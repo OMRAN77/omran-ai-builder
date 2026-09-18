@@ -144,8 +144,15 @@ const btnInstall = $('#btnInstall');
     const __orRemap = {
       'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
       'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
-      'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-4.5',
-      'google/gemini-pro-1.5': 'google/gemini-2.5-pro',
+      'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-5',
+      'google/gemini-pro-1.5': 'google/gemini-3.5-flash',
+      /* v-models-family: بدائل الجيل السابق في المنسدلة المدفوعة → معرّفاتها الحاليّة. */
+      'openai/gpt-4o-mini': 'openai/gpt-5.6-terra',
+      'openai/gpt-4o': 'openai/gpt-5.6-terra',
+      'anthropic/claude-sonnet-4.5': 'anthropic/claude-sonnet-5',
+      'google/gemini-2.5-pro': 'google/gemini-3.5-flash',
+      'meta-llama/llama-3.1-70b-instruct': 'meta-llama/llama-4-maverick',
+      'deepseek/deepseek-chat': 'deepseek/deepseek-v3.2',
     };
     if (__orRemap[__orOld]) localStorage.setItem('aiapp_openrouter_model', __orRemap[__orOld]);
   } catch(e){ __swallow(e, "save:app-10-features#3"); }
@@ -683,11 +690,13 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       fr.readAsDataURL(file);
     });
   }
-  btn.onclick = () => input.click();
-  input.onchange = async () => {
-    const files = Array.from(input.files || []).filter(f => f.type.indexOf('image/') === 0);
-    input.value = '';
-    if(!files.length) return;
+  let __pdfPickHandled = false;
+  async function runPdfFiles(rawFiles){
+    const files = Array.from(rawFiles || []).filter(f => f.type.indexOf('image/') === 0);
+    /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
+       مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
+       (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */
+    if(!files.length){ try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } return; }
     const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
     btn.disabled = true;
     /* v-img2pdf-heic (لقطة عمران ١ سبتمبر): صورة واحدة بصيغة لا يفكها
@@ -760,7 +769,12 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
-  };
+    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+  }
+  // v-attach-picker-v3: تُعاد الوعدة للمراقب فلا يُمسح input.value قبل أن
+  // تنتهي قراءة الصور فعلًا (فصل الملفّ عن مصدره يُفشل القراءة بصمت).
+  btn.onclick = () => { __pdfPickHandled = false; input.click(); omranWatchFilePicker(input, (files) => { if(!__pdfPickHandled){ __pdfPickHandled = true; return runPdfFiles(files); } }); };
+  input.onchange = () => { if(__pdfPickHandled) return; __pdfPickHandled = true; runPdfFiles(input.files); };
 })();
 
 // Brand title: click = home, text follows language

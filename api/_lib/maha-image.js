@@ -135,6 +135,13 @@ module.exports = async (req, res) => {
     // الضيف (بدون حساب) له صورة واحدة مجانية مدى الحياة كتجربة.
     pointsLib = require('./points.js');
     const mahaImgUser = pointsLib.verifyPointsToken(token);
+    /* v-image-modes (أمر عمران «نانو/GPT في +، ولي أنا وحدي»): خيارات محرّك الصورة
+       للمالك وحده — جودة 4K، وفاء النصّ عبر GPT، وتوغل خام يفرض المحرّك (نانو/GPT).
+       تُقرأ فقط حين يكون الطالب المالك؛ غيره لا يُغيّر شيئًا. المالك غير مخصوم أصلًا. */
+    const __isOwnerReq = !!(mahaImgUser && pointsLib.isOwnerUsername(mahaImgUser));
+    const __optWant4K = __isOwnerReq && body.want4K === true;
+    const __optTextFaithful = __isOwnerReq && body.textFaithful === true;
+    const __optForceEngine = (__isOwnerReq && (body.forceEngine === 'nano' || body.forceEngine === 'gpt')) ? body.forceEngine : '';
     if (mahaImgUser) {
       if (!pointsLib.isOwnerUsername(mahaImgUser)) {
         // v-costs-2026-09: 4K بطلب صريح (4k / للطباعة / دقة عالية) تكلف أكثر فتُسعَّر أعلى.
@@ -190,7 +197,7 @@ module.exports = async (req, res) => {
     const __intent = detectEditIntent(intentText);
     /* v-intent-llm: التعابير النمطية مرساة والنموذج يوسّع — طلب قصير على صورة مصدر لم تلتقط النية له مسارًا إبداعيًا
        ولا تبديل/حذف نصّ يُسأل عنه flash (مهلة ٦ ثوانٍ)؛ جواب واثق فقط يرفعه إلى ترقية/فكرة/أسلوب/نفس الصورة. */
-    if (editImageBase64 && !(body && body.sceneUpgrade === true) && !__intent.restyle && !__intent.reimagine && !__intent.elevate && !__intent.sameImage
+    if (editImageBase64 && !__optForceEngine && !(body && body.sceneUpgrade === true) && !__intent.restyle && !__intent.reimagine && !__intent.elevate && !__intent.sameImage
         && intentText.trim().length <= 220 && !isTextEditRequest(intentText) && !isPureTextRemoval(intentText) && !isPersonSwapRequest(intentText) && !isBroadEditRequest(intentText) && llmIntentEnabled(process.env)) {
       const __llm = await classifyEditIntentLLM({ apiKey, text: intentText });
       if (__llm) { __intent[__llm.lane === 'same' ? 'sameImage' : __llm.lane] = true; console.log('[maha-image] intent-llm: ' + __llm.lane + ' (' + __llm.confidence + ')'); }
@@ -237,7 +244,9 @@ module.exports = async (req, res) => {
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     /* الوضع المحسّن هو الافتراضي. «نانو:» يظل مخرجًا صريحًا لإرسال النص الخام،
        ويمكن إعادة السلوك القديم مؤقتًا عبر IMAGE_RAW_DEFAULT=on. */
-    const rawMode = shouldUseRawImagePrompt(prompt, {
+    /* v-image-modes: توغّل «نانو/GPT خام» للمالك = خام فعليّ — نصّه يمرّ حرفيًّا للموديل
+       بلا هندسة أمر ولا كاشف نيّة، ولو مع صورة مرفقة (بلا فقدان كلمة). */
+    const rawMode = !!__optForceEngine || shouldUseRawImagePrompt(prompt, {
       prayerPlan,
       envDefault: process.env.IMAGE_RAW_DEFAULT,
     });
@@ -322,7 +331,7 @@ module.exports = async (req, res) => {
        أو حين يبدأ الطلب بـ«نانو:» صراحةً؛ أمّا تعديل صورة مصدر فيستخدم الأمر
        المهندس دائمًا لأنه هو ما يرفع الجودة فوق التمرير الخام. */
     const __explicitRaw = isExplicitRawImagePrompt(prompt);
-    const __pureRaw = rawMode && (!editImageBase64 || __explicitRaw);
+    const __pureRaw = rawMode && (!editImageBase64 || __explicitRaw || !!__optForceEngine);
     if (__pureRaw) {
       parts.length = 0;
       parts.push({ text: cleanPrompt });
@@ -344,7 +353,9 @@ module.exports = async (req, res) => {
     /* دمج عدة صور (extras) يصل برو أيضًا حين تكون النيّة إبداعية — برو يتعامل مع مراجع متعددة أفضل بكثير */
     const isCreativeEdit = !!editImageBase64 && (isElevate || isReimagine || isRestyle || isSceneUpgrade || __pureRaw);
     /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
-    const primaryModel = editImageBase64 ? ((isCreativeEdit || isTextSwap || isPersonSwap || isBroadEdit) ? creativeModel : editModel) : creativeModel;
+    /* v-image-modes: توغل «نانو خام» للمالك يفرض نانو ٢.٥ (gemini-2.5-flash-image) بدل برو. */
+    const primaryModel = (__optForceEngine === 'nano') ? 'gemini-2.5-flash-image'
+      : (editImageBase64 ? ((isCreativeEdit || isTextSwap || isPersonSwap || isBroadEdit) ? creativeModel : editModel) : creativeModel);
     const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
@@ -357,7 +368,7 @@ module.exports = async (req, res) => {
       return '3:4';
     };
     /* v-4k (المالك: «الجودة قبل التكلفة»): طلب صريح 4K/للطباعة/دقة عالية يرفع إخراج برو إلى 4K (≈ ضعف سعر 2K) */
-    const __want4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || ''));
+    const __want4K = __optWant4K || /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || ''));
     const imageConfig = { imageSize: __want4K ? '4K' : '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
     /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
@@ -436,9 +447,9 @@ module.exports = async (req, res) => {
           form.append('model', 'gpt-image-1');
           form.append('prompt', String(rescuePromptText).slice(0, 3800));
           form.append('size', 'auto');
-          /* v-hifi-edit (مقارنة عمران مع ChatGPT): input_fidelity=high يحفظ
-             نصوص وشعارات الصورة الأصلية — بدونه يعاد رسمها مخربشة. */
-          form.append('input_fidelity', 'high');
+          /* v-hifi-edit: input_fidelity=high يحفظ نصوص وشعارات المصدر — بدونه تُعاد رسمها
+             مخربشة. لكن «GPT خام» للمالك يريد GPT حرًّا بلا قيد التطبيق، فيأخذ الافتراضيّ. */
+          form.append('input_fidelity', __optForceEngine === 'gpt' ? 'low' : 'high');
           form.append('quality', 'high');
           form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
           if (exactTextEdit) {
@@ -546,6 +557,16 @@ module.exports = async (req, res) => {
       return;
     }
 
+    /* v-image-modes: توغل «GPT خام» للمالك — يذهب مباشرة إلى gpt-image (توليد/تعديل)
+       متجاوزًا مسار Gemini كليًّا. للمقارنة والاختبار؛ يبقى الإنقاذ عند الفشل. */
+    if (__optForceEngine === 'gpt') {
+      const __gptB64 = await openaiRescueImage();
+      if (__gptB64) { await sendImg(__gptB64, 'image/png', 'openai'); return; }
+      await refundImageCharge();
+      res.status(502).json({ error: 'image_generation_busy', retryable: true, __diag: process.env.IMG_DIAG === 'off' ? undefined : { forced: 'gpt', openai: (lastRescueErr || 'no-rescue').slice(0, 160) } });
+      return;
+    }
+
     // v-img-textwise: مصدر نصّي كثيف → gpt-image-1 عالي الدقة أولًا؛
     // فشله أو غيابه يُكمل مسار Gemini المعتاد بلا أي خسارة.
     /* v-img-textwise-gen (صورة ChatGPT عند المالك: واجهة أدوات كاملة بعناوين
@@ -568,7 +589,7 @@ module.exports = async (req, res) => {
     const __duoWouldRun = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length; /* دمج عدة صور: المنافس الأحادي يُسقط الصور الإضافية */
     /* v-letter-swap: تبديل حرف على لقطة نصّية لا يُختطف إلى gpt-image وحده — برو يقوده، وgpt-image ينافس بالحكم فقط عند تفعيل المزدوج */
     const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length && (!isTextSwap || __duoWouldRun)
-      && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
+      && (editImageBase64 ? (__optTextFaithful || await sourceLooksTextDense()) : (__optTextFaithful || (!rawMode && __textCueRe.test(cleanPrompt))));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
     let densePromise = null;

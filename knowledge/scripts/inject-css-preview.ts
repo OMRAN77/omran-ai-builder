@@ -1,5 +1,5 @@
 // Preview a CSS block on the live site without deploying: inject <style> then open a modal.
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync } from 'node:fs';
 const b64 = readFileSync(process.argv[2], 'utf8').trim();
 const openId = process.argv[3] || '';

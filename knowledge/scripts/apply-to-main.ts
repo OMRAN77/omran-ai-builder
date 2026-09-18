@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
@@ -6,9 +6,9 @@ const CONN = 'conn_v99nvvn81c6baxgr3m9w';
 const owner = 'OMRAN77', repo = 'omran-ai-builder';
 const md5 = (p: string) => createHash('md5').update(readFileSync(p)).digest('hex');
 
-const BASE = '/tasklet/agent/home/design/work/index.html';      // ما نزّلته من main
-const NEW  = '/tasklet/agent/home/design/ready/index.html';     // المعدَّل
-const CHK  = '/tasklet/agent/home/design/verify/main-index.html';
+const BASE = '/workspace/agent/home/design/work/index.html';      // ما نزّلته من main
+const NEW  = '/workspace/agent/home/design/ready/index.html';     // المعدَّل
+const CHK  = '/workspace/agent/home/design/verify/main-index.html';
 
 // 1) اجلب نسخة main الحالية
 const dl = await invokeTool({
@@ -43,12 +43,12 @@ console.log(`✓ دُفع إلى main — commit ${String(r.commit?.sha).slice(0
 // 3) تحقّق من main بعد الدفع
 const v = await invokeTool({
   toolName: 'github_download_file', connectionId: CONN,
-  args: { owner, repo, repoPath: 'index.html', ref: 'main', destinationPath: '/tasklet/agent/home/design/verify/main-after.html' },
+  args: { owner, repo, repoPath: 'index.html', ref: 'main', destinationPath: '/workspace/agent/home/design/verify/main-after.html' },
 });
 if (v.ok) {
-  const after = md5('/tasklet/agent/home/design/verify/main-after.html');
+  const after = md5('/workspace/agent/home/design/verify/main-after.html');
   console.log(`main بعد الدفع: ${after} ${after === newHash ? '✓ مطابق تمامًا للملف المعدَّل' : '✗ غير مطابق!'}`);
-  const txt = readFileSync('/tasklet/agent/home/design/verify/main-after.html','utf8');
+  const txt = readFileSync('/workspace/agent/home/design/verify/main-after.html','utf8');
   const bad = ['omranRightPanel','omranBalanceCard','omranBalanceTop','omranTopUpBtn',"'#omranQuickList'"].filter(k => txt.includes(k));
   console.log(bad.length ? `✗ بقايا في main: ${bad.join(', ')}` : '✓ صفر بقايا للوحة في main');
   console.log(`✓ أدوات الجوال باقية: ${txt.includes('omranQuickListMobile')}`);

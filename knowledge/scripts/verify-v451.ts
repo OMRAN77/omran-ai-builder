@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 const C = { owner: 'OMRAN77', repo: 'omran-ai-builder' };
 const conn = 'conn_v99nvvn81c6baxgr3m9w';
 await new Promise(r => setTimeout(r, 35000)); // فخّ: الواصفة تكذب فور الدفع

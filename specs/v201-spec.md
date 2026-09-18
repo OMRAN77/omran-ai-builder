@@ -1,6 +1,6 @@
 # v201 Spec — omran-ai-builder input area cleanup
 
-File: /tasklet/agent/home/apps/aidark-clone/index.html (large single-file SPA, Arabic RTL).
+File: /workspace/agent/home/apps/aidark-clone/index.html (large single-file SPA, Arabic RTL).
 Edit via Python scripts (read file, targeted string replace, assert counts, write back). NEVER parallel writes.
 
 ## 1) Replace ➕ button with ⋮
@@ -27,5 +27,5 @@ Edit via Python scripts (read file, targeted string replace, assert counts, writ
 ## Rules
 - RTL Arabic UI, no emoji in any of the touched UI, no borders/boxes beyond existing style language.
 - Do not touch عبدالله files or anything outside index.html.
-- After edits run: `node -e "require('fs').readFileSync('/tasklet/agent/home/apps/aidark-clone/index.html','utf8')"` and a quick sanity grep that old strings are gone.
+- After edits run: `node -e "require('fs').readFileSync('/workspace/agent/home/apps/aidark-clone/index.html','utf8')"` and a quick sanity grep that old strings are gone.
 - Do NOT deploy; parent handles deploy + SW bump.

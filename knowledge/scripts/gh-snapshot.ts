@@ -1,6 +1,6 @@
 // نسخة احتياطيّة من نسخ main الحالية للملفّات المذكورة، قبل الدفع.
 // الاستخدام: bun scripts/gh-snapshot.ts <مجلّد الحفظ> <مسار> [مسار...]
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { mkdirSync, existsSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 const CONN = 'conn_v99nvvn81c6baxgr3m9w', owner = 'OMRAN77', repo = 'omran-ai-builder';
@@ -14,7 +14,7 @@ for (const f of files) {
     args: { owner, repo, repoPath: f, destinationPath: out } });
   if (!r.ok) { missing.push(f); console.log(`✗ ${f} — ${String(r.error).slice(0,160)}`); continue; }
   let size = 0;
-  for (let i = 0; i < 8 && size === 0; i++) {           // /tasklet متّسق بالتراخي: أعِد المحاولة
+  for (let i = 0; i < 8 && size === 0; i++) {           // /workspace متّسق بالتراخي: أعِد المحاولة
     await new Promise(res => setTimeout(res, 400));
     if (existsSync(out)) size = statSync(out).size;
   }

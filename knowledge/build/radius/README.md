@@ -26,4 +26,4 @@
 
 ## الخطوة التالية
 `bun deploy-files.ts production "…"` ثم لقطة شاشة للتحقّق البصريّ، ثم دفع GitHub.
-رجوع: `/tasklet/agent/home/backup/rollback-points/pre-radius/index.html`
+رجوع: `/workspace/agent/home/backup/rollback-points/pre-radius/index.html`

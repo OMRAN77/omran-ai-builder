@@ -1,7 +1,7 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync } from 'node:fs';
-const p7 = readFileSync('/tasklet/agent/home/audit/p3/probe-s7.js', 'utf8');
-const D = '/tasklet/agent/home/audit/p3';
+const p7 = readFileSync('/workspace/agent/home/audit/p3/probe-s7.js', 'utf8');
+const D = '/workspace/agent/home/audit/p3';
 const [, , ...urls] = process.argv;
 for (const u of urls) {
   const [tag, url] = u.split('=');

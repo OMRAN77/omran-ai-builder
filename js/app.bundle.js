@@ -1945,6 +1945,12 @@ function buildSpokenWordSpans(container, text){
   // [عنوان المصدر]\nhttps://example.com — نعيده إلى ماركداون صالح
   // قبل التقسيم كي يصير رابطًا نظيفًا ويُجمع تحت زر «المصادر».
   text = String(text || '').replace(/\[([^\]\n]{1,240})\]\s*\n+\s*\(?\s*(https?:\/\/[^\s)]+)\s*\)?/g, '[$1]($2)');
+  // v-tidy-gaps (أمر عمران «الأسطر متباعدة، كل واحد بعيد عن الثاني»): اجمع الأسطر
+  // الفارغة بين الفقرات (سطر فارغ ⇐ سطر واحد) فتقترب الفقرات وتصير مرتّبة. خارج كتل
+  // الكود فقط (```…``` أو المفتوحة أثناء البثّ) كي لا ينهار تنسيق الكود.
+  text = text.split(/(```[\s\S]*?```|```[\s\S]*$)/g).map(function(__s, __i){
+    return (__i % 2) ? __s : __s.replace(/\n{2,}/g, '\n');
+  }).join('');
   container.innerHTML = '';
   const wordEls = [];
   // v467: capture markdown links [text](url) — even with spaces — as a single token
@@ -1981,7 +1987,18 @@ function buildSpokenWordSpans(container, text){
     container.appendChild(block);
     codePre = pre; parent = pre;
   };
-  const closeCodeBlock = () => { codePre = null; parent = container; };
+  const closeCodeBlock = () => {
+    /* v-code-color (المالك «الكود غير ملوّن»): الكتلة المكتملة تُلوَّن بملوّن المحرّر نفسه
+       (omranCodeHighlight) — يُستبدل النصّ العاديّ بوسوم <i> ملوّنة (كلمات مفتاحيّة/نصوص/
+       تعليقات/أرقام). القراءة الصوتيّة لا تقرأ الكود عادةً فلا يضرّ فقد وسوم tts-word هنا. */
+    try{
+      if(codePre && typeof omranCodeHighlight === 'function'){
+        var __raw = codePre.textContent;
+        if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
+      }
+    }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
+    codePre = null; parent = container;
+  };
   while((m = re.exec(text))){
     if(m.index > lastIndex){
       const between = text.slice(lastIndex, m.index);
@@ -3248,12 +3265,10 @@ const I18N = {
     authOtpSendBtn: "إرسال رمز التحقق",
     aboutTagline: "منصة عربية لبناء التطبيقات بالذكاء الاصطناعي",
     videosGroupTitle: "🎬 الفيديوهات التعريفية",
-    toneSectionLabel: "النبرة",
-    toneAuto: "على راحتك",
-    toneWarm: "ودود",
-    toneDirect: "مباشر",
-    toneFormal: "رسمي",
-    toneHint: "اختر أسلوب الرد المفضّل — أو خلّ الذكاء الاصطناعي يتأقلم معك تلقائيًا.",
+    ciLabel: "التعليمات المخصّصة",
+    ciHint: "اكتب كيف تحب أن يردّ عليك — يُطبَّق في كل محادثاتك.",
+    ciPlaceholder: "مثال: ردّ عليّ بالعامية وباختصار، وبلا مقدّمات.",
+    ciSaved: "تم الحفظ ✅",
     mahaCcTitle: "الترجمة النصية للمكالمة",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
@@ -3779,12 +3794,10 @@ const I18N = {
     authOtpSendBtn: "Send verification code",
     aboutTagline: "An Arabic platform for building apps with AI",
     videosGroupTitle: "🎬 Intro videos",
-    toneSectionLabel: "Tone",
-    toneAuto: "Your call",
-    toneWarm: "Friendly",
-    toneDirect: "Direct",
-    toneFormal: "Formal",
-    toneHint: "Pick your preferred reply style — or let the AI adapt to you automatically.",
+    ciLabel: "Custom instructions",
+    ciHint: "Write how you'd like replies — applied to all your chats.",
+    ciPlaceholder: "Example: Keep it casual and short, no preambles.",
+    ciSaved: "Saved ✅",
     mahaCcTitle: "Live call captions",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
@@ -4495,7 +4508,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=672'; /* v-mode-i18n: مفتاح darkModeTitle في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=673'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -5822,70 +5835,8 @@ function omranRenderOptions(host, blocks){
     host.appendChild(wrap);
   });
 }
-/* v-long-reply: الردّ الطويل يُقصّ في المحادثة ويُقرأ كاملًا في لوحة المعاينة.
-   لا يلمس cur.code ولا المعاينة المحفوظة — يعرض النصّ مهرَّبًا فقط، كما تفعل
-   رقاقة الملفّ النصّي تمامًا. أزرار الرسالة كلها تبقى في أماكنها بلا تغيير. */
-var OMRAN_LONG_REPLY_CHARS = 1500;
-/* v-long-reply-fix: الأنماط المباشرة (style.maxHeight) لم تقصّ شيئًا — تنسيق
-   .msg-text يحمل قواعد أقوى. قاعدة صنف بـ!important تحسم الأمر، ومعها
-   content-visibility:visible كي لا يتعارض قصّ v-tap-fast مع القناع. */
-function omranLongClipCss(){
-  if(document.getElementById('omranLongClipCss')) return;
-  var st = document.createElement('style');
-  st.id = 'omranLongClipCss';
-  st.textContent = '.msg-text.omranLongClip{max-height:260px !important;overflow:hidden !important;'
-    + 'content-visibility:visible !important;'
-    + '-webkit-mask-image:linear-gradient(#000 66%,transparent) !important;'
-    + 'mask-image:linear-gradient(#000 66%,transparent) !important;}';
-  document.head.appendChild(st);
-}
-function omranOpenReplyInPanel(text){
-  try{
-    /* v-panel-md (لقطة المالك ١٣ سبتمبر: «**» و«>» خامًا في اللوحة): الردّ كان
-       يُهرَّب نصًّا صرفًا فتظهر علامات الماركداون. الآن يُنسَّق بالمُنسِّق نفسه
-       الذي ترسم به فقاعة المحادثة (عناوين، عريض، قوائم، روابط، كود)، وتُنزع أزرار
-       النسخ لأنّ الإطار بلا سكربت. اللون يتبع الوضع الفاتح/الداكن. */
-    var esc;
-    try{
-      var __host = document.createElement('div');
-      buildSpokenWordSpans(__host, String(text || ''));
-      __host.querySelectorAll('button').forEach(function(b){ b.remove(); });
-      esc = __host.innerHTML;
-    }catch(e){
-      __swallow(e, 'ui:long-reply-md');
-      esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-    previewFrame.style.display = 'block';
-    $('#pyConsole').style.display = 'none';
-    emptyState.style.display = 'none';
-    previewFrame._imageView = true;   /* يمنع renderCodeAndPreview من استبداله بالكود */
-    previewFrame._lastSrc = null;
-    var rtl = /[\u0600-\u06FF]/.test(String(text || ''));
-    var __light = document.documentElement.getAttribute('data-mode') === 'light';
-    previewFrame.srcdoc = '<html><head><meta charset="utf-8"><style>'
-      + 'body{margin:0;background:' + (__light ? '#ffffff' : '#111') + ';color:' + (__light ? '#14161a' : '#eee') + ';'
-      + 'font-family:Tajawal,Tahoma,Arial,sans-serif;white-space:pre-wrap;word-break:break-word;'
-      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';}'
-      + '.md-bold{font-weight:700}.md-h1{font-size:1.45em;font-weight:700}.md-h2{font-size:1.28em;font-weight:700}'
-      + '.md-h3,.md-h4,.md-h5,.md-h6{font-size:1.12em;font-weight:700}'
-      + 'a{color:#d4af37}'
-      + '.chat-codeblock{direction:ltr;text-align:left;background:' + (__light ? '#f3f3f3' : '#1c1c1c') + ';border-radius:10px;padding:10px 12px;margin:8px 0;overflow:auto}'
-      + '.chat-codeblock-head{font-size:12px;opacity:.6;margin-bottom:6px}'
-      + '.chat-codeblock pre{margin:0;white-space:pre;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}'
-      + '</style></head><body>' + esc + '</body></html>';
-    /* v-panel-head: عنوان اللوحة ونصّ النسخ يتبعان الردّ المعروض */
-    if(typeof window.omranPanelTitle === 'function'){
-      window.omranPanelTitle((typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'الرد الكامل' : 'Full reply', String(text || ''));
-    }
-    if(typeof switchWorkTab === 'function') switchWorkTab('preview');
-    if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
-    if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
-      if(typeof closeDrawers === 'function') closeDrawers();
-      workareaEl.classList.add('open');
-      backdropEl.classList.add('show');
-    }
-  }catch(e){ __swallow(e, 'ui:long-reply-panel'); }
-}
+/* v-long-reply-off (طلب المالك ١٨ سبتمبر): الردّ الطويل يُعرض كاملًا في المحادثة بلا قصّ ولا
+   أزرار — أُزيل القناع وزرّا القراءة والطيّ ولوحة القراءة التي كانت هنا (v-long-reply). */
 function renderMessages(keepScroll){
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
@@ -5911,7 +5862,7 @@ function renderMessages(keepScroll){
         if(__m.attachments) __len += __m.attachments.length * 3;
       }
       const __exp = Array.isArray(__c0.expandedAskAllBatches) ? __c0.expandedAskAllBatches.join(',') : '';
-      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp + '|' + (__c0.__expandedLong || []).join(',');  /* v-long-reply */
+      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp;
     }
     __sig += '|' + (localStorage.getItem('aiapp_lang') || 'ar');
     if(window.__renderMsgSig === __sig && messagesEl.childElementCount > 0) return;
@@ -6095,47 +6046,14 @@ function renderMessages(keepScroll){
       div.appendChild(imgStrip);
     }
     div.appendChild(textDiv);
-    /* v-long-reply: ردّ نصّيّ طويل بلا كود → يُقصّ ويُفتح كاملًا في اللوحة.
-       ردود البناء (m.code) تبقى كما هي — لها زرّ «استخدم هذا الإصدار». */
-    try{
-      if(m.role !== 'user' && !m._loading && !m.code && typeof __mc === 'string'
-         && __mc.length > OMRAN_LONG_REPLY_CHARS){
-        cur.__expandedLong = cur.__expandedLong || [];
-        var __lk = 'L' + mIdx;
-        var __openNow = cur.__expandedLong.indexOf(__lk) !== -1;
-        if(!__openNow){
-          omranLongClipCss();
-          textDiv.classList.add('omranLongClip');
-        }
-        var __lrow = document.createElement('div');
-        __lrow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;';
-        var __mkL = function(label, fn){
-          var b = document.createElement('button');
-          b.type = 'button';
-          b.textContent = label;
-          b.style.cssText = 'padding:5px 13px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.16));background:transparent;color:var(--accent2,#d4af37);font:inherit;font-size:12.5px;cursor:pointer;';
-          b.onclick = function(e){ e.stopPropagation(); fn(); };
-          __lrow.appendChild(b);
-          return b;
-        };
-        var __isArL = (lang === 'ar' || lang === 'ur');
-        __mkL(__isArL ? '📄 اقرأ كامل الرد' : '📄 Read full reply', function(){
-          omranOpenReplyInPanel(__mc);
-        });
-        __mkL(__openNow ? (__isArL ? 'اطوِ' : 'Collapse') : (__isArL ? 'اعرضه هنا' : 'Expand here'), function(){
-          var __p = cur.__expandedLong.indexOf(__lk);
-          if(__p === -1) cur.__expandedLong.push(__lk); else cur.__expandedLong.splice(__p, 1);
-          renderMessages(true);
-        });
-        div.appendChild(__lrow);
-      }
-    }catch(e){ __swallow(e, 'ui:long-reply'); }
     // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
     if(m.role !== 'user' && __mc){
       const aiTag = document.createElement('div');
       aiTag.className = 'aiGenTag';
       aiTag.textContent = t('aiGenTag');  /* v656 — كان ar/en فقط */
-      aiTag.style.cssText = 'font-size:10px;opacity:.5;margin-top:6px;user-select:none;';
+      /* v-tidy-bubble (أمر عمران «خلّه لكن أخفى وأصغر»): يبقى للالتزام بمتجر AppGallery
+         لكن أدقّ وأخفت فلا يلفت النظر. */
+      aiTag.style.cssText = 'font-size:8px;opacity:.28;margin-top:3px;user-select:none;';
       div.appendChild(aiTag);
     }
     if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
@@ -6148,6 +6066,7 @@ function renderMessages(keepScroll){
     {
       // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
       const __inlineLinks = [];
+      const __anchorEls = [];
       if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
@@ -6155,11 +6074,7 @@ function renderMessages(keepScroll){
           if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
             __inlineLinks.push({ url, title });
           }
-          // حوّل الرابط إلى نص بلا href حتى لا يتفرّق
-          const span = document.createElement('span');
-          span.className = 'msgInlineRef';
-          span.textContent = a.textContent;
-          a.parentNode.replaceChild(span, a);
+          __anchorEls.push(a);
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
@@ -6167,8 +6082,21 @@ function renderMessages(keepScroll){
        const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
        const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
       const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
+      // v-src-dedupe (أمر عمران ب): رابط واحد ظاهر في الرد أصلًا = لا بطاقة مصادر
+      // مكرّرة؛ يبقى الرابط قابلًا للضغط داخل الرد. غير ذلك تُحوّل الروابط إلى نصّ
+      // (بلا href حتى لا تتفرّق) وتُجمع كلّها في البطاقة.
+      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
+      const __skipCard = validSrcs.length === 1 && __inlineLinks.length === 1 && __normU(__inlineLinks[0].url) === __normU(validSrcs[0].url);
+      if(!__skipCard){
+        __anchorEls.forEach(a => {
+          const span = document.createElement('span');
+          span.className = 'msgInlineRef';
+          span.textContent = a.textContent;
+          a.parentNode.replaceChild(span, a);
+        });
+      }
 
-      if(validSrcs.length){
+      if(validSrcs.length && !__skipCard){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
         const btn = document.createElement('button');
         btn.className = 'msgSrcBtn';
@@ -6210,10 +6138,14 @@ function renderMessages(keepScroll){
           const title = document.createElement('span');
           title.className = 'msgSrcItemTitle';
           title.textContent = (s.title && /^(إنستغرام|تيك توك|إكس|يوتيوب|فيسبوك|سناب شات) · /.test(s.title)) ? s.title : (s.title || host);
-          const domain = document.createElement('span');
-          domain.className = 'msgSrcItemDomain';
-          domain.textContent = host;
-          info.appendChild(title); info.appendChild(domain);
+          info.appendChild(title);
+          // v-src-dedupe (أمر عمران أ): لا تكرّر النطاق لو هو نفسه العنوان (رابط بلا عنوان).
+          if(title.textContent.trim().toLowerCase() !== host.toLowerCase()){
+            const domain = document.createElement('span');
+            domain.className = 'msgSrcItemDomain';
+            domain.textContent = host;
+            info.appendChild(domain);
+          }
           row.appendChild(fav); row.appendChild(info);
           drop.appendChild(row);
         });
@@ -6311,17 +6243,17 @@ function renderMessages(keepScroll){
           if(a.text){
             chip.style.cursor = 'pointer';
             chip.title = a.name;
-            chip.onclick = () => {
-              /* v-code-viewer: المرفق النصّي يُفتح في تبويب «الكود» بترقيم وتلوين.
-                 المسار القديم (المعاينة الخام) يبقى احتياطًا إن غاب العارض. */
+            /* v-code-viewer: المرفق النصّي يُفتح في تبويب «الكود» بترقيم وتلوين.
+               المسار القديم (المعاينة الخام) يبقى احتياطًا إن غاب العارض. */
+            const __showAttach = (txt) => {
               if(typeof window.omranOpenTextInCodePanel === 'function'){
-                window.omranOpenTextInCodePanel(a.text, a.name);
+                window.omranOpenTextInCodePanel(txt, a.name);
                 return;
               }
               previewFrame.style.display = 'block';
               $('#pyConsole').style.display = 'none';
               emptyState.style.display = 'none';
-              const esc = (a.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const esc = (txt || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
               previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;font-family:monospace;white-space:pre-wrap;word-break:break-word;padding:16px;">' + esc + '</body></html>';
               switchWorkTab('preview');
               closeDrawers();
@@ -6329,6 +6261,17 @@ function renderMessages(keepScroll){
                 workareaEl.classList.add('open');
                 backdropEl.classList.add('show');
               }
+            };
+            chip.onclick = () => {
+              /* v-attach-viewfull (المالك «الملفّ غير كامل في العارض»): المعاينة المحفوظة
+                 مختصرة (٦٠٠٠ حرف) لتخفيف الحالة؛ النصّ الكامل في IndexedDB — نستعيده عند الفتح. */
+              if(a.textFullId && typeof idbGet === 'function'){
+                idbGet(a.textFullId)
+                  .then(full => __showAttach(typeof full === 'string' && full.length ? full : a.text))
+                  .catch(() => __showAttach(a.text));
+                return;
+              }
+              __showAttach(a.text);
             };
           }
           wrap.appendChild(chip);
@@ -6566,7 +6509,8 @@ function renderMessages(keepScroll){
       };
       if(copyMsgBtn){
         const bubbleCol = document.createElement('div');
-        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:' + (m.role === 'user' ? 'flex-end' : 'flex-start') + '; flex:1 1 auto; min-width:0;';
+        /* v-one-side: الفقاعة وأيقوناتها على جهة واحدة (البداية = يمين عربيّ/يسار إنجليزيّ). */
+        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:flex-start; flex:1 1 auto; min-width:0;';
         bubbleCol.appendChild(div);
         bubbleCol.appendChild(copyMsgBtn);
         rowWrap.appendChild(bubbleCol);
@@ -6603,7 +6547,8 @@ function renderMessages(keepScroll){
       compareGroup = null;
       if(copyMsgBtn){
         const bubbleCol = document.createElement('div');
-        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:' + (m.role === 'user' ? 'flex-end' : 'flex-start') + '; max-width:100%;';
+        /* v-one-side: الفقاعة وأيقوناتها على جهة واحدة (البداية = يمين عربيّ/يسار إنجليزيّ). */
+        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:flex-start; max-width:100%;';
         bubbleCol.appendChild(div);
         bubbleCol.appendChild(copyMsgBtn);
         // ✨ v363: ملاحظة تلقائية آخر الرد تقترح الميزة المناسبة من رسالة المستخدم السابقة
@@ -8081,7 +8026,7 @@ function omranCodeEscape(s){
    لصقة ١٠٠ ك.ب. يعني عشرات آلاف العقد في DOM واحد، فيثقل التمرير والكتابة
    والتبديل بين التبويبات. فوق الحدّ نعرض نصًّا خامًّا (عقدة واحدة)؛ الترقيم
    يبقى دائمًا بلا حدّ. */
-var OMRAN_HL_MAX = 60000;
+var OMRAN_HL_MAX = 120000; /* v-code-color: يشمل ملفّات كبيرة (٦٧ك.ب) في الشات والمحرّر */
 function omranCodeHighlight(raw){
   var esc = omranCodeEscape(raw);
   if(esc.length > OMRAN_HL_MAX) return esc;
@@ -8929,36 +8874,41 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 })();
 
-/* v--- نبرة الرد — اختيار صريح من الإعدادات */
+/* v-tone-buttons-removed (أمر المالك ١٧ سبتمبر): أزرار النبرة وتخزينها
+   (omranTone) وحاقن tone في window.fetch — حُذف كلّه. الأزرار لم تكن تصل
+   مسار المحادثة أصلًا: الحاقن كان يضيف tone لطلبات /api/ai، وinjectNote في
+   api/ai.js لا يقرأه إلّا للمسارات المدرجة في PROVIDERS، وaction=chat ليس
+   منها — فكان الاختيار بلا أثر. البديل: الأسلوب العفويّ افتراضًا في ميثاق
+   الشخصيّة + حقل التعليمات المخصّصة أدناه. (كتلة tone.js على الخادم باقية
+   لمسارات المزوّدين المباشرة وتكتشف الأسلوب تلقائيًّا كما كانت.) */
+/* v-custom-instructions: تعليمات المستخدم — تُحفظ محلّيًّا وتُرسل مع كلّ
+   طلب محادثة (app-18-chat-tools) فيحقنها الخادم في تعليمات النظام. */
 (function(){
-  function applyTone(v){
-    document.querySelectorAll('.toneBtn').forEach(b => b.classList.toggle('active', b.dataset.tone === v));
-  }
-  let saved = 'auto';
-  try{ saved = localStorage.getItem('omranTone') || 'auto'; }catch(e){ __swallow(e, "ui:app-05-ui#tone-init"); }
-  applyTone(saved);
-  window.getOmranTone = function(){ try{ return localStorage.getItem('omranTone') || 'auto'; }catch(e){ return 'auto'; } };
-  document.querySelectorAll('.toneBtn').forEach(b => {
-    b.onclick = function(){
-      try{ localStorage.setItem('omranTone', b.dataset.tone); }catch(e){ __swallow(e, "save:app-05-ui#tone"); }
-      applyTone(b.dataset.tone);
+    var ta = document.getElementById('customInstructionsInput');
+    var okEl = document.getElementById('customInstructionsSaved');
+    var cntEl = document.getElementById('customInstructionsCount');
+    var MAXLEN = 1500;
+    window.getCustomInstructions = function(){
+      try{ return (localStorage.getItem('omranCustomInstructions') || '').slice(0, MAXLEN); }catch(e){ return ''; }
     };
-  });
-  // حقن tone في كل طلب /api/ai تلقائياً
-  var _origFetch = window.fetch;
-  window.fetch = function(url, opts){
-    try{
-      if(typeof url === 'string' && url.indexOf('/api/ai') !== -1 && opts && opts.body){
-        var tone = window.getOmranTone();
-        if(tone && tone !== 'auto'){
-          var parsed = JSON.parse(opts.body);
-          parsed.tone = tone;
-          opts = Object.assign({}, opts, { body: JSON.stringify(parsed) });
+    if(!ta) return;
+    ta.value = window.getCustomInstructions();
+    var paint = function(){ if(cntEl) cntEl.textContent = ta.value.length + '/' + MAXLEN; };
+    paint();
+    var okTimer = null, saveTimer = null;
+    ta.addEventListener('input', function(){
+      paint();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function(){
+        try{ localStorage.setItem('omranCustomInstructions', ta.value.slice(0, MAXLEN)); }
+        catch(e){ __swallow(e, 'save:custom-instructions'); }
+        if(okEl){
+          okEl.style.opacity = '1';
+          clearTimeout(okTimer);
+          okTimer = setTimeout(function(){ okEl.style.opacity = '0'; }, 1600);
         }
-      }
-    }catch(e){ /* guard-ok — لا نكسر fetch الأصلي */ }
-    return _origFetch.call(this, url, opts);
-  };
+      }, 400);
+    });
 })();
 
 /* v336: طي/فتح لوحة الكود والمعاينة (كمبيوتر فقط) */
@@ -9187,6 +9137,16 @@ const PROVIDER_QUICK_LIST = [
 // ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
 try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); }
 let providerQuickBarBuilt = false;
+/* v-provider-arrow (أمر عمران «كل المزودين ٩ في السهم»): منتقٍ من شريط السهم (modes.js)
+   يضبط موديل المزوّد ثمّ يبدّل المزوّد بمنطق selectProviderKey نفسه (مشروع/محادثة لكلّ
+   مزوّد). للمالك وحده (الشريط لا يظهر لغيره). */
+window.omranPickProviderModel = function(provKey, storeKey, modelId){
+  try{ if(storeKey && modelId) localStorage.setItem(storeKey, modelId); }catch(e){ __swallow(e, "save:app-05-ui#prov-arrow"); }
+  try{
+    const cur = localStorage.getItem('aiapp_provider') || 'claude';
+    if(provKey && provKey !== cur) selectProviderKey(provKey);
+  }catch(e){ __swallow(e, "misc:app-05-ui#prov-arrow"); }
+};
 function selectProviderKey(key){
   const prev = localStorage.getItem('aiapp_provider') || 'claude';
   localStorage.setItem('aiapp_provider', key);
@@ -11127,7 +11087,7 @@ $('#btnSettings').onclick = () => {
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
   $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
-  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini';
+  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-5.6-terra';
   $('#perplexityApiKey').value = localStorage.getItem('aiapp_perplexity_apikey') || '';
   $('#perplexityModel').value = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
   $('#mistralApiKey').value = localStorage.getItem('aiapp_mistral_apikey') || '';
@@ -11364,7 +11324,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
-    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-4o-mini') : sel.value;
+    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-5.6-terra') : sel.value;
     localStorage.setItem('aiapp_openrouter_model', finalModel);
   })();
   localStorage.setItem('aiapp_perplexity_apikey', $('#perplexityApiKey').value.trim());
@@ -11554,18 +11514,36 @@ $('#codeUploadInput').addEventListener('change', (e) => {
   };
 })();
 
-$('#btnDownload').onclick = () => {
+/* v-files-dl-mobile (بلاغ المالك «الملف ما يتحمّل في الآيفون»): a.download للـblob لا يعمل
+   على iOS Safari (يفتح تبويبًا أو لا شيء). على الجوّال نستخدم مشاركة الملف (navigator.share)
+   فيظهر «حفظ في الملفات»؛ على الحاسوب يبقى التنزيل المباشر. */
+async function omranSaveOrShareFile(blob, fname){
+  const isMobile = document.documentElement.classList.contains('mobile-ui');
+  if(isMobile){
+    try{
+      const file = new File([blob], fname, { type: blob.type || 'application/octet-stream' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        await navigator.share({ files: [file], title: fname });
+        return;
+      }
+    }catch(e){ if(e && e.name === 'AbortError') return; /* غير الإلغاء: ننزّل عاديًّا أدناه */ }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+window.omranSaveOrShareFile = omranSaveOrShareFile;
+
+$('#btnDownload').onclick = async () => {
   const cur = getCurrent();
   if(!cur || !cur.code){ alert(t('noCodeToDownload')); return; }
   const isPy = cur.codeType === 'python';
   const blob = new Blob([cur.code], {type: isPy ? 'text/x-python' : 'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = (cur.title || 'app') + (isPy ? '.py' : '.html');
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  await omranSaveOrShareFile(blob, (cur.title || 'app') + (isPy ? '.py' : '.html'));
 };
 
 // 📦 تصدير المشروع كملف ZIP جاهز للنشر (index.html + README)
@@ -11586,13 +11564,7 @@ $('#btnExportZip').onclick = async () => {
     zip.file(isPy ? 'main.py' : 'index.html', cur.code);
     zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with Omran AI Builder — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
     const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = (cur.title || 'app') + '.zip';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await omranSaveOrShareFile(blob, (cur.title || 'app') + '.zip');
   }catch(e){
     console.error('zip export error', e);
     alert('⚠️ ' + (e.message || e));
@@ -12176,7 +12148,7 @@ async function callOpenAILike(messages, onDelta){
 async function callOpenRouter(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_openrouter_apikey');
   const hasImages = messages.some(m => m.images && m.images.length);
-  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini');
+  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-5.6-terra');
   // If the visitor hasn't entered their own OpenRouter key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -14739,6 +14711,127 @@ function mahaStopMicMeter(){
   }catch(e){ __swallow(e, "ui:app-08-maha#11"); }
 }
 
+/* v-maha-firstword: المايك الحيّ يُقفل عمدًا ثوانٍ حتى تجهز الجلسة (راجع
+   mahaStartRealtimeCall)، فأول جملة يقولها المستخدم كانت تروح بالهواء ولا
+   تُبثّ ولا تُخزّن — يعيد الكلام ويظنّ مها ما ردّت من أول مرة. الحل: نسخة
+   (clone) مستقلّة من مسار الصوت تسجّل محليًّا طوال نافذة الانتظار (حالة
+   enabled لكلّ track مستقلّة بعد clone)، فتُبثّ لاحقًا لو فيها كلام فعليّ. */
+const MAHA_PREBUF_MAX_SEC = 6;
+const MAHA_PREBUF_TARGET_RATE = 24000;
+const MAHA_PREBUF_SPEECH_PEAK = 0.02;
+let mahaPreBufCtx = null, mahaPreBufNode = null, mahaPreBufSrc = null, mahaPreBufGain = null, mahaPreBufTrack = null;
+let mahaPreBufChunks = [], mahaPreBufSamples = 0;
+
+function mahaDownsamplePcm(buf, inRate, outRate){
+  if(outRate >= inRate) return buf;
+  const ratio = inRate / outRate;
+  const out = new Float32Array(Math.round(buf.length / ratio));
+  let offOut = 0, offIn = 0;
+  while(offOut < out.length){
+    const nextIn = Math.round((offOut + 1) * ratio);
+    let sum = 0, n = 0;
+    for(let i = offIn; i < nextIn && i < buf.length; i++){ sum += buf[i]; n++; }
+    out[offOut] = n ? sum / n : 0;
+    offOut++; offIn = nextIn;
+  }
+  return out;
+}
+function mahaFloatToPcm16(buf){
+  const out = new Int16Array(buf.length);
+  for(let i = 0; i < buf.length; i++){
+    const s = Math.max(-1, Math.min(1, buf[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+// من لحظة توفّر الـstream (قبل قفل المسار الحيّ) — يسجّل على نسخة مستقلّة
+// كي لا يوقفه inputTrack.enabled=false لاحقًا (enabled يُصمِت كل مستهلكي المسار الأصلي).
+function mahaStartPreBuffer(stream){
+  try{
+    const track = stream && stream.getAudioTracks()[0];
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if(!track || !AudioCtx || typeof track.clone !== 'function') return;
+    mahaPreBufTrack = track.clone();
+    mahaPreBufChunks = []; mahaPreBufSamples = 0;
+    mahaPreBufCtx = new AudioCtx();
+    mahaPreBufSrc = mahaPreBufCtx.createMediaStreamSource(new MediaStream([mahaPreBufTrack]));
+    mahaPreBufNode = mahaPreBufCtx.createScriptProcessor(4096, 1, 1);
+    mahaPreBufGain = mahaPreBufCtx.createGain();
+    mahaPreBufGain.gain.value = 0; // يغذّي العقدة بلا صدى مسموع
+    const ctxRate = mahaPreBufCtx.sampleRate;
+    mahaPreBufNode.onaudioprocess = (e) => {
+      try{
+        const down = mahaDownsamplePcm(e.inputBuffer.getChannelData(0), ctxRate, MAHA_PREBUF_TARGET_RATE);
+        let peak = 0;
+        for(let i = 0; i < down.length; i++){ const a = Math.abs(down[i]); if(a > peak) peak = a; }
+        mahaPreBufChunks.push({ pcm: mahaFloatToPcm16(down), hasSpeech: peak > MAHA_PREBUF_SPEECH_PEAK });
+        mahaPreBufSamples += down.length;
+        const maxSamples = MAHA_PREBUF_MAX_SEC * MAHA_PREBUF_TARGET_RATE;
+        while(mahaPreBufSamples > maxSamples && mahaPreBufChunks.length > 1){
+          mahaPreBufSamples -= mahaPreBufChunks.shift().pcm.length;
+        }
+      }catch(err){ __swallow(err, "misc:app-08-maha#prebuf-process"); }
+    };
+    mahaPreBufSrc.connect(mahaPreBufNode);
+    mahaPreBufNode.connect(mahaPreBufGain);
+    mahaPreBufGain.connect(mahaPreBufCtx.destination);
+  }catch(e){
+    console.warn('[maha] pre-buffer capture unavailable, first words may be muted:', e);
+    mahaStopPreBuffer();
+  }
+}
+function mahaStopPreBuffer(){
+  try{ if(mahaPreBufNode){ mahaPreBufNode.onaudioprocess = null; mahaPreBufNode.disconnect(); } }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop1"); }
+  try{ if(mahaPreBufGain) mahaPreBufGain.disconnect(); }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop2"); }
+  try{ if(mahaPreBufSrc) mahaPreBufSrc.disconnect(); }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop3"); }
+  try{ if(mahaPreBufTrack) mahaPreBufTrack.stop(); }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop4"); }
+  try{ if(mahaPreBufCtx) mahaPreBufCtx.close().catch(() => {}); }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop5"); }
+  mahaPreBufNode = null; mahaPreBufSrc = null; mahaPreBufGain = null; mahaPreBufTrack = null; mahaPreBufCtx = null;
+  mahaPreBufChunks = []; mahaPreBufSamples = 0;
+}
+// يُستدعى عند mahaRtReady قبل فتح المايك الحيّ: يبثّ المخزَّن لو فيه كلام
+// فعليّ (append مجزَّأ + commit واحد)، ثم يوقف المسجّل المؤقّت ويُفرغه —
+// حتى لا يتكرّر بثّ نفس الصوت من المسارين معًا.
+function mahaFlushPreBuffer(dc){
+  try{
+    const hasSpeech = mahaPreBufChunks.some((c) => c.hasSpeech);
+    if(hasSpeech && dc && dc.readyState === 'open' && mahaPreBufChunks.length){
+      let total = 0;
+      for(const c of mahaPreBufChunks) total += c.pcm.length;
+      const merged = new Int16Array(total);
+      let off = 0;
+      for(const c of mahaPreBufChunks){ merged.set(c.pcm, off); off += c.pcm.length; }
+      const bytes = new Uint8Array(merged.buffer);
+      const CHUNK = 24000; // خام لكل رسالة append، دون حدّ رسائل قناة البيانات
+      for(let i = 0; i < bytes.length; i += CHUNK){
+        let binary = '';
+        const slice = bytes.subarray(i, i + CHUNK);
+        for(let j = 0; j < slice.length; j += 32768){ binary += String.fromCharCode.apply(null, slice.subarray(j, j + 32768)); }
+        dc.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: btoa(binary) }));
+      }
+      dc.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+    }
+  }catch(e){ console.warn('[maha] pre-buffer flush failed, first words may be lost:', e); }
+  finally{ mahaStopPreBuffer(); }
+}
+// نغمة استعداد قصيرة جدًّا (≤120م.ث) تؤكّد للمستخدم أن المايك فتح فعليًّا؛
+// تُعاد استعمال سياق مؤشّر المايك القائم بدل إنشاء AudioContext جديد.
+function mahaPlayReadyBeep(){
+  try{
+    const ctx = mahaMicMeterCtx;
+    if(!ctx || ctx.state === 'closed') return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    osc.connect(gain); gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.start(now);
+    osc.stop(now + 0.12);
+  }catch(e){ __swallow(e, "ui:app-08-maha#ready-beep"); }
+}
+
 let mahaRtCancelled = false;
 async function mahaStartRealtimeCall(){
     mahaRtReady = false;
@@ -14776,6 +14869,9 @@ async function mahaStartRealtimeCall(){
     // The call window opens while connecting; do not transmit its first words
     // before both the WebRTC connection and event channel are truly ready.
     const inputTrack = mahaRtStream.getAudioTracks()[0];
+      // v-maha-firstword: قبل قفل المسار الحيّ — نسخة مستقلّة تسجّل محليًّا
+      // طوال الانتظار فلا تضيع أول جملة (راجع mahaFlushPreBuffer أدناه).
+      mahaStartPreBuffer(mahaRtStream);
       // Keep the first words private until the Realtime session confirms it has
       // finished initializing; then give the audio path a moment to warm up.
       if(inputTrack) inputTrack.enabled = false;
@@ -14877,11 +14973,15 @@ async function mahaStartRealtimeCall(){
       await Promise.all([connectionReady, channelReady, sessionHandshake]);
 
       mahaRtActive = true;
+      // v-maha-firstword: أفرغ المخزَّن المؤقّت (لو فيه كلام فعلي) قبل فتح
+      // المسار الحيّ — حتى لا يُبثّ نفس الصوت مرتين (مرة من المخزن ومرة حيّة).
+      mahaFlushPreBuffer(dc);
       if(inputTrack) inputTrack.enabled = true;
       // Let the browser resume the WebRTC audio encoder before saying "listening".
       await new Promise(resolve => setTimeout(resolve, 250));
       mahaRtReady = true;
       mahaSetState('listening');
+      mahaPlayReadyBeep();
       // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
       // عمدًا حتى تجهز الجلسة — المستخدم كان يتكلم بدري ويظن مها ما ترد.
       if(mahaStateLabelEl && mahaStateLabelEl.textContent) mahaStateLabelEl.textContent = '🟢 ' + mahaStateLabelEl.textContent;
@@ -15216,6 +15316,7 @@ function mahaEndRealtimeCall(){
     mahaClearRtResponseWatchdog();
       if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#17"); } mahaRtDc = null; }
   if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#18"); } mahaRtPc = null; }
+  mahaStopPreBuffer(); // no-op لو سبق وأُفرغ عاديًا؛ يضمن التوقف لو انتهت المكالمة قبل الجهوزية
   mahaStopMicMeter();
   if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }
   if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){ __swallow(e, "misc:app-08-maha#19"); } mahaRtAudioEl = null; }
@@ -15545,7 +15646,9 @@ async function mahaStartCallInner(mode){
   // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
   // that fails for any reason do we fall back to the classic record ->
   // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.
-  mahaSetState('thinking');
+  // v-maha-firstword: "أفكر..." هنا كان يوهم المستخدم أن مها سمعته والمايك
+  // ما زال مقفولًا فعليًا — نصّ تجهيز صريح بدلها حتى تصل "🟢 أستمع" الحقيقية.
+  mahaSetState('thinking', __ar ? '⏳ لحظة، أجهّز الجلسة…' : '⏳ One moment, preparing the session…');
   try{
     // نمسك رفض المحاولة حتى لو خسرت سباق المهلة: رفضها اليتيم كان يتسجل
     // في سجل أخطاء المستخدمين كخطأ إذن مايك بلا معالج.
@@ -16860,7 +16963,47 @@ function readFileAsText(file){
   });
 }
 
-$('#btnAttach').onclick = () => $('#attachInput').click();
+/* v-attach-picker-v2 (فيديو المالك ١٧ سبتمبر: يختار صورة من منتقي النظام،
+   يضغط «تم»، يرجع للتطبيق، والصندوق فاضٍ تمامًا — لا صورة ولا خطأ):
+   الشبكة السابقة كانت تعتمد على حدث window «focus» وفحص واحد بعد 500ms.
+   داخل غلاف أندرويد الأصلي (WebView) منتقي الملفات يُدار عبر
+   onShowFileChooser الأصلي — الـwindow لا «يفقد التركيز» فعليًا من منظور
+   DOM فحدث focus لا يصل إطلاقًا، فالشبكة كانت معطّلة كليًا في هذا الغلاف
+   تحديدًا (لا حدث change من العارض ولا حدث focus يشغّل الفحص البديل).
+   الحل: مراقبة مباشرة بلا اعتماد على أي حدث — فحص input.files كل 350ms
+   لعشرين ثانية بعد كل ضغطة على أزرار الرفع، تلتقط الملف مهما كان الغلاف
+   أو العارض. تعمل مع أو بدون أي حدث آخر، فهي شبكة أمان شاملة. */
+function omranWatchFilePicker(input, onFiles){
+  let handled = false, ticks = 0;
+  const take = () => {
+    if(handled) return;
+    const files = Array.from((input && input.files) || []);
+    if(!files.length) return;
+    handled = true;
+    clearInterval(iv);
+    window.removeEventListener('focus', take);
+    document.removeEventListener('visibilitychange', onVis);
+    /* v-attach-picker-v3: مسح input.value يُؤجَّل حتى تنتهي القراءة فعلًا.
+       قراءة الملفّ مؤجَّلة (FileReader/createObjectURL بعد await)، ومسح
+       القيمة يفصل الملفّ عن مصدره في غلاف أندرويد (content:// — نفس فخّ
+       v405)، فكانت القراءة تفشل بصمت ويبقى الشريط فاضيًا. مسار حدث
+       change كان ينتظر (await) قبل المسح؛ المراقب كان يمسح فورًا. */
+    Promise.resolve(onFiles(files))
+      .catch((e) => { __swallow(e, 'attach:picker'); })
+      .then(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
+  };
+  const onVis = () => { if(document.visibilityState === 'visible') take(); };
+  const iv = setInterval(() => { take(); if(handled || ++ticks > 57) clearInterval(iv); }, 350);
+  window.addEventListener('focus', take);
+  document.addEventListener('visibilitychange', onVis);
+}
+let __attachHandled = false;
+$('#btnAttach').onclick = () => {
+  __attachHandled = false;
+  const input = $('#attachInput');
+  input.click();
+  omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; return omranIngestFiles(files); } });
+};
 
 // ---- Emoji picker ----
 const EMOJI_LIST = [
@@ -17163,6 +17306,8 @@ async function omranIngestFiles(files, opts){
   renderAttachStrip();
 }
 $('#attachInput').addEventListener('change', async (e) => {
+  if(__attachHandled) return; // التقطتها شبكة الأمان (v-attach-picker) — لا تُكرَّر
+  __attachHandled = true;
   const files = Array.from(e.target.files || []);
   await omranIngestFiles(files);
   e.target.value = '';
@@ -18166,7 +18311,15 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       signal: genAbortController ? genAbortController.signal : undefined,
-      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+      body: JSON.stringify(Object.assign({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }, (function(){
+        /* v-image-modes: خيارات «+» للصورة (للمالك) تُمرَّر أعلامًا؛ الخادم يقبلها للمالك وحده. */
+        var __o = String(window.__omMode || ''), __x = {};
+        if(__o === 'image_hd') __x.want4K = true;
+        else if(__o === 'image_text') __x.textFaithful = true;
+        else if(__o === 'image_nano') __x.forceEngine = 'nano';
+        else if(__o === 'image_gpt') __x.forceEngine = 'gpt';
+        return __x;
+      })()))
     });
     const __d = await __r.json().catch(() => ({}));
     __m._loading = false;
@@ -18196,6 +18349,53 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
   }
   renderAll(); saveState();
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok — cleanup, intentional */ }
+}
+
+/* v-image-modes (أمر عمران «خام خام، لا تخليني أخسر كلمة»): وضعا «نانو/GPT خام» للمالك —
+   يمرّ نصّ المستخدم حرفيًّا بلا __parseImageTextSpec ولا كاشف شِعر/دعاء ولا هندسة، ويعمل
+   مع صورة مرفقة (تعديل) أو بدونها (توليد). الخادم يُجبَر على الخام والمحرّك المفروض. */
+async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtt){
+  const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
+  cur.messages.push(__m); renderAll();
+  let __editB64 = '', __editMime = '';
+  try{
+    if(imgAtt && imgAtt.dataUrl && String(imgAtt.dataUrl).slice(0, 5) === 'data:'){
+      const __du = String(imgAtt.dataUrl);
+      __editMime = (__du.slice(5).split(';')[0]) || 'image/png';
+      __editB64 = __du.split(',')[1] || '';
+    }
+  }catch(e){ /* بلا صورة = توليد جديد خام */ }
+  try{
+    const __body = { prompt: String(rawText || '').slice(0, 4000), rawMode: true, forceEngine: forceEngine, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
+    if(__editB64){ __body.editImageBase64 = __editB64; __body.editMimeType = __editMime; __body.userText = String(rawText || '').slice(0, 1200); }
+    const __r = await fetch('/api/maha-image', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      signal: genAbortController ? genAbortController.signal : undefined,
+      body: JSON.stringify(__body)
+    });
+    const __d = await __r.json().catch(() => ({}));
+    __m._loading = false;
+    if(__r.ok && __d && __d.imageBase64){
+      let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
+      __m.content = '';
+      let __genUrl = 'data:' + __mime + ';base64,' + __b64;
+      try{ __genUrl = await omranSharpenImage(__genUrl); }catch(e){ __swallow(e, 'img:sharpen-raw'); }
+      __m.attachments = [{ isImage: true, mime: (__genUrl.slice(5).split(';')[0] || __mime), dataUrl: __genUrl, name: 'image.png' }];
+      if(typeof __d.caption === 'string' && __d.caption.trim()){ cur.messages.push({ role: 'assistant', content: __d.caption.trim() }); }
+      try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok */ }
+      try{ window.__omranLastImageReq = { kind: __editB64 ? 'edit' : 'gen', promptText: rawText }; }catch(e){ __swallow(e, 'img:save-req-raw'); }
+    } else {
+      /* v-image-modes: في الوضع الخام (للمالك) نُظهر سبب فشل المحرّك الحقيقيّ (openai/gemini)
+         من __diag ليعرف المالك لماذا لم يخرج خامًا بدل رسالة عامّة. */
+      var __why = (__d && __d.__diag && (__d.__diag.openai || __d.__diag.gErr || __d.__diag.free)) ? (' [' + (__d.__diag.openai || __d.__diag.gErr || __d.__diag.free) + ']') : '';
+      __m.content = (lang === 'ar' ? 'تعذّر توليد الصورة الآن — ' : 'Image generation failed — ') + ((__d && __d.error) || ('HTTP ' + __r.status)) + __why;
+    }
+  }catch(e){
+    __m._loading = false;
+    __m.content = (e && e.name === 'AbortError') ? (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
+  }
+  renderAll(); saveState();
+  try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok */ }
 }
 
 // v560: تحرير رسالة قديمة يعيد المحادثة من تلك النقطة، وإعادة التوليد تعيد
@@ -18700,7 +18900,16 @@ async function __sendPromptCore(){
   try{
     (attachmentsForMsg || []).forEach(a => {
       if(a && !a.isImage && !a.isVideo && typeof a.text === 'string' && a.text.length > 6000){
-        a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — النصّ الكامل أُرسل للنموذج)';
+        /* v-attach-viewfull (المالك «الملفّ غير كامل في العارض»): كان يُقصّ إلى ٦٠٠٠ حرف
+           لتخفيف حالة الرسائل، فيظهر ناقصًا عند إعادة فتحه في تبويب «الكود». الآن النصّ
+           الكامل يُحفظ مرّة واحدة في IndexedDB (خارج الحالة الثقيلة) والرسالة تحمل معاينة
+           خفيفة + معرّف الاستعادة؛ العارض يفتح الكامل من المخزن (app-04). الإرسال للنموذج
+           لا يتأثّر — يُبنى من المرفق الكامل قبل هذا التخفيف. */
+        try{
+          var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+          if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+        }catch(e2){ /* المعاينة تكفي عند تعذّر المخزن */ }
+        a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — انقر لفتح الملفّ كاملًا)';
       }
     });
   }catch(e){ /* guard-ok — التخفيف تحسينيّ */ }
@@ -18837,7 +19046,12 @@ function __friendlyErr(e){
       return;
     }
     // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
-    if(window.__omMode === 'image' && apiText && !imageAttachments.length){
+    // 🍌🤖 «نانو/GPT خام» (المالك): نصّ حرفيّ للمحرّك بلا تفسير، ومع صورة مرفقة أو بدونها.
+    if((window.__omMode === 'image_nano' || window.__omMode === 'image_gpt') && text){
+      await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments[0]);
+      return;
+    }
+    if(String(window.__omMode || '').indexOf('image') === 0 && apiText && !imageAttachments.length){
       await omModeGenerateImage(cur, apiText, thinkingDiv);
       return;
     }
@@ -21804,8 +22018,15 @@ const btnInstall = $('#btnInstall');
     const __orRemap = {
       'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
       'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
-      'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-4.5',
-      'google/gemini-pro-1.5': 'google/gemini-2.5-pro',
+      'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-5',
+      'google/gemini-pro-1.5': 'google/gemini-3.5-flash',
+      /* v-models-family: بدائل الجيل السابق في المنسدلة المدفوعة → معرّفاتها الحاليّة. */
+      'openai/gpt-4o-mini': 'openai/gpt-5.6-terra',
+      'openai/gpt-4o': 'openai/gpt-5.6-terra',
+      'anthropic/claude-sonnet-4.5': 'anthropic/claude-sonnet-5',
+      'google/gemini-2.5-pro': 'google/gemini-3.5-flash',
+      'meta-llama/llama-3.1-70b-instruct': 'meta-llama/llama-4-maverick',
+      'deepseek/deepseek-chat': 'deepseek/deepseek-v3.2',
     };
     if (__orRemap[__orOld]) localStorage.setItem('aiapp_openrouter_model', __orRemap[__orOld]);
   } catch(e){ __swallow(e, "save:app-10-features#3"); }
@@ -22343,11 +22564,13 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       fr.readAsDataURL(file);
     });
   }
-  btn.onclick = () => input.click();
-  input.onchange = async () => {
-    const files = Array.from(input.files || []).filter(f => f.type.indexOf('image/') === 0);
-    input.value = '';
-    if(!files.length) return;
+  let __pdfPickHandled = false;
+  async function runPdfFiles(rawFiles){
+    const files = Array.from(rawFiles || []).filter(f => f.type.indexOf('image/') === 0);
+    /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
+       مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
+       (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */
+    if(!files.length){ try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } return; }
     const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
     btn.disabled = true;
     /* v-img2pdf-heic (لقطة عمران ١ سبتمبر): صورة واحدة بصيغة لا يفكها
@@ -22420,7 +22643,12 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
-  };
+    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+  }
+  // v-attach-picker-v3: تُعاد الوعدة للمراقب فلا يُمسح input.value قبل أن
+  // تنتهي قراءة الصور فعلًا (فصل الملفّ عن مصدره يُفشل القراءة بصمت).
+  btn.onclick = () => { __pdfPickHandled = false; input.click(); omranWatchFilePicker(input, (files) => { if(!__pdfPickHandled){ __pdfPickHandled = true; return runPdfFiles(files); } }); };
+  input.onchange = () => { if(__pdfPickHandled) return; __pdfPickHandled = true; runPdfFiles(input.files); };
 })();
 
 // Brand title: click = home, text follows language
@@ -22778,8 +23006,8 @@ function openShareModal(project){
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ arm(); setTimeout(arm, 1200); });
   else { arm(); setTimeout(arm, 1200); }
 })();
-/* v-video-trends (طلب المالك ٤ سبتمبر): ١٨ ترند فيديو بلمسة واحدة — العناوين بـ14 لغة. الأوامر على الخادم (api/_lib/video-trends.js). */
-window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt","engine":"veo","ratio":"1280:720","kind":"name","title":{"ar":"قصة بيكسار من ٣ مشاهد","en":"Pixar story in 3 scenes","fr":"Histoire Pixar en 3 scènes","es":"Historia Pixar en 3 escenas","tr":"3 sahnelik Pixar hikâyesi","ru":"История Pixar в 3 сценах","hi":"3 दृश्यों की पिक्सार कहानी","ur":"3 مناظر کی پکسار کہانی","bn":"৩ দৃশ্যের পিক্সার গল্প","ne":"३ दृश्यको पिक्सार कथा","fil":"Pixar story sa 3 eksena","id":"Cerita Pixar 3 adegan","zh":"3幕皮克斯故事","ml":"3 രംഗ പിക്സാർ കഥ"},"sub":{"ar":"صباح، مدرسة، مساء مع العائلة","en":"Morning, school, evening with family","fr":"Matin, école, soirée en famille","es":"Mañana, escuela, tarde en familia","tr":"Sabah, okul, aile akşamı","ru":"Утро, школа, вечер с семьёй","hi":"सुबह, स्कूल, परिवार के साथ शाम","ur":"صبح، اسکول، خاندان کے ساتھ شام","bn":"সকাল, স্কুল, পরিবারের সাথে সন্ধ্যা","ne":"बिहान, स्कुल, परिवारसँग साँझ","fil":"Umaga, paaralan, gabi kasama ang pamilya","id":"Pagi, sekolah, malam bersama keluarga","zh":"早晨、学校、家庭之夜","ml":"രാവിലെ, സ്കൂൾ, കുടുംബത്തോടൊപ്പം സായാഹ്നം"},"scenes":3},{"key":"pixarsketch","em":"😂","photo":"none","engine":"veo","ratio":"720:1280","kind":"scene","title":{"ar":"اسكتش بيكسار عربي","en":"Arabic Pixar sketch","fr":"Sketch Pixar arabe","es":"Sketch Pixar árabe","tr":"Arapça Pixar skeci","ru":"Арабский скетч Pixar","hi":"अरबी पिक्सार स्केच","ur":"عربی پکسار اسکیچ","bn":"আরবি পিক্সার স্কেচ","ne":"अरबी पिक्सार स्केच","fil":"Arabic Pixar sketch","id":"Sketsa Pixar Arab","zh":"阿拉伯皮克斯短剧","ml":"അറബിക് പിക്സാർ സ്കെച്ച്"},"sub":{"ar":"اكتب الموقف وهم يمثّلونه بحوار","en":"Write the situation, they act it out","fr":"Écrivez la situation, ils la jouent","es":"Escribe la situación y la actúan","tr":"Durumu yaz, canlandırsınlar","ru":"Опишите ситуацию — они сыграют","hi":"स्थिति लिखें, वे अभिनय करेंगे","ur":"صورتحال لکھیں، وہ ادا کریں گے","bn":"পরিস্থিতি লিখুন, তারা অভিনয় করবে","ne":"अवस्था लेख्नुहोस्, उनीहरू अभिनय गर्छन्","fil":"Isulat ang sitwasyon, aaktohan nila","id":"Tulis situasinya, mereka perankan","zh":"写下情境，角色演出","ml":"സാഹചര്യം എഴുതൂ, അവർ അഭിനയിക്കും"},"scenes":1},{"key":"heritagesing","em":"🎤","photo":"req","engine":"veo","ratio":"720:1280","kind":"sentence","title":{"ar":"شخصيتي تغني في مشهد تراثي","en":"Sing in a heritage scene","fr":"Chanter dans un décor patrimonial","es":"Cantar en un escenario tradicional","tr":"Geleneksel sahnede şarkı","ru":"Пою в старинном квартале","hi":"विरासत दृश्य में गाना","ur":"ورثے کے منظر میں گانا","bn":"ঐতিহ্যবাহী দৃশ্যে গান","ne":"सम्पदा दृश्यमा गीत","fil":"Kumanta sa heritage scene","id":"Bernyanyi di latar warisan","zh":"在传统场景中歌唱","ml":"പൈതൃക രംഗത്തിൽ പാട്ട്"},"sub":{"ar":"صورة واحدة وكلمات، والباقي علينا","en":"One photo and lyrics, we do the rest","fr":"Une photo et des paroles","es":"Una foto y letra","tr":"Bir fotoğraf ve sözler","ru":"Одно фото и слова","hi":"एक फोटो और बोल","ur":"ایک تصویر اور بول","bn":"একটি ছবি ও কথা","ne":"एक फोटो र बोल","fil":"Isang larawan at lyrics","id":"Satu foto dan lirik","zh":"一张照片和歌词","ml":"ഒരു ഫോട്ടോയും വരികളും"},"scenes":1},{"key":"hugyounger","em":"🤗","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"عناق النفس الصغيرة","en":"Hug your younger self","fr":"Étreindre son enfant intérieur","es":"Abrazar a tu yo niño","tr":"Küçük halini kucakla","ru":"Обнять себя в детстве","hi":"अपने बचपन को गले लगाएँ","ur":"اپنے بچپن کو گلے لگائیں","bn":"ছোটবেলার নিজেকে জড়িয়ে ধরুন","ne":"सानो आफूलाई अँगालो","fil":"Yakapin ang batang ikaw","id":"Peluk dirimu yang kecil","zh":"拥抱童年的自己","ml":"കുട്ടിക്കാലത്തെ നിങ്ങളെ ആലിംഗനം"},"sub":{"ar":"لحظة مؤثرة من صورتك","en":"An emotional moment from your photo","fr":"Un moment émouvant","es":"Un momento emotivo","tr":"Duygusal bir an","ru":"Трогательный момент","hi":"एक भावुक पल","ur":"ایک جذباتی لمحہ","bn":"একটি আবেগময় মুহূর্ত","ne":"भावुक क्षण","fil":"Isang emosyonal na sandali","id":"Momen mengharukan","zh":"感人的瞬间","ml":"വികാരഭരിതമായ നിമിഷം"},"scenes":1},{"key":"oldphoto","em":"🖼️","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"الصورة القديمة تتحرك","en":"Old photo comes alive","fr":"La vieille photo s'anime","es":"La foto antigua cobra vida","tr":"Eski fotoğraf canlanıyor","ru":"Старое фото оживает","hi":"पुरानी फोटो जीवंत","ur":"پرانی تصویر زندہ","bn":"পুরনো ছবি জীবন্ত","ne":"पुरानो फोटो जीवन्त","fil":"Nabubuhay ang lumang larawan","id":"Foto lama jadi hidup","zh":"老照片动起来","ml":"പഴയ ഫോട്ടോ ജീവൻ വയ്ക്കുന്നു"},"sub":{"ar":"ابتسامة وحركة وكلمة","en":"A smile, a move, a word","fr":"Un sourire, un geste, un mot","es":"Una sonrisa, un gesto, una palabra","tr":"Bir gülüş, bir hareket, bir söz","ru":"Улыбка, движение, слово","hi":"मुस्कान, हरकत, शब्द","ur":"مسکراہٹ، حرکت، لفظ","bn":"হাসি, নড়াচড়া, কথা","ne":"मुस्कान, चाल, शब्द","fil":"Ngiti, galaw, salita","id":"Senyum, gerak, kata","zh":"微笑、动作、话语","ml":"പുഞ്ചിരി, ചലനം, വാക്ക്"},"scenes":1},{"key":"tencountries","em":"🌍","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"أنا في ١٠ دول","en":"Me in 10 countries","fr":"Moi dans 10 pays","es":"Yo en 10 países","tr":"10 ülkede ben","ru":"Я в 10 странах","hi":"10 देशों में मैं","ur":"10 ممالک میں میں","bn":"১০ দেশে আমি","ne":"१० देशमा म","fil":"Ako sa 10 bansa","id":"Aku di 10 negara","zh":"我在10个国家","ml":"10 രാജ്യങ്ങളിൽ ഞാൻ"},"sub":{"ar":"انتقالات سريعة بين المدن الشهيرة","en":"Quick cuts across famous cities","fr":"Enchaînement de villes célèbres","es":"Cortes rápidos por ciudades famosas","tr":"Ünlü şehirler arasında hızlı geçiş","ru":"Быстрые кадры известных городов","hi":"मशहूर शहरों के तेज़ कट","ur":"مشہور شہروں کے تیز کٹ","bn":"বিখ্যাত শহরের দ্রুত কাট","ne":"प्रसिद्ध सहरका द्रुत कट","fil":"Mabilis na cuts sa sikat na lungsod","id":"Potongan cepat kota terkenal","zh":"名城快速切换","ml":"പ്രശസ്ത നഗരങ്ങളിലൂടെ"},"scenes":1},{"key":"babyversion","em":"👶","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"بيبي ستايل","en":"Baby version","fr":"Version bébé","es":"Versión bebé","tr":"Bebek hali","ru":"Версия малыша","hi":"बेबी वर्ज़न","ur":"بے بی ورژن","bn":"বেবি ভার্সন","ne":"बेबी संस्करण","fil":"Baby version","id":"Versi bayi","zh":"宝宝版","ml":"ബേബി പതിപ്പ്"},"sub":{"ar":"نسخة طفل بملابس مبالغ فيها","en":"A toddler you in oversized clothes","fr":"Version bambin","es":"Versión bebé con ropa grande","tr":"Kocaman kıyafetli bebek hali","ru":"Малыш в огромной одежде","hi":"बड़े कपड़ों में बच्चा","ur":"بڑے کپڑوں میں بچہ","bn":"বড় পোশাকে শিশু","ne":"ठूला लुगामा बच्चा","fil":"Sanggol na bersyon","id":"Versi balita baju besar","zh":"穿大衣服的宝宝","ml":"വലിയ വസ്ത്രത്തിൽ കുഞ്ഞ്"},"scenes":1},{"key":"outfitswap","em":"👗","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"الإطلالات تتبدل","en":"Outfit swap","fr":"Changement de tenues","es":"Cambio de outfits","tr":"Kıyafet değişimi","ru":"Смена нарядов","hi":"आउटफिट बदलाव","ur":"لباس کی تبدیلی","bn":"পোশাক বদল","ne":"पोशाक परिवर्तन","fil":"Palit-outfit","id":"Ganti outfit","zh":"换装秀","ml":"വേഷം മാറ്റം"},"sub":{"ar":"٥ إطلالات في لقطة واحدة","en":"5 looks in one shot","fr":"5 tenues en un plan","es":"5 looks en una toma","tr":"Tek planda 5 stil","ru":"5 образов в одном кадре","hi":"एक शॉट में 5 लुक","ur":"ایک شاٹ میں 5 لک","bn":"এক শটে ৫ লুক","ne":"एक शटमा ५ लुक","fil":"5 looks sa isang shot","id":"5 gaya dalam satu shot","zh":"一镜五套造型","ml":"ഒറ്റ ഷോട്ടിൽ 5 ലുക്ക്"},"scenes":1},{"key":"productad","em":"📦","photo":"req","engine":"veo","ratio":"1280:720","kind":"product","title":{"ar":"إعلان منتج ٥ ثوانٍ","en":"5-second product ad","fr":"Pub produit 5 s","es":"Anuncio de producto 5 s","tr":"5 saniyelik ürün reklamı","ru":"5-секундная реклама","hi":"5 सेकंड का विज्ञापन","ur":"5 سیکنڈ کا اشتہار","bn":"৫ সেকেন্ডের বিজ্ঞাপন","ne":"५ सेकेन्डको विज्ञापन","fil":"5-segundong ad","id":"Iklan produk 5 detik","zh":"5秒产品广告","ml":"5 സെക്കൻഡ് പരസ്യം"},"sub":{"ar":"صورة المنتج تصير إعلانًا سينمائيًا","en":"Your product photo becomes a cinematic ad","fr":"Votre photo devient une pub","es":"Tu foto se vuelve un anuncio","tr":"Ürün fotoğrafı sinematik reklam olur","ru":"Фото товара становится рекламой","hi":"फोटो बनता है सिनेमाई विज्ञापन","ur":"تصویر سنیما اشتہار بن جاتی ہے","bn":"ছবি হয় সিনেমাটিক বিজ্ঞাপন","ne":"फोटो सिनेमाटिक विज्ञापन बन्छ","fil":"Nagiging cinematic ad","id":"Foto jadi iklan sinematik","zh":"照片变电影级广告","ml":"ഫോട്ടോ സിനിമാറ്റിക് പരസ്യമാകും"},"scenes":1},{"key":"beforeafter","em":"✨","photo":"req","engine":"veo","ratio":"720:1280","kind":"change","title":{"ar":"قبل وبعد","en":"Before & after","fr":"Avant-après","es":"Antes y después","tr":"Önce ve sonra","ru":"До и после","hi":"पहले और बाद","ur":"پہلے اور بعد","bn":"আগে ও পরে","ne":"अघि र पछि","fil":"Bago at pagkatapos","id":"Sebelum & sesudah","zh":"前后对比","ml":"മുമ്പും ശേഷവും"},"sub":{"ar":"تحوّل سلس لأي شيء","en":"A smooth transformation of anything","fr":"Transformation fluide","es":"Transformación suave","tr":"Yumuşak dönüşüm","ru":"Плавное преображение","hi":"किसी भी चीज़ का बदलाव","ur":"کسی بھی چیز کی تبدیلی","bn":"যেকোনো কিছুর রূপান্তর","ne":"जुनसुकैको रूपान्तरण","fil":"Makinis na transpormasyon","id":"Transformasi mulus","zh":"任何事物的平滑转变","ml":"എന്തിന്റെയും പരിവർത്തനം"},"scenes":1},{"key":"talkingpet","em":"🐱","photo":"req","engine":"veo","ratio":"720:1280","kind":"sentence","title":{"ar":"الحيوان يتكلم","en":"Talking pet","fr":"Animal qui parle","es":"Mascota que habla","tr":"Konuşan evcil hayvan","ru":"Говорящий питомец","hi":"बोलता पालतू","ur":"بولتا پالتو","bn":"কথা বলা পোষা","ne":"बोल्ने पाल्तु","fil":"Nagsasalitang alaga","id":"Hewan bicara","zh":"会说话的宠物","ml":"സംസാരിക്കുന്ന വളർത്തുമൃഗം"},"sub":{"ar":"قطتك تقول جملة تكتبها","en":"Your cat says what you write","fr":"Votre chat parle","es":"Tu gato dice lo que escribes","tr":"Kedin yazdığını söyler","ru":"Кот скажет ваши слова","hi":"बिल्ली आपकी बात कहे","ur":"بلی آپ کے الفاظ کہے","bn":"বিড়াল বলবে আপনার কথা","ne":"बिरालोले तपाईंको कुरा भन्छ","fil":"Sasabihin ng pusa","id":"Kucingmu bicara","zh":"猫咪说出你的话","ml":"പൂച്ച നിങ്ങളുടെ വാക്ക് പറയും"},"scenes":1},{"key":"ghibli","em":"🌸","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"ستايل جيبلي","en":"Ghibli style","fr":"Style Ghibli","es":"Estilo Ghibli","tr":"Ghibli tarzı","ru":"Стиль Гибли","hi":"घिबली शैली","ur":"گبلی اسٹائل","bn":"ঘিবলি স্টাইল","ne":"घिबली शैली","fil":"Ghibli style","id":"Gaya Ghibli","zh":"吉卜力风格","ml":"ഗിബ്ലി ശൈലി"},"sub":{"ar":"صورتك تصير مشهد أنمي متحرك","en":"Your photo becomes an anime scene","fr":"Votre photo en scène anime","es":"Tu foto en escena anime","tr":"Fotoğrafın anime sahnesi olur","ru":"Фото становится аниме","hi":"फोटो बनता है एनीमे दृश्य","ur":"تصویر اینیمے منظر بن جاتی ہے","bn":"ছবি হয় অ্যানিমে দৃশ্য","ne":"फोटो एनिमे दृश्य बन्छ","fil":"Nagiging anime scene","id":"Foto jadi adegan anime","zh":"照片变动画场景","ml":"ഫോട്ടോ ആനിമേ രംഗമാകും"},"scenes":1},{"key":"dance","em":"💃","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"الرقص والحركة","en":"Dance move","fr":"Danse","es":"Baile","tr":"Dans","ru":"Танец","hi":"डांस","ur":"ڈانس","bn":"নাচ","ne":"नाच","fil":"Sayaw","id":"Tarian","zh":"舞蹈","ml":"നൃത്തം"},"sub":{"ar":"صورتك ترقص على مقطع رائج","en":"Your photo dances to a trend","fr":"Votre photo danse","es":"Tu foto baila","tr":"Fotoğrafın dans eder","ru":"Фото танцует","hi":"फोटो नाचता है","ur":"تصویر ناچتی ہے","bn":"ছবি নাচে","ne":"फोटो नाच्छ","fil":"Sumasayaw ang larawan","id":"Fotomu menari","zh":"照片跳舞","ml":"ഫോട്ടോ നൃത്തം ചെയ്യും"},"scenes":1},{"key":"productfly","em":"🪄","photo":"req","engine":"veo","ratio":"1280:720","kind":"none","title":{"ar":"المنتج يطير","en":"Floating product","fr":"Produit en lévitation","es":"Producto flotante","tr":"Uçan ürün","ru":"Парящий товар","hi":"तैरता उत्पाद","ur":"تیرتا پروڈکٹ","bn":"ভাসমান পণ্য","ne":"उड्ने उत्पादन","fil":"Lumulutang na produkto","id":"Produk melayang","zh":"悬浮产品","ml":"പറക്കുന്ന ഉൽപ്പന്നം"},"sub":{"ar":"حلقة إعلانية سريعة للعطر أو الساعة","en":"Quick ad loop for perfume or watch","fr":"Boucle pub parfum-montre","es":"Loop de anuncio de perfume o reloj","tr":"Parfüm-saat için reklam döngüsü","ru":"Рекламная петля для духов или часов","hi":"परफ्यूम-घड़ी का विज्ञापन लूप","ur":"پرفیوم-گھڑی اشتہار لوپ","bn":"পারফিউম-ঘড়ির বিজ্ঞাপন লুপ","ne":"अत्तर-घडी विज्ञापन लुप","fil":"Ad loop para sa pabango","id":"Loop iklan parfum","zh":"香水手表广告循环","ml":"പെർഫ്യൂം-വാച്ച് പരസ്യ ലൂപ്പ്"},"scenes":1},{"key":"agejourney","em":"⏳","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"مسيرة العمر","en":"Age journey","fr":"Voyage des âges","es":"Viaje de la edad","tr":"Yaş yolculuğu","ru":"Путь возраста","hi":"उम्र का सफ़र","ur":"عمر کا سفر","bn":"বয়সের যাত্রা","ne":"उमेरको यात्रा","fil":"Paglalakbay ng edad","id":"Perjalanan usia","zh":"岁月旅程","ml":"പ്രായയാത്ര"},"sub":{"ar":"من طفل إلى كهل في ٨ ثوانٍ","en":"Child to elder in 8 seconds","fr":"D'enfant à aîné en 8 s","es":"De niño a anciano en 8 s","tr":"8 saniyede çocuktan yaşlıya","ru":"От ребёнка до старика за 8 с","hi":"8 सेकंड में बच्चे से बुज़ुर्ग","ur":"8 سیکنڈ میں بچے سے بزرگ","bn":"৮ সেকেন্ডে শিশু থেকে বৃদ্ধ","ne":"८ सेकेन्डमा बालकदेखि वृद्ध","fil":"Bata hanggang matanda sa 8 s","id":"Anak ke lansia 8 detik","zh":"8秒从童年到老年","ml":"8 സെക്കൻഡിൽ കുട്ടി മുതൽ വൃദ്ധൻ വരെ"},"scenes":1},{"key":"celebselfie","em":"🤳","photo":"req","engine":"veo","ratio":"720:1280","kind":"setting","title":{"ar":"سيلفي في حدث فخم","en":"Selfie at a glam event","fr":"Selfie à un gala","es":"Selfie en un evento glamuroso","tr":"Şık etkinlikte selfie","ru":"Селфи на гала","hi":"ग्लैम इवेंट में सेल्फी","ur":"گلیم ایونٹ میں سیلفی","bn":"গ্ল্যাম ইভেন্টে সেলফি","ne":"ग्ल्याम इभेन्टमा सेल्फी","fil":"Selfie sa glam event","id":"Selfie di acara glamor","zh":"盛典自拍","ml":"ഗ്ലാം ഇവന്റിൽ സെൽഫി"},"sub":{"ar":"سجادة حمراء وفلاشات","en":"Red carpet and flashes","fr":"Tapis rouge et flashs","es":"Alfombra roja y flashes","tr":"Kırmızı halı ve flaşlar","ru":"Красная дорожка и вспышки","hi":"रेड कार्पेट और फ़्लैश","ur":"ریڈ کارپٹ اور فلیش","bn":"রেড কার্পেট ও ফ্ল্যাশ","ne":"रेड कार्पेट र फ्ल्यास","fil":"Red carpet at flashes","id":"Karpet merah dan lampu kilat","zh":"红毯与闪光灯","ml":"റെഡ് കാർപെറ്റും ഫ്ലാഷുകളും"},"scenes":1},{"key":"asmr","em":"🎧","photo":"req","engine":"veo","ratio":"1280:720","kind":"none","title":{"ar":"ASMR منتج","en":"Product ASMR","fr":"ASMR produit","es":"ASMR de producto","tr":"Ürün ASMR","ru":"ASMR товара","hi":"प्रोडक्ट ASMR","ur":"پروڈکٹ ASMR","bn":"পণ্য ASMR","ne":"उत्पादन ASMR","fil":"Product ASMR","id":"ASMR produk","zh":"产品ASMR","ml":"ഉൽപ്പന്ന ASMR"},"sub":{"ar":"لقطات قريبة ناعمة بأصوات هادئة","en":"Soft close-ups with gentle sounds","fr":"Gros plans doux","es":"Primeros planos suaves","tr":"Yumuşak yakın çekimler","ru":"Мягкие крупные планы","hi":"नरम क्लोज़-अप","ur":"نرم کلوز اپ","bn":"নরম ক্লোজ-আপ","ne":"नरम क्लोज-अप","fil":"Malambot na close-ups","id":"Close-up lembut","zh":"柔和特写","ml":"മൃദുവായ ക്ലോസപ്പുകൾ"},"scenes":1},{"key":"eidgreeting","em":"🌙","photo":"opt","engine":"veo","ratio":"720:1280","kind":"name","title":{"ar":"تهنئة العيد المتحركة","en":"Animated Eid greeting","fr":"Vœux de l'Aïd animés","es":"Felicitación de Eid animada","tr":"Hareketli bayram tebriği","ru":"Анимированное поздравление с Идом","hi":"एनिमेटेड ईद बधाई","ur":"متحرک عید مبارک","bn":"অ্যানিমেটেড ঈদ শুভেচ্ছা","ne":"एनिमेटेड ईद शुभकामना","fil":"Animated Eid greeting","id":"Ucapan Lebaran animasi","zh":"开斋节动态祝福","ml":"ആനിമേറ്റഡ് പെരുന്നാൾ ആശംസ"},"sub":{"ar":"بزيّ العيد وبطاقة تتحرك","en":"In Eid attire with a moving card","fr":"En tenue de fête avec carte animée","es":"Con ropa de Eid y tarjeta animada","tr":"Bayramlık ve hareketli kart","ru":"В праздничном наряде с открыткой","hi":"ईद के कपड़ों में एनिमेटेड कार्ड","ur":"عید کے لباس میں متحرک کارڈ","bn":"ঈদের পোশাকে চলমান কার্ড","ne":"ईदको लुगामा चल्ने कार्ड","fil":"Eid attire na may card","id":"Baju Lebaran & kartu bergerak","zh":"节日盛装与动态贺卡","ml":"പെരുന്നാൾ വേഷവും കാർഡും"},"scenes":1},{"key":"drone","em":"🚁","photo":"req","engine":"veo","ratio":"1280:720","kind":"none","title":{"ar":"تصوير درون","en":"Drone shot","fr":"Vue par drone","es":"Toma con dron","tr":"Drone çekimi","ru":"Съёмка с дрона","hi":"ड्रोन शॉट","ur":"ڈرون شاٹ","bn":"ড্রোন শট","ne":"ड्रोन शट","fil":"Drone shot","id":"Rekaman drone","zh":"无人机航拍","ml":"ഡ്രോൺ ഷോട്ട്"},"sub":{"ar":"صورتك تصير لقطة طيران سينمائية","en":"Your photo becomes a cinematic flyover","fr":"Votre photo en survol cinématique","es":"Tu foto en sobrevuelo cinematográfico","tr":"Fotoğrafın sinematik uçuş olur","ru":"Фото становится кинематографичным облётом","hi":"फोटो बनता है सिनेमाई फ्लाईओवर","ur":"تصویر سنیما فلائی اوور بن جاتی ہے","bn":"ছবি হয় সিনেমাটিক ফ্লাইওভার","ne":"फोटो सिनेमाटिक उडान बन्छ","fil":"Nagiging cinematic flyover","id":"Foto jadi terbang sinematik","zh":"照片变电影级航拍","ml":"ഫോട്ടോ സിനിമാറ്റിക് ഫ്ലൈഓവർ ആകും"},"scenes":1},{"key":"orbit360","em":"🔄","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"دوران ٣٦٠","en":"360° orbit","fr":"Orbite 360°","es":"Órbita 360°","tr":"360° dönüş","ru":"Облёт 360°","hi":"360° ऑर्बिट","ur":"360° آربٹ","bn":"৩৬০° অরবিট","ne":"३६०° घुमाइ","fil":"360° orbit","id":"Orbit 360°","zh":"360° 环绕","ml":"360° ഓർബിറ്റ്"},"sub":{"ar":"الكاميرا تدور حول الشخص أو المنتج","en":"The camera circles the person or product","fr":"La caméra tourne autour","es":"La cámara gira alrededor","tr":"Kamera etrafında döner","ru":"Камера облетает объект","hi":"कैमरा चारों ओर घूमता है","ur":"کیمرہ گرد گھومتا ہے","bn":"ক্যামেরা চারদিকে ঘোরে","ne":"क्यामेरा वरिपरि घुम्छ","fil":"Umiikot ang camera","id":"Kamera mengelilingi","zh":"摄像机环绕拍摄","ml":"ക്യാമറ ചുറ്റും കറങ്ങുന്നു"},"scenes":1}],"ui":{"title":{"ar":"🔥 ترندات — فيديو بلمسة واحدة","en":"🔥 Trends — one-tap video","fr":"🔥 Tendances — vidéo en un geste","es":"🔥 Tendencias — video con un toque","tr":"🔥 Trendler — tek dokunuşla video","ru":"🔥 Тренды — видео в одно касание","hi":"🔥 ट्रेंड्स — एक टैप में वीडियो","ur":"🔥 ٹرینڈز — ایک ٹیپ میں ویڈیو","bn":"🔥 ট্রেন্ড — এক ট্যাপে ভিডিও","ne":"🔥 ट्रेन्ड — एक ट्यापमा भिडियो","fil":"🔥 Trends — one-tap video","id":"🔥 Tren — video sekali ketuk","zh":"🔥 热门 — 一键生成视频","ml":"🔥 ട്രെൻഡുകൾ — ഒറ്റ ടാപ്പിൽ വീഡിയോ"},"sub":{"ar":"اختر بطاقة، أضف صورة إن لزم، واضغط اصنع","en":"Pick a card, add a photo if needed, tap make","fr":"Choisissez, ajoutez une photo, créez","es":"Elige, añade foto si hace falta, crea","tr":"Kart seç, gerekirse fotoğraf ekle, oluştur","ru":"Выберите карточку, добавьте фото, создайте","hi":"कार्ड चुनें, फोटो जोड़ें, बनाएँ","ur":"کارڈ چنیں، تصویر لگائیں، بنائیں","bn":"কার্ড বাছুন, ছবি দিন, বানান","ne":"कार्ड छान्नुहोस्, फोटो थप्नुहोस्, बनाउनुहोस्","fil":"Pumili, magdagdag ng larawan, gawin","id":"Pilih kartu, tambah foto, buat","zh":"选卡片、加照片、点生成","ml":"കാർഡ് തിരഞ്ഞെടുത്ത് ഫോട്ടോ ചേർത്ത് നിർമ്മിക്കൂ"},"photo":{"ar":"📷 اختر صورة","en":"📷 Choose a photo","fr":"📷 Choisir une photo","es":"📷 Elegir foto","tr":"📷 Fotoğraf seç","ru":"📷 Выбрать фото","hi":"📷 फोटो चुनें","ur":"📷 تصویر چنیں","bn":"📷 ছবি বাছুন","ne":"📷 फोटो छान्नुहोस्","fil":"📷 Pumili ng larawan","id":"📷 Pilih foto","zh":"📷 选择照片","ml":"📷 ഫോട്ടോ തിരഞ്ഞെടുക്കുക"},"photoReq":{"ar":"هذا الترند يحتاج صورة","en":"This trend needs a photo","fr":"Ce trend nécessite une photo","es":"Esta tendencia necesita una foto","tr":"Bu trend fotoğraf ister","ru":"Нужно фото","hi":"इस ट्रेंड को फोटो चाहिए","ur":"اس ٹرینڈ کو تصویر چاہیے","bn":"এই ট্রেন্ডে ছবি লাগবে","ne":"यसलाई फोटो चाहिन्छ","fil":"Kailangan ng larawan","id":"Tren ini butuh foto","zh":"此项需要照片","ml":"ഇതിന് ഫോട്ടോ വേണം"},"make":{"ar":"✨ اصنع الفيديو","en":"✨ Make the video","fr":"✨ Créer la vidéo","es":"✨ Crear el video","tr":"✨ Videoyu oluştur","ru":"✨ Создать видео","hi":"✨ वीडियो बनाएँ","ur":"✨ ویڈیو بنائیں","bn":"✨ ভিডিও বানান","ne":"✨ भिडियो बनाउनुहोस्","fil":"✨ Gawin ang video","id":"✨ Buat video","zh":"✨ 生成视频","ml":"✨ വീഡിയോ നിർമ്മിക്കൂ"},"retry":{"ar":"🔁 أعد المحاولة","en":"🔁 Try again","fr":"🔁 Réessayer","es":"🔁 Reintentar","tr":"🔁 Tekrar dene","ru":"🔁 Ещё раз","hi":"🔁 फिर कोशिश","ur":"🔁 دوبارہ کوشش","bn":"🔁 আবার চেষ্টা","ne":"🔁 फेरि प्रयास","fil":"🔁 Subukan muli","id":"🔁 Coba lagi","zh":"🔁 再试一次","ml":"🔁 വീണ്ടും ശ്രമിക്കൂ"},"back":{"ar":"‹ كل الترندات","en":"‹ All trends","fr":"‹ Toutes les tendances","es":"‹ Todas las tendencias","tr":"‹ Tüm trendler","ru":"‹ Все тренды","hi":"‹ सभी ट्रेंड","ur":"‹ تمام ٹرینڈز","bn":"‹ সব ট্রেন্ড","ne":"‹ सबै ट्रेन्ड","fil":"‹ Lahat ng trends","id":"‹ Semua tren","zh":"‹ 全部热门","ml":"‹ എല്ലാ ട്രെൻഡുകളും"},"working":{"ar":"⏳ يصنع الفيديو… نحو دقيقتين","en":"⏳ Making the video… about two minutes","fr":"⏳ Création… environ deux minutes","es":"⏳ Creando… unos dos minutos","tr":"⏳ Oluşturuluyor… yaklaşık iki dakika","ru":"⏳ Создаю… около двух минут","hi":"⏳ बना रहे हैं… लगभग दो मिनट","ur":"⏳ بنا رہے ہیں… تقریباً دو منٹ","bn":"⏳ বানানো হচ্ছে… প্রায় দুই মিনিট","ne":"⏳ बनाउँदै… करिब दुई मिनेट","fil":"⏳ Ginagawa… mga dalawang minuto","id":"⏳ Membuat… sekitar dua menit","zh":"⏳ 生成中… 约两分钟","ml":"⏳ നിർമ്മിക്കുന്നു… ഏകദേശം രണ്ട് മിനിറ്റ്"},"scene":{"ar":"المشهد {i} من {n}…","en":"Scene {i} of {n}…","fr":"Scène {i} sur {n}…","es":"Escena {i} de {n}…","tr":"Sahne {i}-{n}…","ru":"Сцена {i} из {n}…","hi":"दृश्य {i}-{n}…","ur":"منظر {i}-{n}…","bn":"দৃশ্য {i}-{n}…","ne":"दृश्य {i}-{n}…","fil":"Eksena {i}-{n}…","id":"Adegan {i}-{n}…","zh":"第{i}/{n}幕…","ml":"രംഗം {i}-{n}…"},"done":{"ar":"✅ جاهز","en":"✅ Ready","fr":"✅ Prêt","es":"✅ Listo","tr":"✅ Hazır","ru":"✅ Готово","hi":"✅ तैयार","ur":"✅ تیار","bn":"✅ প্রস্তুত","ne":"✅ तयार","fil":"✅ Handa na","id":"✅ Siap","zh":"✅ 完成","ml":"✅ തയ്യാർ"},"fail":{"ar":"❌ تعذّر","en":"❌ Failed","fr":"❌ Échec","es":"❌ Falló","tr":"❌ Başarısız","ru":"❌ Ошибка","hi":"❌ विफल","ur":"❌ ناکام","bn":"❌ ব্যর্থ","ne":"❌ असफल","fil":"❌ Nabigo","id":"❌ Gagal","zh":"❌ 失败","ml":"❌ പരാജയപ്പെട്ടു"},"download":{"ar":"⬇️ تحميل","en":"⬇️ Download","fr":"⬇️ Télécharger","es":"⬇️ Descargar","tr":"⬇️ İndir","ru":"⬇️ Скачать","hi":"⬇️ डाउनलोड","ur":"⬇️ ڈاؤن لوڈ","bn":"⬇️ ডাউনলোড","ne":"⬇️ डाउनलोड","fil":"⬇️ I-download","id":"⬇️ Unduh","zh":"⬇️ 下载","ml":"⬇️ ഡൗൺലോഡ്"},"login":{"ar":"سجّل دخولك أولًا","en":"Sign in first","fr":"Connectez-vous d'abord","es":"Inicia sesión primero","tr":"Önce giriş yap","ru":"Сначала войдите","hi":"पहले साइन इन करें","ur":"پہلے لاگ ان کریں","bn":"আগে সাইন ইন করুন","ne":"पहिले लगइन गर्नुहोस्","fil":"Mag-sign in muna","id":"Masuk dulu","zh":"请先登录","ml":"ആദ്യം സൈൻ ഇൻ ചെയ്യൂ"},"k_name":{"ar":"اسم الطفل أو الشخص","en":"Child or person name","fr":"Prénom","es":"Nombre","tr":"İsim","ru":"Имя","hi":"नाम","ur":"نام","bn":"নাম","ne":"नाम","fil":"Pangalan","id":"Nama","zh":"姓名","ml":"പേര്"},"k_sentence":{"ar":"الجملة أو كلمات الأغنية","en":"The sentence or lyrics","fr":"La phrase ou les paroles","es":"La frase o la letra","tr":"Cümle veya sözler","ru":"Фраза или слова","hi":"वाक्य या बोल","ur":"جملہ یا بول","bn":"বাক্য বা কথা","ne":"वाक्य वा बोल","fil":"Pangungusap o lyrics","id":"Kalimat atau lirik","zh":"句子或歌词","ml":"വാക്യം അല്ലെങ്കിൽ വരികൾ"},"k_scene":{"ar":"الموقف بسطر واحد","en":"The situation in one line","fr":"La situation en une ligne","es":"La situación en una línea","tr":"Durum tek satırda","ru":"Ситуация в одну строку","hi":"स्थिति एक पंक्ति में","ur":"صورتحال ایک سطر میں","bn":"এক লাইনে পরিস্থিতি","ne":"एक लाइनमा अवस्था","fil":"Sitwasyon sa isang linya","id":"Situasi dalam satu baris","zh":"一句话描述情境","ml":"ഒരു വരിയിൽ സാഹചര്യം"},"k_product":{"ar":"اسم المنتج","en":"Product name","fr":"Nom du produit","es":"Nombre del producto","tr":"Ürün adı","ru":"Название товара","hi":"उत्पाद का नाम","ur":"پروڈکٹ کا نام","bn":"পণ্যের নাম","ne":"उत्पादनको नाम","fil":"Pangalan ng produkto","id":"Nama produk","zh":"产品名称","ml":"ഉൽപ്പന്നത്തിന്റെ പേര്"},"k_change":{"ar":"ماذا يتغيّر؟","en":"What changes?","fr":"Que change-t-on ?","es":"¿Qué cambia?","tr":"Ne değişiyor?","ru":"Что меняется?","hi":"क्या बदलता है?","ur":"کیا بدلتا ہے؟","bn":"কী বদলাবে?","ne":"के परिवर्तन हुन्छ?","fil":"Ano ang magbabago?","id":"Apa yang berubah?","zh":"改变什么？","ml":"എന്ത് മാറുന്നു?"},"k_setting":{"ar":"المكان أو الحدث","en":"The place or event","fr":"Le lieu ou l'événement","es":"El lugar o evento","tr":"Yer veya etkinlik","ru":"Место или событие","hi":"जगह या इवेंट","ur":"جگہ یا ایونٹ","bn":"স্থান বা ইভেন্ট","ne":"ठाउँ वा घटना","fil":"Lugar o event","id":"Tempat atau acara","zh":"地点或活动","ml":"സ്ഥലം അല്ലെങ്കിൽ ഇവന്റ്"}}};
+/* v-video-trends (طلب المالك ٤ سبتمبر): ٢٥ ترند فيديو بلمسة واحدة — العناوين بـ14 لغة. الأوامر على الخادم (api/_lib/video-trends.js). */
+window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt","engine":"veo","ratio":"1280:720","kind":"name","title":{"ar":"قصة بيكسار من ٣ مشاهد","en":"Pixar story in 3 scenes","fr":"Histoire Pixar en 3 scènes","es":"Historia Pixar en 3 escenas","tr":"3 sahnelik Pixar hikâyesi","ru":"История Pixar в 3 сценах","hi":"3 दृश्यों की पिक्सार कहानी","ur":"3 مناظر کی پکسار کہانی","bn":"৩ দৃশ্যের পিক্সার গল্প","ne":"३ दृश्यको पिक्सार कथा","fil":"Pixar story sa 3 eksena","id":"Cerita Pixar 3 adegan","zh":"3幕皮克斯故事","ml":"3 രംഗ പിക്സാർ കഥ"},"sub":{"ar":"صباح، مدرسة، مساء مع العائلة","en":"Morning, school, evening with family","fr":"Matin, école, soirée en famille","es":"Mañana, escuela, tarde en familia","tr":"Sabah, okul, aile akşamı","ru":"Утро, школа, вечер с семьёй","hi":"सुबह, स्कूल, परिवार के साथ शाम","ur":"صبح، اسکول، خاندان کے ساتھ شام","bn":"সকাল, স্কুল, পরিবারের সাথে সন্ধ্যা","ne":"बिहान, स्कुल, परिवारसँग साँझ","fil":"Umaga, paaralan, gabi kasama ang pamilya","id":"Pagi, sekolah, malam bersama keluarga","zh":"早晨、学校、家庭之夜","ml":"രാവിലെ, സ്കൂൾ, കുടുംബത്തോടൊപ്പം സായാഹ്നം"},"scenes":3},{"key":"pixarsketch","em":"😂","photo":"none","engine":"veo","ratio":"720:1280","kind":"scene","title":{"ar":"اسكتش بيكسار عربي","en":"Arabic Pixar sketch","fr":"Sketch Pixar arabe","es":"Sketch Pixar árabe","tr":"Arapça Pixar skeci","ru":"Арабский скетч Pixar","hi":"अरबी पिक्सार स्केच","ur":"عربی پکسار اسکیچ","bn":"আরবি পিক্সার স্কেচ","ne":"अरबी पिक्सार स्केच","fil":"Arabic Pixar sketch","id":"Sketsa Pixar Arab","zh":"阿拉伯皮克斯短剧","ml":"അറബിക് പിക്സാർ സ്കെച്ച്"},"sub":{"ar":"اكتب الموقف وهم يمثّلونه بحوار","en":"Write the situation, they act it out","fr":"Écrivez la situation, ils la jouent","es":"Escribe la situación y la actúan","tr":"Durumu yaz, canlandırsınlar","ru":"Опишите ситуацию — они сыграют","hi":"स्थिति लिखें, वे अभिनय करेंगे","ur":"صورتحال لکھیں، وہ ادا کریں گے","bn":"পরিস্থিতি লিখুন, তারা অভিনয় করবে","ne":"अवस्था लेख्नुहोस्, उनीहरू अभिनय गर्छन्","fil":"Isulat ang sitwasyon, aaktohan nila","id":"Tulis situasinya, mereka perankan","zh":"写下情境，角色演出","ml":"സാഹചര്യം എഴുതൂ, അവർ അഭിനയിക്കും"},"scenes":1},{"key":"heritagesing","em":"🎤","photo":"req","engine":"veo","ratio":"720:1280","kind":"sentence","title":{"ar":"شخصيتي تغني في مشهد تراثي","en":"Sing in a heritage scene","fr":"Chanter dans un décor patrimonial","es":"Cantar en un escenario tradicional","tr":"Geleneksel sahnede şarkı","ru":"Пою в старинном квартале","hi":"विरासत दृश्य में गाना","ur":"ورثے کے منظر میں گانا","bn":"ঐতিহ্যবাহী দৃশ্যে গান","ne":"सम्पदा दृश्यमा गीत","fil":"Kumanta sa heritage scene","id":"Bernyanyi di latar warisan","zh":"在传统场景中歌唱","ml":"പൈതൃക രംഗത്തിൽ പാട്ട്"},"sub":{"ar":"صورة واحدة وكلمات، والباقي علينا","en":"One photo and lyrics, we do the rest","fr":"Une photo et des paroles","es":"Una foto y letra","tr":"Bir fotoğraf ve sözler","ru":"Одно фото и слова","hi":"एक फोटो और बोल","ur":"ایک تصویر اور بول","bn":"একটি ছবি ও কথা","ne":"एक फोटो र बोल","fil":"Isang larawan at lyrics","id":"Satu foto dan lirik","zh":"一张照片和歌词","ml":"ഒരു ഫോട്ടോയും വരികളും"},"scenes":1},{"key":"hugyounger","em":"🤗","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"عناق النفس الصغيرة","en":"Hug your younger self","fr":"Étreindre son enfant intérieur","es":"Abrazar a tu yo niño","tr":"Küçük halini kucakla","ru":"Обнять себя в детстве","hi":"अपने बचपन को गले लगाएँ","ur":"اپنے بچپن کو گلے لگائیں","bn":"ছোটবেলার নিজেকে জড়িয়ে ধরুন","ne":"सानो आफूलाई अँगालो","fil":"Yakapin ang batang ikaw","id":"Peluk dirimu yang kecil","zh":"拥抱童年的自己","ml":"കുട്ടിക്കാലത്തെ നിങ്ങളെ ആലിംഗനം"},"sub":{"ar":"لحظة مؤثرة من صورتك","en":"An emotional moment from your photo","fr":"Un moment émouvant","es":"Un momento emotivo","tr":"Duygusal bir an","ru":"Трогательный момент","hi":"एक भावुक पल","ur":"ایک جذباتی لمحہ","bn":"একটি আবেগময় মুহূর্ত","ne":"भावुक क्षण","fil":"Isang emosyonal na sandali","id":"Momen mengharukan","zh":"感人的瞬间","ml":"വികാരഭരിതമായ നിമിഷം"},"scenes":1},{"key":"oldphoto","em":"🖼️","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"الصورة القديمة تتحرك","en":"Old photo comes alive","fr":"La vieille photo s'anime","es":"La foto antigua cobra vida","tr":"Eski fotoğraf canlanıyor","ru":"Старое фото оживает","hi":"पुरानी फोटो जीवंत","ur":"پرانی تصویر زندہ","bn":"পুরনো ছবি জীবন্ত","ne":"पुरानो फोटो जीवन्त","fil":"Nabubuhay ang lumang larawan","id":"Foto lama jadi hidup","zh":"老照片动起来","ml":"പഴയ ഫോട്ടോ ജീവൻ വയ്ക്കുന്നു"},"sub":{"ar":"ابتسامة وحركة وكلمة","en":"A smile, a move, a word","fr":"Un sourire, un geste, un mot","es":"Una sonrisa, un gesto, una palabra","tr":"Bir gülüş, bir hareket, bir söz","ru":"Улыбка, движение, слово","hi":"मुस्कान, हरकत, शब्द","ur":"مسکراہٹ، حرکت، لفظ","bn":"হাসি, নড়াচড়া, কথা","ne":"मुस्कान, चाल, शब्द","fil":"Ngiti, galaw, salita","id":"Senyum, gerak, kata","zh":"微笑、动作、话语","ml":"പുഞ്ചിരി, ചലനം, വാക്ക്"},"scenes":1},{"key":"tencountries","em":"🌍","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"أنا في ١٠ دول","en":"Me in 10 countries","fr":"Moi dans 10 pays","es":"Yo en 10 países","tr":"10 ülkede ben","ru":"Я в 10 странах","hi":"10 देशों में मैं","ur":"10 ممالک میں میں","bn":"১০ দেশে আমি","ne":"१० देशमा म","fil":"Ako sa 10 bansa","id":"Aku di 10 negara","zh":"我在10个国家","ml":"10 രാജ്യങ്ങളിൽ ഞാൻ"},"sub":{"ar":"انتقالات سريعة بين المدن الشهيرة","en":"Quick cuts across famous cities","fr":"Enchaînement de villes célèbres","es":"Cortes rápidos por ciudades famosas","tr":"Ünlü şehirler arasında hızlı geçiş","ru":"Быстрые кадры известных городов","hi":"मशहूर शहरों के तेज़ कट","ur":"مشہور شہروں کے تیز کٹ","bn":"বিখ্যাত শহরের দ্রুত কাট","ne":"प्रसिद्ध सहरका द्रुत कट","fil":"Mabilis na cuts sa sikat na lungsod","id":"Potongan cepat kota terkenal","zh":"名城快速切换","ml":"പ്രശസ്ത നഗരങ്ങളിലൂടെ"},"scenes":1},{"key":"babyversion","em":"👶","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"بيبي ستايل","en":"Baby version","fr":"Version bébé","es":"Versión bebé","tr":"Bebek hali","ru":"Версия малыша","hi":"बेबी वर्ज़न","ur":"بے بی ورژن","bn":"বেবি ভার্সন","ne":"बेबी संस्करण","fil":"Baby version","id":"Versi bayi","zh":"宝宝版","ml":"ബേബി പതിപ്പ്"},"sub":{"ar":"نسخة طفل بملابس مبالغ فيها","en":"A toddler you in oversized clothes","fr":"Version bambin","es":"Versión bebé con ropa grande","tr":"Kocaman kıyafetli bebek hali","ru":"Малыш в огромной одежде","hi":"बड़े कपड़ों में बच्चा","ur":"بڑے کپڑوں میں بچہ","bn":"বড় পোশাকে শিশু","ne":"ठूला लुगामा बच्चा","fil":"Sanggol na bersyon","id":"Versi balita baju besar","zh":"穿大衣服的宝宝","ml":"വലിയ വസ്ത്രത്തിൽ കുഞ്ഞ്"},"scenes":1},{"key":"outfitswap","em":"👗","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"الإطلالات تتبدل","en":"Outfit swap","fr":"Changement de tenues","es":"Cambio de outfits","tr":"Kıyafet değişimi","ru":"Смена нарядов","hi":"आउटफिट बदलाव","ur":"لباس کی تبدیلی","bn":"পোশাক বদল","ne":"पोशाक परिवर्तन","fil":"Palit-outfit","id":"Ganti outfit","zh":"换装秀","ml":"വേഷം മാറ്റം"},"sub":{"ar":"٥ إطلالات في لقطة واحدة","en":"5 looks in one shot","fr":"5 tenues en un plan","es":"5 looks en una toma","tr":"Tek planda 5 stil","ru":"5 образов в одном кадре","hi":"एक शॉट में 5 लुक","ur":"ایک شاٹ میں 5 لک","bn":"এক শটে ৫ লুক","ne":"एक शटमा ५ लुक","fil":"5 looks sa isang shot","id":"5 gaya dalam satu shot","zh":"一镜五套造型","ml":"ഒറ്റ ഷോട്ടിൽ 5 ലുക്ക്"},"scenes":1},{"key":"productad","em":"📦","photo":"req","engine":"veo","ratio":"1280:720","kind":"product","title":{"ar":"إعلان منتج ٥ ثوانٍ","en":"5-second product ad","fr":"Pub produit 5 s","es":"Anuncio de producto 5 s","tr":"5 saniyelik ürün reklamı","ru":"5-секундная реклама","hi":"5 सेकंड का विज्ञापन","ur":"5 سیکنڈ کا اشتہار","bn":"৫ সেকেন্ডের বিজ্ঞাপন","ne":"५ सेकेन्डको विज्ञापन","fil":"5-segundong ad","id":"Iklan produk 5 detik","zh":"5秒产品广告","ml":"5 സെക്കൻഡ് പരസ്യം"},"sub":{"ar":"صورة المنتج تصير إعلانًا سينمائيًا","en":"Your product photo becomes a cinematic ad","fr":"Votre photo devient une pub","es":"Tu foto se vuelve un anuncio","tr":"Ürün fotoğrafı sinematik reklam olur","ru":"Фото товара становится рекламой","hi":"फोटो बनता है सिनेमाई विज्ञापन","ur":"تصویر سنیما اشتہار بن جاتی ہے","bn":"ছবি হয় সিনেমাটিক বিজ্ঞাপন","ne":"फोटो सिनेमाटिक विज्ञापन बन्छ","fil":"Nagiging cinematic ad","id":"Foto jadi iklan sinematik","zh":"照片变电影级广告","ml":"ഫോട്ടോ സിനിമാറ്റിക് പരസ്യമാകും"},"scenes":1},{"key":"beforeafter","em":"✨","photo":"req","engine":"veo","ratio":"720:1280","kind":"change","title":{"ar":"قبل وبعد","en":"Before & after","fr":"Avant-après","es":"Antes y después","tr":"Önce ve sonra","ru":"До и после","hi":"पहले और बाद","ur":"پہلے اور بعد","bn":"আগে ও পরে","ne":"अघि र पछि","fil":"Bago at pagkatapos","id":"Sebelum & sesudah","zh":"前后对比","ml":"മുമ്പും ശേഷവും"},"sub":{"ar":"تحوّل سلس لأي شيء","en":"A smooth transformation of anything","fr":"Transformation fluide","es":"Transformación suave","tr":"Yumuşak dönüşüm","ru":"Плавное преображение","hi":"किसी भी चीज़ का बदलाव","ur":"کسی بھی چیز کی تبدیلی","bn":"যেকোনো কিছুর রূপান্তর","ne":"जुनसुकैको रूपान्तरण","fil":"Makinis na transpormasyon","id":"Transformasi mulus","zh":"任何事物的平滑转变","ml":"എന്തിന്റെയും പരിവർത്തനം"},"scenes":1},{"key":"talkingpet","em":"🐱","photo":"req","engine":"veo","ratio":"720:1280","kind":"sentence","title":{"ar":"الحيوان يتكلم","en":"Talking pet","fr":"Animal qui parle","es":"Mascota que habla","tr":"Konuşan evcil hayvan","ru":"Говорящий питомец","hi":"बोलता पालतू","ur":"بولتا پالتو","bn":"কথা বলা পোষা","ne":"बोल्ने पाल्तु","fil":"Nagsasalitang alaga","id":"Hewan bicara","zh":"会说话的宠物","ml":"സംസാരിക്കുന്ന വളർത്തുമൃഗം"},"sub":{"ar":"قطتك تقول جملة تكتبها","en":"Your cat says what you write","fr":"Votre chat parle","es":"Tu gato dice lo que escribes","tr":"Kedin yazdığını söyler","ru":"Кот скажет ваши слова","hi":"बिल्ली आपकी बात कहे","ur":"بلی آپ کے الفاظ کہے","bn":"বিড়াল বলবে আপনার কথা","ne":"बिरालोले तपाईंको कुरा भन्छ","fil":"Sasabihin ng pusa","id":"Kucingmu bicara","zh":"猫咪说出你的话","ml":"പൂച്ച നിങ്ങളുടെ വാക്ക് പറയും"},"scenes":1},{"key":"ghibli","em":"🌸","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"ستايل جيبلي","en":"Ghibli style","fr":"Style Ghibli","es":"Estilo Ghibli","tr":"Ghibli tarzı","ru":"Стиль Гибли","hi":"घिबली शैली","ur":"گبلی اسٹائل","bn":"ঘিবলি স্টাইল","ne":"घिबली शैली","fil":"Ghibli style","id":"Gaya Ghibli","zh":"吉卜力风格","ml":"ഗിബ്ലി ശൈലി"},"sub":{"ar":"صورتك تصير مشهد أنمي متحرك","en":"Your photo becomes an anime scene","fr":"Votre photo en scène anime","es":"Tu foto en escena anime","tr":"Fotoğrafın anime sahnesi olur","ru":"Фото становится аниме","hi":"फोटो बनता है एनीमे दृश्य","ur":"تصویر اینیمے منظر بن جاتی ہے","bn":"ছবি হয় অ্যানিমে দৃশ্য","ne":"फोटो एनिमे दृश्य बन्छ","fil":"Nagiging anime scene","id":"Foto jadi adegan anime","zh":"照片变动画场景","ml":"ഫോട്ടോ ആനിമേ രംഗമാകും"},"scenes":1},{"key":"dance","em":"💃","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"الرقص والحركة","en":"Dance move","fr":"Danse","es":"Baile","tr":"Dans","ru":"Танец","hi":"डांस","ur":"ڈانس","bn":"নাচ","ne":"नाच","fil":"Sayaw","id":"Tarian","zh":"舞蹈","ml":"നൃത്തം"},"sub":{"ar":"صورتك ترقص على مقطع رائج","en":"Your photo dances to a trend","fr":"Votre photo danse","es":"Tu foto baila","tr":"Fotoğrafın dans eder","ru":"Фото танцует","hi":"फोटो नाचता है","ur":"تصویر ناچتی ہے","bn":"ছবি নাচে","ne":"फोटो नाच्छ","fil":"Sumasayaw ang larawan","id":"Fotomu menari","zh":"照片跳舞","ml":"ഫോട്ടോ നൃത്തം ചെയ്യും"},"scenes":1},{"key":"productfly","em":"🪄","photo":"req","engine":"veo","ratio":"1280:720","kind":"none","title":{"ar":"المنتج يطير","en":"Floating product","fr":"Produit en lévitation","es":"Producto flotante","tr":"Uçan ürün","ru":"Парящий товар","hi":"तैरता उत्पाद","ur":"تیرتا پروڈکٹ","bn":"ভাসমান পণ্য","ne":"उड्ने उत्पादन","fil":"Lumulutang na produkto","id":"Produk melayang","zh":"悬浮产品","ml":"പറക്കുന്ന ഉൽപ്പന്നം"},"sub":{"ar":"حلقة إعلانية سريعة للعطر أو الساعة","en":"Quick ad loop for perfume or watch","fr":"Boucle pub parfum-montre","es":"Loop de anuncio de perfume o reloj","tr":"Parfüm-saat için reklam döngüsü","ru":"Рекламная петля для духов или часов","hi":"परफ्यूम-घड़ी का विज्ञापन लूप","ur":"پرفیوم-گھڑی اشتہار لوپ","bn":"পারফিউম-ঘড়ির বিজ্ঞাপন লুপ","ne":"अत्तर-घडी विज्ञापन लुप","fil":"Ad loop para sa pabango","id":"Loop iklan parfum","zh":"香水手表广告循环","ml":"പെർഫ്യൂം-വാച്ച് പരസ്യ ലൂപ്പ്"},"scenes":1},{"key":"agejourney","em":"⏳","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"مسيرة العمر","en":"Age journey","fr":"Voyage des âges","es":"Viaje de la edad","tr":"Yaş yolculuğu","ru":"Путь возраста","hi":"उम्र का सफ़र","ur":"عمر کا سفر","bn":"বয়সের যাত্রা","ne":"उमेरको यात्रा","fil":"Paglalakbay ng edad","id":"Perjalanan usia","zh":"岁月旅程","ml":"പ്രായയാത്ര"},"sub":{"ar":"من طفل إلى كهل في ٨ ثوانٍ","en":"Child to elder in 8 seconds","fr":"D'enfant à aîné en 8 s","es":"De niño a anciano en 8 s","tr":"8 saniyede çocuktan yaşlıya","ru":"От ребёнка до старика за 8 с","hi":"8 सेकंड में बच्चे से बुज़ुर्ग","ur":"8 سیکنڈ میں بچے سے بزرگ","bn":"৮ সেকেন্ডে শিশু থেকে বৃদ্ধ","ne":"८ सेकेन्डमा बालकदेखि वृद्ध","fil":"Bata hanggang matanda sa 8 s","id":"Anak ke lansia 8 detik","zh":"8秒从童年到老年","ml":"8 സെക്കൻഡിൽ കുട്ടി മുതൽ വൃദ്ധൻ വരെ"},"scenes":1},{"key":"celebselfie","em":"🤳","photo":"req","engine":"veo","ratio":"720:1280","kind":"setting","title":{"ar":"سيلفي في حدث فخم","en":"Selfie at a glam event","fr":"Selfie à un gala","es":"Selfie en un evento glamuroso","tr":"Şık etkinlikte selfie","ru":"Селфи на гала","hi":"ग्लैम इवेंट में सेल्फी","ur":"گلیم ایونٹ میں سیلفی","bn":"গ্ল্যাম ইভেন্টে সেলফি","ne":"ग्ल्याम इभेन्टमा सेल्फी","fil":"Selfie sa glam event","id":"Selfie di acara glamor","zh":"盛典自拍","ml":"ഗ്ലാം ഇവന്റിൽ സെൽഫി"},"sub":{"ar":"سجادة حمراء وفلاشات","en":"Red carpet and flashes","fr":"Tapis rouge et flashs","es":"Alfombra roja y flashes","tr":"Kırmızı halı ve flaşlar","ru":"Красная дорожка и вспышки","hi":"रेड कार्पेट और फ़्लैश","ur":"ریڈ کارپٹ اور فلیش","bn":"রেড কার্পেট ও ফ্ল্যাশ","ne":"रेड कार्पेट र फ्ल्यास","fil":"Red carpet at flashes","id":"Karpet merah dan lampu kilat","zh":"红毯与闪光灯","ml":"റെഡ് കാർപെറ്റും ഫ്ലാഷുകളും"},"scenes":1},{"key":"asmr","em":"🎧","photo":"req","engine":"veo","ratio":"1280:720","kind":"none","title":{"ar":"ASMR منتج","en":"Product ASMR","fr":"ASMR produit","es":"ASMR de producto","tr":"Ürün ASMR","ru":"ASMR товара","hi":"प्रोडक्ट ASMR","ur":"پروڈکٹ ASMR","bn":"পণ্য ASMR","ne":"उत्पादन ASMR","fil":"Product ASMR","id":"ASMR produk","zh":"产品ASMR","ml":"ഉൽപ്പന്ന ASMR"},"sub":{"ar":"لقطات قريبة ناعمة بأصوات هادئة","en":"Soft close-ups with gentle sounds","fr":"Gros plans doux","es":"Primeros planos suaves","tr":"Yumuşak yakın çekimler","ru":"Мягкие крупные планы","hi":"नरम क्लोज़-अप","ur":"نرم کلوز اپ","bn":"নরম ক্লোজ-আপ","ne":"नरम क्लोज-अप","fil":"Malambot na close-ups","id":"Close-up lembut","zh":"柔和特写","ml":"മൃദുവായ ക്ലോസപ്പുകൾ"},"scenes":1},{"key":"eidgreeting","em":"🌙","photo":"opt","engine":"veo","ratio":"720:1280","kind":"name","title":{"ar":"تهنئة العيد المتحركة","en":"Animated Eid greeting","fr":"Vœux de l'Aïd animés","es":"Felicitación de Eid animada","tr":"Hareketli bayram tebriği","ru":"Анимированное поздравление с Идом","hi":"एनिमेटेड ईद बधाई","ur":"متحرک عید مبارک","bn":"অ্যানিমেটেড ঈদ শুভেচ্ছা","ne":"एनिमेटेड ईद शुभकामना","fil":"Animated Eid greeting","id":"Ucapan Lebaran animasi","zh":"开斋节动态祝福","ml":"ആനിമേറ്റഡ് പെരുന്നാൾ ആശംസ"},"sub":{"ar":"بزيّ العيد وبطاقة تتحرك","en":"In Eid attire with a moving card","fr":"En tenue de fête avec carte animée","es":"Con ropa de Eid y tarjeta animada","tr":"Bayramlık ve hareketli kart","ru":"В праздничном наряде с открыткой","hi":"ईद के कपड़ों में एनिमेटेड कार्ड","ur":"عید کے لباس میں متحرک کارڈ","bn":"ঈদের পোশাকে চলমান কার্ড","ne":"ईदको लुगामा चल्ने कार्ड","fil":"Eid attire na may card","id":"Baju Lebaran & kartu bergerak","zh":"节日盛装与动态贺卡","ml":"പെരുന്നാൾ വേഷവും കാർഡും"},"scenes":1},{"key":"drone","em":"🚁","photo":"req","engine":"veo","ratio":"1280:720","kind":"none","title":{"ar":"تصوير درون","en":"Drone shot","fr":"Vue par drone","es":"Toma con dron","tr":"Drone çekimi","ru":"Съёмка с дрона","hi":"ड्रोन शॉट","ur":"ڈرون شاٹ","bn":"ড্রোন শট","ne":"ड्रोन शट","fil":"Drone shot","id":"Rekaman drone","zh":"无人机航拍","ml":"ഡ്രോൺ ഷോട്ട്"},"sub":{"ar":"صورتك تصير لقطة طيران سينمائية","en":"Your photo becomes a cinematic flyover","fr":"Votre photo en survol cinématique","es":"Tu foto en sobrevuelo cinematográfico","tr":"Fotoğrafın sinematik uçuş olur","ru":"Фото становится кинематографичным облётом","hi":"फोटो बनता है सिनेमाई फ्लाईओवर","ur":"تصویر سنیما فلائی اوور بن جاتی ہے","bn":"ছবি হয় সিনেমাটিক ফ্লাইওভার","ne":"फोटो सिनेमाटिक उडान बन्छ","fil":"Nagiging cinematic flyover","id":"Foto jadi terbang sinematik","zh":"照片变电影级航拍","ml":"ഫോട്ടോ സിനിമാറ്റിക് ഫ്ലൈഓവർ ആകും"},"scenes":1},{"key":"orbit360","em":"🔄","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"دوران ٣٦٠","en":"360° orbit","fr":"Orbite 360°","es":"Órbita 360°","tr":"360° dönüş","ru":"Облёт 360°","hi":"360° ऑर्बिट","ur":"360° آربٹ","bn":"৩৬০° অরবিট","ne":"३६०° घुमाइ","fil":"360° orbit","id":"Orbit 360°","zh":"360° 环绕","ml":"360° ഓർബിറ്റ്"},"sub":{"ar":"الكاميرا تدور حول الشخص أو المنتج","en":"The camera circles the person or product","fr":"La caméra tourne autour","es":"La cámara gira alrededor","tr":"Kamera etrafında döner","ru":"Камера облетает объект","hi":"कैमरा चारों ओर घूमता है","ur":"کیمرہ گرد گھومتا ہے","bn":"ক্যামেরা চারদিকে ঘোরে","ne":"क्यामेरा वरिपरि घुम्छ","fil":"Umiikot ang camera","id":"Kamera mengelilingi","zh":"摄像机环绕拍摄","ml":"ക്യാമറ ചുറ്റും കറങ്ങുന്നു"},"scenes":1},{"key":"timecapsule","em":"⏳","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"انعكاس العصر ٢٠٥٠","en":"Time Capsule 2050","fr":"Capsule temporelle 2050","es":"Cápsula del tiempo 2050","tr":"Zaman Kapsülü 2050","ru":"Капсула времени 2050","hi":"टाइम कैप्सूल 2050","ur":"ٹائم کیپسول 2050","bn":"টাইম ক্যাপসুল ২০৫০","ne":"टाइम क्याप्सुल २०५०","fil":"Time Capsule 2050","id":"Kapsul Waktu 2050","zh":"时光胶囊2050","ml":"ടൈം ക്യാപ്‌സ്യൂൾ 2050"},"sub":{"ar":"أنت اليوم بجانب نفسك في ٢٠٥٠","en":"You today beside your 2050 self","fr":"Vous aujourd'hui à côté de votre moi de 2050","es":"Tú hoy junto a tu yo de 2050","tr":"Bugünkü sen, 2050'deki hâlinin yanında","ru":"Вы сегодня рядом с собой из 2050","hi":"आज के आप, 2050 के आपके साथ","ur":"آج کے آپ، 2050 کے اپنے ساتھ","bn":"আজকের আপনি, ২০৫০-এর নিজের পাশে","ne":"आजको तपाईं, २०५० को आफूसँगै","fil":"Ikaw ngayon katabi ng 2050 mong sarili","id":"Kamu hari ini di samping dirimu di 2050","zh":"今天的你与2050年的你同框","ml":"ഇന്നത്തെ നിങ്ങൾ 2050-ലെ നിങ്ങളോടൊപ്പം"}},{"key":"bullettime","em":"🌀","photo":"req","engine":"veo","ratio":"1280:720","kind":"none","title":{"ar":"تجميد الزمن","en":"Bullet Time","fr":"Bullet Time","es":"Tiempo congelado","tr":"Zaman Donması","ru":"Заморозка времени","hi":"बुलेट टाइम","ur":"بلٹ ٹائم","bn":"বুলেট টাইম","ne":"बुलेट टाइम","fil":"Bullet Time","id":"Bullet Time","zh":"子弹时间","ml":"ബുള്ളറ്റ് ടൈം"},"sub":{"ar":"المشهد متجمد والكاميرا تدور ٣٦٠ حولك","en":"Frozen scene, camera orbits you 360","fr":"Scène figée, caméra à 360° autour de vous","es":"Escena congelada, cámara 360 a tu alrededor","tr":"Donmuş sahne, kamera 360 döner","ru":"Застывшая сцена, камера кружит 360","hi":"जमा हुआ दृश्य, कैमरा 360 घूमता है","ur":"منجمد منظر، کیمرہ 360 گھومتا ہے","bn":"জমাট দৃশ্য, ক্যামেরা ৩৬০ ঘোরে","ne":"जमेको दृश्य, क्यामेरा ३६० घुम्छ","fil":"Nakapirming eksena, kamera umiikot 360","id":"Adegan beku, kamera berputar 360","zh":"画面定格，镜头360度环绕","ml":"മരവിച്ച രംഗം, ക്യാമറ 360 കറങ്ങുന്നു"}},{"key":"movieposter","em":"🎥","photo":"req","engine":"veo","ratio":"720:1280","kind":"name","title":{"ar":"البوستر السينمائي","en":"Movie Star Poster","fr":"Affiche de cinéma","es":"Póster de cine","tr":"Film Afişi","ru":"Кинопостер","hi":"मूवी पोस्टर","ur":"مووی پوسٹر","bn":"মুভি পোস্টার","ne":"मुभी पोस्टर","fil":"Movie Poster","id":"Poster Film","zh":"电影海报","ml":"മൂവി പോസ്റ്റർ"},"sub":{"ar":"صورتك بوستر فيلم — اكتب عنوان فيلمك","en":"Your photo as a film poster — type your title","fr":"Votre photo en affiche — écrivez le titre","es":"Tu foto como póster — escribe el título","tr":"Fotoğrafın film afişi olur — başlığı yaz","ru":"Ваше фото как постер — введите название","hi":"आपकी फोटो पोस्टर बनेगी — शीर्षक लिखें","ur":"آپ کی تصویر پوسٹر بنے گی — عنوان لکھیں","bn":"আপনার ছবি পোস্টার হবে — শিরোনাম লিখুন","ne":"तपाईंको फोटो पोस्टर बन्छ — शीर्षक लेख्नुहोस्","fil":"Ang photo mo ay poster — isulat ang title","id":"Fotomu jadi poster — tulis judulnya","zh":"照片变电影海报——写下片名","ml":"നിങ്ങളുടെ ഫോട്ടോ പോസ്റ്ററാകും — ടൈറ്റിൽ എഴുതൂ"}},{"key":"materialize","em":"✨","photo":"req","engine":"veo","ratio":"1280:720","kind":"product","title":{"ar":"تحول المواد","en":"Materialize","fr":"Matérialisation","es":"Materialización","tr":"Maddeleşme","ru":"Материализация","hi":"मैटीरियलाइज़","ur":"میٹریلائز","bn":"ম্যাটেরিয়ালাইজ","ne":"म्याटरियलाइज","fil":"Materialize","id":"Materialisasi","zh":"物质化成型","ml":"മെറ്റീരിയലൈസ്"},"sub":{"ar":"منتجك يتكوّن من جزيئات ذهبية","en":"Your product forms from golden particles","fr":"Votre produit naît de particules dorées","es":"Tu producto se forma de partículas doradas","tr":"Ürünün altın parçacıklardan oluşur","ru":"Ваш товар собирается из золотых частиц","hi":"आपका उत्पाद सुनहरे कणों से बनता है","ur":"آپ کی پروڈکٹ سنہری ذرات سے بنتی ہے","bn":"সোনালি কণা থেকে আপনার পণ্য তৈরি হয়","ne":"सुनौला कणहरूबाट उत्पादन बन्छ","fil":"Nabubuo ang produkto mula sa gintong particles","id":"Produkmu terbentuk dari partikel emas","zh":"产品由金色粒子汇聚成型","ml":"സ്വർണ്ണ കണികകളിൽ നിന്ന് ഉൽപ്പന്നം രൂപപ്പെടുന്നു"}},{"key":"parallaxpop","em":"🪄","photo":"req","engine":"veo","ratio":"720:1280","kind":"none","title":{"ar":"انفجار الأبعاد","en":"3D Parallax Pop","fr":"Parallaxe 3D","es":"Parallax 3D","tr":"3D Paralaks","ru":"3D-параллакс","hi":"3D पैरालैक्स","ur":"3D پیرالیکس","bn":"3D প্যারালাক্স","ne":"3D प्यारालाक्स","fil":"3D Parallax","id":"Parallax 3D","zh":"3D视差动画","ml":"3D പാരലാക്സ്"},"sub":{"ar":"صورتك تنفصل طبقات ثلاثية الأبعاد","en":"Your photo splits into 3D depth layers","fr":"Votre photo se sépare en couches 3D","es":"Tu foto se separa en capas 3D","tr":"Fotoğrafın 3D katmanlara ayrılır","ru":"Фото распадается на 3D-слои","hi":"फोटो 3D परतों में बंटती है","ur":"تصویر 3D تہوں میں بٹتی ہے","bn":"ছবি 3D স্তরে ভাগ হয়","ne":"फोटो 3D तहहरूमा छुट्टिन्छ","fil":"Nahahati ang photo sa 3D layers","id":"Fotomu terbelah jadi lapisan 3D","zh":"照片分离成3D景深图层","ml":"ഫോട്ടോ 3D പാളികളായി വേർതിരിയുന്നു"}}],"ui":{"title":{"ar":"🔥 ترندات — فيديو بلمسة واحدة","en":"🔥 Trends — one-tap video","fr":"🔥 Tendances — vidéo en un geste","es":"🔥 Tendencias — video con un toque","tr":"🔥 Trendler — tek dokunuşla video","ru":"🔥 Тренды — видео в одно касание","hi":"🔥 ट्रेंड्स — एक टैप में वीडियो","ur":"🔥 ٹرینڈز — ایک ٹیپ میں ویڈیو","bn":"🔥 ট্রেন্ড — এক ট্যাপে ভিডিও","ne":"🔥 ट्रेन्ड — एक ट्यापमा भिडियो","fil":"🔥 Trends — one-tap video","id":"🔥 Tren — video sekali ketuk","zh":"🔥 热门 — 一键生成视频","ml":"🔥 ട്രെൻഡുകൾ — ഒറ്റ ടാപ്പിൽ വീഡിയോ"},"sub":{"ar":"اختر بطاقة، أضف صورة إن لزم، واضغط اصنع","en":"Pick a card, add a photo if needed, tap make","fr":"Choisissez, ajoutez une photo, créez","es":"Elige, añade foto si hace falta, crea","tr":"Kart seç, gerekirse fotoğraf ekle, oluştur","ru":"Выберите карточку, добавьте фото, создайте","hi":"कार्ड चुनें, फोटो जोड़ें, बनाएँ","ur":"کارڈ چنیں، تصویر لگائیں، بنائیں","bn":"কার্ড বাছুন, ছবি দিন, বানান","ne":"कार्ड छान्नुहोस्, फोटो थप्नुहोस्, बनाउनुहोस्","fil":"Pumili, magdagdag ng larawan, gawin","id":"Pilih kartu, tambah foto, buat","zh":"选卡片、加照片、点生成","ml":"കാർഡ് തിരഞ്ഞെടുത്ത് ഫോട്ടോ ചേർത്ത് നിർമ്മിക്കൂ"},"photo":{"ar":"📷 اختر صورة","en":"📷 Choose a photo","fr":"📷 Choisir une photo","es":"📷 Elegir foto","tr":"📷 Fotoğraf seç","ru":"📷 Выбрать фото","hi":"📷 फोटो चुनें","ur":"📷 تصویر چنیں","bn":"📷 ছবি বাছুন","ne":"📷 फोटो छान्नुहोस्","fil":"📷 Pumili ng larawan","id":"📷 Pilih foto","zh":"📷 选择照片","ml":"📷 ഫോട്ടോ തിരഞ്ഞെടുക്കുക"},"photoReq":{"ar":"هذا الترند يحتاج صورة","en":"This trend needs a photo","fr":"Ce trend nécessite une photo","es":"Esta tendencia necesita una foto","tr":"Bu trend fotoğraf ister","ru":"Нужно фото","hi":"इस ट्रेंड को फोटो चाहिए","ur":"اس ٹرینڈ کو تصویر چاہیے","bn":"এই ট্রেন্ডে ছবি লাগবে","ne":"यसलाई फोटो चाहिन्छ","fil":"Kailangan ng larawan","id":"Tren ini butuh foto","zh":"此项需要照片","ml":"ഇതിന് ഫോട്ടോ വേണം"},"make":{"ar":"✨ اصنع الفيديو","en":"✨ Make the video","fr":"✨ Créer la vidéo","es":"✨ Crear el video","tr":"✨ Videoyu oluştur","ru":"✨ Создать видео","hi":"✨ वीडियो बनाएँ","ur":"✨ ویڈیو بنائیں","bn":"✨ ভিডিও বানান","ne":"✨ भिडियो बनाउनुहोस्","fil":"✨ Gawin ang video","id":"✨ Buat video","zh":"✨ 生成视频","ml":"✨ വീഡിയോ നിർമ്മിക്കൂ"},"retry":{"ar":"🔁 أعد المحاولة","en":"🔁 Try again","fr":"🔁 Réessayer","es":"🔁 Reintentar","tr":"🔁 Tekrar dene","ru":"🔁 Ещё раз","hi":"🔁 फिर कोशिश","ur":"🔁 دوبارہ کوشش","bn":"🔁 আবার চেষ্টা","ne":"🔁 फेरि प्रयास","fil":"🔁 Subukan muli","id":"🔁 Coba lagi","zh":"🔁 再试一次","ml":"🔁 വീണ്ടും ശ്രമിക്കൂ"},"back":{"ar":"‹ كل الترندات","en":"‹ All trends","fr":"‹ Toutes les tendances","es":"‹ Todas las tendencias","tr":"‹ Tüm trendler","ru":"‹ Все тренды","hi":"‹ सभी ट्रेंड","ur":"‹ تمام ٹرینڈز","bn":"‹ সব ট্রেন্ড","ne":"‹ सबै ट्रेन्ड","fil":"‹ Lahat ng trends","id":"‹ Semua tren","zh":"‹ 全部热门","ml":"‹ എല്ലാ ട്രെൻഡുകളും"},"working":{"ar":"⏳ يصنع الفيديو… نحو دقيقتين","en":"⏳ Making the video… about two minutes","fr":"⏳ Création… environ deux minutes","es":"⏳ Creando… unos dos minutos","tr":"⏳ Oluşturuluyor… yaklaşık iki dakika","ru":"⏳ Создаю… около двух минут","hi":"⏳ बना रहे हैं… लगभग दो मिनट","ur":"⏳ بنا رہے ہیں… تقریباً دو منٹ","bn":"⏳ বানানো হচ্ছে… প্রায় দুই মিনিট","ne":"⏳ बनाउँदै… करिब दुई मिनेट","fil":"⏳ Ginagawa… mga dalawang minuto","id":"⏳ Membuat… sekitar dua menit","zh":"⏳ 生成中… 约两分钟","ml":"⏳ നിർമ്മിക്കുന്നു… ഏകദേശം രണ്ട് മിനിറ്റ്"},"scene":{"ar":"المشهد {i} من {n}…","en":"Scene {i} of {n}…","fr":"Scène {i} sur {n}…","es":"Escena {i} de {n}…","tr":"Sahne {i}-{n}…","ru":"Сцена {i} из {n}…","hi":"दृश्य {i}-{n}…","ur":"منظر {i}-{n}…","bn":"দৃশ্য {i}-{n}…","ne":"दृश्य {i}-{n}…","fil":"Eksena {i}-{n}…","id":"Adegan {i}-{n}…","zh":"第{i}/{n}幕…","ml":"രംഗം {i}-{n}…"},"done":{"ar":"✅ جاهز","en":"✅ Ready","fr":"✅ Prêt","es":"✅ Listo","tr":"✅ Hazır","ru":"✅ Готово","hi":"✅ तैयार","ur":"✅ تیار","bn":"✅ প্রস্তুত","ne":"✅ तयार","fil":"✅ Handa na","id":"✅ Siap","zh":"✅ 完成","ml":"✅ തയ്യാർ"},"fail":{"ar":"❌ تعذّر","en":"❌ Failed","fr":"❌ Échec","es":"❌ Falló","tr":"❌ Başarısız","ru":"❌ Ошибка","hi":"❌ विफल","ur":"❌ ناکام","bn":"❌ ব্যর্থ","ne":"❌ असफल","fil":"❌ Nabigo","id":"❌ Gagal","zh":"❌ 失败","ml":"❌ പരാജയപ്പെട്ടു"},"download":{"ar":"⬇️ تحميل","en":"⬇️ Download","fr":"⬇️ Télécharger","es":"⬇️ Descargar","tr":"⬇️ İndir","ru":"⬇️ Скачать","hi":"⬇️ डाउनलोड","ur":"⬇️ ڈاؤن لوڈ","bn":"⬇️ ডাউনলোড","ne":"⬇️ डाउनलोड","fil":"⬇️ I-download","id":"⬇️ Unduh","zh":"⬇️ 下载","ml":"⬇️ ഡൗൺലോഡ്"},"login":{"ar":"سجّل دخولك أولًا","en":"Sign in first","fr":"Connectez-vous d'abord","es":"Inicia sesión primero","tr":"Önce giriş yap","ru":"Сначала войдите","hi":"पहले साइन इन करें","ur":"پہلے لاگ ان کریں","bn":"আগে সাইন ইন করুন","ne":"पहिले लगइन गर्नुहोस्","fil":"Mag-sign in muna","id":"Masuk dulu","zh":"请先登录","ml":"ആദ്യം സൈൻ ഇൻ ചെയ്യൂ"},"k_name":{"ar":"اسم الطفل أو الشخص","en":"Child or person name","fr":"Prénom","es":"Nombre","tr":"İsim","ru":"Имя","hi":"नाम","ur":"نام","bn":"নাম","ne":"नाम","fil":"Pangalan","id":"Nama","zh":"姓名","ml":"പേര്"},"k_sentence":{"ar":"الجملة أو كلمات الأغنية","en":"The sentence or lyrics","fr":"La phrase ou les paroles","es":"La frase o la letra","tr":"Cümle veya sözler","ru":"Фраза или слова","hi":"वाक्य या बोल","ur":"جملہ یا بول","bn":"বাক্য বা কথা","ne":"वाक्य वा बोल","fil":"Pangungusap o lyrics","id":"Kalimat atau lirik","zh":"句子或歌词","ml":"വാക്യം അല്ലെങ്കിൽ വരികൾ"},"k_scene":{"ar":"الموقف بسطر واحد","en":"The situation in one line","fr":"La situation en une ligne","es":"La situación en una línea","tr":"Durum tek satırda","ru":"Ситуация в одну строку","hi":"स्थिति एक पंक्ति में","ur":"صورتحال ایک سطر میں","bn":"এক লাইনে পরিস্থিতি","ne":"एक लाइनमा अवस्था","fil":"Sitwasyon sa isang linya","id":"Situasi dalam satu baris","zh":"一句话描述情境","ml":"ഒരു വരിയിൽ സാഹചര്യം"},"k_product":{"ar":"اسم المنتج","en":"Product name","fr":"Nom du produit","es":"Nombre del producto","tr":"Ürün adı","ru":"Название товара","hi":"उत्पाद का नाम","ur":"پروڈکٹ کا نام","bn":"পণ্যের নাম","ne":"उत्पादनको नाम","fil":"Pangalan ng produkto","id":"Nama produk","zh":"产品名称","ml":"ഉൽപ്പന്നത്തിന്റെ പേര്"},"k_change":{"ar":"ماذا يتغيّر؟","en":"What changes?","fr":"Que change-t-on ?","es":"¿Qué cambia?","tr":"Ne değişiyor?","ru":"Что меняется?","hi":"क्या बदलता है?","ur":"کیا بدلتا ہے؟","bn":"কী বদলাবে?","ne":"के परिवर्तन हुन्छ?","fil":"Ano ang magbabago?","id":"Apa yang berubah?","zh":"改变什么？","ml":"എന്ത് മാറുന്നു?"},"k_setting":{"ar":"المكان أو الحدث","en":"The place or event","fr":"Le lieu ou l'événement","es":"El lugar o evento","tr":"Yer veya etkinlik","ru":"Место или событие","hi":"जगह या इवेंट","ur":"جگہ یا ایونٹ","bn":"স্থান বা ইভেন্ট","ne":"ठाउँ वा घटना","fil":"Lugar o event","id":"Tempat atau acara","zh":"地点或活动","ml":"സ്ഥലം അല്ലെങ്കിൽ ഇവന്റ്"}}};
 /* ───────── v-video-trends: «🔥 ترندات» — فيديو بلمسة واحدة داخل صانع الفيديو ─────────
  * بطاقات مصوّرة (معاينة تُولَّد وتُحفظ على الخادم)، يختار المستخدم بطاقة، يرفع صورة إن
  * لزم، يكتب كلمة، ويضغط «اصنع». المحرك والمدة والنسبة والأمر كلها من الترند نفسه.
@@ -30038,6 +30266,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
         guestId: window.getGuestId ? window.getGuestId() : '',
+        // v-custom-instructions: تعليمات المستخدم من الإعدادات — الخادم ينظّفها ويحقنها.
+        customInstructions: (function () { try { return window.getCustomInstructions ? window.getCustomInstructions() : ''; } catch (e) { return ''; } })(),
       }),
     }), __CHAT_IDLE_MS, '__chat_no_headers__');
     if (!res.ok || !res.body) {
@@ -34321,27 +34551,23 @@ if(document.readyState === 'loading'){
   window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages };
 })();
 /* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
-   طلب المالك ١٣ سبتمبر (لقطة قائمة نماذج Claude Code): «ممكن تضيف هذيل كلهم».
-   قائمة في الإعدادات (تحت مزوّد الخدمة) بنماذج كلود التسعة؛ الاختيار يُحفظ محلّيًّا
-   ويُرسَل مع كلّ رسالة على مسار كلود فقط (app-18). الخادم يقبل القائمة نفسها حصرًا،
+   v-models-two (أمر عمران ١٤ سبتمبر): القائمة محصورة في Opus 5 + Sonnet 5، والاختيار
+   انتقل من الإعدادات إلى قائمة «+» للمالك (modes.js). الاختيار يُحفظ محلّيًّا ويُرسَل مع
+   كلّ رسالة على مسار كلود فقط (app-18). الخادم يقبل القائمة نفسها حصرًا وللمالك وحده،
    وإن رفض المفتاح النموذج (404/400 نموذج) رجع للافتراضيّ وأخبر المستخدم في سطر الحالة. */
 (function () {
   'use strict';
 
   var KEY = 'aiapp_claude_model';
-  var IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+  /* v-models-family (أمر عمران ١٥ سبتمبر): عائلة كلود ٥ كاملة — الاختيار من منتقي السهم للمالك. */
+  var IDS = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
   function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
   var HINTS = {
     '': ['الافتراضيّ: Sonnet 5 — الأسرع للمحادثة اليوميّة.', 'Default: Sonnet 5 — fastest for everyday chat.'],
-    'claude-fable-5-1': ['الأقوى على الإطلاق؛ أبطأ وأغلى، ويحتاج رصيد API في حساب Anthropic.', 'Most capable; slower and pricier, needs API credits on the Anthropic account.'],
-    'claude-fable-5': ['قويّ جدًّا؛ أبطأ وأغلى، ويحتاج رصيد API في حساب Anthropic.', 'Very capable; slower and pricier, needs API credits on the Anthropic account.'],
     'claude-opus-5': ['أدقّ من Sonnet 5 في المهامّ الصعبة، وأبطأ منه.', 'More precise than Sonnet 5 on hard tasks, slower.'],
-    'claude-opus-4-8': ['الجيل السابق من Opus؛ متين وأبطأ.', 'Previous-generation Opus; solid, slower.'],
-    'claude-opus-4-7': ['الجيل السابق من Opus.', 'Previous-generation Opus.'],
-    'claude-opus-4-6': ['الجيل السابق من Opus.', 'Previous-generation Opus.'],
     'claude-sonnet-5': ['توازن السرعة والدقّة — هو الافتراضيّ.', 'Balanced speed and quality — the default.'],
-    'claude-sonnet-4-6': ['الجيل السابق من Sonnet.', 'Previous-generation Sonnet.'],
-    'claude-haiku-4-5': ['الأسرع والأرخص؛ للأسئلة القصيرة.', 'Fastest and cheapest; for short questions.'],
+    'claude-haiku-4-5': ['الأسرع والأخفّ — للردود القصيرة السريعة.', 'Fastest and lightest — for quick short replies.'],
+    'claude-fable-5-1': ['للكتابة الإبداعيّة والحوار الطبيعيّ.', 'For creative writing and natural dialogue.'],
   };
 
   function get() {

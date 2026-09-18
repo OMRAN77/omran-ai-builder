@@ -1,10 +1,10 @@
 // مسبار المرحلة ٣ — يحفظ الناتج بنفسه (لا يعتمد على destinationPath الذي لا يُنشئ ملفًّا للنواتج الصغيرة).
 // الاستخدام: bun scripts/p3-probe-any.ts <probe.js> <tag>=<url> [tag=url...]
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync, writeFileSync } from 'node:fs';
 const [, , probePath, ...urls] = process.argv;
 const code = readFileSync(probePath, 'utf8');
-const D = '/tasklet/agent/home/audit/p3';
+const D = '/workspace/agent/home/audit/p3';
 const dig = (v: any): any => {                          // ابحث عن أوّل كائن يشبه ناتج المسبار
   if (v && typeof v === 'object') {
     if (!Array.isArray(v) && ['bodyKids','order','modals','els','prem','swallow'].some(k => k in v)) return v;

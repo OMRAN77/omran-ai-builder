@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, copyFileSync } from 'node:fs';
-const D='/tasklet/agent/home/design/deploy';
+const D='/workspace/agent/home/design/deploy';
 const SRC=`${D}/index.html`, OUT=`${D}/index-welcome-preview.html`;
 let s=readFileSync(SRC,'utf8'); const before=s;
 
@@ -13,7 +13,7 @@ if(n!==1){ console.log('✗ توقّفت — المطابقة ليست واحد�
 s=s.replace(OLD,NEW);
 
 // نسخة احتياطية قبل أي كتابة
-copyFileSync(SRC, '/tasklet/agent/home/backup/rollback-points/index-before-welcome-preview.html');
+copyFileSync(SRC, '/workspace/agent/home/backup/rollback-points/index-before-welcome-preview.html');
 writeFileSync(OUT,s);
 
 const lb=before.split('\n').length, la=s.split('\n').length;

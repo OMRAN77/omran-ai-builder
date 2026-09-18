@@ -138,7 +138,7 @@ check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة،
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
 check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('وممنوع سرد مشاريع أو مواضيع قديمة'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
-check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
+check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
@@ -168,7 +168,7 @@ check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wi
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
 check(chatServer.indexOf('v-fast-headers') > 0, 'البثّ يُفتح قبل الذاكرة فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
-check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف حجم يحمي جودة السياق');
+check(chatServer.includes('__i === __lastMsgIdx ? 200000 : 12000'), 'الدور الحالي يتّسع للملفّ المرفق (٢٠٠ألف) والتاريخ الأقدم مضبوط (١٢ألف) لحماية السياق');
 
 // ═══ البصمة والشخصية ═══
 group('البصمة والشخصية');

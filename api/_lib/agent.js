@@ -424,6 +424,8 @@ module.exports = async (req, res) => {
 
   let lastTested = ''; // آخر HTML اختبره الوكيل في هذا الطلب — مصدر نشر احتياطي
   let system = SYSTEM + require('./_bidi.js').BIDI_RULE + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
+  // v-owner-direct (طلب المالك الدائم): صراحة تامّة بلا مجاملة ولا رفض زائد — للمالك وحده.
+  if (isOwner(runUser)) system += '\n\n[تعليمات المالك — دائمة]: خاطبه بصراحة ومباشرة تامّة. لا مجاملة ولا إطراء ولا تحذيرات زائدة ولا تهرّب ولا اعتذار مطوّل. نفّذ طلبه المشروع فورًا بلا لفّ. إن تعذّر شيء فعلًا فقل السبب الحقيقيّ في سطر واحد صريح، بلا وعظ ولا «لا أستطيع» غامضة.';
 
   // ملف الحساب نفسه يصل إلى الوكيل والمحادثة على كل جهاز. صيغة الحقن المشتركة
   // تكيّف الأسلوب وتذكّر المشاريع من دون أن تستبدل شخصية الوكيل أو قواعده.
@@ -472,15 +474,14 @@ module.exports = async (req, res) => {
     // حسابه). غير المالك يبقى على الافتراضي كي لا يُستنزف رصيد المالك بموديلٍ
     // غالٍ لكلّ الزوّار. الاسم الودّي يُترجَم لمعرّف Anthropic من قائمةٍ بيضاء
     // فقط؛ ولو رفض المفتاح الموديل يسقط تلقائيًا للمتاح (resolveModel).
+    /* v-models-two (أمر عمران ١٤ سبتمبر): النماذج محصورة في Sonnet + Opus فقط،
+       واختيارها للمالك من قائمة «+». */
     const AGENT_MODELS = {
       'opus-5': 'claude-opus-5',
       'sonnet-5': 'claude-sonnet-5',
-      'haiku-4.5': 'claude-haiku-4-5-20251001',
-      'fable-5.1': 'claude-fable-5-1',
-      'opus-4.8': 'claude-opus-4-8',
     };
-    /* v-agent-opus (أمر عمران ١٣ سبتمبر): الافتراضيّ Opus 5 — أغلب قوّة النموذج الأعلى
-       بنصف كلفته. المالك يختار غيره من الإعدادات. */
+    /* v-agent-opus (أمر عمران ١٣ سبتمبر): الافتراضيّ Opus 5 — أغلب قوّة النموذج
+       الأعلى بنصف كلفته. المالك يبدّله إلى Sonnet من قائمة «+». */
     const AGENT_DEFAULT = 'claude-opus-5';
     const picked = (isOwner(runUser) && body.agentModel && AGENT_MODELS[String(body.agentModel)]) || '';
     let model = picked || AGENT_DEFAULT;
@@ -563,8 +564,8 @@ module.exports = async (req, res) => {
               body: JSON.stringify({ model: fb.model, messages: plainMsgs, max_tokens: 8000, stream: true }),
             });
             if (!fr.ok) continue;
-            /* v-no-provider-names: لا اسم مزوّد في نصّ يراه المستخدم. */
-            send({ status: '⚠️ تعذّر المحرّك الاحترافيّ — رددتُ عبر المحرّك الاحتياطيّ بلا أدوات: لم أشغّل شيئًا ولم أختبره في هذا الردّ.' });
+            /* v-silent-fallback (طلب المالك: «يبدّل بدون ما أحد يعرف»): التبديل
+               إلى المحرّك الاحتياطيّ يتمّ بصمت — لا سطر حالة يكشف حدوث تبديل. */
             const frd = fr.body.getReader();
             const fdec = new TextDecoder();
             let fbuf = '';

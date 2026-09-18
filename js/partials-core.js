@@ -461,7 +461,9 @@
       <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size: var(--fs-2); padding:2px 4px; line-height:1;">☆</button>
       <!-- v-psheet-only: الواجهة الخارجية حُذفت بقرار المالك — المعرض (portraitStyleSheet) هو الأداة كلها؛
            بقيت هنا عناصر الأسلاك فقط (المدخل، السلكت المخفي، خيارات الستايلات، زر التنفيذ، النتيجة) وتُنقل للمعرض عند الفتح. -->
-      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; flex-direction:column;">
+      <!-- v-psheet-theme: الخلفيّة الداكنة افتراضيّة؛ يقلبها الوضع الفاتح إلى فاتحة عبر
+           html[data-mode="light"] في modules.css. النصّ يتبع الثيم (--text) فلا يختفي. -->
+      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; color:var(--text); flex-direction:column;">
         <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة والزر أكبر -->
         <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
           <div>

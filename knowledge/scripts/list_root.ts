@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 
 const res = await invokeTool({
   toolName: 'github_get_file_content',

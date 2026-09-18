@@ -6,10 +6,10 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const APPLY = process.argv.includes('--apply');
 const KEY = 'db/client-errors/log.json';
-const OUT = '/tasklet/agent/home/audit/errors';
-// ua الذي يخصّني: وسم tasklet، أو متصفّح المِسبار بلا رأس (X11 Linux — لا يستعمله عمران ولا مستخدم حقيقيّ)
-const AGENT_UA = /^tasklet|X11;\s*Linux x86_64/i;
-const AGENT_SRC = /^(agent-verify|tasklet-probe)$/i; // مصادر مِسباري
+const OUT = '/workspace/agent/home/audit/errors';
+// ua الذي يخصّني: وسم workspace، أو متصفّح المِسبار بلا رأس (X11 Linux — لا يستعمله عمران ولا مستخدم حقيقيّ)
+const AGENT_UA = /^workspace|X11;\s*Linux x86_64/i;
+const AGENT_SRC = /^(agent-verify|workspace-probe)$/i; // مصادر مِسباري
 const AGENT_HOST = /-omran4\.vercel\.app/;            // نشرات معاينة — لا يزورها إلا أنا وعمران
 
 function envFile(p: string): Record<string, string> {
@@ -21,7 +21,7 @@ function envFile(p: string): Record<string, string> {
   return o;
 }
 
-const vc = envFile('/tasklet/agent/home/.secrets/vercel.env');
+const vc = envFile('/workspace/agent/home/.secrets/vercel.env');
 const vh = { Authorization: `Bearer ${vc.VERCEL_TOKEN}` };
 
 // ① أسرار Upstash من Vercel (نقطة المعرّف وحدها تفكّ التشفير)

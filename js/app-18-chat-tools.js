@@ -118,6 +118,8 @@
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
         guestId: window.getGuestId ? window.getGuestId() : '',
+        // v-custom-instructions: تعليمات المستخدم من الإعدادات — الخادم ينظّفها ويحقنها.
+        customInstructions: (function () { try { return window.getCustomInstructions ? window.getCustomInstructions() : ''; } catch (e) { return ''; } })(),
       }),
     }), __CHAT_IDLE_MS, '__chat_no_headers__');
     if (!res.ok || !res.body) {

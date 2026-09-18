@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 const CONN='conn_v99nvvn81c6baxgr3m9w';
 const r = await invokeTool({ toolName:'github_list_repositories', connectionId: CONN, args:{ per_page:100 }});
 if(!r.ok){ console.log('ERR:', String(r.error).slice(0,300)); process.exit(0);}

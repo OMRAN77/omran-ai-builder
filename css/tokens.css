@@ -309,7 +309,11 @@
   .ofp-preview{font-size:21px;line-height:1.7;letter-spacing:0;color:var(--text);}
   .ofp-badge{position:absolute;top:5px;inset-inline-end:5px;padding:1px 5px;border-radius:var(--r-pill);background:rgba(127,127,127,.13);color:var(--muted);font-family:'Tajawal','Inter',sans-serif;font-size:8.5px;}
   @keyframes pop{from{opacity:0; transform:translateY(12px) scale(0.96);} to{opacity:1; transform:translateY(0) scale(1);}}
-  .msg.user{color:var(--text,#fff); align-self:flex-end; background:rgba(255,255,255,0.07) !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:var(--r-3) !important; padding:9px 13px !important; max-width:85%;}
+  /* v-one-side (أمر عمران «رسائل المستخدم في طرف والمزود في طرف — أريدهم اتجاه واحد»):
+     الرسالتان تترّاصان على جهة واحدة (البداية = اليمين في العربيّة)؛ نفرّق بالشكل
+     (فقاعة المستخدم) لا بالجهة. */
+  /* v-tidy-bubble (أمر عمران «صغّر البرواز وخلّه مرتّب»): حشو أضيق وبرواز أنحف يلزق على النصّ. */
+  .msg.user{color:var(--text,#fff); align-self:flex-start; background:rgba(255,255,255,0.06) !important; border:1px solid rgba(255,255,255,0.07) !important; border-radius:14px !important; padding:6px 11px !important; max-width:80%;}
   .msg.assistant{align-self:flex-start;}
   .msg.msg-anim{animation:msgFadeIn .4s ease-out;}
   @keyframes msgFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -326,17 +330,17 @@
      بلا pre-wrap كانت الأسطر تنضغط كتلة واحدة («زحمة وبعدين تترتب»). */
   .msg.msg-streaming{white-space:pre-wrap; unicode-bidi:plaintext;}
   .msg-text p, .msg-text li, .msg-text div{unicode-bidi:plaintext;}
-  /* صناديق الكود داخل المحادثة — بنمط Tasklet/GitHub */
+  /* صناديق الكود داخل المحادثة — بنمط GitHub */
   .chat-codeblock{background:#0d1117;border:1px solid #21262d;border-radius:var(--r-2);margin:10px 0;direction:ltr;text-align:left;overflow:hidden;}
   .chat-codeblock-head{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;font-size: var(--fs-5);font-weight: var(--w-bold);color:#8b949e;background:#161b22;border-bottom:1px solid #21262d;font-family:ui-monospace,Consolas,monospace;}
   .chat-codeblock-copy{background:none;border:none;cursor:pointer;color:#8b949e;padding:2px 4px;line-height:1;display:flex;align-items:center;}
   .chat-codeblock-copy:hover{color:#e6edf3;}
   .chat-codeblock pre{margin:0;padding:12px;overflow-x:auto;font-family:ui-monospace,Consolas,Menlo,monospace;font-size:12.5px;line-height:1.55;color:#e6edf3;white-space:pre;}
   .chat-codeblock pre .tts-word{color:#e6edf3;}
-  /* v-hl-yellow (طلب المالك «الأكواد والإنجليزي والمواقع صفراء زي الأرقام» — نفس
-     فكرة كلاود البرتقالي لكن أصفر): تمييزٌ أصفر ذهبيّ داخل ردود المحادثة فقط. */
+  /* v-code-color (المالك «الكود غير ملوّن»): كتل الكود تُلوَّن تلوينًا برمجيًّا كاملًا
+     (omranCodeHighlight في app-02) على أساس رماديّ محايد كالمحرّر — بدل اللون الأصفر
+     الموحّد السابق (v-hl-yellow). --om-hl يبقى لتمييز القراءة الصوتيّة والروابط. */
   :root{ --om-hl:#e3b341; }
-  .chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl) !important; }
   /* v-hl-links-only (طلب المالك): الإنجليزي والأرقام تبقى بيضاء عاديّة —
      الأصفر للروابط فقط (عبر نمط الوسم <a>). لا نلوّن om-en. */
   #inputbar{padding:4px 12px 9px; border-top:none; display:flex; flex-direction:column; gap:6px; position:relative;}
@@ -452,7 +456,7 @@
   #btnStop.live + #btnSend{display:none;}
   #composerBox:focus-within{border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.15);}
   /* v215: بالعربي/الأردو ⋮ و🎤 و➤ على اليمين والنص على يسارهم */
-  /* v333: صندوق بطابقين مثل Tasklet — الكتابة فوق والأزرار صف تحتها داخل الصندوق */
+  /* v333: صندوق بطابقين — الكتابة فوق والأزرار صف تحتها داخل الصندوق */
   #composerBox > #prompt{order:1; flex:1 1 100%; width:100%;}
   #composerBox > .inputbar-tools{order:2;}
   #composerBox > #btnStop, #composerBox > #btnSend{order:3; margin-inline-start:auto;}
@@ -654,7 +658,9 @@
     #tabs{overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
     #tabs::-webkit-scrollbar{display:none;}
     #tabs .tab{padding:12px 10px; font-size:12.5px; flex-shrink:0; white-space:nowrap;}
-    #tabDownloadWrap{padding-inline-end:14px; flex-shrink:0;}
+    /* v-files-dl-mobile: زرّ التنزيل (⋮) كان يُدفع خارج الشاشة بـmargin auto في شريط
+       تبويبات ضيّق بلا شريط تمرير ظاهر — نلصقه بعد التبويبات مباشرة ليصله المستخدم. */
+    #tabDownloadWrap{padding-inline-end:14px; flex-shrink:0; margin-inline-start:6px;}
     #providerStripMobile{display:flex;}
   }
   html.mobile-ui #providerStripMobile{display:flex;}
@@ -700,7 +706,10 @@
   html.mobile-ui #tabs{overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
   html.mobile-ui #tabs::-webkit-scrollbar{display:none;}
   html.mobile-ui #tabs .tab{padding:12px 10px; font-size:12.5px; flex-shrink:0; white-space:nowrap;}
-  html.mobile-ui #tabDownloadWrap{padding-inline-end:14px; flex-shrink:0;}
+  /* v-files-dl-mobile (بلاغ المالك «في الآيفون فقط المعاينة والكود»): margin-inline-start:auto
+     كان يدفع زرّ الثلاث نقاط (التنزيل/ZIP/الرفع) خارج الشاشة في شريط تبويبات ضيّق
+     قابل للتمرير بلا شريط تمرير ظاهر — فلا يصله المستخدم. نلصقه بعد التبويبات مباشرة. */
+  html.mobile-ui #tabDownloadWrap{padding-inline-end:14px; flex-shrink:0; margin-inline-start:6px;}
   html.mobile-ui dialog{
     position:fixed; inset:0; top:0; left:0; right:0; bottom:0; margin:0;
     width:100vw; max-width:100vw; height:100dvh; max-height:100dvh;
@@ -772,7 +781,8 @@
   .msgSrcFavs img:last-child{ margin-inline-end:0; }
   .msgSrcLabel{ font-size:12px; padding-inline-start:8px; }
   .msgSrcCount{ font-size:11px; background:rgba(255,255,255,.08); border-radius:20px; padding:1px 6px; margin-inline-start:2px; }
-  .msgSrcDrop{ position:absolute; inset-inline-start:0; top:calc(100% + 6px); min-width:260px; max-width:320px; background:var(--panel2,#161c2a); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:200; }
+  /* v-src-dedupe (أمر عمران ج): البطاقة تلزق على محتواها بدل عرض ثابت فاضٍ. */
+  .msgSrcDrop{ position:absolute; inset-inline-start:0; top:calc(100% + 6px); min-width:0; width:max-content; max-width:min(340px,88vw); background:var(--panel2,#161c2a); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:200; }
   .msgSrcItem{ display:flex; align-items:flex-start; gap:10px; padding:10px 14px; text-decoration:none; color:var(--text); border-bottom:1px solid var(--border,rgba(255,255,255,.08)); transition:background .12s; }
   .msgSrcItem:last-child{ border-bottom:none; }
   .msgSrcItem:hover{ background:rgba(255,255,255,.06); }

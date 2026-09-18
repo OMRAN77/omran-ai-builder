@@ -141,6 +141,12 @@ function buildSpokenWordSpans(container, text){
   // [عنوان المصدر]\nhttps://example.com — نعيده إلى ماركداون صالح
   // قبل التقسيم كي يصير رابطًا نظيفًا ويُجمع تحت زر «المصادر».
   text = String(text || '').replace(/\[([^\]\n]{1,240})\]\s*\n+\s*\(?\s*(https?:\/\/[^\s)]+)\s*\)?/g, '[$1]($2)');
+  // v-tidy-gaps (أمر عمران «الأسطر متباعدة، كل واحد بعيد عن الثاني»): اجمع الأسطر
+  // الفارغة بين الفقرات (سطر فارغ ⇐ سطر واحد) فتقترب الفقرات وتصير مرتّبة. خارج كتل
+  // الكود فقط (```…``` أو المفتوحة أثناء البثّ) كي لا ينهار تنسيق الكود.
+  text = text.split(/(```[\s\S]*?```|```[\s\S]*$)/g).map(function(__s, __i){
+    return (__i % 2) ? __s : __s.replace(/\n{2,}/g, '\n');
+  }).join('');
   container.innerHTML = '';
   const wordEls = [];
   // v467: capture markdown links [text](url) — even with spaces — as a single token
@@ -177,7 +183,18 @@ function buildSpokenWordSpans(container, text){
     container.appendChild(block);
     codePre = pre; parent = pre;
   };
-  const closeCodeBlock = () => { codePre = null; parent = container; };
+  const closeCodeBlock = () => {
+    /* v-code-color (المالك «الكود غير ملوّن»): الكتلة المكتملة تُلوَّن بملوّن المحرّر نفسه
+       (omranCodeHighlight) — يُستبدل النصّ العاديّ بوسوم <i> ملوّنة (كلمات مفتاحيّة/نصوص/
+       تعليقات/أرقام). القراءة الصوتيّة لا تقرأ الكود عادةً فلا يضرّ فقد وسوم tts-word هنا. */
+    try{
+      if(codePre && typeof omranCodeHighlight === 'function'){
+        var __raw = codePre.textContent;
+        if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
+      }
+    }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
+    codePre = null; parent = container;
+  };
   while((m = re.exec(text))){
     if(m.index > lastIndex){
       const between = text.slice(lastIndex, m.index);

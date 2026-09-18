@@ -487,7 +487,7 @@ $('#btnSettings').onclick = () => {
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
   $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
-  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini';
+  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-5.6-terra';
   $('#perplexityApiKey').value = localStorage.getItem('aiapp_perplexity_apikey') || '';
   $('#perplexityModel').value = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
   $('#mistralApiKey').value = localStorage.getItem('aiapp_mistral_apikey') || '';
@@ -724,7 +724,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
-    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-4o-mini') : sel.value;
+    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-5.6-terra') : sel.value;
     localStorage.setItem('aiapp_openrouter_model', finalModel);
   })();
   localStorage.setItem('aiapp_perplexity_apikey', $('#perplexityApiKey').value.trim());
@@ -914,18 +914,36 @@ $('#codeUploadInput').addEventListener('change', (e) => {
   };
 })();
 
-$('#btnDownload').onclick = () => {
+/* v-files-dl-mobile (بلاغ المالك «الملف ما يتحمّل في الآيفون»): a.download للـblob لا يعمل
+   على iOS Safari (يفتح تبويبًا أو لا شيء). على الجوّال نستخدم مشاركة الملف (navigator.share)
+   فيظهر «حفظ في الملفات»؛ على الحاسوب يبقى التنزيل المباشر. */
+async function omranSaveOrShareFile(blob, fname){
+  const isMobile = document.documentElement.classList.contains('mobile-ui');
+  if(isMobile){
+    try{
+      const file = new File([blob], fname, { type: blob.type || 'application/octet-stream' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        await navigator.share({ files: [file], title: fname });
+        return;
+      }
+    }catch(e){ if(e && e.name === 'AbortError') return; /* غير الإلغاء: ننزّل عاديًّا أدناه */ }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+window.omranSaveOrShareFile = omranSaveOrShareFile;
+
+$('#btnDownload').onclick = async () => {
   const cur = getCurrent();
   if(!cur || !cur.code){ alert(t('noCodeToDownload')); return; }
   const isPy = cur.codeType === 'python';
   const blob = new Blob([cur.code], {type: isPy ? 'text/x-python' : 'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = (cur.title || 'app') + (isPy ? '.py' : '.html');
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  await omranSaveOrShareFile(blob, (cur.title || 'app') + (isPy ? '.py' : '.html'));
 };
 
 // 📦 تصدير المشروع كملف ZIP جاهز للنشر (index.html + README)
@@ -946,13 +964,7 @@ $('#btnExportZip').onclick = async () => {
     zip.file(isPy ? 'main.py' : 'index.html', cur.code);
     zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with Omran AI Builder — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
     const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = (cur.title || 'app') + '.zip';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await omranSaveOrShareFile(blob, (cur.title || 'app') + '.zip');
   }catch(e){
     console.error('zip export error', e);
     alert('⚠️ ' + (e.message || e));
@@ -1536,7 +1548,7 @@ async function callOpenAILike(messages, onDelta){
 async function callOpenRouter(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_openrouter_apikey');
   const hasImages = messages.some(m => m.images && m.images.length);
-  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini');
+  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-5.6-terra');
   // If the visitor hasn't entered their own OpenRouter key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){

@@ -1,10 +1,10 @@
 // دفع ملفات محدّدة إلى main برسالة واحدة + تحقّق بالبصمة
 // الاستخدام: bun gh-push-one.ts "الرسالة" ملف [ملف...]
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const CONN = 'conn_v99nvvn81c6baxgr3m9w', owner = 'OMRAN77', repo = 'omran-ai-builder', branch = 'main';
-const BASE = '/tasklet/agent/home/sync/push';
+const BASE = '/workspace/agent/home/sync/push';
 const blobSha = (b: Buffer) => createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${b.length}\0`), b])).digest('hex');
 const [msg, ...files] = process.argv.slice(2);
 if (!msg || !files.length) { console.log('الاستخدام: bun gh-push-one.ts "الرسالة" ملف [ملف...]'); process.exit(1); }
@@ -14,7 +14,7 @@ if (!res.ok) { console.log('✗ فشل:', String(res.error).slice(0, 400)); proc
 const d: any = await res.json();
 console.log('✓ commit:', d.commit?.sha?.slice(0, 7) ?? JSON.stringify(d).slice(0, 150));
 for (const f of files) {
-  const dest = `/tasklet/agent/home/sync/verify/${f.replace(/\//g, '_')}`;
+  const dest = `/workspace/agent/home/sync/verify/${f.replace(/\//g, '_')}`;
   const dl = await invokeTool({ connectionId: CONN, toolName: 'github_download_file', args: { owner, repo, repoPath: f, destinationPath: dest } });
   if (!dl.ok) { console.log(`? ${f}: تعذّر التحقّق`); continue; }
   // نظام الملفات السحابي قد يُقرأ قبل أن يفرغ التنزيل → بصمة كاذبة. نعيد مرّة.

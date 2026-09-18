@@ -1,4 +1,4 @@
-import { invokeTool, summarizeJsonStructure } from '@tasklet/tools/v2';
+import { invokeTool, summarizeJsonStructure } from '@workspace/tools/v2';
 const CONN = 'conn_ghpnmc2qpyh0ekrazrdy';
 async function g(url: string) {
   const r = await invokeTool({ toolName: 'remote_http_call', connectionId: CONN, args: { url, method: 'GET' } });

@@ -67,7 +67,7 @@
 
 ## الترقية إلى الإنتاج
 ```
-cd /tasklet/agent/home
+cd /workspace/agent/home
 SRC_ROOT=/tmp/p3 bun scripts/deploy-files.ts production "المرحلة ٣ · الشرائح ١–٧" \
   index.html css/tokens.css css/redesign.css css/modules.css \
   js/edu.js js/ui-docs.js js/ui-wiring.js js/premium.js js/exp.js js/video.js \

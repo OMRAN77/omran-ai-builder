@@ -1,25 +1,21 @@
 /* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
-   طلب المالك ١٣ سبتمبر (لقطة قائمة نماذج Claude Code): «ممكن تضيف هذيل كلهم».
-   قائمة في الإعدادات (تحت مزوّد الخدمة) بنماذج كلود التسعة؛ الاختيار يُحفظ محلّيًّا
-   ويُرسَل مع كلّ رسالة على مسار كلود فقط (app-18). الخادم يقبل القائمة نفسها حصرًا،
+   v-models-two (أمر عمران ١٤ سبتمبر): القائمة محصورة في Opus 5 + Sonnet 5، والاختيار
+   انتقل من الإعدادات إلى قائمة «+» للمالك (modes.js). الاختيار يُحفظ محلّيًّا ويُرسَل مع
+   كلّ رسالة على مسار كلود فقط (app-18). الخادم يقبل القائمة نفسها حصرًا وللمالك وحده،
    وإن رفض المفتاح النموذج (404/400 نموذج) رجع للافتراضيّ وأخبر المستخدم في سطر الحالة. */
 (function () {
   'use strict';
 
   var KEY = 'aiapp_claude_model';
-  var IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+  /* v-models-family (أمر عمران ١٥ سبتمبر): عائلة كلود ٥ كاملة — الاختيار من منتقي السهم للمالك. */
+  var IDS = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
   function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
   var HINTS = {
     '': ['الافتراضيّ: Sonnet 5 — الأسرع للمحادثة اليوميّة.', 'Default: Sonnet 5 — fastest for everyday chat.'],
-    'claude-fable-5-1': ['الأقوى على الإطلاق؛ أبطأ وأغلى، ويحتاج رصيد API في حساب Anthropic.', 'Most capable; slower and pricier, needs API credits on the Anthropic account.'],
-    'claude-fable-5': ['قويّ جدًّا؛ أبطأ وأغلى، ويحتاج رصيد API في حساب Anthropic.', 'Very capable; slower and pricier, needs API credits on the Anthropic account.'],
     'claude-opus-5': ['أدقّ من Sonnet 5 في المهامّ الصعبة، وأبطأ منه.', 'More precise than Sonnet 5 on hard tasks, slower.'],
-    'claude-opus-4-8': ['الجيل السابق من Opus؛ متين وأبطأ.', 'Previous-generation Opus; solid, slower.'],
-    'claude-opus-4-7': ['الجيل السابق من Opus.', 'Previous-generation Opus.'],
-    'claude-opus-4-6': ['الجيل السابق من Opus.', 'Previous-generation Opus.'],
     'claude-sonnet-5': ['توازن السرعة والدقّة — هو الافتراضيّ.', 'Balanced speed and quality — the default.'],
-    'claude-sonnet-4-6': ['الجيل السابق من Sonnet.', 'Previous-generation Sonnet.'],
-    'claude-haiku-4-5': ['الأسرع والأرخص؛ للأسئلة القصيرة.', 'Fastest and cheapest; for short questions.'],
+    'claude-haiku-4-5': ['الأسرع والأخفّ — للردود القصيرة السريعة.', 'Fastest and lightest — for quick short replies.'],
+    'claude-fable-5-1': ['للكتابة الإبداعيّة والحوار الطبيعيّ.', 'For creative writing and natural dialogue.'],
   };
 
   function get() {

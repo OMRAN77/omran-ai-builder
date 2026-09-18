@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 
 for (const p of ['js', 'assets']) {
   const res = await invokeTool({

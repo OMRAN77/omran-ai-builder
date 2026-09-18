@@ -939,7 +939,47 @@ function readFileAsText(file){
   });
 }
 
-$('#btnAttach').onclick = () => $('#attachInput').click();
+/* v-attach-picker-v2 (فيديو المالك ١٧ سبتمبر: يختار صورة من منتقي النظام،
+   يضغط «تم»، يرجع للتطبيق، والصندوق فاضٍ تمامًا — لا صورة ولا خطأ):
+   الشبكة السابقة كانت تعتمد على حدث window «focus» وفحص واحد بعد 500ms.
+   داخل غلاف أندرويد الأصلي (WebView) منتقي الملفات يُدار عبر
+   onShowFileChooser الأصلي — الـwindow لا «يفقد التركيز» فعليًا من منظور
+   DOM فحدث focus لا يصل إطلاقًا، فالشبكة كانت معطّلة كليًا في هذا الغلاف
+   تحديدًا (لا حدث change من العارض ولا حدث focus يشغّل الفحص البديل).
+   الحل: مراقبة مباشرة بلا اعتماد على أي حدث — فحص input.files كل 350ms
+   لعشرين ثانية بعد كل ضغطة على أزرار الرفع، تلتقط الملف مهما كان الغلاف
+   أو العارض. تعمل مع أو بدون أي حدث آخر، فهي شبكة أمان شاملة. */
+function omranWatchFilePicker(input, onFiles){
+  let handled = false, ticks = 0;
+  const take = () => {
+    if(handled) return;
+    const files = Array.from((input && input.files) || []);
+    if(!files.length) return;
+    handled = true;
+    clearInterval(iv);
+    window.removeEventListener('focus', take);
+    document.removeEventListener('visibilitychange', onVis);
+    /* v-attach-picker-v3: مسح input.value يُؤجَّل حتى تنتهي القراءة فعلًا.
+       قراءة الملفّ مؤجَّلة (FileReader/createObjectURL بعد await)، ومسح
+       القيمة يفصل الملفّ عن مصدره في غلاف أندرويد (content:// — نفس فخّ
+       v405)، فكانت القراءة تفشل بصمت ويبقى الشريط فاضيًا. مسار حدث
+       change كان ينتظر (await) قبل المسح؛ المراقب كان يمسح فورًا. */
+    Promise.resolve(onFiles(files))
+      .catch((e) => { __swallow(e, 'attach:picker'); })
+      .then(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
+  };
+  const onVis = () => { if(document.visibilityState === 'visible') take(); };
+  const iv = setInterval(() => { take(); if(handled || ++ticks > 57) clearInterval(iv); }, 350);
+  window.addEventListener('focus', take);
+  document.addEventListener('visibilitychange', onVis);
+}
+let __attachHandled = false;
+$('#btnAttach').onclick = () => {
+  __attachHandled = false;
+  const input = $('#attachInput');
+  input.click();
+  omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; return omranIngestFiles(files); } });
+};
 
 // ---- Emoji picker ----
 const EMOJI_LIST = [
@@ -1242,6 +1282,8 @@ async function omranIngestFiles(files, opts){
   renderAttachStrip();
 }
 $('#attachInput').addEventListener('change', async (e) => {
+  if(__attachHandled) return; // التقطتها شبكة الأمان (v-attach-picker) — لا تُكرَّر
+  __attachHandled = true;
   const files = Array.from(e.target.files || []);
   await omranIngestFiles(files);
   e.target.value = '';
@@ -2245,7 +2287,15 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       signal: genAbortController ? genAbortController.signal : undefined,
-      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+      body: JSON.stringify(Object.assign({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }, (function(){
+        /* v-image-modes: خيارات «+» للصورة (للمالك) تُمرَّر أعلامًا؛ الخادم يقبلها للمالك وحده. */
+        var __o = String(window.__omMode || ''), __x = {};
+        if(__o === 'image_hd') __x.want4K = true;
+        else if(__o === 'image_text') __x.textFaithful = true;
+        else if(__o === 'image_nano') __x.forceEngine = 'nano';
+        else if(__o === 'image_gpt') __x.forceEngine = 'gpt';
+        return __x;
+      })()))
     });
     const __d = await __r.json().catch(() => ({}));
     __m._loading = false;
@@ -2275,6 +2325,53 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
   }
   renderAll(); saveState();
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok — cleanup, intentional */ }
+}
+
+/* v-image-modes (أمر عمران «خام خام، لا تخليني أخسر كلمة»): وضعا «نانو/GPT خام» للمالك —
+   يمرّ نصّ المستخدم حرفيًّا بلا __parseImageTextSpec ولا كاشف شِعر/دعاء ولا هندسة، ويعمل
+   مع صورة مرفقة (تعديل) أو بدونها (توليد). الخادم يُجبَر على الخام والمحرّك المفروض. */
+async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtt){
+  const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
+  cur.messages.push(__m); renderAll();
+  let __editB64 = '', __editMime = '';
+  try{
+    if(imgAtt && imgAtt.dataUrl && String(imgAtt.dataUrl).slice(0, 5) === 'data:'){
+      const __du = String(imgAtt.dataUrl);
+      __editMime = (__du.slice(5).split(';')[0]) || 'image/png';
+      __editB64 = __du.split(',')[1] || '';
+    }
+  }catch(e){ /* بلا صورة = توليد جديد خام */ }
+  try{
+    const __body = { prompt: String(rawText || '').slice(0, 4000), rawMode: true, forceEngine: forceEngine, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
+    if(__editB64){ __body.editImageBase64 = __editB64; __body.editMimeType = __editMime; __body.userText = String(rawText || '').slice(0, 1200); }
+    const __r = await fetch('/api/maha-image', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      signal: genAbortController ? genAbortController.signal : undefined,
+      body: JSON.stringify(__body)
+    });
+    const __d = await __r.json().catch(() => ({}));
+    __m._loading = false;
+    if(__r.ok && __d && __d.imageBase64){
+      let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
+      __m.content = '';
+      let __genUrl = 'data:' + __mime + ';base64,' + __b64;
+      try{ __genUrl = await omranSharpenImage(__genUrl); }catch(e){ __swallow(e, 'img:sharpen-raw'); }
+      __m.attachments = [{ isImage: true, mime: (__genUrl.slice(5).split(';')[0] || __mime), dataUrl: __genUrl, name: 'image.png' }];
+      if(typeof __d.caption === 'string' && __d.caption.trim()){ cur.messages.push({ role: 'assistant', content: __d.caption.trim() }); }
+      try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok */ }
+      try{ window.__omranLastImageReq = { kind: __editB64 ? 'edit' : 'gen', promptText: rawText }; }catch(e){ __swallow(e, 'img:save-req-raw'); }
+    } else {
+      /* v-image-modes: في الوضع الخام (للمالك) نُظهر سبب فشل المحرّك الحقيقيّ (openai/gemini)
+         من __diag ليعرف المالك لماذا لم يخرج خامًا بدل رسالة عامّة. */
+      var __why = (__d && __d.__diag && (__d.__diag.openai || __d.__diag.gErr || __d.__diag.free)) ? (' [' + (__d.__diag.openai || __d.__diag.gErr || __d.__diag.free) + ']') : '';
+      __m.content = (lang === 'ar' ? 'تعذّر توليد الصورة الآن — ' : 'Image generation failed — ') + ((__d && __d.error) || ('HTTP ' + __r.status)) + __why;
+    }
+  }catch(e){
+    __m._loading = false;
+    __m.content = (e && e.name === 'AbortError') ? (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
+  }
+  renderAll(); saveState();
+  try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok */ }
 }
 
 // v560: تحرير رسالة قديمة يعيد المحادثة من تلك النقطة، وإعادة التوليد تعيد
@@ -2779,7 +2876,16 @@ async function __sendPromptCore(){
   try{
     (attachmentsForMsg || []).forEach(a => {
       if(a && !a.isImage && !a.isVideo && typeof a.text === 'string' && a.text.length > 6000){
-        a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — النصّ الكامل أُرسل للنموذج)';
+        /* v-attach-viewfull (المالك «الملفّ غير كامل في العارض»): كان يُقصّ إلى ٦٠٠٠ حرف
+           لتخفيف حالة الرسائل، فيظهر ناقصًا عند إعادة فتحه في تبويب «الكود». الآن النصّ
+           الكامل يُحفظ مرّة واحدة في IndexedDB (خارج الحالة الثقيلة) والرسالة تحمل معاينة
+           خفيفة + معرّف الاستعادة؛ العارض يفتح الكامل من المخزن (app-04). الإرسال للنموذج
+           لا يتأثّر — يُبنى من المرفق الكامل قبل هذا التخفيف. */
+        try{
+          var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+          if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+        }catch(e2){ /* المعاينة تكفي عند تعذّر المخزن */ }
+        a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — انقر لفتح الملفّ كاملًا)';
       }
     });
   }catch(e){ /* guard-ok — التخفيف تحسينيّ */ }
@@ -2916,7 +3022,12 @@ function __friendlyErr(e){
       return;
     }
     // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
-    if(window.__omMode === 'image' && apiText && !imageAttachments.length){
+    // 🍌🤖 «نانو/GPT خام» (المالك): نصّ حرفيّ للمحرّك بلا تفسير، ومع صورة مرفقة أو بدونها.
+    if((window.__omMode === 'image_nano' || window.__omMode === 'image_gpt') && text){
+      await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments[0]);
+      return;
+    }
+    if(String(window.__omMode || '').indexOf('image') === 0 && apiText && !imageAttachments.length){
       await omModeGenerateImage(cur, apiText, thinkingDiv);
       return;
     }

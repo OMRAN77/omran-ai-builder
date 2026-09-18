@@ -2,17 +2,17 @@
 /**
  * export-handoff.ts — يبني حزمة تسليم محمولة لأي مزوّد آخر.
  *
- * المصدر الوحيد للحقيقة: /tasklet/workspace/home/  (لا تُحرَّر النسخ المصدَّرة يدويًّا)
+ * المصدر الوحيد للحقيقة: /workspace/workspace/home/  (لا تُحرَّر النسخ المصدَّرة يدويًّا)
  * المخرجات:
- *   /tasklet/agent/home/handoff/OMRAN-BRIEF.md        — ملفّ واحد كامل (يُرفَق كمعرفة)
- *   /tasklet/agent/home/handoff/omran-handoff.zip     — الملفّات الخمسة الأصليّة
+ *   /workspace/agent/home/handoff/OMRAN-BRIEF.md        — ملفّ واحد كامل (يُرفَق كمعرفة)
+ *   /workspace/agent/home/handoff/omran-handoff.zip     — الملفّات الخمسة الأصليّة
  * يتوقّف فورًا إن رصد سرًّا.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
-const SRC = '/tasklet/workspace/home';
-const OUT = '/tasklet/agent/home/handoff';
+const SRC = '/workspace/workspace/home';
+const OUT = '/workspace/agent/home/handoff';
 const FILES = [
   ['AGENTS.md', 'الثوابت — القواعد التي لا تُخالف (هذه وحدها تكفي كنسخة مصغّرة)'],
   ['omran-ai-builder/PROJECT.md', 'المشروع: المستودع، البنية، العيوب، حالة المراحل'],
@@ -56,7 +56,7 @@ if (missing.length) console.error('⚠ ملفّات غائبة: ' + missing.join
 
 const stamp = new Date().toISOString().slice(0, 10);
 const header = `# حزمة تسليم — وكيل عمران الشامسي
-مُولَّد آليًّا: ${stamp} · المصدر: \`/tasklet/workspace/home/\` · لا تُحرَّر هذه النسخة يدويًّا.
+مُولَّد آليًّا: ${stamp} · المصدر: \`/workspace/workspace/home/\` · لا تُحرَّر هذه النسخة يدويًّا.
 
 ## لمن يقرأ هذا الملفّ أوّل مرّة
 أنت الآن ممثّل **عمران الشامسي**، ومهمّتك الحفاظ على موقعه \`omran-ai-builder\` وتطويره.
@@ -74,7 +74,7 @@ const header = `# حزمة تسليم — وكيل عمران الشامسي
 
 const footer = `\n\n---\n\n# نهاية الحزمة
 عدد الملفّات: ${parts.length} · التاريخ: ${stamp}
-لتحديثها: \`bun /tasklet/agent/home/scripts/export-handoff.ts\`
+لتحديثها: \`bun /workspace/agent/home/scripts/export-handoff.ts\`
 `;
 
 mkdirSync(OUT, { recursive: true });

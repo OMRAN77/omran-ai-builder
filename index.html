@@ -106,9 +106,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=694">
-<link rel="stylesheet" href="css/redesign.css?v=660">
-<link rel="stylesheet" href="css/modules.css?v=655">
+<link rel="stylesheet" href="css/tokens.css?v=700">
+<link rel="stylesheet" href="css/redesign.css?v=666">
+<link rel="stylesheet" href="css/modules.css?v=656">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -520,7 +520,7 @@ html.oiOn body{overflow:hidden}
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script src="/js/partials-core.js?v=640"></script>
+<script src="/js/partials-core.js?v=642"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
 <script src="/js/design-sels.js?v=560"></script>
@@ -662,7 +662,11 @@ html.oiOn body{overflow:hidden}
       <div id="quickChips" style="display:flex; flex-direction:column; gap:2px; align-items:stretch;"></div>
     </div>
     <div id="inputbar">
-      <input type="file" id="attachInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.json,.csv,.html,.css,.log,.zip,.docx,.xlsx,.pptx,.jar,.pdf,.xml,.yml,.yaml,.sh,.php,.java,.c,.cpp,.go,.rs,.rb,.sql,.env,*" multiple style="display:none;">
+      <!-- v-attach-anyfile: أُزيلت قائمة accept (صور + امتدادات + «*» غير صالح) — كانت
+           عارضات أندرويد/شاومي (MIUI) تفتح المنتقي وتختار الصورة لكن لا تُرجعها إلى الحقل
+           فتظهر «ما أقدر أحمّل صور». بلا accept يقبل الحقل كلّ الأنواع (صور · PDF · كود · مضغوط)
+           والتحقّق من النوع يبقى في omranIngestFiles. -->
+      <input type="file" id="attachInput" multiple style="display:none;">
       <div id="emojiPicker"></div>
       <!-- v-maha-outside: «م» خارج المستطيل جنبه (طلب المالك ٢٩ أغسطس) — الصف يضم الصندوق + م -->
       <div id="composerRow">
@@ -717,7 +721,7 @@ html.oiOn body{overflow:hidden}
           <button type="button" class="omChip" data-omchip="اكتب مقالاً احترافياً عن: " data-i18n="chipArticle">كتابة مقال احترافي</button>
           <button type="button" class="omChip" data-omchip="اقترح لي أفكاراً لمشروع: " data-i18n="chipIdeas">أفكار لمشروع</button>
         </div>
-        <div id="omranDisclaimer" data-i18n="omranDisclaimerTxt">قد تكون المعلومات غير دقيقة، تحقق من المعلومات المهمة.</div>
+        <!-- v-models-two (أمر عمران): جملة «قد تكون المعلومات غير دقيقة…» تحت الشاشة حُذفت نهائيًّا. -->
       </div>
     </div>
   </div>
@@ -800,13 +804,13 @@ html.oiOn body{overflow:hidden}
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=654"></script>
+<script src="/js/partials-settings.js?v=658"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-1"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=7cab3cec"></script>
-    <script defer src="/js/modes.js?v=cc140914"></script>
+    <script defer src="/js/app.bundle.js?v=a0b32d80"></script>
+    <script defer src="/js/modes.js?v=m150915e"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">
@@ -830,7 +834,7 @@ html.oiOn body{overflow:hidden}
 <script defer src="/js/edu.js?v=664"></script>
 
 <!-- 👑 الرد الاحترافي (Premium Reply) — client-side wiring only. Server enforces real deduction. -->
-<script defer src="/js/premium.js?v=622"></script>
+<script defer src="/js/premium.js?v=624"></script>
 
 
 <!-- ================= 📊 محلّل المصاريف ================= -->
@@ -867,8 +871,9 @@ html.oiOn body{overflow:hidden}
 
     <!-- 🎨 تمييز الأرقام والروابط في ردود الذكاء بلون مختلف -->
     <style>
-    .msg.assistant a{color:#2eb886 !important;font-weight:600;text-decoration:underline;text-underline-offset:2px;}
-    body.dark .msg.assistant a, html.dark .msg.assistant a{color:#4dd0a5 !important;}
+    /* v-links-yellow (أمر عمران «الروابط باللون الأصفر»): كانت خضراء — صارت صفراء مثل بقيّة الروابط. */
+    .msg.assistant a{color:#e3b341 !important;font-weight:600;text-decoration:underline;text-underline-offset:2px;}
+    body.dark .msg.assistant a, html.dark .msg.assistant a{color:#f5c451 !important;}
     .numHL{color:#e8a020;font-weight:700;}
     body.dark .numHL, html.dark .numHL{color:#f5c451;}
     </style>

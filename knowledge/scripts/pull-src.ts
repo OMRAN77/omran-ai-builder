@@ -3,7 +3,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-const env = Object.fromEntries((await Bun.file('/tasklet/agent/home/.secrets/vercel.env').text())
+const env = Object.fromEntries((await Bun.file('/workspace/agent/home/.secrets/vercel.env').text())
   .split('\n').filter(Boolean).map(l => l.split('=') as [string, string]));
 const T = env.VERCEL_TOKEN, TEAM = env.VERCEL_TEAM, PRJ = env.VERCEL_PROJECT;
 const H = { Authorization: `Bearer ${T}` };

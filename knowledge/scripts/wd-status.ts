@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 
 const q = async (sql: string) => {
   const r = await invokeTool({ toolName: 'run_agent_memory_sql', args: { query: sql } });

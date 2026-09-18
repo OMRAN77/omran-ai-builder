@@ -13,6 +13,7 @@ const { logError } = require('./_lib/log-error.js');
 const { BIDI_RULE } = require('./_lib/_bidi.js'); // v568
 const { quickIntent, INTENT_NOTES } = require('./_lib/router.js'); // v--- مصنّف النيّة
 const { toneSection, extractUserMessages } = require('./_lib/tone.js'); // v--- مطابقة الأسلوب
+const { isOwner } = require('./_lib/_owner.js'); // v-owner-raw: المالك يجرّب المزوّد خامًا
 
 function load(action) {
   switch (action) {
@@ -304,6 +305,11 @@ function canonMode(m) { return m === 'minimal' ? 'balanced' : m; }
 function resolveMode(body) {
   const perRequest = body && typeof body.mode === 'string' ? body.mode.trim().toLowerCase() : '';
   if (MODES.indexOf(perRequest) !== -1) return canonMode(perRequest);
+  // v-owner-raw: المالك يأخذ «خام» (factory) افتراضيًّا ليجرّب المزوّد بلا طبقة
+  // التطبيق، بينما يبقى المستخدم على الافتراضيّ العامّ (balanced) المحميّ بقواعده
+  // (لا اسم مزوّد · لا ادّعاء إنسانيّة · التاريخ الصحيح). طلبٌ صريح لوضعٍ آخر
+  // (perRequest أعلاه) يتقدّم على هذا حتّى للمالك.
+  if (body && body.__ownerFactory === true) return 'factory';
   return MODES.indexOf(AI_MODE) !== -1 ? canonMode(AI_MODE) : 'balanced';
 }
 
@@ -334,10 +340,25 @@ function balancedNote(action, country, withImages) {
 }
 
 
+// v-owner-direct (طلب المالك الدائم: «فيه أشياء أريدها يقول لا أستطيع مجاملة… لا
+// أريد المجاملات ولا الكذب»): سطر واحد للمالك وحده يقتل المجاملة والرفض الزائد
+// ويطلب الصراحة. لا يمسّ أمان النموذج الأساسيّ (الضرر الحقيقيّ يبقى مرفوضًا).
+const OWNER_DIRECT_NOTE = '\n[تعليمات المالك — دائمة]: خاطبه بصراحة ومباشرة تامّة. لا مجاملة ولا إطراء ولا تحذيرات زائدة ولا تهرّب ولا اعتذار مطوّل. نفّذ طلبه المشروع فورًا بلا لفّ. إن تعذّر شيء فعلًا فقل السبب الحقيقيّ في سطر واحد صريح، بلا وعظ ولا «لا أستطيع» غامضة.';
+
+/* v-owner-raw2: للمالك وحده — نظام العميل نفسه يُنزع قبل المزوّد، لا ملاحظات
+   الخادم وحدها. بدون هذا يبقى «خام» ناقصًا: العميل يرسل حتّى ١٧ ألف حرف نظامًا. */
+function stripAppSystem(action, body) {
+  if (action === 'gemini') { delete body.systemInstruction; return; }
+  if (Array.isArray(body.messages)) body.messages = body.messages.filter((m) => !(m && m.role === 'system'));
+  if (typeof body.system === 'string') delete body.system;
+}
+
 function injectNote(action, body, country) {
   const mode = resolveMode(body);
-  // Factory: hand the request to the provider untouched.
-  if (mode === 'factory') return;
+  const ownerReq = !!(body && body.__ownerFactory === true); // v-owner-raw: المالك
+  // Factory: hand the request to the provider untouched — لكن المالك يأخذ سطر
+  // الصراحة الدائم فقط (لا طبقة تطبيق أخرى).
+  if (mode === 'factory') { if (ownerReq) applyNote(action, body, OWNER_DIRECT_NOTE); return; }
 
   // v--- مصنّف النيّة: نستخرج نص المستخدم مرة واحدة ونحدد النيّة
   const userText = lastUserText(action, body);
@@ -471,9 +492,21 @@ module.exports = withErrorCapture('ai', async (req, res) => {
           b.contents = sanitizeGeminiContents(b.contents);
         }
         const geoCountry = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
-        injectNote(action, b, geoCountry); req.body = b;
+        // v-owner-raw: يُحسب من التوكن الموقَّع في الجسم؛ العلم يُستهلك داخل
+        // injectNote ثمّ يُحذف فلا يُمرَّر إلى المزوّد.
+        try { b.__ownerFactory = isOwner({ query: req.query, body: b }); } catch (e) { b.__ownerFactory = false; }
+        if (b.__ownerFactory && b.raw !== false) stripAppSystem(action, b);
+        injectNote(action, b, geoCountry);
+        delete b.__ownerFactory;
+        req.body = b;
       }
     } catch (e) { /* never block the request over the note */ }
   }
   return handler(req, res);
 });
+
+// أدوات اختبار داخليّة فقط (لا تُستهلك في الإنتاج): تُتيح فحص الوضع المحسوب
+// وحقن الملاحظات دون نداء مزوّد حقيقيّ.
+module.exports.__resolveMode = resolveMode;
+module.exports.__injectNote = injectNote;
+module.exports.__stripAppSystem = stripAppSystem;
