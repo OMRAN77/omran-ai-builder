@@ -44,6 +44,26 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("signing.keystore")) | Set-Clipboard
 ```
 
+### ١-ب) ضاع المفتاح؟ المسار البديل بلا أوامر (PWABuilder)
+مفتاح 1.3.9 ضاع (المالك ١٨ سبتمبر). الجلسة لا تولّد مفاتيح توقيع ولا تضعها في المستودع؛ المفتاح يُنشأ عندك ويبقى عندك.
+أسهل طريقة بلا طرفيّة — الموقع نفسه الذي بُنيت به الحزم السابقة:
+1. افتح <https://www.pwabuilder.com> وأدخل `https://omran-ai-builder.vercel.app/?store=huawei` ← **Package for stores** ← **Android**.
+2. في الخيارات: **Package ID** `com.omran.aibuilder` · **App name** `Omran AI Builder` · **Launcher name** `عمران AI` ·
+   **Version** `1.3.10` · **Version code** `20260918` · **Start URL** `/?store=huawei` ·
+   **Manifest URL** `https://omran-ai-builder.vercel.app/manifest-huawei.json` · **Fallback** WebView ·
+   **Signing key: Create new** (املأ الاسم والمنظّمة كيفما شئت).
+3. **Download** ← ملفّ مضغوط فيه الـAPK الموقّع و`assetlinks.json` و`signing.keystore` و`signing-key-info.txt`.
+   **احفظ الملفّ المضغوط في مكانين** (هذا هو المفتاح؛ ضياعه يعني حزمة جديدة من الصفر مرّة أخرى).
+4. أرسل للجلسة محتوى `assetlinks.json` من الملفّ المضغوط (بصمة عامّة، ليست سرًّا) — تُوضع في `.well-known/assetlinks.json` وتُدمج.
+5. ارفع الـAPK في AppGallery Connect كما في الخطوة ٣ أدناه.
+
+> **AppGallery والشهادة الجديدة:** إن رفض AGC الرفع بسبب «شهادة التوقيع مختلفة عن النسخة السابقة» — كلّ الإصدارات السابقة
+> مرفوضة ولم يُنشر شيء — احذف التطبيق غير المنشور من AppGallery Connect وأنشئه من جديد بالاسم والحزمة نفسيهما ثمّ ارفع.
+> وإن لم يسمح بحذفه، أنشئه بحزمة جديدة مثل `com.omran.aibuilder.app` وأعِد التوليد بعد تغيير `PACKAGE_ID` في
+> `scripts/twa-generate.mjs` وفي `assetlinks.json`.
+
+**لاحقًا (اختياريّ):** ضع الأربعة من `signing-key-info.txt` في أسرار المستودع (الخطوة ١) فتُبنى الإصدارات القادمة بضغطة من هنا.
+
 ### ٢) البناء: ضغطة واحدة
 **Actions ← android-release ← Run workflow** (الإصدار 1.3.10 و`versionCode` 20260918 جاهزان؛ لا تغيّر شيئًا)، أو قل للجلسة «ابنِ 1.3.10».
 بعد دقائق:

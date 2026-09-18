@@ -1,11 +1,13 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.omran.aibuilder",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_APK_SIGNING_SHA256_FINGERPRINT"
+        "9F:B0:74:31:45:AE:EB:06:38:29:BC:5B:D2:AC:A3:78:EE:1E:F3:14:CC:7C:46:7F:61:3B:F7:F2:46:7D:A5:D8"
       ]
     }
   }
