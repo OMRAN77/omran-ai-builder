@@ -290,4 +290,24 @@ async function completeJson(id, opts) {
   return last;
 }
 
-module.exports = { streamFreeChain, toOpenAIMessages, convoHasImage, streamOne, discoverModel, isModelError, isModelErrorStatus, providerSpec, modelsToTry, rememberWorking, defaultModel, completeJson, RETIRED_MODELS, FREE_NOTE, __workingModel: workingModel };
+// v-cheap-lanes (أمر المالك ١٨ سبتمبر «وزّع المهام بالاشتراكات الأقلّ»): إكمال غير متدفّق على
+// السلسلة الرخيصة بترتيبها (Gemini → Groq → Mistral → OpenRouter) للمسارات العامّة التي كانت
+// تضرب مفتاح المحرّك الاحترافيّ بلا اشتراك (تيليجرام، الأسهم). {ok:true, text, provider, model}
+// عند أوّل نصّ، وإلّا {ok:false, errors} فيقرّر المستدعي احتياطه.
+async function completeFreeChain(opts) {
+  const o = opts || {};
+  const env = o.env || process.env;
+  const errors = [];
+  for (const spec of freeChain(env)) {
+    if (o.requireVision && !spec.vision) continue;
+    let r;
+    try { r = await completeJson(spec.id, { env, messages: o.messages, max_tokens: o.max_tokens || 1500, temperature: typeof o.temperature === 'number' ? o.temperature : 0.5, timeoutMs: o.timeoutMs, fetchImpl: o.fetchImpl, now: o.now }); }
+    catch (e) { errors.push(spec.id + ': ' + String((e && e.message) || e).slice(0, 120)); continue; }
+    const text = r && r.ok && r.json && r.json.choices && r.json.choices[0] && r.json.choices[0].message && String(r.json.choices[0].message.content || '').trim();
+    if (text) return { ok: true, text, provider: spec.id, model: r.model, errors };
+    errors.push(spec.id + ': ' + (r && r.ok ? 'empty' : ('http ' + (r && r.status) + ' ' + String((r && r.body) || '').replace(/[A-Za-z0-9_-]{24,}/g, '…').slice(0, 120))));
+  }
+  return { ok: false, text: '', provider: null, model: null, errors };
+}
+
+module.exports = { streamFreeChain, completeFreeChain, toOpenAIMessages, convoHasImage, streamOne, discoverModel, isModelError, isModelErrorStatus, providerSpec, modelsToTry, rememberWorking, defaultModel, completeJson, RETIRED_MODELS, FREE_NOTE, __workingModel: workingModel };

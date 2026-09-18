@@ -127,7 +127,15 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
       return { failed: true, status: r.status };
     };
     try {
-      let out = await callClaude('claude-sonnet-5');
+      // v-cheap-lanes: البوت مفتوح لأيّ شخص على تيليجرام بلا اشتراك، فكان يصرف مفتاح المحرّك
+      // الاحترافيّ. الآن السلسلة الرخيصة أوّلًا، والمحرّك الاحترافيّ احتياطًا أخيرًا فقط.
+      let out = null;
+      try {
+        const cheap = await require('./_lib/free-chain.js').completeFreeChain({ messages: [{ role: 'system', content: SYSTEM }].concat(hist), max_tokens: 1500 });
+        if (cheap.ok) out = cheap.text;
+        else logError('telegram/cheap-lanes', new Error((cheap.errors || []).join(' | ').slice(0, 300)));
+      } catch (e) { logError('telegram/cheap-lanes', e); }
+      if (!out) out = await callClaude('claude-sonnet-5');
       if (out && out.failed && out.status === 404) {
         // Model retired → pick current sonnet from live list
         const lr = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
