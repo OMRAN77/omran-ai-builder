@@ -77,8 +77,8 @@ assert.ok(omranStreamSplitPoint(closedFence) > 'مقدّمة'.length, 'بعد إ
 const attach = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-09-attach.js'), 'utf8');
 assert.ok(attach.includes('renderStreamingAssistant(thinkingDiv, shownTxt);'), 'مسار البثّ يستعمل الدالّة');
 const state = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-04-i18n-state.js'), 'utf8');
-assert.ok(/function omranOpenReplyInPanel\(text\)\{[\s\S]*buildSpokenWordSpans\(__host, String\(text \|\| ''\)\);/.test(state), 'اللوحة تنسّق الردّ بالمُنسِّق نفسه');
-assert.ok(state.includes("__host.querySelectorAll('button').forEach(function(b){ b.remove(); });"), 'أزرار النسخ تُنزع من الإطار');
+/* لوحة قراءة الردّ الطويل أُزيلت بطلب المالك (v-long-reply-off) — يبقى فحص غيابها فقط */
+assert.ok(!state.includes('function omranOpenReplyInPanel('), 'لوحة القراءة أُزيلت (v-long-reply-off)');
 // ٦) v-bidi-punct: «Omran AI Builder،» تبقى سلسلة لاتينيّة واحدة معزولة الاتّجاه رغم الفاصلة العربيّة الملتصقة
 const bidi = new El('div'); buildSpokenWordSpans(bidi, 'أنت مالك تطبيق Omran AI Builder، ومشروعك قيد التطوير.');
 const ltrWraps = bidi.childNodes.filter((n) => n.nodeType === 1 && n._attrs && n._attrs.dir === 'ltr');
