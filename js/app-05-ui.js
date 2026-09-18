@@ -1699,7 +1699,18 @@ const PROVIDER_NICK_KEYS = {
   mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
   cohere: 'provNickDeep', openrouter: 'provNickDeep',
 };
+/* v-owner-real-names (طلب عمران ١٨ سبتمبر: «عند الكتابة وعند ردّ المزوّد أريد اسمه — الحين يكتب الكينج.
+   فقط الاسم لا تغيّر شيئًا ثانيًا»): للمالك وحده تُعرض الأسماء الحقيقيّة القصيرة للمزوّد الذي ردّ فعلًا
+   (لا رأس مجموعته)، في سطر الحالة وشارة الردّ وقوائم المزوّدين. بقيّة المستخدمين على الألقاب الوظيفيّة. */
+const PROVIDER_REAL_SHORT = {
+  claude: 'Claude', gemini: 'Gemini', openai: 'GPT', groq: 'Groq', mistral: 'Mistral',
+  deepseek: 'DeepSeek', perplexity: 'Perplexity', cohere: 'Cohere', openrouter: 'OpenRouter',
+};
+function omranOwnerUi(){
+  try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
+}
 function functionalLabel(key){
+  if(omranOwnerUi() && PROVIDER_REAL_SHORT[key]) return PROVIDER_REAL_SHORT[key]; // v-owner-real-names
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
