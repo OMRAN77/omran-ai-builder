@@ -34477,11 +34477,50 @@ if(document.readyState === 'loading'){
     };
     var onRetry = function(n){ if(step) step.done(); step = status.step('🔌', 'انقطع الاتّصال — أعيد الالتحاق بالتشغيل (' + n + ')…'); };
     if(packed.images.length){ var s0 = status.step('🖼️', packed.images.length + ' صورة مرفقة تُرسل إلى Claude Code'); s0.done(); }
-    return stream({ op: 'chat', message: text, sessionId: String(cur.ccSessionId || ''), newSession: !cur.ccSessionId, images: packed.images }, onEv)
-      .then(function(done){ if(done) return true; return attachLoop(onEv, onRetry); })
+    var prevOut = '', busyRetried = false;
+    /* v-cc-busy-attach (لقطة المالك «✗ تشغيل جارٍ — انتظر انتهاءه»): الجسر مشغول بتشغيل سابق (من محادثة
+       أخرى أو بعد إعادة تحميل) → نلتحق به ونعرضه هنا حتّى ينتهي، ثمّ نرسل الرسالة الجديدة تلقائيًّا
+       بدل رفضها؛ ناتج التشغيل السابق يُدرج في الردّ نفسه تحت عنوانه. */
+    function drainRunning(){
+      return api('status').catch(function(){ return null; }).then(function(st){
+        if(!st || !st.busy || !st.runId) return '';
+        S.runId = st.runId; S.since = 0; S.retries = 0;
+        var pstep = status.step('⏳', 'تشغيل سابق ما زال جاريًا — ألتحق به حتّى ينتهي ثمّ أرسل رسالتك');
+        var pfull = '', pres = null;
+        var pEv = function(ev){
+          if(ev.tool){ if(pstep) pstep.done(); pstep = status.step('🔧', ev.tool.brief); }
+          if(ev.toolError){ if(pstep) pstep.done(); pstep = status.step('⚠️', ev.toolError); }
+          if(ev.delta){
+            if(pstep){ pstep.done(); pstep = null; }
+            status.release(); pfull += ev.delta;
+            if(typeof renderStreamingAssistant === 'function') renderStreamingAssistant(thinkingDiv, '🧑‍💻 (تشغيل سابق) ' + pfull); else say(cur, thinkingDiv, pfull);
+          }
+          if(ev.result){ pres = ev.result; if(!pfull && ev.result.text) pfull = ev.result.text; }
+          if(ev.done){ S.runId = ''; S.since = 0; }
+        };
+        return attachLoop(pEv, onRetry).catch(function(e){ if(e && e.name === 'AbortError') throw e; return false; }).then(function(){
+          if(pstep) pstep.done();
+          status.release();
+          try{ thinkingDiv.innerHTML = ''; thinkingDiv._omStreamHead = null; thinkingDiv._omLastRender = 0; }catch(e){ /* guard-ok */ }
+          var body = pfull.trim() || 'انتهى بلا نصّ.';
+          return '▶ التشغيل السابق (اكتمل قبل رسالتك):\n' + body + (pres ? '\n— ' + (pres.turns || 0) + ' جولة' + (pres.cost != null ? ' · ' + Number(pres.cost).toFixed(3) + '$' : '') : '') + '\n\n▶ ردّ رسالتك:\n';
+        });
+      });
+    }
+    function chatOnce(){
+      S.since = 0; S.runId = ''; S.retries = 0;
+      return stream({ op: 'chat', message: text, sessionId: String(cur.ccSessionId || ''), newSession: !cur.ccSessionId, images: packed.images }, onEv)
+        .then(function(done){ if(done) return true; return attachLoop(onEv, onRetry); });
+    }
+    return drainRunning().then(function(prev){ prevOut = prev || ''; return chatOnce(); })
       .catch(function(e){
         if(e && e.name === 'AbortError'){ api('stop').catch(function(){ /* guard-ok */ }); err = err || 'أُوقف بأمرك.'; return false; }
-        err = err || (e && e.message) || String(e);
+        var msg = (e && e.message) || String(e);
+        if(!busyRetried && /تشغيل جارٍ|409/.test(msg)){
+          busyRetried = true;
+          return drainRunning().then(function(prev){ prevOut += prev || ''; return chatOnce(); }).catch(function(e2){ if(e2 && e2.name === 'AbortError'){ api('stop').catch(function(){ /* guard-ok */ }); err = 'أُوقف بأمرك.'; return false; } err = (e2 && e2.message) || String(e2); return false; });
+        }
+        err = err || msg;
         if(S.runId) return attachLoop(onEv, onRetry).catch(function(){ return false; });
         return false;
       })
@@ -34499,7 +34538,7 @@ if(document.readyState === 'loading'){
         var ranModel = (result && result.models && result.models.length) ? result.models.join(' + ') : (initModel || (st && st.model) || '');
         if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '') + (ranModel ? ' · النموذج: ' + ranModel : '') + (result.effort ? ' · الجهد: ' + result.effort : '');
         if(st){ var s2 = Object.assign({}, st); if(ranModel) delete s2.model; foot += (foot ? '\n' : '') + statusLine(s2) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : ''); }
-        push(cur, body + (foot ? '\n\n' + foot : ''));
+        push(cur, prevOut + body + (foot ? '\n\n' + foot : ''));
       });
   }
 

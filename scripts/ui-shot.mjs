@@ -4,7 +4,10 @@
 // الاستعمال:
 //   node scripts/ui-shot.mjs --out /tmp/shots [--user omran] [--both|--desktop|--mobile] [--path /]
 //        [--settings accountSection] [--eval "JS يُنفَّذ في الصفحة قبل اللقطة"] [--wait 1500] [--full]
+//        [--viewport 540x960] [--scale 2] [--name 01-tools] [--settle 400]
 //        [--pw /path/to/node_modules/playwright-core]
+//   --viewport/--scale يفرضان مقاس اللقطة (لقطات المتاجر ٩:١٦ مثلًا 540x960 ×2 = 1080×1920)،
+//   --name يسمّي الملفّ بدل desktop/mobile، و--settle مهلة بعد --eval (فتح نافذة أداة قبل اللقطة).
 //
 // يخدم المستودع ثابتًا من جذره ويردّ على /api/* بـ{} (لا شبكة)، يتخطّى المقدّمة وإشعار الخصوصيّة
 // وتبديل الجلسة التلقائيّ، ويحفظ desktop.png و/أو mobile.png ويطبع ملخّصًا JSON فيه أخطاء الصفحة.
@@ -25,6 +28,11 @@ const SETTINGS = String(opt('settings', '') || '');
 const EVAL = String(opt('eval', '') || '');
 const WAIT = Number(opt('wait', 1500)) || 1500;
 const FULL = !!opt('full', false);
+const VP = String(opt('viewport', '') || '').match(/^(\d+)x(\d+)$/);
+const VIEWPORT = VP ? { width: Number(VP[1]), height: Number(VP[2]) } : null;
+const SCALE = Number(opt('scale', 0)) || 0;
+const NAME = String(opt('name', '') || '');
+const SETTLE = Number(opt('settle', 400)) || 400;
 const which = opt('mobile', false) ? ['mobile'] : (opt('desktop', false) ? ['desktop'] : ['desktop', 'mobile']);
 
 async function loadPlaywright() {
@@ -64,8 +72,8 @@ try {
   for (const kind of which) {
     const mobile = kind === 'mobile';
     const ctx = await browser.newContext(mobile
-      ? { viewport: { width: 400, height: 860 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36' }
-      : { viewport: { width: 1280, height: 900 } });
+      ? { viewport: VIEWPORT || { width: 400, height: 860 }, isMobile: true, hasTouch: true, deviceScaleFactor: SCALE || 2, userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36' }
+      : { viewport: VIEWPORT || { width: 1280, height: 900 }, deviceScaleFactor: SCALE || 1 });
     await ctx.addInitScript((u) => {
       try { sessionStorage.setItem('omran_sess_v1', '1'); } catch (e) { /* لا شيء */ }
       try {
@@ -89,8 +97,8 @@ try {
       }, SETTINGS);
       await page.waitForTimeout(400);
     }
-    if (EVAL) { await page.evaluate(EVAL); await page.waitForTimeout(400); }
-    const file = path.join(OUT, kind + '.png');
+    if (EVAL) { await page.evaluate(EVAL); await page.waitForTimeout(SETTLE); }
+    const file = path.join(OUT, (NAME ? NAME + (which.length > 1 ? '-' + kind : '') : kind) + '.png');
     await page.screenshot({ path: file, fullPage: FULL });
     summary.shots.push(file);
     await ctx.close();

@@ -143,6 +143,8 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.ok(ui.includes("renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full)") && !ui.includes('full.slice(-400)'), 'Claude Code يعرض النصّ كلّه منسّقًا أثناء البثّ');
   assert.ok(ui.includes("result.models.join(' + ')") && ui.includes("' · الجهد: ' + result.effort"), 'ذيل الردّ يذكر النموذج الذي عمل فعلًا والجهد');
   assert.ok(!ui.includes('S.retries > 6') && ui.includes('S.retries > 20') && ui.includes('S.retries = 0; if(done) return true;'), 'المتابعة بلا سقف: الالتحاق يتكرّر بعد كلّ قطع نظيف، والسقف على الأخطاء المتتالية فقط');
+  // v-cc-busy-attach («✗ تشغيل جارٍ»): قبل الإرسال يُفحص الجسر؛ إن كان مشغولًا يُلتحق بالتشغيل السابق ويُعرض ثمّ تُرسل الرسالة، وعلى 409 محاولة ثانية
+  assert.ok(ui.includes('function drainRunning()') && ui.includes("if(!st || !st.busy || !st.runId) return '';") && ui.includes("return drainRunning().then(function(prev){ prevOut = prev || ''; return chatOnce(); })") && ui.includes('/تشغيل جارٍ|409/.test(msg)') && ui.includes("'▶ التشغيل السابق (اكتمل قبل رسالتك):\\n'"), 'الجسر المشغول لا يرفض الرسالة: التحاق ثمّ إرسال');
   const modes = fs.readFileSync(R('js/modes.js'), 'utf8');
   assert.ok(/id:'cc',\s*ar:'Claude Code'.*owner:true/.test(modes) && modes.includes("b.setAttribute('data-owner', '1'); b.style.display = isOwner() ? '' : 'none';") && modes.includes("attributeFilter: ['class']"), 'بند Claude Code في قائمة @ للمالك وحده ويُعاد فحصه عند كلّ فتح');
   assert.ok(modes.includes("if(MODE_KEYS[m.id]) b.setAttribute('data-i18n-title'"), 'بند بلا مفتاح ترجمة لا يُوسم بمفتاح undefined');
