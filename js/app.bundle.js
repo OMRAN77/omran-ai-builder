@@ -18603,6 +18603,23 @@ async function sendPrompt(){
     console.error('[sendPrompt] fatal', e);
   }
 }
+/* v-memory-one-hop (لقطتا المالك ١٨ سبتمبر: كلّ ردّ يبدأ بـ«الصورة المرفقة هي نفس صورة طاولة
+   التلفزيون السابقة» وهو غيّر الموضوع بلا أيّ مرفق): هل الدور السابق مباشرةً حمل صورة حقيقيّة؟
+   (المستخدم أرفق صورة، أو المساعد أخرج صورة). صورة الذاكرة memory.png لا تُحفظ في الرسائل فلا تُعدّ،
+   فتنقطع السلسلة بعد قفزة واحدة بدل أن تلاحق كلّ رسالة قصيرة إلى الأبد. */
+function omranPrevTurnHadImage(messages){
+  try{
+    const list = Array.isArray(messages) ? messages : [];
+    const hasImg = (m) => !!(m && Array.isArray(m.attachments) && m.attachments.some(a => a && a.isImage && !a._fromMemory));
+    let lastA = null, lastU = null;
+    for(let i = list.length - 1; i >= 0; i--){
+      const m = list[i]; if(!m) continue;
+      if(m.role === 'assistant' && !lastA){ lastA = m; if(lastU) break; }
+      else if(m.role === 'user' && !lastU){ lastU = m; if(lastA) break; }
+    }
+    return hasImg(lastA) || hasImg(lastU);
+  }catch(e){ return false; }
+}
 async function __sendPromptCore(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -18871,8 +18888,12 @@ async function __sendPromptCore(){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
     // v473c: بعد «وصلتني الصورة» أي رسالة تالية قصيرة تُرفق الصورة المحفوظة تلقائياً
-    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
+    // v-memory-one-hop: قفزة واحدة فقط — الدور السابق مباشرةً حمل صورة حقيقيّة (v574 يبقي العلم
+    // مرفوعًا عبر الرسائل، فكان أيّ نصّ قصير يعيد الصورة إلى الأبد). الإشارة الصريحة أعلاه تبقى دائمًا.
+    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220 && omranPrevTurnHadImage(cur.messages)){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
+      /* الصورة أُرفقت بالتخمين لا بالطلب: النموذج يتجاهلها بصمت إن لم تكن الرسالة عنها (بدل «الصورة المرفقة لا علاقة لها…») */
+      apiText += (apiText ? '\n\n' : '') + '[ملاحظة للنموذج: الصورة memory.png أُرفقت تلقائيًّا من ذاكرة المحادثة لأنّ الرسالة قد تشير إليها. إن كانت الرسالة لا تخصّ الصورة فتجاهلها تمامًا: لا تذكرها ولا تصفها ولا تقل إنّها لا علاقة لها بالسؤال، وأجب عن الرسالة وحدها.]';
     }
     /* v-guide: نعيد نفس اللقطة مع الرسائل التالية داخل جلسة الإرشاد، وإلا أجاب
        النموذج من ذاكرته عن شكل البرنامج بدل الشاشة التي أمام المستخدم.
