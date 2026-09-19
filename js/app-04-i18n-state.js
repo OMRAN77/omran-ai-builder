@@ -1435,8 +1435,13 @@ function renderMessages(keepScroll){
           __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
         }
       }catch(e){ /* الاسم المحفوظ احتياط */ }
+      /* v-owner-model-badge (سؤال المالك ١٩ سبتمبر «كيف أعرف الموديل اللي عندي؟»): للمالك وحده يظهر
+         فوق كلّ ردّ اسم المزوّد الحقيقيّ + ما أعلنه الخادم (الموديل الذي خدم الطلب · كاش · جديد · خرج).
+         كان الحدث يُلتقط ولا يُعرض في أيّ مكان. بقيّة المستخدمين: كما كان (v464 — «اسأل الكل» فقط). */
+      const __ownerBadge = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      if(__ownerBadge && m.model) __plbl = (__plbl ? __plbl + ' · ' : '') + m.model;
       label.textContent = __plbl;
-      if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+      if(isAskAllReply || (__ownerBadge && __plbl)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ») — والمالك يراه دائمًا
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
