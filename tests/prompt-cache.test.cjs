@@ -53,6 +53,9 @@ test('markLastForCache: آخر كتلة في آخر رسالة تُعلَّم، 
 test('usageLabel: كاش · جديد · خرج بأرقام مختصرة', () => {
   assert.equal(usageLabel({ input: 1200, cacheRead: 48000, cacheWrite: 300, output: 950 }), 'كاش 48k · جديد 1.5k · خرج 950');
   assert.equal(usageLabel({ input: 0, cacheRead: 0, cacheWrite: 0, output: 0 }), 'كاش 0 · جديد 0 · خرج 0');
+  // v-owner-served-model: الموديل الذي خدم الطلب يتقدّم الحساب
+  assert.equal(usageLabel({ input: 10, cacheRead: 0, cacheWrite: 0, output: 5, served: 'deepseek/deepseek-v3.2' }), 'deepseek/deepseek-v3.2 · كاش 0 · جديد 10 · خرج 5');
+  assert.match(read('api/_lib/chat.js'), /__usage\.served = String\(\(ev\.message && ev\.message\.model\) \|\| ''\)\.trim\(\) \|\| __usage\.served;/);
 });
 
 test('chat.js: الطلب يحمل النظام كتلًا معلَّمة والرسائل معلَّمة، مع مفتاح إيقاف وإعادة على 400', () => {
