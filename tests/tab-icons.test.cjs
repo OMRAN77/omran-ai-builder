@@ -30,6 +30,13 @@ test('css/tokens.css: شريط #tabs بلون صندوق الكتابة #101013�
   assert.ok(read('index.html').includes('css/tokens.css?v=701'), 'وسم كاش tokens.css رُفع');
 });
 
+test('index.html: خلفية لوحة العمل #workarea بلون صندوق الكتابة #101013 (المعاينة/الكود فقط)', () => {
+  const html = read('index.html');
+  assert.match(html, /<div id="workarea" style="background:#101013;">/, 'خلفية لوحة العمل = #101013');
+  // المحادثة (body) تبقى سوداء — لم يُطلب تغييرها
+  assert.match(read('css/tokens.css'), /--bg:#000000;/, 'خلفية التطبيق الأساسيّة سوداء كما هي');
+});
+
 test('js/app-05-ui.js: تبديل التبويب يعتمد data-tab لا نصّ التبويب', () => {
   const js = read('js/app-05-ui.js');
   assert.match(js, /\$\('#panel-' \+ tab\.dataset\.tab\)\.classList\.add\('active'\)/, 'التفعيل عبر dataset.tab');
