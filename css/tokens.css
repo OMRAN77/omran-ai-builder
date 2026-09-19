@@ -118,7 +118,7 @@
   main{flex:1; display:flex; min-height:0;}
   #sidebar{
     width:250px; background:transparent; backdrop-filter:none;
-    display:flex; flex-direction:column; flex-shrink:0;
+    display:flex; flex-direction:column; flex-shrink:0; position:relative; /* مرجع لسهم الطيّ المطلق */
   }
   /* About section videos: show only the videos matching the current UI language. */
   .lang-videos-en{display:none;}
@@ -1152,14 +1152,29 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
 
 /* v-drawer-close (طلب المالك): زرّ إغلاق ظاهر لدرج المحادثات — الجوّال فقط
    (سطح المكتب قائمته دائمة). السحب للإغلاق قائم سلفًا (omranDrawerDrag). */
-#sidebarCloseBtn{ display:none; }
-html.mobile-ui #sidebarCloseBtn{
-  display:inline-flex; align-items:center; justify-content:center;
+/* سهم طيّ القائمة الجانبيّة — ذهبيّ بلا دائرة ولا إطار (طلب المالك). يظهر على الجوّال
+   وسطح المكتب معًا: على الجوّال يطوي الدرج، وعلى الكمبيوتر يطوي عمود القائمة. */
+#sidebarCloseBtn{
+  display:none; align-items:center; justify-content:center;
   position:absolute; top:calc(8px + env(safe-area-inset-top)); inset-inline-end:10px; z-index:9999;
   width:38px; height:38px;
-  /* سهم ذهبيّ للطيّ (داخل/خارج) بلا دائرة ولا إطار — طلب المالك */
   background:none; border:none; border-radius:0; box-shadow:none;
   color:#d4af37; cursor:pointer; padding:0;
   filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));
 }
-html.mobile-ui #sidebarCloseBtn:active{ opacity:.65; }
+html.mobile-ui #sidebarCloseBtn{ display:inline-flex; }
+html:not(.mobile-ui) #sidebarCloseBtn{ display:inline-flex; top:12px; }
+#sidebarCloseBtn:active{ opacity:.65; }
+
+/* v-sb-collapse (طلب المالك: السهم على الكمبيوتر كمان): طيّ عمود القائمة على سطح
+   المكتب مثل طيّ لوحة العمل — يُخفى العمود ومقبض تغيير حجمه، ويظهر مقبض إعادة فتح. */
+html:not(.mobile-ui) #sidebar.sbCollapsed, html:not(.mobile-ui) #resizer1.sbCollapsed{ display:none !important; }
+#sbReopen{ display:none; }
+html:not(.mobile-ui) body.sbCollapsedMode #sbReopen{
+  display:flex; align-items:center; justify-content:center;
+  position:fixed; top:50%; transform:translateY(-50%); inset-inline-start:0; z-index:70;
+  width:22px; height:74px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
+  border-inline-start:none; border-start-end-radius:10px; border-end-end-radius:10px;
+  color:var(--muted); cursor:pointer; padding:0;
+}
+html:not(.mobile-ui) body.sbCollapsedMode #sbReopen:hover{ color:var(--text); background:rgba(255,255,255,.12); }
