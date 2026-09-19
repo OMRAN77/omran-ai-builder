@@ -32,6 +32,7 @@ function load(action) {
     case 'stamps': return require('./_lib/stamps.js');
     case 'card-extract': return require('./_lib/card-extract.js');
     case 'text-swap': return require('./_lib/text-swap.js');
+    case 'media-intent': return require('./_lib/media-intent.js'); // v-media-gate
     default: return null;
   }
 }
