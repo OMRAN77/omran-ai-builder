@@ -35,5 +35,5 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /#sidebarCloseBtn\{ display:none; \}/, 'مخفيّ على سطح المكتب');
   assert.match(css, /html\.mobile-ui #sidebarCloseBtn\{[\s\S]*?display:inline-flex/, 'ظاهر على الجوّال فقط');
   assert.match(js, /getElementById\('sidebarCloseBtn'\);[\s\S]*?\.onclick = closeDrawers/, 'مربوط بإغلاق الدرج');
-  assert.ok(read('index.html').includes('css/tokens.css?v=704'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=705'), 'وسم كاش tokens.css رُفع');
 });

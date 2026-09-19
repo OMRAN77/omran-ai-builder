@@ -1156,9 +1156,10 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
 html.mobile-ui #sidebarCloseBtn{
   display:inline-flex; align-items:center; justify-content:center;
   position:absolute; top:calc(8px + env(safe-area-inset-top)); inset-inline-end:10px; z-index:9999;
-  width:38px; height:38px; border-radius:50%;
-  /* خلفيّة صلبة + إطار ذهبيّ فيبين واضحًا ولا تظهر أيقونة الشريط من خلفه */
-  background:#161616; border:1px solid rgba(212,175,55,.55); color:#d4af37;
-  box-shadow:0 2px 10px rgba(0,0,0,.5); cursor:pointer; padding:0;
+  width:38px; height:38px;
+  /* سهم ذهبيّ للطيّ (داخل/خارج) بلا دائرة ولا إطار — طلب المالك */
+  background:none; border:none; border-radius:0; box-shadow:none;
+  color:#d4af37; cursor:pointer; padding:0;
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));
 }
-html.mobile-ui #sidebarCloseBtn:active{ background:#20201a; }
+html.mobile-ui #sidebarCloseBtn:active{ opacity:.65; }

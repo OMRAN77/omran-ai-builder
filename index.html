@@ -106,7 +106,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=704">
+<link rel="stylesheet" href="css/tokens.css?v=705">
 <link rel="stylesheet" href="css/redesign.css?v=667">
 <link rel="stylesheet" href="css/modules.css?v=656">
 <script>
@@ -606,8 +606,8 @@ html.oiOn body{overflow:hidden}
 
 <main>
   <div id="sidebar" style="background:#000;">
-    <!-- v-drawer-close (طلب المالك): زرّ إغلاق ظاهر لدرج المحادثات على الجوّال (مع السحب القائم). يظهر على الجوّال فقط. -->
-    <button type="button" id="sidebarCloseBtn" aria-label="إغلاق القائمة" data-i18n="[aria-label]closeTitle" title="إغلاق" data-i18n-title="closeTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+    <!-- v-drawer-close (طلب المالك): زرّ طيّ درج المحادثات على الجوّال — سهم (داخل/خارج) بلا دائرة ولا ✕ (مع السحب القائم). يظهر على الجوّال فقط. -->
+    <button type="button" id="sidebarCloseBtn" aria-label="إغلاق القائمة" data-i18n="[aria-label]closeTitle" title="إغلاق" data-i18n-title="closeTitle"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg></button>
     <!-- v-sidebar-brand (طلب عمران ١٨ سبتمبر بلقطتين): الشعار الذهبيّ في رأس القائمة الجانبيّة مكان «محادثة جديدة»، والزرّ تحته مباشرة — سطح المكتب فقط؛ الجوّال يبقي شعار الرأس. -->
     <div id="sidebarBrand" class="sidebarBrand" title="عمران AI"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg" width="126" height="42"></div>
     <script>/* v-sidebar-brand: يتبع شعار الرأس (بُدّل أثناء التحليل حسب اللغة المحفوظة) فلا وميض */
