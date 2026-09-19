@@ -1,0 +1,127 @@
+// v-chat-github-read (١٩ سبتمبر ٢٠٢٦): «أعطِ المزوّدين كلّهم صلاحيّة قراءة GitHub فقط» — أداة read_github
+// (قراءة فقط) في أدوات المحادثة فتصل كلّ مزوّد يمرّ بمسار الأدوات؛ غير المالك بلا مفتاح، ولا write_github هنا.
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+
+process.env.AUTH_SECRET = 'chat-github-read-test-secret';
+process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+delete process.env.ANTHROPIC_API_KEY;
+delete process.env.GROQ_API_KEY;
+delete process.env.OPENAI_API_KEY;
+delete process.env.GEMINI_API_KEY;
+
+const root = path.resolve(__dirname, '..');
+const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
+const rp = (f) => require.resolve(path.join(root, f));
+const db = new Map();
+require.cache[rp('api/_lib/kv.js')] = { id: rp('api/_lib/kv.js'), filename: rp('api/_lib/kv.js'), loaded: true, exports: {
+  kvGetJSON: async (key) => db.has(key) ? structuredClone(db.get(key)) : null,
+  kvPutJSON: async (key, value) => { db.set(key, structuredClone(value)); },
+  kvDel: async (key) => { db.delete(key); },
+  kvExpire: async () => {},
+} };
+require.cache[rp('api/_lib/_usage.js')] = { id: rp('api/_lib/_usage.js'), filename: rp('api/_lib/_usage.js'), loaded: true, exports: {
+  DAILY_LIMIT: 20, clientIp: () => '127.0.0.1',
+  checkAndConsume: async (token) => ({ allowed: true, username: 'gh-user' }),
+} };
+require.cache[rp('api/_lib/_knowledge.js')] = { id: rp('api/_lib/_knowledge.js'), filename: rp('api/_lib/_knowledge.js'), loaded: true, exports: { ownerKnowledge: () => '' } };
+require.cache[rp('api/_lib/search.js')] = { id: rp('api/_lib/search.js'), filename: rp('api/_lib/search.js'), loaded: true, exports: { fetchPlaces: async () => [] } };
+// قارئ GitHub مزيّف: لا شبكة؛ نسجّل ما طُلب وبأيّ صلاحيّة.
+const ghCalls = [];
+require.cache[rp('api/_lib/github-read.js')] = { id: rp('api/_lib/github-read.js'), filename: rp('api/_lib/github-read.js'), loaded: true, exports: {
+  readGithub: async (input, opts) => { ghCalls.push({ input, opts }); return '📄 README.md (٣ أسطر)\n1 | # عمران AI\n2 | تطبيق\n3 | نهاية'; },
+} };
+const chat = require(rp('api/_lib/chat.js'));
+
+function token(username) {
+  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000 })).toString('base64url');
+  const sig = crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
+  return payload + '.' + sig;
+}
+function sse(events) {
+  return new Response(events.map((e) => 'data: ' + JSON.stringify(e) + '\n').join('') + '\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+const toolTurnStream = (input) => sse([
+  { type: 'message_start', message: { model: 'x', usage: { input_tokens: 1, output_tokens: 0 } } },
+  { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu-1', name: 'read_github' } },
+  { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify(input) } },
+  { type: 'content_block_stop', index: 0 },
+  { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 5 } },
+]);
+const textStream = (text) => sse([
+  { type: 'message_start', message: { model: 'x', usage: { input_tokens: 1, output_tokens: 0 } } },
+  { type: 'content_block_start', index: 0, content_block: { type: 'text' } },
+  { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } },
+  { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 3 } },
+]);
+
+async function ask(provider, user, ghInput) {
+  const bodies = [];
+  const saveFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    bodies.push({ url: String(url), body: JSON.parse(options.body) });
+    return bodies.length === 1 ? toolTurnStream(ghInput) : textStream('قرأتُ الملفّ: عنوانه «عمران AI».');
+  };
+  let written = '';
+  const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: 'اقرأ لي ملفّ README في https://github.com/OMRAN77/omran-ai-builder وقل لي عنوانه' }], token: token(user), provider } };
+  const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('unexpected json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {} };
+  try { await chat(req, res); } finally { global.fetch = saveFetch; }
+  return { bodies, written };
+}
+
+test('١. الأداة معرّفة لكلّ مسار الأدوات، قراءة فقط، والنظام يوجّه إليها بدل fetch_page', () => {
+  const s = read('api/_lib/chat.js');
+  const tools = s.slice(s.indexOf('\nconst TOOLS = ['), s.indexOf('\nconst TOOLS_NOTE'));
+  assert.ok(tools.includes("name: 'read_github'"), 'الأداة في TOOLS');
+  assert.ok(tools.includes("required: ['url']"), 'الرابط إلزاميّ');
+  assert.ok(!tools.includes("name: 'write_github'"), 'لا كتابة في أدوات المحادثة');
+  assert.ok(!s.includes("name: 'write_github'") && !s.includes("cb.name === 'write_github'"), 'لا write_github في المحادثة إطلاقًا — تعريفًا ولا تنفيذًا');
+  assert.ok(s.includes("'• read_github — أي رابط github.com"), 'ملاحظة الأدوات توجّه إليها');
+  assert.ok(s.includes("cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' })"), 'سطر الحالة بمفتاح ترجمة قائم');
+  assert.ok(s.includes("else if (cb.name === 'read_github') result = await require('./github-read.js').readGithub(input, __ownerReq ? undefined : { anonymous: true });"), 'التنفيذ: غير المالك بلا مفتاح، وتحميل كسول');
+  assert.ok(!/^const .*require\('\.\/github-read\.js'\)/m.test(s), 'لا تحميل للقارئ في نطاق الوحدة');
+});
+
+test('٢. غير المالك: النموذج يستدعي read_github فتُنفَّذ بلا مفتاح (العامّ فقط) وتعود نتيجتها له', async () => {
+  ghCalls.length = 0;
+  const r = await ask('deepseek', 'gh-user', { url: 'https://github.com/OMRAN77/omran-ai-builder', path: 'README.md' });
+  assert.equal(r.bodies.length, 2, 'جولة أدوات ثمّ الجواب');
+  assert.ok(r.bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تُرسل للمزوّد');
+  assert.equal(ghCalls.length, 1);
+  assert.equal(ghCalls[0].input.url, 'https://github.com/OMRAN77/omran-ai-builder');
+  assert.equal(ghCalls[0].input.path, 'README.md');
+  assert.deepEqual(ghCalls[0].opts, { anonymous: true });
+  const last = r.bodies[1].body.messages.at(-1);
+  assert.equal(last.role, 'user');
+  const tr = last.content.find((b) => b.type === 'tool_result');
+  assert.ok(tr && tr.tool_use_id === 'tu-1' && /عمران AI/.test(String(tr.content)), 'نتيجة القراءة تعود للنموذج');
+  assert.match(r.written, /يقرأ من GitHub/);
+  assert.match(r.written, /قرأتُ الملفّ/);
+});
+
+test('٣. المالك: القراءة بمفتاحه (بلا anonymous)', async () => {
+  ghCalls.length = 0;
+  const saveOwners = process.env.OWNER_USERNAMES;
+  process.env.OWNER_USERNAMES = 'gh-owner';
+  try {
+    const r = await ask('openai', 'gh-owner', { url: 'OMRAN77/omran-ai-builder', what: 'commits', limit: 5 });
+    assert.equal(ghCalls.length, 1);
+    assert.equal(ghCalls[0].opts, undefined);
+    assert.equal(ghCalls[0].input.what, 'commits');
+    assert.equal(r.bodies.length, 2);
+  } finally {
+    if (saveOwners === undefined) delete process.env.OWNER_USERNAMES; else process.env.OWNER_USERNAMES = saveOwners;
+  }
+});
+
+test('٤. سطر الأثر يستعمل مفاتيح الترجمة القائمة (لا نصّ واجهة جديد بالـ١٤ لغة)', () => {
+  const s = read('api/_lib/chat.js');
+  const i = s.indexOf("if (name === 'read_github') {");
+  const seg = s.slice(i, s.indexOf("if (name === 'run_js') {", i));
+  assert.ok(seg.includes("'trFetchFail'") && seg.includes("'trFetch'"), 'المفتاحان القائمان');
+  assert.ok(!/stGithub|trGithub/.test(s), 'لا مفتاح ترجمة جديد');
+});
