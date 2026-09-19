@@ -865,6 +865,8 @@ btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
   }catch(e){ console.error('codeHint init', e); }
 })();
 backdropEl.onclick = closeDrawers;
+// v-drawer-close (طلب المالك): زرّ الإغلاق الظاهر يسكر درج المحادثات (الجوّال).
+try{ const __sbClose = document.getElementById('sidebarCloseBtn'); if(__sbClose) __sbClose.onclick = closeDrawers; }catch(e){ __swallow(e, "ui:app-10-features#drawer-close"); }
 
 /* ---------- Header "more" dropdown (📂 projects / 📲 install / 🚪 logout) ---------- */
 const btnHeaderMenu = $('#btnHeaderMenu');

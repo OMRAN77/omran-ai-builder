@@ -1133,3 +1133,31 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
 /* v-hl-links-only: الإنجليزي والأرقام بيضاء — الأصفر للروابط فقط (نمط <a>). */
 .chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl,#e3b341) !important; }
 .tts-word.active{ background:var(--om-hl,#e3b341); color:#14161a; box-shadow:0 0 0 2px var(--om-hl,#e3b341); }
+
+/* v-ticker-ai (طلب المالك): شريط الأسهم المطويّ يظهر كأيقونة ذكاء ذهبيّة تومض بخفّة؛
+   الضغط عليها يفتح الشريط. لا يُحذف stockTickerToggle — نبدّل أيقونته فقط. */
+#stockTickerAiIcon{ display:none; }
+#stockTickerToggle.tickerAiCollapsed #stockTickerToggleIcon{ display:none; }
+#stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{
+  display:inline-flex; color:#d4af37;
+  animation:tickerAiPulse 2.2s ease-in-out infinite;
+}
+@keyframes tickerAiPulse{
+  0%,100%{ opacity:.72; filter:drop-shadow(0 0 2px rgba(212,175,55,.45)); }
+  50%{ opacity:1; filter:drop-shadow(0 0 7px rgba(212,175,55,.85)); }
+}
+@media (prefers-reduced-motion: reduce){
+  #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{ animation:none; filter:drop-shadow(0 0 4px rgba(212,175,55,.6)); }
+}
+
+/* v-drawer-close (طلب المالك): زرّ إغلاق ظاهر لدرج المحادثات — الجوّال فقط
+   (سطح المكتب قائمته دائمة). السحب للإغلاق قائم سلفًا (omranDrawerDrag). */
+#sidebarCloseBtn{ display:none; }
+html.mobile-ui #sidebarCloseBtn{
+  display:inline-flex; align-items:center; justify-content:center;
+  position:absolute; top:calc(8px + env(safe-area-inset-top)); inset-inline-end:10px; z-index:8;
+  width:34px; height:34px; border-radius:50%;
+  background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--text);
+  cursor:pointer; padding:0;
+}
+html.mobile-ui #sidebarCloseBtn:active{ background:rgba(255,255,255,.12); }
