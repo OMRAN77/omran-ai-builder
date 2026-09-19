@@ -183,7 +183,12 @@
     tickerWrap.style.borderBottom = collapsed ? 'none' : '1px solid rgba(255,255,255,0.08)';
     tickerWrap.style.overflow = collapsed ? 'visible' : 'hidden';
     const tbtn = document.getElementById('stockTickerToggle');
-    if(tbtn){ tbtn.style.top = collapsed ? '2px' : '50%'; tbtn.style.transform = collapsed ? 'none' : 'translateY(-50%)'; }
+    if(tbtn){
+      tbtn.style.top = collapsed ? '2px' : '50%';
+      tbtn.style.transform = collapsed ? 'none' : 'translateY(-50%)';
+      // v-ticker-ai: المطويّ = أيقونة ذكاء ذهبيّة تومض؛ المفتوح = سهم الطيّ العاديّ.
+      tbtn.classList.toggle('tickerAiCollapsed', collapsed);
+    }
     const icon = document.getElementById('stockTickerToggleIcon');
     if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
     if(collapsed){
@@ -217,6 +222,8 @@
   });
   // v214: زر طي/فتح بنفس المكان — يسكر الشريط ويفتحه بدون حذف
   try{ if(localStorage.getItem('tickerHidden') === '1'){ localStorage.setItem('tickerCollapsed','1'); localStorage.removeItem('tickerHidden'); } }catch(err){ __swallow(err, "save:app-13-stocks-init#3"); }
+  // v-ticker-ai (طلب المالك): الشريط يبدأ مطويًّا كأيقونة ذكاء تومض ما لم يختر المستخدم غير ذلك سابقًا.
+  try{ if(localStorage.getItem('tickerCollapsed') === null) localStorage.setItem('tickerCollapsed','1'); }catch(err){ __swallow(err, "save:app-13-stocks-init#3b"); }
   const tickerToggleBtn = $('#stockTickerToggle');
   if(tickerToggleBtn) tickerToggleBtn.addEventListener('click', function(e){
     e.stopPropagation();
