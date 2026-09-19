@@ -25,7 +25,8 @@
       + '.oStX{background:0;border:0;color:inherit;opacity:.7;font-size:15px;cursor:pointer;padding:4px 6px;font-family:inherit}'
       + '.oStGr{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 4px;margin-bottom:6px}'
       + '.oStT{display:flex;flex-direction:column;align-items:center;gap:7px;background:0;border:0;padding:0;color:inherit;font-family:inherit;font-size:11.5px;cursor:pointer}'
-      + '.oStT i{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:999px;font-style:normal;font-size:22px;font-weight:800;color:#fff}'
+      + '.oStT i{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:999px;font-style:normal;color:#fff}'
+      + '.oStT i svg{width:26px;height:26px;display:block}'
       + '.oStT:active i{transform:scale(.92)}'
       + 'html[data-mode="light"] .oStSh{background:#fff;color:#14161a}';
     document.head.appendChild(st);
@@ -42,16 +43,26 @@
     sh.appendChild(hd);
     var gr = document.createElement('div'); gr.className = 'oStGr'; sh.appendChild(gr);
     var enc = encodeURIComponent(text);
+    function svgIcon(name){
+      var icons = {
+        whatsapp: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 9.5c0-1.4-.6-2.7-1.5-3.6-.9-.9-2.2-1.5-3.5-1.5-2.8 0-5 2.2-5 5 0 .9.2 1.7.6 2.5L6 17l4.6-1.5c.8.4 1.6.6 2.5.6 2.8 0 5-2.2 5-5m-5-7C7.6 2.5 4.5 5.6 4.5 9.5c0 1.4.4 2.8 1.1 3.9L3 20l4.8-1.5c1.1.7 2.5 1 4 1 3.9 0 7-3.1 7-7 0-3.8-3.1-7-7-7z"/></svg>',
+        telegram: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.02-.14-.07-.2-.09-.06-.22-.04-.31-.02-.13.02-2.28 1.45-6.44 4.27-.61.42-1.16.62-1.66.61-.55-.01-1.6-.31-2.38-.57-.96-.3-1.73-.46-1.66-.97.03-.51.7-.99 1.9-1.48 7.4-3.23 8.74-3.79 9.74-3.88 1.02-.11 1.56.24 1.74.75.1.33.09 1.07.05 1.68z"/></svg>',
+        x: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.223-6.815L5.769 21.75H2.462l7.732-8.835L2.288 2.25h6.822l4.822 6.375L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>',
+        email: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>',
+        copy: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+      };
+      return icons[name] || '';
+    }
     var APPS = [
-      { n: 'WhatsApp', g: '✆', c: '#25D366', u: 'https://wa.me/?text=' + enc },
-      { n: 'Telegram', g: '➤', c: '#229ED9', u: 'https://t.me/share/url?url=' + encodeURIComponent(' ') + '&text=' + enc },
-      { n: 'X', g: 'X', c: '#000', u: 'https://twitter.com/intent/tweet?text=' + enc },
-      { n: tt('emailWord', 'البريد', 'Email'), g: '✉', c: '#EA4335', u: 'mailto:?body=' + enc },
-      { n: tt('copyMsgTitle', 'نسخ الردّ', 'Copy reply'), g: '⧉', c: '#d4af37', copy: true },
+      { n: 'WhatsApp', s: 'whatsapp', c: '#25D366', u: 'https://wa.me/?text=' + enc },
+      { n: 'Telegram', s: 'telegram', c: '#229ED9', u: 'https://t.me/share/url?url=' + encodeURIComponent(' ') + '&text=' + enc },
+      { n: 'X', s: 'x', c: '#000', u: 'https://twitter.com/intent/tweet?text=' + enc },
+      { n: tt('emailWord', 'البريد', 'Email'), s: 'email', c: '#EA4335', u: 'mailto:?body=' + enc },
+      { n: tt('copyMsgTitle', 'نسخ الردّ', 'Copy reply'), s: 'copy', c: '#d4af37', copy: true },
     ];
     APPS.forEach(function(a){
       var b = document.createElement('button'); b.type = 'button'; b.className = 'oStT';
-      b.innerHTML = '<i style="background:' + a.c + '">' + a.g + '</i><span>' + a.n + '</span>';
+      b.innerHTML = '<i style="background:' + a.c + '">' + svgIcon(a.s) + '</i><span>' + a.n + '</span>';
       b.onclick = function(){ if(a.copy){ if(copyText(text)) toast(tt('msgShareCopied', 'نُسخ الردّ — الصقه في التطبيق الذي تريده', 'Reply copied — paste it in the app you want')); close(); return; } openExternal(a.u); close(); };
       gr.appendChild(b);
     });

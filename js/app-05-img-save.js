@@ -83,6 +83,17 @@
   }
   function toast(m){ try{ if(typeof settingsToast === 'function'){ settingsToast(m); return; } }catch(e){ /* guard-ok */ } try{ alert(m); }catch(e){ /* guard-ok */ } }
   function copyText(s){ try{ if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s); }catch(e){ /* guard-ok */ } return Promise.reject(new Error('no-clipboard')); }
+  function svgIcon(name){
+    const icons = {
+      download: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
+      share: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
+      open: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>',
+      whatsapp: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 9.5c0-1.4-.6-2.7-1.5-3.6-.9-.9-2.2-1.5-3.5-1.5-2.8 0-5 2.2-5 5 0 .9.2 1.7.6 2.5L6 17l4.6-1.5c.8.4 1.6.6 2.5.6 2.8 0 5-2.2 5-5m-5-7C7.6 2.5 4.5 5.6 4.5 9.5c0 1.4.4 2.8 1.1 3.9L3 20l4.8-1.5c1.1.7 2.5 1 4 1 3.9 0 7-3.1 7-7 0-3.8-3.1-7-7-7z"/></svg>',
+      close: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+      check: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    };
+    return icons[name] || '';
+  }
   function verStamp(){
     const d = document.createElement('div'); d.style.cssText = 'margin-top:8px;font-size:10px;opacity:.45;text-align:center;direction:ltr;';
     try{ const sc = document.querySelector('script[src*="app.bundle.js"]'); const vv = sc ? (String(sc.getAttribute('src') || '').split('v=')[1] || '') : ''; d.textContent = 'v ' + vv.slice(0, 8) + (navigator.canShare ? ' · share:yes' : ' · share:no'); }catch(e){ /* guard-ok */ }
@@ -92,8 +103,13 @@
     try{
       const old = document.getElementById('omranImgSheet'); if(old) old.remove();
       const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
-      sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;font-weight:800;font-size:15px;text-align:center;';
-      sheet.textContent = gtx('imgPreparing', '⏳ جارٍ تجهيز الصورة…', '⏳ Preparing the image…');
+      sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;font-weight:800;font-size:15px;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;';
+      const spinner = document.createElement('div');
+      spinner.style.cssText = 'width:16px;height:16px;border:2px solid rgba(243,239,228,.3);border-top-color:#f3efe4;border-radius:50%;animation:spin .7s linear infinite;';
+      sheet.appendChild(spinner);
+      const txt = document.createElement('span');
+      txt.textContent = gtx('imgPreparing', 'جارٍ تجهيز الصورة…', 'Preparing the image…');
+      sheet.appendChild(txt);
       document.body.appendChild(sheet);
     }catch(e){ /* guard-ok */ }
   }
@@ -103,11 +119,11 @@
     sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
     const head = document.createElement('div');
     head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-weight:800;font-size:15px;';
-    const ttl = document.createElement('span'); ttl.textContent = gtx('imgReadyTitle', '✅ الصورة جاهزة', '✅ Image ready');
-    const x = document.createElement('button'); x.textContent = '✕'; x.type = 'button';
-    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
-    x.onclick = function(){ sheet.remove(); };
-    head.appendChild(ttl); head.appendChild(x);
+    const ttl = document.createElement('span'); ttl.textContent = gtx('imgReadyTitle', 'الصورة جاهزة', 'Image ready');
+    const xbtn = document.createElement('button'); xbtn.type = 'button'; xbtn.innerHTML = svgIcon('close');
+    xbtn.style.cssText = 'background:none;border:none;color:#9a9a9e;cursor:pointer;padding:2px 8px;display:flex;align-items:center;justify-content:center;';
+    xbtn.onclick = function(){ sheet.remove(); };
+    head.appendChild(ttl); head.appendChild(xbtn);
     const row = document.createElement('div');
     row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
     const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
@@ -115,21 +131,21 @@
     const dl = document.createElement('a');
     dl.href = u; dl.setAttribute('download', name); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
     dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
-    dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
+    dl.innerHTML = svgIcon('download') + '<span>' + gtx('imgDlBtn', 'تحميل', 'Download') + '</span>';
     row.appendChild(dl);
     let canShareFile = false;
     try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
     if(canShareFile){
       const sh = document.createElement('button'); sh.type = 'button';
       sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
-      sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
+      sh.innerHTML = svgIcon('share') + '<span>' + gtx('imgShareBtn', 'مشاركة', 'Share') + '</span>';
       sh.onclick = function(){ navigator.share({ files: [file], title: 'Omran AI' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
       row.appendChild(sh);
     } else {
       const op = document.createElement('a');
       op.href = u; op.target = '_blank'; op.rel = 'noopener';
       op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
-      op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
+      op.innerHTML = svgIcon('open') + '<span>' + gtx('imgOpenBtn', 'فتح', 'Open') + '</span>';
       row.appendChild(op);
     }
     const sub = document.createElement('div');
@@ -146,24 +162,24 @@
     sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
     const head = document.createElement('div');
     head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-weight:800;font-size:15px;';
-    const ttl = document.createElement('span'); ttl.textContent = gtx('imgReadyTitle', '✅ الصورة جاهزة', '✅ Image ready');
-    const x = document.createElement('button'); x.textContent = '✕'; x.type = 'button';
-    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
-    x.onclick = function(){ sheet.remove(); };
-    head.appendChild(ttl); head.appendChild(x);
+    const ttl = document.createElement('span'); ttl.textContent = gtx('imgReadyTitle', 'الصورة جاهزة', 'Image ready');
+    const xbtn = document.createElement('button'); xbtn.type = 'button'; xbtn.innerHTML = svgIcon('close');
+    xbtn.style.cssText = 'background:none;border:none;color:#9a9a9e;cursor:pointer;padding:2px 8px;display:flex;align-items:center;justify-content:center;';
+    xbtn.onclick = function(){ sheet.remove(); };
+    head.appendChild(ttl); head.appendChild(xbtn);
     const row = document.createElement('div');
     row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
     const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
     const dl = document.createElement('a');
     dl.href = links.dl; dl.setAttribute('download', name); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
     dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
-    dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
-    dl.onclick = function(){ setTimeout(function(){ ttl.textContent = gtx('imgDlStarted', '📥 بدأ التحميل — افتح الإشعارات/التنزيلات', '📥 Downloading — check notifications/Downloads'); }, 600); };
+    dl.innerHTML = svgIcon('download') + '<span>' + gtx('imgDlBtn', 'تحميل', 'Download') + '</span>';
+    dl.onclick = function(){ setTimeout(function(){ ttl.textContent = gtx('imgDlStarted', 'بدأ التحميل — افتح الإشعارات/التنزيلات', 'Downloading — check notifications/Downloads'); }, 600); };
     row.appendChild(dl);
     const wa = document.createElement('a');
     wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
     wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
-    wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
+    wa.innerHTML = svgIcon('whatsapp') + '<span>' + gtx('imgWaBtn', 'واتساب', 'WhatsApp') + '</span>';
     wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
     row.appendChild(wa);
     let canShareFile = false;
@@ -171,14 +187,14 @@
     if(canShareFile){
       const sh = document.createElement('button'); sh.type = 'button';
       sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
-      sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
+      sh.innerHTML = svgIcon('share') + '<span>' + gtx('imgShareBtn', 'مشاركة', 'Share') + '</span>';
       sh.onclick = function(){ navigator.share({ files: [file], title: 'Omran AI' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
       row.appendChild(sh);
     }
     const op = document.createElement('a');
     op.href = links.open; op.target = '_blank'; op.rel = 'noopener';
     op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
-    op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
+    op.innerHTML = svgIcon('open') + '<span>' + gtx('imgOpenBtn', 'فتح', 'Open') + '</span>';
     op.onclick = function(ev){ try{ const cap2 = window.Capacitor, br2 = cap2 && cap2.Plugins && cap2.Plugins.Browser; if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: links.open }); } }catch(e2){ /* guard-ok */ } };
     row.appendChild(op);
     sheet.appendChild(head); sheet.appendChild(row); sheet.appendChild(verStamp());
