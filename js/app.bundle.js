@@ -22809,8 +22809,31 @@ btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
   }catch(e){ console.error('codeHint init', e); }
 })();
 backdropEl.onclick = closeDrawers;
-// v-drawer-close (طلب المالك): زرّ الإغلاق الظاهر يسكر درج المحادثات (الجوّال).
-try{ const __sbClose = document.getElementById('sidebarCloseBtn'); if(__sbClose) __sbClose.onclick = closeDrawers; }catch(e){ __swallow(e, "ui:app-10-features#drawer-close"); }
+// v-drawer-close + v-sb-collapse (طلب المالك): سهم القائمة الجانبيّة —
+// على الجوّال يسكر الدرج، وعلى سطح المكتب يطوي العمود (مثل طيّ لوحة العمل) مع مقبض إعادة فتح.
+try{
+  const __sbClose = document.getElementById('sidebarCloseBtn');
+  let __sbReopen = document.getElementById('sbReopen');
+  if(!__sbReopen){
+    __sbReopen = document.createElement('button');
+    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button'; __sbReopen.setAttribute('aria-label', 'فتح القائمة');
+    __sbReopen.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+    document.body.appendChild(__sbReopen);
+  }
+  const __setSB = (collapsed) => {
+    sidebarEl.classList.toggle('sbCollapsed', collapsed);
+    const __rz1 = document.getElementById('resizer1');
+    if(__rz1) __rz1.classList.toggle('sbCollapsed', collapsed);
+    document.body.classList.toggle('sbCollapsedMode', collapsed);
+    try{ localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); }catch(e){ __swallow(e, "save:app-10-features#sb-collapse"); }
+  };
+  if(__sbClose) __sbClose.onclick = () => {
+    if(document.documentElement.classList.contains('mobile-ui')) closeDrawers();
+    else __setSB(true);
+  };
+  __sbReopen.onclick = () => __setSB(false);
+  try{ if(localStorage.getItem('sidebarCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) __setSB(true); }catch(e){ __swallow(e, "ui:app-10-features#sb-restore"); }
+}catch(e){ __swallow(e, "ui:app-10-features#drawer-close"); }
 
 /* ---------- Header "more" dropdown (📂 projects / 📲 install / 🚪 logout) ---------- */
 const btnHeaderMenu = $('#btnHeaderMenu');
