@@ -77,12 +77,12 @@ test('١. الأداة معرّفة لكلّ مسار الأدوات، قراء�
   const s = read('api/_lib/chat.js');
   const tools = s.slice(s.indexOf('\nconst TOOLS = ['), s.indexOf('\nconst TOOLS_NOTE'));
   assert.ok(tools.includes("name: 'read_github'"), 'الأداة في TOOLS');
-  assert.ok(tools.includes("required: ['url']"), 'الرابط إلزاميّ');
+  assert.ok(tools.includes("required: [], /* v-github-default-repo"), 'الرابط اختياريّ: بلا url = مستودع التطبيق للمالك');
   assert.ok(!tools.includes("name: 'write_github'"), 'لا كتابة في أدوات المحادثة');
   assert.ok(!s.includes("name: 'write_github'") && !s.includes("cb.name === 'write_github'"), 'لا write_github في المحادثة إطلاقًا — تعريفًا ولا تنفيذًا');
   assert.ok(s.includes("'• read_github — أي رابط github.com"), 'ملاحظة الأدوات توجّه إليها');
   assert.ok(s.includes("cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' })"), 'سطر الحالة بمفتاح ترجمة قائم');
-  assert.ok(s.includes("else if (cb.name === 'read_github') result = await require('./github-read.js').readGithub(input, __ownerReq ? undefined : { anonymous: true });"), 'التنفيذ: غير المالك بلا مفتاح، وتحميل كسول');
+  assert.ok(s.includes("else if (cb.name === 'read_github') {") && s.includes("await require('./github-read.js').readGithub(input, __ownerReq ? undefined : { anonymous: true })"), 'التنفيذ: غير المالك بلا مفتاح، وتحميل كسول');
   assert.ok(!/^const .*require\('\.\/github-read\.js'\)/m.test(s), 'لا تحميل للقارئ في نطاق الوحدة');
 });
 
@@ -129,6 +129,42 @@ test('٥. v-cohere-tools: Cohere يمرّ بمسار الأدوات عبر ال�
   assert.ok(r.bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تصل Cohere');
   assert.equal(ghCalls.length, 1);
   assert.deepEqual(ghCalls[0].opts, { anonymous: true });
+});
+
+test('٦. v-github-default-repo: بلا رابط — المالك يقرأ مستودع التطبيق، وغيره يُطلب منه الرابط بلا نداء', async () => {
+  const s = read('api/_lib/chat.js');
+  const tools = s.slice(s.indexOf('\nconst TOOLS = ['), s.indexOf('\nconst TOOLS_NOTE'));
+  const gh = tools.slice(tools.indexOf("name: 'read_github'")); // آخر أداة في القائمة (fetch_page قبلها يشترط url)
+  assert.ok(!gh.includes("required: ['url']"), 'الرابط لم يعد إلزاميًّا');
+  assert.ok(gh.includes('فاستدعِ الأداة بلا url'), 'الوصف يوجّه إلى الاستدعاء لا الشرح العامّ');
+  // غير المالك بلا رابط: لا نداء للقارئ ورسالة تطلب الرابط تعود للنموذج
+  ghCalls.length = 0;
+  let r = await ask('deepseek', 'gh-user', {});
+  assert.equal(ghCalls.length, 0, 'لا نداء بلا رابط لغير المالك');
+  const tr = r.bodies[1].body.messages.at(-1).content.find((b) => b.type === 'tool_result');
+  assert.match(String(tr.content), /لا رابط/);
+  // المالك بلا رابط: مستودع التطبيق (الافتراضيّ ثمّ من البيئة)
+  const saveOwners = process.env.OWNER_USERNAMES; const saveRepo = process.env.GITHUB_DEFAULT_REPO;
+  process.env.OWNER_USERNAMES = 'gh-owner'; delete process.env.GITHUB_DEFAULT_REPO;
+  try {
+    ghCalls.length = 0;
+    r = await ask('openai', 'gh-owner', {});
+    assert.equal(ghCalls.length, 1);
+    assert.equal(ghCalls[0].input.url, 'OMRAN77/omran-ai-builder');
+    assert.equal(ghCalls[0].opts, undefined);
+    process.env.GITHUB_DEFAULT_REPO = 'OMRAN77/other-repo';
+    ghCalls.length = 0;
+    r = await ask('openai', 'gh-owner', { path: 'README.md' });
+    assert.equal(ghCalls[0].input.url, 'OMRAN77/other-repo');
+    assert.equal(ghCalls[0].input.path, 'README.md');
+  } finally {
+    if (saveOwners === undefined) delete process.env.OWNER_USERNAMES; else process.env.OWNER_USERNAMES = saveOwners;
+    if (saveRepo === undefined) delete process.env.GITHUB_DEFAULT_REPO; else process.env.GITHUB_DEFAULT_REPO = saveRepo;
+  }
+  // رابط صريح يبقى كما هو للمالك
+  process.env.OWNER_USERNAMES = 'gh-owner';
+  try { ghCalls.length = 0; await ask('openai', 'gh-owner', { url: 'https://github.com/x/y' }); assert.equal(ghCalls[0].input.url, 'https://github.com/x/y'); }
+  finally { if (saveOwners === undefined) delete process.env.OWNER_USERNAMES; else process.env.OWNER_USERNAMES = saveOwners; }
 });
 
 test('٤. سطر الأثر يستعمل مفاتيح الترجمة القائمة (لا نصّ واجهة جديد بالـ١٤ لغة)', () => {
