@@ -106,7 +106,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=702">
+<link rel="stylesheet" href="css/tokens.css?v=703">
 <link rel="stylesheet" href="css/redesign.css?v=667">
 <link rel="stylesheet" href="css/modules.css?v=656">
 <script>
@@ -599,13 +599,15 @@ html.oiOn body{overflow:hidden}
 
 <div id="stockTicker" dir="ltr" style="display:none; overflow:hidden; white-space:nowrap; background:rgba(0,0,0,0.45); padding:6px 0; position:relative;">
   <div id="stockTickerTrack" style="display:inline-block; white-space:nowrap; will-change:transform;"></div>
-  <button id="stockTickerToggle" type="button" title="طي/فتح الشريط" data-i18n-title="tickerToggleLabel" aria-label="طي شريط الأسهم" data-i18n="[aria-label]tickerToggleLabel" style="position:absolute; top:50%; transform:translateY(-50%); inset-inline-end:6px; z-index:3; background:none; border:none; box-shadow:none; padding:2px; margin:0; color:rgba(255,255,255,.45); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; line-height:1;" onmouseover="this.style.color='rgba(255,255,255,.85)'" onmouseout="this.style.color='rgba(255,255,255,.45)'"><svg id="stockTickerToggleIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+  <button id="stockTickerToggle" type="button" title="طي/فتح الشريط" data-i18n-title="tickerToggleLabel" aria-label="طي شريط الأسهم" data-i18n="[aria-label]tickerToggleLabel" style="position:absolute; top:50%; transform:translateY(-50%); inset-inline-end:6px; z-index:3; background:none; border:none; box-shadow:none; padding:2px; margin:0; color:rgba(255,255,255,.45); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; line-height:1;" onmouseover="this.style.color='rgba(255,255,255,.85)'" onmouseout="this.style.color='rgba(255,255,255,.45)'"><svg id="stockTickerToggleIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="18 15 12 9 6 15"></polyline></svg><!-- v-ticker-ai (طلب المالك): حين يكون الشريط مطويًّا يظهر مكانه أيقونة ذكاء ذهبيّة تومض بخفّة؛ الضغط يفتح الشريط. --><svg id="stockTickerAiIcon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.6 4.9a3 3 0 0 0 1.9 1.9L20.5 11l-4.9 1.6a3 3 0 0 0-1.9 1.9L12 19.5l-1.6-4.9a3 3 0 0 0-1.9-1.9L3.5 11l4.9-1.6a3 3 0 0 0 1.9-1.9z"></path><path d="M19 3.5l.5 1.6.5.4 1.6.5-1.6.5-.5.4-.5 1.6-.5-1.6-.4-.5L17 6l1.6-.5.4-.4z"></path></svg></button>
 </div>
 
 <div id="drawerBackdrop"></div>
 
 <main>
   <div id="sidebar" style="background:#000;">
+    <!-- v-drawer-close (طلب المالك): زرّ إغلاق ظاهر لدرج المحادثات على الجوّال (مع السحب القائم). يظهر على الجوّال فقط. -->
+    <button type="button" id="sidebarCloseBtn" aria-label="إغلاق القائمة" data-i18n="[aria-label]closeTitle" title="إغلاق" data-i18n-title="closeTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
     <!-- v-sidebar-brand (طلب عمران ١٨ سبتمبر بلقطتين): الشعار الذهبيّ في رأس القائمة الجانبيّة مكان «محادثة جديدة»، والزرّ تحته مباشرة — سطح المكتب فقط؛ الجوّال يبقي شعار الرأس. -->
     <div id="sidebarBrand" class="sidebarBrand" title="عمران AI"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg" width="126" height="42"></div>
     <script>/* v-sidebar-brand: يتبع شعار الرأس (بُدّل أثناء التحليل حسب اللغة المحفوظة) فلا وميض */
@@ -817,7 +819,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=hw-twa-2"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=ee9c4ac1"></script>
+    <script defer src="/js/app.bundle.js?v=8c959b42"></script>
     <script defer src="/js/modes.js?v=m150915e"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
