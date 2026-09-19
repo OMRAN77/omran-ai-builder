@@ -27,14 +27,17 @@ test('css/tokens.css: شريط #tabs بلون صندوق الكتابة #101013�
   // نفس لون صندوق الكتابة في redesign.css
   const redesign = read('css/redesign.css');
   assert.match(redesign, /html #composerBox\{\s*background:#101013 !important;/, 'صندوق الكتابة لونه #101013 (المرجع)');
-  assert.ok(read('index.html').includes('css/tokens.css?v=701'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=702'), 'وسم كاش tokens.css رُفع');
 });
 
-test('index.html: خلفية لوحة العمل #workarea بلون صندوق الكتابة #101013 (المعاينة/الكود فقط)', () => {
+test('index.html + css: خلفية لوحة العمل ومحرّر الكود بلون صندوق الكتابة #101013 (المعاينة/الكود)', () => {
   const html = read('index.html');
+  const css = read('css/tokens.css');
   assert.match(html, /<div id="workarea" style="background:#101013;">/, 'خلفية لوحة العمل = #101013');
+  // اللوحتان بموضع absolute inset:0 تغطّيان #workarea، فمحرّر الكود نفسه لازم يحمل اللون
+  assert.match(css, /#code\{[\s\S]*?background:#101013;/, 'خلفية محرّر الكود = #101013');
   // المحادثة (body) تبقى سوداء — لم يُطلب تغييرها
-  assert.match(read('css/tokens.css'), /--bg:#000000;/, 'خلفية التطبيق الأساسيّة سوداء كما هي');
+  assert.match(css, /--bg:#000000;/, 'خلفية التطبيق الأساسيّة سوداء كما هي');
 });
 
 test('js/app-05-ui.js: تبديل التبويب يعتمد data-tab لا نصّ التبويب', () => {
