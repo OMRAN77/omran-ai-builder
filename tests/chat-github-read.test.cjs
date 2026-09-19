@@ -118,6 +118,19 @@ test('٣. المالك: القراءة بمفتاحه (بلا anonymous)', async
   }
 });
 
+test('٥. v-cohere-tools: Cohere يمرّ بمسار الأدوات عبر الوسيط فيحمل read_github (كان مباشرًا بلا أدوات)', async () => {
+  for (const f of ['js/app-06-checkout.js', 'js/app.bundle.js']) {
+    assert.ok(read(f).includes("const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere'];"), f + ': Cohere في قائمة مسار الأدوات');
+  }
+  ghCalls.length = 0;
+  const r = await ask('cohere', 'gh-user', { url: 'https://github.com/OMRAN77/omran-ai-builder' });
+  assert.match(r.bodies[0].url, /openrouter\.ai\/api\/v1\/messages/);
+  assert.equal(r.bodies[0].body.model, 'cohere/command-a');
+  assert.ok(r.bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تصل Cohere');
+  assert.equal(ghCalls.length, 1);
+  assert.deepEqual(ghCalls[0].opts, { anonymous: true });
+});
+
 test('٤. سطر الأثر يستعمل مفاتيح الترجمة القائمة (لا نصّ واجهة جديد بالـ١٤ لغة)', () => {
   const s = read('api/_lib/chat.js');
   const i = s.indexOf("if (name === 'read_github') {");

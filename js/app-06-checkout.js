@@ -2011,7 +2011,7 @@ async function callClaude(messages, onDelta){
 // 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات الخمس (مُتحقَّق حيًّا).
 // cohere وperplexity وopenrouter خارجها عمدًا: الأوّلان لا يدعمان الأدوات على
 // هذا الطريق، والثالث مفتاح المستخدم نفسه.
-const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq'];
+const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة */
 
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
