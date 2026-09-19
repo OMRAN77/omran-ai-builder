@@ -1155,9 +1155,11 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
 #sidebarCloseBtn{ display:none; }
 html.mobile-ui #sidebarCloseBtn{
   display:inline-flex; align-items:center; justify-content:center;
-  position:absolute; top:calc(8px + env(safe-area-inset-top)); inset-inline-end:10px; z-index:8;
-  width:34px; height:34px; border-radius:50%;
-  background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--text);
-  cursor:pointer; padding:0;
+  position:absolute; top:calc(8px + env(safe-area-inset-top)); inset-inline-end:10px; z-index:9999;
+  width:38px; height:38px;
+  /* سهم ذهبيّ للطيّ (داخل/خارج) بلا دائرة ولا إطار — طلب المالك */
+  background:none; border:none; border-radius:0; box-shadow:none;
+  color:#d4af37; cursor:pointer; padding:0;
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));
 }
-html.mobile-ui #sidebarCloseBtn:active{ background:rgba(255,255,255,.12); }
+html.mobile-ui #sidebarCloseBtn:active{ opacity:.65; }
