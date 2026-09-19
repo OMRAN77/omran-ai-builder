@@ -477,6 +477,33 @@ body #btnMode{ display: none !important; }
   }
 }
 </style>
+<style>
+/* v-chat-center-narrow (لقطة عمران ١٩ سبتمبر «المحادثة كأنّها مسطرة… أريدها في الوسط عندما
+   أغلق الطرفين — مثل الصورة الأخيرة»): نافذة كمبيوتر ضيّقة (≤ ٨٦٠px بالتكبير أو مقياس الشاشة)
+   تأخذ فئة mobile-ui تلقائيًّا (isNarrow أعلاه) فيصير الجانبيّ واللوحة درجين مخفيَّين وتسقط
+   شبكة v-frame-c وعمودها الموسّط، وتمتدّ الرسائل وصندوق الكتابة من حافة إلى حافة. هنا العمود
+   الموسّط نفسه بهامش نسبيّ من عرض النافذة (--om-chat-narrow-inset) لا بالبكسل الثابت، فيبقى
+   في الوسط كما في واجهة الـCode مهما ضاقت النافذة. التمييز بالمؤشّر لا بالفئة: فأرة دقيقة
+   (pointer:fine + hover) = كمبيوتر ضيّق؛ واللمس بعرض لوح (≥ ٧٠٠px، لقطة المالك الثانية من
+   لوح) = العمود نفسه؛ الهاتف (لمس دون ٧٠٠px) خارج الكتلة كلّها فلا يُمسّ. المحدّدات بوزن
+   html.mobile-ui[dir] لتغلب حشوة الجوّال (html.mobile-ui[dir="rtl"] #messages{padding-left:56px
+   !important})، وعلى الكمبيوتر العريض (بلا الفئة) لا تسري. الرجوع: احذف الكتلة. */
+@media (max-width: 860px) and (hover: hover) and (pointer: fine), (min-width: 700px) and (pointer: coarse){
+  :root{ --om-chat-narrow-inset: 12%; }
+  html.mobile-ui[dir] body #messages{ padding-inline: 0 !important; }
+  html.mobile-ui[dir] body #inputbar{ padding-inline: 0 !important; }
+  html.mobile-ui[dir] body #omranHero,
+  html.mobile-ui[dir] body #messages > *,
+  html.mobile-ui[dir] body #askAllHintTip,
+  html.mobile-ui[dir] body #composerRow,
+  html.mobile-ui[dir] body #omranBelowComposer{
+    width: auto !important;
+    max-width: none !important;
+    box-sizing: border-box;
+    margin-inline: max(var(--om-chat-pad, 32px), var(--om-chat-narrow-inset)) !important;
+  }
+}
+</style>
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
 #omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
@@ -819,7 +846,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=hw-twa-2"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=24b8449e"></script>
+    <script defer src="/js/app.bundle.js?v=03e921fb"></script>
     <script defer src="/js/modes.js?v=m150915e"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
