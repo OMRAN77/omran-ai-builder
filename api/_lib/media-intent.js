@@ -72,7 +72,7 @@ async function handler(req, res) {
     const gate = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'media-intent', DAILY_LIMIT);
     if (!gate || !gate.allowed) { res.status(200).json({ lane: null, source: 'limit' }); return; }
   } catch (e) { /* العدّاد تحسين لا شرط */ }
-  const r = await classifyMediaIntentLLM({ apiKey, text, timeoutMs: 5000 });
+  const r = await classifyMediaIntentLLM({ apiKey, text, timeoutMs: 2200 }); /* v-chat-fast: تحت مهلة العميل (٢٫٥ث) */
   if (!r) { res.status(200).json({ lane: null, source: 'unavailable' }); return; }
   res.status(200).json({ lane: r.lane, confidence: r.confidence, source: 'llm' });
 }

@@ -84,7 +84,7 @@ const NAMED = [
   ['api/_lib/chat.js', 1155, 'customInstructionsBlock('],
   ['api/_lib/chat.js', 1244, 'imageTurnConfig('],
   ['api/_lib/chat.js', 1288, 'if (__freeLane)'],
-  ['api/_lib/chat.js', 1356, 'v-king-fallback'],
+  ['api/_lib/chat.js', 1377, 'v-king-fallback'],
   ['api/_lib/tier.js', 81, 'const DEFAULT_CHAIN'],
   ['api/_lib/tier.js', 102, 'function isOwnerUsername('],
   ['api/_lib/tier.js', 107, 'function planActive('],
