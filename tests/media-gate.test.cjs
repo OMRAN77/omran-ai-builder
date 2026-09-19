@@ -103,7 +103,7 @@ test('__VID_MAKE_RE مضيَّق بحدود عربيّة: «تسوي فيديو�
 test('كلّ مسار إنشاء كلماتيّ يحمل شرط البوّابة، في الجزء والحزمة', () => {
   for (const f of ['js/app-09-attach.js', 'js/app.bundle.js']) {
     const s = read(f);
-    assert.ok(s.includes("__mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : await omranMediaIntent(text);"), f + ': البوّابة تُحسب أوّل الإرسال');
+    assert.ok(s.includes("__mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : (__MEDIA_MAKE_RE.test(text) ? await omranMediaIntent(text) : null); /* v-chat-fast */"), f + ': البوّابة تُحسب أوّل الإرسال، والمصنّف لمرشّح الإنشاء فقط');
     assert.ok(s.includes("&& __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'"), f + ': فتح الصانع');
     assert.ok(s.includes("__mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && (\n"), f + ': __wantsVideo');
     assert.ok(s.includes("__adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */"), f + ': الإعلان');
