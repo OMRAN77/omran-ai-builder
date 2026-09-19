@@ -14,8 +14,9 @@ const block = start > 0 ? html.slice(start, html.indexOf('</style>', start)) : '
 test('الكتلة موجودة بعد v-frame-c (فوز بالترتيب) ومحصورة بالنافذة الضيّقة ذات المؤشّر الدقيق', () => {
   assert.ok(start > 0, 'كتلة v-chat-center-narrow في index.html');
   assert.ok(html.indexOf('/* v-frame-c') < start, 'بعد v-frame-c');
-  assert.match(block, /@media \(max-width: 860px\) and \(hover: hover\) and \(pointer: fine\)\{/, 'نافذة ضيّقة + فأرة فقط');
-  assert.ok(!/min-width/.test(block), 'لا تمسّ الشبكة العريضة');
+  assert.match(block, /@media \(max-width: 860px\) and \(hover: hover\) and \(pointer: fine\), \(min-width: 700px\) and \(pointer: coarse\)\{/, 'نافذة ضيّقة بفأرة، أو لمس بعرض لوح');
+  // الهاتف (لمس دون ٧٠٠px) خارج الاستعلام؛ والكمبيوتر العريض بلا فئة mobile-ui فلا تسري عليه المحدّدات
+  assert.ok(!/\(max-width: 699px\)|\(max-width: 600px\)/.test(block), 'لا فرع للهاتف');
   // الفئة mobile-ui تُضاف تلقائيًّا للنافذة الضيّقة (isNarrow) — الكتلة تعتمد على ذلك
   assert.ok(html.includes("var isNarrow = window.matchMedia('(max-width:860px)').matches;"), 'حدّ الضيق في index.html كما تفترضه الكتلة');
 });

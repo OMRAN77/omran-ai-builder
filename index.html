@@ -484,10 +484,11 @@ body #btnMode{ display: none !important; }
    شبكة v-frame-c وعمودها الموسّط، وتمتدّ الرسائل وصندوق الكتابة من حافة إلى حافة. هنا العمود
    الموسّط نفسه بهامش نسبيّ من عرض النافذة (--om-chat-narrow-inset) لا بالبكسل الثابت، فيبقى
    في الوسط كما في واجهة الـCode مهما ضاقت النافذة. التمييز بالمؤشّر لا بالفئة: فأرة دقيقة
-   (pointer:fine + hover) = كمبيوتر؛ الجوّال واللوح الحقيقيّان (لمس = pointer:coarse) خارج
-   الكتلة كلّها فلا يُمسّان. المحدّدات بوزن html.mobile-ui[dir] لتغلب حشوة الجوّال
-   (html.mobile-ui[dir="rtl"] #messages{padding-left:56px !important}). الرجوع: احذف الكتلة. */
-@media (max-width: 860px) and (hover: hover) and (pointer: fine){
+   (pointer:fine + hover) = كمبيوتر ضيّق؛ واللمس بعرض لوح (≥ ٧٠٠px، لقطة المالك الثانية من
+   لوح) = العمود نفسه؛ الهاتف (لمس دون ٧٠٠px) خارج الكتلة كلّها فلا يُمسّ. المحدّدات بوزن
+   html.mobile-ui[dir] لتغلب حشوة الجوّال (html.mobile-ui[dir="rtl"] #messages{padding-left:56px
+   !important})، وعلى الكمبيوتر العريض (بلا الفئة) لا تسري. الرجوع: احذف الكتلة. */
+@media (max-width: 860px) and (hover: hover) and (pointer: fine), (min-width: 700px) and (pointer: coarse){
   :root{ --om-chat-narrow-inset: 12%; }
   html.mobile-ui[dir] body #messages{ padding-inline: 0 !important; }
   html.mobile-ui[dir] body #inputbar{ padding-inline: 0 !important; }
