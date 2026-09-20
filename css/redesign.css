@@ -422,7 +422,7 @@ header{background:var(--bg); backdrop-filter:none;}
    بإطار ذهبي متوهج. نفس التصميم على الجوال والكمبيوتر وفي الوضعين. ═══ */
 html #composerBox{
   background:#101013 !important; border:1px solid rgba(212,175,55,.28) !important; border-radius:999px !important;
-  padding:3px 8px !important; gap:8px !important; align-items:center !important; min-height:46px; /* v-composer-short (طلب المالك): أقصر ارتفاعًا */
+  padding:2px 8px !important; gap:8px !important; align-items:center !important; min-height:42px; /* v-composer-short2 (طلب المالك): أقصر ارتفاعًا بعد شوي */
   box-shadow:0 6px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
 }
 html #composerBox:focus-within{border-color:rgba(212,175,55,.6) !important; box-shadow:0 0 0 3px rgba(212,175,55,.10), 0 6px 24px rgba(0,0,0,.35) !important;}
@@ -453,15 +453,15 @@ html #composerBox > #prompt::placeholder{color:#8f8a7c;}
 /* زر الإرسال: دائرة بإطار ذهبي وتوهّج، في أقصى اليسار */
 html #composerBox > #btnStop, html #composerBox > #btnSend{order:3 !important; margin-inline-start:0 !important;}
 html #composerBox > #btnSend{
-  width:40px !important; height:40px !important; flex:0 0 40px !important; border-radius:999px !important;
+  width:36px !important; height:36px !important; flex:0 0 36px !important; border-radius:999px !important;
   background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
   box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important; opacity:1 !important;
 }
-html #composerBox > #btnSend svg{width:19px; height:19px; stroke:#d4af37;}
+html #composerBox > #btnSend svg{width:17px; height:17px; stroke:#d4af37;}
 html #composerBox.typing > #btnSend{box-shadow:0 0 0 3px rgba(212,175,55,.18), 0 0 22px rgba(212,175,55,.55) !important;}
 /* v-stop-gold (طلب المالك): زرّ الإيقاف بنفس مظهر الإرسال الذهبيّ بدل الأحمر */
 html #composerBox > #btnStop{
-  width:40px !important; height:40px !important; flex:0 0 40px !important; border-radius:999px !important;
+  width:36px !important; height:36px !important; flex:0 0 36px !important; border-radius:999px !important;
   background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
   box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important;
 }

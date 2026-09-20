@@ -42,7 +42,7 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=710'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=711'), 'وسم كاش tokens.css رُفع');
 });
 
 test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الطيّ فوق بأيقونة اللوحة، الإيقاف ذهبيّ، سحب حرّ', () => {
@@ -75,8 +75,20 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=673'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=674'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
+});
+
+test('v-wa-handle-icon: مقبض سحب لوحة المعاينة/الكود أيقونة وحدها بلا مستطيل ولا خطّ، أصغر', () => {
+  const css = read('css/tokens.css');
+  // بلا خلفيّة ولا إطار (المستطيل/الخطّ اتشال) — أيقونة فقط
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*background:none; border:none; border-radius:0;/, 'المقبض بلا مستطيل ولا خطّ');
+  // أصغر من قبل (كان 28×30)
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*width:22px; height:22px;/, 'المقبض أصغر');
+  // الأيقونة (SVG اللوحة المقسومة) باقية
+  assert.match(css, /body\.waCollapsedMode #waReopen svg\{width:16px; height:16px;\}/, 'أيقونة اللوحة باقية');
+  // بلا خلفيّة عند المرور أيضًا (يبقى أيقونة صافية)
+  assert.match(css, /body\.waCollapsedMode #waReopen:hover\{color:var\(--text\); background:none;\}/, 'بلا مستطيل عند المرور');
 });
 
 test('v-align + v-badge-white: محاذاة الأدوات/المزوّد لحافّتَي الصندوق، وشارة الموديل للمالك بيضاء', () => {

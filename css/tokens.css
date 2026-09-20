@@ -246,9 +246,10 @@
     html:not(.mobile-ui) #waCollapseBtn{display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:var(--muted); cursor:pointer; padding:10px 12px;}
     html:not(.mobile-ui) #waCollapseBtn:hover{color:var(--text);}
     /* v-collapse-top (طلب المالك): مقبض الطيّ الصغير فوق (لا في النص)، بأيقونة اللوحة المقسومة */
-    html:not(.mobile-ui) body.waCollapsedMode #waReopen{display:flex; align-items:center; justify-content:center; position:fixed; top:54px; inset-inline-end:0; z-index:70; width:28px; height:30px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); border-inline-end:none; border-start-start-radius:9px; border-end-start-radius:9px; color:var(--muted); cursor:pointer; padding:0;}
-    html:not(.mobile-ui) body.waCollapsedMode #waReopen svg{width:15px; height:15px;}
-    html:not(.mobile-ui) body.waCollapsedMode #waReopen:hover{color:var(--text); background:rgba(255,255,255,.12);}
+    /* v-wa-handle-icon (طلب المالك): مقبض سحب لوحة المعاينة/الكود = أيقونة وحدها بلا مستطيل ولا خطّ */
+    html:not(.mobile-ui) body.waCollapsedMode #waReopen{display:flex; align-items:center; justify-content:center; position:fixed; top:54px; inset-inline-end:2px; z-index:70; width:22px; height:22px; background:none; border:none; border-radius:0; color:var(--muted); cursor:pointer; padding:0;}
+    html:not(.mobile-ui) body.waCollapsedMode #waReopen svg{width:16px; height:16px;}
+    html:not(.mobile-ui) body.waCollapsedMode #waReopen:hover{color:var(--text); background:none;}
     /* عند الطي: المحادثة تتوسع وتاخذ كامل المساحة */
     html:not(.mobile-ui) body.waCollapsedMode #chatcol{width:auto !important; flex:1 1 auto;}
   }
@@ -345,7 +346,7 @@
   :root{ --om-hl:#e3b341; }
   /* v-hl-links-only (طلب المالك): الإنجليزي والأرقام تبقى بيضاء عاديّة —
      الأصفر للروابط فقط (عبر نمط الوسم <a>). لا نلوّن om-en. */
-  #inputbar{padding:4px 12px 4px; border-top:none; display:flex; flex-direction:column; gap:3px; position:relative;} /* v-composer-lower (طلب المالك): تضييق الفراغ فينزل الصندوق */
+  #inputbar{padding:2px 12px 4px; border-top:none; display:flex; flex-direction:column; gap:2px; position:relative;} /* v-composer-lower2 (طلب المالك): تضييق الفراغ فوق أكثر فينزل الصندوق */
   #inputbar .inputbar-tools{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
   #inputbar .inputbar-tools-left{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
   #btnAttach, #btnEmoji, #btnMic, #btnVoiceChat, #btnStop{flex:0 0 auto; font-size:18px; line-height:1; padding:10px 12px;}
