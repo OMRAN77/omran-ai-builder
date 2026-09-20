@@ -20349,41 +20349,9 @@ function __showImgLoading(el, ar, en){
           if(e && e.name === 'AbortError') return;
           __swallow(e, 'img:letter-swap'); /* يسقط بهدوء لمسار القناع الاحتياطي */
         }
-        try{
-          chatPhase('🔎', lang === 'ar' ? 'جاري قراءة الكتابة على الصورة…' : 'Reading the text on the image…', thinkingDiv);
-          const __tsShr = await omranShrinkForEdit(__b64, __mime, 1280); /* مع قناع: صورتان في الطلب */
-          const __tsRes = await fetch('/api/tools?action=text-swap', {
-            method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
-            body: JSON.stringify({ imageBase64:__tsShr.b64, mimeType:__tsShr.mime, request:String(text || '').slice(0, 400), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
-          });
-          const __tsSpec = await __tsRes.json().catch(() => ({}));
-          if(__tsRes.ok && __tsSpec.found && __tsSpec.box && __tsSpec.newLine){
-            chatPhase('✍️', lang === 'ar' ? 'جاري تبديل النص بدون المساس بالصورة…' : 'Swapping the text in place…', thinkingDiv);
-            const __masked = await omranBuildTextEditMask(__b64, __mime, __tsSpec.box);
-            const __maskedRes = await fetch('/api/maha-image', {
-              method:'POST', headers:{ 'Content-Type':'application/json' }, signal:genAbortController.signal,
-              body:JSON.stringify({
-                prompt:'Replace only the selected existing text with exactly «' + __tsSpec.newLine + '». Match its original style, color, size and alignment. Do not change anything outside the transparent mask.',
-                editImageBase64:__masked.sourceB64, editMimeType:'image/png', editMaskBase64:__masked.maskB64,
-                exactTextEdit:true, token:authGet('aiapp_auth_token'), guestId:window.getGuestId()
-              })
-            });
-            const __maskedData = await __maskedRes.json().catch(() => ({}));
-            if(!__maskedRes.ok || !__maskedData.imageBase64) throw new Error('masked_text_edit_failed');
-            const __tsB64 = await omranMergeTextEditRegion(__masked.sourceB64, 'image/png', __maskedData.imageBase64, __maskedData.mimeType || 'image/png', __masked.region);
-            cur.lastEditedImage = { b64: __tsB64, mime: 'image/png' };
-            cur.lastMsgWasImageEdit = true;
-            cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:'image/png', dataUrl:'data:image/png;base64,' + __tsB64 }] });
-            renderAll(); saveState(); return;
-          }
-        }catch(e){
-          if(e && e.name === 'AbortError') return;
-          __swallow(e, 'img:text-swap');
-          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّر تبديل الحرف بدقة هذه المرة. أعد المحاولة بدون تغيير بقية الصورة.':'The character could not be replaced precisely this time. Please retry.' });
-          cur.lastMsgWasImageEdit = true;
-          renderAll(); saveState(); return;
-        }
-        cur.messages.push({ role:'assistant', content:lang==='ar'?'لم أستطع تحديد الحرف المطلوب بثقة. حدده بكلمة أوضح.':'I could not locate the requested character confidently.' });
+        /* v-lanes (قرار المالك ٢٠ سبتمبر «التعديل مرّة وحدة»): تبديل الحرف ضربة واحدة عند الخادم (مسار النصّ → GPT).
+           مرحلتا «قراءة الموضع بالرؤية ثمّ قناع» الاحتياطيّتان أُزيلتا — فشل الخادم = مصارحة لا محاولة ثالثة. */
+        cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّر تبديل النصّ هذه المرّة — أعد المحاولة أو صِف الكلمة المطلوبة بوضوح أكثر.':'Could not swap the text this time — retry or describe the target word more clearly.' });
         cur.lastMsgWasImageEdit = true;
         renderAll(); saveState(); return;
       }
