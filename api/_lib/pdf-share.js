@@ -26,19 +26,40 @@ module.exports = async (req, res) => {
       const n = parseInt(parts[1], 10) || 0;
       const name = parts.slice(2).join(':') || 'omran-ai.pdf';
       const pieces = [];
-      for (let i = 0; i < n; i++) { const c = await kvGetRaw(KEY(id) + ':' + i); if (!c) { res.status(404).json({ error: 'not_found' }); return; } pieces.push(String(c)); }
+      let failed = false;
+      for (let i = 0; i < n; i++) {
+        let c = await kvGetRaw(KEY(id) + ':' + i);
+        if (!c) {
+          // إعادة محاولة واحدة إذا فشلت المرة الأولى (خطأ شبكة مؤقت)
+          await new Promise(r => setTimeout(r, 100));
+          c = await kvGetRaw(KEY(id) + ':' + i).catch(() => null);
+        }
+        if (!c) {
+          failed = true;
+          break;
+        }
+        pieces.push(String(c));
+      }
+      if (failed) { res.status(503).json({ error: 'chunk_missing', detail: 'جزء من الملف اختفى — حاول لاحقًا' }); return; }
       s = name + ':' + pieces.join('');
     }
     // الصيغة: name:base64 — الاسم بلا نقطتين (يُعقَّم عند الحفظ)
     const i = s.indexOf(':');
     const name = i > 0 ? s.slice(0, i) : 'omran-ai.pdf';
-    const buf = Buffer.from(s.slice(i + 1), 'base64');
+    let buf;
+    try {
+      buf = Buffer.from(s.slice(i + 1), 'base64');
+    } catch (e) {
+      res.status(400).json({ error: 'corrupt', detail: 'بيانات الملف معيوبة' });
+      return;
+    }
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Length', String(buf.length));
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.setHeader('Accept-Ranges', 'bytes');
     // اسم عربي في الترويسة يحتاج ترميز RFC 5987 — وإلا كسر بعض الوسطاء
     const ascii = name.replace(/[^\x20-\x7E]/g, '-').replace(/["\\]/g, '-') || 'omran-ai.pdf';
     res.setHeader('Content-Disposition', 'attachment; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(name));
+    res.setHeader('Content-Length', String(buf.length));
     res.status(200).send(buf);
     return;
   }
@@ -65,8 +86,18 @@ module.exports = async (req, res) => {
     } else {
       const n = Math.ceil(data.length / CHUNK);
       ok = true;
-      for (let i = 0; i < n && ok; i++) ok = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
+      const failed = [];
+      for (let i = 0; i < n && ok; i++) {
+        const ok_i = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
+        if (!ok_i) failed.push(i);
+        ok = ok && ok_i;
+      }
+      // إذا أي جزء فشل، لا تحفظ الفهرس (لا تترك أجزاء يتيمة)
       if (ok) ok = await kvSetIfAbsent(KEY(id), 'chunks:' + n + ':' + name, TTL_SEC);
+      if (!ok) {
+        res.status(500).json({ error: 'store_failed', detail: 'فشل حفظ جزء من الملف' });
+        return;
+      }
     }
     if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
     res.status(200).json({ id, url: '/p/' + id, ttlDays: 7 });

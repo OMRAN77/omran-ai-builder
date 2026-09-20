@@ -30,6 +30,34 @@ const SUB_WINDOW_MS = SUB_WINDOW_DAYS * 86400000;
 // المجانية والأدوات الصغيرة) يبقى على سقف الطبقة اليومي.
 const PAID_PROVIDERS = ['claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'agent'];
 
+/* v-plan-routing (قرار المالك ٢٠ سبتمبر — جدول الباقات النهائيّ): لكلّ باقة مزوّد للدردشة والأسئلة
+   العاديّة، ومزوّد أقوى لأدوار البرمجة/البناء/الرياضيات/الملفّ الطويل، وقائمة مسموح بها في المنتقي،
+   وسلسلة التقاط داخل الباقة (أرخص فأرخص) تسبق السلسلة المجّانيّة. المالك وVIP والمجّانيّ خارج الجدول.
+   model = موديل كلود من CLAUDE_MODELS في chat.js؛ بلا model = افتراضيّ المزوّد (OR_MODELS). */
+const PLAN_ROUTING = {
+  basic: { chat: { prov: 'deepseek' }, strong: { prov: 'deepseek' }, allowed: ['deepseek', 'groq'], fallback: [{ prov: 'groq' }] },
+  pro: { chat: { prov: 'deepseek' }, strong: { prov: 'claude', model: 'claude-haiku-4-5' }, allowed: ['deepseek', 'groq', 'gemini', 'mistral'], fallback: [{ prov: 'gemini' }, { prov: 'deepseek' }] },
+  max: { chat: { prov: 'claude', model: 'claude-haiku-4-5' }, strong: { prov: 'claude', model: 'claude-sonnet-5' }, allowed: ['claude', 'openai', 'gemini', 'mistral', 'deepseek', 'groq', 'cohere'], fallback: [{ prov: 'openai' }, { prov: 'gemini' }, { prov: 'deepseek' }] },
+};
+// الدور القويّ: نصّ طويل (وثيقة/ملفّ) أو كتلة كود أو كلمات برمجة/بناء/رياضيات.
+const STRONG_TURN_RE = /```|(?:^|[\s،,.:؛()"'«»-])(?:ال|بال|وال|لل|فال|كال)?(?:كود|كودي|برمج|برمجة|سكربت|سكريبت|دالة|دوال|خوارزميّ?ة|bug|error|exception|debug|api|json|sql|regex|html|css|javascript|typescript|python|react|node|docker|ابنِ|ابني|اعمل(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة|برنامج|بوت|لعبة)|صمّ?م(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة)|احسب|معادلة|معادلات|مشتقّ?ة|تكامل|مصفوفة|احتمال|إحصاء|جبر|ضريبة|فائدة\s+مركّ?بة|نسبة\s+مئويّ?ة|calculate|solve|equation|integral|derivative|matrix|probability|statistics|function|class|compile)(?=$|[\s،,.:؛()"'«»?؟!-])/i;
+function isStrongTurn(text) {
+  const s = String(text || '');
+  if (s.length >= 600) return true;
+  return STRONG_TURN_RE.test(s);
+}
+/* قرار التوجيه لطلب مشترك: الدور القويّ → strong؛ وإلّا المزوّد المطلوب إن كان مسموحًا؛ وإلّا افتراضيّ
+   الباقة. الالتقاط = سلسلة الباقة بلا المزوّد المختار. غير المشترك (مالك/VIP/مجّانيّ/ضيف) → null. */
+function planRoute(tier, requestedProv, lastUserText) {
+  const plan = (tier && tier.tier === 'sub') ? String(tier.plan || '').toLowerCase() : '';
+  const r = PLAN_ROUTING[plan];
+  if (!r) return null;
+  const strong = isStrongTurn(lastUserText);
+  const req = String(requestedProv || '').toLowerCase();
+  const pick = (strong && r.strong) ? r.strong : ((req && r.allowed.includes(req)) ? (req === r.chat.prov ? r.chat : { prov: req }) : r.chat);
+  return { plan, strong, prov: pick.prov, model: pick.model || '', fallback: r.fallback.filter((f) => f.prov !== pick.prov), allowed: r.allowed.slice() };
+}
+
 // أسماء النماذج تتغيّر باستمرار (المجسّ ١٢ سبتمبر: gemini-2.5-flash «لم يعد
 // متاحًا للمستخدمين الجدد»، llama-3.3-70b حُذف من Groq، mistral-large خارج
 // الطبقة المجانية، ونسخة OpenRouter المجانية أُزيلت). لذلك لكل مزوّد قائمة
@@ -78,7 +106,9 @@ const FREE_PROVIDER_SPECS = {
     vision: false,
   },
 };
-const DEFAULT_CHAIN = ['gemini', 'groq', 'mistral', 'openrouter'];
+// v-plan-routing (قرار المالك ٢٠ سبتمبر: «المجّاني ٥ رسائل على Groq من غير أيّ شي»): Groq أوّلًا،
+// والباقون التقاطٌ عند تعطّله فقط (429/5xx). FREE_CHAIN في البيئة يغيّر الترتيب بلا نشر.
+const DEFAULT_CHAIN = ['groq', 'gemini', 'mistral', 'openrouter'];
 
 function envInt(env, name, def) {
   const raw = env && env[name] !== undefined && env[name] !== null ? String(env[name]).trim() : '';
@@ -91,11 +121,12 @@ function envInt(env, name, def) {
 function caps(env) {
   const e = env || process.env;
   return {
+    // v-plan-routing: الأسقف النهائيّة (قرار المالك ٢٠ سبتمبر): مجّاني ٥ · Plus ٥٠ · Pro ١٠٠ · Max ٢٥٠.
     guest: envInt(e, 'GUEST_DAILY', 3),
-    free: envInt(e, 'FREE_DAILY', 10),
+    free: envInt(e, 'FREE_DAILY', 5),
     basic: envInt(e, 'SUB_DAILY_BASIC', 50),
-    pro: envInt(e, 'SUB_DAILY_PRO', 150),
-    max: envInt(e, 'SUB_DAILY_MAX', 400),
+    pro: envInt(e, 'SUB_DAILY_PRO', 100),
+    max: envInt(e, 'SUB_DAILY_MAX', 250),
   };
 }
 
@@ -194,4 +225,5 @@ const FREE_TEXT = {
 module.exports = {
   PLAN_KEYS, SUB_WINDOW_DAYS, PAID_PROVIDERS, FREE_PROVIDER_SPECS, DEFAULT_CHAIN, FREE_TEXT,
   caps, planActive, resolveTier, invalidateTier, isPaidProvider, freeChain, isOwnerUsername,
+  PLAN_ROUTING, isStrongTurn, planRoute, // v-plan-routing
 };

@@ -71,25 +71,31 @@ const NAMED = [
   ['api/_lib/chat.js', 565, 'function pickClaudeModel('],
   ['api/_lib/chat.js', 572, 'const OR_MODELS'],
   ['api/_lib/chat.js', 1012, 'module.exports = async'],
-  ['api/_lib/chat.js', 1033, 'const viaOR'],
-  ['api/_lib/chat.js', 1036, 'const apiKey'],
+  ['api/_lib/chat.js', 1033, 'let viaOR'],
+  ['api/_lib/chat.js', 1036, 'let apiKey'],
   ['api/_lib/chat.js', 1037, 'ANTHROPIC_API_KEY / OPENROUTER_API_KEY'],
-  ['api/_lib/chat.js', 1038, 'const CHAT_URL'],
-  ['api/_lib/chat.js', 1044, 'const DEFAULT_MODEL'],
+  ['api/_lib/chat.js', 1038, 'let CHAT_URL'],
+  ['api/_lib/chat.js', 1044, 'let DEFAULT_MODEL'],
+  ['api/_lib/chat.js', 1055, 'const applyRoute'], // v-plan-routing
   ['api/_lib/chat.js', 1049, 'pickClaudeModel('],
-  ['api/_lib/chat.js', 1099, 'checkAndConsume('],
-  ['api/_lib/chat.js', 1100, 'usage.allowed'],
-  ['api/_lib/chat.js', 1115, '__freeLane'],
-  ['api/_lib/chat.js', 1176, 'const sysParts'],
-  ['api/_lib/chat.js', 1183, 'customInstructionsBlock('],
-  ['api/_lib/chat.js', 1272, 'imageTurnConfig('],
-  ['api/_lib/chat.js', 1316, 'if (__freeLane)'],
-  ['api/_lib/chat.js', 1405, 'v-king-fallback'],
-  ['api/_lib/tier.js', 81, 'const DEFAULT_CHAIN'],
-  ['api/_lib/tier.js', 102, 'function isOwnerUsername('],
-  ['api/_lib/tier.js', 107, 'function planActive('],
-  ['api/_lib/tier.js', 122, 'async function resolveTier('],
-  ['api/_lib/tier.js', 167, 'function freeChain('],
+  ['api/_lib/chat.js', 1126, '__planRoute = tierLib.planRoute('], // v-plan-routing
+  ['api/_lib/chat.js', 1132, 'checkAndConsume('],
+  ['api/_lib/chat.js', 1133, 'usage.allowed'],
+  ['api/_lib/chat.js', 1148, '__freeLane'],
+  ['api/_lib/chat.js', 1202, 'const sysParts'],
+  ['api/_lib/chat.js', 1209, 'customInstructionsBlock('],
+  ['api/_lib/chat.js', 1298, 'imageTurnConfig('],
+  ['api/_lib/chat.js', 1342, 'if (__freeLane)'],
+  ['api/_lib/chat.js', 1428, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
+  ['api/_lib/chat.js', 1443, 'v-king-fallback'],
+  ['api/_lib/tier.js', 37, 'const PLAN_ROUTING'], // v-plan-routing
+  ['api/_lib/tier.js', 44, 'function isStrongTurn('],
+  ['api/_lib/tier.js', 51, 'function planRoute('],
+  ['api/_lib/tier.js', 111, 'const DEFAULT_CHAIN'],
+  ['api/_lib/tier.js', 133, 'function isOwnerUsername('],
+  ['api/_lib/tier.js', 138, 'function planActive('],
+  ['api/_lib/tier.js', 153, 'async function resolveTier('],
+  ['api/_lib/tier.js', 198, 'function freeChain('],
   ['api/_lib/free-chain.js', 18, 'const FREE_NOTE'],
   ['api/_lib/free-chain.js', 156, 'async function streamFreeChain('],
   ['api/_lib/free-chain.js', 244, 'function modelsToTry('],
@@ -127,9 +133,9 @@ assert.deepStrictEqual(PROVIDERS,
 PROVIDERS.forEach((p) => assert.ok(MAP.includes(p), 'المزوّد ' + p + ' مذكور في الخريطة'));
 
 const DEFAULT_CHAIN = listOf(tier, 'const DEFAULT_CHAIN = [');
-assert.deepStrictEqual(DEFAULT_CHAIN, ['gemini', 'groq', 'mistral', 'openrouter'],
+assert.deepStrictEqual(DEFAULT_CHAIN, ['groq', 'gemini', 'mistral', 'openrouter'], // v-plan-routing: Groq أوّلًا
   'ترتيب السلسلة المجانيّة تغيّر — حدّث §٤ في الخريطة');
-assert.ok(MAP.includes("['gemini','groq','mistral','openrouter']"),
+assert.ok(MAP.includes("['groq','gemini','mistral','openrouter']"),
   'الخريطة تذكر ترتيب السلسلة المجانيّة كما هو في الكود');
 
 const MODES = listOf(ai, 'const MODES = [');

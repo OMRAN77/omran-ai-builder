@@ -71,6 +71,7 @@ module.exports = async (req, res) => {
     // الإنشاء ويُسترجع تلقائيًا لو فشل الطلب عند Runway.
     const pointsLib = require('./points.js');
     let chargedUser = null;
+    let videoLocked = null;
     if (usageResult.username && !pointsLib.isOwnerUsername(usageResult.username)) {
       const gateRw = pointsLib.requireConfirmation(body, pointsLib.COSTS.runway_video, 'فيديو Runway');
       if (gateRw) { res.status(gateRw.status).json(gateRw.payload); return; }
@@ -80,6 +81,16 @@ module.exports = async (req, res) => {
         return;
       }
       chargedUser = usageResult.username;
+      // v-plan-routing: فيديو واحد كلّ ٣ دقائق لكلّ حساب — المالك وVIP خارجها (pay.owner). القفل يُفكّ لو فشل Runway.
+      if (!pay.owner) {
+        const __vl = await require('./abuse-guard.js').videoLock(chargedUser);
+        if (!__vl.ok) {
+          await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
+          res.status(429).json({ error: 'video_cooldown', retryAfter: __vl.retryAfter });
+          return;
+        }
+        videoLocked = chargedUser;
+      }
     }
 
     const picked = pickKey();
@@ -150,6 +161,7 @@ module.exports = async (req, res) => {
     }
     if (!upstream.ok) {
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       // رسالة مفهومة للمستخدم + ذيل تقني قصير للتشخيص — لا JSON خام بطول شاشة.
       const tech = String((data && (data.error || (data.issues && data.issues[0] && data.issues[0].message))) || ('HTTP ' + upstream.status)).slice(0, 160);
       res.status(upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات. (' + tech + ')', retryable: true });
