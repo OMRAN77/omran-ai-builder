@@ -11,7 +11,7 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 test('١. الخادم (v-lanes): المسار الأمين على برو 2K مع إبقاء الحرارة المنخفضة، وبرو/نانو بالبيئة، ونانو خام والإنقاذ كما هما', () => {
   const mi = read('api/_lib/maha-image.js');
   assert.match(mi, /const editModel = \(process\.env\.IMAGE_EDIT_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
-  assert.match(mi, /const __faithfulLane = !!editImageBase64 && !extras\.length && !isCreativeEdit && !isPersonSwap && !isBroadEdit;/);
+  assert.match(mi, /const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;/);
   assert.match(mi, /if \(!nanoPrimary && !__faithfulLane\) delete cfg\.temperature;/, 'الحرارة 0.15 تبقى للمسار الأمين على برو — درس v-edit-pro-revert');
   assert.match(mi, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/, 'الفرز القائم لم يُمسّ');
   assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-2\.5-flash-image'/, 'توغّل «نانو خام» للمالك باقٍ');
