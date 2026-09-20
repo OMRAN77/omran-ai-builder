@@ -264,7 +264,7 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
   /* v-sat-measure: ‎--omran-sat تُقاس في selfdiag.js — env() فقط إذا كانت
      النافذة ممتدة فعلًا تحت شريط الساعة، وإلا صفر (غلاف نازل أساسًا). */
   header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
-  #inputbar{padding:2px 10px 5px;}
+  #inputbar{padding:2px 10px 2px;}
   #composerBox{padding:4px 8px 3px !important; border-radius:16px !important; gap:1px;}
   #prompt{min-height:20px; max-height:84px; font-size:13px; padding:4px 8px 2px;}
   #inputbar .inputbar-tools .btn, #inputbar .inputbar-tools-left .btn{padding:5px;}
@@ -501,12 +501,16 @@ html #inputbar > .inputbar-tools-below{
   background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;
 }
 html #inputbar > .inputbar-tools-below .inputbar-tools-left{display:flex !important; align-items:center; gap:1px;}
-/* v-tools-small (طلب المالك): «+/المايك» أصغر ومتناسقة بلا فراغ كبير */
+/* v-tools-small (طلب المالك): «+/المايك» أصغر ومتناسقة بلا فراغ كبير.
+   v-tools-scope: القياس محصور في أزرار الصفّ الظاهرة فقط (أبناء inputbar-tools-left
+   المباشرين + زرّ «+»)، لا يطال أزرار نافذة «+» المنبثقة (#plusToolsPopup) كي لا تنكسر. */
 html #inputbar > .inputbar-tools-below{margin-top:1px !important;}
-html #inputbar > .inputbar-tools-below .btn,
-html #inputbar > .inputbar-tools-below button,
-html #inputbar > .inputbar-tools-below #btnPlusTools{width:30px !important; height:30px !important; flex:0 0 30px !important;}
-html #inputbar > .inputbar-tools-below svg{width:17px !important; height:17px !important;}
+html #inputbar > .inputbar-tools-below #btnPlusTools,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button{width:28px !important; height:28px !important; flex:0 0 28px !important; padding:0 !important;}
+html #inputbar > .inputbar-tools-below #btnPlusTools > svg,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn > svg,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button > svg{width:16px !important; height:16px !important;}
 /* v-tools-align (طلب المالك): على سطح المكتب يُحاذى صفّ الأدوات وشريط المزوّد لحافّتَي
    صندوق الكتابة (نفس هامش composerRow) بدل حافّتَي الشاشة: الأدوات تحت جهة «+»
    (يمين RTL)، وشريط المزوّد تحت زرّ الإرسال (يسار RTL). */

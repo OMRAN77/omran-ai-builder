@@ -345,7 +345,7 @@
   :root{ --om-hl:#e3b341; }
   /* v-hl-links-only (طلب المالك): الإنجليزي والأرقام تبقى بيضاء عاديّة —
      الأصفر للروابط فقط (عبر نمط الوسم <a>). لا نلوّن om-en. */
-  #inputbar{padding:4px 12px 9px; border-top:none; display:flex; flex-direction:column; gap:6px; position:relative;}
+  #inputbar{padding:4px 12px 4px; border-top:none; display:flex; flex-direction:column; gap:3px; position:relative;} /* v-composer-lower (طلب المالك): تضييق الفراغ فينزل الصندوق */
   #inputbar .inputbar-tools{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
   #inputbar .inputbar-tools-left{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
   #btnAttach, #btnEmoji, #btnMic, #btnVoiceChat, #btnStop{flex:0 0 auto; font-size:18px; line-height:1; padding:10px 12px;}
