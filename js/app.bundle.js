@@ -3282,10 +3282,6 @@ const I18N = {
     authError: '🔑 مفتاح API غير صحيح أو منتهي — تأكد منه في ⚙️ الإعدادات.',
     storageFullWarning: '⚠️ مساحة التخزين في المتصفح ممتلئة جدًا حتى بعد حذف الصور القديمة تلقائيًا. يُرجى حذف بعض المحادثات القديمة بالكامل من قائمة المشاريع 📂 لتحرير مساحة أكبر.',
     imagePurgedNote: 'تم حذف الصورة تلقائيًا لتوفير المساحة',
-    imgUpscaleBtn: 'دقّة أعلى',
-    imgUpscaleFail: 'تعذّر رفع الدقّة الآن — جرّب بعد قليل',
-    imgUpscaleNoPoints: 'رصيد النقاط لا يكفي (5 نقاط) — اشحن من الباقات',
-    imgUpscaleLogin: 'سجّل الدخول لرفع دقّة الصورة',
     attachTitle: 'إرفاق',
     attachTruncated: 'تم اقتطاع المحتوى لأنه كان طويلًا جدًا',
     attachReadFail: 'تعذّرت قراءة الملفّ — جرّب اختياره مرّة أخرى',
@@ -3892,10 +3888,6 @@ const I18N = {
     authError: '🔑 Invalid or expired API key — please check it in ⚙️ Settings.',
     storageFullWarning: '⚠️ Your browser storage is still full even after auto-removing old images. Please delete some old conversations entirely from the projects list 📂 to free up more space.',
     imagePurgedNote: 'Image auto-removed to save space',
-    imgUpscaleBtn: 'Upscale',
-    imgUpscaleFail: 'Could not upscale right now — try again shortly',
-    imgUpscaleNoPoints: 'Not enough points (5) — top up from the plans',
-    imgUpscaleLogin: 'Sign in to upscale the image',
     building: 'Building...',
     buildSuccess: 'App created/updated successfully ✅ You can preview it in the "Preview" tab.',
     buildNoCode: '⚠️ No code came back from the provider — the preview is empty. Send the request again or try another provider.',
@@ -16384,8 +16376,8 @@ function renderAttachStrip(){
   try{ window.__composerSyncTall && window.__composerSyncTall(); }catch(e){ /* guard-ok — cosmetic */ }
 }
 
-// 🖼️ v579 — أزرار فوق الصورة نفسها: «تعديل» يرجّع الصورة إلى صندوق الكتابة
-// كمرفق (فيمشي مسار تعديل نفس الصورة بلا لبس)، و«حفظ» يشارك الملف أو ينزّله.
+// 🖼️ v579 — أدوات الصورة: مشاركتها (ورقة إرسال) وحفظها. أزرار «تعديل» و«دقّة
+// أعلى» فوق الصورة حُذفتا نهائيًّا (v-img-buttons-off).
 window.__omranImgTools = function(wrap, dataUrl, att){
   if(!wrap || !dataUrl || String(dataUrl).slice(0, 5) !== 'data:' || wrap.__imgTools) return;
   const ar = (typeof lang !== 'undefined' && lang === 'ar');
@@ -16393,17 +16385,6 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     const st = document.createElement('style'); st.id = 'oImgToolsCss';
     st.textContent = '.oImgBox{position:relative;display:block;width:-moz-fit-content;width:fit-content;min-width:0;max-width:min(460px,100%)}'
       + '.oImgBox>img{display:block;width:auto;max-width:100%;height:auto;max-height:62vh;object-fit:contain}'
-      + '.oImgBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;pointer-events:auto}'
-      // 🖼️ v641 — أمر عمران «حط كلمت التعديل داخل الصوره»: الصفّ يسكن داخل
-      //    إطار الصورة (زاوية البداية السفلى) بدل ما يكون تحتها.
-      + '.oImgBar.inImg{position:absolute;bottom:10px;inset-inline-start:10px;margin:0;z-index:3;max-width:calc(100% - 20px)}'
-      + '.oImgBar.inImg .oImgBtn{box-shadow:0 2px 10px rgba(0,0,0,.28)}'
-      + '.oImgBtn{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;height:40px;border:0;border-radius:999px;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:#fff;background:rgba(0,0,0,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;transition:background .16s ease,transform .12s ease}'
-      + '.oImgBtn.txt{padding:0 20px}'
-      + '.oImgBtn.ico{width:40px;padding:0}'
-      + '.oImgBtn:hover{background:rgba(0,0,0,.55)}'
-      + '.oImgBtn:active{transform:scale(.94)}'
-      + '.oImgBtn svg{width:21px;height:21px;flex:none}'
       + '.msg.assistant.oImgMsg{background:transparent !important;border:0 !important;border-radius:0 !important;padding:0 !important;width:-moz-fit-content;width:fit-content;max-width:min(486px,100%);box-sizing:border-box;overflow:hidden}'
       + 'html[data-mode="light"] .msg.assistant.oImgMsg{background:transparent !important;border:0 !important}'
       + '.msg.assistant.oImgMsg .msg-text:empty{display:none}'
@@ -16411,7 +16392,6 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       + '.msg.assistant.oImgMsg .msg-attachments{margin:0;min-width:0;max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox>img{max-width:100%;border-radius:12px}'
-      + '.oImgGrp{display:flex;align-items:center;gap:10px}'
       + '.oSendOut svg{width:17px;height:17px}'
       + '.oSendBar{display:flex;align-items:center;gap:12px;margin-top:8px}'
       + '@media (max-width:640px){'
@@ -16424,15 +16404,6 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     done: '<path d="M4.9 12.7l4.5 4.5L19.1 7.5"/>'
   };
   const svg = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[k] + '</svg>';
-  const bar = document.createElement('div'); bar.className = 'oImgBar';
-  const mk = (cls, html, label, fn, host) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'oImgBtn ' + cls;
-    b.innerHTML = html;
-    b.setAttribute('aria-label', label); b.title = label;
-    b.onclick = (ev) => { ev.stopPropagation(); fn(b); };
-    (host || bar).appendChild(b);
-    return b;
-  };
   const flash = (b, html) => {
     const prev = b.innerHTML;
     b.innerHTML = html;
@@ -16445,7 +16416,6 @@ window.__omranImgTools = function(wrap, dataUrl, att){
   //    ٢ الحافظة · ٣ فتح الصورة في صفحة مستقلّة (blob) حيث الضغط المطوّل يعطي
   //    «مشاركة» أصليّة · ٤ تنبيه أخير. زرّ التنزيل مُزال نهائيًّا (أمر عمران).
   // ⚠️ v592 — connect-src لا يسمح بـ data: ⇒ التحويل محلّيّ بـ atob (صفر شبكة).
-  const grp = document.createElement('div'); grp.className = 'oImgGrp'; bar.appendChild(grp);
   const nmOf = () => 'image-' + Date.now() + '.png';
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
   const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v625'); } return false; };
@@ -16806,42 +16776,13 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     }catch(_){ /* guard-ok — overlay close cleanup */ }
     document.body.appendChild(ov);
   };
-  // يمين: «تعديل» نصّ فقط
-  mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {
-    pendingAttachments.push({ name: 'edit-' + Date.now() + '.png', isImage: true, mime: dataUrl.slice(5).split(';')[0] || 'image/png', dataUrl: dataUrl });
-    renderAttachStrip();
-    flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
-    const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
-  });
-  /* ✨ v-img-upscale (قرار المالك ٢٠ سبتمبر «نانو وGPT مش بذيك الدقّة»): زرّ «دقّة أعلى» يمرّر الصورة بمكبّر دقّة
-     متخصّص على الخادم (media?action=upscale، ٥ نقاط لغير المالك) ويستبدل الصورة في الرسالة نفسها والمرفق المحفوظ
-     (vaultPending كي تُكتب النسخة الجديدة في المخزن). بلا جلسة أو نقاط أو مفتاح → رسالة واضحة لا صمت. */
-  mk('txt', '<span>' + t('imgUpscaleBtn') + '</span>', t('imgUpscaleBtn'), async (b) => {
-    if(b.__busy) return; b.__busy = true;
-    const prev = b.innerHTML; b.innerHTML = '<span>…</span>';
-    try{
-      const s = String(dataUrl), ci = s.indexOf(',');
-      const mime = (s.slice(0, ci).match(/:([^;,]+)/) || [])[1] || 'image/png';
-      const r = await fetch('/api/media?action=upscale', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: s.slice(ci + 1), mime: mime, token: authGet('aiapp_auth_token') }) });
-      const d = await r.json().catch(() => ({}));
-      b.innerHTML = prev;
-      if(r.ok && d && d.imageBase64){
-        const nu = 'data:' + (d.mimeType || 'image/png') + ';base64,' + d.imageBase64;
-        const im = wrap.querySelector('img'); if(im) im.src = nu;
-        dataUrl = nu; __shF = null;
-        if(att && typeof att === 'object'){ att.dataUrl = nu; if(att.vaultId) att.vaultPending = true; try{ if(typeof saveState === 'function') saveState(); }catch(e){ __swallow(e, 'upscale:save'); } }
-        try{ if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }catch(e){ __swallow(e, 'upscale:wallet'); }
-        flash(b, svg('done'));
-      } else {
-        note(r.status === 401 ? t('imgUpscaleLogin') : (d && d.error === 'points_insufficient' ? t('imgUpscaleNoPoints') : t('imgUpscaleFail')));
-      }
-    }catch(e){ __swallow(e, 'upscale:app-09'); b.innerHTML = prev; note(t('imgUpscaleFail')); }
-    b.__busy = false;
-  });
   // 🔄 زر «نسخة ثانية» أُزيل من فوق الصورة (طلب المالك ٦ سبتمبر: كان يغطّي نصّ
   //    الصورة نفسها). window.omranAnotherVersion تبقى متاحة برمجيًا بلا زرّ.
+  // v-img-buttons-off (طلب المالك ٢٠ سبتمبر: «فيه كلمتين تعديل وترقية الصورة احذفهم نهائي»):
+  //    زرّا «تعديل» و«دقّة أعلى» فوق الصورة حُذفا نهائيًّا. الترقية التلقائية (sendImg في
+  //    maha-image.js لكل ناتج دون 2K) لم تُمَسّ — هي خادميّة بلا زرّ ولا تكلفة إضافية.
   // 📤 v635 — أمر عمران «زرّ الإرسال حطه هني جنبهم»: الإرسال يسكن شريط أزرار
-  // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم؛ «تعديل» يبقى تحت الصورة.
+  // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم.
   // رسالة الصورة بلا نصّ لا تبني شريطًا ⇒ أُنشئ شريطًا بنفس الصنف.
   // 🩹 v636 — تصحيح v635: شريط أزرار الرسالة **أخٌ** للفقاعة لا ابنٌ لها
   //    (app-04-i18n-state: bubbleCol ← [الفقاعة, msgActionBar]) ⇒ البحث داخل
@@ -16948,8 +16889,6 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     //    تحمل border-radius من CSS ⇒ لا حاجة لقصّ الحاوية.
     if(r && r !== '0px'){ wrap.style.borderRadius = r; }
   }catch(e){ /* guard-ok — style cleanup */ }
-  bar.classList.add('inImg'); // v668: رجوع زر «تعديل» داخل الصورة مثل v641 — شكوى عمران كانت عن نص الصورة المولّدة نفسها
-  wrap.appendChild(bar);
 };
 
 function readFileAsDataUrl(file){
