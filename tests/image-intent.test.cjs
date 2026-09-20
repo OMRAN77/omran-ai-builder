@@ -94,7 +94,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.ok(!/allowStyleChange: explicitlyRequestsStyleChange\(cleanPrompt\)/.test(maha), 'v-lanes: حارس الهويّة أُزيل من maha-image'); // يبقى في portrait/studio
   /* v-letter-swap: «غير حرف م حط ع» → نانو بنانا برو بتعليمة قصيرة، وgpt-image منافس بالحكم لا خاطف */
   const { isTextEditRequest, buildLetterSwapPrompt } = require('../api/_lib/image-prompt');
-  for (const t of ['غير حرف م حط ع', 'شيل حرف م وحط ع', 'بدل الاسم إلى عمران', 'اكتب كلمة مبروك', 'replace the word Sale with Open']) assert.equal(isTextEditRequest(t), true, t);
+  for (const t of ['غير حرف م حط ع', 'شيل حرف م وحط ع', 'بدل الاسم إلى عمران', 'اكتب كلمة مبروك', 'replace the word Sale with Open', 'اكتب كل الاسامي الموجوده على نفس الخط']) assert.equal(isTextEditRequest(t), true, t); // v-text-colloquial: «الاسامي» جمع عاميّ لـ«اسم» — لقطة المالك
   for (const t of ['أقوى', 'خلها أفخم', 'شيل الخلفية']) assert.equal(isTextEditRequest(t), false, t);
   /* «شيل الاسم كامل» حذف صِرف لا تبديل حرف (كان يسقط في «لم أستطع تحديد الحرف») — البديل بعده يعيده تبديلًا */
   const { isPureTextRemoval } = require('../api/_lib/image-prompt');
@@ -211,7 +211,8 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   const chatTools = fs.readFileSync('js/app-18-chat-tools.js', 'utf8');
   const chat = fs.readFileSync('api/_lib/chat.js', 'utf8');
   assert.match(attach, /prompt: __editPrompt, userText: String\(text \|\| ''\)\.slice\(0, 600\)/);
-  assert.match(attach, /نانو بنانا برو/);
+  /* v-img-engine-tag-owner: بصمة المحرّك الحرفيّة (لا حزمة عامّة باسم مزوّد) للمالك وحده — مؤكَّدة في الاختبار أدناه */
+  assert.match(attach, /window\.__chatStatus\.note\('🎨', String\(__data\.engine \|\| '\?'\)\)/);
   /* بطاقة ملصوقة/عريضة تُعلَّم «لقطة شاشة» — الطلب الإبداعي القصير عليها يبقى تعديل صورة لا تحليل لقطة */
   /* بعد main (قرار المالك الأخير): أي أمر غير استفهامي مع صورة مرفقة = تعديل؛ «أقوى/أفضل من» تُلتقط بـ__IMG_ELEVATE */
   assert.match(attach, /const __SHOT_ANALYZE = !!\([^;]{0,600}!__IMG_UPGRADE && !__IMG_ELEVATE/);
@@ -247,8 +248,8 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(tools, /if \(gCreative\) return await window\.omranAgentTools\.run\('edit_image', \{ instruction: prompt, userText: gUserText \}\)/);
   assert.match(tools, /var gCreative = !!\(gFirst && gRefB64 && gUserText && gUserText\.length <= 120 && !gNewImage && !gNotEdit/);
   assert.match(chat, /runInClient\(send, 'generate_image', input, lastUserHasImage \? 150000 : 75000\)/);
-  /* زر «نسخة ثانية» يسمّي المحرّك بالمنطق نفسه */
-  assert.match(attach, /'نانو بنانا برو' : 'نانو بنانا'\)\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
+  /* v-img-engine-tag-owner (باب مقفل: لا اسم مزوّد لأيّ مستخدم): بصمة المحرّك للمالك وحده، بالاسم الحرفيّ لا حزمة عامّة */
+  assert.match(attach, /if\(window\.__chatStatus && String\(authGet\('aiapp_username'\) \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'omran'\) window\.__chatStatus\.note\('🎨', String\(__data\.engine \|\| '\?'\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
   /* زر «نسخة ثانية» لا يُبنى فوق الصورة (كان يغطّي نصّها) — الدالة تبقى بلا زرّ */
   assert.ok(!/'نسخة ثانية' : 'Another'\)/.test(attach), 'زر «نسخة ثانية» أُزيل من فوق الصورة');
   assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);

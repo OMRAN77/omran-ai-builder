@@ -2475,7 +2475,8 @@ window.omranAnotherVersion = async function(){
       __m.attachments = [{ name:'edited.png', isImage:true, mime:__outMime, dataUrl:'data:' + __outMime + ';base64,' + __data.imageBase64 }];
       cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
       cur.lastMsgWasImageEdit = true;
-      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
+      /* v-img-engine-tag-owner (باب مقفل: لا اسم مزوّد لأيّ مستخدم — كان يظهر للكلّ بلا حارس): المحرّك الحقيقيّ للمالك وحده. */
+      try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
     } else {
       /* v-img-diag-owner: نفس منطق التوليد والتعديل العاديّين */
       var __whyA = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
@@ -4213,7 +4214,8 @@ function __showImgLoading(el, ar, en){
             let __lsUrl = 'data:' + __lsMime + ';base64,' + __lsData.imageBase64;
             try{ __lsUrl = await omranSharpenImage(__lsUrl); }catch(e){ __swallow(e, 'img:sharpen-swap'); }
             cur.messages.push({ role:'assistant', content:(typeof __lsData.caption === 'string' ? __lsData.caption : ''), attachments:[{ name:'edited.png', isImage:true, mime:(__lsUrl.slice(5).split(';')[0] || __lsMime), dataUrl:__lsUrl }] });
-            try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__lsData.engine || '')) ? 'gpt-image' : (/pro/.test(String(__lsData.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
+            /* v-img-engine-tag-owner: المحرّك الحقيقيّ للمالك وحده. */
+            try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__lsData.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
             cur.lastEditedImage = { b64: __lsData.imageBase64, mime: __lsMime };
             cur.imageEditSource = { b64:__b64, mime:__mime };
             cur.imageEditInstructions = [String(text || '').trim()];
@@ -4262,8 +4264,8 @@ function __showImgLoading(el, ar, en){
         let __editUrl = 'data:' + __outMime + ';base64,' + __data.imageBase64;
         try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
-        // v-img-engine-tag: بصمة المحرك في شريط الحالة — يحسم «أي محرك نفّذ» فورًا.
-        try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine'); }
+        // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
+        try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
         /* v-image-memory: نحفظ الدور (كلمات المستخدم + مصغّر النتيجة 768px، ومصغّر المصدر الأصلي في أول دور) ليراه النموذج في الدور القادم */
         try{
