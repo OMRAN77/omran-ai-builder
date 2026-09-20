@@ -194,17 +194,19 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(attach, /const mx = maxPx \|\| 2048, sc = /);
   assert.match(attach, /const __tsShr = await omranShrinkForEdit\(__b64, __mime, 1280\)/);
   assert.match(attach, /__xa\.mime \|\| 'image\/png', 1280\)/);
-  assert.match(maha, /&& \(!isTextSwap \|\| __duoWouldRun\)\n/);
+  // v-text-gpt-oneshot: تبديل الحرف صار على GPT ضربة واحدة (كان برو يقوده والحكم يختار)
+  assert.ok(!/&& \(!isTextSwap \|\| __duoWouldRun\)\n/.test(maha), 'شرط برو-يقود تبديل الحرف أُزيل');
   /* العميل: برو أولًا على الصورة كاملة، ومسار القناع احتياط */
   assert.match(attach, /textSwap: true, editImageBase64: __lsShr\.b64/);
   assert.ok(attach.indexOf('textSwap: true') < attach.indexOf("fetch('/api/tools?action=text-swap'"), 'Pro-first, masked path second');
   /* تبديل الحرف بالقناع يعمل على 1280px كأي تعديل */
   assert.match(attach, /const __sc = Math\.min\(1, 1280 \/ Math\.max\(img\.naturalWidth \|\| 1, img\.naturalHeight \|\| 1\)\);/);
   /* الترقية تذهب إلى برو دائمًا — لا تُختطف إلى gpt-image المحافظ حين يبدو المصدر «شاشة تطبيق» */
-  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length && \(!isTextSwap \|\| __duoWouldRun\)\n/);
+  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| /);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
   assert.match(maha, /const __duoWouldRun = duoEnabled\(\) && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length;/);
-  assert.match(maha, /if \(__textRoute\) \{\n      if \(__duoWouldRun\) \{/);
+  // v-text-gpt-oneshot: مسار النصّ ضربة واحدة بلا مزدوج
+  assert.match(maha, /if \(__textRoute\) \{\n      const denseB64 = await openaiRescueImage\(\);\n      if \(denseB64\) \{\n        await sendImg\(denseB64, 'image\/png', 'openai'\);\n        return;/);
   assert.match(maha, /const duoOn = __duoWouldRun && \(!__textRoute \|\| !!densePromise\);/);
   assert.match(maha, /generationConfig: genConfigFor\(\{ temperature: 0\.85 \}\) \}\);/);
   /* خط الإنقاذ لم يُمسّ: برو يفشل → نانو 2.5 → gpt-image */
