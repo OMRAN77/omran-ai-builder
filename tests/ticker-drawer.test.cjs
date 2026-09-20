@@ -35,12 +35,12 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   // سهم بلا دائرة (بلا border-radius دائرة ولا خلفيّة صلبة)
   assert.match(css, /#sidebarCloseBtn\{[\s\S]*?background:none; border:none; border-radius:0/, 'بلا دائرة ولا إطار');
   // يظهر على الجوّال وسطح المكتب معًا
-  assert.match(css, /html\.mobile-ui #sidebarCloseBtn\{ display:inline-flex; \}/, 'ظاهر على الجوّال');
+  assert.match(css, /html\.mobile-ui #sidebarCloseBtn\{ display:inline-flex;[\s\S]*?left:8px/, 'ظاهر على الجوّال في طرف اليسار');
   assert.match(css, /html:not\(\.mobile-ui\) #sidebarCloseBtn\{ display:inline-flex;/, 'ظاهر على سطح المكتب');
   // طيّ عمود القائمة على سطح المكتب + مقبض إعادة فتح
   assert.match(css, /html:not\(\.mobile-ui\) #sidebar\.sbCollapsed[\s\S]*?display:none !important/, 'طيّ عمود القائمة على المكتب');
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=706'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=707'), 'وسم كاش tokens.css رُفع');
 });

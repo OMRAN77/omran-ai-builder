@@ -1162,7 +1162,9 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
   color:#d4af37; cursor:pointer; padding:0;
   filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));
 }
-html.mobile-ui #sidebarCloseBtn{ display:inline-flex; }
+/* الجوّال: السهم مثبّت في طرف اليسار من الدرج (طلب المالك «اليسار مش اليمين»).
+   قاعدة `#sidebar > *` تفرض position:relative على أبناء الدرج، فنُعيد absolute هنا. */
+html.mobile-ui #sidebarCloseBtn{ display:inline-flex; position:absolute !important; inset-inline:auto !important; right:auto !important; left:8px !important; }
 html:not(.mobile-ui) #sidebarCloseBtn{ display:inline-flex; top:12px; }
 #sidebarCloseBtn:active{ opacity:.65; }
 

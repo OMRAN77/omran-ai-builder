@@ -18,15 +18,16 @@ test('index.html: الشعار أوّل عنصر في القائمة الجان�
   assert.ok(sb > 0 && brand > sb && mirror > brand && btn > mirror, 'الترتيب: sidebar → sidebarBrand → مرآة → omranNewChatBtn');
   assert.match(html, /<div id="sidebarBrand" class="sidebarBrand" title="عمران AI"><img src="icons\/brand-ar\.png" alt="عمران Ai" class="brandImg" width="126" height="42"><\/div>/);
   assert.ok(html.includes('<span id="brandTitle" class="brandTitle brand-ar">'), 'شعار الرأس باقٍ للجوّال');
-  assert.ok(html.includes('css/redesign.css?v=667'), 'وسم الكاش رُفع');
+  assert.ok(html.includes('css/redesign.css?v=668'), 'وسم الكاش رُفع');
 });
 
-test('redesign.css: يظهر على سطح المكتب فوق الزرّ (order:-3) ويخفي شعار الرأس هناك، ومخفيّ على الجوّال', () => {
+test('redesign.css: الشعار فوق الزرّ (order:-3) على سطح المكتب والجوّال (طلب المالك)، ويخفي شعار الرأس على المكتب', () => {
   const css = read('css/redesign.css');
   assert.match(css, /#sidebarBrand\{display:none;\}/);
   assert.match(css, /html:not\(\.mobile-ui\) #sidebarBrand\{order:-3; display:flex;/);
   assert.match(css, /html:not\(\.mobile-ui\) header h1 #brandTitle\{display:none;\}/);
-  assert.doesNotMatch(css, /html\.mobile-ui #sidebarBrand\{[^}]*display:(?:flex|block)/, 'لا إظهار على الجوّال');
+  // v-sb-brand-mobile: صار يظهر على الجوّال أيضًا أعلى الدرج فوق «محادثة جديدة»
+  assert.match(css, /html\.mobile-ui #sidebarBrand\{order:-3; display:flex;/, 'يظهر على الجوّال فوق الزرّ');
   assert.match(css, /#omranNewChatBtn\{order:-2;/, 'الزرّ يبقى بعد الشعار مباشرة');
   // شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ
   assert.match(css, /html:not\(\.mobile-ui\) body:has\(#stockTicker[^)]*\) #sidebarBrand\{margin-top:28px;\}/);
