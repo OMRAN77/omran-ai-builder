@@ -710,6 +710,7 @@ I18N['ur'] = {
     codeHintText: "اپنی ایپ کا کوڈ اور لائیو پیش منظر دیکھنے کے لیے یہاں ٹیپ کریں 👈",
     previewTitle: "پیش نظارہ",
     attachTruncated: "مواد بہت لمبا ہونے کی وجہ سے مختصر کر دیا گیا",
+    attachReadFail: "فائل پڑھی نہیں جا سکی — دوبارہ منتخب کریں",
     imagesAttachedNote: "منسلکات",
     askAllProvidersLabel: "\"سب سے پوچھیں\" میں شامل پرووائیڈرز",
     includeOpenAI: "OpenAI / OpenRouter",

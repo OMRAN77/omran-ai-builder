@@ -826,6 +826,7 @@ I18N['es'] = {
     "codeHintText": "Toca aquí para ver el código de tu app y la vista previa en vivo 👈",
     "previewTitle": "Vista previa",
     "attachTruncated": "El contenido se truncó porque era demasiado largo",
+    "attachReadFail": "No se pudo leer el archivo — vuelve a elegirlo",
     "imagesAttachedNote": "adjuntos",
     "askAllProvidersLabel": "Proveedores incluidos en \"Preguntar a todos\"",
     "includeOpenAI": "OpenAI / OpenRouter",

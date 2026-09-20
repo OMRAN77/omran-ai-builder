@@ -17,7 +17,7 @@ Rule 4.1 response — this build (1.3.10) changes what the reviewer sees on firs
    video generation, fashion try-on, interior/exterior decor design, live TV, lecture summarizer, CV/PDF builder,
    prayer times with Qibla compass, and more.
 3. The package launches at https://omran-ai-builder.vercel.app/?store=huawei with verified Digital Asset Links
-   (.well-known/assetlinks.json for com.omran.aibuilder), so it runs full-screen without any browser UI.
+   (.well-known/assetlinks.json for com.omran.aibuilder.twa), so it runs full-screen without any browser UI.
 4. No cryptocurrency, foreign-exchange or stock-market content exists in this build (rule 11.4).
 
 How to test each feature quickly:

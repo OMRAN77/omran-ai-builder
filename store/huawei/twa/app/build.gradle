@@ -21,7 +21,7 @@ plugins {
 }
 
 def twaManifest = [
-    applicationId: 'com.omran.aibuilder',
+    applicationId: 'com.omran.aibuilder.twa',
     hostName: 'omran-ai-builder.vercel.app', // The domain being opened in the TWA.
     launchUrl: '/?store=huawei', // The start path for the TWA. Must be relative to the domain.
     name: 'Omran AI Builder', // The application name.
@@ -52,9 +52,9 @@ def twaManifest = [
 
 android {
     compileSdkVersion 36
-    namespace "com.omran.aibuilder"
+    namespace "com.omran.aibuilder.twa"
     defaultConfig {
-        applicationId "com.omran.aibuilder"
+        applicationId "com.omran.aibuilder.twa"
         minSdkVersion 21
         targetSdkVersion 36
         versionCode 20260918

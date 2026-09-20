@@ -23,7 +23,7 @@ assert.ok(Array.isArray(al) && al.length >= 1, 'مصفوفة عبارات');
 const st = al[0];
 assert.deepStrictEqual(st.relation, ['delegate_permission/common.handle_all_urls']);
 assert.strictEqual(st.target.namespace, 'android_app');
-assert.strictEqual(st.target.package_name, 'com.omran.aibuilder', 'اسم الحزمة كما نُشر');
+assert.strictEqual(st.target.package_name, 'com.omran.aibuilder.twa', 'اسم الحزمة المسجّل في AppGallery Connect');
 assert.ok(Array.isArray(st.target.sha256_cert_fingerprints) && st.target.sha256_cert_fingerprints.length >= 1, 'خانة البصمة موجودة');
 const FP = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
 const unfilled = st.target.sha256_cert_fingerprints.filter((f) => !FP.test(f));
@@ -57,7 +57,7 @@ for (const k of ["opt('viewport'", "opt('scale'", "opt('name'", "opt('settle'"])
 // v-store-twa (تتمّة «أريد 1.3.10 جاهزة»): مشروع TWA مولَّد في المستودع + ورك فلو يبنيه ويوقّعه وينشره
 const twa = 'store/huawei/twa/';
 const bg = fs.readFileSync(R(twa + 'app/build.gradle'), 'utf8');
-assert.ok(bg.includes("applicationId: 'com.omran.aibuilder'") && bg.includes("hostName: 'omran-ai-builder.vercel.app'"), 'الحزمة والنطاق');
+assert.ok(bg.includes("applicationId: 'com.omran.aibuilder.twa'") && bg.includes("hostName: 'omran-ai-builder.vercel.app'"), 'الحزمة والنطاق');
 assert.ok(bg.includes("launchUrl: '/?store=huawei'"), 'رابط التشغيل يحمل علم المتجر');
 assert.ok(/versionName "1\.3\.10"/.test(bg) && /versionCode 2026\d{4}/.test(bg), 'الإصدار 1.3.10 ورمز بصيغة تاريخ');
 assert.ok(bg.includes("fallbackType: 'webview'"), 'بلا متصفّح TWA يفتح WebView ملء الشاشة لا تبويبًا');
@@ -65,13 +65,13 @@ assert.ok(bg.includes('com.google.androidbrowserhelper:androidbrowserhelper'), '
 const rootBg = fs.readFileSync(R(twa + 'build.gradle'), 'utf8');
 assert.ok(!rootBg.includes('jcenter()') && rootBg.includes('mavenCentral()'), 'jcenter مغلق — Maven Central');
 const am = fs.readFileSync(R(twa + 'app/src/main/AndroidManifest.xml'), 'utf8');
-assert.ok(am.includes('package="com.omran.aibuilder"') && am.includes('android.support.customtabs.trusted.DEFAULT_URL') && am.includes('android:autoVerify="true"'), 'AndroidManifest');
+assert.ok(am.includes('package="com.omran.aibuilder.twa"') && am.includes('android.support.customtabs.trusted.DEFAULT_URL') && am.includes('android:autoVerify="true"'), 'AndroidManifest');
 const strs = fs.readFileSync(R(twa + 'app/src/main/res/values/strings.xml'), 'utf8');
 assert.ok(strs.includes('https://omran-ai-builder.vercel.app') && strs.includes('delegate_permission/common.handle_all_urls'), 'asset statements في الحزمة');
 const tm = JSON.parse(fs.readFileSync(R(twa + 'twa-manifest.json'), 'utf8'));
-assert.strictEqual(tm.packageId, 'com.omran.aibuilder'); assert.strictEqual(tm.startUrl, '/?store=huawei'); assert.strictEqual(tm.appVersion, '1.3.10');
+assert.strictEqual(tm.packageId, 'com.omran.aibuilder.twa'); assert.strictEqual(tm.startUrl, '/?store=huawei'); assert.strictEqual(tm.appVersion, '1.3.10');
 assert.strictEqual(tm.webManifestUrl, 'https://omran-ai-builder.vercel.app/manifest-huawei.json');
-for (const f of ['gradlew', 'gradle/wrapper/gradle-wrapper.jar', 'gradle/wrapper/gradle-wrapper.properties', 'settings.gradle', 'app/src/main/java/com/omran/aibuilder/LauncherActivity.java', 'app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', 'store_icon.png']) assert.ok(fs.existsSync(R(twa + f)), 'ملفّ المشروع: ' + f);
+for (const f of ['gradlew', 'gradle/wrapper/gradle-wrapper.jar', 'gradle/wrapper/gradle-wrapper.properties', 'settings.gradle', 'app/src/main/java/com/omran/aibuilder/twa/LauncherActivity.java', 'app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', 'store_icon.png']) assert.ok(fs.existsSync(R(twa + f)), 'ملفّ المشروع: ' + f);
 assert.ok(fs.statSync(R(twa + 'gradlew')).mode & 0o111, 'gradlew قابل للتنفيذ');
 const wf = fs.readFileSync(R('.github/workflows/android-release.yml'), 'utf8');
 for (const k of ['workflow_dispatch', 'assembleRelease', 'zipalign', 'apksigner" sign', 'ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'gh release', 'assetlinks.json', 'rm -f "$RUNNER_TEMP/release.keystore"', "default: '1.3.10'"]) assert.ok(wf.includes(k), 'workflow: ' + k);
@@ -81,4 +81,4 @@ assert.ok(!/\.(keystore|jks)$/m.test(tracked), 'لا مخزن مفاتيح في 
 const gi = fs.readFileSync(R('.gitignore'), 'utf8');
 assert.ok(gi.includes('*.keystore') && gi.includes('*.jks') && gi.includes('store/huawei/twa/app/build/'), '.gitignore: المفاتيح وناتج البناء');
 assert.ok(fs.existsSync(R('scripts/twa-generate.mjs')) && fs.readFileSync(R('scripts/twa-generate.mjs'), 'utf8').includes("setFetchEngine('node-fetch')"), 'المولّد في المستودع');
-console.log('✓ store-huawei: بيان الحزمة ?store=huawei، assetlinks للحزمة com.omran.aibuilder، ولقطات المتجر ٩:١٦');
+console.log('✓ store-huawei: بيان الحزمة ?store=huawei، assetlinks للحزمة com.omran.aibuilder.twa، ولقطات المتجر ٩:١٦');
