@@ -3285,6 +3285,7 @@ const I18N = {
     attachTitle: 'إرفاق',
     attachTruncated: 'تم اقتطاع المحتوى لأنه كان طويلًا جدًا',
     attachReadFail: 'تعذّرت قراءة الملفّ — جرّب اختياره مرّة أخرى',
+    attachAddMore: '＋ صورة أخرى',
     imagesAttachedNote: 'مرفقات',
     building: 'جارٍ البناء...',
     buildSuccess: 'تم إنشاء/تحديث التطبيق بنجاح ✅ يمكنك معاينته من تبويب "المعاينة".',
@@ -4375,6 +4376,7 @@ const I18N = {
     previewTitle: 'Preview',
     attachTruncated: 'Content truncated because it was too long',
     attachReadFail: 'Could not read the file — try picking it again',
+    attachAddMore: '+ Add another',
     imagesAttachedNote: 'attachments',
     askAllProvidersLabel: 'Providers included in "Ask All"',
     includeOpenAI: 'OpenAI / OpenRouter',
@@ -4510,7 +4512,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=675'; /* v-attach-huawei: مفتاح attachReadFail في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=676'; /* v-attach-huawei-more: مفتاح attachAddMore في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -16360,6 +16362,17 @@ function renderAttachStrip(){
       strip.appendChild(chip);
     }
   });
+  /* v-attach-huawei-more: شريحة «＋ صورة أخرى» حين يكون المنتقي مفردًا (هواوي/حزمة المتجر) */
+  try{
+    if(pendingAttachments.length && typeof omranPickSingle === 'function' && omranPickSingle()){
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'attach-chip more';
+      more.textContent = t('attachAddMore');
+      more.onclick = (e) => { e.preventDefault(); e.stopPropagation(); omranOpenAttachPicker(); };
+      strip.appendChild(more);
+    }
+  }catch(e){ __swallow(e, 'attach:more'); }
   try{ window.__composerSyncTall && window.__composerSyncTall(); }catch(e){ /* guard-ok — cosmetic */ }
 }
 
@@ -17070,13 +17083,18 @@ function omranWatchFilePicker(input, onFiles){
   document.addEventListener('visibilitychange', onVis);
 }
 let __attachHandled = false;
-$('#btnAttach').onclick = () => {
+/* v-attach-huawei-more («استوى لكن صورة وحدة وحدة، على الأقلّ ٥»): على أجهزة
+   الاختيار المفرد يفتح المنتقي من زرّ «إرفاق» ومن شريحة «＋ صورة أخرى» في شريط
+   المرفقات — نقرة واحدة لكلّ صورة إضافيّة (نقرة المستخدم شرط لفتح المنتقي؛
+   لا يمكن فتحه تلقائيًّا بعد وصول الصورة). */
+function omranOpenAttachPicker(){
   __attachHandled = false;
   const input = $('#attachInput');
   omranPickerPrep(input);
   input.click();
   omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; return omranIngestFiles(files); } });
-};
+}
+$('#btnAttach').onclick = omranOpenAttachPicker;
 
 // ---- Emoji picker ----
 const EMOJI_LIST = [

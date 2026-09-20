@@ -436,6 +436,9 @@
   .attach-chip img{width:24px; height:24px; object-fit:cover; border-radius:var(--r-1);}
   .attach-chip .name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;}
   .attach-chip .rm{cursor:pointer; color:var(--muted); font-weight:bold; padding:0 2px;}
+  /* v-attach-huawei-more: شريحة «＋ صورة أخرى» على أجهزة الاختيار المفرد */
+  .attach-chip.more{cursor:pointer; color:var(--omGold, #d4af37); border:1px dashed var(--omGoldSoft, rgba(212,175,55,.5)); background:transparent; font-weight:700; font-family:inherit;}
+  .attach-chip.more:active{opacity:.7;}
   .attach-chip .rm:hover{color:#e55;}
   .msg-attachments{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
   .msg-attachments img{width:60px; height:60px; object-fit:cover; border-radius:var(--r-1); border:1px solid var(--border);}

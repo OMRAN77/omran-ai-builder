@@ -718,6 +718,7 @@ I18N['ne'] = {
     previewTitle: "पूर्वावलोकन",
     attachTruncated: "सामग्री काटियो किनभने यो धेरै लामो थियो",
     attachReadFail: "फाइल पढ्न सकिएन — फेरि छान्नुहोस्",
+    attachAddMore: "+ अर्को थप्नुहोस्",
     imagesAttachedNote: "संलग्नकहरू",
     askAllProvidersLabel: "\"सबै सोध्नुहोस्\" मा समावेश प्रदायकहरू",
     includeOpenAI: "OpenAI / OpenRouter",

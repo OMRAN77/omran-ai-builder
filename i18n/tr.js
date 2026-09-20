@@ -826,6 +826,7 @@ I18N['tr'] = {
     "previewTitle": "Önizleme",
     "attachTruncated": "İçerik çok uzun olduğu için kısaltıldı",
     "attachReadFail": "Dosya okunamadı — yeniden seçin",
+    "attachAddMore": "+ Bir tane daha ekle",
     "imagesAttachedNote": "ekler",
     "askAllProvidersLabel": "\"Hepsine Sor\"a dahil edilen sağlayıcılar",
     "includeOpenAI": "OpenAI / OpenRouter",

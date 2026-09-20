@@ -729,6 +729,7 @@ I18N['fr'] = {
     previewTitle: "Aperçu",
     attachTruncated: "Contenu tronqué car trop long",
     attachReadFail: "Impossible de lire le fichier — choisissez-le à nouveau",
+    attachAddMore: "+ Ajouter une autre",
     imagesAttachedNote: "pièces jointes",
     askAllProvidersLabel: "Fournisseurs inclus dans « Interroger tous »",
     includeOpenAI: "OpenAI / OpenRouter",
