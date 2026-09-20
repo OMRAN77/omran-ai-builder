@@ -873,7 +873,7 @@ try{
   if(!__sbReopen){
     __sbReopen = document.createElement('button');
     __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button'; __sbReopen.setAttribute('aria-label', 'فتح القائمة');
-    __sbReopen.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+    __sbReopen.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
     document.body.appendChild(__sbReopen);
   }
   const __setSB = (collapsed) => {
@@ -1005,8 +1005,10 @@ function setupResizer(resizerEl, panelEl, opts){
     window.addEventListener('touchend', onUp);
   }, { passive: true });
 }
-setupResizer($('#resizer1'), sidebarEl, { min: 180, max: 420, storeKey: 'panelWidthSidebar' });
-setupResizer($('#resizer2'), chatcolEl, { min: 280, max: 620, storeKey: 'panelWidthChat' });
+// v-free-resize (طلب المالك): سحب حرّ لأيّ حجم — من التصغير الشديد (شبه طيّ) حتّى كبير.
+// القائمة تصل 0 (طيّ كامل بالسحب)، والمحادثة تتوسّع فيضيق workarea (min-width:0) حتّى شبه الطيّ.
+setupResizer($('#resizer1'), sidebarEl, { min: 0, max: 560, storeKey: 'panelWidthSidebar' });
+setupResizer($('#resizer2'), chatcolEl, { min: 240, max: 1600, storeKey: 'panelWidthChat' });
 
 // On mobile, picking a project from the history list should close the drawer.
 $('#history').addEventListener('click', () => {
