@@ -3447,9 +3447,9 @@ const I18N = {
     checkoutWalletUnavailable: 'غير متوفر على هذا الجهاز',
     checkoutTelecomOption: 'فاتورة الاتصالات (اتصالات/du)',
     checkoutComingSoon: 'قريبًا',
-    checkoutPlanLabelBasic: 'الخطة الأساسية 10$ شهريًا — 300 رسالة',
-    checkoutPlanLabelPro: 'الخطة الاحترافية 20$ شهريًا — رسائل غير محدودة',
-    checkoutPlanLabelMax: 'خطة Max ‏100$ شهريًا — 5000 نقطة',
+    checkoutPlanLabelBasic: 'خطة Plus ‏10$ شهريًا — 360 نقطة',
+    checkoutPlanLabelPro: 'خطة Pro ‏20$ شهريًا — 920 نقطة',
+    checkoutPlanLabelMax: 'خطة Max ‏100$ شهريًا — 3,200 نقطة',
     checkoutRedirecting: 'جارٍ التحويل إلى صفحة الدفع...',
     checkoutError: 'حدث خطأ ما، حاول مرة أخرى',
     checkoutNotConfigured: 'الدفع غير مفعّل من الإدارة بعد',
@@ -3683,9 +3683,9 @@ const I18N = {
     checkoutWalletUnavailable: 'Not available on this device',
     checkoutTelecomOption: 'Carrier Billing (Etisalat/du)',
     checkoutComingSoon: 'Coming soon',
-    checkoutPlanLabelBasic: 'Basic Plan $10/mo — 300 messages',
-    checkoutPlanLabelPro: 'Pro Plan $20/mo — Unlimited messages',
-    checkoutPlanLabelMax: 'Max Plan $100/mo — 5000 points',
+    checkoutPlanLabelBasic: 'Plus Plan $10/mo — 360 points',
+    checkoutPlanLabelPro: 'Pro Plan $20/mo — 920 points',
+    checkoutPlanLabelMax: 'Max Plan $100/mo — 3,200 points',
     checkoutRedirecting: 'Redirecting to payment page...',
     checkoutError: 'Something went wrong, please try again',
     checkoutNotConfigured: 'Payments not configured by admin yet',
@@ -4508,7 +4508,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=674'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=675'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
