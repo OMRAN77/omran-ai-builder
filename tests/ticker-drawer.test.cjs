@@ -78,7 +78,7 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=679'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=680'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
 });
 
@@ -158,11 +158,11 @@ test('v-light-visibility: في الوضع الفاتح شريط السحب وا�
   assert.match(modules, /html\[data-mode="light"\] #stockTickerToggle\{background:none!important;border:none!important;box-shadow:none!important\}/, 'زرّ الشريط بلا دائرة ولا إطار ولا ظلّ في الفاتح');
 });
 
-test('v-foldable-composer: على التابلت/القابل للطيّ (mobile-ui ≥861px) الملحّن مضغوط موسّط (٨٠٠px) والأدوات/المزوّد تحت حافّتَيه', () => {
+test('v-foldable-composer: على التابلت/القابل للطيّ (mobile-ui ≥700px) الأدوات/المزوّد تحت حافّتَي الصندوق بنفس هامشه (١٢٪) لا في الزوايا', () => {
   const redesign = read('css/redesign.css');
-  // صندوق بحدّ أقصى ٨٠٠px موسّط عبر --fold-inset (مثل الكمبيوتر) — الكتلة مكتفية بذاتها
-  assert.match(redesign, /html\.mobile-ui #inputbar\{ --fold-inset: max\(var\(--om-chat-pad,32px\), calc\(\(100% - 800px\) \/ 2\)\); \}/, 'حدّ الصندوق ٨٠٠px موسّط على العريض');
-  assert.match(redesign, /html\.mobile-ui #inputbar > #composerRow\{ margin-inline: var\(--fold-inset\) !important;/, 'توسيط الصندوق على العريض');
-  assert.match(redesign, /html\.mobile-ui #inputbar > \.inputbar-tools-below\{ margin-inline-start: var\(--fold-inset\) !important; \}/, 'الأدوات تحت حافّة الصندوق على العريض');
-  assert.match(redesign, /html\.mobile-ui #inputbar > #omBottomBar\{ margin-inline-end: var\(--fold-inset\) !important; \}/, 'المزوّد تحت حافّة الصندوق على العريض');
+  // العتبة 700px (تغطّي عرض الجهاز المطويّ 700–860 الذي فوّتته العتبة القديمة 861)، والهامش ١٢٪ يطابق الصندوق/الرسائل
+  assert.match(redesign, /@media \(min-width:700px\)\{\s*html\.mobile-ui #inputbar\{ --fold-inset: max\(var\(--om-chat-pad,32px\), 12%\); \}/, 'العتبة 700 والهامش ١٢٪');
+  assert.match(redesign, /html\.mobile-ui #inputbar > #composerRow\{ margin-inline: var\(--fold-inset\) !important;/, 'توسيط الصندوق');
+  assert.match(redesign, /html\.mobile-ui #inputbar > \.inputbar-tools-below\{ margin-inline-start: var\(--fold-inset\) !important; \}/, 'الأدوات تحت حافّة الصندوق');
+  assert.match(redesign, /html\.mobile-ui #inputbar > #omBottomBar\{ margin-inline-end: var\(--fold-inset\) !important; \}/, 'المزوّد تحت حافّة الصندوق');
 });
