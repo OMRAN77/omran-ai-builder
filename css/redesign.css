@@ -549,12 +549,14 @@ html.mobile-ui #inputbar > #omBottomBar{
   display:flex !important; justify-content:flex-end !important;
   margin:0 0 0 !important; margin-inline-start:auto !important;
 }
-/* v-foldable-composer (طلب المالك): على التابلت/القابل للطيّ (mobile-ui وشاشة عريضة ≥ 861px)
-   يصير الملحّن مضغوطًا موسّطًا مثل الكمبيوتر تمامًا (صندوق بحدّ أقصى ٨٠٠px)، و«+/المايك»
-   والمزوّد تحت حافّتَي الصندوق لا في زوايا الشاشة. كتلة مكتفية بذاتها (توسّط الصندوق أيضًا)
-   فلا تعتمد على توسيط v-chat-center-narrow المشروط بنوع المؤشّر. الشاشة الطوليّة (< 861) لا تُمسّ. */
-@media (min-width:861px){
-  html.mobile-ui #inputbar{ --fold-inset: max(var(--om-chat-pad,32px), calc((100% - 800px) / 2)); }
+/* v-foldable-composer (طلب المالك، مقيس على أعراض الهواوي/سامسونج): على التابلت/القابل للطيّ
+   (mobile-ui وشاشة عريضة ≥ 700px) كان صندوق الكتابة يتوسّط (v-chat-center-narrow من 700px)
+   بينما «+/المايك» والمزوّد يبقيان بعرض كامل فيطيران لزوايا الشاشة — والعتبة القديمة (861px)
+   كانت تفوّت عرض الجهاز المطويّ (700–860px CSS). الحلّ: من 700px تُحاذى الأدوات والمزوّد
+   لحافّتَي الصندوق بنفس هامشه (١٢٪ = --om-chat-narrow-inset، يطابق الرسائل)، والكتلة توسّط
+   الصندوق بنفسها أيضًا فلا تعتمد على شرط المؤشّر في v-chat-center-narrow. الطوليّ (< 700) لا يُمسّ. */
+@media (min-width:700px){
+  html.mobile-ui #inputbar{ --fold-inset: max(var(--om-chat-pad,32px), 12%); }
   html.mobile-ui #inputbar > #composerRow{ margin-inline: var(--fold-inset) !important; width:auto !important; max-width:none !important; }
   html.mobile-ui #inputbar > .inputbar-tools-below{ margin-inline-start: var(--fold-inset) !important; }
   html.mobile-ui #inputbar > #omBottomBar{ margin-inline-end: var(--fold-inset) !important; }
