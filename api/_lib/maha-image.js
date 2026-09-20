@@ -367,8 +367,12 @@ module.exports = async (req, res) => {
     const primaryModel = (__optForceEngine === 'nano') ? 'gemini-2.5-flash-image'
       : (editImageBase64 ? ((isCreativeEdit || isTextSwap || isPersonSwap || isBroadEdit) ? creativeModel : editModel) : creativeModel);
     const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
-    /* v-lanes: المسار الأمين = تعديل على مصدر واحد ليس إبداعيًّا ولا تبديل أشخاص ولا تعديلًا واسعًا — يحتفظ بحرارته المنخفضة على أيّ محرّك. */
-    const __faithfulLane = !!editImageBase64 && !extras.length && !isCreativeEdit && !isPersonSwap && !isBroadEdit;
+    /* v-lanes: المسار الأمين = تعديل ليس إبداعيًّا ولا تبديل أشخاص ولا تعديلًا واسعًا — يحتفظ بحرارته المنخفضة على أيّ محرّك.
+       v-merge-faithful (لقطة المالك: «ادمج الصورتين مع الأحضان» أرجعت الشخص الثاني وجهًا مختلفًا تمامًا): دمج عدّة صور
+       (extras.length) كان مستثنى من هذا المسار فيعمل دائمًا على حرارة جوجل الافتراضية للإبداع (١.٠) رغم أنّ أمر الدمج
+       نفسه يطلب صراحةً «faces stay pixel-faithful» — فيعيد النموذج تخيّل الوجوه بدل نقلها. الدمج غير الإبداعي يحتاج
+       نفس الحرارة المنخفضة؛ الدمج الإبداعي (isCreativeEdit=true) يبقى خارج هذا المسار كما كان. */
+    const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
     // مع احترام أي طلب صريح (عرضي/مربع/ستوري...). التعديل يحافظ على أبعاد المصدر.
