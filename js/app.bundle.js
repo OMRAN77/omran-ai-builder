@@ -3284,6 +3284,7 @@ const I18N = {
     imagePurgedNote: 'تم حذف الصورة تلقائيًا لتوفير المساحة',
     attachTitle: 'إرفاق',
     attachTruncated: 'تم اقتطاع المحتوى لأنه كان طويلًا جدًا',
+    attachReadFail: 'تعذّرت قراءة الملفّ — جرّب اختياره مرّة أخرى',
     imagesAttachedNote: 'مرفقات',
     building: 'جارٍ البناء...',
     buildSuccess: 'تم إنشاء/تحديث التطبيق بنجاح ✅ يمكنك معاينته من تبويب "المعاينة".',
@@ -4373,6 +4374,7 @@ const I18N = {
     codeHintText: "Tap here to view your app's code & live preview 👈",
     previewTitle: 'Preview',
     attachTruncated: 'Content truncated because it was too long',
+    attachReadFail: 'Could not read the file — try picking it again',
     imagesAttachedNote: 'attachments',
     askAllProvidersLabel: 'Providers included in "Ask All"',
     includeOpenAI: 'OpenAI / OpenRouter',
@@ -4508,7 +4510,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=674'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=675'; /* v-attach-huawei: مفتاح attachReadFail في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -17016,6 +17018,33 @@ function readFileAsText(file){
    الحل: مراقبة مباشرة بلا اعتماد على أي حدث — فحص input.files كل 350ms
    لعشرين ثانية بعد كل ضغطة على أزرار الرفع، تلتقط الملف مهما كان الغلاف
    أو العارض. تعمل مع أو بدون أي حدث آخر، فهي شبكة أمان شاملة. */
+/* v-attach-huawei (فيديو المالك ٢٠ سبتمبر — حزمة هواوي: المنتقي يفتح، يختار صورة،
+   يضغط «تم»، ويرجع بلا شيء رغم v2/v3): على أجهزة هواوي/HarmonyOS/Honor — وحزمة
+   المتجر التي تحمل علم store-safe — يُفتح المنتقي بلا multiple: وضع الاختيار
+   المتعدّد في معرض هواوي يعيد النتيجة بصيغة لا تصل إلى input.files، فيختار
+   المستخدم صورة واحدة في كلّ مرّة (ويعيد «إرفاق» للثانية). وكلّ فشل صامت
+   (لا ملفّ خلال ٢٠ ثانية، أو فشل قراءة ملفّ وصل) يُبلَّغ إلى سجلّ أخطاء
+   العميل ليُقرأ من تقرير client-errors بدل التخمين من فيديو. */
+function omranPickSingle(){
+  try{
+    if(document.documentElement.classList.contains('store-safe')) return true;
+    return /HUAWEI|HarmonyOS|HONOR|HuaweiBrowser|HMSCore/i.test(navigator.userAgent || '');
+  }catch(e){ return false; /* guard-ok — بلا كشف يبقى الاختيار المتعدّد كما كان */ }
+}
+function omranPickerPrep(input){
+  try{ if(input && omranPickSingle() && input.hasAttribute('multiple')) input.removeAttribute('multiple'); }
+  catch(e){ __swallow(e, 'attach:prep'); }
+}
+function omranPickerDiag(kind, input, err){
+  try{
+    const n = (input && input.files) ? input.files.length : -1;
+    const msg = 'attach-picker ' + kind + ': #' + ((input && input.id) || '?') + ' multiple=' + !!(input && input.multiple)
+      + ' files=' + n + (err ? ' — ' + String((err && err.message) || err).slice(0, 160) : '');
+    fetch('/api/system?action=client-errors', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, source: 'attach-picker', line: 0, col: 0, stack: '', url: location.pathname, ua: navigator.userAgent }) })
+      .catch((e) => { __swallow(e, 'attach:diag'); });
+  }catch(e){ __swallow(e, 'attach:diag'); }
+}
 function omranWatchFilePicker(input, onFiles){
   let handled = false, ticks = 0;
   const take = () => {
@@ -17032,11 +17061,11 @@ function omranWatchFilePicker(input, onFiles){
        v405)، فكانت القراءة تفشل بصمت ويبقى الشريط فاضيًا. مسار حدث
        change كان ينتظر (await) قبل المسح؛ المراقب كان يمسح فورًا. */
     Promise.resolve(onFiles(files))
-      .catch((e) => { __swallow(e, 'attach:picker'); })
+      .catch((e) => { __swallow(e, 'attach:picker'); omranPickerDiag('ingest-failed', input, e); })
       .then(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
   };
   const onVis = () => { if(document.visibilityState === 'visible') take(); };
-  const iv = setInterval(() => { take(); if(handled || ++ticks > 57) clearInterval(iv); }, 350);
+  const iv = setInterval(() => { take(); if(handled){ clearInterval(iv); return; } if(++ticks > 57){ clearInterval(iv); omranPickerDiag('timeout', input); } }, 350);
   window.addEventListener('focus', take);
   document.addEventListener('visibilitychange', onVis);
 }
@@ -17044,6 +17073,7 @@ let __attachHandled = false;
 $('#btnAttach').onclick = () => {
   __attachHandled = false;
   const input = $('#attachInput');
+  omranPickerPrep(input);
   input.click();
   omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; return omranIngestFiles(files); } });
 };
@@ -17344,7 +17374,12 @@ async function omranIngestFiles(files, opts){
         }
         pendingAttachments.push({ name: file.name, isImage: false, text });
       }
-    }catch(err){ console.error('attach read error', err); }
+    }catch(err){
+      console.error('attach read error', err);
+      /* v-attach-huawei: الفشل الصامت كان يترك الشريط فاضيًا بلا كلمة — شريحة خطأ مرئيّة + بلاغ تشخيصيّ */
+      pendingAttachments.push({ name: (file && file.name) || 'file', isImage: false, error: true, text: '⚠️ ' + t('attachReadFail') + ((file && file.name) ? ' (' + file.name + ')' : '') });
+      omranPickerDiag('read-failed', null, err);
+    }
   }
   renderAttachStrip();
 }
@@ -22744,7 +22779,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   }
   // v-attach-picker-v3: تُعاد الوعدة للمراقب فلا يُمسح input.value قبل أن
   // تنتهي قراءة الصور فعلًا (فصل الملفّ عن مصدره يُفشل القراءة بصمت).
-  btn.onclick = () => { __pdfPickHandled = false; input.click(); omranWatchFilePicker(input, (files) => { if(!__pdfPickHandled){ __pdfPickHandled = true; return runPdfFiles(files); } }); };
+  btn.onclick = () => { __pdfPickHandled = false; if(typeof omranPickerPrep === 'function') omranPickerPrep(input); /* v-attach-huawei */ input.click(); omranWatchFilePicker(input, (files) => { if(!__pdfPickHandled){ __pdfPickHandled = true; return runPdfFiles(files); } }); };
   input.onchange = () => { if(__pdfPickHandled) return; __pdfPickHandled = true; runPdfFiles(input.files); };
 })();
 

@@ -95,4 +95,38 @@ const pdfFnEnd = features.indexOf('btn.onclick = () =>', pdfFnIdx);
 assert.ok(/btn\.disabled = false;\s*\n\s*try\{ input\.value = ''/.test(features.slice(pdfFnIdx, pdfFnEnd)),
   'التنظيف في نهاية runPdfFiles بعد انتهاء المعالجة');
 
+// (٦) v-attach-huawei (فيديو المالك ٢٠ سبتمبر — حزمة هواوي، بعد v2 وv3): المنتقي يفتح،
+// يختار صورة، «تم»، ويرجع بلا شيء. على هواوي/HarmonyOS/Honor وحزمة المتجر (store-safe)
+// يُفتح المنتقي بلا multiple، وكلّ فشل صامت يُبلَّغ إلى سجلّ أخطاء العميل، وفشل القراءة
+// يظهر شريحةً بدل الصمت.
+{
+  assert.ok(attach.includes('function omranPickSingle()') && attach.includes('function omranPickerPrep(input)') && attach.includes('function omranPickerDiag(kind, input, err)'), 'الدوالّ الثلاث');
+  assert.ok(/HUAWEI\|HarmonyOS\|HONOR\|HuaweiBrowser\|HMSCore/.test(attach) && attach.includes("classList.contains('store-safe')) return true"), 'الكشف: وكيل هواوي أو علم حزمة المتجر');
+  assert.ok(attach.includes("input.hasAttribute('multiple')) input.removeAttribute('multiple')"), 'إزالة multiple قبل الفتح');
+  const a = attach.indexOf("  omranPickerPrep(input);\n  input.click();\n  omranWatchFilePicker(input");
+  assert.ok(a > 0, 'الإرفاق الرئيسيّ: التحضير قبل النقر ثمّ المراقب');
+  assert.ok(features.includes("if(typeof omranPickerPrep === 'function') omranPickerPrep(input); /* v-attach-huawei */ input.click();"), '«صور → PDF»: التحضير قبل النقر');
+  assert.ok(attach.includes("if(++ticks > 57){ clearInterval(iv); omranPickerDiag('timeout', input); }"), 'بلاغ عند انقضاء ٢٠ ثانية بلا ملفّ');
+  assert.ok(attach.includes("omranPickerDiag('ingest-failed', input, e)") && attach.includes("omranPickerDiag('read-failed', null, err)"), 'بلاغ عند فشل الاستيعاب أو القراءة');
+  assert.ok(attach.includes("text: '⚠️ ' + t('attachReadFail')"), 'شريحة خطأ مرئيّة عند فشل قراءة ملفّ');
+  assert.ok(attach.includes("fetch('/api/system?action=client-errors'") && attach.includes("source: 'attach-picker'"), 'البلاغ إلى مسار أخطاء العميل نفسه');
+  // المفتاح في الـ14 لغة والملفّات المحمّلة منفصلة بوسم جديد
+  const i18nData = fs.readFileSync(path.join(root, 'js', 'app-03-i18n-data.js'), 'utf8');
+  assert.strictEqual((i18nData.match(/attachReadFail:/g) || []).length, 2, 'ar + en');
+  for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) assert.ok(/["']?attachReadFail["']?\s*:/.test(fs.readFileSync(path.join(root, 'i18n', lg + '.js'), 'utf8')), 'i18n/' + lg);
+  assert.ok(fs.readFileSync(path.join(root, 'js', 'app-04-i18n-state.js'), 'utf8').includes("'.js?v=675'"), 'وسم ملفّات اللغات رُفع');
+  // سلوك التحضير فعليًّا في نطاق مصغّر: علم المتجر يزيل multiple، وبدونه يبقى
+  const vm = require('node:vm');
+  const src = attach.slice(attach.indexOf('function omranPickSingle()'), attach.indexOf('function omranWatchFilePicker'));
+  const mk = (storeSafe, ua) => {
+    const input = { id: 'attachInput', attrs: { multiple: '' }, hasAttribute(k){ return k in this.attrs; }, removeAttribute(k){ delete this.attrs[k]; } };
+    const ctx = { navigator: { userAgent: ua }, document: { documentElement: { classList: { contains: (c) => storeSafe && c === 'store-safe' } } }, __swallow(){}, fetch: () => ({ catch(){} }), location: { pathname: '/' } };
+    vm.runInNewContext(src + '\nomranPickerPrep(input);', Object.assign(ctx, { input }));
+    return 'multiple' in input.attrs;
+  };
+  assert.strictEqual(mk(true, 'Mozilla/5.0 (Linux; Android 13; Pixel 7) Chrome/120'), false, 'حزمة المتجر: بلا multiple');
+  assert.strictEqual(mk(false, 'Mozilla/5.0 (Linux; Android 10; HarmonyOS; NOH-AN00; HMSCore 6.12) Chrome/99 HuaweiBrowser/13 Mobile'), false, 'هواوي في المتصفّح: بلا multiple');
+  assert.strictEqual(mk(false, 'Mozilla/5.0 (Linux; Android 13; Pixel 7) Chrome/120 Mobile'), true, 'غير هواوي: multiple كما هو');
+}
+console.log('✓ attach-huawei: اختيار مفرد على هواوي وحزمة المتجر، وبلاغ تشخيصيّ لكلّ فشل صامت، وشريحة خطأ عند فشل القراءة');
 console.log('✓ attach-picker: مراقب دوريّ حقيقيّ يلتقط الملف حتى لو صمتت كل الأحداث، ولا يُمسح input.value قبل أن تنتهي قراءته (v3) — في الإرفاق و«صور → PDF»');

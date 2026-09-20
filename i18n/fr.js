@@ -728,6 +728,7 @@ I18N['fr'] = {
     codeHintText: "Appuyez ici pour voir le code et l’aperçu en direct 👈",
     previewTitle: "Aperçu",
     attachTruncated: "Contenu tronqué car trop long",
+    attachReadFail: "Impossible de lire le fichier — choisissez-le à nouveau",
     imagesAttachedNote: "pièces jointes",
     askAllProvidersLabel: "Fournisseurs inclus dans « Interroger tous »",
     includeOpenAI: "OpenAI / OpenRouter",
