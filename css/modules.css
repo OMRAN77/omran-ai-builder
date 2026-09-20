@@ -299,9 +299,10 @@ html:not(.mobile-ui) .omToolCard:hover{box-shadow:var(--sh-2),0 0 0 1px rgba(var
 html:not(.mobile-ui) #eduIntroCard{box-shadow:var(--sh-2),inset 0 1px 0 rgba(var(--accent-glow-rgb),.09)!important}
 html:not(.mobile-ui) #omranNewChatBtn:hover{box-shadow:none!important}
 html:not(.mobile-ui) #stockTickerToggle{box-shadow:var(--sh-1)!important}
-/* v-ticker-toggle-light (طلب المالك «السهم فوق كأنه مأكول»): ظلّ الزرّ الداكن يقصّه
-   #omHeadCenter (overflow:hidden) فيبان صندوقًا مأكولًا على الأبيض — أُزيل في الوضع الفاتح. */
-html[data-mode="light"] #stockTickerToggle{box-shadow:none!important}
+/* v-ticker-toggle-bare-light (طلب المالك «السهم فوق كأنه مأكول»): الزرّ (بحالتيه: الشرارة
+   والسهم ^) عند حافّة #omHeadCenter (overflow:hidden) فتُقصّ دائرته/ظلّه ويبان مأكولًا على
+   الأبيض — يُجرَّد في الوضع الفاتح إلى أيقونة صافية بلا دائرة ولا إطار ولا ظلّ، فلا شيء يُقصّ. */
+html[data-mode="light"] #stockTickerToggle{background:none!important;border:none!important;box-shadow:none!important}
 
 /* ② خلفية: هالة ذهبية علوية + حُبيبات فيلم — ساكنة، لا تعترض النقر */
 html:not(.mobile-ui) body::before{
