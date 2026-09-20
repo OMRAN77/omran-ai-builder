@@ -1788,6 +1788,22 @@ function selectProviderKey(key){
     if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
   }catch(e){ __swallow(e, "ui:app-05-ui#24"); }
 }
+/* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يظهر
+   لمن باقته تسمح باختيار المزوّد (Max) وللمالك وVIP فقط؛ المجّانيّ والضيف وPlus وPro يوجَّهون من الخادم
+   بجدول الباقة (tier.js PLAN_ROUTING) فلا يُعرض لهم اختيار لا أثر له. تُستدعى بنتيجة usage-status
+   (tier/plan) وبنتيجة رصيد النقاط؛ بلا نتيجة (شبكة مقطوعة) لا تغيّر شيئًا. */
+function applyPlanGate(d){
+  try{
+    if(!d || typeof d !== 'object') return;
+    const tier = typeof d.tier === 'string' && d.tier ? d.tier : (d.authed === false ? 'guest' : '');
+    if(!tier) return;
+    const plan = tier === 'sub' ? String(d.plan || '').toLowerCase() : '';
+    const open = tier === 'owner' || tier === 'vip' || (tier === 'sub' && plan === 'max');
+    window.__omranPlan = plan || tier;
+    document.documentElement.classList.toggle('plan-locked', !open);
+  }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }
+}
+window.applyPlanGate = applyPlanGate;
 function buildProviderQuickBar(){
   const grid = document.getElementById('providerGridCells');
   const strip = document.getElementById('providerStripMobile');
@@ -1901,6 +1917,7 @@ async function refreshProviderQuickBar(){
       body: JSON.stringify({ token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
     const data = await res.json();
+    applyPlanGate(data); // v-plan-routing
     const remaining = (data && data.remaining) || {};
     const limit = data.limit || 20;
     document.querySelectorAll('.prov-cell').forEach(cell => {

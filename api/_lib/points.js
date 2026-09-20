@@ -16,11 +16,15 @@ const OWNER_LIST = require('./_owner.js').ownerList();
 // v-costs-2026-09 (قرار المالك ١٢ سبتمبر): الصورة كانت ١٠ نقاط (٠.٢٠$) بينما
 // المسار الإبداعي (برو + أفضل-من-٢ + إعادة محاولة) يكلّف ٠.٣٠–٠.٧٠$ — خسارة؛
 // وصفحة الأسعار تعلن ٢٠ أصلًا. دقيقة مها على gpt-realtime كانت على الحافة.
+// v-plan-routing (قرار المالك ٢٠ سبتمبر — جدول الباقات النهائيّ): الفيديو رُخّص (Runway ٥٥، Veo ٢٧٥)
+// كي يكون في متناول الباقات (Plus فيديو، Pro فيديوان، Max ثلاثة)، والصورة الإبداعيّة (برو + أفضل-من-٢)
+// تُسعَّر ٣٥ لأنّها تكلّف ضعف الصورة العاديّة تقريبًا.
 const COSTS = {
   maha_minute: 15,   // دقيقة مكالمة مع مها
-  runway_video: 60,  // فيديو Runway ‏10 ثواني
-  veo_video: 400,    // فيديو Veo 3 ‏8 ثواني (بالصوت)
+  runway_video: 55,  // فيديو Runway ‏10 ثواني
+  veo_video: 275,    // فيديو Veo 3 ‏8 ثواني (بالصوت)
   image: 20,         // توليد/تعديل صورة
+  image_creative: 35, // صورة إبداعيّة (تعديل إبداعيّ على المحرّك الأقوى + أفضل-من-٢) — تُستكمل فوق image
   image_4k: 30,      // صورة بدقة 4K (طلب صريح: 4k / للطباعة / دقة عالية)
   screen_guide: 5,   // جلسة إرشاد بصريّ — تُخصم مرة واحدة للجلسة كاملة
   premium_claude: 20,  // رد احترافي 👑 Claude Opus 5
@@ -210,17 +214,22 @@ module.exports = async (req, res) => {
 
     if (action === 'balance') {
       if (!username) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
-      if (isOwner(username)) { res.status(200).json({ ok: true, authed: true, owner: true, points: null, unlimited: true, costs: COSTS }); return; }
+      if (isOwner(username)) { res.status(200).json({ ok: true, authed: true, owner: true, points: null, unlimited: true, costs: COSTS, tier: 'owner', plan: null }); return; }
       // VIP: الواجهة تقرأ unlimited وحده (∞ بدل الرقم)، وowner يبقى false
       // لأنّه ليس مالكًا — لوحة التحكّم لا تُفتح له، الحدّ وحده يسقط.
-      if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS }); return; }
+      if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS, tier: 'vip', plan: null }); return; }
       const rec = await readPoints(username);
       if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
+      // v-plan-routing: الباقة السارية مع الرصيد (الواجهة تقفل منتقي المزوّد لغير Max). عطب القراءة = مجّاني.
+      let __t = null;
+      try { __t = await require('./tier.js').resolveTier(username); } catch (e) { __t = null; }
       res.status(200).json({
         ok: true, authed: true, owner: false,
         points: rec.points,
         mahaTrialUsed: !!rec.user.mahaTrialUsed,
         costs: COSTS,
+        tier: (__t && __t.tier) || 'free',
+        plan: (__t && __t.plan) || null,
       });
       return;
     }

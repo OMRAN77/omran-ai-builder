@@ -14,9 +14,16 @@ const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
 
 const PLANS = {
   // v-plans-2026-09: يجب أن تطابق create-checkout-session.js (نقاط ومبالغ).
-  basic: { amount: '10.00', points: 500, name: 'عادية — 500 نقطة / Basic — 500 pts' },
-  pro: { amount: '20.00', points: 1200, name: 'متوسطة — 1,200 نقطة / Pro — 1,200 pts' },
-  max: { amount: '100.00', points: 7000, name: 'كبيرة — 7,000 نقطة / Premium — 7,000 pts' },
+  // v-plan-routing (قرار المالك ٢٠ سبتمبر): Plus ٣٦٠ · Pro ٩٢٠ · Max ٣٬٢٠٠ نقطة شهريًّا.
+  basic: { amount: '10.00', points: 360, name: 'Plus — 360 نقطة / Plus — 360 pts' },
+  pro: { amount: '20.00', points: 920, name: 'Pro — 920 نقطة / Pro — 920 pts' },
+  max: { amount: '100.00', points: 3200, name: 'Max — 3,200 نقطة / Max — 3,200 pts' },
+  // رزم شحن النقاط (pack:true): تُضيف نقاطًا فقط ولا تغيّر الباقة ولا تاريخها. المبالغ مميّزة عن الباقات
+  // لأنّ الالتقاط يطابق بالمبلغ الملتقَط، ومطابقة لأسعار أزرار «باقات النقاط» في الإعدادات.
+  pack100: { amount: '4.99', points: 100, pack: true, name: '100 نقطة / 100 pts' },
+  pack300: { amount: '12.99', points: 300, pack: true, name: '300 نقطة / 300 pts' },
+  pack700: { amount: '24.99', points: 700, pack: true, name: '700 نقطة / 700 pts' },
+  pack900: { amount: '34.99', points: 900, pack: true, name: '900 نقطة / 900 pts' },
 };
 
 function baseUrl() {
@@ -127,8 +134,8 @@ module.exports = async (req, res) => {
               pointsAdded = 0;
               balance = Number(user.points || 0);
             } else if (user && !user.deleted) {
-              user.plan = matchedPlan;
-              user.planUpdatedAt = Date.now();
+              // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها.
+              if (!PLANS[matchedPlan].pack) { user.plan = matchedPlan; user.planUpdatedAt = Date.now(); }
               user.lastPaypalOrderId = data.id;
 
               // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في
@@ -142,7 +149,7 @@ module.exports = async (req, res) => {
               user.points = Number(newBalance);
 
               await putUser(username, user);
-              planGranted = matchedPlan;
+              planGranted = PLANS[matchedPlan].pack ? (user.plan || null) : matchedPlan;
               pointsAdded = PLANS[matchedPlan].points;
               balance = Number(newBalance);
             }

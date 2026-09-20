@@ -155,6 +155,15 @@ module.exports = async (req, res) => {
         }
         mahaImgCharged = mahaImgUser;
         mahaImgChargedAmount = __imgCost;
+        // v-plan-routing: ٢٠ صورة في الساعة لكلّ حساب — المالك وVIP خارجها (pay.owner). فوقها: ردّ الخصم و429.
+        if (!pay.owner) {
+          const __hg = await require('./abuse-guard.js').imageHourlyGuard(mahaImgUser);
+          if (!__hg.ok) {
+            await refundImageCharge();
+            res.status(429).json({ error: 'image_hourly_limit', retryAfter: __hg.retryAfter, max: __hg.max });
+            return;
+          }
+        }
       }
     } else if (typeof guestId === 'string' && /^[a-zA-Z0-9_-]{6,64}$/.test(guestId)) {
       const { kvGetJSON, kvSetIfAbsent, kvIncr, kvDecrBy } = require('./kv.js');
@@ -352,6 +361,20 @@ module.exports = async (req, res) => {
     const creativeModel = (process.env.IMAGE_CREATIVE_MODEL || 'gemini-3-pro-image').trim();
     /* دمج عدة صور (extras) يصل برو أيضًا حين تكون النيّة إبداعية — برو يتعامل مع مراجع متعددة أفضل بكثير */
     const isCreativeEdit = !!editImageBase64 && (isElevate || isReimagine || isRestyle || isSceneUpgrade || __pureRaw);
+    /* v-plan-routing: الصورة الإبداعيّة (برو + أفضل-من-٢) تكلّف ٣٥ لا ٢٠ — الخصم الأساسيّ سبق قبل معرفة النيّة،
+       فالفرق يُخصم هنا حين تتّضح. رصيد لا يكفي الفرق = ردّ الأساس و402 بالسعر الكامل. المالك وVIP لا يُخصم منهما. */
+    if (isCreativeEdit && mahaImgCharged && !__pureRaw) {
+      const __extra = Math.max(0, pointsLib.COSTS.image_creative - mahaImgChargedAmount);
+      if (__extra > 0) {
+        const __xp = await pointsLib.spendPoints(mahaImgCharged, __extra, 'image_creative');
+        if (!__xp.ok) {
+          await refundImageCharge();
+          res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.image_creative, points: __xp.points || 0 });
+          return;
+        }
+        if (!__xp.owner) mahaImgChargedAmount += __extra;
+      }
+    }
     /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
     /* v-image-modes: توغل «نانو خام» للمالك يفرض نانو ٢.٥ (gemini-2.5-flash-image) بدل برو. */
     const primaryModel = (__optForceEngine === 'nano') ? 'gemini-2.5-flash-image'
