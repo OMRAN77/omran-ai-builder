@@ -696,6 +696,7 @@ I18N['hi'] = {
     previewTitle: "पूर्वावलोकन",
     attachTruncated: "सामग्री बहुत लंबी होने के कारण छोटी कर दी गई",
     attachReadFail: "फ़ाइल पढ़ी नहीं जा सकी — इसे फिर से चुनें",
+    attachAddMore: "+ एक और जोड़ें",
     imagesAttachedNote: "संलग्नक",
     askAllProvidersLabel: "\"सभी से पूछें\" में शामिल प्रोवाइडर",
     includeOpenAI: "OpenAI / OpenRouter",

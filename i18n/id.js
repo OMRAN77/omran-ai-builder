@@ -826,6 +826,7 @@ I18N['id'] = {
     "previewTitle": "Pratinjau",
     "attachTruncated": "Konten dipotong karena terlalu panjang",
     "attachReadFail": "File tidak dapat dibaca — pilih lagi",
+    "attachAddMore": "+ Tambah lagi",
     "imagesAttachedNote": "lampiran",
     "askAllProvidersLabel": "Penyedia yang disertakan dalam \"Tanya Semua\"",
     "includeOpenAI": "OpenAI / OpenRouter",

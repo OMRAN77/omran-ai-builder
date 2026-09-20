@@ -27,7 +27,7 @@ test('css/tokens.css: شريط #tabs بلون صندوق الكتابة #101013�
   // نفس لون صندوق الكتابة في redesign.css
   const redesign = read('css/redesign.css');
   assert.match(redesign, /html #composerBox\{\s*background:#101013 !important;/, 'صندوق الكتابة لونه #101013 (المرجع)');
-  assert.ok(read('index.html').includes('css/tokens.css?v=716'), 'وسم كاش tokens.css رُفع');
+  assert.ok(Number((read('index.html').match(/css\/tokens\.css\?v=(\d+)/) || [])[1]) >= 715, 'وسم كاش tokens.css رُفع (٧١٥ فأعلى — كلّ تعديل لاحق يرفعه)');
 });
 
 test('index.html + css: خلفية لوحة العمل ومحرّر الكود بلون صندوق الكتابة #101013 (المعاينة/الكود)', () => {

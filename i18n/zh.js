@@ -821,6 +821,7 @@ I18N['zh'] = {
     "previewTitle": "预览",
     "attachTruncated": "内容过长，已被截断",
     "attachReadFail": "无法读取文件，请重新选择",
+    "attachAddMore": "+ 再添加一张",
     "imagesAttachedNote": "附件",
     "askAllProvidersLabel": "包含在\"全部询问 (Ask All)”中的服务商",
     "includeOpenAI": "OpenAI / OpenRouter",

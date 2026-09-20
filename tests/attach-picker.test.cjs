@@ -41,7 +41,7 @@ assert.ok(/clearInterval\(iv\)/.test(attach), 'الفحص الدوريّ يتو�
 
 // (٣) مسار الإرفاق الرئيسي يستعمل المراقب الموحّد، وحدث change يحترم العلم
 // فلا يُرفق الملف مرّتين لو التقطه المراقب أولًا.
-const clickIdx = attach.indexOf("$('#btnAttach').onclick");
+const clickIdx = attach.indexOf("function omranOpenAttachPicker()"); // v-attach-huawei-more: المعالج صار دالّة موحّدة يستدعيها زرّ «إرفاق» وشريحة «＋ صورة أخرى»
 assert.ok(clickIdx > 0, 'معالج زرّ الإرفاق موجود');
 const clickBlock = attach.slice(clickIdx, clickIdx + 260);
 assert.ok(/__attachHandled = false;/.test(clickBlock), 'العلم يُصفَّر عند فتح المنتقي');
@@ -114,7 +114,7 @@ assert.ok(/btn\.disabled = false;\s*\n\s*try\{ input\.value = ''/.test(features.
   const i18nData = fs.readFileSync(path.join(root, 'js', 'app-03-i18n-data.js'), 'utf8');
   assert.strictEqual((i18nData.match(/attachReadFail:/g) || []).length, 2, 'ar + en');
   for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) assert.ok(/["']?attachReadFail["']?\s*:/.test(fs.readFileSync(path.join(root, 'i18n', lg + '.js'), 'utf8')), 'i18n/' + lg);
-  assert.ok(fs.readFileSync(path.join(root, 'js', 'app-04-i18n-state.js'), 'utf8').includes("'.js?v=675'"), 'وسم ملفّات اللغات رُفع');
+  assert.ok(Number((fs.readFileSync(path.join(root, 'js', 'app-04-i18n-state.js'), 'utf8').match(/'\.js\?v=(\d+)'/) || [])[1]) >= 675, 'وسم ملفّات اللغات رُفع (٦٧٥ فأعلى)');
   // سلوك التحضير فعليًّا في نطاق مصغّر: علم المتجر يزيل multiple، وبدونه يبقى
   const vm = require('node:vm');
   const src = attach.slice(attach.indexOf('function omranPickSingle()'), attach.indexOf('function omranWatchFilePicker'));
@@ -128,5 +128,19 @@ assert.ok(/btn\.disabled = false;\s*\n\s*try\{ input\.value = ''/.test(features.
   assert.strictEqual(mk(false, 'Mozilla/5.0 (Linux; Android 10; HarmonyOS; NOH-AN00; HMSCore 6.12) Chrome/99 HuaweiBrowser/13 Mobile'), false, 'هواوي في المتصفّح: بلا multiple');
   assert.strictEqual(mk(false, 'Mozilla/5.0 (Linux; Android 13; Pixel 7) Chrome/120 Mobile'), true, 'غير هواوي: multiple كما هو');
 }
+// (٧) v-attach-huawei-more («استوى لكن صورة وحدة وحدة، على الأقلّ ٥»): على أجهزة الاختيار
+// المفرد شريحة «＋ صورة أخرى» في شريط المرفقات تفتح المنتقي نفسه بنقرة واحدة لكلّ صورة.
+{
+  assert.ok(attach.includes('function omranOpenAttachPicker()') && attach.includes("$('#btnAttach').onclick = omranOpenAttachPicker;"), 'فاتح موحّد للمنتقي');
+  assert.ok(attach.includes("if(pendingAttachments.length && typeof omranPickSingle === 'function' && omranPickSingle())") && attach.includes("more.className = 'attach-chip more'") && attach.includes("more.textContent = t('attachAddMore')") && attach.includes('omranOpenAttachPicker(); };'), 'الشريحة تظهر مع مرفق على أجهزة الاختيار المفرد وتفتح المنتقي');
+  const css = fs.readFileSync(path.join(root, 'css', 'tokens.css'), 'utf8');
+  assert.ok(css.includes('.attach-chip.more{cursor:pointer;'), 'تنسيق الشريحة');
+  assert.ok(/css\/tokens\.css\?v=(\d+)/.test(html) && Number(html.match(/css\/tokens\.css\?v=(\d+)/)[1]) >= 716, 'وسم tokens.css رُفع');
+  const i18nData = fs.readFileSync(path.join(root, 'js', 'app-03-i18n-data.js'), 'utf8');
+  assert.strictEqual((i18nData.match(/attachAddMore:/g) || []).length, 2, 'ar + en');
+  for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) assert.ok(/["']?attachAddMore["']?\s*:/.test(fs.readFileSync(path.join(root, 'i18n', lg + '.js'), 'utf8')), 'i18n/' + lg);
+  assert.ok(Number((fs.readFileSync(path.join(root, 'js', 'app-04-i18n-state.js'), 'utf8').match(/'\.js\?v=(\d+)'/) || [])[1]) >= 676, 'وسم ملفّات اللغات رُفع (٦٧٦ فأعلى)');
+}
+console.log('✓ attach-huawei-more: «＋ صورة أخرى» بنقرة واحدة لكلّ صورة إضافيّة على أجهزة الاختيار المفرد');
 console.log('✓ attach-huawei: اختيار مفرد على هواوي وحزمة المتجر، وبلاغ تشخيصيّ لكلّ فشل صامت، وشريحة خطأ عند فشل القراءة');
 console.log('✓ attach-picker: مراقب دوريّ حقيقيّ يلتقط الملف حتى لو صمتت كل الأحداث، ولا يُمسح input.value قبل أن تنتهي قراءته (v3) — في الإرفاق و«صور → PDF»');

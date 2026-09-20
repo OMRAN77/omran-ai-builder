@@ -291,6 +291,17 @@ function renderAttachStrip(){
       strip.appendChild(chip);
     }
   });
+  /* v-attach-huawei-more: شريحة «＋ صورة أخرى» حين يكون المنتقي مفردًا (هواوي/حزمة المتجر) */
+  try{
+    if(pendingAttachments.length && typeof omranPickSingle === 'function' && omranPickSingle()){
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'attach-chip more';
+      more.textContent = t('attachAddMore');
+      more.onclick = (e) => { e.preventDefault(); e.stopPropagation(); omranOpenAttachPicker(); };
+      strip.appendChild(more);
+    }
+  }catch(e){ __swallow(e, 'attach:more'); }
   try{ window.__composerSyncTall && window.__composerSyncTall(); }catch(e){ /* guard-ok — cosmetic */ }
 }
 
@@ -1001,13 +1012,18 @@ function omranWatchFilePicker(input, onFiles){
   document.addEventListener('visibilitychange', onVis);
 }
 let __attachHandled = false;
-$('#btnAttach').onclick = () => {
+/* v-attach-huawei-more («استوى لكن صورة وحدة وحدة، على الأقلّ ٥»): على أجهزة
+   الاختيار المفرد يفتح المنتقي من زرّ «إرفاق» ومن شريحة «＋ صورة أخرى» في شريط
+   المرفقات — نقرة واحدة لكلّ صورة إضافيّة (نقرة المستخدم شرط لفتح المنتقي؛
+   لا يمكن فتحه تلقائيًّا بعد وصول الصورة). */
+function omranOpenAttachPicker(){
   __attachHandled = false;
   const input = $('#attachInput');
   omranPickerPrep(input);
   input.click();
   omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; return omranIngestFiles(files); } });
-};
+}
+$('#btnAttach').onclick = omranOpenAttachPicker;
 
 // ---- Emoji picker ----
 const EMOJI_LIST = [

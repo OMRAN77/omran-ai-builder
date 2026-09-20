@@ -828,6 +828,7 @@ I18N['ml'] = {
     "previewTitle": "പ്രിവ്യൂ",
     "attachTruncated": "വളരെ നീണ്ടതിനാൽ ഉള്ളടക്കം ചുരുക്കി",
     "attachReadFail": "ഫയൽ വായിക്കാനായില്ല — വീണ്ടും തിരഞ്ഞെടുക്കുക",
+    "attachAddMore": "+ മറ്റൊന്ന് ചേർക്കുക",
     "imagesAttachedNote": "അറ്റാച്ച്മെന്റുകൾ",
     "askAllProvidersLabel": "\"എല്ലാവരോടും ചോദിക്കുക\"-ൽ ഉൾപ്പെടുത്തിയ പ്രൊവൈഡർമാർ",
     "includeOpenAI": "OpenAI / OpenRouter",

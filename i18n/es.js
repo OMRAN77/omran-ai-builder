@@ -827,6 +827,7 @@ I18N['es'] = {
     "previewTitle": "Vista previa",
     "attachTruncated": "El contenido se truncó porque era demasiado largo",
     "attachReadFail": "No se pudo leer el archivo — vuelve a elegirlo",
+    "attachAddMore": "+ Añadir otra",
     "imagesAttachedNote": "adjuntos",
     "askAllProvidersLabel": "Proveedores incluidos en \"Preguntar a todos\"",
     "includeOpenAI": "OpenAI / OpenRouter",
