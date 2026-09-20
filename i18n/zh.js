@@ -820,6 +820,7 @@ I18N['zh'] = {
     "codeHintText": "点击此处查看应用代码及实时预览 👈",
     "previewTitle": "预览",
     "attachTruncated": "内容过长，已被截断",
+    "attachReadFail": "无法读取文件，请重新选择",
     "imagesAttachedNote": "附件",
     "askAllProvidersLabel": "包含在\"全部询问 (Ask All)”中的服务商",
     "includeOpenAI": "OpenAI / OpenRouter",

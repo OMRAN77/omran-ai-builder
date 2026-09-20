@@ -1,6 +1,6 @@
 # حزمة متجر هواوي (AppGallery) — 1.3.10 جاهزة للبناء بضغطة
 
-**التطبيق:** Omran AI Builder · **معرّف AGC:** 118703501 · **اسم الحزمة:** `com.omran.aibuilder`
+**التطبيق:** Omran AI Builder · **معرّف AGC:** 118703501 · **اسم الحزمة المسجّل في AGC:** `com.omran.aibuilder.twa` (لا `com.omran.aibuilder` — ذاك اسم حزمة APKPure؛ AGC رفض الرفع به ١٨ سبتمبر)
 **آخر رفض:** الإصدار 1.3.9 (٧ و١٥ سبتمبر ٢٠٢٦) بقاعدة **4.1 «ميزة واحدة»** — المراجع فتح غلاف الموقع
 (TWA) فرأى شاشة محادثة واحدة **وشريط عنوان المتصفّح فوقها**، فحكم أنّه موقع لا تطبيق.
 
@@ -13,7 +13,7 @@
 ## ما في المستودع
 | الملفّ | دوره |
 |---|---|
-| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder`، ينطلق من `/?store=huawei`، الإصدار 1.3.10، الاسم على الشاشة «عمران AI»، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
+| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder.twa`، ينطلق من `/?store=huawei`، الإصدار 1.3.10، الاسم على الشاشة «عمران AI»، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
 | `.github/workflows/android-release.yml` | يبني الـAPK على مشغّل GitHub (Android SDK جاهز هناك)، يوقّعه بمفتاحك من أسرار المستودع، ينشر **Release** `v1.3.10` بالـAPK، يطبع بصمة التوقيع، ويفتح طلب سحب يضعها في `assetlinks.json`. |
 | `../../manifest-huawei.json` | بيان الحزمة: `start_url`/`id` = `/?store=huawei`، `scope` = `/`. البيان العامّ `manifest.json` لم يتغيّر. |
 | `../../.well-known/assetlinks.json` | Digital Asset Links للحزمة. البصمة تُملأ تلقائيًّا من الورك فلو (أو يدويًّا). |
@@ -48,7 +48,7 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 مفتاح 1.3.9 ضاع (المالك ١٨ سبتمبر). الجلسة لا تولّد مفاتيح توقيع ولا تضعها في المستودع؛ المفتاح يُنشأ عندك ويبقى عندك.
 أسهل طريقة بلا طرفيّة — الموقع نفسه الذي بُنيت به الحزم السابقة:
 1. افتح <https://www.pwabuilder.com> وأدخل `https://omran-ai-builder.vercel.app/?store=huawei` ← **Package for stores** ← **Android**.
-2. في الخيارات: **Package ID** `com.omran.aibuilder` · **App name** `Omran AI Builder` · **Launcher name** `عمران AI` ·
+2. في الخيارات: **Package ID** `com.omran.aibuilder.twa` · **App name** `Omran AI Builder` · **Launcher name** `عمران AI` ·
    **Version** `1.3.10` · **Version code** `20260918` · **Start URL** `/?store=huawei` ·
    **Manifest URL** `https://omran-ai-builder.vercel.app/manifest-huawei.json` · **Fallback** WebView ·
    **Signing key: Create new** (املأ الاسم والمنظّمة كيفما شئت).

@@ -826,6 +826,7 @@ I18N['ru'] = {
     "codeHintText": "Нажмите здесь, чтобы увидеть код приложения и живой предпросмотр 👈",
     "previewTitle": "Предпросмотр",
     "attachTruncated": "Содержимое обрезано, так как оно было слишком длинным",
+    "attachReadFail": "Не удалось прочитать файл — выберите его снова",
     "imagesAttachedNote": "вложения",
     "askAllProvidersLabel": "Провайдеры, включённые в «Спросить всех»",
     "includeOpenAI": "OpenAI / OpenRouter",

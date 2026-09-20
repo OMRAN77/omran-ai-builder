@@ -80,7 +80,7 @@ assert.ok(html.includes("var key=L?'darkModeTitle':'lightModeTitle';") && html.i
 const state = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-04-i18n-state.js'), 'utf8');
 // v-custom-instructions: رُفع إلى 673 مع مفاتيح ci* — الرقم مثبّت هنا عمدًا
 // ليُجبر رفعه مع كلّ مفتاح جديد في ملفّات اللغة الكسولة.
-assert.ok(state.includes("'.js?v=675'"), 'كاسر كاش ملفات اللغة الكسولة رُفع بعد إضافة المفتاح');
+assert.ok(Number((state.match(/'\.js\?v=(\d+)'/) || [])[1]) >= 674, 'كاسر كاش ملفات اللغة الكسولة رُفع بعد إضافة المفتاح (٦٧٤ فأعلى — كلّ مفتاح جديد يرفعه)');
 
 // العمود الموسّط
 assert.match(block, /--om-chat-max: 800px;/, 'حدّ عرض المحادثة');

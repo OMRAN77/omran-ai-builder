@@ -717,6 +717,7 @@ I18N['ne'] = {
     codeHintText: "तपाईंको एपको कोड र लाइभ पूर्वावलोकन हेर्न यहाँ ट्याप गर्नुहोस् 👈",
     previewTitle: "पूर्वावलोकन",
     attachTruncated: "सामग्री काटियो किनभने यो धेरै लामो थियो",
+    attachReadFail: "फाइल पढ्न सकिएन — फेरि छान्नुहोस्",
     imagesAttachedNote: "संलग्नकहरू",
     askAllProvidersLabel: "\"सबै सोध्नुहोस्\" मा समावेश प्रदायकहरू",
     includeOpenAI: "OpenAI / OpenRouter",

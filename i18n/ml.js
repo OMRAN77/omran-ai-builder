@@ -827,6 +827,7 @@ I18N['ml'] = {
     "codeHintText": "നിങ്ങളുടെ ആപ്പിന്റെ കോഡും ലൈവ് പ്രിവ്യൂവും കാണാൻ ഇവിടെ ടാപ്പ് ചെയ്യുക 👈",
     "previewTitle": "പ്രിവ്യൂ",
     "attachTruncated": "വളരെ നീണ്ടതിനാൽ ഉള്ളടക്കം ചുരുക്കി",
+    "attachReadFail": "ഫയൽ വായിക്കാനായില്ല — വീണ്ടും തിരഞ്ഞെടുക്കുക",
     "imagesAttachedNote": "അറ്റാച്ച്മെന്റുകൾ",
     "askAllProvidersLabel": "\"എല്ലാവരോടും ചോദിക്കുക\"-ൽ ഉൾപ്പെടുത്തിയ പ്രൊവൈഡർമാർ",
     "includeOpenAI": "OpenAI / OpenRouter",

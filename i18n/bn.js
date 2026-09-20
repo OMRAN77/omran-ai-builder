@@ -694,6 +694,7 @@ I18N['bn'] = {
     codeHintText: "আপনার অ্যাপের কোড এবং লাইভ প্রিভিউ দেখতে এখানে ট্যাপ করুন 👈",
     previewTitle: "পূর্বরূপ",
     attachTruncated: "বিষয়বস্তু কেটে ফেলা হয়েছে কারণ এটি খুব দীর্ঘ ছিল৷",
+    attachReadFail: "ফাইলটি পড়া যায়নি — আবার বেছে নিন",
     imagesAttachedNote: "সংযুক্তি",
     askAllProvidersLabel: "\"সমস্ত জিজ্ঞাসা করুন\" এর অন্তর্ভুক্ত প্রদানকারীরা",
     includeOpenAI: "OpenAI / OpenRouter",

@@ -695,6 +695,7 @@ I18N['hi'] = {
     codeHintText: "ऐप का कोड और लाइव पूर्वावलोकन देखने के लिए यहां टैप करें 👈",
     previewTitle: "पूर्वावलोकन",
     attachTruncated: "सामग्री बहुत लंबी होने के कारण छोटी कर दी गई",
+    attachReadFail: "फ़ाइल पढ़ी नहीं जा सकी — इसे फिर से चुनें",
     imagesAttachedNote: "संलग्नक",
     askAllProvidersLabel: "\"सभी से पूछें\" में शामिल प्रोवाइडर",
     includeOpenAI: "OpenAI / OpenRouter",

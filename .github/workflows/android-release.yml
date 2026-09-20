@@ -82,7 +82,7 @@ jobs:
           echo "APK=$OUT" >> "$GITHUB_ENV"
           {
             echo "## Omran AI Builder ${VERSION_NAME} (versionCode ${VERSION_CODE})"
-            echo "- الحزمة: \`com.omran.aibuilder\` — تنطلق من \`https://omran-ai-builder.vercel.app/?store=huawei\`"
+            echo "- الحزمة: \`com.omran.aibuilder.twa\` — تنطلق من \`https://omran-ai-builder.vercel.app/?store=huawei\`"
             echo "- بصمة شهادة التوقيع SHA-256: \`${FP}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -99,7 +99,7 @@ jobs:
         run: |
           set -e
           TAG="v${VERSION_NAME}"
-          NOTES="حزمة AppGallery — com.omran.aibuilder ${VERSION_NAME} (versionCode ${VERSION_CODE}). تنطلق من /?store=huawei. بصمة التوقيع SHA-256: ${FINGERPRINT}"
+          NOTES="حزمة AppGallery — com.omran.aibuilder.twa ${VERSION_NAME} (versionCode ${VERSION_CODE}). تنطلق من /?store=huawei. بصمة التوقيع SHA-256: ${FINGERPRINT}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
           else

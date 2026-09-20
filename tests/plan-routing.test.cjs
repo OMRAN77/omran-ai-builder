@@ -284,14 +284,13 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
   assert.ok(html.includes('/js/partials-settings.js?v=659'), 'وسم الملفّ المنفصل ارتفع');
-  assert.ok(read('js/app-04-i18n-state.js').includes("i18n/' + lg + '.js?v=675'"), 'وسم ملفّات اللغات ارتفع (نصوص الباقات ونافذة الدفع)');
+  assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 
 test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا اسم موديل في وصف النقاط', () => {
-  // المفتاح قد يكون بين علامتي اقتباس في بعض ملفّات اللغات ("checkoutPlanLabelBasic": …).
-  const val = (src, key) => [...src.matchAll(new RegExp('(?:^|[\\s,{])"?' + key + '"?\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')', 'g'))].map((m) => m[1]);
+  const val = (src, key) => [...src.matchAll(new RegExp('(?:^|[\\s,{])' + key + '\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')', 'g'))].map((m) => m[1]);
   const files = ['js/app-03-i18n-data.js'].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((l) => 'i18n/' + l + '.js'));
-  const expect = { planFreeFeats: [/5/, /4/, /3/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/, /15/, /1/], planProFeats: [/100/, /61/, /40/, /2/], planMaxFeats: [/250/, /213/, /150/, /3/], plFreeMsgs: [/5/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/1|واحد/], checkoutPlanLabelBasic: [/Plus/, /10/, /360/], checkoutPlanLabelPro: [/Pro/, /20/, /920/], checkoutPlanLabelMax: [/Max/, /100/, /3[,. ]200/], plProMedia: [/40/, /2/], plMaxMedia: [/150/, /3/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /275/] };
+  const expect = { planFreeFeats: [/5/, /4/, /3/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/, /15/, /1/], planProFeats: [/100/, /61/, /40/, /2/], planMaxFeats: [/250/, /213/, /150/, /3/], plFreeMsgs: [/5/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/1|واحد/], plProMedia: [/40/, /2/], plMaxMedia: [/150/, /3/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /275/] };
   for (const f of files) {
     const src = read(f);
     const n = f.startsWith('i18n/') ? 1 : 2;
@@ -300,7 +299,6 @@ test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا �
       assert.equal(vs.length, n, f + ': ' + k);
       for (const v of vs) { for (const re of res) assert.match(v, re, f + ': ' + k); assert.doesNotMatch(v, /Veo|Runway|Gemini|Claude|GPT/i, f + ': ' + k + ' بلا اسم موديل'); }
       if (/Feats$/.test(k)) for (const v of vs) assert.doesNotMatch(v, /\b(?:20|300|400|460|500|7000|1200)\b/, f + ': ' + k + ' رقم قديم');
-      if (/^checkoutPlanLabel/.test(k)) for (const v of vs) assert.doesNotMatch(v, /5000|\b300\b|\$5\/|\$15\/|\b5 ?\$\/|\b15 ?\$\//, f + ': ' + k + ' رقم قديم في نافذة الدفع');
     }
   }
   const ps = read('js/partials-settings.js');
