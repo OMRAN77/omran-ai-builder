@@ -63,3 +63,18 @@ test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الط
   assert.match(js, /setupResizer\(\$\('#resizer1'\), sidebarEl, \{ min: 0, max: 560/, 'سحب القائمة حرّ حتّى الطيّ');
   assert.match(js, /setupResizer\(\$\('#resizer2'\), chatcolEl, \{ min: 240, max: 1600/, 'سحب المحادثة حرّ واسع');
 });
+
+test('v5/v6: أدوات + والمايك خارج الصندوق تحته، والإرسال وحده داخله، وشريط المزوّد تحت الصندوق', () => {
+  const js = read('js/app-10-features.js');
+  const redesign = read('css/redesign.css');
+  const modes = read('js/modes.js');
+  // #5: نقل مجموعة الأدوات أسفل الصندوق (بعد composerRow) مع صنف inputbar-tools-below
+  assert.match(js, /querySelector\('#composerBox > \.inputbar-tools'\)[\s\S]*?insertBefore\(__tools, __row\.nextSibling\)[\s\S]*?inputbar-tools-below/, 'نقل الأدوات أسفل الصندوق');
+  assert.match(redesign, /#inputbar > \.inputbar-tools-below\{[\s\S]*?align-self:flex-start/, 'تنسيق صفّ الأدوات تحت الصندوق');
+  // زرّ الإرسال يبقى داخل الصندوق (لم يُنقل)
+  assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
+  // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
+  assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
+  assert.ok(read('index.html').includes('css/redesign.css?v=670'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
+});
