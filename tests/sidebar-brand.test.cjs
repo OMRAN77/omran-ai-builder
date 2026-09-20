@@ -17,8 +17,8 @@ test('index.html: الشعار أوّل عنصر في القائمة الجان�
   const btn = html.indexOf('<button type="button" id="omranNewChatBtn">', sb);
   assert.ok(sb > 0 && brand > sb && mirror > brand && btn > mirror, 'الترتيب: sidebar → sidebarBrand → مرآة → omranNewChatBtn');
   assert.match(html, /<div id="sidebarBrand" class="sidebarBrand" title="عمران AI"><img src="icons\/brand-ar\.png" alt="عمران Ai" class="brandImg" width="126" height="42"><\/div>/);
-  assert.ok(html.includes('<span id="brandTitle" class="brandTitle brand-ar">'), 'شعار الرأس باقٍ للجوّال');
-  assert.ok(html.includes('css/redesign.css?v=673'), 'وسم الكاش رُفع');
+  assert.ok(html.includes('<span id="brandTitle" class="brandTitle brand-ar">'), 'عنصر شعار الرأس باقٍ (مصدر المرآة لشعار الدرج) وإن أُخفي بصريًّا');
+  assert.ok(html.includes('css/redesign.css?v=675'), 'وسم الكاش رُفع');
 });
 
 test('redesign.css: الشعار فوق الزرّ (order:-3) على سطح المكتب والجوّال (طلب المالك)، ويخفي شعار الرأس على المكتب', () => {

@@ -106,8 +106,8 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=710">
-<link rel="stylesheet" href="css/redesign.css?v=673">
+<link rel="stylesheet" href="css/tokens.css?v=712">
+<link rel="stylesheet" href="css/redesign.css?v=675">
 <link rel="stylesheet" href="css/modules.css?v=656">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
@@ -468,11 +468,11 @@ body #btnMode{ display: none !important; }
   html:not(.mobile-ui) body #messages > *,
   html:not(.mobile-ui) body #askAllHintTip,
   html:not(.mobile-ui) body #composerRow,
-  html:not(.mobile-ui) body #inputbar > .inputbar-tools-below,
-  html:not(.mobile-ui) body #omBottomBar,
   html:not(.mobile-ui) body #omranBelowComposer{
     margin-inline: var(--om-chat-inset) !important;
   }
+  /* v-below-onerow: «+/المايك» وشريط المزوّد على سطر واحد ضمن نطاق الصندوق نفسه
+     (--om-chat-inset) — التفاصيل في redesign.css؛ هنا تُعرَّف حوافّ النطاق فقط. */
   html:not(.mobile-ui) body #chatJumpBottom,
   html:not(.mobile-ui) body #chatQuickChipsWrap{
     inset-inline-end: calc(var(--om-chat-inset) + 14px);
@@ -848,7 +848,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=hw-twa-2"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=578729a0"></script>
+    <script defer src="/js/app.bundle.js?v=673017c1"></script>
     <script defer src="/js/modes.js?v=m150916a"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

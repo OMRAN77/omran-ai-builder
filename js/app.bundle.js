@@ -22901,7 +22901,7 @@ window.addEventListener('resize', () => { if(window.innerWidth > 860) closeDrawe
 
 /* ---------- Draggable resizers (desktop) ---------- */
 function setupResizer(resizerEl, panelEl, opts){
-  const { min = 180, max = 560, storeKey } = opts;
+  const { min = 180, max = 560, storeKey, invert = false } = opts;
   const saved = parseInt(localStorage.getItem(storeKey) || '', 10);
   if(saved && saved >= min && saved <= max){
     panelEl.style.width = saved + 'px';
@@ -22912,6 +22912,8 @@ function setupResizer(resizerEl, panelEl, opts){
   function onMove(clientX){
     let delta = clientX - startX;
     if(isRTL()) delta = -delta;
+    // v-resizer2-work: مقبض لوحة العمل على الجهة المقابلة للعمود المرن، فاتّجاه سحبه معكوس.
+    if(invert) delta = -delta;
     let newWidth = startWidth + delta;
     newWidth = Math.max(min, Math.min(max, newWidth));
     panelEl.style.width = newWidth + 'px';
@@ -22956,7 +22958,10 @@ function setupResizer(resizerEl, panelEl, opts){
 // v-free-resize (طلب المالك): سحب حرّ لأيّ حجم — من التصغير الشديد (شبه طيّ) حتّى كبير.
 // القائمة تصل 0 (طيّ كامل بالسحب)، والمحادثة تتوسّع فيضيق workarea (min-width:0) حتّى شبه الطيّ.
 setupResizer($('#resizer1'), sidebarEl, { min: 0, max: 560, storeKey: 'panelWidthSidebar' });
-setupResizer($('#resizer2'), chatcolEl, { min: 240, max: 1600, storeKey: 'panelWidthChat' });
+// v-resizer2-work (طلب المالك «شريط المعاينة والكود ما أقدر أحرّكه»): في شبكة v-frame-c
+// عمود المحادثة #chatcol هو 1fr (لا يُضبط بعرض)، فكان سحب resizer2 بلا أثر. اللوحة #workarea
+// في عمود auto يتبع عرضها الصريح، فالمقبض يضبط عرض اللوحة نفسها (باتّجاه معكوس لأنّها الجهة المقابلة).
+setupResizer($('#resizer2'), workareaEl, { min: 240, max: 1600, storeKey: 'panelWidthWork', invert: true });
 
 // v-tools-below (طلب المالك): «+» والمايك (مجموعة الأدوات) تخرج من صندوق الكتابة
 // وتصير صفًّا تحته؛ يبقى زرّ الإرسال وحده داخل الصندوق. نقل DOM فقط — المعرّفات

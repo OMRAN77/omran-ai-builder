@@ -42,7 +42,7 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=710'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=712'), 'وسم كاش tokens.css رُفع');
 });
 
 test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الطيّ فوق بأيقونة اللوحة، الإيقاف ذهبيّ، سحب حرّ', () => {
@@ -61,7 +61,10 @@ test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الط
   assert.match(redesign, /#composerBox > #btnStop\{[\s\S]*?border:1\.5px solid #d4af37 !important; color:#d4af37/, 'الإيقاف ذهبيّ');
   // #1: سحب حرّ واسع المدى (القائمة تصل 0)
   assert.match(js, /setupResizer\(\$\('#resizer1'\), sidebarEl, \{ min: 0, max: 560/, 'سحب القائمة حرّ حتّى الطيّ');
-  assert.match(js, /setupResizer\(\$\('#resizer2'\), chatcolEl, \{ min: 240, max: 1600/, 'سحب المحادثة حرّ واسع');
+  // v-resizer2-work: مقبض لوحة العمل صار يضبط عرض #workarea (لا #chatcol) باتّجاه معكوس
+  assert.match(js, /setupResizer\(\$\('#resizer2'\), workareaEl, \{ min: 240, max: 1600, storeKey: 'panelWidthWork', invert: true \}\)/, 'سحب اللوحة يضبط workarea');
+  assert.match(js, /const \{ min = 180, max = 560, storeKey, invert = false \} = opts;/, 'خيار invert في setupResizer');
+  assert.match(js, /if\(invert\) delta = -delta;/, 'عكس الاتّجاه عند invert');
 });
 
 test('v5/v6: أدوات + والمايك خارج الصندوق تحته، والإرسال وحده داخله، وشريط المزوّد تحت الصندوق', () => {
@@ -75,18 +78,41 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=673'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=675'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
 });
 
-test('v-align + v-badge-white: محاذاة الأدوات/المزوّد لحافّتَي الصندوق، وشارة الموديل للمالك بيضاء', () => {
-  const html = read('index.html');
+test('v-wa-handle-noborder: مقبض سحب لوحة المعاينة/الكود نفس شكله (خلفيّة + استدارة) لكن بلا إطار', () => {
+  const css = read('css/tokens.css');
+  // الشكل باقٍ: خلفيّة + استدارة على جهة البداية، والحجم نفسه (28×30)
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*background:rgba\(255,255,255,\.07\);/, 'الخلفيّة (الشكل) باقية');
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*border-start-start-radius:9px; border-end-start-radius:9px;/, 'الاستدارة باقية');
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*width:28px; height:30px;/, 'نفس الحجم');
+  // الإطار (الخطّ) اتشال فقط
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*border:none;/, 'الإطار اتشال');
+  // الأيقونة باقية والمرور يرجّع خلفيّة أعلى (لا إطار)
+  assert.match(css, /body\.waCollapsedMode #waReopen svg\{width:15px; height:15px;\}/, 'الأيقونة باقية');
+  assert.match(css, /body\.waCollapsedMode #waReopen:hover\{color:var\(--text\); background:rgba\(255,255,255,\.12\);\}/, 'المرور خلفيّة بلا إطار');
+});
+
+test('v-below-onerow: «+/المايك» وشريط المزوّد على سطر واحد تحت الصندوق ضمن نطاقه', () => {
+  const redesign = read('css/redesign.css');
+  // #inputbar يلتفّ صفوفًا، والصندوق سطر كامل
+  assert.match(redesign, /html:not\(\.mobile-ui\) #inputbar\{flex-flow:row wrap;/, 'inputbar يلتفّ صفوفًا');
+  assert.match(redesign, /html:not\(\.mobile-ui\) #inputbar > #composerRow\{flex:1 1 100% !important; order:0;\}/, 'الصندوق سطر كامل');
+  assert.match(redesign, /html:not\(\.mobile-ui\) #inputbar > #omranBelowComposer\{flex:1 1 100% !important; order:3;\}/, 'الترحيب آخر سطر');
+  // الأدوات جهة البداية (order:1) تحت حافّة الصندوق (inset)، والمزوّد جهة النهاية (order:2) تحت الحافّة الأخرى
+  assert.match(redesign, /#inputbar > \.inputbar-tools-below\{\s*order:1 !important;[\s\S]*?margin-inline-start:var\(--om-chat-inset\) !important;/, 'الأدوات جهة البداية ضمن النطاق');
+  assert.match(redesign, /#inputbar > #omBottomBar\{\s*order:2 !important;[\s\S]*?margin-inline-start:auto !important; margin-inline-end:var\(--om-chat-inset\) !important;/, 'المزوّد جهة النهاية ضمن النطاق');
+});
+
+test('v-mobile-brand-once: على الجوّال يبقى شعار الدرج فقط ويُخفى شعار الهيدر + شارة الموديل للمالك بيضاء', () => {
   const redesign = read('css/redesign.css');
   const app04 = read('js/app-04-i18n-state.js');
-  // المحاذاة: صفّ الأدوات وشريط المزوّد يأخذان عرض/توسيط الصندوق (--om-chat-inset)
-  assert.match(html, /#inputbar > \.inputbar-tools-below,\s*html:not\(\.mobile-ui\) body #omBottomBar,[\s\S]*?margin-inline: var\(--om-chat-inset\)/, 'محاذاة ضمن نطاق الصندوق');
-  assert.match(redesign, /#inputbar > \.inputbar-tools-below\{justify-content:flex-start/, 'الأدوات جهة «+»');
-  assert.match(redesign, /#omBottomBar\{justify-content:flex-end/, 'المزوّد تحت الإرسال');
+  // شعار الهيدر مخفيّ على الجوّال (كي لا يتكرّر الاسم)
+  assert.match(redesign, /html\.mobile-ui header h1 #brandTitle\{display:none !important;\}/, 'شعار الهيدر مخفيّ على الجوّال');
+  // شعار الدرج باقٍ على الجوّال
+  assert.match(redesign, /html\.mobile-ui #sidebarBrand\{order:-3; display:flex;/, 'شعار الدرج باقٍ على الجوّال');
   // شارة الموديل للمالك (لا اسأل الكل) بالأبيض
   assert.match(app04, /__ownerBadge && !isAskAllReply\)\{ label\.style\.color = 'var\(--text\)'; \}/, 'شارة الموديل بيضاء للمالك');
 });
