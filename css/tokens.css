@@ -350,10 +350,11 @@
   #inputbar .inputbar-tools{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
   #inputbar .inputbar-tools-left{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
   #btnAttach, #btnEmoji, #btnMic, #btnVoiceChat, #btnStop{flex:0 0 auto; font-size:18px; line-height:1; padding:10px 12px;}
-  #btnMic.recording{background:#ff4d4d; color:#fff; animation: micPulse 1.1s infinite;}
+  /* v-mic-gold (طلب المالك): حالة التسجيل ذهبيّة بوميض بدل الأحمر */
+  #btnMic.recording{background:#0c0c0f; color:#d4af37; border:1.5px solid #d4af37; animation: micPulse 1.1s infinite;}
   #btnMic.transcribing{background:var(--accent-surface); color:var(--accent-on-surface); opacity:0.75;}
   .mini-mic-btn{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:var(--r-2); border:1px solid var(--border,#333); background:var(--panel2,#111); cursor:pointer; font-size:15px; margin-top:6px; flex-shrink:0; }
-  .mini-mic-btn.recording{ background:#ff4d4d; color:#fff; animation: micPulse 1.1s infinite; }
+  .mini-mic-btn.recording{ background:#0c0c0f; color:#d4af37; border-color:#d4af37; animation: micPulse 1.1s infinite; }
   .mini-mic-btn.transcribing{ background:var(--accent-surface); color:var(--accent-on-surface); opacity:0.75; }
   .mini-mic-field-row{ display:flex; align-items:flex-start; gap:6px; }
   .mini-mic-field-row > textarea, .mini-mic-field-row > input{ flex:1; }
@@ -412,7 +413,7 @@
   .miniSwitch::after{content:''; position:absolute; top:2px; inset-inline-start:2px; width:12px; height:12px; border-radius:50%; background:#fff; transition:inset-inline-start .2s;}
   .miniSwitch.on{background:var(--accent-surface);}
   .miniSwitch.on::after{inset-inline-start:16px;}
-  @keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(255,77,77,.55);}70%{box-shadow:0 0 0 10px rgba(255,77,77,0);}100%{box-shadow:0 0 0 0 rgba(255,77,77,0);}}
+  @keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(212,175,55,.55);}70%{box-shadow:0 0 0 10px rgba(212,175,55,0);}100%{box-shadow:0 0 0 0 rgba(212,175,55,0);}}
   #emojiPicker{
     position:absolute; bottom:64px; z-index:50; width:280px; max-height:260px; overflow-y:auto;
     background:var(--panel); border:1px solid var(--border); border-radius:var(--r-3); padding:10px;
