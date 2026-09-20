@@ -427,37 +427,55 @@ module.exports = async (req, res) => {
     async function openaiRescueImage() {
       const okey = process.env.OPENAI_API_KEY;
       if (!okey) { lastRescueErr = 'no OPENAI_API_KEY'; return null; }
+      /* v-gpt-2.5 (٢٠ سبتمبر ٢٠٢٦، طلب المالك: «رقّهم كلهم للأعلى» — GPT/نانو بلا كلود
+         في الصور): OpenAI أصدرت GPT Image 2.5 قبل هذا القرار بـ١٢ يومًا — Sunburst
+         (الأدقّ في التحكّم بالتعديل) وFlare (أسرع من gpt-image-2 بجودة أعلى للتوليد) —
+         وgpt-image-1 (كان المثبَّت وحده هنا) يُوقَف نهائيًّا ٢٣ أكتوبر ٢٠٢٦. الأحدث أوّلًا
+         مع تدرّج نزولًا لما يبقى متاحًا لمفتاح المالك. Sunburst وgpt-image-2 يفرضان أمانة
+         عالية دائمًا ويرفضان input_fidelity بخطأ 400 لو أُرسل؛ gpt-image-1 وحده يحتاجه. */
       /* v-edit-rescue (لقطة بطاقة التجنيد «غش»): التعديل كان بلا خط إنقاذ —
-         إذا انشغل Gemini فشل كل تعديل صورة في المحادثة وسقط العميل على شريط
-         الكانفس. gpt-image-1 يعدل عبر images/edits بنفس الصورة والتعليمة. */
+         إذا انشغل Gemini فشل كل تعديل صورة في المحادثة وسقط العميل على شريط الكانفس. */
       if (editImageBase64) {
-        try {
-          const bytes = Buffer.from(editImageBase64, 'base64');
-          const form = new FormData();
-          form.append('model', 'gpt-image-1');
-          form.append('prompt', String(rescuePromptText).slice(0, 3800));
-          form.append('size', 'auto');
-          /* v-hifi-edit: input_fidelity=high يحفظ نصوص وشعارات المصدر — بدونه تُعاد رسمها
-             مخربشة. لكن «GPT خام» للمالك يريد GPT حرًّا بلا قيد التطبيق، فيأخذ الافتراضيّ. */
-          /* v-lanes: «GPT خام» أيضًا بأمانة عالية في التعديل — الخام = محرّكه وحده، لا أن يعيد الرسم. */
-          form.append('input_fidelity', 'high');
-          form.append('quality', 'high');
-          form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
-          if (exactTextEdit) {
-            const maskBytes = Buffer.from(editMaskBase64, 'base64');
-            form.append('mask', new Blob([maskBytes], { type: 'image/png' }), 'mask.png');
-          }
-          const r = await fetch('https://api.openai.com/v1/images/edits', {
-            method: 'POST',
-            headers: { Authorization: 'Bearer ' + okey },
-            signal: AbortSignal.timeout(120000),
-            body: form,
-          });
-          const d = await r.json().catch(function () { return null; });
-          if (!r.ok) { lastRescueErr = 'openai edit ' + r.status + ' ' + String((d && d.error && d.error.message) || '').slice(0, 120); console.error('[maha-image] edit-rescue ' + lastRescueErr); return null; }
-          const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
-          return b64 || null;
-        } catch (e) { lastRescueErr = 'openai edit ' + (e && e.message); console.error('[maha-image] edit-rescue error: ' + (e && e.message)); return null; }
+        const bytes = Buffer.from(editImageBase64, 'base64');
+        const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2', 'gpt-image-1'];
+        for (let i = 0; i < editModels.length; i++) {
+          const m = editModels[i];
+          try {
+            const form = new FormData();
+            form.append('model', m);
+            form.append('prompt', String(rescuePromptText).slice(0, 3800));
+            form.append('size', 'auto');
+            /* v-hifi-edit: gpt-image-1 وحده يحتاج input_fidelity=high صراحةً ليحفظ نصوص
+               وشعارات المصدر؛ الأحدث (Sunburst وgpt-image-2) يفرضها دائمًا. */
+            if (m === 'gpt-image-1') form.append('input_fidelity', 'high');
+            form.append('quality', 'high');
+            form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
+            if (exactTextEdit) {
+              const maskBytes = Buffer.from(editMaskBase64, 'base64');
+              form.append('mask', new Blob([maskBytes], { type: 'image/png' }), 'mask.png');
+            }
+            const r = await fetch('https://api.openai.com/v1/images/edits', {
+              method: 'POST',
+              headers: { Authorization: 'Bearer ' + okey },
+              signal: AbortSignal.timeout(120000),
+              body: form,
+            });
+            const d = await r.json().catch(function () { return null; });
+            if (!r.ok) {
+              const msg = String((d && d.error && d.error.message) || '').slice(0, 120);
+              lastRescueErr = 'openai edit ' + m + ' ' + r.status + ' ' + msg;
+              const modelUnavailable = (r.status === 400 || r.status === 404) && /model/i.test(msg);
+              if (modelUnavailable && i < editModels.length - 1) continue; // موديل غير متاح لهذا المفتاح — التالي بالقائمة
+              console.error('[maha-image] edit-rescue ' + lastRescueErr);
+              return null;
+            }
+            const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+            if (b64) return b64;
+            lastRescueErr = 'openai edit ' + m + ' empty-response';
+            return null;
+          } catch (e) { lastRescueErr = 'openai edit ' + m + ' ' + (e && e.message); console.error('[maha-image] edit-rescue error: ' + (e && e.message)); return null; }
+        }
+        return null;
       }
       try {
         const size = rescueAspect === '16:9' ? '1536x1024' : (rescueAspect === '1:1' ? '1024x1024' : '1024x1536');
@@ -467,27 +485,36 @@ module.exports = async (req, res) => {
           signal: AbortSignal.timeout(90000),
           body: JSON.stringify({ model, prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'high', n: 1 }),
         });
-        let r = await genOnce('gpt-image-2');
-        // v-img-model-fallback: لو النموذج الأحدث غير متاح لهذا المفتاح (400/404)
-        // نرجع لـgpt-image-1 المضمون بدل الفشل الصامت.
-        if (!r.ok && (r.status === 400 || r.status === 404)) {
+        const genModels = ['gpt-image-2.5-flare', 'gpt-image-2', 'gpt-image-1'];
+        for (let i = 0; i < genModels.length; i++) {
+          const r = await genOnce(genModels[i]);
+          if (r.ok) {
+            const d = await r.json().catch(function () { return null; });
+            const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+            if (b64) return b64;
+            lastRescueErr = 'openai gen ' + genModels[i] + ' empty-response';
+            return null;
+          }
           const t1 = await r.text().catch(function () { return ''; });
-          if (/model/i.test(t1)) r = await genOnce('gpt-image-1');
-          else { lastRescueErr = 'openai gen status=' + r.status + ' ' + t1.slice(0, 120); console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
+          lastRescueErr = 'openai gen ' + genModels[i] + ' status=' + r.status + ' ' + t1.slice(0, 120);
+          // v-img-model-fallback: لو النموذج غير متاح لهذا المفتاح (400/404) نجرّب التالي بالقائمة بدل الفشل الصامت.
+          const modelUnavailable = (r.status === 400 || r.status === 404) && /model/i.test(t1);
+          if (!modelUnavailable || i === genModels.length - 1) { console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
         }
-        if (!r.ok) { lastRescueErr = 'openai gen status=' + r.status + ' ' + String(await r.text().catch(function(){return '';})).slice(0, 120); console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
-        const d = await r.json().catch(function () { return null; });
-        const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
-        return b64 || null;
+        return null;
       } catch (e) { lastRescueErr = 'openai gen ' + (e && e.message); console.error('[maha-image] rescue error: ' + (e && e.message)); return null; }
     }
 
     // v-nano-banana (طلب عمران): إذا فشل موديل الصور الأساسي، نجرّب موديل Google
-    // «Nano Banana» (gemini-2.5-flash-image) بصيغة طلب نظيفة قبل خط إنقاذ OpenAI —
-    // كثيرًا ما يكون متاحًا لمفاتيح لا يتاح لها gemini-3-pro-image، فيُنقذ التوليد.
+    // «Nano Banana» بصيغة طلب نظيفة قبل خط إنقاذ OpenAI — كثيرًا ما يكون متاحًا لمفاتيح
+    // لا يتاح لها gemini-3-pro-image، فيُنقذ التوليد.
+    /* v-gpt-2.5 (٢٠ سبتمبر ٢٠٢٦، «رقّهم كلهم للأعلى»): Nano Banana 2 (gemini-3.1-flash-image)
+       أحدث من Nano Banana الأصليّ (2.5) — يُجرَّب أوّلًا، و٢٫٥ يبقى في القائمة نفسها كخط
+       إنقاذ مضمون لمفاتيح لا تصلها ٣٫١ بعد؛ لا يمسّ هذا التبديل نانو الأساسيّ (برو) ولا
+       `nanoPrimary`/`IMAGE_EDIT_MODEL` — هذه دالّة إنقاذ فقط بعد فشل المحرّك الأساسيّ. */
     let lastNanoErr = '';
     async function geminiNanoBananaImage() {
-      const models = ['gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'];
+      const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'];
       for (let i = 0; i < models.length; i++) {
         try {
           const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {
@@ -667,7 +694,17 @@ module.exports = async (req, res) => {
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       try { await require('./log-error.js').logErrorAndFlush('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-      res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.' });
+      /* v-img-diag-owner: هذا الفشل (نجح الاتصال، رجع بلا صورة — غالبًا حجب أمان أو
+         finishReason) كان بلا __diag إطلاقًا خلافًا لفشل «كلا المزوّدين»، فيرى المالك
+         نفس الرسالة العامّة سواء رُفض الطلب أمنيًّا أو انقطع المفتاح. */
+      const __diagNoImg = process.env.IMG_DIAG === 'off' ? undefined : {
+        primaryModel: primaryModel,
+        gErr: String((((data.candidates || [])[0] || {}).finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || 'no-image-part').slice(0, 120),
+        nano: (lastNanoErr || 'no-nano').slice(0, 120),
+        openai: (lastRescueErr || 'no-rescue').slice(0, 120),
+        free: (lastFreeErr || 'not-tried').slice(0, 120),
+      };
+      res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.', __diag: __diagNoImg });
       return;
     }
 
