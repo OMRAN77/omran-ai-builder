@@ -22955,6 +22955,18 @@ function setupResizer(resizerEl, panelEl, opts){
 setupResizer($('#resizer1'), sidebarEl, { min: 0, max: 560, storeKey: 'panelWidthSidebar' });
 setupResizer($('#resizer2'), chatcolEl, { min: 240, max: 1600, storeKey: 'panelWidthChat' });
 
+// v-tools-below (طلب المالك): «+» والمايك (مجموعة الأدوات) تخرج من صندوق الكتابة
+// وتصير صفًّا تحته؛ يبقى زرّ الإرسال وحده داخل الصندوق. نقل DOM فقط — المعرّفات
+// والنوافذ المنبثقة تبقى كما هي فلا يتأثّر أيّ منطق.
+try{
+  const __tools = document.querySelector('#composerBox > .inputbar-tools');
+  const __row = document.getElementById('composerRow');
+  if(__tools && __row && __row.parentNode){
+    __row.parentNode.insertBefore(__tools, __row.nextSibling);
+    __tools.classList.add('inputbar-tools-below');
+  }
+}catch(e){ __swallow(e, 'ui:app-10-features#tools-below'); }
+
 // On mobile, picking a project from the history list should close the drawer.
 $('#history').addEventListener('click', () => {
   if(window.innerWidth <= 860) closeDrawers();

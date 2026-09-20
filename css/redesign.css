@@ -493,6 +493,15 @@ html #composerBox.omTall > #attachStrip{padding:2px 6px 6px !important;}
   html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left > button, html #inputbar #btnPlusTools{width:34px; height:34px; flex:0 0 34px;}
 }
 
+/* v-tools-below (طلب المالك): مجموعة الأدوات (+ والمايك…) صفّ تحت صندوق الكتابة، جهة البداية
+   (يمين في RTL — حيث كانت الكبسولة). يبقى زرّ الإرسال وحده داخل الصندوق. */
+html #inputbar > .inputbar-tools-below{
+  align-self:flex-start !important; order:unset !important; flex:0 0 auto !important; width:max-content;
+  display:flex !important; align-items:center; gap:2px; margin:2px 6px 0 !important; padding:0 !important;
+  background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;
+}
+html #inputbar > .inputbar-tools-below .inputbar-tools-left{display:flex !important; align-items:center; gap:2px;}
+
 /* v-sidebar-brand (طلب عمران ١٨ سبتمبر): الشعار في رأس القائمة الجانبيّة وزرّ «محادثة جديدة» تحته مباشرة — سطح المكتب فقط.
    الجوّال: العنصر مخفيّ وشعار الرأس كما هو. الترتيب بـorder لأنّ القائمة عمود مرن مرتّب (الزرّ order:-2). */
 #sidebarBrand{display:none;}
