@@ -422,7 +422,7 @@ header{background:var(--bg); backdrop-filter:none;}
    بإطار ذهبي متوهج. نفس التصميم على الجوال والكمبيوتر وفي الوضعين. ═══ */
 html #composerBox{
   background:#101013 !important; border:1px solid rgba(212,175,55,.28) !important; border-radius:999px !important;
-  padding:6px 8px !important; gap:8px !important; align-items:center !important; min-height:54px;
+  padding:3px 8px !important; gap:8px !important; align-items:center !important; min-height:46px; /* v-composer-short (طلب المالك): أقصر ارتفاعًا */
   box-shadow:0 6px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
 }
 html #composerBox:focus-within{border-color:rgba(212,175,55,.6) !important; box-shadow:0 0 0 3px rgba(212,175,55,.10), 0 6px 24px rgba(0,0,0,.35) !important;}
@@ -453,7 +453,7 @@ html #composerBox > #prompt::placeholder{color:#8f8a7c;}
 /* زر الإرسال: دائرة بإطار ذهبي وتوهّج، في أقصى اليسار */
 html #composerBox > #btnStop, html #composerBox > #btnSend{order:3 !important; margin-inline-start:0 !important;}
 html #composerBox > #btnSend{
-  width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;
+  width:40px !important; height:40px !important; flex:0 0 40px !important; border-radius:999px !important;
   background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
   box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important; opacity:1 !important;
 }
@@ -461,7 +461,7 @@ html #composerBox > #btnSend svg{width:19px; height:19px; stroke:#d4af37;}
 html #composerBox.typing > #btnSend{box-shadow:0 0 0 3px rgba(212,175,55,.18), 0 0 22px rgba(212,175,55,.55) !important;}
 /* v-stop-gold (طلب المالك): زرّ الإيقاف بنفس مظهر الإرسال الذهبيّ بدل الأحمر */
 html #composerBox > #btnStop{
-  width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;
+  width:40px !important; height:40px !important; flex:0 0 40px !important; border-radius:999px !important;
   background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
   box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important;
 }
@@ -500,7 +500,13 @@ html #inputbar > .inputbar-tools-below{
   display:flex !important; align-items:center; gap:2px; margin:2px 6px 0 !important; padding:0 !important;
   background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;
 }
-html #inputbar > .inputbar-tools-below .inputbar-tools-left{display:flex !important; align-items:center; gap:2px;}
+html #inputbar > .inputbar-tools-below .inputbar-tools-left{display:flex !important; align-items:center; gap:1px;}
+/* v-tools-small (طلب المالك): «+/المايك» أصغر ومتناسقة بلا فراغ كبير */
+html #inputbar > .inputbar-tools-below{margin-top:1px !important;}
+html #inputbar > .inputbar-tools-below .btn,
+html #inputbar > .inputbar-tools-below button,
+html #inputbar > .inputbar-tools-below #btnPlusTools{width:30px !important; height:30px !important; flex:0 0 30px !important;}
+html #inputbar > .inputbar-tools-below svg{width:17px !important; height:17px !important;}
 /* v-tools-align (طلب المالك): على سطح المكتب يُحاذى صفّ الأدوات وشريط المزوّد لحافّتَي
    صندوق الكتابة (نفس هامش composerRow) بدل حافّتَي الشاشة: الأدوات تحت جهة «+»
    (يمين RTL)، وشريط المزوّد تحت زرّ الإرسال (يسار RTL). */
