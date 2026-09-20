@@ -31,3 +31,28 @@ test('٢. فشل GPT (بلا مفتاح أو خطأ) → المسار القائ
   assert.match(mi, /const duoOn = __duoWouldRun && \(!__textRoute \|\| !!densePromise\);/, 'نصّ فشل عند GPT → Gemini وحده بلا مزدوج (كما كان)');
   assert.match(mi, /if \(!okey\) \{ lastRescueErr = 'no OPENAI_API_KEY'; return null; \}/);
 });
+
+test('٣. v-remove-target: «احذف اسم عمران AI» يحذف هذا النصّ وحده أينما ظهر؛ «شيل الأسماء» تبقى إزالة شاملة', () => {
+  const ip = require('../api/_lib/image-prompt.js');
+  assert.equal(ip.removeTextTarget('احذف اسم عمران ai'), 'عمران ai');
+  assert.equal(ip.removeTextTarget('شيل الاسم «محمد» من الصورة'), 'محمد');
+  assert.equal(ip.removeTextTarget('امسح كلمة welcome'), 'welcome');
+  assert.equal(ip.removeTextTarget('remove the name Omran AI from the image'), 'Omran AI');
+  assert.equal(ip.removeTextTarget('احذف النص'), '', 'بلا نصّ مسمّى');
+  assert.equal(ip.removeTextTarget('احذف النص من الصورة'), '', '«من الصورة» ليست هدفًا');
+  assert.equal(ip.removeTextTarget('شيل الأسماء'), '');
+  assert.equal(ip.removeTextTarget('بدون كتابة'), '');
+  assert.equal(ip.removeTextTarget('غيّر لون القميص'), '');
+  const p = ip.buildEditPrompt('احذف اسم عمران ai', 'احذف اسم عمران ai');
+  assert.match(p, /8\. REMOVE ONLY THE TEXT "عمران ai": erase that exact text everywhere it appears/);
+  assert.match(p, /Every OTHER word, label, letter, number, line, box, icon and layout element must stay identical/);
+  assert.doesNotMatch(p, /completely erase ALL names/);
+  const all = ip.buildEditPrompt('شيل الأسماء من الصورة', 'شيل الأسماء من الصورة');
+  assert.match(all, /8\. REMOVE TEXT: completely erase ALL names/);
+  const none = ip.buildEditPrompt('غيّر لون القميص إلى أزرق', 'غيّر لون القميص إلى أزرق');
+  assert.doesNotMatch(none, /REMOVE/);
+  // كلمات المستخدم الحرفيّة هي مصدر الاستخراج حتّى لو أُعيدت صياغة الطلب بالإنجليزيّة
+  const re = ip.buildEditPrompt('Remove the brand name from the card', 'احذف اسم عمران ai');
+  assert.match(re, /REMOVE ONLY THE TEXT "عمران ai"/);
+  assert.match(require('fs').readFileSync(require('path').join(__dirname, '..', 'api/_lib/maha-image.js'), 'utf8'), /buildEditPrompt\(cleanPrompt, intentText\)/);
+});
