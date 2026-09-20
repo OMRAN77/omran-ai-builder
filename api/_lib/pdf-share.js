@@ -6,7 +6,6 @@
 // نفس نمط img-share.js: التخزين في Redis (Upstash) تحت db/pdf/<id>
 // بعمر ٧ أيام (الملف يُنزَّل فورًا — لا حاجة لعمر أطول).
 const crypto = require('crypto');
-const zlib = require('zlib');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
 
 const MAX_B64 = 4 * 1024 * 1024; // ≈3MB ملف فعلي — تحت حدّ جسم الطلب في Vercel
@@ -60,20 +59,8 @@ module.exports = async (req, res) => {
     // اسم عربي في الترويسة يحتاج ترميز RFC 5987 — وإلا كسر بعض الوسطاء
     const ascii = name.replace(/[^\x20-\x7E]/g, '-').replace(/["\\]/g, '-') || 'omran-ai.pdf';
     res.setHeader('Content-Disposition', 'attachment; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(name));
-
-    // ضغط gzip للملفات الكبيرة لتسريع التحميل
-    if (buf.length > 500 * 1024) { // > 500KB
-      res.setHeader('Content-Encoding', 'gzip');
-      res.status(200);
-      zlib.gzip(buf, (err, compressed) => {
-        if (err) { res.status(500).end(); return; }
-        res.setHeader('Content-Length', String(compressed.length));
-        res.end(compressed);
-      });
-    } else {
-      res.setHeader('Content-Length', String(buf.length));
-      res.status(200).send(buf);
-    }
+    res.setHeader('Content-Length', String(buf.length));
+    res.status(200).send(buf);
     return;
   }
 
