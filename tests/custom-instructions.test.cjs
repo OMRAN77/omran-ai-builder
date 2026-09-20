@@ -102,9 +102,9 @@ files.forEach((f) => {
   });
 });
 // وسم الكاش رُفع وإلّا بقيت الأجهزة على نسخة بلا المفاتيح الجديدة
-assert.ok(/i18n\/' \+ lg \+ '\.js\?v=673'/.test(rd('js/app-04-i18n-state.js')),
+assert.ok(/i18n\/' \+ lg \+ '\.js\?v=674'/.test(rd('js/app-04-i18n-state.js')), // v-plan-routing: 674 (نصوص الباقات)
   'وسم ?v= لملفّات اللغات مرفوع');
-assert.ok(/partials-settings\.js\?v=658/.test(rd('index.html')),
+assert.ok(/partials-settings\.js\?v=659/.test(rd('index.html')), // v-plan-routing: 659
   'وسم ?v= لـpartials-settings مرفوع');
 
 /* ── (٦) v-tone-buttons-removed — أزرار النبرة حُذفت بأمر المالك ──
