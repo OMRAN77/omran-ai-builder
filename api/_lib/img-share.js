@@ -36,6 +36,7 @@ module.exports = async (req, res) => {
     if (s.indexOf('chunks:') === 0) {
       const parts = s.split(':');
       const n = parseInt(parts[1], 10) || 0;
+      const prefix = parts.slice(2).join(':');
       const pieces = [];
       let failed = false;
       for (let i = 0; i < n; i++) {
@@ -51,7 +52,7 @@ module.exports = async (req, res) => {
         pieces.push(String(c));
       }
       if (failed) { res.status(503).json({ error: 'chunk_missing', detail: 'جزء من الصورة اختفى — حاول لاحقًا' }); return; }
-      s = pieces.join('');
+      s = prefix + pieces.join('');
     }
 
     // v649 — الصيغة الجديدة mime:w:h:base64 (الأبعاد تصنع بطاقة صورة كبيرة في
