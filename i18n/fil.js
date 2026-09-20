@@ -827,6 +827,7 @@ I18N['fil'] = {
     "codeHintText": "I-tap dito para tingnan ang code ng iyong app at ang live preview 👈",
     "previewTitle": "Preview",
     "attachTruncated": "Naputol ang laman dahil masyadong mahaba",
+    "attachReadFail": "Hindi mabasa ang file — piliin itong muli",
     "imagesAttachedNote": "mga attachment",
     "askAllProvidersLabel": "Mga provider na kasama sa \"Ask All\"",
     "includeOpenAI": "OpenAI / OpenRouter",

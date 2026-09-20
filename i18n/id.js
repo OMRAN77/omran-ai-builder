@@ -825,6 +825,7 @@ I18N['id'] = {
     "codeHintText": "Ketuk di sini untuk melihat kode aplikasi Anda & pratinjau langsung 👈",
     "previewTitle": "Pratinjau",
     "attachTruncated": "Konten dipotong karena terlalu panjang",
+    "attachReadFail": "File tidak dapat dibaca — pilih lagi",
     "imagesAttachedNote": "lampiran",
     "askAllProvidersLabel": "Penyedia yang disertakan dalam \"Tanya Semua\"",
     "includeOpenAI": "OpenAI / OpenRouter",

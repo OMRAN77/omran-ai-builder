@@ -5,9 +5,9 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.omran.aibuilder",
+      "package_name": "com.omran.aibuilder.twa",
       "sha256_cert_fingerprints": [
-        "9F:B0:74:31:45:AE:EB:06:38:29:BC:5B:D2:AC:A3:78:EE:1E:F3:14:CC:7C:46:7F:61:3B:F7:F2:46:7D:A5:D8"
+        "59:1D:53:FB:5C:DC:37:AF:17:F8:B1:16:EC:66:8F:7E:33:D1:BB:54:C5:6B:A6:3A:E8:13:8C:B5:B3:58:44:DB"
       ]
     }
   }

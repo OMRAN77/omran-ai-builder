@@ -825,6 +825,7 @@ I18N['tr'] = {
     "codeHintText": "Uygulamanızın kodunu ve canlı önizlemesini görmek için buraya dokunun 👈",
     "previewTitle": "Önizleme",
     "attachTruncated": "İçerik çok uzun olduğu için kısaltıldı",
+    "attachReadFail": "Dosya okunamadı — yeniden seçin",
     "imagesAttachedNote": "ekler",
     "askAllProvidersLabel": "\"Hepsine Sor\"a dahil edilen sağlayıcılar",
     "includeOpenAI": "OpenAI / OpenRouter",
