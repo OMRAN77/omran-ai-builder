@@ -94,12 +94,16 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.ok(!/allowStyleChange: explicitlyRequestsStyleChange\(cleanPrompt\)/.test(maha), 'v-lanes: حارس الهويّة أُزيل من maha-image'); // يبقى في portrait/studio
   /* v-letter-swap: «غير حرف م حط ع» → نانو بنانا برو بتعليمة قصيرة، وgpt-image منافس بالحكم لا خاطف */
   const { isTextEditRequest, buildLetterSwapPrompt } = require('../api/_lib/image-prompt');
-  for (const t of ['غير حرف م حط ع', 'شيل حرف م وحط ع', 'بدل الاسم إلى عمران', 'اكتب كلمة مبروك', 'replace the word Sale with Open', 'اكتب كل الاسامي الموجوده على نفس الخط']) assert.equal(isTextEditRequest(t), true, t); // v-text-colloquial: «الاسامي» جمع عاميّ لـ«اسم» — لقطة المالك
+  for (const t of ['غير حرف م حط ع', 'شيل حرف م وحط ع', 'بدل الاسم إلى عمران', 'اكتب كلمة مبروك', 'replace the word Sale with Open', 'اكتب كل الاسامي الموجوده على نفس الخط', 'احذف الكلمات المتكرره']) assert.equal(isTextEditRequest(t), true, t); // v-text-colloquial: «الاسامي» جمع عاميّ لـ«اسم»؛ «كلمات» جمع «كلمة» — لقطتا المالك
   for (const t of ['أقوى', 'خلها أفخم', 'شيل الخلفية']) assert.equal(isTextEditRequest(t), false, t);
   /* «شيل الاسم كامل» حذف صِرف لا تبديل حرف (كان يسقط في «لم أستطع تحديد الحرف») — البديل بعده يعيده تبديلًا */
-  const { isPureTextRemoval } = require('../api/_lib/image-prompt');
+  const { isPureTextRemoval, isRemoveTextRequest, buildEditPrompt } = require('../api/_lib/image-prompt');
   for (const t of ['شيل الاسم كامل', 'شيل الاسم', 'بدون أسماء', 'احذف النص', 'remove the name']) assert.equal(isPureTextRemoval(t), true, t);
   for (const t of ['شيل الاسم وحط عمران', 'شيل حرف م وحط ع', 'غير حرف م حط ع', 'بدل الاسم إلى عمران', 'replace the name with Omran', 'أقوى']) assert.equal(isPureTextRemoval(t), false, t);
+  /* v-remove-words-narrow (لقطة المالك «احذف الكلمات المتكررة»): «كلمات» بلا مؤهّل لا يعني مسحًا شاملًا —
+     isRemoveTextRequest يبقى false عمدًا فيأخذ رقم القاعدة الأضيق (touch ONLY) من isTextEditRequest لا «امسح كلّ شيء». */
+  assert.equal(isRemoveTextRequest('احذف الكلمات المتكرره'), false, 'لا مسح شامل لطلب انتقائي');
+  assert.match(buildEditPrompt('احذف الكلمات المتكرره', 'احذف الكلمات المتكرره'), /8\. TEXT\/LETTER EDIT: touch ONLY/);
   const lp = buildLetterSwapPrompt('غير حرف م حط ع');
   assert.match(lp, /Edit the attached image: "غير حرف م حط ع"/);
   assert.match(lp, /Change ONLY the letter\/word\/number named in that request, in place/);
@@ -199,6 +203,10 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.ok(!/__duoWouldRun|duoEnabled|duoP\b/.test(maha), 'v-lanes: لا محرّك موازٍ');
   // v-text-gpt-oneshot: مسار النصّ ضربة واحدة بلا مزدوج
   assert.match(maha, /if \(__textRoute\) \{\n      const denseB64 = await openaiRescueImage\(\);\n      if \(denseB64\) \{\n        await sendImg\(denseB64, 'image\/png', 'openai'\);\n        return;/);
+  /* v-img-engine-tag-owner (متابعة، لقطة المالك «هذا نانو مش gpt»): مسار النصّ أراد GPT وفشل بصمت إلى نانو —
+     السبب الآن يُلحق باسم المحرّك الحرفيّ (المالك وحده يراه) بدل الاختفاء وراء «nano» بلا تفسير. */
+  assert.match(maha, /__textRouteFailNote = \(lastRescueErr \|\| 'unknown'\)\.slice\(0, 120\);/);
+  assert.match(maha, /if \(__textRouteFailNote\) engine = engine \+ '\(gpt-text-failed:' \+ __textRouteFailNote \+ '\)';/);
   assert.match(maha, /generationConfig: genConfigFor\(\{ temperature: 0\.85 \}\) \}\);/);
   /* خط الإنقاذ لم يُمسّ: برو يفشل → نانو 2.5 → gpt-image */
   assert.match(maha, /geminiNanoBananaImage\(\)/);

@@ -63,6 +63,9 @@ module.exports = async (req, res) => {
   let mahaImgCharged = null;
   let mahaImgChargedAmount = 0; /* v-costs-2026-09: الصورة 20 نقطة و4K 30 — يُردّ المبلغ المخصوم نفسه */
   let guestImageCharge = null;
+  /* v-img-engine-tag-owner (متابعة): مسار النصّ (__textRoute) يقرّر GPT هو الصحّ لكن قد يفشل نداؤه
+     فيسقط بصمت إلى برو/نانو — بلا هذا السطر يرى المالك «nano» بلا أيّ فكرة عن سبب تجاوز GPT له. */
+  let __textRouteFailNote = '';
   async function refundImageCharge() {
     if (mahaImgCharged && pointsLib) {
       const user = mahaImgCharged;
@@ -247,6 +250,8 @@ module.exports = async (req, res) => {
         if (__up && __up.ok) { b64 = __up.b64; mime = __up.mime; engine = engine + '+up' + __up.scale; }
         else if (__up && __up.reason !== 'already_sharp' && __up.reason !== 'no_token' && __up.reason !== 'disabled') console.warn('[maha-image] upscale skipped: ' + __up.reason + (__up.detail ? ' ' + __up.detail : ''));
       }
+      /* v-img-engine-tag-owner (متابعة): مسار النصّ أراد GPT وفشل — يظهر السبب مع اسم المحرّك الفعليّ للمالك وحده (العميل يحرس عرضه). */
+      if (__textRouteFailNote) engine = engine + '(gpt-text-failed:' + __textRouteFailNote + ')';
       const cap = (prayerPlan || editImageBase64) ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, mime || 'image/png', null, 'image/png'); /* v-lanes: التفسير للتوليد الجديد فقط — التعديل بلا نداء إضافيّ */
       res.status(200).json({
         imageBase64: b64,
@@ -617,6 +622,8 @@ module.exports = async (req, res) => {
         await sendImg(denseB64, 'image/png', 'openai');
         return;
       }
+      __textRouteFailNote = (lastRescueErr || 'unknown').slice(0, 120);
+      console.error('[maha-image] text route wanted GPT but it failed, falling back: ' + __textRouteFailNote);
     }
 
     /* v-lanes: نداء واحد للمحرّك — لا مرشّح ثانٍ ولا محرّك موازٍ ولا حكم. الإنقاذ عند الفشل فقط. */
