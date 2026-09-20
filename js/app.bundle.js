@@ -16959,9 +16959,11 @@ function readFileAsDataUrl(file){
    والموثّق أن كلود يصغّر أي صورة أطول من ~1568px على خادمه أصلًا — فالإرسال
    الأكبر هدر محض بلا أي مكسب جودة عند النموذج. 1568px + JPEG 85% تعطي نفس
    ما يراه النموذج بحجم ~200-400KB بدل عدة ميغا. */
-const IMAGE_MAX_DIMENSION = 1568;
-const IMAGE_JPEG_QUALITY = 0.85;
-const IMAGE_PASSTHROUGH_BYTES = 900 * 1024; // send as-is, zero re-encode
+/* v-edit-pro (قرار المالك ٢٠ سبتمبر): المصدر كان يُضغط عند الرفع إلى 1568px بجودة 0.85 فتضيع حواف الحروف قبل أن يصل
+   المحرّك. الآن: تمرير بلا إعادة ترميز حتّى 1.5MB، و2048px بجودة 0.92 لما فوقها (≈ 1–2MB، تحت حدّ Vercel 4.5MB). */
+const IMAGE_MAX_DIMENSION = 2048;
+const IMAGE_JPEG_QUALITY = 0.92;
+const IMAGE_PASSTHROUGH_BYTES = 1536 * 1024; // send as-is, zero re-encode
 // v381: نسخة مضغوطة للمزامنة بين الأجهزة (400px, JPEG 40%)
 const SERVER_THUMB_MAX = 400;
 const SERVER_THUMB_QUALITY = 0.4;
@@ -17879,21 +17881,22 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
    قبل الإرسال — كافية تمامًا لمولّد التعديل والنص يبقى مقروءًا. */
 /* v-full-res (المالك: «كيف توصلني لمستوى نانو»): المصدر كان يُصغَّر إلى 1280px فتضيع تفاصيل الحروف والوجوه. الآن 2048px
    للتعديل بصورة واحدة (≈1MB JPEG، تحت حد Vercel 4.5MB)؛ ومع قناع أو صور إضافية يبقى 1280 كي لا يتجاوز الطلب الحد. */
+/* v-edit-pro: تمرير بلا إعادة ترميز حتّى ~1.5MB (b64 2M)، وإعادة الترميز بجودة 0.92 لا 0.88 — الحروف والوجوه تصل كما هي. */
 async function omranShrinkForEdit(b64, mime, maxPx, force){
   try{
-    if(!b64 || (!force && b64.length < 900000)) return { b64: b64, mime: mime };
+    if(!b64 || (!force && b64.length < 2000000)) return { b64: b64, mime: mime };
     const img = await new Promise((res, rej) => {
       const i = new Image();
       i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
       i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
     });
     const mx = maxPx || 2048, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-    if(!force && sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
+    if(!force && sc >= 1 && b64.length < 2600000) return { b64: b64, mime: mime };
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
     c.height = Math.max(1, Math.round((img.naturalHeight || mx) * sc));
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return { b64: c.toDataURL('image/jpeg', 0.88).split(',')[1], mime: 'image/jpeg' };
+    return { b64: c.toDataURL('image/jpeg', force ? 0.88 : 0.92).split(',')[1], mime: 'image/jpeg' };
   }catch(e){ return { b64: b64, mime: mime }; }
 }
 
