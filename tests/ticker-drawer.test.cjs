@@ -78,7 +78,7 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=678'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=679'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
 });
 
@@ -158,8 +158,11 @@ test('v-light-visibility: في الوضع الفاتح شريط السحب وا�
   assert.match(modules, /html\[data-mode="light"\] #stockTickerToggle\{background:none!important;border:none!important;box-shadow:none!important\}/, 'زرّ الشريط بلا دائرة ولا إطار ولا ظلّ في الفاتح');
 });
 
-test('v-foldable-composer: على الشاشة العريضة/القابلة للطيّ (mobile-ui ≥861px) الأدوات والمزوّد تحت حافّتَي الصندوق لا في الزوايا', () => {
+test('v-foldable-composer: على التابلت/القابل للطيّ (mobile-ui ≥861px) الملحّن مضغوط موسّط (٨٠٠px) والأدوات/المزوّد تحت حافّتَيه', () => {
   const redesign = read('css/redesign.css');
-  assert.match(redesign, /@media \(min-width:861px\)\{\s*html\.mobile-ui #inputbar > \.inputbar-tools-below\{ margin-inline-start: max\(var\(--om-chat-pad,32px\), var\(--om-chat-narrow-inset,12%\)\) !important; \}/, 'الأدوات محاذاة لحافّة الصندوق على العريض');
-  assert.match(redesign, /html\.mobile-ui #inputbar > #omBottomBar\{ margin-inline-end: max\(var\(--om-chat-pad,32px\), var\(--om-chat-narrow-inset,12%\)\) !important; \}/, 'المزوّد محاذاة لحافّة الصندوق على العريض');
+  // صندوق بحدّ أقصى ٨٠٠px موسّط عبر --fold-inset (مثل الكمبيوتر) — الكتلة مكتفية بذاتها
+  assert.match(redesign, /html\.mobile-ui #inputbar\{ --fold-inset: max\(var\(--om-chat-pad,32px\), calc\(\(100% - 800px\) \/ 2\)\); \}/, 'حدّ الصندوق ٨٠٠px موسّط على العريض');
+  assert.match(redesign, /html\.mobile-ui #inputbar > #composerRow\{ margin-inline: var\(--fold-inset\) !important;/, 'توسيط الصندوق على العريض');
+  assert.match(redesign, /html\.mobile-ui #inputbar > \.inputbar-tools-below\{ margin-inline-start: var\(--fold-inset\) !important; \}/, 'الأدوات تحت حافّة الصندوق على العريض');
+  assert.match(redesign, /html\.mobile-ui #inputbar > #omBottomBar\{ margin-inline-end: var\(--fold-inset\) !important; \}/, 'المزوّد تحت حافّة الصندوق على العريض');
 });
