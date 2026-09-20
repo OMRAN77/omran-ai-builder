@@ -511,18 +511,26 @@ html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button{width:28p
 html #inputbar > .inputbar-tools-below #btnPlusTools > svg,
 html #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn > svg,
 html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button > svg{width:16px !important; height:16px !important;}
-/* v-tools-align (طلب المالك): على سطح المكتب يُحاذى صفّ الأدوات وشريط المزوّد لحافّتَي
-   صندوق الكتابة (نفس هامش composerRow) بدل حافّتَي الشاشة: الأدوات تحت جهة «+»
-   (يمين RTL)، وشريط المزوّد تحت زرّ الإرسال (يسار RTL). */
+/* v-below-onerow (طلب المالك): على سطح المكتب «+/المايك» وشريط المزوّد على سطر واحد
+   تحت الصندوق — الأدوات جهة البداية (يمين RTL) تحت حافّة الصندوق، والمزوّد جهة النهاية
+   (يسار RTL) تحت الحافّة الأخرى، والصندوق ينزل يقرب منهم. #inputbar يلتفّ صفوفًا:
+   الصندوق وbelowComposer سطر كامل، والأدوات والمزوّد يتشاركان السطر بينهما.
+   النطاق = --om-chat-inset (نفس عرض الصندوق ٨٠٠px الموسّط). */
 @media (min-width:861px){
-  html:not(.mobile-ui) #inputbar > .inputbar-tools-below,
-  html:not(.mobile-ui) #omBottomBar{
-    align-self:stretch !important; width:auto !important; max-width:none; display:flex !important;
+  html:not(.mobile-ui) #inputbar{flex-flow:row wrap; align-items:center;}
+  /* الترتيب صريح: الصندوق سطر كامل (0)، ثمّ سطر الأدوات+المزوّد (1 ثمّ 2 على نفس السطر)،
+     وترحيب belowComposer آخر سطر (3) كما كان — كي لا يقفز بين الصندوق والأدوات. */
+  html:not(.mobile-ui) #inputbar > #composerRow{flex:1 1 100% !important; order:0;}
+  html:not(.mobile-ui) #inputbar > #omranBelowComposer{flex:1 1 100% !important; order:3;}
+  html:not(.mobile-ui) #inputbar > .inputbar-tools-below{
+    order:1 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+    justify-content:flex-start !important; margin:1px 0 0 !important; margin-inline-start:var(--om-chat-inset) !important;
   }
-  /* المحاذاة الأفقيّة (العرض من --om-chat-inset في index.html): الأدوات تحت جهة «+»
-     (يمين RTL)، والمزوّد تحت زرّ الإرسال (يسار RTL). */
-  html:not(.mobile-ui) #inputbar > .inputbar-tools-below{justify-content:flex-start !important;}
-  html:not(.mobile-ui) #omBottomBar{justify-content:flex-end !important;}
+  html:not(.mobile-ui) #inputbar > #omBottomBar{
+    order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+    display:flex !important; justify-content:flex-end !important;
+    margin:0 0 0 !important; margin-inline-start:auto !important; margin-inline-end:var(--om-chat-inset) !important;
+  }
 }
 
 /* v-sidebar-brand (طلب عمران ١٨ سبتمبر): الشعار في رأس القائمة الجانبيّة وزرّ «محادثة جديدة» تحته مباشرة — سطح المكتب فقط.
@@ -535,6 +543,9 @@ html:not(.mobile-ui) #sidebarBrand .brandImg{height:42px; width:auto; object-fit
 html.mobile-ui #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:12px 14px 2px; cursor:pointer; user-select:none;}
 html.mobile-ui #sidebarBrand .brandImg{height:40px; width:auto; object-fit:contain; display:block;}
 html:not(.mobile-ui) header h1 #brandTitle{display:none;}
+/* v-mobile-brand-once (طلب المالك): على الجوّال يبقى شعار الدرج فقط — يُخفى شعار الهيدر
+   كي لا يظهر الاسم مرّتين («من الجهتين») عند فتح الدرج. */
+html.mobile-ui header h1 #brandTitle{display:none !important;}
 /* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:2px;}

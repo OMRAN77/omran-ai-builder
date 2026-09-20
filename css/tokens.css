@@ -246,10 +246,10 @@
     html:not(.mobile-ui) #waCollapseBtn{display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:var(--muted); cursor:pointer; padding:10px 12px;}
     html:not(.mobile-ui) #waCollapseBtn:hover{color:var(--text);}
     /* v-collapse-top (طلب المالك): مقبض الطيّ الصغير فوق (لا في النص)، بأيقونة اللوحة المقسومة */
-    /* v-wa-handle-icon (طلب المالك): مقبض سحب لوحة المعاينة/الكود = أيقونة وحدها بلا مستطيل ولا خطّ */
-    html:not(.mobile-ui) body.waCollapsedMode #waReopen{display:flex; align-items:center; justify-content:center; position:fixed; top:54px; inset-inline-end:2px; z-index:70; width:22px; height:22px; background:none; border:none; border-radius:0; color:var(--muted); cursor:pointer; padding:0;}
-    html:not(.mobile-ui) body.waCollapsedMode #waReopen svg{width:16px; height:16px;}
-    html:not(.mobile-ui) body.waCollapsedMode #waReopen:hover{color:var(--text); background:none;}
+    /* v-wa-handle-noborder (طلب المالك): مقبض سحب لوحة المعاينة/الكود نفس شكله (خلفيّة + استدارة) لكن بلا إطار (خطّ) */
+    html:not(.mobile-ui) body.waCollapsedMode #waReopen{display:flex; align-items:center; justify-content:center; position:fixed; top:54px; inset-inline-end:0; z-index:70; width:28px; height:30px; background:rgba(255,255,255,.07); border:none; border-start-start-radius:9px; border-end-start-radius:9px; color:var(--muted); cursor:pointer; padding:0;}
+    html:not(.mobile-ui) body.waCollapsedMode #waReopen svg{width:15px; height:15px;}
+    html:not(.mobile-ui) body.waCollapsedMode #waReopen:hover{color:var(--text); background:rgba(255,255,255,.12);}
     /* عند الطي: المحادثة تتوسع وتاخذ كامل المساحة */
     html:not(.mobile-ui) body.waCollapsedMode #chatcol{width:auto !important; flex:1 1 auto;}
   }
