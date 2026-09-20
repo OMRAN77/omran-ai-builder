@@ -549,6 +549,13 @@ html.mobile-ui #inputbar > #omBottomBar{
   display:flex !important; justify-content:flex-end !important;
   margin:0 0 0 !important; margin-inline-start:auto !important;
 }
+/* v-foldable-composer (طلب المالك): على الهواتف القابلة للطيّ (mobile-ui وشاشة عريضة ≥ 861px)
+   الصندوق يتوسّط (v-chat-center-narrow) لكن «+/المايك» والمزوّد كانوا يطيرون لزوايا الشاشة —
+   نحاذيهم تحت حافّتَي الصندوق بنفس هامشه (--om-chat-narrow-inset). الشاشة العاديّة (< 861) لا تُمسّ. */
+@media (min-width:861px){
+  html.mobile-ui #inputbar > .inputbar-tools-below{ margin-inline-start: max(var(--om-chat-pad,32px), var(--om-chat-narrow-inset,12%)) !important; }
+  html.mobile-ui #inputbar > #omBottomBar{ margin-inline-end: max(var(--om-chat-pad,32px), var(--om-chat-narrow-inset,12%)) !important; }
+}
 
 /* v-sidebar-brand (طلب عمران ١٨ سبتمبر): الشعار في رأس القائمة الجانبيّة وزرّ «محادثة جديدة» تحته مباشرة — سطح المكتب فقط.
    الجوّال: العنصر مخفيّ وشعار الرأس كما هو. الترتيب بـorder لأنّ القائمة عمود مرن مرتّب (الزرّ order:-2). */

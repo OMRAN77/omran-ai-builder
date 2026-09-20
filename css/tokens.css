@@ -924,6 +924,13 @@
   html[data-mode="light"] .msgSourceBadge{background:var(--panel2);}
   html[data-mode="light"] #stockTicker{background:rgba(0,0,0,.045) !important;}
   html[data-mode="light"] #stockTickerToggle{background:rgba(0,0,0,.06) !important;}
+  /* v-ticker-ai-light (طلب المالك): شرارة الذكاء بلا صندوق في الوضع الفاتح أيضًا — كانت
+     تظهر صندوقًا رماديًّا مقصوصًا («مأكولة») لأنّ قاعدة صندوق الزرّ الفاتح تغلب. */
+  html[data-mode="light"] #stockTickerToggle.tickerAiCollapsed{background:none !important; box-shadow:none !important; border:none !important;}
+  /* v-resizer-light (طلب المالك): شريط السحب (الفاصل) كان بلون --accent-surface الفاتح جدًّا
+     فيختفي على الأبيض («في المعاينة والكود غير موجود») — خطّ رماديّ واضح في الوضع الفاتح. */
+  html[data-mode="light"] .resizer::after{background:rgba(0,0,0,.30) !important;}
+  html[data-mode="light"] .resizer:hover, html[data-mode="light"] .resizer.dragging{background:rgba(0,0,0,.06) !important;}
   html[data-mode="light"]:not(.mobile-ui) #eduIntroCard, html[data-mode="light"].mobile-ui #eduIntroCard{background:linear-gradient(160deg,#ffffff,#f2f3f6) !important; border-color:rgba(0,0,0,.14) !important;}
   html[data-mode="light"] #stockTicker > div{color:#14161a !important;}
   /* لوحة الكود ومربّعات الكود تبقى داكنة عمدًا — أوضح للقراءة في الوضعين. */
