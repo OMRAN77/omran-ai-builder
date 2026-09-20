@@ -93,7 +93,7 @@ test('v-wa-handle-bare: مقبض سحب لوحة المعاينة/الكود أ�
   // modules.css كان يغلب tokens (يُحمَّل بعده) بصندوق ذهبيّ — أُزيل نهائيًّا
   assert.match(modules, /body\.waCollapsedMode #waReopen\{background:none!important;border:none!important;[^}]*box-shadow:none!important\}/, 'modules بلا صندوق');
   assert.match(modules, /body\.waCollapsedMode #waReopen:hover\{background:none!important;/, 'modules بلا صندوق عند المرور');
-  assert.ok(read('index.html').includes('css/modules.css?v=657'), 'وسم كاش modules رُفع');
+  assert.ok(read('index.html').includes('css/modules.css?v=658'), 'وسم كاش modules رُفع');
 });
 
 test('v-sb-handle-bare: مقبض جهة «المحادثة الجديدة» أيقونة وحدها بلا صندوق (نفس مقبض اللوحة)', () => {
@@ -153,6 +153,9 @@ test('v-light-visibility: في الوضع الفاتح شريط السحب وا�
   assert.match(css, /html\[data-mode="light"\] \.resizer::after\{background:rgba\(0,0,0,\.30\) !important;\}/, 'شريط السحب واضح في الفاتح');
   // شرارة الذكاء المطويّة بلا صندوق في الفاتح (كان صندوقًا مقصوصًا)
   assert.match(css, /html\[data-mode="light"\] #stockTickerToggle\.tickerAiCollapsed\{background:none !important; box-shadow:none !important; border:none !important;\}/, 'الشرارة بلا صندوق ولا ظلّ في الفاتح');
+  // v-ticker-toggle-light: زرّ الشريط (بحالتيه: الشرارة والسهم ^) بلا ظلّ في الفاتح — كان الظلّ يُقصّ فيبان مأكولًا
+  const modules = read('css/modules.css');
+  assert.match(modules, /html\[data-mode="light"\] #stockTickerToggle\{box-shadow:none!important\}/, 'زرّ الشريط بلا ظلّ في الفاتح');
 });
 
 test('v-foldable-composer: على الشاشة العريضة/القابلة للطيّ (mobile-ui ≥861px) الأدوات والمزوّد تحت حافّتَي الصندوق لا في الزوايا', () => {
