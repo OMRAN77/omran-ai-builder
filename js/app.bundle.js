@@ -17865,21 +17865,56 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
    قبل الإرسال — كافية تمامًا لمولّد التعديل والنص يبقى مقروءًا. */
 /* v-full-res (المالك: «كيف توصلني لمستوى نانو»): المصدر كان يُصغَّر إلى 1280px فتضيع تفاصيل الحروف والوجوه. الآن 2048px
    للتعديل بصورة واحدة (≈1MB JPEG، تحت حد Vercel 4.5MB)؛ ومع قناع أو صور إضافية يبقى 1280 كي لا يتجاوز الطلب الحد. */
+/* v-ultra (أمر المالك «صفر ضغط»): المصدر كان يُعاد ترميزه JPEG بجودة 0.88 قبل
+   كلّ تعديل متى تجاوز ~1.2م.ب — حتى لو كانت أبعاده سليمة ولا يحتاج تصغيرًا
+   أصلًا. فيبدأ المحرّك من نسخة مضغوطة ويخسر التفاصيل قبل أن يلمسها.
+   الحلّ الذي طلبه المالك (رفع المصدر إلى Blob وإرسال رابطه) غير ممكن هنا:
+   `api/_lib/blob-client-upload.js` يردّ 503 عمدًا لأنّ Vercel Blob عُلّق
+   والتخزين انتقل إلى Upstash Redis بلا مسار رفع مباشر من المتصفّح.
+   فالمتاح ضمن حدّ جسم دالّة Vercel: نمرّر الأصل كما هو ما دام داخل الميزانيّة،
+   ثمّ PNG بلا فقد، ثمّ JPEG بجودة عالية، والتصغير آخر الحلول لا أوّلها.
+   مسار `force` (مصغّرات ذاكرة الصور، سقفها 420ك.ب على الخادم) لم يُمسّ. */
+const OMRAN_EDIT_SRC_BUDGET = 2600000;   // حروف base64 ≈ 1.95م.ب خامًا
 async function omranShrinkForEdit(b64, mime, maxPx, force){
   try{
-    if(!b64 || (!force && b64.length < 900000)) return { b64: b64, mime: mime };
+    if(!b64) return { b64: b64, mime: mime };
+    // الأصل يمرّ كما هو ما دام داخل الميزانيّة — لا إعادة ترميز ولا تصغير.
+    if(!force && b64.length <= OMRAN_EDIT_SRC_BUDGET) return { b64: b64, mime: mime };
     const img = await new Promise((res, rej) => {
       const i = new Image();
       i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
       i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
     });
-    const mx = maxPx || 2048, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-    if(!force && sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
-    const c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
-    c.height = Math.max(1, Math.round((img.naturalHeight || mx) * sc));
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return { b64: c.toDataURL('image/jpeg', 0.88).split(',')[1], mime: 'image/jpeg' };
+    if(force){
+      // مصغّر الذاكرة: السلوك القديم كما هو (حجم صغير مقصود).
+      const mxF = maxPx || 2048, scF = Math.min(1, mxF / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+      const cf = document.createElement('canvas');
+      cf.width = Math.max(1, Math.round((img.naturalWidth || mxF) * scF));
+      cf.height = Math.max(1, Math.round((img.naturalHeight || mxF) * scF));
+      cf.getContext('2d').drawImage(img, 0, 0, cf.width, cf.height);
+      return { b64: cf.toDataURL('image/jpeg', 0.88).split(',')[1], mime: 'image/jpeg' };
+    }
+    const draw = function (scale){
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+      c.height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      return c;
+    };
+    const mx = maxPx || 3072;   // كان 2048 — سقف أبعاد أعلى قبل أيّ تصغير
+    const fit = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    // بالترتيب: PNG بلا فقد ← JPEG جودة عالية ← تصغير تدريجيّ.
+    for(const step of [
+      { scale: fit, type: 'image/png', q: undefined },
+      { scale: fit, type: 'image/jpeg', q: 0.95 },
+      { scale: fit * 0.8, type: 'image/jpeg', q: 0.95 },
+      { scale: fit * 0.6, type: 'image/jpeg', q: 0.92 },
+    ]){
+      const out = draw(step.scale).toDataURL(step.type, step.q).split(',')[1];
+      if(out && out.length <= OMRAN_EDIT_SRC_BUDGET) return { b64: out, mime: step.type };
+    }
+    // كلّ الخيارات تجاوزت الميزانيّة: أصغر نسخة معقولة بدل فشل الطلب.
+    return { b64: draw(fit * 0.5).toDataURL('image/jpeg', 0.9).split(',')[1], mime: 'image/jpeg' };
   }catch(e){ return { b64: b64, mime: mime }; }
 }
 

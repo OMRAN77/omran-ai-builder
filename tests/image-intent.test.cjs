@@ -81,7 +81,10 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /require\('\.\/image-intent'\)/);
   assert.match(maha, /const intentText = userText \|\| String\(prompt \|\| ''\)/);
   assert.match(maha, /body\.userText\.replace\(\/\\s\*\\\[\[\^\\\[\\\]\]\*\\\]\\s\*\$\/, ''\)/);
-  assert.match(maha, /IMAGE_CREATIVE_MODEL \|\| 'gemini-3-pro-image'/);
+  /* v-ultra: الصياغة انتقلت إلى مسجّل الموديلات (IMG_MODELS) — نفس المعنى:
+     موديل الإبداع من IMAGE_CREATIVE_MODEL وافتراضه gemini-3-pro-image. */
+  assert.match(maha, /creative: __envModel\('IMAGE_CREATIVE_MODEL', 'gemini-3-pro-image'\)/);
+  assert.match(maha, /const creativeModel = IMG_MODELS\.creative;/);
   assert.match(maha, /const isCreativeEdit = !!editImageBase64 && \(isElevate \|\| isReimagine \|\| isRestyle \|\| isSceneUpgrade \|\| __pureRaw\)/);
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/);
   assert.match(maha, /isElevate \? 0\.85/);
@@ -189,9 +192,16 @@ test('server reads the intent from the user\'s own words and sends creative edit
   const want4K = new RegExp(maha.match(/const __want4K = (?:__optWant4K \|\| )?\/(.*)\/i\.test\(/)[1], 'i');
   for (const t of ['أقوى 4K', 'للطباعة', 'دقة عالية', 'print quality version']) assert.ok(want4K.test(t), t);
   for (const t of ['أقوى', 'خلها أفخم', 'اطبع الاسم فوق']) assert.ok(!want4K.test(t), t);
-  /* المصدر يُرسل بدقة 2048px لتعديل الصورة الواحدة، و1280 فقط مع قناع أو صور إضافية */
+  /* v-ultra: المصدر لم يعد يُعاد ترميزه افتراضيًّا. الأصل يمرّ كما هو ما دام داخل
+     ميزانيّة جسم الطلب، ثمّ PNG بلا فقد، ثمّ JPEG بجودة عالية، والتصغير آخر الحلول.
+     سقف الأبعاد ارتفع 2048 → 3072، والقناع يبقى على 1280 (صورتان في طلب واحد). */
   assert.match(attach, /async function omranShrinkForEdit\(b64, mime, maxPx, force\)/);
-  assert.match(attach, /const mx = maxPx \|\| 2048, sc = /);
+  assert.match(attach, /const OMRAN_EDIT_SRC_BUDGET = 2600000;/);
+  assert.match(attach, /if\(!force && b64\.length <= OMRAN_EDIT_SRC_BUDGET\) return \{ b64: b64, mime: mime \};/);
+  assert.match(attach, /const mx = maxPx \|\| 3072;/);
+  assert.match(attach, /\{ scale: fit, type: 'image\/png', q: undefined \}/);
+  assert.ok(!/toDataURL\('image\/jpeg', 0\.88\)[\s\S]{0,80}return \{ b64: c\./.test(attach),
+    'لا إعادة ترميز JPEG افتراضيّة للمصدر');
   assert.match(attach, /const __tsShr = await omranShrinkForEdit\(__b64, __mime, 1280\)/);
   assert.match(attach, /__xa\.mime \|\| 'image\/png', 1280\)/);
   assert.match(maha, /&& \(!isTextSwap \|\| __duoWouldRun\)\n/);

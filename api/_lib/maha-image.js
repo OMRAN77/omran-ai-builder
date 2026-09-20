@@ -25,7 +25,7 @@ async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
       ? 'Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, max 45 words total.'
       : 'Write a short report whose FIRST line is exactly "📋 تفسير الفكرة", then 3 to 4 lines each starting with "• " explaining, from what is actually visible in the image: the main elements and their meaning, and the idea/message behind the picture. Concise, no fluff, max 60 words total.';
     const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). ' + __instr }];
-    if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
+    if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/png', data: sourceB64 } });
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
@@ -98,7 +98,8 @@ module.exports = async (req, res) => {
     /* v-image-memory (خطة المالك ٦ سبتمبر، البند ٣: «ذاكرة محادثة للصور»): العميل يرسل آخر أدوار سلسلة التعديل (نصّ الطلب +
        مصغّر النتيجة، ومصغّر المصدر الأصلي في أول دور) فيرى نموذج الصور ما طُلب وما أخرجه قبل هذا الدور — «أفضل من هذي»،
        «لا، رجّع الخلفية»، «خلها أهدأ» تصير محادثة متصلة كتطبيق Gemini. أربعة أدوار كحد أقصى، كل صورة ≤ 420KB. */
-    const __okMime = function (m) { return /^image\/(?:jpeg|png|webp)$/.test(String(m || '')) ? m : 'image/jpeg'; };
+    /* v-ultra: الافتراضيّ PNG لا JPEG — نوع مجهول كان يُوسَم مضغوطًا بلا داعٍ. */
+    const __okMime = function (m) { return /^image\/(?:jpeg|png|webp)$/.test(String(m || '')) ? m : 'image/png'; };
     const history = Array.isArray(body.history) ? body.history
       .filter(function (h) { return h && typeof h.text === 'string' && typeof h.resultBase64 === 'string' && h.resultBase64.length > 100 && h.resultBase64.length <= 420000; })
       .slice(-4)
@@ -343,20 +344,43 @@ module.exports = async (req, res) => {
        (gemini-2.5-flash-image) لأنه هو من ينتج النتائج الإبداعية التي أراها
        المالك. التوليد الجديد يبقى على gemini-3-pro-image بدقّة 2K. قابل للضبط
        بمتغيّر IMAGE_EDIT_MODEL للرجوع فورًا بلا نشر. */
-    const editModel = (process.env.IMAGE_EDIT_MODEL || 'gemini-2.5-flash-image').trim();
+    /* v-ultra: مسجّل موديلات الصور — كلّ اسم موديل في مكان واحد وقابل للضبط من
+       البيئة بلا نشر جديد (طلب المالك). ومعه إعلان القدرة صراحةً بدل استنتاجها
+       من شكل الاسم: كانت `nanoPrimary` تُحسب بـ`/2\.5-flash-image/.test(...)`
+       وتقرّر شكل الطلب نفسه (responseModalities وtemperature) — فأيّ تبديل
+       للموديل من IMAGE_EDIT_MODEL كان يقلبها بصمت ويغيّر الطلب بلا قصد. */
+    const __envModel = function (name, dflt) { return (process.env[name] || dflt).trim(); };
+    const __envList = function (name, dflt) {
+      return String(process.env[name] || dflt).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    };
+    const IMG_MODELS = {
+      edit: __envModel('IMAGE_EDIT_MODEL', 'gemini-2.5-flash-image'),
+      creative: __envModel('IMAGE_CREATIVE_MODEL', 'gemini-3-pro-image'),
+      nanoRaw: __envModel('IMAGE_NANO_MODEL', 'gemini-2.5-flash-image'),
+      gptGen: __envModel('IMAGE_GPT_GEN_MODEL', 'gpt-image-2'),
+      gptGenFallback: __envModel('IMAGE_GPT_GEN_FALLBACK_MODEL', 'gpt-image-1'),
+      gptEdit: __envModel('IMAGE_GPT_EDIT_MODEL', 'gpt-image-1'),
+      rescueGemini: __envList('IMAGE_RESCUE_GEMINI_MODELS', 'gemini-2.5-flash-image,gemini-2.5-flash-image-preview'),
+    };
+    /* أيّ موديل يقبل صيغة طلب «نانو» (responseModalities + temperature). تُعلن
+       بالاسم لا بالنمط، وتقبل الأسماء الجديدة فور إضافتها للبيئة. */
+    const __nanoStyleModels = __envList('IMAGE_NANO_STYLE_MODELS',
+      'gemini-2.5-flash-image,gemini-2.5-flash-image-preview,gemini-3.1-flash-image');
+    const isNanoStyleModel = function (m) { return __nanoStyleModels.indexOf(String(m || '').trim()) !== -1; };
+    const editModel = IMG_MODELS.edit;
     /* v-nano-pro-edit: الإبداع (أقوى/فكرة مختلفة/تحويل أسلوب/ترقية مشهد/الوضع الخام) على نانو بنانا
        برو (gemini-3-pro-image بدقّة 2K) — وهو المحرّك الذي أخرج للمالك صورته المزخرفة في تطبيق
        Gemini؛ نانو 2.5 كان يرجّع صورة باهتة لموضوع الكرت. التعديل الموضعي (غيّر اللون/شيل الخلفية)
        يبقى على نانو 2.5 السريع الأمين. IMAGE_CREATIVE_MODEL يبدّل بلا نشر، والإنقاذ (نانو 2.5 ثم
        gpt-image) يبقى كما هو عند فشل برو. */
-    const creativeModel = (process.env.IMAGE_CREATIVE_MODEL || 'gemini-3-pro-image').trim();
+    const creativeModel = IMG_MODELS.creative;
     /* دمج عدة صور (extras) يصل برو أيضًا حين تكون النيّة إبداعية — برو يتعامل مع مراجع متعددة أفضل بكثير */
     const isCreativeEdit = !!editImageBase64 && (isElevate || isReimagine || isRestyle || isSceneUpgrade || __pureRaw);
     /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
     /* v-image-modes: توغل «نانو خام» للمالك يفرض نانو ٢.٥ (gemini-2.5-flash-image) بدل برو. */
-    const primaryModel = (__optForceEngine === 'nano') ? 'gemini-2.5-flash-image'
+    const primaryModel = (__optForceEngine === 'nano') ? IMG_MODELS.nanoRaw
       : (editImageBase64 ? ((isCreativeEdit || isTextSwap || isPersonSwap || isBroadEdit) ? creativeModel : editModel) : creativeModel);
-    const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
+    const nanoPrimary = isNanoStyleModel(primaryModel);
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
     // مع احترام أي طلب صريح (عرضي/مربع/ستوري...). التعديل يحافظ على أبعاد المصدر.
@@ -444,14 +468,17 @@ module.exports = async (req, res) => {
         try {
           const bytes = Buffer.from(editImageBase64, 'base64');
           const form = new FormData();
-          form.append('model', 'gpt-image-1');
+          form.append('model', IMG_MODELS.gptEdit);
           form.append('prompt', String(rescuePromptText).slice(0, 3800));
           form.append('size', 'auto');
           /* v-hifi-edit: input_fidelity=high يحفظ نصوص وشعارات المصدر — بدونه تُعاد رسمها
              مخربشة. لكن «GPT خام» للمالك يريد GPT حرًّا بلا قيد التطبيق، فيأخذ الافتراضيّ. */
           form.append('input_fidelity', __optForceEngine === 'gpt' ? 'low' : 'high');
           form.append('quality', 'high');
-          form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
+          /* v-ultra: المصدر يُرسَل PNG دائمًا. كان يُوسَم image/jpeg ويُسمّى
+             photo.jpg مهما كانت بايتاته، فيقرأه المزوّد مضغوطًا ويخسر تفاصيل
+             المصدر قبل أن يبدأ التعديل. */
+          form.append('image', new Blob([bytes], { type: 'image/png' }), 'photo.png');
           if (exactTextEdit) {
             const maskBytes = Buffer.from(editMaskBase64, 'base64');
             form.append('mask', new Blob([maskBytes], { type: 'image/png' }), 'mask.png');
@@ -474,14 +501,15 @@ module.exports = async (req, res) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + okey },
           signal: AbortSignal.timeout(90000),
-          body: JSON.stringify({ model, prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'high', n: 1 }),
+          /* v-ultra: output_format=png صراحةً — لا نتّكل على افتراضيّ المزوّد. */
+          body: JSON.stringify({ model, prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'high', n: 1, output_format: 'png' }),
         });
-        let r = await genOnce('gpt-image-2');
+        let r = await genOnce(IMG_MODELS.gptGen);
         // v-img-model-fallback: لو النموذج الأحدث غير متاح لهذا المفتاح (400/404)
         // نرجع لـgpt-image-1 المضمون بدل الفشل الصامت.
         if (!r.ok && (r.status === 400 || r.status === 404)) {
           const t1 = await r.text().catch(function () { return ''; });
-          if (/model/i.test(t1)) r = await genOnce('gpt-image-1');
+          if (/model/i.test(t1)) r = await genOnce(IMG_MODELS.gptGenFallback);
           else { lastRescueErr = 'openai gen status=' + r.status + ' ' + t1.slice(0, 120); console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
         }
         if (!r.ok) { lastRescueErr = 'openai gen status=' + r.status + ' ' + String(await r.text().catch(function(){return '';})).slice(0, 120); console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
@@ -496,7 +524,7 @@ module.exports = async (req, res) => {
     // كثيرًا ما يكون متاحًا لمفاتيح لا يتاح لها gemini-3-pro-image، فيُنقذ التوليد.
     let lastNanoErr = '';
     async function geminiNanoBananaImage() {
-      const models = ['gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'];
+      const models = IMG_MODELS.rescueGemini;
       for (let i = 0; i < models.length; i++) {
         try {
           const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {

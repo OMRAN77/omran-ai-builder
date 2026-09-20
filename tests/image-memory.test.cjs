@@ -15,12 +15,16 @@ test('server turns the client history into real user/model turns before the curr
   assert.equal((maha.match(/contents: __contents, generationConfig: genConfigFor\(/g) || []).length, 2, 'الطلب الرئيسي (الخام والمهندس) يستخدم السياق');
   assert.match(maha, /Never return an earlier result unchanged/);
   /* الصور خارج القائمة البيضاء تُعامل JPEG، والمصدر الأصلي اختياري */
-  assert.match(maha, /const __okMime = function \(m\) \{ return \/\^image\\\/\(\?:jpeg\|png\|webp\)\$\/\.test\(String\(m \|\| ''\)\) \? m : 'image\/jpeg'; \};/);
+  /* v-ultra: نفس الفحص — قائمة بيضاء للأنواع مع افتراضيّ آمن. تغيّر الافتراضيّ
+     من jpeg إلى png (صفر ضغط من البداية للنهاية بأمر المالك). */
+  assert.match(maha, /const __okMime = function \(m\) \{ return \/\^image\\\/\(\?:jpeg\|png\|webp\)\$\/\.test\(String\(m \|\| ''\)\) \? m : 'image\/png'; \};/);
 });
 
 test('client records each edit turn as a 768px thumb and sends the last three on follow-ups', () => {
   assert.match(attach, /async function omranShrinkForEdit\(b64, mime, maxPx, force\)/);
-  assert.match(attach, /if\(!b64 \|\| \(!force && b64\.length < 900000\)\) return/);
+  /* v-ultra: العتبة صارت ميزانيّة صريحة والأصل يمرّ كما هو تحتها — نفس المعنى
+     (لا عمل على صورة صغيرة) بحدّ أعلى وبلا إعادة ترميز. */
+  assert.match(attach, /if\(!force && b64\.length <= OMRAN_EDIT_SRC_BUDGET\) return \{ b64: b64, mime: mime \};/);
   assert.match(attach, /history: \(__continuesEditChain && Array\.isArray\(cur\.imageTurns\) && cur\.imageTurns\.length\) \? cur\.imageTurns\.slice\(-3\) : undefined/);
   assert.match(attach, /const __tRes = await omranShrinkForEdit\(__data\.imageBase64, __outMime, 768, true\);/);
   assert.match(attach, /cur\.imageTurns = cur\.imageTurns\.concat\(\[__turn\]\)\.slice\(-4\);/);
