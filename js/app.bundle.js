@@ -30661,8 +30661,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       card.classList.toggle('is-active', on);
       card.setAttribute('aria-pressed', on ? 'true' : 'false');
       card.title = ar ? font.ar : font.en;
-      var name = card.querySelector('.ofp-name');
-      if(name) name.textContent = ar ? font.ar : font.en;
+      var preview = card.querySelector('.ofp-preview');
+      if(preview) preview.textContent = ar ? font.ar : font.en;
       var badge = card.querySelector('.ofp-badge');
       if(badge) badge.textContent = ar ? 'أقرب بديل' : 'closest match';
     });
@@ -30702,14 +30702,12 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       card.className = 'ofp-card';
       card.setAttribute('data-font-id', font.id);
       card.setAttribute('aria-pressed', 'false');
-      var name = document.createElement('span');
-      name.className = 'ofp-name';
+      // v-font-name-sample (طلب المالك): البطاقة تعرض اسم الخطّ مكتوبًا بخطّه فقط — بلا «عمران AI» ولا ليبل رماديّ.
       var preview = document.createElement('span');
       preview.className = 'ofp-preview';
-      preview.textContent = 'عمران AI';
+      preview.textContent = isArabic() ? font.ar : font.en; // يُحدَّث في sync حسب اللغة
       preview.style.fontFamily = font.family + ", 'Tajawal', sans-serif";
       preview.style.lineHeight = String(font.line);
-      card.appendChild(name);
       card.appendChild(preview);
       if(font.alt){
         var badge = document.createElement('span');
