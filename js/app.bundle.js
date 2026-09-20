@@ -3282,6 +3282,10 @@ const I18N = {
     authError: '🔑 مفتاح API غير صحيح أو منتهي — تأكد منه في ⚙️ الإعدادات.',
     storageFullWarning: '⚠️ مساحة التخزين في المتصفح ممتلئة جدًا حتى بعد حذف الصور القديمة تلقائيًا. يُرجى حذف بعض المحادثات القديمة بالكامل من قائمة المشاريع 📂 لتحرير مساحة أكبر.',
     imagePurgedNote: 'تم حذف الصورة تلقائيًا لتوفير المساحة',
+    imgUpscaleBtn: 'دقّة أعلى',
+    imgUpscaleFail: 'تعذّر رفع الدقّة الآن — جرّب بعد قليل',
+    imgUpscaleNoPoints: 'رصيد النقاط لا يكفي (5 نقاط) — اشحن من الباقات',
+    imgUpscaleLogin: 'سجّل الدخول لرفع دقّة الصورة',
     attachTitle: 'إرفاق',
     attachTruncated: 'تم اقتطاع المحتوى لأنه كان طويلًا جدًا',
     attachReadFail: 'تعذّرت قراءة الملفّ — جرّب اختياره مرّة أخرى',
@@ -3887,6 +3891,10 @@ const I18N = {
     authError: '🔑 Invalid or expired API key — please check it in ⚙️ Settings.',
     storageFullWarning: '⚠️ Your browser storage is still full even after auto-removing old images. Please delete some old conversations entirely from the projects list 📂 to free up more space.',
     imagePurgedNote: 'Image auto-removed to save space',
+    imgUpscaleBtn: 'Upscale',
+    imgUpscaleFail: 'Could not upscale right now — try again shortly',
+    imgUpscaleNoPoints: 'Not enough points (5) — top up from the plans',
+    imgUpscaleLogin: 'Sign in to upscale the image',
     building: 'Building...',
     buildSuccess: 'App created/updated successfully ✅ You can preview it in the "Preview" tab.',
     buildNoCode: '⚠️ No code came back from the provider — the preview is empty. Send the request again or try another provider.',
@@ -4510,7 +4518,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=676'; /* v-plan-routing: نصوص الباقات ونافذة الدفع، وv-attach-huawei: attachReadFail — في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=677'; /* v-plan-routing: نصوص الباقات ونافذة الدفع، وv-attach-huawei: attachReadFail — في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6235,7 +6243,7 @@ function renderMessages(keepScroll){
           if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
             const ibox = document.createElement('div');
             ibox.style.cssText = 'position:relative;display:block;min-width:0;width:fit-content;max-width:min(460px,100%)';
-            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl); wrap.appendChild(ibox);
+            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
           } else wrap.appendChild(img);
         } else {
           const chip = document.createElement('div');
@@ -16365,7 +16373,7 @@ function renderAttachStrip(){
 
 // 🖼️ v579 — أزرار فوق الصورة نفسها: «تعديل» يرجّع الصورة إلى صندوق الكتابة
 // كمرفق (فيمشي مسار تعديل نفس الصورة بلا لبس)، و«حفظ» يشارك الملف أو ينزّله.
-window.__omranImgTools = function(wrap, dataUrl){
+window.__omranImgTools = function(wrap, dataUrl, att){
   if(!wrap || !dataUrl || String(dataUrl).slice(0, 5) !== 'data:' || wrap.__imgTools) return;
   const ar = (typeof lang !== 'undefined' && lang === 'ar');
   if(!document.getElementById('oImgToolsCss')){
@@ -16791,6 +16799,31 @@ window.__omranImgTools = function(wrap, dataUrl){
     renderAttachStrip();
     flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
     const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
+  });
+  /* ✨ v-img-upscale (قرار المالك ٢٠ سبتمبر «نانو وGPT مش بذيك الدقّة»): زرّ «دقّة أعلى» يمرّر الصورة بمكبّر دقّة
+     متخصّص على الخادم (media?action=upscale، ٥ نقاط لغير المالك) ويستبدل الصورة في الرسالة نفسها والمرفق المحفوظ
+     (vaultPending كي تُكتب النسخة الجديدة في المخزن). بلا جلسة أو نقاط أو مفتاح → رسالة واضحة لا صمت. */
+  mk('txt', '<span>' + t('imgUpscaleBtn') + '</span>', t('imgUpscaleBtn'), async (b) => {
+    if(b.__busy) return; b.__busy = true;
+    const prev = b.innerHTML; b.innerHTML = '<span>…</span>';
+    try{
+      const s = String(dataUrl), ci = s.indexOf(',');
+      const mime = (s.slice(0, ci).match(/:([^;,]+)/) || [])[1] || 'image/png';
+      const r = await fetch('/api/media?action=upscale', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: s.slice(ci + 1), mime: mime, token: authGet('aiapp_auth_token') }) });
+      const d = await r.json().catch(() => ({}));
+      b.innerHTML = prev;
+      if(r.ok && d && d.imageBase64){
+        const nu = 'data:' + (d.mimeType || 'image/png') + ';base64,' + d.imageBase64;
+        const im = wrap.querySelector('img'); if(im) im.src = nu;
+        dataUrl = nu; __shF = null;
+        if(att && typeof att === 'object'){ att.dataUrl = nu; if(att.vaultId) att.vaultPending = true; try{ if(typeof saveState === 'function') saveState(); }catch(e){ __swallow(e, 'upscale:save'); } }
+        try{ if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }catch(e){ __swallow(e, 'upscale:wallet'); }
+        flash(b, svg('done'));
+      } else {
+        note(r.status === 401 ? t('imgUpscaleLogin') : (d && d.error === 'points_insufficient' ? t('imgUpscaleNoPoints') : t('imgUpscaleFail')));
+      }
+    }catch(e){ __swallow(e, 'upscale:app-09'); b.innerHTML = prev; note(t('imgUpscaleFail')); }
+    b.__busy = false;
   });
   // 🔄 زر «نسخة ثانية» أُزيل من فوق الصورة (طلب المالك ٦ سبتمبر: كان يغطّي نصّ
   //    الصورة نفسها). window.omranAnotherVersion تبقى متاحة برمجيًا بلا زرّ.

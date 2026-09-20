@@ -296,7 +296,7 @@ function renderAttachStrip(){
 
 // 🖼️ v579 — أزرار فوق الصورة نفسها: «تعديل» يرجّع الصورة إلى صندوق الكتابة
 // كمرفق (فيمشي مسار تعديل نفس الصورة بلا لبس)، و«حفظ» يشارك الملف أو ينزّله.
-window.__omranImgTools = function(wrap, dataUrl){
+window.__omranImgTools = function(wrap, dataUrl, att){
   if(!wrap || !dataUrl || String(dataUrl).slice(0, 5) !== 'data:' || wrap.__imgTools) return;
   const ar = (typeof lang !== 'undefined' && lang === 'ar');
   if(!document.getElementById('oImgToolsCss')){
@@ -722,6 +722,31 @@ window.__omranImgTools = function(wrap, dataUrl){
     renderAttachStrip();
     flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
     const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
+  });
+  /* ✨ v-img-upscale (قرار المالك ٢٠ سبتمبر «نانو وGPT مش بذيك الدقّة»): زرّ «دقّة أعلى» يمرّر الصورة بمكبّر دقّة
+     متخصّص على الخادم (media?action=upscale، ٥ نقاط لغير المالك) ويستبدل الصورة في الرسالة نفسها والمرفق المحفوظ
+     (vaultPending كي تُكتب النسخة الجديدة في المخزن). بلا جلسة أو نقاط أو مفتاح → رسالة واضحة لا صمت. */
+  mk('txt', '<span>' + t('imgUpscaleBtn') + '</span>', t('imgUpscaleBtn'), async (b) => {
+    if(b.__busy) return; b.__busy = true;
+    const prev = b.innerHTML; b.innerHTML = '<span>…</span>';
+    try{
+      const s = String(dataUrl), ci = s.indexOf(',');
+      const mime = (s.slice(0, ci).match(/:([^;,]+)/) || [])[1] || 'image/png';
+      const r = await fetch('/api/media?action=upscale', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: s.slice(ci + 1), mime: mime, token: authGet('aiapp_auth_token') }) });
+      const d = await r.json().catch(() => ({}));
+      b.innerHTML = prev;
+      if(r.ok && d && d.imageBase64){
+        const nu = 'data:' + (d.mimeType || 'image/png') + ';base64,' + d.imageBase64;
+        const im = wrap.querySelector('img'); if(im) im.src = nu;
+        dataUrl = nu; __shF = null;
+        if(att && typeof att === 'object'){ att.dataUrl = nu; if(att.vaultId) att.vaultPending = true; try{ if(typeof saveState === 'function') saveState(); }catch(e){ __swallow(e, 'upscale:save'); } }
+        try{ if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }catch(e){ __swallow(e, 'upscale:wallet'); }
+        flash(b, svg('done'));
+      } else {
+        note(r.status === 401 ? t('imgUpscaleLogin') : (d && d.error === 'points_insufficient' ? t('imgUpscaleNoPoints') : t('imgUpscaleFail')));
+      }
+    }catch(e){ __swallow(e, 'upscale:app-09'); b.innerHTML = prev; note(t('imgUpscaleFail')); }
+    b.__busy = false;
   });
   // 🔄 زر «نسخة ثانية» أُزيل من فوق الصورة (طلب المالك ٦ سبتمبر: كان يغطّي نصّ
   //    الصورة نفسها). window.omranAnotherVersion تبقى متاحة برمجيًا بلا زرّ.
