@@ -667,7 +667,17 @@ module.exports = async (req, res) => {
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       try { await require('./log-error.js').logErrorAndFlush('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-      res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.' });
+      /* v-img-diag-owner: هذا الفشل (نجح الاتصال، رجع بلا صورة — غالبًا حجب أمان أو
+         finishReason) كان بلا __diag إطلاقًا خلافًا لفشل «كلا المزوّدين»، فيرى المالك
+         نفس الرسالة العامّة سواء رُفض الطلب أمنيًّا أو انقطع المفتاح. */
+      const __diagNoImg = process.env.IMG_DIAG === 'off' ? undefined : {
+        primaryModel: primaryModel,
+        gErr: String((((data.candidates || [])[0] || {}).finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || 'no-image-part').slice(0, 120),
+        nano: (lastNanoErr || 'no-nano').slice(0, 120),
+        openai: (lastRescueErr || 'no-rescue').slice(0, 120),
+        free: (lastFreeErr || 'not-tried').slice(0, 120),
+      };
+      res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.', __diag: __diagNoImg });
       return;
     }
 
