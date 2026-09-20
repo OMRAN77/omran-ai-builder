@@ -625,21 +625,20 @@ module.exports = async (req, res) => {
     /* دمج عدة صور لا يمرّ بمسار gpt-image الأحادي (يُسقط الصور الإضافية) */
     /* v-nano-pro-edit: قرار المزدوج يُحسم هنا مرة واحدة — الترقية مستثناة منه، فلا يُترك نداء gpt-image معلّقًا بلا حكم */
     const __duoWouldRun = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length; /* دمج عدة صور: المنافس الأحادي يُسقط الصور الإضافية */
-    /* v-letter-swap: تبديل حرف على لقطة نصّية لا يُختطف إلى gpt-image وحده — برو يقوده، وgpt-image ينافس بالحكم فقط عند تفعيل المزدوج */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length && (!isTextSwap || __duoWouldRun)
-      && (editImageBase64 ? (__optTextFaithful || await sourceLooksTextDense()) : (__optTextFaithful || (!rawMode && __textCueRe.test(cleanPrompt))));
-    /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
-       يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
-    let densePromise = null;
+    /* v-text-gpt-oneshot (قرار المالك ٢٠ سبتمبر: «الي أريده نتيجة قويّة بضربة وحدة — حتّى الكتابة صفر»، بعد لقطة
+       شبكة الخطوط: «احذف اسم عمران AI» راح لنانو ٢٫٥ فكسر الحروف وحذف نصفها): أيّ طلب يمسّ نصًّا في صورة (حذف/تبديل/
+       كتابة/تغيير اسم) أو مصدر نصوصه كثيفة → GPT (images/edits بـinput_fidelity=high) نداءً واحدًا، بلا نانو وبلا حكم.
+       يلغي v-letter-swap (برو يقود تبديل الحرف) وv-duo-textroute (الحكم على مسار النصّ). الإبداعيّ (أقوى/فكرة/أسلوب/
+       ترقية) خارج هذا المسار كما كان، وتوغّل «نانو خام» للمالك يبقى خامًا. فشل GPT → المسار القائم كما هو. */
+    const __textIntent = !!editImageBase64 && !__pureRaw && (isTextRemove || isTextSwap || __textCueRe.test(cleanPrompt) || /اكتب|أكتب|كتابة|كتابه|\bwrite\b/i.test(cleanPrompt));
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length
+      && (__textIntent || (editImageBase64 ? (__optTextFaithful || await sourceLooksTextDense()) : (__optTextFaithful || (!rawMode && __textCueRe.test(cleanPrompt)))));
+    let densePromise = null; /* لم يعد يُملأ: مسار النصّ ضربة واحدة بلا مزدوج (v-text-gpt-oneshot) */
     if (__textRoute) {
-      if (__duoWouldRun) {
-        densePromise = openaiRescueImage().catch(function () { return null; });
-      } else {
-        const denseB64 = await openaiRescueImage();
-        if (denseB64) {
-          await sendImg(denseB64, 'image/png', 'openai');
-          return;
-        }
+      const denseB64 = await openaiRescueImage();
+      if (denseB64) {
+        await sendImg(denseB64, 'image/png', 'openai');
+        return;
       }
     }
 
