@@ -1441,6 +1441,9 @@ function renderMessages(keepScroll){
       const __ownerBadge = (typeof omranOwnerUi === 'function' && omranOwnerUi());
       if(__ownerBadge && m.model) __plbl = (__plbl ? __plbl + ' · ' : '') + m.model;
       label.textContent = __plbl;
+      // v-badge-white (طلب المالك): شارة الموديل فوق الردّ بالأبيض (كالكتابة والأرقام)،
+      // لا بلون المزوّد — يبقى لون المزوّد لتمييز «اسأل الكل» فقط.
+      if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
       if(isAskAllReply || (__ownerBadge && __plbl)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ») — والمالك يراه دائمًا
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
