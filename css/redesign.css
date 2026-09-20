@@ -264,7 +264,7 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
   /* v-sat-measure: ‎--omran-sat تُقاس في selfdiag.js — env() فقط إذا كانت
      النافذة ممتدة فعلًا تحت شريط الساعة، وإلا صفر (غلاف نازل أساسًا). */
   header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
-  #inputbar{padding:2px 10px 5px;}
+  #inputbar{padding:2px 10px 2px;}
   #composerBox{padding:4px 8px 3px !important; border-radius:16px !important; gap:1px;}
   #prompt{min-height:20px; max-height:84px; font-size:13px; padding:4px 8px 2px;}
   #inputbar .inputbar-tools .btn, #inputbar .inputbar-tools-left .btn{padding:5px;}
@@ -422,7 +422,7 @@ header{background:var(--bg); backdrop-filter:none;}
    بإطار ذهبي متوهج. نفس التصميم على الجوال والكمبيوتر وفي الوضعين. ═══ */
 html #composerBox{
   background:#101013 !important; border:1px solid rgba(212,175,55,.28) !important; border-radius:999px !important;
-  padding:6px 8px !important; gap:8px !important; align-items:center !important; min-height:54px;
+  padding:2px 8px !important; gap:8px !important; align-items:center !important; min-height:40px; /* v-composer-short3 (طلب المالك): أقصر ارتفاعًا مع تصغير الأيقونات */
   box-shadow:0 6px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
 }
 html #composerBox:focus-within{border-color:rgba(212,175,55,.6) !important; box-shadow:0 0 0 3px rgba(212,175,55,.10), 0 6px 24px rgba(0,0,0,.35) !important;}
@@ -439,10 +439,11 @@ html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left 
   background:none !important; box-shadow:none !important; color:#e9e4d6 !important; display:inline-flex; align-items:center; justify-content:center;
 }
 html #inputbar #plusToolsWrap{display:inline-flex; align-items:center;}
-/* فاصل رفيع بين + والمايك كما في الصورة */
+/* v-mic-noline (طلب المالك): إزالة الخطّ الفاصل الصغير جنب المايك */
 html #inputbar .inputbar-tools-left > #btnMic{position:relative;}
-html #inputbar .inputbar-tools-left > #btnMic::before{content:''; position:absolute; top:8px; bottom:8px; inset-inline-end:-1px; width:1px; background:rgba(255,255,255,.14);}
-html #inputbar .inputbar-tools-left > #btnMic.recording{background:#ff4d4d !important; color:#fff !important;}
+html #inputbar .inputbar-tools-left > #btnMic::before{display:none !important;}
+/* v-mic-gold (طلب المالك): مايك التسجيل ذهبيّ بوميض بدل الأحمر */
+html #inputbar .inputbar-tools-left > #btnMic.recording{background:#0c0c0f !important; color:#d4af37 !important; border:1.5px solid #d4af37 !important;}
 html #inputbar .inputbar-tools-left svg, html #inputbar #btnPlusTools svg{width:21px; height:21px;}
 /* النص */
 html #composerBox > #prompt{
@@ -453,13 +454,21 @@ html #composerBox > #prompt::placeholder{color:#8f8a7c;}
 /* زر الإرسال: دائرة بإطار ذهبي وتوهّج، في أقصى اليسار */
 html #composerBox > #btnStop, html #composerBox > #btnSend{order:3 !important; margin-inline-start:0 !important;}
 html #composerBox > #btnSend{
-  width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;
+  width:33px !important; height:33px !important; flex:0 0 33px !important; border-radius:999px !important;
   background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
   box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important; opacity:1 !important;
 }
-html #composerBox > #btnSend svg{width:19px; height:19px; stroke:#d4af37;}
+html #composerBox > #btnSend svg{width:16px; height:16px; stroke:#d4af37;}
 html #composerBox.typing > #btnSend{box-shadow:0 0 0 3px rgba(212,175,55,.18), 0 0 22px rgba(212,175,55,.55) !important;}
-html #composerBox > #btnStop{width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;}
+/* v-stop-gold (طلب المالك): زرّ الإيقاف بنفس مظهر الإرسال الذهبيّ بدل الأحمر */
+html #composerBox > #btnStop{
+  width:33px !important; height:33px !important; flex:0 0 33px !important; border-radius:999px !important;
+  background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
+  box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important;
+}
+html #composerBox > #btnStop svg{fill:#d4af37 !important; color:#d4af37 !important;}
+html[data-mode="light"] #composerBox > #btnStop{background:#fffdf5 !important; color:#b8902a !important; box-shadow:0 0 0 3px rgba(212,175,55,.14), 0 0 14px rgba(212,175,55,.30) !important;}
+html[data-mode="light"] #composerBox > #btnStop svg{fill:#b8902a !important; color:#b8902a !important;}
 /* v-composer-light (طلب المالك ٤ سبتمبر): في الوضع الفاتح صندوق الكتابة أبيض بإطار ذهبي، لا أسود */
 html[data-mode="light"] #composerBox{
   background:#ffffff !important; border:1px solid rgba(212,175,55,.55) !important;
@@ -484,3 +493,76 @@ html #composerBox.omTall > #attachStrip{padding:2px 6px 6px !important;}
   html #composerBox > #btnSend, html #composerBox > #btnStop{width:40px !important; height:40px !important; flex:0 0 40px !important;}
   html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left > button, html #inputbar #btnPlusTools{width:34px; height:34px; flex:0 0 34px;}
 }
+
+/* v-tools-below (طلب المالك): مجموعة الأدوات (+ والمايك…) صفّ تحت صندوق الكتابة، جهة البداية
+   (يمين في RTL — حيث كانت الكبسولة). يبقى زرّ الإرسال وحده داخل الصندوق. */
+html #inputbar > .inputbar-tools-below{
+  align-self:flex-start !important; order:unset !important; flex:0 0 auto !important; width:max-content;
+  display:flex !important; align-items:center; gap:2px; margin:2px 6px 0 !important; padding:0 !important;
+  background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;
+}
+html #inputbar > .inputbar-tools-below .inputbar-tools-left{display:flex !important; align-items:center; gap:1px;}
+/* v-tools-small (طلب المالك): «+/المايك» أصغر ومتناسقة بلا فراغ كبير.
+   v-tools-scope: القياس محصور في أزرار الصفّ الظاهرة فقط (أبناء inputbar-tools-left
+   المباشرين + زرّ «+»)، لا يطال أزرار نافذة «+» المنبثقة (#plusToolsPopup) كي لا تنكسر. */
+html #inputbar > .inputbar-tools-below{margin-top:1px !important;}
+html #inputbar > .inputbar-tools-below #btnPlusTools,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button{width:24px !important; height:24px !important; flex:0 0 24px !important; padding:0 !important;}
+html #inputbar > .inputbar-tools-below #btnPlusTools > svg,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn > svg,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button > svg{width:14px !important; height:14px !important;}
+/* v-below-onerow (طلب المالك): على سطح المكتب «+/المايك» وشريط المزوّد على سطر واحد
+   تحت الصندوق — الأدوات جهة البداية (يمين RTL) تحت حافّة الصندوق، والمزوّد جهة النهاية
+   (يسار RTL) تحت الحافّة الأخرى، والصندوق ينزل يقرب منهم. #inputbar يلتفّ صفوفًا:
+   الصندوق وbelowComposer سطر كامل، والأدوات والمزوّد يتشاركان السطر بينهما.
+   النطاق = --om-chat-inset (نفس عرض الصندوق ٨٠٠px الموسّط). */
+@media (min-width:861px){
+  html:not(.mobile-ui) #inputbar{flex-flow:row wrap; align-items:center;}
+  /* الترتيب صريح: الصندوق سطر كامل (0)، ثمّ سطر الأدوات+المزوّد (1 ثمّ 2 على نفس السطر)،
+     وترحيب belowComposer آخر سطر (3) كما كان — كي لا يقفز بين الصندوق والأدوات. */
+  html:not(.mobile-ui) #inputbar > #composerRow{flex:1 1 100% !important; order:0;}
+  html:not(.mobile-ui) #inputbar > #omranBelowComposer{flex:1 1 100% !important; order:3;}
+  html:not(.mobile-ui) #inputbar > .inputbar-tools-below{
+    order:1 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+    justify-content:flex-start !important; margin:1px 0 0 !important; margin-inline-start:var(--om-chat-inset) !important;
+  }
+  html:not(.mobile-ui) #inputbar > #omBottomBar{
+    order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+    display:flex !important; justify-content:flex-end !important;
+    margin:0 0 0 !important; margin-inline-start:auto !important; margin-inline-end:var(--om-chat-inset) !important;
+  }
+}
+
+/* v-below-onerow-mobile (طلب المالك «في الهاتف ما نزل + نفس الكمبيوتر على نفس المستوى»):
+   نفس السطر الواحد على الجوّال — «+/المايك» جهة البداية وشريط المزوّد جهة النهاية، بعرض
+   الصندوق (حشوة #inputbar) لا بنطاق --om-chat-inset (خاصّ بالمكتب). */
+html.mobile-ui #inputbar{flex-flow:row wrap; align-items:center;}
+html.mobile-ui #inputbar > #composerRow{flex:1 1 100% !important; order:0;}
+html.mobile-ui #inputbar > #omranBelowComposer{flex:1 1 100% !important; order:3;}
+html.mobile-ui #inputbar > .inputbar-tools-below{
+  order:1 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+  justify-content:flex-start !important; margin:2px 0 0 !important;
+}
+html.mobile-ui #inputbar > #omBottomBar{
+  order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+  display:flex !important; justify-content:flex-end !important;
+  margin:0 0 0 !important; margin-inline-start:auto !important;
+}
+
+/* v-sidebar-brand (طلب عمران ١٨ سبتمبر): الشعار في رأس القائمة الجانبيّة وزرّ «محادثة جديدة» تحته مباشرة — سطح المكتب فقط.
+   الجوّال: العنصر مخفيّ وشعار الرأس كما هو. الترتيب بـorder لأنّ القائمة عمود مرن مرتّب (الزرّ order:-2). */
+#sidebarBrand{display:none;}
+html:not(.mobile-ui) #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:10px 14px 0; cursor:pointer; user-select:none;}
+html:not(.mobile-ui) #sidebarBrand .brandImg{height:42px; width:auto; object-fit:contain; display:block;}
+/* v-sb-brand-mobile (طلب المالك): إظهار شعار «عمران ai» أعلى درج المحادثات على الجوّال
+   أيضًا، فوق زرّ «محادثة جديدة» مباشرة (الزرّ order:-2 فالشعار order:-3 يسبقه). */
+html.mobile-ui #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:12px 14px 2px; cursor:pointer; user-select:none;}
+html.mobile-ui #sidebarBrand .brandImg{height:40px; width:auto; object-fit:contain; display:block;}
+html:not(.mobile-ui) header h1 #brandTitle{display:none;}
+/* v-mobile-brand-once (طلب المالك): على الجوّال يبقى شعار الدرج فقط — يُخفى شعار الهيدر
+   كي لا يظهر الاسم مرّتين («من الجهتين») عند فتح الدرج. */
+html.mobile-ui header h1 #brandTitle{display:none !important;}
+/* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
+html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
+html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:2px;}

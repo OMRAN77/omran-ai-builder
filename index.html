@@ -106,9 +106,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=700">
-<link rel="stylesheet" href="css/redesign.css?v=666">
-<link rel="stylesheet" href="css/modules.css?v=656">
+<link rel="stylesheet" href="css/tokens.css?v=715">
+<link rel="stylesheet" href="css/redesign.css?v=677">
+<link rel="stylesheet" href="css/modules.css?v=657">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -140,9 +140,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <style>
 /* v473 — إخفاء ٥ عناصر بأمر عمران (٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة كاملةً. */
 #btnTemplates, #btnAgentMode, #btnInstall, #btnInstallHeader, #btnShareApp, #btnGov { display: none !important; }
-/* v474 — لون روابط الردّ: فيروزيّ (أمر عمران «٢»، ٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة. */
-.msg-text a{ color:#2dd4bf !important; }
-html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
+/* v474 — لون روابط الردّ. v-hl-gold (طلب المالك ١٩ سبتمبر): ذهبيّ بدل الفيروزيّ. الرجوع: احذف هذه الكتلة. */
+.msg-text a{ color:#d4af37 !important; }
+html[data-mode="light"] .msg-text a{ color:#b8860b !important; }
 </style>
 <style>
 /* v-chat-width: تخطيط المحادثة — كمبيوتر فقط.
@@ -471,9 +471,38 @@ body #btnMode{ display: none !important; }
   html:not(.mobile-ui) body #omranBelowComposer{
     margin-inline: var(--om-chat-inset) !important;
   }
+  /* v-below-onerow: «+/المايك» وشريط المزوّد على سطر واحد ضمن نطاق الصندوق نفسه
+     (--om-chat-inset) — التفاصيل في redesign.css؛ هنا تُعرَّف حوافّ النطاق فقط. */
   html:not(.mobile-ui) body #chatJumpBottom,
   html:not(.mobile-ui) body #chatQuickChipsWrap{
     inset-inline-end: calc(var(--om-chat-inset) + 14px);
+  }
+}
+</style>
+<style>
+/* v-chat-center-narrow (لقطة عمران ١٩ سبتمبر «المحادثة كأنّها مسطرة… أريدها في الوسط عندما
+   أغلق الطرفين — مثل الصورة الأخيرة»): نافذة كمبيوتر ضيّقة (≤ ٨٦٠px بالتكبير أو مقياس الشاشة)
+   تأخذ فئة mobile-ui تلقائيًّا (isNarrow أعلاه) فيصير الجانبيّ واللوحة درجين مخفيَّين وتسقط
+   شبكة v-frame-c وعمودها الموسّط، وتمتدّ الرسائل وصندوق الكتابة من حافة إلى حافة. هنا العمود
+   الموسّط نفسه بهامش نسبيّ من عرض النافذة (--om-chat-narrow-inset) لا بالبكسل الثابت، فيبقى
+   في الوسط كما في واجهة الـCode مهما ضاقت النافذة. التمييز بالمؤشّر لا بالفئة: فأرة دقيقة
+   (pointer:fine + hover) = كمبيوتر ضيّق؛ واللمس بعرض لوح (≥ ٧٠٠px، لقطة المالك الثانية من
+   لوح) = العمود نفسه؛ الهاتف (لمس دون ٧٠٠px) خارج الكتلة كلّها فلا يُمسّ. المحدّدات بوزن
+   html.mobile-ui[dir] لتغلب حشوة الجوّال (html.mobile-ui[dir="rtl"] #messages{padding-left:56px
+   !important})، وعلى الكمبيوتر العريض (بلا الفئة) لا تسري. الرجوع: احذف الكتلة. */
+@media (max-width: 860px) and (hover: hover) and (pointer: fine), (min-width: 700px) and (pointer: coarse){
+  :root{ --om-chat-narrow-inset: 12%; }
+  html.mobile-ui[dir] body #messages{ padding-inline: 0 !important; }
+  html.mobile-ui[dir] body #inputbar{ padding-inline: 0 !important; }
+  html.mobile-ui[dir] body #omranHero,
+  html.mobile-ui[dir] body #messages > *,
+  html.mobile-ui[dir] body #askAllHintTip,
+  html.mobile-ui[dir] body #composerRow,
+  html.mobile-ui[dir] body #omranBelowComposer{
+    width: auto !important;
+    max-width: none !important;
+    box-sizing: border-box;
+    margin-inline: max(var(--om-chat-pad, 32px), var(--om-chat-narrow-inset)) !important;
   }
 }
 </style>
@@ -489,6 +518,12 @@ body #btnMode{ display: none !important; }
 @keyframes oiUp{to{opacity:1}}
 @media (prefers-reduced-motion:reduce){#omranIntro .oiImg,#omranIntro .oiSheen{animation:none}}
 html.oiOn body{overflow:hidden}
+</style>
+<style>
+/* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يختفي لمن
+   لا تسمح باقته باختيار المزوّد (المجّانيّ/الضيف/Plus/Pro) — الخادم يوجّههم بجدول الباقة. الفئة plan-locked
+   تضعها applyPlanGate (app-05) من نتيجة usage-status أو رصيد النقاط. الرجوع: احذف الكتلة. */
+html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }
 </style>
 </head>
 <body>
@@ -599,13 +634,19 @@ html.oiOn body{overflow:hidden}
 
 <div id="stockTicker" dir="ltr" style="display:none; overflow:hidden; white-space:nowrap; background:rgba(0,0,0,0.45); padding:6px 0; position:relative;">
   <div id="stockTickerTrack" style="display:inline-block; white-space:nowrap; will-change:transform;"></div>
-  <button id="stockTickerToggle" type="button" title="طي/فتح الشريط" data-i18n-title="tickerToggleLabel" aria-label="طي شريط الأسهم" data-i18n="[aria-label]tickerToggleLabel" style="position:absolute; top:50%; transform:translateY(-50%); inset-inline-end:6px; z-index:3; background:none; border:none; box-shadow:none; padding:2px; margin:0; color:rgba(255,255,255,.45); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; line-height:1;" onmouseover="this.style.color='rgba(255,255,255,.85)'" onmouseout="this.style.color='rgba(255,255,255,.45)'"><svg id="stockTickerToggleIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+  <button id="stockTickerToggle" type="button" title="طي/فتح الشريط" data-i18n-title="tickerToggleLabel" aria-label="طي شريط الأسهم" data-i18n="[aria-label]tickerToggleLabel" style="position:absolute; top:50%; transform:translateY(-50%); inset-inline-end:6px; z-index:3; background:none; border:none; box-shadow:none; padding:2px; margin:0; color:rgba(255,255,255,.45); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; line-height:1;" onmouseover="this.style.color='rgba(255,255,255,.85)'" onmouseout="this.style.color='rgba(255,255,255,.45)'"><svg id="stockTickerToggleIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="18 15 12 9 6 15"></polyline></svg><!-- v-ticker-ai (طلب المالك): حين يكون الشريط مطويًّا يظهر مكانه أيقونة ذكاء ذهبيّة تومض بخفّة؛ الضغط يفتح الشريط. --><svg id="stockTickerAiIcon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.6 4.9a3 3 0 0 0 1.9 1.9L20.5 11l-4.9 1.6a3 3 0 0 0-1.9 1.9L12 19.5l-1.6-4.9a3 3 0 0 0-1.9-1.9L3.5 11l4.9-1.6a3 3 0 0 0 1.9-1.9z"></path><path d="M19 3.5l.5 1.6.5.4 1.6.5-1.6.5-.5.4-.5 1.6-.5-1.6-.4-.5L17 6l1.6-.5.4-.4z"></path></svg></button>
 </div>
 
 <div id="drawerBackdrop"></div>
 
 <main>
   <div id="sidebar" style="background:#000;">
+    <!-- v-drawer-close (طلب المالك): زرّ طيّ درج المحادثات على الجوّال — سهم (داخل/خارج) بلا دائرة ولا ✕ (مع السحب القائم). يظهر على الجوّال فقط. -->
+    <button type="button" id="sidebarCloseBtn" aria-label="إغلاق القائمة" data-i18n="[aria-label]closeTitle" title="إغلاق" data-i18n-title="closeTitle"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg></button>
+    <!-- v-sidebar-brand (طلب عمران ١٨ سبتمبر بلقطتين): الشعار الذهبيّ في رأس القائمة الجانبيّة مكان «محادثة جديدة»، والزرّ تحته مباشرة — سطح المكتب فقط؛ الجوّال يبقي شعار الرأس. -->
+    <div id="sidebarBrand" class="sidebarBrand" title="عمران AI"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg" width="126" height="42"></div>
+    <script>/* v-sidebar-brand: يتبع شعار الرأس (بُدّل أثناء التحليل حسب اللغة المحفوظة) فلا وميض */
+    (function(){try{var b=document.getElementById('brandTitle'),s=document.getElementById('sidebarBrand');if(b&&s)s.innerHTML=b.innerHTML;}catch(e){}})();</script>
     <button type="button" id="omranNewChatBtn"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="ncLabel" data-i18n="ncNewChatLabel">محادثة جديدة ✨</span></button>
     <div id="omranHistTitle"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> <span data-i18n="omNavChats">المحادثات</span></div>
     <div id="providerGridSidebar">
@@ -728,10 +769,14 @@ html.oiOn body{overflow:hidden}
 
   <div class="resizer" id="resizer2"></div>
 
-  <div id="workarea" style="background:#000;">
+  <div id="workarea" style="background:#101013;">
     <div id="tabs">
-      <div class="tab active" data-tab="preview" data-i18n="preview">المعاينة</div>
-      <div class="tab" data-tab="code" data-i18n="code">الكود</div>
+      <!-- v-tab-icons (طلب المالك): استُبدلت كلمتا «المعاينة»/«الكود» بأيقونتين خطّيّتين
+           (شاشة للمعاينة، أقواس كود </> للكود) على طراز باقي الواجهة. النصّ بقي في
+           title + aria-label بمفتاحي الترجمة نفسيهما (preview/code) لكلّ اللغات؛
+           استُعمل data-i18n-title بدل data-i18n كي لا تمسح الترجمة الأيقونة داخلها. -->
+      <div class="tab active" data-tab="preview" data-i18n-title="preview" data-i18n="[aria-label]preview" title="المعاينة" aria-label="المعاينة"><svg class="tabIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg></div>
+      <div class="tab" data-tab="code" data-i18n-title="code" data-i18n="[aria-label]code" title="الكود" aria-label="الكود"><svg class="tabIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></div>
       <div id="tabDownloadWrap">
         <input type="file" id="codeUploadInput" accept=".html,.htm,.py,.txt" style="display:none;">
         <button class="tab" id="btnTabsMenu" data-i18n-title="tabsMenuTitle" type="button" title="خيارات الملف" style="border:none; padding:12px 14px;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
@@ -804,13 +849,13 @@ html.oiOn body{overflow:hidden}
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=658"></script>
+<script src="/js/partials-settings.js?v=659"></script>
 
-<script src="/js/selfdiag.js?v=hw-twa-1"></script>
+<script src="/js/selfdiag.js?v=hw-twa-2"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=a0b32d80"></script>
-    <script defer src="/js/modes.js?v=m150915e"></script>
+    <script defer src="/js/app.bundle.js?v=4681a988"></script>
+    <script defer src="/js/modes.js?v=m150916a"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">

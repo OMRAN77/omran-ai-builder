@@ -2579,6 +2579,46 @@ async function sendPrompt(){
     console.error('[sendPrompt] fatal', e);
   }
 }
+/* v-memory-one-hop (لقطتا المالك ١٨ سبتمبر: كلّ ردّ يبدأ بـ«الصورة المرفقة هي نفس صورة طاولة
+   التلفزيون السابقة» وهو غيّر الموضوع بلا أيّ مرفق): هل الدور السابق مباشرةً حمل صورة حقيقيّة؟
+   (المستخدم أرفق صورة، أو المساعد أخرج صورة). صورة الذاكرة memory.png لا تُحفظ في الرسائل فلا تُعدّ،
+   فتنقطع السلسلة بعد قفزة واحدة بدل أن تلاحق كلّ رسالة قصيرة إلى الأبد. */
+function omranPrevTurnHadImage(messages){
+  try{
+    const list = Array.isArray(messages) ? messages : [];
+    const hasImg = (m) => !!(m && Array.isArray(m.attachments) && m.attachments.some(a => a && a.isImage && !a._fromMemory));
+    let lastA = null, lastU = null;
+    for(let i = list.length - 1; i >= 0; i--){
+      const m = list[i]; if(!m) continue;
+      if(m.role === 'assistant' && !lastA){ lastA = m; if(lastU) break; }
+      else if(m.role === 'user' && !lastU){ lastU = m; if(lastA) break; }
+    }
+    return hasImg(lastA) || hasImg(lastU);
+  }catch(e){ return false; }
+}
+/* v-media-gate (بلاغ المالك ١٩ سبتمبر): كلمات الوسائط التي تستدعي البوّابة، وكلمات «الكلام عن» الوسائط
+   (كيف/طريقة/أفضل برنامج/يوتيوب/سكربت/سؤال…) التي تعني: لا إنشاء. حدود الكلمة العربيّة يدويّة لأنّ \b لا يفهمها. */
+const __MEDIA_WORD_RE = /فيديو|ڤيديو|video|صور|image|picture|photo|بوستر|ملصق|شعار|لوجو|logo|بطاق|شهاد|دعو[ةه]|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|banner|بنر|غلاف|رسم|draw|animation|أنيميشن|انيميشن|كليب|clip|مقطع|فيلم/i;
+/* v-chat-fast (المالك ١٩ سبتمبر «الردود بطيئة»): المصنّف لا يُنادى إلّا حين تحمل الرسالة ما قد يفتح مسار إنشاء
+   فعلًا — فعل طلب/إنشاء، أو كلمة إعلان/بيع (مسار الإعلان يطلقها وحدها)، أو بدء الرسالة باسم الوسيط.
+   «أتصور إنّ السوق يرتفع» و«رأيك في فيلم الأمس» لا تنتظر شيئًا. */
+const __MEDIA_MAKE_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])(?:اعمل|أعمل|اعملي|اصنع|أصنع|صنع|سوّ|سوي|سوّي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|أبي|ابي|ابا|أبا|بغيت|أريد|اريد|أبيك|ابيك|حاب|حابب|أحتاج|احتاج|طلع|طلعلي|صنعلي|عطني|أعطني|اعطني|هات|ارسم|أرسم|ارسملي|رسم|صمم|صمّم|صممي|تصميم|اكتب|أكتب|اكتبلي|ممكن|تقدر|تگدر|يمكن|create|make|generate|produce|draw|design|build|render|write|give me|i want|show me|can you)(?=$|[\s،,.!؟?()"'«»:؛-])|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|^\s*(?:فيلم|فيديو|ڤيديو|مقطع|كليب|صور[ةه]?|بوستر|شعار|لوجو|بطاقة|شهادة|دعوة|غلاف|video|image|logo|poster)\s/i;
+const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
+/* مصنّف النيّة على الخادم (Gemini Flash، حرارة صفر): 'image' | 'video' | 'none' | null عند التعذّر أو المهلة. */
+async function omranMediaIntent(text){
+  try{
+    const ctrl = new AbortController();
+    const tm = setTimeout(() => ctrl.abort(), 2500); /* v-chat-fast: كان ٦ ثوانٍ — تعذّر = null فتحكم التعابير */
+    const r = await fetch('/api/tools?action=media-intent', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+      body: JSON.stringify({ text: String(text || '').slice(0, 400), token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), guestId: (typeof window.getGuestId === 'function' ? window.getGuestId() : '') })
+    });
+    clearTimeout(tm);
+    const j = await r.json().catch(() => null);
+    const lane = j && typeof j.lane === 'string' ? j.lane : null;
+    return (lane === 'image' || lane === 'video' || lane === 'none') ? lane : null;
+  }catch(e){ return null; }
+}
 async function __sendPromptCore(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -2626,11 +2666,21 @@ async function __sendPromptCore(){
     return;
   }
 
+  /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
+     على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */
+  let __mediaLane = null;
+  try{
+    const __mediaHasImg = pendingAttachments.some(a => a && a.isImage);
+    if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
+      __mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : (__MEDIA_MAKE_RE.test(text) ? await omranMediaIntent(text) : null); /* v-chat-fast */
+    }
+  }catch(e){ __mediaLane = null; }
+  window.__mediaGate = __mediaLane; /* للتشخيص */
   // 🎬 v525: اكتشاف طلب إنشاء فيديو → فتح صانع الفيديو مباشرة
   // إذا فيه صورة: نحلّلها بـ AI ليطلع prompt إنجليزي دقيق بدل نص المستخدم الخام
-  const __VID_MAKE_RE = /(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
+  const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
   const __VID_Q_RE    = /^(?:كيف|ما|وش|ايش|أيش|هل|لماذا|why|how|what|can\s+i|where)\s|[؟?]\s*$/;
-  if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && typeof window.omranOpenVideoMaker === 'function'){
+  if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
     const __heroAtt = pendingAttachments.find(function(a){ return a.isImage && a.dataUrl; });
     promptEl.value = '';
     if(__heroAtt && __heroAtt.dataUrl){
@@ -2847,8 +2897,12 @@ async function __sendPromptCore(){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
     // v473c: بعد «وصلتني الصورة» أي رسالة تالية قصيرة تُرفق الصورة المحفوظة تلقائياً
-    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
+    // v-memory-one-hop: قفزة واحدة فقط — الدور السابق مباشرةً حمل صورة حقيقيّة (v574 يبقي العلم
+    // مرفوعًا عبر الرسائل، فكان أيّ نصّ قصير يعيد الصورة إلى الأبد). الإشارة الصريحة أعلاه تبقى دائمًا.
+    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220 && omranPrevTurnHadImage(cur.messages)){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
+      /* الصورة أُرفقت بالتخمين لا بالطلب: النموذج يتجاهلها بصمت إن لم تكن الرسالة عنها (بدل «الصورة المرفقة لا علاقة لها…») */
+      apiText += (apiText ? '\n\n' : '') + '[ملاحظة للنموذج: الصورة memory.png أُرفقت تلقائيًّا من ذاكرة المحادثة لأنّ الرسالة قد تشير إليها. إن كانت الرسالة لا تخصّ الصورة فتجاهلها تمامًا: لا تذكرها ولا تصفها ولا تقل إنّها لا علاقة لها بالسؤال، وأجب عن الرسالة وحدها.]';
     }
     /* v-guide: نعيد نفس اللقطة مع الرسائل التالية داخل جلسة الإرشاد، وإلا أجاب
        النموذج من ذاكرته عن شكل البرنامج بدل الشاشة التي أمام المستخدم.
@@ -3392,7 +3446,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
+    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
       // v695: إعلان → /api/tools?action=adimage (gpt-image-2) بجودة احترافية حقيقية
       const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
@@ -3650,7 +3704,7 @@ function __friendlyErr(e){
       return;
     }
     // 🏠 طلب توليد صورة جديدة انطلاقًا من صورة مرفقة (مثال: مخطط منزل + "عطني تصميم خارجي")
-    const __imgGenIntentRe = /^\s*صور[هة]\s+\S|(?:^|[\s.,،!؟?])(?:صوّر|صور|صوره|صورة|تصور)\s?لي\s+\S|(عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want|show me)\s+(?:لي\s+)?.{0,20}?(تصميم|تصور|منظر|واجهة|صوره?|رسمة|شكل|design|render|view|image|picture|visual)/i;
+    const __imgGenIntentRe = /^\s*صور[هة]\s+\S|(?:^|[\s.,،!؟?])(?:صوّر|صور|صوره|صورة|تصور)\s?لي\s+\S|(?:^|[\s،,.!؟?()\"'«»:؛-])(عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want|show me)\s+(?:لي\s+)?.{0,20}?(تصميم|تصور|منظر|واجهة|صوره?|رسمة|شكل|design|render|view|image|picture|visual)/i;
     // 🎬 فيديو من المحادثة مباشرة: صورة + "سوي فيديو/حركها" → Runway image_to_video،
     // وبدون صورة مع طلب فيديو صريح → text_to_video. (كل الأقسام في مكان واحد)
     const __videoWordRe = /فيديو|ڤيديو|\bvideo\b/i;
@@ -3658,7 +3712,7 @@ function __friendlyErr(e){
     const __vidSrc = __srcImg
       ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
-    const __wantsVideo = !!text && !__codeWordRe.test(text) && (
+    const __wantsVideo = !!text && !__codeWordRe.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && (
       (__videoWordRe.test(text) && (__routeCmdRe.test(text) || /(حول|حوّل|حوله|حوّله|ولد|ولّد|انتج|أنتج|اطلع لي|طلع لي|generate|convert|turn)/i.test(text) || /(فيديو|ڤيديو|video)\s+(عن|يظهر|فيه|about|of|showing)\s+\S/i.test(text))) ||
       (!!__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text))
     );
@@ -3811,7 +3865,7 @@ function __showImgLoading(el, ar, en){
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, (__IMG_UPGRADE || __IMG_ELEVATE) ? 'جاري تطوير الصورة…' : 'جاري تعديل الصورة…', (__IMG_UPGRADE || __IMG_ELEVATE) ? 'Improving the image…' : 'Editing image…');
       const __upgSrc = (!__srcImg && (__IMG_UPGRADE || __IMG_ELEVATE) && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
@@ -4289,7 +4343,7 @@ function __showImgLoading(el, ar, en){
     // («صمّم فيلا دورين ٤ غرف»)، لا وثيقة ملصوقة. حدّ ٥٠٠ حرف يمنع الوثيقة من
     // إطلاق المخطط، ويُبقي كلّ طلبات التصميم الفعليّة تعمل (المتابعة لها حدّها).
     const __archReqOk = text.length < 500 && __archVerbRe.test(text) && __archHomeRe.test(text) && !__archExcludeRe.test(text);
-    if(text && !__srcImg && !__blockAutoImage && !__followUp && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
+    if(text && !__srcImg && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !__followUp && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
        (__archReqOk || __archFollowUp)){
       const __archText = __archFollowUp ? (__archAffirm ? __archCtxText : (__archCtxText + ' — والمطلوب الآن تحديدًا: ' + text)) : text;
       cur.lastArchText = __archFollowUp ? __archCtxText : text;
@@ -4365,7 +4419,7 @@ function __showImgLoading(el, ar, en){
     // 🏛️ v225: طلب نصي بنية صورة بدون أي صورة مرفقة (تصور معماري/منظور/ارسم...)
     // → توليد صورة فعلي بـ Gemini بدل رد نظري أو وعود فارغة من المزود.
     const __txtOnlyImgRe = /^\s*صور[هة]\s+\S|(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
-    if(text && !__blockAutoImage && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
+    if(text && !__blockAutoImage && __mediaLane !== 'none' && __mediaLane !== 'video' /* v-media-gate */ && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
        (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
       if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
@@ -5432,12 +5486,11 @@ DESIGN RULES (non-negotiable):
           // الفقاعة أُزيلت (إيقاف/خطأ) → الحركة تنتهي بصمت ولا تعلّق شيئًا.
           if(!thinkingDiv.isConnected){ __live.shown = __live.target.length; __live.done = true; }
           if(__live.shown < __live.target.length){
-            const left = __live.target.length - __live.shown;
-            /* v-reveal-quick (شكوى المالك: «الردود بطيئة جدًا»): وتيرة ٦٦ حرفًا
-               بالثانية كانت تمطّط ردًّا عاديًّا ١٢+ ثانية. الآن ~١٦٦ حرفًا
-               بالثانية — يبقى الإحساس التدريجي المرتب بلا انتظار ممل — مع
-               لحاق سريع متى تراكم البث فوق ٤٠٠ حرف. */
-            __live.shown = Math.min(__live.target.length, __live.shown + (left > 400 ? Math.ceil(left / 120) : 5));
+            /* v-chat-fast (المالك ١٩ سبتمبر «سرعة الردود في المحادثة وتكون منتظمة»): لا وتيرة كتابة
+               مصطنعة بعد اليوم. v-reveal-quick (~١٦٦ حرفًا/ث مع لحاق متغيّر) كانت تمطّط الردّ ثوانيَ
+               بعد اكتماله وتجعل السرعة تتقلّب بين بطء ولحاق. الآن كلّ نبضة (٣٠مل) تعرض كلّ ما وصل من
+               الشبكة: السرعة سرعة المزوّد نفسه، والنبض ثابت. النصّ الكامل محفوظ دائمًا كما كان. */
+            __live.shown = __live.target.length;
             __liveRender();
           } else if(__live.done){
             clearInterval(__live.timer);
@@ -5529,6 +5582,7 @@ DESIGN RULES (non-negotiable):
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
       let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
+      let __ctModel = ''; /* v-owner-model-badge: ما أعلنه الخادم عن الموديل الذي أجاب (للمالك) */
       let __ctTier = null; /* v-tiers: طبقة الردّ (free / free-limit / guest / guest-limit) لشارة «ردّ مجاني» */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
@@ -5560,7 +5614,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; }
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
@@ -5611,7 +5665,7 @@ DESIGN RULES (non-negotiable):
         const __cv = window.__chatVideoResult;
         if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; window.__chatVideoResult = null; }
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
-      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false, attachments: __chatVidAtt,
+      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, model: __ctModel || undefined /* v-owner-model-badge */, askAllReply: false, attachments: __chatVidAtt,
         tier: __ctTier || undefined, /* v-tiers */
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,

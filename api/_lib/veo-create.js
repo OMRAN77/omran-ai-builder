@@ -31,6 +31,7 @@ module.exports = async (req, res) => {
     const pointsLib = require('./points.js');
     const gate = await checkOwnerBypass(token);
     let chargedUser = null;
+    let videoLocked = null;
     if (!gate.allowed) {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
@@ -43,6 +44,16 @@ module.exports = async (req, res) => {
         return;
       }
       chargedUser = username;
+      // v-plan-routing: فيديو واحد كلّ ٣ دقائق لكلّ حساب — VIP خارجها (pay.owner). القفل يُفكّ لو فشل Veo.
+      if (!pay.owner) {
+        const __vl = await require('./abuse-guard.js').videoLock(username);
+        if (!__vl.ok) {
+          await pointsLib.refundPoints(username, pointsLib.COSTS.veo_video);
+          res.status(429).json({ error: 'video_cooldown', retryAfter: __vl.retryAfter });
+          return;
+        }
+        videoLocked = username;
+      }
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -74,6 +85,7 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       res.status(upstream.status).json({ error: 'Veo error: ' + String(msg).slice(0, 500) });
       return;
     }

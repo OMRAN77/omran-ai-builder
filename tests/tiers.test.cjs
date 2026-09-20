@@ -15,10 +15,10 @@ const fc = require('../api/_lib/free-chain.js');
 const DAY = 86400000;
 
 test('caps: safe defaults and env overrides', () => {
-  assert.deepEqual(tier.caps({}), { guest: 3, free: 10, basic: 50, pro: 150, max: 400 });
+  assert.deepEqual(tier.caps({}), { guest: 3, free: 5, basic: 50, pro: 100, max: 250 }); // v-plan-routing
   assert.equal(tier.caps({ FREE_DAILY: '25' }).free, 25);
   assert.equal(tier.caps({ FREE_DAILY: '5' }).free, 5, 'المالك يقدر ينزل إلى ٥ من البيئة');
-  assert.equal(tier.caps({ FREE_DAILY: 'abc' }).free, 10, 'قيمة تالفة = البديل');
+  assert.equal(tier.caps({ FREE_DAILY: 'abc' }).free, 5, 'قيمة تالفة = البديل');
   assert.equal(tier.caps({ GUEST_DAILY: '-1' }).guest, 3);
   assert.equal(tier.caps({ SUB_DAILY_PRO: '999' }).pro, 999);
 });
@@ -47,10 +47,10 @@ test('resolveTier: guest / owner / vip / subscriber by plan / free', async () =>
   assert.deepEqual(await tier.resolveTier(null, o), { tier: 'guest', plan: null, cap: 3, subscriber: false });
   assert.deepEqual(await tier.resolveTier('Omran', o), { tier: 'owner', plan: null, cap: Infinity, subscriber: true });
   assert.deepEqual(await tier.resolveTier('vipguy', o), { tier: 'vip', plan: null, cap: Infinity, subscriber: true });
-  assert.deepEqual(await tier.resolveTier('subpro', o), { tier: 'sub', plan: 'pro', cap: 150, subscriber: true });
-  assert.deepEqual(await tier.resolveTier('lapsed', o), { tier: 'free', plan: null, cap: 10, subscriber: false }, 'اشتراك منتهٍ = مجاني');
-  assert.deepEqual(await tier.resolveTier('rich', o), { tier: 'free', plan: null, cap: 10, subscriber: false }, 'النقاط وحدها لا تصنع مشتركًا');
-  assert.deepEqual(await tier.resolveTier('nobody', o), { tier: 'free', plan: null, cap: 10, subscriber: false });
+  assert.deepEqual(await tier.resolveTier('subpro', o), { tier: 'sub', plan: 'pro', cap: 100, subscriber: true });
+  assert.deepEqual(await tier.resolveTier('lapsed', o), { tier: 'free', plan: null, cap: 5, subscriber: false }, 'اشتراك منتهٍ = مجاني');
+  assert.deepEqual(await tier.resolveTier('rich', o), { tier: 'free', plan: null, cap: 5, subscriber: false }, 'النقاط وحدها لا تصنع مشتركًا');
+  assert.deepEqual(await tier.resolveTier('nobody', o), { tier: 'free', plan: null, cap: 5, subscriber: false });
   const boom = await tier.resolveTier('subpro', Object.assign({}, o, { getUser: async () => { throw new Error('redis down'); } }));
   assert.equal(boom.tier, 'free', 'عطب القراءة لا يرفع أحدًا إلى مشترك');
 });
@@ -63,16 +63,16 @@ test('paid providers are subscriber-only; the free chain and small tools are not
 test('freeChain: order from env, providers without keys skipped, model overrides', () => {
   assert.deepEqual(tier.freeChain({}).map((s) => s.id), []);
   const env = { GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q', OPENROUTER_API_KEY: 'o' };
-  assert.deepEqual(tier.freeChain(env).map((s) => s.id), ['gemini', 'groq', 'openrouter']);
+  assert.deepEqual(tier.freeChain(env).map((s) => s.id), ['groq', 'gemini', 'openrouter']); // v-plan-routing: Groq أوّلًا
   assert.deepEqual(tier.freeChain(Object.assign({ FREE_CHAIN: 'groq, gemini ,bogus' }, env)).map((s) => s.id), ['groq', 'gemini']);
-  const g = tier.freeChain(Object.assign({ FREE_GEMINI_MODEL: 'gemini-9-flash' }, env))[0];
+  const g = tier.freeChain(Object.assign({ FREE_GEMINI_MODEL: 'gemini-9-flash' }, env))[1];
   assert.equal(g.model, 'gemini-9-flash', 'نموذج البيئة يُجرَّب أولًا');
   assert.equal(g.models[0], 'gemini-9-flash'); assert.equal(g.models[1], 'gemini-flash-latest');
   assert.equal(g.vision, true);
   assert.match(g.url, /generativelanguage\.googleapis\.com\/v1beta\/openai\/chat\/completions/);
   assert.match(g.modelsUrl, /\/v1beta\/openai\/models$/);
-  assert.equal(tier.freeChain(env)[0].model, 'gemini-flash-latest', 'الاسم المستعار الذي يعمل في بقية الخادم');
-  assert.equal(tier.freeChain(env)[1].model, 'openai/gpt-oss-120b');
+  assert.equal(tier.freeChain(env)[1].model, 'gemini-flash-latest', 'الاسم المستعار الذي يعمل في بقية الخادم');
+  assert.equal(tier.freeChain(env)[0].model, 'openai/gpt-oss-120b');
   for (const s of tier.freeChain(env)) { assert.equal(typeof s.key, 'string'); assert.ok(s.models.length >= 4, s.id + ' candidates'); assert.ok(s.pick instanceof RegExp); }
   /* مرشّح الانتقاء يلتقط نماذج flash النصّية فقط عند Gemini، والمجانية فقط عند OpenRouter */
   const specs = tier.FREE_PROVIDER_SPECS;
@@ -85,7 +85,7 @@ test('freeChain: order from env, providers without keys skipped, model overrides
 test('no provider name reaches the user in free-tier texts', () => {
   const texts = [tier.FREE_TEXT.freeLimit, tier.FREE_TEXT.guestLimit, tier.FREE_TEXT.subLimit(50), tier.FREE_TEXT.busy, tier.FREE_TEXT.subscribeOnly, fc.FREE_NOTE];
   for (const t of texts) assert.doesNotMatch(t, /كلاود|claude|gemini|جيميني|groq|mistral|llama|openrouter|anthropic|google/i, t);
-  assert.match(tier.FREE_TEXT.guestLimit, /10 رسائل/);
+  assert.match(tier.FREE_TEXT.guestLimit, /5 رسائل/);
   const app04 = read('js/app-04-i18n-state.js');
   const badge = app04.slice(app04.indexOf('v-tiers'), app04.indexOf('v-tiers') + 3000);
   assert.doesNotMatch(badge, /كلاود|claude/i);
@@ -117,7 +117,7 @@ function sse(deltas) {
 }
 
 test('streamFreeChain: 429 on the first provider falls through, deltas are forwarded', async () => {
-  const env = { GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q' };
+  const env = { GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q', FREE_CHAIN: 'gemini,groq' }; // الترتيب صريح: الاختبار عن الالتقاط لا عن الافتراضيّ
   const calls = [];
   const fetchImpl = async (url, init) => {
     calls.push({ url, body: JSON.parse(init.body) });
@@ -172,7 +172,7 @@ test('isModelError: 404 and tier/model 400/403 only', () => {
 });
 
 test('streamFreeChain: all providers down → ok:false and nothing sent', async () => {
-  const env = { GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q', MISTRAL_API_KEY: 'm' };
+  const env = { GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q', MISTRAL_API_KEY: 'm', FREE_CHAIN: 'gemini,groq,mistral' };
   const fetchImpl = async () => new Response('down', { status: 503 });
   const sent = [];
   const r = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: (e) => sent.push(e), env, fetchImpl, log: () => {} });
@@ -218,7 +218,7 @@ test('client wiring: tier flows from the stream to the stored message to the bad
 test('points: image 20 (4K 30), maha minute 15; refunds return the charged amount', () => {
   const { COSTS } = require('../api/_lib/points.js');
   assert.equal(COSTS.image, 20); assert.equal(COSTS.image_4k, 30); assert.equal(COSTS.maha_minute, 15);
-  assert.equal(COSTS.runway_video, 60); assert.equal(COSTS.veo_video, 400); assert.equal(COSTS.premium_claude, 20);
+  assert.equal(COSTS.runway_video, 55); assert.equal(COSTS.veo_video, 275); assert.equal(COSTS.premium_claude, 20); // v-plan-routing
   const mi = read('api/_lib/maha-image.js');
   assert.match(mi, /const __imgCost = __ask4K \? pointsLib\.COSTS\.image_4k : pointsLib\.COSTS\.image;/);
   assert.match(mi, /mahaImgChargedAmount = __imgCost;/);
@@ -233,25 +233,25 @@ function parsePlans(src) {
   return out;
 }
 
-test('plans: 500 / 1,200 / 7,000 — identical in Stripe and PayPal, advertised the same in the UI', () => {
+test('plans: 360 / 920 / 3,200 (v-plan-routing) — identical in Stripe and PayPal, advertised the same in the UI', () => {
   const stripe = parsePlans(read('api/_lib/create-checkout-session.js'));
   const paypal = parsePlans(read('api/_lib/paypal-order.js'));
-  assert.deepEqual(stripe, { basic: { amount: 1000, points: 500 }, pro: { amount: 2000, points: 1200 }, max: { amount: 10000, points: 7000 } });
-  assert.deepEqual(paypal, { basic: { amount: 10, points: 500 }, pro: { amount: 20, points: 1200 }, max: { amount: 100, points: 7000 } });
+  assert.deepEqual(stripe, { basic: { amount: 1000, points: 360 }, pro: { amount: 2000, points: 920 }, max: { amount: 10000, points: 3200 } });
+  assert.deepEqual(paypal, { basic: { amount: 10, points: 360 }, pro: { amount: 20, points: 920 }, max: { amount: 100, points: 3200 } });
   const ps = read('js/partials-settings.js');
-  for (const s of ['<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '10 رسائل يوميًا', '50 رسالة احترافية يوميًا', '150 رسالة احترافية يوميًا', '400 رسالة احترافية يوميًا', 'مها: 15 نقطة/دقيقة', 'صورة: 20']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
-  for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '20 رسالة يوميًا', 'رسائل بلا حدود', 'صورة: 10']) assert.ok(!ps.includes(s), 'partials-settings stale: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '5 رسائل يوميًا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'مها: 15 نقطة/دقيقة', 'صورة: 20']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
+  for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '20 رسالة يوميًا', 'رسائل بلا حدود', 'صورة: 10']) assert.ok(!ps.includes(s), 'partials-settings stale: ' + s);
   const ph = read('pricing.html');
-  for (const s of ['<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '10 رسائل يوميًا', '<div class="val">15</div>', '<div class="val">20</div>']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
-  for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', 'رسائل بلا حدود', '<div class="val">10</div>']) assert.ok(!ph.includes(s), 'pricing.html stale: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '5 رسائل يوميًا', '<div class="val">15</div>', '<div class="val">20</div>']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
+  for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '<b>500</b>', '<b>7,000</b>', 'رسائل بلا حدود', '<div class="val">10</div>']) assert.ok(!ph.includes(s), 'pricing.html stale: ' + s);
   const i18n = read('js/app-03-i18n-data.js');
-  assert.ok(i18n.includes("plFreeMsgs: '10 رسائل يوميًا'") && i18n.includes("plFreeMsgs: '10 messages a day'"));
-  assert.ok(i18n.includes("plStMsgs: '50 رسالة احترافية يوميًا'") && i18n.includes("plProMsgs: '150 pro messages a day'"));
+  assert.ok(i18n.includes("plFreeMsgs: '5 رسائل يوميًا'") && i18n.includes("plFreeMsgs: '5 messages a day'"));
+  assert.ok(i18n.includes("plStMsgs: '50 رسالة يوميًا'") && i18n.includes("plProMsgs: '100 messages a day'"));
 });
 
 test('paypal capture is idempotent per order id', () => {
   const pp = read('api/_lib/paypal-order.js');
-  assert.match(pp, /if \(user && !user\.deleted && user\.lastPaypalOrderId === data\.id\) \{[\s\S]*?pointsAdded = 0;[\s\S]*?\} else if \(user && !user\.deleted\) \{\n\s+user\.plan = matchedPlan;/);
+  assert.match(pp, /if \(user && !user\.deleted && user\.lastPaypalOrderId === data\.id\) \{[\s\S]*?pointsAdded = 0;[\s\S]*?\} else if \(user && !user\.deleted\) \{\n[^\n]*\n\s+if \(!PLANS\[matchedPlan\]\.pack\) \{ user\.plan = matchedPlan;/);
 });
 
 test('completeJson: retired preferred name ignored, 404 tries the next candidate, other errors pass through', async () => {
@@ -299,7 +299,7 @@ test('no retired model name is hard-wired anywhere on the server or in client de
 test('chat.js: king unavailable before the first character → SILENT server-side free-chain fallback (no visible notice)', () => {
   const chat = read('api/_lib/chat.js');
   // يهبط إلى السلسلة المجانية ويبثّها بـsend مباشرة (لا غلاف يُضيف بادئة).
-  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(__fb\.ok\) \{ send\(\{ done: true \}\); res\.end\(\); return; \}/);
+  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send, requireVision: lastUserHasImage \}\);\n\s+if \(__fb\.ok\) \{[\s\S]*?send\(\{ done: true \}\); res\.end\(\); return;[\s\S]*?\}/);
   // v-silent-fallback (طلب المالك «يبدّل بدون ما أحد يعرف»): لا بادئة مرئيّة في الردّ.
   assert.ok(!/فهذا ردّ من المحرّك الاحتياطي بلا أدوات/.test(chat), 'يجب ألّا تظهر بادئة التبديل للمستخدم');
   const groq = read('api/_lib/groq.js');

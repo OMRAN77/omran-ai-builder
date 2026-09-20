@@ -33,9 +33,16 @@ const PLANS = {
   // v-plans-2026-09 (قرار المالك ١٢ سبتمبر): الباقات الأكبر تأخذ سعر نقطة أفضل
   // (كانت الثلاث بنفس السعر فلا حافز للترقية). يجب أن تطابق paypal-order.js
   // وبطاقات partials-settings.js وpricing.html.
-  basic: { amount: 1000, points: 500, name: 'عادية — 500 نقطة / Basic — 500 pts' },
-  pro: { amount: 2000, points: 1200, name: 'متوسطة — 1,200 نقطة / Pro — 1,200 pts' },
-  max: { amount: 10000, points: 7000, name: 'كبيرة — 7,000 نقطة / Premium — 7,000 pts' },
+  // v-plan-routing (قرار المالك ٢٠ سبتمبر): Plus ٣٦٠ · Pro ٩٢٠ · Max ٣٬٢٠٠ نقطة شهريًّا.
+  basic: { amount: 1000, points: 360, name: 'Plus — 360 نقطة / Plus — 360 pts' },
+  pro: { amount: 2000, points: 920, name: 'Pro — 920 نقطة / Pro — 920 pts' },
+  max: { amount: 10000, points: 3200, name: 'Max — 3,200 نقطة / Max — 3,200 pts' },
+  // رزم شحن النقاط (pack:true): دفعة واحدة (mode=payment لا اشتراك)، تُضيف نقاطًا ولا تغيّر الباقة.
+  // يجب أن تطابق paypal-order.js والأسعار على أزرار «باقات النقاط» في الإعدادات.
+  pack100: { amount: 499, points: 100, pack: true, name: '100 نقطة / 100 pts' },
+  pack300: { amount: 1299, points: 300, pack: true, name: '300 نقطة / 300 pts' },
+  pack700: { amount: 2499, points: 700, pack: true, name: '700 نقطة / 700 pts' },
+  pack900: { amount: 3499, points: 900, pack: true, name: '900 نقطة / 900 pts' },
 };
 
 // Shared "the payment definitely happened, now grant it" logic used by both
@@ -52,8 +59,8 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
     return { ok: true, plan, pointsAdded: 0, alreadyGranted: true, balance: Number(user.points || 0) };
   }
 
-  user.plan = plan;
-  user.planUpdatedAt = Date.now();
+  // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
+  if (!PLANS[plan].pack) { user.plan = plan; user.planUpdatedAt = Date.now(); }
   if (sourceField) user[sourceField] = sourceId;
 
   // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
@@ -67,7 +74,7 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
   user.points = Number(newBalance);
 
   await putUser(username, user);
-  return { ok: true, plan, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
+  return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
 }
 
 async function createCheckoutSession(req, res) {
@@ -88,19 +95,22 @@ async function createCheckoutSession(req, res) {
 
     const base = origin || 'https://omran-ai-builder.vercel.app';
     const params = new URLSearchParams();
-    params.append('mode', 'subscription');
+    // v-plan-routing: رزمة النقاط دفعة واحدة (payment) بلا تجديد؛ الباقة اشتراك شهريّ.
+    params.append('mode', planInfo.pack ? 'payment' : 'subscription');
     params.append('payment_method_types[0]', 'card');
     params.append('line_items[0][quantity]', '1');
     params.append('line_items[0][price_data][currency]', 'usd');
     params.append('line_items[0][price_data][unit_amount]', String(planInfo.amount));
-    params.append('line_items[0][price_data][recurring][interval]', 'month');
+    if (!planInfo.pack) params.append('line_items[0][price_data][recurring][interval]', 'month');
     params.append('line_items[0][price_data][product_data][name]', planInfo.name);
     params.append('metadata[plan]', plan);
     if (username) params.append('metadata[username]', username);
     // v-webhook: نفس البيانات على الاشتراك نفسه — فتحملها فواتير التجديد
     // الشهري ويعرف الويب هوك لمن يضيف نقاط كل شهر (كان التجديد بلا شحن).
-    params.append('subscription_data[metadata][plan]', plan);
-    if (username) params.append('subscription_data[metadata][username]', username);
+    if (!planInfo.pack) {
+      params.append('subscription_data[metadata][plan]', plan);
+      if (username) params.append('subscription_data[metadata][username]', username);
+    }
     params.append('success_url', `${base}/?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`);
     params.append('cancel_url', `${base}/?checkout=cancel`);
 

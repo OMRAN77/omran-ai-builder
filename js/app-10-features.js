@@ -808,6 +808,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       else if(BRAND_L10N_W[l]){ imgSrc = 'icons/brand-' + l + '.png'; imgW = BRAND_L10N_W[l]; imgAlt = 'Omran Ai'; }
       else { imgSrc = 'icons/brand-en.png'; imgW = 161; imgAlt = 'Omran Ai'; }
       bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
+      /* v-sidebar-brand: نسخة رأس القائمة الجانبيّة تتبع الشعار نفسه عند تبديل اللغة */
+      const sb = document.getElementById('sidebarBrand');
+      if(sb){ sb.innerHTML = bt.innerHTML; if(h1 && !sb.onclick) sb.onclick = h1.onclick; }
     }
   };
   syncBrand();
@@ -862,6 +865,31 @@ btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
   }catch(e){ console.error('codeHint init', e); }
 })();
 backdropEl.onclick = closeDrawers;
+// v-drawer-close + v-sb-collapse (طلب المالك): سهم القائمة الجانبيّة —
+// على الجوّال يسكر الدرج، وعلى سطح المكتب يطوي العمود (مثل طيّ لوحة العمل) مع مقبض إعادة فتح.
+try{
+  const __sbClose = document.getElementById('sidebarCloseBtn');
+  let __sbReopen = document.getElementById('sbReopen');
+  if(!__sbReopen){
+    __sbReopen = document.createElement('button');
+    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button'; __sbReopen.setAttribute('aria-label', 'فتح القائمة');
+    __sbReopen.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
+    document.body.appendChild(__sbReopen);
+  }
+  const __setSB = (collapsed) => {
+    sidebarEl.classList.toggle('sbCollapsed', collapsed);
+    const __rz1 = document.getElementById('resizer1');
+    if(__rz1) __rz1.classList.toggle('sbCollapsed', collapsed);
+    document.body.classList.toggle('sbCollapsedMode', collapsed);
+    try{ localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); }catch(e){ __swallow(e, "save:app-10-features#sb-collapse"); }
+  };
+  if(__sbClose) __sbClose.onclick = () => {
+    if(document.documentElement.classList.contains('mobile-ui')) closeDrawers();
+    else __setSB(true);
+  };
+  __sbReopen.onclick = () => __setSB(false);
+  try{ if(localStorage.getItem('sidebarCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) __setSB(true); }catch(e){ __swallow(e, "ui:app-10-features#sb-restore"); }
+}catch(e){ __swallow(e, "ui:app-10-features#drawer-close"); }
 
 /* ---------- Header "more" dropdown (📂 projects / 📲 install / 🚪 logout) ---------- */
 const btnHeaderMenu = $('#btnHeaderMenu');
@@ -925,7 +953,7 @@ window.addEventListener('resize', () => { if(window.innerWidth > 860) closeDrawe
 
 /* ---------- Draggable resizers (desktop) ---------- */
 function setupResizer(resizerEl, panelEl, opts){
-  const { min = 180, max = 560, storeKey } = opts;
+  const { min = 180, max = 560, storeKey, invert = false } = opts;
   const saved = parseInt(localStorage.getItem(storeKey) || '', 10);
   if(saved && saved >= min && saved <= max){
     panelEl.style.width = saved + 'px';
@@ -936,6 +964,8 @@ function setupResizer(resizerEl, panelEl, opts){
   function onMove(clientX){
     let delta = clientX - startX;
     if(isRTL()) delta = -delta;
+    // v-resizer2-work: مقبض لوحة العمل على الجهة المقابلة للعمود المرن، فاتّجاه سحبه معكوس.
+    if(invert) delta = -delta;
     let newWidth = startWidth + delta;
     newWidth = Math.max(min, Math.min(max, newWidth));
     panelEl.style.width = newWidth + 'px';
@@ -977,8 +1007,25 @@ function setupResizer(resizerEl, panelEl, opts){
     window.addEventListener('touchend', onUp);
   }, { passive: true });
 }
-setupResizer($('#resizer1'), sidebarEl, { min: 180, max: 420, storeKey: 'panelWidthSidebar' });
-setupResizer($('#resizer2'), chatcolEl, { min: 280, max: 620, storeKey: 'panelWidthChat' });
+// v-free-resize (طلب المالك): سحب حرّ لأيّ حجم — من التصغير الشديد (شبه طيّ) حتّى كبير.
+// القائمة تصل 0 (طيّ كامل بالسحب)، والمحادثة تتوسّع فيضيق workarea (min-width:0) حتّى شبه الطيّ.
+setupResizer($('#resizer1'), sidebarEl, { min: 0, max: 560, storeKey: 'panelWidthSidebar' });
+// v-resizer2-work (طلب المالك «شريط المعاينة والكود ما أقدر أحرّكه»): في شبكة v-frame-c
+// عمود المحادثة #chatcol هو 1fr (لا يُضبط بعرض)، فكان سحب resizer2 بلا أثر. اللوحة #workarea
+// في عمود auto يتبع عرضها الصريح، فالمقبض يضبط عرض اللوحة نفسها (باتّجاه معكوس لأنّها الجهة المقابلة).
+setupResizer($('#resizer2'), workareaEl, { min: 240, max: 1600, storeKey: 'panelWidthWork', invert: true });
+
+// v-tools-below (طلب المالك): «+» والمايك (مجموعة الأدوات) تخرج من صندوق الكتابة
+// وتصير صفًّا تحته؛ يبقى زرّ الإرسال وحده داخل الصندوق. نقل DOM فقط — المعرّفات
+// والنوافذ المنبثقة تبقى كما هي فلا يتأثّر أيّ منطق.
+try{
+  const __tools = document.querySelector('#composerBox > .inputbar-tools');
+  const __row = document.getElementById('composerRow');
+  if(__tools && __row && __row.parentNode){
+    __row.parentNode.insertBefore(__tools, __row.nextSibling);
+    __tools.classList.add('inputbar-tools-below');
+  }
+}catch(e){ __swallow(e, 'ui:app-10-features#tools-below'); }
 
 // On mobile, picking a project from the history list should close the drawer.
 $('#history').addEventListener('click', () => {

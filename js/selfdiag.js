@@ -19,8 +19,14 @@
 (function(){
   try{
     var sp = new URLSearchParams(location.search).get('store');
-    if(sp) localStorage.setItem('aiapp_store', String(sp).slice(0, 20));
-    if((localStorage.getItem('aiapp_store') || '') === 'huawei'){
+    /* v-store-flag-session (بلاغ المالك ١٨ سبتمبر «حذفت الأسهم كاملة» و«شريط الأسهم ما يفتح»):
+       العلم كان يُحفظ في localStorage فيلتصق بالمتصفّح العاديّ بعد أيّ فتحة لرابط ?store=huawei
+       (تجربة المالك للحزمة) ويخفي الأسهم والشريط إلى الأبد بينما سهم الطيّ يبقى ظاهرًا. الآن يُحفظ في
+       sessionStorage: يدوم طوال جلسة التبويب أو الحزمة (وحزمة المتجر تنطلق دائمًا برابط يحمل العلم)
+       ويزول بإغلاقها. علم قديم عالق في localStorage يُمسح مرّة واحدة فيتعافى المتصفّح المتأثّر. */
+    if(sp) sessionStorage.setItem('aiapp_store', String(sp).slice(0, 20));
+    try{ localStorage.removeItem('aiapp_store'); }catch(e){ /* guard-ok */ }
+    if((sessionStorage.getItem('aiapp_store') || '') === 'huawei'){
       document.documentElement.classList.add('store-safe');
       /* v-store-twa (رفض هواوي 4.1 مرة ثانية — 1.3.9): مدخل المتجر يحمل بيان
          الحزمة الخاص به (manifest-huawei.json: start_url = /?store=huawei) حتى

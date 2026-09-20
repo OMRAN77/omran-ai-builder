@@ -112,7 +112,11 @@
       pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + divider + provsHTML();
       wrap.appendChild(pop); wrap.appendChild(chip);
       bar.appendChild(wrap);
-      host.appendChild(bar);
+      // v-model-under-send (طلب المالك): الشريط تحت صندوق الكتابة مباشرة (جهة زرّ الإرسال)
+      // لا أسفل كلّ شيء — نضعه بعد صفّ الملحّن مباشرةً كي يتبع الصندوق.
+      var __row = document.getElementById('composerRow');
+      if(__row && __row.parentNode === host && __row.nextSibling){ host.insertBefore(bar, __row.nextSibling); }
+      else { host.appendChild(bar); }
 
       var ACCENT = 'var(--accent,#f0c040)', INK = 'var(--text,#eee)';
       function refresh(){

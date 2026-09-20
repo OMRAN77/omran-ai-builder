@@ -2543,10 +2543,10 @@ const I18N = {
     refreshBtn: 'تحديث', worldMarketsTitle: 'الأسواق العالمية', pickStockTitle: 'اختيار سهم', cnProjectData: '📋 بيانات المشروع', cnLandArea: 'مساحة الأرض (م²) — اختياري', cnLandAreaPh: 'مثال: 500',
     cnEmirateOpt: 'الإمارة — اختياري', cnDetailsAnnexes: '🏠 التفاصيل والملاحق', cnExElevator: 'مصعد داخلي', cnExStore: 'مخزن خارجي', cnExWaterTank: 'خزان مياه', cnExSolar: 'ألواح شمسية',
     cnExPlayground: 'ملعب خارجي', cnExCarport: 'مظلة سيارات إضافية', cnBudgetOutputs: '💰 الميزانية والمخرجات', cnDownloadBoq: '📊 تنزيل جدول الكميات', cnPdfReport: '📄 تقرير PDF',
-    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '10 رسائل يوميًا',
-    plFreeVoice: 'دقيقة واحدة محادثة صوتية', plFreeImgs: '3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '50 رسالة احترافية يوميًا', plStVoice: '33 دقيقة محادثة صوتية', plStImgs: '25 صورة',
-    plStVideos: '8 مقاطع فيديو', plProMsgs: '150 رسالة احترافية يوميًا', plProVoice: '80 دقيقة محادثة صوتية', plProMedia: '60 صورة · 20 فيديو · 3 سينمائي', plProAgent: 'الوكيل الذكي',
-    plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro · 400 رسالة احترافية يوميًا', plMaxVoice: '460 دقيقة محادثة صوتية', plMaxMedia: '350 صورة · 116 فيديو · 17 سينمائي', plMaxSupport: 'دعم مخصّص',
+    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '5 رسائل يوميًا',
+    plFreeVoice: 'حتّى 4 دقائق محادثة صوتية', plFreeImgs: 'حتّى 3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '50 رسالة يوميًا', plStVoice: 'حتّى 24 دقيقة محادثة صوتية', plStImgs: 'حتّى 15 صورة',
+    plStVideos: 'فيديو واحد', plProMsgs: '100 رسالة يوميًا', plProVoice: 'حتّى 61 دقيقة محادثة صوتية', plProMedia: 'حتّى 40 صورة · 2 فيديو', plProAgent: 'الوكيل الذكي',
+    plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro · 250 رسالة يوميًا', plMaxVoice: 'حتّى 213 دقيقة محادثة صوتية', plMaxMedia: 'حتّى 150 صورة · 3 فيديو', plMaxSupport: 'دعم مخصّص',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 صورة جواز/هوية رسمية', portraitStyleRestore: '🔧 ترميم صورة قديمة', portraitStyleColorize: '🎨 تلوين أبيض وأسود', portraitStyleUpscale: '🔍 رفع الدقة والوضوح', portraitStyleObjectremove: '🧹 إزالة شخص أو عنصر', portraitStyleOutfit: '👕 تبديل الملابس', portraitStyleProductshot: '📦 تصوير منتج احترافي', portraitStyleHajj: '🕋 تهنئة حج وعمرة', portraitStyleBirthday: '🎂 إطار عيد ميلاد', portraitStyleNewborn: '👶 تهنئة مولود جديد', portraitStyleFigurine: '🧸 مجسّم أكشن في علبة', portraitStyleGhibli: '🍃 ستايل جيبلي', portraitStyleLego: '🧱 شخصية ليغو', portraitStyleStickerpack: '💬 ملصقات واتساب (٦ تعبيرات)', portraitStyleChibi: '🐣 شيبي لطيف', portraitStyleStatue: '🗿 تمثال رخامي', portraitStylePolaroid: '📸 بولارويد قديمة', portraitStyleCelebtoon: '🦸 شخصية كرتونية مفضلة', portraitStyleProfession: '👩‍⚕️ مهنة (طبيب · طيار · شرطي...)', portraitStyleSuperhero: '🦸‍♂️ بطل خارق بزي كامل', portraitStyleAstronaut: '🚀 رائد فضاء', portraitOutfitKandura: '👔 كندورة إماراتية + غترة', portraitOutfitAbaya: '🧕 عباية + شيلة', portraitOutfitThobe: '🧣 ثوب خليجي + شماغ', portraitOutfitSuit: '🧵 بدلة رسمية', portraitOutfitDress: '👗 فستان سهرة', portraitOutfitCasual: '🧥 كاجوال أنيق', portraitOutfitSport: '🎽️ ملابس رياضية', portraitOutfitWinter: '🧤 معطف شتوي', portraitProfDoctor: '👩‍⚕️ طبيب', portraitProfPilot: '🧑‍✈️ طيار', portraitProfPolice: '👮 شرطي', portraitProfChef: '🧑‍🍳 طبّاخ', portraitProfEngineer: '👷 مهندس موقع', portraitProfTeacher: '🧑‍🏫 معلم', portraitProfFirefighter: '🧑‍🚒 إطفائي', portraitProfScientist: '🧑‍🔬 عالم مختبر', portraitGrpTools: '🛠️ أدوات عملية', portraitGrpOccasions: '🎉 مناسبات', portraitGrpTrending: '🔥 رائجة', portraitGrpDressup: '🎭 تلبيس', portraitStyleClaymation: '🏺 صلصال متحرك (كلاي)', portraitStyleLowpoly: '🔷 ثلاثي الأبعاد هندسي (Low Poly)', portraitStyleGraffiti: '🎨 جرافيتي شوارع', portraitStyleMosaic: '🧩 فسيفساء', portraitStyleStainedglass: '🪟 زجاج معشّق', portraitStylePapercraft: '📄 فن الورق الطبقي', portraitStyleCrochet: '🧶 دمية كروشيه', portraitStyleInflatable: '🎈 مجسّم بالون لامع', portraitStyleUkiyoe: '🌊 طباعة يابانية قديمة', portraitStyleSandart: '🏜️ رسم بالرمل الخليجي', portraitStyleNeonsign: '💡 نيون مضيء', portraitStyleDoubleexposure: '🌆 تعريض مزدوج فني', portraitGrpNew: '🆕 ستايلات جديدة',
     designAiPlaceFromPhoto: '📷 من صورتي', designAiPlaceRestaurant: '🍽️ مطعم', designAiPlaceCafe: '☕ كافيه', designAiPlaceBedroom: '🛏️ غرفة نوم', designAiPlaceMajlis: '🪑 مجلس', designAiPlaceLiving: '🛋️ صالة', designAiPlaceKitchen: '🍳 مطبخ', designAiPlaceOffice: '💼 مكتب', designAiPlaceShop: '🛍️ محل', designAiPlaceBath: '🛁 حمام', designAiPlaceKids: '🧸 غرفة أطفال', designAiPlaceEntrance: '🚪 مدخل', designAiPlaceGarden: '🌳 حديقة', designAiStyleNajdi: '🏜️ نجدي', designAiStyleIslamic: '✳️ إسلامي معاصر', designAiStyleAndalusi: '🏛️ أندلسي', fashionAiOccasionGraduation: '🎓 تخرج', fashionAiOccasionReligious: '🕌 مناسبة دينية', fashionAiSeasonAutumn: '🍂 خريفي', fashionAiSeasonSpring: '🌸 ربيعي',
@@ -2560,7 +2560,7 @@ const I18N = {
     sbProjSearch: 'بحث عن مشروع',
     sbDeleteAll: 'حذف الكل',
     pricingPointsTitle: 'باقات النقاط',
-    pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على المحادثة الصوتية والفيديو والصور، بدون اشتراك. الصوت: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10',
+    pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو سينمائي: 275',
     pricingWalletLabel: 'رصيدك من النقاط',
     pricingPointsUnit: 'نقطة',
     pricingBuyBtn: 'شراء',
@@ -3432,10 +3432,10 @@ const I18N = {
     planTag: 'الأكثر اختيارًا',
     planCurrentBtn: 'باقتك الحالية',
     planSoonBtn: 'قريبًا',
-    planFreeFeats: '<li>20 رسالة يوميًا</li><li>دقيقة واحدة محادثة صوتية</li><li>3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li>',
-    planPlusFeats: '<li>300 رسالة شهريًا</li><li>30 دقيقة محادثة صوتية</li><li>15 صورة</li><li>5 مقاطع فيديو</li>',
-    planProFeats: '<li>رسائل بلا حدود</li><li>80 دقيقة محادثة صوتية</li><li>40 صورة · 13 فيديو · 2 سينمائي</li><li>الوكيل الذكي</li><li>أولوية في السرعة · شارة ذهبية</li>',
-    planMaxFeats: '<li>كل مزايا Pro</li><li>500 دقيقة محادثة صوتية</li><li>250 صورة · 83 فيديو · 12 سينمائي</li><li>دعم مخصّص</li>',
+    planFreeFeats: '<li>5 رسائل يوميًا</li><li>حتّى 4 دقائق محادثة صوتية</li><li>حتّى 3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li>',
+    planPlusFeats: '<li>50 رسالة يوميًا</li><li>حتّى 24 دقيقة محادثة صوتية</li><li>حتّى 15 صورة</li><li>فيديو واحد</li>',
+    planProFeats: '<li>100 رسالة يوميًا</li><li>حتّى 61 دقيقة محادثة صوتية</li><li>حتّى 40 صورة · 2 فيديو</li><li>الوكيل الذكي</li><li>أولوية في السرعة · شارة ذهبية</li>',
+    planMaxFeats: '<li>كل مزايا Pro · 250 رسالة يوميًا</li><li>حتّى 213 دقيقة محادثة صوتية</li><li>حتّى 150 صورة · 3 فيديو</li><li>دعم مخصّص</li>',
     pricingProDesc: 'رسائل بلا حدود + وكيل عمران + 200 نقطة شهريًا + أولوية سرعة + شارة ذهبية',
     pricingComingSoon: 'قريبًا 🚀 — الاشتراك غير متاح حاليًا',
     pricingSubscribeBtn: 'اشترك الآن',
@@ -3522,10 +3522,10 @@ const I18N = {
     cnLandArea: 'Land area (m²) — optional', cnLandAreaPh: 'e.g. 500', cnEmirateOpt: 'Emirate — optional', cnDetailsAnnexes: '🏠 Details and annexes', cnExElevator: 'Indoor elevator',
     cnExStore: 'Outdoor storeroom', cnExWaterTank: 'Water tank', cnExSolar: 'Solar panels', cnExPlayground: 'Outdoor playground', cnExCarport: 'Extra car canopy',
     cnBudgetOutputs: '💰 Budget and outputs', cnDownloadBoq: '📊 Download bill of quantities', cnPdfReport: '📄 PDF report', keyHowToTitle: '📝 How to get a key for each provider:',
-    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '10 messages a day', plFreeVoice: 'One minute of voice chat', plFreeImgs: '3 AI images',
-    plFreeNoVideo: 'No video', plStMsgs: '50 pro messages a day', plStVoice: '33 minutes of voice chat', plStImgs: '25 images', plStVideos: '8 videos', plProMsgs: '150 pro messages a day',
-    plProVoice: '80 minutes of voice chat', plProMedia: '60 images · 20 videos · 3 cinematic', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
-    plMaxAllPro: 'Everything in Pro · 400 pro messages a day', plMaxVoice: '460 minutes of voice chat', plMaxMedia: '350 images · 116 videos · 17 cinematic', plMaxSupport: 'Dedicated support',
+    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '5 messages a day', plFreeVoice: 'Up to 4 minutes of voice chat', plFreeImgs: 'Up to 3 AI images',
+    plFreeNoVideo: 'No video', plStMsgs: '50 messages a day', plStVoice: 'Up to 24 minutes of voice chat', plStImgs: 'Up to 15 images', plStVideos: '1 video', plProMsgs: '100 messages a day',
+    plProVoice: 'Up to 61 minutes of voice chat', plProMedia: 'Up to 40 images · 2 videos', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
+    plMaxAllPro: 'Everything in Pro · 250 messages a day', plMaxVoice: 'Up to 213 minutes of voice chat', plMaxMedia: 'Up to 150 images · 3 videos', plMaxSupport: 'Dedicated support',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 Passport/ID photo', portraitStyleRestore: '🔧 Restore old photo', portraitStyleColorize: '🎨 Colorize B&W', portraitStyleUpscale: '🔍 Upscale', portraitStyleObjectremove: '🧹 Remove person or object', portraitStyleOutfit: '👕 Change outfit', portraitStyleProductshot: '📦 Pro product shot', portraitStyleHajj: '🕋 Hajj & Umrah greeting', portraitStyleBirthday: '🎂 Birthday frame', portraitStyleNewborn: '👶 Newborn greeting', portraitStyleFigurine: '🧸 Boxed action figure', portraitStyleGhibli: '🍃 Ghibli style', portraitStyleLego: '🧱 LEGO character', portraitStyleStickerpack: '💬 WhatsApp stickers (6 emotions)', portraitStyleChibi: '🐣 Cute Chibi', portraitStyleStatue: '🗿 Marble statue', portraitStylePolaroid: '📸 Vintage Polaroid', portraitStyleCelebtoon: '🦸 Favorite cartoon character', portraitStyleProfession: '👩‍⚕️ Profession (doctor, pilot, police...)', portraitStyleSuperhero: '🦸‍♂️ Superhero full costume', portraitStyleAstronaut: '🚀 Astronaut', portraitOutfitKandura: '👔 Emirati Kandura + Ghutra', portraitOutfitAbaya: '🧕 Abaya + Shayla', portraitOutfitThobe: '🧣 Gulf Thobe + Shemagh', portraitOutfitSuit: '🧵 Formal suit', portraitOutfitDress: '👗 Evening dress', portraitOutfitCasual: '🧥 Smart casual', portraitOutfitSport: '🎽️ Sportswear', portraitOutfitWinter: '🧤 Winter coat', portraitProfDoctor: '👩‍⚕️ Doctor', portraitProfPilot: '🧑‍✈️ Pilot', portraitProfPolice: '👮 Police officer', portraitProfChef: '🧑‍🍳 Chef', portraitProfEngineer: '👷 Site engineer', portraitProfTeacher: '🧑‍🏫 Teacher', portraitProfFirefighter: '🧑‍🚒 Firefighter', portraitProfScientist: '🧑‍🔬 Lab scientist', portraitGrpTools: '🛠️ Practical tools', portraitGrpOccasions: '🎉 Occasions', portraitGrpTrending: '🔥 Trending', portraitGrpDressup: '🎭 Dress up', portraitStyleClaymation: '🏺 Claymation', portraitStyleLowpoly: '🔷 Low-poly 3D', portraitStyleGraffiti: '🎨 Street graffiti', portraitStyleMosaic: '🧩 Mosaic', portraitStyleStainedglass: '🪟 Stained glass', portraitStylePapercraft: '📄 Layered paper art', portraitStyleCrochet: '🧶 Crochet doll', portraitStyleInflatable: '🎈 Glossy 3D balloon', portraitStyleUkiyoe: '🌊 Japanese Ukiyo-e', portraitStyleSandart: '🏜️ Gulf sand art', portraitStyleNeonsign: '💡 Neon sign', portraitStyleDoubleexposure: '🌆 Double exposure', portraitGrpNew: '🆕 New styles',
     designAiPlaceFromPhoto: '📷 From my photo', designAiPlaceRestaurant: '🍽️ Restaurant', designAiPlaceCafe: '☕ Cafe', designAiPlaceBedroom: '🛏️ Bedroom', designAiPlaceMajlis: '🪑 Majlis', designAiPlaceLiving: '🛋️ Living room', designAiPlaceKitchen: '🍳 Kitchen', designAiPlaceOffice: '💼 Office', designAiPlaceShop: '🛍️ Shop', designAiPlaceBath: '🛁 Bathroom', designAiPlaceKids: '🧸 Kids room', designAiPlaceEntrance: '🚪 Entrance', designAiPlaceGarden: '🌳 Garden', designAiStyleNajdi: '🏜️ Najdi', designAiStyleIslamic: '✳️ Contemporary Islamic', designAiStyleAndalusi: '🏛️ Andalusian', fashionAiOccasionGraduation: '🎓 Graduation', fashionAiOccasionReligious: '🕌 Religious occasion', fashionAiSeasonAutumn: '🍂 Autumn', fashionAiSeasonSpring: '🌸 Spring',
@@ -3539,7 +3539,7 @@ const I18N = {
     sbProjSearch: 'Search projects',
     sbDeleteAll: 'Delete all',
     pricingPointsTitle: 'Points Packs',
-    pricingPointsDesc: 'Points are one universal currency — spend them on voice chat, videos and images, no subscription needed. Voice: 10 pts/min • Video: 60 • Veo 3: 400 • Image: 10',
+    pricingPointsDesc: 'Points are one universal currency — spend them on Maha voice, videos and images, no subscription needed. Maha: 15 pts/min • Image: 20 • Creative image: 35 • Video: 55 • Cinematic video: 275',
     pricingWalletLabel: 'Your points balance',
     pricingPointsUnit: 'pts',
     pricingBuyBtn: 'Buy',
@@ -3651,10 +3651,10 @@ const I18N = {
     planTag: 'Most popular',
     planCurrentBtn: 'Your current plan',
     planSoonBtn: 'Soon',
-    planFreeFeats: '<li>20 messages daily</li><li>1 minute voice chat</li><li>3 AI images</li><li class="off">No video</li>',
-    planPlusFeats: '<li>300 messages / month</li><li>30 minutes voice chat</li><li>15 images</li><li>5 videos</li>',
-    planProFeats: '<li>Unlimited messages</li><li>80 minutes voice chat</li><li>40 images · 13 videos · 2 cinematic</li><li>Smart agent</li><li>Speed priority · gold badge</li>',
-    planMaxFeats: '<li>Everything in Pro</li><li>500 minutes voice chat</li><li>250 images · 83 videos · 12 cinematic</li><li>Dedicated support</li>',
+    planFreeFeats: '<li>5 messages a day</li><li>Up to 4 minutes of voice chat</li><li>Up to 3 AI images</li><li class="off">No video</li>',
+    planPlusFeats: '<li>50 messages a day</li><li>Up to 24 minutes of voice chat</li><li>Up to 15 images</li><li>1 video</li>',
+    planProFeats: '<li>100 messages a day</li><li>Up to 61 minutes of voice chat</li><li>Up to 40 images · 2 videos</li><li>The smart agent</li><li>Priority speed · gold badge</li>',
+    planMaxFeats: '<li>Everything in Pro · 250 messages a day</li><li>Up to 213 minutes of voice chat</li><li>Up to 150 images · 3 videos</li><li>Dedicated support</li>',
     pricingProDesc: 'Unlimited messages + Omran Agent + 200 points/month + priority speed + gold badge',
     pricingComingSoon: 'Coming soon 🚀 — subscriptions aren\'t available yet',
     pricingSubscribeBtn: 'Subscribe now',
@@ -4508,7 +4508,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=673'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=674'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -5922,8 +5922,16 @@ function renderMessages(keepScroll){
           __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
         }
       }catch(e){ /* الاسم المحفوظ احتياط */ }
+      /* v-owner-model-badge (سؤال المالك ١٩ سبتمبر «كيف أعرف الموديل اللي عندي؟»): للمالك وحده يظهر
+         فوق كلّ ردّ اسم المزوّد الحقيقيّ + ما أعلنه الخادم (الموديل الذي خدم الطلب · كاش · جديد · خرج).
+         كان الحدث يُلتقط ولا يُعرض في أيّ مكان. بقيّة المستخدمين: كما كان (v464 — «اسأل الكل» فقط). */
+      const __ownerBadge = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      if(__ownerBadge && m.model) __plbl = (__plbl ? __plbl + ' · ' : '') + m.model;
       label.textContent = __plbl;
-      if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+      // v-badge-white (طلب المالك): شارة الموديل فوق الردّ بالأبيض (كالكتابة والأرقام)،
+      // لا بلون المزوّد — يبقى لون المزوّد لتمييز «اسأل الكل» فقط.
+      if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
+      if(isAskAllReply || (__ownerBadge && __plbl)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ») — والمالك يراه دائمًا
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
@@ -8972,7 +8980,8 @@ document.querySelectorAll('.tab').forEach(tab => {
   };
   const ro = document.createElement('button');
   ro.id = 'waReopen'; ro.type = 'button'; ro.setAttribute('aria-label','فتح اللوحة');
-  ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+  /* v-collapse-top: أيقونة اللوحة المقسومة (طلب المالك) بدل السهم */
+  ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
   document.body.appendChild(ro);
   function setWA(collapsed){
     wa.classList.toggle('waCollapsed', collapsed);
@@ -9117,7 +9126,18 @@ const PROVIDER_NICK_KEYS = {
   mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
   cohere: 'provNickDeep', openrouter: 'provNickDeep',
 };
+/* v-owner-real-names (طلب عمران ١٨ سبتمبر: «عند الكتابة وعند ردّ المزوّد أريد اسمه — الحين يكتب الكينج.
+   فقط الاسم لا تغيّر شيئًا ثانيًا»): للمالك وحده تُعرض الأسماء الحقيقيّة القصيرة للمزوّد الذي ردّ فعلًا
+   (لا رأس مجموعته)، في سطر الحالة وشارة الردّ وقوائم المزوّدين. بقيّة المستخدمين على الألقاب الوظيفيّة. */
+const PROVIDER_REAL_SHORT = {
+  claude: 'Claude', gemini: 'Gemini', openai: 'GPT', groq: 'Groq', mistral: 'Mistral',
+  deepseek: 'DeepSeek', perplexity: 'Perplexity', cohere: 'Cohere', openrouter: 'OpenRouter',
+};
+function omranOwnerUi(){
+  try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
+}
 function functionalLabel(key){
+  if(omranOwnerUi() && PROVIDER_REAL_SHORT[key]) return PROVIDER_REAL_SHORT[key]; // v-owner-real-names
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
@@ -9194,6 +9214,22 @@ function selectProviderKey(key){
     if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
   }catch(e){ __swallow(e, "ui:app-05-ui#24"); }
 }
+/* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يظهر
+   لمن باقته تسمح باختيار المزوّد (Max) وللمالك وVIP فقط؛ المجّانيّ والضيف وPlus وPro يوجَّهون من الخادم
+   بجدول الباقة (tier.js PLAN_ROUTING) فلا يُعرض لهم اختيار لا أثر له. تُستدعى بنتيجة usage-status
+   (tier/plan) وبنتيجة رصيد النقاط؛ بلا نتيجة (شبكة مقطوعة) لا تغيّر شيئًا. */
+function applyPlanGate(d){
+  try{
+    if(!d || typeof d !== 'object') return;
+    const tier = typeof d.tier === 'string' && d.tier ? d.tier : (d.authed === false ? 'guest' : '');
+    if(!tier) return;
+    const plan = tier === 'sub' ? String(d.plan || '').toLowerCase() : '';
+    const open = tier === 'owner' || tier === 'vip' || (tier === 'sub' && plan === 'max');
+    window.__omranPlan = plan || tier;
+    document.documentElement.classList.toggle('plan-locked', !open);
+  }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }
+}
+window.applyPlanGate = applyPlanGate;
 function buildProviderQuickBar(){
   const grid = document.getElementById('providerGridCells');
   const strip = document.getElementById('providerStripMobile');
@@ -9307,6 +9343,7 @@ async function refreshProviderQuickBar(){
       body: JSON.stringify({ token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
     const data = await res.json();
+    applyPlanGate(data); // v-plan-routing
     const remaining = (data && data.remaining) || {};
     const limit = data.limit || 20;
     document.querySelectorAll('.prov-cell').forEach(cell => {
@@ -10623,14 +10660,18 @@ let currentPaymentRequest = null;
 let currentWalletAvailability = null; // { applePay, googlePay } | null while unknown/unsupported
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000 };
+// v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499 };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
 // money on its own.
 const STRIPE_PUBLISHABLE_KEY = 'pk_live_51TqBIu2ftH7NE4SGWV6z94pri9bau6c01UwTIXcUyM38XCUmIQJHe8IJzoYgTM0ab1zav7BWsh69KmgtuwS5H5J1002423FVlB';
 
-// 💰 نظام النقاط — شراء باقة نقاط (يفعّل مع Stripe لاحقًا)
+// 💰 نظام النقاط — شراء رزمة نقاط: v-plan-routing (قرار المالك ٢٠ سبتمبر) — نفس نافذة الدفع
+// بمعرّف pack<n>؛ الخادم (Stripe/PayPal) يضيف النقاط فقط ولا يمسّ الباقة. رزمة مجهولة = «قريبًا» كما كان.
 function buyPointsPack(amount){
+  const n = Math.floor(Number(amount) || 0);
+  if(n > 0 && CHECKOUT_PLAN_AMOUNTS['pack' + n]){ openCheckout('pack' + n); return; }
   settingsToast(t('pricingComingSoon'));
 }
 window.buyPointsPack = buyPointsPack;
@@ -10649,6 +10690,7 @@ async function refreshPointsWallet(){
       row.style.display = 'flex';
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
+      if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
     } else { row.style.display = 'none'; }
   }catch(e){ /* صامت */ }
 }
@@ -10713,7 +10755,8 @@ function openCheckout(plan){
   const overlay = document.getElementById('checkoutModalOverlay');
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
-  if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
+  if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually
@@ -12611,7 +12654,7 @@ async function callClaude(messages, onDelta){
 // 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات الخمس (مُتحقَّق حيًّا).
 // cohere وperplexity وopenrouter خارجها عمدًا: الأوّلان لا يدعمان الأدوات على
 // هذا الطريق، والثالث مفتاح المستخدم نفسه.
-const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq'];
+const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة */
 
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
@@ -18603,6 +18646,46 @@ async function sendPrompt(){
     console.error('[sendPrompt] fatal', e);
   }
 }
+/* v-memory-one-hop (لقطتا المالك ١٨ سبتمبر: كلّ ردّ يبدأ بـ«الصورة المرفقة هي نفس صورة طاولة
+   التلفزيون السابقة» وهو غيّر الموضوع بلا أيّ مرفق): هل الدور السابق مباشرةً حمل صورة حقيقيّة؟
+   (المستخدم أرفق صورة، أو المساعد أخرج صورة). صورة الذاكرة memory.png لا تُحفظ في الرسائل فلا تُعدّ،
+   فتنقطع السلسلة بعد قفزة واحدة بدل أن تلاحق كلّ رسالة قصيرة إلى الأبد. */
+function omranPrevTurnHadImage(messages){
+  try{
+    const list = Array.isArray(messages) ? messages : [];
+    const hasImg = (m) => !!(m && Array.isArray(m.attachments) && m.attachments.some(a => a && a.isImage && !a._fromMemory));
+    let lastA = null, lastU = null;
+    for(let i = list.length - 1; i >= 0; i--){
+      const m = list[i]; if(!m) continue;
+      if(m.role === 'assistant' && !lastA){ lastA = m; if(lastU) break; }
+      else if(m.role === 'user' && !lastU){ lastU = m; if(lastA) break; }
+    }
+    return hasImg(lastA) || hasImg(lastU);
+  }catch(e){ return false; }
+}
+/* v-media-gate (بلاغ المالك ١٩ سبتمبر): كلمات الوسائط التي تستدعي البوّابة، وكلمات «الكلام عن» الوسائط
+   (كيف/طريقة/أفضل برنامج/يوتيوب/سكربت/سؤال…) التي تعني: لا إنشاء. حدود الكلمة العربيّة يدويّة لأنّ \b لا يفهمها. */
+const __MEDIA_WORD_RE = /فيديو|ڤيديو|video|صور|image|picture|photo|بوستر|ملصق|شعار|لوجو|logo|بطاق|شهاد|دعو[ةه]|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|banner|بنر|غلاف|رسم|draw|animation|أنيميشن|انيميشن|كليب|clip|مقطع|فيلم/i;
+/* v-chat-fast (المالك ١٩ سبتمبر «الردود بطيئة»): المصنّف لا يُنادى إلّا حين تحمل الرسالة ما قد يفتح مسار إنشاء
+   فعلًا — فعل طلب/إنشاء، أو كلمة إعلان/بيع (مسار الإعلان يطلقها وحدها)، أو بدء الرسالة باسم الوسيط.
+   «أتصور إنّ السوق يرتفع» و«رأيك في فيلم الأمس» لا تنتظر شيئًا. */
+const __MEDIA_MAKE_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])(?:اعمل|أعمل|اعملي|اصنع|أصنع|صنع|سوّ|سوي|سوّي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|أبي|ابي|ابا|أبا|بغيت|أريد|اريد|أبيك|ابيك|حاب|حابب|أحتاج|احتاج|طلع|طلعلي|صنعلي|عطني|أعطني|اعطني|هات|ارسم|أرسم|ارسملي|رسم|صمم|صمّم|صممي|تصميم|اكتب|أكتب|اكتبلي|ممكن|تقدر|تگدر|يمكن|create|make|generate|produce|draw|design|build|render|write|give me|i want|show me|can you)(?=$|[\s،,.!؟?()"'«»:؛-])|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|^\s*(?:فيلم|فيديو|ڤيديو|مقطع|كليب|صور[ةه]?|بوستر|شعار|لوجو|بطاقة|شهادة|دعوة|غلاف|video|image|logo|poster)\s/i;
+const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
+/* مصنّف النيّة على الخادم (Gemini Flash، حرارة صفر): 'image' | 'video' | 'none' | null عند التعذّر أو المهلة. */
+async function omranMediaIntent(text){
+  try{
+    const ctrl = new AbortController();
+    const tm = setTimeout(() => ctrl.abort(), 2500); /* v-chat-fast: كان ٦ ثوانٍ — تعذّر = null فتحكم التعابير */
+    const r = await fetch('/api/tools?action=media-intent', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+      body: JSON.stringify({ text: String(text || '').slice(0, 400), token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), guestId: (typeof window.getGuestId === 'function' ? window.getGuestId() : '') })
+    });
+    clearTimeout(tm);
+    const j = await r.json().catch(() => null);
+    const lane = j && typeof j.lane === 'string' ? j.lane : null;
+    return (lane === 'image' || lane === 'video' || lane === 'none') ? lane : null;
+  }catch(e){ return null; }
+}
 async function __sendPromptCore(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -18650,11 +18733,21 @@ async function __sendPromptCore(){
     return;
   }
 
+  /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
+     على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */
+  let __mediaLane = null;
+  try{
+    const __mediaHasImg = pendingAttachments.some(a => a && a.isImage);
+    if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
+      __mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : (__MEDIA_MAKE_RE.test(text) ? await omranMediaIntent(text) : null); /* v-chat-fast */
+    }
+  }catch(e){ __mediaLane = null; }
+  window.__mediaGate = __mediaLane; /* للتشخيص */
   // 🎬 v525: اكتشاف طلب إنشاء فيديو → فتح صانع الفيديو مباشرة
   // إذا فيه صورة: نحلّلها بـ AI ليطلع prompt إنجليزي دقيق بدل نص المستخدم الخام
-  const __VID_MAKE_RE = /(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
+  const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
   const __VID_Q_RE    = /^(?:كيف|ما|وش|ايش|أيش|هل|لماذا|why|how|what|can\s+i|where)\s|[؟?]\s*$/;
-  if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && typeof window.omranOpenVideoMaker === 'function'){
+  if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
     const __heroAtt = pendingAttachments.find(function(a){ return a.isImage && a.dataUrl; });
     promptEl.value = '';
     if(__heroAtt && __heroAtt.dataUrl){
@@ -18871,8 +18964,12 @@ async function __sendPromptCore(){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
     // v473c: بعد «وصلتني الصورة» أي رسالة تالية قصيرة تُرفق الصورة المحفوظة تلقائياً
-    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
+    // v-memory-one-hop: قفزة واحدة فقط — الدور السابق مباشرةً حمل صورة حقيقيّة (v574 يبقي العلم
+    // مرفوعًا عبر الرسائل، فكان أيّ نصّ قصير يعيد الصورة إلى الأبد). الإشارة الصريحة أعلاه تبقى دائمًا.
+    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220 && omranPrevTurnHadImage(cur.messages)){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
+      /* الصورة أُرفقت بالتخمين لا بالطلب: النموذج يتجاهلها بصمت إن لم تكن الرسالة عنها (بدل «الصورة المرفقة لا علاقة لها…») */
+      apiText += (apiText ? '\n\n' : '') + '[ملاحظة للنموذج: الصورة memory.png أُرفقت تلقائيًّا من ذاكرة المحادثة لأنّ الرسالة قد تشير إليها. إن كانت الرسالة لا تخصّ الصورة فتجاهلها تمامًا: لا تذكرها ولا تصفها ولا تقل إنّها لا علاقة لها بالسؤال، وأجب عن الرسالة وحدها.]';
     }
     /* v-guide: نعيد نفس اللقطة مع الرسائل التالية داخل جلسة الإرشاد، وإلا أجاب
        النموذج من ذاكرته عن شكل البرنامج بدل الشاشة التي أمام المستخدم.
@@ -19416,7 +19513,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
+    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
       // v695: إعلان → /api/tools?action=adimage (gpt-image-2) بجودة احترافية حقيقية
       const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
@@ -19674,7 +19771,7 @@ function __friendlyErr(e){
       return;
     }
     // 🏠 طلب توليد صورة جديدة انطلاقًا من صورة مرفقة (مثال: مخطط منزل + "عطني تصميم خارجي")
-    const __imgGenIntentRe = /^\s*صور[هة]\s+\S|(?:^|[\s.,،!؟?])(?:صوّر|صور|صوره|صورة|تصور)\s?لي\s+\S|(عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want|show me)\s+(?:لي\s+)?.{0,20}?(تصميم|تصور|منظر|واجهة|صوره?|رسمة|شكل|design|render|view|image|picture|visual)/i;
+    const __imgGenIntentRe = /^\s*صور[هة]\s+\S|(?:^|[\s.,،!؟?])(?:صوّر|صور|صوره|صورة|تصور)\s?لي\s+\S|(?:^|[\s،,.!؟?()\"'«»:؛-])(عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want|show me)\s+(?:لي\s+)?.{0,20}?(تصميم|تصور|منظر|واجهة|صوره?|رسمة|شكل|design|render|view|image|picture|visual)/i;
     // 🎬 فيديو من المحادثة مباشرة: صورة + "سوي فيديو/حركها" → Runway image_to_video،
     // وبدون صورة مع طلب فيديو صريح → text_to_video. (كل الأقسام في مكان واحد)
     const __videoWordRe = /فيديو|ڤيديو|\bvideo\b/i;
@@ -19682,7 +19779,7 @@ function __friendlyErr(e){
     const __vidSrc = __srcImg
       ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
-    const __wantsVideo = !!text && !__codeWordRe.test(text) && (
+    const __wantsVideo = !!text && !__codeWordRe.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && (
       (__videoWordRe.test(text) && (__routeCmdRe.test(text) || /(حول|حوّل|حوله|حوّله|ولد|ولّد|انتج|أنتج|اطلع لي|طلع لي|generate|convert|turn)/i.test(text) || /(فيديو|ڤيديو|video)\s+(عن|يظهر|فيه|about|of|showing)\s+\S/i.test(text))) ||
       (!!__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text))
     );
@@ -19835,7 +19932,7 @@ function __showImgLoading(el, ar, en){
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, (__IMG_UPGRADE || __IMG_ELEVATE) ? 'جاري تطوير الصورة…' : 'جاري تعديل الصورة…', (__IMG_UPGRADE || __IMG_ELEVATE) ? 'Improving the image…' : 'Editing image…');
       const __upgSrc = (!__srcImg && (__IMG_UPGRADE || __IMG_ELEVATE) && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
@@ -20313,7 +20410,7 @@ function __showImgLoading(el, ar, en){
     // («صمّم فيلا دورين ٤ غرف»)، لا وثيقة ملصوقة. حدّ ٥٠٠ حرف يمنع الوثيقة من
     // إطلاق المخطط، ويُبقي كلّ طلبات التصميم الفعليّة تعمل (المتابعة لها حدّها).
     const __archReqOk = text.length < 500 && __archVerbRe.test(text) && __archHomeRe.test(text) && !__archExcludeRe.test(text);
-    if(text && !__srcImg && !__blockAutoImage && !__followUp && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
+    if(text && !__srcImg && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !__followUp && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
        (__archReqOk || __archFollowUp)){
       const __archText = __archFollowUp ? (__archAffirm ? __archCtxText : (__archCtxText + ' — والمطلوب الآن تحديدًا: ' + text)) : text;
       cur.lastArchText = __archFollowUp ? __archCtxText : text;
@@ -20389,7 +20486,7 @@ function __showImgLoading(el, ar, en){
     // 🏛️ v225: طلب نصي بنية صورة بدون أي صورة مرفقة (تصور معماري/منظور/ارسم...)
     // → توليد صورة فعلي بـ Gemini بدل رد نظري أو وعود فارغة من المزود.
     const __txtOnlyImgRe = /^\s*صور[هة]\s+\S|(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
-    if(text && !__blockAutoImage && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
+    if(text && !__blockAutoImage && __mediaLane !== 'none' && __mediaLane !== 'video' /* v-media-gate */ && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
        (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
       if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
@@ -21456,12 +21553,11 @@ DESIGN RULES (non-negotiable):
           // الفقاعة أُزيلت (إيقاف/خطأ) → الحركة تنتهي بصمت ولا تعلّق شيئًا.
           if(!thinkingDiv.isConnected){ __live.shown = __live.target.length; __live.done = true; }
           if(__live.shown < __live.target.length){
-            const left = __live.target.length - __live.shown;
-            /* v-reveal-quick (شكوى المالك: «الردود بطيئة جدًا»): وتيرة ٦٦ حرفًا
-               بالثانية كانت تمطّط ردًّا عاديًّا ١٢+ ثانية. الآن ~١٦٦ حرفًا
-               بالثانية — يبقى الإحساس التدريجي المرتب بلا انتظار ممل — مع
-               لحاق سريع متى تراكم البث فوق ٤٠٠ حرف. */
-            __live.shown = Math.min(__live.target.length, __live.shown + (left > 400 ? Math.ceil(left / 120) : 5));
+            /* v-chat-fast (المالك ١٩ سبتمبر «سرعة الردود في المحادثة وتكون منتظمة»): لا وتيرة كتابة
+               مصطنعة بعد اليوم. v-reveal-quick (~١٦٦ حرفًا/ث مع لحاق متغيّر) كانت تمطّط الردّ ثوانيَ
+               بعد اكتماله وتجعل السرعة تتقلّب بين بطء ولحاق. الآن كلّ نبضة (٣٠مل) تعرض كلّ ما وصل من
+               الشبكة: السرعة سرعة المزوّد نفسه، والنبض ثابت. النصّ الكامل محفوظ دائمًا كما كان. */
+            __live.shown = __live.target.length;
             __liveRender();
           } else if(__live.done){
             clearInterval(__live.timer);
@@ -21553,6 +21649,7 @@ DESIGN RULES (non-negotiable):
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
       let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
+      let __ctModel = ''; /* v-owner-model-badge: ما أعلنه الخادم عن الموديل الذي أجاب (للمالك) */
       let __ctTier = null; /* v-tiers: طبقة الردّ (free / free-limit / guest / guest-limit) لشارة «ردّ مجاني» */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
@@ -21584,7 +21681,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; }
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
@@ -21635,7 +21732,7 @@ DESIGN RULES (non-negotiable):
         const __cv = window.__chatVideoResult;
         if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; window.__chatVideoResult = null; }
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
-      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false, attachments: __chatVidAtt,
+      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, model: __ctModel || undefined /* v-owner-model-badge */, askAllReply: false, attachments: __chatVidAtt,
         tier: __ctTier || undefined, /* v-tiers */
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
@@ -22682,6 +22779,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       else if(BRAND_L10N_W[l]){ imgSrc = 'icons/brand-' + l + '.png'; imgW = BRAND_L10N_W[l]; imgAlt = 'Omran Ai'; }
       else { imgSrc = 'icons/brand-en.png'; imgW = 161; imgAlt = 'Omran Ai'; }
       bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
+      /* v-sidebar-brand: نسخة رأس القائمة الجانبيّة تتبع الشعار نفسه عند تبديل اللغة */
+      const sb = document.getElementById('sidebarBrand');
+      if(sb){ sb.innerHTML = bt.innerHTML; if(h1 && !sb.onclick) sb.onclick = h1.onclick; }
     }
   };
   syncBrand();
@@ -22736,6 +22836,31 @@ btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
   }catch(e){ console.error('codeHint init', e); }
 })();
 backdropEl.onclick = closeDrawers;
+// v-drawer-close + v-sb-collapse (طلب المالك): سهم القائمة الجانبيّة —
+// على الجوّال يسكر الدرج، وعلى سطح المكتب يطوي العمود (مثل طيّ لوحة العمل) مع مقبض إعادة فتح.
+try{
+  const __sbClose = document.getElementById('sidebarCloseBtn');
+  let __sbReopen = document.getElementById('sbReopen');
+  if(!__sbReopen){
+    __sbReopen = document.createElement('button');
+    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button'; __sbReopen.setAttribute('aria-label', 'فتح القائمة');
+    __sbReopen.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
+    document.body.appendChild(__sbReopen);
+  }
+  const __setSB = (collapsed) => {
+    sidebarEl.classList.toggle('sbCollapsed', collapsed);
+    const __rz1 = document.getElementById('resizer1');
+    if(__rz1) __rz1.classList.toggle('sbCollapsed', collapsed);
+    document.body.classList.toggle('sbCollapsedMode', collapsed);
+    try{ localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); }catch(e){ __swallow(e, "save:app-10-features#sb-collapse"); }
+  };
+  if(__sbClose) __sbClose.onclick = () => {
+    if(document.documentElement.classList.contains('mobile-ui')) closeDrawers();
+    else __setSB(true);
+  };
+  __sbReopen.onclick = () => __setSB(false);
+  try{ if(localStorage.getItem('sidebarCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) __setSB(true); }catch(e){ __swallow(e, "ui:app-10-features#sb-restore"); }
+}catch(e){ __swallow(e, "ui:app-10-features#drawer-close"); }
 
 /* ---------- Header "more" dropdown (📂 projects / 📲 install / 🚪 logout) ---------- */
 const btnHeaderMenu = $('#btnHeaderMenu');
@@ -22799,7 +22924,7 @@ window.addEventListener('resize', () => { if(window.innerWidth > 860) closeDrawe
 
 /* ---------- Draggable resizers (desktop) ---------- */
 function setupResizer(resizerEl, panelEl, opts){
-  const { min = 180, max = 560, storeKey } = opts;
+  const { min = 180, max = 560, storeKey, invert = false } = opts;
   const saved = parseInt(localStorage.getItem(storeKey) || '', 10);
   if(saved && saved >= min && saved <= max){
     panelEl.style.width = saved + 'px';
@@ -22810,6 +22935,8 @@ function setupResizer(resizerEl, panelEl, opts){
   function onMove(clientX){
     let delta = clientX - startX;
     if(isRTL()) delta = -delta;
+    // v-resizer2-work: مقبض لوحة العمل على الجهة المقابلة للعمود المرن، فاتّجاه سحبه معكوس.
+    if(invert) delta = -delta;
     let newWidth = startWidth + delta;
     newWidth = Math.max(min, Math.min(max, newWidth));
     panelEl.style.width = newWidth + 'px';
@@ -22851,8 +22978,25 @@ function setupResizer(resizerEl, panelEl, opts){
     window.addEventListener('touchend', onUp);
   }, { passive: true });
 }
-setupResizer($('#resizer1'), sidebarEl, { min: 180, max: 420, storeKey: 'panelWidthSidebar' });
-setupResizer($('#resizer2'), chatcolEl, { min: 280, max: 620, storeKey: 'panelWidthChat' });
+// v-free-resize (طلب المالك): سحب حرّ لأيّ حجم — من التصغير الشديد (شبه طيّ) حتّى كبير.
+// القائمة تصل 0 (طيّ كامل بالسحب)، والمحادثة تتوسّع فيضيق workarea (min-width:0) حتّى شبه الطيّ.
+setupResizer($('#resizer1'), sidebarEl, { min: 0, max: 560, storeKey: 'panelWidthSidebar' });
+// v-resizer2-work (طلب المالك «شريط المعاينة والكود ما أقدر أحرّكه»): في شبكة v-frame-c
+// عمود المحادثة #chatcol هو 1fr (لا يُضبط بعرض)، فكان سحب resizer2 بلا أثر. اللوحة #workarea
+// في عمود auto يتبع عرضها الصريح، فالمقبض يضبط عرض اللوحة نفسها (باتّجاه معكوس لأنّها الجهة المقابلة).
+setupResizer($('#resizer2'), workareaEl, { min: 240, max: 1600, storeKey: 'panelWidthWork', invert: true });
+
+// v-tools-below (طلب المالك): «+» والمايك (مجموعة الأدوات) تخرج من صندوق الكتابة
+// وتصير صفًّا تحته؛ يبقى زرّ الإرسال وحده داخل الصندوق. نقل DOM فقط — المعرّفات
+// والنوافذ المنبثقة تبقى كما هي فلا يتأثّر أيّ منطق.
+try{
+  const __tools = document.querySelector('#composerBox > .inputbar-tools');
+  const __row = document.getElementById('composerRow');
+  if(__tools && __row && __row.parentNode){
+    __row.parentNode.insertBefore(__tools, __row.nextSibling);
+    __tools.classList.add('inputbar-tools-below');
+  }
+}catch(e){ __swallow(e, 'ui:app-10-features#tools-below'); }
 
 // On mobile, picking a project from the history list should close the drawer.
 $('#history').addEventListener('click', () => {
@@ -26926,7 +27070,12 @@ function stuL(ar, en){
     tickerWrap.style.borderBottom = collapsed ? 'none' : '1px solid rgba(255,255,255,0.08)';
     tickerWrap.style.overflow = collapsed ? 'visible' : 'hidden';
     const tbtn = document.getElementById('stockTickerToggle');
-    if(tbtn){ tbtn.style.top = collapsed ? '2px' : '50%'; tbtn.style.transform = collapsed ? 'none' : 'translateY(-50%)'; }
+    if(tbtn){
+      tbtn.style.top = collapsed ? '2px' : '50%';
+      tbtn.style.transform = collapsed ? 'none' : 'translateY(-50%)';
+      // v-ticker-ai: المطويّ = أيقونة ذكاء ذهبيّة تومض؛ المفتوح = سهم الطيّ العاديّ.
+      tbtn.classList.toggle('tickerAiCollapsed', collapsed);
+    }
     const icon = document.getElementById('stockTickerToggleIcon');
     if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
     if(collapsed){
@@ -26960,6 +27109,8 @@ function stuL(ar, en){
   });
   // v214: زر طي/فتح بنفس المكان — يسكر الشريط ويفتحه بدون حذف
   try{ if(localStorage.getItem('tickerHidden') === '1'){ localStorage.setItem('tickerCollapsed','1'); localStorage.removeItem('tickerHidden'); } }catch(err){ __swallow(err, "save:app-13-stocks-init#3"); }
+  // v-ticker-ai (طلب المالك): الشريط يبدأ مطويًّا كأيقونة ذكاء تومض ما لم يختر المستخدم غير ذلك سابقًا.
+  try{ if(localStorage.getItem('tickerCollapsed') === null) localStorage.setItem('tickerCollapsed','1'); }catch(err){ __swallow(err, "save:app-13-stocks-init#3b"); }
   const tickerToggleBtn = $('#stockTickerToggle');
   if(tickerToggleBtn) tickerToggleBtn.addEventListener('click', function(e){
     e.stopPropagation();

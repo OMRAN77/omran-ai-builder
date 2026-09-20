@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=673'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=674'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -1435,8 +1435,16 @@ function renderMessages(keepScroll){
           __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
         }
       }catch(e){ /* الاسم المحفوظ احتياط */ }
+      /* v-owner-model-badge (سؤال المالك ١٩ سبتمبر «كيف أعرف الموديل اللي عندي؟»): للمالك وحده يظهر
+         فوق كلّ ردّ اسم المزوّد الحقيقيّ + ما أعلنه الخادم (الموديل الذي خدم الطلب · كاش · جديد · خرج).
+         كان الحدث يُلتقط ولا يُعرض في أيّ مكان. بقيّة المستخدمين: كما كان (v464 — «اسأل الكل» فقط). */
+      const __ownerBadge = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      if(__ownerBadge && m.model) __plbl = (__plbl ? __plbl + ' · ' : '') + m.model;
       label.textContent = __plbl;
-      if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+      // v-badge-white (طلب المالك): شارة الموديل فوق الردّ بالأبيض (كالكتابة والأرقام)،
+      // لا بلون المزوّد — يبقى لون المزوّد لتمييز «اسأل الكل» فقط.
+      if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
+      if(isAskAllReply || (__ownerBadge && __plbl)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ») — والمالك يراه دائمًا
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */

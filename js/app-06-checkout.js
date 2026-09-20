@@ -23,14 +23,18 @@ let currentPaymentRequest = null;
 let currentWalletAvailability = null; // { applePay, googlePay } | null while unknown/unsupported
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000 };
+// v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499 };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
 // money on its own.
 const STRIPE_PUBLISHABLE_KEY = 'pk_live_51TqBIu2ftH7NE4SGWV6z94pri9bau6c01UwTIXcUyM38XCUmIQJHe8IJzoYgTM0ab1zav7BWsh69KmgtuwS5H5J1002423FVlB';
 
-// 💰 نظام النقاط — شراء باقة نقاط (يفعّل مع Stripe لاحقًا)
+// 💰 نظام النقاط — شراء رزمة نقاط: v-plan-routing (قرار المالك ٢٠ سبتمبر) — نفس نافذة الدفع
+// بمعرّف pack<n>؛ الخادم (Stripe/PayPal) يضيف النقاط فقط ولا يمسّ الباقة. رزمة مجهولة = «قريبًا» كما كان.
 function buyPointsPack(amount){
+  const n = Math.floor(Number(amount) || 0);
+  if(n > 0 && CHECKOUT_PLAN_AMOUNTS['pack' + n]){ openCheckout('pack' + n); return; }
   settingsToast(t('pricingComingSoon'));
 }
 window.buyPointsPack = buyPointsPack;
@@ -49,6 +53,7 @@ async function refreshPointsWallet(){
       row.style.display = 'flex';
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
+      if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
     } else { row.style.display = 'none'; }
   }catch(e){ /* صامت */ }
 }
@@ -113,7 +118,8 @@ function openCheckout(plan){
   const overlay = document.getElementById('checkoutModalOverlay');
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
-  if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
+  if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually
@@ -2011,7 +2017,7 @@ async function callClaude(messages, onDelta){
 // 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات الخمس (مُتحقَّق حيًّا).
 // cohere وperplexity وopenrouter خارجها عمدًا: الأوّلان لا يدعمان الأدوات على
 // هذا الطريق، والثالث مفتاح المستخدم نفسه.
-const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq'];
+const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة */
 
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;

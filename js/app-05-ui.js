@@ -1554,7 +1554,8 @@ document.querySelectorAll('.tab').forEach(tab => {
   };
   const ro = document.createElement('button');
   ro.id = 'waReopen'; ro.type = 'button'; ro.setAttribute('aria-label','فتح اللوحة');
-  ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+  /* v-collapse-top: أيقونة اللوحة المقسومة (طلب المالك) بدل السهم */
+  ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
   document.body.appendChild(ro);
   function setWA(collapsed){
     wa.classList.toggle('waCollapsed', collapsed);
@@ -1699,7 +1700,18 @@ const PROVIDER_NICK_KEYS = {
   mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
   cohere: 'provNickDeep', openrouter: 'provNickDeep',
 };
+/* v-owner-real-names (طلب عمران ١٨ سبتمبر: «عند الكتابة وعند ردّ المزوّد أريد اسمه — الحين يكتب الكينج.
+   فقط الاسم لا تغيّر شيئًا ثانيًا»): للمالك وحده تُعرض الأسماء الحقيقيّة القصيرة للمزوّد الذي ردّ فعلًا
+   (لا رأس مجموعته)، في سطر الحالة وشارة الردّ وقوائم المزوّدين. بقيّة المستخدمين على الألقاب الوظيفيّة. */
+const PROVIDER_REAL_SHORT = {
+  claude: 'Claude', gemini: 'Gemini', openai: 'GPT', groq: 'Groq', mistral: 'Mistral',
+  deepseek: 'DeepSeek', perplexity: 'Perplexity', cohere: 'Cohere', openrouter: 'OpenRouter',
+};
+function omranOwnerUi(){
+  try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
+}
 function functionalLabel(key){
+  if(omranOwnerUi() && PROVIDER_REAL_SHORT[key]) return PROVIDER_REAL_SHORT[key]; // v-owner-real-names
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
@@ -1776,6 +1788,22 @@ function selectProviderKey(key){
     if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
   }catch(e){ __swallow(e, "ui:app-05-ui#24"); }
 }
+/* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يظهر
+   لمن باقته تسمح باختيار المزوّد (Max) وللمالك وVIP فقط؛ المجّانيّ والضيف وPlus وPro يوجَّهون من الخادم
+   بجدول الباقة (tier.js PLAN_ROUTING) فلا يُعرض لهم اختيار لا أثر له. تُستدعى بنتيجة usage-status
+   (tier/plan) وبنتيجة رصيد النقاط؛ بلا نتيجة (شبكة مقطوعة) لا تغيّر شيئًا. */
+function applyPlanGate(d){
+  try{
+    if(!d || typeof d !== 'object') return;
+    const tier = typeof d.tier === 'string' && d.tier ? d.tier : (d.authed === false ? 'guest' : '');
+    if(!tier) return;
+    const plan = tier === 'sub' ? String(d.plan || '').toLowerCase() : '';
+    const open = tier === 'owner' || tier === 'vip' || (tier === 'sub' && plan === 'max');
+    window.__omranPlan = plan || tier;
+    document.documentElement.classList.toggle('plan-locked', !open);
+  }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }
+}
+window.applyPlanGate = applyPlanGate;
 function buildProviderQuickBar(){
   const grid = document.getElementById('providerGridCells');
   const strip = document.getElementById('providerStripMobile');
@@ -1889,6 +1917,7 @@ async function refreshProviderQuickBar(){
       body: JSON.stringify({ token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
     const data = await res.json();
+    applyPlanGate(data); // v-plan-routing
     const remaining = (data && data.remaining) || {};
     const limit = data.limit || 20;
     document.querySelectorAll('.prov-cell').forEach(cell => {

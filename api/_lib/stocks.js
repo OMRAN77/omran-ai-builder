@@ -8,6 +8,15 @@ const { logError } = require('./log-error.js');
 // endpoint could spend the owner's balance. Metered per account, else per IP.
 const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
 const STOCKS_AI_DAILY_LIMIT = 30;
+// v-cheap-lanes: نصّ من السلسلة الرخيصة (بلا مفتاح المحرّك الاحترافيّ)، أو null فيتابع المستدعي احتياطه.
+async function cheapText(prompt, maxTokens) {
+  try {
+    const r = await require('./free-chain.js').completeFreeChain({ messages: [{ role: 'user', content: prompt }], max_tokens: maxTokens });
+    if (r.ok) return r.text;
+    logError('stocks/cheap-lanes', new Error((r.errors || []).join(' | ').slice(0, 300)));
+  } catch (e) { logError('stocks/cheap-lanes', e); }
+  return null;
+}
 
 const BASE = 'https://api.twelvedata.com';
 const tickerCache = new Map();
@@ -281,6 +290,9 @@ module.exports = async (req, res) => {
         headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: m, max_tokens: 1600, messages: [{ role: 'user', content: prompt }] }),
       });
+      // v-cheap-lanes: مسار عامّ (ضيوف بلا اشتراك) — السلسلة الرخيصة أوّلًا، والمحرّك الاحترافيّ احتياطًا أخيرًا.
+      const cheapLesson = await cheapText(prompt, 1600);
+      if (cheapLesson) { res.status(200).json({ live, lesson: cheapLesson }); return; }
       let ar = await callClaude('claude-sonnet-5');
       if (ar.status === 404) {
         const lr = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
@@ -475,6 +487,9 @@ module.exports = async (req, res) => {
         headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: m, max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }),
       });
+      // v-cheap-lanes: مسار عامّ (ضيوف بلا اشتراك) — السلسلة الرخيصة أوّلًا، والمحرّك الاحترافيّ احتياطًا أخيرًا.
+      const cheapAnalysis = await cheapText(prompt, 1500);
+      if (cheapAnalysis) { res.status(200).json({ facts, analysis: cheapAnalysis }); return; }
       let ar = await callClaude('claude-sonnet-5');
       if (ar.status === 404) {
         // model unavailable on this key — pick best available sonnet/haiku
