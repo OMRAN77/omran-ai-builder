@@ -490,6 +490,10 @@ html #composerBox.omTall > #attachStrip{padding:2px 6px 6px !important;}
 #sidebarBrand{display:none;}
 html:not(.mobile-ui) #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:10px 14px 0; cursor:pointer; user-select:none;}
 html:not(.mobile-ui) #sidebarBrand .brandImg{height:42px; width:auto; object-fit:contain; display:block;}
+/* v-sb-brand-mobile (طلب المالك): إظهار شعار «عمران ai» أعلى درج المحادثات على الجوّال
+   أيضًا، فوق زرّ «محادثة جديدة» مباشرة (الزرّ order:-2 فالشعار order:-3 يسبقه). */
+html.mobile-ui #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:12px 14px 2px; cursor:pointer; user-select:none;}
+html.mobile-ui #sidebarBrand .brandImg{height:40px; width:auto; object-fit:contain; display:block;}
 html:not(.mobile-ui) header h1 #brandTitle{display:none;}
 /* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
