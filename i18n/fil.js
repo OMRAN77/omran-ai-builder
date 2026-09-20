@@ -832,6 +832,7 @@ I18N['fil'] = {
     "previewTitle": "Preview",
     "attachTruncated": "Naputol ang laman dahil masyadong mahaba",
     "attachReadFail": "Hindi mabasa ang file — piliin itong muli",
+    "attachAddMore": "+ Magdagdag pa",
     "imagesAttachedNote": "mga attachment",
     "askAllProvidersLabel": "Mga provider na kasama sa \"Ask All\"",
     "includeOpenAI": "OpenAI / OpenRouter",

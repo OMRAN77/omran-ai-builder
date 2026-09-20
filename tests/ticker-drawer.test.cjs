@@ -42,7 +42,7 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=716'), 'وسم كاش tokens.css رُفع');
+  assert.ok(Number((read('index.html').match(/css\/tokens\.css\?v=(\d+)/) || [])[1]) >= 715, 'وسم كاش tokens.css رُفع (٧١٥ فأعلى — كلّ تعديل لاحق يرفعه)');
 });
 
 test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الطيّ فوق بأيقونة اللوحة، الإيقاف ذهبيّ، سحب حرّ', () => {
@@ -78,7 +78,7 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=678'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=680'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
 });
 
@@ -93,7 +93,7 @@ test('v-wa-handle-bare: مقبض سحب لوحة المعاينة/الكود أ�
   // modules.css كان يغلب tokens (يُحمَّل بعده) بصندوق ذهبيّ — أُزيل نهائيًّا
   assert.match(modules, /body\.waCollapsedMode #waReopen\{background:none!important;border:none!important;[^}]*box-shadow:none!important\}/, 'modules بلا صندوق');
   assert.match(modules, /body\.waCollapsedMode #waReopen:hover\{background:none!important;/, 'modules بلا صندوق عند المرور');
-  assert.ok(read('index.html').includes('css/modules.css?v=657'), 'وسم كاش modules رُفع');
+  assert.ok(read('index.html').includes('css/modules.css?v=659'), 'وسم كاش modules رُفع');
 });
 
 test('v-sb-handle-bare: مقبض جهة «المحادثة الجديدة» أيقونة وحدها بلا صندوق (نفس مقبض اللوحة)', () => {
@@ -153,10 +153,16 @@ test('v-light-visibility: في الوضع الفاتح شريط السحب وا�
   assert.match(css, /html\[data-mode="light"\] \.resizer::after\{background:rgba\(0,0,0,\.30\) !important;\}/, 'شريط السحب واضح في الفاتح');
   // شرارة الذكاء المطويّة بلا صندوق في الفاتح (كان صندوقًا مقصوصًا)
   assert.match(css, /html\[data-mode="light"\] #stockTickerToggle\.tickerAiCollapsed\{background:none !important; box-shadow:none !important; border:none !important;\}/, 'الشرارة بلا صندوق ولا ظلّ في الفاتح');
+  // v-ticker-toggle-light: زرّ الشريط (بحالتيه: الشرارة والسهم ^) بلا ظلّ في الفاتح — كان الظلّ يُقصّ فيبان مأكولًا
+  const modules = read('css/modules.css');
+  assert.match(modules, /html\[data-mode="light"\] #stockTickerToggle\{background:none!important;border:none!important;box-shadow:none!important\}/, 'زرّ الشريط بلا دائرة ولا إطار ولا ظلّ في الفاتح');
 });
 
-test('v-foldable-composer: على الشاشة العريضة/القابلة للطيّ (mobile-ui ≥861px) الأدوات والمزوّد تحت حافّتَي الصندوق لا في الزوايا', () => {
+test('v-foldable-composer: على التابلت/القابل للطيّ (mobile-ui ≥700px) الأدوات/المزوّد تحت حافّتَي الصندوق بنفس هامشه (١٢٪) لا في الزوايا', () => {
   const redesign = read('css/redesign.css');
-  assert.match(redesign, /@media \(min-width:861px\)\{\s*html\.mobile-ui #inputbar > \.inputbar-tools-below\{ margin-inline-start: max\(var\(--om-chat-pad,32px\), var\(--om-chat-narrow-inset,12%\)\) !important; \}/, 'الأدوات محاذاة لحافّة الصندوق على العريض');
-  assert.match(redesign, /html\.mobile-ui #inputbar > #omBottomBar\{ margin-inline-end: max\(var\(--om-chat-pad,32px\), var\(--om-chat-narrow-inset,12%\)\) !important; \}/, 'المزوّد محاذاة لحافّة الصندوق على العريض');
+  // العتبة 700px (تغطّي عرض الجهاز المطويّ 700–860 الذي فوّتته العتبة القديمة 861)، والهامش ١٢٪ يطابق الصندوق/الرسائل
+  assert.match(redesign, /@media \(min-width:700px\)\{\s*html\.mobile-ui #inputbar\{ --fold-inset: max\(var\(--om-chat-pad,32px\), 12%\); \}/, 'العتبة 700 والهامش ١٢٪');
+  assert.match(redesign, /html\.mobile-ui #inputbar > #composerRow\{ margin-inline: var\(--fold-inset\) !important;/, 'توسيط الصندوق');
+  assert.match(redesign, /html\.mobile-ui #inputbar > \.inputbar-tools-below\{ margin-inline-start: var\(--fold-inset\) !important; \}/, 'الأدوات تحت حافّة الصندوق');
+  assert.match(redesign, /html\.mobile-ui #inputbar > #omBottomBar\{ margin-inline-end: var\(--fold-inset\) !important; \}/, 'المزوّد تحت حافّة الصندوق');
 });

@@ -699,6 +699,7 @@ I18N['bn'] = {
     previewTitle: "পূর্বরূপ",
     attachTruncated: "বিষয়বস্তু কেটে ফেলা হয়েছে কারণ এটি খুব দীর্ঘ ছিল৷",
     attachReadFail: "ফাইলটি পড়া যায়নি — আবার বেছে নিন",
+    attachAddMore: "+ আরেকটি যোগ করুন",
     imagesAttachedNote: "সংযুক্তি",
     askAllProvidersLabel: "\"সমস্ত জিজ্ঞাসা করুন\" এর অন্তর্ভুক্ত প্রদানকারীরা",
     includeOpenAI: "OpenAI / OpenRouter",

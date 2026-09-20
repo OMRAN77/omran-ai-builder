@@ -831,6 +831,7 @@ I18N['ru'] = {
     "previewTitle": "Предпросмотр",
     "attachTruncated": "Содержимое обрезано, так как оно было слишком длинным",
     "attachReadFail": "Не удалось прочитать файл — выберите его снова",
+    "attachAddMore": "+ Добавить ещё",
     "imagesAttachedNote": "вложения",
     "askAllProvidersLabel": "Провайдеры, включённые в «Спросить всех»",
     "includeOpenAI": "OpenAI / OpenRouter",

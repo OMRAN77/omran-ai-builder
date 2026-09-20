@@ -715,6 +715,7 @@ I18N['ur'] = {
     previewTitle: "پیش نظارہ",
     attachTruncated: "مواد بہت لمبا ہونے کی وجہ سے مختصر کر دیا گیا",
     attachReadFail: "فائل پڑھی نہیں جا سکی — دوبارہ منتخب کریں",
+    attachAddMore: "+ ایک اور شامل کریں",
     imagesAttachedNote: "منسلکات",
     askAllProvidersLabel: "\"سب سے پوچھیں\" میں شامل پرووائیڈرز",
     includeOpenAI: "OpenAI / OpenRouter",
