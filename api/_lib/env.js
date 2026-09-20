@@ -33,6 +33,7 @@ const SPEC = {
   FREE_MISTRAL_MODEL:     ['tunable', 'يُجرَّب أولًا ثم قائمة مرشّحين ثم استكشاف /models'],
   FREE_OPENROUTER_MODEL:  ['tunable', 'يُجرَّب أولًا ثم قائمة مرشّحين ثم استكشاف /models'],
   CHAT_PROMPT_CACHE:      ['tunable', 'off يعطّل التخزين المؤقّت للموجّه في المحادثة الرئيسيّة (chat.js) — الافتراضيّ مفعّل'],
+  GITHUB_DEFAULT_REPO:    ['tunable', 'owner/repo الذي تقرؤه أداة read_github للمالك حين يقول «اقرأ الجيت هوب» بلا رابط — الافتراضيّ OMRAN77/omran-ai-builder'],
   DEEPSEEK_API_KEY:       ['feature', 'محرّك بديل'],
   COHERE_API_KEY:         ['feature', 'ترتيب النتائج'],
   OPENROUTER_API_KEY:     ['feature', 'محرّك بديل'],
