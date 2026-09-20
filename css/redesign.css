@@ -442,7 +442,8 @@ html #inputbar #plusToolsWrap{display:inline-flex; align-items:center;}
 /* v-mic-noline (طلب المالك): إزالة الخطّ الفاصل الصغير جنب المايك */
 html #inputbar .inputbar-tools-left > #btnMic{position:relative;}
 html #inputbar .inputbar-tools-left > #btnMic::before{display:none !important;}
-html #inputbar .inputbar-tools-left > #btnMic.recording{background:#ff4d4d !important; color:#fff !important;}
+/* v-mic-gold (طلب المالك): مايك التسجيل ذهبيّ بوميض بدل الأحمر */
+html #inputbar .inputbar-tools-left > #btnMic.recording{background:#0c0c0f !important; color:#d4af37 !important; border:1.5px solid #d4af37 !important;}
 html #inputbar .inputbar-tools-left svg, html #inputbar #btnPlusTools svg{width:21px; height:21px;}
 /* النص */
 html #composerBox > #prompt{

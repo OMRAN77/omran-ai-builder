@@ -42,7 +42,7 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=714'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=715'), 'وسم كاش tokens.css رُفع');
 });
 
 test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الطيّ فوق بأيقونة اللوحة، الإيقاف ذهبيّ، سحب حرّ', () => {
@@ -78,7 +78,7 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=676'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=677'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
 });
 
@@ -101,6 +101,19 @@ test('v-sb-handle-bare: مقبض جهة «المحادثة الجديدة» أي
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;/, 'بلا صندوق');
   assert.match(css, /body\.sbCollapsedMode #sbReopen svg\{width:16px; height:16px;\}/, 'الأيقونة باقية');
   assert.match(css, /body\.sbCollapsedMode #sbReopen:hover\{ color:var\(--text\); background:none !important; \}/, 'بلا صندوق عند المرور');
+});
+
+test('v-mic-gold: مايك التسجيل ذهبيّ بوميض بدل الأحمر، وبلا أحمر باقٍ', () => {
+  const css = read('css/tokens.css');
+  const redesign = read('css/redesign.css');
+  // حالة التسجيل ذهبيّة (لا حمراء) في المرجع والعميل
+  assert.match(css, /#btnMic\.recording\{background:#0c0c0f; color:#d4af37; border:1\.5px solid #d4af37; animation: micPulse/, 'المايك ذهبيّ');
+  assert.match(redesign, /#inputbar \.inputbar-tools-left > #btnMic\.recording\{background:#0c0c0f !important; color:#d4af37 !important; border:1\.5px solid #d4af37 !important;\}/, 'مايك الصندوق ذهبيّ');
+  // الوميض ذهبيّ لا أحمر
+  assert.match(css, /@keyframes micPulse\{[^}]*rgba\(212,175,55,\.55\)/, 'الوميض ذهبيّ');
+  // لا أحمر باقٍ على أيّ حالة تسجيل للمايك
+  assert.doesNotMatch(css, /(#btnMic|mini-mic-btn)\.recording\{[^}]*#ff4d4d/, 'لا أحمر على المايك');
+  assert.doesNotMatch(redesign, /#btnMic\.recording\{[^}]*#ff4d4d/, 'لا أحمر على مايك الصندوق');
 });
 
 test('v-below-onerow: «+/المايك» وشريط المزوّد على سطر واحد تحت الصندوق ضمن نطاقه', () => {
