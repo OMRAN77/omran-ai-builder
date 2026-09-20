@@ -57,6 +57,8 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Length', String(buf.length));
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
     res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     // اسم عربي في الترويسة يحتاج ترميز RFC 5987 — وإلا كسر بعض الوسطاء
     const ascii = name.replace(/[^\x20-\x7E]/g, '-').replace(/["\\]/g, '-') || 'omran-ai.pdf';
     res.setHeader('Content-Disposition', 'attachment; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(name));
