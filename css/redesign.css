@@ -501,6 +501,19 @@ html #inputbar > .inputbar-tools-below{
   background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;
 }
 html #inputbar > .inputbar-tools-below .inputbar-tools-left{display:flex !important; align-items:center; gap:2px;}
+/* v-tools-align (طلب المالك): على سطح المكتب يُحاذى صفّ الأدوات وشريط المزوّد لحافّتَي
+   صندوق الكتابة (نفس هامش composerRow) بدل حافّتَي الشاشة: الأدوات تحت جهة «+»
+   (يمين RTL)، وشريط المزوّد تحت زرّ الإرسال (يسار RTL). */
+@media (min-width:861px){
+  html:not(.mobile-ui) #inputbar > .inputbar-tools-below,
+  html:not(.mobile-ui) #omBottomBar{
+    align-self:stretch !important; width:auto !important; max-width:none; display:flex !important;
+  }
+  /* المحاذاة الأفقيّة (العرض من --om-chat-inset في index.html): الأدوات تحت جهة «+»
+     (يمين RTL)، والمزوّد تحت زرّ الإرسال (يسار RTL). */
+  html:not(.mobile-ui) #inputbar > .inputbar-tools-below{justify-content:flex-start !important;}
+  html:not(.mobile-ui) #omBottomBar{justify-content:flex-end !important;}
+}
 
 /* v-sidebar-brand (طلب عمران ١٨ سبتمبر): الشعار في رأس القائمة الجانبيّة وزرّ «محادثة جديدة» تحته مباشرة — سطح المكتب فقط.
    الجوّال: العنصر مخفيّ وشعار الرأس كما هو. الترتيب بـorder لأنّ القائمة عمود مرن مرتّب (الزرّ order:-2). */

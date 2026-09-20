@@ -75,6 +75,18 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=670'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=671'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
+});
+
+test('v-align + v-badge-white: محاذاة الأدوات/المزوّد لحافّتَي الصندوق، وشارة الموديل للمالك بيضاء', () => {
+  const html = read('index.html');
+  const redesign = read('css/redesign.css');
+  const app04 = read('js/app-04-i18n-state.js');
+  // المحاذاة: صفّ الأدوات وشريط المزوّد يأخذان عرض/توسيط الصندوق (--om-chat-inset)
+  assert.match(html, /#inputbar > \.inputbar-tools-below,\s*html:not\(\.mobile-ui\) body #omBottomBar,[\s\S]*?margin-inline: var\(--om-chat-inset\)/, 'محاذاة ضمن نطاق الصندوق');
+  assert.match(redesign, /#inputbar > \.inputbar-tools-below\{justify-content:flex-start/, 'الأدوات جهة «+»');
+  assert.match(redesign, /#omBottomBar\{justify-content:flex-end/, 'المزوّد تحت الإرسال');
+  // شارة الموديل للمالك (لا اسأل الكل) بالأبيض
+  assert.match(app04, /__ownerBadge && !isAskAllReply\)\{ label\.style\.color = 'var\(--text\)'; \}/, 'شارة الموديل بيضاء للمالك');
 });
