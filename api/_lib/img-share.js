@@ -77,6 +77,8 @@ module.exports = async (req, res) => {
       res.setHeader('Content-Length', String(buf.length));
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
       /* v-media-dl (شكوى المالك «ما تتحمل الصور»): ?dl=1 يجعل الرابط تنزيلًا حقيقيًا عبر منزّل النظام */
       const wantDl = String((req.query && req.query.dl) || '') === '1';
       const dlName = String((req.query && req.query.name) || '').replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || ('omran-' + id + '.' + (mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg')));
