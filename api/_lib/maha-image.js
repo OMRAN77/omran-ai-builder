@@ -284,8 +284,13 @@ module.exports = async (req, res) => {
     }
 
     if (editImageBase64 && extras.length) {
-      // 🧩 دمج عدة صور في تصميم واحد
-      parts.push({ text: 'TASK: "' + cleanPrompt + '"\n\nYou are given ' + (extras.length + 1) + ' input images. COMPOSE them together into ONE single high-quality design exactly as the instruction asks. Rules:\n1. Every input image MUST appear in the final result - do not drop any of them.\n2. Keep each image\'s content recognizable and faithful (logos, faces, text stay pixel-faithful; do not redraw or distort them).\n3. Arrange them beautifully per the instruction (e.g. logo behind/above text, side by side, layered) with a premium, professional layout.\n4. Any Arabic text must remain correct and readable.\nOutput a single composed image.' });
+      /* 🧩 دمج عدة صور في تصميم واحد
+         v-merge-identity-lock (لقطة المالك: «ادمج الصورتين مع الأحضان» ما زال يرجّع الشخص الثاني بوجه مختلف
+         حتى بعد إصلاح الحرارة v-merge-faithful): القاعدة ٢ القديمة كانت سطرًا عامًّا وسط قواعد تصميم شعار/نصّ
+         («faces stay pixel-faithful» بلا تفصيل) — ضعيفة جدًّا لمهمّة دمج شخصين حقيقيّين بمشهد جديد (حضن). صيغة
+         أوضح وأقوى («IDENTITY LOCK» صريحة، تستثني تغيّر الوضعيّة/المشهد من الاستثناء) لم تُختبَر حيًّا بعد؛ لو
+         استمرّت المشكلة فالسبب على الأرجح قدرة النموذج نفسه لا صياغة الأمر — راجع DECISIONS.md. */
+      parts.push({ text: 'TASK: "' + cleanPrompt + '"\n\nYou are given ' + (extras.length + 1) + ' separate input images. COMPOSE them together into ONE single, cohesive, high-quality result exactly as the instruction asks. Rules:\n1. Every input image MUST appear in the final result - do not drop, merge, or omit any of them.\n2. IDENTITY LOCK: for every real person, face, logo, or exact text shown in an input image, copy it into the output EXACTLY as it appears in ITS OWN source image - same facial features, skin tone, bone structure, hair and expression for a person; same shape, colour and wording for a logo or text. NEVER invent a different face, NEVER average or blend two people into one, NEVER swap which face belongs to which body, and NEVER redraw a face from imagination even when the instruction asks for a new pose, scene or interaction (a hug, a handshake, standing together) - only the pose/scene/background is new; the identity of every person must stay pixel-recognizable as the exact same individual from their own input image.\n3. Arrange everything beautifully per the instruction (e.g. two people from separate photos placed together in one scene, or a logo behind/above text, side by side, layered) with a premium, professional, photorealistic layout when the subjects are real photos.\n4. Any Arabic text must remain correct and readable.\nOutput a single composed image.' });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     } else if (editImageBase64) {
