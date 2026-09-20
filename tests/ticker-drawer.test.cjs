@@ -42,7 +42,7 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=708'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=709'), 'وسم كاش tokens.css رُفع');
 });
 
 test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الطيّ فوق بأيقونة اللوحة، الإيقاف ذهبيّ، سحب حرّ', () => {
@@ -53,8 +53,8 @@ test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الط
   // #2: إزالة دائرة شرارة الأسهم
   assert.match(css, /#stockTickerToggle\.tickerAiCollapsed\{ background:none !important; border:none !important; box-shadow:none !important;/, 'الشرارة بلا دائرة');
   // #3: المقابض فوق (top:64px) بأيقونة اللوحة المقسومة (rect+line) في الجزأين
-  assert.match(css, /body\.waCollapsedMode #waReopen\{[\s\S]*?top:64px/, 'مقبض اللوحة فوق');
-  assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?top:64px/, 'مقبض القائمة فوق');
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[\s\S]*?top:54px/, "مقبض اللوحة فوق");
+  assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?top:54px/, "مقبض القائمة فوق");
   assert.match(ui, /ro\.innerHTML = '<svg[\s\S]*?<rect x="3" y="3"[\s\S]*?<line x1="9" y1="3"/, 'أيقونة اللوحة في مقبض العمل');
   assert.match(js, /__sbReopen\.innerHTML = '<svg[\s\S]*?<rect x="3" y="3"[\s\S]*?<line x1="9" y1="3"/, 'أيقونة اللوحة في مقبض القائمة');
   // #4: زرّ الإيقاف ذهبيّ لا أحمر
@@ -75,7 +75,7 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=671'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=672'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
 });
 
