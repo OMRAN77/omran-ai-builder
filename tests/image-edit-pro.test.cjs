@@ -8,15 +8,15 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
-test('١. الخادم: محرّك التعديل الموضعيّ الافتراضيّ نانو ٢٫٥ الأمين (v-edit-pro-revert)، وبرو خيار صريح بالبيئة، ونانو خام والإنقاذ كما هما', () => {
+test('١. الخادم (v-lanes): المسار الأمين على برو 2K مع إبقاء الحرارة المنخفضة، وبرو/نانو بالبيئة، ونانو خام والإنقاذ كما هما', () => {
   const mi = read('api/_lib/maha-image.js');
-  // v-edit-pro-revert: برو للتعديل الموضعيّ يفقد الحرارة المنخفضة (genConfigFor يحذفها لغير نانو) فيعيد التخيّل — المالك: «لا صورة نفس الطلب».
-  assert.match(mi, /const editModel = \(process\.env\.IMAGE_EDIT_MODEL \|\| 'gemini-2\.5-flash-image'\)\.trim\(\);/);
-  assert.ok(mi.includes('v-edit-pro-revert'), 'سبب الرجوع موثّق في الكود');
+  assert.match(mi, /const editModel = \(process\.env\.IMAGE_EDIT_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
+  assert.match(mi, /const __faithfulLane = !!editImageBase64 && !extras\.length && !isCreativeEdit && !isPersonSwap && !isBroadEdit;/);
+  assert.match(mi, /if \(!nanoPrimary && !__faithfulLane\) delete cfg\.temperature;/, 'الحرارة 0.15 تبقى للمسار الأمين على برو — درس v-edit-pro-revert');
   assert.match(mi, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/, 'الفرز القائم لم يُمسّ');
   assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-2\.5-flash-image'/, 'توغّل «نانو خام» للمالك باقٍ');
-  assert.match(mi, /const nanoPrimary = \/2\\\.5-flash-image\/\.test\(primaryModel\);/, 'برو ليس نانو → imageSize 2K وبلا حرارة منخفضة');
-  assert.match(mi, /if \(!nanoPrimary\) delete cfg\.temperature;/, 'السبب الجذريّ: الحرارة تُحذف لغير نانو');
+  assert.match(mi, /const nanoPrimary = \/2\\\.5-flash-image\/\.test\(primaryModel\);/);
+  assert.ok(mi.includes('v-lanes'), 'القرار موثّق في الكود');
 });
 
 test('٢. العميل: الرفع حتّى 1.5MB بلا إعادة ترميز، و2048px بجودة 0.92، وتصغير التعديل يمرّر حتّى 2M حرفًا بجودة 0.92', () => {
@@ -27,7 +27,6 @@ test('٢. العميل: الرفع حتّى 1.5MB بلا إعادة ترميز،
   assert.match(a9, /c\.toDataURL\('image\/jpeg', force \? 0\.88 : 0\.92\)/, 'ذاكرة الأدوار (force) تبقى صغيرة، والمصدر بجودة أعلى');
   assert.match(a9, /const mx = maxPx \|\| 2048/, 'سقف التعديل بصورة واحدة 2048 (v-full-res)');
   // مع قناع أو صور إضافية يبقى 1280 كي لا يتجاوز الطلب حدّ Vercel
-  assert.match(a9, /omranShrinkForEdit\(__b64, __mime, 1280\)/);
   assert.match(a9, /omranShrinkForEdit\(\(__xa\.dataUrl \|\| ''\)\.split\(','\)\[1\] \|\| '', __xa\.mime \|\| 'image\/png', 1280\)/);
   assert.ok(read('js/app.bundle.js').includes('const IMAGE_PASSTHROUGH_BYTES = 1536 * 1024;'), 'الحزمة مبنيّة');
 });

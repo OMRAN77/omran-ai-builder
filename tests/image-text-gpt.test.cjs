@@ -11,7 +11,8 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 test('١. نيّة النصّ: حذف أو تبديل أو كتابة أو كلمات النصّ على مصدر = GPT ضربة واحدة؛ الخام للمالك والإبداعيّ خارجها', () => {
   const mi = read('api/_lib/maha-image.js');
   assert.match(mi, /const __textIntent = !!editImageBase64 && !__pureRaw && \(isTextRemove \|\| isTextSwap \|\| __textCueRe\.test\(cleanPrompt\) \|\| \/اكتب\|أكتب\|كتابة\|كتابه\|\\bwrite\\b\/i\.test\(cleanPrompt\)\);/);
-  assert.match(mi, /&& \(__textIntent \|\| \(editImageBase64 \? \(__optTextFaithful \|\| await sourceLooksTextDense\(\)\) : \(__optTextFaithful \|\| \(!rawMode && __textCueRe\.test\(cleanPrompt\)\)\)\)\);/, 'المصدر الكثيف والتوليد بنصّ كما كانا');
+  assert.match(mi, /&& \(__textIntent \|\| \(editImageBase64 \? __optTextFaithful : \(__optTextFaithful \|\| \(!rawMode && __textCueRe\.test\(cleanPrompt\)\)\)\)\);/, 'v-lanes: بلا مصنّف نصّ كثيف؛ التوليد بنصّ كما كان');
+  assert.ok(!/sourceLooksTextDense/.test(mi));
   assert.match(mi, /!isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent/, 'الإبداعيّ ودمج الصور خارج المسار');
   // ضربة واحدة: لا مزدوج ولا حكم على مسار النصّ
   const i = mi.indexOf('if (__textRoute) {');
@@ -22,13 +23,12 @@ test('١. نيّة النصّ: حذف أو تبديل أو كتابة أو كل�
   // الحذف والتبديل كما هما معرّفان
   assert.match(mi, /const isTextRemove = !!editImageBase64 && [^\n]*isPureTextRemoval\(intentText\);/);
   // GPT في التعديل بأمانة عالية إلّا في «GPT خام» للمالك
-  assert.match(mi, /form\.append\('input_fidelity', __optForceEngine === 'gpt' \? 'low' : 'high'\);/);
+  assert.match(mi, /form\.append\('input_fidelity', 'high'\);/, 'v-lanes: أمانة عالية دائمًا في التعديل، حتّى GPT خام');
 });
 
 test('٢. فشل GPT (بلا مفتاح أو خطأ) → المسار القائم كما هو، والمزدوج لا يعمل على مسار نصّ فشل', () => {
   const mi = read('api/_lib/maha-image.js');
-  assert.match(mi, /let densePromise = null; \/\* لم يعد يُملأ/);
-  assert.match(mi, /const duoOn = __duoWouldRun && \(!__textRoute \|\| !!densePromise\);/, 'نصّ فشل عند GPT → Gemini وحده بلا مزدوج (كما كان)');
+  assert.ok(!/densePromise|duoOn|duoP\b/.test(mi), 'v-lanes: لا مزدوج إطلاقًا — نصّ فشل عند GPT → مسار Gemini وحده');
   assert.match(mi, /if \(!okey\) \{ lastRescueErr = 'no OPENAI_API_KEY'; return null; \}/);
 });
 
