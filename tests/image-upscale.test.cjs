@@ -129,23 +129,13 @@ test('٦. التوصيل: مخرج maha-image يرقّي دون 2K إلّا ال
   for (const k of ['REPLICATE_API_TOKEN', 'IMAGE_UPSCALE', 'UPSCALE_MAX_MS']) { assert.ok(env.includes(k + ':'), 'env.js: ' + k); assert.ok(read('.env.example').includes('# ' + k + '='), '.env.example: ' + k); }
 });
 
-test('٧. العميل: زرّ «دقّة أعلى» فوق الصورة يستبدل الصورة والمرفق، والنصوص في ١٤ لغة، والوسم مرفوع', () => {
+test('٧. العميل: زرّا «تعديل» و«دقّة أعلى» فوق الصورة حُذفا نهائيًّا (v-img-buttons-off) — الترقية التلقائية بلا زرّ لم تُمَسّ', () => {
   const a9 = read('js/app-09-attach.js');
   assert.ok(a9.includes('window.__omranImgTools = function(wrap, dataUrl, att){'), 'المرفق يُمرَّر');
-  assert.match(a9, /mk\('txt', '<span>' \+ t\('imgUpscaleBtn'\) \+ '<\/span>', t\('imgUpscaleBtn'\), async \(b\) => \{/);
-  assert.match(a9, /fetch\('\/api\/media\?action=upscale', \{ method: 'POST'/);
-  assert.match(a9, /if\(att && typeof att === 'object'\)\{ att\.dataUrl = nu; if\(att\.vaultId\) att\.vaultPending = true;/, 'النسخة المرقّاة تُحفظ وتُكتب في المخزن');
-  assert.match(a9, /note\(r\.status === 401 \? t\('imgUpscaleLogin'\) : \(d && d\.error === 'points_insufficient' \? t\('imgUpscaleNoPoints'\) : t\('imgUpscaleFail'\)\)\);/);
-  assert.ok(read('js/app-04-i18n-state.js').includes('window.__omranImgTools(ibox, a.dataUrl, a);'), 'موضع العرض يمرّر المرفق');
+  assert.ok(!/mk\(['"]txt['"]/.test(a9), 'لا زرّ نصّي فوق الصورة (تعديل/دقّة أعلى) بعد الحذف');
+  assert.ok(!a9.includes("fetch('/api/media?action=upscale'"), 'زرّ الترقية اليدويّة حُذف من العميل');
+  assert.ok(!/\bimgUpscale(?:Btn|Fail|NoPoints|Login)\b/.test(a9), 'مفاتيح الترجمة القديمة للزرّ غير مستعملة');
   const files = ['js/app-03-i18n-data.js'].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((l) => 'i18n/' + l + '.js'));
-  for (const f of files) {
-    const src = read(f); const n = f.startsWith('i18n/') ? 1 : 2;
-    for (const k of ['imgUpscaleBtn', 'imgUpscaleFail', 'imgUpscaleNoPoints', 'imgUpscaleLogin']) {
-      const vs = [...src.matchAll(new RegExp('(?:^|[\\s,{])"?' + k + '"?\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')', 'g'))];
-      assert.equal(vs.length, n, f + ': ' + k);
-      for (const v of vs) assert.doesNotMatch(v[1], /Replicate|ESRGAN|Gemini|GPT|nano/i, f + ': ' + k + ' بلا اسم مزوّد');
-    }
-  }
-  assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 677, 'وسم ملفّات اللغات ≥ 677');
-  assert.ok(read('js/app.bundle.js').includes("t('imgUpscaleBtn')"), 'الحزمة مبنيّة');
+  for (const f of files) assert.ok(!/imgUpscale/.test(read(f)), f + ': لا أثر لمفاتيح الزرّ المحذوف');
+  assert.ok(!read('js/app.bundle.js').includes("t('imgUpscaleBtn')"), 'الحزمة مبنيّة بلا الزرّ المحذوف');
 });
