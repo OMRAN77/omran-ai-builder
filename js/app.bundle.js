@@ -18447,6 +18447,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
         /* v-image-modes: خيارات «+» للصورة (للمالك) تُمرَّر أعلامًا؛ الخادم يقبلها للمالك وحده. */
         var __o = String(window.__omMode || ''), __x = {};
         if(__o === 'image_hd') __x.want4K = true;
+        else if(__o === 'image_ultra') __x.ultra = true; /* v-ultra-duo */
         else if(__o === 'image_text') __x.textFaithful = true;
         else if(__o === 'image_nano') __x.forceEngine = 'nano';
         else if(__o === 'image_gpt') __x.forceEngine = 'gpt';

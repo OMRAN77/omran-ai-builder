@@ -105,4 +105,53 @@ assert.match(blobUp, /Upstash Redis/, 'والسبب موثّق: التخزين �
     'الطبقة ' + m + ' ما زالت موصولة بمسار الصور (لم تكن محذوفة كما افترضت المهمّة)');
 });
 
-console.log('✓ image-lanes: مسجّل موديلات من البيئة · القدرة معلَنة لا مستنتَجة · PNG بلا ضغط · المصدر بلا إعادة ترميز');
+/* ── (٦) v-ultra-duo: المسار «الخارق» — نداءان بالتسلسل ──
+   الفكرة مبنيّة على ما سجّله الملفّ نفسه: GPT ينشئ النصّ العربيّ الجديد (وGemini
+   يكسره)، ونانو برو هو «الأقوى في الحروف العربية» في **الحفظ والنقل**. فالتسلسل
+   يعطي كلّاً ما يتفوّق فيه. هذه الفحوص تقفل الخصائص التي بدونها ينقلب المسار
+   إلى نتيجة أسوأ من GPT وحده. */
+const ultra = maha.slice(maha.indexOf('v-ultra-duo'));
+assert.ok(ultra.length > 500, 'كتلة المسار الخارق موجودة');
+
+// (أ) المرحلة الثانية تستلم ناتج الأولى **صورةً مصدرًا** لا وصفًا لتوليد جديد.
+assert.match(ultra, /inlineData: \{ mimeType: 'image\/png', data: srcB64 \}/,
+  'برو يستلم ناتج GPT كمصدر — لا يعيد الرسم من وصف');
+assert.match(ultra, /parts: \[\{ text: ULTRA_ENRICH \}, \{ inlineData:/,
+  'التعليمة أوّلًا ثمّ الصورة المصدر — ترتيب مسار التعديل');
+
+// (ب) التعليمة مقيّدة: تحفظ ولا تعيد الرسم.
+assert.match(ultra, /pixel-identical/, 'النصّ يُحفظ حرفيًّا');
+assert.match(ultra, /Do NOT redraw, retype, translate or re-letter any text/,
+  'منع إعادة رسم النصّ صراحةً — وإلّا كسر برو ما أتقنه GPT');
+assert.match(ultra, /Improve ONLY the physical rendering quality/,
+  'الإثراء محصور في الإخراج لا المحتوى');
+
+// (ج) فشل المرحلة الثانية لا يخسر المستخدم شيئًا.
+assert.match(ultra, /await sendImg\(__e \|\| __g, 'image\/png', __e \? 'ultra-duo' : 'ultra-gpt-only'\);/,
+  'فشل الإثراء يسلّم ناتج GPT كما هو — الخارق لا يكون أسوأ من مرحلته الأولى');
+
+// (د) لا تشغيل بكلمات مفتاحيّة (فخّ v-news-intent) — علم صريح فقط.
+assert.match(ultra, /body\.ultra !== true\) return false;/, 'علم صريح لا تخمين من النصّ');
+assert.ok(!/ultra[\s\S]{0,400}?test\(intentText/.test(ultra), 'لا مطابقة نصّ لتشغيل المسار');
+
+// (هـ) توليد جديد فقط — لا تعديل ولا صور إضافية ولا خطّة دعاء.
+assert.match(ultra, /if \(editImageBase64 \|\| extras\.length \|\| prayerPlan\) return false;/);
+
+// (و) **البوّابتان متطابقتان** — خادم وواجهة معًا. بوّابة خادم أوسع من الواجهة
+//     تصنع سلكًا مقطوعًا: ميزة يقبلها الخادم ولا يصل إليها أحد (نفس علّة أزرار النبرة).
+assert.match(ultra, /return __isOwnerReq;/, 'الخادم: المالك وحده');
+const modes = rd('js/modes.js');
+const __ultraRow = modes.split('\n').find((l) => /id:'image_ultra'/.test(l)) || '';
+assert.ok(/owner:true/.test(__ultraRow), 'الواجهة: المالك وحده — نفس بوّابة الخادم');
+assert.match(rd('js/app-09-attach.js'), /__o === 'image_ultra'\) __x\.ultra = true;/,
+  'الواجهة ترسل العلم الذي يقرأه الخادم — لا اسم مختلف');
+assert.match(rd('index.html'), /modes\.js\?v=m200920a/, 'وسم كاش modes.js مرفوع بعد إضافة الوضع');
+
+// (ز) المسار يستعمل المسجّل لا أسماء مثبّتة.
+assert.match(ultra, /model: IMG_MODELS\.gptGen/);
+assert.match(ultra, /model: IMG_MODELS\.gptGenFallback/);
+assert.match(ultra, /models\/' \+ IMG_MODELS\.creative \+ '/, 'المرحلة الثانية على موديل الإبداع من المسجّل');
+// وقابل للإطفاء من البيئة بلا نشر
+assert.match(ultra, /IMAGE_ULTRA_LANE \|\| 'on'/);
+
+console.log('✓ image-lanes: مسجّل موديلات · قدرة معلَنة · PNG بلا ضغط · مصدر بلا إعادة ترميز · مسار خارق ببوّابتين متطابقتين');

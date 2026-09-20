@@ -642,6 +642,89 @@ module.exports = async (req, res) => {
     const duoOn = __duoWouldRun && (!__textRoute || !!densePromise);
     const duoP = duoOn ? (densePromise || openaiRescueImage().catch(function () { return null; })) : null;
     let duoEngine = '';
+    /* ───────────── v-ultra-duo: المسار «الخارق» (نداءان بالتسلسل) ─────────────
+       الدليل من هذا الملفّ نفسه لا من التخمين:
+         • رسم نصّ عربيّ **جديد**: gpt-image ينفّذه، وGemini «يكسر الحروف» (سطر ٦٠١).
+         • **نقل/حفظ** نصّ موجود: نانو برو «الأقوى في الحروف العربية» (٢١١) ويبدّلها
+           في مكانها (٣٧٩)، والترقية تذهب إليه دائمًا وهو يحفظ الحروف (٦١٣).
+       فالتسلسل يعطي كلّ محرّك ما يتفوّق فيه: GPT يبني التكوين والنصّ، ثمّ برو
+       يستلم ناتجه **كمصدر تعديل** (لا كوصف لتوليد جديد) فيعمل في وضع «احفظ
+       وأثرِ» — وهو موضع قوّته — بدل أن يعيد الرسم من الصفر فيكسر ما أتقنه GPT.
+       ثلاثة ضوابط تمنع أن يصير الخارق أسوأ من GPT وحده:
+         (١) تعليمة مقيّدة: التكوين والنصّ والهويّة تُحفظ حرفيًّا، والإثراء للإضاءة
+             والخامات والتفاصيل فقط.
+         (٢) فشل المرحلة الثانية = نُسلّم ناتج المرحلة الأولى، فلا يخسر المستخدم شيئًا.
+         (٣) لا يُشغَّل بكلمات مفتاحيّة (فخّ v-news-intent) بل بعلم صريح من العميل
+             body.ultra مع اشتراك فعليّ — نداءان يعنيان ضعف الزمن والتكلفة. */
+    const __ultraOn = String(process.env.IMAGE_ULTRA_LANE || 'on').toLowerCase() !== 'off';
+    /* البوّابة مقفولة على المالك في الطرفين معًا (هنا وفي js/modes.js) عمدًا:
+       بوّابة خادم أوسع من بوّابة الواجهة = سلك مقطوع (ميزة يقبلها الخادم ولا
+       يصل إليها أحد). المالك يجرّب الجودة أوّلًا لأنّ النداءين يضاعفان الكلفة،
+       ثمّ يُفتح للمشتركين بتعديل سطر واحد في كلّ جهة معًا لا في جهة وحدها. */
+    function ultraEligible() {
+      if (!__ultraOn || body.ultra !== true) return false;
+      if (editImageBase64 || extras.length || prayerPlan) return false; // توليد جديد فقط
+      return __isOwnerReq;
+    }
+    /* المرحلة الأولى: GPT يبني التكوين والنصّ. */
+    async function ultraStageGpt() {
+      const okeyU = process.env.OPENAI_API_KEY;
+      if (!okeyU) return null;
+      const sizeU = rescueAspect === '16:9' ? '1536x1024' : (rescueAspect === '1:1' ? '1024x1024' : '1024x1536');
+      const r = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + okeyU },
+        signal: AbortSignal.timeout(90000),
+        body: JSON.stringify({ model: IMG_MODELS.gptGen, prompt: String(cleanPrompt).slice(0, 3800), size: sizeU, quality: 'high', n: 1, output_format: 'png' }),
+      });
+      if (!r.ok && (r.status === 400 || r.status === 404)) {
+        const t1 = await r.text().catch(function () { return ''; });
+        if (!/model/i.test(t1)) return null;
+        const r2 = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + okeyU },
+          signal: AbortSignal.timeout(90000),
+          body: JSON.stringify({ model: IMG_MODELS.gptGenFallback, prompt: String(cleanPrompt).slice(0, 3800), size: sizeU, quality: 'high', n: 1, output_format: 'png' }),
+        });
+        if (!r2.ok) return null;
+        const d2 = await r2.json().catch(function () { return null; });
+        return (d2 && d2.data && d2.data[0] && d2.data[0].b64_json) || null;
+      }
+      if (!r.ok) return null;
+      const d = await r.json().catch(function () { return null; });
+      return (d && d.data && d.data[0] && d.data[0].b64_json) || null;
+    }
+    /* المرحلة الثانية: برو يستلمه مصدرًا ويثري بلا إعادة رسم. */
+    const ULTRA_ENRICH = 'This image is the approved layout. Keep it EXACTLY as it is: same composition, same framing, same subjects and their identity, same colours, and — most important — every letter, word, number and logo must stay pixel-identical in the same place, in the same script, unchanged. Do NOT redraw, retype, translate or re-letter any text. Improve ONLY the physical rendering quality: lighting realism, material and fabric texture, micro-detail, depth and sharpness. The result must be recognisably the same image, just rendered better.';
+    async function ultraStagePro(srcB64) {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + IMG_MODELS.creative + ':generateContent?key=' + apiKey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(120000),
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: ULTRA_ENRICH }, { inlineData: { mimeType: 'image/png', data: srcB64 } }] }],
+          generationConfig: { imageConfig: imageConfig, temperature: 0.15 },
+        }),
+      });
+      if (!r.ok) return null;
+      const d = await r.json().catch(function () { return null; });
+      const cand = d && d.candidates && d.candidates[0];
+      const part = cand && cand.content && Array.isArray(cand.content.parts)
+        && cand.content.parts.find(function (x) { return x && x.inlineData && x.inlineData.data; });
+      return part ? part.inlineData.data : null;
+    }
+    if (ultraEligible()) {
+      const __g = await ultraStageGpt().catch(function () { return null; });
+      if (__g) {
+        const __e = await ultraStagePro(__g).catch(function () { return null; });
+        // فشل الإثراء لا يخسر المستخدم شيئًا: ناتج المرحلة الأولى يُسلَّم كما هو.
+        await sendImg(__e || __g, 'image/png', __e ? 'ultra-duo' : 'ultra-gpt-only');
+        return;
+      }
+      // فشل المرحلة الأولى: نكمل بالمسار العاديّ بلا إزعاج المستخدم.
+      console.error('[maha-image] ultra: stage-1 failed, falling back to the normal lane');
+    }
+
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
     // request; the user should not have to resend the same prompt.
