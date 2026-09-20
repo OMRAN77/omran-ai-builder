@@ -15,6 +15,7 @@ function load(action) {
     case 'blob-client-upload': return require('./_lib/blob-client-upload.js');
     case 'img': return require('./_lib/img-share.js'); // v627 — رابط الصورة العامّ
     case 'pdf': return require('./_lib/pdf-share.js'); // v-pdf-link — تنزيل PDF داخل الأغلفة
+    case 'file': return require('./_lib/file-share.js'); // v-file-share — تنزيل أي ملف (فيديو، documents)
     default: return null;
   }
 }
