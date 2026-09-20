@@ -42,7 +42,7 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=713'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=714'), 'وسم كاش tokens.css رُفع');
 });
 
 test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الطيّ فوق بأيقونة اللوحة، الإيقاف ذهبيّ، سحب حرّ', () => {
@@ -94,6 +94,13 @@ test('v-wa-handle-bare: مقبض سحب لوحة المعاينة/الكود أ�
   assert.match(modules, /body\.waCollapsedMode #waReopen\{background:none!important;border:none!important;[^}]*box-shadow:none!important\}/, 'modules بلا صندوق');
   assert.match(modules, /body\.waCollapsedMode #waReopen:hover\{background:none!important;/, 'modules بلا صندوق عند المرور');
   assert.ok(read('index.html').includes('css/modules.css?v=657'), 'وسم كاش modules رُفع');
+});
+
+test('v-sb-handle-bare: مقبض جهة «المحادثة الجديدة» أيقونة وحدها بلا صندوق (نفس مقبض اللوحة)', () => {
+  const css = read('css/tokens.css');
+  assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;/, 'بلا صندوق');
+  assert.match(css, /body\.sbCollapsedMode #sbReopen svg\{width:16px; height:16px;\}/, 'الأيقونة باقية');
+  assert.match(css, /body\.sbCollapsedMode #sbReopen:hover\{ color:var\(--text\); background:none !important; \}/, 'بلا صندوق عند المرور');
 });
 
 test('v-below-onerow: «+/المايك» وشريط المزوّد على سطر واحد تحت الصندوق ضمن نطاقه', () => {

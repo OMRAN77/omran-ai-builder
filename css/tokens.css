@@ -1177,12 +1177,12 @@ html:not(.mobile-ui) #sidebarCloseBtn{ display:inline-flex; top:12px; }
    المكتب مثل طيّ لوحة العمل — يُخفى العمود ومقبض تغيير حجمه، ويظهر مقبض إعادة فتح. */
 html:not(.mobile-ui) #sidebar.sbCollapsed, html:not(.mobile-ui) #resizer1.sbCollapsed{ display:none !important; }
 #sbReopen{ display:none; }
+/* v-sb-handle-bare (طلب المالك): مقبض جهة «المحادثة الجديدة» أيقونة وحدها بلا صندوق — مثل مقبض اللوحة */
 html:not(.mobile-ui) body.sbCollapsedMode #sbReopen{
   display:flex; align-items:center; justify-content:center;
-  position:fixed; top:54px; inset-inline-start:0; z-index:70;
-  width:28px; height:30px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
-  border-inline-start:none; border-start-end-radius:9px; border-end-end-radius:9px;
+  position:fixed; top:54px; inset-inline-start:2px; z-index:70;
+  width:24px; height:26px; background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;
   color:var(--muted); cursor:pointer; padding:0;
 }
-html:not(.mobile-ui) body.sbCollapsedMode #sbReopen svg{width:15px; height:15px;}
-html:not(.mobile-ui) body.sbCollapsedMode #sbReopen:hover{ color:var(--text); background:rgba(255,255,255,.12); }
+html:not(.mobile-ui) body.sbCollapsedMode #sbReopen svg{width:16px; height:16px;}
+html:not(.mobile-ui) body.sbCollapsedMode #sbReopen:hover{ color:var(--text); background:none !important; }
