@@ -42,7 +42,7 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=712'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=713'), 'وسم كاش tokens.css رُفع');
 });
 
 test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الطيّ فوق بأيقونة اللوحة، الإيقاف ذهبيّ، سحب حرّ', () => {
@@ -78,21 +78,22 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=675'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=676'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
 });
 
-test('v-wa-handle-noborder: مقبض سحب لوحة المعاينة/الكود نفس شكله (خلفيّة + استدارة) لكن بلا إطار', () => {
+test('v-wa-handle-bare: مقبض سحب لوحة المعاينة/الكود أيقونة وحدها بلا أيّ إطار/صندوق', () => {
   const css = read('css/tokens.css');
-  // الشكل باقٍ: خلفيّة + استدارة على جهة البداية، والحجم نفسه (28×30)
-  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*background:rgba\(255,255,255,\.07\);/, 'الخلفيّة (الشكل) باقية');
-  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*border-start-start-radius:9px; border-end-start-radius:9px;/, 'الاستدارة باقية');
-  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*width:28px; height:30px;/, 'نفس الحجم');
-  // الإطار (الخطّ) اتشال فقط
-  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*border:none;/, 'الإطار اتشال');
-  // الأيقونة باقية والمرور يرجّع خلفيّة أعلى (لا إطار)
-  assert.match(css, /body\.waCollapsedMode #waReopen svg\{width:15px; height:15px;\}/, 'الأيقونة باقية');
-  assert.match(css, /body\.waCollapsedMode #waReopen:hover\{color:var\(--text\); background:rgba\(255,255,255,\.12\);\}/, 'المرور خلفيّة بلا إطار');
+  const modules = read('css/modules.css');
+  // بلا خلفيّة ولا إطار ولا استدارة — أيقونة فقط (tokens)
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*background:none !important;/, 'بلا خلفيّة');
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*border:none !important;/, 'بلا إطار');
+  assert.match(css, /body\.waCollapsedMode #waReopen\{[^}]*border-radius:0 !important;/, 'بلا استدارة');
+  assert.match(css, /body\.waCollapsedMode #waReopen svg\{width:16px; height:16px;\}/, 'الأيقونة باقية');
+  // modules.css كان يغلب tokens (يُحمَّل بعده) بصندوق ذهبيّ — أُزيل نهائيًّا
+  assert.match(modules, /body\.waCollapsedMode #waReopen\{background:none!important;border:none!important;[^}]*box-shadow:none!important\}/, 'modules بلا صندوق');
+  assert.match(modules, /body\.waCollapsedMode #waReopen:hover\{background:none!important;/, 'modules بلا صندوق عند المرور');
+  assert.ok(read('index.html').includes('css/modules.css?v=657'), 'وسم كاش modules رُفع');
 });
 
 test('v-below-onerow: «+/المايك» وشريط المزوّد على سطر واحد تحت الصندوق ضمن نطاقه', () => {
@@ -104,6 +105,15 @@ test('v-below-onerow: «+/المايك» وشريط المزوّد على سطر
   // الأدوات جهة البداية (order:1) تحت حافّة الصندوق (inset)، والمزوّد جهة النهاية (order:2) تحت الحافّة الأخرى
   assert.match(redesign, /#inputbar > \.inputbar-tools-below\{\s*order:1 !important;[\s\S]*?margin-inline-start:var\(--om-chat-inset\) !important;/, 'الأدوات جهة البداية ضمن النطاق');
   assert.match(redesign, /#inputbar > #omBottomBar\{\s*order:2 !important;[\s\S]*?margin-inline-start:auto !important; margin-inline-end:var\(--om-chat-inset\) !important;/, 'المزوّد جهة النهاية ضمن النطاق');
+  // على الجوّال أيضًا: نفس السطر الواحد (بلا نطاق inset)
+  assert.match(redesign, /html\.mobile-ui #inputbar\{flex-flow:row wrap;/, 'inputbar يلتفّ صفوفًا على الجوّال');
+  assert.match(redesign, /html\.mobile-ui #inputbar > \.inputbar-tools-below\{\s*order:1 !important;/, 'الأدوات جهة البداية على الجوّال');
+  assert.match(redesign, /html\.mobile-ui #inputbar > #omBottomBar\{\s*order:2 !important;[\s\S]*?margin-inline-start:auto !important;/, 'المزوّد جهة النهاية على الجوّال');
+});
+
+test('v-mic-noline: إزالة الخطّ الفاصل جنب المايك', () => {
+  const redesign = read('css/redesign.css');
+  assert.match(redesign, /#inputbar \.inputbar-tools-left > #btnMic::before\{display:none !important;\}/, 'الخطّ الفاصل مخفيّ');
 });
 
 test('v-mobile-brand-once: على الجوّال يبقى شعار الدرج فقط ويُخفى شعار الهيدر + شارة الموديل للمالك بيضاء', () => {
