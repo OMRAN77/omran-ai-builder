@@ -4,6 +4,7 @@
 // التخزين: "mime:base64" تحت db/img/<id> بعمر ٣٠ يومًا (الصور لا تُحفظ للأبد).
 // الجسم مضغوط من المتصفّح (JPEG ≤1600px) فيبقى دون حدّ جسم الطلب في Vercel.
 const crypto = require('crypto');
+const zlib = require('zlib');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
 
 const MAX_B64 = 3 * 1024 * 1024; // حدّ أمان لكلّ صورة
@@ -74,14 +75,26 @@ module.exports = async (req, res) => {
         return;
       }
       res.setHeader('Content-Type', mime);
-      res.setHeader('Content-Length', String(buf.length));
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       res.setHeader('Accept-Ranges', 'bytes');
       /* v-media-dl (شكوى المالك «ما تتحمل الصور»): ?dl=1 يجعل الرابط تنزيلًا حقيقيًا عبر منزّل النظام */
       const wantDl = String((req.query && req.query.dl) || '') === '1';
       const dlName = String((req.query && req.query.name) || '').replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || ('omran-' + id + '.' + (mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg')));
       res.setHeader('Content-Disposition', (wantDl ? 'attachment' : 'inline') + '; filename="' + (wantDl ? dlName : 'image-' + id + '.jpg') + '"');
-      res.status(200).send(buf);
+
+      // ضغط gzip للصور الكبيرة لتسريع التحميل (خاصّة الصور المرسلة من الهاتف)
+      if (buf.length > 500 * 1024) { // > 500KB
+        res.setHeader('Content-Encoding', 'gzip');
+        res.status(200);
+        zlib.gzip(buf, (err, compressed) => {
+          if (err) { res.status(500).end(); return; }
+          res.setHeader('Content-Length', String(compressed.length));
+          res.end(compressed);
+        });
+      } else {
+        res.setHeader('Content-Length', String(buf.length));
+        res.status(200).send(buf);
+      }
       return;
     }
 
