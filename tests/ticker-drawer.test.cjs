@@ -42,7 +42,7 @@ test('v-drawer-close: زرّ إغلاق ظاهر لدرج المحادثات ع�
   assert.match(css, /body\.sbCollapsedMode #sbReopen\{[\s\S]*?display:flex/, 'مقبض إعادة الفتح');
   // السلوك: جوّال → closeDrawers، مكتب → طيّ العمود
   assert.match(js, /mobile-ui'\)\) closeDrawers\(\);\s*else __setSB\(true\)/, 'جوّال يسكر الدرج والمكتب يطوي العمود');
-  assert.ok(read('index.html').includes('css/tokens.css?v=715'), 'وسم كاش tokens.css رُفع');
+  assert.ok(read('index.html').includes('css/tokens.css?v=716'), 'وسم كاش tokens.css رُفع');
 });
 
 test('v2/v3/v4/v1: شرارة الأسهم بلا دائرة، مقابض الطيّ فوق بأيقونة اللوحة، الإيقاف ذهبيّ، سحب حرّ', () => {
@@ -145,4 +145,12 @@ test('v-mobile-brand-once: على الجوّال يبقى شعار الدرج ف
   assert.match(redesign, /html\.mobile-ui #sidebarBrand\{order:-3; display:flex;/, 'شعار الدرج باقٍ على الجوّال');
   // شارة الموديل للمالك (لا اسأل الكل) بالأبيض
   assert.match(app04, /__ownerBadge && !isAskAllReply\)\{ label\.style\.color = 'var\(--text\)'; \}/, 'شارة الموديل بيضاء للمالك');
+});
+
+test('v-light-visibility: في الوضع الفاتح شريط السحب واضح، وشرارة الذكاء بلا صندوق مقصوص', () => {
+  const css = read('css/tokens.css');
+  // شريط السحب (الفاصل) بخطّ رماديّ واضح على الأبيض
+  assert.match(css, /html\[data-mode="light"\] \.resizer::after\{background:rgba\(0,0,0,\.30\) !important;\}/, 'شريط السحب واضح في الفاتح');
+  // شرارة الذكاء المطويّة بلا صندوق في الفاتح (كان صندوقًا مقصوصًا)
+  assert.match(css, /html\[data-mode="light"\] #stockTickerToggle\.tickerAiCollapsed\{background:none !important; box-shadow:none !important; border:none !important;\}/, 'الشرارة بلا صندوق ولا ظلّ في الفاتح');
 });
