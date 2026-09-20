@@ -325,7 +325,7 @@ module.exports = async (req, res) => {
         : (isBroadEdit ? buildBroadEditPrompt(cleanPrompt, intentText)
         : (isTextSwap ? buildLetterSwapPrompt(cleanPrompt)
         : (isReimagine ? buildReimaginePrompt(cleanPrompt, intentText)
-          : buildEditPrompt(cleanPrompt))))))) });
+          : buildEditPrompt(cleanPrompt, intentText))))))) }); /* v-remove-target: كلمات المستخدم لاستخراج النصّ المسمّى */
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else if (pipelineActive && pipelineRewrite) {
       // Pipeline prompt includes negative in separate field — combine for Gemini

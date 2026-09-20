@@ -66,7 +66,7 @@ test('all image-edit entry points apply style preservation except explicit anime
   const portrait = fs.readFileSync('api/_lib/portrait-style.js', 'utf8');
   const studio = fs.readFileSync('api/_lib/studio-create.js', 'utf8');
   const fashion = fs.readFileSync('api/_lib/fashion-create.js', 'utf8');
-  assert.match(maha, /buildEditPrompt\(cleanPrompt\)/);
+  assert.match(maha, /buildEditPrompt\(cleanPrompt, intentText\)/); // v-remove-target
   assert.match(portrait, /\['hairstyle',[\s\S]*?'outfit'[\s\S]*?\]\.includes\(style\)/);
   assert.match(portrait, /temperature: isLocalizedEdit \? 0\.15 : 0\.65/);
   assert.match(studio, /if \(feature !== 'anime'\) promptText \+=/);
