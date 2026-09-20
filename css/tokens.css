@@ -245,7 +245,8 @@
     html:not(.mobile-ui) #workarea.waCollapsed, html:not(.mobile-ui) #resizer2.waCollapsed{display:none !important;}
     html:not(.mobile-ui) #waCollapseBtn{display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:var(--muted); cursor:pointer; padding:10px 12px;}
     html:not(.mobile-ui) #waCollapseBtn:hover{color:var(--text);}
-    html:not(.mobile-ui) body.waCollapsedMode #waReopen{display:flex; align-items:center; justify-content:center; position:fixed; top:50%; transform:translateY(-50%); inset-inline-end:0; z-index:70; width:22px; height:74px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); border-inline-end:none; border-start-start-radius:10px; border-end-start-radius:10px; color:var(--muted); cursor:pointer; padding:0;}
+    /* v-collapse-top (طلب المالك): مقبض الطيّ الصغير فوق (لا في النص)، بأيقونة اللوحة المقسومة */
+    html:not(.mobile-ui) body.waCollapsedMode #waReopen{display:flex; align-items:center; justify-content:center; position:fixed; top:64px; inset-inline-end:0; z-index:70; width:34px; height:36px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); border-inline-end:none; border-start-start-radius:10px; border-end-start-radius:10px; color:var(--muted); cursor:pointer; padding:0;}
     html:not(.mobile-ui) body.waCollapsedMode #waReopen:hover{color:var(--text); background:rgba(255,255,255,.12);}
     /* عند الطي: المحادثة تتوسع وتاخذ كامل المساحة */
     html:not(.mobile-ui) body.waCollapsedMode #chatcol{width:auto !important; flex:1 1 auto;}
@@ -1137,6 +1138,8 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
 /* v-ticker-ai (طلب المالك): شريط الأسهم المطويّ يظهر كأيقونة ذكاء ذهبيّة تومض بخفّة؛
    الضغط عليها يفتح الشريط. لا يُحذف stockTickerToggle — نبدّل أيقونته فقط. */
 #stockTickerAiIcon{ display:none; }
+/* v-ticker-nocircle (طلب المالك): شرارة الذكاء بلا دائرة/إطار — نلغي خلفيّة الزرّ وحدوده وظلّه في الحالة المطويّة (أعلى تخصّصًا من modules.css). */
+#stockTickerToggle.tickerAiCollapsed{ background:none !important; border:none !important; box-shadow:none !important; padding:2px !important; }
 #stockTickerToggle.tickerAiCollapsed #stockTickerToggleIcon{ display:none; }
 #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{
   display:inline-flex; color:#d4af37;
@@ -1174,8 +1177,8 @@ html:not(.mobile-ui) #sidebar.sbCollapsed, html:not(.mobile-ui) #resizer1.sbColl
 #sbReopen{ display:none; }
 html:not(.mobile-ui) body.sbCollapsedMode #sbReopen{
   display:flex; align-items:center; justify-content:center;
-  position:fixed; top:50%; transform:translateY(-50%); inset-inline-start:0; z-index:70;
-  width:22px; height:74px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
+  position:fixed; top:64px; inset-inline-start:0; z-index:70;
+  width:34px; height:36px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
   border-inline-start:none; border-start-end-radius:10px; border-end-end-radius:10px;
   color:var(--muted); cursor:pointer; padding:0;
 }
