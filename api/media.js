@@ -12,6 +12,7 @@ function load(action) {
     case 'stt': return require('./_lib/stt.js');
     case 'translate': return require('./_lib/translate.js');
     case 'maha-image': return require('./_lib/maha-image.js');
+    case 'upscale': return require('./_lib/upscale.js'); // v-img-upscale — زرّ «دقّة أعلى» (٥ نقاط)
     case 'blob-client-upload': return require('./_lib/blob-client-upload.js');
     case 'img': return require('./_lib/img-share.js'); // v627 — رابط الصورة العامّ
     case 'pdf': return require('./_lib/pdf-share.js'); // v-pdf-link — تنزيل PDF داخل الأغلفة

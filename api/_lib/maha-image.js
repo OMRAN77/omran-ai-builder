@@ -270,12 +270,21 @@ module.exports = async (req, res) => {
     // ترجع الصورة بلا caption، فإن كان المحرّك الأساسيّ غير متاح لمفتاح المالك
     // مرّت كلّ الطلبات عبرها بلا أيّ تفسير.
     async function sendImg(b64, mime, engine) {
+      /* v-img-upscale (قرار المالك ٢٠ سبتمبر): أيّ ناتج دون 2K (نانو ٢٫٥ ≈ ١٠٢٤، gpt-image ≤ ١٥٣٦) يمرّ بمكبّر دقّة
+         متخصّص لا يغيّر المحتوى قبل الإرسال. الخام للمالك يبقى خامًا. بلا مفتاح/عطب/مهلة تُعاد الصورة كما هي. */
+      let __up = null;
+      if (!__pureRaw && String(process.env.IMAGE_UPSCALE || '').toLowerCase() !== 'off') {
+        try { __up = await require('./upscale.js').upscaleImage(b64, mime || 'image/png'); } catch (e) { __up = null; }
+        if (__up && __up.ok) { b64 = __up.b64; mime = __up.mime; engine = engine + '+up' + __up.scale; }
+        else if (__up && __up.reason !== 'already_sharp' && __up.reason !== 'no_token' && __up.reason !== 'disabled') console.warn('[maha-image] upscale skipped: ' + __up.reason + (__up.detail ? ' ' + __up.detail : ''));
+      }
       const cap = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, mime || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
       res.status(200).json({
         imageBase64: b64,
         mimeType: mime || 'image/png',
         caption: cap || undefined,
         engine: engine,
+        upscaled: (__up && __up.ok) ? { scale: __up.scale, width: __up.w, height: __up.h } : undefined,
         authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
         visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
         prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
@@ -348,11 +357,12 @@ module.exports = async (req, res) => {
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     }
     /* v-nano-edit (مقارنة المالك: «نانو الأصلي» يعيد التخيّل بجرأة، وتطبيقنا
-       كان يعدّل تعديلًا خجولًا كفوتوشوب): محرّك التعديل الأساسي = نانو بنانا
-       (gemini-2.5-flash-image) لأنه هو من ينتج النتائج الإبداعية التي أراها
-       المالك. التوليد الجديد يبقى على gemini-3-pro-image بدقّة 2K. قابل للضبط
-       بمتغيّر IMAGE_EDIT_MODEL للرجوع فورًا بلا نشر. */
-    const editModel = (process.env.IMAGE_EDIT_MODEL || 'gemini-2.5-flash-image').trim();
+       كان يعدّل تعديلًا خجولًا كفوتوشوب): محرّك التعديل الأساسي كان نانو بنانا
+       (gemini-2.5-flash-image). قابل للضبط بمتغيّر IMAGE_EDIT_MODEL للرجوع فورًا بلا نشر.
+       v-edit-pro (قرار المالك ٢٠ سبتمبر «كمّل ٣ و٤ — تكون الكتابة أفضل شي على الصور»): التعديل الموضعيّ أيضًا
+       على نانو بنانا برو (gemini-3-pro-image بدقّة 2K) — نانو ٢٫٥ لا يقبل imageSize فيرجع ~١٠٢٤ ويكسر الحروف
+       العربيّة، وبرو يحفظها ويبدّلها في مكانها (لقطة المالك). نانو ٢٫٥ يبقى لتوغّل «نانو خام» ولمسار الإنقاذ. */
+    const editModel = (process.env.IMAGE_EDIT_MODEL || 'gemini-3-pro-image').trim();
     /* v-nano-pro-edit: الإبداع (أقوى/فكرة مختلفة/تحويل أسلوب/ترقية مشهد/الوضع الخام) على نانو بنانا
        برو (gemini-3-pro-image بدقّة 2K) — وهو المحرّك الذي أخرج للمالك صورته المزخرفة في تطبيق
        Gemini؛ نانو 2.5 كان يرجّع صورة باهتة لموضوع الكرت. التعديل الموضعي (غيّر اللون/شيل الخلفية)
@@ -391,7 +401,11 @@ module.exports = async (req, res) => {
       return '3:4';
     };
     /* v-4k (المالك: «الجودة قبل التكلفة»): طلب صريح 4K/للطباعة/دقة عالية يرفع إخراج برو إلى 4K (≈ ضعف سعر 2K) */
-    const __want4K = __optWant4K || /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || ''));
+    /* v-img-upscale (قرار المالك ٢٠ سبتمبر: «Max على 4K افتراضيًّا بلا كلمة للطباعة»): باقة Max تأخذ 4K من برو بسعر الصورة
+       العاديّ (الخصم سبق أعلاه)؛ الطلب الصريح لغيرها يبقى بسعر image_4k. عطب قراءة الباقة = 2K. */
+    let __maxPlan4K = false;
+    if (mahaImgUser && !__isOwnerReq) { try { const __tp = await require('./tier.js').resolveTier(mahaImgUser); __maxPlan4K = !!(__tp && __tp.tier === 'sub' && String(__tp.plan || '').toLowerCase() === 'max'); } catch (e) { __maxPlan4K = false; } }
+    const __want4K = __optWant4K || /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || '')) || __maxPlan4K;
     const imageConfig = { imageSize: __want4K ? '4K' : '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
     /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
