@@ -497,7 +497,9 @@ module.exports = async (req, res) => {
               const msg = String((d && d.error && d.error.message) || '').slice(0, 120);
               lastRescueErr = 'openai edit ' + m + ' ' + r.status + ' ' + msg;
               const modelUnavailable = (r.status === 400 || r.status === 404) && /model/i.test(msg);
-              if (modelUnavailable && i < editModels.length - 1) continue; // موديل غير متاح لهذا المفتاح — التالي بالقائمة
+              // v-safety-model-fallback: رفض نظام السلامة لموديل واحد لا يوقف تجربة الباقي — لكلّ موديل مصنِّف سلامة مستقلّ.
+              const safetyBlocked = r.status === 400 && /safety system|content policy|rejected by the safety/i.test(msg);
+              if ((modelUnavailable || safetyBlocked) && i < editModels.length - 1) continue; // التالي بالقائمة
               console.error('[maha-image] edit-rescue ' + lastRescueErr);
               return null;
             }
@@ -531,7 +533,10 @@ module.exports = async (req, res) => {
           lastRescueErr = 'openai gen ' + genModels[i] + ' status=' + r.status + ' ' + t1.slice(0, 120);
           // v-img-model-fallback: لو النموذج غير متاح لهذا المفتاح (400/404) نجرّب التالي بالقائمة بدل الفشل الصامت.
           const modelUnavailable = (r.status === 400 || r.status === 404) && /model/i.test(t1);
-          if (!modelUnavailable || i === genModels.length - 1) { console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
+          // v-safety-model-fallback: رفض نظام السلامة لموديل واحد لا يعني رفض البقيّة — لكلّ
+          // موديل مصنِّف سلامة مستقلّ (نفس منطق مسار التعديل أعلاه).
+          const safetyBlocked = r.status === 400 && /safety system|content policy|rejected by the safety/i.test(t1);
+          if (!(modelUnavailable || safetyBlocked) || i === genModels.length - 1) { console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
         }
         return null;
       } catch (e) { lastRescueErr = 'openai gen ' + (e && e.message); console.error('[maha-image] rescue error: ' + (e && e.message)); return null; }
