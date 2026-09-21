@@ -78,7 +78,7 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   assert.match(read('index.html'), /<div id="composerBox">[\s\S]*?id="btnSend"[\s\S]*?<\/div>\s*<!--/, 'الإرسال داخل الصندوق');
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
-  assert.ok(read('index.html').includes('css/redesign.css?v=680'), 'وسم كاش redesign رُفع');
+  assert.ok(read('index.html').includes('css/redesign.css?v=681'), 'وسم كاش redesign رُفع');
   assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
 });
 
@@ -165,4 +165,15 @@ test('v-foldable-composer: على التابلت/القابل للطيّ (mobile
   assert.match(redesign, /html\.mobile-ui #inputbar > #composerRow\{ margin-inline: var\(--fold-inset\) !important;/, 'توسيط الصندوق');
   assert.match(redesign, /html\.mobile-ui #inputbar > \.inputbar-tools-below\{ margin-inline-start: var\(--fold-inset\) !important; \}/, 'الأدوات تحت حافّة الصندوق');
   assert.match(redesign, /html\.mobile-ui #inputbar > #omBottomBar\{ margin-inline-end: var\(--fold-inset\) !important; \}/, 'المزوّد تحت حافّة الصندوق');
+});
+
+test('v-maha-in-tools: «مها» زرّ دائريّ صغير ضمن صفّ الأدوات (بدل الصندوق الطويل الممتدّ)', () => {
+  const js = read('js/app-10-features.js');
+  const redesign = read('css/redesign.css');
+  // نقل DOM: btnMahaDock يُلحق بـ.inputbar-tools-left مع صنف maha-in-tools
+  assert.match(js, /const __maha = document\.getElementById\('btnMahaDock'\);[\s\S]*?__toolsLeft\.appendChild\(__maha\); __maha\.classList\.add\('maha-in-tools'\);/, 'نقل مها إلى صفّ الأدوات');
+  // زرّ دائريّ صغير بلا امتداد ولا صندوق زجاجيّ
+  assert.match(redesign, /#inputbar > \.inputbar-tools-below #btnMahaDock\{[\s\S]*?width:24px !important; height:24px !important;[\s\S]*?background:none !important;[\s\S]*?border-radius:999px !important;/, 'مها دائريّة صغيرة بلا صندوق');
+  // الحرف يبقى بذهب الشعار
+  assert.match(redesign, /#inputbar > \.inputbar-tools-below #btnMahaDock \.mahaGlyph\{[\s\S]*?font-size:19px !important;/, 'حرف مها بحجم مناسب للصفّ');
 });
