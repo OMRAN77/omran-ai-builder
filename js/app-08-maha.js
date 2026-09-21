@@ -248,6 +248,16 @@ function mahaReadVoiceGender(){
   catch(e){ return 'female'; }
 }
 let mahaDetectedGender = mahaReadVoiceGender();
+// v-maha-voice-speed (طلب المالك «صوت مها بطيء سريع سريع جدًا» من الإعدادات › الصوت):
+// سرعة كلام مها في الوضعين (الفائق عبر تعليمة نبرة نصّية، والأساسيّ عبر معامل TTS
+// حقيقيّ في api/_lib/tts.js) — أربع درجات فقط، وأيّ قيمة أخرى/تالفة تسقط على "normal".
+const MAHA_VOICE_SPEEDS = ['slow', 'normal', 'fast', 'xfast'];
+function mahaReadVoiceSpeed(){
+  try{
+    const v = localStorage.getItem('aiapp_maha_voice_speed');
+    return MAHA_VOICE_SPEEDS.includes(v) ? v : 'normal';
+  }catch(e){ return 'normal'; }
+}
 // v-persona-pick: الأيقونة تعكس الشخصية المحفوظة من الإقلاع لا من أول مكالمة.
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } });
 else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } }, 0);
@@ -397,7 +407,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed() })
       });
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
@@ -470,7 +480,7 @@ async function mahaRecordUntilSilence(){
   const CLEAR_SPEECH = 0.03;       // كلام واضح يُحتسب فورًا حتى أثناء المعايرة
   let noiseFloor = 0;
   let silenceThreshold = 0.015;    // يعاد حسابها بعد المعايرة
-  const SILENCE_HOLD_MS = 1200;    // كانت 900م.ث — توقف طبيعي وسط الجملة كان يقصها
+  const SILENCE_HOLD_MS = 2000;    // كانت 1200م.ث (وقبلها 900) — سكتة تفكير طبيعية وسط الكلام كانت تُقطع بعد كلمتين فقط
   const MIN_TALK_MS = 600;         // كانت 1000م.ث — «نعم» و«هلا» القصيرة كانت تضيع
   const MAX_TURN_MS = 20000;       // hard safety cap per turn
   let lastLoudAt = Date.now();
@@ -1336,6 +1346,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       voiceGender: mahaReadVoiceGender(),
+      voiceSpeed: mahaReadVoiceSpeed(),
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -2030,8 +2041,33 @@ function mahaStartPointsMeter(budget){
   }catch(e){ __swallow(e, "points:app-08-maha#25"); }
 }
 
+// v-maha-hide-composer: تُخفي صندوق كتابة المحادثة الرئيسي أثناء مكالمة مها
+// العائمة (وتُظهره من جديد عند إنهائها) — مكالمة صوتية بحتة لا مكان فيها
+// لصندوق كتابة يبقى شغّالًا خلف شاشة المكالمة.
+let mahaComposerHidden = false;
+function mahaHideComposer(){
+  try{
+    const bar = document.getElementById('inputbar');
+    if(!bar || mahaComposerHidden) return;
+    mahaComposerHidden = true;
+    bar.dataset.mahaPrevDisplay = bar.style.display || '';
+    bar.style.display = 'none';
+  }catch(e){ __swallow(e, "ui:app-08-maha#composer-hide"); }
+}
+function mahaShowComposer(){
+  try{
+    if(!mahaComposerHidden) return;
+    mahaComposerHidden = false;
+    const bar = document.getElementById('inputbar');
+    if(!bar) return;
+    bar.style.display = bar.dataset.mahaPrevDisplay || '';
+    delete bar.dataset.mahaPrevDisplay;
+  }catch(e){ __swallow(e, "ui:app-08-maha#composer-show"); }
+}
+
 function mahaEndCall(){
   mahaCallActive = false;
+  mahaShowComposer();
   mahaStopPointsMeter();
   mahaLowMicStreak = 0;
   try{ mahaCameraOff(); }catch(e){ __swallow(e, "points:app-08-maha#26"); }
@@ -2133,6 +2169,11 @@ async function mahaStartCallInner(mode){
     mahaCallScreenEl.classList.toggle('maha-builder-mode', mahaCallMode === 'builder');
     if(typeof mahaPositionOnOpen === 'function') mahaPositionOnOpen();
   }
+  // v-maha-hide-composer (طلب عمران): مكالمة مها العائمة كانت تُفتح وصندوق
+  // كتابة المحادثة الرئيسي يبقى ظاهرًا وقابلًا للاستخدام خلفها — مكالمة
+  // صوتية بحتة لا تحتاج صندوق كتابة أصلًا. لا يمسّ وضع "الوكيل الصوتي" في
+  // تبويب الصوت (builder) لأنّه تبويب مستقل لا يتراكب مع الصندوق.
+  if(mahaCallMode !== 'builder') mahaHideComposer();
   // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
   // that fails for any reason do we fall back to the classic record ->
   // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.

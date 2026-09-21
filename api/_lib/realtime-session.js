@@ -155,6 +155,17 @@ module.exports = async (req, res) => {
     const mode = body.mode === 'builder' ? 'builder' : 'assistant';
     const voiceGender = body.voiceGender === 'male' ? 'male' : 'female';
     const isDesktop = body.desktop === true; // v607: يبقى مُستقبَلًا من العميل؛ لم يبقَ فرق في إعدادات الصوت (الجوّال والكمبيوتر سواء)
+    // v-maha-voice-speed (طلب المالك): لا معامل سرعة رقميّ موثَّق في audio.output لواجهة
+    // الفائق (Realtime) — إضافة حقل غير موثَّق قد يرفض الجلسة كليًّا فتنكسر مها بالكامل.
+    // البديل الآمن: تعليمة نصّية صريحة في instructions (تقنية معروفة تُغيّر إيقاع الأداء
+    // الصوتيّ فعليًا). "normal" لا يضيف شيئًا — سلوك الفائق الافتراضيّ يبقى حرفيًا كما كان.
+    const voiceSpeed = ['slow', 'fast', 'xfast'].includes(body.voiceSpeed) ? body.voiceSpeed : 'normal';
+    const VOICE_SPEED_INSTRUCTIONS = {
+      slow: ' SPEAKING PACE (highest priority, overrides any other pacing cue above): speak notably slower than a normal phone call - calm, unhurried, with clear brief pauses between phrases - while staying completely natural, never robotic.',
+      fast: ' SPEAKING PACE (highest priority, overrides any other pacing cue above): speak noticeably faster than a normal phone call - brisk and energetic - while staying clearly understandable, never rushed to the point of mumbling.',
+      xfast: ' SPEAKING PACE (highest priority, overrides any other pacing cue above): speak very fast, rapid-fire like a hyped radio host or auctioneer, almost no pauses between phrases - but every word must still be clearly understandable, never slurred.',
+    };
+    const voiceSpeedInstruction = VOICE_SPEED_INSTRUCTIONS[voiceSpeed] || '';
 
     const usage = await checkAndConsume(token, guestId, 'maha-realtime', clientIp(req));
     if (!usage.allowed) {
@@ -271,7 +282,8 @@ module.exports = async (req, res) => {
         instructions: (mode === 'builder'
           ? BUILDER_REALTIME_INSTRUCTIONS
           : (voiceGender === 'male' ? toMalePersona(MAHA_REALTIME_INSTRUCTIONS) : MAHA_REALTIME_INSTRUCTIONS))
-          + timeContext + memoryContext,
+          + timeContext + memoryContext
+          + (mode === 'builder' ? '' : voiceSpeedInstruction),
         audio: {
           output: (mode !== 'builder' && voiceGender === 'male')
             ? { voice: 'cedar' } /* v-maha-power: صوت رجالي أحدث وأطبع من echo */

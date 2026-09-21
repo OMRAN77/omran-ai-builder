@@ -29,7 +29,19 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { text, voice, gender, lang, token, guestId } = body;
+    const { text, voice, gender, lang, token, guestId, speed } = body;
+    // v-maha-voice-speed (طلب المالك): درجات سرعة كلام مها الأربع — تُترجَم إلى معامل
+    // native حقيقي لكل مزوّد (Azure SSML prosody rate% أو معامل speed الرقمي لـOpenAI
+    // TTS)، لا playbackRate على العميل (ذاك يغيّر طبقة الصوت أيضًا). قيمة غير معروفة/غائبة
+    // تسقط على "normal" (٪0 / 1.0) — نفس السلوك الافتراضي القديم بالضبط لكل مستدعٍ آخر
+    // لـ/api/tts (صانع الفيديو، الاستوديو، "استمع" في المحادثة) لا يرسل speed أصلًا.
+    const TTS_SPEED_MAP = {
+      slow: { azureRate: '-25%', openaiSpeed: 0.75 },
+      normal: { azureRate: '0%', openaiSpeed: 1 },
+      fast: { azureRate: '+25%', openaiSpeed: 1.25 },
+      xfast: { azureRate: '+50%', openaiSpeed: 1.5 },
+    };
+    const ttsSpeed = TTS_SPEED_MAP[speed] || TTS_SPEED_MAP.normal;
 
     if (!text) {
       res.status(400).json({ error: 'Missing text' });
@@ -98,7 +110,7 @@ module.exports = async (req, res) => {
         .replace(/'/g, '&apos;');
       const ssml = '<speak version="1.0" xml:lang="' + locale + '">' +
         '<voice name="' + voiceName + '">' +
-        '<prosody rate="0%" pitch="0%">' + escapeXml(String(text).slice(0, 4000)) + '</prosody>' +
+        '<prosody rate="' + ttsSpeed.azureRate + '" pitch="0%">' + escapeXml(String(text).slice(0, 4000)) + '</prosody>' +
         '</voice></speak>';
       const azResp = await fetch('https://' + azRegion + '.tts.speech.microsoft.com/cognitiveservices/v1', {
         method: 'POST',
@@ -120,7 +132,7 @@ module.exports = async (req, res) => {
             const fbResp = await fetch('https://api.openai.com/v1/audio/speech', {
               method: 'POST',
               headers: { 'Authorization': 'Bearer ' + fallbackKey, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'tts-1', voice: gender === 'male' ? 'onyx' : 'nova', input: String(text).slice(0, 4000) }),
+              body: JSON.stringify({ model: 'tts-1', voice: gender === 'male' ? 'onyx' : 'nova', input: String(text).slice(0, 4000), speed: ttsSpeed.openaiSpeed }),
             });
             if (fbResp.ok) {
               const fbBuffer = await fbResp.arrayBuffer();
@@ -158,6 +170,7 @@ module.exports = async (req, res) => {
         model: body.model === 'gpt-4o-mini-tts' ? 'gpt-4o-mini-tts' : 'tts-1',
         voice: voice || 'onyx',
         input: String(text).slice(0, 4000),
+        speed: ttsSpeed.openaiSpeed,
         ...(body.model === 'gpt-4o-mini-tts' && body.instructions
           ? { instructions: String(body.instructions).slice(0, 600) } : {}),
       }),
