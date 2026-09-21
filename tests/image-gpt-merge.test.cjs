@@ -3,6 +3,8 @@
 // ١٦ صورة مرجعيّة، لا صورة واحدة كما افترض v-merge-identity-lock (كان صحيحًا لـgpt-image-1 القديم وحده). خطّ
 // إنقاذ GPT في الخادم كان يُسقط صور الدمج (extras) صامتًا؛ ووضع «GPT/نانو الخام» بالعميل كان يرسل أوّل صورة
 // فقط (imageAttachments[0]) بلا extraImages إطلاقًا. هذا الاختبار يثبت أنّ الاثنين صارا يحملان كلّ الصور.
+// v-gpt-multi-merge-fix (٢١ سبتمبر ٢٠٢٦، لقطة المالك: «400 Duplicate parameter: 'image'»): الاختبار ١ عُدِّل
+// — حقل `image` مكرَّر بنفس الاسم يرفضه gpt-image-2.5-sunburst فعليًّا؛ الصيغة الصحيحة لعدّة ملفّات هي `image[]`.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,12 +16,14 @@ const mi = read('api/_lib/maha-image.js');
 const attach = read('js/app-09-attach.js');
 const bundle = read('js/app.bundle.js');
 
-test('١. الخادم: خطّ إنقاذ GPT يرسل صور الدمج (extras) لـgpt-image-2.5/2، لا gpt-image-1 القديم', () => {
-  const i = mi.indexOf("form.append('image', new Blob([bytes]");
-  assert.ok(i > 0, 'موضع نداء الصورة الأساسيّة موجود');
-  const block = mi.slice(i, i + 1200);
+test('١. الخادم: خطّ إنقاذ GPT يرسل صور الدمج (extras) لـgpt-image-2.5/2 بحقل image[]، لا gpt-image-1 القديم ولا image مكرَّرة', () => {
+  const i = mi.indexOf("const __imgField = (extras.length && m !== 'gpt-image-1')");
+  assert.ok(i > 0, 'حساب اسم الحقل موجود');
+  const block = mi.slice(i, i + 800);
+  assert.match(block, /const __imgField = \(extras\.length && m !== 'gpt-image-1'\) \? 'image\[\]' : 'image';/, 'الصورة الأساسيّة تستعمل image[] فقط حين توجد صور دمج، وimage مفردة غير ذلك');
+  assert.match(block, /form\.append\(__imgField, new Blob\(\[bytes\]/, 'الصورة الأساسيّة تُرفق بالحقل المحسوب');
   assert.match(block, /if \(extras\.length && m !== 'gpt-image-1'\) \{/, 'يستثني gpt-image-1 من الصور المتعدّدة');
-  assert.match(block, /for \(const x of extras\) form\.append\('image', new Blob\(\[Buffer\.from\(x\.data, 'base64'\)\]/, 'يرفق كلّ صورة إضافيّة بنفس حقل image');
+  assert.match(block, /for \(const x of extras\) form\.append\('image\[\]', new Blob\(\[Buffer\.from\(x\.data, 'base64'\)\]/, 'يرفق كلّ صورة إضافيّة بحقل image[] لا image مكرَّرة (كانت تسبّب 400 Duplicate parameter فعليًّا)');
 });
 
 test('٢. العميل: omModeRawImage يقبل مصفوفة صور ويبني extraImages من كلّ ما قبل الصورة الأخيرة', () => {
