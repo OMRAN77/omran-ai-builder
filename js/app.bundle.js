@@ -2548,7 +2548,7 @@ const I18N = {
     plStVideos: 'فيديو واحد', plProMsgs: '100 رسالة يوميًا', plProVoice: 'حتّى 61 دقيقة محادثة صوتية', plProMedia: 'حتّى 40 صورة · 2 فيديو', plProAgent: 'الوكيل الذكي',
     plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro · 250 رسالة يوميًا', plMaxVoice: 'حتّى 213 دقيقة محادثة صوتية', plMaxMedia: 'حتّى 150 صورة · 3 فيديو', plMaxSupport: 'دعم مخصّص',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
-    portraitStylePassport: '🫎 صورة جواز/هوية رسمية', portraitStyleRestore: '🔧 ترميم صورة قديمة', portraitStyleColorize: '🎨 تلوين أبيض وأسود', portraitStyleUpscale: '🔍 رفع الدقة والوضوح', portraitStyleObjectremove: '🧹 إزالة شخص أو عنصر', portraitStyleOutfit: '👕 تبديل الملابس', portraitStyleProductshot: '📦 تصوير منتج احترافي', portraitStyleHajj: '🕋 تهنئة حج وعمرة', portraitStyleBirthday: '🎂 إطار عيد ميلاد', portraitStyleNewborn: '👶 تهنئة مولود جديد', portraitStyleFigurine: '🧸 مجسّم أكشن في علبة', portraitStyleGhibli: '🍃 ستايل جيبلي', portraitStyleLego: '🧱 شخصية ليغو', portraitStyleStickerpack: '💬 ملصقات واتساب (٦ تعبيرات)', portraitStyleChibi: '🐣 شيبي لطيف', portraitStyleStatue: '🗿 تمثال رخامي', portraitStylePolaroid: '📸 بولارويد قديمة', portraitStyleCelebtoon: '🦸 شخصية كرتونية مفضلة', portraitStyleProfession: '👩‍⚕️ مهنة (طبيب · طيار · شرطي...)', portraitStyleSuperhero: '🦸‍♂️ بطل خارق بزي كامل', portraitStyleAstronaut: '🚀 رائد فضاء', portraitOutfitKandura: '👔 كندورة إماراتية + غترة', portraitOutfitAbaya: '🧕 عباية + شيلة', portraitOutfitThobe: '🧣 ثوب خليجي + شماغ', portraitOutfitSuit: '🧵 بدلة رسمية', portraitOutfitDress: '👗 فستان سهرة', portraitOutfitCasual: '🧥 كاجوال أنيق', portraitOutfitSport: '🎽️ ملابس رياضية', portraitOutfitWinter: '🧤 معطف شتوي', portraitProfDoctor: '👩‍⚕️ طبيب', portraitProfPilot: '🧑‍✈️ طيار', portraitProfPolice: '👮 شرطي', portraitProfChef: '🧑‍🍳 طبّاخ', portraitProfEngineer: '👷 مهندس موقع', portraitProfTeacher: '🧑‍🏫 معلم', portraitProfFirefighter: '🧑‍🚒 إطفائي', portraitProfScientist: '🧑‍🔬 عالم مختبر', portraitGrpTools: '🛠️ أدوات عملية', portraitGrpOccasions: '🎉 مناسبات', portraitGrpTrending: '🔥 رائجة', portraitGrpDressup: '🎭 تلبيس', portraitStyleClaymation: '🏺 صلصال متحرك (كلاي)', portraitStyleLowpoly: '🔷 ثلاثي الأبعاد هندسي (Low Poly)', portraitStyleGraffiti: '🎨 جرافيتي شوارع', portraitStyleMosaic: '🧩 فسيفساء', portraitStyleStainedglass: '🪟 زجاج معشّق', portraitStylePapercraft: '📄 فن الورق الطبقي', portraitStyleCrochet: '🧶 دمية كروشيه', portraitStyleInflatable: '🎈 مجسّم بالون لامع', portraitStyleUkiyoe: '🌊 طباعة يابانية قديمة', portraitStyleSandart: '🏜️ رسم بالرمل الخليجي', portraitStyleNeonsign: '💡 نيون مضيء', portraitStyleDoubleexposure: '🌆 تعريض مزدوج فني', portraitGrpNew: '🆕 ستايلات جديدة',
+    portraitStylePassport: '🫎 صورة جواز/هوية رسمية', portraitStyleRestore: '🔧 ترميم صورة قديمة', portraitStyleColorize: '🎨 تلوين أبيض وأسود', portraitStyleUpscale: '🔍 رفع الدقة والوضوح', portraitStyleObjectremove: '🧹 إزالة شخص أو عنصر', portraitStyleOutfit: '👕 تبديل الملابس', portraitStyleProductshot: '📦 تصوير منتج احترافي', portraitStyleHajj: '🕋 تهنئة حج وعمرة', portraitStyleBirthday: '🎂 إطار عيد ميلاد', portraitStyleNewborn: '👶 تهنئة مولود جديد', portraitStyleFigurine: '🧸 مجسّم أكشن في علبة', portraitStyleGhibli: '🍃 ستايل جيبلي', portraitStyleLego: '🧱 شخصية ليغو', portraitStyleStickerpack: '💬 ملصقات واتساب (٦ تعبيرات)', portraitStyleChibi: '🐣 شيبي لطيف', portraitStyleStatue: '🗿 تمثال رخامي', portraitStylePolaroid: '📸 بولارويد قديمة', portraitStyleCelebtoon: '🦸 شخصية كرتونية مفضلة', portraitStyleProfession: '👩‍⚕️ مهنة (طبيب · طيار · شرطي...)', portraitStyleSuperhero: '🦸‍♂️ بطل خارق بزي كامل', portraitStyleAstronaut: '🚀 رائد فضاء', portraitOutfitKandura: '👔 كندورة إماراتية + غترة', portraitOutfitAbaya: '🧕 عباية + شيلة', portraitOutfitThobe: '🧣 ثوب خليجي + شماغ', portraitOutfitSuit: '🧵 بدلة رسمية', portraitOutfitDress: '👗 فستان سهرة', portraitOutfitCasual: '🧥 كاجوال أنيق', portraitOutfitSport: '🎽️ ملابس رياضية', portraitOutfitWinter: '🧤 معطف شتوي', portraitProfDoctor: '👩‍⚕️ طبيب', portraitProfPilot: '🧑‍✈️ طيار', portraitProfPolice: '👮 شرطي', portraitProfChef: '🧑‍🍳 طبّاخ', portraitProfEngineer: '👷 مهندس موقع', portraitProfTeacher: '🧑‍🏫 معلم', portraitProfFirefighter: '🧑‍🚒 إطفائي', portraitProfScientist: '🧑‍🔬 عالم مختبر', portraitGrpTools: '🛠️ أدوات عملية', portraitGrpOccasions: '🎉 مناسبات', portraitGrpTrending: '🔥 رائجة', portraitGrpDressup: '🎭 تلبيس', portraitStyleClaymation: '🏺 صلصال متحرك (كلاي)', portraitStyleLowpoly: '🔷 ثلاثي الأبعاد هندسي (Low Poly)', portraitStyleGraffiti: '🎨 جرافيتي شوارع', portraitStyleMosaic: '🧩 فسيفساء', portraitStyleStainedglass: '🪟 زجاج معشّق', portraitStylePapercraft: '📄 فن الورق الطبقي', portraitStyleCrochet: '🧶 دمية كروشيه', portraitStyleInflatable: '🎈 مجسّم بالون لامع', portraitStyleUkiyoe: '🌊 طباعة يابانية قديمة', portraitStyleSandart: '🏜️ رسم بالرمل الخليجي', portraitStyleNeonsign: '💡 نيون مضيء', portraitStyleDoubleexposure: '🌆 تعريض مزدوج فني', portraitGrpNew: '🆕 ستايلات جديدة', portraitStyleSheikh: '👑 إطلالة شيخ أو شيخة', portraitStyleFalconry: '🦅 صيد بالصقر', portraitStyleArabianHorse: '🐎 فروسية عربية', portraitStyleSaudiHeritage: '🇸🇦 تراث سعودي', portraitStyleKuwaitiHeritage: '🇰🇼 تراث كويتي', portraitStyleOmaniHeritage: '🇴🇲 تراث عماني', portraitStyleQatariHeritage: '🇶🇦 تراث قطري', portraitStyleBahrainiHeritage: '🇧🇭 تراث بحريني', portraitStyleEyefix: '👀 تصحيح عين مغمضة', portraitStyleGlasses: '🕶️ إضافة أو إزالة نظارة', portraitStyleBokeh: '🌫️ ضبابية الخلفية فقط', portraitStyleHenna: '💍 ليلة حنّاء أو خطوبة', portraitStyleFirstday: '🎒 أول يوم دراسة', portraitStyleFlagday: '🇦🇪 يوم العلم الإماراتي', portraitStyleTarot: '🃏 بطاقة تاروت', portraitStyleStamp: '📮 طابع بريد قديم', portraitStyleMoviePoster: '🎬 بوستر فيلم أكشن', portraitStyleDiorama: '🏠 ديوراما مصغّرة', portraitStyleEmoji3d: '😊 إيموجي ثلاثي الأبعاد', portraitStyleY2k: '📼 ستايل Y2K', portraitStyleAlbumCover: '🎵 بوستر ألبوم غنائي',
     designAiPlaceFromPhoto: '📷 من صورتي', designAiPlaceRestaurant: '🍽️ مطعم', designAiPlaceCafe: '☕ كافيه', designAiPlaceBedroom: '🛏️ غرفة نوم', designAiPlaceMajlis: '🪑 مجلس', designAiPlaceLiving: '🛋️ صالة', designAiPlaceKitchen: '🍳 مطبخ', designAiPlaceOffice: '💼 مكتب', designAiPlaceShop: '🛍️ محل', designAiPlaceBath: '🛁 حمام', designAiPlaceKids: '🧸 غرفة أطفال', designAiPlaceEntrance: '🚪 مدخل', designAiPlaceGarden: '🌳 حديقة', designAiStyleNajdi: '🏜️ نجدي', designAiStyleIslamic: '✳️ إسلامي معاصر', designAiStyleAndalusi: '🏛️ أندلسي', fashionAiOccasionGraduation: '🎓 تخرج', fashionAiOccasionReligious: '🕌 مناسبة دينية', fashionAiSeasonAutumn: '🍂 خريفي', fashionAiSeasonSpring: '🌸 ربيعي',
     constructionTypeRest: '🌴 استراحة', constructionTypeFarm: '🌾 مزرعة', constructionTypeAnnexhome: '🏘️ ملحق سكني', constructionTypeMall: '🛍️ مجمّع تجاري', constructionTypeSchool: '🏫 مدرسة', constructionTypeHall: '💒 صالة أفراح', constructionEmirateNone: '— بدون —', constructionEmirateDubai: 'دبي', constructionEmirateAbudhabi: 'أبوظبي', constructionEmirateSharjah: 'الشارقة', constructionEmirateAjman: 'عجمان', constructionEmirateUmmalquwain: 'أم القيوين', constructionEmirateRasalkhaimah: 'رأس الخيمة', constructionEmirateFujairah: 'الفجيرة', constructionStyleAndalusi: '🕌 أندلسي', constructionStyleIslamic: '🌙 إسلامي معاصر', constructionStyleMediterranean: '🏖️ متوسطي', constructionStyleNajdi: '🏜️ نجدي', constructionStyleNeoclassic: '🏛️ نيو كلاسيك', constructionRoomOffice: '🧑‍💻 مكتب منزلي', constructionRoomKids: '🧸 غرفة أطفال', constructionRoomStairs: '🪜 الدرج والمدخل', constructionRoomRoof: '🌇 السطح', constructionGrpResidential: '🏠 سكني', constructionGrpCommercial: '🏢 تجاري وإداري', constructionGrpPublic: '🕌 عام وخدمي',
     ncNewChatLabel: 'محادثة جديدة ✨',
@@ -3113,12 +3113,24 @@ const I18N = {
     religionDisclaimer: '⚠️ هذا اجتهاد ذكاء اصطناعي وليس فتوى شرعية أو حكمًا قطعيًا، يُرجى الرجوع لأهل العلم والمختصين.',
     religionTabVerse: '🕌 تفسير آية',
     religionTabHadith: '📖 بحث حديث',
+    religionTabBible: '✝️ آية كتاب مقدس',
+    religionTabTorah: '✡️ آية توراتية',
+    religionTabBuddhism: '🕉️ تعليم بوذي',
+    religionTabHinduism: '🙏 حكمة هندوسية',
     religionTabDream: '🌙 تفسير الأحلام',
     religionInputLabelVerse: 'اكتب الآية أو رقمها (مثال: البقرة 255)',
     religionInputLabelHadith: 'اكتب نص الحديث أو موضوعه',
+    religionInputLabelBible: 'اكتب الآية من الكتاب المقدس أو موضوعها',
+    religionInputLabelTorah: 'اكتب الآية من التوراة أو موضوعها',
+    religionInputLabelBuddhism: 'اكتب موضوعًا بوذيًا أو سؤالًا',
+    religionInputLabelHinduism: 'اكتب موضوعًا هندوسيًا أو سؤالًا',
     religionInputLabelDream: 'اكتب وصف حلمك بالتفصيل',
     religionInputPlaceholderVerse: 'مثال: سورة البقرة آية 255 (آية الكرسي)',
     religionInputPlaceholderHadith: 'مثال: حديث الأعمال بالنيات، أو اكتب موضوعًا مثل بر الوالدين',
+    religionInputPlaceholderBible: 'مثال: إنجيل متى 5:7 (الطوبى) أو الحب',
+    religionInputPlaceholderTorah: 'مثال: التكوين 1:1 أو الشريعة',
+    religionInputPlaceholderBuddhism: 'مثال: التنوير، الكارما، الحكمة',
+    religionInputPlaceholderHinduism: 'مثال: الدارما، الكارما، الإله براهمان',
     religionInputPlaceholderDream: 'مثال: حلمت أني أطير فوق البحر وأرى قمرًا كبيرًا...',
     religionGenerateBtn: '✨ فسّر',
     religionNeedInput: '⚠️ الرجاء كتابة نص أولًا.',
@@ -3529,7 +3541,7 @@ const I18N = {
     plProVoice: 'Up to 61 minutes of voice chat', plProMedia: 'Up to 40 images · 2 videos', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
     plMaxAllPro: 'Everything in Pro · 250 messages a day', plMaxVoice: 'Up to 213 minutes of voice chat', plMaxMedia: 'Up to 150 images · 3 videos', plMaxSupport: 'Dedicated support',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
-    portraitStylePassport: '🫎 Passport/ID photo', portraitStyleRestore: '🔧 Restore old photo', portraitStyleColorize: '🎨 Colorize B&W', portraitStyleUpscale: '🔍 Upscale', portraitStyleObjectremove: '🧹 Remove person or object', portraitStyleOutfit: '👕 Change outfit', portraitStyleProductshot: '📦 Pro product shot', portraitStyleHajj: '🕋 Hajj & Umrah greeting', portraitStyleBirthday: '🎂 Birthday frame', portraitStyleNewborn: '👶 Newborn greeting', portraitStyleFigurine: '🧸 Boxed action figure', portraitStyleGhibli: '🍃 Ghibli style', portraitStyleLego: '🧱 LEGO character', portraitStyleStickerpack: '💬 WhatsApp stickers (6 emotions)', portraitStyleChibi: '🐣 Cute Chibi', portraitStyleStatue: '🗿 Marble statue', portraitStylePolaroid: '📸 Vintage Polaroid', portraitStyleCelebtoon: '🦸 Favorite cartoon character', portraitStyleProfession: '👩‍⚕️ Profession (doctor, pilot, police...)', portraitStyleSuperhero: '🦸‍♂️ Superhero full costume', portraitStyleAstronaut: '🚀 Astronaut', portraitOutfitKandura: '👔 Emirati Kandura + Ghutra', portraitOutfitAbaya: '🧕 Abaya + Shayla', portraitOutfitThobe: '🧣 Gulf Thobe + Shemagh', portraitOutfitSuit: '🧵 Formal suit', portraitOutfitDress: '👗 Evening dress', portraitOutfitCasual: '🧥 Smart casual', portraitOutfitSport: '🎽️ Sportswear', portraitOutfitWinter: '🧤 Winter coat', portraitProfDoctor: '👩‍⚕️ Doctor', portraitProfPilot: '🧑‍✈️ Pilot', portraitProfPolice: '👮 Police officer', portraitProfChef: '🧑‍🍳 Chef', portraitProfEngineer: '👷 Site engineer', portraitProfTeacher: '🧑‍🏫 Teacher', portraitProfFirefighter: '🧑‍🚒 Firefighter', portraitProfScientist: '🧑‍🔬 Lab scientist', portraitGrpTools: '🛠️ Practical tools', portraitGrpOccasions: '🎉 Occasions', portraitGrpTrending: '🔥 Trending', portraitGrpDressup: '🎭 Dress up', portraitStyleClaymation: '🏺 Claymation', portraitStyleLowpoly: '🔷 Low-poly 3D', portraitStyleGraffiti: '🎨 Street graffiti', portraitStyleMosaic: '🧩 Mosaic', portraitStyleStainedglass: '🪟 Stained glass', portraitStylePapercraft: '📄 Layered paper art', portraitStyleCrochet: '🧶 Crochet doll', portraitStyleInflatable: '🎈 Glossy 3D balloon', portraitStyleUkiyoe: '🌊 Japanese Ukiyo-e', portraitStyleSandart: '🏜️ Gulf sand art', portraitStyleNeonsign: '💡 Neon sign', portraitStyleDoubleexposure: '🌆 Double exposure', portraitGrpNew: '🆕 New styles',
+    portraitStylePassport: '🫎 Passport/ID photo', portraitStyleRestore: '🔧 Restore old photo', portraitStyleColorize: '🎨 Colorize B&W', portraitStyleUpscale: '🔍 Upscale', portraitStyleObjectremove: '🧹 Remove person or object', portraitStyleOutfit: '👕 Change outfit', portraitStyleProductshot: '📦 Pro product shot', portraitStyleHajj: '🕋 Hajj & Umrah greeting', portraitStyleBirthday: '🎂 Birthday frame', portraitStyleNewborn: '👶 Newborn greeting', portraitStyleFigurine: '🧸 Boxed action figure', portraitStyleGhibli: '🍃 Ghibli style', portraitStyleLego: '🧱 LEGO character', portraitStyleStickerpack: '💬 WhatsApp stickers (6 emotions)', portraitStyleChibi: '🐣 Cute Chibi', portraitStyleStatue: '🗿 Marble statue', portraitStylePolaroid: '📸 Vintage Polaroid', portraitStyleCelebtoon: '🦸 Favorite cartoon character', portraitStyleProfession: '👩‍⚕️ Profession (doctor, pilot, police...)', portraitStyleSuperhero: '🦸‍♂️ Superhero full costume', portraitStyleAstronaut: '🚀 Astronaut', portraitOutfitKandura: '👔 Emirati Kandura + Ghutra', portraitOutfitAbaya: '🧕 Abaya + Shayla', portraitOutfitThobe: '🧣 Gulf Thobe + Shemagh', portraitOutfitSuit: '🧵 Formal suit', portraitOutfitDress: '👗 Evening dress', portraitOutfitCasual: '🧥 Smart casual', portraitOutfitSport: '🎽️ Sportswear', portraitOutfitWinter: '🧤 Winter coat', portraitProfDoctor: '👩‍⚕️ Doctor', portraitProfPilot: '🧑‍✈️ Pilot', portraitProfPolice: '👮 Police officer', portraitProfChef: '🧑‍🍳 Chef', portraitProfEngineer: '👷 Site engineer', portraitProfTeacher: '🧑‍🏫 Teacher', portraitProfFirefighter: '🧑‍🚒 Firefighter', portraitProfScientist: '🧑‍🔬 Lab scientist', portraitGrpTools: '🛠️ Practical tools', portraitGrpOccasions: '🎉 Occasions', portraitGrpTrending: '🔥 Trending', portraitGrpDressup: '🎭 Dress up', portraitStyleClaymation: '🏺 Claymation', portraitStyleLowpoly: '🔷 Low-poly 3D', portraitStyleGraffiti: '🎨 Street graffiti', portraitStyleMosaic: '🧩 Mosaic', portraitStyleStainedglass: '🪟 Stained glass', portraitStylePapercraft: '📄 Layered paper art', portraitStyleCrochet: '🧶 Crochet doll', portraitStyleInflatable: '🎈 Glossy 3D balloon', portraitStyleUkiyoe: '🌊 Japanese Ukiyo-e', portraitStyleSandart: '🏜️ Gulf sand art', portraitStyleNeonsign: '💡 Neon sign', portraitStyleDoubleexposure: '🌆 Double exposure', portraitGrpNew: '🆕 New styles', portraitStyleSheikh: '👑 Sheikh/Sheikha Look', portraitStyleFalconry: '🦅 Falconry Portrait', portraitStyleArabianHorse: '🐎 Arabian Horse Equestrian', portraitStyleSaudiHeritage: '🇸🇦 Saudi Heritage Style', portraitStyleKuwaitiHeritage: '🇰🇼 Kuwaiti Heritage Style', portraitStyleOmaniHeritage: '🇴🇲 Omani Heritage Style', portraitStyleQatariHeritage: '🇶🇦 Qatari Heritage Style', portraitStyleBahrainiHeritage: '🇧🇭 Bahraini Heritage Style', portraitStyleEyefix: '👀 Fix Closed Eyes', portraitStyleGlasses: '🕶️ Add/Remove Glasses', portraitStyleBokeh: '🌫️ Background Blur Only', portraitStyleHenna: '💍 Henna Night / Engagement', portraitStyleFirstday: '🎒 First Day of School', portraitStyleFlagday: '🇦🇪 UAE Flag Day', portraitStyleTarot: '🃏 Tarot Card Portrait', portraitStyleStamp: '📮 Vintage Postage Stamp', portraitStyleMoviePoster: '🎬 Action Movie Poster', portraitStyleDiorama: '🏠 Miniature Diorama', portraitStyleEmoji3d: '😊 3D Emoji Style', portraitStyleY2k: '📼 Y2K Aesthetic', portraitStyleAlbumCover: '🎵 Music Album Cover',
     designAiPlaceFromPhoto: '📷 From my photo', designAiPlaceRestaurant: '🍽️ Restaurant', designAiPlaceCafe: '☕ Cafe', designAiPlaceBedroom: '🛏️ Bedroom', designAiPlaceMajlis: '🪑 Majlis', designAiPlaceLiving: '🛋️ Living room', designAiPlaceKitchen: '🍳 Kitchen', designAiPlaceOffice: '💼 Office', designAiPlaceShop: '🛍️ Shop', designAiPlaceBath: '🛁 Bathroom', designAiPlaceKids: '🧸 Kids room', designAiPlaceEntrance: '🚪 Entrance', designAiPlaceGarden: '🌳 Garden', designAiStyleNajdi: '🏜️ Najdi', designAiStyleIslamic: '✳️ Contemporary Islamic', designAiStyleAndalusi: '🏛️ Andalusian', fashionAiOccasionGraduation: '🎓 Graduation', fashionAiOccasionReligious: '🕌 Religious occasion', fashionAiSeasonAutumn: '🍂 Autumn', fashionAiSeasonSpring: '🌸 Spring',
     constructionTypeRest: '🌴 Rest house', constructionTypeFarm: '🌾 Farm', constructionTypeAnnexhome: '🏘️ Residential annex', constructionTypeMall: '🛍️ Shopping mall', constructionTypeSchool: '🏫 School', constructionTypeHall: '💒 Wedding hall', constructionEmirateNone: '— None —', constructionEmirateDubai: 'Dubai', constructionEmirateAbudhabi: 'Abu Dhabi', constructionEmirateSharjah: 'Sharjah', constructionEmirateAjman: 'Ajman', constructionEmirateUmmalquwain: 'Umm Al Quwain', constructionEmirateRasalkhaimah: 'Ras Al Khaimah', constructionEmirateFujairah: 'Fujairah', constructionStyleAndalusi: '🕌 Andalusian', constructionStyleIslamic: '🌙 Contemporary Islamic', constructionStyleMediterranean: '🏖️ Mediterranean', constructionStyleNajdi: '🏜️ Najdi', constructionStyleNeoclassic: '🏛️ Neoclassic', constructionRoomOffice: '🧑‍💻 Home office', constructionRoomKids: '🧸 Kids room', constructionRoomStairs: '🪜 Stairs & entrance', constructionRoomRoof: '🌇 Rooftop', constructionGrpResidential: '🏠 Residential', constructionGrpCommercial: '🏢 Commercial & office', constructionGrpPublic: '🕌 Public & services',
     ncNewChatLabel: 'New chat ✨',
@@ -4306,12 +4318,24 @@ const I18N = {
     religionDisclaimer: '⚠️ This is an AI interpretation, not an official religious ruling. Please consult qualified scholars/experts.',
     religionTabVerse: '🕌 Verse Tafsir',
     religionTabHadith: '📖 Hadith Lookup',
+    religionTabBible: '✝️ Bible Verse',
+    religionTabTorah: '✡️ Torah Verse',
+    religionTabBuddhism: '🕉️ Buddhist Teaching',
+    religionTabHinduism: '🙏 Hindu Wisdom',
     religionTabDream: '🌙 Dream Interpretation',
     religionInputLabelVerse: 'Type the verse or its number (e.g. Al-Baqarah 255)',
     religionInputLabelHadith: 'Type the hadith text or its topic',
+    religionInputLabelBible: 'Type a Bible verse or its topic',
+    religionInputLabelTorah: 'Type a Torah verse or its topic',
+    religionInputLabelBuddhism: 'Type a Buddhist topic or question',
+    religionInputLabelHinduism: 'Type a Hindu topic or question',
     religionInputLabelDream: 'Describe your dream in detail',
     religionInputPlaceholderVerse: 'e.g. Surah Al-Baqarah verse 255 (Ayat al-Kursi)',
     religionInputPlaceholderHadith: 'e.g. hadith of intentions, or a topic like honoring parents',
+    religionInputPlaceholderBible: 'e.g. Matthew 5:7 (Beatitudes) or love',
+    religionInputPlaceholderTorah: 'e.g. Genesis 1:1 or the Law',
+    religionInputPlaceholderBuddhism: 'e.g. enlightenment, karma, wisdom',
+    religionInputPlaceholderHinduism: 'e.g. dharma, karma, Brahman',
     religionInputPlaceholderDream: 'e.g. I dreamed I was flying over the sea and saw a big moon...',
     religionGenerateBtn: '✨ Interpret',
     religionNeedInput: '⚠️ Please write some text first.',
@@ -24718,36 +24742,6 @@ async function __safeJson(res){
     });
   };
 
-  let extraImagesB64 = [];
-  const multiWrap = $('#portraitMultiWrap');
-  const multiFileInput = $('#portraitMultiFileInput');
-  const multiFileBtn = $('#portraitMultiFileBtn');
-  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
-  const multiLabel = $('#portraitMultiLabel');
-  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
-  if(multiFileInput){
-    multiFileInput.onchange = () => {
-      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
-      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
-      extraImagesB64 = [];
-      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = String(reader.result || '');
-          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
-          if(multiPreviewWrap){
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
-            multiPreviewWrap.appendChild(img);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    };
-  }
-
   let variantSrc = null;
   /* v-decor-ideas: أفكار بلا صورة — رقائق لأنواع الأماكن + سطر حرّ «اكتب ما تريد» */
   const ideaChips = document.getElementById('designAiIdeaChips');
@@ -25053,25 +25047,41 @@ async function __safeJson(res){
   const baBeforeClip = $('#designBABeforeClip');
   const baBefore = $('#designBABefore');
   const baLine = $('#designBALine');
-  const baRange = $('#designBARange');
-  function baHide(){ if(baWrap) baWrap.style.display = 'none'; if(baRange) baRange.style.display = 'none'; }
+  /* v-compare-drag-all (طلب المالك ٢١ سبتمبر: «غيّرها» — نفس تحسين سحب أنماط الصور على بقيّة الأدوات):
+     baSet(p) كانت تُقاد من <input type=range id=designBARange> مخفيّ (v-no-slider ٤ سبتمبر) فبلا وسيلة
+     تفاعل. السحب صار مباشرة على baWrap نفسه بمقبض دائريّ فوق الخطّ الفاصل — baSet نفسها لم تتغيّر. */
+  function baHide(){ if(baWrap) baWrap.style.display = 'none'; }
   function baSize(){ if(baWrap && baBefore) baBefore.style.width = baWrap.getBoundingClientRect().width + 'px'; }
   function baSet(p){
     if(baBeforeClip) baBeforeClip.style.width = p + '%';
     if(baLine) baLine.style.left = p + '%';
     baSize();
   }
-  if(baRange) baRange.oninput = function(){ baSet(baRange.value); };
+  let __baDragging = false;
+  function baPctFromEvent(ev){
+    const rect = baWrap.getBoundingClientRect();
+    if(!rect.width) return 0;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
+  }
+  if(baWrap){
+    baWrap.style.touchAction = 'none';
+    baWrap.style.cursor = 'ew-resize';
+    baWrap.addEventListener('pointerdown', (ev) => {
+      __baDragging = true;
+      try{ baWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      baSet(baPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    baWrap.addEventListener('pointermove', (ev) => { if(__baDragging) baSet(baPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => baWrap.addEventListener(evt, () => { __baDragging = false; }));
+  }
   window.addEventListener('resize', function(){ if(baWrap && baWrap.style.display !== 'none') baSize(); });
   function showBeforeAfter(beforeUrl, afterUrl){
-    /* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): لا شريط مقارنة — الناتج وحده */
     if(!baWrap || !baAfter || !baBefore) return false;
     baAfter.src = afterUrl;
     baBefore.src = beforeUrl;
     baAfter.onload = baSize;
     baWrap.style.display = 'block';
-    baRange.style.display = 'none';
-    baRange.value = 0;
     baSet(0);
     return true;
   }
@@ -25225,7 +25235,7 @@ const STU_XL = {
   'منمنمات إسلامية مذهّبة': {en:'Gilded Islamic Miniatures',fr:'Miniatures Islamiques Dorées',hi:'सोने का इस्लामिक लघुचित्र',bn:'সোনালি ইসলামিক মিনিয়েচার',ne:'सुनको इस्लामिक मिनिएचर',id:'Miniatur Islam Berlapis Emas',fil:'Gilded Islamic Miniatures',tr:'Altın Kaplı İslami Minyatürler',zh:'镀金伊斯兰微型画',ru:'Позолоченные исламские миниатюры',es:'Miniaturas Islámicas Doradas',ml:'സ്വർണ്ണപ്പതിത ഇസ്ലാമിക് ചെറുകലാ'},
   'بوستر شخصية لعبة': {en:'Game Character Poster',fr:'Affiche Personnage de Jeu',hi:'गेम चरित्र पोस्टर',bn:'গেম চরিত্র পোস্টার',ne:'गेम क्यारेक्टर पोस्टर',id:'Poster Karakter Game',fil:'Game Character Poster',tr:'Oyun Karakteri Posteri',zh:'游戏角色海报',ru:'Постер персонажа игры',es:'Póster del Personaje del Juego',ml:'ഗെയിം കഥാപാത്ര പോസ്റ്റർ'},
   'كاريكاتير صحفي قديم': {en:'Vintage Newspaper Caricature',fr:'Caricature de Journal Vintage',hi:'विंटेज अखबार कारिकेचर',bn:'ভিন্টেজ সংবাদপত্র ক্যারিকেচার',ne:'भिन्टेज पत्र क्यारिकेचर',id:'Karikatur Koran Vintage',fil:'Vintage Newspaper Caricature',tr:'Vintage Gazete Karikatürü',zh:'复古报纸漫画',ru:'Винтажная газетная карикатура',es:'Caricatura de Periódico Vintage',ml:'വിന്റേജ് സമാചാരപ്പത്ര കാരിക്കേച്ചർ'},
-  'أجواء رعب هالوين': {en:'Halloween Horror Vibes',fr:'Ambiance Horreur Halloween',hi:'हैलोवीन恐ब्भ वातावरण',bn:'হ্যালোইন ভয় পরিবেশ',ne:'हेलोइन भय वातावरण',id:'Vibes Horor Halloween',fil:'Halloween Horror Vibes',tr:'Cadılar Bayramı Korku Atmosferi',zh:'万圣节恐怖氛围',ru:'Хэллоуинские ужасные вибрации',es:'Vibraciones de Terror de Halloween',ml:'ഹാലോവീൻ ഭയാനകമായ വൈബ്സ്'},
+  'أجواء رعب هالوين': {en:'Halloween Horror Vibes',fr:'Ambiance Horreur Halloween',hi:'डरावना हैलोवीन वातावरण',bn:'হ্যালোইন ভয় পরিবেশ',ne:'हेलोइन भय वातावरण',id:'Vibes Horor Halloween',fil:'Halloween Horror Vibes',tr:'Cadılar Bayramı Korku Atmosferi',zh:'万圣节恐怖氛围',ru:'Хэллоуинские ужасные вибрации',es:'Vibraciones de Terror de Halloween',ml:'ഹാലോവീൻ ഭയാനകമായ വൈബ്സ്'},
   'أنمي حركة ياباني': {en:'Japanese Action Anime',fr:'Anime d\'Action Japonais',hi:'जापानी एक्शन एनिमे',bn:'জাপানি অ্যাকশন এনিমে',ne:'जापानी कार्य एनिमे',id:'Anime Aksi Jepang',fil:'Japanese Action Anime',tr:'Japon Aksiyon Animesi',zh:'日本动作动画',ru:'Японское боевое аниме',es:'Anime de Acción Japonés',ml:'ജാപ്പനീസ് നടപടി എനിമെ'},
   'لوحة ملكية كلاسيكية': {en:'Classical Royal Painting',fr:'Peinture Royale Classique',hi:'शास्त्रीय शाही चित्र',bn:'ক্লাসিক্যাল রাজকীয় চিত্র',ne:'शास्त्रीय शाही पेंटिंग',id:'Lukisan Kerajaan Klasik',fil:'Classical Royal Painting',tr:'Klasik Kraliyet Resmi',zh:'古典皇家绘画',ru:'Классическая королевская живопись',es:'Pintura Real Clásica',ml:'ക്ലാസ്സിക്കൽ രാജകീയ പെയിന്റിംഗ്'},
   'زخرفة بالخط العربي': {en:'Arabic Calligraphy Art',fr:'Art de la Calligraphie Arabe',hi:'अरबी सुलेख कला',bn:'আরবি ক্যালিগ্রাফি শিল্প',ne:'अरबी क्यालिग्राफी कला',id:'Seni Kaligrafi Arab',fil:'Arabic Calligraphy Art',tr:'Arap Hat Sanatı',zh:'阿拉伯书法艺术',ru:'Арабское каллиграфическое искусство',es:'Arte de Caligrafía Árabe',ml:'അറബിക് കാലിഗ്രാഫി ആർട്ട്'},
@@ -25257,7 +25267,7 @@ const STU_XL = {
   'تذكار مولود جديد': {en:'Newborn Keepsake',fr:'Souvenir de Nouveau-Né',hi:'नवजात स्मृति',bn:'নবজাত স্মৃতিচিহ্ন',ne:'नवजात स्मरक',id:'Kenang-kenangan Bayi Baru',fil:'Newborn Keepsake',tr:'Yeni Doğan Hatırası',zh:'新生儿纪念品',ru:'Памятка новорожденного',es:'Recuerdo de Recién Nacido',ml:'നവജാത കിതാബ്'},
   'شخصية صلصال لطيفة': {en:'Cute Clay Character',fr:'Personnage d\'Argile Mignon',hi:'प्यारा मिट्टी चरित्र',bn:'সুন্দর মাটির চরিত্র',ne:'प्यारा माटो क्यारेक्टर',id:'Karakter Tanah Liat Lucu',fil:'Cute Clay Character',tr:'Sevimli Kil Karakteri',zh:'可爱粘土角色',ru:'Милый персонаж из глины',es:'Personaje de Arcilla Bonito',ml:'സുന്ദരമായ കളിമണ്ണ് പാത്രം'},
   'تصميم هندسي حديث': {en:'Modern Geometric Design',fr:'Conception Géométrique Moderne',hi:'आधुनिक ज्यामितीय डिजाइन',bn:'আধুনিক জ্যামিতিক ডিজাইন',ne:'आधुनिक ज्यामितीय डिजाइन',id:'Desain Geometris Modern',fil:'Modern Geometric Design',tr:'Modern Geometrik Tasarım',zh:'现代几何设计',ru:'Современный геометрический дизайн',es:'Diseño Geométrico Moderno',ml:'ആധുനിക ജ്യാമിതീയ ഡിസൈൻ'},
-  'জরাফিতি শারে جريء': {en:'Bold Street Graffiti',fr:'Graffiti de Rue Audacieux',hi:'साहसी सड़क ग्राफिटी',bn:'সাহসী রাস্তা গ্রাফিটি',ne:'साहसी सड़क ग्राफिटी',id:'Graffiti Jalan Berani',fil:'Bold Street Graffiti',tr:'Cesur Sokak Grafitisi',zh:'大胆街头涂鸦',ru:'Смелое уличное граффити',es:'Graffiti Callejero Audaz',ml:'ധാരസാധ്യ തെരുവ് ഗ്രാഫിറ്റി'},
+  'جرافيتي شارع جريء': {en:'Bold Street Graffiti',fr:'Graffiti de Rue Audacieux',hi:'साहसी सड़क ग्राफिटी',bn:'সাহসী রাস্তা গ্রাফিটি',ne:'साहसी सड़क ग्राफिटी',id:'Graffiti Jalan Berani',fil:'Bold Street Graffiti',tr:'Cesur Sokak Grafitisi',zh:'大胆街头涂鸦',ru:'Смелое уличное граффити',es:'Graffiti Callejero Audaz',ml:'ധാരസാധ്യ തെരുവ് ഗ്രാഫിറ്റി'},
   'فسيفساء فنية': {en:'Artistic Mosaic',fr:'Mosaïque Artistique',hi:'कलात्मक मोज़ेक',bn:'শিল্পকলা মোজাইক',ne:'कलात्मक मोजैक',id:'Mosaik Artistik',fil:'Artistic Mosaic',tr:'Sanatsal Mozaik',zh:'艺术马赛克',ru:'Художественная мозаика',es:'Mosaico Artístico',ml:'കലാത്മക മോസൈക്ക്'},
   'زجاج معشّق ملوّن': {en:'Colored Stained Glass',fr:'Vitrail Coloré',hi:'रंगीन सना हुआ ग्लास',bn:'রঙিন দাগযুক্ত গ্লাস',ne:'रङ्गीन दाग गरिएको गिलास',id:'Kaca Patri Berwarna',fil:'Colored Stained Glass',tr:'Renkli Vitray Cam',zh:'彩色彩玻璃',ru:'Разноцветное витражное стекло',es:'Vidrio Teñido de Color',ml:'വർണ്ണിത ദാഗ് ഗ്ലാസ്'},
   'فن الورق المقصوص': {en:'Paper Cut Art',fr:'Art du Découpage de Papier',hi:'कागज कला कला',bn:'কাগজ কাটা শিল্প',ne:'कागज काट कला',id:'Seni Potong Kertas',fil:'Paper Cut Art',tr:'Kağıt Kesme Sanatı',zh:'纸艺术',ru:'Искусство вырезания из бумаги',es:'Arte de Corte de Papel',ml:'പേപ്പർ കട് ആർട്ട്'},
@@ -25278,6 +25288,28 @@ const STU_XL = {
   'مهنة: طبيب، طيار، شرطي…': {en:'Profession: Doctor, Pilot, Police...',fr:'Profession: Médecin, Pilote, Police...',hi:'पेशा: डॉक्टर, पायलट, पुलिस...',bn:'পেশা: ডাক্তার, পাইলট, পুলিশ...',ne:'पेशा: डाक्टर, पायलट, पुलिस...',id:'Profesi: Dokter, Pilot, Polisi...',fil:'Profession: Doctor, Pilot, Police...',tr:'Meslek: Doktor, Pilot, Polis...',zh:'职业：医生、飞行员、警察...',ru:'Профессия: Врач, Пилот, Полицейский...',es:'Profesión: Doctor, Piloto, Policía...',ml:'പ്രൊഫഷൻ: ഡോക്ടർ, പൈലറ്റ്, പോലീസ്...'},
   'بطل خارق بزي كامل': {en:'Superhero in Full Costume',fr:'Superhéros en Costume Complet',hi:'पूर्ण पोशाक में सुपरहीरो',bn:'সম্পূর্ণ পোশাকে সুপারহিরো',ne:'पूर्ण पोशाक मा सुपरहीरो',id:'Superhero dalam Kostum Lengkap',fil:'Superhero in Full Costume',tr:'Tam Kostümlü Süper Kahraman',zh:'全装扮超级英雄',ru:'Супергерой в полном костюме',es:'Superhéroe en Traje Completo',ml:'പൂർണ്ണ കോസ്റ്റ്യൂമിൽ സുപ്പർഹീറോ'},
   'رائد فضاء': {en:'Astronaut',fr:'Astronaute',hi:'अंतरिक्ष यात्री',bn:'মহাকাশচারী',ne:'अंतरिक्ष यात्री',id:'Astronot',fil:'Astronaut',tr:'Uzay Astronotu',zh:'宇航员',ru:'Космонавт',es:'Astronauta',ml:'ബഹിരാകാശ യാത്രികൻ'},
+  /* v-pstyle-batch-2: ٢١ ستايلًا جديدًا (٢١ سبتمبر ٢٠٢٦) */
+  'بطاقة تاروت': {en:'Tarot Card Portrait',fr:'Portrait Carte de Tarot',hi:'टैरो कार्ड पोर्ट्रेट',bn:'ট্যারো কার্ড প্রতিকৃতি',ne:'ट्यारो कार्ड पोट्रेट',id:'Potret Kartu Tarot',fil:'Larawan na Tarot Card',tr:'Tarot Kartı Portresi',zh:'塔罗牌肖像',ru:'Портрет в стиле карты Таро',es:'Retrato de Carta del Tarot',ml:'ടാരറ്റ് കാർഡ് ഛായാചിത്രം'},
+  'طابع بريد قديم': {en:'Vintage Postage Stamp',fr:'Timbre-Poste Vintage',hi:'विंटेज डाक टिकट',bn:'ভিন্টেজ ডাকটিকিট',ne:'भिन्टेज हुलाक टिकट',id:'Perangko Vintage',fil:'Lumang Selyo ng Koreo',tr:'Vintage Posta Pulu',zh:'复古邮票',ru:'Винтажная почтовая марка',es:'Sello Postal Vintage',ml:'വിന്റേജ് തപാൽ സ്റ്റാമ്പ്'},
+  'بوستر فيلم أكشن': {en:'Action Movie Poster',fr:'Affiche de Film d\'Action',hi:'एक्शन मूवी पोस्टर',bn:'অ্যাকশন মুভি পোস্টার',ne:'एक्शन मुभी पोस्टर',id:'Poster Film Aksi',fil:'Poster ng Action Movie',tr:'Aksiyon Filmi Posteri',zh:'动作电影海报',ru:'Постер боевика',es:'Póster de Película de Acción',ml:'ആക്ഷൻ മൂവി പോസ്റ്റർ'},
+  'ديوراما مصغّرة': {en:'Miniature Diorama',fr:'Diorama Miniature',hi:'लघु डायोरामा',bn:'ক্ষুদ্র ডায়োরামা',ne:'साना डायोरामा',id:'Diorama Mini',fil:'Maliit na Diorama',tr:'Minyatür Diyorama',zh:'微缩场景',ru:'Миниатюрная диорама',es:'Diorama en Miniatura',ml:'ചെറിയ ഡയോറാമ'},
+  'إيموجي ثلاثي الأبعاد': {en:'3D Emoji Style',fr:'Style Emoji 3D',hi:'3D इमोजी शैली',bn:'৩ডি ইমোজি স্টাইল',ne:'3D इमोजी शैली',id:'Gaya Emoji 3D',fil:'3D Emoji na Estilo',tr:'3D Emoji Tarzı',zh:'3D表情符号风格',ru:'Стиль 3D-эмодзи',es:'Estilo Emoji 3D',ml:'3D ഇമോജി ശൈലി'},
+  'ستايل Y2K': {en:'Y2K Aesthetic',fr:'Esthétique Y2K',hi:'Y2K सौंदर्यशास्त्र',bn:'Y2K নান্দনিকতা',ne:'Y2K सौन्दर्यशास्त्र',id:'Estetika Y2K',fil:'Y2K na Estilo',tr:'Y2K Estetiği',zh:'Y2K美学风格',ru:'Эстетика Y2K',es:'Estética Y2K',ml:'Y2K സൗന്ദര്യശാസ്ത്രം'},
+  'بوستر ألبوم غنائي': {en:'Music Album Cover',fr:'Pochette d\'Album Musical',hi:'संगीत एल्बम कवर',bn:'মিউজিক অ্যালবাম কভার',ne:'सङ्गीत एल्बम कभर',id:'Sampul Album Musik',fil:'Cover ng Music Album',tr:'Müzik Albümü Kapağı',zh:'音乐专辑封面',ru:'Обложка музыкального альбома',es:'Portada de Álbum Musical',ml:'സംഗീത ആൽബം കവർ'},
+  'إطلالة شيخ أو شيخة': {en:'Sheikh/Sheikha Look',fr:'Look Cheikh/Cheikha',hi:'शेख/शेखा लुक',bn:'শেখ/শেখা লুক',ne:'शेख/शेखा लुक',id:'Gaya Sheikh/Sheikha',fil:'Itsura ng Sheikh/Sheikha',tr:'Şeyh/Şeyha Görünümü',zh:'酋长/酋长夫人造型',ru:'Образ шейха/шейхи',es:'Look de Jeque/Jequesa',ml:'ഷെയ്ഖ്/ഷെയ്ഖ ലുക്ക്'},
+  'صيد بالصقر': {en:'Falconry Portrait',fr:'Portrait de Fauconnerie',hi:'बाज़ शिकार पोर्ट्रेट',bn:'বাজ শিকার প্রতিকৃতি',ne:'बाज सिकार पोट्रेट',id:'Potret Berburu Elang',fil:'Larawan ng Pangangaso gamit ang Falcon',tr:'Doğancılık Portresi',zh:'猎鹰狩猎肖像',ru:'Портрет соколиной охоты',es:'Retrato de Cetrería',ml:'പരുന്ത് വേട്ട ഛായാചിത്രം'},
+  'فروسية عربية': {en:'Arabian Horse Equestrian',fr:'Équitation Cheval Arabe',hi:'अरबी घोड़ा सवारी',bn:'আরবি ঘোড়ার আরোহণ',ne:'अरबी घोडा सवारी',id:'Berkuda Kuda Arab',fil:'Pagsakay sa Kabayong Arabo',tr:'Arap Atı Biniciliği',zh:'阿拉伯马术',ru:'Верховая езда на арабской лошади',es:'Equitación en Caballo Árabe',ml:'അറേബ്യൻ കുതിര സവാരി'},
+  'تراث سعودي': {en:'Saudi Heritage Style',fr:'Style Patrimoine Saoudien',hi:'सऊदी विरासत शैली',bn:'সৌদি ঐতিহ্য শৈলী',ne:'साउदी सम्पदा शैली',id:'Gaya Warisan Saudi',fil:'Estilong Pamana ng Saudi',tr:'Suudi Miras Tarzı',zh:'沙特文化遗产风格',ru:'Стиль саудовского наследия',es:'Estilo Patrimonio Saudí',ml:'സൗദി പൈതൃക ശൈലി'},
+  'تراث كويتي': {en:'Kuwaiti Heritage Style',fr:'Style Patrimoine Koweïtien',hi:'कुवैती विरासत शैली',bn:'কুয়েতি ঐতিহ্য শৈলী',ne:'कुवेती सम्पदा शैली',id:'Gaya Warisan Kuwait',fil:'Estilong Pamana ng Kuwait',tr:'Kuveyt Miras Tarzı',zh:'科威特文化遗产风格',ru:'Стиль кувейтского наследия',es:'Estilo Patrimonio Kuwaití',ml:'കുവൈറ്റ് പൈതൃക ശൈലി'},
+  'تراث عماني': {en:'Omani Heritage Style',fr:'Style Patrimoine Omanais',hi:'ओमानी विरासत शैली',bn:'ওমানি ঐতিহ্য শৈলী',ne:'ओमानी सम्पदा शैली',id:'Gaya Warisan Oman',fil:'Estilong Pamana ng Oman',tr:'Umman Miras Tarzı',zh:'阿曼文化遗产风格',ru:'Стиль оманского наследия',es:'Estilo Patrimonio Omaní',ml:'ഒമാൻ പൈതൃക ശൈലി'},
+  'تراث قطري': {en:'Qatari Heritage Style',fr:'Style Patrimoine Qatari',hi:'क़तरी विरासत शैली',bn:'কাতারি ঐতিহ্য শৈলী',ne:'कतरी सम्पदा शैली',id:'Gaya Warisan Qatar',fil:'Estilong Pamana ng Qatar',tr:'Katar Miras Tarzı',zh:'卡塔尔文化遗产风格',ru:'Стиль катарского наследия',es:'Estilo Patrimonio Catarí',ml:'ഖത്തർ പൈതൃക ശൈലി'},
+  'تراث بحريني': {en:'Bahraini Heritage Style',fr:'Style Patrimoine Bahreïni',hi:'बहरीनी विरासत शैली',bn:'বাহরাইনি ঐতিহ্য শৈলী',ne:'बहराइनी सम्पदा शैली',id:'Gaya Warisan Bahrain',fil:'Estilong Pamana ng Bahrain',tr:'Bahreyn Miras Tarzı',zh:'巴林文化遗产风格',ru:'Стиль бахрейнского наследия',es:'Estilo Patrimonio Bahreiní',ml:'ബഹ്റൈൻ പൈതൃക ശൈലി'},
+  'تصحيح عين مغمضة': {en:'Fix Closed Eyes',fr:'Corriger les Yeux Fermés',hi:'बंद आँखें ठीक करें',bn:'বন্ধ চোখ ঠিক করুন',ne:'बन्द आँखा ठीक गर्नुहोस्',id:'Perbaiki Mata Tertutup',fil:'Ayusin ang Nakapikit na Mata',tr:'Kapalı Gözleri Düzelt',zh:'修复闭眼',ru:'Исправление закрытых глаз',es:'Corregir Ojos Cerrados',ml:'അടഞ്ഞ കണ്ണുകൾ ശരിയാക്കുക'},
+  'إضافة أو إزالة نظارة': {en:'Add/Remove Glasses',fr:'Ajouter/Retirer des Lunettes',hi:'चश्मा जोड़ें/हटाएं',bn:'চশমা যোগ/অপসারণ',ne:'चश्मा थप्नुहोस्/हटाउनुहोस्',id:'Tambah/Hapus Kacamata',fil:'Magdagdag/Alisin ang Salamin',tr:'Gözlük Ekle/Çıkar',zh:'添加/移除眼镜',ru:'Добавить/убрать очки',es:'Añadir/Quitar Gafas',ml:'കണ്ണട ചേർക്കുക/നീക്കുക'},
+  'ضبابية الخلفية فقط': {en:'Background Blur Only',fr:'Flou d\'Arrière-Plan Seulement',hi:'केवल पृष्ठभूमि धुंधली',bn:'শুধু পটভূমি ঝাপসা',ne:'पृष्ठभूमि मात्र धमिलो',id:'Hanya Blur Latar Belakang',fil:'Malabo lang ang Background',tr:'Sadece Arka Plan Bulanıklığı',zh:'仅背景虚化',ru:'Только размытие фона',es:'Solo Desenfoque de Fondo',ml:'പശ്ചാത്തലം മാത്രം മങ്ങിക്കുക'},
+  'ليلة حنّاء أو خطوبة': {en:'Henna Night / Engagement',fr:'Soirée Henné / Fiançailles',hi:'मेहंदी रात / सगाई',bn:'মেহেদি রাত / বাগদান',ne:'मेहेन्दी रात / सगाई',id:'Malam Henna / Pertunangan',fil:'Gabi ng Henna / Kasunduan',tr:'Kına Gecesi / Nişan',zh:'海娜之夜/订婚',ru:'Ночь хны / помолвка',es:'Noche de Henna / Compromiso',ml:'മൈലാഞ്ചി രാത്രി / വിവാഹനിശ്ചയം'},
+  'أول يوم دراسة': {en:'First Day of School',fr:'Premier Jour d\'École',hi:'स्कूल का पहला दिन',bn:'স্কুলের প্রথম দিন',ne:'विद्यालयको पहिलो दिन',id:'Hari Pertama Sekolah',fil:'Unang Araw ng Paaralan',tr:'Okulun İlk Günü',zh:'开学第一天',ru:'Первый день в школе',es:'Primer Día de Escuela',ml:'സ്കൂളിലെ ആദ്യ ദിവസം'},
+  'يوم العلم الإماراتي': {en:'UAE Flag Day',fr:'Journée du Drapeau des É.A.U.',hi:'यूएई ध्वज दिवस',bn:'ইউএই পতাকা দিবস',ne:'यूएई झण्डा दिवस',id:'Hari Bendera UEA',fil:'Araw ng Watawat ng UAE',tr:'BAE Bayrak Günü',zh:'阿联酋国旗日',ru:'День флага ОАЭ',es:'Día de la Bandera de EAU',ml:'യുഎഇ പതാക ദിനം'},
 };
 
 function stuL(ar, en){
@@ -25359,6 +25391,14 @@ function stuL(ar, en){
     chibi: 'تشيبي ياباني لطيف', statue: 'تمثال رخامي كلاسيكي', polaroid: 'بولارويد قديمة',
     celebtoon: 'كرتون مع شخصيتك المفضلة', profession: 'مهنة: طبيب، طيار، شرطي…', superhero: 'بطل خارق بزي كامل',
     astronaut: 'رائد فضاء',
+    /* v-pstyle-batch-2: ٢١ ستايلًا جديدًا (طلب المالك «رتّبهم كلهم» بعد فكرة أفكار جديدة ٢١ سبتمبر) */
+    tarot: 'بطاقة تاروت', stamp: 'طابع بريد قديم', moviePoster: 'بوستر فيلم أكشن', diorama: 'ديوراما مصغّرة',
+    emoji3d: 'إيموجي ثلاثي الأبعاد', y2k: 'ستايل Y2K', albumCover: 'بوستر ألبوم غنائي',
+    sheikh: 'إطلالة شيخ أو شيخة', falconry: 'صيد بالصقر', arabianHorse: 'فروسية عربية',
+    saudiHeritage: 'تراث سعودي', kuwaitiHeritage: 'تراث كويتي', omaniHeritage: 'تراث عماني',
+    qatariHeritage: 'تراث قطري', bahrainiHeritage: 'تراث بحريني',
+    eyefix: 'تصحيح عين مغمضة', glasses: 'إضافة أو إزالة نظارة', bokeh: 'ضبابية الخلفية فقط',
+    henna: 'ليلة حنّاء أو خطوبة', firstday: 'أول يوم دراسة', flagday: 'يوم العلم الإماراتي',
   };
   function pstyleLang(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   /* دمج: الأوصاف مترجمة فعليًا لكل اللغات عبر STU_XL (بدل إخفائها) */
@@ -25505,7 +25545,7 @@ function stuL(ar, en){
       const opts = document.createElement('div'); opts.id = 'portraitWorkOpts';
       work.appendChild(opts);
       ['portraitBackdropWrap','portraitBeautifyWrap','portraitAgeWrap','portraitHairWrap','portraitAdWrap','portraitCelebWrap','portraitRemoveWrap','portraitOutfitWrap','portraitProfWrap','portraitEraWrap','portraitMultiWrap'].forEach((id) => { const el = document.getElementById(id); if(el) opts.appendChild(el); });
-      ['portraitStyleStatus','portraitCompareWrap','portraitCompareSlider','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
+      ['portraitStyleStatus','portraitCompareWrap','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
       scroller.insertBefore(work, scroller.firstChild);
     }
     let foot = document.getElementById('portraitStyleFoot');
@@ -25708,7 +25748,6 @@ function stuL(ar, en){
   const compareWrap = $('#portraitCompareWrap');
   const compareBefore = $('#portraitCompareBefore');
   const compareAfterWrap = $('#portraitCompareAfterWrap');
-  const compareSlider = $('#portraitCompareSlider');
   const shareBtn2 = $('#portraitShareBtn');
   if(shareBtn2){
     /* v-img-save-universal: مشاركة عبر المسار الموحّد (جسر التطبيق → ورقة النظام → رابط سيرفر + واتساب) */
@@ -25730,18 +25769,43 @@ function stuL(ar, en){
       }catch(_){ /* guard-ok — يسقط للتنزيل العادي */ }
     });
   }
-  function updateCompareSlider(){
-    if(!compareSlider || !compareAfterWrap) return;
-    compareAfterWrap.style.width = compareSlider.value + '%';
+  /* v-compare-drag (طلب المالك ٢١ سبتمبر: «تحسّن طريقة السحب» بعد استعادة شريط قبل/بعد): السحب صار
+     مباشرة على الصورة نفسها بمقبض دائريّ واضح فوق الخطّ الفاصل — بدل عنصر <input type=range> منفصل
+     تحت الصورة (v-no-slider القديم أخفاه بلا بديل، فبدا الشريط معطوبًا رغم بقاء صندوق المقارنة ظاهرًا).
+     Pointer Events توحّد الفأرة واللمس بمستمع واحد؛ setPointerCapture يبقي السحب متصلًا حتى خارج حدود
+     الصورة، وtouch-action:none على الحاوية (تحت) يمنع تحويل السحب الأفقي إلى تمرير الصفحة على الجوال
+     (نفس عطب v-slider-touch القديم لكن بجذر مختلف — الحاوية لا عنصر input). النقر في أيّ نقطة من
+     الصورة يقفز الفاصل إليها فورًا (نمط مقارنة الصور المعتاد)، لا يقتصر على سحب المقبض فقط. */
+  let comparePct = 100;
+  function setComparePct(pct){
+    comparePct = Math.max(0, Math.min(100, pct));
+    if(compareAfterWrap) compareAfterWrap.style.width = comparePct + '%';
     const divider = $('#portraitCompareDivider');
-    if(divider) divider.style.left = compareSlider.value + '%';
+    if(divider) divider.style.left = comparePct + '%';
   }
   function layoutCompareAfter(){
     if(!compareWrap || !resultEl) return;
     const w = compareWrap.offsetWidth;
     if(w) resultEl.style.width = w + 'px';
   }
-  if(compareSlider) compareSlider.addEventListener('input', updateCompareSlider);
+  let __compareDragging = false;
+  function comparePctFromEvent(ev){
+    const rect = compareWrap.getBoundingClientRect();
+    if(!rect.width) return comparePct;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
+  }
+  if(compareWrap){
+    compareWrap.style.touchAction = 'none';
+    compareWrap.style.cursor = 'ew-resize';
+    compareWrap.addEventListener('pointerdown', (ev) => {
+      __compareDragging = true;
+      try{ compareWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      setComparePct(comparePctFromEvent(ev));
+      ev.preventDefault();
+    });
+    compareWrap.addEventListener('pointermove', (ev) => { if(__compareDragging) setComparePct(comparePctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => compareWrap.addEventListener(evt, () => { __compareDragging = false; }));
+  }
   window.addEventListener('resize', layoutCompareAfter);
   if(!modal || !btnOpen) return;
 
@@ -25794,6 +25858,40 @@ function stuL(ar, en){
     });
   };
 
+  /* v-merge-scope-fix (لقطة المالك ٢١ سبتمبر: «extraImagesB64 is not defined» عند رفع صورة الشخص
+     الثاني لِـ«دمج صورتين»): هذه الكتلة (صور familystyle/merge2 الإضافية) كانت بالخطأ داخل نطاق
+     («AI Interior Design») لا هنا — extraImagesB64 هناك محلّي لتلك الدالّة المغلقة، فلا يراه سطر
+     الإرسال هنا (btnGenerate.onclick أدناه)، ما يرمي ReferenceError عند التوليد. المعرّفات
+     #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
+     مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
+  let extraImagesB64 = [];
+  const multiFileInput = $('#portraitMultiFileInput');
+  const multiFileBtn = $('#portraitMultiFileBtn');
+  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
+  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
+  if(multiFileInput){
+    multiFileInput.onchange = () => {
+      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
+      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      extraImagesB64 = [];
+      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || '');
+          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
+          if(multiPreviewWrap){
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+            multiPreviewWrap.appendChild(img);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+  }
+
   btnGenerate.onclick = async () => {
     if(!selectedBase64){
       setStatus(t('portraitNeedImage'));
@@ -25808,7 +25906,6 @@ function stuL(ar, en){
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     if(compareWrap) compareWrap.style.display = 'none';
-    if(compareSlider) compareSlider.style.display = 'none';
     downloadEl.style.display = 'none';
     if(shareBtn2) shareBtn2.style.display = 'none';
     setStatus(t('portraitGenerating'));
@@ -25847,7 +25944,6 @@ function stuL(ar, en){
         resultEl.src = gifUrl;
         resultEl.style.display = 'block';
         if(compareWrap) compareWrap.style.display = 'none';
-        if(compareSlider) compareSlider.style.display = 'none';
         downloadEl.href = gifUrl;
         downloadEl.setAttribute('download', 'omran-avatar.gif');
         downloadEl.style.display = 'block';
@@ -25857,12 +25953,10 @@ function stuL(ar, en){
         const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
         resultEl.src = dataUrl;
         resultEl.style.display = 'block';
-        if(compareWrap && compareBefore && compareSlider){
+        if(compareWrap && compareBefore){
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
-          compareSlider.style.display = 'none'; /* v-no-slider */
-          compareSlider.value = 100;
-          updateCompareSlider();
+          setComparePct(100);
           layoutCompareAfter();
         }
         downloadEl.href = dataUrl;
@@ -25901,7 +25995,6 @@ function stuL(ar, en){
   const resultWrap = $('#fashionAiResultWrap');
   const beforeWrap = $('#fashionAiBeforeWrap');
   const beforeImg = $('#fashionAiBeforeImg');
-  const sliderRange = $('#fashionAiSliderRange');
   const favSaveBtn = $('#fashionAiFavoriteSaveBtn');
   const favoritesBtn = $('#fashionAiFavoritesBtn');
   const favoritesPanel = $('#fashionAiFavoritesPanel');
@@ -26099,28 +26192,41 @@ function stuL(ar, en){
     setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, 1800);
   };
 
-  /* ---- 🔄 before/after slider ---- */
+  /* ---- 🔄 before/after slider ----
+     v-compare-drag-all (طلب المالك ٢١ سبتمبر «غيّرها»): كانت مُقفلة كليًّا (`if(true) return;`) منذ
+     v-no-slider — السحب صار مباشرة على resultWrap نفسه بدل <input type=range> مخفيّ. */
+  function updateSliderClip(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
   function setupBeforeAfter(afterUrl){
-    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
-    beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
-    if(true) return;
     if(mode !== 'image' || !selectedBase64){
       beforeWrap.style.display = 'none';
-      sliderRange.style.display = 'none';
       return;
     }
     beforeImg.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
     beforeWrap.style.display = 'block';
-    sliderRange.style.display = 'block';
-    updateSliderClip(sliderRange.value);
+    updateSliderClip(50);
   }
-  function updateSliderClip(val){
-    const pct = Math.max(0, Math.min(100, Number(val)));
-    beforeWrap.style.width = pct + '%';
-    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  let __fashionBaDragging = false;
+  function fashionBaPctFromEvent(ev){
+    const rect = resultWrap.getBoundingClientRect();
+    if(!rect.width) return 50;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
   }
-  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+  if(resultWrap){
+    resultWrap.style.touchAction = 'none';
+    resultWrap.addEventListener('pointerdown', (ev) => {
+      if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      __fashionBaDragging = true;
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      updateSliderClip(fashionBaPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    resultWrap.addEventListener('pointermove', (ev) => { if(__fashionBaDragging) updateSliderClip(fashionBaPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => resultWrap.addEventListener(evt, () => { __fashionBaDragging = false; }));
+  }
 
   /* ---- 📊 v-fashion-compare-cards: صفّ مقارنة يُسحب باليد — بطاقات صور بلا
      كتابة، اختيار حتى ٣ بعلامة ✓ ذهبية. مربّعات الاختيار باقية مخفيّة فقارئ
@@ -26242,7 +26348,6 @@ function stuL(ar, en){
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus(t('fashionAiGenerating'));
 
     try{
@@ -26532,7 +26637,15 @@ function stuL(ar, en){
   const SYSTEM_PROMPTS = {
     verse: 'أنت عالم متخصص في تفسير القرآن الكريم. عند إعطائك آية أو اسم سورة ورقم آية، اشرحها بعمق ودقة معتمدًا على أشهر كتب التفسير المعتبرة (تفسير ابن كثير، تفسير الطبري، تفسير السعدي، تفسير القرطبي). اذكر: 1) نص الآية كاملة، 2) سبب النزول إن وجد، 3) المعنى الإجمالي، 4) أهم الفوائد والدروس المستفادة. اكتب بأسلوب واضح ومنظم بعناوين. اختم دائمًا بجملة: "هذا اجتهاد بشري في نقل التفسير المعتمد وليس فتوى شخصية، راجع أهل العلم للتأكد." أجب بنفس لغة سؤال المستخدم.',
     hadith: 'أنت باحث متخصص في الحديث النبوي الشريف. عند إعطائك نص حديث أو موضوعًا، ابحث في معرفتك عن الحديث الأقرب لذلك من الكتب الصحيحة المعتبرة (صحيح البخاري، صحيح مسلم، سنن أبي داود، الترمذي، النسائي، ابن ماجه). اذكر: 1) نص الحديث كاملًا إن استطعت، 2) الراوي ومصدر التخريج، 3) درجة الحديث (صحيح/حسن/ضعيف) بحسب ما هو معروف ومشهور، 4) الشرح والمعنى، 5) الفوائد والأحكام المستفادة. إذا لم تكن متأكدًا من درجة الحديث بدقة تامة، وضّح ذلك صراحة وانصح بالرجوع لموقع الدرر السنية أو مختص. أجب بنفس لغة سؤال المستخدم.',
+<<<<<<< HEAD
+    bible: 'أنت باحث متخصص في الكتاب المقدس والتقليد المسيحي. عند إعطائك آية من الإنجيل أو الفلسفة المسيحية، اشرحها مستندًا إلى التقاليس المسيحية المختلفة والتفسيرات الكنسية المعتمدة. اذكر: 1) نص الآية كاملة، 2) السياق التاريخي والروحي، 3) المعنى اللاهوتي والروحي، 4) الدروس المستفادة. اكتب بوضوح واحترام للتقليس المسيحية. أجب بنفس لغة سؤال المستخدم.',
+    torah: 'أنت محلل متخصص في التوراة والتقاليس اليهودية. عند إعطائك آية توراتية أو موضوعًا يهوديًا، اشرحها معتمدًا على التلمود وتفسيرات الحاخامات المعتبرين. اذكر: 1) نص الآية، 2) التفسيرات التلمودية، 3) الدروس والحكمة اليهودية، 4) الصلة بالحياة المعاصرة. أجب بنفس لغة سؤال المستخدم.',
+    buddhism: 'أنت معلم متخصص في البوذية والتعاليم البوذية. عند إعطائك سؤالًا حول الطريق الوسط والتنوير والكارما، اشرحه بعمق مستندًا إلى الروايات البوذية الأساسية والحكمة الشرقية. اذكر: 1) المبدأ الأساسي، 2) التطبيق العملي، 3) المعنى الروحي، 4) الدروس والحكمة البوذية. أجب بنفس لغة سؤال المستخدم.',
+    hinduism: 'أنت عالم في الهندوسية والفلسفة الهندية القديمة. عند إعطائك سؤالًا عن الفيدا أو الأوبنيشاد أو الكارما والدارما، اشرحها مستندًا إلى الحكمة الهندية التقليدية. اذكر: 1) المفهوم الأساسي، 2) التفسير من النصوص المقدسة، 3) التطبيق الروحي، 4) الدروس المستفادة. أجب بنفس لغة سؤال المستخدم.',
+    dream: 'أنت مفسر أحلام موسوعي متعمق يجمع بين كل الثقافات والأديان. عند إعطائك وصف حلم، قدّم تفسيرًا قويًا وعميقًا ومفصلاً (وليس سطحيًا) من زوايا متعددة، كل زاوية بعنوان واضح: 1) ☪️ التفسير الإسلامي (استنادًا لمنهج ابن سيرين والنابلسي، مع ربط الرموز بمعانيها التقليدية)، 2) ✝️ التفسير المسيحي (استنادًا لتفسيرات الكتاب المقدس والتقليد الكنسي لرموز الأحلام كيوسف ودانيال)، 3) ✡️ التفسير اليهودي (التلمود وتفسيرات الحاخامات التقليدية)، 4) 🕉️ التفسير الهندوسي/البوذي (المعاني الروحية والكارما والرموز الشرقية)، 5) 🧠 علم النفس الحديث (تحليل فرويد ويونغ للرموز واللاوعي والأرشيتايبس)، 6) 🌍 الرمزية الثقافية العامة المتعارف عليها عالميًا. حلل كل رمز رئيسي ذكره المستخدم في حلمه (الألوان، الحيوانات، الأماكن، الأفعال) بعمق داخل كل قسم. اختم بخلاصة عامة تجمع أهم المعاني المشتركة. أجب بنفس لغة سؤال المستخدم، وكن مفصلاً وغنيًا وليس مختصرًا.',
+=======
     dream: 'أنت مفسر أحلام موسوعي متخصص في تحليل الأحلام من ستة منظورات دينية وثقافية مختلفة. عند إعطائك وصف حلم، يجب عليك دائماً تقديم جميع التفسيرات الستة التالية بالكامل — لا تحذف أي منها مهما كان الحلم. كل تفسير بعنوان واضح ومفصل: 1) ☪️ التفسير الإسلامي الكامل (استنادًا لمنهج ابن سيرين والنابلسي، كتاب تعطير الأنام، مع شرح معاني الرموز بعمق)، 2) ✝️ التفسير المسيحي الكامل (استنادًا لتفسيرات الكتاب المقدس والتقليد الكنسي، قصص يوسف الصديق ودانيال، مع المعاني الروحية)، 3) ✡️ التفسير اليهودي الكامل (التلمود والقبالاه، تفسيرات الحاخامات، الرموز والمعاني العميقة)، 4) 🕉️ التفسير الهندوسي والبوذي الكامل (نظرية الكارما، الرموز الروحية، تفسير الأوبنشاد والسوترا)، 5) 🧠 التفسير النفسي الكامل (تحليل فرويد ويونغ والأرشيتايبس، اللاوعي والرموز النفسية)، 6) 🌍 الرمزية الثقافية العامة (المعاني المشتركة عالميًا للرموز والألوان والحيوانات). أجب بنفس لغة سؤال المستخدم وكن مفصلاً جداً.',
+>>>>>>> claude/eager-dirac-1qdfr3
   };
 
   function setStatus(text){
@@ -27853,7 +27966,6 @@ function stuL(ar, en){
   const resultWrap = $('#studioAiResultWrap');
   const beforeWrap = $('#studioAiBeforeWrap');
   const beforeImg = $('#studioAiBeforeImg');
-  const sliderRange = $('#studioAiSliderRange');
   const multiAngleEl = $('#studioAiMultiAngle');
   const favSaveBtn = $('#studioAiFavoriteSaveBtn');
   const favoritesBtn = $('#studioAiFavoritesBtn');
@@ -28113,28 +28225,41 @@ function stuL(ar, en){
     setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, 1800);
   };
 
-  /* ---- 🔄 before/after slider ---- */
+  /* ---- 🔄 before/after slider ----
+     v-compare-drag-all (طلب المالك ٢١ سبتمبر «غيّرها»): كانت مُقفلة كليًّا (`if(true) return;`) منذ
+     v-no-slider — السحب صار مباشرة على resultWrap نفسه بدل <input type=range> مخفيّ. */
+  function updateSliderClip(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
   function setupBeforeAfter(){
-    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
-    beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
-    if(true) return;
     if(feature === 'merge' || !selectedBase64A){
       beforeWrap.style.display = 'none';
-      sliderRange.style.display = 'none';
       return;
     }
     beforeImg.src = 'data:' + selectedMimeA + ';base64,' + selectedBase64A;
     beforeWrap.style.display = 'block';
-    sliderRange.style.display = 'block';
-    updateSliderClip(sliderRange.value);
+    updateSliderClip(50);
   }
-  function updateSliderClip(val){
-    const pct = Math.max(0, Math.min(100, Number(val)));
-    beforeWrap.style.width = pct + '%';
-    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  let __studioBaDragging = false;
+  function studioBaPctFromEvent(ev){
+    const rect = resultWrap.getBoundingClientRect();
+    if(!rect.width) return 50;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
   }
-  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+  if(resultWrap){
+    resultWrap.style.touchAction = 'none';
+    resultWrap.addEventListener('pointerdown', (ev) => {
+      if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      __studioBaDragging = true;
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      updateSliderClip(studioBaPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    resultWrap.addEventListener('pointermove', (ev) => { if(__studioBaDragging) updateSliderClip(studioBaPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => resultWrap.addEventListener(evt, () => { __studioBaDragging = false; }));
+  }
 
   /* ---- 📊 compare checkboxes (built from style options) ---- */
   function buildCompareChecks(){
@@ -28247,7 +28372,6 @@ function stuL(ar, en){
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus('');
   }
 
@@ -28355,7 +28479,6 @@ function stuL(ar, en){
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus(t('studioAiGenerating'));
 
     try{
