@@ -16,7 +16,7 @@ const pipeline = read('api/_lib/image-pipeline.js');
 test('التعديل عبر GPT: يجرّب Sunburst الأحدث أوّلًا، ثمّ gpt-image-2، ثمّ gpt-image-1 آخر إنقاذ', () => {
   const i = mi.indexOf("const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2', 'gpt-image-1'];");
   assert.ok(i > 0, 'قائمة تدرّج موديلات التعديل موجودة بالترتيب الصحيح');
-  const block = mi.slice(i, i + 1800);
+  const block = mi.slice(i, i + 2300); // v-gpt-multi-merge: إرفاق extras وسّع المسافة قبل modelUnavailable/continue
   assert.ok(block.includes("if (m === 'gpt-image-1') form.append('input_fidelity', 'high');"), 'input_fidelity لـgpt-image-1 وحده — الأحدث يفرضها ويرفضها بـ400');
   assert.ok(block.includes('modelUnavailable') && block.includes('continue'), 'ينتقل للموديل التالي عند 400/404 يذكر الموديل فقط');
 });
