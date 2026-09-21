@@ -248,6 +248,16 @@ function mahaReadVoiceGender(){
   catch(e){ return 'female'; }
 }
 let mahaDetectedGender = mahaReadVoiceGender();
+// v-maha-voice-speed (طلب المالك «صوت مها بطيء سريع سريع جدًا» من الإعدادات › الصوت):
+// سرعة كلام مها في الوضعين (الفائق عبر تعليمة نبرة نصّية، والأساسيّ عبر معامل TTS
+// حقيقيّ في api/_lib/tts.js) — أربع درجات فقط، وأيّ قيمة أخرى/تالفة تسقط على "normal".
+const MAHA_VOICE_SPEEDS = ['slow', 'normal', 'fast', 'xfast'];
+function mahaReadVoiceSpeed(){
+  try{
+    const v = localStorage.getItem('aiapp_maha_voice_speed');
+    return MAHA_VOICE_SPEEDS.includes(v) ? v : 'normal';
+  }catch(e){ return 'normal'; }
+}
 // v-persona-pick: الأيقونة تعكس الشخصية المحفوظة من الإقلاع لا من أول مكالمة.
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } });
 else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } }, 0);
@@ -397,7 +407,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed() })
       });
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
@@ -1336,6 +1346,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       voiceGender: mahaReadVoiceGender(),
+      voiceSpeed: mahaReadVoiceSpeed(),
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });

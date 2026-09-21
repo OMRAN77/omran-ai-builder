@@ -339,6 +339,15 @@
     <button type="button" class="voiceGenderBtn" data-gender="male"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span data-i18n="voiceGenderMale">صوت رجل</span></button>
     <button type="button" class="voiceGenderBtn" data-gender="female"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><path d="M8 3.5C9 2.5 10.4 2 12 2s3 .5 4 1.5"></path></svg><span data-i18n="voiceGenderFemale">صوت امرأة</span></button>
   </div>
+  <!-- v-maha-voice-speed (طلب المالك «صوت مها بطيء سريع سريع جدًا»): سرعة كلام مها —
+       تُطبَّق على الوضعين (الفائق عبر تعليمة نبرة، والأساسيّ عبر معامل TTS حقيقيّ). -->
+  <label style="display:block; margin-top:18px;" data-i18n="voiceSpeedLabel">سرعة الصوت</label>
+  <div id="voiceSpeedBtns" style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+    <button type="button" class="voiceSpeedBtn" data-speed="slow"><span data-i18n="voiceSpeedSlow">بطيء</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="normal"><span data-i18n="voiceSpeedNormal">عادي</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="fast"><span data-i18n="voiceSpeedFast">سريع</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="xfast"><span data-i18n="voiceSpeedXFast">سريع جدًا</span></button>
+  </div>
   <button type="button" class="btn" id="btnTestVoice" style="margin-top:16px; display:inline-flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg><span data-i18n="testVoiceBtn">تجربة الصوت</span></button>
   </div></div>
 

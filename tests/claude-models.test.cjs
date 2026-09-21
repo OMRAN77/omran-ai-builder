@@ -84,8 +84,9 @@ test('٤. الواجهة: مبدّل النموذج في قائمة «+» (لل�
   const i18n = read('js/app-03-i18n-data.js');
   assert.equal((i18n.match(/claudeModelPick:/g) || []).length, 2, 'عربيّ وإنجليزيّ');
   assert.equal((i18n.match(/stModelFallback:/g) || []).length, 2);
-  // v-custom-instructions: رُفع إلى 657 بعد إضافة حقل التعليمات المخصّصة للقسم؛ v-plan-routing: 659 (بطاقات الباقات).
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=659'), 'كسر كاش الجزء بعد تغييره');
+  // v-custom-instructions: رُفع إلى 657 بعد إضافة حقل التعليمات المخصّصة للقسم؛ v-plan-routing: 659
+  // (بطاقات الباقات)؛ v-maha-voice-speed: 660 (أزرار سرعة صوت مها في قسم الصوت).
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=660'), 'كسر كاش الجزء بعد تغييره');
 });
 
 test('٥. Haiku 4.5 بلا effort في دور الصورة، والجيل الحاليّ معه', () => {
