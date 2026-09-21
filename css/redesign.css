@@ -347,6 +347,27 @@ html.mobile-ui #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:
 }
 html.mobile-ui #composerRow{gap:6px;}
 html.mobile-ui #composerRow > #btnMahaDock{width:48px; border-radius:16px !important;}
+/* v-maha-in-tools (طلب المالك): «مها» صارت زرًّا دائريًّا صغيرًا ضمن صفّ الأدوات (مع +/المايك)
+   بدل الصندوق الطويل الممتدّ جنب المحرّر — بلا امتداد ولا صندوق زجاجيّ. الحرف بذهب الشعار. */
+html #inputbar > .inputbar-tools-below #btnMahaDock{
+  width:24px !important; height:24px !important; flex:0 0 24px !important;
+  padding:0 !important; margin:0 !important;
+  background:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  border:none !important; border-radius:999px !important; box-shadow:none !important;
+  display:inline-flex !important; align-items:center; justify-content:center;
+}
+html #inputbar > .inputbar-tools-below #btnMahaDock:hover{background:rgba(249,227,130,.12) !important;}
+html #inputbar > .inputbar-tools-below #btnMahaDock .mahaGlyph{
+  display:block; line-height:1 !important; font-weight:700; font-size:19px !important;
+  font-family:'Tajawal', Tahoma, Arial, sans-serif; color:#f2d164; text-shadow:none;
+  transform:translateY(-1px) !important;
+}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  html #inputbar > .inputbar-tools-below #btnMahaDock .mahaGlyph{
+    background:linear-gradient(180deg, #faf0a1 0%, #f9e382 38%, #f2d164 62%, #ba842a 100%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+}
 #composerBox:not(.typing) > #btnSend{ opacity:.55; }
 #composerBox.typing > #btnSend{ opacity:1; animation:morphIn .16s ease; }
 @keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }

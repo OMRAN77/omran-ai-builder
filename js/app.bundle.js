@@ -23005,6 +23005,11 @@ try{
   if(__tools && __row && __row.parentNode){
     __row.parentNode.insertBefore(__tools, __row.nextSibling);
     __tools.classList.add('inputbar-tools-below');
+    // v-maha-in-tools (طلب المالك): «مها» تخرج من الصندوق الطويل جنب الصندوق وتصير زرًّا
+    // دائريًّا صغيرًا ضمن صفّ الأدوات مع «+» والمايك — نقل DOM فقط، المعرّف ومنطق النقر يبقيان.
+    const __maha = document.getElementById('btnMahaDock');
+    const __toolsLeft = __tools.querySelector('.inputbar-tools-left');
+    if(__maha && __toolsLeft){ __toolsLeft.appendChild(__maha); __maha.classList.add('maha-in-tools'); }
   }
 }catch(e){ __swallow(e, 'ui:app-10-features#tools-below'); }
 
