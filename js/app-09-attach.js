@@ -5536,9 +5536,9 @@ DESIGN RULES (non-negotiable):
         __live.target = stripped;
         __liveTimer();
       };
-      // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
+      // المزود المختار من المستخدم يرد بنفسه (GPT هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
       const isBuildTask = __routeFix && !__gateNoBuild;
-      const __selProv = localStorage.getItem('aiapp_provider') || 'claude';
+      const __selProv = localStorage.getItem('aiapp_provider') || 'openai';
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
       // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
       // ٦ أغسطس: الاختيار الصريح يُحترم فقط حيث توجد قائمة تُختار منها (الجوال).
