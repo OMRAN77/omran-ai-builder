@@ -1038,8 +1038,12 @@
     </div>
 
     <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
-      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;" data-i18n="religionTabVerse">🕌 تفسير آية</button>
-      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;" data-i18n="religionTabHadith">📖 بحث حديث</button>
+      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;" data-i18n="religionTabVerse">🕌 آية قرآنية</button>
+      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;" data-i18n="religionTabHadith">📖 حديث نبوي</button>
+      <button type="button" class="btn religionTabBtn" data-tool="bible" style="white-space:nowrap;" data-i18n="religionTabBible">✝️ آية كتاب مقدس</button>
+      <button type="button" class="btn religionTabBtn" data-tool="torah" style="white-space:nowrap;" data-i18n="religionTabTorah">✡️ آية توراتية</button>
+      <button type="button" class="btn religionTabBtn" data-tool="buddhism" style="white-space:nowrap;" data-i18n="religionTabBuddhism">🕉️ تعليم بوذي</button>
+      <button type="button" class="btn religionTabBtn" data-tool="hinduism" style="white-space:nowrap;" data-i18n="religionTabHinduism">🙏 حكمة هندوسية</button>
       <button type="button" class="btn religionTabBtn" data-tool="dream" style="white-space:nowrap;" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
     </div>
 
