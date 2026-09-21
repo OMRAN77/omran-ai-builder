@@ -471,11 +471,16 @@ module.exports = async (req, res) => {
                وشعارات المصدر؛ الأحدث (Sunburst وgpt-image-2) يفرضها دائمًا. */
             if (m === 'gpt-image-1') form.append('input_fidelity', 'high');
             form.append('quality', 'high');
-            form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
-            /* v-gpt-multi-merge (دليل حيّ من المالك عبر ChatGPT + توثيق OpenAI): images/edits لـgpt-image-2/2.5
-               يقبل حتى ١٦ صورة (لا واحدة كما افترضت v-merge-identity-lock — صحيح لـgpt-image-1 القديم وحده). */
+            /* v-gpt-multi-merge-fix (لقطة المالك ٢١ سبتمبر: «تعذّر توليد الصورة الآن — 400 Duplicate
+               parameter: 'image'»): v-gpt-multi-merge افترض أنّ images/edits يقبل حقل `image` مكرَّرًا
+               بنفس الاسم لعدّة صور — نداء حيّ فعليّ أثبت العكس: gpt-image-2.5-sunburst (وبقيّة موديلات
+               ٢/٢٫٥) يرفض بـ400 فورًا لو تكرّر اسم الحقل. الاتفاقيّة الصحيحة لتعدّد الملفّات في
+               multipart/form-data لهذه النقطة هي `image[]` (صيغة مصفوفة)، لا `image` مكرّرة — تُستعمل
+               فقط حين توجد صور دمج فعليّة (extras)؛ صورة واحدة تبقى بحقل `image` المفرد كما كان. */
+            const __imgField = (extras.length && m !== 'gpt-image-1') ? 'image[]' : 'image';
+            form.append(__imgField, new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
             if (extras.length && m !== 'gpt-image-1') {
-              for (const x of extras) form.append('image', new Blob([Buffer.from(x.data, 'base64')], { type: x.mime || 'image/jpeg' }), 'ref.jpg');
+              for (const x of extras) form.append('image[]', new Blob([Buffer.from(x.data, 'base64')], { type: x.mime || 'image/jpeg' }), 'ref.jpg');
             }
             if (exactTextEdit) {
               const maskBytes = Buffer.from(editMaskBase64, 'base64');
