@@ -17,6 +17,14 @@ const API = 'https://api.github.com';
 const CHUNK = 7000;             // حروف الملفّ في الاستدعاء الواحد
 const TREE_MAX = 300;           // مدخلات الشجرة المعروضة
 const FILE_MAX = 1500000;       // بايت — فوقه لا يُقرأ الملفّ
+const README_MAX = 2500;        // حروف README المعروضة في نظرة المستودع
+/* v-claude-deep-github (طلب المالك: «كلود ٥ يقرا الجيت هب نفسك بالضبط»): قراءة أعمق
+   (أسطر أكثر بالدفعة الواحدة، شجرة أوسع، README أطول، ملفّات أكبر) على مسار كلود
+   حصرًا — انظر opts.deep في chat.js. بقيّة المزوّدين على القيم القديمة كما كانت. */
+const DEEP_CHUNK = 24000;
+const DEEP_TREE_MAX = 900;
+const DEEP_FILE_MAX = 4000000;
+const DEEP_README_MAX = 7000;
 const ZIP_MAX = 8 * 1024 * 1024;
 const NAME_RE = /^[A-Za-z0-9_.-]+$/;
 
@@ -105,16 +113,17 @@ const repoOf = (t) => t.owner + '/' + t.repo;
 const b = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : n >= 1024 ? Math.round(n / 1024) + 'KB' : n + 'B');
 
 /* ---------- الملفّ: أسطر مرقّمة على دفعات ---------- */
-function formatFile(name, ref, content, from) {
+function formatFile(name, ref, content, from, deep) {
   const text = String(content || '');
   if (text.indexOf(String.fromCharCode(0)) !== -1) return '📄 ' + name + ' — ملفّ ثنائيّ (' + b(text.length) + ')، لا يُقرأ نصًّا.';
   const lines = text.split('\n');
   const total = lines.length;
+  const chunk = deep ? DEEP_CHUNK : CHUNK;
   let start = Math.max(1, Math.min(parseInt(from, 10) || 1, total));
   let acc = '', i = start - 1;
   for (; i < total; i++) {
     const ln = (i + 1) + '| ' + lines[i] + '\n';
-    if (acc.length + ln.length > CHUNK && acc) break;
+    if (acc.length + ln.length > chunk && acc) break;
     acc += ln;
   }
   const end = i;
@@ -130,7 +139,8 @@ async function getContents(t, o) {
   const j = await r.json();
   if (Array.isArray(j)) return { type: 'dir', entries: j };
   if (j && j.type === 'file') {
-    if (Number(j.size) > FILE_MAX) return { error: 'الملفّ أكبر من ' + b(FILE_MAX) + ' — اختر ملفًّا أصغر.' };
+    const fileMax = (o && o.deep) ? DEEP_FILE_MAX : FILE_MAX;
+    if (Number(j.size) > fileMax) return { error: 'الملفّ أكبر من ' + b(fileMax) + ' — اختر ملفًّا أصغر.' };
     let content = '';
     if (j.encoding === 'base64' && typeof j.content === 'string') content = Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf8');
     else {
@@ -144,10 +154,11 @@ async function getContents(t, o) {
   return { error: 'ردّ غير مفهوم من GitHub.' };
 }
 
-function formatDir(t, entries) {
-  const rows = entries.slice(0, TREE_MAX).map((e) => '- ' + e.name + (e.type === 'dir' ? '/' : ' (' + b(Number(e.size) || 0) + ')'));
+function formatDir(t, entries, deep) {
+  const treeMax = deep ? DEEP_TREE_MAX : TREE_MAX;
+  const rows = entries.slice(0, treeMax).map((e) => '- ' + e.name + (e.type === 'dir' ? '/' : ' (' + b(Number(e.size) || 0) + ')'));
   return '📁 ' + repoOf(t) + '/' + t.path + (t.ref ? ' (' + t.ref + ')' : '') + ' · ' + entries.length + ' مدخلة\n' + rows.join('\n')
-    + (entries.length > TREE_MAX ? '\n… و' + (entries.length - TREE_MAX) + ' أخرى' : '');
+    + (entries.length > treeMax ? '\n… و' + (entries.length - treeMax) + ' أخرى' : '');
 }
 
 /* ---------- المستودع: وصف + شجرة + README ---------- */
@@ -158,16 +169,18 @@ async function readRepo(t, o) {
   const ref = t.ref || j.default_branch || 'main';
   const out = ['📦 ' + (j.full_name || repoOf(t)) + (j.description ? ' — ' + j.description : ''),
     'اللغة: ' + (j.language || '؟') + ' · نجوم: ' + (j.stargazers_count || 0) + ' · الفرع: ' + ref + (j.pushed_at ? ' · آخر دفع: ' + String(j.pushed_at).slice(0, 10) : '') + (j.private ? ' · خاصّ' : '')];
+  const treeMax = (o && o.deep) ? DEEP_TREE_MAX : TREE_MAX;
+  const readmeMax = (o && o.deep) ? DEEP_README_MAX : README_MAX;
   const tr = await ghFetch('/repos/' + repoOf(t) + '/git/trees/' + encodeURIComponent(ref) + '?recursive=1', o);
   if (tr.ok) {
     const tj = await tr.json();
     const blobs = (tj.tree || []).filter((e) => e.type === 'blob' && !zipLib.SKIP_DIR_PATTERNS.some((p) => p.test(e.path)));
     out.push('\nالملفّات (' + blobs.length + (tj.truncated ? '+' : '') + '):');
-    out.push(blobs.slice(0, TREE_MAX).map((e) => '- ' + e.path + ' (' + b(Number(e.size) || 0) + ')').join('\n'));
-    if (blobs.length > TREE_MAX) out.push('… و' + (blobs.length - TREE_MAX) + ' ملفًّا آخر');
+    out.push(blobs.slice(0, treeMax).map((e) => '- ' + e.path + ' (' + b(Number(e.size) || 0) + ')').join('\n'));
+    if (blobs.length > treeMax) out.push('… و' + (blobs.length - treeMax) + ' ملفًّا آخر');
   } else out.push('\n(تعذّرت قراءة الشجرة: ' + ghError(tr, 'الشجرة', o && o.env, o && o.anonymous) + ')');
   const rd = await ghFetch('/repos/' + repoOf(t) + '/readme?ref=' + encodeURIComponent(ref), Object.assign({}, o, { raw: true }));
-  if (rd.ok) { const txt = await rd.text(); out.push('\nREADME:\n' + txt.slice(0, 2500) + (txt.length > 2500 ? '\n…' : '')); }
+  if (rd.ok) { const txt = await rd.text(); out.push('\nREADME:\n' + txt.slice(0, readmeMax) + (txt.length > readmeMax ? '\n…' : '')); }
   out.push('\nلقراءة ملفّ: استدعِ read_github برابطه (blob) أو بـ' + repoOf(t) + ' مع path.');
   return out.join('\n');
 }
@@ -242,8 +255,8 @@ async function readGithub(input, opts) {
     if (t.kind === 'repo' && !t.path) return await readRepo(t, opts);
     const c = await getContents(t, opts);
     if (c.error) return c.error;
-    if (c.type === 'dir') return formatDir(t, c.entries);
-    return formatFile(c.name, t.ref, c.content, t.from);
+    if (c.type === 'dir') return formatDir(t, c.entries, opts && opts.deep);
+    return formatFile(c.name, t.ref, c.content, t.from, opts && opts.deep);
   } catch (e) {
     return 'تعذّر الوصول إلى GitHub: ' + String((e && e.message) || e).slice(0, 120);
   }
@@ -279,4 +292,4 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, readCommits, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX };
+module.exports = { parseTarget, readGithub, readCommits, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX };
