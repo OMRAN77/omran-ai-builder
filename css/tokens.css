@@ -1148,8 +1148,12 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
    — سطح المكتب فقط — فيظهر أبيض على الجوّال. نعيدها هنا خارج أي ميديا لتعمل
    على كلّ العروض، مع لون احتياطيّ صريح. */
 :root{ --om-hl:#e3b341; }
-/* v-hl-links-only: الإنجليزي والأرقام بيضاء — الأصفر للروابط فقط (نمط <a>). */
-.chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl,#e3b341) !important; }
+/* v-code-color-mobile-fix (بلاغ المالك: أرقام الكود صفراء أثناء البثّ على الجوّال):
+   هذا السطر كان ينسخ قاعدة v-hl-yellow القديمة بالخطأ (فرض الأصفر على كتلة الكود
+   كاملة عبر --om-hl) رغم أنّ v-code-color حذفتها من نسخة سطح المكتب أعلاه (سطر ٣٤١-٣٤٢)
+   ليحلّ محلّها تلوين omranCodeHighlight البرمجيّ. التعليق أعلاه كان يقول «الأرقام بيضاء»
+   بينما السطر نفسه يلوّنها صفراء — نفس اللون المحايد الآن على كلّ العروض، لا الأصفر. */
+.chat-codeblock pre, .chat-codeblock pre .tts-word{ color:#e6edf3 !important; }
 .tts-word.active{ background:var(--om-hl,#e3b341); color:#14161a; box-shadow:0 0 0 2px var(--om-hl,#e3b341); }
 
 /* v-ticker-ai (طلب المالك): شريط الأسهم المطويّ يظهر كأيقونة ذكاء ذهبيّة تومض بخفّة؛
