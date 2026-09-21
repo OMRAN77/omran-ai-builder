@@ -472,6 +472,11 @@ module.exports = async (req, res) => {
             if (m === 'gpt-image-1') form.append('input_fidelity', 'high');
             form.append('quality', 'high');
             form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
+            /* v-gpt-multi-merge (دليل حيّ من المالك عبر ChatGPT + توثيق OpenAI): images/edits لـgpt-image-2/2.5
+               يقبل حتى ١٦ صورة (لا واحدة كما افترضت v-merge-identity-lock — صحيح لـgpt-image-1 القديم وحده). */
+            if (extras.length && m !== 'gpt-image-1') {
+              for (const x of extras) form.append('image', new Blob([Buffer.from(x.data, 'base64')], { type: x.mime || 'image/jpeg' }), 'ref.jpg');
+            }
             if (exactTextEdit) {
               const maskBytes = Buffer.from(editMaskBase64, 'base64');
               form.append('mask', new Blob([maskBytes], { type: 'image/png' }), 'mask.png');

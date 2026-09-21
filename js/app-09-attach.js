@@ -2360,20 +2360,32 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
 /* v-image-modes (أمر عمران «خام خام، لا تخليني أخسر كلمة»): وضعا «نانو/GPT خام» للمالك —
    يمرّ نصّ المستخدم حرفيًّا بلا __parseImageTextSpec ولا كاشف شِعر/دعاء ولا هندسة، ويعمل
    مع صورة مرفقة (تعديل) أو بدونها (توليد). الخادم يُجبَر على الخام والمحرّك المفروض. */
-async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtt){
+async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtts){
   const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
   cur.messages.push(__m); renderAll();
-  let __editB64 = '', __editMime = '';
+  /* v-gpt-multi-merge: يقبل صورة وحدة (توافقًا قديمًا) أو مصفوفة صور — دمج عدّة صور بالوضع الخام
+     صار ممكنًا فعليًّا (نانو وGPT كلاهما يقبلان مراجع متعدّدة الآن)، لا صورة واحدة فقط كما كان. */
+  const __atts = Array.isArray(imgAtts) ? imgAtts.filter(a => a && a.dataUrl) : (imgAtts && imgAtts.dataUrl ? [imgAtts] : []);
+  let __editB64 = '', __editMime = '', __extraImgs;
   try{
-    if(imgAtt && imgAtt.dataUrl && String(imgAtt.dataUrl).slice(0, 5) === 'data:'){
-      const __du = String(imgAtt.dataUrl);
+    if(__atts.length && String(__atts[__atts.length - 1].dataUrl).slice(0, 5) === 'data:'){
+      const __main = __atts[__atts.length - 1];
+      const __du = String(__main.dataUrl);
       __editMime = (__du.slice(5).split(';')[0]) || 'image/png';
       __editB64 = __du.split(',')[1] || '';
+      if(__atts.length > 1){
+        __extraImgs = [];
+        for(const __xa of __atts.slice(0, -1)){
+          const __xs = await omranShrinkForEdit((__xa.dataUrl || '').split(',')[1] || '', __xa.mime || 'image/png', 1280);
+          __extraImgs.push({ data: __xs.b64, mime: __xs.mime });
+        }
+      }
     }
   }catch(e){ /* بلا صورة = توليد جديد خام */ }
   try{
     const __body = { prompt: String(rawText || '').slice(0, 4000), rawMode: true, forceEngine: forceEngine, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
     if(__editB64){ __body.editImageBase64 = __editB64; __body.editMimeType = __editMime; __body.userText = String(rawText || '').slice(0, 1200); }
+    if(__extraImgs){ __body.extraImages = __extraImgs; }
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       signal: genAbortController ? genAbortController.signal : undefined,
@@ -3112,7 +3124,7 @@ function __friendlyErr(e){
     // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
     // 🍌🤖 «نانو/GPT خام» (المالك): نصّ حرفيّ للمحرّك بلا تفسير، ومع صورة مرفقة أو بدونها.
     if((window.__omMode === 'image_nano' || window.__omMode === 'image_gpt') && text){
-      await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments[0]);
+      await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments);
       return;
     }
     if(String(window.__omMode || '').indexOf('image') === 0 && apiText && !imageAttachments.length){
