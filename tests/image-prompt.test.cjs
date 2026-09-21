@@ -66,13 +66,13 @@ test('all image-edit entry points apply style preservation except explicit anime
   const portrait = fs.readFileSync('api/_lib/portrait-style.js', 'utf8');
   const studio = fs.readFileSync('api/_lib/studio-create.js', 'utf8');
   const fashion = fs.readFileSync('api/_lib/fashion-create.js', 'utf8');
-  assert.match(maha, /buildEditPrompt\(cleanPrompt\)/);
+  assert.match(maha, /buildEditPrompt\(cleanPrompt, intentText\)/); // v-remove-target
   assert.match(portrait, /\['hairstyle',[\s\S]*?'outfit'[\s\S]*?\]\.includes\(style\)/);
   assert.match(portrait, /temperature: isLocalizedEdit \? 0\.15 : 0\.65/);
   assert.match(studio, /if \(feature !== 'anime'\) promptText \+=/);
   assert.match(studio, /temperature: feature === 'anime' \? 0\.65 : 0\.15/);
   assert.match(sourceStylePreservationRule(), /unless the USER REQUEST explicitly asks/);
-  assert.match(maha, /verifyLocalizedImageEdit/);
+  assert.ok(!/verifyLocalizedImageEdit/.test(maha), 'v-lanes: لا حارس رافض في maha-image'); // يبقى في portrait/studio
   assert.match(portrait, /if \(!isMultiSourceComposition\)/);
   assert.match(portrait, /allowStyleChange: !!STYLE_PROMPTS\[style\]/);
   assert.match(portrait, /const frameGuard = await verifyLocalizedImageEdit/);
@@ -135,14 +135,14 @@ test('chat edit flow continues from the latest edited pixels and never auto-recr
   assert.doesNotMatch(maha, /mahaCallImageApi\(promptText, false\)/);
 });
 
-test('single-letter replacements are masked and cannot redraw the rest of the image', () => {
+test('single-letter replacements: the server text lane (one GPT call); the masked path stays available server-side only', () => {
   const attach = fs.readFileSync('js/app-09-attach.js', 'utf8');
   const mahaApi = fs.readFileSync('api/_lib/maha-image.js', 'utf8');
   const textSwap = fs.readFileSync('api/_lib/text-swap.js', 'utf8');
   assert.match(attach, /شيل\|احذف\|امسح\|استبدل[\s\S]{0,100}حرف\|رمز/);
-  assert.match(attach, /omranBuildTextEditMask/);
-  assert.match(attach, /editMaskBase64:__masked\.maskB64/);
-  assert.match(attach, /omranMergeTextEditRegion/);
+  /* v-lanes: العميل لا يبني قناعًا بعد الآن — تبديل الحرف طلب واحد للخادم (textSwap: true) */
+  assert.match(attach, /textSwap: true, editImageBase64: __lsShr\.b64/);
+  assert.ok(!attach.includes('editMaskBase64:__masked.maskB64'), 'مرحلة القناع أُزيلت من العميل');
   assert.match(mahaApi, /form\.append\('mask',[\s\S]{0,120}'mask\.png'\)/);
   assert.match(mahaApi, /if \(exactTextEdit\) \{[\s\S]{0,500}return;[\s\S]{0,300}return;/);
   assert.match(textSwap, /standalone letter or logo glyph/);

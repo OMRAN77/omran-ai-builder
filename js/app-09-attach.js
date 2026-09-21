@@ -305,26 +305,15 @@ function renderAttachStrip(){
   try{ window.__composerSyncTall && window.__composerSyncTall(); }catch(e){ /* guard-ok — cosmetic */ }
 }
 
-// 🖼️ v579 — أزرار فوق الصورة نفسها: «تعديل» يرجّع الصورة إلى صندوق الكتابة
-// كمرفق (فيمشي مسار تعديل نفس الصورة بلا لبس)، و«حفظ» يشارك الملف أو ينزّله.
-window.__omranImgTools = function(wrap, dataUrl){
+// 🖼️ v579 — أدوات الصورة: مشاركتها (ورقة إرسال) وحفظها. أزرار «تعديل» و«دقّة
+// أعلى» فوق الصورة حُذفتا نهائيًّا (v-img-buttons-off).
+window.__omranImgTools = function(wrap, dataUrl, att){
   if(!wrap || !dataUrl || String(dataUrl).slice(0, 5) !== 'data:' || wrap.__imgTools) return;
   const ar = (typeof lang !== 'undefined' && lang === 'ar');
   if(!document.getElementById('oImgToolsCss')){
     const st = document.createElement('style'); st.id = 'oImgToolsCss';
     st.textContent = '.oImgBox{position:relative;display:block;width:-moz-fit-content;width:fit-content;min-width:0;max-width:min(460px,100%)}'
       + '.oImgBox>img{display:block;width:auto;max-width:100%;height:auto;max-height:62vh;object-fit:contain}'
-      + '.oImgBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;pointer-events:auto}'
-      // 🖼️ v641 — أمر عمران «حط كلمت التعديل داخل الصوره»: الصفّ يسكن داخل
-      //    إطار الصورة (زاوية البداية السفلى) بدل ما يكون تحتها.
-      + '.oImgBar.inImg{position:absolute;bottom:10px;inset-inline-start:10px;margin:0;z-index:3;max-width:calc(100% - 20px)}'
-      + '.oImgBar.inImg .oImgBtn{box-shadow:0 2px 10px rgba(0,0,0,.28)}'
-      + '.oImgBtn{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;height:40px;border:0;border-radius:999px;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:#fff;background:rgba(0,0,0,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;transition:background .16s ease,transform .12s ease}'
-      + '.oImgBtn.txt{padding:0 20px}'
-      + '.oImgBtn.ico{width:40px;padding:0}'
-      + '.oImgBtn:hover{background:rgba(0,0,0,.55)}'
-      + '.oImgBtn:active{transform:scale(.94)}'
-      + '.oImgBtn svg{width:21px;height:21px;flex:none}'
       + '.msg.assistant.oImgMsg{background:transparent !important;border:0 !important;border-radius:0 !important;padding:0 !important;width:-moz-fit-content;width:fit-content;max-width:min(486px,100%);box-sizing:border-box;overflow:hidden}'
       + 'html[data-mode="light"] .msg.assistant.oImgMsg{background:transparent !important;border:0 !important}'
       + '.msg.assistant.oImgMsg .msg-text:empty{display:none}'
@@ -332,7 +321,6 @@ window.__omranImgTools = function(wrap, dataUrl){
       + '.msg.assistant.oImgMsg .msg-attachments{margin:0;min-width:0;max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox>img{max-width:100%;border-radius:12px}'
-      + '.oImgGrp{display:flex;align-items:center;gap:10px}'
       + '.oSendOut svg{width:17px;height:17px}'
       + '.oSendBar{display:flex;align-items:center;gap:12px;margin-top:8px}'
       + '@media (max-width:640px){'
@@ -345,15 +333,6 @@ window.__omranImgTools = function(wrap, dataUrl){
     done: '<path d="M4.9 12.7l4.5 4.5L19.1 7.5"/>'
   };
   const svg = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[k] + '</svg>';
-  const bar = document.createElement('div'); bar.className = 'oImgBar';
-  const mk = (cls, html, label, fn, host) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'oImgBtn ' + cls;
-    b.innerHTML = html;
-    b.setAttribute('aria-label', label); b.title = label;
-    b.onclick = (ev) => { ev.stopPropagation(); fn(b); };
-    (host || bar).appendChild(b);
-    return b;
-  };
   const flash = (b, html) => {
     const prev = b.innerHTML;
     b.innerHTML = html;
@@ -366,7 +345,6 @@ window.__omranImgTools = function(wrap, dataUrl){
   //    ٢ الحافظة · ٣ فتح الصورة في صفحة مستقلّة (blob) حيث الضغط المطوّل يعطي
   //    «مشاركة» أصليّة · ٤ تنبيه أخير. زرّ التنزيل مُزال نهائيًّا (أمر عمران).
   // ⚠️ v592 — connect-src لا يسمح بـ data: ⇒ التحويل محلّيّ بـ atob (صفر شبكة).
-  const grp = document.createElement('div'); grp.className = 'oImgGrp'; bar.appendChild(grp);
   const nmOf = () => 'image-' + Date.now() + '.png';
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
   const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v625'); } return false; };
@@ -727,17 +705,13 @@ window.__omranImgTools = function(wrap, dataUrl){
     }catch(_){ /* guard-ok — overlay close cleanup */ }
     document.body.appendChild(ov);
   };
-  // يمين: «تعديل» نصّ فقط
-  mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {
-    pendingAttachments.push({ name: 'edit-' + Date.now() + '.png', isImage: true, mime: dataUrl.slice(5).split(';')[0] || 'image/png', dataUrl: dataUrl });
-    renderAttachStrip();
-    flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
-    const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
-  });
   // 🔄 زر «نسخة ثانية» أُزيل من فوق الصورة (طلب المالك ٦ سبتمبر: كان يغطّي نصّ
   //    الصورة نفسها). window.omranAnotherVersion تبقى متاحة برمجيًا بلا زرّ.
+  // v-img-buttons-off (طلب المالك ٢٠ سبتمبر: «فيه كلمتين تعديل وترقية الصورة احذفهم نهائي»):
+  //    زرّا «تعديل» و«دقّة أعلى» فوق الصورة حُذفا نهائيًّا. الترقية التلقائية (sendImg في
+  //    maha-image.js لكل ناتج دون 2K) لم تُمَسّ — هي خادميّة بلا زرّ ولا تكلفة إضافية.
   // 📤 v635 — أمر عمران «زرّ الإرسال حطه هني جنبهم»: الإرسال يسكن شريط أزرار
-  // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم؛ «تعديل» يبقى تحت الصورة.
+  // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم.
   // رسالة الصورة بلا نصّ لا تبني شريطًا ⇒ أُنشئ شريطًا بنفس الصنف.
   // 🩹 v636 — تصحيح v635: شريط أزرار الرسالة **أخٌ** للفقاعة لا ابنٌ لها
   //    (app-04-i18n-state: bubbleCol ← [الفقاعة, msgActionBar]) ⇒ البحث داخل
@@ -844,8 +818,6 @@ window.__omranImgTools = function(wrap, dataUrl){
     //    تحمل border-radius من CSS ⇒ لا حاجة لقصّ الحاوية.
     if(r && r !== '0px'){ wrap.style.borderRadius = r; }
   }catch(e){ /* guard-ok — style cleanup */ }
-  bar.classList.add('inImg'); // v668: رجوع زر «تعديل» داخل الصورة مثل v641 — شكوى عمران كانت عن نص الصورة المولّدة نفسها
-  wrap.appendChild(bar);
 };
 
 function readFileAsDataUrl(file){
@@ -868,9 +840,11 @@ function readFileAsDataUrl(file){
    والموثّق أن كلود يصغّر أي صورة أطول من ~1568px على خادمه أصلًا — فالإرسال
    الأكبر هدر محض بلا أي مكسب جودة عند النموذج. 1568px + JPEG 85% تعطي نفس
    ما يراه النموذج بحجم ~200-400KB بدل عدة ميغا. */
-const IMAGE_MAX_DIMENSION = 1568;
-const IMAGE_JPEG_QUALITY = 0.85;
-const IMAGE_PASSTHROUGH_BYTES = 900 * 1024; // send as-is, zero re-encode
+/* v-edit-pro (قرار المالك ٢٠ سبتمبر): المصدر كان يُضغط عند الرفع إلى 1568px بجودة 0.85 فتضيع حواف الحروف قبل أن يصل
+   المحرّك. الآن: تمرير بلا إعادة ترميز حتّى 1.5MB، و2048px بجودة 0.92 لما فوقها (≈ 1–2MB، تحت حدّ Vercel 4.5MB). */
+const IMAGE_MAX_DIMENSION = 2048;
+const IMAGE_JPEG_QUALITY = 0.92;
+const IMAGE_PASSTHROUGH_BYTES = 1536 * 1024; // send as-is, zero re-encode
 // v381: نسخة مضغوطة للمزامنة بين الأجهزة (400px, JPEG 40%)
 const SERVER_THUMB_MAX = 400;
 const SERVER_THUMB_QUALITY = 0.4;
@@ -1793,21 +1767,22 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
    قبل الإرسال — كافية تمامًا لمولّد التعديل والنص يبقى مقروءًا. */
 /* v-full-res (المالك: «كيف توصلني لمستوى نانو»): المصدر كان يُصغَّر إلى 1280px فتضيع تفاصيل الحروف والوجوه. الآن 2048px
    للتعديل بصورة واحدة (≈1MB JPEG، تحت حد Vercel 4.5MB)؛ ومع قناع أو صور إضافية يبقى 1280 كي لا يتجاوز الطلب الحد. */
+/* v-edit-pro: تمرير بلا إعادة ترميز حتّى ~1.5MB (b64 2M)، وإعادة الترميز بجودة 0.92 لا 0.88 — الحروف والوجوه تصل كما هي. */
 async function omranShrinkForEdit(b64, mime, maxPx, force){
   try{
-    if(!b64 || (!force && b64.length < 900000)) return { b64: b64, mime: mime };
+    if(!b64 || (!force && b64.length < 2000000)) return { b64: b64, mime: mime };
     const img = await new Promise((res, rej) => {
       const i = new Image();
       i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
       i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
     });
     const mx = maxPx || 2048, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-    if(!force && sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
+    if(!force && sc >= 1 && b64.length < 2600000) return { b64: b64, mime: mime };
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
     c.height = Math.max(1, Math.round((img.naturalHeight || mx) * sc));
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return { b64: c.toDataURL('image/jpeg', 0.88).split(',')[1], mime: 'image/jpeg' };
+    return { b64: c.toDataURL('image/jpeg', force ? 0.88 : 0.92).split(',')[1], mime: 'image/jpeg' };
   }catch(e){ return { b64: b64, mime: mime }; }
 }
 
@@ -2366,7 +2341,13 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       // 🔄 نحفظ طلب التوليد ليعيده زر «نسخة ثانية» بتنويعة جديدة
       try{ window.__omranLastImageReq = { kind:'gen', promptText: promptText }; }catch(e){ __swallow(e, 'img:save-req-gen'); }
     } else {
-      __m.content = lang === 'ar' ? ('تعذّر توليد الصورة الآن — ' + ((__d && __d.error) || ('HTTP ' + __r.status))) : ('Image generation failed — ' + ((__d && __d.error) || ('HTTP ' + __r.status)));
+      /* v-img-diag-owner (شكوى المالك: «عندي مزوّدين نانو وGPT والنتيجة 0» بلا أيّ سبب):
+         الوضع الخام وحده كان يُظهر __diag (سبب فشل المزوّد الحقيقيّ)؛ التوليد العاديّ —
+         المسار الذي يستعمله المالك فعليًّا — كان يعرض رمز الخطأ العامّ فقط، فلا يُعرف
+         أيّ مزوّد فشل ولماذا. يظهر للمالك وحده؛ أسماء المزوّدين ممنوعة عن بقية المستخدمين. */
+      var __why = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __d && __d.__diag)
+        ? (' [' + (__d.__diag.gErr || __d.__diag.openai || __d.__diag.nano || __d.__diag.free || '?') + ']') : '';
+      __m.content = (lang === 'ar' ? 'تعذّر توليد الصورة الآن — ' : 'Image generation failed — ') + ((__d && __d.error) || ('HTTP ' + __r.status)) + __why;
     }
   }catch(e){
     __m._loading = false;
@@ -2494,9 +2475,13 @@ window.omranAnotherVersion = async function(){
       __m.attachments = [{ name:'edited.png', isImage:true, mime:__outMime, dataUrl:'data:' + __outMime + ';base64,' + __data.imageBase64 }];
       cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
       cur.lastMsgWasImageEdit = true;
-      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
+      /* v-img-engine-tag-owner (باب مقفل: لا اسم مزوّد لأيّ مستخدم — كان يظهر للكلّ بلا حارس): المحرّك الحقيقيّ للمالك وحده. */
+      try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
     } else {
-      __m.content = imgErrFriendly(__data && __data.error, lang === 'ar') || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.');
+      /* v-img-diag-owner: نفس منطق التوليد والتعديل العاديّين */
+      var __whyA = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
+        ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || '?') + ']') : '';
+      __m.content = (imgErrFriendly(__data && __data.error, lang === 'ar') || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.')) + __whyA;
     }
     renderAll(); saveState();
   }catch(e){
@@ -4229,7 +4214,8 @@ function __showImgLoading(el, ar, en){
             let __lsUrl = 'data:' + __lsMime + ';base64,' + __lsData.imageBase64;
             try{ __lsUrl = await omranSharpenImage(__lsUrl); }catch(e){ __swallow(e, 'img:sharpen-swap'); }
             cur.messages.push({ role:'assistant', content:(typeof __lsData.caption === 'string' ? __lsData.caption : ''), attachments:[{ name:'edited.png', isImage:true, mime:(__lsUrl.slice(5).split(';')[0] || __lsMime), dataUrl:__lsUrl }] });
-            try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__lsData.engine || '')) ? 'gpt-image' : (/pro/.test(String(__lsData.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
+            /* v-img-engine-tag-owner: المحرّك الحقيقيّ للمالك وحده. */
+            try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__lsData.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
             cur.lastEditedImage = { b64: __lsData.imageBase64, mime: __lsMime };
             cur.imageEditSource = { b64:__b64, mime:__mime };
             cur.imageEditInstructions = [String(text || '').trim()];
@@ -4242,41 +4228,9 @@ function __showImgLoading(el, ar, en){
           if(e && e.name === 'AbortError') return;
           __swallow(e, 'img:letter-swap'); /* يسقط بهدوء لمسار القناع الاحتياطي */
         }
-        try{
-          chatPhase('🔎', lang === 'ar' ? 'جاري قراءة الكتابة على الصورة…' : 'Reading the text on the image…', thinkingDiv);
-          const __tsShr = await omranShrinkForEdit(__b64, __mime, 1280); /* مع قناع: صورتان في الطلب */
-          const __tsRes = await fetch('/api/tools?action=text-swap', {
-            method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
-            body: JSON.stringify({ imageBase64:__tsShr.b64, mimeType:__tsShr.mime, request:String(text || '').slice(0, 400), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
-          });
-          const __tsSpec = await __tsRes.json().catch(() => ({}));
-          if(__tsRes.ok && __tsSpec.found && __tsSpec.box && __tsSpec.newLine){
-            chatPhase('✍️', lang === 'ar' ? 'جاري تبديل النص بدون المساس بالصورة…' : 'Swapping the text in place…', thinkingDiv);
-            const __masked = await omranBuildTextEditMask(__b64, __mime, __tsSpec.box);
-            const __maskedRes = await fetch('/api/maha-image', {
-              method:'POST', headers:{ 'Content-Type':'application/json' }, signal:genAbortController.signal,
-              body:JSON.stringify({
-                prompt:'Replace only the selected existing text with exactly «' + __tsSpec.newLine + '». Match its original style, color, size and alignment. Do not change anything outside the transparent mask.',
-                editImageBase64:__masked.sourceB64, editMimeType:'image/png', editMaskBase64:__masked.maskB64,
-                exactTextEdit:true, token:authGet('aiapp_auth_token'), guestId:window.getGuestId()
-              })
-            });
-            const __maskedData = await __maskedRes.json().catch(() => ({}));
-            if(!__maskedRes.ok || !__maskedData.imageBase64) throw new Error('masked_text_edit_failed');
-            const __tsB64 = await omranMergeTextEditRegion(__masked.sourceB64, 'image/png', __maskedData.imageBase64, __maskedData.mimeType || 'image/png', __masked.region);
-            cur.lastEditedImage = { b64: __tsB64, mime: 'image/png' };
-            cur.lastMsgWasImageEdit = true;
-            cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:'image/png', dataUrl:'data:image/png;base64,' + __tsB64 }] });
-            renderAll(); saveState(); return;
-          }
-        }catch(e){
-          if(e && e.name === 'AbortError') return;
-          __swallow(e, 'img:text-swap');
-          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّر تبديل الحرف بدقة هذه المرة. أعد المحاولة بدون تغيير بقية الصورة.':'The character could not be replaced precisely this time. Please retry.' });
-          cur.lastMsgWasImageEdit = true;
-          renderAll(); saveState(); return;
-        }
-        cur.messages.push({ role:'assistant', content:lang==='ar'?'لم أستطع تحديد الحرف المطلوب بثقة. حدده بكلمة أوضح.':'I could not locate the requested character confidently.' });
+        /* v-lanes (قرار المالك ٢٠ سبتمبر «التعديل مرّة وحدة»): تبديل الحرف ضربة واحدة عند الخادم (مسار النصّ → GPT).
+           مرحلتا «قراءة الموضع بالرؤية ثمّ قناع» الاحتياطيّتان أُزيلتا — فشل الخادم = مصارحة لا محاولة ثالثة. */
+        cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّر تبديل النصّ هذه المرّة — أعد المحاولة أو صِف الكلمة المطلوبة بوضوح أكثر.':'Could not swap the text this time — retry or describe the target word more clearly.' });
         cur.lastMsgWasImageEdit = true;
         renderAll(); saveState(); return;
       }
@@ -4310,8 +4264,8 @@ function __showImgLoading(el, ar, en){
         let __editUrl = 'data:' + __outMime + ';base64,' + __data.imageBase64;
         try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
-        // v-img-engine-tag: بصمة المحرك في شريط الحالة — يحسم «أي محرك نفّذ» فورًا.
-        try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine'); }
+        // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
+        try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
         /* v-image-memory: نحفظ الدور (كلمات المستخدم + مصغّر النتيجة 768px، ومصغّر المصدر الأصلي في أول دور) ليراه النموذج في الدور القادم */
         try{
@@ -4328,7 +4282,10 @@ function __showImgLoading(el, ar, en){
         // 🔄 نحفظ الطلب كما هو ليعيده زر «نسخة ثانية» بتنويعة جديدة
         try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: { prompt: __editPrompt, userText: String(text || '').slice(0, 600), editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs } }; }catch(e){ __swallow(e, 'img:save-req'); }
       } else {
-        cur.messages.push({ role: 'assistant', content: imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?')))) });
+        /* v-img-diag-owner: نفس منطق التوليد العاديّ — السبب الحقيقيّ (__diag) يظهر للمالك وحده */
+        var __whyE = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
+          ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || '?') + ']') : '';
+        cur.messages.push({ role: 'assistant', content: (imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?'))))) + __whyE });
         cur.lastMsgWasImageEdit = true;
       }
       renderAll(); saveState();

@@ -201,14 +201,17 @@ function buildSceneUpgradePrompt(userPrompt){
    كلمة، الْمس المنطقة المطلوبة فقط واترك كل حرف آخر مطابقًا حرفًا بحرف. */
 function isTextEditRequest(text){
   return /\b(?:write|add|remove|delete|erase|replace|change|swap)\b[^\n]{0,40}\b(?:letter|word|text|character|caption|title|logo)\b/i.test(text)
-    || /(?:اكتب|أكتب|اضف|أضف|ضيف|شيل|احذف|امسح|بدّل|بدل|غيّر|غير|استبدل)[^\n]{0,30}(?:حرف|كلمة|كلمه|نص|النص|اسم|أسماء|اسماء|عنوان|شعار|رقم)/.test(text);
+    || /(?:اكتب|أكتب|اضف|أضف|ضيف|شيل|احذف|امسح|بدّل|بدل|غيّر|غير|استبدل)[^\n]{0,30}(?:حرف|كلمة|كلمه|كلمات|نص|النص|اسم|أسماء|اسماء|اسامي|أسامي|عنوان|شعار|رقم)/.test(text);
 }
 /* v-remove-text (المالك: «بدون أسماء — يحذف الأسماء من الصورة»): طلب إزالة
    الأسماء/الكتابة/العلامة المائية من الصورة. */
 function isRemoveTextRequest(text){
   const t = String(text || '');
-  return /(?:بدون|بلا|من\s*دون)\s*(?:أسماء|اسماء|اسم|كتابة|كتابه|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة|لوجو|شعار|واتر\s*مارك)/.test(t)
-    || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
+  /* v-remove-words-narrow (لقطة المالك «احذف الكلمات المتكررة»): «كلمات» بلا مؤهّل خارج isRemoveTextRequest
+     عمدًا — قيد مثل «المتكررة» يعني حذفًا انتقائيًّا لا مسحًا شاملًا؛ isTextEditRequest يتكفّل بهذي الحالة
+     بقاعدة «المس المسمّى فقط» الأضيق، لا قاعدة «امسح كلّ شيء». */
+  return /(?:بدون|بلا|من\s*دون)\s*(?:أسماء|اسماء|اسامي|أسامي|اسم|كتابة|كتابه|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة|لوجو|شعار|واتر\s*مارك)/.test(t)
+    || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسامي|أسامي|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
     || /\b(?:remove|erase|delete|clear|without|no)\b[^\n]{0,20}\b(?:names?|text|writing|words?|letters?|numbers?|caption|watermark|logo|signature|labels?)\b/i.test(t);
 }
 /* v-raw-words (خطة المالك ٦ سبتمبر، البند ٢: «إرسال كلماتي خامًا في المسارات الإبداعية»): في مسار الأدوات كان نموذج الصور
@@ -333,7 +336,21 @@ function buildReimaginePrompt(userPrompt, userWords){
     'Return only one finished image.'
   ].join('\n');
 }
-function buildEditPrompt(userPrompt){
+/* v-remove-target (لقطة المالك: «احذف اسم عمران AI» على شبكة الخطوط → GPT مسح كلّ النصوص والتسميات = «يحذف الصورة
+   كاملة»): القاعدة ٨ كانت «امسح كلّ الأسماء والكلمات» حتّى حين يسمّي الطلب نصًّا بعينه. الآن: اسم/نصّ مسمّى بعد فعل الحذف
+   يُحذف هو وحده أينما ظهر (كلّ نسخه)، وكلّ حرف آخر يبقى؛ بلا اسم محدّد («شيل الأسماء/بدون كتابة») تبقى الإزالة الشاملة. */
+const REMOVE_TARGET_AR_RE = /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:لي\s+)?(?:ال)?(?:اسم|كلمة|كلمه|نص|النص|عنوان|شعار|لوجو|رقم|توقيع|كتابة|كتابه)\s*[:：]?\s*["«“']?([^"»”'\n]{1,60}?)["»”']?\s*(?:من\s+(?:الصورة|الصوره|هذي|هذه|الخلفية|الخلفيه)(?:\s.*)?)?$/; /* بلا \b بعد العربيّة — \b لا يعرف الحروف العربيّة */
+const REMOVE_TARGET_EN_RE = /\b(?:remove|erase|delete|clear)\b\s+(?:the\s+)?(?:name|text|word|words|caption|title|logo|label|number|date|signature)\s*[:：]?\s*["“']?([^"”'\n]{1,60}?)["”']?\s*(?:from\s+(?:the\s+)?(?:image|picture|photo).*)?$/i;
+function removeTextTarget(text){
+  const t = String(text || '').trim();
+  const m = t.match(REMOVE_TARGET_AR_RE) || t.match(REMOVE_TARGET_EN_RE);
+  if(!m) return '';
+  const target = String(m[1] || '').trim().replace(/[.!؟?،,]+$/, '').trim();
+  if(!target || /^(?:من|from)\s/i.test(target)) return '';
+  if(/^(?:كامل|كله|كلها|كلّه|كلّها|الكل|الكلّ|all|everything|entire|whole)$/i.test(target)) return '';
+  return target;
+}
+function buildEditPrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   const rules = [
     'TASK: "' + prompt + '"',
@@ -347,7 +364,10 @@ function buildEditPrompt(userPrompt){
     '6. Never write, draw, translate or render the instruction itself inside the image. Preserve existing text character-for-character unless the USER REQUEST explicitly replaces it.',
     '7. Never return the image unchanged. Always apply the USER REQUEST as written: if it is short or vague, apply its most reasonable literal interpretation to the closest matching element — changing nothing else. Do not add, invent or improve anything the USER REQUEST did not ask for.'
   ];
-  if(isRemoveTextRequest(prompt)){
+  const removeTarget = isRemoveTextRequest(String(userWords || '')) || isRemoveTextRequest(prompt) ? (removeTextTarget(userWords) || removeTextTarget(prompt)) : '';
+  if(removeTarget){
+    rules.push('8. REMOVE ONLY THE TEXT "' + removeTarget + '": erase that exact text everywhere it appears in the image (every instance, in any font, size or colour) and nothing else. Every OTHER word, label, letter, number, line, box, icon and layout element must stay identical, character-for-character, in place. Rebuild the background behind the removed text so the surface looks clean and natural (matching colour, texture and lighting). Do not blank, crop or empty the rest of the image.');
+  } else if(isRemoveTextRequest(prompt) || isRemoveTextRequest(String(userWords || ''))){
     rules.push('8. REMOVE TEXT: completely erase ALL names, words, letters, numbers, captions, signatures, logos and watermarks that appear in the image, unless the request names specific text to keep. Rebuild whatever was behind the removed text so the surface looks clean and natural (matching colour, texture, lighting and perspective) as if the text was never there. Do NOT leave blur, smudges, ghosting or empty boxes. Change nothing else in the image.');
   } else if(isTextEditRequest(prompt)){
     rules.push('8. TEXT/LETTER EDIT: touch ONLY the exact letter or word named in the request. Every OTHER letter, word, number and label anywhere in the image must stay identical, character-for-character, in the same font, size, colour and position — do NOT repaint, reflow or re-typeset surrounding text. Render any new Arabic text with correct, cleanly joined right-to-left glyphs. Do NOT insert stray digits, random symbols, or the words of the instruction (like "تعديل"/"edit").');
@@ -393,4 +413,4 @@ function buildRestylePrompt(userPrompt, userWords){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, removeTextTarget, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

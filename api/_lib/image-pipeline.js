@@ -4,7 +4,7 @@
  * المبدأ: النموذج اللغوي هو العقل، ونموذج الصور هو اليد.
  *
  * rewrite  → Claude يحوّل الطلب العربي إلى وصف إنجليزي + قيود قابلة للفحص
- * generate → مزوّد صور حقيقي (gpt-image-2 / gemini)
+ * generate → مزوّد صور حقيقي (gpt-image-2.5-flare / gemini)
  * verify   → Claude vision يفحص الصورة مقابل القيود ويعيد ملاحظة تصحيح
  * retry    → إعادة التوليد بالملاحظة، لا بنفس الوصف
  * logo     → الرمز من النموذج، والنص العربي يُركَّب برمجياً بـ SVG
@@ -55,7 +55,7 @@ async function rewrite(userText, llm) {
 // 2) المزوّدون — اليد
 // ============================================================
 
-/** gpt-image-2: الأقوى حالياً في العدّ والتخطيط. */
+/** gpt-image-2.5-flare: الأقوى حاليًا في العدّ والتخطيط (v-gpt-2.5، ٢٠ سبتمبر ٢٠٢٦). */
 function openaiProvider(apiKey) {
   const SIZES = {
     "1:1": "1024x1024",
@@ -65,10 +65,10 @@ function openaiProvider(apiKey) {
   };
 
   return {
-    name: "gpt-image-2",
+    name: "gpt-image-2.5-flare",
     async generate({ prompt, negative, aspect, transparent }) {
       const body = {
-        model: "gpt-image-2",
+        model: "gpt-image-2.5-flare",
         prompt: negative ? `${prompt}\n\nAvoid: ${negative}` : prompt,
         size: SIZES[aspect] || "1024x1024",
         n: 1,

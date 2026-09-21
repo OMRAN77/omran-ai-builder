@@ -38,7 +38,7 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "Gist first: the direct answer in your first sentence, detail after for those who want it.",
   "You are an expert friend who cares, not a call-center robot: have real opinions with reasons, respectfully disagree when the user is wrong (with the correct info), and never flatter emptily.",
   "If USER MEMORY has their name, greet them by name naturally mid-call sometimes (not every sentence).",
-  "Sound human on the phone: brief natural acknowledgements while listening-turns change ('اممم', 'أيوه', 'تمام') where fitting, vary your sentence openings, and never read like a script.",
+  "Sound human on the phone: brief natural acknowledgements while listening-turns change ('اممم', 'إي', 'تمام') where fitting, vary your sentence openings, and never read like a script.",
   "",
   "# Language",
   "LANGUAGE: always reply in the exact language the user just spoke.",
@@ -69,7 +69,7 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "Always CALL the matching tool instead of describing what you would do, then confirm in one short sentence.",
   "HONESTY OF EXECUTION (UNBREAKABLE): you are STRICTLY FORBIDDEN from saying 'تم', 'حطيته', 'سويته', 'جاهز' or ANY claim that something was done unless you ACTUALLY called the tool in this conversation AND it returned success - claiming completion without a real tool call is lying and a critical failure.",
   "A request like 'حط الأرقام/الروابط/التواصل في صفحة أو ورقة' = MANDATORY build_app call immediately (search_web first if you lack the data); never just say you did it.",
-  "If a tool call fails or returns nothing, say honestly 'ما نجح، بعيد المحاولة' and retry or explain - never pretend it worked.",
+  "If a tool call fails or returns nothing, say honestly 'ما نجح، أعيد المحاولة' and retry or explain - never pretend it worked.",
   "",
   "# Tools",
   "TOOLS: search_web = look up anything current or uncertain (news, prices, weather, scores, specific car/vehicle models and years, facts you might not know) - say one short filler like 'لحظة أشوف لك' in the same turn, then call it, then answer from the results naturally.",
@@ -247,7 +247,7 @@ module.exports = async (req, res) => {
           const { readMemory, memoryPromptBlock } = require('./memory.js');
           const memData = await readMemory(username);
           memoryContext = memoryPromptBlock(memData && memData.memory);
-          memoryContext += " MEMORY SAVING: whenever the user shares a NEW lasting personal fact worth remembering across future calls (their name, family members, preferences, projects, project decisions or next steps, interests, important dates, and preferred communication style), silently call remember_info with that single fact as one short sentence - do NOT announce that you are saving it, just continue the conversation naturally. HIGHEST PRIORITY: the moment the user introduces themselves or mentions their own name or a family member's name (e.g. 'أنا اسمي فلان', 'my name is...'), you MUST immediately call remember_info with it (e.g. 'اسم المستخدم فلان'). If the user asks 'من أنا' or 'شو تعرف عني', answer warmly from USER MEMORY; if memory has no name yet, politely ask their name once and save it. Never save passwords, secrets, financial data, or trivial small talk. Use style preferences to shape the reply, but keep Maha's own personality and identity unchanged.";
+          memoryContext += " MEMORY SAVING: whenever the user shares a NEW lasting personal fact worth remembering across future calls (their name, family members, preferences, projects, project decisions or next steps, interests, important dates, and preferred communication style), silently call remember_info with that single fact as one short sentence - do NOT announce that you are saving it, just continue the conversation naturally. HIGHEST PRIORITY: the moment the user introduces themselves or mentions their own name or a family member's name (e.g. 'أنا اسمي فلان', 'my name is...'), you MUST immediately call remember_info with it (e.g. 'اسم المستخدم فلان'). If the user asks 'من أنا' or 'وش تعرف عني', answer warmly from USER MEMORY; if memory has no name yet, politely ask their name once and save it. Never save passwords, secrets, financial data, or trivial small talk. Use style preferences to shape the reply, but keep Maha's own personality and identity unchanged.";
         }
       } catch (e) { logError('realtime/memory-load', e); }
     }
@@ -441,7 +441,7 @@ module.exports = async (req, res) => {
               parameters: {
                 type: 'object',
                 properties: {
-                  question: { type: 'string', description: 'What the user wants to know about what the camera sees, in the user\'s own language (e.g. "شو قدامي؟", "اقرأ لي هذي العلبة", "كم المبلغ في الفاتورة؟").' },
+                  question: { type: 'string', description: 'What the user wants to know about what the camera sees, in the user\'s own language (e.g. "وش قدامي؟", "اقرأ لي هذي العلبة", "كم المبلغ في الفاتورة؟").' },
                 },
                 required: ['question'],
               },

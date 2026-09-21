@@ -85,21 +85,25 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const isCreativeEdit = !!editImageBase64 && \(isElevate \|\| isReimagine \|\| isRestyle \|\| isSceneUpgrade \|\| __pureRaw\)/);
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/);
   assert.match(maha, /isElevate \? 0\.85/);
-  assert.match(maha, /sourceIsRealPlacePhoto/);
-  assert.match(maha, /if \(__place !== true\) \{ isSceneUpgrade = false; isElevate = true; \}/);
-  assert.match(maha, /if \(!nanoPrimary\) delete cfg\.temperature;/);
+  // v-lanes: بلا سؤال «مكان حقيقيّ؟» للنموذج — علم الترقية بلا تلميح مكان = ترقية تصميم مباشرة
+  assert.ok(!/sourceIsRealPlacePhoto/.test(maha), 'مصنّف المكان أُزيل');
+  assert.match(maha, /if \(isSceneUpgrade && !__intent\.placeUpgradeHint && !__intent\.sameImage\) \{ isSceneUpgrade = false; isElevate = true; \}/);
+  assert.match(maha, /if \(!nanoPrimary && !__faithfulLane\) delete cfg\.temperature;/); // v-lanes: الحرارة تبقى للمسار الأمين
   assert.match(maha, /logError(?:AndFlush)?\('maha-image:primary-fallback'/);
   /* الحارس يعمل على كل تعديل الآن: الأسلوب/الترقية/الفكرة المختلفة لا تُرفض لتغيير الوسيط، والهوية مفروضة */
-  assert.match(maha, /allowStyleChange: explicitlyRequestsStyleChange\(cleanPrompt\) \|\| isRestyle \|\| isReimagine \|\| isElevate,/);
-  assert.match(maha, /allowBroadChange: isSceneUpgrade \|\| isElevate \|\| isReimagine \|\| isRestyle,/);
+  assert.ok(!/allowStyleChange: explicitlyRequestsStyleChange\(cleanPrompt\)/.test(maha), 'v-lanes: حارس الهويّة أُزيل من maha-image'); // يبقى في portrait/studio
   /* v-letter-swap: «غير حرف م حط ع» → نانو بنانا برو بتعليمة قصيرة، وgpt-image منافس بالحكم لا خاطف */
   const { isTextEditRequest, buildLetterSwapPrompt } = require('../api/_lib/image-prompt');
-  for (const t of ['غير حرف م حط ع', 'شيل حرف م وحط ع', 'بدل الاسم إلى عمران', 'اكتب كلمة مبروك', 'replace the word Sale with Open']) assert.equal(isTextEditRequest(t), true, t);
+  for (const t of ['غير حرف م حط ع', 'شيل حرف م وحط ع', 'بدل الاسم إلى عمران', 'اكتب كلمة مبروك', 'replace the word Sale with Open', 'اكتب كل الاسامي الموجوده على نفس الخط', 'احذف الكلمات المتكرره']) assert.equal(isTextEditRequest(t), true, t); // v-text-colloquial: «الاسامي» جمع عاميّ لـ«اسم»؛ «كلمات» جمع «كلمة» — لقطتا المالك
   for (const t of ['أقوى', 'خلها أفخم', 'شيل الخلفية']) assert.equal(isTextEditRequest(t), false, t);
   /* «شيل الاسم كامل» حذف صِرف لا تبديل حرف (كان يسقط في «لم أستطع تحديد الحرف») — البديل بعده يعيده تبديلًا */
-  const { isPureTextRemoval } = require('../api/_lib/image-prompt');
+  const { isPureTextRemoval, isRemoveTextRequest, buildEditPrompt } = require('../api/_lib/image-prompt');
   for (const t of ['شيل الاسم كامل', 'شيل الاسم', 'بدون أسماء', 'احذف النص', 'remove the name']) assert.equal(isPureTextRemoval(t), true, t);
   for (const t of ['شيل الاسم وحط عمران', 'شيل حرف م وحط ع', 'غير حرف م حط ع', 'بدل الاسم إلى عمران', 'replace the name with Omran', 'أقوى']) assert.equal(isPureTextRemoval(t), false, t);
+  /* v-remove-words-narrow (لقطة المالك «احذف الكلمات المتكررة»): «كلمات» بلا مؤهّل لا يعني مسحًا شاملًا —
+     isRemoveTextRequest يبقى false عمدًا فيأخذ رقم القاعدة الأضيق (touch ONLY) من isTextEditRequest لا «امسح كلّ شيء». */
+  assert.equal(isRemoveTextRequest('احذف الكلمات المتكرره'), false, 'لا مسح شامل لطلب انتقائي');
+  assert.match(buildEditPrompt('احذف الكلمات المتكرره', 'احذف الكلمات المتكرره'), /8\. TEXT\/LETTER EDIT: touch ONLY/);
   const lp = buildLetterSwapPrompt('غير حرف م حط ع');
   assert.match(lp, /Edit the attached image: "غير حرف م حط ع"/);
   assert.match(lp, /Change ONLY the letter\/word\/number named in that request, in place/);
@@ -129,8 +133,6 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && isPureTextRemoval\(intentText\);/);
   assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
   assert.match(maha, /isPersonSwap \? buildPersonSwapPrompt\(cleanPrompt, intentText\)/);
-  assert.match(maha, /const __guardLane = !!\(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\);/);
-  assert.match(maha, /&& !isPersonSwapRequest\(intentText\) && !isBroadEditRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/);
   assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
   assert.match(maha, /isReimagine \? buildReimaginePrompt\(cleanPrompt, intentText\)/);
@@ -140,13 +142,9 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const __rawCreative = creativeRawEnabled\(process\.env\) && \(isElevate \|\| isReimagine \|\| isRestyle\);/);
   assert.match(maha, /__rawCreative \? rawCreativePrompt\(cleanPrompt, intentText\)/);
   /* v-intent-llm: النموذج يوسّع التعابير النمطية فقط حين لا تلتقط مسارًا إبداعيًا ولا تبديل/حذف نصّ، ولا يعمل بلا صورة مصدر */
-  assert.match(maha, /if \(editImageBase64 && !__optForceEngine && !\(body && body\.sceneUpgrade === true\) && !__intent\.restyle && !__intent\.reimagine && !__intent\.elevate && !__intent\.sameImage\n\s+&& intentText\.trim\(\)\.length <= 220 && !isTextEditRequest\(intentText\) && !isPureTextRemoval\(intentText\) && !isPersonSwapRequest\(intentText\) && !isBroadEditRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
-  assert.match(maha, /const __llm = await classifyEditIntentLLM\(\{ apiKey, text: intentText \}\);/);
-  assert.match(maha, /if \(__llm\) \{ __intent\[__llm\.lane === 'same' \? 'sameImage' : __llm\.lane\] = true;/);
+  assert.ok(!/classifyEditIntentLLM/.test(maha), 'v-lanes: مصنّف النيّة بالذكاء أُزيل — القاموس وحده يقرّر');
   /* v-best-of: مرشّح ثانٍ بالتوازي في المسارات الإبداعية والحكم الإبداعي يختار؛ IMAGE_BEST_OF يضبط العدد */
-  assert.match(maha, /const __altP = \(isCreativeEdit && !pipelineActive && !prayerPlan && bestOfCount\(process\.env\) >= 2\)/);
-  assert.match(maha, /const pick = await judgeBest\(\{ apiKey, prompt: cleanPrompt, creative: true, source: \{ b64: editImageBase64/);
-  assert.match(maha, /if \(pick === 'b'\) imgPart = altImg;\n\s+duoEngine = 'gemini x2\+judge';/);
+  assert.ok(!/__altP|judgeBest|bestOfCount/.test(maha), 'v-lanes: لا مرشّح ثانٍ ولا حكم — نداء واحد');
   const judge = require('../api/_lib/image-judge');
   assert.equal(judge.bestOfCount({}), 2, 'الافتراضي مرشّحان (الجودة قبل التكلفة)');
   assert.equal(judge.bestOfCount({ IMAGE_BEST_OF: '1' }), 1);
@@ -183,7 +181,6 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(cp, /Request: "عطني  فكرة أقوى"/, 'الاقتباسات وأسطر الطلب لا تكسر القالب');
   for (const lane of llm.INTENT_LANES) assert.match(cp, new RegExp('- ' + lane + ':'));
   /* المالك ٦ سبتمبر: لا حارس هوية/أسلوب على المسارات الإبداعية (نانو الأصلي لا يحجب)، ويبقى على التعديل الموضعي */
-  assert.match(maha, /const __guardLane = !!\(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\);\n\s+if \(__guardLane\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
   /* 4K عند الطلب الصريح فقط، وإلا 2K */
   assert.match(maha, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
   const want4K = new RegExp(maha.match(/const __want4K = (?:__optWant4K \|\| )?\/(.*)\/i\.test\(/)[1], 'i');
@@ -192,20 +189,24 @@ test('server reads the intent from the user\'s own words and sends creative edit
   /* المصدر يُرسل بدقة 2048px لتعديل الصورة الواحدة، و1280 فقط مع قناع أو صور إضافية */
   assert.match(attach, /async function omranShrinkForEdit\(b64, mime, maxPx, force\)/);
   assert.match(attach, /const mx = maxPx \|\| 2048, sc = /);
-  assert.match(attach, /const __tsShr = await omranShrinkForEdit\(__b64, __mime, 1280\)/);
   assert.match(attach, /__xa\.mime \|\| 'image\/png', 1280\)/);
-  assert.match(maha, /&& \(!isTextSwap \|\| __duoWouldRun\)\n/);
-  /* العميل: برو أولًا على الصورة كاملة، ومسار القناع احتياط */
+  // v-text-gpt-oneshot: تبديل الحرف صار على GPT ضربة واحدة (كان برو يقوده والحكم يختار)
+  assert.ok(!/&& \(!isTextSwap \|\| __duoWouldRun\)\n/.test(maha), 'شرط برو-يقود تبديل الحرف أُزيل');
+  /* v-lanes: العميل يرسل تبديل الحرف للخادم مرّة واحدة (مسار النصّ → GPT)؛ مسار القناع الاحتياطيّ أُزيل */
   assert.match(attach, /textSwap: true, editImageBase64: __lsShr\.b64/);
-  assert.ok(attach.indexOf('textSwap: true') < attach.indexOf("fetch('/api/tools?action=text-swap'"), 'Pro-first, masked path second');
+  assert.ok(!attach.includes("fetch('/api/tools?action=text-swap'"), 'لا مرحلة قناع احتياطيّة');
   /* تبديل الحرف بالقناع يعمل على 1280px كأي تعديل */
   assert.match(attach, /const __sc = Math\.min\(1, 1280 \/ Math\.max\(img\.naturalWidth \|\| 1, img\.naturalHeight \|\| 1\)\);/);
   /* الترقية تذهب إلى برو دائمًا — لا تُختطف إلى gpt-image المحافظ حين يبدو المصدر «شاشة تطبيق» */
-  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length && \(!isTextSwap \|\| __duoWouldRun\)\n/);
+  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| /);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
-  assert.match(maha, /const __duoWouldRun = duoEnabled\(\) && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length;/);
-  assert.match(maha, /if \(__textRoute\) \{\n      if \(__duoWouldRun\) \{/);
-  assert.match(maha, /const duoOn = __duoWouldRun && \(!__textRoute \|\| !!densePromise\);/);
+  assert.ok(!/__duoWouldRun|duoEnabled|duoP\b/.test(maha), 'v-lanes: لا محرّك موازٍ');
+  // v-text-gpt-oneshot: مسار النصّ ضربة واحدة بلا مزدوج
+  assert.match(maha, /if \(__textRoute\) \{\n      const denseB64 = await openaiRescueImage\(\);\n      if \(denseB64\) \{\n        await sendImg\(denseB64, 'image\/png', 'openai'\);\n        return;/);
+  /* v-img-engine-tag-owner (متابعة، لقطة المالك «هذا نانو مش gpt»): مسار النصّ أراد GPT وفشل بصمت إلى نانو —
+     السبب الآن يُلحق باسم المحرّك الحرفيّ (المالك وحده يراه) بدل الاختفاء وراء «nano» بلا تفسير. */
+  assert.match(maha, /__textRouteFailNote = \(lastRescueErr \|\| 'unknown'\)\.slice\(0, 120\);/);
+  assert.match(maha, /if \(__textRouteFailNote\) engine = engine \+ '\(gpt-text-failed:' \+ __textRouteFailNote \+ '\)';/);
   assert.match(maha, /generationConfig: genConfigFor\(\{ temperature: 0\.85 \}\) \}\);/);
   /* خط الإنقاذ لم يُمسّ: برو يفشل → نانو 2.5 → gpt-image */
   assert.match(maha, /geminiNanoBananaImage\(\)/);
@@ -218,7 +219,8 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   const chatTools = fs.readFileSync('js/app-18-chat-tools.js', 'utf8');
   const chat = fs.readFileSync('api/_lib/chat.js', 'utf8');
   assert.match(attach, /prompt: __editPrompt, userText: String\(text \|\| ''\)\.slice\(0, 600\)/);
-  assert.match(attach, /نانو بنانا برو/);
+  /* v-img-engine-tag-owner: بصمة المحرّك الحرفيّة (لا حزمة عامّة باسم مزوّد) للمالك وحده — مؤكَّدة في الاختبار أدناه */
+  assert.match(attach, /window\.__chatStatus\.note\('🎨', String\(__data\.engine \|\| '\?'\)\)/);
   /* بطاقة ملصوقة/عريضة تُعلَّم «لقطة شاشة» — الطلب الإبداعي القصير عليها يبقى تعديل صورة لا تحليل لقطة */
   /* بعد main (قرار المالك الأخير): أي أمر غير استفهامي مع صورة مرفقة = تعديل؛ «أقوى/أفضل من» تُلتقط بـ__IMG_ELEVATE */
   assert.match(attach, /const __SHOT_ANALYZE = !!\([^;]{0,600}!__IMG_UPGRADE && !__IMG_ELEVATE/);
@@ -254,8 +256,8 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(tools, /if \(gCreative\) return await window\.omranAgentTools\.run\('edit_image', \{ instruction: prompt, userText: gUserText \}\)/);
   assert.match(tools, /var gCreative = !!\(gFirst && gRefB64 && gUserText && gUserText\.length <= 120 && !gNewImage && !gNotEdit/);
   assert.match(chat, /runInClient\(send, 'generate_image', input, lastUserHasImage \? 150000 : 75000\)/);
-  /* زر «نسخة ثانية» يسمّي المحرّك بالمنطق نفسه */
-  assert.match(attach, /'نانو بنانا برو' : 'نانو بنانا'\)\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
+  /* v-img-engine-tag-owner (باب مقفل: لا اسم مزوّد لأيّ مستخدم): بصمة المحرّك للمالك وحده، بالاسم الحرفيّ لا حزمة عامّة */
+  assert.match(attach, /if\(window\.__chatStatus && String\(authGet\('aiapp_username'\) \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'omran'\) window\.__chatStatus\.note\('🎨', String\(__data\.engine \|\| '\?'\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
   /* زر «نسخة ثانية» لا يُبنى فوق الصورة (كان يغطّي نصّها) — الدالة تبقى بلا زرّ */
   assert.ok(!/'نسخة ثانية' : 'Another'\)/.test(attach), 'زر «نسخة ثانية» أُزيل من فوق الصورة');
   assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);
