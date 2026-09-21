@@ -306,10 +306,14 @@ module.exports = async (req, res) => {
                   // Preserve quiet opening words and natural pauses in a first turn.
                   threshold: 0.08,
                   prefix_padding_ms: 1000,
-                  // كانت 450م.ث — أي توقّف طبيعيّ وسط الجملة كان يقطعها فيصل
-                  // نصف الكلام ويأتي الردّ «مش مضبوط». 700م.ث توازن مجرَّب:
-                  // تسمع الجملة كاملة بزيادة كمون شبه محسوسة فقط.
-                  silence_duration_ms: 700,
+                  // كانت 450م.ث ثمّ 700م.ث (v607) — والبلاغ تكرّر حتّى بعد 700م.ث: «يردّ بعد
+                  // الكلمة الثانية». v-maha-voice-speed لمس فقط SILENCE_HOLD_MS في المسار
+                  // الاحتياطيّ الكلاسيكيّ (js/app-08-maha.js) لا هذا الإعداد — الفائق (الوضع
+                  // النشِط افتراضيًّا) بقي بلا تغيير وهو غالبًا المسار الفعليّ الذي جرَّبه
+                  // المالك. 1100م.ث خطوة أكبر بنفس منطق رفعة v607، بانتظار تجربة صوتية حيّة
+                  // فعليّة (لا طريقة لقياس زمن الصمت المناسب إلّا بمكالمة حقيقية) — إن تكرّر
+                  // القطع ارفعها أكثر تدريجيًّا، وإن صار الردّ بطيئًا واضحًا اخفضها قليلًا.
+                  silence_duration_ms: 1100,
                   // Be explicit so every detected user turn creates a reply.
                   // The client sends one explicit response.create after speech_stopped.
                 // Avoid racing the server's automatic response on mobile.
