@@ -82,28 +82,38 @@ test('١. الأداة معرّفة لكلّ مسار الأدوات، قراء�
   assert.ok(!s.includes("name: 'write_github'") && !s.includes("cb.name === 'write_github'"), 'لا write_github في المحادثة إطلاقًا — تعريفًا ولا تنفيذًا');
   assert.ok(s.includes("'• read_github — أي رابط github.com"), 'ملاحظة الأدوات توجّه إليها');
   assert.ok(s.includes("cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' })"), 'سطر الحالة بمفتاح ترجمة قائم');
-  assert.ok(s.includes("else if (cb.name === 'read_github') {") && s.includes("await require('./github-read.js').readGithub(input, __ownerReq ? undefined : { anonymous: true })"), 'التنفيذ: غير المالك بلا مفتاح، وتحميل كسول');
+  assert.ok(s.includes("else if (cb.name === 'read_github') {") && s.includes("if (!__ownerReq) {"), 'التنفيذ: بوابة المالك أوّل شيء');
+  assert.ok(s.includes("result = await require('./github-read.js').readGithub(input, prov === 'claude' ? { deep: true } : undefined);"), 'v-claude-deep-github: عمق إضافيّ على مسار كلود للمالك');
   assert.ok(!/^const .*require\('\.\/github-read\.js'\)/m.test(s), 'لا تحميل للقارئ في نطاق الوحدة');
 });
 
-test('٢. غير المالك: النموذج يستدعي read_github فتُنفَّذ بلا مفتاح (العامّ فقط) وتعود نتيجتها له', async () => {
-  ghCalls.length = 0;
-  const r = await ask('deepseek', 'gh-user', { url: 'https://github.com/OMRAN77/omran-ai-builder', path: 'README.md' });
-  assert.equal(r.bodies.length, 2, 'جولة أدوات ثمّ الجواب');
-  assert.ok(r.bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تُرسل للمزوّد');
-  assert.equal(ghCalls.length, 1);
-  assert.equal(ghCalls[0].input.url, 'https://github.com/OMRAN77/omran-ai-builder');
-  assert.equal(ghCalls[0].input.path, 'README.md');
-  assert.deepEqual(ghCalls[0].opts, { anonymous: true });
-  const last = r.bodies[1].body.messages.at(-1);
-  assert.equal(last.role, 'user');
-  const tr = last.content.find((b) => b.type === 'tool_result');
-  assert.ok(tr && tr.tool_use_id === 'tu-1' && /عمران AI/.test(String(tr.content)), 'نتيجة القراءة تعود للنموذج');
-  assert.match(r.written, /يقرأ من GitHub/);
-  assert.match(r.written, /قرأتُ الملفّ/);
+test('٢. غير المالك (على أيّ مزوّد، كلود ضمنًا): read_github ممنوعة كليًّا — بلا نداء شبكة (v-github-owner-only)', async () => {
+  for (const prov of ['claude', 'deepseek', 'openai']) {
+    ghCalls.length = 0;
+    const r = await ask(prov, 'gh-user', { url: 'https://github.com/OMRAN77/omran-ai-builder', path: 'README.md' });
+    assert.equal(ghCalls.length, 0, prov + ': لا نداء شبكة لغير المالك');
+    const tr = r.bodies[1].body.messages.at(-1).content.find((b) => b.type === 'tool_result');
+    assert.match(String(tr.content), /غير متاحة/, prov);
+    assert.doesNotMatch(String(tr.content), /كلود|claude|Claude/i, prov + ': لا اسم مزوّد أو نموذج');
+  }
 });
 
-test('٣. المالك: القراءة بمفتاحه (بلا anonymous)', async () => {
+test('٣. المالك على كلود: القراءة بمفتاحه (بلا anonymous) مع العمق الإضافيّ', async () => {
+  ghCalls.length = 0;
+  const saveOwners = process.env.OWNER_USERNAMES;
+  process.env.OWNER_USERNAMES = 'gh-owner';
+  try {
+    const r = await ask('claude', 'gh-owner', { url: 'OMRAN77/omran-ai-builder', what: 'commits', limit: 5 });
+    assert.equal(ghCalls.length, 1);
+    assert.deepEqual(ghCalls[0].opts, { deep: true });
+    assert.equal(ghCalls[0].input.what, 'commits');
+    assert.equal(r.bodies.length, 2);
+  } finally {
+    if (saveOwners === undefined) delete process.env.OWNER_USERNAMES; else process.env.OWNER_USERNAMES = saveOwners;
+  }
+});
+
+test('٣ب. المالك على غير كلود: القراءة بمفتاحه بلا عمق إضافيّ (بلا تغيير عن السابق)', async () => {
   ghCalls.length = 0;
   const saveOwners = process.env.OWNER_USERNAMES;
   process.env.OWNER_USERNAMES = 'gh-owner';
@@ -118,7 +128,7 @@ test('٣. المالك: القراءة بمفتاحه (بلا anonymous)', async
   }
 });
 
-test('٥. v-cohere-tools: Cohere يمرّ بمسار الأدوات عبر الوسيط فيحمل read_github (كان مباشرًا بلا أدوات)', async () => {
+test('٥. v-cohere-tools: Cohere يمرّ بمسار الأدوات عبر الوسيط فيحمل read_github (كان مباشرًا بلا أدوات)؛ التنفيذ الآن ممنوع لغير المالك', async () => {
   for (const f of ['js/app-06-checkout.js', 'js/app.bundle.js']) {
     assert.ok(read(f).includes("const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere'];"), f + ': Cohere في قائمة مسار الأدوات');
   }
@@ -126,35 +136,36 @@ test('٥. v-cohere-tools: Cohere يمرّ بمسار الأدوات عبر ال�
   const r = await ask('cohere', 'gh-user', { url: 'https://github.com/OMRAN77/omran-ai-builder' });
   assert.match(r.bodies[0].url, /openrouter\.ai\/api\/v1\/messages/);
   assert.equal(r.bodies[0].body.model, 'cohere/command-a');
-  assert.ok(r.bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تصل Cohere');
-  assert.equal(ghCalls.length, 1);
-  assert.deepEqual(ghCalls[0].opts, { anonymous: true });
+  assert.ok(r.bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تصل Cohere (تُعرَّف له، والتنفيذ وحده يُمنع)');
+  assert.equal(ghCalls.length, 0, 'v-github-owner-only: غير المالك بلا نداء شبكة');
 });
 
-test('٦. v-github-default-repo: بلا رابط — المالك يقرأ مستودع التطبيق، وغيره يُطلب منه الرابط بلا نداء', async () => {
+test('٦. v-github-default-repo: بلا رابط — المالك يقرأ مستودع التطبيق؛ غير المالك ممنوع قبل حتّى فحص الرابط', async () => {
   const s = read('api/_lib/chat.js');
   const tools = s.slice(s.indexOf('\nconst TOOLS = ['), s.indexOf('\nconst TOOLS_NOTE'));
   const gh = tools.slice(tools.indexOf("name: 'read_github'")); // آخر أداة في القائمة (fetch_page قبلها يشترط url)
   assert.ok(!gh.includes("required: ['url']"), 'الرابط لم يعد إلزاميًّا');
   assert.ok(gh.includes('فاستدعِ الأداة بلا url'), 'الوصف يوجّه إلى الاستدعاء لا الشرح العامّ');
-  // غير المالك بلا رابط: لا نداء للقارئ ورسالة تطلب الرابط تعود للنموذج
-  ghCalls.length = 0;
-  let r = await ask('deepseek', 'gh-user', {});
-  assert.equal(ghCalls.length, 0, 'لا نداء بلا رابط لغير المالك');
-  const tr = r.bodies[1].body.messages.at(-1).content.find((b) => b.type === 'tool_result');
-  assert.match(String(tr.content), /لا رابط/);
+  // غير المالك بلا رابط: لا نداء للقارئ — يُمنع قبل حتّى فحص الرابط، على أيّ مزوّد
+  for (const prov of ['deepseek', 'claude']) {
+    ghCalls.length = 0;
+    const r = await ask(prov, 'gh-user', {});
+    assert.equal(ghCalls.length, 0, prov + ': لا نداء بلا رابط لغير المالك');
+    const tr = r.bodies[1].body.messages.at(-1).content.find((b) => b.type === 'tool_result');
+    assert.match(String(tr.content), /غير متاحة/, prov);
+  }
   // المالك بلا رابط: مستودع التطبيق (الافتراضيّ ثمّ من البيئة)
   const saveOwners = process.env.OWNER_USERNAMES; const saveRepo = process.env.GITHUB_DEFAULT_REPO;
   process.env.OWNER_USERNAMES = 'gh-owner'; delete process.env.GITHUB_DEFAULT_REPO;
   try {
     ghCalls.length = 0;
-    r = await ask('openai', 'gh-owner', {});
+    await ask('openai', 'gh-owner', {});
     assert.equal(ghCalls.length, 1);
     assert.equal(ghCalls[0].input.url, 'OMRAN77/omran-ai-builder');
     assert.equal(ghCalls[0].opts, undefined);
     process.env.GITHUB_DEFAULT_REPO = 'OMRAN77/other-repo';
     ghCalls.length = 0;
-    r = await ask('openai', 'gh-owner', { path: 'README.md' });
+    await ask('openai', 'gh-owner', { path: 'README.md' });
     assert.equal(ghCalls[0].input.url, 'OMRAN77/other-repo');
     assert.equal(ghCalls[0].input.path, 'README.md');
   } finally {
