@@ -862,7 +862,7 @@ function stuL(ar, en){
       const opts = document.createElement('div'); opts.id = 'portraitWorkOpts';
       work.appendChild(opts);
       ['portraitBackdropWrap','portraitBeautifyWrap','portraitAgeWrap','portraitHairWrap','portraitAdWrap','portraitCelebWrap','portraitRemoveWrap','portraitOutfitWrap','portraitProfWrap','portraitEraWrap','portraitMultiWrap'].forEach((id) => { const el = document.getElementById(id); if(el) opts.appendChild(el); });
-      ['portraitStyleStatus','portraitCompareWrap','portraitCompareSlider','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
+      ['portraitStyleStatus','portraitCompareWrap','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
       scroller.insertBefore(work, scroller.firstChild);
     }
     let foot = document.getElementById('portraitStyleFoot');
@@ -1065,7 +1065,6 @@ function stuL(ar, en){
   const compareWrap = $('#portraitCompareWrap');
   const compareBefore = $('#portraitCompareBefore');
   const compareAfterWrap = $('#portraitCompareAfterWrap');
-  const compareSlider = $('#portraitCompareSlider');
   const shareBtn2 = $('#portraitShareBtn');
   if(shareBtn2){
     /* v-img-save-universal: مشاركة عبر المسار الموحّد (جسر التطبيق → ورقة النظام → رابط سيرفر + واتساب) */
@@ -1087,18 +1086,43 @@ function stuL(ar, en){
       }catch(_){ /* guard-ok — يسقط للتنزيل العادي */ }
     });
   }
-  function updateCompareSlider(){
-    if(!compareSlider || !compareAfterWrap) return;
-    compareAfterWrap.style.width = compareSlider.value + '%';
+  /* v-compare-drag (طلب المالك ٢١ سبتمبر: «تحسّن طريقة السحب» بعد استعادة شريط قبل/بعد): السحب صار
+     مباشرة على الصورة نفسها بمقبض دائريّ واضح فوق الخطّ الفاصل — بدل عنصر <input type=range> منفصل
+     تحت الصورة (v-no-slider القديم أخفاه بلا بديل، فبدا الشريط معطوبًا رغم بقاء صندوق المقارنة ظاهرًا).
+     Pointer Events توحّد الفأرة واللمس بمستمع واحد؛ setPointerCapture يبقي السحب متصلًا حتى خارج حدود
+     الصورة، وtouch-action:none على الحاوية (تحت) يمنع تحويل السحب الأفقي إلى تمرير الصفحة على الجوال
+     (نفس عطب v-slider-touch القديم لكن بجذر مختلف — الحاوية لا عنصر input). النقر في أيّ نقطة من
+     الصورة يقفز الفاصل إليها فورًا (نمط مقارنة الصور المعتاد)، لا يقتصر على سحب المقبض فقط. */
+  let comparePct = 100;
+  function setComparePct(pct){
+    comparePct = Math.max(0, Math.min(100, pct));
+    if(compareAfterWrap) compareAfterWrap.style.width = comparePct + '%';
     const divider = $('#portraitCompareDivider');
-    if(divider) divider.style.left = compareSlider.value + '%';
+    if(divider) divider.style.left = comparePct + '%';
   }
   function layoutCompareAfter(){
     if(!compareWrap || !resultEl) return;
     const w = compareWrap.offsetWidth;
     if(w) resultEl.style.width = w + 'px';
   }
-  if(compareSlider) compareSlider.addEventListener('input', updateCompareSlider);
+  let __compareDragging = false;
+  function comparePctFromEvent(ev){
+    const rect = compareWrap.getBoundingClientRect();
+    if(!rect.width) return comparePct;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
+  }
+  if(compareWrap){
+    compareWrap.style.touchAction = 'none';
+    compareWrap.style.cursor = 'ew-resize';
+    compareWrap.addEventListener('pointerdown', (ev) => {
+      __compareDragging = true;
+      try{ compareWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      setComparePct(comparePctFromEvent(ev));
+      ev.preventDefault();
+    });
+    compareWrap.addEventListener('pointermove', (ev) => { if(__compareDragging) setComparePct(comparePctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => compareWrap.addEventListener(evt, () => { __compareDragging = false; }));
+  }
   window.addEventListener('resize', layoutCompareAfter);
   if(!modal || !btnOpen) return;
 
@@ -1199,7 +1223,6 @@ function stuL(ar, en){
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     if(compareWrap) compareWrap.style.display = 'none';
-    if(compareSlider) compareSlider.style.display = 'none';
     downloadEl.style.display = 'none';
     if(shareBtn2) shareBtn2.style.display = 'none';
     setStatus(t('portraitGenerating'));
@@ -1238,7 +1261,6 @@ function stuL(ar, en){
         resultEl.src = gifUrl;
         resultEl.style.display = 'block';
         if(compareWrap) compareWrap.style.display = 'none';
-        if(compareSlider) compareSlider.style.display = 'none';
         downloadEl.href = gifUrl;
         downloadEl.setAttribute('download', 'omran-avatar.gif');
         downloadEl.style.display = 'block';
@@ -1248,12 +1270,10 @@ function stuL(ar, en){
         const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
         resultEl.src = dataUrl;
         resultEl.style.display = 'block';
-        if(compareWrap && compareBefore && compareSlider){
+        if(compareWrap && compareBefore){
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
-          compareSlider.style.display = 'none'; /* v-no-slider */
-          compareSlider.value = 100;
-          updateCompareSlider();
+          setComparePct(100);
           layoutCompareAfter();
         }
         downloadEl.href = dataUrl;

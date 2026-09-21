@@ -687,13 +687,14 @@
       <div id="portraitCompareAfterWrap" style="position:absolute; top:0; left:0; height:100%; overflow:hidden; width:50%;">
         <img id="portraitStyleResult" style="position:absolute; top:0; left:0; height:100%; object-fit:contain; background:#000;">
       </div>
-      <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;"></div>
+      <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;">
+        <!-- v-compare-drag: مقبض دائريّ فوق الصورة نفسها — السحب على الحاوية (compareWrap في
+             app-12-studios.js) لا هذا العنصر تحديدًا؛ هو مؤشّر بصريّ فقط بلا مستمع خاصّ به. -->
+        <div id="portraitCompareHandle" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414;">↔</div>
+      </div>
       <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
       <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
     </div>
-    <!-- v-slider-touch: «الشريط أوقات يسحب وأوقات لا» — سحب المقبض على الجوال كان
-         يتحوّل لتمرير الصفحة؛ touch-action:none يحسم الإيماءة للشريط، والارتفاع أكبر لليد. -->
-    <input type="range" id="portraitCompareSlider" min="0" max="100" value="50" style="width:100%; margin-top:8px; display:none; touch-action:none; height:32px; accent-color:#d4af37;">
     <a id="portraitStyleDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-portrait-style.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" id="portraitShareBtn" style="display:none; margin-top:8px; width:100%;" class="btn" data-i18n="portraitShareBtn">↗️ مشاركة (واتساب/ستوري)</button>
   </div>
