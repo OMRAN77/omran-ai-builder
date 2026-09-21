@@ -470,7 +470,7 @@ async function mahaRecordUntilSilence(){
   const CLEAR_SPEECH = 0.03;       // كلام واضح يُحتسب فورًا حتى أثناء المعايرة
   let noiseFloor = 0;
   let silenceThreshold = 0.015;    // يعاد حسابها بعد المعايرة
-  const SILENCE_HOLD_MS = 1200;    // كانت 900م.ث — توقف طبيعي وسط الجملة كان يقصها
+  const SILENCE_HOLD_MS = 2000;    // كانت 1200م.ث (وقبلها 900) — سكتة تفكير طبيعية وسط الكلام كانت تُقطع بعد كلمتين فقط
   const MIN_TALK_MS = 600;         // كانت 1000م.ث — «نعم» و«هلا» القصيرة كانت تضيع
   const MAX_TURN_MS = 20000;       // hard safety cap per turn
   let lastLoudAt = Date.now();
