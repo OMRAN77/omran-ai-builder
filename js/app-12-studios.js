@@ -105,36 +105,6 @@ async function __safeJson(res){
     });
   };
 
-  let extraImagesB64 = [];
-  const multiWrap = $('#portraitMultiWrap');
-  const multiFileInput = $('#portraitMultiFileInput');
-  const multiFileBtn = $('#portraitMultiFileBtn');
-  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
-  const multiLabel = $('#portraitMultiLabel');
-  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
-  if(multiFileInput){
-    multiFileInput.onchange = () => {
-      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
-      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
-      extraImagesB64 = [];
-      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = String(reader.result || '');
-          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
-          if(multiPreviewWrap){
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
-            multiPreviewWrap.appendChild(img);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    };
-  }
-
   let variantSrc = null;
   /* v-decor-ideas: أفكار بلا صورة — رقائق لأنواع الأماكن + سطر حرّ «اكتب ما تريد» */
   const ideaChips = document.getElementById('designAiIdeaChips');
@@ -1180,6 +1150,40 @@ function stuL(ar, en){
       }
     });
   };
+
+  /* v-merge-scope-fix (لقطة المالك ٢١ سبتمبر: «extraImagesB64 is not defined» عند رفع صورة الشخص
+     الثاني لِـ«دمج صورتين»): هذه الكتلة (صور familystyle/merge2 الإضافية) كانت بالخطأ داخل نطاق
+     («AI Interior Design») لا هنا — extraImagesB64 هناك محلّي لتلك الدالّة المغلقة، فلا يراه سطر
+     الإرسال هنا (btnGenerate.onclick أدناه)، ما يرمي ReferenceError عند التوليد. المعرّفات
+     #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
+     مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
+  let extraImagesB64 = [];
+  const multiFileInput = $('#portraitMultiFileInput');
+  const multiFileBtn = $('#portraitMultiFileBtn');
+  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
+  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
+  if(multiFileInput){
+    multiFileInput.onchange = () => {
+      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
+      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      extraImagesB64 = [];
+      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || '');
+          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
+          if(multiPreviewWrap){
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+            multiPreviewWrap.appendChild(img);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+  }
 
   btnGenerate.onclick = async () => {
     if(!selectedBase64){
