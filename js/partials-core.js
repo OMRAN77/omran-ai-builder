@@ -520,6 +520,14 @@
         <option value="familystyle" data-i18n="portraitStyleFamily">👨‍👩‍👧‍👦 ستايل عائلي موحّد</option>
         <option value="merge2" data-i18n="portraitStyleMerge2">🧑‍🤝‍🧑 دمج شخصين بصورة واحدة</option>
         <option value="avatargif" data-i18n="portraitStyleAvatarGif">🎞️ أفاتار متحرك بسيط (GIF)</option>
+        <option value="sheikh" data-i18n="portraitStyleSheikh">👑 إطلالة شيخ أو شيخة</option>
+        <option value="falconry" data-i18n="portraitStyleFalconry">🦅 صيد بالصقر</option>
+        <option value="arabianHorse" data-i18n="portraitStyleArabianHorse">🐎 فروسية عربية</option>
+        <option value="saudiHeritage" data-i18n="portraitStyleSaudiHeritage">🇸🇦 تراث سعودي</option>
+        <option value="kuwaitiHeritage" data-i18n="portraitStyleKuwaitiHeritage">🇰🇼 تراث كويتي</option>
+        <option value="omaniHeritage" data-i18n="portraitStyleOmaniHeritage">🇴🇲 تراث عماني</option>
+        <option value="qatariHeritage" data-i18n="portraitStyleQatariHeritage">🇶🇦 تراث قطري</option>
+        <option value="bahrainiHeritage" data-i18n="portraitStyleBahrainiHeritage">🇧🇭 تراث بحريني</option>
         <optgroup label="🛠️ أدوات عملية" data-i18n="[label]portraitGrpTools">
         <option value="passport" data-i18n="portraitStylePassport">🫎 صورة جواز/هوية رسمية</option>
         <option value="restore" data-i18n="portraitStyleRestore">🔧 ترميم صورة قديمة</option>
@@ -528,11 +536,17 @@
         <option value="objectremove" data-i18n="portraitStyleObjectremove">🧹 إزالة شخص أو عنصر</option>
         <option value="outfit" data-i18n="portraitStyleOutfit">👕 تبديل الملابس</option>
         <option value="productshot" data-i18n="portraitStyleProductshot">📦 تصوير منتج احترافي</option>
+        <option value="eyefix" data-i18n="portraitStyleEyefix">👀 تصحيح عين مغمضة</option>
+        <option value="glasses" data-i18n="portraitStyleGlasses">🕶️ إضافة أو إزالة نظارة</option>
+        <option value="bokeh" data-i18n="portraitStyleBokeh">🌫️ ضبابية الخلفية فقط</option>
         </optgroup>
         <optgroup label="🎉 مناسبات" data-i18n="[label]portraitGrpOccasions">
         <option value="hajj" data-i18n="portraitStyleHajj">🕋 تهنئة حج وعمرة</option>
         <option value="birthday" data-i18n="portraitStyleBirthday">🎂 إطار عيد ميلاد</option>
         <option value="newborn" data-i18n="portraitStyleNewborn">👶 تهنئة مولود جديد</option>
+        <option value="henna" data-i18n="portraitStyleHenna">💍 ليلة حنّاء أو خطوبة</option>
+        <option value="firstday" data-i18n="portraitStyleFirstday">🎒 أول يوم دراسة</option>
+        <option value="flagday" data-i18n="portraitStyleFlagday">🇦🇪 يوم العلم الإماراتي</option>
         </optgroup>
         <optgroup label="🆕 ستايلات جديدة" data-i18n="[label]portraitGrpNew">
         <option value="claymation" data-i18n="portraitStyleClaymation">🏺 صلصال متحرك (كلاي)</option>
@@ -557,6 +571,13 @@
         <option value="statue" data-i18n="portraitStyleStatue">🗿 تمثال رخامي</option>
         <option value="polaroid" data-i18n="portraitStylePolaroid">📸 بولارويد قديمة</option>
         <option value="celebtoon" data-i18n="portraitStyleCelebtoon">🦸 شخصية كرتونية مفضلة</option>
+        <option value="tarot" data-i18n="portraitStyleTarot">🃏 بطاقة تاروت</option>
+        <option value="stamp" data-i18n="portraitStyleStamp">📮 طابع بريد قديم</option>
+        <option value="moviePoster" data-i18n="portraitStyleMoviePoster">🎬 بوستر فيلم أكشن</option>
+        <option value="diorama" data-i18n="portraitStyleDiorama">🏠 ديوراما مصغّرة</option>
+        <option value="emoji3d" data-i18n="portraitStyleEmoji3d">😊 إيموجي ثلاثي الأبعاد</option>
+        <option value="y2k" data-i18n="portraitStyleY2k">📼 ستايل Y2K</option>
+        <option value="albumCover" data-i18n="portraitStyleAlbumCover">🎵 بوستر ألبوم غنائي</option>
         </optgroup>
         <optgroup label="🎭 تلبيس" data-i18n="[label]portraitGrpDressup">
         <option value="profession" data-i18n="portraitStyleProfession">👩‍⚕️ مهنة (طبيب · طيار · شرطي...)</option>
