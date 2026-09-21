@@ -173,6 +173,12 @@
         <activity android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
             android:configChanges="orientation|screenSize" />
 
+        <!-- v-maha-webview-mic: LauncherActivity.getFallbackStrategy() يوجّه هنا بدل الكلاس أعلاه
+             (يبقى مُعلَنًا بلا ضرر — غير مُستعمَل فعليًّا الآن) لأنّه وحده يمنح صلاحية المايك
+             وقت التشغيل. نفس android:configChanges الأصليّ. -->
+        <activity android:name=".MahaWebViewFallbackActivity"
+            android:configChanges="orientation|screenSize" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="@string/providerAuthority"

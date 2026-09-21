@@ -1,3 +1,40 @@
+## ٢١ سبتمبر ٢٠٢٦ — v-maha-webview-mic-2: كتبت فرع WebView محليّ يمنح صلاحية المايك — غير مُتحقَّق ببناء حقيقيّ
+- **الطلب:** بعد بند v-maha-webview-mic أدناه (نفس اليوم)، أبلغ المالك أنّ نسخة AppGallery الحاليّة
+  (المرفوعة قبل ٣ أيّام، غالبًا نفس مسار PWABuilder الموثَّق في `store/huawei/README.md` لاستعادة
+  المفتاح الضائع ١٨ سبتمبر) **نفسها** تعاني العطل — أي اقتراح "جرّب PWABuilder" لم يعد مفيدًا؛
+  الحاجة كود فعليّ يمنح الصلاحية وقت التشغيل، لا مجرّد إعادة توليد بأداة مختلفة.
+- **الفحص:** استنسخت مصدر المكتبة الحقيقيّ (`GoogleChrome/android-browser-helper`، ٢٫٦٫٢ عبر
+  `add_repo`) بدل التخمين. تأكّدت مباشرة: `WebViewFallbackActivity.java` الأصليّ **لا يُنفّذ
+  `WebChromeClient.onPermissionRequest` إطلاقًا** (فقط `onShowCustomView`/`onHideCustomView`
+  للفيديو ملء الشاشة) — يفسّر الفشل الفوريّ الدائم بيقين، لا تخمينًا. ولقيت نقطة توسيع رسميّة
+  موثَّقة في `LauncherActivity.getFallbackStrategy()` نفسها («Override this for creating a custom
+  fallback approach, such as launching a different WebView fallback implementation»)، ومصدر
+  `TwaLauncher.WEBVIEW_FALLBACK_STRATEGY`/`FallbackStrategy` لمعرفة التوقيع الحقيقيّ بدل التخمين.
+- **القرار:**
+  1. `MahaWebViewFallbackActivity.java` (جديد) — نسخة كاملة من `WebViewFallbackActivity` الأصليّ
+     (نُسخت حرفيًّا من المصدر المستنسَخ، بما فيها مفاتيح الإضافات الخاصّة الثلاثة لتبقى متوافقة مع
+     `createLaunchIntent()` الأصليّ) + إضافة واحدة فقط: `onPermissionRequest` يمنح صوت المايك
+     فقط (لا كاميرا) بعد التحقّق من/طلب `RECORD_AUDIO` وقت التشغيل (`ActivityCompat.requestPermissions`
+     + `onRequestPermissionsResult`).
+  2. `LauncherActivity.java`: يُجاوِز `getFallbackStrategy()` — لو القيمة الافتراضيّة هي
+     `WEBVIEW_FALLBACK_STRATEGY` (مقارنة مرجعيّة `!=`، نفس الكائن الثابت الوحيد الذي تُعيده المكتبة)
+     يبني نفس الإنِتنت عبر `WebViewFallbackActivity.createLaunchIntent()` الأصليّ ثمّ يُعيد توجيهه
+     بـ`setClass()` إلى الفرع المحليّ الجديد — يعيد استعمال منطق القرار الأصليّ بدل تكراره.
+  3. `AndroidManifest.xml`: تسجيل `.MahaWebViewFallbackActivity` جديد؛ تسجيل المكتبة الأصليّ بقي
+     كما هو (غير مُستعمَل فعليًّا الآن، بلا ضرر بقاؤه).
+- **غير مُتحقَّق — صريح:** لا بيئة Android SDK/محاكي/جهاز في هذي الجلسة. حاولت تنزيل AAR حقيقيّة
+  (`androidx.browser`/`androidx.core`) من `maven.google.com`/Maven Central للترجمة التجريبيّة
+  بـ`javac` خارج Gradle — محجوبة (403) أو غير موجودة بالمسارات التي جرّبتها. التحقّق الوحيد الممكن:
+  قراءة المصدر الحقيقيّ حرفيًّا (تمّت) ومطابقة التوقيعات يدويًّا (تمّت). **التحقّق الحاسم يحتاج
+  تشغيل فعليّ لـ`Actions ← android-release`** (فيه Android SDK كامل) **ثمّ تثبيت الـAPK الناتج
+  على جهاز حقيقيّ وتجربة مها** — لم يحدث أيّ منهما في هذي الجلسة.
+- **الاختبار:** لا اختبار `node:test` (كود Java خارج نطاق الحزمة). `npm run ci` مرّ (لا تغيير على
+  ملفّات جافاسكربت/الحزمة).
+- **الدرس:** وجود توثيق رسميّ صريح لنقطة توسيع (`getFallbackStrategy`) في نفس الملفّ الذي كنّا
+  نقرأه أصلًا (`LauncherActivity.java` المولَّد) كان يستحقّ فحصًا أعمق من أوّل مرّة بدل افتراض
+  "الفرع مستحيل بلا مصدر" — استنساخ مستودع المكتبة مباشرة (أداة `add_repo`) كان أرخص بكثير من
+  الاستمرار بالتخمين، ووفّر يقينًا بدل احتمال.
+
 ## ٢١ سبتمبر ٢٠٢٦ — v-maha-webview-mic: «مشغول ببرنامج ثاني» عاد فورًا بعد v-maha-mic-race — العطل في حزمة هواوي الأندرويد لا في الجافاسكربت
 - **العرض:** بعد نشر v-maha-mic-race (أدناه)، طلب المالك تحديدًا فأرسل فيديو حيّ ثانٍ (`SVID_٢٠٢٦٠٩٢١_٢١١٤١٣`،
   بعد وقت دمج PR #710 بساعة تقريبًا — تأكّدت من التوقيتين). أعدت نفس أسلوب استخراج الإطارات

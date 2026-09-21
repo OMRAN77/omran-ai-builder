@@ -87,16 +87,22 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 **WebView أندرويد خام** (`WebViewFallbackActivity` من مكتبة `androidbrowserhelper` مباشرة، بلا فرع
 محليّ) — و`AndroidManifest.xml` كان بلا `android.permission.RECORD_AUDIO` إطلاقًا، فيفشل
 `getUserMedia` دائمًا بصلاحية "خطِرة" غير معلَنة في البيان، بغضّ النظر عن أي كود.
-- **أُضيف:** صلاحية `RECORD_AUDIO` في `AndroidManifest.xml` (شرط لازم، **غير كافٍ وحده**).
-- **ناقص عمدًا:** منح الصلاحية وقت التشغيل داخل `WebChromeClient.onPermissionRequest` — يحتاج فرعًا
-  محليًّا من `WebViewFallbackActivity`، ولا مصدر المكتبة ولا بيئة بناء/جهاز حقيقيّ متاحة للتحقّق
-  من هذا الفرع قبل الدفع لخطّ بناء يستهلك مفتاح التوقيع.
-- **⚠️ إعادة التوليد تمحو هذي الإضافة:** `node scripts/twa-generate.mjs` يحذف `store/huawei/twa`
-  كاملًا ويعيد بناءه من الصفر (`fs.rmSync` في السكربت) — أي إعادة توليد لاحقة (تغيير أيقونة، رفع
-  إصدار جذريّ...) تُسقط صلاحية `RECORD_AUDIO` ما لم تُعَد يدويًّا بعدها مباشرة.
-- **المسار الأسرع للتحقّق الحيّ:** أعد توليد الحزمة عبر PWABuilder (الخطوة ١-ب أعلاه) بخيار
-  Fallback=WebView — غلافها مختلف عن Bubblewrap الخام ومعروف بدعم `getUserMedia` في وضع WebView؛
-  لو فتح المايك بعدها، هذا يؤكّد التشخيص ويعطي مسارًا فوريًّا للنشر بلا انتظار فرع Java محليّ.
+- **أُضيف:** صلاحية `RECORD_AUDIO` في `AndroidManifest.xml`، وفرع محليّ كامل
+  (`MahaWebViewFallbackActivity.java`، نسخة من `WebViewFallbackActivity` الأصليّ مأخوذة من مصدر
+  المكتبة الحقيقيّ `GoogleChrome/android-browser-helper` ٢٫٦٫٢) يمنح صلاحية المايك وقت التشغيل عبر
+  `WebChromeClient.onPermissionRequest` — الأصل لا يُنفّذها إطلاقًا (تأكّدنا من المصدر مباشرة).
+  `LauncherActivity.getFallbackStrategy()` (نقطة توسيع رسميّة موثَّقة في المكتبة نفسها) يوجّه
+  إليه بدل الأصل. التفاصيل الكاملة في `knowledge/DECISIONS.md` (v-maha-webview-mic-2).
+- **⚠️ غير مُتحقَّق ببناء حقيقيّ:** لا Android SDK/محاكي/جهاز في جلسة الكتابة — التحقّق الوحيد كان
+  قراءة مصدر المكتبة الحقيقيّ ومطابقة التوقيعات يدويًّا. **الخطوة التالية اللازمة:** `Actions ←
+  android-release` (Android SDK حقيقيّ هناك) ثمّ تثبيت الـAPK على جهاز فعليّ وتجربة مها — أوّل
+  تحقّق حاسم ممكن لهذا الإصلاح.
+- **⚠️ إعادة التوليد تمحو كل هذا:** `node scripts/twa-generate.mjs` يحذف `store/huawei/twa` كاملًا
+  ويعيد بناءه من الصفر (`fs.rmSync` في السكربت) — أي إعادة توليد لاحقة (تغيير أيقونة، رفع إصدار
+  جذريّ...) تُسقط صلاحية `RECORD_AUDIO` **و**`MahaWebViewFallbackActivity.java` **و**تعديل
+  `LauncherActivity.java` معًا ما لم تُعَد يدويًّا بعدها مباشرة (أو عبر PWABuilder، الخطوة ١-ب —
+  مسار مختلف كليًّا لا يحتاج هذا الفرع، لكن نسخة AppGallery المرفوعة ١٨ سبتمبر عبره كانت تعاني
+  نفس العطل، فليس بديلًا مضمونًا).
 
 ## تفاصيل للصيانة
 - **إعادة توليد المشروع** (بعد تغيير البيان أو الأيقونات): `npm i --no-save @bubblewrap/core && node scripts/twa-generate.mjs --version 1.3.11 --code 20261001`.
