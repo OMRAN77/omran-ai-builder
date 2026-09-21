@@ -939,7 +939,6 @@
   const resultWrap = $('#studioAiResultWrap');
   const beforeWrap = $('#studioAiBeforeWrap');
   const beforeImg = $('#studioAiBeforeImg');
-  const sliderRange = $('#studioAiSliderRange');
   const multiAngleEl = $('#studioAiMultiAngle');
   const favSaveBtn = $('#studioAiFavoriteSaveBtn');
   const favoritesBtn = $('#studioAiFavoritesBtn');
@@ -1199,28 +1198,41 @@
     setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, 1800);
   };
 
-  /* ---- 🔄 before/after slider ---- */
+  /* ---- 🔄 before/after slider ----
+     v-compare-drag-all (طلب المالك ٢١ سبتمبر «غيّرها»): كانت مُقفلة كليًّا (`if(true) return;`) منذ
+     v-no-slider — السحب صار مباشرة على resultWrap نفسه بدل <input type=range> مخفيّ. */
+  function updateSliderClip(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
   function setupBeforeAfter(){
-    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
-    beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
-    if(true) return;
     if(feature === 'merge' || !selectedBase64A){
       beforeWrap.style.display = 'none';
-      sliderRange.style.display = 'none';
       return;
     }
     beforeImg.src = 'data:' + selectedMimeA + ';base64,' + selectedBase64A;
     beforeWrap.style.display = 'block';
-    sliderRange.style.display = 'block';
-    updateSliderClip(sliderRange.value);
+    updateSliderClip(50);
   }
-  function updateSliderClip(val){
-    const pct = Math.max(0, Math.min(100, Number(val)));
-    beforeWrap.style.width = pct + '%';
-    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  let __studioBaDragging = false;
+  function studioBaPctFromEvent(ev){
+    const rect = resultWrap.getBoundingClientRect();
+    if(!rect.width) return 50;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
   }
-  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+  if(resultWrap){
+    resultWrap.style.touchAction = 'none';
+    resultWrap.addEventListener('pointerdown', (ev) => {
+      if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      __studioBaDragging = true;
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      updateSliderClip(studioBaPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    resultWrap.addEventListener('pointermove', (ev) => { if(__studioBaDragging) updateSliderClip(studioBaPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => resultWrap.addEventListener(evt, () => { __studioBaDragging = false; }));
+  }
 
   /* ---- 📊 compare checkboxes (built from style options) ---- */
   function buildCompareChecks(){
@@ -1333,7 +1345,6 @@
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus('');
   }
 
@@ -1441,7 +1452,6 @@
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus(t('studioAiGenerating'));
 
     try{

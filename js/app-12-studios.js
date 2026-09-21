@@ -105,36 +105,6 @@ async function __safeJson(res){
     });
   };
 
-  let extraImagesB64 = [];
-  const multiWrap = $('#portraitMultiWrap');
-  const multiFileInput = $('#portraitMultiFileInput');
-  const multiFileBtn = $('#portraitMultiFileBtn');
-  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
-  const multiLabel = $('#portraitMultiLabel');
-  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
-  if(multiFileInput){
-    multiFileInput.onchange = () => {
-      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
-      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
-      extraImagesB64 = [];
-      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = String(reader.result || '');
-          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
-          if(multiPreviewWrap){
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
-            multiPreviewWrap.appendChild(img);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    };
-  }
-
   let variantSrc = null;
   /* v-decor-ideas: أفكار بلا صورة — رقائق لأنواع الأماكن + سطر حرّ «اكتب ما تريد» */
   const ideaChips = document.getElementById('designAiIdeaChips');
@@ -440,25 +410,41 @@ async function __safeJson(res){
   const baBeforeClip = $('#designBABeforeClip');
   const baBefore = $('#designBABefore');
   const baLine = $('#designBALine');
-  const baRange = $('#designBARange');
-  function baHide(){ if(baWrap) baWrap.style.display = 'none'; if(baRange) baRange.style.display = 'none'; }
+  /* v-compare-drag-all (طلب المالك ٢١ سبتمبر: «غيّرها» — نفس تحسين سحب أنماط الصور على بقيّة الأدوات):
+     baSet(p) كانت تُقاد من <input type=range id=designBARange> مخفيّ (v-no-slider ٤ سبتمبر) فبلا وسيلة
+     تفاعل. السحب صار مباشرة على baWrap نفسه بمقبض دائريّ فوق الخطّ الفاصل — baSet نفسها لم تتغيّر. */
+  function baHide(){ if(baWrap) baWrap.style.display = 'none'; }
   function baSize(){ if(baWrap && baBefore) baBefore.style.width = baWrap.getBoundingClientRect().width + 'px'; }
   function baSet(p){
     if(baBeforeClip) baBeforeClip.style.width = p + '%';
     if(baLine) baLine.style.left = p + '%';
     baSize();
   }
-  if(baRange) baRange.oninput = function(){ baSet(baRange.value); };
+  let __baDragging = false;
+  function baPctFromEvent(ev){
+    const rect = baWrap.getBoundingClientRect();
+    if(!rect.width) return 0;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
+  }
+  if(baWrap){
+    baWrap.style.touchAction = 'none';
+    baWrap.style.cursor = 'ew-resize';
+    baWrap.addEventListener('pointerdown', (ev) => {
+      __baDragging = true;
+      try{ baWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      baSet(baPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    baWrap.addEventListener('pointermove', (ev) => { if(__baDragging) baSet(baPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => baWrap.addEventListener(evt, () => { __baDragging = false; }));
+  }
   window.addEventListener('resize', function(){ if(baWrap && baWrap.style.display !== 'none') baSize(); });
   function showBeforeAfter(beforeUrl, afterUrl){
-    /* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): لا شريط مقارنة — الناتج وحده */
     if(!baWrap || !baAfter || !baBefore) return false;
     baAfter.src = afterUrl;
     baBefore.src = beforeUrl;
     baAfter.onload = baSize;
     baWrap.style.display = 'block';
-    baRange.style.display = 'none';
-    baRange.value = 0;
     baSet(0);
     return true;
   }
@@ -612,7 +598,7 @@ const STU_XL = {
   'منمنمات إسلامية مذهّبة': {en:'Gilded Islamic Miniatures',fr:'Miniatures Islamiques Dorées',hi:'सोने का इस्लामिक लघुचित्र',bn:'সোনালি ইসলামিক মিনিয়েচার',ne:'सुनको इस्लामिक मिनिएचर',id:'Miniatur Islam Berlapis Emas',fil:'Gilded Islamic Miniatures',tr:'Altın Kaplı İslami Minyatürler',zh:'镀金伊斯兰微型画',ru:'Позолоченные исламские миниатюры',es:'Miniaturas Islámicas Doradas',ml:'സ്വർണ്ണപ്പതിത ഇസ്ലാമിക് ചെറുകലാ'},
   'بوستر شخصية لعبة': {en:'Game Character Poster',fr:'Affiche Personnage de Jeu',hi:'गेम चरित्र पोस्टर',bn:'গেম চরিত্র পোস্টার',ne:'गेम क्यारेक्टर पोस्टर',id:'Poster Karakter Game',fil:'Game Character Poster',tr:'Oyun Karakteri Posteri',zh:'游戏角色海报',ru:'Постер персонажа игры',es:'Póster del Personaje del Juego',ml:'ഗെയിം കഥാപാത്ര പോസ്റ്റർ'},
   'كاريكاتير صحفي قديم': {en:'Vintage Newspaper Caricature',fr:'Caricature de Journal Vintage',hi:'विंटेज अखबार कारिकेचर',bn:'ভিন্টেজ সংবাদপত্র ক্যারিকেচার',ne:'भिन्टेज पत्र क्यारिकेचर',id:'Karikatur Koran Vintage',fil:'Vintage Newspaper Caricature',tr:'Vintage Gazete Karikatürü',zh:'复古报纸漫画',ru:'Винтажная газетная карикатура',es:'Caricatura de Periódico Vintage',ml:'വിന്റേജ് സമാചാരപ്പത്ര കാരിക്കേച്ചർ'},
-  'أجواء رعب هالوين': {en:'Halloween Horror Vibes',fr:'Ambiance Horreur Halloween',hi:'हैलोवीन恐ब्भ वातावरण',bn:'হ্যালোইন ভয় পরিবেশ',ne:'हेलोइन भय वातावरण',id:'Vibes Horor Halloween',fil:'Halloween Horror Vibes',tr:'Cadılar Bayramı Korku Atmosferi',zh:'万圣节恐怖氛围',ru:'Хэллоуинские ужасные вибрации',es:'Vibraciones de Terror de Halloween',ml:'ഹാലോവീൻ ഭയാനകമായ വൈബ്സ്'},
+  'أجواء رعب هالوين': {en:'Halloween Horror Vibes',fr:'Ambiance Horreur Halloween',hi:'डरावना हैलोवीन वातावरण',bn:'হ্যালোইন ভয় পরিবেশ',ne:'हेलोइन भय वातावरण',id:'Vibes Horor Halloween',fil:'Halloween Horror Vibes',tr:'Cadılar Bayramı Korku Atmosferi',zh:'万圣节恐怖氛围',ru:'Хэллоуинские ужасные вибрации',es:'Vibraciones de Terror de Halloween',ml:'ഹാലോവീൻ ഭയാനകമായ വൈബ്സ്'},
   'أنمي حركة ياباني': {en:'Japanese Action Anime',fr:'Anime d\'Action Japonais',hi:'जापानी एक्शन एनिमे',bn:'জাপানি অ্যাকশন এনিমে',ne:'जापानी कार्य एनिमे',id:'Anime Aksi Jepang',fil:'Japanese Action Anime',tr:'Japon Aksiyon Animesi',zh:'日本动作动画',ru:'Японское боевое аниме',es:'Anime de Acción Japonés',ml:'ജാപ്പനീസ് നടപടി എനിമെ'},
   'لوحة ملكية كلاسيكية': {en:'Classical Royal Painting',fr:'Peinture Royale Classique',hi:'शास्त्रीय शाही चित्र',bn:'ক্লাসিক্যাল রাজকীয় চিত্র',ne:'शास्त्रीय शाही पेंटिंग',id:'Lukisan Kerajaan Klasik',fil:'Classical Royal Painting',tr:'Klasik Kraliyet Resmi',zh:'古典皇家绘画',ru:'Классическая королевская живопись',es:'Pintura Real Clásica',ml:'ക്ലാസ്സിക്കൽ രാജകീയ പെയിന്റിംഗ്'},
   'زخرفة بالخط العربي': {en:'Arabic Calligraphy Art',fr:'Art de la Calligraphie Arabe',hi:'अरबी सुलेख कला',bn:'আরবি ক্যালিগ্রাফি শিল্প',ne:'अरबी क्यालिग्राफी कला',id:'Seni Kaligrafi Arab',fil:'Arabic Calligraphy Art',tr:'Arap Hat Sanatı',zh:'阿拉伯书法艺术',ru:'Арабское каллиграфическое искусство',es:'Arte de Caligrafía Árabe',ml:'അറബിക് കാലിഗ്രാഫി ആർട്ട്'},
@@ -644,7 +630,7 @@ const STU_XL = {
   'تذكار مولود جديد': {en:'Newborn Keepsake',fr:'Souvenir de Nouveau-Né',hi:'नवजात स्मृति',bn:'নবজাত স্মৃতিচিহ্ন',ne:'नवजात स्मरक',id:'Kenang-kenangan Bayi Baru',fil:'Newborn Keepsake',tr:'Yeni Doğan Hatırası',zh:'新生儿纪念品',ru:'Памятка новорожденного',es:'Recuerdo de Recién Nacido',ml:'നവജാത കിതാബ്'},
   'شخصية صلصال لطيفة': {en:'Cute Clay Character',fr:'Personnage d\'Argile Mignon',hi:'प्यारा मिट्टी चरित्र',bn:'সুন্দর মাটির চরিত্র',ne:'प्यारा माटो क्यारेक्टर',id:'Karakter Tanah Liat Lucu',fil:'Cute Clay Character',tr:'Sevimli Kil Karakteri',zh:'可爱粘土角色',ru:'Милый персонаж из глины',es:'Personaje de Arcilla Bonito',ml:'സുന്ദരമായ കളിമണ്ണ് പാത്രം'},
   'تصميم هندسي حديث': {en:'Modern Geometric Design',fr:'Conception Géométrique Moderne',hi:'आधुनिक ज्यामितीय डिजाइन',bn:'আধুনিক জ্যামিতিক ডিজাইন',ne:'आधुनिक ज्यामितीय डिजाइन',id:'Desain Geometris Modern',fil:'Modern Geometric Design',tr:'Modern Geometrik Tasarım',zh:'现代几何设计',ru:'Современный геометрический дизайн',es:'Diseño Geométrico Moderno',ml:'ആധുനിക ജ്യാമിതീയ ഡിസൈൻ'},
-  'জরাফিতি শারে جريء': {en:'Bold Street Graffiti',fr:'Graffiti de Rue Audacieux',hi:'साहसी सड़क ग्राफिटी',bn:'সাহসী রাস্তা গ্রাফিটি',ne:'साहसी सड़क ग्राफिटी',id:'Graffiti Jalan Berani',fil:'Bold Street Graffiti',tr:'Cesur Sokak Grafitisi',zh:'大胆街头涂鸦',ru:'Смелое уличное граффити',es:'Graffiti Callejero Audaz',ml:'ധാരസാധ്യ തെരുവ് ഗ്രാഫിറ്റി'},
+  'جرافيتي شارع جريء': {en:'Bold Street Graffiti',fr:'Graffiti de Rue Audacieux',hi:'साहसी सड़क ग्राफिटी',bn:'সাহসী রাস্তা গ্রাফিটি',ne:'साहसी सड़क ग्राफिटी',id:'Graffiti Jalan Berani',fil:'Bold Street Graffiti',tr:'Cesur Sokak Grafitisi',zh:'大胆街头涂鸦',ru:'Смелое уличное граффити',es:'Graffiti Callejero Audaz',ml:'ധാരസാധ്യ തെരുവ് ഗ്രാഫിറ്റി'},
   'فسيفساء فنية': {en:'Artistic Mosaic',fr:'Mosaïque Artistique',hi:'कलात्मक मोज़ेक',bn:'শিল্পকলা মোজাইক',ne:'कलात्मक मोजैक',id:'Mosaik Artistik',fil:'Artistic Mosaic',tr:'Sanatsal Mozaik',zh:'艺术马赛克',ru:'Художественная мозаика',es:'Mosaico Artístico',ml:'കലാത്മക മോസൈക്ക്'},
   'زجاج معشّق ملوّن': {en:'Colored Stained Glass',fr:'Vitrail Coloré',hi:'रंगीन सना हुआ ग्लास',bn:'রঙিন দাগযুক্ত গ্লাস',ne:'रङ्गीन दाग गरिएको गिलास',id:'Kaca Patri Berwarna',fil:'Colored Stained Glass',tr:'Renkli Vitray Cam',zh:'彩色彩玻璃',ru:'Разноцветное витражное стекло',es:'Vidrio Teñido de Color',ml:'വർണ്ണിത ദാഗ് ഗ്ലാസ്'},
   'فن الورق المقصوص': {en:'Paper Cut Art',fr:'Art du Découpage de Papier',hi:'कागज कला कला',bn:'কাগজ কাটা শিল্প',ne:'कागज काट कला',id:'Seni Potong Kertas',fil:'Paper Cut Art',tr:'Kağıt Kesme Sanatı',zh:'纸艺术',ru:'Искусство вырезания из бумаги',es:'Arte de Corte de Papel',ml:'പേപ്പർ കട് ആർട്ട്'},
@@ -892,7 +878,7 @@ function stuL(ar, en){
       const opts = document.createElement('div'); opts.id = 'portraitWorkOpts';
       work.appendChild(opts);
       ['portraitBackdropWrap','portraitBeautifyWrap','portraitAgeWrap','portraitHairWrap','portraitAdWrap','portraitCelebWrap','portraitRemoveWrap','portraitOutfitWrap','portraitProfWrap','portraitEraWrap','portraitMultiWrap'].forEach((id) => { const el = document.getElementById(id); if(el) opts.appendChild(el); });
-      ['portraitStyleStatus','portraitCompareWrap','portraitCompareSlider','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
+      ['portraitStyleStatus','portraitCompareWrap','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
       scroller.insertBefore(work, scroller.firstChild);
     }
     let foot = document.getElementById('portraitStyleFoot');
@@ -1095,7 +1081,6 @@ function stuL(ar, en){
   const compareWrap = $('#portraitCompareWrap');
   const compareBefore = $('#portraitCompareBefore');
   const compareAfterWrap = $('#portraitCompareAfterWrap');
-  const compareSlider = $('#portraitCompareSlider');
   const shareBtn2 = $('#portraitShareBtn');
   if(shareBtn2){
     /* v-img-save-universal: مشاركة عبر المسار الموحّد (جسر التطبيق → ورقة النظام → رابط سيرفر + واتساب) */
@@ -1117,18 +1102,43 @@ function stuL(ar, en){
       }catch(_){ /* guard-ok — يسقط للتنزيل العادي */ }
     });
   }
-  function updateCompareSlider(){
-    if(!compareSlider || !compareAfterWrap) return;
-    compareAfterWrap.style.width = compareSlider.value + '%';
+  /* v-compare-drag (طلب المالك ٢١ سبتمبر: «تحسّن طريقة السحب» بعد استعادة شريط قبل/بعد): السحب صار
+     مباشرة على الصورة نفسها بمقبض دائريّ واضح فوق الخطّ الفاصل — بدل عنصر <input type=range> منفصل
+     تحت الصورة (v-no-slider القديم أخفاه بلا بديل، فبدا الشريط معطوبًا رغم بقاء صندوق المقارنة ظاهرًا).
+     Pointer Events توحّد الفأرة واللمس بمستمع واحد؛ setPointerCapture يبقي السحب متصلًا حتى خارج حدود
+     الصورة، وtouch-action:none على الحاوية (تحت) يمنع تحويل السحب الأفقي إلى تمرير الصفحة على الجوال
+     (نفس عطب v-slider-touch القديم لكن بجذر مختلف — الحاوية لا عنصر input). النقر في أيّ نقطة من
+     الصورة يقفز الفاصل إليها فورًا (نمط مقارنة الصور المعتاد)، لا يقتصر على سحب المقبض فقط. */
+  let comparePct = 100;
+  function setComparePct(pct){
+    comparePct = Math.max(0, Math.min(100, pct));
+    if(compareAfterWrap) compareAfterWrap.style.width = comparePct + '%';
     const divider = $('#portraitCompareDivider');
-    if(divider) divider.style.left = compareSlider.value + '%';
+    if(divider) divider.style.left = comparePct + '%';
   }
   function layoutCompareAfter(){
     if(!compareWrap || !resultEl) return;
     const w = compareWrap.offsetWidth;
     if(w) resultEl.style.width = w + 'px';
   }
-  if(compareSlider) compareSlider.addEventListener('input', updateCompareSlider);
+  let __compareDragging = false;
+  function comparePctFromEvent(ev){
+    const rect = compareWrap.getBoundingClientRect();
+    if(!rect.width) return comparePct;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
+  }
+  if(compareWrap){
+    compareWrap.style.touchAction = 'none';
+    compareWrap.style.cursor = 'ew-resize';
+    compareWrap.addEventListener('pointerdown', (ev) => {
+      __compareDragging = true;
+      try{ compareWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      setComparePct(comparePctFromEvent(ev));
+      ev.preventDefault();
+    });
+    compareWrap.addEventListener('pointermove', (ev) => { if(__compareDragging) setComparePct(comparePctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => compareWrap.addEventListener(evt, () => { __compareDragging = false; }));
+  }
   window.addEventListener('resize', layoutCompareAfter);
   if(!modal || !btnOpen) return;
 
@@ -1181,6 +1191,40 @@ function stuL(ar, en){
     });
   };
 
+  /* v-merge-scope-fix (لقطة المالك ٢١ سبتمبر: «extraImagesB64 is not defined» عند رفع صورة الشخص
+     الثاني لِـ«دمج صورتين»): هذه الكتلة (صور familystyle/merge2 الإضافية) كانت بالخطأ داخل نطاق
+     («AI Interior Design») لا هنا — extraImagesB64 هناك محلّي لتلك الدالّة المغلقة، فلا يراه سطر
+     الإرسال هنا (btnGenerate.onclick أدناه)، ما يرمي ReferenceError عند التوليد. المعرّفات
+     #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
+     مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
+  let extraImagesB64 = [];
+  const multiFileInput = $('#portraitMultiFileInput');
+  const multiFileBtn = $('#portraitMultiFileBtn');
+  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
+  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
+  if(multiFileInput){
+    multiFileInput.onchange = () => {
+      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
+      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      extraImagesB64 = [];
+      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || '');
+          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
+          if(multiPreviewWrap){
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+            multiPreviewWrap.appendChild(img);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+  }
+
   btnGenerate.onclick = async () => {
     if(!selectedBase64){
       setStatus(t('portraitNeedImage'));
@@ -1195,7 +1239,6 @@ function stuL(ar, en){
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     if(compareWrap) compareWrap.style.display = 'none';
-    if(compareSlider) compareSlider.style.display = 'none';
     downloadEl.style.display = 'none';
     if(shareBtn2) shareBtn2.style.display = 'none';
     setStatus(t('portraitGenerating'));
@@ -1234,7 +1277,6 @@ function stuL(ar, en){
         resultEl.src = gifUrl;
         resultEl.style.display = 'block';
         if(compareWrap) compareWrap.style.display = 'none';
-        if(compareSlider) compareSlider.style.display = 'none';
         downloadEl.href = gifUrl;
         downloadEl.setAttribute('download', 'omran-avatar.gif');
         downloadEl.style.display = 'block';
@@ -1244,12 +1286,10 @@ function stuL(ar, en){
         const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
         resultEl.src = dataUrl;
         resultEl.style.display = 'block';
-        if(compareWrap && compareBefore && compareSlider){
+        if(compareWrap && compareBefore){
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
-          compareSlider.style.display = 'none'; /* v-no-slider */
-          compareSlider.value = 100;
-          updateCompareSlider();
+          setComparePct(100);
           layoutCompareAfter();
         }
         downloadEl.href = dataUrl;
@@ -1288,7 +1328,6 @@ function stuL(ar, en){
   const resultWrap = $('#fashionAiResultWrap');
   const beforeWrap = $('#fashionAiBeforeWrap');
   const beforeImg = $('#fashionAiBeforeImg');
-  const sliderRange = $('#fashionAiSliderRange');
   const favSaveBtn = $('#fashionAiFavoriteSaveBtn');
   const favoritesBtn = $('#fashionAiFavoritesBtn');
   const favoritesPanel = $('#fashionAiFavoritesPanel');
@@ -1486,28 +1525,41 @@ function stuL(ar, en){
     setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, 1800);
   };
 
-  /* ---- 🔄 before/after slider ---- */
+  /* ---- 🔄 before/after slider ----
+     v-compare-drag-all (طلب المالك ٢١ سبتمبر «غيّرها»): كانت مُقفلة كليًّا (`if(true) return;`) منذ
+     v-no-slider — السحب صار مباشرة على resultWrap نفسه بدل <input type=range> مخفيّ. */
+  function updateSliderClip(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
   function setupBeforeAfter(afterUrl){
-    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
-    beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
-    if(true) return;
     if(mode !== 'image' || !selectedBase64){
       beforeWrap.style.display = 'none';
-      sliderRange.style.display = 'none';
       return;
     }
     beforeImg.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
     beforeWrap.style.display = 'block';
-    sliderRange.style.display = 'block';
-    updateSliderClip(sliderRange.value);
+    updateSliderClip(50);
   }
-  function updateSliderClip(val){
-    const pct = Math.max(0, Math.min(100, Number(val)));
-    beforeWrap.style.width = pct + '%';
-    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  let __fashionBaDragging = false;
+  function fashionBaPctFromEvent(ev){
+    const rect = resultWrap.getBoundingClientRect();
+    if(!rect.width) return 50;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
   }
-  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+  if(resultWrap){
+    resultWrap.style.touchAction = 'none';
+    resultWrap.addEventListener('pointerdown', (ev) => {
+      if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      __fashionBaDragging = true;
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      updateSliderClip(fashionBaPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    resultWrap.addEventListener('pointermove', (ev) => { if(__fashionBaDragging) updateSliderClip(fashionBaPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => resultWrap.addEventListener(evt, () => { __fashionBaDragging = false; }));
+  }
 
   /* ---- 📊 v-fashion-compare-cards: صفّ مقارنة يُسحب باليد — بطاقات صور بلا
      كتابة، اختيار حتى ٣ بعلامة ✓ ذهبية. مربّعات الاختيار باقية مخفيّة فقارئ
@@ -1629,7 +1681,6 @@ function stuL(ar, en){
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus(t('fashionAiGenerating'));
 
     try{
