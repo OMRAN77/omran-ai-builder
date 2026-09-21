@@ -1097,11 +1097,12 @@ html, body, *, *::before, *::after{scrollbar-width:none !important; -ms-overflow
 html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none !important; background:transparent !important;}
 *::-webkit-scrollbar-thumb, *::-webkit-scrollbar-track{display:none !important; background:transparent !important;}
 
-/* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): أشرطة مقارنة قبل/بعد في أدوات الصور كلها مخفية.
-   v-compare-drag (٢١ سبتمبر، طلب المالك «تحسّن طريقة السحب»): استُثنيت أنماط الصور وحدها — عنصر
-   #portraitCompareSlider القديم أُزيل من الصفحة كليًّا (سحب مباشر على الصورة بدله في app-12-studios.js)
-   لا وجود له هنا فيما بعد؛ الباقي (تصميم داخليّ/أزياء/استوديو) لم يُطلَب تغييره فبقي مخفيًّا كما هو. */
-#designBARange, #fashionAiSliderRange, #studioAiSliderRange, #designBALine, #fashionAiBeforeWrap, #studioAiBeforeWrap{display:none !important;}
+/* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب») ثمّ v-compare-drag/v-compare-drag-all (٢١ سبتمبر،
+   طلب المالك «تحسّن طريقة السحب» ثمّ «غيّرها» على البقيّة): قاعدة الإخفاء الشاملة القديمة أُزيلت نهائيًّا —
+   أنماط الصور والتصميم الداخليّ والأزياء والاستوديو صارت كلّها سحبًا مباشرًا على الصورة بمقبض دائريّ
+   (app-12-studios.js/app-13-stocks-init.js)؛ عناصر <input type=range> القديمة (designBARange،
+   fashionAiSliderRange، studioAiSliderRange) أُزيلت من الصفحة كليًّا، وdesignBALine/fashionAiBeforeWrap/
+   studioAiBeforeWrap تُدار عرضها الآن بجافاسكربت كلّ أداة (display:block عند وجود نتيجة) لا CSS مشترك. */
 
 /* v-noscroll-clip (لقطة المالك على التابلت: شريط تمرير رمادي على يسار نافذة الأدوات رغم قواعد الإخفاء —
    بعض أغلفة WebView ترسم الشريط بنفسها وتتجاهل CSS). الحيلة: الحاوية الأم تقصّ، والعنصر المتمرّر يمتدّ

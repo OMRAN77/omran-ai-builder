@@ -410,25 +410,41 @@ async function __safeJson(res){
   const baBeforeClip = $('#designBABeforeClip');
   const baBefore = $('#designBABefore');
   const baLine = $('#designBALine');
-  const baRange = $('#designBARange');
-  function baHide(){ if(baWrap) baWrap.style.display = 'none'; if(baRange) baRange.style.display = 'none'; }
+  /* v-compare-drag-all (طلب المالك ٢١ سبتمبر: «غيّرها» — نفس تحسين سحب أنماط الصور على بقيّة الأدوات):
+     baSet(p) كانت تُقاد من <input type=range id=designBARange> مخفيّ (v-no-slider ٤ سبتمبر) فبلا وسيلة
+     تفاعل. السحب صار مباشرة على baWrap نفسه بمقبض دائريّ فوق الخطّ الفاصل — baSet نفسها لم تتغيّر. */
+  function baHide(){ if(baWrap) baWrap.style.display = 'none'; }
   function baSize(){ if(baWrap && baBefore) baBefore.style.width = baWrap.getBoundingClientRect().width + 'px'; }
   function baSet(p){
     if(baBeforeClip) baBeforeClip.style.width = p + '%';
     if(baLine) baLine.style.left = p + '%';
     baSize();
   }
-  if(baRange) baRange.oninput = function(){ baSet(baRange.value); };
+  let __baDragging = false;
+  function baPctFromEvent(ev){
+    const rect = baWrap.getBoundingClientRect();
+    if(!rect.width) return 0;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
+  }
+  if(baWrap){
+    baWrap.style.touchAction = 'none';
+    baWrap.style.cursor = 'ew-resize';
+    baWrap.addEventListener('pointerdown', (ev) => {
+      __baDragging = true;
+      try{ baWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      baSet(baPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    baWrap.addEventListener('pointermove', (ev) => { if(__baDragging) baSet(baPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => baWrap.addEventListener(evt, () => { __baDragging = false; }));
+  }
   window.addEventListener('resize', function(){ if(baWrap && baWrap.style.display !== 'none') baSize(); });
   function showBeforeAfter(beforeUrl, afterUrl){
-    /* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): لا شريط مقارنة — الناتج وحده */
     if(!baWrap || !baAfter || !baBefore) return false;
     baAfter.src = afterUrl;
     baBefore.src = beforeUrl;
     baAfter.onload = baSize;
     baWrap.style.display = 'block';
-    baRange.style.display = 'none';
-    baRange.value = 0;
     baSet(0);
     return true;
   }
@@ -1312,7 +1328,6 @@ function stuL(ar, en){
   const resultWrap = $('#fashionAiResultWrap');
   const beforeWrap = $('#fashionAiBeforeWrap');
   const beforeImg = $('#fashionAiBeforeImg');
-  const sliderRange = $('#fashionAiSliderRange');
   const favSaveBtn = $('#fashionAiFavoriteSaveBtn');
   const favoritesBtn = $('#fashionAiFavoritesBtn');
   const favoritesPanel = $('#fashionAiFavoritesPanel');
@@ -1510,28 +1525,41 @@ function stuL(ar, en){
     setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, 1800);
   };
 
-  /* ---- 🔄 before/after slider ---- */
+  /* ---- 🔄 before/after slider ----
+     v-compare-drag-all (طلب المالك ٢١ سبتمبر «غيّرها»): كانت مُقفلة كليًّا (`if(true) return;`) منذ
+     v-no-slider — السحب صار مباشرة على resultWrap نفسه بدل <input type=range> مخفيّ. */
+  function updateSliderClip(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
   function setupBeforeAfter(afterUrl){
-    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
-    beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
-    if(true) return;
     if(mode !== 'image' || !selectedBase64){
       beforeWrap.style.display = 'none';
-      sliderRange.style.display = 'none';
       return;
     }
     beforeImg.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
     beforeWrap.style.display = 'block';
-    sliderRange.style.display = 'block';
-    updateSliderClip(sliderRange.value);
+    updateSliderClip(50);
   }
-  function updateSliderClip(val){
-    const pct = Math.max(0, Math.min(100, Number(val)));
-    beforeWrap.style.width = pct + '%';
-    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  let __fashionBaDragging = false;
+  function fashionBaPctFromEvent(ev){
+    const rect = resultWrap.getBoundingClientRect();
+    if(!rect.width) return 50;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
   }
-  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+  if(resultWrap){
+    resultWrap.style.touchAction = 'none';
+    resultWrap.addEventListener('pointerdown', (ev) => {
+      if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      __fashionBaDragging = true;
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      updateSliderClip(fashionBaPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    resultWrap.addEventListener('pointermove', (ev) => { if(__fashionBaDragging) updateSliderClip(fashionBaPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => resultWrap.addEventListener(evt, () => { __fashionBaDragging = false; }));
+  }
 
   /* ---- 📊 v-fashion-compare-cards: صفّ مقارنة يُسحب باليد — بطاقات صور بلا
      كتابة، اختيار حتى ٣ بعلامة ✓ ذهبية. مربّعات الاختيار باقية مخفيّة فقارئ
@@ -1653,7 +1681,6 @@ function stuL(ar, en){
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus(t('fashionAiGenerating'));
 
     try{

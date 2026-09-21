@@ -39,10 +39,7 @@ test('js/app-12-studios.js: نتيجة التوليد تستدعي setComparePct
   assert.match(src, /compareWrap\.style\.display = 'block';\s*\n\s*setComparePct\(100\);/, 'الناتج الجديد يُظهر «بعد» كاملًا افتراضيًّا عبر setComparePct لا compareSlider.value');
 });
 
-test('css/tokens.css: قاعدة إخفاء الأشرطة (v-no-slider) لم تعد تذكر #portraitCompareSlider بعد إزالته', () => {
+test('css/tokens.css: قاعدة إخفاء الأشرطة المشتركة (v-no-slider) أُزيلت بالكامل — v-compare-drag-all طبّقت السحب على الأربعة كلّها', () => {
   const src = fs.readFileSync(path.join(root, 'css/tokens.css'), 'utf8');
-  // نفحص قاعدة الإخفاء نفسها (سطر الـCSS الفعليّ) لا التعليقات — بقيّة أشرطة المقارنة
-  // (تصميم داخليّ/أزياء/استوديو) لم تُطلَب فتبقى مخفيّة كما هي.
-  assert.match(src, /#designBARange, #fashionAiSliderRange, #studioAiSliderRange, #designBALine, #fashionAiBeforeWrap, #studioAiBeforeWrap\{display:none !important;\}/);
-  assert.doesNotMatch(src, /#designBARange[^\n]*#portraitCompareSlider/, 'قاعدة الإخفاء الفعليّة لا تذكر العنصر المُزال');
+  assert.doesNotMatch(src, /#portraitCompareSlider|#designBARange|#fashionAiSliderRange|#studioAiSliderRange/, 'لا مرجع لأيّ من عناصر input المُزالة الأربعة');
 });

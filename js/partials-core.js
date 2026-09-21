@@ -430,11 +430,13 @@
       <div id="designBABeforeClip" style="position:absolute; inset:0; overflow:hidden; width:50%;">
         <img id="designBABefore" style="position:absolute; top:0; left:0; height:100%; object-fit:cover;">
       </div>
-      <div id="designBALine" style="position:absolute; top:0; bottom:0; left:50%; width:2px; background:#d4af37; box-shadow:0 0 8px rgba(212,175,55,.8);"></div>
+      <div id="designBALine" style="position:absolute; top:0; bottom:0; left:50%; width:2px; background:#d4af37; box-shadow:0 0 8px rgba(212,175,55,.8);">
+        <!-- v-compare-drag-all: مقبض دائريّ فوق الصورة — السحب على designBAWrap نفسه (app-12-studios.js) -->
+        <div id="designBAHandle" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414;">↔</div>
+      </div>
       <span style="position:absolute; top:8px; left:8px; font-size:10.5px; font-weight:700; background:rgba(0,0,0,.55); color:#fff; padding:2px 8px; border-radius:99px;" data-i18n="designBABefore">قبل</span>
       <span style="position:absolute; top:8px; right:8px; font-size:10.5px; font-weight:700; background:rgba(212,175,55,.85); color:#141414; padding:2px 8px; border-radius:99px;" data-i18n="designBAAfter">بعد</span>
     </div>
-    <input type="range" id="designBARange" min="0" max="100" value="50" style="display:none; width:100%; margin-top:8px; accent-color:#d4af37;">
     <img id="designAiResult" style="display:none; width:100%; margin-top:14px; border-radius:var(--r-2); background:#000;">
     <div id="designAiGrid" style="display:none; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;"></div>
     <a id="designAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-design-ai.png" data-i18n="designAiDownloadBtn">⬇️ تحميل الصورة</a>
@@ -862,8 +864,9 @@
            object-fit:contain يعرضها كاملة. v-slider-touch: سحب الشريط على الجوال. -->
       <div id="fashionAiBeforeWrap" style="display:none; position:absolute; top:0; left:0; height:100%; overflow:hidden; border-right:2px solid #fff;">
         <img id="fashionAiBeforeImg" style="display:block; height:100%; max-width:none; object-fit:contain; background:#000;">
+        <!-- v-compare-drag-all: مقبض عند حافّة القصّ نفسها — يتبعها تلقائيًّا مع تغيّر عرض الحاوية -->
+        <div id="fashionAiCompareHandle" style="position:absolute; top:50%; right:-20px; transform:translateY(-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
       </div>
-      <input type="range" id="fashionAiSliderRange" min="0" max="100" value="50" style="display:none; position:absolute; bottom:8px; left:8px; right:8px; width:calc(100% - 16px); z-index:5; touch-action:none; height:32px; accent-color:#d4af37;">
     </div>
     <a id="fashionAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-fashion-ai.png" data-i18n="fashionAiDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" class="btn" id="fashionAiFavoriteSaveBtn" style="display:none; width:100%; margin-top:8px;" data-i18n="fashionFavoriteSaveBtn">🤍 حفظ في المفضلة</button>
@@ -1009,8 +1012,9 @@
       <img id="studioAiResult" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
       <div id="studioAiBeforeWrap" style="display:none; position:absolute; top:0; left:0; height:100%; overflow:hidden; border-right:2px solid #fff;">
         <img id="studioAiBeforeImg" style="display:block; height:100%; max-width:none;">
+        <!-- v-compare-drag-all: مقبض عند حافّة القصّ نفسها — يتبعها تلقائيًّا مع تغيّر عرض الحاوية -->
+        <div id="studioAiCompareHandle" style="position:absolute; top:50%; right:-20px; transform:translateY(-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
       </div>
-      <input type="range" id="studioAiSliderRange" min="0" max="100" value="50" style="display:none; position:absolute; bottom:8px; left:8px; right:8px; width:calc(100% - 16px); z-index:5;">
     </div>
 
     <a id="studioAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-studio-ai.png" data-i18n="studioAiDownloadBtn">⬇️ تحميل الصورة</a>
