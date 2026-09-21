@@ -5346,6 +5346,12 @@ function __chatsMergeServer(server, deletedIds){
           if(lm.content && (!sm.content || sm.content === '[media]')) return lm;
           // لو المحلي أطول بكثير → خذ المحلي (السيرفر مقصوص)
           if(lm.content && sm.content && lm.content.length > sm.content.length + 50) return lm;
+          // v-keep-local-attachments: رسالة موجودة محليًّا أصلًا (نفس الفهرس) —
+          // مرفقاتها (صور) لا يمكن أن تكون نسخة السيرفر المرفوعة (مضغوطة أو
+          // '[media]' إن فشل الضغط) أوضح منها أبدًا. بلا هذا الفحص، رسالة صورة
+          // بلا نصّ (content فارغ) كانت تسقط للشرطين أعلاه فتُستبدل بصمت بنسخة
+          // متدهورة لمجرّد أنّ جهازًا آخر أضاف رسالة جديدة لنفس المحادثة.
+          if((Array.isArray(lm.attachments) && lm.attachments.length) || (Array.isArray(lm.apiImages) && lm.apiImages.length)) return lm;
           return sm;
         });
         local.messages = merged;
