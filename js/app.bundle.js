@@ -14066,7 +14066,7 @@ async function mahaSpeak(text){
 async function mahaRecordUntilSilence(){
   // نفس تحسينات المايك التي يطلبها الوضع الحديث: كانت الغائبة هنا، فصوت
   // المستخدم الهادئ يصل ضعيفًا وينرمى كأنه ضجيج — «أول مرة ما ترد».
-  mahaStream = await navigator.mediaDevices.getUserMedia({
+  mahaStream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
   let mimeType = '';
@@ -14980,7 +14980,7 @@ async function mahaStartRealtimeCall(){
   const EPHEMERAL_KEY = tokenData.clientSecret;
   if(mahaRtCancelled) throw new Error('cancelled');
 
-  mahaRtStream = await navigator.mediaDevices.getUserMedia({
+  mahaRtStream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
   if(mahaRtCancelled){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; throw new Error('cancelled'); }
@@ -15722,11 +15722,30 @@ function mahaMicMsg(e){
              : "🎤 No mic permission yet. Answer the browser prompt, or click 🔒 in the address bar → Microphone → Allow, then tap Maha again.";
   return (ar ? "🎤 تعذّر فتح المايك" : "🎤 Could not open the microphone") + (n ? " (" + n + ")" : "");
 }
+// v-maha-mic-race: محاولة ثانية وحيدة بعد إمهال قصير إن كان الخطأ من نوع "المايك مشغول"
+// المؤقّت (NotReadable/TrackStart/Aborted) — هذا النوع تحديدًا معروف بأنه غالبًا سباق تحرير
+// عتاد لا رفض دائم، فمحاولة ثانية بعد ٣٠٠م.ث كافية غالبًا لحلّه دون أن يشعر المستخدم بتأخير.
+async function mahaGetUserMediaRetry(constraints){
+  try{ return await navigator.mediaDevices.getUserMedia(constraints); }
+  catch(e){
+    if(!/NotReadable|TrackStart|Aborted/i.test((e && e.name) || '')) throw e;
+    await new Promise(r => setTimeout(r, 300));
+    return await navigator.mediaDevices.getUserMedia(constraints);
+  }
+}
 // فحص مسبق: نطلب الإذن قبل فتح شاشة النداء، فلا تتجمّد الشاشة ١٢ ثانية بلا سبب ظاهر.
+// v-maha-mic-race (بلاغ المالك بفيديو حيّ: "ماتفتح من البداية" — نفس رسالة «المايك مشغول
+// ببرنامج ثاني» تظهر في كل محاولة): كان يفتح المايك هنا (getUserMedia بسيط) ثم يقفله فورًا،
+// ثم بعد كسور ثانية يفتحه ثانية بقيود مختلفة (echoCancellation/noiseSuppression) داخل
+// mahaStartRealtimeCall — فتح-إغلاق-فتح سريع كهذا معروف بأنه يُطلق NotReadableError/
+// TrackStartError على أندرويد لأن نظام التشغيل لا يُحرِّر عتاد المايك فورًا. الإذن إن كان
+// ممنوحًا مسبقًا (الحالة الشائعة لأي محاولة ثانية) لا يحتاج فتح المايك هنا أصلًا — نتحقّق من
+// الحالة فقط ونتخطّى الفتح التجريبي كليًّا فيختفي هذا التعارض الذاتي في أغلب الحالات.
 async function mahaMicPreflight(){
   var perm = "";
   try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ /* guard-ok: unsupported Permissions API falls through to getUserMedia. */ }
   if(perm === "denied") return mahaMicMsg({ name: "NotAllowedError" });
+  if(perm === "granted") return null; // مُصرَّح مسبقًا — لا داعي لفتح/إغلاق المايك هنا إطلاقًا
   try{
     // If the permission prompt is answered AFTER the 15s race rejected, the
     // stream still arrives with nobody left to stop it - the mic stays hot.
@@ -15737,6 +15756,10 @@ async function mahaMicPreflight(){
       new Promise(function(_res, rej){ setTimeout(function(){ rej({ name: "__timeout__" }); }, 15000); })
     ]);
     s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ /* guard-ok: an already-ended track needs no cleanup. */ } });
+    // مهلة صغيرة قبل العودة: بعض أجهزة أندرويد لا تُحرِّر عتاد المايك فور tr.stop()،
+    // والنداء الحقيقيّ القادم (mahaStartRealtimeCall) يفتحه ثانية بقيود مختلفة خلال أجزاء
+    // من الثانية — إمهال قصير يقلّل احتمال NotReadableError الذاتيّ دون تأخير محسوس للمستخدم.
+    await new Promise(function(r){ setTimeout(r, 250); });
     return null;
   }catch(e){ console.error("[maha] mic preflight failed:", e); return mahaMicMsg(e); }
 }
