@@ -423,3 +423,19 @@ html[data-mode="light"] #portraitStyleSheet .pstyleFoot{background:#EBEBEB !impo
    المصاريف): الرأس ينزل تحت شريط الحالة بهامش الأمان والزر أكبر. */
 #expModal .expHead, .xm .xmHead{padding-top:calc(14px + max(env(safe-area-inset-top,0px), 30px));}
 #expModal .expX, .xm .xmX{width:42px;height:40px;}
+
+/* v-maha-band (أمر المالك ٢٢ سبتمبر بعد لقطتي النافذة: «حطّ الكاميرا فوق، واحذف اسم مها، والإغلاق من أيّ مكان أو
+   السكوت أو ضغطة م مرّة ثانية، واحذف X، وخلّها من أوّل الشريط لنهايته مش في المنتصف — نفس شريط الأسهم»):
+   في مكالمة مها (لا البنّاء الصوتيّ) النافذة شريط بعرض الشاشة كلّه في منتصفها، والكاميرا فوقه، بلا اسم ولا ✕. */
+#mahaCallScreen.maha-goldband{left:0 !important; right:0 !important; top:50% !important; bottom:auto !important; width:100vw !important; transform:translateY(-50%); gap:8px !important;}
+#mahaCallScreen.maha-goldband #mahaCallNameLabel,#mahaCallScreen.maha-goldband #btnMahaEndCall{display:none !important;}
+#mahaCallScreen.maha-goldband #mahaCallBtns{order:-1;}
+#mahaCallScreen.maha-goldband #mahaAvatarBox{width:100%;}
+#mahaCallScreen.maha-goldband #mahaDragHandle{cursor:default !important;}
+/* صندوق الكتابة يبقى مخفيًّا أثناء المكالمة (v-maha-hide-composer) إلّا زرّ «م» في مكانه — ضغطه ثانيةً يُنهيها */
+#inputbar.maha-calling{visibility:hidden;}
+#inputbar.maha-calling #btnMahaDock{visibility:visible;}
+/* v-maha-band-under (المالك: «خلّه خلف المحادثة الجديدة وتحت المعاينة والكود»): الشريط بعرض الشاشة يمرّ تحت الشريط
+   الجانبيّ ولوحة المعاينة/الكود — يرتفعان فوق نافذة المكالمة (99999) طوال مكالمة مها فقط. على الحاسوب عنصرا شبكة
+   الصفحة فيسري z-index بلا تغيير موضعهما، وعلى الجوّال درجان ثابتان (٦٠) يعلوانه حين يُفتحان. */
+body.maha-band-on #sidebar, body.maha-band-on #workarea{z-index:100000;}
