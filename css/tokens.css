@@ -986,11 +986,11 @@ html[data-mode="light"] #composerBox{background:#E5E5E5 !important;}
 /* v569: الروابط لا تتقطّع في منتصف الكلمة — الكسر عند المسافة، والكلمة الأطول من السطر وحدها تُكسر */
 .msg a, .msg-text a{overflow-wrap:break-word; word-break:normal; hyphens:none;}
 
-/* v-store-safe: حزمة AppGallery — كل الواجهات المالية مخفية (قاعدة 11.4). */
-html.store-safe #stockTicker,
-html.store-safe #btnStocks,
-html.store-safe #stocksModal,
-html.store-safe #aboutStocksCard{display:none !important;}
+/* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر): كانت هذه القاعدة تخفي كل
+   الواجهات الماليّة تحت حزمة AppGallery (قاعدة هواوي 11.4) — أُزيلت بأمره
+   رغم تحذيره من مخاطرة رفض المتجر؛ راجع knowledge/DECISIONS.md لهذا التاريخ.
+   store/huawei/REVIEW-NOTES.md لا يزال يذكر للمراجع أنّ لا محتوى أسواق أسهم
+   في الحزمة — هذا التعديل يجعل ذلك النصّ غير صحيح إن أُعيد استعماله كما هو. */
 
 /* v-close-unified (طلب عمران ١ سبتمبر): أزرار إغلاق الميزات كانت مبعثرة
    (14px، 46px، 90px من اليسار وبأشكال شتى) — نقطة واحدة ثابتة أعلى يسار

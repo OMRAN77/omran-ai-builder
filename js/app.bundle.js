@@ -27142,9 +27142,10 @@ function stuL(ar, en){
 })();
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
-  /* v-store-safe: حزمة AppGallery لا تلمس أي بيانات مالية إطلاقًا —
-     لا شريط ولا صفحة ولا نداء أسعار واحد (قاعدة هواوي 11.4). */
-  if(document.documentElement.classList.contains('store-safe')) return;
+  /* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر — بعد تحذيره من مخاطرة رفض
+     هواوي بقاعدة 11.4): الأسهم تبقى ظاهرة وتعمل حتى داخل حزمة AppGallery.
+     كانت v-store-safe تُرجع مبكرًا هنا فتمنع كل نداء أسعار تحت store-safe؛
+     أُزيل الحارس بأمر صريح — راجع knowledge/DECISIONS.md لهذا التاريخ. */
   const modal = $('#stocksModal');
   const btnOpen = $('#btnStocks');
   if(!modal || !btnOpen) return;
