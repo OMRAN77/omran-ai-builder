@@ -470,7 +470,11 @@ module.exports = async (req, res) => {
 
     // v606: نطق مها أحيوى 5% (0.25-1.5 موثّق). لو رفضتها الواجهة
     // فالخطّاف أدناه يحذفها ويعيد الطلب — صفر خطر على المكالمة.
-    if (mode !== 'builder') sessionConfig.session.audio.output.speed = 1.05;
+    // v-reply-voice-speed (المالك ٢٢ سبتمبر «بطيء وسريع… أريدهم لمها»): درجة الإعدادات صارت معامل السرعة الحقيقيّ
+    // هنا أيضًا (الحقل موثّق: audio.output.speed من 0.25 إلى 1.5) لا تعليمة النبرة وحدها. التعليمة تبقى (إيقاع
+    // ووقفات)، لذلك المعاملات أهدأ من خريطة tts.js كي لا يتضاعف الأثر فيصعب الفهم.
+    const REALTIME_SPEED = { slow: 0.85, normal: 1.05, fast: 1.2, xfast: 1.35 };
+    if (mode !== 'builder') sessionConfig.session.audio.output.speed = REALTIME_SPEED[voiceSpeed] || 1.05;
 
     const postSession = () => fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',

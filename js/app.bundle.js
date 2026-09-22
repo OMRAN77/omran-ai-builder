@@ -2159,6 +2159,15 @@ function stopAllSpeaking(){
   clearWordHighlight();
   ttsHighlightWordEls = null;
 }
+/* v-reply-voice-speed (طلب المالك ٢٢ سبتمبر «خاصيّة بطيء وسريع… أريدها لمها والصوت الي عند المحادثة في الردود»):
+   سرعة الصوت في الإعدادات كانت تصل مها وحدها؛ «استمع» على الردود وقراءتها التلقائيّة وزرّ «تجربة الصوت» كانت
+   بالسرعة العاديّة دائمًا. المفتاح نفسه (aiapp_maha_voice_speed) والدرجات الأربع نفسها، وقيمة تالفة = عاديّ. */
+function ttsSpeedSetting(){
+  try{
+    const v = localStorage.getItem('aiapp_maha_voice_speed');
+    return (v === 'slow' || v === 'fast' || v === 'xfast') ? v : 'normal';
+  }catch(e){ return 'normal'; }
+}
 async function fetchCloudSpeech(text){
   // v246: دائمًا صوت Azure Neural عالي الجودة (نفس مسار مها) — الجنس من إعداد
   // المستخدم واللغة تُكتشف تلقائيًا من النص لدقة نطق أعلى في كل اللغات.
@@ -2167,7 +2176,7 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000) })
+    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -2342,6 +2351,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   utter.lang = langTags[detectedLang] || 'en-US';
   const v = pickVoice(detectedLang);
   if(v) utter.voice = v;
+  utter.rate = ({ slow: 0.8, normal: 1, fast: 1.25, xfast: 1.5 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed: صوت الجهاز الاحتياطيّ بالسرعة نفسها
   const offsets = wordEls && wordEls.length ? wordStartOffsets(text) : null;
   if(offsets){
     utter.onboundary = (e) => {
