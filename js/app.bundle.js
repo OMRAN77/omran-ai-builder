@@ -2351,7 +2351,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   utter.lang = langTags[detectedLang] || 'en-US';
   const v = pickVoice(detectedLang);
   if(v) utter.voice = v;
-  utter.rate = ({ slow: 0.8, normal: 1, fast: 1.25, xfast: 1.5 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed: صوت الجهاز الاحتياطيّ بالسرعة نفسها
+  utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed + v-maha-pace: صوت الجهاز الاحتياطيّ بالمدى الهادئ نفسه
   const offsets = wordEls && wordEls.length ? wordStartOffsets(text) : null;
   if(offsets){
     utter.onboundary = (e) => {
@@ -15019,7 +15019,9 @@ async function mahaStartRealtimeCall(){
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
-        mahaArmRtResponseWatchdog(3000);
+        // v-maha-listen: كان ٣٠٠٠ — كلّ جملة أطول من ٣ ثوانٍ يُطلق الحارس ردّ مها في منتصفها («تتكلّم قبل لا
+        // تخلّص»)، وضجيج يبدأ «كلامًا» يُطلق ردًّا على لا شيء. الآن شبكة أمان لمجرى عالق فقط.
+        mahaArmRtResponseWatchdog(20000);
         mahaSetState('listening');
       }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){
@@ -35091,7 +35093,7 @@ if(document.readyState === 'loading'){
       s.className = 'omSkyStar';
       s.style.top = (Math.random() * 100).toFixed(2) + '%';
       s.style.left = (Math.random() * 100).toFixed(2) + '%';
-      s.style.setProperty('--sz', (4 + Math.random() * 5).toFixed(1) + 'px');
+      s.style.setProperty('--sz', (6 + Math.random() * 7).toFixed(1) + 'px'); // v-maha-stars2: «كبّر النجوم شوي» — ٦–١٣ بدل ٤–٩
       s.style.setProperty('--dur', (2.2 + Math.random() * 2.4).toFixed(2) + 's');
       s.style.setProperty('--dly', (Math.random() * 4).toFixed(2) + 's');
       sky.appendChild(s);

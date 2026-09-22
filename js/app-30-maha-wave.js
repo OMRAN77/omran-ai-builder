@@ -23,7 +23,7 @@
       s.className = 'omSkyStar';
       s.style.top = (Math.random() * 100).toFixed(2) + '%';
       s.style.left = (Math.random() * 100).toFixed(2) + '%';
-      s.style.setProperty('--sz', (4 + Math.random() * 5).toFixed(1) + 'px');
+      s.style.setProperty('--sz', (6 + Math.random() * 7).toFixed(1) + 'px'); // v-maha-stars2: «كبّر النجوم شوي» — ٦–١٣ بدل ٤–٩
       s.style.setProperty('--dur', (2.2 + Math.random() * 2.4).toFixed(2) + 's');
       s.style.setProperty('--dly', (Math.random() * 4).toFixed(2) + 's');
       sky.appendChild(s);

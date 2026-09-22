@@ -280,6 +280,7 @@ test('١١. نجوم الشاشة كلّها أثناء مكالمة مها: ن�
   const st = sky.children[0];
   assert.equal(st.className, 'omSkyStar', 'نجمة الجانبيّ نفسها');
   for (const k of ['--sz', '--dur', '--dly']) assert.ok(st.style[k], k);
+  for (const c of sky.children) { const z = parseFloat(c.style['--sz']); assert.ok(z >= 6 && z <= 13, 'أكبر شوي (٦–١٣): ' + z); }
   assert.equal(load({ w: 390, h: 800 }).body.children.find((c) => c.id === 'mahaSkyLayer').children.length, 30, 'الجوّال: ٣٠ على الأقلّ');
   const css = read('css/modules.css');
   assert.ok(css.includes('#mahaSkyLayer{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:99998; display:none;}'), 'الشاشة كلّها، بلا ضغطات، تحت الشريط (99999)');
