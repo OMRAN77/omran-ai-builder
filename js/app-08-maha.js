@@ -37,7 +37,46 @@ const btnMahaEl = document.getElementById('btnMaha');
 const mahaCallScreenEl = document.getElementById('mahaCallScreen');
 const mahaOrbEl = document.getElementById('mahaOrb');
 const mahaWaveEl = document.getElementById('mahaWave');
+const mahaOrbWaveEl = document.getElementById('mahaOrbWave');
 const mahaStateLabelEl = document.getElementById('mahaStateLabel');
+
+/* v-maha-gold-wave (تصميم المالك «الموجة الذهبية»): طبقات جيبيّة ذهبيّة خلف
+   كرة مها، بنفس معادلة موجة الصوت في تصميمه — canvas بدل CSS لأن الحركة
+   جيبيّة مركّبة (أربع طبقات بسرعات/أطوال مختلفة) لا يعبّر عنها keyframes.
+   تشتغل فقط أثناء مكالمة مها الشخصيّة (لا وضع الوكيل الصوتيّ builder، الذي
+   يستعمل #mahaWave بدلها) — تبدأ عند فتح الشاشة وتتوقّف معها تمامًا. */
+const MAHA_ORB_WAVE_LAYERS = [
+  { amplitude: 16, length: 0.05, speed: 0.05, opacity: 0.22, stroke: '#ffe3a8' },
+  { amplitude: 10, length: 0.035, speed: 0.03, opacity: 0.35, stroke: '#d9a74a' },
+  { amplitude: 7, length: 0.07, speed: -0.04, opacity: 0.28, stroke: '#f7e1b5' },
+];
+let mahaOrbWaveRaf = null, mahaOrbWaveTick = 0;
+function mahaStartOrbWave(){
+  if(!mahaOrbWaveEl || mahaOrbWaveRaf) return;
+  const ctx = mahaOrbWaveEl.getContext('2d');
+  const W = mahaOrbWaveEl.width, H = mahaOrbWaveEl.height;
+  function frame(){
+    mahaOrbWaveTick++;
+    ctx.clearRect(0, 0, W, H);
+    MAHA_ORB_WAVE_LAYERS.forEach(function(wLayer){
+      ctx.beginPath();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = wLayer.stroke;
+      ctx.globalAlpha = wLayer.opacity;
+      for(let x = 0; x <= W; x += 2){
+        const y = H / 2 + Math.sin(x * wLayer.length + mahaOrbWaveTick * wLayer.speed) * wLayer.amplitude;
+        if(x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    });
+    mahaOrbWaveRaf = requestAnimationFrame(frame);
+  }
+  frame();
+}
+function mahaStopOrbWave(){
+  if(mahaOrbWaveRaf){ cancelAnimationFrame(mahaOrbWaveRaf); mahaOrbWaveRaf = null; }
+  if(mahaOrbWaveEl){ try{ mahaOrbWaveEl.getContext('2d').clearRect(0, 0, mahaOrbWaveEl.width, mahaOrbWaveEl.height); }catch(e){ __swallow(e, 'maha:orbwave-clear'); } }
+}
 
 /* v-maha-cc-removed: لوحة الترجمة النصّيّة الحيّة وزرّها 💬 حُذفا بطلب المالك —
    المكالمة صوت فقط بلا أيّ نصّ على الشاشة. */
@@ -2040,6 +2079,7 @@ function mahaShowComposer(){
 function mahaEndCall(){
   mahaCallActive = false;
   mahaShowComposer();
+  mahaStopOrbWave();
   mahaStopPointsMeter();
   mahaLowMicStreak = 0;
   try{ mahaCameraOff(); }catch(e){ __swallow(e, "points:app-08-maha#26"); }
@@ -2151,6 +2191,7 @@ async function mahaStartCallInner(mode){
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
   if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
+  if(mahaCallMode === 'builder') mahaStopOrbWave(); else mahaStartOrbWave();
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
   /* v-maha-name: الاسم بالحروف اللاتينية لغير العربي/الأردو */
   const __mahaLang = (typeof lang !== 'undefined' && lang) ? lang : 'ar';

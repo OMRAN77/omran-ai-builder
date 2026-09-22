@@ -831,8 +831,12 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     <div id="mahaPointsMeter" style="display:none; margin-top:3px; align-items:center; justify-content:center; gap:4px; font-size:10px; color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
   </div>
   <div style="flex:1; display:flex; align-items:center; justify-content:center; position:relative;">
-    <div id="mahaOrb" class="maha-orb-idle" style="width:105px; height:105px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:39px; box-shadow:0 0 28px rgba(123,92,255,.5);">💁‍♀️</div>
-    <img id="mahaGenImage" alt="" style="display:none; width:105px; height:105px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(123,92,255,.5); cursor:zoom-in;" />
+    <!-- v-maha-gold-wave (تصميم المالك «الموجة الذهبية»): خلفية موجيّة متحرّكة خلف
+         كرة مها — قماشة واحدة، تُرسَم/تُوقَف برمجيًّا (mahaStartOrbWave/mahaStopOrbWave
+         في app-08-maha.js) بدل CSS، فلا تشتغل إلا وشاشة المكالمة مفتوحة فعلًا. -->
+    <canvas id="mahaOrbWave" width="220" height="150" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:0;"></canvas>
+    <div id="mahaOrb" class="maha-orb-idle" style="position:relative; z-index:1; width:105px; height:105px; border-radius:50%; background:linear-gradient(135deg,#f7e1b5,#cfa653); display:flex; align-items:center; justify-content:center; font-size:39px; box-shadow:0 0 28px rgba(207,166,83,.5);">💁‍♀️</div>
+    <img id="mahaGenImage" alt="" style="position:relative; z-index:1; display:none; width:105px; height:105px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(207,166,83,.5); cursor:zoom-in;" />
     <div id="mahaWave" class="maha-wave-idle" style="display:none; width:77px; height:77px; border-radius:50%;"></div>
   </div>
   <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:auto; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); width:59px; height:78px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
@@ -851,7 +855,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-2"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=9e0b6362"></script>
+    <script defer src="/js/app.bundle.js?v=db538847"></script>
     <script defer src="/js/modes.js?v=m150916a"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
