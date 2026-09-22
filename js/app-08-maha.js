@@ -31,6 +31,7 @@ function mahaUnlockAudio(){
     const p = mahaAudioEl.play();
     if(p && p.catch) p.catch(()=>{});
   }catch(e){ __swallow(e, "misc:app-08-maha#1"); }
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.prime(); }catch(e){ __swallow(e, 'maha:goldwave-prime'); } // v-maha-goldwave
 }
 
 const btnMahaEl = document.getElementById('btnMaha');
@@ -147,6 +148,15 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
     }
   });
 })();
+
+/* v-maha-goldwave: موجة مها الذهبيّة (js/app-30-maha-wave.js) مكان الدائرة في نافذة المكالمة. الدائرة تبقى في
+   الصفحة لمنطقها (حالاتها وقياس المايك) لكنّها مخفيّة ما دامت الموجة موجودة. */
+const mahaGoldWaveEl = document.getElementById('mahaGoldWave');
+function mahaAvatarDisplay(show){
+  if(mahaOrbEl) mahaOrbEl.style.display = (show && !mahaGoldWaveEl) ? 'flex' : 'none';
+  if(mahaGoldWaveEl) mahaGoldWaveEl.style.display = show ? 'block' : 'none';
+  try{ if(window.mahaGoldWave) window.mahaGoldWave[show ? 'start' : 'stop'](); }catch(e){ __swallow(e, 'maha:goldwave-show'); }
+}
 
 function mahaSetState(state, customLabel){
   mahaState = state;
@@ -400,6 +410,7 @@ async function mahaSpeak(text){
       // النطق معلقًا للأبد (تسريب متراكم) — الإيقاف بعد نهاية المكالمة يحسمه.
       audio.onpause = () => { if(!mahaCallActive) finish(); };
       audio.src = url;
+      try{ if(window.mahaGoldWave) window.mahaGoldWave.trackAudio(audio, blob); }catch(e){ __swallow(e, 'maha:goldwave-track'); } // v-maha-goldwave
       await audio.play();
       mahaStartInterruptListener(audio, finish);
     }catch(e){ resolve(); }
@@ -954,6 +965,7 @@ function mahaShowImage(base64, mimeType){
     el.style.display = 'block';
   }
   if(orb) orb.style.display = 'none';
+  if(mahaGoldWaveEl) mahaAvatarDisplay(false); // v-maha-goldwave
 }
 
 // Shows a real photo fetched from the live web (image URL) instead of an
@@ -988,6 +1000,7 @@ function mahaShowRealPhotoUrl(url){
     el.style.display = 'block';
   }
   if(orb) orb.style.display = 'none';
+  if(mahaGoldWaveEl) mahaAvatarDisplay(false); // v-maha-goldwave
 }
 
 // Searches the live web for a real photo of something that actually exists
@@ -1346,6 +1359,7 @@ async function mahaStartRealtimeCall(){
   mahaRtAudioEl.autoplay = true;
   pc.ontrack = (e) => {
     mahaRtAudioEl.srcObject = e.streams[0];
+    try{ if(window.mahaGoldWave) window.mahaGoldWave.attachStream(e.streams[0]); }catch(err){ __swallow(err, 'maha:goldwave-rt'); } // v-maha-goldwave
     // Give the incoming audio a slightly larger jitter buffer so small
     // network hiccups get smoothed out instead of causing an audible
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
@@ -1796,6 +1810,7 @@ function mahaEndRealtimeCall(){
   mahaStopMicMeter();
   if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }
   if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){ __swallow(e, "misc:app-08-maha#19"); } mahaRtAudioEl = null; }
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.detachStream(); }catch(e){ __swallow(e, 'maha:goldwave-rt-end'); } // v-maha-goldwave
 }
 
 async function mahaCallLoop(){
@@ -2052,6 +2067,7 @@ function mahaEndCall(){
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.end(); }catch(e){ __swallow(e, 'maha:goldwave-end'); } // v-maha-goldwave
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
   mahaCallMode = 'assistant';
@@ -2127,7 +2143,7 @@ async function mahaStartCallInner(mode){
   if(mahaCallMode !== 'builder'){ await mahaEnsureVoiceChosen(); }
   if(mahaCallScreenEl){
     mahaCallScreenEl.style.display = "flex";
-    if(mahaOrbEl) mahaOrbEl.style.display = "flex";
+    mahaAvatarDisplay(mahaCallMode !== 'builder'); // v-maha-goldwave (كان: الدائرة دائمًا)
     mahaSetState("thinking", __ar ? "🎤 بانتظار إذن المايك…" : "🎤 Waiting for mic permission…");
     if(typeof mahaPositionOnOpen === "function") mahaPositionOnOpen();
   }
@@ -2149,7 +2165,7 @@ async function mahaStartCallInner(mode){
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
-  if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
+  mahaAvatarDisplay(mahaCallMode !== 'builder'); // v-maha-goldwave: الموجة الذهبيّة مكان الدائرة
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
   /* v-maha-name: الاسم بالحروف اللاتينية لغير العربي/الأردو */
