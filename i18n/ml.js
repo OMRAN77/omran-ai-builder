@@ -993,7 +993,6 @@ Object.assign(I18N["ml"], {
     ciHint: "എങ്ങനെ മറുപടി വേണമെന്ന് എഴുതുക — നിങ്ങളുടെ എല്ലാ ചാറ്റുകളിലും ബാധകമാകും.",
     ciPlaceholder: "ഉദാഹരണം: സാധാരണ ഭാഷയിൽ ചുരുക്കി മറുപടി നൽകുക, ആമുഖം വേണ്ട.",
     ciSaved: "സേവ് ചെയ്തു ✅",
-    mahaCcTitle: "കോളിന്റെ തത്സമയ ക്യാപ്ഷനുകൾ",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "ഈ ഉപകരണത്തിൽ ലഭ്യമല്ല",

@@ -993,7 +993,6 @@ Object.assign(I18N["fil"], {
     ciHint: "Isulat kung paano mo gustong sagutin — ilalapat sa lahat ng chat mo.",
     ciPlaceholder: "Halimbawa: sumagot nang kaswal at maikli, walang paunang salita.",
     ciSaved: "Na-save ✅",
-    mahaCcTitle: "Live na caption ng tawag",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Hindi available sa device na ito",
