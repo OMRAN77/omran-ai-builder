@@ -5,6 +5,32 @@
 // inconsistent/unsupported browser SpeechRecognition API.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 
+// v-maha-short-cmd: أوامر/إجابات قصيرة شائعة جدًّا في مكالمة صوتيّة — كلمة واحدة
+// منها ليست علامة ضعف تفريغ، بل أمر مشروع (نعم/لا/وقف/كمّل/شكرًا...). كانت كلّ
+// كلمة واحدة تُعلَّم منخفضة الثقة دائمًا، فردّ المستخدم بـ"نعم" أو "stop" كان
+// يُترجَم دومًا إلى "أعد من فضلك". القائمة تُطابَق بعد تطبيع (انظر normalizeShortWord)
+// حتى تلتقط "شكراً"/"شكرا" و"أوكي" وكلمة تنتهي بعلامة ترقيم مثل "نعم." بلا فشل.
+const SHORT_COMMANDS_RAW = [
+  'نعم', 'إيه', 'أيوه', 'آه', 'اها', 'لا', 'لأ', 'ماشي', 'تمام', 'زين', 'أوكي', 'أوك',
+  'وقف', 'توقف', 'اسكت', 'كمّل', 'كمل', 'أكمل', 'استمر', 'ارجع', 'عيد', 'أعد',
+  'شكرا', 'شكرًا', 'مشكور', 'سلام', 'مرحبا', 'هلا', 'هاي', 'باي', 'مها', 'عبدالله',
+  'ابدأ', 'بس', 'خلاص', 'طيب', 'صح', 'خطأ', 'غلط',
+  'yes', 'yeah', 'yep', 'no', 'nope', 'ok', 'okay', 'stop', 'wait', 'continue',
+  'repeat', 'again', 'thanks', 'hi', 'hello', 'bye', 'start', 'done', 'right', 'wrong', 'maha',
+];
+function normalizeShortWord(w) {
+  return String(w || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[ً-ْٰ]/g, '') // تشكيل
+    .replace(/[.,،؟!؛]+$/g, '') // ترقيم نهائيّ
+    .replace(/[أإآ]/g, 'ا') // همزات
+    .replace(/ة/g, 'ه') // تاء مربوطة
+    .replace(/ى/g, 'ي') // ألف مقصورة
+    .trim();
+}
+const SHORT_COMMANDS = new Set(SHORT_COMMANDS_RAW.map(normalizeShortWord));
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -95,22 +121,34 @@ module.exports = async (req, res) => {
     // Compute a simple confidence score from Whisper's own segment stats.
     let lowConfidence = false;
     const segments = Array.isArray(parsed.segments) ? parsed.segments : [];
+    let avgNoSpeech = null, avgLogprob = null;
     if (segments.length) {
       let noSpeechSum = 0, logprobSum = 0;
       for (const s of segments) {
         noSpeechSum += (typeof s.no_speech_prob === 'number') ? s.no_speech_prob : 0;
         logprobSum += (typeof s.avg_logprob === 'number') ? s.avg_logprob : 0;
       }
-      const avgNoSpeech = noSpeechSum / segments.length;
-      const avgLogprob = logprobSum / segments.length;
+      avgNoSpeech = noSpeechSum / segments.length;
+      avgLogprob = logprobSum / segments.length;
+    }
+    // A lone known short command/answer (نعم/لا/وقف/كمّل/شكرًا...) is legitimate
+    // and common in a voice call — never force it into "أعد من فضلك" just for
+    // being one word, even if Whisper's own segment signals look weak for it.
+    // Everything else keeps being judged by Whisper's own confidence signals:
+    // the general threshold below for normal transcripts, and a stricter one
+    // for a lone UNKNOWN word (more fragile than a full sentence; a single
+    // garbled word is a common Whisper failure mode on quick/overlapping speech).
+    const words = (parsed.text || '').trim().split(/\s+/).filter(Boolean);
+    const isKnownShortWord = words.length === 1 && SHORT_COMMANDS.has(normalizeShortWord(words[0]));
+    if (!isKnownShortWord && avgNoSpeech !== null) {
       // High no_speech_prob = Whisper itself thinks it may not be real speech.
       // Very negative avg_logprob = Whisper was not confident about the words it picked.
-      if (avgNoSpeech > 0.5 || avgLogprob < -1.0) lowConfidence = true;
+      if (words.length === 1) {
+        if (avgNoSpeech > 0.35 || avgLogprob < -0.7) lowConfidence = true;
+      } else if (avgNoSpeech > 0.5 || avgLogprob < -1.0) {
+        lowConfidence = true;
+      }
     }
-    // Also flag extremely short transcripts (1-2 words) as low-confidence, since a
-    // single garbled word is a common Whisper failure mode on quick/overlapping speech.
-    const wordCount = (parsed.text || '').trim().split(/\s+/).filter(Boolean).length;
-    if (wordCount > 0 && wordCount <= 1) lowConfidence = true;
 
     // Whisper's own detected spoken language (ISO-639-1-ish code, e.g. "ar",
     // "en", "fr", "hi", "ur", "bn", "ne"). Used downstream to pick a matching

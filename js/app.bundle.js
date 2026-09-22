@@ -15046,6 +15046,14 @@ async function mahaStartRealtimeCall(){
         new Promise(resolve => setTimeout(resolve, 5000)),
       ]);
       await Promise.all([connectionReady, channelReady, sessionHandshake]);
+      if(mahaRtCancelled){
+        // v-maha-rt-cancel-race: المهلة (12 ثانية في mahaStartCall) انتهت أثناء
+        // هذا الانتظار وسلّمت المكالمة للوضع الأساسيّ — لا نفعّل مسارًا صوتيًا
+        // فائقًا متأخّرًا فوق مايك الوضع الأساسيّ الجاري (مايكان في مكالمة واحدة).
+        console.info('[maha-realtime] جلسة فائقة وصلت متأخّرة بعد التسليم للوضع الأساسيّ — أُهملت');
+        try{ mahaStopPointsMeter(); mahaEndRealtimeCall(); }catch(e){ __swallow(e, "misc:app-08-maha#rtcancel1"); }
+        throw new Error('cancelled');
+      }
 
       mahaRtActive = true;
       // v-maha-firstword: أفرغ المخزَّن المؤقّت (لو فيه كلام فعلي) قبل فتح
@@ -15054,6 +15062,12 @@ async function mahaStartRealtimeCall(){
       if(inputTrack) inputTrack.enabled = true;
       // Let the browser resume the WebRTC audio encoder before saying "listening".
       await new Promise(resolve => setTimeout(resolve, 250));
+      if(mahaRtCancelled){
+        // نفس السباق أعلاه — نافذة ربع الثانية هذه حقيقيّة أيضًا.
+        console.info('[maha-realtime] جلسة فائقة وصلت متأخّرة أثناء الإحماء — أُهملت');
+        try{ mahaStopPointsMeter(); mahaEndRealtimeCall(); }catch(e){ __swallow(e, "misc:app-08-maha#rtcancel2"); }
+        throw new Error('cancelled');
+      }
       mahaRtReady = true;
       mahaSetState('listening');
       mahaPlayReadyBeep();
