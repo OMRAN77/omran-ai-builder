@@ -19,7 +19,7 @@ test('server: image-turn config retried on any upstream failure, failures flushe
   assert.ok(!chat.includes("if (!upstream.ok && upstream.status === 400 && __imgCfg"), 'شرط 400 القديم زال');
   assert.ok(chat.includes("await logErrorAndFlush('chat/image-turn-' + upstream.status"), 'فشل إعداد الصورة يُسجَّل منتظَرًا');
   assert.ok(chat.includes("await logErrorAndFlush('chat/upstream-fail', new Error(upstream.status + ': ' + errText), { action: lastUserHasImage ? 'image-turn' : 'text-turn' });"), 'الفشل النهائيّ يُسجَّل بنوع الدور');
-  assert.ok(chat.includes('let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage) ? setInterval('), 'النبض لدور الصورة');
+  assert.ok(chat.includes('let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage || __ownerReq) ? setInterval('), 'النبض لدور الصورة');
   const i = chat.indexOf("const eff = String(e.CHAT_IMAGE_EFFORT || 'high')");
   assert.ok(i > 0, 'الجهد الافتراضيّ high');
 });

@@ -85,7 +85,7 @@
            الأسماء القديمة (Astra/Sol/Luna…) كانت عرضًا لا يصل الخادم فأُزيلت. */
         { key:'openai',     name:'OpenAI · GPT',             or:true, store:'aiapp_model',            def:'openai/gpt-5.6-terra',        models:[['openai/gpt-5.6-terra','GPT-5.6 Terra']] },
         { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), or:true, store:'aiapp_gemini_model', def:'google/gemini-3.5-flash', models:[['google/gemini-3.5-flash','Gemini 3.5 Flash']] },
-        { key:'groq',       name:'Groq',                     or:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
+        { key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
         { key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
         { key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v3.2',      models:[['deepseek/deepseek-v3.2','DeepSeek V3.2']] },
         { key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
@@ -94,7 +94,7 @@
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
-      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && v && v.indexOf('/') === -1) v = ''; /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ */ return v || pv.def; }catch(e){ return pv.def; } }
+      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
       /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
       window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
       function curProvModelLabel(){ var pv=provOf(curProv()); if(!pv) return curProv(); var mid=curModelId(pv); for(var i=0;i<pv.models.length;i++) if(pv.models[i][0]===mid) return pv.models[i][1]; return pv.name; }

@@ -12,7 +12,7 @@ const OR_VENDOR = { openai: 'openai', gemini: 'google', deepseek: 'deepseek', mi
 const OR_ID_RE = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i;
 const PER_PROVIDER = 8;
 const TTL_MS = 6 * 60 * 60 * 1000;
-const KV_KEY = 'provmodels:v1';
+const KV_KEY = 'provmodels:v2'; // v-owner-direct: v2 = قائمة Groq من Groq نفسه
 const OR_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 function pickProviderModel(prov, requested, fallback) {
@@ -41,6 +41,17 @@ function parseModels(payload) {
   return out;
 }
 
+// قائمة Groq: موديلات المحادثة النشطة (بلا صوت/تفريغ/حرّاس/أنظمة مركّبة)، الأحدث أوّلًا، ثمانية كحدّ، والاسم هو المعرّف.
+const GROQ_MODELS_URL = 'https://api.groq.com/openai/v1/models';
+function parseGroqModels(payload) {
+  const rows = (payload && Array.isArray(payload.data)) ? payload.data : [];
+  return rows
+    .filter((m) => m && typeof m.id === 'string' && m.active !== false && /^[a-z0-9][a-z0-9._\/-]{0,99}$/i.test(m.id) && !/whisper|tts|playai|orpheus|guard|compound|distil/i.test(m.id))
+    .sort((a, b) => (Number(b.created) || 0) - (Number(a.created) || 0))
+    .slice(0, PER_PROVIDER)
+    .map((m) => [m.id, m.id]);
+}
+
 let __mem = { at: 0, models: null };
 async function loadModels(opts) {
   const o = opts || {};
@@ -61,6 +72,16 @@ async function loadModels(opts) {
   if (!r.ok) throw new Error('openrouter models ' + r.status);
   const models = parseModels(await r.json());
   if (!Object.keys(models).length) throw new Error('openrouter models: empty');
+  /* v-owner-direct: بمفتاح Groq تتّصل المحادثة بـGroq مباشرةً (oa-direct.js)، فقائمة السهم لـGroq تأتي من Groq
+     نفسه لا من موديلات Meta عند الوسيط. تعثّرها يبقي قائمة الوسيط. */
+  const gk = String(process.env.GROQ_API_KEY || '').trim();
+  if (gk) {
+    try {
+      const g = await f(GROQ_MODELS_URL, { headers: { Authorization: 'Bearer ' + gk } });
+      const gl = g && g.ok ? parseGroqModels(await g.json()) : [];
+      if (gl.length) models.groq = gl;
+    } catch (e) { /* قائمة الوسيط تبقى */ }
+  }
   __mem = { at: now, models };
   if (kv) { try { await kv.kvPutJSON(KV_KEY, { at: now, models }); } catch (e) { /* التخزين تحسينيّ */ } }
   return { models, source: 'network', at: now };
@@ -81,5 +102,6 @@ module.exports = async (req, res) => {
 };
 module.exports.pickProviderModel = pickProviderModel;
 module.exports.parseModels = parseModels;
+module.exports.parseGroqModels = parseGroqModels;
 module.exports.loadModels = loadModels;
 module.exports.OR_VENDOR = OR_VENDOR;

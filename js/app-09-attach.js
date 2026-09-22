@@ -2037,10 +2037,13 @@ function updateAgentModeUI(){
   lbl.textContent = lang === 'ar' ? ('وكيل عمران: ' + (on ? 'شغال ✅' : 'إيقاف')) : ('Omran Agent: ' + (on ? 'ON ✅' : 'OFF'));
   btn.style.color = on ? 'var(--accent, var(--accent))' : '';
 }
-function __stripCodeForHistory(role, s){
+/* v-owner-memory: full='all' يبقي الردّ كما هو (كوده ونصّه)، وfull آخر غير فارغ يستبدل الكود ولا يقصّ النصّ عند ٣٠٠٠ —
+   للمالك وحده (موضع النداء في بناء الأدوار). غير المالك كما كان. */
+function __stripCodeForHistory(role, s, full){
   s = String(s || '');
-  if(role !== 'assistant') return s;
-  return s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]').slice(0, 3000); // ✅ v325
+  if(role !== 'assistant' || full === 'all') return s;
+  const r = s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]');
+  return full ? r : r.slice(0, 3000); // ✅ v325
 }
 // 🕯️ الدوام: انقطاع البث لا يعني ضياع العمل — الخادم يكمل ويكتب دفتره كل خطوة.
 // نسأل الدفتر حتى ينتهي التشغيل ونستعيد نصّه، بدل رمي خطأ شبكة في وجه المستخدم.
@@ -4705,9 +4708,12 @@ DESIGN RULES (non-negotiable):
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
     {
-      const MAX_TURNS = 24;        // عدد أدوار المحادثة المرسلة كاملة
-      const MAX_CHARS = 90000;     // سقف حجم السياق الكلي
-      const MAX_PER_MSG = 7000;    // سقف الرسالة الواحدة (بلا قص من المنتصف)
+      /* v-owner-memory (المالك ٢٢ سبتمبر «المحادثة شبه ضعيفة»): للمالك المحادثة كاملة كالتطبيقات الأصليّة —
+         ٢٠٠ دور حتّى ٤٠٠ ألف حرف، والردّ السابق بكوده ونصّه كاملًا ما لم يكن للمحادثة مشروع (كوده يُرسل منفصلًا). */
+      const __ownerCtx = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      const MAX_TURNS = __ownerCtx ? 200 : 24;        // عدد أدوار المحادثة المرسلة كاملة
+      const MAX_CHARS = __ownerCtx ? 400000 : 90000;  // سقف حجم السياق الكلي
+      const MAX_PER_MSG = __ownerCtx ? 60000 : 7000;  // سقف الرسالة الواحدة (بلا قص من المنتصف)
 
       // ① مرساة الموضوع: أوائل رسائل المحادثة تبقى كتعليمة نظام قصيرة
       //    حتى لا يضيع موضوع المحادثة الأصلي بعد عشرات الرسائل.
@@ -4725,11 +4731,11 @@ DESIGN RULES (non-negotiable):
       // ② أدوار محادثة حقيقية بدل ضغط السجل في رسالة system واحدة.
       //    هذا هو الإصلاح الأساسي: النموذج يرى محادثة، لا تعليمات.
       let __turns = [];
-      if(!__quietSocialTurn){
+      if(!__quietSocialTurn || __ownerCtx){ // v-owner-memory: للمالك «زين/ممتاز» وسط الشغل تحمل التاريخ
         __historyMsgs.slice(-MAX_TURNS).forEach(m => {
           if(!m || m._loading || m._failed) return;
           const role = (m.role === 'user') ? 'user' : 'assistant';
-          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content)) || '').trim();
+          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content), __ownerCtx ? (cur.code ? 'text' : 'all') : '') || '').trim();
           if(!txt) return;
           txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
           if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط

@@ -175,7 +175,7 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
   assert.ok(loop > 0 && quick400 < loop && loop < finalFail, 'الالتقاط بعد إعادة الحقول السريعة وقبل الفشل النهائيّ');
   assert.ok(s.includes('const applyRoute = (p, model) => {'));
   for (const v of ['let prov', 'let viaOR', 'let apiKey', 'let CHAT_URL', 'let DEFAULT_MODEL']) assert.ok(s.includes(v + ' '), v);
-  assert.ok(s.includes("callUpstream = (withImg) => fetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
+  assert.ok(s.includes("callUpstream = (withImg) => __upFetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
 });
 
 // ── (٣) النقاط والأسعار ──

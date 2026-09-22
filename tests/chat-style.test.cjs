@@ -133,7 +133,7 @@ check(attach.includes('v-social-alive') && !attach.includes('_localSocial: true'
 check(chatServer.includes('v-social-alive') && !chatServer.includes('JSON.stringify({ delta: socialReply })'), 'الخادم لا يعيد ردًا مخزنًا — النموذج يجيب التحية');
 check(prompts.includes('«كيف الحال؟» أجب عنه بدفء كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
 check(attach.includes('const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text)') && attach.includes('const __memMsg = __quietSocialTurn ? null : memorySystemMsg()'), 'سؤال الحال لا يحقن ذاكرة الحساب في العميل');
-check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocialTurn){'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
+check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocialTurn || __ownerCtx){'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
 check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة') && attach.includes('ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'سؤال الحال له توجيه مباشر يمنع عرض الخدمة والمواضيع القديمة');
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
@@ -168,7 +168,7 @@ check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wi
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
 check(chatServer.indexOf('v-fast-headers') > 0, 'البثّ يُفتح قبل الذاكرة فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
-check(chatServer.includes('__i === __lastMsgIdx ? 200000 : 12000'), 'الدور الحالي يتّسع للملفّ المرفق (٢٠٠ألف) والتاريخ الأقدم مضبوط (١٢ألف) لحماية السياق');
+check(chatServer.includes('__i === __lastMsgIdx ? 200000 : (__ownerReq ? 60000 : 12000)'), 'الدور الحالي يتّسع للملفّ المرفق (٢٠٠ألف) والتاريخ الأقدم مضبوط (١٢ألف) لحماية السياق');
 
 // ═══ البصمة والشخصية ═══
 group('البصمة والشخصية');
