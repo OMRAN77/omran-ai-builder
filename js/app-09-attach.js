@@ -5544,11 +5544,15 @@ DESIGN RULES (non-negotiable):
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
       // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
       // ٦ أغسطس: الاختيار الصريح يُحترم فقط حيث توجد قائمة تُختار منها (الجوال).
-      const __respectExplicit = !__provUiHidden() && !!localStorage.getItem('aiapp_provider_explicit');
+      /* v-owner-free (أمر المالك ٢٢ سبتمبر «الصلاحيّة التامّة للمزوّدين — أنا صاحب التطبيق»): للمالك وحده
+         المزوّد الذي اختاره هو الذي يردّ — لا تحويل قسريّ إلى كلود للبناء/الإصلاح/الرؤية، ولا قفل خيط.
+         غير المالك كما كان. */
+      const __ownerFree = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      const __respectExplicit = __ownerFree || (!__provUiHidden() && !!localStorage.getItem('aiapp_provider_explicit'));
       const __specProv = (!__routeFix && !__respectExplicit) ? pickSpecialtyProvider(text) : null;
       // 🖼️→🌐 v272: صورة مرفقة + طلب ترجمة/قراءة نص → توجيه خلفي لأقوى مزود رؤية (Claude)
       // حتى لو المستخدم واقف على مزود نظره ضعيف بالصور (Cohere/Groq...). الواجهة ما تتغير.
-      const __visionOverride = (imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
+      const __visionOverride = (!__ownerFree && imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
       // v382: بوابة البناء دائمًا تروح لـ Claude (الكينج) — أي مزود ثاني ممنوع يوصف البناء
       // v401: البناء وإصلاح الكود يثبتان على Claude — لا كل رسالة قصيرة.
       //
@@ -5561,8 +5565,8 @@ DESIGN RULES (non-negotiable):
       // الصحيح: بوابة البناء (موافقة صريحة) أو طلب إصلاح صريح («صلّح»، «ما
       // يشتغل»، «error»). أما «ممكن…» فتحترم الزر الذي ضغطه المستخدم.
       // v405: احترام الزر خيارٌ للمستخدم — من يريد مزوده في كل شيء يثبته ويتحمّل نتيجته.
-      var __pinProv = false;
-      try{ __pinProv = localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
+      var __pinProv = __ownerFree; // v-owner-free: المالك مثبَّت على اختياره دائمًا
+      try{ __pinProv = __pinProv || localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
       const __effProv0 = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
       const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit, isCasualTurn(text));
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
