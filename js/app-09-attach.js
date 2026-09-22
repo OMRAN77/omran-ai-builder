@@ -3754,7 +3754,9 @@ function __friendlyErr(e){
     // 🎬 فيديو من المحادثة مباشرة: صورة + "سوي فيديو/حركها" → Runway image_to_video،
     // وبدون صورة مع طلب فيديو صريح → text_to_video. (كل الأقسام في مكان واحد)
     const __videoWordRe = /فيديو|ڤيديو|\bvideo\b/i;
-    const __animateRe = /(حرك|حرّك|animate)/i;
+    /* v-animate-word: «حرك» كلمةً قائمة (مع و/ف اختياريّة) لا مقطعًا داخل «محرك/متحرك/الحركة» — لا `\b` للعربيّة في JS.
+       «انته اي محرك» بعد تعديل صورة كان يطلق فيديو مدفوعًا من آخر صورة. */
+    const __animateRe = /(?:^|[^\u0600-\u06FF])[وف]?(?:حرك|حرّك)|\banimate/i;
     const __vidSrc = __srcImg
       ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
