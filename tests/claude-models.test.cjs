@@ -78,7 +78,8 @@ test('٤. الواجهة: مبدّل النموذج في قائمة «+» (لل�
   assert.ok(a29.includes('window.claudeModelGet = get;'));
   assert.ok(a29.includes("el.id !== 'claudeModel'"));
   const a18 = read('js/app-18-chat-tools.js');
-  assert.ok(a18.includes("model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; }"));
+  // v-provider-models: لبقيّة المزوّدين معرّف OpenRouter من شريط السهم (omranModelFor)؛ كلود كما كان.
+  assert.ok(a18.includes("model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); }"));
   assert.ok(a18.includes("if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;"));
   assert.ok(a18.includes('model: __model || undefined'));
   const i18n = read('js/app-03-i18n-data.js');
