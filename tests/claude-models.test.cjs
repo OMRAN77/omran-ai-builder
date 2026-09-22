@@ -98,7 +98,7 @@ test('٥. Haiku 4.5 بلا effort في دور الصورة، والجيل الح
 
 test('٦. طلب المحادثة بلا thinking ولا temperature — فالقائمة كلّها تمرّ بالطلب نفسه', () => {
   const s = read('api/_lib/chat.js');
-  const i = s.indexOf('const callUpstream = (withImg) => fetch(CHAT_URL');
+  const i = s.indexOf('const callUpstream = (withImg) => __upFetch(CHAT_URL');
   const req = s.slice(i, s.indexOf('let upstream = await callUpstream(true);', i));
   assert.ok(req.length > 0);
   assert.ok(!/thinking|temperature|top_p|top_k/.test(req), 'Fable يرفض temperature، وHaiku يرفض adaptive');

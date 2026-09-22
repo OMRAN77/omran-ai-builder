@@ -85,35 +85,41 @@ injectNote(action, body, country)                 ai.js:357
 
 ## ٣. مسار المحادثة الرئيسيّ (`action=chat`)
 
-`api/ai.js:30` يسلّم كلّ شيء إلى `api/_lib/chat.js:1013`. **لا يمرّ بـ`injectNote` إطلاقًا.**
+`api/ai.js:30` يسلّم كلّ شيء إلى `api/_lib/chat.js:1032`. **لا يمرّ بـ`injectNote` إطلاقًا.**
 
 ### ٣-أ. اختيار الوجهة والمفتاح
 
 ```
 prov (من body.provider، افتراضه 'claude')
 │
-├─ viaOR ؟                                        chat.js:1034
+├─ viaOR ؟                                        chat.js:1053
 │     claude:  لا ANTHROPIC_API_KEY  و  يوجد OPENROUTER_API_KEY
 │     غيره:    يوجد OPENROUTER_API_KEY
 │
-├─ المفتاح   = viaOR ? OPENROUTER_API_KEY : ANTHROPIC_API_KEY     chat.js:1037
-│     (لا مفتاح → 500 صريح، لا هبوط صامت)                          chat.js:1038
+├─ المفتاح   = viaOR ? OPENROUTER_API_KEY : ANTHROPIC_API_KEY     chat.js:1056
+│     (لا مفتاح → 500 صريح، لا هبوط صامت)                          chat.js:1057
 │
-├─ العنوان   = viaOR ? openrouter.ai/api/v1/messages              chat.js:1039
+├─ العنوان   = viaOR ? openrouter.ai/api/v1/messages              chat.js:1058
 │                    : api.anthropic.com/v1/messages
 │
-└─ النموذج الافتراضيّ                              chat.js:1045
-      viaOR → OR_MODELS[prov]        (chat.js:573)
+└─ النموذج الافتراضيّ                              chat.js:1064
+      viaOR → OR_MODELS[prov]        (chat.js:592)
       وإلّا → CHAT_CLAUDE_MODEL أو 'claude-sonnet-5'
 ```
 
 **v-plan-routing (قرار المالك ٢٠ سبتمبر):** الحقول الأربعة أعلاه `let` لا `const`، لأنّ `applyRoute(p, model)`
-(`chat.js:1058`) يعيد ضبطها معًا (المزوّد · الوسيط · المفتاح · العنوان · الموديل) بقرار الباقة أو بالالتقاط.
+(`chat.js:1093`) يعيد ضبطها معًا (المزوّد · الوسيط · المفتاح · العنوان · الموديل) بقرار الباقة أو بالالتقاط.
 مزوّد بلا مفتاح في البيئة لا يُختار (تعود false فلا يتغيّر شيء).
 
-**اختيار المستخدم للنموذج — للمالك وحده:** `chat.js:1052` يستدعي `pickClaudeModel`
-(`chat.js:566`) فقط إن كان `prov === 'claude'` **و**الطالب المالك. القائمة المقبولة حصرًا
-`CLAUDE_MODELS` (`chat.js:560`) — أيّ اسم خارجها يسقط للافتراضيّ بلا خطأ.
+**اختيار المستخدم للنموذج — للمالك وحده:** `chat.js:1071` يستدعي `pickClaudeModel`
+(`chat.js:585`) فقط إن كان `prov === 'claude'` **و**الطالب المالك. القائمة المقبولة حصرًا
+`CLAUDE_MODELS` (`chat.js:579`) — أيّ اسم خارجها يسقط للافتراضيّ بلا خطأ.
+
+**v-owner-direct (أمر المالك ٢٢ سبتمبر) — Groq وGPT مباشرةً للمالك:** `chat.js:1076` — إن كان الطالب المالك والمزوّد
+`groq` أو `openai` ومفتاحه (`GROQ_API_KEY` / `OPENAI_API_KEY`) في البيئة، يُرسل الطلب إلى عنوان المزوّد نفسه
+(`api.groq.com` / `api.openai.com`, صيغة chat/completions) عبر `api/_lib/oa-direct.js` الذي يترجم الطلب والبثّ
+بين البروتوكولين فلا تتغيّر حلقة الأدوات. فشل المباشر قبل أوّل حرف = الوسيط للمزوّد نفسه بسطر حالة
+`stModelFallback`. غير المالك، أو بلا المفتاح: الوسيط كما في المخطّط أعلاه.
 
 ### ٣-ب. بوّابة الطبقة والحصّة
 
@@ -133,29 +139,29 @@ planRoute(tier, reqProv, lastUserText)            tier.js:51  ← v-plan-routing
 │    max:          دردشة Claude Haiku 4.5 · قويّ Claude Sonnet 5 · مسموح الكلّ · التقاط openai→gemini→deepseek
 │  الدور القويّ = isStrongTurn (tier.js:44): كتلة كود، أو ≥ ٦٠٠ حرف، أو كلمات برمجة/بناء/رياضيات
 │  المطلوب من المنتقي يُقبل إن كان في المسموح، وإلّا افتراضيّ الباقة؛ القويّ يغلب المطلوب
-│  التطبيق في chat.js:1129 (قبل الحصّة كي تُعدّ الرسالة على المزوّد الذي يخدمها فعلًا)
+│  التطبيق في chat.js:1164 (قبل الحصّة كي تُعدّ الرسالة على المزوّد الذي يخدمها فعلًا)
 │  المالك · VIP · المجانيّ · الضيف → null (لا يمرّون هنا)
 │
-checkAndConsume(...)                              chat.js:1135
+checkAndConsume(...)                              chat.js:1170
 │  السلّة = غير مشترك ? 'chat' : prov   ← المجانيّ سقفه رقم واحد، والمشترك سلّة مزوّده
 │
-├─ usage.allowed === false                        chat.js:1136
+├─ usage.allowed === false                        chat.js:1171
 │    ├─ reason 'auth'          → «الجلسة منتهية…»
 │    ├─ free / guest           → tier:'free-limit' | 'guest-limit' + نصّ + done
 │    │                            (**لا هبوط لمزوّد آخر** — كلّها مغلقة أمامه)
 │    └─ مشترك تجاوز سقفه        → FREE_TEXT.subLimit(cap)
 │
-└─ __freeLane = usage.tier && !usage.subscriber   chat.js:1151
+└─ __freeLane = usage.tier && !usage.subscriber   chat.js:1186
 ```
 
 ### ٣-ج. بناء تعليمات النظام
 
 ```
-sysParts                                          chat.js:1205
+sysParts                                          chat.js:1241
 ├─ رسائل system من العميل (ما عدا نسخة الذاكرة القديمة — isClientMemoryNote)
 ├─ body.system إن وُجد
 ├─ ذاكرة الحساب (memoryPromptBlock)
-└─ التعليمات المخصّصة                              chat.js:1212
+└─ التعليمات المخصّصة                              chat.js:1248
       customInstructionsBlock(body.customInstructions)   chat.js:62
       سقف 1500 حرفًا · تعلو على الأسلوب الافتراضيّ · تحت الهويّة والأبواب المقفلة
 
@@ -167,7 +173,7 @@ PERSONA_NOTE هو ميثاق الشخصيّة (الهويّة · اللغة · �
 ### ٣-د. الطبقة المجانيّة تنتهي هنا
 
 ```
-if (__freeLane)                                   chat.js:1345
+if (__freeLane)                                   chat.js:1381
    send({tier}) ثمّ streamFreeChain(...)           free-chain.js:156
    بلا أدوات · بلا بحث حيّ · بلا صور · وينتهي الطلب
    فشل السلسلة كلّها → logError + tierDiag + FREE_TEXT.busy   (لا خطأ تقنيّ للمستخدم)
@@ -181,7 +187,7 @@ if (__freeLane)                                   chat.js:1345
 من يمرّ بهذا المسار من العميل: `TOOL_PROVIDERS` في `app-06` — claude · openai · gemini · deepseek · mistral ·
 groq · cohere (v-cohere-tools: Cohere عبر الوسيط `cohere/command-a`). Perplexity و«OpenRouter» العامّ يبقيان
 على المسار المباشر (§٢) **بلا أدوات** — Sonar لا يقبل أدوات وبحثه مدمج.
-دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:540` / `chat.js:1301`.
+دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:559` / `chat.js:1337`.
 
 ---
 
@@ -215,15 +221,15 @@ streamFreeChain(args)                             free-chain.js:156
 
 | الحالة | أين | ماذا يحدث |
 |--------|-----|-----------|
-| لا `ANTHROPIC_API_KEY` ولا `OPENROUTER_API_KEY` | `chat.js:1038` | 500 صريح — **لا هبوط** |
-| الطبقة المجانيّة | `chat.js:1345` | السلسلة المجانيّة، وينتهي الطلب |
+| لا `ANTHROPIC_API_KEY` ولا `OPENROUTER_API_KEY` | `chat.js:1057` | 500 صريح — **لا هبوط** |
+| الطبقة المجانيّة | `chat.js:1381` | السلسلة المجانيّة، وينتهي الطلب |
 | 400 على حقول إطفاء التفكير (وسيط OpenRouter، غير كلود) | قبل الفشل النهائيّ (`v-chat-fast`، `chat/or-quick-400`) | إعادة فوريّة بلا الحقل المرفوض (`thinking`/`reasoning`)، ويُذكَر المستوى لبقيّة عمر الدالّة (`__orQuick.level`) |
-| مشترك: تعطّل مزوّد باقته **قبل أوّل حرف** | `chat.js:1431` (`v-plan-routing`، `chat/plan-fallback-<status>`) | التالي في سلسلة الباقة **بصمت** (أرخص فأرخص، مزوّد بلا مفتاح يُتخطّى) قبل الهبوط المجانيّ أدناه |
-| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1446` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
+| مشترك: تعطّل مزوّد باقته **قبل أوّل حرف** | `chat.js:1496` (`v-plan-routing`، `chat/plan-fallback-<status>`) | التالي في سلسلة الباقة **بصمت** (أرخص فأرخص، مزوّد بلا مفتاح يُتخطّى) قبل الهبوط المجانيّ أدناه |
+| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1511` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
 | … ودور فيه **صورة** | نفس الموضع (`v-img-no-blind`) | `requireVision`: المزوّدات بلا رؤية تُستبعد (Gemini وحده يرى)؛ لا مزوّد يرى → `FREE_TEXT.imageBusy` صريح، **لا تأليف** ولا هبوط للعميل. المالك وحده يرى `modelLabel: احتياط · مزوّد/نموذج`. نفاد الرصيد (402) → إشعار دفع للمالك مرّة كلّ ٦ ساعات (`_owner-alert.js`) |
 | فشل السلسلة أيضًا | نفس الموضع | `tierDiag` + `error` مع `fallback:true` فيهبط العميل بمساره القديم |
 | انهيار **بعد** بدء البثّ (`anyText`) | نفس الموضع | لا هبوط — النصّ المكتوب يبقى |
-| نفاد حصّة المجانيّ/الضيف | `chat.js:1136` | ردّ عاديّ بزرّ اشتراك، لا خطأ |
+| نفاد حصّة المجانيّ/الضيف | `chat.js:1171` | ردّ عاديّ بزرّ اشتراك، لا خطأ |
 
 القاعدة المستخلصة: **الهبوط الصامت مشروط بألّا يكون كُتب حرف واحد.**
 

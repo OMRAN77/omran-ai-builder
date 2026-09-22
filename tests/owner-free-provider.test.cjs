@@ -35,7 +35,7 @@ test('قفل الخيط: الاختيار الصريح (المالك) يتجاو
 });
 
 test('الخادم: الاحتياط المجّانيّ خام للمالك المتحقَّق منه (بلا بصمة ولا ملاحظة الوضع المجّانيّ)', () => {
-  assert.ok(chat.includes("const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, convo, send, requireVision: lastUserHasImage });"));
+  assert.ok(chat.includes("const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });"));
   assert.ok(chat.includes('const __rawOwner = __ownerReq && !(body && body.raw === false);'), 'الخام للمالك كما في v-owner-raw2، بتوثيق الرمز على الخادم');
   const fc = fs.readFileSync('api/_lib/free-chain.js', 'utf8');
   assert.ok(fc.includes("const system = args.raw ? '' : String(args.system || '') + FREE_NOTE;"));
