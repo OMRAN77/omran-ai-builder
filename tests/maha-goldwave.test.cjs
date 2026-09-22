@@ -14,8 +14,9 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const SRC = read('js/app-30-maha-wave.js');
 
 function el() {
-  return { style: { cssText: '' }, children: [], isConnected: true, clientWidth: 200, clientHeight: 161,
-    appendChild(c) { this.children.push(c); }, removeChild(c) { this.children.splice(this.children.indexOf(c), 1); } };
+  return { style: { cssText: '', setProperty(k, v) { this[k] = v; } }, children: [], attrs: {}, isConnected: true, clientWidth: 200, clientHeight: 161,
+    appendChild(c) { this.children.push(c); }, removeChild(c) { this.children.splice(this.children.indexOf(c), 1); },
+    setAttribute(k, v) { this.attrs[k] = v; } };
 }
 // بيئة صفحة مصغّرة: rAF يُدار يدويًّا بزمن نحدّده
 function load(opts) {
@@ -43,9 +44,10 @@ function load(opts) {
     };
     this.resume = () => Promise.resolve();
   }
+  const body = el();
   const ctx = {
-    document: { getElementById: (id) => (id === 'mahaGoldWave' ? host : null), createElement: () => el() },
-    window: { matchMedia: () => ({ matches: !!o.reduce }), AudioContext: FakeCtx },
+    document: { body, getElementById: (id) => (id === 'mahaGoldWave' ? host : null), createElement: () => el() },
+    window: { matchMedia: () => ({ matches: !!o.reduce }), AudioContext: FakeCtx, innerWidth: o.w || 1280, innerHeight: o.h || 900 },
     requestAnimationFrame: (f) => { queue.push(f); return queue.length; },
     cancelAnimationFrame: () => { queue.length = 0; },
     __swallow() {},
@@ -53,7 +55,7 @@ function load(opts) {
   };
   vm.runInNewContext(SRC, ctx);
   const tick = (t) => { const fs2 = queue.splice(0); fs2.forEach((f) => f(t)); };
-  return { host, api: ctx.window.mahaGoldWave, tick, queue, audioNodes };
+  return { host, body, api: ctx.window.mahaGoldWave, tick, queue, audioNodes };
 }
 const posX = (s) => parseFloat(String(s.style.backgroundPosition).split('px')[0]);
 
@@ -183,7 +185,7 @@ test('٧. الشريط في مكالمة مها: بعرض الشاشة، الك�
   assert.ok(/id="mahaCallScreen" style="[^"]*z-index:99999;/.test(read('index.html')), 'نافذة المكالمة تحتهما مباشرةً');
   const html = read('index.html');
   assert.ok(html.includes('<div id="mahaCallBtns" style="display:flex; align-items:center; gap:13px;">') && html.includes('<div id="mahaAvatarBox"'));
-  assert.ok(html.includes('css/modules.css?v=661'), 'وسم الكاش رُفع');
+  assert.ok(html.includes('css/modules.css?v=662'), 'وسم الكاش رُفع');
   for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
     const s2 = read(f);
     assert.ok(s2.includes("if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band") && s2.includes("  if(mahaCallMode !== 'builder') mahaStartCloseWatch();"), f + ': للمكالمة لا للبنّاء');
@@ -267,4 +269,23 @@ test('١٠. النشاط يُسجَّل من مصادره الثلاثة', () =>
   assert.ok(src.includes('lastLoudAt = now; everLoud = true; mahaLastActivity = now; // v-maha-band'), 'كلام المستخدم في الوضع الأساسيّ');
   assert.ok(src.includes("if(ev.type === 'input_audio_buffer.speech_started'){\n        mahaLastActivity = Date.now(); // v-maha-band"), 'كلام المستخدم في المكالمة المباشرة');
   assert.ok(src.indexOf('let mahaLastActivity = 0;') < src.indexOf('function mahaSetState('), 'معرَّف قبل أوّل استعمال');
+});
+
+test('١١. نجوم الشاشة كلّها أثناء مكالمة مها: نجوم الجانبيّ نفسها بكثافتها، خلف الشريط، ونجوم الجانبيّ تبقى ظاهرة', () => {
+  const { body } = load({ w: 1280, h: 900 });
+  const sky = body.children.find((c) => c.id === 'mahaSkyLayer');
+  assert.ok(sky, 'الطبقة في الجسم');
+  assert.equal(sky.attrs['aria-hidden'], 'true');
+  assert.equal(sky.children.length, 92, '١٢٨٠×٩٠٠ ÷ ١٢٥٠٠');
+  const st = sky.children[0];
+  assert.equal(st.className, 'omSkyStar', 'نجمة الجانبيّ نفسها');
+  for (const k of ['--sz', '--dur', '--dly']) assert.ok(st.style[k], k);
+  assert.equal(load({ w: 390, h: 800 }).body.children.find((c) => c.id === 'mahaSkyLayer').children.length, 30, 'الجوّال: ٣٠ على الأقلّ');
+  const css = read('css/modules.css');
+  assert.ok(css.includes('#mahaSkyLayer{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:99998; display:none;}'), 'الشاشة كلّها، بلا ضغطات، تحت الشريط (99999)');
+  assert.ok(css.includes('body.maha-band-on #mahaSkyLayer{display:block;}'), 'تظهر مع المكالمة وتختفي بعدها');
+  assert.ok(css.includes('animation:omSkyTwinkle var(--dur) ease-in-out infinite var(--dly);'), 'وميض نجوم الجانبيّ نفسه');
+  assert.ok(css.includes('body.maha-band-on #omSkyLayer{z-index:100001;}'), 'نجوم الجانبيّ فوق الجانبيّ المرفوع');
+  assert.ok(css.includes('@media (prefers-reduced-motion:reduce){ #mahaSkyLayer{display:none !important;} }'));
+  assert.ok(read('index.html').includes('@keyframes omSkyTwinkle{'), 'الحركة معرّفة في الصفحة');
 });

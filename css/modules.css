@@ -439,3 +439,11 @@ html[data-mode="light"] #portraitStyleSheet .pstyleFoot{background:#EBEBEB !impo
    الجانبيّ ولوحة المعاينة/الكود — يرتفعان فوق نافذة المكالمة (99999) طوال مكالمة مها فقط. على الحاسوب عنصرا شبكة
    الصفحة فيسري z-index بلا تغيير موضعهما، وعلى الجوّال درجان ثابتان (٦٠) يعلوانه حين يُفتحان. */
 body.maha-band-on #sidebar, body.maha-band-on #workarea{z-index:100000;}
+/* v-maha-stars (المالك: «أريد النجوم عند فتح مها الشاشة كاملة»): نجوم الشريط الجانبيّ الذهبيّة نفسها (omSkyStar ·
+   omSkyTwinkle) على الشاشة كلّها طوال مكالمة مها — خلف الشريط الذهبيّ (99999) فتبقى صورته كما هي، ولا تلتقط ضغطة.
+   ونجوم الجانبيّ (#omSkyLayer، ٦٠) ترتفع فوقه بعد أن صار الجانبيّ 100000 أثناء المكالمة، وإلّا اختفت تحته. */
+#mahaSkyLayer{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:99998; display:none;}
+body.maha-band-on #mahaSkyLayer{display:block;}
+#mahaSkyLayer .omSkyStar{position:absolute; width:var(--sz); height:var(--sz); background:#ffd76a; clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); filter:drop-shadow(0 0 5px rgba(255,215,106,.85)); opacity:0; animation:omSkyTwinkle var(--dur) ease-in-out infinite var(--dly);}
+body.maha-band-on #omSkyLayer{z-index:100001;}
+@media (prefers-reduced-motion:reduce){ #mahaSkyLayer{display:none !important;} }

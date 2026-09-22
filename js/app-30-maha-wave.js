@@ -10,6 +10,26 @@
 (function(){
   const host = document.getElementById('mahaGoldWave');
   if(!host) return;
+
+  /* v-maha-stars: نجوم الشاشة كلّها أثناء المكالمة — كثافة نجوم الشريط الجانبيّ نفسها (~نجمة لكلّ ١٢٥٠٠ بكسل²)،
+     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة. */
+  (function(){
+    const sky = document.createElement('div');
+    sky.id = 'mahaSkyLayer';
+    sky.setAttribute('aria-hidden', 'true');
+    const count = Math.max(30, Math.min(110, Math.round((window.innerWidth || 1280) * (window.innerHeight || 800) / 12500)));
+    for(let i = 0; i < count; i++){
+      const s = document.createElement('span');
+      s.className = 'omSkyStar';
+      s.style.top = (Math.random() * 100).toFixed(2) + '%';
+      s.style.left = (Math.random() * 100).toFixed(2) + '%';
+      s.style.setProperty('--sz', (4 + Math.random() * 5).toFixed(1) + 'px');
+      s.style.setProperty('--dur', (2.2 + Math.random() * 2.4).toFixed(2) + 's');
+      s.style.setProperty('--dly', (Math.random() * 4).toFixed(2) + 's');
+      sky.appendChild(s);
+    }
+    document.body.appendChild(sky);
+  })();
   const TILE = '/assets/maha/maha-wave-tile.webp';
   const SPEED = 36, BANDS = 24, RATE = 60;
   const VIS = 0.5, CY = 0.46, ASPECT = 1534 / 1235; // الشريط يعرض نصف ارتفاع الصورة حول خطّ الموجة (٤٦٪)
