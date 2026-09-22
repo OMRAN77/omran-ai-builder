@@ -435,3 +435,7 @@ html[data-mode="light"] #portraitStyleSheet .pstyleFoot{background:#EBEBEB !impo
 /* صندوق الكتابة يبقى مخفيًّا أثناء المكالمة (v-maha-hide-composer) إلّا زرّ «م» في مكانه — ضغطه ثانيةً يُنهيها */
 #inputbar.maha-calling{visibility:hidden;}
 #inputbar.maha-calling #btnMahaDock{visibility:visible;}
+/* v-maha-band-under (المالك: «خلّه خلف المحادثة الجديدة وتحت المعاينة والكود»): الشريط بعرض الشاشة يمرّ تحت الشريط
+   الجانبيّ ولوحة المعاينة/الكود — يرتفعان فوق نافذة المكالمة (99999) طوال مكالمة مها فقط. على الحاسوب عنصرا شبكة
+   الصفحة فيسري z-index بلا تغيير موضعهما، وعلى الجوّال درجان ثابتان (٦٠) يعلوانه حين يُفتحان. */
+body.maha-band-on #sidebar, body.maha-band-on #workarea{z-index:100000;}

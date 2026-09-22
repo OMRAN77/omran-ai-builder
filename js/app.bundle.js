@@ -15717,6 +15717,7 @@ function mahaEndCall(){
   mahaCallActive = false;
   mahaStopCloseWatch(); // v-maha-band
   if(mahaCallScreenEl) mahaCallScreenEl.classList.remove('maha-goldband');
+  document.body.classList.remove('maha-band-on'); // v-maha-band-under
   mahaShowComposer();
   mahaStopPointsMeter();
   mahaLowMicStreak = 0;
@@ -15848,6 +15849,7 @@ async function mahaStartCallInner(mode){
   // تبويب الصوت (builder) لأنّه تبويب مستقل لا يتراكب مع الصندوق.
   if(mahaCallMode !== 'builder') mahaHideComposer();
   if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band
+  document.body.classList.toggle('maha-band-on', mahaCallMode !== 'builder'); // v-maha-band-under: الجانبيّ والمعاينة فوق الشريط
   if(mahaCallMode !== 'builder') mahaStartCloseWatch();
   // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
   // that fails for any reason do we fall back to the classic record ->

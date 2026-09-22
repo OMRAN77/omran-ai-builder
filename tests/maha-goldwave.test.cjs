@@ -179,14 +179,17 @@ test('٧. الشريط في مكالمة مها: بعرض الشاشة، الك�
   assert.ok(css.includes('#mahaCallScreen.maha-goldband #mahaCallNameLabel,#mahaCallScreen.maha-goldband #btnMahaEndCall{display:none !important;}'), 'بلا اسم ولا ✕');
   assert.ok(css.includes('#mahaCallScreen.maha-goldband #mahaCallBtns{order:-1;}'), 'الكاميرا فوق');
   assert.ok(css.includes('#inputbar.maha-calling{visibility:hidden;}') && css.includes('#inputbar.maha-calling #btnMahaDock{visibility:visible;}'), '«م» ظاهر وحده');
+  assert.ok(css.includes('body.maha-band-on #sidebar, body.maha-band-on #workarea{z-index:100000;}'), 'الجانبيّ والمعاينة/الكود فوق الشريط (نافذة المكالمة 99999)');
+  assert.ok(/id="mahaCallScreen" style="[^"]*z-index:99999;/.test(read('index.html')), 'نافذة المكالمة تحتهما مباشرةً');
   const html = read('index.html');
   assert.ok(html.includes('<div id="mahaCallBtns" style="display:flex; align-items:center; gap:13px;">') && html.includes('<div id="mahaAvatarBox"'));
-  assert.ok(html.includes('css/modules.css?v=660'), 'وسم الكاش رُفع');
+  assert.ok(html.includes('css/modules.css?v=661'), 'وسم الكاش رُفع');
   for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
     const s2 = read(f);
-    assert.ok(s2.includes("if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band\n  if(mahaCallMode !== 'builder') mahaStartCloseWatch();"), f + ': للمكالمة لا للبنّاء');
+    assert.ok(s2.includes("if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band") && s2.includes("  if(mahaCallMode !== 'builder') mahaStartCloseWatch();"), f + ': للمكالمة لا للبنّاء');
     assert.ok(s2.includes("if(panel.classList.contains('maha-goldband')) return; // v-maha-band"), f + ': لا سحب');
     assert.ok(s2.includes("mahaStopCloseWatch(); // v-maha-band\n  if(mahaCallScreenEl) mahaCallScreenEl.classList.remove('maha-goldband');"), f + ': الإنهاء ينظّف');
+    assert.ok(s2.includes("document.body.classList.toggle('maha-band-on', mahaCallMode !== 'builder');") && s2.includes("document.body.classList.remove('maha-band-on'); // v-maha-band-under"), f + ': فئة الجسم تُضاف وتُزال');
     assert.ok(s2.includes("if(btnMahaDockEl) btnMahaDockEl.onclick = () => { if(mahaCallActive && mahaCallMode !== 'builder'){ mahaEndCall(); return; } mahaUnlockAudio(); mahaStartCall(); };"), f + ': «م» ثانيةً يُنهي');
   }
 });
