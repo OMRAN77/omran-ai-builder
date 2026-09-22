@@ -17,6 +17,7 @@ const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat
 let mahaStream = null, mahaMediaRecorder = null, mahaChunks = [];
 let mahaAudioCtx = null, mahaAnalyser = null, mahaVadRaf = null, mahaLastPeakRms = 0, mahaLowMicStreak = 0;
 let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking | speaking
+let mahaLastActivity = 0; // v-maha-band: آخر كلام أو ردّ — مهلة السكوت تُحسب منه
 let mahaHistory = [];
 let mahaIntroduced = false;
 let mahaCurrentAudio = null;
@@ -110,6 +111,7 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
 
   function pointerDown(e){
     if(typeof mahaCallMode !== 'undefined' && mahaCallMode === 'builder') return;
+    if(panel.classList.contains('maha-goldband')) return; // v-maha-band: الشريط بعرض الشاشة لا يُسحب
     dragging = true;
     handle.style.cursor = 'grabbing';
     const pt = e.touches ? e.touches[0] : e;
@@ -160,6 +162,7 @@ function mahaAvatarDisplay(show){
 
 function mahaSetState(state, customLabel){
   mahaState = state;
+  if(state !== 'listening') mahaLastActivity = Date.now(); // v-maha-band: مهلة السكوت تُحسب من آخر نشاط
   if(mahaOrbEl) mahaOrbEl.className = 'maha-orb-' + (state === 'error' ? 'thinking' : state);
   if(mahaWaveEl) mahaWaveEl.className = 'maha-wave-' + (state === 'error' ? 'thinking' : state);
   if(mahaStateLabelEl){
@@ -483,7 +486,7 @@ async function mahaRecordUntilSilence(){
         silenceThreshold = Math.min(0.028, Math.max(0.013, noiseFloor * 2.2 + 0.004));
       }
       if(rms > (elapsed < CALIBRATE_MS ? CLEAR_SPEECH : silenceThreshold)){
-        lastLoudAt = now; everLoud = true;
+        lastLoudAt = now; everLoud = true; mahaLastActivity = now; // v-maha-band
       }
       const silentFor = now - lastLoudAt;
       if(elapsed > MAX_TURN_MS || (everLoud && elapsed > MIN_TALK_MS && silentFor > SILENCE_HOLD_MS)){
@@ -1386,6 +1389,7 @@ async function mahaStartRealtimeCall(){
         resolveRtSessionReady();
         return;
       }    if(ev.type === 'input_audio_buffer.speech_started'){
+        mahaLastActivity = Date.now(); // v-maha-band
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
@@ -2037,8 +2041,8 @@ function mahaHideComposer(){
     const bar = document.getElementById('inputbar');
     if(!bar || mahaComposerHidden) return;
     mahaComposerHidden = true;
-    bar.dataset.mahaPrevDisplay = bar.style.display || '';
-    bar.style.display = 'none';
+    // v-maha-band: فئة لا display:none — الصندوق مخفيّ كما كان، وزرّ «م» وحده ظاهر في مكانه لإنهاء المكالمة
+    bar.classList.add('maha-calling');
   }catch(e){ __swallow(e, "ui:app-08-maha#composer-hide"); }
 }
 function mahaShowComposer(){
@@ -2047,13 +2051,46 @@ function mahaShowComposer(){
     mahaComposerHidden = false;
     const bar = document.getElementById('inputbar');
     if(!bar) return;
-    bar.style.display = bar.dataset.mahaPrevDisplay || '';
-    delete bar.dataset.mahaPrevDisplay;
+    bar.classList.remove('maha-calling');
   }catch(e){ __swallow(e, "ui:app-08-maha#composer-show"); }
+}
+
+/* v-maha-band (أمر المالك ٢٢ سبتمبر: «الإغلاق يكون من أيّ مكان، ولا السكوت، ولا تضغط مرّة ثانية م» — وحذف ✕):
+   في مكالمة مها (لا البنّاء) (١) أيّ ضغطة في أيّ مكان تُنهيها وتُستهلك (مثل إغلاق طبقة فوق الصفحة) — إلّا الكاميرا
+   ومعاينتها والصورة المعروضة وعارضها، فهي أدوات المكالمة؛ (٢) سكوت ٢٠ ثانية وهي تنتظر (لا المستخدم يتكلّم ولا مها
+   تتكلّم أو تفكّر) يُنهيها؛ (٣) «م» ثانيةً (على زرّه). التسجيل بعد فتح المكالمة فلا تُمسك ضغطة البدء نفسها. */
+const MAHA_SILENCE_END_MS = 20000;
+let mahaCloseWatch = null;
+function mahaStartCloseWatch(){
+  mahaStopCloseWatch();
+  mahaLastActivity = Date.now();
+  const onTap = (e) => {
+    if(!mahaCallActive || mahaCallMode === 'builder') return;
+    const tgt = e.target;
+    if(tgt && tgt.closest && tgt.closest('#btnMahaCamera, #mahaCamPreview, #mahaGenImage, #mahaImageLightbox')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    mahaEndCall();
+  };
+  const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
+  const iv = setInterval(() => {
+    if(!mahaCallActive || mahaCallMode === 'builder') return;
+    if(mahaState === 'listening' && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
+  }, 1000);
+  mahaCloseWatch = { onTap, armT, iv };
+}
+function mahaStopCloseWatch(){
+  if(!mahaCloseWatch) return;
+  clearTimeout(mahaCloseWatch.armT);
+  clearInterval(mahaCloseWatch.iv);
+  document.removeEventListener('click', mahaCloseWatch.onTap, true);
+  mahaCloseWatch = null;
 }
 
 function mahaEndCall(){
   mahaCallActive = false;
+  mahaStopCloseWatch(); // v-maha-band
+  if(mahaCallScreenEl) mahaCallScreenEl.classList.remove('maha-goldband');
   mahaShowComposer();
   mahaStopPointsMeter();
   mahaLowMicStreak = 0;
@@ -2184,6 +2221,8 @@ async function mahaStartCallInner(mode){
   // صوتية بحتة لا تحتاج صندوق كتابة أصلًا. لا يمسّ وضع "الوكيل الصوتي" في
   // تبويب الصوت (builder) لأنّه تبويب مستقل لا يتراكب مع الصندوق.
   if(mahaCallMode !== 'builder') mahaHideComposer();
+  if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band
+  if(mahaCallMode !== 'builder') mahaStartCloseWatch();
   // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
   // that fails for any reason do we fall back to the classic record ->
   // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.
@@ -2248,7 +2287,7 @@ async function mahaStartCall(mode){
 
 if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };
 const btnMahaDockEl = document.getElementById('btnMahaDock');
-if(btnMahaDockEl) btnMahaDockEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock
+if(btnMahaDockEl) btnMahaDockEl.onclick = () => { if(mahaCallActive && mahaCallMode !== 'builder'){ mahaEndCall(); return; } mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock + v-maha-band: «م» ثانيةً يُنهي
 if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
 
 // v273: One-time intro tour for brand-new users — points at مها button

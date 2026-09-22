@@ -13643,6 +13643,7 @@ const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat
 let mahaStream = null, mahaMediaRecorder = null, mahaChunks = [];
 let mahaAudioCtx = null, mahaAnalyser = null, mahaVadRaf = null, mahaLastPeakRms = 0, mahaLowMicStreak = 0;
 let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking | speaking
+let mahaLastActivity = 0; // v-maha-band: آخر كلام أو ردّ — مهلة السكوت تُحسب منه
 let mahaHistory = [];
 let mahaIntroduced = false;
 let mahaCurrentAudio = null;
@@ -13736,6 +13737,7 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
 
   function pointerDown(e){
     if(typeof mahaCallMode !== 'undefined' && mahaCallMode === 'builder') return;
+    if(panel.classList.contains('maha-goldband')) return; // v-maha-band: الشريط بعرض الشاشة لا يُسحب
     dragging = true;
     handle.style.cursor = 'grabbing';
     const pt = e.touches ? e.touches[0] : e;
@@ -13786,6 +13788,7 @@ function mahaAvatarDisplay(show){
 
 function mahaSetState(state, customLabel){
   mahaState = state;
+  if(state !== 'listening') mahaLastActivity = Date.now(); // v-maha-band: مهلة السكوت تُحسب من آخر نشاط
   if(mahaOrbEl) mahaOrbEl.className = 'maha-orb-' + (state === 'error' ? 'thinking' : state);
   if(mahaWaveEl) mahaWaveEl.className = 'maha-wave-' + (state === 'error' ? 'thinking' : state);
   if(mahaStateLabelEl){
@@ -14109,7 +14112,7 @@ async function mahaRecordUntilSilence(){
         silenceThreshold = Math.min(0.028, Math.max(0.013, noiseFloor * 2.2 + 0.004));
       }
       if(rms > (elapsed < CALIBRATE_MS ? CLEAR_SPEECH : silenceThreshold)){
-        lastLoudAt = now; everLoud = true;
+        lastLoudAt = now; everLoud = true; mahaLastActivity = now; // v-maha-band
       }
       const silentFor = now - lastLoudAt;
       if(elapsed > MAX_TURN_MS || (everLoud && elapsed > MIN_TALK_MS && silentFor > SILENCE_HOLD_MS)){
@@ -15012,6 +15015,7 @@ async function mahaStartRealtimeCall(){
         resolveRtSessionReady();
         return;
       }    if(ev.type === 'input_audio_buffer.speech_started'){
+        mahaLastActivity = Date.now(); // v-maha-band
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
@@ -15663,8 +15667,8 @@ function mahaHideComposer(){
     const bar = document.getElementById('inputbar');
     if(!bar || mahaComposerHidden) return;
     mahaComposerHidden = true;
-    bar.dataset.mahaPrevDisplay = bar.style.display || '';
-    bar.style.display = 'none';
+    // v-maha-band: فئة لا display:none — الصندوق مخفيّ كما كان، وزرّ «م» وحده ظاهر في مكانه لإنهاء المكالمة
+    bar.classList.add('maha-calling');
   }catch(e){ __swallow(e, "ui:app-08-maha#composer-hide"); }
 }
 function mahaShowComposer(){
@@ -15673,13 +15677,46 @@ function mahaShowComposer(){
     mahaComposerHidden = false;
     const bar = document.getElementById('inputbar');
     if(!bar) return;
-    bar.style.display = bar.dataset.mahaPrevDisplay || '';
-    delete bar.dataset.mahaPrevDisplay;
+    bar.classList.remove('maha-calling');
   }catch(e){ __swallow(e, "ui:app-08-maha#composer-show"); }
+}
+
+/* v-maha-band (أمر المالك ٢٢ سبتمبر: «الإغلاق يكون من أيّ مكان، ولا السكوت، ولا تضغط مرّة ثانية م» — وحذف ✕):
+   في مكالمة مها (لا البنّاء) (١) أيّ ضغطة في أيّ مكان تُنهيها وتُستهلك (مثل إغلاق طبقة فوق الصفحة) — إلّا الكاميرا
+   ومعاينتها والصورة المعروضة وعارضها، فهي أدوات المكالمة؛ (٢) سكوت ٢٠ ثانية وهي تنتظر (لا المستخدم يتكلّم ولا مها
+   تتكلّم أو تفكّر) يُنهيها؛ (٣) «م» ثانيةً (على زرّه). التسجيل بعد فتح المكالمة فلا تُمسك ضغطة البدء نفسها. */
+const MAHA_SILENCE_END_MS = 20000;
+let mahaCloseWatch = null;
+function mahaStartCloseWatch(){
+  mahaStopCloseWatch();
+  mahaLastActivity = Date.now();
+  const onTap = (e) => {
+    if(!mahaCallActive || mahaCallMode === 'builder') return;
+    const tgt = e.target;
+    if(tgt && tgt.closest && tgt.closest('#btnMahaCamera, #mahaCamPreview, #mahaGenImage, #mahaImageLightbox')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    mahaEndCall();
+  };
+  const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
+  const iv = setInterval(() => {
+    if(!mahaCallActive || mahaCallMode === 'builder') return;
+    if(mahaState === 'listening' && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
+  }, 1000);
+  mahaCloseWatch = { onTap, armT, iv };
+}
+function mahaStopCloseWatch(){
+  if(!mahaCloseWatch) return;
+  clearTimeout(mahaCloseWatch.armT);
+  clearInterval(mahaCloseWatch.iv);
+  document.removeEventListener('click', mahaCloseWatch.onTap, true);
+  mahaCloseWatch = null;
 }
 
 function mahaEndCall(){
   mahaCallActive = false;
+  mahaStopCloseWatch(); // v-maha-band
+  if(mahaCallScreenEl) mahaCallScreenEl.classList.remove('maha-goldband');
   mahaShowComposer();
   mahaStopPointsMeter();
   mahaLowMicStreak = 0;
@@ -15810,6 +15847,8 @@ async function mahaStartCallInner(mode){
   // صوتية بحتة لا تحتاج صندوق كتابة أصلًا. لا يمسّ وضع "الوكيل الصوتي" في
   // تبويب الصوت (builder) لأنّه تبويب مستقل لا يتراكب مع الصندوق.
   if(mahaCallMode !== 'builder') mahaHideComposer();
+  if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band
+  if(mahaCallMode !== 'builder') mahaStartCloseWatch();
   // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
   // that fails for any reason do we fall back to the classic record ->
   // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.
@@ -15874,7 +15913,7 @@ async function mahaStartCall(mode){
 
 if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };
 const btnMahaDockEl = document.getElementById('btnMahaDock');
-if(btnMahaDockEl) btnMahaDockEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock
+if(btnMahaDockEl) btnMahaDockEl.onclick = () => { if(mahaCallActive && mahaCallMode !== 'builder'){ mahaEndCall(); return; } mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock + v-maha-band: «م» ثانيةً يُنهي
 if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
 
 // v273: One-time intro tour for brand-new users — points at مها button
@@ -35030,26 +35069,34 @@ if(document.readyState === 'loading'){
    #stockTickerTrack نفسها)، والصورة موصولة بنسختها المعكوسة فلا يبان لها طرف. ومع صوت مها يتنفّس شريطها بخفّة
    (سماكة حول خطّه وانسياب صغير) — بلا وميض ولا قفز، وطلبها «بلا كانفا»: شرائح عموديّة تعرض مقطعها من الصورة.
    مصدر الصوت: المكالمة المباشرة من مجرى صوتها نفسه (طيف ترددات، الغليظ في الوسط والحادّ نحو الأطراف)،
-   والوضع الأساسيّ من نسخة مفكوكة من مقطع النطق نفسه متزامنة مع وقت تشغيله — عنصر الصوت الذي يُسمع لا يُمسّ. */
+   والوضع الأساسيّ من نسخة مفكوكة من مقطع النطق نفسه متزامنة مع وقت تشغيله — عنصر الصوت الذي يُسمع لا يُمسّ.
+   v-maha-band (أمر المالك بعد اللقطات: «من أوّل الشريط لنهايته مش في المنتصف — نفس شريط الأسهم»): العنصر صار شريطًا
+   بعرض الشاشة. في الشريط العريض تُعرض الصورة بارتفاعها الطبيعيّ مقصوصةً على نصفها الأوسط حول خطّ الموجة، وتتكرّر
+   (الصورة + المعكوسة) على العرض كلّه؛ وعدد الشرائح يتبع العرض (شريحة لكلّ ~١٠ بكسل) فلا تظهر درجات. */
 (function(){
   const host = document.getElementById('mahaGoldWave');
   if(!host) return;
   const TILE = '/assets/maha/maha-wave-tile.webp';
-  const N = 40, SPEED = 36, BANDS = 24, RATE = 60;
+  const SPEED = 36, BANDS = 24, RATE = 60;
+  const VIS = 0.5, CY = 0.46, ASPECT = 1534 / 1235; // الشريط يعرض نصف ارتفاع الصورة حول خطّ الموجة (٤٦٪)
   let reduce = false;
   try{ reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ __swallow(e, 'maha:goldwave-rm'); }
 
+  // الشرائح تُبنى عند أوّل إطار ظاهر بعدد يتبع العرض، وتُعاد إن تغيّر العرض كثيرًا (تدوير الجوّال)
   const strips = [];
-  if(!reduce){
+  let N = 0, en = [], tmp = [];
+  function build(n){
+    while(strips.length){ host.removeChild(strips.pop()); }
+    N = n; en = new Array(N).fill(0); tmp = new Array(N).fill(0);
     for(let i = 0; i < N; i++){
       const s = document.createElement('div');
-      s.style.cssText = 'position:absolute; top:0; height:100%; left:' + (i * 100 / N) + '%; width:calc(' + (100 / N) + '% + 1px); background-image:url(' + TILE + '); background-repeat:repeat-x; transform-origin:50% 44%; will-change:transform;';
+      s.style.cssText = 'position:absolute; top:0; height:100%; left:' + (i * 100 / N) + '%; width:calc(' + (100 / N) + '% + 1px); background-image:url(' + TILE + '); background-repeat:repeat-x; transform-origin:50% 50%; will-change:transform;';
       host.appendChild(s);
       strips.push(s);
     }
     host.style.backgroundImage = 'none'; // الخلفيّة الثابتة للإطار الأوّل فقط؛ الشرائح تتولّى الصورة بعدها
+    lastW = 0; lastH = 0; still = true;
   }
-  const en = new Array(N).fill(0), tmp = new Array(N).fill(0);
   const bands = new Array(BANDS).fill(0);
   const PROFILE = []; // الوضع الأساسيّ بلا طيف: شكل ثابت الغليظ فيه أقوى، يضربه مستوى الصوت
   for(let b = 0; b < BANDS; b++) PROFILE.push(1 - 0.65 * b / (BANDS - 1));
@@ -35158,12 +35205,17 @@ if(document.readyState === 'loading'){
   function render(){
     const W = host.clientWidth, h = host.clientHeight;
     if(!W || !h) return;
+    const want = Math.min(160, Math.max(40, Math.round(W / 10)));
+    if(want !== N) build(want);
+    const band = W > h * 2;
+    const imgH = band ? h / VIS : h, imgW = band ? imgH * ASPECT : W;
+    const tileW = 2 * imgW, posY = band ? -(CY * imgH - h / 2) : 0;
     if(W !== lastW || h !== lastH){
-      for(let z = 0; z < N; z++) strips[z].style.backgroundSize = (2 * W) + 'px ' + h + 'px';
+      for(let z = 0; z < N; z++) strips[z].style.backgroundSize = tileW.toFixed(2) + 'px ' + imgH.toFixed(2) + 'px';
       lastW = W; lastH = h;
     }
-    const off = scroll % (2 * W);
-    for(let q = 0; q < N; q++) strips[q].style.backgroundPosition = (-(q * W / N + off)).toFixed(2) + 'px 0';
+    const off = scroll % tileW;
+    for(let q = 0; q < N; q++) strips[q].style.backgroundPosition = (-(q * W / N + off)).toFixed(2) + 'px ' + posY.toFixed(2) + 'px';
     if(level < 0.002){
       if(!still){ for(let j = 0; j < N; j++) strips[j].style.transform = ''; still = true; }
       return;

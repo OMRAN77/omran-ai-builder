@@ -26,7 +26,8 @@ function buildIsolated() {
   const end = src.indexOf('\n}\n', src.indexOf('function mahaShowComposer(){')) + 3;
   assert.ok(start > 0 && end > start, 'مقطع الدالتين موجود');
   const chunk = src.slice(start, end);
-  const bar = { style: { display: 'flex' }, dataset: {} };
+  const cls = new Set();
+  const bar = { style: { display: 'flex' }, dataset: {}, classList: { add: (c) => cls.add(c), remove: (c) => cls.delete(c), contains: (c) => cls.has(c) } };
   const ctx = {
     document: { getElementById: (id) => (id === 'inputbar' ? bar : null) },
     __swallow: () => {},
@@ -35,24 +36,26 @@ function buildIsolated() {
   return { ctx, bar };
 }
 
-test('الإخفاء: يحفظ العرض السابق ويضبط none، ولا يكرّر الحفظ لو نُودي مرّتين', () => {
+/* v-maha-band (أمر المالك: «ولا تضغط مرّة ثانية م»): الصندوق يُخفى بفئة maha-calling (visibility) لا display:none —
+   مخفيّ كما كان، وزرّ «م» داخله وحده يبقى ظاهرًا في مكانه لإنهاء المكالمة. */
+test('الإخفاء: فئة maha-calling (الصندوق مخفيّ و«م» ظاهر)، بلا لمس display، ونداء ثانٍ لا يكرّر', () => {
   const { ctx, bar } = buildIsolated();
   ctx.hide();
-  assert.equal(bar.style.display, 'none');
-  assert.equal(bar.dataset.mahaPrevDisplay, 'flex');
-  bar.style.display = 'none'; // لو تغيّر شيء خارجيًا أثناء الإخفاء
-  ctx.hide(); // نداء ثانٍ لا يفعل شيئًا (mahaComposerHidden = true أصلًا)
-  assert.equal(bar.dataset.mahaPrevDisplay, 'flex');
+  assert.equal(bar.classList.contains('maha-calling'), true);
+  assert.equal(bar.style.display, 'flex', 'التخطيط لا يتغيّر');
+  ctx.hide();
+  assert.equal(bar.classList.contains('maha-calling'), true);
+  const css = fs.readFileSync(path.join(root, 'css/modules.css'), 'utf8');
+  assert.ok(css.includes('#inputbar.maha-calling{visibility:hidden;}') && css.includes('#inputbar.maha-calling #btnMahaDock{visibility:visible;}'));
 });
 
-test('الإظهار: يعيد العرض المحفوظ ويمسح العلامة، وبلا إخفاء سابق لا يفعل شيئًا', () => {
+test('الإظهار: يزيل الفئة، وبلا إخفاء سابق لا يفعل شيئًا', () => {
   const { ctx, bar } = buildIsolated();
-  ctx.show(); // بلا إخفاء سابق
-  assert.equal(bar.style.display, 'flex', 'لم يتغيّر شيء');
+  ctx.show();
+  assert.equal(bar.classList.contains('maha-calling'), false, 'لم يتغيّر شيء');
   ctx.hide();
   ctx.show();
-  assert.equal(bar.style.display, 'flex', 'رجع كما كان قبل الإخفاء');
-  assert.equal(bar.dataset.mahaPrevDisplay, undefined, 'العلامة مُسحت');
+  assert.equal(bar.classList.contains('maha-calling'), false, 'رجع كما كان');
 });
 
-console.log('✓ maha-hide-composer: صندوق الكتابة يختفي أثناء مكالمة مها ويرجع عند إنهائها');
+console.log('✓ maha-hide-composer: صندوق الكتابة يختفي أثناء مكالمة مها (إلّا «م») ويرجع عند إنهائها');
