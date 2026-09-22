@@ -93,7 +93,7 @@ test('v-wa-handle-bare: مقبض سحب لوحة المعاينة/الكود أ�
   // modules.css كان يغلب tokens (يُحمَّل بعده) بصندوق ذهبيّ — أُزيل نهائيًّا
   assert.match(modules, /body\.waCollapsedMode #waReopen\{background:none!important;border:none!important;[^}]*box-shadow:none!important\}/, 'modules بلا صندوق');
   assert.match(modules, /body\.waCollapsedMode #waReopen:hover\{background:none!important;/, 'modules بلا صندوق عند المرور');
-  assert.ok(read('index.html').includes('css/modules.css?v=661'), 'وسم كاش modules رُفع');
+  assert.ok(read('index.html').includes('css/modules.css?v=662'), 'وسم كاش modules رُفع');
 });
 
 test('v-sb-handle-bare: مقبض جهة «المحادثة الجديدة» أيقونة وحدها بلا صندوق (نفس مقبض اللوحة)', () => {
