@@ -56,6 +56,17 @@
 #mahaCallScreen.maha-builder-mode #btnMahaEndCall{width:38px !important; height:38px !important; font-size:16px !important;}
 #mahaCallScreen.maha-builder-mode #mahaCamPreview{top:52px !important; bottom:auto !important; left:12px !important; transform:none !important;}
 #mahaCallScreen.maha-builder-mode{gap:0 !important;}
+/* v-maha-gold-wave (تصميم المالك «الموجة الذهبية»): الموجة أوّلًا (كبيرة، هي
+   الواجهة الأساسيّة)، ثمّ اسم/حالة مها كحبّة (pill) ذهبيّة الحافّة تحتها —
+   إعادة ترتيب بصريّ فقط (flex order) لا مسّ للـDOM ولا لوضع الوكيل الصوتيّ
+   (builder، بلا order هنا فيبقى ترتيبه الأصليّ كما هو تمامًا). */
+#mahaCallScreen:not(.maha-builder-mode) #mahaOrbWrap{order:1;}
+#mahaCallScreen:not(.maha-builder-mode) #mahaDragHandle{
+  order:2; margin-top:14px; background:rgba(20,16,8,.72);
+  border:1px solid rgba(207,166,83,.55); border-radius:20px; padding:12px 22px;
+  box-shadow:0 10px 25px rgba(0,0,0,.4);
+}
+#mahaCallScreen:not(.maha-builder-mode) #mahaCallActions{order:3; margin-top:6px;}
 @keyframes mahaWaveListen{0%{box-shadow:0 0 0 0 rgba(255,255,255,.5);}70%{box-shadow:0 0 0 30px rgba(255,255,255,0);}100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}}
 @keyframes mahaWaveThink{0%{box-shadow:0 0 18px 4px rgba(255,213,79,.35);}50%{box-shadow:0 0 30px 10px rgba(255,213,79,.65);}100%{box-shadow:0 0 18px 4px rgba(255,213,79,.35);}}
 @keyframes mahaWaveSpeak{0%{box-shadow:0 0 20px 6px rgba(80,230,150,.4);}50%{box-shadow:0 0 36px 14px rgba(80,230,150,.75);}100%{box-shadow:0 0 20px 6px rgba(80,230,150,.4);}}
