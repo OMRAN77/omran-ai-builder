@@ -989,7 +989,6 @@ Object.assign(I18N["tr"], {
     ciHint: "Nasıl yanıt verilmesini istediğinizi yazın — tüm sohbetlerinize uygulanır.",
     ciPlaceholder: "Örnek: Günlük dille ve kısa yanıtla, giriş cümlesi olmadan.",
     ciSaved: "Kaydedildi ✅",
-    mahaCcTitle: "Canlı arama altyazıları",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Bu cihazda kullanılamıyor",

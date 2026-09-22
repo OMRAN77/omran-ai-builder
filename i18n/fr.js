@@ -943,7 +943,6 @@ Object.assign(I18N["fr"], {
     ciHint: "Écrivez comment vous voulez les réponses — appliqué à toutes vos conversations.",
     ciPlaceholder: "Exemple : réponds simplement et brièvement, sans préambule.",
     ciSaved: "Enregistré ✅",
-    mahaCcTitle: "Sous-titres de l'appel",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Indisponible sur cet appareil",
