@@ -1393,7 +1393,9 @@ async function mahaStartRealtimeCall(){
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
-        mahaArmRtResponseWatchdog(3000);
+        // v-maha-listen: كان ٣٠٠٠ — كلّ جملة أطول من ٣ ثوانٍ يُطلق الحارس ردّ مها في منتصفها («تتكلّم قبل لا
+        // تخلّص»)، وضجيج يبدأ «كلامًا» يُطلق ردًّا على لا شيء. الآن شبكة أمان لمجرى عالق فقط.
+        mahaArmRtResponseWatchdog(20000);
         mahaSetState('listening');
       }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){

@@ -39,6 +39,8 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "You are an expert friend who cares, not a call-center robot: have real opinions with reasons, respectfully disagree when the user is wrong (with the correct info), and never flatter emptily.",
   "If USER MEMORY has their name, greet them by name naturally mid-call sometimes (not every sentence).",
   "Sound human on the phone: brief natural acknowledgements while listening-turns change ('اممم', 'إي', 'تمام') where fitting, vary your sentence openings, and never read like a script.",
+  "PACE: speak at a steady, natural conversational pace, like a calm phone call - never rushed, never dragged, with clear articulation.",
+  "LISTENING: wait for the user to finish their thought. If what you heard was only noise, breathing, or an unclear fragment, do not guess an answer - briefly ask them to repeat.",
   "",
   "# Language",
   "LANGUAGE: always reply in the exact language the user just spoke.",
@@ -161,9 +163,10 @@ module.exports = async (req, res) => {
     // الصوتيّ فعليًا). "normal" لا يضيف شيئًا — سلوك الفائق الافتراضيّ يبقى حرفيًا كما كان.
     const voiceSpeed = ['slow', 'fast', 'xfast'].includes(body.voiceSpeed) ? body.voiceSpeed : 'normal';
     const VOICE_SPEED_INSTRUCTIONS = {
-      slow: ' SPEAKING PACE (highest priority, overrides any other pacing cue above): speak notably slower than a normal phone call - calm, unhurried, with clear brief pauses between phrases - while staying completely natural, never robotic.',
-      fast: ' SPEAKING PACE (highest priority, overrides any other pacing cue above): speak noticeably faster than a normal phone call - brisk and energetic - while staying clearly understandable, never rushed to the point of mumbling.',
-      xfast: ' SPEAKING PACE (highest priority, overrides any other pacing cue above): speak very fast, rapid-fire like a hyped radio host or auctioneer, almost no pauses between phrases - but every word must still be clearly understandable, never slurred.',
+      // v-maha-pace: لمسة خفيفة فوق المعامل الحقيقيّ — لا «مزاد» ولا «وقفات» تكسر الإيقاع الطبيعيّ.
+      slow: ' SPEAKING PACE: a little slower and clearer than usual - still natural and flowing, never drawn out.',
+      fast: ' SPEAKING PACE: a little quicker than usual - still natural, every word clear.',
+      xfast: ' SPEAKING PACE: noticeably quicker than usual - still natural, every word clear, never rushed or slurred.',
     };
     const voiceSpeedInstruction = VOICE_SPEED_INSTRUCTIONS[voiceSpeed] || '';
 
@@ -303,8 +306,11 @@ module.exports = async (req, res) => {
               ? { type: 'server_vad', threshold: 0.88, prefix_padding_ms: 300, silence_duration_ms: 800 }
               : {
                   type: 'server_vad',
-                  // Preserve quiet opening words and natural pauses in a first turn.
-                  threshold: 0.08,
+                  // v-maha-listen (المالك ٢٢ سبتمبر: «ما فيها دقّة إنصات، تتسرّع — تتكلّم قبل لا تتكلّم»): كانت 0.08
+                  // (الافتراضيّ الموثّق 0.5) فكلّ نفَس أو ضجيج أو صدى صوت مها نفسها = «كلام»، والصمت لا يُلتقط
+                  // فلا يأتي speech_stopped، فيتكفّل حارس العميل (كان ٣ث) بإطلاق الردّ وسط الجملة أو على ضجيج.
+                  // الكلمات الأولى الهادئة يحفظها prefix_padding_ms (١ث قبل بدء الكشف) لا العتبة المنخفضة.
+                  threshold: 0.5,
                   prefix_padding_ms: 1000,
                   // كانت 450م.ث ثمّ 700م.ث (v607) — والبلاغ تكرّر حتّى بعد 700م.ث: «يردّ بعد
                   // الكلمة الثانية». v-maha-voice-speed لمس فقط SILENCE_HOLD_MS في المسار
@@ -473,8 +479,10 @@ module.exports = async (req, res) => {
     // v-reply-voice-speed (المالك ٢٢ سبتمبر «بطيء وسريع… أريدهم لمها»): درجة الإعدادات صارت معامل السرعة الحقيقيّ
     // هنا أيضًا (الحقل موثّق: audio.output.speed من 0.25 إلى 1.5) لا تعليمة النبرة وحدها. التعليمة تبقى (إيقاع
     // ووقفات)، لذلك المعاملات أهدأ من خريطة tts.js كي لا يتضاعف الأثر فيصعب الفهم.
-    const REALTIME_SPEED = { slow: 0.85, normal: 1.05, fast: 1.2, xfast: 1.35 };
-    if (mode !== 'builder') sessionConfig.session.audio.output.speed = REALTIME_SPEED[voiceSpeed] || 1.05;
+    // v-maha-pace (المالك: «يا بطيئة ما تفهم عليها ولا سريعة ما تفهم عليها، مش نظاميّة»): المعامل كان يتضاعف مع تعليمة
+    // نبرة متطرّفة («مثل الدلّال في المزاد»). الآن مدى هادئ موحّد مع tts.js، والعاديّ 1.0 كالمحادثة الصوتيّة المعتادة.
+    const REALTIME_SPEED = { slow: 0.9, normal: 1.0, fast: 1.1, xfast: 1.2 };
+    if (mode !== 'builder') sessionConfig.session.audio.output.speed = REALTIME_SPEED[voiceSpeed] || 1.0;
 
     const postSession = () => fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
