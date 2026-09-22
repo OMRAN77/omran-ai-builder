@@ -465,22 +465,22 @@ console.log('  ✓ v-edu-questions: لا بتر ولا درس بلا أسئلة 
 }
 console.log('  ✓ v-err-human: لا Load failed خام — عربي واضح وإرشاد');
 
-// ㊵ v-store-safe: رفض AppGallery 11.4 (عملات/كريبتو = خدمة مالية منظمة) —
-// حزمة هواوي تدخل بـ?store=huawei فتختفي كل المالية ولا يُطلق نداء أسعار
-// واحد؛ العلامة تُحفظ، والويب/أبل كاملان بلا تغيير.
+// ㊵ v-store-safe-revert: كانت حزمة هواوي (?store=huawei) تخفي كل المالية
+// (قاعدة AppGallery 11.4) — عمران أمر صراحة ٢٢ سبتمبر بإرجاعها رغم تحذيره
+// من مخاطرة رفض المتجر بها. العلامة (store-safe) نفسها باقية (يستعملها
+// app-09-attach.js لكشف منتقي ملفّات هواوي) لكنها لم تعد تخفي الأسهم.
 {
   const sd2 = fs.readFileSync(path.join(__dirname, '../js/selfdiag.js'), 'utf8');
-  assert.ok(sd2.includes('v-store-safe') && sd2.includes("classList.add('store-safe')"), 'بوابة العلامة في selfdiag المبكر');
-  /* v-store-flag-session (١٨ سبتمبر): العلامة تبقى طوال جلسة التبويب/الحزمة (sessionStorage) لا في المتصفّح إلى الأبد —
-     الحفظ الدائم حبس المالك بعد تجربة رابط الحزمة فاختفت الأسهم من الويب. */
+  assert.ok(sd2.includes('v-store-safe') && sd2.includes("classList.add('store-safe')"), 'بوابة العلامة في selfdiag المبكر (لا تزال قائمة لأغراض أخرى)');
+  /* v-store-flag-session (١٨ سبتمبر): العلامة تبقى طوال جلسة التبويب/الحزمة (sessionStorage) لا في المتصفّح إلى الأبد. */
   assert.ok(sd2.includes("sessionStorage.setItem('aiapp_store'"), 'العلامة تبقى طوال الجلسة');
   assert.ok(!sd2.includes("localStorage.setItem('aiapp_store'"), 'ولا تلتصق بالمتصفّح العاديّ');
   const tk3 = fs.readFileSync(path.join(__dirname, '../css/tokens.css'), 'utf8');
-  assert.ok(tk3.includes('html.store-safe #stockTicker') && tk3.includes('html.store-safe #stocksModal'), 'كل الواجهات المالية مخفية');
+  assert.ok(!tk3.includes('html.store-safe #stockTicker') && !tk3.includes('html.store-safe #stocksModal'), 'الأسهم لم تعد مخفيّة تحت store-safe');
   const st13 = fs.readFileSync(path.join(__dirname, '../js/app-13-stocks-init.js'), 'utf8');
-  assert.ok(st13.includes("contains('store-safe')) return;"), 'محرك الأسهم لا يعمل إطلاقًا — صفر نداءات أسعار');
+  assert.ok(!st13.includes("contains('store-safe')) return;"), 'محرك الأسهم يعمل حتى تحت store-safe — لا إرجاع مبكر');
 }
-console.log('  ✓ v-store-safe: حزمة هواوي بلا أي محتوى مالي — قاعدة 11.4');
+console.log('  ✓ v-store-safe-revert: الأسهم ظاهرة وتعمل حتى في حزمة هواوي (أمر عمران ٢٢ سبتمبر)');
 
 // ㊶ v-lab-haiku: «تجربة غير مكتملة» استمرت — سونيت أبطأ من إكمال صفحة غنية
 // ضمن المهلة. هايكو 4.5 (أسرع ~3×) يبنيها + جولة إتمام تلقائية عند الانقطاع.
