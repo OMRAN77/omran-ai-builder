@@ -1431,6 +1431,23 @@ async function mahaStartRealtimeCall(){
       ]);
       await Promise.all([connectionReady, channelReady, sessionHandshake]);
 
+      // v-maha-race-cancel (بلاغ المالك «هلا ساكتة أول مرة، وأوقات تخربط»):
+      // mahaStartCallInner يسابق هذا الإعداد بمهلة ١٢ث — لو خسر السباق يستدعي
+      // mahaEndRealtimeCall() (يقفل pc/dc/stream ويصفّر mahaRtCancelled=true)
+      // ويهبط للمسار الأساسي فورًا، لكن هذه الدالّة تستمرّ بلا توقّف (لا أحد
+      // يلغيها فعليًّا) وتصل هنا أحيانًا بعد الإلغاء بلحظات فتُعيد إحياء حالة
+      // عامّة ميتة: mahaRtActive/mahaRtReady تعودان true، والمسار الحيّ يُصدَّق
+      // «جاهز» ويُفتح مايكه (inputTrack.enabled=true) بينما المسار الأساسيّ
+      // فعليًّا يسجّل بمايك آخر في نفس اللحظة — إمّا تصادم صامت (لا ردّ) أو
+      // ردّان متداخلان (خربطة). الحارس هنا يوقف هذه الدالّة بمجرّد اكتشاف
+      // الإلغاء بدل إتمام «تفعيل» يستحيل الانتفاع منه.
+      if(mahaRtCancelled){
+        try{ pc.close(); }catch(e){ __swallow(e, 'maha:race-cancel-pc'); }
+        try{ dc.close(); }catch(e){ __swallow(e, 'maha:race-cancel-dc'); }
+        try{ mahaRtStream.getTracks().forEach(tr => tr.stop()); }catch(e){ __swallow(e, 'maha:race-cancel-stream'); }
+        throw new Error('cancelled');
+      }
+
       mahaRtActive = true;
       // v-maha-firstword: أفرغ المخزَّن المؤقّت (لو فيه كلام فعلي) قبل فتح
       // المسار الحيّ — حتى لا يُبثّ نفس الصوت مرتين (مرة من المخزن ومرة حيّة).
