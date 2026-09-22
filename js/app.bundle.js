@@ -22513,6 +22513,19 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   });
 })();
 
+// معالج النقر على أزرار التنقل — فتح مربعات الأدوات
+(function(){
+  document.querySelectorAll('[data-omnav]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const action = btn.getAttribute('data-omnav');
+      if(action === 'tools'){
+        const ov = document.getElementById('sectionsToolsOverlay');
+        if(ov) ov.classList.add('show');
+      }
+    });
+  });
+})();
+
 // «المتصفح» (v361) — خانة بحث ويب مربوطة بالمحادثة الحالية: المستخدم يكتب
 // موضوعًا، يُرسَل داخل نفس المحادثة عبر sendPrompt() فيكمّل النموذج على نفس
 // السياق (بحث حي + ربط بالكلام السابق). الدخول والخروج بحرية؛ الموضوع محفوظ.
