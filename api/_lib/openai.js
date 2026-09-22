@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    let useModel = (!model || model === 'gpt-4.1-mini' || model === 'gpt-4o-mini') ? 'gpt-4.1' : model;
+    let useModel = (!model || model === 'gpt-4.1-mini' || model === 'gpt-4o-mini') ? 'gpt-4.1' : String(model);
+    if (useModel.indexOf('/') !== -1) useModel = useModel.split('/').pop(); // v-provider-models: معرّف OpenRouter (openai/…) على المسار المباشر
     // 👑 الرد الاحترافي: موديل بريميوم مقابل نقاط (المالك بلا حدود).
     let premiumRefund = null;
     let isPremium = false;

@@ -80,18 +80,23 @@
          مفتاح موديل المزوّد (عبر omranPickProviderModel). المعرّفات من إعدادات التطبيق نفسها. */
       var PROVS = [
         { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-sonnet-5',     models:[['claude-opus-5','Opus 5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
-        { key:'openai',     name:'OpenAI · GPT',             store:'aiapp_model',            def:'gpt-5.6-terra',       models:[['gpt-6-astra','GPT-6 Astra'],['gpt-5.6-sol','GPT-5.6 Sol'],['gpt-5.6-terra','GPT-5.6 Terra'],['gpt-5.6-luna','GPT-5.6 Luna'],['gpt-4.1','GPT-4.1']] },
-        { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), store:'aiapp_gemini_model', def:'gemini-flash-latest', models:[['gemini-pro-latest','Gemini Pro'],['gemini-flash-latest','Gemini Flash'],['gemini-flash-lite-latest','Gemini Flash Lite']] },
-        { key:'groq',       name:'Groq',                     store:'aiapp_groq_model',       def:'openai/gpt-oss-120b', models:[['openai/gpt-oss-120b','GPT-OSS 120B'],['openai/gpt-oss-20b','GPT-OSS 20B'],['qwen/qwen3.6-27b','Qwen3.6 27B']] },
-        { key:'mistral',    name:'Mistral',                  store:'aiapp_mistral_model',    def:'mistral-small-latest',models:[['mistral-large-latest','Mistral Large'],['mistral-medium-latest','Mistral Medium'],['mistral-small-latest','Mistral Small']] },
-        { key:'deepseek',   name:'DeepSeek',                 store:'aiapp_deepseek_model',   def:'deepseek-v4-pro',     models:[['deepseek-v4-pro','DeepSeek V4 Pro'],['deepseek-flash','DeepSeek Flash']] },
-        { key:'cohere',     name:'Cohere',                   store:'aiapp_cohere_model',     def:'command-a-03-2025',   models:[['command-a-03-2025','Command A'],['command-r-plus','Command R+']] },
+        /* v-provider-models (أمر المالك ٢٢ سبتمبر «كلّ واحد وموديله بالضبط»): المعرّفات هنا معرّفات OpenRouter كما
+           يستعملها الخادم (OR_MODELS في chat.js) — الافتراضيّ الواحد ثابت، والباقي يأتي حيًّا من /api/ai?action=models.
+           الأسماء القديمة (Astra/Sol/Luna…) كانت عرضًا لا يصل الخادم فأُزيلت. */
+        { key:'openai',     name:'OpenAI · GPT',             or:true, store:'aiapp_model',            def:'openai/gpt-5.6-terra',        models:[['openai/gpt-5.6-terra','GPT-5.6 Terra']] },
+        { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), or:true, store:'aiapp_gemini_model', def:'google/gemini-3.5-flash', models:[['google/gemini-3.5-flash','Gemini 3.5 Flash']] },
+        { key:'groq',       name:'Groq',                     or:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
+        { key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
+        { key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v3.2',      models:[['deepseek/deepseek-v3.2','DeepSeek V3.2']] },
+        { key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
         { key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
         { key:'openrouter', name:'OpenRouter',               store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5','Claude Opus 5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.5-flash','Gemini 3.5 Flash'],['deepseek/deepseek-v3.2','DeepSeek V3.2'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
-      function curModelId(pv){ try{ return localStorage.getItem(pv.store) || pv.def; }catch(e){ return pv.def; } }
+      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && v && v.indexOf('/') === -1) v = ''; /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ */ return v || pv.def; }catch(e){ return pv.def; } }
+      /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
+      window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
       function curProvModelLabel(){ var pv=provOf(curProv()); if(!pv) return curProv(); var mid=curModelId(pv); for(var i=0;i<pv.models.length;i++) if(pv.models[i][0]===mid) return pv.models[i][1]; return pv.name; }
 
       var ROW = 'display:block; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:9px 12px; border-radius:8px; cursor:pointer;';
@@ -109,7 +114,25 @@
       }
       /* v-cc-remove (طلب المالك «شيله عشان ما يلخبط»): أُزيل زرّ «Claude Code» المربوط
          بجسر Railway المكسور — الوكيل يملك صلاحيات Claude Code الكاملة عبر GitHub Actions. */
-      pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + divider + provsHTML();
+      function renderPop(){ pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + divider + provsHTML(); }
+      renderPop();
+      /* v-provider-models: القائمة الحيّة من الخادم (OpenRouter — الأحدث ثمانية لكلّ مزوّد) تُلحق بالافتراضيّ الثابت. */
+      if(isOwner()){
+        try{
+          fetch('/api/ai?action=models', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) })
+            .then(function(r){ return r.ok ? r.json() : null; })
+            .then(function(d){
+              if(!d || !d.models) return;
+              var changed = false;
+              for(var i=0;i<PROVS.length;i++){ var p = PROVS[i]; var L = d.models[p.key];
+                if(!p.or || !L || !L.length) continue;
+                var has = false; for(var j=0;j<L.length;j++){ if(L[j][0] === p.def) has = true; }
+                p.models = (has ? [] : [[p.def, p.models[0][1]]]).concat(L); changed = true;
+              }
+              if(changed){ renderPop(); refresh(); }
+            }).catch(function(){ /* guard-ok: القائمة الحيّة تحسينيّة — الافتراضيّ الثابت يبقى */ });
+        }catch(e){ /* guard-ok */ }
+      }
       wrap.appendChild(pop); wrap.appendChild(chip);
       bar.appendChild(wrap);
       // v-model-under-send (طلب المالك): الشريط تحت صندوق الكتابة مباشرة (جهة زرّ الإرسال)
