@@ -1020,7 +1020,7 @@ function codeForApi(code){
 function renderHistory(){
   historyEl.innerHTML = '';
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
-  const provKey = localStorage.getItem('aiapp_provider') || 'claude';
+  const provKey = localStorage.getItem('aiapp_provider') || 'openai';
   let provDirty = false;
   state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
   if(provDirty) saveState();
@@ -1057,7 +1057,7 @@ function renderHistory(){
     titleSpan.onclick = () => {
       // v380: الضغط على محادثة من مزود آخر → ينتقل لمزودها تلقائيًا (بدون إنشاء محادثة جديدة)
       try{
-        const cur = localStorage.getItem('aiapp_provider') || 'claude';
+        const cur = localStorage.getItem('aiapp_provider') || 'openai';
         if(p.provider && p.provider !== cur){
           localStorage.setItem('aiapp_provider', p.provider);
           const sel = document.getElementById('provider');

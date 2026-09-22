@@ -89,7 +89,7 @@
         { key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
         { key:'openrouter', name:'OpenRouter',               store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5','Claude Opus 5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.5-flash','Gemini 3.5 Flash'],['deepseek/deepseek-v3.2','DeepSeek V3.2'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
       ];
-      function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'claude'; }catch(e){ return 'claude'; } }
+      function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
       function curModelId(pv){ try{ return localStorage.getItem(pv.store) || pv.def; }catch(e){ return pv.def; } }
       function curProvModelLabel(){ var pv=provOf(curProv()); if(!pv) return curProv(); var mid=curModelId(pv); for(var i=0;i<pv.models.length;i++) if(pv.models[i][0]===mid) return pv.models[i][1]; return pv.name; }
