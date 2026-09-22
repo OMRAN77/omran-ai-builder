@@ -44,9 +44,20 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("signing.keystore")) | Set-Clipboard
 ```
 
-### ١-ب) ضاع المفتاح؟ المسار البديل بلا أوامر (PWABuilder)
-مفتاح 1.3.9 ضاع (المالك ١٨ سبتمبر). الجلسة لا تولّد مفاتيح توقيع ولا تضعها في المستودع؛ المفتاح يُنشأ عندك ويبقى عندك.
-أسهل طريقة بلا طرفيّة — الموقع نفسه الذي بُنيت به الحزم السابقة:
+### ١-ب) ضاع المفتاح؟ — ⚠️ PWABuilder ليس بديلًا لإصلاح المايك تحديدًا
+مفتاح 1.3.9 ضاع (المالك ١٨ سبتمبر، وأُكِّد ثانية ٢٢ سبتمبر). **تحديث ٢٢ سبتمبر (v-maha-webview-mic-3):**
+فحصت مصدر PWABuilder الحقيقيّ (`pwa-builder/CloudAPK`) — يستعمل **نفس** Bubblewrap ومكتبة
+`androidbrowserhelper` اللي فيها عطل المايك (`knowledge/DECISIONS.md`، v-maha-webview-mic).
+حزمة PWABuilder ستحمل **نفس عطل المايك بالضبط**، لأنّها لا تستعمل `MahaWebViewFallbackActivity`
+المحليّ الذي كتبناه في `store/huawei/twa`. **لا تستعمله لهذا الغرض.**
+بدلًا منه: ولّدت الجلسة مخزن مفاتيح جديدًا كليًّا (لا مشكلة توقيع — كل الإصدارات السابقة مرفوضة
+ولم يُنشر شيء) وأرسلته لك مباشرة (ملفّ `.keystore` + base64 + تعليمات) — أضِف الأربعة أسرار من
+الخطوة ١ أعلاه من ذاك الملفّ، ثمّ قل «ابنِ ١.٣.١٠». لو AGC رفض برسالة «شهادة توقيع مختلفة» رغم
+عدم نشر شيء (لأنّ 1.3.9 رُفعت للمراجعة سابقًا، والحذف كان لتطبيق غير مُنشَر لا مُلغى)، طبّق حلّ
+الفقرة الآتية (حذف التطبيق غير المنشور من AGC وإعادة إنشائه).
+
+القسم التالي (خطوات PWABuilder) يبقى مرجعًا عامًّا لمسار توليد حزمة بلا كود مخصَّص فقط — لا تستعمله
+لهذي المشكلة تحديدًا:
 1. افتح <https://www.pwabuilder.com> وأدخل `https://omran-ai-builder.vercel.app/?store=huawei` ← **Package for stores** ← **Android**.
 2. في الخيارات: **Package ID** `com.omran.aibuilder.twa` · **App name** `Omran AI Builder` · **Launcher name** `عمران AI` ·
    **Version** `1.3.10` · **Version code** `20260918` · **Start URL** `/?store=huawei` ·
