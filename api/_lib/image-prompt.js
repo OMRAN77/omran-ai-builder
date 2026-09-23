@@ -235,16 +235,26 @@ function rawCreativePrompt(prompt, userWords){
    الأشخاص عمدًا. كلمة «الاسم» في الجملة كانت تحوّله إلى تبديل حرف («غيّر فقط الحرف المسمّى»)، ثم يرفض حارسُ الهوية النتيجة
    لأنها غيّرت الشخص — وهو المطلوب حرفيًا. مسار خاص: برو، بلا حارس هوية، وبلا gpt-image (إخلاصه العالي يُبقي الوجوه). */
 const PERSON_WORDS = '(?:أشخاص|اشخاص|شخص|رجال|رجل|بنات|بنت|نساء|امرأة|مرأة|أولاد|اولاد|أطفال|اطفال|ناس|موديل|موديلات|شخصيات|شخصي[ةه]|people|persons?|faces?|men|women|models?|characters?)';
+/* v-img-honest (لقطة المالك ٢٣ سبتمبر: «غيّر جميع وجوه وأشكال الأشخاص» ← الصورة نفسها وتقرير «تمّ»): «جميع/كل» بين الفعل
+   والمفعول، و«وجوه وأشكال» معطوفتين، و«غيّر الوجوه» وحدها، و«ابي تغيّر…» — كلّها لم تطابق فذهبت للمسار الأمين (حرارة ٠٫١٥،
+   «احفظ كلّ بكسل») فرجعت الصورة كما هي. وبالعكس «خلّ الرجل يبتسم» كانت تطابق تبديل هويّة: أفعال «خلّ/اجعل/سوّي» صارت تحتاج
+   «مختلف/جديد/ثاني» بعد الأشخاص. */
+const SWAP_VERB = '(?:[تي]?غيّ?ر|غيري|[تي]?بدّ?ل|بدلي|[تي]?استبدل)';
+const SWAP_ALL = '(?:(?:جميع|كل|كلّ|كامل|كافة|كافّة|باقي)\\s*)?';
+const FACE_WORD = '(?:ال)?(?:أشكال|اشكال|شكل|وجوه|وجه|ملامح|هوي[ةه]|صور[ةه]?|صور)';
 const PERSON_SWAP_RE = new RegExp([
-  '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|استبدل|خل|خلي|خلّي|اجعل|سوّ?ي?)\\s*(?:لي\\s*)?(?:(?:ال)?(?:أشكال|اشكال|شكل|وجوه|وجه|ملامح|هوي[ةه]|صور[ةه]?|صور)\\s*)?(?:ال)?' + PERSON_WORDS + '(?=$|[\\s،,.!؟?])',
+  '(?:^|[\\s،,])' + SWAP_VERB + '\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:' + FACE_WORD + '\\s*(?:و\\s*' + FACE_WORD + '\\s*)?)?(?:ال)?' + PERSON_WORDS + '(?=$|[\\s،,.!؟?])',
+  '(?:^|[\\s،,])' + SWAP_VERB + '\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:ال)?(?:وجوه|وجه(?:ه|ها|هم)?)(?=$|[\\s،,.!؟?])',
+  '(?:^|[\\s،,])(?:خل|خلي|خلّي|اجعل|سوّ?ي?)\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:ال)?' + PERSON_WORDS + '\\s*(?:[^\\s،,.!؟?]+\\s*)?(?:مختلف|مختلفين|مختلفة|مختلفه|ثانيين|ثاني[ةه]?|جدد|جديد[ةه]?|غير)(?=$|[\\s،,.!؟?])',
   '(?:^|[\\s،,])(?:ال)?(?:أشخاص|اشخاص|وجوه|شخصيات|رجال|بنات|نساء)\\s*(?:مختلف|مختلفين|مختلفة|مختلفه|ثانيين|ثانية|ثانيه|جدد|جديدة|جديده|غير)(?=$|[\\s،,.!؟?])',
   '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:(?:ال)?(?:صور[ةه]?|صور|وجوه|أشكال|اشكال)\\s*)?(?:ال)?' + PERSON_WORDS,
+  '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:ال)?(?:وجوه|أشكال\\s*(?:ال)?' + PERSON_WORDS + ')',
   /* v-swap-photos (لقطة المالك ٢٣ سبتمبر: «عطني نفس الأسامي وغيّر الصور بدون تكرار الصور الشخصيات» على لقطة بطاقات أنماط ← رجعت
      الصورة نفسها): لم يطابق أيّ نمط فذهب للمسار الأمين (حرارة ٠٫١٥، «احفظ كلّ شيء») فخرجت كما هي. «غيّر الصور … بدون
      تكرار» و«كلّ بطاقة/صورة شخص مختلف» = تبديل أشخاص. */
   '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|استبدل)\\s*(?:لي\\s*)?(?:ال)?(?:صور|صور[ةه])(?=$|[\\s،,.!؟?])[^\\n]{0,40}?(?:بدون|من\\s*غير|بلا)\\s*تكرار',
   '(?:كل|لكل)\\s*(?:بطاق[ةه]|صور[ةه]|كرت|خان[ةه]|مربع)\\s*(?:ب|فيها\\s*)?(?:شخص|شخصي[ةه]|وجه|موديل)\\s*(?:مختلف[ةه]?|غير|ثاني[ةه]?|جديد[ةه]?)',
-  '\\b(?:change|replace|swap|use)\\s+(?:the\\s+|all\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b',
+  '\\b(?:change|replace|swap|use)\\s+(?:all\\s+)?(?:(?:of\\s+)?the\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b',
   '\\b(?:different|new|unique)\\s+(?:faces?|people|persons?|models?)\\b',
   /* «غيّر على اسم الشخصية» / «غيّرها على حسب الاسم» / «طابق الشخص مع الاسم» / «غيّر الصور حسب الأسماء» = الشخص يطابق الاسم تحته */
   '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|عدّ?ل|سوّ?ي?|خلّ?ي?|اجعل|طابق|طابقي)(?:ها|هم|ه|ي)?\\s*(?:(?:ال)?(?:صور[ةه]?|شخصي[ةه]|شخصيات|شخص|أشخاص|اشخاص|وجوه|أشكال|اشكال)\\s*)?(?:على\\s*حسب|على|حسب|بحسب|وفق|طبق|مثل|زي|بناء\\s*على|مع)\\s*(?:ال)?(?:اسم|أسماء|اسماء|اسمه|اسمها)',
@@ -264,12 +274,24 @@ function buildPersonSwapPrompt(userPrompt, userWords){
     ...taskHeader(prompt, userWords),
     '',
     'PEOPLE REPLACEMENT on the attached source image. The user explicitly wants the people changed, so their identity must NOT be preserved:',
-    '1. Replace each person with a NEW, distinct, realistic person as the request describes. Each new person must be unmistakably different from the one in the source at a glance — different face, hairstyle, age bracket and skin tone where the name allows; a viewer comparing both images must never think it is the same person lightly retouched. If a name, caption or label sits under or next to a person, that person must plausibly match that name (gender, age and cultural cues). No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
+    /* v-img-honest (تبديل «أنماط الصور» رجع الصورة نفسها): العدّ الصريح لكلّ شخص في كلّ بطاقة، والناتج الثابت فشل مسمّى،
+       والأشخاص الجدد متخيَّلون لا يشبهون أحدًا حقيقيًّا (يخفّف رفض «تزييف الوجوه»)، والطفل يبقى طفلًا بعمره (يخفّف حساسيّة
+       القاصرين ويمنع تحويله بالغًا)، وبأسلوب البطاقة نفسه لا «واقعيّ» دائمًا (البطاقات قد تكون رسمًا أو ثلاثيّ الأبعاد). */
+    '1. Replace EVERY person in the image — every card, tile, frame and panel, none skipped — with a NEW, distinct, fictional person as the request describes (not resembling any real or famous person), drawn in the same medium and style as that part of the source. Each new person must be unmistakably different from the one in the source at a glance — different face, hairstyle and skin tone; keep the same gender and age group (a child stays a child of about the same age, a baby stays a baby) unless the request or a name under them says otherwise; a viewer comparing both images must never think it is the same person lightly retouched. If a person\'s name sits under or next to them, that person must plausibly match that name (gender, age and cultural cues); a style or category title is not a person\'s name. No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
     wantsClothes
       ? '2. Change the outfits too: give every new person a complete, different outfit (style, colours, garments) that suits them and the name or label under them — no two outfits alike, and none copied from the source. Keep layout, frames, positions, poses, background, lighting, and every piece of text and every label character-for-character.'
       : '2. Keep everything else exactly as in the source: layout, frames, positions, poses, outfits and dress code, background, lighting, colours, and every piece of text and every label character-for-character.',
-    '3. Never write the instruction itself into the image. Return only one finished image.'
+    '3. Returning the source unchanged, or with the same faces lightly retouched, is a FAILURE — the faces must visibly be new people.',
+    '4. Never write the instruction itself into the image. Return only one finished image.'
   ].join('\n');
+}
+/* v-img-mix — خيار «أ»: GPT يصلّح الكتابة وحدها على ناتج برو. مع مصدر: صورتان (الناتج أوّلًا، والمصدر مرجع الحروف حرفًا بحرف)،
+   و«الأشخاص مختلفون عمدًا» كي لا ينسخ وجوه المصدر. بلا مصدر (توليد): الكتابة كما طلبها المستخدم. لا شيء غير الكتابة يُمسّ. */
+function buildTextPolishPrompt(userWords, withSource){
+  const req = String(userWords || '').trim().slice(0, 600);
+  return withSource
+    ? 'You are given 2 images in this order: (1) the RESULT to fix, (2) the ORIGINAL source, for reference only. Fix ONLY the written text in image 1: every title, caption and label must read exactly, letter-for-letter, like the matching text in image 2 — unless the user\'s request changes that text: "' + req + '". Render Arabic with correct, cleanly joined right-to-left glyphs in the same font style, size, colour and position. Change NOTHING else in image 1 — people, faces, hair, clothes, colours, layout and background stay exactly as they are in image 1 (they are intentionally different from image 2). Return one finished image.'
+    : 'Fix ONLY the written text in the attached image so every word reads exactly as the user asked: "' + req + '". Render Arabic with correct, cleanly joined right-to-left glyphs; keep font style, size, colour and position. Change NOTHING else in the image. Return one finished image.';
 }
 /* v-broad-edit (لقطة المالك ٦ سبتمبر «غير الملابس ورتب الصور خلها فقط صور» على لقطة شاشة مليئة بالنصوص): طلب مركّب يعيد
    الترتيب ويحذف الكتابة كلها ويغيّر اللبس. القالب الموضعي («لا تغيّر إلا ما طُلب واحفظ كل بكسل») يناقض إعادة الترتيب،
@@ -418,4 +440,4 @@ function buildRestylePrompt(userPrompt, userWords){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, removeTextTarget, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, removeTextTarget, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection, buildTextPolishPrompt };

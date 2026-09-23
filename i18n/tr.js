@@ -1087,3 +1087,6 @@ Object.assign(I18N["tr"], {"imgUndoPrev": "Önceki sürüme döndürüldü 👆 
 
 /* v-owner-page: صفحة المالك في الإعدادات */
 Object.assign(I18N["tr"], {"ownerSectionTitle": "👑 Sahip sayfası"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["tr"], {"imgUnchanged": "⚠️ Düzenleme uygulanmadı: görsel değişmeden döndü, bu yüzden göstermedim ve sizden düşülmedi. Tam olarak neyin değişmesi gerektiğini söyleyin ya da farklı ifade edin."});

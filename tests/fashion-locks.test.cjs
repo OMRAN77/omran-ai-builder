@@ -210,7 +210,8 @@ console.log('  ✓ v-physical-design: التصميم يُرى قبل أن يُق
 // ⑳ v-maha-image-rescue: مولد صور المحادثة بخط إنقاذ تاسع + لا خطف لطلبات صورة التصميم.
 const mahaImgSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
 assert.ok(mahaImgSrv.includes('v-maha-image-rescue') && mahaImgSrv.includes('openaiRescueImage'), 'إنقاذ gpt-image-1 موجود');
-assert.ok(mahaImgSrv.includes("await sendImg(rescuedB64, 'image/png', 'openai')") && mahaImgSrv.includes('v-prayer-carry'), 'الإنقاذ يرد صورة بنفس العقد (sendImg) ومعها الدعاء المؤلف');
+// v-img-honest: كلّ ناتج (والإنقاذ منه) يمرّ بـdeliver ← sendImg نفسه الذي يحمل الدعاء المؤلَّف (authoredText)
+assert.ok(mahaImgSrv.includes("await deliver({ b64: rescuedB64, mime: 'image/png', engine: 'openai' }, null)") && mahaImgSrv.includes('v-prayer-carry') && mahaImgSrv.includes('authoredText: prayerPlan ? prayerPlan.prayerText : undefined'), 'الإنقاذ يرد صورة بنفس العقد (deliver ← sendImg) ومعها الدعاء المؤلف');
 const attachCli20 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
 assert.ok(attachCli20.includes('__designCtxRe') && attachCli20.includes('!__designCtxRe.test(text)'), 'طلب صورة التصميم لا يُخطف للبحث');
 const agentTools20 = fs.readFileSync(path.join(__dirname, '../js/app-17-agent-tools.js'), 'utf8');

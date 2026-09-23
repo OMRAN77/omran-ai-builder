@@ -15,7 +15,7 @@ test('١. الشريحة تعرض اللقب الوظيفيّ لا اسم الن
   const a = nickOf(modes, /var NICK = (\{[^}]+\});/);
   const b = nickOf(app05, /const PROVIDER_NICK_KEYS = (\{[\s\S]*?\});/);
   assert.deepEqual(a, b);
-  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m230923b/);
+  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m230923c/);
 });
 
 test('٢. اللقب يُقرأ من الترجمة (١٤ لغة) مع احتياط، وبلا اسم مزوّد', () => {

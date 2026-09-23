@@ -37,6 +37,10 @@ function imgErrFriendly(err, isAr){
       ? 'أوقفت النتيجة لأنها غيّرت هوية الشخص أو أشياء لم تطلبها. بقيت الصورة الأصلية محفوظة.'
       : 'I stopped the result because it changed the person or unrelated details. The original remains saved.';
   }
+  /* v-img-honest: الخادم قاس الناتج فوجده الصورة نفسها (حتّى بعد المحرّك الآخر) فلم يعرضه وردّ النقاط — بدل «تمّ» على صورة لم تتغيّر */
+  if(err === 'image_unchanged'){
+    return t('imgUnchanged');
+  }
   if(err === 'image_edit_validation_failed'){
     return isAr
       ? 'تعذّر التحقق من سلامة التعديل، لذلك لم أعرض النتيجة ولم أغيّر الأصل. جرّب بعد لحظة.'
