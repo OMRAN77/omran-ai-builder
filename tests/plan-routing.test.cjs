@@ -132,7 +132,7 @@ test('٤. الخادم: Pro دردشة → DeepSeek، Pro دور قويّ → Ha
   r = await ask(SUB('basic'), 'openai', 'اشرح لي الذكاء الاصطناعي باختصار');
   assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v3.2', 'Plus يطلب GPT → DeepSeek');
   r = await ask({ tier: 'owner', plan: null, cap: Infinity, subscriber: true }, 'claude', 'اكتب لي كود');
-  assert.equal(r.bodies[0].body.model, 'anthropic/claude-sonnet-5', 'المالك على افتراضيّه');
+  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'المالك على افتراضيّه (v-chat-economy: Haiku 4.5)');
   // مفتاح أنثروبيك حاضر → كلود مباشر بالاسم المباشر، وDeepSeek يبقى عبر الوسيط
   process.env.ANTHROPIC_API_KEY = 'sk-test';
   try {
