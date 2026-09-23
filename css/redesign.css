@@ -612,3 +612,16 @@ html.kb-open #omranBottomNav{display:none !important;}
   #sidebar, #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
 }
 html.mobile-ui #sidebar, html.mobile-ui #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
+
+/* v-android-gpu (فيديو المالك ٢٣ سبتمبر «التطبيق كامل يشوش» — أندرويد/هواوي: ضجيج مكان الشعار، مستطيلات سوداء فوق
+   بطاقات الأدوات، شاشات نصف مرسومة). عطب تركيب في معالج الرسوم: ٢٥ نجمة متحرّكة كلّ واحدة طبقة مستقلّة بفلتر
+   drop-shadow على شكل مقصوص (clip-path) يُعاد حسابه كلّ إطار، وأيقونة الشريط تحرّك فلترًا بلا توقّف، ونافذة الأدوات
+   فوق تغبيش ملء الشاشة لا يُرى أصلًا (القائمة تغطّي الشاشة كلّها). على أندرويد فقط (html.omAndroid): النجوم تبقى
+   وتومض بلا توهّج الفلتر، والأيقونة تنبض بالشفافيّة وحدها، والتغبيش المخفيّ يُلغى. الآيفون والكمبيوتر كما هما. */
+html.omAndroid #omranNewChatBtn > .omStar,
+html.omAndroid #omSkyLayer .omSkyStar,
+html.omAndroid #mahaSkyLayer .omSkyStar{filter:none;}
+html.omAndroid #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{animation:tickerAiPulseLite 2.2s ease-in-out infinite; filter:none;}
+@keyframes tickerAiPulseLite{0%,100%{opacity:.72;} 50%{opacity:1;}}
+html.omAndroid #sectionsToolsOverlay{backdrop-filter:none; -webkit-backdrop-filter:none;}
+

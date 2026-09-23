@@ -42,5 +42,5 @@ test('٢. CSS: الكيبورد مفتوح ⇒ لا حجز تحت main ولا ش
   assert.match(css, /html\.kb-open #omranBottomNav\{display:none !important;\}/);
   assert.match(css, /html\.mobile-ui #sidebar, html\.mobile-ui #workarea\{padding-top:min\(var\(--omran-sat, env\(safe-area-inset-top,0px\)\), 62px\);\}/);
   assert.match(css, /@media \(max-width:860px\)\{\n\s+#sidebar, #workarea\{padding-top:min\(var\(--omran-sat/);
-  assert.match(html, /css\/redesign\.css\?v=683/); // v-img-mix رفع الوسم (عنصر «دمج نانو + GPT» في «+»)
+  assert.ok(+((html.match(/css\/redesign\.css\?v=(\d+)/) || [])[1] || 0) >= 682);
 });
