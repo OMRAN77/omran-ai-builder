@@ -107,3 +107,13 @@ test('١٠. المربّع بلا إطار خارجيّ', () => {
   assert.ok(a.includes('border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}'));
   assert.ok(!a.includes('background:#050505;border:1px solid'));
 });
+
+test('١١. «غيّر الصور بدون تكرار الشخصيات» على لقطة بطاقات = تبديل أشخاص لا تعديل أمين يرجّع الصورة نفسها', () => {
+  const ip = require('../api/_lib/image-prompt.js');
+  for (const x of ['عطني نفس الاسامي وغير الصور بدون تكرار الصور الشخصيات', 'غير الصور اللي داخل البطاقات بدون تكرار', 'خل كل بطاقة شخص مختلف', 'بدون تكرار الشخصيات', 'غير الأشخاص في الصورة']) assert.ok(ip.isPersonSwapRequest(x), x);
+  for (const x of ['غير الخلفية', 'خل الصورة ليل', 'غير لون السيارة', 'كبر الصورة', 'رجعها زي أول']) assert.ok(!ip.isPersonSwapRequest(x), x);
+  const pr = ip.buildPersonSwapPrompt('غير الصور بدون تكرار', 'غير الصور بدون تكرار');
+  assert.ok(/every piece of text and every label character-for-character/.test(pr), 'الأسماء تبقى');
+  assert.ok(/identity must NOT be preserved/.test(pr));
+  assert.ok(read('api/_lib/maha-image.js').includes('const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;'), 'التبديل خارج المسار الأمين');
+});
