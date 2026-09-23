@@ -192,7 +192,7 @@ I18N['ur'] = {
     logoutTitle: "لاگ آؤٹ",
     loginAction: "لاگ ان",
     acctSectionTitle: "👤 میرا اکاؤنٹ",
-    statsSectionTitle: "میرے اعداد و شمار",
+    statsSectionTitle: "میرے پروجیکٹس اور بیک اپ",
     statsProjectsLabel: "پراجیکٹس کی تعداد",
     statsMessagesLabel: "کل بھیجے گئے پیغامات",
     statsFavProviderLabel: "پسندیدہ پرووائیڈر",
@@ -1035,3 +1035,9 @@ Object.assign(I18N['ur'], {"tvMatches": "میچوں کا شیڈول", "tvMatchLi
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["ur"], {"imgUndoPrev": "پچھلے ورژن پر واپس کر دیا 👆 کیا بدلوں؟", "imgUndoOrig": "اصل تصویر پر واپس کر دیا 👆 کیا بدلوں؟", "imgUndoNone": "یہ پہلا ورژن ہے، اس سے پہلے کچھ نہیں 👆 کیا بدلوں؟"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["ur"], {"ownerSectionTitle": "👑 مالک کا صفحہ"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["ur"], {"imgUnchanged": "⚠️ ترمیم لاگو نہیں ہوئی: تصویر بغیر تبدیلی کے واپس آئی، اس لیے میں نے اسے نہیں دکھایا اور اس کا شمار آپ پر نہیں ہوا۔ بتائیں کہ بالکل کیا بدلنا ہے، یا کسی اور انداز میں لکھیں۔"});

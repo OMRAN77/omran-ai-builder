@@ -4,10 +4,13 @@
   /* v-tools-clean (المالك ٥ سبتمبر: «جبتلك الصور نظيفة — غيّر الصور كاملة بالترتيب ونفس المقاس مع 14 لغة»):
      ثماني عشرة صورة نظيفة بلا نصّ مطبوع، كلها بمقاس واحد 1200×720، لكل اللغات بما فيها العربية.
      العنوان والوصف يُكتبان نصًّا مترجمًا فوق البطاقة (tcMeta) بالـ14 لغة. */
-  var CLEAN_V = '1';
+  /* v-gpu-lite (فيديو المالك ٢٣ سبتمبر «التطبيق كامل يشوش»): البطاقة تُعرض 173×96 على الجوّال (~300 على الكمبيوتر)،
+     والأصل 1200×720 يكلّف 3.3MB من ذاكرة الرسم لكلّ واحدة — ثماني عشرة = ~60MB، فتمتلئ ذاكرة معالج الرسوم في
+     أندرويد وتظهر مستطيلات سوداء فوق البطاقات. نسخة عرض 600×360 في assets/tool-cards/s (الأصول باقية في clean/). */
+  var CLEAN_V = '2';
   var IDS = ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnStocks','btnOmranTV','btnQibla','btnExpense','btnOmranEdu','btnConstruction','btnReligion','btnCV','btnDocs','btnFeedback','btnEmailAssist'];
   var TOOL_PHOTOS = {};
-  IDS.forEach(function(id){ TOOL_PHOTOS[id] = '/assets/tool-cards/clean/' + id + '.jpg?v=' + CLEAN_V; });
+  IDS.forEach(function(id){ TOOL_PHOTOS[id] = '/assets/tool-cards/s/' + id + '.jpg?v=' + CLEAN_V; });
   function isAr(){ return String(document.documentElement.lang || 'ar').toLowerCase().indexOf('ar') === 0; }
   function srcFor(id){ return TOOL_PHOTOS[id]; }
 

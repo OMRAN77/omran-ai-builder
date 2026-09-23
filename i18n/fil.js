@@ -183,7 +183,7 @@ I18N['fil'] = {
     "logoutTitle": "Mag-log out",
     "loginAction": "Mag-login",
     "acctSectionTitle": "👤 Aking account",
-    "statsSectionTitle": "Aking mga istatistika",
+    "statsSectionTitle": "Aking mga proyekto at backup",
     "statsProjectsLabel": "Bilang ng mga proyekto",
     "statsMessagesLabel": "Kabuuang mensaheng naipadala",
     "statsFavProviderLabel": "Paboritong provider",
@@ -1088,3 +1088,9 @@ Object.assign(I18N['fil'], {"tvMatches": "Iskedyul ng mga laro", "tvMatchLive": 
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["fil"], {"imgUndoPrev": "Ibinalik sa naunang bersyon 👆 Ano ang babaguhin ko?", "imgUndoOrig": "Ibinalik sa orihinal 👆 Ano ang babaguhin ko?", "imgUndoNone": "Ito ang unang bersyon, wala nang nauna 👆 Ano ang babaguhin ko?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["fil"], {"ownerSectionTitle": "👑 Pahina ng may-ari"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["fil"], {"imgUnchanged": "⚠️ Hindi nailapat ang edit: bumalik ang larawan nang walang pagbabago, kaya hindi ko ito ipinakita at hindi ito ibinawas sa iyo. Sabihin kung ano mismo ang dapat magbago o ibahin ang pagkakasabi."});

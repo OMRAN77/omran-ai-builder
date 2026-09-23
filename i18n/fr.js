@@ -210,7 +210,7 @@ I18N['fr'] = {
     logoutTitle: "Déconnexion",
     loginAction: "Connexion",
     acctSectionTitle: "👤 Mon compte",
-    statsSectionTitle: "Mes statistiques",
+    statsSectionTitle: "Mes projets et sauvegarde",
     statsProjectsLabel: "Nombre de projets",
     statsMessagesLabel: "Total des messages envoyés",
     statsFavProviderLabel: "Fournisseur préféré",
@@ -1038,3 +1038,9 @@ Object.assign(I18N['fr'], {"tvMatches": "Calendrier des matchs", "tvMatchLive": 
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["fr"], {"imgUndoPrev": "Retour à la version précédente 👆 Que dois-je changer ?", "imgUndoOrig": "Retour à l'original 👆 Que dois-je changer ?", "imgUndoNone": "C'est la première version, rien avant 👆 Que dois-je changer ?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["fr"], {"ownerSectionTitle": "👑 Page du propriétaire"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["fr"], {"imgUnchanged": "⚠️ La modification n'a pas été appliquée : l'image est revenue inchangée, je ne l'ai donc pas affichée et rien ne vous a été décompté. Précisez exactement ce qui doit changer ou reformulez."});

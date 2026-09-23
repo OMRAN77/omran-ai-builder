@@ -240,6 +240,7 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 #plusToolsPopup .omModeItem[data-mode="image_nano"]{order:50;}   /* ٥ محرّك نانو (خام) */
 #plusToolsPopup .omModeItem[data-mode="image_text"]{order:60;}   /* ٦ صورة بنصّ دقيق */
 #plusToolsPopup .omModeItem[data-mode="image_gpt"]{order:70;}    /* ٧ محرّك GPT (خام) */
+#plusToolsPopup .omModeItem[data-mode="image_mix"]{order:72;}    /* ٨ دمج نانو + GPT (v-img-mix) — تحت GPT وفوق الفاصل */
 #plusToolsPopup .omModeSep{order:75;}                              /* فاصل فوق الحذف */
 #plusToolsPopup #btnDeleteChat{order:80;}                          /* حذف المحادثة (أسفل) */
 /* القائمة لا تُقصّ على الشاشات القصيرة: سقف ارتفاع مع تمرير عند اللزوم. */
@@ -599,3 +600,28 @@ html.mobile-ui header h1 #brandTitle{display:none !important;}
 /* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:2px;}
+
+/* v-iphone-fit (لقطات المالك ٢٣ سبتمبر — آيفون):
+   ١) الكيبورد مفتوح (html.kb-open من pinVisualViewport): شريط التبويبات وحاشية الهوم خلف الكيبورد، فلا حجز
+      لهما تحت main — مربّع الكتابة يلتصق فوق الكيبورد مباشرة بدل الطفو في وسط الشاشة.
+   ٢) درجا المحادثات والملفّات مثبّتان من top:0 بلا حاشية القمّة، فالشعار وأزرار الملفّات تحت الساعة والبطارية.
+      نفس حاشية الهيدر (بسقف 62px). السهم المطلق في درج المحادثات يحسب حاشيته بنفسه فلا يتأثّر. */
+html.kb-open main{padding-bottom:0 !important;}
+html.kb-open #omranBottomNav{display:none !important;}
+@media (max-width:860px){
+  #sidebar, #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
+}
+html.mobile-ui #sidebar, html.mobile-ui #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
+
+/* v-android-gpu (فيديو المالك ٢٣ سبتمبر «التطبيق كامل يشوش» — أندرويد/هواوي: ضجيج مكان الشعار، مستطيلات سوداء فوق
+   بطاقات الأدوات، شاشات نصف مرسومة). عطب تركيب في معالج الرسوم: ٢٥ نجمة متحرّكة كلّ واحدة طبقة مستقلّة بفلتر
+   drop-shadow على شكل مقصوص (clip-path) يُعاد حسابه كلّ إطار، وأيقونة الشريط تحرّك فلترًا بلا توقّف، ونافذة الأدوات
+   فوق تغبيش ملء الشاشة لا يُرى أصلًا (القائمة تغطّي الشاشة كلّها). على أندرويد فقط (html.omAndroid): النجوم تبقى
+   وتومض بلا توهّج الفلتر، والأيقونة تنبض بالشفافيّة وحدها، والتغبيش المخفيّ يُلغى. الآيفون والكمبيوتر كما هما. */
+html.omAndroid #omranNewChatBtn > .omStar,
+html.omAndroid #omSkyLayer .omSkyStar,
+html.omAndroid #mahaSkyLayer .omSkyStar{filter:none;}
+html.omAndroid #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{animation:tickerAiPulseLite 2.2s ease-in-out infinite; filter:none;}
+@keyframes tickerAiPulseLite{0%,100%{opacity:.72;} 50%{opacity:1;}}
+html.omAndroid #sectionsToolsOverlay{backdrop-filter:none; -webkit-backdrop-filter:none;}
+

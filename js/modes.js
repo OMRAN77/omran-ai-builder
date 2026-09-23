@@ -16,6 +16,10 @@
     { id:'image_hd',   ar:'صورة 4K',        en:'Image · 4K',         ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>', owner:true },
     { id:'image_nano', ar:'محرّك نانو (خام)', en:'Nano engine (raw)', ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>', owner:true },
     { id:'image_gpt',  ar:'محرّك GPT (خام)',  en:'GPT engine (raw)',  ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>', owner:true },
+    /* v-img-mix (المالك ٢٣ سبتمبر: «خاصيّة + دمج بين نانو وGPT — النتيجة ١» ثمّ «سوّ الخيار أ»): دمج متسلسل — برو يرسم المشهد
+       والوجوه، ثمّ GPT يصلّح الكتابة وحدها على ناتجه، والحكم يختار صورة واحدة. توليدًا أو تعديلًا لصورة مرفقة، بالأمر المهندس
+       لا الخام. للمالك وحده كبقيّة أوضاع المحرّك. */
+    { id:'image_mix',  ar:'دمج نانو + GPT', en:'Nano + GPT merge', ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="12" r="6"></circle><circle cx="15" cy="12" r="6"></circle></svg>', owner:true },
     /* v-bottom-bar (أمر عمران ١٤ سبتمبر «حط الوكيل وكودي وياهم»): الوكيل وClaude Code
        نُقلا من قائمة «+» إلى الشريط أسفل الصندوق مع مؤشّر النموذج (bottom:true) —
        للمالك وحده. الوكيل تبديل موكَّل لمفتاح النقاط القديم (btnPremiumToggle) فتبقى
@@ -97,7 +101,12 @@
       function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
       /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
       window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
-      function curProvModelLabel(){ var pv=provOf(curProv()); if(!pv) return curProv(); var mid=curModelId(pv); for(var i=0;i<pv.models.length;i++) if(pv.models[i][0]===mid) return pv.models[i][1]; return pv.name; }
+      /* v-chip-func-name (أمر المالك ٢٣ سبتمبر «أبدله باسم وظيفي»): الشريحة تحت صندوق الكتابة كانت تعرض اسم النموذج
+         («Sonnet 5»، «GPT-5.6 Terra») — صارت اللقب الوظيفيّ للمزوّد المختار (الكينج/السريع/العميق، مفاتيح provNick* بـ١٤ لغة،
+         نفس خريطة PROVIDER_NICK_KEYS في app-05). القائمة المنسدلة تبقى بأسماء النماذج (أمر المالك «كلّ واحد وموديله بالضبط»). */
+      var NICK = { claude:'provNickKing', gemini:'provNickFast', groq:'provNickFast', mistral:'provNickFast', openai:'provNickDeep', deepseek:'provNickDeep', perplexity:'provNickDeep', cohere:'provNickDeep', openrouter:'provNickDeep' };
+      var NICK_FB = { provNickKing:(AR?'الكينج':'The King'), provNickFast:(AR?'السريع':'The Fast'), provNickDeep:(AR?'العميق':'The Deep') };
+      function curProvFuncLabel(){ var k = NICK[curProv()] || 'provNickDeep'; try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok: i18n لم يجهز — الاحتياط */ } return NICK_FB[k]; }
 
       var ROW = 'display:block; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:9px 12px; border-radius:8px; cursor:pointer;';
       function optRow(act, label, key){ var a = key ? ' data-i18n="' + key + '"' : ''; return '<button type="button" class="omModelOpt" data-act="' + act + '" style="' + ROW + '"><span' + a + '>' + label + '</span></button>'; }
@@ -144,7 +153,7 @@
       var ACCENT = 'var(--accent,#f0c040)', INK = 'var(--text,#eee)';
       function refresh(){
         var nm = wrap.querySelector('.omModelName');
-        if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true) ? agentLabel() : curProvModelLabel();
+        if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true) ? agentLabel() : curProvFuncLabel();
         try{
           var pk = curProv(); var pv = provOf(pk); var mid = pv ? curModelId(pv) : '';
           var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ heads[i].style.color = (heads[i].getAttribute('data-prov') === pk) ? ACCENT : INK; }

@@ -194,7 +194,7 @@ I18N['hi'] = {
     logoutTitle: "लॉग आउट",
     loginAction: "लॉग इन",
     acctSectionTitle: "👤 मेरा खाता",
-    statsSectionTitle: "मेरे आँकड़े",
+    statsSectionTitle: "मेरे प्रोजेक्ट और बैकअप",
     statsProjectsLabel: "प्रोजेक्ट संख्या",
     statsMessagesLabel: "कुल भेजे गए संदेश",
     statsFavProviderLabel: "पसंदीदा प्रोवाइडर",
@@ -1037,3 +1037,9 @@ Object.assign(I18N['hi'], {"tvMatches": "मैच कार्यक्रम",
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["hi"], {"imgUndoPrev": "पिछले संस्करण पर लौटा दिया 👆 क्या बदलूँ?", "imgUndoOrig": "मूल तस्वीर पर लौटा दिया 👆 क्या बदलूँ?", "imgUndoNone": "यह पहला संस्करण है, इससे पहले कुछ नहीं 👆 क्या बदलूँ?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["hi"], {"ownerSectionTitle": "👑 मालिक का पेज"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["hi"], {"imgUnchanged": "⚠️ बदलाव लागू नहीं हुआ: तस्वीर बिना बदले लौट आई, इसलिए मैंने उसे नहीं दिखाया और इसका शुल्क नहीं लिया गया। साफ़ बताइए कि ठीक क्या बदलना है, या दूसरे शब्दों में लिखिए।"});
