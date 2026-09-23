@@ -182,7 +182,7 @@ I18N['ru'] = {
     "logoutTitle": "Выйти",
     "loginAction": "Вход",
     "acctSectionTitle": "👤 Мой аккаунт",
-    "statsSectionTitle": "Моя статистика",
+    "statsSectionTitle": "Мои проекты и резервная копия",
     "statsProjectsLabel": "Количество проектов",
     "statsMessagesLabel": "Всего отправлено сообщений",
     "statsFavProviderLabel": "Любимый провайдер",
@@ -1087,3 +1087,9 @@ Object.assign(I18N['ru'], {"tvMatches": "Расписание матчей", "tv
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["ru"], {"imgUndoPrev": "Вернул предыдущую версию 👆 Что изменить?", "imgUndoOrig": "Вернул оригинал 👆 Что изменить?", "imgUndoNone": "Это первая версия, до неё ничего нет 👆 Что изменить?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["ru"], {"ownerSectionTitle": "👑 Страница владельца"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["ru"], {"imgUnchanged": "⚠️ Правка не применена: изображение вернулось без изменений, поэтому я его не показал, и с вас ничего не списано. Уточните, что именно изменить, или сформулируйте иначе."});

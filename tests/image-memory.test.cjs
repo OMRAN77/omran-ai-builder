@@ -20,7 +20,7 @@ test('server turns the client history into real user/model turns before the curr
 
 test('client records each edit turn as a 768px thumb and sends the last three on follow-ups', () => {
   assert.match(attach, /async function omranShrinkForEdit\(b64, mime, maxPx, force\)/);
-  assert.match(attach, /if\(!b64 \|\| \(!force && b64\.length < 2000000\)\) return/); // v-edit-pro: التمرير حتّى 2M حرفًا (كان 900K)
+  assert.match(attach, /if\(!b64 \|\| \(!force && b64\.length < 2000000 && !\/webp\/i\.test\(String\(mime \|\| ''\)\)\)\) return/); // v-edit-pro: التمرير حتّى 2M حرفًا (كان 900K)؛ v-img-honest: webp يُعاد ترميزه
   assert.match(attach, /history: \(__continuesEditChain && Array\.isArray\(cur\.imageTurns\) && cur\.imageTurns\.length\) \? cur\.imageTurns\.slice\(-3\) : undefined/);
   assert.match(attach, /const __tRes = await omranShrinkForEdit\(__data\.imageBase64, __outMime, 768, true\);/);
   assert.match(attach, /cur\.imageTurns = cur\.imageTurns\.concat\(\[__turn\]\)\.slice\(-4\);/);

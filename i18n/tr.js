@@ -181,7 +181,7 @@ I18N['tr'] = {
     "logoutTitle": "Çıkış yap",
     "loginAction": "Giriş",
     "acctSectionTitle": "👤 Hesabım",
-    "statsSectionTitle": "İstatistiklerim",
+    "statsSectionTitle": "Projelerim ve yedekleme",
     "statsProjectsLabel": "Proje sayısı",
     "statsMessagesLabel": "Gönderilen toplam mesaj",
     "statsFavProviderLabel": "Favori sağlayıcı",
@@ -1084,3 +1084,9 @@ Object.assign(I18N['tr'], {"tvMatches": "Maç programı", "tvMatchLive": "Şu an
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["tr"], {"imgUndoPrev": "Önceki sürüme döndürüldü 👆 Neyi değiştireyim?", "imgUndoOrig": "Orijinale döndürüldü 👆 Neyi değiştireyim?", "imgUndoNone": "Bu ilk sürüm, öncesi yok 👆 Neyi değiştireyim?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["tr"], {"ownerSectionTitle": "👑 Sahip sayfası"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["tr"], {"imgUnchanged": "⚠️ Düzenleme uygulanmadı: görsel değişmeden döndü, bu yüzden göstermedim ve sizden düşülmedi. Tam olarak neyin değişmesi gerektiğini söyleyin ya da farklı ifade edin."});

@@ -68,9 +68,17 @@ module.exports = async (req, res) => {
     // natural native-sounding reply instead of the Arabic voice mangling
     // non-Arabic text. Falls back to Gulf Arabic when no language is known.
     if (voice === 'maha') {
-      const azKey = process.env.AZURE_SPEECH_KEY;
+      // v-tts-free (المالك: «أفضل صوت يقرأ لي… بالمجان»): أفضل صوت عربيّ هنا هو فاطمة/حمدان نفسه، وهو
+      // مجّانيّ رسميًّا بباقة Azure المجّانيّة F0 (٥٠٠ ألف حرف شهريًّا، ٢٠ طلبًا في الدقيقة، ولا تُحاسِب أبدًا
+      // — تقف عند الحدّ). AZURE_SPEECH_KEY_FREE (مفتاح F0) يُجرَّب أوّلًا، ثمّ AZURE_SPEECH_KEY المدفوع إن وُجد
+      // بالصوت نفسه. المفتاح المجّانيّ وحده = مجّانيّ فقط: لا هبوط لـOpenAI المدفوع، والعميل يكمل بصوت الجهاز.
       const azRegion = process.env.AZURE_SPEECH_REGION || 'uaenorth';
-      if (!azKey) {
+      const azFreeKey = String(process.env.AZURE_SPEECH_KEY_FREE || '').trim();
+      const azPaidKey = String(process.env.AZURE_SPEECH_KEY || '').trim();
+      const azAccounts = [];
+      if (azFreeKey) azAccounts.push({ tier: 'free', key: azFreeKey, region: String(process.env.AZURE_SPEECH_REGION_FREE || '').trim() || azRegion });
+      if (azPaidKey) azAccounts.push({ tier: 'paid', key: azPaidKey, region: azRegion });
+      if (!azAccounts.length) {
         res.status(500).json({ error: 'Server is missing AZURE_SPEECH_KEY' });
         return;
       }
@@ -114,43 +122,51 @@ module.exports = async (req, res) => {
         '<voice name="' + voiceName + '">' +
         '<prosody rate="' + ttsSpeed.azureRate + '" pitch="0%">' + escapeXml(String(text).slice(0, 4000)) + '</prosody>' +
         '</voice></speak>';
-      const azResp = await fetch('https://' + azRegion + '.tts.speech.microsoft.com/cognitiveservices/v1', {
-        method: 'POST',
-        headers: {
-          'Ocp-Apim-Subscription-Key': azKey,
-          'Content-Type': 'application/ssml+xml',
-          'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
-          'User-Agent': 'omran-ai-builder-maha',
-        },
-        body: ssml,
-      });
-      if (!azResp.ok) {
-        // Azure hiccup (or an unavailable locale/voice) - fall back to
-        // OpenAI's multilingual TTS instead of failing the whole reply, so
-        // Maha still speaks something rather than going silent.
-        const fallbackKey = process.env.OPENAI_API_KEY;
-        if (fallbackKey) {
-          try {
-            const fbResp = await fetch('https://api.openai.com/v1/audio/speech', {
-              method: 'POST',
-              headers: { 'Authorization': 'Bearer ' + fallbackKey, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'tts-1', voice: gender === 'male' ? 'onyx' : 'nova', input: String(text).slice(0, 4000), speed: ttsSpeed.openaiSpeed }),
-            });
-            if (fbResp.ok) {
-              const fbBuffer = await fbResp.arrayBuffer();
-              res.setHeader('Content-Type', 'audio/mpeg');
-              res.status(200).send(Buffer.from(fbBuffer));
-              return;
-            }
-          } catch (e) { /* fall through to error below */ }
+      let azResp = null;
+      for (const acct of azAccounts) {
+        try {
+          azResp = await fetch('https://' + acct.region + '.tts.speech.microsoft.com/cognitiveservices/v1', {
+            method: 'POST',
+            headers: {
+              'Ocp-Apim-Subscription-Key': acct.key,
+              'Content-Type': 'application/ssml+xml',
+              'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+              'User-Agent': 'omran-ai-builder-maha',
+            },
+            body: ssml,
+          });
+        } catch (e) { azResp = null; } // تعثّر شبكة لهذا الحساب — نجرّب التالي
+        if (azResp && azResp.ok) {
+          const azBuffer = await azResp.arrayBuffer();
+          res.setHeader('Content-Type', 'audio/mpeg');
+          res.setHeader('X-TTS-Tier', acct.tier); // للمسبار: هل خدم المجّانيّ أم المدفوع
+          res.status(200).send(Buffer.from(azBuffer));
+          return;
         }
-        const errText = await azResp.text();
-        res.status(azResp.status).json({ error: 'Azure TTS error: ' + errText.slice(0, 500) });
-        return;
       }
-      const azBuffer = await azResp.arrayBuffer();
-      res.setHeader('Content-Type', 'audio/mpeg');
-      res.status(200).send(Buffer.from(azBuffer));
+      // Azure hiccup (or an unavailable locale/voice) - fall back to
+      // OpenAI's multilingual TTS instead of failing the whole reply, so
+      // Maha still speaks something rather than going silent.
+      // v-tts-free: فقط حين يوجد مفتاح Azure مدفوع (المالك قبِل الدفع) — المجّانيّ وحده لا يلمس محرّكًا مدفوعًا.
+      const fallbackKey = azPaidKey ? process.env.OPENAI_API_KEY : '';
+      if (fallbackKey) {
+        try {
+          const fbResp = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + fallbackKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'tts-1', voice: gender === 'male' ? 'onyx' : 'nova', input: String(text).slice(0, 4000), speed: ttsSpeed.openaiSpeed }),
+          });
+          if (fbResp.ok) {
+            const fbBuffer = await fbResp.arrayBuffer();
+            res.setHeader('Content-Type', 'audio/mpeg');
+            res.setHeader('X-TTS-Tier', 'fallback');
+            res.status(200).send(Buffer.from(fbBuffer));
+            return;
+          }
+        } catch (e) { /* fall through to error below */ }
+      }
+      const errText = azResp ? await azResp.text() : 'network';
+      res.status(azResp ? azResp.status : 502).json({ error: 'Azure TTS error: ' + errText.slice(0, 500) });
       return;
     }
 

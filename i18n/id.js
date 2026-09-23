@@ -181,7 +181,7 @@ I18N['id'] = {
     "logoutTitle": "Keluar",
     "loginAction": "Masuk",
     "acctSectionTitle": "👤 Akun saya",
-    "statsSectionTitle": "Statistik saya",
+    "statsSectionTitle": "Proyek saya & cadangan",
     "statsProjectsLabel": "Jumlah proyek",
     "statsMessagesLabel": "Total pesan terkirim",
     "statsFavProviderLabel": "Penyedia favorit",
@@ -1085,3 +1085,9 @@ Object.assign(I18N['id'], {"tvMatches": "Jadwal pertandingan", "tvMatchLive": "S
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["id"], {"imgUndoPrev": "Dikembalikan ke versi sebelumnya 👆 Apa yang perlu diubah?", "imgUndoOrig": "Dikembalikan ke gambar asli 👆 Apa yang perlu diubah?", "imgUndoNone": "Ini versi pertama, tidak ada sebelumnya 👆 Apa yang perlu diubah?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["id"], {"ownerSectionTitle": "👑 Halaman pemilik"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["id"], {"imgUnchanged": "⚠️ Edit tidak diterapkan: gambar kembali tanpa perubahan, jadi tidak saya tampilkan dan tidak dihitung ke akunmu. Jelaskan persis apa yang harus berubah atau ucapkan dengan cara lain."});

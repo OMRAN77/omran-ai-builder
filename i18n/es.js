@@ -182,7 +182,7 @@ I18N['es'] = {
     "logoutTitle": "Cerrar sesión",
     "loginAction": "Iniciar sesión",
     "acctSectionTitle": "👤 Mi cuenta",
-    "statsSectionTitle": "Mis estadísticas",
+    "statsSectionTitle": "Mis proyectos y copia de seguridad",
     "statsProjectsLabel": "Número de proyectos",
     "statsMessagesLabel": "Total de mensajes enviados",
     "statsFavProviderLabel": "Proveedor favorito",
@@ -1086,3 +1086,9 @@ Object.assign(I18N['es'], {"tvMatches": "Calendario de partidos", "tvMatchLive":
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["es"], {"imgUndoPrev": "Volví a la versión anterior 👆 ¿Qué cambio?", "imgUndoOrig": "Volví a la original 👆 ¿Qué cambio?", "imgUndoNone": "Esta es la primera versión, no hay nada antes 👆 ¿Qué cambio?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["es"], {"ownerSectionTitle": "👑 Página del propietario"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["es"], {"imgUnchanged": "⚠️ La edición no se aplicó: la imagen volvió sin cambios, así que no la mostré y no se te cobró. Di exactamente qué debe cambiar o exprésalo de otra forma."});

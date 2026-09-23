@@ -193,7 +193,7 @@ I18N['bn'] = {
     logoutTitle: "লগ আউট করুন",
     loginAction: "লগইন করুন",
     acctSectionTitle: "👤 আমার অ্যাকাউন্ট",
-    statsSectionTitle: "আমার পরিসংখ্যান",
+    statsSectionTitle: "আমার প্রকল্প ও ব্যাকআপ",
     statsProjectsLabel: "প্রকল্প গণনা",
     statsMessagesLabel: "মোট বার্তা পাঠানো হয়েছে",
     statsFavProviderLabel: "প্রিয় প্রদানকারী",
@@ -1037,3 +1037,9 @@ Object.assign(I18N['bn'], {"tvMatches": "ম্যাচের সূচি", "t
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["bn"], {"imgUndoPrev": "আগের সংস্করণে ফিরিয়ে দিলাম 👆 কী বদলাব?", "imgUndoOrig": "মূল ছবিতে ফিরিয়ে দিলাম 👆 কী বদলাব?", "imgUndoNone": "এটাই প্রথম সংস্করণ, আগে কিছু নেই 👆 কী বদলাব?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["bn"], {"ownerSectionTitle": "👑 মালিকের পাতা"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["bn"], {"imgUnchanged": "⚠️ সম্পাদনা প্রয়োগ হয়নি: ছবিটি অপরিবর্তিত ফিরে এসেছে, তাই আমি দেখাইনি এবং আপনার কিছু কাটা হয়নি। ঠিক কী বদলাতে হবে বলুন, অথবা অন্যভাবে লিখুন।"});

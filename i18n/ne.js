@@ -193,7 +193,7 @@ I18N['ne'] = {
     logoutTitle: "लग आउट गर्नुहोस्",
     loginAction: "लगइन गर्नुहोस्",
     acctSectionTitle: "👤 मेरो खाता",
-    statsSectionTitle: "मेरो तथ्याङ्क",
+    statsSectionTitle: "मेरो परियोजना र ब्याकअप",
     statsProjectsLabel: "परियोजनाहरू गणना",
     statsMessagesLabel: "कुल सन्देशहरू पठाइयो",
     statsFavProviderLabel: "मनपर्ने प्रदायक",
@@ -1036,3 +1036,9 @@ Object.assign(I18N['ne'], {"tvMatches": "खेल तालिका", "tvMatch
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["ne"], {"imgUndoPrev": "अघिल्लो संस्करणमा फर्काएँ 👆 के बदलूँ?", "imgUndoOrig": "मूल तस्बिरमा फर्काएँ 👆 के बदलूँ?", "imgUndoNone": "यो पहिलो संस्करण हो, अघि केही छैन 👆 के बदलूँ?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["ne"], {"ownerSectionTitle": "👑 मालिकको पृष्ठ"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["ne"], {"imgUnchanged": "⚠️ सम्पादन लागू भएन: तस्बिर नबदलिई फर्कियो, त्यसैले देखाइनँ र तपाईंको केही कटेन। ठ्याक्कै के बदल्ने भन्नुहोस्, वा अर्को तरिकाले लेख्नुहोस्।"});

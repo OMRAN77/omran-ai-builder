@@ -240,6 +240,7 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 #plusToolsPopup .omModeItem[data-mode="image_nano"]{order:50;}   /* ٥ محرّك نانو (خام) */
 #plusToolsPopup .omModeItem[data-mode="image_text"]{order:60;}   /* ٦ صورة بنصّ دقيق */
 #plusToolsPopup .omModeItem[data-mode="image_gpt"]{order:70;}    /* ٧ محرّك GPT (خام) */
+#plusToolsPopup .omModeItem[data-mode="image_mix"]{order:72;}    /* ٨ دمج نانو + GPT (v-img-mix) — تحت GPT وفوق الفاصل */
 #plusToolsPopup .omModeSep{order:75;}                              /* فاصل فوق الحذف */
 #plusToolsPopup #btnDeleteChat{order:80;}                          /* حذف المحادثة (أسفل) */
 /* القائمة لا تُقصّ على الشاشات القصيرة: سقف ارتفاع مع تمرير عند اللزوم. */
