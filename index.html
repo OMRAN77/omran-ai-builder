@@ -105,8 +105,8 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <meta name="apple-mobile-web-app-title" content="Omran AI Builder">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=719">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css?v=720">
 <link rel="stylesheet" href="css/redesign.css?v=681">
 <link rel="stylesheet" href="css/modules.css?v=662">
 <script>
@@ -853,7 +853,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-2"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=070e059e"></script>
+    <script defer src="/js/app.bundle.js?v=71b9ed9e"></script>
     <script defer src="/js/modes.js?v=m220922b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -913,53 +913,13 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 
 <!-- v413 ديكور: إطار البطاقات · ذوبان حرفَي الشريط · مقبض اللوحة · زرّ المحادثة · الفواصل — كمبيوتر وجوّال -->
 
-    <!-- 🎨 تمييز الأرقام والروابط في ردود الذكاء بلون مختلف -->
+    <!-- 🎨 الروابط في ردود الذكاء ذهبيّة. v-num-plain (المالك ٢٣ سبتمبر «الأرقام تطلع باللون الذهبي، أريد فقط الروابط»):
+         أُزيل مُلوِّن الأرقام (.numHL) — كان يلفّ كلّ رقم بعد اكتمال الردّ بلون ذهبيّ. -->
     <style>
     /* v-links-yellow (أمر عمران «الروابط باللون الأصفر»): كانت خضراء — صارت صفراء مثل بقيّة الروابط. */
     .msg.assistant a{color:#e3b341 !important;font-weight:600;text-decoration:underline;text-underline-offset:2px;}
     body.dark .msg.assistant a, html.dark .msg.assistant a{color:#f5c451 !important;}
-    .numHL{color:#e8a020;font-weight:700;}
-    body.dark .numHL, html.dark .numHL{color:#f5c451;}
     </style>
-    <script>
-    (function(){
-    var SKIP = {A:1,CODE:1,PRE:1,SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,BUTTON:1};
-    var NUM_RE = /(\d[\d.,،:%\u066B\u066C]*\d%?|\d%?|[\u0660-\u0669][\u0660-\u0669.,،:%\u066B\u066C]*%?)/g;
-    function hl(root){
-      try{
-        var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-          acceptNode: function(n){
-            var p = n.parentNode;
-            for (var e = p; e && e !== root; e = e.parentNode) {
-              if (SKIP[e.nodeName] || (e.classList && e.classList.contains('numHL'))) return NodeFilter.FILTER_REJECT;
-            }
-            return /\d|[\u0660-\u0669]/.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-          }
-        });
-        var nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
-        nodes.forEach(function(n){
-          var frag = document.createDocumentFragment(), s = n.nodeValue, last = 0, m;
-          NUM_RE.lastIndex = 0;
-          while ((m = NUM_RE.exec(s))) {
-            if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
-            var sp = document.createElement('span'); sp.className = 'numHL'; sp.textContent = m[0];
-            frag.appendChild(sp); last = m.index + m[0].length;
-          }
-          if (last === 0) return;
-          if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
-          n.parentNode.replaceChild(frag, n);
-        });
-      }catch(e){}
-    }
-    var t = null;
-    new MutationObserver(function(){
-      clearTimeout(t);
-      t = setTimeout(function(){
-        document.querySelectorAll('.msg.assistant:not(.msg-streaming)').forEach(hl);
-      }, 600);
-    }).observe(document.body, {childList:true, subtree:true, characterData:true});
-    })();
-    </script> 
 <!-- ===== ✨ نجوم زر "محادثة جديدة" ===== -->
 <style>
 #omranNewChatBtn{ position:relative; overflow:hidden; }

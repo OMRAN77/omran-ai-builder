@@ -4,7 +4,10 @@
   var KEY = 'omran_font';
   var loaded = Object.create(null);
   var fonts = [
-    {id:'default', ar:'الافتراضي', en:'Default', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-font-plex (المالك ٢٣ سبتمبر «الخط مش جميل، شوف أحلى خط»): الافتراضيّ صار IBM Plex Sans Arabic —
+       أوضح خطّ عربيّ للقراءة الطويلة (فتحات حروف واسعة، أرقام متناسقة مع اللاتينيّ). تجوال باقٍ خيارًا. */
+    {id:'default', ar:'الافتراضي', en:'Default', family:"'IBM Plex Sans Arabic'", google:'', line:1.8},
+    {id:'tajawal', ar:'تجوال', en:'Tajawal', family:"'Tajawal'", google:'', line:1.7},
     {id:'kufi', ar:'الكوفي', en:'Kufi', family:"'Reem Kufi'", google:'Reem+Kufi:wght@400..700', line:1.85},
     {id:'naskh', ar:'النسخ', en:'Naskh', family:"'Amiri'", google:'Amiri:ital,wght@0,400;0,700;1,400', line:1.95},
     {id:'naskh2', ar:'نسخ نوتو', en:'Noto Naskh', family:"'Noto Naskh Arabic'", google:'Noto+Naskh+Arabic:wght@400..700', line:1.9},

@@ -1591,37 +1591,27 @@ function renderMessages(keepScroll){
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
     {
-      // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
+      // الروابط الخارجية الظاهرة في النصّ — تبقى روابط، وتُستثنى من بطاقة المصادر
       const __inlineLinks = [];
-      const __anchorEls = [];
       if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
           const title = a.textContent.trim() || url;
-          if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
+          if(url && !__inlineLinks.some(l => l.url === url)){
             __inlineLinks.push({ url, title });
           }
-          __anchorEls.push(a);
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
        const __isMapUrl = (url) => /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i.test(String(url || ''));
        const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
-       const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
-      const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
-      // v-src-dedupe (أمر عمران ب): رابط واحد ظاهر في الرد أصلًا = لا بطاقة مصادر
-      // مكرّرة؛ يبقى الرابط قابلًا للضغط داخل الرد. غير ذلك تُحوّل الروابط إلى نصّ
-      // (بلا href حتى لا تتفرّق) وتُجمع كلّها في البطاقة.
-      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
-      const __skipCard = validSrcs.length === 1 && __inlineLinks.length === 1 && __normU(__inlineLinks[0].url) === __normU(validSrcs[0].url);
-      if(!__skipCard){
-        __anchorEls.forEach(a => {
-          const span = document.createElement('span');
-          span.className = 'msgInlineRef';
-          span.textContent = a.textContent;
-          a.parentNode.replaceChild(span, a);
-        });
-      }
+      /* v-inline-links-stay (المالك ٢٣ سبتمبر: «يقول ادخل الرابط… يعطيني مرّة أو مرّتين صح والباقي يخربط»):
+         كان الرابط يبقى قابلًا للضغط في ردّ فيه رابط واحد فقط؛ رابطان فأكثر = كلّها تتحوّل نصًّا عاديًّا
+         (msgInlineRef) وتختفي في زرّ «المصادر» المطويّ. الآن الرابط في النصّ يبقى رابطًا ذهبيًّا يُفتح دائمًا،
+         وبطاقة «المصادر» لا تحمل إلّا مصادر البحث التي ليست ظاهرة في النصّ أصلًا. */
+      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
+      const validSrcs = __srcBase.filter(s => !__inlineLinks.some(l => __normU(l.url) === __normU(s.url))).slice(0, 15);
+      const __skipCard = false;
 
       if(validSrcs.length && !__skipCard){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
