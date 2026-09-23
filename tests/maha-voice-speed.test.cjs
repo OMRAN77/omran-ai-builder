@@ -90,7 +90,7 @@ test('api/_lib/tts.js: خريطة السرعة الأربع صحيحة (Azure % 
     return new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 });
   };
   try {
-    for (const [speed, openaiSpeed] of [['slow', 0.9], ['normal', 1], ['fast', 1.1], ['xfast', 1.2], [undefined, 1]]) { // v-maha-pace: مدى هادئ
+    for (const [speed, openaiSpeed] of [['slow', 0.8], ['normal', 1], ['fast', 1.2], ['xfast', 1.4], [undefined, 1]]) { // v-voice-speed-range: مدى يُسمع
       calls.length = 0;
       const res = fakeRes();
       await handler({ method: 'POST', body: { text: 'hi', voice: 'onyx', speed }, headers: {}, socket: {} }, res);

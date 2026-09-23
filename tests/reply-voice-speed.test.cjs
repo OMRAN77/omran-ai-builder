@@ -65,7 +65,7 @@ test('٢. صوت الردود (fetchCloudSpeech) يرسل السرعة مع ال
 test('٣. صوت الجهاز الاحتياطيّ بالسرعة نفسها، والحزمة مطابقة', () => {
   for (const f of ['js/app-02-tts.js', 'js/app.bundle.js']) {
     const s = read(f);
-    assert.ok(s.includes("utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1;"), f);
+    assert.ok(s.includes("utter.rate = ({ slow: 0.8, normal: 1, fast: 1.2, xfast: 1.4 })[ttsSpeedSetting()] || 1;"), f); // v-voice-speed-range
     assert.ok(s.includes('text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })'), f);
   }
 });
@@ -91,7 +91,7 @@ test('٤. مكالمة مها المباشرة: معامل السرعة الحق
     return bodies[bodies.length - 1].session;
   };
   try {
-    const want = { slow: 0.9, normal: 1.0, fast: 1.1, xfast: 1.2 }; // v-maha-pace
+    const want = { slow: 0.8, normal: 1.0, fast: 1.2, xfast: 1.4 }; // v-voice-speed-range
     for (const [v, speed] of Object.entries(want)) {
       const s = await run({ voiceSpeed: v });
       assert.equal(s.audio.output.speed, speed, v);

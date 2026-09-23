@@ -51,12 +51,13 @@ document.querySelectorAll('.voiceSpeedBtn').forEach(b => {
 const btnTestVoice = $('#btnTestVoice');
 if(btnTestVoice){
   btnTestVoice.onclick = () => {
+    // v-voice-speed-range: جملة الثانيتين كان فرق السرعات فيها أقلّ من نصف ثانية فلا يُسمع — جملتان تُظهران الإيقاع
     const testTextByLang = {
-      ar: 'مرحبًا، هذا اختبار للصوت.',
-      en: 'Hello, this is a voice test.',
-      fr: 'Bonjour, ceci est un test de la voix.',
-      hi: 'नमस्ते, यह आवाज़ का परीक्षण है।',
-      ur: 'ہیلو، یہ آواز کا امتحان ہے۔'
+      ar: 'مرحبًا، هذا اختبار لسرعة الصوت. هكذا ستسمع قراءة الردود في التطبيق.',
+      en: 'Hello, this is a voice speed test. This is how replies will be read to you in the app.',
+      fr: 'Bonjour, ceci est un test de la vitesse de la voix. Voici comment les réponses vous seront lues.',
+      hi: 'नमस्ते, यह आवाज़ की गति का परीक्षण है। ऐप में जवाब आपको इसी तरह पढ़कर सुनाए जाएँगे।',
+      ur: 'ہیلو، یہ آواز کی رفتار کا امتحان ہے۔ ایپ میں جوابات آپ کو اسی طرح پڑھ کر سنائے جائیں گے۔'
     };
     speakSmart(testTextByLang[lang] || testTextByLang.en, null, null, true);
   };

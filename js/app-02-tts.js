@@ -586,7 +586,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
     utter.lang = langTags[detectedLang] || 'en-US';
     const v = pickVoice(detectedLang);
     if(v) utter.voice = v;
-    utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed + v-maha-pace: صوت الجهاز الاحتياطيّ بالمدى الهادئ نفسه
+    utter.rate = ({ slow: 0.8, normal: 1, fast: 1.2, xfast: 1.4 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed + v-voice-speed-range: صوت الجهاز الاحتياطيّ بالمدى نفسه
     const offsets = wordEls && wordEls.length ? allOffsets : null;
     if(offsets){
       utter.onboundary = (e) => {

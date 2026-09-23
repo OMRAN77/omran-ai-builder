@@ -37,11 +37,13 @@ module.exports = async (req, res) => {
     // لـ/api/tts (صانع الفيديو، الاستوديو، "استمع" في المحادثة) لا يرسل speed أصلًا.
     // v-maha-pace (المالك: «يا بطيئة ما تفهم عليها ولا سريعة ما تفهم عليها»): ±٢٥٪ و+٥٠٪ كانت خارج الكلام الطبيعيّ.
     // مدى هادئ موحّد مع المكالمة المباشرة (realtime-session.js) وصوت الجهاز الاحتياطيّ (app-02).
+    // v-voice-speed-range (المالك: «البطيء جدًّا والسريع جدًّا كأنّه عادي»): ±١٠٪ لا تُسمع — ٠٫٨/١/١٫٢/١٫٤ بين المدى الهادئ
+    // والمدى الأوّل (٠٫٧٥/١٫٥ «ما تفهم عليها»)، وكلّ درجة تبعد ١٥٪ فأكثر عن جارتها.
     const TTS_SPEED_MAP = {
-      slow: { azureRate: '-10%', openaiSpeed: 0.9 },
+      slow: { azureRate: '-20%', openaiSpeed: 0.8 },
       normal: { azureRate: '0%', openaiSpeed: 1 },
-      fast: { azureRate: '+10%', openaiSpeed: 1.1 },
-      xfast: { azureRate: '+20%', openaiSpeed: 1.2 },
+      fast: { azureRate: '+20%', openaiSpeed: 1.2 },
+      xfast: { azureRate: '+40%', openaiSpeed: 1.4 },
     };
     const ttsSpeed = TTS_SPEED_MAP[speed] || TTS_SPEED_MAP.normal;
 

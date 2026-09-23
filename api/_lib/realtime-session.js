@@ -481,7 +481,8 @@ module.exports = async (req, res) => {
     // ووقفات)، لذلك المعاملات أهدأ من خريطة tts.js كي لا يتضاعف الأثر فيصعب الفهم.
     // v-maha-pace (المالك: «يا بطيئة ما تفهم عليها ولا سريعة ما تفهم عليها، مش نظاميّة»): المعامل كان يتضاعف مع تعليمة
     // نبرة متطرّفة («مثل الدلّال في المزاد»). الآن مدى هادئ موحّد مع tts.js، والعاديّ 1.0 كالمحادثة الصوتيّة المعتادة.
-    const REALTIME_SPEED = { slow: 0.9, normal: 1.0, fast: 1.1, xfast: 1.2 };
+    // v-voice-speed-range (المالك: «البطيء جدًّا والسريع جدًّا كأنّه عادي»): المدى الهادئ لا يُسمع — موحّد مع tts.js.
+    const REALTIME_SPEED = { slow: 0.8, normal: 1.0, fast: 1.2, xfast: 1.4 };
     if (mode !== 'builder') sessionConfig.session.audio.output.speed = REALTIME_SPEED[voiceSpeed] || 1.0;
 
     const postSession = () => fetch('https://api.openai.com/v1/realtime/client_secrets', {
@@ -495,6 +496,20 @@ module.exports = async (req, res) => {
 
     let upstream = await postSession();
     let rawText = await upstream.text();
+    // v-voice-speed-range: كان أيّ رفض أوّل (حقل التفريغ، عطل عابر ٥٠٠/٤٢٩) يحذف السرعة قبل الإعادة، فتسير المكالمة على
+    // «عاديّ» بصمت مهما اختار المستخدم. الآن: الخطأ الذي يسمّي حقلًا يحذفه وحده، وما لا يسمّي شيئًا يُعاد كما هو مرّة؛
+    // والحذف القديم أدناه يبقى شبكة أمان لخطأ عنيد، فالمكالمة لا تنكسر بسبب حقل اختياريّ أبدًا.
+    if (!upstream.ok) {
+      const __names = (re) => re.test(rawText);
+      if (sessionConfig.session.audio.output.speed != null && __names(/speed/i)) {
+        delete sessionConfig.session.audio.output.speed;
+      } else if (sessionConfig.session.audio.input.transcription && __names(/transcri/i)) {
+        delete sessionConfig.session.audio.input.transcription;
+      }
+      console.warn('[realtime-session] retry after', upstream.status, String(rawText).slice(0, 200));
+      upstream = await postSession();
+      rawText = await upstream.text();
+    }
     // بعض إصدارات واجهة realtime لا تقبل حقل السرعة — أعِد المحاولة بدونه
     if (!upstream.ok && sessionConfig.session.audio.output.speed != null) {
       delete sessionConfig.session.audio.output.speed;
