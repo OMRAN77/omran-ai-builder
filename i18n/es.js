@@ -182,7 +182,7 @@ I18N['es'] = {
     "logoutTitle": "Cerrar sesión",
     "loginAction": "Iniciar sesión",
     "acctSectionTitle": "👤 Mi cuenta",
-    "statsSectionTitle": "Mis estadísticas",
+    "statsSectionTitle": "Mis proyectos y copia de seguridad",
     "statsProjectsLabel": "Número de proyectos",
     "statsMessagesLabel": "Total de mensajes enviados",
     "statsFavProviderLabel": "Proveedor favorito",

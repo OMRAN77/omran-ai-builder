@@ -176,7 +176,7 @@ I18N['zh'] = {
     "logoutTitle": "退出登录",
     "loginAction": "登录",
     "acctSectionTitle": "👤 我的账户",
-    "statsSectionTitle": "我的统计数据",
+    "statsSectionTitle": "我的项目与备份",
     "statsProjectsLabel": "项目数量",
     "statsMessagesLabel": "发送消息总数",
     "statsFavProviderLabel": "收藏的服务商",

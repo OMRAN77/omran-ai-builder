@@ -2773,7 +2773,7 @@ const I18N = {
     modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
     provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق',
     acctLoginBtnLabel: '🔐 تسجيل الدخول / حساب جديد',
-    statsSectionTitle: 'إحصائياتي',
+    statsSectionTitle: 'مشاريعي والنسخ الاحتياطي',
     statsProjectsLabel: 'عدد المشاريع',
     statsMessagesLabel: 'إجمالي الرسائل المُرسلة',
     statsFavProviderLabel: 'أكثر مزوّد تستخدمه',
@@ -3823,7 +3823,7 @@ const I18N = {
     modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
     provNickKing: 'The King', provNickFast: 'The Fast', provNickDeep: 'The Deep',
     acctLoginBtnLabel: '🔐 Sign in / Create account',
-    statsSectionTitle: 'My stats',
+    statsSectionTitle: 'My projects & backup',
     statsProjectsLabel: 'Projects count',
     statsMessagesLabel: 'Total messages sent',
     statsFavProviderLabel: 'Favorite provider',
@@ -4626,7 +4626,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=684'; /* v-owner-page: مفتاح «صفحة المالك». قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=685'; /* v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -10038,7 +10038,7 @@ try{
     if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ /* guard-ok */ } }
   }, true);
 }catch(e){ /* guard-ok */ }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','ownerSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','ownerSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;
@@ -10176,7 +10176,7 @@ function collapseAllSettingsSections(){
 
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
 // v-owner-page: «صفحة المالك» أوّل القائمة، وتُتخطّى لغير المالك (settingsOwnerUi)
-const SETTINGS_NAV_IDS = ['ownerSection','langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
+const SETTINGS_NAV_IDS = ['ownerSection','langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
@@ -10199,15 +10199,28 @@ function stripUiEmoji(t){ try{ return (t||'').replace(/[\u{1F000}-\u{1FAFF}\u{21
 function settingsOwnerUi(){
   try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
 }
+function settingsLabelWidth(listEl){
+  try{
+    const ctx = document.createElement('canvas').getContext('2d');
+    const cs = getComputedStyle(listEl);
+    ctx.font = (cs.fontWeight || '400') + ' ' + (cs.fontSize || '15px') + ' ' + (cs.fontFamily || 'sans-serif');
+    return (txt) => ctx.measureText(String(txt || '')).width;
+  }catch(e){ return (txt) => String(txt || '').length; }
+}
 function renderSettingsNavList(){
   const listEl = document.getElementById('settingsNavList');
   if(!listEl) return;
   listEl.innerHTML = '';
   const owner = settingsOwnerUi();
-  SETTINGS_NAV_IDS.forEach(sid => {
-    if(sid === 'ownerSection' && !owner) return;
-    const headerH3 = document.querySelector('#' + sid + ' .settingsSectionHeader h3');
-    const label = stripUiEmoji(headerH3 ? headerH3.textContent : sid);
+  const labelOf = (sid) => { const h = document.querySelector('#' + sid + ' .settingsSectionHeader h3'); return stripUiEmoji(h ? h.textContent : sid); };
+  const ids = SETTINGS_NAV_IDS.filter(sid => document.getElementById(sid) && (sid !== 'ownerSection' || owner));
+  // v-settings-tidy (أمر عمران «رتّب الإعدادات من الأصغر فوق إلى الأكبر»): الصفوف بعرض عنوانها
+  // المقيس بخطّ القائمة، الأقصر فوق؛ «صفحة المالك» تبقى أوّلًا. الترتيب يتبع اللغة الحاليّة.
+  const width = settingsLabelWidth(listEl);
+  const rest = ids.filter(sid => sid !== 'ownerSection').map((sid, i) => ({ sid, i, w: width(labelOf(sid)) }))
+    .sort((a, b) => (a.w - b.w) || (a.i - b.i)).map(x => x.sid);
+  (ids.includes('ownerSection') ? ['ownerSection'].concat(rest) : rest).forEach(sid => {
+    const label = labelOf(sid);
     const row = document.createElement('div');
     row.className = 'settingsNavRow' + (sid === 'ownerSection' ? ' settingsNavOwner' : '');
     row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +

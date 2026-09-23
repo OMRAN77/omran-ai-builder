@@ -192,7 +192,7 @@ I18N['ur'] = {
     logoutTitle: "لاگ آؤٹ",
     loginAction: "لاگ ان",
     acctSectionTitle: "👤 میرا اکاؤنٹ",
-    statsSectionTitle: "میرے اعداد و شمار",
+    statsSectionTitle: "میرے پروجیکٹس اور بیک اپ",
     statsProjectsLabel: "پراجیکٹس کی تعداد",
     statsMessagesLabel: "کل بھیجے گئے پیغامات",
     statsFavProviderLabel: "پسندیدہ پرووائیڈر",

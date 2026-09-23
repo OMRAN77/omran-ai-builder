@@ -194,7 +194,7 @@ I18N['hi'] = {
     logoutTitle: "लॉग आउट",
     loginAction: "लॉग इन",
     acctSectionTitle: "👤 मेरा खाता",
-    statsSectionTitle: "मेरे आँकड़े",
+    statsSectionTitle: "मेरे प्रोजेक्ट और बैकअप",
     statsProjectsLabel: "प्रोजेक्ट संख्या",
     statsMessagesLabel: "कुल भेजे गए संदेश",
     statsFavProviderLabel: "पसंदीदा प्रोवाइडर",

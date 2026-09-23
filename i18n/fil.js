@@ -183,7 +183,7 @@ I18N['fil'] = {
     "logoutTitle": "Mag-log out",
     "loginAction": "Mag-login",
     "acctSectionTitle": "👤 Aking account",
-    "statsSectionTitle": "Aking mga istatistika",
+    "statsSectionTitle": "Aking mga proyekto at backup",
     "statsProjectsLabel": "Bilang ng mga proyekto",
     "statsMessagesLabel": "Kabuuang mensaheng naipadala",
     "statsFavProviderLabel": "Paboritong provider",

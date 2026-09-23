@@ -193,7 +193,7 @@ I18N['ne'] = {
     logoutTitle: "लग आउट गर्नुहोस्",
     loginAction: "लगइन गर्नुहोस्",
     acctSectionTitle: "👤 मेरो खाता",
-    statsSectionTitle: "मेरो तथ्याङ्क",
+    statsSectionTitle: "मेरो परियोजना र ब्याकअप",
     statsProjectsLabel: "परियोजनाहरू गणना",
     statsMessagesLabel: "कुल सन्देशहरू पठाइयो",
     statsFavProviderLabel: "मनपर्ने प्रदायक",

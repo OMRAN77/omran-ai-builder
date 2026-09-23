@@ -39,7 +39,7 @@ test('٢. صفّ «صفحة المالك» أوّل القائمة للمالك 
     const el = (extra) => Object.assign({ style: {}, classList: { add(){}, remove(){} }, textContent: '' }, extra);
     const list = el({ set innerHTML(v){ rows.length = 0; }, appendChild(r){ rows.push(r); } });
     const document = {
-      getElementById: (id) => id === 'settingsNavList' ? list : null,
+      getElementById: (id) => id === 'settingsNavList' ? list : {},
       querySelector: (q) => ({ textContent: q.includes('ownerSection') ? '👑 صفحة المالك' : q }),
       querySelectorAll: () => [],
       createElement: () => { const r = el({ innerHTML: '' }); r.querySelector = () => r; return r; },
@@ -49,11 +49,11 @@ test('٢. صفّ «صفحة المالك» أوّل القائمة للمالك 
     return { rows, open: g(document, () => user, null, () => {}, shown, {}) };
   };
   const owner = run('Omran');
-  assert.equal(owner.rows.length, 15);
+  assert.equal(owner.rows.length, 14); // v-settings-tidy: حُذف «الوكيل»
   assert.equal(owner.rows[0].className, 'settingsNavRow settingsNavOwner');
   assert.equal(owner.rows[0].textContent, 'صفحة المالك');
   const guest = run('ali');
-  assert.equal(guest.rows.length, 14);
+  assert.equal(guest.rows.length, 13);
   assert.ok(guest.rows.every(r => !/Owner/.test(r.className)));
   assert.deepEqual(guest.open('ownerSection'), ['home'], 'غير المالك يُعاد للقائمة');
 });
@@ -66,7 +66,7 @@ test('٣. العنوان بالـ١٤ لغة، والقائمة تُعاد بن�
   }
   assert.match(read('js/app-01-boot-auth.js'), /if\(typeof renderSettingsNavList === 'function'\) renderSettingsNavList\(\);/);
   const html = read('index.html');
-  assert.match(html, /js\/partials-settings\.js\?v=661/);
+  assert.match(html, /js\/partials-settings\.js\?v=662/);
   assert.match(html, /css\/tokens\.css\?v=721/);
-  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=684'/);
+  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=685'/);
 });
