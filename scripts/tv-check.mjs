@@ -271,7 +271,12 @@ try {
       try {
         const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + lg + '/scoreboard?dates=' + d, { signal: AbortSignal.timeout(15000) });
         if (!r.ok) { console.log('مباريات ' + lg + ' ' + d + ': ' + r.status); continue; }
-        got.push(...parseEspn(await r.json(), lg));
+        const j = await r.json();
+        const got1 = parseEspn(j, lg);
+        const evs = (j && j.events) || [];
+        console.log('مباريات ' + lg + ' ' + d + ': ' + evs.length + ' حدث ← ' + got1.length + ' مقروءة');
+        if (evs.length && !got1.length) console.log('  عيّنة: ' + JSON.stringify(evs[0]).slice(0, 700));
+        got.push(...got1);
       } catch (e) { console.log('مباريات ' + lg + ' ' + d + ' تخطّت: ' + (e && e.message)); }
     }
   }
