@@ -206,7 +206,7 @@
     { n: 'Asianet News (مالايالام)', h: 'asianetnews', c: 'in_', g: 'news' },
     { n: 'Manorama News (مالايالام)', h: 'manoramanews', c: 'in_', g: 'news' },
     { n: 'Polimer News (تاميل)', h: 'PolimerNews', c: 'in_', g: 'news' },
-    { n: 'Star Sports (يوتيوب)', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
+    { n: 'Star Sports', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
     // ——— باكستان
     { n: 'Geo News (أردو)', h: 'GeoNews', c: 'pk', g: 'news' },
     { n: 'ARY News (أردو)', h: 'ArynewsTvofficial', c: 'pk', g: 'news' },
@@ -234,7 +234,7 @@
     { n: 'Kantipur TV (نيبالي)', h: 'KantipurTVHD', c: 'np', g: 'news' },
     // ——— بريطانيا / أمريكا
     { n: 'Sky News', h: 'SkyNews', c: 'uk', g: 'news' },
-    { n: 'BBC News (يوتيوب)', h: 'BBCNews', c: 'uk', g: 'news' },
+    { n: 'BBC News', h: 'BBCNews', c: 'uk', g: 'news' },
     { n: 'ABC News Live', h: 'ABCNews', c: 'us', g: 'news' },
     { n: 'NBC News Now', h: 'NBCNews', c: 'us', g: 'news' },
     { n: 'CBS News', h: 'CBSNews', c: 'us', g: 'news' },
@@ -890,13 +890,11 @@
   var TV_STATUS = null;
   var TV_SPORTS_FRESH = [];
   var TV_MATCHES = [];
-  var TV_CHECKED_AT = 0;                 // v659: زمن آخر فحص يومي
   function loadStatus(){
     return fetch('/tv-status.json', { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(d){
-        TV_STATUS = (d && d.channels) || null;
-        TV_CHECKED_AT = (d && d.checkedAt) ? (Date.parse(d.checkedAt) || 0) : 0;
+        TV_STATUS = d ? (d.channels || {}) : null; // v-tv-no-youtube: علامة «حُمّل»؛ الفاحص لم يعد يكتب قنوات يوتيوب
         try{ window.__tvStreamsStatus = (d && d.streams) || null; }catch(e){ __swallow(e, 'tv:ss'); }
         /* v-tv-sports-fresh + v-tv-matches: قائمة الرياضة الطازجة وجدول المباريات من الفحص اليوميّ. */
         TV_SPORTS_FRESH = (d && Array.isArray(d.sports)) ? d.sports : [];
@@ -904,12 +902,11 @@
       })
       .catch(function(e){ __swallow(e, 'tv:status'); });
   }
-  function stOf(ch){ return (ch.h && TV_STATUS && TV_STATUS[ch.h]) || null; }
 
   /* v-tv-hls (طلب المالك: بث مباشر بلا يوتيوب): tv-streams.json — روابط بث
    * HLS رسمية عامة (فهرس iptv-org) لقنواتنا + قائمة رياضية عالمية. القناة
    * التي لها رابط مباشر تُشغَّل في مشغّلنا الخاص (بلا أي علامة يوتيوب)،
-   * ويوتيوب يبقى احتياطًا. رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
+   * ولا يوتيوب إطلاقًا (v-tv-no-youtube). رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
   var TV_M3U = null;
   var TV_M3U_BAD = {};
   function loadStreams(){
@@ -971,9 +968,6 @@
   /* v-tv-hls: الفاحص يمر مرة باليوم — نافذة «طازج» ٣ ساعات كانت تجعل الفلتر
    * يعمل ٣ ساعات فقط وبقية اليوم تظهر القنوات الميتة كلها. ٢٦ ساعة تغطي
    * الدورة كاملة، و«بثت مؤخرًا» ٣٠ يومًا كي لا تختفي قناة تبث أحيانًا. */
-  var FRESH_MS = 26 * 36e5;
-  var RECENT_MS = 30 * 864e5;
-  function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
   /* v-direct-tv: أبقِ أسماء الدليل الحالية، لكن التشغيل لا يمر إلا عبر HLS/DASH. */
   /* v-tv-inapp-only (طلب المالك: «القنوات تحوّلني على جوجل وقنوات اليوتيوب
      مااريدها»): لا تُعرض إلّا قناة لها بثّ مباشر يشتغل داخل التطبيق. القنوات
@@ -1001,10 +995,8 @@
         '<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;">' +
           '<button type="button" id="tvBack" style="background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 14px;color:inherit;cursor:pointer;">' + tvBackLbl() + '</button>' +
           '<span id="tvNowName" style="font-size:14px;font-weight:700;"></span>' +
-          '<button type="button" id="tvExt" style="display:none;margin-inline-start:auto;background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 12px;color:inherit;cursor:pointer;font-size:12px;">↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube') + '</button>' +
         '</div>' +
         '<div style="flex:1;min-height:0;background:#000;position:relative;">' +
-          '<iframe id="tvFrame" style="width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
           /* v-tv-hls: مشغّلنا الخاص — بث مباشر نظيف بلا أي علامة يوتيوب */
           '<video id="tvVideo" controls playsinline style="display:none;position:absolute;inset:0;width:100%;height:100%;background:#000;"></video>' +
         '</div>' +
@@ -1019,7 +1011,6 @@
     document.body.appendChild(el);
     el.querySelector('#tvClose').onclick = closeTv;
     el.querySelector('#tvBack').onclick = stopPlayer;
-    el.querySelector('#tvExt').onclick = function(){ if(S.nowUrl) openExternal(S.nowUrl); };
     el.querySelector('#tvSearch').oninput = function(){ S.q = this.value.trim(); renderGrid(); };
     return el;
   }
@@ -1294,7 +1285,6 @@
     function playHls(ch, url, card, onFail){
       var el = shell();
       var v = el.querySelector('#tvVideo');
-      var fr = el.querySelector('#tvFrame');
       var failed = false;
       var timer = setTimeout(fail, 18000); // مهلة أطول للبثّ البطيء قبل الاستسلام
       function ready(){ if(timer){ clearTimeout(timer); timer = null; } }
@@ -1309,10 +1299,6 @@
       function show(){
         S.nowName = ch.n;
         el.querySelector('#tvNowName').textContent = tvChName(ch.n);
-        S.nowUrl = '';
-        var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
-        fr.src = 'about:blank';
-        fr.style.display = 'none';
         v.style.display = 'block';
         el.querySelector('#tvBrowse').style.display = 'none';
         el.querySelector('#tvPlayerWrap').style.display = 'flex';
@@ -1396,8 +1382,6 @@
     if(el){
       var v = el.querySelector('#tvVideo');
       if(v){ try{ v.pause(); }catch(e){ __swallow(e, 'tv:vid-pause'); } v.removeAttribute('src'); try{ v.load(); }catch(e){ __swallow(e, 'tv:vid-load'); } v.style.display = 'none'; }
-      var fr = el.querySelector('#tvFrame');
-      if(fr) fr.style.display = '';
     }
   }
 
@@ -1425,10 +1409,7 @@
 
   function stopPlayer(){
     var el = shell();
-    S.nowUrl = '';
     stopHls();                             /* v-tv-hls */
-    var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
-    el.querySelector('#tvFrame').src = 'about:blank';
     el.querySelector('#tvPlayerWrap').style.display = 'none';
     el.querySelector('#tvBrowse').style.display = 'flex';
   }
@@ -1460,7 +1441,6 @@
     el.dir = tvDir();
     var q = el.querySelector('#tvTitleTxt'); if(q) q.textContent = tvT('tvTitle', '📺 تلفزيون', '📺 TV');
     q = el.querySelector('#tvBack'); if(q) q.textContent = tvBackLbl();
-    q = el.querySelector('#tvExt'); if(q) q.textContent = '↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube');
     q = el.querySelector('#tvSearch'); if(q) q.placeholder = '🔍 ' + tvT('tvSearchPh', 'ابحث عن قناة...', 'Search channels...');
     q = el.querySelector('#tvNowName'); if(q && S.nowName) q.textContent = tvChName(S.nowName);
     try{ renderChips(); }catch(e){ __swallow(e, 'tv:relang-chips'); }

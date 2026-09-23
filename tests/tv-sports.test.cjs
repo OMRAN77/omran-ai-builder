@@ -3,7 +3,7 @@
 // يثبت: (١) بناء قائمة الرياضة الطازجة من الفهرس يستبعد المدفوع والمحظور والمغلق وhttp وما يحتاج Referer،
 // والعربيّ أوّلًا؛ (٢) قراءة جدول ESPN ونافذته؛ (٣) فلتر العميل: التفاؤل الجغرافيّ للعربيّ وحده في شاشة
 // الرياضة، وأسباب الفحص العميق تُخفي الميت؛ (٤) شاشة المباريات بلا innerHTML لأسماء خارجيّة وبلا زرّ
-// تشغيل لمدفوع؛ (٥) المفاتيح في الـ14 لغة؛ (٦) الفاحص يكتب sports وmatches.
+// تشغيل لمدفوع؛ (٥) المفاتيح في الـ14 لغة؛ (٦) الفاحص يكتب sports وmatches؛ (٧) لا يوتيوب إطلاقًا.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -134,7 +134,7 @@ test('٥. مفاتيح الجدول في الـ14 لغة ووسم اللغات �
     const s = read('i18n/' + lg + '.js');
     K.forEach((k) => assert.ok(s.includes('"' + k + '":'), lg + ': ' + k));
   });
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=681'"), 'وسم ملفّات اللغات');
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=682'"), 'وسم ملفّات اللغات');
 });
 
 test('٦. الفاحص يبني الطازجة ويفحص روابطها ويكتب sports وmatches', () => {
@@ -144,4 +144,18 @@ test('٦. الفاحص يبني الطازجة ويفحص روابطها ويك�
   assert.ok(s.includes('  sports: sportsOut,\n  matches,\n'), 'تُكتب في tv-status.json');
   assert.ok(s.includes('st.deep = await deepProbe(body, r.url || u);'), 'الفحص العميق حتّى أوّل مقطع');
   assert.ok(s.includes("const days = [''].concat(Array.from({ length: MATCH_DAYS }, (_, i) => ymd(now + i * 864e5)));"), 'الجولة الحاليّة + ١٤ يومًا يومًا يومًا');
+});
+
+// v-tv-no-youtube (المالك: «مااريد شي اسمه يوتيوب — اريد شغل مباشر»): لا زرّ ولا إطار ولا اسم ولا نصّ يوتيوب،
+// والفاحص لا يطلب youtube.com أصلًا — البثّ المباشر داخل التطبيق وحده.
+test('٧. لا يوتيوب: المشغّل والأسماء والـ14 لغة والفاحص', () => {
+  const tv = read('js/app-25-tv.js');
+  assert.ok(!/id="tvExt"|id="tvFrame"|#tvExt|#tvFrame|tvYoutube/.test(tv), 'لا زرّ يوتيوب ولا إطار تضمين');
+  assert.ok(!/n: '[^']*يوتيوب/.test(tv), 'لا قناة اسمها يحمل «يوتيوب»');
+  assert.ok(tv.includes('<video id="tvVideo"'), 'المشغّل المباشر باقٍ');
+  const langs = ['js/app-03-i18n-data.js'].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((l) => 'i18n/' + l + '.js'));
+  langs.forEach((f) => assert.ok(!read(f).includes('tvYoutube'), f));
+  const chk = read('scripts/tv-check.mjs');
+  assert.ok(!/youtube\.com|liveInfo|bySearch|byHandle\(/.test(chk), 'الفاحص بلا يوتيوب');
+  assert.ok(!chk.includes('  channels,\n'), 'لا قسم قنوات يوتيوب في tv-status.json');
 });
