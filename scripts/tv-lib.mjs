@@ -33,7 +33,7 @@ export function buildSports(channels, streams, blocklist, max = 700) {
     .slice(0, max);
 }
 
-export const MATCH_LEAGUES = ['uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1', 'egy.1', 'afc.champions'];
+export const MATCH_LEAGUES = ['uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1', 'afc.champions']; // egy.1 ردّ 400 في كلّ تشغيل
 
 const teamName = (x) => String((x && x.team && (x.team.displayName || x.team.shortDisplayName || x.team.name)) || '').slice(0, 60);
 

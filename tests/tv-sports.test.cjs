@@ -142,5 +142,5 @@ test('٦. الفاحص يبني الطازجة ويفحص روابطها ويك�
   assert.ok(s.includes("freshSports.forEach((e) => e.m.forEach((u) => urls.add(u)));"), 'روابط الطازجة تُفحص مع البقيّة');
   assert.ok(s.includes('  sports: sportsOut,\n  matches,\n'), 'تُكتب في tv-status.json');
   assert.ok(s.includes('st.deep = await deepProbe(body, r.url || u);'), 'الفحص العميق حتّى أوّل مقطع');
-  assert.ok(s.includes("const days = ['', ymd(now), ymd(now + 864e5)];"), 'الجولة الحاليّة بلا تاريخ + اليوم والغد');
+  assert.ok(s.includes("const days = [''].concat(Array.from({ length: 7 }, (_, i) => ymd(now + i * 864e5)));"), 'الجولة الحاليّة + الأيّام السبعة القادمة يومًا يومًا');
 });

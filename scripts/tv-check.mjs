@@ -261,11 +261,12 @@ const sportsOut = freshSports
   .filter((e) => e.m.length);
 
 /* v-tv-matches: جدول المباريات من لوحة ESPN العامّة — الجولة الحاليّة لكلّ دوري (بلا تاريخ) + اليوم والغد،
- * نافذة ٧ أيّام. لقطة يوميّة، لا نتائج حيّة. (تجربة ٢٣ سبتمبر: اليوم والغد وحدهما = ٠ حدث في كلّ الدوريّات.) */
+ * والأيّام السبعة القادمة يومًا يومًا. لقطة يوميّة، لا نتائج حيّة. (تجربة ٢٣ سبتمبر: «الجولة الحاليّة» = الجولة
+ * المنتهية للتوّ، واليوم والغد فارغان منتصف الأسبوع — فالجدول يحتاج كلّ يوم من الأسبوع القادم.) */
 let matches = [];
 try {
   const now = Date.now();
-  const days = ['', ymd(now), ymd(now + 864e5)];
+  const days = [''].concat(Array.from({ length: 7 }, (_, i) => ymd(now + i * 864e5)));
   const got = [];
   for (const lg of MATCH_LEAGUES) {
     for (const d of days) {
@@ -275,7 +276,8 @@ try {
         const j = await r.json();
         const got1 = parseEspn(j, lg);
         const evs = (j && j.events) || [];
-        console.log('مباريات ' + lg + ' ' + (d || 'الجولة الحاليّة') + ': ' + evs.length + ' حدث ← ' + got1.length + ' مقروءة');
+        const span = got1.length ? ' (' + got1[0].t.slice(0, 10) + ' … ' + got1[got1.length - 1].t.slice(0, 10) + ')' : '';
+        if (evs.length || !d) console.log('مباريات ' + lg + ' ' + (d || 'الجولة الحاليّة') + ': ' + evs.length + ' حدث ← ' + got1.length + ' مقروءة' + span);
         if (evs.length && !got1.length) console.log('  عيّنة: ' + JSON.stringify(evs[0]).slice(0, 700));
         got.push(...got1);
       } catch (e) { console.log('مباريات ' + lg + ' ' + d + ' تخطّت: ' + (e && e.message)); }
