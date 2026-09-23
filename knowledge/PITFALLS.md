@@ -101,6 +101,11 @@
 - **قائمة أرقام داخل نصّ عربيّ على canvas تنقلب:** `fillText('رأيتُ: 56, 91, 66')` في صفحة rtl يظهر «66, 91, 56». لُفّ الجزء الرقميّ بعزل `\u2066…\u2069` واضبط `ctx.direction` من المحتوى (v-edu-algo، `js/edu-algo.js`).
 - **اختبار دوالّ من `vm.runInNewContext`:** الكائنات من نطاق آخر فتفشل `deepStrictEqual` رغم تطابق القيم — طبّعها بـ`JSON.parse(JSON.stringify(x))` أوّلًا (`tests/edu-plus.test.cjs`).
 
+## ٤٫٧ مسارات المزوّدين المباشرة
+- **GPT المفكّر + أدوات على `/v1/chat/completions` = 400** («Function tools with reasoning_effort are not supported … Please use /v1/responses»). مكانه `/v1/responses`، والأدوات هناك `strict:true` افتراضيًّا، فمرّر `strict:false` لمخطّطات غير صارمة. نداء الأداة يعود بلا معرّف `fc_` حتّى لا يُطلب عنصر التفكير معه (v-oa-responses، `api/_lib/oa-direct.js`).
+- **كتالوج OpenRouter ≠ ما يملكه مفتاح المزوّد المباشر:** قائمة موديلات المسار المباشر تأتي من `/v1/models` عند المزوّد نفسه، والاختيار المرفوض يُمسح من الجهاز، وإلّا تكرّر 404 مع كلّ رسالة (v-oa-models).
+- **سطر تقنيّ إنجليزيّ في صندوق عربيّ (`white-space:pre-wrap`، rtl) يتبعثر:** لُفّه بـ`\u2066…\u2069` (v-err-ltr).
+
 ## ٥. عام
 - **حدث `window.focus`/`blur` لا يصل عند التنقّل داخل/خارج غلاف WebView أصليّ (حزمة متجر).**
   منتقي ملفّات النظام (`onShowFileChooser`) وأنشطة مشابهة (كاميرا، تفويض خارجيّ) تُعرَض كطبقة

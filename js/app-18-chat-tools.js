@@ -179,6 +179,8 @@
         if (ev.error) serverErr = ev.error;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
         if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
+        /* v-oa-models: موديل مختار رفضه المفتاح → يُمسح من الاختيار المحفوظ (يعود للافتراضيّ) فلا يتكرّر الرفض مع كلّ رسالة */
+        if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:forget-model'); } }
       }
     }
     noteEnd();

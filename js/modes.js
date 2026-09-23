@@ -101,6 +101,14 @@
       function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
       /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
       window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
+      /* v-oa-models (لقطة «فحص النظام» ٢٣ سبتمبر: gpt-6-luna-pro ×4): الخادم رفض الموديل المختار (غير موجود أو لا يملكه
+         المفتاح) ورجع للافتراضيّ — يُمسح من الاختيار المحفوظ لهذا المزوّد إن كان هو نفسه، فلا يُرسل مع كلّ رسالة بعدها.
+         اختيار آخر صالح لا يُمسّ. */
+      window.omranForgetModel = function(k, id){
+        try{ var pv = provOf(k); if(!pv || !id) return false; if((localStorage.getItem(pv.store) || '') !== String(id)) return false;
+          localStorage.removeItem(pv.store); try{ refresh(); }catch(e2){ /* guard-ok: الشريط لم يُبنَ بعد */ } return true; }
+        catch(e){ return false; /* guard-ok: بلا تخزين يبقى الرجوع للافتراضيّ على الخادم */ }
+      };
       /* v-chip-func-name (أمر المالك ٢٣ سبتمبر «أبدله باسم وظيفي»): الشريحة تحت صندوق الكتابة كانت تعرض اسم النموذج
          («Sonnet 5»، «GPT-5.6 Terra») — صارت اللقب الوظيفيّ للمزوّد المختار (الكينج/السريع/العميق، مفاتيح provNick* بـ١٤ لغة،
          نفس خريطة PROVIDER_NICK_KEYS في app-05). القائمة المنسدلة تبقى بأسماء النماذج (أمر المالك «كلّ واحد وموديله بالضبط»). */

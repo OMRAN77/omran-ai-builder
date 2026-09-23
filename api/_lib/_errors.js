@@ -81,6 +81,12 @@ async function sendToSentry(err, context) {
 // Returns true when this exact route+message pair is new (not a repeat) —
 // v-error-push uses this to alert the owner once per distinct error, not
 // once per occurrence (a crash loop must never turn into a notification storm).
+/* v-err-deploy (لقطة «فحص النظام» ٢٣ سبتمبر: أخطاء خادم من ٢١ سبتمبر وأخطاء أُصلحت تبقى معروضة كأنّها الآن): كلّ خطأ
+   يُختم بالنشر الذي وقع فيه، ولوحة المالك تفصل أخطاء النشر الحاليّ عمّا قبله. خطأ يتكرّر بعد نشر جديد ينتقل إليه. */
+function deployId() {
+  return String(process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 40);
+}
+
 async function appendToRedisLog(entry) {
   try {
     const items = (await kvGetJSON(LOG_PATH)) || [];
@@ -90,6 +96,7 @@ async function appendToRedisLog(entry) {
     if (dup) {
       dup.count = (dup.count || 1) + 1;
       dup.lastAt = entry.at;
+      if (entry.deploy) dup.deploy = entry.deploy;
     } else {
       list.unshift(entry);
     }
@@ -116,6 +123,7 @@ async function reportError(err, context) {
     name: (err && err.name) || 'Error',
     stack: err && err.stack ? String(err.stack).slice(0, 1500) : null,
     count: 1,
+    deploy: deployId(),
   };
   console.error(`[error] ${entry.route}${entry.action ? '?' + entry.action : ''}: ${entry.message}`);
   const [, isNew] = await Promise.all([sendToSentry(err, entry), appendToRedisLog(entry)]);
@@ -161,4 +169,4 @@ function withErrorCapture(routeName, handler) {
   };
 }
 
-module.exports = { reportError, withErrorCapture };
+module.exports = { reportError, withErrorCapture, deployId };

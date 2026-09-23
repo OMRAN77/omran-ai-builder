@@ -15,10 +15,16 @@ async function checkRedis() {
   } catch (e) { return false; }
 }
 
-async function readClientErrors() {
+/* v-health-split (لقطة «فحص النظام» ٢٣ سبتمبر ٢٣:٤٢: «أخطاء مسجلة من المستخدمين: 3» كلّها أسطر v-mem-probe): المسبار
+   يكتب أرقام ذاكرة جهاز المالك في سجلّ الأخطاء عمدًا (قناة القراءة الوحيدة من الجهاز)، فكانت تُعدّ أخطاءً وتُنذر بها.
+   تُفصل هنا: clientErrors للأخطاء وحدها، وclientDiag لقياسات المسبار — تُعرض بعنوانها ولا تُحسب. */
+function isDiag(e) {
+  return !!e && (/^diag:/.test(String(e.source || '')) || /^v-mem-probe\b/.test(String(e.message || '')));
+}
+async function readClientLog() {
   try {
     const items = await kvGetJSON('db/client-errors/log.json');
-    return Array.isArray(items) ? items.slice(0, 10) : [];
+    return Array.isArray(items) ? items : [];
   } catch (e) { return []; }
 }
 
@@ -29,10 +35,13 @@ async function readServerErrors() {
   try {
     const items = await kvGetJSON('db/server-errors/log.json');
     if (!Array.isArray(items)) return [];
-    return items.slice(0, 10).map((e) => ({
-      at: e.at, lastAt: e.lastAt || null, route: e.route, action: e.action || null,
-      message: String(e.message || '').slice(0, 200), count: e.count || 1,
-    }));
+    // v-err-deploy: الأحدث أوّلًا (آخر ظهور لا أوّله)، وبصمة النشر لكلّ خطأ ليفصل العميل الحاليّ عمّا قبله.
+    return items.slice()
+      .sort((a, b) => String(b.lastAt || b.at || '').localeCompare(String(a.lastAt || a.at || '')))
+      .slice(0, 12).map((e) => ({
+        at: e.at, lastAt: e.lastAt || null, route: e.route, action: e.action || null,
+        message: String(e.message || '').slice(0, 200), count: e.count || 1, deploy: e.deploy || '',
+      }));
   } catch (e) { return []; }
 }
 
@@ -71,7 +80,9 @@ module.exports = async (req, res) => {
     Resend: !!process.env.RESEND_API_KEY
   };
 
-  const [redisOk, clientErrors, serverErrors] = await Promise.all([checkRedis(), readClientErrors(), readServerErrors()]);
+  const [redisOk, clientLog, serverErrors] = await Promise.all([checkRedis(), readClientLog(), readServerErrors()]);
+  const clientErrors = clientLog.filter((e) => !isDiag(e)).slice(0, 10);
+  const clientDiag = clientLog.filter(isDiag).slice(0, 6);
 
   res.status(200).json({
     ok: redisOk && Object.values(envKeys).every(Boolean) ? true : false,
@@ -82,7 +93,10 @@ module.exports = async (req, res) => {
 
     clientErrorsCount: clientErrors.length,
     clientErrors,
+    clientDiag,
     serverErrorsCount: serverErrors.length,
-    serverErrors
+    serverErrors,
+    deploy: require('./_errors.js').deployId(),
   });
 };
+module.exports.isDiag = isDiag;
