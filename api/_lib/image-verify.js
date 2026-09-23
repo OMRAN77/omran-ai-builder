@@ -48,7 +48,8 @@ function buildVerifyParts(o) {
     (n > 1 ? 'Then pick the best result: the executed request comes first (done > partial > not_done); among equals prefer the one that keeps what should stay unchanged (text letter-for-letter, layout) and looks most finished and realistic. NEVER prefer a result just because it is closer to the source — when a change was requested, looking like the source is a failure.\n' : '') +
     reportInstr(!!o.source) + '\n' +
     (o.source ? 'Also classify the REQUEST itself as "scope": "big" if doing it must visibly change a large part of the picture (replacing people or faces, a new style, a new scene or layout), else "small" (a local tweak: one object, a colour, a word).\n' : '') +
-    'Reply with JSON only, no code fence: {"verdicts": [' + cands.map(function () { return '"done|partial|not_done"'; }).join(', ') + '], "pick": ' + (n > 1 ? '<index of the best result, 0 = A>' : '0') + (o.source ? ', "scope": "big|small"' : '') + ', "missing": "<short English note of what is missing in the picked result, or empty>", "report": "<the report>"}' });
+    'Also rate the written text in the picked result as "text": "none" (no writing at all), "ok" (every word correct' + (o.source ? ' and identical to the source wherever it should stay' : '') + ') or "broken" (any garbled, misspelled or changed letter — check Arabic letter by letter).\n' +
+    'Reply with JSON only, no code fence: {"verdicts": [' + cands.map(function () { return '"done|partial|not_done"'; }).join(', ') + '], "pick": ' + (n > 1 ? '<index of the best result, 0 = A>' : '0') + (o.source ? ', "scope": "big|small"' : '') + ', "text": "none|ok|broken", "missing": "<short English note of what is missing in the picked result, or empty>", "report": "<the report>"}' });
   return parts;
 }
 
@@ -70,7 +71,8 @@ function parseVerdict(txt, n) {
   if (!Number.isFinite(pick) || pick < 0 || pick >= n) pick = rankCandidates(verdicts.map(function (v) { return { verdict: v }; }));
   const report = typeof j.report === 'string' ? j.report.trim().slice(0, 600) : '';
   const scope = /^big$/i.test(String(j.scope || '').trim()) ? 'big' : (/^small$/i.test(String(j.scope || '').trim()) ? 'small' : '');
-  return { verdicts, pick, report, scope, missing: typeof j.missing === 'string' ? j.missing.slice(0, 200) : '' };
+  const text = /^(none|ok|broken)$/i.test(String(j.text || '').trim()) ? String(j.text).trim().toLowerCase() : '';
+  return { verdicts, pick, report, scope, text, missing: typeof j.missing === 'string' ? j.missing.slice(0, 200) : '' };
 }
 
 /* ترتيب حتميّ بلا نموذج: الثابت بالبكسل خاسر دائمًا، ثمّ done > partial/مجهول > not_done، والتساوي للأسبق (المسار الأساسيّ) */
@@ -85,7 +87,7 @@ function rankCandidates(cands) {
 function isFailed(c) { return !!(c && (c.unchanged || c.verdict === 'not_done')); }
 
 /* opts: { apiKey, request, source:{b64,mime}|null, candidates:[{b64,mime,evidence?}], intent, timeoutMs }
-   → { ok:true, verdicts, pick, scope, report, missing } | { ok:false, reason } */
+   → { ok:true, verdicts, pick, scope, text, report, missing } | { ok:false, reason } */
 async function verifyAndReport(opts) {
   const o = opts || {};
   const cands = (o.candidates || []).filter(function (c) { return c && c.b64; }).slice(0, 3);
@@ -112,7 +114,7 @@ async function verifyAndReport(opts) {
    ٣) الحاكم قرأ الطلب «كبيرًا» (كاشف النيّة قد يفلت منه تبديل) والبكسل «نفس الصورة» = لم يُنفَّذ مهما قال.
    لم يُنفَّذ أو ثابت = المحرّك الآخر مرّة واحدة (altFn) ويُعاد الحكم على الأحياء معًا؛ ثابت في الكلّ و honest = { ok:false }
    (مصارحة ٤٢٢ عند المتّصل). honest=false (الخام/IMAGE_VERIFY=off/الدعاء) = لا محرّك آخر ولا رفض، تقرير صادق فقط.
-   o: { first, altFn, apiKey, request, source:{b64,mime}|null, measurable, expectBig, intent, honest, skipJudge, deadlineOk }
+   o: { first, altFn, polishFn, apiKey, request, source:{b64,mime}|null, measurable, expectBig, intent, honest, skipJudge, deadlineOk }
    → { ok:true, best, report, engine, tried } | { ok:false, tried } */
 async function settleCandidates(o) {
   const pool = [].concat(o.first).filter(function (c) { return c && c.b64; });
@@ -132,8 +134,15 @@ async function settleCandidates(o) {
       candidates: list.map(function (c) { return { b64: (c.vis || c).b64, mime: (c.vis || c).mime, evidence: c.evidence }; }) });
     if (!v.ok) return { best: list[rankCandidates(list)], report: '' };
     list.forEach(function (c, i) { c.verdict = v.verdicts[i]; });
-    if (v.scope === 'big') list.forEach(function (c) { if (looksUnchanged(c.cmp, true)) { c.unchanged = true; c.verdict = 'not_done'; } });
-    return { best: list[v.pick], report: v.report };
+    let flipped = false;
+    if (v.scope === 'big') list.forEach(function (c) { if (!c.unchanged && looksUnchanged(c.cmp, true)) { c.unchanged = true; c.verdict = 'not_done'; flipped = true; } });
+    /* مراجعة: المختار قلبه القياس «ثابتًا» ⇒ اختياره وتقريره («تمّ…») لا يُصدَّقان — حكم جديد على الأحياء إن وُجدوا (نداء واحد
+       في هذا المسار النادر)، وإلّا بلا تقرير (المتّصل يصارح بـ٤٢٢، أو الخام يُرسل بلا ادّعاء). */
+    if (flipped && list[v.pick].unchanged) {
+      const rest = list.filter(function (c) { return !c.unchanged; });
+      return rest.length ? check(rest) : { best: list[v.pick], report: '', text: v.text };
+    }
+    return { best: list[v.pick], report: v.report, text: v.text };
   };
   const alive = function () { return pool.filter(function (c) { return !c.unchanged; }); };
   pool.forEach(measure);
@@ -142,6 +151,13 @@ async function settleCandidates(o) {
     let alt = null;
     try { alt = await o.altFn(); } catch (e) { alt = null; } /* guard-ok — فشل المحرّك الآخر = نكمل بما عندنا */
     if (alt && alt.b64) { measure(alt); pool.push(alt); if (!alt.unchanged) out = await check(alive()); }
+  }
+  /* v-img-mix خيار «أ»: المختار من برو ونُفّذ وفيه كتابة (أو لم يُعرف) = GPT يصلّح الكتابة وحدها، ثمّ حكم بين الاثنين */
+  if (o.polishFn && out && out.best && !out.best.unchanged && out.best.verdict !== 'not_done' && out.text !== 'none' && !/openai/.test(out.best.engine || '') && (!o.deadlineOk || o.deadlineOk())) {
+    const base = out.best;
+    let pol = null;
+    try { pol = await o.polishFn(base); } catch (e) { pol = null; } /* guard-ok — فشل التلميع = نرسل ناتج برو كما هو */
+    if (pol && pol.b64) { measure(pol); pool.push(pol); if (!pol.unchanged) out = await check([base, pol]); }
   }
   const tried = pool.map(function (c) { return c.engine + ':' + (c.unchanged ? 'same' : (c.verdict || '?')); }).join(',');
   if (!alive().length && o.honest) return { ok: false, tried: tried };

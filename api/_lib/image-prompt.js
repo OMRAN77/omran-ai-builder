@@ -285,6 +285,14 @@ function buildPersonSwapPrompt(userPrompt, userWords){
     '4. Never write the instruction itself into the image. Return only one finished image.'
   ].join('\n');
 }
+/* v-img-mix — خيار «أ»: GPT يصلّح الكتابة وحدها على ناتج برو. مع مصدر: صورتان (الناتج أوّلًا، والمصدر مرجع الحروف حرفًا بحرف)،
+   و«الأشخاص مختلفون عمدًا» كي لا ينسخ وجوه المصدر. بلا مصدر (توليد): الكتابة كما طلبها المستخدم. لا شيء غير الكتابة يُمسّ. */
+function buildTextPolishPrompt(userWords, withSource){
+  const req = String(userWords || '').trim().slice(0, 600);
+  return withSource
+    ? 'You are given 2 images in this order: (1) the RESULT to fix, (2) the ORIGINAL source, for reference only. Fix ONLY the written text in image 1: every title, caption and label must read exactly, letter-for-letter, like the matching text in image 2 — unless the user\'s request changes that text: "' + req + '". Render Arabic with correct, cleanly joined right-to-left glyphs in the same font style, size, colour and position. Change NOTHING else in image 1 — people, faces, hair, clothes, colours, layout and background stay exactly as they are in image 1 (they are intentionally different from image 2). Return one finished image.'
+    : 'Fix ONLY the written text in the attached image so every word reads exactly as the user asked: "' + req + '". Render Arabic with correct, cleanly joined right-to-left glyphs; keep font style, size, colour and position. Change NOTHING else in the image. Return one finished image.';
+}
 /* v-broad-edit (لقطة المالك ٦ سبتمبر «غير الملابس ورتب الصور خلها فقط صور» على لقطة شاشة مليئة بالنصوص): طلب مركّب يعيد
    الترتيب ويحذف الكتابة كلها ويغيّر اللبس. القالب الموضعي («لا تغيّر إلا ما طُلب واحفظ كل بكسل») يناقض إعادة الترتيب،
    ومسار النصّ الكثيف يرسله إلى gpt-image المحافظ فتخرج الواجهة نفسها بحروف مشوّهة. مسار خاص: برو، بلا حارس، كل الأوامر معًا. */
@@ -432,4 +440,4 @@ function buildRestylePrompt(userPrompt, userWords){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, removeTextTarget, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, removeTextTarget, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection, buildTextPolishPrompt };

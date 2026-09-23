@@ -18,7 +18,7 @@ test('١. نيّة النصّ: حذف أو تبديل أو كتابة أو كل�
   const i = mi.indexOf('if (__textRoute && !__engineMix) {');
   assert.ok(i > 0, 'مسار النصّ موجود');
   const seg = mi.slice(i, mi.indexOf('/* v-lanes: نداء واحد للمحرّك (برو)', i));
-  assert.ok(seg.includes("const denseB64 = await openaiRescueImage();") && seg.includes("await deliver({ b64: denseB64, mime: 'image/png', engine: 'openai' }, proCandidate);"), 'GPT أوّلًا ثمّ القياس والإرسال');
+  assert.ok(seg.includes("const denseB64 = await openaiRescueImage();") && seg.includes("await deliver({ b64: denseB64, mime: 'image/png', engine: 'openai' }, function () { return proCandidate(__extraBudget()); });"), 'GPT أوّلًا ثمّ القياس والإرسال');
   assert.ok(!seg.includes('densePromise = openaiRescueImage'), 'لا نداء متوازٍ للحكم');
   assert.ok(mi.indexOf('const __textIntent') > mi.indexOf('const __pureRaw = rawMode'), '__pureRaw معرّف قبل الاستعمال');
   // الحذف والتبديل كما هما معرّفان

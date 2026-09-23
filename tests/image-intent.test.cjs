@@ -205,7 +205,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
   assert.ok(!/__duoWouldRun|duoEnabled|duoP\b/.test(maha), 'v-lanes: لا محرّك موازٍ');
   // v-text-gpt-oneshot: مسار النصّ ضربة واحدة بلا مزدوج (v-img-honest: يُقاس، وبرو مرّة فقط إن لم يُنفّذ GPT)
-  assert.match(maha, /if \(__textRoute && !__engineMix\) \{\n      const denseB64 = await openaiRescueImage\(\);\n      if \(denseB64\) \{\n        await deliver\(\{ b64: denseB64, mime: 'image\/png', engine: 'openai' \}, proCandidate\);/);
+  assert.match(maha, /if \(__textRoute && !__engineMix\) \{\n      const denseB64 = await openaiRescueImage\(\);\n      if \(denseB64\) \{\n        await deliver\(\{ b64: denseB64, mime: 'image\/png', engine: 'openai' \}, function \(\) \{ return proCandidate\(__extraBudget\(\)\); \}\);/);
   /* v-img-engine-tag-owner (متابعة، لقطة المالك «هذا نانو مش gpt»): مسار النصّ أراد GPT وفشل بصمت إلى نانو —
      السبب الآن يُلحق باسم المحرّك الحرفيّ (المالك وحده يراه) بدل الاختفاء وراء «nano» بلا تفسير. */
   assert.match(maha, /__textRouteFailNote = \(lastRescueErr \|\| 'unknown'\)\.slice\(0, 120\);/);

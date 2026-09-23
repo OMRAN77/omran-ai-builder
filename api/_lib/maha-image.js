@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, isTextEditRequest, isPureTextRemoval, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, isTextEditRequest, isPureTextRemoval, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange, buildTextPolishPrompt } = require('./image-prompt');
 /* v-nano-pro-edit: نيّات التعديل (أسلوب/فكرة مختلفة/أقوى/نفس الصورة) في وحدة واحدة قابلة للاختبار،
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
@@ -252,11 +252,14 @@ module.exports = async (req, res) => {
        ويُختار المنفَّذ؛ ثابت في المحرّكين = مصارحة ٤٢٢ وردّ النقاط بدل صورة قديمة تحت «تمّ». درس v-lanes: الاختيار بالتنفيذ أوّلًا،
        لا يُفضَّل الأقرب للمصدر أبدًا. الخام يبقى خامًا (بلا محرّك آخر ولا رفض — تقرير صادق فقط)، وIMAGE_VERIFY=off يوقف الإعادة. */
     const __t0 = Date.now();
+    /* مراجعة v-img-honest: أيّ نداء إضافيّ (محرّك آخر · تلميع الكتابة) يأخذ ما بقي من ٣٠٠ث بعد حجز الحكم (٢٢ث) والتكبير (٦٠ث)
+       ومهلة — بلا ذلك تخطّى نداء برو الاحتياطيّ (٩٠ث × محاولتين) السقف فضاعت الصورة الجاهزة والنقاط. أقلّ من ٢٥ث = لا نداء. */
+    const __extraBudget = function () { return 213000 - (Date.now() - __t0); };
     const __expectBig = !!editImageBase64 && !extras.length && (isPersonSwap || isRestyle || isReimagine || isElevate || isSceneUpgrade);
     const __vIntent = { personSwap: isPersonSwap, textEdit: isTextSwap || isTextRemove, restyle: isRestyle, reimagine: isReimagine, elevate: isElevate || isSceneUpgrade, merge: !!extras.length };
     const __settleCtx = { apiKey: apiKey, request: intentText || cleanPrompt, source: editImageBase64 ? { b64: editImageBase64, mime: editMimeType || 'image/jpeg' } : null, measurable: !extras.length, expectBig: __expectBig, intent: __vIntent, skipJudge: !!prayerPlan };
-    async function deliver(first, altFn) {
-      const r = await settleCandidates(Object.assign({ first: first, altFn: altFn, deadlineOk: function () { return (Date.now() - __t0) < 80000; },
+    async function deliver(first, altFn, polishFn) {
+      const r = await settleCandidates(Object.assign({ first: first, altFn: altFn, polishFn: polishFn || null, deadlineOk: function () { return __extraBudget() >= 25000; },
         honest: !prayerPlan && !__pureRaw && String(process.env.IMAGE_VERIFY || 'on').toLowerCase() !== 'off' }, __settleCtx));
       if (!r.ok) {
         await refundImageCharge();
@@ -450,8 +453,14 @@ module.exports = async (req, res) => {
     // v-img-visible: نلتقط سبب فشل خط الإنقاذ (OpenAI) ليظهر مع سبب Gemini في
     // لوحة المالك — كان كل ذلك يذهب لـconsole.error فقط، فيرى المالك «0» بلا سبب.
     let lastRescueErr = '';
-    async function openaiRescueImage(promptOverride) {
+    async function openaiRescueImage(promptOverride, imagesOverride, timeoutMs) {
       const __gptPrompt = String(promptOverride || rescuePromptText).slice(0, 3800); /* v-img-honest: المحرّك الآخر قد يُعطى أمر إعادة بلا تناقض */
+      /* v-img-mix (خيار «أ»): تلميع الكتابة يرسل ناتج برو أوّلًا والمصدر مرجعًا — مسار الصور المتعدّدة نفسه (image[]).
+         المهلة من ميزانيّة الطلب حين تُعطى (مراجعة: نداء إضافيّ بمهلة ١٢٠ث ثابتة كان يتخطّى سقف ٣٠٠ث فتضيع الصورة والنقاط). */
+      const __src = imagesOverride ? imagesOverride[0] : (editImageBase64 ? { data: editImageBase64, mime: editMimeType } : null);
+      const __refs = imagesOverride ? imagesOverride.slice(1) : extras;
+      const __deadline = timeoutMs ? Date.now() + timeoutMs : 0;
+      const __to = function (def) { return __deadline ? Math.max(5000, __deadline - Date.now()) : def; };
       const okey = process.env.OPENAI_API_KEY;
       if (!okey) { lastRescueErr = 'no OPENAI_API_KEY'; return null; }
       /* v-gpt-2.5 (٢٠ سبتمبر ٢٠٢٦، طلب المالك: «رقّهم كلهم للأعلى» — GPT/نانو بلا كلود
@@ -462,8 +471,9 @@ module.exports = async (req, res) => {
          عالية دائمًا ويرفضان input_fidelity بخطأ 400 لو أُرسل؛ gpt-image-1 وحده يحتاجه. */
       /* v-edit-rescue (لقطة بطاقة التجنيد «غش»): التعديل كان بلا خط إنقاذ —
          إذا انشغل Gemini فشل كل تعديل صورة في المحادثة وسقط العميل على شريط الكانفس. */
-      if (editImageBase64) {
-        const bytes = Buffer.from(editImageBase64, 'base64');
+      if (__src) {
+        const extras = __refs;
+        const bytes = Buffer.from(__src.data, 'base64');
         const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2', 'gpt-image-1'];
         for (let i = 0; i < editModels.length; i++) {
           const m = editModels[i];
@@ -483,7 +493,7 @@ module.exports = async (req, res) => {
                multipart/form-data لهذه النقطة هي `image[]` (صيغة مصفوفة)، لا `image` مكرّرة — تُستعمل
                فقط حين توجد صور دمج فعليّة (extras)؛ صورة واحدة تبقى بحقل `image` المفرد كما كان. */
             const __imgField = (extras.length && m !== 'gpt-image-1') ? 'image[]' : 'image';
-            form.append(__imgField, new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
+            form.append(__imgField, new Blob([bytes], { type: __src.mime || editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
             if (extras.length && m !== 'gpt-image-1') {
               for (const x of extras) form.append('image[]', new Blob([Buffer.from(x.data, 'base64')], { type: x.mime || 'image/jpeg' }), 'ref.jpg');
             }
@@ -494,7 +504,7 @@ module.exports = async (req, res) => {
             const r = await fetch('https://api.openai.com/v1/images/edits', {
               method: 'POST',
               headers: { Authorization: 'Bearer ' + okey },
-              signal: AbortSignal.timeout(120000),
+              signal: AbortSignal.timeout(__to(120000)),
               body: form,
             });
             const d = await r.json().catch(function () { return null; });
@@ -521,7 +531,7 @@ module.exports = async (req, res) => {
         const genOnce = (model) => fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + okey },
-          signal: AbortSignal.timeout(90000),
+          signal: AbortSignal.timeout(__to(90000)),
           body: JSON.stringify({ model, prompt: __gptPrompt, size, quality: 'high', n: 1 }),
         });
         const genModels = ['gpt-image-2.5-flare', 'gpt-image-2', 'gpt-image-1'];
@@ -630,9 +640,11 @@ module.exports = async (req, res) => {
     /* v-img-honest + v-img-mix: المحرّكان مرشّحان بعقد واحد { b64, mime, engine } — برو بالأمر المهندس، وGPT بالأمر نفسه
        (rescuePromptText). null = فشل؛ سبب فشل برو يبقى في __gFail لتشخيص المالك ولسلسلة الإنقاذ أدناه كما كانت. */
     let __gFail = null;
-    async function proCandidate() {
-      /* v-lanes: نداء واحد للمحرّك — لا مرشّح ثانٍ ولا حكم هنا؛ القياس والمحرّك الآخر للمنفَّذ فقط عبر deliver. */
+    async function proCandidate(budget) {
+      /* v-lanes: نداء واحد للمحرّك — لا مرشّح ثانٍ ولا حكم هنا؛ القياس والمحرّك الآخر للمنفَّذ فقط عبر deliver.
+         budget (نداء إضافيّ): محاولة واحدة بمهلة ما بقي، لا ٩٠ث × محاولتين. */
       const imageResult = await fetchImageWithRetry({
+        maxAttempts: budget ? 1 : undefined, timeoutMs: budget ? Math.max(15000, budget) : undefined,
         url: endpoint,
         init: {
           method: 'POST',
@@ -707,23 +719,15 @@ module.exports = async (req, res) => {
       const mainEngine = nanoPrimary ? (__pureRaw ? 'nano-raw' : 'nano') : (__pureRaw ? 'nano-pro-raw' : 'nano-pro');
       return { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png', engine: mainEngine };
     }
-    async function gptCandidate(prompt) {
-      const b64 = await openaiRescueImage(prompt);
+    async function gptCandidate(prompt, budget) {
+      const b64 = await openaiRescueImage(prompt, null, budget);
       return b64 ? { b64: b64, mime: 'image/png', engine: 'openai' } : null;
     }
     /* v-img-honest: المحرّك الآخر بعد «لم يُنفَّذ» في المسار الأمين لا يُعطى قالبه نفسه — قاعدته «كلّ شخص يبقى كما هو» هي ما ثبّت
        الصورة حين أفلت طلب تبديل من كاشف النيّة. يُعطى كلمات المستخدم بتعليمة تنفيذ كامل بلا تناقض. الدمج يبقى بقالب الهويّة. */
     const __retryPrompt = 'Edit the attached image exactly as the user asks, in their own words: "' + String(intentText || cleanPrompt).slice(0, 1200) + '".\nThe first attempt returned the picture practically unchanged or without the request — this time apply the WHOLE request fully and visibly. Keep everything the request does not mention as it is, and keep every written word letter-for-letter unless the request changes it. Never write these instructions inside the image. Return one finished image.';
-    const __gptAlt = process.env.OPENAI_API_KEY ? function () { return gptCandidate((__faithfulLane && !extras.length) ? __retryPrompt : ''); } : null;
-
-    /* v-img-mix: المحرّكان معًا بالتوازي على الطلب نفسه، ثمّ deliver يقيس كلًّا منهما ويحكم بينهما بالتنفيذ أوّلًا ويُرسل صورة
-       واحدة («النتيجة ١»). فشلهما معًا = سلسلة الإنقاذ نفسها أدناه. */
-    if (__engineMix) {
-      const both = await Promise.all([proCandidate().catch(function () { return null; }), gptCandidate().catch(function () { return null; })]);
-      const got = both.filter(Boolean);
-      got.forEach(function (c) { c.engine = 'mix:' + c.engine; });
-      if (got.length) { await deliver(got, null); return; }
-    }
+    const __gptAlt = process.env.OPENAI_API_KEY ? function () { return gptCandidate((__faithfulLane && !extras.length) ? __retryPrompt : '', __extraBudget()); } : null;
+    let __gptTried = false;
 
     // v-img-textwise: مصدر نصّي كثيف → gpt-image-1 عالي الدقة أولًا؛
     // فشله أو غيابه يُكمل مسار Gemini المعتاد بلا أي خسارة.
@@ -751,10 +755,29 @@ module.exports = async (req, res) => {
     const __textIntent = !!editImageBase64 && !__pureRaw && (isTextRemove || isTextSwap || __textCueRe.test(cleanPrompt) || /اكتب|أكتب|كتابة|كتابه|\bwrite\b/i.test(cleanPrompt));
     const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length
       && (__textIntent || (editImageBase64 ? __optTextFaithful : (__optTextFaithful || (!rawMode && __textCueRe.test(cleanPrompt))))); /* v-lanes: بلا مصنّف «نصّ كثيف» */
+    /* v-img-mix — خيار «أ» (المالك: «وموضوع الدمج هل فيه تغيّر ولا اسم فقط؟» ← «سوّ الخيار أ»): دمج فعليّ متسلسل لا اختيار فقط.
+       ١) برو يرسم المشهد والوجوه (أقواهما فيهما). ٢) لم يُنفَّذ أو ثابت = GPT ينفّذ الطلب كاملًا. ٣) نُفّذ وفي الصورة كتابة =
+       GPT يصلّح الكتابة وحدها على ناتج برو، والمصدر مرجع الحروف حرفًا بحرف ولا يُمسّ غير الكتابة. ٤) الحكم يختار بين برو وحده
+       وبرو+GPT، فالتلميع لا يُفسد نتيجة (ونسخة أعادت وجوه المصدر يسقطها القياس). صورة واحدة («النتيجة ١»). */
+    const __polishPrompt = buildTextPolishPrompt(intentText || cleanPrompt, !!(editImageBase64 && !extras.length));
+    async function textPolish(c) {
+      const imgs = [{ data: c.b64, mime: c.mime }].concat((editImageBase64 && !extras.length) ? [{ data: editImageBase64, mime: editMimeType || 'image/jpeg' }] : []);
+      const b64 = await openaiRescueImage(__polishPrompt, imgs, __extraBudget());
+      return b64 ? { b64: b64, mime: 'image/png', engine: c.engine + '+gpt-text' } : null;
+    }
+    if (__engineMix) {
+      const pro = await proCandidate().catch(function () { return null; });
+      const polish = (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null;
+      if (pro) { pro.engine = 'mix:' + pro.engine; await deliver(pro, __gptAlt, polish); return; }
+      __gptTried = true;
+      const gpt = __extraBudget() >= 25000 ? await gptCandidate('', __extraBudget()).catch(function () { return null; }) : null;
+      if (gpt) { gpt.engine = 'mix:openai'; await deliver(gpt, null); return; }
+    }
+
     if (__textRoute && !__engineMix) {
       const denseB64 = await openaiRescueImage();
       if (denseB64) {
-        await deliver({ b64: denseB64, mime: 'image/png', engine: 'openai' }, proCandidate); /* v-img-honest: لم يُنفَّذ = برو مرّة */
+        await deliver({ b64: denseB64, mime: 'image/png', engine: 'openai' }, function () { return proCandidate(__extraBudget()); }); /* v-img-honest: لم يُنفَّذ = برو مرّة */
         return;
       }
       __textRouteFailNote = (lastRescueErr || 'unknown').slice(0, 120);
@@ -776,7 +799,7 @@ module.exports = async (req, res) => {
         try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
         await deliver({ b64: nanoB64, mime: 'image/png', engine: 'gemini-nano-banana' }, __gptAlt); return;
       }
-      const rescuedB64 = await openaiRescueImage();
+      const rescuedB64 = __gptTried ? null : await openaiRescueImage(); /* الدمج جرّب GPT وفشل — لا نداء ثانٍ (مراجعة) */
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
       if (rescuedB64) { await deliver({ b64: rescuedB64, mime: 'image/png', engine: 'openai' }, null); return; }
@@ -817,7 +840,7 @@ module.exports = async (req, res) => {
       if (nanoB64b) {
         try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
         await deliver({ b64: nanoB64b, mime: 'image/png', engine: 'gemini-nano-banana' }, __gptAlt); return; }
-      const rescuedB64b = await openaiRescueImage();
+      const rescuedB64b = __gptTried ? null : await openaiRescueImage();
       if (rescuedB64b) { await deliver({ b64: rescuedB64b, mime: 'image/png', engine: 'openai' }, null); return; }
       const freeImgB = await freeFallbackImage();
       if (freeImgB) { await deliver({ b64: freeImgB.b64, mime: freeImgB.mime, engine: 'pollinations-free' }, null); return; }

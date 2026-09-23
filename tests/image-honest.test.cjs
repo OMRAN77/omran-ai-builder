@@ -104,8 +104,10 @@ async function run(body, engines, judge) {
     const u = String(url);
     if (u.includes('api.openai.com/v1/images/edits')) {
       const prompt = init.body.get('prompt');
-      calls.push({ kind: 'gpt-edit', prompt });
-      return engines.gptEdit ? Response.json({ data: [{ b64_json: engines.gptEdit }] }) : Response.json({ error: { message: 'boom' } }, { status: 500 });
+      const images = init.body.getAll('image').length + init.body.getAll('image[]').length;
+      calls.push({ kind: 'gpt-edit', prompt, images });
+      const out = typeof engines.gptEdit === 'function' ? engines.gptEdit(prompt) : engines.gptEdit;
+      return out ? Response.json({ data: [{ b64_json: out }] }) : Response.json({ error: { message: 'boom' } }, { status: 500 });
     }
     if (u.includes('api.openai.com/v1/images/generations')) {
       calls.push({ kind: 'gpt-gen', prompt: JSON.parse(init.body).prompt });
@@ -181,24 +183,38 @@ test('٦. طلب أفلت من كاشف النيّة (مسار أمين) وال�
   assert.match(r.json.engine, /nano-pro:same,openai:done/, 'البكسل غلب «done» الكاذب');
 });
 
-test('٧. وضع «دمج نانو + GPT» للمالك: المحرّكان بالتوازي، حكم واحد على الاثنين، وصورة واحدة', async () => {
-  const B = mirror(SWAP);
-  const r = await run({ prompt: SWAP_REQ, userText: SWAP_REQ, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'owner', engineMix: true }, { pro: SWAP, gptEdit: B },
-    (b, n) => ({ verdicts: n === 2 ? ['partial', 'done'] : ['done'], pick: n === 2 ? 1 : 0, scope: 'big', report: 'اخترت نسخة GPT.' }));
+test('٧. «دمج نانو + GPT» للمالك (خيار «أ»): برو يرسم الوجوه ثمّ GPT يصلّح الكتابة وحدها على ناتجه، والحكم يختار صورة واحدة', async () => {
+  const OWN = { prompt: SWAP_REQ, userText: SWAP_REQ, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'owner', engineMix: true };
+  const FIXED = mirror(SWAP); // «برو + تصحيح الكتابة» (صورة مختلفة عن المصدر كما يجب)
+  const isPolish = (p) => /^You are given 2 images in this order: \(1\) the RESULT to fix/.test(p);
+  // (أ) نُفّذ والكتابة مكسورة ← تلميع GPT بصورتين (ناتج برو + المصدر مرجعًا) ← حكم بين الاثنين ← المصحَّح
+  const r = await run(OWN, { pro: SWAP, gptEdit: (p) => (isPolish(p) ? FIXED : null) },
+    (b, n) => (n === 1 ? { verdicts: ['done'], pick: 0, scope: 'big', text: 'broken', report: 'x' } : { verdicts: ['partial', 'done'], pick: 1, scope: 'big', text: 'ok', report: 'بدّلت الوجوه وصحّحت «تهنئة».' }));
   assert.equal(r.status, 200);
-  assert.equal(r.json.imageBase64, B, 'المختار = المنفَّذ كاملًا');
-  assert.equal(r.json.caption, 'اخترت نسخة GPT.');
-  assert.match(r.json.engine, /^mix:openai\[mix:nano-pro:partial,mix:openai:done\]$/);
-  assert.equal(r.calls.filter((c) => c.kind === 'judge').length, 1);
-  assert.equal(r.calls.find((c) => c.kind === 'judge').n, 2);
-  assert.match(r.calls.find((c) => c.kind === 'judge').text, /NEVER prefer a result just because it is closer to the source/);
-  // وأحدهما رجّع الصورة نفسها ← لا يُعرض على الحاكم، والآخر يُرسل
-  const r2 = await run({ prompt: SWAP_REQ, userText: SWAP_REQ, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'owner', engineMix: true }, { pro: SAME, gptEdit: SWAP }, done());
-  assert.equal(r2.json.imageBase64, SWAP);
-  assert.equal(r2.calls.find((c) => c.kind === 'judge').n, 1);
-  // غير المالك لا يصله الوضع: نداء برو وحده
-  const r3 = await run({ prompt: SWAP_REQ, userText: SWAP_REQ, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'user', engineMix: true }, { pro: SWAP, gptEdit: SWAP }, done());
-  assert.deepEqual(r3.calls.map((c) => c.kind), ['pro', 'judge'], 'غير المالك = المسار العاديّ');
+  assert.equal(r.json.imageBase64, FIXED);
+  assert.equal(r.json.caption, 'بدّلت الوجوه وصحّحت «تهنئة».');
+  assert.deepEqual(r.calls.map((c) => c.kind), ['pro', 'judge', 'gpt-edit', 'judge'], 'برو ← حكم ← GPT للكتابة ← حكم بين الاثنين');
+  const pol = r.calls[2];
+  assert.ok(isPolish(pol.prompt) && /Change NOTHING else in image 1/.test(pol.prompt) && pol.images === 2, 'التلميع: الكتابة وحدها، والمصدر مرجع الحروف');
+  assert.equal(r.calls[3].n, 2);
+  assert.match(r.json.engine, /^mix:nano-pro\+gpt-text\[mix:nano-pro:partial,mix:nano-pro\+gpt-text:done\]$/);
+  // (ب) لا كتابة في الصورة ← لا تلميع
+  const r2 = await run(OWN, { pro: SWAP, gptEdit: FIXED }, () => ({ verdicts: ['done'], pick: 0, scope: 'big', text: 'none', report: 'y' }));
+  assert.deepEqual(r2.calls.map((c) => c.kind), ['pro', 'judge']);
+  assert.equal(r2.json.engine, 'mix:nano-pro');
+  // (ج) برو يرجّع الصورة نفسها ← GPT ينفّذ الطلب كاملًا (أمر التبديل)، ولا تلميع لناتج GPT
+  const r3 = await run(OWN, { pro: SAME, gptEdit: (p) => (isPolish(p) ? FIXED : SWAP) }, () => ({ verdicts: ['done'], pick: 0, scope: 'big', text: 'broken', report: 'z' }));
+  assert.equal(r3.json.imageBase64, SWAP);
+  assert.deepEqual(r3.calls.map((c) => c.kind), ['pro', 'gpt-edit', 'judge']);
+  assert.match(r3.calls[1].prompt, /PEOPLE REPLACEMENT/);
+  // (د) التلميع أعاد وجوه المصدر ← يسقطه القياس بلا حكم، ويبقى ناتج برو
+  const r4 = await run(OWN, { pro: SWAP, gptEdit: (p) => (isPolish(p) ? SAME : null) }, () => ({ verdicts: ['done'], pick: 0, scope: 'big', text: 'broken', report: 'w' }));
+  assert.equal(r4.json.imageBase64, SWAP);
+  assert.deepEqual(r4.calls.map((c) => c.kind), ['pro', 'judge', 'gpt-edit']);
+  assert.match(r4.json.engine, /nano-pro\+gpt-text:same/);
+  // (هـ) غير المالك لا يصله الوضع: برو وحده
+  const r5 = await run({ ...OWN, token: 'user' }, { pro: SWAP, gptEdit: SWAP }, done());
+  assert.deepEqual(r5.calls.map((c) => c.kind), ['pro', 'judge'], 'غير المالك = المسار العاديّ');
 });
 
 test('٨. الخام يبقى خامًا: «نانو خام» يرجّع الصورة نفسها ← تُرسل كما هي بتقرير صادق، بلا محرّك آخر ولا ٤٢٢', async () => {
@@ -267,4 +283,47 @@ test('١٣. العميل: وضع «دمج نانو + GPT» في «+» للمال
   const tools = read('js/app-17-agent-tools.js');
   assert.match(tools, /ej\.verdict/, 'أداة الوكيل تنقل حكم التنفيذ للنموذج فلا يدّعي «تمّ»');
   assert.ok(read('js/app.bundle.js').includes("__x.engineMix = true;"), 'الحزمة مبنيّة');
+});
+
+test('١٤. مراجعة: النداءات الإضافيّة بميزانيّة ٣٠٠ث، فكّ الصور بسقف ٢٠ ميغابكسل، والدمج لا يعيد GPT بعد فشله', async () => {
+  const mi = read('api/_lib/maha-image.js');
+  assert.match(mi, /const __extraBudget = function \(\) \{ return 213000 - \(Date\.now\(\) - __t0\); \};/, '٣٠٠ث − الحكم ٢٢ث − التكبير ٦٠ث − هامش');
+  assert.match(mi, /deadlineOk: function \(\) \{ return __extraBudget\(\) >= 25000; \}/);
+  assert.match(mi, /maxAttempts: budget \? 1 : undefined, timeoutMs: budget \? Math\.max\(15000, budget\) : undefined,/, 'برو الاحتياطيّ: محاولة واحدة بما بقي');
+  assert.match(mi, /function \(\) \{ return proCandidate\(__extraBudget\(\)\); \}/);
+  assert.match(mi, /signal: AbortSignal\.timeout\(__to\(120000\)\),/);
+  assert.match(mi, /return gptCandidate\(\(__faithfulLane && !extras\.length\) \? __retryPrompt : '', __extraBudget\(\)\);/);
+  // صورة بأبعاد ضخمة (رأس PNG يدّعي ٨٠٠٠×٨٠٠٠، وJPEG رأسه ٨٠٠٠×٨٠٠٠) = لا قياس فورًا، لا فكّ بثوانٍ وغيغابايتات
+  const big = PNG.sync.write(new PNG({ width: 4, height: 4 }));
+  big.writeUInt32BE(8000, 16); big.writeUInt32BE(8000, 20);
+  const t = Date.now();
+  assert.equal(diff.decodeImage(big), null);
+  const j = Buffer.from(diff.visionCopy(SRC, 64).b64, 'base64'); const sof = j.indexOf(Buffer.from([0xff, 0xc0]));
+  j.writeUInt16BE(8000, sof + 5); j.writeUInt16BE(8000, sof + 7);
+  assert.equal(diff.decodeImage(j), null);
+  assert.ok(Date.now() - t < 500, 'رفض فوريّ');
+  // الدمج: برو وGPT فشلا ← سلسلة الإنقاذ بلا نداء GPT ثانٍ
+  const r = await run({ prompt: SWAP_REQ, userText: SWAP_REQ, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'owner', engineMix: true }, { pro: null, gptEdit: null, nano: null }, done());
+  assert.equal(r.calls.filter((c) => c.kind === 'gpt-edit').length, 1, 'GPT مرّة واحدة فقط');
+  assert.ok(r.status >= 500);
+});
+
+test('١٥. مراجعة: المختار الذي قلبه القياس «ثابتًا» لا يُرسل بتقرير «تمّ»، والشعار الشفّاف لا يُرى أسود متطابقًا', async () => {
+  // الطلب أفلت من كاشف النيّة (قياس صارم)، والتلميع أعاد الصورة نفسها، والحاكم اختاره بـ«تمّ» وقال scope كبير
+  let k = 0;
+  const judge = (b, n) => { k++; return n === 2 ? { verdicts: ['done', 'done'], pick: 1, scope: 'big', text: 'ok', report: 'تمّ تغيير جميع الوجوه.' } : { verdicts: ['done'], pick: 0, scope: 'big', text: 'broken', report: 'حكم جديد ' + k }; };
+  const req = 'ابي ناس غير اللي بالصورة';
+  const r = await run({ prompt: req, userText: req, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'owner', engineMix: true },
+    { pro: SWAP, gptEdit: (p) => (/^You are given 2 images/.test(p) ? SAME : null) }, judge);
+  assert.equal(r.status, 200);
+  assert.equal(r.json.imageBase64, SWAP, 'المنفَّذ لا النسخة الثابتة');
+  assert.equal(r.json.caption, 'حكم جديد 3', 'تقرير من حكم جديد على المنفَّذ لا «تمّ» المختار الخطأ');
+  assert.deepEqual(r.calls.map((c) => c.kind), ['pro', 'judge', 'gpt-edit', 'judge', 'judge']);
+  // شعاران شفّافان بحبر أسود في مكانين مختلفين
+  const logo = (x0) => { const p = new PNG({ width: 120, height: 60 }); for (let y = 20; y < 40; y++) for (let x = x0; x < x0 + 30; x++) { const i = (y * 120 + x) * 4; p.data[i + 3] = 255; } return PNG.sync.write(p).toString('base64'); };
+  const c = diff.compareImages(logo(10), logo(80));
+  assert.ok(c.ok && c.changedFrac > 0.05, JSON.stringify(c));
+  assert.equal(diff.looksUnchanged(c, false), false, 'لا ٤٢٢ كاذب على الشعارات الشفّافة');
+  const v = diff.decodeImage(Buffer.from(diff.visionCopy(logo(10), 120).b64, 'base64'));
+  assert.ok(v.data[(5 * v.w + 5) * 4] > 100, 'الخلفيّة الشفّافة رماديّة لا سوداء أمام الحاكم');
 });

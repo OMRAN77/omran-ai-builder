@@ -9,6 +9,10 @@ const jpeg = require('jpeg-js');
 const { PNG } = require('pngjs');
 
 const GRID = 64;
+/* مراجعة: مصدر JPEG صغير الحجم كبير الأبعاد (مسح مستند ٤٨ ميغابكسل) كان يُفكّ في ١٠ث و٢ غ.ب ذاكرة فتُقتل الدالّة بلا ردّ ولا
+   ردّ نقاط. ٢٠ ميغابكسل تكفي ناتج 4K (≈١٧)؛ الأكبر = لا قياس، والمتّصل يكمل كما لو لم يُقس. */
+const MAX_PIXELS = 20e6;
+const BG = 128; /* خلفيّة الشفافيّة (رماديّ متوسّط) في القياس ونسخة الرؤية */
 const CELL_T = 18; /* فرق متوسّط القنوات في الخليّة (من ٢٥٥) فوقه = الخليّة تغيّرت فعلًا لا ضجيج إعادة رسم */
 
 function toBuffer(x) {
@@ -22,11 +26,12 @@ function decodeImage(x) {
   if (!buf || buf.length < 32) return null;
   try {
     if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+      if (buf.length >= 24 && buf.readUInt32BE(16) * buf.readUInt32BE(20) > MAX_PIXELS) return null;
       const p = PNG.sync.read(buf);
       return { w: p.width, h: p.height, data: p.data };
     }
     if (buf[0] === 0xff && buf[1] === 0xd8) {
-      const j = jpeg.decode(buf, { useTArray: true, formatAsRGBA: true, maxResolutionInMP: 120, maxMemoryUsageInMB: 1024 });
+      const j = jpeg.decode(buf, { useTArray: true, formatAsRGBA: true, maxResolutionInMP: MAX_PIXELS / 1e6, maxMemoryUsageInMB: 512 });
       return { w: j.width, h: j.height, data: j.data };
     }
   } catch (e) { return null; } /* guard-ok — صورة لا تُفكّ = لا قياس، والمتّصل يكمل بلا حكم */
@@ -47,9 +52,10 @@ function thumb(img, n, rect) {
       const cx = Math.min(n - 1, Math.floor(x * n / r.w));
       const i = (row + r.x + x) * 4;
       const c = cy * n + cx;
-      /* الشفافيّة تُركّب على أسود كي لا يُحسب PNG شفّاف مختلفًا عن نسخته المعتمة */
+      /* الشفافيّة تُركّب على رماديّ متوسّط (مراجعة: على الأسود صار حبر أسود على شفّاف «أسود كامل» فبدا شعاران مختلفان
+         متطابقين ⇒ ٤٢٢ كاذب). على الرماديّ يظهر الحبر الأسود والأبيض معًا. */
       const a = d[i + 3] === undefined ? 1 : d[i + 3] / 255;
-      out[c * 3] += d[i] * a; out[c * 3 + 1] += d[i + 1] * a; out[c * 3 + 2] += d[i + 2] * a;
+      out[c * 3] += d[i] * a + BG * (1 - a); out[c * 3 + 1] += d[i + 1] * a + BG * (1 - a); out[c * 3 + 2] += d[i + 2] * a + BG * (1 - a);
       cnt[c] += 1;
     }
   }
@@ -140,7 +146,7 @@ function visionCopy(x, maxSide) {
       const stepY = Math.max(1, Math.floor((y1 - y0) / 3)), stepX = Math.max(1, Math.floor((x1 - x0) / 3));
       for (let yy = y0; yy < y1; yy += stepY) for (let xx = x0; xx < x1; xx += stepX) {
         const i = (yy * img.w + xx) * 4; const a = d[i + 3] === undefined ? 1 : d[i + 3] / 255;
-        r += d[i] * a; g += d[i + 1] * a; b += d[i + 2] * a; c++;
+        r += d[i] * a + BG * (1 - a); g += d[i + 1] * a + BG * (1 - a); b += d[i + 2] * a + BG * (1 - a); c++;
       }
       const o = (y * W + x2) * 4; out[o] = r / c; out[o + 1] = g / c; out[o + 2] = b / c; out[o + 3] = 255;
     }
