@@ -20,12 +20,13 @@ const vaultLib = (vault, reads = [], w = {}, mk = { calls: 0, live: 0, maxLive: 
   'function idbImgGetMany(ids){ ids.forEach(id => reads.push(id)); const o = {}; ids.forEach(id => { if(vault[id]) o[id] = vault[id]; }); return new Promise(r => setTimeout(() => r(o), 5)); }' +
   'function idbImgGet(id){ reads.push(id); return new Promise(r => setTimeout(() => r(vault[id]), 5)); }' +
   'let idbSetCalls = []; function idbSet(k, v){ idbSetCalls.push([k, v]); return Promise.resolve(); }' +
+  'function getCurrent(){ return (state.projects || []).find(p => p.id === state.currentId) || null; }' +
   slice('function __vaultRead(a){', 'function idbImgSweep(liveIds){') +
   'function __makeView(src){ mk.calls++; mk.live++; mk.maxLive = Math.max(mk.maxLive, mk.live); return new Promise(r => setTimeout(() => { mk.live--; r("data:image/jpeg;base64,VIEW" + src.length); }, 8)); }' +
   slice('async function __vaultSave(){', '/* الاستعادة: صور مشروع') +
   slice('async function hydrateProjectImages(p, fromIdx){', 'window.__hydrateProjectImages') +
   slice('function __vaultJsonSize(){', 'function saveStateLocal(){') +
-  '; return { hydrateProjectImages, __imgWindowStart, __vaultJsonSize, __IMG_WINDOW, __vaultRead, __vaultRelease, __imgView, __vaultSave, __vaultReplacer, __projectsToJson, idbSetCalls: () => idbSetCalls };');
+  '; return { hydrateProjectImages, __imgWindowStart, __vaultJsonSize, __IMG_WINDOW, __vaultRead, __vaultRelease, __imgView, __vaultSave, __vaultReplacer, __projectsToJson, __vaultProjBlobs, __collectVaultIds, idbSetCalls: () => idbSetCalls };');
 
 test('١. الاستعادة لنافذة العرض وحدها (آخر ٣٠ رسالة)، وكلّها حين يطلب «عرض الأقدم»', async () => {
   const vault = {}; const msgs = [];
@@ -194,4 +195,68 @@ test('١٢. الرسم: نسخة العرض أوّلًا، والأصل يظهر
   assert.match(src, /__imgView\(a\)\.then\(__showSrc\)/);
   assert.match(src, /img\.style\.display = ''; img\.src = u;/);
   assert.match(src, /img\.decoding = 'async';/);
+});
+
+/* v-proj-vault (فحص الإقلاع في محادثة فارغة ببيانات كبيانات المالك: ١٨٣ م.ب نصوص base64 على مستوى المشروع — آخر صورة معدّلة،
+   مصدر التعديل، أساس طبقة النصّ، لقطة الدليل، الديكور — تُحمَّل لكلّ المشاريع وينسخها كلّ حفظ ٣–٤ مرّات). */
+const b64 = (c) => c.repeat(200000);
+const imgProj = (id, c) => ({ id, messages: [{ role: 'user', content: 'x' }], lastEditedImage: { b64: b64(c + '1'), mime: 'image/png' }, imageEditSource: { b64: b64(c + '2'), mime: 'image/png' },
+  imageTextLayer: { baseB64: b64(c + '3'), baseMime: 'image/png', text: 'نص', fontKey: 'k' }, guideShot: { b64: b64(c + '4'), mime: 'image/png' }, decorHistory: { 'مودرن': { b64: b64(c + '5'), mime: 'image/png' } } });
+
+test('١٣. الحفظ يكتب base64 المشروع في مخزن الصور ويُبقي في السجلّ معرّفه؛ الصغير كما هو، والكنس يعدّها حيّة', async () => {
+  const vault = {}; const A = imgProj('A', 'a'); A.imageEditSource = { b64: 'SMALL', mime: 'image/png' };
+  const L = vaultLib(vault)(vault, { projects: [A], currentId: 'A' }, [], {}, { calls: 0, live: 0, maxLive: 0 });
+  await L.__vaultSave();
+  const rec = L.idbSetCalls()[0][1][0];
+  for (const [f, k] of [['lastEditedImage', 'b64'], ['imageTextLayer', 'baseB64'], ['guideShot', 'b64']]) {
+    assert.equal(rec[f][k], '', f + ' خارج السجلّ'); assert.ok(rec[f].vaultId && vault[rec[f].vaultId] === A[f][k], f + ' في المخزن');
+    assert.equal(rec[f].vaultPending, undefined);
+  }
+  assert.equal(rec.decorHistory['مودرن'].b64, ''); assert.equal(vault[rec.decorHistory['مودرن'].vaultId], A.decorHistory['مودرن'].b64);
+  assert.equal(rec.imageEditSource.b64, 'SMALL', 'الصغير يبقى في السجلّ'); assert.equal(rec.imageEditSource.vaultId, undefined);
+  assert.equal(rec.imageTextLayer.text, 'نص', 'بقيّة الحقول كما هي');
+  assert.ok(JSON.stringify(rec).length < 3000, 'السجلّ بلا base64');
+  const live = L.__collectVaultIds([A]);
+  assert.ok(live.has(A.lastEditedImage.vaultId) && live.has(A.decorHistory['مودرن'].vaultId), 'الكنس لا يمسحها');
+  assert.ok(L.__vaultJsonSize() < 3000, 'حارس الحجم يقيس السجلّ بلا base64');
+});
+
+test('١٤. base64 المشاريع الأخرى يُفرَج عنه عند فتح غيرها ويعود حين يُفتح مشروعه (قراءة واحدة لكلّ كائن)؛ المعلّق لا يُمسّ', async () => {
+  const vault = {}; const reads = []; const A = imgProj('A', 'a'); const B = imgProj('B', 'b');
+  const st = { projects: [A, B], currentId: 'A' };
+  const L = vaultLib(vault)(vault, st, reads, {}, { calls: 0, live: 0, maxLive: 0 });
+  await L.__vaultSave();
+  assert.equal(B.lastEditedImage.b64, '', 'أوّل حفظ ينقلها للمخزن ويُخرج غير المفتوح من الذاكرة فورًا');
+  assert.ok(A.lastEditedImage.b64.length > 150000, 'والمفتوح يبقى');
+  const pendingB = { b64: b64('p'), mime: 'image/png' }; B.imageEditSource = pendingB; pendingB.vaultId = 'vp'; pendingB.vaultPending = true;
+  await L.hydrateProjectImages(A);
+  assert.equal(B.lastEditedImage.b64, '', 'B خرج من الذاكرة'); assert.equal(B.imageTextLayer.baseB64, ''); assert.equal(B.decorHistory['مودرن'].b64, '');
+  assert.equal(pendingB.b64.length, 200000, 'المعلّق (لم يُكتب بعد) لا يُمسّ');
+  assert.ok(A.lastEditedImage.b64.length > 150000, 'المفتوح يبقى');
+  assert.equal(L.__vaultProjBlobs(A), null, 'لا شيء في المخزن = لا وعد (الإرسال لا ينتظر)');
+  reads.length = 0;
+  const p1 = L.__vaultProjBlobs(B), p2 = L.__vaultProjBlobs(B);
+  await Promise.all([p1, p2]);
+  assert.equal(reads.length, 4, 'أربعة كائنات مخزونة = أربع قراءات مهما تكرّر الطلب');
+  assert.equal(B.lastEditedImage.b64, vault[B.lastEditedImage.vaultId]); assert.equal(B.imageTextLayer.baseB64, vault[B.imageTextLayer.vaultId]); assert.equal(B.guideShot.b64, vault[B.guideShot.vaultId]); assert.ok(B.guideShot.b64.length > 150000);
+});
+
+test('١٥. الإرسال ينتظر الاستعادة قبل أن يقرأ آخر صورة معدّلة، ولا يتأخّر حين لا شيء في المخزن؛ والكتّاب يُسندون كائنًا جديدًا دائمًا', () => {
+  const att = fs.readFileSync('js/app-09-attach.js', 'utf8');
+  assert.match(att, /async function sendPrompt\(\)\{\n[^\n]*\n  try\{ const __cb = getCurrent\(\); const __bp = \(__cb && window\.__vaultProjBlobs\) \? window\.__vaultProjBlobs\(__cb\) : null; if\(__bp\) await __bp; \}/);
+  assert.match(src, /if\(p\) __vaultProjBlobs\(p\);/, 'فتح المشروع يستعيدها');
+  /* الحفظ يُبقي معرّف الكائن فإن عُدّلت الصورة في مكانها لا تُكتب وتُستعاد القديمة — الكاتب يجب أن يُسند كائنًا جديدًا */
+  const inPlace = /(lastEditedImage|imageEditSource|imageTextLayer|guideShot)\s*\.\s*(b64|baseB64)\s*=[^=]|decorHistory\[[^\]]+\]\s*\.\s*b64\s*=[^=]/;
+  for (const f of fs.readdirSync('js').filter(f => /\.js$/.test(f) && f !== 'app.bundle.js')) {
+    assert.ok(!inPlace.test(fs.readFileSync('js/' + f, 'utf8')), f + ': تعديل base64 مشروع في مكانه');
+  }
+});
+
+test('١٦. زرّ المشاركة لا يبني ملفّ الصورة الكامل لحظة ظهوره، ورقائق المستخدم بمصغّرتها، ونسخ العرض على لوحة برمجيّة', () => {
+  const att = fs.readFileSync('js/app-09-attach.js', 'utf8');
+  const fp = att.slice(att.indexOf('const filePossible = () => {'), att.indexOf('const saveOpen = (t) => {'));
+  assert.ok(fp.length > 50 && !/fileOnce\(\)/.test(fp), 'filePossible لا يبني الملفّ');
+  assert.match(fp, /new File\(\[new Uint8Array\(1\)\]/);
+  assert.match(src, /if\(__chipThumb\) img\.src = __chipThumb;/);
+  assert.match(src, /getContext\('2d', \{ willReadFrequently: true \}\)/);
 });
