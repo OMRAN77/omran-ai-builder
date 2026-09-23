@@ -132,6 +132,72 @@ for (const { name, h } of list) {
  * المتصفح (hls.js) يحتاج Access-Control-Allow-Origin، وأغلب روابط الفهرس
  * تعمل في تطبيقات التلفزيون لا المتصفح. العميل يعتمد النتيجة: cors:false
  * تُتجاهل على غير سفاري، وok:false تُتجاهل كليًا. */
+/* v-tv-deep (المالك ٢٣ سبتمبر: «أكثر القنوات الرياضيّة ما تشتغل»): تشخيص فقط — لا يغيّر ok/cors/geo
+ * ولا ما يعرضه العميل. الفهرس قد يمرّ والتشغيل يفشل: نتبع الرابط إلى قائمة الجودة ثمّ أوّل مقطع
+ * فيديو (ومفتاح التشفير إن وُجد) ونسجّل CORS في كلّ خطوة، والسبب الأوّل للفشل في deep.why. */
+const ORIGIN = 'https://omran-ai-builder.vercel.app';
+function corsOk(r) {
+  const a = r.headers.get('access-control-allow-origin') || '';
+  return a === '*' || a.includes('omran-ai-builder.vercel.app');
+}
+function nextUri(text, base, tag) {
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].startsWith(tag)) continue;
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j].trim();
+      if (!l || l.startsWith('#')) continue;
+      try { return new URL(l, base).href; } catch { return null; }
+    }
+  }
+  return null;
+}
+async function hop(url, wantText) {
+  const r = await fetch(url, {
+    headers: { 'User-Agent': HEADERS['User-Agent'], Origin: ORIGIN },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(9000),
+  });
+  const out = { code: r.status, cors: corsOk(r), url: r.url || url, text: '' };
+  if (wantText && r.ok) out.text = await r.text();
+  else { try { await r.body?.cancel(); } catch { /* الجسم لا يلزم */ } }
+  return out;
+}
+const ok2xx = (c) => c >= 200 && c < 300;
+async function deepProbe(text, base) {
+  const d = { why: '' };
+  try {
+    let media = text, mediaUrl = base;
+    if (text.includes('#EXT-X-STREAM-INF')) {
+      const vu = nextUri(text, base, '#EXT-X-STREAM-INF');
+      if (!vu) { d.why = 'no-variant'; return d; }
+      const v = await hop(vu, true);
+      d.variant = v.code; d.variantCors = v.cors;
+      if (!ok2xx(v.code) || !v.text.includes('#EXTM3U')) { d.why = 'variant-dead'; return d; }
+      if (!v.cors) { d.why = 'variant-nocors'; return d; }
+      media = v.text; mediaUrl = v.url;
+    }
+    if (/#EXT-X-KEY:[^\n]*METHOD=(SAMPLE-AES|ISO-23001-7)/i.test(media) || /KEYFORMAT="(com\.widevine|com\.microsoft|com\.apple)/i.test(media)) { d.why = 'drm'; return d; }
+    if (media.includes('#EXT-X-ENDLIST')) d.ended = true;
+    const km = media.match(/#EXT-X-KEY:[^\n]*METHOD=AES-128[^\n]*URI="([^"]+)"/i);
+    if (km) {
+      const k = await hop(new URL(km[1], mediaUrl).href, false);
+      d.key = k.code; d.keyCors = k.cors;
+      if (!ok2xx(k.code)) { d.why = 'key-dead'; return d; }
+      if (!k.cors) { d.why = 'key-nocors'; return d; }
+    }
+    const su = nextUri(media, mediaUrl, '#EXTINF');
+    if (!su) { d.why = 'no-segments'; return d; }
+    const s = await hop(su, false);
+    d.seg = s.code; d.segCors = s.cors;
+    if (!ok2xx(s.code)) { d.why = 'seg-dead'; return d; }
+    if (!s.cors) { d.why = 'seg-nocors'; return d; }
+    d.why = d.ended ? 'ended' : 'ok';
+  } catch { d.why = d.why || 'timeout'; }
+  return d;
+}
+const deepCounts = {};
+
 const streamsStatus = {};
 let mOk = 0, mCors = 0;
 try {
@@ -155,10 +221,15 @@ try {
         });
         st.code = r.status;
         if (r.ok) {
-          const head = (await r.text()).slice(0, 4000);
+          const body = await r.text();
+          const head = body.slice(0, 4000);
           st.ok = head.includes('#EXTM3U');
           const acao = r.headers.get('access-control-allow-origin') || '';
           st.cors = acao === '*' || acao.includes('omran-ai-builder.vercel.app');
+          if (st.ok) {
+            st.deep = await deepProbe(body, r.url || u);
+            deepCounts[st.deep.why] = (deepCounts[st.deep.why] || 0) + 1;
+          }
         }
         /* v-tv-geo: 403/451 من أمريكا ≠ رابط ميت — قنوات المنطقة (الكأس،
          * الشارقة…) تمنع خارجها وتعمل عند مستخدمينا. تُعلَّم geo ولا تُخفى. */
@@ -171,11 +242,12 @@ try {
   }
   await Promise.all(Array.from({ length: CONC }, worker));
   console.log('روابط شغالة: ' + mOk + ' — منها صالحة للمتصفح (CORS): ' + mCors);
+  console.log('الفحص العميق (حتّى أوّل مقطع فيديو): ' + JSON.stringify(deepCounts));
 } catch (e) { console.log('فحص الروابط تخطى: ' + (e && e.message)); }
 
 const out = {
   checkedAt: new Date().toISOString(),
-  counts: { total: list.length, ok: okCount, live: liveCount, repaired, streamsOk: mOk, streamsCors: mCors },
+  counts: { total: list.length, ok: okCount, live: liveCount, repaired, streamsOk: mOk, streamsCors: mCors, streamsDeep: deepCounts },
   channels,
   streams: streamsStatus,
 };
