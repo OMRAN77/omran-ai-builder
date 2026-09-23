@@ -1,0 +1,49 @@
+name: eval
+
+# مقياس جودة المحادثة (v-eval) — ٥٠ سؤالًا على الإنتاج وتقرير بالدرجات والمقارنة بالسابق.
+# يدويّ فقط: كلّ تشغيل يكلّف نداءات مزوّد حقيقيّة (≈٥٤ نداءً لكلّ مزوّد).
+on:
+  workflow_dispatch:
+    inputs:
+      providers:
+        description: 'المزوّدون مفصولون بفواصل (claude,openai,gemini,deepseek,mistral,groq,cohere)'
+        default: 'claude'
+        required: true
+      only:
+        description: 'معرّفات أسئلة محدّدة (اختياريّ)'
+        default: ''
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run eval against production
+        shell: bash
+        env:
+          EVAL_BASE: ${{ vars.PROBE_BASE_URL }}
+          EVAL_TOKEN: ${{ secrets.EVAL_TOKEN }}
+          EVAL_PROVIDERS: ${{ inputs.providers }}
+          EVAL_ONLY: ${{ inputs.only }}
+        run: node scripts/eval-run.mjs | tee eval-output.txt
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-${{ github.run_id }}
+          path: |
+            eval/out/
+            eval-output.txt
+          retention-days: 90
