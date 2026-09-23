@@ -1,3 +1,8 @@
+/* v-site-guide3 (المالك ٢٣ سبتمبر «المزوّدين كلّهم أبيهم نفس الطريقة»): نسخة العميل من قاعدة الإرشاد بين المواقع —
+   تُرسل رسالة نظام في دور الإرشاد فتصل المسارات التي بلا أدوات (الاحتياط، والمزوّد بلا أدوات)، ونصّها مطابق لـ
+   SITE_GUIDE_NOTE في api/_lib/chat.js (اختبار chat-format يطابقهما). */
+const OMRAN_SITE_GUIDE_RE = /(?:وين|فين|أين|اين)\s+(?:أ|ا)?(?:لقى|لاقي|حصل|جدد|سوي|دخل|قدم|دفع|حجز|سجل|طلع|فتح|غير|ضغط)|كيف\s+(?:أ|ا)?(?:وصل|دخل|سوي|جدد|قدم|حجز|دفع|سجل|طلع|فتح|غير|حصل|لقى)|(?:أ|ا)رشدني|دخّ?لني|ودّ?يني|دلّ?ني|(?:ما|مو)\s+(?:لقيت|حصلت|عرفت\s+(?:وين|المكان|أدخل|ادخل))|\bhow\s+(?:do|can)\s+i\s+(?:get\s+to|find|renew|apply|book|access|open)\b|\bwhere\s+(?:do|can)\s+i\b|\btake\s+me\s+to\b|\bguide\s+me\b/i;
+const OMRAN_SITE_GUIDE_NOTE = '[الإرشاد بين المواقع والصفحات — «وين ألقى كذا» · «كيف أوصل لـ» · «أرشدني» · «دخّلني على»]: أنت الدليل، والمستخدم يضغط ويتبعك. (١) ابحث بـweb_search عن الصفحة المقصودة بالضبط (صفحة الخدمة نفسها لا الموقع الرئيسيّ)، وافتحها بـfetch_page إن احتجت أسماء الأزرار. (٢) اكتب خطوات مرقّمة قصيرة؛ كلّ خطوة سطر فيه ماذا يفعل واسم الزرّ أو القائمة كما يظهر حرفيًّا بين «»، وتحتها مباشرةً سطر مستقلّ فيه رابط تلك الصفحة نفسها بصيغة [اسم الصفحة](الرابط) ليضغطه فيصل إليها فورًا — رابط لكلّ خطوة فيها صفحة جديدة. (٣) إن كانت الخدمة في موقع آخر (جهة ثانية · تطبيق · بوّابة حكوميّة) فانقله إليه صراحةً: «هذي الخدمة ما هي هنا، ادخل هنا ↓» ثمّ رابط صفحتها. (٤) الروابط من نتائج البحث أو الصفحات التي فتحتها فقط؛ وإن لم تجد رابط الصفحة الدقيقة فأعطِ أقرب صفحة وجدتها وقل أيّ زرّ يضغط منها. (٥) إن قال المستخدم إنّه ما لقي الشيء أو ما يشبه ما وصفت: لا تكرّر الكلام — ابحث من جديد وأعطه الرابط المباشر للخطوة التي وقف عندها، أو اطلب لقطة شاشة وأكمل منها. واستمرّ بالطريقة نفسها في كلّ ردود المحادثة.';
 /* Global shim so the dozen per-feature status writes scattered through the
    send flow can feed the same bar instead of wiping it with textContent=.
    Falls back to the old behaviour when no bar exists. */
@@ -4568,6 +4573,8 @@ function __showImgLoading(el, ar, en){
     if(__pastedDoc) apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة نصٌّ ملصوق (تقرير أو رسالة أو سجل أخطاء) وليست طلب بناء. حلّله: ماذا يعني، ما السبب، وما الخطوات العملية المطلوبة من المستخدم بالترتيب — بلغة المستخدم. ممنوع منعًا باتًا بناء تطبيق أو صفحة أو أي كتلة كود ردًّا عليه، حتى لو ورد فيه «app» أو «feature» أو «submit» — إلا إذا كتب المستخدم بنفسه أمر بناء صريحًا.'});
     /* v-topic-memory: الصياغة القديمة «أجب عن الأخيرة وحدها… التاريخ خلفيّة فقط» علّمت النموذج النسيان. */
     if(!__quietSocialTurn) apiMessages.push({role: 'system', content: 'قاعدة الموضوع (أولوية قصوى): رسالة المستخدم الأخيرة تحدّد الموضوع الحاليّ. إن كانت موضوعًا جديدًا فأجب عنه وحده ولا تكمل السابق ولا تخلطه به من تلقاء نفسك. وإن عادت إلى موضوع سابق في هذه المحادثة فأنت تذكره كاملًا بتفاصيله وتبني عليه — لا تقل إنّك لا تعرفه ولا تطلب إعادته. تاريخ المحادثة كلّه ذاكرتك الحاضرة، لا قائمة مهام تُعاد.', __topicRule: true});
+    const __siteGuideTurn = !__quietSocialTurn && !!text && OMRAN_SITE_GUIDE_RE.test(text); // v-site-guide3
+    if(__siteGuideTurn) apiMessages.push({role: 'system', content: OMRAN_SITE_GUIDE_NOTE});
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
       apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
@@ -5076,7 +5083,14 @@ DESIGN RULES (non-negotiable):
           st._flushed = 0; // v610 — نصّ جديد يستحقّ رسمًا مصيَّرًا جديدًا
         };
         try{
-          const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
+          /* v-site-guide3: «اسأل الكل» يستدعي كلّ مزوّد مباشرةً بلا بحث — فلا روابط صفحات. في دور الإرشاد يمرّ
+             مزوّدو الأدوات بمسار الأدوات نفسه (بحث + قراءة صفحة) كالمحادثة العاديّة؛ أيّ عثرة تهبط للمباشر. */
+          let reply = null;
+          if(__siteGuideTurn && TOOL_PROVIDERS.indexOf(p.key) !== -1 && typeof window.callChatWithTools === 'function'){
+            try{ const __gr = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, p.key); if(__gr && __gr.reply) reply = __gr.reply; }
+            catch(e){ if(e && e.name === 'AbortError') throw e; __swallow(e, 'askall:site-guide-tools'); }
+          }
+          if(reply === null) reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
           var __chatVideo = window.__chatVideoResult;
           if (__chatVideo && __chatVideo.url) {
             msg.attachments = (msg.attachments || []).concat([{ isVideo: true, url: __chatVideo.url, name: __chatVideo.name || 'chat-video.mp4', mime: 'video/mp4' }]);
