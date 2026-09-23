@@ -239,12 +239,12 @@ const PERSON_WORDS = '(?:أشخاص|اشخاص|شخص|رجال|رجل|بنات|�
    والمفعول، و«وجوه وأشكال» معطوفتين، و«غيّر الوجوه» وحدها، و«ابي تغيّر…» — كلّها لم تطابق فذهبت للمسار الأمين (حرارة ٠٫١٥،
    «احفظ كلّ بكسل») فرجعت الصورة كما هي. وبالعكس «خلّ الرجل يبتسم» كانت تطابق تبديل هويّة: أفعال «خلّ/اجعل/سوّي» صارت تحتاج
    «مختلف/جديد/ثاني» بعد الأشخاص. */
-const SWAP_VERB = '(?:[تي]?غيّ?ر|غيري|[تي]?بدّ?ل|بدلي|[تي]?استبدل)';
+const SWAP_VERB = '(?:[تي]?غيّ?ر(?:ت|تي|وا)?|غيري|[تي]?بدّ?ل(?:ت|تي|وا)?|بدلي|[تي]?استبدل)'; /* «ما غيّرت الوجوه» (شكوى) = تبديل */
 const SWAP_ALL = '(?:(?:جميع|كل|كلّ|كامل|كافة|كافّة|باقي)\\s*)?';
 const FACE_WORD = '(?:ال)?(?:أشكال|اشكال|شكل|وجوه|وجه|ملامح|هوي[ةه]|صور[ةه]?|صور)';
 const PERSON_SWAP_RE = new RegExp([
   '(?:^|[\\s،,])' + SWAP_VERB + '\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:' + FACE_WORD + '\\s*(?:و\\s*' + FACE_WORD + '\\s*)?)?(?:ال)?' + PERSON_WORDS + '(?=$|[\\s،,.!؟?])',
-  '(?:^|[\\s،,])' + SWAP_VERB + '\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:ال)?(?:وجوه|وجه(?:ه|ها|هم)?)(?=$|[\\s،,.!؟?])',
+  '(?:^|[\\s،,])' + SWAP_VERB + '\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:ال)?(?:وجوه|وجه(?:ه|ها|هم)?)(?=\\s*(?:$|[،,.!؟?]|و|كل(?:ها|هم)?|جميع|ب?وجوه|بوجه(?!ي)|بأشخاص|بناس|بدون|من\\s*غير|بلا))',
   '(?:^|[\\s،,])(?:خل|خلي|خلّي|اجعل|سوّ?ي?)\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:ال)?' + PERSON_WORDS + '\\s*(?:[^\\s،,.!؟?]+\\s*)?(?:مختلف|مختلفين|مختلفة|مختلفه|ثانيين|ثاني[ةه]?|جدد|جديد[ةه]?|غير)(?=$|[\\s،,.!؟?])',
   '(?:^|[\\s،,])(?:ال)?(?:أشخاص|اشخاص|وجوه|شخصيات|رجال|بنات|نساء)\\s*(?:مختلف|مختلفين|مختلفة|مختلفه|ثانيين|ثانية|ثانيه|جدد|جديدة|جديده|غير)(?=$|[\\s،,.!؟?])',
   '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:(?:ال)?(?:صور[ةه]?|صور|وجوه|أشكال|اشكال)\\s*)?(?:ال)?' + PERSON_WORDS,
@@ -254,14 +254,23 @@ const PERSON_SWAP_RE = new RegExp([
      تكرار» و«كلّ بطاقة/صورة شخص مختلف» = تبديل أشخاص. */
   '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|استبدل)\\s*(?:لي\\s*)?(?:ال)?(?:صور|صور[ةه])(?=$|[\\s،,.!؟?])[^\\n]{0,40}?(?:بدون|من\\s*غير|بلا)\\s*تكرار',
   '(?:كل|لكل)\\s*(?:بطاق[ةه]|صور[ةه]|كرت|خان[ةه]|مربع)\\s*(?:ب|فيها\\s*)?(?:شخص|شخصي[ةه]|وجه|موديل)\\s*(?:مختلف[ةه]?|غير|ثاني[ةه]?|جديد[ةه]?)',
-  '\\b(?:change|replace|swap|use)\\s+(?:all\\s+)?(?:(?:of\\s+)?the\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b',
+  '\\b(?:change|replace|swap|use)\\s+(?:all\\s+)?(?:(?:of\\s+)?the\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b(?![’\\u0027]s\\b)',
   '\\b(?:different|new|unique)\\s+(?:faces?|people|persons?|models?)\\b',
   /* «غيّر على اسم الشخصية» / «غيّرها على حسب الاسم» / «طابق الشخص مع الاسم» / «غيّر الصور حسب الأسماء» = الشخص يطابق الاسم تحته */
   '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|عدّ?ل|سوّ?ي?|خلّ?ي?|اجعل|طابق|طابقي)(?:ها|هم|ه|ي)?\\s*(?:(?:ال)?(?:صور[ةه]?|شخصي[ةه]|شخصيات|شخص|أشخاص|اشخاص|وجوه|أشكال|اشكال)\\s*)?(?:على\\s*حسب|على|حسب|بحسب|وفق|طبق|مثل|زي|بناء\\s*على|مع)\\s*(?:ال)?(?:اسم|أسماء|اسماء|اسمه|اسمها)',
   '(?:يناسب|تناسب|يطابق|تطابق|يوافق|توافق)\\s*(?:ال)?(?:اسم|أسماء|اسماء)',
   '\\b(?:match(?:es|ing)?|according\\s+to|based\\s+on)\\s+(?:the\\s+)?names?\\b',
 ].join('|'), 'i');
-function isPersonSwapRequest(text){ return PERSON_SWAP_RE.test(String(text || '')); }
+/* v-img-honest (مراجعة): «[تي]» في الفعل جعلت النفي يطابق — «ولا تغيّر الأشخاص»، «بدون ما تبدّل»، «don't change the people» كانت
+   تُبدّل الجميع. المقطع المنفيّ يُحذف قبل الفحص حتّى أوّل فاصلة («لا تغيّر الخلفية، غيّر الأشخاص» يبقى تبديلًا). «ما غيّرت الوجوه»
+   (شكوى بالماضي) ليست نفيًا لأمر فلا تُحذف. */
+const SWAP_NEG_RE = /(?:^|[\s،,])(?:و?لا|و?ما|بدون(?:\s*ما)?|من\s*غير(?:\s*ما)?|دون(?:\s*(?:أن|ما))?|بلا(?:\s*ما)?)\s*(?:[تي](?:غيّ?ر|بدّ?ل|ستبدل)|تغيير|تبديل|استبدال)[^،,.!؟?\n]*|\b(?:don'?t|do\s+not|never|without)\s+(?:change|changing|replace|replacing|swap|swapping)\b[^,.!?\n]*|\bkeep\s+(?:all\s+)?(?:the\s+)?(?:same\s+)?(?:people|persons?|faces?|characters?)\b/gi;
+function isPersonSwapRequest(text){ return PERSON_SWAP_RE.test(String(text || '').replace(SWAP_NEG_RE, ' ')); }
+/* مراجعة: شخص بعينه («الرجل اللي على اليمين بس»، «the man on the left») = التبديل له وحده، والباقون كما هم — لا «كلّ شخص» ولا
+   بوّابة «٣٪ من الصورة» (شخص صغير في صورة جماعيّة يمسّ ١٪). جمعٌ أو «كل/جميع» معه = الجميع كما كان. */
+const SWAP_ONE_RE = /(?:اللي|الي|التي|الذي)\s*(?:على|ع|في|فى)?\s*(?:اليمين|اليسار|اليمنى|اليسرى|النص|الوسط|الخلف|الورا|قدام|الأمام|فوق|تحت)|(?:^|[\s،,])(?:بس|فقط|وحده|وحدها)(?=$|[\s،,.!؟?])|\b(?:on|at|in)\s+the\s+(?:left|right|middle|center|centre|back|front)\b|\bonly\b/i;
+const SWAP_MANY_RE = /(?:^|[\s،,])(?:جميع|كل|كلّ|كامل|كلهم|كلها|الكل|(?:ال)?(?:أشخاص|اشخاص|وجوه|شخصيات|ناس|بطاقات)|(?:بدون|من\s*غير|بلا)\s*تكرار)(?=$|[\s،,.!؟?])|\b(?:all|every(?:one|body)?|people|faces|characters)\b/i;
+function isTargetedPersonSwap(text){ const t = String(text || '').replace(SWAP_NEG_RE, ' '); return SWAP_ONE_RE.test(t) && !SWAP_MANY_RE.test(t); }
 /* v-person-clothes (لقطة المالك ٦ سبتمبر «غير الشخصيات مع الملابس وخل كل شخصية غير عن الثانيه» → «مافي تغير حقيقي»):
    القاعدة ٢ كانت تأمر بإبقاء «الملابس وقواعد اللبس» كما هي، فتناقض الطلب نفسه ويخرج الناس بوجوه معدَّلة قليلًا وبنفس
    الثياب. عند ذكر الملابس في الطلب تُقلب القاعدة: ملابس جديدة كاملة ومختلفة لكل شخص. («زي» وحدها ليست لباسًا هنا —
@@ -270,6 +279,7 @@ const PERSON_CLOTHES_RE = /(?:^|[\s،,])(?:و|ف|ب)?(?:ال)?(?:ملابس|مل
 function buildPersonSwapPrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   const wantsClothes = PERSON_CLOTHES_RE.test(String(userWords || '') + ' ' + String(userPrompt || ''));
+  const targeted = isTargetedPersonSwap(userWords || userPrompt);
   return [
     ...taskHeader(prompt, userWords),
     '',
@@ -277,7 +287,7 @@ function buildPersonSwapPrompt(userPrompt, userWords){
     /* v-img-honest (تبديل «أنماط الصور» رجع الصورة نفسها): العدّ الصريح لكلّ شخص في كلّ بطاقة، والناتج الثابت فشل مسمّى،
        والأشخاص الجدد متخيَّلون لا يشبهون أحدًا حقيقيًّا (يخفّف رفض «تزييف الوجوه»)، والطفل يبقى طفلًا بعمره (يخفّف حساسيّة
        القاصرين ويمنع تحويله بالغًا)، وبأسلوب البطاقة نفسه لا «واقعيّ» دائمًا (البطاقات قد تكون رسمًا أو ثلاثيّ الأبعاد). */
-    '1. Replace EVERY person in the image — every card, tile, frame and panel, none skipped — with a NEW, distinct, fictional person as the request describes (not resembling any real or famous person), drawn in the same medium and style as that part of the source. Each new person must be unmistakably different from the one in the source at a glance — different face, hairstyle and skin tone; keep the same gender and age group (a child stays a child of about the same age, a baby stays a baby) unless the request or a name under them says otherwise; a viewer comparing both images must never think it is the same person lightly retouched. If a person\'s name sits under or next to them, that person must plausibly match that name (gender, age and cultural cues); a style or category title is not a person\'s name. No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
+    (targeted ? '1. Replace ONLY the person or people the request singles out (by position, description or name) — everyone else stays exactly as in the source, same face, hair and identity — with a NEW, distinct, fictional person as the request describes' : '1. Replace EVERY person in the image — every card, tile, frame and panel, none skipped — with a NEW, distinct, fictional person as the request describes') + ' (not resembling any real or famous person), drawn in the same medium and style as that part of the source. Each new person must be unmistakably different from the one in the source at a glance — different face, hairstyle and skin tone; keep the same gender and age group (a child stays a child of about the same age, a baby stays a baby) unless the request or a name under them says otherwise; a viewer comparing both images must never think it is the same person lightly retouched. If a person\'s name sits under or next to them, that person must plausibly match that name (gender, age and cultural cues); a style or category title is not a person\'s name. No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
     wantsClothes
       ? '2. Change the outfits too: give every new person a complete, different outfit (style, colours, garments) that suits them and the name or label under them — no two outfits alike, and none copied from the source. Keep layout, frames, positions, poses, background, lighting, and every piece of text and every label character-for-character.'
       : '2. Keep everything else exactly as in the source: layout, frames, positions, poses, outfits and dress code, background, lighting, colours, and every piece of text and every label character-for-character.',
@@ -440,4 +450,4 @@ function buildRestylePrompt(userPrompt, userWords){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, removeTextTarget, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection, buildTextPolishPrompt };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, removeTextTarget, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection, buildTextPolishPrompt, isTargetedPersonSwap };
