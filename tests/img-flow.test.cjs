@@ -43,3 +43,38 @@ test('٤. «ارسم» وحدها تُسأل عن الموضوع بدل رسم �
   for (const x of ['ارسم قطة', 'رسمة وردة', 'draw a cat']) assert.ok(!re.test(x), x);
   assert.ok(a.includes('if(__bareDraw || (!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text))){'));
 });
+
+test('٥. حلقة التعديل: بعد صورة، أيّ رسالة قصيرة ليست سؤالًا ولا شكرًا = تعديل على آخر نسخة', () => {
+  const a = read('js/app-09-attach.js');
+  const m = a.match(/const __ackOnly = (\/.+\/i);/);
+  assert.ok(m);
+  const ack = eval(m[1]);
+  for (const x of ['شكرا', 'حلوة', 'تمام 👍', 'ok']) assert.ok(ack.test(x), x);
+  for (const x of ['أكثر واقعية', 'نفس الشي بس مبتسمة', 'لا، الخلفية فقط', 'حلوة بس الإضاءة قوية']) assert.ok(!ack.test(x), x + ' = تعديل لا شكر');
+  assert.ok(a.includes('const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || \'\').trim() && text.length <= 300 && !__ackOnly.test(text) && !__nanoQ.test(text)'));
+  assert.ok(a.includes('const __FOLLOW_DEFAULT = __FOLLOW_ANY || '));
+});
+
+test('٦. التراجع: «رجعها زي أول/تراجع» للنسخة السابقة و«للأصلية» للأولى، فوريّ بلا محرّك، وبنصّ الـ١٤ لغة', () => {
+  const a = read('js/app-09-attach.js');
+  const u = eval(a.match(/const __undoRe = (\/.+\/i);/)[1]);
+  for (const x of ['رجعها زي أول', 'تراجع', 'رجعها', 'رجعها للأصلية', 'undo', 'الصورة السابقة']) assert.ok(u.test(x), x);
+  for (const x of ['خلها ليل', 'أكثر واقعية', 'رجل على حصان']) assert.ok(!u.test(x), x);
+  const o = eval(a.match(/const __wantOrig = (\/.+\/i)\.test\(text\);/)[1]);
+  assert.ok(o.test('رجعها للأصلية') && o.test('الصورة الأولى') && !o.test('رجعها زي أول'));
+  assert.ok(a.includes("content: t(__wantOrig ? 'imgUndoOrig' : 'imgUndoPrev'),") && a.includes("content: t('imgUndoNone') });"));
+  const d = read('js/app-03-i18n-data.js');
+  assert.equal((d.match(/imgUndoPrev:/g) || []).length, 2, 'عربيّ وإنجليزيّ');
+  for (const lg of ['fr', 'hi', 'ur', 'bn', 'ne', 'id', 'fil', 'tr', 'zh', 'ru', 'es', 'ml']) {
+    const s = read('i18n/' + lg + '.js');
+    assert.ok(s.includes('"imgUndoPrev"') && s.includes('"imgUndoOrig"') && s.includes('"imgUndoNone"'), lg);
+  }
+});
+
+test('٧. تقرير الصورة: للتوليد والتعديل، يصف المرئيّ فقط ويعترف بما لم يتحقّق', () => {
+  const s = read('api/_lib/maha-image.js');
+  assert.ok(s.includes("const cap = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, mime || 'image/png', editImageBase64 || null, editMimeType || 'image/jpeg');"));
+  assert.ok(s.includes('if any part of the request is NOT visible or came out different, say so plainly'));
+  assert.ok(s.includes('if any requested element is missing or different, add one line starting with "⚠️ "'));
+  assert.ok(s.includes('never claim something is in the image when it is not'));
+});

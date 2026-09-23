@@ -1084,3 +1084,6 @@ Object.assign(I18N['ru'], {"tvSportsWorld":"Мировой спорт","tvDirect
 Object.assign(I18N['ru'], { qiblaTitle: '📿 Кибла и время молитв' });
 /* v-tv-matches: جدول المباريات */
 Object.assign(I18N['ru'], {"tvMatches": "Расписание матчей", "tvMatchLive": "Сейчас в эфире", "tvMatchPaid": "Платный", "tvNoMatches": "Сейчас нет запланированных матчей", "tvMatchesNote": "Время по часам вашего устройства · расписание обновляется ежедневно"});
+
+/* v-img-undo: الرجوع لنسخة سابقة من الصورة */
+Object.assign(I18N["ru"], {"imgUndoPrev": "Вернул предыдущую версию 👆 Что изменить?", "imgUndoOrig": "Вернул оригинал 👆 Что изменить?", "imgUndoNone": "Это первая версия, до неё ничего нет 👆 Что изменить?"});

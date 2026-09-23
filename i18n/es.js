@@ -1083,3 +1083,6 @@ Object.assign(I18N['es'], {"tvSportsWorld":"Deportes del mundo","tvDirect":"En d
 Object.assign(I18N['es'], { qiblaTitle: '📿 Qibla y horarios de oración' });
 /* v-tv-matches: جدول المباريات */
 Object.assign(I18N['es'], {"tvMatches": "Calendario de partidos", "tvMatchLive": "En directo", "tvMatchPaid": "De pago", "tvNoMatches": "No hay partidos programados ahora", "tvMatchesNote": "Horas según tu dispositivo · el calendario se actualiza a diario"});
+
+/* v-img-undo: الرجوع لنسخة سابقة من الصورة */
+Object.assign(I18N["es"], {"imgUndoPrev": "Volví a la versión anterior 👆 ¿Qué cambio?", "imgUndoOrig": "Volví a la original 👆 ¿Qué cambio?", "imgUndoNone": "Esta es la primera versión, no hay nada antes 👆 ¿Qué cambio?"});
