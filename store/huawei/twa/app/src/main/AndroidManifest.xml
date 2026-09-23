@@ -38,6 +38,16 @@
 
         <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
+    <!-- v-maha-webview-mic-4: صلاحيّة RECORD_AUDIO وحدها لا تكفي لالتقاط صوت فعليّ داخل
+         WebView أندرويد — مصادر متعدّدة (Chromium/WebRTC، ومكتبات WebView أخرى كـCapacitor)
+         توثّق أنّ فتح مسار التقاط الصوت (AudioRecord/AudioManager) داخل WebView يحتاج أيضًا
+         android.permission.MODIFY_AUDIO_SETTINGS معلَنة في البيان (صلاحيّة "عاديّة" تُمنح
+         تلقائيًّا عند التثبيت بلا طلب وقت تشغيل) — غيابها يفشل التقاط الصوت على مستوى النظام
+         بخطأ يصل الجافاسكربت كـNotReadableError/TrackStartError (بالضبط رسالة «المايك مشغول
+         ببرنامج ثاني»)، رغم أنّ onPermissionRequest منح RESOURCE_AUDIO_CAPTURE بنجاح
+         (v-maha-webview-mic-2) لأنّ الفشل هنا في طبقة أخرى غير طبقة صلاحية WebView. -->
+
+        <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
 
 
 

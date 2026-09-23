@@ -79,7 +79,7 @@
          متداخلة للمالك وحده — كلّ مزوّد يفتح موديلاته، والاختيار يضبط aiapp_provider +
          مفتاح موديل المزوّد (عبر omranPickProviderModel). المعرّفات من إعدادات التطبيق نفسها. */
       var PROVS = [
-        { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-sonnet-5',     models:[['claude-opus-5','Opus 5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
+        { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-haiku-4-5',     models:[['claude-opus-5','Opus 5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
         /* v-provider-models (أمر المالك ٢٢ سبتمبر «كلّ واحد وموديله بالضبط»): المعرّفات هنا معرّفات OpenRouter كما
            يستعملها الخادم (OR_MODELS في chat.js) — الافتراضيّ الواحد ثابت، والباقي يأتي حيًّا من /api/ai?action=models.
            الأسماء القديمة (Astra/Sol/Luna…) كانت عرضًا لا يصل الخادم فأُزيلت. */
