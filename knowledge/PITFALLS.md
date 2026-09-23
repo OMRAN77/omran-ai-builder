@@ -97,6 +97,10 @@
   التزام بهذا الوسم على `main` = صفر ضمانات جودة، لا افتراض «الأغلب فُحص قبله». `tests/no-conflict-
   markers.test.cjs` يفحص كامل شجرة المصدر (لا `git diff` فقط) عن هذا النمط تحديدًا (v-hotfix-conflict-markers).
 
+## ٤٫٦ canvas والنصّ العربيّ
+- **قائمة أرقام داخل نصّ عربيّ على canvas تنقلب:** `fillText('رأيتُ: 56, 91, 66')` في صفحة rtl يظهر «66, 91, 56». لُفّ الجزء الرقميّ بعزل `\u2066…\u2069` واضبط `ctx.direction` من المحتوى (v-edu-algo، `js/edu-algo.js`).
+- **اختبار دوالّ من `vm.runInNewContext`:** الكائنات من نطاق آخر فتفشل `deepStrictEqual` رغم تطابق القيم — طبّعها بـ`JSON.parse(JSON.stringify(x))` أوّلًا (`tests/edu-plus.test.cjs`).
+
 ## ٥. عام
 - **حدث `window.focus`/`blur` لا يصل عند التنقّل داخل/خارج غلاف WebView أصليّ (حزمة متجر).**
   منتقي ملفّات النظام (`onShowFileChooser`) وأنشطة مشابهة (كاميرا، تفويض خارجيّ) تُعرَض كطبقة

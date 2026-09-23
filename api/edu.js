@@ -26,6 +26,11 @@ const GUEST_PROCESS_PER_DAY = 3;
 // Every analysis is a Claude call with a large PDF and a big output budget.
 const USER_PROCESS_PER_DAY = Number(process.env.EDU_USER_DAILY || 25);
 const USER_GRADE_PER_DAY = Number(process.env.EDU_GRADE_DAILY || 120);
+// v-edu-plus: «اسأل المعلّم» و«حلّ مسألة» — سقفان مستقلّان عن تحليل المحاضرات
+const USER_TUTOR_PER_DAY = Number(process.env.EDU_TUTOR_DAILY || 80);
+const GUEST_TUTOR_PER_DAY = 10;
+const USER_SOLVE_PER_DAY = Number(process.env.EDU_SOLVE_DAILY || 30);
+const GUEST_SOLVE_PER_DAY = 3;
 
 /**
  * One daily counter per subject (ip or username) per bucket. Owner is exempt.
@@ -897,6 +902,84 @@ module.exports = withErrorCapture('edu', async (req, res) => {
           rubric: rubric.slice(0, 8),
         },
       });
+      return;
+    }
+
+    // ---------------- 💬 tutor: «اسأل المعلّم» داخل الدرس (v-edu-plus) ----------------
+    // الطالب يسأل عن درس بعينه؛ المعلّم يعرف الدرس (عنوانه وملخّصه) وآخر المحادثة، ويجيب
+    // بإيجاز وبطريقة غير التي في الملخّص. سقف يوميّ مستقلّ عن التحليل.
+    if (action === 'tutor') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const question = String(body.question || '').slice(0, 2000).trim();
+      if (!question) { res.status(400).json({ error: 'اكتب سؤالك أولًا.' }); return; }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const cap = username ? USER_TUTOR_PER_DAY : GUEST_TUTOR_PER_DAY;
+        if (await overDailyLimit(subject, 'tutor', cap)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي لأسئلة المعلّم (' + cap + '). عد غدًا 🌙' });
+          return;
+        }
+      }
+      const title = String(body.title || '').slice(0, 160);
+      const summary = String(body.summary || '').slice(0, 12000);
+      const history = (Array.isArray(body.history) ? body.history : []).slice(-8)
+        .map((m) => (m && m.role === 'assistant' ? 'المعلّم: ' : 'الطالب: ') + String((m && m.text) || '').slice(0, 1500)).join('\n');
+      const sys = 'أنت معلّم خصوصيّ صبور وذكيّ داخل تطبيق تعليميّ. عندك درس محدّد، والطالب يسألك عنه.\n'
+        + 'قواعد: (١) أجب عن سؤاله بالضبط وبإيجاز (عادةً ٤–١٢ سطرًا)، بلغة بسيطة ومثال ملموس من الحياة أو خطوات مرقّمة. '
+        + '(٢) إن لم يفهم فاشرح بطريقة مختلفة عن الملخّص لا بتكرار نصّه. (٣) إن كان السؤال خارج الدرس فأجب باختصار ثمّ اربطه بالدرس. '
+        + '(٤) لا تحلّ واجبًا منقولًا حرفيًّا دون شرح — علّم الطريقة. (٥) المعادلات بصيغة $…$ والكود في ```…``` والمقارنات في جدول ماركداون. '
+        + '(٦) اختم أحيانًا بسؤال قصير يتأكّد من فهمه. (٧) لا تذكر اسم أيّ نموذج ذكاء اصطناعيّ أو شركة؛ أنت «المعلّم».\n'
+        + languageRules(body.lang, body.nativeLang, '') + '\n'
+        + 'أعد JSON فقط: {"reply":"إجابتك بالماركداون"}';
+      const blocks = [{ type: 'text', text: 'الدرس: ' + title + '\n\nملخّص الدرس:\n' + summary
+        + (history ? '\n\nآخر المحادثة:\n' + history : '') + '\n\nسؤال الطالب الآن:\n' + question }];
+      let result = null;
+      try { result = await anthropicJSON(apiKey, sys, blocks, 1800); }
+      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الردّ الآن — حاول مرة أخرى.' }); return; }
+      const reply = String((result && result.reply) || '').trim();
+      if (!reply) { res.status(502).json({ error: 'وصل ردّ فارغ — حاول مرة أخرى.' }); return; }
+      res.status(200).json({ ok: true, reply: reply.slice(0, 8000) });
+      return;
+    }
+
+    // ---------------- 🧩 solve: حلّ مسألة خطوة بخطوة (v-edu-plus) ----------------
+    // صورة أو نصّ مسألة → خطوات، لكلّ خطوة تلميح أوّلًا ثمّ العمل، ثمّ الجواب والتحقّق.
+    // الواجهة تكشفها واحدة واحدة فيتعلّم الطالب الطريقة لا ينسخ الجواب.
+    if (action === 'solve') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const text = String(body.text || '').slice(0, 6000).trim();
+      const img = body.image && typeof body.image.base64 === 'string' ? body.image : null;
+      if (!text && !img) { res.status(400).json({ error: 'اكتب المسألة أو صوّرها أولًا.' }); return; }
+      if (img && img.base64.length > MAX_BASE64_CHARS) { res.status(413).json({ error: 'الصورة كبيرة جدًا — جرّب صورة أصغر.' }); return; }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const cap = username ? USER_SOLVE_PER_DAY : GUEST_SOLVE_PER_DAY;
+        if (await overDailyLimit(subject, 'solve', cap)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي لحلّ المسائل (' + cap + '). عد غدًا 🌙' });
+          return;
+        }
+      }
+      const sys = 'أنت معلّم يحلّ مسألة خطوة بخطوة ليتعلّم الطالب الطريقة. اقرأ المسألة بدقّة (من الصورة أو النصّ) وحلّها صحيحًا.\n'
+        + 'أعد JSON فقط بهذه الصيغة: {"problem":"نصّ المسألة كما فهمتها","topic":"الموضوع","steps":[{"hint":"تلميح قصير يوجّه للخطوة دون كشفها","work":"الخطوة كاملة بالحساب"}],"answer":"الجواب النهائيّ","check":"كيف نتحقّق أنّ الجواب صحيح","tip":"الفكرة العامّة لحلّ المسائل المشابهة"}\n'
+        + 'من ٢ إلى ٨ خطوات. المعادلات بصيغة $…$، والكود في ```…```. إن كانت الصورة غير مقروءة أو ليست مسألة فأعد {"error":"السبب باختصار"}. '
+        + 'لا تذكر اسم أيّ نموذج ذكاء اصطناعيّ أو شركة.\n' + languageRules(body.lang, body.nativeLang, '');
+      const blocks = [];
+      if (img) blocks.push({ type: 'image', source: { type: 'base64', media_type: /^image\/(png|jpeg|gif|webp)$/i.test(img.mime || '') ? img.mime : 'image/jpeg', data: img.base64 } });
+      blocks.push({ type: 'text', text: (text ? 'المسألة:\n' + text : 'المسألة في الصورة.') + '\n\nحلّها الآن وأعد JSON فقط.' });
+      let result = null;
+      try { result = await anthropicJSON(apiKey, sys, blocks, 4000); }
+      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الحلّ الآن — حاول مرة أخرى.' }); return; }
+      if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300) }); return; }
+      const steps = (result && Array.isArray(result.steps) ? result.steps : [])
+        .filter((st) => st && (st.work || st.hint)).slice(0, 10)
+        .map((st) => ({ hint: String(st.hint || '').slice(0, 600), work: String(st.work || '').slice(0, 2500) }));
+      if (!steps.length || !result.answer) { res.status(502).json({ error: 'تعذّر فهم الحلّ — حاول مرة أخرى.' }); return; }
+      res.status(200).json({ ok: true, solution: {
+        problem: String(result.problem || text).slice(0, 3000), topic: String(result.topic || '').slice(0, 120), steps,
+        answer: String(result.answer).slice(0, 1500), check: String(result.check || '').slice(0, 1500), tip: String(result.tip || '').slice(0, 800),
+      } });
       return;
     }
 
