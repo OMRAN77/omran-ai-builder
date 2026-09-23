@@ -446,6 +446,15 @@ function ttsSpeedSetting(){
     return (v === 'slow' || v === 'fast' || v === 'xfast') ? v : 'normal';
   }catch(e){ return 'normal'; }
 }
+/* v-tts-account (المالك: «ابدا فيهم كلهم»): صوت القراءة كان يطلب /api/tts بلا حساب فيُعدّ على عنوان IP —
+   المالك نفسه يُحدّ بستّين طلبًا في اليوم، ومن يتشاركون شبكة يتشاركونها. الحساب يُرسل الآن: المالك وVIP بلا حدّ،
+   وكلّ حساب حصّته، والضيف على عنوانه كما كان. مها الأساسيّ وتأكيد تبويب الصوت يستعملان المساعدين نفسيهما. */
+function ttsAuthToken(){
+  try{ return (typeof authGet === 'function' ? authGet('aiapp_auth_token') : '') || ''; }catch(e){ return ''; }
+}
+function ttsGuestId(){
+  try{ return (typeof window !== 'undefined' && typeof window.getGuestId === 'function') ? (window.getGuestId() || '') : ''; }catch(e){ return ''; }
+}
 async function fetchCloudSpeech(text){
   // v246: دائمًا صوت Azure Neural عالي الجودة (نفس مسار مها) — الجنس من إعداد
   // المستخدم واللغة تُكتشف تلقائيًا من النص لدقة نطق أعلى في كل اللغات.
@@ -454,7 +463,7 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
