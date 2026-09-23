@@ -11,8 +11,13 @@ const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغمق)، ويعود للصفحة إن أُعيد رسم القائمة', () => {
   for (const f of ['js/app-09-attach.js', 'js/app.bundle.js']) {
     const s = read(f);
-    assert.ok(s.includes("const __dotCol = __light ? 'rgba(184,134,11,.75)' : 'rgba(212,175,55,.85)';"), f);
-    assert.ok(!s.includes("const __dotCol = __light ? 'rgba(0,0,0,.30)' : 'rgba(255,255,255,.35)';"), 'لا أبيض');
+    /* v-img-gold-wave: أسود بنقاط ذهبيّة تمشي عليها إضاءة بشكل موجة، بدون خطوط */
+    assert.ok(s.includes("st.id = 'omran-imggen-css'"), f);
+    assert.ok(s.includes('radial-gradient(rgba(212,175,55,.34) 1.4px') && s.includes('#070707'), 'نقاط ذهبيّة على أسود');
+    assert.ok(s.includes('animation:omGenFlow 3.4s linear infinite') && s.includes('mask-size:200cqw 100%') && s.includes('mask-position:-100cqw 0'), 'الإضاءة تمشي على النقاط بشكل موجة');
+    assert.ok(!s.includes('omGenWave') && !s.includes('omGenSlide'), 'بدون الخطوط (طلب المالك)');
+    assert.ok(s.includes('prefers-reduced-motion:reduce){.omGenLit{animation:none}}'), 'احترام تقليل الحركة');
+    assert.ok(!s.includes("'rgba(255,255,255,.35)'"), 'لا أبيض');
     assert.ok(s.includes("if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el);"), 'بعد هبوط بحث الصور');
   }
 });

@@ -3871,22 +3871,16 @@ function __showImgLoading(el, ar, en){
   /* v-img-box (فحص المالك ٢٣ سبتمبر «كلّ ما أريد بناء صورة في مربّع يطلع»): مسار «عطني صور…» يعيد رسم القائمة حين لا
      يجد صورًا في البحث فيهبط للتوليد — فكانت البطاقة تُرسم في عنصر خرج من الصفحة ولا تظهر. تُعاد إلى آخر المحادثة. */
   try{ if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el); }catch(e){ /* guard-ok — العرض اختياريّ */ }
-  // v666: رجوع لبطاقة v664 — بطاقة رمادية بزوايا دائرية، نص «جارٍ إنشاء الصورة»، نقاط تتنفس
-  if(!document.getElementById('omran-imgload-css')){
-    const st = document.createElement('style'); st.id = 'omran-imgload-css';
-    st.textContent = '@keyframes omranDotsBreathe{0%,100%{opacity:.35}50%{opacity:.9}}';
+  /* v-img-gold-wave (المالك ٢٣ سبتمبر بصورتين مقترحتين + لقطة ChatGPT: «أيّ وحدة أفضل؟ لوني الذهبي والأسود، والحركة
+     نفس هذي داخل الصورة»): المربّع الرماديّ بنقاط تتنفّس صار أسود بنقاط ذهبيّة تمشي عليها إضاءة على شكل موجة
+     (قناع موجيّ متحرّك؛ «بدون الخطوط» — المالك). CSS خالص بلا صور ولا canvas، ويتوقّف مع prefers-reduced-motion.
+     معاينة حيّة: https://claude.ai/artifact/PG7aNWPP9TXwohqE8KaVrJ */
+  if(!document.getElementById('omran-imggen-css')){
+    const st = document.createElement('style'); st.id = 'omran-imggen-css';
+    st.textContent = ".omGen{position:relative;container-type:inline-size;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:radial-gradient(90% 70% at 100% 0%,rgba(212,175,55,.22),transparent 60%),radial-gradient(70% 60% at 0% 100%,rgba(212,175,55,.10),transparent 60%),#070707;border:1px solid rgba(212,175,55,.22)}.omGenTxt{position:absolute;top:18px;right:20px;z-index:3;color:#f3d98b;font-size:15px;letter-spacing:.2px;text-shadow:0 0 12px rgba(212,175,55,.45)}.omGenDots,.omGenLit{position:absolute;left:0;right:0;top:17%;bottom:6%;background-size:17px 17px;background-position:center}.omGenDots{background-image:radial-gradient(rgba(212,175,55,.34) 1.4px,transparent 1.7px);-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}.omGenLit{background-image:radial-gradient(#ffe08a 2.2px,rgba(255,200,70,.35) 3px,transparent 4.3px);filter:drop-shadow(0 0 3px rgba(255,205,90,.9));-webkit-mask-image:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20200%20100%27%20preserveAspectRatio%3D%27none%27%3E%3Cfilter%20id%3D%27b%27%20x%3D%27-50%25%27%20y%3D%27-50%25%27%20width%3D%27200%25%27%20height%3D%27200%25%27%3E%3CfeGaussianBlur%20stdDeviation%3D%274%27/%3E%3C/filter%3E%3Cg%20filter%3D%27url%28%23b%29%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%3E%3Cpath%20d%3D%27M-100%2055%20C-75%2025%20-75%2025%20-50%2055%20S-25%2085%200%2055%20S25%2025%2050%2055%20S75%2085%20100%2055%20S125%2025%20150%2055%20S175%2085%20200%2055%20S225%2025%20250%2055%20S275%2085%20300%2055%27%20stroke-width%3D%2713%27/%3E%3Cpath%20d%3D%27M-100%2032%20C-75%208%20-75%208%20-50%2032%20S-25%2058%200%2032%20S25%208%2050%2032%20S75%2058%20100%2032%20S125%208%20150%2032%20S175%2058%20200%2032%20S225%208%20250%2032%20S275%2058%20300%2032%27%20stroke-width%3D%278%27%20opacity%3D%27.55%27/%3E%3C/g%3E%3C/svg%3E\");mask-image:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20200%20100%27%20preserveAspectRatio%3D%27none%27%3E%3Cfilter%20id%3D%27b%27%20x%3D%27-50%25%27%20y%3D%27-50%25%27%20width%3D%27200%25%27%20height%3D%27200%25%27%3E%3CfeGaussianBlur%20stdDeviation%3D%274%27/%3E%3C/filter%3E%3Cg%20filter%3D%27url%28%23b%29%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%3E%3Cpath%20d%3D%27M-100%2055%20C-75%2025%20-75%2025%20-50%2055%20S-25%2085%200%2055%20S25%2025%2050%2055%20S75%2085%20100%2055%20S125%2025%20150%2055%20S175%2085%20200%2055%20S225%2025%20250%2055%20S275%2085%20300%2055%27%20stroke-width%3D%2713%27/%3E%3Cpath%20d%3D%27M-100%2032%20C-75%208%20-75%208%20-50%2032%20S-25%2058%200%2032%20S25%208%2050%2032%20S75%2058%20100%2032%20S125%208%20150%2032%20S175%2058%20200%2032%20S225%208%20250%2032%20S275%2058%20300%2032%27%20stroke-width%3D%278%27%20opacity%3D%27.55%27/%3E%3C/g%3E%3C/svg%3E\");-webkit-mask-size:200cqw 100%;mask-size:200cqw 100%;-webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;animation:omGenFlow 3.4s linear infinite}@keyframes omGenFlow{from{-webkit-mask-position:0 0;mask-position:0 0}to{-webkit-mask-position:-100cqw 0;mask-position:-100cqw 0}}@media (prefers-reduced-motion:reduce){.omGenLit{animation:none}}";
     document.head.appendChild(st);
   }
-  // v672: بالوضع الفاتح تنعكس الألوان — بطاقة فاتحة ونقاط وكتابة غامقة (نفس الشكل)
-  const __light = document.documentElement.getAttribute('data-mode') === 'light';
-  const __cardBg = __light ? '#e9e9ec' : '#3a3a3d';
-  const __txtCol = __light ? 'rgba(0,0,0,.75)' : 'rgba(255,255,255,.85)';
-  /* v-img-box: نجوم البطاقة ذهبيّة بدل الأبيض (طلب المالك) — أغمق قليلًا في الوضع الفاتح كي تُرى. */
-  const __dotCol = __light ? 'rgba(184,134,11,.75)' : 'rgba(212,175,55,.85)';
-  el.innerHTML = `<div style="display:block;width:min(340px,85vw);height:min(340px,85vw);background:${__cardBg};border-radius:24px;margin:6px 0;position:relative;overflow:hidden">
-    <div style="position:absolute;top:18px;right:20px;color:${__txtCol};font-size:15px" dir="rtl">جارٍ إنشاء الصورة</div>
-    <div style="position:absolute;inset:0;margin:auto;width:62%;height:52%;background-image:radial-gradient(${__dotCol} 1.7px,transparent 1.7px);background-size:16px 16px;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent);animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
-  </div>`;
+  el.innerHTML = "<div class='omGen' role='status' aria-label='جارٍ إنشاء الصورة'><div class='omGenTxt' dir='rtl'>جارٍ إنشاء الصورة</div><div class='omGenDots'></div><div class='omGenLit'></div></div>";
 }
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
