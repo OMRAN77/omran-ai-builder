@@ -193,7 +193,7 @@ I18N['bn'] = {
     logoutTitle: "লগ আউট করুন",
     loginAction: "লগইন করুন",
     acctSectionTitle: "👤 আমার অ্যাকাউন্ট",
-    statsSectionTitle: "আমার পরিসংখ্যান",
+    statsSectionTitle: "আমার প্রকল্প ও ব্যাকআপ",
     statsProjectsLabel: "প্রকল্প গণনা",
     statsMessagesLabel: "মোট বার্তা পাঠানো হয়েছে",
     statsFavProviderLabel: "প্রিয় প্রদানকারী",

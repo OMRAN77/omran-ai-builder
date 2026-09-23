@@ -183,7 +183,7 @@ I18N['ml'] = {
     "logoutTitle": "ലോഗ് ഔട്ട്",
     "loginAction": "ലോഗിൻ",
     "acctSectionTitle": "👤 എന്റെ അക്കൗണ്ട്",
-    "statsSectionTitle": "എന്റെ സ്റ്റാറ്റുകൾ",
+    "statsSectionTitle": "എന്റെ പ്രോജക്റ്റുകളും ബാക്കപ്പും",
     "statsProjectsLabel": "പ്രോജക്ടുകളുടെ എണ്ണം",
     "statsMessagesLabel": "അയച്ച ആകെ മെസ്സേജുകൾ",
     "statsFavProviderLabel": "ഇഷ്ടപ്പെട്ട പ്രൊവൈഡർ",

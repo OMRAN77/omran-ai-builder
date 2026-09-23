@@ -210,7 +210,7 @@ I18N['fr'] = {
     logoutTitle: "Déconnexion",
     loginAction: "Connexion",
     acctSectionTitle: "👤 Mon compte",
-    statsSectionTitle: "Mes statistiques",
+    statsSectionTitle: "Mes projets et sauvegarde",
     statsProjectsLabel: "Nombre de projets",
     statsMessagesLabel: "Total des messages envoyés",
     statsFavProviderLabel: "Fournisseur préféré",

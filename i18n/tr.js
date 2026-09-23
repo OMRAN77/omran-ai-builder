@@ -181,7 +181,7 @@ I18N['tr'] = {
     "logoutTitle": "Çıkış yap",
     "loginAction": "Giriş",
     "acctSectionTitle": "👤 Hesabım",
-    "statsSectionTitle": "İstatistiklerim",
+    "statsSectionTitle": "Projelerim ve yedekleme",
     "statsProjectsLabel": "Proje sayısı",
     "statsMessagesLabel": "Gönderilen toplam mesaj",
     "statsFavProviderLabel": "Favori sağlayıcı",

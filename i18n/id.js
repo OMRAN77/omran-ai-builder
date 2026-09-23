@@ -181,7 +181,7 @@ I18N['id'] = {
     "logoutTitle": "Keluar",
     "loginAction": "Masuk",
     "acctSectionTitle": "👤 Akun saya",
-    "statsSectionTitle": "Statistik saya",
+    "statsSectionTitle": "Proyek saya & cadangan",
     "statsProjectsLabel": "Jumlah proyek",
     "statsMessagesLabel": "Total pesan terkirim",
     "statsFavProviderLabel": "Penyedia favorit",

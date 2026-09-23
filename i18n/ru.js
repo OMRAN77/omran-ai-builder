@@ -182,7 +182,7 @@ I18N['ru'] = {
     "logoutTitle": "Выйти",
     "loginAction": "Вход",
     "acctSectionTitle": "👤 Мой аккаунт",
-    "statsSectionTitle": "Моя статистика",
+    "statsSectionTitle": "Мои проекты и резервная копия",
     "statsProjectsLabel": "Количество проектов",
     "statsMessagesLabel": "Всего отправлено сообщений",
     "statsFavProviderLabel": "Любимый провайдер",
