@@ -32341,6 +32341,11 @@ if(document.readyState === 'loading'){
     { n: 'عجمان', c: 'ae', g: 'general', h: 'ajmanTV' },
     { n: 'الشارقة 2', c: 'ae', g: 'general', h: 'sharjah2' },
     { n: 'الفجيرة', c: 'ae', g: 'general', h: 'fujairahTV' },
+    /* v-tv-uae (المالك: «قنوات الإمارات الرياضية والعادية رتبها»): قنوات رسميّة لها رابط عامّ في الفهرس —
+       الوسطى والشرقية من كلباء (مؤسّسة الشارقة للإعلام) وبرامج العربية (دبي). */
+    { n: 'الوسطى', c: 'ae', g: 'general', h: 'alWoustaTV' },
+    { n: 'الشرقية من كلباء', c: 'ae', g: 'general', h: 'kalbaTV' },
+    { n: 'برامج العربية', c: 'ae', g: 'general', h: 'alArabiyaPrograms' },
     { n: 'سبيستون', c: 'ae', g: 'kids', h: 'spacetoon' },
     // ——— قطر
     { n: 'الجزيرة', h: 'aljazeera', c: 'qa', g: 'news' },
@@ -32453,7 +32458,7 @@ if(document.readyState === 'loading'){
     { n: 'السعودية', h: 'SaudiChannelOne', c: 'sa', g: 'general' },
     { n: 'SBC', h: 'sbc_sa', c: 'sa', g: 'general' },
     { n: 'الثقافية السعودية', h: 'thaqafeyah', c: 'sa', g: 'general' },
-    { n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'sa', g: 'biz' },
+    { n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'ae', g: 'biz' }, /* v-tv-uae: العربية في دبي كقناتها الأمّ */
     // ——— توسعة مصر
     { n: 'MBC مصر (شاهد)', u: 'https://shahid.mbc.net/ar/live', c: 'eg', g: 'general' },
     { n: 'DMC', h: 'dmctveg', c: 'eg', g: 'general' },
@@ -32973,6 +32978,9 @@ if(document.readyState === 'loading'){
     "ماجد للأطفال (المنصة)": "Majid Kids TV",
     "الظفرة": "Al Dhafra TV",
     "عجمان": "Ajman TV",
+    "الوسطى": "Al Wousta TV",
+    "الشرقية من كلباء": "Al Sharqiya from Kalba",
+    "برامج العربية": "Al Arabiya Programs",
     "السعودية": "Saudi TV",
     "الثقافية السعودية": "Saudi Al Thaqafiya",
     "الحياة": "Al Hayah TV",
@@ -33351,6 +33359,9 @@ if(document.readyState === 'loading'){
     });
   }
 
+  var TV_CAT_RANK = { sports: 0, general: 1, drama: 2, movies: 3, music: 4, news: 5, biz: 6, kids: 7, religion: 8 };
+  function tvCatRank(ch){ var r = TV_CAT_RANK[ch.g]; return r === undefined ? 9 : r; }
+
   function renderGrid(){
     var el = shell();
     var grid = el.querySelector('#tvGrid');
@@ -33406,10 +33417,14 @@ if(document.readyState === 'loading'){
         return true;
       });
       // الحيّ الآن أولًا — وصاحب البث المباشر النظيف قبله
+      /* v-tv-uae (المالك: «قنوات الإمارات الرياضية والعادية رتبها»): تبويب الإمارات بالتصنيف — الرياضة ثمّ
+       * العامّة ثمّ الأخبار والاقتصاد ثمّ الأطفال. بقيّة الدول على ترتيبها القديم. */
+      var byCat = !q && S.country === 'ae' && S.cat === 'all';
       list.sort(function(a, b){
         var la = mOf(a) ? 2 : 0;
         var lb = mOf(b) ? 2 : 0;
-        return lb - la;
+        if(lb !== la) return lb - la;
+        return byCat ? tvCatRank(a) - tvCatRank(b) : 0;
       });
     }
     var liveNow = list.filter(function(x){ return !!mOf(x); }).length;

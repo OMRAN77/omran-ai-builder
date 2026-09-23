@@ -159,3 +159,18 @@ test('٧. لا يوتيوب: المشغّل والأسماء والـ14 لغة �
   assert.ok(!/youtube\.com|liveInfo|bySearch|byHandle\(/.test(chk), 'الفاحص بلا يوتيوب');
   assert.ok(!chk.includes('  channels,\n'), 'لا قسم قنوات يوتيوب في tv-status.json');
 });
+
+// v-tv-uae (المالك: «قنوات الإمارات الرياضية والعادية الي اريدها رتبها»): القنوات الرسميّة الإماراتيّة التي لها
+// رابط عامّ في الفهرس موجودة بروابطها وأسمائها الإنجليزيّة، وتبويب الإمارات مرتّب بالتصنيف (الرياضة أوّلًا).
+test('٨. تبويب الإمارات: الوسطى وكلباء وبرامج العربية والعربية Business بروابط، وترتيب بالتصنيف', () => {
+  const tv = read('js/app-25-tv.js');
+  const bh = JSON.parse(read('tv-streams.json')).byHandle;
+  [['الوسطى', 'alWoustaTV', 'Al Wousta TV'], ['الشرقية من كلباء', 'kalbaTV', 'Al Sharqiya from Kalba'], ['برامج العربية', 'alArabiyaPrograms', 'Al Arabiya Programs']].forEach(([ar, h, en]) => {
+    assert.ok(tv.includes("{ n: '" + ar + "', c: 'ae', g: 'general', h: '" + h + "' }"), ar);
+    assert.ok(Array.isArray(bh[h]) && bh[h].length && bh[h].every((u) => u.startsWith('https://')), h + ' رابط https');
+    assert.ok(tv.includes('"' + ar + '": "' + en + '"'), en);
+  });
+  assert.ok(tv.includes("{ n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'ae', g: 'biz' }"), 'العربية Business مع الإمارات');
+  assert.ok(tv.includes("var byCat = !q && S.country === 'ae' && S.cat === 'all';") && tv.includes('return byCat ? tvCatRank(a) - tvCatRank(b) : 0;'));
+  assert.ok(tv.includes('var TV_CAT_RANK = { sports: 0, general: 1,'), 'الرياضة ثمّ العامّة');
+});
