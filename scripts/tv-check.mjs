@@ -260,21 +260,22 @@ const sportsOut = freshSports
   .map((e) => ({ n: e.n, c: e.c, m: e.m.filter((u) => streamsStatus[u] && (streamsStatus[u].ok || streamsStatus[u].geo)) }))
   .filter((e) => e.m.length);
 
-/* v-tv-matches: جدول مباريات اليوم والغد (UTC) من لوحة ESPN العامّة — لقطة يوميّة، لا نتائج حيّة. */
+/* v-tv-matches: جدول المباريات من لوحة ESPN العامّة — الجولة الحاليّة لكلّ دوري (بلا تاريخ) + اليوم والغد،
+ * نافذة ٧ أيّام. لقطة يوميّة، لا نتائج حيّة. (تجربة ٢٣ سبتمبر: اليوم والغد وحدهما = ٠ حدث في كلّ الدوريّات.) */
 let matches = [];
 try {
   const now = Date.now();
-  const days = [ymd(now), ymd(now + 864e5)];
+  const days = ['', ymd(now), ymd(now + 864e5)];
   const got = [];
   for (const lg of MATCH_LEAGUES) {
     for (const d of days) {
       try {
-        const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + lg + '/scoreboard?dates=' + d, { signal: AbortSignal.timeout(15000) });
+        const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + lg + '/scoreboard' + (d ? '?dates=' + d : ''), { signal: AbortSignal.timeout(15000) });
         if (!r.ok) { console.log('مباريات ' + lg + ' ' + d + ': ' + r.status); continue; }
         const j = await r.json();
         const got1 = parseEspn(j, lg);
         const evs = (j && j.events) || [];
-        console.log('مباريات ' + lg + ' ' + d + ': ' + evs.length + ' حدث ← ' + got1.length + ' مقروءة');
+        console.log('مباريات ' + lg + ' ' + (d || 'الجولة الحاليّة') + ': ' + evs.length + ' حدث ← ' + got1.length + ' مقروءة');
         if (evs.length && !got1.length) console.log('  عيّنة: ' + JSON.stringify(evs[0]).slice(0, 700));
         got.push(...got1);
       } catch (e) { console.log('مباريات ' + lg + ' ' + d + ' تخطّت: ' + (e && e.message)); }

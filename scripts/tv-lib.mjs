@@ -53,14 +53,14 @@ export function parseEspn(j, lg) {
   return out;
 }
 
-/* نافذة الجدول: من ٣ ساعات مضت (مباراة جارية) إلى ٣٦ ساعة قادمة، بلا تكرار، مرتّبة بالوقت. */
-export function windowMatches(list, now, cap = 150) {
+/* نافذة الجدول: من ٣ ساعات مضت (مباراة جارية) إلى ٧ أيّام قادمة، بلا تكرار، مرتّبة بالوقت. */
+export function windowMatches(list, now, cap = 200, aheadMs = 7 * 864e5) {
   const seen = new Set();
   return (list || [])
     .filter((m) => {
       const t = Date.parse(m.t);
       const k = m.lg + '|' + (m.id || m.h + m.a + m.t);
-      if (seen.has(k) || !(t >= now - 3 * 36e5 && t <= now + 36 * 36e5)) return false;
+      if (seen.has(k) || !(t >= now - 3 * 36e5 && t <= now + aheadMs)) return false;
       seen.add(k);
       return true;
     })

@@ -1051,11 +1051,11 @@
     drb.textContent = '🎭 ' + tvT('tvDramaWorld', 'دراما ومنوّعات', 'Drama & Shows');
     drb.onclick = function(){ S.country = '__drama'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(drb);
-    /* v-tv-matches (المالك: «جدول مباريات مثل ياسين تيفي»): مباريات اليوم والغد بتوقيت الجهاز. */
+    /* v-tv-matches (المالك: «جدول مباريات مثل ياسين تيفي»): مباريات الأيّام السبعة القادمة بتوقيت الجهاز. */
     var mb = document.createElement('button');
     mb.type = 'button';
     mb.style.cssText = chipCss(S.country === '__matches');
-    mb.textContent = '📅 ' + tvT('tvMatchesToday', 'مباريات اليوم', "Today's matches");
+    mb.textContent = '📅 ' + tvT('tvMatches', 'جدول المباريات', 'Match schedule');
     mb.onclick = function(){ S.country = '__matches'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(mb);
     Object.keys(TV_COUNTRIES).forEach(function(code){
@@ -1128,7 +1128,7 @@
   var TV_MATCH_PAID = { 'eng.1': 'beIN SPORTS', 'uefa.champions': 'beIN SPORTS', 'uefa.europa': 'beIN SPORTS' };
   function renderMatches(grid, el){
     var now = Date.now();
-    var rows = TV_MATCHES.filter(function(m){ var t = Date.parse(m && m.t); return t > now - 2 * 36e5 && t < now + 30 * 36e5; });
+    var rows = TV_MATCHES.filter(function(m){ var t = Date.parse(m && m.t); return t > now - 2 * 36e5 && t < now + 7 * 864e5; });
     var meta = el.querySelector('#tvMeta');
     if(meta) meta.textContent = tvT('tvMatchesNote', 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', 'Times in your device clock · schedule updates daily');
     if(!rows.length){
@@ -1142,7 +1142,7 @@
     var today = new Date(now).toDateString();
     rows.forEach(function(m){
       var t = Date.parse(m.t), d = new Date(t);
-      var opts = d.toDateString() === today ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', hour: '2-digit', minute: '2-digit' };
+      var opts = d.toDateString() === today ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' };
       var when;
       try{ when = d.toLocaleString(L, opts); }catch(e){ when = d.toLocaleString(undefined, opts); }
       var live = now >= t && now < t + 2 * 36e5;

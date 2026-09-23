@@ -1080,4 +1080,4 @@ Object.assign(I18N['tr'], {"tvSportsWorld":"Dünya Sporu","tvDirect":"Canlı yay
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['tr'], { qiblaTitle: '📿 Kıble ve Namaz Vakitleri' });
 /* v-tv-matches: جدول المباريات */
-Object.assign(I18N['tr'], {"tvMatchesToday": "Bugünün maçları", "tvMatchLive": "Şu an canlı", "tvMatchPaid": "Ücretli", "tvNoMatches": "Şu an planlanmış maç yok", "tvMatchesNote": "Saatler cihazınıza göre · program her gün güncellenir"});
+Object.assign(I18N['tr'], {"tvMatches": "Maç programı", "tvMatchLive": "Şu an canlı", "tvMatchPaid": "Ücretli", "tvNoMatches": "Şu an planlanmış maç yok", "tvMatchesNote": "Saatler cihazınıza göre · program her gün güncellenir"});

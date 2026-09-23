@@ -1033,4 +1033,4 @@ Object.assign(I18N['hi'], {"tvSportsWorld":"विश्व खेल","tvDirect
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['hi'], { qiblaTitle: '📿 क़िबला और नमाज़ के समय' });
 /* v-tv-matches: جدول المباريات */
-Object.assign(I18N['hi'], {"tvMatchesToday": "आज के मैच", "tvMatchLive": "अभी लाइव", "tvMatchPaid": "सशुल्क", "tvNoMatches": "अभी कोई निर्धारित मैच नहीं", "tvMatchesNote": "समय आपके डिवाइस की घड़ी के अनुसार · कार्यक्रम रोज़ अपडेट होता है"});
+Object.assign(I18N['hi'], {"tvMatches": "मैच कार्यक्रम", "tvMatchLive": "अभी लाइव", "tvMatchPaid": "सशुल्क", "tvNoMatches": "अभी कोई निर्धारित मैच नहीं", "tvMatchesNote": "समय आपके डिवाइस की घड़ी के अनुसार · कार्यक्रम रोज़ अपडेट होता है"});
