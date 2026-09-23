@@ -1038,3 +1038,6 @@ Object.assign(I18N['fr'], {"tvMatches": "Calendrier des matchs", "tvMatchLive": 
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["fr"], {"imgUndoPrev": "Retour à la version précédente 👆 Que dois-je changer ?", "imgUndoOrig": "Retour à l'original 👆 Que dois-je changer ?", "imgUndoNone": "C'est la première version, rien avant 👆 Que dois-je changer ?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["fr"], {"ownerSectionTitle": "👑 Page du propriétaire"});

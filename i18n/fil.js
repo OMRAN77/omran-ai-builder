@@ -1088,3 +1088,6 @@ Object.assign(I18N['fil'], {"tvMatches": "Iskedyul ng mga laro", "tvMatchLive": 
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["fil"], {"imgUndoPrev": "Ibinalik sa naunang bersyon 👆 Ano ang babaguhin ko?", "imgUndoOrig": "Ibinalik sa orihinal 👆 Ano ang babaguhin ko?", "imgUndoNone": "Ito ang unang bersyon, wala nang nauna 👆 Ano ang babaguhin ko?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["fil"], {"ownerSectionTitle": "👑 Pahina ng may-ari"});

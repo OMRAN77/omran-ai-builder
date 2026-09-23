@@ -909,6 +909,8 @@ const $ = s => document.querySelector(s);
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
     }
+    /* v-owner-page: صفّ «صفحة المالك» في قائمة الإعدادات يتبع الدخول والخروج */
+    try{ if(typeof renderSettingsNavList === 'function') renderSettingsNavList(); }catch(e){ /* guard-ok — القائمة تُبنى أيضًا عند فتح الإعدادات */ }
     // v-maha-dock: مها راسية بجانب المايك — الزر العائم لا يُظهر بعد الآن.
   }
   // Deferred (not called synchronously): I18N is declared further down in
@@ -2745,6 +2747,7 @@ const I18N = {
     aboutSupportDesc: 'نرد على استفساراتك خلال ٢٤-٤٨ ساعة.',
     aboutCopyright: '© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪',
     adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
+    ownerSectionTitle: '👑 صفحة المالك',
     videoBadgeShort: 'قصير',
     videoBadgeFull: 'كامل',
     provTypingSuffix: 'يكتب…',
@@ -3794,6 +3797,7 @@ const I18N = {
     aboutSupportDesc: 'We answer your inquiries within 24–48 hours.',
     aboutCopyright: '© Omran AI team — Made with love in the UAE 🇦🇪',
     adminPanelTitle: '🛠️ Admin panel (owner only)',
+    ownerSectionTitle: '👑 Owner page',
     videoBadgeShort: 'Short',
     videoBadgeFull: 'Full',
     provTypingSuffix: 'is typing…',
@@ -4622,7 +4626,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=683'; /* v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=684'; /* v-owner-page: مفتاح «صفحة المالك». قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -10034,7 +10038,7 @@ try{
     if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ /* guard-ok */ } }
   }, true);
 }catch(e){ /* guard-ok */ }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','vaultSection','adminSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','ownerSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;
@@ -10171,7 +10175,8 @@ function collapseAllSettingsSections(){
 }
 
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
-const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
+// v-owner-page: «صفحة المالك» أوّل القائمة، وتُتخطّى لغير المالك (settingsOwnerUi)
+const SETTINGS_NAV_IDS = ['ownerSection','langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
@@ -10187,18 +10192,24 @@ const SETTINGS_NAV_ICONS = {
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
   pricingSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`,
   aboutSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+  ownerSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20"></path><path d="M3 18 2 7l6 4 4-7 4 7 6-4-1 11"></path></svg>`,
   feedbackSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
 };
 function stripUiEmoji(t){ try{ return (t||'').replace(/[\u{1F000}-\u{1FAFF}\u{2100}-\u{214F}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}]/gu,'').trim(); }catch(e){ return t; } }
+function settingsOwnerUi(){
+  try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
+}
 function renderSettingsNavList(){
   const listEl = document.getElementById('settingsNavList');
   if(!listEl) return;
   listEl.innerHTML = '';
+  const owner = settingsOwnerUi();
   SETTINGS_NAV_IDS.forEach(sid => {
+    if(sid === 'ownerSection' && !owner) return;
     const headerH3 = document.querySelector('#' + sid + ' .settingsSectionHeader h3');
     const label = stripUiEmoji(headerH3 ? headerH3.textContent : sid);
     const row = document.createElement('div');
-    row.className = 'settingsNavRow';
+    row.className = 'settingsNavRow' + (sid === 'ownerSection' ? ' settingsNavOwner' : '');
     row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
       '<span class="settingsNavLabel"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
     row.querySelector('.settingsNavLabel').textContent = label;
@@ -10218,6 +10229,7 @@ function showSettingsHome(){
 }
 window.showSettingsHome = showSettingsHome;
 function showSettingsPage(sid){
+  if(sid === 'ownerSection' && !settingsOwnerUi()){ showSettingsHome(); return; }
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');
   const pageTitleEl = document.getElementById('settingsPageTitle');

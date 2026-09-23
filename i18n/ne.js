@@ -1036,3 +1036,6 @@ Object.assign(I18N['ne'], {"tvMatches": "खेल तालिका", "tvMatch
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["ne"], {"imgUndoPrev": "अघिल्लो संस्करणमा फर्काएँ 👆 के बदलूँ?", "imgUndoOrig": "मूल तस्बिरमा फर्काएँ 👆 के बदलूँ?", "imgUndoNone": "यो पहिलो संस्करण हो, अघि केही छैन 👆 के बदलूँ?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["ne"], {"ownerSectionTitle": "👑 मालिकको पृष्ठ"});
