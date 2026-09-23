@@ -79,7 +79,7 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
   assert.ok(+((read('index.html').match(/css\/redesign\.css\?v=(\d+)/) || [])[1] || 0) >= 681, 'وسم كاش redesign رُفع (681 فما فوق)');
-  assert.ok(read('index.html').includes('js/modes.js?v=m230923a'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m230923b'), 'وسم كاش modes رُفع');
 });
 
 test('v-wa-handle-bare: مقبض سحب لوحة المعاينة/الكود أيقونة وحدها بلا أيّ إطار/صندوق', () => {
