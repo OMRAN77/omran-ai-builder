@@ -7,6 +7,7 @@
  * النتيجة tv-status.json: العميل يستعمل المعرّف المُصحّح ويخفي ما لم يُحل.
  */
 import { readFile, writeFile } from 'node:fs/promises';
+import { buildSports, parseEspn, windowMatches, ymd, MATCH_LEAGUES } from './tv-lib.mjs';
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
@@ -197,6 +198,7 @@ async function deepProbe(text, base) {
   return d;
 }
 const deepCounts = {};
+let freshSports = [];
 
 const streamsStatus = {};
 let mOk = 0, mCors = 0;
@@ -205,6 +207,14 @@ try {
   const urls = new Set();
   Object.values(tvs.byHandle || {}).forEach((v) => (Array.isArray(v) ? v : [v]).forEach((u) => urls.add(u)));
   (tvs.sports || []).forEach((s) => (Array.isArray(s.m) ? s.m : [s.m]).forEach((u) => urls.add(u)));
+  /* v-tv-sports-fresh: قائمة الرياضة الطازجة من الفهرس العامّ — روابطها تُفحص مع البقيّة. */
+  try {
+    const api = async (f) => (await fetch('https://iptv-org.github.io/api/' + f, { signal: AbortSignal.timeout(60000) })).json();
+    const [chs, sts, blk] = await Promise.all([api('channels.json'), api('streams.json'), api('blocklist.json')]);
+    freshSports = buildSports(chs, sts, blk);
+    freshSports.forEach((e) => e.m.forEach((u) => urls.add(u)));
+    console.log('قائمة رياضة طازجة: ' + freshSports.length + ' قناة من الفهرس');
+  } catch (e) { console.log('قائمة الرياضة الطازجة تخطّت: ' + (e && e.message)); }
   const all = [...urls];
   console.log('\nفحص ' + all.length + ' رابط بث مباشر...');
   const CONC = 12;
@@ -245,11 +255,37 @@ try {
   console.log('الفحص العميق (حتّى أوّل مقطع فيديو): ' + JSON.stringify(deepCounts));
 } catch (e) { console.log('فحص الروابط تخطى: ' + (e && e.message)); }
 
+/* v-tv-sports-fresh: لا يُكتب إلّا رابط وصل فهرسه (أو محجوب جغرافيًّا) — العميل يحسم الباقي بـdeep. */
+const sportsOut = freshSports
+  .map((e) => ({ n: e.n, c: e.c, m: e.m.filter((u) => streamsStatus[u] && (streamsStatus[u].ok || streamsStatus[u].geo)) }))
+  .filter((e) => e.m.length);
+
+/* v-tv-matches: جدول مباريات اليوم والغد (UTC) من لوحة ESPN العامّة — لقطة يوميّة، لا نتائج حيّة. */
+let matches = [];
+try {
+  const now = Date.now();
+  const days = [ymd(now), ymd(now + 864e5)];
+  const got = [];
+  for (const lg of MATCH_LEAGUES) {
+    for (const d of days) {
+      try {
+        const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + lg + '/scoreboard?dates=' + d, { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) { console.log('مباريات ' + lg + ' ' + d + ': ' + r.status); continue; }
+        got.push(...parseEspn(await r.json(), lg));
+      } catch (e) { console.log('مباريات ' + lg + ' ' + d + ' تخطّت: ' + (e && e.message)); }
+    }
+  }
+  matches = windowMatches(got, now);
+  console.log('جدول المباريات: ' + matches.length + ' مباراة');
+} catch (e) { console.log('جدول المباريات تخطّى: ' + (e && e.message)); }
+
 const out = {
   checkedAt: new Date().toISOString(),
-  counts: { total: list.length, ok: okCount, live: liveCount, repaired, streamsOk: mOk, streamsCors: mCors, streamsDeep: deepCounts },
+  counts: { total: list.length, ok: okCount, live: liveCount, repaired, streamsOk: mOk, streamsCors: mCors, streamsDeep: deepCounts, sportsFresh: sportsOut.length, matches: matches.length },
   channels,
   streams: streamsStatus,
+  sports: sportsOut,
+  matches,
 };
 await writeFile('tv-status.json', JSON.stringify(out) + '\n');
 console.log('\nالخلاصة: ' + okCount + '/' + list.length + ' محلولة (منها ' + repaired + ' أُصلحت بالبحث)، ' + liveCount + ' حية الآن.');

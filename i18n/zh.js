@@ -1071,3 +1071,5 @@ Object.assign(I18N['zh'], {"tvSportsWorld":"世界體育","tvDirect":"直播"});
 
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['zh'], { qiblaTitle: '📿 朝向与礼拜时间' });
+/* v-tv-matches: جدول المباريات */
+Object.assign(I18N['zh'], {"tvMatchesToday": "今日賽事", "tvMatchLive": "正在直播", "tvMatchPaid": "付費", "tvNoMatches": "目前沒有已排定的賽事", "tvMatchesNote": "時間依您裝置的時鐘 · 賽程每日更新"});

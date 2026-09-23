@@ -1083,3 +1083,5 @@ Object.assign(I18N['fil'], {"tvSportsWorld":"Sports ng Mundo","tvDirect":"Live s
 
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['fil'], { qiblaTitle: '📿 Qibla at Oras ng Dasal' });
+/* v-tv-matches: جدول المباريات */
+Object.assign(I18N['fil'], {"tvMatchesToday": "Mga laro ngayon", "tvMatchLive": "Live ngayon", "tvMatchPaid": "May bayad", "tvNoMatches": "Walang nakatakdang laro ngayon", "tvMatchesNote": "Oras ayon sa iyong device · araw-araw ina-update ang iskedyul"});

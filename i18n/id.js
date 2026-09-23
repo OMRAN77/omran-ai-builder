@@ -1080,3 +1080,5 @@ Object.assign(I18N['id'], {"tvSportsWorld":"Olahraga Dunia","tvDirect":"Siaran l
 
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['id'], { qiblaTitle: '📿 Kiblat & Waktu Salat' });
+/* v-tv-matches: جدول المباريات */
+Object.assign(I18N['id'], {"tvMatchesToday": "Pertandingan hari ini", "tvMatchLive": "Sedang live", "tvMatchPaid": "Berbayar", "tvNoMatches": "Tidak ada pertandingan terjadwal saat ini", "tvMatchesNote": "Waktu sesuai perangkat Anda · jadwal diperbarui setiap hari"});

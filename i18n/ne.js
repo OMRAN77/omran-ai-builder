@@ -1031,3 +1031,5 @@ Object.assign(I18N['ne'], {"tvSportsWorld":"विश्व खेलकुद",
 
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['ne'], { qiblaTitle: '📿 किबला र नमाजको समय' });
+/* v-tv-matches: جدول المباريات */
+Object.assign(I18N['ne'], {"tvMatchesToday": "आजका खेलहरू", "tvMatchLive": "अहिले प्रत्यक्ष", "tvMatchPaid": "सशुल्क", "tvNoMatches": "अहिले कुनै तालिकाबद्ध खेल छैन", "tvMatchesNote": "समय तपाईंको उपकरणको घडी अनुसार · तालिका दैनिक अद्यावधिक हुन्छ"});

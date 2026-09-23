@@ -888,6 +888,8 @@
    * قناة ok:false تُخفى (معرّف خاطئ/محذوف)، وok مع live تأخذ 🔴.
    * غياب الملف = لا فلترة (أول نشر). */
   var TV_STATUS = null;
+  var TV_SPORTS_FRESH = [];
+  var TV_MATCHES = [];
   var TV_CHECKED_AT = 0;                 // v659: زمن آخر فحص يومي
   function loadStatus(){
     return fetch('/tv-status.json', { cache: 'no-store' })
@@ -896,6 +898,9 @@
         TV_STATUS = (d && d.channels) || null;
         TV_CHECKED_AT = (d && d.checkedAt) ? (Date.parse(d.checkedAt) || 0) : 0;
         try{ window.__tvStreamsStatus = (d && d.streams) || null; }catch(e){ __swallow(e, 'tv:ss'); }
+        /* v-tv-sports-fresh + v-tv-matches: قائمة الرياضة الطازجة وجدول المباريات من الفحص اليوميّ. */
+        TV_SPORTS_FRESH = (d && Array.isArray(d.sports)) ? d.sports : [];
+        TV_MATCHES = (d && Array.isArray(d.matches)) ? d.matches : [];
       })
       .catch(function(e){ __swallow(e, 'tv:status'); });
   }
@@ -919,7 +924,13 @@
     try{ return !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl'); }
     catch(e){ return false; }
   })();
-  function streamUsable(u){
+  /* v-tv-sports-clean (المالك: «أكثر القنوات الرياضيّة ما تشتغل»): الفاحص يتبع الرابط حتّى أوّل مقطع
+   * فيديو (deep.why) — مقطع/قائمة ميتة أو مشفّرة أو منتهية = لا يشتغل عند أحد فيُخفى؛ ومنع CORS في
+   * خطوة لاحقة يُخفى على hls.js وحده. timeout يبقى متفائلًا (قد يكون بطء لحظيّ). */
+  var TV_DEEP_DEAD = { 'variant-dead': 1, 'seg-dead': 1, 'key-dead': 1, drm: 1, 'no-segments': 1, 'no-variant': 1, ended: 1 };
+  var TV_DEEP_NOCORS = { 'variant-nocors': 1, 'seg-nocors': 1, 'key-nocors': 1 };
+  var TV_ARAB_CC = { sa: 1, ae: 1, qa: 1, kw: 1, bh: 1, om: 1, jo: 1, eg: 1, iq: 1, sy: 1, lb: 1, ps: 1, ye: 1, ly: 1, tn: 1, dz: 1, ma: 1, sd: 1, mr: 1 };
+  function streamUsable(u, strict, cc){
     var badAt = TV_M3U_BAD[u];
     if(badAt){
       if(Date.now() - badAt < 8000) return false;
@@ -930,15 +941,20 @@
     if(!ss || !ss[u]) return true;         // لا بيانات فحص — نتفاءل ويحسمها التشغيل
     /* v-tv-geo: 403 عند فاحص أمريكا = حجب جغرافي غالبًا — القناة تعمل في
      * منطقتها (الكأس/الشارقة عند مستخدمينا)؛ نتفاءل ويحسمها التشغيل الفعلي. */
-    if(ss[u].geo) return true;
+    /* v-tv-sports-clean: في شاشة الرياضة (strict) التفاؤل الجغرافيّ للقنوات العربيّة وحدها —
+     * Rai Sport وSky F1 وNBA TV وbeIN USA مقفولة على بلدها أو مدفوعة فلا تشتغل عند مستخدمينا. */
+    if(ss[u].geo) return !strict || !!TV_ARAB_CC[cc];
     if(ss[u].ok === false) return false;   // رابط ميت مؤكد
     if(!TV_NATIVE_HLS && ss[u].cors === false) return false; // المتصفح سيمنعه حتمًا
+    var dw = ss[u].deep && ss[u].deep.why;
+    if(dw && TV_DEEP_DEAD[dw]) return false;
+    if(dw && !TV_NATIVE_HLS && TV_DEEP_NOCORS[dw]) return false;
     return true;
   }
-  function mOf(ch){
+  function mOf(ch, strict){
     var raw = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
     if(!raw) return null;
-    var list = (Array.isArray(raw) ? raw : [raw]).filter(streamUsable);
+    var list = (Array.isArray(raw) ? raw : [raw]).filter(function(u){ return streamUsable(u, strict, ch.c); });
     return list.length ? list : null;
   }
 
@@ -1035,6 +1051,13 @@
     drb.textContent = '🎭 ' + tvT('tvDramaWorld', 'دراما ومنوّعات', 'Drama & Shows');
     drb.onclick = function(){ S.country = '__drama'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(drb);
+    /* v-tv-matches (المالك: «جدول مباريات مثل ياسين تيفي»): مباريات اليوم والغد بتوقيت الجهاز. */
+    var mb = document.createElement('button');
+    mb.type = 'button';
+    mb.style.cssText = chipCss(S.country === '__matches');
+    mb.textContent = '📅 ' + tvT('tvMatchesToday', 'مباريات اليوم', "Today's matches");
+    mb.onclick = function(){ S.country = '__matches'; S.cat = 'all'; renderChips(); renderGrid(); };
+    cw.appendChild(mb);
     Object.keys(TV_COUNTRIES).forEach(function(code){
       /* v-tv-hls: دولة بلا أي قناة ظاهرة (كلها ميتة) لا يظهر زرها — كانت
        * تفتح شبكة فاضية (مصر ٠ من ١٣ في فحص اليوم). */
@@ -1099,12 +1122,67 @@
     grid.appendChild(sep);
   }
 
+  /* v-tv-matches: لقطة يوميّة من الفاحص (tv-status.json ← matches)، لا نتائج حيّة. الناقل يُذكر حيث حقوق
+   * المنطقة معروفة ومستقرّة فقط، ولا زرّ تشغيل لقناة مدفوعة — لا بديل «ياسين/الأسطورة». الأسماء خارجيّة
+   * فتُبنى بـtextContent لا innerHTML. */
+  var TV_MATCH_PAID = { 'eng.1': 'beIN SPORTS', 'uefa.champions': 'beIN SPORTS', 'uefa.europa': 'beIN SPORTS' };
+  function renderMatches(grid, el){
+    var now = Date.now();
+    var rows = TV_MATCHES.filter(function(m){ var t = Date.parse(m && m.t); return t > now - 2 * 36e5 && t < now + 30 * 36e5; });
+    var meta = el.querySelector('#tvMeta');
+    if(meta) meta.textContent = tvT('tvMatchesNote', 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', 'Times in your device clock · schedule updates daily');
+    if(!rows.length){
+      var empty = document.createElement('div');
+      empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';
+      empty.textContent = tvT('tvNoMatches', 'لا مباريات في الجدول الآن', 'No scheduled matches right now');
+      grid.appendChild(empty);
+      return;
+    }
+    var L = tvLang();
+    var today = new Date(now).toDateString();
+    rows.forEach(function(m){
+      var t = Date.parse(m.t), d = new Date(t);
+      var opts = d.toDateString() === today ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', hour: '2-digit', minute: '2-digit' };
+      var when;
+      try{ when = d.toLocaleString(L, opts); }catch(e){ when = d.toLocaleString(undefined, opts); }
+      var live = now >= t && now < t + 2 * 36e5;
+      var row = document.createElement('div');
+      row.className = 'tvMatchRow';
+      row.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.03);';
+      var tm = document.createElement('div');
+      tm.style.cssText = 'flex:0 0 auto;min-width:64px;text-align:center;font-size:13px;font-weight:700;line-height:1.5;';
+      tm.textContent = when;
+      if(live){
+        var lv = document.createElement('div');
+        lv.style.cssText = 'font-size:10px;color:#ff5a5a;font-weight:800;';
+        lv.textContent = '🔴 ' + tvT('tvMatchLive', 'جارية الآن', 'Live now');
+        tm.appendChild(lv);
+      }
+      var mid = document.createElement('div');
+      mid.style.cssText = 'flex:1;min-width:0;';
+      var teams = document.createElement('div');
+      teams.dir = 'auto';
+      teams.style.cssText = 'font-size:14px;font-weight:600;line-height:1.5;';
+      teams.textContent = m.h + '  ×  ' + m.a;
+      var sub = document.createElement('div');
+      sub.dir = 'auto';
+      sub.style.cssText = 'font-size:11px;color:var(--muted,#98a0b3);margin-top:2px;';
+      sub.textContent = '⚽ ' + (m.ln || m.lg || '') + (TV_MATCH_PAID[m.lg] ? '  ·  📺 ' + TV_MATCH_PAID[m.lg] + ' (' + tvT('tvMatchPaid', 'مدفوعة', 'Paid') + ')' : '');
+      mid.appendChild(teams);
+      mid.appendChild(sub);
+      row.appendChild(tm);
+      row.appendChild(mid);
+      grid.appendChild(row);
+    });
+  }
+
   function renderGrid(){
     var el = shell();
     var grid = el.querySelector('#tvGrid');
     grid.innerHTML = '';
     var q = S.q.toLowerCase();
-    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama') renderPlatforms(grid);
+    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama' && S.country !== '__matches') renderPlatforms(grid);
+    if(!q && S.country === '__matches'){ renderMatches(grid, el); return; }
     var list;
     if(!q && S.country === '__sports'){
       /* v-tv-hls: شاشة «رياضة العالم» — قنواتنا الرياضية + كل قناة رياضية
@@ -1113,14 +1191,17 @@
       var seenN = {}, seenU = {};
       list = [];
       TV_CH.forEach(function(ch){
-        if(ch.g !== 'sports' || !mOf(ch)) return;
+        var u0 = ch.g === 'sports' ? mOf(ch, true) : null;
+        if(!u0) return;
         seenN[ch.n.toLowerCase().replace(/\s+/g, '')] = 1;
-        var u0 = mOf(ch); if(u0) u0.forEach(function(u){ seenU[u] = 1; }); // نفس البث باسمين = قناة واحدة
-        list.push(ch);
+        u0.forEach(function(u){ seenU[u] = 1; }); // نفس البث باسمين = قناة واحدة
+        list.push(Object.assign({}, ch, { m: u0 }));
       });
-      ((TV_M3U && TV_M3U.sports) || []).forEach(function(s){
+      /* v-tv-sports-fresh: الطازجة من الفحص اليوميّ أوّلًا، ثمّ نسخة tv-streams.json الثابتة احتياطًا. */
+      TV_SPORTS_FRESH.concat((TV_M3U && TV_M3U.sports) || []).forEach(function(s){
+        if(!s || !s.n || !s.m) return;
         var k = s.n.toLowerCase().replace(/\s+/g, '');
-        var us = (Array.isArray(s.m) ? s.m : [s.m]).filter(streamUsable);
+        var us = (Array.isArray(s.m) ? s.m : [s.m]).filter(function(u){ return streamUsable(u, true, s.c); });
         if(seenN[k] || !us.length || us.some(function(u){ return seenU[u]; })) return;
         seenN[k] = 1; us.forEach(function(u){ seenU[u] = 1; });
         list.push({ n: s.n, c: s.c, g: 'sports', m: us });
