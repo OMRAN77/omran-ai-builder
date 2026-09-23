@@ -3868,6 +3868,9 @@ function __showImgLoading(el, ar, en){
   const _st = window.__chatStatus;
   if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){ /* guard-ok — cleanup, intentional */ } }
   if(!el) return;
+  /* v-img-box (فحص المالك ٢٣ سبتمبر «كلّ ما أريد بناء صورة في مربّع يطلع»): مسار «عطني صور…» يعيد رسم القائمة حين لا
+     يجد صورًا في البحث فيهبط للتوليد — فكانت البطاقة تُرسم في عنصر خرج من الصفحة ولا تظهر. تُعاد إلى آخر المحادثة. */
+  try{ if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el); }catch(e){ /* guard-ok — العرض اختياريّ */ }
   // v666: رجوع لبطاقة v664 — بطاقة رمادية بزوايا دائرية، نص «جارٍ إنشاء الصورة»، نقاط تتنفس
   if(!document.getElementById('omran-imgload-css')){
     const st = document.createElement('style'); st.id = 'omran-imgload-css';
@@ -3878,10 +3881,11 @@ function __showImgLoading(el, ar, en){
   const __light = document.documentElement.getAttribute('data-mode') === 'light';
   const __cardBg = __light ? '#e9e9ec' : '#3a3a3d';
   const __txtCol = __light ? 'rgba(0,0,0,.75)' : 'rgba(255,255,255,.85)';
-  const __dotCol = __light ? 'rgba(0,0,0,.30)' : 'rgba(255,255,255,.35)';
+  /* v-img-box: نجوم البطاقة ذهبيّة بدل الأبيض (طلب المالك) — أغمق قليلًا في الوضع الفاتح كي تُرى. */
+  const __dotCol = __light ? 'rgba(184,134,11,.75)' : 'rgba(212,175,55,.85)';
   el.innerHTML = `<div style="display:block;width:min(340px,85vw);height:min(340px,85vw);background:${__cardBg};border-radius:24px;margin:6px 0;position:relative;overflow:hidden">
     <div style="position:absolute;top:18px;right:20px;color:${__txtCol};font-size:15px" dir="rtl">جارٍ إنشاء الصورة</div>
-    <div style="position:absolute;inset:0;margin:auto;width:62%;height:52%;background-image:radial-gradient(${__dotCol} 1.2px,transparent 1.2px);background-size:16px 16px;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent);animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
+    <div style="position:absolute;inset:0;margin:auto;width:62%;height:52%;background-image:radial-gradient(${__dotCol} 1.7px,transparent 1.7px);background-size:16px 16px;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent);animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
   </div>`;
 }
 
@@ -4376,7 +4380,7 @@ function __showImgLoading(el, ar, en){
       const __archText = __archFollowUp ? (__archAffirm ? __archCtxText : (__archCtxText + ' — والمطلوب الآن تحديدًا: ' + text)) : text;
       cur.lastArchText = __archFollowUp ? __archCtxText : text;
       const __archGen = async (label, prompt) => {
-        chatPhase('⚙️', label, thinkingDiv);
+        __showImgLoading(thinkingDiv, label, label); // v-img-box: المربّع بدل سطر «⚙️»
         let __d = {}; let __k = false;
         try{
           for(let __t3 = 0; __t3 < 3 && !__k; __t3++){
@@ -4449,7 +4453,10 @@ function __showImgLoading(el, ar, en){
     const __txtOnlyImgRe = /^\s*صور[هة]\s+\S|(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
     if(text && !__blockAutoImage && __mediaLane !== 'none' && __mediaLane !== 'video' /* v-media-gate */ && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
        (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
-      if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
+      /* v-img-bare (مسبار الصور ٢٣ سبتمبر): «ارسم» وحدها كانت تُرسل للمولّد بلا موضوع فترسم شيئًا عشوائيًّا —
+         فعل رسم بلا موضوع يُسأل عنه كالطلب المبهم. */
+      const __bareDraw = /^\s*(?:ارسم|أرسم|ارسمي|ارسم\s*لي|ارسملي|رسمة|رسمه|صمم|صمّم|draw|imagine)\s*[.!؟?]*\s*$/i.test(text);
+      if(__bareDraw || (!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text))){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
         renderAll(); saveState();
         thinkingDiv && thinkingDiv.remove();
@@ -5634,6 +5641,20 @@ DESIGN RULES (non-negotiable):
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
       // صفحة · تشغيل كود)، فيقرّر النموذج بنفسه متى يحتاج أداة بدل أن تقرّر
       // عنه أنماط نصّيّة في المتصفّح. أيّ عثرة تهبط صامتة إلى المسار القديم.
+      /* v-img-box: أداة generate_image/edit_image في مسار الأدوات كانت تُظهر سطر «🎨 يرسم صورة…» بلا مربّع. الآن
+         app-18 يستدعي هذا فيظهر المربّع نفسه فوق الردّ (الصورة تُعرض فوق النصّ في الرسم النهائيّ). */
+      window.__omranImgBox = function(){
+        try{
+          let b = thinkingDiv.__imgBox;
+          if(!b || !b.isConnected){
+            b = document.createElement('div'); b.className = 'msg assistant omImgBoxLive';
+            if(thinkingDiv.isConnected) thinkingDiv.parentNode.insertBefore(b, thinkingDiv); else messagesEl.appendChild(b);
+            thinkingDiv.__imgBox = b;
+          }
+          __showImgLoading(b, 'جارٍ إنشاء الصورة', 'Generating image');
+          return true;
+        }catch(e){ __swallow(e, 'img:box'); return false; }
+      };
       try{
         let __ct = null;
         if(__toolsWillRun){

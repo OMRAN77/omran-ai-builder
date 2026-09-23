@@ -1794,7 +1794,10 @@ function renderMessages(keepScroll){
           wrap.appendChild(chip);
         }
       });
-      div.appendChild(wrap);
+      /* v-img-first (المالك ٢٣ سبتمبر «الردود آخر الصورة لا أوّل الصور»): صور المساعد المرفقة (تعديل، بحث صور، البانيات)
+         كانت تُلحق تحت النصّ، والمرسومة داخل الردّ فوقه — فيتقلّب الترتيب. الآن الصورة أوّلًا ثمّ الردّ دائمًا. */
+      if(m.role !== 'user' && textDiv.parentNode === div && m.attachments.some(a => a && (a.isImage || a.isVideo))) div.insertBefore(wrap, textDiv);
+      else div.appendChild(wrap);
     }
     if((m.content && m.content.trim()) || (m.role !== 'user' && m.attachments && m.attachments.some(a => a && (a.isImage || a.isVideo)))){ // v669: الأيقونات تظهر تحت الصور حتى بلا نص
       const actionBar = document.createElement('div');
