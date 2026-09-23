@@ -497,6 +497,22 @@ function __imgWindowStart(p){
   const n = (p && Array.isArray(p.messages)) ? p.messages.length : 0;
   return (p && p.__showAllMsgs) ? 0 : Math.max(0, n - __IMG_WINDOW);
 }
+/* v-mem-guard2 (فيديو المالك بعد #739: النصّ صار سليمًا، لكنّ الشعار تشويش وصفوف لا تُرسم — في محادثة جديدة فارغة):
+   (١) صور المحادثة التي غادرها تبقى بحجمها الكامل في الذاكرة ولا شيء يعيدها للمخزن، فحِمل محادثة الصور يبقى وأنت في غيرها.
+   (٢) فتح المحادثة كان يقرأ كلّ صورة نحو ٤٫٥ مرّات بالتوازي (كلّ renderMessages يطلق استعادة بلا قفل، ومسار الرسم يقرأ كلّ صورة
+   مرّة ثانية). الآن: ما خارج نافذة المحادثة المفتوحة يعود لمعرّفه (الأصل في المخزن ويُستعاد حين يُعرض)، وكلّ صورة قيد القراءة
+   تُقرأ مرّة واحدة وينتظرها الجميع. المعلّقة (لم تُكتب في المخزن بعد) والصغيرة بلا معرّف لا تُمسّ. */
+const __vaultReads = new WeakMap();
+function __vaultRelease(keepP, keepFrom){
+  let freed = 0;
+  ((typeof state !== 'undefined' && state && state.projects) || []).forEach(p => ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || (p === keepP && i >= keepFrom)) return;
+    (m.attachments || []).concat(m.apiImages || []).forEach(a => {
+      if(a && a.vaultId && !a.vaultPending && typeof a.dataUrl === 'string' && a.dataUrl.length > VAULT_MIN && !__vaultReads.has(a)){ a.dataUrl = ''; freed++; }
+    });
+  }));
+  return freed;
+}
 function __collectVaultIds(projects){
   const ids = new Set();
   __vaultEach(projects, a => { if(a.vaultId) ids.add(a.vaultId); });
@@ -519,6 +535,15 @@ function idbImgGet(id){
     rq.onsuccess = () => { db.close(); res(rq.result); };
     rq.onerror = () => { db.close(); rej(rq.error); };
   }));
+}
+/* v-mem-guard2: قراءة صورة واحدة من المخزن — إن كانت قيد القراءة (الاستعادة أو رسم سابق) يُنتظر الوعد نفسه */
+function __vaultRead(a){
+  let pr = __vaultReads.get(a);
+  if(!pr){
+    pr = idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; delete a.purged; } return a.dataUrl; }).finally(() => __vaultReads.delete(a));
+    __vaultReads.set(a, pr);
+  }
+  return pr;
 }
 function idbImgSweep(liveIds){
   return idbOpen().then(db => new Promise((res, rej) => {
@@ -554,14 +579,17 @@ function idbImgGetMany(ids){
 async function hydrateProjectImages(p, fromIdx){
   const need = [];
   const start = (typeof fromIdx === 'number') ? fromIdx : __imgWindowStart(p);
+  if(p) __vaultRelease(p, start); /* v-mem-guard2: ما خارج النافذة يعود لمعرّفه */
   ((p && p.messages) || []).forEach((m, i) => {
     if(!m || i < start) return;
-    (m.attachments || []).forEach(a => { if(a && a.isImage && __vaultDegraded(a)) need.push(a); });
-    (m.apiImages || []).forEach(a => { if(a && __vaultDegraded(a)) need.push(a); });
+    (m.attachments || []).forEach(a => { if(a && a.isImage && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
+    (m.apiImages || []).forEach(a => { if(a && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
   });
   if(!need.length) return 0;
-  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة */
-  try{ const got = await idbImgGetMany(need.map(a => a.vaultId)); need.forEach(a => { if(got[a.vaultId]){ a.dataUrl = got[a.vaultId]; delete a.purged; } }); }catch(e){ __swallow(e, 'vault:get'); }
+  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة؛ وكلّ صورة تُسجَّل «قيد القراءة» فلا تُقرأ ثانية حتّى تنتهي */
+  const batch = idbImgGetMany(need.map(a => a.vaultId));
+  need.forEach(a => { __vaultReads.set(a, batch.then(got => { if(got[a.vaultId]){ a.dataUrl = got[a.vaultId]; delete a.purged; } return a.dataUrl; }, () => a.dataUrl).finally(() => __vaultReads.delete(a))); });
+  try{ await Promise.all(need.map(a => __vaultReads.get(a))); }catch(e){ __swallow(e, 'vault:get'); }
   return need.length;
 }
 window.__hydrateProjectImages = hydrateProjectImages;
@@ -1743,7 +1771,9 @@ function renderMessages(keepScroll){
         } else if(a.isImage){
           const img = document.createElement('img');
           /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
-          if(__vaultDegraded(a)){ idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; delete a.purged; img.src = d; } }).catch(e => __swallow(e, 'vault:render')); }
+          /* v-mem-guard2: قراءة واحدة مشتركة؛ وأدوات المشاركة تُلحق حين يصل الأصل (كانت تُتخطّى لصورة رُسمت قبل وصوله) */
+          let __ibox = null;
+          if(__vaultDegraded(a)){ __vaultRead(a).then(d => { if(typeof d === 'string' && d.length > VAULT_MIN){ img.src = d; if(__ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); } }).catch(e => __swallow(e, 'vault:render')); }
           img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
           img.title = a.name;
           img.style.cursor = 'pointer';
@@ -1766,7 +1796,7 @@ function renderMessages(keepScroll){
           if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
             const ibox = document.createElement('div');
             ibox.style.cssText = 'position:relative;display:block;min-width:0;width:fit-content;max-width:min(460px,100%)';
-            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
+            __ibox = ibox; ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
           } else wrap.appendChild(img);
         } else {
           const chip = document.createElement('div');
