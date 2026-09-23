@@ -804,9 +804,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
          الصورة تُعلن مسبقًا فيحجز المتصفح مكانها قبل تحميلها — لا قفزة.
          النِّسب من ملفات PNG الفعلية: عربي 1203×400، إنجليزي 1534×400. */
       let imgSrc, imgW, imgAlt;
-      if(l === 'ar'){ imgSrc = 'icons/brand-ar.png'; imgW = 126; imgAlt = 'عمران Ai'; }
+      /* v-gpu-lite: نسختا عرض 3× لارتفاع 42 (379×126 و483×126) بدل الأصلين 1203×400 و1534×400 — ضجيج الشعار في فيديو المالك */
+      if(l === 'ar'){ imgSrc = 'icons/brand-ar-s.png'; imgW = 126; imgAlt = 'عمران Ai'; }
       else if(BRAND_L10N_W[l]){ imgSrc = 'icons/brand-' + l + '.png'; imgW = BRAND_L10N_W[l]; imgAlt = 'Omran Ai'; }
-      else { imgSrc = 'icons/brand-en.png'; imgW = 161; imgAlt = 'Omran Ai'; }
+      else { imgSrc = 'icons/brand-en-s.png'; imgW = 161; imgAlt = 'Omran Ai'; }
       bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
       /* v-sidebar-brand: نسخة رأس القائمة الجانبيّة تتبع الشعار نفسه عند تبديل اللغة */
       const sb = document.getElementById('sidebarBrand');
