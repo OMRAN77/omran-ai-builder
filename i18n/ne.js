@@ -941,7 +941,6 @@ Object.assign(I18N["ne"], {
     ciHint: "तपाईं कस्तो जवाफ चाहनुहुन्छ लेख्नुहोस् — तपाईंका सबै च्याटमा लागू हुन्छ।",
     ciPlaceholder: "उदाहरण: बोलीचालीको भाषामा छोटो जवाफ देऊ, भूमिका नबाँधी।",
     ciSaved: "सुरक्षित भयो ✅",
-    mahaCcTitle: "कलको लाइभ क्याप्सन",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "यो उपकरणमा उपलब्ध छैन",

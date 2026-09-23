@@ -992,7 +992,6 @@ Object.assign(I18N["ru"], {
     ciHint: "Напишите, как вам отвечать — применяется ко всем вашим чатам.",
     ciPlaceholder: "Пример: отвечай просто и кратко, без вступлений.",
     ciSaved: "Сохранено ✅",
-    mahaCcTitle: "Субтитры звонка",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Недоступно на этом устройстве",

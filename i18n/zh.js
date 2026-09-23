@@ -981,7 +981,6 @@ Object.assign(I18N["zh"], {
     ciHint: "写下你希望的回复方式 — 将应用于你的所有对话。",
     ciPlaceholder: "例如：用口语、简短回答，不要开场白。",
     ciSaved: "已保存 ✅",
-    mahaCcTitle: "通话实时字幕",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "此设备不可用",

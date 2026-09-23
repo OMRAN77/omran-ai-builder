@@ -1,5 +1,6 @@
 // v-store-flag-session (١٨ سبتمبر ٢٠٢٦): علم حزمة هواوي (?store=huawei) يُحفظ في sessionStorage لا localStorage
-// فلا يلتصق بالمتصفّح العاديّ ويخفي الأسهم والشريط إلى الأبد؛ والعلم القديم العالق يُمسح.
+// فلا يلتصق بالمتصفّح العاديّ (يبقى العلم يميّز حزمة هواوي لأغراض أخرى — منتقي الملفّات في app-09-attach.js
+// — بعد أن أزال v-store-safe-revert إخفاءه للأسهم)؛ والعلم القديم العالق يُمسح.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +27,8 @@ test('index.html: وسم selfdiag رُفع فلا يبقى متصفّح على �
   assert.ok(read('index.html').includes('/js/selfdiag.js?v=hw-twa-2'));
 });
 
-test('tokens.css: الإخفاء تحت store-safe يشمل الزرّ والشريط والنافذة (السبب الذي بدا كحذف)', () => {
+test('tokens.css: v-store-safe-revert — الأسهم لم تعد تُخفى تحت store-safe (أمر عمران ٢٢ سبتمبر)', () => {
   const css = read('css/tokens.css');
-  assert.match(css, /html\.store-safe #stockTicker,\nhtml\.store-safe #btnStocks,\nhtml\.store-safe #stocksModal,\nhtml\.store-safe #aboutStocksCard\{display:none !important;\}/);
+  assert.doesNotMatch(css, /html\.store-safe #stockTicker,\nhtml\.store-safe #btnStocks,\nhtml\.store-safe #stocksModal,\nhtml\.store-safe #aboutStocksCard\{display:none !important;\}/);
+  assert.ok(css.includes('v-store-safe-revert'), 'أثر القرار موثَّق في مكانه');
 });

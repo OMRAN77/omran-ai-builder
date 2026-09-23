@@ -1993,7 +1993,7 @@ function buildSpokenWordSpans(container, text){
        تعليقات/أرقام). القراءة الصوتيّة لا تقرأ الكود عادةً فلا يضرّ فقد وسوم tts-word هنا. */
     try{
       if(codePre && typeof omranCodeHighlight === 'function'){
-        var __raw = codePre.textContent;
+        var __raw = codePre.textContent.replace(/^[ \t]*\n+/, ''); // v-md-blocks: لا أسطر فارغة أعلى صندوق الكود
         if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
       }
     }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
@@ -2114,6 +2114,7 @@ function buildSpokenWordSpans(container, text){
     lastIndex = m.index + m[0].length;
   }
   if(lastIndex < text.length) container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  const __lines = omranMdBlocks(container, text); // v-md-blocks
   // v476: عزل الاتجاه — «(+9714) 708 1111» داخل جملة عربية كان يُعرض معكوسًا
   // لأن المسافات بين الأرقام تتبع اتجاه الفقرة. نلفّ كل تتابع لاتيني/رقمي
   // متجاور في غلاف dir=ltr معزول. لا يغيّر عدد spans فمحاذاة TTS تبقى سليمة.
@@ -2130,20 +2131,81 @@ function buildSpokenWordSpans(container, text){
         const w = document.createElement('span');
         w.setAttribute('dir', 'ltr');
         w.style.unicodeBidi = 'isolate';
-        container.insertBefore(w, __run[0]);
+        __run[0].parentNode.insertBefore(w, __run[0]);
         __run.forEach(n => w.appendChild(n));
       }
       __run = [];
     };
-    for(const n of Array.from(container.childNodes)){
-      const t = n.textContent || '';
-      if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
-      else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
-      else __flush();
+    for(const __blk of __lines){
+      for(const n of Array.from(__blk.childNodes)){
+        const t = n.textContent || '';
+        if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
+        else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
+        else __flush();
+      }
+      __flush();
     }
-    __flush();
   }catch(e){ __swallow(e, 'bidi:isolate'); }
   return wordEls;
+}
+/* v-md-blocks (المالك ٢٣ سبتمبر: «الكتابة غير نظاميّة وغير مرتّبة في أوقات»): الردّ كان نصًّا واحدًا بـpre-wrap
+   وunicode-bidi:plaintext — كلّ سطر يأخذ اتّجاهه من أوّل حرف قويّ فيه، فسطر يبدأ بكلمة إنجليزيّة أو رقم
+   («3. Zuma Dubai — التقييم 4.5») ينقلب يسارًا ويتبعثر ترتيبه، ورقم القائمة يقفز لطرف السطر الآخر. الآن كلّ سطر
+   كتلة مستقلّة باتّجاه صريح: اتّجاه الردّ كلّه (عربيّ إن غلب العربيّ)، إلّا سطرًا إنجليزيًّا خالصًا فيبقى يسارًا.
+   علامة القائمة (• أو 1.) تُعلَّق في بداية السطر بمسافة ثابتة، والعنوان كتلة لها هامش. العناصر نفسها (tts-word)
+   وترتيبها لا يتغيّران، فتمييز القراءة الصوتيّة يبقى كما هو. */
+const OMRAN_AR_CHARS = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/g;
+function omranMdBlocks(container, text){
+  const arN = (String(text).match(OMRAN_AR_CHARS) || []).length;
+  const laN = (String(text).match(/[A-Za-z]/g) || []).length;
+  const baseRtl = arN > 0 && arN * 2 >= laN;
+  const nodes = Array.prototype.slice.call(container.childNodes);
+  nodes.forEach(function(n){ container.removeChild(n); });
+  const out = [];
+  let cur = null;
+  const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
+  newLine();
+  nodes.forEach(function(n){
+    if(n.nodeType === 1 && n.className === 'chat-codeblock'){ out.push(n); newLine(); return; }
+    if(n.nodeType === 3){
+      const parts = String(n.textContent).split('\n');
+      parts.forEach(function(p, i){
+        if(i > 0) newLine();
+        if(p && (cur.childNodes.length || p.trim())) cur.appendChild(document.createTextNode(p));
+      });
+      return;
+    }
+    cur.appendChild(n);
+  });
+  const lines = [];
+  out.forEach(function(b){
+    if(b.className !== 'md-line'){ container.appendChild(b); return; }
+    if(!b.childNodes.length) return;
+    const t = b.textContent || '';
+    const hasAr = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(t);
+    const la = (t.match(/[A-Za-z]/g) || []).length;
+    const rtl = baseRtl ? (hasAr || la < 12) : (hasAr && !la);
+    b.setAttribute('dir', rtl ? 'rtl' : 'ltr');
+    let fv = null;
+    const kids = Array.prototype.slice.call(b.childNodes);
+    for(let i = 0; i < kids.length; i++){
+      const k = kids[i];
+      if(k.nodeType === 1 && k.style.display !== 'none' && String(k.textContent).trim()){ fv = k; break; }
+      if(k.nodeType === 3 && String(k.textContent).trim()) break;
+    }
+    let cls = 'md-line';
+    if(fv){
+      const ft = String(fv.textContent).trim();
+      if(/\bmd-h\d\b/.test(fv.className)) cls += ' md-hb';
+      else if(ft === '•'){ cls += ' md-li'; fv.className += ' md-mk'; }
+      else if(/^•\s/.test(ft)) cls += ' md-li md-li-glued';
+      else if(/^(?:[0-9]{1,3}|[٠-٩]{1,3})[.)]$/.test(ft)){ cls += ' md-oli'; fv.className += ' md-mk'; }
+    }
+    b.className = cls;
+    container.appendChild(b);
+    lines.push(b);
+  });
+  return lines;
 }
 function wordStartOffsets(text){
   const offsets = [];
@@ -2159,6 +2221,15 @@ function stopAllSpeaking(){
   clearWordHighlight();
   ttsHighlightWordEls = null;
 }
+/* v-reply-voice-speed (طلب المالك ٢٢ سبتمبر «خاصيّة بطيء وسريع… أريدها لمها والصوت الي عند المحادثة في الردود»):
+   سرعة الصوت في الإعدادات كانت تصل مها وحدها؛ «استمع» على الردود وقراءتها التلقائيّة وزرّ «تجربة الصوت» كانت
+   بالسرعة العاديّة دائمًا. المفتاح نفسه (aiapp_maha_voice_speed) والدرجات الأربع نفسها، وقيمة تالفة = عاديّ. */
+function ttsSpeedSetting(){
+  try{
+    const v = localStorage.getItem('aiapp_maha_voice_speed');
+    return (v === 'slow' || v === 'fast' || v === 'xfast') ? v : 'normal';
+  }catch(e){ return 'normal'; }
+}
 async function fetchCloudSpeech(text){
   // v246: دائمًا صوت Azure Neural عالي الجودة (نفس مسار مها) — الجنس من إعداد
   // المستخدم واللغة تُكتشف تلقائيًا من النص لدقة نطق أعلى في كل اللغات.
@@ -2167,7 +2238,7 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000) })
+    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -2342,6 +2413,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   utter.lang = langTags[detectedLang] || 'en-US';
   const v = pickVoice(detectedLang);
   if(v) utter.voice = v;
+  utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed + v-maha-pace: صوت الجهاز الاحتياطيّ بالمدى الهادئ نفسه
   const offsets = wordEls && wordEls.length ? wordStartOffsets(text) : null;
   if(offsets){
     utter.onboundary = (e) => {
@@ -2489,7 +2561,7 @@ function renderStreamingAssistant(el, text){
   if(!fresh && head !== prev){
     if(head.length > prev.length && head.indexOf(prev) === 0){
       /* الرأس امتدّ فقط: نرسم الزيادة في مقطع جديد ونلحقه — لا إعادة لما رُسم. */
-      var seg = document.createElement('span');
+      var seg = document.createElement('div');
       seg.className = 'omStreamSeg';
       buildSpokenWordSpans(seg, head.slice(prev.length));
       hw.appendChild(seg);
@@ -2500,9 +2572,9 @@ function renderStreamingAssistant(el, text){
   }
   if(fresh){
     el.innerHTML = '';
-    hw = document.createElement('span'); hw.className = 'omStreamHead';
-    tw = document.createElement('span'); tw.className = 'omStreamTail';
-    var seg0 = document.createElement('span'); seg0.className = 'omStreamSeg';
+    hw = document.createElement('div'); hw.className = 'omStreamHead';
+    tw = document.createElement('div'); tw.className = 'omStreamTail';
+    var seg0 = document.createElement('div'); seg0.className = 'omStreamSeg';
     buildSpokenWordSpans(seg0, head);
     hw.appendChild(seg0);
     el.appendChild(hw); el.appendChild(tw);
@@ -3281,7 +3353,6 @@ const I18N = {
     ciHint: "اكتب كيف تحب أن يردّ عليك — يُطبَّق في كل محادثاتك.",
     ciPlaceholder: "مثال: ردّ عليّ بالعامية وباختصار، وبلا مقدّمات.",
     ciSaved: "تم الحفظ ✅",
-    mahaCcTitle: "الترجمة النصية للمكالمة",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
     chatToPdfLabel: "تحويل إلى PDF",
@@ -3817,7 +3888,6 @@ const I18N = {
     ciHint: "Write how you'd like replies — applied to all your chats.",
     ciPlaceholder: "Example: Keep it casual and short, no preambles.",
     ciSaved: "Saved ✅",
-    mahaCcTitle: "Live call captions",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
     chatToPdfLabel: "Convert to PDF",
@@ -4546,7 +4616,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=679'; /* v-maha-voice-speed: مفاتيح سرعة صوت مها الخمسة — في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=680'; /* v-maha-cc-removed: حُذف مفتاح زرّ الترجمة النصّيّة من الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6116,37 +6186,27 @@ function renderMessages(keepScroll){
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
     {
-      // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
+      // الروابط الخارجية الظاهرة في النصّ — تبقى روابط، وتُستثنى من بطاقة المصادر
       const __inlineLinks = [];
-      const __anchorEls = [];
       if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
           const title = a.textContent.trim() || url;
-          if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
+          if(url && !__inlineLinks.some(l => l.url === url)){
             __inlineLinks.push({ url, title });
           }
-          __anchorEls.push(a);
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
        const __isMapUrl = (url) => /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i.test(String(url || ''));
        const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
-       const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
-      const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
-      // v-src-dedupe (أمر عمران ب): رابط واحد ظاهر في الرد أصلًا = لا بطاقة مصادر
-      // مكرّرة؛ يبقى الرابط قابلًا للضغط داخل الرد. غير ذلك تُحوّل الروابط إلى نصّ
-      // (بلا href حتى لا تتفرّق) وتُجمع كلّها في البطاقة.
-      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
-      const __skipCard = validSrcs.length === 1 && __inlineLinks.length === 1 && __normU(__inlineLinks[0].url) === __normU(validSrcs[0].url);
-      if(!__skipCard){
-        __anchorEls.forEach(a => {
-          const span = document.createElement('span');
-          span.className = 'msgInlineRef';
-          span.textContent = a.textContent;
-          a.parentNode.replaceChild(span, a);
-        });
-      }
+      /* v-inline-links-stay (المالك ٢٣ سبتمبر: «يقول ادخل الرابط… يعطيني مرّة أو مرّتين صح والباقي يخربط»):
+         كان الرابط يبقى قابلًا للضغط في ردّ فيه رابط واحد فقط؛ رابطان فأكثر = كلّها تتحوّل نصًّا عاديًّا
+         (msgInlineRef) وتختفي في زرّ «المصادر» المطويّ. الآن الرابط في النصّ يبقى رابطًا ذهبيًّا يُفتح دائمًا،
+         وبطاقة «المصادر» لا تحمل إلّا مصادر البحث التي ليست ظاهرة في النصّ أصلًا. */
+      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
+      const validSrcs = __srcBase.filter(s => !__inlineLinks.some(l => __normU(l.url) === __normU(s.url))).slice(0, 15);
+      const __skipCard = false;
 
       if(validSrcs.length && !__skipCard){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
@@ -13635,6 +13695,7 @@ const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat
 let mahaStream = null, mahaMediaRecorder = null, mahaChunks = [];
 let mahaAudioCtx = null, mahaAnalyser = null, mahaVadRaf = null, mahaLastPeakRms = 0, mahaLowMicStreak = 0;
 let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking | speaking
+let mahaLastActivity = 0; // v-maha-band: آخر كلام أو ردّ — مهلة السكوت تُحسب منه
 let mahaHistory = [];
 let mahaIntroduced = false;
 let mahaCurrentAudio = null;
@@ -13649,6 +13710,7 @@ function mahaUnlockAudio(){
     const p = mahaAudioEl.play();
     if(p && p.catch) p.catch(()=>{});
   }catch(e){ __swallow(e, "misc:app-08-maha#1"); }
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.prime(); }catch(e){ __swallow(e, 'maha:goldwave-prime'); } // v-maha-goldwave
 }
 
 const btnMahaEl = document.getElementById('btnMaha');
@@ -13657,45 +13719,8 @@ const mahaOrbEl = document.getElementById('mahaOrb');
 const mahaWaveEl = document.getElementById('mahaWave');
 const mahaStateLabelEl = document.getElementById('mahaStateLabel');
 
-/* v-maha-captions: ترجمة نصية حية للمكالمة — نفس ميزة صوت GPT المتقدم.
-   في المكالمة اللحظية تصل كلمات مها تدفقًا (transcript.delta) وكلام المستخدم
-   من تفريغ الإدخال؛ وفي الوضع الأساسي النصوص جاهزة أصلًا. زر 💬 يخفيها لمن
-   يريد مكالمة صافية، والاختيار محفوظ. ولذوي ضعف السمع هي باب وصولٍ كامل. */
-const mahaCapEl = document.getElementById('mahaCaptions');
-let mahaCcOn = true; try{ mahaCcOn = localStorage.getItem('aiapp_maha_cc') !== '0'; }catch(e){ /* guard-ok: تخزين معطّل = الافتراض ظاهر */ }
-let mahaCapLive = null; // سطر مها الجاري بثّه
-function mahaCapSync(){ if(mahaCapEl) mahaCapEl.style.display = (mahaCcOn && mahaCallActive && mahaCapEl.childNodes.length) ? 'block' : 'none'; }
-function mahaCapClear(){ if(mahaCapEl) mahaCapEl.innerHTML = ''; mahaCapLive = null; mahaCapSync(); }
-function mahaCapLine(who, text){
-  if(!mahaCapEl || !text) return null;
-  const d = document.createElement('div');
-  if(who === 'user'){ d.style.cssText = 'color:#bdb4d8; font-size:11px;'; d.textContent = '👤 ' + text; }
-  else{ d.style.cssText = 'color:#f3efff;'; d.textContent = text; }
-  mahaCapEl.appendChild(d);
-  while(mahaCapEl.childNodes.length > 14) mahaCapEl.removeChild(mahaCapEl.firstChild);
-  mahaCapSync();
-  mahaCapEl.scrollTop = mahaCapEl.scrollHeight;
-  return d;
-}
-function mahaCapUser(text){ mahaCapLive = null; mahaCapLine('user', String(text || '').trim()); }
-function mahaCapDelta(delta){
-  if(!mahaCapEl || !delta) return;
-  if(!mahaCapLive){ mahaCapLive = mahaCapLine('maha', String(delta)); return; }
-  mahaCapLive.textContent += String(delta);
-  mahaCapEl.scrollTop = mahaCapEl.scrollHeight;
-}
-function mahaCapDone(){ mahaCapLive = null; }
-(function(){
-  const b = document.getElementById('btnMahaCc');
-  if(!b) return;
-  const paint = () => { b.style.background = mahaCcOn ? 'rgba(123,92,255,.45)' : 'rgba(255,255,255,.14)'; };
-  paint();
-  b.onclick = () => {
-    mahaCcOn = !mahaCcOn;
-    try{ localStorage.setItem('aiapp_maha_cc', mahaCcOn ? '1' : '0'); }catch(e){ /* guard-ok: بلا تخزين يبقى الاختيار لهذه المكالمة */ }
-    paint(); mahaCapSync();
-  };
-})();
+/* v-maha-cc-removed: لوحة الترجمة النصّيّة الحيّة وزرّها 💬 حُذفا بطلب المالك —
+   المكالمة صوت فقط بلا أيّ نصّ على الشاشة. */
 const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
 
 /* ---------- مها floating draggable window ---------- */
@@ -13764,6 +13789,7 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
 
   function pointerDown(e){
     if(typeof mahaCallMode !== 'undefined' && mahaCallMode === 'builder') return;
+    if(panel.classList.contains('maha-goldband')) return; // v-maha-band: الشريط بعرض الشاشة لا يُسحب
     dragging = true;
     handle.style.cursor = 'grabbing';
     const pt = e.touches ? e.touches[0] : e;
@@ -13803,8 +13829,18 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
   });
 })();
 
+/* v-maha-goldwave: موجة مها الذهبيّة (js/app-30-maha-wave.js) مكان الدائرة في نافذة المكالمة. الدائرة تبقى في
+   الصفحة لمنطقها (حالاتها وقياس المايك) لكنّها مخفيّة ما دامت الموجة موجودة. */
+const mahaGoldWaveEl = document.getElementById('mahaGoldWave');
+function mahaAvatarDisplay(show){
+  if(mahaOrbEl) mahaOrbEl.style.display = (show && !mahaGoldWaveEl) ? 'flex' : 'none';
+  if(mahaGoldWaveEl) mahaGoldWaveEl.style.display = show ? 'block' : 'none';
+  try{ if(window.mahaGoldWave) window.mahaGoldWave[show ? 'start' : 'stop'](); }catch(e){ __swallow(e, 'maha:goldwave-show'); }
+}
+
 function mahaSetState(state, customLabel){
   mahaState = state;
+  if(state !== 'listening') mahaLastActivity = Date.now(); // v-maha-band: مهلة السكوت تُحسب من آخر نشاط
   if(mahaOrbEl) mahaOrbEl.className = 'maha-orb-' + (state === 'error' ? 'thinking' : state);
   if(mahaWaveEl) mahaWaveEl.className = 'maha-wave-' + (state === 'error' ? 'thinking' : state);
   if(mahaStateLabelEl){
@@ -14055,6 +14091,7 @@ async function mahaSpeak(text){
       // النطق معلقًا للأبد (تسريب متراكم) — الإيقاف بعد نهاية المكالمة يحسمه.
       audio.onpause = () => { if(!mahaCallActive) finish(); };
       audio.src = url;
+      try{ if(window.mahaGoldWave) window.mahaGoldWave.trackAudio(audio, blob); }catch(e){ __swallow(e, 'maha:goldwave-track'); } // v-maha-goldwave
       await audio.play();
       mahaStartInterruptListener(audio, finish);
     }catch(e){ resolve(); }
@@ -14127,7 +14164,7 @@ async function mahaRecordUntilSilence(){
         silenceThreshold = Math.min(0.028, Math.max(0.013, noiseFloor * 2.2 + 0.004));
       }
       if(rms > (elapsed < CALIBRATE_MS ? CLEAR_SPEECH : silenceThreshold)){
-        lastLoudAt = now; everLoud = true;
+        lastLoudAt = now; everLoud = true; mahaLastActivity = now; // v-maha-band
       }
       const silentFor = now - lastLoudAt;
       if(elapsed > MAX_TURN_MS || (everLoud && elapsed > MIN_TALK_MS && silentFor > SILENCE_HOLD_MS)){
@@ -14609,6 +14646,7 @@ function mahaShowImage(base64, mimeType){
     el.style.display = 'block';
   }
   if(orb) orb.style.display = 'none';
+  if(mahaGoldWaveEl) mahaAvatarDisplay(false); // v-maha-goldwave
 }
 
 // Shows a real photo fetched from the live web (image URL) instead of an
@@ -14643,6 +14681,7 @@ function mahaShowRealPhotoUrl(url){
     el.style.display = 'block';
   }
   if(orb) orb.style.display = 'none';
+  if(mahaGoldWaveEl) mahaAvatarDisplay(false); // v-maha-goldwave
 }
 
 // Searches the live web for a real photo of something that actually exists
@@ -15001,6 +15040,7 @@ async function mahaStartRealtimeCall(){
   mahaRtAudioEl.autoplay = true;
   pc.ontrack = (e) => {
     mahaRtAudioEl.srcObject = e.streams[0];
+    try{ if(window.mahaGoldWave) window.mahaGoldWave.attachStream(e.streams[0]); }catch(err){ __swallow(err, 'maha:goldwave-rt'); } // v-maha-goldwave
     // Give the incoming audio a slightly larger jitter buffer so small
     // network hiccups get smoothed out instead of causing an audible
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
@@ -15027,10 +15067,13 @@ async function mahaStartRealtimeCall(){
         resolveRtSessionReady();
         return;
       }    if(ev.type === 'input_audio_buffer.speech_started'){
+        mahaLastActivity = Date.now(); // v-maha-band
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
-        mahaArmRtResponseWatchdog(3000);
+        // v-maha-listen: كان ٣٠٠٠ — كلّ جملة أطول من ٣ ثوانٍ يُطلق الحارس ردّ مها في منتصفها («تتكلّم قبل لا
+        // تخلّص»)، وضجيج يبدأ «كلامًا» يُطلق ردًّا على لا شيء. الآن شبكة أمان لمجرى عالق فقط.
+        mahaArmRtResponseWatchdog(20000);
         mahaSetState('listening');
       }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){
@@ -15039,13 +15082,8 @@ async function mahaStartRealtimeCall(){
       }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
-    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); mahaCapDone(); }
+    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
     else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
-    // v-maha-captions: كلمات مها تدفقًا + كلام المستخدم من تفريغ الإدخال
-    // (اسمان للحدث: صيغة GA وصيغة المعاينة الأقدم — نلتقط كليهما).
-    else if(ev.type === 'response.output_audio_transcript.delta' || ev.type === 'response.audio_transcript.delta'){ mahaCapDelta(ev.delta); }
-    else if(ev.type === 'response.output_audio_transcript.done' || ev.type === 'response.audio_transcript.done'){ mahaCapDone(); }
-    else if(ev.type === 'conversation.item.input_audio_transcription.completed'){ mahaCapUser(ev.transcript); }
     else if(ev.type === 'error'){ console.error('[maha-realtime] server error:', ev); }
   });
 
@@ -15090,6 +15128,23 @@ async function mahaStartRealtimeCall(){
         new Promise(resolve => setTimeout(resolve, 5000)),
       ]);
       await Promise.all([connectionReady, channelReady, sessionHandshake]);
+
+      // v-maha-race-cancel (بلاغ المالك «هلا ساكتة أول مرة، وأوقات تخربط»):
+      // mahaStartCallInner يسابق هذا الإعداد بمهلة ١٢ث — لو خسر السباق يستدعي
+      // mahaEndRealtimeCall() (يقفل pc/dc/stream ويصفّر mahaRtCancelled=true)
+      // ويهبط للمسار الأساسي فورًا، لكن هذه الدالّة تستمرّ بلا توقّف (لا أحد
+      // يلغيها فعليًّا) وتصل هنا أحيانًا بعد الإلغاء بلحظات فتُعيد إحياء حالة
+      // عامّة ميتة: mahaRtActive/mahaRtReady تعودان true، والمسار الحيّ يُصدَّق
+      // «جاهز» ويُفتح مايكه (inputTrack.enabled=true) بينما المسار الأساسيّ
+      // فعليًّا يسجّل بمايك آخر في نفس اللحظة — إمّا تصادم صامت (لا ردّ) أو
+      // ردّان متداخلان (خربطة). الحارس هنا يوقف هذه الدالّة بمجرّد اكتشاف
+      // الإلغاء بدل إتمام «تفعيل» يستحيل الانتفاع منه.
+      if(mahaRtCancelled){
+        try{ pc.close(); }catch(e){ __swallow(e, 'maha:race-cancel-pc'); }
+        try{ dc.close(); }catch(e){ __swallow(e, 'maha:race-cancel-dc'); }
+        try{ mahaRtStream.getTracks().forEach(tr => tr.stop()); }catch(e){ __swallow(e, 'maha:race-cancel-stream'); }
+        throw new Error('cancelled');
+      }
 
       mahaRtActive = true;
       // v-maha-firstword: أفرغ المخزَّن المؤقّت (لو فيه كلام فعلي) قبل فتح
@@ -15439,6 +15494,7 @@ function mahaEndRealtimeCall(){
   mahaStopMicMeter();
   if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }
   if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){ __swallow(e, "misc:app-08-maha#19"); } mahaRtAudioEl = null; }
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.detachStream(); }catch(e){ __swallow(e, 'maha:goldwave-rt-end'); } // v-maha-goldwave
 }
 
 async function mahaCallLoop(){
@@ -15524,7 +15580,6 @@ async function mahaCallLoop(){
       }
 
       mahaHistory.push({ role: 'user', content: transcript });
-      mahaCapUser(transcript); /* v-maha-captions */
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       // Classic pipeline has no real function-calling like the Realtime mode.
@@ -15543,7 +15598,6 @@ async function mahaCallLoop(){
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
         mahaSetState('speaking');
-        mahaCapLine('maha', imgReply); /* v-maha-captions */
         await mahaSpeak(imgReply);
         continue;
       }
@@ -15594,7 +15648,6 @@ async function mahaCallLoop(){
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       mahaSetState('speaking');
-      mahaCapLine('maha', reply); /* v-maha-captions */
       await mahaSpeak(reply);
     }catch(e){ console.error('[maha] turn error', e); }
   }
@@ -15668,8 +15721,8 @@ function mahaHideComposer(){
     const bar = document.getElementById('inputbar');
     if(!bar || mahaComposerHidden) return;
     mahaComposerHidden = true;
-    bar.dataset.mahaPrevDisplay = bar.style.display || '';
-    bar.style.display = 'none';
+    // v-maha-band: فئة لا display:none — الصندوق مخفيّ كما كان، وزرّ «م» وحده ظاهر في مكانه لإنهاء المكالمة
+    bar.classList.add('maha-calling');
   }catch(e){ __swallow(e, "ui:app-08-maha#composer-hide"); }
 }
 function mahaShowComposer(){
@@ -15678,13 +15731,47 @@ function mahaShowComposer(){
     mahaComposerHidden = false;
     const bar = document.getElementById('inputbar');
     if(!bar) return;
-    bar.style.display = bar.dataset.mahaPrevDisplay || '';
-    delete bar.dataset.mahaPrevDisplay;
+    bar.classList.remove('maha-calling');
   }catch(e){ __swallow(e, "ui:app-08-maha#composer-show"); }
+}
+
+/* v-maha-band (أمر المالك ٢٢ سبتمبر: «الإغلاق يكون من أيّ مكان، ولا السكوت، ولا تضغط مرّة ثانية م» — وحذف ✕):
+   في مكالمة مها (لا البنّاء) (١) أيّ ضغطة في أيّ مكان تُنهيها وتُستهلك (مثل إغلاق طبقة فوق الصفحة) — إلّا الكاميرا
+   ومعاينتها والصورة المعروضة وعارضها، فهي أدوات المكالمة؛ (٢) سكوت ٢٠ ثانية وهي تنتظر (لا المستخدم يتكلّم ولا مها
+   تتكلّم أو تفكّر) يُنهيها؛ (٣) «م» ثانيةً (على زرّه). التسجيل بعد فتح المكالمة فلا تُمسك ضغطة البدء نفسها. */
+const MAHA_SILENCE_END_MS = 20000;
+let mahaCloseWatch = null;
+function mahaStartCloseWatch(){
+  mahaStopCloseWatch();
+  mahaLastActivity = Date.now();
+  const onTap = (e) => {
+    if(!mahaCallActive || mahaCallMode === 'builder') return;
+    const tgt = e.target;
+    if(tgt && tgt.closest && tgt.closest('#btnMahaCamera, #mahaCamPreview, #mahaGenImage, #mahaImageLightbox')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    mahaEndCall();
+  };
+  const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
+  const iv = setInterval(() => {
+    if(!mahaCallActive || mahaCallMode === 'builder') return;
+    if(mahaState === 'listening' && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
+  }, 1000);
+  mahaCloseWatch = { onTap, armT, iv };
+}
+function mahaStopCloseWatch(){
+  if(!mahaCloseWatch) return;
+  clearTimeout(mahaCloseWatch.armT);
+  clearInterval(mahaCloseWatch.iv);
+  document.removeEventListener('click', mahaCloseWatch.onTap, true);
+  mahaCloseWatch = null;
 }
 
 function mahaEndCall(){
   mahaCallActive = false;
+  mahaStopCloseWatch(); // v-maha-band
+  if(mahaCallScreenEl) mahaCallScreenEl.classList.remove('maha-goldband');
+  document.body.classList.remove('maha-band-on'); // v-maha-band-under
   mahaShowComposer();
   mahaStopPointsMeter();
   mahaLowMicStreak = 0;
@@ -15697,8 +15784,8 @@ function mahaEndCall(){
   if(mahaMediaRecorder && mahaMediaRecorder.state === 'recording'){ try{ mahaMediaRecorder.stop(); }catch(e){ __swallow(e, "ui:app-08-maha#27"); } }
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
-  mahaCapClear(); /* v-maha-captions: مكالمة جديدة تبدأ بسجل نظيف */
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.end(); }catch(e){ __swallow(e, 'maha:goldwave-end'); } // v-maha-goldwave
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
   mahaCallMode = 'assistant';
@@ -15774,7 +15861,7 @@ async function mahaStartCallInner(mode){
   if(mahaCallMode !== 'builder'){ await mahaEnsureVoiceChosen(); }
   if(mahaCallScreenEl){
     mahaCallScreenEl.style.display = "flex";
-    if(mahaOrbEl) mahaOrbEl.style.display = "flex";
+    mahaAvatarDisplay(mahaCallMode !== 'builder'); // v-maha-goldwave (كان: الدائرة دائمًا)
     mahaSetState("thinking", __ar ? "🎤 بانتظار إذن المايك…" : "🎤 Waiting for mic permission…");
     if(typeof mahaPositionOnOpen === "function") mahaPositionOnOpen();
   }
@@ -15796,7 +15883,7 @@ async function mahaStartCallInner(mode){
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
-  if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
+  mahaAvatarDisplay(mahaCallMode !== 'builder'); // v-maha-goldwave: الموجة الذهبيّة مكان الدائرة
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
   /* v-maha-name: الاسم بالحروف اللاتينية لغير العربي/الأردو */
@@ -15815,6 +15902,9 @@ async function mahaStartCallInner(mode){
   // صوتية بحتة لا تحتاج صندوق كتابة أصلًا. لا يمسّ وضع "الوكيل الصوتي" في
   // تبويب الصوت (builder) لأنّه تبويب مستقل لا يتراكب مع الصندوق.
   if(mahaCallMode !== 'builder') mahaHideComposer();
+  if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band
+  document.body.classList.toggle('maha-band-on', mahaCallMode !== 'builder'); // v-maha-band-under: الجانبيّ والمعاينة فوق الشريط
+  if(mahaCallMode !== 'builder') mahaStartCloseWatch();
   // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
   // that fails for any reason do we fall back to the classic record ->
   // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.
@@ -15879,7 +15969,7 @@ async function mahaStartCall(mode){
 
 if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };
 const btnMahaDockEl = document.getElementById('btnMahaDock');
-if(btnMahaDockEl) btnMahaDockEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock
+if(btnMahaDockEl) btnMahaDockEl.onclick = () => { if(mahaCallActive && mahaCallMode !== 'builder'){ mahaEndCall(); return; } mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock + v-maha-band: «م» ثانيةً يُنهي
 if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
 
 // v273: One-time intro tour for brand-new users — points at مها button
@@ -18233,10 +18323,13 @@ function updateAgentModeUI(){
   lbl.textContent = lang === 'ar' ? ('وكيل عمران: ' + (on ? 'شغال ✅' : 'إيقاف')) : ('Omran Agent: ' + (on ? 'ON ✅' : 'OFF'));
   btn.style.color = on ? 'var(--accent, var(--accent))' : '';
 }
-function __stripCodeForHistory(role, s){
+/* v-owner-memory: full='all' يبقي الردّ كما هو (كوده ونصّه)، وfull آخر غير فارغ يستبدل الكود ولا يقصّ النصّ عند ٣٠٠٠ —
+   للمالك وحده (موضع النداء في بناء الأدوار). غير المالك كما كان. */
+function __stripCodeForHistory(role, s, full){
   s = String(s || '');
-  if(role !== 'assistant') return s;
-  return s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]').slice(0, 3000); // ✅ v325
+  if(role !== 'assistant' || full === 'all') return s;
+  const r = s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]');
+  return full ? r : r.slice(0, 3000); // ✅ v325
 }
 // 🕯️ الدوام: انقطاع البث لا يعني ضياع العمل — الخادم يكمل ويكتب دفتره كل خطوة.
 // نسأل الدفتر حتى ينتهي التشغيل ونستعيد نصّه، بدل رمي خطأ شبكة في وجه المستخدم.
@@ -19950,7 +20043,9 @@ function __friendlyErr(e){
     // 🎬 فيديو من المحادثة مباشرة: صورة + "سوي فيديو/حركها" → Runway image_to_video،
     // وبدون صورة مع طلب فيديو صريح → text_to_video. (كل الأقسام في مكان واحد)
     const __videoWordRe = /فيديو|ڤيديو|\bvideo\b/i;
-    const __animateRe = /(حرك|حرّك|animate)/i;
+    /* v-animate-word: «حرك» كلمةً قائمة (مع و/ف اختياريّة) لا مقطعًا داخل «محرك/متحرك/الحركة» — لا `\b` للعربيّة في JS.
+       «انته اي محرك» بعد تعديل صورة كان يطلق فيديو مدفوعًا من آخر صورة. */
+    const __animateRe = /(?:^|[^\u0600-\u06FF])[وف]?(?:حرك|حرّك)|\banimate/i;
     const __vidSrc = __srcImg
       ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
@@ -20899,9 +20994,12 @@ DESIGN RULES (non-negotiable):
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
     {
-      const MAX_TURNS = 24;        // عدد أدوار المحادثة المرسلة كاملة
-      const MAX_CHARS = 90000;     // سقف حجم السياق الكلي
-      const MAX_PER_MSG = 7000;    // سقف الرسالة الواحدة (بلا قص من المنتصف)
+      /* v-owner-memory (المالك ٢٢ سبتمبر «المحادثة شبه ضعيفة»): للمالك المحادثة كاملة كالتطبيقات الأصليّة —
+         ٢٠٠ دور حتّى ٤٠٠ ألف حرف، والردّ السابق بكوده ونصّه كاملًا ما لم يكن للمحادثة مشروع (كوده يُرسل منفصلًا). */
+      const __ownerCtx = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      const MAX_TURNS = __ownerCtx ? 200 : 24;        // عدد أدوار المحادثة المرسلة كاملة
+      const MAX_CHARS = __ownerCtx ? 400000 : 90000;  // سقف حجم السياق الكلي
+      const MAX_PER_MSG = __ownerCtx ? 60000 : 7000;  // سقف الرسالة الواحدة (بلا قص من المنتصف)
 
       // ① مرساة الموضوع: أوائل رسائل المحادثة تبقى كتعليمة نظام قصيرة
       //    حتى لا يضيع موضوع المحادثة الأصلي بعد عشرات الرسائل.
@@ -20919,11 +21017,11 @@ DESIGN RULES (non-negotiable):
       // ② أدوار محادثة حقيقية بدل ضغط السجل في رسالة system واحدة.
       //    هذا هو الإصلاح الأساسي: النموذج يرى محادثة، لا تعليمات.
       let __turns = [];
-      if(!__quietSocialTurn){
+      if(!__quietSocialTurn || __ownerCtx){ // v-owner-memory: للمالك «زين/ممتاز» وسط الشغل تحمل التاريخ
         __historyMsgs.slice(-MAX_TURNS).forEach(m => {
           if(!m || m._loading || m._failed) return;
           const role = (m.role === 'user') ? 'user' : 'assistant';
-          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content)) || '').trim();
+          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content), __ownerCtx ? (cur.code ? 'text' : 'all') : '') || '').trim();
           if(!txt) return;
           txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
           if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط
@@ -21163,10 +21261,10 @@ DESIGN RULES (non-negotiable):
          ~66 حرفًا بالثانية، مع تسريع فقط عند تراكم يفوق 1200 حرف حتى لا
          يقضي ردٌّ طويل جدًا دقيقة كاملة «يتكتب» بعد اكتماله. */
       const REVEAL_TICK_MS = 30;
-      const __revealStep = (st) => {
-        const left = st.target.length - st.shown;
-        return left > 1200 ? Math.ceil(left / 300) : 2;
-      };
+      /* v-askall-fast (المالك ٢٣ سبتمبر «المزوّد بطيء وهو يكتب — كلّ المزوّدين»): فقاعات «اسأل الكل»
+         بقيت على وتيرة v-reveal-slow (حرفان كلّ ٣٠مل ≈ ٦٦ حرفًا/ث) بعد أن ألغتها v-chat-fast في المحادثة
+         العاديّة — فكلّ مزوّد يبدو بطيئًا مهما كانت سرعته. الآن كلّ نبضة تعرض كلّ ما وصل: سرعة المزوّد نفسه. */
+      const __revealStep = (st) => st.target.length - st.shown;
       const ensureRevealTimer = (msg) => {
         let st = revealStates.get(msg._uid);
         if(!st){
@@ -21183,7 +21281,8 @@ DESIGN RULES (non-negotiable):
               msg.content = st.target;
               const el = messagesEl.querySelector('[data-askuid="' + msg._uid + '"]');
               // strip ** أثناء الحركة حتى لا يظهر الماركداون خامًا للمستخدم
-              if(el) el.textContent = st.target.slice(0, st.shown).replace(/\*\*/g, '');
+              // v-askall-fast: المنسّق الحيّ نفسه الذي تستعمله المحادثة (أسطر مرتّبة، روابط، عناوين) بدل نصّ خام
+              if(el) renderStreamingAssistant(el, st.target.slice(0, st.shown));
               // v610 — الحركة تكتب النصّ خامًّا بـtextContent، فروابط الماركداون
               // تبقى عارية حتّى الرسم النهائيّ. ولو بُتر الردّ أو تعطّل الإنهاء
               // لم يأتِ ذلك الرسم أبدًا فبقيت خامًا (عيب رآه عمران). عند لحاق
@@ -21738,11 +21837,15 @@ DESIGN RULES (non-negotiable):
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
       // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
       // ٦ أغسطس: الاختيار الصريح يُحترم فقط حيث توجد قائمة تُختار منها (الجوال).
-      const __respectExplicit = !__provUiHidden() && !!localStorage.getItem('aiapp_provider_explicit');
+      /* v-owner-free (أمر المالك ٢٢ سبتمبر «الصلاحيّة التامّة للمزوّدين — أنا صاحب التطبيق»): للمالك وحده
+         المزوّد الذي اختاره هو الذي يردّ — لا تحويل قسريّ إلى كلود للبناء/الإصلاح/الرؤية، ولا قفل خيط.
+         غير المالك كما كان. */
+      const __ownerFree = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      const __respectExplicit = __ownerFree || (!__provUiHidden() && !!localStorage.getItem('aiapp_provider_explicit'));
       const __specProv = (!__routeFix && !__respectExplicit) ? pickSpecialtyProvider(text) : null;
       // 🖼️→🌐 v272: صورة مرفقة + طلب ترجمة/قراءة نص → توجيه خلفي لأقوى مزود رؤية (Claude)
       // حتى لو المستخدم واقف على مزود نظره ضعيف بالصور (Cohere/Groq...). الواجهة ما تتغير.
-      const __visionOverride = (imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
+      const __visionOverride = (!__ownerFree && imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
       // v382: بوابة البناء دائمًا تروح لـ Claude (الكينج) — أي مزود ثاني ممنوع يوصف البناء
       // v401: البناء وإصلاح الكود يثبتان على Claude — لا كل رسالة قصيرة.
       //
@@ -21755,8 +21858,8 @@ DESIGN RULES (non-negotiable):
       // الصحيح: بوابة البناء (موافقة صريحة) أو طلب إصلاح صريح («صلّح»، «ما
       // يشتغل»، «error»). أما «ممكن…» فتحترم الزر الذي ضغطه المستخدم.
       // v405: احترام الزر خيارٌ للمستخدم — من يريد مزوده في كل شيء يثبته ويتحمّل نتيجته.
-      var __pinProv = false;
-      try{ __pinProv = localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
+      var __pinProv = __ownerFree; // v-owner-free: المالك مثبَّت على اختياره دائمًا
+      try{ __pinProv = __pinProv || localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
       const __effProv0 = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
       const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit, isCasualTurn(text));
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
@@ -23541,7 +23644,20 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
-      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
+         position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
+         فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك
+         لا يعرف بوجودها ليضغط ✕. جسم الصفحة شبكة CSS (body{display:grid})
+         بصفوف/أعمدة محدَّدة صراحةً للهيدر وشريط الأسهم وعمود المحادثة
+         (v-frame-c)، فإدراج الشريط كابن عاديّ بلا موضع شبكة صريح يُقحمه في
+         صفّ ضمنيّ أسفل الشاشة كلّها لا فوق الهيدر مباشرة — لذا الحلّ يبقى
+         fixed (يهرب من الشبكة تمامًا) لكن `top` يُحسَب من الارتفاع الفعليّ
+         لأسفل الهيدر بدل ٠ ثابت، فيظهر الشريط تحته دائمًا لا فوقه. */
+      const headerBottom = (function(){
+        try{ const h = document.querySelector('header'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; }
+        catch(e){ return 0; }
+      })();
+      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
       bar.textContent = '🩺 تنبيه للمالك — توجد ملاحظات في النظام:\n' + problems.join('\n');
       const x = document.createElement('button');
       x.textContent = '✕';
@@ -27129,9 +27245,10 @@ function stuL(ar, en){
 })();
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
-  /* v-store-safe: حزمة AppGallery لا تلمس أي بيانات مالية إطلاقًا —
-     لا شريط ولا صفحة ولا نداء أسعار واحد (قاعدة هواوي 11.4). */
-  if(document.documentElement.classList.contains('store-safe')) return;
+  /* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر — بعد تحذيره من مخاطرة رفض
+     هواوي بقاعدة 11.4): الأسهم تبقى ظاهرة وتعمل حتى داخل حزمة AppGallery.
+     كانت v-store-safe تُرجع مبكرًا هنا فتمنع كل نداء أسعار تحت store-safe؛
+     أُزيل الحارس بأمر صريح — راجع knowledge/DECISIONS.md لهذا التاريخ. */
   const modal = $('#stocksModal');
   const btnOpen = $('#btnStocks');
   if(!modal || !btnOpen) return;
@@ -30663,8 +30780,9 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
-        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود فقط، والخادم يقبل قائمته حصرًا */
-        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; } catch (e) { return ''; } })(),
+        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
+           المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
+        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -30815,7 +30933,18 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   var KEY = 'omran_font';
   var loaded = Object.create(null);
   var fonts = [
-    {id:'default', ar:'الافتراضي', en:'Default', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-font-plex (المالك ٢٣ سبتمبر «الخط مش جميل، شوف أحلى خط»): الافتراضيّ صار IBM Plex Sans Arabic —
+       أوضح خطّ عربيّ للقراءة الطويلة (فتحات حروف واسعة، أرقام متناسقة مع اللاتينيّ). تجوال باقٍ خيارًا. */
+    {id:'default', ar:'الافتراضي', en:'Default', family:"'IBM Plex Sans Arabic'", google:'', line:1.8},
+    {id:'tajawal', ar:'تجوال', en:'Tajawal', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-fonts-more (المالك ٢٣ سبتمبر «فيه خطوط أفضل من اللي عندي؟ زيد عليها»): ستّة خطوط قراءة حديثة
+       من Google Fonts، تُحمَّل عند اختيارها فقط كبقيّة الخيارات. */
+    {id:'cairo', ar:'القاهرة', en:'Cairo', family:"'Cairo'", google:'Cairo:wght@400;600;700', line:1.75},
+    {id:'almarai', ar:'المراعي', en:'Almarai', family:"'Almarai'", google:'Almarai:wght@400;700', line:1.8},
+    {id:'readex', ar:'ريدكس', en:'Readex Pro', family:"'Readex Pro'", google:'Readex+Pro:wght@400;600;700', line:1.75},
+    {id:'notokufi', ar:'كوفي نوتو', en:'Noto Kufi', family:"'Noto Kufi Arabic'", google:'Noto+Kufi+Arabic:wght@400;600;700', line:1.85},
+    {id:'vazir', ar:'وزير', en:'Vazirmatn', family:"'Vazirmatn'", google:'Vazirmatn:wght@400;600;700', line:1.8},
+    {id:'messiri', ar:'المسيري', en:'El Messiri', family:"'El Messiri'", google:'El+Messiri:wght@400;600;700', line:1.8},
     {id:'kufi', ar:'الكوفي', en:'Kufi', family:"'Reem Kufi'", google:'Reem+Kufi:wght@400..700', line:1.85},
     {id:'naskh', ar:'النسخ', en:'Naskh', family:"'Amiri'", google:'Amiri:ital,wght@0,400;0,700;1,400', line:1.95},
     {id:'naskh2', ar:'نسخ نوتو', en:'Noto Naskh', family:"'Noto Naskh Arabic'", google:'Noto+Naskh+Arabic:wght@400..700', line:1.9},
@@ -35002,4 +35131,224 @@ if(document.readyState === 'loading'){
   window.claudeModelGet = get;
   window.claudeModelSync = sync;
   window.CLAUDE_MODEL_IDS = IDS.slice();
+})();
+/* v-maha-goldwave (طلب المالك ٢٢ سبتمبر، بعد خمسة نماذج راجعها بنفسه): «حطها في التطبيق» — صورة الموجة الذهبية
+   نفسها مكان دائرة مها في نافذة المكالمة. تمشي باستمرار مثل شريط الأسهم (٣٦ بكسل/ث من اليمين لليسار — سرعة
+   #stockTickerTrack نفسها)، والصورة موصولة بنسختها المعكوسة فلا يبان لها طرف. ومع صوت مها يتنفّس شريطها بخفّة
+   (سماكة حول خطّه وانسياب صغير) — بلا وميض ولا قفز، وطلبها «بلا كانفا»: شرائح عموديّة تعرض مقطعها من الصورة.
+   مصدر الصوت: المكالمة المباشرة من مجرى صوتها نفسه (طيف ترددات، الغليظ في الوسط والحادّ نحو الأطراف)،
+   والوضع الأساسيّ من نسخة مفكوكة من مقطع النطق نفسه متزامنة مع وقت تشغيله — عنصر الصوت الذي يُسمع لا يُمسّ.
+   v-maha-band (أمر المالك بعد اللقطات: «من أوّل الشريط لنهايته مش في المنتصف — نفس شريط الأسهم»): العنصر صار شريطًا
+   بعرض الشاشة. في الشريط العريض تُعرض الصورة بارتفاعها الطبيعيّ مقصوصةً على نصفها الأوسط حول خطّ الموجة، وتتكرّر
+   (الصورة + المعكوسة) على العرض كلّه؛ وعدد الشرائح يتبع العرض (شريحة لكلّ ~١٠ بكسل) فلا تظهر درجات. */
+(function(){
+  const host = document.getElementById('mahaGoldWave');
+  if(!host) return;
+
+  /* v-maha-stars: نجوم الشاشة كلّها أثناء المكالمة — كثافة نجوم الشريط الجانبيّ نفسها (~نجمة لكلّ ١٢٥٠٠ بكسل²)،
+     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة. */
+  (function(){
+    const sky = document.createElement('div');
+    sky.id = 'mahaSkyLayer';
+    sky.setAttribute('aria-hidden', 'true');
+    const count = Math.max(30, Math.min(110, Math.round((window.innerWidth || 1280) * (window.innerHeight || 800) / 12500)));
+    for(let i = 0; i < count; i++){
+      const s = document.createElement('span');
+      s.className = 'omSkyStar';
+      s.style.top = (Math.random() * 100).toFixed(2) + '%';
+      s.style.left = (Math.random() * 100).toFixed(2) + '%';
+      s.style.setProperty('--sz', (6 + Math.random() * 7).toFixed(1) + 'px'); // v-maha-stars2: «كبّر النجوم شوي» — ٦–١٣ بدل ٤–٩
+      s.style.setProperty('--dur', (2.2 + Math.random() * 2.4).toFixed(2) + 's');
+      s.style.setProperty('--dly', (Math.random() * 4).toFixed(2) + 's');
+      sky.appendChild(s);
+    }
+    document.body.appendChild(sky);
+  })();
+  const TILE = '/assets/maha/maha-wave-tile.webp';
+  const SPEED = 36, BANDS = 24, RATE = 60;
+  const VIS = 0.5, CY = 0.46, ASPECT = 1534 / 1235; // الشريط يعرض نصف ارتفاع الصورة حول خطّ الموجة (٤٦٪)
+  let reduce = false;
+  try{ reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ __swallow(e, 'maha:goldwave-rm'); }
+
+  // الشرائح تُبنى عند أوّل إطار ظاهر بعدد يتبع العرض، وتُعاد إن تغيّر العرض كثيرًا (تدوير الجوّال)
+  const strips = [];
+  let N = 0, en = [], tmp = [];
+  function build(n){
+    while(strips.length){ host.removeChild(strips.pop()); }
+    N = n; en = new Array(N).fill(0); tmp = new Array(N).fill(0);
+    for(let i = 0; i < N; i++){
+      const s = document.createElement('div');
+      s.style.cssText = 'position:absolute; top:0; height:100%; left:' + (i * 100 / N) + '%; width:calc(' + (100 / N) + '% + 1px); background-image:url(' + TILE + '); background-repeat:repeat-x; transform-origin:50% 50%; will-change:transform;';
+      host.appendChild(s);
+      strips.push(s);
+    }
+    host.style.backgroundImage = 'none'; // الخلفيّة الثابتة للإطار الأوّل فقط؛ الشرائح تتولّى الصورة بعدها
+    lastW = 0; lastH = 0; still = true;
+  }
+  const bands = new Array(BANDS).fill(0);
+  const PROFILE = []; // الوضع الأساسيّ بلا طيف: شكل ثابت الغليظ فيه أقوى، يضربه مستوى الصوت
+  for(let b = 0; b < BANDS; b++) PROFILE.push(1 - 0.65 * b / (BANDS - 1));
+
+  let raf = 0, last = 0, scroll = 0, phase = 0, level = 0, still = true, lastW = 0, lastH = 0;
+  let ctx = null, an = null, srcNode = null, freq = null, wave = null, edges = null;
+  let tracked = null, env = null;
+
+  function ensureCtx(){
+    try{
+      if(!ctx){
+        const C = window.AudioContext || window.webkitAudioContext;
+        if(!C) return null;
+        ctx = new C();
+      }
+      if(ctx.state === 'suspended'){ const p = ctx.resume(); if(p && p.catch) p.catch(e => __swallow(e, 'maha:goldwave-resume')); }
+    }catch(e){ __swallow(e, 'maha:goldwave-ctx'); return null; }
+    return ctx;
+  }
+
+  // حدود الأشرطة لوغاريتميّة بين ٩٠ و٥٠٠٠ هرتز — مجال الكلام
+  function bandEdges(sampleRate, bins){
+    const out = [], nyq = sampleRate / 2;
+    for(let b = 0; b <= BANDS; b++){
+      const bin = Math.round(90 * Math.pow(5000 / 90, b / BANDS) / nyq * bins);
+      out.push(Math.max(b ? out[b - 1] + 1 : 1, bin));
+    }
+    return out;
+  }
+
+  // المكالمة المباشرة: المحلّل على مجرى صوت مها — لا يوصل بالسمّاعة (الصوت يُسمع من عنصره كما كان)
+  function attachStream(stream){
+    detachStream();
+    const c = ensureCtx();
+    if(!c || !stream) return;
+    try{
+      an = c.createAnalyser();
+      an.fftSize = 1024;
+      an.smoothingTimeConstant = 0.5;
+      an.minDecibels = -85;
+      an.maxDecibels = -22;
+      srcNode = c.createMediaStreamSource(stream);
+      srcNode.connect(an);
+      freq = new Uint8Array(an.frequencyBinCount);
+      wave = new Uint8Array(an.fftSize);
+      edges = bandEdges(c.sampleRate, freq.length);
+    }catch(e){ __swallow(e, 'maha:goldwave-stream'); an = null; srcNode = null; }
+  }
+  function detachStream(){
+    if(srcNode){ try{ srcNode.disconnect(); }catch(e){ __swallow(e, 'maha:goldwave-detach'); } }
+    srcNode = null; an = null;
+  }
+
+  // الوضع الأساسيّ: غلاف مستوى الصوت (٦٠ في الثانية) من نسخة مفكوكة من المقطع نفسه، يُقرأ بوقت تشغيله
+  function trackAudio(audio, blob){
+    tracked = audio; env = null;
+    const c = ensureCtx();
+    if(!c || !blob || !blob.arrayBuffer) return;
+    blob.arrayBuffer()
+      .then(ab => new Promise((res, rej) => { const p = c.decodeAudioData(ab, res, rej); if(p && p.then) p.then(res, rej); }))
+      .then(buf => {
+        if(tracked !== audio) return;
+        const ch = buf.getChannelData(0), win = Math.max(1, Math.round(buf.sampleRate / RATE));
+        const out = new Float32Array(Math.ceil(ch.length / win));
+        for(let w = 0; w < out.length; w++){
+          const a = w * win, z = Math.min(ch.length, a + win);
+          let s = 0;
+          for(let i = a; i < z; i++) s += ch[i] * ch[i];
+          out[w] = Math.sqrt(s / Math.max(1, z - a));
+        }
+        env = out;
+      })
+      .catch(e => __swallow(e, 'maha:goldwave-decode'));
+  }
+
+  const norm = (rms) => Math.pow(Math.max(0, Math.min(1, (rms - 0.012) / 0.2)), 0.75);
+
+  function sample(){
+    let target = 0;
+    if(an){
+      an.getByteTimeDomainData(wave);
+      let sum = 0;
+      for(let i = 0; i < wave.length; i++){ const v = (wave[i] - 128) / 128; sum += v * v; }
+      target = norm(Math.sqrt(sum / wave.length));
+      an.getByteFrequencyData(freq);
+      for(let b = 0; b < BANDS; b++){
+        let s = 0, c = 0;
+        for(let j = edges[b]; j < edges[b + 1] && j < freq.length; j++){ s += freq[j]; c++; }
+        const bt = Math.pow(Math.max(0, (c ? s / c / 255 : 0) - 0.12) / 0.88, 1.25);
+        bands[b] += (bt - bands[b]) * (bt > bands[b] ? 0.35 : 0.18);
+      }
+    }else{
+      if(tracked && env && !tracked.paused && !tracked.ended){
+        const i = Math.floor((tracked.currentTime || 0) * RATE);
+        if(i >= 0 && i < env.length) target = norm(env[i]);
+      }
+      for(let b = 0; b < BANDS; b++){
+        const bt = target * PROFILE[b];
+        bands[b] += (bt - bands[b]) * (bt > bands[b] ? 0.35 : 0.18);
+      }
+    }
+    level += (target - level) * (target > level ? 0.35 : 0.18);
+    if(level < 0.002 && target === 0) level = 0;
+  }
+
+  function render(){
+    const W = host.clientWidth, h = host.clientHeight;
+    if(!W || !h) return;
+    const want = Math.min(160, Math.max(40, Math.round(W / 10)));
+    if(want !== N) build(want);
+    const band = W > h * 2;
+    const imgH = band ? h / VIS : h, imgW = band ? imgH * ASPECT : W;
+    const tileW = 2 * imgW, posY = band ? -(CY * imgH - h / 2) : 0;
+    if(W !== lastW || h !== lastH){
+      for(let z = 0; z < N; z++) strips[z].style.backgroundSize = tileW.toFixed(2) + 'px ' + imgH.toFixed(2) + 'px';
+      lastW = W; lastH = h;
+    }
+    const off = scroll % tileW;
+    for(let q = 0; q < N; q++) strips[q].style.backgroundPosition = (-(q * W / N + off)).toFixed(2) + 'px ' + posY.toFixed(2) + 'px';
+    if(level < 0.002){
+      if(!still){ for(let j = 0; j < N; j++) strips[j].style.transform = ''; still = true; }
+      return;
+    }
+    still = false;
+    const lastB = BANDS - 1;
+    for(let k = 0; k < N; k++){
+      const d = Math.abs(k / (N - 1) - 0.5) * 2;
+      const p = d * lastB, b0 = Math.floor(p), f = p - b0;
+      en[k] = bands[b0] * (1 - f) + bands[Math.min(lastB, b0 + 1)] * f;
+    }
+    for(let pass = 0; pass < 2; pass++){
+      for(let m = 0; m < N; m++) tmp[m] = (en[Math.max(0, m - 1)] + 2 * en[m] + en[Math.min(N - 1, m + 1)]) / 4;
+      for(let m = 0; m < N; m++) en[m] = tmp[m];
+    }
+    for(let k = 0; k < N; k++){
+      const e = en[k];
+      const x = Math.sin((k / N) * Math.PI * 4 - phase * 2) * h * 0.004 * e;
+      const y = Math.sin((k / N) * Math.PI * 3 + phase) * h * 0.005 * e;
+      strips[k].style.transform = 'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px) scaleY(' + (1 + 0.14 * e).toFixed(4) + ')';
+    }
+  }
+
+  function frame(t){
+    raf = 0;
+    if(host.style.display === 'none' || !host.isConnected) return;
+    const dt = last ? Math.min(0.05, (t - last) / 1000) : 0.016;
+    last = t;
+    sample();
+    scroll += dt * SPEED;
+    phase += dt * 0.6;
+    render();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function start(){ if(!reduce && !raf){ last = 0; raf = requestAnimationFrame(frame); } }
+  function stop(){ if(raf){ cancelAnimationFrame(raf); raf = 0; } }
+  function end(){
+    stop();
+    detachStream();
+    tracked = null; env = null; level = 0;
+    bands.fill(0);
+    for(let j = 0; j < strips.length; j++) strips[j].style.transform = '';
+    still = true;
+  }
+
+  window.mahaGoldWave = { prime: ensureCtx, start, stop, end, attachStream, detachStream, trackAudio };
 })();

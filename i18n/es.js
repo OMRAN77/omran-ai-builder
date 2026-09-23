@@ -991,7 +991,6 @@ Object.assign(I18N["es"], {
     ciHint: "Escribe cómo quieres que te respondan — se aplica a todos tus chats.",
     ciPlaceholder: "Ejemplo: responde de forma coloquial y breve, sin preámbulos.",
     ciSaved: "Guardado ✅",
-    mahaCcTitle: "Subtítulos de la llamada",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "No disponible en este dispositivo",

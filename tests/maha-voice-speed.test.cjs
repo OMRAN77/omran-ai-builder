@@ -90,7 +90,7 @@ test('api/_lib/tts.js: خريطة السرعة الأربع صحيحة (Azure % 
     return new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 });
   };
   try {
-    for (const [speed, openaiSpeed] of [['slow', 0.75], ['normal', 1], ['fast', 1.25], ['xfast', 1.5], [undefined, 1]]) {
+    for (const [speed, openaiSpeed] of [['slow', 0.9], ['normal', 1], ['fast', 1.1], ['xfast', 1.2], [undefined, 1]]) { // v-maha-pace: مدى هادئ
       calls.length = 0;
       const res = fakeRes();
       await handler({ method: 'POST', body: { text: 'hi', voice: 'onyx', speed }, headers: {}, socket: {} }, res);
@@ -120,6 +120,9 @@ test('realtime-session.js: تعليمة السرعة تُضاف لوضع assista
   for (const kw of ['slow', 'fast', 'xfast']) {
     assert.match(rtSrc, new RegExp("VOICE_SPEED_INSTRUCTIONS = \\{[\\s\\S]*" + kw + ":"), kw + ' له نصّ تعليمة');
   }
+  // v-maha-pace: تعليمات لطيفة فوق المعامل الحقيقيّ — لا مبالغة تكسر الإيقاع، وسطر إيقاع طبيعيّ دائم
+  assert.ok(!/auctioneer|rapid-fire|notably slower/.test(rtSrc), 'لا «مزاد» ولا «أبطأ بوضوح»');
+  assert.ok(rtSrc.includes('"PACE: speak at a steady, natural conversational pace, like a calm phone call - never rushed, never dragged, with clear articulation.",'));
 });
 
 console.log('✓ maha-voice-speed: أربع درجات لسرعة مها من الإعدادات، مطبَّقة في الأساسيّ (TTS حقيقي) والفائق (تعليمة إيقاع)');

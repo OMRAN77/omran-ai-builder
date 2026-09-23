@@ -940,7 +940,6 @@ Object.assign(I18N["ur"], {
     ciHint: "لکھیں کہ آپ جواب کیسا چاہتے ہیں — آپ کی تمام گفتگو پر لاگو ہوگا۔",
     ciPlaceholder: "مثال: عام بول چال میں مختصر جواب دیں، بغیر تمہید کے۔",
     ciSaved: "محفوظ ہو گیا ✅",
-    mahaCcTitle: "کال کے براہِ راست کیپشن",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "اس آلے پر دستیاب نہیں",

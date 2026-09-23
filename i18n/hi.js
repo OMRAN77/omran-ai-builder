@@ -942,7 +942,6 @@ Object.assign(I18N["hi"], {
     ciHint: "लिखें कि आप कैसा जवाब चाहते हैं — आपकी सभी चैट पर लागू होगा।",
     ciPlaceholder: "उदाहरण: बोलचाल की भाषा में छोटा जवाब दें, बिना भूमिका के।",
     ciSaved: "सहेजा गया ✅",
-    mahaCcTitle: "कॉल के लाइव कैप्शन",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "इस डिवाइस पर उपलब्ध नहीं",

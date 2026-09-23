@@ -119,8 +119,9 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
   عبر `onPermissionRequest` وحده غير كافٍ لالتقاط صوت فعليّ داخل WebView؛ يحتاج أيضًا
   `android.permission.MODIFY_AUDIO_SETTINGS` معلَنة في `AndroidManifest.xml` (صلاحيّة عاديّة،
   بلا طلب وقت تشغيل) وإلا يفشل التقاط الصوت بخطأ NotReadableError رغم نجاح منح صلاحيّة WebView
-  نفسها. أُضيفت. التفاصيل الكاملة في `knowledge/DECISIONS.md` (v-maha-webview-mic-4) — **غير
-  محقَّقة ببناء+جهاز حقيقيّ بعد**.
+  نفسها. أُضيفت. التفاصيل الكاملة في `knowledge/DECISIONS.md` (v-maha-webview-mic-4). **جُرِّبت
+  على جهاز المالك ولم تحلّ العطل** — تغيّر العَرَض من تنبيه «مشغول» إلى «لا شيء يحدث»؛ التشخيص
+  مستمرّ.
 
 ## تفاصيل للصيانة
 - **إعادة توليد المشروع** (بعد تغيير البيان أو الأيقونات): `npm i --no-save @bubblewrap/core && node scripts/twa-generate.mjs --version 1.3.11 --code 20261001`.

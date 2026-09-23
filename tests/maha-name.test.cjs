@@ -14,7 +14,7 @@ assert.ok(persona.includes('إذا ناداك المستخدم «مها» فهو
 assert.ok(persona.includes('«مها» ليست اسم المستخدم أبدًا ولا تنادِه بها'), 'لا مناداة للمستخدم بمها');
 // السطر يسبق قاعدة اللغة مباشرةً — أي في أوّل ما يقرأه النموذج في المسارات كلّها (الاحترافيّ والمجانيّ والاجتماعيّ)
 assert.ok(/PERSONA_NOTE \+ '\\n' \+ baseSystem/.test(chat), 'البصمة تتصدّر النظام');
-assert.ok((chat.match(/streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem/g) || []).length >= 2, 'السلسلة المجانيّة تأخذ البصمة نفسها');
+assert.ok((chat.match(/streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem/g) || []).length >= 1, 'السلسلة المجانيّة تأخذ البصمة نفسها (v-owner-free: موقع الاحتياط خام للمالك وحده)');
 
 const memory = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'memory.js'), 'utf8');
 assert.ok(memory.includes('«مها» و«عمران» اسما مساعدَي التطبيق'), 'مدير الذاكرة يعرف الاسمين');

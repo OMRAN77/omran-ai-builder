@@ -990,7 +990,6 @@ Object.assign(I18N["id"], {
     ciHint: "Tulis bagaimana Anda ingin dibalas — berlaku di semua obrolan Anda.",
     ciPlaceholder: "Contoh: jawab santai dan singkat, tanpa basa-basi.",
     ciSaved: "Tersimpan ✅",
-    mahaCcTitle: "Teks langsung panggilan",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Tidak tersedia di perangkat ini",

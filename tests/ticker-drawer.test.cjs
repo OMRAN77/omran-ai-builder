@@ -79,7 +79,7 @@ test('v5/v6: أدوات + والمايك خارج الصندوق تحته، وا
   // #6: شريط المزوّد يُدرج بعد composerRow (تحت الصندوق، جهة الإرسال)
   assert.match(modes, /getElementById\('composerRow'\)[\s\S]*?host\.insertBefore\(bar, __row\.nextSibling\)/, 'شريط المزوّد تحت الصندوق');
   assert.ok(read('index.html').includes('css/redesign.css?v=681'), 'وسم كاش redesign رُفع');
-  assert.ok(read('index.html').includes('js/modes.js?v=m150916a'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m220922b'), 'وسم كاش modes رُفع');
 });
 
 test('v-wa-handle-bare: مقبض سحب لوحة المعاينة/الكود أيقونة وحدها بلا أيّ إطار/صندوق', () => {
@@ -93,7 +93,7 @@ test('v-wa-handle-bare: مقبض سحب لوحة المعاينة/الكود أ�
   // modules.css كان يغلب tokens (يُحمَّل بعده) بصندوق ذهبيّ — أُزيل نهائيًّا
   assert.match(modules, /body\.waCollapsedMode #waReopen\{background:none!important;border:none!important;[^}]*box-shadow:none!important\}/, 'modules بلا صندوق');
   assert.match(modules, /body\.waCollapsedMode #waReopen:hover\{background:none!important;/, 'modules بلا صندوق عند المرور');
-  assert.ok(read('index.html').includes('css/modules.css?v=659'), 'وسم كاش modules رُفع');
+  assert.ok(read('index.html').includes('css/modules.css?v=662'), 'وسم كاش modules رُفع');
 });
 
 test('v-sb-handle-bare: مقبض جهة «المحادثة الجديدة» أيقونة وحدها بلا صندوق (نفس مقبض اللوحة)', () => {

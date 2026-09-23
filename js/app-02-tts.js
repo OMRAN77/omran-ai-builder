@@ -189,7 +189,7 @@ function buildSpokenWordSpans(container, text){
        تعليقات/أرقام). القراءة الصوتيّة لا تقرأ الكود عادةً فلا يضرّ فقد وسوم tts-word هنا. */
     try{
       if(codePre && typeof omranCodeHighlight === 'function'){
-        var __raw = codePre.textContent;
+        var __raw = codePre.textContent.replace(/^[ \t]*\n+/, ''); // v-md-blocks: لا أسطر فارغة أعلى صندوق الكود
         if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
       }
     }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
@@ -310,6 +310,7 @@ function buildSpokenWordSpans(container, text){
     lastIndex = m.index + m[0].length;
   }
   if(lastIndex < text.length) container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  const __lines = omranMdBlocks(container, text); // v-md-blocks
   // v476: عزل الاتجاه — «(+9714) 708 1111» داخل جملة عربية كان يُعرض معكوسًا
   // لأن المسافات بين الأرقام تتبع اتجاه الفقرة. نلفّ كل تتابع لاتيني/رقمي
   // متجاور في غلاف dir=ltr معزول. لا يغيّر عدد spans فمحاذاة TTS تبقى سليمة.
@@ -326,20 +327,81 @@ function buildSpokenWordSpans(container, text){
         const w = document.createElement('span');
         w.setAttribute('dir', 'ltr');
         w.style.unicodeBidi = 'isolate';
-        container.insertBefore(w, __run[0]);
+        __run[0].parentNode.insertBefore(w, __run[0]);
         __run.forEach(n => w.appendChild(n));
       }
       __run = [];
     };
-    for(const n of Array.from(container.childNodes)){
-      const t = n.textContent || '';
-      if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
-      else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
-      else __flush();
+    for(const __blk of __lines){
+      for(const n of Array.from(__blk.childNodes)){
+        const t = n.textContent || '';
+        if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
+        else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
+        else __flush();
+      }
+      __flush();
     }
-    __flush();
   }catch(e){ __swallow(e, 'bidi:isolate'); }
   return wordEls;
+}
+/* v-md-blocks (المالك ٢٣ سبتمبر: «الكتابة غير نظاميّة وغير مرتّبة في أوقات»): الردّ كان نصًّا واحدًا بـpre-wrap
+   وunicode-bidi:plaintext — كلّ سطر يأخذ اتّجاهه من أوّل حرف قويّ فيه، فسطر يبدأ بكلمة إنجليزيّة أو رقم
+   («3. Zuma Dubai — التقييم 4.5») ينقلب يسارًا ويتبعثر ترتيبه، ورقم القائمة يقفز لطرف السطر الآخر. الآن كلّ سطر
+   كتلة مستقلّة باتّجاه صريح: اتّجاه الردّ كلّه (عربيّ إن غلب العربيّ)، إلّا سطرًا إنجليزيًّا خالصًا فيبقى يسارًا.
+   علامة القائمة (• أو 1.) تُعلَّق في بداية السطر بمسافة ثابتة، والعنوان كتلة لها هامش. العناصر نفسها (tts-word)
+   وترتيبها لا يتغيّران، فتمييز القراءة الصوتيّة يبقى كما هو. */
+const OMRAN_AR_CHARS = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/g;
+function omranMdBlocks(container, text){
+  const arN = (String(text).match(OMRAN_AR_CHARS) || []).length;
+  const laN = (String(text).match(/[A-Za-z]/g) || []).length;
+  const baseRtl = arN > 0 && arN * 2 >= laN;
+  const nodes = Array.prototype.slice.call(container.childNodes);
+  nodes.forEach(function(n){ container.removeChild(n); });
+  const out = [];
+  let cur = null;
+  const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
+  newLine();
+  nodes.forEach(function(n){
+    if(n.nodeType === 1 && n.className === 'chat-codeblock'){ out.push(n); newLine(); return; }
+    if(n.nodeType === 3){
+      const parts = String(n.textContent).split('\n');
+      parts.forEach(function(p, i){
+        if(i > 0) newLine();
+        if(p && (cur.childNodes.length || p.trim())) cur.appendChild(document.createTextNode(p));
+      });
+      return;
+    }
+    cur.appendChild(n);
+  });
+  const lines = [];
+  out.forEach(function(b){
+    if(b.className !== 'md-line'){ container.appendChild(b); return; }
+    if(!b.childNodes.length) return;
+    const t = b.textContent || '';
+    const hasAr = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(t);
+    const la = (t.match(/[A-Za-z]/g) || []).length;
+    const rtl = baseRtl ? (hasAr || la < 12) : (hasAr && !la);
+    b.setAttribute('dir', rtl ? 'rtl' : 'ltr');
+    let fv = null;
+    const kids = Array.prototype.slice.call(b.childNodes);
+    for(let i = 0; i < kids.length; i++){
+      const k = kids[i];
+      if(k.nodeType === 1 && k.style.display !== 'none' && String(k.textContent).trim()){ fv = k; break; }
+      if(k.nodeType === 3 && String(k.textContent).trim()) break;
+    }
+    let cls = 'md-line';
+    if(fv){
+      const ft = String(fv.textContent).trim();
+      if(/\bmd-h\d\b/.test(fv.className)) cls += ' md-hb';
+      else if(ft === '•'){ cls += ' md-li'; fv.className += ' md-mk'; }
+      else if(/^•\s/.test(ft)) cls += ' md-li md-li-glued';
+      else if(/^(?:[0-9]{1,3}|[٠-٩]{1,3})[.)]$/.test(ft)){ cls += ' md-oli'; fv.className += ' md-mk'; }
+    }
+    b.className = cls;
+    container.appendChild(b);
+    lines.push(b);
+  });
+  return lines;
 }
 function wordStartOffsets(text){
   const offsets = [];
@@ -355,6 +417,15 @@ function stopAllSpeaking(){
   clearWordHighlight();
   ttsHighlightWordEls = null;
 }
+/* v-reply-voice-speed (طلب المالك ٢٢ سبتمبر «خاصيّة بطيء وسريع… أريدها لمها والصوت الي عند المحادثة في الردود»):
+   سرعة الصوت في الإعدادات كانت تصل مها وحدها؛ «استمع» على الردود وقراءتها التلقائيّة وزرّ «تجربة الصوت» كانت
+   بالسرعة العاديّة دائمًا. المفتاح نفسه (aiapp_maha_voice_speed) والدرجات الأربع نفسها، وقيمة تالفة = عاديّ. */
+function ttsSpeedSetting(){
+  try{
+    const v = localStorage.getItem('aiapp_maha_voice_speed');
+    return (v === 'slow' || v === 'fast' || v === 'xfast') ? v : 'normal';
+  }catch(e){ return 'normal'; }
+}
 async function fetchCloudSpeech(text){
   // v246: دائمًا صوت Azure Neural عالي الجودة (نفس مسار مها) — الجنس من إعداد
   // المستخدم واللغة تُكتشف تلقائيًا من النص لدقة نطق أعلى في كل اللغات.
@@ -363,7 +434,7 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000) })
+    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -538,6 +609,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   utter.lang = langTags[detectedLang] || 'en-US';
   const v = pickVoice(detectedLang);
   if(v) utter.voice = v;
+  utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed + v-maha-pace: صوت الجهاز الاحتياطيّ بالمدى الهادئ نفسه
   const offsets = wordEls && wordEls.length ? wordStartOffsets(text) : null;
   if(offsets){
     utter.onboundary = (e) => {
@@ -685,7 +757,7 @@ function renderStreamingAssistant(el, text){
   if(!fresh && head !== prev){
     if(head.length > prev.length && head.indexOf(prev) === 0){
       /* الرأس امتدّ فقط: نرسم الزيادة في مقطع جديد ونلحقه — لا إعادة لما رُسم. */
-      var seg = document.createElement('span');
+      var seg = document.createElement('div');
       seg.className = 'omStreamSeg';
       buildSpokenWordSpans(seg, head.slice(prev.length));
       hw.appendChild(seg);
@@ -696,9 +768,9 @@ function renderStreamingAssistant(el, text){
   }
   if(fresh){
     el.innerHTML = '';
-    hw = document.createElement('span'); hw.className = 'omStreamHead';
-    tw = document.createElement('span'); tw.className = 'omStreamTail';
-    var seg0 = document.createElement('span'); seg0.className = 'omStreamSeg';
+    hw = document.createElement('div'); hw.className = 'omStreamHead';
+    tw = document.createElement('div'); tw.className = 'omStreamTail';
+    var seg0 = document.createElement('div'); seg0.className = 'omStreamSeg';
     buildSpokenWordSpans(seg0, head);
     hw.appendChild(seg0);
     el.appendChild(hw); el.appendChild(tw);

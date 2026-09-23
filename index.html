@@ -105,10 +105,10 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <meta name="apple-mobile-web-app-title" content="Omran AI Builder">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=719">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css?v=720">
 <link rel="stylesheet" href="css/redesign.css?v=681">
-<link rel="stylesheet" href="css/modules.css?v=659">
+<link rel="stylesheet" href="css/modules.css?v=662">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -830,16 +830,15 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     <div id="mahaMicMeter" style="display:none; margin:4px auto 0; width:84px; height:4px; border-radius:var(--r-1); background:rgba(255,255,255,.12); overflow:hidden;"><div id="mahaMicMeterFill" style="width:0%; height:100%; border-radius:var(--r-1); background:linear-gradient(90deg,#22c55e,#4ade80); transition:width .08s linear;"></div></div>
     <div id="mahaPointsMeter" style="display:none; margin-top:3px; align-items:center; justify-content:center; gap:4px; font-size:10px; color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
   </div>
-  <div style="flex:1; display:flex; align-items:center; justify-content:center; position:relative;">
+  <div id="mahaAvatarBox" style="flex:1; display:flex; align-items:center; justify-content:center; position:relative;">
     <div id="mahaOrb" class="maha-orb-idle" style="width:105px; height:105px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:39px; box-shadow:0 0 28px rgba(123,92,255,.5);">💁‍♀️</div>
     <img id="mahaGenImage" alt="" style="display:none; width:105px; height:105px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(123,92,255,.5); cursor:zoom-in;" />
     <div id="mahaWave" class="maha-wave-idle" style="display:none; width:77px; height:77px; border-radius:50%;"></div>
+    <!-- v-maha-goldwave + v-maha-band: موجة مها الذهبيّة شريطًا بعرض الشاشة كلّه مثل شريط الأسهم — الشرائح يبنيها js/app-30-maha-wave.js؛ الخلفيّة للإطار الأوّل فقط -->
+    <div id="mahaGoldWave" aria-hidden="true" style="display:none; position:relative; width:100vw; max-width:none; height:clamp(110px, 18vh, 170px); overflow:hidden; background:#030201 url('/assets/maha/maha-wave-tile.webp') 0 46% / auto 200% repeat-x;"></div>
   </div>
   <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:auto; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); width:59px; height:78px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
-  <!-- v-maha-captions: ترجمة نصية حية للمكالمة — مثل صوت GPT المتقدم، ولذوي ضعف السمع -->
-  <div id="mahaCaptions" dir="rtl" style="display:none; width:min(258px, 78vw); max-height:118px; overflow-y:auto; background:rgba(10,10,20,.78); border:1px solid rgba(255,255,255,.16); border-radius:13px; padding:7px 11px; font-size:12px; line-height:1.75; color:#f3efff; text-align:right; box-shadow:0 4px 16px rgba(0,0,0,.45); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);"></div>
-  <div style="display:flex; align-items:center; gap:13px;">
-    <button type="button" id="btnMahaCc" data-i18n-title="mahaCcTitle" title="الترجمة النصية" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:14px; cursor:pointer;">💬</button>
+  <div id="mahaCallBtns" style="display:flex; align-items:center; gap:13px;">
     <button type="button" id="btnMahaCamera" data-i18n-title="mahaCameraTitle" title="الكاميرا — عين مها" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:15px; cursor:pointer;">📷</button>
     <button type="button" id="btnMahaEndCall" style="width:45px; height:45px; border-radius:50%; border:none; background:#ff4d4d; color:#fff; font-size:18px; box-shadow:0 4px 11px rgba(255,77,77,.5); cursor:pointer;">✕</button>
   </div>
@@ -854,8 +853,8 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-2"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=14827a02"></script>
-    <script defer src="/js/modes.js?v=m150916a"></script>
+    <script defer src="/js/app.bundle.js?v=922709b6"></script>
+    <script defer src="/js/modes.js?v=m220922b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">
@@ -914,53 +913,13 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 
 <!-- v413 ديكور: إطار البطاقات · ذوبان حرفَي الشريط · مقبض اللوحة · زرّ المحادثة · الفواصل — كمبيوتر وجوّال -->
 
-    <!-- 🎨 تمييز الأرقام والروابط في ردود الذكاء بلون مختلف -->
+    <!-- 🎨 الروابط في ردود الذكاء ذهبيّة. v-num-plain (المالك ٢٣ سبتمبر «الأرقام تطلع باللون الذهبي، أريد فقط الروابط»):
+         أُزيل مُلوِّن الأرقام (.numHL) — كان يلفّ كلّ رقم بعد اكتمال الردّ بلون ذهبيّ. -->
     <style>
     /* v-links-yellow (أمر عمران «الروابط باللون الأصفر»): كانت خضراء — صارت صفراء مثل بقيّة الروابط. */
     .msg.assistant a{color:#e3b341 !important;font-weight:600;text-decoration:underline;text-underline-offset:2px;}
     body.dark .msg.assistant a, html.dark .msg.assistant a{color:#f5c451 !important;}
-    .numHL{color:#e8a020;font-weight:700;}
-    body.dark .numHL, html.dark .numHL{color:#f5c451;}
     </style>
-    <script>
-    (function(){
-    var SKIP = {A:1,CODE:1,PRE:1,SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,BUTTON:1};
-    var NUM_RE = /(\d[\d.,،:%\u066B\u066C]*\d%?|\d%?|[\u0660-\u0669][\u0660-\u0669.,،:%\u066B\u066C]*%?)/g;
-    function hl(root){
-      try{
-        var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-          acceptNode: function(n){
-            var p = n.parentNode;
-            for (var e = p; e && e !== root; e = e.parentNode) {
-              if (SKIP[e.nodeName] || (e.classList && e.classList.contains('numHL'))) return NodeFilter.FILTER_REJECT;
-            }
-            return /\d|[\u0660-\u0669]/.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-          }
-        });
-        var nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
-        nodes.forEach(function(n){
-          var frag = document.createDocumentFragment(), s = n.nodeValue, last = 0, m;
-          NUM_RE.lastIndex = 0;
-          while ((m = NUM_RE.exec(s))) {
-            if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
-            var sp = document.createElement('span'); sp.className = 'numHL'; sp.textContent = m[0];
-            frag.appendChild(sp); last = m.index + m[0].length;
-          }
-          if (last === 0) return;
-          if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
-          n.parentNode.replaceChild(frag, n);
-        });
-      }catch(e){}
-    }
-    var t = null;
-    new MutationObserver(function(){
-      clearTimeout(t);
-      t = setTimeout(function(){
-        document.querySelectorAll('.msg.assistant:not(.msg-streaming)').forEach(hl);
-      }, 600);
-    }).observe(document.body, {childList:true, subtree:true, characterData:true});
-    })();
-    </script> 
 <!-- ===== ✨ نجوم زر "محادثة جديدة" ===== -->
 <style>
 #omranNewChatBtn{ position:relative; overflow:hidden; }
