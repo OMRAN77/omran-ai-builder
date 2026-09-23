@@ -11,7 +11,7 @@ const make = (vault) => new Function('vault',
   'const __swallow = () => {};' +
   slice('const VAULT_MIN = 150000;', 'function idbImgPutAll(puts){') +
   'function idbImgGetMany(ids){ const o = {}; ids.forEach(id => { if(vault[id]) o[id] = vault[id]; }); return Promise.resolve(o); }' +
-  slice('async function hydrateProjectImages(p){', 'window.__hydrateProjectImages') +
+  slice('async function hydrateProjectImages(p, fromIdx){', 'window.__hydrateProjectImages') +
   '; return { __vaultDegraded, __vaultReplacer, hydrateProjectImages };'
 )(vault);
 const big = 'data:image/png;base64,' + 'A'.repeat(200000);

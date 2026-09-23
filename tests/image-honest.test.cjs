@@ -327,3 +327,36 @@ test('١٥. مراجعة: المختار الذي قلبه القياس «ثاب
   const v = diff.decodeImage(Buffer.from(diff.visionCopy(logo(10), 120).b64, 'base64'));
   assert.ok(v.data[(5 * v.w + 5) * 4] > 100, 'الخلفيّة الشفّافة رماديّة لا سوداء أمام الحاكم');
 });
+
+test('١٦. مراجعة الكاشف: النفي لا يبدّل أحدًا، «غيّر وجهها لابتسامة» ليست تبديلًا، والشخص بعينه وحده يُبدَّل', async () => {
+  const ip = require(rp('api/_lib/image-prompt.js'));
+  for (const t of ['غير الخلفية ولا تغير الأشخاص', 'ما تغير الاشخاص', 'غير الملابس بدون ما تبدل الأشخاص', 'غير الإضاءة، لا تغير الوجوه', 'بدون تغيير الأشخاص', "don't change the people", 'keep the same faces',
+    'غير وجهها لابتسامة', 'غير وجهه خله يبتسم', 'غير وجهها بمكياج خفيف', 'غير الوجه لوجه مبتسم', 'غير وجه الساعة للون ذهبي', 'غير وجه الكرت', 'بدل وجهه بوجهي', "change all the people's shirts to red"]) assert.equal(ip.isPersonSwapRequest(t), false, t);
+  for (const t of ['لا تغير الخلفية، غير الأشخاص', 'ما غيرت الوجوه', 'ابي تغير وجوه كل الأشخاص', 'غير وجهها', 'بدّل كل الوجوه بوجوه جديدة']) assert.equal(ip.isPersonSwapRequest(t), true, t);
+  for (const t of ['غير الرجل اللي على اليمين بس', 'بدل البنت اللي في النص بشخص ثاني', 'replace the man on the left with a different person']) assert.equal(ip.isTargetedPersonSwap(t), true, t);
+  for (const t of [SWAP_REQ, 'غير الأشخاص بس خل الخلفية', 'change all the faces']) assert.equal(ip.isTargetedPersonSwap(t), false, t);
+  assert.match(ip.buildPersonSwapPrompt('x', 'غير الرجل اللي على اليمين بس'), /Replace ONLY the person or people the request singles out[^\n]*everyone else stays exactly as in the source/);
+  // الموجِّه: النفي يذهب للمسار الأمين (لا أمر تبديل)
+  const req = 'غير الخلفية للون أبيض ولا تغير الأشخاص';
+  const r = await run({ prompt: req, userText: req, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'user' }, { pro: SWAP }, () => ({ verdicts: ['done'], pick: 0, scope: 'small', text: 'ok', report: 'ok' }));
+  assert.doesNotMatch(r.calls[0].text, /PEOPLE REPLACEMENT/);
+  // شخص بعينه: تغيير صغير (بطاقة واحدة من ثمانٍ) ليس «ثابتًا»، والحاكم يرى تلميح الاستهداف
+  const one = (() => { const s = diff.decodeImage(SRC), w = diff.decodeImage(SWAP); const o = Buffer.alloc(s.w * s.h * 4);
+    for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) { const i = (y * s.w + x) * 4, inCard = x > 250 && x < 360 && y > 10 && y < 150; const src = inCard ? w : s; const j = (y * src.w + x) * 4; o[i] = src.data[j]; o[i + 1] = src.data[j + 1]; o[i + 2] = src.data[j + 2]; o[i + 3] = 255; }
+    return Buffer.from(jpeg.encode({ width: s.w, height: s.h, data: o }, 88).data).toString('base64'); })();
+  const req2 = 'غير الرجل اللي على اليمين بس';
+  const r2 = await run({ prompt: req2, userText: req2, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'user' }, { pro: one, gptEdit: SWAP }, () => ({ verdicts: ['done'], pick: 0, scope: 'small', text: 'ok', report: 'بدّلته وحده.' }));
+  assert.equal(r2.status, 200); assert.equal(r2.json.imageBase64, one, 'لا ٤٢٢ ولا GPT يبدّل الجميع');
+  assert.deepEqual(r2.calls.map((c) => c.kind), ['pro', 'judge']);
+  assert.match(r2.calls[0].text, /Replace ONLY the person/);
+  assert.match(r2.calls[1].text, /TARGETED PERSON SWAP/);
+});
+
+test('١٧. مراجعة العميل: متابعة الدمج تعدّل آخر نسخة، تشخيص ٤٢٢ يذكر ما جُرّب، سطر المحرّك في تبديل الحرف، وwebp يُعاد ترميزه', () => {
+  const a9 = read('js/app-09-attach.js');
+  assert.match(a9, /if\(!imageAttachments\.length && window\.__omMode === 'image_mix' && cur\.lastEditedImage && cur\.lastEditedImage\.b64 && cur\.lastMsgWasImageEdit && text && text\.length <= 300 && !__IMGF_NEW_RE\.test\(text\)\)\{/);
+  assert.equal((a9.match(/__data\.__diag\.free \|\| __data\.__diag\.tried \|\| '\?'/g) || []).length, 2);
+  assert.match(a9, /content:\(typeof __lsData\.caption === 'string' \? __lsData\.caption : ''\) \+ __imgEngineLine\(__lsData\.engine\)/);
+  assert.match(a9, /b64\.length < 2000000 && !\/webp\/i\.test\(String\(mime \|\| ''\)\)\)\) return/);
+  assert.ok(read('js/app.bundle.js').includes("window.__omMode === 'image_mix' && cur.lastEditedImage"), 'الحزمة مبنيّة');
+});

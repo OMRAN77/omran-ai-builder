@@ -487,6 +487,32 @@ function __vaultReplacer(k, v){
 function __vaultDegraded(a){
   return !!(a && a.vaultId && !a.vaultPending && (typeof a.dataUrl !== 'string' || a.dataUrl.length <= VAULT_MIN));
 }
+/* v-mem-guard (لقطات المالك ٢٣ سبتمبر: «خربت الدنيا — ولا شي يفتح»: الكتابة تتقطّع خطوطًا، صفوف سوداء، والشعار تشويش):
+   v-vault-restore كان يستعيد أصول كلّ صور المحادثة المفتوحة بحجمها الكامل مع كلّ رسم، ثمّ يبني الحفظ (كلّ ١٫٥ث) نصًّا من
+   المشروع كلّه بصوره، وتنسخ المرآة (كلّ ١٠ث) كلّ رسالة بصورها — مسبار ٤٠ صورة: الذاكرة ٣٤ ← ٣٧١ م.ب ونصّ ٦٢ مليون حرف
+   في كلّ حفظ؛ بصور المالك الحقيقيّة (٥–٢٠ م.ب) غيغابايتات فتنهار ذاكرة الرسم في الجوّال. الاستعادة الآن لنافذة العرض
+   وحدها (آخر ٣٠ رسالة كما يرسم renderMessages)؛ الأقدم تُقرأ صورةً صورةً حين تُعرض («عرض الأقدم»). */
+const __IMG_WINDOW = 30;
+function __imgWindowStart(p){
+  const n = (p && Array.isArray(p.messages)) ? p.messages.length : 0;
+  return (p && p.__showAllMsgs) ? 0 : Math.max(0, n - __IMG_WINDOW);
+}
+/* v-mem-guard2 (فيديو المالك بعد #739: النصّ صار سليمًا، لكنّ الشعار تشويش وصفوف لا تُرسم — في محادثة جديدة فارغة):
+   (١) صور المحادثة التي غادرها تبقى بحجمها الكامل في الذاكرة ولا شيء يعيدها للمخزن، فحِمل محادثة الصور يبقى وأنت في غيرها.
+   (٢) فتح المحادثة كان يقرأ كلّ صورة نحو ٤٫٥ مرّات بالتوازي (كلّ renderMessages يطلق استعادة بلا قفل، ومسار الرسم يقرأ كلّ صورة
+   مرّة ثانية). الآن: ما خارج نافذة المحادثة المفتوحة يعود لمعرّفه (الأصل في المخزن ويُستعاد حين يُعرض)، وكلّ صورة قيد القراءة
+   تُقرأ مرّة واحدة وينتظرها الجميع. المعلّقة (لم تُكتب في المخزن بعد) والصغيرة بلا معرّف لا تُمسّ. */
+const __vaultReads = new WeakMap();
+function __vaultRelease(keepP, keepFrom){
+  let freed = 0;
+  ((typeof state !== 'undefined' && state && state.projects) || []).forEach(p => ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || (p === keepP && i >= keepFrom)) return;
+    (m.attachments || []).concat(m.apiImages || []).forEach(a => {
+      if(a && a.vaultId && !a.vaultPending && typeof a.dataUrl === 'string' && a.dataUrl.length > VAULT_MIN && !__vaultReads.has(a)){ a.dataUrl = ''; freed++; }
+    });
+  }));
+  return freed;
+}
 function __collectVaultIds(projects){
   const ids = new Set();
   __vaultEach(projects, a => { if(a.vaultId) ids.add(a.vaultId); });
@@ -509,6 +535,15 @@ function idbImgGet(id){
     rq.onsuccess = () => { db.close(); res(rq.result); };
     rq.onerror = () => { db.close(); rej(rq.error); };
   }));
+}
+/* v-mem-guard2: قراءة صورة واحدة من المخزن — إن كانت قيد القراءة (الاستعادة أو رسم سابق) يُنتظر الوعد نفسه */
+function __vaultRead(a){
+  let pr = __vaultReads.get(a);
+  if(!pr){
+    pr = idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; delete a.purged; } return a.dataUrl; }).finally(() => __vaultReads.delete(a));
+    __vaultReads.set(a, pr);
+  }
+  return pr;
 }
 function idbImgSweep(liveIds){
   return idbOpen().then(db => new Promise((res, rej) => {
@@ -541,12 +576,20 @@ function idbImgGetMany(ids){
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
 }
-async function hydrateProjectImages(p){
+async function hydrateProjectImages(p, fromIdx){
   const need = [];
-  __vaultEach(p ? [p] : [], a => { if(__vaultDegraded(a)) need.push(a); });
+  const start = (typeof fromIdx === 'number') ? fromIdx : __imgWindowStart(p);
+  if(p) __vaultRelease(p, start); /* v-mem-guard2: ما خارج النافذة يعود لمعرّفه */
+  ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || i < start) return;
+    (m.attachments || []).forEach(a => { if(a && a.isImage && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
+    (m.apiImages || []).forEach(a => { if(a && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
+  });
   if(!need.length) return 0;
-  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة */
-  try{ const got = await idbImgGetMany(need.map(a => a.vaultId)); need.forEach(a => { if(got[a.vaultId]){ a.dataUrl = got[a.vaultId]; delete a.purged; } }); }catch(e){ __swallow(e, 'vault:get'); }
+  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة؛ وكلّ صورة تُسجَّل «قيد القراءة» فلا تُقرأ ثانية حتّى تنتهي */
+  const batch = idbImgGetMany(need.map(a => a.vaultId));
+  need.forEach(a => { __vaultReads.set(a, batch.then(got => { if(got[a.vaultId]){ a.dataUrl = got[a.vaultId]; delete a.purged; } return a.dataUrl; }, () => a.dataUrl).finally(() => __vaultReads.delete(a))); });
+  try{ await Promise.all(need.map(a => __vaultReads.get(a))); }catch(e){ __swallow(e, 'vault:get'); }
   return need.length;
 }
 window.__hydrateProjectImages = hydrateProjectImages;
@@ -626,7 +669,7 @@ function __saveFlush(force){
          الصفحة يُحفظ فورًا. المنظّف بقي لمسار localStorage الاحتياطي وحده لأن سقفه 5MB فعليًا. */
       if(!force){
         try{
-          const __sz = __projectsToJson().length;
+          const __sz = __vaultJsonSize(); /* v-mem-guard: كان __projectsToJson() يبني نصّ المشروع المفتوح بصوره كاملة في كلّ حفظ */
           const __gap = __sz > 60000000 ? 30000 : (__sz > 12000000 ? 10000 : 0);
           const __wait = __gap - (Date.now() - __idbSavedAt);
           if(__gap && __wait > 0){ __saveDirty = true; __saveTimer = setTimeout(__saveFlush, __wait); return; }
@@ -663,6 +706,10 @@ function saveState(){
   __saveDirty = true;
   if(__saveTimer) return;
   __saveTimer = setTimeout(__saveFlush, 1500);
+}
+/* v-mem-guard: حجم ما يكتبه __vaultSave فعلًا (صور المخزن معرّفات لا base64) — حارس التباعد لا يبني نصّ الصور */
+function __vaultJsonSize(){
+  try{ return JSON.stringify(state.projects, __vaultReplacer).length; }catch(e){ return 0; } /* guard-ok — الحارس تحسين؛ الفشل = حفظ فوريّ كما قبل */
 }
 // ⚡ v320: الحفظ يعالج المشروع المفتوح فقط — الباقي من نسخة نصية جاهزة (كاش).
 let __projJsonCache = new WeakMap();
@@ -724,20 +771,17 @@ function chatsAuthToken(){
    الصور الصغيرة (< 150KB base64) تبقى كما هي. بدون thumb + كبيرة = [media]. */
 function __msgForServer(m){
   try{
-    var o = JSON.parse(JSON.stringify(m));
-    // المرفقات: استخدم serverThumb إذا موجود، أو احتفظ بالصغيرة
-    function fixImg(a){
-      if(!a || !a.isImage) return;
-      if(a.serverThumb){
-        a.dataUrl = a.serverThumb;
-        delete a.serverThumb;
-      } else if(a.dataUrl && a.dataUrl.length > 150000){
-        a.dataUrl = '[media]';
+    /* v-mem-guard: كانت JSON.parse(JSON.stringify(m)) تنسخ كلّ base64 الرسالة ثمّ تستبدلها بـ«[media]» — كلّ ١٠ث ولكلّ رسالة في
+       كلّ المحادثات، مئات الميغا بعد v-vault-restore. الآن تُستبدل أثناء النسخ: المصغّرة (serverThumb) للصورة إن وُجدت،
+       والأكبر من 150KB «[media]» (ومنها apiImages بلا isImage التي كانت تُنسخ كاملة)، والصغيرة تبقى كما هي. */
+    var o = JSON.parse(JSON.stringify(m, function(k, v){
+      if(k === 'serverThumb' && this && this.isImage) return undefined;
+      if(k === 'dataUrl' && this && typeof v === 'string'){
+        if(this.isImage && this.serverThumb) return this.serverThumb;
+        if(v.length > 150000) return '[media]';
       }
-      // الصغيرة تبقى كما هي
-    }
-    if(o.attachments) o.attachments.forEach(fixImg);
-    if(o.apiImages) o.apiImages.forEach(fixImg);
+      return v;
+    }));
     // النص الطويل
     if(o && typeof o.content === 'string' && o.content.length > 12001){
       o.content = o.content.slice(0, 12000) + '…';
@@ -1406,7 +1450,7 @@ function renderMessages(keepScroll){
   let compareGroup = null;
   cur.expandedAskAllBatches = cur.expandedAskAllBatches || [];
   // ⚡ v320: نافذة عرض — نرسم آخر 30 رسالة فقط؛ الأقدم تظهر بزر عند الطلب.
-  const __MSGWIN = 30;
+  const __MSGWIN = __IMG_WINDOW; /* v-mem-guard: النافذة نفسها التي تُستعاد صورها */
   const __winStart = cur.__showAllMsgs ? 0 : Math.max(0, cur.messages.length - __MSGWIN);
   if(__winStart > 0){
     const __OLDT = { ar:'عرض الرسائل الأقدم', en:'Show older messages', fr:'Afficher les messages plus anciens', hi:'पुराने संदेश दिखाएँ', ur:'پرانے پیغامات دکھائیں', bn:'পুরনো বার্তা দেখান', ne:'पुराना सन्देशहरू देखाउनुहोस्', id:'Tampilkan pesan lama', fil:'Ipakita ang mga lumang mensahe', tr:'Eski mesajları göster', zh:'显示较早的消息', ru:'Показать старые сообщения', es:'Mostrar mensajes anteriores', ml:'പഴയ സന്ദേശങ്ങൾ കാണിക്കുക' };
@@ -1727,7 +1771,9 @@ function renderMessages(keepScroll){
         } else if(a.isImage){
           const img = document.createElement('img');
           /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
-          if(__vaultDegraded(a)){ idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; delete a.purged; img.src = d; } }).catch(e => __swallow(e, 'vault:render')); }
+          /* v-mem-guard2: قراءة واحدة مشتركة؛ وأدوات المشاركة تُلحق حين يصل الأصل (كانت تُتخطّى لصورة رُسمت قبل وصوله) */
+          let __ibox = null;
+          if(__vaultDegraded(a)){ __vaultRead(a).then(d => { if(typeof d === 'string' && d.length > VAULT_MIN){ img.src = d; if(__ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); } }).catch(e => __swallow(e, 'vault:render')); }
           img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
           img.title = a.name;
           img.style.cursor = 'pointer';
@@ -1750,7 +1796,7 @@ function renderMessages(keepScroll){
           if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
             const ibox = document.createElement('div');
             ibox.style.cssText = 'position:relative;display:block;min-width:0;width:fit-content;max-width:min(460px,100%)';
-            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
+            __ibox = ibox; ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
           } else wrap.appendChild(img);
         } else {
           const chip = document.createElement('div');

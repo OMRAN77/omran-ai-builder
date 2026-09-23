@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, isTextEditRequest, isPureTextRemoval, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange, buildTextPolishPrompt } = require('./image-prompt');
+const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, isTextEditRequest, isPureTextRemoval, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange, buildTextPolishPrompt, isTargetedPersonSwap } = require('./image-prompt');
 /* v-nano-pro-edit: نيّات التعديل (أسلوب/فكرة مختلفة/أقوى/نفس الصورة) في وحدة واحدة قابلة للاختبار،
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
@@ -255,8 +255,9 @@ module.exports = async (req, res) => {
     /* مراجعة v-img-honest: أيّ نداء إضافيّ (محرّك آخر · تلميع الكتابة) يأخذ ما بقي من ٣٠٠ث بعد حجز الحكم (٢٢ث) والتكبير (٦٠ث)
        ومهلة — بلا ذلك تخطّى نداء برو الاحتياطيّ (٩٠ث × محاولتين) السقف فضاعت الصورة الجاهزة والنقاط. أقلّ من ٢٥ث = لا نداء. */
     const __extraBudget = function () { return 213000 - (Date.now() - __t0); };
-    const __expectBig = !!editImageBase64 && !extras.length && (isPersonSwap || isRestyle || isReimagine || isElevate || isSceneUpgrade);
-    const __vIntent = { personSwap: isPersonSwap, textEdit: isTextSwap || isTextRemove, restyle: isRestyle, reimagine: isReimagine, elevate: isElevate || isSceneUpgrade, merge: !!extras.length };
+    const __swapOne = isPersonSwap && isTargetedPersonSwap(intentText); /* مراجعة: شخص بعينه = لا بوّابة «٣٪» ولا «كلّ شخص» */
+    const __expectBig = !!editImageBase64 && !extras.length && ((isPersonSwap && !__swapOne) || isRestyle || isReimagine || isElevate || isSceneUpgrade);
+    const __vIntent = { personSwap: isPersonSwap && !extras.length, targeted: __swapOne, textEdit: isTextSwap || isTextRemove, restyle: isRestyle, reimagine: isReimagine, elevate: isElevate || isSceneUpgrade, merge: !!extras.length };
     const __settleCtx = { apiKey: apiKey, request: intentText || cleanPrompt, source: editImageBase64 ? { b64: editImageBase64, mime: editMimeType || 'image/jpeg' } : null, measurable: !extras.length, expectBig: __expectBig, intent: __vIntent, skipJudge: !!prayerPlan };
     async function deliver(first, altFn, polishFn) {
       const r = await settleCandidates(Object.assign({ first: first, altFn: altFn, polishFn: polishFn || null, deadlineOk: function () { return __extraBudget() >= 25000; },
