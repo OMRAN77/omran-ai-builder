@@ -1993,7 +1993,7 @@ function buildSpokenWordSpans(container, text){
        تعليقات/أرقام). القراءة الصوتيّة لا تقرأ الكود عادةً فلا يضرّ فقد وسوم tts-word هنا. */
     try{
       if(codePre && typeof omranCodeHighlight === 'function'){
-        var __raw = codePre.textContent;
+        var __raw = codePre.textContent.replace(/^[ \t]*\n+/, ''); // v-md-blocks: لا أسطر فارغة أعلى صندوق الكود
         if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
       }
     }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
@@ -2114,6 +2114,7 @@ function buildSpokenWordSpans(container, text){
     lastIndex = m.index + m[0].length;
   }
   if(lastIndex < text.length) container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  const __lines = omranMdBlocks(container, text); // v-md-blocks
   // v476: عزل الاتجاه — «(+9714) 708 1111» داخل جملة عربية كان يُعرض معكوسًا
   // لأن المسافات بين الأرقام تتبع اتجاه الفقرة. نلفّ كل تتابع لاتيني/رقمي
   // متجاور في غلاف dir=ltr معزول. لا يغيّر عدد spans فمحاذاة TTS تبقى سليمة.
@@ -2130,20 +2131,81 @@ function buildSpokenWordSpans(container, text){
         const w = document.createElement('span');
         w.setAttribute('dir', 'ltr');
         w.style.unicodeBidi = 'isolate';
-        container.insertBefore(w, __run[0]);
+        __run[0].parentNode.insertBefore(w, __run[0]);
         __run.forEach(n => w.appendChild(n));
       }
       __run = [];
     };
-    for(const n of Array.from(container.childNodes)){
-      const t = n.textContent || '';
-      if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
-      else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
-      else __flush();
+    for(const __blk of __lines){
+      for(const n of Array.from(__blk.childNodes)){
+        const t = n.textContent || '';
+        if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
+        else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
+        else __flush();
+      }
+      __flush();
     }
-    __flush();
   }catch(e){ __swallow(e, 'bidi:isolate'); }
   return wordEls;
+}
+/* v-md-blocks (المالك ٢٣ سبتمبر: «الكتابة غير نظاميّة وغير مرتّبة في أوقات»): الردّ كان نصًّا واحدًا بـpre-wrap
+   وunicode-bidi:plaintext — كلّ سطر يأخذ اتّجاهه من أوّل حرف قويّ فيه، فسطر يبدأ بكلمة إنجليزيّة أو رقم
+   («3. Zuma Dubai — التقييم 4.5») ينقلب يسارًا ويتبعثر ترتيبه، ورقم القائمة يقفز لطرف السطر الآخر. الآن كلّ سطر
+   كتلة مستقلّة باتّجاه صريح: اتّجاه الردّ كلّه (عربيّ إن غلب العربيّ)، إلّا سطرًا إنجليزيًّا خالصًا فيبقى يسارًا.
+   علامة القائمة (• أو 1.) تُعلَّق في بداية السطر بمسافة ثابتة، والعنوان كتلة لها هامش. العناصر نفسها (tts-word)
+   وترتيبها لا يتغيّران، فتمييز القراءة الصوتيّة يبقى كما هو. */
+const OMRAN_AR_CHARS = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/g;
+function omranMdBlocks(container, text){
+  const arN = (String(text).match(OMRAN_AR_CHARS) || []).length;
+  const laN = (String(text).match(/[A-Za-z]/g) || []).length;
+  const baseRtl = arN > 0 && arN * 2 >= laN;
+  const nodes = Array.prototype.slice.call(container.childNodes);
+  nodes.forEach(function(n){ container.removeChild(n); });
+  const out = [];
+  let cur = null;
+  const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
+  newLine();
+  nodes.forEach(function(n){
+    if(n.nodeType === 1 && n.className === 'chat-codeblock'){ out.push(n); newLine(); return; }
+    if(n.nodeType === 3){
+      const parts = String(n.textContent).split('\n');
+      parts.forEach(function(p, i){
+        if(i > 0) newLine();
+        if(p && (cur.childNodes.length || p.trim())) cur.appendChild(document.createTextNode(p));
+      });
+      return;
+    }
+    cur.appendChild(n);
+  });
+  const lines = [];
+  out.forEach(function(b){
+    if(b.className !== 'md-line'){ container.appendChild(b); return; }
+    if(!b.childNodes.length) return;
+    const t = b.textContent || '';
+    const hasAr = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(t);
+    const la = (t.match(/[A-Za-z]/g) || []).length;
+    const rtl = baseRtl ? (hasAr || la < 12) : (hasAr && !la);
+    b.setAttribute('dir', rtl ? 'rtl' : 'ltr');
+    let fv = null;
+    const kids = Array.prototype.slice.call(b.childNodes);
+    for(let i = 0; i < kids.length; i++){
+      const k = kids[i];
+      if(k.nodeType === 1 && k.style.display !== 'none' && String(k.textContent).trim()){ fv = k; break; }
+      if(k.nodeType === 3 && String(k.textContent).trim()) break;
+    }
+    let cls = 'md-line';
+    if(fv){
+      const ft = String(fv.textContent).trim();
+      if(/\bmd-h\d\b/.test(fv.className)) cls += ' md-hb';
+      else if(ft === '•'){ cls += ' md-li'; fv.className += ' md-mk'; }
+      else if(/^•\s/.test(ft)) cls += ' md-li md-li-glued';
+      else if(/^(?:[0-9]{1,3}|[٠-٩]{1,3})[.)]$/.test(ft)){ cls += ' md-oli'; fv.className += ' md-mk'; }
+    }
+    b.className = cls;
+    container.appendChild(b);
+    lines.push(b);
+  });
+  return lines;
 }
 function wordStartOffsets(text){
   const offsets = [];
@@ -2499,7 +2561,7 @@ function renderStreamingAssistant(el, text){
   if(!fresh && head !== prev){
     if(head.length > prev.length && head.indexOf(prev) === 0){
       /* الرأس امتدّ فقط: نرسم الزيادة في مقطع جديد ونلحقه — لا إعادة لما رُسم. */
-      var seg = document.createElement('span');
+      var seg = document.createElement('div');
       seg.className = 'omStreamSeg';
       buildSpokenWordSpans(seg, head.slice(prev.length));
       hw.appendChild(seg);
@@ -2510,9 +2572,9 @@ function renderStreamingAssistant(el, text){
   }
   if(fresh){
     el.innerHTML = '';
-    hw = document.createElement('span'); hw.className = 'omStreamHead';
-    tw = document.createElement('span'); tw.className = 'omStreamTail';
-    var seg0 = document.createElement('span'); seg0.className = 'omStreamSeg';
+    hw = document.createElement('div'); hw.className = 'omStreamHead';
+    tw = document.createElement('div'); tw.className = 'omStreamTail';
+    var seg0 = document.createElement('div'); seg0.className = 'omStreamSeg';
     buildSpokenWordSpans(seg0, head);
     hw.appendChild(seg0);
     el.appendChild(hw); el.appendChild(tw);
@@ -6124,37 +6186,27 @@ function renderMessages(keepScroll){
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
     {
-      // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
+      // الروابط الخارجية الظاهرة في النصّ — تبقى روابط، وتُستثنى من بطاقة المصادر
       const __inlineLinks = [];
-      const __anchorEls = [];
       if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
           const title = a.textContent.trim() || url;
-          if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
+          if(url && !__inlineLinks.some(l => l.url === url)){
             __inlineLinks.push({ url, title });
           }
-          __anchorEls.push(a);
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
        const __isMapUrl = (url) => /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i.test(String(url || ''));
        const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
-       const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
-      const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
-      // v-src-dedupe (أمر عمران ب): رابط واحد ظاهر في الرد أصلًا = لا بطاقة مصادر
-      // مكرّرة؛ يبقى الرابط قابلًا للضغط داخل الرد. غير ذلك تُحوّل الروابط إلى نصّ
-      // (بلا href حتى لا تتفرّق) وتُجمع كلّها في البطاقة.
-      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
-      const __skipCard = validSrcs.length === 1 && __inlineLinks.length === 1 && __normU(__inlineLinks[0].url) === __normU(validSrcs[0].url);
-      if(!__skipCard){
-        __anchorEls.forEach(a => {
-          const span = document.createElement('span');
-          span.className = 'msgInlineRef';
-          span.textContent = a.textContent;
-          a.parentNode.replaceChild(span, a);
-        });
-      }
+      /* v-inline-links-stay (المالك ٢٣ سبتمبر: «يقول ادخل الرابط… يعطيني مرّة أو مرّتين صح والباقي يخربط»):
+         كان الرابط يبقى قابلًا للضغط في ردّ فيه رابط واحد فقط؛ رابطان فأكثر = كلّها تتحوّل نصًّا عاديًّا
+         (msgInlineRef) وتختفي في زرّ «المصادر» المطويّ. الآن الرابط في النصّ يبقى رابطًا ذهبيًّا يُفتح دائمًا،
+         وبطاقة «المصادر» لا تحمل إلّا مصادر البحث التي ليست ظاهرة في النصّ أصلًا. */
+      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
+      const validSrcs = __srcBase.filter(s => !__inlineLinks.some(l => __normU(l.url) === __normU(s.url))).slice(0, 15);
+      const __skipCard = false;
 
       if(validSrcs.length && !__skipCard){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
@@ -30880,7 +30932,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   var KEY = 'omran_font';
   var loaded = Object.create(null);
   var fonts = [
-    {id:'default', ar:'الافتراضي', en:'Default', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-font-plex (المالك ٢٣ سبتمبر «الخط مش جميل، شوف أحلى خط»): الافتراضيّ صار IBM Plex Sans Arabic —
+       أوضح خطّ عربيّ للقراءة الطويلة (فتحات حروف واسعة، أرقام متناسقة مع اللاتينيّ). تجوال باقٍ خيارًا. */
+    {id:'default', ar:'الافتراضي', en:'Default', family:"'IBM Plex Sans Arabic'", google:'', line:1.8},
+    {id:'tajawal', ar:'تجوال', en:'Tajawal', family:"'Tajawal'", google:'', line:1.7},
     {id:'kufi', ar:'الكوفي', en:'Kufi', family:"'Reem Kufi'", google:'Reem+Kufi:wght@400..700', line:1.85},
     {id:'naskh', ar:'النسخ', en:'Naskh', family:"'Amiri'", google:'Amiri:ital,wght@0,400;0,700;1,400', line:1.95},
     {id:'naskh2', ar:'نسخ نوتو', en:'Noto Naskh', family:"'Noto Naskh Arabic'", google:'Noto+Naskh+Arabic:wght@400..700', line:1.9},
