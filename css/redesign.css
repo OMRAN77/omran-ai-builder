@@ -599,3 +599,15 @@ html.mobile-ui header h1 #brandTitle{display:none !important;}
 /* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:2px;}
+
+/* v-iphone-fit (لقطات المالك ٢٣ سبتمبر — آيفون):
+   ١) الكيبورد مفتوح (html.kb-open من pinVisualViewport): شريط التبويبات وحاشية الهوم خلف الكيبورد، فلا حجز
+      لهما تحت main — مربّع الكتابة يلتصق فوق الكيبورد مباشرة بدل الطفو في وسط الشاشة.
+   ٢) درجا المحادثات والملفّات مثبّتان من top:0 بلا حاشية القمّة، فالشعار وأزرار الملفّات تحت الساعة والبطارية.
+      نفس حاشية الهيدر (بسقف 62px). السهم المطلق في درج المحادثات يحسب حاشيته بنفسه فلا يتأثّر. */
+html.kb-open main{padding-bottom:0 !important;}
+html.kb-open #omranBottomNav{display:none !important;}
+@media (max-width:860px){
+  #sidebar, #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
+}
+html.mobile-ui #sidebar, html.mobile-ui #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}

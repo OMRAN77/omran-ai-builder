@@ -97,7 +97,12 @@
       function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
       /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
       window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
-      function curProvModelLabel(){ var pv=provOf(curProv()); if(!pv) return curProv(); var mid=curModelId(pv); for(var i=0;i<pv.models.length;i++) if(pv.models[i][0]===mid) return pv.models[i][1]; return pv.name; }
+      /* v-chip-func-name (أمر المالك ٢٣ سبتمبر «أبدله باسم وظيفي»): الشريحة تحت صندوق الكتابة كانت تعرض اسم النموذج
+         («Sonnet 5»، «GPT-5.6 Terra») — صارت اللقب الوظيفيّ للمزوّد المختار (الكينج/السريع/العميق، مفاتيح provNick* بـ١٤ لغة،
+         نفس خريطة PROVIDER_NICK_KEYS في app-05). القائمة المنسدلة تبقى بأسماء النماذج (أمر المالك «كلّ واحد وموديله بالضبط»). */
+      var NICK = { claude:'provNickKing', gemini:'provNickFast', groq:'provNickFast', mistral:'provNickFast', openai:'provNickDeep', deepseek:'provNickDeep', perplexity:'provNickDeep', cohere:'provNickDeep', openrouter:'provNickDeep' };
+      var NICK_FB = { provNickKing:(AR?'الكينج':'The King'), provNickFast:(AR?'السريع':'The Fast'), provNickDeep:(AR?'العميق':'The Deep') };
+      function curProvFuncLabel(){ var k = NICK[curProv()] || 'provNickDeep'; try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok: i18n لم يجهز — الاحتياط */ } return NICK_FB[k]; }
 
       var ROW = 'display:block; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:9px 12px; border-radius:8px; cursor:pointer;';
       function optRow(act, label, key){ var a = key ? ' data-i18n="' + key + '"' : ''; return '<button type="button" class="omModelOpt" data-act="' + act + '" style="' + ROW + '"><span' + a + '>' + label + '</span></button>'; }
@@ -144,7 +149,7 @@
       var ACCENT = 'var(--accent,#f0c040)', INK = 'var(--text,#eee)';
       function refresh(){
         var nm = wrap.querySelector('.omModelName');
-        if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true) ? agentLabel() : curProvModelLabel();
+        if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true) ? agentLabel() : curProvFuncLabel();
         try{
           var pk = curProv(); var pv = provOf(pk); var mid = pv ? curModelId(pv) : '';
           var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ heads[i].style.color = (heads[i].getAttribute('data-prov') === pk) ? ACCENT : INK; }
