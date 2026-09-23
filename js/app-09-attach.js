@@ -4975,10 +4975,10 @@ DESIGN RULES (non-negotiable):
          ~66 حرفًا بالثانية، مع تسريع فقط عند تراكم يفوق 1200 حرف حتى لا
          يقضي ردٌّ طويل جدًا دقيقة كاملة «يتكتب» بعد اكتماله. */
       const REVEAL_TICK_MS = 30;
-      const __revealStep = (st) => {
-        const left = st.target.length - st.shown;
-        return left > 1200 ? Math.ceil(left / 300) : 2;
-      };
+      /* v-askall-fast (المالك ٢٣ سبتمبر «المزوّد بطيء وهو يكتب — كلّ المزوّدين»): فقاعات «اسأل الكل»
+         بقيت على وتيرة v-reveal-slow (حرفان كلّ ٣٠مل ≈ ٦٦ حرفًا/ث) بعد أن ألغتها v-chat-fast في المحادثة
+         العاديّة — فكلّ مزوّد يبدو بطيئًا مهما كانت سرعته. الآن كلّ نبضة تعرض كلّ ما وصل: سرعة المزوّد نفسه. */
+      const __revealStep = (st) => st.target.length - st.shown;
       const ensureRevealTimer = (msg) => {
         let st = revealStates.get(msg._uid);
         if(!st){
@@ -4995,7 +4995,8 @@ DESIGN RULES (non-negotiable):
               msg.content = st.target;
               const el = messagesEl.querySelector('[data-askuid="' + msg._uid + '"]');
               // strip ** أثناء الحركة حتى لا يظهر الماركداون خامًا للمستخدم
-              if(el) el.textContent = st.target.slice(0, st.shown).replace(/\*\*/g, '');
+              // v-askall-fast: المنسّق الحيّ نفسه الذي تستعمله المحادثة (أسطر مرتّبة، روابط، عناوين) بدل نصّ خام
+              if(el) renderStreamingAssistant(el, st.target.slice(0, st.shown));
               // v610 — الحركة تكتب النصّ خامًّا بـtextContent، فروابط الماركداون
               // تبقى عارية حتّى الرسم النهائيّ. ولو بُتر الردّ أو تعطّل الإنهاء
               // لم يأتِ ذلك الرسم أبدًا فبقيت خامًا (عيب رآه عمران). عند لحاق

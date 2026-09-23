@@ -92,3 +92,13 @@ test('٦. الإرشاد داخل موقع: خطوات بأسماء الأزرا
   assert.ok(c.includes('ممنوع رابط عميق لم تفتحه'));
   assert.ok(c.includes('اطلب لقطة شاشة وأكمل منها خطوة خطوة'));
 });
+
+test('٧. «اسأل الكل» بسرعة المزوّد نفسه ومنسّق حيًّا — لا وتيرة ٦٦ حرفًا/ث ولا نصّ خام', () => {
+  const a = read('js/app-09-attach.js');
+  assert.ok(a.includes('const __revealStep = (st) => st.target.length - st.shown;'), 'كلّ نبضة تعرض كلّ ما وصل');
+  assert.ok(!a.includes('return left > 1200 ? Math.ceil(left / 300) : 2;'), 'أُلغيت الوتيرة البطيئة');
+  assert.ok(a.includes('if(el) renderStreamingAssistant(el, st.target.slice(0, st.shown));'), 'المنسّق الحيّ');
+  assert.ok(!a.includes("el.textContent = st.target.slice(0, st.shown).replace("), 'لا نصّ خام');
+  // المسار العاديّ ما زال بلا وتيرة مصطنعة (v-chat-fast)
+  assert.ok(a.includes('__live.shown = __live.target.length;'));
+});
