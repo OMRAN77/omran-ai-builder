@@ -338,6 +338,14 @@
             // «بيت أسود» — لا رسائل مرسومة ولا شاشة ترحيب ظاهرة. نحاول إعادة
             // الرسم أولًا (أرخص من الريلود)، وإن بقيت سوداء نعاملها كإقلاع معطوب.
             var blackHome = false;
+            /* v-maha-wd (المالك ٢٣ سبتمبر «زرّ مها ما يفتح في الآيفون»): مكالمة مها تخفي شاشة الترحيب، فإن فُتحت في
+               الثواني الخمس الأولى رآها الرقيب «بيتًا أسود» وأعاد تحميل الصفحة بعد ثانيتين من الضغط فتختفي المكالمة.
+               مكالمة جارية أو تبدأ = التطبيق حيّ؛ لا إعادة تحميل. */
+            try{
+              var __ms = document.getElementById('mahaCallScreen');
+              if((typeof mahaCallActive !== 'undefined' && mahaCallActive) || (typeof mahaCallStarting !== 'undefined' && mahaCallStarting)
+                 || (__ms && getComputedStyle(__ms).display !== 'none')) return;
+            }catch(e){ /* guard-ok: فحص المكالمة ترف — الرقيب يكمل كما كان */ }
             if(bootDone){
               try{
                 var me = document.getElementById('messages');
