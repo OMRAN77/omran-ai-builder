@@ -1881,6 +1881,20 @@ function detectSpeechLang(text){
   if(frenchHints.test(t) || frenchWords.test(t)) return 'fr';
   return 'en';
 }
+/* v-tts-free: صوت الجهاز هو الاحتياط المجّانيّ حين لا يصل صوت الخادم — فنختار أفضله: الطبيعيّ أوّلًا (Natural/Neural
+   في متصفّح Edge وهي أصوات الخادم نفسها، ثمّ Premium/Enhanced في آبل، ثمّ أصوات الشبكة)، والخليجيّ (ar-AE ثمّ ar-SA)
+   قبل بقيّة العربيّ. الترتيب ثابت فالأجهزة بلا صوت طبيعيّ تبقى على اختيارها القديم. */
+function deviceVoiceScore(v){
+  const n = String((v && v.name) || '');
+  const l = String((v && v.lang) || '').toLowerCase().replace('_', '-');
+  let s = 0;
+  if(/natural|neural/i.test(n)) s = 30;
+  else if(/premium|enhanced|siri/i.test(n)) s = 20;
+  else if(/google/i.test(n) || (v && v.localService === false)) s = 10;
+  if(l.indexOf('ar-ae') === 0) s += 2;
+  else if(l.indexOf('ar-sa') === 0) s += 1;
+  return s;
+}
 function pickVoice(langCode){
   const voices = ('speechSynthesis' in window) ? window.speechSynthesis.getVoices() : [];
   if(!voices.length) return null;
@@ -1891,12 +1905,13 @@ function pickVoice(langCode){
   }
   const code = (typeof langCode === 'string') ? langCode : (langCode ? 'ar' : 'en');
   const langVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(code));
-  const pool = langVoices.length ? langVoices : voices;
+  const pool = (langVoices.length ? langVoices : voices).slice().sort((a, b) => deviceVoiceScore(b) - deviceVoiceScore(a));
   const genderPref = localStorage.getItem('aiapp_voice_gender');
   if(genderPref){
-    const femaleHints = /female|woman|zira|susan|fiona|moira|samantha|victoria|karen|tessa|eva|salma|hoda|amira|layla|zeina/i;
-    const maleHints = /male|man|daniel|david|fred|alex|mark|george|thomas|rishi|majed|naayf|hamed/i;
-    const filtered = pool.filter(v => genderPref === 'female' ? femaleHints.test(v.name) : maleHints.test(v.name));
+    const femaleHints = /female|woman|zira|susan|fiona|moira|samantha|victoria|karen|tessa|eva|salma|hoda|amira|layla|zeina|fatima|zariyah|noura|\bamal\b|laila|aysha|\bsana\b|amany|\brana\b|maryam|mariam|\biman\b|mouna|\breem\b|amina/i;
+    const maleHints = /\bmale\b|\bman\b|daniel|david|fred|alex|mark|george|thomas|rishi|majed|maged|naayf|hamed|hamid|hamdan|shakir|fahed|moaz|\bali\b|abdullah|taim|rami|laith|bassel|saleh|omar|jamal|hedi|ismael|tarik/i;
+    // «Female» كانت تطابق «male» فيأخذ من اختار صوت رجل صوتَ امرأة
+    const filtered = pool.filter(v => genderPref === 'female' ? femaleHints.test(v.name) : (maleHints.test(v.name) && !femaleHints.test(v.name)));
     if(filtered.length) return filtered[0];
   }
   return pool[0] || voices[0];
@@ -2225,6 +2240,7 @@ function wordStartOffsets(text){
   return offsets;
 }
 function stopAllSpeaking(){
+  currentCloudToken = null; // v-tts-free: مقطع كان قيد الجلب لا يبدأ بعد «إيقاف» (ولا صوت الجهاز البديل)
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
   if(currentCloudAudio){ try{ currentCloudAudio.pause(); }catch(e){ __swallow(e, "misc:app-02-tts#2"); } currentCloudAudio = null; }
   if(ttsHighlightRaf){ cancelAnimationFrame(ttsHighlightRaf); ttsHighlightRaf = null; }
@@ -2240,6 +2256,15 @@ function ttsSpeedSetting(){
     return (v === 'slow' || v === 'fast' || v === 'xfast') ? v : 'normal';
   }catch(e){ return 'normal'; }
 }
+/* v-tts-account (المالك: «ابدا فيهم كلهم»): صوت القراءة كان يطلب /api/tts بلا حساب فيُعدّ على عنوان IP —
+   المالك نفسه يُحدّ بستّين طلبًا في اليوم، ومن يتشاركون شبكة يتشاركونها. الحساب يُرسل الآن: المالك وVIP بلا حدّ،
+   وكلّ حساب حصّته، والضيف على عنوانه كما كان. مها الأساسيّ وتأكيد تبويب الصوت يستعملان المساعدين نفسيهما. */
+function ttsAuthToken(){
+  try{ return (typeof authGet === 'function' ? authGet('aiapp_auth_token') : '') || ''; }catch(e){ return ''; }
+}
+function ttsGuestId(){
+  try{ return (typeof window !== 'undefined' && typeof window.getGuestId === 'function') ? (window.getGuestId() || '') : ''; }catch(e){ return ''; }
+}
 async function fetchCloudSpeech(text){
   // v246: دائمًا صوت Azure Neural عالي الجودة (نفس مسار مها) — الجنس من إعداد
   // المستخدم واللغة تُكتشف تلقائيًا من النص لدقة نطق أعلى في كل اللغات.
@@ -2248,7 +2273,7 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -2258,8 +2283,8 @@ async function fetchCloudSpeech(text){
   const blob = await resp.blob();
   return URL.createObjectURL(blob);
 }
-// Splits text into speakable chunks (roughly one sentence each, merged up to
-// ~180 chars) so cloud TTS can start playing the first chunk almost
+// Splits text into speakable chunks (the first ≈ one sentence, the rest merged
+// to ~160–400 chars) so cloud TTS can start playing the first chunk almost
 // immediately instead of waiting for the entire message to be synthesized.
 // Each chunk also carries wordStart/wordCount so karaoke highlighting can map
 // back to the correct spans in the full wordEls array.
@@ -2276,7 +2301,11 @@ function splitTextForTTS(text){
     buf += (buf ? ' ' : '') + words[i].text;
     const endsSentence = /[.!?؟۔]$/.test(words[i].text);
     const isLast = i === words.length - 1;
-    if(isLast || (endsSentence && buf.length >= 20) || buf.length >= 180){
+    /* v-tts-free: المقطع الأوّل قصير كما كان فيبدأ الصوت فورًا، وما بعده جمل مجموعة (١٦٠–٤٠٠ حرف): الردّ ذو الأسطر
+       القصيرة كان طلبًا لكلّ سطر، فيتجاوز حدّ الباقة المجّانيّة (٢٠ طلبًا في الدقيقة) ويأكل حصّة اليوم (٦٠ طلبًا). */
+    const minLen = chunks.length ? 160 : 20;
+    const maxLen = chunks.length ? 400 : 180;
+    if(isLast || (endsSentence && buf.length >= minLen) || buf.length >= maxLen){
       chunks.push({ text: buf, wordStart: startWord, wordCount: i - startWord + 1 });
       buf = '';
       startWord = i + 1;
@@ -2313,6 +2342,7 @@ async function applyDialectForSpeech(text){
 // v265: عنصر صوت واحد يُفتح (unlock) لحظة ضغطة المستخدم ثم يُعاد استخدامه —
 // آيفون وبعض المتصفحات تمنع تشغيل صوت أُنشئ بعد جلب من الشبكة خارج الضغطة.
 let cloudAudioEl = null;
+let deviceSpeechUnlocked = false;
 function unlockCloudAudio(){
   try{
     if(!cloudAudioEl) cloudAudioEl = new Audio();
@@ -2321,6 +2351,19 @@ function unlockCloudAudio(){
     const p = cloudAudioEl.play();
     if(p && p.catch) p.catch(()=>{});
   }catch(e){ __swallow(e, "misc:app-02-tts#4"); }
+  /* v-tts-free: آيفون لا ينطق بصوت الجهاز إلّا بعد نطق بدأ داخل ضغطة — نطق صامت مرّة واحدة هنا يفتح صوت الجهاز
+     البديل الذي يبدأ لاحقًا بعد جلب مرفوض (خارج الضغطة). القراءة التلقائيّة ليست ضغطة فلا تستهلك الفتح. */
+  const __ua = (typeof navigator !== 'undefined' && navigator.userActivation) || null;
+  if(!deviceSpeechUnlocked && (!__ua || __ua.isActive)){
+    try{
+      if('speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'){
+        const u = new SpeechSynthesisUtterance(' ');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+        deviceSpeechUnlocked = true;
+      }
+    }catch(e){ __swallow(e, 'tts:device-unlock'); }
+  }
 }
 async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   if(!text) return;
@@ -2339,6 +2382,36 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   // device has no speech synthesis at all, or no matching voice installed
   // for the detected language (Arabic/French/Hindi/Urdu/English).
   const useCloud = cloudEnabled || noDeviceTTS || noMatchingVoice;
+  /* v-tts-free: صوت الجهاز (مجّانيّ) للنصّ كلّه، أو لبقيّته من الكلمة fromWord حين يرفض الخادم مقطعًا (انتهى
+     الحدّ المجّانيّ أو حصّة اليوم أو تعطّل) — كان المقطع المرفوض يُتخطّى فيصمت ما تبقّى من الردّ. */
+  const speakOnDevice = (fromWord, alreadyStarted) => {
+    if(!('speechSynthesis' in window)){ if(onEnd) onEnd(); return; }
+    const allOffsets = wordStartOffsets(text);
+    const base = fromWord > 0 ? allOffsets[fromWord] : 0;
+    if(base === undefined){ if(onEnd) onEnd(); return; }
+    const sayText = base ? text.slice(base) : text;
+    const detectedLang = detectSpeechLang(sayText);
+    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
+    const utter = new SpeechSynthesisUtterance(sayText);
+    utter.lang = langTags[detectedLang] || 'en-US';
+    const v = pickVoice(detectedLang);
+    if(v) utter.voice = v;
+    utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed + v-maha-pace: صوت الجهاز الاحتياطيّ بالمدى الهادئ نفسه
+    const offsets = wordEls && wordEls.length ? allOffsets : null;
+    if(offsets){
+      utter.onboundary = (e) => {
+        if(e.name && e.name !== 'word') return;
+        const at = base + e.charIndex;
+        let idx = 0;
+        for(let i = 0; i < offsets.length; i++){ if(offsets[i] <= at) idx = i; else break; }
+        setActiveWord(wordEls, idx);
+      };
+    }
+    utter.onend = () => { clearWordHighlight(); if(onEnd) onEnd(); };
+    utter.onerror = () => { clearWordHighlight(); if(onEnd) onEnd(); };
+    if(onStart && !alreadyStarted) onStart();
+    window.speechSynthesis.speak(utter);
+  };
   if(useCloud){
     try{
       const chunks = splitTextForTTS(text);
@@ -2350,7 +2423,11 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
       // with playback time of chunk N instead of adding up sequentially.
       const promises = new Array(chunks.length);
       const ensureFetched = (i) => {
-        if(i < chunks.length && !promises[i]) promises[i] = fetchCloudSpeech(chunks[i].text);
+        if(i < chunks.length && !promises[i]){
+          promises[i] = fetchCloudSpeech(chunks[i].text);
+          // guard-ok: الرفض يُعالَج حين يُنتظر المقطع في playChunk (صوت الجهاز) — المقطع المجلوب مسبقًا لا يُبلَّغ «خطأً غير معالج»
+          promises[i].catch(() => {});
+        }
         return promises[i];
       };
       ensureFetched(0);
@@ -2368,6 +2445,11 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         try{ url = await ensureFetched(i); }
         catch(e){
           if(currentCloudToken !== token) return;
+          if('speechSynthesis' in window){
+            currentCloudToken = null; currentCloudAudio = null;
+            speakOnDevice(chunks[i].wordStart, started);
+            return;
+          }
           // Skip the failed chunk rather than aborting the whole reply.
           playChunk(i + 1);
           return;
@@ -2416,27 +2498,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
       }
     }
   }
-  if(!('speechSynthesis' in window)){ if(onEnd) onEnd(); return; }
-  const detectedLang = detectSpeechLang(text);
-  const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = langTags[detectedLang] || 'en-US';
-  const v = pickVoice(detectedLang);
-  if(v) utter.voice = v;
-  utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed + v-maha-pace: صوت الجهاز الاحتياطيّ بالمدى الهادئ نفسه
-  const offsets = wordEls && wordEls.length ? wordStartOffsets(text) : null;
-  if(offsets){
-    utter.onboundary = (e) => {
-      if(e.name && e.name !== 'word') return;
-      let idx = 0;
-      for(let i = 0; i < offsets.length; i++){ if(offsets[i] <= e.charIndex) idx = i; else break; }
-      setActiveWord(wordEls, idx);
-    };
-  }
-  utter.onend = () => { clearWordHighlight(); if(onEnd) onEnd(); };
-  utter.onerror = () => { clearWordHighlight(); if(onEnd) onEnd(); };
-  if(onStart) onStart();
-  window.speechSynthesis.speak(utter);
+  speakOnDevice(0, false);
 }
 function speakText(text){ speakSmart(text); }
 // Known Arabic TTS voice names -> Latin transliteration (accurate, curated)
@@ -13326,7 +13388,7 @@ async function voiceTabSpeak(text){
     const resp = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300) }),
+      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300), token: ttsAuthToken(), guestId: ttsGuestId() }), // v-tts-account
     });
     if(resp.ok){
       const blob = await resp.blob();
@@ -14155,7 +14217,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed() })
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
