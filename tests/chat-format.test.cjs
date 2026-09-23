@@ -86,11 +86,59 @@ test('٥. الخطّ الافتراضيّ IBM Plex Sans Arabic محمَّل، و
   assert.ok(read('css/tokens.css').includes(":root{--omran-chat-font:'IBM Plex Sans Arabic',"));
 });
 
-test('٦. الإرشاد داخل موقع: خطوات بأسماء الأزرار من صفحة مُتحقَّقة، لا رابط عميق من الذاكرة', () => {
+test('٦. الإرشاد بين المواقع يصل فعلًا: وحدة مشتركة، يُحقن في نظام كلّ المستخدمين وفي نظام المالك الخام، لا في TOOLS_NOTE الميّت', () => {
+  const g = require('../api/_lib/site-guide.js');
+  for (const q of ['وين ألقى تجديد الجواز', 'كيف أجدد رخصتي', 'دخلني على موقع الهجرة', 'ودّيني لصفحة الدفع', 'ما لقيت الزر', 'how do I renew my visa', 'where can i pay']) assert.ok(g.SITE_GUIDE_RE.test(q), q);
+  for (const q of ['اشرح لي الذكاء الاصطناعي', 'كيف حالك', 'اكتب قصيدة']) assert.ok(!g.SITE_GUIDE_RE.test(q), q);
+  assert.ok(g.SITE_GUIDE_NOTE.includes(g.SITE_GUIDE_MARK));
+  assert.ok(g.SITE_GUIDE_NOTE.includes('وتحتها مباشرةً سطر مستقلّ فيه رابط تلك الصفحة نفسها'));
+  assert.ok(g.SITE_GUIDE_NOTE.includes('«هذي الخدمة ما هي هنا، ادخل هنا ↓»'));
+  assert.ok(g.SITE_GUIDE_NOTE.includes('الروابط من نتائج البحث أو الصفحات التي فتحتها فقط'));
   const c = read('api/_lib/chat.js');
-  assert.ok(c.includes('[الإرشاد داخل موقع'));
-  assert.ok(c.includes('ممنوع رابط عميق لم تفتحه'));
-  assert.ok(c.includes('اطلب لقطة شاشة وأكمل منها خطوة خطوة'));
+  const tn = c.slice(c.indexOf('const TOOLS_NOTE'), c.indexOf('const IMAGE_TOPICS_NOTE'));
+  assert.ok(!tn.includes('الإرشاد'), 'القاعدة لم تعد في TOOLS_NOTE غير المحقون');
+  assert.ok(c.includes("const siteGuideTurn = toolTurn && typeof lastUserText === 'string' && SITE_GUIDE_RE.test(lastUserText);"));
+  assert.ok(c.includes("+ (siteGuideTurn && baseSystem.indexOf(SITE_GUIDE_MARK) === -1 ? SITE_GUIDE_NOTE : '')"), 'نظام المستخدم بلا تكرار');
+  assert.ok(c.includes("const __sysSend = __rawOwner ? (siteGuideTurn ? SITE_GUIDE_NOTE.trim() : '') : system;"), 'نظام المالك الخام');
+});
+
+test('٦ب. العميل: النصّ نفسه حرفيًّا، يُرسل في دور الإرشاد، و«اسأل الكل» يمرّ بمسار البحث', () => {
+  const g = require('../api/_lib/site-guide.js');
+  const a = read('js/app-09-attach.js');
+  const ctx = {};
+  const l1 = a.slice(a.indexOf('const OMRAN_SITE_GUIDE_RE'), a.indexOf('\n', a.indexOf('const OMRAN_SITE_GUIDE_NOTE')));
+  vm.runInNewContext(l1.replace(/const /g, 'this.'), ctx);
+  assert.equal(ctx.OMRAN_SITE_GUIDE_NOTE, g.SITE_GUIDE_NOTE.trim(), 'نصّ العميل = نصّ الخادم');
+  assert.equal(ctx.OMRAN_SITE_GUIDE_RE.source, g.SITE_GUIDE_RE.source, 'الكاشف نفسه');
+  assert.ok(a.includes('if(__siteGuideTurn) apiMessages.push({role: \'system\', content: OMRAN_SITE_GUIDE_NOTE});'));
+  assert.ok(a.includes("if(__siteGuideTurn && TOOL_PROVIDERS.indexOf(p.key) !== -1 && typeof window.callChatWithTools === 'function'){"));
+  assert.ok(a.includes('if(reply === null) reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);'), 'الهبوط للمباشر');
+  assert.ok(read('js/app.bundle.js').includes('OMRAN_SITE_GUIDE_NOTE'), 'الحزمة مطابقة');
+});
+
+test('٦ج. مسار المالك الخام الاحتياطيّ (api/ai.js): الإرشاد يعود في دوره فقط', () => {
+  const ai = require('../api/ai.js');
+  const g = require('../api/_lib/site-guide.js');
+  const body = (q) => ({ __ownerFactory: true, messages: [{ role: 'user', content: q }] });
+  const b1 = body('وين ألقى تجديد الإقامة؟'); ai.__injectNote('mistral', b1, 'AE');
+  const s1 = b1.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+  assert.ok(s1.includes(g.SITE_GUIDE_MARK), 'دور الإرشاد: القاعدة تصل');
+  const b2 = body('اكتب قصيدة عن البحر'); ai.__injectNote('mistral', b2, 'AE');
+  const s2 = b2.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+  assert.ok(!s2.includes(g.SITE_GUIDE_MARK), 'غير الإرشاد: الخام كما هو');
+});
+
+test('٦د. قراءة الصفحة تُرجع روابطها (نصّ الزرّ ← الرابط المطلق)، ونتائج البحث لا تُختصر لنطاق واحد في دور الإرشاد', () => {
+  const c = read('api/_lib/chat.js');
+  const i = c.indexOf('function pageLinks'); const j = c.indexOf('\n}\n', i) + 2;
+  const ctx = { URL };
+  vm.runInNewContext(c.slice(i, j) + ';this.f = pageLinks;', ctx);
+  const out = ctx.f('<a href="/services/renew">تجديد <b>الجواز</b></a><a href="https://x.com/a">X</a><a href="#top">أعلى</a><a href="mailto:a@b.c">بريد</a><a href="/services/renew">مكرّر</a><a href="/empty"></a>', 'https://www.icp.gov.ae/ar/');
+  assert.match(out, /تجديد الجواز ← https:\/\/www\.icp\.gov\.ae\/services\/renew/);
+  assert.ok(out.indexOf('icp.gov.ae') < out.indexOf('x.com'), 'روابط الموقع نفسه أوّلًا');
+  assert.ok(!/mailto|#top|مكرّر|\/empty/.test(out), 'بلا بريد ولا مرساة ولا مكرّر ولا بلا نصّ');
+  assert.ok(c.includes('return text ? text.slice(0, 6000) + links :'));
+  assert.ok(c.includes("const host = siteGuideTurn ? urlMatch[0]"), 'التكرار بالرابط الكامل في دور الإرشاد');
 });
 
 test('٧. «اسأل الكل» بسرعة المزوّد نفسه ومنسّق حيًّا — لا وتيرة ٦٦ حرفًا/ث ولا نصّ خام', () => {

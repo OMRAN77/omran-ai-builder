@@ -4,6 +4,7 @@
 // that append ?action=<name>. Requires use literal paths so Vercel's file
 // tracer (@vercel/nft) includes each module in the deployment bundle.
 // Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
+const { SITE_GUIDE_RE, SITE_GUIDE_NOTE } = require('./_lib/site-guide.js'); // v-site-guide3
 require('./_lib/_fetch-timeout.js');
 require('./_lib/_env-keys.js'); // v-key-shape: مفتاح OpenRouter الموضوع خطأً في ANTHROPIC_API_KEY يُنقل إلى مكانه
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
@@ -359,7 +360,14 @@ function injectNote(action, body, country) {
   const ownerReq = !!(body && body.__ownerFactory === true); // v-owner-raw: المالك
   // Factory: hand the request to the provider untouched — لكن المالك يأخذ سطر
   // الصراحة الدائم فقط (لا طبقة تطبيق أخرى).
-  if (mode === 'factory') { if (ownerReq) applyNote(action, body, OWNER_DIRECT_NOTE); return; }
+  if (mode === 'factory') {
+    if (ownerReq) {
+      applyNote(action, body, OWNER_DIRECT_NOTE);
+      // v-site-guide3: نظام العميل نُزع للمالك (v-owner-raw2) — قاعدة الإرشاد وحدها تعود في دور الإرشاد
+      try { if (SITE_GUIDE_RE.test(String(lastUserText(action, body) || ''))) applyNote(action, body, SITE_GUIDE_NOTE); } catch (e) { /* guard-ok — الإرشاد إضافة لا شرط */ }
+    }
+    return;
+  }
 
   // v--- مصنّف النيّة: نستخرج نص المستخدم مرة واحدة ونحدد النيّة
   const userText = lastUserText(action, body);
