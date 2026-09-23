@@ -11,29 +11,34 @@ const slice = (from, to) => { const i = src.indexOf(from), j = src.indexOf(to, i
 const big = (c) => 'data:image/png;base64,' + c.repeat(200000);
 const thumb = 'data:image/jpeg;base64,' + 'T'.repeat(30000);
 
-/* reads يسجّل كلّ قراءة من المخزن (معرّفًا معرّفًا) — والقراءة غير متزامنة كالحقيقيّة فتتداخل الاستعادات */
-const vaultLib = (vault, reads = []) => new Function('vault', 'state', 'reads',
+/* reads يسجّل كلّ قراءة من المخزن (معرّفًا معرّفًا) — والقراءة غير متزامنة كالحقيقيّة فتتداخل الاستعادات.
+   w نافذة وهميّة (المرآة المنحّفة __usingSlimProjects)، وmk يسجّل صنع نسخ العرض (بلا canvas في node) وتداخلها. */
+const vaultLib = (vault, reads = [], w = {}, mk = { calls: 0, live: 0, maxLive: 0 }) => new Function('vault', 'state', 'reads', 'window', 'mk',
   'const __swallow = () => {};' +
   slice('const VAULT_MIN = 150000;', 'function idbImgPutAll(puts){') +
+  'function idbImgPutAll(puts){ puts.forEach(x => { vault[x.id] = x.dataUrl; }); return Promise.resolve(); }' +
   'function idbImgGetMany(ids){ ids.forEach(id => reads.push(id)); const o = {}; ids.forEach(id => { if(vault[id]) o[id] = vault[id]; }); return new Promise(r => setTimeout(() => r(o), 5)); }' +
   'function idbImgGet(id){ reads.push(id); return new Promise(r => setTimeout(() => r(vault[id]), 5)); }' +
+  'let idbSetCalls = []; function idbSet(k, v){ idbSetCalls.push([k, v]); return Promise.resolve(); }' +
   slice('function __vaultRead(a){', 'function idbImgSweep(liveIds){') +
+  'function __makeView(src){ mk.calls++; mk.live++; mk.maxLive = Math.max(mk.maxLive, mk.live); return new Promise(r => setTimeout(() => { mk.live--; r("data:image/jpeg;base64,VIEW" + src.length); }, 8)); }' +
+  slice('async function __vaultSave(){', '/* الاستعادة: صور مشروع') +
   slice('async function hydrateProjectImages(p, fromIdx){', 'window.__hydrateProjectImages') +
-  slice('function __vaultJsonSize(){', '// ⚡ v320') +
-  '; return { hydrateProjectImages, __imgWindowStart, __vaultJsonSize, __IMG_WINDOW, __vaultRead, __vaultRelease };');
+  slice('function __vaultJsonSize(){', 'function saveStateLocal(){') +
+  '; return { hydrateProjectImages, __imgWindowStart, __vaultJsonSize, __IMG_WINDOW, __vaultRead, __vaultRelease, __imgView, __vaultSave, __vaultReplacer, __projectsToJson, idbSetCalls: () => idbSetCalls };');
 
 test('١. الاستعادة لنافذة العرض وحدها (آخر ٣٠ رسالة)، وكلّها حين يطلب «عرض الأقدم»', async () => {
   const vault = {}; const msgs = [];
   for (let i = 0; i < 40; i++) { vault['v' + i] = big('A'); msgs.push({ role: 'assistant', attachments: [{ isImage: true, vaultId: 'v' + i, dataUrl: '[media]' }], apiImages: [{ vaultId: 'v' + i, dataUrl: '[media]' }] }); }
   const p = { id: 'p', messages: msgs };
-  const L = vaultLib(vault)(vault, { projects: [p] }, []);
+  const L = vaultLib(vault)(vault, { projects: [p] }, [], {}, { calls: 0, live: 0, maxLive: 0 });
   assert.equal(L.__IMG_WINDOW, 30);
   assert.equal(L.__imgWindowStart(p), 10);
   await L.hydrateProjectImages(p);
   const restored = msgs.map((m, i) => (m.attachments[0].dataUrl.length > 150000 ? i : -1)).filter((i) => i >= 0);
   assert.deepEqual([restored.length, restored[0]], [30, 10], 'آخر ٣٠ رسالة فقط');
   assert.equal(msgs[9].attachments[0].dataUrl, '[media]', 'الأقدم تبقى بديلها حتّى تُعرض');
-  assert.equal(msgs[39].apiImages[0].dataUrl.length > 150000, true, 'نسخة المحرّر في النافذة تعود');
+  assert.equal(msgs[39].apiImages[0].dataUrl, '[media]', 'v-img-view: apiImages لا يقرؤها شيء بعد تخزينها فلا تُستعاد (كانت تضاعف الذاكرة)');
   p.__showAllMsgs = true;
   await L.hydrateProjectImages(p);
   assert.equal(msgs[0].attachments[0].dataUrl.length > 150000, true, '«عرض الأقدم» = الكلّ');
@@ -42,7 +47,7 @@ test('١. الاستعادة لنافذة العرض وحدها (آخر ٣٠ ر�
 
 test('٢. حارس حجم الحفظ لا يبني نصّ الصور: يقيس ما يُكتب فعلًا (صور المخزن معرّفات)', () => {
   const p = { id: 'p', messages: [{ role: 'assistant', attachments: [{ isImage: true, vaultId: 'v1', dataUrl: big('B') }] }, { role: 'user', content: 'مرحبا' }] };
-  const L = vaultLib({})({}, { projects: [p] }, []);
+  const L = vaultLib({})({}, { projects: [p] }, [], {}, { calls: 0, live: 0, maxLive: 0 });
   assert.ok(L.__vaultJsonSize() < 1000, 'بلا base64 المخزون');
   assert.match(src, /const __sz = __vaultJsonSize\(\);/);
   assert.ok(!/const __sz = __projectsToJson\(\)\.length;/.test(src), 'لم يعد يبني نصّ المشروع بصوره في كلّ حفظ');
@@ -69,7 +74,7 @@ test('٤. مغادرة محادثة الصور تعيد صورها لمعرّف�
   const A = { id: 'A', messages: [imgMsg('a1', '[media]'), imgMsg('a2', '[media]')] };
   A.messages.push({ role: 'user', attachments: [{ isImage: true, vaultId: 'a3', vaultPending: true, dataUrl: big('P') }, { isImage: true, dataUrl: thumb }] });
   const B = { id: 'B', messages: [imgMsg('b1', '')] };
-  const L = vaultLib(vault)(vault, { projects: [A, B] }, []);
+  const L = vaultLib(vault)(vault, { projects: [A, B] }, [], {}, { calls: 0, live: 0, maxLive: 0 });
   await L.hydrateProjectImages(A);
   assert.equal(A.messages[0].attachments[0].dataUrl, vault.a1, 'فتح A يستعيد صوره');
   await L.hydrateProjectImages(B);
@@ -88,7 +93,7 @@ test('٥. ما يخرج من نافذة المحادثة المفتوحة يعو
   const vault = {}; const msgs = [];
   for (let i = 0; i < 31; i++) { vault['v' + i] = big('Q'); msgs.push(imgMsg('v' + i, '')); }
   const p = { id: 'p', messages: msgs };
-  const L = vaultLib(vault)(vault, { projects: [p] }, []);
+  const L = vaultLib(vault)(vault, { projects: [p] }, [], {}, { calls: 0, live: 0, maxLive: 0 });
   await L.hydrateProjectImages(p, 0);
   assert.equal(msgs[0].attachments[0].dataUrl.length > 150000, true);
   await L.hydrateProjectImages(p);
@@ -101,7 +106,7 @@ test('٦. كلّ صورة تُقرأ من المخزن مرّة واحدة مه�
   const vault = {}; const msgs = []; const reads = [];
   for (let i = 0; i < 6; i++) { vault['v' + i] = big('R'); msgs.push(imgMsg('v' + i, '[media]')); }
   const p = { id: 'p', messages: msgs };
-  const L = vaultLib(vault)(vault, { projects: [p] }, reads);
+  const L = vaultLib(vault)(vault, { projects: [p] }, reads, {}, { calls: 0, live: 0, maxLive: 0 });
   const runs = [L.hydrateProjectImages(p), L.hydrateProjectImages(p), L.hydrateProjectImages(p)];
   const draws = msgs.map(m => L.__vaultRead(m.attachments[0])); // مسار الرسم أثناء الاستعادة
   const got = await Promise.all(draws); await Promise.all(runs);
@@ -114,9 +119,79 @@ test('٦. كلّ صورة تُقرأ من المخزن مرّة واحدة مه�
 
 test('٧. الرسم يقرأ عبر القارئ المشترك ويُلحق أدوات المشاركة حين يصل الأصل، والتراجع يقرأ الصورة المختارة من المخزن', () => {
   assert.match(src, /if\(p\) __vaultRelease\(p, start\);/, 'كلّ فتح/رسم يحرّر ما خارج النافذة');
-  assert.match(src, /__vaultRead\(a\)\.then\(d => \{ if\(typeof d === 'string' && d\.length > VAULT_MIN\)\{ img\.src = d; if\(__ibox && window\.__omranImgTools\)/);
-  assert.ok(!/idbImgGet\(a\.vaultId\)\.then\(d => \{ if\(typeof d === 'string' && d\)\{ a\.dataUrl = d; delete a\.purged; img\.src = d;/.test(src), 'لا قراءة ثانية مستقلّة في مسار الرسم');
+  /* v-img-view: الأصل لا يُرسم — الأدوات وحدها تنتظره، كلّ واحدة في مهمّتها، والمنفصلة عن الصفحة تُتخطّى */
+  assert.match(src, /__vaultRead\(a\)\.then\(d => \{ if\(__isBigDataImg\(d\)\) setTimeout\(\(\) => \{ if\(img\.isConnected && __ibox && window\.__omranImgTools\) window\.__omranImgTools\(__ibox, d, a\); \}, 0\);/);
+  assert.ok(!/img\.src = d;/.test(src), 'لا يُعيَّن الأصل المقروء من المخزن للصورة المرسومة');
   const att = fs.readFileSync('js/app-09-attach.js', 'utf8');
   assert.match(att, /a\.isImage && \(\/\^data:image\\\/\/\.test\(a\.dataUrl \|\| ''\) \|\| \(a\.vaultId && !a\.purged\)\)\) __chain\.push\(a\)/, 'سلسلة التراجع تشمل المخزونة');
   assert.match(att, /await __vaultRead\(__pick\)/, 'وتقرأ المختارة من المخزن');
+});
+
+/* v-img-view (فيديو المالك بعد #740: الشعار وصور بطاقات الأدوات تشويش ومربّعات سوداء): الصور تُرسم بنسخة عرض 1280px
+   تُصنع مرّة وتُحفظ في المخزن بمفتاح «معرّف~v»، والأصل للمشاركة والحفظ والعرض الكامل والتعديل. */
+test('٨. نسخة العرض: تُصنع مرّة من الأصل وتُحفظ «معرّف~v»، ثمّ تُقرأ وحدها بلا الأصل بعد الإفراج', async () => {
+  const vault = { a1: big('A') }; const reads = []; const mk = { calls: 0, live: 0, maxLive: 0 };
+  const a = { isImage: true, vaultId: 'a1', dataUrl: '' };
+  const p = { id: 'p', messages: [{ role: 'assistant', attachments: [a] }] };
+  const L = vaultLib(vault)(vault, { projects: [p] }, reads, {}, mk);
+  const v = await L.__imgView(a);
+  assert.equal(v, 'data:image/jpeg;base64,VIEW' + vault.a1.length, 'صُنعت من الأصل المخزون');
+  assert.equal(vault['a1~v'], v, 'وحُفظت في المخزن بمفتاحها');
+  assert.equal(a.viewUrl, v); assert.equal(mk.calls, 1);
+  assert.equal(await L.__imgView(a), v); assert.equal(mk.calls, 1, 'لا صنع ثانٍ');
+  L.__vaultRelease(null, 0);
+  assert.equal(a.viewUrl, undefined, 'الإفراج يشمل نسخة العرض'); assert.equal(a.dataUrl, '', 'والأصل');
+  reads.length = 0;
+  assert.equal(await L.__imgView(a), v, 'العودة تقرأ النسخة');
+  assert.deepEqual(reads, ['a1~v'], 'النسخة وحدها — الأصل لا يُقرأ للعرض');
+  assert.equal(a.dataUrl, '', 'والأصل لا يعود للذاكرة بسبب العرض');
+});
+
+test('٩. الصنع صورةً صورةً (طابور) مهما تزامن الرسم، ولكلّ صورة وعد واحد', async () => {
+  const vault = {}; const mk = { calls: 0, live: 0, maxLive: 0 }; const atts = [];
+  for (let i = 0; i < 5; i++) { vault['v' + i] = big('S'); atts.push({ isImage: true, vaultId: 'v' + i, dataUrl: '' }); }
+  const p = { id: 'p', messages: atts.map(a => ({ role: 'assistant', attachments: [a] })) };
+  const L = vaultLib(vault)(vault, { projects: [p] }, [], {}, mk);
+  const out = await Promise.all(atts.concat(atts).map(a => L.__imgView(a)));
+  assert.equal(mk.calls, 5, 'كلّ صورة تُصنع مرّة واحدة وإن طُلبت مرّتين');
+  assert.equal(mk.maxLive, 1, 'لا يُفكّ أصلان معًا');
+  assert.ok(out.every(Boolean));
+});
+
+test('١٠. صورة جديدة (معلّقة): نسختها في الذاكرة ثمّ تُكتب مع أصلها عند الحفظ؛ والسجلّ والمرآة بلا نسخة العرض', async () => {
+  const vault = {}; const mk = { calls: 0, live: 0, maxLive: 0 };
+  const a = { isImage: true, dataUrl: big('N') };
+  const p = { id: 'p', messages: [{ role: 'assistant', attachments: [a] }] };
+  const st = { projects: [p], currentId: 'p' };
+  const L = vaultLib(vault)(vault, st, [], {}, mk);
+  const v = await L.__imgView(a);
+  assert.equal(a.viewUrl, v); assert.equal(Object.keys(vault).length, 0, 'بلا معرّف لا يُكتب شيء بعد');
+  await L.__vaultSave();
+  assert.ok(a.vaultId && vault[a.vaultId] === a.dataUrl && vault[a.vaultId + '~v'] === v, 'الحفظ يكتب الأصل ونسخته');
+  const saved = JSON.stringify(L.idbSetCalls()[0][1]);
+  assert.ok(!saved.includes('VIEW') && !saved.includes('viewUrl'), 'السجلّ بلا نسخة العرض');
+  assert.ok(!L.__projectsToJson().includes('viewUrl'), 'ولا الحفظ الاحتياطيّ في localStorage');
+  const __msgForServer = new Function(slice('function __msgForServer(m){', 'function chatsSlimForServer(){') + '; return __msgForServer;')();
+  assert.ok(!JSON.stringify(__msgForServer(p.messages[0])).includes('viewUrl'), 'ولا المرآة/المزامنة');
+  assert.match(src, /if\(!liveIds\.has\(String\(k\)\.replace\(\/~v\$\/, ''\)\)\) st\.delete\(k\);/, 'الكنس يُبقي النسخة ما بقي أصلها');
+});
+
+test('١١. المرآة المنحّفة عند الإقلاع لا تُقرأ أصولها ولا تُصنع منها نسخ، والرسم بالكاملة لا يتخطّاه تطابق البصمة', async () => {
+  const vault = { s1: big('M') }; const reads = []; const mk = { calls: 0, live: 0, maxLive: 0 };
+  const a = { isImage: true, vaultId: 's1', dataUrl: '[media]' };
+  const p = { id: 'p', messages: [{ role: 'assistant', attachments: [a] }] };
+  const L = vaultLib(vault)(vault, { projects: [p] }, reads, { __usingSlimProjects: true }, mk);
+  assert.equal(await L.hydrateProjectImages(p), 0);
+  assert.equal(await L.__imgView(a), '', 'بلا نسخة محفوظة: تنتظر الكاملة');
+  assert.deepEqual([reads, mk.calls], [['s1~v'], 0], 'قراءة النسخة الصغيرة فقط — لا أصل');
+  const att = fs.readFileSync('js/app-09-attach.js', 'utf8');
+  assert.match(att, /window\.__usingSlimProjects = false;[\s\S]{0,700}window\.__renderMsgSig = '';\s*renderAll\(\);/);
+});
+
+test('١٢. الرسم: نسخة العرض أوّلًا، والأصل يظهر فورًا فقط لصورة جديدة لم تُخزَّن، والمخفيّة بعد خطأ تعود ظاهرة', () => {
+  assert.match(src, /if\(a\.viewUrl\) img\.src = a\.viewUrl;/);
+  assert.match(src, /if\(__isBigDataImg\(a\.dataUrl\) && \(!a\.vaultId \|\| a\.vaultPending\)\) img\.src = a\.dataUrl;/);
+  assert.match(src, /__imgView\(a\)\.then\(__showSrc\)/);
+  assert.match(src, /img\.style\.display = ''; img\.src = u;/);
+  assert.match(src, /img\.decoding = 'async';/);
 });

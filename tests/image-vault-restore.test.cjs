@@ -28,7 +28,7 @@ test('١. البديل المتدهور («[media]»، مصغّرة، فراغ،
   assert.equal(__vaultDegraded({ dataUrl: thumb }), false, 'صغيرة بلا معرّف هي الأصل');
 });
 
-test('٢. الإقلاع من المرآة المنحّفة: المرفقات وapiImages تعود للأصل من المخزن ويسقط purged', async () => {
+test('٢. الإقلاع من المرآة المنحّفة: المرفقات تعود للأصل من المخزن ويسقط purged (وapiImages لا تُستعاد)', async () => {
   const { hydrateProjectImages } = make({ v1: big, v2: big, v3: big, v4: big });
   const p = { id: 'p', messages: [
     { role: 'assistant', attachments: [{ isImage: true, vaultId: 'v1', dataUrl: '[media]' }], apiImages: [{ vaultId: 'v2', dataUrl: '[media]' }] },
@@ -37,7 +37,7 @@ test('٢. الإقلاع من المرآة المنحّفة: المرفقات و
   await hydrateProjectImages(p);
   const [a1, a3, a4, lost] = [p.messages[0].attachments[0], p.messages[1].attachments[0], p.messages[1].attachments[1], p.messages[1].attachments[2]];
   assert.equal(a1.dataUrl, big);
-  assert.equal(p.messages[0].apiImages[0].dataUrl, big, 'نسخة المحرّر تعود أيضًا');
+  assert.equal(p.messages[0].apiImages[0].dataUrl, '[media]', 'v-img-view: apiImages لا يقرؤها شيء بعد تخزينها (المحرّر يقرأ رسالة الدور الجديد وحدها) فلا تُستعاد — كانت تضاعف الذاكرة');
   assert.equal(a3.dataUrl, big, 'المصغّرة تُستبدل بالأصل');
   assert.equal(a4.dataUrl, big); assert.equal(a4.purged, undefined, 'لا بطاقة «حُذفت الصورة»');
   assert.equal(lost.dataUrl, thumb, 'ما ليس في المخزن يبقى على بديله — لا يُمسح');

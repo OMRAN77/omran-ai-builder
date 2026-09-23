@@ -5940,6 +5940,8 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
         window.__usingSlimProjects = false;
         /* v-image-vault: صور المشروع المفتوح تُستعاد من المخزن قبل أول رسم؛ الباقي عند عرضه؛ وكنس اليتيمة بعد الإقلاع */
         try{ await window.__hydrateProjectImages(state.projects.find(q => q.id === state.currentId)); }catch(e){ __swallow(e, 'vault:boot'); }
+        /* v-img-view: بصمة الرسم نفسها للمرآة والكاملة (نفس العدد والنصّ) فكان الرسم بالكاملة يُتخطّى وتبقى صور المرآة مخفيّة */
+        window.__renderMsgSig = '';
         renderAll();
         try{ setTimeout(() => { window.__vaultSweep && window.__vaultSweep(); }, 15000); }catch(e){ __swallow(e, 'vault:sweep'); }
       }
