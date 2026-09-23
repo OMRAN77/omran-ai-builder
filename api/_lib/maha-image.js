@@ -22,8 +22,8 @@ async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
     // للصورة المولّدة (بلا مصدر) = تقرير «📋 تفسير الفكرة» يشرح ما رُسم؛ للتعديل
     // (بمصدر) يبقى تقرير «ما تغيّر + هل أعجبتك؟» كما طلب المالك ٦ سبتمبر.
     const __instr = sourceB64
-      ? 'Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, max 45 words total.'
-      : 'Write a short report whose FIRST line is exactly "📋 تفسير الفكرة", then 3 to 4 lines each starting with "• " explaining, from what is actually visible in the image: the main elements and their meaning, and the idea/message behind the picture. Concise, no fluff, max 60 words total.';
+      ? 'Compare the two images carefully. Write: (1) one short sentence stating exactly what changed, describing only what is truly visible in the result; (2) if any part of the request is NOT visible or came out different, say so plainly in one short sentence (do not claim it was done); (3) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, max 55 words total.'
+      : 'Write a short report whose FIRST line is exactly "📋 تفسير الفكرة", then 3 to 4 lines each starting with "• " describing only what is actually visible in the image: the main elements and the idea behind it. Then check it against the request: if any requested element is missing or different, add one line starting with "⚠️ " naming it honestly (never claim something is in the image when it is not). End with one short line offering one concrete tweak. Concise, no fluff, max 75 words total.';
     const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). ' + __instr }];
     if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
@@ -252,7 +252,7 @@ module.exports = async (req, res) => {
       }
       /* v-img-engine-tag-owner (متابعة): مسار النصّ أراد GPT وفشل — يظهر السبب مع اسم المحرّك الفعليّ للمالك وحده (العميل يحرس عرضه). */
       if (__textRouteFailNote) engine = engine + '(gpt-text-failed:' + __textRouteFailNote + ')';
-      const cap = (prayerPlan || editImageBase64) ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, mime || 'image/png', null, 'image/png'); /* v-lanes: التفسير للتوليد الجديد فقط — التعديل بلا نداء إضافيّ */
+      const cap = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, mime || 'image/png', editImageBase64 || null, editMimeType || 'image/jpeg'); /* v-img-report (المالك ٢٣ سبتمبر «الكلام بعد الصورة بالدقّة… لين أوصل للصورة»): التقرير للتعديل أيضًا (المصدر + الناتج) */
       res.status(200).json({
         imageBase64: b64,
         mimeType: mime || 'image/png',

@@ -1034,3 +1034,6 @@ Object.assign(I18N['bn'], {"tvSportsWorld":"বিশ্ব ক্রীড়�
 Object.assign(I18N['bn'], { qiblaTitle: '📿 কিবলা ও নামাজের সময়' });
 /* v-tv-matches: جدول المباريات */
 Object.assign(I18N['bn'], {"tvMatches": "ম্যাচের সূচি", "tvMatchLive": "এখন লাইভ", "tvMatchPaid": "পেইড", "tvNoMatches": "এখন কোনো নির্ধারিত ম্যাচ নেই", "tvMatchesNote": "সময় আপনার ডিভাইসের ঘড়ি অনুযায়ী · সূচি প্রতিদিন হালনাগাদ হয়"});
+
+/* v-img-undo: الرجوع لنسخة سابقة من الصورة */
+Object.assign(I18N["bn"], {"imgUndoPrev": "আগের সংস্করণে ফিরিয়ে দিলাম 👆 কী বদলাব?", "imgUndoOrig": "মূল ছবিতে ফিরিয়ে দিলাম 👆 কী বদলাব?", "imgUndoNone": "এটাই প্রথম সংস্করণ, আগে কিছু নেই 👆 কী বদলাব?"});

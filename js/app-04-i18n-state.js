@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=682'; /* v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=683'; /* v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -1794,7 +1794,10 @@ function renderMessages(keepScroll){
           wrap.appendChild(chip);
         }
       });
-      div.appendChild(wrap);
+      /* v-img-first (المالك ٢٣ سبتمبر «الردود آخر الصورة لا أوّل الصور»): صور المساعد المرفقة (تعديل، بحث صور، البانيات)
+         كانت تُلحق تحت النصّ، والمرسومة داخل الردّ فوقه — فيتقلّب الترتيب. الآن الصورة أوّلًا ثمّ الردّ دائمًا. */
+      if(m.role !== 'user' && textDiv.parentNode === div && m.attachments.some(a => a && (a.isImage || a.isVideo))) div.insertBefore(wrap, textDiv);
+      else div.appendChild(wrap);
     }
     if((m.content && m.content.trim()) || (m.role !== 'user' && m.attachments && m.attachments.some(a => a && (a.isImage || a.isVideo)))){ // v669: الأيقونات تظهر تحت الصور حتى بلا نص
       const actionBar = document.createElement('div');

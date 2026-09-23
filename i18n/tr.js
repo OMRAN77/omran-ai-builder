@@ -1081,3 +1081,6 @@ Object.assign(I18N['tr'], {"tvSportsWorld":"Dünya Sporu","tvDirect":"Canlı yay
 Object.assign(I18N['tr'], { qiblaTitle: '📿 Kıble ve Namaz Vakitleri' });
 /* v-tv-matches: جدول المباريات */
 Object.assign(I18N['tr'], {"tvMatches": "Maç programı", "tvMatchLive": "Şu an canlı", "tvMatchPaid": "Ücretli", "tvNoMatches": "Şu an planlanmış maç yok", "tvMatchesNote": "Saatler cihazınıza göre · program her gün güncellenir"});
+
+/* v-img-undo: الرجوع لنسخة سابقة من الصورة */
+Object.assign(I18N["tr"], {"imgUndoPrev": "Önceki sürüme döndürüldü 👆 Neyi değiştireyim?", "imgUndoOrig": "Orijinale döndürüldü 👆 Neyi değiştireyim?", "imgUndoNone": "Bu ilk sürüm, öncesi yok 👆 Neyi değiştireyim?"});

@@ -19,11 +19,12 @@ test('request-check parses strictly and is on by default', () => {
   assert.match(p, /Ignore taste and quality/);
 });
 
-test('v-lanes: maha-image no longer wires the request check (one call, no retry) — the caption report stays for new generations only', () => {
+test('v-lanes: maha-image no longer wires the request check (one call, no retry) — the caption report covers new generations and edits (v-img-report)', () => {
   assert.ok(!/verifyRequestApplied|requestCheckEnabled/.test(maha), 'فحص التطبيق وإعادته أُزيلا من maha-image');
   assert.ok(!/CORRECTION: your previous attempt did NOT satisfy the request/.test(maha));
   /* v-caption-report: تقرير مختصر + «هل أعجبتك؟ ولا أسوي لك … أو …؟» بلغة المستخدم، من كلماته الحرفية */
-  assert.match(maha, /one short sentence reporting exactly what changed in the result; \(2\) one question asking whether they like it and offering TWO concrete next options specific to this image/);
+  assert.match(maha, /one short sentence stating exactly what changed, describing only what is truly visible in the result; \(2\) if any part of the request is NOT visible or came out different, say so plainly/); // v-img-report: والاعتراف بما لم يتحقّق
+  assert.match(maha, /offering TWO concrete next options specific to this image/);
   assert.match(maha, /Gulf Arabic if they wrote Gulf Arabic/);
-  assert.match(maha, /const cap = \(prayerPlan \|\| editImageBase64\) \? '' : await imageCaption\(apiKey, intentText \|\| cleanPrompt,/, 'التفسير للتوليد الجديد فقط');
+  assert.match(maha, /const cap = prayerPlan \? '' : await imageCaption\(apiKey, intentText \|\| cleanPrompt,/, 'v-img-report: التقرير للتوليد والتعديل');
 });

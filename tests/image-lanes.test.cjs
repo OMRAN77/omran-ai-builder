@@ -55,7 +55,8 @@ test('٣. الخام خام: المحرّك المختار وحده، GPT خام
   assert.match(mi, /if \(__optForceEngine === 'gpt'\) \{\n\s+const __gptB64 = await openaiRescueImage\(\);/);
   assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-2\.5-flash-image'/);
   assert.match(mi, /if \(isSceneUpgrade && !__intent\.placeUpgradeHint && !__intent\.sameImage\) \{ isSceneUpgrade = false; isElevate = true; \}/);
-  assert.match(mi, /const cap = \(prayerPlan \|\| editImageBase64\) \? '' : await imageCaption\(/);
+  // v-img-report (المالك ٢٣ سبتمبر): التقرير يعود للتعديل أيضًا (المصدر + الناتج) — كان للتوليد فقط
+  assert.match(mi, /const cap = prayerPlan \? '' : await imageCaption\(apiKey, intentText \|\| cleanPrompt, b64, mime \|\| 'image\/png', editImageBase64 \|\| null,/);
   // خطّ الإنقاذ كما هو: برو → نانو ٢٫٥ → GPT → المجّانيّ (توليد فقط)
   assert.match(mi, /const nanoB64 = await geminiNanoBananaImage\(\);/);
   assert.match(mi, /const rescuedB64 = await openaiRescueImage\(\);/);
