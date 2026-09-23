@@ -1076,3 +1076,6 @@ Object.assign(I18N['zh'], {"tvMatches": "賽程表", "tvMatchLive": "正在直�
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["zh"], {"imgUndoPrev": "已恢复到上一个版本 👆 要改什么？", "imgUndoOrig": "已恢复到原图 👆 要改什么？", "imgUndoNone": "这是第一个版本，之前没有 👆 要改什么？"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["zh"], {"ownerSectionTitle": "👑 所有者页面"});

@@ -542,10 +542,15 @@
   </div></div>
 
 
-  <!-- v-secret-vault: خزنة الأسرار — للمالك وحده (تظهر مع لوحة التحكّم) -->
-  <div id="vaultSectionWrap" style="display:none;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('vaultSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;">🔐 خزنة الأسرار (خاص بالمالك)</h3><span class="settingsSectionArrow" id="vaultSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="vaultSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <!-- v-owner-page (أمر عمران): صفحة المالك — الخزنة ولوحة التحكّم كانتا خارج نظام الصفحات
+       فتظهران أسفل كلّ صفحة إعدادات. صارتا صفحة واحدة في القائمة، للمالك وحده. -->
+  <div id="ownerSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('ownerSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="ownerSectionTitle">👑 صفحة المالك</h3><span class="settingsSectionArrow" id="ownerSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="ownerSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+
+  <!-- v-secret-vault: خزنة الأسرار — للمالك وحده -->
+  <div id="vaultSectionWrap" class="ownerCard" style="display:none;">
+    <div class="ownerCardTitle">🔐 خزنة الأسرار</div>
+    <div id="vaultSectionContent">
       <div style="font-size:12.5px; line-height:1.8; opacity:.85;">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع. الرفع يحتاج توكن بصلاحيّة Contents: write وPull requests: write على المستودع.</div>
       <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
@@ -561,9 +566,9 @@
     </div>
   </div>
 
-  <div id="adminSectionWrap" style="display:none;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="adminSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <div id="adminSectionWrap" class="ownerCard" style="display:none;">
+    <div class="ownerCardTitle" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</div>
+    <div id="adminSectionContent">
       <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
       <!-- v-claude-diag: فحص مفتاح كلود الفعلي في الخادم — يحسم «فيه رصيد» من عدمه -->
       <button type="button" id="adminClaudeDiagBtn" onclick="adminClaudeDiag()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px; margin-inline-start:8px;">👑 فحص مفتاح كلود</button>
@@ -588,6 +593,8 @@
       <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "افحص الآن" لتشغيل الفحص...</div>
     </div>
   </div>
+
+  </div></div>
 
   <button type="button" id="settingsLogoutBtn" style="display:none !important; width:100%; margin-top:18px; padding:12px; border-radius:var(--r-2); border:none; background:none; color:#fff; font-weight:700; font-size:14px; cursor:pointer;">🔑 <span id="settingsLogoutBtnLabel" data-i18n="loginAction">دخول</span></button>
 

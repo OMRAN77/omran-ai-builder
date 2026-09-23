@@ -772,6 +772,8 @@ const $ = s => document.querySelector(s);
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
     }
+    /* v-owner-page: صفّ «صفحة المالك» في قائمة الإعدادات يتبع الدخول والخروج */
+    try{ if(typeof renderSettingsNavList === 'function') renderSettingsNavList(); }catch(e){ /* guard-ok — القائمة تُبنى أيضًا عند فتح الإعدادات */ }
     // v-maha-dock: مها راسية بجانب المايك — الزر العائم لا يُظهر بعد الآن.
   }
   // Deferred (not called synchronously): I18N is declared further down in

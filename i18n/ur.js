@@ -1035,3 +1035,6 @@ Object.assign(I18N['ur'], {"tvMatches": "میچوں کا شیڈول", "tvMatchLi
 
 /* v-img-undo: الرجوع لنسخة سابقة من الصورة */
 Object.assign(I18N["ur"], {"imgUndoPrev": "پچھلے ورژن پر واپس کر دیا 👆 کیا بدلوں؟", "imgUndoOrig": "اصل تصویر پر واپس کر دیا 👆 کیا بدلوں؟", "imgUndoNone": "یہ پہلا ورژن ہے، اس سے پہلے کچھ نہیں 👆 کیا بدلوں؟"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["ur"], {"ownerSectionTitle": "👑 مالک کا صفحہ"});
