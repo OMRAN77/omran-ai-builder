@@ -2600,7 +2600,7 @@ const I18N = {
     introSplashLabel: '✨ شاشة الافتتاح عند فتح التطبيق',
     introSkip: 'اضغط للمتابعة',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
-    tvBack: "رجوع", tvYoutube: "يوتيوب", tvSearchPh: "ابحث عن قناة...", tvAll: "الكل", tvPlatforms: "منصات رسمية — تفتح بحسابك", tvLiveIn: "قنوات مباشرة داخل التطبيق", tvNoMatch: "لا توجد قنوات مطابقة", tvLive: "مباشر الآن", tvLiveCount: "قناة تبثّ الآن", tvOfficial: "المنصة الرسمية", tvOpening: "جارٍ الفتح...", tvOff: "القناة موقفة البث حاليًا", tvCatNews: "أخبار", tvCatSports: "رياضة", tvCatGeneral: "عامة", tvCatReligion: "دينية", tvCatKids: "أطفال", tvCatBiz: "اقتصاد", tvCIntl: "دولية", tvPfShahid: "كل قنوات MBC مباشر", tvPfAwaan: "كل قنوات دبي مباشر", tvPfAdtv: "قنوات أبوظبي وماجد", tvPfTod: "beIN باشتراكك", tvPfRotana: "قنوات روتانا", tvPfSub: "باشتراكك",
+    tvBack: "رجوع", tvSearchPh: "ابحث عن قناة...", tvAll: "الكل", tvPlatforms: "منصات رسمية — تفتح بحسابك", tvLiveIn: "قنوات مباشرة داخل التطبيق", tvNoMatch: "لا توجد قنوات مطابقة", tvLive: "مباشر الآن", tvLiveCount: "قناة تبثّ الآن", tvOfficial: "المنصة الرسمية", tvOpening: "جارٍ الفتح...", tvOff: "القناة موقفة البث حاليًا", tvCatNews: "أخبار", tvCatSports: "رياضة", tvCatGeneral: "عامة", tvCatReligion: "دينية", tvCatKids: "أطفال", tvCatBiz: "اقتصاد", tvCIntl: "دولية", tvPfShahid: "كل قنوات MBC مباشر", tvPfAwaan: "كل قنوات دبي مباشر", tvPfAdtv: "قنوات أبوظبي وماجد", tvPfTod: "beIN باشتراكك", tvPfRotana: "قنوات روتانا", tvPfSub: "باشتراكك",
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
     aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -2923,7 +2923,7 @@ const I18N = {
     portraitGenerating: '⏳ جارٍ التحويل...',
     carToolsTitle: '🚗 قسم السيارات',
     qiblaTitle: '📿 القبلة والمواقيت',
-    tvTitle: '📺 تلفزيون', tvSportsWorld: 'رياضة العالم', tvDirect: 'بث مباشر',
+    tvTitle: '📺 تلفزيون', tvSportsWorld: 'رياضة العالم', tvMatches: 'جدول المباريات', tvMatchLive: 'جارية الآن', tvMatchPaid: 'مدفوعة', tvNoMatches: 'لا مباريات في الجدول الآن', tvMatchesNote: 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', tvDirect: 'بث مباشر',
     stocksTitle: '📈 سوق الأسهم العالمي', stocksDesc: 'أسعار الأسهم العالمية مع رسم بياني مباشر.',
     stocksSymbolPh: 'مثال: AAPL أو TSLA', stocksLoadBtn: 'عرض',
     stocksIntDay: 'يومي (3 أشهر)', stocksIntHour: 'كل ساعة', stocksInt15: 'كل 15 دقيقة', stocksIntWeek: 'أسبوعي',
@@ -3595,7 +3595,7 @@ const I18N = {
     introSplashLabel: '✨ Opening screen when the app starts',
     introSkip: 'Tap to continue',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
-    tvBack: "Back", tvYoutube: "YouTube", tvSearchPh: "Search channels...", tvAll: "All", tvPlatforms: "Official platforms — open with your account", tvLiveIn: "Live channels inside the app", tvNoMatch: "No matching channels", tvLive: "LIVE", tvLiveCount: "channels live now", tvOfficial: "Official site", tvOpening: "Opening...", tvOff: "Not streaming right now", tvCatNews: "News", tvCatSports: "Sports", tvCatGeneral: "General", tvCatReligion: "Religion", tvCatKids: "Kids", tvCatBiz: "Business", tvCIntl: "International", tvPfShahid: "All MBC channels live", tvPfAwaan: "All Dubai channels live", tvPfAdtv: "Abu Dhabi & Majid channels", tvPfTod: "beIN with your subscription", tvPfRotana: "Rotana channels", tvPfSub: "with your subscription",
+    tvBack: "Back", tvSearchPh: "Search channels...", tvAll: "All", tvPlatforms: "Official platforms — open with your account", tvLiveIn: "Live channels inside the app", tvNoMatch: "No matching channels", tvLive: "LIVE", tvLiveCount: "channels live now", tvOfficial: "Official site", tvOpening: "Opening...", tvOff: "Not streaming right now", tvCatNews: "News", tvCatSports: "Sports", tvCatGeneral: "General", tvCatReligion: "Religion", tvCatKids: "Kids", tvCatBiz: "Business", tvCIntl: "International", tvPfShahid: "All MBC channels live", tvPfAwaan: "All Dubai channels live", tvPfAdtv: "Abu Dhabi & Majid channels", tvPfTod: "beIN with your subscription", tvPfRotana: "Rotana channels", tvPfSub: "with your subscription",
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
     aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -4131,7 +4131,7 @@ const I18N = {
     portraitLimitReached: 'You reached the daily limit for this feature, try again tomorrow',
     carToolsTitle: '🚗 Car Tools',
     qiblaTitle: '📿 Qibla & Prayer',
-    tvTitle: '📺 TV', tvSportsWorld: 'World Sports', tvDirect: 'Live stream',
+    tvTitle: '📺 TV', tvSportsWorld: 'World Sports', tvMatches: 'Match schedule', tvMatchLive: 'Live now', tvMatchPaid: 'Paid', tvNoMatches: 'No scheduled matches right now', tvMatchesNote: 'Times in your device clock · schedule updates daily', tvDirect: 'Live stream',
     stocksTitle: '📈 Global Stock Market', stocksDesc: 'Global stock prices with a live chart.',
     stocksSymbolPh: 'e.g. AAPL or TSLA', stocksLoadBtn: 'Show',
     stocksIntDay: 'Daily (3 months)', stocksIntHour: 'Hourly', stocksInt15: 'Every 15 min', stocksIntWeek: 'Weekly',
@@ -4616,7 +4616,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=680'; /* v-maha-cc-removed: حُذف مفتاح زرّ الترجمة النصّيّة من الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=682'; /* v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -32341,6 +32341,11 @@ if(document.readyState === 'loading'){
     { n: 'عجمان', c: 'ae', g: 'general', h: 'ajmanTV' },
     { n: 'الشارقة 2', c: 'ae', g: 'general', h: 'sharjah2' },
     { n: 'الفجيرة', c: 'ae', g: 'general', h: 'fujairahTV' },
+    /* v-tv-uae (المالك: «قنوات الإمارات الرياضية والعادية رتبها»): قنوات رسميّة لها رابط عامّ في الفهرس —
+       الوسطى والشرقية من كلباء (مؤسّسة الشارقة للإعلام) وبرامج العربية (دبي). */
+    { n: 'الوسطى', c: 'ae', g: 'general', h: 'alWoustaTV' },
+    { n: 'الشرقية من كلباء', c: 'ae', g: 'general', h: 'kalbaTV' },
+    { n: 'برامج العربية', c: 'ae', g: 'general', h: 'alArabiyaPrograms' },
     { n: 'سبيستون', c: 'ae', g: 'kids', h: 'spacetoon' },
     // ——— قطر
     { n: 'الجزيرة', h: 'aljazeera', c: 'qa', g: 'news' },
@@ -32390,7 +32395,7 @@ if(document.readyState === 'loading'){
     { n: 'Asianet News (مالايالام)', h: 'asianetnews', c: 'in_', g: 'news' },
     { n: 'Manorama News (مالايالام)', h: 'manoramanews', c: 'in_', g: 'news' },
     { n: 'Polimer News (تاميل)', h: 'PolimerNews', c: 'in_', g: 'news' },
-    { n: 'Star Sports (يوتيوب)', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
+    { n: 'Star Sports', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
     // ——— باكستان
     { n: 'Geo News (أردو)', h: 'GeoNews', c: 'pk', g: 'news' },
     { n: 'ARY News (أردو)', h: 'ArynewsTvofficial', c: 'pk', g: 'news' },
@@ -32418,7 +32423,7 @@ if(document.readyState === 'loading'){
     { n: 'Kantipur TV (نيبالي)', h: 'KantipurTVHD', c: 'np', g: 'news' },
     // ——— بريطانيا / أمريكا
     { n: 'Sky News', h: 'SkyNews', c: 'uk', g: 'news' },
-    { n: 'BBC News (يوتيوب)', h: 'BBCNews', c: 'uk', g: 'news' },
+    { n: 'BBC News', h: 'BBCNews', c: 'uk', g: 'news' },
     { n: 'ABC News Live', h: 'ABCNews', c: 'us', g: 'news' },
     { n: 'NBC News Now', h: 'NBCNews', c: 'us', g: 'news' },
     { n: 'CBS News', h: 'CBSNews', c: 'us', g: 'news' },
@@ -32453,7 +32458,7 @@ if(document.readyState === 'loading'){
     { n: 'السعودية', h: 'SaudiChannelOne', c: 'sa', g: 'general' },
     { n: 'SBC', h: 'sbc_sa', c: 'sa', g: 'general' },
     { n: 'الثقافية السعودية', h: 'thaqafeyah', c: 'sa', g: 'general' },
-    { n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'sa', g: 'biz' },
+    { n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'ae', g: 'biz' }, /* v-tv-uae: العربية في دبي كقناتها الأمّ */
     // ——— توسعة مصر
     { n: 'MBC مصر (شاهد)', u: 'https://shahid.mbc.net/ar/live', c: 'eg', g: 'general' },
     { n: 'DMC', h: 'dmctveg', c: 'eg', g: 'general' },
@@ -32973,6 +32978,9 @@ if(document.readyState === 'loading'){
     "ماجد للأطفال (المنصة)": "Majid Kids TV",
     "الظفرة": "Al Dhafra TV",
     "عجمان": "Ajman TV",
+    "الوسطى": "Al Wousta TV",
+    "الشرقية من كلباء": "Al Sharqiya from Kalba",
+    "برامج العربية": "Al Arabiya Programs",
     "السعودية": "Saudi TV",
     "الثقافية السعودية": "Saudi Al Thaqafiya",
     "الحياة": "Al Hayah TV",
@@ -33072,23 +33080,25 @@ if(document.readyState === 'loading'){
    * قناة ok:false تُخفى (معرّف خاطئ/محذوف)، وok مع live تأخذ 🔴.
    * غياب الملف = لا فلترة (أول نشر). */
   var TV_STATUS = null;
-  var TV_CHECKED_AT = 0;                 // v659: زمن آخر فحص يومي
+  var TV_SPORTS_FRESH = [];
+  var TV_MATCHES = [];
   function loadStatus(){
     return fetch('/tv-status.json', { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(d){
-        TV_STATUS = (d && d.channels) || null;
-        TV_CHECKED_AT = (d && d.checkedAt) ? (Date.parse(d.checkedAt) || 0) : 0;
+        TV_STATUS = d ? (d.channels || {}) : null; // v-tv-no-youtube: علامة «حُمّل»؛ الفاحص لم يعد يكتب قنوات يوتيوب
         try{ window.__tvStreamsStatus = (d && d.streams) || null; }catch(e){ __swallow(e, 'tv:ss'); }
+        /* v-tv-sports-fresh + v-tv-matches: قائمة الرياضة الطازجة وجدول المباريات من الفحص اليوميّ. */
+        TV_SPORTS_FRESH = (d && Array.isArray(d.sports)) ? d.sports : [];
+        TV_MATCHES = (d && Array.isArray(d.matches)) ? d.matches : [];
       })
       .catch(function(e){ __swallow(e, 'tv:status'); });
   }
-  function stOf(ch){ return (ch.h && TV_STATUS && TV_STATUS[ch.h]) || null; }
 
   /* v-tv-hls (طلب المالك: بث مباشر بلا يوتيوب): tv-streams.json — روابط بث
    * HLS رسمية عامة (فهرس iptv-org) لقنواتنا + قائمة رياضية عالمية. القناة
    * التي لها رابط مباشر تُشغَّل في مشغّلنا الخاص (بلا أي علامة يوتيوب)،
-   * ويوتيوب يبقى احتياطًا. رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
+   * ولا يوتيوب إطلاقًا (v-tv-no-youtube). رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
   var TV_M3U = null;
   var TV_M3U_BAD = {};
   function loadStreams(){
@@ -33103,7 +33113,13 @@ if(document.readyState === 'loading'){
     try{ return !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl'); }
     catch(e){ return false; }
   })();
-  function streamUsable(u){
+  /* v-tv-sports-clean (المالك: «أكثر القنوات الرياضيّة ما تشتغل»): الفاحص يتبع الرابط حتّى أوّل مقطع
+   * فيديو (deep.why) — مقطع/قائمة ميتة أو مشفّرة أو منتهية = لا يشتغل عند أحد فيُخفى؛ ومنع CORS في
+   * خطوة لاحقة يُخفى على hls.js وحده. timeout يبقى متفائلًا (قد يكون بطء لحظيّ). */
+  var TV_DEEP_DEAD = { 'variant-dead': 1, 'seg-dead': 1, 'key-dead': 1, drm: 1, 'no-segments': 1, 'no-variant': 1, ended: 1 };
+  var TV_DEEP_NOCORS = { 'variant-nocors': 1, 'seg-nocors': 1, 'key-nocors': 1 };
+  var TV_ARAB_CC = { sa: 1, ae: 1, qa: 1, kw: 1, bh: 1, om: 1, jo: 1, eg: 1, iq: 1, sy: 1, lb: 1, ps: 1, ye: 1, ly: 1, tn: 1, dz: 1, ma: 1, sd: 1, mr: 1 };
+  function streamUsable(u, strict, cc){
     var badAt = TV_M3U_BAD[u];
     if(badAt){
       if(Date.now() - badAt < 8000) return false;
@@ -33114,15 +33130,20 @@ if(document.readyState === 'loading'){
     if(!ss || !ss[u]) return true;         // لا بيانات فحص — نتفاءل ويحسمها التشغيل
     /* v-tv-geo: 403 عند فاحص أمريكا = حجب جغرافي غالبًا — القناة تعمل في
      * منطقتها (الكأس/الشارقة عند مستخدمينا)؛ نتفاءل ويحسمها التشغيل الفعلي. */
-    if(ss[u].geo) return true;
+    /* v-tv-sports-clean: في شاشة الرياضة (strict) التفاؤل الجغرافيّ للقنوات العربيّة وحدها —
+     * Rai Sport وSky F1 وNBA TV وbeIN USA مقفولة على بلدها أو مدفوعة فلا تشتغل عند مستخدمينا. */
+    if(ss[u].geo) return !strict || !!TV_ARAB_CC[cc];
     if(ss[u].ok === false) return false;   // رابط ميت مؤكد
     if(!TV_NATIVE_HLS && ss[u].cors === false) return false; // المتصفح سيمنعه حتمًا
+    var dw = ss[u].deep && ss[u].deep.why;
+    if(dw && TV_DEEP_DEAD[dw]) return false;
+    if(dw && !TV_NATIVE_HLS && TV_DEEP_NOCORS[dw]) return false;
     return true;
   }
-  function mOf(ch){
+  function mOf(ch, strict){
     var raw = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
     if(!raw) return null;
-    var list = (Array.isArray(raw) ? raw : [raw]).filter(streamUsable);
+    var list = (Array.isArray(raw) ? raw : [raw]).filter(function(u){ return streamUsable(u, strict, ch.c); });
     return list.length ? list : null;
   }
 
@@ -33139,9 +33160,6 @@ if(document.readyState === 'loading'){
   /* v-tv-hls: الفاحص يمر مرة باليوم — نافذة «طازج» ٣ ساعات كانت تجعل الفلتر
    * يعمل ٣ ساعات فقط وبقية اليوم تظهر القنوات الميتة كلها. ٢٦ ساعة تغطي
    * الدورة كاملة، و«بثت مؤخرًا» ٣٠ يومًا كي لا تختفي قناة تبث أحيانًا. */
-  var FRESH_MS = 26 * 36e5;
-  var RECENT_MS = 30 * 864e5;
-  function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
   /* v-direct-tv: أبقِ أسماء الدليل الحالية، لكن التشغيل لا يمر إلا عبر HLS/DASH. */
   /* v-tv-inapp-only (طلب المالك: «القنوات تحوّلني على جوجل وقنوات اليوتيوب
      مااريدها»): لا تُعرض إلّا قناة لها بثّ مباشر يشتغل داخل التطبيق. القنوات
@@ -33169,10 +33187,8 @@ if(document.readyState === 'loading'){
         '<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;">' +
           '<button type="button" id="tvBack" style="background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 14px;color:inherit;cursor:pointer;">' + tvBackLbl() + '</button>' +
           '<span id="tvNowName" style="font-size:14px;font-weight:700;"></span>' +
-          '<button type="button" id="tvExt" style="display:none;margin-inline-start:auto;background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 12px;color:inherit;cursor:pointer;font-size:12px;">↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube') + '</button>' +
         '</div>' +
         '<div style="flex:1;min-height:0;background:#000;position:relative;">' +
-          '<iframe id="tvFrame" style="width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
           /* v-tv-hls: مشغّلنا الخاص — بث مباشر نظيف بلا أي علامة يوتيوب */
           '<video id="tvVideo" controls playsinline style="display:none;position:absolute;inset:0;width:100%;height:100%;background:#000;"></video>' +
         '</div>' +
@@ -33187,7 +33203,6 @@ if(document.readyState === 'loading'){
     document.body.appendChild(el);
     el.querySelector('#tvClose').onclick = closeTv;
     el.querySelector('#tvBack').onclick = stopPlayer;
-    el.querySelector('#tvExt').onclick = function(){ if(S.nowUrl) openExternal(S.nowUrl); };
     el.querySelector('#tvSearch').oninput = function(){ S.q = this.value.trim(); renderGrid(); };
     return el;
   }
@@ -33219,6 +33234,13 @@ if(document.readyState === 'loading'){
     drb.textContent = '🎭 ' + tvT('tvDramaWorld', 'دراما ومنوّعات', 'Drama & Shows');
     drb.onclick = function(){ S.country = '__drama'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(drb);
+    /* v-tv-matches (المالك: «جدول مباريات مثل ياسين تيفي»): مباريات الأسبوعين القادمين بتوقيت الجهاز (أندية ومنتخبات). */
+    var mb = document.createElement('button');
+    mb.type = 'button';
+    mb.style.cssText = chipCss(S.country === '__matches');
+    mb.textContent = '📅 ' + tvT('tvMatches', 'جدول المباريات', 'Match schedule');
+    mb.onclick = function(){ S.country = '__matches'; S.cat = 'all'; renderChips(); renderGrid(); };
+    cw.appendChild(mb);
     Object.keys(TV_COUNTRIES).forEach(function(code){
       /* v-tv-hls: دولة بلا أي قناة ظاهرة (كلها ميتة) لا يظهر زرها — كانت
        * تفتح شبكة فاضية (مصر ٠ من ١٣ في فحص اليوم). */
@@ -33283,12 +33305,70 @@ if(document.readyState === 'loading'){
     grid.appendChild(sep);
   }
 
+  /* v-tv-matches: لقطة يوميّة من الفاحص (tv-status.json ← matches)، لا نتائج حيّة. الناقل يُذكر حيث حقوق
+   * المنطقة معروفة ومستقرّة فقط، ولا زرّ تشغيل لقناة مدفوعة — لا بديل «ياسين/الأسطورة». الأسماء خارجيّة
+   * فتُبنى بـtextContent لا innerHTML. */
+  var TV_MATCH_PAID = { 'eng.1': 'beIN SPORTS', 'uefa.champions': 'beIN SPORTS', 'uefa.europa': 'beIN SPORTS' };
+  function renderMatches(grid, el){
+    var now = Date.now();
+    var rows = TV_MATCHES.filter(function(m){ var t = Date.parse(m && m.t); return t > now - 2 * 36e5 && t < now + 14 * 864e5; });
+    var meta = el.querySelector('#tvMeta');
+    if(meta) meta.textContent = tvT('tvMatchesNote', 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', 'Times in your device clock · schedule updates daily');
+    if(!rows.length){
+      var empty = document.createElement('div');
+      empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';
+      empty.textContent = tvT('tvNoMatches', 'لا مباريات في الجدول الآن', 'No scheduled matches right now');
+      grid.appendChild(empty);
+      return;
+    }
+    var L = tvLang();
+    var today = new Date(now).toDateString();
+    rows.forEach(function(m){
+      var t = Date.parse(m.t), d = new Date(t);
+      var opts = d.toDateString() === today ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' };
+      var when;
+      try{ when = d.toLocaleString(L, opts); }catch(e){ when = d.toLocaleString(undefined, opts); }
+      var live = now >= t && now < t + 2 * 36e5;
+      var row = document.createElement('div');
+      row.className = 'tvMatchRow';
+      row.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.03);';
+      var tm = document.createElement('div');
+      tm.style.cssText = 'flex:0 0 auto;min-width:64px;text-align:center;font-size:13px;font-weight:700;line-height:1.5;';
+      tm.textContent = when;
+      if(live){
+        var lv = document.createElement('div');
+        lv.style.cssText = 'font-size:10px;color:#ff5a5a;font-weight:800;';
+        lv.textContent = '🔴 ' + tvT('tvMatchLive', 'جارية الآن', 'Live now');
+        tm.appendChild(lv);
+      }
+      var mid = document.createElement('div');
+      mid.style.cssText = 'flex:1;min-width:0;';
+      var teams = document.createElement('div');
+      teams.dir = 'auto';
+      teams.style.cssText = 'font-size:14px;font-weight:600;line-height:1.5;';
+      teams.textContent = m.h + '  ×  ' + m.a;
+      var sub = document.createElement('div');
+      sub.dir = 'auto';
+      sub.style.cssText = 'font-size:11px;color:var(--muted,#98a0b3);margin-top:2px;';
+      sub.textContent = '⚽ ' + (m.ln || m.lg || '') + (TV_MATCH_PAID[m.lg] ? '  ·  📺 ' + TV_MATCH_PAID[m.lg] + ' (' + tvT('tvMatchPaid', 'مدفوعة', 'Paid') + ')' : '');
+      mid.appendChild(teams);
+      mid.appendChild(sub);
+      row.appendChild(tm);
+      row.appendChild(mid);
+      grid.appendChild(row);
+    });
+  }
+
+  var TV_CAT_RANK = { sports: 0, general: 1, drama: 2, movies: 3, music: 4, news: 5, biz: 6, kids: 7, religion: 8 };
+  function tvCatRank(ch){ var r = TV_CAT_RANK[ch.g]; return r === undefined ? 9 : r; }
+
   function renderGrid(){
     var el = shell();
     var grid = el.querySelector('#tvGrid');
     grid.innerHTML = '';
     var q = S.q.toLowerCase();
-    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama') renderPlatforms(grid);
+    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama' && S.country !== '__matches') renderPlatforms(grid);
+    if(!q && S.country === '__matches'){ renderMatches(grid, el); return; }
     var list;
     if(!q && S.country === '__sports'){
       /* v-tv-hls: شاشة «رياضة العالم» — قنواتنا الرياضية + كل قناة رياضية
@@ -33297,14 +33377,17 @@ if(document.readyState === 'loading'){
       var seenN = {}, seenU = {};
       list = [];
       TV_CH.forEach(function(ch){
-        if(ch.g !== 'sports' || !mOf(ch)) return;
+        var u0 = ch.g === 'sports' ? mOf(ch, true) : null;
+        if(!u0) return;
         seenN[ch.n.toLowerCase().replace(/\s+/g, '')] = 1;
-        var u0 = mOf(ch); if(u0) u0.forEach(function(u){ seenU[u] = 1; }); // نفس البث باسمين = قناة واحدة
-        list.push(ch);
+        u0.forEach(function(u){ seenU[u] = 1; }); // نفس البث باسمين = قناة واحدة
+        list.push(Object.assign({}, ch, { m: u0 }));
       });
-      ((TV_M3U && TV_M3U.sports) || []).forEach(function(s){
+      /* v-tv-sports-fresh: الطازجة من الفحص اليوميّ أوّلًا، ثمّ نسخة tv-streams.json الثابتة احتياطًا. */
+      TV_SPORTS_FRESH.concat((TV_M3U && TV_M3U.sports) || []).forEach(function(s){
+        if(!s || !s.n || !s.m) return;
         var k = s.n.toLowerCase().replace(/\s+/g, '');
-        var us = (Array.isArray(s.m) ? s.m : [s.m]).filter(streamUsable);
+        var us = (Array.isArray(s.m) ? s.m : [s.m]).filter(function(u){ return streamUsable(u, true, s.c); });
         if(seenN[k] || !us.length || us.some(function(u){ return seenU[u]; })) return;
         seenN[k] = 1; us.forEach(function(u){ seenU[u] = 1; });
         list.push({ n: s.n, c: s.c, g: 'sports', m: us });
@@ -33334,10 +33417,14 @@ if(document.readyState === 'loading'){
         return true;
       });
       // الحيّ الآن أولًا — وصاحب البث المباشر النظيف قبله
+      /* v-tv-uae (المالك: «قنوات الإمارات الرياضية والعادية رتبها»): تبويب الإمارات بالتصنيف — الرياضة ثمّ
+       * العامّة ثمّ الأخبار والاقتصاد ثمّ الأطفال. بقيّة الدول على ترتيبها القديم. */
+      var byCat = !q && S.country === 'ae' && S.cat === 'all';
       list.sort(function(a, b){
         var la = mOf(a) ? 2 : 0;
         var lb = mOf(b) ? 2 : 0;
-        return lb - la;
+        if(lb !== la) return lb - la;
+        return byCat ? tvCatRank(a) - tvCatRank(b) : 0;
       });
     }
     var liveNow = list.filter(function(x){ return !!mOf(x); }).length;
@@ -33397,7 +33484,6 @@ if(document.readyState === 'loading'){
     function playHls(ch, url, card, onFail){
       var el = shell();
       var v = el.querySelector('#tvVideo');
-      var fr = el.querySelector('#tvFrame');
       var failed = false;
       var timer = setTimeout(fail, 18000); // مهلة أطول للبثّ البطيء قبل الاستسلام
       function ready(){ if(timer){ clearTimeout(timer); timer = null; } }
@@ -33412,10 +33498,6 @@ if(document.readyState === 'loading'){
       function show(){
         S.nowName = ch.n;
         el.querySelector('#tvNowName').textContent = tvChName(ch.n);
-        S.nowUrl = '';
-        var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
-        fr.src = 'about:blank';
-        fr.style.display = 'none';
         v.style.display = 'block';
         el.querySelector('#tvBrowse').style.display = 'none';
         el.querySelector('#tvPlayerWrap').style.display = 'flex';
@@ -33499,8 +33581,6 @@ if(document.readyState === 'loading'){
     if(el){
       var v = el.querySelector('#tvVideo');
       if(v){ try{ v.pause(); }catch(e){ __swallow(e, 'tv:vid-pause'); } v.removeAttribute('src'); try{ v.load(); }catch(e){ __swallow(e, 'tv:vid-load'); } v.style.display = 'none'; }
-      var fr = el.querySelector('#tvFrame');
-      if(fr) fr.style.display = '';
     }
   }
 
@@ -33528,10 +33608,7 @@ if(document.readyState === 'loading'){
 
   function stopPlayer(){
     var el = shell();
-    S.nowUrl = '';
     stopHls();                             /* v-tv-hls */
-    var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
-    el.querySelector('#tvFrame').src = 'about:blank';
     el.querySelector('#tvPlayerWrap').style.display = 'none';
     el.querySelector('#tvBrowse').style.display = 'flex';
   }
@@ -33563,7 +33640,6 @@ if(document.readyState === 'loading'){
     el.dir = tvDir();
     var q = el.querySelector('#tvTitleTxt'); if(q) q.textContent = tvT('tvTitle', '📺 تلفزيون', '📺 TV');
     q = el.querySelector('#tvBack'); if(q) q.textContent = tvBackLbl();
-    q = el.querySelector('#tvExt'); if(q) q.textContent = '↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube');
     q = el.querySelector('#tvSearch'); if(q) q.placeholder = '🔍 ' + tvT('tvSearchPh', 'ابحث عن قناة...', 'Search channels...');
     q = el.querySelector('#tvNowName'); if(q && S.nowName) q.textContent = tvChName(S.nowName);
     try{ renderChips(); }catch(e){ __swallow(e, 'tv:relang-chips'); }
