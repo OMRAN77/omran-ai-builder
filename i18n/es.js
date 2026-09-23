@@ -1083,3 +1083,5 @@ Object.assign(I18N['es'], {"tvSportsWorld":"Deportes del mundo","tvDirect":"En d
 Object.assign(I18N['es'], { qiblaTitle: '📿 Qibla y horarios de oración' });
 /* v-tv-matches: جدول المباريات */
 Object.assign(I18N['es'], {"tvMatches": "Calendario de partidos", "tvMatchLive": "En directo", "tvMatchPaid": "De pago", "tvNoMatches": "No hay partidos programados ahora", "tvMatchesNote": "Horas según tu dispositivo · el calendario se actualiza a diario"});
+/* v-tv-device-check: فحص القنوات من جهاز المستخدم */
+Object.assign(I18N['es'], {"tvDevChecking": "Comprobando desde tu dispositivo"});

@@ -3,7 +3,8 @@
 // يثبت: (١) بناء قائمة الرياضة الطازجة من الفهرس يستبعد المدفوع والمحظور والمغلق وhttp وما يحتاج Referer،
 // والعربيّ أوّلًا؛ (٢) قراءة جدول ESPN ونافذته؛ (٣) فلتر العميل: التفاؤل الجغرافيّ للعربيّ وحده في شاشة
 // الرياضة، وأسباب الفحص العميق تُخفي الميت؛ (٤) شاشة المباريات بلا innerHTML لأسماء خارجيّة وبلا زرّ
-// تشغيل لمدفوع؛ (٥) المفاتيح في الـ14 لغة؛ (٦) الفاحص يكتب sports وmatches؛ (٧) لا يوتيوب إطلاقًا.
+// تشغيل لمدفوع؛ (٥) المفاتيح في الـ14 لغة؛ (٦) الفاحص يكتب sports وmatches؛ (٧) لا يوتيوب إطلاقًا؛
+// (٨) تبويب الإمارات؛ (٩–١٠) الفحص من جهاز المستخدم يغلب فحص أمريكا.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -70,7 +71,7 @@ test('٢. parseEspn + windowMatches: مباراة صالحة فقط، ونافذ
   assert.equal(ymd(Date.parse('2026-01-05T23:30:00Z')), '20260105');
 });
 
-function clientStreamUsable(ss, native) {
+function clientStreamUsable(ss, native, dev) {
   const src = read('js/app-25-tv.js');
   const grab = (re) => { const m = src.match(re); assert.ok(m, String(re)); return m[0]; };
   const consts = grab(/var TV_DEEP_DEAD = [^\n]+\n\s+var TV_DEEP_NOCORS = [^\n]+\n\s+var TV_ARAB_CC = [^\n]+/);
@@ -81,7 +82,7 @@ function clientStreamUsable(ss, native) {
     if (src[i] === '{') depth++;
     else if (src[i] === '}' && --depth === 0) { end = i + 1; break; }
   }
-  const ctx = { window: { __tvStreamsStatus: ss }, TV_M3U_BAD: {}, TV_STATUS: null, TV_NATIVE_HLS: native, Date };
+  const ctx = { window: { __tvStreamsStatus: ss }, TV_M3U_BAD: {}, TV_STATUS: null, TV_NATIVE_HLS: native, Date, devVerdict: (u) => (dev && u in dev ? dev[u] : null) };
   vm.runInNewContext(consts + '\n' + src.slice(start, end) + '\nthis.f = streamUsable;', ctx);
   return ctx.f;
 }
@@ -134,7 +135,7 @@ test('٥. مفاتيح الجدول في الـ14 لغة ووسم اللغات �
     const s = read('i18n/' + lg + '.js');
     K.forEach((k) => assert.ok(s.includes('"' + k + '":'), lg + ': ' + k));
   });
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=682'"), 'وسم ملفّات اللغات');
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=683'"), 'وسم ملفّات اللغات');
 });
 
 test('٦. الفاحص يبني الطازجة ويفحص روابطها ويكتب sports وmatches', () => {
@@ -173,4 +174,84 @@ test('٨. تبويب الإمارات: الوسطى وكلباء وبرامج ا
   assert.ok(tv.includes("{ n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'ae', g: 'biz' }"), 'العربية Business مع الإمارات');
   assert.ok(tv.includes("var byCat = !q && S.country === 'ae' && S.cat === 'all';") && tv.includes('return byCat ? tvCatRank(a) - tvCatRank(b) : 0;'));
   assert.ok(tv.includes('var TV_CAT_RANK = { sports: 0, general: 1,'), 'الرياضة ثمّ العامّة');
+});
+
+// v-tv-device-check (المالك: «بعضها يشتغل وأغلبها لا»): الفاحص من أمريكا، والقنوات الأمريكيّة المجانيّة محجوبة
+// خارجها — حكم جهاز المستخدم (فحص بطلبات hls.js نفسها أو تشغيل فعليّ) يغلب فحص أمريكا في الاتّجاهين.
+test('٩. حكم الجهاز يغلب فحص أمريكا: ميت هناك ويشتغل هنا يظهر، وشغّال هناك ومحجوب هنا يختفي', () => {
+  const ss = { usDead: { ok: false, cors: false, code: 404 }, usOk: { ok: true, cors: true, deep: { why: 'ok' } }, geoAr: { ok: false, geo: true, code: 403 } };
+  const f = clientStreamUsable(ss, false, { usDead: true, usOk: false, geoAr: false });
+  assert.equal(f('usDead', true, 'us'), true, 'يشتغل من جهاز المستخدم');
+  assert.equal(f('usOk', true, 'us'), false, 'Amagi/Wurl المحجوبة خارج أمريكا تختفي');
+  assert.equal(f('geoAr', true, 'ae'), false, 'التفاؤل الجغرافيّ يحسمه الجهاز');
+  const tv = read('js/app-25-tv.js');
+  assert.ok(tv.includes('    var dv = devVerdict(u);') && tv.indexOf('var dv = devVerdict(u);') < tv.indexOf('if(ss[u].geo)'), 'قبل قرارات فحص أمريكا');
+  assert.ok(tv.includes('devResult(url, false);') && tv.includes('v.onplaying = function(){ __vRetry = 0; ready(); devResult(url, true); };'), 'التشغيل الفعليّ يسجّل');
+  assert.ok(tv.includes("'⚙︎ TV-13 · '"), 'رقم النسخة الظاهر رُفع ليعرف المالك أنّ التحديث وصله');
+  assert.ok(tv.includes('if(TV_NATIVE_HLS || typeof fetch !== \'function\') return;'), 'سفاري لا يُفحص مسبقًا (لا يحتاج CORS)');
+});
+
+function devKit(fetchImpl, store) {
+  const src = read('js/app-25-tv.js');
+  const from = src.indexOf("  var TV_DEV_KEY = 'tvDevCheck1';");
+  const to = src.indexOf('  var devRerender = null;');
+  assert.ok(from > 0 && to > from);
+  const ls = { data: store || {}, getItem(k) { return this.data[k] || null; }, setItem(k, v) { this.data[k] = v; } };
+  const ctx = { localStorage: ls, fetch: fetchImpl, AbortController, setTimeout, clearTimeout, URL, Promise, JSON, Date, Object, String, __swallow() {} };
+  vm.runInNewContext(src.slice(from, to) + '\nthis.k = { devProbe, devMark, devVerdict, devResult, TV_DEV, TV_DEV_BUSY };', ctx);
+  return { ...ctx.k, ls };
+}
+
+test('١٠. devProbe: قائمة ← جودة ← أوّل مقطع من الجهاز؛ أيّ خطوة تفشل أو يمنعها المتصفّح = فشل؛ والحكم يُحفظ ويتقادم', async () => {
+  const R = (status, body) => ({ ok: status >= 200 && status < 300, status, url: '', text: async () => body || '' });
+  const routes = {
+    'https://a.test/m.m3u8': () => R(200, '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nv/low.m3u8\n'),
+    'https://a.test/v/low.m3u8': () => R(200, '#EXTM3U\n#EXTINF:6,\nseg1.ts\n'),
+    'https://a.test/v/seg1.ts': () => R(200),
+    'https://b.test/m.m3u8': () => R(200, '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nv.m3u8\n'),
+    'https://b.test/v.m3u8': () => R(403),
+    'https://c.test/m.m3u8': () => { throw new TypeError('CORS'); },
+    'https://d.test/m.m3u8': () => R(200, '#EXTM3U\n#EXTINF:6,\nx.ts\n'),
+    'https://d.test/x.ts': () => R(403),
+    'https://e.test/m.m3u8': () => R(200, '<html>geo</html>'),
+  };
+  const seen = [];
+  const k = devKit(async (u) => { seen.push(u); const f = routes[u]; if (!f) throw new TypeError('net'); return f(); });
+  assert.equal(await k.devProbe('https://a.test/m.m3u8'), true, 'السلسلة كاملة تنجح');
+  assert.deepEqual(seen.slice(0, 3), ['https://a.test/m.m3u8', 'https://a.test/v/low.m3u8', 'https://a.test/v/seg1.ts'], 'مسارات نسبيّة تُحلّ على الرابط');
+  assert.equal(await k.devProbe('https://b.test/m.m3u8'), false, 'قائمة الجودة 403');
+  assert.equal(await k.devProbe('https://c.test/m.m3u8'), false, 'منع المتصفّح (CORS) = لا يشتغل على hls.js');
+  assert.equal(await k.devProbe('https://d.test/m.m3u8'), false, 'المقطع محجوب');
+  assert.equal(await k.devProbe('https://e.test/m.m3u8'), false, 'صفحة حجب بدل قائمة');
+  k.devMark('https://a.test/m.m3u8', true);
+  k.devMark('https://b.test/m.m3u8', false);
+  assert.equal(k.devVerdict('https://a.test/m.m3u8'), true);
+  assert.equal(k.devVerdict('https://b.test/m.m3u8'), false);
+  assert.equal(k.devVerdict('https://none.test/'), null);
+  assert.ok(JSON.parse(k.ls.data.tvDevCheck1)['https://a.test/m.m3u8'].ok, 'يُحفظ في الجهاز');
+  const old = { 'https://a.test/m.m3u8': { ok: true, at: Date.now() - 13 * 36e5 }, 'https://b.test/m.m3u8': { ok: false, at: Date.now() - 7 * 36e5 } };
+  const k2 = devKit(async () => R(404), { tvDevCheck1: JSON.stringify(old) });
+  assert.equal(k2.devVerdict('https://a.test/m.m3u8'), null, 'النجاح يتقادم بعد ١٢ ساعة');
+  assert.equal(k2.devVerdict('https://b.test/m.m3u8'), null, 'الفشل يتقادم بعد ٦ ساعات');
+});
+
+test('١١. مفتاح «يفحص من جهازك» في الـ14 لغة', () => {
+  const core = read('js/app-03-i18n-data.js');
+  assert.equal((core.match(/\btvDevChecking:/g) || []).length, 2);
+  ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].forEach((lg) => assert.ok(read('i18n/' + lg + '.js').includes('"tvDevChecking":'), lg));
+});
+
+test('١٢. حارس الشبكة: فشل قبل أوّل نجاح لا يُحفظ (انقطاع لا حجب)، وأوّل نجاح يحفظ المعلَّق فشلًا حقيقيًّا', () => {
+  const k = devKit(async () => { throw new TypeError('offline'); });
+  k.devResult('https://x.test/1', false);
+  k.devResult('https://x.test/2', false);
+  assert.equal(k.devVerdict('https://x.test/1'), null, 'جهاز بلا شبكة لا يُخفي القائمة');
+  assert.equal(k.ls.data.tvDevCheck1, undefined, 'لا شيء محفوظ');
+  assert.ok(k.TV_DEV_BUSY['https://x.test/1'], 'لا يُعاد فحصه في الجلسة نفسها');
+  k.devResult('https://x.test/ok', true);
+  assert.equal(k.devVerdict('https://x.test/ok'), true);
+  assert.equal(k.devVerdict('https://x.test/1'), false, 'بعد إثبات الشبكة: المعلَّق فشل حقيقيّ');
+  assert.equal(k.devVerdict('https://x.test/2'), false);
+  k.devResult('https://x.test/3', false);
+  assert.equal(k.devVerdict('https://x.test/3'), false, 'وبعدها يُحفظ الفشل مباشرة');
 });

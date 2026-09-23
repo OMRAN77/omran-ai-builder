@@ -1084,3 +1084,5 @@ Object.assign(I18N['ru'], {"tvSportsWorld":"Мировой спорт","tvDirect
 Object.assign(I18N['ru'], { qiblaTitle: '📿 Кибла и время молитв' });
 /* v-tv-matches: جدول المباريات */
 Object.assign(I18N['ru'], {"tvMatches": "Расписание матчей", "tvMatchLive": "Сейчас в эфире", "tvMatchPaid": "Платный", "tvNoMatches": "Сейчас нет запланированных матчей", "tvMatchesNote": "Время по часам вашего устройства · расписание обновляется ежедневно"});
+/* v-tv-device-check: فحص القنوات من جهاز المستخدم */
+Object.assign(I18N['ru'], {"tvDevChecking": "Проверка с вашего устройства"});

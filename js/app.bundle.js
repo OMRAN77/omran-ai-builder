@@ -2923,7 +2923,7 @@ const I18N = {
     portraitGenerating: '⏳ جارٍ التحويل...',
     carToolsTitle: '🚗 قسم السيارات',
     qiblaTitle: '📿 القبلة والمواقيت',
-    tvTitle: '📺 تلفزيون', tvSportsWorld: 'رياضة العالم', tvMatches: 'جدول المباريات', tvMatchLive: 'جارية الآن', tvMatchPaid: 'مدفوعة', tvNoMatches: 'لا مباريات في الجدول الآن', tvMatchesNote: 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', tvDirect: 'بث مباشر',
+    tvTitle: '📺 تلفزيون', tvSportsWorld: 'رياضة العالم', tvMatches: 'جدول المباريات', tvDevChecking: 'يفحص من جهازك', tvMatchLive: 'جارية الآن', tvMatchPaid: 'مدفوعة', tvNoMatches: 'لا مباريات في الجدول الآن', tvMatchesNote: 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', tvDirect: 'بث مباشر',
     stocksTitle: '📈 سوق الأسهم العالمي', stocksDesc: 'أسعار الأسهم العالمية مع رسم بياني مباشر.',
     stocksSymbolPh: 'مثال: AAPL أو TSLA', stocksLoadBtn: 'عرض',
     stocksIntDay: 'يومي (3 أشهر)', stocksIntHour: 'كل ساعة', stocksInt15: 'كل 15 دقيقة', stocksIntWeek: 'أسبوعي',
@@ -4131,7 +4131,7 @@ const I18N = {
     portraitLimitReached: 'You reached the daily limit for this feature, try again tomorrow',
     carToolsTitle: '🚗 Car Tools',
     qiblaTitle: '📿 Qibla & Prayer',
-    tvTitle: '📺 TV', tvSportsWorld: 'World Sports', tvMatches: 'Match schedule', tvMatchLive: 'Live now', tvMatchPaid: 'Paid', tvNoMatches: 'No scheduled matches right now', tvMatchesNote: 'Times in your device clock · schedule updates daily', tvDirect: 'Live stream',
+    tvTitle: '📺 TV', tvSportsWorld: 'World Sports', tvMatches: 'Match schedule', tvDevChecking: 'Checking from your device', tvMatchLive: 'Live now', tvMatchPaid: 'Paid', tvNoMatches: 'No scheduled matches right now', tvMatchesNote: 'Times in your device clock · schedule updates daily', tvDirect: 'Live stream',
     stocksTitle: '📈 Global Stock Market', stocksDesc: 'Global stock prices with a live chart.',
     stocksSymbolPh: 'e.g. AAPL or TSLA', stocksLoadBtn: 'Show',
     stocksIntDay: 'Daily (3 months)', stocksIntHour: 'Hourly', stocksInt15: 'Every 15 min', stocksIntWeek: 'Weekly',
@@ -4616,7 +4616,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=682'; /* v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=683'; /* v-tv-device-check: مفتاح «يفحص من جهازك» في الـ14 لغة (وقبله v-tv-no-youtube) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -33119,12 +33119,120 @@ if(document.readyState === 'loading'){
   var TV_DEEP_DEAD = { 'variant-dead': 1, 'seg-dead': 1, 'key-dead': 1, drm: 1, 'no-segments': 1, 'no-variant': 1, ended: 1 };
   var TV_DEEP_NOCORS = { 'variant-nocors': 1, 'seg-nocors': 1, 'key-nocors': 1 };
   var TV_ARAB_CC = { sa: 1, ae: 1, qa: 1, kw: 1, bh: 1, om: 1, jo: 1, eg: 1, iq: 1, sy: 1, lb: 1, ps: 1, ye: 1, ly: 1, tn: 1, dz: 1, ma: 1, sd: 1, mr: 1 };
+  /* v-tv-device-check (المالك: «بعضها يشتغل وأغلبها لا»): الفاحص اليوميّ يعمل من أمريكا، وكثير من القنوات
+   * المجانيّة (Amagi/Wurl/Tubi…) محجوبة خارجها — فالحكم الأخير من جهاز المستخدم نفسه: نفس طلبات hls.js
+   * (قائمة ← جودة ← أوّل مقطع) من شبكته، والنتيجة تُحفظ في الجهاز (نجاح ١٢ ساعة، فشل ٦). التشغيل الفعليّ
+   * يسجّل أيضًا. المشغّل الأصيل (سفاري) لا يحتاج CORS فلا يُفحص مسبقًا، لكنّ فشل تشغيله يُسجَّل. */
+  var TV_DEV_KEY = 'tvDevCheck1';
+  var TV_DEV = (function(){ try{ return JSON.parse(localStorage.getItem(TV_DEV_KEY) || '{}') || {}; }catch(e){ return {}; } })();
+  var TV_DEV_BUSY = {};
+  var TV_DEV_PENDING = 0;
+  function devVerdict(u){
+    var r = TV_DEV[u];
+    if(!r) return null;
+    return (Date.now() - r.at) > (r.ok ? 12 : 6) * 36e5 ? null : !!r.ok;
+  }
+  function devMark(u, ok){
+    TV_DEV[u] = { ok: !!ok, at: Date.now() };
+    var ks = Object.keys(TV_DEV);
+    if(ks.length > 900){ ks.sort(function(a, b){ return TV_DEV[a].at - TV_DEV[b].at; }); ks.slice(0, ks.length - 900).forEach(function(k){ delete TV_DEV[k]; }); }
+    try{ localStorage.setItem(TV_DEV_KEY, JSON.stringify(TV_DEV)); }catch(e){ __swallow(e, 'tv:dev-save'); }
+  }
+  /* حارس الشبكة: فشل قبل أوّل نجاح في هذه الجلسة قد يكون انقطاعًا لا حجبًا — يُعلَّق ولا يُحفظ، فلا تختفي
+   * القائمة كلّها ٦ ساعات بسبب إشارة ضعيفة لحظة الفتح. أوّل نجاح يثبت الشبكة فيُحفظ المعلَّق فشلًا حقيقيًّا. */
+  var TV_DEV_NET_OK = false;
+  var TV_DEV_HELD = [];
+  function devResult(u, ok){
+    if(ok){
+      if(!TV_DEV_NET_OK){
+        TV_DEV_NET_OK = true;
+        TV_DEV_HELD.forEach(function(x){ devMark(x, false); delete TV_DEV_BUSY[x]; });
+        TV_DEV_HELD = [];
+      }
+      devMark(u, true);
+      delete TV_DEV_BUSY[u];
+    } else if(TV_DEV_NET_OK){
+      devMark(u, false);
+      delete TV_DEV_BUSY[u];
+    } else {
+      TV_DEV_HELD.push(u);                 // يبقى في BUSY فلا يُعاد فحصه في هذه الجلسة
+      TV_DEV_BUSY[u] = 1;
+    }
+  }
+  function devFetch(url, wantText){
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    var stop = function(){ try{ if(ctl) ctl.abort(); }catch(e){ __swallow(e, 'tv:dev-abort'); } };
+    var t = setTimeout(stop, 7000);
+    return fetch(url, { signal: ctl ? ctl.signal : undefined, cache: 'no-store' }).then(function(r){
+      if(!r.ok || !wantText){ clearTimeout(t); stop(); return { ok: r.ok, text: '', url: r.url || url }; }
+      return r.text().then(function(x){ clearTimeout(t); return { ok: true, text: x, url: r.url || url }; });
+    }, function(){ clearTimeout(t); return { ok: false, text: '', url: url }; });
+  }
+  function devNext(text, base, tag){
+    var lines = String(text).split(/\r?\n/);
+    for(var i = 0; i < lines.length; i++){
+      if(lines[i].indexOf(tag) !== 0) continue;
+      for(var j = i + 1; j < lines.length; j++){
+        var l = lines[j].trim();
+        if(!l || l.charAt(0) === '#') continue;
+        try{ return new URL(l, base).href; }catch(e){ return null; }
+      }
+    }
+    return null;
+  }
+  function devProbe(u){
+    return devFetch(u, true).then(function(a){
+      if(!a.ok || a.text.indexOf('#EXTM3U') < 0) return false;
+      var media = a.text.indexOf('#EXT-X-STREAM-INF') < 0 ? Promise.resolve(a)
+        : (function(){ var vu = devNext(a.text, a.url, '#EXT-X-STREAM-INF'); return vu ? devFetch(vu, true) : Promise.resolve({ ok: false, text: '' }); })();
+      return media.then(function(b){
+        if(!b.ok || b.text.indexOf('#EXTM3U') < 0) return false;
+        var su = devNext(b.text, b.url, '#EXTINF');
+        return su ? devFetch(su, false).then(function(c){ return !!c.ok; }) : false;
+      });
+    }).then(null, function(){ return false; });
+  }
+  var devRerender = null;
+  function devCheckList(list){
+    if(TV_NATIVE_HLS || typeof fetch !== 'function') return;
+    var urls = [];
+    list.forEach(function(ch){
+      var raw = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
+      (Array.isArray(raw) ? raw : raw ? [raw] : []).forEach(function(u){
+        if(!TV_DEV_BUSY[u] && devVerdict(u) === null && urls.indexOf(u) < 0) urls.push(u);
+      });
+    });
+    urls = urls.slice(0, 400);
+    if(!urls.length) return;
+    urls.forEach(function(u){ TV_DEV_BUSY[u] = 1; });
+    TV_DEV_PENDING += urls.length;
+    var i = 0;
+    var next = function(){
+      if(i >= urls.length) return;
+      var u = urls[i++];
+      devProbe(u).then(function(ok){
+        devResult(u, ok);
+        TV_DEV_PENDING--;
+        if(!devRerender) devRerender = setTimeout(function(){
+          devRerender = null;
+          var el = document.getElementById('omranTvShell');
+          var br = el && el.querySelector('#tvBrowse');
+          if(el && el.style.display === 'flex' && br && br.style.display !== 'none') renderGrid();
+        }, 900);
+        next();
+      });
+    };
+    for(var k = 0; k < 6; k++) next();
+  }
+
   function streamUsable(u, strict, cc){
     var badAt = TV_M3U_BAD[u];
     if(badAt){
       if(Date.now() - badAt < 8000) return false;
       delete TV_M3U_BAD[u];
     }
+    var dv = devVerdict(u);                // v-tv-device-check: حكم جهاز المستخدم يغلب فحص أمريكا
+    if(dv !== null) return dv;
     var ss = TV_STATUS === null ? null : null;
     try{ ss = window.__tvStreamsStatus || null; }catch(e){ ss = null; }
     if(!ss || !ss[u]) return true;         // لا بيانات فحص — نتفاءل ويحسمها التشغيل
@@ -33433,8 +33541,10 @@ if(document.readyState === 'loading'){
        ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
     var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
     var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
-    if(meta) meta.textContent = '⚙︎ TV-12 · ' + __hls + ' · روابط:' + __links
-      + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
+    if(meta) meta.textContent = '⚙︎ TV-13 · ' + __hls + ' · روابط:' + __links
+      + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '')
+      + (TV_DEV_PENDING > 0 ? ' · 📶 ' + tvT('tvDevChecking', 'يفحص من جهازك', 'Checking from your device') + ' ' + TV_DEV_PENDING : '');
+    if(!q || list.length < 60) devCheckList(list);
     if(!list.length){
       var empty = document.createElement('div');
       empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';
@@ -33492,6 +33602,7 @@ if(document.readyState === 'loading'){
         failed = true;
         ready();
         TV_M3U_BAD[url] = Date.now();
+        devResult(url, false);             // v-tv-device-check: فشل تشغيل فعليّ على هذا الجهاز
         stopHls();
         if(typeof onFail === 'function') onFail();
       }
@@ -33528,7 +33639,7 @@ if(document.readyState === 'loading'){
         }
         fail();
       };
-      v.onplaying = function(){ __vRetry = 0; ready(); };
+      v.onplaying = function(){ __vRetry = 0; ready(); devResult(url, true); };
       v.onstalled = function(){ /* المشغّل يعيد التعبئة تلقائيًّا — لا نوقفها */ };
       v.onloadedmetadata = null;
       if(v.canPlayType('application/vnd.apple.mpegurl')){
