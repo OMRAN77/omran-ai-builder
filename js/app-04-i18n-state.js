@@ -477,6 +477,7 @@ function __vaultAssign(projects, now){
 }
 /* نسخة الحفظ: الصورة المخزونة تُستبدل بمعرّفها فقط */
 function __vaultReplacer(k, v){
+  if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض تُحفظ في المخزن بمفتاحها لا في السجلّ */
   if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && (v.length > VAULT_MIN || v === '[media]')) return '';
   if(k === 'vaultPending') return undefined;
   return v;
@@ -509,6 +510,7 @@ function __vaultRelease(keepP, keepFrom){
     if(!m || (p === keepP && i >= keepFrom)) return;
     (m.attachments || []).concat(m.apiImages || []).forEach(a => {
       if(a && a.vaultId && !a.vaultPending && typeof a.dataUrl === 'string' && a.dataUrl.length > VAULT_MIN && !__vaultReads.has(a)){ a.dataUrl = ''; freed++; }
+      if(a && a.vaultId && !a.vaultPending && a.viewUrl && !__viewReads.has(a)) delete a.viewUrl; /* v-img-view: نسختها في المخزن */
     });
   }));
   return freed;
@@ -545,12 +547,77 @@ function __vaultRead(a){
   }
   return pr;
 }
+/* v-img-view (فيديو المالك بعد #740: الشعار وصور بطاقات الأدوات تشويش ومربّعات سوداء — ذاكرة رسم الصور في الجوّال):
+   صور المحادثة كانت تُرسم بأصلها (2K–4K، ٥–٢٠ م.ب data URL) في فقاعة عرضها ٤٦٠px؛ كلّ صورة تُفكّ بحجمها الكامل (4K = ٦٤ م.ب
+   بكسلات) وتُرفع للرسم، وكلّ إعادة رسم تحلّل عشرات الميغا. الآن تُرسم نسخة عرض (أطول ضلع 1280px، JPEG، أو PNG إن كانت شفّافة)
+   تُصنع مرّة من الأصل وتُحفظ في المخزن بمفتاح «معرّف~v»؛ الأصل يبقى كما هو لكلّ ما يحتاجه (المشاركة، الحفظ، العرض الكامل،
+   التعديل، التراجع). التوليد صورةً صورةً (طابور) كي لا تُفكّ أصول كثيرة معًا. */
+const __VIEW_MAX = 1280;
+const __viewReads = new WeakMap();
+let __viewQ = Promise.resolve();
+function __isBigDataImg(u){ return typeof u === 'string' && u.length > VAULT_MIN && u.slice(0, 11) === 'data:image/'; }
+function __makeView(src){
+  return new Promise(res => {
+    try{
+      const im = new Image();
+      im.onload = () => {
+        try{
+          const w0 = im.naturalWidth || im.width, h0 = im.naturalHeight || im.height;
+          if(!w0 || !h0){ res(''); return; }
+          const k = Math.min(1, __VIEW_MAX / Math.max(w0, h0));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+          const cx = c.getContext('2d');
+          cx.drawImage(im, 0, 0, c.width, c.height);
+          let alpha = false;
+          if(!/^data:image\/jpe?g/i.test(src)){
+            const d = cx.getImageData(0, 0, c.width, c.height).data;
+            for(let i = 3; i < d.length; i += 16){ if(d[i] < 250){ alpha = true; break; } }
+          }
+          const out = alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.86);
+          c.width = c.height = 0;
+          res(typeof out === 'string' && out.slice(0, 11) === 'data:image/' ? out : '');
+        }catch(e){ __swallow(e, 'view:make'); res(''); }
+      };
+      im.onerror = () => res('');
+      im.src = src;
+    }catch(e){ __swallow(e, 'view:make#img'); res(''); }
+  });
+}
+/* نسخة العرض لمرفق: من الذاكرة، أو من المخزن، أو تُصنع من الأصل (المخزون يُقرأ عبر القارئ المشترك) وتُحفظ */
+function __imgView(a){
+  if(!a) return Promise.resolve('');
+  if(a.viewUrl) return Promise.resolve(a.viewUrl);
+  let pr = __viewReads.get(a);
+  if(pr) return pr;
+  pr = (async () => {
+    if(a.vaultId && !a.vaultPending){
+      try{ const v = await idbImgGet(a.vaultId + '~v'); if(typeof v === 'string' && v.slice(0, 11) === 'data:image/'){ a.viewUrl = v; return v; } }catch(e){ __swallow(e, 'view:get'); }
+      if(typeof window !== 'undefined' && window.__usingSlimProjects) return ''; /* المرآة المنحّفة تُستبدل بالكاملة قريبًا — لا تُفكّ أصولها */
+    }
+    const job = __viewQ.then(async () => {
+      let src = __isBigDataImg(a.dataUrl) ? a.dataUrl : '';
+      if(!src && a.vaultId && !a.vaultPending){ try{ const d = await __vaultRead(a); if(__isBigDataImg(d)) src = d; }catch(e){ __swallow(e, 'view:orig'); } }
+      if(!src) return '';
+      const v = await __makeView(src);
+      if(!v) return '';
+      a.viewUrl = v;
+      if(a.vaultId && !a.vaultPending) idbImgPutAll([{ id: a.vaultId + '~v', dataUrl: v }]).catch(e => __swallow(e, 'view:put'));
+      return v;
+    });
+    __viewQ = job.catch(() => '');
+    return job;
+  })().finally(() => __viewReads.delete(a));
+  __viewReads.set(a, pr);
+  return pr;
+}
+window.__imgView = __imgView;
 function idbImgSweep(liveIds){
   return idbOpen().then(db => new Promise((res, rej) => {
     const tx = db.transaction(IDB_IMAGES, 'readwrite');
     const st = tx.objectStore(IDB_IMAGES);
     const rq = st.getAllKeys();
-    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(k)) st.delete(k); }); };
+    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(String(k).replace(/~v$/, ''))) st.delete(k); }); }; /* v-img-view: نسخة العرض تبقى ما بقي أصلها */
     tx.oncomplete = () => { db.close(); res(); };
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
@@ -559,11 +626,13 @@ function idbImgSweep(liveIds){
 async function __vaultSave(){
   const puts = __vaultAssign(state.projects, Date.now());
   let vaulted = true;
-  try{ await idbImgPutAll(puts); puts.forEach(x => { delete x.ref.vaultPending; }); }
+  /* v-img-view: نسخة عرض صُنعت قبل أن يُكتب الأصل تُكتب معه */
+  try{ await idbImgPutAll(puts.concat(puts.filter(x => x.ref && x.ref.viewUrl).map(x => ({ id: x.id + '~v', dataUrl: x.ref.viewUrl })))); puts.forEach(x => { delete x.ref.vaultPending; }); }
   catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
-  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects));
+  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects, __noViewReplacer));
   await idbSet('aiapp_projects', copy);
 }
+function __noViewReplacer(k, v){ return k === 'viewUrl' ? undefined : v; }
 /* الاستعادة: صور مشروع بلا dataUrl تُقرأ من المخزن (عند الإقلاع للمشروع المفتوح، وعند العرض لغيره) */
 function idbImgGetMany(ids){
   if(!ids.length) return Promise.resolve({});
@@ -580,10 +649,12 @@ async function hydrateProjectImages(p, fromIdx){
   const need = [];
   const start = (typeof fromIdx === 'number') ? fromIdx : __imgWindowStart(p);
   if(p) __vaultRelease(p, start); /* v-mem-guard2: ما خارج النافذة يعود لمعرّفه */
+  /* v-img-view: المرآة المنحّفة تُستبدل بالكاملة بعد لحظات فقراءة أصولها ضائعة (كانت تُقرأ كلّ صورة مرّتين عند الإقلاع)؛
+     وapiImages لا يقرؤها شيء إلّا للرسالة الجديدة (قبل أن تُخزَّن) فلا تُستعاد — كانت تضاعف الذاكرة. */
+  if(typeof window !== 'undefined' && window.__usingSlimProjects) return 0;
   ((p && p.messages) || []).forEach((m, i) => {
     if(!m || i < start) return;
     (m.attachments || []).forEach(a => { if(a && a.isImage && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
-    (m.apiImages || []).forEach(a => { if(a && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
   });
   if(!need.length) return 0;
   /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة؛ وكلّ صورة تُسجَّل «قيد القراءة» فلا تُقرأ ثانية حتّى تنتهي */
@@ -720,7 +791,7 @@ function __projectsToJson(){
       const c = __projJsonCache.get(p);
       if(c !== undefined) return c;
     }
-    const s = JSON.stringify(p);
+    const s = JSON.stringify(p, __noViewReplacer);
     __projJsonCache.set(p, s);
     return s;
   });
@@ -776,6 +847,7 @@ function __msgForServer(m){
        والأكبر من 150KB «[media]» (ومنها apiImages بلا isImage التي كانت تُنسخ كاملة)، والصغيرة تبقى كما هي. */
     var o = JSON.parse(JSON.stringify(m, function(k, v){
       if(k === 'serverThumb' && this && this.isImage) return undefined;
+      if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض محلّيّة */
       if(k === 'dataUrl' && this && typeof v === 'string'){
         if(this.isImage && this.serverThumb) return this.serverThumb;
         if(v.length > 150000) return '[media]';
@@ -1770,12 +1842,19 @@ function renderMessages(keepScroll){
           wrap.appendChild(chip);
         } else if(a.isImage){
           const img = document.createElement('img');
-          /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
-          /* v-mem-guard2: قراءة واحدة مشتركة؛ وأدوات المشاركة تُلحق حين يصل الأصل (كانت تُتخطّى لصورة رُسمت قبل وصوله) */
+          img.decoding = 'async';
           let __ibox = null;
-          /* v-mem-guard3: كلّ الصور تصل من دفعة واحدة فتُحَلّ وعودها معًا — تعيين src لعشرات الميغا في مهمّة واحدة جمّد الإقلاع ١٫٥ث؛ كلّ صورة الآن في مهمّتها */
-          if(__vaultDegraded(a)){ __vaultRead(a).then(d => { if(typeof d === 'string' && d.length > VAULT_MIN) setTimeout(() => { if(!img.isConnected) return; img.src = d; if(__ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
-          img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
+          /* v-img-view: تُرسم نسخة العرض (1280px) لا الأصل. صورة جديدة لم تُخزَّن بعد تظهر بأصلها فورًا ثمّ تُستبدل بنسختها؛
+             المخزونة بلا نسخة في الذاكرة تنتظر نسختها (من المخزن، أو تُصنع مرّة من الأصل). كلّ تعيين في مهمّته (v-mem-guard3:
+             الدفعة الواحدة جمّدت الإقلاع ١٫٥ث)، والمنفصلة عن الصفحة تُتخطّى، والمخفيّة بعد خطأ src فارغ تعود ظاهرة. */
+          const __showSrc = (u) => { if(typeof u === 'string' && u) setTimeout(() => { if(!img.isConnected || img.getAttribute('src') === u) return; img.style.display = ''; img.src = u; }, 0); };
+          if(a.viewUrl) img.src = a.viewUrl;
+          else if(__isBigDataImg(a.dataUrl) || __vaultDegraded(a)){
+            if(__isBigDataImg(a.dataUrl) && (!a.vaultId || a.vaultPending)) img.src = a.dataUrl;
+            __imgView(a).then(__showSrc).catch(e => __swallow(e, 'img:view'));
+          } else img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
+          /* v-image-vault/v-mem-guard2: أدوات المشاركة والحفظ تحتاج الأصل — يُقرأ من المخزن (قراءة مشتركة) وتُلحق حين يصل */
+          if(__vaultDegraded(a) && !window.__usingSlimProjects){ __vaultRead(a).then(d => { if(__isBigDataImg(d)) setTimeout(() => { if(img.isConnected && __ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
           img.title = a.name;
           img.style.cursor = 'pointer';
           // v531: صور المساعد مولَّدة ⇒ تُعرض كبيرة. مرفقات المستخدم تبقى رقاقات صغيرة.
@@ -1786,7 +1865,7 @@ function renderMessages(keepScroll){
             emptyState.style.display = 'none';
             previewFrame._imageView = true;
             previewFrame._lastSrc = null;
-            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + a.dataUrl + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
+            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + ((a.dataUrl && a.dataUrl !== '[media]') ? a.dataUrl : (a.viewUrl || '')) + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
             switchWorkTab('preview');
             closeDrawers();
             if(localStorage.getItem('previewEnabled') !== 'off'){
