@@ -47,7 +47,7 @@ test('save path, boot hydration and lazy render hydration are wired', () => {
   assert.match(src, /__idbSavedAt = Date\.now\(\);\n\s+__vaultSave\(\)\.catch\(err => \{/);
   assert.match(src, /try\{ await idbImgPutAll\(puts\); puts\.forEach\(x => \{ delete x\.ref\.vaultPending; \}\); \}/);
   assert.match(src, /const copy = vaulted \? JSON\.parse\(JSON\.stringify\(state\.projects, __vaultReplacer\)\) : JSON\.parse\(JSON\.stringify\(state\.projects\)\);/);
-  assert.match(src, /if\(!a\.dataUrl && a\.vaultId\)\{ idbImgGet\(a\.vaultId\)\.then\(d => \{ if\(typeof d === 'string' && d\)\{ a\.dataUrl = d; img\.src = d; \} \}\)/);
+  assert.match(src, /if\(__vaultDegraded\(a\)\)\{ idbImgGet\(a\.vaultId\)\.then\(d => \{ if\(typeof d === 'string' && d\)\{ a\.dataUrl = d; delete a\.purged; img\.src = d; \} \}\)/);
   const boot = fs.readFileSync('js/app-09-attach.js', 'utf8');
   assert.match(boot, /await window\.__hydrateProjectImages\(state\.projects\.find\(q => q\.id === state\.currentId\)\);/);
   assert.match(boot, /window\.__vaultSweep && window\.__vaultSweep\(\);/);
