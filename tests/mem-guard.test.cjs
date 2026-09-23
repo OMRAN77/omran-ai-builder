@@ -114,7 +114,8 @@ test('٦. كلّ صورة تُقرأ من المخزن مرّة واحدة مه�
 
 test('٧. الرسم يقرأ عبر القارئ المشترك ويُلحق أدوات المشاركة حين يصل الأصل، والتراجع يقرأ الصورة المختارة من المخزن', () => {
   assert.match(src, /if\(p\) __vaultRelease\(p, start\);/, 'كلّ فتح/رسم يحرّر ما خارج النافذة');
-  assert.match(src, /__vaultRead\(a\)\.then\(d => \{ if\(typeof d === 'string' && d\.length > VAULT_MIN\)\{ img\.src = d; if\(__ibox && window\.__omranImgTools\)/);
+  /* v-mem-guard3: كلّ صورة تُعيَّن في مهمّتها (setTimeout) لا كلّها في مهمّة الدفعة الواحدة، والمنفصلة عن الصفحة (رسم أحدث) تُتخطّى */
+  assert.match(src, /__vaultRead\(a\)\.then\(d => \{ if\(typeof d === 'string' && d\.length > VAULT_MIN\) setTimeout\(\(\) => \{ if\(!img\.isConnected\) return; img\.src = d; if\(__ibox && window\.__omranImgTools\)/);
   assert.ok(!/idbImgGet\(a\.vaultId\)\.then\(d => \{ if\(typeof d === 'string' && d\)\{ a\.dataUrl = d; delete a\.purged; img\.src = d;/.test(src), 'لا قراءة ثانية مستقلّة في مسار الرسم');
   const att = fs.readFileSync('js/app-09-attach.js', 'utf8');
   assert.match(att, /a\.isImage && \(\/\^data:image\\\/\/\.test\(a\.dataUrl \|\| ''\) \|\| \(a\.vaultId && !a\.purged\)\)\) __chain\.push\(a\)/, 'سلسلة التراجع تشمل المخزونة');

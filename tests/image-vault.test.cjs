@@ -48,7 +48,7 @@ test('save path, boot hydration and lazy render hydration are wired', () => {
   assert.match(src, /try\{ await idbImgPutAll\(puts\); puts\.forEach\(x => \{ delete x\.ref\.vaultPending; \}\); \}/);
   assert.match(src, /const copy = vaulted \? JSON\.parse\(JSON\.stringify\(state\.projects, __vaultReplacer\)\) : JSON\.parse\(JSON\.stringify\(state\.projects\)\);/);
   /* v-mem-guard2: الرسم يقرأ عبر القارئ المشترك __vaultRead (قراءة واحدة لكلّ صورة) — وهو يعيد الأصل للمرفق ويزيل purged */
-  assert.match(src, /if\(__vaultDegraded\(a\)\)\{ __vaultRead\(a\)\.then\(d => \{ if\(typeof d === 'string' && d\.length > VAULT_MIN\)\{ img\.src = d;/);
+  assert.match(src, /if\(__vaultDegraded\(a\)\)\{ __vaultRead\(a\)\.then\(d => \{ if\(typeof d === 'string' && d\.length > VAULT_MIN\) setTimeout\(\(\) => \{ if\(!img\.isConnected\) return; img\.src = d;/);
   assert.match(src, /pr = idbImgGet\(a\.vaultId\)\.then\(d => \{ if\(typeof d === 'string' && d\)\{ a\.dataUrl = d; delete a\.purged; \} return a\.dataUrl; \}\)/);
   const boot = fs.readFileSync('js/app-09-attach.js', 'utf8');
   assert.match(boot, /await window\.__hydrateProjectImages\(state\.projects\.find\(q => q\.id === state\.currentId\)\);/);

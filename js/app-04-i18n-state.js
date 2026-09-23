@@ -1773,7 +1773,8 @@ function renderMessages(keepScroll){
           /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
           /* v-mem-guard2: قراءة واحدة مشتركة؛ وأدوات المشاركة تُلحق حين يصل الأصل (كانت تُتخطّى لصورة رُسمت قبل وصوله) */
           let __ibox = null;
-          if(__vaultDegraded(a)){ __vaultRead(a).then(d => { if(typeof d === 'string' && d.length > VAULT_MIN){ img.src = d; if(__ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); } }).catch(e => __swallow(e, 'vault:render')); }
+          /* v-mem-guard3: كلّ الصور تصل من دفعة واحدة فتُحَلّ وعودها معًا — تعيين src لعشرات الميغا في مهمّة واحدة جمّد الإقلاع ١٫٥ث؛ كلّ صورة الآن في مهمّتها */
+          if(__vaultDegraded(a)){ __vaultRead(a).then(d => { if(typeof d === 'string' && d.length > VAULT_MIN) setTimeout(() => { if(!img.isConnected) return; img.src = d; if(__ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
           img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
           img.title = a.name;
           img.style.cursor = 'pointer';
