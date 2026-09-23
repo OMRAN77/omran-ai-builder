@@ -82,3 +82,38 @@ test('٧. تقرير الصورة: للتوليد والتعديل، يصف ال
   assert.ok(s.includes('if any requested element is missing or different, add one line starting with "⚠️ "'));
   assert.ok(s.includes('never claim something is in the image when it is not'));
 });
+
+test('٨. طريق بناء واحد: كلّ صيغ طلب الصورة الجديدة تمرّ بالبانِي نفسه، والأسئلة لا', () => {
+  const a = read('js/app-09-attach.js');
+  const re = eval(a.match(/const __unifiedBuildRe = (\/.+\/i);/)[1]);
+  for (const x of ['ولّد صورة سيارة رياضية', 'تخيل مدينة في المستقبل', 'لوحة زيتية للبحر', 'خلفية جوال فضاء', 'منظر طبيعي جبال وثلج', 'generate an image of a dog', 'أبي صورة قطة', 'صورني قطة كرتونية']) assert.ok(re.test(x), x);
+  for (const x of ['تخيل لو كنت غني', 'كم عمر القطط', 'اشرح لي الذكاء الاصطناعي', 'عطني فكرة مشروع']) assert.ok(!re.test(x), x);
+  assert.ok(a.includes('|| (__unifiedBuildRe.test(text) && !__nanoQ.test(text)))){'), 'يدخل بوّابة البانِي المباشر، والسؤال مستثنى');
+});
+
+test('٩. صور الإنترنت فقط بطلب صريح أو بالجمع — المفرد بناء', () => {
+  const a = read('js/app-09-attach.js');
+  const m = a.match(/const __realPhotoCue = (\/.+?\/i)\.test\(text\) \|\| (\/.+?\/i)\.test\(text\);/);
+  assert.ok(m, 'الكاشف موجود');
+  const [r1, r2] = [eval(m[1]), eval(m[2])];
+  const cue = (x) => r1.test(x) || r2.test(x);
+  for (const x of ['عطني صور ليوبارد 8', 'أبي صور حقيقية لبرج خليفة', 'عطني صورة من النت لسيارة كامري', 'show me photos of Paris']) assert.ok(cue(x), x);
+  for (const x of ['أبي صورة قطة', 'عطني صورة غروب في دبي', 'صور لي قطة']) assert.ok(!cue(x), x);
+  assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) &&'));
+});
+
+test('١٠. المربّع بلا إطار خارجيّ', () => {
+  const a = read('js/app-09-attach.js');
+  assert.ok(a.includes('border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}'));
+  assert.ok(!a.includes('background:#050505;border:1px solid'));
+});
+
+test('١١. «غيّر الصور بدون تكرار الشخصيات» على لقطة بطاقات = تبديل أشخاص لا تعديل أمين يرجّع الصورة نفسها', () => {
+  const ip = require('../api/_lib/image-prompt.js');
+  for (const x of ['عطني نفس الاسامي وغير الصور بدون تكرار الصور الشخصيات', 'غير الصور اللي داخل البطاقات بدون تكرار', 'خل كل بطاقة شخص مختلف', 'بدون تكرار الشخصيات', 'غير الأشخاص في الصورة']) assert.ok(ip.isPersonSwapRequest(x), x);
+  for (const x of ['غير الخلفية', 'خل الصورة ليل', 'غير لون السيارة', 'كبر الصورة', 'رجعها زي أول']) assert.ok(!ip.isPersonSwapRequest(x), x);
+  const pr = ip.buildPersonSwapPrompt('غير الصور بدون تكرار', 'غير الصور بدون تكرار');
+  assert.ok(/every piece of text and every label character-for-character/.test(pr), 'الأسماء تبقى');
+  assert.ok(/identity must NOT be preserved/.test(pr));
+  assert.ok(read('api/_lib/maha-image.js').includes('const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;'), 'التبديل خارج المسار الأمين');
+});
