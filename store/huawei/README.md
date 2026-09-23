@@ -110,10 +110,18 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
   تحقّق حاسم ممكن لهذا الإصلاح.
 - **⚠️ إعادة التوليد تمحو كل هذا:** `node scripts/twa-generate.mjs` يحذف `store/huawei/twa` كاملًا
   ويعيد بناءه من الصفر (`fs.rmSync` في السكربت) — أي إعادة توليد لاحقة (تغيير أيقونة، رفع إصدار
-  جذريّ...) تُسقط صلاحية `RECORD_AUDIO` **و**`MahaWebViewFallbackActivity.java` **و**تعديل
-  `LauncherActivity.java` معًا ما لم تُعَد يدويًّا بعدها مباشرة (أو عبر PWABuilder، الخطوة ١-ب —
-  مسار مختلف كليًّا لا يحتاج هذا الفرع، لكن نسخة AppGallery المرفوعة ١٨ سبتمبر عبره كانت تعاني
-  نفس العطل، فليس بديلًا مضمونًا).
+  جذريّ...) تُسقط صلاحيّتَي `RECORD_AUDIO` **و**`MODIFY_AUDIO_SETTINGS` (أدناه)، **و**
+  `MahaWebViewFallbackActivity.java`، **و**تعديل `LauncherActivity.java` معًا ما لم تُعَد يدويًّا
+  بعدها مباشرة (أو عبر PWABuilder، الخطوة ١-ب — مسار مختلف كليًّا لا يحتاج هذا الفرع، لكن نسخة
+  AppGallery المرفوعة ١٨ سبتمبر عبره كانت تعاني نفس العطل، فليس بديلًا مضمونًا).
+- **تحديث ٢٢ سبتمبر (v-maha-webview-mic-4):** بعد نشر الإصلاح أعلاه فعليًّا في حزمة v1.3.10
+  موقّعة، أكّد المالك أنّ «المايك مشغول» **عاد من نفس هذي الحزمة الجديدة** — منح `RECORD_AUDIO`
+  عبر `onPermissionRequest` وحده غير كافٍ لالتقاط صوت فعليّ داخل WebView؛ يحتاج أيضًا
+  `android.permission.MODIFY_AUDIO_SETTINGS` معلَنة في `AndroidManifest.xml` (صلاحيّة عاديّة،
+  بلا طلب وقت تشغيل) وإلا يفشل التقاط الصوت بخطأ NotReadableError رغم نجاح منح صلاحيّة WebView
+  نفسها. أُضيفت. التفاصيل الكاملة في `knowledge/DECISIONS.md` (v-maha-webview-mic-4). **جُرِّبت
+  على جهاز المالك ولم تحلّ العطل** — تغيّر العَرَض من تنبيه «مشغول» إلى «لا شيء يحدث»؛ التشخيص
+  مستمرّ.
 
 ## تفاصيل للصيانة
 - **إعادة توليد المشروع** (بعد تغيير البيان أو الأيقونات): `npm i --no-save @bubblewrap/core && node scripts/twa-generate.mjs --version 1.3.11 --code 20261001`.
