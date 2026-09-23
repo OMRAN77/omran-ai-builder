@@ -3164,7 +3164,10 @@ function __friendlyErr(e){
     // v-photo-make (لقطة عمران: «صورة جميلة عليها دعاء الجمعة» رُدّت بفشل جلب):
     // «صورة عليها/مكتوب عليها…» طلب صناعة لا جلب — يمر للنموذج فيرسمها.
     const __photoMakeRe = /عليها|عليه\s|مكتوب|اكتب|دعاء|أدعي[ةه]|تهنئ|بطاق[ةه]|معايد|قالب|بوستر|منشور/i;
-    const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
+    /* v-img-one-road: جلب صور الإنترنت فقط حين يُطلب صراحةً («صور حقيقية»، «من النت») أو بالجمع («عطني صور ليوبارد 8»)؛
+       المفرد («أبي صورة قطة») بناء. */
+    const __realPhotoCue = /(حقيقي|حقيقية|من\s*النت|من\s*الانترنت|من\s*الإنترنت|من\s*قوقل|من\s*جوجل|\breal\b|\bactual\b|from\s+the\s+(?:web|internet))/i.test(text) || /(?:^|[\s،,])(?:صور)(?!\s*لي(?:$|[\s،,.!]))(?=$|[\s،,.!])|\b(?:photos|pictures|images)\b/i.test(text);
+    const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
       cur.messages.push(__logoMsg);
@@ -3877,7 +3880,7 @@ function __showImgLoading(el, ar, en){
      prefers-reduced-motion. معاينة: https://claude.ai/artifact/PG7aNWPP9TXwohqE8KaVrJ */
   if(!document.getElementById('omran-imggen-css2')){
     const st = document.createElement('style'); st.id = 'omran-imggen-css2';
-    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:#050505;border:1px solid rgba(224,172,43,.25)}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
+    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
     document.head.appendChild(st);
   }
   const __N = 13, __steps = 2 * (__N - 1);
@@ -4480,9 +4483,13 @@ function __showImgLoading(el, ar, en){
     }
     // 🏛️ v225: طلب نصي بنية صورة بدون أي صورة مرفقة (تصور معماري/منظور/ارسم...)
     // → توليد صورة فعلي بـ Gemini بدل رد نظري أو وعود فارغة من المزود.
+    /* v-img-one-road (المالك ٢٣ سبتمبر «وحّد طرق بناء الصور في طريق واحد»): مسبار ٣٠ طلبًا — «ولّد صورة»، «تخيّل مدينة»، «لوحة
+       زيتيّة»، «خلفية جوال»، «generate an image of» كانت تذهب لأداة المحادثة (بلا مربّع ولا تقرير ولا حلقة تعديل)، و«أبي صورة
+       قطة» لبحث صور الإنترنت. كلّ طلب صورة جديدة يمرّ الآن بالبانِي نفسه: مربّع · تقرير · متابعة وتراجع. */
+    const __unifiedBuildRe = /(?:^|[\s،,])(?:ولّد|ولد|اصنع|أنشئ|انشئ|سوّ?ي|سو|اعمل|أعمل|صمّ?م|ارسم|أرسم|generate|create|make|draw|render)\s*(?:لي\s*)?(?:صور[ةه]|صوره|رسم[ةه]|لوح[ةه]|خلفي[ةه]|an?\s+image|an?\s+picture|an?\s+illustration|image|picture|illustration|wallpaper)(?=$|[\s،,.!])|(?:^|[\s،,])(?:صوّ?رني|صوّر\s*لي)|(?:^|[\s،,])(?:أبي|ابي|ابغى|أبغى|أبغي|ابغي|اريد|أريد|عطني|أعطني|اعطني|هات|بدي|ودي)\s*(?:لي\s*)?(?:صور[ةه]|صوره|رسم[ةه]|لوح[ةه]|خلفي[ةه])(?=$|[\s،,.!])|(?:^|[\s،,])(?:لوح[ةه]\s*(?:زيتي[ةه]|مائي[ةه]|فني[ةه])|خلفي[ةه]\s*(?:جو[ّا]?ل|للجوال|شاش[ةه]|للشاش[ةه]|موبايل|ايفون|آيفون)|منظر\s*طبيعي|wallpaper)|(?:^|[\s،,])تخيّ?ل\s+(?!لو|إن|ان|انك|إنك|معي|معاي|أن|اني|إني)\S|\b(?:an?|the)\s+(?:image|picture|illustration)\s+of\b/i;
     const __txtOnlyImgRe = /^\s*صور[هة]\s+\S|(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
     if(text && !__blockAutoImage && __mediaLane !== 'none' && __mediaLane !== 'video' /* v-media-gate */ && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
-       (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
+       (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)) || (__unifiedBuildRe.test(text) && !__nanoQ.test(text)))){
       /* v-img-bare (مسبار الصور ٢٣ سبتمبر): «ارسم» وحدها كانت تُرسل للمولّد بلا موضوع فترسم شيئًا عشوائيًّا —
          فعل رسم بلا موضوع يُسأل عنه كالطلب المبهم. */
       const __bareDraw = /^\s*(?:ارسم|أرسم|ارسمي|ارسم\s*لي|ارسملي|رسمة|رسمه|صمم|صمّم|draw|imagine)\s*[.!؟?]*\s*$/i.test(text);
