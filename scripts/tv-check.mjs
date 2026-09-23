@@ -7,7 +7,7 @@
  * النتيجة tv-status.json: العميل يستعمل المعرّف المُصحّح ويخفي ما لم يُحل.
  */
 import { readFile, writeFile } from 'node:fs/promises';
-import { buildSports, parseEspn, windowMatches, ymd, MATCH_LEAGUES } from './tv-lib.mjs';
+import { buildSports, parseEspn, windowMatches, ymd, MATCH_LEAGUES, MATCH_DAYS } from './tv-lib.mjs';
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
@@ -261,12 +261,12 @@ const sportsOut = freshSports
   .filter((e) => e.m.length);
 
 /* v-tv-matches: جدول المباريات من لوحة ESPN العامّة — الجولة الحاليّة لكلّ دوري (بلا تاريخ) + اليوم والغد،
- * والأيّام السبعة القادمة يومًا يومًا. لقطة يوميّة، لا نتائج حيّة. (تجربة ٢٣ سبتمبر: «الجولة الحاليّة» = الجولة
+ * والأيّام الأربعة عشر القادمة يومًا يومًا. لقطة يوميّة، لا نتائج حيّة. (تجربة ٢٣ سبتمبر: «الجولة الحاليّة» = الجولة
  * المنتهية للتوّ، واليوم والغد فارغان منتصف الأسبوع — فالجدول يحتاج كلّ يوم من الأسبوع القادم.) */
 let matches = [];
 try {
   const now = Date.now();
-  const days = [''].concat(Array.from({ length: 7 }, (_, i) => ymd(now + i * 864e5)));
+  const days = [''].concat(Array.from({ length: MATCH_DAYS }, (_, i) => ymd(now + i * 864e5)));
   const got = [];
   for (const lg of MATCH_LEAGUES) {
     for (const d of days) {

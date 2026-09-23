@@ -33235,7 +33235,7 @@ if(document.readyState === 'loading'){
     drb.textContent = '🎭 ' + tvT('tvDramaWorld', 'دراما ومنوّعات', 'Drama & Shows');
     drb.onclick = function(){ S.country = '__drama'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(drb);
-    /* v-tv-matches (المالك: «جدول مباريات مثل ياسين تيفي»): مباريات الأيّام السبعة القادمة بتوقيت الجهاز. */
+    /* v-tv-matches (المالك: «جدول مباريات مثل ياسين تيفي»): مباريات الأسبوعين القادمين بتوقيت الجهاز (أندية ومنتخبات). */
     var mb = document.createElement('button');
     mb.type = 'button';
     mb.style.cssText = chipCss(S.country === '__matches');
@@ -33312,7 +33312,7 @@ if(document.readyState === 'loading'){
   var TV_MATCH_PAID = { 'eng.1': 'beIN SPORTS', 'uefa.champions': 'beIN SPORTS', 'uefa.europa': 'beIN SPORTS' };
   function renderMatches(grid, el){
     var now = Date.now();
-    var rows = TV_MATCHES.filter(function(m){ var t = Date.parse(m && m.t); return t > now - 2 * 36e5 && t < now + 7 * 864e5; });
+    var rows = TV_MATCHES.filter(function(m){ var t = Date.parse(m && m.t); return t > now - 2 * 36e5 && t < now + 14 * 864e5; });
     var meta = el.querySelector('#tvMeta');
     if(meta) meta.textContent = tvT('tvMatchesNote', 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', 'Times in your device clock · schedule updates daily');
     if(!rows.length){

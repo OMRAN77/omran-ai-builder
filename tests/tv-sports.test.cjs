@@ -48,7 +48,7 @@ test('١. buildSports: رياضة فقط، بلا مدفوع/محظور/مغلق
   assert.deepEqual(out[2].m, ['https://a.example/us1.m3u8'], 'بلا تكرار وبلا http');
 });
 
-test('٢. parseEspn + windowMatches: مباراة صالحة فقط، ونافذة ٣ ساعات مضت إلى ٧ أيّام قادمة بلا تكرار', async () => {
+test('٢. parseEspn + windowMatches: مباراة صالحة فقط، ونافذة ٣ ساعات مضت إلى ١٤ يومًا قادمة بلا تكرار', async () => {
   const { parseEspn, windowMatches, ymd } = await lib();
   const now = Date.parse('2026-09-23T10:00:00Z');
   const ev = (id, date, home, away) => ({ id, date, competitions: [{ competitors: [{ homeAway: 'home', team: { displayName: home } }, { homeAway: 'away', team: { displayName: away } }] }] });
@@ -58,14 +58,15 @@ test('٢. parseEspn + windowMatches: مباراة صالحة فقط، ونافذ
     { id: '3', date: '2026-09-23T19:00Z', competitions: [{ competitors: [{ homeAway: 'home', team: { displayName: 'Solo' } }] }] },
     ev('4', '2026-09-23T08:00Z', 'Early', 'Kick'),
     ev('5', '2026-09-25T19:00Z', 'Far', 'Future'),
-    ev('6', '2026-10-05T19:00Z', 'Too', 'Late'),
+    ev('6', '2026-10-12T19:00Z', 'Too', 'Late'),
+    ev('7', '2026-10-04T19:00Z', 'After', 'Break'),
   ] };
   const got = parseEspn(j, 'eng.1');
-  assert.deepEqual(got.map((m) => m.id), ['1', '4', '5', '6'], 'تاريخ تالف أو خصم ناقص = يُسقط');
+  assert.deepEqual(got.map((m) => m.id), ['1', '4', '5', '6', '7'], 'تاريخ تالف أو خصم ناقص = يُسقط');
   assert.deepEqual(got[0], { id: '1', t: '2026-09-23T19:00:00.000Z', lg: 'eng.1', ln: 'English Premier League', h: 'Arsenal', a: 'Chelsea' });
   assert.equal(parseEspn({}, 'x.1').length, 0);
   const w = windowMatches(got.concat(got), now);
-  assert.deepEqual(w.map((m) => m.id), ['4', '1', '5'], 'جارية قبل ساعتين تبقى، وبعد ٧ أيّام تسقط، والتكرار يسقط');
+  assert.deepEqual(w.map((m) => m.id), ['4', '1', '5', '7'], 'جارية قبل ساعتين تبقى، وبعد ١٤ يومًا تسقط، والتكرار يسقط');
   assert.equal(ymd(Date.parse('2026-01-05T23:30:00Z')), '20260105');
 });
 
@@ -138,9 +139,9 @@ test('٥. مفاتيح الجدول في الـ14 لغة ووسم اللغات �
 
 test('٦. الفاحص يبني الطازجة ويفحص روابطها ويكتب sports وmatches', () => {
   const s = read('scripts/tv-check.mjs');
-  assert.ok(s.includes("import { buildSports, parseEspn, windowMatches, ymd, MATCH_LEAGUES } from './tv-lib.mjs';"));
+  assert.ok(s.includes("import { buildSports, parseEspn, windowMatches, ymd, MATCH_LEAGUES, MATCH_DAYS } from './tv-lib.mjs';"));
   assert.ok(s.includes("freshSports.forEach((e) => e.m.forEach((u) => urls.add(u)));"), 'روابط الطازجة تُفحص مع البقيّة');
   assert.ok(s.includes('  sports: sportsOut,\n  matches,\n'), 'تُكتب في tv-status.json');
   assert.ok(s.includes('st.deep = await deepProbe(body, r.url || u);'), 'الفحص العميق حتّى أوّل مقطع');
-  assert.ok(s.includes("const days = [''].concat(Array.from({ length: 7 }, (_, i) => ymd(now + i * 864e5)));"), 'الجولة الحاليّة + الأيّام السبعة القادمة يومًا يومًا');
+  assert.ok(s.includes("const days = [''].concat(Array.from({ length: MATCH_DAYS }, (_, i) => ymd(now + i * 864e5)));"), 'الجولة الحاليّة + ١٤ يومًا يومًا يومًا');
 });

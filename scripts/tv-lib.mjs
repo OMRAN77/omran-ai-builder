@@ -33,7 +33,9 @@ export function buildSports(channels, streams, blocklist, max = 700) {
     .slice(0, max);
 }
 
-export const MATCH_LEAGUES = ['uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1', 'afc.champions']; // egy.1 ردّ 400 في كلّ تشغيل
+/* المنتخبات أيضًا: في فترة التوقّف الدوليّ (٢٣ سبتمبر ٢٠٢٦) كلّ دوريّات الأندية صفر أسبوعًا كاملًا. egy.1 ردّ 400 دائمًا. */
+export const MATCH_LEAGUES = ['uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1', 'afc.champions', 'uefa.nations', 'fifa.friendly'];
+export const MATCH_DAYS = 14;
 
 const teamName = (x) => String((x && x.team && (x.team.displayName || x.team.shortDisplayName || x.team.name)) || '').slice(0, 60);
 
@@ -53,8 +55,8 @@ export function parseEspn(j, lg) {
   return out;
 }
 
-/* نافذة الجدول: من ٣ ساعات مضت (مباراة جارية) إلى ٧ أيّام قادمة، بلا تكرار، مرتّبة بالوقت. */
-export function windowMatches(list, now, cap = 200, aheadMs = 7 * 864e5) {
+/* نافذة الجدول: من ٣ ساعات مضت (مباراة جارية) إلى ١٤ يومًا قادمة، بلا تكرار، مرتّبة بالوقت. */
+export function windowMatches(list, now, cap = 200, aheadMs = MATCH_DAYS * 864e5) {
   const seen = new Set();
   return (list || [])
     .filter((m) => {
