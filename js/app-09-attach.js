@@ -960,22 +960,35 @@ function omranPickerDiag(kind, input, err){
   try{
     const n = (input && input.files) ? input.files.length : -1;
     const msg = 'attach-picker ' + kind + ': #' + ((input && input.id) || '?') + ' multiple=' + !!(input && input.multiple)
-      + ' files=' + n + (err ? ' — ' + String((err && err.message) || err).slice(0, 160) : '');
+      + ' files=' + n + (input ? ' cancel-evt=' + ('oncancel' in input) : '') + (err ? ' — ' + String((err && err.message) || err).slice(0, 160) : '');
     fetch('/api/system?action=client-errors', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg, source: 'attach-picker', line: 0, col: 0, stack: '', url: location.pathname, ua: navigator.userAgent }) })
+      body: JSON.stringify({ message: msg, source: 'attach-picker', line: 0, col: 0, stack: '', url: location.pathname, ua: navigator.userAgent,
+        build: (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '' }) })
       .catch((e) => { __swallow(e, 'attach:diag'); });
   }catch(e){ __swallow(e, 'attach:diag'); }
 }
+/* v-attach-nofalse (تنبيه المالك ٢٣ سبتمبر: «attach-picker timeout … files=0» مرّتين
+   بين أخطاء المستخدمين): بلاغ «timeout» كان يُرسَل بعد ٢٠ ثانية من النقر مهما حدث —
+   (١) المستخدم ألغى المنتقي، (٢) بقي في المعرض أكثر من ٢٠ ثانية يختار (فتوقّف المراقب
+   ثمّ وصلت الصورة بـchange سليمة)، (٣) change سبق المراقب فاستوعب الملفّ ومسح
+   input.value قبل الفحص التالي. الثلاث نجاح أو إلغاء لا عطل. الآن: المراقب لا يعدّ
+   الوقت والمنتقي مفتوح؛ change بملفّات أو cancel يُنهيانه بصمت؛ والبلاغ «no-file»
+   فقط إن عاد المستخدم للصفحة (focus/visible) ومرّت ٨ ثوانٍ بلا ملفّ ولا change ولا
+   cancel — وهي الحالة الوحيدة المريبة فعلًا (معرض هواوي). حدّ أقصى ٥ دقائق بلا بلاغ. */
 function omranWatchFilePicker(input, onFiles){
-  let handled = false, ticks = 0;
+  let handled = false, total = 0, returnedAt = 0;
+  const stop = () => {
+    handled = true;
+    clearInterval(iv);
+    window.removeEventListener('focus', onReturn);
+    document.removeEventListener('visibilitychange', onVis);
+    if(input){ input.removeEventListener('change', onChange); input.removeEventListener('cancel', stop); }
+  };
   const take = () => {
     if(handled) return;
     const files = Array.from((input && input.files) || []);
     if(!files.length) return;
-    handled = true;
-    clearInterval(iv);
-    window.removeEventListener('focus', take);
-    document.removeEventListener('visibilitychange', onVis);
+    stop();
     /* v-attach-picker-v3: مسح input.value يُؤجَّل حتى تنتهي القراءة فعلًا.
        قراءة الملفّ مؤجَّلة (FileReader/createObjectURL بعد await)، ومسح
        القيمة يفصل الملفّ عن مصدره في غلاف أندرويد (content:// — نفس فخّ
@@ -985,10 +998,20 @@ function omranWatchFilePicker(input, onFiles){
       .catch((e) => { __swallow(e, 'attach:picker'); omranPickerDiag('ingest-failed', input, e); })
       .then(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
   };
-  const onVis = () => { if(document.visibilityState === 'visible') take(); };
-  const iv = setInterval(() => { take(); if(handled){ clearInterval(iv); return; } if(++ticks > 57){ clearInterval(iv); omranPickerDiag('timeout', input); } }, 350);
-  window.addEventListener('focus', take);
+  const onReturn = () => { take(); if(!handled && !returnedAt) returnedAt = Date.now(); };
+  const onVis = () => { if(document.visibilityState === 'visible') onReturn(); };
+  /* change بملفّات: معالجه الخاصّ يستوعبها ويمسح القيمة بعد القراءة — المراقب يتوقّف
+     فقط، ولا يمسح هو input.value أثناء قراءة المعالج (فخّ v3). */
+  const onChange = () => { if(input && input.files && input.files.length) stop(); };
+  const iv = setInterval(() => {
+    take();
+    if(handled) return;
+    if(++total > 857){ stop(); return; } // ٥ دقائق: لا نعرف شيئًا — لا بلاغ
+    if(returnedAt && Date.now() - returnedAt > 8000){ stop(); omranPickerDiag('no-file', input); }
+  }, 350);
+  window.addEventListener('focus', onReturn);
   document.addEventListener('visibilitychange', onVis);
+  if(input){ input.addEventListener('change', onChange); input.addEventListener('cancel', stop); }
 }
 let __attachHandled = false;
 /* v-attach-huawei-more («استوى لكن صورة وحدة وحدة، على الأقلّ ٥»): على أجهزة

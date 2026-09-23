@@ -6,20 +6,20 @@ var PALETTE=['#d4af37','#f1d98a','#b8902a','#e8a13c','#c98226','#f0be7a','#8c6a1
 var RTL_LANGS=['ar','ur'];
 function appLang(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } }
 var I18N={
-ar:{title:'التعليم',oldEdu:'📚 دورات وشروحات',upload:'ارفع محاضرة جديدة',uploadSub:'PDF أو صور أو DOCX',orPaste:'أو الصق نصًا',pastePh:'الصق نص المحاضرة هنا...',analyze:'حلّل المحاضرة',analyzing:'⏳ نحلل المحاضرة… قد يستغرق الأمر دقيقة',mySubjects:'📚 موادي',empty:'لا توجد دروس بعد — ارفع أول محاضرة وابدأ المذاكرة!',lessonsWord:'درس',summaryTab:'📄 الملخص',cardsTab:'🎴 بطاقات',quizTab:'✍️ اختبار',labTab:'🧪 تجربة حية',know:'أعرفه ✅',review:'أراجعه 🔄',tapFlip:'اضغط على البطاقة لقلبها',retry:'أعد الاختبار',yourScore:'نتيجتك',great:'ممتاز! أنت جاهز للامتحان 🌟',good:'جيد جدًا! راجع الأخطاء وستتقنها 💪',keepGoing:'بداية طيبة — راجع الملخص والبطاقات ثم أعد المحاولة 📖',del:'حذف',confirmDel:'حذف هذا الدرس نهائيًا؟',err:'حدث خطأ، حاول مرة أخرى.',guestNote:'أنت غير مسجّل — تُحفظ دروسك على هذا الجهاز فقط.',intro:'جديد: 🎓 التعليم — ارفع محاضرتك واحصل على ملخص وبطاقات واختبار',introBtn:'جرّبه الآن',hint:'💡 جرّب قسم «التعليم»: ارفع محاضرتك واحصل على ملخص وبطاقات واختبار تلقائيًا',docxFail:'تعذر قراءة ملف DOCX — جرّب حفظه كـ PDF ورفعه.',tooBig:'الملف كبير جدًا (الحد حوالي 10 ميغابايت).',cardsDone:'أنهيت كل البطاقات! 🎉',finish:'إنهاء',next:'التالي',streakWord:'يوم'},
-en:{title:'Education',oldEdu:'📚 Courses & Lessons',upload:'Upload a new lecture',uploadSub:'PDF, images or DOCX',orPaste:'or paste text',pastePh:'Paste your lecture text here...',analyze:'Analyze lecture',analyzing:'⏳ Analyzing your lecture… this may take a minute',mySubjects:'📚 My subjects',empty:'No lessons yet — upload your first lecture to start studying!',lessonsWord:'lesson(s)',summaryTab:'📄 Summary',cardsTab:'🎴 Flashcards',quizTab:'✍️ Quiz',labTab:'🧪 Live Lab',know:'I know it ✅',review:'Review 🔄',tapFlip:'Tap the card to flip it',retry:'Retake quiz',yourScore:'Your score',great:'Excellent! You are exam-ready 🌟',good:'Very good! Review your mistakes and you will master it 💪',keepGoing:'Good start — review the summary and cards, then try again 📖',del:'Delete',confirmDel:'Delete this lesson permanently?',err:'Something went wrong, please try again.',guestNote:'You are not signed in — lessons are saved on this device only.',intro:'New: 🎓 Education — upload a lecture and get a summary, flashcards and a quiz',introBtn:'Try it now',hint:'💡 Try "Education": upload your lecture and get a summary, flashcards and a quiz automatically',docxFail:'Could not read the DOCX file — try saving it as PDF.',tooBig:'File too large (limit is about 10 MB).',cardsDone:'You finished all the cards! 🎉',finish:'Finish',next:'Next',streakWord:'day(s)'},
-fr:{title:'Mes cours',oldEdu:'📚 Cours et tutoriels',upload:'Téléverser un nouveau cours',orPaste:'ou coller du texte',analyze:'Analyser le cours',analyzing:'⏳ Analyse du cours en cours…',mySubjects:'📚 Mes matières',empty:'Aucune leçon — téléversez votre premier cours !',summaryTab:'📄 Résumé',cardsTab:'🎴 Cartes',quizTab:'✍️ Quiz',know:'Je sais ✅',review:'À revoir 🔄',tapFlip:'Touchez la carte pour la retourner',retry:'Refaire le quiz',yourScore:'Votre score',great:'Excellent ! Vous êtes prêt 🌟',good:'Très bien ! Revoyez vos erreurs 💪',keepGoing:'Bon début — relisez le résumé puis réessayez 📖',del:'Supprimer',confirmDel:'Supprimer cette leçon ?',err:'Une erreur est survenue.',guestNote:'Non connecté — leçons enregistrées sur cet appareil.',intro:'Nouveau : 🎓 Mes cours — résumé, cartes et quiz automatiques',introBtn:'Essayer',hint:'💡 Essayez « Mes cours » : résumé, cartes et quiz automatiques',next:'Suivant',finish:'Terminer'},
-hi:{title:'मेरे पाठ',oldEdu:'📚 कोर्स और पाठ',upload:'नया लेक्चर अपलोड करें',orPaste:'या टेक्स्ट पेस्ट करें',analyze:'लेक्चर का विश्लेषण करें',analyzing:'⏳ लेक्चर का विश्लेषण हो रहा है…',mySubjects:'📚 मेरे विषय',empty:'अभी कोई पाठ नहीं — पहला लेक्चर अपलोड करें!',summaryTab:'📄 सारांश',cardsTab:'🎴 कार्ड',quizTab:'✍️ क्विज़',know:'आता है ✅',review:'दोहराना 🔄',tapFlip:'पलटने के लिए कार्ड पर टैप करें',retry:'क्विज़ दोबारा दें',yourScore:'आपका स्कोर',great:'शानदार! आप तैयार हैं 🌟',good:'बहुत अच्छा! गलतियाँ दोहराएँ 💪',keepGoing:'अच्छी शुरुआत — सारांश पढ़कर फिर कोशिश करें 📖',del:'हटाएँ',confirmDel:'यह पाठ हटाएँ?',err:'कुछ गलत हुआ, फिर कोशिश करें।',guestNote:'लॉगिन नहीं — पाठ इसी डिवाइस पर सहेजे जाते हैं।',intro:'नया: 🎓 मेरे पाठ — सारांश, कार्ड और क्विज़ अपने आप',introBtn:'आज़माएँ',hint:'💡 «मेरे पाठ» आज़माएँ: लेक्चर से सारांश, कार्ड और क्विज़',next:'आगे',finish:'समाप्त'},
-ur:{title:'میرے اسباق',oldEdu:'📚 کورسز اور اسباق',upload:'نیا لیکچر اپ لوڈ کریں',orPaste:'یا متن پیسٹ کریں',analyze:'لیکچر کا تجزیہ کریں',analyzing:'⏳ لیکچر کا تجزیہ ہو رہا ہے…',mySubjects:'📚 میرے مضامین',empty:'ابھی کوئی سبق نہیں — پہلا لیکچر اپ لوڈ کریں!',summaryTab:'📄 خلاصہ',cardsTab:'🎴 کارڈز',quizTab:'✍️ کوئز',know:'آتا ہے ✅',review:'دہرانا 🔄',tapFlip:'پلٹنے کے لیے کارڈ پر ٹیپ کریں',retry:'کوئز دوبارہ دیں',yourScore:'آپ کا اسکور',great:'زبردست! آپ تیار ہیں 🌟',good:'بہت خوب! غلطیاں دہرائیں 💪',keepGoing:'اچھی شروعات — خلاصہ پڑھ کر دوبارہ کوشش کریں 📖',del:'حذف کریں',confirmDel:'یہ سبق حذف کریں؟',err:'کچھ غلط ہوا، دوبارہ کوشش کریں۔',guestNote:'لاگ اِن نہیں — اسباق صرف اسی ڈیوائس پر محفوظ ہوتے ہیں۔',intro:'نیا: 🎓 میرے اسباق — خلاصہ، کارڈز اور کوئز خودکار',introBtn:'آزمائیں',hint:'💡 «میرے اسباق» آزمائیں: لیکچر سے خلاصہ، کارڈز اور کوئز',next:'اگلا',finish:'ختم'},
-bn:{title:'আমার পাঠ',oldEdu:'📚 কোর্স ও পাঠ',upload:'নতুন লেকচার আপলোড করুন',orPaste:'বা টেক্সট পেস্ট করুন',analyze:'লেকচার বিশ্লেষণ করুন',analyzing:'⏳ লেকচার বিশ্লেষণ চলছে…',mySubjects:'📚 আমার বিষয়',empty:'এখনও কোনো পাঠ নেই — প্রথম লেকচার আপলোড করুন!',summaryTab:'📄 সারাংশ',cardsTab:'🎴 কার্ড',quizTab:'✍️ কুইজ',know:'জানি ✅',review:'আবার 🔄',tapFlip:'উল্টাতে কার্ডে ট্যাপ করুন',retry:'আবার কুইজ দিন',yourScore:'আপনার স্কোর',great:'চমৎকার! আপনি প্রস্তুত 🌟',good:'খুব ভালো! ভুলগুলো দেখুন 💪',keepGoing:'ভালো শুরু — সারাংশ পড়ে আবার চেষ্টা করুন 📖',del:'মুছুন',confirmDel:'এই পাঠ মুছবেন?',err:'সমস্যা হয়েছে, আবার চেষ্টা করুন।',guestNote:'লগইন নেই — পাঠ এই ডিভাইসেই সংরক্ষিত।',intro:'নতুন: 🎓 আমার পাঠ — সারাংশ, কার্ড ও কুইজ স্বয়ংক্রিয়',introBtn:'চেষ্টা করুন',hint:'💡 «আমার পাঠ» দেখুন: লেকচার থেকে সারাংশ, কার্ড ও কুইজ',next:'পরবর্তী',finish:'শেষ'},
-ne:{title:'मेरा पाठहरू',oldEdu:'📚 कोर्स र पाठहरू',upload:'नयाँ लेक्चर अपलोड गर्नुहोस्',orPaste:'वा टेक्स्ट टाँस्नुहोस्',analyze:'लेक्चर विश्लेषण गर्नुहोस्',analyzing:'⏳ लेक्चर विश्लेषण हुँदैछ…',mySubjects:'📚 मेरा विषयहरू',empty:'अहिले कुनै पाठ छैन — पहिलो लेक्चर अपलोड गर्नुहोस्!',summaryTab:'📄 सारांश',cardsTab:'🎴 कार्ड',quizTab:'✍️ क्विज',know:'थाहा छ ✅',review:'दोहोर्‍याउने 🔄',tapFlip:'पल्टाउन कार्डमा ट्याप गर्नुहोस्',retry:'क्विज फेरि दिनुहोस्',yourScore:'तपाईंको स्कोर',great:'उत्कृष्ट! तपाईं तयार हुनुहुन्छ 🌟',good:'धेरै राम्रो! गल्ती हेर्नुहोस् 💪',keepGoing:'राम्रो सुरुवात — सारांश पढेर फेरि प्रयास गर्नुहोस् 📖',del:'हटाउनुहोस्',confirmDel:'यो पाठ हटाउने?',err:'केही गडबड भयो, फेरि प्रयास गर्नुहोस्।',guestNote:'लगइन छैन — पाठ यही डिभाइसमा मात्र सुरक्षित।',intro:'नयाँ: 🎓 मेरा पाठहरू — सारांश, कार्ड र क्विज स्वतः',introBtn:'प्रयास गर्नुहोस्',hint:'💡 «मेरा पाठहरू» हेर्नुहोस्: लेक्चरबाट सारांश, कार्ड र क्विज',next:'अर्को',finish:'सकियो'},
-id:{title:'Pelajaranku',oldEdu:'📚 Kursus & Pelajaran',upload:'Unggah kuliah baru',orPaste:'atau tempel teks',analyze:'Analisis kuliah',analyzing:'⏳ Menganalisis kuliah…',mySubjects:'📚 Mata pelajaranku',empty:'Belum ada pelajaran — unggah kuliah pertamamu!',summaryTab:'📄 Ringkasan',cardsTab:'🎴 Kartu',quizTab:'✍️ Kuis',know:'Sudah paham ✅',review:'Ulangi 🔄',tapFlip:'Ketuk kartu untuk membalik',retry:'Ulangi kuis',yourScore:'Skormu',great:'Luar biasa! Kamu siap ujian 🌟',good:'Bagus sekali! Tinjau kesalahanmu 💪',keepGoing:'Awal yang baik — baca ringkasan lalu coba lagi 📖',del:'Hapus',confirmDel:'Hapus pelajaran ini?',err:'Terjadi kesalahan, coba lagi.',guestNote:'Belum masuk — pelajaran disimpan di perangkat ini saja.',intro:'Baru: 🎓 Pelajaranku — ringkasan, kartu, dan kuis otomatis',introBtn:'Coba sekarang',hint:'💡 Coba "Pelajaranku": unggah kuliah, dapatkan ringkasan, kartu & kuis',next:'Berikutnya',finish:'Selesai'},
-fil:{title:'Aking Aralin',oldEdu:'📚 Mga Kurso at Aralin',upload:'Mag-upload ng bagong lektura',orPaste:'o mag-paste ng teksto',analyze:'Suriin ang lektura',analyzing:'⏳ Sinusuri ang lektura…',mySubjects:'📚 Aking mga asignatura',empty:'Wala pang aralin — i-upload ang unang lektura!',summaryTab:'📄 Buod',cardsTab:'🎴 Cards',quizTab:'✍️ Pagsusulit',know:'Alam ko ✅',review:'Ulitin 🔄',tapFlip:'I-tap ang card para baligtarin',retry:'Ulitin ang pagsusulit',yourScore:'Iskor mo',great:'Mahusay! Handa ka na 🌟',good:'Napakahusay! Balikan ang mga mali 💪',keepGoing:'Magandang simula — basahin ang buod at subukan muli 📖',del:'Burahin',confirmDel:'Burahin ang araling ito?',err:'May naganap na error, subukan muli.',guestNote:'Hindi naka-login — dito lang sa device naka-save.',intro:'Bago: 🎓 Aking Aralin — buod, cards at pagsusulit nang awtomatiko',introBtn:'Subukan',hint:'💡 Subukan ang "Aking Aralin": buod, cards at quiz mula sa lektura',next:'Susunod',finish:'Tapos'},
-tr:{title:'Derslerim',oldEdu:'📚 Kurslar ve Dersler',upload:'Yeni ders yükle',orPaste:'veya metin yapıştır',analyze:'Dersi analiz et',analyzing:'⏳ Ders analiz ediliyor…',mySubjects:'📚 Derslerim',empty:'Henüz ders yok — ilk dersini yükle!',summaryTab:'📄 Özet',cardsTab:'🎴 Kartlar',quizTab:'✍️ Sınav',know:'Biliyorum ✅',review:'Tekrar 🔄',tapFlip:'Çevirmek için karta dokun',retry:'Sınavı tekrarla',yourScore:'Puanın',great:'Mükemmel! Sınava hazırsın 🌟',good:'Çok iyi! Hatalarını gözden geçir 💪',keepGoing:'İyi başlangıç — özeti oku ve tekrar dene 📖',del:'Sil',confirmDel:'Bu ders silinsin mi?',err:'Bir hata oluştu, tekrar dene.',guestNote:'Giriş yapılmadı — dersler yalnızca bu cihazda saklanır.',intro:'Yeni: 🎓 Derslerim — otomatik özet, kart ve sınav',introBtn:'Şimdi dene',hint:'💡 "Derslerim"i dene: dersinden özet, kart ve sınav',next:'İleri',finish:'Bitir'},
-zh:{title:'我的课程',oldEdu:'📚 课程与讲解',upload:'上传新讲义',orPaste:'或粘贴文本',analyze:'分析讲义',analyzing:'⏳ 正在分析讲义…',mySubjects:'📚 我的科目',empty:'还没有课程——上传第一份讲义吧！',summaryTab:'📄 摘要',cardsTab:'🎴 卡片',quizTab:'✍️ 测验',know:'我会了 ✅',review:'再复习 🔄',tapFlip:'点击卡片翻面',retry:'重新测验',yourScore:'你的得分',great:'太棒了！你已准备好考试 🌟',good:'很好！复习一下错题 💪',keepGoing:'不错的开始——先看摘要再试一次 📖',del:'删除',confirmDel:'确定删除该课程？',err:'出错了，请重试。',guestNote:'未登录——课程仅保存在本设备。',intro:'新功能：🎓 我的课程——自动生成摘要、卡片和测验',introBtn:'立即体验',hint:'💡 试试「我的课程」：上传讲义自动生成摘要、卡片和测验',next:'下一题',finish:'完成'},
-ru:{title:'Мои уроки',oldEdu:'📚 Курсы и уроки',upload:'Загрузить новую лекцию',orPaste:'или вставьте текст',analyze:'Анализировать лекцию',analyzing:'⏳ Анализируем лекцию…',mySubjects:'📚 Мои предметы',empty:'Пока нет уроков — загрузите первую лекцию!',summaryTab:'📄 Конспект',cardsTab:'🎴 Карточки',quizTab:'✍️ Тест',know:'Знаю ✅',review:'Повторить 🔄',tapFlip:'Нажмите на карточку, чтобы перевернуть',retry:'Пройти тест снова',yourScore:'Ваш результат',great:'Отлично! Вы готовы к экзамену 🌟',good:'Очень хорошо! Повторите ошибки 💪',keepGoing:'Хорошее начало — перечитайте конспект и попробуйте снова 📖',del:'Удалить',confirmDel:'Удалить этот урок?',err:'Произошла ошибка, попробуйте снова.',guestNote:'Вы не вошли — уроки хранятся только на этом устройстве.',intro:'Новое: 🎓 Мои уроки — конспект, карточки и тест автоматически',introBtn:'Попробовать',hint:'💡 Попробуйте «Мои уроки»: конспект, карточки и тест из лекции',next:'Далее',finish:'Готово'},
-es:{title:'Mis lecciones',oldEdu:'📚 Cursos y lecciones',upload:'Subir una nueva clase',orPaste:'o pega el texto',analyze:'Analizar la clase',analyzing:'⏳ Analizando la clase…',mySubjects:'📚 Mis materias',empty:'Aún no hay lecciones — ¡sube tu primera clase!',summaryTab:'📄 Resumen',cardsTab:'🎴 Tarjetas',quizTab:'✍️ Examen',know:'Lo sé ✅',review:'Repasar 🔄',tapFlip:'Toca la tarjeta para girarla',retry:'Repetir examen',yourScore:'Tu puntuación',great:'¡Excelente! Estás listo 🌟',good:'¡Muy bien! Repasa tus errores 💪',keepGoing:'Buen comienzo — repasa el resumen e inténtalo de nuevo 📖',del:'Eliminar',confirmDel:'¿Eliminar esta lección?',err:'Ocurrió un error, inténtalo de nuevo.',guestNote:'Sin iniciar sesión — las lecciones se guardan solo en este dispositivo.',intro:'Nuevo: 🎓 Mis lecciones — resumen, tarjetas y examen automáticos',introBtn:'Pruébalo',hint:'💡 Prueba «Mis lecciones»: resumen, tarjetas y examen de tu clase',next:'Siguiente',finish:'Terminar'},
-ml:{title:'എന്റെ പാഠങ്ങൾ',oldEdu:'📚 കോഴ്സുകളും പാഠങ്ങളും',upload:'പുതിയ ലക്ചർ അപ്‌ലോഡ് ചെയ്യുക',orPaste:'അല്ലെങ്കിൽ ടെക്സ്റ്റ് ഒട്ടിക്കുക',analyze:'ലക്ചർ വിശകലനം ചെയ്യുക',analyzing:'⏳ ലക്ചർ വിശകലനം ചെയ്യുന്നു…',mySubjects:'📚 എന്റെ വിഷയങ്ങൾ',empty:'ഇതുവരെ പാഠങ്ങളില്ല — ആദ്യ ലക്ചർ അപ്‌ലോഡ് ചെയ്യൂ!',summaryTab:'📄 സംഗ്രഹം',cardsTab:'🎴 കാർഡുകൾ',quizTab:'✍️ ക്വിസ്',know:'അറിയാം ✅',review:'വീണ്ടും 🔄',tapFlip:'മറിക്കാൻ കാർഡിൽ ടാപ്പ് ചെയ്യുക',retry:'ക്വിസ് വീണ്ടും',yourScore:'നിങ്ങളുടെ സ്കോർ',great:'മികച്ചത്! നിങ്ങൾ തയ്യാർ 🌟',good:'വളരെ നല്ലത്! തെറ്റുകൾ അവലോകനം ചെയ്യുക 💪',keepGoing:'നല്ല തുടക്കം — സംഗ്രഹം വായിച്ച് വീണ്ടും ശ്രമിക്കൂ 📖',del:'ഇല്ലാതാക്കുക',confirmDel:'ഈ പാഠം ഇല്ലാതാക്കണോ?',err:'പിശക് സംഭവിച്ചു, വീണ്ടും ശ്രമിക്കുക.',guestNote:'ലോഗിൻ ചെയ്തിട്ടില്ല — പാഠങ്ങൾ ഈ ഉപകരണത്തിൽ മാത്രം.',intro:'പുതിയത്: 🎓 എന്റെ പാഠങ്ങൾ — സംഗ്രഹം, കാർഡുകൾ, ക്വിസ്',introBtn:'ഇപ്പോൾ ശ്രമിക്കൂ',hint:'💡 «എന്റെ പാഠങ്ങൾ» ശ്രമിക്കൂ: ലക്ചറിൽ നിന്ന് സംഗ്രഹവും കാർഡുകളും ക്വിസും',next:'അടുത്തത്',finish:'പൂർത്തിയാക്കുക'}
+ar:{title:'التعليم',oldEdu:'🎬 صانع الفيديو والشرائح التعليميّة',upload:'ارفع محاضرة جديدة',uploadSub:'PDF أو صور أو DOCX',orPaste:'أو الصق نصًا',pastePh:'الصق نص المحاضرة هنا...',analyze:'حلّل المحاضرة',analyzing:'⏳ نحلل المحاضرة… قد يستغرق الأمر دقيقة',mySubjects:'📚 موادي',empty:'لا توجد دروس بعد — ارفع أول محاضرة وابدأ المذاكرة!',lessonsWord:'درس',summaryTab:'📄 الملخص',cardsTab:'🎴 بطاقات',quizTab:'✍️ اختبار',labTab:'🧪 تجربة حية',know:'أعرفه ✅',review:'أراجعه 🔄',tapFlip:'اضغط على البطاقة لقلبها',retry:'أعد الاختبار',yourScore:'نتيجتك',great:'ممتاز! أنت جاهز للامتحان 🌟',good:'جيد جدًا! راجع الأخطاء وستتقنها 💪',keepGoing:'بداية طيبة — راجع الملخص والبطاقات ثم أعد المحاولة 📖',del:'حذف',confirmDel:'حذف هذا الدرس نهائيًا؟',err:'حدث خطأ، حاول مرة أخرى.',guestNote:'أنت غير مسجّل — تُحفظ دروسك على هذا الجهاز فقط.',intro:'جديد: 🎓 التعليم — ارفع محاضرتك واحصل على ملخص وبطاقات واختبار',introBtn:'جرّبه الآن',hint:'💡 جرّب قسم «التعليم»: ارفع محاضرتك واحصل على ملخص وبطاقات واختبار تلقائيًا',docxFail:'تعذر قراءة ملف DOCX — جرّب حفظه كـ PDF ورفعه.',tooBig:'الملف كبير جدًا (الحد حوالي 10 ميغابايت).',cardsDone:'أنهيت كل البطاقات! 🎉',finish:'إنهاء',next:'التالي',streakWord:'يوم'},
+en:{title:'Education',oldEdu:'🎬 Educational video & slides maker',upload:'Upload a new lecture',uploadSub:'PDF, images or DOCX',orPaste:'or paste text',pastePh:'Paste your lecture text here...',analyze:'Analyze lecture',analyzing:'⏳ Analyzing your lecture… this may take a minute',mySubjects:'📚 My subjects',empty:'No lessons yet — upload your first lecture to start studying!',lessonsWord:'lesson(s)',summaryTab:'📄 Summary',cardsTab:'🎴 Flashcards',quizTab:'✍️ Quiz',labTab:'🧪 Live Lab',know:'I know it ✅',review:'Review 🔄',tapFlip:'Tap the card to flip it',retry:'Retake quiz',yourScore:'Your score',great:'Excellent! You are exam-ready 🌟',good:'Very good! Review your mistakes and you will master it 💪',keepGoing:'Good start — review the summary and cards, then try again 📖',del:'Delete',confirmDel:'Delete this lesson permanently?',err:'Something went wrong, please try again.',guestNote:'You are not signed in — lessons are saved on this device only.',intro:'New: 🎓 Education — upload a lecture and get a summary, flashcards and a quiz',introBtn:'Try it now',hint:'💡 Try "Education": upload your lecture and get a summary, flashcards and a quiz automatically',docxFail:'Could not read the DOCX file — try saving it as PDF.',tooBig:'File too large (limit is about 10 MB).',cardsDone:'You finished all the cards! 🎉',finish:'Finish',next:'Next',streakWord:'day(s)'},
+fr:{title:'Mes cours',oldEdu:'🎬 Créateur de vidéos et diapositives',upload:'Téléverser un nouveau cours',orPaste:'ou coller du texte',analyze:'Analyser le cours',analyzing:'⏳ Analyse du cours en cours…',mySubjects:'📚 Mes matières',empty:'Aucune leçon — téléversez votre premier cours !',summaryTab:'📄 Résumé',cardsTab:'🎴 Cartes',quizTab:'✍️ Quiz',know:'Je sais ✅',review:'À revoir 🔄',tapFlip:'Touchez la carte pour la retourner',retry:'Refaire le quiz',yourScore:'Votre score',great:'Excellent ! Vous êtes prêt 🌟',good:'Très bien ! Revoyez vos erreurs 💪',keepGoing:'Bon début — relisez le résumé puis réessayez 📖',del:'Supprimer',confirmDel:'Supprimer cette leçon ?',err:'Une erreur est survenue.',guestNote:'Non connecté — leçons enregistrées sur cet appareil.',intro:'Nouveau : 🎓 Mes cours — résumé, cartes et quiz automatiques',introBtn:'Essayer',hint:'💡 Essayez « Mes cours » : résumé, cartes et quiz automatiques',next:'Suivant',finish:'Terminer'},
+hi:{title:'मेरे पाठ',oldEdu:'🎬 शैक्षिक वीडियो और स्लाइड निर्माता',upload:'नया लेक्चर अपलोड करें',orPaste:'या टेक्स्ट पेस्ट करें',analyze:'लेक्चर का विश्लेषण करें',analyzing:'⏳ लेक्चर का विश्लेषण हो रहा है…',mySubjects:'📚 मेरे विषय',empty:'अभी कोई पाठ नहीं — पहला लेक्चर अपलोड करें!',summaryTab:'📄 सारांश',cardsTab:'🎴 कार्ड',quizTab:'✍️ क्विज़',know:'आता है ✅',review:'दोहराना 🔄',tapFlip:'पलटने के लिए कार्ड पर टैप करें',retry:'क्विज़ दोबारा दें',yourScore:'आपका स्कोर',great:'शानदार! आप तैयार हैं 🌟',good:'बहुत अच्छा! गलतियाँ दोहराएँ 💪',keepGoing:'अच्छी शुरुआत — सारांश पढ़कर फिर कोशिश करें 📖',del:'हटाएँ',confirmDel:'यह पाठ हटाएँ?',err:'कुछ गलत हुआ, फिर कोशिश करें।',guestNote:'लॉगिन नहीं — पाठ इसी डिवाइस पर सहेजे जाते हैं।',intro:'नया: 🎓 मेरे पाठ — सारांश, कार्ड और क्विज़ अपने आप',introBtn:'आज़माएँ',hint:'💡 «मेरे पाठ» आज़माएँ: लेक्चर से सारांश, कार्ड और क्विज़',next:'आगे',finish:'समाप्त'},
+ur:{title:'میرے اسباق',oldEdu:'🎬 تعلیمی ویڈیو اور سلائیڈ بنانے والا',upload:'نیا لیکچر اپ لوڈ کریں',orPaste:'یا متن پیسٹ کریں',analyze:'لیکچر کا تجزیہ کریں',analyzing:'⏳ لیکچر کا تجزیہ ہو رہا ہے…',mySubjects:'📚 میرے مضامین',empty:'ابھی کوئی سبق نہیں — پہلا لیکچر اپ لوڈ کریں!',summaryTab:'📄 خلاصہ',cardsTab:'🎴 کارڈز',quizTab:'✍️ کوئز',know:'آتا ہے ✅',review:'دہرانا 🔄',tapFlip:'پلٹنے کے لیے کارڈ پر ٹیپ کریں',retry:'کوئز دوبارہ دیں',yourScore:'آپ کا اسکور',great:'زبردست! آپ تیار ہیں 🌟',good:'بہت خوب! غلطیاں دہرائیں 💪',keepGoing:'اچھی شروعات — خلاصہ پڑھ کر دوبارہ کوشش کریں 📖',del:'حذف کریں',confirmDel:'یہ سبق حذف کریں؟',err:'کچھ غلط ہوا، دوبارہ کوشش کریں۔',guestNote:'لاگ اِن نہیں — اسباق صرف اسی ڈیوائس پر محفوظ ہوتے ہیں۔',intro:'نیا: 🎓 میرے اسباق — خلاصہ، کارڈز اور کوئز خودکار',introBtn:'آزمائیں',hint:'💡 «میرے اسباق» آزمائیں: لیکچر سے خلاصہ، کارڈز اور کوئز',next:'اگلا',finish:'ختم'},
+bn:{title:'আমার পাঠ',oldEdu:'🎬 শিক্ষামূলক ভিডিও ও স্লাইড নির্মাতা',upload:'নতুন লেকচার আপলোড করুন',orPaste:'বা টেক্সট পেস্ট করুন',analyze:'লেকচার বিশ্লেষণ করুন',analyzing:'⏳ লেকচার বিশ্লেষণ চলছে…',mySubjects:'📚 আমার বিষয়',empty:'এখনও কোনো পাঠ নেই — প্রথম লেকচার আপলোড করুন!',summaryTab:'📄 সারাংশ',cardsTab:'🎴 কার্ড',quizTab:'✍️ কুইজ',know:'জানি ✅',review:'আবার 🔄',tapFlip:'উল্টাতে কার্ডে ট্যাপ করুন',retry:'আবার কুইজ দিন',yourScore:'আপনার স্কোর',great:'চমৎকার! আপনি প্রস্তুত 🌟',good:'খুব ভালো! ভুলগুলো দেখুন 💪',keepGoing:'ভালো শুরু — সারাংশ পড়ে আবার চেষ্টা করুন 📖',del:'মুছুন',confirmDel:'এই পাঠ মুছবেন?',err:'সমস্যা হয়েছে, আবার চেষ্টা করুন।',guestNote:'লগইন নেই — পাঠ এই ডিভাইসেই সংরক্ষিত।',intro:'নতুন: 🎓 আমার পাঠ — সারাংশ, কার্ড ও কুইজ স্বয়ংক্রিয়',introBtn:'চেষ্টা করুন',hint:'💡 «আমার পাঠ» দেখুন: লেকচার থেকে সারাংশ, কার্ড ও কুইজ',next:'পরবর্তী',finish:'শেষ'},
+ne:{title:'मेरा पाठहरू',oldEdu:'🎬 शैक्षिक भिडियो र स्लाइड निर्माता',upload:'नयाँ लेक्चर अपलोड गर्नुहोस्',orPaste:'वा टेक्स्ट टाँस्नुहोस्',analyze:'लेक्चर विश्लेषण गर्नुहोस्',analyzing:'⏳ लेक्चर विश्लेषण हुँदैछ…',mySubjects:'📚 मेरा विषयहरू',empty:'अहिले कुनै पाठ छैन — पहिलो लेक्चर अपलोड गर्नुहोस्!',summaryTab:'📄 सारांश',cardsTab:'🎴 कार्ड',quizTab:'✍️ क्विज',know:'थाहा छ ✅',review:'दोहोर्‍याउने 🔄',tapFlip:'पल्टाउन कार्डमा ट्याप गर्नुहोस्',retry:'क्विज फेरि दिनुहोस्',yourScore:'तपाईंको स्कोर',great:'उत्कृष्ट! तपाईं तयार हुनुहुन्छ 🌟',good:'धेरै राम्रो! गल्ती हेर्नुहोस् 💪',keepGoing:'राम्रो सुरुवात — सारांश पढेर फेरि प्रयास गर्नुहोस् 📖',del:'हटाउनुहोस्',confirmDel:'यो पाठ हटाउने?',err:'केही गडबड भयो, फेरि प्रयास गर्नुहोस्।',guestNote:'लगइन छैन — पाठ यही डिभाइसमा मात्र सुरक्षित।',intro:'नयाँ: 🎓 मेरा पाठहरू — सारांश, कार्ड र क्विज स्वतः',introBtn:'प्रयास गर्नुहोस्',hint:'💡 «मेरा पाठहरू» हेर्नुहोस्: लेक्चरबाट सारांश, कार्ड र क्विज',next:'अर्को',finish:'सकियो'},
+id:{title:'Pelajaranku',oldEdu:'🎬 Pembuat video & slide edukasi',upload:'Unggah kuliah baru',orPaste:'atau tempel teks',analyze:'Analisis kuliah',analyzing:'⏳ Menganalisis kuliah…',mySubjects:'📚 Mata pelajaranku',empty:'Belum ada pelajaran — unggah kuliah pertamamu!',summaryTab:'📄 Ringkasan',cardsTab:'🎴 Kartu',quizTab:'✍️ Kuis',know:'Sudah paham ✅',review:'Ulangi 🔄',tapFlip:'Ketuk kartu untuk membalik',retry:'Ulangi kuis',yourScore:'Skormu',great:'Luar biasa! Kamu siap ujian 🌟',good:'Bagus sekali! Tinjau kesalahanmu 💪',keepGoing:'Awal yang baik — baca ringkasan lalu coba lagi 📖',del:'Hapus',confirmDel:'Hapus pelajaran ini?',err:'Terjadi kesalahan, coba lagi.',guestNote:'Belum masuk — pelajaran disimpan di perangkat ini saja.',intro:'Baru: 🎓 Pelajaranku — ringkasan, kartu, dan kuis otomatis',introBtn:'Coba sekarang',hint:'💡 Coba "Pelajaranku": unggah kuliah, dapatkan ringkasan, kartu & kuis',next:'Berikutnya',finish:'Selesai'},
+fil:{title:'Aking Aralin',oldEdu:'🎬 Gumagawa ng pang-edukasyong video at slide',upload:'Mag-upload ng bagong lektura',orPaste:'o mag-paste ng teksto',analyze:'Suriin ang lektura',analyzing:'⏳ Sinusuri ang lektura…',mySubjects:'📚 Aking mga asignatura',empty:'Wala pang aralin — i-upload ang unang lektura!',summaryTab:'📄 Buod',cardsTab:'🎴 Cards',quizTab:'✍️ Pagsusulit',know:'Alam ko ✅',review:'Ulitin 🔄',tapFlip:'I-tap ang card para baligtarin',retry:'Ulitin ang pagsusulit',yourScore:'Iskor mo',great:'Mahusay! Handa ka na 🌟',good:'Napakahusay! Balikan ang mga mali 💪',keepGoing:'Magandang simula — basahin ang buod at subukan muli 📖',del:'Burahin',confirmDel:'Burahin ang araling ito?',err:'May naganap na error, subukan muli.',guestNote:'Hindi naka-login — dito lang sa device naka-save.',intro:'Bago: 🎓 Aking Aralin — buod, cards at pagsusulit nang awtomatiko',introBtn:'Subukan',hint:'💡 Subukan ang "Aking Aralin": buod, cards at quiz mula sa lektura',next:'Susunod',finish:'Tapos'},
+tr:{title:'Derslerim',oldEdu:'🎬 Eğitim videosu ve slayt oluşturucu',upload:'Yeni ders yükle',orPaste:'veya metin yapıştır',analyze:'Dersi analiz et',analyzing:'⏳ Ders analiz ediliyor…',mySubjects:'📚 Derslerim',empty:'Henüz ders yok — ilk dersini yükle!',summaryTab:'📄 Özet',cardsTab:'🎴 Kartlar',quizTab:'✍️ Sınav',know:'Biliyorum ✅',review:'Tekrar 🔄',tapFlip:'Çevirmek için karta dokun',retry:'Sınavı tekrarla',yourScore:'Puanın',great:'Mükemmel! Sınava hazırsın 🌟',good:'Çok iyi! Hatalarını gözden geçir 💪',keepGoing:'İyi başlangıç — özeti oku ve tekrar dene 📖',del:'Sil',confirmDel:'Bu ders silinsin mi?',err:'Bir hata oluştu, tekrar dene.',guestNote:'Giriş yapılmadı — dersler yalnızca bu cihazda saklanır.',intro:'Yeni: 🎓 Derslerim — otomatik özet, kart ve sınav',introBtn:'Şimdi dene',hint:'💡 "Derslerim"i dene: dersinden özet, kart ve sınav',next:'İleri',finish:'Bitir'},
+zh:{title:'我的课程',oldEdu:'🎬 教学视频与幻灯片制作',upload:'上传新讲义',orPaste:'或粘贴文本',analyze:'分析讲义',analyzing:'⏳ 正在分析讲义…',mySubjects:'📚 我的科目',empty:'还没有课程——上传第一份讲义吧！',summaryTab:'📄 摘要',cardsTab:'🎴 卡片',quizTab:'✍️ 测验',know:'我会了 ✅',review:'再复习 🔄',tapFlip:'点击卡片翻面',retry:'重新测验',yourScore:'你的得分',great:'太棒了！你已准备好考试 🌟',good:'很好！复习一下错题 💪',keepGoing:'不错的开始——先看摘要再试一次 📖',del:'删除',confirmDel:'确定删除该课程？',err:'出错了，请重试。',guestNote:'未登录——课程仅保存在本设备。',intro:'新功能：🎓 我的课程——自动生成摘要、卡片和测验',introBtn:'立即体验',hint:'💡 试试「我的课程」：上传讲义自动生成摘要、卡片和测验',next:'下一题',finish:'完成'},
+ru:{title:'Мои уроки',oldEdu:'🎬 Создание учебных видео и слайдов',upload:'Загрузить новую лекцию',orPaste:'или вставьте текст',analyze:'Анализировать лекцию',analyzing:'⏳ Анализируем лекцию…',mySubjects:'📚 Мои предметы',empty:'Пока нет уроков — загрузите первую лекцию!',summaryTab:'📄 Конспект',cardsTab:'🎴 Карточки',quizTab:'✍️ Тест',know:'Знаю ✅',review:'Повторить 🔄',tapFlip:'Нажмите на карточку, чтобы перевернуть',retry:'Пройти тест снова',yourScore:'Ваш результат',great:'Отлично! Вы готовы к экзамену 🌟',good:'Очень хорошо! Повторите ошибки 💪',keepGoing:'Хорошее начало — перечитайте конспект и попробуйте снова 📖',del:'Удалить',confirmDel:'Удалить этот урок?',err:'Произошла ошибка, попробуйте снова.',guestNote:'Вы не вошли — уроки хранятся только на этом устройстве.',intro:'Новое: 🎓 Мои уроки — конспект, карточки и тест автоматически',introBtn:'Попробовать',hint:'💡 Попробуйте «Мои уроки»: конспект, карточки и тест из лекции',next:'Далее',finish:'Готово'},
+es:{title:'Mis lecciones',oldEdu:'🎬 Creador de vídeos y diapositivas educativos',upload:'Subir una nueva clase',orPaste:'o pega el texto',analyze:'Analizar la clase',analyzing:'⏳ Analizando la clase…',mySubjects:'📚 Mis materias',empty:'Aún no hay lecciones — ¡sube tu primera clase!',summaryTab:'📄 Resumen',cardsTab:'🎴 Tarjetas',quizTab:'✍️ Examen',know:'Lo sé ✅',review:'Repasar 🔄',tapFlip:'Toca la tarjeta para girarla',retry:'Repetir examen',yourScore:'Tu puntuación',great:'¡Excelente! Estás listo 🌟',good:'¡Muy bien! Repasa tus errores 💪',keepGoing:'Buen comienzo — repasa el resumen e inténtalo de nuevo 📖',del:'Eliminar',confirmDel:'¿Eliminar esta lección?',err:'Ocurrió un error, inténtalo de nuevo.',guestNote:'Sin iniciar sesión — las lecciones se guardan solo en este dispositivo.',intro:'Nuevo: 🎓 Mis lecciones — resumen, tarjetas y examen automáticos',introBtn:'Pruébalo',hint:'💡 Prueba «Mis lecciones»: resumen, tarjetas y examen de tu clase',next:'Siguiente',finish:'Terminar'},
+ml:{title:'എന്റെ പാഠങ്ങൾ',oldEdu:'🎬 വിദ്യാഭ്യാസ വീഡിയോ, സ്ലൈഡ് നിർമ്മാതാവ്',upload:'പുതിയ ലക്ചർ അപ്‌ലോഡ് ചെയ്യുക',orPaste:'അല്ലെങ്കിൽ ടെക്സ്റ്റ് ഒട്ടിക്കുക',analyze:'ലക്ചർ വിശകലനം ചെയ്യുക',analyzing:'⏳ ലക്ചർ വിശകലനം ചെയ്യുന്നു…',mySubjects:'📚 എന്റെ വിഷയങ്ങൾ',empty:'ഇതുവരെ പാഠങ്ങളില്ല — ആദ്യ ലക്ചർ അപ്‌ലോഡ് ചെയ്യൂ!',summaryTab:'📄 സംഗ്രഹം',cardsTab:'🎴 കാർഡുകൾ',quizTab:'✍️ ക്വിസ്',know:'അറിയാം ✅',review:'വീണ്ടും 🔄',tapFlip:'മറിക്കാൻ കാർഡിൽ ടാപ്പ് ചെയ്യുക',retry:'ക്വിസ് വീണ്ടും',yourScore:'നിങ്ങളുടെ സ്കോർ',great:'മികച്ചത്! നിങ്ങൾ തയ്യാർ 🌟',good:'വളരെ നല്ലത്! തെറ്റുകൾ അവലോകനം ചെയ്യുക 💪',keepGoing:'നല്ല തുടക്കം — സംഗ്രഹം വായിച്ച് വീണ്ടും ശ്രമിക്കൂ 📖',del:'ഇല്ലാതാക്കുക',confirmDel:'ഈ പാഠം ഇല്ലാതാക്കണോ?',err:'പിശക് സംഭവിച്ചു, വീണ്ടും ശ്രമിക്കുക.',guestNote:'ലോഗിൻ ചെയ്തിട്ടില്ല — പാഠങ്ങൾ ഈ ഉപകരണത്തിൽ മാത്രം.',intro:'പുതിയത്: 🎓 എന്റെ പാഠങ്ങൾ — സംഗ്രഹം, കാർഡുകൾ, ക്വിസ്',introBtn:'ഇപ്പോൾ ശ്രമിക്കൂ',hint:'💡 «എന്റെ പാഠങ്ങൾ» ശ്രമിക്കൂ: ലക്ചറിൽ നിന്ന് സംഗ്രഹവും കാർഡുകളും ക്വിസും',next:'അടുത്തത്',finish:'പൂർത്തിയാക്കുക'}
 };
 /* v-curr-i18n: نموذج «درس من المنهج» بالـ12 لغة الإضافية */
 (function(){ var EX={
@@ -78,6 +78,9 @@ function eduL(ar, en){
   if(l === 'en') return en;
   var m = EDU_XL[ar];
   if(m && m[l]) return m[l];
+  /* v-edu-plus: نصوص الإضافات (edu-plus.js / edu-algo.js) بجدولها الخاصّ بالـ14 لغة */
+  var m2 = (typeof window !== 'undefined' && window.__EDU_XL2) ? window.__EDU_XL2[ar] : null;
+  if(m2 && m2[l]) return m2[l];
   var x = (typeof EDU_X !== 'undefined') ? EDU_X[l] : null;
   if(x && x[ar]) return x[ar];
   return en;
@@ -242,21 +245,76 @@ function saveProgress(id,fields){
   return api(p).then(function(j){ if(j&&j.streak) mergeServerStreak(j.streak); }).catch(function(){});
 }
 /* ---------- mini markdown renderer ---------- */
+/* v-edu-render (فحص التعليم ٢٣ سبتمبر): العارض كان يفهم العناوين والقوائم والخطّ العريض فقط —
+   المعادلات والجداول وصناديق الكود تظهر نصًّا خامًا، فدروس الرياضيّات والفيزياء والخوارزميّات
+   مكسورة. الآن: ```كود```، جداول |أ|ب|، اقتباس >، ومعادلات $…$ و$$…$$ و\(…\) و\[…\] تُرسم بلا
+   مكتبة (كسور مكدّسة، أسس، جذور، رموز يونانيّة ورياضيّة) واتّجاهها يسار-يمين. كلّ نصّ يُهرَّب أوّلًا. */
+var MATH_SYM={times:'×',cdot:'·',div:'÷',pm:'±',mp:'∓',leq:'≤',le:'≤',geq:'≥',ge:'≥',neq:'≠',ne:'≠',approx:'≈',equiv:'≡',infty:'∞',
+  pi:'π',alpha:'α',beta:'β',gamma:'γ',delta:'δ',Delta:'Δ',epsilon:'ε',theta:'θ',lambda:'λ',mu:'μ',sigma:'σ',Sigma:'Σ',phi:'φ',omega:'ω',Omega:'Ω',rho:'ρ',tau:'τ',
+  sum:'Σ',prod:'∏',int:'∫',partial:'∂',nabla:'∇',rightarrow:'→',to:'→',leftarrow:'←',Rightarrow:'⇒',Leftrightarrow:'⇔',in:'∈',notin:'∉',subset:'⊂',cup:'∪',cap:'∩',
+  forall:'∀',bmod:'mod',pmod:'mod',exists:'∃',angle:'∠',degree:'°',circ:'°',perp:'⊥',parallel:'∥',ldots:'…',cdots:'⋯',log:'log',ln:'ln',sin:'sin',cos:'cos',tan:'tan',lim:'lim',max:'max',min:'min'};
+function mathHtml(src){
+  var s=esc(src).replace(/\\left|\\right/g,'').replace(/\\[,;:! ]/g,' ').replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g,'$1');
+  for(var n=0;n<12;n++){
+    var t=s.replace(/\\[dt]?frac\{([^{}]*)\}\{([^{}]*)\}/g,'<span class="eduFrac"><span>$1</span><span>$2</span></span>')
+      .replace(/\\sqrt\{([^{}]*)\}/g,'√<span class="eduSqrt">$1</span>')
+      .replace(/\^\{([^{}]*)\}/g,'<sup>$1</sup>').replace(/_\{([^{}]*)\}/g,'<sub>$1</sub>');
+    if(t===s) break; s=t;
+  }
+  s=s.replace(/\^([A-Za-z0-9+\-−])/g,'<sup>$1</sup>').replace(/_([A-Za-z0-9])/g,'<sub>$1</sub>')
+    .replace(/\\([A-Za-z]+)/g,function(m,w){ return MATH_SYM.hasOwnProperty(w)?MATH_SYM[w]:w; })
+    .replace(/[{}]/g,'');
+  return s;
+}
 function md(src){
-  var lines=String(src||'').split(/\r?\n/); var out=[],list=null;
+  var lines=String(src||'').split(/\r?\n/); var out=[],list=null,k=0;
   function closeList(){ if(list){ out.push(list==='ul'?'</ul>':'</ol>'); list=null; } }
-  function inline(s){ return esc(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/\*([^*]+)\*/g,'<i>$1</i>').replace(/`([^`]+)`/g,'<code>$1</code>'); }
-  lines.forEach(function(ln){
-    var t=ln.trim();
-    if(!t){ closeList(); return; }
+  function inline(s){
+    var keep=[];
+    function hold(h){ keep.push(h); return '\u0000'+(keep.length-1)+'\u0000'; }
+    s=String(s).replace(/`([^`]+)`/g,function(m,c){ return hold('<code dir="ltr">'+esc(c)+'</code>'); })
+      .replace(/\$\$([^$]+)\$\$|\\\((.+?)\\\)|\$([^\s$](?:[^$\n]*?[^\s$])?)\$/g,function(m,a,b,c){ return hold('<span class="eduMath" dir="ltr">'+mathHtml(a||b||c)+'</span>'); });
+    return esc(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/\*([^*\s][^*]*)\*/g,'<i>$1</i>')
+      .replace(/\u0000(\d+)\u0000/g,function(m,n){ return keep[+n]; });
+  }
+  function cells(t){ return t.replace(/^\|/,'').replace(/\|$/,'').split('|').map(function(c){ return c.trim(); }); }
+  while(k<lines.length){
+    var ln=lines[k], t=ln.trim();
+    var fence=t.match(/^```\s*([\w+#-]*)/);
+    if(fence){
+      closeList(); var code=[]; k++;
+      while(k<lines.length && !/^\s*```/.test(lines[k])){ code.push(lines[k]); k++; }
+      k++;
+      out.push('<pre class="eduCode" dir="ltr">'+(fence[1]?'<span class="eduCodeLang">'+esc(fence[1])+'</span>':'')+'<code>'+esc(code.join('\n'))+'</code></pre>');
+      continue;
+    }
+    var blockMath=t.match(/^\$\$(.*)$/)||t.match(/^\\\[(.*)$/);
+    if(blockMath){
+      closeList(); var endRe=/^\$\$/.test(t)?/\$\$\s*$/:/\\\]\s*$/; var buf=blockMath[1];
+      if(!endRe.test(buf)){ k++; while(k<lines.length && !endRe.test(lines[k])){ buf+=' '+lines[k].trim(); k++; } if(k<lines.length) buf+=' '+lines[k].trim(); }
+      k++;
+      out.push('<div class="eduMathBlock" dir="ltr">'+mathHtml(buf.replace(endRe,''))+'</div>');
+      continue;
+    }
+    if(/^\|.*\|$/.test(t) && k+1<lines.length && /^\|?\s*:?-{2,}/.test(lines[k+1].trim())){
+      closeList(); var head=cells(t); k+=2; var rows=[];
+      while(k<lines.length && /^\|.*\|$/.test(lines[k].trim())){ rows.push(cells(lines[k].trim())); k++; }
+      out.push('<div class="eduTblWrap"><table class="eduTbl"><thead><tr>'+head.map(function(c){ return '<th>'+inline(c)+'</th>'; }).join('')+'</tr></thead><tbody>'
+        +rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+inline(c)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></div>');
+      continue;
+    }
+    k++;
+    if(!t){ closeList(); continue; }
     var h=t.match(/^(#{1,6})\s+(.*)$/);
-    if(h){ closeList(); var lv=Math.min(h[1].length+2,5); out.push('<h'+lv+'>'+inline(h[2])+'</h'+lv+'>'); return; }
+    if(h){ closeList(); var lv=Math.min(h[1].length+2,5); out.push('<h'+lv+'>'+inline(h[2])+'</h'+lv+'>'); continue; }
+    var bq=t.match(/^>\s?(.*)$/);
+    if(bq){ closeList(); out.push('<blockquote>'+inline(bq[1])+'</blockquote>'); continue; }
     var ul=t.match(/^[-*•]\s+(.*)$/);
-    if(ul){ if(list!=='ul'){ closeList(); out.push('<ul>'); list='ul'; } out.push('<li>'+inline(ul[1])+'</li>'); return; }
+    if(ul){ if(list!=='ul'){ closeList(); out.push('<ul>'); list='ul'; } out.push('<li>'+inline(ul[1])+'</li>'); continue; }
     var ol=t.match(/^\d+[.)]\s+(.*)$/);
-    if(ol){ if(list!=='ol'){ closeList(); out.push('<ol>'); list='ol'; } out.push('<li>'+inline(ol[1])+'</li>'); return; }
+    if(ol){ if(list!=='ol'){ closeList(); out.push('<ol>'); list='ol'; } out.push('<li>'+inline(ol[1])+'</li>'); continue; }
     closeList(); out.push('<p>'+inline(t)+'</p>');
-  });
+  }
   closeList(); return out.join('');
 }
 /* ---------- view engine ---------- */
@@ -289,6 +347,7 @@ function showHome(){
    +'<textarea id="eduPasteTxt" placeholder="'+esc(T('pastePh'))+'"></textarea>'
    +'<button class="eduPrimary" id="eduAnalyzeTxtBtn">'+esc(T('analyze'))+'</button></div>'
    +'<button class="eduUploadBtn" id="eduCurricBtn" style="margin-top:10px;"><span style="font-size:20px;">📚</span><span>'+esc(eduL('درس من المنهج — اختر البلد والصف والمادة','Lesson from curriculum — pick country, grade & subject'))+'</span></button>'
+   +'<div id="eduPlusHome"></div>' /* v-edu-plus: المسار الجاهز · حلّ مسألة · مراجعة اليوم · تقدّمي */
    +(getToken()?'':'<div class="eduNote">'+esc(T('guestNote'))+'</div>')
    +eduExamLangControl()
    +'<div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
@@ -318,6 +377,7 @@ function showHome(){
   var oldRow=document.getElementById('eduOldEduRow');
   if(oldRow) oldRow.onclick=function(){ closeModal(); if(typeof window.openOmranEduModal==='function') window.openOmranEduModal(); };
   listLessons().then(function(r){ renderSubjects(r.lessons||[]); }).catch(function(){ renderSubjects([]); });
+  if(window.__eduPlus&&window.__eduPlus.home){ try{ window.__eduPlus.home(document.getElementById('eduPlusHome')); }catch(e){ __swallow(e,'edu:plus-home'); } }
 }
 function renderSubjects(lessons){
   var wrap=document.getElementById('eduSubjWrap'); if(!wrap) return;
@@ -383,12 +443,17 @@ function showLesson(lesson,backFn){
     +'<button class="eduTab" data-tab="cards">'+esc(T('cardsTab'))+' ('+(lesson.flashcards||[]).length+')</button>'
     +'<button class="eduTab" data-tab="quiz">'+esc(T('quizTab'))+' ('+(lesson.quiz||[]).length+')</button>'
     +'<button class="eduTab" data-tab="lab">'+esc(T('labTab'))+'</button>'
+    +(window.__eduPlus?'<button class="eduTab" data-tab="tutor">'+esc(eduL('💬 اسأل المعلّم','💬 Ask the tutor'))+'</button>':'')
     +'</div><div id="eduTabPane"></div>';
   body.innerHTML=html;
   var pane=document.getElementById('eduTabPane');
   function activate(tab){
     body.querySelectorAll('.eduTab').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-tab')===tab); });
-    if(tab==='sum') pane.innerHTML='<div class="eduSummary">'+md(lesson.summary)+'</div>';
+    if(tab==='sum'){
+      pane.innerHTML='<div class="eduSummary">'+md(lesson.summary)+'</div>';
+      if(window.__eduPlus&&window.__eduPlus.listenBtn) window.__eduPlus.listenBtn(pane,lesson.summary);
+    }
+    else if(tab==='tutor'&&window.__eduPlus) window.__eduPlus.tutor(pane,{id:lesson.id,title:lesson.title,summary:lesson.summary});
     else if(tab==='cards') renderCards(pane,lesson);
     else if(tab==='lab') renderLab(pane,lesson);
     else renderQuiz(pane,lesson);
@@ -440,8 +505,10 @@ function renderCards(pane,lesson){
       +'<div class="eduCardBtns"><button class="eduKnowBtn" id="eduKnow">'+esc(T('know'))+'</button>'
       +'<button class="eduReviewBtn" id="eduRev">'+esc(T('review'))+'</button></div>';
     document.getElementById('eduCardEl').onclick=function(){ flipped=!flipped; this.classList.toggle('flipped',flipped); };
-    document.getElementById('eduKnow').onclick=function(){ known++; i++; flipped=false; draw(); };
-    document.getElementById('eduRev').onclick=function(){ cards.push(cards[i]); i++; flipped=false; draw(); };
+    /* v-edu-srs: كلّ حكم «أعرفه/أراجعه» يجدول البطاقة للمراجعة المتباعدة (edu-plus.js) */
+    function srs(ok){ try{ if(window.__eduPlus&&window.__eduPlus.srsMark) window.__eduPlus.srsMark(lesson,c,ok); }catch(e){ __swallow(e,'edu:srs'); } }
+    document.getElementById('eduKnow').onclick=function(){ srs(true); known++; i++; flipped=false; draw(); };
+    document.getElementById('eduRev').onclick=function(){ srs(false); cards.push(cards[i]); i++; flipped=false; draw(); };
   }
   draw();
 }
@@ -542,7 +609,7 @@ function renderQuiz(pane,lesson){
       if(roundRight>=4&&idx<2) level=LEVELS[idx+1];
       else if(roundRight<3&&idx>0) level=LEVELS[idx-1];
       var remaining=LEVELS.some(function(l){ return byLevel[l].length>used[l]; });
-      if(!remaining||stats.basic.total+stats.mid.total+stats.advanced.total>=15){ finish(); return; }
+      if(!remaining){ finish(); return; } /* v-edu-plus: بلا سقف ١٥ — كلّ أسئلة الدرس متاحة */
       if(!nextRound()) return;
     }
     var q=round[i];
@@ -602,6 +669,8 @@ function renderLab(pane,lesson){
       .then(function(j){
         if(!j||!j.html) throw new Error(TL('وصلت تجربة فارغة — أعد المحاولة.','Empty lab returned — try again.'));
         lesson.__labHtml=j.html;
+        /* v-edu-plus: الضيف بلا خزن على الخادم — تُحفظ التجربة مع الدرس محلّيًّا فلا تُولَّد (وتُحتسب) كلّ فتحة */
+        if(!getToken()){ try{ var arr=localLessons(); arr.forEach(function(x){ if(x.id===lesson.id) x.__labHtml=j.html; }); saveLocalLessons(arr); }catch(e){ __swallow(e,'save:edu-lab'); } }
         showFrame(j.html);
       })
       .catch(function(e){
@@ -871,6 +940,13 @@ function handleDocx(file){
 /* v306: the dedicated menu button was merged into the single «التعليم» button
    (btnOmranEdu), whose handler calls window.eduHubOpen(). */
 window.eduHubOpen=openModal;
+/* v-edu-plus: واجهة داخليّة لملفّي الإضافات (edu-plus.js، edu-algo.js) — نفس المحرّك والتنقّل والتخزين */
+window.__eduCore={
+  body:function(){ return body; }, T:T, eduL:eduL, esc:esc, md:md, api:api, appLang:appLang, isRTL:isRTL,
+  setBack:setBack, setNav:function(a){ navStack=a; }, showHome:showHome, showLesson:showLesson,
+  listLessons:listLessons, getLesson:getLesson, getToken:getToken, nativeLang:eduNativeLang, bumpStreak:bumpStreak,
+  fileToBase64:fileToBase64, localStreak:localStreak
+};
 /* first-open announcement */
 try{
   if(!localStorage.getItem(LS_INTRO)){
