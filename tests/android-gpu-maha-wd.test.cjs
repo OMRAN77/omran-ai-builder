@@ -37,5 +37,17 @@ test('٣. رقيب الإقلاع لا يعيد التحميل ومكالمة م
   assert.equal(run(Object.assign({}, hidden, { active: true })), undefined, 'مكالمة جارية ⇒ خروج');
   assert.equal(run(Object.assign({}, hidden, { starting: true })), undefined, 'مكالمة تبدأ ⇒ خروج');
   assert.equal(run(hidden), 'reload-path', 'بلا مكالمة يكمل الرقيب فحصه كما كان');
-  assert.match(html, /\/js\/selfdiag\.js\?v=hw-twa-3/);
+  assert.match(html, /\/js\/selfdiag\.js\?v=hw-twa-4/);
+});
+
+test('٤. v-mem-probe: جهاز المالك وحده يرسل أرقام الذاكرة لسجلّ «فحص النظام» بعد ٢٠ث ودقيقتين وخمس', () => {
+  const a = sd.indexOf('(function memProbe(){');
+  assert.ok(a > 0 && a > sd.indexOf('function report(msg'), 'بعد تعريف المُبلِّغ');
+  const src = sd.slice(a, sd.indexOf('})();', a) + 5);
+  assert.match(src, /if\(!ownerNow\(\)\) return;/);
+  assert.match(src, /=== 'omran'/);
+  assert.match(src, /\[\[20000, '٢٠ث'\], \[120000, 'دقيقتان'\], \[300000, '٥ دقائق'\]\]/);
+  assert.match(src, /report\('v-mem-probe ' \+ tag/);
+  assert.match(src, /window\.__omrS && window\.__omrS\.projects/);
+  assert.doesNotMatch(src, /getContext\(/, 'بلا WebGL/لوحة — لا حِمل جديد على معالج الرسوم');
 });

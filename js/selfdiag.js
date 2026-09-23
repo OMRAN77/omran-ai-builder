@@ -201,6 +201,45 @@
     report((r && r.message) || String(r), '', 0, 0, r && r.stack);
   });
 
+  /* v-mem-probe (المالك ٢٣ سبتمبر «بعده في تشويش» — لقطات من أندرويد كبير: الصور خضراء مشوّشة، والأيقونات لا تُرسم
+     حتّى في محادثة فارغة، ونصوص الإعدادات مخدوشة): عطل ذاكرة رسم لا يُعاد إنتاجه في المحاكي (بلا معالج رسوم).
+     بدل التخمين: جهاز المالك وحده يرسل أرقامه الحقيقيّة إلى سجلّ الأخطاء الذي تعرضه «فحص النظام» — ذاكرة JS، ذاكرة
+     الجهاز، الشاشة، الصور المفكوكة (الظاهرة والكلّ)، صور المحادثات في الذاكرة، عدد العناصر. بعد ٢٠ث ودقيقتين وخمس. */
+  (function memProbe(){
+    function ownerNow(){
+      try{ var u = (window.authGet && window.authGet('aiapp_username')) || localStorage.getItem('aiapp_username') || ''; return String(u).trim().toLowerCase() === 'omran'; }
+      catch(e){ return false; }
+    }
+    function sample(tag){
+      try{
+        if(!ownerNow()) return;
+        var MB = function(n){ return Math.round(n / 1048576); };
+        var pm = performance && performance.memory;
+        var heap = pm ? (MB(pm.usedJSHeapSize) + '/' + MB(pm.jsHeapSizeLimit) + 'MB') : '؟';
+        var vis = 0, visMB = 0, all = 0, allMB = 0;
+        var imgs = document.images;
+        for(var i = 0; i < imgs.length; i++){
+          var im = imgs[i]; if(!im.naturalWidth) continue;
+          var px = im.naturalWidth * im.naturalHeight * 4;
+          all++; allMB += px;
+          if(im.offsetParent){ vis++; visMB += px; }
+        }
+        var st = 0, stN = 0;
+        try{
+          (window.__omrS && window.__omrS.projects || []).forEach(function(p){ (p && p.messages || []).forEach(function(m){
+            (m && m.attachments || []).concat(m && m.apiImages || []).forEach(function(a){ var L = (a && typeof a.dataUrl === 'string') ? a.dataUrl.length : 0; if(L > 20000){ st += L; stN++; } });
+          }); });
+        }catch(e){ /* guard-ok: الحالة لم تجهز بعد */ }
+        report('v-mem-probe ' + tag + ': heap ' + heap + ' · جهاز ' + (navigator.deviceMemory || '؟') + 'GB · شاشة '
+          + window.innerWidth + 'x' + window.innerHeight + '@' + (Math.round((window.devicePixelRatio || 1) * 100) / 100)
+          + ' · صور ظاهرة ' + vis + ' (' + MB(visMB) + 'MB) كلّ ' + all + ' (' + MB(allMB) + 'MB)'
+          + ' · صور بالذاكرة ' + stN + ' (' + MB(st) + 'MB نصّ) · عناصر ' + document.getElementsByTagName('*').length
+          + ' · ' + (document.documentElement.classList.contains('omAndroid') ? 'omAndroid' : 'غير أندرويد'), 'selfdiag.js', 0, 0, '');
+      }catch(e){ /* guard-ok: المسبار ترف تشخيصيّ */ }
+    }
+    [[20000, '٢٠ث'], [120000, 'دقيقتان'], [300000, '٥ دقائق']].forEach(function(x){ setTimeout(function(){ sample(x[1]); }, x[0]); });
+  })();
+
   // v-diag-nav: وضع تشخيص حي للتبويبات — يعمل فقط عند فتح الرابط بـ ?diag=1
   // يعرض: البنية، بيئة التشغيل، ماذا يغطي كل تبويب، وعدّادًا حيًّا للمسات
   // واصلة فعلًا لكل زر. لقطة شاشة واحدة تحسم مكان العطل.
