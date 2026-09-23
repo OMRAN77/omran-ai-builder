@@ -477,9 +477,15 @@ function __vaultAssign(projects, now){
 }
 /* نسخة الحفظ: الصورة المخزونة تُستبدل بمعرّفها فقط */
 function __vaultReplacer(k, v){
-  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return '';
+  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && (v.length > VAULT_MIN || v === '[media]')) return '';
   if(k === 'vaultPending') return undefined;
   return v;
+}
+/* v-vault-restore (المالك ٢٣ سبتمبر «الصور تمسح من المحادثه»): الصورة المخزونة قد تحمل في الذاكرة بديلًا متدهورًا —
+   «[media]» أو المصغّرة من المرآة المنحّفة/السيرفر، أو فراغًا بعد purgeOldImages — والأصل سليم في المخزن. المعرّف لا
+   يُعيَّن إلّا لصورة فوق VAULT_MIN، فأيّ dataUrl أقصر مع معرّف = بديل يجب استبداله بالأصل. */
+function __vaultDegraded(a){
+  return !!(a && a.vaultId && !a.vaultPending && (typeof a.dataUrl !== 'string' || a.dataUrl.length <= VAULT_MIN));
 }
 function __collectVaultIds(projects){
   const ids = new Set();
@@ -537,10 +543,10 @@ function idbImgGetMany(ids){
 }
 async function hydrateProjectImages(p){
   const need = [];
-  __vaultEach(p ? [p] : [], a => { if(a.vaultId && !a.dataUrl && !a.purged) need.push(a); });
+  __vaultEach(p ? [p] : [], a => { if(__vaultDegraded(a)) need.push(a); });
   if(!need.length) return 0;
   /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة */
-  try{ const got = await idbImgGetMany(need.map(a => a.vaultId)); need.forEach(a => { if(got[a.vaultId]) a.dataUrl = got[a.vaultId]; }); }catch(e){ __swallow(e, 'vault:get'); }
+  try{ const got = await idbImgGetMany(need.map(a => a.vaultId)); need.forEach(a => { if(got[a.vaultId]){ a.dataUrl = got[a.vaultId]; delete a.purged; } }); }catch(e){ __swallow(e, 'vault:get'); }
   return need.length;
 }
 window.__hydrateProjectImages = hydrateProjectImages;
@@ -1357,6 +1363,8 @@ function omranRenderOptions(host, blocks){
 /* v-long-reply-off (طلب المالك ١٨ سبتمبر): الردّ الطويل يُعرض كاملًا في المحادثة بلا قصّ ولا
    أزرار — أُزيل القناع وزرّا القراءة والطيّ ولوحة القراءة التي كانت هنا (v-long-reply). */
 function renderMessages(keepScroll){
+  /* v-vault-restore: كلّ فتح لمحادثة يستعيد أصول صورها المتدهورة (المرفقات وapiImages التي يعدّل عليها المحرّر) من المخزن */
+  try{ const __hp = getCurrent(); if(__hp) hydrateProjectImages(__hp).catch(e => __swallow(e, 'vault:open')); }catch(e){ __swallow(e, 'vault:open#sync'); }
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
   // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
@@ -1711,7 +1719,7 @@ function renderMessages(keepScroll){
           dl.style.textDecoration = 'none';
           dl.style.alignSelf = 'center';
           wrap.appendChild(dl);
-        } else if(a.isImage && a.purged){
+        } else if(a.isImage && a.purged && !a.vaultId){
           const chip = document.createElement('div');
           chip.className = 'file-chip';
           chip.textContent = '🗑️ ' + t('imagePurgedNote');
@@ -1719,8 +1727,8 @@ function renderMessages(keepScroll){
         } else if(a.isImage){
           const img = document.createElement('img');
           /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
-          if(!a.dataUrl && a.vaultId){ idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; img.src = d; } }).catch(e => __swallow(e, 'vault:render')); }
-          img.src = a.dataUrl;
+          if(__vaultDegraded(a)){ idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; delete a.purged; img.src = d; } }).catch(e => __swallow(e, 'vault:render')); }
+          img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
           img.title = a.name;
           img.style.cursor = 'pointer';
           // v531: صور المساعد مولَّدة ⇒ تُعرض كبيرة. مرفقات المستخدم تبقى رقاقات صغيرة.
