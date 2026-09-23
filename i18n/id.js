@@ -1088,3 +1088,6 @@ Object.assign(I18N["id"], {"imgUndoPrev": "Dikembalikan ke versi sebelumnya 👆
 
 /* v-owner-page: صفحة المالك في الإعدادات */
 Object.assign(I18N["id"], {"ownerSectionTitle": "👑 Halaman pemilik"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["id"], {"imgUnchanged": "⚠️ Edit tidak diterapkan: gambar kembali tanpa perubahan, jadi tidak saya tampilkan dan tidak dihitung ke akunmu. Jelaskan persis apa yang harus berubah atau ucapkan dengan cara lain."});

@@ -1079,3 +1079,6 @@ Object.assign(I18N["zh"], {"imgUndoPrev": "已恢复到上一个版本 👆 要�
 
 /* v-owner-page: صفحة المالك في الإعدادات */
 Object.assign(I18N["zh"], {"ownerSectionTitle": "👑 所有者页面"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["zh"], {"imgUnchanged": "⚠️ 编辑未生效：图片原样返回，所以没有显示，也不计费。请说明具体要改什么，或换一种说法。"});

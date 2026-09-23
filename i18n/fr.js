@@ -1041,3 +1041,6 @@ Object.assign(I18N["fr"], {"imgUndoPrev": "Retour à la version précédente �
 
 /* v-owner-page: صفحة المالك في الإعدادات */
 Object.assign(I18N["fr"], {"ownerSectionTitle": "👑 Page du propriétaire"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["fr"], {"imgUnchanged": "⚠️ La modification n'a pas été appliquée : l'image est revenue inchangée, je ne l'ai donc pas affichée et rien ne vous a été décompté. Précisez exactement ce qui doit changer ou reformulez."});

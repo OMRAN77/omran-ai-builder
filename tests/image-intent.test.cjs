@@ -155,12 +155,15 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(judgeSrc, /prefer the bolder, more complete design over the timid one/);
   assert.match(judgeSrc, /\(1\) actually does what the request asks — the requested style, idea or change must be unmistakably applied/, 'الحكم الإبداعي: تنفيذ الطلب أولًا ثم الجمال');
   /* v-flash-budget: flash-latest يفكّر افتراضيًا والتفكير يلتهم السقف الصغير — لا سقف 4 ولا 90 في أي نداء مساعد */
-  for (const f of ['api/_lib/maha-image.js', 'api/_lib/image-judge.js', 'api/_lib/image-intent-llm.js', 'api/_lib/image-edit-guard.js']) {
+  for (const f of ['api/_lib/image-verify.js', 'api/_lib/image-judge.js', 'api/_lib/image-intent-llm.js', 'api/_lib/image-edit-guard.js']) {
     const src = fs.readFileSync(f, 'utf8');
     const caps = (src.match(/maxOutputTokens: (\d+)/g) || []).map(x => parseInt(x.split(': ')[1], 10));
     assert.ok(caps.length > 0 && caps.every(c => c >= 64), f + ': ' + caps.join(','));
   }
-  assert.match(maha, /maxOutputTokens: 400, thinkingConfig: \{ thinkingBudget: 0 \} \} \}\)/);
+  /* v-img-honest (٢٣ سبتمبر): التفسير صار حكمًا في image-verify — تفكير قصير مقصود (بلا تفكير صدّق الطلب فكتب «تمّ تغيير جميع الوجوه»
+     تحت الصورة نفسها) وسقف 3000 يترك للنصّ مكانه بعد التفكير (درس v-flash-nothink: التفكير كان يلتهم سقف 400 فيعود فارغًا). */
+  assert.ok(!/maxOutputTokens/.test(maha), 'لا نداء نصّيّ في maha-image — التقرير في image-verify');
+  assert.match(fs.readFileSync('api/_lib/image-verify.js', 'utf8'), /maxOutputTokens: 3000, responseMimeType: 'application\/json', thinkingConfig: \{ thinkingBudget: 768 \}/);
   /* v-flash-nothink: كل نداء flash مساعد بلا تفكير — وإلا التهم التفكيرُ السقفَ: الحكم «A» دائمًا (أفضل-من-٢ بلا فائدة)،
      وفحص «هل نُفِّذ الطلب؟» null (بلا إعادة محاولة)، والمصنّف null، والحارس فارغ */
   for (const f of ['api/_lib/image-judge.js', 'api/_lib/request-check.js', 'api/_lib/image-intent-llm.js', 'api/_lib/image-edit-guard.js']) {
@@ -201,8 +204,8 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| /);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
   assert.ok(!/__duoWouldRun|duoEnabled|duoP\b/.test(maha), 'v-lanes: لا محرّك موازٍ');
-  // v-text-gpt-oneshot: مسار النصّ ضربة واحدة بلا مزدوج
-  assert.match(maha, /if \(__textRoute\) \{\n      const denseB64 = await openaiRescueImage\(\);\n      if \(denseB64\) \{\n        await sendImg\(denseB64, 'image\/png', 'openai'\);\n        return;/);
+  // v-text-gpt-oneshot: مسار النصّ ضربة واحدة بلا مزدوج (v-img-honest: يُقاس، وبرو مرّة فقط إن لم يُنفّذ GPT)
+  assert.match(maha, /if \(__textRoute && !__engineMix\) \{\n      const denseB64 = await openaiRescueImage\(\);\n      if \(denseB64\) \{\n        await deliver\(\{ b64: denseB64, mime: 'image\/png', engine: 'openai' \}, proCandidate\);/);
   /* v-img-engine-tag-owner (متابعة، لقطة المالك «هذا نانو مش gpt»): مسار النصّ أراد GPT وفشل بصمت إلى نانو —
      السبب الآن يُلحق باسم المحرّك الحرفيّ (المالك وحده يراه) بدل الاختفاء وراء «nano» بلا تفسير. */
   assert.match(maha, /__textRouteFailNote = \(lastRescueErr \|\| 'unknown'\)\.slice\(0, 120\);/);

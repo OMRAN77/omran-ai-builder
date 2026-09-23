@@ -1091,3 +1091,6 @@ Object.assign(I18N["fil"], {"imgUndoPrev": "Ibinalik sa naunang bersyon 👆 Ano
 
 /* v-owner-page: صفحة المالك في الإعدادات */
 Object.assign(I18N["fil"], {"ownerSectionTitle": "👑 Pahina ng may-ari"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["fil"], {"imgUnchanged": "⚠️ Hindi nailapat ang edit: bumalik ang larawan nang walang pagbabago, kaya hindi ko ito ipinakita at hindi ito ibinawas sa iyo. Sabihin kung ano mismo ang dapat magbago o ibahin ang pagkakasabi."});

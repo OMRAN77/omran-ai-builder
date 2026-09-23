@@ -117,9 +117,10 @@ test('٥. الإجراء upscale: ٤٠١ بلا جلسة، ٥ نقاط لغير 
 
 test('٦. التوصيل: مخرج maha-image يرقّي دون 2K إلّا الخام، وMax على 4K، والمسار والسعر مسجّلان', () => {
   const mi = read('api/_lib/maha-image.js');
-  assert.match(mi, /async function sendImg\(b64, mime, engine\) \{\n\s+\/\* v-img-upscale[\s\S]*?if \(!__pureRaw && String\(process\.env\.IMAGE_UPSCALE \|\| ''\)\.toLowerCase\(\) !== 'off'\) \{\n\s+try \{ __up = await require\('\.\/upscale\.js'\)\.upscaleImage\(b64, mime \|\| 'image\/png'\); \}/);
+  assert.match(mi, /async function sendImg\(b64, mime, engine, report, verdict\) \{\n\s+\/\* v-img-upscale[\s\S]*?if \(!__pureRaw && String\(process\.env\.IMAGE_UPSCALE \|\| ''\)\.toLowerCase\(\) !== 'off'\) \{\n\s+try \{ __up = await require\('\.\/upscale\.js'\)\.upscaleImage\(b64, mime \|\| 'image\/png'\); \}/);
   assert.match(mi, /if \(__up && __up\.ok\) \{ b64 = __up\.b64; mime = __up\.mime; engine = engine \+ '\+up' \+ __up\.scale; \}/);
-  assert.ok(mi.indexOf("const cap = prayerPlan ? '' : await imageCaption(") > mi.indexOf("engine = engine + '+up'"), 'الترقية قبل التفسير والإرسال'); // v-img-report: التقرير للتعديل أيضًا
+  // v-img-honest: القياس والتقرير على ناتج المحرّك قبل الترقية (settleCandidates)، والترقية قبل الإرسال كما كانت
+  assert.ok(mi.indexOf("caption: (!prayerPlan && report) || undefined,") > mi.indexOf("engine = engine + '+up'"), 'الترقية قبل الإرسال');
   assert.match(mi, /__maxPlan4K = !!\(__tp && __tp\.tier === 'sub' && String\(__tp\.plan \|\| ''\)\.toLowerCase\(\) === 'max'\);/);
   assert.match(mi, /const __want4K = __optWant4K \|\| \/[^\n]*\/i\.test\(intentText \+ ' ' \+ String\(prompt \|\| ''\)\) \|\| __maxPlan4K;/);
   assert.match(mi, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/, 'الاختبار القائم في image-intent يبقى صادقًا');

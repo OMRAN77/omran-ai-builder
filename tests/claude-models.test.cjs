@@ -117,5 +117,5 @@ test('٧. الافتراضيّ الاقتصاديّ: Haiku 4.5 في الخادم
   const picker = read('js/app-29-claude-model.js');
   assert.ok(picker.includes("'': ['الافتراضيّ: Haiku 4.5"), 'التلميح بلا اختيار');
   assert.ok(/'claude-haiku-4-5': \['[^']*هو الافتراضيّ/.test(picker) && !/'claude-sonnet-5': \['[^']*الافتراضيّ/.test(picker), 'وصف الافتراضيّ انتقل لـHaiku');
-  assert.ok(read('index.html').includes('js/modes.js?v=m230923b'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m230923c'), 'وسم كاش modes رُفع');
 });
