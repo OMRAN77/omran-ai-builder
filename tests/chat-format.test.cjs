@@ -102,3 +102,13 @@ test('٧. «اسأل الكل» بسرعة المزوّد نفسه ومنسّق 
   // المسار العاديّ ما زال بلا وتيرة مصطنعة (v-chat-fast)
   assert.ok(a.includes('__live.shown = __live.target.length;'));
 });
+
+test('٨. ستّة خطوط قراءة حديثة في «نوع الخطّ»، تُحمَّل من Google Fonts عند اختيارها', () => {
+  const f = read('js/app-19-fonts.js');
+  for (const g of ['Cairo:wght@400;600;700', 'Almarai:wght@400;700', 'Readex+Pro:wght@400;600;700', 'Noto+Kufi+Arabic:wght@400;600;700', 'Vazirmatn:wght@400;600;700', 'El+Messiri:wght@400;600;700']) {
+    assert.ok(f.includes("google:'" + g + "'"), g);
+  }
+  const ids = [...f.matchAll(/\{id:'([a-z0-9]+)'/g)].map((m) => m[1]);
+  assert.equal(new Set(ids).size, ids.length, 'لا معرّف مكرّر');
+  assert.equal(ids.length, 16);
+});

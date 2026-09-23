@@ -30937,6 +30937,14 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
        أوضح خطّ عربيّ للقراءة الطويلة (فتحات حروف واسعة، أرقام متناسقة مع اللاتينيّ). تجوال باقٍ خيارًا. */
     {id:'default', ar:'الافتراضي', en:'Default', family:"'IBM Plex Sans Arabic'", google:'', line:1.8},
     {id:'tajawal', ar:'تجوال', en:'Tajawal', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-fonts-more (المالك ٢٣ سبتمبر «فيه خطوط أفضل من اللي عندي؟ زيد عليها»): ستّة خطوط قراءة حديثة
+       من Google Fonts، تُحمَّل عند اختيارها فقط كبقيّة الخيارات. */
+    {id:'cairo', ar:'القاهرة', en:'Cairo', family:"'Cairo'", google:'Cairo:wght@400;600;700', line:1.75},
+    {id:'almarai', ar:'المراعي', en:'Almarai', family:"'Almarai'", google:'Almarai:wght@400;700', line:1.8},
+    {id:'readex', ar:'ريدكس', en:'Readex Pro', family:"'Readex Pro'", google:'Readex+Pro:wght@400;600;700', line:1.75},
+    {id:'notokufi', ar:'كوفي نوتو', en:'Noto Kufi', family:"'Noto Kufi Arabic'", google:'Noto+Kufi+Arabic:wght@400;600;700', line:1.85},
+    {id:'vazir', ar:'وزير', en:'Vazirmatn', family:"'Vazirmatn'", google:'Vazirmatn:wght@400;600;700', line:1.8},
+    {id:'messiri', ar:'المسيري', en:'El Messiri', family:"'El Messiri'", google:'El+Messiri:wght@400;600;700', line:1.8},
     {id:'kufi', ar:'الكوفي', en:'Kufi', family:"'Reem Kufi'", google:'Reem+Kufi:wght@400..700', line:1.85},
     {id:'naskh', ar:'النسخ', en:'Naskh', family:"'Amiri'", google:'Amiri:ital,wght@0,400;0,700;1,400', line:1.95},
     {id:'naskh2', ar:'نسخ نوتو', en:'Noto Naskh', family:"'Noto Naskh Arabic'", google:'Noto+Naskh+Arabic:wght@400..700', line:1.9},
