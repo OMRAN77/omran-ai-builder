@@ -60,9 +60,16 @@
       if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب');
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
       if(missing.length) problems.push('مفاتيح ناقصة: ' + missing.join(', '));
-      if(d.clientErrorsCount > 0){
-        const top = (d.clientErrors || []).slice(0,3).map(e => '• ' + String(e.message || '').slice(0,90)).join('\n');
-        problems.push('أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount + '\n' + top);
+      /* v-err-build: أخطاء النسخة الحاليّة فقط — ما أُصلح في نسخة سابقة لا يُنذر بعد
+         نشر الإصلاح. ومع كلّ خطأ ملفّه وسطره، فاللقطة وحدها تكفي للتشخيص. */
+      const __build = (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '';
+      const __live = (d.clientErrors || []).filter(e => (typeof window.__omranErrLive === 'function') ? window.__omranErrLive(e, __build, Date.now()) : true);
+      if(__live.length > 0){
+        const top = __live.slice(0,3).map(e => {
+          const src = String(e.source || '').split('/').pop().split('?')[0].slice(0, 40);
+          return '• ' + String(e.message || '').slice(0,90) + (src ? ' — ' + src + (e.line ? ':' + e.line : '') : '') + (e.count > 1 ? ' (x' + e.count + ')' : '');
+        }).join('\n');
+        problems.push('أخطاء مسجلة من المستخدمين: ' + __live.length + '\n' + top);
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');

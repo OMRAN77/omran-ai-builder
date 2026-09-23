@@ -151,6 +151,20 @@
     }, true);
   }catch(e){ /* guard-ok */ }
 })();
+/* v-err-build (تنبيه المالك ٢٣ سبتمبر بأخطاء منها «Unexpected token» من نسخة أُصلحت):
+   سجلّ الأخطاء لا ينتهي — خطأ النسخة المكسورة يبقى ينذر المالك بعد إصلاحه. كلّ بلاغ
+   يحمل بصمة الحزمة التي وقع فيها، وتنبيه المالك يعرض أخطاء النسخة الحاليّة فقط
+   (والقديمة بلا بصمة ما دامت آخر مرّة رُئيت فيها خلال ٢٤ ساعة). */
+window.__omranBuild = function(){
+  try{ return ((document.querySelector('script[src*="app.bundle.js"]') || {}).src || '').match(/v=([0-9a-f]+)/)[1] || ''; }
+  catch(e){ return ''; /* guard-ok: بلا بصمة يُعامَل البلاغ بعمره */ }
+};
+window.__omranErrLive = function(e, build, now){
+  if(!e) return false;
+  if(e.build) return !build || e.build === build;
+  var t = Date.parse(e.lastSeen || e.firstSeen || '');
+  return !isNaN(t) && (now - t) < 24 * 3600 * 1000;
+};
 (function(){
   var reported = {};
   function report(msg, src, line, col, stack){
@@ -165,7 +179,7 @@
         body: JSON.stringify({
           message: msg, source: String(src || ''), line: line || 0, col: col || 0,
           stack: String(stack || '').slice(0, 1500),
-          url: location.pathname, ua: navigator.userAgent
+          url: location.pathname, ua: navigator.userAgent, build: window.__omranBuild()
         })
       }).catch(function(){}); // guard-ok: مُبلِّغ الأخطاء لا يُبلّغ عن فشل إبلاغه — وإلّا صار الإبلاغ سببًا لإبلاغ جديد (حلقة لا تنتهي)
     }catch(e){ __swallow(e, "misc:index#6"); }
