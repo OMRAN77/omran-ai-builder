@@ -545,6 +545,11 @@
     background:var(--panel2); color:var(--text); font-size: var(--fs-3); font-family:inherit;
   }
   dialog input:focus, dialog select:focus{outline:none; border-color:var(--accent);}
+  /* v-dialog-ring (لقطة المالك من الآيفون ٢٤ سبتمبر: «في الإعدادات احذف الخط الأزرق»): عند فتح درج
+     الإعدادات يأخذ <dialog> نفسه التركيز، فيرسم المتصفّح حلقة التركيز الافتراضيّة حوله (outline:auto —
+     زرقاء في الآيفون). الدرج ملاصق لأعلى الشاشة ويمينها وأسفلها فلا يظهر من الحلقة إلّا ضلعها الأيسر:
+     خطّ أزرق بطول الشاشة. الحاوية نفسها ليست زرًّا يحتاج حلقة؛ عناصر التحكّم داخلها تبقى بحلقاتها. */
+  dialog:focus, dialog:focus-visible{outline:none;}
   dialog select option{ background:#000000; color:#f1f1f4; }
   select option{ background:#000000; color:#f1f1f4; }
   .dlg-actions{
