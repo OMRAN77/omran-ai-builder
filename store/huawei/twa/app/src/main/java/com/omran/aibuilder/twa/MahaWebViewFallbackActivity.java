@@ -408,6 +408,16 @@ public class MahaWebViewFallbackActivity extends Activity {
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
+        /* v-no-force-dark (المالك ٢٤ سبتمبر): التغميق الخوارزميّ في WebView يعيد تلوين صفحة
+         * لا تعلن color-scheme، فيطال SVG السطريّ والصور والنصّ — وهذا شكل «الأيقونة الممتلئة»
+         * و«الصورة الخضراء» و«النصّ المخدوش» في فيديو المالك. الصفحة صارت تعلنها (v-color-scheme)،
+         * وهذا إيقاف صريح من جهة الغلاف أيضًا: التطبيق داكن أصلًا فلا يحتاج تغميقًا من أحد.
+         * setForceDark متاحة من API 29 ومهملة من 33 (حيث الإيقاف هو الافتراض لأنّ targetSdk 36)،
+         * لكنّ أغلفة المصنّعين لا تلتزم دائمًا بالافتراض — فالإعلان الصريح تأمين بلا كلفة. */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try { webSettings.setForceDark(WebSettings.FORCE_DARK_OFF); }
+            catch (Throwable t) { Log.w(TAG, "setForceDark unavailable", t); }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             webSettings.setMediaPlaybackRequiresUserGesture(false);
         }

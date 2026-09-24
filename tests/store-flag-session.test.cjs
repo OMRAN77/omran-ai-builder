@@ -24,7 +24,7 @@ test('selfdiag.js: العلم في sessionStorage، والقديم في localSto
 });
 
 test('index.html: وسم selfdiag رُفع فلا يبقى متصفّح على النسخة الملتصقة', () => {
-  assert.ok(read('index.html').includes('/js/selfdiag.js?v=hw-twa-5'));
+  assert.ok(read('index.html').includes('/js/selfdiag.js?v=hw-twa-6'));
 });
 
 test('tokens.css: v-store-safe-revert — الأسهم لم تعد تُخفى تحت store-safe (أمر عمران ٢٢ سبتمبر)', () => {
