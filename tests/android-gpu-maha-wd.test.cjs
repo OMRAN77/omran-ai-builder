@@ -37,7 +37,7 @@ test('٣. رقيب الإقلاع لا يعيد التحميل ومكالمة م
   assert.equal(run(Object.assign({}, hidden, { active: true })), undefined, 'مكالمة جارية ⇒ خروج');
   assert.equal(run(Object.assign({}, hidden, { starting: true })), undefined, 'مكالمة تبدأ ⇒ خروج');
   assert.equal(run(hidden), 'reload-path', 'بلا مكالمة يكمل الرقيب فحصه كما كان');
-  assert.match(html, /\/js\/selfdiag\.js\?v=hw-twa-4/);
+  assert.match(html, /\/js\/selfdiag\.js\?v=hw-twa-5/);
 });
 
 test('٤. v-mem-probe: جهاز المالك وحده يرسل أرقام الذاكرة لسجلّ «فحص النظام» بعد ٢٠ث ودقيقتين وخمس', () => {

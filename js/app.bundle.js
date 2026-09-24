@@ -10861,13 +10861,22 @@ async function postWithConfirm(url, payload){
         info.appendChild(sb);
       }
       card.appendChild(wrap); card.appendChild(info);
-      card.onclick = function(){ sheet.style.display = 'none'; if(cfg.onPick) cfg.onPick(it.v); };
+      card.onclick = function(){ shut(); if(cfg.onPick) cfg.onPick(it.v); };
       grid.appendChild(card);
     });
     sheet.style.display = 'flex';
     var c = el('pickerSheetClose');
-    if(c) c.onclick = function(){ sheet.style.display = 'none'; };
+    if(c) c.onclick = shut;
   } };
+  /* v-picker-release (المالك ٢٤ سبتمبر، قياس «فحص النظام» من جهازه: ٣٣ صورة مفكوكة و«ظاهرة ١»
+     — أي ٣٢ صورة في حاويات مخفيّة): الإغلاق كان `display:none` وحده، فتبقى بطاقات المعرض كلّها
+     وصورها مفكوكة في الذاكرة إلى أن يُفتح معرض آخر. المعرض يُبنى من الصفر في كلّ فتحة
+     (`grid.innerHTML = ''` أوّل open) فإفراغه عند الإغلاق لا يفقد شيئًا ولا يؤخّر فتحة قادمة. */
+  function shut(){
+    var sheet = el('pickerSheet'), grid = el('pickerSheetGrid');
+    if(sheet) sheet.style.display = 'none';
+    if(grid) grid.innerHTML = '';
+  }
   /* بطاقة مصغّرة موحّدة «عرض الكل ›» — get() ترجع {img,name,sub}،
      وopenCfg() ترجع إعدادات open. ترجع {el,refresh}. */
   window.omranPicker.trigger = function(get, openCfg){
