@@ -97,12 +97,15 @@ function colEdge(img, x, ya, yb) {
 const EDGE_MIN = 14;
 /* لون خلفيّة اللوحة: اللون الأكثر تكرارًا بين بكسلات الصورة المسطّحة (بلا نسيج) — الفراغ بين البطاقات وجسمها. لا يعتمد على
    مربّعات النموذج (حلقة حولها تقع داخل الصورة إن صغّرها). */
-function backgroundColor(img) {
+function backgroundColor(img, region) {
   const bins = new Map();
-  const step = Math.max(1, Math.floor(Math.sqrt(img.w * img.h / 60000)));
+  /* region = مساحة اللوحة وحدها (مراجعة: لقطة جوّال طويلة لونُ صفحتها يغلب فلا يبلغ جسم البطاقة ٢٠٪ منه) */
+  const r = region || { x0: 0, y0: 0, x1: img.w, y1: img.h };
+  const X0 = Math.max(1, r.x0), Y0 = Math.max(1, r.y0), X1 = Math.min(img.w - 1, r.x1), Y1 = Math.min(img.h - 1, r.y1);
+  const step = Math.max(1, Math.floor(Math.sqrt((X1 - X0) * (Y1 - Y0) / 60000)));
   const d = img.data;
-  for (let y = 1; y < img.h - 1; y += step) {
-    for (let x = 1; x < img.w - 1; x += step) {
+  for (let y = Y0; y < Y1; y += step) {
+    for (let x = X0; x < X1; x += step) {
       const i = (y * img.w + x) * 4;
       const g = Math.abs(lum(d, i) - lum(d, i + 4)) + Math.abs(lum(d, i) - lum(d, i + img.w * 4));
       if (g > 4) continue;
@@ -112,24 +115,33 @@ function backgroundColor(img) {
       bins.set(k, b);
     }
   }
-  let top = null;
-  bins.forEach(function (b) { if (!top || b.n > top.n) top = b; });
-  return top && top.n >= 20 ? [Math.round(top.r / top.n), Math.round(top.g / top.n), Math.round(top.b / top.n)] : null;
+  /* لونان: الصفحة وجسم البطاقة قد يختلفان (أسود وفحميّ، أبيض ورماديّ فاتح) — الثاني إن بلغ ٢٠٪ من الأوّل */
+  const top = Array.from(bins.values()).sort(function (a, b) { return b.n - a.n; });
+  if (!top.length || top[0].n < 20) return null;
+  const col = function (b) { return [Math.round(b.r / b.n), Math.round(b.g / b.n), Math.round(b.b / b.n)]; };
+  const out = [col(top[0])];
+  if (top[1] && top[1].n >= top[0].n * 0.2) out.push(col(top[1]));
+  return out;
 }
-/* متوسّط بُعد لون صفّ/عمود (على امتداد الضلع) عن لون الخلفيّة */
-function rowBgDist(img, y, xa, xb, bg) {
-  if (y < 0 || y >= img.h) return 999;
-  let s = 0, n = 0;
+function bgDist(d, i, bg) {
+  let m = 999;
+  for (let k = 0; k < bg.length; k++) { const c = bg[k]; const v = Math.abs(d[i] - c[0]) + Math.abs(d[i + 1] - c[1]) + Math.abs(d[i + 2] - c[2]); if (v < m) m = v; }
+  return m;
+}
+/* متوسّط بُعد لون صفّ/عمود (على امتداد الضلع) عن لون الخلفيّة؛ frac = نسبة بكسلاته القريبة منها (سطر كتابة أغلبه خلفيّة) */
+function rowBgDist(img, y, xa, xb, bg, frac) {
+  if (y < 0 || y >= img.h) return frac ? 1 : 999;
+  let s = 0, n = 0, k = 0;
   const step = Math.max(1, Math.floor((xb - xa) / 80));
-  for (let x = xa; x < xb; x += step) { const i = (y * img.w + x) * 4; s += Math.abs(img.data[i] - bg[0]) + Math.abs(img.data[i + 1] - bg[1]) + Math.abs(img.data[i + 2] - bg[2]); n++; }
-  return n ? s / n : 999;
+  for (let x = xa; x < xb; x += step) { const v = bgDist(img.data, (y * img.w + x) * 4, bg); s += v; if (v <= BG_NEAR) k++; n++; }
+  return frac ? (n ? k / n : 1) : (n ? s / n : 999);
 }
-function colBgDist(img, x, ya, yb, bg) {
-  if (x < 0 || x >= img.w) return 999;
-  let s = 0, n = 0;
+function colBgDist(img, x, ya, yb, bg, frac) {
+  if (x < 0 || x >= img.w) return frac ? 1 : 999;
+  let s = 0, n = 0, k = 0;
   const step = Math.max(1, Math.floor((yb - ya) / 80));
-  for (let y = ya; y < yb; y += step) { const i = (y * img.w + x) * 4; s += Math.abs(img.data[i] - bg[0]) + Math.abs(img.data[i + 1] - bg[1]) + Math.abs(img.data[i + 2] - bg[2]); n++; }
-  return n ? s / n : 999;
+  for (let y = ya; y < yb; y += step) { const v = bgDist(img.data, (y * img.w + x) * 4, bg); s += v; if (v <= BG_NEAR) k++; n++; }
+  return frac ? (n ? k / n : 1) : (n ? s / n : 999);
 }
 const BG_NEAR = 40;
 /* كلّ ضلع يُزاح لأفضل حافّة في نافذة صغيرة حوله: حافّة قويّة خارجها مباشرةً (٣ صفوف/أعمدة) بلون خلفيّة اللوحة — لا صورة
@@ -137,29 +149,34 @@ const BG_NEAR = 40;
    بطاقة مقصوصة بطرفها فيلتصق به. */
 function snapBox(img, box, bg) {
   const bw = box.x1 - box.x0, bh = box.y1 - box.y0;
-  const wy = Math.max(4, Math.round(img.h * 0.025)), wx = Math.max(4, Math.round(img.w * 0.025));
+  /* النافذة من مقاس البطاقة لا الصورة (مراجعة: لقطة جوّال كاملة ٢٠٤٨ طولًا = نافذة ٥١ بكسل تقفز لعنوان البطاقة التي فوقها) */
+  const wy = Math.max(4, Math.min(Math.round(img.h * 0.025), Math.round(bh * 0.1))), wx = Math.max(4, Math.min(Math.round(img.w * 0.025), Math.round(bw * 0.1)));
   const xa = Math.max(0, box.x0 + Math.round(bw * 0.15)), xb = Math.min(img.w, box.x1 - Math.round(bw * 0.15));
   const ya = Math.max(0, box.y0 + Math.round(bh * 0.15)), yb = Math.min(img.h, box.y1 - Math.round(bh * 0.15));
   /* side: -1 = حدّ البداية (الخارج قبله)، +1 = حدّ النهاية (الخارج بعده، والقيمة حصريّة) */
-  const best = function (v0, win, max, edge, dist, side) {
+  const best = function (v0, win, max, edge, dist, frac, side, atEdge) {
     let good = null, near = null;
     for (let v = Math.max(1, v0 - win); v <= Math.min(max - 1, v0 + win); v++) {
       const e = edge(v);
       if (e < EDGE_MIN) continue;
       if (bg) {
         const out = side < 0 ? [v - 2, v - 3, v - 4] : [v + 1, v + 2, v + 3]; /* بعد صفّ الانتقال (ضباب JPEG) */
-        if (out.every(function (o) { return dist(o) <= BG_NEAR; }) && (!good || e > good.e)) good = { v: v, e: e };
+        /* والداخل صورة لا خلفيّة: لا حدّ جسم البطاقة مع الصفحة، ولا سطر عنوان (أغلب بكسلاته خلفيّة بين الحروف) */
+        const inn = side < 0 ? [v + 1, v + 2] : [v - 2, v - 3];
+        if (out.every(function (o) { return dist(o) <= BG_NEAR; }) && inn.every(function (o) { return frac(o) < 0.5; }) && (!good || e > good.e)) good = { v: v, e: e };
       }
       if (!near || Math.abs(v - v0) < Math.abs(near.v - v0)) near = { v: v, e: e };
     }
-    return good ? good.v : (near ? near.v : v0);
+    /* مراجعة: بلا حافّة خارجها خلفيّة = طرف الصورة إن كان قريبًا (بطاقة مقصوصة)، وإلّا قيمة النموذج — «أقرب حافّة» كانت سطر
+       العنوان تحت صورة بثوب أسود، والتصويت يتبع ترتيب النموذج. وطرف الصورة لا يسبق حافّة حقيقيّة (هامش الصفحة لا يُطلى). */
+    return good ? good.v : (atEdge != null ? atEdge : (near && !bg ? near.v : v0));
   };
-  const rE = function (y) { return rowEdge(img, y, xa, xb); }, rD = function (y) { return rowBgDist(img, y, xa, xb, bg); };
-  const cE = function (x) { return colEdge(img, x, ya, yb); }, cD = function (x) { return colBgDist(img, x, ya, yb, bg); };
-  const y0 = box.y0 <= wy ? 0 : best(box.y0, wy, img.h, rE, rD, -1);
-  const y1 = box.y1 >= img.h - wy ? img.h : best(box.y1, wy, img.h, rE, rD, 1);
-  const x0 = box.x0 <= wx ? 0 : best(box.x0, wx, img.w, cE, cD, -1);
-  const x1 = box.x1 >= img.w - wx ? img.w : best(box.x1, wx, img.w, cE, cD, 1);
+  const rE = function (y) { return rowEdge(img, y, xa, xb); }, rD = function (y) { return rowBgDist(img, y, xa, xb, bg); }, rF = function (y) { return rowBgDist(img, y, xa, xb, bg, true); };
+  const cE = function (x) { return colEdge(img, x, ya, yb); }, cD = function (x) { return colBgDist(img, x, ya, yb, bg); }, cF = function (x) { return colBgDist(img, x, ya, yb, bg, true); };
+  const y0 = best(box.y0, wy, img.h, rE, rD, rF, -1, box.y0 <= wy ? 0 : null);
+  const y1 = best(box.y1, wy, img.h, rE, rD, rF, 1, box.y1 >= img.h - wy ? img.h : null);
+  const x0 = best(box.x0, wx, img.w, cE, cD, cF, -1, box.x0 <= wx ? 0 : null);
+  const x1 = best(box.x1, wx, img.w, cE, cD, cF, 1, box.x1 >= img.w - wx ? img.w : null);
   if (x1 - x0 < bw * 0.7 || y1 - y0 < bh * 0.7) return Object.assign({}, box); /* ضبط شاذّ = نثق بالنموذج */
   return { x0: x0, y0: y0, x1: x1, y1: y1 };
 }
@@ -205,11 +222,16 @@ function cornerGuard(img, b) {
   const d = img.data;
   const r = Math.max(2, Math.min(28, Math.round(Math.min(b.x1 - b.x0, b.y1 - b.y0) * 0.1)));
   const corners = [[b.x0, b.y0, -1, -1], [b.x1 - 1, b.y0, 1, -1], [b.x0, b.y1 - 1, -1, 1], [b.x1 - 1, b.y1 - 1, 1, 1]];
+  const px = function (x, y) { const i = (y * img.w + x) * 4; return [d[i], d[i + 1], d[i + 2]]; };
+  const near = function (p, q) { return Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]) <= 40; };
   return { r: r, bg: corners.map(function (c) {
     const ox = c[0] + 2 * c[2], oy = c[1] + 2 * c[3];
     if (ox < 0 || oy < 0 || ox >= img.w || oy >= img.h) return null;
-    const i = (oy * img.w + ox) * 4;
-    return [d[i], d[i + 1], d[i + 2]];
+    const out = px(ox, oy);
+    /* مستديرة فعلًا (مراجعة: زاوية مربّعة بثوب أسود كانت تُبقي بكسلات قديمة): بكسل الزاوية نفسه بلون الخلفيّة، والضلعان بعد r ليسا كذلك */
+    const ex = c[0] - (r + 1) * c[2], ey = c[1] - (r + 1) * c[3];
+    if (!near(px(c[0], c[1]), out) || near(px(ex, c[1]), out) || near(px(c[0], ey), out)) return null;
+    return out;
   }) };
 }
 
@@ -309,6 +331,7 @@ const PERSONAS = {
   couple: ['a young Gulf Arab couple', 'a Levantine couple in their thirties', 'a North African couple in their late twenties', 'a South Asian couple in their early thirties'],
   group: ['a different family of the same size and ages', 'a different group of the same size and ages, clearly new people', 'new people of the same number and ages'],
 };
+const VARIANTS = ['a noticeably older look and a different hairstyle', 'a rounder face and a different skin tone', 'glasses and a different smile', 'a slimmer face and lighter eyes', 'a different ethnicity and a wider jaw'];
 /* بذرة ثابتة من العناوين: الطلب نفسه يعطي التوزيع نفسه (اختبار)، ولوحة أخرى توزيعًا آخر */
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function assignPersonas(cards, seedText) {
@@ -317,27 +340,31 @@ function assignPersonas(cards, seedText) {
   return cards.map(function (c) {
     const pool = PERSONAS[c.subject] || PERSONAS.group;
     const k = used[c.subject] || 0; used[c.subject] = k + 1;
-    return pool[((seed % pool.length) + k) % pool.length]; /* متتالية من نقطة البذرة = لا تكرار حتّى يفرغ المخزون */
+    const base = pool[((seed % pool.length) + k) % pool.length]; /* متتالية من نقطة البذرة = لا تكرار حتّى يفرغ المخزون */
+    const round = Math.floor(k / pool.length);
+    return round ? base + ', with ' + VARIANTS[(round - 1 + k) % VARIANTS.length] + ' — clearly not the same person as any other card' : base;
   });
 }
 
 /* ---------------- أوامر البطاقة والحكم ---------------- */
 
-function cardPrompt(kind, card, persona) {
+function cardPrompt(kind, card, persona, request) {
   const where = card.title ? ' from a card titled "' + card.title + '"' : '';
   const theme = card.scene ? ' (' + card.scene + ')' : '';
+  /* مراجعة: كلمات المالك («لوجوه خليجية»، «خلهم كلهم رجال») تسبق الوصف المقترح حين يتعارضان */
+  const req = request ? 'The user\'s own request, which overrides the suggested description below wherever they conflict: "' + String(request).slice(0, 300) + '".\n' : '';
   if (kind === 'renew') {
-    return 'Create a brand-new photo' + where + theme + '. Show ' + persona + ' in a fresh composition that clearly fits the SAME theme: keep the theme\'s key elements exactly (place, occasion, outfit type and any head covering) — only the person, pose and scene details are new. ' +
+    return req + 'Create a brand-new photo' + where + theme + '. Show ' + persona + ' in a fresh composition that clearly fits the SAME theme: keep the theme\'s key elements exactly (place, occasion, outfit type and any head covering) — only the person, pose and scene details are new. ' +
       'It must look clearly different from the attached photo. Photorealistic, natural light, same aspect ratio as the attached photo. No text, letters, logos, borders or frames. Return the photo only.';
   }
-  return 'This is one photo' + where + theme + '. Replace the person in it with a completely different, new person: ' + persona + '. ' +
+  return req + 'This is one photo' + where + theme + '. Replace the person in it with a completely different, new person: ' + persona + '. ' +
     'Keep everything else as it is: the same setting and theme, framing, pose type, clothing style (including any head covering), props, lighting, colours and photographic style. ' +
     'The new person must clearly be someone else — different face, features and hair — natural and photorealistic, with the same age group. No text, letters, logos, borders or frames. Return the photo only, same aspect ratio.';
 }
 
-function judgeParts(kind, card, orig, cands) {
+function judgeParts(kind, card, orig, cands, request) {
   const letters = ['A', 'B'];
-  const parts = [{ text: 'Card: "' + (card.title || '') + '" — ' + (card.scene || '') + '. The task was: ' + (kind === 'renew' ? 'a NEW photo for the same theme, with a new person.' : 'replace the person with a clearly DIFFERENT new person, keeping the scene.') + '\nORIGINAL photo:' },
+  const parts = [{ text: 'Card: "' + (card.title || '') + '" — ' + (card.scene || '') + '. The task was: ' + (kind === 'renew' ? 'a NEW photo for the same theme, with a new person.' : 'replace the person with a clearly DIFFERENT new person, keeping the scene.') + (request ? ' The user asked, verbatim: "' + String(request).slice(0, 300) + '" — a candidate that contradicts it (wrong gender, look or origin asked for) does not keep the theme.' : '') + '\nORIGINAL photo:' },
     { inlineData: { mimeType: orig.mime, data: orig.b64 } }];
   cands.forEach(function (c, i) { parts.push({ text: 'CANDIDATE ' + letters[i] + ':' }); parts.push({ inlineData: { mimeType: c.mime, data: c.b64 } }); });
   parts.push({ text: 'For each candidate answer honestly from what you SEE: "new_person" (true only if it is clearly a different person from the ORIGINAL — not the same face), "theme" (true if it keeps the card theme' + (kind === 'renew' ? '' : ' and scene') + '), "quality" 0-10 (photorealistic, natural face and hands, no artifacts, no text). ' +
@@ -360,7 +387,7 @@ async function judgeCard(o) {
   try {
     const r = await (o.fetchFn || fetch)('https://generativelanguage.googleapis.com/v1beta/models/' + DETECT_MODEL + ':generateContent?key=' + o.apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(o.timeoutMs || 20000),
-      body: JSON.stringify({ contents: [{ parts: judgeParts(o.kind, o.card, o.orig, o.cands) }], generationConfig: { temperature: 0.1, maxOutputTokens: 1500, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 256 } } }),
+      body: JSON.stringify({ contents: [{ parts: judgeParts(o.kind, o.card, o.orig, o.cands, o.request) }], generationConfig: { temperature: 0.1, maxOutputTokens: 1500, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 256 } } }),
     });
     if (!r.ok) return null;
     const d = await r.json().catch(function () { return null; });
@@ -370,12 +397,15 @@ async function judgeCard(o) {
 }
 
 /* ---------------- هل الطلب لتبديل كلّ الأشخاص أو صور جديدة للبطاقات؟ ---------------- */
-const RENEW_RE = /(?:غي[ّ]?ر|بد[ّ]?ل|استبدل|حط|ابي|أبي|ابغى|أبغى)\s*(?:لي\s*)?(?:ال)?صور(?![ةه])|صور\s*(?:ثاني[ةه]|جديد[ةه]|مختلف[ةه]|غير(?:ها)?)|بصور\s*(?:ثاني[ةه]|جديد[ةه]|مختلف[ةه]|غيرها)|\b(?:different|new|other)\s+(?:photos|pictures|images)\b/i;
+/* مراجعة: «غيّر الصور لكرتون / مكان بعض / والكتابة…» تعديل آخر لا صور جديدة — الفعل مع «الصور» وحده يُقبل فقط آخرَ الرسالة */
+const RENEW_RE = /(?:غي[ّ]?ر|بد[ّ]?ل|استبدل)\s*(?:لي\s*)?(?:ال)?صور(?![ةهت])\s*(?:كلها|كله|جميعها)?\s*[.!؟?]?\s*$|صور\s*(?:ثاني[ةه]|جديد[ةه]|مختلف[ةه]|غيرها)|بصور\s*(?:ثاني[ةه]|جديد[ةه]|مختلف[ةه]|غيرها)|\b(?:different|new|other)\s+(?:photos|pictures|images)\b/i;
 /* «غيّرهم كلّهم / الباقي / كمّلهم» متابعةً لطلب تبديل = تبديل (لقطة المالك: «غيرهم كلهم» بعد «تمّ تغيير ثلاث شخصيات») */
 const ALL_FOLLOW_RE = /^\s*(?:(?:غي[ّ]?ر|بد[ّ]?ل)(?:هم|هن)?\s*)?(?:كل(?:هم|هن)|الباقي|البقي[ةه]|باقي\s*(?:الوجوه|الأشخاص|الناس|البطاقات)|الكل|كمل(?:هم|هن)?)\s*[.!]?\s*$/;
-/* f: { personSwap (تبديل للكلّ لا لشخص بعينه), reimagine, history:[{text}] } → 'swap' | 'renew' | '' */
+/* f: { personSwap (تبديل للكلّ لا لشخص بعينه), reimagine, other (أسلوب/ترقية/كتابة/تعديل واسع — ليس لهذا المسار), history:[{text}] }
+   → 'swap' | 'renew' | '' */
 function cardsKind(text, f) {
   const o = f || {};
+  if (o.other) return '';
   const { isPersonSwapRequest } = require('./image-prompt');
   const prevSwap = (o.history || []).some(function (h) { return h && isPersonSwapRequest(String(h.text || '')); });
   if (o.personSwap || (prevSwap && ALL_FOLLOW_RE.test(String(text || '')))) return 'swap';
@@ -407,7 +437,9 @@ async function runCards(o) {
   const det = o.detect ? await o.detect(img, vis) : await detectCards({ apiKey: o.apiKey, img: img, vis: vis, fetchFn: o.fetchFn });
   const cards0 = (det && det.cards) || [];
   if (cards0.length < 2) return { ok: false, reason: 'not_cards' + (det && det.reason ? ':' + det.reason : '') };
-  const bg = backgroundColor(img);
+  const ext = cards0.reduce(function (m, c) { return { x0: Math.min(m.x0, c.box.x0), y0: Math.min(m.y0, c.box.y0), x1: Math.max(m.x1, c.box.x1), y1: Math.max(m.y1, c.box.y1) }; }, { x0: img.w, y0: img.h, x1: 0, y1: 0 });
+  const px = Math.round((ext.x1 - ext.x0) * 0.08), py = Math.round((ext.y1 - ext.y0) * 0.08);
+  const bg = backgroundColor(img, { x0: ext.x0 - px, y0: ext.y0 - py, x1: ext.x1 + px, y1: ext.y1 + py });
   const boxes = alignGrid(cards0.map(function (c) { return snapBox(img, c.box, bg); }));
   const personas = assignPersonas(cards0, o.request);
   const cards = cards0.map(function (c, i) { return Object.assign({}, c, { box: boxes[i], persona: personas[i] }); });
@@ -417,10 +449,10 @@ async function runCards(o) {
   const results = await Promise.all(cards.map(async function (c) {
     const tile = cropRGBA(img, c.box);
     const crop = { b64: encodePng(tile), mime: 'image/png' };
-    const prompt = cardPrompt(o.kind, c, c.persona);
+    const prompt = cardPrompt(o.kind, c, c.persona, o.request);
     const reserve = o.reserveMs == null ? 30000 : o.reserveMs, minCall = o.minCallMs == null ? 15000 : o.minCallMs, grace = o.graceMs == null ? 3000 : o.graceMs;
     const budget = function () { return Math.max(0, left() - reserve); }; /* يبقى بعده وقت للحكم والتركيب */
-    const tried = [];
+    const tried = [], why = [];
     const call = async function (name) {
       const fn = o.engines[name];
       if (!fn || budget() < minCall) return null;
@@ -429,10 +461,12 @@ async function runCards(o) {
         const b = budget();
         const r = await withTimeout(fn(prompt, crop, b), b + grace); /* المحرّك لا يتجاوز موعد اللوحة مهما أعاد المحاولة */
         const dec = r && r.b64 ? decodeImage(r.b64) : null;
-        if (!dec) return null;
+        if (!dec) { why.push(name + '=' + String((r && r.error) || (r ? 'undecodable' : 'timeout')).slice(0, 40)); return null; }
         const small = fitCover(dec, tile.w, tile.h); /* بمقاس البطاقة فورًا: الأصل 2K لا يبقى في الذاكرة */
         const cmp = compareImages(tile, small);
-        return { engine: name, img: small, changed: !!(cmp && cmp.ok && cmp.changedFrac >= 0.08) };
+        const changed = !!(cmp && cmp.ok && cmp.changedFrac >= 0.08);
+        if (!changed) why.push(name + '=same');
+        return { engine: name, img: small, changed: changed };
       } catch (e) { return null; } /* guard-ok — فشل محرّك على بطاقة = المحرّك الآخر أو تبقى كما هي */
     };
     /* الحكم: شخص جديد بموضوع البطاقة؛ بلا حكم (عطب/مهلة) = أوّل متغيّر بالبكسل */
@@ -440,26 +474,31 @@ async function runCards(o) {
       cands = cands.filter(function (x) { return x && x.changed; });
       if (!cands.length) return null;
       if (left() < 20000) return cands[0];
-      const v = await judge({ kind: o.kind, card: c, orig: visCopy(tile, 512), cands: cands.map(function (x) { return visCopy(x.img, 512); }), timeoutMs: Math.min(20000, left() - 10000) });
+      const v = await judge({ kind: o.kind, request: o.request, card: c, orig: visCopy(tile, 512), cands: cands.map(function (x) { return visCopy(x.img, 512); }), timeoutMs: Math.min(20000, left() - 10000) });
       if (!v) return cands[0];
       const ok = cands.map(function (x, i) { return !!(v.c[i] && v.c[i].newPerson && v.c[i].theme); });
       if (v.pick >= 0 && ok[v.pick]) return cands[v.pick];
-      return ok.indexOf(true) >= 0 ? cands[ok.indexOf(true)] : null; /* لا شخص جديد بموضوعه = لا يُعدّ تنفيذًا */
+      if (ok.indexOf(true) >= 0) return cands[ok.indexOf(true)];
+      cands.forEach(function (x) { why.push(x.engine + '=judge'); });
+      return null; /* لا شخص جديد بموضوعه = لا يُعدّ تنفيذًا */
     };
     /* الدمج: المحرّكان معًا على كلّ بطاقة ويُختار الأفضل. العاديّ: برو، وإن رفضه القياس أو الحكم فـGPT لهذه البطاقة وحدها. */
     let pick = await choose(o.mix ? await Promise.all([call('pro'), call('gpt')]) : [await call('pro')]);
     if (!pick && !o.mix) pick = await choose([await call('gpt')]);
-    return { card: c, pick: pick, tried: tried.join('+') || 'none' };
+    return { card: c, pick: pick, tried: tried.join('+') || 'none', why: why.join(',') };
   }));
 
   const done = results.filter(function (r) { return r.pick; });
-  if (!done.length) return { ok: false, reason: 'no_card_changed' };
+  if (!done.length) return { ok: false, reason: 'no_card_changed', why: results.map(function (r) { return r.why; }).filter(Boolean).slice(0, 4).join(';') };
   const out = composite(img, done.map(function (r) { return { box: r.card.box, img: r.pick.img, guard: cornerGuard(img, r.card.box) }; }));
   const count = { pro: 0, gpt: 0 };
+  const kept = results.filter(function (r) { return !r.pick; }).map(function (r) { return (SUBJECTS.indexOf(r.card.subject) >= 0 ? r.card.subject : 'card') + '[' + (r.why || r.tried) + ']'; });
   done.forEach(function (r) { count[r.pick.engine] = (count[r.pick.engine] || 0) + 1; });
+  let alpha = false;
+  for (let i = 3; i < img.data.length; i += 4 * 97) if (img.data[i] < 250) { alpha = true; break; }
   return {
-    ok: true, b64: encodeJpeg(out, 92), mime: 'image/jpeg',
-    engine: 'cards[' + done.length + '/' + cards.length + ' pro:' + count.pro + ',gpt:' + count.gpt + ']',
+    ok: true, b64: alpha ? encodePng(out) : encodeJpeg(out, 92), mime: alpha ? 'image/png' : 'image/jpeg', /* شفّافة = PNG (JPEG يسوّدها) */
+    engine: 'cards[' + done.length + '/' + cards.length + ' pro:' + count.pro + ',gpt:' + count.gpt + ']' + (kept.length ? '(kept:' + kept.join(';') + ')' : ''), /* لماذا بقيت بطاقة — للمالك */
     cards: results.map(function (r) { return { title: r.card.title, subject: r.card.subject, box: r.card.box, engine: r.pick ? r.pick.engine : 'kept', tried: r.tried }; }),
   };
 }

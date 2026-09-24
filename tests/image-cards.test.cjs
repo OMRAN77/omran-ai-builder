@@ -46,15 +46,15 @@ const meanDiffRows = (a, b, y0, y1) => {
   return s / n;
 };
 
-test('١. ضبط الحدود بالبكسل: مربّعات النموذج (±٧ بكسل) تلتصق بحدود الصور الحقيقيّة (±١) — ولا تقفز للبطاقة المجاورة ولا لسطر العنوان', () => {
+test('١. ضبط الحدود بالبكسل: مربّعات النموذج (±٧ بكسل) تلتصق بحدود الصور الحقيقيّة (±٣) — ولا تقفز للبطاقة المجاورة ولا لسطر العنوان', () => {
   const bg = cards.backgroundColor(IMG);
-  assert.ok(bg && bg[0] < 30 && bg[1] < 30 && bg[2] < 30, 'خلفيّة اللوحة الداكنة: ' + bg);
+  assert.ok(Array.isArray(bg) && bg.length >= 1 && bg[0][0] < 30 && bg[0][1] < 30 && bg[0][2] < 30, 'خلفيّة اللوحة الداكنة أوّلًا: ' + JSON.stringify(bg));
   let worst = 0;
   for (let r = 0; r < 30; r++) {
     const snapped = cards.alignGrid(detected().map((c) => cards.snapBox(IMG, c.box, bg)));
     snapped.forEach((b, i) => { worst = Math.max(worst, Math.abs(b.x0 - TRUTH[i][0]), Math.abs(b.y0 - TRUTH[i][1]), Math.abs(b.x1 - TRUTH[i][2]), Math.abs(b.y1 - TRUTH[i][3])); });
   }
-  assert.ok(worst <= 1, 'أسوأ ضلع على ٣٠ جولة: ' + worst + ' بكسل (منها بطاقة الحجاب الأسود بلا حافّة سفليّة)');
+  assert.ok(worst <= 3, 'أسوأ ضلع على ٣٠ جولة: ' + worst + ' بكسل (منها بطاقة الحجاب الأسود بلا حافّة سفليّة: قيمة النموذج لا أقرب حافّة)');
   assert.deepEqual(cards.consensus([152, 163, 167, 152]).v, 152, 'الاتّفاق لا الوسيط: خطآن لا يغلبان');
 });
 
@@ -210,7 +210,7 @@ async function route(body, o) {
     const parts = b.contents[b.contents.length - 1].parts;
     const text = parts.filter((p) => p.text).map((p) => p.text).join('\n');
     if (u.includes('gemini-flash-latest')) {
-      if (/made of several CARDS/.test(text)) { calls.push({ kind: 'detect' }); return txt(o.cards === undefined ? CARDS_JSON : o.cards); }
+      if (/made of several CARDS/.test(text)) { calls.push({ kind: 'detect' }); return o.detectStatus ? Response.json({ error: { message: 'busy' } }, { status: o.detectStatus }) : txt(o.cards === undefined ? CARDS_JSON : o.cards); }
       if (/^Card: "/.test(text)) { calls.push({ kind: 'card-judge', text }); return txt({ c: parts.filter((p) => p.text && /^CANDIDATE/.test(p.text)).map(() => ({ new_person: true, theme: true, quality: 8 })), pick: 'A' }); }
       calls.push({ kind: 'judge', text });
       return txt({ verdicts: ['done'], pick: 0, scope: 'big', text: 'ok', report: 'بدّلت الأشخاص في البطاقات الثماني والعناوين كما هي. هل أعجبتك؟ ولا أسوي لك … أو …؟' });
@@ -274,10 +274,10 @@ test('١١. «غيرهم كلهم» بعد تبديل = تبديل على الب
 test('١٢. واجهة: «دمج نانو + GPT» لا ينطفئ بمسح حرف في صندوق فارغ ويبقى بعد إعادة الفتح للمالك (بلا تركيز يفتح لوحة المفاتيح)', () => {
   const m = fs.readFileSync(path.join(root, 'js/modes.js'), 'utf8');
   assert.match(m, /e\.key === 'Backspace' && !ta\.value && window\.__omMode && window\.__omMode !== 'image_mix'/);
-  assert.match(m, /if\(id === 'image_mix'\) localStorage\.setItem\('omStickyMode', 'image_mix'\); else localStorage\.removeItem\('omStickyMode'\);/);
-  assert.match(m, /if\(on && !window\.__omMode && localStorage\.getItem\('omStickyMode'\) === 'image_mix'\) pick\('image_mix', true\);/);
+  assert.match(m, /if\(id === 'image_mix'\) localStorage\.setItem\('omStickyMode', 'image_mix\|' \+ Date\.now\(\)\); else localStorage\.removeItem\('omStickyMode'\);/);
+  assert.match(m, /if\(on && !stickyTried\)\{ stickyTried = true; var sv = String\(localStorage\.getItem\('omStickyMode'\) \|\| ''\)\.split\('\|'\); if\(!window\.__omMode && sv\[0\] === 'image_mix' && Date\.now\(\) - \(\+sv\[1\] \|\| 0\) < 3 \* 3600000\) pick\('image_mix', true\); \}/, 'مرّة لكلّ تحميل وخلال ٣ ساعات');
   assert.match(m, /if\(ta && !quiet\)\{ ta\.focus\(\); \}/);
-  assert.match(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), /js\/modes\.js\?v=m240924a/);
+  assert.match(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), /js\/modes\.js\?v=m240924b/);
 });
 
 test('١٣. نيّة اللوحة: تبديل للكلّ، «غيرهم كلهم» بعد تبديل، و«صور ثانية/غيّر الصور» صور جديدة؛ وشخص بعينه أو طلب عاديّ = لا', () => {
@@ -289,4 +289,95 @@ test('١٣. نيّة اللوحة: تبديل للكلّ، «غيرهم كلهم
   for (const t of ['الأنماط بصور ثانية', 'غير الصور', 'حط صور جديدة للأنماط', 'ابي صور مختلفة', 'new photos please']) assert.equal(cards.cardsKind(t, {}), 'renew', t);
   assert.equal(cards.cardsKind('غير الصورة', {}), '', '«الصورة» مفردة = تعديل عاديّ');
   assert.equal(cards.cardsKind('خلّ الخلفية أفتح', {}), '');
+});
+
+/* ── مراجعة w6w18h18z: ما أثبته المراجِع بالتجربة، كلٌّ باختباره ── */
+
+/* لوحة المالك مكبّرة k مرّة داخل لوحة أكبر بلون الصفحة، مزاحة (ox,oy) — لقطة جوّال كاملة (٢٠٤٨ طولًا) أو بهامش صفحة */
+function placeGrid(k, W, H, ox, oy) {
+  const q = (405 * IMG.w + 117) * 4, d = Buffer.alloc(W * H * 4);
+  for (let i = 0; i < W * H; i++) { d[i * 4] = IMG.data[q]; d[i * 4 + 1] = IMG.data[q + 1]; d[i * 4 + 2] = IMG.data[q + 2]; d[i * 4 + 3] = 255; }
+  for (let y = 0; y < IMG.h * k; y++) for (let x = 0; x < IMG.w * k; x++) {
+    const a = (Math.floor(y / k) * IMG.w + Math.floor(x / k)) * 4, o = ((y + oy) * W + x + ox) * 4;
+    d[o] = IMG.data[a]; d[o + 1] = IMG.data[a + 1]; d[o + 2] = IMG.data[a + 2];
+  }
+  return { img: { w: W, h: H, data: d }, T: TRUTH.map((t) => [t[0] * k + ox, t[1] * k + oy, t[2] * k + ox, t[3] * k + oy]) };
+}
+const worstOf = (out, T) => out.reduce((m, b, i) => Math.max(m, Math.abs(b.x0 - T[i][0]), Math.abs(b.y0 - T[i][1]), Math.abs(b.x1 - T[i][2]), Math.abs(b.y1 - T[i][3])), 0);
+
+test('١٤. لقطة جوّال كاملة (٩٦٠×٢٠٤٨) وهامش صفحة: النافذة من مقاس البطاقة فلا قفز لعنوان البطاقة التي فوقها ولا طلاء للهامش؛ وترتيب النموذج لا يغيّر النتيجة', () => {
+  for (const [k, W, H, ox, oy] of [[2, 960, 2048, 0, 600], [2, 1000, 2048, 20, 24], [1, 500, 427, 10, 10]]) {
+    const { img, T } = placeGrid(k, W, H, ox, oy);
+    const region = { x0: T[0][0] - 40 * k, y0: T[0][1] - 40 * k, x1: T[7][2] + 40 * k, y1: T[7][3] + 60 * k };
+    const bg = cards.backgroundColor(img, region);
+    const snap = (bs) => cards.alignGrid(bs.map((b) => cards.snapBox(img, b, bg)));
+    const exact = snap(T.map((t) => box(t)));
+    assert.ok(worstOf(exact, T) <= 2, W + '×' + H + ' مربّعات دقيقة تبقى دقيقة (كانت تقفز ٤٢–٤٤ بكسل): ' + worstOf(exact, T));
+    let worst = 0;
+    for (let r = 0; r < 20; r++) {
+      const out = snap(T.map((t) => ({ x0: t[0] + jitter() * k, y0: t[1] + jitter() * k, x1: t[2] + jitter() * k, y1: t[3] + jitter() * k })));
+      worst = Math.max(worst, worstOf(out, T));
+      assert.ok(out.every((b) => b.x0 >= ox - 2 && b.y0 >= oy - 2), 'لا طلاء للهامش');
+      assert.ok(out.slice(0, 4).every((b) => b.y1 < 161 * k + oy), 'صور الصفّ الأعلى لا تبلغ سطر العنوان');
+      assert.ok(out.slice(4).every((b) => b.y0 > 208 * k + oy), 'صور الصفّ الثاني لا تصعد لعناوين الصفّ الأعلى');
+    }
+    assert.ok(worst <= 6 * k, W + '×' + H + ' أسوأ ضلع بمربّعات ±' + 7 * k + ': ' + worst);
+  }
+  const bg = cards.backgroundColor(IMG), ex = TRUTH.map((t) => box(t));
+  for (const ord of [[0, 1, 2, 3], [1, 2, 0, 3], [2, 1, 3, 0], [3, 2, 1, 0]]) {
+    assert.deepEqual(cards.alignGrid(ord.map((i) => cards.snapBox(IMG, ex[i], bg))).map((b) => b.y1), [152, 152, 152, 152], 'ترتيب ' + ord.join(''));
+  }
+});
+
+test('١٥. لونا خلفيّة (صفحة داكنة وجسم بطاقة فاتح بحشوة): الحدّ حدّ الصورة لا حدّ البطاقة، ولا شفافيّة تصير سوداء', () => {
+  const W = 200, H = 100, d = Buffer.alloc(W * H * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const o = (y * W + x) * 4, inCard = ((x >= 10 && x < 95) || (x >= 105 && x < 190)) && y >= 4 && y < 96;
+    const inPhoto = inCard && y >= 10 && y < 60 && ((x >= 18 && x < 87) || (x >= 113 && x < 182));
+    const c = inPhoto ? [(x * 37 + y * 91) % 256, (x * 13 + y * 7) % 256, (x * y) % 256] : inCard ? [240, 240, 238] : [30, 30, 34];
+    d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+  }
+  const img = { w: W, h: H, data: d }, bg = cards.backgroundColor(img);
+  assert.equal(bg.length, 2, 'اللونان: ' + JSON.stringify(bg));
+  const out = cards.alignGrid([{ x0: 14, y0: 6, x1: 91, y1: 64 }, { x0: 109, y0: 13, x1: 186, y1: 57 }].map((b) => cards.snapBox(img, b, bg)));
+  assert.deepEqual(out, [{ x0: 18, y0: 10, x1: 87, y1: 60 }, { x0: 113, y0: 10, x1: 182, y1: 60 }]);
+});
+
+test('١٦. كلمات المالك تصل أمر كلّ بطاقة وحكمها؛ وتعديل ليس تبديلًا («لكرتون»، «مكان بعض»، «والكتابة…»، ستايل/تحسين/نصّ) لا يدخل اللوحة؛ ولا تكرار بعد نفاد الأوصاف', () => {
+  const c = { title: 'ليلة حناء', subject: 'woman', scene: 'woman with henna' };
+  const req = 'خلهم كلهم رجال لوجوه خليجية';
+  assert.match(cards.cardPrompt('swap', c, 'a woman', req), /overrides the suggested description[^"]*"خلهم كلهم رجال لوجوه خليجية"/);
+  assert.match(cards.cardPrompt('renew', c, 'a woman', req), /^The user's own request/);
+  assert.doesNotMatch(cards.cardPrompt('swap', c, 'a woman', ''), /user's own request/, 'بلا طلب = الأمر كما كان');
+  const jp = cards.judgeParts('swap', c, { b64: 'A', mime: 'image/png' }, [{ b64: 'B', mime: 'image/png' }], req);
+  assert.match(jp[0].text, /The user asked, verbatim: "خلهم كلهم رجال لوجوه خليجية"/);
+  for (const t of ['غير الصور لكرتون', 'بدل الصور مكان بعض', 'غير الصور والكتابة للانجليزي', 'غير الصور لأبيض وأسود', 'غير الصور لستايل انمي']) assert.equal(cards.cardsKind(t, {}), '', t);
+  assert.equal(cards.cardsKind('غير الصور كلها', {}), 'renew');
+  assert.equal(cards.cardsKind('غيّر جميع الوجوه', { personSwap: true, other: true }), '', 'ستايل/تحسين/نصّ = المسار العاديّ');
+  const many = Array.from({ length: 12 }, (_, i) => ({ title: 't' + i, subject: 'woman', scene: 's' }));
+  assert.equal(new Set(cards.assignPersonas(many, 'x')).size, 12, '١٢ امرأة = ١٢ وصفًا');
+  const m = fs.readFileSync(path.join(root, 'api/_lib/maha-image.js'), 'utf8');
+  assert.match(m, /other: isRestyle \|\| isElevate \|\| isSceneUpgrade \|\| isTextSwap \|\| isTextRemove \|\| isBroadEdit/);
+});
+
+test('١٧. الموجِّه: فشل البطاقات متأخّرًا = ٤٢٢ صادقة بسبب كلّ محرّك (لا مسار كامل يتخطّى ٣٠٠ث)؛ فشل الكشف يُذكر للمالك؛ و٤K لا تدخل اللوحة', async () => {
+  const realNow = Date.now;
+  let skew = 0;
+  Date.now = () => realNow() + skew;
+  let late;
+  try {
+    late = await route(OWNER(), { pro: (c, p) => { if (p.includes('card titled')) skew = 90000; return c; }, gpt: () => null });
+  } finally { Date.now = realNow; }
+  assert.equal(late.status, 422, JSON.stringify(late.json).slice(0, 200));
+  assert.equal(late.json.error, 'image_unchanged');
+  assert.match(late.json.__diag.cards, /^no_card_changed .*pro=same/, 'السبب لكلّ محرّك: ' + late.json.__diag.cards);
+  assert.match(late.json.__diag.cards, /gpt=/);
+  assert.equal(late.calls.filter((c) => c.kind === 'pro' && c.whole).length, 0, 'لا نداء للصورة كاملة بعد ٩٠ث من البطاقات');
+  const det = await route(OWNER(), { detectStatus: 503, pro: (c) => edited(c, 30), gpt: (c) => edited(c, 220) });
+  assert.equal(det.status, 200);
+  assert.match(det.json.engine, /\(cards:not_cards:http_503\)/, 'فشل الكشف لا يُخفى');
+  const k4 = await route(OWNER({ prompt: REQ + ' 4k', userText: REQ + ' 4k' }), { pro: (c) => edited(c, 30), gpt: (c) => edited(c, 220) });
+  assert.equal(kinds(k4).detect, undefined, '٤K = الصورة كاملة بدقّتها لا لوحة ٤٨٠ بكسل');
+  const m = fs.readFileSync(path.join(root, 'api/_lib/maha-image.js'), 'utf8');
+  assert.match(m, /fetchImageWithRetry\(\{ maxAttempts: 1, timeoutMs: Math\.max\(15000, budget\)/, 'محاولة برو واحدة لكلّ بطاقة: لا نداء يتيم');
 });

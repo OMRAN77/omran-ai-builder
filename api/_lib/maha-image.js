@@ -772,17 +772,17 @@ module.exports = async (req, res) => {
     /* v-img-cards (المالك ٢٤ سبتمبر: «مافي دمج بين الاثنين — الناتج صفر»): لوحة بطاقات + «غيّر كلّ الأشخاص / بدون تكرار / صور ثانية»
        = كلّ بطاقة وحدها بشخص جديد لا يتكرّر وبموضوعها، والكتابة من المصدر، والدمج = المحرّكان على كلّ بطاقة ويُختار الأفضل (image-cards.js).
        ليست لوحة = المسار العاديّ. للمالك وحده (٨–١٦ نداء محرّك بدل ١–٣ — تعميمه قرار مال/نقاط). IMAGE_CARDS=off يوقفه. */
-    const __cardsKind = cardsKind(intentText, { personSwap: isPersonSwap && !__swapOne, reimagine: isReimagine, history: history });
-    if (__isOwnerReq && __cardsKind && editImageBase64 && !extras.length && !__pureRaw && !prayerPlan && String(process.env.IMAGE_CARDS || 'on').toLowerCase() !== 'off') {
+    const __cardsKind = cardsKind(intentText, { personSwap: isPersonSwap && !__swapOne, reimagine: isReimagine, history: history, other: isRestyle || isElevate || isSceneUpgrade || isTextSwap || isTextRemove || isBroadEdit });
+    if (__isOwnerReq && __cardsKind && editImageBase64 && !extras.length && !__pureRaw && !prayerPlan && !__want4K && String(process.env.IMAGE_CARDS || 'on').toLowerCase() !== 'off') {
       const proCard = async function (cardPrompt, crop, budget) { /* المحرّك الأساسيّ نفسه (endpoint)، ١K تكفي صورة بطاقة */
-        const r = await fetchImageWithRetry({ maxAttempts: 2, timeoutMs: Math.max(15000, budget), url: endpoint,
+        const r = await fetchImageWithRetry({ maxAttempts: 1, timeoutMs: Math.max(15000, budget), url: endpoint, /* مراجعة: محاولة واحدة — لا نداء يتيم بعد استسلام البطاقات */
           init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: cardPrompt }, { inlineData: { mimeType: crop.mime, data: crop.b64 } }] }], generationConfig: nanoPrimary ? { responseModalities: ['IMAGE'] } : { imageConfig: { imageSize: '1K' } } }) } });
         const cp = ((((((r || {}).data || {}).candidates || [])[0] || {}).content || {}).parts || []).find(function (x) { return x.inlineData && x.inlineData.data; });
-        return (r && r.response && r.response.ok && cp) ? { b64: cp.inlineData.data, mime: cp.inlineData.mimeType || 'image/png' } : null;
+        const dd = (r && r.data) || {}; return (r && r.response && r.response.ok && cp) ? { b64: cp.inlineData.data, mime: cp.inlineData.mimeType || 'image/png' } : { error: (r && r.response ? r.response.status : 'noresp') + ' ' + ((dd.promptFeedback || {}).blockReason || ((dd.candidates || [])[0] || {}).finishReason || '') };
       };
       const gptCard = process.env.OPENAI_API_KEY ? async function (cardPrompt, crop, budget) {
         const b64 = await openaiRescueImage(cardPrompt, [{ data: crop.b64, mime: crop.mime }], budget);
-        return b64 ? { b64: b64, mime: 'image/png' } : null;
+        return b64 ? { b64: b64, mime: 'image/png' } : { error: String(lastRescueErr || 'fail').replace(/^openai\s+/, '') };
       } : null;
       const __cr = await runCards({ apiKey: apiKey, source: { b64: editImageBase64, mime: editMimeType || 'image/jpeg' }, kind: __cardsKind, mix: __engineMix, request: intentText,
         deadline: __t0 + 190000, engines: { pro: proCard, gpt: gptCard } }).catch(function (e) { return { ok: false, reason: 'error ' + String((e && e.message) || e).slice(0, 60) }; });
@@ -790,8 +790,9 @@ module.exports = async (req, res) => {
         await deliver({ b64: __cr.b64, mime: __cr.mime, engine: (__engineMix ? 'mix:' : '') + __cr.engine, noUpscale: true }, null, null);
         return;
       }
-      if (!/^not_cards/.test(__cr.reason || '')) __cardsNote = __cr.reason || 'fail';
-    }
+      if (__cr.reason !== 'not_cards') __cardsNote = (__cr.reason || 'fail') + (__cr.why ? ' ' + __cr.why : '');
+    } /* مراجعة: فشلت البطاقات متأخّرة = لا مسار كامل يتجاوز ٣٠٠ث؛ ٤٢٢ صادقة واسترداد */
+    if (__cardsNote && __extraBudget() < 150000) { await refundImageCharge(); res.status(422).json({ error: 'image_unchanged', retryable: true, __diag: process.env.IMG_DIAG === 'off' ? undefined : { cards: __cardsNote } }); return; }
     if (__engineMix) {
       const pro = await proCandidate().catch(function () { return null; });
       const polish = (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null;
