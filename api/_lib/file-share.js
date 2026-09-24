@@ -7,6 +7,26 @@ const MAX_B64 = 5 * 1024 * 1024; // ≈4MB ملف فعلي
 const TTL_SEC = 60 * 60 * 24 * 7;
 const KEY = (id) => 'db/file/' + id;
 
+/* v-reply-export: النقطة صارت مربوطة من التطبيق (/f/<id>). يُخدم من نطاق التطبيق نفسه، فلا نوع قابل
+   للتنفيذ أبدًا (text/javascript يُحمَّل كسكربت أو عامل خدمة من النطاق نفسه رغم attachment): قائمة سماح
+   بما يصدّره التطبيق فعلًا، والباقي application/octet-stream. تُطبَّق عند الحفظ وعند الإرسال (سجلّات أقدم). */
+const TYPES = new Set(['application/msword', 'text/plain', 'text/markdown', 'text/csv', 'application/json',
+  'image/png', 'image/jpeg', 'image/webp', 'video/mp4', 'application/zip']);
+function safeMime(raw) {
+  const base = String(raw || '').split(';')[0].trim().toLowerCase();
+  if (!TYPES.has(base)) return 'application/octet-stream';
+  return base.indexOf('text/') === 0 ? base + '; charset=utf-8' : base;
+}
+/* اسم ASCII يحتفظ بامتداده بعد القصّ؛ امتدادات التثبيت/التنفيذ الثنائيّة تصير .bin */
+function safeName(raw) {
+  const n = String(raw || 'file');
+  const m = n.match(/(\.[A-Za-z0-9]{1,8})$/);
+  let ext = m ? m[1] : '';
+  const base = (ext ? n.slice(0, -ext.length) : n).replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60 - ext.length) || 'file';
+  if (/^\.(apk|aab|xapk|exe|msi|bat|cmd|com|scr|jar|ps1|vbs|dll|dmg|pkg|deb|rpm|sh)$/i.test(ext)) ext = '.bin';
+  return base + ext;
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
     const rawId = String((req.query && req.query.id) || '');
@@ -36,14 +56,14 @@ module.exports = async (req, res) => {
         pieces.push(String(c));
       }
       if (failed) { res.status(503).json({ error: 'chunk_missing', detail: 'جزء من الملف اختفى — حاول لاحقًا' }); return; }
-      s = prefix + pieces.join('');
+      s = prefix + ':' + pieces.join(''); // v-reply-export: الفاصل بين الاسم والبيانات (بدونه يخرج الملفّ ٠ بايت باسم file)
     }
 
     // الصيغة: mime:name:base64
     const i1 = s.indexOf(':');
     const i2 = i1 >= 0 ? s.indexOf(':', i1 + 1) : -1;
-    const mime = i1 >= 0 ? s.slice(0, i1) : 'application/octet-stream';
-    const name = (i2 >= 0 ? s.slice(i1 + 1, i2) : '') || 'file';
+    const mime = safeMime(i1 >= 0 ? s.slice(0, i1) : '');
+    const name = safeName((i2 >= 0 ? s.slice(i1 + 1, i2) : '') || 'file');
     let buf;
     try {
       buf = Buffer.from(i2 >= 0 ? s.slice(i2 + 1) : '', 'base64');
@@ -73,12 +93,9 @@ module.exports = async (req, res) => {
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
 
-    /* v-reply-export: النوع يُخزَّن بصيغة mime:name:data ويُرسَل ترويسةً — نوع/نوع فرعيّ مع charset
-       اختياريّ فقط؛ غيره (نقطتان، أسطر، معاملات أخرى) يصير application/octet-stream. */
-    const rawMime = String(body.mime || '').trim();
-    const mime = /^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+(;\s*charset=[A-Za-z0-9_-]+)?$/.test(rawMime) ? rawMime : 'application/octet-stream';
-    const rawName = String(body.name || 'file');
-    const name = rawName.replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || 'file';
+    /* v-reply-export: النوع والاسم يُخزَّنان بصيغة mime:name:data — لا نقطتان ولا أسطر فيهما */
+    const mime = safeMime(body.mime);
+    const name = safeName(body.name);
     const id = crypto.randomBytes(6).toString('hex');
 
     const CHUNK = 700 * 1024;

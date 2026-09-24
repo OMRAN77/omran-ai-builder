@@ -7294,10 +7294,12 @@ function renderMessages(keepScroll){
       if(!a || a.dataset.nativeDownload) return;
       const h = a.getAttribute('href') || '';
       if(!/^(data:|blob:)/i.test(h)) return;
-      /* v-reply-export: الصور فقط — ملفّ Word/TXT/PDF كان يُرفع هنا «صورة» (image/jpeg) فتخرج
-         روابط التحميل والواتساب مكسورة. اسم بامتداد غير صوريّ يُترك لمساره. */
+      /* v-reply-export: بلا جسر، الصور فقط — ملفّ Word/TXT/PDF كان يُرفع هنا «صورة» (image/jpeg) فتخرج
+         روابط التحميل والواتساب مكسورة. اسم بامتداد غير صوريّ يُترك لمساره. مع جسر التطبيق (آيفون/أندرويد)
+         يبقى كلّ ملفّ هنا كما كان: omranSaveImage يسلّمه للجسر بنوعه الحقيقيّ (ZIP، الكود، النسخ الاحتياطيّ). */
       const ext = ((a.getAttribute('download') || '').match(/\.([A-Za-z0-9]{1,5})$/) || [])[1] || '';
-      if(ext && !/^(png|jpe?g|webp|gif|bmp|heic|heif|avif)$/i.test(ext) && !/^data:image\//i.test(h)) return;
+      const hasBridge = typeof omranNativeBridge === 'function' && !!omranNativeBridge('omranShare');
+      if(!hasBridge && ext && !/^(png|jpe?g|webp|gif|bmp|heic|heif|avif)$/i.test(ext) && !/^data:image\//i.test(h)) return;
       if(!appish()) return;
       e.preventDefault(); e.stopPropagation();
       window.omranSaveImage(h, a.getAttribute('download') || 'omran-image.png', 'save');
@@ -7865,6 +7867,11 @@ function omranLikelyApp(){
   }catch(e){ __swallow(e, 'share:app-detect'); }
   return false;
 }
+/* v-reply-export: داخل غلاف فعليّ (TWA/WebView/كاباسيتور/تطبيق مثبّت) تنزيل blob يموت؛ في متصفّح
+   الجوال العاديّ يعمل، فلا يُرفع ملفّ المستخدم للخادم هناك إلّا PDF (كما كان). */
+function omranInWrapper(){
+  try{ if(omranLikelyApp()) return true; return /\bwv\b/.test(navigator.userAgent || ''); }catch(e){ return false; }
+}
 async function omranBlobToServerLink(blob, filename){
   const b64 = await new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -7950,7 +7957,20 @@ function omranPdfReadySheet(url, file, filename, kind, openUrl){
       }catch(e2){ __swallow(e2, 'pdf:sheet-open'); }
     };
     row.appendChild(op);
-    if(!canShareFile) row.style.gridTemplateColumns = '1fr 1fr';
+    /* v-reply-export: واتساب برابط الملفّ نفسه (لا صورة مكسورة). رابط لنطاق آخر، فيفتحه غلاف WebView
+       في متصفّح النظام حتى قبل تحديث الحزمة — الطريق الوحيد للإرسال هناك. */
+    let nBtns = row.children.length;
+    if((kind === 'file' || kind === 'pdf' || !kind) && !/^(blob|data):/i.test(String(url || ''))){
+      let absUrl = String(url || '');
+      try{ absUrl = new URL(absUrl, location.href).href; }catch(e){ /* guard-ok: يبقى كما هو */ }
+      const wa = document.createElement('a');
+      wa.href = 'https://wa.me/?text=' + encodeURIComponent(absUrl); wa.target = '_blank'; wa.rel = 'noopener';
+      wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
+      wa.textContent = (typeof t === 'function' && t('imgWaBtn') !== 'imgWaBtn' && t('imgWaBtn')) || (isArT ? '💬 واتساب' : '💬 WhatsApp');
+      row.appendChild(wa);
+      nBtns++;
+    }
+    row.style.gridTemplateColumns = nBtns === 3 ? '1fr 1fr 1fr' : '1fr 1fr';
     sheet.appendChild(head); sheet.appendChild(row);
     document.body.appendChild(sheet);
     setTimeout(function(){ try{ sheet.remove(); }catch(e){ /* guard-ok */ } }, 120000);
@@ -7961,11 +7981,11 @@ async function omranSaveBlob(blob, filename){
   const isPdfFile = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
   /* v-reply-export: نوع الورقة — PDF بعنوانه، والصورة بعنوانها، وأيّ ملفّ آخر «الملفّ جاهز» */
   const sheetKind = isPdfFile ? 'pdf' : (/^image\//i.test((blob && blob.type) || '') ? 'image' : 'file');
-  const sheetMime = isPdfFile ? 'application/pdf' : ((blob && blob.type) || 'application/octet-stream');
+  const sheetMime = isPdfFile ? 'application/pdf' : (String((blob && blob.type) || 'application/octet-stream').split(';')[0].trim() || 'application/octet-stream');
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   try{
     if(navigator.canShare && typeof File === 'function'){
-      const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      const f = new File([blob], filename, { type: sheetMime });
       if(navigator.canShare({ files: [f] })){
         try{ await navigator.share({ files: [f], title: filename }); return; }
         catch(e){
@@ -7976,16 +7996,17 @@ async function omranSaveBlob(blob, filename){
       }
     }
   }catch(e){ __swallow(e, 'share:universal'); }
-  /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي لكلّ الأنواع (v-reply-export: كان PDF فقط، فكان
-     Word/TXT يسقطان على تنزيل blob الذي تخطفه مصيدة الصور وترفعه «صورة» مكسورة) */
-  if(omranLikelyApp() || omranMobileUA()){
+  /* رابط سيرفر حقيقي: PDF داخل الأغلفة وعلى أي جوال (كما كان)؛ وغير الـPDF (v-reply-export) داخل
+     الأغلفة فقط — هناك تنزيل blob يموت، وفي متصفّح الجوال العاديّ يعمل فلا يغادر الملفّ الجهاز. */
+  if(isPdfFile ? (omranLikelyApp() || omranMobileUA()) : omranInWrapper()){
     try{
       const url = await omranBlobToServerLink(blob, filename);
       let fileForShare = null;
       try{ if(typeof File === 'function') fileForShare = new File([blob], filename, { type: sheetMime }); }catch(e){ fileForShare = null; }
       if(omranPdfReadySheet(url, fileForShare, filename, sheetKind)){
-        /* محاولة تنزيل تلقائي صامتة إلى جانب الورقة (تعمل في TWA كروم) */
-        try{
+        /* محاولة تنزيل تلقائي صامتة إلى جانب الورقة (تعمل في TWA كروم) — PDF فقط كما كان، ولا في
+           WebView (v-reply-export: منزّل النظام الجديد هناك كان سينزّله تلقائيًّا ثمّ نسخة ثانية باللمس) */
+        if(isPdfFile && !/\bwv\b/.test(navigator.userAgent || '')) try{
           const dfr0 = document.createElement('iframe');
           dfr0.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
           dfr0.src = url; document.body.appendChild(dfr0);
@@ -8288,19 +8309,25 @@ function exportReplyAsImage(text){
   ctx.textAlign = 'right';
   ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
   lines.forEach((line, i) => { ctx.fillText(line, canvas.width - padding, padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4)); });
-  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); }, 'image/png');
+  /* v-reply-export: الصورة بمسار الصور المجرَّب (جسر، مشاركة، رفع مصغَّر لـ/i/ بواتساب وفتح مباشر، وتنزيل
+     عاديّ على الكمبيوتر) لا بمسار الملفّات العامّ */
+  canvas.toBlob(blob => {
+    if(!blob) return;
+    if(typeof window.omranSaveImage === 'function') window.omranSaveImage(blob, 'omran-ai-reply.png', 'save');
+    else msgSaveExport(blob, 'omran-ai-reply.png');
+  }, 'image/png');
 }
 function exportReplyAsTxt(text){
   const blob = new Blob([text || ''], { type: 'text/plain;charset=utf-8' });
   msgSaveExport(blob, 'omran-ai-reply.txt');
 }
-/* v-reply-export (شكوى المالك ٢٤ سبتمبر: «الورد والـtxt والصور ما تشتغل»): كانت الثلاثة تنزّل
-   blob مباشرة، وداخل التطبيق تخطفها مصيدة الصور فترفع Word/TXT «صورة» مكسورة. على الجوال وفي
-   التطبيقات تمرّ الآن بمسار الحفظ الموحّد (جسر ← ورقة المشاركة ← رابط خادم بورقة أزرار)؛
-   الكمبيوتر ينزّل مباشرة كما كان. */
+/* v-reply-export (شكوى المالك ٢٤ سبتمبر: «الورد والـtxt والصور ما تشتغل»): كان Word/TXT ينزّلان
+   blob مباشرة، وداخل التطبيق تخطفهما مصيدة الصور فترفعهما «صورة» مكسورة. داخل التطبيقات يمرّان الآن
+   بمسار الحفظ الموحّد (جسر ← ورقة المشاركة ← رابط خادم بورقة أزرار)؛ الكمبيوتر ومتصفّح الجوال
+   العاديّ ينزّلان مباشرة كما كانا. */
 function msgSaveExport(blob, filename){
   let viaSheet = false;
-  try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
+  try{ viaSheet = !!(omranNativeBridge('omranShare') || omranInWrapper()); }catch(e){ viaSheet = false; }
   if(viaSheet){
     omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
     return;

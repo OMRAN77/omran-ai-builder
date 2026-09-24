@@ -240,10 +240,12 @@
       if(!a || a.dataset.nativeDownload) return;
       const h = a.getAttribute('href') || '';
       if(!/^(data:|blob:)/i.test(h)) return;
-      /* v-reply-export: الصور فقط — ملفّ Word/TXT/PDF كان يُرفع هنا «صورة» (image/jpeg) فتخرج
-         روابط التحميل والواتساب مكسورة. اسم بامتداد غير صوريّ يُترك لمساره. */
+      /* v-reply-export: بلا جسر، الصور فقط — ملفّ Word/TXT/PDF كان يُرفع هنا «صورة» (image/jpeg) فتخرج
+         روابط التحميل والواتساب مكسورة. اسم بامتداد غير صوريّ يُترك لمساره. مع جسر التطبيق (آيفون/أندرويد)
+         يبقى كلّ ملفّ هنا كما كان: omranSaveImage يسلّمه للجسر بنوعه الحقيقيّ (ZIP، الكود، النسخ الاحتياطيّ). */
       const ext = ((a.getAttribute('download') || '').match(/\.([A-Za-z0-9]{1,5})$/) || [])[1] || '';
-      if(ext && !/^(png|jpe?g|webp|gif|bmp|heic|heif|avif)$/i.test(ext) && !/^data:image\//i.test(h)) return;
+      const hasBridge = typeof omranNativeBridge === 'function' && !!omranNativeBridge('omranShare');
+      if(!hasBridge && ext && !/^(png|jpe?g|webp|gif|bmp|heic|heif|avif)$/i.test(ext) && !/^data:image\//i.test(h)) return;
       if(!appish()) return;
       e.preventDefault(); e.stopPropagation();
       window.omranSaveImage(h, a.getAttribute('download') || 'omran-image.png', 'save');

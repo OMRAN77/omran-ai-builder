@@ -58,10 +58,13 @@ import androidx.core.content.ContextCompat;
 
 import com.google.androidbrowserhelper.trusted.LauncherActivityMetadata;
 
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MahaWebViewFallbackActivity extends Activity {
     private static final String TAG = MahaWebViewFallbackActivity.class.getSimpleName();
@@ -337,9 +340,9 @@ public class MahaWebViewFallbackActivity extends Activity {
         };
     }
 
-    // v-reply-export: بلا هذا المستمع يرمي WebView كلّ تنزيل صامتًا. روابط http(s) (روابط الخادم
-    // /f/ و/p/ و/i/ برأس attachment) تذهب لمنزّل النظام مع الكوكيز ووكيل المستخدم نفسيهما؛
-    // blob:/data: لا يقدر النظام يجلبها فتُترك (الموقع لا يرسلها هنا داخل التطبيق).
+    // v-reply-export: بلا هذا المستمع يرمي WebView كلّ تنزيل صامتًا. روابط التطبيق نفسه (https ونطاقه:
+    // /f/ و/p/ و/i/ برأس attachment) تذهب لمنزّل النظام مع الكوكيز ووكيل المستخدم نفسيهما؛ روابط نطاق
+    // آخر تُفتح في متصفّح النظام؛ blob:/data: لا يقدر النظام يجلبها فتُترك.
     private void attachDownloadListener(WebView webView) {
         webView.setDownloadListener(new DownloadListener() {
             @Override
@@ -353,12 +356,17 @@ public class MahaWebViewFallbackActivity extends Activity {
     private void startSystemDownload(String url, String userAgent, String contentDisposition,
                                      String mimetype) {
         Uri uri = Uri.parse(url);
-        String scheme = uri.getScheme();
-        if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) {
-            Log.w(TAG, "Download scheme not supported by DownloadManager: " + scheme);
+        // منزّل النظام يعمل بلا سؤال لروابط التطبيق نفسه (https ونطاقه) فقط؛ غيرها يفتح في متصفّح النظام
+        // كما يفعل WebViewClient مع أيّ نطاق آخر — لا تنزيل صامت من إطار طرف ثالث.
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || !isAppOrigin(uri)) {
+            if ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) {
+                openInBrowser(uri);
+            } else {
+                Log.w(TAG, "Download scheme not supported by DownloadManager: " + uri.getScheme());
+            }
             return;
         }
-        String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
+        String fileName = fileNameFor(url, contentDisposition, mimetype);
         try {
             DownloadManager.Request request = new DownloadManager.Request(uri);
             if (mimetype != null && !mimetype.isEmpty()) {
@@ -374,20 +382,82 @@ public class MahaWebViewFallbackActivity extends Activity {
             request.setTitle(fileName);
             request.setNotificationVisibility(
                     DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            // أندرويد ٦–٩ يحتاج صلاحيّة التخزين لـ«التنزيلات» العامّة؛ بدونها مجلّد التطبيق (بلا صلاحيّة)
+            // بدل استثناء يفتح متصفّحًا عند كلّ تنزيل.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                    || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            } else {
+                request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, fileName);
+            }
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             dm.enqueue(request);
             Toast.makeText(this, "⬇️ " + fileName, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            // أندرويد ٦–٩ بلا صلاحيّة التخزين، أو منزّل معطَّل: متصفّح النظام ينزّل الرابط نفسه.
+            // منزّل معطَّل أو مرفوض: متصفّح النظام ينزّل الرابط نفسه.
             Log.e(TAG, "DownloadManager failed, opening in browser: " + url, e);
-            try {
-                new CustomTabsIntent.Builder().setToolbarColor(mStatusBarColor).build()
-                        .launchUrl(this, uri);
-            } catch (ActivityNotFoundException ex) {
-                Log.e(TAG, "No browser to open " + url, ex);
+            openInBrowser(uri);
+        }
+    }
+
+    private void openInBrowser(Uri uri) {
+        try {
+            new CustomTabsIntent.Builder().setToolbarColor(mStatusBarColor).build()
+                    .launchUrl(this, uri);
+        } catch (ActivityNotFoundException ex) {
+            Log.e(TAG, "No browser to open " + uri, ex);
+        }
+    }
+
+    private boolean isAppOrigin(Uri uri) {
+        if (sameOrigin(uri, mLaunchUrl)) {
+            return true;
+        }
+        for (Uri extra : mExtraOrigins) {
+            if (sameOrigin(uri, extra)) {
+                return true;
             }
         }
+        return false;
+    }
+
+    private static boolean sameOrigin(Uri a, Uri b) {
+        return a != null && b != null && a.getScheme() != null && a.getHost() != null
+                && a.getScheme().equalsIgnoreCase(b.getScheme())
+                && a.getHost().equalsIgnoreCase(b.getHost())
+                && a.getPort() == b.getPort();
+    }
+
+    // URLUtil.guessFileName يخطئ مع filename*= (روابط /p/ تُحفظ برقمها): نقرأ الترويسة أوّلًا.
+    static String fileNameFor(String url, String contentDisposition, String mimetype) {
+        String name = fileNameFromDisposition(contentDisposition);
+        return name != null ? name : URLUtil.guessFileName(url, contentDisposition, mimetype);
+    }
+
+    static String fileNameFromDisposition(String contentDisposition) {
+        if (contentDisposition == null) {
+            return null;
+        }
+        String name = null;
+        Matcher star = Pattern.compile("filename\\*\\s*=\\s*(?:UTF-8|utf-8)''([^;\\s]+)")
+                .matcher(contentDisposition);
+        if (star.find()) {
+            try {
+                name = URLDecoder.decode(star.group(1).replace("+", "%2B"), "UTF-8");
+            } catch (Exception ignored) {
+                name = null;
+            }
+        }
+        if (name == null || name.trim().isEmpty()) {
+            Matcher plain = Pattern.compile("filename\\s*=\\s*\"([^\"]+)\"").matcher(contentDisposition);
+            name = plain.find() ? plain.group(1) : null;
+        }
+        if (name == null) {
+            return null;
+        }
+        name = name.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
+        return name.isEmpty() || name.startsWith(".") ? null : name;
     }
 
     @SuppressLint("SetJavaScriptEnabled")
