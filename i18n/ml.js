@@ -380,6 +380,7 @@ I18N['ml'] = {
     "videoModeLabel": "ക്രിയേഷൻ മോഡ്",
     "videoModeCanvasOnly": "🎨 Canvas മാത്രം (AI ഇല്ലാതെ)",
     "videoModeRunwayOnly": "🤖 AI വീഡിയോ മാത്രം (Runway)",
+    "videoModeMinimax": "💸 ലാഭകരമായ വീഡിയോ — വിലക്കുറവും വേഗവും",
     "videoModeHybrid": "🔗 രണ്ടും ലയിപ്പിക്കുക (മികച്ചത്)",
     "videoModeVeo": "🚀 Veo 3 — Google (മികച്ച ക്വാളിറ്റി + സൗണ്ട്)",
     "videoModeActor": "🗣️ സംസാരിക്കുന്ന നടൻ — എമിറാത്തി ഭാഷാഭേദം (Veo 3)",

@@ -2913,6 +2913,7 @@ const I18N = {
     videoModeLabel: 'وضع الإنشاء',
     videoModeCanvasOnly: '🎨 كانفا فقط (بدون AI)',
     videoModeRunwayOnly: '🤖 فيديو AI فقط (Runway)',
+    videoModeMinimax: '💸 فيديو اقتصادي — أرخص وأسرع',
     videoModeHybrid: '🔗 دمج الاثنين (الأفضل)',
     videoModeVeo: '🚀 Veo 3 — جوجل (أعلى جودة + صوت)',
     videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)",
@@ -4124,6 +4125,7 @@ const I18N = {
     videoModeLabel: 'Creation mode',
     videoModeCanvasOnly: '🎨 Canvas only (no AI)',
     videoModeRunwayOnly: '🤖 AI video only (Runway)',
+    videoModeMinimax: '💸 Economy video — cheaper & faster',
     videoModeHybrid: '🔗 Merge both (best)',
     videoModeVeo: '🚀 Veo 3 — Google (top quality + sound)',
     videoModeActor: "🗣️ Talking actor — Emirati dialect (Veo 3)",
@@ -25010,6 +25012,49 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           // آخر ملاذ: عرض المشاهد ورا بعض مع روابط تحميل منفصلة
           showScenesPlaylist();
         }
+      } catch(e){
+        setStatus(friendlyError(e));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
+    /* v-minimax-video: المحرّك الاقتصاديّ — إضافة بجانب Runway وVeo. غير متزامن:
+       ينشئ مهمّة ويستطلعها حتى يجهز المقطع (نفس شكل استطلاع Runway). */
+    if(creationMode === 'minimax'){
+      try{
+        setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
+        const cr = await (window.postWithConfirm
+          ? window.postWithConfirm('/api/video?action=minimax-create', payload)
+          : fetch('/api/video?action=minimax-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        const crData = await cr.json();
+        if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error });
+        const videoUrl = await new Promise((resolve, reject) => {
+          const iv = setInterval(async () => {
+            try{
+              const st = await fetch('/api/video?action=minimax-status&task_id=' + encodeURIComponent(crData.task_id));
+              const d = await st.json();
+              if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
+              if(d.status === 'SUCCEEDED' && d.output && d.output[0]){ clearInterval(iv); resolve(d.output[0]); }
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error(bT('فشل توليد الفيديو — أعد المحاولة.','Video generation failed — try again.'))); }
+              else setStatus(bT('⏳ يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Generating the video (may take 1-3 min)...'));
+            } catch(e){ /* keep polling */ }
+          }, 8000);
+        });
+        setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
+        const vres = await fetch(proxyVideoUrl(videoUrl));
+        if(!vres.ok) throw new Error('download failed ' + vres.status);
+        const vblob = await vres.blob();
+        const vurl = URL.createObjectURL(vblob);
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+        resultEl.src = vurl;
+        resultEl.style.display = 'block';
+        downloadEl.href = proxyVideoUrl(videoUrl);
+        downloadEl.style.display = 'block';
+        autoSaveVideo(vurl);
       } catch(e){
         setStatus(friendlyError(e));
       } finally {
