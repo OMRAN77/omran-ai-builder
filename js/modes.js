@@ -42,11 +42,15 @@
   }
   function modelName(){ return curModel() === 'opus' ? 'Opus 5' : 'Sonnet 5'; }
   function isOwner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
+  var stickyTried = false;
   function refreshOwnerItems(){
     try{
       var on = isOwner();
       var items = document.querySelectorAll('.omModeItem[data-owner="1"]');
       for(var i = 0; i < items.length; i++) items[i].style.display = on ? '' : 'none';
+      /* v-img-cards: «دمج نانو + GPT» يبقى بعد إعادة فتح التطبيق للمالك حتّى يُزال بـ× */
+      /* مراجعة: مرّة واحدة لكلّ تحميل (لا يغلق قائمة + ولا يعود بعد ×)، وخلال ٣ ساعات فقط — لا نصّ عاديّ يصير عمل صور مدفوعًا بعد أيّام */
+      try{ if(on && !stickyTried){ stickyTried = true; var sv = String(localStorage.getItem('omStickyMode') || '').split('|'); if(!window.__omMode && sv[0] === 'image_mix' && Date.now() - (+sv[1] || 0) < 3 * 3600000) pick('image_mix', true); } } /* بلا تركيز: لا لوحة مفاتيح عند فتح التطبيق */catch(e){ /* guard-ok: تخزين محجوب = بلا تذكّر */ }
       var bar = document.getElementById('omBottomBar');
       if(bar) bar.style.display = on ? 'flex' : 'none';
     }catch(e){ /* guard-ok: optional owner items */ }
@@ -243,7 +247,9 @@
     });
     ta.addEventListener('keydown', function(e){
       if(e.key === 'Escape' && window.__omMode){ pick(null); }
-      if(e.key === 'Backspace' && !ta.value && window.__omMode){ pick(null); }
+      /* v-img-cards (المالك: «مافي دمج» — آخر طلب ذهب بلا دمج): مسح حرف في صندوق فارغ كان يُطفئ «دمج نانو + GPT» بصمت؛
+         وضع الصورة يبقى حتّى يُزال بـ× أو Esc */
+      if(e.key === 'Backspace' && !ta.value && window.__omMode && window.__omMode !== 'image_mix'){ pick(null); }
     });
     buildBottomBar();
     /* الدخول قد يتمّ بعد بناء الصندوق — نعيد فحص المالك مرّاتٍ قصيرة وعند عودة التركيز
@@ -251,9 +257,10 @@
     [500, 1500, 3500, 7000].forEach(function(ms){ setTimeout(refreshOwnerItems, ms); });
     try{ window.addEventListener('focus', refreshOwnerItems); }catch(e){ /* guard-ok */ }
   }
-  function pick(id){
+  function pick(id, quiet){
     try{ popup.classList.remove('show'); }catch(e){ /* guard-ok: an absent optional popup needs no cleanup. */ }
     window.__omMode = id;
+    try{ if(id === 'image_mix') localStorage.setItem('omStickyMode', 'image_mix|' + Date.now()); else localStorage.removeItem('omStickyMode'); }catch(e){ /* guard-ok: تخزين محجوب = بلا تذكّر */ }
     var m = null; for(var i=0;i<MODES.length;i++){ if(MODES[i].id === id) m = MODES[i]; }
     /* v-cc-nopill (أمر عمران «مااريد كودي يطلع هذا المكان، الصفحة نظيفة»): وضع
        Claude Code يشتغل من قائمة السهم فقط — بلا فقاعة داخل صندوق الكتابة؛
@@ -275,7 +282,7 @@
         else if(id !== 'web' && on) w.click();
       }
     }catch(e){ /* guard-ok: optional web-mode mirroring must not block mode selection. */ }
-    try{ if(ta){ ta.focus(); } }catch(e){ /* guard-ok: focus restoration is best-effort. */ }
+    try{ if(ta && !quiet){ ta.focus(); } }catch(e){ /* guard-ok: focus restoration is best-effort. */ }
     try{ if(window.omBottomSync) window.omBottomSync(); }catch(e){ /* guard-ok: تحديث تجميليّ للشريط */ }
   }
   window.__omSetMode = pick;

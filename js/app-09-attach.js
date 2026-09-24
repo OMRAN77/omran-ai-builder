@@ -461,13 +461,16 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     if(!__shF){ try{ __shF = fileOf(); }catch(e){ __swallow(e, 'fileOnce:app-09-attach#v642'); __shF = null; } }
     return __shF;
   };
+  /* v-share-lazy (فحص ذاكرة جهاز المالك): الفحص كان يبني ملفّ الصورة الكامل (atob لعشرات الميغا) لكلّ صورة لحظة ظهور زرّها
+     ويُبقيه في الذاكرة — ٤٧٢ م.ب في محادثة صور. canShare يحكم بالنوع لا بالمحتوى، فيُفحص بملفّ بايت واحد من النوع نفسه،
+     والملفّ الحقيقيّ يُبنى عند النقر وحدها (shareFile/fileOnce)؛ إن تعذّر بناؤه حينها تُكمل المسارات البديلة كما كانت. */
   const filePossible = () => {
     try{
       const nv = navigator;
       if(typeof File !== 'function' || typeof nv.share !== 'function') return false;
-      const f = fileOnce();
-      if(!f) return false;
-      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [f] })) return true; }catch(e){ /* guard-ok — canShare() may throw on some browsers */ } }
+      const ty = (String(dataUrl).match(/^data:([^;,]+)/) || [])[1] || 'image/png';
+      const probe = new File([new Uint8Array(1)], 'image' + (ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : '.png')), { type: ty });
+      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [probe] })) return true; }catch(e){ /* guard-ok — canShare() may throw on some browsers */ } }
       return true;
     }catch(e){ __swallow(e, 'filePossible:app-09-attach#v642'); }
     return false;
@@ -2652,6 +2655,8 @@ try{
    غلاف يلتقط أي استثناء يسقط سطرَ الإرسال بصمت (قبل أو بعد try الداخلي) ويعرضه
    في المحادثة بدل «لا شيء إطلاقًا»، ويكشف السبب الحقيقي في جهاز المستخدم. */
 async function sendPrompt(){
+  /* v-proj-vault: آخر صورة معدّلة ومصدرها وطبقة النصّ قد تكون في المخزن (مشروع عاد إليه المستخدم أو إقلاع) — تُستعاد قبل أن يقرأها الإرسال */
+  try{ const __cb = getCurrent(); const __bp = (__cb && window.__vaultProjBlobs) ? window.__vaultProjBlobs(__cb) : null; if(__bp) await __bp; }catch(e){ __swallow(e, 'vault:blobs-send'); }
   try{ return await __sendPromptCore.apply(this, arguments); }
   catch(e){
     try{

@@ -17,6 +17,7 @@ const { detectEditIntent } = require('./image-intent');
    v-img-honest (المالك ٢٣ سبتمبر: «أوّل شي يقولي شي والتنفيذ صفر»): التفسير القديم بلا تفكير صدّق الطلب فكتب «تمّ تغيير جميع
    الوجوه» تحت الصورة نفسها. الآن: قياس بكسل (image-diff) لا يرى الطلب أصلًا + حكم رؤية يرى القياس دليلًا. */
 const { settleCandidates } = require('./image-verify');
+const { runCards, cardsKind } = require('./image-cards');
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const pipeline = require('./image-pipeline');
@@ -42,6 +43,7 @@ module.exports = async (req, res) => {
   /* v-img-engine-tag-owner (متابعة): مسار النصّ (__textRoute) يقرّر GPT هو الصحّ لكن قد يفشل نداؤه
      فيسقط بصمت إلى برو/نانو — بلا هذا السطر يرى المالك «nano» بلا أيّ فكرة عن سبب تجاوز GPT له. */
   let __textRouteFailNote = '';
+  let __cardsNote = '';
   async function refundImageCharge() {
     if (mahaImgCharged && pointsLib) {
       const user = mahaImgCharged;
@@ -220,17 +222,18 @@ module.exports = async (req, res) => {
     // مسارات الإنقاذ الستّة (nano/openai الاحتياطية، openai-masked، dense)
     // ترجع الصورة بلا caption، فإن كان المحرّك الأساسيّ غير متاح لمفتاح المالك
     // مرّت كلّ الطلبات عبرها بلا أيّ تفسير.
-    async function sendImg(b64, mime, engine, report, verdict) {
+    async function sendImg(b64, mime, engine, report, verdict, noUpscale) {
       /* v-img-upscale (قرار المالك ٢٠ سبتمبر): أيّ ناتج دون 2K (نانو ٢٫٥ ≈ ١٠٢٤، gpt-image ≤ ١٥٣٦) يمرّ بمكبّر دقّة
          متخصّص لا يغيّر المحتوى قبل الإرسال. الخام للمالك يبقى خامًا. بلا مفتاح/عطب/مهلة تُعاد الصورة كما هي. */
       let __up = null;
-      if (!__pureRaw && String(process.env.IMAGE_UPSCALE || '').toLowerCase() !== 'off') {
+      if (!noUpscale && !__pureRaw && String(process.env.IMAGE_UPSCALE || '').toLowerCase() !== 'off') { /* v-img-cards: لوحة البطاقات بمقاس المصدر وكتابته — لا مكبّر يعيد رسمها */
         try { __up = await require('./upscale.js').upscaleImage(b64, mime || 'image/png'); } catch (e) { __up = null; }
         if (__up && __up.ok) { b64 = __up.b64; mime = __up.mime; engine = engine + '+up' + __up.scale; }
         else if (__up && __up.reason !== 'already_sharp' && __up.reason !== 'no_token' && __up.reason !== 'disabled') console.warn('[maha-image] upscale skipped: ' + __up.reason + (__up.detail ? ' ' + __up.detail : ''));
       }
       /* v-img-engine-tag-owner (متابعة): مسار النصّ أراد GPT وفشل — يظهر السبب مع اسم المحرّك الفعليّ للمالك وحده (العميل يحرس عرضه). */
       if (__textRouteFailNote) engine = engine + '(gpt-text-failed:' + __textRouteFailNote + ')';
+      if (__cardsNote) engine = engine + '(cards:' + __cardsNote + ')'; /* v-img-cards: لوحة بطاقات لم تكتمل — السبب للمالك */
       /* v-img-report (المالك ٢٣ سبتمبر «الكلام بعد الصورة بالدقّة… لين أوصل للصورة»): التقرير يصل جاهزًا من deliver (حكم الرؤية
          على الناتج قبل التكبير)، للتعديل والتوليد، ومعه الحكم نفسه (done/partial/not_done) ليصدق العميل وأداة الوكيل. */
       res.status(200).json({
@@ -268,7 +271,7 @@ module.exports = async (req, res) => {
         res.status(422).json({ error: 'image_unchanged', retryable: true, __diag: process.env.IMG_DIAG === 'off' ? undefined : { tried: r.tried } });
         return;
       }
-      await sendImg(r.best.b64, r.best.mime, r.engine, r.report, r.best.verdict);
+      await sendImg(r.best.b64, r.best.mime, r.engine, r.report, r.best.verdict, r.best.noUpscale);
     }
 
     // 🧪 خط أنابيب الصور الجديد: يعمل فقط لتوليد جديد (لا تعديل، لا دعاء،
@@ -766,6 +769,30 @@ module.exports = async (req, res) => {
       const b64 = await openaiRescueImage(__polishPrompt, imgs, __extraBudget());
       return b64 ? { b64: b64, mime: 'image/png', engine: c.engine + '+gpt-text' } : null;
     }
+    /* v-img-cards (المالك ٢٤ سبتمبر: «مافي دمج بين الاثنين — الناتج صفر»): لوحة بطاقات + «غيّر كلّ الأشخاص / بدون تكرار / صور ثانية»
+       = كلّ بطاقة وحدها بشخص جديد لا يتكرّر وبموضوعها، والكتابة من المصدر، والدمج = المحرّكان على كلّ بطاقة ويُختار الأفضل (image-cards.js).
+       ليست لوحة = المسار العاديّ. للمالك وحده (٨–١٦ نداء محرّك بدل ١–٣ — تعميمه قرار مال/نقاط). IMAGE_CARDS=off يوقفه. */
+    const __cardsKind = cardsKind(intentText, { personSwap: isPersonSwap && !__swapOne, reimagine: isReimagine, history: history, other: isRestyle || isElevate || isSceneUpgrade || isTextSwap || isTextRemove || isBroadEdit });
+    if (__isOwnerReq && __cardsKind && editImageBase64 && !extras.length && !__pureRaw && !prayerPlan && !__want4K && String(process.env.IMAGE_CARDS || 'on').toLowerCase() !== 'off') {
+      const proCard = async function (cardPrompt, crop, budget) { /* المحرّك الأساسيّ نفسه (endpoint)، ١K تكفي صورة بطاقة */
+        const r = await fetchImageWithRetry({ maxAttempts: 1, timeoutMs: Math.max(15000, budget), url: endpoint, /* مراجعة: محاولة واحدة — لا نداء يتيم بعد استسلام البطاقات */
+          init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: cardPrompt }, { inlineData: { mimeType: crop.mime, data: crop.b64 } }] }], generationConfig: nanoPrimary ? { responseModalities: ['IMAGE'] } : { imageConfig: { imageSize: '1K' } } }) } });
+        const cp = ((((((r || {}).data || {}).candidates || [])[0] || {}).content || {}).parts || []).find(function (x) { return x.inlineData && x.inlineData.data; });
+        const dd = (r && r.data) || {}; return (r && r.response && r.response.ok && cp) ? { b64: cp.inlineData.data, mime: cp.inlineData.mimeType || 'image/png' } : { error: (r && r.response ? r.response.status : 'noresp') + ' ' + ((dd.promptFeedback || {}).blockReason || ((dd.candidates || [])[0] || {}).finishReason || '') };
+      };
+      const gptCard = process.env.OPENAI_API_KEY ? async function (cardPrompt, crop, budget) {
+        const b64 = await openaiRescueImage(cardPrompt, [{ data: crop.b64, mime: crop.mime }], budget);
+        return b64 ? { b64: b64, mime: 'image/png' } : { error: String(lastRescueErr || 'fail').replace(/^openai\s+/, '') };
+      } : null;
+      const __cr = await runCards({ apiKey: apiKey, source: { b64: editImageBase64, mime: editMimeType || 'image/jpeg' }, kind: __cardsKind, mix: __engineMix, request: intentText,
+        deadline: __t0 + 190000, engines: { pro: proCard, gpt: gptCard } }).catch(function (e) { return { ok: false, reason: 'error ' + String((e && e.message) || e).slice(0, 60) }; });
+      if (__cr.ok) {
+        await deliver({ b64: __cr.b64, mime: __cr.mime, engine: (__engineMix ? 'mix:' : '') + __cr.engine, noUpscale: true }, null, null);
+        return;
+      }
+      if (__cr.reason !== 'not_cards') __cardsNote = (__cr.reason || 'fail') + (__cr.why ? ' ' + __cr.why : '');
+    } /* مراجعة: فشلت البطاقات متأخّرة = لا مسار كامل يتجاوز ٣٠٠ث؛ ٤٢٢ صادقة واسترداد */
+    if (__cardsNote && __extraBudget() < 150000) { await refundImageCharge(); res.status(422).json({ error: 'image_unchanged', retryable: true, __diag: process.env.IMG_DIAG === 'off' ? undefined : { cards: __cardsNote } }); return; }
     if (__engineMix) {
       const pro = await proCandidate().catch(function () { return null; });
       const polish = (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null;

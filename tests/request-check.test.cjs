@@ -30,5 +30,6 @@ test('v-lanes: maha-image no longer wires the request check (one call, no retry)
   assert.match(verify, /one short sentence stating exactly what changed, describing only what is truly visible in the result; \(2\) if any part of the request is NOT visible or came out different, say so plainly/); // v-img-report: والاعتراف بما لم يتحقّق
   assert.match(verify, /offering TWO concrete next options specific to this image/);
   assert.match(verify, /Gulf Arabic if they wrote Gulf Arabic/);
-  assert.match(maha, /await sendImg\(r\.best\.b64, r\.best\.mime, r\.engine, r\.report, r\.best\.verdict\);/, 'v-img-report: التقرير للتوليد والتعديل');
+  /* v-img-cards: ولوحة البطاقات بلا مكبّر (مقاس المصدر وكتابته) */
+  assert.match(maha, /await sendImg\(r\.best\.b64, r\.best\.mime, r\.engine, r\.report, r\.best\.verdict, r\.best\.noUpscale\);/, 'v-img-report: التقرير للتوليد والتعديل');
 });

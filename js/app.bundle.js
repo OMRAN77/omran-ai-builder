@@ -5139,6 +5139,19 @@ function __vaultEach(projects, fn){
     (m && m.apiImages || []).forEach(a => { if(a) fn(a); });
   }));
 }
+/* v-proj-vault (فحص الإقلاع في محادثة فارغة ببيانات كبيانات المالك: ١٨٣ م.ب من ذاكرة JS نصوصُ base64 على مستوى المشروع —
+   آخر صورة معدّلة، مصدر التعديل، أساس طبقة النصّ، لقطة الدليل، وسجلّ الديكور — تُحمَّل لكلّ المشاريع عند كلّ إقلاع ولا يعرضها
+   شيء، ثمّ ينسخها كلّ حفظ ٣–٤ مرّات: قمّة ١٫٣ غ.ب ومهامّ طويلة ٢–٧ث): تُخزَّن في مخزن الصور كالمرفقات، ويبقى في السجلّ معرّفها.
+   كلّ كاتب لهذه الحقول يُسند كائنًا جديدًا (لا تعديل في المكان)، فالكائن الجديد بلا معرّف يُكتب في الحفظ التالي والقديم يكنسه الكنس. */
+const __PROJ_BLOBS = [['lastEditedImage', 'b64'], ['imageEditSource', 'b64'], ['imageTextLayer', 'baseB64'], ['guideShot', 'b64']];
+function __projBlobEach(projects, fn){
+  (projects || []).forEach(p => {
+    if(!p) return;
+    __PROJ_BLOBS.forEach(fk => { const o = p[fk[0]]; if(o && typeof o === 'object') fn(o, fk[1], p); });
+    if(p.decorHistory && typeof p.decorHistory === 'object') Object.keys(p.decorHistory).forEach(s => { const o = p.decorHistory[s]; if(o && typeof o === 'object') fn(o, 'b64', p); });
+  });
+}
+function __blobDegraded(o, k){ return !!(o && o.vaultId && !o.vaultPending && (typeof o[k] !== 'string' || o[k].length <= VAULT_MIN)); }
 /* يعيّن معرّفًا لكل صورة كبيرة بلا معرّف ويعيد ما يجب كتابته في المخزن */
 function __vaultAssign(projects, now){
   const puts = [];
@@ -5147,12 +5160,18 @@ function __vaultAssign(projects, now){
     if(!a.vaultId){ a.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); a.vaultPending = true; }
     if(a.vaultPending) puts.push({ id: a.vaultId, dataUrl: a.dataUrl, ref: a });
   });
+  __projBlobEach(projects, (o, k) => { /* v-proj-vault */
+    if(typeof o[k] !== 'string' || o[k].length <= VAULT_MIN) return;
+    if(!o.vaultId){ o.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); o.vaultPending = true; }
+    if(o.vaultPending) puts.push({ id: o.vaultId, dataUrl: o[k], ref: o });
+  });
   return puts;
 }
 /* نسخة الحفظ: الصورة المخزونة تُستبدل بمعرّفها فقط */
 function __vaultReplacer(k, v){
   if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض تُحفظ في المخزن بمفتاحها لا في السجلّ */
   if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && (v.length > VAULT_MIN || v === '[media]')) return '';
+  if((k === 'b64' || k === 'baseB64') && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return ''; /* v-proj-vault */
   if(k === 'vaultPending') return undefined;
   return v;
 }
@@ -5187,12 +5206,31 @@ function __vaultRelease(keepP, keepFrom){
       if(a && a.vaultId && !a.vaultPending && a.viewUrl && !__viewReads.has(a)) delete a.viewUrl; /* v-img-view: نسختها في المخزن */
     });
   }));
+  /* v-proj-vault: base64 المشاريع الأخرى يعود لمعرّفه (المفتوح يبقى، والمعلّق لم يُكتب بعد) */
+  __projBlobEach(((typeof state !== 'undefined' && state && state.projects) || []).filter(p => p !== keepP), (o, k) => {
+    if(o.vaultId && !o.vaultPending && typeof o[k] === 'string' && o[k].length > VAULT_MIN && !__vaultReads.has(o)){ o[k] = ''; freed++; }
+  });
   return freed;
 }
 function __collectVaultIds(projects){
   const ids = new Set();
   __vaultEach(projects, a => { if(a.vaultId) ids.add(a.vaultId); });
+  __projBlobEach(projects, o => { if(o.vaultId) ids.add(o.vaultId); }); /* v-proj-vault: الكنس لا يمسحها */
   return ids;
+}
+/* v-proj-vault: base64 المشروع المفتوح يُستعاد من المخزن (قراءة مشتركة لكلّ كائن)، ويُنتظر قبل أيّ إرسال */
+function __vaultProjBlobs(p){
+  const prs = [];
+  __projBlobEach(p ? [p] : [], (o, k) => {
+    if(!__blobDegraded(o, k)) return;
+    let pr = __vaultReads.get(o);
+    if(!pr){
+      pr = idbImgGet(o.vaultId).then(d => { if(typeof d === 'string' && d) o[k] = d; return o[k]; }).catch(e => { __swallow(e, 'vault:blob'); return o[k]; }).finally(() => __vaultReads.delete(o));
+      __vaultReads.set(o, pr);
+    }
+    prs.push(pr);
+  });
+  return prs.length ? Promise.all(prs) : null; /* لا شيء في المخزن = لا انتظار (الإرسال يبدأ في المهمّة نفسها كما كان) */
 }
 function idbImgPutAll(puts){
   if(!puts.length) return Promise.resolve();
@@ -5241,7 +5279,7 @@ function __makeView(src){
           const k = Math.min(1, __VIEW_MAX / Math.max(w0, h0));
           const c = document.createElement('canvas');
           c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
-          const cx = c.getContext('2d');
+          const cx = c.getContext('2d', { willReadFrequently: true }); /* لوحة برمجيّة: الأصل 4K لا يُرفع لذاكرة الرسم لصنع نسخته */
           cx.drawImage(im, 0, 0, c.width, c.height);
           let alpha = false;
           if(!/^data:image\/jpe?g/i.test(src)){
@@ -5305,6 +5343,9 @@ async function __vaultSave(){
   catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
   const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects, __noViewReplacer));
   await idbSet('aiapp_projects', copy);
+  /* v-proj-vault: ما كُتب للتوّ في المخزن من غير المحادثة المفتوحة يخرج من الذاكرة الآن لا عند الرسم التالي (أوّل حفظ بعد النشر
+     ينقل base64 كلّ المشاريع إلى المخزن دفعة واحدة) */
+  if(vaulted && puts.length){ try{ const __cp = (typeof getCurrent === 'function') ? getCurrent() : null; __vaultRelease(__cp, __cp ? __imgWindowStart(__cp) : 0); }catch(e){ __swallow(e, 'vault:release-after-save'); } }
 }
 function __noViewReplacer(k, v){ return k === 'viewUrl' ? undefined : v; }
 /* الاستعادة: صور مشروع بلا dataUrl تُقرأ من المخزن (عند الإقلاع للمشروع المفتوح، وعند العرض لغيره) */
@@ -5326,6 +5367,7 @@ async function hydrateProjectImages(p, fromIdx){
   /* v-img-view: المرآة المنحّفة تُستبدل بالكاملة بعد لحظات فقراءة أصولها ضائعة (كانت تُقرأ كلّ صورة مرّتين عند الإقلاع)؛
      وapiImages لا يقرؤها شيء إلّا للرسالة الجديدة (قبل أن تُخزَّن) فلا تُستعاد — كانت تضاعف الذاكرة. */
   if(typeof window !== 'undefined' && window.__usingSlimProjects) return 0;
+  if(p) __vaultProjBlobs(p); /* v-proj-vault: لا يُنتظر هنا (لا يُعرض) — الإرسال ينتظره */
   ((p && p.messages) || []).forEach((m, i) => {
     if(!m || i < start) return;
     (m.attachments || []).forEach(a => { if(a && a.isImage && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
@@ -5338,6 +5380,7 @@ async function hydrateProjectImages(p, fromIdx){
   return need.length;
 }
 window.__hydrateProjectImages = hydrateProjectImages;
+window.__vaultProjBlobs = __vaultProjBlobs;
 window.__vaultSweep = function(){ try{ return idbImgSweep(__collectVaultIds(state.projects)); }catch(e){ return Promise.resolve(); } };
 
 // Strips old image data (keeps a small placeholder) to free up localStorage
@@ -6522,7 +6565,10 @@ function renderMessages(keepScroll){
              المخزونة بلا نسخة في الذاكرة تنتظر نسختها (من المخزن، أو تُصنع مرّة من الأصل). كلّ تعيين في مهمّته (v-mem-guard3:
              الدفعة الواحدة جمّدت الإقلاع ١٫٥ث)، والمنفصلة عن الصفحة تُتخطّى، والمخفيّة بعد خطأ src فارغ تعود ظاهرة. */
           const __showSrc = (u) => { if(typeof u === 'string' && u) setTimeout(() => { if(!img.isConnected || img.getAttribute('src') === u) return; img.style.display = ''; img.src = u; }, 0); };
-          if(a.viewUrl) img.src = a.viewUrl;
+          /* v-chip-thumb: رقاقة مرفق المستخدم ٦٠px (object-fit:cover يفكّ الأصل كاملًا) تُرسم بمصغّرتها المحفوظة (400px) إن وُجدت */
+          const __chipThumb = (m.role === 'user' || a._fromMemory) && typeof a.serverThumb === 'string' && a.serverThumb.slice(0, 11) === 'data:image/' ? a.serverThumb : '';
+          if(__chipThumb) img.src = __chipThumb;
+          else if(a.viewUrl) img.src = a.viewUrl;
           else if(__isBigDataImg(a.dataUrl) || __vaultDegraded(a)){
             if(__isBigDataImg(a.dataUrl) && (!a.vaultId || a.vaultPending)) img.src = a.dataUrl;
             __imgView(a).then(__showSrc).catch(e => __swallow(e, 'img:view'));
@@ -16984,13 +17030,16 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     if(!__shF){ try{ __shF = fileOf(); }catch(e){ __swallow(e, 'fileOnce:app-09-attach#v642'); __shF = null; } }
     return __shF;
   };
+  /* v-share-lazy (فحص ذاكرة جهاز المالك): الفحص كان يبني ملفّ الصورة الكامل (atob لعشرات الميغا) لكلّ صورة لحظة ظهور زرّها
+     ويُبقيه في الذاكرة — ٤٧٢ م.ب في محادثة صور. canShare يحكم بالنوع لا بالمحتوى، فيُفحص بملفّ بايت واحد من النوع نفسه،
+     والملفّ الحقيقيّ يُبنى عند النقر وحدها (shareFile/fileOnce)؛ إن تعذّر بناؤه حينها تُكمل المسارات البديلة كما كانت. */
   const filePossible = () => {
     try{
       const nv = navigator;
       if(typeof File !== 'function' || typeof nv.share !== 'function') return false;
-      const f = fileOnce();
-      if(!f) return false;
-      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [f] })) return true; }catch(e){ /* guard-ok — canShare() may throw on some browsers */ } }
+      const ty = (String(dataUrl).match(/^data:([^;,]+)/) || [])[1] || 'image/png';
+      const probe = new File([new Uint8Array(1)], 'image' + (ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : '.png')), { type: ty });
+      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [probe] })) return true; }catch(e){ /* guard-ok — canShare() may throw on some browsers */ } }
       return true;
     }catch(e){ __swallow(e, 'filePossible:app-09-attach#v642'); }
     return false;
@@ -19175,6 +19224,8 @@ try{
    غلاف يلتقط أي استثناء يسقط سطرَ الإرسال بصمت (قبل أو بعد try الداخلي) ويعرضه
    في المحادثة بدل «لا شيء إطلاقًا»، ويكشف السبب الحقيقي في جهاز المستخدم. */
 async function sendPrompt(){
+  /* v-proj-vault: آخر صورة معدّلة ومصدرها وطبقة النصّ قد تكون في المخزن (مشروع عاد إليه المستخدم أو إقلاع) — تُستعاد قبل أن يقرأها الإرسال */
+  try{ const __cb = getCurrent(); const __bp = (__cb && window.__vaultProjBlobs) ? window.__vaultProjBlobs(__cb) : null; if(__bp) await __bp; }catch(e){ __swallow(e, 'vault:blobs-send'); }
   try{ return await __sendPromptCore.apply(this, arguments); }
   catch(e){
     try{

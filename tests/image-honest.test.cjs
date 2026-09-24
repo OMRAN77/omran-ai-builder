@@ -99,6 +99,7 @@ const handler = require(rp('api/_lib/maha-image.js'));
 /* engines: { pro, nano, gptEdit, gptGen } كلّ واحد صورة b64 أو null (فشل)؛ judge(body, nCands) → كائن JSON للحاكم أو null (فشل HTTP) */
 async function run(body, engines, judge) {
   const calls = [];
+  let detects = 0;
   const save = global.fetch;
   global.fetch = async (url, init) => {
     const u = String(url);
@@ -116,6 +117,8 @@ async function run(body, engines, judge) {
     const b = JSON.parse(init.body);
     if (u.includes('gemini-flash-latest')) {
       const parts = b.contents[0].parts;
+      /* v-img-cards: كشف لوحة البطاقات للمالك قبل مساره — هنا «ليست لوحة» فيكمل المسار العاديّ كما كان */
+      if (parts.some((p) => p.text && /made of several CARDS/.test(p.text))) { detects++; return Response.json({ candidates: [{ content: { parts: [{ text: '{"cards":[]}' }] } }] }); }
       const n = parts.filter((p) => p.text && /^RESULT [ABC]:/.test(p.text)).length;
       calls.push({ kind: 'judge', n, text: parts.filter((p) => p.text).map((p) => p.text).join('\n'), cfg: b.generationConfig });
       const j = judge ? judge(b, n) : null;
@@ -132,7 +135,7 @@ async function run(body, engines, judge) {
   const res = { setHeader() {}, status(s) { status = s; return this; }, json(v) { json = v; return this; }, end() { return this; } };
   ledger.length = 0;
   try { await handler({ method: 'POST', headers: {}, body }, res); } finally { global.fetch = save; }
-  return { status, json, calls, ledger: ledger.slice() };
+  return { status, json, calls, detects, ledger: ledger.slice() };
 }
 const SWAP_REQ = 'غيّر جميع وجوه وأشكال الأشخاص في الخيارات بدون تكرار';
 const done = (report) => () => ({ verdicts: ['done'], pick: 0, scope: 'big', report: report || 'غيّرت كلّ الوجوه. هل أعجبتك؟ ولا أسوي لك … أو …؟' });
@@ -194,6 +197,7 @@ test('٧. «دمج نانو + GPT» للمالك (خيار «أ»): برو ير�
   assert.equal(r.json.imageBase64, FIXED);
   assert.equal(r.json.caption, 'بدّلت الوجوه وصحّحت «تهنئة».');
   assert.deepEqual(r.calls.map((c) => c.kind), ['pro', 'judge', 'gpt-edit', 'judge'], 'برو ← حكم ← GPT للكتابة ← حكم بين الاثنين');
+  assert.equal(r.detects, 1, 'v-img-cards: تبديل المالك يُكشف أوّلًا هل الصورة لوحة بطاقات؛ ليست لوحة = هذا المسار كما كان');
   const pol = r.calls[2];
   assert.ok(isPolish(pol.prompt) && /Change NOTHING else in image 1/.test(pol.prompt) && pol.images === 2, 'التلميع: الكتابة وحدها، والمصدر مرجع الحروف');
   assert.equal(r.calls[3].n, 2);

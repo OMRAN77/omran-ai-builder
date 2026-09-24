@@ -77,7 +77,7 @@ test('٦. التراجع: «رجعها زي أول/تراجع» للنسخة ا�
 
 test('٧. تقرير الصورة: للتوليد والتعديل، يصف المرئيّ فقط ويعترف بما لم يتحقّق', () => {
   /* v-img-honest (٢٣ سبتمبر): التقرير انتقل إلى image-verify مع حكم التنفيذ في النداء نفسه، ويصل sendImg جاهزًا للتوليد والتعديل */
-  assert.ok(read('api/_lib/maha-image.js').includes('await sendImg(r.best.b64, r.best.mime, r.engine, r.report, r.best.verdict);'));
+  assert.ok(read('api/_lib/maha-image.js').includes('await sendImg(r.best.b64, r.best.mime, r.engine, r.report, r.best.verdict, r.best.noUpscale);')); /* v-img-cards: لوحة البطاقات بلا مكبّر */
   const s = read('api/_lib/image-verify.js');
   assert.ok(s.includes('source: srcVis') && s.includes("reportInstr(!!o.source)"), 'المصدر مع الناتج للتعديل');
   assert.ok(s.includes('if any part of the request is NOT visible or came out different, say so plainly'));

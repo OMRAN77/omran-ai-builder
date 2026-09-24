@@ -117,7 +117,8 @@ test('٥. الإجراء upscale: ٤٠١ بلا جلسة، ٥ نقاط لغير 
 
 test('٦. التوصيل: مخرج maha-image يرقّي دون 2K إلّا الخام، وMax على 4K، والمسار والسعر مسجّلان', () => {
   const mi = read('api/_lib/maha-image.js');
-  assert.match(mi, /async function sendImg\(b64, mime, engine, report, verdict\) \{\n\s+\/\* v-img-upscale[\s\S]*?if \(!__pureRaw && String\(process\.env\.IMAGE_UPSCALE \|\| ''\)\.toLowerCase\(\) !== 'off'\) \{\n\s+try \{ __up = await require\('\.\/upscale\.js'\)\.upscaleImage\(b64, mime \|\| 'image\/png'\); \}/);
+  /* v-img-cards: لوحة البطاقات (noUpscale) بمقاس المصدر وكتابته لا تمرّ بالمكبّر؛ غيرها كما كان */
+  assert.match(mi, /async function sendImg\(b64, mime, engine, report, verdict, noUpscale\) \{\n\s+\/\* v-img-upscale[\s\S]*?if \(!noUpscale && !__pureRaw && String\(process\.env\.IMAGE_UPSCALE \|\| ''\)\.toLowerCase\(\) !== 'off'\) \{[^\n]*\n\s+try \{ __up = await require\('\.\/upscale\.js'\)\.upscaleImage\(b64, mime \|\| 'image\/png'\); \}/);
   assert.match(mi, /if \(__up && __up\.ok\) \{ b64 = __up\.b64; mime = __up\.mime; engine = engine \+ '\+up' \+ __up\.scale; \}/);
   // v-img-honest: القياس والتقرير على ناتج المحرّك قبل الترقية (settleCandidates)، والترقية قبل الإرسال كما كانت
   assert.ok(mi.indexOf("caption: (!prayerPlan && report) || undefined,") > mi.indexOf("engine = engine + '+up'"), 'الترقية قبل الإرسال');
