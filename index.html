@@ -84,6 +84,16 @@ window.__omranWhenSeen = (function () {
 <meta name="author" content="Omran">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#000000">
+<!-- v-color-scheme (المالك ٢٤ سبتمبر، الجولة الخامسة — الدليل: أيقونات SVG سطريّة تُرسم
+     **ممتلئة رماديّة** والنصّ بجانبها سليم؛ وهي في الصفحة من أوّل بايت بـfill="none" ولا قاعدة
+     CSS تضبط fill — أي أنّ شيئًا **خارج كودنا** يغيّر رسمها): التغميق الخوارزميّ في WebView
+     أندرويد/هواوي (force-dark) يعيد تلوين صفحة **لا تعلن color-scheme**، ويطال SVG والصور
+     والنصّ — وهذا شكل «الضجيج الملوّن» و«الصور الخضراء» و«النصّ المخدوش».
+     الإعلان الوحيد في المشروع كان `color-scheme:light` في tokens.css تحت الوضع الفاتح وحده،
+     والوضع الداكن (وهو ما يستعمله المالك) بلا إعلان إطلاقًا — getComputedStyle: "normal".
+     إعلانها هنا قبل أيّ نمط يخبر المحرّك أنّ الصفحة تتولّى وضعها بنفسها فيمتنع عن تغميقها. -->
+<meta name="color-scheme" content="dark light">
+<style>:root{color-scheme:dark}html[data-mode="light"]{color-scheme:light}</style>
 <link rel="canonical" href="https://omran-ai-builder.vercel.app/">
 <link rel="alternate" hreflang="ar" href="https://omran-ai-builder.vercel.app/">
 <link rel="alternate" hreflang="en" href="https://omran-ai-builder.vercel.app/">
@@ -891,7 +901,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
 <script src="/js/partials-settings.js?v=662"></script>
 
-<script src="/js/selfdiag.js?v=hw-twa-5"></script>
+<script src="/js/selfdiag.js?v=hw-twa-6"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
     <script defer src="/js/app.bundle.js?v=c27d7eed"></script>

@@ -261,6 +261,21 @@ window.__omranErrLive = function(e, build, now){
           + window.innerWidth + 'x' + window.innerHeight + '@' + (Math.round((window.devicePixelRatio || 1) * 100) / 100)
           + ' · صور ظاهرة ' + vis + ' (' + MB(visMB) + 'MB) كلّ ' + all + ' (' + MB(allMB) + 'MB)'
           + (top ? ' · أثقل المخفيّ: ' + top : '')
+          /* v-sys-recolor: هل يعيد النظام تلوين ما نرسمه؟ إعلان color-scheme المحسوب يثبت أنّ
+             الإصلاح وصل، وبقيّة الاستعلامات تكشف تغميقًا قسريًّا أو إعداد إمكانيّة وصول —
+             وهو ما يفسّر أيقونة ممتلئة ونصًّا سليمًا بجانبها بلا أيّ علاقة بالذاكرة. */
+          + ' · نظام: ' + (function(){
+              var q = function(m){ try{ return matchMedia(m).matches; }catch(e){ return false; } };
+              var out = [];
+              try{ out.push('scheme=' + (getComputedStyle(document.documentElement).colorScheme || '?')); }
+              catch(e){ out.push('scheme=?'); }
+              out.push('sysDark=' + (q('(prefers-color-scheme: dark)') ? 'نعم' : 'لا'));
+              if(q('(forced-colors: active)')) out.push('ألوان مفروضة!');
+              if(q('(inverted-colors: inverted)')) out.push('ألوان معكوسة!');
+              if(q('(prefers-contrast: more)')) out.push('تباين عالٍ!');
+              if(q('(prefers-reduced-transparency: reduce)')) out.push('شفافيّة مخفّضة');
+              return out.join(' ');
+            })()
           + ' · صور بالذاكرة ' + stN + ' (' + MB(st) + 'MB نصّ) · عناصر ' + document.getElementsByTagName('*').length
           + ' · ' + (document.documentElement.classList.contains('omAndroid') ? 'omAndroid' : 'غير أندرويد'), 'selfdiag.js', 0, 0, '');
       }catch(e){ /* guard-ok: المسبار ترف تشخيصيّ */ }
