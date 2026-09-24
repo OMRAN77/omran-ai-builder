@@ -133,7 +133,7 @@ test('١٢. ١٤ لغة بلا مفتاح ناقص، والوسم مرفوع', (
   }
   ['cTitle', 'cm0', 'cm1', 'cm2', 'brandTitle', 'mTitle', 'amenDefault', 'dlPrint', 'copyBtn', 'resumeBtn']
     .forEach((k) => assert.ok(base.includes(k), 'مفتاح جديد ناقص: ' + k));
-  assert.match(html, /i18n\/ad-studio\.js\?v=604/);
+  assert.match(html, /i18n\/ad-studio\.js\?v=605/);
 });
 
 test('١٣. «بطاقة مواصفات» تتصدّر العشرة، ومفاتيح السحب تتبع رقم التصميم لا ترتيبه', () => {
@@ -157,7 +157,7 @@ test('١٤. هويّة المكتب وجلسة الإعلان تُحفظان م�
 test('١٥. صور اللوحات تُعرض كاملة — contain فوق نسخة مموّهة، لا قصّ بـcover', () => {
   assert.match(html, /\.cpo \.im \.ft\{position:relative;object-fit:contain\}/);
   assert.match(html, /\.cpo \.im \.bl\{position:absolute;inset:0;object-fit:cover;filter:blur/);
-  assert.match(html, /function cImg\(src,label\)\{[\s\S]{0,220}class="bl"[\s\S]{0,120}class="ft"/);
+  assert.match(html, /function cImg\(src,label,slot\)\{[\s\S]{0,260}class="bl"[\s\S]{0,140}class="ft"/);
   // لا بطل ولا مخطّط ولا خريطة يمرّ بغير الغلاف
   const K = html.slice(html.indexOf('function posterK('), html.indexOf('function posterL('));
   ['MED.hero||S.img', 'MED.map', 'MED.plan'].forEach((src) =>
@@ -172,7 +172,7 @@ test('١٦. هامش واحد لكلّ المناطق، والصفّ الأوس�
 });
 
 test('١٧. تبسيط: شارتان لا ثلاث، ومرافق بالعربيّة وحدها، وشعار واحد في الشريط', () => {
-  assert.match(html, /function cBadges\(\)\{ return \[S\.badge\|\|T\('badgeFb'\), S\.badge3\|\|S\.badge2\|\|''\]/);
+  assert.match(html, /function cBadges\(\)\{ return \[\['badge',S\.badge\|\|T\('badgeFb'\)\],\['badge3',S\.badge3\|\|S\.badge2\|\|''\]\]/);
   const amen = html.slice(html.indexOf('function cAmenBar('), html.indexOf('function cStrip('));
   assert.doesNotMatch(amen, /<em>/, 'السطر الإنجليزيّ ما زال يضاعف نصّ المرافق');
   const foot = html.slice(html.indexOf('function cFootBar('), html.indexOf('function cAmenBar('));
@@ -185,4 +185,70 @@ test('١٨. صفّ الماركات يظهر فقط إن ذُكرت — كان �
   assert.match(M, /const .*hb=br\.length>0/);
   assert.match(M, /\(hb\?'<div class="z m-brands"/);
   assert.doesNotMatch(M, /\(br\.length\?br:f\)/, 'ما زال يرتدّ إلى المزايا عند غياب الماركات');
+});
+
+/* v-ad-inline (طلب المالك: «بدل ما الكتابة في اتجاه والتحميل في اتجاه آخر، خلّه في نفس
+   الصورة: تضغط على المكان وتكتب رقم الواتساب، وتمسح اسم البطل فتصير صورة فقط، وتضيف
+   مربّع نصّ حرّ أو تمسحه»). أُثبت بمسبار متصفّح يضغط ويكتب ويسحب فعلًا. */
+test('١٩. الألواح الفوقيّة ذهبت — لا خانة نصّ ولا زرّ رفع خارج اللوحة', () => {
+  const w = html.slice(html.indexOf('<div class="cwrap"'), html.indexOf('<div class="gwrap"'));
+  assert.doesNotMatch(w, /input type="text"/, 'ما زالت هناك خانة نصّ فوق اللوحة');
+  assert.doesNotMatch(w, /class="slot"/, 'ما زال هناك زرّ رفع فوق اللوحة');
+  ['bName', 'bTag', 'bTel1', 'slotHero', 'slotLogo', 'mClear'].forEach((id) =>
+    assert.ok(!html.includes('id="' + id + '"'), 'بقيّة من اللوح القديم: ' + id));
+  assert.match(html, /<input type="file" id="fSlot"/);       // منتقٍ واحد لكلّ الخانات
+});
+
+test('٢٠. كلّ نصّ وصورة على اللوحة قابل للتحرير في مكانه', () => {
+  ['brand.wa', 'brand.tel1', 'brand.ig', 'brand.name', 'title', 'titleEn', 'badge', 'features.', 'amenities.', 'deal.']
+    .forEach((f) => assert.ok(html.includes("EF('" + f) || html.includes('EF(\'' + f) || html.includes("EF('" + f + "'"),
+      'حقل غير قابل للتحرير: ' + f));
+  ['hero', 'logo', 'plan', 'map', 'thumb.'].forEach((k) =>
+    assert.ok(html.includes("EI('" + k) || html.includes("'" + k + "'"), 'خانة صورة غير قابلة للرفع: ' + k));
+  assert.match(html, /function setField\(f,val\)/);
+  assert.match(html, /function startEdit\(el\)/);
+  // المصفوفات تُجسَّد من قيمها الظاهرة قبل أوّل تعديل، وإلّا ضاع ما لم يُعدَّل
+  assert.match(html, /const SEED=\{features:\(\)=>cFeat\(\), amenities:\(\)=>cAmen\(\)/);
+});
+
+test('٢١. × يمسح العنصر، و«اسم البطل» منه فتبقى صورة فقط', () => {
+  assert.match(html, /const HID=new Set\(LS\(HIDKEY,\[\]\)\)/);
+  assert.match(html, /const HX=k=>HID\.has\(k\)/);
+  assert.match(html, /HX\(P\+'cap'\)\?'':'<div class="cap"'/);
+  // المسح يُحفظ، ولا يُبنى العنصر أصلًا في الرسم التالي
+  assert.match(html, /else if\(k\)\{ HID\.add\(k\); hidSave\(\); \}/);
+});
+
+test('٢٢. مربّع نصّ حرّ يُضاف ويُسحب ويُمسح، ويُحفظ لكلّ لوحة', () => {
+  assert.match(html, /function cFree\(i\)\{ return \(FREE\[i\]\|\|\[\]\)\.map/);
+  assert.match(html, /data-fb="'\+i\+'\.'\+j\+'" data-del="fb\.'\+i\+'\.'\+j\+'"/);
+  assert.match(html, /FREE\[i\]=\(FREE\[i\]\|\|\[\]\)\.concat\(\[\{t:T\('newBoxTxt'\)/);
+  assert.match(html, /if\(k\.indexOf\('fb\.'\)===0\)/);
+  assert.match(html, /FREE\[i\]\[j\]\.x=FBD\.nx; FREE\[i\]\[j\]\.y=FBD\.ny; fbSave\(\)/);
+  ['posterK', 'posterL', 'posterM'].forEach((f, i) => {
+    const b = html.slice(html.indexOf('function ' + f + '('), html.indexOf('function ' + f + '(') + 4200);
+    assert.ok(b.includes('cFree(' + i + ')'), 'اللوحة بلا مربّعات حرّة: ' + f);
+  });
+});
+
+test('٢٣. أدوات التحرير لا تظهر في الصورة المنزَّلة', () => {
+  assert.match(html, /\.cpo\.exporting \.xdel\{display:none !important\}/);
+  assert.match(html, /\.cpo\.exporting \.fbx\{outline:none\}/);
+  assert.match(html, /el\.classList\.add\('exporting'\);/);
+  assert.match(html, /el\.classList\.remove\('exporting'\);/);
+  // التكبير أيضًا بلا زرّ المسح
+  assert.match(html, /cl\.querySelectorAll\('\.xdel'\)\.forEach\(n=>n\.remove\(\)\)/);
+});
+
+test('٢٤. إخفاء زرّ المسح بلا طور الالتقاط — كان يختفي قبل أن تصله الضغطة', () => {
+  assert.match(html, /cgrid\.addEventListener\('pointerleave',\(\)=>document\.querySelectorAll\('\.xdel\.on'\)\.forEach\(x=>x\.classList\.remove\('on'\)\)\);/);
+  assert.doesNotMatch(html, /pointerleave'[^)]*\)\),\s*true\)/);
+});
+
+test('٢٥. لا نداء لدالّة مساعدة غير معرّفة — cTelList بقيت منادَاة بعد إعادة التسمية فانكسر «انسخ النصّ»', () => {
+  const js = html.slice(html.indexOf('<script>'), html.lastIndexOf('</script>'));
+  const defined = new Set([...js.matchAll(/function (c[A-Z]\w*)\s*\(/g)].map((m) => m[1]));
+  const called = new Set([...js.matchAll(/\b(c[A-Z]\w*)\s*\(/g)].map((m) => m[1]));
+  const missing = [...called].filter((n) => !defined.has(n));
+  assert.deepEqual(missing, [], 'نداء لدالّة غير معرّفة: ' + missing.join(', '));
 });
