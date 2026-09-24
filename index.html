@@ -140,7 +140,7 @@ window.__omranWhenSeen = (function () {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css?v=721">
-<link rel="stylesheet" href="css/redesign.css?v=684">
+<link rel="stylesheet" href="css/redesign.css?v=685">
 <link rel="stylesheet" href="css/modules.css?v=662">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
@@ -550,6 +550,14 @@ body #btnMode{ display: none !important; }
 @keyframes oiBreathe{from{transform:scale(1)}to{transform:scale(1.025)}}
 @keyframes oiUp{to{opacity:1}}
 @media (prefers-reduced-motion:reduce){#omranIntro .oiImg,#omranIntro .oiSheen{animation:none}}
+/* v-intro-gpu (المالك ٢٤ سبتمبر «وميض»): المقدّمة تظهر مع كلّ تشغيل، وهي أوّل ما يراه — وفيها
+   أغلى تأثيرين على معالج رسوم أندرويد في أثقل لحظة (الإقلاع): oiBg يمرّر blur(30px) على طبقة
+   892×970 (أكبر من الشاشة، مكبّرة 1.12)، وoiSheen يفرض عزل طبقة بـmix-blend-mode:screen.
+   قياس بمقاس جهاز المالك: ثماني طبقات بحجم الشاشة الكاملة أثناء المقدّمة. على أندرويد وحده:
+   الخلفيّة المغبّشة تُحذف (الحاوية أصلًا ‎#07070B‎ فيبقى الإطار داكنًا نظيفًا) والوميض يبقى
+   متحرّكًا بلا مزج. الآيفون والكمبيوتر بلا تغيير. */
+html.omAndroid #omranIntro .oiBg{display:none}
+html.omAndroid #omranIntro .oiSheen{mix-blend-mode:normal;opacity:.5}
 html.oiOn body{overflow:hidden}
 </style>
 <style>
@@ -993,11 +1001,17 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     ['66%','80%','7px','3s','.9s'],
     ['30%','91%','5px','2.9s','1.9s']
   ];
+  /* v-stars-lite (الخطوة التالية التي سمّاها v-android-gpu ولم تُنفَّذ): كلّ نجمة طبقة تركيب
+     متحرّكة دائمة — ٢٥ نجمة (٧ على زرّ المحادثة و١٨ في الشريط) = ٢٥ طبقة تُركَّب في كلّ إطار.
+     على أندرويد وحده تُنصَّف: النجوم تبقى وتومض، والحمل ينزل للنصف. */
+  var OM_LITE = false;
+  try { OM_LITE = document.documentElement.classList.contains('omAndroid'); }
+  catch (e) { /* guard-ok: بلا العلامة يبقى العدد الكامل كما كان */ }
   function build(){
     var b = document.getElementById('omranNewChatBtn');
     if(!b || b.dataset.omStars) return;
     b.dataset.omStars = '1';
-    STARS.forEach(function(p){
+    STARS.filter(function(_, i){ return !OM_LITE || i % 2 === 0; }).forEach(function(p){
       var s = document.createElement('span');
       s.className = 'omStar';
       s.style.top = p[0]; s.style.left = p[1];
@@ -1039,7 +1053,10 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </style>
 <script>
 (function(){
+  /* v-stars-lite: ثماني عشرة نجمة في الشريط الجانبيّ = ثماني عشرة طبقة متحرّكة — نصفها على أندرويد. */
   var COUNT = 18, layer = null;
+  try { if (document.documentElement.classList.contains('omAndroid')) COUNT = 8; }
+  catch (e) { /* guard-ok: بلا العلامة يبقى العدد الكامل */ }
 
   function makeLayer(){
     if(layer && layer.parentNode) return layer;
