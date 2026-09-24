@@ -1140,6 +1140,7 @@ let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null,
     const dc = mahaRtDc;
     mahaRtResponseWatchdog = setTimeout(() => {
       mahaRtResponseWatchdog = null;
+      mahaTurnAwaiting = false; // v-maha-turn: انتهى قرار هذه النوبة — تفريغ يصل بعده لا يقرّر شيئًا
       if(!mahaRtReady || !mahaCallActive || mahaRtDc !== dc || !dc || dc.readyState !== 'open') return;
       try{
         // Only a fallback: response.created clears this before it can duplicate.
@@ -1147,7 +1148,92 @@ let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null,
       }catch(e){ __swallow(e, "misc:app-08-maha#rt-response-watchdog"); }
     }, delayMs);
     }
-    
+
+/* ---------- v-maha-turn: إنصات مثل إنسان في المسار الفائق (HD) ----------
+   المالك (٢٤ سبتمبر): «أريدها كأنّك تكلّم شخص — الإنصات». الخادم يقيس الصمت
+   بالمسطرة وحدها (server_vad، ١١٠٠م.ث في api/_lib/realtime-session.js) ثمّ كان
+   العميل يطلق الردّ بعد ٣٥٠م.ث **مهما كان الذي سمعه**: سكتة تفكير وسط الجملة
+   («وبعدين…») = ردّ في منتصف الكلام، وضجيج أو همهمة أو هلوسة تفريغ على الصمت
+   = ردّ على لا شيء. الإنسان لا يعدّ الصمت — يسمع الجملة نفسها: «كم الساعة؟»
+   يردّ فورًا، و«أبي أسوّي…» ينتظره يكمّل، والهمهمة يتجاهلها.
+   كلام المستخدم يُفرَّغ نصًّا أصلًا داخل الجلسة (transcription مفعَّل في
+   realtime-session.js) — فالنصّ يصل بلا نداء ولا كلفة ولا مزوّد جديد.
+   الدوالّ التالية نقيّة (بلا DOM ولا شبكة) يفحصها tests/maha-turn.test.cjs. */
+let mahaTurnAwaiting = false; // بين speech_stopped وقرار هذه النوبة
+let mahaTurnItemId = null;    // عنصر النوبة المنتظَرة — تفريغ نوبة أخرى لا يقرّر مكانها
+
+const MAHA_TURN_TX_WAIT_MS = 400;  // أقصى انتظار لوصول التفريغ (كان ٣٥٠ إطلاقًا أعمى)
+const MAHA_TURN_HOLD_MS = 1400;    // إمهال فكرة لم تكتمل — يسقط كلّيًّا إن عاد يتكلّم
+const MAHA_TURN_REPLY_MS = 60;     // الفكرة اكتملت: ردّ فورًا
+
+// آخر كلمة تكشف أنّ الجملة لم تنتهِ: حرف عطف أو جرّ أو أداة ربط معلّقة (بعد التسوية).
+// (بلا «ولا/قبل/بعد»: تنهي جملة كاملة في الخليجيّة «تجي ولا»، «شفته من قبل»، «ما خلصت بعد»؛
+//  وبلا «اي»: بعد التسوية هي «إي» = نعم — ردّ كامل لا فكرة معلّقة.)
+const MAHA_TURN_TAIL_AR = ['و','ف','او','ثم','بس','لكن','لاكن','يعني','عشان','علشان','لان','لانه','لانها','مثل','زي','مثلا','في','من','علي','عن','الي','مع','عند','بين','تحت','فوق','حق','ان','اذا','لو','كل','ال','بدون','غير','حتي'];
+const MAHA_TURN_TAIL_EN = ['and','or','but','so','because','like','the','a','an','to','of','for','with','about','if','when','that','is','are','my','i'];
+// همهمة تفكير خالصة. «اه/ايه/ايوه» ليست منها — تلك «نعم» وردّ كامل (v-maha-oneword).
+const MAHA_TURN_HESITATIONS = ['امم','اممم','امممم','مممم','همم','هممم','um','uh','uhm','hmm','mmm','er','erm'];
+// هلوسات مفرّغ الكلام على الصمت (مدرَّب على ترجمات يوتيوب) — نفس عائلة المرشّح
+// المثبَّت في api/_lib/stt.js للمسار الأساسيّ، والمسار الفائق كان بلا مثله.
+const MAHA_TURN_NOISE_RES = [
+  /^شكرا\s*(جزيلا)?\s*(علي|ل|لكم)?\s*(المشاهده|المتابعه)/,
+  /اشترك\S*\s*(في|بال|ب)?\s*(ال)?قناه/,
+  /ترجمه\s+نانسي\s+قنقر/,
+  /^thanks?\s*(you)?\s*for\s*watching/i,
+  /^(please\s*)?subscribe\b/i,
+];
+
+// تسوية عربيّة خفيفة: التشكيل والتطويل يسقطان، وأشكال الألف والياء والتاء المربوطة تتوحّد.
+function mahaTurnNorm(text){
+  return String(text == null ? '' : text)
+    .replace(/[\u064B-\u0652\u0640]/g, '')
+    .replace(/[\u0622\u0623\u0625]/g, '\u0627')
+    .replace(/\u0649/g, '\u064A')
+    .replace(/\u0629/g, '\u0647')
+    .trim();
+}
+
+// ماذا يفعل إنسان سمع هذه النوبة؟ يردّ · يمهله · يتجاهلها.
+function mahaTurnPlan(text){
+  const raw = String(text == null ? '' : text).trim();
+  const norm = mahaTurnNorm(raw);
+  const bare = norm.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  if(!bare) return { act: 'ignore', waitMs: 0 };
+  for(let i = 0; i < MAHA_TURN_NOISE_RES.length; i++){
+    if(MAHA_TURN_NOISE_RES[i].test(bare)) return { act: 'ignore', waitMs: 0 };
+  }
+  // سؤال صريح = فكرة مكتملة مهما كانت آخر كلمة.
+  if(/[?؟!]\s*$/.test(raw)) return { act: 'reply', waitMs: MAHA_TURN_REPLY_MS };
+  if(/[,،]\s*$/.test(raw) || /\.\.\.\s*$/.test(raw) || /…\s*$/.test(raw)) return { act: 'hold', waitMs: MAHA_TURN_HOLD_MS };
+  const words = bare.split(' ');
+  const last = words[words.length - 1].toLowerCase();
+  if(MAHA_TURN_HESITATIONS.indexOf(last) !== -1) return { act: 'hold', waitMs: MAHA_TURN_HOLD_MS };
+  if(MAHA_TURN_TAIL_AR.indexOf(last) !== -1 || MAHA_TURN_TAIL_EN.indexOf(last) !== -1) return { act: 'hold', waitMs: MAHA_TURN_HOLD_MS };
+  return { act: 'reply', waitMs: MAHA_TURN_REPLY_MS };
+}
+
+// وصل تفريغ نوبة المستخدم: هنا وحده يُقرَّر متى تتكلّم مها.
+function mahaTurnOnTranscript(text, itemId){
+  if(!mahaTurnAwaiting) return; // تفريغ نوبة سابقة وصل متأخّرًا — لا يقرّر شيئًا
+  // سكتة ثمّ إكمال ثمّ سكتة: تفريغ الجزء الأوّل قد يصل داخل نافذة الجزء الثاني.
+  // نطابق العنصر متى وُجد الطرفان؛ وإن غاب أحدهما نمضي (لا نعطّل القرار كلّه).
+  if(itemId && mahaTurnItemId && itemId !== mahaTurnItemId) return;
+  mahaTurnAwaiting = false;
+  const plan = mahaTurnPlan(text);
+  if(plan.act === 'ignore'){
+    // ضجيج أو همهمة أو هلوسة: الإنسان لا يردّ على لا شيء — يبقى منصتًا.
+    mahaClearRtResponseWatchdog();
+    mahaSetState('listening');
+    return;
+  }
+  if(plan.act === 'hold'){
+    // الفكرة لم تكتمل: تبقى منصتة — وإن عاد يتكلّم ألغى speech_started الردّ كلّه.
+    mahaSetState('listening');
+  }
+  mahaArmRtResponseWatchdog(plan.waitMs);
+}
+window.mahaTurnPlan = mahaTurnPlan; // للفحص من المتصفّح واللقطات
+
 /* v283: مؤشر صوت المايك داخل مكالمة مها — يبين هل صوت المستخدم واصل */
 let mahaMicMeterCtx = null, mahaMicMeterRaf = 0, mahaMicSilenceStart = 0, mahaMicWarned = false;
 function mahaStartMicMeter(stream){
@@ -1314,6 +1400,7 @@ function mahaPlayReadyBeep(){
 let mahaRtCancelled = false;
 async function mahaStartRealtimeCall(){
     mahaRtReady = false;
+    mahaTurnAwaiting = false; // v-maha-turn
     mahaClearRtResponseWatchdog();
       mahaRtCancelled = false;
   const tokenRes = await fetch('/api/realtime-session', {
@@ -1390,6 +1477,7 @@ async function mahaStartRealtimeCall(){
         return;
       }    if(ev.type === 'input_audio_buffer.speech_started'){
         mahaLastActivity = Date.now(); // v-maha-band
+        mahaTurnAwaiting = false; // v-maha-turn: عاد يتكلّم — أيّ ردّ معلّق يسقط هنا
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
@@ -1399,10 +1487,17 @@ async function mahaStartRealtimeCall(){
         mahaSetState('listening');
       }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){
+        // v-maha-turn: لا ردّ قبل أن نعرف ماذا قال — ننتظر تفريغ النوبة (٤٠٠م.ث
+        // سقفًا، وبعدها يمضي الحارس كما كان) ثمّ يقرّر mahaTurnOnTranscript.
+        mahaTurnAwaiting = true;
+        mahaTurnItemId = (ev && ev.item_id) || null;
         mahaSetState('thinking');
-        mahaArmRtResponseWatchdog(350);
+        mahaArmRtResponseWatchdog(MAHA_TURN_TX_WAIT_MS);
       }
-      else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
+      else if(ev.type === 'conversation.item.input_audio_transcription.completed'){
+        mahaTurnOnTranscript(ev && ev.transcript, ev && ev.item_id); // v-maha-turn
+      }
+      else if(ev.type === 'response.created'){ mahaTurnAwaiting = false; mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
     else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
     else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
@@ -1809,6 +1904,7 @@ function mahaEndRealtimeCall(){
     mahaRtCancelled = true;
     mahaRtActive = false;
     mahaRtReady = false;
+    mahaTurnAwaiting = false; // v-maha-turn
     mahaClearRtResponseWatchdog();
       if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#17"); } mahaRtDc = null; }
   if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#18"); } mahaRtPc = null; }

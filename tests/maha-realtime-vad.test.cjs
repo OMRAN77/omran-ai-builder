@@ -34,7 +34,11 @@ test('v-maha-listen: حارس بدء الكلام شبكة أمان (٢٠ث) ل�
   assert.ok(block.includes('mahaArmRtResponseWatchdog(20000);'), 'عشرون ثانية');
   assert.ok(!/mahaArmRtResponseWatchdog\(3000\)/.test(maha), 'لا ٣ ثوانٍ في أيّ مكان');
   const stop = maha.slice(maha.indexOf("else if(ev.type === 'input_audio_buffer.speech_stopped'){"), maha.indexOf("else if(ev.type === 'response.created')"));
-  assert.ok(stop.includes('mahaArmRtResponseWatchdog(350);'), 'بعد انتهاء الكلام الردّ سريع كما كان');
+  // v-maha-turn (٢٤ سبتمبر) غيّر هذا عمدًا: بعد انتهاء الكلام لم تعد ٣٥٠م.ث عمياء تُطلق الردّ —
+  // تُنتظر نصّ النوبة (٤٠٠م.ث سقفًا) ثمّ يقرّر mahaTurnOnTranscript: ردّ · إمهال · تجاهل ضجيج.
+  // القرار نفسه مُختبَر سلوكيًّا في tests/maha-turn.test.cjs.
+  assert.ok(stop.includes('mahaArmRtResponseWatchdog(MAHA_TURN_TX_WAIT_MS);'), 'بعد انتهاء الكلام ننتظر التفريغ لا مهلة عمياء');
+  assert.ok(/const MAHA_TURN_TX_WAIT_MS = 400;/.test(maha), 'سقف انتظار التفريغ ٤٠٠م.ث');
   const rt = src;
   assert.ok(rt.includes('"LISTENING: wait for the user to finish their thought. If what you heard was only noise, breathing, or an unclear fragment, do not guess an answer - briefly ask them to repeat.",'), 'تعليمة الإنصات');
 });

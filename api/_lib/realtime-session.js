@@ -324,6 +324,10 @@ module.exports = async (req, res) => {
                   // The client sends one explicit response.create after speech_stopped.
                 // Avoid racing the server's automatic response on mobile.
                 create_response: false,
+                  // v-maha-turn: المقاطعة صراحةً — أيّ كلمة من المستخدم وهي تتكلّم
+                  // تقطع كلامها في حينه (هذا ما يجعلها تبدو إنسانًا لا مسجّلًا).
+                  // القيمة هي الافتراضيّ، وتثبيتها يمنع انقلابه صامتًا.
+                  interrupt_response: true,
                 },
           },
         },
