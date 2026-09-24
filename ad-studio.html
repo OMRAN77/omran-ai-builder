@@ -301,9 +301,14 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
    فلا تتراكم كما يتراكم em داخل em، والتنزيل بأيّ دقّة يبقى متناسبًا. */
 .cpo{position:relative;overflow:hidden;border-radius:calc(var(--u)*1.4);background:#080b11;color:#fff;
   box-shadow:0 14px 44px rgba(0,0,0,.6);cursor:zoom-in;font-family:'Tajawal',system-ui,sans-serif;
-  --gold:#d3af5f;--navy:#0a1730;--red:#c1172b;--ink2:rgba(255,255,255,.72);--u:5px}
+  --gold:#d3af5f;--navy:#0a1730;--red:#c1172b;--ink2:rgba(255,255,255,.72);--u:5px;--g:calc(var(--u)*2.2)}
 .cpo *{box-sizing:border-box}
 .cpo img{display:block;width:100%;height:100%;object-fit:cover}
+/* v-ad-tidy: الصور كانت تُقصّ بـcover فيضيع أعلى المشهد. الغلاف يُظهر الصورة كاملة
+   (contain) فوق نسخة مموّهة منها تملأ الإطار — لا شريط أسود ولا قصّ. */
+.cpo .im{position:relative;width:100%;height:100%;overflow:hidden;background:#0b111c;border-radius:inherit}
+.cpo .im .bl{position:absolute;inset:0;object-fit:cover;filter:blur(calc(var(--u)*1.4)) brightness(.45);transform:scale(1.12)}
+.cpo .im .ft{position:relative;object-fit:contain}
 .cpo .ph{width:100%;height:100%;background:linear-gradient(150deg,#1b2436,#0d1422 70%);display:flex;
   align-items:center;justify-content:center;color:rgba(255,255,255,.28);font:700 calc(var(--u)*1.8) 'Tajawal';text-align:center;padding:calc(var(--u)*1)}
 .cpo .z{position:absolute}
@@ -320,15 +325,15 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
   font:700 calc(var(--u)*1.6)/1.3 'Tajawal';color:#eaeef5;text-align:right;overflow:hidden}
 .cpo .feat span i{font-style:normal;font-size:calc(var(--u)*2);color:var(--gold);width:calc(var(--u)*2.6);text-align:center;flex:none}
 .cpo .strip{display:grid;gap:calc(var(--u)*.5)}
-.cpo .strip figure{position:relative;overflow:hidden;margin:0;background:#0d1422}
+.cpo .strip .im{border-radius:calc(var(--u)*.9)}
+.cpo .strip figure{position:relative;overflow:hidden;margin:0;background:#0d1422;border-radius:calc(var(--u)*.9)}
 .cpo .strip figcaption{position:absolute;right:0;left:0;bottom:0;background:linear-gradient(to top,rgba(4,7,12,.92),transparent);
   color:#fff;font:700 calc(var(--u)*1.4)/1.5 'Tajawal';text-align:center;padding:calc(var(--u)*1.4) calc(var(--u)*.4) calc(var(--u)*.5)}
 .cpo .amen{display:flex;align-items:center;justify-content:space-around;background:#0a1120;border-top:1px solid rgba(211,175,95,.3)}
 .cpo .amen span{display:flex;align-items:center;gap:calc(var(--u)*.7);color:#e9edf4;text-align:center}
 .cpo .amen span i{font-style:normal;font-size:calc(var(--u)*2.3);color:var(--gold)}
-.cpo .amen span b{font:800 calc(var(--u)*1.32)/1.25 'Tajawal';display:block}
-.cpo .amen span em{font-style:normal;font:600 calc(var(--u)*1)/1.25 'Tajawal';color:var(--ink2);display:block;letter-spacing:.5px}
-.cpo .foot{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u)*1.4);
+.cpo .amen span b{font:800 calc(var(--u)*1.4)/1.25 'Tajawal';display:block;white-space:nowrap}
+.cpo .foot{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u)*1.2);
   background:linear-gradient(100deg,#060a13,#0d1830 55%,#060a13);padding:0 calc(var(--u)*2.4);border-top:1px solid rgba(211,175,95,.4)}
 .cpo .foot .tels{display:flex;align-items:center;gap:calc(var(--u)*1.2);font:900 calc(var(--u)*2.9) 'Tajawal';color:#fff;direction:ltr}
 .cpo .foot .tels s{text-decoration:none;color:var(--gold);font-size:calc(var(--u)*2.6)}
@@ -346,71 +351,76 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
 .cpo .card b{font:900 calc(var(--u)*1.85)/1.22 'Tajawal';color:#fff;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .cpo .card span{font:600 calc(var(--u)*1.15)/1.4 'Tajawal';color:var(--ink2)}
 
-/* ك — مشروع عقاريّ (مرجع المالك ١) */
+/* ك — مشروع عقاريّ (مرجع المالك ١) — نسخة مبسّطة: هامش واحد، وصفّ أوسط متساوي الأثلاث */
 .K{background:#070a10}
-.K .k-hero{top:0;left:0;width:76%;height:38.5%}
-.K .k-logo{top:2.5%;left:2.5%;height:8%}
-.K .k-side{top:0;right:0;width:24%;height:54.6%;display:flex;flex-direction:column;background:#070a10}
-.K .k-side .bdgs{display:flex;flex-direction:column;gap:calc(var(--u)*.35)}
-.K .k-side .ttl{padding:calc(var(--u)*1.4) calc(var(--u)*1.3) 0;text-align:right}
-.K .k-side .feat{flex:1;padding:calc(var(--u)*.6) calc(var(--u)*1.4) calc(var(--u)*1)}
-.K .k-hero .cap{position:absolute;right:auto;left:calc(var(--u)*2.2);bottom:calc(var(--u)*2);text-align:left;
-  font:800 calc(var(--u)*1.7)/1.45 'Tajawal';color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.8)}
-.K .k-hero .cap em{font-style:normal;display:block;font-weight:600;font-size:calc(var(--u)*1.2);color:var(--ink2);letter-spacing:1px}
-.K .k-strip{top:39%;left:0;width:76%;height:15.6%;grid-template-columns:repeat(3,1fr)}
-.K .k-mid{top:54.6%;left:0;width:100%;height:30.4%;display:flex;gap:calc(var(--u)*.5);background:#fff}
-.K .k-plan{width:32%;background:#fff;padding:calc(var(--u)*1);display:flex;align-items:center;justify-content:center}
-.K .k-plan img{object-fit:contain}
-.K .k-spec{width:24%;background:#fff;color:#11161f;padding:calc(var(--u)*1.6) calc(var(--u)*.8);text-align:center;display:flex;flex-direction:column;gap:calc(var(--u)*.5);justify-content:center}
-.K .k-spec b{font:800 calc(var(--u)*2.5)/1.15 'Tajawal';letter-spacing:1px}
-.K .k-spec i{font-style:normal;font:600 calc(var(--u)*1.35) 'Tajawal';color:#5c6675;letter-spacing:2px}
-.K .k-spec hr{border:0;border-top:1px solid #d7dbe2;width:70%;margin:calc(var(--u)*.4) auto}
-.K .k-spec u{text-decoration:none;display:flex;justify-content:space-between;gap:calc(var(--u)*.6);font:600 calc(var(--u)*1.25) 'Tajawal';color:#3a4350}
+.K .k-hero{top:var(--g);left:var(--g);width:calc(66% - var(--g)*1.5);height:42%;border-radius:calc(var(--u)*1.1);overflow:hidden}
+.K .k-logo{top:calc(var(--g)*1.9);left:calc(var(--g)*1.9);height:7.5%;z-index:2}
+.K .k-side{top:var(--g);right:var(--g);width:calc(34% - var(--g)*1.5);height:42%;display:flex;flex-direction:column;gap:calc(var(--u)*.9)}
+.K .k-side .bdgs{display:flex;flex-direction:column;gap:calc(var(--u)*.4)}
+.K .k-side .ttl{text-align:right}
+.K .k-side .feat{flex:1;justify-content:flex-start;gap:calc(var(--u)*.7)}
+.K .k-hero .cap{position:absolute;left:calc(var(--u)*1.6);bottom:calc(var(--u)*1.4);text-align:left;z-index:2;
+  font:800 calc(var(--u)*1.6)/1.4 'Tajawal';color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.9)}
+.K .k-hero .cap em{font-style:normal;display:block;font-weight:600;font-size:calc(var(--u)*1.1);color:var(--ink2);letter-spacing:1px}
+.K .k-strip{top:calc(42% + var(--g)*2);left:var(--g);width:calc(100% - var(--g)*2);height:12.5%;grid-template-columns:repeat(3,1fr);gap:var(--g)}
+.K .k-mid{top:calc(55% + var(--g)*3);left:var(--g);width:calc(100% - var(--g)*2);height:22.5%;
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--g)}
+.K .k-mid>*{border-radius:calc(var(--u)*1.1);overflow:hidden}
+.K .k-spec{background:#fff;color:#11161f;padding:calc(var(--u)*1.4) calc(var(--u)*1);text-align:center;
+  display:flex;flex-direction:column;gap:calc(var(--u)*.45);justify-content:center}
+.K .k-spec b{font:800 calc(var(--u)*2.2)/1.15 'Tajawal'}
+.K .k-spec i{font-style:normal;font:600 calc(var(--u)*1.2) 'Tajawal';color:#5c6675;letter-spacing:1.5px}
+.K .k-spec hr{border:0;border-top:1px solid #d7dbe2;width:64%;margin:calc(var(--u)*.35) auto}
+.K .k-spec u{text-decoration:none;display:flex;justify-content:space-between;gap:calc(var(--u)*.5);font:600 calc(var(--u)*1.2)/1.5 'Tajawal';color:#3a4350}
 .K .k-spec u s{text-decoration:none;color:#11161f;font-weight:800}
-.K .k-map{flex:1;position:relative;order:-1}
-.K .k-person{right:0;bottom:15.4%;width:18%;height:34%}
-.K .k-amen{top:85%;left:0;width:100%;height:7.4%}
-.K .k-foot{top:92.4%;left:0;width:100%;height:7.6%}
+.K .k-person{right:0;bottom:17%;width:16%;height:28%;z-index:3}
+.K .k-amen{top:83.5%;left:0;width:100%;height:7.5%}
+.K .k-foot{top:91%;left:0;width:100%;height:9%}
 
-/* ل — استثمار وفلل (مرجع المالك ٢، طوليّ) */
+/* ل — استثمار وفلل (مرجع المالك ٢، طوليّ) — ثلاثة صفوف بطاقات بدل أربعة */
 .L{background:linear-gradient(170deg,#0c1626,#070b14 60%)}
-.L .l-logo{top:2%;right:3%;height:9%}
-.L .l-head{top:2%;left:3%;width:62%;text-align:left}
-.L .l-head h2{font-size:calc(var(--u)*6.4);color:var(--gold)}
-.L .l-hero{top:14%;left:0;width:73%;height:40%}
-.L .l-side{top:14%;right:0;width:27%;height:40%;display:flex;flex-direction:column;justify-content:center;gap:calc(var(--u)*.55);padding:0 calc(var(--u)*1.2)}
-.L .l-side span{display:flex;align-items:center;gap:calc(var(--u)*.9);background:rgba(10,18,34,.9);border:1px solid rgba(211,175,95,.4);
-  border-radius:calc(var(--u)*1);padding:calc(var(--u)*.75) calc(var(--u)*.9);font:700 calc(var(--u)*1.45)/1.35 'Tajawal';color:#eaeef5}
-.L .l-side span i{font-style:normal;font-size:calc(var(--u)*2);color:var(--gold);flex:none}
-.L .l-row1{top:55%;left:0;width:100%;height:15%;display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:calc(var(--u)*.8);padding:0 calc(var(--u)*1.2)}
-.L .l-row1 .marks{text-align:right;font:600 calc(var(--u)*1.25)/1.65 'Tajawal';color:#dfe5ee;overflow:hidden}
-.L .l-row1 .marks b{color:var(--gold);font-size:calc(var(--u)*1.4);display:block;margin-bottom:calc(var(--u)*.3)}
-.L .l-row1 .tels{display:flex;flex-direction:column;gap:calc(var(--u)*.25);font:900 calc(var(--u)*2.3) 'Tajawal';color:#fff;direction:ltr;align-items:center}
-.L .l-row2{top:70.5%;left:0;width:100%;height:11%;display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*.8);padding:0 calc(var(--u)*1.2)}
-.L .l-strip{top:82%;left:0;width:100%;height:11%;grid-template-columns:repeat(5,1fr);padding:0 calc(var(--u)*1.2)}
-.L .l-foot{top:93.4%;left:0;width:100%;height:6.6%}
+.L .l-logo{top:calc(var(--g)*.8);right:var(--g);height:8%}
+.L .l-head{top:calc(var(--g)*.9);left:var(--g);width:60%;text-align:left}
+.L .l-head h2{color:var(--gold)}
+.L .l-hero{top:10.5%;left:var(--g);width:calc(69% - var(--g)*1.5);height:40%;border-radius:calc(var(--u)*1.1);overflow:hidden}
+.L .l-side{top:10.5%;right:var(--g);width:calc(31% - var(--g)*1.5);height:40%;
+  display:flex;flex-direction:column;justify-content:center;gap:calc(var(--u)*.55)}
+.L .l-side span{display:flex;align-items:center;gap:calc(var(--u)*.8);background:rgba(12,22,40,.9);
+  border-radius:calc(var(--u)*.9);padding:calc(var(--u)*.8) calc(var(--u)*.9);
+  font:700 calc(var(--u)*1.4)/1.3 'Tajawal';color:#eaeef5;overflow:hidden}
+.L .l-side span i{font-style:normal;font-size:calc(var(--u)*1.9);color:var(--gold);flex:none}
+.L .l-row1{top:52%;left:var(--g);width:calc(100% - var(--g)*2);height:9.5%;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:var(--g)}
+.L .l-strip{top:63%;left:var(--g);width:calc(100% - var(--g)*2);height:14.5%;grid-template-columns:repeat(5,1fr);gap:calc(var(--g)*.6)}
+.L .l-row2{top:79.5%;left:var(--g);width:calc(100% - var(--g)*2);height:10%;
+  display:grid;grid-template-columns:1.3fr 1fr;gap:var(--g)}
+.L .l-row2 .marks{text-align:right;font:600 calc(var(--u)*1.2)/1.6 'Tajawal';color:#dfe5ee;overflow:hidden}
+.L .l-row2 .marks b{color:var(--gold);font-size:calc(var(--u)*1.3);display:block;margin-bottom:calc(var(--u)*.25)}
+.L .l-row2.solo .tels{flex-direction:row;gap:calc(var(--u)*1.8)}
+.L .l-row2 .tels{display:flex;flex-direction:column;gap:calc(var(--u)*.15);font:900 calc(var(--u)*2.1) 'Tajawal';color:#fff;direction:ltr;align-items:center}
+.L .l-foot{top:92%;left:0;width:100%;height:8%}
 
-/* م — معرض سيّارات (مرجع المالك ٣) */
+/* م — معرض سيّارات (مرجع المالك ٣) — صفّ الماركات يظهر فقط إن ذُكرت */
 .M{background:radial-gradient(ellipse at 50% 0%,#1a1206 0%,#07070a 62%)}
-.M .m-logo{top:2.5%;right:3%;height:9%}
-.M .m-head{top:3.5%;left:0;right:0;text-align:center;padding:0 calc(var(--u)*17)}
+.M .m-logo{top:calc(var(--g)*.8);right:var(--g);height:8%}
+.M .m-head{top:calc(var(--g)*1.1);left:0;right:0;text-align:center;padding:0 calc(var(--u)*16)}
 .M .m-head .en{font:900 calc(var(--u)*7.6)/1.02 'Tajawal';color:var(--gold);letter-spacing:calc(var(--u)*.22)}
-.M .m-head h2{font-size:calc(var(--u)*5.4);margin-top:calc(var(--u)*.2)}
-.M .m-head .sub{background:var(--red);color:#fff;font:900 calc(var(--u)*2.3) 'Tajawal';display:inline-block;
-  padding:calc(var(--u)*.5) calc(var(--u)*2);margin-top:calc(var(--u)*.8)}
-.M .m-head .sp{font:700 calc(var(--u)*1.5)/1.7 'Tajawal';color:#e6e9f0;margin-top:calc(var(--u)*.7)}
-.M .m-hero{top:29%;left:0;width:100%;height:37%}
-.M .m-brands{top:67%;left:0;width:100%;height:9%;display:flex;align-items:center;justify-content:space-around;padding:0 calc(var(--u)*2)}
+.M .m-head h2{margin-top:calc(var(--u)*.1)}
+.M .m-head .sub{background:var(--red);color:#fff;font:900 calc(var(--u)*2.1) 'Tajawal';display:inline-block;
+  padding:calc(var(--u)*.45) calc(var(--u)*1.8);margin-top:calc(var(--u)*.7);border-radius:calc(var(--u)*.4)}
+.M .m-head .sp{font:700 calc(var(--u)*1.4)/1.6 'Tajawal';color:#e6e9f0;margin-top:calc(var(--u)*.6)}
+.M .m-hero{left:var(--g);width:calc(100% - var(--g)*2);border-radius:calc(var(--u)*1.1);overflow:hidden}
+.M .m-brands{left:var(--g);width:calc(100% - var(--g)*2);display:flex;align-items:center;justify-content:space-around}
 .M .m-brands span{text-align:center;color:#fff}
-.M .m-brands span b{font:900 calc(var(--u)*1.55)/1.25 'Tajawal';display:block}
-.M .m-brands span em{font-style:normal;font:600 calc(var(--u)*1.05) 'Tajawal';color:var(--ink2);display:block;letter-spacing:.6px}
-.M .m-feat{top:76.5%;left:0;width:100%;height:10.5%;display:grid;grid-template-columns:repeat(6,1fr);gap:calc(var(--u)*.7);padding:0 calc(var(--u)*2)}
-.M .m-bar{top:88%;left:0;width:100%;height:8%;display:flex;align-items:center;justify-content:center;gap:calc(var(--u)*1.6);padding:0 calc(var(--u)*2)}
-.M .m-bar .tels{display:flex;align-items:center;gap:calc(var(--u)*1.2);font:900 calc(var(--u)*3.4) 'Tajawal';color:var(--gold);direction:ltr}
-.M .m-bar .tels s{text-decoration:none;color:#fff;font-size:calc(var(--u)*2.6)}
-.M .m-bar .wa{font-size:calc(var(--u)*3.6);color:#25d366}
+.M .m-brands span b{font:900 calc(var(--u)*1.5)/1.25 'Tajawal';display:block}
+.M .m-brands span em{font-style:normal;font:600 calc(var(--u)*1.02) 'Tajawal';color:var(--ink2);display:block;letter-spacing:.5px}
+.M .m-feat{left:var(--g);width:calc(100% - var(--g)*2);display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--g)*.7)}
+.M .m-bar{top:88.5%;left:0;width:100%;height:7.5%;display:flex;align-items:center;justify-content:center;gap:calc(var(--u)*1.6);padding:0 calc(var(--u)*2)}
+.M .m-bar .tels{display:flex;align-items:center;gap:calc(var(--u)*1.1);font:900 calc(var(--u)*3.2) 'Tajawal';color:var(--gold);direction:ltr}
+.M .m-bar .tels s{text-decoration:none;color:#fff;font-size:calc(var(--u)*2.4)}
+.M .m-bar .wa{font-size:calc(var(--u)*3.4);color:#25d366}
 .M .m-foot{top:96%;left:0;width:100%;height:4%;display:flex;align-items:center;justify-content:center;gap:calc(var(--u)*1.4);
-  font:700 calc(var(--u)*1.3) 'Tajawal';color:var(--ink2);letter-spacing:1px}
+  font:700 calc(var(--u)*1.25) 'Tajawal';color:var(--ink2);letter-spacing:1px}
 
 /* شبكة اللوحات المركّبة + لوحة الهوية والصور */
 .cwrap{display:none;margin-top:34px}
@@ -1141,12 +1151,16 @@ function cDealRows(){
   if(d.price||S.price) r.push([T('lblPrices'),d.price||((S.price||'')+' '+(S.unit||''))]);
   return r;
 }
+/* شارتان لا ثلاث — الثالثة كانت تزحم رأس اللوحة */
+function cBadges(){ return [S.badge||T('badgeFb'), S.badge3||S.badge2||''].filter(Boolean); }
 function cTelList(){ return [BR.tel1,BR.tel2,S.tel].map(x=>String(x||'').trim()).filter(Boolean)
   .filter((x,i,a)=>a.indexOf(x)===i).slice(0,2); }
 function cFs(t,big,mid,sml,lb,lm){ const n=String(t||'').trim().length;
   return 'font-size:calc(var(--u)*'+(n>lm?sml:n>lb?mid:big)+')'; }
-function cImg(src,label,cls){ return src? '<img src="'+src+'"'+(cls?' class="'+cls+'"':'')+' alt="">'
-  : '<div class="ph">'+esc(label||'')+'</div>'; }
+/* الصورة كاملة فوق نسخة مموّهة منها — لا قصّ من الأعلى ولا شريط فارغ */
+function cImg(src,label){ return '<div class="im">'+(src
+  ? '<img class="bl" src="'+src+'" alt=""><img class="ft" src="'+src+'" alt="">'
+  : '<div class="ph">'+esc(label||'')+'</div>')+'</div>'; }
 function cLogo(){ return '<div class="logo">'+(BR.logo? '<img src="'+BR.logo+'" alt="">'
   : '<b>'+esc(BR.name||T('bNameFb'))+(BR.tag?'<i>'+esc(BR.tag)+'</i>':'')+'</b>')+'</div>'; }
 function cFootBar(cls){
@@ -1154,13 +1168,11 @@ function cFootBar(cls){
   return '<div class="z foot '+cls+'">'+cLogo()+
     '<span class="lbl">'+esc(T('lblContact2'))+'</span>'+
     '<span class="tels"><s>☎</s>'+tels.map(t=>'<bdi>'+esc(t)+'</bdi>').join('<em></em>')+'</span>'+
-    (BR.ig?'<span class="ig">◯ '+esc(BR.ig)+'</span>':'')+
-    '<span class="tag">'+esc(BR.tag||T('tagFb'))+'</span></div>';
+    (BR.ig?'<span class="ig">◯ '+esc(BR.ig)+'</span>':'')+'</div>';
 }
 function cAmenBar(cls){
-  const a=cAmen();
-  return '<div class="z amen '+cls+'">'+a.map((x,i)=>{ const [ar,en]=cPair(x);
-    return '<span><i>'+CAIC[i%6]+'</i><span><b>'+esc(ar)+'</b>'+(en?'<em>'+esc(en)+'</em>':'')+'</span></span>'; }).join('')+'</div>';
+  return '<div class="z amen '+cls+'">'+cAmen().map((x,i)=>
+    '<span><i>'+CAIC[i%6]+'</i><b>'+esc(cPair(x)[0])+'</b></span>').join('')+'</div>';
 }
 function cStrip(cls,n,caps){
   const t=MED.thumbs.slice(0,n);
@@ -1172,23 +1184,22 @@ function cStrip(cls,n,caps){
 
 /* ================= اللوحات الثلاث ================= */
 function posterK(){                                     // مشروع عقاريّ
-  const f=cFeat(), rows=cDealRows();
+  const f=cFeat().slice(0,5), rows=cDealRows().slice(0,3), bd=cBadges();
+  const ttl=S.title||CATS[S.cat||'other'].title;
   return '<div class="cpo K" data-ck="0">'+
     '<div class="z k-hero">'+cImg(MED.hero||S.img,T('mHeroPh'))+
       (S.kick?'<div class="cap">'+esc(String(S.kick).split('·')[0].trim())+(S.subEn?'<em>'+esc(S.subEn)+'</em>':'')+'</div>':'')+'</div>'+
     '<div class="z k-logo">'+cLogo()+'</div>'+
     '<div class="z k-side">'+
-      '<div class="bdgs">'+
-        '<b class="bdg red">'+esc(S.badge||T('badgeFb'))+'</b>'+
-        (S.badge2?'<b class="bdg blk">'+esc(S.badge2)+'</b>':'')+
-        (S.badge3?'<b class="bdg gold">'+esc(S.badge3)+'</b>':'')+'</div>'+
-      '<div class="ttl"><h2 style="'+cFs(S.title||CATS[S.cat||'other'].title,4.6,3.9,3.2,12,18)+'">'+esc(S.title||CATS[S.cat||'other'].title)+(S.titleEn?'<em>'+esc(S.titleEn)+'</em>':'')+'</h2></div>'+
-      '<div class="feat">'+f.map((x,i)=>'<span><i>'+CFIC[i%8]+'</i>'+esc(x)+'</span>').join('')+'</div>'+
+      '<div class="bdgs">'+bd.map((x,i)=>'<b class="bdg '+(i?'gold':'red')+'">'+esc(x)+'</b>').join('')+'</div>'+
+      '<div class="ttl"><h2 style="'+cFs(ttl,4.4,3.7,3.1,12,18)+'">'+esc(ttl)+
+        (S.titleEn?'<em>'+esc(S.titleEn)+'</em>':'')+'</h2></div>'+
+      '<div class="feat">'+f.map((x,i)=>'<span><i>'+CFIC[i%8]+'</i>'+esc(cPair(x)[0])+'</span>').join('')+'</div>'+
     '</div>'+
     cStrip('k-strip',3)+
     '<div class="z k-mid">'+
       '<div class="k-map">'+cImg(MED.map,T('mMapPh'))+'</div>'+
-      '<div class="k-spec"><b>'+esc(S.title||'')+'</b>'+(S.place?'<i>'+esc(S.place)+'</i>':'')+'<hr>'+
+      '<div class="k-spec"><b>'+esc(ttl)+'</b>'+(S.place?'<i>'+esc(S.place)+'</i>':'')+'<hr>'+
         rows.map(([a,b])=>'<u>'+esc(a)+'<s>'+esc(b)+'</s></u>').join('')+'</div>'+
       '<div class="k-plan">'+cImg(MED.plan,T('mPlanPh'))+'</div>'+
     '</div>'+
@@ -1196,40 +1207,42 @@ function posterK(){                                     // مشروع عقاري
     cAmenBar('k-amen')+cFootBar('k-foot')+'</div>';
 }
 function posterL(){                                     // استثمار وفلل (طوليّ)
-  const f=cFeat(), rows=cDealRows(), lm=cList(S.landmarks,6), tels=cTelList();
+  const f=cFeat().slice(0,5), rows=cDealRows().slice(0,3), lm=cList(S.landmarks,4), tels=cTelList();
+  const ttl=S.title||CATS[S.cat||'other'].title;
   return '<div class="cpo L" data-ck="1">'+
     '<div class="z l-logo">'+cLogo()+'</div>'+
-    '<div class="z l-head"><h2 style="'+cFs(S.title||CATS[S.cat||'other'].title,6.4,5.2,4.2,14,22)+'">'+esc(S.title||CATS[S.cat||'other'].title)+(S.titleEn?'<em>'+esc(S.titleEn)+'</em>':'')+'</h2></div>'+
+    '<div class="z l-head"><h2 style="'+cFs(ttl,5.8,4.8,3.9,14,22)+'">'+esc(ttl)+
+      (S.titleEn?'<em>'+esc(S.titleEn)+'</em>':'')+'</h2></div>'+
     '<div class="z l-hero">'+cImg(MED.hero||S.img,T('mHeroPh'))+'</div>'+
-    '<div class="z l-side">'+f.map((x,i)=>'<span><i>'+CFIC[i%8]+'</i>'+esc(x)+'</span>').join('')+'</div>'+
-    '<div class="z l-row1">'+
-      '<div class="card"><div class="marks"><b>'+esc(T('lblLandmarks'))+'</b>'+
-        (lm.length?lm.map(x=>'• '+esc(x)).join('<br>'):esc(T('mMapPh')))+'</div></div>'+
-      '<div class="card"><em>'+esc(T('lblContact2'))+'</em><div class="tels">'+
-        (tels.length?tels.map(t=>'<bdi>'+esc(t)+'</bdi>').join(''):'<bdi>—</bdi>')+
-        (BR.wa?'<bdi>'+esc(BR.wa)+'</bdi>':'')+'</div></div>'+
-      '<div class="card"><em>'+esc(T('lblFreehold'))+'</em><b>'+esc((S.deal&&S.deal.freehold)||T('freeholdFb'))+'</b></div>'+
-    '</div>'+
-    '<div class="z l-row2">'+(rows.length?rows:[[T('lblPrices'),(S.price||'')+' '+(S.unit||'')]])
-      .concat([['',''],['',''],['','']]).slice(0,4)
+    '<div class="z l-side">'+f.map((x,i)=>'<span><i>'+CFIC[i%8]+'</i>'+esc(cPair(x)[0])+'</span>').join('')+'</div>'+
+    '<div class="z l-row1">'+(rows.length?rows:[[T('lblPrices'),((S.price||'')+' '+(S.unit||'')).trim()]])
+      .concat([['',''],['','']]).slice(0,3)
       .map(([a,b])=>'<div class="card">'+(a?'<em>'+esc(a)+'</em><b>'+esc(b)+'</b>':'')+'</div>').join('')+'</div>'+
     cStrip('l-strip',5,cList(S.chips,3).concat(cFeat()).slice(0,5))+
-    '<div class="z foot l-foot">'+cLogo()+'<span class="tag">'+esc(BR.tag||T('tagFb'))+'</span>'+
-      '<span class="lbl">◉ '+esc(S.place||S.kick||'')+'</span></div>'+
+    /* بطاقة المعالم تختفي إن لم تُذكر فيتمدّد التواصل، بدل مربّع فارغ */
+    '<div class="z l-row2'+(lm.length?'':' solo')+'"'+(lm.length?'':' style="grid-template-columns:1fr"')+'>'+
+      (lm.length?'<div class="card"><div class="marks"><b>'+esc(T('lblLandmarks'))+'</b>'+
+        lm.map(x=>'• '+esc(x)).join('<br>')+'</div></div>':'')+
+      '<div class="card"><em>'+esc(T('lblContact2'))+'</em><div class="tels">'+
+        (tels.length?tels.map(t=>'<bdi>'+esc(t)+'</bdi>').join(''):'<bdi>—</bdi>')+'</div></div>'+
+    '</div>'+
+    '<div class="z foot l-foot">'+cLogo()+'<span class="lbl">◉ '+esc(S.place||S.kick||'')+'</span>'+
+      (S.deal&&S.deal.freehold?'<span class="tag">'+esc(T('lblFreehold'))+' — '+esc(S.deal.freehold)+'</span>':'')+'</div>'+
     '</div>';
 }
 function posterM(){                                     // معرض سيّارات
-  const f=cFeat(), br=cList(S.brands,6), tels=cTelList();
+  const f=cFeat().slice(0,6), br=cList(S.brands,6), tels=cTelList();
+  const ttl=S.title||CATS[S.cat||'other'].title, hb=br.length>0;
   return '<div class="cpo M" data-ck="2">'+
     '<div class="z m-logo">'+cLogo()+'</div>'+
-    '<div class="z m-head">'+(S.titleEn?'<div class="en" style="'+cFs(S.titleEn,7.6,4.6,3.1,10,17)+'">'+esc(S.titleEn)+'</div>':'')+
-      '<h2 style="'+cFs(S.title||CATS[S.cat||'other'].title,5.4,4.2,3.3,11,17)+'">'+esc(S.title||CATS[S.cat||'other'].title)+'</h2>'+
+    '<div class="z m-head">'+(S.titleEn?'<div class="en" style="'+cFs(S.titleEn,7.4,4.4,3,10,17)+'">'+esc(S.titleEn)+'</div>':'')+
+      '<h2 style="'+cFs(ttl,5.2,4,3.2,11,17)+'">'+esc(ttl)+'</h2>'+
       '<div class="sub">'+esc(S.badge||T('badgeFb'))+'</div>'+
       (S.spec?'<div class="sp">'+esc(S.spec)+'</div>':'')+'</div>'+
-    '<div class="z m-hero">'+cImg(MED.hero||S.img,T('mHeroPh'))+'</div>'+
-    '<div class="z m-brands">'+(br.length?br:f).slice(0,6).map(x=>{ const [a,b]=cPair(x);
-      return '<span><b>'+esc(a)+'</b>'+(b?'<em>'+esc(b)+'</em>':'')+'</span>'; }).join('')+'</div>'+
-    '<div class="z m-feat">'+f.slice(0,6).map((x,i)=>{ const [a,b]=cPair(x);
+    '<div class="z m-hero" style="top:23%;height:'+(hb?39:47)+'%">'+cImg(MED.hero||S.img,T('mHeroPh'))+'</div>'+
+    (hb?'<div class="z m-brands" style="top:63%;height:8.5%">'+br.map(x=>{ const [a,b]=cPair(x);
+      return '<span><b>'+esc(a)+'</b>'+(b?'<em>'+esc(b)+'</em>':'')+'</span>'; }).join('')+'</div>':'')+
+    '<div class="z m-feat" style="top:'+(hb?73:71.5)+'%;height:'+(hb?14:15.5)+'%">'+f.map((x,i)=>{ const [a,b]=cPair(x);
       return '<div class="card"><em>'+CFIC[i%8]+'</em><b>'+esc(a)+'</b>'+(b?'<span>'+esc(b)+'</span>':'')+'</div>'; }).join('')+'</div>'+
     '<div class="z m-bar">'+(BR.wa?'<span class="wa">✆</span>':'')+
       '<span class="tels"><s>☎</s>'+(tels.length?tels.map(t=>'<bdi>'+esc(t)+'</bdi>').join('<s>|</s>'):'<bdi>—</bdi>')+'</span>'+

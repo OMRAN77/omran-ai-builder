@@ -150,3 +150,39 @@ test('١٤. هويّة المكتب وجلسة الإعلان تُحفظان م�
   ['img', 'thumbs', 'plan', 'map', 'person', 'logo'].forEach((k) =>
     assert.ok(!fld[1].includes("'" + k + "'"), 'صورة تُحفظ في التخزين: ' + k));
 });
+
+/* v-ad-tidy (بلاغ المالك بعد الجولة الأولى: «أشوفه جميل لكن معقّد شوي… خلّه أبسط،
+   والصورة النهائيّة مقطوعة من فوق مش كاملة»). أُعيد إنتاجه بتنزيل الـPNG فعلًا من
+   مسار الزرّ نفسه: الأبعاد سليمة، لكنّ object-fit:cover كان يقصّ أعلى المشهد وأسفله. */
+test('١٥. صور اللوحات تُعرض كاملة — contain فوق نسخة مموّهة، لا قصّ بـcover', () => {
+  assert.match(html, /\.cpo \.im \.ft\{position:relative;object-fit:contain\}/);
+  assert.match(html, /\.cpo \.im \.bl\{position:absolute;inset:0;object-fit:cover;filter:blur/);
+  assert.match(html, /function cImg\(src,label\)\{[\s\S]{0,220}class="bl"[\s\S]{0,120}class="ft"/);
+  // لا بطل ولا مخطّط ولا خريطة يمرّ بغير الغلاف
+  const K = html.slice(html.indexOf('function posterK('), html.indexOf('function posterL('));
+  ['MED.hero||S.img', 'MED.map', 'MED.plan'].forEach((src) =>
+    assert.ok(K.includes('cImg(' + src), 'صورة خارج الغلاف: ' + src));
+});
+
+test('١٦. هامش واحد لكلّ المناطق، والصفّ الأوسط ثلاثة أعمدة متساوية', () => {
+  assert.match(html, /--u:5px;--g:calc\(var\(--u\)\*2\.2\)/);
+  assert.match(html, /\.K \.k-mid\{[^}]*grid-template-columns:1fr 1fr 1fr;gap:var\(--g\)/);
+  ['.K .k-hero{top:var(--g);left:var(--g)', '.K .k-strip{top:calc(', '.L .l-hero{', '.M .m-hero{left:var(--g)']
+    .forEach((sel) => assert.ok(html.includes(sel), 'منطقة بلا هامش موحّد: ' + sel));
+});
+
+test('١٧. تبسيط: شارتان لا ثلاث، ومرافق بالعربيّة وحدها، وشعار واحد في الشريط', () => {
+  assert.match(html, /function cBadges\(\)\{ return \[S\.badge\|\|T\('badgeFb'\), S\.badge3\|\|S\.badge2\|\|''\]/);
+  const amen = html.slice(html.indexOf('function cAmenBar('), html.indexOf('function cStrip('));
+  assert.doesNotMatch(amen, /<em>/, 'السطر الإنجليزيّ ما زال يضاعف نصّ المرافق');
+  const foot = html.slice(html.indexOf('function cFootBar('), html.indexOf('function cAmenBar('));
+  assert.equal((foot.match(/cLogo\(\)/g) || []).length, 1, 'الشعار مكرَّر في شريط التواصل');
+  assert.doesNotMatch(foot, /class="tag"/, 'السطر التعريفيّ مكرَّر مع الشعار');
+});
+
+test('١٨. صفّ الماركات يظهر فقط إن ذُكرت — كان يكرّر المزايا نفسها', () => {
+  const M = html.slice(html.indexOf('function posterM('));
+  assert.match(M, /const .*hb=br\.length>0/);
+  assert.match(M, /\(hb\?'<div class="z m-brands"/);
+  assert.doesNotMatch(M, /\(br\.length\?br:f\)/, 'ما زال يرتدّ إلى المزايا عند غياب الماركات');
+});
