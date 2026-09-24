@@ -274,6 +274,10 @@ window.__omranErrLive = function(e, build, now){
               if(q('(inverted-colors: inverted)')) out.push('ألوان معكوسة!');
               if(q('(prefers-contrast: more)')) out.push('تباين عالٍ!');
               if(q('(prefers-reduced-transparency: reduce)')) out.push('شفافيّة مخفّضة');
+              /* v-cpu-raster: وضع الرسم من الغلاف (cpu / gpu-video / gpu). بلا WebGL هنا عمدًا
+                 (v-mem-probe: المسبار لا يضيف حِملًا على معالج رسوم معطوب). اسم المعالج في /gpu-test.html. */
+              try{ out.push('رسم=' + (window.OmranRender && window.OmranRender.mode ? window.OmranRender.mode() : 'بلا-جسر')); }
+              catch(e){ out.push('رسم=?'); }
               return out.join(' ');
             })()
           + ' · صور بالذاكرة ' + stN + ' (' + MB(st) + 'MB نصّ) · عناصر ' + document.getElementsByTagName('*').length

@@ -61,5 +61,5 @@ test('٤. المسبار يبلّغ ما يفعله النظام بألوانن�
     '\\(inverted-colors: inverted\\)', '\\(prefers-contrast: more\\)']) {
     assert.match(sd, new RegExp(q), 'استعلام: ' + q);
   }
-  assert.match(html, /\/js\/selfdiag\.js\?v=hw-twa-6/, 'الوسم رُفع — الملفّ يُحمَّل منفصلًا');
+  assert.match(html, /\/js\/selfdiag\.js\?v=hw-twa-7/, 'الوسم رُفع — الملفّ يُحمَّل منفصلًا');
 });

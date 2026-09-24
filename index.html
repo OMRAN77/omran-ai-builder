@@ -22,6 +22,27 @@ catch (e) { /* guard-ok: بلا العلامة يبقى الشكل الكامل 
    تخطيط فلا يتقاطع مع الشاشة أبدًا، فيحمّله المتصفّح فورًا؛ و`new Image()` يتجاوز الوسم أصلًا.
    هنا مراقب تقاطع واحد يُعرَّف قبل أيّ سكربت: العمل يُؤجَّل حتّى يدخل العنصر الشاشة فعلًا
    (أي حين تُفتح نافذته)، فتُحمَّل صوره ساعتها لا قبلها. */
+/* v-cpu-raster (الجزء الذي في الصفحة): غلاف هواوي يرسم بالمعالج المركزيّ لأنّ تعريف معالج رسوم
+   الجهاز يتلف الصفوف العليا من الأنسجة (صور البطاقات وأطلس الحروف — فيديو المالك ١٧:٤٤). الفيديو
+   المضمَّن يحتاج التسريع العتاديّ، فنخبر الغلاف متى يعمل <video> ومتى يتوقّف. أحداث الوسائط لا
+   تفقّع لكنّها تمرّ بمرحلة الالتقاط على document. خارج التطبيق (متصفّح) لا جسر = لا شيء يحدث. */
+(function () {
+  try {
+    var R = window.OmranRender;
+    if (!R || typeof R.video !== 'function') return;
+    var last = null;
+    var sync = function () {
+      var on = false, v = document.getElementsByTagName('video');
+      for (var i = 0; i < v.length; i++) { if (!v[i].paused && !v[i].ended) { on = true; break; } }
+      if (on === last) return;
+      last = on;
+      try { R.video(on); } catch (e) { /* guard-ok: الجسر ترف — بلاه يبقى الرسم كما هو */ }
+    };
+    ['play', 'playing', 'pause', 'ended', 'emptied', 'abort'].forEach(function (t) {
+      document.addEventListener(t, function () { setTimeout(sync, 0); }, true);
+    });
+  } catch (e) { /* guard-ok: خارج غلاف هواوي لا جسر */ }
+})();
 window.__omranWhenSeen = (function () {
   var obs = null;
   try {
@@ -901,7 +922,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
 <script src="/js/partials-settings.js?v=662"></script>
 
-<script src="/js/selfdiag.js?v=hw-twa-6"></script>
+<script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
     <script defer src="/js/app.bundle.js?v=c27d7eed"></script>
