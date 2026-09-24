@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=678'; /* v-img-upscale: مفاتيح «دقّة أعلى» + v-attach-huawei-more: attachAddMore — في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=686'; /* v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -484,6 +484,19 @@ function __vaultEach(projects, fn){
     (m && m.apiImages || []).forEach(a => { if(a) fn(a); });
   }));
 }
+/* v-proj-vault (فحص الإقلاع في محادثة فارغة ببيانات كبيانات المالك: ١٨٣ م.ب من ذاكرة JS نصوصُ base64 على مستوى المشروع —
+   آخر صورة معدّلة، مصدر التعديل، أساس طبقة النصّ، لقطة الدليل، وسجلّ الديكور — تُحمَّل لكلّ المشاريع عند كلّ إقلاع ولا يعرضها
+   شيء، ثمّ ينسخها كلّ حفظ ٣–٤ مرّات: قمّة ١٫٣ غ.ب ومهامّ طويلة ٢–٧ث): تُخزَّن في مخزن الصور كالمرفقات، ويبقى في السجلّ معرّفها.
+   كلّ كاتب لهذه الحقول يُسند كائنًا جديدًا (لا تعديل في المكان)، فالكائن الجديد بلا معرّف يُكتب في الحفظ التالي والقديم يكنسه الكنس. */
+const __PROJ_BLOBS = [['lastEditedImage', 'b64'], ['imageEditSource', 'b64'], ['imageTextLayer', 'baseB64'], ['guideShot', 'b64']];
+function __projBlobEach(projects, fn){
+  (projects || []).forEach(p => {
+    if(!p) return;
+    __PROJ_BLOBS.forEach(fk => { const o = p[fk[0]]; if(o && typeof o === 'object') fn(o, fk[1], p); });
+    if(p.decorHistory && typeof p.decorHistory === 'object') Object.keys(p.decorHistory).forEach(s => { const o = p.decorHistory[s]; if(o && typeof o === 'object') fn(o, 'b64', p); });
+  });
+}
+function __blobDegraded(o, k){ return !!(o && o.vaultId && !o.vaultPending && (typeof o[k] !== 'string' || o[k].length <= VAULT_MIN)); }
 /* يعيّن معرّفًا لكل صورة كبيرة بلا معرّف ويعيد ما يجب كتابته في المخزن */
 function __vaultAssign(projects, now){
   const puts = [];
@@ -492,18 +505,77 @@ function __vaultAssign(projects, now){
     if(!a.vaultId){ a.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); a.vaultPending = true; }
     if(a.vaultPending) puts.push({ id: a.vaultId, dataUrl: a.dataUrl, ref: a });
   });
+  __projBlobEach(projects, (o, k) => { /* v-proj-vault */
+    if(typeof o[k] !== 'string' || o[k].length <= VAULT_MIN) return;
+    if(!o.vaultId){ o.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); o.vaultPending = true; }
+    if(o.vaultPending) puts.push({ id: o.vaultId, dataUrl: o[k], ref: o });
+  });
   return puts;
 }
 /* نسخة الحفظ: الصورة المخزونة تُستبدل بمعرّفها فقط */
 function __vaultReplacer(k, v){
-  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return '';
+  if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض تُحفظ في المخزن بمفتاحها لا في السجلّ */
+  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && (v.length > VAULT_MIN || v === '[media]')) return '';
+  if((k === 'b64' || k === 'baseB64') && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return ''; /* v-proj-vault */
   if(k === 'vaultPending') return undefined;
   return v;
+}
+/* v-vault-restore (المالك ٢٣ سبتمبر «الصور تمسح من المحادثه»): الصورة المخزونة قد تحمل في الذاكرة بديلًا متدهورًا —
+   «[media]» أو المصغّرة من المرآة المنحّفة/السيرفر، أو فراغًا بعد purgeOldImages — والأصل سليم في المخزن. المعرّف لا
+   يُعيَّن إلّا لصورة فوق VAULT_MIN، فأيّ dataUrl أقصر مع معرّف = بديل يجب استبداله بالأصل. */
+function __vaultDegraded(a){
+  return !!(a && a.vaultId && !a.vaultPending && (typeof a.dataUrl !== 'string' || a.dataUrl.length <= VAULT_MIN));
+}
+/* v-mem-guard (لقطات المالك ٢٣ سبتمبر: «خربت الدنيا — ولا شي يفتح»: الكتابة تتقطّع خطوطًا، صفوف سوداء، والشعار تشويش):
+   v-vault-restore كان يستعيد أصول كلّ صور المحادثة المفتوحة بحجمها الكامل مع كلّ رسم، ثمّ يبني الحفظ (كلّ ١٫٥ث) نصًّا من
+   المشروع كلّه بصوره، وتنسخ المرآة (كلّ ١٠ث) كلّ رسالة بصورها — مسبار ٤٠ صورة: الذاكرة ٣٤ ← ٣٧١ م.ب ونصّ ٦٢ مليون حرف
+   في كلّ حفظ؛ بصور المالك الحقيقيّة (٥–٢٠ م.ب) غيغابايتات فتنهار ذاكرة الرسم في الجوّال. الاستعادة الآن لنافذة العرض
+   وحدها (آخر ٣٠ رسالة كما يرسم renderMessages)؛ الأقدم تُقرأ صورةً صورةً حين تُعرض («عرض الأقدم»). */
+const __IMG_WINDOW = 30;
+function __imgWindowStart(p){
+  const n = (p && Array.isArray(p.messages)) ? p.messages.length : 0;
+  return (p && p.__showAllMsgs) ? 0 : Math.max(0, n - __IMG_WINDOW);
+}
+/* v-mem-guard2 (فيديو المالك بعد #739: النصّ صار سليمًا، لكنّ الشعار تشويش وصفوف لا تُرسم — في محادثة جديدة فارغة):
+   (١) صور المحادثة التي غادرها تبقى بحجمها الكامل في الذاكرة ولا شيء يعيدها للمخزن، فحِمل محادثة الصور يبقى وأنت في غيرها.
+   (٢) فتح المحادثة كان يقرأ كلّ صورة نحو ٤٫٥ مرّات بالتوازي (كلّ renderMessages يطلق استعادة بلا قفل، ومسار الرسم يقرأ كلّ صورة
+   مرّة ثانية). الآن: ما خارج نافذة المحادثة المفتوحة يعود لمعرّفه (الأصل في المخزن ويُستعاد حين يُعرض)، وكلّ صورة قيد القراءة
+   تُقرأ مرّة واحدة وينتظرها الجميع. المعلّقة (لم تُكتب في المخزن بعد) والصغيرة بلا معرّف لا تُمسّ. */
+const __vaultReads = new WeakMap();
+function __vaultRelease(keepP, keepFrom){
+  let freed = 0;
+  ((typeof state !== 'undefined' && state && state.projects) || []).forEach(p => ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || (p === keepP && i >= keepFrom)) return;
+    (m.attachments || []).concat(m.apiImages || []).forEach(a => {
+      if(a && a.vaultId && !a.vaultPending && typeof a.dataUrl === 'string' && a.dataUrl.length > VAULT_MIN && !__vaultReads.has(a)){ a.dataUrl = ''; freed++; }
+      if(a && a.vaultId && !a.vaultPending && a.viewUrl && !__viewReads.has(a)) delete a.viewUrl; /* v-img-view: نسختها في المخزن */
+    });
+  }));
+  /* v-proj-vault: base64 المشاريع الأخرى يعود لمعرّفه (المفتوح يبقى، والمعلّق لم يُكتب بعد) */
+  __projBlobEach(((typeof state !== 'undefined' && state && state.projects) || []).filter(p => p !== keepP), (o, k) => {
+    if(o.vaultId && !o.vaultPending && typeof o[k] === 'string' && o[k].length > VAULT_MIN && !__vaultReads.has(o)){ o[k] = ''; freed++; }
+  });
+  return freed;
 }
 function __collectVaultIds(projects){
   const ids = new Set();
   __vaultEach(projects, a => { if(a.vaultId) ids.add(a.vaultId); });
+  __projBlobEach(projects, o => { if(o.vaultId) ids.add(o.vaultId); }); /* v-proj-vault: الكنس لا يمسحها */
   return ids;
+}
+/* v-proj-vault: base64 المشروع المفتوح يُستعاد من المخزن (قراءة مشتركة لكلّ كائن)، ويُنتظر قبل أيّ إرسال */
+function __vaultProjBlobs(p){
+  const prs = [];
+  __projBlobEach(p ? [p] : [], (o, k) => {
+    if(!__blobDegraded(o, k)) return;
+    let pr = __vaultReads.get(o);
+    if(!pr){
+      pr = idbImgGet(o.vaultId).then(d => { if(typeof d === 'string' && d) o[k] = d; return o[k]; }).catch(e => { __swallow(e, 'vault:blob'); return o[k]; }).finally(() => __vaultReads.delete(o));
+      __vaultReads.set(o, pr);
+    }
+    prs.push(pr);
+  });
+  return prs.length ? Promise.all(prs) : null; /* لا شيء في المخزن = لا انتظار (الإرسال يبدأ في المهمّة نفسها كما كان) */
 }
 function idbImgPutAll(puts){
   if(!puts.length) return Promise.resolve();
@@ -523,12 +595,86 @@ function idbImgGet(id){
     rq.onerror = () => { db.close(); rej(rq.error); };
   }));
 }
+/* v-mem-guard2: قراءة صورة واحدة من المخزن — إن كانت قيد القراءة (الاستعادة أو رسم سابق) يُنتظر الوعد نفسه */
+function __vaultRead(a){
+  let pr = __vaultReads.get(a);
+  if(!pr){
+    pr = idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; delete a.purged; } return a.dataUrl; }).finally(() => __vaultReads.delete(a));
+    __vaultReads.set(a, pr);
+  }
+  return pr;
+}
+/* v-img-view (فيديو المالك بعد #740: الشعار وصور بطاقات الأدوات تشويش ومربّعات سوداء — ذاكرة رسم الصور في الجوّال):
+   صور المحادثة كانت تُرسم بأصلها (2K–4K، ٥–٢٠ م.ب data URL) في فقاعة عرضها ٤٦٠px؛ كلّ صورة تُفكّ بحجمها الكامل (4K = ٦٤ م.ب
+   بكسلات) وتُرفع للرسم، وكلّ إعادة رسم تحلّل عشرات الميغا. الآن تُرسم نسخة عرض (أطول ضلع 1280px، JPEG، أو PNG إن كانت شفّافة)
+   تُصنع مرّة من الأصل وتُحفظ في المخزن بمفتاح «معرّف~v»؛ الأصل يبقى كما هو لكلّ ما يحتاجه (المشاركة، الحفظ، العرض الكامل،
+   التعديل، التراجع). التوليد صورةً صورةً (طابور) كي لا تُفكّ أصول كثيرة معًا. */
+const __VIEW_MAX = 1280;
+const __viewReads = new WeakMap();
+let __viewQ = Promise.resolve();
+function __isBigDataImg(u){ return typeof u === 'string' && u.length > VAULT_MIN && u.slice(0, 11) === 'data:image/'; }
+function __makeView(src){
+  return new Promise(res => {
+    try{
+      const im = new Image();
+      im.onload = () => {
+        try{
+          const w0 = im.naturalWidth || im.width, h0 = im.naturalHeight || im.height;
+          if(!w0 || !h0){ res(''); return; }
+          const k = Math.min(1, __VIEW_MAX / Math.max(w0, h0));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+          const cx = c.getContext('2d', { willReadFrequently: true }); /* لوحة برمجيّة: الأصل 4K لا يُرفع لذاكرة الرسم لصنع نسخته */
+          cx.drawImage(im, 0, 0, c.width, c.height);
+          let alpha = false;
+          if(!/^data:image\/jpe?g/i.test(src)){
+            const d = cx.getImageData(0, 0, c.width, c.height).data;
+            for(let i = 3; i < d.length; i += 16){ if(d[i] < 250){ alpha = true; break; } }
+          }
+          const out = alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.86);
+          c.width = c.height = 0;
+          res(typeof out === 'string' && out.slice(0, 11) === 'data:image/' ? out : '');
+        }catch(e){ __swallow(e, 'view:make'); res(''); }
+      };
+      im.onerror = () => res('');
+      im.src = src;
+    }catch(e){ __swallow(e, 'view:make#img'); res(''); }
+  });
+}
+/* نسخة العرض لمرفق: من الذاكرة، أو من المخزن، أو تُصنع من الأصل (المخزون يُقرأ عبر القارئ المشترك) وتُحفظ */
+function __imgView(a){
+  if(!a) return Promise.resolve('');
+  if(a.viewUrl) return Promise.resolve(a.viewUrl);
+  let pr = __viewReads.get(a);
+  if(pr) return pr;
+  pr = (async () => {
+    if(a.vaultId && !a.vaultPending){
+      try{ const v = await idbImgGet(a.vaultId + '~v'); if(typeof v === 'string' && v.slice(0, 11) === 'data:image/'){ a.viewUrl = v; return v; } }catch(e){ __swallow(e, 'view:get'); }
+      if(typeof window !== 'undefined' && window.__usingSlimProjects) return ''; /* المرآة المنحّفة تُستبدل بالكاملة قريبًا — لا تُفكّ أصولها */
+    }
+    const job = __viewQ.then(async () => {
+      let src = __isBigDataImg(a.dataUrl) ? a.dataUrl : '';
+      if(!src && a.vaultId && !a.vaultPending){ try{ const d = await __vaultRead(a); if(__isBigDataImg(d)) src = d; }catch(e){ __swallow(e, 'view:orig'); } }
+      if(!src) return '';
+      const v = await __makeView(src);
+      if(!v) return '';
+      a.viewUrl = v;
+      if(a.vaultId && !a.vaultPending) idbImgPutAll([{ id: a.vaultId + '~v', dataUrl: v }]).catch(e => __swallow(e, 'view:put'));
+      return v;
+    });
+    __viewQ = job.catch(() => '');
+    return job;
+  })().finally(() => __viewReads.delete(a));
+  __viewReads.set(a, pr);
+  return pr;
+}
+window.__imgView = __imgView;
 function idbImgSweep(liveIds){
   return idbOpen().then(db => new Promise((res, rej) => {
     const tx = db.transaction(IDB_IMAGES, 'readwrite');
     const st = tx.objectStore(IDB_IMAGES);
     const rq = st.getAllKeys();
-    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(k)) st.delete(k); }); };
+    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(String(k).replace(/~v$/, ''))) st.delete(k); }); }; /* v-img-view: نسخة العرض تبقى ما بقي أصلها */
     tx.oncomplete = () => { db.close(); res(); };
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
@@ -537,11 +683,16 @@ function idbImgSweep(liveIds){
 async function __vaultSave(){
   const puts = __vaultAssign(state.projects, Date.now());
   let vaulted = true;
-  try{ await idbImgPutAll(puts); puts.forEach(x => { delete x.ref.vaultPending; }); }
+  /* v-img-view: نسخة عرض صُنعت قبل أن يُكتب الأصل تُكتب معه */
+  try{ await idbImgPutAll(puts.concat(puts.filter(x => x.ref && x.ref.viewUrl).map(x => ({ id: x.id + '~v', dataUrl: x.ref.viewUrl })))); puts.forEach(x => { delete x.ref.vaultPending; }); }
   catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
-  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects));
+  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects, __noViewReplacer));
   await idbSet('aiapp_projects', copy);
+  /* v-proj-vault: ما كُتب للتوّ في المخزن من غير المحادثة المفتوحة يخرج من الذاكرة الآن لا عند الرسم التالي (أوّل حفظ بعد النشر
+     ينقل base64 كلّ المشاريع إلى المخزن دفعة واحدة) */
+  if(vaulted && puts.length){ try{ const __cp = (typeof getCurrent === 'function') ? getCurrent() : null; __vaultRelease(__cp, __cp ? __imgWindowStart(__cp) : 0); }catch(e){ __swallow(e, 'vault:release-after-save'); } }
 }
+function __noViewReplacer(k, v){ return k === 'viewUrl' ? undefined : v; }
 /* الاستعادة: صور مشروع بلا dataUrl تُقرأ من المخزن (عند الإقلاع للمشروع المفتوح، وعند العرض لغيره) */
 function idbImgGetMany(ids){
   if(!ids.length) return Promise.resolve({});
@@ -554,15 +705,27 @@ function idbImgGetMany(ids){
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
 }
-async function hydrateProjectImages(p){
+async function hydrateProjectImages(p, fromIdx){
   const need = [];
-  __vaultEach(p ? [p] : [], a => { if(a.vaultId && !a.dataUrl && !a.purged) need.push(a); });
+  const start = (typeof fromIdx === 'number') ? fromIdx : __imgWindowStart(p);
+  if(p) __vaultRelease(p, start); /* v-mem-guard2: ما خارج النافذة يعود لمعرّفه */
+  /* v-img-view: المرآة المنحّفة تُستبدل بالكاملة بعد لحظات فقراءة أصولها ضائعة (كانت تُقرأ كلّ صورة مرّتين عند الإقلاع)؛
+     وapiImages لا يقرؤها شيء إلّا للرسالة الجديدة (قبل أن تُخزَّن) فلا تُستعاد — كانت تضاعف الذاكرة. */
+  if(typeof window !== 'undefined' && window.__usingSlimProjects) return 0;
+  if(p) __vaultProjBlobs(p); /* v-proj-vault: لا يُنتظر هنا (لا يُعرض) — الإرسال ينتظره */
+  ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || i < start) return;
+    (m.attachments || []).forEach(a => { if(a && a.isImage && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
+  });
   if(!need.length) return 0;
-  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة */
-  try{ const got = await idbImgGetMany(need.map(a => a.vaultId)); need.forEach(a => { if(got[a.vaultId]) a.dataUrl = got[a.vaultId]; }); }catch(e){ __swallow(e, 'vault:get'); }
+  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة؛ وكلّ صورة تُسجَّل «قيد القراءة» فلا تُقرأ ثانية حتّى تنتهي */
+  const batch = idbImgGetMany(need.map(a => a.vaultId));
+  need.forEach(a => { __vaultReads.set(a, batch.then(got => { if(got[a.vaultId]){ a.dataUrl = got[a.vaultId]; delete a.purged; } return a.dataUrl; }, () => a.dataUrl).finally(() => __vaultReads.delete(a))); });
+  try{ await Promise.all(need.map(a => __vaultReads.get(a))); }catch(e){ __swallow(e, 'vault:get'); }
   return need.length;
 }
 window.__hydrateProjectImages = hydrateProjectImages;
+window.__vaultProjBlobs = __vaultProjBlobs;
 window.__vaultSweep = function(){ try{ return idbImgSweep(__collectVaultIds(state.projects)); }catch(e){ return Promise.resolve(); } };
 
 // Strips old image data (keeps a small placeholder) to free up localStorage
@@ -639,7 +802,7 @@ function __saveFlush(force){
          الصفحة يُحفظ فورًا. المنظّف بقي لمسار localStorage الاحتياطي وحده لأن سقفه 5MB فعليًا. */
       if(!force){
         try{
-          const __sz = __projectsToJson().length;
+          const __sz = __vaultJsonSize(); /* v-mem-guard: كان __projectsToJson() يبني نصّ المشروع المفتوح بصوره كاملة في كلّ حفظ */
           const __gap = __sz > 60000000 ? 30000 : (__sz > 12000000 ? 10000 : 0);
           const __wait = __gap - (Date.now() - __idbSavedAt);
           if(__gap && __wait > 0){ __saveDirty = true; __saveTimer = setTimeout(__saveFlush, __wait); return; }
@@ -677,6 +840,10 @@ function saveState(){
   if(__saveTimer) return;
   __saveTimer = setTimeout(__saveFlush, 1500);
 }
+/* v-mem-guard: حجم ما يكتبه __vaultSave فعلًا (صور المخزن معرّفات لا base64) — حارس التباعد لا يبني نصّ الصور */
+function __vaultJsonSize(){
+  try{ return JSON.stringify(state.projects, __vaultReplacer).length; }catch(e){ return 0; } /* guard-ok — الحارس تحسين؛ الفشل = حفظ فوريّ كما قبل */
+}
 // ⚡ v320: الحفظ يعالج المشروع المفتوح فقط — الباقي من نسخة نصية جاهزة (كاش).
 let __projJsonCache = new WeakMap();
 function __projectsToJson(){
@@ -686,7 +853,7 @@ function __projectsToJson(){
       const c = __projJsonCache.get(p);
       if(c !== undefined) return c;
     }
-    const s = JSON.stringify(p);
+    const s = JSON.stringify(p, __noViewReplacer);
     __projJsonCache.set(p, s);
     return s;
   });
@@ -737,20 +904,18 @@ function chatsAuthToken(){
    الصور الصغيرة (< 150KB base64) تبقى كما هي. بدون thumb + كبيرة = [media]. */
 function __msgForServer(m){
   try{
-    var o = JSON.parse(JSON.stringify(m));
-    // المرفقات: استخدم serverThumb إذا موجود، أو احتفظ بالصغيرة
-    function fixImg(a){
-      if(!a || !a.isImage) return;
-      if(a.serverThumb){
-        a.dataUrl = a.serverThumb;
-        delete a.serverThumb;
-      } else if(a.dataUrl && a.dataUrl.length > 150000){
-        a.dataUrl = '[media]';
+    /* v-mem-guard: كانت JSON.parse(JSON.stringify(m)) تنسخ كلّ base64 الرسالة ثمّ تستبدلها بـ«[media]» — كلّ ١٠ث ولكلّ رسالة في
+       كلّ المحادثات، مئات الميغا بعد v-vault-restore. الآن تُستبدل أثناء النسخ: المصغّرة (serverThumb) للصورة إن وُجدت،
+       والأكبر من 150KB «[media]» (ومنها apiImages بلا isImage التي كانت تُنسخ كاملة)، والصغيرة تبقى كما هي. */
+    var o = JSON.parse(JSON.stringify(m, function(k, v){
+      if(k === 'serverThumb' && this && this.isImage) return undefined;
+      if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض محلّيّة */
+      if(k === 'dataUrl' && this && typeof v === 'string'){
+        if(this.isImage && this.serverThumb) return this.serverThumb;
+        if(v.length > 150000) return '[media]';
       }
-      // الصغيرة تبقى كما هي
-    }
-    if(o.attachments) o.attachments.forEach(fixImg);
-    if(o.apiImages) o.apiImages.forEach(fixImg);
+      return v;
+    }));
     // النص الطويل
     if(o && typeof o.content === 'string' && o.content.length > 12001){
       o.content = o.content.slice(0, 12000) + '…';
@@ -850,6 +1015,12 @@ function __chatsMergeServer(server, deletedIds){
           if(lm.content && (!sm.content || sm.content === '[media]')) return lm;
           // لو المحلي أطول بكثير → خذ المحلي (السيرفر مقصوص)
           if(lm.content && sm.content && lm.content.length > sm.content.length + 50) return lm;
+          // v-keep-local-attachments: رسالة موجودة محليًّا أصلًا (نفس الفهرس) —
+          // مرفقاتها (صور) لا يمكن أن تكون نسخة السيرفر المرفوعة (مضغوطة أو
+          // '[media]' إن فشل الضغط) أوضح منها أبدًا. بلا هذا الفحص، رسالة صورة
+          // بلا نصّ (content فارغ) كانت تسقط للشرطين أعلاه فتُستبدل بصمت بنسخة
+          // متدهورة لمجرّد أنّ جهازًا آخر أضاف رسالة جديدة لنفس المحادثة.
+          if((Array.isArray(lm.attachments) && lm.attachments.length) || (Array.isArray(lm.apiImages) && lm.apiImages.length)) return lm;
           return sm;
         });
         local.messages = merged;
@@ -1033,7 +1204,7 @@ function codeForApi(code){
 function renderHistory(){
   historyEl.innerHTML = '';
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
-  const provKey = localStorage.getItem('aiapp_provider') || 'claude';
+  const provKey = localStorage.getItem('aiapp_provider') || 'openai';
   let provDirty = false;
   state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
   if(provDirty) saveState();
@@ -1070,7 +1241,7 @@ function renderHistory(){
     titleSpan.onclick = () => {
       // v380: الضغط على محادثة من مزود آخر → ينتقل لمزودها تلقائيًا (بدون إنشاء محادثة جديدة)
       try{
-        const cur = localStorage.getItem('aiapp_provider') || 'claude';
+        const cur = localStorage.getItem('aiapp_provider') || 'openai';
         if(p.provider && p.provider !== cur){
           localStorage.setItem('aiapp_provider', p.provider);
           const sel = document.getElementById('provider');
@@ -1370,6 +1541,8 @@ function omranRenderOptions(host, blocks){
 /* v-long-reply-off (طلب المالك ١٨ سبتمبر): الردّ الطويل يُعرض كاملًا في المحادثة بلا قصّ ولا
    أزرار — أُزيل القناع وزرّا القراءة والطيّ ولوحة القراءة التي كانت هنا (v-long-reply). */
 function renderMessages(keepScroll){
+  /* v-vault-restore: كلّ فتح لمحادثة يستعيد أصول صورها المتدهورة (المرفقات وapiImages التي يعدّل عليها المحرّر) من المخزن */
+  try{ const __hp = getCurrent(); if(__hp) hydrateProjectImages(__hp).catch(e => __swallow(e, 'vault:open')); }catch(e){ __swallow(e, 'vault:open#sync'); }
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
   // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
@@ -1411,7 +1584,7 @@ function renderMessages(keepScroll){
   let compareGroup = null;
   cur.expandedAskAllBatches = cur.expandedAskAllBatches || [];
   // ⚡ v320: نافذة عرض — نرسم آخر 30 رسالة فقط؛ الأقدم تظهر بزر عند الطلب.
-  const __MSGWIN = 30;
+  const __MSGWIN = __IMG_WINDOW; /* v-mem-guard: النافذة نفسها التي تُستعاد صورها */
   const __winStart = cur.__showAllMsgs ? 0 : Math.max(0, cur.messages.length - __MSGWIN);
   if(__winStart > 0){
     const __OLDT = { ar:'عرض الرسائل الأقدم', en:'Show older messages', fr:'Afficher les messages plus anciens', hi:'पुराने संदेश दिखाएँ', ur:'پرانے پیغامات دکھائیں', bn:'পুরনো বার্তা দেখান', ne:'पुराना सन्देशहरू देखाउनुहोस्', id:'Tampilkan pesan lama', fil:'Ipakita ang mga lumang mensahe', tr:'Eski mesajları göster', zh:'显示较早的消息', ru:'Показать старые сообщения', es:'Mostrar mensajes anteriores', ml:'പഴയ സന്ദേശങ്ങൾ കാണിക്കുക' };
@@ -1604,37 +1777,27 @@ function renderMessages(keepScroll){
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
     {
-      // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
+      // الروابط الخارجية الظاهرة في النصّ — تبقى روابط، وتُستثنى من بطاقة المصادر
       const __inlineLinks = [];
-      const __anchorEls = [];
       if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
           const title = a.textContent.trim() || url;
-          if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
+          if(url && !__inlineLinks.some(l => l.url === url)){
             __inlineLinks.push({ url, title });
           }
-          __anchorEls.push(a);
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
        const __isMapUrl = (url) => /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i.test(String(url || ''));
        const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
-       const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
-      const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
-      // v-src-dedupe (أمر عمران ب): رابط واحد ظاهر في الرد أصلًا = لا بطاقة مصادر
-      // مكرّرة؛ يبقى الرابط قابلًا للضغط داخل الرد. غير ذلك تُحوّل الروابط إلى نصّ
-      // (بلا href حتى لا تتفرّق) وتُجمع كلّها في البطاقة.
-      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
-      const __skipCard = validSrcs.length === 1 && __inlineLinks.length === 1 && __normU(__inlineLinks[0].url) === __normU(validSrcs[0].url);
-      if(!__skipCard){
-        __anchorEls.forEach(a => {
-          const span = document.createElement('span');
-          span.className = 'msgInlineRef';
-          span.textContent = a.textContent;
-          a.parentNode.replaceChild(span, a);
-        });
-      }
+      /* v-inline-links-stay (المالك ٢٣ سبتمبر: «يقول ادخل الرابط… يعطيني مرّة أو مرّتين صح والباقي يخربط»):
+         كان الرابط يبقى قابلًا للضغط في ردّ فيه رابط واحد فقط؛ رابطان فأكثر = كلّها تتحوّل نصًّا عاديًّا
+         (msgInlineRef) وتختفي في زرّ «المصادر» المطويّ. الآن الرابط في النصّ يبقى رابطًا ذهبيًّا يُفتح دائمًا،
+         وبطاقة «المصادر» لا تحمل إلّا مصادر البحث التي ليست ظاهرة في النصّ أصلًا. */
+      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
+      const validSrcs = __srcBase.filter(s => !__inlineLinks.some(l => __normU(l.url) === __normU(s.url))).slice(0, 15);
+      const __skipCard = false;
 
       if(validSrcs.length && !__skipCard){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
@@ -1734,16 +1897,29 @@ function renderMessages(keepScroll){
           dl.style.textDecoration = 'none';
           dl.style.alignSelf = 'center';
           wrap.appendChild(dl);
-        } else if(a.isImage && a.purged){
+        } else if(a.isImage && a.purged && !a.vaultId){
           const chip = document.createElement('div');
           chip.className = 'file-chip';
           chip.textContent = '🗑️ ' + t('imagePurgedNote');
           wrap.appendChild(chip);
         } else if(a.isImage){
           const img = document.createElement('img');
-          /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
-          if(!a.dataUrl && a.vaultId){ idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; img.src = d; } }).catch(e => __swallow(e, 'vault:render')); }
-          img.src = a.dataUrl;
+          img.decoding = 'async';
+          let __ibox = null;
+          /* v-img-view: تُرسم نسخة العرض (1280px) لا الأصل. صورة جديدة لم تُخزَّن بعد تظهر بأصلها فورًا ثمّ تُستبدل بنسختها؛
+             المخزونة بلا نسخة في الذاكرة تنتظر نسختها (من المخزن، أو تُصنع مرّة من الأصل). كلّ تعيين في مهمّته (v-mem-guard3:
+             الدفعة الواحدة جمّدت الإقلاع ١٫٥ث)، والمنفصلة عن الصفحة تُتخطّى، والمخفيّة بعد خطأ src فارغ تعود ظاهرة. */
+          const __showSrc = (u) => { if(typeof u === 'string' && u) setTimeout(() => { if(!img.isConnected || img.getAttribute('src') === u) return; img.style.display = ''; img.src = u; }, 0); };
+          /* v-chip-thumb: رقاقة مرفق المستخدم ٦٠px (object-fit:cover يفكّ الأصل كاملًا) تُرسم بمصغّرتها المحفوظة (400px) إن وُجدت */
+          const __chipThumb = (m.role === 'user' || a._fromMemory) && typeof a.serverThumb === 'string' && a.serverThumb.slice(0, 11) === 'data:image/' ? a.serverThumb : '';
+          if(__chipThumb) img.src = __chipThumb;
+          else if(a.viewUrl) img.src = a.viewUrl;
+          else if(__isBigDataImg(a.dataUrl) || __vaultDegraded(a)){
+            if(__isBigDataImg(a.dataUrl) && (!a.vaultId || a.vaultPending)) img.src = a.dataUrl;
+            __imgView(a).then(__showSrc).catch(e => __swallow(e, 'img:view'));
+          } else img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
+          /* v-image-vault/v-mem-guard2: أدوات المشاركة والحفظ تحتاج الأصل — يُقرأ من المخزن (قراءة مشتركة) وتُلحق حين يصل */
+          if(__vaultDegraded(a) && !window.__usingSlimProjects){ __vaultRead(a).then(d => { if(__isBigDataImg(d)) setTimeout(() => { if(img.isConnected && __ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
           img.title = a.name;
           img.style.cursor = 'pointer';
           // v531: صور المساعد مولَّدة ⇒ تُعرض كبيرة. مرفقات المستخدم تبقى رقاقات صغيرة.
@@ -1754,7 +1930,7 @@ function renderMessages(keepScroll){
             emptyState.style.display = 'none';
             previewFrame._imageView = true;
             previewFrame._lastSrc = null;
-            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + a.dataUrl + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
+            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + ((a.dataUrl && a.dataUrl !== '[media]') ? a.dataUrl : (a.viewUrl || '')) + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
             switchWorkTab('preview');
             closeDrawers();
             if(localStorage.getItem('previewEnabled') !== 'off'){
@@ -1765,7 +1941,7 @@ function renderMessages(keepScroll){
           if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
             const ibox = document.createElement('div');
             ibox.style.cssText = 'position:relative;display:block;min-width:0;width:fit-content;max-width:min(460px,100%)';
-            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
+            __ibox = ibox; ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
           } else wrap.appendChild(img);
         } else {
           const chip = document.createElement('div');
@@ -1817,7 +1993,10 @@ function renderMessages(keepScroll){
           wrap.appendChild(chip);
         }
       });
-      div.appendChild(wrap);
+      /* v-img-first (المالك ٢٣ سبتمبر «الردود آخر الصورة لا أوّل الصور»): صور المساعد المرفقة (تعديل، بحث صور، البانيات)
+         كانت تُلحق تحت النصّ، والمرسومة داخل الردّ فوقه — فيتقلّب الترتيب. الآن الصورة أوّلًا ثمّ الردّ دائمًا. */
+      if(m.role !== 'user' && textDiv.parentNode === div && m.attachments.some(a => a && (a.isImage || a.isVideo))) div.insertBefore(wrap, textDiv);
+      else div.appendChild(wrap);
     }
     if((m.content && m.content.trim()) || (m.role !== 'user' && m.attachments && m.attachments.some(a => a && (a.isImage || a.isVideo)))){ // v669: الأيقونات تظهر تحت الصور حتى بلا نص
       const actionBar = document.createElement('div');

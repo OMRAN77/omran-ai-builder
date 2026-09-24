@@ -11,10 +11,10 @@
   var IDS = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
   function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
   var HINTS = {
-    '': ['الافتراضيّ: Sonnet 5 — الأسرع للمحادثة اليوميّة.', 'Default: Sonnet 5 — fastest for everyday chat.'],
+    '': ['الافتراضيّ: Haiku 4.5 — الاقتصاديّ والأسرع للمحادثة اليوميّة.', 'Default: Haiku 4.5 — economical and fastest for everyday chat.'],
     'claude-opus-5': ['أدقّ من Sonnet 5 في المهامّ الصعبة، وأبطأ منه.', 'More precise than Sonnet 5 on hard tasks, slower.'],
-    'claude-sonnet-5': ['توازن السرعة والدقّة — هو الافتراضيّ.', 'Balanced speed and quality — the default.'],
-    'claude-haiku-4-5': ['الأسرع والأخفّ — للردود القصيرة السريعة.', 'Fastest and lightest — for quick short replies.'],
+    'claude-sonnet-5': ['توازن السرعة والدقّة.', 'Balanced speed and quality.'],
+    'claude-haiku-4-5': ['الاقتصاديّ والأسرع — هو الافتراضيّ.', 'Economical and fastest — the default.'],
     'claude-fable-5-1': ['للكتابة الإبداعيّة والحوار الطبيعيّ.', 'For creative writing and natural dialogue.'],
   };
 

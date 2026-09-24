@@ -60,13 +60,33 @@
       if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب');
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
       if(missing.length) problems.push('مفاتيح ناقصة: ' + missing.join(', '));
-      if(d.clientErrorsCount > 0){
-        const top = (d.clientErrors || []).slice(0,3).map(e => '• ' + String(e.message || '').slice(0,90)).join('\n');
-        problems.push('أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount + '\n' + top);
+      /* v-err-build: أخطاء النسخة الحاليّة فقط — ما أُصلح في نسخة سابقة لا يُنذر بعد
+         نشر الإصلاح. ومع كلّ خطأ ملفّه وسطره، فاللقطة وحدها تكفي للتشخيص. */
+      const __build = (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '';
+      const __live = (d.clientErrors || []).filter(e => (typeof window.__omranErrLive === 'function') ? window.__omranErrLive(e, __build, Date.now()) : true);
+      if(__live.length > 0){
+        const top = __live.slice(0,3).map(e => {
+          const src = String(e.source || '').split('/').pop().split('?')[0].slice(0, 40);
+          return '• ' + '\u2066' + String(e.message || '').slice(0,90) + (src ? ' — ' + src + (e.line ? ':' + e.line : '') : '') + (e.count > 1 ? ' (x' + e.count + ')' : '') + '\u2069'; /* v-err-ltr */
+        }).join('\n');
+        problems.push('أخطاء مسجلة من المستخدمين: ' + __live.length + '\n' + top);
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
-      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
+         position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
+         فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك
+         لا يعرف بوجودها ليضغط ✕. جسم الصفحة شبكة CSS (body{display:grid})
+         بصفوف/أعمدة محدَّدة صراحةً للهيدر وشريط الأسهم وعمود المحادثة
+         (v-frame-c)، فإدراج الشريط كابن عاديّ بلا موضع شبكة صريح يُقحمه في
+         صفّ ضمنيّ أسفل الشاشة كلّها لا فوق الهيدر مباشرة — لذا الحلّ يبقى
+         fixed (يهرب من الشبكة تمامًا) لكن `top` يُحسَب من الارتفاع الفعليّ
+         لأسفل الهيدر بدل ٠ ثابت، فيظهر الشريط تحته دائمًا لا فوقه. */
+      const headerBottom = (function(){
+        try{ const h = document.querySelector('header'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; }
+        catch(e){ return 0; }
+      })();
+      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
       bar.textContent = '🩺 تنبيه للمالك — توجد ملاحظات في النظام:\n' + problems.join('\n');
       const x = document.createElement('button');
       x.textContent = '✕';
@@ -101,8 +121,8 @@
         lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
         /* v-err-date: بلا تاريخ لا نفرق خطأ اليوم عن خطأ الأسبوع الماضي */
         const __fmtD = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
-        d.clientErrors.slice(0,5).forEach(e => {
-          lines.push('   • ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtD(e.lastSeen) ? ' — ' + __fmtD(e.lastSeen) : ''));
+        d.clientErrors.slice(0,10).forEach(e => {
+          lines.push('   • ' + '\u2066' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtD(e.lastSeen) ? ' — ' + __fmtD(e.lastSeen) : '') + '\u2069'); /* v-err-ltr */
           /* v-crash-stack: انهيارات غلاف الأندرويد تُعرض بمكدسها — التشخيص
              يحتاج اسم الصنف والسطر لا الرسالة وحدها. */
           if(/android/i.test(String(e.source || '')) && e.stack){
@@ -119,16 +139,30 @@
       } else {
         lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
       }
+      /* v-health-split: قياسات مسبار الذاكرة (v-mem-probe) أرقام من جهاز المالك لا أخطاء — بعنوانها، ولا تُحسب ملاحظة. */
+      const __fmtT = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
+      if((d.clientDiag || []).length){
+        lines.push('📏 قياسات جهازك (ليست أخطاء): ' + d.clientDiag.length);
+        d.clientDiag.forEach(e => { lines.push('   · ' + String(e.message || '').replace(/^v-mem-probe\s*/, '').slice(0,200) + (__fmtT(e.lastSeen) ? ' — ' + __fmtT(e.lastSeen) : '')); });
+      }
       /* v-health-srv: أخطاء الخادم نفسها (نداءات النماذج، المسارات) — كانت
-         تُسجّل في KV بلا أي نافذة عرض للمالك. */
-      if(d.serverErrorsCount > 0){
-        lines.push('⚠️ أخطاء الخادم: ' + d.serverErrorsCount);
-        (d.serverErrors || []).slice(0,5).forEach(e => {
-          const __d2 = (() => { try{ const v = e.lastAt || e.at; return v ? new Date(v).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } })();
-          lines.push('   • [' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,110) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__d2 ? ' — ' + __d2 : ''));
-        });
+         تُسجّل في KV بلا أي نافذة عرض للمالك. v-err-deploy: النشر الحاليّ وحده «ملاحظة»؛ ما قبله يُعرض مطويًّا
+         بعنوانه (أُصلح أو لم يتكرّر بعد التحديث) — كانت أخطاء ٢١ سبتمبر وما أُصلح تُعدّ كأنّها الآن. */
+      const __srv = d.serverErrors || [];
+      const __cur = String(d.deploy || '');
+      const __now = __srv.filter(e => !__cur || e.deploy === __cur);
+      const __old = __srv.filter(e => __cur && e.deploy !== __cur);
+      /* v-err-ltr: السطر التقنيّ (مسار + JSON إنجليزيّ) داخل صندوق يمين-يسار كان يتبعثر («'>>' Uncaught…») — يُعزل يسار-يمين كتلةً واحدة */
+      const __srvLine = (e) => '\u2066' + '[' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtT(e.lastAt || e.at) ? ' — ' + __fmtT(e.lastAt || e.at) : '') + '\u2069';
+      if(__now.length){
+        lines.push('⚠️ أخطاء الخادم' + (__cur ? ' في النشر الحاليّ' : '') + ': ' + __now.length);
+        __now.forEach(e => { lines.push('   • ' + __srvLine(e)); });
       } else {
-        lines.push('✅ لا توجد أخطاء في الخادم');
+        lines.push('✅ لا توجد أخطاء في الخادم' + (__cur ? ' منذ آخر تحديث' : ''));
+      }
+      if(__old.length){
+        lines.push('🗂️ من نشر سابق (أُصلحت أو لم تتكرّر بعد التحديث): ' + __old.length);
+        __old.forEach(e => { lines.push('   · ' + __srvLine(e)); });
       }
     }catch(e){
       lines.push('❌ فحص الخادم فشل: ' + e.message);
@@ -140,7 +174,9 @@
   window.clearClientErrors = async function(){
     const box = document.getElementById('adminHealthBox');
     try{
-      const r = await fetch('/api/system?action=client-errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {method:'DELETE'});
+      /* v-err-deploy: «مسح سجل الأخطاء» كان يمسح أخطاء المستخدمين وحدها — أخطاء الخادم لا تُمسح من التطبيق أبدًا
+         (402 من ٢١ سبتمبر باقٍ). clear=errors في فحص الصحّة يمسح السجلّين معًا (للمالك وحده). */
+      const r = await fetch('/api/system?action=health&clear=errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
     }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
   };

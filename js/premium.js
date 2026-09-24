@@ -4,13 +4,13 @@
   const PREMIUM_COST_UI = { claude:20, openai:15, gemini:12 };
 
   function isPremiumProvider(){
-    const p = localStorage.getItem('aiapp_provider') || 'claude';
+    const p = localStorage.getItem('aiapp_provider') || 'openai';
     return p === 'claude' || p === 'openai' || p === 'gemini';
   }
   window.isPremiumProvider = isPremiumProvider;
 
   function currentPremiumCost(){
-    const p = localStorage.getItem('aiapp_provider') || 'claude';
+    const p = localStorage.getItem('aiapp_provider') || 'openai';
     return PREMIUM_COST_UI[p] || 0;
   }
 

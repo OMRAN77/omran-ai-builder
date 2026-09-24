@@ -163,7 +163,7 @@ async function streamFreeChain(args) {
   const chain = needVision ? all.filter((s) => s.vision) : all;
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
-  const system = String(args.system || '') + FREE_NOTE;
+  const system = args.raw ? '' : String(args.system || '') + FREE_NOTE; // v-owner-free: raw للمالك المتحقَّق منه فقط (chat.js)
   let attempts = 0;
   // أسباب الفشل (بلا مفاتيح) — تُعاد للمستدعي ليسجّلها ويبثّها كتشخيص للمالك.
   const errors = [];

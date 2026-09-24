@@ -10,7 +10,7 @@ I18N['tr'] = {
     "introSplashLabel": "✨ Uygulama açılışında açılış ekranı",
     "introSkip": "Devam etmek için dokunun",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
-    tvTitle: "📺 TV", tvBack: "Geri", tvYoutube: "YouTube", tvSearchPh: "Kanal ara...", tvAll: "Tümü", tvPlatforms: "Resmî platformlar — kendi hesabınızla açılır", tvLiveIn: "Uygulama içinde canlı kanallar", tvNoMatch: "Eşleşen kanal yok", tvLive: "CANLI", tvLiveCount: "kanal şu anda canlı", tvOfficial: "Resmî site", tvOpening: "Açılıyor...", tvOff: "Kanal şu anda yayında değil", tvCatNews: "Haber", tvCatSports: "Spor", tvCatGeneral: "Genel", tvCatReligion: "Dinî", tvCatKids: "Çocuk", tvCatBiz: "Ekonomi", tvCIntl: "Uluslararası",
+    tvTitle: "📺 TV", tvBack: "Geri", tvSearchPh: "Kanal ara...", tvAll: "Tümü", tvPlatforms: "Resmî platformlar — kendi hesabınızla açılır", tvLiveIn: "Uygulama içinde canlı kanallar", tvNoMatch: "Eşleşen kanal yok", tvLive: "CANLI", tvLiveCount: "kanal şu anda canlı", tvOfficial: "Resmî site", tvOpening: "Açılıyor...", tvOff: "Kanal şu anda yayında değil", tvCatNews: "Haber", tvCatSports: "Spor", tvCatGeneral: "Genel", tvCatReligion: "Dinî", tvCatKids: "Çocuk", tvCatBiz: "Ekonomi", tvCIntl: "Uluslararası",
     tvPfShahid: "Tüm MBC kanalları canlı", tvPfAwaan: "Tüm Dubai kanalları canlı", tvPfAdtv: "Abu Dabi ve Majid kanalları", tvPfTod: "beIN aboneliğinizle", tvPfRotana: "Rotana kanalları", tvPfSub: "aboneliğinizle",
     tvCountries: {"ae":"Birleşik Arap Emirlikleri","sa":"Suudi Arabistan","qa":"Katar","kw":"Kuveyt","bh":"Bahreyn","om":"Umman","eg":"Mısır","jo":"Ürdün","lb":"Lübnan","iq":"Irak","ps":"Filistin Bölgeleri","ye":"Yemen","sd":"Sudan","ma":"Fas","dz":"Cezayir","tn":"Tunus","ly":"Libya","tr":"Türkiye","in_":"Hindistan","pk":"Pakistan","bd":"Bangladeş","ph":"Filipinler","id_":"Endonezya","lk":"Sri Lanka","np":"Nepal","uk":"Birleşik Krallık","us":"Amerika Birleşik Devletleri","fr":"Fransa","de":"Almanya","ru":"Rusya","af":"Afganistan","am":"Ermenistan","ar_":"Arjantin","at":"Avusturya","au":"Avustralya","az":"Azerbaycan","be":"Belçika","bg":"Bulgaristan","bo":"Bolivya","br":"Brezilya","ca":"Kanada","ch":"İsviçre","cl":"Şili","cm":"Kamerun","cn":"Çin","co":"Kolombiya","cz":"Çekya","dk":"Danimarka","do":"Dominik Cumhuriyeti","ec":"Ekvador","es":"İspanya","et":"Etiyopya","fi":"Finlandiya","ge":"Gürcistan","gh":"Gana","gr":"Yunanistan","hk":"Çin Hong Kong ÖİB","hr":"Hırvatistan","hu":"Macaristan","ie":"İrlanda","il":"İsrail","it":"İtalya","jp":"Japonya","ke":"Kenya","kr":"Güney Kore","kz":"Kazakistan","mx":"Meksika","my":"Malezya","ng":"Nijerya","nl":"Hollanda","no":"Norveç","nz":"Yeni Zelanda","pl":"Polonya","pt":"Portekiz","py":"Paraguay","ro":"Romanya","rs":"Sırbistan","se":"İsveç","sg":"Singapur","sn":"Senegal","th":"Tayland","tw":"Tayvan","tz":"Tanzanya","ua":"Ukrayna","ug":"Uganda","uz":"Özbekistan","ve":"Venezuela","vn":"Vietnam","za":"Güney Afrika"},
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -181,7 +181,7 @@ I18N['tr'] = {
     "logoutTitle": "Çıkış yap",
     "loginAction": "Giriş",
     "acctSectionTitle": "👤 Hesabım",
-    "statsSectionTitle": "İstatistiklerim",
+    "statsSectionTitle": "Projelerim ve yedekleme",
     "statsProjectsLabel": "Proje sayısı",
     "statsMessagesLabel": "Gönderilen toplam mesaj",
     "statsFavProviderLabel": "Favori sağlayıcı",
@@ -893,6 +893,11 @@ I18N['tr'] = {
     "voiceGenderDefault": "Varsayılan (cihaz sesi)",
     "voiceGenderMale": "Erkek ses",
     "voiceGenderFemale": "Kadın ses",
+    "voiceSpeedLabel": "Ses hızı",
+    "voiceSpeedSlow": "Yavaş",
+    "voiceSpeedNormal": "Normal",
+    "voiceSpeedFast": "Hızlı",
+    "voiceSpeedXFast": "Çok hızlı",
     "cloudVoiceLabel": "🌟 Yüksek kaliteli AI sesi kullan (OpenAI TTS - yukarıda OpenAI anahtarı gerektirir)",
     "voiceOnyx": "🧔 Erkek - Onyx",
     "voiceEcho": "👨 Erkek - Echo",
@@ -984,7 +989,6 @@ Object.assign(I18N["tr"], {
     ciHint: "Nasıl yanıt verilmesini istediğinizi yazın — tüm sohbetlerinize uygulanır.",
     ciPlaceholder: "Örnek: Günlük dille ve kısa yanıtla, giriş cümlesi olmadan.",
     ciSaved: "Kaydedildi ✅",
-    mahaCcTitle: "Canlı arama altyazıları",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Bu cihazda kullanılamıyor",
@@ -1075,3 +1079,14 @@ Object.assign(I18N['tr'], {"tvSportsWorld":"Dünya Sporu","tvDirect":"Canlı yay
 
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['tr'], { qiblaTitle: '📿 Kıble ve Namaz Vakitleri' });
+/* v-tv-matches: جدول المباريات */
+Object.assign(I18N['tr'], {"tvMatches": "Maç programı", "tvMatchLive": "Şu an canlı", "tvMatchPaid": "Ücretli", "tvNoMatches": "Şu an planlanmış maç yok", "tvMatchesNote": "Saatler cihazınıza göre · program her gün güncellenir"});
+
+/* v-img-undo: الرجوع لنسخة سابقة من الصورة */
+Object.assign(I18N["tr"], {"imgUndoPrev": "Önceki sürüme döndürüldü 👆 Neyi değiştireyim?", "imgUndoOrig": "Orijinale döndürüldü 👆 Neyi değiştireyim?", "imgUndoNone": "Bu ilk sürüm, öncesi yok 👆 Neyi değiştireyim?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["tr"], {"ownerSectionTitle": "👑 Sahip sayfası"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["tr"], {"imgUnchanged": "⚠️ Düzenleme uygulanmadı: görsel değişmeden döndü, bu yüzden göstermedim ve sizden düşülmedi. Tam olarak neyin değişmesi gerektiğini söyleyin ya da farklı ifade edin."});

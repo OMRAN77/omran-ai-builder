@@ -483,7 +483,7 @@ $('#btnSettings').onclick = () => {
   collapseAllSettingsSections();
   renderStats();
   renderReferral();
-  $('#provider').value = localStorage.getItem('aiapp_provider') || 'claude';
+  $('#provider').value = localStorage.getItem('aiapp_provider') || 'openai';
   $('#apiKey').value = localStorage.getItem('aiapp_apikey') || '';
   $('#modelName').value = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
@@ -518,6 +518,7 @@ $('#btnSettings').onclick = () => {
   $('#chkIncludeDeepSeek').checked = localStorage.getItem('aiapp_include_deepseek') !== 'false';
   $('#chkIncludeCohere').checked = localStorage.getItem('aiapp_include_cohere') !== 'false';
   try { setVoiceGenderUI(localStorage.getItem('aiapp_voice_gender') || 'female'); } catch(e) { console.error(e); }
+  try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }
   } catch(e) { console.error('settings populate error', e); }
@@ -2022,7 +2023,7 @@ const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'gr
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
   if(providerKey === 'default'){
-    effective = localStorage.getItem('aiapp_provider') || 'claude';
+    effective = localStorage.getItem('aiapp_provider') || 'openai';
   }
   if(effective === 'gemini') return await callGemini(messages, onDelta);
   if(effective === 'groq') return await callGroq(messages, onDelta);
@@ -2133,7 +2134,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   }catch(e){ __swallow(e, "misc:app-06-checkout#11"); }
   // v358 — التوجيه بالمجموعات الوظيفية: المزود المختار يوسَّع لسلسلة مجموعته
   // (الاحتياط الصامت يبقى داخل نفس المجموعة أولًا)، ثم بقية المزودين كشبكة أمان أخيرة.
-  const __sel = localStorage.getItem('aiapp_provider') || 'claude';
+  const __sel = localStorage.getItem('aiapp_provider') || 'openai';
   const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
   const order = [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];

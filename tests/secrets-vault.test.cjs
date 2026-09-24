@@ -155,7 +155,7 @@ test('source guards: server redacts on both handlers, client intercepts pasted t
   assert.ok(attach.includes("window.omranVaultStore('github_token', __gh)") && attach.includes("text = text.replace(__secRe,"), 'اعتراض اللصق في العميل');
   assert.ok(read('js/partials-settings.js').includes('id="vaultSectionWrap"') && read('js/partials-settings.js').includes('type="password" id="vaultGhInput"'), 'قسم الخزنة (حقل كلمة سرّ)');
   assert.ok(read('js/app-01-boot-auth.js').includes("__vw.style.display = isAdminUI ? '' : 'none';"), 'يظهر للمالك وحده');
-  assert.ok(read('js/app-05-ui.js').includes("'vaultSection','adminSection'"), 'القسم مسجَّل');
+  assert.ok(read('js/app-05-ui.js').includes("'aboutSection','ownerSection'];"), 'القسم مسجَّل (داخل صفحة المالك — v-owner-page)');
   assert.ok(read('js/app-28-vault.js').includes('window.omranVaultStore = function'), 'الجزء الجديد');
   assert.ok(read('.env.example').includes('SECRETS_KEY'), 'موثّق في البيئة');
   const gw = read('api/_lib/github-write.js');

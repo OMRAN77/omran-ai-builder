@@ -123,7 +123,7 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
   const vv = window.visualViewport;
   if(!vv) return;
   const root = document.documentElement;
-  let lastT = -1, lastH = -1;
+  let lastT = -1, lastH = -1, lastOn = null;
   const apply = () => {
     const t  = Math.max(0, Math.round(vv.offsetTop));
     const h  = Math.max(220, Math.round(vv.height));
@@ -135,6 +135,10 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
        فيه المنفذ منزاحًا والكيبورد مقفولًا — الكيبورد وحده هو المعيار. */
     const on = kb >= 40;
     const nt = on ? t : 0, nh = on ? h : 0;
+    /* v-kb-gap (لقطة المالك ٢٣ سبتمبر «شوف مكان الدردشه وين تسير»): الكيبورد مفتوح والجسم قصير بطول المرئيّ،
+       لكنّ main يحجز تحته 48px لشريط التبويبات + حاشية شريط الهوم (34) — وكلاهما خلف الكيبورد — فيطفو مربّع
+       الكتابة ٨٢ نقطة فوقه. علامة kb-open يقرؤها redesign.css ليلغي الحجز ويخفي الشريط ما دام الكيبورد مفتوحًا. */
+    if(on !== lastOn){ lastOn = on; root.classList.toggle('kb-open', on); }
     if(nt !== lastT){
       lastT = nt;
       if(on) root.style.setProperty('--vv-top', nt + 'px');
@@ -768,6 +772,8 @@ const $ = s => document.querySelector(s);
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
     }
+    /* v-owner-page: صفّ «صفحة المالك» في قائمة الإعدادات يتبع الدخول والخروج */
+    try{ if(typeof renderSettingsNavList === 'function') renderSettingsNavList(); }catch(e){ /* guard-ok — القائمة تُبنى أيضًا عند فتح الإعدادات */ }
     // v-maha-dock: مها راسية بجانب المايك — الزر العائم لا يُظهر بعد الآن.
   }
   // Deferred (not called synchronously): I18N is declared further down in

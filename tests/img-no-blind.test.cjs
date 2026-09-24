@@ -83,7 +83,7 @@ test('بلا requireVision (الطبقة المجانيّة) السلوك الق
 
 test('chat.js: هبوط الملك يطلب الرؤية لدور الصورة، ويعترف عند الفشل، والمالك يرى المحرّك', () => {
   const chat = read('api/_lib/chat.js');
-  assert.match(chat, /const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send, requireVision: lastUserHasImage \}\);/);
+  assert.match(chat, /const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), raw: __rawOwner, convo: __ownerReq \? compactConversation\(convo\) : convo \/\* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة \*\/, send, requireVision: lastUserHasImage \}\);/); // v-owner-free: خام للمالك
   assert.match(chat, /if \(lastUserHasImage\) \{ send\(\{ delta: tierLib\.FREE_TEXT\.imageBusy \}\); send\(\{ done: true \}\); res\.end\(\); return; \}/);
   assert.match(chat, /if \(__ownerReq\) send\(\{ modelId: 'fallback', modelLabel: 'احتياط · ' \+ __fb\.provider \+ ' \/ ' \+ __fb\.model \}\);/);
   assert.match(chat, /require\('\.\/_owner-alert\.js'\)\.alertOwnerCredit\(\{ status: upstream\.status, text: errText \}\)/);

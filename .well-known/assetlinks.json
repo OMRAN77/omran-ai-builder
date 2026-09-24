@@ -7,7 +7,8 @@
       "namespace": "android_app",
       "package_name": "com.omran.aibuilder.twa",
       "sha256_cert_fingerprints": [
-        "59:1D:53:FB:5C:DC:37:AF:17:F8:B1:16:EC:66:8F:7E:33:D1:BB:54:C5:6B:A6:3A:E8:13:8C:B5:B3:58:44:DB"
+        "59:1D:53:FB:5C:DC:37:AF:17:F8:B1:16:EC:66:8F:7E:33:D1:BB:54:C5:6B:A6:3A:E8:13:8C:B5:B3:58:44:DB",
+        "D1:80:B6:30:E1:76:94:19:3D:E5:22:FD:3A:C4:EA:8F:36:4A:53:B4:2D:41:CB:D6:7A:29:96:25:C9:A6:17:E9"
       ]
     }
   }

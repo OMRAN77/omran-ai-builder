@@ -132,7 +132,7 @@ test('٤. الخادم: Pro دردشة → DeepSeek، Pro دور قويّ → Ha
   r = await ask(SUB('basic'), 'openai', 'اشرح لي الذكاء الاصطناعي باختصار');
   assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v3.2', 'Plus يطلب GPT → DeepSeek');
   r = await ask({ tier: 'owner', plan: null, cap: Infinity, subscriber: true }, 'claude', 'اكتب لي كود');
-  assert.equal(r.bodies[0].body.model, 'anthropic/claude-sonnet-5', 'المالك على افتراضيّه');
+  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'المالك على افتراضيّه (v-chat-economy: Haiku 4.5)');
   // مفتاح أنثروبيك حاضر → كلود مباشر بالاسم المباشر، وDeepSeek يبقى عبر الوسيط
   process.env.ANTHROPIC_API_KEY = 'sk-test';
   try {
@@ -175,7 +175,7 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
   assert.ok(loop > 0 && quick400 < loop && loop < finalFail, 'الالتقاط بعد إعادة الحقول السريعة وقبل الفشل النهائيّ');
   assert.ok(s.includes('const applyRoute = (p, model) => {'));
   for (const v of ['let prov', 'let viaOR', 'let apiKey', 'let CHAT_URL', 'let DEFAULT_MODEL']) assert.ok(s.includes(v + ' '), v);
-  assert.ok(s.includes("callUpstream = (withImg) => fetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
+  assert.ok(s.includes("callUpstream = (withImg) => __upFetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
 });
 
 // ── (٣) النقاط والأسعار ──
@@ -283,7 +283,7 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=659'), 'وسم الملفّ المنفصل ارتفع');
+  assert.ok(html.includes('/js/partials-settings.js?v=662'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 

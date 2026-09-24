@@ -151,6 +151,20 @@
     }, true);
   }catch(e){ /* guard-ok */ }
 })();
+/* v-err-build (تنبيه المالك ٢٣ سبتمبر بأخطاء منها «Unexpected token» من نسخة أُصلحت):
+   سجلّ الأخطاء لا ينتهي — خطأ النسخة المكسورة يبقى ينذر المالك بعد إصلاحه. كلّ بلاغ
+   يحمل بصمة الحزمة التي وقع فيها، وتنبيه المالك يعرض أخطاء النسخة الحاليّة فقط
+   (والقديمة بلا بصمة ما دامت آخر مرّة رُئيت فيها خلال ٢٤ ساعة). */
+window.__omranBuild = function(){
+  try{ return ((document.querySelector('script[src*="app.bundle.js"]') || {}).src || '').match(/v=([0-9a-f]+)/)[1] || ''; }
+  catch(e){ return ''; /* guard-ok: بلا بصمة يُعامَل البلاغ بعمره */ }
+};
+window.__omranErrLive = function(e, build, now){
+  if(!e) return false;
+  if(e.build) return !build || e.build === build;
+  var t = Date.parse(e.lastSeen || e.firstSeen || '');
+  return !isNaN(t) && (now - t) < 24 * 3600 * 1000;
+};
 (function(){
   var reported = {};
   function report(msg, src, line, col, stack){
@@ -165,7 +179,7 @@
         body: JSON.stringify({
           message: msg, source: String(src || ''), line: line || 0, col: col || 0,
           stack: String(stack || '').slice(0, 1500),
-          url: location.pathname, ua: navigator.userAgent
+          url: location.pathname, ua: navigator.userAgent, build: window.__omranBuild()
         })
       }).catch(function(){}); // guard-ok: مُبلِّغ الأخطاء لا يُبلّغ عن فشل إبلاغه — وإلّا صار الإبلاغ سببًا لإبلاغ جديد (حلقة لا تنتهي)
     }catch(e){ __swallow(e, "misc:index#6"); }
@@ -200,6 +214,45 @@
     var r = e.reason;
     report((r && r.message) || String(r), '', 0, 0, r && r.stack);
   });
+
+  /* v-mem-probe (المالك ٢٣ سبتمبر «بعده في تشويش» — لقطات من أندرويد كبير: الصور خضراء مشوّشة، والأيقونات لا تُرسم
+     حتّى في محادثة فارغة، ونصوص الإعدادات مخدوشة): عطل ذاكرة رسم لا يُعاد إنتاجه في المحاكي (بلا معالج رسوم).
+     بدل التخمين: جهاز المالك وحده يرسل أرقامه الحقيقيّة إلى سجلّ الأخطاء الذي تعرضه «فحص النظام» — ذاكرة JS، ذاكرة
+     الجهاز، الشاشة، الصور المفكوكة (الظاهرة والكلّ)، صور المحادثات في الذاكرة، عدد العناصر. بعد ٢٠ث ودقيقتين وخمس. */
+  (function memProbe(){
+    function ownerNow(){
+      try{ var u = (window.authGet && window.authGet('aiapp_username')) || localStorage.getItem('aiapp_username') || ''; return String(u).trim().toLowerCase() === 'omran'; }
+      catch(e){ return false; }
+    }
+    function sample(tag){
+      try{
+        if(!ownerNow()) return;
+        var MB = function(n){ return Math.round(n / 1048576); };
+        var pm = performance && performance.memory;
+        var heap = pm ? (MB(pm.usedJSHeapSize) + '/' + MB(pm.jsHeapSizeLimit) + 'MB') : '؟';
+        var vis = 0, visMB = 0, all = 0, allMB = 0;
+        var imgs = document.images;
+        for(var i = 0; i < imgs.length; i++){
+          var im = imgs[i]; if(!im.naturalWidth) continue;
+          var px = im.naturalWidth * im.naturalHeight * 4;
+          all++; allMB += px;
+          if(im.offsetParent){ vis++; visMB += px; }
+        }
+        var st = 0, stN = 0;
+        try{
+          (window.__omrS && window.__omrS.projects || []).forEach(function(p){ (p && p.messages || []).forEach(function(m){
+            (m && m.attachments || []).concat(m && m.apiImages || []).forEach(function(a){ var L = (a && typeof a.dataUrl === 'string') ? a.dataUrl.length : 0; if(L > 20000){ st += L; stN++; } });
+          }); });
+        }catch(e){ /* guard-ok: الحالة لم تجهز بعد */ }
+        report('v-mem-probe ' + tag + ': heap ' + heap + ' · جهاز ' + (navigator.deviceMemory || '؟') + 'GB · شاشة '
+          + window.innerWidth + 'x' + window.innerHeight + '@' + (Math.round((window.devicePixelRatio || 1) * 100) / 100)
+          + ' · صور ظاهرة ' + vis + ' (' + MB(visMB) + 'MB) كلّ ' + all + ' (' + MB(allMB) + 'MB)'
+          + ' · صور بالذاكرة ' + stN + ' (' + MB(st) + 'MB نصّ) · عناصر ' + document.getElementsByTagName('*').length
+          + ' · ' + (document.documentElement.classList.contains('omAndroid') ? 'omAndroid' : 'غير أندرويد'), 'selfdiag.js', 0, 0, '');
+      }catch(e){ /* guard-ok: المسبار ترف تشخيصيّ */ }
+    }
+    [[20000, '٢٠ث'], [120000, 'دقيقتان'], [300000, '٥ دقائق']].forEach(function(x){ setTimeout(function(){ sample(x[1]); }, x[0]); });
+  })();
 
   // v-diag-nav: وضع تشخيص حي للتبويبات — يعمل فقط عند فتح الرابط بـ ?diag=1
   // يعرض: البنية، بيئة التشغيل، ماذا يغطي كل تبويب، وعدّادًا حيًّا للمسات
@@ -338,6 +391,14 @@
             // «بيت أسود» — لا رسائل مرسومة ولا شاشة ترحيب ظاهرة. نحاول إعادة
             // الرسم أولًا (أرخص من الريلود)، وإن بقيت سوداء نعاملها كإقلاع معطوب.
             var blackHome = false;
+            /* v-maha-wd (المالك ٢٣ سبتمبر «زرّ مها ما يفتح في الآيفون»): مكالمة مها تخفي شاشة الترحيب، فإن فُتحت في
+               الثواني الخمس الأولى رآها الرقيب «بيتًا أسود» وأعاد تحميل الصفحة بعد ثانيتين من الضغط فتختفي المكالمة.
+               مكالمة جارية أو تبدأ = التطبيق حيّ؛ لا إعادة تحميل. */
+            try{
+              var __ms = document.getElementById('mahaCallScreen');
+              if((typeof mahaCallActive !== 'undefined' && mahaCallActive) || (typeof mahaCallStarting !== 'undefined' && mahaCallStarting)
+                 || (__ms && getComputedStyle(__ms).display !== 'none')) return;
+            }catch(e){ /* guard-ok: فحص المكالمة ترف — الرقيب يكمل كما كان */ }
             if(bootDone){
               try{
                 var me = document.getElementById('messages');

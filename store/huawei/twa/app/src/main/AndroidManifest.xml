@@ -22,13 +22,34 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.omran.aibuilder.twa">
 
-    
-        <uses-permission android:name="android.permission.INTERNET"/>
-    
-        <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    
 
-    
+        <uses-permission android:name="android.permission.INTERNET"/>
+
+        <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+
+    <!-- v-maha-webview-mic: بلا صلاحية أندرويد هذي، getUserMedia(audio) يفشل فورًا وبشكل دائم
+         داخل WebViewFallbackActivity (الأجهزة بلا متصفّح يدعم TWA — أغلب أجهزة هواوي) بغضّ النظر
+         عن أي إصلاح جافاسكربت، لأنّ صلاحية "خطِرة" (dangerous) كهذي تحتاج إعلانًا هنا قبل أن
+         يقدر أي كود (حتى داخل WebChromeClient) يمنحها وقت التشغيل. إعلانها وحده غير كافٍ —
+         يبقى الطلب الفعليّ وقت التشغيل (ActivityCompat.requestPermissions) ومنح WebView نفسه
+         (WebChromeClient.onPermissionRequest) غير مؤكَّدين هنا لعدم توفّر مصدر
+         androidbrowserhelper:2.6.2 للتحقّق أو بيئة بناء/جهاز لاختبار حيّ (راجع knowledge/DECISIONS.md). -->
+
+        <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
+    <!-- v-maha-webview-mic-4: صلاحيّة RECORD_AUDIO وحدها لا تكفي لالتقاط صوت فعليّ داخل
+         WebView أندرويد — مصادر متعدّدة (Chromium/WebRTC، ومكتبات WebView أخرى كـCapacitor)
+         توثّق أنّ فتح مسار التقاط الصوت (AudioRecord/AudioManager) داخل WebView يحتاج أيضًا
+         android.permission.MODIFY_AUDIO_SETTINGS معلَنة في البيان (صلاحيّة "عاديّة" تُمنح
+         تلقائيًّا عند التثبيت بلا طلب وقت تشغيل) — غيابها يفشل التقاط الصوت على مستوى النظام
+         بخطأ يصل الجافاسكربت كـNotReadableError/TrackStartError (بالضبط رسالة «المايك مشغول
+         ببرنامج ثاني»)، رغم أنّ onPermissionRequest منح RESOURCE_AUDIO_CAPTURE بنجاح
+         (v-maha-webview-mic-2) لأنّ الفشل هنا في طبقة أخرى غير طبقة صلاحية WebView. -->
+
+        <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+
+
 
     
 
@@ -160,6 +181,12 @@
         <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
 
         <activity android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
+            android:configChanges="orientation|screenSize" />
+
+        <!-- v-maha-webview-mic: LauncherActivity.getFallbackStrategy() يوجّه هنا بدل الكلاس أعلاه
+             (يبقى مُعلَنًا بلا ضرر — غير مُستعمَل فعليًّا الآن) لأنّه وحده يمنح صلاحية المايك
+             وقت التشغيل. نفس android:configChanges الأصليّ. -->
+        <activity android:name=".MahaWebViewFallbackActivity"
             android:configChanges="orientation|screenSize" />
 
         <provider

@@ -289,7 +289,7 @@
   .fontSizeBtn.active .fsCheck{display:block;}
 
   /* اختيار خط المحادثة — المحتوى فقط، ويعمل على الكمبيوتر والجوال */
-  :root{--omran-chat-font:'Tajawal','Inter',Tahoma,Arial,sans-serif;--omran-chat-line:1.7;}
+  :root{--omran-chat-font:'IBM Plex Sans Arabic','Tajawal','Inter',Tahoma,Arial,sans-serif;--omran-chat-line:1.8;} /* v-chat-font-plex */
   html[data-omran-font] .msg,
   html[data-omran-font] .msg-text,
   html[data-omran-font] .msg-text *{font-family:var(--omran-chat-font);}
@@ -769,8 +769,16 @@
   .settingsNavRow .settingsNavChevron{ flex:0 0 auto; width:16px; height:16px; color:var(--muted); opacity:.7; }
   [dir="rtl"] .settingsNavRow .settingsNavChevron{ transform:scaleX(-1); }
   [dir="rtl"] #settingsBackSvg{ transform:scaleX(-1); }
+  /* v-owner-page: صفحة المالك — بطاقتان (الخزنة · لوحة التحكّم) وصفّ ذهبيّ في رأس القائمة */
+  .ownerCard{ background:var(--panel2); border:1px solid rgba(212,175,55,.28); border-radius:var(--r-3); padding:14px; margin-bottom:14px; }
+  .ownerCard .ownerCardTitle{ font-size:14px; font-weight:700; margin-bottom:10px; color:#d4af37; }
+  .ownerCard input, .ownerCard #vaultGhStatus, .ownerCard #vaultTestBox, .ownerCard #adminStatsBox, .ownerCard #adminClaudeDiagBox, .ownerCard #adminUsersTable, .ownerCard #vipListBox, .ownerCard #adminHealthBox{ background:var(--panel) !important; }
+  .settingsNavRow.settingsNavOwner .settingsNavIcon, .settingsNavRow.settingsNavOwner .settingsNavLabel{ color:#d4af37; font-weight:700; }
   .voiceGenderBtn{ flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 10px; background:var(--panel2); border:2px solid transparent; border-radius:var(--r-3); cursor:pointer; color:var(--muted); font-size: var(--fs-3); transition:border-color .15s, color .15s; }
   .voiceGenderBtn.active{ border-color:var(--accent); color:var(--text); }
+  /* v-maha-voice-speed: نفس منطق voiceGenderBtn بصفٍّ أفقيّ مضغوط (نصّ فقط، بلا أيقونة) */
+  .voiceSpeedBtn{ flex:1 1 0; padding:10px 8px; background:var(--panel2); border:2px solid transparent; border-radius:var(--r-3); cursor:pointer; color:var(--muted); font-size: var(--fs-4); transition:border-color .15s, color .15s; }
+  .voiceSpeedBtn.active{ border-color:var(--accent); color:var(--text); }
   /* iOS-style toggle switch, used by ticker calm-mode + reused wherever needed */
   .iosSwitch{ position:relative; display:inline-block; width:44px; height:26px; flex:0 0 auto; }
   .iosSwitch input{ opacity:0; width:0; height:0; }
@@ -983,11 +991,11 @@ html[data-mode="light"] #composerBox{background:#E5E5E5 !important;}
 /* v569: الروابط لا تتقطّع في منتصف الكلمة — الكسر عند المسافة، والكلمة الأطول من السطر وحدها تُكسر */
 .msg a, .msg-text a{overflow-wrap:break-word; word-break:normal; hyphens:none;}
 
-/* v-store-safe: حزمة AppGallery — كل الواجهات المالية مخفية (قاعدة 11.4). */
-html.store-safe #stockTicker,
-html.store-safe #btnStocks,
-html.store-safe #stocksModal,
-html.store-safe #aboutStocksCard{display:none !important;}
+/* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر): كانت هذه القاعدة تخفي كل
+   الواجهات الماليّة تحت حزمة AppGallery (قاعدة هواوي 11.4) — أُزيلت بأمره
+   رغم تحذيره من مخاطرة رفض المتجر؛ راجع knowledge/DECISIONS.md لهذا التاريخ.
+   store/huawei/REVIEW-NOTES.md لا يزال يذكر للمراجع أنّ لا محتوى أسواق أسهم
+   في الحزمة — هذا التعديل يجعل ذلك النصّ غير صحيح إن أُعيد استعماله كما هو. */
 
 /* v-close-unified (طلب عمران ١ سبتمبر): أزرار إغلاق الميزات كانت مبعثرة
    (14px، 46px، 90px من اليسار وبأشكال شتى) — نقطة واحدة ثابتة أعلى يسار
@@ -1148,8 +1156,12 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
    — سطح المكتب فقط — فيظهر أبيض على الجوّال. نعيدها هنا خارج أي ميديا لتعمل
    على كلّ العروض، مع لون احتياطيّ صريح. */
 :root{ --om-hl:#e3b341; }
-/* v-hl-links-only: الإنجليزي والأرقام بيضاء — الأصفر للروابط فقط (نمط <a>). */
-.chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl,#e3b341) !important; }
+/* v-code-color-mobile-fix (بلاغ المالك: أرقام الكود صفراء أثناء البثّ على الجوّال):
+   هذا السطر كان ينسخ قاعدة v-hl-yellow القديمة بالخطأ (فرض الأصفر على كتلة الكود
+   كاملة عبر --om-hl) رغم أنّ v-code-color حذفتها من نسخة سطح المكتب أعلاه (سطر ٣٤١-٣٤٢)
+   ليحلّ محلّها تلوين omranCodeHighlight البرمجيّ. التعليق أعلاه كان يقول «الأرقام بيضاء»
+   بينما السطر نفسه يلوّنها صفراء — نفس اللون المحايد الآن على كلّ العروض، لا الأصفر. */
+.chat-codeblock pre, .chat-codeblock pre .tts-word{ color:#e6edf3 !important; }
 .tts-word.active{ background:var(--om-hl,#e3b341); color:#14161a; box-shadow:0 0 0 2px var(--om-hl,#e3b341); }
 
 /* v-ticker-ai (طلب المالك): شريط الأسهم المطويّ يظهر كأيقونة ذكاء ذهبيّة تومض بخفّة؛
@@ -1201,3 +1213,17 @@ html:not(.mobile-ui) body.sbCollapsedMode #sbReopen{
 }
 html:not(.mobile-ui) body.sbCollapsedMode #sbReopen svg{width:16px; height:16px;}
 html:not(.mobile-ui) body.sbCollapsedMode #sbReopen:hover{ color:var(--text); background:none !important; }
+
+/* v-md-blocks (المالك ٢٣ سبتمبر: «الكتابة غير نظاميّة وغير مرتّبة»): كلّ سطر من الردّ كتلة باتّجاه صريح
+   (buildSpokenWordSpans ← omranMdBlocks) بدل نصّ واحد يقلب اتّجاه كلّ سطر حسب أوّل حرف فيه.
+   unicode-bidi:isolate يغلب plaintext الموروث من .msg-text فيُحترم dir الكتلة. */
+.msg .md-line, .msg-text div.md-line{unicode-bidi:isolate; white-space:pre-wrap; margin:0 0 .4em;}
+.msg .md-line:last-child{margin-bottom:0;}
+.msg .md-line.md-hb{margin:.75em 0 .3em;}
+.msg .md-line.md-hb:first-child{margin-top:0;}
+.msg .md-line.md-li, .msg .md-line.md-oli{position:relative; padding-inline-start:1.55em; margin-bottom:.25em;}
+.msg .md-line.md-li-glued{padding-inline-start:.2em;}
+.msg .md-line .tts-word.md-mk{position:absolute; top:0; min-width:1.3em; text-align:center; unicode-bidi:isolate; direction:ltr; color:var(--muted,#98a0b3); font-weight:600;}
+.msg .md-line[dir="rtl"] .tts-word.md-mk{right:0; left:auto;}
+.msg .md-line[dir="ltr"] .tts-word.md-mk{left:0; right:auto;}
+.msg .omStreamHead, .msg .omStreamTail, .msg .omStreamSeg{display:block;}

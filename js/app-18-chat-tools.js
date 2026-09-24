@@ -112,8 +112,9 @@
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
-        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود فقط، والخادم يقبل قائمته حصرًا */
-        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; } catch (e) { return ''; } })(),
+        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
+           المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
+        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -155,7 +156,9 @@
         if (line.indexOf('data: ') !== 0) continue;
         var ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
-        if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
+        /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
+        if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
+        else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
         if (ev.delta) {
           noteEnd();
@@ -176,6 +179,8 @@
         if (ev.error) serverErr = ev.error;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
         if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
+        /* v-oa-models: موديل مختار رفضه المفتاح → يُمسح من الاختيار المحفوظ (يعود للافتراضيّ) فلا يتكرّر الرفض مع كلّ رسالة */
+        if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:forget-model'); } }
       }
     }
     noteEnd();

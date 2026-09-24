@@ -1,5 +1,9 @@
 // tests/image-lanes.test.cjs — v-lanes (٢٠ سبتمبر ٢٠٢٦): بعد فحص مسار الصور من الصفر — «نتيجة قويّة بضربة وحدة»:
 // قرار واحد، ثلاثة مسارات، نداء واحد للمحرّك، بلا حكم ولا مرشّح ثانٍ ولا حارس رافض ولا فحص وإعادة ولا مصنّفات ذكاء.
+// v-img-honest + v-img-mix (٢٣ سبتمبر، المالك: «يقولي شي والتنفيذ صفر… وخاصيّة دمج بين نانو وGPT — النتيجة ١») عدّل
+// قرارين من v-lanes بطلب صريح: (أ) كلّ ناتج يُقاس (بكسل + نداء الرؤية الواحد الذي كان التفسير) ولم يُنفَّذ = المحرّك الآخر
+// مرّة واحدة؛ (ب) وضع «+» للمالك يشغّل المحرّكين معًا ويختار صورة. الباقي كما هو: الوحدات المحذوفة لا تعود (الحكم القديم
+// كان يفضّل الأقرب للمصدر)، نداء واحد للمحرّك في المسار العاديّ حين ينفّذ، والخام خام. الاختبار السلوكيّ: image-honest.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,21 +18,28 @@ test('١. الطبقات المحذوفة لا أثر لها في maha-image: ح
     assert.ok(!new RegExp('\\b' + sym + '\\b').test(mi), sym + ' ما زال في maha-image');
   }
   for (const mod of ['./image-judge', './image-edit-guard', './request-check', './image-intent-llm']) assert.ok(!mi.includes("require('" + mod + "')"), mod + ' ما زال يُستدعى');
-  // نداءات النماذج المتبقّية: التفسير · المحرّك الأساسيّ · GPT تعديل · GPT توليد · نانو إنقاذ
+  // نداءات النماذج المتبقّية: المحرّك الأساسيّ · GPT تعديل · GPT توليد · نانو إنقاذ — والتفسير انتقل إلى image-verify
+  // (v-img-honest: صار حكمًا وتقريرًا في النداء نفسه). المجموع خمسة كما كان.
   const calls = (mi.match(/generativelanguage\.googleapis\.com|api\.openai\.com/g) || []).length;
-  assert.equal(calls, 5, 'خمسة مواضع نداء فقط (كانت ٨) — وكلّ طلب يمرّ بواحد منها للصورة');
+  assert.equal(calls, 4, 'أربعة مواضع نداء في maha-image (كانت ٨ قبل v-lanes)');
+  assert.equal((read('api/_lib/image-verify.js').match(/generativelanguage\.googleapis\.com|api\.openai\.com/g) || []).length, 1, 'ونداء الرؤية الواحد في image-verify');
   // v-gpt-2.5 (٢٠ سبتمبر ٢٠٢٦): السقف ارتفع من 760 إلى 800 عمدًا — قوائم تدرّج موديلات GPT/نانو
   // (2.5-sunburst/flare → 2 → 1، و3.1 → 2.5 فلاش) أضافت أسطرًا حقيقية، لا تراجعًا عن v-lanes.
   // v-gpt-multi-merge (٢١ سبتمبر ٢٠٢٦): السقف ارتفع من 800 إلى 815 — إرفاق extras لخطّ إنقاذ GPT
   // (سطر شرط + حلقة + تعليق يوثّق دليلًا حيًّا فعليًّا) أضاف أسطرًا حقيقية، لا حشوًا.
-  assert.ok(mi.split('\n').length < 815, 'الملفّ ما زال أقصر بكثير من الأصل (كان ٨٨٧) رغم تدرّج الموديلات الجديد');
+  // v-img-honest + v-img-mix (٢٣ سبتمبر ٢٠٢٦): السقف من 815 إلى 875 — مرشّحا المحرّكين (proCandidate/gptCandidate)، الدمج المتسلسل
+  // (خيار «أ»: برو ثمّ GPT للكتابة)، ميزانيّة النداءات الإضافيّة، وأمر الإعادة بلا تناقض. منطق القياس والحكم في image-verify
+  // (settleCandidates) وأوامر التلميع في image-prompt — لا هنا.
+  // v-img-cards (٢٤ سبتمبر ٢٠٢٦): السقف من 875 إلى 900 — توصيل مسار لوحة البطاقات للمالك (محوّلا المحرّكين للقصاصة ونداء runCards
+  // وتسليم الناتج بلا مكبّر). الكشف والضبط والتركيب والحكم لكلّ بطاقة ونيّة الطلب في image-cards.js — لا هنا.
+  assert.ok(mi.split('\n').length < 900, 'الملفّ قريب من الأصل (كان ٨٨٧) رغم القياس ووضع الدمج ولوحة البطاقات');
 });
 
 test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ أمين → برو 2K بحرارة 0.15؛ إبداعيّ → برو بحرارته الافتراضيّة', () => {
   // نصّ
   assert.match(mi, /const __textIntent = !!editImageBase64 && !__pureRaw && \(isTextRemove \|\| isTextSwap \|\| __textCueRe\.test\(cleanPrompt\)/);
   assert.match(mi, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| \(editImageBase64 \? __optTextFaithful : /);
-  assert.match(mi, /if \(__textRoute\) \{\n\s+const denseB64 = await openaiRescueImage\(\);\n\s+if \(denseB64\) \{\n\s+await sendImg\(denseB64, 'image\/png', 'openai'\);\n\s+return;/);
+  assert.match(mi, /if \(__textRoute && !__engineMix\) \{\n\s+const denseB64 = await openaiRescueImage\(\);\n\s+if \(denseB64\) \{\n\s+await deliver\(\{ b64: denseB64, mime: 'image\/png', engine: 'openai' \}, function \(\) \{ return proCandidate\(__extraBudget\(\)\); \}\);[^\n]*\n\s+return;/, 'GPT أوّلًا ضربة واحدة؛ برو فقط إن لم يُنفّذ');
   // أمين
   assert.match(mi, /const editModel = \(process\.env\.IMAGE_EDIT_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
   assert.match(mi, /const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;/);
@@ -40,12 +51,14 @@ test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ 
   // إبداعيّ وتوليد
   assert.match(mi, /const creativeModel = \(process\.env\.IMAGE_CREATIVE_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
   assert.match(mi, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
-  // نداء واحد ثمّ الإرسال — الإنقاذ عند الفشل فقط
-  const i = mi.indexOf('const imageResult = await fetchImageWithRetry({');
-  const j = mi.indexOf('await sendImg(imgPart.inlineData.data', i);
+  // نداء واحد للمحرّك — الإنقاذ عند الفشل فقط؛ القياس في deliver (image-verify) لا داخل نداء المحرّك
+  const i = mi.indexOf('async function proCandidate(budget) {');
+  const j = mi.indexOf('async function gptCandidate(', i);
+  assert.ok(i > 0 && j > i, 'مرشّح برو موجود');
   const seg = mi.slice(i, j);
   assert.equal((seg.match(/fetchImageWithRetry\(/g) || []).length, 2, 'نداء أساسيّ + إعادة خطّ الأنابيب المعطّل افتراضيًّا فقط');
-  assert.ok(!/judge|guard|verifyRequest/i.test(seg), 'لا حكم ولا حارس ولا فحص بين المحرّك والإرسال');
+  assert.ok(!/judge|guard|verifyRequest/i.test(seg), 'لا حكم ولا حارس ولا فحص داخل نداء المحرّك');
+  assert.match(mi, /const primary = __engineMix \? null : await proCandidate\(\);\n\s+if \(primary\) \{ await deliver\(primary, __gptAlt\); return; \}/, 'المسار العاديّ: برو ثمّ القياس، وGPT فقط إن لم يُنفّذ');
   assert.match(mi, /const mainEngine = nanoPrimary \? \(__pureRaw \? 'nano-raw' : 'nano'\) : \(__pureRaw \? 'nano-pro-raw' : 'nano-pro'\);/);
 });
 
@@ -55,10 +68,15 @@ test('٣. الخام خام: المحرّك المختار وحده، GPT خام
   assert.match(mi, /if \(__optForceEngine === 'gpt'\) \{\n\s+const __gptB64 = await openaiRescueImage\(\);/);
   assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-2\.5-flash-image'/);
   assert.match(mi, /if \(isSceneUpgrade && !__intent\.placeUpgradeHint && !__intent\.sameImage\) \{ isSceneUpgrade = false; isElevate = true; \}/);
-  assert.match(mi, /const cap = \(prayerPlan \|\| editImageBase64\) \? '' : await imageCaption\(/);
+  // v-img-report (المالك ٢٣ سبتمبر): التقرير للتوليد والتعديل (المصدر + الناتج) — v-img-honest: يكتبه الحاكم نفسه مع القياس
+  assert.match(mi, /await sendImg\(r\.best\.b64, r\.best\.mime, r\.engine, r\.report, r\.best\.verdict, r\.best\.noUpscale\);/);
+  assert.match(mi, /caption: \(!prayerPlan && report\) \|\| undefined,/);
+  // الخام خام: لا محرّك آخر ولا رفض ٤٢٢ (honest=false)
+  assert.match(mi, /honest: !prayerPlan && !__pureRaw && String\(process\.env\.IMAGE_VERIFY \|\| 'on'\)\.toLowerCase\(\) !== 'off'/);
+  assert.match(mi, /if \(__gptB64\) \{ await deliver\(\{ b64: __gptB64, mime: 'image\/png', engine: 'openai' \}, null\); return; \}/);
   // خطّ الإنقاذ كما هو: برو → نانو ٢٫٥ → GPT → المجّانيّ (توليد فقط)
   assert.match(mi, /const nanoB64 = await geminiNanoBananaImage\(\);/);
-  assert.match(mi, /const rescuedB64 = await openaiRescueImage\(\);/);
+  assert.match(mi, /const rescuedB64 = __gptTried \? null : await openaiRescueImage\(\);/); // v-img-mix: الدمج جرّب GPT وفشل = لا نداء ثانٍ
   assert.match(mi, /const freeImg = await freeFallbackImage\(\);/);
 });
 

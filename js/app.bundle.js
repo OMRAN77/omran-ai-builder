@@ -77,6 +77,7 @@
           stack: (err && err.stack) ? String(err.stack).slice(0, 800) : null,
           url: location.href,
           ua: navigator.userAgent,
+          build: (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '',
         }),
         keepalive: true,
       }).catch(function () { /* الإبلاغ نفسه لا يجوز أن يوقف شيئًا */ });
@@ -260,7 +261,7 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
   const vv = window.visualViewport;
   if(!vv) return;
   const root = document.documentElement;
-  let lastT = -1, lastH = -1;
+  let lastT = -1, lastH = -1, lastOn = null;
   const apply = () => {
     const t  = Math.max(0, Math.round(vv.offsetTop));
     const h  = Math.max(220, Math.round(vv.height));
@@ -272,6 +273,10 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
        فيه المنفذ منزاحًا والكيبورد مقفولًا — الكيبورد وحده هو المعيار. */
     const on = kb >= 40;
     const nt = on ? t : 0, nh = on ? h : 0;
+    /* v-kb-gap (لقطة المالك ٢٣ سبتمبر «شوف مكان الدردشه وين تسير»): الكيبورد مفتوح والجسم قصير بطول المرئيّ،
+       لكنّ main يحجز تحته 48px لشريط التبويبات + حاشية شريط الهوم (34) — وكلاهما خلف الكيبورد — فيطفو مربّع
+       الكتابة ٨٢ نقطة فوقه. علامة kb-open يقرؤها redesign.css ليلغي الحجز ويخفي الشريط ما دام الكيبورد مفتوحًا. */
+    if(on !== lastOn){ lastOn = on; root.classList.toggle('kb-open', on); }
     if(nt !== lastT){
       lastT = nt;
       if(on) root.style.setProperty('--vv-top', nt + 'px');
@@ -905,6 +910,8 @@ const $ = s => document.querySelector(s);
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
     }
+    /* v-owner-page: صفّ «صفحة المالك» في قائمة الإعدادات يتبع الدخول والخروج */
+    try{ if(typeof renderSettingsNavList === 'function') renderSettingsNavList(); }catch(e){ /* guard-ok — القائمة تُبنى أيضًا عند فتح الإعدادات */ }
     // v-maha-dock: مها راسية بجانب المايك — الزر العائم لا يُظهر بعد الآن.
   }
   // Deferred (not called synchronously): I18N is declared further down in
@@ -1841,6 +1848,10 @@ function imgErrFriendly(err, isAr){
       ? 'أوقفت النتيجة لأنها غيّرت هوية الشخص أو أشياء لم تطلبها. بقيت الصورة الأصلية محفوظة.'
       : 'I stopped the result because it changed the person or unrelated details. The original remains saved.';
   }
+  /* v-img-honest: الخادم قاس الناتج فوجده الصورة نفسها (حتّى بعد المحرّك الآخر) فلم يعرضه وردّ النقاط — بدل «تمّ» على صورة لم تتغيّر */
+  if(err === 'image_unchanged'){
+    return t('imgUnchanged');
+  }
   if(err === 'image_edit_validation_failed'){
     return isAr
       ? 'تعذّر التحقق من سلامة التعديل، لذلك لم أعرض النتيجة ولم أغيّر الأصل. جرّب بعد لحظة.'
@@ -1871,6 +1882,20 @@ function detectSpeechLang(text){
   if(frenchHints.test(t) || frenchWords.test(t)) return 'fr';
   return 'en';
 }
+/* v-tts-free: صوت الجهاز هو الاحتياط المجّانيّ حين لا يصل صوت الخادم — فنختار أفضله: الطبيعيّ أوّلًا (Natural/Neural
+   في متصفّح Edge وهي أصوات الخادم نفسها، ثمّ Premium/Enhanced في آبل، ثمّ أصوات الشبكة)، والخليجيّ (ar-AE ثمّ ar-SA)
+   قبل بقيّة العربيّ. الترتيب ثابت فالأجهزة بلا صوت طبيعيّ تبقى على اختيارها القديم. */
+function deviceVoiceScore(v){
+  const n = String((v && v.name) || '');
+  const l = String((v && v.lang) || '').toLowerCase().replace('_', '-');
+  let s = 0;
+  if(/natural|neural/i.test(n)) s = 30;
+  else if(/premium|enhanced|siri/i.test(n)) s = 20;
+  else if(/google/i.test(n) || (v && v.localService === false)) s = 10;
+  if(l.indexOf('ar-ae') === 0) s += 2;
+  else if(l.indexOf('ar-sa') === 0) s += 1;
+  return s;
+}
 function pickVoice(langCode){
   const voices = ('speechSynthesis' in window) ? window.speechSynthesis.getVoices() : [];
   if(!voices.length) return null;
@@ -1881,12 +1906,13 @@ function pickVoice(langCode){
   }
   const code = (typeof langCode === 'string') ? langCode : (langCode ? 'ar' : 'en');
   const langVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(code));
-  const pool = langVoices.length ? langVoices : voices;
+  const pool = (langVoices.length ? langVoices : voices).slice().sort((a, b) => deviceVoiceScore(b) - deviceVoiceScore(a));
   const genderPref = localStorage.getItem('aiapp_voice_gender');
   if(genderPref){
-    const femaleHints = /female|woman|zira|susan|fiona|moira|samantha|victoria|karen|tessa|eva|salma|hoda|amira|layla|zeina/i;
-    const maleHints = /male|man|daniel|david|fred|alex|mark|george|thomas|rishi|majed|naayf|hamed/i;
-    const filtered = pool.filter(v => genderPref === 'female' ? femaleHints.test(v.name) : maleHints.test(v.name));
+    const femaleHints = /female|woman|zira|susan|fiona|moira|samantha|victoria|karen|tessa|eva|salma|hoda|amira|layla|zeina|fatima|zariyah|noura|\bamal\b|laila|aysha|\bsana\b|amany|\brana\b|maryam|mariam|\biman\b|mouna|\breem\b|amina/i;
+    const maleHints = /\bmale\b|\bman\b|daniel|david|fred|alex|mark|george|thomas|rishi|majed|maged|naayf|hamed|hamid|hamdan|shakir|fahed|moaz|\bali\b|abdullah|taim|rami|laith|bassel|saleh|omar|jamal|hedi|ismael|tarik/i;
+    // «Female» كانت تطابق «male» فيأخذ من اختار صوت رجل صوتَ امرأة
+    const filtered = pool.filter(v => genderPref === 'female' ? femaleHints.test(v.name) : (maleHints.test(v.name) && !femaleHints.test(v.name)));
     if(filtered.length) return filtered[0];
   }
   return pool[0] || voices[0];
@@ -1993,7 +2019,7 @@ function buildSpokenWordSpans(container, text){
        تعليقات/أرقام). القراءة الصوتيّة لا تقرأ الكود عادةً فلا يضرّ فقد وسوم tts-word هنا. */
     try{
       if(codePre && typeof omranCodeHighlight === 'function'){
-        var __raw = codePre.textContent;
+        var __raw = codePre.textContent.replace(/^[ \t]*\n+/, ''); // v-md-blocks: لا أسطر فارغة أعلى صندوق الكود
         if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
       }
     }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
@@ -2114,6 +2140,7 @@ function buildSpokenWordSpans(container, text){
     lastIndex = m.index + m[0].length;
   }
   if(lastIndex < text.length) container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  const __lines = omranMdBlocks(container, text); // v-md-blocks
   // v476: عزل الاتجاه — «(+9714) 708 1111» داخل جملة عربية كان يُعرض معكوسًا
   // لأن المسافات بين الأرقام تتبع اتجاه الفقرة. نلفّ كل تتابع لاتيني/رقمي
   // متجاور في غلاف dir=ltr معزول. لا يغيّر عدد spans فمحاذاة TTS تبقى سليمة.
@@ -2130,20 +2157,81 @@ function buildSpokenWordSpans(container, text){
         const w = document.createElement('span');
         w.setAttribute('dir', 'ltr');
         w.style.unicodeBidi = 'isolate';
-        container.insertBefore(w, __run[0]);
+        __run[0].parentNode.insertBefore(w, __run[0]);
         __run.forEach(n => w.appendChild(n));
       }
       __run = [];
     };
-    for(const n of Array.from(container.childNodes)){
-      const t = n.textContent || '';
-      if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
-      else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
-      else __flush();
+    for(const __blk of __lines){
+      for(const n of Array.from(__blk.childNodes)){
+        const t = n.textContent || '';
+        if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
+        else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
+        else __flush();
+      }
+      __flush();
     }
-    __flush();
   }catch(e){ __swallow(e, 'bidi:isolate'); }
   return wordEls;
+}
+/* v-md-blocks (المالك ٢٣ سبتمبر: «الكتابة غير نظاميّة وغير مرتّبة في أوقات»): الردّ كان نصًّا واحدًا بـpre-wrap
+   وunicode-bidi:plaintext — كلّ سطر يأخذ اتّجاهه من أوّل حرف قويّ فيه، فسطر يبدأ بكلمة إنجليزيّة أو رقم
+   («3. Zuma Dubai — التقييم 4.5») ينقلب يسارًا ويتبعثر ترتيبه، ورقم القائمة يقفز لطرف السطر الآخر. الآن كلّ سطر
+   كتلة مستقلّة باتّجاه صريح: اتّجاه الردّ كلّه (عربيّ إن غلب العربيّ)، إلّا سطرًا إنجليزيًّا خالصًا فيبقى يسارًا.
+   علامة القائمة (• أو 1.) تُعلَّق في بداية السطر بمسافة ثابتة، والعنوان كتلة لها هامش. العناصر نفسها (tts-word)
+   وترتيبها لا يتغيّران، فتمييز القراءة الصوتيّة يبقى كما هو. */
+const OMRAN_AR_CHARS = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/g;
+function omranMdBlocks(container, text){
+  const arN = (String(text).match(OMRAN_AR_CHARS) || []).length;
+  const laN = (String(text).match(/[A-Za-z]/g) || []).length;
+  const baseRtl = arN > 0 && arN * 2 >= laN;
+  const nodes = Array.prototype.slice.call(container.childNodes);
+  nodes.forEach(function(n){ container.removeChild(n); });
+  const out = [];
+  let cur = null;
+  const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
+  newLine();
+  nodes.forEach(function(n){
+    if(n.nodeType === 1 && n.className === 'chat-codeblock'){ out.push(n); newLine(); return; }
+    if(n.nodeType === 3){
+      const parts = String(n.textContent).split('\n');
+      parts.forEach(function(p, i){
+        if(i > 0) newLine();
+        if(p && (cur.childNodes.length || p.trim())) cur.appendChild(document.createTextNode(p));
+      });
+      return;
+    }
+    cur.appendChild(n);
+  });
+  const lines = [];
+  out.forEach(function(b){
+    if(b.className !== 'md-line'){ container.appendChild(b); return; }
+    if(!b.childNodes.length) return;
+    const t = b.textContent || '';
+    const hasAr = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(t);
+    const la = (t.match(/[A-Za-z]/g) || []).length;
+    const rtl = baseRtl ? (hasAr || la < 12) : (hasAr && !la);
+    b.setAttribute('dir', rtl ? 'rtl' : 'ltr');
+    let fv = null;
+    const kids = Array.prototype.slice.call(b.childNodes);
+    for(let i = 0; i < kids.length; i++){
+      const k = kids[i];
+      if(k.nodeType === 1 && k.style.display !== 'none' && String(k.textContent).trim()){ fv = k; break; }
+      if(k.nodeType === 3 && String(k.textContent).trim()) break;
+    }
+    let cls = 'md-line';
+    if(fv){
+      const ft = String(fv.textContent).trim();
+      if(/\bmd-h\d\b/.test(fv.className)) cls += ' md-hb';
+      else if(ft === '•'){ cls += ' md-li'; fv.className += ' md-mk'; }
+      else if(/^•\s/.test(ft)) cls += ' md-li md-li-glued';
+      else if(/^(?:[0-9]{1,3}|[٠-٩]{1,3})[.)]$/.test(ft)){ cls += ' md-oli'; fv.className += ' md-mk'; }
+    }
+    b.className = cls;
+    container.appendChild(b);
+    lines.push(b);
+  });
+  return lines;
 }
 function wordStartOffsets(text){
   const offsets = [];
@@ -2153,11 +2241,30 @@ function wordStartOffsets(text){
   return offsets;
 }
 function stopAllSpeaking(){
+  currentCloudToken = null; // v-tts-free: مقطع كان قيد الجلب لا يبدأ بعد «إيقاف» (ولا صوت الجهاز البديل)
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
   if(currentCloudAudio){ try{ currentCloudAudio.pause(); }catch(e){ __swallow(e, "misc:app-02-tts#2"); } currentCloudAudio = null; }
   if(ttsHighlightRaf){ cancelAnimationFrame(ttsHighlightRaf); ttsHighlightRaf = null; }
   clearWordHighlight();
   ttsHighlightWordEls = null;
+}
+/* v-reply-voice-speed (طلب المالك ٢٢ سبتمبر «خاصيّة بطيء وسريع… أريدها لمها والصوت الي عند المحادثة في الردود»):
+   سرعة الصوت في الإعدادات كانت تصل مها وحدها؛ «استمع» على الردود وقراءتها التلقائيّة وزرّ «تجربة الصوت» كانت
+   بالسرعة العاديّة دائمًا. المفتاح نفسه (aiapp_maha_voice_speed) والدرجات الأربع نفسها، وقيمة تالفة = عاديّ. */
+function ttsSpeedSetting(){
+  try{
+    const v = localStorage.getItem('aiapp_maha_voice_speed');
+    return (v === 'slow' || v === 'fast' || v === 'xfast') ? v : 'normal';
+  }catch(e){ return 'normal'; }
+}
+/* v-tts-account (المالك: «ابدا فيهم كلهم»): صوت القراءة كان يطلب /api/tts بلا حساب فيُعدّ على عنوان IP —
+   المالك نفسه يُحدّ بستّين طلبًا في اليوم، ومن يتشاركون شبكة يتشاركونها. الحساب يُرسل الآن: المالك وVIP بلا حدّ،
+   وكلّ حساب حصّته، والضيف على عنوانه كما كان. مها الأساسيّ وتأكيد تبويب الصوت يستعملان المساعدين نفسيهما. */
+function ttsAuthToken(){
+  try{ return (typeof authGet === 'function' ? authGet('aiapp_auth_token') : '') || ''; }catch(e){ return ''; }
+}
+function ttsGuestId(){
+  try{ return (typeof window !== 'undefined' && typeof window.getGuestId === 'function') ? (window.getGuestId() || '') : ''; }catch(e){ return ''; }
 }
 async function fetchCloudSpeech(text){
   // v246: دائمًا صوت Azure Neural عالي الجودة (نفس مسار مها) — الجنس من إعداد
@@ -2167,7 +2274,7 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000) })
+    body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -2177,8 +2284,8 @@ async function fetchCloudSpeech(text){
   const blob = await resp.blob();
   return URL.createObjectURL(blob);
 }
-// Splits text into speakable chunks (roughly one sentence each, merged up to
-// ~180 chars) so cloud TTS can start playing the first chunk almost
+// Splits text into speakable chunks (the first ≈ one sentence, the rest merged
+// to ~160–400 chars) so cloud TTS can start playing the first chunk almost
 // immediately instead of waiting for the entire message to be synthesized.
 // Each chunk also carries wordStart/wordCount so karaoke highlighting can map
 // back to the correct spans in the full wordEls array.
@@ -2195,7 +2302,11 @@ function splitTextForTTS(text){
     buf += (buf ? ' ' : '') + words[i].text;
     const endsSentence = /[.!?؟۔]$/.test(words[i].text);
     const isLast = i === words.length - 1;
-    if(isLast || (endsSentence && buf.length >= 20) || buf.length >= 180){
+    /* v-tts-free: المقطع الأوّل قصير كما كان فيبدأ الصوت فورًا، وما بعده جمل مجموعة (١٦٠–٤٠٠ حرف): الردّ ذو الأسطر
+       القصيرة كان طلبًا لكلّ سطر، فيتجاوز حدّ الباقة المجّانيّة (٢٠ طلبًا في الدقيقة) ويأكل حصّة اليوم (٦٠ طلبًا). */
+    const minLen = chunks.length ? 160 : 20;
+    const maxLen = chunks.length ? 400 : 180;
+    if(isLast || (endsSentence && buf.length >= minLen) || buf.length >= maxLen){
       chunks.push({ text: buf, wordStart: startWord, wordCount: i - startWord + 1 });
       buf = '';
       startWord = i + 1;
@@ -2232,6 +2343,7 @@ async function applyDialectForSpeech(text){
 // v265: عنصر صوت واحد يُفتح (unlock) لحظة ضغطة المستخدم ثم يُعاد استخدامه —
 // آيفون وبعض المتصفحات تمنع تشغيل صوت أُنشئ بعد جلب من الشبكة خارج الضغطة.
 let cloudAudioEl = null;
+let deviceSpeechUnlocked = false;
 function unlockCloudAudio(){
   try{
     if(!cloudAudioEl) cloudAudioEl = new Audio();
@@ -2240,6 +2352,19 @@ function unlockCloudAudio(){
     const p = cloudAudioEl.play();
     if(p && p.catch) p.catch(()=>{});
   }catch(e){ __swallow(e, "misc:app-02-tts#4"); }
+  /* v-tts-free: آيفون لا ينطق بصوت الجهاز إلّا بعد نطق بدأ داخل ضغطة — نطق صامت مرّة واحدة هنا يفتح صوت الجهاز
+     البديل الذي يبدأ لاحقًا بعد جلب مرفوض (خارج الضغطة). القراءة التلقائيّة ليست ضغطة فلا تستهلك الفتح. */
+  const __ua = (typeof navigator !== 'undefined' && navigator.userActivation) || null;
+  if(!deviceSpeechUnlocked && (!__ua || __ua.isActive)){
+    try{
+      if('speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'){
+        const u = new SpeechSynthesisUtterance(' ');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+        deviceSpeechUnlocked = true;
+      }
+    }catch(e){ __swallow(e, 'tts:device-unlock'); }
+  }
 }
 async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   if(!text) return;
@@ -2258,6 +2383,36 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   // device has no speech synthesis at all, or no matching voice installed
   // for the detected language (Arabic/French/Hindi/Urdu/English).
   const useCloud = cloudEnabled || noDeviceTTS || noMatchingVoice;
+  /* v-tts-free: صوت الجهاز (مجّانيّ) للنصّ كلّه، أو لبقيّته من الكلمة fromWord حين يرفض الخادم مقطعًا (انتهى
+     الحدّ المجّانيّ أو حصّة اليوم أو تعطّل) — كان المقطع المرفوض يُتخطّى فيصمت ما تبقّى من الردّ. */
+  const speakOnDevice = (fromWord, alreadyStarted) => {
+    if(!('speechSynthesis' in window)){ if(onEnd) onEnd(); return; }
+    const allOffsets = wordStartOffsets(text);
+    const base = fromWord > 0 ? allOffsets[fromWord] : 0;
+    if(base === undefined){ if(onEnd) onEnd(); return; }
+    const sayText = base ? text.slice(base) : text;
+    const detectedLang = detectSpeechLang(sayText);
+    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
+    const utter = new SpeechSynthesisUtterance(sayText);
+    utter.lang = langTags[detectedLang] || 'en-US';
+    const v = pickVoice(detectedLang);
+    if(v) utter.voice = v;
+    utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1; // v-reply-voice-speed + v-maha-pace: صوت الجهاز الاحتياطيّ بالمدى الهادئ نفسه
+    const offsets = wordEls && wordEls.length ? allOffsets : null;
+    if(offsets){
+      utter.onboundary = (e) => {
+        if(e.name && e.name !== 'word') return;
+        const at = base + e.charIndex;
+        let idx = 0;
+        for(let i = 0; i < offsets.length; i++){ if(offsets[i] <= at) idx = i; else break; }
+        setActiveWord(wordEls, idx);
+      };
+    }
+    utter.onend = () => { clearWordHighlight(); if(onEnd) onEnd(); };
+    utter.onerror = () => { clearWordHighlight(); if(onEnd) onEnd(); };
+    if(onStart && !alreadyStarted) onStart();
+    window.speechSynthesis.speak(utter);
+  };
   if(useCloud){
     try{
       const chunks = splitTextForTTS(text);
@@ -2269,7 +2424,11 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
       // with playback time of chunk N instead of adding up sequentially.
       const promises = new Array(chunks.length);
       const ensureFetched = (i) => {
-        if(i < chunks.length && !promises[i]) promises[i] = fetchCloudSpeech(chunks[i].text);
+        if(i < chunks.length && !promises[i]){
+          promises[i] = fetchCloudSpeech(chunks[i].text);
+          // guard-ok: الرفض يُعالَج حين يُنتظر المقطع في playChunk (صوت الجهاز) — المقطع المجلوب مسبقًا لا يُبلَّغ «خطأً غير معالج»
+          promises[i].catch(() => {});
+        }
         return promises[i];
       };
       ensureFetched(0);
@@ -2287,6 +2446,11 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         try{ url = await ensureFetched(i); }
         catch(e){
           if(currentCloudToken !== token) return;
+          if('speechSynthesis' in window){
+            currentCloudToken = null; currentCloudAudio = null;
+            speakOnDevice(chunks[i].wordStart, started);
+            return;
+          }
           // Skip the failed chunk rather than aborting the whole reply.
           playChunk(i + 1);
           return;
@@ -2335,26 +2499,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
       }
     }
   }
-  if(!('speechSynthesis' in window)){ if(onEnd) onEnd(); return; }
-  const detectedLang = detectSpeechLang(text);
-  const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = langTags[detectedLang] || 'en-US';
-  const v = pickVoice(detectedLang);
-  if(v) utter.voice = v;
-  const offsets = wordEls && wordEls.length ? wordStartOffsets(text) : null;
-  if(offsets){
-    utter.onboundary = (e) => {
-      if(e.name && e.name !== 'word') return;
-      let idx = 0;
-      for(let i = 0; i < offsets.length; i++){ if(offsets[i] <= e.charIndex) idx = i; else break; }
-      setActiveWord(wordEls, idx);
-    };
-  }
-  utter.onend = () => { clearWordHighlight(); if(onEnd) onEnd(); };
-  utter.onerror = () => { clearWordHighlight(); if(onEnd) onEnd(); };
-  if(onStart) onStart();
-  window.speechSynthesis.speak(utter);
+  speakOnDevice(0, false);
 }
 function speakText(text){ speakSmart(text); }
 // Known Arabic TTS voice names -> Latin transliteration (accurate, curated)
@@ -2489,7 +2634,7 @@ function renderStreamingAssistant(el, text){
   if(!fresh && head !== prev){
     if(head.length > prev.length && head.indexOf(prev) === 0){
       /* الرأس امتدّ فقط: نرسم الزيادة في مقطع جديد ونلحقه — لا إعادة لما رُسم. */
-      var seg = document.createElement('span');
+      var seg = document.createElement('div');
       seg.className = 'omStreamSeg';
       buildSpokenWordSpans(seg, head.slice(prev.length));
       hw.appendChild(seg);
@@ -2500,9 +2645,9 @@ function renderStreamingAssistant(el, text){
   }
   if(fresh){
     el.innerHTML = '';
-    hw = document.createElement('span'); hw.className = 'omStreamHead';
-    tw = document.createElement('span'); tw.className = 'omStreamTail';
-    var seg0 = document.createElement('span'); seg0.className = 'omStreamSeg';
+    hw = document.createElement('div'); hw.className = 'omStreamHead';
+    tw = document.createElement('div'); tw.className = 'omStreamTail';
+    var seg0 = document.createElement('div'); seg0.className = 'omStreamSeg';
     buildSpokenWordSpans(seg0, head);
     hw.appendChild(seg0);
     el.appendChild(hw); el.appendChild(tw);
@@ -2528,8 +2673,10 @@ const I18N = {
     introSplashLabel: '✨ شاشة الافتتاح عند فتح التطبيق',
     introSkip: 'اضغط للمتابعة',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
-    tvBack: "رجوع", tvYoutube: "يوتيوب", tvSearchPh: "ابحث عن قناة...", tvAll: "الكل", tvPlatforms: "منصات رسمية — تفتح بحسابك", tvLiveIn: "قنوات مباشرة داخل التطبيق", tvNoMatch: "لا توجد قنوات مطابقة", tvLive: "مباشر الآن", tvLiveCount: "قناة تبثّ الآن", tvOfficial: "المنصة الرسمية", tvOpening: "جارٍ الفتح...", tvOff: "القناة موقفة البث حاليًا", tvCatNews: "أخبار", tvCatSports: "رياضة", tvCatGeneral: "عامة", tvCatReligion: "دينية", tvCatKids: "أطفال", tvCatBiz: "اقتصاد", tvCIntl: "دولية", tvPfShahid: "كل قنوات MBC مباشر", tvPfAwaan: "كل قنوات دبي مباشر", tvPfAdtv: "قنوات أبوظبي وماجد", tvPfTod: "beIN باشتراكك", tvPfRotana: "قنوات روتانا", tvPfSub: "باشتراكك",
+    tvBack: "رجوع", tvSearchPh: "ابحث عن قناة...", tvAll: "الكل", tvPlatforms: "منصات رسمية — تفتح بحسابك", tvLiveIn: "قنوات مباشرة داخل التطبيق", tvNoMatch: "لا توجد قنوات مطابقة", tvLive: "مباشر الآن", tvLiveCount: "قناة تبثّ الآن", tvOfficial: "المنصة الرسمية", tvOpening: "جارٍ الفتح...", tvOff: "القناة موقفة البث حاليًا", tvCatNews: "أخبار", tvCatSports: "رياضة", tvCatGeneral: "عامة", tvCatReligion: "دينية", tvCatKids: "أطفال", tvCatBiz: "اقتصاد", tvCIntl: "دولية", tvPfShahid: "كل قنوات MBC مباشر", tvPfAwaan: "كل قنوات دبي مباشر", tvPfAdtv: "قنوات أبوظبي وماجد", tvPfTod: "beIN باشتراكك", tvPfRotana: "قنوات روتانا", tvPfSub: "باشتراكك",
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
+    imgUndoPrev: "رجّعتها للنسخة السابقة 👆 وش تبي أغيّر فيها؟", imgUndoOrig: "رجّعتها للصورة الأصليّة 👆 وش تبي أغيّر فيها؟", imgUndoNone: "هذي هي أوّل نسخة، ما قبلها شي 👆 وش تبي أغيّر فيها؟", /* v-img-undo */
+    imgUnchanged: "⚠️ ما تنفّذ التعديل: الصورة رجعت نفسها بدون تغيير، فما عرضتها ولا انحسبت عليك. وضّح وش يتغيّر بالضبط أو اكتب الطلب بصيغة ثانية.", /* v-img-honest */
     aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
@@ -2668,6 +2815,7 @@ const I18N = {
     aboutSupportDesc: 'نرد على استفساراتك خلال ٢٤-٤٨ ساعة.',
     aboutCopyright: '© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪',
     adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
+    ownerSectionTitle: '👑 صفحة المالك',
     videoBadgeShort: 'قصير',
     videoBadgeFull: 'كامل',
     provTypingSuffix: 'يكتب…',
@@ -2693,7 +2841,7 @@ const I18N = {
     modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
     provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق',
     acctLoginBtnLabel: '🔐 تسجيل الدخول / حساب جديد',
-    statsSectionTitle: 'إحصائياتي',
+    statsSectionTitle: 'مشاريعي والنسخ الاحتياطي',
     statsProjectsLabel: 'عدد المشاريع',
     statsMessagesLabel: 'إجمالي الرسائل المُرسلة',
     statsFavProviderLabel: 'أكثر مزوّد تستخدمه',
@@ -2851,7 +2999,7 @@ const I18N = {
     portraitGenerating: '⏳ جارٍ التحويل...',
     carToolsTitle: '🚗 قسم السيارات',
     qiblaTitle: '📿 القبلة والمواقيت',
-    tvTitle: '📺 تلفزيون', tvSportsWorld: 'رياضة العالم', tvDirect: 'بث مباشر',
+    tvTitle: '📺 تلفزيون', tvSportsWorld: 'رياضة العالم', tvMatches: 'جدول المباريات', tvMatchLive: 'جارية الآن', tvMatchPaid: 'مدفوعة', tvNoMatches: 'لا مباريات في الجدول الآن', tvMatchesNote: 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', tvDirect: 'بث مباشر',
     stocksTitle: '📈 سوق الأسهم العالمي', stocksDesc: 'أسعار الأسهم العالمية مع رسم بياني مباشر.',
     stocksSymbolPh: 'مثال: AAPL أو TSLA', stocksLoadBtn: 'عرض',
     stocksIntDay: 'يومي (3 أشهر)', stocksIntHour: 'كل ساعة', stocksInt15: 'كل 15 دقيقة', stocksIntWeek: 'أسبوعي',
@@ -3281,7 +3429,6 @@ const I18N = {
     ciHint: "اكتب كيف تحب أن يردّ عليك — يُطبَّق في كل محادثاتك.",
     ciPlaceholder: "مثال: ردّ عليّ بالعامية وباختصار، وبلا مقدّمات.",
     ciSaved: "تم الحفظ ✅",
-    mahaCcTitle: "الترجمة النصية للمكالمة",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
     chatToPdfLabel: "تحويل إلى PDF",
@@ -3406,6 +3553,11 @@ const I18N = {
     voiceGenderDefault: 'افتراضي (صوت الجهاز)',
     voiceGenderMale: 'صوت رجل',
     voiceGenderFemale: 'صوت امرأة',
+    voiceSpeedLabel: 'سرعة الصوت',
+    voiceSpeedSlow: 'بطيء',
+    voiceSpeedNormal: 'عادي',
+    voiceSpeedFast: 'سريع',
+    voiceSpeedXFast: 'سريع جدًا',
     cloudVoiceLabel: '🌟 استخدام صوت اصطناعي عالي الجودة (OpenAI TTS - يحتاج مفتاح OpenAI أعلاه)',
     voiceOnyx: '🧔 رجل - Onyx',
     voiceEcho: '👨 رجل - Echo',
@@ -3519,8 +3671,10 @@ const I18N = {
     introSplashLabel: '✨ Opening screen when the app starts',
     introSkip: 'Tap to continue',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
-    tvBack: "Back", tvYoutube: "YouTube", tvSearchPh: "Search channels...", tvAll: "All", tvPlatforms: "Official platforms — open with your account", tvLiveIn: "Live channels inside the app", tvNoMatch: "No matching channels", tvLive: "LIVE", tvLiveCount: "channels live now", tvOfficial: "Official site", tvOpening: "Opening...", tvOff: "Not streaming right now", tvCatNews: "News", tvCatSports: "Sports", tvCatGeneral: "General", tvCatReligion: "Religion", tvCatKids: "Kids", tvCatBiz: "Business", tvCIntl: "International", tvPfShahid: "All MBC channels live", tvPfAwaan: "All Dubai channels live", tvPfAdtv: "Abu Dhabi & Majid channels", tvPfTod: "beIN with your subscription", tvPfRotana: "Rotana channels", tvPfSub: "with your subscription",
+    tvBack: "Back", tvSearchPh: "Search channels...", tvAll: "All", tvPlatforms: "Official platforms — open with your account", tvLiveIn: "Live channels inside the app", tvNoMatch: "No matching channels", tvLive: "LIVE", tvLiveCount: "channels live now", tvOfficial: "Official site", tvOpening: "Opening...", tvOff: "Not streaming right now", tvCatNews: "News", tvCatSports: "Sports", tvCatGeneral: "General", tvCatReligion: "Religion", tvCatKids: "Kids", tvCatBiz: "Business", tvCIntl: "International", tvPfShahid: "All MBC channels live", tvPfAwaan: "All Dubai channels live", tvPfAdtv: "Abu Dhabi & Majid channels", tvPfTod: "beIN with your subscription", tvPfRotana: "Rotana channels", tvPfSub: "with your subscription",
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
+    imgUndoPrev: "Back to the previous version 👆 What should I change?", imgUndoOrig: "Back to the original 👆 What should I change?", imgUndoNone: "This is the first version — nothing before it 👆 What should I change?", /* v-img-undo */
+    imgUnchanged: "⚠️ The edit wasn't applied: the picture came back unchanged, so I didn't show it and it wasn't counted against you. Say exactly what should change, or phrase it differently.", /* v-img-honest */
     aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
@@ -3712,6 +3866,7 @@ const I18N = {
     aboutSupportDesc: 'We answer your inquiries within 24–48 hours.',
     aboutCopyright: '© Omran AI team — Made with love in the UAE 🇦🇪',
     adminPanelTitle: '🛠️ Admin panel (owner only)',
+    ownerSectionTitle: '👑 Owner page',
     videoBadgeShort: 'Short',
     videoBadgeFull: 'Full',
     provTypingSuffix: 'is typing…',
@@ -3737,7 +3892,7 @@ const I18N = {
     modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
     provNickKing: 'The King', provNickFast: 'The Fast', provNickDeep: 'The Deep',
     acctLoginBtnLabel: '🔐 Sign in / Create account',
-    statsSectionTitle: 'My stats',
+    statsSectionTitle: 'My projects & backup',
     statsProjectsLabel: 'Projects count',
     statsMessagesLabel: 'Total messages sent',
     statsFavProviderLabel: 'Favorite provider',
@@ -3812,7 +3967,6 @@ const I18N = {
     ciHint: "Write how you'd like replies — applied to all your chats.",
     ciPlaceholder: "Example: Keep it casual and short, no preambles.",
     ciSaved: "Saved ✅",
-    mahaCcTitle: "Live call captions",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
     chatToPdfLabel: "Convert to PDF",
@@ -4056,7 +4210,7 @@ const I18N = {
     portraitLimitReached: 'You reached the daily limit for this feature, try again tomorrow',
     carToolsTitle: '🚗 Car Tools',
     qiblaTitle: '📿 Qibla & Prayer',
-    tvTitle: '📺 TV', tvSportsWorld: 'World Sports', tvDirect: 'Live stream',
+    tvTitle: '📺 TV', tvSportsWorld: 'World Sports', tvMatches: 'Match schedule', tvMatchLive: 'Live now', tvMatchPaid: 'Paid', tvNoMatches: 'No scheduled matches right now', tvMatchesNote: 'Times in your device clock · schedule updates daily', tvDirect: 'Live stream',
     stocksTitle: '📈 Global Stock Market', stocksDesc: 'Global stock prices with a live chart.',
     stocksSymbolPh: 'e.g. AAPL or TSLA', stocksLoadBtn: 'Show',
     stocksIntDay: 'Daily (3 months)', stocksIntHour: 'Hourly', stocksInt15: 'Every 15 min', stocksIntWeek: 'Weekly',
@@ -4467,6 +4621,11 @@ const I18N = {
     voiceGenderDefault: 'Default (device voice)',
     voiceGenderMale: 'Male voice',
     voiceGenderFemale: 'Female voice',
+    voiceSpeedLabel: 'Voice speed',
+    voiceSpeedSlow: 'Slow',
+    voiceSpeedNormal: 'Normal',
+    voiceSpeedFast: 'Fast',
+    voiceSpeedXFast: 'Very fast',
     cloudVoiceLabel: '🌟 Use high-quality AI voice (OpenAI TTS - needs OpenAI key above)',
     voiceOnyx: '🧔 Male - Onyx',
     voiceEcho: '👨 Male - Echo',
@@ -4536,7 +4695,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=678'; /* v-img-upscale: مفاتيح «دقّة أعلى» + v-attach-huawei-more: attachAddMore — في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=686'; /* v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -4999,6 +5158,19 @@ function __vaultEach(projects, fn){
     (m && m.apiImages || []).forEach(a => { if(a) fn(a); });
   }));
 }
+/* v-proj-vault (فحص الإقلاع في محادثة فارغة ببيانات كبيانات المالك: ١٨٣ م.ب من ذاكرة JS نصوصُ base64 على مستوى المشروع —
+   آخر صورة معدّلة، مصدر التعديل، أساس طبقة النصّ، لقطة الدليل، وسجلّ الديكور — تُحمَّل لكلّ المشاريع عند كلّ إقلاع ولا يعرضها
+   شيء، ثمّ ينسخها كلّ حفظ ٣–٤ مرّات: قمّة ١٫٣ غ.ب ومهامّ طويلة ٢–٧ث): تُخزَّن في مخزن الصور كالمرفقات، ويبقى في السجلّ معرّفها.
+   كلّ كاتب لهذه الحقول يُسند كائنًا جديدًا (لا تعديل في المكان)، فالكائن الجديد بلا معرّف يُكتب في الحفظ التالي والقديم يكنسه الكنس. */
+const __PROJ_BLOBS = [['lastEditedImage', 'b64'], ['imageEditSource', 'b64'], ['imageTextLayer', 'baseB64'], ['guideShot', 'b64']];
+function __projBlobEach(projects, fn){
+  (projects || []).forEach(p => {
+    if(!p) return;
+    __PROJ_BLOBS.forEach(fk => { const o = p[fk[0]]; if(o && typeof o === 'object') fn(o, fk[1], p); });
+    if(p.decorHistory && typeof p.decorHistory === 'object') Object.keys(p.decorHistory).forEach(s => { const o = p.decorHistory[s]; if(o && typeof o === 'object') fn(o, 'b64', p); });
+  });
+}
+function __blobDegraded(o, k){ return !!(o && o.vaultId && !o.vaultPending && (typeof o[k] !== 'string' || o[k].length <= VAULT_MIN)); }
 /* يعيّن معرّفًا لكل صورة كبيرة بلا معرّف ويعيد ما يجب كتابته في المخزن */
 function __vaultAssign(projects, now){
   const puts = [];
@@ -5007,18 +5179,77 @@ function __vaultAssign(projects, now){
     if(!a.vaultId){ a.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); a.vaultPending = true; }
     if(a.vaultPending) puts.push({ id: a.vaultId, dataUrl: a.dataUrl, ref: a });
   });
+  __projBlobEach(projects, (o, k) => { /* v-proj-vault */
+    if(typeof o[k] !== 'string' || o[k].length <= VAULT_MIN) return;
+    if(!o.vaultId){ o.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); o.vaultPending = true; }
+    if(o.vaultPending) puts.push({ id: o.vaultId, dataUrl: o[k], ref: o });
+  });
   return puts;
 }
 /* نسخة الحفظ: الصورة المخزونة تُستبدل بمعرّفها فقط */
 function __vaultReplacer(k, v){
-  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return '';
+  if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض تُحفظ في المخزن بمفتاحها لا في السجلّ */
+  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && (v.length > VAULT_MIN || v === '[media]')) return '';
+  if((k === 'b64' || k === 'baseB64') && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return ''; /* v-proj-vault */
   if(k === 'vaultPending') return undefined;
   return v;
+}
+/* v-vault-restore (المالك ٢٣ سبتمبر «الصور تمسح من المحادثه»): الصورة المخزونة قد تحمل في الذاكرة بديلًا متدهورًا —
+   «[media]» أو المصغّرة من المرآة المنحّفة/السيرفر، أو فراغًا بعد purgeOldImages — والأصل سليم في المخزن. المعرّف لا
+   يُعيَّن إلّا لصورة فوق VAULT_MIN، فأيّ dataUrl أقصر مع معرّف = بديل يجب استبداله بالأصل. */
+function __vaultDegraded(a){
+  return !!(a && a.vaultId && !a.vaultPending && (typeof a.dataUrl !== 'string' || a.dataUrl.length <= VAULT_MIN));
+}
+/* v-mem-guard (لقطات المالك ٢٣ سبتمبر: «خربت الدنيا — ولا شي يفتح»: الكتابة تتقطّع خطوطًا، صفوف سوداء، والشعار تشويش):
+   v-vault-restore كان يستعيد أصول كلّ صور المحادثة المفتوحة بحجمها الكامل مع كلّ رسم، ثمّ يبني الحفظ (كلّ ١٫٥ث) نصًّا من
+   المشروع كلّه بصوره، وتنسخ المرآة (كلّ ١٠ث) كلّ رسالة بصورها — مسبار ٤٠ صورة: الذاكرة ٣٤ ← ٣٧١ م.ب ونصّ ٦٢ مليون حرف
+   في كلّ حفظ؛ بصور المالك الحقيقيّة (٥–٢٠ م.ب) غيغابايتات فتنهار ذاكرة الرسم في الجوّال. الاستعادة الآن لنافذة العرض
+   وحدها (آخر ٣٠ رسالة كما يرسم renderMessages)؛ الأقدم تُقرأ صورةً صورةً حين تُعرض («عرض الأقدم»). */
+const __IMG_WINDOW = 30;
+function __imgWindowStart(p){
+  const n = (p && Array.isArray(p.messages)) ? p.messages.length : 0;
+  return (p && p.__showAllMsgs) ? 0 : Math.max(0, n - __IMG_WINDOW);
+}
+/* v-mem-guard2 (فيديو المالك بعد #739: النصّ صار سليمًا، لكنّ الشعار تشويش وصفوف لا تُرسم — في محادثة جديدة فارغة):
+   (١) صور المحادثة التي غادرها تبقى بحجمها الكامل في الذاكرة ولا شيء يعيدها للمخزن، فحِمل محادثة الصور يبقى وأنت في غيرها.
+   (٢) فتح المحادثة كان يقرأ كلّ صورة نحو ٤٫٥ مرّات بالتوازي (كلّ renderMessages يطلق استعادة بلا قفل، ومسار الرسم يقرأ كلّ صورة
+   مرّة ثانية). الآن: ما خارج نافذة المحادثة المفتوحة يعود لمعرّفه (الأصل في المخزن ويُستعاد حين يُعرض)، وكلّ صورة قيد القراءة
+   تُقرأ مرّة واحدة وينتظرها الجميع. المعلّقة (لم تُكتب في المخزن بعد) والصغيرة بلا معرّف لا تُمسّ. */
+const __vaultReads = new WeakMap();
+function __vaultRelease(keepP, keepFrom){
+  let freed = 0;
+  ((typeof state !== 'undefined' && state && state.projects) || []).forEach(p => ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || (p === keepP && i >= keepFrom)) return;
+    (m.attachments || []).concat(m.apiImages || []).forEach(a => {
+      if(a && a.vaultId && !a.vaultPending && typeof a.dataUrl === 'string' && a.dataUrl.length > VAULT_MIN && !__vaultReads.has(a)){ a.dataUrl = ''; freed++; }
+      if(a && a.vaultId && !a.vaultPending && a.viewUrl && !__viewReads.has(a)) delete a.viewUrl; /* v-img-view: نسختها في المخزن */
+    });
+  }));
+  /* v-proj-vault: base64 المشاريع الأخرى يعود لمعرّفه (المفتوح يبقى، والمعلّق لم يُكتب بعد) */
+  __projBlobEach(((typeof state !== 'undefined' && state && state.projects) || []).filter(p => p !== keepP), (o, k) => {
+    if(o.vaultId && !o.vaultPending && typeof o[k] === 'string' && o[k].length > VAULT_MIN && !__vaultReads.has(o)){ o[k] = ''; freed++; }
+  });
+  return freed;
 }
 function __collectVaultIds(projects){
   const ids = new Set();
   __vaultEach(projects, a => { if(a.vaultId) ids.add(a.vaultId); });
+  __projBlobEach(projects, o => { if(o.vaultId) ids.add(o.vaultId); }); /* v-proj-vault: الكنس لا يمسحها */
   return ids;
+}
+/* v-proj-vault: base64 المشروع المفتوح يُستعاد من المخزن (قراءة مشتركة لكلّ كائن)، ويُنتظر قبل أيّ إرسال */
+function __vaultProjBlobs(p){
+  const prs = [];
+  __projBlobEach(p ? [p] : [], (o, k) => {
+    if(!__blobDegraded(o, k)) return;
+    let pr = __vaultReads.get(o);
+    if(!pr){
+      pr = idbImgGet(o.vaultId).then(d => { if(typeof d === 'string' && d) o[k] = d; return o[k]; }).catch(e => { __swallow(e, 'vault:blob'); return o[k]; }).finally(() => __vaultReads.delete(o));
+      __vaultReads.set(o, pr);
+    }
+    prs.push(pr);
+  });
+  return prs.length ? Promise.all(prs) : null; /* لا شيء في المخزن = لا انتظار (الإرسال يبدأ في المهمّة نفسها كما كان) */
 }
 function idbImgPutAll(puts){
   if(!puts.length) return Promise.resolve();
@@ -5038,12 +5269,86 @@ function idbImgGet(id){
     rq.onerror = () => { db.close(); rej(rq.error); };
   }));
 }
+/* v-mem-guard2: قراءة صورة واحدة من المخزن — إن كانت قيد القراءة (الاستعادة أو رسم سابق) يُنتظر الوعد نفسه */
+function __vaultRead(a){
+  let pr = __vaultReads.get(a);
+  if(!pr){
+    pr = idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; delete a.purged; } return a.dataUrl; }).finally(() => __vaultReads.delete(a));
+    __vaultReads.set(a, pr);
+  }
+  return pr;
+}
+/* v-img-view (فيديو المالك بعد #740: الشعار وصور بطاقات الأدوات تشويش ومربّعات سوداء — ذاكرة رسم الصور في الجوّال):
+   صور المحادثة كانت تُرسم بأصلها (2K–4K، ٥–٢٠ م.ب data URL) في فقاعة عرضها ٤٦٠px؛ كلّ صورة تُفكّ بحجمها الكامل (4K = ٦٤ م.ب
+   بكسلات) وتُرفع للرسم، وكلّ إعادة رسم تحلّل عشرات الميغا. الآن تُرسم نسخة عرض (أطول ضلع 1280px، JPEG، أو PNG إن كانت شفّافة)
+   تُصنع مرّة من الأصل وتُحفظ في المخزن بمفتاح «معرّف~v»؛ الأصل يبقى كما هو لكلّ ما يحتاجه (المشاركة، الحفظ، العرض الكامل،
+   التعديل، التراجع). التوليد صورةً صورةً (طابور) كي لا تُفكّ أصول كثيرة معًا. */
+const __VIEW_MAX = 1280;
+const __viewReads = new WeakMap();
+let __viewQ = Promise.resolve();
+function __isBigDataImg(u){ return typeof u === 'string' && u.length > VAULT_MIN && u.slice(0, 11) === 'data:image/'; }
+function __makeView(src){
+  return new Promise(res => {
+    try{
+      const im = new Image();
+      im.onload = () => {
+        try{
+          const w0 = im.naturalWidth || im.width, h0 = im.naturalHeight || im.height;
+          if(!w0 || !h0){ res(''); return; }
+          const k = Math.min(1, __VIEW_MAX / Math.max(w0, h0));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+          const cx = c.getContext('2d', { willReadFrequently: true }); /* لوحة برمجيّة: الأصل 4K لا يُرفع لذاكرة الرسم لصنع نسخته */
+          cx.drawImage(im, 0, 0, c.width, c.height);
+          let alpha = false;
+          if(!/^data:image\/jpe?g/i.test(src)){
+            const d = cx.getImageData(0, 0, c.width, c.height).data;
+            for(let i = 3; i < d.length; i += 16){ if(d[i] < 250){ alpha = true; break; } }
+          }
+          const out = alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.86);
+          c.width = c.height = 0;
+          res(typeof out === 'string' && out.slice(0, 11) === 'data:image/' ? out : '');
+        }catch(e){ __swallow(e, 'view:make'); res(''); }
+      };
+      im.onerror = () => res('');
+      im.src = src;
+    }catch(e){ __swallow(e, 'view:make#img'); res(''); }
+  });
+}
+/* نسخة العرض لمرفق: من الذاكرة، أو من المخزن، أو تُصنع من الأصل (المخزون يُقرأ عبر القارئ المشترك) وتُحفظ */
+function __imgView(a){
+  if(!a) return Promise.resolve('');
+  if(a.viewUrl) return Promise.resolve(a.viewUrl);
+  let pr = __viewReads.get(a);
+  if(pr) return pr;
+  pr = (async () => {
+    if(a.vaultId && !a.vaultPending){
+      try{ const v = await idbImgGet(a.vaultId + '~v'); if(typeof v === 'string' && v.slice(0, 11) === 'data:image/'){ a.viewUrl = v; return v; } }catch(e){ __swallow(e, 'view:get'); }
+      if(typeof window !== 'undefined' && window.__usingSlimProjects) return ''; /* المرآة المنحّفة تُستبدل بالكاملة قريبًا — لا تُفكّ أصولها */
+    }
+    const job = __viewQ.then(async () => {
+      let src = __isBigDataImg(a.dataUrl) ? a.dataUrl : '';
+      if(!src && a.vaultId && !a.vaultPending){ try{ const d = await __vaultRead(a); if(__isBigDataImg(d)) src = d; }catch(e){ __swallow(e, 'view:orig'); } }
+      if(!src) return '';
+      const v = await __makeView(src);
+      if(!v) return '';
+      a.viewUrl = v;
+      if(a.vaultId && !a.vaultPending) idbImgPutAll([{ id: a.vaultId + '~v', dataUrl: v }]).catch(e => __swallow(e, 'view:put'));
+      return v;
+    });
+    __viewQ = job.catch(() => '');
+    return job;
+  })().finally(() => __viewReads.delete(a));
+  __viewReads.set(a, pr);
+  return pr;
+}
+window.__imgView = __imgView;
 function idbImgSweep(liveIds){
   return idbOpen().then(db => new Promise((res, rej) => {
     const tx = db.transaction(IDB_IMAGES, 'readwrite');
     const st = tx.objectStore(IDB_IMAGES);
     const rq = st.getAllKeys();
-    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(k)) st.delete(k); }); };
+    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(String(k).replace(/~v$/, ''))) st.delete(k); }); }; /* v-img-view: نسخة العرض تبقى ما بقي أصلها */
     tx.oncomplete = () => { db.close(); res(); };
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
@@ -5052,11 +5357,16 @@ function idbImgSweep(liveIds){
 async function __vaultSave(){
   const puts = __vaultAssign(state.projects, Date.now());
   let vaulted = true;
-  try{ await idbImgPutAll(puts); puts.forEach(x => { delete x.ref.vaultPending; }); }
+  /* v-img-view: نسخة عرض صُنعت قبل أن يُكتب الأصل تُكتب معه */
+  try{ await idbImgPutAll(puts.concat(puts.filter(x => x.ref && x.ref.viewUrl).map(x => ({ id: x.id + '~v', dataUrl: x.ref.viewUrl })))); puts.forEach(x => { delete x.ref.vaultPending; }); }
   catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
-  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects));
+  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects, __noViewReplacer));
   await idbSet('aiapp_projects', copy);
+  /* v-proj-vault: ما كُتب للتوّ في المخزن من غير المحادثة المفتوحة يخرج من الذاكرة الآن لا عند الرسم التالي (أوّل حفظ بعد النشر
+     ينقل base64 كلّ المشاريع إلى المخزن دفعة واحدة) */
+  if(vaulted && puts.length){ try{ const __cp = (typeof getCurrent === 'function') ? getCurrent() : null; __vaultRelease(__cp, __cp ? __imgWindowStart(__cp) : 0); }catch(e){ __swallow(e, 'vault:release-after-save'); } }
 }
+function __noViewReplacer(k, v){ return k === 'viewUrl' ? undefined : v; }
 /* الاستعادة: صور مشروع بلا dataUrl تُقرأ من المخزن (عند الإقلاع للمشروع المفتوح، وعند العرض لغيره) */
 function idbImgGetMany(ids){
   if(!ids.length) return Promise.resolve({});
@@ -5069,15 +5379,27 @@ function idbImgGetMany(ids){
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
 }
-async function hydrateProjectImages(p){
+async function hydrateProjectImages(p, fromIdx){
   const need = [];
-  __vaultEach(p ? [p] : [], a => { if(a.vaultId && !a.dataUrl && !a.purged) need.push(a); });
+  const start = (typeof fromIdx === 'number') ? fromIdx : __imgWindowStart(p);
+  if(p) __vaultRelease(p, start); /* v-mem-guard2: ما خارج النافذة يعود لمعرّفه */
+  /* v-img-view: المرآة المنحّفة تُستبدل بالكاملة بعد لحظات فقراءة أصولها ضائعة (كانت تُقرأ كلّ صورة مرّتين عند الإقلاع)؛
+     وapiImages لا يقرؤها شيء إلّا للرسالة الجديدة (قبل أن تُخزَّن) فلا تُستعاد — كانت تضاعف الذاكرة. */
+  if(typeof window !== 'undefined' && window.__usingSlimProjects) return 0;
+  if(p) __vaultProjBlobs(p); /* v-proj-vault: لا يُنتظر هنا (لا يُعرض) — الإرسال ينتظره */
+  ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || i < start) return;
+    (m.attachments || []).forEach(a => { if(a && a.isImage && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
+  });
   if(!need.length) return 0;
-  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة */
-  try{ const got = await idbImgGetMany(need.map(a => a.vaultId)); need.forEach(a => { if(got[a.vaultId]) a.dataUrl = got[a.vaultId]; }); }catch(e){ __swallow(e, 'vault:get'); }
+  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة؛ وكلّ صورة تُسجَّل «قيد القراءة» فلا تُقرأ ثانية حتّى تنتهي */
+  const batch = idbImgGetMany(need.map(a => a.vaultId));
+  need.forEach(a => { __vaultReads.set(a, batch.then(got => { if(got[a.vaultId]){ a.dataUrl = got[a.vaultId]; delete a.purged; } return a.dataUrl; }, () => a.dataUrl).finally(() => __vaultReads.delete(a))); });
+  try{ await Promise.all(need.map(a => __vaultReads.get(a))); }catch(e){ __swallow(e, 'vault:get'); }
   return need.length;
 }
 window.__hydrateProjectImages = hydrateProjectImages;
+window.__vaultProjBlobs = __vaultProjBlobs;
 window.__vaultSweep = function(){ try{ return idbImgSweep(__collectVaultIds(state.projects)); }catch(e){ return Promise.resolve(); } };
 
 // Strips old image data (keeps a small placeholder) to free up localStorage
@@ -5154,7 +5476,7 @@ function __saveFlush(force){
          الصفحة يُحفظ فورًا. المنظّف بقي لمسار localStorage الاحتياطي وحده لأن سقفه 5MB فعليًا. */
       if(!force){
         try{
-          const __sz = __projectsToJson().length;
+          const __sz = __vaultJsonSize(); /* v-mem-guard: كان __projectsToJson() يبني نصّ المشروع المفتوح بصوره كاملة في كلّ حفظ */
           const __gap = __sz > 60000000 ? 30000 : (__sz > 12000000 ? 10000 : 0);
           const __wait = __gap - (Date.now() - __idbSavedAt);
           if(__gap && __wait > 0){ __saveDirty = true; __saveTimer = setTimeout(__saveFlush, __wait); return; }
@@ -5192,6 +5514,10 @@ function saveState(){
   if(__saveTimer) return;
   __saveTimer = setTimeout(__saveFlush, 1500);
 }
+/* v-mem-guard: حجم ما يكتبه __vaultSave فعلًا (صور المخزن معرّفات لا base64) — حارس التباعد لا يبني نصّ الصور */
+function __vaultJsonSize(){
+  try{ return JSON.stringify(state.projects, __vaultReplacer).length; }catch(e){ return 0; } /* guard-ok — الحارس تحسين؛ الفشل = حفظ فوريّ كما قبل */
+}
 // ⚡ v320: الحفظ يعالج المشروع المفتوح فقط — الباقي من نسخة نصية جاهزة (كاش).
 let __projJsonCache = new WeakMap();
 function __projectsToJson(){
@@ -5201,7 +5527,7 @@ function __projectsToJson(){
       const c = __projJsonCache.get(p);
       if(c !== undefined) return c;
     }
-    const s = JSON.stringify(p);
+    const s = JSON.stringify(p, __noViewReplacer);
     __projJsonCache.set(p, s);
     return s;
   });
@@ -5252,20 +5578,18 @@ function chatsAuthToken(){
    الصور الصغيرة (< 150KB base64) تبقى كما هي. بدون thumb + كبيرة = [media]. */
 function __msgForServer(m){
   try{
-    var o = JSON.parse(JSON.stringify(m));
-    // المرفقات: استخدم serverThumb إذا موجود، أو احتفظ بالصغيرة
-    function fixImg(a){
-      if(!a || !a.isImage) return;
-      if(a.serverThumb){
-        a.dataUrl = a.serverThumb;
-        delete a.serverThumb;
-      } else if(a.dataUrl && a.dataUrl.length > 150000){
-        a.dataUrl = '[media]';
+    /* v-mem-guard: كانت JSON.parse(JSON.stringify(m)) تنسخ كلّ base64 الرسالة ثمّ تستبدلها بـ«[media]» — كلّ ١٠ث ولكلّ رسالة في
+       كلّ المحادثات، مئات الميغا بعد v-vault-restore. الآن تُستبدل أثناء النسخ: المصغّرة (serverThumb) للصورة إن وُجدت،
+       والأكبر من 150KB «[media]» (ومنها apiImages بلا isImage التي كانت تُنسخ كاملة)، والصغيرة تبقى كما هي. */
+    var o = JSON.parse(JSON.stringify(m, function(k, v){
+      if(k === 'serverThumb' && this && this.isImage) return undefined;
+      if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض محلّيّة */
+      if(k === 'dataUrl' && this && typeof v === 'string'){
+        if(this.isImage && this.serverThumb) return this.serverThumb;
+        if(v.length > 150000) return '[media]';
       }
-      // الصغيرة تبقى كما هي
-    }
-    if(o.attachments) o.attachments.forEach(fixImg);
-    if(o.apiImages) o.apiImages.forEach(fixImg);
+      return v;
+    }));
     // النص الطويل
     if(o && typeof o.content === 'string' && o.content.length > 12001){
       o.content = o.content.slice(0, 12000) + '…';
@@ -5365,6 +5689,12 @@ function __chatsMergeServer(server, deletedIds){
           if(lm.content && (!sm.content || sm.content === '[media]')) return lm;
           // لو المحلي أطول بكثير → خذ المحلي (السيرفر مقصوص)
           if(lm.content && sm.content && lm.content.length > sm.content.length + 50) return lm;
+          // v-keep-local-attachments: رسالة موجودة محليًّا أصلًا (نفس الفهرس) —
+          // مرفقاتها (صور) لا يمكن أن تكون نسخة السيرفر المرفوعة (مضغوطة أو
+          // '[media]' إن فشل الضغط) أوضح منها أبدًا. بلا هذا الفحص، رسالة صورة
+          // بلا نصّ (content فارغ) كانت تسقط للشرطين أعلاه فتُستبدل بصمت بنسخة
+          // متدهورة لمجرّد أنّ جهازًا آخر أضاف رسالة جديدة لنفس المحادثة.
+          if((Array.isArray(lm.attachments) && lm.attachments.length) || (Array.isArray(lm.apiImages) && lm.apiImages.length)) return lm;
           return sm;
         });
         local.messages = merged;
@@ -5548,7 +5878,7 @@ function codeForApi(code){
 function renderHistory(){
   historyEl.innerHTML = '';
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
-  const provKey = localStorage.getItem('aiapp_provider') || 'claude';
+  const provKey = localStorage.getItem('aiapp_provider') || 'openai';
   let provDirty = false;
   state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
   if(provDirty) saveState();
@@ -5585,7 +5915,7 @@ function renderHistory(){
     titleSpan.onclick = () => {
       // v380: الضغط على محادثة من مزود آخر → ينتقل لمزودها تلقائيًا (بدون إنشاء محادثة جديدة)
       try{
-        const cur = localStorage.getItem('aiapp_provider') || 'claude';
+        const cur = localStorage.getItem('aiapp_provider') || 'openai';
         if(p.provider && p.provider !== cur){
           localStorage.setItem('aiapp_provider', p.provider);
           const sel = document.getElementById('provider');
@@ -5885,6 +6215,8 @@ function omranRenderOptions(host, blocks){
 /* v-long-reply-off (طلب المالك ١٨ سبتمبر): الردّ الطويل يُعرض كاملًا في المحادثة بلا قصّ ولا
    أزرار — أُزيل القناع وزرّا القراءة والطيّ ولوحة القراءة التي كانت هنا (v-long-reply). */
 function renderMessages(keepScroll){
+  /* v-vault-restore: كلّ فتح لمحادثة يستعيد أصول صورها المتدهورة (المرفقات وapiImages التي يعدّل عليها المحرّر) من المخزن */
+  try{ const __hp = getCurrent(); if(__hp) hydrateProjectImages(__hp).catch(e => __swallow(e, 'vault:open')); }catch(e){ __swallow(e, 'vault:open#sync'); }
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
   // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
@@ -5926,7 +6258,7 @@ function renderMessages(keepScroll){
   let compareGroup = null;
   cur.expandedAskAllBatches = cur.expandedAskAllBatches || [];
   // ⚡ v320: نافذة عرض — نرسم آخر 30 رسالة فقط؛ الأقدم تظهر بزر عند الطلب.
-  const __MSGWIN = 30;
+  const __MSGWIN = __IMG_WINDOW; /* v-mem-guard: النافذة نفسها التي تُستعاد صورها */
   const __winStart = cur.__showAllMsgs ? 0 : Math.max(0, cur.messages.length - __MSGWIN);
   if(__winStart > 0){
     const __OLDT = { ar:'عرض الرسائل الأقدم', en:'Show older messages', fr:'Afficher les messages plus anciens', hi:'पुराने संदेश दिखाएँ', ur:'پرانے پیغامات دکھائیں', bn:'পুরনো বার্তা দেখান', ne:'पुराना सन्देशहरू देखाउनुहोस्', id:'Tampilkan pesan lama', fil:'Ipakita ang mga lumang mensahe', tr:'Eski mesajları göster', zh:'显示较早的消息', ru:'Показать старые сообщения', es:'Mostrar mensajes anteriores', ml:'പഴയ സന്ദേശങ്ങൾ കാണിക്കുക' };
@@ -6119,37 +6451,27 @@ function renderMessages(keepScroll){
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
     {
-      // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
+      // الروابط الخارجية الظاهرة في النصّ — تبقى روابط، وتُستثنى من بطاقة المصادر
       const __inlineLinks = [];
-      const __anchorEls = [];
       if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
           const title = a.textContent.trim() || url;
-          if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
+          if(url && !__inlineLinks.some(l => l.url === url)){
             __inlineLinks.push({ url, title });
           }
-          __anchorEls.push(a);
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
        const __isMapUrl = (url) => /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i.test(String(url || ''));
        const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
-       const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
-      const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
-      // v-src-dedupe (أمر عمران ب): رابط واحد ظاهر في الرد أصلًا = لا بطاقة مصادر
-      // مكرّرة؛ يبقى الرابط قابلًا للضغط داخل الرد. غير ذلك تُحوّل الروابط إلى نصّ
-      // (بلا href حتى لا تتفرّق) وتُجمع كلّها في البطاقة.
-      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
-      const __skipCard = validSrcs.length === 1 && __inlineLinks.length === 1 && __normU(__inlineLinks[0].url) === __normU(validSrcs[0].url);
-      if(!__skipCard){
-        __anchorEls.forEach(a => {
-          const span = document.createElement('span');
-          span.className = 'msgInlineRef';
-          span.textContent = a.textContent;
-          a.parentNode.replaceChild(span, a);
-        });
-      }
+      /* v-inline-links-stay (المالك ٢٣ سبتمبر: «يقول ادخل الرابط… يعطيني مرّة أو مرّتين صح والباقي يخربط»):
+         كان الرابط يبقى قابلًا للضغط في ردّ فيه رابط واحد فقط؛ رابطان فأكثر = كلّها تتحوّل نصًّا عاديًّا
+         (msgInlineRef) وتختفي في زرّ «المصادر» المطويّ. الآن الرابط في النصّ يبقى رابطًا ذهبيًّا يُفتح دائمًا،
+         وبطاقة «المصادر» لا تحمل إلّا مصادر البحث التي ليست ظاهرة في النصّ أصلًا. */
+      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
+      const validSrcs = __srcBase.filter(s => !__inlineLinks.some(l => __normU(l.url) === __normU(s.url))).slice(0, 15);
+      const __skipCard = false;
 
       if(validSrcs.length && !__skipCard){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
@@ -6249,16 +6571,29 @@ function renderMessages(keepScroll){
           dl.style.textDecoration = 'none';
           dl.style.alignSelf = 'center';
           wrap.appendChild(dl);
-        } else if(a.isImage && a.purged){
+        } else if(a.isImage && a.purged && !a.vaultId){
           const chip = document.createElement('div');
           chip.className = 'file-chip';
           chip.textContent = '🗑️ ' + t('imagePurgedNote');
           wrap.appendChild(chip);
         } else if(a.isImage){
           const img = document.createElement('img');
-          /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
-          if(!a.dataUrl && a.vaultId){ idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; img.src = d; } }).catch(e => __swallow(e, 'vault:render')); }
-          img.src = a.dataUrl;
+          img.decoding = 'async';
+          let __ibox = null;
+          /* v-img-view: تُرسم نسخة العرض (1280px) لا الأصل. صورة جديدة لم تُخزَّن بعد تظهر بأصلها فورًا ثمّ تُستبدل بنسختها؛
+             المخزونة بلا نسخة في الذاكرة تنتظر نسختها (من المخزن، أو تُصنع مرّة من الأصل). كلّ تعيين في مهمّته (v-mem-guard3:
+             الدفعة الواحدة جمّدت الإقلاع ١٫٥ث)، والمنفصلة عن الصفحة تُتخطّى، والمخفيّة بعد خطأ src فارغ تعود ظاهرة. */
+          const __showSrc = (u) => { if(typeof u === 'string' && u) setTimeout(() => { if(!img.isConnected || img.getAttribute('src') === u) return; img.style.display = ''; img.src = u; }, 0); };
+          /* v-chip-thumb: رقاقة مرفق المستخدم ٦٠px (object-fit:cover يفكّ الأصل كاملًا) تُرسم بمصغّرتها المحفوظة (400px) إن وُجدت */
+          const __chipThumb = (m.role === 'user' || a._fromMemory) && typeof a.serverThumb === 'string' && a.serverThumb.slice(0, 11) === 'data:image/' ? a.serverThumb : '';
+          if(__chipThumb) img.src = __chipThumb;
+          else if(a.viewUrl) img.src = a.viewUrl;
+          else if(__isBigDataImg(a.dataUrl) || __vaultDegraded(a)){
+            if(__isBigDataImg(a.dataUrl) && (!a.vaultId || a.vaultPending)) img.src = a.dataUrl;
+            __imgView(a).then(__showSrc).catch(e => __swallow(e, 'img:view'));
+          } else img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
+          /* v-image-vault/v-mem-guard2: أدوات المشاركة والحفظ تحتاج الأصل — يُقرأ من المخزن (قراءة مشتركة) وتُلحق حين يصل */
+          if(__vaultDegraded(a) && !window.__usingSlimProjects){ __vaultRead(a).then(d => { if(__isBigDataImg(d)) setTimeout(() => { if(img.isConnected && __ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
           img.title = a.name;
           img.style.cursor = 'pointer';
           // v531: صور المساعد مولَّدة ⇒ تُعرض كبيرة. مرفقات المستخدم تبقى رقاقات صغيرة.
@@ -6269,7 +6604,7 @@ function renderMessages(keepScroll){
             emptyState.style.display = 'none';
             previewFrame._imageView = true;
             previewFrame._lastSrc = null;
-            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + a.dataUrl + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
+            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + ((a.dataUrl && a.dataUrl !== '[media]') ? a.dataUrl : (a.viewUrl || '')) + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
             switchWorkTab('preview');
             closeDrawers();
             if(localStorage.getItem('previewEnabled') !== 'off'){
@@ -6280,7 +6615,7 @@ function renderMessages(keepScroll){
           if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
             const ibox = document.createElement('div');
             ibox.style.cssText = 'position:relative;display:block;min-width:0;width:fit-content;max-width:min(460px,100%)';
-            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
+            __ibox = ibox; ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
           } else wrap.appendChild(img);
         } else {
           const chip = document.createElement('div');
@@ -6332,7 +6667,10 @@ function renderMessages(keepScroll){
           wrap.appendChild(chip);
         }
       });
-      div.appendChild(wrap);
+      /* v-img-first (المالك ٢٣ سبتمبر «الردود آخر الصورة لا أوّل الصور»): صور المساعد المرفقة (تعديل، بحث صور، البانيات)
+         كانت تُلحق تحت النصّ، والمرسومة داخل الردّ فوقه — فيتقلّب الترتيب. الآن الصورة أوّلًا ثمّ الردّ دائمًا. */
+      if(m.role !== 'user' && textDiv.parentNode === div && m.attachments.some(a => a && (a.isImage || a.isVideo))) div.insertBefore(wrap, textDiv);
+      else div.appendChild(wrap);
     }
     if((m.content && m.content.trim()) || (m.role !== 'user' && m.attachments && m.attachments.some(a => a && (a.isImage || a.isVideo)))){ // v669: الأيقونات تظهر تحت الصور حتى بلا نص
       const actionBar = document.createElement('div');
@@ -7319,6 +7657,13 @@ function renderMessages(keepScroll){
     return kids[0] || el;
   }
   /* عناصر لا نسحب منها: منزلقات، فيديو، كانفاس، حقول نصية، وأي قائمة تتمرر أفقيًا */
+  /* v-compare-drag-swipe-fix (لقطة المالك ٢١ سبتمبر: «السحب يسحب الشاشة كاملة إلى الخارج» —
+     شريط قبل/بعد المحسّن): حاويات المقارنة (v-compare-drag/v-compare-drag-all) صارت سحبًا مباشرًا
+     على <div> عاديّ بدل <input type=range> القديم المستثنى هنا صراحة (السطر أعلاه). أيّ سحب عليها
+     كان يبدأ أيضًا سحب الورقة/النافذة كاملة للإغلاق (هذا الملف يستمع لأي سحب من أيّ مكان في الأداة)،
+     فيتنازع مع سحب المقارنة ويغلبه بصريًّا — بالضبط ما وصفه المالك. نفس منطق استثناء «شريط تمرير أفقي»
+     أدناه (overflowX) لكن بالمعرّف مباشرة لأنّ حاويات المقارنة overflow:hidden لا scroll. */
+  var COMPARE_DRAG_IDS = { portraitCompareWrap: 1, designBAWrap: 1, fashionAiResultWrap: 1, studioAiResultWrap: 1 };
   function blocked(t){
     var e = t;
     for(var i = 0; e && e !== document.body && i < 12; i++){
@@ -7327,6 +7672,7 @@ function renderMessages(keepScroll){
       if(tag === 'input' && (e.type === 'range' || e.type === 'file')) return true;
       /* الحقول: السحب منها مسموح ما لم تكن قيد الكتابة (شكوى المالك في مولّد السيرة: الصفحة كلها حقول) */
       if((tag === 'input' || tag === 'textarea' || tag === 'select') && document.activeElement === e) return true;
+      if(e.id && COMPARE_DRAG_IDS[e.id]) return true;
       try{
         var cs = getComputedStyle(e);
         if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;
@@ -9210,12 +9556,12 @@ let providerQuickBarBuilt = false;
 window.omranPickProviderModel = function(provKey, storeKey, modelId){
   try{ if(storeKey && modelId) localStorage.setItem(storeKey, modelId); }catch(e){ __swallow(e, "save:app-05-ui#prov-arrow"); }
   try{
-    const cur = localStorage.getItem('aiapp_provider') || 'claude';
+    const cur = localStorage.getItem('aiapp_provider') || 'openai';
     if(provKey && provKey !== cur) selectProviderKey(provKey);
   }catch(e){ __swallow(e, "misc:app-05-ui#prov-arrow"); }
 };
 function selectProviderKey(key){
-  const prev = localStorage.getItem('aiapp_provider') || 'claude';
+  const prev = localStorage.getItem('aiapp_provider') || 'openai';
   localStorage.setItem('aiapp_provider', key);
   // v262: المستخدم اختار مزودًا بيده → نحترم اختياره ويتعطل التوجيه بالتخصص
   localStorage.setItem('aiapp_provider_explicit', '1');
@@ -9310,7 +9656,7 @@ function buildProviderQuickBar(){
 /* v336: قائمة المزودين المنسدلة (كمبيوتر فقط) */
 function provDDUpdateButton(){
   try{
-    const cur = localStorage.getItem('aiapp_provider') || 'claude';
+    const cur = localStorage.getItem('aiapp_provider') || 'openai';
     const p = PROVIDER_QUICK_LIST.find(x => x.key === cur) || PROVIDER_QUICK_LIST[0];
     const logo = document.getElementById('provDDLogo');
     const name = document.getElementById('provDDName');
@@ -9368,7 +9714,7 @@ function relabelProviders(){
 }
 try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
-  const current = localStorage.getItem('aiapp_provider') || 'claude';
+  const current = localStorage.getItem('aiapp_provider') || 'openai';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
     el.classList.toggle('active', el.dataset.provider === current);
     el.title = functionalLabel(el.dataset.provider);
@@ -9952,7 +10298,7 @@ try{
     if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ /* guard-ok */ } }
   }, true);
 }catch(e){ /* guard-ok */ }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','vaultSection','adminSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','ownerSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;
@@ -10089,7 +10435,8 @@ function collapseAllSettingsSections(){
 }
 
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
-const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
+// v-owner-page: «صفحة المالك» أوّل القائمة، وتُتخطّى لغير المالك (settingsOwnerUi)
+const SETTINGS_NAV_IDS = ['ownerSection','langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
@@ -10105,18 +10452,37 @@ const SETTINGS_NAV_ICONS = {
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
   pricingSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`,
   aboutSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+  ownerSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20"></path><path d="M3 18 2 7l6 4 4-7 4 7 6-4-1 11"></path></svg>`,
   feedbackSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
 };
 function stripUiEmoji(t){ try{ return (t||'').replace(/[\u{1F000}-\u{1FAFF}\u{2100}-\u{214F}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}]/gu,'').trim(); }catch(e){ return t; } }
+function settingsOwnerUi(){
+  try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
+}
+function settingsLabelWidth(listEl){
+  try{
+    const ctx = document.createElement('canvas').getContext('2d');
+    const cs = getComputedStyle(listEl);
+    ctx.font = (cs.fontWeight || '400') + ' ' + (cs.fontSize || '15px') + ' ' + (cs.fontFamily || 'sans-serif');
+    return (txt) => ctx.measureText(String(txt || '')).width;
+  }catch(e){ return (txt) => String(txt || '').length; }
+}
 function renderSettingsNavList(){
   const listEl = document.getElementById('settingsNavList');
   if(!listEl) return;
   listEl.innerHTML = '';
-  SETTINGS_NAV_IDS.forEach(sid => {
-    const headerH3 = document.querySelector('#' + sid + ' .settingsSectionHeader h3');
-    const label = stripUiEmoji(headerH3 ? headerH3.textContent : sid);
+  const owner = settingsOwnerUi();
+  const labelOf = (sid) => { const h = document.querySelector('#' + sid + ' .settingsSectionHeader h3'); return stripUiEmoji(h ? h.textContent : sid); };
+  const ids = SETTINGS_NAV_IDS.filter(sid => document.getElementById(sid) && (sid !== 'ownerSection' || owner));
+  // v-settings-tidy (أمر عمران «رتّب الإعدادات من الأصغر فوق إلى الأكبر»): الصفوف بعرض عنوانها
+  // المقيس بخطّ القائمة، الأقصر فوق؛ «صفحة المالك» تبقى أوّلًا. الترتيب يتبع اللغة الحاليّة.
+  const width = settingsLabelWidth(listEl);
+  const rest = ids.filter(sid => sid !== 'ownerSection').map((sid, i) => ({ sid, i, w: width(labelOf(sid)) }))
+    .sort((a, b) => (a.w - b.w) || (a.i - b.i)).map(x => x.sid);
+  (ids.includes('ownerSection') ? ['ownerSection'].concat(rest) : rest).forEach(sid => {
+    const label = labelOf(sid);
     const row = document.createElement('div');
-    row.className = 'settingsNavRow';
+    row.className = 'settingsNavRow' + (sid === 'ownerSection' ? ' settingsNavOwner' : '');
     row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
       '<span class="settingsNavLabel"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
     row.querySelector('.settingsNavLabel').textContent = label;
@@ -10136,6 +10502,7 @@ function showSettingsHome(){
 }
 window.showSettingsHome = showSettingsHome;
 function showSettingsPage(sid){
+  if(sid === 'ownerSection' && !settingsOwnerUi()){ showSettingsHome(); return; }
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');
   const pageTitleEl = document.getElementById('settingsPageTitle');
@@ -11167,7 +11534,7 @@ $('#btnSettings').onclick = () => {
   collapseAllSettingsSections();
   renderStats();
   renderReferral();
-  $('#provider').value = localStorage.getItem('aiapp_provider') || 'claude';
+  $('#provider').value = localStorage.getItem('aiapp_provider') || 'openai';
   $('#apiKey').value = localStorage.getItem('aiapp_apikey') || '';
   $('#modelName').value = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
@@ -11202,6 +11569,7 @@ $('#btnSettings').onclick = () => {
   $('#chkIncludeDeepSeek').checked = localStorage.getItem('aiapp_include_deepseek') !== 'false';
   $('#chkIncludeCohere').checked = localStorage.getItem('aiapp_include_cohere') !== 'false';
   try { setVoiceGenderUI(localStorage.getItem('aiapp_voice_gender') || 'female'); } catch(e) { console.error(e); }
+  try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }
   } catch(e) { console.error('settings populate error', e); }
@@ -12706,7 +13074,7 @@ const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'gr
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
   if(providerKey === 'default'){
-    effective = localStorage.getItem('aiapp_provider') || 'claude';
+    effective = localStorage.getItem('aiapp_provider') || 'openai';
   }
   if(effective === 'gemini') return await callGemini(messages, onDelta);
   if(effective === 'groq') return await callGroq(messages, onDelta);
@@ -12817,7 +13185,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   }catch(e){ __swallow(e, "misc:app-06-checkout#11"); }
   // v358 — التوجيه بالمجموعات الوظيفية: المزود المختار يوسَّع لسلسلة مجموعته
   // (الاحتياط الصامت يبقى داخل نفس المجموعة أولًا)، ثم بقية المزودين كشبكة أمان أخيرة.
-  const __sel = localStorage.getItem('aiapp_provider') || 'claude';
+  const __sel = localStorage.getItem('aiapp_provider') || 'openai';
   const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
   const order = [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
@@ -13003,6 +13371,18 @@ document.querySelectorAll('.voiceGenderBtn').forEach(b => {
     setVoiceGenderUI(b.dataset.gender);
   };
 });
+// v-maha-voice-speed: نفس نمط أزرار الجنس أعلاه لأزرار السرعة — يُزامَن عند فتح
+// الإعدادات فعليًا (app-06-checkout.js، مثل setVoiceGenderUI بالضبط) لا هنا فورًا،
+// لأن أزرار القسم قد لا تكون في DOM وقت تحميل هذا الجزء.
+function setVoiceSpeedUI(val){
+  document.querySelectorAll('.voiceSpeedBtn').forEach(b => b.classList.toggle('active', b.dataset.speed === val));
+}
+document.querySelectorAll('.voiceSpeedBtn').forEach(b => {
+  b.onclick = () => {
+    localStorage.setItem('aiapp_maha_voice_speed', b.dataset.speed);
+    setVoiceSpeedUI(b.dataset.speed);
+  };
+});
 const btnTestVoice = $('#btnTestVoice');
 if(btnTestVoice){
   btnTestVoice.onclick = () => {
@@ -13154,7 +13534,7 @@ async function voiceTabSpeak(text){
     const resp = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300) }),
+      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300), token: ttsAuthToken(), guestId: ttsGuestId() }), // v-tts-account
     });
     if(resp.ok){
       const blob = await resp.blob();
@@ -13617,6 +13997,7 @@ const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat
 let mahaStream = null, mahaMediaRecorder = null, mahaChunks = [];
 let mahaAudioCtx = null, mahaAnalyser = null, mahaVadRaf = null, mahaLastPeakRms = 0, mahaLowMicStreak = 0;
 let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking | speaking
+let mahaLastActivity = 0; // v-maha-band: آخر كلام أو ردّ — مهلة السكوت تُحسب منه
 let mahaHistory = [];
 let mahaIntroduced = false;
 let mahaCurrentAudio = null;
@@ -13631,6 +14012,7 @@ function mahaUnlockAudio(){
     const p = mahaAudioEl.play();
     if(p && p.catch) p.catch(()=>{});
   }catch(e){ __swallow(e, "misc:app-08-maha#1"); }
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.prime(); }catch(e){ __swallow(e, 'maha:goldwave-prime'); } // v-maha-goldwave
 }
 
 const btnMahaEl = document.getElementById('btnMaha');
@@ -13639,45 +14021,8 @@ const mahaOrbEl = document.getElementById('mahaOrb');
 const mahaWaveEl = document.getElementById('mahaWave');
 const mahaStateLabelEl = document.getElementById('mahaStateLabel');
 
-/* v-maha-captions: ترجمة نصية حية للمكالمة — نفس ميزة صوت GPT المتقدم.
-   في المكالمة اللحظية تصل كلمات مها تدفقًا (transcript.delta) وكلام المستخدم
-   من تفريغ الإدخال؛ وفي الوضع الأساسي النصوص جاهزة أصلًا. زر 💬 يخفيها لمن
-   يريد مكالمة صافية، والاختيار محفوظ. ولذوي ضعف السمع هي باب وصولٍ كامل. */
-const mahaCapEl = document.getElementById('mahaCaptions');
-let mahaCcOn = true; try{ mahaCcOn = localStorage.getItem('aiapp_maha_cc') !== '0'; }catch(e){ /* guard-ok: تخزين معطّل = الافتراض ظاهر */ }
-let mahaCapLive = null; // سطر مها الجاري بثّه
-function mahaCapSync(){ if(mahaCapEl) mahaCapEl.style.display = (mahaCcOn && mahaCallActive && mahaCapEl.childNodes.length) ? 'block' : 'none'; }
-function mahaCapClear(){ if(mahaCapEl) mahaCapEl.innerHTML = ''; mahaCapLive = null; mahaCapSync(); }
-function mahaCapLine(who, text){
-  if(!mahaCapEl || !text) return null;
-  const d = document.createElement('div');
-  if(who === 'user'){ d.style.cssText = 'color:#bdb4d8; font-size:11px;'; d.textContent = '👤 ' + text; }
-  else{ d.style.cssText = 'color:#f3efff;'; d.textContent = text; }
-  mahaCapEl.appendChild(d);
-  while(mahaCapEl.childNodes.length > 14) mahaCapEl.removeChild(mahaCapEl.firstChild);
-  mahaCapSync();
-  mahaCapEl.scrollTop = mahaCapEl.scrollHeight;
-  return d;
-}
-function mahaCapUser(text){ mahaCapLive = null; mahaCapLine('user', String(text || '').trim()); }
-function mahaCapDelta(delta){
-  if(!mahaCapEl || !delta) return;
-  if(!mahaCapLive){ mahaCapLive = mahaCapLine('maha', String(delta)); return; }
-  mahaCapLive.textContent += String(delta);
-  mahaCapEl.scrollTop = mahaCapEl.scrollHeight;
-}
-function mahaCapDone(){ mahaCapLive = null; }
-(function(){
-  const b = document.getElementById('btnMahaCc');
-  if(!b) return;
-  const paint = () => { b.style.background = mahaCcOn ? 'rgba(123,92,255,.45)' : 'rgba(255,255,255,.14)'; };
-  paint();
-  b.onclick = () => {
-    mahaCcOn = !mahaCcOn;
-    try{ localStorage.setItem('aiapp_maha_cc', mahaCcOn ? '1' : '0'); }catch(e){ /* guard-ok: بلا تخزين يبقى الاختيار لهذه المكالمة */ }
-    paint(); mahaCapSync();
-  };
-})();
+/* v-maha-cc-removed: لوحة الترجمة النصّيّة الحيّة وزرّها 💬 حُذفا بطلب المالك —
+   المكالمة صوت فقط بلا أيّ نصّ على الشاشة. */
 const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
 
 /* ---------- مها floating draggable window ---------- */
@@ -13746,6 +14091,7 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
 
   function pointerDown(e){
     if(typeof mahaCallMode !== 'undefined' && mahaCallMode === 'builder') return;
+    if(panel.classList.contains('maha-goldband')) return; // v-maha-band: الشريط بعرض الشاشة لا يُسحب
     dragging = true;
     handle.style.cursor = 'grabbing';
     const pt = e.touches ? e.touches[0] : e;
@@ -13785,8 +14131,18 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
   });
 })();
 
+/* v-maha-goldwave: موجة مها الذهبيّة (js/app-30-maha-wave.js) مكان الدائرة في نافذة المكالمة. الدائرة تبقى في
+   الصفحة لمنطقها (حالاتها وقياس المايك) لكنّها مخفيّة ما دامت الموجة موجودة. */
+const mahaGoldWaveEl = document.getElementById('mahaGoldWave');
+function mahaAvatarDisplay(show){
+  if(mahaOrbEl) mahaOrbEl.style.display = (show && !mahaGoldWaveEl) ? 'flex' : 'none';
+  if(mahaGoldWaveEl) mahaGoldWaveEl.style.display = show ? 'block' : 'none';
+  try{ if(window.mahaGoldWave) window.mahaGoldWave[show ? 'start' : 'stop'](); }catch(e){ __swallow(e, 'maha:goldwave-show'); }
+}
+
 function mahaSetState(state, customLabel){
   mahaState = state;
+  if(state !== 'listening') mahaLastActivity = Date.now(); // v-maha-band: مهلة السكوت تُحسب من آخر نشاط
   if(mahaOrbEl) mahaOrbEl.className = 'maha-orb-' + (state === 'error' ? 'thinking' : state);
   if(mahaWaveEl) mahaWaveEl.className = 'maha-wave-' + (state === 'error' ? 'thinking' : state);
   if(mahaStateLabelEl){
@@ -13848,6 +14204,16 @@ function mahaReadVoiceGender(){
   catch(e){ return 'female'; }
 }
 let mahaDetectedGender = mahaReadVoiceGender();
+// v-maha-voice-speed (طلب المالك «صوت مها بطيء سريع سريع جدًا» من الإعدادات › الصوت):
+// سرعة كلام مها في الوضعين (الفائق عبر تعليمة نبرة نصّية، والأساسيّ عبر معامل TTS
+// حقيقيّ في api/_lib/tts.js) — أربع درجات فقط، وأيّ قيمة أخرى/تالفة تسقط على "normal".
+const MAHA_VOICE_SPEEDS = ['slow', 'normal', 'fast', 'xfast'];
+function mahaReadVoiceSpeed(){
+  try{
+    const v = localStorage.getItem('aiapp_maha_voice_speed');
+    return MAHA_VOICE_SPEEDS.includes(v) ? v : 'normal';
+  }catch(e){ return 'normal'; }
+}
 // v-persona-pick: الأيقونة تعكس الشخصية المحفوظة من الإقلاع لا من أول مكالمة.
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } });
 else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } }, 0);
@@ -13997,7 +14363,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
@@ -14027,6 +14393,7 @@ async function mahaSpeak(text){
       // النطق معلقًا للأبد (تسريب متراكم) — الإيقاف بعد نهاية المكالمة يحسمه.
       audio.onpause = () => { if(!mahaCallActive) finish(); };
       audio.src = url;
+      try{ if(window.mahaGoldWave) window.mahaGoldWave.trackAudio(audio, blob); }catch(e){ __swallow(e, 'maha:goldwave-track'); } // v-maha-goldwave
       await audio.play();
       mahaStartInterruptListener(audio, finish);
     }catch(e){ resolve(); }
@@ -14038,7 +14405,7 @@ async function mahaSpeak(text){
 async function mahaRecordUntilSilence(){
   // نفس تحسينات المايك التي يطلبها الوضع الحديث: كانت الغائبة هنا، فصوت
   // المستخدم الهادئ يصل ضعيفًا وينرمى كأنه ضجيج — «أول مرة ما ترد».
-  mahaStream = await navigator.mediaDevices.getUserMedia({
+  mahaStream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
   let mimeType = '';
@@ -14070,7 +14437,7 @@ async function mahaRecordUntilSilence(){
   const CLEAR_SPEECH = 0.03;       // كلام واضح يُحتسب فورًا حتى أثناء المعايرة
   let noiseFloor = 0;
   let silenceThreshold = 0.015;    // يعاد حسابها بعد المعايرة
-  const SILENCE_HOLD_MS = 1200;    // كانت 900م.ث — توقف طبيعي وسط الجملة كان يقصها
+  const SILENCE_HOLD_MS = 2000;    // كانت 1200م.ث (وقبلها 900) — سكتة تفكير طبيعية وسط الكلام كانت تُقطع بعد كلمتين فقط
   const MIN_TALK_MS = 600;         // كانت 1000م.ث — «نعم» و«هلا» القصيرة كانت تضيع
   const MAX_TURN_MS = 20000;       // hard safety cap per turn
   let lastLoudAt = Date.now();
@@ -14099,7 +14466,7 @@ async function mahaRecordUntilSilence(){
         silenceThreshold = Math.min(0.028, Math.max(0.013, noiseFloor * 2.2 + 0.004));
       }
       if(rms > (elapsed < CALIBRATE_MS ? CLEAR_SPEECH : silenceThreshold)){
-        lastLoudAt = now; everLoud = true;
+        lastLoudAt = now; everLoud = true; mahaLastActivity = now; // v-maha-band
       }
       const silentFor = now - lastLoudAt;
       if(elapsed > MAX_TURN_MS || (everLoud && elapsed > MIN_TALK_MS && silentFor > SILENCE_HOLD_MS)){
@@ -14581,6 +14948,7 @@ function mahaShowImage(base64, mimeType){
     el.style.display = 'block';
   }
   if(orb) orb.style.display = 'none';
+  if(mahaGoldWaveEl) mahaAvatarDisplay(false); // v-maha-goldwave
 }
 
 // Shows a real photo fetched from the live web (image URL) instead of an
@@ -14615,6 +14983,7 @@ function mahaShowRealPhotoUrl(url){
     el.style.display = 'block';
   }
   if(orb) orb.style.display = 'none';
+  if(mahaGoldWaveEl) mahaAvatarDisplay(false); // v-maha-goldwave
 }
 
 // Searches the live web for a real photo of something that actually exists
@@ -14936,6 +15305,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       voiceGender: mahaReadVoiceGender(),
+      voiceSpeed: mahaReadVoiceSpeed(),
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -14951,7 +15321,7 @@ async function mahaStartRealtimeCall(){
   const EPHEMERAL_KEY = tokenData.clientSecret;
   if(mahaRtCancelled) throw new Error('cancelled');
 
-  mahaRtStream = await navigator.mediaDevices.getUserMedia({
+  mahaRtStream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
   if(mahaRtCancelled){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; throw new Error('cancelled'); }
@@ -14972,6 +15342,7 @@ async function mahaStartRealtimeCall(){
   mahaRtAudioEl.autoplay = true;
   pc.ontrack = (e) => {
     mahaRtAudioEl.srcObject = e.streams[0];
+    try{ if(window.mahaGoldWave) window.mahaGoldWave.attachStream(e.streams[0]); }catch(err){ __swallow(err, 'maha:goldwave-rt'); } // v-maha-goldwave
     // Give the incoming audio a slightly larger jitter buffer so small
     // network hiccups get smoothed out instead of causing an audible
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
@@ -14998,10 +15369,13 @@ async function mahaStartRealtimeCall(){
         resolveRtSessionReady();
         return;
       }    if(ev.type === 'input_audio_buffer.speech_started'){
+        mahaLastActivity = Date.now(); // v-maha-band
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
-        mahaArmRtResponseWatchdog(3000);
+        // v-maha-listen: كان ٣٠٠٠ — كلّ جملة أطول من ٣ ثوانٍ يُطلق الحارس ردّ مها في منتصفها («تتكلّم قبل لا
+        // تخلّص»)، وضجيج يبدأ «كلامًا» يُطلق ردًّا على لا شيء. الآن شبكة أمان لمجرى عالق فقط.
+        mahaArmRtResponseWatchdog(20000);
         mahaSetState('listening');
       }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){
@@ -15010,13 +15384,8 @@ async function mahaStartRealtimeCall(){
       }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
-    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); mahaCapDone(); }
+    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
     else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
-    // v-maha-captions: كلمات مها تدفقًا + كلام المستخدم من تفريغ الإدخال
-    // (اسمان للحدث: صيغة GA وصيغة المعاينة الأقدم — نلتقط كليهما).
-    else if(ev.type === 'response.output_audio_transcript.delta' || ev.type === 'response.audio_transcript.delta'){ mahaCapDelta(ev.delta); }
-    else if(ev.type === 'response.output_audio_transcript.done' || ev.type === 'response.audio_transcript.done'){ mahaCapDone(); }
-    else if(ev.type === 'conversation.item.input_audio_transcription.completed'){ mahaCapUser(ev.transcript); }
     else if(ev.type === 'error'){ console.error('[maha-realtime] server error:', ev); }
   });
 
@@ -15061,6 +15430,23 @@ async function mahaStartRealtimeCall(){
         new Promise(resolve => setTimeout(resolve, 5000)),
       ]);
       await Promise.all([connectionReady, channelReady, sessionHandshake]);
+
+      // v-maha-race-cancel (بلاغ المالك «هلا ساكتة أول مرة، وأوقات تخربط»):
+      // mahaStartCallInner يسابق هذا الإعداد بمهلة ١٢ث — لو خسر السباق يستدعي
+      // mahaEndRealtimeCall() (يقفل pc/dc/stream ويصفّر mahaRtCancelled=true)
+      // ويهبط للمسار الأساسي فورًا، لكن هذه الدالّة تستمرّ بلا توقّف (لا أحد
+      // يلغيها فعليًّا) وتصل هنا أحيانًا بعد الإلغاء بلحظات فتُعيد إحياء حالة
+      // عامّة ميتة: mahaRtActive/mahaRtReady تعودان true، والمسار الحيّ يُصدَّق
+      // «جاهز» ويُفتح مايكه (inputTrack.enabled=true) بينما المسار الأساسيّ
+      // فعليًّا يسجّل بمايك آخر في نفس اللحظة — إمّا تصادم صامت (لا ردّ) أو
+      // ردّان متداخلان (خربطة). الحارس هنا يوقف هذه الدالّة بمجرّد اكتشاف
+      // الإلغاء بدل إتمام «تفعيل» يستحيل الانتفاع منه.
+      if(mahaRtCancelled){
+        try{ pc.close(); }catch(e){ __swallow(e, 'maha:race-cancel-pc'); }
+        try{ dc.close(); }catch(e){ __swallow(e, 'maha:race-cancel-dc'); }
+        try{ mahaRtStream.getTracks().forEach(tr => tr.stop()); }catch(e){ __swallow(e, 'maha:race-cancel-stream'); }
+        throw new Error('cancelled');
+      }
 
       mahaRtActive = true;
       // v-maha-firstword: أفرغ المخزَّن المؤقّت (لو فيه كلام فعلي) قبل فتح
@@ -15410,6 +15796,7 @@ function mahaEndRealtimeCall(){
   mahaStopMicMeter();
   if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }
   if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){ __swallow(e, "misc:app-08-maha#19"); } mahaRtAudioEl = null; }
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.detachStream(); }catch(e){ __swallow(e, 'maha:goldwave-rt-end'); } // v-maha-goldwave
 }
 
 async function mahaCallLoop(){
@@ -15495,7 +15882,6 @@ async function mahaCallLoop(){
       }
 
       mahaHistory.push({ role: 'user', content: transcript });
-      mahaCapUser(transcript); /* v-maha-captions */
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       // Classic pipeline has no real function-calling like the Realtime mode.
@@ -15514,7 +15900,6 @@ async function mahaCallLoop(){
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
         mahaSetState('speaking');
-        mahaCapLine('maha', imgReply); /* v-maha-captions */
         await mahaSpeak(imgReply);
         continue;
       }
@@ -15565,7 +15950,6 @@ async function mahaCallLoop(){
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       mahaSetState('speaking');
-      mahaCapLine('maha', reply); /* v-maha-captions */
       await mahaSpeak(reply);
     }catch(e){ console.error('[maha] turn error', e); }
   }
@@ -15630,8 +16014,67 @@ function mahaStartPointsMeter(budget){
   }catch(e){ __swallow(e, "points:app-08-maha#25"); }
 }
 
+// v-maha-hide-composer: تُخفي صندوق كتابة المحادثة الرئيسي أثناء مكالمة مها
+// العائمة (وتُظهره من جديد عند إنهائها) — مكالمة صوتية بحتة لا مكان فيها
+// لصندوق كتابة يبقى شغّالًا خلف شاشة المكالمة.
+let mahaComposerHidden = false;
+function mahaHideComposer(){
+  try{
+    const bar = document.getElementById('inputbar');
+    if(!bar || mahaComposerHidden) return;
+    mahaComposerHidden = true;
+    // v-maha-band: فئة لا display:none — الصندوق مخفيّ كما كان، وزرّ «م» وحده ظاهر في مكانه لإنهاء المكالمة
+    bar.classList.add('maha-calling');
+  }catch(e){ __swallow(e, "ui:app-08-maha#composer-hide"); }
+}
+function mahaShowComposer(){
+  try{
+    if(!mahaComposerHidden) return;
+    mahaComposerHidden = false;
+    const bar = document.getElementById('inputbar');
+    if(!bar) return;
+    bar.classList.remove('maha-calling');
+  }catch(e){ __swallow(e, "ui:app-08-maha#composer-show"); }
+}
+
+/* v-maha-band (أمر المالك ٢٢ سبتمبر: «الإغلاق يكون من أيّ مكان، ولا السكوت، ولا تضغط مرّة ثانية م» — وحذف ✕):
+   في مكالمة مها (لا البنّاء) (١) أيّ ضغطة في أيّ مكان تُنهيها وتُستهلك (مثل إغلاق طبقة فوق الصفحة) — إلّا الكاميرا
+   ومعاينتها والصورة المعروضة وعارضها، فهي أدوات المكالمة؛ (٢) سكوت ٢٠ ثانية وهي تنتظر (لا المستخدم يتكلّم ولا مها
+   تتكلّم أو تفكّر) يُنهيها؛ (٣) «م» ثانيةً (على زرّه). التسجيل بعد فتح المكالمة فلا تُمسك ضغطة البدء نفسها. */
+const MAHA_SILENCE_END_MS = 20000;
+let mahaCloseWatch = null;
+function mahaStartCloseWatch(){
+  mahaStopCloseWatch();
+  mahaLastActivity = Date.now();
+  const onTap = (e) => {
+    if(!mahaCallActive || mahaCallMode === 'builder') return;
+    const tgt = e.target;
+    if(tgt && tgt.closest && tgt.closest('#btnMahaCamera, #mahaCamPreview, #mahaGenImage, #mahaImageLightbox')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    mahaEndCall();
+  };
+  const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
+  const iv = setInterval(() => {
+    if(!mahaCallActive || mahaCallMode === 'builder') return;
+    if(mahaState === 'listening' && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
+  }, 1000);
+  mahaCloseWatch = { onTap, armT, iv };
+}
+function mahaStopCloseWatch(){
+  if(!mahaCloseWatch) return;
+  clearTimeout(mahaCloseWatch.armT);
+  clearInterval(mahaCloseWatch.iv);
+  document.removeEventListener('click', mahaCloseWatch.onTap, true);
+  mahaCloseWatch = null;
+}
+
 function mahaEndCall(){
   mahaCallActive = false;
+  mahaStopCloseWatch(); // v-maha-band
+  if(mahaCallScreenEl) mahaCallScreenEl.classList.remove('maha-goldband');
+  document.body.classList.remove('maha-band-on'); // v-maha-band-under
+  mahaShowComposer();
   mahaStopPointsMeter();
   mahaLowMicStreak = 0;
   try{ mahaCameraOff(); }catch(e){ __swallow(e, "points:app-08-maha#26"); }
@@ -15643,8 +16086,8 @@ function mahaEndCall(){
   if(mahaMediaRecorder && mahaMediaRecorder.state === 'recording'){ try{ mahaMediaRecorder.stop(); }catch(e){ __swallow(e, "ui:app-08-maha#27"); } }
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
-  mahaCapClear(); /* v-maha-captions: مكالمة جديدة تبدأ بسجل نظيف */
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
+  try{ if(window.mahaGoldWave) window.mahaGoldWave.end(); }catch(e){ __swallow(e, 'maha:goldwave-end'); } // v-maha-goldwave
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
   mahaCallMode = 'assistant';
@@ -15668,11 +16111,30 @@ function mahaMicMsg(e){
              : "🎤 No mic permission yet. Answer the browser prompt, or click 🔒 in the address bar → Microphone → Allow, then tap Maha again.";
   return (ar ? "🎤 تعذّر فتح المايك" : "🎤 Could not open the microphone") + (n ? " (" + n + ")" : "");
 }
+// v-maha-mic-race: محاولة ثانية وحيدة بعد إمهال قصير إن كان الخطأ من نوع "المايك مشغول"
+// المؤقّت (NotReadable/TrackStart/Aborted) — هذا النوع تحديدًا معروف بأنه غالبًا سباق تحرير
+// عتاد لا رفض دائم، فمحاولة ثانية بعد ٣٠٠م.ث كافية غالبًا لحلّه دون أن يشعر المستخدم بتأخير.
+async function mahaGetUserMediaRetry(constraints){
+  try{ return await navigator.mediaDevices.getUserMedia(constraints); }
+  catch(e){
+    if(!/NotReadable|TrackStart|Aborted/i.test((e && e.name) || '')) throw e;
+    await new Promise(r => setTimeout(r, 300));
+    return await navigator.mediaDevices.getUserMedia(constraints);
+  }
+}
 // فحص مسبق: نطلب الإذن قبل فتح شاشة النداء، فلا تتجمّد الشاشة ١٢ ثانية بلا سبب ظاهر.
+// v-maha-mic-race (بلاغ المالك بفيديو حيّ: "ماتفتح من البداية" — نفس رسالة «المايك مشغول
+// ببرنامج ثاني» تظهر في كل محاولة): كان يفتح المايك هنا (getUserMedia بسيط) ثم يقفله فورًا،
+// ثم بعد كسور ثانية يفتحه ثانية بقيود مختلفة (echoCancellation/noiseSuppression) داخل
+// mahaStartRealtimeCall — فتح-إغلاق-فتح سريع كهذا معروف بأنه يُطلق NotReadableError/
+// TrackStartError على أندرويد لأن نظام التشغيل لا يُحرِّر عتاد المايك فورًا. الإذن إن كان
+// ممنوحًا مسبقًا (الحالة الشائعة لأي محاولة ثانية) لا يحتاج فتح المايك هنا أصلًا — نتحقّق من
+// الحالة فقط ونتخطّى الفتح التجريبي كليًّا فيختفي هذا التعارض الذاتي في أغلب الحالات.
 async function mahaMicPreflight(){
   var perm = "";
   try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ /* guard-ok: unsupported Permissions API falls through to getUserMedia. */ }
   if(perm === "denied") return mahaMicMsg({ name: "NotAllowedError" });
+  if(perm === "granted") return null; // مُصرَّح مسبقًا — لا داعي لفتح/إغلاق المايك هنا إطلاقًا
   try{
     // If the permission prompt is answered AFTER the 15s race rejected, the
     // stream still arrives with nobody left to stop it - the mic stays hot.
@@ -15683,6 +16145,10 @@ async function mahaMicPreflight(){
       new Promise(function(_res, rej){ setTimeout(function(){ rej({ name: "__timeout__" }); }, 15000); })
     ]);
     s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ /* guard-ok: an already-ended track needs no cleanup. */ } });
+    // مهلة صغيرة قبل العودة: بعض أجهزة أندرويد لا تُحرِّر عتاد المايك فور tr.stop()،
+    // والنداء الحقيقيّ القادم (mahaStartRealtimeCall) يفتحه ثانية بقيود مختلفة خلال أجزاء
+    // من الثانية — إمهال قصير يقلّل احتمال NotReadableError الذاتيّ دون تأخير محسوس للمستخدم.
+    await new Promise(function(r){ setTimeout(r, 250); });
     return null;
   }catch(e){ console.error("[maha] mic preflight failed:", e); return mahaMicMsg(e); }
 }
@@ -15697,7 +16163,7 @@ async function mahaStartCallInner(mode){
   if(mahaCallMode !== 'builder'){ await mahaEnsureVoiceChosen(); }
   if(mahaCallScreenEl){
     mahaCallScreenEl.style.display = "flex";
-    if(mahaOrbEl) mahaOrbEl.style.display = "flex";
+    mahaAvatarDisplay(mahaCallMode !== 'builder'); // v-maha-goldwave (كان: الدائرة دائمًا)
     mahaSetState("thinking", __ar ? "🎤 بانتظار إذن المايك…" : "🎤 Waiting for mic permission…");
     if(typeof mahaPositionOnOpen === "function") mahaPositionOnOpen();
   }
@@ -15719,7 +16185,7 @@ async function mahaStartCallInner(mode){
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
-  if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
+  mahaAvatarDisplay(mahaCallMode !== 'builder'); // v-maha-goldwave: الموجة الذهبيّة مكان الدائرة
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
   /* v-maha-name: الاسم بالحروف اللاتينية لغير العربي/الأردو */
@@ -15733,6 +16199,14 @@ async function mahaStartCallInner(mode){
     mahaCallScreenEl.classList.toggle('maha-builder-mode', mahaCallMode === 'builder');
     if(typeof mahaPositionOnOpen === 'function') mahaPositionOnOpen();
   }
+  // v-maha-hide-composer (طلب عمران): مكالمة مها العائمة كانت تُفتح وصندوق
+  // كتابة المحادثة الرئيسي يبقى ظاهرًا وقابلًا للاستخدام خلفها — مكالمة
+  // صوتية بحتة لا تحتاج صندوق كتابة أصلًا. لا يمسّ وضع "الوكيل الصوتي" في
+  // تبويب الصوت (builder) لأنّه تبويب مستقل لا يتراكب مع الصندوق.
+  if(mahaCallMode !== 'builder') mahaHideComposer();
+  if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band
+  document.body.classList.toggle('maha-band-on', mahaCallMode !== 'builder'); // v-maha-band-under: الجانبيّ والمعاينة فوق الشريط
+  if(mahaCallMode !== 'builder') mahaStartCloseWatch();
   // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
   // that fails for any reason do we fall back to the classic record ->
   // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.
@@ -15797,7 +16271,7 @@ async function mahaStartCall(mode){
 
 if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };
 const btnMahaDockEl = document.getElementById('btnMahaDock');
-if(btnMahaDockEl) btnMahaDockEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock
+if(btnMahaDockEl) btnMahaDockEl.onclick = () => { if(mahaCallActive && mahaCallMode !== 'builder'){ mahaEndCall(); return; } mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock + v-maha-band: «م» ثانيةً يُنهي
 if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
 
 // v273: One-time intro tour for brand-new users — points at مها button
@@ -16112,6 +16586,11 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
   var sb = document.getElementById('btnSettings');
   if(sb) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
 })();
+/* v-site-guide3 (المالك ٢٣ سبتمبر «المزوّدين كلّهم أبيهم نفس الطريقة»): نسخة العميل من قاعدة الإرشاد بين المواقع —
+   تُرسل رسالة نظام في دور الإرشاد فتصل المسارات التي بلا أدوات (الاحتياط، والمزوّد بلا أدوات)، ونصّها مطابق لـ
+   SITE_GUIDE_NOTE في api/_lib/chat.js (اختبار chat-format يطابقهما). */
+const OMRAN_SITE_GUIDE_RE = /(?:وين|فين|أين|اين)\s+(?:أ|ا)?(?:لقى|لاقي|حصل|جدد|سوي|دخل|قدم|دفع|حجز|سجل|طلع|فتح|غير|ضغط)|كيف\s+(?:أ|ا)?(?:وصل|دخل|سوي|جدد|قدم|حجز|دفع|سجل|طلع|فتح|غير|حصل|لقى)|(?:أ|ا)رشدني|دخّ?لني|ودّ?يني|دلّ?ني|(?:ما|مو)\s+(?:لقيت|حصلت|عرفت\s+(?:وين|المكان|أدخل|ادخل))|\bhow\s+(?:do|can)\s+i\s+(?:get\s+to|find|renew|apply|book|access|open)\b|\bwhere\s+(?:do|can)\s+i\b|\btake\s+me\s+to\b|\bguide\s+me\b/i;
+const OMRAN_SITE_GUIDE_NOTE = '[الإرشاد بين المواقع والصفحات — «وين ألقى كذا» · «كيف أوصل لـ» · «أرشدني» · «دخّلني على»]: أنت الدليل، والمستخدم يضغط ويتبعك. (١) ابحث بـweb_search عن الصفحة المقصودة بالضبط (صفحة الخدمة نفسها لا الموقع الرئيسيّ)، وافتحها بـfetch_page إن احتجت أسماء الأزرار. (٢) اكتب خطوات مرقّمة قصيرة؛ كلّ خطوة سطر فيه ماذا يفعل واسم الزرّ أو القائمة كما يظهر حرفيًّا بين «»، وتحتها مباشرةً سطر مستقلّ فيه رابط تلك الصفحة نفسها بصيغة [اسم الصفحة](الرابط) ليضغطه فيصل إليها فورًا — رابط لكلّ خطوة فيها صفحة جديدة. (٣) إن كانت الخدمة في موقع آخر (جهة ثانية · تطبيق · بوّابة حكوميّة) فانقله إليه صراحةً: «هذي الخدمة ما هي هنا، ادخل هنا ↓» ثمّ رابط صفحتها. (٤) الروابط من نتائج البحث أو الصفحات التي فتحتها فقط؛ وإن لم تجد رابط الصفحة الدقيقة فأعطِ أقرب صفحة وجدتها وقل أيّ زرّ يضغط منها. (٥) إن قال المستخدم إنّه ما لقي الشيء أو ما يشبه ما وصفت: لا تكرّر الكلام — ابحث من جديد وأعطه الرابط المباشر للخطوة التي وقف عندها، أو اطلب لقطة شاشة وأكمل منها. واستمرّ بالطريقة نفسها في كلّ ردود المحادثة.';
 /* Global shim so the dozen per-feature status writes scattered through the
    send flow can feed the same bar instead of wiping it with textContent=.
    Falls back to the old behaviour when no bar exists. */
@@ -16570,13 +17049,16 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     if(!__shF){ try{ __shF = fileOf(); }catch(e){ __swallow(e, 'fileOnce:app-09-attach#v642'); __shF = null; } }
     return __shF;
   };
+  /* v-share-lazy (فحص ذاكرة جهاز المالك): الفحص كان يبني ملفّ الصورة الكامل (atob لعشرات الميغا) لكلّ صورة لحظة ظهور زرّها
+     ويُبقيه في الذاكرة — ٤٧٢ م.ب في محادثة صور. canShare يحكم بالنوع لا بالمحتوى، فيُفحص بملفّ بايت واحد من النوع نفسه،
+     والملفّ الحقيقيّ يُبنى عند النقر وحدها (shareFile/fileOnce)؛ إن تعذّر بناؤه حينها تُكمل المسارات البديلة كما كانت. */
   const filePossible = () => {
     try{
       const nv = navigator;
       if(typeof File !== 'function' || typeof nv.share !== 'function') return false;
-      const f = fileOnce();
-      if(!f) return false;
-      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [f] })) return true; }catch(e){ /* guard-ok — canShare() may throw on some browsers */ } }
+      const ty = (String(dataUrl).match(/^data:([^;,]+)/) || [])[1] || 'image/png';
+      const probe = new File([new Uint8Array(1)], 'image' + (ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : '.png')), { type: ty });
+      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [probe] })) return true; }catch(e){ /* guard-ok — canShare() may throw on some browsers */ } }
       return true;
     }catch(e){ __swallow(e, 'filePossible:app-09-attach#v642'); }
     return false;
@@ -17069,22 +17551,35 @@ function omranPickerDiag(kind, input, err){
   try{
     const n = (input && input.files) ? input.files.length : -1;
     const msg = 'attach-picker ' + kind + ': #' + ((input && input.id) || '?') + ' multiple=' + !!(input && input.multiple)
-      + ' files=' + n + (err ? ' — ' + String((err && err.message) || err).slice(0, 160) : '');
+      + ' files=' + n + (input ? ' cancel-evt=' + ('oncancel' in input) : '') + (err ? ' — ' + String((err && err.message) || err).slice(0, 160) : '');
     fetch('/api/system?action=client-errors', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg, source: 'attach-picker', line: 0, col: 0, stack: '', url: location.pathname, ua: navigator.userAgent }) })
+      body: JSON.stringify({ message: msg, source: 'attach-picker', line: 0, col: 0, stack: '', url: location.pathname, ua: navigator.userAgent,
+        build: (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '' }) })
       .catch((e) => { __swallow(e, 'attach:diag'); });
   }catch(e){ __swallow(e, 'attach:diag'); }
 }
+/* v-attach-nofalse (تنبيه المالك ٢٣ سبتمبر: «attach-picker timeout … files=0» مرّتين
+   بين أخطاء المستخدمين): بلاغ «timeout» كان يُرسَل بعد ٢٠ ثانية من النقر مهما حدث —
+   (١) المستخدم ألغى المنتقي، (٢) بقي في المعرض أكثر من ٢٠ ثانية يختار (فتوقّف المراقب
+   ثمّ وصلت الصورة بـchange سليمة)، (٣) change سبق المراقب فاستوعب الملفّ ومسح
+   input.value قبل الفحص التالي. الثلاث نجاح أو إلغاء لا عطل. الآن: المراقب لا يعدّ
+   الوقت والمنتقي مفتوح؛ change بملفّات أو cancel يُنهيانه بصمت؛ والبلاغ «no-file»
+   فقط إن عاد المستخدم للصفحة (focus/visible) ومرّت ٨ ثوانٍ بلا ملفّ ولا change ولا
+   cancel — وهي الحالة الوحيدة المريبة فعلًا (معرض هواوي). حدّ أقصى ٥ دقائق بلا بلاغ. */
 function omranWatchFilePicker(input, onFiles){
-  let handled = false, ticks = 0;
+  let handled = false, total = 0, returnedAt = 0;
+  const stop = () => {
+    handled = true;
+    clearInterval(iv);
+    window.removeEventListener('focus', onReturn);
+    document.removeEventListener('visibilitychange', onVis);
+    if(input){ input.removeEventListener('change', onChange); input.removeEventListener('cancel', stop); }
+  };
   const take = () => {
     if(handled) return;
     const files = Array.from((input && input.files) || []);
     if(!files.length) return;
-    handled = true;
-    clearInterval(iv);
-    window.removeEventListener('focus', take);
-    document.removeEventListener('visibilitychange', onVis);
+    stop();
     /* v-attach-picker-v3: مسح input.value يُؤجَّل حتى تنتهي القراءة فعلًا.
        قراءة الملفّ مؤجَّلة (FileReader/createObjectURL بعد await)، ومسح
        القيمة يفصل الملفّ عن مصدره في غلاف أندرويد (content:// — نفس فخّ
@@ -17094,10 +17589,20 @@ function omranWatchFilePicker(input, onFiles){
       .catch((e) => { __swallow(e, 'attach:picker'); omranPickerDiag('ingest-failed', input, e); })
       .then(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
   };
-  const onVis = () => { if(document.visibilityState === 'visible') take(); };
-  const iv = setInterval(() => { take(); if(handled){ clearInterval(iv); return; } if(++ticks > 57){ clearInterval(iv); omranPickerDiag('timeout', input); } }, 350);
-  window.addEventListener('focus', take);
+  const onReturn = () => { take(); if(!handled && !returnedAt) returnedAt = Date.now(); };
+  const onVis = () => { if(document.visibilityState === 'visible') onReturn(); };
+  /* change بملفّات: معالجه الخاصّ يستوعبها ويمسح القيمة بعد القراءة — المراقب يتوقّف
+     فقط، ولا يمسح هو input.value أثناء قراءة المعالج (فخّ v3). */
+  const onChange = () => { if(input && input.files && input.files.length) stop(); };
+  const iv = setInterval(() => {
+    take();
+    if(handled) return;
+    if(++total > 857){ stop(); return; } // ٥ دقائق: لا نعرف شيئًا — لا بلاغ
+    if(returnedAt && Date.now() - returnedAt > 8000){ stop(); omranPickerDiag('no-file', input); }
+  }, 350);
+  window.addEventListener('focus', onReturn);
   document.addEventListener('visibilitychange', onVis);
+  if(input){ input.addEventListener('change', onChange); input.addEventListener('cancel', stop); }
 }
 let __attachHandled = false;
 /* v-attach-huawei-more («استوى لكن صورة وحدة وحدة، على الأقلّ ٥»): على أجهزة
@@ -17884,14 +18389,14 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
 /* v-edit-pro: تمرير بلا إعادة ترميز حتّى ~1.5MB (b64 2M)، وإعادة الترميز بجودة 0.92 لا 0.88 — الحروف والوجوه تصل كما هي. */
 async function omranShrinkForEdit(b64, mime, maxPx, force){
   try{
-    if(!b64 || (!force && b64.length < 2000000)) return { b64: b64, mime: mime };
+    if(!b64 || (!force && b64.length < 2000000 && !/webp/i.test(String(mime || '')))) return { b64: b64, mime: mime }; /* v-img-honest (مراجعة): webp لا يقيسه الخادم (JPEG/PNG فقط) — يُعاد ترميزه JPEG بجودة 0.92 */
     const img = await new Promise((res, rej) => {
       const i = new Image();
       i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
       i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
     });
     const mx = maxPx || 2048, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-    if(!force && sc >= 1 && b64.length < 2600000) return { b64: b64, mime: mime };
+    if(!force && sc >= 1 && b64.length < 2600000 && !/webp/i.test(String(mime || ''))) return { b64: b64, mime: mime };
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
     c.height = Math.max(1, Math.round((img.naturalHeight || mx) * sc));
@@ -18151,10 +18656,13 @@ function updateAgentModeUI(){
   lbl.textContent = lang === 'ar' ? ('وكيل عمران: ' + (on ? 'شغال ✅' : 'إيقاف')) : ('Omran Agent: ' + (on ? 'ON ✅' : 'OFF'));
   btn.style.color = on ? 'var(--accent, var(--accent))' : '';
 }
-function __stripCodeForHistory(role, s){
+/* v-owner-memory: full='all' يبقي الردّ كما هو (كوده ونصّه)، وfull آخر غير فارغ يستبدل الكود ولا يقصّ النصّ عند ٣٠٠٠ —
+   للمالك وحده (موضع النداء في بناء الأدوار). غير المالك كما كان. */
+function __stripCodeForHistory(role, s, full){
   s = String(s || '');
-  if(role !== 'assistant') return s;
-  return s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]').slice(0, 3000); // ✅ v325
+  if(role !== 'assistant' || full === 'all') return s;
+  const r = s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]');
+  return full ? r : r.slice(0, 3000); // ✅ v325
 }
 // 🕯️ الدوام: انقطاع البث لا يعني ضياع العمل — الخادم يكمل ويكتب دفتره كل خطوة.
 // نسأل الدفتر حتى ينتهي التشغيل ونستعيد نصّه، بدل رمي خطأ شبكة في وجه المستخدم.
@@ -18410,6 +18918,14 @@ async function omranSharpenImage(dataUrl, amount){
   }catch(e){ __swallow(e, 'img:sharpen'); return dataUrl; }
 }
 
+/* v-img-mix + v-img-honest: شريط الحالة يُطلق قبل وصول الصورة (بصمة v-img-engine-tag-owner ميتة في مسار التعديل)، فيُكتب
+   سطر المحرّك للمالك وحده تحت التقرير — فقط حين يعمل المحرّكان (وضع الدمج، أو محرّك ثانٍ بعد «لم يُنفَّذ»). غيره لا يرى اسمًا. */
+function __imgEngineLine(engine){
+  const e = String(engine || '');
+  if(!e || !/\[|^mix:/.test(e) || String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return '';
+  return '\n\n⚙️ ' + e;
+}
+
 async function omModeGenerateImage(cur, promptText, thinkingDiv){
   const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
   const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
@@ -18432,6 +18948,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
         else if(__o === 'image_text') __x.textFaithful = true;
         else if(__o === 'image_nano') __x.forceEngine = 'nano';
         else if(__o === 'image_gpt') __x.forceEngine = 'gpt';
+        else if(__o === 'image_mix') __x.engineMix = true; /* v-img-mix: المحرّكان معًا وصورة واحدة */
         return __x;
       })()))
     });
@@ -18450,7 +18967,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       try{ __genUrl = await omranSharpenImage(__genUrl); }catch(e){ __swallow(e, 'img:sharpen-gen'); }
       __m.attachments = [{ isImage: true, mime: (__genUrl.slice(5).split(';')[0] || __mime), dataUrl: __genUrl, name: 'image.png' }];
       // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة.
-      if(typeof __d.caption === 'string' && __d.caption.trim()){ cur.messages.push({ role: 'assistant', content: __d.caption.trim() }); }
+      if((typeof __d.caption === 'string' && __d.caption.trim()) || __imgEngineLine(__d.engine)){ cur.messages.push({ role: 'assistant', content: (String(__d.caption || '').trim() + __imgEngineLine(__d.engine)).trim() }); }
       try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok — cleanup, intentional */ }
       // 🔄 نحفظ طلب التوليد ليعيده زر «نسخة ثانية» بتنويعة جديدة
       try{ window.__omranLastImageReq = { kind:'gen', promptText: promptText }; }catch(e){ __swallow(e, 'img:save-req-gen'); }
@@ -18606,7 +19123,7 @@ window.omranAnotherVersion = async function(){
     } else {
       /* v-img-diag-owner: نفس منطق التوليد والتعديل العاديّين */
       var __whyA = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
-        ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || '?') + ']') : '';
+        ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || __data.__diag.tried || '?') + ']') : '';
       __m.content = (imgErrFriendly(__data && __data.error, lang === 'ar') || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.')) + __whyA;
     }
     renderAll(); saveState();
@@ -18726,6 +19243,8 @@ try{
    غلاف يلتقط أي استثناء يسقط سطرَ الإرسال بصمت (قبل أو بعد try الداخلي) ويعرضه
    في المحادثة بدل «لا شيء إطلاقًا»، ويكشف السبب الحقيقي في جهاز المستخدم. */
 async function sendPrompt(){
+  /* v-proj-vault: آخر صورة معدّلة ومصدرها وطبقة النصّ قد تكون في المخزن (مشروع عاد إليه المستخدم أو إقلاع) — تُستعاد قبل أن يقرأها الإرسال */
+  try{ const __cb = getCurrent(); const __bp = (__cb && window.__vaultProjBlobs) ? window.__vaultProjBlobs(__cb) : null; if(__bp) await __bp; }catch(e){ __swallow(e, 'vault:blobs-send'); }
   try{ return await __sendPromptCore.apply(this, arguments); }
   catch(e){
     try{
@@ -19064,6 +19583,11 @@ async function __sendPromptCore(){
       /* الصورة أُرفقت بالتخمين لا بالطلب: النموذج يتجاهلها بصمت إن لم تكن الرسالة عنها (بدل «الصورة المرفقة لا علاقة لها…») */
       apiText += (apiText ? '\n\n' : '') + '[ملاحظة للنموذج: الصورة memory.png أُرفقت تلقائيًّا من ذاكرة المحادثة لأنّ الرسالة قد تشير إليها. إن كانت الرسالة لا تخصّ الصورة فتجاهلها تمامًا: لا تذكرها ولا تصفها ولا تقل إنّها لا علاقة لها بالسؤال، وأجب عن الرسالة وحدها.]';
     }
+    /* v-img-mix (مراجعة): في وضع «دمج نانو + GPT» بعد صورة، رسالة ليست طلب صورة جديدة = تعديل على آخر نسخة. التقرير رسالة منفصلة
+       بعد الصورة فكان فحص «الدور السابق حمل صورة» يفشل، فتُرسم صورة جديدة من «خلها سوداء» وحدها. */
+    if(!imageAttachments.length && window.__omMode === 'image_mix' && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 300 && !__IMGF_NEW_RE.test(text)){
+      imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
+    }
     /* v-guide: نعيد نفس اللقطة مع الرسائل التالية داخل جلسة الإرشاد، وإلا أجاب
        النموذج من ذاكرته عن شكل البرنامج بدل الشاشة التي أمام المستخدم.
        السقف (٦ أدوار / ٤٠٠ حرف) يحدّ تكلفة إعادة الإرسال. */
@@ -19270,7 +19794,10 @@ function __friendlyErr(e){
     // v-photo-make (لقطة عمران: «صورة جميلة عليها دعاء الجمعة» رُدّت بفشل جلب):
     // «صورة عليها/مكتوب عليها…» طلب صناعة لا جلب — يمر للنموذج فيرسمها.
     const __photoMakeRe = /عليها|عليه\s|مكتوب|اكتب|دعاء|أدعي[ةه]|تهنئ|بطاق[ةه]|معايد|قالب|بوستر|منشور/i;
-    const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
+    /* v-img-one-road: جلب صور الإنترنت فقط حين يُطلب صراحةً («صور حقيقية»، «من النت») أو بالجمع («عطني صور ليوبارد 8»)؛
+       المفرد («أبي صورة قطة») بناء. */
+    const __realPhotoCue = /(حقيقي|حقيقية|من\s*النت|من\s*الانترنت|من\s*الإنترنت|من\s*قوقل|من\s*جوجل|\breal\b|\bactual\b|from\s+the\s+(?:web|internet))/i.test(text) || /(?:^|[\s،,])(?:صور)(?!\s*لي(?:$|[\s،,.!]))(?=$|[\s،,.!])|\b(?:photos|pictures|images)\b/i.test(text);
+    const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
       cur.messages.push(__logoMsg);
@@ -19868,7 +20395,9 @@ function __friendlyErr(e){
     // 🎬 فيديو من المحادثة مباشرة: صورة + "سوي فيديو/حركها" → Runway image_to_video،
     // وبدون صورة مع طلب فيديو صريح → text_to_video. (كل الأقسام في مكان واحد)
     const __videoWordRe = /فيديو|ڤيديو|\bvideo\b/i;
-    const __animateRe = /(حرك|حرّك|animate)/i;
+    /* v-animate-word: «حرك» كلمةً قائمة (مع و/ف اختياريّة) لا مقطعًا داخل «محرك/متحرك/الحركة» — لا `\b` للعربيّة في JS.
+       «انته اي محرك» بعد تعديل صورة كان يطلق فيديو مدفوعًا من آخر صورة. */
+    const __animateRe = /(?:^|[^\u0600-\u06FF])[وف]?(?:حرك|حرّك)|\banimate/i;
     const __vidSrc = __srcImg
       ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
@@ -19972,21 +20501,24 @@ function __showImgLoading(el, ar, en){
   const _st = window.__chatStatus;
   if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){ /* guard-ok — cleanup, intentional */ } }
   if(!el) return;
-  // v666: رجوع لبطاقة v664 — بطاقة رمادية بزوايا دائرية، نص «جارٍ إنشاء الصورة»، نقاط تتنفس
-  if(!document.getElementById('omran-imgload-css')){
-    const st = document.createElement('style'); st.id = 'omran-imgload-css';
-    st.textContent = '@keyframes omranDotsBreathe{0%,100%{opacity:.35}50%{opacity:.9}}';
+  /* v-img-box (فحص المالك ٢٣ سبتمبر «كلّ ما أريد بناء صورة في مربّع يطلع»): مسار «عطني صور…» يعيد رسم القائمة حين لا
+     يجد صورًا في البحث فيهبط للتوليد — فكانت البطاقة تُرسم في عنصر خرج من الصفحة ولا تظهر. تُعاد إلى آخر المحادثة. */
+  try{ if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el); }catch(e){ /* guard-ok — العرض اختياريّ */ }
+  /* v-img-gold-dots (المالك ٢٣ سبتمبر، بعد ثلاث معاينات: «الخلفية سوداء، والنقاط بدرجة هذا الذهبي، هي اللي تتحرّك في المربّع
+     كامل منظّمة مش عشوائيّة»؛ رفض الموجة بخطوط ثمّ «الانفجار» من الوسط): شبكة ١٣×١٣ نقطة ذهبيّة ثابتة على أسود، وإضاءة تمشي
+     عليها بخطوط قُطريّة من فوق يمين إلى تحت يسار — كلّ قُطر يلمع معًا ثمّ الذي بعده. CSS + تأخير لكلّ نقطة، وتتوقّف مع
+     prefers-reduced-motion. معاينة: https://claude.ai/artifact/PG7aNWPP9TXwohqE8KaVrJ */
+  if(!document.getElementById('omran-imggen-css2')){
+    const st = document.createElement('style'); st.id = 'omran-imggen-css2';
+    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
     document.head.appendChild(st);
   }
-  // v672: بالوضع الفاتح تنعكس الألوان — بطاقة فاتحة ونقاط وكتابة غامقة (نفس الشكل)
-  const __light = document.documentElement.getAttribute('data-mode') === 'light';
-  const __cardBg = __light ? '#e9e9ec' : '#3a3a3d';
-  const __txtCol = __light ? 'rgba(0,0,0,.75)' : 'rgba(255,255,255,.85)';
-  const __dotCol = __light ? 'rgba(0,0,0,.30)' : 'rgba(255,255,255,.35)';
-  el.innerHTML = `<div style="display:block;width:min(340px,85vw);height:min(340px,85vw);background:${__cardBg};border-radius:24px;margin:6px 0;position:relative;overflow:hidden">
-    <div style="position:absolute;top:18px;right:20px;color:${__txtCol};font-size:15px" dir="rtl">جارٍ إنشاء الصورة</div>
-    <div style="position:absolute;inset:0;margin:auto;width:62%;height:52%;background-image:radial-gradient(${__dotCol} 1.2px,transparent 1.2px);background-size:16px 16px;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent);animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
-  </div>`;
+  const __N = 13, __steps = 2 * (__N - 1);
+  let __dots = '';
+  for(let y = 0; y < __N; y++) for(let x = 0; x < __N; x++){
+    __dots += '<i class="omDot" style="left:' + (12 + x * 76 / (__N - 1)).toFixed(2) + '%;top:' + (18 + y * 76 / (__N - 1)).toFixed(2) + '%;--d:' + (((__N - 1 - x) + y) / __steps * 1.9).toFixed(3) + 's"></i>';
+  }
+  el.innerHTML = '<div class="omGen" role="status" aria-label="جارٍ إنشاء الصورة"><div class="omGenTxt" dir="rtl">جارٍ إنشاء الصورة</div>' + __dots + '</div>';
 }
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
@@ -20007,7 +20539,13 @@ function __showImgLoading(el, ar, en){
     // v-follow-edit-intent: المتابعة على آخر صورة مولّدة تشترط نيّة تعديل/أسلوب
     // صريحة (__editStyleIntent المعرّف أعلى) — «كبّرها/خلها أحمر/3d» تعمل، و«الفئة»
     // ونحوها لا تولّد شيئًا.
-    const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text));
+    /* v-img-loop (المالك ٢٣ سبتمبر: «عند رفع الصور أريد كذا وكذا لين أوصل للصورة المطلوبة»): مسبار ١٤ متابعة بعد صورة —
+       ٥ منها («أكثر واقعية»، «نفس الشي بس مبتسمة»، «لا، الخلفية فقط»، «حلوة بس الإضاءة قوية») ذهبت للمحادثة لأنّ نيّة
+       التعديل قائمة كلمات («واقعي» لا تطابق «واقعية»، «إضاءة» لا تطابق «الإضاءة»). كتطبيقات الصور الكبرى: بعد صورة مباشرةً
+       أيّ رسالة قصيرة ليست سؤالًا ولا شكرًا ولا طلب صورة جديدة ولا كودًا = تعديل على آخر نسخة. */
+    const __ackOnly = /^\s*(?:هلا|مرحبا|السلام\s*عليكم|شكرا|شكرًا|مشكور|تسلم|تسلمين|يعطيك\s*العافية|تمام|ممتاز|رائع|جميل|جميلة|حلو|حلوة|زين|نعم|لا|اوكي|أوكي|ok|okay|thanks|thank you|nice|great|perfect|yes|no)\s*[.!👍❤️🌹]*\s*$/i;
+    const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 300 && !__ackOnly.test(text) && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
+    const __FOLLOW_DEFAULT = __FOLLOW_ANY || !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text));
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/
        ارسم صورة») بلا أي فعل تعديل وبلا إشارة للمرفق = توليد جديد نظيف
@@ -20025,7 +20563,35 @@ function __showImgLoading(el, ar, en){
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    /* v-img-undo (مسبار المتابعات: «رجعها زي أول» ذهبت للمحادثة — لا تراجع إطلاقًا): الرجوع للنسخة السابقة («زي أول»،
+       «رجعها»، «تراجع») أو الأصليّة («الأصلية»، «الأولى») من صور المحادثة نفسها — فوريّ بلا نداء محرّك، وتصير هي
+       المصدر للتعديل التالي. */
+    const __undoRe = /^\s*(?:رجّ?ع(?:ها)?|ارجع(?:ها)?|تراجع|الغ[يِ]?\s*(?:التعديل|آخر\s*تعديل)|undo|go\s*back|revert)(?=$|[\s،,.!])|زي\s*(?:أول|اول|قبل|ما\s*كانت)|(?:النسخة|الصورة)\s*(?:السابقة|الأولى|الاولى|الأصلية|الاصلية)|(?:لل|ل)(?:أصلية|اصلية|أولى|اولى)/i;
+    if(text && text.length <= 80 && (!__srcImg || __srcImg._fromMemory) && cur.lastEditedImage && cur.lastEditedImage.b64 && __undoRe.test(text) && !__nanoQ.test(text)){
+      const __chain = [];
+      /* v-mem-guard2: صور خارج نافذة العرض تعود لمعرّفها في المخزن — تبقى في السلسلة وتُقرأ منه حين تُختار */
+      cur.messages.forEach(m => { if(m && Array.isArray(m.attachments)) m.attachments.forEach(a => { if(a && a.isImage && (/^data:image\//.test(a.dataUrl || '') || (a.vaultId && !a.purged))) __chain.push(a); }); });
+      const __wantOrig = /(أصلي|اصلي|أولى|اولى|original)/i.test(text); // «للأصلية» و«الأصلية» و«الأولى»
+      const __pick = __wantOrig ? __chain[0] : __chain[__chain.length - 2];
+      if(!__pick || __pick === __chain[__chain.length - 1]){
+        cur.messages.push({ role: 'assistant', content: t('imgUndoNone') });
+        thinkingDiv && thinkingDiv.remove();
+        renderAll(); saveState();
+        return;
+      }
+      {
+        if(!/^data:image\//.test(__pick.dataUrl || '') && __pick.vaultId){ try{ await __vaultRead(__pick); }catch(e){ __swallow(e, 'img:undo-vault'); } }
+        if(!/^data:image\//.test(__pick.dataUrl || '')){ cur.messages.push({ role: 'assistant', content: t('imgUndoNone') }); thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return; }
+        const __mm = (__pick.dataUrl.match(/^data:([^;]+);base64,/) || [])[1] || 'image/png';
+        cur.messages.push({ role: 'assistant', content: t(__wantOrig ? 'imgUndoOrig' : 'imgUndoPrev'), attachments: [{ name: 'image.png', isImage: true, mime: __mm, dataUrl: __pick.dataUrl }] });
+        cur.lastEditedImage = { b64: __pick.dataUrl.split(',')[1] || '', mime: __mm };
+        cur.lastMsgWasImageEdit = true;
+        thinkingDiv && thinkingDiv.remove();
+        renderAll(); saveState();
+        return;
+      }
+    }
+    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || (window.__omMode === 'image_mix' && __srcImg && !__srcImg._fromMemory) /* v-img-mix: الوضع الصريح + صورة مرفقة = تعديل عليها */ || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, (__IMG_UPGRADE || __IMG_ELEVATE) ? 'جاري تطوير الصورة…' : 'جاري تعديل الصورة…', (__IMG_UPGRADE || __IMG_ELEVATE) ? 'Improving the image…' : 'Editing image…');
       const __upgSrc = (!__srcImg && (__IMG_UPGRADE || __IMG_ELEVATE) && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
@@ -20332,14 +20898,14 @@ function __showImgLoading(el, ar, en){
         try{
           __showImgLoading(thinkingDiv, 'جاري تبديل الحرف في مكانه…', 'Swapping the letter in place…');
           const __lsShr = await omranShrinkForEdit(__b64, __mime);
-          const __lsBody = { prompt: String(text || '').slice(0, 600), userText: String(text || '').slice(0, 600), textSwap: true, editImageBase64: __lsShr.b64, editMimeType: __lsShr.mime };
+          const __lsBody = { prompt: String(text || '').slice(0, 600), userText: String(text || '').slice(0, 600), textSwap: true, editImageBase64: __lsShr.b64, editMimeType: __lsShr.mime, engineMix: (window.__omMode === 'image_mix') || undefined };
           const __lsRes = await fetch('/api/maha-image', { method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal, body: JSON.stringify(Object.assign({}, __lsBody, { token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })) });
           const __lsData = await __lsRes.json().catch(() => ({}));
           if(__lsRes.ok && __lsData.imageBase64){
             const __lsMime = __lsData.mimeType || 'image/png';
             let __lsUrl = 'data:' + __lsMime + ';base64,' + __lsData.imageBase64;
             try{ __lsUrl = await omranSharpenImage(__lsUrl); }catch(e){ __swallow(e, 'img:sharpen-swap'); }
-            cur.messages.push({ role:'assistant', content:(typeof __lsData.caption === 'string' ? __lsData.caption : ''), attachments:[{ name:'edited.png', isImage:true, mime:(__lsUrl.slice(5).split(';')[0] || __lsMime), dataUrl:__lsUrl }] });
+            cur.messages.push({ role:'assistant', content:(typeof __lsData.caption === 'string' ? __lsData.caption : '') + __imgEngineLine(__lsData.engine), attachments:[{ name:'edited.png', isImage:true, mime:(__lsUrl.slice(5).split(';')[0] || __lsMime), dataUrl:__lsUrl }] });
             /* v-img-engine-tag-owner: المحرّك الحقيقيّ للمالك وحده. */
             try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__lsData.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
             cur.lastEditedImage = { b64: __lsData.imageBase64, mime: __lsMime };
@@ -20380,7 +20946,7 @@ function __showImgLoading(el, ar, en){
       const __res = await fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         signal: genAbortController.signal,
-        body: JSON.stringify({ prompt: __editPrompt, userText: String(text || '').slice(0, 600) /* v-nano-pro-edit: كلمات المستخدم نفسها للنيّة */, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, history: (__continuesEditChain && Array.isArray(cur.imageTurns) && cur.imageTurns.length) ? cur.imageTurns.slice(-3) : undefined /* v-image-memory */, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+        body: JSON.stringify({ prompt: __editPrompt, userText: String(text || '').slice(0, 600) /* v-nano-pro-edit: كلمات المستخدم نفسها للنيّة */, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, history: (__continuesEditChain && Array.isArray(cur.imageTurns) && cur.imageTurns.length) ? cur.imageTurns.slice(-3) : undefined /* v-image-memory */, engineMix: (window.__omMode === 'image_mix') || undefined /* v-img-mix (الخادم يقبله للمالك وحده) */, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const __data = await __res.json().catch(() => ({}));
       const __ok = __res.ok && !!__data.imageBase64;
@@ -20389,7 +20955,7 @@ function __showImgLoading(el, ar, en){
         const __outMime = __data.mimeType || 'image/png';
         let __editUrl = 'data:' + __outMime + ';base64,' + __data.imageBase64;
         try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
-        cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
+        cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */ + __imgEngineLine(__data.engine), attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
         // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
         try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
@@ -20410,7 +20976,7 @@ function __showImgLoading(el, ar, en){
       } else {
         /* v-img-diag-owner: نفس منطق التوليد العاديّ — السبب الحقيقيّ (__diag) يظهر للمالك وحده */
         var __whyE = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
-          ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || '?') + ']') : '';
+          ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || __data.__diag.tried || '?') + ']') : '';
         cur.messages.push({ role: 'assistant', content: (imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?'))))) + __whyE });
         cur.lastMsgWasImageEdit = true;
       }
@@ -20480,7 +21046,7 @@ function __showImgLoading(el, ar, en){
       const __archText = __archFollowUp ? (__archAffirm ? __archCtxText : (__archCtxText + ' — والمطلوب الآن تحديدًا: ' + text)) : text;
       cur.lastArchText = __archFollowUp ? __archCtxText : text;
       const __archGen = async (label, prompt) => {
-        chatPhase('⚙️', label, thinkingDiv);
+        __showImgLoading(thinkingDiv, label, label); // v-img-box: المربّع بدل سطر «⚙️»
         let __d = {}; let __k = false;
         try{
           for(let __t3 = 0; __t3 < 3 && !__k; __t3++){
@@ -20550,10 +21116,17 @@ function __showImgLoading(el, ar, en){
     }
     // 🏛️ v225: طلب نصي بنية صورة بدون أي صورة مرفقة (تصور معماري/منظور/ارسم...)
     // → توليد صورة فعلي بـ Gemini بدل رد نظري أو وعود فارغة من المزود.
+    /* v-img-one-road (المالك ٢٣ سبتمبر «وحّد طرق بناء الصور في طريق واحد»): مسبار ٣٠ طلبًا — «ولّد صورة»، «تخيّل مدينة»، «لوحة
+       زيتيّة»، «خلفية جوال»، «generate an image of» كانت تذهب لأداة المحادثة (بلا مربّع ولا تقرير ولا حلقة تعديل)، و«أبي صورة
+       قطة» لبحث صور الإنترنت. كلّ طلب صورة جديدة يمرّ الآن بالبانِي نفسه: مربّع · تقرير · متابعة وتراجع. */
+    const __unifiedBuildRe = /(?:^|[\s،,])(?:ولّد|ولد|اصنع|أنشئ|انشئ|سوّ?ي|سو|اعمل|أعمل|صمّ?م|ارسم|أرسم|generate|create|make|draw|render)\s*(?:لي\s*)?(?:صور[ةه]|صوره|رسم[ةه]|لوح[ةه]|خلفي[ةه]|an?\s+image|an?\s+picture|an?\s+illustration|image|picture|illustration|wallpaper)(?=$|[\s،,.!])|(?:^|[\s،,])(?:صوّ?رني|صوّر\s*لي)|(?:^|[\s،,])(?:أبي|ابي|ابغى|أبغى|أبغي|ابغي|اريد|أريد|عطني|أعطني|اعطني|هات|بدي|ودي)\s*(?:لي\s*)?(?:صور[ةه]|صوره|رسم[ةه]|لوح[ةه]|خلفي[ةه])(?=$|[\s،,.!])|(?:^|[\s،,])(?:لوح[ةه]\s*(?:زيتي[ةه]|مائي[ةه]|فني[ةه])|خلفي[ةه]\s*(?:جو[ّا]?ل|للجوال|شاش[ةه]|للشاش[ةه]|موبايل|ايفون|آيفون)|منظر\s*طبيعي|wallpaper)|(?:^|[\s،,])تخيّ?ل\s+(?!لو|إن|ان|انك|إنك|معي|معاي|أن|اني|إني)\S|\b(?:an?|the)\s+(?:image|picture|illustration)\s+of\b/i;
     const __txtOnlyImgRe = /^\s*صور[هة]\s+\S|(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
     if(text && !__blockAutoImage && __mediaLane !== 'none' && __mediaLane !== 'video' /* v-media-gate */ && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
-       (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
-      if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
+       (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)) || (__unifiedBuildRe.test(text) && !__nanoQ.test(text)))){
+      /* v-img-bare (مسبار الصور ٢٣ سبتمبر): «ارسم» وحدها كانت تُرسل للمولّد بلا موضوع فترسم شيئًا عشوائيًّا —
+         فعل رسم بلا موضوع يُسأل عنه كالطلب المبهم. */
+      const __bareDraw = /^\s*(?:ارسم|أرسم|ارسمي|ارسم\s*لي|ارسملي|رسمة|رسمه|صمم|صمّم|draw|imagine)\s*[.!؟?]*\s*$/i.test(text);
+      if(__bareDraw || (!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text))){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
         renderAll(); saveState();
         thinkingDiv && thinkingDiv.remove();
@@ -20677,6 +21250,8 @@ function __showImgLoading(el, ar, en){
     if(__pastedDoc) apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة نصٌّ ملصوق (تقرير أو رسالة أو سجل أخطاء) وليست طلب بناء. حلّله: ماذا يعني، ما السبب، وما الخطوات العملية المطلوبة من المستخدم بالترتيب — بلغة المستخدم. ممنوع منعًا باتًا بناء تطبيق أو صفحة أو أي كتلة كود ردًّا عليه، حتى لو ورد فيه «app» أو «feature» أو «submit» — إلا إذا كتب المستخدم بنفسه أمر بناء صريحًا.'});
     /* v-topic-memory: الصياغة القديمة «أجب عن الأخيرة وحدها… التاريخ خلفيّة فقط» علّمت النموذج النسيان. */
     if(!__quietSocialTurn) apiMessages.push({role: 'system', content: 'قاعدة الموضوع (أولوية قصوى): رسالة المستخدم الأخيرة تحدّد الموضوع الحاليّ. إن كانت موضوعًا جديدًا فأجب عنه وحده ولا تكمل السابق ولا تخلطه به من تلقاء نفسك. وإن عادت إلى موضوع سابق في هذه المحادثة فأنت تذكره كاملًا بتفاصيله وتبني عليه — لا تقل إنّك لا تعرفه ولا تطلب إعادته. تاريخ المحادثة كلّه ذاكرتك الحاضرة، لا قائمة مهام تُعاد.', __topicRule: true});
+    const __siteGuideTurn = !__quietSocialTurn && !!text && OMRAN_SITE_GUIDE_RE.test(text); // v-site-guide3
+    if(__siteGuideTurn) apiMessages.push({role: 'system', content: OMRAN_SITE_GUIDE_NOTE});
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
       apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
@@ -20817,9 +21392,12 @@ DESIGN RULES (non-negotiable):
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
     {
-      const MAX_TURNS = 24;        // عدد أدوار المحادثة المرسلة كاملة
-      const MAX_CHARS = 90000;     // سقف حجم السياق الكلي
-      const MAX_PER_MSG = 7000;    // سقف الرسالة الواحدة (بلا قص من المنتصف)
+      /* v-owner-memory (المالك ٢٢ سبتمبر «المحادثة شبه ضعيفة»): للمالك المحادثة كاملة كالتطبيقات الأصليّة —
+         ٢٠٠ دور حتّى ٤٠٠ ألف حرف، والردّ السابق بكوده ونصّه كاملًا ما لم يكن للمحادثة مشروع (كوده يُرسل منفصلًا). */
+      const __ownerCtx = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      const MAX_TURNS = __ownerCtx ? 200 : 24;        // عدد أدوار المحادثة المرسلة كاملة
+      const MAX_CHARS = __ownerCtx ? 400000 : 90000;  // سقف حجم السياق الكلي
+      const MAX_PER_MSG = __ownerCtx ? 60000 : 7000;  // سقف الرسالة الواحدة (بلا قص من المنتصف)
 
       // ① مرساة الموضوع: أوائل رسائل المحادثة تبقى كتعليمة نظام قصيرة
       //    حتى لا يضيع موضوع المحادثة الأصلي بعد عشرات الرسائل.
@@ -20837,11 +21415,11 @@ DESIGN RULES (non-negotiable):
       // ② أدوار محادثة حقيقية بدل ضغط السجل في رسالة system واحدة.
       //    هذا هو الإصلاح الأساسي: النموذج يرى محادثة، لا تعليمات.
       let __turns = [];
-      if(!__quietSocialTurn){
+      if(!__quietSocialTurn || __ownerCtx){ // v-owner-memory: للمالك «زين/ممتاز» وسط الشغل تحمل التاريخ
         __historyMsgs.slice(-MAX_TURNS).forEach(m => {
           if(!m || m._loading || m._failed) return;
           const role = (m.role === 'user') ? 'user' : 'assistant';
-          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content)) || '').trim();
+          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content), __ownerCtx ? (cur.code ? 'text' : 'all') : '') || '').trim();
           if(!txt) return;
           txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
           if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط
@@ -21081,10 +21659,10 @@ DESIGN RULES (non-negotiable):
          ~66 حرفًا بالثانية، مع تسريع فقط عند تراكم يفوق 1200 حرف حتى لا
          يقضي ردٌّ طويل جدًا دقيقة كاملة «يتكتب» بعد اكتماله. */
       const REVEAL_TICK_MS = 30;
-      const __revealStep = (st) => {
-        const left = st.target.length - st.shown;
-        return left > 1200 ? Math.ceil(left / 300) : 2;
-      };
+      /* v-askall-fast (المالك ٢٣ سبتمبر «المزوّد بطيء وهو يكتب — كلّ المزوّدين»): فقاعات «اسأل الكل»
+         بقيت على وتيرة v-reveal-slow (حرفان كلّ ٣٠مل ≈ ٦٦ حرفًا/ث) بعد أن ألغتها v-chat-fast في المحادثة
+         العاديّة — فكلّ مزوّد يبدو بطيئًا مهما كانت سرعته. الآن كلّ نبضة تعرض كلّ ما وصل: سرعة المزوّد نفسه. */
+      const __revealStep = (st) => st.target.length - st.shown;
       const ensureRevealTimer = (msg) => {
         let st = revealStates.get(msg._uid);
         if(!st){
@@ -21101,7 +21679,8 @@ DESIGN RULES (non-negotiable):
               msg.content = st.target;
               const el = messagesEl.querySelector('[data-askuid="' + msg._uid + '"]');
               // strip ** أثناء الحركة حتى لا يظهر الماركداون خامًا للمستخدم
-              if(el) el.textContent = st.target.slice(0, st.shown).replace(/\*\*/g, '');
+              // v-askall-fast: المنسّق الحيّ نفسه الذي تستعمله المحادثة (أسطر مرتّبة، روابط، عناوين) بدل نصّ خام
+              if(el) renderStreamingAssistant(el, st.target.slice(0, st.shown));
               // v610 — الحركة تكتب النصّ خامًّا بـtextContent، فروابط الماركداون
               // تبقى عارية حتّى الرسم النهائيّ. ولو بُتر الردّ أو تعطّل الإنهاء
               // لم يأتِ ذلك الرسم أبدًا فبقيت خامًا (عيب رآه عمران). عند لحاق
@@ -21181,7 +21760,14 @@ DESIGN RULES (non-negotiable):
           st._flushed = 0; // v610 — نصّ جديد يستحقّ رسمًا مصيَّرًا جديدًا
         };
         try{
-          const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
+          /* v-site-guide3: «اسأل الكل» يستدعي كلّ مزوّد مباشرةً بلا بحث — فلا روابط صفحات. في دور الإرشاد يمرّ
+             مزوّدو الأدوات بمسار الأدوات نفسه (بحث + قراءة صفحة) كالمحادثة العاديّة؛ أيّ عثرة تهبط للمباشر. */
+          let reply = null;
+          if(__siteGuideTurn && TOOL_PROVIDERS.indexOf(p.key) !== -1 && typeof window.callChatWithTools === 'function'){
+            try{ const __gr = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, p.key); if(__gr && __gr.reply) reply = __gr.reply; }
+            catch(e){ if(e && e.name === 'AbortError') throw e; __swallow(e, 'askall:site-guide-tools'); }
+          }
+          if(reply === null) reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
           var __chatVideo = window.__chatVideoResult;
           if (__chatVideo && __chatVideo.url) {
             msg.attachments = (msg.attachments || []).concat([{ isVideo: true, url: __chatVideo.url, name: __chatVideo.name || 'chat-video.mp4', mime: 'video/mp4' }]);
@@ -21650,17 +22236,21 @@ DESIGN RULES (non-negotiable):
         __live.target = stripped;
         __liveTimer();
       };
-      // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
+      // المزود المختار من المستخدم يرد بنفسه (GPT هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
       const isBuildTask = __routeFix && !__gateNoBuild;
-      const __selProv = localStorage.getItem('aiapp_provider') || 'claude';
+      const __selProv = localStorage.getItem('aiapp_provider') || 'openai';
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
       // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
       // ٦ أغسطس: الاختيار الصريح يُحترم فقط حيث توجد قائمة تُختار منها (الجوال).
-      const __respectExplicit = !__provUiHidden() && !!localStorage.getItem('aiapp_provider_explicit');
+      /* v-owner-free (أمر المالك ٢٢ سبتمبر «الصلاحيّة التامّة للمزوّدين — أنا صاحب التطبيق»): للمالك وحده
+         المزوّد الذي اختاره هو الذي يردّ — لا تحويل قسريّ إلى كلود للبناء/الإصلاح/الرؤية، ولا قفل خيط.
+         غير المالك كما كان. */
+      const __ownerFree = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      const __respectExplicit = __ownerFree || (!__provUiHidden() && !!localStorage.getItem('aiapp_provider_explicit'));
       const __specProv = (!__routeFix && !__respectExplicit) ? pickSpecialtyProvider(text) : null;
       // 🖼️→🌐 v272: صورة مرفقة + طلب ترجمة/قراءة نص → توجيه خلفي لأقوى مزود رؤية (Claude)
       // حتى لو المستخدم واقف على مزود نظره ضعيف بالصور (Cohere/Groq...). الواجهة ما تتغير.
-      const __visionOverride = (imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
+      const __visionOverride = (!__ownerFree && imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
       // v382: بوابة البناء دائمًا تروح لـ Claude (الكينج) — أي مزود ثاني ممنوع يوصف البناء
       // v401: البناء وإصلاح الكود يثبتان على Claude — لا كل رسالة قصيرة.
       //
@@ -21673,8 +22263,8 @@ DESIGN RULES (non-negotiable):
       // الصحيح: بوابة البناء (موافقة صريحة) أو طلب إصلاح صريح («صلّح»، «ما
       // يشتغل»، «error»). أما «ممكن…» فتحترم الزر الذي ضغطه المستخدم.
       // v405: احترام الزر خيارٌ للمستخدم — من يريد مزوده في كل شيء يثبته ويتحمّل نتيجته.
-      var __pinProv = false;
-      try{ __pinProv = localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
+      var __pinProv = __ownerFree; // v-owner-free: المالك مثبَّت على اختياره دائمًا
+      try{ __pinProv = __pinProv || localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
       const __effProv0 = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
       const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit, isCasualTurn(text));
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
@@ -21721,6 +22311,20 @@ DESIGN RULES (non-negotiable):
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
       // صفحة · تشغيل كود)، فيقرّر النموذج بنفسه متى يحتاج أداة بدل أن تقرّر
       // عنه أنماط نصّيّة في المتصفّح. أيّ عثرة تهبط صامتة إلى المسار القديم.
+      /* v-img-box: أداة generate_image/edit_image في مسار الأدوات كانت تُظهر سطر «🎨 يرسم صورة…» بلا مربّع. الآن
+         app-18 يستدعي هذا فيظهر المربّع نفسه فوق الردّ (الصورة تُعرض فوق النصّ في الرسم النهائيّ). */
+      window.__omranImgBox = function(){
+        try{
+          let b = thinkingDiv.__imgBox;
+          if(!b || !b.isConnected){
+            b = document.createElement('div'); b.className = 'msg assistant omImgBoxLive';
+            if(thinkingDiv.isConnected) thinkingDiv.parentNode.insertBefore(b, thinkingDiv); else messagesEl.appendChild(b);
+            thinkingDiv.__imgBox = b;
+          }
+          __showImgLoading(b, 'جارٍ إنشاء الصورة', 'Generating image');
+          return true;
+        }catch(e){ __swallow(e, 'img:box'); return false; }
+      };
       try{
         let __ct = null;
         if(__toolsWillRun){
@@ -21952,6 +22556,8 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
         window.__usingSlimProjects = false;
         /* v-image-vault: صور المشروع المفتوح تُستعاد من المخزن قبل أول رسم؛ الباقي عند عرضه؛ وكنس اليتيمة بعد الإقلاع */
         try{ await window.__hydrateProjectImages(state.projects.find(q => q.id === state.currentId)); }catch(e){ __swallow(e, 'vault:boot'); }
+        /* v-img-view: بصمة الرسم نفسها للمرآة والكاملة (نفس العدد والنصّ) فكان الرسم بالكاملة يُتخطّى وتبقى صور المرآة مخفيّة */
+        window.__renderMsgSig = '';
         renderAll();
         try{ setTimeout(() => { window.__vaultSweep && window.__vaultSweep(); }, 15000); }catch(e){ __swallow(e, 'vault:sweep'); }
       }
@@ -22840,9 +23446,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
          الصورة تُعلن مسبقًا فيحجز المتصفح مكانها قبل تحميلها — لا قفزة.
          النِّسب من ملفات PNG الفعلية: عربي 1203×400، إنجليزي 1534×400. */
       let imgSrc, imgW, imgAlt;
-      if(l === 'ar'){ imgSrc = 'icons/brand-ar.png'; imgW = 126; imgAlt = 'عمران Ai'; }
+      /* v-gpu-lite: نسختا عرض 3× لارتفاع 42 (379×126 و483×126) بدل الأصلين 1203×400 و1534×400 — ضجيج الشعار في فيديو المالك */
+      if(l === 'ar'){ imgSrc = 'icons/brand-ar-s.png'; imgW = 126; imgAlt = 'عمران Ai'; }
       else if(BRAND_L10N_W[l]){ imgSrc = 'icons/brand-' + l + '.png'; imgW = BRAND_L10N_W[l]; imgAlt = 'Omran Ai'; }
-      else { imgSrc = 'icons/brand-en.png'; imgW = 161; imgAlt = 'Omran Ai'; }
+      else { imgSrc = 'icons/brand-en-s.png'; imgW = 161; imgAlt = 'Omran Ai'; }
       bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
       /* v-sidebar-brand: نسخة رأس القائمة الجانبيّة تتبع الشعار نفسه عند تبديل اللغة */
       const sb = document.getElementById('sidebarBrand');
@@ -23453,13 +24060,33 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب');
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
       if(missing.length) problems.push('مفاتيح ناقصة: ' + missing.join(', '));
-      if(d.clientErrorsCount > 0){
-        const top = (d.clientErrors || []).slice(0,3).map(e => '• ' + String(e.message || '').slice(0,90)).join('\n');
-        problems.push('أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount + '\n' + top);
+      /* v-err-build: أخطاء النسخة الحاليّة فقط — ما أُصلح في نسخة سابقة لا يُنذر بعد
+         نشر الإصلاح. ومع كلّ خطأ ملفّه وسطره، فاللقطة وحدها تكفي للتشخيص. */
+      const __build = (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '';
+      const __live = (d.clientErrors || []).filter(e => (typeof window.__omranErrLive === 'function') ? window.__omranErrLive(e, __build, Date.now()) : true);
+      if(__live.length > 0){
+        const top = __live.slice(0,3).map(e => {
+          const src = String(e.source || '').split('/').pop().split('?')[0].slice(0, 40);
+          return '• ' + '\u2066' + String(e.message || '').slice(0,90) + (src ? ' — ' + src + (e.line ? ':' + e.line : '') : '') + (e.count > 1 ? ' (x' + e.count + ')' : '') + '\u2069'; /* v-err-ltr */
+        }).join('\n');
+        problems.push('أخطاء مسجلة من المستخدمين: ' + __live.length + '\n' + top);
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
-      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
+         position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
+         فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك
+         لا يعرف بوجودها ليضغط ✕. جسم الصفحة شبكة CSS (body{display:grid})
+         بصفوف/أعمدة محدَّدة صراحةً للهيدر وشريط الأسهم وعمود المحادثة
+         (v-frame-c)، فإدراج الشريط كابن عاديّ بلا موضع شبكة صريح يُقحمه في
+         صفّ ضمنيّ أسفل الشاشة كلّها لا فوق الهيدر مباشرة — لذا الحلّ يبقى
+         fixed (يهرب من الشبكة تمامًا) لكن `top` يُحسَب من الارتفاع الفعليّ
+         لأسفل الهيدر بدل ٠ ثابت، فيظهر الشريط تحته دائمًا لا فوقه. */
+      const headerBottom = (function(){
+        try{ const h = document.querySelector('header'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; }
+        catch(e){ return 0; }
+      })();
+      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
       bar.textContent = '🩺 تنبيه للمالك — توجد ملاحظات في النظام:\n' + problems.join('\n');
       const x = document.createElement('button');
       x.textContent = '✕';
@@ -23494,8 +24121,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
         /* v-err-date: بلا تاريخ لا نفرق خطأ اليوم عن خطأ الأسبوع الماضي */
         const __fmtD = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
-        d.clientErrors.slice(0,5).forEach(e => {
-          lines.push('   • ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtD(e.lastSeen) ? ' — ' + __fmtD(e.lastSeen) : ''));
+        d.clientErrors.slice(0,10).forEach(e => {
+          lines.push('   • ' + '\u2066' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtD(e.lastSeen) ? ' — ' + __fmtD(e.lastSeen) : '') + '\u2069'); /* v-err-ltr */
           /* v-crash-stack: انهيارات غلاف الأندرويد تُعرض بمكدسها — التشخيص
              يحتاج اسم الصنف والسطر لا الرسالة وحدها. */
           if(/android/i.test(String(e.source || '')) && e.stack){
@@ -23512,16 +24139,30 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       } else {
         lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
       }
+      /* v-health-split: قياسات مسبار الذاكرة (v-mem-probe) أرقام من جهاز المالك لا أخطاء — بعنوانها، ولا تُحسب ملاحظة. */
+      const __fmtT = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
+      if((d.clientDiag || []).length){
+        lines.push('📏 قياسات جهازك (ليست أخطاء): ' + d.clientDiag.length);
+        d.clientDiag.forEach(e => { lines.push('   · ' + String(e.message || '').replace(/^v-mem-probe\s*/, '').slice(0,200) + (__fmtT(e.lastSeen) ? ' — ' + __fmtT(e.lastSeen) : '')); });
+      }
       /* v-health-srv: أخطاء الخادم نفسها (نداءات النماذج، المسارات) — كانت
-         تُسجّل في KV بلا أي نافذة عرض للمالك. */
-      if(d.serverErrorsCount > 0){
-        lines.push('⚠️ أخطاء الخادم: ' + d.serverErrorsCount);
-        (d.serverErrors || []).slice(0,5).forEach(e => {
-          const __d2 = (() => { try{ const v = e.lastAt || e.at; return v ? new Date(v).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } })();
-          lines.push('   • [' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,110) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__d2 ? ' — ' + __d2 : ''));
-        });
+         تُسجّل في KV بلا أي نافذة عرض للمالك. v-err-deploy: النشر الحاليّ وحده «ملاحظة»؛ ما قبله يُعرض مطويًّا
+         بعنوانه (أُصلح أو لم يتكرّر بعد التحديث) — كانت أخطاء ٢١ سبتمبر وما أُصلح تُعدّ كأنّها الآن. */
+      const __srv = d.serverErrors || [];
+      const __cur = String(d.deploy || '');
+      const __now = __srv.filter(e => !__cur || e.deploy === __cur);
+      const __old = __srv.filter(e => __cur && e.deploy !== __cur);
+      /* v-err-ltr: السطر التقنيّ (مسار + JSON إنجليزيّ) داخل صندوق يمين-يسار كان يتبعثر («'>>' Uncaught…») — يُعزل يسار-يمين كتلةً واحدة */
+      const __srvLine = (e) => '\u2066' + '[' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtT(e.lastAt || e.at) ? ' — ' + __fmtT(e.lastAt || e.at) : '') + '\u2069';
+      if(__now.length){
+        lines.push('⚠️ أخطاء الخادم' + (__cur ? ' في النشر الحاليّ' : '') + ': ' + __now.length);
+        __now.forEach(e => { lines.push('   • ' + __srvLine(e)); });
       } else {
-        lines.push('✅ لا توجد أخطاء في الخادم');
+        lines.push('✅ لا توجد أخطاء في الخادم' + (__cur ? ' منذ آخر تحديث' : ''));
+      }
+      if(__old.length){
+        lines.push('🗂️ من نشر سابق (أُصلحت أو لم تتكرّر بعد التحديث): ' + __old.length);
+        __old.forEach(e => { lines.push('   · ' + __srvLine(e)); });
       }
     }catch(e){
       lines.push('❌ فحص الخادم فشل: ' + e.message);
@@ -23533,7 +24174,9 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   window.clearClientErrors = async function(){
     const box = document.getElementById('adminHealthBox');
     try{
-      const r = await fetch('/api/system?action=client-errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {method:'DELETE'});
+      /* v-err-deploy: «مسح سجل الأخطاء» كان يمسح أخطاء المستخدمين وحدها — أخطاء الخادم لا تُمسح من التطبيق أبدًا
+         (402 من ٢١ سبتمبر باقٍ). clear=errors في فحص الصحّة يمسح السجلّين معًا (للمالك وحده). */
+      const r = await fetch('/api/system?action=health&clear=errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
     }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
   };
@@ -26660,7 +27303,12 @@ function stuL(ar, en){
     torah: 'أنت محلل متخصص في التوراة والتقاليس اليهودية. عند إعطائك آية توراتية أو موضوعًا يهوديًا، اشرحها معتمدًا على التلمود وتفسيرات الحاخامات المعتبرين. اذكر: 1) نص الآية، 2) التفسيرات التلمودية، 3) الدروس والحكمة اليهودية، 4) الصلة بالحياة المعاصرة. أجب بنفس لغة سؤال المستخدم.',
     buddhism: 'أنت معلم متخصص في البوذية والتعاليم البوذية. عند إعطائك سؤالًا حول الطريق الوسط والتنوير والكارما، اشرحه بعمق مستندًا إلى الروايات البوذية الأساسية والحكمة الشرقية. اذكر: 1) المبدأ الأساسي، 2) التطبيق العملي، 3) المعنى الروحي، 4) الدروس والحكمة البوذية. أجب بنفس لغة سؤال المستخدم.',
     hinduism: 'أنت عالم في الهندوسية والفلسفة الهندية القديمة. عند إعطائك سؤالًا عن الفيدا أو الأوبنيشاد أو الكارما والدارما، اشرحها مستندًا إلى الحكمة الهندية التقليدية. اذكر: 1) المفهوم الأساسي، 2) التفسير من النصوص المقدسة، 3) التطبيق الروحي، 4) الدروس المستفادة. أجب بنفس لغة سؤال المستخدم.',
-    dream: 'أنت مفسر أحلام موسوعي متعمق يجمع بين كل الثقافات والأديان. عند إعطائك وصف حلم، قدّم تفسيرًا قويًا وعميقًا ومفصلاً (وليس سطحيًا) من زوايا متعددة، كل زاوية بعنوان واضح: 1) ☪️ التفسير الإسلامي (استنادًا لمنهج ابن سيرين والنابلسي، مع ربط الرموز بمعانيها التقليدية)، 2) ✝️ التفسير المسيحي (استنادًا لتفسيرات الكتاب المقدس والتقليد الكنسي لرموز الأحلام كيوسف ودانيال)، 3) ✡️ التفسير اليهودي (التلمود وتفسيرات الحاخامات التقليدية)، 4) 🕉️ التفسير الهندوسي/البوذي (المعاني الروحية والكارما والرموز الشرقية)، 5) 🧠 علم النفس الحديث (تحليل فرويد ويونغ للرموز واللاوعي والأرشيتايبس)، 6) 🌍 الرمزية الثقافية العامة المتعارف عليها عالميًا. حلل كل رمز رئيسي ذكره المستخدم في حلمه (الألوان، الحيوانات، الأماكن، الأفعال) بعمق داخل كل قسم. اختم بخلاصة عامة تجمع أهم المعاني المشتركة. أجب بنفس لغة سؤال المستخدم، وكن مفصلاً وغنيًا وليس مختصرًا.',
+    /* v-hotfix-conflict-markers (٢١ سبتمبر ٢٠٢٦): دمج claude/eager-dirac-1qdfr3 في main تُرك بعلامات
+       تعارض <<<<<<</=======/>>>>>>> غير محلولة داخل السطر (لا حذف طرف كامل) — كسر app.bundle.js في
+       الإنتاج بالكامل (SyntaxError على كل مستخدم). أُبقيت bible/torah/buddhism/hinduism (طرف HEAD،
+       لا وجود لها في الطرف الآخر أصلًا)، واعتُمد نصّ dream من claude/eager-dirac-1qdfr3 (تعديل متعمَّد
+       لاحق «تقوية نص تفسير الأحلام لإعطاء جميع التفسيرات الستة» — يفرض صراحة عدم حذف أي تفسير). */
+    dream: 'أنت مفسر أحلام موسوعي متخصص في تحليل الأحلام من ستة منظورات دينية وثقافية مختلفة. عند إعطائك وصف حلم، يجب عليك دائماً تقديم جميع التفسيرات الستة التالية بالكامل — لا تحذف أي منها مهما كان الحلم. كل تفسير بعنوان واضح ومفصل: 1) ☪️ التفسير الإسلامي الكامل (استنادًا لمنهج ابن سيرين والنابلسي، كتاب تعطير الأنام، مع شرح معاني الرموز بعمق)، 2) ✝️ التفسير المسيحي الكامل (استنادًا لتفسيرات الكتاب المقدس والتقليد الكنسي، قصص يوسف الصديق ودانيال، مع المعاني الروحية)، 3) ✡️ التفسير اليهودي الكامل (التلمود والقبالاه، تفسيرات الحاخامات، الرموز والمعاني العميقة)، 4) 🕉️ التفسير الهندوسي والبوذي الكامل (نظرية الكارما، الرموز الروحية، تفسير الأوبنشاد والسوترا)، 5) 🧠 التفسير النفسي الكامل (تحليل فرويد ويونغ والأرشيتايبس، اللاوعي والرموز النفسية)، 6) 🌍 الرمزية الثقافية العامة (المعاني المشتركة عالميًا للرموز والألوان والحيوانات). أجب بنفس لغة سؤال المستخدم وكن مفصلاً جداً.',
   };
 
   function setStatus(text){
@@ -27042,9 +27690,10 @@ function stuL(ar, en){
 })();
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
-  /* v-store-safe: حزمة AppGallery لا تلمس أي بيانات مالية إطلاقًا —
-     لا شريط ولا صفحة ولا نداء أسعار واحد (قاعدة هواوي 11.4). */
-  if(document.documentElement.classList.contains('store-safe')) return;
+  /* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر — بعد تحذيره من مخاطرة رفض
+     هواوي بقاعدة 11.4): الأسهم تبقى ظاهرة وتعمل حتى داخل حزمة AppGallery.
+     كانت v-store-safe تُرجع مبكرًا هنا فتمنع كل نداء أسعار تحت store-safe؛
+     أُزيل الحارس بأمر صريح — راجع knowledge/DECISIONS.md لهذا التاريخ. */
   const modal = $('#stocksModal');
   const btnOpen = $('#btnStocks');
   if(!modal || !btnOpen) return;
@@ -30392,6 +31041,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
             try { ej = await er.json(); } catch (e) { ej = null; }
           } catch (e) { return 'تعذّر تعديل الصورة: ' + String((e && e.message) || e).slice(0, 100); }
           if (!er.ok || !ej || !ej.imageBase64) {
+            /* v-img-honest: الخادم قاس الناتج فوجده الصورة نفسها — النموذج يعرف ذلك فلا يروي «تمّ» */
+            if (ej && ej.error === 'image_unchanged') return 'لم يُنفَّذ التعديل: رجعت الصورة نفسها بلا تغيير (مقيسة بالبكسل)، فلم تُعرض ولم تُحسب على المستخدم. قل له ذلك بصراحة، لا تدّعِ أنّ شيئًا تغيّر، واقترح صياغة أوضح.';
             return 'تعذّر تعديل الصورة: ' + (((ej && ej.error) || ('HTTP ' + er.status)) + '').slice(0, 120);
           }
           var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
@@ -30408,7 +31059,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
               tcur.imageTurns = tcur.imageTurns.concat([tTurn]).slice(-4);
             }
           } catch (e) { /* guard-ok — الذاكرة اختيارية */ }
-          return '✅ عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + '). ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
+          /* v-img-honest (المالك: «يقولي شي والتنفيذ صفر»): النموذج كان يرى «✅» وحدها فيروي «تمّ تغيير كلّ شيء» مهما خرج.
+             الآن يصله حكم التنفيذ (ej.verdict) وتقرير ما يُرى فعلًا، ويُطلب منه ألّا يدّعي أكثر منه. */
+          var ev = ej.verdict === 'not_done' ? ' — الفحص: الطلب لم يظهر في الصورة' : (ej.verdict === 'partial' ? ' — الفحص: نُفّذ جزء فقط' : (ej.verdict === 'done' ? ' — الفحص: نُفّذ' : ''));
+          return (ej.verdict === 'not_done' ? '⚠️' : '✅') + ' عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + ')' + ev + (ej.caption ? '. ما يُرى فعلًا: «' + String(ej.caption).slice(0, 400) + '» — صِف للمستخدم هذا وحده ولا تدّعِ أكثر منه' : '') + '. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
         // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل
@@ -30576,8 +31230,9 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
-        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود فقط، والخادم يقبل قائمته حصرًا */
-        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; } catch (e) { return ''; } })(),
+        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
+           المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
+        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -30619,7 +31274,9 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         if (line.indexOf('data: ') !== 0) continue;
         var ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
-        if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
+        /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
+        if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
+        else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
         if (ev.delta) {
           noteEnd();
@@ -30640,6 +31297,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         if (ev.error) serverErr = ev.error;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
         if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
+        /* v-oa-models: موديل مختار رفضه المفتاح → يُمسح من الاختيار المحفوظ (يعود للافتراضيّ) فلا يتكرّر الرفض مع كلّ رسالة */
+        if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:forget-model'); } }
       }
     }
     noteEnd();
@@ -30728,7 +31387,18 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   var KEY = 'omran_font';
   var loaded = Object.create(null);
   var fonts = [
-    {id:'default', ar:'الافتراضي', en:'Default', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-font-plex (المالك ٢٣ سبتمبر «الخط مش جميل، شوف أحلى خط»): الافتراضيّ صار IBM Plex Sans Arabic —
+       أوضح خطّ عربيّ للقراءة الطويلة (فتحات حروف واسعة، أرقام متناسقة مع اللاتينيّ). تجوال باقٍ خيارًا. */
+    {id:'default', ar:'الافتراضي', en:'Default', family:"'IBM Plex Sans Arabic'", google:'', line:1.8},
+    {id:'tajawal', ar:'تجوال', en:'Tajawal', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-fonts-more (المالك ٢٣ سبتمبر «فيه خطوط أفضل من اللي عندي؟ زيد عليها»): ستّة خطوط قراءة حديثة
+       من Google Fonts، تُحمَّل عند اختيارها فقط كبقيّة الخيارات. */
+    {id:'cairo', ar:'القاهرة', en:'Cairo', family:"'Cairo'", google:'Cairo:wght@400;600;700', line:1.75},
+    {id:'almarai', ar:'المراعي', en:'Almarai', family:"'Almarai'", google:'Almarai:wght@400;700', line:1.8},
+    {id:'readex', ar:'ريدكس', en:'Readex Pro', family:"'Readex Pro'", google:'Readex+Pro:wght@400;600;700', line:1.75},
+    {id:'notokufi', ar:'كوفي نوتو', en:'Noto Kufi', family:"'Noto Kufi Arabic'", google:'Noto+Kufi+Arabic:wght@400;600;700', line:1.85},
+    {id:'vazir', ar:'وزير', en:'Vazirmatn', family:"'Vazirmatn'", google:'Vazirmatn:wght@400;600;700', line:1.8},
+    {id:'messiri', ar:'المسيري', en:'El Messiri', family:"'El Messiri'", google:'El+Messiri:wght@400;600;700', line:1.8},
     {id:'kufi', ar:'الكوفي', en:'Kufi', family:"'Reem Kufi'", google:'Reem+Kufi:wght@400..700', line:1.85},
     {id:'naskh', ar:'النسخ', en:'Naskh', family:"'Amiri'", google:'Amiri:ital,wght@0,400;0,700;1,400', line:1.95},
     {id:'naskh2', ar:'نسخ نوتو', en:'Noto Naskh', family:"'Noto Naskh Arabic'", google:'Noto+Naskh+Arabic:wght@400..700', line:1.9},
@@ -31277,7 +31947,7 @@ function onHistoryReady(){
     // ── أنشئ محادثة جديدة ──────────────────────────────────────────────────
     var newId = 'p_' + Date.now();
     var provKey = '';
-    try{ provKey = localStorage.getItem('aiapp_provider') || 'claude'; }catch(e){ /* guard-ok */ provKey = 'claude'; }
+    try{ provKey = localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ /* guard-ok */ provKey = 'openai'; }
     var title = '';
     try{ title = (typeof t === 'function') ? (t('defaultProjectTitle') || 'محادثة جديدة') : 'محادثة جديدة'; }catch(e){ title = 'محادثة جديدة'; }
 
@@ -32125,6 +32795,11 @@ if(document.readyState === 'loading'){
     { n: 'عجمان', c: 'ae', g: 'general', h: 'ajmanTV' },
     { n: 'الشارقة 2', c: 'ae', g: 'general', h: 'sharjah2' },
     { n: 'الفجيرة', c: 'ae', g: 'general', h: 'fujairahTV' },
+    /* v-tv-uae (المالك: «قنوات الإمارات الرياضية والعادية رتبها»): قنوات رسميّة لها رابط عامّ في الفهرس —
+       الوسطى والشرقية من كلباء (مؤسّسة الشارقة للإعلام) وبرامج العربية (دبي). */
+    { n: 'الوسطى', c: 'ae', g: 'general', h: 'alWoustaTV' },
+    { n: 'الشرقية من كلباء', c: 'ae', g: 'general', h: 'kalbaTV' },
+    { n: 'برامج العربية', c: 'ae', g: 'general', h: 'alArabiyaPrograms' },
     { n: 'سبيستون', c: 'ae', g: 'kids', h: 'spacetoon' },
     // ——— قطر
     { n: 'الجزيرة', h: 'aljazeera', c: 'qa', g: 'news' },
@@ -32174,7 +32849,7 @@ if(document.readyState === 'loading'){
     { n: 'Asianet News (مالايالام)', h: 'asianetnews', c: 'in_', g: 'news' },
     { n: 'Manorama News (مالايالام)', h: 'manoramanews', c: 'in_', g: 'news' },
     { n: 'Polimer News (تاميل)', h: 'PolimerNews', c: 'in_', g: 'news' },
-    { n: 'Star Sports (يوتيوب)', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
+    { n: 'Star Sports', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
     // ——— باكستان
     { n: 'Geo News (أردو)', h: 'GeoNews', c: 'pk', g: 'news' },
     { n: 'ARY News (أردو)', h: 'ArynewsTvofficial', c: 'pk', g: 'news' },
@@ -32202,7 +32877,7 @@ if(document.readyState === 'loading'){
     { n: 'Kantipur TV (نيبالي)', h: 'KantipurTVHD', c: 'np', g: 'news' },
     // ——— بريطانيا / أمريكا
     { n: 'Sky News', h: 'SkyNews', c: 'uk', g: 'news' },
-    { n: 'BBC News (يوتيوب)', h: 'BBCNews', c: 'uk', g: 'news' },
+    { n: 'BBC News', h: 'BBCNews', c: 'uk', g: 'news' },
     { n: 'ABC News Live', h: 'ABCNews', c: 'us', g: 'news' },
     { n: 'NBC News Now', h: 'NBCNews', c: 'us', g: 'news' },
     { n: 'CBS News', h: 'CBSNews', c: 'us', g: 'news' },
@@ -32237,7 +32912,7 @@ if(document.readyState === 'loading'){
     { n: 'السعودية', h: 'SaudiChannelOne', c: 'sa', g: 'general' },
     { n: 'SBC', h: 'sbc_sa', c: 'sa', g: 'general' },
     { n: 'الثقافية السعودية', h: 'thaqafeyah', c: 'sa', g: 'general' },
-    { n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'sa', g: 'biz' },
+    { n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'ae', g: 'biz' }, /* v-tv-uae: العربية في دبي كقناتها الأمّ */
     // ——— توسعة مصر
     { n: 'MBC مصر (شاهد)', u: 'https://shahid.mbc.net/ar/live', c: 'eg', g: 'general' },
     { n: 'DMC', h: 'dmctveg', c: 'eg', g: 'general' },
@@ -32757,6 +33432,9 @@ if(document.readyState === 'loading'){
     "ماجد للأطفال (المنصة)": "Majid Kids TV",
     "الظفرة": "Al Dhafra TV",
     "عجمان": "Ajman TV",
+    "الوسطى": "Al Wousta TV",
+    "الشرقية من كلباء": "Al Sharqiya from Kalba",
+    "برامج العربية": "Al Arabiya Programs",
     "السعودية": "Saudi TV",
     "الثقافية السعودية": "Saudi Al Thaqafiya",
     "الحياة": "Al Hayah TV",
@@ -32856,23 +33534,25 @@ if(document.readyState === 'loading'){
    * قناة ok:false تُخفى (معرّف خاطئ/محذوف)، وok مع live تأخذ 🔴.
    * غياب الملف = لا فلترة (أول نشر). */
   var TV_STATUS = null;
-  var TV_CHECKED_AT = 0;                 // v659: زمن آخر فحص يومي
+  var TV_SPORTS_FRESH = [];
+  var TV_MATCHES = [];
   function loadStatus(){
     return fetch('/tv-status.json', { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(d){
-        TV_STATUS = (d && d.channels) || null;
-        TV_CHECKED_AT = (d && d.checkedAt) ? (Date.parse(d.checkedAt) || 0) : 0;
+        TV_STATUS = d ? (d.channels || {}) : null; // v-tv-no-youtube: علامة «حُمّل»؛ الفاحص لم يعد يكتب قنوات يوتيوب
         try{ window.__tvStreamsStatus = (d && d.streams) || null; }catch(e){ __swallow(e, 'tv:ss'); }
+        /* v-tv-sports-fresh + v-tv-matches: قائمة الرياضة الطازجة وجدول المباريات من الفحص اليوميّ. */
+        TV_SPORTS_FRESH = (d && Array.isArray(d.sports)) ? d.sports : [];
+        TV_MATCHES = (d && Array.isArray(d.matches)) ? d.matches : [];
       })
       .catch(function(e){ __swallow(e, 'tv:status'); });
   }
-  function stOf(ch){ return (ch.h && TV_STATUS && TV_STATUS[ch.h]) || null; }
 
   /* v-tv-hls (طلب المالك: بث مباشر بلا يوتيوب): tv-streams.json — روابط بث
    * HLS رسمية عامة (فهرس iptv-org) لقنواتنا + قائمة رياضية عالمية. القناة
    * التي لها رابط مباشر تُشغَّل في مشغّلنا الخاص (بلا أي علامة يوتيوب)،
-   * ويوتيوب يبقى احتياطًا. رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
+   * ولا يوتيوب إطلاقًا (v-tv-no-youtube). رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
   var TV_M3U = null;
   var TV_M3U_BAD = {};
   function loadStreams(){
@@ -32887,7 +33567,13 @@ if(document.readyState === 'loading'){
     try{ return !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl'); }
     catch(e){ return false; }
   })();
-  function streamUsable(u){
+  /* v-tv-sports-clean (المالك: «أكثر القنوات الرياضيّة ما تشتغل»): الفاحص يتبع الرابط حتّى أوّل مقطع
+   * فيديو (deep.why) — مقطع/قائمة ميتة أو مشفّرة أو منتهية = لا يشتغل عند أحد فيُخفى؛ ومنع CORS في
+   * خطوة لاحقة يُخفى على hls.js وحده. timeout يبقى متفائلًا (قد يكون بطء لحظيّ). */
+  var TV_DEEP_DEAD = { 'variant-dead': 1, 'seg-dead': 1, 'key-dead': 1, drm: 1, 'no-segments': 1, 'no-variant': 1, ended: 1 };
+  var TV_DEEP_NOCORS = { 'variant-nocors': 1, 'seg-nocors': 1, 'key-nocors': 1 };
+  var TV_ARAB_CC = { sa: 1, ae: 1, qa: 1, kw: 1, bh: 1, om: 1, jo: 1, eg: 1, iq: 1, sy: 1, lb: 1, ps: 1, ye: 1, ly: 1, tn: 1, dz: 1, ma: 1, sd: 1, mr: 1 };
+  function streamUsable(u, strict, cc){
     var badAt = TV_M3U_BAD[u];
     if(badAt){
       if(Date.now() - badAt < 8000) return false;
@@ -32898,15 +33584,20 @@ if(document.readyState === 'loading'){
     if(!ss || !ss[u]) return true;         // لا بيانات فحص — نتفاءل ويحسمها التشغيل
     /* v-tv-geo: 403 عند فاحص أمريكا = حجب جغرافي غالبًا — القناة تعمل في
      * منطقتها (الكأس/الشارقة عند مستخدمينا)؛ نتفاءل ويحسمها التشغيل الفعلي. */
-    if(ss[u].geo) return true;
+    /* v-tv-sports-clean: في شاشة الرياضة (strict) التفاؤل الجغرافيّ للقنوات العربيّة وحدها —
+     * Rai Sport وSky F1 وNBA TV وbeIN USA مقفولة على بلدها أو مدفوعة فلا تشتغل عند مستخدمينا. */
+    if(ss[u].geo) return !strict || !!TV_ARAB_CC[cc];
     if(ss[u].ok === false) return false;   // رابط ميت مؤكد
     if(!TV_NATIVE_HLS && ss[u].cors === false) return false; // المتصفح سيمنعه حتمًا
+    var dw = ss[u].deep && ss[u].deep.why;
+    if(dw && TV_DEEP_DEAD[dw]) return false;
+    if(dw && !TV_NATIVE_HLS && TV_DEEP_NOCORS[dw]) return false;
     return true;
   }
-  function mOf(ch){
+  function mOf(ch, strict){
     var raw = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
     if(!raw) return null;
-    var list = (Array.isArray(raw) ? raw : [raw]).filter(streamUsable);
+    var list = (Array.isArray(raw) ? raw : [raw]).filter(function(u){ return streamUsable(u, strict, ch.c); });
     return list.length ? list : null;
   }
 
@@ -32923,9 +33614,6 @@ if(document.readyState === 'loading'){
   /* v-tv-hls: الفاحص يمر مرة باليوم — نافذة «طازج» ٣ ساعات كانت تجعل الفلتر
    * يعمل ٣ ساعات فقط وبقية اليوم تظهر القنوات الميتة كلها. ٢٦ ساعة تغطي
    * الدورة كاملة، و«بثت مؤخرًا» ٣٠ يومًا كي لا تختفي قناة تبث أحيانًا. */
-  var FRESH_MS = 26 * 36e5;
-  var RECENT_MS = 30 * 864e5;
-  function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
   /* v-direct-tv: أبقِ أسماء الدليل الحالية، لكن التشغيل لا يمر إلا عبر HLS/DASH. */
   /* v-tv-inapp-only (طلب المالك: «القنوات تحوّلني على جوجل وقنوات اليوتيوب
      مااريدها»): لا تُعرض إلّا قناة لها بثّ مباشر يشتغل داخل التطبيق. القنوات
@@ -32953,10 +33641,8 @@ if(document.readyState === 'loading'){
         '<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;">' +
           '<button type="button" id="tvBack" style="background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 14px;color:inherit;cursor:pointer;">' + tvBackLbl() + '</button>' +
           '<span id="tvNowName" style="font-size:14px;font-weight:700;"></span>' +
-          '<button type="button" id="tvExt" style="display:none;margin-inline-start:auto;background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 12px;color:inherit;cursor:pointer;font-size:12px;">↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube') + '</button>' +
         '</div>' +
         '<div style="flex:1;min-height:0;background:#000;position:relative;">' +
-          '<iframe id="tvFrame" style="width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
           /* v-tv-hls: مشغّلنا الخاص — بث مباشر نظيف بلا أي علامة يوتيوب */
           '<video id="tvVideo" controls playsinline style="display:none;position:absolute;inset:0;width:100%;height:100%;background:#000;"></video>' +
         '</div>' +
@@ -32971,7 +33657,6 @@ if(document.readyState === 'loading'){
     document.body.appendChild(el);
     el.querySelector('#tvClose').onclick = closeTv;
     el.querySelector('#tvBack').onclick = stopPlayer;
-    el.querySelector('#tvExt').onclick = function(){ if(S.nowUrl) openExternal(S.nowUrl); };
     el.querySelector('#tvSearch').oninput = function(){ S.q = this.value.trim(); renderGrid(); };
     return el;
   }
@@ -33003,6 +33688,13 @@ if(document.readyState === 'loading'){
     drb.textContent = '🎭 ' + tvT('tvDramaWorld', 'دراما ومنوّعات', 'Drama & Shows');
     drb.onclick = function(){ S.country = '__drama'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(drb);
+    /* v-tv-matches (المالك: «جدول مباريات مثل ياسين تيفي»): مباريات الأسبوعين القادمين بتوقيت الجهاز (أندية ومنتخبات). */
+    var mb = document.createElement('button');
+    mb.type = 'button';
+    mb.style.cssText = chipCss(S.country === '__matches');
+    mb.textContent = '📅 ' + tvT('tvMatches', 'جدول المباريات', 'Match schedule');
+    mb.onclick = function(){ S.country = '__matches'; S.cat = 'all'; renderChips(); renderGrid(); };
+    cw.appendChild(mb);
     Object.keys(TV_COUNTRIES).forEach(function(code){
       /* v-tv-hls: دولة بلا أي قناة ظاهرة (كلها ميتة) لا يظهر زرها — كانت
        * تفتح شبكة فاضية (مصر ٠ من ١٣ في فحص اليوم). */
@@ -33067,12 +33759,70 @@ if(document.readyState === 'loading'){
     grid.appendChild(sep);
   }
 
+  /* v-tv-matches: لقطة يوميّة من الفاحص (tv-status.json ← matches)، لا نتائج حيّة. الناقل يُذكر حيث حقوق
+   * المنطقة معروفة ومستقرّة فقط، ولا زرّ تشغيل لقناة مدفوعة — لا بديل «ياسين/الأسطورة». الأسماء خارجيّة
+   * فتُبنى بـtextContent لا innerHTML. */
+  var TV_MATCH_PAID = { 'eng.1': 'beIN SPORTS', 'uefa.champions': 'beIN SPORTS', 'uefa.europa': 'beIN SPORTS' };
+  function renderMatches(grid, el){
+    var now = Date.now();
+    var rows = TV_MATCHES.filter(function(m){ var t = Date.parse(m && m.t); return t > now - 2 * 36e5 && t < now + 14 * 864e5; });
+    var meta = el.querySelector('#tvMeta');
+    if(meta) meta.textContent = tvT('tvMatchesNote', 'الأوقات بتوقيت جهازك · الجدول يتحدّث يوميًّا', 'Times in your device clock · schedule updates daily');
+    if(!rows.length){
+      var empty = document.createElement('div');
+      empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';
+      empty.textContent = tvT('tvNoMatches', 'لا مباريات في الجدول الآن', 'No scheduled matches right now');
+      grid.appendChild(empty);
+      return;
+    }
+    var L = tvLang();
+    var today = new Date(now).toDateString();
+    rows.forEach(function(m){
+      var t = Date.parse(m.t), d = new Date(t);
+      var opts = d.toDateString() === today ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' };
+      var when;
+      try{ when = d.toLocaleString(L, opts); }catch(e){ when = d.toLocaleString(undefined, opts); }
+      var live = now >= t && now < t + 2 * 36e5;
+      var row = document.createElement('div');
+      row.className = 'tvMatchRow';
+      row.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.03);';
+      var tm = document.createElement('div');
+      tm.style.cssText = 'flex:0 0 auto;min-width:64px;text-align:center;font-size:13px;font-weight:700;line-height:1.5;';
+      tm.textContent = when;
+      if(live){
+        var lv = document.createElement('div');
+        lv.style.cssText = 'font-size:10px;color:#ff5a5a;font-weight:800;';
+        lv.textContent = '🔴 ' + tvT('tvMatchLive', 'جارية الآن', 'Live now');
+        tm.appendChild(lv);
+      }
+      var mid = document.createElement('div');
+      mid.style.cssText = 'flex:1;min-width:0;';
+      var teams = document.createElement('div');
+      teams.dir = 'auto';
+      teams.style.cssText = 'font-size:14px;font-weight:600;line-height:1.5;';
+      teams.textContent = m.h + '  ×  ' + m.a;
+      var sub = document.createElement('div');
+      sub.dir = 'auto';
+      sub.style.cssText = 'font-size:11px;color:var(--muted,#98a0b3);margin-top:2px;';
+      sub.textContent = '⚽ ' + (m.ln || m.lg || '') + (TV_MATCH_PAID[m.lg] ? '  ·  📺 ' + TV_MATCH_PAID[m.lg] + ' (' + tvT('tvMatchPaid', 'مدفوعة', 'Paid') + ')' : '');
+      mid.appendChild(teams);
+      mid.appendChild(sub);
+      row.appendChild(tm);
+      row.appendChild(mid);
+      grid.appendChild(row);
+    });
+  }
+
+  var TV_CAT_RANK = { sports: 0, general: 1, drama: 2, movies: 3, music: 4, news: 5, biz: 6, kids: 7, religion: 8 };
+  function tvCatRank(ch){ var r = TV_CAT_RANK[ch.g]; return r === undefined ? 9 : r; }
+
   function renderGrid(){
     var el = shell();
     var grid = el.querySelector('#tvGrid');
     grid.innerHTML = '';
     var q = S.q.toLowerCase();
-    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama') renderPlatforms(grid);
+    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama' && S.country !== '__matches') renderPlatforms(grid);
+    if(!q && S.country === '__matches'){ renderMatches(grid, el); return; }
     var list;
     if(!q && S.country === '__sports'){
       /* v-tv-hls: شاشة «رياضة العالم» — قنواتنا الرياضية + كل قناة رياضية
@@ -33081,14 +33831,17 @@ if(document.readyState === 'loading'){
       var seenN = {}, seenU = {};
       list = [];
       TV_CH.forEach(function(ch){
-        if(ch.g !== 'sports' || !mOf(ch)) return;
+        var u0 = ch.g === 'sports' ? mOf(ch, true) : null;
+        if(!u0) return;
         seenN[ch.n.toLowerCase().replace(/\s+/g, '')] = 1;
-        var u0 = mOf(ch); if(u0) u0.forEach(function(u){ seenU[u] = 1; }); // نفس البث باسمين = قناة واحدة
-        list.push(ch);
+        u0.forEach(function(u){ seenU[u] = 1; }); // نفس البث باسمين = قناة واحدة
+        list.push(Object.assign({}, ch, { m: u0 }));
       });
-      ((TV_M3U && TV_M3U.sports) || []).forEach(function(s){
+      /* v-tv-sports-fresh: الطازجة من الفحص اليوميّ أوّلًا، ثمّ نسخة tv-streams.json الثابتة احتياطًا. */
+      TV_SPORTS_FRESH.concat((TV_M3U && TV_M3U.sports) || []).forEach(function(s){
+        if(!s || !s.n || !s.m) return;
         var k = s.n.toLowerCase().replace(/\s+/g, '');
-        var us = (Array.isArray(s.m) ? s.m : [s.m]).filter(streamUsable);
+        var us = (Array.isArray(s.m) ? s.m : [s.m]).filter(function(u){ return streamUsable(u, true, s.c); });
         if(seenN[k] || !us.length || us.some(function(u){ return seenU[u]; })) return;
         seenN[k] = 1; us.forEach(function(u){ seenU[u] = 1; });
         list.push({ n: s.n, c: s.c, g: 'sports', m: us });
@@ -33118,10 +33871,14 @@ if(document.readyState === 'loading'){
         return true;
       });
       // الحيّ الآن أولًا — وصاحب البث المباشر النظيف قبله
+      /* v-tv-uae (المالك: «قنوات الإمارات الرياضية والعادية رتبها»): تبويب الإمارات بالتصنيف — الرياضة ثمّ
+       * العامّة ثمّ الأخبار والاقتصاد ثمّ الأطفال. بقيّة الدول على ترتيبها القديم. */
+      var byCat = !q && S.country === 'ae' && S.cat === 'all';
       list.sort(function(a, b){
         var la = mOf(a) ? 2 : 0;
         var lb = mOf(b) ? 2 : 0;
-        return lb - la;
+        if(lb !== la) return lb - la;
+        return byCat ? tvCatRank(a) - tvCatRank(b) : 0;
       });
     }
     var liveNow = list.filter(function(x){ return !!mOf(x); }).length;
@@ -33181,7 +33938,6 @@ if(document.readyState === 'loading'){
     function playHls(ch, url, card, onFail){
       var el = shell();
       var v = el.querySelector('#tvVideo');
-      var fr = el.querySelector('#tvFrame');
       var failed = false;
       var timer = setTimeout(fail, 18000); // مهلة أطول للبثّ البطيء قبل الاستسلام
       function ready(){ if(timer){ clearTimeout(timer); timer = null; } }
@@ -33196,10 +33952,6 @@ if(document.readyState === 'loading'){
       function show(){
         S.nowName = ch.n;
         el.querySelector('#tvNowName').textContent = tvChName(ch.n);
-        S.nowUrl = '';
-        var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
-        fr.src = 'about:blank';
-        fr.style.display = 'none';
         v.style.display = 'block';
         el.querySelector('#tvBrowse').style.display = 'none';
         el.querySelector('#tvPlayerWrap').style.display = 'flex';
@@ -33283,8 +34035,6 @@ if(document.readyState === 'loading'){
     if(el){
       var v = el.querySelector('#tvVideo');
       if(v){ try{ v.pause(); }catch(e){ __swallow(e, 'tv:vid-pause'); } v.removeAttribute('src'); try{ v.load(); }catch(e){ __swallow(e, 'tv:vid-load'); } v.style.display = 'none'; }
-      var fr = el.querySelector('#tvFrame');
-      if(fr) fr.style.display = '';
     }
   }
 
@@ -33312,10 +34062,7 @@ if(document.readyState === 'loading'){
 
   function stopPlayer(){
     var el = shell();
-    S.nowUrl = '';
     stopHls();                             /* v-tv-hls */
-    var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
-    el.querySelector('#tvFrame').src = 'about:blank';
     el.querySelector('#tvPlayerWrap').style.display = 'none';
     el.querySelector('#tvBrowse').style.display = 'flex';
   }
@@ -33347,7 +34094,6 @@ if(document.readyState === 'loading'){
     el.dir = tvDir();
     var q = el.querySelector('#tvTitleTxt'); if(q) q.textContent = tvT('tvTitle', '📺 تلفزيون', '📺 TV');
     q = el.querySelector('#tvBack'); if(q) q.textContent = tvBackLbl();
-    q = el.querySelector('#tvExt'); if(q) q.textContent = '↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube');
     q = el.querySelector('#tvSearch'); if(q) q.placeholder = '🔍 ' + tvT('tvSearchPh', 'ابحث عن قناة...', 'Search channels...');
     q = el.querySelector('#tvNowName'); if(q && S.nowName) q.textContent = tvChName(S.nowName);
     try{ renderChips(); }catch(e){ __swallow(e, 'tv:relang-chips'); }
@@ -34877,10 +35623,10 @@ if(document.readyState === 'loading'){
   var IDS = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
   function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
   var HINTS = {
-    '': ['الافتراضيّ: Sonnet 5 — الأسرع للمحادثة اليوميّة.', 'Default: Sonnet 5 — fastest for everyday chat.'],
+    '': ['الافتراضيّ: Haiku 4.5 — الاقتصاديّ والأسرع للمحادثة اليوميّة.', 'Default: Haiku 4.5 — economical and fastest for everyday chat.'],
     'claude-opus-5': ['أدقّ من Sonnet 5 في المهامّ الصعبة، وأبطأ منه.', 'More precise than Sonnet 5 on hard tasks, slower.'],
-    'claude-sonnet-5': ['توازن السرعة والدقّة — هو الافتراضيّ.', 'Balanced speed and quality — the default.'],
-    'claude-haiku-4-5': ['الأسرع والأخفّ — للردود القصيرة السريعة.', 'Fastest and lightest — for quick short replies.'],
+    'claude-sonnet-5': ['توازن السرعة والدقّة.', 'Balanced speed and quality.'],
+    'claude-haiku-4-5': ['الاقتصاديّ والأسرع — هو الافتراضيّ.', 'Economical and fastest — the default.'],
     'claude-fable-5-1': ['للكتابة الإبداعيّة والحوار الطبيعيّ.', 'For creative writing and natural dialogue.'],
   };
 
@@ -34915,4 +35661,224 @@ if(document.readyState === 'loading'){
   window.claudeModelGet = get;
   window.claudeModelSync = sync;
   window.CLAUDE_MODEL_IDS = IDS.slice();
+})();
+/* v-maha-goldwave (طلب المالك ٢٢ سبتمبر، بعد خمسة نماذج راجعها بنفسه): «حطها في التطبيق» — صورة الموجة الذهبية
+   نفسها مكان دائرة مها في نافذة المكالمة. تمشي باستمرار مثل شريط الأسهم (٣٦ بكسل/ث من اليمين لليسار — سرعة
+   #stockTickerTrack نفسها)، والصورة موصولة بنسختها المعكوسة فلا يبان لها طرف. ومع صوت مها يتنفّس شريطها بخفّة
+   (سماكة حول خطّه وانسياب صغير) — بلا وميض ولا قفز، وطلبها «بلا كانفا»: شرائح عموديّة تعرض مقطعها من الصورة.
+   مصدر الصوت: المكالمة المباشرة من مجرى صوتها نفسه (طيف ترددات، الغليظ في الوسط والحادّ نحو الأطراف)،
+   والوضع الأساسيّ من نسخة مفكوكة من مقطع النطق نفسه متزامنة مع وقت تشغيله — عنصر الصوت الذي يُسمع لا يُمسّ.
+   v-maha-band (أمر المالك بعد اللقطات: «من أوّل الشريط لنهايته مش في المنتصف — نفس شريط الأسهم»): العنصر صار شريطًا
+   بعرض الشاشة. في الشريط العريض تُعرض الصورة بارتفاعها الطبيعيّ مقصوصةً على نصفها الأوسط حول خطّ الموجة، وتتكرّر
+   (الصورة + المعكوسة) على العرض كلّه؛ وعدد الشرائح يتبع العرض (شريحة لكلّ ~١٠ بكسل) فلا تظهر درجات. */
+(function(){
+  const host = document.getElementById('mahaGoldWave');
+  if(!host) return;
+
+  /* v-maha-stars: نجوم الشاشة كلّها أثناء المكالمة — كثافة نجوم الشريط الجانبيّ نفسها (~نجمة لكلّ ١٢٥٠٠ بكسل²)،
+     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة. */
+  (function(){
+    const sky = document.createElement('div');
+    sky.id = 'mahaSkyLayer';
+    sky.setAttribute('aria-hidden', 'true');
+    const count = Math.max(30, Math.min(110, Math.round((window.innerWidth || 1280) * (window.innerHeight || 800) / 12500)));
+    for(let i = 0; i < count; i++){
+      const s = document.createElement('span');
+      s.className = 'omSkyStar';
+      s.style.top = (Math.random() * 100).toFixed(2) + '%';
+      s.style.left = (Math.random() * 100).toFixed(2) + '%';
+      s.style.setProperty('--sz', (6 + Math.random() * 7).toFixed(1) + 'px'); // v-maha-stars2: «كبّر النجوم شوي» — ٦–١٣ بدل ٤–٩
+      s.style.setProperty('--dur', (2.2 + Math.random() * 2.4).toFixed(2) + 's');
+      s.style.setProperty('--dly', (Math.random() * 4).toFixed(2) + 's');
+      sky.appendChild(s);
+    }
+    document.body.appendChild(sky);
+  })();
+  const TILE = '/assets/maha/maha-wave-tile.webp';
+  const SPEED = 36, BANDS = 24, RATE = 60;
+  const VIS = 0.5, CY = 0.46, ASPECT = 1534 / 1235; // الشريط يعرض نصف ارتفاع الصورة حول خطّ الموجة (٤٦٪)
+  let reduce = false;
+  try{ reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ __swallow(e, 'maha:goldwave-rm'); }
+
+  // الشرائح تُبنى عند أوّل إطار ظاهر بعدد يتبع العرض، وتُعاد إن تغيّر العرض كثيرًا (تدوير الجوّال)
+  const strips = [];
+  let N = 0, en = [], tmp = [];
+  function build(n){
+    while(strips.length){ host.removeChild(strips.pop()); }
+    N = n; en = new Array(N).fill(0); tmp = new Array(N).fill(0);
+    for(let i = 0; i < N; i++){
+      const s = document.createElement('div');
+      s.style.cssText = 'position:absolute; top:0; height:100%; left:' + (i * 100 / N) + '%; width:calc(' + (100 / N) + '% + 1px); background-image:url(' + TILE + '); background-repeat:repeat-x; transform-origin:50% 50%; will-change:transform;';
+      host.appendChild(s);
+      strips.push(s);
+    }
+    host.style.backgroundImage = 'none'; // الخلفيّة الثابتة للإطار الأوّل فقط؛ الشرائح تتولّى الصورة بعدها
+    lastW = 0; lastH = 0; still = true;
+  }
+  const bands = new Array(BANDS).fill(0);
+  const PROFILE = []; // الوضع الأساسيّ بلا طيف: شكل ثابت الغليظ فيه أقوى، يضربه مستوى الصوت
+  for(let b = 0; b < BANDS; b++) PROFILE.push(1 - 0.65 * b / (BANDS - 1));
+
+  let raf = 0, last = 0, scroll = 0, phase = 0, level = 0, still = true, lastW = 0, lastH = 0;
+  let ctx = null, an = null, srcNode = null, freq = null, wave = null, edges = null;
+  let tracked = null, env = null;
+
+  function ensureCtx(){
+    try{
+      if(!ctx){
+        const C = window.AudioContext || window.webkitAudioContext;
+        if(!C) return null;
+        ctx = new C();
+      }
+      if(ctx.state === 'suspended'){ const p = ctx.resume(); if(p && p.catch) p.catch(e => __swallow(e, 'maha:goldwave-resume')); }
+    }catch(e){ __swallow(e, 'maha:goldwave-ctx'); return null; }
+    return ctx;
+  }
+
+  // حدود الأشرطة لوغاريتميّة بين ٩٠ و٥٠٠٠ هرتز — مجال الكلام
+  function bandEdges(sampleRate, bins){
+    const out = [], nyq = sampleRate / 2;
+    for(let b = 0; b <= BANDS; b++){
+      const bin = Math.round(90 * Math.pow(5000 / 90, b / BANDS) / nyq * bins);
+      out.push(Math.max(b ? out[b - 1] + 1 : 1, bin));
+    }
+    return out;
+  }
+
+  // المكالمة المباشرة: المحلّل على مجرى صوت مها — لا يوصل بالسمّاعة (الصوت يُسمع من عنصره كما كان)
+  function attachStream(stream){
+    detachStream();
+    const c = ensureCtx();
+    if(!c || !stream) return;
+    try{
+      an = c.createAnalyser();
+      an.fftSize = 1024;
+      an.smoothingTimeConstant = 0.5;
+      an.minDecibels = -85;
+      an.maxDecibels = -22;
+      srcNode = c.createMediaStreamSource(stream);
+      srcNode.connect(an);
+      freq = new Uint8Array(an.frequencyBinCount);
+      wave = new Uint8Array(an.fftSize);
+      edges = bandEdges(c.sampleRate, freq.length);
+    }catch(e){ __swallow(e, 'maha:goldwave-stream'); an = null; srcNode = null; }
+  }
+  function detachStream(){
+    if(srcNode){ try{ srcNode.disconnect(); }catch(e){ __swallow(e, 'maha:goldwave-detach'); } }
+    srcNode = null; an = null;
+  }
+
+  // الوضع الأساسيّ: غلاف مستوى الصوت (٦٠ في الثانية) من نسخة مفكوكة من المقطع نفسه، يُقرأ بوقت تشغيله
+  function trackAudio(audio, blob){
+    tracked = audio; env = null;
+    const c = ensureCtx();
+    if(!c || !blob || !blob.arrayBuffer) return;
+    blob.arrayBuffer()
+      .then(ab => new Promise((res, rej) => { const p = c.decodeAudioData(ab, res, rej); if(p && p.then) p.then(res, rej); }))
+      .then(buf => {
+        if(tracked !== audio) return;
+        const ch = buf.getChannelData(0), win = Math.max(1, Math.round(buf.sampleRate / RATE));
+        const out = new Float32Array(Math.ceil(ch.length / win));
+        for(let w = 0; w < out.length; w++){
+          const a = w * win, z = Math.min(ch.length, a + win);
+          let s = 0;
+          for(let i = a; i < z; i++) s += ch[i] * ch[i];
+          out[w] = Math.sqrt(s / Math.max(1, z - a));
+        }
+        env = out;
+      })
+      .catch(e => __swallow(e, 'maha:goldwave-decode'));
+  }
+
+  const norm = (rms) => Math.pow(Math.max(0, Math.min(1, (rms - 0.012) / 0.2)), 0.75);
+
+  function sample(){
+    let target = 0;
+    if(an){
+      an.getByteTimeDomainData(wave);
+      let sum = 0;
+      for(let i = 0; i < wave.length; i++){ const v = (wave[i] - 128) / 128; sum += v * v; }
+      target = norm(Math.sqrt(sum / wave.length));
+      an.getByteFrequencyData(freq);
+      for(let b = 0; b < BANDS; b++){
+        let s = 0, c = 0;
+        for(let j = edges[b]; j < edges[b + 1] && j < freq.length; j++){ s += freq[j]; c++; }
+        const bt = Math.pow(Math.max(0, (c ? s / c / 255 : 0) - 0.12) / 0.88, 1.25);
+        bands[b] += (bt - bands[b]) * (bt > bands[b] ? 0.35 : 0.18);
+      }
+    }else{
+      if(tracked && env && !tracked.paused && !tracked.ended){
+        const i = Math.floor((tracked.currentTime || 0) * RATE);
+        if(i >= 0 && i < env.length) target = norm(env[i]);
+      }
+      for(let b = 0; b < BANDS; b++){
+        const bt = target * PROFILE[b];
+        bands[b] += (bt - bands[b]) * (bt > bands[b] ? 0.35 : 0.18);
+      }
+    }
+    level += (target - level) * (target > level ? 0.35 : 0.18);
+    if(level < 0.002 && target === 0) level = 0;
+  }
+
+  function render(){
+    const W = host.clientWidth, h = host.clientHeight;
+    if(!W || !h) return;
+    const want = Math.min(160, Math.max(40, Math.round(W / 10)));
+    if(want !== N) build(want);
+    const band = W > h * 2;
+    const imgH = band ? h / VIS : h, imgW = band ? imgH * ASPECT : W;
+    const tileW = 2 * imgW, posY = band ? -(CY * imgH - h / 2) : 0;
+    if(W !== lastW || h !== lastH){
+      for(let z = 0; z < N; z++) strips[z].style.backgroundSize = tileW.toFixed(2) + 'px ' + imgH.toFixed(2) + 'px';
+      lastW = W; lastH = h;
+    }
+    const off = scroll % tileW;
+    for(let q = 0; q < N; q++) strips[q].style.backgroundPosition = (-(q * W / N + off)).toFixed(2) + 'px ' + posY.toFixed(2) + 'px';
+    if(level < 0.002){
+      if(!still){ for(let j = 0; j < N; j++) strips[j].style.transform = ''; still = true; }
+      return;
+    }
+    still = false;
+    const lastB = BANDS - 1;
+    for(let k = 0; k < N; k++){
+      const d = Math.abs(k / (N - 1) - 0.5) * 2;
+      const p = d * lastB, b0 = Math.floor(p), f = p - b0;
+      en[k] = bands[b0] * (1 - f) + bands[Math.min(lastB, b0 + 1)] * f;
+    }
+    for(let pass = 0; pass < 2; pass++){
+      for(let m = 0; m < N; m++) tmp[m] = (en[Math.max(0, m - 1)] + 2 * en[m] + en[Math.min(N - 1, m + 1)]) / 4;
+      for(let m = 0; m < N; m++) en[m] = tmp[m];
+    }
+    for(let k = 0; k < N; k++){
+      const e = en[k];
+      const x = Math.sin((k / N) * Math.PI * 4 - phase * 2) * h * 0.004 * e;
+      const y = Math.sin((k / N) * Math.PI * 3 + phase) * h * 0.005 * e;
+      strips[k].style.transform = 'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px) scaleY(' + (1 + 0.14 * e).toFixed(4) + ')';
+    }
+  }
+
+  function frame(t){
+    raf = 0;
+    if(host.style.display === 'none' || !host.isConnected) return;
+    const dt = last ? Math.min(0.05, (t - last) / 1000) : 0.016;
+    last = t;
+    sample();
+    scroll += dt * SPEED;
+    phase += dt * 0.6;
+    render();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function start(){ if(!reduce && !raf){ last = 0; raf = requestAnimationFrame(frame); } }
+  function stop(){ if(raf){ cancelAnimationFrame(raf); raf = 0; } }
+  function end(){
+    stop();
+    detachStream();
+    tracked = null; env = null; level = 0;
+    bands.fill(0);
+    for(let j = 0; j < strips.length; j++) strips[j].style.transform = '';
+    still = true;
+  }
+
+  window.mahaGoldWave = { prime: ensureCtx, start, stop, end, attachStream, detachStream, trackAudio };
 })();

@@ -49,8 +49,11 @@ module.exports = async (req, res) => {
     const noise = /Failed to fetch|NetworkError|Load failed|Script error\.?$|ResizeObserver|extension/i;
     if (noise.test(msg)) { res.status(200).json({ ok: true, skipped: true }); return; }
 
+    // v-err-build: بصمة الحزمة التي وقع فيها الخطأ — جزء من التوقيع، فخطأ نسخة أُصلحت
+    // لا يختلط بتكراره في النسخة الحاليّة، وتنبيه المالك يعرض النسخة الحاليّة فقط.
+    const build = /^[0-9a-f]{4,16}$/.test(String(body.build || '')) ? String(body.build) : '';
     const items = await readLog();
-    const sig = msg + '|' + String(body.source || '').slice(0, 200) + '|' + (body.line || 0);
+    const sig = msg + '|' + String(body.source || '').slice(0, 200) + '|' + (body.line || 0) + (build ? '|' + build : '');
     const existing = items.find(it => it.sig === sig);
     const now = new Date().toISOString();
     if (existing) {
@@ -66,6 +69,7 @@ module.exports = async (req, res) => {
         stack: String(body.stack || '').slice(0, 1500),
         url: String(body.url || '').slice(0, 300),
         ua: String(body.ua || '').slice(0, 200),
+        build,
         count: 1,
         firstSeen: now,
         lastSeen: now

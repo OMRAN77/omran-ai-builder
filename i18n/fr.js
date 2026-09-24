@@ -10,7 +10,7 @@ I18N['fr'] = {
     "introSplashLabel": "✨ Écran d’ouverture au lancement de l’app",
     "introSkip": "Touchez pour continuer",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
-    tvTitle: "📺 TV", tvBack: "Retour", tvYoutube: "YouTube", tvSearchPh: "Rechercher une chaîne...", tvAll: "Toutes", tvPlatforms: "Plateformes officielles — s’ouvrent avec votre compte", tvLiveIn: "Chaînes en direct dans l’application", tvNoMatch: "Aucune chaîne correspondante", tvLive: "EN DIRECT", tvLiveCount: "chaînes en direct", tvOfficial: "Site officiel", tvOpening: "Ouverture...", tvOff: "La chaîne n’émet pas actuellement", tvCatNews: "Actualités", tvCatSports: "Sport", tvCatGeneral: "Généraliste", tvCatReligion: "Religion", tvCatKids: "Jeunesse", tvCatBiz: "Économie", tvCIntl: "International",
+    tvTitle: "📺 TV", tvBack: "Retour", tvSearchPh: "Rechercher une chaîne...", tvAll: "Toutes", tvPlatforms: "Plateformes officielles — s’ouvrent avec votre compte", tvLiveIn: "Chaînes en direct dans l’application", tvNoMatch: "Aucune chaîne correspondante", tvLive: "EN DIRECT", tvLiveCount: "chaînes en direct", tvOfficial: "Site officiel", tvOpening: "Ouverture...", tvOff: "La chaîne n’émet pas actuellement", tvCatNews: "Actualités", tvCatSports: "Sport", tvCatGeneral: "Généraliste", tvCatReligion: "Religion", tvCatKids: "Jeunesse", tvCatBiz: "Économie", tvCIntl: "International",
     tvPfShahid: "Toutes les chaînes MBC en direct", tvPfAwaan: "Toutes les chaînes de Dubaï en direct", tvPfAdtv: "Chaînes d’Abou Dabi et Majid", tvPfTod: "beIN avec votre abonnement", tvPfRotana: "Chaînes Rotana", tvPfSub: "avec votre abonnement",
     tvCountries: {"ae":"Émirats arabes unis","sa":"Arabie saoudite","qa":"Qatar","kw":"Koweït","bh":"Bahreïn","om":"Oman","eg":"Égypte","jo":"Jordanie","lb":"Liban","iq":"Irak","ps":"Territoires palestiniens","ye":"Yémen","sd":"Soudan","ma":"Maroc","dz":"Algérie","tn":"Tunisie","ly":"Libye","tr":"Turquie","in_":"Inde","pk":"Pakistan","bd":"Bangladesh","ph":"Philippines","id_":"Indonésie","lk":"Sri Lanka","np":"Népal","uk":"Royaume-Uni","us":"États-Unis","fr":"France","de":"Allemagne","ru":"Russie","af":"Afghanistan","am":"Arménie","ar_":"Argentine","at":"Autriche","au":"Australie","az":"Azerbaïdjan","be":"Belgique","bg":"Bulgarie","bo":"Bolivie","br":"Brésil","ca":"Canada","ch":"Suisse","cl":"Chili","cm":"Cameroun","cn":"Chine","co":"Colombie","cz":"Tchéquie","dk":"Danemark","do":"République dominicaine","ec":"Équateur","es":"Espagne","et":"Éthiopie","fi":"Finlande","ge":"Géorgie","gh":"Ghana","gr":"Grèce","hk":"R.A.S. chinoise de Hong Kong","hr":"Croatie","hu":"Hongrie","ie":"Irlande","il":"Israël","it":"Italie","jp":"Japon","ke":"Kenya","kr":"Corée du Sud","kz":"Kazakhstan","mx":"Mexique","my":"Malaisie","ng":"Nigeria","nl":"Pays-Bas","no":"Norvège","nz":"Nouvelle-Zélande","pl":"Pologne","pt":"Portugal","py":"Paraguay","ro":"Roumanie","rs":"Serbie","se":"Suède","sg":"Singapour","sn":"Sénégal","th":"Thaïlande","tw":"Taïwan","tz":"Tanzanie","ua":"Ukraine","ug":"Ouganda","uz":"Ouzbékistan","ve":"Venezuela","vn":"Viêt Nam","za":"Afrique du Sud"},
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -210,7 +210,7 @@ I18N['fr'] = {
     logoutTitle: "Déconnexion",
     loginAction: "Connexion",
     acctSectionTitle: "👤 Mon compte",
-    statsSectionTitle: "Mes statistiques",
+    statsSectionTitle: "Mes projets et sauvegarde",
     statsProjectsLabel: "Nombre de projets",
     statsMessagesLabel: "Total des messages envoyés",
     statsFavProviderLabel: "Fournisseur préféré",
@@ -786,6 +786,11 @@ I18N['fr'] = {
     voiceGenderDefault: "Par défaut (voix de l'appareil)",
     voiceGenderMale: "Voix masculine",
     voiceGenderFemale: "Voix féminine",
+    voiceSpeedLabel: "Vitesse de la voix",
+    voiceSpeedSlow: "Lent",
+    voiceSpeedNormal: "Normal",
+    voiceSpeedFast: "Rapide",
+    voiceSpeedXFast: "Très rapide",
     cloudVoiceLabel: "🌟 Utiliser une voix IA haute qualité (OpenAI TTS - nécessite une clé OpenAI ci-dessus)",
     voiceOnyx: "🧔 Masculine - Onyx",
     voiceEcho: "👨 Masculine - Echo",
@@ -938,7 +943,6 @@ Object.assign(I18N["fr"], {
     ciHint: "Écrivez comment vous voulez les réponses — appliqué à toutes vos conversations.",
     ciPlaceholder: "Exemple : réponds simplement et brièvement, sans préambule.",
     ciSaved: "Enregistré ✅",
-    mahaCcTitle: "Sous-titres de l'appel",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Indisponible sur cet appareil",
@@ -1029,3 +1033,14 @@ Object.assign(I18N['fr'], {"tvSportsWorld":"Sport mondial","tvDirect":"Direct"})
 
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['fr'], { qiblaTitle: '📿 Qibla et horaires de prière' });
+/* v-tv-matches: جدول المباريات */
+Object.assign(I18N['fr'], {"tvMatches": "Calendrier des matchs", "tvMatchLive": "En direct", "tvMatchPaid": "Payant", "tvNoMatches": "Aucun match prévu pour le moment", "tvMatchesNote": "Heures de votre appareil · programme mis à jour chaque jour"});
+
+/* v-img-undo: الرجوع لنسخة سابقة من الصورة */
+Object.assign(I18N["fr"], {"imgUndoPrev": "Retour à la version précédente 👆 Que dois-je changer ?", "imgUndoOrig": "Retour à l'original 👆 Que dois-je changer ?", "imgUndoNone": "C'est la première version, rien avant 👆 Que dois-je changer ?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["fr"], {"ownerSectionTitle": "👑 Page du propriétaire"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["fr"], {"imgUnchanged": "⚠️ La modification n'a pas été appliquée : l'image est revenue inchangée, je ne l'ai donc pas affichée et rien ne vous a été décompté. Précisez exactement ce qui doit changer ou reformulez."});

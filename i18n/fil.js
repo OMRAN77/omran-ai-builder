@@ -10,7 +10,7 @@ I18N['fil'] = {
     "introSplashLabel": "✨ Opening screen kapag binuksan ang app",
     "introSkip": "I-tap para magpatuloy",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
-    tvTitle: "📺 TV", tvBack: "Bumalik", tvYoutube: "YouTube", tvSearchPh: "Maghanap ng channel...", tvAll: "Lahat", tvPlatforms: "Opisyal na plataporma — bubukas gamit ang iyong account", tvLiveIn: "Mga live na channel sa loob ng app", tvNoMatch: "Walang tumugmang channel", tvLive: "LIVE", tvLiveCount: "channel na live ngayon", tvOfficial: "Opisyal na site", tvOpening: "Binubuksan...", tvOff: "Hindi nagbo-broadcast ang channel ngayon", tvCatNews: "Balita", tvCatSports: "Sports", tvCatGeneral: "Pangkalahatan", tvCatReligion: "Relihiyon", tvCatKids: "Pambata", tvCatBiz: "Negosyo", tvCIntl: "Pandaigdig",
+    tvTitle: "📺 TV", tvBack: "Bumalik", tvSearchPh: "Maghanap ng channel...", tvAll: "Lahat", tvPlatforms: "Opisyal na plataporma — bubukas gamit ang iyong account", tvLiveIn: "Mga live na channel sa loob ng app", tvNoMatch: "Walang tumugmang channel", tvLive: "LIVE", tvLiveCount: "channel na live ngayon", tvOfficial: "Opisyal na site", tvOpening: "Binubuksan...", tvOff: "Hindi nagbo-broadcast ang channel ngayon", tvCatNews: "Balita", tvCatSports: "Sports", tvCatGeneral: "Pangkalahatan", tvCatReligion: "Relihiyon", tvCatKids: "Pambata", tvCatBiz: "Negosyo", tvCIntl: "Pandaigdig",
     tvPfShahid: "Lahat ng MBC channel nang live", tvPfAwaan: "Lahat ng Dubai channel nang live", tvPfAdtv: "Mga channel ng Abu Dhabi at Majid", tvPfTod: "beIN gamit ang iyong subscription", tvPfRotana: "Mga channel ng Rotana", tvPfSub: "gamit ang iyong subscription",
     tvCountries: {"ae":"United Arab Emirates","sa":"Saudi Arabia","qa":"Qatar","kw":"Kuwait","bh":"Bahrain","om":"Oman","eg":"Egypt","jo":"Jordan","lb":"Lebanon","iq":"Iraq","ps":"Palestinian Territories","ye":"Yemen","sd":"Sudan","ma":"Morocco","dz":"Algeria","tn":"Tunisia","ly":"Libya","tr":"Türkiye","in_":"India","pk":"Pakistan","bd":"Bangladesh","ph":"Pilipinas","id_":"Indonesia","lk":"Sri Lanka","np":"Nepal","uk":"United Kingdom","us":"Estados Unidos","fr":"France","de":"Germany","ru":"Russia","af":"Afghanistan","am":"Armenia","ar_":"Argentina","at":"Austria","au":"Australia","az":"Azerbaijan","be":"Belgium","bg":"Bulgaria","bo":"Bolivia","br":"Brazil","ca":"Canada","ch":"Switzerland","cl":"Chile","cm":"Cameroon","cn":"China","co":"Colombia","cz":"Czechia","dk":"Denmark","do":"Dominican Republic","ec":"Ecuador","es":"Spain","et":"Ethiopia","fi":"Finland","ge":"Georgia","gh":"Ghana","gr":"Greece","hk":"Hong Kong SAR China","hr":"Croatia","hu":"Hungary","ie":"Ireland","il":"Israel","it":"Italy","jp":"Japan","ke":"Kenya","kr":"Timog Korea","kz":"Kazakhstan","mx":"Mexico","my":"Malaysia","ng":"Nigeria","nl":"Netherlands","no":"Norway","nz":"New Zealand","pl":"Poland","pt":"Portugal","py":"Paraguay","ro":"Romania","rs":"Serbia","se":"Sweden","sg":"Singapore","sn":"Senegal","th":"Thailand","tw":"Taiwan","tz":"Tanzania","ua":"Ukraine","ug":"Uganda","uz":"Uzbekistan","ve":"Venezuela","vn":"Vietnam","za":"South Africa"},
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -183,7 +183,7 @@ I18N['fil'] = {
     "logoutTitle": "Mag-log out",
     "loginAction": "Mag-login",
     "acctSectionTitle": "👤 Aking account",
-    "statsSectionTitle": "Aking mga istatistika",
+    "statsSectionTitle": "Aking mga proyekto at backup",
     "statsProjectsLabel": "Bilang ng mga proyekto",
     "statsMessagesLabel": "Kabuuang mensaheng naipadala",
     "statsFavProviderLabel": "Paboritong provider",
@@ -895,6 +895,11 @@ I18N['fil'] = {
     "voiceGenderDefault": "Default (boses ng device)",
     "voiceGenderMale": "Boses ng lalaki",
     "voiceGenderFemale": "Boses ng babae",
+    "voiceSpeedLabel": "Bilis ng boses",
+    "voiceSpeedSlow": "Mabagal",
+    "voiceSpeedNormal": "Normal",
+    "voiceSpeedFast": "Mabilis",
+    "voiceSpeedXFast": "Napakabilis",
     "cloudVoiceLabel": "🌟 Gamitin ang mataas na kalidad na AI voice (OpenAI TTS - kailangan ng OpenAI key sa itaas)",
     "voiceOnyx": "🧔 Lalaki - Onyx",
     "voiceEcho": "👨 Lalaki - Echo",
@@ -988,7 +993,6 @@ Object.assign(I18N["fil"], {
     ciHint: "Isulat kung paano mo gustong sagutin — ilalapat sa lahat ng chat mo.",
     ciPlaceholder: "Halimbawa: sumagot nang kaswal at maikli, walang paunang salita.",
     ciSaved: "Na-save ✅",
-    mahaCcTitle: "Live na caption ng tawag",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Hindi available sa device na ito",
@@ -1079,3 +1083,14 @@ Object.assign(I18N['fil'], {"tvSportsWorld":"Sports ng Mundo","tvDirect":"Live s
 
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['fil'], { qiblaTitle: '📿 Qibla at Oras ng Dasal' });
+/* v-tv-matches: جدول المباريات */
+Object.assign(I18N['fil'], {"tvMatches": "Iskedyul ng mga laro", "tvMatchLive": "Live ngayon", "tvMatchPaid": "May bayad", "tvNoMatches": "Walang nakatakdang laro ngayon", "tvMatchesNote": "Oras ayon sa iyong device · araw-araw ina-update ang iskedyul"});
+
+/* v-img-undo: الرجوع لنسخة سابقة من الصورة */
+Object.assign(I18N["fil"], {"imgUndoPrev": "Ibinalik sa naunang bersyon 👆 Ano ang babaguhin ko?", "imgUndoOrig": "Ibinalik sa orihinal 👆 Ano ang babaguhin ko?", "imgUndoNone": "Ito ang unang bersyon, wala nang nauna 👆 Ano ang babaguhin ko?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["fil"], {"ownerSectionTitle": "👑 Pahina ng may-ari"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["fil"], {"imgUnchanged": "⚠️ Hindi nailapat ang edit: bumalik ang larawan nang walang pagbabago, kaya hindi ko ito ipinakita at hindi ito ibinawas sa iyo. Sabihin kung ano mismo ang dapat magbago o ibahin ang pagkakasabi."});

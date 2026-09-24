@@ -36,6 +36,18 @@ document.querySelectorAll('.voiceGenderBtn').forEach(b => {
     setVoiceGenderUI(b.dataset.gender);
   };
 });
+// v-maha-voice-speed: نفس نمط أزرار الجنس أعلاه لأزرار السرعة — يُزامَن عند فتح
+// الإعدادات فعليًا (app-06-checkout.js، مثل setVoiceGenderUI بالضبط) لا هنا فورًا،
+// لأن أزرار القسم قد لا تكون في DOM وقت تحميل هذا الجزء.
+function setVoiceSpeedUI(val){
+  document.querySelectorAll('.voiceSpeedBtn').forEach(b => b.classList.toggle('active', b.dataset.speed === val));
+}
+document.querySelectorAll('.voiceSpeedBtn').forEach(b => {
+  b.onclick = () => {
+    localStorage.setItem('aiapp_maha_voice_speed', b.dataset.speed);
+    setVoiceSpeedUI(b.dataset.speed);
+  };
+});
 const btnTestVoice = $('#btnTestVoice');
 if(btnTestVoice){
   btnTestVoice.onclick = () => {
@@ -187,7 +199,7 @@ async function voiceTabSpeak(text){
     const resp = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300) }),
+      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300), token: ttsAuthToken(), guestId: ttsGuestId() }), // v-tts-account
     });
     if(resp.ok){
       const blob = await resp.blob();

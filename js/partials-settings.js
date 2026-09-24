@@ -112,22 +112,14 @@
   </div></div>
 
   <div id="statsSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('statsSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="statsSectionTitle">📊 إحصائياتي</h3><span class="settingsSectionArrow" id="statsSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="statsSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('statsSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="statsSectionTitle">📊 مشاريعي والنسخ الاحتياطي</h3><span class="settingsSectionArrow" id="statsSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="statsSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
     <div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsProjectsLabel">عدد المشاريع</span><b id="statProjectsCount" style="font-size: var(--fs-2);">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsMessagesLabel">إجمالي الرسائل المُرسلة</span><b id="statMessagesCount" style="font-size: var(--fs-2);">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsFavProviderLabel">أكثر مزوّد تستخدمه</span><b id="statFavProvider" style="font-size: var(--fs-2);">—</b></div><button type="button" id="btnExportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="statsExportBtn">تصدير المشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button><button type="button" id="btnImportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="statsImportBtn">استيراد مشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button></div>
       <input type="file" id="importProjectsFile" accept="application/json" style="display:none;">
       </div>
     </div>
   </div></div>
 
-  <!-- v-agent-settings: قسم «الوكيل» — زر التشغيل انتقل هنا من الشاشة الرئيسية (أمر عمران ٢٦ أغسطس ٢٠٢٦) -->
-  <div id="agentSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('agentSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="agentSectionTitle">🤖 الوكيل</h3><span class="settingsSectionArrow" id="agentSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="agentSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-      <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted); line-height:1.7;" data-i18n="agentSectionDesc">وضع الوكيل: يخطّط وينفّذ بنفسه — يبني ويعدّل ويختبر الكود قبل تسليمه، يتحقق من المصادر الحية، ويكمل عمله حتى لو أُغلقت الصفحة. شغّله من الزر ثم اكتب طلبك في المحادثة.</p>
-      <div id="agentSettingsHost"></div>
-      <p id="agentOnNote" style="display:none; margin:10px 0 0; font-size:12px; color:var(--accent-ink, var(--accent)); font-weight:600;" data-i18n="agentOnNote">الوكيل شغّال الآن — ارجع للمحادثة واكتب طلبك.</p>
-    </div>
-  </div>
-
+  <!-- v-settings-tidy (أمر عمران): قسم «الوكيل» حُذف — كان نصًّا بلا زرّ؛ التشغيل من قائمة «@» للمالك. -->
   <div id="apiKeysSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('apiKeysSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="apiKeysSectionTitle">🔑 مفاتيح API لمزوّدي الخدمة</h3><span class="settingsSectionArrow" id="apiKeysSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="apiKeysSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <label data-i18n="provider">مزوّد الخدمة الافتراضي</label>
@@ -339,6 +331,15 @@
     <button type="button" class="voiceGenderBtn" data-gender="male"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span data-i18n="voiceGenderMale">صوت رجل</span></button>
     <button type="button" class="voiceGenderBtn" data-gender="female"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><path d="M8 3.5C9 2.5 10.4 2 12 2s3 .5 4 1.5"></path></svg><span data-i18n="voiceGenderFemale">صوت امرأة</span></button>
   </div>
+  <!-- v-maha-voice-speed (طلب المالك «صوت مها بطيء سريع سريع جدًا»): سرعة كلام مها —
+       تُطبَّق على الوضعين (الفائق عبر تعليمة نبرة، والأساسيّ عبر معامل TTS حقيقيّ). -->
+  <label style="display:block; margin-top:18px;" data-i18n="voiceSpeedLabel">سرعة الصوت</label>
+  <div id="voiceSpeedBtns" style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+    <button type="button" class="voiceSpeedBtn" data-speed="slow"><span data-i18n="voiceSpeedSlow">بطيء</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="normal"><span data-i18n="voiceSpeedNormal">عادي</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="fast"><span data-i18n="voiceSpeedFast">سريع</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="xfast"><span data-i18n="voiceSpeedXFast">سريع جدًا</span></button>
+  </div>
   <button type="button" class="btn" id="btnTestVoice" style="margin-top:16px; display:inline-flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg><span data-i18n="testVoiceBtn">تجربة الصوت</span></button>
   </div></div>
 
@@ -533,10 +534,15 @@
   </div></div>
 
 
-  <!-- v-secret-vault: خزنة الأسرار — للمالك وحده (تظهر مع لوحة التحكّم) -->
-  <div id="vaultSectionWrap" style="display:none;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('vaultSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;">🔐 خزنة الأسرار (خاص بالمالك)</h3><span class="settingsSectionArrow" id="vaultSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="vaultSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <!-- v-owner-page (أمر عمران): صفحة المالك — الخزنة ولوحة التحكّم كانتا خارج نظام الصفحات
+       فتظهران أسفل كلّ صفحة إعدادات. صارتا صفحة واحدة في القائمة، للمالك وحده. -->
+  <div id="ownerSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('ownerSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="ownerSectionTitle">👑 صفحة المالك</h3><span class="settingsSectionArrow" id="ownerSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="ownerSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+
+  <!-- v-secret-vault: خزنة الأسرار — للمالك وحده -->
+  <div id="vaultSectionWrap" class="ownerCard" style="display:none;">
+    <div class="ownerCardTitle">🔐 خزنة الأسرار</div>
+    <div id="vaultSectionContent">
       <div style="font-size:12.5px; line-height:1.8; opacity:.85;">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع. الرفع يحتاج توكن بصلاحيّة Contents: write وPull requests: write على المستودع.</div>
       <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
@@ -552,9 +558,9 @@
     </div>
   </div>
 
-  <div id="adminSectionWrap" style="display:none;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="adminSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <div id="adminSectionWrap" class="ownerCard" style="display:none;">
+    <div class="ownerCardTitle" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</div>
+    <div id="adminSectionContent">
       <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
       <!-- v-claude-diag: فحص مفتاح كلود الفعلي في الخادم — يحسم «فيه رصيد» من عدمه -->
       <button type="button" id="adminClaudeDiagBtn" onclick="adminClaudeDiag()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px; margin-inline-start:8px;">👑 فحص مفتاح كلود</button>
@@ -579,6 +585,8 @@
       <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "افحص الآن" لتشغيل الفحص...</div>
     </div>
   </div>
+
+  </div></div>
 
   <button type="button" id="settingsLogoutBtn" style="display:none !important; width:100%; margin-top:18px; padding:12px; border-radius:var(--r-2); border:none; background:none; color:#fff; font-weight:700; font-size:14px; cursor:pointer;">🔑 <span id="settingsLogoutBtnLabel" data-i18n="loginAction">دخول</span></button>
 

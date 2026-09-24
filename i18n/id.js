@@ -10,7 +10,7 @@ I18N['id'] = {
     "introSplashLabel": "✨ Layar pembuka saat aplikasi dibuka",
     "introSkip": "Ketuk untuk melanjutkan",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
-    tvTitle: "📺 TV", tvBack: "Kembali", tvYoutube: "YouTube", tvSearchPh: "Cari saluran...", tvAll: "Semua", tvPlatforms: "Platform resmi — dibuka dengan akun Anda", tvLiveIn: "Saluran langsung di dalam aplikasi", tvNoMatch: "Tidak ada saluran yang cocok", tvLive: "LANGSUNG", tvLiveCount: "kanal siaran langsung", tvOfficial: "Situs resmi", tvOpening: "Membuka...", tvOff: "Saluran sedang tidak menyiarkan", tvCatNews: "Berita", tvCatSports: "Olahraga", tvCatGeneral: "Umum", tvCatReligion: "Keagamaan", tvCatKids: "Anak", tvCatBiz: "Ekonomi", tvCIntl: "Internasional",
+    tvTitle: "📺 TV", tvBack: "Kembali", tvSearchPh: "Cari saluran...", tvAll: "Semua", tvPlatforms: "Platform resmi — dibuka dengan akun Anda", tvLiveIn: "Saluran langsung di dalam aplikasi", tvNoMatch: "Tidak ada saluran yang cocok", tvLive: "LANGSUNG", tvLiveCount: "kanal siaran langsung", tvOfficial: "Situs resmi", tvOpening: "Membuka...", tvOff: "Saluran sedang tidak menyiarkan", tvCatNews: "Berita", tvCatSports: "Olahraga", tvCatGeneral: "Umum", tvCatReligion: "Keagamaan", tvCatKids: "Anak", tvCatBiz: "Ekonomi", tvCIntl: "Internasional",
     tvPfShahid: "Semua saluran MBC langsung", tvPfAwaan: "Semua saluran Dubai langsung", tvPfAdtv: "Saluran Abu Dhabi dan Majid", tvPfTod: "beIN dengan langganan Anda", tvPfRotana: "Saluran Rotana", tvPfSub: "dengan langganan Anda",
     tvCountries: {"ae":"Uni Emirat Arab","sa":"Arab Saudi","qa":"Qatar","kw":"Kuwait","bh":"Bahrain","om":"Oman","eg":"Mesir","jo":"Yordania","lb":"Lebanon","iq":"Irak","ps":"Wilayah Palestina","ye":"Yaman","sd":"Sudan","ma":"Maroko","dz":"Aljazair","tn":"Tunisia","ly":"Libya","tr":"Turki","in_":"India","pk":"Pakistan","bd":"Bangladesh","ph":"Filipina","id_":"Indonesia","lk":"Sri Lanka","np":"Nepal","uk":"Inggris Raya","us":"Amerika Serikat","fr":"Prancis","de":"Jerman","ru":"Rusia","af":"Afganistan","am":"Armenia","ar_":"Argentina","at":"Austria","au":"Australia","az":"Azerbaijan","be":"Belgia","bg":"Bulgaria","bo":"Bolivia","br":"Brasil","ca":"Kanada","ch":"Swiss","cl":"Cile","cm":"Kamerun","cn":"Tiongkok","co":"Kolombia","cz":"Ceko","dk":"Denmark","do":"Republik Dominika","ec":"Ekuador","es":"Spanyol","et":"Etiopia","fi":"Finlandia","ge":"Georgia","gh":"Ghana","gr":"Yunani","hk":"Hong Kong DAK Tiongkok","hr":"Kroasia","hu":"Hungaria","ie":"Irlandia","il":"Israel","it":"Italia","jp":"Jepang","ke":"Kenya","kr":"Korea Selatan","kz":"Kazakhstan","mx":"Meksiko","my":"Malaysia","ng":"Nigeria","nl":"Belanda","no":"Norwegia","nz":"Selandia Baru","pl":"Polandia","pt":"Portugal","py":"Paraguay","ro":"Rumania","rs":"Serbia","se":"Swedia","sg":"Singapura","sn":"Senegal","th":"Thailand","tw":"Taiwan","tz":"Tanzania","ua":"Ukraina","ug":"Uganda","uz":"Uzbekistan","ve":"Venezuela","vn":"Vietnam","za":"Afrika Selatan"},
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -181,7 +181,7 @@ I18N['id'] = {
     "logoutTitle": "Keluar",
     "loginAction": "Masuk",
     "acctSectionTitle": "👤 Akun saya",
-    "statsSectionTitle": "Statistik saya",
+    "statsSectionTitle": "Proyek saya & cadangan",
     "statsProjectsLabel": "Jumlah proyek",
     "statsMessagesLabel": "Total pesan terkirim",
     "statsFavProviderLabel": "Penyedia favorit",
@@ -893,6 +893,11 @@ I18N['id'] = {
     "voiceGenderDefault": "Default (suara perangkat)",
     "voiceGenderMale": "Suara pria",
     "voiceGenderFemale": "Suara wanita",
+    "voiceSpeedLabel": "Kecepatan suara",
+    "voiceSpeedSlow": "Lambat",
+    "voiceSpeedNormal": "Normal",
+    "voiceSpeedFast": "Cepat",
+    "voiceSpeedXFast": "Sangat cepat",
     "cloudVoiceLabel": "🌟 Gunakan suara AI berkualitas tinggi (OpenAI TTS - memerlukan kunci OpenAI di atas)",
     "voiceOnyx": "🧔 Pria - Onyx",
     "voiceEcho": "👨 Pria - Echo",
@@ -985,7 +990,6 @@ Object.assign(I18N["id"], {
     ciHint: "Tulis bagaimana Anda ingin dibalas — berlaku di semua obrolan Anda.",
     ciPlaceholder: "Contoh: jawab santai dan singkat, tanpa basa-basi.",
     ciSaved: "Tersimpan ✅",
-    mahaCcTitle: "Teks langsung panggilan",
     checkoutApplePay: "Apple Pay",
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Tidak tersedia di perangkat ini",
@@ -1076,3 +1080,14 @@ Object.assign(I18N['id'], {"tvSportsWorld":"Olahraga Dunia","tvDirect":"Siaran l
 
 /* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
 Object.assign(I18N['id'], { qiblaTitle: '📿 Kiblat & Waktu Salat' });
+/* v-tv-matches: جدول المباريات */
+Object.assign(I18N['id'], {"tvMatches": "Jadwal pertandingan", "tvMatchLive": "Sedang live", "tvMatchPaid": "Berbayar", "tvNoMatches": "Tidak ada pertandingan terjadwal saat ini", "tvMatchesNote": "Waktu sesuai perangkat Anda · jadwal diperbarui setiap hari"});
+
+/* v-img-undo: الرجوع لنسخة سابقة من الصورة */
+Object.assign(I18N["id"], {"imgUndoPrev": "Dikembalikan ke versi sebelumnya 👆 Apa yang perlu diubah?", "imgUndoOrig": "Dikembalikan ke gambar asli 👆 Apa yang perlu diubah?", "imgUndoNone": "Ini versi pertama, tidak ada sebelumnya 👆 Apa yang perlu diubah?"});
+
+/* v-owner-page: صفحة المالك في الإعدادات */
+Object.assign(I18N["id"], {"ownerSectionTitle": "👑 Halaman pemilik"});
+
+/* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
+Object.assign(I18N["id"], {"imgUnchanged": "⚠️ Edit tidak diterapkan: gambar kembali tanpa perubahan, jadi tidak saya tampilkan dan tidak dihitung ke akunmu. Jelaskan persis apa yang harus berubah atau ucapkan dengan cara lain."});

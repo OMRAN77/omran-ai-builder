@@ -122,7 +122,7 @@ test('٢. الخادم: 400 يذكر reasoning → إعادة بـthinking وح�
 
 test('٣. الخادم: البنية — الحقول خارج تعريف callUpstream (اختبار v-claude-models يحرسه)، والإعادة بعد كاش-400 وقبل الفشل النهائيّ', () => {
   const s = read('api/_lib/chat.js');
-  const i = s.indexOf('const callUpstream = (withImg) => fetch(CHAT_URL');
+  const i = s.indexOf('const callUpstream = (withImg) => __upFetch(CHAT_URL');
   const req = s.slice(i, s.indexOf('let upstream = await callUpstream(true);', i));
   assert.ok(req.includes('__quickFields()'), 'الدمج في الجسم');
   assert.ok(!/thinking|reasoning/.test(req), 'لا حرف من الحقول داخل التعريف');
@@ -132,7 +132,7 @@ test('٣. الخادم: البنية — الحقول خارج تعريف callUp
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");
   const finalFail = s.indexOf("await logErrorAndFlush('chat/upstream-fail'");
   assert.ok(cache400 > 0 && quick400 > cache400 && finalFail > quick400);
-  assert.ok(s.includes("if (!viaOR || prov === 'claude') return {};"), 'كلود لا يُمسّ');
+  assert.ok(s.includes("if (!viaOR || prov === 'claude' || __ownerReq) return {};"), 'كلود لا يُمسّ');
 });
 
 // ── العميل ──
