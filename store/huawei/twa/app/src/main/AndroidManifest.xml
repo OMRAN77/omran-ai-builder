@@ -185,14 +185,30 @@
 
         <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
 
+        <!-- v-fold-config + v-webview-opaque: انظر النشاط التالي — غير مستعمل فعليًّا
+             (getFallbackStrategy يوجّه إلى MahaWebViewFallbackActivity) لكنّه يبقى مطابقًا
+             حتّى لا يعود العطب إن تغيّر التوجيه. -->
         <activity android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
-            android:configChanges="orientation|screenSize" />
+            android:theme="@style/OmranWebViewTheme"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|keyboardHidden|uiMode" />
 
         <!-- v-maha-webview-mic: LauncherActivity.getFallbackStrategy() يوجّه هنا بدل الكلاس أعلاه
              (يبقى مُعلَنًا بلا ضرر — غير مُستعمَل فعليًّا الآن) لأنّه وحده يمنح صلاحية المايك
              وقت التشغيل. نفس android:configChanges الأصليّ. -->
+        <!-- v-webview-opaque: سمة معتمة بدل Theme.Translucent.NoTitleBar الموروثة من
+             <application> — نافذة شفّافة لا تضمن سطحًا معتمًا، فيخرج ما لم يرسمه WebView
+             ضجيجًا ملوّنًا ومستطيلات سوداء (راجع res/values/styles.xml).
+
+             v-fold-config (جهاز المالك HUAWEI Mate X7 **قابل للطيّ**): configChanges كان
+             "orientation|screenSize" وحدهما. طيّ الجهاز أو فتحه يغيّر screenLayout و
+             smallestScreenSize، وهما غير معلنين — فيهدم أندرويد النشاط ويعيد إنشاءه، أي
+             WebView جديد و**إعادة تحميل الصفحة كاملة**: ومضة الشاشة كلّها وشاشة نصف مرسومة
+             عند كلّ طيّ/فتح. وكذلك density (تغيير حجم العرض) وuiMode (الوضع الداكن)
+             وkeyboardHidden. إعلانها يُبقي النشاط حيًّا ويسلّم التغيير إلى
+             onConfigurationChanged، وWebView يعيد التخطيط وحده بلا إعادة تحميل. -->
         <activity android:name=".MahaWebViewFallbackActivity"
-            android:configChanges="orientation|screenSize" />
+            android:theme="@style/OmranWebViewTheme"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|keyboardHidden|uiMode" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

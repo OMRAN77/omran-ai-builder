@@ -135,6 +135,7 @@ public class MahaWebViewFallbackActivity extends Activity {
         mWebView.setWebViewClient(createWebViewClient());
         mWebView.setWebChromeClient(createWebViewChromeClient());
         attachDownloadListener(mWebView);
+        paintOpaque(mWebView);
 
         WebSettings webSettings = mWebView.getSettings();
         setupWebSettings(webSettings);
@@ -220,6 +221,7 @@ public class MahaWebViewFallbackActivity extends Activity {
                 mWebView = new WebView(view.getContext());
                 mWebView.setWebViewClient(this);
                 attachDownloadListener(mWebView);
+                paintOpaque(mWebView);
                 WebSettings webSettings = mWebView.getSettings();
                 setupWebSettings(webSettings);
                 vg.addView(mWebView);
@@ -388,6 +390,17 @@ public class MahaWebViewFallbackActivity extends Activity {
                 Log.e(TAG, "No browser to open " + url, ex);
             }
         }
+    }
+
+    /**
+     * v-webview-opaque: WebView نفسه يُرسم بخلفيّة معتمة بلون التطبيق (‎#000000‎، وهو
+     * background_color في manifest.json و meta theme-color في index.html). الافتراضيّ أبيض،
+     * فكلّ إطار لم تكتمل رسمته كان يخرج ومضة بيضاء داخل تطبيق أسود؛ ومع نافذة شفّافة (كانت
+     * السمة الموروثة) لا يوجد سطح معتم تحته إطلاقًا فيخرج ما في المخزن ضجيجًا. السمة المعتمة
+     * في res/values/styles.xml تحلّ النافذة، وهذا السطر يحلّ سطح WebView نفسه — الاثنان معًا.
+     */
+    private static void paintOpaque(WebView webView) {
+        webView.setBackgroundColor(0xFF000000);
     }
 
     @SuppressLint("SetJavaScriptEnabled")

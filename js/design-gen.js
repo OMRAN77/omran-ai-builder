@@ -12,7 +12,7 @@
     card.style.position='relative'; card.style.overflow='hidden'; card.style.borderRadius='12px';
     if(tall) card.style.aspectRatio='3/4';
     var im=document.createElement('img');
-    im.src=url; im.loading='eager'; im.alt='';
+    im.loading='lazy'; im.alt='';
     im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;';
     im.onerror=function(){ im.remove(); };
     im.onload=function(){
@@ -23,6 +23,10 @@
       if(ck) ck.style.cssText='position:absolute;top:6px;inset-inline-end:6px;z-index:2;width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(212,175,55,.6);display:flex;align-items:center;justify-content:center;font-size:11px;background:rgba(0,0,0,.45);';
     };
     card.insertBefore(im,card.firstChild);
+    /* v-art-defer: البطاقة داخل #fashionAiModal المغلق — الصورة كانت تُحمَّل عند الإقلاع
+       (eager يتجاوز display:none أصلًا). تُحمَّل الآن حين تدخل الشاشة، أي عند فتح النافذة. */
+    if(window.__omranWhenSeen) window.__omranWhenSeen(im,function(){ im.src=url; });
+    else im.src=url;
   }
   var LOOKS='assets/fashion/looks/';
   // صور مخصّصة للفئات (بورتريه) — لا تعيد صور بطاقات الأنماط.

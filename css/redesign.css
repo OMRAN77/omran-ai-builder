@@ -624,4 +624,11 @@ html.omAndroid #mahaSkyLayer .omSkyStar{filter:none;}
 html.omAndroid #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{animation:tickerAiPulseLite 2.2s ease-in-out infinite; filter:none;}
 @keyframes tickerAiPulseLite{0%,100%{opacity:.72;} 50%{opacity:1;}}
 html.omAndroid #sectionsToolsOverlay{backdrop-filter:none; -webkit-backdrop-filter:none;}
+/* v-bdf-off (المالك ٢٤ سبتمبر «وميض ومشوّشة»): v-android-gpu أطفأ التغبيش تحت لوحة الأدوات
+   وحدها، وبقي حيًّا على تسع نوافذ أخرى (قائمة الرأس، الرقائق السريعة، التعليم، التجارب،
+   المستندات، الحكومة، السيرة، الملاحظات) وعلى كلّ غلاف يُحقَن من JS بنمط سطريّ. كلّ واحد منها
+   لقطة خلفيّة ملء الشاشة في كلّ إطار — أغلى ما يُطلب من معالج رسوم WebView، وكلّها زينة فوق
+   خلفيّة معتمة أصلًا (rgba سوداء) فالنصّ يبقى مقروءًا بلا تغبيش.
+   القاعدة عامّة بـ!important لأنّ النمط السطريّ من JS لا تغلبه قاعدة عاديّة. أندرويد وحده. */
+html.omAndroid *{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;}
 

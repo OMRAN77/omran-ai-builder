@@ -14,6 +14,35 @@ window.__swallow = window.__swallow || function (err, ctx) {
    يقرؤها redesign.css ليخفّف ما يرهق معالج الرسوم في أندرويد (ظلال الفلتر المتحرّكة والتغبيش المخفيّ). */
 try { if (/Android|HarmonyOS|HUAWEI|HONOR/i.test(navigator.userAgent || '')) document.documentElement.classList.add('omAndroid'); }
 catch (e) { /* guard-ok: بلا العلامة يبقى الشكل الكامل كما كان */ }
+/* v-art-defer (المالك ٢٤ سبتمبر: «الشاشة كاملة فيها وميض ومشوّشة… والأدوات»): مقياس على مقاس
+   جهازه (٧٠٠×٧٧٠ بكثافة ٢٫٦٢٥، محادثة فارغة): ٧٤ صورة تُحمَّل عند الإقلاع = ٥٠٫٤ م.ب بكسلات،
+   والمعروض منها ٠٫١٨ م.ب وحدها (الشعار) — ٦٩ صورة داخل نوافذ **مغلقة**: استوديو الأزياء ٤٨
+   (٣٣٫١ م.ب: نسائيّ/رجاليّ/أطفال وصفّ المقارنة ٣٦ نمطًا)، بطاقات الأدوات ١٨ (١٤٫٨ م.ب)،
+   الديكور ٢ والاستوديو ١. `loading="lazy"` لا يؤجّل شيئًا داخل display:none — العنصر بلا صندوق
+   تخطيط فلا يتقاطع مع الشاشة أبدًا، فيحمّله المتصفّح فورًا؛ و`new Image()` يتجاوز الوسم أصلًا.
+   هنا مراقب تقاطع واحد يُعرَّف قبل أيّ سكربت: العمل يُؤجَّل حتّى يدخل العنصر الشاشة فعلًا
+   (أي حين تُفتح نافذته)، فتُحمَّل صوره ساعتها لا قبلها. */
+window.__omranWhenSeen = (function () {
+  var obs = null;
+  try {
+    obs = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        if (!entries[i].isIntersecting) continue;
+        var el = entries[i].target;
+        obs.unobserve(el);
+        var fns = el.__omSeen; el.__omSeen = null;
+        if (fns) for (var j = 0; j < fns.length; j++) { try { fns[j](); } catch (e) { window.__swallow(e, 'whenSeen'); } }
+      }
+    }, { rootMargin: '400px' });
+  } catch (e) { /* guard-ok: بلا مراقب يُنفَّذ العمل فورًا كما كان قبل التأجيل */ }
+  return function (el, fn) {
+    if (!el || typeof fn !== 'function') return;
+    if (!obs) { fn(); return; }
+    if (el.__omSeen) { el.__omSeen.push(fn); return; }
+    el.__omSeen = [fn];
+    obs.observe(el);
+  };
+})();
 </script>
 
   <meta name="google-site-verification" content="EIm6owSevV2DFP5G_giH4ZW-UNLtHuKGH4AY-xZMH74" />
@@ -111,7 +140,7 @@ catch (e) { /* guard-ok: بلا العلامة يبقى الشكل الكامل 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css?v=721">
-<link rel="stylesheet" href="css/redesign.css?v=684">
+<link rel="stylesheet" href="css/redesign.css?v=685">
 <link rel="stylesheet" href="css/modules.css?v=662">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
@@ -521,6 +550,14 @@ body #btnMode{ display: none !important; }
 @keyframes oiBreathe{from{transform:scale(1)}to{transform:scale(1.025)}}
 @keyframes oiUp{to{opacity:1}}
 @media (prefers-reduced-motion:reduce){#omranIntro .oiImg,#omranIntro .oiSheen{animation:none}}
+/* v-intro-gpu (المالك ٢٤ سبتمبر «وميض»): المقدّمة تظهر مع كلّ تشغيل، وهي أوّل ما يراه — وفيها
+   أغلى تأثيرين على معالج رسوم أندرويد في أثقل لحظة (الإقلاع): oiBg يمرّر blur(30px) على طبقة
+   892×970 (أكبر من الشاشة، مكبّرة 1.12)، وoiSheen يفرض عزل طبقة بـmix-blend-mode:screen.
+   قياس بمقاس جهاز المالك: ثماني طبقات بحجم الشاشة الكاملة أثناء المقدّمة. على أندرويد وحده:
+   الخلفيّة المغبّشة تُحذف (الحاوية أصلًا ‎#07070B‎ فيبقى الإطار داكنًا نظيفًا) والوميض يبقى
+   متحرّكًا بلا مزج. الآيفون والكمبيوتر بلا تغيير. */
+html.omAndroid #omranIntro .oiBg{display:none}
+html.omAndroid #omranIntro .oiSheen{mix-blend-mode:normal;opacity:.5}
 html.oiOn body{overflow:hidden}
 </style>
 <style>
@@ -564,7 +601,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
 <script src="/js/design-sels.js?v=560"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
-<script src="/js/design-gen.js?v=607"></script>
+<script src="/js/design-gen.js?v=608"></script>
 
 
 <header>
@@ -857,7 +894,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-4"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=31547100"></script>
+    <script defer src="/js/app.bundle.js?v=850bda30"></script>
     <script defer src="/js/modes.js?v=m240924b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -912,7 +949,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
   <button type="button" class="omNavBtn" data-omnav="files"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavFiles">الملفات</span></button>
   <button type="button" class="omNavBtn" data-omnav="settings"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span data-i18n="omNavSettings">الإعدادات</span></button>
 </nav>
-<script defer src="/js/ui-wiring.js?v=649"></script>
+<script defer src="/js/ui-wiring.js?v=650"></script>
 <!-- v412 — استوديو صانع الفيديو (كمبيوتر فقط، لا يلمس الجوّال) -->
 <script defer src="/js/video.js?v=423"></script>
 
@@ -964,11 +1001,17 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     ['66%','80%','7px','3s','.9s'],
     ['30%','91%','5px','2.9s','1.9s']
   ];
+  /* v-stars-lite (الخطوة التالية التي سمّاها v-android-gpu ولم تُنفَّذ): كلّ نجمة طبقة تركيب
+     متحرّكة دائمة — ٢٥ نجمة (٧ على زرّ المحادثة و١٨ في الشريط) = ٢٥ طبقة تُركَّب في كلّ إطار.
+     على أندرويد وحده تُنصَّف: النجوم تبقى وتومض، والحمل ينزل للنصف. */
+  var OM_LITE = false;
+  try { OM_LITE = document.documentElement.classList.contains('omAndroid'); }
+  catch (e) { /* guard-ok: بلا العلامة يبقى العدد الكامل كما كان */ }
   function build(){
     var b = document.getElementById('omranNewChatBtn');
     if(!b || b.dataset.omStars) return;
     b.dataset.omStars = '1';
-    STARS.forEach(function(p){
+    STARS.filter(function(_, i){ return !OM_LITE || i % 2 === 0; }).forEach(function(p){
       var s = document.createElement('span');
       s.className = 'omStar';
       s.style.top = p[0]; s.style.left = p[1];
@@ -1010,7 +1053,10 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </style>
 <script>
 (function(){
+  /* v-stars-lite: ثماني عشرة نجمة في الشريط الجانبيّ = ثماني عشرة طبقة متحرّكة — نصفها على أندرويد. */
   var COUNT = 18, layer = null;
+  try { if (document.documentElement.classList.contains('omAndroid')) COUNT = 8; }
+  catch (e) { /* guard-ok: بلا العلامة يبقى العدد الكامل */ }
 
   function makeLayer(){
     if(layer && layer.parentNode) return layer;

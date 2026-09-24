@@ -3068,7 +3068,14 @@ async function postWithConfirm(url, payload){
       nm.textContent = s.name || '';
       sb.textContent = s.sub || '';
       if(s.bg) th.style.background = s.bg;
-      if(s.img){ im.style.visibility = 'visible'; im.src = s.img; }
+      /* v-art-defer: البطاقة المصغّرة تُبنى عند الإقلاع داخل نوافذ مغلقة (الديكور، المناسبة،
+         الموسم)، فكانت صورتها تُحمَّل بلا أن يراها أحد. الحاوية th بمقاس ثابت 44×58 فلها
+         تخطيطها دائمًا — التأجيل عليها آمن، والصورة تصل عند فتح النافذة. */
+      if(s.img){
+        im.style.visibility = 'visible';
+        if(window.__omranWhenSeen) window.__omranWhenSeen(im, function(){ im.src = s.img; });
+        else im.src = s.img;
+      }
       else im.style.visibility = 'hidden';
     }
     d.onclick = function(){ window.omranPicker.open(openCfg()); };

@@ -24,7 +24,7 @@ test('٢. على أندرويد: النجوم بلا فلتر، الأيقونة
   assert.match(css, /@keyframes tickerAiPulseLite\{0%,100%\{opacity:\.72;\} 50%\{opacity:1;\}\}/);
   assert.doesNotMatch(css.slice(css.indexOf('@keyframes tickerAiPulseLite')), /filter:drop-shadow/);
   assert.match(css, /html\.omAndroid #sectionsToolsOverlay\{backdrop-filter:none; -webkit-backdrop-filter:none;\}/);
-  assert.match(html, /css\/redesign\.css\?v=684/);
+  assert.match(html, /css\/redesign\.css\?v=685/);
 });
 
 test('٣. رقيب الإقلاع لا يعيد التحميل ومكالمة مها جارية أو تبدأ أو شاشتها ظاهرة', () => {
@@ -50,4 +50,51 @@ test('٤. v-mem-probe: جهاز المالك وحده يرسل أرقام الذ
   assert.match(src, /report\('v-mem-probe ' \+ tag/);
   assert.match(src, /window\.__omrS && window\.__omrS\.projects/);
   assert.doesNotMatch(src, /getContext\(/, 'بلا WebGL/لوحة — لا حِمل جديد على معالج الرسوم');
+});
+
+/* ————— الجولة الثانية (المالك ٢٤ سبتمبر: «صلّح الدنيا كلّها») ————— */
+
+test('٥. v-bdf-off: لا backdrop-filter على أندرويد إطلاقًا — ولا يمسّ الآيفون ولا الكمبيوتر', () => {
+  // قياس قبلها: تسعة عناصر بتغبيش حيّ (قائمة الرأس، الرقائق، التعليم، التجارب،
+  // المستندات، الحكومة، السيرة، الملاحظات) + أغلفة تُحقَن من JS بنمط سطريّ.
+  assert.match(css, /html\.omAndroid \*\{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;\}/);
+  // !important لازم: النمط السطريّ من JS لا تغلبه قاعدة عاديّة
+  const injected = require('node:fs').readFileSync('js/app-10-features.js', 'utf8');
+  assert.match(injected, /backdrop-filter:blur/, 'ما زال هناك تغبيش سطريّ من JS — لذلك !important');
+  // القاعدة تحت html.omAndroid وحدها
+  const rule = css.match(/html\.omAndroid \*\{backdrop-filter[^}]+\}/)[0];
+  assert.ok(rule.startsWith('html.omAndroid '), 'أندرويد وحده — لا قاعدة عامّة تصيب الجميع');
+  assert.match(html, /css\/redesign\.css\?v=685/);
+});
+
+test('٦. v-intro-gpu: المقدّمة على أندرويد بلا طبقة تغبيش ملء الشاشة وبلا عزل مزج', () => {
+  // قبلها: oiBg يمرّر blur(30px) على 892×970 (أكبر من الشاشة، مكبّرة 1.12)،
+  // وoiSheen يفرض عزل طبقة بـmix-blend-mode:screen — في أثقل لحظة (الإقلاع).
+  assert.match(html, /html\.omAndroid #omranIntro \.oiBg\{display:none\}/);
+  assert.match(html, /html\.omAndroid #omranIntro \.oiSheen\{mix-blend-mode:normal;opacity:\.5\}/);
+  // الأصل باقٍ للآيفون والكمبيوتر
+  assert.match(html, /#omranIntro \.oiBg\{[^}]*filter:blur\(30px\) brightness\(\.5\)/);
+  assert.match(html, /#omranIntro \.oiSheen\{[^}]*mix-blend-mode:screen/);
+  // الحاوية نفسها معتمة فالإطار يبقى داكنًا نظيفًا بلا الخلفيّة المغبّشة
+  assert.match(html, /#omranIntro\{[^}]*background:#07070B/);
+  // الأمر يأتي بعد قاعدة تقليل الحركة فلا يُلغيها
+  assert.ok(html.indexOf('@media (prefers-reduced-motion:reduce){#omranIntro') < html.indexOf('html.omAndroid #omranIntro .oiBg'));
+});
+
+test('٧. v-stars-lite: نجوم أندرويد نصفها (١٢ بدل ٢٥) والآيفون والكمبيوتر كما كانا', () => {
+  // كلّ نجمة طبقة تركيب متحرّكة دائمة — الخطوة التي سمّاها v-android-gpu ولم تُنفَّذ
+  const starsSrc = html.match(/var STARS = (\[[\s\S]*?\n  \];)/);
+  assert.ok(starsSrc, 'مصفوفة نجوم الزرّ');
+  const STARS = new Function('return ' + starsSrc[1].replace(/;$/, ''))();
+  assert.equal(STARS.length, 7, 'سبع نجوم على زرّ المحادثة كما كانت');
+  const pick = (lite) => STARS.filter((_, i) => !lite || i % 2 === 0);
+  assert.equal(pick(true).length, 4, 'أندرويد: أربع');
+  assert.equal(pick(false).length, 7, 'غيره: سبع كما كان');
+  assert.match(html, /STARS\.filter\(function\(_, i\)\{ return !OM_LITE \|\| i % 2 === 0; \}\)/);
+  assert.match(html, /OM_LITE = document\.documentElement\.classList\.contains\('omAndroid'\)/);
+  // نجوم الشريط الجانبيّ
+  assert.match(html, /var COUNT = 18, layer = null;/, 'الأصل ١٨ للآيفون والكمبيوتر');
+  assert.match(html, /if \(document\.documentElement\.classList\.contains\('omAndroid'\)\) COUNT = 8;/);
+  // كلّ حارس له طريق رجوع صامت
+  assert.equal((html.match(/guard-ok: بلا العلامة يبقى العدد الكامل/g) || []).length, 2);
 });

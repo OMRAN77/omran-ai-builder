@@ -113,9 +113,20 @@
     try{ new MutationObserver(tick).observe(o, { attributes: true, attributeFilter: ['class'] }); }catch(e){ /* guard-ok */ }
     tick();
   }
+  /* v-art-defer (المالك ٢٤ سبتمبر «… والأدوات»): الثماني عشرة بطاقة داخل #sectionsToolsOverlay
+     المغلق، وupgradeButton كان يحمّلها كلّها عند الإقلاع بـ`new Image()` — ١٤٫٨ م.ب بكسلات لا
+     يراها أحد حتّى تُفتح لوحة الأدوات. التأجيل على **الزرّ** لا على الصورة: الصورة بلا
+     `hasToolPhoto` بلا ارتفاع فلا تتقاطع أبدًا، والزرّ له تخطيطه في الشبكة دائمًا. النصّ
+     (decorate) يبقى عند الإقلاع كما كان — العناوين والأوصاف ليست بكسلات. */
   function applyToolPhotos(){
     watchOverlay();
-    Object.keys(TOOL_PHOTOS).forEach(function(id){ upgradeButton(id, srcFor(id)); decorate(id); });
+    Object.keys(TOOL_PHOTOS).forEach(function(id){
+      decorate(id);
+      var btn = document.getElementById(id);
+      if(!btn) return;
+      if(window.__omranWhenSeen) window.__omranWhenSeen(btn, function(){ upgradeButton(id, srcFor(id)); });
+      else upgradeButton(id, srcFor(id));
+    });
   }
   try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
 

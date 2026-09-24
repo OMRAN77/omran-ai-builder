@@ -29,7 +29,7 @@ test('١. كلّ بطاقة أداة تُحمَّل من نسخة العرض 600
     assert.ok(w * h * 4 / 1048576 < 0.9, id);
     assert.ok(fs.existsSync('assets/tool-cards/clean/' + id + '.jpg'), 'الأصل باقٍ: ' + id);
   }
-  assert.match(fs.readFileSync('js/ui-wiring.js', 'utf8'), /\/js\/tool-card-images\.js\?v=14/);
+  assert.match(fs.readFileSync('js/ui-wiring.js', 'utf8'), /\/js\/tool-card-images\.js\?v=15/);
 });
 
 test('٢. الشعار العربيّ والإنجليزيّ بنسخة 3× لارتفاع 42 في الصفحة وفي مبدّل اللغة', () => {
@@ -42,5 +42,5 @@ test('٢. الشعار العربيّ والإنجليزيّ بنسخة 3× لا
   assert.match(a10, /imgSrc = 'icons\/brand-ar-s\.png'/);
   assert.match(a10, /imgSrc = 'icons\/brand-en-s\.png'/);
   assert.doesNotMatch(a10, /icons\/brand-(?:ar|en)\.png/);
-  assert.match(html, /\/js\/ui-wiring\.js\?v=649/);
+  assert.match(html, /\/js\/ui-wiring\.js\?v=650/);
 });
