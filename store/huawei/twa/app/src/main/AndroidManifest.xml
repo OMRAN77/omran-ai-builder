@@ -49,6 +49,11 @@
 
         <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
 
+    <!-- v-reply-export: منزّل النظام (DownloadManager) في MahaWebViewFallbackActivity يحفظ في
+         «التنزيلات» العامّة؛ أندرويد ٩ وما قبله يحتاج هذه الصلاحيّة لذلك، والأحدث لا يحتاجها. -->
+
+        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
+
 
 
     

@@ -73,7 +73,10 @@ module.exports = async (req, res) => {
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
 
-    const mime = String(body.mime || 'application/octet-stream');
+    /* v-reply-export: النوع يُخزَّن بصيغة mime:name:data ويُرسَل ترويسةً — نوع/نوع فرعيّ مع charset
+       اختياريّ فقط؛ غيره (نقطتان، أسطر، معاملات أخرى) يصير application/octet-stream. */
+    const rawMime = String(body.mime || '').trim();
+    const mime = /^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+(;\s*charset=[A-Za-z0-9_-]+)?$/.test(rawMime) ? rawMime : 'application/octet-stream';
     const rawName = String(body.name || 'file');
     const name = rawName.replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || 'file';
     const id = crypto.randomBytes(6).toString('hex');

@@ -2776,7 +2776,7 @@ const I18N = {
     voiceTabAssistantName: 'المساعد',
     copyCode: 'نسخ',
     copiedMsg: 'تم النسخ ✅',
-    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", imgReadyTitle: "✅ الصورة جاهزة", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
+    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", imgReadyTitle: "✅ الصورة جاهزة", fileReadyTitle: "✅ الملف جاهز", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
     adStudioTitle: 'استوديو الإعلانات',
     adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
@@ -3985,7 +3985,7 @@ const I18N = {
     copyCode: 'Copy',
     copyCodeTitle: 'Copy code',
     copiedMsg: 'Copied ✅',
-    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", imgReadyTitle: "✅ Image ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
+    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", imgReadyTitle: "✅ Image ready", fileReadyTitle: "✅ File ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
     promptPlaceholder: 'Type your message here ...',
@@ -4695,7 +4695,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=686'; /* v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=687'; /* v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7294,6 +7294,10 @@ function renderMessages(keepScroll){
       if(!a || a.dataset.nativeDownload) return;
       const h = a.getAttribute('href') || '';
       if(!/^(data:|blob:)/i.test(h)) return;
+      /* v-reply-export: الصور فقط — ملفّ Word/TXT/PDF كان يُرفع هنا «صورة» (image/jpeg) فتخرج
+         روابط التحميل والواتساب مكسورة. اسم بامتداد غير صوريّ يُترك لمساره. */
+      const ext = ((a.getAttribute('download') || '').match(/\.([A-Za-z0-9]{1,5})$/) || [])[1] || '';
+      if(ext && !/^(png|jpe?g|webp|gif|bmp|heic|heif|avif)$/i.test(ext) && !/^data:image\//i.test(h)) return;
       if(!appish()) return;
       e.preventDefault(); e.stopPropagation();
       window.omranSaveImage(h, a.getAttribute('download') || 'omran-image.png', 'save');
@@ -7869,40 +7873,15 @@ async function omranBlobToServerLink(blob, filename){
     fr.readAsDataURL(blob);
   });
   if(!b64 || b64.length > 4 * 1024 * 1024) throw new Error('too-large');
-  const r = await fetch('/api/media?action=pdf', {
+  /* v-reply-export: PDF إلى نقطته (تفحص التوقيع)، وأيّ ملفّ آخر (Word/TXT/صورة) إلى نقطة الملفّات العامّة */
+  const isPdf = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
+  const r = await fetch(isPdf ? '/api/media?action=pdf' : '/api/media?action=file', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: b64, name: filename }),
+    body: JSON.stringify({ data: b64, name: filename, mime: (blob && blob.type) || 'application/octet-stream' }),
   });
   const d = await r.json();
   if(!r.ok || !d || !d.url) throw new Error('upload-failed');
   return d.url;
-}
-function omranShareRetapBar(file, filename){
-  try{
-    const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-    const bar = document.createElement('div');
-    bar.style.cssText = 'position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));inset-inline:14px;z-index:99999;background:rgba(24,24,30,.96);border:1px solid rgba(212,175,55,.4);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;color:#eef0f6;font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.5);';
-    const txt = document.createElement('span');
-    txt.style.cssText = 'flex:1;';
-    txt.textContent = isArT ? '✅ الملف جاهز' : '✅ File ready';
-    const go = document.createElement('button');
-    go.textContent = isArT ? 'حفظ / مشاركة' : 'Save / Share';
-    go.style.cssText = 'background:none;color:#d4af37;font-weight:800;font-size:13.5px;padding:7px 14px;border:1px solid rgba(212,175,55,.5);border-radius:10px;cursor:pointer;touch-action:manipulation;';
-    go.onclick = function(){
-      navigator.share({ files: [file], title: filename }).then(function(){ bar.remove(); }).catch(function(e3){
-        if(e3 && e3.name === 'AbortError'){ bar.remove(); return; }
-        __swallow(e3, 'share:retap');
-      });
-    };
-    const x2 = document.createElement('button');
-    x2.textContent = '✕';
-    x2.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:14px;cursor:pointer;padding:4px 6px;';
-    x2.onclick = function(){ bar.remove(); };
-    bar.appendChild(txt); bar.appendChild(go); bar.appendChild(x2);
-    document.body.appendChild(bar);
-    setTimeout(function(){ try{ bar.remove(); }catch(e){ __swallow(e, 'share:retap-bar'); } }, 60000);
-    return true;
-  }catch(e){ __swallow(e, 'share:retap-bar2'); return false; }
 }
 /* v-pdf-sheet (شكوى المالك ٤ سبتمبر «تحميل PDF ما اشتغل في الهواوي والأندرويد»):
    كشف الغلاف كان يخطئ (لا مرجع android-app ولا standalone في بعض الأغلفة) فيسقط
@@ -7926,7 +7905,8 @@ function omranPdfReadySheet(url, file, filename, kind, openUrl){
     const head = document.createElement('div');
     head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;color:#f3efe4;font-weight:800;font-size:15px;';
     const ttl = document.createElement('span');
-    ttl.textContent = kind === 'video' ? (isArT ? '✅ الفيديو جاهز' : '✅ Video ready') : (kind === 'image' ? (isArT ? '✅ الصورة جاهزة' : '✅ Image ready') : (isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready'));
+    const fileTtl = (typeof t === 'function' && t('fileReadyTitle') !== 'fileReadyTitle' && t('fileReadyTitle')) || (isArT ? '✅ الملف جاهز' : '✅ File ready');
+    ttl.textContent = kind === 'video' ? (isArT ? '✅ الفيديو جاهز' : '✅ Video ready') : (kind === 'image' ? (isArT ? '✅ الصورة جاهزة' : '✅ Image ready') : (kind === 'file' ? fileTtl : (isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready')));
     const x = document.createElement('button'); x.textContent = '✕';
     x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
     x.onclick = function(){ sheet.remove(); };
@@ -7979,6 +7959,9 @@ function omranPdfReadySheet(url, file, filename, kind, openUrl){
 }
 async function omranSaveBlob(blob, filename){
   const isPdfFile = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
+  /* v-reply-export: نوع الورقة — PDF بعنوانه، والصورة بعنوانها، وأيّ ملفّ آخر «الملفّ جاهز» */
+  const sheetKind = isPdfFile ? 'pdf' : (/^image\//i.test((blob && blob.type) || '') ? 'image' : 'file');
+  const sheetMime = isPdfFile ? 'application/pdf' : ((blob && blob.type) || 'application/octet-stream');
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   try{
     if(navigator.canShare && typeof File === 'function'){
@@ -7987,23 +7970,20 @@ async function omranSaveBlob(blob, filename){
         try{ await navigator.share({ files: [f], title: filename }); return; }
         catch(e){
           if(e && e.name === 'AbortError') return;
-          /* v-share-retap (عمران: «على طول استوت من الهاتف» مرة واحدة فقط):
-             آيفون يرفض المشاركة بعد معالجة طويلة لانتهاء «ضغطة المستخدم».
-             ضغطة جديدة على شريط صغير تعيد فتح ورقة المشاركة الأصلية دائمًا.
-             داخل الأغلفة فقط — المتصفحات العادية تنزّل مباشرة كما كانت. */
-          /* v-pdf-sheet: PDF على الجوال → ورقة الأزرار (أدناه) بدل شريط إعادة اللمس */
-          if(!(isPdfFile && (omranLikelyApp() || omranMobileUA())) && omranLikelyApp() && omranShareRetapBar(f, filename)) return;
+          /* v-reply-export: رفض المشاركة (انتهاء «ضغطة المستخدم» في الآيفون، أو نوع خارج قائمة كروم
+             مثل .doc) → ورقة الأزرار أدناه لكلّ الأنواع؛ فيها «مشاركة» بلمسة جديدة تغني عن شريط إعادة اللمس. */
         }
       }
     }
   }catch(e){ __swallow(e, 'share:universal'); }
-  /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
-  if(isPdfFile && (omranLikelyApp() || omranMobileUA())){
+  /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي لكلّ الأنواع (v-reply-export: كان PDF فقط، فكان
+     Word/TXT يسقطان على تنزيل blob الذي تخطفه مصيدة الصور وترفعه «صورة» مكسورة) */
+  if(omranLikelyApp() || omranMobileUA()){
     try{
       const url = await omranBlobToServerLink(blob, filename);
       let fileForShare = null;
-      try{ if(typeof File === 'function') fileForShare = new File([blob], filename, { type: 'application/pdf' }); }catch(e){ fileForShare = null; }
-      if(omranPdfReadySheet(url, fileForShare, filename)){
+      try{ if(typeof File === 'function') fileForShare = new File([blob], filename, { type: sheetMime }); }catch(e){ fileForShare = null; }
+      if(omranPdfReadySheet(url, fileForShare, filename, sheetKind)){
         /* محاولة تنزيل تلقائي صامتة إلى جانب الورقة (تعمل في TWA كروم) */
         try{
           const dfr0 = document.createElement('iframe');
@@ -8061,9 +8041,9 @@ async function omranSaveBlob(blob, filename){
       /* v-pdf-big (شكوى المالك: بصورة واحدة يعمل وبخمس لا): تعذّر رابط الخادم (ملف كبير) —
          الورقة نفسها بملف محلي: مشاركة بالملف (تعمل في الأغلفة) ورابط blob وفتح */
       try{
-        let f2 = null; try{ if(typeof File === 'function') f2 = new File([blob], filename, { type: 'application/pdf' }); }catch(e2){ f2 = null; }
+        let f2 = null; try{ if(typeof File === 'function') f2 = new File([blob], filename, { type: sheetMime }); }catch(e2){ f2 = null; }
         const bu = URL.createObjectURL(blob);
-        if(omranPdfReadySheet(bu, f2, filename, 'pdf', bu)) return;
+        if(omranPdfReadySheet(bu, f2, filename, sheetKind, bu)) return;
       }catch(e3){ __swallow(e3, 'share:big-sheet'); }
     }
   }
@@ -8077,7 +8057,7 @@ function msgDownloadBlob(blob, filename){
       fr.onload = () => {
         try{
           const b64 = String(fr.result || '').split(',')[1] || '';
-          share.postMessage({ b64, name: filename || 'omran-file', mime: blob.type || 'application/octet-stream' });
+          share.postMessage({ b64, name: filename || 'omran-file', mime: String(blob.type || 'application/octet-stream').split(';')[0].trim() });
         }catch(e){ __swallow(e, 'share:app#post'); }
       };
       fr.readAsDataURL(blob);
@@ -8186,7 +8166,9 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
   try{
     await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
     try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
-    const canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 2 });
+    /* v-reply-export (PDF «فاضي»): html-to-image ينسخ موضع الحاوية المحسوب (fixed؛ left:-12000px) إلى
+       نسختها داخل الصورة، فتُرسم خارج اللوحة ويخرج كلّ PDF أبيض منذ v-pdf-file. النسخة تُرسم في مكانها. */
+    const canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 2, style: { position: 'static', left: '0', top: '0' } });
     if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -8276,7 +8258,7 @@ function exportReplyAsPdf(text){
 function exportReplyAsWord(text){
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  msgDownloadBlob(blob, 'omran-ai-reply.doc');
+  msgSaveExport(blob, 'omran-ai-reply.doc');
 }
 function exportReplyAsImage(text){
   const width = 900;
@@ -8306,11 +8288,24 @@ function exportReplyAsImage(text){
   ctx.textAlign = 'right';
   ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
   lines.forEach((line, i) => { ctx.fillText(line, canvas.width - padding, padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4)); });
-  canvas.toBlob(blob => { if(blob) msgDownloadBlob(blob, 'omran-ai-reply.png'); }, 'image/png');
+  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); }, 'image/png');
 }
 function exportReplyAsTxt(text){
   const blob = new Blob([text || ''], { type: 'text/plain;charset=utf-8' });
-  msgDownloadBlob(blob, 'omran-ai-reply.txt');
+  msgSaveExport(blob, 'omran-ai-reply.txt');
+}
+/* v-reply-export (شكوى المالك ٢٤ سبتمبر: «الورد والـtxt والصور ما تشتغل»): كانت الثلاثة تنزّل
+   blob مباشرة، وداخل التطبيق تخطفها مصيدة الصور فترفع Word/TXT «صورة» مكسورة. على الجوال وفي
+   التطبيقات تمرّ الآن بمسار الحفظ الموحّد (جسر ← ورقة المشاركة ← رابط خادم بورقة أزرار)؛
+   الكمبيوتر ينزّل مباشرة كما كان. */
+function msgSaveExport(blob, filename){
+  let viaSheet = false;
+  try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
+  if(viaSheet){
+    omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
+    return;
+  }
+  msgDownloadBlob(blob, filename);
 }
 let __msgMoreMenuOpen = null;
 function closeMsgMoreMenu(){

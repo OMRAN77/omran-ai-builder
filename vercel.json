@@ -123,6 +123,10 @@
       "destination": "/api/media?action=pdf&id=:id"
     },
     {
+      "source": "/f/:id",
+      "destination": "/api/media?action=file&id=:id"
+    },
+    {
       "source": "/api/openai",
       "destination": "/api/ai?action=openai"
     },
