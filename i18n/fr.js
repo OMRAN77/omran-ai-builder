@@ -386,6 +386,7 @@ I18N['fr'] = {
     videoModeCanvasOnly: "🎨 Canvas seul (sans IA)",
     videoModeRunwayOnly: "🤖 Vidéo IA seule (Runway)",
     videoModeMinimax: "💸 Vidéo économique — moins cher et plus rapide",
+    videoModeOmni: "🎬 Vidéo cinématographique — qualité maximale (plus cher)",
     videoModeHybrid: "🔗 Fusionner les deux (meilleur)",
     videoModeVeo: "🚀 Veo 3 — Google (meilleure qualité + son)",
     videoModeActor: "🗣️ Acteur parlant — dialecte émirati (Veo 3)",

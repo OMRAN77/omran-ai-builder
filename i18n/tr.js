@@ -379,6 +379,7 @@ I18N['tr'] = {
     "videoModeCanvasOnly": "🎨 Yalnızca Canvas (AI yok)",
     "videoModeRunwayOnly": "🤖 Yalnızca AI video (Runway)",
     "videoModeMinimax": "💸 Ekonomik video — daha ucuz ve hızlı",
+    "videoModeOmni": "🎬 Sinematik video — en yüksek kalite (daha pahalı)",
     "videoModeHybrid": "🔗 İkisini birleştir (en iyisi)",
     "videoModeVeo": "🚀 Veo 3 — Google (en üst kalite + ses)",
     "videoModeActor": "🗣️ Konuşan aktör — Emirati lehçesi (Veo 3)",

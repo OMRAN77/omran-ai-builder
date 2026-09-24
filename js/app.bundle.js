@@ -2914,6 +2914,7 @@ const I18N = {
     videoModeCanvasOnly: '🎨 كانفا فقط (بدون AI)',
     videoModeRunwayOnly: '🤖 فيديو AI فقط (Runway)',
     videoModeMinimax: '💸 فيديو اقتصادي — أرخص وأسرع',
+    videoModeOmni: '🎬 فيديو سينمائيّ — أعلى جودة (أغلى)',
     videoModeHybrid: '🔗 دمج الاثنين (الأفضل)',
     videoModeVeo: '🚀 Veo 3 — جوجل (أعلى جودة + صوت)',
     videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)",
@@ -4126,6 +4127,7 @@ const I18N = {
     videoModeCanvasOnly: '🎨 Canvas only (no AI)',
     videoModeRunwayOnly: '🤖 AI video only (Runway)',
     videoModeMinimax: '💸 Economy video — cheaper & faster',
+    videoModeOmni: '🎬 Cinematic video — top quality (pricier)',
     videoModeHybrid: '🔗 Merge both (best)',
     videoModeVeo: '🚀 Veo 3 — Google (top quality + sound)',
     videoModeActor: "🗣️ Talking actor — Emirati dialect (Veo 3)",
@@ -25022,6 +25024,42 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
     /* v-minimax-video: المحرّك الاقتصاديّ — إضافة بجانب Runway وVeo. غير متزامن:
        ينشئ مهمّة ويستطلعها حتى يجهز المقطع (نفس شكل استطلاع Runway). */
+    /* v-omni-video: المحرّك السينمائيّ (Gemini Omni) — إضافة رابعة. متزامن:
+       طلب واحد يرجّع رابط الفيديو مباشرة (بلا استطلاع). */
+    if(creationMode === 'omni'){
+      try{
+        setStatus(bT('🎬 جاري توليد الفيديو السينمائيّ (قد يستغرق ١-٣ دقائق)...','🎬 Generating the cinematic video (may take 1-3 min)...'));
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
+        const cr = await (window.postWithConfirm
+          ? window.postWithConfirm('/api/video?action=omni-create', payload)
+          : fetch('/api/video?action=omni-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        const d = await cr.json();
+        if(!cr.ok || d.error) throw Object.assign(new Error(d.error || 'omni failed'), { code: d.error });
+        const videoUrl = d.url || d.dataUrl;
+        if(!videoUrl) throw new Error('no video');
+        setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
+        let vurl;
+        if(d.dataUrl){ vurl = d.dataUrl; }
+        else {
+          const vres = await fetch(videoUrl);
+          if(!vres.ok) throw new Error('download failed ' + vres.status);
+          vurl = URL.createObjectURL(await vres.blob());
+        }
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+        resultEl.src = vurl;
+        resultEl.style.display = 'block';
+        downloadEl.href = d.url || vurl;
+        downloadEl.style.display = 'block';
+        autoSaveVideo(vurl);
+      } catch(e){
+        setStatus(friendlyError(e));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
     if(creationMode === 'minimax'){
       try{
         setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
