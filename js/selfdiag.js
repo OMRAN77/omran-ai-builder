@@ -231,13 +231,26 @@ window.__omranErrLive = function(e, build, now){
         var pm = performance && performance.memory;
         var heap = pm ? (MB(pm.usedJSHeapSize) + '/' + MB(pm.jsHeapSizeLimit) + 'MB') : '؟';
         var vis = 0, visMB = 0, all = 0, allMB = 0;
+        /* v-mem-hosts (المالك ٢٤ سبتمبر: «نفس المشكلة»): الأرقام وحدها قالت «٣٢ صورة مخفيّة
+           تحمل ١٥١ م.ب» ولم تقل **أين** — فذهبت جولة أخرى في التخمين. الآن يسمّي المسبار
+           الحاويات المخفيّة الأثقل بأسمائها، فتكفي لقطة واحدة لتحديد الجذر بلا تخمين. */
+        var hosts = {};
         var imgs = document.images;
         for(var i = 0; i < imgs.length; i++){
           var im = imgs[i]; if(!im.naturalWidth) continue;
           var px = im.naturalWidth * im.naturalHeight * 4;
           all++; allMB += px;
-          if(im.offsetParent){ vis++; visMB += px; }
+          if(im.offsetParent){ vis++; visMB += px; continue; }
+          var host = '?', e = im.parentElement, n = 0;
+          while(e && n < 14){
+            if(e.id){ host = '#' + e.id; break; }
+            e = e.parentElement; n++;
+          }
+          var h = hosts[host] || (hosts[host] = { n: 0, px: 0 });
+          h.n++; h.px += px;
         }
+        var top = Object.keys(hosts).sort(function(a, b){ return hosts[b].px - hosts[a].px; }).slice(0, 3)
+          .map(function(k){ return k + ' ' + MB(hosts[k].px) + 'MB×' + hosts[k].n; }).join(' · ');
         var st = 0, stN = 0;
         try{
           (window.__omrS && window.__omrS.projects || []).forEach(function(p){ (p && p.messages || []).forEach(function(m){
@@ -247,6 +260,7 @@ window.__omranErrLive = function(e, build, now){
         report('v-mem-probe ' + tag + ': heap ' + heap + ' · جهاز ' + (navigator.deviceMemory || '؟') + 'GB · شاشة '
           + window.innerWidth + 'x' + window.innerHeight + '@' + (Math.round((window.devicePixelRatio || 1) * 100) / 100)
           + ' · صور ظاهرة ' + vis + ' (' + MB(visMB) + 'MB) كلّ ' + all + ' (' + MB(allMB) + 'MB)'
+          + (top ? ' · أثقل المخفيّ: ' + top : '')
           + ' · صور بالذاكرة ' + stN + ' (' + MB(st) + 'MB نصّ) · عناصر ' + document.getElementsByTagName('*').length
           + ' · ' + (document.documentElement.classList.contains('omAndroid') ? 'omAndroid' : 'غير أندرويد'), 'selfdiag.js', 0, 0, '');
       }catch(e){ /* guard-ok: المسبار ترف تشخيصيّ */ }
