@@ -8,6 +8,10 @@
 // + طلب صلاحية RECORD_AUDIO وقت التشغيل. LauncherActivity.getFallbackStrategy() يوجّه لهذا
 // الكلاس بدل الأصل (نقطة توسيع رسميّة موثَّقة في مكتبة androidbrowserhelper نفسها).
 //
+// v-reply-export (٢٤ سبتمبر ٢٠٢٦): إضافة ثانية — الأصل لا يضبط DownloadListener، فكان كلّ تنزيل
+// (أزرار «تحميل» في ورقة الملفّ/الصورة/PDF، الإطار الخفيّ، <a download>) يسقط صامتًا. روابط http(s)
+// تذهب الآن لمنزّل النظام (attachDownloadListener أدناه).
+//
 // غير مُتحقَّق حيًّا: لا بيئة بناء أندرويد ولا جهاز في جلسة التشخيص التي كتبت هذا الملفّ —
 // يحتاج تجربة فعليّة بعد `Actions ← android-release` وتثبيت الـAPK. راجع
 // knowledge/DECISIONS.md (v-maha-webview-mic) وstore/huawei/README.md قبل أي تعديل هنا.
@@ -16,6 +20,7 @@ package com.omran.aibuilder.twa;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -25,14 +30,18 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
+import android.webkit.DownloadListener;
 import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
+import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -125,6 +134,7 @@ public class MahaWebViewFallbackActivity extends Activity {
         mWebView = new WebView(this);
         mWebView.setWebViewClient(createWebViewClient());
         mWebView.setWebChromeClient(createWebViewChromeClient());
+        attachDownloadListener(mWebView);
 
         WebSettings webSettings = mWebView.getSettings();
         setupWebSettings(webSettings);
@@ -209,6 +219,7 @@ public class MahaWebViewFallbackActivity extends Activity {
 
                 mWebView = new WebView(view.getContext());
                 mWebView.setWebViewClient(this);
+                attachDownloadListener(mWebView);
                 WebSettings webSettings = mWebView.getSettings();
                 setupWebSettings(webSettings);
                 vg.addView(mWebView);
@@ -324,6 +335,59 @@ public class MahaWebViewFallbackActivity extends Activity {
                         new String[]{Manifest.permission.RECORD_AUDIO}, RC_RECORD_AUDIO);
             }
         };
+    }
+
+    // v-reply-export: بلا هذا المستمع يرمي WebView كلّ تنزيل صامتًا. روابط http(s) (روابط الخادم
+    // /f/ و/p/ و/i/ برأس attachment) تذهب لمنزّل النظام مع الكوكيز ووكيل المستخدم نفسيهما؛
+    // blob:/data: لا يقدر النظام يجلبها فتُترك (الموقع لا يرسلها هنا داخل التطبيق).
+    private void attachDownloadListener(WebView webView) {
+        webView.setDownloadListener(new DownloadListener() {
+            @Override
+            public void onDownloadStart(String url, String userAgent, String contentDisposition,
+                                        String mimetype, long contentLength) {
+                startSystemDownload(url, userAgent, contentDisposition, mimetype);
+            }
+        });
+    }
+
+    private void startSystemDownload(String url, String userAgent, String contentDisposition,
+                                     String mimetype) {
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) {
+            Log.w(TAG, "Download scheme not supported by DownloadManager: " + scheme);
+            return;
+        }
+        String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
+        try {
+            DownloadManager.Request request = new DownloadManager.Request(uri);
+            if (mimetype != null && !mimetype.isEmpty()) {
+                request.setMimeType(mimetype);
+            }
+            String cookies = CookieManager.getInstance().getCookie(url);
+            if (cookies != null) {
+                request.addRequestHeader("Cookie", cookies);
+            }
+            if (userAgent != null) {
+                request.addRequestHeader("User-Agent", userAgent);
+            }
+            request.setTitle(fileName);
+            request.setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            dm.enqueue(request);
+            Toast.makeText(this, "⬇️ " + fileName, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            // أندرويد ٦–٩ بلا صلاحيّة التخزين، أو منزّل معطَّل: متصفّح النظام ينزّل الرابط نفسه.
+            Log.e(TAG, "DownloadManager failed, opening in browser: " + url, e);
+            try {
+                new CustomTabsIntent.Builder().setToolbarColor(mStatusBarColor).build()
+                        .launchUrl(this, uri);
+            } catch (ActivityNotFoundException ex) {
+                Log.e(TAG, "No browser to open " + url, ex);
+            }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
