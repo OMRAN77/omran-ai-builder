@@ -367,6 +367,7 @@ I18N['ur'] = {
     videoModeLabel: "تخلیقی موڈ",
     videoModeCanvasOnly: "🎨 صرف کینوس (بغیر AI)",
     videoModeRunwayOnly: "🤖 صرف AI ویڈیو (Runway)",
+    videoModeMinimax: "💸 کفایتی ویڈیو — سستا اور تیز",
     videoModeHybrid: "🔗 دونوں کو ملائیں (بہترین)",
     videoModeVeo: "🚀 Veo 3 — گوگل (اعلیٰ معیار + آواز)",
     videoModeActor: "🗣️ بولنے والا اداکار — اماراتی لہجہ (Veo 3)",
