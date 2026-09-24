@@ -1157,6 +1157,78 @@ function openShareModal(project){
   });
 })();
 
+/* v-modal-img-release (المالك ٢٤ سبتمبر، الجولة الرابعة: «نفس المشكلة»).
+   قياس «فحص النظام» من جهازه بعد v-art-defer: `صور ظاهرة 1 (0MB) كلّ 33 (151MB)` — أي **٣٢
+   صورة داخل حاويات مخفيّة تحمل ١٥١ م.ب**. صور المعارض كلّها 360×540 (٠٫٧٤ م.ب) فلا تفسّر الرقم؛
+   الذي يفسّره صور **النتائج المولَّدة** (2K = ١٦ م.ب للواحدة) الباقية في `<img>` داخل نوافذ
+   الاستوديوهات بعد إغلاقها: عشرة منها ≈ ١٦٠ م.ب. إغلاق النافذة كان `display:none` وحده، فتبقى
+   البكسلات محجوزة إلى نهاية الجلسة، وعليها تتزاحم فكّ الصور والرسم فتتأخّر الطبقة الرئيسيّة —
+   وهذا ما يظهر في فيديو المالك: مربّعات رماديّة مكان الأيقونات ثمّ شاشة فارغة ثمّ الرسم الصحيح
+   (بلاطات لم تُرسَم بعد)، بينما شريط الأسهم يبقى مرسومًا لأنّه طبقة تركيب مستقلّة.
+
+   هنا: عند إخفاء النافذة تُفرَّغ صورها الكبيرة وحدها (≥ ٤ م.ب مفكوكة — النتائج والمعاينات، لا
+   بطاقات المعارض ولا الأيقونات) ويُحفظ مصدرها؛ وعند إظهارها يُعاد فورًا قبل أن يراها المستخدم.
+   لا تُمسّ صورة قيد التحميل (naturalWidth == 0) فلا يُقطع توليد جارٍ. */
+(function omranModalImgRelease(){
+  var MIN_PX = 4 * 1048576 / 4; /* ≥ ٤ م.ب مفكوكة = مليون بكسل (١٠٢٤×١٠٢٤ فأكثر) */
+  var IDS = ['portraitStyleModal','videoMakerModal','designAiModal','fashionAiModal','studioAiModal',
+    'constructionModal','religionModal','emailAssistModal','expModal','docModal','govModal','cvModal',
+    'eduHubModal','omranEduModal','portraitStyleSheet','pickerSheet','adStudioModal','imgTextModal'];
+
+  function shown(el){
+    try{ return !!el.offsetParent || getComputedStyle(el).display !== 'none'; }
+    catch(e){ return true; /* guard-ok: عند الشكّ لا نحرّر شيئًا */ }
+  }
+  function release(modal){
+    var n = 0;
+    try{
+      var imgs = modal.getElementsByTagName('img');
+      for(var i = 0; i < imgs.length; i++){
+        var im = imgs[i];
+        if(!im.naturalWidth) continue;                    /* قيد التحميل — لا يُقطع */
+        if(im.naturalWidth * im.naturalHeight < MIN_PX) continue;
+        var src = im.getAttribute('src');
+        if(!src || im.__omHold) continue;
+        im.__omHold = src;
+        im.removeAttribute('src');
+        n++;
+      }
+    }catch(e){ __swallow(e, 'modal-img-release'); }
+    return n;
+  }
+  function restore(modal){
+    try{
+      var imgs = modal.getElementsByTagName('img');
+      for(var i = 0; i < imgs.length; i++){
+        var im = imgs[i];
+        if(!im.__omHold) continue;
+        im.src = im.__omHold;
+        im.__omHold = null;
+      }
+    }catch(e){ __swallow(e, 'modal-img-restore'); }
+  }
+  /* أيّ كود يقرأ .src ونافذته مغلقة يجد الفراغ — لذلك مُتاح استرجاعها صراحةً. */
+  window.omranModalImgSrc = function(img){ return (img && (img.__omHold || img.getAttribute('src'))) || ''; };
+
+  function watch(id){
+    var m = document.getElementById(id);
+    if(!m || m.__omImgWatch) return;
+    m.__omImgWatch = 1;
+    var was = shown(m);
+    try{
+      new MutationObserver(function(){
+        var now = shown(m);
+        if(now === was) return;
+        was = now;
+        if(now) restore(m); else release(m);
+      }).observe(m, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+    }catch(e){ __swallow(e, 'modal-img-watch'); }
+  }
+  function arm(){ IDS.forEach(watch); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arm);
+  arm(); setTimeout(arm, 1500); setTimeout(arm, 4000);
+})();
+
 /* v-modal-close-fix (شكوى عمران: «✕ فوق عند الساعة ما ينضغط» — وبطلبه لاحقًا:
    بلا أي زر إضافي): كل نوافذ الأدوات الكبيرة يأخذ رأسها هامش أمان علويًّا حتى
    لا يختبئ ✕ تحت الساعة، ويكبر الزر نفسه. قائمة معلنة — لا لمس لغيرها. */
