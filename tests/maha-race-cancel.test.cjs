@@ -20,8 +20,12 @@ const src = fs.readFileSync(path.join(root, 'js/app-08-maha.js'), 'utf8');
 function extractFn(name) {
   const start = src.indexOf(name);
   assert.ok(start > 0, name + ' موجودة');
-  // نطاق سخيّ يكفي لاحتواء الدالّة كاملة (مستعمَل بنفس الأسلوب في tests/maha-mic-race.test.cjs)
-  return src.slice(start, start + 9000);
+  // كان النطاق رقمًا ثابتًا (٩٠٠٠ حرف) فكسره نموّ الدالّة بتعليقات v-maha-alive: قطع
+  // النافذة قبل فحص الإلغاء فبدا الترتيب مكسورًا والسلوك سليم. الآن ينتهي النطاق عند
+  // الدالّة التالية — يتبع الملفّ مهما طال. التثبيتات نفسها لم تتغيّر.
+  const end = src.indexOf('function mahaEndRealtimeCall(', start);
+  assert.ok(end > start, 'نهاية النطاق (mahaEndRealtimeCall) موجودة بعد ' + name);
+  return src.slice(start, end);
 }
 
 test('v-maha-race-cancel: فحص الإلغاء يقع بعد المصافحة مباشرة وقبل mahaRtActive=true', () => {

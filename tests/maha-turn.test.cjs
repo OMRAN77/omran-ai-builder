@@ -44,7 +44,7 @@ function load() {
     clearTimeout: (t) => { if (t) t.dead = true; },
   };
   vm.createContext(ctx);
-  vm.runInContext(SLICE + '\n;this.__api = { mahaTurnPlan, mahaTurnOnTranscript, mahaArmRtResponseWatchdog, mahaClearRtResponseWatchdog, get awaiting(){ return mahaTurnAwaiting; }, set awaiting(v){ mahaTurnAwaiting = v; }, set itemId(v){ mahaTurnItemId = v; } };', ctx);
+  vm.runInContext(SLICE + '\n;this.__api = { mahaTurnPlan, mahaTurnOnTranscript, mahaArmRtResponseWatchdog, mahaClearRtResponseWatchdog, get awaiting(){ return mahaTurnAwaiting; }, set awaiting(v){ mahaTurnAwaiting = v; }, set itemId(v){ mahaTurnItemId = v; }, set interrupted(v){ mahaTurnInterrupted = v; }, set commits(v){ mahaTurnCommits = v; } };', ctx);
   const advance = (ms) => {
     now += ms;
     timers.filter((t) => !t.dead && t.at <= now).forEach((t) => { t.dead = true; t.fn(); });
@@ -133,9 +133,10 @@ test('نوبة معلّقة ثمّ سكوت: تردّ بعد الإمهال لا
   assert.deepEqual(sent, [{ type: 'response.create' }], 'ثمّ تردّ مرّة واحدة');
 });
 
-test('ضجيج: لا ردّ إطلاقًا وتعود للإنصات', () => {
+test('ضجيج خالص ولا شيء معلّق: لا ردّ إطلاقًا وتعود للإنصات', () => {
   const { api, sent, states, advance } = load();
   api.awaiting = true;
+  api.commits = 1; // نوبة الضجيج وحدها، ولا ردّ مبتور قبلها
   api.mahaArmRtResponseWatchdog(400);
   advance(200);
   api.mahaTurnOnTranscript('شكرا على المشاهدة');
@@ -166,6 +167,42 @@ test('تفريغ متأخّر لنوبة انتهت لا يُطلق ردًّا �
   api.mahaTurnOnTranscript('أبي أسوّي لي تطبيق و'); // وصل بعد إطلاق الحارس
   advance(5000);
   assert.deepEqual(sent, [{ type: 'response.create' }], 'ردّ واحد فقط');
+});
+
+// ——— v-maha-alive: «تجاهل الضجيج» يجب ألّا يصير «اسكتي للأبد» ———
+test('سعلة وهي تتكلّم: المقاطعة بترت ردّها ⇒ تردّ، لا تصمت للأبد', () => {
+  const { api, sent, advance } = load();
+  api.interrupted = true;  // speech_started وقع والحالة 'speaking'
+  api.awaiting = true;
+  api.commits = 1;
+  api.mahaArmRtResponseWatchdog(400);
+  advance(150);
+  api.mahaTurnOnTranscript('');   // السعلة لا نصّ لها
+  advance(100);
+  assert.deepEqual(sent, [{ type: 'response.create' }], 'تستأنف بدل الصمت الأبديّ');
+});
+
+test('سؤال ثمّ ضجيج: السؤال لا يبقى بلا جواب', () => {
+  const { api, sent, advance } = load();
+  api.awaiting = true;
+  api.commits = 2;                // نوبة السؤال ثمّ نوبة الضجيج، وبلا ردّ بينهما
+  api.mahaArmRtResponseWatchdog(400);
+  advance(150);
+  api.mahaTurnOnTranscript('شكرا على المشاهدة');
+  advance(100);
+  assert.deepEqual(sent, [{ type: 'response.create' }], 'تجيب على السؤال المعلّق');
+});
+
+test('مرشّح الهلوسات ينزع المعروف ويحكم على الباقي — لا يبتلع سؤالًا حقيقيًّا', () => {
+  const { api } = load();
+  // هلوسة خالصة = تجاهل
+  for (const junk of ['اشتركوا في القناة', 'شكرا على المشاهدة', 'Thanks for watching']) {
+    assert.equal(api.mahaTurnPlan(junk).act, 'ignore', junk);
+  }
+  // نفس الكلمات داخل سؤال حقيقيّ = ردّ
+  for (const real of ['أبي أشترك في القناة', 'كيف أشترك في القناة؟', 'شكرا على المشاهدة معك يا مها كيف أسوي كذا']) {
+    assert.notEqual(api.mahaTurnPlan(real).act, 'ignore', real);
+  }
 });
 
 // ——— الربط في الملفّ نفسه ———
@@ -203,10 +240,34 @@ test('الخادم: إعداد الإنصات كما ثبّته v-maha-listen، 
   assert.match(RT, /transcription: \{ model: 'gpt-4o-mini-transcribe' \}/);
 });
 
+test('v-maha-alive: كلامها ليس سكوتًا، وعمل الأداة ليس سكوتًا', () => {
+  // (١) نهاية كلامها تجدّد ساعة السكوت — وإلّا استهلك ردّ طويل المهلة كاملةً
+  const done = SRC.slice(SRC.indexOf("ev.type === 'output_audio_buffer.stopped'"), SRC.indexOf("else if(ev.type === 'response.function_call_arguments.done')"));
+  assert.ok(/mahaLastActivity = Date\.now\(\);/.test(done), 'انتهاء كلامها نشاط يجدّد المهلة');
+  assert.ok(done.indexOf('mahaLastActivity') < done.indexOf("mahaSetState('listening')"), 'التجديد قبل العودة للإنصات');
+  // (٢) الأداة قيد التنفيذ = المكالمة حيّة
+  assert.ok(/let mahaRtToolBusy = 0;/.test(SRC), 'عدّاد انشغال الأداة معرَّف');
+  const tool = SRC.slice(SRC.indexOf('async function mahaHandleRtFunctionCall('), SRC.indexOf('// Like mahaMaybeSearch, but always searches'));
+  assert.ok(/mahaRtToolBusy\+\+;/.test(tool), 'يرتفع عند بدء الأداة');
+  assert.ok(/mahaRtToolBusy = Math\.max\(0, mahaRtToolBusy - 1\);/.test(tool), 'وينزل عند انتهائها');
+  assert.ok(tool.indexOf('mahaRtToolBusy++') < tool.indexOf("mahaSetState('thinking')"), 'يرتفع قبل أيّ انتظار');
+  const watch = SRC.slice(SRC.indexOf('function mahaStartCloseWatch('), SRC.indexOf('function mahaStopCloseWatch('));
+  assert.ok(/if\(mahaRtToolBusy > 0\)\{ mahaLastActivity = Date\.now\(\); return; \}/.test(watch), 'المراقب لا يقفل وأداة تعمل');
+  assert.ok(/mahaRtToolBusy = 0;/.test(watch), 'ويُصفَّر مع كلّ مكالمة جديدة');
+});
+
+test('v-maha-alive: أوّل جملة تُبثّ ثمّ يُطلب لها ردّ (لا تُخزَّن وتُنسى)', () => {
+  const flush = SRC.slice(SRC.indexOf('function mahaFlushPreBuffer('), SRC.indexOf('function mahaPlayReadyBeep('));
+  const iCommit = flush.indexOf("input_audio_buffer.commit");
+  const iCreate = flush.indexOf("type: 'response.create'");
+  assert.ok(iCommit > 0 && iCreate > iCommit, 'طلب الردّ بعد الإيداع لا قبله');
+});
+
 test('الحزمة تحمل المنطق نفسه', () => {
   const bundle = fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8');
   assert.ok(bundle.includes('function mahaTurnPlan('), 'المنطق داخل الحزمة');
   assert.ok(bundle.includes('MAHA_TURN_HOLD_MS = 1400'), 'قيمه داخل الحزمة');
+  assert.ok(bundle.includes('let mahaRtToolBusy = 0;'), 'حارس الأداة داخل الحزمة');
 });
 
 console.log('✓ maha-turn: مها تنتظر حتّى تخلّص فكرتك، وتتجاهل الضجيج، وتردّ فور اكتمال السؤال');

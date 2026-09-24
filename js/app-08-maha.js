@@ -1127,6 +1127,7 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
  * reason (e.g. browser without WebRTC support, network blocking WebRTC,
  * server missing the key, etc.) so the feature never just stops working. */
 let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false, mahaRtReady = false;
+let mahaRtToolBusy = 0; // v-maha-alive: أدوات قيد التنفيذ — انتظارها ليس سكوتًا
     let mahaRtResponseWatchdog = null;
 
     // Realtime normally starts a reply after server VAD detects the end of speech.
@@ -1161,6 +1162,9 @@ let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null,
    الدوالّ التالية نقيّة (بلا DOM ولا شبكة) يفحصها tests/maha-turn.test.cjs. */
 let mahaTurnAwaiting = false; // بين speech_stopped وقرار هذه النوبة
 let mahaTurnItemId = null;    // عنصر النوبة المنتظَرة — تفريغ نوبة أخرى لا يقرّر مكانها
+// v-maha-alive: «تجاهل الضجيج» يجب ألّا يتحوّل أبدًا إلى «اسكتي للأبد».
+let mahaTurnInterrupted = false; // الضجيج قطع كلامها فعلًا (بترته المقاطعة) ⇒ لا بدّ من ردّ
+let mahaTurnCommits = 0;         // نوبات وصلت بلا ردّ بعدها ⇒ فيها كلام حقيقيّ ينتظر
 
 const MAHA_TURN_TX_WAIT_MS = 400;  // أقصى انتظار لوصول التفريغ (كان ٣٥٠ إطلاقًا أعمى)
 const MAHA_TURN_HOLD_MS = 1400;    // إمهال فكرة لم تكتمل — يسقط كلّيًّا إن عاد يتكلّم
@@ -1199,9 +1203,13 @@ function mahaTurnPlan(text){
   const norm = mahaTurnNorm(raw);
   const bare = norm.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
   if(!bare) return { act: 'ignore', waitMs: 0 };
-  for(let i = 0; i < MAHA_TURN_NOISE_RES.length; i++){
-    if(MAHA_TURN_NOISE_RES[i].test(bare)) return { act: 'ignore', waitMs: 0 };
-  }
+  // v-maha-alive: الهلوسة تُنزع ثمّ يُنظر في الباقي — لا «يحوي العبارة ⇒ اصمت».
+  // (كان «اشترك…قناة» غير مثبَّت الطرفين، فـ«أبي أشترك في القناة» سؤال حقيقيّ يُبتلع صمتًا.
+  //  نفس منهج مرشّح api/_lib/stt.js المثبَّت: انزع المعروف، واحكم على ما بقي.)
+  let rest = bare;
+  for(let i = 0; i < MAHA_TURN_NOISE_RES.length; i++) rest = rest.replace(MAHA_TURN_NOISE_RES[i], ' ');
+  rest = rest.replace(/\s+/g, ' ').trim();
+  if(rest.length < 2) return { act: 'ignore', waitMs: 0 };
   // سؤال صريح = فكرة مكتملة مهما كانت آخر كلمة.
   if(/[?؟!]\s*$/.test(raw)) return { act: 'reply', waitMs: MAHA_TURN_REPLY_MS };
   if(/[,،]\s*$/.test(raw) || /\.\.\.\s*$/.test(raw) || /…\s*$/.test(raw)) return { act: 'hold', waitMs: MAHA_TURN_HOLD_MS };
@@ -1221,7 +1229,15 @@ function mahaTurnOnTranscript(text, itemId){
   mahaTurnAwaiting = false;
   const plan = mahaTurnPlan(text);
   if(plan.act === 'ignore'){
-    // ضجيج أو همهمة أو هلوسة: الإنسان لا يردّ على لا شيء — يبقى منصتًا.
+    // v-maha-alive: تجاهل الضجيج لا يعني تركه بلا ردّ. سعلة وهي تتكلّم = المقاطعة بترت
+    // ردّها (interrupt_response)، وسعلة بعد سؤاله = السؤال ما زال بلا جواب — الصمت هنا
+    // يترك المكالمة ميّتة حتّى يقفلها حارس السكوت. في الحالتين نردّ؛ ولا نصمت إلّا إذا
+    // لم يكن هناك شيء ينتظر جوابًا أصلًا.
+    if(mahaTurnInterrupted || mahaTurnCommits > 1){
+      mahaArmRtResponseWatchdog(MAHA_TURN_REPLY_MS);
+      return;
+    }
+    // ضجيج خالص ولا شيء معلّق: الإنسان لا يردّ على لا شيء — يبقى منصتًا.
     mahaClearRtResponseWatchdog();
     mahaSetState('listening');
     return;
@@ -1375,6 +1391,10 @@ function mahaFlushPreBuffer(dc){
         dc.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: btoa(binary) }));
       }
       dc.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+      // v-maha-alive: الخادم على create_response:false (الردّ بيد العميل)، فالمخزَّن كان
+      // يُبثّ ويُسجَّل في الجلسة **ولا يُجاب أبدًا** — أوّل جملة يقولها المالك تضيع في
+      // صمت حتّى يعيدها. هذا ما كان v-maha-firstword يحاول إنقاذه من أصله.
+      dc.send(JSON.stringify({ type: 'response.create' }));
     }
   }catch(e){ console.warn('[maha] pre-buffer flush failed, first words may be lost:', e); }
   finally{ mahaStopPreBuffer(); }
@@ -1400,7 +1420,7 @@ function mahaPlayReadyBeep(){
 let mahaRtCancelled = false;
 async function mahaStartRealtimeCall(){
     mahaRtReady = false;
-    mahaTurnAwaiting = false; // v-maha-turn
+    mahaTurnAwaiting = false; mahaTurnCommits = 0; mahaTurnInterrupted = false; // v-maha-turn
     mahaClearRtResponseWatchdog();
       mahaRtCancelled = false;
   const tokenRes = await fetch('/api/realtime-session', {
@@ -1478,6 +1498,7 @@ async function mahaStartRealtimeCall(){
       }    if(ev.type === 'input_audio_buffer.speech_started'){
         mahaLastActivity = Date.now(); // v-maha-band
         mahaTurnAwaiting = false; // v-maha-turn: عاد يتكلّم — أيّ ردّ معلّق يسقط هنا
+        if(mahaState === 'speaking') mahaTurnInterrupted = true; // v-maha-alive: قاطع كلامها ⇒ لا بدّ من ردّ بعدها
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
@@ -1491,15 +1512,23 @@ async function mahaStartRealtimeCall(){
         // سقفًا، وبعدها يمضي الحارس كما كان) ثمّ يقرّر mahaTurnOnTranscript.
         mahaTurnAwaiting = true;
         mahaTurnItemId = (ev && ev.item_id) || null;
+        mahaTurnCommits++; // v-maha-alive: نوبة وصلت ولم يأتِ ردّ بعد
         mahaSetState('thinking');
         mahaArmRtResponseWatchdog(MAHA_TURN_TX_WAIT_MS);
       }
       else if(ev.type === 'conversation.item.input_audio_transcription.completed'){
         mahaTurnOnTranscript(ev && ev.transcript, ev && ev.item_id); // v-maha-turn
       }
-      else if(ev.type === 'response.created'){ mahaTurnAwaiting = false; mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
+      else if(ev.type === 'response.created'){ mahaTurnAwaiting = false; mahaTurnCommits = 0; mahaTurnInterrupted = false; mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
-    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
+    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){
+      // v-maha-alive: مهلة السكوت ٢٠ث تُحسب من **نهاية** كلامها لا من بدايته. mahaSetState
+      // لا يجدّد الساعة عند 'listening' عمدًا، فكان آخر تجديد لحظة بدء كلامها: ردّ طويل
+      // (نشرة أخبار تأمر بها التعليمات نفسها ٥–٨ عناوين) يستهلك المهلة كاملةً، فتُقفل
+      // المكالمة في وجه المالك في اللحظة التي سكتت فيها — قبل أن ينطق حرفًا.
+      mahaLastActivity = Date.now();
+      mahaSetState('listening');
+    }
     else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
     else if(ev.type === 'error'){ console.error('[maha-realtime] server error:', ev); }
   });
@@ -1691,6 +1720,10 @@ async function mahaHandleRtFunctionCall(ev){
   try{ args = JSON.parse(ev.arguments || '{}'); }catch(e){ /* ignore */ }
 
   let output = { ok: false };
+  // v-maha-alive: الأداة (صورة/بحث/بناء/كاميرا) تعمل هنا دقيقةً أحيانًا، بينما
+  // response.done الخاصّ بنداء الأداة يصل فورًا ويعيد الحالة إلى 'listening' —
+  // فيعدّ حارس السكوت انتظار الأداة سكوتًا ويقفل المكالمة في منتصف عملها.
+  mahaRtToolBusy++;
   try{
     mahaSetState('thinking');
     if(ev.name === 'generate_image'){
@@ -1737,6 +1770,8 @@ async function mahaHandleRtFunctionCall(ev){
     output = { ok: false, message: 'Tool execution error.' };
   }
 
+  mahaRtToolBusy = Math.max(0, mahaRtToolBusy - 1); // v-maha-alive
+  mahaLastActivity = Date.now();                    // v-maha-alive: انتهاء الأداة نشاط
   try{
     mahaRtDc.send(JSON.stringify({
       type: 'conversation.item.create',
@@ -1904,7 +1939,7 @@ function mahaEndRealtimeCall(){
     mahaRtCancelled = true;
     mahaRtActive = false;
     mahaRtReady = false;
-    mahaTurnAwaiting = false; // v-maha-turn
+    mahaTurnAwaiting = false; mahaTurnCommits = 0; mahaTurnInterrupted = false; // v-maha-turn
     mahaClearRtResponseWatchdog();
       if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#17"); } mahaRtDc = null; }
   if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#18"); } mahaRtPc = null; }
@@ -2162,6 +2197,7 @@ let mahaCloseWatch = null;
 function mahaStartCloseWatch(){
   mahaStopCloseWatch();
   mahaLastActivity = Date.now();
+  mahaRtToolBusy = 0; // v-maha-alive
   const onTap = (e) => {
     if(!mahaCallActive || mahaCallMode === 'builder') return;
     const tgt = e.target;
@@ -2173,6 +2209,7 @@ function mahaStartCloseWatch(){
   const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
   const iv = setInterval(() => {
     if(!mahaCallActive || mahaCallMode === 'builder') return;
+    if(mahaRtToolBusy > 0){ mahaLastActivity = Date.now(); return; } // v-maha-alive: أداة تعمل = المكالمة حيّة
     if(mahaState === 'listening' && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
   }, 1000);
   mahaCloseWatch = { onTap, armT, iv };
