@@ -30,7 +30,9 @@ test('١. الطبقات المحذوفة لا أثر لها في maha-image: ح
   // v-img-honest + v-img-mix (٢٣ سبتمبر ٢٠٢٦): السقف من 815 إلى 875 — مرشّحا المحرّكين (proCandidate/gptCandidate)، الدمج المتسلسل
   // (خيار «أ»: برو ثمّ GPT للكتابة)، ميزانيّة النداءات الإضافيّة، وأمر الإعادة بلا تناقض. منطق القياس والحكم في image-verify
   // (settleCandidates) وأوامر التلميع في image-prompt — لا هنا.
-  assert.ok(mi.split('\n').length < 875, 'الملفّ ما زال أقصر من الأصل (كان ٨٨٧) رغم القياس ووضع الدمج');
+  // v-img-cards (٢٤ سبتمبر ٢٠٢٦): السقف من 875 إلى 900 — توصيل مسار لوحة البطاقات للمالك (محوّلا المحرّكين للقصاصة ونداء runCards
+  // وتسليم الناتج بلا مكبّر). الكشف والضبط والتركيب والحكم لكلّ بطاقة ونيّة الطلب في image-cards.js — لا هنا.
+  assert.ok(mi.split('\n').length < 900, 'الملفّ قريب من الأصل (كان ٨٨٧) رغم القياس ووضع الدمج ولوحة البطاقات');
 });
 
 test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ أمين → برو 2K بحرارة 0.15؛ إبداعيّ → برو بحرارته الافتراضيّة', () => {
@@ -67,7 +69,7 @@ test('٣. الخام خام: المحرّك المختار وحده، GPT خام
   assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-2\.5-flash-image'/);
   assert.match(mi, /if \(isSceneUpgrade && !__intent\.placeUpgradeHint && !__intent\.sameImage\) \{ isSceneUpgrade = false; isElevate = true; \}/);
   // v-img-report (المالك ٢٣ سبتمبر): التقرير للتوليد والتعديل (المصدر + الناتج) — v-img-honest: يكتبه الحاكم نفسه مع القياس
-  assert.match(mi, /await sendImg\(r\.best\.b64, r\.best\.mime, r\.engine, r\.report, r\.best\.verdict\);/);
+  assert.match(mi, /await sendImg\(r\.best\.b64, r\.best\.mime, r\.engine, r\.report, r\.best\.verdict, r\.best\.noUpscale\);/);
   assert.match(mi, /caption: \(!prayerPlan && report\) \|\| undefined,/);
   // الخام خام: لا محرّك آخر ولا رفض ٤٢٢ (honest=false)
   assert.match(mi, /honest: !prayerPlan && !__pureRaw && String\(process\.env\.IMAGE_VERIFY \|\| 'on'\)\.toLowerCase\(\) !== 'off'/);

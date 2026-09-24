@@ -279,7 +279,7 @@ test('٩. العميل: الموديل المرفوض يُمسح من الاخت
   const tools = fs.readFileSync(path.join(root, 'js/app-18-chat-tools.js'), 'utf8');
   assert.ok(tools.includes("if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); }"), 'العميل يمسح عند سطر الرجوع');
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('window.omranForgetModel(ev.prov'), 'في الحزمة');
-  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m230923d'), 'وسم كاش modes رُفع');
+  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m240924a'), 'وسم كاش modes رُفع');
 });
 
 test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب الذي رفض والموديل (OpenAI المباشر ثمّ OpenRouter) بدل JSON بلا اسم', async () => {
