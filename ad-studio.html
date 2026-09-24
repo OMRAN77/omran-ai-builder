@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>استوديو الإعلانات — عمران AI</title>
-<script src="/i18n/ad-studio.js?v=604"></script>
+<script src="/i18n/ad-studio.js?v=605"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -345,6 +345,7 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
 .cpo .cut img{height:100%;width:100%;object-fit:cover;object-position:top center}
 .cpo h2{font:900 calc(var(--u)*5.2)/1.06 'Tajawal';color:#fff;margin:0}
 .cpo h2 em{font-style:normal;display:block;font:700 calc(var(--u)*1.55)/1.5 'Tajawal';color:var(--gold);letter-spacing:1px;margin-top:calc(var(--u)*.5)}
+.cpo .ten{font:700 calc(var(--u)*1.45)/1.5 'Tajawal';color:var(--gold);letter-spacing:1px;margin-top:calc(var(--u)*.45)}
 .cpo .card{background:rgba(9,15,28,.92);border:1px solid rgba(211,175,95,.42);border-radius:calc(var(--u)*1.2);
   padding:calc(var(--u)*1) calc(var(--u)*1.1);text-align:center;display:flex;flex-direction:column;justify-content:center;gap:calc(var(--u)*.3);overflow:hidden}
 .cpo .card em{font-style:normal;font:800 calc(var(--u)*1.35)/1.3 'Tajawal';color:var(--gold)}
@@ -422,7 +423,31 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
 .M .m-foot{top:96%;left:0;width:100%;height:4%;display:flex;align-items:center;justify-content:center;gap:calc(var(--u)*1.4);
   font:700 calc(var(--u)*1.25) 'Tajawal';color:var(--ink2);letter-spacing:1px}
 
-/* شبكة اللوحات المركّبة + لوحة الهوية والصور */
+/* أدوات التحرير على اللوحة — تختفي كلّها من الصورة المنزَّلة (.exporting) */
+.edbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.edbar .hintx{margin:0;flex:1;min-width:220px}
+.ctb{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 8px}
+.tbb{background:#1c1f25;border:1px solid #2b3038;color:#cbd2da;font:700 11px 'Tajawal';padding:5px 11px;border-radius:99px;cursor:pointer}
+.tbb:hover{border-color:#d4af37;color:#fff}
+.cpo [data-f]{cursor:text;border-radius:3px}
+.cpo [data-f]:hover{box-shadow:0 0 0 1px rgba(212,175,55,.75)}
+.cpo [data-f].ing{box-shadow:0 0 0 2px #d4af37;outline:none;background:rgba(0,0,0,.4)}
+.cpo [data-img]{cursor:pointer}
+.cpo [data-img]:hover{box-shadow:0 0 0 2px rgba(212,175,55,.8)}
+.cpo .xdel{position:absolute;display:none;z-index:90;width:calc(var(--u)*3.4);height:calc(var(--u)*3.4);
+  transform:translate(-55%,-55%);border-radius:50%;border:0;background:#c1172b;color:#fff;
+  font:900 calc(var(--u)*2.2)/1 'Tajawal';cursor:pointer;align-items:center;justify-content:center;padding:0;
+  box-shadow:0 2px 8px rgba(0,0,0,.6)}
+.cpo .xdel.on{display:flex}
+.cpo .fbx{position:absolute;z-index:80;color:#fff;font-weight:900;line-height:1.25;cursor:grab;
+  padding:calc(var(--u)*.4) calc(var(--u)*.8);border-radius:calc(var(--u)*.6);white-space:pre-wrap;max-width:62%;
+  text-shadow:0 2px 10px rgba(0,0,0,.85);outline:1px dashed rgba(212,175,55,.6);touch-action:none}
+.cpo .fbx.ing{cursor:text;outline:2px solid #d4af37;background:rgba(0,0,0,.45)}
+.cpo.exporting .xdel{display:none !important}
+.cpo.exporting .fbx{outline:none}
+.cpo.exporting [data-f],.cpo.exporting [data-img]{box-shadow:none !important}
+
+/* شبكة اللوحات المركّبة */
 .cwrap{display:none;margin-top:34px}
 .cwrap.on{display:block}
 .cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px;margin-top:18px;align-items:start}
@@ -466,40 +491,13 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
 
   <div class="cwrap" id="cwrap">
     <div class="gtitle" data-i18n="cTitle">لوحات مركّبة — طراز الوكالات</div>
-    <div class="panel">
-      <h4 data-i18n="brandTitle">هوية المكتب — تُحفظ مرّة وتُطبع في كلّ إعلان</h4>
-      <div class="row">
-        <button class="slot" id="slotLogo" data-i18n="bLogo">⬆︎ شعار المكتب</button>
-        <input type="text" id="bName" data-i18n="[placeholder]bName" autocomplete="off">
-        <input type="text" id="bTag" data-i18n="[placeholder]bTag" autocomplete="off">
-        <input type="text" id="bTel1" data-i18n="[placeholder]bTel1" autocomplete="off">
-        <input type="text" id="bTel2" data-i18n="[placeholder]bTel2" autocomplete="off">
-        <input type="text" id="bWa" data-i18n="[placeholder]bWa" autocomplete="off">
-        <input type="text" id="bIg" data-i18n="[placeholder]bIg" autocomplete="off">
-        <button class="okB" id="bSave" data-i18n="bSave">احفظ الهوية</button>
-      </div>
-    </div>
-    <div class="panel">
-      <h4 data-i18n="mTitle">صور اللوحة</h4>
-      <div class="row">
-        <button class="slot" id="slotHero" data-i18n="mHero">⬆︎ صورة البطل</button>
-        <button class="slot" id="slotThumbs" data-i18n="mThumbs">⬆︎ شريط الصور (حتّى ٥)</button>
-        <button class="slot" id="slotPlan" data-i18n="mPlan">⬆︎ المخطّط</button>
-        <button class="slot" id="slotMap" data-i18n="mMap">⬆︎ خريطة الموقع</button>
-        <button class="slot" id="slotPerson" data-i18n="mPerson">⬆︎ صورة الشخص</button>
-        <button class="rstAll" id="mClear" data-i18n="mClearB">امسح الصور</button>
-        <button class="okB" id="copyTxt" data-i18n="copyBtn">انسخ نصّ الإعلان</button>
-      </div>
-      <div class="hintx" data-i18n="mHint">كلّ صورة اختياريّة — ما تتركه فارغًا يظهر مكانه مربّع خافت بلا كسر التصميم.</div>
+    <div class="edbar">
+      <span class="hintx" data-i18n="edHint">اضغط على أيّ نصّ لتكتبه، وعلى أيّ صورة لترفعها، و× يمسح العنصر.</span>
+      <button class="okB" id="copyTxt" data-i18n="copyBtn">انسخ نصّ الإعلان</button>
     </div>
     <div class="cgrid" id="cgrid"></div>
   </div>
-  <input type="file" id="fLogo" accept="image/*" style="display:none">
-  <input type="file" id="fHero" accept="image/*" style="display:none">
-  <input type="file" id="fThumbs" accept="image/*" multiple style="display:none">
-  <input type="file" id="fPlan" accept="image/*" style="display:none">
-  <input type="file" id="fMap" accept="image/*" style="display:none">
-  <input type="file" id="fPerson" accept="image/*" style="display:none">
+  <input type="file" id="fSlot" accept="image/*" style="display:none">
 
   <div class="gwrap" id="gwrap">
     <div class="gtitle" data-i18n="gTitle">عشرة تصاميم — اختر واحدًا</div>
@@ -1079,55 +1077,34 @@ document.getElementById('grid').addEventListener('click',async e=>{
 });
 window.__cardPng=cardPng;
 
-/* ================= v-ad-suite: الهوية والصور واللوحات المركّبة =================
-   مراجع المالك الثلاثة (بوستر عقاريّ، بوستر استثمار، بوستر معرض سيّارات) بنيتها واحدة:
-   شعار · شارة · عنوان ثنائيّ اللغة · عمود مواصفات بأيقونات · شريط صور · مخطّط وخريطة ·
-   شخص مقصوص · صفّ مرافق · شريط تواصل. تُرسم كلّها كودًا لأنّ نصّها دقيق (أرقام ومساحات
-   وتواريخ) ومولّد الصور يهلوس الحروف العربيّة والأرقام — والمولّد يبقى للمشهد وحده. */
-const BRKEY='adst-brand-v1';
-const BR=(()=>{ try{ return JSON.parse(localStorage.getItem(BRKEY))||{}; }
-  catch(e){ return {}; /* هويّة تالفة في التخزين = نبدأ بهويّة فارغة، ولا شيء يُعطَّل */ } })();
+/* ================= v-ad-inline: التحرير على اللوحة نفسها =================
+   طلب المالك: «بدل ما الكتابة في اتجاه والتحميل في اتجاه آخر — خلّه في نفس الصورة:
+   تضغط على المكان وتكتب رقم الواتساب، وتمسح اسم البطل فتصير صورة فقط، وتضيف مربّع
+   نصّ حرّ أو تمسحه». فذهبت الألواح الفوقيّة كلّها: كلّ شيء بالضغط على اللوحة.
+   النصّ يُحرَّر في مكانه، والصورة تُرفع بالضغط عليها، و× يمسح العنصر، و+ يضيف مربّعًا
+   حرًّا يُسحب إلى أيّ نقطة. الممسوح والمربّعات الحرّة تُحفظ محلّيًّا مع الجلسة. */
+const BRKEY='adst-brand-v1', HIDKEY='adst-hid-v1', FBKEY='adst-free-v1';
+const LS=(k,d)=>{ try{ return JSON.parse(localStorage.getItem(k))||d; }
+  catch(e){ return d; /* قيمة تالفة في التخزين = نبدأ بالافتراضيّ، ولا شيء يُعطَّل */ } };
+const LSet=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }
+  catch(e){ /* التخزين ممتلئ أو محظور — يبقى في الذاكرة لهذه الجلسة */ } };
+const BR=LS(BRKEY,{});
 const MED={hero:null,thumbs:[],plan:null,map:null,person:null};
-const brSave=()=>{ try{ localStorage.setItem(BRKEY,JSON.stringify(BR)); }
-  catch(e){ /* التخزين ممتلئ أو محظور — الهويّة تبقى في الذاكرة لهذه الجلسة */ } };
+const HID=new Set(LS(HIDKEY,[]));
+const FREE=LS(FBKEY,{});
+const brSave=()=>LSet(BRKEY,BR);
+const hidSave=()=>LSet(HIDKEY,[...HID]);
+const fbSave=()=>LSet(FBKEY,FREE);
 
 const CFIC=['▣','≈','▤','⛱','☰','◉','✦','◈'];
-const CAIC=['\u25C8','\u2248','\u2630','\u2726','\u25C9','\u25A3'];
+const CAIC=['◈','≈','☰','✦','◉','▣'];
 const CNM=[T('cm0'),T('cm1'),T('cm2')], CCP=[T('cc0'),T('cc1'),T('cc2')];
 
-function rdFile(f){ return new Promise(ok=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=()=>ok(null); r.readAsDataURL(f); }); }
-function slotOn(id,has){ const b=document.getElementById(id); if(b) b.classList.toggle('has',!!has); }
-
-/* الصور: زرّ يفتح مُنتقيًا مخفيًّا، والنتيجة تدخل MED ثمّ تُعاد اللوحات */
-[['slotLogo','fLogo'],['slotHero','fHero'],['slotThumbs','fThumbs'],['slotPlan','fPlan'],
- ['slotMap','fMap'],['slotPerson','fPerson']].forEach(([b,f])=>{
-  const bt=document.getElementById(b), fl=document.getElementById(f); if(!bt||!fl) return;
-  bt.onclick=()=>fl.click();
-  fl.onchange=async e=>{
-    const fs=[...(e.target.files||[])]; if(!fs.length) return;
-    if(f==='fThumbs'){ MED.thumbs=(await Promise.all(fs.slice(0,5).map(rdFile))).filter(Boolean); slotOn(b,MED.thumbs.length); }
-    else{ const d=await rdFile(fs[0]);
-      if(f==='fLogo'){ BR.logo=d; brSave(); } 
-      else if(f==='fHero'){ MED.hero=d; S.img=d; }
-      else MED[f==='fPlan'?'plan':f==='fMap'?'map':'person']=d;
-      slotOn(b,d); }
-    e.target.value=''; renderComp(); if(S.cat) render();
-  };
-});
-document.getElementById('mClear').onclick=()=>{
-  MED.hero=null; MED.thumbs=[]; MED.plan=null; MED.map=null; MED.person=null;
-  ['slotHero','slotThumbs','slotPlan','slotMap','slotPerson'].forEach(x=>slotOn(x,false));
-  renderComp();
-};
-
-/* هوية المكتب: حقول تُملأ مرّة وتُحفظ محلّيًّا فتُطبع في كلّ إعلان تاليًا */
-const BF=[['bName','name'],['bTag','tag'],['bTel1','tel1'],['bTel2','tel2'],['bWa','wa'],['bIg','ig']];
-BF.forEach(([id,k])=>{ const el=document.getElementById(id); if(!el) return;
-  if(BR[k]) el.value=BR[k];
-  el.addEventListener('input',()=>{ BR[k]=el.value.trim(); renderComp(); }); });
-slotOn('slotLogo',BR.logo);
-document.getElementById('bSave').onclick=function(){ BF.forEach(([id,k])=>{ const el=document.getElementById(id); if(el) BR[k]=el.value.trim(); });
-  brSave(); const o=this.textContent; this.textContent='✓ '+T('bSaved'); setTimeout(()=>{this.textContent=o;},1400); renderComp(); };
+/* سمات التحرير: نصّ قابل للكتابة · صورة قابلة للرفع · مفتاح المسح */
+const EF=f=>' data-f="'+f+'"';
+const EI=k=>' data-img="'+k+'"';
+const ED=k=>' data-del="'+k+'"';
+const HX=k=>HID.has(k);
 
 /* ================= بيانات اللوحة ================= */
 function cList(v,n){ return (Array.isArray(v)?v:[]).map(x=>String(x).trim()).filter(Boolean).slice(0,n); }
@@ -1143,130 +1120,284 @@ function cAmen(){
   if(!a.length) a=String(T('amenDefault')).split(',').map(x=>x.trim()).filter(Boolean);
   return a.slice(0,6);
 }
-function cDealRows(){
+function cDeal(){
   const d=S.deal||{}, r=[];
-  if(d.delivery) r.push([T('lblDelivery'),d.delivery]);
-  if(d.plan)     r.push([T('lblPlan'),d.plan]);
-  if(d.area)     r.push([T('lblArea'),d.area]);
-  if(d.price||S.price) r.push([T('lblPrices'),d.price||((S.price||'')+' '+(S.unit||''))]);
+  if(d.delivery) r.push(['deal.delivery',T('lblDelivery'),d.delivery]);
+  if(d.plan)     r.push(['deal.plan',T('lblPlan'),d.plan]);
+  if(d.area)     r.push(['deal.area',T('lblArea'),d.area]);
+  if(d.price||S.price) r.push(['deal.price',T('lblPrices'),d.price||((S.price||'')+' '+(S.unit||'')).trim()]);
   return r;
 }
-/* شارتان لا ثلاث — الثالثة كانت تزحم رأس اللوحة */
-function cBadges(){ return [S.badge||T('badgeFb'), S.badge3||S.badge2||''].filter(Boolean); }
-function cTelList(){ return [BR.tel1,BR.tel2,S.tel].map(x=>String(x||'').trim()).filter(Boolean)
-  .filter((x,i,a)=>a.indexOf(x)===i).slice(0,2); }
+function cBadges(){ return [['badge',S.badge||T('badgeFb')],['badge3',S.badge3||S.badge2||'']].filter(x=>x[1]); }
+function cTels(){ return [['brand.tel1',BR.tel1],['brand.tel2',BR.tel2]].filter(x=>String(x[1]||'').trim()); }
 function cFs(t,big,mid,sml,lb,lm){ const n=String(t||'').trim().length;
   return 'font-size:calc(var(--u)*'+(n>lm?sml:n>lb?mid:big)+')'; }
-/* الصورة كاملة فوق نسخة مموّهة منها — لا قصّ من الأعلى ولا شريط فارغ */
-function cImg(src,label){ return '<div class="im">'+(src
+function cImg(src,label,slot){ return '<div class="im"'+(slot?EI(slot):'')+'>'+(src
   ? '<img class="bl" src="'+src+'" alt=""><img class="ft" src="'+src+'" alt="">'
   : '<div class="ph">'+esc(label||'')+'</div>')+'</div>'; }
-function cLogo(){ return '<div class="logo">'+(BR.logo? '<img src="'+BR.logo+'" alt="">'
-  : '<b>'+esc(BR.name||T('bNameFb'))+(BR.tag?'<i>'+esc(BR.tag)+'</i>':'')+'</b>')+'</div>'; }
-function cFootBar(cls){
-  const tels=cTelList();
+function cLogo(){ return '<div class="logo"'+EI('logo')+(BR.logo?ED('logo'):'')+'>'+(BR.logo
+  ? '<img src="'+BR.logo+'" alt="">'
+  : '<b><span'+EF('brand.name')+'>'+esc(BR.name||T('bNameFb'))+'</span>'+
+    '<i'+EF('brand.tag')+'>'+esc(BR.tag||T('tagFb'))+'</i></b>')+'</div>'; }
+function cFootBar(P,cls){
+  const t=cTels();
   return '<div class="z foot '+cls+'">'+cLogo()+
     '<span class="lbl">'+esc(T('lblContact2'))+'</span>'+
-    '<span class="tels"><s>☎</s>'+tels.map(t=>'<bdi>'+esc(t)+'</bdi>').join('<em></em>')+'</span>'+
-    (BR.ig?'<span class="ig">◯ '+esc(BR.ig)+'</span>':'')+'</div>';
+    '<span class="tels"><s>☎</s>'+(t.length?t.map(([f,v])=>'<bdi'+EF(f)+'>'+esc(v)+'</bdi>').join('<em></em>')
+      :'<bdi'+EF('brand.tel1')+'>'+esc(T('bTel1'))+'</bdi>')+'</span>'+
+    (HX(P+'ig')?'':'<span class="ig"'+ED(P+'ig')+'>◯ <span'+EF('brand.ig')+'>'+esc(BR.ig||T('bIg'))+'</span></span>')+'</div>';
 }
-function cAmenBar(cls){
-  return '<div class="z amen '+cls+'">'+cAmen().map((x,i)=>
-    '<span><i>'+CAIC[i%6]+'</i><b>'+esc(cPair(x)[0])+'</b></span>').join('')+'</div>';
+function cAmenBar(P,cls){
+  if(HX(P+'amen')) return '';
+  return '<div class="z amen '+cls+'"'+ED(P+'amen')+'>'+cAmen().map((x,i)=>
+    HX(P+'amen.'+i)?'':'<span'+ED(P+'amen.'+i)+'><i>'+CAIC[i%6]+'</i><b'+EF('amenities.'+i)+'>'+esc(cPair(x)[0])+'</b></span>').join('')+'</div>';
 }
-function cStrip(cls,n,caps){
-  const t=MED.thumbs.slice(0,n);
-  let h='<div class="z strip '+cls+'">';
-  for(let i=0;i<n;i++){ const c=caps&&caps[i]?'<figcaption>'+esc(caps[i])+'</figcaption>':'';
-    h+='<figure>'+cImg(t[i],T('mThumbPh'))+c+'</figure>'; }
+function cStrip(P,cls,n,caps){
+  if(HX(P+'strip')) return '';
+  let h='<div class="z strip '+cls+'"'+ED(P+'strip')+'>';
+  for(let i=0;i<n;i++){ if(HX(P+'thumb.'+i)) continue;
+    const c=caps&&caps[i]?'<figcaption>'+esc(caps[i])+'</figcaption>':'';
+    h+='<figure'+ED(P+'thumb.'+i)+'>'+cImg(MED.thumbs[i],T('mThumbPh'),'thumb.'+i)+c+'</figure>'; }
   return h+'</div>';
 }
+function cFree(i){ return (FREE[i]||[]).map((b,j)=>
+  '<div class="fbx" data-fb="'+i+'.'+j+'" data-del="fb.'+i+'.'+j+'" style=""left:'+b.x+'%;top:'+b.y+'%;font-size:calc(var(--u)*'+(b.s||2.4)+')">'+
+  esc(b.t)+'</div>').join(''); }
 
 /* ================= اللوحات الثلاث ================= */
 function posterK(){                                     // مشروع عقاريّ
-  const f=cFeat().slice(0,5), rows=cDealRows().slice(0,3), bd=cBadges();
+  const P='K.', f=cFeat().slice(0,5), rows=cDeal().slice(0,3), bd=cBadges();
   const ttl=S.title||CATS[S.cat||'other'].title;
   return '<div class="cpo K" data-ck="0">'+
-    '<div class="z k-hero">'+cImg(MED.hero||S.img,T('mHeroPh'))+
-      (S.kick?'<div class="cap">'+esc(String(S.kick).split('·')[0].trim())+(S.subEn?'<em>'+esc(S.subEn)+'</em>':'')+'</div>':'')+'</div>'+
+    '<div class="z k-hero">'+cImg(MED.hero||S.img,T('mHeroPh'),'hero')+
+      (HX(P+'cap')?'':'<div class="cap"'+ED(P+'cap')+'><span'+EF('kick')+'>'+esc(String(S.kick||'').split('·')[0].trim()||T('mHeroPh'))+'</span>'+
+        (S.subEn?'<em'+EF('subEn')+'>'+esc(S.subEn)+'</em>':'')+'</div>')+'</div>'+
     '<div class="z k-logo">'+cLogo()+'</div>'+
     '<div class="z k-side">'+
-      '<div class="bdgs">'+bd.map((x,i)=>'<b class="bdg '+(i?'gold':'red')+'">'+esc(x)+'</b>').join('')+'</div>'+
-      '<div class="ttl"><h2 style="'+cFs(ttl,4.4,3.7,3.1,12,18)+'">'+esc(ttl)+
-        (S.titleEn?'<em>'+esc(S.titleEn)+'</em>':'')+'</h2></div>'+
-      '<div class="feat">'+f.map((x,i)=>'<span><i>'+CFIC[i%8]+'</i>'+esc(cPair(x)[0])+'</span>').join('')+'</div>'+
+      '<div class="bdgs">'+bd.map(([fd,v],i)=>HX(P+'bdg.'+i)?'':
+        '<b class="bdg '+(i?'gold':'red')+'"'+ED(P+'bdg.'+i)+EF(fd)+'>'+esc(v)+'</b>').join('')+'</div>'+
+      '<div class="ttl"><h2 style="'+cFs(ttl,4.4,3.7,3.1,12,18)+'"'+EF('title')+'>'+esc(ttl)+'</h2>'+
+        (HX(P+'ten')?'':'<div class="ten"'+ED(P+'ten')+EF('titleEn')+'>'+esc(S.titleEn||T('bTag'))+'</div>')+'</div>'+
+      '<div class="feat">'+f.map((x,i)=>HX(P+'feat.'+i)?'':
+        '<span'+ED(P+'feat.'+i)+'><i>'+CFIC[i%8]+'</i><b'+EF('features.'+i)+'>'+esc(cPair(x)[0])+'</b></span>').join('')+'</div>'+
     '</div>'+
-    cStrip('k-strip',3)+
+    cStrip(P,'k-strip',3)+
     '<div class="z k-mid">'+
-      '<div class="k-map">'+cImg(MED.map,T('mMapPh'))+'</div>'+
-      '<div class="k-spec"><b>'+esc(ttl)+'</b>'+(S.place?'<i>'+esc(S.place)+'</i>':'')+'<hr>'+
-        rows.map(([a,b])=>'<u>'+esc(a)+'<s>'+esc(b)+'</s></u>').join('')+'</div>'+
-      '<div class="k-plan">'+cImg(MED.plan,T('mPlanPh'))+'</div>'+
+      (HX(P+'map')?'':'<div class="k-map"'+ED(P+'map')+'>'+cImg(MED.map,T('mMapPh'),'map')+'</div>')+
+      (HX(P+'spec')?'':'<div class="k-spec"'+ED(P+'spec')+'><b'+EF('title')+'>'+esc(ttl)+'</b>'+
+        '<i'+EF('place')+'>'+esc(S.place||T('mMapPh'))+'</i><hr>'+
+        rows.map(([fd,a,b])=>'<u>'+esc(a)+'<s'+EF(fd)+'>'+esc(b)+'</s></u>').join('')+'</div>')+
+      (HX(P+'plan')?'':'<div class="k-plan"'+ED(P+'plan')+'>'+cImg(MED.plan,T('mPlanPh'),'plan')+'</div>')+
     '</div>'+
-    (MED.person?'<div class="z cut k-person"><img src="'+MED.person+'" alt=""></div>':'')+
-    cAmenBar('k-amen')+cFootBar('k-foot')+'</div>';
+    (MED.person?'<div class="z cut k-person"'+ED(P+'person')+EI('person')+'><img src="'+MED.person+'" alt=""></div>':'')+
+    cAmenBar(P,'k-amen')+cFootBar(P,'k-foot')+cFree(0)+'</div>';
 }
 function posterL(){                                     // استثمار وفلل (طوليّ)
-  const f=cFeat().slice(0,5), rows=cDealRows().slice(0,3), lm=cList(S.landmarks,4), tels=cTelList();
+  const P='L.', f=cFeat().slice(0,5), rows=cDeal().slice(0,3), lm=cList(S.landmarks,4), t=cTels();
   const ttl=S.title||CATS[S.cat||'other'].title;
   return '<div class="cpo L" data-ck="1">'+
     '<div class="z l-logo">'+cLogo()+'</div>'+
-    '<div class="z l-head"><h2 style="'+cFs(ttl,5.8,4.8,3.9,14,22)+'">'+esc(ttl)+
-      (S.titleEn?'<em>'+esc(S.titleEn)+'</em>':'')+'</h2></div>'+
-    '<div class="z l-hero">'+cImg(MED.hero||S.img,T('mHeroPh'))+'</div>'+
-    '<div class="z l-side">'+f.map((x,i)=>'<span><i>'+CFIC[i%8]+'</i>'+esc(cPair(x)[0])+'</span>').join('')+'</div>'+
-    '<div class="z l-row1">'+(rows.length?rows:[[T('lblPrices'),((S.price||'')+' '+(S.unit||'')).trim()]])
-      .concat([['',''],['','']]).slice(0,3)
-      .map(([a,b])=>'<div class="card">'+(a?'<em>'+esc(a)+'</em><b>'+esc(b)+'</b>':'')+'</div>').join('')+'</div>'+
-    cStrip('l-strip',5,cList(S.chips,3).concat(cFeat()).slice(0,5))+
-    /* بطاقة المعالم تختفي إن لم تُذكر فيتمدّد التواصل، بدل مربّع فارغ */
+    '<div class="z l-head"><h2 style="'+cFs(ttl,5.8,4.8,3.9,14,22)+'"'+EF('title')+'>'+esc(ttl)+'</h2>'+
+      (HX(P+'ten')?'':'<div class="ten"'+ED(P+'ten')+EF('titleEn')+'>'+esc(S.titleEn||T('bTag'))+'</div>')+'</div>'+
+    '<div class="z l-hero">'+cImg(MED.hero||S.img,T('mHeroPh'),'hero')+'</div>'+
+    '<div class="z l-side">'+f.map((x,i)=>HX(P+'feat.'+i)?'':
+      '<span'+ED(P+'feat.'+i)+'><i>'+CFIC[i%8]+'</i><b'+EF('features.'+i)+'>'+esc(cPair(x)[0])+'</b></span>').join('')+'</div>'+
+    '<div class="z l-row1">'+(rows.length?rows:[['price',T('lblPrices'),((S.price||'')+' '+(S.unit||'')).trim()]])
+      .concat([['','',''],['','','']]).slice(0,3)
+      .map(([fd,a,b],i)=>HX(P+'card.'+i)?'<div class="card"></div>':
+        '<div class="card"'+(a?ED(P+'card.'+i):'')+'>'+(a?'<em>'+esc(a)+'</em><b'+EF(fd)+'>'+esc(b)+'</b>':'')+'</div>').join('')+'</div>'+
+    cStrip(P,'l-strip',5,cList(S.chips,3).concat(cFeat()).slice(0,5))+
     '<div class="z l-row2'+(lm.length?'':' solo')+'"'+(lm.length?'':' style="grid-template-columns:1fr"')+'>'+
-      (lm.length?'<div class="card"><div class="marks"><b>'+esc(T('lblLandmarks'))+'</b>'+
-        lm.map(x=>'• '+esc(x)).join('<br>')+'</div></div>':'')+
+      (lm.length?'<div class="card"'+ED(P+'marks')+'><div class="marks"><b>'+esc(T('lblLandmarks'))+'</b>'+
+        lm.map((x,i)=>'<span'+EF('landmarks.'+i)+'>• '+esc(x)+'</span>').join('<br>')+'</div></div>':'')+
       '<div class="card"><em>'+esc(T('lblContact2'))+'</em><div class="tels">'+
-        (tels.length?tels.map(t=>'<bdi>'+esc(t)+'</bdi>').join(''):'<bdi>—</bdi>')+'</div></div>'+
+        (t.length?t.map(([fd,v])=>'<bdi'+EF(fd)+'>'+esc(v)+'</bdi>').join('')
+          :'<bdi'+EF('brand.tel1')+'>'+esc(T('bTel1'))+'</bdi>')+
+        (HX(P+'wa')?'':'<bdi'+ED(P+'wa')+EF('brand.wa')+'>'+esc(BR.wa||T('bWa'))+'</bdi>')+'</div></div>'+
     '</div>'+
-    '<div class="z foot l-foot">'+cLogo()+'<span class="lbl">◉ '+esc(S.place||S.kick||'')+'</span>'+
-      (S.deal&&S.deal.freehold?'<span class="tag">'+esc(T('lblFreehold'))+' — '+esc(S.deal.freehold)+'</span>':'')+'</div>'+
-    '</div>';
+    '<div class="z foot l-foot">'+cLogo()+'<span class="lbl">◉ <span'+EF('place')+'>'+esc(S.place||S.kick||T('mMapPh'))+'</span></span>'+
+      (S.deal&&S.deal.freehold?'<span class="tag"'+EF('deal.freehold')+'>'+esc(S.deal.freehold)+'</span>':'')+'</div>'+
+    cFree(1)+'</div>';
 }
 function posterM(){                                     // معرض سيّارات
-  const f=cFeat().slice(0,6), br=cList(S.brands,6), tels=cTelList();
+  const P='M.', f=cFeat().slice(0,6), br=cList(S.brands,6), t=cTels();
   const ttl=S.title||CATS[S.cat||'other'].title, hb=br.length>0;
   return '<div class="cpo M" data-ck="2">'+
     '<div class="z m-logo">'+cLogo()+'</div>'+
-    '<div class="z m-head">'+(S.titleEn?'<div class="en" style="'+cFs(S.titleEn,7.4,4.4,3,10,17)+'">'+esc(S.titleEn)+'</div>':'')+
-      '<h2 style="'+cFs(ttl,5.2,4,3.2,11,17)+'">'+esc(ttl)+'</h2>'+
-      '<div class="sub">'+esc(S.badge||T('badgeFb'))+'</div>'+
-      (S.spec?'<div class="sp">'+esc(S.spec)+'</div>':'')+'</div>'+
-    '<div class="z m-hero" style="top:23%;height:'+(hb?39:47)+'%">'+cImg(MED.hero||S.img,T('mHeroPh'))+'</div>'+
-    (hb?'<div class="z m-brands" style="top:63%;height:8.5%">'+br.map(x=>{ const [a,b]=cPair(x);
-      return '<span><b>'+esc(a)+'</b>'+(b?'<em>'+esc(b)+'</em>':'')+'</span>'; }).join('')+'</div>':'')+
+    '<div class="z m-head">'+(HX(P+'ten')?'':'<div class="en" style="'+cFs(S.titleEn||T('bTag'),7.4,4.4,3,10,17)+'"'+ED(P+'ten')+EF('titleEn')+'>'+esc(S.titleEn||T('bTag'))+'</div>')+
+      '<h2 style="'+cFs(ttl,5.2,4,3.2,11,17)+'"'+EF('title')+'>'+esc(ttl)+'</h2>'+
+      (HX(P+'sub')?'':'<div class="sub"'+ED(P+'sub')+EF('badge')+'>'+esc(S.badge||T('badgeFb'))+'</div>')+
+      (HX(P+'sp')?'':'<div class="sp"'+ED(P+'sp')+EF('spec')+'>'+esc(S.spec||CATS[S.cat||'other'].spec)+'</div>')+'</div>'+
+    '<div class="z m-hero" style="top:23%;height:'+(hb?39:47)+'%">'+cImg(MED.hero||S.img,T('mHeroPh'),'hero')+'</div>'+
+    (hb?'<div class="z m-brands" style="top:63%;height:8.5%">'+br.map((x,i)=>{ const [a,b]=cPair(x);
+      return HX(P+'br.'+i)?'':'<span'+ED(P+'br.'+i)+'><b'+EF('brands.'+i)+'>'+esc(a)+'</b>'+(b?'<em>'+esc(b)+'</em>':'')+'</span>'; }).join('')+'</div>':'')+
     '<div class="z m-feat" style="top:'+(hb?73:71.5)+'%;height:'+(hb?14:15.5)+'%">'+f.map((x,i)=>{ const [a,b]=cPair(x);
-      return '<div class="card"><em>'+CFIC[i%8]+'</em><b>'+esc(a)+'</b>'+(b?'<span>'+esc(b)+'</span>':'')+'</div>'; }).join('')+'</div>'+
-    '<div class="z m-bar">'+(BR.wa?'<span class="wa">✆</span>':'')+
-      '<span class="tels"><s>☎</s>'+(tels.length?tels.map(t=>'<bdi>'+esc(t)+'</bdi>').join('<s>|</s>'):'<bdi>—</bdi>')+'</span>'+
-      (S.badge2?'<b class="bdg red">'+esc(S.badge2)+'</b>':'')+'</div>'+
-    '<div class="z m-foot">'+esc(BR.tag||T('tagFb'))+'</div>'+
-    '</div>';
+      return HX(P+'feat.'+i)?'':'<div class="card"'+ED(P+'feat.'+i)+'><em>'+CFIC[i%8]+'</em><b'+EF('features.'+i)+'>'+esc(a)+'</b>'+(b?'<span>'+esc(b)+'</span>':'')+'</div>'; }).join('')+'</div>'+
+    '<div class="z m-bar">'+(HX(P+'wa')?'':'<span class="wa"'+ED(P+'wa')+'>✆ <bdi'+EF('brand.wa')+'>'+esc(BR.wa||T('bWa'))+'</bdi></span>')+
+      '<span class="tels"><s>☎</s>'+(t.length?t.map(([fd,v])=>'<bdi'+EF(fd)+'>'+esc(v)+'</bdi>').join('<s>|</s>')
+        :'<bdi'+EF('brand.tel1')+'>'+esc(T('bTel1'))+'</bdi>')+'</span>'+
+      (HX(P+'bdg2')?'':'<b class="bdg red"'+ED(P+'bdg2')+EF('badge2')+'>'+esc(S.badge2||T('badgeFb'))+'</b>')+'</div>'+
+    '<div class="z m-foot"'+EF('brand.tag')+'>'+esc(BR.tag||T('tagFb'))+'</div>'+
+    cFree(2)+'</div>';
 }
 
 /* ================= الرسم ================= */
 const CAR={square:'1 / 1',tall:'2 / 3',wide:'4 / 5'};
 const CNAT=['1 / 1','2 / 3','1 / 1'];
+const CPFX=['K.','L.','M.'];
 function cSetU(el){ const w=el.clientWidth||el.offsetWidth; if(w) el.style.setProperty('--u',(w/100)+'px'); }
 function cSetAll(){ document.querySelectorAll('.cpo').forEach(cSetU); }
 function renderComp(){
   const host=document.getElementById('cgrid'); if(!host) return;
   const ar=S.ratioPicked?CAR[S.ratio]:null;
   host.innerHTML=[posterK(),posterL(),posterM()].map((h,i)=>
-    '<div class="col"><h3><i style="background:#d4af37"></i>'+CNM[i]+'</h3>'+h+
+    '<div class="col"><h3><i style="background:#d4af37"></i>'+CNM[i]+'</h3>'+
+    '<div class="ctb">'+
+      '<button class="tbb" data-add="'+i+'">＋ '+T('addBox')+'</button>'+
+      '<button class="tbb" data-zoom="'+i+'">⛶ '+T('zoomB')+'</button>'+
+      '<button class="tbb" data-rst="'+i+'">↺ '+T('resetBoard')+'</button>'+
+    '</div>'+h+
     '<div class="cap">'+CCP[i]+'</div>'+
     '<button class="dlB" data-cdl="'+i+'">⬇︎ '+T('dlPrint')+'</button></div>').join('');
-  host.querySelectorAll('.cpo').forEach((el,i)=>{ el.style.aspectRatio=ar||CNAT[i]; cSetU(el); });
+  host.querySelectorAll('.cpo').forEach((el,i)=>{ el.style.aspectRatio=ar||CNAT[i];
+    el.insertAdjacentHTML('beforeend','<button class="xdel" type="button" aria-label="×">×</button>');
+    cSetU(el); });
   requestAnimationFrame(cSetAll);
 }
 addEventListener('resize',cSetAll);
+
+/* ================= المحرّر على اللوحة ================= */
+function rdFile(f){ return new Promise(ok=>{ const r=new FileReader(); r.onload=()=>ok(r.result);
+  r.onerror=()=>ok(null); r.readAsDataURL(f); }); }
+let PEND=null, FBSUP=false;
+const fSlot=document.getElementById('fSlot');
+fSlot.onchange=async e=>{
+  const f=(e.target.files||[])[0]; e.target.value=''; if(!f||!PEND) return;
+  const d=await rdFile(f), k=PEND; PEND=null; if(!d) return;
+  if(k==='logo'){ BR.logo=d; brSave(); HID.delete('logo'); }
+  else if(k==='hero'){ MED.hero=d; S.img=d; }
+  else if(k.indexOf('thumb.')===0){ MED.thumbs[+k.slice(6)]=d; }
+  else MED[k]=d;
+  renderComp(); if(S.cat) render();
+};
+/* كتابة القيمة في مكانها من الحالة — المصفوفات تُجسَّد من قيمها الظاهرة أوّل تعديل */
+function setField(f,val){
+  val=String(val||'').trim();
+  if(f.indexOf('brand.')===0){ BR[f.slice(6)]=val; brSave(); return; }
+  const i=f.indexOf('.');
+  if(i<0){ S[f]=val; return; }
+  const a=f.slice(0,i), b=f.slice(i+1);
+  if(a==='deal'){ S.deal=Object.assign({},S.deal||{}); S.deal[b]=val; return; }
+  const SEED={features:()=>cFeat(), amenities:()=>cAmen(),
+    landmarks:()=>cList(S.landmarks,6), brands:()=>cList(S.brands,6), chips:()=>cList(S.chips,3)};
+  if(SEED[a]){ const cur=(Array.isArray(S[a])&&S[a].length?S[a].slice():SEED[a]().slice());
+    cur[+b]=val; S[a]=cur; return; }
+  S[f]=val;
+}
+function startEdit(el){
+  if(el.isContentEditable) return;
+  el.contentEditable='true'; el.classList.add('ing'); el.focus();
+  try{ const r=document.createRange(); r.selectNodeContents(el);
+    const sl=getSelection(); sl.removeAllRanges(); sl.addRange(r); }
+  catch(e){ /* بعض المتصفّحات ترفض التحديد على عنصر لم يُرسم بعد — الكتابة تعمل بلا تحديد */ }
+  const fin=()=>{
+    el.contentEditable='false'; el.classList.remove('ing');
+    const v=el.textContent.replace(/\s+/g,' ').trim();
+    const fb=el.closest('.fbx');
+    if(fb){ const p=fb.dataset.fb.split('.'), i=+p[0], j=+p[1];
+      if(FREE[i]&&FREE[i][j]){ FREE[i][j].t=v; fbSave(); } }
+    else if(el.dataset.f) setField(el.dataset.f,v);
+    sessSave(); renderComp();
+  };
+  el.addEventListener('blur',fin,{once:true});
+  el.addEventListener('keydown',ev=>{
+    if(ev.key==='Enter'){ ev.preventDefault(); el.blur(); }
+    else if(ev.key==='Escape'){ ev.stopPropagation(); el.blur(); } });
+}
+function showX(cpo,el){
+  const x=cpo.querySelector('.xdel'); if(!x) return;
+  const a=cpo.getBoundingClientRect(), b=el.getBoundingClientRect();
+  x.style.left=Math.max(0,b.left-a.left)+'px'; x.style.top=Math.max(0,b.top-a.top)+'px';
+  x.dataset.k=el.dataset.del; x.classList.add('on');
+}
+const cgrid=document.getElementById('cgrid');
+cgrid.addEventListener('pointerover',e=>{
+  const cpo=e.target.closest('.cpo'); if(!cpo) return;
+  if(e.target.closest('.xdel')) return;
+  const el=e.target.closest('[data-del]');
+  if(el) showX(cpo,el); else cpo.querySelector('.xdel').classList.remove('on');
+});
+/* بلا طور الالتقاط: pointerleave لا يتصاعد، ومع capture كان مغادرة أيّ عنصر داخليّ
+   تُخفي الـ× قبل أن تصله الضغطة — فالمسح لا يحدث أبدًا. الآن يُخفى عند مغادرة الشبكة. */
+cgrid.addEventListener('pointerleave',()=>document.querySelectorAll('.xdel.on').forEach(x=>x.classList.remove('on')));
+
+cgrid.addEventListener('click',async e=>{
+  const add=e.target.closest('[data-add]');
+  if(add){ const i=+add.dataset.add; FREE[i]=(FREE[i]||[]).concat([{t:T('newBoxTxt'),x:38,y:44,s:2.4}]);
+    fbSave(); renderComp(); return; }
+  const rs=e.target.closest('[data-rst]');
+  if(rs){ const i=+rs.dataset.rst, P=CPFX[i];
+    [...HID].forEach(k=>{ if(k.indexOf(P)===0) HID.delete(k); }); hidSave();
+    delete FREE[i]; fbSave(); renderComp(); return; }
+  const zm=e.target.closest('[data-zoom]');
+  if(zm){ const el=zm.closest('.col').querySelector('.cpo'); if(!el) return;
+    const z=document.getElementById('zoomWrap');
+    z.querySelectorAll('.canvas,.cpo').forEach(n=>n.remove());
+    const cl=el.cloneNode(true); cl.querySelectorAll('.xdel').forEach(n=>n.remove());
+    z.appendChild(cl); z.classList.add('on'); requestAnimationFrame(()=>cSetU(cl)); return; }
+  const d=e.target.closest('.dlB[data-cdl]');
+  if(d){ const el=d.closest('.col').querySelector('.cpo'); if(!el) return;
+    const o=d.textContent; d.disabled=true; d.textContent=T('dlPrep');
+    el.classList.add('exporting');                    // يُخفي أدوات التحرير من الصورة المنزَّلة
+    try{ const L=await h2iLib();
+      const pr=Math.max(2,Math.min(4,Math.ceil(1600/(el.offsetWidth||520))));
+      const url=await L.toPng(el,{pixelRatio:pr,cacheBust:true,backgroundColor:'#080b11',
+        width:el.offsetWidth,height:el.offsetHeight});
+      const a=document.createElement('a'); a.href=url; a.download='ad-'+(CNM[+d.dataset.cdl]||'poster')+'.png';
+      document.body.appendChild(a); a.click(); a.remove(); d.textContent='✅ '+T('dlDone');
+    }catch(err){ d.textContent='⚠️ '+T('dlFail'); }
+    el.classList.remove('exporting');
+    setTimeout(()=>{ d.textContent=o; d.disabled=false; },1600); return; }
+  const x=e.target.closest('.xdel');
+  if(x){ const k=x.dataset.k||'';
+    if(k.indexOf('fb.')===0){ const p=k.split('.'), i=+p[1], j=+p[2];
+      if(FREE[i]) { FREE[i]=FREE[i].filter((_,n)=>n!==j); fbSave(); } }
+    else if(k==='logo'){ delete BR.logo; brSave(); }
+    else if(k){ HID.add(k); hidSave(); }
+    renderComp(); return; }
+  if(FBSUP) return;                                   // سحب المربّع الحرّ لا يفتح التحرير
+  const ed=e.target.closest('[data-f]');
+  if(ed){ startEdit(ed); return; }
+  const fb=e.target.closest('.fbx');
+  if(fb){ startEdit(fb); return; }
+  const im=e.target.closest('[data-img]');
+  if(im){ PEND=im.dataset.img; fSlot.click(); return; }
+});
+
+/* سحب المربّع الحرّ إلى أيّ نقطة على اللوحة */
+let FBD=null;
+addEventListener('pointerdown',e=>{
+  const b=e.target.closest('.fbx'); if(!b||b.isContentEditable) return;
+  const cpo=b.closest('.cpo'); if(!cpo) return;
+  FBD={b,cpo,sx:e.clientX,sy:e.clientY,x0:parseFloat(b.style.left)||0,y0:parseFloat(b.style.top)||0,moved:false};
+  try{ b.setPointerCapture(e.pointerId); }catch(err){ /* بلا التقاط المؤشّر السحب يبقى يعمل */ }
+});
+addEventListener('pointermove',e=>{
+  if(!FBD) return;
+  const dx=e.clientX-FBD.sx, dy=e.clientY-FBD.sy;
+  if(Math.abs(dx)>3||Math.abs(dy)>3) FBD.moved=true;
+  const w=FBD.cpo.clientWidth||1, h=FBD.cpo.clientHeight||1;
+  FBD.nx=Math.max(1,Math.min(92,FBD.x0+dx/w*100));
+  FBD.ny=Math.max(1,Math.min(95,FBD.y0+dy/h*100));
+  FBD.b.style.left=FBD.nx+'%'; FBD.b.style.top=FBD.ny+'%';
+});
+addEventListener('pointerup',()=>{
+  if(!FBD) return;
+  if(FBD.moved){ const p=FBD.b.dataset.fb.split('.'), i=+p[0], j=+p[1];
+    if(FREE[i]&&FREE[i][j]){ FREE[i][j].x=FBD.nx; FREE[i][j].y=FBD.ny; fbSave(); }
+    FBSUP=true; setTimeout(()=>{ FBSUP=false; },80); }
+  FBD=null;
+});
 
 /* نصّ الإعلان جاهزًا للّصق في واتساب أو موقع الإعلانات */
 function cAdText(){
@@ -1280,7 +1411,8 @@ function cAdText(){
   if(d.plan) L.push(T('lblPlan')+': '+d.plan);
   if(S.place) L.push(T('lblView')+': '+S.place);
   if(S.note) L.push(String(S.note));
-  const t=cTelList(); if(t.length) L.push(T('lblContact2')+': '+t.join(' \u00b7 '));
+  const t=cTels().map(x=>x[1]); if(t.length) L.push(T('lblContact2')+': '+t.join(' \u00b7 '));
+  if(BR.wa) L.push(T('bWa')+': '+BR.wa);
   if(BR.ig) L.push(BR.ig);
   return L.join('\n');
 }
@@ -1306,25 +1438,6 @@ function sessLoad(){ try{ return JSON.parse(localStorage.getItem(SKEY))||null; }
 function sessResume(o){ SFLD.forEach(k=>{ if(o[k]!==undefined) S[k]=o[k]; });
   if(!CATS[S.cat]) S.cat='other'; heroDone(); done(); }
 
-/* تكبير + تنزيل بجودة طباعة (لا تقلّ عن ١٦٠٠ بكسل على الضلع الأعرض) */
-document.getElementById('cgrid').addEventListener('click',async e=>{
-  const d=e.target.closest('.dlB[data-cdl]');
-  if(d){ const el=d.closest('.col').querySelector('.cpo'); if(!el) return;
-    const o=d.textContent; d.disabled=true; d.textContent=T('dlPrep');
-    try{ const L=await h2iLib();
-      const pr=Math.max(2,Math.min(4,Math.ceil(1600/(el.offsetWidth||520))));
-      const url=await L.toPng(el,{pixelRatio:pr,cacheBust:true,backgroundColor:'#080b11',
-        width:el.offsetWidth,height:el.offsetHeight});
-      const a=document.createElement('a'); a.href=url; a.download='ad-'+(CNM[+d.dataset.cdl]||'poster')+'.png';
-      document.body.appendChild(a); a.click(); a.remove(); d.textContent='✅ '+T('dlDone');
-    }catch(err){ d.textContent='⚠️ '+T('dlFail'); }
-    setTimeout(()=>{ d.textContent=o; d.disabled=false; },1600); return; }
-  const c=e.target.closest('.cpo');
-  if(c){ const z=document.getElementById('zoomWrap');
-    z.querySelectorAll('.canvas,.cpo').forEach(n=>n.remove());
-    const cl=c.cloneNode(true); z.appendChild(cl); z.classList.add('on');
-    requestAnimationFrame(()=>cSetU(cl)); }
-});
 
 start();
 </script>
