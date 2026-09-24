@@ -374,6 +374,7 @@ I18N['zh'] = {
     "videoModeCanvasOnly": "🎨 仅画布(无 AI)",
     "videoModeRunwayOnly": "🤖 仅 AI 视频 (Runway)",
     "videoModeMinimax": "💸 经济视频 — 更便宜更快",
+    "videoModeOmni": "🎬 电影级视频 — 最高画质（更贵）",
     "videoModeHybrid": "🔗 结合两者(推荐)",
     "videoModeVeo": "🚀 Veo 3 — Google(顶级画质 + 音频)",
     "videoModeActor": "🗣️ 说话的演员 — 阿联酋方言 (Veo 3)",

@@ -369,6 +369,7 @@ I18N['bn'] = {
     videoModeCanvasOnly: "🎨 শুধু ক্যানভাস (AI ছাড়া)",
     videoModeRunwayOnly: "🤖 শুধু AI ভিডিও (Runway)",
     videoModeMinimax: "💸 সাশ্রয়ী ভিডিও — সস্তা ও দ্রুত",
+    videoModeOmni: "🎬 সিনেম্যাটিক ভিডিও — সর্বোচ্চ মান (ব্যয়বহুল)",
     videoModeHybrid: "🔗 উভয়ই মিশ্রিত করুন (সেরা)",
     videoModeVeo: "🚀 Veo 3 — Google (সেরা মান + শব্দ)",
     videoModeActor: "🗣️ কথা বলা অভিনেতা — আমিরাতি উপভাষা (Veo 3)",

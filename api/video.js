@@ -18,6 +18,7 @@ function load(action) {
     case 'veo-download': return require('./_lib/veo-download.js');
     case 'minimax-create': return require('./_lib/minimax-create.js');
     case 'minimax-status': return require('./_lib/minimax-status.js');
+    case 'omni-create': return require('./_lib/omni-create.js');
     default: return null;
   }
 }

@@ -380,6 +380,7 @@ I18N['ru'] = {
     "videoModeCanvasOnly": "🎨 Только Canvas (без ИИ)",
     "videoModeRunwayOnly": "🤖 Только AI-видео (Runway)",
     "videoModeMinimax": "💸 Экономичное видео — дешевле и быстрее",
+    "videoModeOmni": "🎬 Кинематографичное видео — высшее качество (дороже)",
     "videoModeHybrid": "🔗 Объединить оба (лучший результат)",
     "videoModeVeo": "🚀 Veo 3 — Google (лучшее качество + звук)",
     "videoModeActor": "🗣️ Говорящий актёр — эмиратский диалект (Veo 3)",

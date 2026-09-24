@@ -370,6 +370,7 @@ I18N['hi'] = {
     videoModeCanvasOnly: "🎨 केवल कैनवस (बिना AI)",
     videoModeRunwayOnly: "🤖 केवल AI वीडियो (Runway)",
     videoModeMinimax: "💸 किफ़ायती वीडियो — सस्ता और तेज़",
+    videoModeOmni: "🎬 सिनेमैटिक वीडियो — सर्वोच्च गुणवत्ता (महँगा)",
     videoModeHybrid: "🔗 दोनों मिलाएं (सर्वश्रेष्ठ)",
     videoModeVeo: "🚀 Veo 3 — Google (सर्वोच्च गुणवत्ता + ध्वनि)",
     videoModeActor: "🗣️ बोलता अभिनेता — अमीराती बोली (Veo 3)",

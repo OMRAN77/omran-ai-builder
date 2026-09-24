@@ -379,6 +379,7 @@ I18N['id'] = {
     "videoModeCanvasOnly": "🎨 Hanya kanvas (tanpa AI)",
     "videoModeRunwayOnly": "🤖 Hanya video AI (Runway)",
     "videoModeMinimax": "💸 Video hemat — lebih murah & cepat",
+    "videoModeOmni": "🎬 Video sinematik — kualitas tertinggi (lebih mahal)",
     "videoModeHybrid": "🔗 Gabungkan keduanya (terbaik)",
     "videoModeVeo": "🚀 Veo 3 — Google (kualitas terbaik + suara)",
     "videoModeActor": "🗣️ Aktor berbicara — dialek Emirat (Veo 3)",
