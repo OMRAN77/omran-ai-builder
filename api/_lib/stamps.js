@@ -1,6 +1,7 @@
 // «طوابع المدرسة» — ورقة طوابع/ملصقات قابلة للطباعة والقص عبر OpenAI (gpt-image-2).
 // يأخذ صورة الطفل + اسمه ويعيد ورقة كاملة فيها طوابع صغيرة كثيرة بأشكال جميلة.
 // نفس حرّاس adimage.js: هويّة مُتحقَّقة ثم سقف يومي، وsignal خاص يتخطى حارس الـ٣٠ ثانية.
+// v-ad-suite: عدّاد مستقلّ ('stamps') — كان يشارك عدّاد 'adimage' فتأكل الطوابع رصيد الإعلانات.
 const { checkAndConsumeCustom } = require('./_usage.js');
 const { verifyPointsToken } = require('./points.js');
 
@@ -82,7 +83,7 @@ module.exports = async (req, res) => {
     }
 
     // الخصم من الحد اليومي بعد اكتمال كل التحققات — طلب ناقص ما يحرق محاولة
-    const gate = await checkAndConsumeCustom(b.token, null, null, 'adimage', DAILY);
+    const gate = await checkAndConsumeCustom(b.token, null, null, 'stamps', DAILY);
     if (!gate.allowed) {
       res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' صور). جرّب غدًا.' }));
       return;

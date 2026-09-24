@@ -155,9 +155,9 @@ module.exports = async (req, res) => {
       p += 'CUSTOMER BACKGROUND REQUEST (overrides the template\'s background and colour mood, but NOT its layout): restyle the background scene and colour palette to match exactly: "' + bg + '". Keep every card, plaque and text position identical to the layout.' + (hasImg ? ' The customer\'s photographed subject itself still stays exactly as photographed.' : '') + '\n';
     }
     const pool = SCENES[cat] || SCENES.other;
-    const scene = pool[Math.floor(Math.random() * pool.length)];
+    const scene = pool[Math.floor(Math.random() * pool.length)] + '. Art direction: ' + look;
     p += p0hint
-       + (bg ? '' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
+       + (bg ? 'Art direction: ' + look + '.\n' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Art direction: ' + look + '. Accent/glow colour: ' + accent + '.\n'
                  : 'Scene and mood for THIS poster (unique per request): ' + scene + '. Accent/glow colour: ' + accent + '.\n')
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
@@ -179,7 +179,7 @@ module.exports = async (req, res) => {
     p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic'
       + (hasImg ? ', keeping the customer photo\'s own lighting and time of day. '
                 : (bg ? ', lit to match the requested background scene. '
-                      : ', lit by warm golden street light, on wet reflective ground at night. '));
+                      : ', lit by warm golden street light, on wet reflective ground at night. '))
        + 'Do not add any other text, no watermark, no logo, no invented or misspelled letters. '
        + 'Composition must be clean, balanced, symmetric and ready to publish — premium classifieds-ad style, black and gold.';
 
