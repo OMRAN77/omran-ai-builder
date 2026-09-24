@@ -15,4 +15,7 @@
 -->
 <resources>
     <color name="shortcut_background">#F5F5F5</color>
+    <!-- v-webview-opaque: خلفيّة نافذة WebView — أسود التطبيق نفسه (background_color في
+         manifest.json و meta theme-color) فلا ومضة بيضاء بين رسمتين. -->
+    <color name="omranWindowBackground">#000000</color>
 </resources>

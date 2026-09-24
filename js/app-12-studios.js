@@ -1420,10 +1420,15 @@ function stuL(ar, en){
   }
   function lookImg(gender, value, alt){
     const img = document.createElement('img');
-    img.src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
     img.alt = alt;
-    img.loading = 'eager'; // البطاقات ≈40KB كلها — الكسل يؤخّر ظهورها بلا مكسب
+    img.loading = 'lazy';
     img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+    /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
+       فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
+       التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
+    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
+    else img.src = __src;
     img.onerror = function(){
       if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
       else img.remove();

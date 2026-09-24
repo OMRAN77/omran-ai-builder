@@ -10891,7 +10891,14 @@ async function postWithConfirm(url, payload){
       nm.textContent = s.name || '';
       sb.textContent = s.sub || '';
       if(s.bg) th.style.background = s.bg;
-      if(s.img){ im.style.visibility = 'visible'; im.src = s.img; }
+      /* v-art-defer: البطاقة المصغّرة تُبنى عند الإقلاع داخل نوافذ مغلقة (الديكور، المناسبة،
+         الموسم)، فكانت صورتها تُحمَّل بلا أن يراها أحد. الحاوية th بمقاس ثابت 44×58 فلها
+         تخطيطها دائمًا — التأجيل عليها آمن، والصورة تصل عند فتح النافذة. */
+      if(s.img){
+        im.style.visibility = 'visible';
+        if(window.__omranWhenSeen) window.__omranWhenSeen(im, function(){ im.src = s.img; });
+        else im.src = s.img;
+      }
       else im.style.visibility = 'hidden';
     }
     d.onclick = function(){ window.omranPicker.open(openCfg()); };
@@ -26714,10 +26721,15 @@ function stuL(ar, en){
   }
   function lookImg(gender, value, alt){
     const img = document.createElement('img');
-    img.src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
     img.alt = alt;
-    img.loading = 'eager'; // البطاقات ≈40KB كلها — الكسل يؤخّر ظهورها بلا مكسب
+    img.loading = 'lazy';
     img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+    /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
+       فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
+       التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
+    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
+    else img.src = __src;
     img.onerror = function(){
       if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
       else img.remove();
@@ -28965,9 +28977,12 @@ function stuL(ar, en){
     trig.id = 'studioStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
     const img = document.createElement('img');
-    img.src = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
-    img.alt = cur.textContent.trim(); img.loading = 'eager';
+    img.alt = cur.textContent.trim(); img.loading = 'lazy';
     img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    /* v-art-defer: داخل #studioAiModal المغلق — المقاس ثابت 44×58 فالتأجيل آمن. */
+    const __sSrc = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
+    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __sSrc; });
+    else img.src = __sSrc;
     img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = PREVIEW_API(feature, cur.value); } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';

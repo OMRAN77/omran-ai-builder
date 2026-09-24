@@ -1280,9 +1280,12 @@
     trig.id = 'studioStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
     const img = document.createElement('img');
-    img.src = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
-    img.alt = cur.textContent.trim(); img.loading = 'eager';
+    img.alt = cur.textContent.trim(); img.loading = 'lazy';
     img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    /* v-art-defer: داخل #studioAiModal المغلق — المقاس ثابت 44×58 فالتأجيل آمن. */
+    const __sSrc = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
+    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __sSrc; });
+    else img.src = __sSrc;
     img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = PREVIEW_API(feature, cur.value); } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
