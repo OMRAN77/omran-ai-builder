@@ -374,6 +374,8 @@ I18N['ne'] = {
     videoModeLabel: "सिर्जना मोड",
     videoModeCanvasOnly: "🎨 क्यानभास मात्र (AI बिना)",
     videoModeRunwayOnly: "🤖 AI भिडियो मात्र (Runway)",
+    videoModeMinimax: "💸 किफायती भिडियो — सस्तो र छिटो",
+    videoModeOmni: "🎬 सिनेम्याटिक भिडियो — उच्च गुणस्तर (महँगो)",
     videoModeHybrid: "🔗 दुवै मिलाउनुहोस् (उत्तम)",
     videoModeVeo: "🚀 Veo 3 — Google (उत्कृष्ट गुणस्तर + आवाज)",
     videoModeActor: "🗣️ बोल्ने अभिनेता — इमिराती भाषिका (Veo 3)",

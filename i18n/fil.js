@@ -380,6 +380,8 @@ I18N['fil'] = {
     "videoModeLabel": "Mode ng paggawa",
     "videoModeCanvasOnly": "🎨 Canvas lamang (walang AI)",
     "videoModeRunwayOnly": "🤖 AI video lamang (Runway)",
+    "videoModeMinimax": "💸 Ekonomiyang video — mas mura at mabilis",
+    "videoModeOmni": "🎬 Cinematic na video — pinakamataas na kalidad (mas mahal)",
     "videoModeHybrid": "🔗 Pagsamahin ang dalawa (pinakamahusay)",
     "videoModeVeo": "🚀 Veo 3 — Google (pinakamataas na kalidad + tunog)",
     "videoModeActor": "🗣️ Nagsasalitang aktor — Emirati dialect (Veo 3)",

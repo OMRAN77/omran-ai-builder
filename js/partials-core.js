@@ -123,6 +123,8 @@
       <select id="videoMakerMode" style="width:100%;">
         <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 كانفا فقط (بدون AI)</option>
         <option value="runway" selected data-i18n="videoModeRunwayOnly">🤖 فيديو AI فقط (Runway)</option>
+        <option value="minimax" data-i18n="videoModeMinimax">💸 فيديو اقتصادي — أرخص وأسرع</option>
+        <option value="omni" data-i18n="videoModeOmni">🎬 فيديو سينمائيّ — أعلى جودة (أغلى)</option>
         <option value="hybrid" data-i18n="videoModeHybrid">🔗 دمج الاثنين (الأفضل)</option>
         <option value="veo" data-i18n="videoModeVeo">🚀 Veo 3 — جوجل (أعلى جودة + صوت)</option>
         <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)</option>
