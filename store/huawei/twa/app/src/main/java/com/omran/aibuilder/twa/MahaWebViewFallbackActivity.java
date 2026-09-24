@@ -39,6 +39,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.URLUtil;
@@ -80,6 +81,52 @@ public class MahaWebViewFallbackActivity extends Activity {
     private Uri mLaunchUrl;
     private int mStatusBarColor;
     private WebView mWebView;
+
+    /* v-cpu-raster (فيديو المالك ٢٤ سبتمبر ١٧:٤٤، مكبَّرًا بدقّته الأصليّة): **الصفوف العليا من كلّ
+     * نسيج في معالج الرسوم تتلف** — صور بطاقات الأدوات تظهر شريطًا علويًّا من خطوط أفقيّة
+     * مبعثرة والباقي معتم مكعّب، وفي أطلس الحروف تختفي أكثر الحروف تكرارًا (م ا ن و ل) لأنّها
+     * تُرسم أوّلًا فتقع في أعلى الأطلس: «صـع فيدي» بدل «صانع الفيديو»، «تص يم» بدل «تصميم».
+     * نفس البطاقات في كلّ إطار، وفي الوضعين الداكن والفاتح، وبـ١١ م.ب صور ظاهرة فقط على جهاز
+     * ٨ غ.ب — فليس ذاكرة ولا CSS ولا تغميقًا (التغميق ممنوع افتراضًا لـtargetSdk ≥ 33). هذا
+     * عطل رفع أنسجة في تعريف معالج الرسوم، ولا تعالجه الصفحة. العلاج المعروف: أن يرسم WebView
+     * بالمعالج المركزيّ (طبقة برمجيّة) فلا تمرّ الأنسجة بالتعريف المعطوب.
+     * الفيديو المضمَّن يحتاج التسريع العتاديّ (توثيق WebView)، لذلك تعيد الصفحة معالج الرسوم
+     * أثناء تشغيل أيّ <video> فقط عبر OmranRender.video(true/false) — التلفزيون وصانع الفيديو
+     * يعملان كما كانا. هواوي وحدها: هذه حزمة متجر هواوي، والعطل على معالج رسوم كيرين. */
+    private static final boolean CPU_RASTER = "HUAWEI".equalsIgnoreCase(Build.MANUFACTURER);
+    private volatile boolean mVideoPlaying = false;
+
+    private void applyRenderMode(WebView webView) {
+        if (!CPU_RASTER || webView == null) return;
+        try {
+            webView.setLayerType(mVideoPlaying ? View.LAYER_TYPE_NONE : View.LAYER_TYPE_SOFTWARE, null);
+        } catch (Throwable t) {
+            Log.w(TAG, "setLayerType failed", t);
+        }
+    }
+
+    /** جسر صغير للصفحة: يبدّل الرسم أثناء الفيديو، ويخبر «فحص النظام» بالوضع الحاليّ. */
+    private final class RenderBridge {
+        @JavascriptInterface
+        public void video(final boolean playing) {
+            runOnUiThread(() -> {
+                if (mVideoPlaying == playing) return;
+                mVideoPlaying = playing;
+                applyRenderMode(mWebView);
+            });
+        }
+
+        @JavascriptInterface
+        public String mode() {
+            if (!CPU_RASTER) return "gpu";
+            return mVideoPlaying ? "gpu-video" : "cpu";
+        }
+    }
+
+    private void attachRenderBridge(WebView webView) {
+        webView.addJavascriptInterface(new RenderBridge(), "OmranRender");
+        applyRenderMode(webView);
+    }
     private List<Uri> mExtraOrigins = new ArrayList<>();
     private PermissionRequest mPendingMicRequest;
 
@@ -136,6 +183,7 @@ public class MahaWebViewFallbackActivity extends Activity {
         mWebView.setWebChromeClient(createWebViewChromeClient());
         attachDownloadListener(mWebView);
         paintOpaque(mWebView);
+        attachRenderBridge(mWebView);
 
         WebSettings webSettings = mWebView.getSettings();
         setupWebSettings(webSettings);
@@ -222,6 +270,7 @@ public class MahaWebViewFallbackActivity extends Activity {
                 mWebView.setWebViewClient(this);
                 attachDownloadListener(mWebView);
                 paintOpaque(mWebView);
+                attachRenderBridge(mWebView);
                 WebSettings webSettings = mWebView.getSettings();
                 setupWebSettings(webSettings);
                 vg.addView(mWebView);
