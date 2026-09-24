@@ -12,7 +12,7 @@ const OR_VENDOR = { openai: 'openai', gemini: 'google', deepseek: 'deepseek', mi
 const OR_ID_RE = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i;
 const PER_PROVIDER = 8;
 const TTL_MS = 6 * 60 * 60 * 1000;
-const KV_KEY = 'provmodels:v2'; // v-owner-direct: v2 = قائمة Groq من Groq نفسه
+const KV_KEY = 'provmodels:v3'; // v-owner-direct: v2 = قائمة Groq من Groq نفسه؛ v-oa-models: v3 = قائمة GPT من OpenAI نفسه (يُسقط المخزَّن وفيه gpt-6-luna-pro)
 const OR_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 function pickProviderModel(prov, requested, fallback) {
@@ -52,6 +52,23 @@ function parseGroqModels(payload) {
     .map((m) => [m.id, m.id]);
 }
 
+/* v-oa-models (لقطة «فحص النظام» ٢٣ سبتمبر: «The model `gpt-6-luna-pro` does not exist or you do not have access to it» ×4):
+   قائمة GPT في السهم كانت من كتالوج الوسيط، والمحادثة ترسل الاختيار إلى OpenAI مباشرةً بمفتاح المالك — فيظهر في القائمة
+   موديل لا يملكه المفتاح، وكلّ رسالة عليه = 404 ثمّ الافتراضيّ بسطر «غير متاح». بمفتاح OpenAI تأتي القائمة من OpenAI نفسه
+   (/v1/models لا يعرض إلّا ما يملكه المفتاح): موديلات المحادثة فقط (بلا صوت/صورة/تضمين/بحث/فوري/نسخ مؤرَّخة)،
+   الأحدث أوّلًا، ثمانية، والمعرّف ببادئة الوسيط كما يتوقّعه العميل وpickProviderModel (directModel يقصّها). */
+const OPENAI_MODELS_URL = 'https://api.openai.com/v1/models';
+function parseOpenAIModels(payload) {
+  const rows = (payload && Array.isArray(payload.data)) ? payload.data : [];
+  return rows
+    .filter((m) => m && typeof m.id === 'string' && /^(?:gpt-|o\d|chatgpt-)/i.test(m.id) && /^[a-z0-9][a-z0-9._-]{0,99}$/i.test(m.id))
+    .filter((m) => !/audio|realtime|tts|transcribe|image|dall-e|whisper|embedding|moderation|search|instruct|codex|computer-use|deep-research/i.test(m.id))
+    .filter((m) => !/-\d{4}-\d{2}-\d{2}$|-\d{4}$/.test(m.id))
+    .sort((a, b) => (Number(b.created) || 0) - (Number(a.created) || 0))
+    .slice(0, PER_PROVIDER)
+    .map((m) => ['openai/' + m.id, m.id]);
+}
+
 let __mem = { at: 0, models: null };
 async function loadModels(opts) {
   const o = opts || {};
@@ -82,6 +99,15 @@ async function loadModels(opts) {
       if (gl.length) models.groq = gl;
     } catch (e) { /* قائمة الوسيط تبقى */ }
   }
+  // v-oa-models: بمفتاح OpenAI قائمة GPT من OpenAI نفسه (ما يملكه المفتاح فقط)؛ تعثّرها يبقي قائمة الوسيط.
+  const ok = String(process.env.OPENAI_API_KEY || '').trim();
+  if (ok) {
+    try {
+      const g = await f(OPENAI_MODELS_URL, { headers: { Authorization: 'Bearer ' + ok } });
+      const ol = g && g.ok ? parseOpenAIModels(await g.json()) : [];
+      if (ol.length) models.openai = ol;
+    } catch (e) { /* قائمة الوسيط تبقى */ }
+  }
   __mem = { at: now, models };
   if (kv) { try { await kv.kvPutJSON(KV_KEY, { at: now, models }); } catch (e) { /* التخزين تحسينيّ */ } }
   return { models, source: 'network', at: now };
@@ -103,5 +129,6 @@ module.exports = async (req, res) => {
 module.exports.pickProviderModel = pickProviderModel;
 module.exports.parseModels = parseModels;
 module.exports.parseGroqModels = parseGroqModels;
+module.exports.parseOpenAIModels = parseOpenAIModels;
 module.exports.loadModels = loadModels;
 module.exports.OR_VENDOR = OR_VENDOR;

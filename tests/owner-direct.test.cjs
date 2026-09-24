@@ -206,8 +206,14 @@ test('٧. المالك + مفتاح OpenAI: GPT مباشر بمعرّفه عند
   process.env.OPENAI_API_KEY = 'sk-openai-test';
   process.env.GROQ_API_KEY = 'gsk-test';
   try {
-    let r = await run({ user: 'omran', provider: 'openai', model: 'openai/gpt-5.6-terra', messages: ask('سؤال'), script: [() => oaText('من GPT', 'gpt-5.6-terra')] });
-    assert.equal(r.calls[0].url, 'https://api.openai.com/v1/chat/completions');
+    // v-oa-responses: GPT المباشر على /v1/responses (الأدوات مع التفكير لا تُقبل في chat/completions لموديلات GPT الجديدة)
+    const oaResp = (text, model) => new Response([
+      { type: 'response.created', response: { model } },
+      { type: 'response.output_text.delta', output_index: 0, delta: text },
+      { type: 'response.completed', response: { status: 'completed', usage: { input_tokens: 10, output_tokens: 2 } } },
+    ].map((e) => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join(''), { status: 200 });
+    let r = await run({ user: 'omran', provider: 'openai', model: 'openai/gpt-5.6-terra', messages: ask('سؤال'), script: [() => oaResp('من GPT', 'gpt-5.6-terra')] });
+    assert.equal(r.calls[0].url, 'https://api.openai.com/v1/responses');
     assert.equal(r.calls[0].headers.Authorization, 'Bearer sk-openai-test');
     assert.equal(r.calls[0].body.model, 'gpt-5.6-terra');
     assert.equal(r.text, 'من GPT');
