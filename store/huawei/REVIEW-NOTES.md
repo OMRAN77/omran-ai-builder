@@ -6,7 +6,7 @@
 ## Notes for review (English — paste in AGC)
 ```
 Omran AI Builder is a native-feeling multi-tool AI application, not a single-feature website wrapper.
-Rule 4.1 response — this build (1.3.10) changes what the reviewer sees on first launch:
+Rule 4.1 response — this build (1.3.12) changes what the reviewer sees on first launch:
 
 1. On first launch the app opens the Tools panel automatically. It shows 19 in-app tools in three groups:
    Creativity: Photo styles, Suggestions, Video maker, Decor AI, Fashion studio, Style AI.
@@ -36,7 +36,7 @@ Test account: (username) / (password)
 ## ملاحظات المراجع (عربيّ — للمراجعة العربيّة إن وُجدت)
 ```
 تطبيق عمران AI منصّة أدوات ذكاء اصطناعيّ متعدّدة، لا غلاف موقع بميزة واحدة.
-ردًّا على القاعدة 4.1 — هذا الإصدار (1.3.10) يغيّر ما يراه المراجع من أوّل ثانية:
+ردًّا على القاعدة 4.1 — هذا الإصدار (1.3.12) يغيّر ما يراه المراجع من أوّل ثانية:
 ١) عند أوّل تشغيل يفتح التطبيق مربّع الأدوات تلقائيًّا: ١٩ أداة داخل التطبيق في ثلاث مجموعات
    (إبداع: أنماط الصور، اقتراحات، صانع الفيديو، ديكور، أزياء، ستايل · أعمال: استوديو الإعلانات،
    محلّل المصاريف، السيرة الذاتيّة، المستندات، البريد، المقاولات · حياة يوميّة: القبلة والمواقيت،
