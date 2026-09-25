@@ -4668,6 +4668,9 @@ Object.assign(I18N.ar, {"mediaPlansTitle": "اشتراكات الصور والف
 Object.assign(I18N.en, {"mediaPlansTitle": "Image & video plans", "mediaPlansDesc": "For people who only want images or videos — no chat. Each plan has its own balance that can't be spent on anything else.", "mediaImgName": "Images", "mediaVidName": "Video", "mediaImgUnit": "high-quality images", "mediaVidEco": "economy videos", "mediaVidCine": "cinematic videos", "mediaVidSound": "videos with sound", "mediaOr": "or", "mediaNoChatVideo": "No chat, no video", "mediaNoChatImage": "No chat, no images", "mediaLeftImg": "Left in your image plan", "mediaLeftVid": "Left in your video plan"});
 Object.assign(I18N.ar, {"mediaImgPlain": "صورة", "mediaHighEq": "الصورة العالية = صورتين", "mediaQLabel": "جودة الصور", "mediaQNormal": "⚡ عاديّة", "mediaQHigh": "💎 عالية", "mediaQNormalDesc": "سريعة ومناسبة للسوشال ميديا — صورة واحدة من رصيدك", "mediaQHighDesc": "تفاصيل أدقّ ونصوص أوضح وتصلح للطباعة — صورتين من رصيدك", "mediaQHint": "أو اكتب «جودة عالية» في طلبك لصورة واحدة"});
 Object.assign(I18N.en, {"mediaImgPlain": "images", "mediaHighEq": "A high-quality image = 2 images", "mediaQLabel": "Image quality", "mediaQNormal": "⚡ Standard", "mediaQHigh": "💎 High", "mediaQNormalDesc": "Fast, great for social media — 1 image from your balance", "mediaQHighDesc": "Finer detail, clearer text, print-ready — 2 images from your balance", "mediaQHint": "Or write “high quality” in your request for a single image"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N.ar, {"priceTabChat": "💬 المحادثة", "priceTabImg": "🖼️ الصور", "priceTabVid": "🎬 الفيديو", "priceTabPts": "⚡ النقاط"});
+Object.assign(I18N.en, {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Images", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Points"});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
@@ -4704,7 +4707,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=689'; /* v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=690'; /* v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -11111,6 +11114,14 @@ function buyPointsPack(amount){
 }
 window.buyPointsPack = buyPointsPack;
 
+// v-price-tabs: كلّ نوع اشتراك في قسمه — زرّ القسم يعرضه ويخفي البقيّة.
+function showPriceTab(tab){
+  const k = ['chat', 'img', 'vid', 'pts'].includes(tab) ? tab : 'chat';
+  document.querySelectorAll('#pricingSection .priceTab').forEach(function(el){ el.style.display = el.getAttribute('data-tab') === k ? '' : 'none'; });
+  document.querySelectorAll('#priceTabs .priceTabBtn').forEach(function(b){ const on = b.getAttribute('data-tab') === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+}
+window.showPriceTab = showPriceTab;
+
 // v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
 function renderMediaPlanStatus(media){
   const box = document.getElementById('mediaPlanStatus');
@@ -11118,7 +11129,12 @@ function renderMediaPlanStatus(media){
   const m = media || {};
   const lines = [];
   if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' (' + t('mediaHighEq') + ')');
-  if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  const vbox = document.getElementById('mediaVidStatus');
+  if(vbox){
+    vbox.innerHTML = (m.video && m.video.counts) ? (t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine')) : '';
+    vbox.style.display = (m.video && m.video.counts) ? 'block' : 'none';
+  }
+  if(!vbox && m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
   box.innerHTML = lines.join('<br>');
   box.style.display = lines.length ? 'block' : 'none';
   const qb = document.getElementById('mediaQualityBox');

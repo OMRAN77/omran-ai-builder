@@ -40,6 +40,14 @@ function buyPointsPack(amount){
 }
 window.buyPointsPack = buyPointsPack;
 
+// v-price-tabs: كلّ نوع اشتراك في قسمه — زرّ القسم يعرضه ويخفي البقيّة.
+function showPriceTab(tab){
+  const k = ['chat', 'img', 'vid', 'pts'].includes(tab) ? tab : 'chat';
+  document.querySelectorAll('#pricingSection .priceTab').forEach(function(el){ el.style.display = el.getAttribute('data-tab') === k ? '' : 'none'; });
+  document.querySelectorAll('#priceTabs .priceTabBtn').forEach(function(b){ const on = b.getAttribute('data-tab') === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+}
+window.showPriceTab = showPriceTab;
+
 // v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
 function renderMediaPlanStatus(media){
   const box = document.getElementById('mediaPlanStatus');
@@ -47,7 +55,12 @@ function renderMediaPlanStatus(media){
   const m = media || {};
   const lines = [];
   if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' (' + t('mediaHighEq') + ')');
-  if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  const vbox = document.getElementById('mediaVidStatus');
+  if(vbox){
+    vbox.innerHTML = (m.video && m.video.counts) ? (t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine')) : '';
+    vbox.style.display = (m.video && m.video.counts) ? 'block' : 'none';
+  }
+  if(!vbox && m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
   box.innerHTML = lines.join('<br>');
   box.style.display = lines.length ? 'block' : 'none';
   const qb = document.getElementById('mediaQualityBox');

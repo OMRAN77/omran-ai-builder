@@ -1089,3 +1089,5 @@ Object.assign(I18N["zh"], {"imgUnchanged": "⚠️ 编辑未生效：图片原�
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["zh"], {"mediaPlansTitle": "图片与视频订阅", "mediaPlansDesc": "只想要图片或视频的用户——不含聊天。每个订阅都有独立余额，不能用于其他用途。", "mediaImgName": "图片", "mediaVidName": "视频", "mediaImgUnit": "张高质量图片", "mediaVidEco": "个经济视频", "mediaVidCine": "个电影级视频", "mediaVidSound": "个有声视频", "mediaOr": "或", "mediaNoChatVideo": "不含聊天和视频", "mediaNoChatImage": "不含聊天和图片", "mediaLeftImg": "图片订阅剩余", "mediaLeftVid": "视频订阅剩余"});
 Object.assign(I18N["zh"], {"mediaImgPlain": "张图片", "mediaHighEq": "一张高质量图片 = 2张图片", "mediaQLabel": "图片质量", "mediaQNormal": "⚡ 标准", "mediaQHigh": "💎 高质量", "mediaQNormalDesc": "快速，适合社交媒体——扣除余额1张", "mediaQHighDesc": "细节更精细、文字更清晰、可打印——扣除余额2张", "mediaQHint": "或在请求中写“高质量”，仅对该张生效"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N["zh"], {"priceTabChat": "💬 聊天", "priceTabImg": "🖼️ 图片", "priceTabVid": "🎬 视频", "priceTabPts": "⚡ 积分"});
