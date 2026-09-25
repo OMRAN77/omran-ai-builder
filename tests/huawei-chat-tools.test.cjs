@@ -53,6 +53,19 @@ test('js/ui-wiring.js: ربط نقرات البطاقات بالأدوات وك�
   assert.ok(wiring.includes('/HUAWEI|HarmonyOS|HONOR|HuaweiBrowser|HMSCore/i.test(navigator.userAgent'), 'كشف أجهزة هواوي لإضافة store-safe');
 });
 
+test('البطاقات تختفي عند دخول صندوق الكتابة', () => {
+  const css = read('css/redesign.css');
+  assert.ok(css.includes('html.store-safe body.omranWelcome.hwChatting #huaweiHeroWrap{display:none !important;}'), 'قاعدة الإخفاء');
+  const wiring = read('js/ui-wiring.js');
+  assert.ok(/hwPrompt\.addEventListener\('focus'/.test(wiring) && /hwPrompt\.addEventListener\('input'/.test(wiring), 'مربوط بالتركيز والكتابة');
+  assert.ok(wiring.includes("classList.toggle('hwChatting'"), 'يبدّل الصنف على body');
+});
+
+test('زرّ «جرّبه لي» 🧪 محذوف من الواجهة', () => {
+  const html = read('index.html');
+  assert.ok(!html.includes('id="omranTestBar"') && !html.includes('id="btnTestApp"'), 'لا شريط اختبار');
+});
+
 test('js/app-03-i18n-data.js: كل مفاتيح الترجمة المستخدمة موجودة في القاموس', () => {
   const dict = read('js/app-03-i18n-data.js');
   const usedKeys = [

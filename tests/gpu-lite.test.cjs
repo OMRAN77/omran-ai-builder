@@ -39,5 +39,5 @@ test('٢. شعار «OM Ai» بنسخة 3× لارتفاع 42 في الصفحة 
   assert.doesNotMatch(html, /icons\/brand-(?:ar|en)(?:-s)?\.png/);
   const a10 = fs.readFileSync('js/app-10-features.js', 'utf8');
   assert.doesNotMatch(a10, /icons\/brand-/, 'لا تبديل صورة حسب اللغة');
-  assert.match(html, /\/js\/ui-wiring\.js\?v=650/);
+  assert.match(html, /\/js\/ui-wiring\.js\?v=651/);
 });
