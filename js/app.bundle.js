@@ -4671,6 +4671,8 @@ Object.assign(I18N.en, {"mediaImgPlain": "images", "mediaHighEq": "A high-qualit
 /* v-price-tabs: أقسام صفحة الأسعار */
 Object.assign(I18N.ar, {"priceTabChat": "💬 المحادثة", "priceTabImg": "🖼️ الصور", "priceTabVid": "🎬 الفيديو", "priceTabPts": "⚡ النقاط"});
 Object.assign(I18N.en, {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Images", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Points"});
+Object.assign(I18N.ar, {"priceTabMaha": "🎙️ مها", "mahaPlanName": "مها", "mahaPlansDesc": "لمن يريد مكالمات مها الصوتيّة. دقائق الشهر خاصّة بمها، وإذا خلصت تكمل من نقاطك.", "mahaMinPlain": "دقيقة مكالمة", "mahaMinUnit": "دقيقة", "mahaCapNote": "حتّى 10 دقائق للمكالمة الواحدة", "mahaNoChat": "بلا محادثة ولا صور ولا فيديو", "mahaLeft": "المتبقّي من دقائق مها", "mahaCapEnd": "انتهت المكالمة عند حدّ 10 دقائق — اتّصل من جديد لتكمل", "mahaToPoints": "دقائقك تكمل من نقاطك الحين"});
+Object.assign(I18N.en, {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "For Maha voice calls. Your monthly minutes are for Maha only; when they run out, calls continue on your points.", "mahaMinPlain": "call minutes", "mahaMinUnit": "min", "mahaCapNote": "Up to 10 minutes per call", "mahaNoChat": "No chat, images or video", "mahaLeft": "Maha minutes left", "mahaCapEnd": "The call ended at the 10-minute limit — call again to continue", "mahaToPoints": "Your minutes are used up — continuing on points"});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
@@ -4707,7 +4709,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=690'; /* v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=691'; /* v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -11098,7 +11100,7 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211 }; // v-media-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211 }; // v-media-plans + v-maha-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
 const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
@@ -11116,7 +11118,7 @@ window.buyPointsPack = buyPointsPack;
 
 // v-price-tabs: كلّ نوع اشتراك في قسمه — زرّ القسم يعرضه ويخفي البقيّة.
 function showPriceTab(tab){
-  const k = ['chat', 'img', 'vid', 'pts'].includes(tab) ? tab : 'chat';
+  const k = ['chat', 'img', 'vid', 'maha', 'pts'].includes(tab) ? tab : 'chat';
   document.querySelectorAll('#pricingSection .priceTab').forEach(function(el){ el.style.display = el.getAttribute('data-tab') === k ? '' : 'none'; });
   document.querySelectorAll('#priceTabs .priceTabBtn').forEach(function(b){ const on = b.getAttribute('data-tab') === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
 }
@@ -11137,6 +11139,11 @@ function renderMediaPlanStatus(media){
   if(!vbox && m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
   box.innerHTML = lines.join('<br>');
   box.style.display = lines.length ? 'block' : 'none';
+  const mbox = document.getElementById('mahaPlanStatus');
+  if(mbox){
+    mbox.innerHTML = (m.maha && m.maha.counts) ? (t('mahaLeft') + ': <b>' + (Number(m.maha.counts.maha_minute) || 0) + '</b> ' + t('mahaMinUnit')) : '';
+    mbox.style.display = (m.maha && m.maha.counts) ? 'block' : 'none';
+  }
   const qb = document.getElementById('mediaQualityBox');
   if(qb){
     qb.style.display = m.image ? 'block' : 'none';
@@ -11235,8 +11242,8 @@ function openCheckout(plan){
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
-  const __mp = /^(img|vid)_(basic|pro|max)$/.exec(String(plan));
-  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
+  const __mp = /^(img|vid|maha)_(basic|pro|max)$/.exec(String(plan));
+  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
   else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
@@ -16039,12 +16046,19 @@ function mahaStartPointsMeter(budget){
     let pts = Number(budget.points) || 0;
     let trial = !!budget.trial;
     const isGuest = !!budget.guest;
-    val.textContent = trial ? '🎁 1:00' : String(pts);
+    // v-maha-plans: السعر من الخادم (كان ١٠ ثابتة فيرفضها الخادم bad_amount)، ودقائق الاشتراك قبل النقاط.
+    const cost = Number(budget.cost) || 15;
+    let mahaMin = Math.max(0, Math.floor(Number(budget.mahaMin) || 0));
+    const capMin = Math.max(0, Math.floor(Number(budget.capMin) || 0));
+    let callMin = 0;
+    const show = ()=>{ val.textContent = mahaMin > 0 ? ('🎙️ ' + mahaMin + ' ' + t('mahaMinUnit')) : String(pts); };
+    if(trial) val.textContent = '🎁 1:00'; else show();
     el.style.display = 'flex';
     const isAr = (typeof lang !== 'undefined' ? lang : 'ar') === 'ar';
-    const endGently = ()=>{
+    const endGently = (capHit)=>{
       mahaStopPointsMeter();
       try{ mahaEndCall(); }catch(e){ __swallow(e, "points:app-08-maha#20"); }
+      if(capHit){ setTimeout(()=>{ try{ settingsToast(t('mahaCapEnd')); }catch(e){ __swallow(e, "points:app-08-maha#cap"); } }, 400); return; }
       setTimeout(()=>{
         try{
           if(confirm(isAr ? 'خلصت نقاطك 🌸 تبي تشحن نقاط عشان نكمل سوالفنا؟' : 'Your points ran out 🌸 Top up to keep talking with me?')){
@@ -16064,15 +16078,24 @@ function mahaStartPointsMeter(budget){
             await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
               body: JSON.stringify({ action:'maha-trial-used', token: authGet('aiapp_auth_token') }) });
           }catch(e){ __swallow(e, "auth:app-08-maha#24"); }
-          if(pts < 10){ endGently(); return; }
-          val.textContent = String(pts);
+          if(pts < cost && mahaMin < 1){ endGently(); return; }
+          show();
           return;
         }
         const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ action:'consume', amount:10, reason:'maha-minute', token: authGet('aiapp_auth_token') }) });
+          body: JSON.stringify({ action:'consume', amount:cost, reason:'maha_minute', token: authGet('aiapp_auth_token') }) });
         const d = await r.json().catch(()=>({}));
         if(d && d.ok){
-          if(typeof d.points === 'number' && isFinite(d.points)){ pts = d.points; val.textContent = String(pts); }
+          if(d.media === 'maha'){
+            mahaMin = Math.floor((Number(d.mediaLeft) || 0) / 55);
+            callMin++;
+            show();
+            if(capMin && callMin >= capMin){ endGently(true); return; }
+          } else {
+            if(mahaMin > 0){ try{ settingsToast(t('mahaToPoints')); }catch(e){ __swallow(e, "points:app-08-maha#topts"); } }
+            mahaMin = 0;
+            if(typeof d.points === 'number' && isFinite(d.points)){ pts = d.points; show(); }
+          }
         } else if(d && d.reason === 'insufficient'){
           endGently();
         }

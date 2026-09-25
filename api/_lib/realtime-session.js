@@ -192,11 +192,15 @@ module.exports = async (req, res) => {
       const rec = await pointsLib.readPoints(rtUser);
       const pts = rec ? rec.points : 0;
       const trial = !!(rec && !rec.user.mahaTrialUsed);
-      if (pts < pointsLib.COSTS.maha_minute && !trial) {
+      // v-maha-plans: دقائق اشتراك مها تُصرف قبل النقاط، وحدّ المكالمة للمشترك وحده.
+      const mediaLib = require('./_mediaPlans.js');
+      let mahaMin = 0;
+      try { const st = await mediaLib.mediaStatus(rtUser); mahaMin = (st.maha && st.maha.counts.maha_minute) || 0; } catch (e) { mahaMin = 0; }
+      if (pts < pointsLib.COSTS.maha_minute && !trial && mahaMin < 1) {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.maha_minute, points: pts });
         return;
       }
-      mahaBudget = { unlimited: false, points: pts, trial };
+      mahaBudget = { unlimited: false, points: pts, trial, cost: pointsLib.COSTS.maha_minute, mahaMin, capMin: mahaMin > 0 ? mediaLib.MAHA_CALL_CAP_MIN : 0 };
     } else {
       const { kvGetJSON, kvPutJSON } = require('./kv.js');
       // The free guest minute was keyed on an id the browser itself generates, so

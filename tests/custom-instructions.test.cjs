@@ -104,7 +104,7 @@ files.forEach((f) => {
 // وسم الكاش رُفع وإلّا بقيت الأجهزة على نسخة بلا المفاتيح الجديدة
 assert.ok(Number((rd('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, // v-plan-routing: 674 (نصوص الباقات)؛ v-maha-voice-speed: 679؛ كلّ مفتاح جديد يرفعه
   'وسم ?v= لملفّات اللغات مرفوع');
-assert.ok(/partials-settings\.js\?v=667/.test(rd('index.html')), // v-plan-routing: 659؛ v-maha-voice-speed: 660
+assert.ok(/partials-settings\.js\?v=668/.test(rd('index.html')), // v-plan-routing: 659؛ v-maha-voice-speed: 660
   'وسم ?v= لـpartials-settings مرفوع');
 
 /* ── (٦) v-tone-buttons-removed — أزرار النبرة حُذفت بأمر المالك ──

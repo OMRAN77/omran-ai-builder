@@ -395,10 +395,11 @@
   </style>
   <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;" data-i18n="currencyLabel">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div>
   <!-- v-price-tabs: كلّ نوع اشتراك في قسمه — المحادثة · الصور · الفيديو · النقاط -->
-  <div id="priceTabs" role="tablist" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:0 0 12px;">
+  <div id="priceTabs" role="tablist" style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin:0 0 12px;">
     <button type="button" role="tab" class="priceTabBtn on" data-tab="chat" onclick="showPriceTab('chat')" data-i18n="priceTabChat">💬 المحادثة</button>
     <button type="button" role="tab" class="priceTabBtn" data-tab="img" onclick="showPriceTab('img')" data-i18n="priceTabImg">🖼️ الصور</button>
     <button type="button" role="tab" class="priceTabBtn" data-tab="vid" onclick="showPriceTab('vid')" data-i18n="priceTabVid">🎬 الفيديو</button>
+    <button type="button" role="tab" class="priceTabBtn" data-tab="maha" onclick="showPriceTab('maha')" data-i18n="priceTabMaha">🎙️ مها</button>
     <button type="button" role="tab" class="priceTabBtn" data-tab="pts" onclick="showPriceTab('pts')" data-i18n="priceTabPts">⚡ النقاط</button>
   </div>
   <div class="priceTab" data-tab="chat"><div class="planGrid">
@@ -495,6 +496,34 @@
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <ul><li><b>158</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>55</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>37</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('vid_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    </div>
+  </div>
+  <!-- v-maha-plans: دقائق مها الصوتيّة وحدها — رصيد خاصّ، وإذا خلص تكمل من النقاط -->
+  <div class="priceTab" data-tab="maha" style="display:none;">
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mahaPlansDesc">لمن يريد مكالمات مها الصوتيّة. دقائق الشهر خاصّة بمها، وإذا خلصت تكمل من نقاطك.</div>
+    <div id="mahaPlanStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
+    <div class="planGrid" style="margin-top:10px;">
+    <div class="pcard">
+      <div class="pname" data-i18n="mahaPlanName">مها</div>
+      <div class="pprice"><span class="pnum" data-usd="10.21">10.21</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>46</b> <span data-i18n="mahaMinPlain">دقيقة مكالمة</span></li><li data-i18n="mahaCapNote">حتّى 10 دقائق للمكالمة الواحدة</li><li class="off" data-i18n="mahaNoChat">بلا محادثة ولا صور ولا فيديو</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('maha_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard feat"><span class="ptag" data-i18n="planTag">الأكثر اختيارًا</span>
+      <div class="pname" data-i18n="mahaPlanName">مها</div>
+      <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>75</b> <span data-i18n="mahaMinPlain">دقيقة مكالمة</span></li><li data-i18n="mahaCapNote">حتّى 10 دقائق للمكالمة الواحدة</li><li class="off" data-i18n="mahaNoChat">بلا محادثة ولا صور ولا فيديو</li></ul>
+      <button type="button" class="pbtn primary" onclick="openCheckout('maha_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname" data-i18n="mahaPlanName">مها</div>
+      <div class="pprice"><span class="pnum" data-usd="102.11">102.11</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>478</b> <span data-i18n="mahaMinPlain">دقيقة مكالمة</span></li><li data-i18n="mahaCapNote">حتّى 10 دقائق للمكالمة الواحدة</li><li class="off" data-i18n="mahaNoChat">بلا محادثة ولا صور ولا فيديو</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('maha_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     </div>
   </div>

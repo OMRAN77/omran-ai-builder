@@ -1091,3 +1091,4 @@ Object.assign(I18N["zh"], {"mediaPlansTitle": "图片与视频订阅", "mediaPla
 Object.assign(I18N["zh"], {"mediaImgPlain": "张图片", "mediaHighEq": "一张高质量图片 = 2张图片", "mediaQLabel": "图片质量", "mediaQNormal": "⚡ 标准", "mediaQHigh": "💎 高质量", "mediaQNormalDesc": "快速，适合社交媒体——扣除余额1张", "mediaQHighDesc": "细节更精细、文字更清晰、可打印——扣除余额2张", "mediaQHint": "或在请求中写“高质量”，仅对该张生效"});
 /* v-price-tabs: أقسام صفحة الأسعار */
 Object.assign(I18N["zh"], {"priceTabChat": "💬 聊天", "priceTabImg": "🖼️ 图片", "priceTabVid": "🎬 视频", "priceTabPts": "⚡ 积分"});
+Object.assign(I18N["zh"], {"priceTabMaha": "🎙️ 玛哈", "mahaPlanName": "玛哈", "mahaPlansDesc": "用于与玛哈语音通话。每月分钟数仅限玛哈使用；用完后通话将使用你的积分继续。", "mahaMinPlain": "分钟通话", "mahaMinUnit": "分钟", "mahaCapNote": "每次通话最多 10 分钟", "mahaNoChat": "不含聊天、图片或视频", "mahaLeft": "玛哈剩余分钟", "mahaCapEnd": "通话已在 10 分钟上限结束 — 请重新拨打继续", "mahaToPoints": "分钟已用完 — 改用积分继续"});
