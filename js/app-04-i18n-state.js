@@ -1542,7 +1542,21 @@ function renderHistory(){
           if(typeof updateProviderQuickBarActive === 'function') updateProviderQuickBarActive();
         }
       }catch(e){ __swallow(e, "save:app-04-i18n-state#38"); }
-      state.currentId = p.id; mahaClearImageRef(); renderAll();
+      state.currentId = p.id;
+      const hasMsgs = !!(p.messages && p.messages.length > 0);
+      document.body.classList.toggle('omranWelcome', !hasMsgs);
+      const hwHero = document.getElementById('huaweiHeroWrap');
+      const oHero = document.getElementById('omranHero');
+      if(hasMsgs){
+        if(hwHero) hwHero.style.setProperty('display', 'none', 'important');
+        if(oHero) oHero.style.setProperty('display', 'none', 'important');
+        const oTools = document.getElementById('sectionsToolsOverlay');
+        if(oTools) oTools.classList.remove('show');
+      } else {
+        if(hwHero) hwHero.style.removeProperty('display');
+        if(oHero) oHero.style.removeProperty('display');
+      }
+      mahaClearImageRef(); renderAll();
     };
     div.appendChild(titleSpan);
 
@@ -1832,6 +1846,20 @@ function omranRenderOptions(host, blocks){
 function renderMessages(keepScroll){
   /* v-vault-restore: كلّ فتح لمحادثة يستعيد أصول صورها المتدهورة (المرفقات وapiImages التي يعدّل عليها المحرّر) من المخزن */
   try{ const __hp = getCurrent(); if(__hp) hydrateProjectImages(__hp).catch(e => __swallow(e, 'vault:open')); }catch(e){ __swallow(e, 'vault:open#sync'); }
+  const __cInit = getCurrent();
+  const hasMsgs = !!(__cInit && Array.isArray(__cInit.messages) && __cInit.messages.length > 0);
+  document.body.classList.toggle('omranWelcome', !hasMsgs);
+  const hwHero = document.getElementById('huaweiHeroWrap');
+  const oHero = document.getElementById('omranHero');
+  if(hasMsgs){
+    if(hwHero) hwHero.style.setProperty('display', 'none', 'important');
+    if(oHero) oHero.style.setProperty('display', 'none', 'important');
+    const oTools = document.getElementById('sectionsToolsOverlay');
+    if(oTools) oTools.classList.remove('show');
+  } else {
+    if(hwHero) hwHero.style.removeProperty('display');
+    if(oHero) oHero.style.removeProperty('display');
+  }
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
   // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
@@ -1865,7 +1893,9 @@ function renderMessages(keepScroll){
   const prevScrollTop = messagesEl.scrollTop;
   let __wasNearBottom = true;
   try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
-  messagesEl.innerHTML = '';
+  window.__isRenderingMsgs = true;
+  try{
+    messagesEl.innerHTML = '';
   const cur = getCurrent();
   const chipsWrap = $('#chatQuickChipsWrap');
   if(chipsWrap && cur && cur.messages && cur.messages.length) chipsWrap.style.display = 'none';
@@ -2603,4 +2633,8 @@ function renderMessages(keepScroll){
   }
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
+  }finally{
+    window.__isRenderingMsgs = false;
+    try{ if(typeof window.syncWelcome === 'function') window.syncWelcome(); }catch(e){ /* guard-ok */ }
+  }
 }
