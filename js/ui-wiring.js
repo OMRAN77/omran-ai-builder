@@ -96,6 +96,19 @@
   var hwSuggestions = $('#hwCardSuggestions');
   if(hwSuggestions) hwSuggestions.addEventListener('click', function(){ tap('#btnQuickTemplates'); });
 
+  /* v-huawei-chat-hide: دخول صندوق الكتابة يعني بدء المحادثة — البطاقات تختفي
+     ما دام الصندوق مركّزًا أو فيه نصّ، وتعود إن تركه فارغًا. */
+  var hwPrompt = $('#prompt');
+  function syncHwChatting(){
+    var on = !!hwPrompt && (document.activeElement === hwPrompt || hwPrompt.value.trim() !== '');
+    document.body.classList.toggle('hwChatting', on);
+  }
+  if(hwPrompt){
+    hwPrompt.addEventListener('focus', syncHwChatting);
+    hwPrompt.addEventListener('blur', syncHwChatting);
+    hwPrompt.addEventListener('input', syncHwChatting);
+  }
+
   var hwAll = $('#hwAllToolsBtn');
   if(hwAll) hwAll.addEventListener('click', function(){
     var o = document.getElementById('sectionsToolsOverlay');

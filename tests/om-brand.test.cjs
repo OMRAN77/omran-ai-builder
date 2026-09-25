@@ -17,7 +17,7 @@ test('index.html: الرأس والقائمة الجانبيّة بشعار «OM
   assert.doesNotMatch(html, /icons\/brand-(?:ar|en|zh|hi|es|fr|bn|ru|ur|id|fil|tr|ne|ml)(?:-s)?\.png/, 'لا شعار «عمران» لأيّ لغة');
   assert.doesNotMatch(html, /alt="عمران Ai"/);
   assert.doesNotMatch(html, /var W = \{ zh:84/, 'سكربت الوميض لا يبدّل الصورة');
-  assert.match(html, /css\/redesign\.css\?v=686/);
+  assert.match(html, /css\/redesign\.css\?v=687/);
 });
 
 test('app-10 + الحزمة: syncBrand لا يبدّل الصورة حسب اللغة', () => {

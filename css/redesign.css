@@ -67,6 +67,7 @@ html.store-safe body.omranWelcome #huaweiHeroWrap{
   padding:8px 6px;
   box-sizing:border-box;
 }
+html.store-safe body.omranWelcome.hwChatting #huaweiHeroWrap{display:none !important;}
 .huawei-hero-head{display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; margin-bottom:2px;}
 .huawei-hero-badge{font-size:11px; font-weight:var(--w-bold, 700); color:var(--omGold, #d4af37); background:rgba(var(--accent-tint-rgb, 212,175,55),.12); border:1px solid var(--omGoldSoft, rgba(212,175,55,.3)); border-radius:999px; padding:2px 10px; letter-spacing:.5px;}
 .huawei-hero-title{font-size:16px; font-weight:800; color:var(--text); margin:2px 0 0; line-height:1.4;}

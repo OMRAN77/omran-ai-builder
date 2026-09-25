@@ -24,7 +24,7 @@ test('٢. على أندرويد: النجوم بلا فلتر، الأيقونة
   assert.match(css, /@keyframes tickerAiPulseLite\{0%,100%\{opacity:\.72;\} 50%\{opacity:1;\}\}/);
   assert.doesNotMatch(css.slice(css.indexOf('@keyframes tickerAiPulseLite')), /filter:drop-shadow/);
   assert.match(css, /html\.omAndroid #sectionsToolsOverlay\{backdrop-filter:none; -webkit-backdrop-filter:none;\}/);
-  assert.match(html, /css\/redesign\.css\?v=686/);
+  assert.match(html, /css\/redesign\.css\?v=687/);
 });
 
 test('٣. رقيب الإقلاع لا يعيد التحميل ومكالمة مها جارية أو تبدأ أو شاشتها ظاهرة', () => {
@@ -64,7 +64,7 @@ test('٥. v-bdf-off: لا backdrop-filter على أندرويد إطلاقًا �
   // القاعدة تحت html.omAndroid وحدها
   const rule = css.match(/html\.omAndroid \*\{backdrop-filter[^}]+\}/)[0];
   assert.ok(rule.startsWith('html.omAndroid '), 'أندرويد وحده — لا قاعدة عامّة تصيب الجميع');
-  assert.match(html, /css\/redesign\.css\?v=686/);
+  assert.match(html, /css\/redesign\.css\?v=687/);
 });
 
 test('٦. v-intro-gpu: المقدّمة على أندرويد بلا طبقة تغبيش ملء الشاشة وبلا عزل مزج', () => {
