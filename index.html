@@ -70,14 +70,17 @@ window.__omranWhenSeen = (function () {
   <meta name="google-site-verification" content="7RpDAzZaxoqFw0wXGzNIWXFFtmOTRH8GNNrFjz5oCD8" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title id="pageTitle">عمران AI — منصّة الذكاء</title>
+<title id="pageTitle">om ai — عمران AI — منصّة الذكاء</title>
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="om ai">
 <script>/* v-boot-l10n (شكوى المالك: عند التحديث الصفحة كلها تظهر بالعربي ثم تنقلب
   وتقفز العناصر): الصفحة مكتوبة عربية، والترجمة تصل بعد تحميل الحزمة. هنا —
   قبل أول رسمة — يُضبط الاتجاه واللغة من المحفوظ ويُسدل ستار حتى يُطبَّق قاموس
-  اللغة الحقيقي (يرفعه applyLanguage، وحارس زمني يرفعه قسرًا لو تعثّر التحميل). */
+  اللغة الحقيقي (يرفعه applyLanguage، وحارس زمني يرفعه قسرًا لو تعثّر التحميل).
+  v-search-om-ai (طلب المالك ٢٥ سبتمبر: om ai في البحث بدل Omran AI Builder):
+  في البحث تظهر om ai، وداخل التطبيق يُعاد عنوان النافذة فورًا إلى عمران AI. */
 (function(){try{
   var l = localStorage.getItem('aiapp_lang') || 'ar';
-  if(l === 'ar') return;
+  if(l === 'ar'){ document.title = 'عمران AI — منصّة الذكاء'; return; }
   var d = document.documentElement;
   d.dir = (l === 'ur') ? 'rtl' : 'ltr';
   d.lang = l;
@@ -100,8 +103,8 @@ window.__omranWhenSeen = (function () {
   var isNarrow = window.matchMedia('(max-width:860px)').matches;
   if((isMobileUA && isTouch) || isNarrow) document.documentElement.classList.add('mobile-ui');
 }catch(e){}})();</script>
-<meta name="description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
-<meta name="keywords" content="منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
+<meta name="description" content="om ai — أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
+<meta name="keywords" content="om ai, om ai builder, Omran AI Builder, عمران AI, منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
 <meta name="author" content="Omran">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#000000">
@@ -122,9 +125,9 @@ window.__omranWhenSeen = (function () {
 
 <!-- Open Graph / Facebook / WhatsApp -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Omran AI Builder">
+<meta property="og:site_name" content="om ai">
 <meta property="og:url" content="https://omran-ai-builder.vercel.app/">
-<meta property="og:title" content="Omran AI Builder — مُنشئ التطبيقات بالذكاء الاصطناعي">
+<meta property="og:title" content="om ai — مُنشئ التطبيقات بالذكاء الاصطناعي">
 <meta property="og:description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم 4 نماذج ذكاء اصطناعي رائدة، ثنائي اللغة، ومجاني بالكامل.">
 <meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
 <meta property="og:image:width" content="1200">
@@ -134,31 +137,40 @@ window.__omranWhenSeen = (function () {
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Omran AI Builder — مُنشئ التطبيقات بالذكاء الاصطناعي">
+<meta name="twitter:title" content="om ai — مُنشئ التطبيقات بالذكاء الاصطناعي">
 <meta name="twitter:description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. مجاني وثنائي اللغة.">
 <meta name="twitter:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
 
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "Omran AI Builder",
-  "alternateName": "مُنشئ التطبيقات بالذكاء الاصطناعي",
-  "url": "https://omran-ai-builder.vercel.app/",
-  "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "Any",
-  "description": "أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر.",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "om ai",
+    "alternateName": ["Omran AI Builder", "Omran AI", "عمران AI", "om ai builder"],
+    "url": "https://omran-ai-builder.vercel.app/"
   },
-  "author": {
-    "@type": "Person",
-    "name": "Omran"
-  },
-  "inLanguage": ["ar", "en"]
-}
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "om ai",
+    "alternateName": ["Omran AI Builder", "Omran AI", "مُنشئ التطبيقات بالذكاء الاصطناعي"],
+    "url": "https://omran-ai-builder.vercel.app/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "description": "أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Omran"
+    },
+    "inLanguage": ["ar", "en"]
+  }
+]
 </script>
 
 <link rel="manifest" href="/manifest.json?v=515-vg-removed">
