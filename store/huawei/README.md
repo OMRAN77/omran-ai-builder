@@ -1,4 +1,4 @@
-# حزمة متجر هواوي (AppGallery) — 1.3.10 جاهزة للبناء بضغطة
+# حزمة متجر هواوي (AppGallery) — 1.3.12 جاهزة للبناء بضغطة
 
 **التطبيق:** Omran AI Builder · **معرّف AGC:** 118703501 · **اسم الحزمة المسجّل في AGC:** `com.omran.aibuilder.twa` (لا `com.omran.aibuilder` — ذاك اسم حزمة APKPure؛ AGC رفض الرفع به ١٨ سبتمبر)
 **آخر رفض:** الإصدار 1.3.9 (٧ و١٥ سبتمبر ٢٠٢٦) بقاعدة **4.1 «ميزة واحدة»** — المراجع فتح غلاف الموقع
@@ -13,8 +13,8 @@
 ## ما في المستودع
 | الملفّ | دوره |
 |---|---|
-| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder.twa`، ينطلق من `/?store=huawei`، الإصدار 1.3.10، الاسم على الشاشة «عمران AI»، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
-| `.github/workflows/android-release.yml` | يبني الـAPK على مشغّل GitHub (Android SDK جاهز هناك)، يوقّعه بمفتاحك من أسرار المستودع، ينشر **Release** `v1.3.10` بالـAPK، يطبع بصمة التوقيع، ويفتح طلب سحب يضعها في `assetlinks.json`. |
+| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder.twa`، ينطلق من `/?store=huawei`، الإصدار 1.3.12، الاسم على الشاشة «عمران AI»، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
+| `.github/workflows/android-release.yml` | يبني الـAPK على مشغّل GitHub (Android SDK جاهز هناك)، يوقّعه بمفتاحك من أسرار المستودع، ينشر **Release** `v1.3.12` بالـAPK، يطبع بصمة التوقيع، ويفتح طلب سحب يضعها في `assetlinks.json`. |
 | `../../manifest-huawei.json` | بيان الحزمة: `start_url`/`id` = `/?store=huawei`، `scope` = `/`. البيان العامّ `manifest.json` لم يتغيّر. |
 | `../../.well-known/assetlinks.json` | Digital Asset Links للحزمة. البصمة تُملأ تلقائيًّا من الورك فلو (أو يدويًّا). |
 | `screenshots/` | ٨ لقطات ٩:١٦ (١٠٨٠×١٩٢٠) من الحزمة نفسها: مربّع الأدوات (شاشتان) وستّ أدوات. شاشة المحادثة وحدها استُبعدت عمدًا. |
@@ -60,7 +60,7 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 لهذي المشكلة تحديدًا:
 1. افتح <https://www.pwabuilder.com> وأدخل `https://omran-ai-builder.vercel.app/?store=huawei` ← **Package for stores** ← **Android**.
 2. في الخيارات: **Package ID** `com.omran.aibuilder.twa` · **App name** `Omran AI Builder` · **Launcher name** `عمران AI` ·
-   **Version** `1.3.10` · **Version code** `20260918` · **Start URL** `/?store=huawei` ·
+   **Version** `1.3.12` · **Version code** `20260925` · **Start URL** `/?store=huawei` ·
    **Manifest URL** `https://omran-ai-builder.vercel.app/manifest-huawei.json` · **Fallback** WebView ·
    **Signing key: Create new** (املأ الاسم والمنظّمة كيفما شئت).
 3. **Download** ← ملفّ مضغوط فيه الـAPK الموقّع و`assetlinks.json` و`signing.keystore` و`signing-key-info.txt`.
@@ -76,9 +76,9 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 **لاحقًا (اختياريّ):** ضع الأربعة من `signing-key-info.txt` في أسرار المستودع (الخطوة ١) فتُبنى الإصدارات القادمة بضغطة من هنا.
 
 ### ٢) البناء: ضغطة واحدة
-**Actions ← android-release ← Run workflow** (الإصدار 1.3.10 و`versionCode` 20260918 جاهزان؛ لا تغيّر شيئًا)، أو قل للجلسة «ابنِ 1.3.10».
+**Actions ← android-release ← Run workflow** (الإصدار 1.3.12 و`versionCode` 20260925 جاهزان؛ لا تغيّر شيئًا)، أو قل للجلسة «ابنِ 1.3.12».
 بعد دقائق:
-- **Release `v1.3.10`** في صفحة المستودع (Releases) وفيه `omran-ai-builder-1.3.10.apk` — حمّله.
+- **Release `v1.3.12`** في صفحة المستودع (Releases) وفيه `omran-ai-builder-1.3.12.apk` — حمّله.
 - ملخّص التشغيل يعرض **بصمة التوقيع SHA-256**، ويُفتح طلب سحب يضعها في `assetlinks.json` — ادمجه (Vercel ينشر تلقائيًّا).
   تحقّق: `https://omran-ai-builder.vercel.app/.well-known/assetlinks.json` يعرض البصمة.
 - إن كان **App signing** مفعّلًا في AppGallery Connect (التطبيق ← App signing) فخذ بصمة شهادة AGC من الصفحة نفسها
@@ -86,7 +86,7 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 
 ### ٣) الرفع في AppGallery Connect
 - جرّب الـAPK على جهاز هواوي أوّلًا: **بلا شريط عنوان** + مربّع الأدوات يفتح من أوّل ثانية + لا شريط أسهم. (شريط عنوان = البصمة لم تُنشر بعد على النطاق.)
-- ارفع `omran-ai-builder-1.3.10.apk`، اللقطات الثماني من `screenshots/`، الأيقونة `twa/store_icon.png`، الوصف من
+- ارفع `omran-ai-builder-1.3.12.apk`، اللقطات الثماني من `screenshots/`، الأيقونة `twa/store_icon.png`، الوصف من
   `REVIEW-NOTES.md`، وفي خانة **Remarks / Notes for review** النصّ الإنجليزيّ من `REVIEW-NOTES.md` مع حساب تجريبيّ
   (اسم مستخدم وكلمة مرور تُنشئهما أنت — لا تكتبهما في المستودع).
 
