@@ -35718,6 +35718,10 @@ if(document.readyState === 'loading'){
     if(/^(الحالة|status)$/i.test(t)) return { cmd: 'status', arg: '' };
     if(/^(جلسة جديدة|new session)$/i.test(t)) return { cmd: 'new', arg: '' };
     if(/^(أوقف|اوقف|stop)$/i.test(t)) return { cmd: 'stop', arg: '' };
+    /* v-cc-notify: إشعارات طلبات السحب — قائمة، وفتح إشعار كامل مع ردّ الوكيل، ومراقبة طلب برقمه. */
+    if(/^(الإشعارات|الاشعارات|إشعارات|اشعارات|notifications)$/i.test(t)) return { cmd: 'notes', arg: '' };
+    if((m = /^(افتح|open)(?:\s*[:：]\s*|\s+)\[?(\d+)\]?$/i.exec(t))) return { cmd: 'open', arg: m[2] };
+    if((m = /^(راقب|watch)(?:\s*[:：]\s*|\s+)#?(\d+)$/i.exec(t))) return { cmd: 'watch', arg: m[2] };
     return null;
   }
 
@@ -35772,6 +35776,25 @@ if(document.readyState === 'loading'){
     return 'الفرع: ' + (j.branch || '؟') + ' · تغييرات غير ملتزمة: ' + (j.dirty || 0) + ' · التزامات فوق ' + (j.base || 'main') + ': ' + (j.ahead || 0)
       + (j.model ? ' · النموذج: ' + j.model : '') + (S.prUrl ? '\nطلب السحب: ' + S.prUrl : '');
   }
+  function noteTime(at){ try{ return new Date(at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }catch(e){ return ''; } }
+  function notesList(j){
+    var list = (j && j.notes) || [];
+    if(!list.length) return '🔔 لا إشعارات بعد.' + ((j && j.watching && j.watching.length) ? ' أراقب: #' + j.watching.join('، #') : ' أراقب كلّ طلب سحب ينفتح من هنا تلقائيًّا.');
+    return '🔔 الإشعارات' + (j.unread ? ' (' + j.unread + ' جديد)' : '') + ':\n'
+      + list.map(function(n){ return (n.read ? '' : '🆕 ') + '[' + n.id + '] ' + n.title + ' · ' + noteTime(n.at) + (n.wake ? ' · 🤖 أيقظ الوكيل' : ''); }).join('\n')
+      + '\n\nاكتب «افتح ' + list[0].id + '» لقراءة الإشعار كاملًا مع ردّ الوكيل.';
+  }
+  function noteFull(n){
+    if(!n) return 'ما لقيت إشعارًا بهذا الرقم — اكتب «الإشعارات» للقائمة.';
+    var out = '🔔 [' + n.id + '] ' + n.title + ' · ' + noteTime(n.at);
+    if(n.url) out += '\n' + n.url;
+    if(n.body) out += '\n\n' + n.body;
+    if(n.wake) out += '\n\n🤖 ردّ الوكيل:\n' + (n.reply || (n.runId ? '⏳ يشتغل عليه الحين — اكتب أيّ رسالة لتلتحق بالتشغيل.' : '⏳ ينتظر دوره.'));
+    return out;
+  }
+  function unreadHint(){
+    return api('notes').then(function(j){ return (j && j.unread) ? '\n🔔 ' + j.unread + ' إشعار جديد — اكتب «الإشعارات».' : ''; }).catch(function(){ return ''; });
+  }
   function push(cur, text){ cur.messages.push({ role: 'assistant', content: '🧑‍💻 ' + String(text || '').trim(), _cc: true }); }
   function say(cur, thinkingDiv, text){ try{ thinkingDiv.textContent = '🧑‍💻 ' + text; }catch(e){ /* guard-ok */ } }
 
@@ -35785,7 +35808,7 @@ if(document.readyState === 'loading'){
       say(cur, thinkingDiv, 'انشر: التزام ودفع وطلب سحب…');
       return api('publish', { title: title, message: title }).then(function(j){
         S.prNumber = j.prNumber || 0; S.prUrl = j.prUrl || ''; save();
-        done('⬆️ نُشر الفرع ' + j.branch + (j.prUrl ? '\nطلب السحب: ' + j.prUrl : '') + '\nاكتب «ادمج» لدمجه في main بعد المراجعة.');
+        done('⬆️ نُشر الفرع ' + j.branch + (j.prUrl ? '\nطلب السحب: ' + j.prUrl : '') + (j.watching ? '\n🔔 أراقبه: الفحوص والمعاينة والتعليقات — وإذا احمرّ فحص أصحّي الوكيل يصلحه.' : '') + '\nاكتب «ادمج» لدمجه في main بعد المراجعة.');
       }).catch(fail);
     }
     if(c.cmd === 'merge' || c.cmd === 'merge-force'){
@@ -35795,6 +35818,7 @@ if(document.readyState === 'loading'){
       if(!window.confirm('تدمج طلب السحب #' + n + ' في main الآن؟ Vercel سينشره.' + (force ? ' (بالقوّة رغم فحص أحمر)' : ''))) return Promise.resolve(done('أُلغي الدمج.'));
       say(cur, thinkingDiv, 'ادمج #' + n + '…');
       return api('merge', { prNumber: n, force: force }).then(function(j){
+        if(j.queued) return done('⏳ الفحوص ما خلصت (' + (j.pending || []).join('، ') + ') — بدمج #' + n + ' تلقائيًّا أوّل ما تخضرّ، وإذا احمرّت ألغيه. تابع من «الإشعارات».');
         S.prNumber = 0; S.prUrl = ''; save();
         done(j.already ? 'كان #' + n + ' مدموجًا من قبل.' : ('✅ دُمج #' + n + ' (' + String(j.sha || '').slice(0, 7) + ') — Vercel ينشر الآن.'));
       }).catch(function(e){ done('✗ ' + e.message + (force ? '' : '\nللتجاوز اكتب «ادمج بالقوّة».')); });
@@ -35807,6 +35831,20 @@ if(document.readyState === 'loading'){
       return api('status').then(function(j){ done(statusLine(j) + (j.busy ? '\n⏳ تشغيل جارٍ.' : '')); }).catch(fail);
     }
     if(c.cmd === 'new'){ cur.ccSessionId = ''; return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
+    if(c.cmd === 'notes'){
+      return api('notes').then(function(j){ done(notesList(j)); return api('notesRead', {}); }).catch(fail);
+    }
+    if(c.cmd === 'open'){
+      var id = parseInt(c.arg, 10) || 0;
+      return api('notes').then(function(j){
+        var n = ((j && j.notes) || []).filter(function(x){ return x.id === id; })[0];
+        done(noteFull(n));
+        if(n) return api('notesRead', { ids: [id] });
+      }).catch(fail);
+    }
+    if(c.cmd === 'watch'){
+      return api('watch', { prNumber: parseInt(c.arg, 10) || 0 }).then(function(){ done('🔔 أراقب #' + c.arg + ': الفحوص والمعاينة والتعليقات.'); }).catch(fail);
+    }
     if(c.cmd === 'stop'){ return api('stop').then(function(){ done('⏹️ طُلب الإيقاف.'); }).catch(fail); }
     return Promise.resolve(done('أمر غير معروف.'));
   }
@@ -35910,7 +35948,9 @@ if(document.readyState === 'loading'){
         status.release();
         return api('status').catch(function(){ return null; });
       })
-      .then(function(st){
+      .then(function(st){ return unreadHint().then(function(h){ return { st: st, hint: h }; }); })
+      .then(function(x){
+        var st = x.st;
         var body = full.trim();
         if(!body) body = err ? ('✗ ' + err) : '✅ انتهى بلا نصّ.';
         else if(err) body += '\n\n⚠️ ' + err;
@@ -35919,7 +35959,7 @@ if(document.readyState === 'loading'){
         var ranModel = (result && result.models && result.models.length) ? result.models.join(' + ') : (initModel || (st && st.model) || '');
         if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '') + (ranModel ? ' · النموذج: ' + ranModel : '') + (result.effort ? ' · الجهد: ' + result.effort : '');
         if(st){ var s2 = Object.assign({}, st); if(ranModel) delete s2.model; foot += (foot ? '\n' : '') + statusLine(s2) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : ''); }
-        push(cur, prevOut + body + (foot ? '\n\n' + foot : ''));
+        push(cur, prevOut + body + (foot ? '\n\n' + foot : '') + x.hint);
       });
   }
 
