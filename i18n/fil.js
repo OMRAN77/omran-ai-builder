@@ -1097,3 +1097,6 @@ Object.assign(I18N["fil"], {"ownerSectionTitle": "👑 Pahina ng may-ari"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["fil"], {"imgUnchanged": "⚠️ Hindi nailapat ang edit: bumalik ang larawan nang walang pagbabago, kaya hindi ko ito ipinakita at hindi ito ibinawas sa iyo. Sabihin kung ano mismo ang dapat magbago o ibahin ang pagkakasabi."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["fil"], {"mediaPlansTitle": "Mga plan para sa larawan at video", "mediaPlansDesc": "Para sa gusto lang ng larawan o video — walang chat. May sariling balanse ang bawat plan at hindi ito magagastos sa iba.", "mediaImgName": "Mga larawan", "mediaVidName": "Video", "mediaImgUnit": "larawang mataas ang kalidad", "mediaVidEco": "matipid na video", "mediaVidCine": "cinematic na video", "mediaVidSound": "video na may tunog", "mediaOr": "o", "mediaNoChatVideo": "Walang chat at video", "mediaNoChatImage": "Walang chat at larawan", "mediaLeftImg": "Natitira sa plan ng larawan", "mediaLeftVid": "Natitira sa plan ng video"});

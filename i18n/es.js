@@ -1095,3 +1095,6 @@ Object.assign(I18N["es"], {"ownerSectionTitle": "👑 Página del propietario"})
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["es"], {"imgUnchanged": "⚠️ La edición no se aplicó: la imagen volvió sin cambios, así que no la mostré y no se te cobró. Di exactamente qué debe cambiar o exprésalo de otra forma."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["es"], {"mediaPlansTitle": "Planes de imágenes y video", "mediaPlansDesc": "Para quien solo quiere imágenes o videos, sin chat. Cada plan tiene su propio saldo y no se gasta en otra cosa.", "mediaImgName": "Imágenes", "mediaVidName": "Video", "mediaImgUnit": "imágenes de alta calidad", "mediaVidEco": "videos económicos", "mediaVidCine": "videos cinematográficos", "mediaVidSound": "videos con sonido", "mediaOr": "o", "mediaNoChatVideo": "Sin chat ni video", "mediaNoChatImage": "Sin chat ni imágenes", "mediaLeftImg": "Restante en tu plan de imágenes", "mediaLeftVid": "Restante en tu plan de video"});

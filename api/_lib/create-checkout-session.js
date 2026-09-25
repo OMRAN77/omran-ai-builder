@@ -28,6 +28,7 @@
 // with STRIPE_WEBHOOK_SECRET — see PAYMENT-AUDIT-REPORT.md.
 const { verifyToken, getUser, putUser } = require('./auth.js');
 const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
+const { MEDIA_PLANS, grantMedia } = require('./_mediaPlans.js');
 
 const PLANS = {
   // v-plans-2026-09 (قرار المالك ١٢ سبتمبر): الباقات الأكبر تأخذ سعر نقطة أفضل
@@ -44,6 +45,8 @@ const PLANS = {
   pack700: { amount: 2499, points: 700, pack: true, name: '700 نقطة / 700 pts' },
   pack900: { amount: 3499, points: 900, pack: true, name: '900 نقطة / 900 pts' },
 };
+// v-media-plans: اشتراكات الصور/الفيديو — شهريّة، بلا نقاط ولا تغيير للباقة (رصيدها منفصل في _mediaPlans.js).
+for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.amount, points: 0, media: p.media, name: p.name };
 
 // Shared "the payment definitely happened, now grant it" logic used by both
 // the Stripe Checkout Session flow (verifyCheckout) and the Apple Pay /
@@ -57,6 +60,13 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
   // بلا فحص، فتكرار التحقق (تحديث صفحة النجاح، أو جسر الآيفون) كان يضاعفها.
   if (sourceField && sourceId && user[sourceField] === sourceId) {
     return { ok: true, plan, pointsAdded: 0, alreadyGranted: true, balance: Number(user.points || 0) };
+  }
+
+  if (PLANS[plan].media) {
+    if (sourceField) user[sourceField] = sourceId;
+    const g = await grantMedia(user, username, plan);
+    await putUser(username, user);
+    return { ok: true, plan: user.plan || null, media: g.media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0) };
   }
 
   // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.

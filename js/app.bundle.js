@@ -4663,6 +4663,9 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
 /* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
 Object.assign(I18N.ar, {"pfGuestTitle":"💼 المحفظة التعليمية","pfGuestIntro":"100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆","pfGuestLogin":"سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.","pfLoadingBox":"⏳ نجهز محفظتك…","pfLoadFail":"تعذر تحميل المحفظة"});
 Object.assign(I18N.en, {"pfGuestTitle":"💼 Practice Portfolio","pfGuestIntro":"100k virtual — trade at real market prices and compete with everyone else 🏆","pfGuestLogin":"Sign in to start your portfolio — your progress is saved to your account.","pfLoadingBox":"⏳ Preparing your portfolio…","pfLoadFail":"Couldn't load the portfolio"});
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N.ar, {"mediaPlansTitle": "اشتراكات الصور والفيديو", "mediaPlansDesc": "لمن يريد الصور أو الفيديو فقط — بلا محادثة. رصيد كلّ اشتراك خاصّ به ولا يُصرف على غيره.", "mediaImgName": "صور", "mediaVidName": "فيديو", "mediaImgUnit": "صورة عالية الجودة", "mediaVidEco": "فيديو اقتصادي", "mediaVidCine": "فيديو سينمائيّ", "mediaVidSound": "فيديو بالصوت", "mediaOr": "أو", "mediaNoChatVideo": "بلا محادثة ولا فيديو", "mediaNoChatImage": "بلا محادثة ولا صور", "mediaLeftImg": "المتبقّي في اشتراك الصور", "mediaLeftVid": "المتبقّي في اشتراك الفيديو"});
+Object.assign(I18N.en, {"mediaPlansTitle": "Image & video plans", "mediaPlansDesc": "For people who only want images or videos — no chat. Each plan has its own balance that can't be spent on anything else.", "mediaImgName": "Images", "mediaVidName": "Video", "mediaImgUnit": "high-quality images", "mediaVidEco": "economy videos", "mediaVidCine": "cinematic videos", "mediaVidSound": "videos with sound", "mediaOr": "or", "mediaNoChatVideo": "No chat, no video", "mediaNoChatImage": "No chat, no images", "mediaLeftImg": "Left in your image plan", "mediaLeftVid": "Left in your video plan"});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
@@ -4699,7 +4702,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=687'; /* v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=688'; /* v-media-plans: مفاتيح اشتراكات الصور والفيديو. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -11090,7 +11093,8 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499 };
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211 }; // v-media-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
+const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
 // money on its own.
@@ -11104,6 +11108,18 @@ function buyPointsPack(amount){
   settingsToast(t('pricingComingSoon'));
 }
 window.buyPointsPack = buyPointsPack;
+
+// v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
+function renderMediaPlanStatus(media){
+  const box = document.getElementById('mediaPlanStatus');
+  if(!box) return;
+  const m = media || {};
+  const lines = [];
+  if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image) || 0) + '</b> ' + t('mediaImgUnit'));
+  if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  box.innerHTML = lines.join('<br>');
+  box.style.display = lines.length ? 'block' : 'none';
+}
 
 // جلب رصيد النقاط وعرضه في صف المحفظة أعلى قسم الباقات
 async function refreshPointsWallet(){
@@ -11120,6 +11136,7 @@ async function refreshPointsWallet(){
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
+      renderMediaPlanStatus(d.media);
     } else { row.style.display = 'none'; }
   }catch(e){ /* صامت */ }
 }
@@ -11185,7 +11202,9 @@ function openCheckout(plan){
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
-  if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  const __mp = /^(img|vid)_(basic|pro|max)$/.exec(String(plan));
+  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
+  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually

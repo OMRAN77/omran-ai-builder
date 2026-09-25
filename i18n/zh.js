@@ -1085,3 +1085,6 @@ Object.assign(I18N["zh"], {"ownerSectionTitle": "👑 所有者页面"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["zh"], {"imgUnchanged": "⚠️ 编辑未生效：图片原样返回，所以没有显示，也不计费。请说明具体要改什么，或换一种说法。"});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["zh"], {"mediaPlansTitle": "图片与视频订阅", "mediaPlansDesc": "只想要图片或视频的用户——不含聊天。每个订阅都有独立余额，不能用于其他用途。", "mediaImgName": "图片", "mediaVidName": "视频", "mediaImgUnit": "张高质量图片", "mediaVidEco": "个经济视频", "mediaVidCine": "个电影级视频", "mediaVidSound": "个有声视频", "mediaOr": "或", "mediaNoChatVideo": "不含聊天和视频", "mediaNoChatImage": "不含聊天和图片", "mediaLeftImg": "图片订阅剩余", "mediaLeftVid": "视频订阅剩余"});

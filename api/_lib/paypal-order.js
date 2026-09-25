@@ -11,6 +11,7 @@
 // when it's missing).
 const { verifyToken, getUser, putUser } = require('./auth.js');
 const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
+const { MEDIA_PLANS, grantMedia } = require('./_mediaPlans.js');
 
 const PLANS = {
   // v-plans-2026-09: يجب أن تطابق create-checkout-session.js (نقاط ومبالغ).
@@ -25,6 +26,9 @@ const PLANS = {
   pack700: { amount: '24.99', points: 700, pack: true, name: '700 نقطة / 700 pts' },
   pack900: { amount: '34.99', points: 900, pack: true, name: '900 نقطة / 900 pts' },
 };
+// v-media-plans: اشتراكات الصور/الفيديو بمبالغ مميّزة (الالتقاط يطابق بالمبلغ) ورصيد منفصل بلا نقاط.
+// الصور والفيديو بنفس المبلغ، فالطلب يحمل الخطّة في custom_id ويُتحقّق أنّ مبلغها هو الملتقَط.
+for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.paypal, points: 0, media: p.media, name: p.name };
 
 function baseUrl() {
   return (process.env.PAYPAL_MODE !== 'sandbox')
@@ -84,6 +88,7 @@ module.exports = async (req, res) => {
           intent: 'CAPTURE',
           purchase_units: [{
             description: planInfo.name,
+            custom_id: String(body.plan),
             amount: { currency_code: 'USD', value: planInfo.amount },
           }],
         }),
@@ -123,7 +128,10 @@ module.exports = async (req, res) => {
             && data.purchase_units[0].payments.captures
             && data.purchase_units[0].payments.captures[0];
           const amountValue = capture && capture.amount && capture.amount.value;
-          const matchedPlan = Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue);
+          const customId = (capture && capture.custom_id) || (data.purchase_units && data.purchase_units[0] && data.purchase_units[0].custom_id);
+          const matchedPlan = (customId && PLANS[customId] && PLANS[customId].amount === amountValue)
+            ? customId
+            : Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue && !PLANS[p].media);
           const username = verifyToken(token);
           if (username && matchedPlan) {
             const user = await getUser(username);
@@ -131,6 +139,13 @@ module.exports = async (req, res) => {
               // v-paypal-idempotent: نفس الطلب لا يُشحن مرتين (تحديث صفحة النجاح أو
               // تكرار نداء capture) — نفس حارس Stripe في grantPlanToUser.
               planGranted = user.plan || matchedPlan;
+              pointsAdded = 0;
+              balance = Number(user.points || 0);
+            } else if (user && !user.deleted && PLANS[matchedPlan].media) {
+              user.lastPaypalOrderId = data.id;
+              await grantMedia(user, username, matchedPlan);
+              await putUser(username, user);
+              planGranted = matchedPlan;
               pointsAdded = 0;
               balance = Number(user.points || 0);
             } else if (user && !user.deleted) {

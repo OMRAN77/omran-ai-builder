@@ -1045,3 +1045,6 @@ Object.assign(I18N["bn"], {"ownerSectionTitle": "👑 মালিকের প�
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["bn"], {"imgUnchanged": "⚠️ সম্পাদনা প্রয়োগ হয়নি: ছবিটি অপরিবর্তিত ফিরে এসেছে, তাই আমি দেখাইনি এবং আপনার কিছু কাটা হয়নি। ঠিক কী বদলাতে হবে বলুন, অথবা অন্যভাবে লিখুন।"});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["bn"], {"mediaPlansTitle": "ছবি ও ভিডিও সাবস্ক্রিপশন", "mediaPlansDesc": "যারা শুধু ছবি বা ভিডিও চান তাদের জন্য — চ্যাট ছাড়া। প্রতিটি সাবস্ক্রিপশনের নিজস্ব ব্যালেন্স, যা অন্য কিছুতে খরচ হয় না।", "mediaImgName": "ছবি", "mediaVidName": "ভিডিও", "mediaImgUnit": "উচ্চমানের ছবি", "mediaVidEco": "সাশ্রয়ী ভিডিও", "mediaVidCine": "সিনেমাটিক ভিডিও", "mediaVidSound": "শব্দসহ ভিডিও", "mediaOr": "অথবা", "mediaNoChatVideo": "চ্যাট ও ভিডিও নেই", "mediaNoChatImage": "চ্যাট ও ছবি নেই", "mediaLeftImg": "ছবির সাবস্ক্রিপশনে বাকি", "mediaLeftVid": "ভিডিও সাবস্ক্রিপশনে বাকি"});

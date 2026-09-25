@@ -1094,3 +1094,6 @@ Object.assign(I18N["id"], {"ownerSectionTitle": "👑 Halaman pemilik"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["id"], {"imgUnchanged": "⚠️ Edit tidak diterapkan: gambar kembali tanpa perubahan, jadi tidak saya tampilkan dan tidak dihitung ke akunmu. Jelaskan persis apa yang harus berubah atau ucapkan dengan cara lain."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["id"], {"mediaPlansTitle": "Langganan gambar & video", "mediaPlansDesc": "Untuk yang hanya ingin gambar atau video — tanpa chat. Setiap langganan punya saldo sendiri dan tidak bisa dipakai untuk hal lain.", "mediaImgName": "Gambar", "mediaVidName": "Video", "mediaImgUnit": "gambar berkualitas tinggi", "mediaVidEco": "video hemat", "mediaVidCine": "video sinematik", "mediaVidSound": "video bersuara", "mediaOr": "atau", "mediaNoChatVideo": "Tanpa chat dan video", "mediaNoChatImage": "Tanpa chat dan gambar", "mediaLeftImg": "Sisa di langganan gambar", "mediaLeftVid": "Sisa di langganan video"});

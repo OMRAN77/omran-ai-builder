@@ -24,7 +24,8 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499 };
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211 }; // v-media-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
+const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
 // money on its own.
@@ -38,6 +39,18 @@ function buyPointsPack(amount){
   settingsToast(t('pricingComingSoon'));
 }
 window.buyPointsPack = buyPointsPack;
+
+// v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
+function renderMediaPlanStatus(media){
+  const box = document.getElementById('mediaPlanStatus');
+  if(!box) return;
+  const m = media || {};
+  const lines = [];
+  if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image) || 0) + '</b> ' + t('mediaImgUnit'));
+  if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  box.innerHTML = lines.join('<br>');
+  box.style.display = lines.length ? 'block' : 'none';
+}
 
 // جلب رصيد النقاط وعرضه في صف المحفظة أعلى قسم الباقات
 async function refreshPointsWallet(){
@@ -54,6 +67,7 @@ async function refreshPointsWallet(){
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
+      renderMediaPlanStatus(d.media);
     } else { row.style.display = 'none'; }
   }catch(e){ /* صامت */ }
 }
@@ -119,7 +133,9 @@ function openCheckout(plan){
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
-  if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  const __mp = /^(img|vid)_(basic|pro|max)$/.exec(String(plan));
+  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
+  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually

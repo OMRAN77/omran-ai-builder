@@ -426,6 +426,58 @@
       <button type="button" class="pbtn" onclick="openCheckout('max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
   </div>
+  <!-- v-media-plans: اشتراكات الصور/الفيديو وحدها — رصيد خاصّ بلا نقاط ولا محادثة المشتركين -->
+  <div id="mediaPlansBox" style="margin-top:16px;">
+    <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="mediaPlansTitle">اشتراكات الصور والفيديو</div>
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mediaPlansDesc">لمن يريد الصور أو الفيديو فقط — بلا محادثة. رصيد كلّ اشتراك خاصّ به ولا يُصرف على غيره.</div>
+    <div id="mediaPlanStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
+    <div class="planGrid" style="margin-top:10px;">
+    <div class="pcard">
+      <div class="pname" data-i18n="mediaImgName">صور</div>
+      <div class="pprice"><span class="pnum" data-usd="10.21">10.21</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>15</b> <span data-i18n="mediaImgUnit">صورة عالية الجودة</span></li><li class="off" data-i18n="mediaNoChatVideo">بلا محادثة ولا فيديو</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('img_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname" data-i18n="mediaImgName">صور</div>
+      <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>20</b> <span data-i18n="mediaImgUnit">صورة عالية الجودة</span></li><li class="off" data-i18n="mediaNoChatVideo">بلا محادثة ولا فيديو</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('img_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname" data-i18n="mediaImgName">صور</div>
+      <div class="pprice"><span class="pnum" data-usd="102.11">102.11</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>330</b> <span data-i18n="mediaImgUnit">صورة عالية الجودة</span></li><li class="off" data-i18n="mediaNoChatVideo">بلا محادثة ولا فيديو</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('img_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    </div>
+    <div class="planGrid" style="margin-top:10px;">
+    <div class="pcard">
+      <div class="pname" data-i18n="mediaVidName">فيديو</div>
+      <div class="pprice"><span class="pnum" data-usd="10.21">10.21</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>7</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>2</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>1</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('vid_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname" data-i18n="mediaVidName">فيديو</div>
+      <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>9</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>3</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>2</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('vid_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname" data-i18n="mediaVidName">فيديو</div>
+      <div class="pprice"><span class="pnum" data-usd="102.11">102.11</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>158</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>55</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>37</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('vid_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    </div>
+  </div>
   <div style="margin-top:16px;">
     <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingPointsTitle">باقات النقاط</div>
     <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو سينمائي: 275</div>

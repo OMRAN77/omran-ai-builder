@@ -258,7 +258,7 @@ test('٨. الباقات ٣٦٠/٩٢٠/٣٬٢٠٠ متطابقة في Stripe وP
   assert.match(pp, /if \(!PLANS\[matchedPlan\]\.pack\) \{ user\.plan = matchedPlan; user\.planUpdatedAt = Date\.now\(\); \}/);
   // العميل: الأزرار الأربعة تفتح نافذة الدفع بنفس الأسعار المعروضة
   const a6 = read('js/app-06-checkout.js');
-  assert.match(a6, /const CHECKOUT_PLAN_AMOUNTS = \{ basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499 \};/);
+  assert.match(a6, /const CHECKOUT_PLAN_AMOUNTS = \{ basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499(, img_basic: 1021[^}]*)? \};/); // v-media-plans: اشتراكات الصور/الفيديو بعد الرزم
   assert.match(a6, /if\(n > 0 && CHECKOUT_PLAN_AMOUNTS\['pack' \+ n\]\)\{ openCheckout\('pack' \+ n\); return; \}/);
   const ps = read('js/partials-settings.js');
   for (const [n, usd] of [[100, '4.99'], [300, '12.99'], [700, '24.99'], [900, '34.99']]) assert.ok(ps.includes('onclick="buyPointsPack(' + n + ')"') && ps.includes('data-usd="' + usd + '"'), 'زرّ ' + n);
@@ -329,7 +329,7 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=663'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=664'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 

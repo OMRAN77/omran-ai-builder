@@ -1046,3 +1046,6 @@ Object.assign(I18N["fr"], {"ownerSectionTitle": "👑 Page du propriétaire"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["fr"], {"imgUnchanged": "⚠️ La modification n'a pas été appliquée : l'image est revenue inchangée, je ne l'ai donc pas affichée et rien ne vous a été décompté. Précisez exactement ce qui doit changer ou reformulez."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["fr"], {"mediaPlansTitle": "Abonnements images et vidéo", "mediaPlansDesc": "Pour ceux qui veulent seulement des images ou des vidéos — sans chat. Chaque abonnement a son propre solde, utilisable uniquement pour lui.", "mediaImgName": "Images", "mediaVidName": "Vidéo", "mediaImgUnit": "images haute qualité", "mediaVidEco": "vidéos économiques", "mediaVidCine": "vidéos cinématiques", "mediaVidSound": "vidéos avec son", "mediaOr": "ou", "mediaNoChatVideo": "Sans chat ni vidéo", "mediaNoChatImage": "Sans chat ni images", "mediaLeftImg": "Restant dans l’abonnement images", "mediaLeftVid": "Restant dans l’abonnement vidéo"});

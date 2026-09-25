@@ -1093,3 +1093,6 @@ Object.assign(I18N["tr"], {"ownerSectionTitle": "👑 Sahip sayfası"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["tr"], {"imgUnchanged": "⚠️ Düzenleme uygulanmadı: görsel değişmeden döndü, bu yüzden göstermedim ve sizden düşülmedi. Tam olarak neyin değişmesi gerektiğini söyleyin ya da farklı ifade edin."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["tr"], {"mediaPlansTitle": "Görsel ve video abonelikleri", "mediaPlansDesc": "Yalnızca görsel veya video isteyenler için — sohbet yok. Her aboneliğin kendi bakiyesi vardır ve başka bir şeye harcanmaz.", "mediaImgName": "Görseller", "mediaVidName": "Video", "mediaImgUnit": "yüksek kaliteli görsel", "mediaVidEco": "ekonomik video", "mediaVidCine": "sinematik video", "mediaVidSound": "sesli video", "mediaOr": "veya", "mediaNoChatVideo": "Sohbet ve video yok", "mediaNoChatImage": "Sohbet ve görsel yok", "mediaLeftImg": "Görsel aboneliğinde kalan", "mediaLeftVid": "Video aboneliğinde kalan"});
