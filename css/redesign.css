@@ -593,6 +593,17 @@ html:not(.mobile-ui) #sidebarBrand .brandImg{height:42px; width:auto; object-fit
    أيضًا، فوق زرّ «محادثة جديدة» مباشرة (الزرّ order:-2 فالشعار order:-3 يسبقه). */
 html.mobile-ui #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:12px 14px 2px; cursor:pointer; user-select:none;}
 html.mobile-ui #sidebarBrand .brandImg{height:40px; width:auto; object-fit:contain; display:block;}
+/* v-om-brand (طلب عمران ٢٥ سبتمبر): «OM Ai» ونجومه الثلاث بجانبه تومض بالتناوب؛ dir=ltr يُبقي النجوم يمين الكلمة في العربيّة. */
+.omBrand{display:inline-flex; align-items:center; direction:ltr;}
+.omStars{display:block; margin-left:-2px; width:22px; height:42px; flex:0 0 auto; overflow:visible;}
+html.mobile-ui .omStars{width:21px; height:40px;}
+.omBrandStar{transform-origin:0 0; animation:omTwinkle 2.2s ease-in-out infinite; filter:drop-shadow(0 0 3px currentColor);}
+.omBrandStar.s1{color:#04BAEC; animation-delay:0s;}
+.omBrandStar.s2{color:#FEED01; animation-duration:2.8s; animation-delay:.7s;}
+.omBrandStar.s3{color:#F049D7; animation-duration:2.5s; animation-delay:1.4s;}
+@keyframes omTwinkle{0%,100%{opacity:.35; transform:scale(.65) rotate(0deg);} 50%{opacity:1; transform:scale(1.15) rotate(20deg);}}
+@media (prefers-reduced-motion: reduce){ .omBrandStar{animation:none; opacity:1; transform:none;} }
+html.omAndroid .omBrandStar{filter:none;}
 html:not(.mobile-ui) header h1 #brandTitle{display:none;}
 /* v-mobile-brand-once (طلب المالك): على الجوّال يبقى شعار الدرج فقط — يُخفى شعار الهيدر
    كي لا يظهر الاسم مرّتين («من الجهتين») عند فتح الدرج. */

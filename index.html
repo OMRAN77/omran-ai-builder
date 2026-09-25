@@ -171,7 +171,7 @@ window.__omranWhenSeen = (function () {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css?v=722">
-<link rel="stylesheet" href="css/redesign.css?v=685">
+<link rel="stylesheet" href="css/redesign.css?v=686">
 <link rel="stylesheet" href="css/modules.css?v=662">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
@@ -639,18 +639,12 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
   <button type="button" class="omIconBtn" id="omranHamburger" title="القائمة الجانبية" data-i18n-title="sidePanelTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
   <h1>
     <span class="titles">
-      <span id="brandTitle" class="brandTitle brand-ar"><img src="icons/brand-ar-s.png" alt="عمران Ai" class="brandImg" width="126" height="42"></span>
-      <script>/* v-brand-noflash (شكوى المالك: الضغط على الاسم فوق يُظهر «عمران» عربيًا
-        بأي لغة): الشعار العربي كان مكتوبًا في الصفحة فيظهر أول لقطة قبل الجافاسكربت.
-        هنا يُبدَّل فورًا أثناء التحليل بشعار اللغة المحفوظة — نفس جدول syncBrand. */
+      <span id="brandTitle" class="brandTitle brand-ar"><span class="omBrand" dir="ltr"><img src="icons/brand-om-s.png" alt="OM Ai" class="brandImg" width="141" height="42"><svg class="omStars" viewBox="0 0 22 42" width="22" height="42" aria-hidden="true"><g transform="translate(7.5 14) scale(0.42)"><path class="omBrandStar s1" fill="#04BAEC" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(15 19) scale(0.62)"><path class="omBrandStar s2" fill="#FEED01" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(7.5 28) scale(0.38)"><path class="omBrandStar s3" fill="#F049D7" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g></svg></span></span>
+      <script>/* v-om-brand (طلب عمران ٢٥ سبتمبر): شعار «OM Ai» واحد لكلّ اللغات الأربع عشرة بدل شعار «عمران» لكلّ لغة،
+        فلا تبديل صورة هنا؛ يبقى عنوان التبويب لغير العربيّة كما كان في v-brand-noflash. */
       (function(){try{
         var l = localStorage.getItem('aiapp_lang') || 'ar';
-        if(l === 'ar') return;
-        var W = { zh:84, hi:71, es:87, fr:89, bn:80, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
-        var s = W[l] ? ('icons/brand-' + l + '.png') : 'icons/brand-en-s.png';
-        var w = W[l] || 161;
-        document.getElementById('brandTitle').innerHTML = '<img src="' + s + '" alt="Omran Ai" class="brandImg" width="' + w + '" height="42">';
-        document.title = 'Omran AI';
+        if(l !== 'ar') document.title = 'Omran AI';
       }catch(e){}})();</script>
     </span>
   </h1>
@@ -716,7 +710,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     <!-- v-drawer-close (طلب المالك): زرّ طيّ درج المحادثات على الجوّال — سهم (داخل/خارج) بلا دائرة ولا ✕ (مع السحب القائم). يظهر على الجوّال فقط. -->
     <button type="button" id="sidebarCloseBtn" aria-label="إغلاق القائمة" data-i18n="[aria-label]closeTitle" title="إغلاق" data-i18n-title="closeTitle"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg></button>
     <!-- v-sidebar-brand (طلب عمران ١٨ سبتمبر بلقطتين): الشعار الذهبيّ في رأس القائمة الجانبيّة مكان «محادثة جديدة»، والزرّ تحته مباشرة — سطح المكتب فقط؛ الجوّال يبقي شعار الرأس. -->
-    <div id="sidebarBrand" class="sidebarBrand" title="عمران AI"><img src="icons/brand-ar-s.png" alt="عمران Ai" class="brandImg" width="126" height="42"></div>
+    <div id="sidebarBrand" class="sidebarBrand" title="OM Ai"><span class="omBrand" dir="ltr"><img src="icons/brand-om-s.png" alt="OM Ai" class="brandImg" width="141" height="42"><svg class="omStars" viewBox="0 0 22 42" width="22" height="42" aria-hidden="true"><g transform="translate(7.5 14) scale(0.42)"><path class="omBrandStar s1" fill="#04BAEC" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(15 19) scale(0.62)"><path class="omBrandStar s2" fill="#FEED01" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(7.5 28) scale(0.38)"><path class="omBrandStar s3" fill="#F049D7" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g></svg></span></div>
     <script>/* v-sidebar-brand: يتبع شعار الرأس (بُدّل أثناء التحليل حسب اللغة المحفوظة) فلا وميض */
     (function(){try{var b=document.getElementById('brandTitle'),s=document.getElementById('sidebarBrand');if(b&&s)s.innerHTML=b.innerHTML;}catch(e){}})();</script>
     <button type="button" id="omranNewChatBtn"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="ncLabel" data-i18n="ncNewChatLabel">محادثة جديدة ✨</span></button>
@@ -925,7 +919,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=51202e63"></script>
+    <script defer src="/js/app.bundle.js?v=3842544c"></script>
     <script defer src="/js/modes.js?v=m250925b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
