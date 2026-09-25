@@ -130,5 +130,5 @@ export function makeGit(opts) {
     return status();
   }
 
-  return { git, status, publish, prState, merge, resetToBase, repo, base };
+  return { git, gh, status, publish, prState, merge, resetToBase, repo, base };
 }

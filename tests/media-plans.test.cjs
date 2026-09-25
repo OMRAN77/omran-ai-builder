@@ -41,7 +41,7 @@ const reset = (u, rec) => { users.set(u, Object.assign({ username: u, points: 70
 
 test('١. الباقات الستّ: المبالغ بالدرهم، ومميّزة عن باقات المحادثة، والرصيد يعطي الأعداد المعلنة', () => {
   const P = media.MEDIA_PLANS;
-  assert.deepEqual(Object.keys(P), ['img_basic', 'img_pro', 'img_max', 'vid_basic', 'vid_pro', 'vid_max']);
+  assert.deepEqual(Object.keys(P), ['img_basic', 'img_pro', 'img_max', 'vid_basic', 'vid_pro', 'vid_max', 'maha_basic', 'maha_pro', 'maha_max']);
   for (const k of Object.keys(P)) {
     assert.equal(checkout.PLANS[k].points, 0, k + ': بلا نقاط');
     assert.equal(checkout.PLANS[k].media, P[k].media);
@@ -55,7 +55,7 @@ test('١. الباقات الستّ: المبالغ بالدرهم، ومميّ�
     [[7, 2, 1], [9, 3, 2], [158, 55, 37]]);
   // الربح بعد رسوم Stripe (٢٫٩٪ + ٠٫٣٠$): صور ٢٠ · ٥٣ · ١٦٠ درهم؛ فيديو ٢٥–٣٠ · ٦٠–٦٥ · ١٨٠–٢٢٠
   const profit = (k) => { const aedPrice = P[k].amount / 100 * 3.6725; return aedPrice - (aedPrice * 0.029 + 0.3 * 3.6725) - P[k].budget / 100; };
-  for (const [k, lo, hi] of [['img_basic', 19.5, 20.5], ['img_pro', 52.5, 53.5], ['img_max', 159.5, 160.5], ['vid_basic', 25, 30], ['vid_pro', 60, 65], ['vid_max', 180, 220]]) {
+  for (const [k, lo, hi] of [['img_basic', 19.5, 20.5], ['img_pro', 52.5, 53.5], ['img_max', 159.5, 160.5], ['vid_basic', 25, 30], ['vid_pro', 60, 65], ['vid_max', 180, 220], ['maha_basic', 9.5, 10.5], ['maha_pro', 29.5, 31], ['maha_max', 99.5, 100.5]]) {
     const p = profit(k);
     assert.ok(p >= lo && p <= hi, k + ': الربح ' + p.toFixed(1));
   }
@@ -142,7 +142,7 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
   for (const k of Object.keys(media.MEDIA_PLANS)) assert.ok(box.includes("openCheckout('" + k + "')"), k);
   assert.doesNotMatch(box, /Veo|Runway|Omni|MiniMax|Gemini|GPT|Nano|جوجل/i, 'بلا اسم مزوّد');
   const co = read('js/app-06-checkout.js');
-  assert.match(co, /img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211/);
+  assert.match(co, /img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211/);
   const keys = ['mediaImgPlain', 'mediaHighEq', 'mediaQLabel', 'mediaQNormal', 'mediaQHigh', 'mediaQNormalDesc', 'mediaQHighDesc', 'mediaQHint', 'mediaPlansTitle', 'mediaPlansDesc', 'mediaImgName', 'mediaVidName', 'mediaImgUnit', 'mediaVidEco', 'mediaVidCine', 'mediaVidSound', 'mediaOr', 'mediaNoChatVideo', 'mediaNoChatImage', 'mediaLeftImg', 'mediaLeftVid'];
   const i18n = read('js/app-03-i18n-data.js');
   for (const l of ['ar', 'en']) assert.ok(keys.every((k) => new RegExp('I18N\\.' + l + ', \\{[^\\n]*"' + k + '"').test(i18n)), l);
@@ -150,8 +150,8 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     const s = read('i18n/' + l + '.js');
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=665'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=689'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=669'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=691'"));
 });
 
 test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرصيد على المحرّك السريع، و«جودة عالية» في الطلب أو الإعداد = عالية', async () => {
@@ -183,4 +183,112 @@ test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرص�
   for (const n2 of [61, 74, 810]) assert.ok(html.includes('<li><b>' + n2 + '</b> <span data-i18n="mediaImgPlain">'), n2);
   assert.ok(html.includes("onclick=\"setMediaQuality('normal')\"") && html.includes("onclick=\"setMediaQuality('high')\""));
   assert.match(read('api/_lib/points.js'), /action === 'media-quality'/);
+});
+
+test('٨. أقسام الأسعار (v-price-tabs): المحادثة · الصور · الفيديو · النقاط، كلّ قسم وحده والمحادثة افتراضيًّا', () => {
+  const html = read('js/partials-settings.js');
+  const tabs = ['chat', 'img', 'vid', 'maha', 'pts'];
+  for (const k of tabs) {
+    assert.ok(html.includes('data-tab="' + k + '" onclick="showPriceTab(\'' + k + '\')"'), 'زرّ ' + k);
+    assert.equal((html.match(new RegExp('class="priceTab" data-tab="' + k + '"', 'g')) || []).length, 1, 'قسم ' + k);
+  }
+  assert.ok(html.includes('class="priceTabBtn on" data-tab="chat"'));
+  assert.ok(!html.includes('id="openFullPricing"'), 'رابط «عرض كل الباقات» فوق الأسعار حُذف');
+  assert.ok(html.includes('<div class="priceTab" data-tab="chat"><div class="planGrid">'), 'المحادثة ظاهرة');
+  const sec = (k) => { const i = html.indexOf('class="priceTab" data-tab="' + k + '"'); const n = tabs.indexOf(k) < tabs.length - 1 ? html.indexOf('class="priceTab" data-tab="' + tabs[tabs.indexOf(k) + 1] + '"') : html.indexOf('termsLink', i); return html.slice(i, n); };
+  for (const k of ['img', 'vid', 'maha', 'pts']) assert.match(sec(k), /^class="priceTab" data-tab="\w+"[^>]*style="display:none;"/, k + ' مخفيّ حتّى يُختار');
+  assert.ok(sec('chat').includes("openCheckout('max')") && !sec('chat').includes("openCheckout('img_basic')"));
+  assert.ok(['img_basic', 'img_pro', 'img_max'].every((p) => sec('img').includes("openCheckout('" + p + "')")) && !sec('img').includes("openCheckout('vid_basic')"));
+  assert.ok(['vid_basic', 'vid_pro', 'vid_max'].every((p) => sec('vid').includes("openCheckout('" + p + "')")) && sec('vid').includes('id="mediaVidStatus"'));
+  assert.ok(sec('img').includes('id="mediaQualityBox"'));
+  assert.ok(sec('pts').includes('buyPointsPack(100)'));
+  assert.ok(html.includes("showSettingsPage('pricingSection'); if(typeof showPriceTab==='function')showPriceTab('pts')"), 'شحن النقاط يفتح قسم النقاط');
+  assert.match(read('js/app-06-checkout.js'), /function showPriceTab\(tab\)\{/);
+  const keys = ['priceTabChat', 'priceTabImg', 'priceTabVid', 'priceTabPts'];
+  const i18n = read('js/app-03-i18n-data.js');
+  for (const l of ['ar', 'en']) assert.ok(keys.every((k) => new RegExp('I18N\\.' + l + ', \\{[^\\n]*"' + k + '"').test(i18n)), l);
+  for (const l of ['fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml']) assert.ok(keys.every((k) => read('i18n/' + l + '.js').includes('"' + k + '"')), l);
+});
+
+test('٩. اشتراك مها (v-maha-plans): ٤٦ · ٧٥ · ٤٧٨ دقيقة، تُخصم قبل النقاط عبر consume، وحدّ ١٠ دقائق للمكالمة', async () => {
+  const P = media.MEDIA_PLANS;
+  assert.equal(media.UNIT_COST.maha_minute, 55);
+  assert.deepEqual(['maha_basic', 'maha_pro', 'maha_max'].map((p) => Math.floor(P[p].budget / 55)), [46, 75, 478]);
+  assert.equal(media.MAHA_CALL_CAP_MIN, 10);
+  assert.equal(media.mediaOf('maha_minute'), 'maha');
+
+  reset('reem');
+  await checkout.grantPlanToUser('reem', 'maha_basic', 'lastStripeSessionId', 'cs_9');
+  assert.equal(kv.get('media:maha:reem'), '2530');
+  assert.equal(users.get('reem').plan, undefined, 'لا باقة محادثة');
+  assert.deepEqual((await media.mediaStatus('reem')).maha.counts, { maha_minute: 46 });
+
+  // العميل يرسل consume بسعر الدقيقة الحقيقيّ — المسار الكامل عبر معالج /api/points
+  const crypto = require('node:crypto');
+  const payload = Buffer.from(JSON.stringify({ u: 'reem', exp: Date.now() + 60000 })).toString('base64url');
+  const token = payload + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
+  const call = (body) => new Promise((resolve) => {
+    const res = { setHeader() {}, status(c) { this.c = c; return this; }, json(d) { resolve(Object.assign({ code: this.c }, d)); }, end() { resolve({ code: this.c }); } };
+    points({ method: 'POST', body }, res);
+  });
+  const d = await call({ action: 'consume', amount: points.COSTS.maha_minute, reason: 'maha_minute', token });
+  assert.equal(d.ok, true);
+  assert.equal(d.media, 'maha');
+  assert.equal(Math.floor(d.mediaLeft / 55), 45);
+  assert.equal(kv.get('points:reem'), '70', 'النقاط لم تُمسّ');
+  assert.equal((await call({ action: 'consume', amount: 10, reason: 'maha_minute', token })).reason, 'bad_amount', 'المبلغ القديم مرفوض — لذا صار العميل يرسل سعر الخادم');
+  assert.equal(kv.get('media:tix:reem'), undefined, 'دقيقة مها لا تذكرة استرجاع لها');
+  await points.refundPoints('reem', 15);
+  assert.equal(kv.get('media:maha:reem'), String(2530 - 55), 'استرجاع ١٥ نقطة من خدمة أخرى لا يعيد دقيقة');
+
+  const img = await points.spendPoints('reem', points.COSTS.image, 'image');
+  assert.equal(img.media, undefined, 'الصورة من النقاط لا من دقائق مها');
+  kv.set('media:maha:reem', '30');
+  const out = await points.spendPoints('reem', points.COSTS.maha_minute, 'maha_minute');
+  assert.equal(out.media, undefined, 'نفاد الدقائق ← النقاط');
+  assert.equal(kv.get('points:reem'), String(85 - 20 - 15));
+
+  // الخادم يفتح المكالمة للمشترك بلا نقاط، والعميل يعدّ الدقائق ويقف عند الحدّ
+  const rs = read('api/_lib/realtime-session.js');
+  assert.match(rs, /if \(pts < pointsLib\.COSTS\.maha_minute && !trial && mahaMin < 1\) \{/);
+  assert.match(rs, /cost: pointsLib\.COSTS\.maha_minute, mahaMin, capMin: mahaMin > 0 \? mediaLib\.MAHA_CALL_CAP_MIN : 0/);
+  const mc = read('js/app-08-maha.js');
+  assert.match(mc, /action:'consume', amount:cost, reason:'maha_minute'/);
+  assert.doesNotMatch(mc, /amount:10,/);
+  assert.match(mc, /mahaMin = Math\.floor\(\(Number\(d\.mediaLeft\) \|\| 0\) \/ 55\);/);
+  assert.match(mc, /if\(capMin && callMin >= capMin\)\{ endGently\(true\); return; \}/);
+
+  const html = read('js/partials-settings.js');
+  const i = html.indexOf('class="priceTab" data-tab="maha"');
+  const sec = html.slice(i, html.indexOf('class="priceTab" data-tab="pts"'));
+  for (const [p, n] of [['maha_basic', 46], ['maha_pro', 75], ['maha_max', 478]]) {
+    assert.ok(sec.includes("openCheckout('" + p + "')"), p);
+    assert.ok(sec.includes('<li><b>' + n + '</b> <span data-i18n="mahaMinPlain">'), String(n));
+  }
+  assert.ok(sec.includes('id="mahaPlanStatus"'));
+  assert.doesNotMatch(sec, /GPT|OpenAI|realtime|Gemini|Claude/i, 'بلا اسم مزوّد');
+  assert.match(read('js/app-06-checkout.js'), /\['chat', 'img', 'vid', 'maha', 'pts'\]/);
+  const keys = ['priceTabMaha', 'mahaPlanName', 'mahaPlansDesc', 'mahaMinPlain', 'mahaMinUnit', 'mahaCapNote', 'mahaNoChat', 'mahaLeft', 'mahaCapEnd', 'mahaToPoints'];
+  const i18n = read('js/app-03-i18n-data.js');
+  for (const l of ['ar', 'en']) assert.ok(keys.every((k) => new RegExp('I18N\\.' + l + ', \\{[^\\n]*"' + k + '"').test(i18n)), l);
+  for (const l of ['fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml']) assert.ok(keys.every((k) => read('i18n/' + l + '.js').includes('"' + k + '"')), l);
+});
+
+test('١٠. «حسابي» (v-acct-media): سطر لكلّ اشتراك ساري تحت النقاط، ولا شيء لغير المشترك', () => {
+  const html = read('js/partials-settings.js');
+  assert.ok(html.indexOf('id="acctMediaBox"') > html.indexOf('id="acctPointsBox"') && html.indexOf('id="acctMediaBox"') < html.indexOf('id="acctPointsLowWarn"'), 'تحت النقاط');
+  const co = read('js/app-06-checkout.js');
+  const src = co.slice(co.indexOf('function renderAcctMedia('), co.indexOf('async function refreshAcctPoints('));
+  const box = { style: {}, innerHTML: '' };
+  const tr = { priceTabImg: '🖼️ الصور', priceTabVid: '🎬 الفيديو', priceTabMaha: '🎙️ مها', mediaImgPlain: 'صورة', mediaVidEco: 'اقتصادي', mediaOr: 'أو', mediaVidCine: 'سينمائيّ', mahaMinUnit: 'دقيقة' };
+  const render = new Function('document', 't', src + '; return renderAcctMedia;')({ getElementById: (id) => id === 'acctMediaBox' ? box : null }, (k) => tr[k] || k);
+  render({ image: { counts: { image_normal: 42 } }, maha: { counts: { maha_minute: 32 } } });
+  assert.equal(box.style.display, 'flex');
+  assert.ok(box.innerHTML.includes('🖼️ الصور') && box.innerHTML.includes('42 صورة'));
+  assert.ok(box.innerHTML.includes('🎙️ مها') && box.innerHTML.includes('32 دقيقة'));
+  assert.ok(!box.innerHTML.includes('🎬'), 'لا سطر فيديو بلا اشتراك');
+  render({});
+  assert.equal(box.style.display, 'none');
+  assert.equal(box.innerHTML, '');
+  assert.match(co, /box\.style\.display = 'flex';\n {4}renderAcctMedia\(d\.media\);/);
 });

@@ -1992,12 +1992,19 @@ function mahaStartPointsMeter(budget){
     let pts = Number(budget.points) || 0;
     let trial = !!budget.trial;
     const isGuest = !!budget.guest;
-    val.textContent = trial ? '🎁 1:00' : String(pts);
+    // v-maha-plans: السعر من الخادم (كان ١٠ ثابتة فيرفضها الخادم bad_amount)، ودقائق الاشتراك قبل النقاط.
+    const cost = Number(budget.cost) || 15;
+    let mahaMin = Math.max(0, Math.floor(Number(budget.mahaMin) || 0));
+    const capMin = Math.max(0, Math.floor(Number(budget.capMin) || 0));
+    let callMin = 0;
+    const show = ()=>{ val.textContent = mahaMin > 0 ? ('🎙️ ' + mahaMin + ' ' + t('mahaMinUnit')) : String(pts); };
+    if(trial) val.textContent = '🎁 1:00'; else show();
     el.style.display = 'flex';
     const isAr = (typeof lang !== 'undefined' ? lang : 'ar') === 'ar';
-    const endGently = ()=>{
+    const endGently = (capHit)=>{
       mahaStopPointsMeter();
       try{ mahaEndCall(); }catch(e){ __swallow(e, "points:app-08-maha#20"); }
+      if(capHit){ setTimeout(()=>{ try{ settingsToast(t('mahaCapEnd')); }catch(e){ __swallow(e, "points:app-08-maha#cap"); } }, 400); return; }
       setTimeout(()=>{
         try{
           if(confirm(isAr ? 'خلصت نقاطك 🌸 تبي تشحن نقاط عشان نكمل سوالفنا؟' : 'Your points ran out 🌸 Top up to keep talking with me?')){
@@ -2017,15 +2024,24 @@ function mahaStartPointsMeter(budget){
             await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
               body: JSON.stringify({ action:'maha-trial-used', token: authGet('aiapp_auth_token') }) });
           }catch(e){ __swallow(e, "auth:app-08-maha#24"); }
-          if(pts < 10){ endGently(); return; }
-          val.textContent = String(pts);
+          if(pts < cost && mahaMin < 1){ endGently(); return; }
+          show();
           return;
         }
         const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ action:'consume', amount:10, reason:'maha-minute', token: authGet('aiapp_auth_token') }) });
+          body: JSON.stringify({ action:'consume', amount:cost, reason:'maha_minute', token: authGet('aiapp_auth_token') }) });
         const d = await r.json().catch(()=>({}));
         if(d && d.ok){
-          if(typeof d.points === 'number' && isFinite(d.points)){ pts = d.points; val.textContent = String(pts); }
+          if(d.media === 'maha'){
+            mahaMin = Math.floor((Number(d.mediaLeft) || 0) / 55);
+            callMin++;
+            show();
+            if(capMin && callMin >= capMin){ endGently(true); return; }
+          } else {
+            if(mahaMin > 0){ try{ settingsToast(t('mahaToPoints')); }catch(e){ __swallow(e, "points:app-08-maha#topts"); } }
+            mahaMin = 0;
+            if(typeof d.points === 'number' && isFinite(d.points)){ pts = d.points; show(); }
+          }
         } else if(d && d.reason === 'insufficient'){
           endGently();
         }

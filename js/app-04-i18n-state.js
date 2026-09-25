@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=689'; /* v-showcase-starter: مفتاح defaultShowcaseTitle لـ14 لغة. قبله v-media-plans. */
+    sc.src = 'i18n/' + lg + '.js?v=691'; /* v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -2013,6 +2013,10 @@ function renderMessages(keepScroll){
       const __oOpt = omranExtractOptions(__mc);
       msgWordEls = buildSpokenWordSpans(textDiv, __oOpt ? __oOpt.text : __mc);
       if(__oOpt && mIdx === cur.messages.length - 1) omranRenderOptions(textDiv, __oOpt.blocks);
+      // v-cc-fold: ردّ Claude Code — أدواته وأكواده الطويلة مطويّة بترتيبها داخل الردّ
+      if(m._cc && window.omranCC && typeof window.omranCC.decorate === 'function'){
+        try{ const __ccw = window.omranCC.decorate(textDiv, m); if(__ccw) msgWordEls = __ccw; }catch(e){ __swallow(e, 'cc:fold'); }
+      }
     } else {
       textDiv.textContent = __mc;
     }

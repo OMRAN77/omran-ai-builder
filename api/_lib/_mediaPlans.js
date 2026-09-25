@@ -18,7 +18,14 @@ const MEDIA_PLANS = {
   vid_basic: { media: 'video', amount: 1021, paypal: '10.21', budget: 736, name: 'فيديو — 37.5 درهم / Video — 37.5 AED' },
   vid_pro: { media: 'video', amount: 2042, paypal: '20.42', budget: 927, name: 'فيديو — 75 درهم / Video — 75 AED' },
   vid_max: { media: 'video', amount: 10211, paypal: '102.11', budget: 16280, name: 'فيديو — 375 درهم / Video — 375 AED' },
+  // v-maha-plans: دقائق مها الصوتيّة (المالك: «خلّ الناس تستفيد») — ربح ~١٠ · ~٣٠ · ~١٠٠ درهم ⇒ ٤٦ · ٧٥ · ٤٧٨ دقيقة.
+  maha_basic: { media: 'maha', amount: 1021, paypal: '10.21', budget: 2530, name: 'مها — 37.5 درهم / Maha — 37.5 AED' },
+  maha_pro: { media: 'maha', amount: 2042, paypal: '20.42', budget: 4125, name: 'مها — 75 درهم / Maha — 75 AED' },
+  maha_max: { media: 'maha', amount: 10211, paypal: '102.11', budget: 26290, name: 'مها — 375 درهم / Maha — 375 AED' },
 };
+
+// حدّ المكالمة الواحدة لمشترك مها بالدقائق — مكالمة منسيّة مفتوحة لا تأكل رصيد الشهر.
+const MAHA_CALL_CAP_MIN = 10;
 
 // تكلفة كلّ عمليّة علينا بالفلس — يُخصم من رصيد الاشتراك بدل النقاط.
 const UNIT_COST = {
@@ -31,11 +38,13 @@ const UNIT_COST = {
   runway_video: 184,  // فيديو AI
   omni_video: 294,    // سينمائيّ
   veo_video: 440,     // Veo
+  maha_minute: 55,    // دقيقة مكالمة مها على المحرّك الصوتيّ الكامل
 };
 
 function mediaOf(reason) {
   const r = String(reason || '');
   if (!UNIT_COST[r]) return null;
+  if (r === 'maha_minute') return 'maha';
   return /_video$/.test(r) ? 'video' : 'image';
 }
 
@@ -96,9 +105,12 @@ async function trySpendMedia(username, pts, reason, opts) {
     try { await kvIncrBy(key, fils); } catch (e) { console.error('[media] rollback failed:', e && e.message); }
     return null;
   }
-  const list = await readTickets(username);
-  list.push({ p: Math.floor(Number(pts) || 0), f: fils, k: kind });
-  await writeTickets(username, list);
+  // دقيقة مها مضت فعلًا فلا تُستردّ، ولا تذكرة لها كي لا يطابقها استرجاع ١٥ نقطة من خدمة أخرى.
+  if (kind !== 'maha') {
+    const list = await readTickets(username);
+    list.push({ p: Math.floor(Number(pts) || 0), f: fils, k: kind });
+    await writeTickets(username, list);
+  }
   return { media: kind, fils, left: after };
 }
 
@@ -157,7 +169,7 @@ async function mediaStatus(username, opts) {
   let user = null;
   try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
   const out = {};
-  for (const kind of ['image', 'video']) {
+  for (const kind of ['image', 'video', 'maha']) {
     if (!mediaActive(user, kind, o.now)) continue;
     let left = 0;
     try { left = Math.max(0, Number(await kvGetRaw(budgetKey(username, kind))) || 0); } catch (e) { left = 0; }
@@ -170,6 +182,6 @@ async function mediaStatus(username, opts) {
 }
 
 module.exports = {
-  MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS,
+  MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS, MAHA_CALL_CAP_MIN,
   mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, mediaStatus, imageQuality, setImageQuality,
 };

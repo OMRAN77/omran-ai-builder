@@ -4670,6 +4670,11 @@ Object.assign(I18N.ar, {"mediaPlansTitle": "اشتراكات الصور والف
 Object.assign(I18N.en, {"mediaPlansTitle": "Image & video plans", "mediaPlansDesc": "For people who only want images or videos — no chat. Each plan has its own balance that can't be spent on anything else.", "mediaImgName": "Images", "mediaVidName": "Video", "mediaImgUnit": "high-quality images", "mediaVidEco": "economy videos", "mediaVidCine": "cinematic videos", "mediaVidSound": "videos with sound", "mediaOr": "or", "mediaNoChatVideo": "No chat, no video", "mediaNoChatImage": "No chat, no images", "mediaLeftImg": "Left in your image plan", "mediaLeftVid": "Left in your video plan"});
 Object.assign(I18N.ar, {"mediaImgPlain": "صورة", "mediaHighEq": "الصورة العالية = صورتين", "mediaQLabel": "جودة الصور", "mediaQNormal": "⚡ عاديّة", "mediaQHigh": "💎 عالية", "mediaQNormalDesc": "سريعة ومناسبة للسوشال ميديا — صورة واحدة من رصيدك", "mediaQHighDesc": "تفاصيل أدقّ ونصوص أوضح وتصلح للطباعة — صورتين من رصيدك", "mediaQHint": "أو اكتب «جودة عالية» في طلبك لصورة واحدة"});
 Object.assign(I18N.en, {"mediaImgPlain": "images", "mediaHighEq": "A high-quality image = 2 images", "mediaQLabel": "Image quality", "mediaQNormal": "⚡ Standard", "mediaQHigh": "💎 High", "mediaQNormalDesc": "Fast, great for social media — 1 image from your balance", "mediaQHighDesc": "Finer detail, clearer text, print-ready — 2 images from your balance", "mediaQHint": "Or write “high quality” in your request for a single image"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N.ar, {"priceTabChat": "💬 المحادثة", "priceTabImg": "🖼️ الصور", "priceTabVid": "🎬 الفيديو", "priceTabPts": "⚡ النقاط"});
+Object.assign(I18N.en, {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Images", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Points"});
+Object.assign(I18N.ar, {"priceTabMaha": "🎙️ مها", "mahaPlanName": "مها", "mahaPlansDesc": "لمن يريد مكالمات مها الصوتيّة. دقائق الشهر خاصّة بمها، وإذا خلصت تكمل من نقاطك.", "mahaMinPlain": "دقيقة مكالمة", "mahaMinUnit": "دقيقة", "mahaCapNote": "حتّى 10 دقائق للمكالمة الواحدة", "mahaNoChat": "بلا محادثة ولا صور ولا فيديو", "mahaLeft": "المتبقّي من دقائق مها", "mahaCapEnd": "انتهت المكالمة عند حدّ 10 دقائق — اتّصل من جديد لتكمل", "mahaToPoints": "دقائقك تكمل من نقاطك الحين"});
+Object.assign(I18N.en, {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "For Maha voice calls. Your monthly minutes are for Maha only; when they run out, calls continue on your points.", "mahaMinPlain": "call minutes", "mahaMinUnit": "min", "mahaCapNote": "Up to 10 minutes per call", "mahaNoChat": "No chat, images or video", "mahaLeft": "Maha minutes left", "mahaCapEnd": "The call ended at the 10-minute limit — call again to continue", "mahaToPoints": "Your minutes are used up — continuing on points"});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
@@ -4706,7 +4711,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=689'; /* v-showcase-starter: مفتاح defaultShowcaseTitle لـ14 لغة. قبله v-media-plans. */
+    sc.src = 'i18n/' + lg + '.js?v=691'; /* v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6698,6 +6703,10 @@ function renderMessages(keepScroll){
       const __oOpt = omranExtractOptions(__mc);
       msgWordEls = buildSpokenWordSpans(textDiv, __oOpt ? __oOpt.text : __mc);
       if(__oOpt && mIdx === cur.messages.length - 1) omranRenderOptions(textDiv, __oOpt.blocks);
+      // v-cc-fold: ردّ Claude Code — أدواته وأكواده الطويلة مطويّة بترتيبها داخل الردّ
+      if(m._cc && window.omranCC && typeof window.omranCC.decorate === 'function'){
+        try{ const __ccw = window.omranCC.decorate(textDiv, m); if(__ccw) msgWordEls = __ccw; }catch(e){ __swallow(e, 'cc:fold'); }
+      }
     } else {
       textDiv.textContent = __mc;
     }
@@ -11397,7 +11406,7 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211 }; // v-media-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211 }; // v-media-plans + v-maha-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
 const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
@@ -11413,6 +11422,14 @@ function buyPointsPack(amount){
 }
 window.buyPointsPack = buyPointsPack;
 
+// v-price-tabs: كلّ نوع اشتراك في قسمه — زرّ القسم يعرضه ويخفي البقيّة.
+function showPriceTab(tab){
+  const k = ['chat', 'img', 'vid', 'maha', 'pts'].includes(tab) ? tab : 'chat';
+  document.querySelectorAll('#pricingSection .priceTab').forEach(function(el){ el.style.display = el.getAttribute('data-tab') === k ? '' : 'none'; });
+  document.querySelectorAll('#priceTabs .priceTabBtn').forEach(function(b){ const on = b.getAttribute('data-tab') === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+}
+window.showPriceTab = showPriceTab;
+
 // v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
 function renderMediaPlanStatus(media){
   const box = document.getElementById('mediaPlanStatus');
@@ -11420,9 +11437,19 @@ function renderMediaPlanStatus(media){
   const m = media || {};
   const lines = [];
   if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' (' + t('mediaHighEq') + ')');
-  if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  const vbox = document.getElementById('mediaVidStatus');
+  if(vbox){
+    vbox.innerHTML = (m.video && m.video.counts) ? (t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine')) : '';
+    vbox.style.display = (m.video && m.video.counts) ? 'block' : 'none';
+  }
+  if(!vbox && m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
   box.innerHTML = lines.join('<br>');
   box.style.display = lines.length ? 'block' : 'none';
+  const mbox = document.getElementById('mahaPlanStatus');
+  if(mbox){
+    mbox.innerHTML = (m.maha && m.maha.counts) ? (t('mahaLeft') + ': <b>' + (Number(m.maha.counts.maha_minute) || 0) + '</b> ' + t('mahaMinUnit')) : '';
+    mbox.style.display = (m.maha && m.maha.counts) ? 'block' : 'none';
+  }
   const qb = document.getElementById('mediaQualityBox');
   if(qb){
     qb.style.display = m.image ? 'block' : 'none';
@@ -11465,6 +11492,19 @@ window.refreshPointsWallet = refreshPointsWallet;
    تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
    يُستدعى تلقائيًا عند فتح قسم «حسابي» — لا زر ولا خطوة من المستخدم. */
 const ACCT_POINTS_LOW = 20;
+// v-acct-media: سطر لكلّ اشتراك ساري (صور · فيديو · مها) تحت رصيد النقاط في «حسابي».
+function renderAcctMedia(media){
+  const box = document.getElementById('acctMediaBox');
+  if(!box) return;
+  const m = media || {};
+  const row = (label, value) => '<div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-weight: var(--w-bold); white-space:nowrap;">' + label + '</span><span style="font-weight:800; color:#d4af37; text-align:end;">' + value + '</span></div>';
+  const rows = [];
+  if(m.image && m.image.counts) rows.push(row(t('priceTabImg'), (Number(m.image.counts.image_normal) || 0) + ' ' + t('mediaImgPlain')));
+  if(m.video && m.video.counts) rows.push(row(t('priceTabVid'), (Number(m.video.counts.minimax_video) || 0) + ' ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' ' + (Number(m.video.counts.omni_video) || 0) + ' ' + t('mediaVidCine')));
+  if(m.maha && m.maha.counts) rows.push(row(t('priceTabMaha'), (Number(m.maha.counts.maha_minute) || 0) + ' ' + t('mahaMinUnit')));
+  box.innerHTML = rows.join('');
+  box.style.display = rows.length ? 'flex' : 'none';
+}
 async function refreshAcctPoints(){
   const box = document.getElementById('acctPointsBox');
   const val = document.getElementById('acctPointsValue');
@@ -11472,12 +11512,13 @@ async function refreshAcctPoints(){
   const warnText = document.getElementById('acctPointsLowText');
   if(!box || !val) return;
   const token = authGet('aiapp_auth_token');
-  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
-    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     box.style.display = 'flex';
+    renderAcctMedia(d.media);
     if(d.unlimited){
       val.textContent = '∞';
       if(warn) warn.style.display = 'none';
@@ -11521,8 +11562,8 @@ function openCheckout(plan){
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
-  const __mp = /^(img|vid)_(basic|pro|max)$/.exec(String(plan));
-  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
+  const __mp = /^(img|vid|maha)_(basic|pro|max)$/.exec(String(plan));
+  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
   else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
@@ -16325,12 +16366,19 @@ function mahaStartPointsMeter(budget){
     let pts = Number(budget.points) || 0;
     let trial = !!budget.trial;
     const isGuest = !!budget.guest;
-    val.textContent = trial ? '🎁 1:00' : String(pts);
+    // v-maha-plans: السعر من الخادم (كان ١٠ ثابتة فيرفضها الخادم bad_amount)، ودقائق الاشتراك قبل النقاط.
+    const cost = Number(budget.cost) || 15;
+    let mahaMin = Math.max(0, Math.floor(Number(budget.mahaMin) || 0));
+    const capMin = Math.max(0, Math.floor(Number(budget.capMin) || 0));
+    let callMin = 0;
+    const show = ()=>{ val.textContent = mahaMin > 0 ? ('🎙️ ' + mahaMin + ' ' + t('mahaMinUnit')) : String(pts); };
+    if(trial) val.textContent = '🎁 1:00'; else show();
     el.style.display = 'flex';
     const isAr = (typeof lang !== 'undefined' ? lang : 'ar') === 'ar';
-    const endGently = ()=>{
+    const endGently = (capHit)=>{
       mahaStopPointsMeter();
       try{ mahaEndCall(); }catch(e){ __swallow(e, "points:app-08-maha#20"); }
+      if(capHit){ setTimeout(()=>{ try{ settingsToast(t('mahaCapEnd')); }catch(e){ __swallow(e, "points:app-08-maha#cap"); } }, 400); return; }
       setTimeout(()=>{
         try{
           if(confirm(isAr ? 'خلصت نقاطك 🌸 تبي تشحن نقاط عشان نكمل سوالفنا؟' : 'Your points ran out 🌸 Top up to keep talking with me?')){
@@ -16350,15 +16398,24 @@ function mahaStartPointsMeter(budget){
             await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
               body: JSON.stringify({ action:'maha-trial-used', token: authGet('aiapp_auth_token') }) });
           }catch(e){ __swallow(e, "auth:app-08-maha#24"); }
-          if(pts < 10){ endGently(); return; }
-          val.textContent = String(pts);
+          if(pts < cost && mahaMin < 1){ endGently(); return; }
+          show();
           return;
         }
         const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ action:'consume', amount:10, reason:'maha-minute', token: authGet('aiapp_auth_token') }) });
+          body: JSON.stringify({ action:'consume', amount:cost, reason:'maha_minute', token: authGet('aiapp_auth_token') }) });
         const d = await r.json().catch(()=>({}));
         if(d && d.ok){
-          if(typeof d.points === 'number' && isFinite(d.points)){ pts = d.points; val.textContent = String(pts); }
+          if(d.media === 'maha'){
+            mahaMin = Math.floor((Number(d.mediaLeft) || 0) / 55);
+            callMin++;
+            show();
+            if(capMin && callMin >= capMin){ endGently(true); return; }
+          } else {
+            if(mahaMin > 0){ try{ settingsToast(t('mahaToPoints')); }catch(e){ __swallow(e, "points:app-08-maha#topts"); } }
+            mahaMin = 0;
+            if(typeof d.points === 'number' && isFinite(d.points)){ pts = d.points; show(); }
+          }
         } else if(d && d.reason === 'insufficient'){
           endGently();
         }
@@ -19105,6 +19162,10 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   window.__chatStatus = agentStatus;
   let __agentStep = agentStatus.step('🤖', lang === 'ar' ? 'وكيل عمران يخطط…' : 'Omran Agent planning…');
   const history = cur.messages.slice(-8).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: __stripCodeForHistory(m.role, m.apiText || m.content) }));
+  /* v-agent-attach (لقطة المالك: أرفق sw.js فردّ الوكيل «ما وصلني شي أحلله»): الرسالة المحفوظة تحمل
+     نصّ المستخدم وحده («مرفقات» إن كان فارغًا)، ونصّ الملفّ المرفق في apiText لهذا الدور فقط —
+     فالدور الحاليّ يُرسل بـapiText كاملًا كما في المحادثة العاديّة ووضع Claude Code. */
+  if(apiText && history.length && history[history.length - 1].role === 'user') history[history.length - 1].content = String(apiText);
   // العلامة تُكتب قبل الطلب لا بعده: لو أُعيد التحميل في الثانية الأولى وجب أن
   // نعرف أن هناك دفترًا يُنتظر. localStorage لأنها تنجو من إغلاق التبويب وتُكتب
   // فورًا — IndexedDB غير متزامنة فقد لا تصل قبل موت الصفحة. والضيف بلا دفتر.
@@ -35967,6 +36028,10 @@ if(document.readyState === 'loading'){
     if(/^(الحالة|status)$/i.test(t)) return { cmd: 'status', arg: '' };
     if(/^(جلسة جديدة|new session)$/i.test(t)) return { cmd: 'new', arg: '' };
     if(/^(أوقف|اوقف|stop)$/i.test(t)) return { cmd: 'stop', arg: '' };
+    /* v-cc-notify: إشعارات طلبات السحب — قائمة، وفتح إشعار كامل مع ردّ الوكيل، ومراقبة طلب برقمه. */
+    if(/^(الإشعارات|الاشعارات|إشعارات|اشعارات|notifications)$/i.test(t)) return { cmd: 'notes', arg: '' };
+    if((m = /^(افتح|open)(?:\s*[:：]\s*|\s+)\[?(\d+)\]?$/i.exec(t))) return { cmd: 'open', arg: m[2] };
+    if((m = /^(راقب|watch)(?:\s*[:：]\s*|\s+)#?(\d+)$/i.exec(t))) return { cmd: 'watch', arg: m[2] };
     return null;
   }
 
@@ -36021,7 +36086,117 @@ if(document.readyState === 'loading'){
     return 'الفرع: ' + (j.branch || '؟') + ' · تغييرات غير ملتزمة: ' + (j.dirty || 0) + ' · التزامات فوق ' + (j.base || 'main') + ': ' + (j.ahead || 0)
       + (j.model ? ' · النموذج: ' + j.model : '') + (S.prUrl ? '\nطلب السحب: ' + S.prUrl : '');
   }
-  function push(cur, text){ cur.messages.push({ role: 'assistant', content: '🧑‍💻 ' + String(text || '').trim(), _cc: true }); }
+  function noteTime(at){ try{ return new Date(at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }catch(e){ return ''; } }
+  function notesList(j){
+    var list = (j && j.notes) || [];
+    if(!list.length) return '🔔 لا إشعارات بعد.' + ((j && j.watching && j.watching.length) ? ' أراقب: #' + j.watching.join('، #') : ' أراقب كلّ طلب سحب ينفتح من هنا تلقائيًّا.');
+    return '🔔 الإشعارات' + (j.unread ? ' (' + j.unread + ' جديد)' : '') + ':\n'
+      + list.map(function(n){ return (n.read ? '' : '🆕 ') + '[' + n.id + '] ' + n.title + ' · ' + noteTime(n.at) + (n.wake ? ' · 🤖 أيقظ الوكيل' : ''); }).join('\n')
+      + '\n\nاكتب «افتح ' + list[0].id + '» لقراءة الإشعار كاملًا مع ردّ الوكيل.';
+  }
+  function noteFull(n){
+    if(!n) return 'ما لقيت إشعارًا بهذا الرقم — اكتب «الإشعارات» للقائمة.';
+    var out = '🔔 [' + n.id + '] ' + n.title + ' · ' + noteTime(n.at);
+    if(n.url) out += '\n' + n.url;
+    if(n.body) out += '\n\n' + n.body;
+    if(n.wake) out += '\n\n🤖 ردّ الوكيل:\n' + (n.reply || (n.runId ? '⏳ يشتغل عليه الحين — اكتب أيّ رسالة لتلتحق بالتشغيل.' : '⏳ ينتظر دوره.'));
+    return out;
+  }
+  function unreadHint(){
+    return api('notes').then(function(j){ return (j && j.unread) ? '\n🔔 ' + j.unread + ' إشعار جديد — اكتب «الإشعارات».' : ''; }).catch(function(){ return ''; });
+  }
+  /* v-cc-fold (المالك: «مثل تطبيق Claude — الملفات والأكواد مطويّة داخل المحادثة»): الردّ يُحفظ
+     أجزاءً بترتيبها (نصّ · مجموعة أدوات)، وكلّ أداة سطر مطويّ ينفتح على الأمر أو التعديل وناتجه. */
+  var FOLD_BUDGET = 60000, CODE_FOLD_LINES = 15;
+  function capParts(parts){
+    var used = 0;
+    parts.forEach(function(p){ (p.items || []).forEach(function(it){
+      ['detail', 'result'].forEach(function(k){ var s = String(it[k] || ''); if(used + s.length > FOLD_BUDGET){ it[k] = s ? '… (حُذف للحجم)' : ''; } else used += s.length; });
+    }); });
+    return parts;
+  }
+  function push(cur, text, parts){
+    var m = { role: 'assistant', content: '🧑‍💻 ' + String(text || '').trim(), _cc: true };
+    if(parts && parts.some(function(p){ return p.t === 'tools'; })){
+      var first = parts.filter(function(p){ return p.t === 'text'; })[0];
+      if(first) first.s = '🧑‍💻 ' + first.s.replace(/^\s+/, ''); else parts.unshift({ t: 'text', s: '🧑‍💻' });
+      m._ccParts = capParts(parts);
+    }
+    cur.messages.push(m);
+  }
+  function foldPre(text, asDiff, isErr){
+    var p = document.createElement('pre');
+    p.dir = 'ltr';
+    p.style.cssText = 'margin:4px 0; padding:8px; max-height:320px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow:auto; border-radius:8px; background:rgba(0,0,0,.25); font-size:11.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; text-align:left;' + (isErr ? ' color:#f87171;' : '');
+    if(asDiff){
+      String(text).split('\n').forEach(function(l){
+        var sp = document.createElement('span');
+        sp.style.cssText = 'display:block; font-family:inherit;' + (/^\+ /.test(l) ? ' color:#4ade80; background:rgba(74,222,128,.08);' : /^- /.test(l) ? ' color:#f87171; background:rgba(248,113,113,.08);' : '');
+        sp.textContent = l;
+        p.appendChild(sp);
+      });
+    } else p.textContent = text;
+    return p;
+  }
+  function toolsEl(items){
+    var d = document.createElement('details');
+    d.className = 'cc-tools';
+    d.style.cssText = 'margin:6px 0; padding:2px 10px; border:1px solid var(--line2,rgba(128,128,128,.28)); border-radius:10px; font-size:12.5px;';
+    var errs = items.filter(function(it){ return it.err; }).length;
+    var s = document.createElement('summary');
+    s.style.cssText = 'cursor:pointer; color:var(--muted); padding:5px 0;';
+    s.textContent = '🔧 استخدم ' + items.length + ' ' + (items.length === 1 ? 'أداة' : 'أدوات') + (errs ? ' · ⚠️ ' + errs : '');
+    d.appendChild(s);
+    items.forEach(function(it){
+      var x = document.createElement('details');
+      x.className = 'cc-tool';
+      x.style.cssText = 'margin:3px 0; padding-inline-start:8px; border-inline-start:2px solid var(--line2,rgba(128,128,128,.28));';
+      var xs = document.createElement('summary');
+      xs.style.cssText = 'cursor:pointer; overflow-wrap:anywhere; padding:2px 0;';
+      xs.textContent = (it.err ? '⚠️ ' : '') + (it.brief || it.name || 'أداة');
+      x.appendChild(xs);
+      if(it.detail) x.appendChild(foldPre(it.detail, /^(Edit|MultiEdit|Write)$/.test(it.name || ''), false));
+      if(it.result) x.appendChild(foldPre(it.result, false, it.err));
+      if(!it.detail && !it.result){ var e = document.createElement('div'); e.style.cssText = 'color:var(--muted); font-size:11.5px; padding:2px 0 4px;'; e.textContent = 'بلا ناتج.'; x.appendChild(e); }
+      d.appendChild(x);
+    });
+    return d;
+  }
+  function foldCode(root){
+    Array.prototype.slice.call(root.querySelectorAll('.chat-codeblock')).forEach(function(b){
+      var pre = b.querySelector('pre');
+      if(!pre || (b.parentNode && b.parentNode.className === 'cc-code-fold')) return;
+      var n = pre.textContent.replace(/\n+$/, '').split('\n').length;
+      if(n <= CODE_FOLD_LINES) return;
+      var d = document.createElement('details');
+      d.className = 'cc-code-fold';
+      d.style.cssText = 'margin:6px 0;';
+      var s = document.createElement('summary');
+      s.style.cssText = 'cursor:pointer; color:var(--muted); font-size:12.5px; padding:4px 0;';
+      var lbl = b.querySelector('.chat-codeblock-head span');
+      s.textContent = '📄 ' + ((lbl && lbl.textContent) || 'code') + ' · ' + n + ' سطر';
+      b.parentNode.insertBefore(d, b);
+      d.appendChild(s); d.appendChild(b);
+    });
+  }
+  /** يستدعيه renderMessages لكلّ ردّ Claude Code: الأجزاء بترتيبها والأدوات مطويّة، والكود الطويل مطويّ. يعيد كلمات القراءة. */
+  function decorate(textDiv, m){
+    var words = null;
+    if(Array.isArray(m._ccParts) && m._ccParts.length && typeof buildSpokenWordSpans === 'function'){
+      textDiv.innerHTML = '';
+      words = [];
+      m._ccParts.forEach(function(p){
+        if(p.t === 'tools' && Array.isArray(p.items) && p.items.length){ textDiv.appendChild(toolsEl(p.items)); return; }
+        if(p.t !== 'text' || !String(p.s || '').trim()) return;
+        var d = document.createElement('div');
+        var w = buildSpokenWordSpans(d, p.s);
+        if(w && w.length) words = words.concat(w);
+        textDiv.appendChild(d);
+      });
+    }
+    foldCode(textDiv);
+    return words;
+  }
   function say(cur, thinkingDiv, text){ try{ thinkingDiv.textContent = '🧑‍💻 ' + text; }catch(e){ /* guard-ok */ } }
 
   /** الأوامر الصريحة من الصندوق: تنفيذ + رسالة في المحادثة. الدمج والتراجع بتأكيد. */
@@ -36034,7 +36209,7 @@ if(document.readyState === 'loading'){
       say(cur, thinkingDiv, 'انشر: التزام ودفع وطلب سحب…');
       return api('publish', { title: title, message: title }).then(function(j){
         S.prNumber = j.prNumber || 0; S.prUrl = j.prUrl || ''; save();
-        done('⬆️ نُشر الفرع ' + j.branch + (j.prUrl ? '\nطلب السحب: ' + j.prUrl : '') + '\nاكتب «ادمج» لدمجه في main بعد المراجعة.');
+        done('⬆️ نُشر الفرع ' + j.branch + (j.prUrl ? '\nطلب السحب: ' + j.prUrl : '') + (j.watching ? '\n🔔 أراقبه: الفحوص والمعاينة والتعليقات — وإذا احمرّ فحص أصحّي الوكيل يصلحه.' : '') + '\nاكتب «ادمج» لدمجه في main بعد المراجعة.');
       }).catch(fail);
     }
     if(c.cmd === 'merge' || c.cmd === 'merge-force'){
@@ -36044,6 +36219,7 @@ if(document.readyState === 'loading'){
       if(!window.confirm('تدمج طلب السحب #' + n + ' في main الآن؟ Vercel سينشره.' + (force ? ' (بالقوّة رغم فحص أحمر)' : ''))) return Promise.resolve(done('أُلغي الدمج.'));
       say(cur, thinkingDiv, 'ادمج #' + n + '…');
       return api('merge', { prNumber: n, force: force }).then(function(j){
+        if(j.queued) return done('⏳ الفحوص ما خلصت (' + (j.pending || []).join('، ') + ') — بدمج #' + n + ' تلقائيًّا أوّل ما تخضرّ، وإذا احمرّت ألغيه. تابع من «الإشعارات».');
         S.prNumber = 0; S.prUrl = ''; save();
         done(j.already ? 'كان #' + n + ' مدموجًا من قبل.' : ('✅ دُمج #' + n + ' (' + String(j.sha || '').slice(0, 7) + ') — Vercel ينشر الآن.'));
       }).catch(function(e){ done('✗ ' + e.message + (force ? '' : '\nللتجاوز اكتب «ادمج بالقوّة».')); });
@@ -36056,6 +36232,20 @@ if(document.readyState === 'loading'){
       return api('status').then(function(j){ done(statusLine(j) + (j.busy ? '\n⏳ تشغيل جارٍ.' : '')); }).catch(fail);
     }
     if(c.cmd === 'new'){ cur.ccSessionId = ''; return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
+    if(c.cmd === 'notes'){
+      return api('notes').then(function(j){ done(notesList(j)); return api('notesRead', {}); }).catch(fail);
+    }
+    if(c.cmd === 'open'){
+      var id = parseInt(c.arg, 10) || 0;
+      return api('notes').then(function(j){
+        var n = ((j && j.notes) || []).filter(function(x){ return x.id === id; })[0];
+        done(noteFull(n));
+        if(n) return api('notesRead', { ids: [id] });
+      }).catch(fail);
+    }
+    if(c.cmd === 'watch'){
+      return api('watch', { prNumber: parseInt(c.arg, 10) || 0 }).then(function(){ done('🔔 أراقب #' + c.arg + ': الفحوص والمعاينة والتعليقات.'); }).catch(fail);
+    }
     if(c.cmd === 'stop'){ return api('stop').then(function(){ done('⏹️ طُلب الإيقاف.'); }).catch(fail); }
     return Promise.resolve(done('أمر غير معروف.'));
   }
@@ -36081,7 +36271,12 @@ if(document.readyState === 'loading'){
     S.since = 0; S.runId = ''; S.retries = 0;
     var step = status.step('🧑‍💻', 'Claude Code يعمل…');
     var full = '', result = null, err = '', initModel = '';
+    var parts = [];
+    var last = function(){ return parts[parts.length - 1]; };
     var onEv = function(ev){
+      if(ev.tool){ var it = { id: ev.tool.id || '', name: ev.tool.name || '', brief: ev.tool.brief || '', detail: ev.tool.detail || '' }; if(last() && last().t === 'tools') last().items.push(it); else parts.push({ t: 'tools', items: [it] }); }
+      if(ev.toolResult) parts.forEach(function(p){ (p.items || []).forEach(function(it){ if(it.id && it.id === ev.toolResult.id){ it.result = ev.toolResult.text || ''; it.err = !!ev.toolResult.error; } }); });
+      if(ev.delta){ if(last() && last().t === 'text') last().s += ev.delta; else parts.push({ t: 'text', s: ev.delta }); }
       if(ev.run) S.runId = ev.run;
       /* v-cc-session-per-chat: جلسة Claude Code مربوطة بمحادثة التطبيق نفسها لا بالمتصفّح كلّه —
          محادثة جديدة في التطبيق = جلسة جديدة، والرجوع لمحادثة قديمة يستأنف جلستها. */
@@ -36159,7 +36354,9 @@ if(document.readyState === 'loading'){
         status.release();
         return api('status').catch(function(){ return null; });
       })
-      .then(function(st){
+      .then(function(st){ return unreadHint().then(function(h){ return { st: st, hint: h }; }); })
+      .then(function(x){
+        var st = x.st;
         var body = full.trim();
         if(!body) body = err ? ('✗ ' + err) : '✅ انتهى بلا نصّ.';
         else if(err) body += '\n\n⚠️ ' + err;
@@ -36168,7 +36365,9 @@ if(document.readyState === 'loading'){
         var ranModel = (result && result.models && result.models.length) ? result.models.join(' + ') : (initModel || (st && st.model) || '');
         if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '') + (ranModel ? ' · النموذج: ' + ranModel : '') + (result.effort ? ' · الجهد: ' + result.effort : '');
         if(st){ var s2 = Object.assign({}, st); if(ranModel) delete s2.model; foot += (foot ? '\n' : '') + statusLine(s2) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : ''); }
-        push(cur, prevOut + body + (foot ? '\n\n' + foot : ''));
+        var tail = (full.trim() ? (err ? '\n\n⚠️ ' + err : '') : body) + (foot ? '\n\n' + foot : '') + x.hint;
+        var ccParts = (prevOut ? [{ t: 'text', s: prevOut }] : []).concat(parts, tail.trim() ? [{ t: 'text', s: tail }] : []);
+        push(cur, prevOut + body + (foot ? '\n\n' + foot : '') + x.hint, ccParts);
       });
   }
 
@@ -36178,7 +36377,7 @@ if(document.readyState === 'loading'){
     return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, _fold: { push: push, capParts: capParts } };
 })();
 /* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
    v-models-two (أمر عمران ١٤ سبتمبر): القائمة محصورة في Opus 5 + Sonnet 5، والاختيار

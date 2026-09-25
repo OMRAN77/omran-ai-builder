@@ -24,7 +24,7 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211 }; // v-media-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211 }; // v-media-plans + v-maha-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
 const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
@@ -40,6 +40,14 @@ function buyPointsPack(amount){
 }
 window.buyPointsPack = buyPointsPack;
 
+// v-price-tabs: كلّ نوع اشتراك في قسمه — زرّ القسم يعرضه ويخفي البقيّة.
+function showPriceTab(tab){
+  const k = ['chat', 'img', 'vid', 'maha', 'pts'].includes(tab) ? tab : 'chat';
+  document.querySelectorAll('#pricingSection .priceTab').forEach(function(el){ el.style.display = el.getAttribute('data-tab') === k ? '' : 'none'; });
+  document.querySelectorAll('#priceTabs .priceTabBtn').forEach(function(b){ const on = b.getAttribute('data-tab') === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+}
+window.showPriceTab = showPriceTab;
+
 // v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
 function renderMediaPlanStatus(media){
   const box = document.getElementById('mediaPlanStatus');
@@ -47,9 +55,19 @@ function renderMediaPlanStatus(media){
   const m = media || {};
   const lines = [];
   if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' (' + t('mediaHighEq') + ')');
-  if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  const vbox = document.getElementById('mediaVidStatus');
+  if(vbox){
+    vbox.innerHTML = (m.video && m.video.counts) ? (t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine')) : '';
+    vbox.style.display = (m.video && m.video.counts) ? 'block' : 'none';
+  }
+  if(!vbox && m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
   box.innerHTML = lines.join('<br>');
   box.style.display = lines.length ? 'block' : 'none';
+  const mbox = document.getElementById('mahaPlanStatus');
+  if(mbox){
+    mbox.innerHTML = (m.maha && m.maha.counts) ? (t('mahaLeft') + ': <b>' + (Number(m.maha.counts.maha_minute) || 0) + '</b> ' + t('mahaMinUnit')) : '';
+    mbox.style.display = (m.maha && m.maha.counts) ? 'block' : 'none';
+  }
   const qb = document.getElementById('mediaQualityBox');
   if(qb){
     qb.style.display = m.image ? 'block' : 'none';
@@ -92,6 +110,19 @@ window.refreshPointsWallet = refreshPointsWallet;
    تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
    يُستدعى تلقائيًا عند فتح قسم «حسابي» — لا زر ولا خطوة من المستخدم. */
 const ACCT_POINTS_LOW = 20;
+// v-acct-media: سطر لكلّ اشتراك ساري (صور · فيديو · مها) تحت رصيد النقاط في «حسابي».
+function renderAcctMedia(media){
+  const box = document.getElementById('acctMediaBox');
+  if(!box) return;
+  const m = media || {};
+  const row = (label, value) => '<div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-weight: var(--w-bold); white-space:nowrap;">' + label + '</span><span style="font-weight:800; color:#d4af37; text-align:end;">' + value + '</span></div>';
+  const rows = [];
+  if(m.image && m.image.counts) rows.push(row(t('priceTabImg'), (Number(m.image.counts.image_normal) || 0) + ' ' + t('mediaImgPlain')));
+  if(m.video && m.video.counts) rows.push(row(t('priceTabVid'), (Number(m.video.counts.minimax_video) || 0) + ' ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' ' + (Number(m.video.counts.omni_video) || 0) + ' ' + t('mediaVidCine')));
+  if(m.maha && m.maha.counts) rows.push(row(t('priceTabMaha'), (Number(m.maha.counts.maha_minute) || 0) + ' ' + t('mahaMinUnit')));
+  box.innerHTML = rows.join('');
+  box.style.display = rows.length ? 'flex' : 'none';
+}
 async function refreshAcctPoints(){
   const box = document.getElementById('acctPointsBox');
   const val = document.getElementById('acctPointsValue');
@@ -99,12 +130,13 @@ async function refreshAcctPoints(){
   const warnText = document.getElementById('acctPointsLowText');
   if(!box || !val) return;
   const token = authGet('aiapp_auth_token');
-  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
-    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     box.style.display = 'flex';
+    renderAcctMedia(d.media);
     if(d.unlimited){
       val.textContent = '∞';
       if(warn) warn.style.display = 'none';
@@ -148,8 +180,8 @@ function openCheckout(plan){
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
-  const __mp = /^(img|vid)_(basic|pro|max)$/.exec(String(plan));
-  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
+  const __mp = /^(img|vid|maha)_(basic|pro|max)$/.exec(String(plan));
+  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
   else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {

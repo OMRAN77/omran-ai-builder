@@ -14,8 +14,9 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { timingSafeEqual, randomBytes } from 'node:crypto';
-import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, decideTool, briefTool, redact } from './policy.mjs';
+import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, decideTool, briefTool, detailTool, DETAIL_MAX, redact } from './policy.mjs';
 import { makeGit } from './git.mjs';
+import { makeWatcher, wakeMessage } from './watch.mjs';
 
 const env = process.env;
 const PORT = Number(env.PORT) || 8787;
@@ -50,6 +51,41 @@ let state = { sessionId: '', updatedAt: 0 };
 
 async function loadState() { try { state = JSON.parse(await readFile(join(STATE_DIR, 'state.json'), 'utf8')); } catch (e) { state = { sessionId: '', updatedAt: 0 }; } }
 async function saveState() { try { await mkdir(STATE_DIR, { recursive: true }); await writeFile(join(STATE_DIR, 'state.json'), JSON.stringify(state)); } catch (e) { console.warn('[cc] state save failed', e && e.message); } }
+
+/* v-cc-notify: إشعارات طلبات السحب — تُحفظ وتُفتح من المحادثة، والأحمر وتعليق المالك يوقظان الوكيل. */
+const wakeQueue = [];
+const watcher = makeWatcher({
+  gh: (p) => gitOps.gh(p),
+  repo: gitOps.repo,
+  onNote: (n) => { if (n.wake) wakeQueue.push(n); },
+  onMergeReady: async (n) => (current && !current.done) ? { deferred: true } : gitOps.merge({ prNumber: n }),
+});
+async function loadWatch() { try { watcher.load(JSON.parse(await readFile(join(STATE_DIR, 'watch.json'), 'utf8'))); } catch (e) { /* أوّل تشغيل */ } }
+async function saveWatch() { try { await mkdir(STATE_DIR, { recursive: true }); await writeFile(join(STATE_DIR, 'watch.json'), JSON.stringify(watcher.dump())); } catch (e) { console.warn('[cc] watch save failed', e && e.message); } }
+const PR_URL_RE = new RegExp('github\\.com/' + gitOps.repo.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '/pull/(\\d+)', 'g');
+function watchFromText(text) { for (const m of String(text || '').matchAll(PR_URL_RE)) watcher.watch(m[1]); }
+
+/** يوقظ الوكيل بما تجمّع من إشعارات إن كان الجسر فارغًا، ويحفظ ردّه على الإشعار نفسه. */
+function wakeIfIdle() {
+  if (!wakeQueue.length || (current && !current.done)) return;
+  const batch = wakeQueue.splice(0);
+  const log = new RunLog('w' + Date.now().toString(36) + randomBytes(3).toString('hex'));
+  runs.set(log.id, log); current = log;
+  log.push({ run: log.id });
+  log.push({ wake: batch.map((n) => n.id) });
+  for (const n of batch) n.runId = log.id;
+  runMessage(log, wakeMessage(batch), { sessionId: state.sessionId || '' })
+    .catch((e) => { log.push({ error: redact(String(e && e.message || e)) }); log.end(); })
+    .then(async () => {
+      const reply = log.events.map((e) => e.delta || '').join('').trim() || String((log.events.find((e) => e.result) || {}).result?.text || '');
+      for (const n of batch) n.reply = redact(reply.slice(0, 6000));
+      await saveWatch();
+    });
+}
+async function watchLoop() {
+  try { if (watcher.watching().length) { await watcher.tick(); await saveWatch(); } wakeIfIdle(); }
+  catch (e) { console.warn('[cc] watch tick failed', e && e.message); }
+}
 
 function authed(req) {
   const h = String(req.headers.authorization || '');
@@ -118,10 +154,12 @@ async function runMessage(log, message, opts) {
         const ev = msg.event || {};
         if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta' && ev.delta.text) { sawText = true; log.push({ delta: ev.delta.text }); }
       } else if (msg.type === 'assistant' && msg.message && Array.isArray(msg.message.content)) {
-        for (const b of msg.message.content) if (b && b.type === 'tool_use') log.push({ tool: { name: b.name, brief: redact(briefTool(b.name, b.input)) } });
+        for (const b of msg.message.content) if (b && b.type === 'tool_use') log.push({ tool: { id: b.id, name: b.name, brief: redact(briefTool(b.name, b.input)), detail: redact(detailTool(b.name, b.input)) } });
       } else if (msg.type === 'user' && msg.message && Array.isArray(msg.message.content)) {
         for (const b of msg.message.content) if (b && b.type === 'tool_result') {
           const t = typeof b.content === 'string' ? b.content : (Array.isArray(b.content) ? b.content.map((c) => c.text || '').join('\n') : '');
+          if (!b.is_error) watchFromText(t);
+          log.push({ toolResult: { id: b.tool_use_id, error: !!b.is_error, text: redact(t.length > DETAIL_MAX ? t.slice(0, DETAIL_MAX) + '\n… (مقصوص)' : t) } });
           if (b.is_error) log.push({ toolError: redact(String(t).slice(0, 300)) });
         }
       } else if (msg.type === 'result') {
@@ -197,12 +235,36 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/publish') {
       if (current && !current.done) return json(res, 409, { error: 'تشغيل جارٍ — انتظر انتهاءه قبل النشر.' });
       const r = await gitOps.publish(await body(req));
+      if (r.ok && r.prNumber) { watcher.watch(r.prNumber); await saveWatch(); r.watching = true; }
       return json(res, r.error ? 400 : 200, r);
     }
     if (req.method === 'POST' && url.pathname === '/merge') {
       if (current && !current.done) return json(res, 409, { error: 'تشغيل جارٍ — انتظر انتهاءه قبل الدمج.' });
-      const r = await gitOps.merge(await body(req));
+      const b = await body(req);
+      /* v-cc-notify: فحوص جارية = لا دمج أعمى ولا رفض — يُدمج تلقائيًّا حين تخضرّ، ويُلغى إن احمرّت. */
+      const n = parseInt(b.prNumber, 10) || 0;
+      if (n && !b.force) {
+        const st = await gitOps.prState(n);
+        if (!st.error && st.state === 'open' && !st.merged && !st.failing.length && st.pending.length) {
+          watcher.watch(n, { mergeWhenGreen: true }); await saveWatch();
+          return json(res, 200, { ok: true, queued: true, pending: st.pending, url: st.url });
+        }
+      }
+      const r = await gitOps.merge(b);
       return json(res, r.error ? 400 : 200, r);
+    }
+    if (req.method === 'GET' && url.pathname === '/notes') {
+      return json(res, 200, { ok: true, notes: watcher.notes(30), unread: watcher.unread(), watching: watcher.watching() });
+    }
+    if (req.method === 'POST' && url.pathname === '/notes/read') {
+      const b = await body(req);
+      watcher.markRead(Array.isArray(b.ids) ? b.ids.map(Number) : undefined); await saveWatch();
+      return json(res, 200, { ok: true, unread: watcher.unread() });
+    }
+    if (req.method === 'POST' && url.pathname === '/watch') {
+      const b = await body(req);
+      const w = watcher.watch(b.prNumber); await saveWatch();
+      return json(res, w ? 200 : 400, w ? { ok: true, watching: watcher.watching() } : { error: 'حدّد رقم طلب السحب.' });
     }
     if (req.method === 'GET' && url.pathname.startsWith('/pr/')) {
       return json(res, 200, await gitOps.prState(parseInt(url.pathname.slice(4), 10)));
@@ -221,4 +283,6 @@ const server = createServer(async (req, res) => {
 });
 
 await loadState();
+await loadWatch();
+setInterval(watchLoop, 60000).unref();
 server.listen(PORT, () => console.log('[cc-bridge] listening on ' + PORT + ' · repo ' + REPO_DIR + ' · model ' + MODEL));

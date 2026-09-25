@@ -166,6 +166,19 @@ export class RunLog {
   wait(ms) { return new Promise((res) => { const t = setTimeout(() => { this.waiters = this.waiters.filter((f) => f !== fn); res(); }, ms); const fn = () => { clearTimeout(t); res(); }; this.waiters.push(fn); }); }
 }
 
+/** v-cc-fold: تفاصيل الأداة التي تنفتح تحت سطرها المطويّ — الأمر كاملًا، والتعديل سطورًا «- قبل / + بعد». */
+export const DETAIL_MAX = 3000;
+export function detailTool(name, input) {
+  const i = input && typeof input === 'object' ? input : {};
+  const clip = (s) => { const t = String(s == null ? '' : s); return t.length > DETAIL_MAX ? t.slice(0, DETAIL_MAX) + '\n… (مقصوص)' : t; };
+  const diff = (a, b) => String(a || '').split('\n').map((l) => '- ' + l).concat(String(b || '').split('\n').map((l) => '+ ' + l)).join('\n');
+  if (name === 'Bash') return clip(i.command);
+  if (name === 'Edit') return clip(diff(i.old_string, i.new_string));
+  if (name === 'MultiEdit') return clip((Array.isArray(i.edits) ? i.edits : []).map((e) => diff(e && e.old_string, e && e.new_string)).join('\n…\n'));
+  if (name === 'Write') return clip(String(i.content || '').split('\n').map((l) => '+ ' + l).join('\n'));
+  return '';
+}
+
 /** ملخّص قصير لمدخل أداة يُعرض في السجلّ (بلا أسرار وبلا محتوى ملفّات كامل). */
 export function briefTool(name, input) {
   const i = input && typeof input === 'object' ? input : {};
