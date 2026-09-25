@@ -304,6 +304,7 @@ I18N['hi'] = {
     cancel: "रद्द करें",
     save: "सहेजें",
     defaultProjectTitle: "नया प्रोजेक्ट",
+    defaultShowcaseTitle: "स्मार्ट डैशबोर्ड",
     templatesBtn: "🧩 टेम्पलेट्स",
     templatesModalTitle: "🧩 टेम्पलेट चुनें",
     useThisTemplate: "✅ यह टेम्पलेट उपयोग करें",

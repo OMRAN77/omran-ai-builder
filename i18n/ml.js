@@ -307,6 +307,7 @@ I18N['ml'] = {
     "cancel": "റദ്ദാക്കുക",
     "save": "സേവ് ചെയ്യുക",
     "defaultProjectTitle": "പുതിയ പ്രോജക്ട്",
+    "defaultShowcaseTitle": "സ്മാർട്ട് ഡാഷ്‌ബോർഡ്",
     "templatesBtn": "🧩 ടെംപ്ലേറ്റുകൾ",
     "templatesModalTitle": "🧩 ഒരു ടെംപ്ലേറ്റ് തിരഞ്ഞെടുക്കുക",
     "useThisTemplate": "✅ ഈ ടെംപ്ലേറ്റ് ഉപയോഗിക്കുക",

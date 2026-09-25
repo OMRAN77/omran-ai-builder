@@ -302,6 +302,7 @@ I18N['ur'] = {
     cancel: "منسوخ کریں",
     save: "محفوظ کریں",
     defaultProjectTitle: "نیا پراجیکٹ",
+    defaultShowcaseTitle: "سمارٹ ڈیش بورڈ",
     templatesBtn: "🧩 ٹیمپلیٹس",
     templatesModalTitle: "🧩 ایک ٹیمپلیٹ منتخب کریں",
     useThisTemplate: "✅ یہ ٹیمپلیٹ استعمال کریں",

@@ -70,14 +70,17 @@ window.__omranWhenSeen = (function () {
   <meta name="google-site-verification" content="7RpDAzZaxoqFw0wXGzNIWXFFtmOTRH8GNNrFjz5oCD8" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title id="pageTitle">عمران AI — منصّة الذكاء</title>
+<title id="pageTitle">om ai — عمران AI — منصّة الذكاء</title>
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="om ai">
 <script>/* v-boot-l10n (شكوى المالك: عند التحديث الصفحة كلها تظهر بالعربي ثم تنقلب
   وتقفز العناصر): الصفحة مكتوبة عربية، والترجمة تصل بعد تحميل الحزمة. هنا —
   قبل أول رسمة — يُضبط الاتجاه واللغة من المحفوظ ويُسدل ستار حتى يُطبَّق قاموس
-  اللغة الحقيقي (يرفعه applyLanguage، وحارس زمني يرفعه قسرًا لو تعثّر التحميل). */
+  اللغة الحقيقي (يرفعه applyLanguage، وحارس زمني يرفعه قسرًا لو تعثّر التحميل).
+  v-search-om-ai (طلب المالك ٢٥ سبتمبر: om ai في البحث بدل Omran AI Builder):
+  في البحث تظهر om ai، وداخل التطبيق يُعاد عنوان النافذة فورًا إلى عمران AI. */
 (function(){try{
   var l = localStorage.getItem('aiapp_lang') || 'ar';
-  if(l === 'ar') return;
+  if(l === 'ar'){ document.title = 'عمران AI — منصّة الذكاء'; return; }
   var d = document.documentElement;
   d.dir = (l === 'ur') ? 'rtl' : 'ltr';
   d.lang = l;
@@ -100,8 +103,8 @@ window.__omranWhenSeen = (function () {
   var isNarrow = window.matchMedia('(max-width:860px)').matches;
   if((isMobileUA && isTouch) || isNarrow) document.documentElement.classList.add('mobile-ui');
 }catch(e){}})();</script>
-<meta name="description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
-<meta name="keywords" content="منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
+<meta name="description" content="om ai — أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
+<meta name="keywords" content="om ai, om ai builder, Omran AI Builder, عمران AI, منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
 <meta name="author" content="Omran">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#000000">
@@ -122,9 +125,9 @@ window.__omranWhenSeen = (function () {
 
 <!-- Open Graph / Facebook / WhatsApp -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Omran AI Builder">
+<meta property="og:site_name" content="om ai">
 <meta property="og:url" content="https://omran-ai-builder.vercel.app/">
-<meta property="og:title" content="Omran AI Builder — مُنشئ التطبيقات بالذكاء الاصطناعي">
+<meta property="og:title" content="om ai — مُنشئ التطبيقات بالذكاء الاصطناعي">
 <meta property="og:description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم 4 نماذج ذكاء اصطناعي رائدة، ثنائي اللغة، ومجاني بالكامل.">
 <meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
 <meta property="og:image:width" content="1200">
@@ -134,31 +137,40 @@ window.__omranWhenSeen = (function () {
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Omran AI Builder — مُنشئ التطبيقات بالذكاء الاصطناعي">
+<meta name="twitter:title" content="om ai — مُنشئ التطبيقات بالذكاء الاصطناعي">
 <meta name="twitter:description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. مجاني وثنائي اللغة.">
 <meta name="twitter:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
 
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "Omran AI Builder",
-  "alternateName": "مُنشئ التطبيقات بالذكاء الاصطناعي",
-  "url": "https://omran-ai-builder.vercel.app/",
-  "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "Any",
-  "description": "أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر.",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "om ai",
+    "alternateName": ["Omran AI Builder", "Omran AI", "عمران AI", "om ai builder"],
+    "url": "https://omran-ai-builder.vercel.app/"
   },
-  "author": {
-    "@type": "Person",
-    "name": "Omran"
-  },
-  "inLanguage": ["ar", "en"]
-}
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "om ai",
+    "alternateName": ["Omran AI Builder", "Omran AI", "مُنشئ التطبيقات بالذكاء الاصطناعي"],
+    "url": "https://omran-ai-builder.vercel.app/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "description": "أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Omran"
+    },
+    "inLanguage": ["ar", "en"]
+  }
+]
 </script>
 
 <link rel="manifest" href="/manifest.json?v=515-vg-removed">
@@ -762,6 +774,58 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 
   <div id="chatcol">
     <div id="omranHero">
+      <!-- 📱 بطاقات هواوي في صندوق المحادثة: تظهر فقط عند فتح حزمة هواوي (?store=huawei / html.store-safe) وفي وضع الترحيب -->
+      <div id="huaweiHeroWrap" class="huawei-hero-wrap">
+        <div class="huawei-hero-head">
+          <span class="huawei-hero-badge">عمران AI</span>
+          <h2 class="huawei-hero-title" data-i18n="quickToolsTitle">أدوات سريعة</h2>
+        </div>
+        <div id="huaweiToolsGrid" class="huawei-tools-grid">
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardPortrait" data-hwtool="portrait">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnPortraitStyle.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="portraitBtnTitle">أنماط الصور</span>
+                <span class="tcSub" data-i18n="tcSub_btnPortraitStyle">مجموعة متنوعة من أنماط الصور</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardEdu" data-hwtool="edu">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnOmranEdu.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="omranEduTitle">التعليم</span>
+                <span class="tcSub" data-i18n="tcSub_btnOmranEdu">كورسات ودروس تعليمية</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardQibla" data-hwtool="qibla">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnQibla.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="qiblaTitle">القبلة والمواقيت</span>
+                <span class="tcSub" data-i18n="tcSub_btnQibla">مواقيت الصلاة واتجاه القبلة</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardSuggestions" data-hwtool="suggestions">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnQuickTemplates.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="quickTemplatesTitle">اقتراحات</span>
+                <span class="tcSub" data-i18n="tcSub_btnQuickTemplates">أفكار وإلهام لمشاريعك القادمة</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+        </div>
+        <button type="button" class="hwAllToolsBtn" id="hwAllToolsBtn">
+          <span data-i18n="omNavTools">الأدوات</span> <span aria-hidden="true">›</span>
+        </button>
+      </div>
       <div id="omranToolsGrid"></div>
       <div id="omranQuickMobileWrap">
         <div class="omPanelTitle" data-i18n="quickToolsTitle">أدوات سريعة</div>
@@ -924,8 +988,8 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
-    <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=51202e63"></script>
+    <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
+    <script defer src="/js/app.bundle.js?v=3e66eca6"></script>
     <script defer src="/js/modes.js?v=m250925b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
