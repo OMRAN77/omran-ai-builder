@@ -102,6 +102,7 @@ test('٤. لا موديل موقوف أو يُوقف قريبًا في نداء 
   const mi = read('api/_lib/maha-image.js');
   assert.ok(mi.includes("(__optForceEngine === 'nano') ? 'gemini-3.1-flash-image'"));
   assert.ok(mi.includes('const nanoPrimary = /flash-image/.test(primaryModel);'), 'نانو ٢ بالصيغة النظيفة نفسها (بلا imageConfig)');
+  assert.ok(mi.includes(".filter(function (m) { return m !== primaryModel; });"), 'إنقاذ نانو لا يعيد الموديل الذي فشل عليه «نانو خام»');
   const sr = read('api/_lib/search.js');
   assert.ok(sr.includes("'openai/gpt-oss-20b'"), 'بديل Groq الرسميّ');
   assert.ok(sr.includes("max_tokens: reasoning ? 400 : 3"), 'gpt-oss يفكّر — ٣ رموز كانت سترجع فارغًا');

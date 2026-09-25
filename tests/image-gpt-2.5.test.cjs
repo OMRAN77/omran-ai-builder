@@ -26,7 +26,7 @@ test('التوليد عبر GPT: يجرّب Flare الأحدث أوّلًا، ث
 });
 
 test('نانو الاحتياطيّ (بعد فشل المحرّك الأساسيّ): Nano Banana 2 (gemini-3.1-flash-image) قبل ٢٫٥', () => {
-  assert.ok(mi.includes("const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'];"), 'الأحدث أوّلًا و٢٫٥ يبقى خط إنقاذ');
+  assert.ok(mi.includes("const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'].filter("), 'الأحدث أوّلًا و٢٫٥ يبقى خط إنقاذ');
 });
 
 test('gpt-image-1 لم يعد المصدر الوحيد — لا يظهر مثبَّتًا بمفرده في أيّ نداء GPT حيّ', () => {

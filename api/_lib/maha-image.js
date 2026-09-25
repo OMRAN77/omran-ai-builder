@@ -570,7 +570,7 @@ module.exports = async (req, res) => {
        `nanoPrimary`/`IMAGE_EDIT_MODEL` — هذه دالّة إنقاذ فقط بعد فشل المحرّك الأساسيّ. */
     let lastNanoErr = '';
     async function geminiNanoBananaImage() {
-      const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'];
+      const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'].filter(function (m) { return m !== primaryModel; }); // v-models-latest: «نانو خام» فشل عليه = لا يُعاد
       for (let i = 0; i < models.length; i++) {
         try {
           const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {
