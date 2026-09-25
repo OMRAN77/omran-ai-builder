@@ -9,6 +9,7 @@ require('./_lib/_env-keys.js'); // v-key-shape: مفتاح OpenRouter الموض
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
 const { installCors } = require('./_lib/cors.js');
+const { oaLightFetch } = require('./_lib/_oa-light.js'); // v-models-latest
 // حارس الميزات المتقاعدة — يُفحص قبل أي تحميل وحدة أو استخدام مفتاح.
 const { isRetired, retiredResponse } = require('./_lib/_retired.js');
 
@@ -471,16 +472,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const sys = 'You are an expert curriculum designer. Generate a complete lesson script as JSON only (no text outside JSON). The lesson is at ' + levelLabel + ' level. ALL text values in the JSON (title, heading, bullets, narration) MUST be written entirely in ' + langName + ' — do not mix in other languages. Content must be accurate, well organized, and sized for a video of about ' + mins + ' minutes (~' + totalWords + ' total narration words spread across slides).';
       const userMsg = 'Topic: "' + String(topic).slice(0, 500) + '"\n\nGenerate about ' + targetSlides + ' slides (a bit more or fewer if truly needed). Write every field in ' + langName + '. Return ONLY JSON in exactly this shape:\n{\n  "title": "Lesson title (in ' + langName + ')",\n  "slides": [\n    { "heading": "Slide heading (in ' + langName + ')", "bullets": ["point 1", "point 2", "point 3"] (in ' + langName + '), "narration": "Full narration text a natural voice will read for this slide, in ' + langName + ', clear and easy to understand" }\n  ]\n}\nFirst slide is always an intro, last slide is a summary/conclusion.';
 
-      const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + oaiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
+      const upstream = await oaLightFetch(oaiKey, { // v-models-latest
           messages: [{ role: 'system', content: sys }, { role: 'user', content: userMsg }],
           temperature: 0.7,
           response_format: { type: 'json_object' },
-        }),
-      });
+        });
       if (!upstream.ok) {
         const errText = await upstream.text();
         res.status(upstream.status).json({ error: 'OpenAI error: ' + errText.slice(0, 500) });

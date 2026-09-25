@@ -14,8 +14,8 @@ test('١. الخادم (v-lanes): المسار الأمين على برو 2K م�
   assert.match(mi, /const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;/);
   assert.match(mi, /if \(!nanoPrimary && !__faithfulLane\) delete cfg\.temperature;/, 'الحرارة 0.15 تبقى للمسار الأمين على برو — درس v-edit-pro-revert');
   assert.match(mi, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/, 'الفرز القائم لم يُمسّ');
-  assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-2\.5-flash-image'/, 'توغّل «نانو خام» للمالك باقٍ');
-  assert.match(mi, /const nanoPrimary = \/2\\\.5-flash-image\/\.test\(primaryModel\);/);
+  assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-3\.1-flash-image'/, 'توغّل «نانو خام» للمالك باقٍ');
+  assert.match(mi, /const nanoPrimary = \/flash-image\/\.test\(primaryModel\);/); // v-models-latest: نانو ٢ (٣٫١) بالصيغة النظيفة نفسها
   assert.ok(mi.includes('v-lanes'), 'القرار موثّق في الكود');
 });
 

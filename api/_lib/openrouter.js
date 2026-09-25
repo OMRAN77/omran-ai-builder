@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         provider: { data_collection: 'deny' }, // v544: امنع المزوّدين الذين يجمعون البيانات
-        model: model || 'openai/gpt-4o-mini',
+        model: model || 'openai/gpt-6-luna' /* v-models-latest */,
         messages,
         temperature: 0.7,
         max_tokens: 30000,

@@ -34,8 +34,11 @@ module.exports = async (req, res) => {
     // Deprecated/retired Cohere model names get silently upgraded server-side,
     // so stale client caches (old JS, old localStorage) never hit a hard error.
     const DEPRECATED_MODELS = new Set(['command-r-plus', 'command-r', 'command-r-plus-08-2024', 'command-r-08-2024', 'command']);
+    // v-models-latest: الافتراضيّ Command A+ (مايو ٢٠٢٦)؛ ولو لم يصله المفتاح (404) يرجع النداء إلى Command A.
+    const COHERE_DEFAULT = 'command-a-plus-05-2026';
+    const COHERE_PREV = 'command-a-03-2025';
     if (!model || DEPRECATED_MODELS.has(String(model).trim().toLowerCase())) {
-      model = 'command-a-03-2025';
+      model = COHERE_DEFAULT;
     }
     if (!messages) {
       res.status(400).json({ error: 'Missing messages' });
@@ -66,13 +69,14 @@ module.exports = async (req, res) => {
         'Authorization': 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
-        model: model || 'command-a-03-2025',
+        model: model || COHERE_DEFAULT,
         messages: msgs,
         temperature: 0.7,
         stream: wantStream,
       }),
     });
     let upstream = await doFetch(messages);
+    if ((upstream.status === 404 || upstream.status === 400) && model === COHERE_DEFAULT) { model = COHERE_PREV; upstream = await doFetch(messages); }
     // Retry once on 422: keep only system prompts + the last user message.
     if (upstream.status === 422) {
       const systems = messages.filter((m) => m.role === 'system');

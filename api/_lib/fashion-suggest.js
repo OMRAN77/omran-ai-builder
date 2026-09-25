@@ -6,9 +6,10 @@
 // match-score percentage). Does NOT generate an image and does NOT consume
 // the daily image-generation quota — only requires a logged-in session.
 const { checkFashionQuota } = require('./_fashionUsage');
+const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
 // v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يُسقط الاقتراحات —
-// gpt-4o-mini بمفتاح OPENAI_API_KEY يجيب بنفس المطلوب (مع رؤية الصورة إن وُجدت).
+// موديل OpenAI الخفيف الأحدث (_oa-light) بمفتاح OPENAI_API_KEY يجيب بنفس المطلوب (مع رؤية الصورة إن وُجدت).
 async function openaiSuggest(promptText, imageBase64, mimeType) {
   const key = (process.env.OPENAI_API_KEY || '').trim();
   if (!key) return '';
@@ -17,11 +18,7 @@ async function openaiSuggest(promptText, imageBase64, mimeType) {
       ? [{ type: 'text', text: promptText },
          { type: 'image_url', image_url: { url: 'data:' + (mimeType || 'image/jpeg') + ';base64,' + imageBase64 } }]
       : promptText;
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content }], max_tokens: 900, temperature: 0.8 }),
-    });
+    const r = await oaLightFetch(key, { messages: [{ role: 'user', content }], max_tokens: 900, temperature: 0.8 }); // v-models-latest
     const d = await r.json();
     if (!r.ok) { console.warn('[fashion-suggest] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return ''; }
     return String((((d.choices || [])[0] || {}).message || {}).content || '');

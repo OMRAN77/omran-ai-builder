@@ -9,12 +9,13 @@
  *
  * كلّ الدوال تُرجع صورة كـ base64 خام (بلا بادئة data:).
  * المفاتيح: OPENAI_API_KEY · GEMINI_API_KEY
- * النماذج : IMAGE_EDIT_MODEL (نانو، افتراضي gemini-2.5-flash-image) · gpt-image-2
+ * النماذج : IMAGE_EDIT_MODEL (نانو، افتراضي gemini-3.1-flash-image) · gpt-image-2
  */
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const NANO_MODEL = (process.env.IMAGE_EDIT_MODEL || 'gemini-2.5-flash-image').trim(); // نانو
+// v-models-latest: نانو ٢٫٥ (gemini-2.5-flash-image) تُوقفه Google في ٢ أكتوبر ٢٠٢٦ — بديله الرسميّ نانو ٢ (٣٫١).
+const NANO_MODEL = (process.env.IMAGE_EDIT_MODEL || 'gemini-3.1-flash-image').trim(); // نانو
 const GPT_MODEL  = 'gpt-image-2';
 const TIMEOUT    = 240000; // ٤ دقائق — التوليد/التعديل عالي الدقّة قد يطول
 

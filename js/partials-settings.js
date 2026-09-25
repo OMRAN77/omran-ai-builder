@@ -163,10 +163,10 @@
         <!-- v-models-family: رُفعت للجيل الحاليّ (معرّفات تطابق OR_MODELS في الخادم). -->
         <option value="openai/gpt-5.6-terra">OpenAI GPT-5.6 Terra</option>
         <option value="anthropic/claude-sonnet-5">Anthropic Claude Sonnet 5</option>
-        <option value="anthropic/claude-opus-5">Anthropic Claude Opus 5</option>
-        <option value="google/gemini-3.5-flash">Google Gemini 3.5 Flash</option>
+        <option value="anthropic/claude-opus-5.5">Anthropic Claude Opus 5.5</option>
+        <option value="google/gemini-3.8-flash">Google Gemini 3.8 Flash</option>
         <option value="meta-llama/llama-4-maverick">Meta Llama 4 Maverick</option>
-        <option value="deepseek/deepseek-v3.2">DeepSeek V3.2</option>
+        <option value="deepseek/deepseek-v4-pro">DeepSeek V4 Pro</option>
       </optgroup>
       <option value="__custom__" data-i18n="orCustomOption">✏️ مخصص...</option>
     </select>

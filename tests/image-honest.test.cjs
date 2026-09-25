@@ -228,7 +228,7 @@ test('٨. الخام يبقى خامًا: «نانو خام» يرجّع الص�
   assert.equal(r.json.imageBase64, SAME);
   assert.equal(r.json.caption, 'الصورة ما تغيّرت.');
   assert.deepEqual(r.calls.map((c) => c.kind), ['nano', 'judge']);
-  assert.equal(r.calls[0].model, 'gemini-2.5-flash-image');
+  assert.equal(r.calls[0].model, 'gemini-3.1-flash-image');
 });
 
 test('٩. التوليد: الحاكم «لم يُنفَّذ» ← GPT مرّة ويُختار المنفَّذ؛ والحاكم المعطّل لا يوقف الصورة ولا يستدعي محرّكًا آخر', async () => {

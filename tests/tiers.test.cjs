@@ -261,18 +261,18 @@ test('completeJson: retired preferred name ignored, 404 tries the next candidate
     const body = JSON.parse(init.body);
     calls.push(body.model);
     if (body.model === 'openai/gpt-oss-120b') return new Response(JSON.stringify({ error: { message: 'The model `openai/gpt-oss-120b` does not exist or you do not have access to it.' } }), { status: 404 });
-    if (body.model === 'meta-llama/llama-4-maverick-17b-128e-instruct') return new Response(JSON.stringify({ choices: [{ message: { content: 'تمام' } }] }), { status: 200 });
+    if (body.model === 'openai/gpt-oss-20b') return new Response(JSON.stringify({ choices: [{ message: { content: 'تمام' } }] }), { status: 200 });
     return new Response('x', { status: 500 });
   };
   fc.__workingModel.clear();
   const r = await fc.completeJson('groq', { key: 'k', model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'هلا' }], fetchImpl, env: {}, now: 5000 });
-  assert.equal(r.ok, true); assert.equal(r.model, 'meta-llama/llama-4-maverick-17b-128e-instruct');
+  assert.equal(r.ok, true); assert.equal(r.model, 'openai/gpt-oss-20b');
   assert.equal(r.json.choices[0].message.content, 'تمام');
-  assert.deepEqual(calls, ['openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct'], 'الاسم المتقاعد لا يُجرَّب أصلًا');
+  assert.deepEqual(calls, ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], 'الاسم المتقاعد لا يُجرَّب أصلًا');
   /* النداء التالي يبدأ بالناجح */
   calls.length = 0;
   await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl, env: {}, now: 6000 });
-  assert.deepEqual(calls, ['meta-llama/llama-4-maverick-17b-128e-instruct']);
+  assert.deepEqual(calls, ['openai/gpt-oss-20b']);
   /* خطأ غير النموذج يُعاد فورًا بلا تجربة الباقين */
   fc.__workingModel.clear();
   const bad = await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl: async () => new Response('rate', { status: 429 }), env: {}, now: 7000 });

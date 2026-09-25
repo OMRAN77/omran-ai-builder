@@ -119,7 +119,7 @@ test('٤. الخادم: Pro دردشة → DeepSeek، Pro دور قويّ → Ha
   let r = await ask(SUB('pro'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار');
   assert.equal(r.bodies.length, 1);
   assert.match(r.bodies[0].url, /openrouter\.ai\/api\/v1\/messages/);
-  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v3.2');
+  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro');
   assert.match(r.written, /"delta":"تم"/);
   r = await ask(SUB('pro'), 'claude', 'اكتب لي كود جافاسكربت يطبع هلا');
   assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'الدور القويّ في Pro = Haiku عبر الوسيط');
@@ -130,7 +130,7 @@ test('٤. الخادم: Pro دردشة → DeepSeek، Pro دور قويّ → Ha
   r = await ask(SUB('max'), 'openai', 'اشرح لي الذكاء الاصطناعي باختصار');
   assert.equal(r.bodies[0].body.model, 'openai/gpt-5.6-terra', 'Max يقدر يختار GPT للدردشة');
   r = await ask(SUB('basic'), 'openai', 'اشرح لي الذكاء الاصطناعي باختصار');
-  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v3.2', 'Plus يطلب GPT → DeepSeek');
+  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro', 'Plus يطلب GPT → DeepSeek');
   r = await ask({ tier: 'owner', plan: null, cap: Infinity, subscriber: true }, 'claude', 'اكتب لي كود');
   assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'المالك على افتراضيّه (v-chat-economy: Haiku 4.5)');
   // مفتاح أنثروبيك حاضر → كلود مباشر بالاسم المباشر، وDeepSeek يبقى عبر الوسيط
@@ -141,7 +141,7 @@ test('٤. الخادم: Pro دردشة → DeepSeek، Pro دور قويّ → Ha
     assert.equal(r.bodies[0].body.model, 'claude-sonnet-5');
     r = await ask(SUB('pro'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار');
     assert.match(r.bodies[0].url, /openrouter\.ai/);
-    assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v3.2');
+    assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro');
   } finally { delete process.env.ANTHROPIC_API_KEY; }
 });
 
@@ -149,16 +149,16 @@ test('٥. الخادم: تعطّل مزوّد الباقة قبل أوّل حر�
   chat.__orQuick.level = 2;
   let r = await ask(SUB('pro'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار', ['{"error":"insufficient credits"}', 'ok']);
   assert.equal(r.bodies.length, 2);
-  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v3.2');
-  assert.equal(r.bodies[1].body.model, 'google/gemini-3.5-flash', 'الالتقاط داخل الباقة');
+  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro');
+  assert.equal(r.bodies[1].body.model, 'google/gemini-3.8-flash', 'الالتقاط داخل الباقة');
   assert.match(r.written, /"delta":"تم"/);
   assert.doesNotMatch(r.written, /"error"/, 'بصمت');
   r = await ask(SUB('max'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار', ['boom', 'boom', 'ok']);
-  assert.deepEqual(r.bodies.slice(0, 3).map((b) => b.body.model), ['anthropic/claude-haiku-4.5', 'openai/gpt-5.6-terra', 'google/gemini-3.5-flash']);
+  assert.deepEqual(r.bodies.slice(0, 3).map((b) => b.body.model), ['anthropic/claude-haiku-4.5', 'openai/gpt-5.6-terra', 'google/gemini-3.8-flash']);
   assert.match(r.written, /"delta":"تم"/);
   // الكلّ معطّل → السلسلة المجّانيّة (OpenRouter المجّانيّ هنا) ثمّ رسالة الانشغال بلا خطأ خام
   r = await ask(SUB('basic'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار', ['boom']);
-  assert.deepEqual(r.bodies.slice(0, 2).map((b) => b.body.model), ['deepseek/deepseek-v3.2', 'meta-llama/llama-4-maverick']);
+  assert.deepEqual(r.bodies.slice(0, 2).map((b) => b.body.model), ['deepseek/deepseek-v4-pro', 'meta-llama/llama-4-maverick']);
   assert.ok(r.bodies.length > 2, 'ثمّ السلسلة المجّانيّة');
   assert.match(r.written, /"fallback":true/, 'الفشل النهائيّ كما كان (v-king-fallback): العميل يلتقط');
 });
@@ -283,7 +283,7 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=662'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=663'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 

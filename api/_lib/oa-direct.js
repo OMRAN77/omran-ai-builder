@@ -46,9 +46,11 @@ function directModel(prov, requested, env) {
   if (!a || a === def || !DIRECT_ID_RE.test(a)) return { model: def, picked: false, def };
   return { model: a, picked: true, def };
 }
+// v-models-latest: Groq أوقف Llama 4 Maverick (٩ مارس ٢٠٢٦) وScout (١٧ يوليو) وبديلهما الرسميّ gpt-oss —
+// فمعرّف السهم الافتراضيّ يُترجم له مباشرةً بدل محاولة ضائعة على موديل ميّت ثمّ السلسلة.
 const GROQ_ALIAS = {
-  'meta-llama/llama-4-maverick': 'meta-llama/llama-4-maverick-17b-128e-instruct',
-  'meta-llama/llama-4-scout': 'meta-llama/llama-4-scout-17b-16e-instruct',
+  'meta-llama/llama-4-maverick': 'openai/gpt-oss-120b',
+  'meta-llama/llama-4-scout': 'openai/gpt-oss-20b',
 };
 
 function textOf(content) {

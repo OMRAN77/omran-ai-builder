@@ -31,7 +31,7 @@ const gh = require('./github-read.js'); // v-agent-github: رابط مستودع
 const LIMITS = { files: 60, perFile: 200000, total: 500000, perFileFree: 60000, totalFree: 60000, ask: 1200 };
 const ZIP_MAX = 3 * 1024 * 1024;
 const NUL = String.fromCharCode(0);
-const DEFAULT_MODEL = 'claude-opus-5';
+const DEFAULT_MODEL = 'claude-opus-5-5'; // v-models-latest: خليفة Opus 5 وأرخص؛ الجهد يُرسل صراحةً هنا أصلًا
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 const MARK_A = '@@ANALYSIS';
 const MARK_R = '@@REPORT';
@@ -336,7 +336,8 @@ async function callPro(prompt, opts) {
   if (!apiKey) throw new Error('missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY');
   const url = viaOR ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
   const base = (env.CODE_ANALYZE_MODEL && String(env.CODE_ANALYZE_MODEL).trim()) || DEFAULT_MODEL;
-  const model = viaOR && base.indexOf('/') === -1 ? 'anthropic/' + base : base;
+  // الوسيط يكتب الإصدار الفرعيّ بنقطة (claude-opus-5-5 ← anthropic/claude-opus-5.5) — v-models-latest.
+  const model = viaOR && base.indexOf('/') === -1 ? 'anthropic/' + base.replace(/-(\d+)-(\d+)$/, '-$1.$2') : base;
   const headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
   // بلا temperature: الجيل الحاليّ يرفض معاملات العيّنة بـ400. التفكير التكيّفيّ
   // والجهد على مسار أنثروبيك المباشر فقط (الوسيط لا يضمن تمريرهما).

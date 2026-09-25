@@ -66,7 +66,7 @@ test('٣. الخام خام: المحرّك المختار وحده، GPT خام
   assert.match(mi, /form\.append\('input_fidelity', 'high'\);/);
   assert.ok(!/'low' : 'high'/.test(mi));
   assert.match(mi, /if \(__optForceEngine === 'gpt'\) \{\n\s+const __gptB64 = await openaiRescueImage\(\);/);
-  assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-2\.5-flash-image'/);
+  assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-3\.1-flash-image'/);
   assert.match(mi, /if \(isSceneUpgrade && !__intent\.placeUpgradeHint && !__intent\.sameImage\) \{ isSceneUpgrade = false; isElevate = true; \}/);
   // v-img-report (المالك ٢٣ سبتمبر): التقرير للتوليد والتعديل (المصدر + الناتج) — v-img-honest: يكتبه الحاكم نفسه مع القياس
   assert.match(mi, /await sendImg\(r\.best\.b64, r\.best\.mime, r\.engine, r\.report, r\.best\.verdict, r\.best\.noUpscale\);/);
