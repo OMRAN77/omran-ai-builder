@@ -31,7 +31,8 @@ assert.ok(indexHtml.includes('content="om ai — أنشئ تطبيقات'), 'و�
 
 // 5. فحص ثبات التطبيق من الداخل
 // التأكد من أن الهوية والشعارات وأزرار التطبيق لم تتأثر
-assert.ok(indexHtml.includes('alt="عمران Ai"'), 'شعار التطبيق عمران AI لم يتغير');
+// v-om-brand: الشعار صار «OM Ai» بطلب المالك بعد هذا الاختبار
+assert.ok(indexHtml.includes('alt="OM Ai"'), 'شعار التطبيق «OM Ai» (v-om-brand)');
 assert.ok(indexHtml.includes('id="brandTitle"'), 'شعار الهيدر موجود');
 
 console.log('✓ جميع فحوصات v-om-ai-search نجحت بنجاح');

@@ -32,15 +32,12 @@ test('١. كلّ بطاقة أداة تُحمَّل من نسخة العرض 600
   assert.match(fs.readFileSync('js/ui-wiring.js', 'utf8'), /\/js\/tool-card-images\.js\?v=15/);
 });
 
-test('٢. الشعار العربيّ والإنجليزيّ بنسخة 3× لارتفاع 42 في الصفحة وفي مبدّل اللغة', () => {
-  assert.deepEqual(dims('icons/brand-ar-s.png'), [379, 126]);
-  assert.deepEqual(dims('icons/brand-en-s.png'), [483, 126]);
+test('٢. شعار «OM Ai» بنسخة 3× لارتفاع 42 في الصفحة (v-om-brand بدّل شعارات «عمران» لكلّ لغة)', () => {
+  assert.deepEqual(dims('icons/brand-om-s.png'), [422, 126]);
   const html = fs.readFileSync('index.html', 'utf8');
-  assert.equal((html.match(/src="icons\/brand-ar-s\.png"/g) || []).length, 2);
-  assert.doesNotMatch(html, /icons\/brand-(?:ar|en)\.png/);
+  assert.equal((html.match(/src="icons\/brand-om-s\.png"/g) || []).length, 2);
+  assert.doesNotMatch(html, /icons\/brand-(?:ar|en)(?:-s)?\.png/);
   const a10 = fs.readFileSync('js/app-10-features.js', 'utf8');
-  assert.match(a10, /imgSrc = 'icons\/brand-ar-s\.png'/);
-  assert.match(a10, /imgSrc = 'icons\/brand-en-s\.png'/);
-  assert.doesNotMatch(a10, /icons\/brand-(?:ar|en)\.png/);
+  assert.doesNotMatch(a10, /icons\/brand-/, 'لا تبديل صورة حسب اللغة');
   assert.match(html, /\/js\/ui-wiring\.js\?v=650/);
 });
