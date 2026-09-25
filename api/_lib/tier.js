@@ -30,38 +30,62 @@ const SUB_WINDOW_MS = SUB_WINDOW_DAYS * 86400000;
 // المجانية والأدوات الصغيرة) يبقى على سقف الطبقة اليومي.
 const PAID_PROVIDERS = ['claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'agent'];
 
-/* v-plan-routing (قرار المالك ٢٠ سبتمبر — جدول الباقات النهائيّ): لكلّ باقة مزوّد للدردشة والأسئلة
-   العاديّة، ومزوّد أقوى لأدوار البرمجة/البناء/الرياضيات/الملفّ الطويل، وقائمة مسموح بها في المنتقي،
-   وسلسلة التقاط داخل الباقة (أرخص فأرخص) تسبق السلسلة المجّانيّة. المالك وVIP والمجّانيّ خارج الجدول.
-   model = موديل كلود من CLAUDE_MODELS في chat.js؛ بلا model = افتراضيّ المزوّد (OR_MODELS). */
-/* v-plus-haiku (قرار المالك ٢٥ سبتمبر — باقة ١٠$): أوّل SUB_HAIKU_BASIC (٣٠) رسالة في اليوم على Haiku، ثمّ DeepSeek
-   حتّى سقف الباقة، وGemini بمفتاحه المباشر احتياطًا (لا يعتمد على رصيد الوسيط). ثلاثة مزوّدين فقط ولا اختيار من المنتقي،
-   والعدّ في سلّة واحدة «plan» فالسقف ٥٠ رسالة إجمالًا لا لكلّ مزوّد. */
+/* v-plan-jobs (قرار المالك ٢٥ سبتمبر: «كلّ واحد ووظيفته، والوكيل يوظّفهم»): كلّ رسالة مشترك تُصنَّف وظيفةً
+   (turnJob) وتذهب لمزوّدها المختصّ — الدردشة Groq (الأرخص)، البرمجة كلود، الرياضيّات والملفّ الطويل DeepSeek،
+   الصور Gemini (يرى ورخيص). كلود بحدّ يوميّ لكلّ باقة (عدّاد مستقلّ لكلّ موديل)، وبعده المزوّد التالي في قائمة
+   الوظيفة. الالتقاط Gemini ثمّ DeepSeek ثمّ Groq بلا كلود. السقف الكلّيّ للباقة في سلّة واحدة «plan».
+   كلّ الحدود متغيّرات بيئة. direct = مفتاح المزوّد نفسه (oa-direct.js) لا الوسيط؛ model = موديل من CLAUDE_MODELS. */
+const LANES = {
+  groq: { prov: 'groq', direct: true },
+  gemini: { prov: 'gemini', direct: true },
+  deepseek: { prov: 'deepseek' },
+  haiku: { prov: 'claude', model: 'claude-haiku-4-5', meter: 'haiku' },
+  sonnet: { prov: 'claude', model: 'claude-sonnet-5', meter: 'sonnet' },
+};
+const PLAN_FALLBACK = ['gemini', 'deepseek', 'groq'];
 const PLAN_ROUTING = {
-  basic: { chat: { prov: 'claude', model: 'claude-haiku-4-5' }, after: { prov: 'deepseek' }, dailyVar: 'SUB_HAIKU_BASIC', dailyDef: 30, bucket: 'plan', strong: null, allowed: [], fallback: [{ prov: 'deepseek' }, { prov: 'gemini', direct: true }] },
-  pro: { chat: { prov: 'deepseek' }, strong: { prov: 'claude', model: 'claude-haiku-4-5' }, allowed: ['deepseek', 'groq', 'gemini', 'mistral'], fallback: [{ prov: 'gemini' }, { prov: 'deepseek' }] },
-  max: { chat: { prov: 'claude', model: 'claude-haiku-4-5' }, strong: { prov: 'claude', model: 'claude-sonnet-5' }, allowed: ['claude', 'openai', 'gemini', 'mistral', 'deepseek', 'groq', 'cohere'], fallback: [{ prov: 'openai' }, { prov: 'gemini' }, { prov: 'deepseek' }] },
+  basic: { chat: ['groq'], code: ['haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_BASIC', 5] }, allowed: [] },
+  pro: { chat: ['groq'], code: ['haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_PRO', 10] }, allowed: [] },
+  max: { chat: ['haiku', 'groq'], code: ['sonnet', 'haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_MAX', 150], sonnet: ['SUB_SONNET_MAX', 30] }, allowed: ['claude', 'groq', 'gemini', 'deepseek', 'mistral', 'cohere'] },
 };
 // الدور القويّ: نصّ طويل (وثيقة/ملفّ) أو كتلة كود أو كلمات برمجة/بناء/رياضيات.
 const STRONG_TURN_RE = /```|(?:^|[\s،,.:؛()"'«»-])(?:ال|بال|وال|لل|فال|كال)?(?:كود|كودي|برمج|برمجة|سكربت|سكريبت|دالة|دوال|خوارزميّ?ة|bug|error|exception|debug|api|json|sql|regex|html|css|javascript|typescript|python|react|node|docker|ابنِ|ابني|اعمل(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة|برنامج|بوت|لعبة)|صمّ?م(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة)|احسب|معادلة|معادلات|مشتقّ?ة|تكامل|مصفوفة|احتمال|إحصاء|جبر|ضريبة|فائدة\s+مركّ?بة|نسبة\s+مئويّ?ة|calculate|solve|equation|integral|derivative|matrix|probability|statistics|function|class|compile)(?=$|[\s،,.:؛()"'«»?؟!-])/i;
+const MATH_TURN_RE = /(?:^|[\s،,.:؛()"'«»-])(?:ال|بال|وال|لل|فال|كال)?(?:احسب|معادلة|معادلات|مشتقّ?ة|تكامل|مصفوفة|احتمال|إحصاء|جبر|ضريبة|فائدة\s+مركّ?بة|نسبة\s+مئويّ?ة|calculate|solve|equation|integral|derivative|matrix|probability|statistics)(?=$|[\s،,.:؛()"'«»?؟!-])/i;
 function isStrongTurn(text) {
   const s = String(text || '');
   if (s.length >= 600) return true;
   return STRONG_TURN_RE.test(s);
 }
-/* قرار التوجيه لطلب مشترك: الدور القويّ → strong؛ وإلّا المزوّد المطلوب إن كان مسموحًا؛ وإلّا افتراضيّ
-   الباقة. الالتقاط = سلسلة الباقة بلا المزوّد المختار. غير المشترك (مالك/VIP/مجّانيّ/ضيف) → null. */
-function planRoute(tier, requestedProv, lastUserText, usedToday, env) {
+// وظيفة الرسالة: image (صورة مرفقة) · code (كود/بناء) · math (حساب، أو نصّ طويل بلا كود = ملفّ) · chat.
+function turnJob(text, hasImage) {
+  if (hasImage) return 'image';
+  const s = String(text || '');
+  if (!isStrongTurn(s)) return 'chat';
+  if (s.indexOf('```') !== -1) return 'code';
+  if (MATH_TURN_RE.test(s)) return 'math';
+  const codeOnly = STRONG_TURN_RE.test(s);
+  return (s.length >= 600 && !codeOnly) ? 'math' : 'code';
+}
+/* قرار التوجيه لطلب مشترك: أوّل مزوّد في قائمة الوظيفة لم يبلغ حدّه اليوميّ (used = { haiku, sonnet })؛ ومنتقي
+   Max يُقبل للدردشة إن كان مسموحًا (كلود = Haiku بحدّه). الالتقاط بلا المختار. غير المشترك → null. */
+function planRoute(tier, requestedProv, lastUserText, used, env, hasImage) {
   const plan = (tier && tier.tier === 'sub') ? String(tier.plan || '').toLowerCase() : '';
   const r = PLAN_ROUTING[plan];
   if (!r) return null;
-  const strong = isStrongTurn(lastUserText);
+  const e = env || process.env;
+  const u = used || {};
+  const open = (name) => { const m = LANES[name].meter; if (!m) return true; const lim = r.meters[m]; return !!lim && (Number(u[m]) || 0) < envInt(e, lim[0], lim[1]); };
+  const job = turnJob(lastUserText, hasImage);
   const req = String(requestedProv || '').toLowerCase();
-  const chat = (r.after && (Number(usedToday) || 0) >= envInt(env || process.env, r.dailyVar, r.dailyDef)) ? r.after : r.chat;
-  const pick = (strong && r.strong) ? r.strong : ((req && r.allowed.includes(req)) ? (req === chat.prov ? chat : { prov: req }) : chat);
-  const out = { plan, strong, prov: pick.prov, model: pick.model || '', fallback: r.fallback.filter((f) => f.prov !== pick.prov), allowed: r.allowed.slice() };
-  if (r.bucket) out.bucket = r.bucket;
-  return out;
+  let names = r[job].filter(open);
+  if (job === 'chat' && req && r.allowed.includes(req)) {
+    const reqName = req === 'claude' ? 'haiku' : req;
+    if (LANES[reqName] ? open(reqName) : true) names = [reqName];
+  }
+  if (!names.length) names = ['groq'];
+  const lane = LANES[names[0]] || { prov: names[0] };
+  const fallback = PLAN_FALLBACK.filter((n) => LANES[n].prov !== lane.prov).map((n) => Object.assign({}, LANES[n]));
+  return { plan, job, strong: job === 'code' || job === 'math', prov: lane.prov, model: lane.model || '', direct: !!lane.direct, meter: lane.meter || '', fallback, allowed: r.allowed.slice(), bucket: 'plan' };
 }
 
 // أسماء النماذج تتغيّر باستمرار (المجسّ ١٢ سبتمبر: gemini-2.5-flash «لم يعد
@@ -231,5 +255,5 @@ const FREE_TEXT = {
 module.exports = {
   PLAN_KEYS, SUB_WINDOW_DAYS, PAID_PROVIDERS, FREE_PROVIDER_SPECS, DEFAULT_CHAIN, FREE_TEXT,
   caps, planActive, resolveTier, invalidateTier, isPaidProvider, freeChain, isOwnerUsername,
-  PLAN_ROUTING, isStrongTurn, planRoute, // v-plan-routing
+  PLAN_ROUTING, LANES, isStrongTurn, turnJob, planRoute, // v-plan-routing · v-plan-jobs
 };

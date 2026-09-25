@@ -292,4 +292,10 @@ async function todayCount(username, bucket) {
   return countTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
 }
 
-module.exports = { todayCount, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp };
+// v-plan-jobs: عدّاد يوميّ لحدّ موديل داخل الباقة (Haiku/Sonnet).
+async function bumpCount(username, bucket) {
+  if (!username) return;
+  await addTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
+}
+
+module.exports = { todayCount, bumpCount, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp };

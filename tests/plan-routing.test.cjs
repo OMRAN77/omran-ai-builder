@@ -31,57 +31,70 @@ require.cache[rp('api/_lib/kv.js')] = { id: rp('api/_lib/kv.js'), filename: rp('
 } };
 require.cache[rp('api/_lib/_usage.js')] = { id: rp('api/_lib/_usage.js'), filename: rp('api/_lib/_usage.js'), loaded: true, exports: {
   DAILY_LIMIT: 20, clientIp: () => '127.0.0.1',
-  checkAndConsume: async () => ({ allowed: true, username: 'plan-user' }),
-  todayCount: async () => usedToday,
+  checkAndConsume: async (tok, gid, bucket) => { consumed.push(bucket); return { allowed: true, username: 'plan-user' }; },
+  todayCount: async (u, bucket) => counts[bucket] || 0,
+  bumpCount: async (u, bucket) => { bumped.push(bucket); },
 } };
-let usedToday = 0;
+let counts = {};
+const consumed = [];
+const bumped = [];
 require.cache[rp('api/_lib/_knowledge.js')] = { id: rp('api/_lib/_knowledge.js'), filename: rp('api/_lib/_knowledge.js'), loaded: true, exports: { ownerKnowledge: () => '' } };
 require.cache[rp('api/_lib/search.js')] = { id: rp('api/_lib/search.js'), filename: rp('api/_lib/search.js'), loaded: true, exports: { fetchPlaces: async () => [] } };
 const tierLib = require(rp('api/_lib/tier.js'));
 const chat = require(rp('api/_lib/chat.js'));
 
 // ── (١) الجدول نفسه ──
-test('١. الأسقف الافتراضيّة الجديدة والسلسلة المجّانيّة تبدأ بـGroq', () => {
+test('١. الأسقف الافتراضيّة والسلسلة المجّانيّة تبدأ بـGroq، وجدول الوظائف (v-plan-jobs)', () => {
   assert.deepEqual(tierLib.caps({}), { guest: 3, free: 5, basic: 50, pro: 100, max: 250 });
   assert.deepEqual(tierLib.DEFAULT_CHAIN, ['groq', 'gemini', 'mistral', 'openrouter']);
   assert.equal(tierLib.freeChain({ GROQ_API_KEY: 'q', GEMINI_API_KEY: 'g' })[0].id, 'groq', 'Groq أوّلًا');
   assert.match(tierLib.FREE_TEXT.guestLimit, /5 رسائل/);
   const pr = tierLib.PLAN_ROUTING;
   assert.deepEqual(Object.keys(pr), ['basic', 'pro', 'max']);
-  assert.deepEqual(pr.basic.chat, { prov: 'claude', model: 'claude-haiku-4-5' }); assert.deepEqual(pr.basic.after, { prov: 'deepseek' }); assert.equal(pr.basic.strong, null);
-  assert.equal(pr.pro.chat.prov, 'deepseek'); assert.deepEqual(pr.pro.strong, { prov: 'claude', model: 'claude-haiku-4-5' });
-  assert.deepEqual(pr.max.chat, { prov: 'claude', model: 'claude-haiku-4-5' }); assert.deepEqual(pr.max.strong, { prov: 'claude', model: 'claude-sonnet-5' });
-  assert.ok(pr.max.allowed.includes('openai') && pr.max.allowed.includes('claude') && !pr.pro.allowed.includes('openai') && !pr.basic.allowed.includes('claude'));
+  for (const k of ['basic', 'pro']) {
+    assert.deepEqual([pr[k].chat, pr[k].code, pr[k].math, pr[k].image], [['groq'], ['haiku', 'deepseek'], ['deepseek'], ['gemini']], k);
+    assert.deepEqual(pr[k].allowed, [], k + ': بلا منتقي');
+  }
+  assert.deepEqual(pr.basic.meters, { haiku: ['SUB_HAIKU_BASIC', 5] });
+  assert.deepEqual(pr.pro.meters, { haiku: ['SUB_HAIKU_PRO', 10] });
+  assert.deepEqual(pr.max.meters, { haiku: ['SUB_HAIKU_MAX', 150], sonnet: ['SUB_SONNET_MAX', 30] });
+  assert.deepEqual([pr.max.chat, pr.max.code], [['haiku', 'groq'], ['sonnet', 'haiku', 'deepseek']]);
+  assert.ok(!pr.max.allowed.includes('openai') && !pr.max.allowed.includes('perplexity'), 'Max بلا GPT في المنتقي');
+  assert.deepEqual(tierLib.LANES.groq, { prov: 'groq', direct: true });
+  assert.deepEqual(tierLib.LANES.gemini, { prov: 'gemini', direct: true });
 });
 
-test('٢. isStrongTurn: برمجة/بناء/رياضيات/كتلة كود/نصّ طويل = قويّ؛ الدردشة لا', () => {
-  for (const s of ['هلا كيف الحال', 'اشرح لي الذكاء الاصطناعي باختصار', 'شو أفضل مطعم في دبي', 'ترجم لي هذي الجملة']) assert.equal(tierLib.isStrongTurn(s), false, s);
-  for (const s of ['اكتب لي كود بايثون يقرأ ملف', 'ابني لي موقع لمطعم', 'احسب لي ضريبة 5% على 2000', 'حلّ المعادلة x^2 - 4 = 0', 'عدّل الكود', 'عندي bug في الدالة', 'شرح ```js\nlet a=1\n```', 'Please solve this equation', 'What is the derivative of x^3']) assert.equal(tierLib.isStrongTurn(s), true, s);
-  assert.equal(tierLib.isStrongTurn('ن'.repeat(600)), true, 'نصّ طويل = ملفّ');
+test('٢. isStrongTurn وturnJob: دردشة · كود · رياضيّات/ملفّ طويل · صورة', () => {
+  for (const s of ['هلا كيف الحال', 'اشرح لي الذكاء الاصطناعي باختصار', 'شو أفضل مطعم في دبي', 'ترجم لي هذي الجملة']) { assert.equal(tierLib.isStrongTurn(s), false, s); assert.equal(tierLib.turnJob(s), 'chat', s); }
+  for (const s of ['اكتب لي كود بايثون يقرأ ملف', 'ابني لي موقع لمطعم', 'عدّل الكود', 'عندي bug في الدالة', 'شرح ```js\nlet a=1\n```']) assert.equal(tierLib.turnJob(s), 'code', s);
+  for (const s of ['احسب لي ضريبة 5% على 2000', 'حلّ المعادلة x^2 - 4 = 0', 'Please solve this equation', 'What is the derivative of x^3', 'ن'.repeat(600)]) assert.equal(tierLib.turnJob(s), 'math', s);
+  assert.equal(tierLib.turnJob('هلا', true), 'image');
   assert.equal(tierLib.isStrongTurn(''), false); assert.equal(tierLib.isStrongTurn(null), false);
 });
 
-test('٣. planRoute: لكلّ باقة مزوّدها، الدور القويّ يصعّد، المطلوب يُقبل إن كان مسموحًا، والالتقاط بلا المختار', () => {
+test('٣. planRoute: كلّ وظيفة لمزوّدها، حدود كلود اليوميّة، المنتقي لـMax وحده، والالتقاط بلا كلود', () => {
   const sub = (plan) => ({ tier: 'sub', plan, subscriber: true, cap: 1 });
   for (const t of [null, { tier: 'owner', subscriber: true }, { tier: 'vip', subscriber: true }, { tier: 'free', subscriber: false }, { tier: 'guest', subscriber: false }, { tier: 'sub', plan: 'gold', subscriber: true }]) assert.equal(tierLib.planRoute(t, 'claude', 'اكتب كود'), null);
-  // v-plus-haiku: Plus = Haiku لأوّل ٣٠ رسالة ثمّ DeepSeek، وGemini مباشر احتياطًا، ولا اختيار من المنتقي، وسلّة عدّ واحدة
-  assert.deepEqual(tierLib.planRoute(sub('basic'), 'claude', 'هلا'), { plan: 'basic', strong: false, prov: 'claude', model: 'claude-haiku-4-5', fallback: [{ prov: 'deepseek' }, { prov: 'gemini', direct: true }], allowed: [], bucket: 'plan' });
-  assert.equal(tierLib.planRoute(sub('basic'), 'openai', 'هلا', 29).model, 'claude-haiku-4-5', 'الرسالة ٣٠ ما زالت Haiku');
-  assert.deepEqual(tierLib.planRoute(sub('basic'), 'claude', 'اكتب كود', 30), { plan: 'basic', strong: true, prov: 'deepseek', model: '', fallback: [{ prov: 'gemini', direct: true }], allowed: [], bucket: 'plan' });
-  assert.equal(tierLib.planRoute(sub('basic'), 'groq', 'هلا', 45).prov, 'deepseek', 'المنتقي لا يغيّر مزوّد Plus');
-  assert.equal(tierLib.planRoute(sub('basic'), '', 'هلا', 10, { SUB_HAIKU_BASIC: '10' }).prov, 'deepseek', 'العتبة من البيئة');
-  assert.equal(tierLib.planRoute(sub('pro'), '', 'هلا', 999).prov, 'deepseek', 'العدّ لا يمسّ Pro');
-  assert.equal(tierLib.planRoute(sub('pro'), '', 'هلا').bucket, undefined);
-  const pro = tierLib.planRoute(sub('pro'), 'claude', 'هلا');
-  assert.deepEqual([pro.prov, pro.model, pro.fallback], ['deepseek', '', [{ prov: 'gemini' }]]);
-  const proStrong = tierLib.planRoute(sub('PRO'), '', 'ابني لي تطبيق');
-  assert.deepEqual([proStrong.prov, proStrong.model, proStrong.strong, proStrong.fallback], ['claude', 'claude-haiku-4-5', true, [{ prov: 'gemini' }, { prov: 'deepseek' }]]);
-  const max = tierLib.planRoute(sub('max'), '', 'هلا');
-  assert.deepEqual([max.prov, max.model, max.fallback], ['claude', 'claude-haiku-4-5', [{ prov: 'openai' }, { prov: 'gemini' }, { prov: 'deepseek' }]]);
-  assert.deepEqual(tierLib.planRoute(sub('max'), '', 'احسب لي الفائدة المركبة').model, 'claude-sonnet-5');
-  const maxGpt = tierLib.planRoute(sub('max'), 'openai', 'هلا');
-  assert.deepEqual([maxGpt.prov, maxGpt.model, maxGpt.fallback], ['openai', '', [{ prov: 'gemini' }, { prov: 'deepseek' }]]);
-  assert.equal(tierLib.planRoute(sub('max'), 'openai', 'اكتب كود').model, 'claude-sonnet-5', 'الدور القويّ في Max = Sonnet ولو اختار GPT');
+  const pick = (r) => [r.job, r.prov, r.model, r.direct, r.fallback.map((f) => f.prov).join('>')];
+  assert.deepEqual(pick(tierLib.planRoute(sub('basic'), 'openai', 'هلا', {}, {})), ['chat', 'groq', '', true, 'gemini>deepseek']);
+  assert.deepEqual(pick(tierLib.planRoute(sub('basic'), '', 'اكتب كود بايثون', { haiku: 4 }, {})), ['code', 'claude', 'claude-haiku-4-5', false, 'gemini>deepseek>groq']);
+  assert.deepEqual(pick(tierLib.planRoute(sub('basic'), '', 'اكتب كود بايثون', { haiku: 5 }, {})), ['code', 'deepseek', '', false, 'gemini>groq'], 'بعد ٥ Haiku → DeepSeek');
+  assert.equal(tierLib.planRoute(sub('pro'), '', 'اكتب كود بايثون', { haiku: 9 }, {}).model, 'claude-haiku-4-5');
+  assert.equal(tierLib.planRoute(sub('pro'), '', 'اكتب كود بايثون', { haiku: 10 }, {}).prov, 'deepseek');
+  assert.equal(tierLib.planRoute(sub('pro'), '', 'اكتب كود بايثون', { haiku: 10 }, { SUB_HAIKU_PRO: '20' }).prov, 'claude', 'الحدّ من البيئة');
+  assert.deepEqual(pick(tierLib.planRoute(sub('pro'), '', 'احسب لي الفائدة المركبة', {}, {})), ['math', 'deepseek', '', false, 'gemini>groq']);
+  assert.deepEqual(pick(tierLib.planRoute(sub('pro'), '', 'شو هذا', {}, {}, true)), ['image', 'gemini', '', true, 'deepseek>groq']);
+  assert.equal(tierLib.planRoute(sub('pro'), 'deepseek', 'هلا', {}, {}).prov, 'groq', 'المنتقي لا يغيّر Pro');
+  assert.equal(tierLib.planRoute(sub('max'), '', 'هلا', { haiku: 149 }, {}).model, 'claude-haiku-4-5');
+  assert.equal(tierLib.planRoute(sub('max'), '', 'هلا', { haiku: 150 }, {}).prov, 'groq', 'بعد ١٥٠ Haiku → Groq');
+  assert.equal(tierLib.planRoute(sub('max'), '', 'ابني لي صفحة', {}, {}).model, 'claude-sonnet-5');
+  assert.equal(tierLib.planRoute(sub('max'), '', 'ابني لي صفحة', { sonnet: 30 }, {}).model, 'claude-haiku-4-5', 'بعد ٣٠ Sonnet → Haiku');
+  assert.equal(tierLib.planRoute(sub('max'), '', 'ابني لي صفحة', { sonnet: 30, haiku: 150 }, {}).prov, 'deepseek');
+  assert.equal(tierLib.planRoute(sub('max'), 'deepseek', 'هلا', {}, {}).prov, 'deepseek', 'Max يختار للدردشة');
+  assert.equal(tierLib.planRoute(sub('max'), 'openai', 'هلا', {}, {}).model, 'claude-haiku-4-5', 'GPT غير مسموح → افتراضيّ Max');
+  assert.equal(tierLib.planRoute(sub('max'), 'claude', 'هلا', { haiku: 150 }, {}).prov, 'groq', 'اختيار كلود يخضع لحدّ Haiku');
+  assert.equal(tierLib.planRoute(sub('max'), 'deepseek', 'اكتب كود', {}, {}).model, 'claude-sonnet-5', 'الكود يغلب المنتقي');
+  for (const p of ['basic', 'pro', 'max']) assert.equal(tierLib.planRoute(sub(p), '', 'هلا', {}, {}).bucket, 'plan');
 });
 
 // ── (٢) chat.js: التوجيه الفعليّ والالتقاط ──
@@ -99,87 +112,107 @@ function streamResponse(text) {
   ];
   return new Response(events.map((e) => 'data: ' + JSON.stringify(e) + '\n').join('') + '\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
 }
+function oaStream(text) {
+  const sse = 'data: ' + JSON.stringify({ model: 'm', choices: [{ delta: { content: text || 'تم' } }] }) + '\n\n'
+    + 'data: ' + JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n';
+  return new Response(sse, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+const DIRECT_RE = /api\.groq\.com|generativelanguage\.googleapis\.com/;
+const CHAT_RE = /openrouter\.ai\/api\/v1\/(?:messages|chat)|api\.anthropic\.com|api\.groq\.com\/openai\/v1\/chat|generativelanguage\.googleapis\.com\/v1beta\/openai\/chat/;
 const realResolve = tierLib.resolveTier;
-async function ask(tier, provider, text, script) {
+async function ask(tier, provider, text, script, extra) {
   const bodies = [];
   const saveFetch = global.fetch;
   let i = 0;
   global.fetch = async (url, options) => {
+    const u = String(url);
     const b = options && options.body ? JSON.parse(options.body) : null;
-    bodies.push({ url: String(url), body: b });
+    if (!CHAT_RE.test(u)) return new Response('{}', { status: 404 });
+    bodies.push({ url: u, body: b });
     const step = (script || ['ok'])[Math.min(i++, (script || ['ok']).length - 1)];
-    if (step === 'ok') return streamResponse();
+    if (step === 'ok') return DIRECT_RE.test(u) ? oaStream() : streamResponse();
     return new Response(step, { status: 500 });
   };
   tierLib.resolveTier = async () => tier;
   let written = '';
-  const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: text }], token: token('plan-user'), provider } };
+  const content = (extra && extra.image) ? [{ type: 'text', text }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'iVBORw0KGgo=' } }] : text;
+  const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content }], token: token('plan-user'), provider } };
   const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('unexpected json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {} };
   try { await chat(req, res); } finally { global.fetch = saveFetch; tierLib.resolveTier = realResolve; }
   return { bodies, written };
 }
 const SUB = (plan) => ({ tier: 'sub', plan, cap: 100, subscriber: true });
+function withKeys(fn) {
+  return async () => {
+    process.env.GROQ_API_KEY = 'q-test'; process.env.GEMINI_API_KEY = 'g-test';
+    try { await fn(); } finally { delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API_KEY; counts = {}; }
+  };
+}
 
-test('٤. الخادم: Pro دردشة → DeepSeek، Pro دور قويّ → Haiku، Max → Haiku/Sonnet، Plus يطلب GPT → DeepSeek، المالك لا يُمسّ', async () => {
+test('٤. الخادم: كلّ وظيفة لمزوّدها بمفاتيحه، وحدّ كلود يُعدّ، والسقف في سلّة واحدة، والمالك لا يُمسّ', withKeys(async () => {
   chat.__orQuick.level = 2;
+  consumed.length = 0; bumped.length = 0;
   let r = await ask(SUB('pro'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار');
   assert.equal(r.bodies.length, 1);
-  assert.match(r.bodies[0].url, /openrouter\.ai\/api\/v1\/messages/);
-  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro');
+  assert.match(r.bodies[0].url, /api\.groq\.com\/openai\/v1\/chat\/completions/, 'دردشة Pro = Groq المباشر');
+  assert.equal(r.bodies[0].body.model, 'openai/gpt-oss-120b');
   assert.match(r.written, /"delta":"تم"/);
+  assert.deepEqual([consumed.at(-1), bumped.length], ['plan', 0], 'سلّة واحدة، ولا عدّ لكلود');
   r = await ask(SUB('pro'), 'claude', 'اكتب لي كود جافاسكربت يطبع هلا');
-  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'الدور القويّ في Pro = Haiku عبر الوسيط');
+  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'كود Pro = Haiku');
+  assert.deepEqual(bumped, ['plan-haiku']);
+  counts = { 'plan-haiku': 10 };
+  r = await ask(SUB('pro'), 'claude', 'اكتب لي كود جافاسكربت يطبع هلا');
+  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro', 'بعد حدّ Haiku → DeepSeek');
+  counts = {};
+  r = await ask(SUB('basic'), 'openai', 'احسب لي الفائدة المركبة على 1000');
+  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro', 'الحساب = DeepSeek');
+  r = await ask(SUB('basic'), '', 'شو في الصورة', null, { image: true });
+  assert.match(r.bodies[0].url, /generativelanguage\.googleapis\.com/, 'الصورة = Gemini المباشر');
+  assert.ok(JSON.stringify(r.bodies[0].body.messages).includes('image_url'), 'الصورة تصل');
   r = await ask(SUB('max'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار');
   assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5');
   r = await ask(SUB('max'), 'gemini', 'ابني لي صفحة هبوط لمطعم');
-  assert.equal(r.bodies[0].body.model, 'anthropic/claude-sonnet-5', 'الدور القويّ في Max = Sonnet ولو اختار مزوّدًا آخر');
+  assert.equal(r.bodies[0].body.model, 'anthropic/claude-sonnet-5', 'الكود في Max = Sonnet ولو اختار مزوّدًا آخر');
   r = await ask(SUB('max'), 'openai', 'اشرح لي الذكاء الاصطناعي باختصار');
-  assert.equal(r.bodies[0].body.model, 'openai/gpt-5.6-terra', 'Max يقدر يختار GPT للدردشة');
-  r = await ask(SUB('basic'), 'openai', 'اشرح لي الذكاء الاصطناعي باختصار');
-  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'Plus يطلب GPT → Haiku (أوّل ٣٠ رسالة)');
-  usedToday = 30;
-  try {
-    r = await ask(SUB('basic'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار');
-    assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro', 'بعد ٣٠ رسالة → DeepSeek');
-  } finally { usedToday = 0; }
+  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'Max لا يختار GPT');
   r = await ask({ tier: 'owner', plan: null, cap: Infinity, subscriber: true }, 'claude', 'اكتب لي كود');
-  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'المالك على افتراضيّه (v-chat-economy: Haiku 4.5)');
-  // مفتاح أنثروبيك حاضر → كلود مباشر بالاسم المباشر، وDeepSeek يبقى عبر الوسيط
+  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'المالك على افتراضيّه');
   process.env.ANTHROPIC_API_KEY = 'sk-test';
   try {
-    r = await ask(SUB('max'), 'claude', 'احسب لي الفائدة المركبة على 1000');
+    r = await ask(SUB('max'), 'claude', 'اكتب كود بايثون');
     assert.match(r.bodies[0].url, /api\.anthropic\.com/);
     assert.equal(r.bodies[0].body.model, 'claude-sonnet-5');
-    r = await ask(SUB('pro'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار');
-    assert.match(r.bodies[0].url, /openrouter\.ai/);
-    assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro');
   } finally { delete process.env.ANTHROPIC_API_KEY; }
-});
+}));
 
-test('٥. الخادم: تعطّل مزوّد الباقة قبل أوّل حرف → التالي في سلسلة الباقة بصمت، ثمّ السلسلة المجّانيّة', async () => {
+test('٥. الخادم: تعطّل مزوّد الوظيفة قبل أوّل حرف → Gemini ثمّ DeepSeek ثمّ Groq بصمت، ثمّ السلسلة المجّانيّة', withKeys(async () => {
   chat.__orQuick.level = 2;
-  let r = await ask(SUB('pro'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار', ['{"error":"insufficient credits"}', 'ok']);
-  assert.equal(r.bodies.length, 2);
-  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro');
-  assert.equal(r.bodies[1].body.model, 'google/gemini-3.8-flash', 'الالتقاط داخل الباقة');
+  let r = await ask(SUB('pro'), 'claude', 'اكتب كود بايثون', ['{"error":"insufficient credits"}', 'ok']);
+  assert.deepEqual(r.bodies.map((b) => b.body.model), ['anthropic/claude-haiku-4.5', 'gemini-flash-latest']);
   assert.match(r.written, /"delta":"تم"/);
-  assert.doesNotMatch(r.written, /"error"/, 'بصمت');
-  r = await ask(SUB('max'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار', ['boom', 'boom', 'ok']);
-  assert.deepEqual(r.bodies.slice(0, 3).map((b) => b.body.model), ['anthropic/claude-haiku-4.5', 'openai/gpt-5.6-terra', 'google/gemini-3.8-flash']);
+  assert.doesNotMatch(r.written, /"error"|Gemini/, 'بصمت وبلا اسم مزوّد');
+  r = await ask(SUB('basic'), '', 'هلا', ['boom', 'boom', 'ok']);
+  assert.deepEqual(r.bodies.map((b) => b.body.model), ['openai/gpt-oss-120b', 'gemini-flash-latest', 'deepseek/deepseek-v4-pro']);
   assert.match(r.written, /"delta":"تم"/);
-  // الكلّ معطّل → السلسلة المجّانيّة (OpenRouter المجّانيّ هنا) ثمّ رسالة الانشغال بلا خطأ خام
-  r = await ask(SUB('basic'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار', ['boom']);
-  assert.deepEqual(r.bodies.slice(0, 2).map((b) => b.body.model), ['anthropic/claude-haiku-4.5', 'deepseek/deepseek-v4-pro'], 'بلا مفتاح Gemini يُتخطّى الاحتياط المباشر');
-  assert.ok(r.bodies.length > 2, 'ثمّ السلسلة المجّانيّة');
-  assert.match(r.written, /"fallback":true/, 'الفشل النهائيّ كما كان (v-king-fallback): العميل يلتقط');
+}));
+
+test('٥-ب. بلا مفاتيح مباشرة: Groq وGemini يُتخطّيان (لا انقلاب صامت)، والكلّ معطّل → السلسلة المجّانيّة', async () => {
+  chat.__orQuick.level = 2;
+  let r = await ask(SUB('basic'), '', 'هلا', ['boom']);
+  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro', 'بلا مفتاح Groq/Gemini → DeepSeek عبر الوسيط');
+  assert.ok(r.bodies.length > 1, 'ثمّ السلسلة المجّانيّة');
+  assert.match(r.written, /"fallback":true/, 'الفشل النهائيّ كما كان (v-king-fallback)');
 });
 
-test('٦. البنية: التوجيه قبل فحص الحصّة، والالتقاط قبل الهبوط المجّانيّ، والحقول let لا const', () => {
+test('٦. البنية: التوجيه قبل فحص الحصّة، والالتقاط قبل الهبوط المجّانيّ، والمباشر للمالك Groq/GPT فقط', () => {
   const s = read('api/_lib/chat.js');
   const route = s.indexOf('__planRoute = tierLib.planRoute(__tier, reqProv, lastUserText, ');
   const consume = s.indexOf("const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : ((__planRoute && __planRoute.bucket) || prov)");
   const lastUser = s.indexOf('const lastUserAny = messages.slice().reverse().find(');
   assert.ok(route > 0 && lastUser > 0 && lastUser < route && route < consume, 'الرسالة الأخيرة → التوجيه → الحصّة');
+  const bump = s.indexOf("await bumpCount(__planUser, 'plan-' + __planRoute.meter)");
+  assert.ok(bump > consume, 'حدّ كلود يُعدّ بعد قبول الحصّة');
   const loop = s.indexOf('while (!upstream.ok && !anyText && __planFallbacks.length) {');
   const finalFail = s.indexOf('if (!upstream.ok) {\n        const errText = (await upstream.text()).slice(0, 300);');
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");
@@ -187,34 +220,6 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
   assert.ok(s.includes('const applyRoute = (p, model, direct) => {'));
   for (const v of ['let prov', 'let viaOR', 'let apiKey', 'let CHAT_URL', 'let DEFAULT_MODEL']) assert.ok(s.includes(v + ' '), v);
   assert.ok(s.includes("callUpstream = (withImg) => __upFetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
-});
-
-test('٦-ب. Plus: Haiku ثمّ DeepSeek يتعطّلان → Gemini بمفتاحه المباشر بصمت وبلا اسم مزوّد؛ مسار المالك المباشر لا يشمل Gemini', async () => {
-  chat.__orQuick.level = 2;
-  process.env.GEMINI_API_KEY = 'g-test';
-  const saveFetch = global.fetch;
-  const calls = [];
-  global.fetch = async (url, options) => {
-    const u = String(url);
-    calls.push({ url: u, body: options && options.body ? JSON.parse(options.body) : null });
-    if (/generativelanguage/.test(u)) {
-      const sse = 'data: ' + JSON.stringify({ model: 'gemini-flash-latest', choices: [{ delta: { content: 'هلا' } }] }) + '\n\n'
-        + 'data: ' + JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n';
-      return new Response(sse, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
-    }
-    return new Response('{"error":"insufficient credits"}', { status: 402 });
-  };
-  tierLib.resolveTier = async () => SUB('basic');
-  let written = '';
-  const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: 'اشرح لي الذكاء الاصطناعي باختصار' }], token: token('plan-user'), provider: 'openai' } };
-  const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('unexpected json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {} };
-  try { await chat(req, res); } finally { global.fetch = saveFetch; tierLib.resolveTier = realResolve; delete process.env.GEMINI_API_KEY; }
-  const chatCalls = calls.filter((c) => /openrouter\.ai\/api\/v1\/messages|generativelanguage/.test(c.url));
-  assert.deepEqual(chatCalls.slice(0, 3).map((c) => (c.body && c.body.model)), ['anthropic/claude-haiku-4.5', 'deepseek/deepseek-v4-pro', 'gemini-flash-latest']);
-  assert.match(chatCalls[2].url, /generativelanguage\.googleapis\.com\/v1beta\/openai\/chat\/completions/);
-  assert.match(written, /"delta":"هلا"/);
-  assert.doesNotMatch(written, /Gemini|"error"/, 'بصمت وبلا اسم مزوّد');
-  const s = read('api/_lib/chat.js');
   assert.ok(s.includes("let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai'))"), 'Gemini ليس في مسار المالك المباشر');
   assert.ok(s.includes('if (!upstream.ok && __direct && __ownerReq && !anyText'), 'سطر «النموذج غير متاح» للمالك وحده');
 });

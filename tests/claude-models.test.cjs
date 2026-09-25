@@ -57,7 +57,7 @@ test('٣. الخادم: body.model على مسار كلود فقط، رجوع ل
   assert.ok(s.includes("k: 'stModelFallback', p: { model: __pick.label }"));
   assert.ok(s.includes('CHAT_MODEL = DEFAULT_MODEL;'));
   assert.ok(s.includes('if (__imgCfg) __imgCfg = imageTurnConfig(process.env, viaOR, CHAT_MODEL);'), 'دور الصورة يتبع النموذج بعد الرجوع');
-  assert.ok(s.includes('let __imgCfg = lastUserHasImage'));
+  assert.ok(s.includes('let __imgCfg = (lastUserHasImage && !__direct)'));
   // الرجوع يسبق الفشل النهائيّ (الاحتياط) ويأتي بعد إعادة دور الصورة
   const imgRetry = s.indexOf("upstream = await callUpstream(false);\n      }\n      // v-claude-models");
   const fallback = s.indexOf('if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {');
