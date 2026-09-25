@@ -26151,7 +26151,7 @@ function stuL(ar, en){
 
 /* v-pstyle-img: وسم إصدار صور الأنماط — /assets/ مخبّأة يومًا كاملًا (وأسبوعًا stale)،
    فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
-const PSTYLE_IMG_V = '2';
+const PSTYLE_IMG_V = '9';
 function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
