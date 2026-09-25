@@ -261,6 +261,14 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-media-plans: إعداد جودة الصور لمشترك الصور (عاديّة/عالية).
+    if (action === 'media-quality') {
+      if (!username) { res.status(401).json({ ok: false, reason: 'auth' }); return; }
+      const ok = await media.setImageQuality(username, String(body.quality || ''));
+      res.status(ok ? 200 : 400).json({ ok });
+      return;
+    }
+
     if (action === 'maha-trial-used') {
       // تسجيل استهلاك الدقيقة التجريبية المجانية لمها (مرة وحدة بالعمر).
       if (!username) { res.status(401).json({ ok: false, reason: 'auth' }); return; }

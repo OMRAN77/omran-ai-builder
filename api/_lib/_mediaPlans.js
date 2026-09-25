@@ -8,12 +8,13 @@ const MEDIA_WINDOW_DAYS = 35;
 const MEDIA_WINDOW_MS = MEDIA_WINDOW_DAYS * 86400000;
 
 // الرصيد بالفلس = تكلفتنا المسموحة بعد ربح المالك ورسوم الدفع:
-// ٣٧٫٥ ← ربح ~٢٨ · ٧٥ ← ~٦٢ · ٣٧٥ ← ~٢٠٠ درهم.
+// صور: ٣٧٫٥ ← ربح ~٢٠ · ٧٥ ← ~٥٣ · ٣٧٥ ← ~١٦٠ درهم (المالك: «قلّل الربح وزِد الصور»).
+// فيديو: ٣٧٫٥ ← ~٢٨ · ٧٥ ← ~٦٢ · ٣٧٥ ← ~٢٠٠ درهم.
 // المبالغ بالدولار مطابقة للدرهم (÷٣٫٦٧٢٥) ومميّزة عن باقات المحادثة لأنّ PayPal يطابق بالمبلغ.
 const MEDIA_PLANS = {
-  img_basic: { media: 'image', amount: 1021, paypal: '10.21', budget: 780, name: 'صور — 37.5 درهم / Images — 37.5 AED' },
-  img_pro: { media: 'image', amount: 2042, paypal: '20.42', budget: 1000, name: 'صور — 75 درهم / Images — 75 AED' },
-  img_max: { media: 'image', amount: 10211, paypal: '102.11', budget: 16250, name: 'صور — 375 درهم / Images — 375 AED' },
+  img_basic: { media: 'image', amount: 1021, paypal: '10.21', budget: 1531, name: 'صور — 37.5 درهم / Images — 37.5 AED' },
+  img_pro: { media: 'image', amount: 2042, paypal: '20.42', budget: 1872, name: 'صور — 75 درهم / Images — 75 AED' },
+  img_max: { media: 'image', amount: 10211, paypal: '102.11', budget: 20302, name: 'صور — 375 درهم / Images — 375 AED' },
   vid_basic: { media: 'video', amount: 1021, paypal: '10.21', budget: 736, name: 'فيديو — 37.5 درهم / Video — 37.5 AED' },
   vid_pro: { media: 'video', amount: 2042, paypal: '20.42', budget: 927, name: 'فيديو — 75 درهم / Video — 75 AED' },
   vid_max: { media: 'video', amount: 10211, paypal: '102.11', budget: 16280, name: 'فيديو — 375 درهم / Video — 375 AED' },
@@ -21,7 +22,8 @@ const MEDIA_PLANS = {
 
 // تكلفة كلّ عمليّة علينا بالفلس — يُخصم من رصيد الاشتراك بدل النقاط.
 const UNIT_COST = {
-  image: 49,          // صورة عالية (المحرّك الأساسيّ)
+  image_normal: 25,   // صورة عاديّة (المحرّك السريع)
+  image: 50,          // صورة عالية (المحرّك الأساسيّ) = صورتان عاديّتان
   image_4k: 88,
   image_creative: 49, // فرق الإبداعيّ فوق الصورة (أفضل-من-٢)
   image_upscale: 10,
@@ -124,6 +126,31 @@ async function refundMedia(username, pts) {
   return left;
 }
 
+const QUALITIES = ['normal', 'high'];
+const HIGH_ASK_RE = /(?:جود[ةه]\s*عالي[ةه]|عالي[ةه]\s*الجود[ةه]|\bhigh[-\s]?quality\b|\bHD\b)/i;
+// الكتابة داخل الصورة تذهب لمسار النصّ الأغلى، فتُحسب عالية دائمًا.
+const TEXT_ASK_RE = /(?:اكتب|أكتب|كتاب[ةه]|نصّ?|خطّ?\s|اسم|حرف|\bwrite\b|\btext\b|\bwords?\b)/i;
+
+/** جودة صورة مشترك الصور: «عاديّة» افتراضيًّا، و«جودة عالية» في الطلب أو الإعداد تجعلها عالية. null = ليس مشتركًا. */
+async function imageQuality(username, text, opts) {
+  const o = opts || {};
+  let user = null;
+  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  if (!mediaActive(user, 'image', o.now)) return null;
+  if (HIGH_ASK_RE.test(String(text || '')) || TEXT_ASK_RE.test(String(text || ''))) return 'high';
+  return user.media.image.quality === 'high' ? 'high' : 'normal';
+}
+
+async function setImageQuality(username, quality) {
+  if (!QUALITIES.includes(quality)) return false;
+  const { getUser, putUser } = require('./auth.js');
+  const user = await getUser(username);
+  if (!mediaActive(user, 'image')) return false;
+  user.media.image.quality = quality;
+  await putUser(username, user);
+  return true;
+}
+
 /** الرصيد المتبقّي وعدد ما يكفيه من كلّ نوع — للواجهة. */
 async function mediaStatus(username, opts) {
   const o = opts || {};
@@ -137,11 +164,12 @@ async function mediaStatus(username, opts) {
     const counts = {};
     for (const r of Object.keys(UNIT_COST)) if (mediaOf(r) === kind && r !== 'image_creative') counts[r] = Math.floor(left / UNIT_COST[r]);
     out[kind] = { plan: user.media[kind].plan, left, counts };
+    if (kind === 'image') out.image.quality = user.media.image.quality === 'high' ? 'high' : 'normal';
   }
   return out;
 }
 
 module.exports = {
   MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS,
-  mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, mediaStatus,
+  mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, mediaStatus, imageQuality, setImageQuality,
 };

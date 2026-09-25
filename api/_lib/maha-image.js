@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
   let guestImageCharge = null;
   /* v-img-engine-tag-owner (متابعة): مسار النصّ (__textRoute) يقرّر GPT هو الصحّ لكن قد يفشل نداؤه
      فيسقط بصمت إلى برو/نانو — بلا هذا السطر يرى المالك «nano» بلا أيّ فكرة عن سبب تجاوز GPT له. */
-  let __textRouteFailNote = '';
+  let __textRouteFailNote = '', __mediaQuality = '', __mediaLeft = 0; /* v-media-plans: جودة صورة مشترك الصور ومتبقّيه بعد الخصم من رصيده */
   let __cardsNote = '';
   async function refundImageCharge() {
     if (mahaImgCharged && pointsLib) {
@@ -131,8 +131,8 @@ module.exports = async (req, res) => {
         // v-costs-2026-09: 4K بطلب صريح (4k / للطباعة / دقة عالية) تكلف أكثر فتُسعَّر أعلى.
         const __ask4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i
           .test(String(userText || '') + ' ' + String(prompt || ''));
-        const __imgCost = __ask4K ? pointsLib.COSTS.image_4k : pointsLib.COSTS.image;
-        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : 'image');
+        const __imgCost = __ask4K ? pointsLib.COSTS.image_4k : pointsLib.COSTS.image; const __mq = __ask4K ? null : await require('./_mediaPlans.js').imageQuality(mahaImgUser, String(userText || '') + ' ' + String(prompt || '')).catch(() => null); /* v-media-plans: «عاديّة» بنصف الرصيد على المحرّك السريع */
+        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : (__mq === 'normal' ? 'image_normal' : 'image')); if (pay.ok && pay.media === 'image') { __mediaQuality = __mq || 'high'; __mediaLeft = pay.mediaLeft; }
         if (!pay.ok) {
           res.status(402).json({ error: 'points_insufficient', needed: __imgCost, points: pay.points || 0 });
           return;
@@ -245,7 +245,7 @@ module.exports = async (req, res) => {
         upscaled: (__up && __up.ok) ? { scale: __up.scale, width: __up.w, height: __up.h } : undefined,
         authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
         visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
-        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
+        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined, mediaTag: __mediaQuality ? { q: __mediaQuality, left: Math.floor(__mediaLeft / 25) } : undefined, /* v-media-plans: الجودة والمتبقّي بالصور العاديّة */
       });
     }
 
@@ -374,7 +374,7 @@ module.exports = async (req, res) => {
        فالفرق يُخصم هنا حين تتّضح. رصيد لا يكفي الفرق = ردّ الأساس و402 بالسعر الكامل. المالك وVIP لا يُخصم منهما. */
     if (isCreativeEdit && mahaImgCharged && !__pureRaw) {
       const __extra = Math.max(0, pointsLib.COSTS.image_creative - mahaImgChargedAmount);
-      if (__extra > 0) {
+      if (__extra > 0 && __mediaQuality !== 'normal') { /* v-media-plans: العاديّة على نانو بلا فرق الإبداعيّ */
         const __xp = await pointsLib.spendPoints(mahaImgCharged, __extra, 'image_creative');
         if (!__xp.ok) {
           await refundImageCharge();
@@ -386,7 +386,7 @@ module.exports = async (req, res) => {
     }
     /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
     /* v-image-modes: توغل «نانو خام» للمالك يفرض نانو بدل برو. v-models-latest: نانو ٢٫٥ يُوقف ٢ أكتوبر ٢٠٢٦ → نانو ٢ (٣٫١) بالصيغة النظيفة نفسها. */
-    const primaryModel = (__optForceEngine === 'nano') ? 'gemini-3.1-flash-image'
+    const primaryModel = (__optForceEngine === 'nano') ? 'gemini-3.1-flash-image' : (__mediaQuality === 'normal') ? 'gemini-3.1-flash-image' /* v-media-plans: العاديّة */
       : (editImageBase64 ? ((isCreativeEdit || isTextSwap || isPersonSwap || isBroadEdit) ? creativeModel : editModel) : creativeModel);
     const nanoPrimary = /flash-image/.test(primaryModel);
     /* v-lanes: المسار الأمين = تعديل ليس إبداعيًّا ولا تبديل أشخاص ولا تعديلًا واسعًا — يحتفظ بحرارته المنخفضة على أيّ محرّك.

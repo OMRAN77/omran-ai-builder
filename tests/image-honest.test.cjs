@@ -360,7 +360,7 @@ test('١٧. مراجعة العميل: متابعة الدمج تعدّل آخر
   const a9 = read('js/app-09-attach.js');
   assert.match(a9, /if\(!imageAttachments\.length && window\.__omMode === 'image_mix' && cur\.lastEditedImage && cur\.lastEditedImage\.b64 && cur\.lastMsgWasImageEdit && text && text\.length <= 300 && !__IMGF_NEW_RE\.test\(text\)\)\{/);
   assert.equal((a9.match(/__data\.__diag\.free \|\| __data\.__diag\.tried \|\| '\?'/g) || []).length, 2);
-  assert.match(a9, /content:\(typeof __lsData\.caption === 'string' \? __lsData\.caption : ''\) \+ __imgEngineLine\(__lsData\.engine\)/);
+  assert.match(a9, /content:\(typeof __lsData\.caption === 'string' \? __lsData\.caption : ''\) \+ __imgEngineLine\(__lsData\.engine(, __lsData)?\)/); // v-media-plans: الوسم يمرّ معه
   assert.match(a9, /b64\.length < 2000000 && !\/webp\/i\.test\(String\(mime \|\| ''\)\)\)\) return/);
   assert.ok(read('js/app.bundle.js').includes("window.__omMode === 'image_mix' && cur.lastEditedImage"), 'الحزمة مبنيّة');
 });

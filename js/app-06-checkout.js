@@ -46,11 +46,26 @@ function renderMediaPlanStatus(media){
   if(!box) return;
   const m = media || {};
   const lines = [];
-  if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image) || 0) + '</b> ' + t('mediaImgUnit'));
+  if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' (' + t('mediaHighEq') + ')');
   if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
   box.innerHTML = lines.join('<br>');
   box.style.display = lines.length ? 'block' : 'none';
+  const qb = document.getElementById('mediaQualityBox');
+  if(qb){
+    qb.style.display = m.image ? 'block' : 'none';
+    const q = (m.image && m.image.quality) === 'high' ? 'high' : 'normal';
+    qb.querySelectorAll('.mediaQBtn').forEach(function(b){ const on = b.getAttribute('data-q') === q; b.style.borderColor = on ? '#c9a227' : ''; b.style.background = on ? 'rgba(201,162,39,.16)' : 'transparent'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  }
 }
+async function setMediaQuality(q){
+  const token = authGet('aiapp_auth_token');
+  if(!token) return;
+  try{
+    const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'media-quality', token, quality:q }) });
+    if(r.ok) refreshPointsWallet();
+  }catch(e){ __swallow(e, 'media:quality'); }
+}
+window.setMediaQuality = setMediaQuality;
 
 // جلب رصيد النقاط وعرضه في صف المحفظة أعلى قسم الباقات
 async function refreshPointsWallet(){
