@@ -457,6 +457,12 @@ const $ = s => document.querySelector(s);
     if(userLabel) userLabel.textContent = username;
     // v214: الاسم صار داخل قائمة ⋮ — الشارة العلوية تبقى مخفية
     updateAvatarUI();
+    // v-checkout-login: من ضغط «اشترك» وهو زائر يعود لنافذة الدفع نفسها بعد الدخول.
+    const pendingPlan = window.__pendingCheckoutPlan;
+    if(pendingPlan && authGet('aiapp_auth_token') && typeof window.openCheckout === 'function'){
+      window.__pendingCheckoutPlan = null;
+      try{ window.openCheckout(pendingPlan); }catch(e){ __swallow(e, 'auth:resume-checkout'); }
+    }
   }
 
   // Single header button next to ⚙️ Settings that doubles as the login/logout
@@ -1391,6 +1397,7 @@ const $ = s => document.querySelector(s);
     setMode('login');
     if(reason === 'guestLimit'){ errBox.textContent = curT().guestLimitMsg; }
     if(reason === 'guestImage'){ setMode('signup'); errBox.textContent = curT().guestImageMsg || curT().guestLimitMsg; }
+    if(reason === 'checkout'){ setMode('signup'); errBox.textContent = curT().checkoutLoginFirst || ''; }
     showOverlay();
   };
 

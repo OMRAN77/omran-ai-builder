@@ -173,7 +173,20 @@ function omranIOSStoreApp(){
 }
 
 function openCheckout(plan){
+  // v-checkout-login: الدفع بلا حساب كان يُخصم ولا يصل لأحد — التسجيل أوّلًا، ثمّ تعود النافذة نفسها بعد الدخول.
+  if(!authGet('aiapp_auth_token')){
+    window.__pendingCheckoutPlan = plan;
+    const sd0 = document.getElementById('settingsDialog');
+    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if(typeof window.requireLogin === 'function') window.requireLogin('checkout');
+    else settingsToast(t('checkoutLoginFirst'));
+    return;
+  }
   checkoutCurrentPlan = plan;
+  const arRow = document.getElementById('checkoutAutoRenewRow');
+  const arBox = document.getElementById('checkoutAutoRenew');
+  if (arBox) arBox.checked = false;
+  if (arRow) arRow.style.display = /^pack\d+$/.test(String(plan)) ? 'none' : 'flex';
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
   const overlay = document.getElementById('checkoutModalOverlay');
@@ -223,7 +236,7 @@ async function startStripeCheckout(){
     const r = await fetch('/api/account?action=create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token') }),
+      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token'), autoRenew: !!(document.getElementById('checkoutAutoRenew') || {}).checked }),
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
@@ -408,7 +421,7 @@ async function loadPaypalButtons(){
           const cr = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan }),
+            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan, token: authGet('aiapp_auth_token') }),
           });
           const cd = await cr.json();
           if (!cr.ok) throw new Error(cd.error || 'error');

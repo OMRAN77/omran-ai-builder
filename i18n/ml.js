@@ -171,6 +171,8 @@ I18N['ml'] = {
     "checkoutTitle": "സബ്‌സ്ക്രിപ്ഷൻ പൂർത്തിയാക്കുക",
     "checkoutTestBadge": "🧪 ടെസ്റ്റ് മോഡ്",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "ആദ്യം സൈൻ അപ്പ് ചെയ്യുക അല്ലെങ്കിൽ ലോഗിൻ ചെയ്യുക, തുടർന്ന് സബ്‌സ്‌ക്രൈബ് ചെയ്യുക",
+    "checkoutAutoRenew": "🔁 കാർഡ് വഴി എല്ലാ മാസവും സ്വയമേവ പുതുക്കൽ",
     "checkoutTelecomOption": "കാരിയർ ബില്ലിംഗ് (Etisalat/du)",
     "checkoutComingSoon": "ഉടൻ വരുന്നു",
     "checkoutPlanLabelBasic": 'Plus പ്ലാൻ $10/മാസം — 360 പോയിന്റുകൾ',

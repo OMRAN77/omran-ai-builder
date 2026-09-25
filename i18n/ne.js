@@ -181,6 +181,8 @@ I18N['ne'] = {
     checkoutTitle: "सदस्यता पूरा गर्नुहोस्",
     checkoutTestBadge: "🧪 परीक्षण मोड",
     checkoutCardOption: "भिसा / मास्टरकार्ड",
+    checkoutLoginFirst: "पहिले साइन अप वा लग इन गर्नुहोस्, त्यसपछि सदस्यता लिनुहोस्",
+    checkoutAutoRenew: "🔁 कार्डबाट हरेक महिना स्वतः नवीकरण",
     checkoutTelecomOption: "क्यारियर बिलिङ (Etisalat/du)",
     checkoutComingSoon: "चाँडै आउँदैछ",
     checkoutPlanLabelBasic: 'Plus योजना $10/महिना — 360 अंक',

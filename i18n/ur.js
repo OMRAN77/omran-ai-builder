@@ -180,6 +180,8 @@ I18N['ur'] = {
     checkoutTitle: "سبسکرپشن مکمل کریں",
     checkoutTestBadge: "🧪 ٹیسٹ موڈ",
     checkoutCardOption: "ویزا / ماسٹر کارڈ",
+    checkoutLoginFirst: "پہلے سائن اپ یا لاگ اِن کریں، پھر سبسکرائب کریں",
+    checkoutAutoRenew: "🔁 کارڈ سے ہر مہینے خودکار تجدید",
     checkoutTelecomOption: "ٹیلی کام بلنگ (Etisalat/du)",
     checkoutComingSoon: "جلد آ رہا ہے",
     checkoutPlanLabelBasic: 'Plus پلان $10/ماہ — 360 پوائنٹس',

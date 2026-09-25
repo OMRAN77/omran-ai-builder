@@ -169,6 +169,8 @@ I18N['tr'] = {
     "checkoutTitle": "Aboneliği Tamamla",
     "checkoutTestBadge": "🧪 Test Modu",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Önce kaydolun veya giriş yapın, sonra abone olun",
+    "checkoutAutoRenew": "🔁 Kartla her ay otomatik yenileme",
     "checkoutTelecomOption": "Operatör Faturalandırması (Etisalat/du)",
     "checkoutComingSoon": "Yakında geliyor",
     "checkoutPlanLabelBasic": 'Plus Plan 10$/ay — 360 puan',
