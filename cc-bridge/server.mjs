@@ -14,7 +14,7 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { timingSafeEqual, randomBytes } from 'node:crypto';
-import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, decideTool, briefTool, redact } from './policy.mjs';
+import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, decideTool, briefTool, detailTool, DETAIL_MAX, redact } from './policy.mjs';
 import { makeGit } from './git.mjs';
 import { makeWatcher, wakeMessage } from './watch.mjs';
 
@@ -154,11 +154,12 @@ async function runMessage(log, message, opts) {
         const ev = msg.event || {};
         if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta' && ev.delta.text) { sawText = true; log.push({ delta: ev.delta.text }); }
       } else if (msg.type === 'assistant' && msg.message && Array.isArray(msg.message.content)) {
-        for (const b of msg.message.content) if (b && b.type === 'tool_use') log.push({ tool: { name: b.name, brief: redact(briefTool(b.name, b.input)) } });
+        for (const b of msg.message.content) if (b && b.type === 'tool_use') log.push({ tool: { id: b.id, name: b.name, brief: redact(briefTool(b.name, b.input)), detail: redact(detailTool(b.name, b.input)) } });
       } else if (msg.type === 'user' && msg.message && Array.isArray(msg.message.content)) {
         for (const b of msg.message.content) if (b && b.type === 'tool_result') {
           const t = typeof b.content === 'string' ? b.content : (Array.isArray(b.content) ? b.content.map((c) => c.text || '').join('\n') : '');
           if (!b.is_error) watchFromText(t);
+          log.push({ toolResult: { id: b.tool_use_id, error: !!b.is_error, text: redact(t.length > DETAIL_MAX ? t.slice(0, DETAIL_MAX) + '\n… (مقصوص)' : t) } });
           if (b.is_error) log.push({ toolError: redact(String(t).slice(0, 300)) });
         }
       } else if (msg.type === 'result') {

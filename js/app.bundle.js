@@ -6412,6 +6412,10 @@ function renderMessages(keepScroll){
       const __oOpt = omranExtractOptions(__mc);
       msgWordEls = buildSpokenWordSpans(textDiv, __oOpt ? __oOpt.text : __mc);
       if(__oOpt && mIdx === cur.messages.length - 1) omranRenderOptions(textDiv, __oOpt.blocks);
+      // v-cc-fold: ردّ Claude Code — أدواته وأكواده الطويلة مطويّة بترتيبها داخل الردّ
+      if(m._cc && window.omranCC && typeof window.omranCC.decorate === 'function'){
+        try{ const __ccw = window.omranCC.decorate(textDiv, m); if(__ccw) msgWordEls = __ccw; }catch(e){ __swallow(e, 'cc:fold'); }
+      }
     } else {
       textDiv.textContent = __mc;
     }
@@ -35795,7 +35799,98 @@ if(document.readyState === 'loading'){
   function unreadHint(){
     return api('notes').then(function(j){ return (j && j.unread) ? '\n🔔 ' + j.unread + ' إشعار جديد — اكتب «الإشعارات».' : ''; }).catch(function(){ return ''; });
   }
-  function push(cur, text){ cur.messages.push({ role: 'assistant', content: '🧑‍💻 ' + String(text || '').trim(), _cc: true }); }
+  /* v-cc-fold (المالك: «مثل تطبيق Claude — الملفات والأكواد مطويّة داخل المحادثة»): الردّ يُحفظ
+     أجزاءً بترتيبها (نصّ · مجموعة أدوات)، وكلّ أداة سطر مطويّ ينفتح على الأمر أو التعديل وناتجه. */
+  var FOLD_BUDGET = 60000, CODE_FOLD_LINES = 15;
+  function capParts(parts){
+    var used = 0;
+    parts.forEach(function(p){ (p.items || []).forEach(function(it){
+      ['detail', 'result'].forEach(function(k){ var s = String(it[k] || ''); if(used + s.length > FOLD_BUDGET){ it[k] = s ? '… (حُذف للحجم)' : ''; } else used += s.length; });
+    }); });
+    return parts;
+  }
+  function push(cur, text, parts){
+    var m = { role: 'assistant', content: '🧑‍💻 ' + String(text || '').trim(), _cc: true };
+    if(parts && parts.some(function(p){ return p.t === 'tools'; })){
+      var first = parts.filter(function(p){ return p.t === 'text'; })[0];
+      if(first) first.s = '🧑‍💻 ' + first.s.replace(/^\s+/, ''); else parts.unshift({ t: 'text', s: '🧑‍💻' });
+      m._ccParts = capParts(parts);
+    }
+    cur.messages.push(m);
+  }
+  function foldPre(text, asDiff, isErr){
+    var p = document.createElement('pre');
+    p.dir = 'ltr';
+    p.style.cssText = 'margin:4px 0; padding:8px; max-height:320px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow:auto; border-radius:8px; background:rgba(0,0,0,.25); font-size:11.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; text-align:left;' + (isErr ? ' color:#f87171;' : '');
+    if(asDiff){
+      String(text).split('\n').forEach(function(l){
+        var sp = document.createElement('span');
+        sp.style.cssText = 'display:block; font-family:inherit;' + (/^\+ /.test(l) ? ' color:#4ade80; background:rgba(74,222,128,.08);' : /^- /.test(l) ? ' color:#f87171; background:rgba(248,113,113,.08);' : '');
+        sp.textContent = l;
+        p.appendChild(sp);
+      });
+    } else p.textContent = text;
+    return p;
+  }
+  function toolsEl(items){
+    var d = document.createElement('details');
+    d.className = 'cc-tools';
+    d.style.cssText = 'margin:6px 0; padding:2px 10px; border:1px solid var(--line2,rgba(128,128,128,.28)); border-radius:10px; font-size:12.5px;';
+    var errs = items.filter(function(it){ return it.err; }).length;
+    var s = document.createElement('summary');
+    s.style.cssText = 'cursor:pointer; color:var(--muted); padding:5px 0;';
+    s.textContent = '🔧 استخدم ' + items.length + ' ' + (items.length === 1 ? 'أداة' : 'أدوات') + (errs ? ' · ⚠️ ' + errs : '');
+    d.appendChild(s);
+    items.forEach(function(it){
+      var x = document.createElement('details');
+      x.className = 'cc-tool';
+      x.style.cssText = 'margin:3px 0; padding-inline-start:8px; border-inline-start:2px solid var(--line2,rgba(128,128,128,.28));';
+      var xs = document.createElement('summary');
+      xs.style.cssText = 'cursor:pointer; overflow-wrap:anywhere; padding:2px 0;';
+      xs.textContent = (it.err ? '⚠️ ' : '') + (it.brief || it.name || 'أداة');
+      x.appendChild(xs);
+      if(it.detail) x.appendChild(foldPre(it.detail, /^(Edit|MultiEdit|Write)$/.test(it.name || ''), false));
+      if(it.result) x.appendChild(foldPre(it.result, false, it.err));
+      if(!it.detail && !it.result){ var e = document.createElement('div'); e.style.cssText = 'color:var(--muted); font-size:11.5px; padding:2px 0 4px;'; e.textContent = 'بلا ناتج.'; x.appendChild(e); }
+      d.appendChild(x);
+    });
+    return d;
+  }
+  function foldCode(root){
+    Array.prototype.slice.call(root.querySelectorAll('.chat-codeblock')).forEach(function(b){
+      var pre = b.querySelector('pre');
+      if(!pre || (b.parentNode && b.parentNode.className === 'cc-code-fold')) return;
+      var n = pre.textContent.replace(/\n+$/, '').split('\n').length;
+      if(n <= CODE_FOLD_LINES) return;
+      var d = document.createElement('details');
+      d.className = 'cc-code-fold';
+      d.style.cssText = 'margin:6px 0;';
+      var s = document.createElement('summary');
+      s.style.cssText = 'cursor:pointer; color:var(--muted); font-size:12.5px; padding:4px 0;';
+      var lbl = b.querySelector('.chat-codeblock-head span');
+      s.textContent = '📄 ' + ((lbl && lbl.textContent) || 'code') + ' · ' + n + ' سطر';
+      b.parentNode.insertBefore(d, b);
+      d.appendChild(s); d.appendChild(b);
+    });
+  }
+  /** يستدعيه renderMessages لكلّ ردّ Claude Code: الأجزاء بترتيبها والأدوات مطويّة، والكود الطويل مطويّ. يعيد كلمات القراءة. */
+  function decorate(textDiv, m){
+    var words = null;
+    if(Array.isArray(m._ccParts) && m._ccParts.length && typeof buildSpokenWordSpans === 'function'){
+      textDiv.innerHTML = '';
+      words = [];
+      m._ccParts.forEach(function(p){
+        if(p.t === 'tools' && Array.isArray(p.items) && p.items.length){ textDiv.appendChild(toolsEl(p.items)); return; }
+        if(p.t !== 'text' || !String(p.s || '').trim()) return;
+        var d = document.createElement('div');
+        var w = buildSpokenWordSpans(d, p.s);
+        if(w && w.length) words = words.concat(w);
+        textDiv.appendChild(d);
+      });
+    }
+    foldCode(textDiv);
+    return words;
+  }
   function say(cur, thinkingDiv, text){ try{ thinkingDiv.textContent = '🧑‍💻 ' + text; }catch(e){ /* guard-ok */ } }
 
   /** الأوامر الصريحة من الصندوق: تنفيذ + رسالة في المحادثة. الدمج والتراجع بتأكيد. */
@@ -35870,7 +35965,12 @@ if(document.readyState === 'loading'){
     S.since = 0; S.runId = ''; S.retries = 0;
     var step = status.step('🧑‍💻', 'Claude Code يعمل…');
     var full = '', result = null, err = '', initModel = '';
+    var parts = [];
+    var last = function(){ return parts[parts.length - 1]; };
     var onEv = function(ev){
+      if(ev.tool){ var it = { id: ev.tool.id || '', name: ev.tool.name || '', brief: ev.tool.brief || '', detail: ev.tool.detail || '' }; if(last() && last().t === 'tools') last().items.push(it); else parts.push({ t: 'tools', items: [it] }); }
+      if(ev.toolResult) parts.forEach(function(p){ (p.items || []).forEach(function(it){ if(it.id && it.id === ev.toolResult.id){ it.result = ev.toolResult.text || ''; it.err = !!ev.toolResult.error; } }); });
+      if(ev.delta){ if(last() && last().t === 'text') last().s += ev.delta; else parts.push({ t: 'text', s: ev.delta }); }
       if(ev.run) S.runId = ev.run;
       /* v-cc-session-per-chat: جلسة Claude Code مربوطة بمحادثة التطبيق نفسها لا بالمتصفّح كلّه —
          محادثة جديدة في التطبيق = جلسة جديدة، والرجوع لمحادثة قديمة يستأنف جلستها. */
@@ -35959,7 +36059,9 @@ if(document.readyState === 'loading'){
         var ranModel = (result && result.models && result.models.length) ? result.models.join(' + ') : (initModel || (st && st.model) || '');
         if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '') + (ranModel ? ' · النموذج: ' + ranModel : '') + (result.effort ? ' · الجهد: ' + result.effort : '');
         if(st){ var s2 = Object.assign({}, st); if(ranModel) delete s2.model; foot += (foot ? '\n' : '') + statusLine(s2) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : ''); }
-        push(cur, prevOut + body + (foot ? '\n\n' + foot : '') + x.hint);
+        var tail = (full.trim() ? (err ? '\n\n⚠️ ' + err : '') : body) + (foot ? '\n\n' + foot : '') + x.hint;
+        var ccParts = (prevOut ? [{ t: 'text', s: prevOut }] : []).concat(parts, tail.trim() ? [{ t: 'text', s: tail }] : []);
+        push(cur, prevOut + body + (foot ? '\n\n' + foot : '') + x.hint, ccParts);
       });
   }
 
@@ -35969,7 +36071,7 @@ if(document.readyState === 'loading'){
     return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, _fold: { push: push, capParts: capParts } };
 })();
 /* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
    v-models-two (أمر عمران ١٤ سبتمبر): القائمة محصورة في Opus 5 + Sonnet 5، والاختيار
