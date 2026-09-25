@@ -110,6 +110,19 @@ window.refreshPointsWallet = refreshPointsWallet;
    تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
    يُستدعى تلقائيًا عند فتح قسم «حسابي» — لا زر ولا خطوة من المستخدم. */
 const ACCT_POINTS_LOW = 20;
+// v-acct-media: سطر لكلّ اشتراك ساري (صور · فيديو · مها) تحت رصيد النقاط في «حسابي».
+function renderAcctMedia(media){
+  const box = document.getElementById('acctMediaBox');
+  if(!box) return;
+  const m = media || {};
+  const row = (label, value) => '<div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-weight: var(--w-bold); white-space:nowrap;">' + label + '</span><span style="font-weight:800; color:#d4af37; text-align:end;">' + value + '</span></div>';
+  const rows = [];
+  if(m.image && m.image.counts) rows.push(row(t('priceTabImg'), (Number(m.image.counts.image_normal) || 0) + ' ' + t('mediaImgPlain')));
+  if(m.video && m.video.counts) rows.push(row(t('priceTabVid'), (Number(m.video.counts.minimax_video) || 0) + ' ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' ' + (Number(m.video.counts.omni_video) || 0) + ' ' + t('mediaVidCine')));
+  if(m.maha && m.maha.counts) rows.push(row(t('priceTabMaha'), (Number(m.maha.counts.maha_minute) || 0) + ' ' + t('mahaMinUnit')));
+  box.innerHTML = rows.join('');
+  box.style.display = rows.length ? 'flex' : 'none';
+}
 async function refreshAcctPoints(){
   const box = document.getElementById('acctPointsBox');
   const val = document.getElementById('acctPointsValue');
@@ -117,12 +130,13 @@ async function refreshAcctPoints(){
   const warnText = document.getElementById('acctPointsLowText');
   if(!box || !val) return;
   const token = authGet('aiapp_auth_token');
-  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
-    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     box.style.display = 'flex';
+    renderAcctMedia(d.media);
     if(d.unlimited){
       val.textContent = '∞';
       if(warn) warn.style.display = 'none';

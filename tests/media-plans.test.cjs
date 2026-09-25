@@ -150,7 +150,7 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     const s = read('i18n/' + l + '.js');
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=668'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=669'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=691'"));
 });
 
@@ -272,4 +272,23 @@ test('٩. اشتراك مها (v-maha-plans): ٤٦ · ٧٥ · ٤٧٨ دقيقة�
   const i18n = read('js/app-03-i18n-data.js');
   for (const l of ['ar', 'en']) assert.ok(keys.every((k) => new RegExp('I18N\\.' + l + ', \\{[^\\n]*"' + k + '"').test(i18n)), l);
   for (const l of ['fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml']) assert.ok(keys.every((k) => read('i18n/' + l + '.js').includes('"' + k + '"')), l);
+});
+
+test('١٠. «حسابي» (v-acct-media): سطر لكلّ اشتراك ساري تحت النقاط، ولا شيء لغير المشترك', () => {
+  const html = read('js/partials-settings.js');
+  assert.ok(html.indexOf('id="acctMediaBox"') > html.indexOf('id="acctPointsBox"') && html.indexOf('id="acctMediaBox"') < html.indexOf('id="acctPointsLowWarn"'), 'تحت النقاط');
+  const co = read('js/app-06-checkout.js');
+  const src = co.slice(co.indexOf('function renderAcctMedia('), co.indexOf('async function refreshAcctPoints('));
+  const box = { style: {}, innerHTML: '' };
+  const tr = { priceTabImg: '🖼️ الصور', priceTabVid: '🎬 الفيديو', priceTabMaha: '🎙️ مها', mediaImgPlain: 'صورة', mediaVidEco: 'اقتصادي', mediaOr: 'أو', mediaVidCine: 'سينمائيّ', mahaMinUnit: 'دقيقة' };
+  const render = new Function('document', 't', src + '; return renderAcctMedia;')({ getElementById: (id) => id === 'acctMediaBox' ? box : null }, (k) => tr[k] || k);
+  render({ image: { counts: { image_normal: 42 } }, maha: { counts: { maha_minute: 32 } } });
+  assert.equal(box.style.display, 'flex');
+  assert.ok(box.innerHTML.includes('🖼️ الصور') && box.innerHTML.includes('42 صورة'));
+  assert.ok(box.innerHTML.includes('🎙️ مها') && box.innerHTML.includes('32 دقيقة'));
+  assert.ok(!box.innerHTML.includes('🎬'), 'لا سطر فيديو بلا اشتراك');
+  render({});
+  assert.equal(box.style.display, 'none');
+  assert.equal(box.innerHTML, '');
+  assert.match(co, /box\.style\.display = 'flex';\n {4}renderAcctMedia\(d\.media\);/);
 });

@@ -52,6 +52,8 @@
       <span style="font-weight: var(--w-bold);">⭐ <span data-i18n="acctPointsLabel">رصيد النقاط</span></span>
       <span id="acctPointsValue" style="font-weight:800; color:#d4af37; direction:ltr; unicode-bidi:isolate;">—</span>
     </div>
+    <!-- v-acct-media: المتبقّي من اشتراكات الصور/الفيديو/مها تحت النقاط — سطر لكلّ اشتراك ساري فقط -->
+    <div id="acctMediaBox" style="display:none; flex-direction:column; gap:6px; padding:10px 12px; margin:-8px 0 14px; border-radius:var(--r-2); background:rgba(212,175,55,.05); border:1px solid rgba(212,175,55,.22); font-size: var(--fs-3);"></div>
     <div id="acctPointsLowWarn" style="display:none; padding:10px 12px; margin:-6px 0 14px; border-radius:var(--r-2); background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.40); color:#ef4444; font-size:12.5px; line-height:1.7;">
       <span id="acctPointsLowText" data-i18n="acctPointsLow">⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.</span>
       <button type="button" id="acctPointsBuyBtn" onclick="if(typeof showSettingsPage==='function')showSettingsPage('pricingSection'); if(typeof showPriceTab==='function')showPriceTab('pts')" style="display:block; margin-top:7px; width:100%; padding:9px; border-radius:8px; border:1px solid rgba(212,175,55,.5); background:rgba(212,175,55,.12); color:#d4af37; font-weight:700; cursor:pointer;" data-i18n="acctPointsBuyBtn">💳 شحن النقاط</button>
