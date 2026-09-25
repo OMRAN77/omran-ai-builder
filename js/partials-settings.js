@@ -54,7 +54,7 @@
     </div>
     <div id="acctPointsLowWarn" style="display:none; padding:10px 12px; margin:-6px 0 14px; border-radius:var(--r-2); background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.40); color:#ef4444; font-size:12.5px; line-height:1.7;">
       <span id="acctPointsLowText" data-i18n="acctPointsLow">⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.</span>
-      <button type="button" id="acctPointsBuyBtn" onclick="if(typeof showSettingsPage==='function')showSettingsPage('pricingSection')" style="display:block; margin-top:7px; width:100%; padding:9px; border-radius:8px; border:1px solid rgba(212,175,55,.5); background:rgba(212,175,55,.12); color:#d4af37; font-weight:700; cursor:pointer;" data-i18n="acctPointsBuyBtn">💳 شحن النقاط</button>
+      <button type="button" id="acctPointsBuyBtn" onclick="if(typeof showSettingsPage==='function')showSettingsPage('pricingSection'); if(typeof showPriceTab==='function')showPriceTab('pts')" style="display:block; margin-top:7px; width:100%; padding:9px; border-radius:8px; border:1px solid rgba(212,175,55,.5); background:rgba(212,175,55,.12); color:#d4af37; font-weight:700; cursor:pointer;" data-i18n="acctPointsBuyBtn">💳 شحن النقاط</button>
     </div>
     <button type="button" id="acctLogoutBtn" style="display:none; width:100%; padding:11px; margin-bottom:14px; border-radius:var(--r-2); border:1px solid rgba(239,68,68,.45); background:rgba(239,68,68,.10); color:#ef4444; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="logoutTitle">🚪 تسجيل الخروج</button>
     <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:14px;">
@@ -369,6 +369,8 @@
     <b id="pricingWalletValue" style="margin-inline-start:auto; font-size: var(--fs-2);">—</b>
   </div>
   <style>
+  .priceTabBtn{padding:9px 4px; border-radius:10px; border:1px solid var(--line2,rgba(128,128,128,.30)); background:transparent; color:var(--text); font-family:inherit; font-size:12.5px; cursor:pointer;}
+  .priceTabBtn.on{border-color:#c9a227; background:rgba(201,162,39,.16); font-weight:700;}
   .planGrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:12px; align-items:stretch; margin-top:6px;}
   .pcard{position:relative; background:var(--panel2); border:1px solid var(--line,rgba(128,128,128,.18)); border-radius:16px; padding:20px 16px 16px; display:flex; flex-direction:column;}
   .pcard.feat{border-color:rgba(201,162,39,.45);}
@@ -392,7 +394,15 @@
   .pcard .pbtn.primary{background:#c9a227; border-color:#c9a227; color:#0a0a0a;}
   .pcard .pbtn.ghost{opacity:.45; cursor:default;}
   </style>
-  <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;" data-i18n="currencyLabel">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div><div class="planGrid">
+  <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;" data-i18n="currencyLabel">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div>
+  <!-- v-price-tabs: كلّ نوع اشتراك في قسمه — المحادثة · الصور · الفيديو · النقاط -->
+  <div id="priceTabs" role="tablist" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:0 0 12px;">
+    <button type="button" role="tab" class="priceTabBtn on" data-tab="chat" onclick="showPriceTab('chat')" data-i18n="priceTabChat">💬 المحادثة</button>
+    <button type="button" role="tab" class="priceTabBtn" data-tab="img" onclick="showPriceTab('img')" data-i18n="priceTabImg">🖼️ الصور</button>
+    <button type="button" role="tab" class="priceTabBtn" data-tab="vid" onclick="showPriceTab('vid')" data-i18n="priceTabVid">🎬 الفيديو</button>
+    <button type="button" role="tab" class="priceTabBtn" data-tab="pts" onclick="showPriceTab('pts')" data-i18n="priceTabPts">⚡ النقاط</button>
+  </div>
+  <div class="priceTab" data-tab="chat"><div class="planGrid">
     <div class="pcard">
       <div class="pname" data-i18n="pricingFreeTitle">مجاني</div>
       <div class="pprice"><span class="pnum" data-usd="0">0</span><span class="pcur cursym">$</span></div>
@@ -425,10 +435,9 @@
       <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro · 250 رسالة يوميًا</li><li data-i18n="plMaxVoice">حتّى 213 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">حتّى 150 صورة · 3 فيديو</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
-  </div>
+  </div></div>
   <!-- v-media-plans: اشتراكات الصور/الفيديو وحدها — رصيد خاصّ بلا نقاط ولا محادثة المشتركين -->
-  <div id="mediaPlansBox" style="margin-top:16px;">
-    <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="mediaPlansTitle">اشتراكات الصور والفيديو</div>
+  <div class="priceTab" data-tab="img" id="mediaPlansBox" style="display:none;">
     <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mediaPlansDesc">لمن يريد الصور أو الفيديو فقط — بلا محادثة. رصيد كلّ اشتراك خاصّ به ولا يُصرف على غيره.</div>
     <div id="mediaPlanStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
     <div id="mediaQualityBox" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--line2,rgba(128,128,128,.30)); border-radius:10px;">
@@ -462,6 +471,10 @@
       <button type="button" class="pbtn" onclick="openCheckout('img_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     </div>
+  </div>
+  <div class="priceTab" data-tab="vid" style="display:none;">
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mediaPlansDesc">لمن يريد الصور أو الفيديو فقط — بلا محادثة. رصيد كلّ اشتراك خاصّ به ولا يُصرف على غيره.</div>
+    <div id="mediaVidStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
     <div class="planGrid" style="margin-top:10px;">
     <div class="pcard">
       <div class="pname" data-i18n="mediaVidName">فيديو</div>
@@ -486,7 +499,7 @@
     </div>
     </div>
   </div>
-  <div style="margin-top:16px;">
+  <div class="priceTab" data-tab="pts" style="display:none;">
     <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingPointsTitle">باقات النقاط</div>
     <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو سينمائي: 275</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
