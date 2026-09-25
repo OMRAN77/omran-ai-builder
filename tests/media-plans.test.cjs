@@ -150,7 +150,7 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     const s = read('i18n/' + l + '.js');
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=666'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=667'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=690'"));
 });
 
@@ -193,6 +193,7 @@ test('٨. أقسام الأسعار (v-price-tabs): المحادثة · الصو
     assert.equal((html.match(new RegExp('class="priceTab" data-tab="' + k + '"', 'g')) || []).length, 1, 'قسم ' + k);
   }
   assert.ok(html.includes('class="priceTabBtn on" data-tab="chat"'));
+  assert.ok(!html.includes('id="openFullPricing"'), 'رابط «عرض كل الباقات» فوق الأسعار حُذف');
   assert.ok(html.includes('<div class="priceTab" data-tab="chat"><div class="planGrid">'), 'المحادثة ظاهرة');
   const sec = (k) => { const i = html.indexOf('class="priceTab" data-tab="' + k + '"'); const n = tabs.indexOf(k) < 3 ? html.indexOf('class="priceTab" data-tab="' + tabs[tabs.indexOf(k) + 1] + '"') : html.indexOf('termsLink', i); return html.slice(i, n); };
   for (const k of ['img', 'vid', 'pts']) assert.match(sec(k), /^class="priceTab" data-tab="\w+"[^>]*style="display:none;"/, k + ' مخفيّ حتّى يُختار');
