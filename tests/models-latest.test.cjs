@@ -102,6 +102,7 @@ test('٤. لا موديل موقوف أو يُوقف قريبًا في نداء 
   const mi = read('api/_lib/maha-image.js');
   assert.ok(mi.includes("(__optForceEngine === 'nano') ? 'gemini-3.1-flash-image'"));
   assert.ok(mi.includes('const nanoPrimary = /flash-image/.test(primaryModel);'), 'نانو ٢ بالصيغة النظيفة نفسها (بلا imageConfig)');
+  assert.ok(mi.includes(".filter(function (m) { return m !== primaryModel; });"), 'إنقاذ نانو لا يعيد الموديل الذي فشل عليه «نانو خام»');
   const sr = read('api/_lib/search.js');
   assert.ok(sr.includes("'openai/gpt-oss-20b'"), 'بديل Groq الرسميّ');
   assert.ok(sr.includes("max_tokens: reasoning ? 400 : 3"), 'gpt-oss يفكّر — ٣ رموز كانت سترجع فارغًا');
@@ -133,6 +134,6 @@ test('٧. كلود: Opus 5.5 في الوكيل وتحليل الكود والم�
   assert.ok(m.includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"));
   assert.ok(read('js/app.bundle.js').includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"), 'الحزمة أُعيد بناؤها');
   assert.ok(read('js/modes.js').includes("['claude-opus-5-5','Opus 5.5']"));
-  assert.ok(read('index.html').includes('js/modes.js?v=m250925a') && read('index.html').includes('js/partials-settings.js?v=663'), 'وسوم الكاش رُفعت');
+  assert.ok(read('index.html').includes('js/modes.js?v=m250925b') && read('index.html').includes('js/partials-settings.js?v=663'), 'وسوم الكاش رُفعت');
   assert.ok(read('js/app-10-features.js').includes("'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',"), 'اختيار الوسيط المحفوظ يهاجر');
 });

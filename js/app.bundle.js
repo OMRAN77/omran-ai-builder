@@ -18959,9 +18959,8 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       body: JSON.stringify(Object.assign({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }, (function(){
         /* v-image-modes: خيارات «+» للصورة (للمالك) تُمرَّر أعلامًا؛ الخادم يقبلها للمالك وحده. */
         var __o = String(window.__omMode || ''), __x = {};
-        if(__o === 'image_hd') __x.want4K = true;
-        else if(__o === 'image_text') __x.textFaithful = true;
-        else if(__o === 'image_nano') __x.forceEngine = 'nano';
+        /* v-img-write-modes: 4K والنصّ الدقيق خرجا من «+» — الخادم يلتقطهما من كتابة الطلب */
+        if(__o === 'image_nano') __x.forceEngine = 'nano';
         else if(__o === 'image_gpt') __x.forceEngine = 'gpt';
         else if(__o === 'image_mix') __x.engineMix = true; /* v-img-mix: المحرّكان معًا وصورة واحدة */
         return __x;
@@ -20036,6 +20035,18 @@ function __friendlyErr(e){
         renderAll(); saveState();
         return;
       }
+      /* v-stamps-plus (طلب عمران ٢٥ سبتمبر): حتّى ٣ صور (إخوان) بالترتيب، والخيارات من الكتابة أو من لوحة الثيمات:
+         العدد ٦/١٢/٢٤، الشكل منوّع/دائري/مربّع/قلب، الوجه حقيقيّ/كرتونيّ. المحفوظ آخر مرّة هو الافتراضيّ. */
+      const __stImgs = imageAttachments.filter(function(a){ return a && a.dataUrl; }).slice(-3).map(function(a){ return { b64:a.dataUrl.split(',')[1], mime:a.mime||'image/jpeg' }; });
+      if(!__stImgs.length) __stImgs.push({ b64:__stSrcB64, mime:__stSrcMime });
+      window.__stOpts = (function(){
+        var o = { count:12, shape:'mixed', style:'real' };
+        try{ var sv = JSON.parse(localStorage.getItem('omStampOpts') || '{}'); if([6,12,24].indexOf(sv.count) !== -1) o.count = sv.count; if(['mixed','circle','square','heart'].indexOf(sv.shape) !== -1) o.shape = sv.shape; if(sv.style === 'cartoon') o.style = 'cartoon'; }catch(e){ __swallow(e, 'stamps:opts-read'); }
+        var n = text.match(/(?:^|\s)(6|٦|12|١٢|24|٢٤)\s*(?:طابع|طوابع|ملصق|ستيكر)/); if(n) o.count = { '6':6,'٦':6,'12':12,'١٢':12,'24':24,'٢٤':24 }[n[1]];
+        if(/دائري|دائريه|دائرية|دوائر/.test(text)) o.shape = 'circle'; else if(/مربع|مربعات/.test(text)) o.shape = 'square'; else if(/قلب|قلوب/.test(text)) o.shape = 'heart';
+        if(/كرتون|كرتوني|كرتونيه|كرتونية/.test(text)) o.style = 'cartoon'; else if(/حقيقي|حقيقيه|حقيقية/.test(text)) o.style = 'real';
+        return o;
+      })();
       const __stNameM = text.match(/(?:باسم|بأسم|اسمه|اسمها|اسم|إسم|بي\s*اسم)\s*([^\n.،,؟!]{2,25})/);
       let __stName = __stNameM ? __stNameM[1].trim() : '';
       // 🏫 v729: المدرسة والمادة اختياريتان — «مدرسة كذا» و«مادة كذا»
@@ -20048,7 +20059,9 @@ function __friendlyErr(e){
       __stName = __stName.replace(__stCutRe,'').trim();
       __stSchool = __stSchool.replace(/\s*(?:و\s*)?(?:مادته|مادتها|مادة|ماده|المادة|الماده)(?=\s|$)[\s\S]*$/,'').trim();
       __stSubject = __stSubject.replace(/\s*(?:و\s*)?(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)(?=\s|$)[\s\S]*$/,'').trim();
-      if(!/فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|قيمنق|قيمنج|جيمنج|جيمر|بلايستيشن|أنمي|انمي|مانجا|ستريت|سكيت|قرافيتي|جرافيتي|مغامر|طعوس|دباب|اوف رود|أوف رود|أساطير|اساطير|ذئب|تنين|بناتي|استاتيك|اسثتيك|فاشن|موضة|موضه|مكياج|فاجئني|عشوائي/i.test(text)){
+      /* v-stamps-plus: «باسم أحمد وسارة» مع صورتين = اسم لكلّ صورة بالترتيب */
+      const __stNames = __stImgs.length > 1 ? __stName.split(/\s+و\s*|\s*[،,]\s*/).map(function(x){ return x.trim(); }).filter(Boolean).slice(0, 3) : [];
+      if(!/فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|قيمنق|قيمنج|جيمنج|جيمر|بلايستيشن|أنمي|انمي|مانجا|ستريت|سكيت|قرافيتي|جرافيتي|مغامر|طعوس|دباب|اوف رود|أوف رود|أساطير|اساطير|ذئب|تنين|بناتي|استاتيك|اسثتيك|فاشن|موضة|موضه|مكياج|سبونج|توم وجيري|ميكي|ميني|فروزن|إلسا|سبايدر|باو باترول|بيبا|بوكيمون|بيكاتشو|ماريو|مينيون|باربي|كارز|ماكوين|فاجئني|عشوائي/i.test(text)){
         // 🎨 v734: ورقة ثيمات كاملة — overlay picker بدل نص مرقّم
         window.__stPickTheme = window.__stPickTheme || function(){
           return new Promise(function(rs){
@@ -20061,6 +20074,13 @@ function __friendlyErr(e){
                 {k:'تراث صقر',e:'🦅'},{k:'روبوتات',e:'🤖'},{k:'حلويات',e:'🍩'},
                 {k:'فراشات',e:'🦋'},{k:'مدرسي كلاسيكي',e:'📚'},
                 {k:'كرومي',e:'🎨'},{k:'ماي ملدي',e:'🐰'},{k:'هالو كاتي',e:'🎀'},{k:'الدببة الثلاثة',e:'🐻'}
+              ]},
+              /* v-stamps-plus: شخصيات الكرتون المشهورة — t.img (صورة البطاقة من assets/stamps/) تظهر متى أُضيفت، وإلّا الإيموجي */
+              { t:'⭐ شخصيات كرتون', th:[
+                {k:'سبونج بوب',e:'🧽'},{k:'توم وجيري',e:'🧀'},{k:'ميكي ماوس',e:'🐭'},
+                {k:'فروزن',e:'❄️'},{k:'سبايدرمان',e:'🕷️'},{k:'باو باترول',e:'🐶'},
+                {k:'بيبا',e:'🐷'},{k:'بوكيمون',e:'⚡'},{k:'ماريو',e:'🍄'},
+                {k:'مينيونز',e:'💛'},{k:'باربي',e:'💖'},{k:'كارز',e:'🏎️'}
               ]},
               { t:'🧑 شباب +12', th:[
                 {k:'قيمنق',e:'🎮'},{k:'أنمي',e:'⚔️'},{k:'ستريت',e:'🛹'},
@@ -20078,7 +20098,7 @@ function __friendlyErr(e){
                 +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px;">';
               g.th.forEach(function(t){
                 cards+='<button class="__stCard" data-k="'+t.k+'" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:16px;padding:13px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">'
-                  +'<span style="font-size:34px;line-height:1.1">'+t.e+'</span>'
+                  +(t.img ? '<img src="'+t.img+'" alt="" loading="lazy" style="width:56px;height:56px;object-fit:cover;border-radius:12px" onerror="this.outerHTML=\'<span style=&quot;font-size:34px;line-height:1.1&quot;>'+t.e+'</span>\'">' : '<span style="font-size:34px;line-height:1.1">'+t.e+'</span>')
                   +'<span style="font-size:11px;color:#ddd;font-weight:600;text-align:center;line-height:1.3">'+t.k+'</span>'
                   +'</button>';
               });
@@ -20087,6 +20107,22 @@ function __friendlyErr(e){
             ov.innerHTML='<div dir="rtl" style="width:100%;max-width:430px;max-height:87vh;overflow-y:auto;background:#18181f;border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 24px 70px rgba(0,0,0,.7);">'
               +'<div style="font-size:17px;font-weight:700;margin-bottom:3px;text-align:center;">🏷️ اختر ثيم الطوابع</div>'
               +'<div style="font-size:12px;opacity:.55;margin-bottom:14px;text-align:center;">اضغط وأبدأ التصميم مباشرة</div>'
+              +(function(){ /* v-stamps-plus: خيارات الورقة */
+                var O = window.__stOpts || { count:12, shape:'mixed', style:'real' };
+                var row = function(label, key, items){
+                  return '<div style="margin-bottom:10px;"><div style="font-size:12px;color:#aaa;margin:0 2px 6px;text-align:right;">'+label+'</div><div style="display:flex;gap:6px;">'
+                    + items.map(function(it){ var on = String(O[key]) === String(it[0]);
+                      return '<button class="__stOpt" data-key="'+key+'" data-v="'+it[0]+'" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation;border:1px solid '+(on?'rgba(168,130,255,.8)':'rgba(255,255,255,.12)')+';background:'+(on?'rgba(168,130,255,.22)':'rgba(255,255,255,.04)')+';color:'+(on?'#e6dcff':'#ccc')+';">'+it[1]+'</button>'; }).join('')
+                    + '</div></div>';
+                };
+                var nImg = window.__stImgCount || 1;
+                return '<div style="border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px 10px 4px;margin-bottom:14px;background:rgba(255,255,255,.02);">'
+                  + '<div style="font-size:12px;color:#c9b3ff;margin:0 2px 10px;text-align:right;">📸 '+(nImg > 1 ? (nImg+' صور — طوابع لكلّ واحد + طابع يجمعهم') : 'صورة وحدة — تقدر ترفق لين ٣ صور للإخوان')+'</div>'
+                  + row('عدد الطوابع', 'count', [[6,'6 كبيرة'],[12,'12'],[24,'24 صغيرة']])
+                  + row('الشكل', 'shape', [['mixed','منوّع'],['circle','⚪ دائري'],['square','⬜ مربّع'],['heart','❤️ قلب']])
+                  + row('الوجه', 'style', [['real','📷 حقيقي'],['cartoon','🎨 كرتوني']])
+                  + '</div>';
+              })()
               +cards
               +'<button id="__stSurp" style="width:100%;padding:13px;border-radius:14px;border:1px solid rgba(168,130,255,.4);background:rgba(168,130,255,.1);color:#c9b3ff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:9px;touch-action:manipulation;">✨ فاجئني — اختر لي</button>'
               +'<button id="__stCnc" style="width:100%;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#777;font-size:13px;cursor:pointer;touch-action:manipulation;">إلغاء</button>'
@@ -20094,18 +20130,27 @@ function __friendlyErr(e){
             document.body.appendChild(ov);
             function done(v){try{document.body.removeChild(ov);}catch(_){ /* guard-ok — cleanup, intentional */ }rs(v);}
             ov.querySelectorAll('.__stCard').forEach(function(b){b.onclick=function(){done(b.getAttribute('data-k'));};});
+            ov.querySelectorAll('.__stOpt').forEach(function(b){b.onclick=function(){
+              var key = b.getAttribute('data-key'), v = b.getAttribute('data-v');
+              window.__stOpts = window.__stOpts || { count:12, shape:'mixed', style:'real' };
+              window.__stOpts[key] = key === 'count' ? Number(v) : v;
+              try{ localStorage.setItem('omStampOpts', JSON.stringify(window.__stOpts)); }catch(e){ __swallow(e, 'stamps:opts-save'); }
+              ov.querySelectorAll('.__stOpt[data-key="'+key+'"]').forEach(function(x){ var on = x === b;
+                x.style.borderColor = on ? 'rgba(168,130,255,.8)' : 'rgba(255,255,255,.12)'; x.style.background = on ? 'rgba(168,130,255,.22)' : 'rgba(255,255,255,.04)'; x.style.color = on ? '#e6dcff' : '#ccc'; });
+            };});
             ov.querySelector('#__stSurp').onclick=function(){done('فاجئني');};
             ov.querySelector('#__stCnc').onclick=function(){done(null);};
             ov.addEventListener('click',function(e){if(e.target===ov)done(null);});
           });
         };
+        window.__stImgCount = __stImgs.length;
         var __stHint = await window.__stPickTheme();
         if(!__stHint){ thinkingDiv.remove(); renderAll(); saveState(); return; }
         // فاجئني → أرسل hint فارغ عشان السيرفر يختار عشوائياً
         var __stFinalHint = __stHint === 'فاجئني' ? '' : __stHint;
         __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
         try{
-          var __stBodyOv = { name:__stName, school:__stSchool, subject:__stSubject, hint:__stFinalHint, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+          var __stBodyOv = { name:__stName, names:__stNames, school:__stSchool, subject:__stSubject, hint:__stFinalHint, imageBase64:__stSrcB64, mimeType:__stSrcMime, images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
           var __stResOv = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBodyOv)});
           var __stDataOv = await __stResOv.json().catch(()=>({}));
           if(!__stResOv.ok || !__stDataOv.imageBase64){
@@ -20128,7 +20173,7 @@ function __friendlyErr(e){
       }
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
-        const __stBody = { name:__stName, school:__stSchool, subject:__stSubject, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stBody = { name:__stName, names:__stNames, school:__stSchool, subject:__stSubject, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
