@@ -108,3 +108,23 @@ test('الشاشة مفتوحة من الطرفين والكود النموذج�
   assert.ok(app05.includes('window.OMRAN_STARTER_APP_CODE'), 'عرض التطبيق النموذجي في المعاينة عند خلو الكود');
 });
 
+test('حذف العنوان والشارة العلوية واختفاء بطاقات الأدوات فورًا عند دخول المحادثة', () => {
+  const html = read('index.html');
+  assert.ok(!html.includes('huawei-hero-head'), 'حذف عنصر رأس البطاقات huawei-hero-head');
+  assert.ok(!html.includes('huawei-hero-title'), 'حذف عنوان أدوات سريعة من فوق البطاقات');
+
+  const css = read('css/redesign.css');
+  assert.ok(css.includes('body:not(.omranWelcome) #huaweiHeroWrap'), 'إخفاء قاطع للبطاقات خارج وضع الترحيب');
+
+  const wiring = read('js/ui-wiring.js');
+  assert.ok(wiring.includes('window.syncWelcome = syncWelcome'), 'إتاحة دالة syncWelcome على window');
+  assert.ok(wiring.includes("hwHero.style.setProperty('display', 'none', 'important')"), 'إخفاء فوري للبطاقات بالخاصية المباشرة عند وجود رسائل');
+
+  const app04 = read('js/app-04-i18n-state.js');
+  assert.ok(app04.includes("document.body.classList.toggle('omranWelcome', !hasMsgs)"), 'تحديث وضع الترحيب فورًا في renderMessages');
+
+  const app09 = read('js/app-09-attach.js');
+  assert.ok(app09.includes("document.body.classList.remove('omranWelcome')"), 'إزالة وضع الترحيب فور إرسال رسالة في sendPrompt');
+});
+
+

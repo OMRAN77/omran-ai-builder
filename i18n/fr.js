@@ -198,6 +198,8 @@ I18N['fr'] = {
     checkoutTitle: "Finaliser l'abonnement",
     checkoutTestBadge: "🧪 Mode test",
     checkoutCardOption: "Visa / Mastercard",
+    checkoutLoginFirst: "Inscrivez-vous ou connectez-vous d’abord, puis abonnez-vous",
+    checkoutAutoRenew: "🔁 Renouvellement automatique mensuel par carte",
     checkoutTelecomOption: "Facturation opérateur (Etisalat/du)",
     checkoutComingSoon: "Bientôt disponible",
     checkoutPlanLabelBasic: 'Forfait Plus 10 $/mois — 360 points',

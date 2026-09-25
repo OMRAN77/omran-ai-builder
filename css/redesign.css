@@ -56,6 +56,10 @@ body.omranWelcome #messages{display:none;}
 
 /* ---------------- 📱 بطاقات أدوات هواوي في شاشة الترحيب (طلب عمران لمتجر AppGallery) ---------------- */
 #huaweiHeroWrap{display:none !important;}
+body:not(.omranWelcome) #omranHero,
+body:not(.omranWelcome) #huaweiHeroWrap{
+  display:none !important;
+}
 html.store-safe body.omranWelcome #huaweiHeroWrap{
   display:flex !important;
   flex-direction:column;

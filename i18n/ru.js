@@ -170,6 +170,8 @@ I18N['ru'] = {
     "checkoutTitle": "Оформление подписки",
     "checkoutTestBadge": "🧪 Тестовый режим",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Сначала зарегистрируйтесь или войдите, затем оформите подписку",
+    "checkoutAutoRenew": "🔁 Автопродление каждый месяц с карты",
     "checkoutTelecomOption": "Оплата через оператора (Etisalat/du)",
     "checkoutComingSoon": "Скоро",
     "checkoutPlanLabelBasic": 'Тариф Plus 10 $/мес — 360 баллов',

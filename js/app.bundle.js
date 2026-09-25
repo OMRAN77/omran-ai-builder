@@ -595,6 +595,12 @@ const $ = s => document.querySelector(s);
     if(userLabel) userLabel.textContent = username;
     // v214: الاسم صار داخل قائمة ⋮ — الشارة العلوية تبقى مخفية
     updateAvatarUI();
+    // v-checkout-login: من ضغط «اشترك» وهو زائر يعود لنافذة الدفع نفسها بعد الدخول.
+    const pendingPlan = window.__pendingCheckoutPlan;
+    if(pendingPlan && authGet('aiapp_auth_token') && typeof window.openCheckout === 'function'){
+      window.__pendingCheckoutPlan = null;
+      try{ window.openCheckout(pendingPlan); }catch(e){ __swallow(e, 'auth:resume-checkout'); }
+    }
   }
 
   // Single header button next to ⚙️ Settings that doubles as the login/logout
@@ -1529,6 +1535,7 @@ const $ = s => document.querySelector(s);
     setMode('login');
     if(reason === 'guestLimit'){ errBox.textContent = curT().guestLimitMsg; }
     if(reason === 'guestImage'){ setMode('signup'); errBox.textContent = curT().guestImageMsg || curT().guestLimitMsg; }
+    if(reason === 'checkout'){ setMode('signup'); errBox.textContent = curT().checkoutLoginFirst || ''; }
     showOverlay();
   };
 
@@ -3611,6 +3618,8 @@ const I18N = {
     checkoutTitle: 'إتمام الاشتراك',
     checkoutTestBadge: '🧪 وضع تجريبي (Test Mode)',
     checkoutCardOption: 'بطاقة',
+    checkoutLoginFirst: 'سجّل حسابك أو ادخل أوّلًا، ثمّ اشترك',
+    checkoutAutoRenew: '🔁 تجديد تلقائيّ كلّ شهر بالبطاقة',
     checkoutApplePay: 'Apple Pay',
     checkoutGooglePay: 'Google Pay',
     checkoutWalletUnavailable: 'غير متوفر على هذا الجهاز',
@@ -3849,6 +3858,8 @@ const I18N = {
     checkoutTitle: 'Complete Subscription',
     checkoutTestBadge: '🧪 Test Mode',
     checkoutCardOption: 'Card',
+    checkoutLoginFirst: 'Sign up or log in first, then subscribe',
+    checkoutAutoRenew: '🔁 Auto-renew monthly by card',
     checkoutApplePay: 'Apple Pay',
     checkoutGooglePay: 'Google Pay',
     checkoutWalletUnavailable: 'Not available on this device',
@@ -4711,7 +4722,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=691'; /* v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=692'; /* v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6232,7 +6243,21 @@ function renderHistory(){
           if(typeof updateProviderQuickBarActive === 'function') updateProviderQuickBarActive();
         }
       }catch(e){ __swallow(e, "save:app-04-i18n-state#38"); }
-      state.currentId = p.id; mahaClearImageRef(); renderAll();
+      state.currentId = p.id;
+      const hasMsgs = !!(p.messages && p.messages.length > 0);
+      document.body.classList.toggle('omranWelcome', !hasMsgs);
+      const hwHero = document.getElementById('huaweiHeroWrap');
+      const oHero = document.getElementById('omranHero');
+      if(hasMsgs){
+        if(hwHero) hwHero.style.setProperty('display', 'none', 'important');
+        if(oHero) oHero.style.setProperty('display', 'none', 'important');
+        const oTools = document.getElementById('sectionsToolsOverlay');
+        if(oTools) oTools.classList.remove('show');
+      } else {
+        if(hwHero) hwHero.style.removeProperty('display');
+        if(oHero) oHero.style.removeProperty('display');
+      }
+      mahaClearImageRef(); renderAll();
     };
     div.appendChild(titleSpan);
 
@@ -6522,6 +6547,20 @@ function omranRenderOptions(host, blocks){
 function renderMessages(keepScroll){
   /* v-vault-restore: كلّ فتح لمحادثة يستعيد أصول صورها المتدهورة (المرفقات وapiImages التي يعدّل عليها المحرّر) من المخزن */
   try{ const __hp = getCurrent(); if(__hp) hydrateProjectImages(__hp).catch(e => __swallow(e, 'vault:open')); }catch(e){ __swallow(e, 'vault:open#sync'); }
+  const __cInit = getCurrent();
+  const hasMsgs = !!(__cInit && Array.isArray(__cInit.messages) && __cInit.messages.length > 0);
+  document.body.classList.toggle('omranWelcome', !hasMsgs);
+  const hwHero = document.getElementById('huaweiHeroWrap');
+  const oHero = document.getElementById('omranHero');
+  if(hasMsgs){
+    if(hwHero) hwHero.style.setProperty('display', 'none', 'important');
+    if(oHero) oHero.style.setProperty('display', 'none', 'important');
+    const oTools = document.getElementById('sectionsToolsOverlay');
+    if(oTools) oTools.classList.remove('show');
+  } else {
+    if(hwHero) hwHero.style.removeProperty('display');
+    if(oHero) oHero.style.removeProperty('display');
+  }
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
   // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
@@ -6555,7 +6594,9 @@ function renderMessages(keepScroll){
   const prevScrollTop = messagesEl.scrollTop;
   let __wasNearBottom = true;
   try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
-  messagesEl.innerHTML = '';
+  window.__isRenderingMsgs = true;
+  try{
+    messagesEl.innerHTML = '';
   const cur = getCurrent();
   const chipsWrap = $('#chatQuickChipsWrap');
   if(chipsWrap && cur && cur.messages && cur.messages.length) chipsWrap.style.display = 'none';
@@ -7293,6 +7334,10 @@ function renderMessages(keepScroll){
   }
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
+  }finally{
+    window.__isRenderingMsgs = false;
+    try{ if(typeof window.syncWelcome === 'function') window.syncWelcome(); }catch(e){ /* guard-ok */ }
+  }
 }
 /* v-topic-memory (شكوى المالك ١٤ سبتمبر «المواضيع كلّها تتداخل… أتكلّم عن موضوع وأبدّله ثمّ أرجع
    للي قبله فكأنّي ما سألته أيّ شيء»): المطلوب وجهان معًا — تبديل الموضوع لا يجرّ القديم، والرجوع
@@ -11555,7 +11600,20 @@ function omranIOSStoreApp(){
 }
 
 function openCheckout(plan){
+  // v-checkout-login: الدفع بلا حساب كان يُخصم ولا يصل لأحد — التسجيل أوّلًا، ثمّ تعود النافذة نفسها بعد الدخول.
+  if(!authGet('aiapp_auth_token')){
+    window.__pendingCheckoutPlan = plan;
+    const sd0 = document.getElementById('settingsDialog');
+    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if(typeof window.requireLogin === 'function') window.requireLogin('checkout');
+    else settingsToast(t('checkoutLoginFirst'));
+    return;
+  }
   checkoutCurrentPlan = plan;
+  const arRow = document.getElementById('checkoutAutoRenewRow');
+  const arBox = document.getElementById('checkoutAutoRenew');
+  if (arBox) arBox.checked = false;
+  if (arRow) arRow.style.display = /^pack\d+$/.test(String(plan)) ? 'none' : 'flex';
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
   const overlay = document.getElementById('checkoutModalOverlay');
@@ -11605,7 +11663,7 @@ async function startStripeCheckout(){
     const r = await fetch('/api/account?action=create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token') }),
+      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token'), autoRenew: !!(document.getElementById('checkoutAutoRenew') || {}).checked }),
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
@@ -11790,7 +11848,7 @@ async function loadPaypalButtons(){
           const cr = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan }),
+            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan, token: authGet('aiapp_auth_token') }),
           });
           const cd = await cr.json();
           if (!cr.ok) throw new Error(cd.error || 'error');
@@ -20021,6 +20079,12 @@ async function __sendPromptCore(){
   } else {
     cur.messages.push(__nextUserMessage);
   }
+  document.body.classList.remove('omranWelcome');
+  try{
+    const __hw = document.getElementById('huaweiHeroWrap'); if(__hw) __hw.style.setProperty('display', 'none', 'important');
+    const __hero = document.getElementById('omranHero'); if(__hero) __hero.style.setProperty('display', 'none', 'important');
+    const __tools = document.getElementById('sectionsToolsOverlay'); if(__tools) __tools.classList.remove('show');
+  }catch(_e){ /* guard-ok */ }
   /* v-attach-light (بلاغ المالك «الشاشة تثقل لما أرفع ملفات»): نصّ المرفق الكامل
      (قد يبلغ مئات الكيلوبايتات للملف) لزِم فقط لبناء apiText لهذا الدور — وقد بُني
      أعلاه بالكامل والنموذج سيستلمه. الإبقاء عليه كاملًا داخل كل رسالة يُضخّم الحالة

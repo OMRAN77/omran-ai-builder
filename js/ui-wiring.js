@@ -118,9 +118,23 @@
   /* ---------- 3) وضع الترحيب ---------- */
   var messagesEl = $('#messages');
   function syncWelcome(){
-    var empty = !messagesEl || messagesEl.children.length === 0;
+    if(window.__isRenderingMsgs) return;
+    var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    var empty = cur ? (!cur.messages || cur.messages.length === 0) : (!messagesEl || messagesEl.children.length === 0);
     document.body.classList.toggle('omranWelcome', empty);
+    var hwHero = document.getElementById('huaweiHeroWrap');
+    var oHero = document.getElementById('omranHero');
+    if(!empty){
+      if(hwHero) hwHero.style.setProperty('display', 'none', 'important');
+      if(oHero) oHero.style.setProperty('display', 'none', 'important');
+      var oTools = document.getElementById('sectionsToolsOverlay');
+      if(oTools) oTools.classList.remove('show');
+    } else {
+      if(hwHero) hwHero.style.removeProperty('display');
+      if(oHero) oHero.style.removeProperty('display');
+    }
   }
+  window.syncWelcome = syncWelcome;
   if(messagesEl && window.MutationObserver){
     new MutationObserver(syncWelcome).observe(messagesEl, { childList:true });
   }

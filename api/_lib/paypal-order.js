@@ -77,6 +77,8 @@ module.exports = async (req, res) => {
     if (action === 'create') {
       const planInfo = PLANS[body.plan];
       if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+      // v-checkout-login: طلب بلا حساب يُلتقط ولا يُنسب لأحد — لا طلب دفع بلا دخول.
+      if (!verifyToken(body.token)) { res.status(401).json({ error: 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe' }); return; }
 
       const r = await fetch(`${baseUrl()}/v2/checkout/orders`, {
         method: 'POST',

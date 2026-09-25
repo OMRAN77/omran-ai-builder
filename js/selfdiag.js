@@ -40,6 +40,8 @@
       if(!localStorage.getItem('aiapp_store_tour')){
         var __openTour = function(){
           try{
+            var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+            if(cur && Array.isArray(cur.messages) && cur.messages.length > 0) return;
             var o = document.getElementById('sectionsToolsOverlay');
             if(!o) return setTimeout(__openTour, 400);
             o.classList.add('show');

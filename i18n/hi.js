@@ -182,6 +182,8 @@ I18N['hi'] = {
     checkoutTitle: "सदस्यता पूरी करें",
     checkoutTestBadge: "🧪 परीक्षण मोड",
     checkoutCardOption: "वीज़ा / मास्टरकार्ड",
+    checkoutLoginFirst: "पहले साइन अप या लॉग इन करें, फिर सदस्यता लें",
+    checkoutAutoRenew: "🔁 कार्ड से हर महीने स्वतः नवीनीकरण",
     checkoutTelecomOption: "टेलीकॉम बिलिंग (Etisalat/du)",
     checkoutComingSoon: "जल्द आ रहा है",
     checkoutPlanLabelBasic: 'Plus प्लान $10/माह — 360 पॉइंट',
