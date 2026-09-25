@@ -89,14 +89,14 @@ const NAMED = [
   ['api/_lib/chat.js', 1414, 'if (__freeLane)'],
   ['api/_lib/chat.js', 1533, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
   ['api/_lib/chat.js', 1548, 'v-king-fallback'],
-  ['api/_lib/tier.js', 37, 'const PLAN_ROUTING'], // v-plan-routing
-  ['api/_lib/tier.js', 44, 'function isStrongTurn('],
-  ['api/_lib/tier.js', 51, 'function planRoute('],
-  ['api/_lib/tier.js', 111, 'const DEFAULT_CHAIN'],
-  ['api/_lib/tier.js', 133, 'function isOwnerUsername('],
-  ['api/_lib/tier.js', 138, 'function planActive('],
-  ['api/_lib/tier.js', 153, 'async function resolveTier('],
-  ['api/_lib/tier.js', 198, 'function freeChain('],
+  ['api/_lib/tier.js', 40, 'const PLAN_ROUTING'], // v-plan-routing
+  ['api/_lib/tier.js', 47, 'function isStrongTurn('],
+  ['api/_lib/tier.js', 54, 'function planRoute('],
+  ['api/_lib/tier.js', 117, 'const DEFAULT_CHAIN'],
+  ['api/_lib/tier.js', 139, 'function isOwnerUsername('],
+  ['api/_lib/tier.js', 144, 'function planActive('],
+  ['api/_lib/tier.js', 159, 'async function resolveTier('],
+  ['api/_lib/tier.js', 204, 'function freeChain('],
   ['api/_lib/free-chain.js', 18, 'const FREE_NOTE'],
   ['api/_lib/free-chain.js', 156, 'async function streamFreeChain('],
   ['api/_lib/free-chain.js', 244, 'function modelsToTry('],

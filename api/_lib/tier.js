@@ -34,8 +34,11 @@ const PAID_PROVIDERS = ['claude', 'openai', 'deepseek', 'cohere', 'perplexity', 
    العاديّة، ومزوّد أقوى لأدوار البرمجة/البناء/الرياضيات/الملفّ الطويل، وقائمة مسموح بها في المنتقي،
    وسلسلة التقاط داخل الباقة (أرخص فأرخص) تسبق السلسلة المجّانيّة. المالك وVIP والمجّانيّ خارج الجدول.
    model = موديل كلود من CLAUDE_MODELS في chat.js؛ بلا model = افتراضيّ المزوّد (OR_MODELS). */
+/* v-plus-haiku (قرار المالك ٢٥ سبتمبر — باقة ١٠$): أوّل SUB_HAIKU_BASIC (٣٠) رسالة في اليوم على Haiku، ثمّ DeepSeek
+   حتّى سقف الباقة، وGemini بمفتاحه المباشر احتياطًا (لا يعتمد على رصيد الوسيط). ثلاثة مزوّدين فقط ولا اختيار من المنتقي،
+   والعدّ في سلّة واحدة «plan» فالسقف ٥٠ رسالة إجمالًا لا لكلّ مزوّد. */
 const PLAN_ROUTING = {
-  basic: { chat: { prov: 'deepseek' }, strong: { prov: 'deepseek' }, allowed: ['deepseek', 'groq'], fallback: [{ prov: 'groq' }] },
+  basic: { chat: { prov: 'claude', model: 'claude-haiku-4-5' }, after: { prov: 'deepseek' }, dailyVar: 'SUB_HAIKU_BASIC', dailyDef: 30, bucket: 'plan', strong: null, allowed: [], fallback: [{ prov: 'deepseek' }, { prov: 'gemini', direct: true }] },
   pro: { chat: { prov: 'deepseek' }, strong: { prov: 'claude', model: 'claude-haiku-4-5' }, allowed: ['deepseek', 'groq', 'gemini', 'mistral'], fallback: [{ prov: 'gemini' }, { prov: 'deepseek' }] },
   max: { chat: { prov: 'claude', model: 'claude-haiku-4-5' }, strong: { prov: 'claude', model: 'claude-sonnet-5' }, allowed: ['claude', 'openai', 'gemini', 'mistral', 'deepseek', 'groq', 'cohere'], fallback: [{ prov: 'openai' }, { prov: 'gemini' }, { prov: 'deepseek' }] },
 };
@@ -48,14 +51,17 @@ function isStrongTurn(text) {
 }
 /* قرار التوجيه لطلب مشترك: الدور القويّ → strong؛ وإلّا المزوّد المطلوب إن كان مسموحًا؛ وإلّا افتراضيّ
    الباقة. الالتقاط = سلسلة الباقة بلا المزوّد المختار. غير المشترك (مالك/VIP/مجّانيّ/ضيف) → null. */
-function planRoute(tier, requestedProv, lastUserText) {
+function planRoute(tier, requestedProv, lastUserText, usedToday, env) {
   const plan = (tier && tier.tier === 'sub') ? String(tier.plan || '').toLowerCase() : '';
   const r = PLAN_ROUTING[plan];
   if (!r) return null;
   const strong = isStrongTurn(lastUserText);
   const req = String(requestedProv || '').toLowerCase();
-  const pick = (strong && r.strong) ? r.strong : ((req && r.allowed.includes(req)) ? (req === r.chat.prov ? r.chat : { prov: req }) : r.chat);
-  return { plan, strong, prov: pick.prov, model: pick.model || '', fallback: r.fallback.filter((f) => f.prov !== pick.prov), allowed: r.allowed.slice() };
+  const chat = (r.after && (Number(usedToday) || 0) >= envInt(env || process.env, r.dailyVar, r.dailyDef)) ? r.after : r.chat;
+  const pick = (strong && r.strong) ? r.strong : ((req && r.allowed.includes(req)) ? (req === chat.prov ? chat : { prov: req }) : chat);
+  const out = { plan, strong, prov: pick.prov, model: pick.model || '', fallback: r.fallback.filter((f) => f.prov !== pick.prov), allowed: r.allowed.slice() };
+  if (r.bucket) out.bucket = r.bucket;
+  return out;
 }
 
 // أسماء النماذج تتغيّر باستمرار (المجسّ ١٢ سبتمبر: gemini-2.5-flash «لم يعد

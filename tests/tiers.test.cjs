@@ -185,7 +185,7 @@ test('streamFreeChain: all providers down → ok:false and nothing sent', async 
 test('chat.js wiring: tier first, free lane before the tool loop, limit as a reply with a tier event', () => {
   const chat = read('api/_lib/chat.js');
   assert.match(chat, /__tier = await tierLib\.resolveTier\(token \? __vt\(token\) : null\);/);
-  assert.match(chat, /checkAndConsume\(token, guestId, \(__tier && !__tier\.subscriber\) \? 'chat' : prov, clientIp\(req\), \{ tier: __tier \|\| undefined \}\)/);
+  assert.match(chat, /checkAndConsume\(token, guestId, \(__tier && !__tier\.subscriber\) \? 'chat' : \(\(__planRoute && __planRoute\.bucket\) \|\| prov\), clientIp\(req\), \{ tier: __tier \|\| undefined \}\)/);
   assert.match(chat, /send\(\{ tier: usage\.tier === 'guest' \? 'guest-limit' : 'free-limit' \}\);\n\s+send\(\{ delta: usage\.message \|\| tierLib\.FREE_TEXT\.freeLimit \}\);\n\s+send\(\{ done: true \}\);/);
   assert.match(chat, /const __freeLane = !!\(usage\.tier && !usage\.subscriber\);/);
   assert.match(chat, /if \(__freeLane\) \{\n\s+send\(\{ tier: usage\.tier \}\);\n\s+const __fr = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(!__fr\.ok\) \{[\s\S]*?send\(\{ tierDiag: \(__fr\.errors \|\| \[\]\)\.slice\(0, 6\) \}\);\n\s+send\(\{ delta: tierLib\.FREE_TEXT\.busy \}\);\n\s+\}\n\s+send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;\n\s+\}\n\s+while \(steps < MAX_STEPS\) \{/);

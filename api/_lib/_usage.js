@@ -286,4 +286,10 @@ function clientIp(req) {
   return null;
 }
 
-module.exports = { checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp };
+// v-plus-haiku: عدد رسائل اليوم في سلّة واحدة بلا استهلاك (قبل التوجيه).
+async function todayCount(username, bucket) {
+  if (!username) return 0;
+  return countTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
+}
+
+module.exports = { todayCount, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp };

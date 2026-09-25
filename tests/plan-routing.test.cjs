@@ -32,7 +32,9 @@ require.cache[rp('api/_lib/kv.js')] = { id: rp('api/_lib/kv.js'), filename: rp('
 require.cache[rp('api/_lib/_usage.js')] = { id: rp('api/_lib/_usage.js'), filename: rp('api/_lib/_usage.js'), loaded: true, exports: {
   DAILY_LIMIT: 20, clientIp: () => '127.0.0.1',
   checkAndConsume: async () => ({ allowed: true, username: 'plan-user' }),
+  todayCount: async () => usedToday,
 } };
+let usedToday = 0;
 require.cache[rp('api/_lib/_knowledge.js')] = { id: rp('api/_lib/_knowledge.js'), filename: rp('api/_lib/_knowledge.js'), loaded: true, exports: { ownerKnowledge: () => '' } };
 require.cache[rp('api/_lib/search.js')] = { id: rp('api/_lib/search.js'), filename: rp('api/_lib/search.js'), loaded: true, exports: { fetchPlaces: async () => [] } };
 const tierLib = require(rp('api/_lib/tier.js'));
@@ -46,7 +48,7 @@ test('١. الأسقف الافتراضيّة الجديدة والسلسلة ا
   assert.match(tierLib.FREE_TEXT.guestLimit, /5 رسائل/);
   const pr = tierLib.PLAN_ROUTING;
   assert.deepEqual(Object.keys(pr), ['basic', 'pro', 'max']);
-  assert.equal(pr.basic.chat.prov, 'deepseek'); assert.equal(pr.basic.strong.prov, 'deepseek');
+  assert.deepEqual(pr.basic.chat, { prov: 'claude', model: 'claude-haiku-4-5' }); assert.deepEqual(pr.basic.after, { prov: 'deepseek' }); assert.equal(pr.basic.strong, null);
   assert.equal(pr.pro.chat.prov, 'deepseek'); assert.deepEqual(pr.pro.strong, { prov: 'claude', model: 'claude-haiku-4-5' });
   assert.deepEqual(pr.max.chat, { prov: 'claude', model: 'claude-haiku-4-5' }); assert.deepEqual(pr.max.strong, { prov: 'claude', model: 'claude-sonnet-5' });
   assert.ok(pr.max.allowed.includes('openai') && pr.max.allowed.includes('claude') && !pr.pro.allowed.includes('openai') && !pr.basic.allowed.includes('claude'));
@@ -62,10 +64,14 @@ test('٢. isStrongTurn: برمجة/بناء/رياضيات/كتلة كود/نص�
 test('٣. planRoute: لكلّ باقة مزوّدها، الدور القويّ يصعّد، المطلوب يُقبل إن كان مسموحًا، والالتقاط بلا المختار', () => {
   const sub = (plan) => ({ tier: 'sub', plan, subscriber: true, cap: 1 });
   for (const t of [null, { tier: 'owner', subscriber: true }, { tier: 'vip', subscriber: true }, { tier: 'free', subscriber: false }, { tier: 'guest', subscriber: false }, { tier: 'sub', plan: 'gold', subscriber: true }]) assert.equal(tierLib.planRoute(t, 'claude', 'اكتب كود'), null);
-  assert.deepEqual(tierLib.planRoute(sub('basic'), 'claude', 'هلا'), { plan: 'basic', strong: false, prov: 'deepseek', model: '', fallback: [{ prov: 'groq' }], allowed: ['deepseek', 'groq'] });
-  assert.equal(tierLib.planRoute(sub('basic'), 'openai', 'هلا').prov, 'deepseek', 'غير مسموح → افتراضيّ الباقة');
-  assert.deepEqual(tierLib.planRoute(sub('basic'), 'groq', 'هلا').fallback, [], 'المطلوب المسموح يُقبل ولا يُكرَّر في الالتقاط');
-  assert.equal(tierLib.planRoute(sub('basic'), 'groq', 'اكتب كود').prov, 'deepseek', 'الدور القويّ يغلب المطلوب');
+  // v-plus-haiku: Plus = Haiku لأوّل ٣٠ رسالة ثمّ DeepSeek، وGemini مباشر احتياطًا، ولا اختيار من المنتقي، وسلّة عدّ واحدة
+  assert.deepEqual(tierLib.planRoute(sub('basic'), 'claude', 'هلا'), { plan: 'basic', strong: false, prov: 'claude', model: 'claude-haiku-4-5', fallback: [{ prov: 'deepseek' }, { prov: 'gemini', direct: true }], allowed: [], bucket: 'plan' });
+  assert.equal(tierLib.planRoute(sub('basic'), 'openai', 'هلا', 29).model, 'claude-haiku-4-5', 'الرسالة ٣٠ ما زالت Haiku');
+  assert.deepEqual(tierLib.planRoute(sub('basic'), 'claude', 'اكتب كود', 30), { plan: 'basic', strong: true, prov: 'deepseek', model: '', fallback: [{ prov: 'gemini', direct: true }], allowed: [], bucket: 'plan' });
+  assert.equal(tierLib.planRoute(sub('basic'), 'groq', 'هلا', 45).prov, 'deepseek', 'المنتقي لا يغيّر مزوّد Plus');
+  assert.equal(tierLib.planRoute(sub('basic'), '', 'هلا', 10, { SUB_HAIKU_BASIC: '10' }).prov, 'deepseek', 'العتبة من البيئة');
+  assert.equal(tierLib.planRoute(sub('pro'), '', 'هلا', 999).prov, 'deepseek', 'العدّ لا يمسّ Pro');
+  assert.equal(tierLib.planRoute(sub('pro'), '', 'هلا').bucket, undefined);
   const pro = tierLib.planRoute(sub('pro'), 'claude', 'هلا');
   assert.deepEqual([pro.prov, pro.model, pro.fallback], ['deepseek', '', [{ prov: 'gemini' }]]);
   const proStrong = tierLib.planRoute(sub('PRO'), '', 'ابني لي تطبيق');
@@ -130,7 +136,12 @@ test('٤. الخادم: Pro دردشة → DeepSeek، Pro دور قويّ → Ha
   r = await ask(SUB('max'), 'openai', 'اشرح لي الذكاء الاصطناعي باختصار');
   assert.equal(r.bodies[0].body.model, 'openai/gpt-5.6-terra', 'Max يقدر يختار GPT للدردشة');
   r = await ask(SUB('basic'), 'openai', 'اشرح لي الذكاء الاصطناعي باختصار');
-  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro', 'Plus يطلب GPT → DeepSeek');
+  assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'Plus يطلب GPT → Haiku (أوّل ٣٠ رسالة)');
+  usedToday = 30;
+  try {
+    r = await ask(SUB('basic'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار');
+    assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro', 'بعد ٣٠ رسالة → DeepSeek');
+  } finally { usedToday = 0; }
   r = await ask({ tier: 'owner', plan: null, cap: Infinity, subscriber: true }, 'claude', 'اكتب لي كود');
   assert.equal(r.bodies[0].body.model, 'anthropic/claude-haiku-4.5', 'المالك على افتراضيّه (v-chat-economy: Haiku 4.5)');
   // مفتاح أنثروبيك حاضر → كلود مباشر بالاسم المباشر، وDeepSeek يبقى عبر الوسيط
@@ -158,24 +169,54 @@ test('٥. الخادم: تعطّل مزوّد الباقة قبل أوّل حر�
   assert.match(r.written, /"delta":"تم"/);
   // الكلّ معطّل → السلسلة المجّانيّة (OpenRouter المجّانيّ هنا) ثمّ رسالة الانشغال بلا خطأ خام
   r = await ask(SUB('basic'), 'claude', 'اشرح لي الذكاء الاصطناعي باختصار', ['boom']);
-  assert.deepEqual(r.bodies.slice(0, 2).map((b) => b.body.model), ['deepseek/deepseek-v4-pro', 'meta-llama/llama-4-maverick']);
+  assert.deepEqual(r.bodies.slice(0, 2).map((b) => b.body.model), ['anthropic/claude-haiku-4.5', 'deepseek/deepseek-v4-pro'], 'بلا مفتاح Gemini يُتخطّى الاحتياط المباشر');
   assert.ok(r.bodies.length > 2, 'ثمّ السلسلة المجّانيّة');
   assert.match(r.written, /"fallback":true/, 'الفشل النهائيّ كما كان (v-king-fallback): العميل يلتقط');
 });
 
 test('٦. البنية: التوجيه قبل فحص الحصّة، والالتقاط قبل الهبوط المجّانيّ، والحقول let لا const', () => {
   const s = read('api/_lib/chat.js');
-  const route = s.indexOf('__planRoute = tierLib.planRoute(__tier, reqProv, lastUserText);');
-  const consume = s.indexOf("const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : prov");
+  const route = s.indexOf('__planRoute = tierLib.planRoute(__tier, reqProv, lastUserText, ');
+  const consume = s.indexOf("const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : ((__planRoute && __planRoute.bucket) || prov)");
   const lastUser = s.indexOf('const lastUserAny = messages.slice().reverse().find(');
   assert.ok(route > 0 && lastUser > 0 && lastUser < route && route < consume, 'الرسالة الأخيرة → التوجيه → الحصّة');
   const loop = s.indexOf('while (!upstream.ok && !anyText && __planFallbacks.length) {');
   const finalFail = s.indexOf('if (!upstream.ok) {\n        const errText = (await upstream.text()).slice(0, 300);');
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");
   assert.ok(loop > 0 && quick400 < loop && loop < finalFail, 'الالتقاط بعد إعادة الحقول السريعة وقبل الفشل النهائيّ');
-  assert.ok(s.includes('const applyRoute = (p, model) => {'));
+  assert.ok(s.includes('const applyRoute = (p, model, direct) => {'));
   for (const v of ['let prov', 'let viaOR', 'let apiKey', 'let CHAT_URL', 'let DEFAULT_MODEL']) assert.ok(s.includes(v + ' '), v);
   assert.ok(s.includes("callUpstream = (withImg) => __upFetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
+});
+
+test('٦-ب. Plus: Haiku ثمّ DeepSeek يتعطّلان → Gemini بمفتاحه المباشر بصمت وبلا اسم مزوّد؛ مسار المالك المباشر لا يشمل Gemini', async () => {
+  chat.__orQuick.level = 2;
+  process.env.GEMINI_API_KEY = 'g-test';
+  const saveFetch = global.fetch;
+  const calls = [];
+  global.fetch = async (url, options) => {
+    const u = String(url);
+    calls.push({ url: u, body: options && options.body ? JSON.parse(options.body) : null });
+    if (/generativelanguage/.test(u)) {
+      const sse = 'data: ' + JSON.stringify({ model: 'gemini-flash-latest', choices: [{ delta: { content: 'هلا' } }] }) + '\n\n'
+        + 'data: ' + JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n';
+      return new Response(sse, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    }
+    return new Response('{"error":"insufficient credits"}', { status: 402 });
+  };
+  tierLib.resolveTier = async () => SUB('basic');
+  let written = '';
+  const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: 'اشرح لي الذكاء الاصطناعي باختصار' }], token: token('plan-user'), provider: 'openai' } };
+  const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('unexpected json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {} };
+  try { await chat(req, res); } finally { global.fetch = saveFetch; tierLib.resolveTier = realResolve; delete process.env.GEMINI_API_KEY; }
+  const chatCalls = calls.filter((c) => /openrouter\.ai\/api\/v1\/messages|generativelanguage/.test(c.url));
+  assert.deepEqual(chatCalls.slice(0, 3).map((c) => (c.body && c.body.model)), ['anthropic/claude-haiku-4.5', 'deepseek/deepseek-v4-pro', 'gemini-flash-latest']);
+  assert.match(chatCalls[2].url, /generativelanguage\.googleapis\.com\/v1beta\/openai\/chat\/completions/);
+  assert.match(written, /"delta":"هلا"/);
+  assert.doesNotMatch(written, /Gemini|"error"/, 'بصمت وبلا اسم مزوّد');
+  const s = read('api/_lib/chat.js');
+  assert.ok(s.includes("let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai'))"), 'Gemini ليس في مسار المالك المباشر');
+  assert.ok(s.includes('if (!upstream.ok && __direct && __ownerReq && !anyText'), 'سطر «النموذج غير متاح» للمالك وحده');
 });
 
 // ── (٣) النقاط والأسعار ──

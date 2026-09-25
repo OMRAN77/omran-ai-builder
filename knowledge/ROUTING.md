@@ -126,20 +126,20 @@ prov (من body.provider، افتراضه 'claude')
 ### ٣-ب. بوّابة الطبقة والحصّة
 
 ```
-resolveTier(username)                             tier.js:153
+resolveTier(username)                             tier.js:159
 │  لا اسم           → guest            (cap = caps().guest)
-│  المالك            → owner  · subscriber:true · cap = ∞     tier.js:133
+│  المالك            → owner  · subscriber:true · cap = ∞     tier.js:139
 │  VIP              → vip    · subscriber:true · cap = ∞
-│  باقة سارية        → sub    · subscriber:true · cap = caps()[plan]   planActive: tier.js:138
+│  باقة سارية        → sub    · subscriber:true · cap = caps()[plan]   planActive: tier.js:144
 │  وإلّا             → free   · subscriber:false
 │  (نتيجة مخبّأة TIER_CACHE_MS لكلّ اسم)
 │
-planRoute(tier, reqProv, lastUserText)            tier.js:51  ← v-plan-routing (مشترك فقط)
-│  الجدول PLAN_ROUTING                             tier.js:37
-│    basic (Plus): دردشة DeepSeek · قويّ DeepSeek · مسموح deepseek/groq · التقاط groq
+planRoute(tier, reqProv, lastUserText)            tier.js:54  ← v-plan-routing (مشترك فقط)
+│  الجدول PLAN_ROUTING                             tier.js:40
+│    basic (Plus): أوّل ٣٠ رسالة/يوم Claude Haiku 4.5 ثمّ DeepSeek (SUB_HAIKU_BASIC) · بلا منتقي · التقاط deepseek→Gemini مباشر · سلّة عدّ واحدة «plan»
 │    pro:          دردشة DeepSeek · قويّ Claude Haiku 4.5 · مسموح deepseek/groq/gemini/mistral · التقاط gemini→deepseek
 │    max:          دردشة Claude Haiku 4.5 · قويّ Claude Sonnet 5 · مسموح الكلّ · التقاط openai→gemini→deepseek
-│  الدور القويّ = isStrongTurn (tier.js:44): كتلة كود، أو ≥ ٦٠٠ حرف، أو كلمات برمجة/بناء/رياضيات
+│  الدور القويّ = isStrongTurn (tier.js:47): كتلة كود، أو ≥ ٦٠٠ حرف، أو كلمات برمجة/بناء/رياضيات
 │  المطلوب من المنتقي يُقبل إن كان في المسموح، وإلّا افتراضيّ الباقة؛ القويّ يغلب المطلوب
 │  التطبيق في chat.js:1195 (قبل الحصّة كي تُعدّ الرسالة على المزوّد الذي يخدمها فعلًا)
 │  المالك · VIP · المجانيّ · الضيف → null (لا يمرّون هنا)
@@ -198,8 +198,8 @@ groq · cohere (v-cohere-tools: Cohere عبر الوسيط `cohere/command-a`). 
 ```
 streamFreeChain(args)                             free-chain.js:156
 │
-├─ الترتيب: freeChain(env)                        tier.js:198
-│     من FREE_CHAIN في البيئة، وإلّا DEFAULT_CHAIN  tier.js:111
+├─ الترتيب: freeChain(env)                        tier.js:204
+│     من FREE_CHAIN في البيئة، وإلّا DEFAULT_CHAIN  tier.js:117
 │     ['groq','gemini','mistral','openrouter']   ← v-plan-routing: Groq أوّلًا (المجّاني ٥ رسائل عليه)
 │     ومزوّد بلا مفتاح يُستبعد من القائمة أصلًا
 │
