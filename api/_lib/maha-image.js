@@ -121,7 +121,7 @@ module.exports = async (req, res) => {
        تُقرأ فقط حين يكون الطالب المالك؛ غيره لا يُغيّر شيئًا. المالك غير مخصوم أصلًا. */
     const __isOwnerReq = !!(mahaImgUser && pointsLib.isOwnerUsername(mahaImgUser));
     const __optWant4K = __isOwnerReq && body.want4K === true;
-    const __optTextFaithful = __isOwnerReq && body.textFaithful === true;
+    const __optTextFaithful = __isOwnerReq && (body.textFaithful === true || /(?:نصّ?|كتابه?ة?|خط)\s*(?:دقيق[هة]?|صحيح[هة]?|مضبوط[هة]?)/.test(userText + ' ' + String(prompt || ''))); // v-img-write-modes: من الكتابة بعد خروجه من «+»
     const __optForceEngine = (__isOwnerReq && (body.forceEngine === 'nano' || body.forceEngine === 'gpt')) ? body.forceEngine : '';
     /* v-img-mix (المالك ٢٣ سبتمبر: «خاصيّة + دمج بين نانو وGPT — النتيجة ١»): وضع «+» للمالك وحده — المحرّكان معًا على الأمر
        المهندس نفسه بالتوازي (زمن أبطئهما لا مجموعهما)، والحكم ينفّذ أوّلًا ثمّ يختار صورة واحدة. ليس خامًا. */

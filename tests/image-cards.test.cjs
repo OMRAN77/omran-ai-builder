@@ -277,7 +277,7 @@ test('١٢. واجهة: «دمج نانو + GPT» لا ينطفئ بمسح حر�
   assert.match(m, /if\(id === 'image_mix'\) localStorage\.setItem\('omStickyMode', 'image_mix\|' \+ Date\.now\(\)\); else localStorage\.removeItem\('omStickyMode'\);/);
   assert.match(m, /if\(on && !stickyTried\)\{ stickyTried = true; var sv = String\(localStorage\.getItem\('omStickyMode'\) \|\| ''\)\.split\('\|'\); if\(!window\.__omMode && sv\[0\] === 'image_mix' && Date\.now\(\) - \(\+sv\[1\] \|\| 0\) < 3 \* 3600000\) pick\('image_mix', true\); \}/, 'مرّة لكلّ تحميل وخلال ٣ ساعات');
   assert.match(m, /if\(ta && !quiet\)\{ ta\.focus\(\); \}/);
-  assert.match(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), /js\/modes\.js\?v=m250925a/);
+  assert.match(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), /js\/modes\.js\?v=m250925b/);
 });
 
 test('١٣. نيّة اللوحة: تبديل للكلّ، «غيرهم كلهم» بعد تبديل، و«صور ثانية/غيّر الصور» صور جديدة؛ وشخص بعينه أو طلب عاديّ = لا', () => {
