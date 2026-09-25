@@ -252,8 +252,10 @@ test('٨. الباقات ٣٦٠/٩٢٠/٣٬٢٠٠ متطابقة في Stripe وP
   assert.equal(new Set(amounts).size, amounts.length, 'المبالغ مميّزة — الالتقاط يطابق بالمبلغ');
   const ccs = read('api/_lib/create-checkout-session.js');
   assert.match(ccs, /if \(!PLANS\[plan\]\.pack\) \{ user\.plan = plan; user\.planUpdatedAt = Date\.now\(\); \}/);
-  assert.match(ccs, /params\.append\('mode', planInfo\.pack \? 'payment' : 'subscription'\);/);
-  assert.match(ccs, /if \(!planInfo\.pack\) params\.append\('line_items\[0\]\[price_data\]\[recurring\]\[interval\]', 'month'\);/);
+  // v-checkout-autorenew: الرزمة لا تتجدّد أبدًا، والباقة تتجدّد باختيار صريح فقط (checkout-login يفحص السلوك).
+  assert.match(ccs, /const recurring = !planInfo\.pack && autoRenew === true;/);
+  assert.match(ccs, /params\.append\('mode', recurring \? 'subscription' : 'payment'\);/);
+  assert.match(ccs, /if \(recurring\) params\.append\('line_items\[0\]\[price_data\]\[recurring\]\[interval\]', 'month'\);/);
   const pp = read('api/_lib/paypal-order.js');
   assert.match(pp, /if \(!PLANS\[matchedPlan\]\.pack\) \{ user\.plan = matchedPlan; user\.planUpdatedAt = Date\.now\(\); \}/);
   // العميل: الأزرار الأربعة تفتح نافذة الدفع بنفس الأسعار المعروضة
@@ -329,7 +331,7 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=669'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=670'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 

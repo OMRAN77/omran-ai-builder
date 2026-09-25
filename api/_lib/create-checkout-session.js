@@ -48,6 +48,8 @@ const PLANS = {
 // v-media-plans: اشتراكات الصور/الفيديو — شهريّة، بلا نقاط ولا تغيير للباقة (رصيدها منفصل في _mediaPlans.js).
 for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.amount, points: 0, media: p.media, name: p.name };
 
+const LOGIN_FIRST = 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe';
+
 // Shared "the payment definitely happened, now grant it" logic used by both
 // the Stripe Checkout Session flow (verifyCheckout) and the Apple Pay /
 // Google Pay PaymentIntent flow (verifyPaymentIntent), so both stay
@@ -97,29 +99,33 @@ async function createCheckoutSession(req, res) {
 
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { plan, origin, token } = body;
+    const { plan, origin, token, autoRenew } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
 
+    // v-checkout-login: دفعة بلا حساب تُخصم ولا تُنسب لأحد (الويب هوك يتجاهلها) — لا جلسة دفع بلا دخول.
     const username = verifyToken(token);
+    if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
 
+    // v-checkout-autorenew: يدويّ (payment) لشهر واحد افتراضيًّا — الباقة تسقط بعد ٣٥ يومًا (tier.js)؛
+    // الاشتراك الشهريّ المتجدّد لمن فعّل autoRenew صراحةً. رزمة النقاط دفعة واحدة دائمًا.
+    const recurring = !planInfo.pack && autoRenew === true;
     const base = origin || 'https://omran-ai-builder.vercel.app';
     const params = new URLSearchParams();
-    // v-plan-routing: رزمة النقاط دفعة واحدة (payment) بلا تجديد؛ الباقة اشتراك شهريّ.
-    params.append('mode', planInfo.pack ? 'payment' : 'subscription');
+    params.append('mode', recurring ? 'subscription' : 'payment');
     params.append('payment_method_types[0]', 'card');
     params.append('line_items[0][quantity]', '1');
     params.append('line_items[0][price_data][currency]', 'usd');
     params.append('line_items[0][price_data][unit_amount]', String(planInfo.amount));
-    if (!planInfo.pack) params.append('line_items[0][price_data][recurring][interval]', 'month');
+    if (recurring) params.append('line_items[0][price_data][recurring][interval]', 'month');
     params.append('line_items[0][price_data][product_data][name]', planInfo.name);
     params.append('metadata[plan]', plan);
-    if (username) params.append('metadata[username]', username);
+    params.append('metadata[username]', username);
     // v-webhook: نفس البيانات على الاشتراك نفسه — فتحملها فواتير التجديد
     // الشهري ويعرف الويب هوك لمن يضيف نقاط كل شهر (كان التجديد بلا شحن).
-    if (!planInfo.pack) {
+    if (recurring) {
       params.append('subscription_data[metadata][plan]', plan);
-      if (username) params.append('subscription_data[metadata][username]', username);
+      params.append('subscription_data[metadata][username]', username);
     }
     params.append('success_url', `${base}/?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`);
     params.append('cancel_url', `${base}/?checkout=cancel`);
@@ -219,6 +225,7 @@ async function createPaymentIntent(req, res) {
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
 
     const username = verifyToken(token);
+    if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
 
     const params = new URLSearchParams();
     params.append('amount', String(planInfo.amount));
@@ -226,7 +233,7 @@ async function createPaymentIntent(req, res) {
     params.append('payment_method_types[0]', 'card');
     params.append('description', planInfo.name);
     params.append('metadata[plan]', plan);
-    if (username) params.append('metadata[username]', username);
+    params.append('metadata[username]', username);
 
     const stripeRes = await fetch('https://api.stripe.com/v1/payment_intents', {
       method: 'POST',

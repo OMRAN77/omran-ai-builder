@@ -171,6 +171,8 @@ I18N['fil'] = {
     "checkoutTitle": "Kumpletuhin ang Subscription",
     "checkoutTestBadge": "🧪 Test Mode",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Mag-sign up o mag-log in muna, saka mag-subscribe",
+    "checkoutAutoRenew": "🔁 Awtomatikong buwanang renewal sa card",
     "checkoutTelecomOption": "Carrier Billing (Etisalat/du)",
     "checkoutComingSoon": "Malapit na",
     "checkoutPlanLabelBasic": 'Plus Plan $10/buwan — 360 puntos',

@@ -164,6 +164,8 @@ I18N['zh'] = {
     "checkoutTitle": "完成订阅",
     "checkoutTestBadge": "🧪 测试模式",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "请先注册或登录，然后再订阅",
+    "checkoutAutoRenew": "🔁 每月自动从银行卡续费",
     "checkoutTelecomOption": "运营商代扣(Etisalat/du)",
     "checkoutComingSoon": "即将推出",
     "checkoutPlanLabelBasic": 'Plus 套餐 $10/月 — 360 积分',

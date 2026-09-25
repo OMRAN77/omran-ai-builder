@@ -719,6 +719,11 @@
           <span style="font-size:20px;">💳</span>
           <span data-i18n="checkoutCardOption">بطاقة</span>
         </button>
+        <!-- v-checkout-autorenew: الدفع يدويّ لشهر واحد افتراضيًّا؛ التجديد الشهريّ التلقائيّ بالبطاقة لمن يفعّله. -->
+        <label id="checkoutAutoRenewRow" style="display:flex; align-items:center; gap:6px; margin-top:-4px; padding:0 4px; font-size:12px; color:var(--muted); cursor:pointer;">
+          <input type="checkbox" id="checkoutAutoRenew" style="width:14px; height:14px; margin:0; accent-color:#c9a227; cursor:pointer;">
+          <span data-i18n="checkoutAutoRenew">🔁 تجديد تلقائيّ كلّ شهر بالبطاقة</span>
+        </label>
 
         <div id="paypalButtonContainer" style="min-height:45px;"></div>
         <button type="button" id="paypalFallbackBtn" onclick="startPaypalCheckout()" style="display:none; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:10px; border:none; background:#0070ba; color:#fff; cursor:pointer; font-size: var(--fs-3); font-weight:600;">

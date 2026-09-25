@@ -169,6 +169,8 @@ I18N['id'] = {
     "checkoutTitle": "Selesaikan Langganan",
     "checkoutTestBadge": "🧪 Mode Uji Coba",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Daftar atau masuk dulu, lalu berlangganan",
+    "checkoutAutoRenew": "🔁 Perpanjangan otomatis bulanan dengan kartu",
     "checkoutTelecomOption": "Tagihan Operator (Etisalat/du)",
     "checkoutComingSoon": "Segera hadir",
     "checkoutPlanLabelBasic": 'Paket Plus $10/bln — 360 poin',

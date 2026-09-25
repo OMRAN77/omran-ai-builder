@@ -170,6 +170,8 @@ I18N['es'] = {
     "checkoutTitle": "Completar suscripción",
     "checkoutTestBadge": "🧪 Modo de prueba",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Regístrate o inicia sesión primero y luego suscríbete",
+    "checkoutAutoRenew": "🔁 Renovación automática mensual con tarjeta",
     "checkoutTelecomOption": "Facturación por operador (Etisalat/du)",
     "checkoutComingSoon": "Próximamente",
     "checkoutPlanLabelBasic": 'Plan Plus $10/mes — 360 puntos',

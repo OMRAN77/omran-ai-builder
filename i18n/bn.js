@@ -181,6 +181,8 @@ I18N['bn'] = {
     checkoutTitle: "সম্পূর্ণ সদস্যতা",
     checkoutTestBadge: "🧪 পরীক্ষা মোড",
     checkoutCardOption: "ভিসা/মাস্টারকার্ড",
+    checkoutLoginFirst: "প্রথমে নিবন্ধন বা লগইন করুন, তারপর সাবস্ক্রাইব করুন",
+    checkoutAutoRenew: "🔁 প্রতি মাসে কার্ডে স্বয়ংক্রিয় নবায়ন",
     checkoutTelecomOption: "ক্যারিয়ার বিলিং (Etisalat/du)",
     checkoutComingSoon: "শীঘ্রই আসছে",
     checkoutPlanLabelBasic: 'Plus প্ল্যান $10/মাস — 360 পয়েন্ট',
