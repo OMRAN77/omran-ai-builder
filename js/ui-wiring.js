@@ -77,6 +77,31 @@
   /* v445: إعادة تطبيق الترجمة على البطاقات والأدوات المرسومة ديناميكيًا */
   try{ if(typeof applyLanguage === 'function') applyLanguage(); }catch(e){ __swallow(e, "misc:index#omhome-i18n"); }
 
+  /* ---------- 2ب) بطاقات أدوات هواوي في شاشة الترحيب (v-huawei-welcome-tools) ---------- */
+  try{
+    if(/HUAWEI|HarmonyOS|HONOR|HuaweiBrowser|HMSCore/i.test(navigator.userAgent || '')){
+      document.documentElement.classList.add('store-safe');
+    }
+  }catch(e){ __swallow(e, "wiring:hw-detect"); }
+
+  var hwPortrait = $('#hwCardPortrait');
+  if(hwPortrait) hwPortrait.addEventListener('click', function(){ tap('#btnPortraitStyle'); });
+
+  var hwEdu = $('#hwCardEdu');
+  if(hwEdu) hwEdu.addEventListener('click', function(){ tap('#btnOmranEdu'); });
+
+  var hwQibla = $('#hwCardQibla');
+  if(hwQibla) hwQibla.addEventListener('click', function(){ tap('#btnQibla'); });
+
+  var hwSuggestions = $('#hwCardSuggestions');
+  if(hwSuggestions) hwSuggestions.addEventListener('click', function(){ tap('#btnQuickTemplates'); });
+
+  var hwAll = $('#hwAllToolsBtn');
+  if(hwAll) hwAll.addEventListener('click', function(){
+    var o = document.getElementById('sectionsToolsOverlay');
+    if(o) o.classList.add('show');
+  });
+
   /* ---------- 3) وضع الترحيب ---------- */
   var messagesEl = $('#messages');
   function syncWelcome(){

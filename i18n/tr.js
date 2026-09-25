@@ -305,6 +305,7 @@ I18N['tr'] = {
     "cancel": "İptal",
     "save": "Kaydet",
     "defaultProjectTitle": "Yeni Proje",
+    "defaultShowcaseTitle": "Akıllı Kontrol Paneli",
     "templatesBtn": "🧩 Şablonlar",
     "templatesModalTitle": "🧩 Bir Şablon Seçin",
     "useThisTemplate": "✅ Bu Şablonu Kullan",

@@ -303,6 +303,7 @@ I18N['ne'] = {
     cancel: "रद्द गर्नुहोस्",
     save: "बचत गर्नुहोस्",
     defaultProjectTitle: "नयाँ परियोजना",
+    defaultShowcaseTitle: "स्मार्ट ड्यासबोर्ड",
     templatesBtn: "🧩 टेम्प्लेटहरू",
     templatesModalTitle: "🧩 टेम्प्लेट छान्नुहोस्",
     useThisTemplate: "✅ यो टेम्प्लेट प्रयोग गर्नुहोस्",

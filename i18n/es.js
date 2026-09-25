@@ -306,6 +306,7 @@ I18N['es'] = {
     "cancel": "Cancelar",
     "save": "Guardar",
     "defaultProjectTitle": "Nuevo proyecto",
+    "defaultShowcaseTitle": "Panel de control inteligente",
     "templatesBtn": "🧩 Plantillas",
     "templatesModalTitle": "🧩 Elige una plantilla",
     "useThisTemplate": "✅ Usar esta plantilla",

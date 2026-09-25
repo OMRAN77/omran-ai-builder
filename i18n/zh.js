@@ -300,6 +300,7 @@ I18N['zh'] = {
     "cancel": "取消",
     "save": "保存",
     "defaultProjectTitle": "新项目",
+    "defaultShowcaseTitle": "智能仪表板",
     "templatesBtn": "🧩 模板",
     "templatesModalTitle": "🧩 选择模板",
     "useThisTemplate": "✅ 使用此模板",
