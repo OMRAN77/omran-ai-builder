@@ -320,6 +320,7 @@ I18N['fr'] = {
     cancel: "Annuler",
     save: "Enregistrer",
     defaultProjectTitle: "Nouveau projet",
+    defaultShowcaseTitle: "Tableau de bord intelligent",
     templatesBtn: "🧩 Modèles",
     templatesModalTitle: "🧩 Choisir un modèle",
     useThisTemplate: "✅ Utiliser ce modèle",

@@ -65,9 +65,33 @@ test('js/app-03-i18n-data.js: كل مفاتيح الترجمة المستخدم�
     'tcSub_btnQibla',
     'quickTemplatesTitle',
     'tcSub_btnQuickTemplates',
-    'omNavTools'
+    'omNavTools',
+    'defaultShowcaseTitle'
   ];
   for (const k of usedKeys) {
     assert.ok(new RegExp('[\\s{,\'"]' + k + '["\']?\\s*:').test(dict), 'مفتاح ' + k + ' موجود في القاموس');
   }
 });
+
+test('index.html: استخدام الصور الحقيقية للأدوات بدلاً من الإيموجي', () => {
+  const html = read('index.html');
+  assert.ok(html.includes('/assets/tool-cards/s/btnPortraitStyle.jpg'), 'صورة أنماط الصور موجودة');
+  assert.ok(html.includes('/assets/tool-cards/s/btnOmranEdu.jpg'), 'صورة التعليم موجودة');
+  assert.ok(html.includes('/assets/tool-cards/s/btnQibla.jpg'), 'صورة القبلة موجودة');
+  assert.ok(html.includes('/assets/tool-cards/s/btnQuickTemplates.jpg'), 'صورة الاقتراحات موجودة');
+  assert.ok(!html.includes('hwCardIcon'), 'لا توجد إيموجيات أطفال كأيقونات');
+});
+
+test('الشاشة مفتوحة من الطرفين والكود النموذجي يبدأ فورًا', () => {
+  const html = read('index.html');
+  assert.ok(html.includes("localStorage.setItem('waCollapsed','0')"), 'لوحة المعاينة مفتوحة من البداية');
+  assert.ok(html.includes("localStorage.setItem('sidebarCollapsed','0')"), 'القائمة الجانبية مفتوحة من البداية');
+
+  const app04 = read('js/app-04-i18n-state.js');
+  assert.ok(app04.includes('window.OMRAN_STARTER_APP_CODE ='), 'تعريف كود التطبيق النموذجي');
+  assert.ok(app04.includes('defaultShowcaseTitle'), 'اسم المشروع النموذجي الافتراضي');
+
+  const app05 = read('js/app-05-ui.js');
+  assert.ok(app05.includes('window.OMRAN_STARTER_APP_CODE'), 'عرض التطبيق النموذجي في المعاينة عند خلو الكود');
+});
+

@@ -306,6 +306,7 @@ I18N['ru'] = {
     "cancel": "Отмена",
     "save": "Сохранить",
     "defaultProjectTitle": "Новый проект",
+    "defaultShowcaseTitle": "Умная панель",
     "templatesBtn": "🧩 Шаблоны",
     "templatesModalTitle": "🧩 Выберите шаблон",
     "useThisTemplate": "✅ Использовать этот шаблон",

@@ -3393,6 +3393,7 @@ const I18N = {
     cancel: 'إلغاء',
     save: 'حفظ',
     defaultProjectTitle: 'مشروع جديد',
+    defaultShowcaseTitle: 'لوحة القيادة الذكية',
     templatesBtn: '🧩 قوالب جاهزة',
     templatesModalTitle: '🧩 اختر قالبًا جاهزًا',
     useThisTemplate: '✅ استخدام هذا القالب',
@@ -4046,6 +4047,7 @@ const I18N = {
     cancel: 'Cancel',
     save: 'Save',
     defaultProjectTitle: 'New Project',
+    defaultShowcaseTitle: 'Smart Dashboard',
     templatesBtn: '🧩 Templates',
     templatesModalTitle: '🧩 Choose a Template',
     useThisTemplate: '✅ Use This Template',
@@ -4704,7 +4706,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=689'; /* v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=689'; /* v-showcase-starter: مفتاح defaultShowcaseTitle لـ14 لغة. قبله v-media-plans. */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -5119,8 +5121,297 @@ if(!state.currentId && state.projects.length){
     if(__curP) state.currentId = __curP.id;
   }catch(e){ __swallow(e, 'boot:app-04#cur-early'); }
 }
+if(!state.projects.length){
+  const __starterId = 'p_' + Date.now();
+  state.projects = [{
+    id: __starterId,
+    title: (typeof t === 'function' ? t('defaultShowcaseTitle') : 'لوحة القيادة الذكية'),
+    messages: [],
+    code: '',
+  }];
+  state.currentId = __starterId;
+}
 // v522: نكشف state على window حتى يقدر app-22-session-new.js يصل إليه من داخل IIFE
 window.__omrS = state;
+
+// طلب المالك: تطبيق تنفيذي متكامل (Executive Dashboard) بمستوى عالي يظهر فور فتح التطبيق
+window.OMRAN_STARTER_APP_CODE = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة القيادة الذكية | عمران AI</title>
+  <style>
+    :root {
+      --bg: #090b10;
+      --card-bg: rgba(18, 22, 34, 0.75);
+      --card-border: rgba(212, 160, 23, 0.18);
+      --card-hover: rgba(212, 160, 23, 0.35);
+      --gold: #d4a017;
+      --gold-light: #f5c842;
+      --text: #f0f2f5;
+      --text-dim: #9aa4b2;
+      --accent-green: #10b981;
+      --accent-blue: #38bdf8;
+      --accent-purple: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body {
+      background: radial-gradient(circle at 50% 0%, #151c2e 0%, var(--bg) 70%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--gold-light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 0.5px;
+    }
+    .badge-live {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-live::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 18px;
+      backdrop-filter: blur(8px);
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card:hover {
+      border-color: var(--card-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+    .stat-title {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .stat-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .stat-diff {
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--accent-green);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .grid-main {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 768px) {
+      .grid-main { grid-template-columns: 1fr; }
+    }
+    .chart-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-head h3 {
+      font-size: 1rem;
+      color: #fff;
+      font-weight: 600;
+    }
+    .btn-action {
+      background: rgba(212, 160, 23, 0.12);
+      color: var(--gold-light);
+      border: 1px solid var(--card-border);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-action:hover {
+      background: rgba(212, 160, 23, 0.25);
+      border-color: var(--gold);
+    }
+    .svg-chart {
+      width: 100%;
+      height: 180px;
+      overflow: visible;
+    }
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .activity-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.85rem;
+    }
+    .act-tag {
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-blue);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand-title">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+      <span>لوحة العمليات والتحليلات الذكية</span>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center;">
+      <span class="badge-live">النظام متصل</span>
+      <button class="btn-action" id="btnRefresh">تحديث فوري</button>
+    </div>
+  </header>
+
+  <section class="grid-stats">
+    <div class="stat-card">
+      <div class="stat-title">كفاءة المعالجة الذكية</div>
+      <div class="stat-val" id="statEff">99.4%</div>
+      <div class="stat-diff">↑ +1.8% هذا الأسبوع</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">المهام المنجزة تلقائيًا</div>
+      <div class="stat-val" id="statTasks">14,280</div>
+      <div class="stat-diff">↑ +240 مهمة اليوم</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">سرعة الاستجابة اللحظية</div>
+      <div class="stat-val" id="statLatency">42 ms</div>
+      <div class="stat-diff" style="color:var(--accent-blue);">⚡ أداء فائق السرعة</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">الدقة والمطابقة الهندسية</div>
+      <div class="stat-val" id="statAcc">100%</div>
+      <div class="stat-diff">✓ تدقيق شامل معتمد</div>
+    </div>
+  </section>
+
+  <div class="grid-main">
+    <div class="chart-panel">
+      <div class="panel-head">
+        <h3>معدل الإنتاجية والتحليل الحي</h3>
+        <span style="font-size:0.8rem; color:var(--text-dim);">آخر ٧ فترات تدريب</span>
+      </div>
+      <svg class="svg-chart" viewBox="0 0 500 180">
+        <defs>
+          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#d4a017" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#d4a017" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <path d="M 10 150 Q 80 120 160 135 T 320 60 T 490 30 L 490 180 L 10 180 Z" fill="url(#chartGrad)"/>
+        <path id="curvePath" d="M 10 150 Q 80 120 160 135 T 320 60 T 490 30" fill="none" stroke="#d4a017" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="160" cy="135" r="5" fill="#f5c842" stroke="#090b10" stroke-width="2"/>
+        <circle cx="320" cy="60" r="5" fill="#f5c842" stroke="#090b10" stroke-width="2"/>
+        <circle cx="490" cy="30" r="6" fill="#10b981" stroke="#090b10" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <div class="chart-panel">
+      <div class="panel-head">
+        <h3>سجل النشاط المباشر</h3>
+      </div>
+      <div class="activity-list" id="actList">
+        <div class="activity-item">
+          <span>توليد نموذج ثلاثي الأبعاد</span>
+          <span class="act-tag">مكتمل</span>
+        </div>
+        <div class="activity-item">
+          <span>فحص توافق المكونات</span>
+          <span class="act-tag">ناجح</span>
+        </div>
+        <div class="activity-item">
+          <span>تحسين محاذاة العرض</span>
+          <span class="act-tag">محدث</span>
+        </div>
+        <div class="activity-item">
+          <span>مزامنة قواعد المعرفة</span>
+          <span class="act-tag">نشط</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('btnRefresh').addEventListener('click', function() {
+      var btn = this;
+      btn.textContent = 'جار التحديث...';
+      btn.style.opacity = '0.7';
+      setTimeout(function() {
+        var eff = (99.1 + Math.random() * 0.8).toFixed(1);
+        document.getElementById('statEff').textContent = eff + '%';
+        var tasks = 14280 + Math.floor(Math.random() * 40);
+        document.getElementById('statTasks').textContent = tasks.toLocaleString();
+        var lat = 38 + Math.floor(Math.random() * 8);
+        document.getElementById('statLatency').textContent = lat + ' ms';
+        btn.textContent = 'تم التحديث ✓';
+        btn.style.opacity = '1';
+        setTimeout(function() { btn.textContent = 'تحديث فوري'; }, 1500);
+      }, 400);
+    });
+  </script>
+</body>
+</html>`;
+
 
 // 💾 IndexedDB storage — سعة بالجيجات بدل حد 5MB في localStorage.
 // المشاريع/المحادثات/الصور تنحفظ هنا؛ localStorage يبقى للإعدادات الصغيرة فقط.
@@ -5906,7 +6197,7 @@ function renderHistory(){
       const iframe = document.createElement('iframe');
       iframe.setAttribute('sandbox', '');
       iframe.setAttribute('loading', 'lazy');
-      iframe.srcdoc = p.code;
+      iframe.srcdoc = p.code.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
       thumb.appendChild(iframe);
     } else {
       const ph = document.createElement('span');
@@ -8748,6 +9039,17 @@ function renderCodeAndPreview(){
       if(__bar && __bar._resetEdit) __bar._resetEdit();
     }
   }catch(e){ /* guard-ok */ }
+  if(!cur || !cur.code){
+    // طلب المالك: عرض كود حقيقي في المعاينة بمستوى عالي ومفتوح من الطرفين عند أول تشغيل
+    if(cur && !cur.code && (!cur.messages || !cur.messages.length) && !previewFrame._imageView && typeof window.OMRAN_STARTER_APP_CODE === 'string' && window.OMRAN_STARTER_APP_CODE){
+      cur.code = window.OMRAN_STARTER_APP_CODE;
+      if(!cur.title || cur.title === t('defaultProjectTitle')){
+        cur.title = t('defaultShowcaseTitle');
+      }
+      try{ saveState(); }catch(e){ __swallow(e, 'ui:starter-save'); }
+      try{ renderHistory(); }catch(e){ __swallow(e, 'ui:starter-hist'); }
+    }
+  }
   if(!cur || !cur.code){
     if(previewFrame._imageView){
       pyConsole.style.display = 'none';

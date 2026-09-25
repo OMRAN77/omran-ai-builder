@@ -781,37 +781,45 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
           <h2 class="huawei-hero-title" data-i18n="quickToolsTitle">أدوات سريعة</h2>
         </div>
         <div id="huaweiToolsGrid" class="huawei-tools-grid">
-          <button type="button" class="hwToolCard" id="hwCardPortrait" data-hwtool="portrait">
-            <div class="hwToolIconWrap">🎨</div>
-            <div class="hwToolTexts">
-              <span class="hwToolName" data-i18n="portraitBtnTitle">أنماط الصور</span>
-              <span class="hwToolDesc" data-i18n="tcSub_btnPortraitStyle">مجموعة متنوعة من أنماط الصور</span>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardPortrait" data-hwtool="portrait">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnPortraitStyle.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="portraitBtnTitle">أنماط الصور</span>
+                <span class="tcSub" data-i18n="tcSub_btnPortraitStyle">مجموعة متنوعة من أنماط الصور</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
             </div>
-            <span class="hwToolArrow" aria-hidden="true">›</span>
           </button>
-          <button type="button" class="hwToolCard" id="hwCardEdu" data-hwtool="edu">
-            <div class="hwToolIconWrap">🎓</div>
-            <div class="hwToolTexts">
-              <span class="hwToolName" data-i18n="omranEduTitle">التعليم</span>
-              <span class="hwToolDesc" data-i18n="tcSub_btnOmranEdu">كورسات ودروس تعليمية</span>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardEdu" data-hwtool="edu">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnOmranEdu.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="omranEduTitle">التعليم</span>
+                <span class="tcSub" data-i18n="tcSub_btnOmranEdu">كورسات ودروس تعليمية</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
             </div>
-            <span class="hwToolArrow" aria-hidden="true">›</span>
           </button>
-          <button type="button" class="hwToolCard" id="hwCardQibla" data-hwtool="qibla">
-            <div class="hwToolIconWrap">🕋</div>
-            <div class="hwToolTexts">
-              <span class="hwToolName" data-i18n="qiblaTitle">القبلة والمواقيت</span>
-              <span class="hwToolDesc" data-i18n="tcSub_btnQibla">مواقيت الصلاة واتجاه القبلة</span>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardQibla" data-hwtool="qibla">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnQibla.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="qiblaTitle">القبلة والمواقيت</span>
+                <span class="tcSub" data-i18n="tcSub_btnQibla">مواقيت الصلاة واتجاه القبلة</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
             </div>
-            <span class="hwToolArrow" aria-hidden="true">›</span>
           </button>
-          <button type="button" class="hwToolCard" id="hwCardSuggestions" data-hwtool="suggestions">
-            <div class="hwToolIconWrap">💡</div>
-            <div class="hwToolTexts">
-              <span class="hwToolName" data-i18n="quickTemplatesTitle">اقتراحات</span>
-              <span class="hwToolDesc" data-i18n="tcSub_btnQuickTemplates">أفكار وإلهام لمشاريعك القادمة</span>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardSuggestions" data-hwtool="suggestions">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnQuickTemplates.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="quickTemplatesTitle">اقتراحات</span>
+                <span class="tcSub" data-i18n="tcSub_btnQuickTemplates">أفكار وإلهام لمشاريعك القادمة</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
             </div>
-            <span class="hwToolArrow" aria-hidden="true">›</span>
           </button>
         </div>
         <button type="button" class="hwAllToolsBtn" id="hwAllToolsBtn">
@@ -980,8 +988,8 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
-    <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=b51ed376"></script>
+    <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
+    <script defer src="/js/app.bundle.js?v=35619409"></script>
     <script defer src="/js/modes.js?v=m250925b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

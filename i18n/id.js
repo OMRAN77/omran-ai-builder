@@ -305,6 +305,7 @@ I18N['id'] = {
     "cancel": "Batal",
     "save": "Simpan",
     "defaultProjectTitle": "Proyek Baru",
+    "defaultShowcaseTitle": "Dasbor Pintar",
     "templatesBtn": "🧩 Templat",
     "templatesModalTitle": "🧩 Pilih Templat",
     "useThisTemplate": "✅ Gunakan Templat Ini",

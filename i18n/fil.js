@@ -307,6 +307,7 @@ I18N['fil'] = {
     "cancel": "Kanselahin",
     "save": "I-save",
     "defaultProjectTitle": "Bagong Proyekto",
+    "defaultShowcaseTitle": "Matalinong Dashboard",
     "templatesBtn": "🧩 Mga Template",
     "templatesModalTitle": "🧩 Pumili ng Template",
     "useThisTemplate": "✅ Gamitin ang Template na Ito",
