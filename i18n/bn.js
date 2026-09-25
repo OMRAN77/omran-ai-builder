@@ -303,6 +303,7 @@ I18N['bn'] = {
     cancel: "বাতিল করুন",
     save: "সংরক্ষণ করুন",
     defaultProjectTitle: "নতুন প্রকল্প",
+    defaultShowcaseTitle: "স্মার্ট ড্যাশবোর্ড",
     templatesBtn: "🧩 টেমপ্লেট",
     templatesModalTitle: "🧩 একটি টেমপ্লেট চয়ন করুন",
     useThisTemplate: "✅ এই টেমপ্লেটটি ব্যবহার করুন",
