@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
 const ISTIKHARA_PRAYER = 'اللَّهُمَّ إِنِّي أَسْتَخِيرُكَ بِعِلْمِكَ، وَأَسْتَقْدِرُكَ بِقُدْرَتِكَ، وَأَسْأَلُكَ مِنْ فَضْلِكَ الْعَظِيمِ، فَإِنَّكَ تَقْدِرُ وَلَا أَقْدِرُ، وَتَعْلَمُ وَلَا أَعْلَمُ، وَأَنْتَ عَلَّامُ الْغُيُوبِ. اللَّهُمَّ إِنْ كُنْتَ تَعْلَمُ أَنَّ هَذَا الْأَمْرَ خَيْرٌ لِي فِي دِينِي وَمَعَاشِي وَعَاقِبَةِ أَمْرِي، فَاقْدُرْهُ لِي وَيَسِّرْهُ لِي، ثُمَّ بَارِكْ لِي فِيهِ، وَإِنْ كُنْتَ تَعْلَمُ أَنَّ هَذَا الْأَمْرَ شَرٌّ لِي فِي دِينِي وَمَعَاشِي وَعَاقِبَةِ أَمْرِي، فَاصْرِفْهُ عَنِّي وَاصْرِفْنِي عَنْهُ، وَاقْدُرْ لِيَ الْخَيْرَ حَيْثُ كَانَ، ثُمَّ أَرْضِنِي بِهِ.';
 
@@ -131,16 +132,11 @@ async function authorPrayerPlan(apiKey, request, options = {}) {
         direction: options.direction,
         directionIndex: options.directionIndex,
       });
-      const upstream = await (options.fetchImpl || fetch)('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + openaiKey },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
+      const upstream = await oaLightFetch(openaiKey, { // v-models-latest
           temperature: 0.9,
           response_format: { type: 'json_object' },
           messages: [{ role: 'user', content: prompt + '\nReturn ONLY the JSON object.' }],
-        }),
-      });
+        }, { fetchImpl: options.fetchImpl });
       const data = await upstream.json().catch(() => ({}));
       if (upstream.ok) {
         const text = String((((data.choices || [])[0] || {}).message || {}).content || '').trim();

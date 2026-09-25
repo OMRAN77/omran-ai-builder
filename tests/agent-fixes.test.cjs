@@ -11,8 +11,11 @@ const path = require('node:path');
 const agent = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'agent.js'), 'utf8');
 
 // ② الافتراضيّ
-assert.ok(agent.includes("const AGENT_DEFAULT = 'claude-opus-5';"), 'الافتراضيّ Opus 5');
-assert.ok(agent.includes("ids.find((id) => /^claude-opus-5$/.test(id)) ||"), 'الرجوع عند 404 يفضّل Opus 5');
+// v-models-latest (٢٥ سبتمبر): Opus 5 ← Opus 5.5 بجهد high صريح (افتراضيّه medium)، والرجوع يفضّل 5.5 ثمّ 5.
+assert.ok(agent.includes("const AGENT_DEFAULT = 'claude-opus-5-5';"), 'الافتراضيّ Opus 5.5');
+assert.ok(agent.includes("ids.find((id) => /^claude-opus-5-5$/.test(id)) || // v-models-latest\n        ids.find((id) => /^claude-opus-5$/.test(id)) ||"), 'الرجوع عند 404 يفضّل Opus 5.5 ثمّ 5');
+assert.ok(agent.includes("/^claude-opus-5-5/.test(m) ? { output_config: { effort: 'high' } } : {}"), 'جهد high صريح على 5.5');
+assert.ok(agent.includes("'opus-5': 'claude-opus-5-5',"), 'اختيار الوكيل المحفوظ القديم يُرقّى');
 assert.ok(!/'claude-sonnet-5'\s*;\s*\n\s*let steps/.test(agent), 'لا افتراضيّ Sonnet قديم');
 // ① الإعلان عن النموذج للمالك
 assert.ok(agent.includes("if (upstream.ok && !modelAnnounced && isOwner(runUser)) {"), 'يُعلن مرّة واحدة وللمالك وحده');
@@ -43,6 +46,6 @@ const GH = require('../api/_lib/github-read.js');
   const modes = fs.readFileSync(path.join(__dirname, '..', 'js', 'modes.js'), 'utf8');
   // v-model-chip: اختيار النموذج مؤشّر أسفل الصندوق لا بند في «+».
   assert.ok(modes.includes("chip.id = 'omModelChip'"), 'مؤشّر النموذج أسفل الصندوق');
-  assert.ok(modes.includes("'Opus 5'") && modes.includes("'Sonnet 5'"), 'المؤشّر يعرض Opus 5 / Sonnet 5');
+  assert.ok(modes.includes("'Opus 5.5'") && modes.includes("'Sonnet 5'"), 'المؤشّر يعرض Opus 5.5 / Sonnet 5');
   console.log('✓ agent-fixes: Opus 5 افتراضيًّا ومُعلَنًا، الرفض واضح، بلا أسماء مزوّدين، ومفتاح GitHub للمالك وحده');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -8,18 +8,20 @@
 
   var KEY = 'aiapp_claude_model';
   /* v-models-family (أمر عمران ١٥ سبتمبر): عائلة كلود ٥ كاملة — الاختيار من منتقي السهم للمالك. */
-  var IDS = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
+  /* v-models-latest (٢٥ سبتمبر): Opus 5 ← Opus 5.5، والاختيار المحفوظ القديم يُرقّى تلقائيًّا. */
+  var IDS = ['claude-opus-5-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
+  var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };
   function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
   var HINTS = {
     '': ['الافتراضيّ: Haiku 4.5 — الاقتصاديّ والأسرع للمحادثة اليوميّة.', 'Default: Haiku 4.5 — economical and fastest for everyday chat.'],
-    'claude-opus-5': ['أدقّ من Sonnet 5 في المهامّ الصعبة، وأبطأ منه.', 'More precise than Sonnet 5 on hard tasks, slower.'],
+    'claude-opus-5-5': ['أدقّ من Sonnet 5 في المهامّ الصعبة، وأبطأ منه.', 'More precise than Sonnet 5 on hard tasks, slower.'],
     'claude-sonnet-5': ['توازن السرعة والدقّة.', 'Balanced speed and quality.'],
     'claude-haiku-4-5': ['الاقتصاديّ والأسرع — هو الافتراضيّ.', 'Economical and fastest — the default.'],
     'claude-fable-5-1': ['للكتابة الإبداعيّة والحوار الطبيعيّ.', 'For creative writing and natural dialogue.'],
   };
 
   function get() {
-    try { var v = localStorage.getItem(KEY) || ''; return IDS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; }
+    try { var v = localStorage.getItem(KEY) || ''; if (UPGRADES[v]) { v = UPGRADES[v]; localStorage.setItem(KEY, v); } return IDS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; }
   }
   function set(v) {
     v = IDS.indexOf(v) === -1 ? '' : v;

@@ -71,7 +71,7 @@ test('١. الخادم: موديل OpenRouter غير كلود يطلب بلا ت
   let r = await ask('deepseek', ['ok']);
   assert.equal(r.bodies.length, 1);
   assert.match(r.bodies[0].url, /openrouter\.ai\/api\/v1\/messages/);
-  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v3.2');
+  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro');
   assert.deepEqual(r.bodies[0].body.thinking, { type: 'disabled' });
   assert.deepEqual(r.bodies[0].body.reasoning, { enabled: false });
   assert.match(r.written, /"delta":"تم"/);

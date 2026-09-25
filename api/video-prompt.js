@@ -2,6 +2,7 @@
 // يستقبل صورة (base64) ويُعيد prompt إنجليزي لـ Runway AI
 // يُستدعى من كود الاعتراض في sendPrompt عندما يرفق المستخدم صورة مع طلب فيديو
 'use strict';
+const { oaLightFetch } = require('./_lib/_oa-light.js'); // v-models-latest
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,14 +24,7 @@ module.exports = async (req, res) => {
     const mimeType = mime || 'image/jpeg';
     const dataUrl = 'data:' + mimeType + ';base64,' + imageBase64;
 
-    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
+    const upstream = await oaLightFetch(apiKey, { // v-models-latest
         max_tokens: 100,
         temperature: 0.4,
         store: false,
@@ -44,8 +38,7 @@ module.exports = async (req, res) => {
             },
           ],
         }],
-      }),
-    });
+      });
 
     const data = await upstream.json();
     const prompt = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '').trim();

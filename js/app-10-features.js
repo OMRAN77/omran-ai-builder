@@ -145,14 +145,18 @@ const btnInstall = $('#btnInstall');
       'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
       'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
       'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-5',
-      'google/gemini-pro-1.5': 'google/gemini-3.5-flash',
+      'google/gemini-pro-1.5': 'google/gemini-3.8-flash',
       /* v-models-family: بدائل الجيل السابق في المنسدلة المدفوعة → معرّفاتها الحاليّة. */
       'openai/gpt-4o-mini': 'openai/gpt-5.6-terra',
       'openai/gpt-4o': 'openai/gpt-5.6-terra',
       'anthropic/claude-sonnet-4.5': 'anthropic/claude-sonnet-5',
-      'google/gemini-2.5-pro': 'google/gemini-3.5-flash',
+      'google/gemini-2.5-pro': 'google/gemini-3.8-flash',
       'meta-llama/llama-3.1-70b-instruct': 'meta-llama/llama-4-maverick',
-      'deepseek/deepseek-chat': 'deepseek/deepseek-v3.2',
+      'deepseek/deepseek-chat': 'deepseek/deepseek-v4-pro',
+      /* v-models-latest (٢٥ سبتمبر): خيارات المنسدلة التي رُقّيت → معرّفاتها الجديدة. */
+      'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',
+      'google/gemini-3.5-flash': 'google/gemini-3.8-flash',
+      'deepseek/deepseek-v3.2': 'deepseek/deepseek-v4-pro',
     };
     if (__orRemap[__orOld]) localStorage.setItem('aiapp_openrouter_model', __orRemap[__orOld]);
   } catch(e){ __swallow(e, "save:app-10-features#3"); }

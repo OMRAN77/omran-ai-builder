@@ -302,9 +302,9 @@ console.log('  ✓ v-sweep: الفحص الشامل — أسلاك حية وتر
   for (const dead of ['anthropic/claude-3.5-sonnet', 'google/gemini-pro-1.5', 'google/gemini-flash-1.5:free', 'mistralai/mistral-7b-instruct:free']) {
     assert.ok(!ps.includes('"' + dead + '"'), 'اسم ميت في المنسدلة: ' + dead);
   }
-  assert.ok(ps.includes('anthropic/claude-sonnet-5') && ps.includes('google/gemini-3.5-flash'), 'البدائل الحية في المنسدلة');
+  assert.ok(ps.includes('anthropic/claude-sonnet-5') && ps.includes('google/gemini-3.8-flash'), 'البدائل الحية في المنسدلة');
   const ft = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
-  assert.ok(ft.includes('__orRemap') && ft.includes("'google/gemini-pro-1.5': 'google/gemini-3.5-flash'"), 'مهاجر القيم المحفوظة الميتة');
+  assert.ok(ft.includes('__orRemap') && ft.includes("'google/gemini-pro-1.5': 'google/gemini-3.8-flash'"), 'مهاجر القيم المحفوظة الميتة');
 }
 console.log('  ✓ v-or-models: قوائم OpenRouter حية ومهاجرة');
 
@@ -336,7 +336,7 @@ console.log('  \u2713 v-dream-tafsir: تفسير حقيقي + أداة ديني�
 // ㉙ v-prayer-rescue: بطاقات الدعاء لا تموت بزحام Gemini — إنقاذ OpenAI.
 {
   const pp = fs.readFileSync(path.join(__dirname, '../api/_lib/prayer-plan.js'), 'utf8');
-  assert.ok(pp.includes('v-prayer-rescue') && pp.includes("'gpt-4o-mini'") && pp.includes('validatePrayerPlan(JSON.parse'), 'مخطط الدعاء له خط إنقاذ بنفس التدقيق');
+  assert.ok(pp.includes('v-prayer-rescue') && pp.includes('oaLightFetch(openaiKey') && pp.includes('validatePrayerPlan(JSON.parse'), 'مخطط الدعاء له خط إنقاذ بنفس التدقيق');
 }
 assert.ok(fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8').split('v-prayer-carry').length >= 2, 'الإنقاذ يمرر الدعاء المؤلف مع الصورة');
 console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود واحد ولا يضيع في الإنقاذ');

@@ -164,11 +164,10 @@ function boxToRect(box, w, h, pad) {
 async function openaiMaskedEdit(openaiKey, promptText, imgBuf, mime, maskBuf) {
   const attempt = async (withFidelity) => {
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', 'gpt-image-2'); /* v-models-latest: gpt-image-1 يُوقف ٢٣ أكتوبر ٢٠٢٦؛ gpt-image-2 يرفض input_fidelity (دقّته عالية دائمًا) */
     form.append('prompt', String(promptText).slice(0, 3900));
     form.append('size', 'auto');
     form.append('quality', 'high');
-    if (withFidelity) form.append('input_fidelity', 'high');
     form.append('image', new Blob([imgBuf], { type: mime || 'image/jpeg' }), 'photo.jpg');
     form.append('mask', new Blob([maskBuf], { type: 'image/png' }), 'mask.png');
     const r = await fetch('https://api.openai.com/v1/images/edits', {

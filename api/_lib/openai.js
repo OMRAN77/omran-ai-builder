@@ -3,6 +3,7 @@ const { stripPrivateKeys } = require('./_msgs.js'); // v-static-leak
 // own server-side API key (OPENAI_API_KEY env var), so visitors can try the app
 // without entering their own key. This key is NEVER exposed to the client.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
+const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,7 +37,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    let useModel = (!model || model === 'gpt-4.1-mini' || model === 'gpt-4o-mini') ? 'gpt-4.1' : String(model);
+    // v-models-latest: الافتراضيّ (والأسماء القديمة) = الخفيف الأحدث بقائمة مرشّحين (_oa-light) بدل gpt-4.1 الثابت.
+    const useDefault = !model || model === 'gpt-4.1-mini' || model === 'gpt-4o-mini' || model === 'gpt-4.1';
+    let useModel = useDefault ? 'gpt-4.1' : String(model);
     if (useModel.indexOf('/') !== -1) useModel = useModel.split('/').pop(); // v-provider-models: معرّف OpenRouter (openai/…) على المسار المباشر
     // 👑 الرد الاحترافي: موديل بريميوم مقابل نقاط (المالك بلا حدود).
     let premiumRefund = null;
@@ -64,14 +67,16 @@ module.exports = async (req, res) => {
     const wantStream = !!body.stream;
     const payload = { model: useModel, messages, stream: wantStream, store: false }; // v544: لا تُخزَّن عند المزوّد
     if (!isPremium) payload.temperature = 0.7; // موديلات gpt-5.x قد ترفض temperature مخصص
-    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
-      },
-      body: JSON.stringify(payload),
-    });
+    const upstream = (useDefault && !isPremium)
+      ? await oaLightFetch(apiKey, payload, { models: ['gpt-6-luna', 'gpt-5-mini', 'gpt-4.1'] })
+      : await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey,
+        },
+        body: JSON.stringify(payload),
+      });
 
     if (wantStream && upstream.ok && upstream.body) {
       res.status(200);

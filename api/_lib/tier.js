@@ -81,7 +81,7 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://api.groq.com/openai/v1/models',
     keyVar: 'GROQ_API_KEY',
     modelVar: 'FREE_GROQ_MODEL',
-    models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'],
+    models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.1-8b-instant'], // v-models-latest: Groq أوقف Llama 4/3.x وqwen3-32b (مارس–أغسطس ٢٠٢٦) للمجانيّ والمطوّرين — الحيّ أوّلًا، والميّتان ذيلٌ لحسابات المؤسّسات
     pick: /gpt-oss-120b|llama-4-maverick|llama-4-scout|llama-3\.3-70b|qwen3-32b|kimi-k2|gpt-oss-20b|llama-3\.1-8b/i,
     vision: false,
   },

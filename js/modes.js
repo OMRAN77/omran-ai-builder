@@ -31,16 +31,16 @@
   window.__omMode = null;
   /* aiapp_claude_model يستعمل المعرّف الكامل (claude-opus-5)، وaiapp_agent_model
      يستعمل المفتاح القصير (opus-5) — نضبط الاثنين معًا. */
-  function curModel(){ try{ return (localStorage.getItem('aiapp_claude_model') === 'claude-opus-5') ? 'opus' : 'sonnet'; }catch(e){ return 'sonnet'; } }
+  function curModel(){ try{ return /^claude-opus-5(?:-5)?$/.test(localStorage.getItem('aiapp_claude_model') || '') ? 'opus' : 'sonnet'; }catch(e){ return 'sonnet'; } }
   function setModel(which){
     try{
-      if(which === 'opus'){ localStorage.setItem('aiapp_claude_model','claude-opus-5'); localStorage.setItem('aiapp_agent_model','opus-5'); }
+      if(which === 'opus'){ localStorage.setItem('aiapp_claude_model','claude-opus-5-5'); localStorage.setItem('aiapp_agent_model','opus-5-5'); } /* v-models-latest: Opus 5.5 */
       else { localStorage.setItem('aiapp_claude_model','claude-sonnet-5'); localStorage.setItem('aiapp_agent_model','sonnet-5'); }
     }catch(e){ /* guard-ok: التخزين المحلّيّ قد يكون مقفلًا */ }
     try{ if(window.claudeModelSync) window.claudeModelSync(); }catch(e){ /* guard-ok */ }
     try{ if(window.omModelChipSync) window.omModelChipSync(); }catch(e){ /* guard-ok */ }
   }
-  function modelName(){ return curModel() === 'opus' ? 'Opus 5' : 'Sonnet 5'; }
+  function modelName(){ return curModel() === 'opus' ? 'Opus 5.5' : 'Sonnet 5'; }
   function isOwner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
   var stickyTried = false;
   function refreshOwnerItems(){
@@ -87,18 +87,18 @@
          متداخلة للمالك وحده — كلّ مزوّد يفتح موديلاته، والاختيار يضبط aiapp_provider +
          مفتاح موديل المزوّد (عبر omranPickProviderModel). المعرّفات من إعدادات التطبيق نفسها. */
       var PROVS = [
-        { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-haiku-4-5',     models:[['claude-opus-5','Opus 5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
+        { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-haiku-4-5',     models:[['claude-opus-5-5','Opus 5.5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
         /* v-provider-models (أمر المالك ٢٢ سبتمبر «كلّ واحد وموديله بالضبط»): المعرّفات هنا معرّفات OpenRouter كما
            يستعملها الخادم (OR_MODELS في chat.js) — الافتراضيّ الواحد ثابت، والباقي يأتي حيًّا من /api/ai?action=models.
            الأسماء القديمة (Astra/Sol/Luna…) كانت عرضًا لا يصل الخادم فأُزيلت. */
         { key:'openai',     name:'OpenAI · GPT',             or:true, store:'aiapp_model',            def:'openai/gpt-5.6-terra',        models:[['openai/gpt-5.6-terra','GPT-5.6 Terra']] },
-        { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), or:true, store:'aiapp_gemini_model', def:'google/gemini-3.5-flash', models:[['google/gemini-3.5-flash','Gemini 3.5 Flash']] },
+        { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), or:true, store:'aiapp_gemini_model', def:'google/gemini-3.8-flash', models:[['google/gemini-3.8-flash','Gemini 3.8 Flash']] },
         { key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
         { key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
-        { key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v3.2',      models:[['deepseek/deepseek-v3.2','DeepSeek V3.2']] },
+        { key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
         { key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
         { key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
-        { key:'openrouter', name:'OpenRouter',               store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5','Claude Opus 5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.5-flash','Gemini 3.5 Flash'],['deepseek/deepseek-v3.2','DeepSeek V3.2'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
+        { key:'openrouter', name:'OpenRouter',               store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.8-flash','Gemini 3.8 Flash'],['deepseek/deepseek-v4-pro','DeepSeek V4 Pro'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
@@ -190,7 +190,7 @@
           var prov = pm.getAttribute('data-prov'), store = pm.getAttribute('data-store'), model = pm.getAttribute('data-model');
           setAgent(false); if(window.__omMode === 'cc') pick(null);
           // موديل الوكيل يُزامَن مع Opus/Sonnet فقط (الوكيل يدعمهما)؛ Haiku/Fable موديلا محادثة.
-          if(prov === 'claude'){ if(model === 'claude-opus-5') setModel('opus'); else if(model === 'claude-sonnet-5') setModel('sonnet'); }
+          if(prov === 'claude'){ if(model === 'claude-opus-5-5') setModel('opus'); else if(model === 'claude-sonnet-5') setModel('sonnet'); }
           try{ if(window.omranPickProviderModel) window.omranPickProviderModel(prov, store, model); }catch(e2){ /* guard-ok */ }
           try{ if(prov === 'claude' && window.claudeModelSync) window.claudeModelSync(); }catch(e3){ /* guard-ok */ }
           refresh(); pop.style.display = 'none'; return;

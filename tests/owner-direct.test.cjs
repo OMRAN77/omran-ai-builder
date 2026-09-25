@@ -54,9 +54,9 @@ const anthropicText = (text) => sse([
   { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } },
 ]);
 const oaText = (text, model) => sse([
-  { model: model || 'meta-llama/llama-4-maverick-17b-128e-instruct', choices: [{ index: 0, delta: { role: 'assistant', content: '' } }] },
-  { model: model || 'meta-llama/llama-4-maverick-17b-128e-instruct', choices: [{ index: 0, delta: { content: text } }] },
-  { model: model || 'meta-llama/llama-4-maverick-17b-128e-instruct', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], x_groq: { usage: { prompt_tokens: 50, completion_tokens: 3 } } },
+  { model: model || 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { role: 'assistant', content: '' } }] },
+  { model: model || 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { content: text } }] },
+  { model: model || 'openai/gpt-oss-120b', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], x_groq: { usage: { prompt_tokens: 50, completion_tokens: 3 } } },
   '[DONE]',
 ]);
 
@@ -130,12 +130,13 @@ test('٢. الجسر: بثّ chat/completions ← أحداث أنثروبيك (�
   assert.deepEqual(tail.message, { usage: { input_tokens: 60, cache_read_input_tokens: 40 } }, 'المدخل في حدث ثانٍ بلا موديل');
 });
 
-test('٣. الموديل المباشر: GPT يقصّ بادئة الوسيط، وافتراضيّ السهم لـGroq = Maverick باسمه عند Groq', () => {
+test('٣. الموديل المباشر: GPT يقصّ بادئة الوسيط، وافتراضيّ السهم لـGroq = بديل Maverick الرسميّ عند Groq (gpt-oss-120b)', () => {
   assert.deepEqual(od.directModel('openai', 'openai/gpt-5.6-terra', {}), { model: 'gpt-5.6-terra', picked: true, def: 'gpt-5.6-terra' });
   assert.equal(od.directModel('openai', '', {}).picked, false);
   assert.equal(od.directModel('openai', 'google/gemini-3.5-flash', {}).picked, false, 'معرّف شركة أخرى لا يُقبل');
-  assert.deepEqual(od.directModel('groq', 'meta-llama/llama-4-maverick', {}), { model: 'meta-llama/llama-4-maverick-17b-128e-instruct', picked: false, def: 'meta-llama/llama-4-maverick-17b-128e-instruct' });
-  assert.deepEqual(od.directModel('groq', 'qwen/qwen3-32b', {}), { model: 'qwen/qwen3-32b', picked: true, def: 'meta-llama/llama-4-maverick-17b-128e-instruct' });
+  // v-models-latest: Groq أوقف Maverick (مارس ٢٠٢٦) — افتراضيّ السهم يُترجم لبديله الرسميّ gpt-oss-120b.
+  assert.deepEqual(od.directModel('groq', 'meta-llama/llama-4-maverick', {}), { model: 'openai/gpt-oss-120b', picked: false, def: 'openai/gpt-oss-120b' });
+  assert.deepEqual(od.directModel('groq', 'qwen/qwen3-32b', {}), { model: 'qwen/qwen3-32b', picked: true, def: 'openai/gpt-oss-120b' });
   assert.equal(od.directModel('groq', 'bad id!', {}).picked, false);
   assert.equal(od.directRoute('groq', {}), null, 'بلا مفتاح = الوسيط');
   assert.equal(od.directRoute('claude', { GROQ_API_KEY: 'k' }), null);
@@ -148,8 +149,8 @@ test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمف
   try {
     const r = await run({ user: 'omran', provider: 'groq', model: 'meta-llama/llama-4-maverick', messages: ask('ابحث عن عمران وش هو'), script: [
       () => sse([
-        { model: 'meta-llama/llama-4-maverick-17b-128e-instruct', choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: 'call_a', type: 'function', function: { name: 'web_search', arguments: '{"query":"عمران"}' } }] } }] },
-        { model: 'meta-llama/llama-4-maverick-17b-128e-instruct', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] },
+        { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: 'call_a', type: 'function', function: { name: 'web_search', arguments: '{"query":"عمران"}' } }] } }] },
+        { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] },
         '[DONE]',
       ]),
       () => oaText('هذا جواب Groq'),
@@ -158,7 +159,7 @@ test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمف
     for (const c of r.calls) {
       assert.equal(c.url, 'https://api.groq.com/openai/v1/chat/completions');
       assert.equal(c.headers.Authorization, 'Bearer gsk-test');
-      assert.equal(c.body.model, 'meta-llama/llama-4-maverick-17b-128e-instruct');
+      assert.equal(c.body.model, 'openai/gpt-oss-120b');
       assert.ok(Array.isArray(c.body.tools) && c.body.tools.some((t) => t.function.name === 'web_search'), 'الأدوات عابرة');
       assert.ok(!c.body.messages.some((m) => m.role === 'system'), 'المالك خام: لا نظام');
     }
@@ -167,7 +168,7 @@ test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمف
     assert.equal(second[2].role, 'tool');
     assert.equal(second[2].tool_call_id, 'call_a');
     assert.equal(r.text, 'هذا جواب Groq');
-    assert.ok(r.events.some((e) => typeof e.modelLabel === 'string' && e.modelLabel.includes('meta-llama/llama-4-maverick-17b-128e-instruct')), 'الشارة تسمّي ما خدم فعلًا');
+    assert.ok(r.events.some((e) => typeof e.modelLabel === 'string' && e.modelLabel.includes('openai/gpt-oss-120b')), 'الشارة تسمّي ما خدم فعلًا');
   } finally { delete process.env.GROQ_API_KEY; }
 });
 
@@ -191,14 +192,14 @@ test('٦. موديل Groq الافتراضيّ متقاعد → المرشّح �
   od.__deadModels.clear();
   try {
     let r = await run({ user: 'omran', provider: 'groq', messages: ask('سؤال'), script: [
-      () => new Response('{"error":{"message":"The model `meta-llama/llama-4-maverick-17b-128e-instruct` does not exist","code":"model_not_found"}}', { status: 404 }),
-      () => oaText('تم', 'openai/gpt-oss-120b'),
+      () => new Response('{"error":{"message":"The model `openai/gpt-oss-120b` does not exist","code":"model_not_found"}}', { status: 404 }),
+      () => oaText('تم', 'openai/gpt-oss-20b'),
     ] });
     assert.equal(r.calls.length, 2);
     assert.notEqual(r.calls[1].body.model, r.calls[0].body.model);
     assert.equal(r.text, 'تم');
     r = await run({ user: 'omran', provider: 'groq', messages: ask('سؤال'), script: [() => oaText('ثاني')] });
-    assert.notEqual(r.calls[0].body.model, 'meta-llama/llama-4-maverick-17b-128e-instruct', 'المرفوض لا يتصدّر');
+    assert.notEqual(r.calls[0].body.model, 'openai/gpt-oss-120b', 'المرفوض لا يتصدّر');
   } finally { delete process.env.GROQ_API_KEY; od.__deadModels.clear(); }
 });
 

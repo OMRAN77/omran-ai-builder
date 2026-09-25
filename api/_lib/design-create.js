@@ -14,11 +14,9 @@ async function openaiDesignEdit(promptText, imageBase64, mimeType) {
   try {
     const bytes = Buffer.from(imageBase64, 'base64');
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', 'gpt-image-2'); /* v-models-latest: gpt-image-1 يُوقف ٢٣ أكتوبر ٢٠٢٦؛ gpt-image-2 يرفض input_fidelity (دقّته عالية دائمًا) */
     form.append('prompt', String(promptText).slice(0, 3900));
     form.append('size', 'auto');
-    /* v-strong-rescue */
-    form.append('input_fidelity', 'high');
     form.append('quality', 'high');
     form.append('output_format', 'webp');
     form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'room.jpg');

@@ -20,14 +20,13 @@ async function openaiStudioEdit(promptText, images) {
   if (!key) return null;
   try {
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', 'gpt-image-2'); /* v-models-latest: gpt-image-1 يُوقف ٢٣ أكتوبر ٢٠٢٦؛ gpt-image-2 يرفض input_fidelity (دقّته عالية دائمًا) */
     form.append('prompt', String(promptText).slice(0, 3900));
     form.append('size', 'auto');
-    /* v-strong-rescue: حفظ الملامح وجودة عالية */
-    form.append('input_fidelity', 'high');
     form.append('quality', 'high');
+    const imgField = images.length > 1 ? 'image[]' : 'image'; // أكثر من صورة على gpt-image-2 = image[] (كما في maha-image)
     images.forEach(([b64, mime], i) => {
-      form.append('image', new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
+      form.append(imgField, new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
     });
     const r = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',

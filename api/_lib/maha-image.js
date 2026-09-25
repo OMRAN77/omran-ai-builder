@@ -385,10 +385,10 @@ module.exports = async (req, res) => {
       }
     }
     /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
-    /* v-image-modes: توغل «نانو خام» للمالك يفرض نانو ٢.٥ (gemini-2.5-flash-image) بدل برو. */
-    const primaryModel = (__optForceEngine === 'nano') ? 'gemini-2.5-flash-image'
+    /* v-image-modes: توغل «نانو خام» للمالك يفرض نانو بدل برو. v-models-latest: نانو ٢٫٥ يُوقف ٢ أكتوبر ٢٠٢٦ → نانو ٢ (٣٫١) بالصيغة النظيفة نفسها. */
+    const primaryModel = (__optForceEngine === 'nano') ? 'gemini-3.1-flash-image'
       : (editImageBase64 ? ((isCreativeEdit || isTextSwap || isPersonSwap || isBroadEdit) ? creativeModel : editModel) : creativeModel);
-    const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
+    const nanoPrimary = /flash-image/.test(primaryModel);
     /* v-lanes: المسار الأمين = تعديل ليس إبداعيًّا ولا تبديل أشخاص ولا تعديلًا واسعًا — يحتفظ بحرارته المنخفضة على أيّ محرّك.
        v-merge-faithful (لقطة المالك: «ادمج الصورتين مع الأحضان» أرجعت الشخص الثاني وجهًا مختلفًا تمامًا): دمج عدّة صور
        (extras.length) كان مستثنى من هذا المسار فيعمل دائمًا على حرارة جوجل الافتراضية للإبداع (١.٠) رغم أنّ أمر الدمج

@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
       const tp = 'High quality ' + map[value] + ', vertical 3:4 composition, cinematic color grading, no text, no watermark, no logo.';
       const tr = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST', headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gpt-image-1', prompt: tp.slice(0, 3900), size: '1024x1536', quality: 'medium', n: 1, output_format: 'webp', output_compression: 72 }),
+        body: JSON.stringify({ model: 'gpt-image-2', prompt: tp.slice(0, 3900), size: '1024x1536', quality: 'medium', n: 1, output_format: 'webp', output_compression: 72 }),
         signal: AbortSignal.timeout(240000),
       });
       const td = await tr.json();
@@ -81,7 +81,7 @@ module.exports = async (req, res) => {
     const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-image-1', prompt: prompt.slice(0, 3900), size: '1024x1536', quality: 'medium', n: 1, output_format: 'webp', output_compression: 72 }),
+      body: JSON.stringify({ model: 'gpt-image-2', prompt: prompt.slice(0, 3900), size: '1024x1536', quality: 'medium', n: 1, output_format: 'webp', output_compression: 72 }),
       signal: AbortSignal.timeout(240000),
     });
     const d = await r.json();
