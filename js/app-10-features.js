@@ -197,23 +197,20 @@ window.addEventListener('beforeinstallprompt', (e) => {
   } catch(err){ __swallow(err, "save:app-10-features#4"); }
 });
 
+/* v-browser-install: المتصفّحات التي لا تطلق beforeinstallprompt (Safari، Firefox، متصفّحات iOS)
+   تحصل على خطوات متصفّحها بلغة الواجهة. iPadOS يعرّف نفسه «Macintosh» فيُميَّز باللمس. */
+function installHowKey(ua, touchPoints){
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && touchPoints > 1);
+  if(isIOS) return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? 'installHowIOSOther' : 'installHowIOS';
+  if(/Android/i.test(ua)) return 'installHowAndroid';
+  if(/Firefox\//.test(ua)) return 'installHowFirefox';
+  if(/Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg\/|OPR\//.test(ua)) return 'installHowMacSafari';
+  return 'installHowDesktop';
+}
 function showManualInstallInstructions(){
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isAndroid = /Android/i.test(ua);
-  let msgAr, msgEn;
-  if(isIOS){
-    msgAr = 'للتثبيت على الآيفون:\n1) افتح الموقع من متصفح Safari\n2) اضغط زر المشاركة (المربع مع السهم للأعلى) في الأسفل\n3) اختر "إضافة إلى الشاشة الرئيسية"\n4) اضغط "إضافة"';
-    msgEn = 'To install on iPhone:\n1) Open this site in Safari\n2) Tap the Share button (square with an up arrow)\n3) Choose "Add to Home Screen"\n4) Tap "Add"';
-  } else if(isAndroid){
-    msgAr = 'للتثبيت على أندرويد:\n1) افتح قائمة المتصفح (⋮) في الأعلى يمين\n2) اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"\n3) اتبع التعليمات لإتمام التثبيت';
-    msgEn = 'To install on Android:\n1) Open the browser menu (⋮) top-right\n2) Choose "Install app" or "Add to Home screen"\n3) Follow the prompts to finish installing';
-  } else {
-    msgAr = 'للتثبيت على الكمبيوتر:\nابحث عن أيقونة التثبيت (⊕ أو شاشة صغيرة) في شريط عنوان المتصفح، ثم اضغط عليها واختر "تثبيت".';
-    msgEn = 'To install on desktop:\nLook for the install icon (⊕ or small monitor) in your browser\'s address bar, click it, then choose "Install".';
-  }
-  const currentLang = (typeof lang !== 'undefined' && lang === 'ar') ? 'ar' : 'en';
-  alert(currentLang === 'ar' ? msgAr : msgEn);
+  const key = installHowKey(navigator.userAgent || '', navigator.maxTouchPoints || 0);
+  const d = (typeof window.curT === 'function') ? window.curT() : {};
+  alert(d[key] || (I18N.en || {})[key] || '');
 }
 
 const onInstallBtnClick = async () => {
@@ -232,6 +229,27 @@ installButtons.forEach(b => { b.onclick = onInstallBtnClick; });
 window.addEventListener('appinstalled', () => {
   showInstallButtons(false);
 });
+
+/* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
+   المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */
+(function(){
+  try {
+    const u = new URL(location.href);
+    const q = (u.searchParams.get('q') || '').trim().slice(0, 4000);
+    if(!q) return;
+    u.searchParams.delete('q');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    const fill = () => {
+      const p = document.getElementById('prompt');
+      if(!p) return;
+      p.value = q;
+      p.dispatchEvent(new Event('input', { bubbles: true }));
+      try { p.focus(); } catch(e){ __swallow(e, "misc:app-10-features#q-focus"); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill, { once: true });
+    else setTimeout(fill, 0);
+  } catch(e){ __swallow(e, "misc:app-10-features#q"); }
+})();
 
 /* ---------- Share App button ---------- */
 const btnShareApp = $('#btnShareApp');

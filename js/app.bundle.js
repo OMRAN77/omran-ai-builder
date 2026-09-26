@@ -3580,6 +3580,12 @@ const I18N = {
     testVoiceBtn: 'تجربة الصوت',
     voiceTestSample: 'مرحبًا! هذه تجربة للصوت المختار.',
     install: 'تثبيت التطبيق',
+    installHowIOS: 'للتثبيت على الآيفون أو الآيباد:\n1) افتح الموقع في Safari\n2) اضغط زرّ المشاركة (مربّع بسهم للأعلى)\n3) اختر «إضافة إلى الشاشة الرئيسية» ثمّ «إضافة»',
+    installHowIOSOther: 'للتثبيت على الآيفون من هذا المتصفّح:\n1) اضغط زرّ المشاركة (مربّع بسهم للأعلى) بجانب شريط العنوان\n2) اختر «إضافة إلى الشاشة الرئيسية»\nإن لم يظهر الخيار فافتح الموقع في Safari.',
+    installHowAndroid: 'للتثبيت على أندرويد:\n1) افتح قائمة المتصفّح (⋮)\n2) اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»\n3) أكّد التثبيت',
+    installHowDesktop: 'للتثبيت على الكمبيوتر (Chrome أو Edge):\nاضغط أيقونة التثبيت (⊕ أو شاشة صغيرة) في شريط العنوان، أو افتح قائمة المتصفّح (⋮ أو …) واختر «تثبيت» أو «التطبيقات ← تثبيت هذا الموقع كتطبيق».',
+    installHowMacSafari: 'للتثبيت على الماك من Safari:\nافتح قائمة «ملف» في الأعلى واختر «إضافة إلى Dock» ثمّ «إضافة».',
+    installHowFirefox: 'Firefox على الكمبيوتر لا يثبّت تطبيقات الويب.\nافتح الموقع في Chrome أو Edge ثمّ اضغط «تثبيت التطبيق»، أو ثبّته من الجوّال.',
     shareAppBtn: 'مشاركة التطبيق',
     refreshBtnTitle: 'تحديث الصفحة',
     langBtn: 'EN',
@@ -4655,6 +4661,12 @@ const I18N = {
     testVoiceBtn: 'Test voice',
     voiceTestSample: 'Hello! This is a test of the selected voice.',
     install: 'Install App',
+    installHowIOS: 'To install on iPhone or iPad:\n1) Open this site in Safari\n2) Tap the Share button (square with an up arrow)\n3) Choose "Add to Home Screen", then "Add"',
+    installHowIOSOther: 'To install on iPhone from this browser:\n1) Tap the Share button (square with an up arrow) next to the address bar\n2) Choose "Add to Home Screen"\nIf the option is missing, open this site in Safari.',
+    installHowAndroid: 'To install on Android:\n1) Open the browser menu (⋮)\n2) Choose "Install app" or "Add to Home screen"\n3) Confirm the install',
+    installHowDesktop: 'To install on desktop (Chrome or Edge):\nClick the install icon (⊕ or small monitor) in the address bar, or open the browser menu (⋮ or …) and choose "Install" or "Apps → Install this site as an app".',
+    installHowMacSafari: 'To install on Mac from Safari:\nOpen the "File" menu at the top, choose "Add to Dock", then "Add".',
+    installHowFirefox: 'Firefox on desktop cannot install web apps.\nOpen this site in Chrome or Edge and click "Install App", or install it from your phone.',
     shareAppBtn: 'Share App',
     refreshBtnTitle: 'Refresh Page',
     langBtn: 'ع',
@@ -4722,7 +4734,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=692'; /* v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=693'; /* v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -23365,23 +23377,20 @@ window.addEventListener('beforeinstallprompt', (e) => {
   } catch(err){ __swallow(err, "save:app-10-features#4"); }
 });
 
+/* v-browser-install: المتصفّحات التي لا تطلق beforeinstallprompt (Safari، Firefox، متصفّحات iOS)
+   تحصل على خطوات متصفّحها بلغة الواجهة. iPadOS يعرّف نفسه «Macintosh» فيُميَّز باللمس. */
+function installHowKey(ua, touchPoints){
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && touchPoints > 1);
+  if(isIOS) return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? 'installHowIOSOther' : 'installHowIOS';
+  if(/Android/i.test(ua)) return 'installHowAndroid';
+  if(/Firefox\//.test(ua)) return 'installHowFirefox';
+  if(/Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg\/|OPR\//.test(ua)) return 'installHowMacSafari';
+  return 'installHowDesktop';
+}
 function showManualInstallInstructions(){
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isAndroid = /Android/i.test(ua);
-  let msgAr, msgEn;
-  if(isIOS){
-    msgAr = 'للتثبيت على الآيفون:\n1) افتح الموقع من متصفح Safari\n2) اضغط زر المشاركة (المربع مع السهم للأعلى) في الأسفل\n3) اختر "إضافة إلى الشاشة الرئيسية"\n4) اضغط "إضافة"';
-    msgEn = 'To install on iPhone:\n1) Open this site in Safari\n2) Tap the Share button (square with an up arrow)\n3) Choose "Add to Home Screen"\n4) Tap "Add"';
-  } else if(isAndroid){
-    msgAr = 'للتثبيت على أندرويد:\n1) افتح قائمة المتصفح (⋮) في الأعلى يمين\n2) اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"\n3) اتبع التعليمات لإتمام التثبيت';
-    msgEn = 'To install on Android:\n1) Open the browser menu (⋮) top-right\n2) Choose "Install app" or "Add to Home screen"\n3) Follow the prompts to finish installing';
-  } else {
-    msgAr = 'للتثبيت على الكمبيوتر:\nابحث عن أيقونة التثبيت (⊕ أو شاشة صغيرة) في شريط عنوان المتصفح، ثم اضغط عليها واختر "تثبيت".';
-    msgEn = 'To install on desktop:\nLook for the install icon (⊕ or small monitor) in your browser\'s address bar, click it, then choose "Install".';
-  }
-  const currentLang = (typeof lang !== 'undefined' && lang === 'ar') ? 'ar' : 'en';
-  alert(currentLang === 'ar' ? msgAr : msgEn);
+  const key = installHowKey(navigator.userAgent || '', navigator.maxTouchPoints || 0);
+  const d = (typeof window.curT === 'function') ? window.curT() : {};
+  alert(d[key] || (I18N.en || {})[key] || '');
 }
 
 const onInstallBtnClick = async () => {
@@ -23400,6 +23409,27 @@ installButtons.forEach(b => { b.onclick = onInstallBtnClick; });
 window.addEventListener('appinstalled', () => {
   showInstallButtons(false);
 });
+
+/* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
+   المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */
+(function(){
+  try {
+    const u = new URL(location.href);
+    const q = (u.searchParams.get('q') || '').trim().slice(0, 4000);
+    if(!q) return;
+    u.searchParams.delete('q');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    const fill = () => {
+      const p = document.getElementById('prompt');
+      if(!p) return;
+      p.value = q;
+      p.dispatchEvent(new Event('input', { bubbles: true }));
+      try { p.focus(); } catch(e){ __swallow(e, "misc:app-10-features#q-focus"); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill, { once: true });
+    else setTimeout(fill, 0);
+  } catch(e){ __swallow(e, "misc:app-10-features#q"); }
+})();
 
 /* ---------- Share App button ---------- */
 const btnShareApp = $('#btnShareApp');

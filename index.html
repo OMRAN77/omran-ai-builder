@@ -173,7 +173,7 @@ window.__omranWhenSeen = (function () {
 ]
 </script>
 
-<link rel="manifest" href="/manifest.json?v=515-vg-removed">
+<link rel="manifest" href="/manifest.json?v=516-browser-install">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -215,7 +215,8 @@ window.__omranWhenSeen = (function () {
 
 <style>
 /* v473 — إخفاء ٥ عناصر بأمر عمران (٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة كاملةً. */
-#btnTemplates, #btnAgentMode, #btnInstall, #btnInstallHeader, #btnShareApp, #btnGov { display: none !important; }
+/* v-browser-install (طلب المالك ٢٦ سبتمبر «أريد التطبيق في المتصفّحات»): #btnInstall عاد للقائمة؛ يخفيه الكود حين يعمل التطبيق مثبّتًا. */
+#btnTemplates, #btnAgentMode, #btnInstallHeader, #btnShareApp, #btnGov { display: none !important; }
 /* v474 — لون روابط الردّ. v-hl-gold (طلب المالك ١٩ سبتمبر): ذهبيّ بدل الفيروزيّ. الرجوع: احذف هذه الكتلة. */
 .msg-text a{ color:#d4af37 !important; }
 html[data-mode="light"] .msg-text a{ color:#b8860b !important; }
@@ -973,7 +974,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=e4a7cace"></script>
+    <script defer src="/js/app.bundle.js?v=7523543d"></script>
     <script defer src="/js/modes.js?v=m250925b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
