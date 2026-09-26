@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "Omran AI"
+  },
+  "extDesc": {
+    "message": "کسی بھی صفحے سے Omran AI سے پوچھیں: متن منتخب کر کے رائٹ کلک کریں، ایڈریس بار میں \"om\" لکھیں، یا ٹول بار بٹن استعمال کریں۔"
+  },
+  "ctxAsk": {
+    "message": "Omran AI سے پوچھیں: «%s»"
+  },
+  "popupPlaceholder": {
+    "message": "Omran AI سے کچھ بھی پوچھیں…"
+  },
+  "popupAsk": {
+    "message": "پوچھیں"
+  },
+  "popupOpen": {
+    "message": "Omran AI کھولیں"
+  },
+  "popupHint": {
+    "message": "مشورہ: کسی بھی صفحے پر متن منتخب کریں، رائٹ کلک کر کے «Omran AI سے پوچھیں» چنیں — یا ایڈریس بار میں om اور اسپیس لکھیں۔"
+  },
+  "omniboxHint": {
+    "message": "Omran AI سے پوچھیں: سوال لکھیں اور Enter دبائیں"
+  }
+}

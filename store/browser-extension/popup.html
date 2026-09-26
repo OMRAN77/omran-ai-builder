@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon-48.png" width="32" height="32" alt="">
+    <h1 data-msg="extName">Omran AI</h1>
+  </header>
+  <form id="ask">
+    <textarea id="q" rows="4" maxlength="4000" data-msg-placeholder="popupPlaceholder" autofocus></textarea>
+    <button type="submit" class="primary" data-msg="popupAsk">Ask</button>
+  </form>
+  <button type="button" id="open" data-msg="popupOpen">Open app</button>
+  <p class="hint" data-msg="popupHint"></p>
+  <script src="popup.js"></script>
+</body>
+</html>

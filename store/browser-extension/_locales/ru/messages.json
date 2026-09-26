@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "Omran AI"
+  },
+  "extDesc": {
+    "message": "Спрашивайте Omran AI с любой страницы: правый клик по выделенному тексту, «om» в адресной строке или кнопка на панели."
+  },
+  "ctxAsk": {
+    "message": "Спросить Omran AI: «%s»"
+  },
+  "popupPlaceholder": {
+    "message": "Спросите Omran AI о чём угодно…"
+  },
+  "popupAsk": {
+    "message": "Спросить"
+  },
+  "popupOpen": {
+    "message": "Открыть Omran AI"
+  },
+  "popupHint": {
+    "message": "Совет: выделите текст на любой странице, нажмите правую кнопку и выберите «Спросить Omran AI» — или введите om и пробел в адресной строке."
+  },
+  "omniboxHint": {
+    "message": "Спросить Omran AI: введите вопрос и нажмите Enter"
+  }
+}

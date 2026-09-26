@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "Omran AI"
+  },
+  "extDesc": {
+    "message": "Interrogez Omran AI depuis toute page : clic droit sur un texte sélectionné, « om » dans la barre d’adresse, ou le bouton."
+  },
+  "ctxAsk": {
+    "message": "Demander à Omran AI : « %s »"
+  },
+  "popupPlaceholder": {
+    "message": "Demandez n’importe quoi à Omran AI…"
+  },
+  "popupAsk": {
+    "message": "Demander"
+  },
+  "popupOpen": {
+    "message": "Ouvrir Omran AI"
+  },
+  "popupHint": {
+    "message": "Astuce : sélectionnez du texte, faites un clic droit et choisissez « Demander à Omran AI », ou tapez om puis espace dans la barre d’adresse."
+  },
+  "omniboxHint": {
+    "message": "Demander à Omran AI : tapez votre question puis Entrée"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "Omran AI"
+  },
+  "extDesc": {
+    "message": "Ask Omran AI from any page: select text and right-click, type \"om\" in the address bar, or use the toolbar button."
+  },
+  "ctxAsk": {
+    "message": "Ask Omran AI about \"%s\""
+  },
+  "popupPlaceholder": {
+    "message": "Ask Omran AI anything…"
+  },
+  "popupAsk": {
+    "message": "Ask"
+  },
+  "popupOpen": {
+    "message": "Open Omran AI"
+  },
+  "popupHint": {
+    "message": "Tip: select text on any page, right-click, and choose \"Ask Omran AI\" — or type om and a space in the address bar."
+  },
+  "omniboxHint": {
+    "message": "Ask Omran AI: type your question and press Enter"
+  }
+}

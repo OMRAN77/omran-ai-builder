@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "Omran AI"
+  },
+  "extDesc": {
+    "message": "在任意网页向 Omran AI 提问：选中文字后右键，或在地址栏输入“om”，或使用工具栏按钮。"
+  },
+  "ctxAsk": {
+    "message": "向 Omran AI 提问：“%s”"
+  },
+  "popupPlaceholder": {
+    "message": "向 Omran AI 提任何问题…"
+  },
+  "popupAsk": {
+    "message": "提问"
+  },
+  "popupOpen": {
+    "message": "打开 Omran AI"
+  },
+  "popupHint": {
+    "message": "提示：在任意网页选中文字，右键选择“向 Omran AI 提问”——或在地址栏输入 om 加空格。"
+  },
+  "omniboxHint": {
+    "message": "向 Omran AI 提问：输入问题后按回车"
+  }
+}
