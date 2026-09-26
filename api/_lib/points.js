@@ -32,14 +32,14 @@ const COSTS = {
   image_upscale: 5,  // زرّ «دقّة أعلى»: ترقية صورة قائمة بمكبّر دقّة (v-img-upscale)
   screen_guide: 5,   // جلسة إرشاد بصريّ — تُخصم مرة واحدة للجلسة كاملة
   premium_claude: 20,  // رد احترافي 👑 Claude Opus 5
-  premium_openai: 15,  // رد احترافي 👑 GPT-5.6
+  premium_openai: 15,  // رد احترافي 👑 أقوى موديل OpenAI
   premium_gemini: 12,  // رد احترافي 👑 Gemini 3.1 Pro
 };
 
 // خرائط الموديلات البريميوم — المرجع الوحيد في الخادم.
 const PREMIUM_MODELS = {
   claude: 'claude-opus-5',
-  openai: 'gpt-5.6-terra',
+  openai: 'gpt-6-astra',
   gemini: 'gemini-3.1-pro-preview',
 };
 const PREMIUM_COST = {

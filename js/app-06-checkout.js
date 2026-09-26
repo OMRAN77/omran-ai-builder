@@ -1592,7 +1592,9 @@ async function readClaudeStream(res, onDelta){
 
 async function callOpenAILike(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_apikey');
-  const model = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
+  // v-openai-pick: السهم يحفظ معرّفًا بصيغة OpenRouter (openai/…) كي يعمل
+  // في مسار الأدوات؛ المفتاح الشخصي يتصل بـOpenAI نفسها فتُقصّ البادئة هنا.
+  const model = (localStorage.getItem('aiapp_model') || 'gpt-4o-mini').replace(/^openai\//i, '');
   // If the visitor hasn't entered their own OpenAI key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -1610,6 +1612,8 @@ async function callOpenAILike(messages, onDelta){
     const data = await res.json();
     return data.choices[0].message.content;
   }
+  const directBody = { model, messages: toOpenAIVisionMessages(messages), stream: !!onDelta };
+  if(!/^gpt-[56]/i.test(model)) directBody.temperature = 0.7;
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
       signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
     method: 'POST',
@@ -1617,7 +1621,7 @@ async function callOpenAILike(messages, onDelta){
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + apiKey,
     },
-    body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), temperature: 0.7, stream: !!onDelta }),
+    body: JSON.stringify(directBody),
   });
   if(!res.ok){
     const errText = await res.text();

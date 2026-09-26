@@ -134,6 +134,32 @@ test('٧. كلود: Opus 5.5 في الوكيل وتحليل الكود والم�
   assert.ok(m.includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"));
   assert.ok(read('js/app.bundle.js').includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"), 'الحزمة أُعيد بناؤها');
   assert.ok(read('js/modes.js').includes("['claude-opus-5-5','Opus 5.5']"));
-  assert.ok(read('index.html').includes('js/modes.js?v=m250925b') && read('index.html').includes('js/partials-settings.js?v=675'), 'وسوم الكاش رُفعت');
+  assert.ok(read('index.html').includes('js/modes.js?v=m260926a') && read('index.html').includes('js/partials-settings.js?v=675'), 'وسوم الكاش رُفعت');
   assert.ok(read('js/app-10-features.js').includes("'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',"), 'اختيار الوسيط المحفوظ يهاجر');
+});
+
+test('٨. OpenAI: المالك يختار من موديلاته الحيّة، وSol افتراضيّ وAstra احترافيّ بلا تغيير أسلوب المحادثة', () => {
+  const od = require('../api/_lib/oa-direct.js');
+  assert.deepEqual(od.directModel('openai', '', {}), { model: 'gpt-6-sol', picked: false, def: 'gpt-6-sol' });
+  assert.equal(od.directModel('openai', 'openai/gpt-6-astra', {}).model, 'gpt-6-astra', 'اختيار المالك يصل OpenAI بلا بادئة الوسيط');
+
+  const pm = require('../api/_lib/provider-models.js');
+  const live = pm.parseOpenAIModels({ data: [
+    { id: 'gpt-6-luna', created: 1 },
+    { id: 'gpt-6-astra', created: 2 },
+    { id: 'gpt-6-sol', created: 3 },
+    ...Array.from({ length: 10 }, (_, i) => ({ id: 'gpt-other-' + i, created: 100 + i })),
+  ] });
+  assert.deepEqual(live.slice(0, 3).map((x) => x[0]), ['openai/gpt-6-astra', 'openai/gpt-6-sol', 'openai/gpt-6-luna'], 'الأقوى الثلاثة لا تسقط من أحدث ٨');
+
+  const points = read('api/_lib/points.js');
+  assert.match(points, /openai:\s*'gpt-6-astra'/, 'الردّ الاحترافيّ على أقوى موديل');
+  const openai = read('api/_lib/openai.js');
+  assert.ok(openai.includes("require('./points.js')"), 'مسار Premium يستورد دوال النقاط بدل ReferenceError');
+  assert.ok(read('api/_lib/chat.js').includes("openai: 'openai/gpt-6-sol'"), 'OpenAI فقط يتوحّد على Sol');
+  assert.ok(read('js/modes.js').includes("def:'openai/gpt-6-sol'"), 'افتراضيّ منتقي المالك هو Sol');
+
+  const checkout = read('js/app-06-checkout.js');
+  assert.ok(checkout.includes("replace(/^openai\\//i, '')"), 'المفتاح الشخصي لا يرسل بادئة OpenRouter إلى OpenAI');
+  assert.ok(checkout.includes("!/^gpt-[56]/i.test(model)"), 'الموديل الحديث لا يستقبل temperature غير المناسب');
 });

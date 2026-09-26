@@ -131,7 +131,7 @@ test('٢. الجسر: بثّ chat/completions ← أحداث أنثروبيك (�
 });
 
 test('٣. الموديل المباشر: GPT يقصّ بادئة الوسيط، وافتراضيّ السهم لـGroq = بديل Maverick الرسميّ عند Groq (gpt-oss-120b)', () => {
-  assert.deepEqual(od.directModel('openai', 'openai/gpt-5.6-terra', {}), { model: 'gpt-5.6-terra', picked: true, def: 'gpt-5.6-terra' });
+  assert.deepEqual(od.directModel('openai', 'openai/gpt-5.6-terra', {}), { model: 'gpt-5.6-terra', picked: true, def: 'gpt-6-sol' });
   assert.equal(od.directModel('openai', '', {}).picked, false);
   assert.equal(od.directModel('openai', 'google/gemini-3.5-flash', {}).picked, false, 'معرّف شركة أخرى لا يُقبل');
   // v-models-latest: Groq أوقف Maverick (مارس ٢٠٢٦) — افتراضيّ السهم يُترجم لبديله الرسميّ gpt-oss-120b.

@@ -4,6 +4,7 @@ const { stripPrivateKeys } = require('./_msgs.js'); // v-static-leak
 // without entering their own key. This key is NEVER exposed to the client.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
+const { spendPoints, refundPoints, verifyPointsToken, PREMIUM_MODELS, PREMIUM_COST } = require('./points.js'); // v-openai-pick
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
