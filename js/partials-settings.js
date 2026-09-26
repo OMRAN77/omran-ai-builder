@@ -410,7 +410,7 @@
       <div class="pprice"><span class="pnum" data-usd="0">0</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planFreePer">للتجربة</div>
       <div class="ppts"><b>70</b><span data-i18n="planPtsFree">نقطة ترحيب — مرّة واحدة</span></div>
-      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">5 رسائل يوميًا</li><li data-i18n="plFreeVoice">حتّى 4 دقائق محادثة صوتية</li><li data-i18n="plFreeImgs">حتّى 3 صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
+      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">20 رسالة أوّل يوم، ثمّ 3 يوميًا</li><li data-i18n="plFreeVoice">حتّى 4 دقائق محادثة صوتية</li><li data-i18n="plFreeImgs">حتّى 3 صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
       <button type="button" class="pbtn ghost" disabled data-i18n="planCurrentBtn">باقتك الحالية</button>
     </div>
     <div class="pcard">

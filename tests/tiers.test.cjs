@@ -15,11 +15,11 @@ const fc = require('../api/_lib/free-chain.js');
 const DAY = 86400000;
 
 test('caps: safe defaults and env overrides', () => {
-  assert.deepEqual(tier.caps({}), { guest: 3, free: 5, basic: 50, pro: 100, max: 250 }); // v-plan-routing
+  assert.deepEqual(tier.caps({}), { guest: 0, free: 3, basic: 50, pro: 100, max: 250 }); // v-plan-routing · v-free-first-day
   assert.equal(tier.caps({ FREE_DAILY: '25' }).free, 25);
   assert.equal(tier.caps({ FREE_DAILY: '5' }).free, 5, 'المالك يقدر ينزل إلى ٥ من البيئة');
-  assert.equal(tier.caps({ FREE_DAILY: 'abc' }).free, 5, 'قيمة تالفة = البديل');
-  assert.equal(tier.caps({ GUEST_DAILY: '-1' }).guest, 3);
+  assert.equal(tier.caps({ FREE_DAILY: 'abc' }).free, 3, 'قيمة تالفة = البديل');
+  assert.equal(tier.caps({ GUEST_DAILY: '-1' }).guest, 0);
   assert.equal(tier.caps({ SUB_DAILY_PRO: '999' }).pro, 999);
 });
 
@@ -44,13 +44,13 @@ test('resolveTier: guest / owner / vip / subscriber by plan / free', async () =>
   const getUser = async (u) => users[u] || null;
   const isVip = async (u) => u === 'vipguy';
   const o = { getUser, isVip, now, noCache: true, env: {} };
-  assert.deepEqual(await tier.resolveTier(null, o), { tier: 'guest', plan: null, cap: 3, subscriber: false });
+  assert.deepEqual(await tier.resolveTier(null, o), { tier: 'guest', plan: null, cap: 0, subscriber: false });
   assert.deepEqual(await tier.resolveTier('Omran', o), { tier: 'owner', plan: null, cap: Infinity, subscriber: true });
   assert.deepEqual(await tier.resolveTier('vipguy', o), { tier: 'vip', plan: null, cap: Infinity, subscriber: true });
   assert.deepEqual(await tier.resolveTier('subpro', o), { tier: 'sub', plan: 'pro', cap: 100, subscriber: true });
-  assert.deepEqual(await tier.resolveTier('lapsed', o), { tier: 'free', plan: null, cap: 5, subscriber: false }, 'اشتراك منتهٍ = مجاني');
-  assert.deepEqual(await tier.resolveTier('rich', o), { tier: 'free', plan: null, cap: 5, subscriber: false }, 'النقاط وحدها لا تصنع مشتركًا');
-  assert.deepEqual(await tier.resolveTier('nobody', o), { tier: 'free', plan: null, cap: 5, subscriber: false });
+  assert.deepEqual(await tier.resolveTier('lapsed', o), { tier: 'free', plan: null, cap: 3, subscriber: false }, 'اشتراك منتهٍ = مجاني');
+  assert.deepEqual(await tier.resolveTier('rich', o), { tier: 'free', plan: null, cap: 3, subscriber: false }, 'النقاط وحدها لا تصنع مشتركًا');
+  assert.deepEqual(await tier.resolveTier('nobody', o), { tier: 'free', plan: null, cap: 3, subscriber: false });
   const boom = await tier.resolveTier('subpro', Object.assign({}, o, { getUser: async () => { throw new Error('redis down'); } }));
   assert.equal(boom.tier, 'free', 'عطب القراءة لا يرفع أحدًا إلى مشترك');
 });
@@ -85,7 +85,7 @@ test('freeChain: order from env, providers without keys skipped, model overrides
 test('no provider name reaches the user in free-tier texts', () => {
   const texts = [tier.FREE_TEXT.freeLimit, tier.FREE_TEXT.guestLimit, tier.FREE_TEXT.subLimit(50), tier.FREE_TEXT.busy, tier.FREE_TEXT.subscribeOnly, fc.FREE_NOTE];
   for (const t of texts) assert.doesNotMatch(t, /كلاود|claude|gemini|جيميني|groq|mistral|llama|openrouter|anthropic|google/i, t);
-  assert.match(tier.FREE_TEXT.guestLimit, /5 رسائل/);
+  assert.match(tier.FREE_TEXT.guestLimit, /3 رسائل/);
   const app04 = read('js/app-04-i18n-state.js');
   const badge = app04.slice(app04.indexOf('v-tiers'), app04.indexOf('v-tiers') + 3000);
   assert.doesNotMatch(badge, /كلاود|claude/i);
@@ -239,13 +239,13 @@ test('plans: 360 / 920 / 3,200 (v-plan-routing) — identical in Stripe and PayP
   assert.deepEqual(stripe, { basic: { amount: 1000, points: 360 }, pro: { amount: 2000, points: 920 }, max: { amount: 10000, points: 3200 } });
   assert.deepEqual(paypal, { basic: { amount: 10, points: 360 }, pro: { amount: 20, points: 920 }, max: { amount: 100, points: 3200 } });
   const ps = read('js/partials-settings.js');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '5 رسائل يوميًا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'مها: 15 نقطة/دقيقة', 'صورة: 20']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة أوّل يوم، ثمّ 3 يوميًا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'مها: 15 نقطة/دقيقة', 'صورة: 20']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
   for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '20 رسالة يوميًا', 'رسائل بلا حدود', 'صورة: 10']) assert.ok(!ps.includes(s), 'partials-settings stale: ' + s);
   const ph = read('pricing.html');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '5 رسائل يوميًا', '<div class="val">15</div>', '<div class="val">20</div>']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة أوّل يوم، ثمّ 3 يوميًا', '<div class="val">15</div>', '<div class="val">20</div>']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
   for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '<b>500</b>', '<b>7,000</b>', 'رسائل بلا حدود', '<div class="val">10</div>']) assert.ok(!ph.includes(s), 'pricing.html stale: ' + s);
   const i18n = read('js/app-03-i18n-data.js');
-  assert.ok(i18n.includes("plFreeMsgs: '5 رسائل يوميًا'") && i18n.includes("plFreeMsgs: '5 messages a day'"));
+  assert.ok(i18n.includes("plFreeMsgs: '20 رسالة أوّل يوم، ثمّ 3 يوميًا'") && i18n.includes("plFreeMsgs: '20 messages on day one, then 3 a day'"));
   assert.ok(i18n.includes("plStMsgs: '50 رسالة يوميًا'") && i18n.includes("plProMsgs: '100 messages a day'"));
 });
 

@@ -1,7 +1,7 @@
 // api/_lib/tier.js — v-tiers: طبقات المحادثة الثلاث (قرار المالك ١٢ سبتمبر).
 //
-//   ضيف بلا حساب      → سلسلة مجانية، GUEST_DAILY رسائل يوميًّا (٣)
-//   مسجَّل بلا اشتراك  → سلسلة مجانية، FREE_DAILY رسائل يوميًّا (١٠)
+//   ضيف بلا حساب      → لا شيء، GUEST_DAILY (٠): التسجيل أوّلًا (v-free-first-day)
+//   مسجَّل بلا اشتراك  → سلسلة مجانية، FREE_FIRST_DAY يوم التسجيل (٢٠) ثمّ FREE_DAILY يوميًّا (٣)
 //   مشترك             → المحرّك الاحترافي بكل الأدوات، سقف حماية بحسب الباقة
 //                        (SUB_DAILY_BASIC ٥٠ · SUB_DAILY_PRO ١٥٠ · SUB_DAILY_MAX ٤٠٠)
 //   VIP / المالك       → بلا حدود
@@ -151,9 +151,9 @@ function envInt(env, name, def) {
 function caps(env) {
   const e = env || process.env;
   return {
-    // v-plan-routing: الأسقف النهائيّة (قرار المالك ٢٠ سبتمبر): مجّاني ٥ · Plus ٥٠ · Pro ١٠٠ · Max ٢٥٠.
-    guest: envInt(e, 'GUEST_DAILY', 3),
-    free: envInt(e, 'FREE_DAILY', 5),
+    // v-plan-routing + v-free-first-day (٢٦ سبتمبر): ضيف ٠ · مجّاني ٣ (٢٠ يوم التسجيل) · Plus ٥٠ · Pro ١٠٠ · Max ٢٥٠.
+    guest: envInt(e, 'GUEST_DAILY', 0),
+    free: envInt(e, 'FREE_DAILY', 3),
     basic: envInt(e, 'SUB_DAILY_BASIC', 50),
     pro: envInt(e, 'SUB_DAILY_PRO', 100),
     max: envInt(e, 'SUB_DAILY_MAX', 250),
@@ -208,7 +208,10 @@ async function resolveTier(username, opts) {
       const plan = String(user.plan).toLowerCase();
       value = { tier: 'sub', plan, cap: c[plan], subscriber: true };
     } else {
-      value = { tier: 'free', plan: null, cap: c.free, subscriber: false };
+      // v-free-first-day (قرار المالك ٢٦ سبتمبر): يوم التسجيل (بتوقيت UTC كعدّاد اليوم) FREE_FIRST_DAY رسالة، ثمّ FREE_DAILY.
+      const born = Number(user && user.createdAt) || 0;
+      const firstDay = born > 0 && new Date(born).toISOString().slice(0, 10) === new Date(now).toISOString().slice(0, 10);
+      value = { tier: 'free', plan: null, cap: firstDay ? Math.max(c.free, envInt(o.env || process.env, 'FREE_FIRST_DAY', 20)) : c.free, subscriber: false };
     }
   }
   if (!o.noCache) tierCache.set(uname, { at: now, value: Object.assign({}, value) });
@@ -244,7 +247,7 @@ function freeChain(env) {
 // نصوص تراها الطبقة المجانية — بلا اسم أي مزوّد (قرار المالك: «بدون اسم كلاود»).
 const FREE_TEXT = {
   freeLimit: 'انتهت رسائلك المجانية لليوم. اشترك للنسخة الاحترافية بلا حدود.',
-  get guestLimit() { return 'انتهت رسائل التجربة. سجّل حسابًا مجانيًّا لتكمل: ' + caps().free + ' رسائل يوميًّا و٧٠ نقطة ترحيب.'; },
+  get guestLimit() { return 'سجّل حسابًا مجانيًّا لتبدأ الدردشة: ' + envInt(process.env, 'FREE_FIRST_DAY', 20) + ' رسالة في أوّل يوم، ثمّ ' + caps().free + ' رسائل يوميًّا، و٧٠ نقطة ترحيب.'; },
   subLimit: (cap) => 'وصلت سقف باقتك اليومي (' + cap + ' رسالة). يتجدد غدًا.',
   busy: 'الوضع المجاني مشغول الآن. جرّب بعد قليل، أو اشترك للنسخة الاحترافية.',
   // v-img-no-blind: اعتراف صريح بدل تأليف «الصورة غير واضحة» حين لا يتوفّر محرّك يرى الصور.

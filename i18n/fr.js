@@ -28,7 +28,7 @@ I18N['fr'] = {
     cnExElevator: 'Ascenseur intérieur', cnExStore: 'Entrepôt extérieur', cnExWaterTank: 'Réservoir d\'eau', cnExSolar: 'Panneaux solaires', cnExPlayground: 'Aire de jeux extérieure',
     cnExCarport: 'Auvent à voitures supplémentaire', cnBudgetOutputs: '💰 Budget et résultats', cnDownloadBoq: '📊 Télécharger le bordereau de quantités', cnPdfReport: '📄 Rapport PDF',
     keyHowToTitle: '📝 Comment obtenir une clé pour chaque fournisseur :', showAllPlansCur: 'Afficher tous les forfaits et prix dans votre devise', currencyLabel: 'Devise',
-    plFreeMsgs: '5 messages par jour', plFreeVoice: "Jusqu'à 4 minutes de chat vocal", plFreeImgs: "Jusqu'à 3 images par IA", plFreeNoVideo: 'Sans vidéo', plStMsgs: '50 messages par jour',
+    plFreeMsgs: '20 messages le premier jour, puis 3 par jour', plFreeVoice: "Jusqu'à 4 minutes de chat vocal", plFreeImgs: "Jusqu'à 3 images par IA", plFreeNoVideo: 'Sans vidéo', plStMsgs: '50 messages par jour',
     plStVoice: "Jusqu'à 24 minutes de chat vocal", plStImgs: "Jusqu'à 15 images", plStVideos: '1 vidéo', plProMsgs: '100 messages par jour', plProVoice: "Jusqu'à 61 minutes de chat vocal",
     plProMedia: "Jusqu'à 40 images · 2 vidéos", plProAgent: 'L\'agent intelligent', plProPriority: 'Vitesse prioritaire · badge doré', plMaxAllPro: 'Tout ce qui est dans Pro · 250 messages par jour',
     plMaxVoice: "Jusqu'à 213 minutes de chat vocal", plMaxMedia: "Jusqu'à 150 images · 3 vidéos", plMaxSupport: 'Support dédié',
@@ -168,7 +168,7 @@ I18N['fr'] = {
     authCopied: "✅ Copié",
     authSubmitLogin: "Connexion",
     authSubmitSignup: "Créer un compte",
-    guestLimitMsg: "🎉 Vous avez utilisé vos 20 messages gratuits ! Connectez-vous (ou créez un compte) pour continuer à discuter.",
+    guestLimitMsg: 'Créez un compte gratuit pour commencer à discuter : 20 messages le premier jour, puis 3 par jour.',
     
     
     
@@ -898,7 +898,7 @@ I18N['fr'] = {
     memorySaveBtn: "Enregistrer les modifications", memoryClearBtn: "Supprimer ma mémoire", memoryEmpty: "Rien n’est encore enregistré à votre sujet.", memoryGuest: "Connectez-vous pour voir votre mémoire.", memoryConfirm: "Supprimer tout ce que l’application retient de vous ? Action irréversible.", memorySaved: "Enregistré et synchronisé avec votre compte.",
     memorySaveError: "Échec de l’enregistrement. Veuillez réessayer.", memoryLoadError: "Impossible de charger la mémoire pour le moment.", fontFamilySectionLabel: "Style de police", fontFamilyHint: "Modifie les messages du chat sur ordinateur et mobile, sans changer les blocs de code ni la mise en page.",
     guestImageMsg: "🎁 Vous avez utilisé vos 3 images gratuites invité ! Créez un compte gratuit en quelques secondes et recevez 70 points cadeau pour continuer à générer et modifier des images.", planPer: "par mois", planFreePer: "pour essayer", planPtsFree: "points de bienvenue — une seule fois", planPtsMo: "points chaque mois", planTag: "Le plus populaire", planCurrentBtn: "Votre forfait actuel",
-    planSoonBtn: "Bientôt", planFreeFeats: "<li>5 messages par jour</li><li>Jusqu'à 4 minutes de chat vocal</li><li>Jusqu'à 3 images par IA</li><li class=\"off\">Sans vidéo</li>", planPlusFeats: "<li>50 messages par jour</li><li>Jusqu'à 24 minutes de chat vocal</li><li>Jusqu'à 15 images</li><li>1 vidéo</li>",
+    planSoonBtn: "Bientôt", planFreeFeats: "<li>20 messages le premier jour, puis 3 par jour</li><li>Jusqu'à 4 minutes de chat vocal</li><li>Jusqu'à 3 images par IA</li><li class=\"off\">Sans vidéo</li>", planPlusFeats: "<li>50 messages par jour</li><li>Jusqu'à 24 minutes de chat vocal</li><li>Jusqu'à 15 images</li><li>1 vidéo</li>",
     planProFeats: "<li>100 messages par jour</li><li>Jusqu'à 61 minutes de chat vocal</li><li>Jusqu'à 40 images · 2 vidéos</li><li>L'agent intelligent</li><li>Vitesse prioritaire · badge doré</li>", planMaxFeats: "<li>Tout ce qui est dans Pro · 250 messages par jour</li><li>Jusqu'à 213 minutes de chat vocal</li><li>Jusqu'à 150 images · 3 vidéos</li><li>Support dédié</li>", checkoutPlanLabelMax: 'Forfait Max 100 $/mois — 3 200 points',
     copyCode: "Copier", copiedMsg: "Copié ✅", emailAsst_connectText: "Connectez votre compte Gmail pour que l’IA puisse lire vos e-mails et proposer des réponses prêtes que vous validez avant l’envoi.", emailAsst_connectBtn: "🔗 Connecter Gmail", emailAsst_disclaimer: "⚠️ Aucune réponse n’est jamais envoyée sans votre approbation explicite pour chaque message.", emailAsst_title: "📧 Assistant e-mail IA",
     emailAsst_refresh: "Actualiser", emailAsst_loading: "Analyse de votre boîte de réception…", emailAsst_empty: "Aucun nouvel e-mail ne nécessite de réponse pour le moment.", emailAsst_notConnected: "Gmail n’est pas connecté, veuillez le reconnecter.", emailAsst_send: "✅ Envoyer", emailAsst_ignore: "🚫 Ignorer cet expéditeur", emailAsst_sending: "Envoi…", emailAsst_sent: "✅ Envoyé",

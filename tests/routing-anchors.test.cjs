@@ -96,7 +96,7 @@ const NAMED = [
   ['api/_lib/tier.js', 163, 'function isOwnerUsername('],
   ['api/_lib/tier.js', 168, 'function planActive('],
   ['api/_lib/tier.js', 183, 'async function resolveTier('],
-  ['api/_lib/tier.js', 228, 'function freeChain('],
+  ['api/_lib/tier.js', 231, 'function freeChain('],
   ['api/_lib/free-chain.js', 18, 'const FREE_NOTE'],
   ['api/_lib/free-chain.js', 156, 'async function streamFreeChain('],
   ['api/_lib/free-chain.js', 244, 'function modelsToTry('],

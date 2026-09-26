@@ -45,10 +45,10 @@ const chat = require(rp('api/_lib/chat.js'));
 
 // ── (١) الجدول نفسه ──
 test('١. الأسقف الافتراضيّة والسلسلة المجّانيّة تبدأ بـGroq، وجدول الوظائف (v-plan-jobs)', () => {
-  assert.deepEqual(tierLib.caps({}), { guest: 3, free: 5, basic: 50, pro: 100, max: 250 });
+  assert.deepEqual(tierLib.caps({}), { guest: 0, free: 3, basic: 50, pro: 100, max: 250 }); // v-free-first-day
   assert.deepEqual(tierLib.DEFAULT_CHAIN, ['groq', 'gemini', 'mistral', 'openrouter']);
   assert.equal(tierLib.freeChain({ GROQ_API_KEY: 'q', GEMINI_API_KEY: 'g' })[0].id, 'groq', 'Groq أوّلًا');
-  assert.match(tierLib.FREE_TEXT.guestLimit, /5 رسائل/);
+  assert.match(tierLib.FREE_TEXT.guestLimit, /3 رسائل/);
   const pr = tierLib.PLAN_ROUTING;
   assert.deepEqual(Object.keys(pr), ['basic', 'pro', 'max']);
   for (const k of ['basic', 'pro']) {
@@ -331,14 +331,14 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=670'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=671'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 
 test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا اسم موديل في وصف النقاط', () => {
   const val = (src, key) => [...src.matchAll(new RegExp('(?:^|[\\s,{])' + key + '\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')', 'g'))].map((m) => m[1]);
   const files = ['js/app-03-i18n-data.js'].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((l) => 'i18n/' + l + '.js'));
-  const expect = { planFreeFeats: [/5/, /4/, /3/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/, /15/, /1/], planProFeats: [/100/, /61/, /40/, /2/], planMaxFeats: [/250/, /213/, /150/, /3/], plFreeMsgs: [/5/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/1|واحد/], plProMedia: [/40/, /2/], plMaxMedia: [/150/, /3/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /275/] };
+  const expect = { planFreeFeats: [/20/, /4/, /3/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/, /15/, /1/], planProFeats: [/100/, /61/, /40/, /2/], planMaxFeats: [/250/, /213/, /150/, /3/], plFreeMsgs: [/20/, /3/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/1|واحد/], plProMedia: [/40/, /2/], plMaxMedia: [/150/, /3/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /275/] };
   for (const f of files) {
     const src = read(f);
     const n = f.startsWith('i18n/') ? 1 : 2;
@@ -346,21 +346,21 @@ test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا �
       const vs = val(src, k);
       assert.equal(vs.length, n, f + ': ' + k);
       for (const v of vs) { for (const re of res) assert.match(v, re, f + ': ' + k); assert.doesNotMatch(v, /Veo|Runway|Gemini|Claude|GPT/i, f + ': ' + k + ' بلا اسم موديل'); }
-      if (/Feats$/.test(k)) for (const v of vs) assert.doesNotMatch(v, /\b(?:20|300|400|460|500|7000|1200)\b/, f + ': ' + k + ' رقم قديم');
+      if (/Feats$/.test(k)) for (const v of vs) assert.doesNotMatch(k === 'planFreeFeats' ? v.replace(/^["']<li>[^<]*<\/li>/, '') : v, /\b(?:20|300|400|460|500|7000|1200)\b/, f + ': ' + k + ' رقم قديم'); // v-free-first-day: ٢٠ أوّل يوم مقصودة
     }
   }
   const ps = read('js/partials-settings.js');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '5 رسائل يوميًا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'صورة إبداعية: 35', 'فيديو: 55', 'فيديو سينمائي: 275']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة أوّل يوم، ثمّ 3 يوميًا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'صورة إبداعية: 35', 'فيديو: 55', 'فيديو سينمائي: 275']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
   for (const s of ['<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '10 رسائل يوميًا', 'احترافية يوميًا', 'Veo 3']) assert.ok(!ps.includes(s), 'partials-settings stale: ' + s);
   const ph = read('pricing.html');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '5 رسائل يوميًا', '<div class="val">35</div>', '<div class="val">55</div>', '<div class="val">275</div>', '<th>300 نقطة</th>', 'loc(12.99,x)']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة أوّل يوم، ثمّ 3 يوميًا', '<div class="val">35</div>', '<div class="val">55</div>', '<div class="val">275</div>', '<th>300 نقطة</th>', 'loc(12.99,x)']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
   for (const s of ['<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '10 رسائل يوميًا', '<div class="val">60</div>', '<div class="val">400</div>']) assert.ok(!ph.includes(s), 'pricing.html stale: ' + s);
   assert.ok(read('js/app.bundle.js').includes('function applyPlanGate(d){'), 'الحزمة مبنيّة');
 });
 
 test('١٢. توثيق البيئة: الأسقف الجديدة وترتيب السلسلة في env.js و.env.example', () => {
   const env = read('api/_lib/env.js');
-  assert.ok(env.includes("'بديل: ٥ — رسائل المسجَّل المجاني يوميًّا") && env.includes("'بديل: ١٠٠ — سقف حماية باقة برو") && env.includes("'بديل: ٢٥٠ — سقف حماية باقة ماكس") && env.includes('groq,gemini,mistral,openrouter'));
+  assert.ok(env.includes("'بديل: ٣ — رسائل المسجَّل المجاني يوميًّا") && env.includes("'بديل: ١٠٠ — سقف حماية باقة برو") && env.includes("'بديل: ٢٥٠ — سقف حماية باقة ماكس") && env.includes('groq,gemini,mistral,openrouter'));
   const ex = read('.env.example');
-  assert.ok(ex.includes('# FREE_DAILY=5 ') && ex.includes('# SUB_DAILY_PRO=100 ') && ex.includes('# SUB_DAILY_MAX=250 ') && ex.includes('# FREE_CHAIN=groq,gemini,mistral,openrouter'));
+  assert.ok(ex.includes('# FREE_DAILY=3 ') && ex.includes('# SUB_DAILY_PRO=100 ') && ex.includes('# SUB_DAILY_MAX=250 ') && ex.includes('# FREE_CHAIN=groq,gemini,mistral,openrouter'));
 });
