@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "اسأل Om ai من أيّ صفحة: حدّد نصًّا واضغط بالزرّ الأيمن، أو اكتب om ثمّ مسافة في شريط العنوان، أو اضغط Alt+O."
+  },
+  "actionTitle": {
+    "message": "افتح Om ai"
+  },
+  "menuAsk": {
+    "message": "اسأل Om ai عن «%s»"
+  },
+  "menuSummarize": {
+    "message": "لخّص هذه الصفحة بـOm ai"
+  },
+  "summarizePrompt": {
+    "message": "لخّص لي هذه الصفحة: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: اكتب سؤالك واضغط Enter"
+  }
+}

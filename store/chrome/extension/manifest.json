@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "short_name": "Om ai",
+  "description": "__MSG_extDesc__",
+  "version": "1.0.0",
+  "default_locale": "en",
+  "homepage_url": "https://omran-ai-builder.vercel.app/",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "__MSG_actionTitle__",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["contextMenus"],
+  "omnibox": {
+    "keyword": "om"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+O"
+      },
+      "description": "__MSG_actionTitle__"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "যেকোনো পেজ থেকে Om ai-কে জিজ্ঞাসা করুন: লেখা সিলেক্ট করে রাইট-ক্লিক করুন, ঠিকানা বারে om ও একটি স্পেস লিখুন, বা Alt+O চাপুন।"
+  },
+  "actionTitle": {
+    "message": "Om ai খুলুন"
+  },
+  "menuAsk": {
+    "message": "\"%s\" সম্পর্কে Om ai-কে জিজ্ঞাসা করুন"
+  },
+  "menuSummarize": {
+    "message": "Om ai দিয়ে এই পেজের সারাংশ"
+  },
+  "summarizePrompt": {
+    "message": "এই পেজের সারাংশ দিন: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: প্রশ্ন লিখে Enter চাপুন"
+  }
+}

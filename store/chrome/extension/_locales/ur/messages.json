@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "کسی بھی صفحے سے Om ai سے پوچھیں: متن منتخب کر کے رائٹ کلک کریں، ایڈریس بار میں om اور اسپیس لکھیں، یا Alt+O دبائیں۔"
+  },
+  "actionTitle": {
+    "message": "Om ai کھولیں"
+  },
+  "menuAsk": {
+    "message": "«%s» کے بارے میں Om ai سے پوچھیں"
+  },
+  "menuSummarize": {
+    "message": "Om ai سے اس صفحے کا خلاصہ"
+  },
+  "summarizePrompt": {
+    "message": "اس صفحے کا خلاصہ بتاؤ: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: اپنا سوال لکھ کر Enter دبائیں"
+  }
+}

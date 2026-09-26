@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "Tanya Om ai dari halaman mana pun: pilih teks lalu klik kanan, ketik om dan spasi di bilah alamat, atau tekan Alt+O."
+  },
+  "actionTitle": {
+    "message": "Buka Om ai"
+  },
+  "menuAsk": {
+    "message": "Tanya Om ai tentang \"%s\""
+  },
+  "menuSummarize": {
+    "message": "Ringkas halaman ini dengan Om ai"
+  },
+  "summarizePrompt": {
+    "message": "Ringkaskan halaman ini untukku: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: ketik pertanyaan lalu tekan Enter"
+  }
+}

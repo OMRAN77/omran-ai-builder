@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "ഏത് പേജിൽ നിന്നും Om ai-യോട് ചോദിക്കൂ: ടെക്സ്റ്റ് തിരഞ്ഞെടുത്ത് റൈറ്റ്-ക്ലിക്ക്, വിലാസ ബാറിൽ om + സ്പേസ്, അല്ലെങ്കിൽ Alt+O."
+  },
+  "actionTitle": {
+    "message": "Om ai തുറക്കുക"
+  },
+  "menuAsk": {
+    "message": "\"%s\" എന്നതിനെക്കുറിച്ച് Om ai-യോട് ചോദിക്കുക"
+  },
+  "menuSummarize": {
+    "message": "Om ai ഉപയോഗിച്ച് ഈ പേജ് സംഗ്രഹിക്കുക"
+  },
+  "summarizePrompt": {
+    "message": "ഈ പേജ് എനിക്കായി സംഗ്രഹിക്കൂ: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: ചോദ്യം ടൈപ്പ് ചെയ്ത് Enter അമർത്തുക"
+  }
+}

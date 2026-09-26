@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "在任何网页向 Om ai 提问：选中文字后右键，在地址栏输入 om 加空格，或按 Alt+O。"
+  },
+  "actionTitle": {
+    "message": "打开 Om ai"
+  },
+  "menuAsk": {
+    "message": "向 Om ai 询问“%s”"
+  },
+  "menuSummarize": {
+    "message": "用 Om ai 总结此页面"
+  },
+  "summarizePrompt": {
+    "message": "帮我总结这个页面：$URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai：输入问题后按 Enter"
+  }
+}

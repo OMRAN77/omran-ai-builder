@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "Her sayfadan Om ai’a sorun: metni seçip sağ tıklayın, adres çubuğuna om ve boşluk yazın ya da Alt+O’ya basın."
+  },
+  "actionTitle": {
+    "message": "Om ai’ı aç"
+  },
+  "menuAsk": {
+    "message": "\"%s\" hakkında Om ai’a sor"
+  },
+  "menuSummarize": {
+    "message": "Bu sayfayı Om ai ile özetle"
+  },
+  "summarizePrompt": {
+    "message": "Bu sayfayı benim için özetle: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: sorunuzu yazıp Enter’a basın"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "Спросите Om ai с любой страницы: выделите текст и правый клик, введите om и пробел в адресной строке или Alt+O."
+  },
+  "actionTitle": {
+    "message": "Открыть Om ai"
+  },
+  "menuAsk": {
+    "message": "Спросить Om ai о «%s»"
+  },
+  "menuSummarize": {
+    "message": "Кратко пересказать страницу с Om ai"
+  },
+  "summarizePrompt": {
+    "message": "Кратко перескажи эту страницу: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: введите вопрос и нажмите Enter"
+  }
+}

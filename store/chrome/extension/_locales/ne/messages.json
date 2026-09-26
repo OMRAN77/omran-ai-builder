@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "जुनसुकै पेजबाट Om ai लाई सोध्नुहोस्: टेक्स्ट छानेर राइट-क्लिक, ठेगाना बारमा om र स्पेस, वा Alt+O थिच्नुहोस्।"
+  },
+  "actionTitle": {
+    "message": "Om ai खोल्नुहोस्"
+  },
+  "menuAsk": {
+    "message": "\"%s\" बारे Om ai लाई सोध्नुहोस्"
+  },
+  "menuSummarize": {
+    "message": "Om ai बाट यो पेजको सारांश"
+  },
+  "summarizePrompt": {
+    "message": "यो पेजको सारांश देऊ: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: प्रश्न टाइप गरेर Enter थिच्नुहोस्"
+  }
+}

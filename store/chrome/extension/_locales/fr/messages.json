@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "Interrogez Om ai depuis toute page : sélectionnez un texte puis clic droit, tapez om et un espace dans la barre, ou Alt+O."
+  },
+  "actionTitle": {
+    "message": "Ouvrir Om ai"
+  },
+  "menuAsk": {
+    "message": "Demander à Om ai à propos de « %s »"
+  },
+  "menuSummarize": {
+    "message": "Résumer cette page avec Om ai"
+  },
+  "summarizePrompt": {
+    "message": "Résume-moi cette page : $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai : tapez votre question puis Entrée"
+  }
+}

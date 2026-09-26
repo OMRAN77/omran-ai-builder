@@ -32325,7 +32325,31 @@ try{
   }
 }catch(e){ /* guard-ok — إذا فشل sessionStorage نتجاهل الميزة بهدوء */ }
 
-if(!isNewSession) return; // نفس التبويب / تحديث الصفحة — لا تغيير
+// ── v-ext-q: سؤال من الرابط (?q=) — إضافة المتصفّح وبحث «om ai» ─────────────
+// يُكتب في صندوق المحادثة ولا يُرسل (لا خصم نقاط بلا ضغطة من المستخدم)، ويُمسح من الرابط
+// كي لا يعود مع التحديث. يُعاد بعد إنشاء محادثة الزيارة الجديدة فيقع فيها لا في القديمة.
+var URL_Q_MAX = 4000;
+var urlQ = '';
+try{
+  var qsp = new URLSearchParams(location.search);
+  urlQ = String(qsp.get('q') || '').trim().slice(0, URL_Q_MAX);
+  if(qsp.has('q')){
+    qsp.delete('q');
+    var qrest = qsp.toString();
+    history.replaceState(history.state, '', location.pathname + (qrest ? '?' + qrest : '') + location.hash);
+  }
+}catch(e){ /* guard-ok — رابط غير قابل للقراءة: لا سؤال */ }
+
+function fillUrlQuestion(){
+  if(!urlQ) return;
+  var inp = document.getElementById('prompt');
+  if(!inp){ setTimeout(fillUrlQuestion, 200); return; }
+  var cur = String(inp.value || '').trim();
+  if(cur && cur !== urlQ) return; // المستخدم بدأ يكتب شيئًا آخر — لا نطمسه
+  inp.value = urlQ;
+  try{ inp.dispatchEvent(new Event('input', { bubbles: true })); }catch(e){ /* guard-ok — تحجيم الصندوق زينة */ }
+  try{ inp.focus(); inp.setSelectionRange(urlQ.length, urlQ.length); }catch(e){ /* guard-ok — التركيز اختياريّ */ }
+}
 
 // ── انتظر ظهور المحادثات في القائمة (يعني IDB اكتمل) ─────────────────────
 function onHistoryReady(){
@@ -32348,7 +32372,8 @@ function onHistoryReady(){
     // هل المستخدم بدأ يكتب بالفعل؟
     try{
       var inp = document.getElementById('prompt') || document.getElementById('msgInput');
-      if(inp && String(inp.value || '').trim()) return;
+      var typed = inp ? String(inp.value || '').trim() : '';
+      if(typed && typed !== urlQ) return;
     }catch(e){ /* guard-ok — فحص اختياري */ }
 
     // ── أنشئ محادثة جديدة ──────────────────────────────────────────────────
@@ -32366,6 +32391,7 @@ function onHistoryReady(){
 
     // ── إشعار خفيف ──────────────────────────────────────────────────────────
     showSessionToast();
+    fillUrlQuestion();
 
   }catch(e){ try{ __swallow(e,'session-new#3'); }catch(_){ /* guard-ok */ } }
 }
@@ -32421,10 +32447,15 @@ function showSessionToast(){
 }
 
 // ── ابدأ بعد بناء DOM ──────────────────────────────────────────────────────
+// نفس التبويب / تحديث الصفحة = لا محادثة جديدة، والسؤال من الرابط يُكتب في الحاليّة.
+function start(){
+  fillUrlQuestion();
+  if(isNewSession) waitForHistory();
+}
 if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', waitForHistory);
+  document.addEventListener('DOMContentLoaded', start);
 } else {
-  waitForHistory();
+  start();
 }
 
 })();

@@ -1,0 +1,29 @@
+{
+  "extName": {
+    "message": "Om ai"
+  },
+  "extDesc": {
+    "message": "Magtanong sa Om ai mula sa anumang page: pumili ng teksto at i-right-click, i-type ang om at space sa address bar, o Alt+O."
+  },
+  "actionTitle": {
+    "message": "Buksan ang Om ai"
+  },
+  "menuAsk": {
+    "message": "Tanungin ang Om ai tungkol sa \"%s\""
+  },
+  "menuSummarize": {
+    "message": "Ibuod ang page na ito gamit ang Om ai"
+  },
+  "summarizePrompt": {
+    "message": "Ibuod mo ang page na ito: $URL$",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "omniboxHint": {
+    "message": "Om ai: i-type ang tanong at pindutin ang Enter"
+  }
+}
