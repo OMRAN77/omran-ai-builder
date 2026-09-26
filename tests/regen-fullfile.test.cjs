@@ -34,3 +34,14 @@ test('البطاقة تعرض حجم الملفّ الكامل', () => {
   assert.ok(fn.includes('if(a.fullBytes > __bytes) __bytes = a.fullBytes;'));
   assert.ok(fn.includes('const ln = a.fullLines ||'));
 });
+
+test('v-history-files: الأدوار اللاحقة ترى نصّ الملفّ المرفق في السجلّ', () => {
+  const i = src.indexOf('v-history-files');
+  assert.ok(i > 0, 'الكتلة موجودة');
+  const block = src.slice(i, i + 2600);
+  assert.ok(block.includes('m !== __nextUserMessage'), 'الدور الحاليّ يُرسل بـapiText كما هو');
+  assert.ok(block.includes('await idbGet(a.textFullId)'), 'الكامل من المخزن لا المعاينة');
+  assert.ok(/__ownerCtx \? 200000 : 40000/.test(block), 'ميزانيّة تحفظ سقف السياق');
+  assert.ok(block.includes('غير مقطوع'), 'القصّ للميزانيّة يُعلَن حتّى لا يظنّ النموذج الملفّ ناقصًا');
+  assert.ok(src.includes('if(__histFiles.has(m)) txt += __histFiles.get(m);'), 'يُلحق بعد قصّ نصّ الرسالة');
+});

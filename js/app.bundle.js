@@ -21657,6 +21657,31 @@ DESIGN RULES (non-negotiable):
       // ② أدوار محادثة حقيقية بدل ضغط السجل في رسالة system واحدة.
       //    هذا هو الإصلاح الأساسي: النموذج يرى محادثة، لا تعليمات.
       let __turns = [];
+      /* v-history-files: الرسالة المحفوظة تحمل نصّ المستخدم وحده، فالملفّ المرفق كان يصل
+         في دوره فقط ثمّ يغيب — «وش في السطر كذا؟» بعده بلا ملفّ. الكامل من IndexedDB
+         (textFullId) أو المرفق الصغير نفسه، والأحدث أولًا ضمن ميزانيّة تحفظ سقف السياق. */
+      const __histFiles = new Map();
+      if(!__quietSocialTurn || __ownerCtx){
+        let __fileBudget = __ownerCtx ? 200000 : 40000;
+        const __withFiles = __historyMsgs.slice(-MAX_TURNS).filter(m => m && m.role === 'user' && m !== __nextUserMessage
+          && m.apiText === undefined && Array.isArray(m.attachments) && m.attachments.some(a => a && !a.isImage && !a.isVideo && typeof a.text === 'string'));
+        for(let __k = __withFiles.length - 1; __k >= 0 && __fileBudget > 0; __k--){
+          const m = __withFiles[__k];
+          let __out = '';
+          for(const a of m.attachments){
+            if(!a || a.isImage || a.isVideo || typeof a.text !== 'string' || __fileBudget <= 0) continue;
+            let __body = a.text;
+            if(a.textFullId && typeof idbGet === 'function'){
+              try{ const __full = await idbGet(a.textFullId); if(typeof __full === 'string' && __full.length > __body.length) __body = __full; }
+              catch(e){ __swallow(e, 'history:file-full'); }
+            }
+            if(__body.length > __fileBudget) __body = __body.slice(0, __fileBudget) + '\n… [بقيّة الملفّ لم تُرسل في هذا الدور لطول المحادثة — الملفّ عند المستخدم كامل غير مقطوع]';
+            __fileBudget -= __body.length;
+            __out += '\n\n📄 ' + (a.name || 'file') + ':\n```\n' + __body + '\n```';
+          }
+          if(__out) __histFiles.set(m, __out);
+        }
+      }
       if(!__quietSocialTurn || __ownerCtx){ // v-owner-memory: للمالك «زين/ممتاز» وسط الشغل تحمل التاريخ
         __historyMsgs.slice(-MAX_TURNS).forEach(m => {
           if(!m || m._loading || m._failed) return;
@@ -21665,6 +21690,7 @@ DESIGN RULES (non-negotiable):
           if(!txt) return;
           txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
           if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط
+          if(__histFiles.has(m)) txt += __histFiles.get(m);
           const prev = __turns[__turns.length - 1];
           if(prev && prev.role === role) prev.content += '\n\n' + txt; // دمج بدل الرفض
           else __turns.push({role, content: txt});
