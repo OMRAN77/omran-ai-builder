@@ -352,7 +352,6 @@ const $ = s => document.querySelector(s);
   const passLabelText = $('#authPasswordLabelText');
   const forgotLink = $('#authForgotLink');
   const backToLoginLink = $('#authBackToLoginLink');
-  const emailRow = $('#authEmailRow');
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
   const useCodeLink = $('#authUseCodeLink');
@@ -387,12 +386,22 @@ const $ = s => document.querySelector(s);
     tabLogin.classList.toggle('primary', m === 'login');
     tabSignup.classList.toggle('primary', m === 'signup');
     const rememberRow = $('#authRememberRow');
-    emailRow.style.display = (m === 'signup') ? 'flex' : 'none';
     userInput.readOnly = (m === 'resetToken');
+    /* v-simple-login: التبويبات مخفيّة دائمًا؛ زرّ واحد تحت جوجل يبدّل بين الدخول والتسجيل، وعنوان صغير خارج الدخول */
+    const heading = $('#authHeading');
+    const altBlock = $('#authAltBlock');
+    const switchBtn = $('#authSwitchBtn');
+    const headText = m === 'signup' ? t.authCreateAccount : (m === 'login' ? '' : t.authForgotLink);
+    if(heading){ heading.textContent = headText || ''; heading.style.display = headText ? 'block' : 'none'; }
+    if(altBlock) altBlock.style.display = (m === 'login' || m === 'signup') ? 'flex' : 'none';
+    if(switchBtn) switchBtn.textContent = m === 'signup' ? t.authHaveAccount : t.authCreateAccount;
+    userInput.placeholder = (m === 'login' || m === 'forgotEmail') ? (t.authIdPlaceholder || '') : (t.authUsernameLabel || '');
+    passInput.placeholder = (m === 'reset' || m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
+    passInput.autocomplete = m === 'login' ? 'current-password' : 'new-password';
     if(m === 'reset'){
       tabsRow.style.display = 'none';
       recoveryRow.style.display = 'flex';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authNewPasswordLabel;
       forgotLink.style.display = 'none';
       useCodeLink.style.display = 'none';
@@ -411,7 +420,7 @@ const $ = s => document.querySelector(s);
     } else if(m === 'resetToken'){
       tabsRow.style.display = 'none';
       recoveryRow.style.display = 'none';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authNewPasswordLabel;
       forgotLink.style.display = 'none';
       useCodeLink.style.display = 'none';
@@ -419,15 +428,15 @@ const $ = s => document.querySelector(s);
       submitBtn.textContent = t.authSubmitReset;
       if(rememberRow) rememberRow.style.display = 'none';
     } else {
-      tabsRow.style.display = 'flex';
+      tabsRow.style.display = 'none';
       recoveryRow.style.display = 'none';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authPasswordLabel;
       forgotLink.style.display = (m === 'login') ? '' : 'none';
       useCodeLink.style.display = 'none';
       backToLoginLink.style.display = 'none';
       submitBtn.textContent = m === 'login' ? t.authSubmitLogin : t.authSubmitSignup;
-      if(rememberRow) rememberRow.style.display = 'flex';
+      if(rememberRow) rememberRow.style.display = 'none';
     }
   }
   tabLogin.onclick = () => setMode('login');
@@ -435,6 +444,8 @@ const $ = s => document.querySelector(s);
   forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
   useCodeLink.onclick = (e) => { e.preventDefault(); setMode('reset'); };
   backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
+  const authSwitchBtn = $('#authSwitchBtn');
+  if(authSwitchBtn) authSwitchBtn.onclick = () => setMode(mode === 'signup' ? 'login' : 'signup');
 
   const togglePassBtn = $('#authTogglePassBtn');
   if(togglePassBtn){
@@ -1209,7 +1220,7 @@ const $ = s => document.querySelector(s);
 
     if(mode === 'forgotEmail'){
       if(!username){
-        errBox.textContent = isEn ? 'Please enter your username' : 'الرجاء إدخال اسم المستخدم';
+        errBox.textContent = isEn ? 'Please enter your username or email' : 'الرجاء إدخال اسم المستخدم أو الإيميل';
         return;
       }
       submitBtn.disabled = true;
@@ -2794,6 +2805,9 @@ const I18N = {
     authTabLogin: 'تسجيل الدخول',
     authTabSignup: 'حساب جديد',
     authUsernameLabel: 'اسم المستخدم',
+    authIdPlaceholder: "اسم المستخدم أو الإيميل",
+    authCreateAccount: "إنشاء حساب جديد",
+    authHaveAccount: "عندي حساب — تسجيل الدخول",
     authPasswordLabel: 'كلمة المرور',
     authNewPasswordLabel: 'كلمة مرور جديدة',
     authRecoveryLabel: 'رمز الاسترجاع',
@@ -2808,6 +2822,7 @@ const I18N = {
     clockWorldLabel: '🌍 الساعة العالمية',
     authBackToLogin: 'رجوع لتسجيل الدخول',
     authSubmitReset: 'إعادة تعيين كلمة المرور',
+    authSubmitForgotEmail: "أرسل رابط الاسترجاع على الإيميل",
     authRecoveryModalTitle: '🔑 احتفظ برمز الاسترجاع هذا',
     authRecoveryModalDesc: 'هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.',
     authCopyBtn: '📋 نسخ',
@@ -3791,6 +3806,9 @@ const I18N = {
     authTabLogin: 'Log In',
     authTabSignup: 'Sign Up',
     authUsernameLabel: 'Username',
+    authIdPlaceholder: "Username or email",
+    authCreateAccount: "Create new account",
+    authHaveAccount: "I have an account — Log in",
     authPasswordLabel: 'Password',
     authNewPasswordLabel: 'New password',
     authRecoveryLabel: 'Recovery code',
@@ -3807,6 +3825,7 @@ const I18N = {
     clockWorldLabel: '🌍 World Clock',
     authBackToLogin: 'Back to login',
     authSubmitReset: 'Reset password',
+    authSubmitForgotEmail: "Email me a reset link",
     authRecoveryModalTitle: '🔑 Save this recovery code',
     authRecoveryModalDesc: 'This is the only code you can use to recover your account if you forget your password. Save it somewhere safe — it will not be shown again.',
     authCopyBtn: '📋 Copy',
@@ -4722,7 +4741,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=693'; /* v-free-first-day: رسائل المجانيّ والضيف. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=694'; /* v-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
