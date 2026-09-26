@@ -207,7 +207,7 @@ I18N['zh'] = {
     "acctUsernameLabel": "用户名",
     "acctPasswordRow": "密码",
     "acctSaveBtn": "保存",
-    "acctEmailLabel": "📧 备用邮箱(用于找回密码)",
+    "acctEmailLabel": "邮箱(忘记用户名或密码时使用)",
     "acctReferralLabel": "🔗 邀请好友链接",
     "acctCopyBtn": "📋 复制",
     "acctReferralHint": "每有一位好友通过您的链接注册，您和好友均可获得 10 条额外免费消息 🎁",

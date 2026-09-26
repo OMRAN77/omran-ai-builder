@@ -83,6 +83,14 @@
       </div>
       <div id="acctPasswordMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
+    <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowEmail',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctEmailLabel">الإيميل (لو نسيت اسمك أو كلمة المرور)</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowEmail" style="display:none; padding:8px 8px 12px;">
+      <div style="display:flex; gap:8px;">
+        <input type="email" id="acctEmail" style="flex:1; direction:ltr;" autocomplete="email">
+        <button type="button" class="btn" id="acctEmailSaveBtn" style="width:auto; white-space:nowrap;" data-i18n="acctSaveBtn">حفظ</button>
+      </div>
+      <div id="acctEmailMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+    </div></div>
     <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowRef',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctReferralLabel">🔗 رابط دعوة أصدقائك</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowRef" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">

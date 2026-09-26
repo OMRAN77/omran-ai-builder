@@ -9,21 +9,26 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const html = read('js/partials-settings.js');
 const acct = html.slice(html.indexOf('<div id="accountSection"'), html.indexOf('<div id="statsSection"'));
 
-test('١. الترتيب: الصورة ← اسم المستخدم ← كلمة المرور ← رابط الدعوة ← تنظيف التطبيق', () => {
-  const order = ['id="acctAvatarInput"', "'acctRowUser'", "'acctRowPass'", "'acctRowRef'", "'acctRowCleanup'"].map((k) => acct.indexOf(k));
+test('١. الترتيب: الصورة ← اسم المستخدم ← كلمة المرور ← الإيميل ← رابط الدعوة ← تنظيف التطبيق', () => {
+  const order = ['id="acctAvatarInput"', "'acctRowUser'", "'acctRowPass'", "'acctRowEmail'", "'acctRowRef'", "'acctRowCleanup'"].map((k) => acct.indexOf(k));
   assert.ok(order.every((i) => i > 0), JSON.stringify(order));
   assert.deepEqual([...order].sort((a, b) => a - b), order);
 });
 
-test('٢. الاسم الذهبيّ والنقاط والإيميل والخروج الأحمر خارج الصفحة', () => {
-  for (const id of ['acctSignedInAs', 'acctPointsBox', 'acctMediaBox', 'acctPointsLowWarn', 'acctLogoutBtn', 'acctRowEmail', 'acctEmail']) {
+test('٢. الاسم الذهبيّ والنقاط والخروج الأحمر خارج الصفحة', () => {
+  for (const id of ['acctSignedInAs', 'acctPointsBox', 'acctMediaBox', 'acctPointsLowWarn', 'acctLogoutBtn']) {
     assert.ok(!html.includes('id="' + id + '"'), id);
+  }
+  assert.match(acct, /id="acctEmail"[\s\S]*id="acctEmailSaveBtn"/, 'خانة الإيميل باقية لمن نسي اسمه (أمر المالك)');
+  assert.match(acct, /data-i18n="acctEmailLabel">الإيميل \(لو نسيت اسمك أو كلمة المرور\)</);
+  for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) {
+    assert.doesNotMatch(read('i18n/' + lg + '.js'), /acctEmailLabel"?: "📧/, lg);
   }
 });
 
 test('٣. ألوان عاديّة: لا أحمر في الصفحة، والصفوف رماديّة عند التمرير', () => {
   assert.doesNotMatch(acct, /#ef4444|239,\s*68,\s*68/);
-  assert.equal((acct.match(/class="acctRowBtn"/g) || []).length, 4);
+  assert.equal((acct.match(/class="acctRowBtn"/g) || []).length, 5);
   const css = read('css/tokens.css');
   assert.match(css, /\.acctRowBtn:hover, \.acctRowBtn:active\{ background:rgba\(128,128,128,\.12\) !important; \}/);
   assert.match(css, /\.settingsNavLogout \.settingsNavChevron\{ display:none; \}/);

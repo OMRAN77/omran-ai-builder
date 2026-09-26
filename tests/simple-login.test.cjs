@@ -97,5 +97,5 @@ test('النصوص الجديدة بالـ١٤ لغة', () => {
     const s = read('i18n/' + l + '.js');
     for (const k of ['authIdPlaceholder', 'authCreateAccount', 'authHaveAccount', 'authSubmitForgotEmail']) assert.match(s, new RegExp('"?' + k + '"?:\\s*"[^"]+"'), l + ': ' + k);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=696'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=697'/);
 });

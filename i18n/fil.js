@@ -214,7 +214,7 @@ I18N['fil'] = {
     "acctUsernameLabel": "Username",
     "acctPasswordRow": "Password",
     "acctSaveBtn": "I-save",
-    "acctEmailLabel": "📧 Backup email (para sa password recovery)",
+    "acctEmailLabel": "Email (kung nakalimutan mo ang username o password)",
     "acctReferralLabel": "🔗 Link para mag-imbita ng kaibigan",
     "acctCopyBtn": "📋 Kopyahin",
     "acctReferralHint": "Para sa bawat kaibigang mag-sign up gamit ang link mo, kayong dalawa ay makakakuha ng 10 karagdagang libreng mensahe 🎁",

@@ -2888,7 +2888,7 @@ const I18N = {
     acctUsernameLabel: 'اسم المستخدم',
     acctPasswordRow: 'كلمة المرور',
     acctSaveBtn: 'حفظ',
-    acctEmailLabel: '📧 الإيميل الاحتياطي (لاسترجاع كلمة المرور)',
+    acctEmailLabel: 'الإيميل (لو نسيت اسمك أو كلمة المرور)',
     acctInvalidEmail: 'صيغة الإيميل غير صحيحة',
     acctReferralLabel: '🔗 رابط دعوة أصدقائك',
     acctCopyBtn: '📋 نسخ',
@@ -3961,7 +3961,7 @@ const I18N = {
     acctUsernameLabel: 'Username',
     acctPasswordRow: 'Password',
     acctSaveBtn: 'Save',
-    acctEmailLabel: '📧 Backup email (for password recovery)',
+    acctEmailLabel: 'Email (if you forget your username or password)',
     acctReferralLabel: '🔗 Invite friends link',
     acctCopyBtn: '📋 Copy',
     acctReferralHint: 'For every friend who signs up with your link, you both get 10 extra free messages 🎁',
@@ -4763,7 +4763,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=696'; /* دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=697'; /* v-account-tidy: نصّ خانة الإيميل. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];

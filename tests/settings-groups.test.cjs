@@ -70,7 +70,7 @@ test('٤. النصوص بالـ١٤ لغة، وبلا اسم مزوّد', () => 
       assert.doesNotMatch(m[1], /ChatGPT|Claude|Gemini|GPT|Groq|كلود|جيمناي/i, lg + ': ' + k);
     }
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=696'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=697'/);
 });
 
 test('٥. الجوّال صفحة كاملة بزرّ ✕، والحاسوب بلا تغيير (v-settings-full-mobile)', () => {
