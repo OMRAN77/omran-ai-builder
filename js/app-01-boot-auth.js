@@ -1364,7 +1364,7 @@ const $ = s => document.querySelector(s);
   // GUEST_MSG_LIMIT free messages (tracked locally); once used up, sendPrompt()
   // calls window.requireLogin() to show this same overlay and block further
   // sends until the user logs into an existing account (or signs up).
-  const GUEST_MSG_LIMIT = 20;
+  const GUEST_MSG_LIMIT = 0; /* v-free-first-day (قرار المالك ٢٦ سبتمبر): الضيف لا يرسل شيئًا — التسجيل أوّلًا */
   window.GUEST_MSG_LIMIT = GUEST_MSG_LIMIT;
   window.getGuestMsgCount = () => parseInt(localStorage.getItem('aiapp_guest_msg_count') || '0', 10);
   window.incrementGuestMsgCount = () => localStorage.setItem('aiapp_guest_msg_count', String(window.getGuestMsgCount() + 1));
@@ -1395,7 +1395,7 @@ const $ = s => document.querySelector(s);
   })();
   window.requireLogin = (reason) => {
     setMode('login');
-    if(reason === 'guestLimit'){ errBox.textContent = curT().guestLimitMsg; }
+    if(reason === 'guestLimit'){ setMode('signup'); errBox.textContent = curT().guestLimitMsg; }
     if(reason === 'guestImage'){ setMode('signup'); errBox.textContent = curT().guestImageMsg || curT().guestLimitMsg; }
     if(reason === 'checkout'){ setMode('signup'); errBox.textContent = curT().checkoutLoginFirst || ''; }
     showOverlay();

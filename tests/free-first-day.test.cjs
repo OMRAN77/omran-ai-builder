@@ -1,5 +1,5 @@
 // tests/free-first-day.test.cjs — v-free-first-day (قرار المالك ٢٦ سبتمبر):
-// المسجَّل المجاني ٢٠ رسالة في يوم تسجيله، ثمّ ٥ يوميًّا.
+// الضيف لا يرسل شيئًا، والمسجَّل المجاني ٢٠ رسالة في يوم تسجيله ثمّ ٣ يوميًّا.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -19,15 +19,15 @@ test('يوم التسجيل ٢٠ رسالة', async () => {
   assert.equal((await run({ createdAt: Date.UTC(2026, 8, 26, 0, 0, 1) })).cap, 20, 'أوّل ثانية من اليوم');
 });
 
-test('من اليوم الثاني ٥ رسائل', async () => {
-  assert.equal((await run({ createdAt: Date.UTC(2026, 8, 25, 23, 59) })).cap, 5, 'أمس قبل منتصف الليل');
-  assert.equal((await run({ createdAt: now - 30 * 24 * H })).cap, 5);
+test('من اليوم الثاني ٣ رسائل', async () => {
+  assert.equal((await run({ createdAt: Date.UTC(2026, 8, 25, 23, 59) })).cap, 3, 'أمس قبل منتصف الليل');
+  assert.equal((await run({ createdAt: now - 30 * 24 * H })).cap, 3);
 });
 
-test('حساب قديم بلا تاريخ تسجيل أو بتاريخ تالف = ٥', async () => {
-  assert.equal((await run({})).cap, 5);
-  assert.equal((await run({ createdAt: 'x' })).cap, 5);
-  assert.equal((await run(null)).cap, 5);
+test('حساب قديم بلا تاريخ تسجيل أو بتاريخ تالف = ٣', async () => {
+  assert.equal((await run({})).cap, 3);
+  assert.equal((await run({ createdAt: 'x' })).cap, 3);
+  assert.equal((await run(null)).cap, 3);
 });
 
 test('الأرقام من البيئة، ويوم التسجيل لا يقلّ عن اليوميّ', async () => {
@@ -37,13 +37,39 @@ test('الأرقام من البيئة، ويوم التسجيل لا يقلّ �
   assert.equal((await run({ createdAt: now - 48 * H }, { FREE_FIRST_DAY: '30', FREE_DAILY: '7' })).cap, 7);
 });
 
-test('المشترك والضيف لا يتأثّران', async () => {
+test('الضيف صفر والمشترك لا يتأثّر', async () => {
   assert.deepEqual(await run({ createdAt: now - H, plan: 'pro', planUpdatedAt: now - H }), { tier: 'sub', plan: 'pro', cap: 100, subscriber: true });
-  assert.equal((await tier.resolveTier(null, { now, noCache: true, env: {} })).cap, 3);
+  assert.equal((await tier.resolveTier(null, { now, noCache: true, env: {} })).cap, 0);
+  assert.equal(tier.caps({}).guest, 0);
 });
 
-test('رسالة الضيف تذكر أوّل يوم ثمّ اليوميّ، والمتغيّر موثّق', () => {
-  assert.match(tier.FREE_TEXT.guestLimit, /20 رسالة في أوّل يوم، ثمّ 5 رسائل يوميًّا/);
+test('الخادم يرفض الضيف قبل أيّ عدّ', () => {
+  const u = read('api/_lib/_usage.js');
+  assert.match(u, /const guestLimit = tierLib\.caps\(\)\.guest;[\s\S]*?if \(count >= guestLimit\) \{[\s\S]*?await addTally\(key\);/);
+});
+
+test('الواجهة: الضيف يُحوَّل للتسجيل من أوّل رسالة', () => {
+  const a = read('js/app-01-boot-auth.js');
+  assert.match(a, /const GUEST_MSG_LIMIT = 0;/);
+  assert.match(a, /if\(reason === 'guestLimit'\)\{ setMode\('signup'\); errBox\.textContent = curT\(\)\.guestLimitMsg; \}/);
+  assert.match(read('js/app-09-attach.js'), /if\(window\.getGuestMsgCount\(\) >= window\.GUEST_MSG_LIMIT\)\{\s*window\.requireLogin\('guestLimit'\);\s*return;/);
+});
+
+test('النصوص بالـ١٤ لغة تذكر ٢٠ ثمّ ٣، والمتغيّرات موثّقة', () => {
+  assert.match(tier.FREE_TEXT.guestLimit, /^سجّل حسابًا مجانيًّا لتبدأ الدردشة: 20 رسالة في أوّل يوم، ثمّ 3 رسائل يوميًّا/);
+  const ar = read('js/app-03-i18n-data.js');
+  assert.ok(ar.includes("guestLimitMsg: 'سجّل حسابًا مجانيًّا لتبدأ الدردشة: 20 رسالة في أوّل يوم، ثمّ 3 رسائل يوميًّا.'"));
+  assert.ok(ar.includes("guestLimitMsg: 'Create a free account to start chatting: 20 messages on your first day, then 3 a day.'"));
+  for (const l of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) {
+    const s = read('i18n/' + l + '.js');
+    for (const k of ['guestLimitMsg', 'plFreeMsgs']) {
+      const m = s.match(new RegExp(k + `"?\\s*:\\s*'([^']*)'`));
+      assert.ok(m && /20/.test(m[1]) && /3/.test(m[1]) && !/5/.test(m[1]), l + ': ' + k);
+    }
+    assert.ok(/planFreeFeats"?\s*:\s*["']<li>[^<]*20[^<]*3[^<]*<\/li>/.test(s), l + ': planFreeFeats');
+  }
+  assert.ok(read('pricing.html').includes('</svg>20 رسالة أوّل يوم، ثمّ 3 يوميًا</li>'));
   assert.ok(read('api/_lib/env.js').includes('FREE_FIRST_DAY:'));
-  assert.ok(read('.env.example').includes('# FREE_FIRST_DAY=20 '));
+  const ex = read('.env.example');
+  assert.ok(ex.includes('# FREE_FIRST_DAY=20 ') && ex.includes('# FREE_DAILY=3 ') && ex.includes('# GUEST_DAILY=0 '));
 });

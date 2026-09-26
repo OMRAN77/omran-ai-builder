@@ -23,7 +23,7 @@ I18N['zh'] = {
     emailConnectHint: '连接你的 Gmail 账户，让 AI 阅读你的邮件，并在发送前提供供你审核的回复建议。', voiceSummaryBtn: '语音摘要', refreshBtn: '刷新', worldMarketsTitle: '全球市场', pickStockTitle: '选择股票', cnProjectData: '📋 项目数据',
     cnLandArea: '土地面积（m²）— 可选', cnLandAreaPh: '例如：500', cnEmirateOpt: '酋长国 — 可选', cnDetailsAnnexes: '🏠 详情与附属设施', cnExElevator: '室内电梯', cnExStore: '室外储藏室', cnExWaterTank: '水箱', cnExSolar: '太阳能板',
     cnExPlayground: '室外游乐场', cnExCarport: '额外车棚', cnBudgetOutputs: '💰 预算与输出', cnDownloadBoq: '📊 下载工程量清单', cnPdfReport: '📄 PDF 报告', keyHowToTitle: '📝 如何获取每个提供商的密钥：', showAllPlansCur: '以你的货币显示所有套餐和价格',
-    currencyLabel: '货币', plFreeMsgs: '每天5条消息', plFreeVoice: '最多4分钟语音聊天', plFreeImgs: '最多3张AI图片', plFreeNoVideo: '无视频', plStMsgs: '每天50条消息', plStVoice: '最多24分钟语音聊天', plStImgs: '最多15张图片', plStVideos: '1个视频',
+    currencyLabel: '货币', plFreeMsgs: '第一天20条消息，之后每天3条', plFreeVoice: '最多4分钟语音聊天', plFreeImgs: '最多3张AI图片', plFreeNoVideo: '无视频', plStMsgs: '每天50条消息', plStVoice: '最多24分钟语音聊天', plStImgs: '最多15张图片', plStVideos: '1个视频',
     plProMsgs: '每天100条消息', plProVoice: '最多61分钟语音聊天', plProMedia: '最多40张图片 · 2个视频', plProAgent: '智能代理', plProPriority: '优先速度 · 金色徽章', plMaxAllPro: '包含Pro的所有功能 · 每天250条消息', plMaxVoice: '最多213分钟语音聊天',
     plMaxMedia: '最多150张图片 · 3个视频', plMaxSupport: '专属支持',
     adStudioTitle: '广告工作室', adStudioHint: '广告工作室 — 通过对话制作你的广告', chatToPdfEmpty: '暂无可转换的回复。', mahaConnectionLost: '无法重新连接', voiceTabAssistantName: '助手',
@@ -134,7 +134,7 @@ I18N['zh'] = {
     "authOrDivider": "或",
     "authGoogleBtn": "使用 Google 继续",
     "authSubmitSignup": "创建账户",
-    "guestLimitMsg": "🎉 您已用完 20 条免费消息!登录账户(或创建新账户)以继续对话。",
+    "guestLimitMsg": '注册免费账户即可开始聊天：第一天20条消息，之后每天3条。',
     
     
     
@@ -939,7 +939,7 @@ I18N['zh'] = {
     constructionTypeRest: '🌴 度假屋', constructionTypeFarm: '🌾 农场', constructionTypeAnnexhome: '🏘️ 住宅附楼', constructionTypeMall: '🛍️ 购物中心', constructionTypeSchool: '🏫 学校', constructionTypeHall: '💒 婚礼大厅', constructionEmirateNone: '— 无 —', constructionEmirateDubai: '迪拜', constructionEmirateAbudhabi: '阿布扎比', constructionEmirateSharjah: '沙迦', constructionEmirateAjman: '阿治曼', constructionEmirateUmmalquwain: '乌姆盖万', constructionEmirateRasalkhaimah: '哈伊马角', constructionEmirateFujairah: '富查伊拉', constructionStyleAndalusi: '🕌 安达卢西亚风', constructionStyleIslamic: '🌙 现代伊斯兰', constructionStyleMediterranean: '🏖️ 地中海风', constructionStyleNajdi: '🏜️ 纳吉迪', constructionStyleNeoclassic: '🏛️ 新古典', constructionRoomOffice: '🧑‍💻 家庭办公室', constructionRoomKids: '🧸 儿童房', constructionRoomStairs: '🪜 楼梯和入口', constructionRoomRoof: '🌇 屋顶', constructionGrpResidential: '🏠 住宅', constructionGrpCommercial: '🏢 商业和行政', constructionGrpPublic: '🕌 公共和服务',
     /* v601: 30 مفتاحًا مفقودة + 24 مفتاح مساعد البريد (54) */
     designAiPlaceLabel: "地点类型", premiumOn: "智能体已开启⚡——直接回答，无风格层", premiumNeedLogin: "登录以使用智能体", memorySectionLabel: "我的记忆", memoryIntro: "应用记住的关于你、你的项目和你的交流风格的内容都在这里。它会通过你的账户在各设备间同步，你也可以编辑或删除它。", memorySaveBtn: "保存更改", memoryClearBtn: "删除我的记忆", memoryEmpty: "目前还没有保存任何关于你的信息。", memoryGuest: "登录以查看你的记忆。", memoryConfirm: "删除应用记住的所有关于你的信息？此操作无法撤销。", memorySaved: "已保存并与你的账户同步。", memorySaveError: "保存失败，请重试。",
-    memoryLoadError: "目前无法加载记忆。", fontFamilySectionLabel: "字体样式", fontFamilyHint: "更改桌面和手机上的聊天消息，不会更改代码块或应用布局。", guestImageMsg: "🎁你已用完3张免费访客图片！几秒内创建免费账户，即可获得70个礼品积分，继续生成和编辑图片。", planPer: "每月", planFreePer: "试用", planPtsFree: "欢迎积分——仅一次", planPtsMo: "每月积分", planTag: "最受欢迎", planCurrentBtn: "你当前的套餐", planSoonBtn: "即将推出", planFreeFeats: '<li>每天5条消息</li><li>最多4分钟语音聊天</li><li>最多3张AI图片</li><li class="off">无视频</li>',
+    memoryLoadError: "目前无法加载记忆。", fontFamilySectionLabel: "字体样式", fontFamilyHint: "更改桌面和手机上的聊天消息，不会更改代码块或应用布局。", guestImageMsg: "🎁你已用完3张免费访客图片！几秒内创建免费账户，即可获得70个礼品积分，继续生成和编辑图片。", planPer: "每月", planFreePer: "试用", planPtsFree: "欢迎积分——仅一次", planPtsMo: "每月积分", planTag: "最受欢迎", planCurrentBtn: "你当前的套餐", planSoonBtn: "即将推出", planFreeFeats: '<li>第一天20条消息，之后每天3条</li><li>最多4分钟语音聊天</li><li>最多3张AI图片</li><li class="off">无视频</li>',
     planPlusFeats: '<li>每天50条消息</li><li>最多24分钟语音聊天</li><li>最多15张图片</li><li>1个视频</li>', planProFeats: '<li>每天100条消息</li><li>最多61分钟语音聊天</li><li>最多40张图片 · 2个视频</li><li>智能代理</li><li>优先速度 · 金色徽章</li>', planMaxFeats: '<li>包含Pro的所有功能 · 每天250条消息</li><li>最多213分钟语音聊天</li><li>最多150张图片 · 3个视频</li><li>专属支持</li>', checkoutPlanLabelMax: 'Max 套餐 $100/月 — 3,200 积分', copyCode: "复制", copiedMsg: "已复制✅",
     emailAsst_connectText: "连接你的Gmail账户，让AI读取你的邮件并在你审核后建议现成的回复。", emailAsst_connectBtn: "🔗连接Gmail", emailAsst_disclaimer: "⚠️任何回复都不会在未经你对每条消息明确批准的情况下发送。", emailAsst_title: "📧AI邮件助手", emailAsst_refresh: "刷新", emailAsst_loading: "正在扫描你的收件箱…", emailAsst_empty: "目前没有需要回复的新邮件。", emailAsst_notConnected: "Gmail未连接，请重新连接。", emailAsst_send: "✅发送", emailAsst_ignore: "🚫忽略此发件人", emailAsst_sending: "发送中…", emailAsst_sent: "✅已发送",
     emailAsst_ignored: "🚫已忽略——不再显示", emailAsst_error: "❌错误：", emailAsst_voiceBtn: "语音摘要", emailAsst_addToCalendar: "📅添加到日历", emailAsst_addingEvent: "正在添加事件…", emailAsst_eventAdded: "✅已添加到你的日历", emailAsst_calReauth: "请重新连接Gmail以允许访问日历", emailAsst_voiceLoading: "🔊正在准备语音摘要…", emailAsst_voiceEmpty: "没有可摘要的邮件。", emailAsst_urgent: "🔴紧急", emailAsst_normal: "🟡普通", emailAsst_low: "⚪低",

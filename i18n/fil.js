@@ -28,7 +28,7 @@ I18N['fil'] = {
     cnLandAreaPh: 'hal.: 500', cnEmirateOpt: 'Emirate — opsyonal', cnDetailsAnnexes: '🏠 Mga detalye at annex', cnExElevator: 'Panloob na elevator', cnExStore: 'Panlabas na bodega',
     cnExWaterTank: 'Tangke ng tubig', cnExSolar: 'Solar panel', cnExPlayground: 'Panlabas na palaruan', cnExCarport: 'Karagdagang carport', cnBudgetOutputs: '💰 Badyet at output',
     cnDownloadBoq: '📊 I-download ang bill of quantities', cnPdfReport: '📄 PDF report', keyHowToTitle: '📝 Paano kumuha ng key para sa bawat provider:',
-    showAllPlansCur: 'Ipakita ang lahat ng plano at presyo sa iyong currency', currencyLabel: 'Currency', plFreeMsgs: '5 mensahe bawat araw', plFreeVoice: 'Hanggang 4 minuto ng voice chat',
+    showAllPlansCur: 'Ipakita ang lahat ng plano at presyo sa iyong currency', currencyLabel: 'Currency', plFreeMsgs: '20 mensahe sa unang araw, tapos 3 bawat araw', plFreeVoice: 'Hanggang 4 minuto ng voice chat',
     plFreeImgs: 'Hanggang 3 larawang AI', plFreeNoVideo: 'Walang video', plStMsgs: '50 mensahe bawat araw', plStVoice: 'Hanggang 24 minuto ng voice chat', plStImgs: 'Hanggang 15 larawan', plStVideos: '1 video',
     plProMsgs: '100 mensahe bawat araw', plProVoice: 'Hanggang 61 minuto ng voice chat', plProMedia: 'Hanggang 40 larawan · 2 video', plProAgent: 'Ang smart agent',
     plProPriority: 'Priority speed · gold badge', plMaxAllPro: 'Lahat ng meron sa Pro · 250 mensahe bawat araw', plMaxVoice: 'Hanggang 213 minuto ng voice chat', plMaxMedia: 'Hanggang 150 larawan · 3 video',
@@ -141,7 +141,7 @@ I18N['fil'] = {
     "authOrDivider": "o",
     "authGoogleBtn": "Magpatuloy gamit ang Google",
     "authSubmitSignup": "Gumawa ng Account",
-    "guestLimitMsg": "🎉 Naubos mo na ang iyong 20 libreng mensahe! Mag-log in sa account mo (o gumawa ng bago) para magpatuloy sa pag-chat.",
+    "guestLimitMsg": 'Gumawa ng libreng account para makapag-chat: 20 mensahe sa unang araw, tapos 3 bawat araw.',
     
     
     
@@ -948,7 +948,7 @@ I18N['fil'] = {
     designAiPlaceLabel: "Uri ng lugar", premiumOn: "Nakabukas ang Agent ⚡ — direktang sagot, walang style layers", premiumNeedLogin: "Mag-sign in para gamitin ang Agent", memorySectionLabel: "Aking memorya", memoryIntro: "Ito ang tinatandaan ng app tungkol sa iyo, sa iyong mga proyekto, at sa iyong pamamaraan ng komunikasyon. Naka-sync ito sa iyong account sa lahat ng device, at maaari mo itong i-edit o burahin.",
     memorySaveBtn: "I-save ang mga pagbabago", memoryClearBtn: "Burahin ang aking memorya", memoryEmpty: "Walang naka-save tungkol sa iyo pa.", memoryGuest: "Mag-sign in para makita ang iyong memorya.", memoryConfirm: "Buburahin ba lahat ng tinatandaan ng app tungkol sa iyo? Hindi na ito maibabalik.", memorySaved: "Na-save at na-sync sa iyong account.", memorySaveError: "Hindi na-save. Pakisubukang muli.",
     memoryLoadError: "Hindi ma-load ang memorya sa ngayon.", fontFamilySectionLabel: "Estilo ng font", fontFamilyHint: "Nagbabago ang mga chat message sa desktop at mobile, hindi ang code blocks o layout ng app.", guestImageMsg: "🎁 Naubos na ang iyong 3 libreng guest image! Gumawa ng libreng account sa ilang segundo lang at kumuha ng 70 gift points para makapagpatuloy sa paggawa at pag-edit ng mga larawan.",
-    planPer: "kada buwan", planFreePer: "para subukan", planPtsFree: "welcome points — isang-panahon lang", planPtsMo: "points bawat buwan", planTag: "Pinakasikat", planCurrentBtn: "Iyong kasalukuyang plano", planSoonBtn: "Malapit na", planFreeFeats: '<li>5 mensahe bawat araw</li><li>Hanggang 4 minuto ng voice chat</li><li>Hanggang 3 larawang AI</li><li class="off">Walang video</li>',
+    planPer: "kada buwan", planFreePer: "para subukan", planPtsFree: "welcome points — isang-panahon lang", planPtsMo: "points bawat buwan", planTag: "Pinakasikat", planCurrentBtn: "Iyong kasalukuyang plano", planSoonBtn: "Malapit na", planFreeFeats: '<li>20 mensahe sa unang araw, tapos 3 bawat araw</li><li>Hanggang 4 minuto ng voice chat</li><li>Hanggang 3 larawang AI</li><li class="off">Walang video</li>',
     planPlusFeats: '<li>50 mensahe bawat araw</li><li>Hanggang 24 minuto ng voice chat</li><li>Hanggang 15 larawan</li><li>1 video</li>', planProFeats: '<li>100 mensahe bawat araw</li><li>Hanggang 61 minuto ng voice chat</li><li>Hanggang 40 larawan · 2 video</li><li>Ang smart agent</li><li>Priority speed · gold badge</li>',
     planMaxFeats: '<li>Lahat ng meron sa Pro · 250 mensahe bawat araw</li><li>Hanggang 213 minuto ng voice chat</li><li>Hanggang 150 larawan · 3 video</li><li>Dedikadong support</li>', checkoutPlanLabelMax: 'Max Plan $100/buwan — 3,200 puntos', copyCode: "Kopyahin", copiedMsg: "Nakopya ✅",
     emailAsst_connectText: "Ikonekta ang iyong Gmail account para mabasa ng AI ang iyong mga email at magmungkahi ng mga handang sagot na aaprubahan mo bago ipadala.", emailAsst_connectBtn: "🔗 Ikonekta ang Gmail", emailAsst_disclaimer: "⚠️ Walang sagot na ipinapadala kailanman kung wala ang iyong tahasang aprubasyon sa bawat mensahe.", emailAsst_title: "📧 AI Email Assistant", emailAsst_refresh: "I-refresh",
