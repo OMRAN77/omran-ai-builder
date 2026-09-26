@@ -10555,7 +10555,7 @@ const SETTINGS_NAV_ICONS = {
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
   pricingSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`,
   aboutSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
-  settingsEmailRow: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>`,
+  settingsLogoutRow: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`,
   ownerSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20"></path><path d="M3 18 2 7l6 4 4-7 4 7 6-4-1 11"></path></svg>`,
   feedbackSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
 };
@@ -10568,7 +10568,7 @@ function settingsOwnerUi(){
    (v-settings-tidy). «صفحة المالك» تبقى أوّلًا للمالك وحده. */
 const SETTINGS_NAV_GROUPS = [
   ['setGrpPersonal', ['toneSection', 'memorySection', 'voiceSection']],
-  ['setGrpAccount', ['settingsEmailRow', 'pricingSection', 'accountSection', 'statsSection']],
+  ['setGrpAccount', ['pricingSection', 'accountSection', 'statsSection']],
   ['setGrpAppearance', ['themeSection', 'fontFamilySection', 'fontSizeSection', 'langSection']],
   ['setGrpGeneral', ['notifSection', 'apiKeysSection', 'aboutSection']],
 ];
@@ -10585,7 +10585,7 @@ function settingsNavRow(sid, label, value, sub){
   row.querySelector('.settingsNavSub').textContent = sub || '';
   row.querySelector('.settingsNavValue').textContent = value || '';
   if(row.dataset) row.dataset.sid = sid;
-  row.onclick = () => showSettingsPage(sid === 'settingsEmailRow' ? 'accountSection' : sid);
+  row.onclick = () => showSettingsPage(sid);
   return row;
 }
 function renderSettingsProfile(){
@@ -10607,18 +10607,6 @@ function renderSettingsProfile(){
   if(up) up.style.display = settingsPaidPlan() ? 'none' : 'flex';
 }
 window.renderSettingsProfile = renderSettingsProfile;
-function settingsFetchEmail(){
-  try{
-    const token = typeof authGet === 'function' ? authGet('aiapp_auth_token') : '';
-    if(!token){ window.__setEmailFor = ''; window.__setEmail = undefined; return; }
-    if(window.__setEmailFor === token) return;
-    window.__setEmailFor = token;
-    window.__setEmail = undefined;
-    fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getProfile', token }) })
-      .then(r => r.json()).then(d => { if(d && d.ok){ window.__setEmail = d.email || ''; renderSettingsNavList(); } })
-      .catch(e => { window.__setEmailFor = ''; __swallow(e, 'ui:settings-email'); });
-  }catch(e){ __swallow(e, 'ui:settings-email#2'); }
-}
 function renderSettingsNavList(){
   const listEl = document.getElementById('settingsNavList');
   if(!listEl) return;
@@ -10626,7 +10614,7 @@ function renderSettingsNavList(){
   const owner = settingsOwnerUi();
   const logged = settingsLoggedIn();
   const labelOf = (sid) => { const h = document.querySelector('#' + sid + ' .settingsSectionHeader h3'); return stripUiEmoji(h ? h.textContent : sid); };
-  const has = (sid) => sid === 'settingsEmailRow' ? logged : !!document.getElementById(sid);
+  const has = (sid) => !!document.getElementById(sid);
   if(owner && has('ownerSection')){
     const card = document.createElement('div');
     card.className = 'settingsNavGroup';
@@ -10644,14 +10632,25 @@ function renderSettingsNavList(){
     const card = document.createElement('div');
     card.className = 'settingsNavGroup';
     rows.forEach(sid => {
-      if(sid === 'settingsEmailRow') card.appendChild(settingsNavRow(sid, settingsTr('setEmailRow'), '', window.__setEmail || settingsTr('setNoEmail')));
-      else card.appendChild(settingsNavRow(sid, labelOf(sid), sid === 'pricingSection' ? planText : ''));
+      card.appendChild(settingsNavRow(sid, labelOf(sid), sid === 'pricingSection' ? planText : ''));
     });
     listEl.appendChild(title);
     listEl.appendChild(card);
   });
+  /* v-account-tidy (أمر المالك ٢٦ سبتمبر): الخروج آخر صفّ في الإعدادات بلون عاديّ، لا زرًّا أحمر داخل «حسابي». */
+  if(logged){
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup settingsNavLogoutCard';
+    const row = settingsNavRow('settingsLogoutRow', stripUiEmoji(settingsTr('logoutTitle')));
+    row.classList.add('settingsNavLogout');
+    row.onclick = () => {
+      try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-logout#close'); }
+      if(typeof doLogout === 'function') doLogout();
+    };
+    listEl.appendChild(card);
+    card.appendChild(row);
+  }
   try{ renderSettingsProfile(); }catch(e){ __swallow(e, 'ui:settings-profile'); }
-  settingsFetchEmail();
 }
 (function(){
   const av = document.getElementById('setProfileAvatar');
