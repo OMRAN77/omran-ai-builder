@@ -4276,6 +4276,12 @@ function __showImgLoading(el, ar, en){
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
       let __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
+      /* v-text-replace: «غير الكلام الى مبروك» / «خلي الكتابه مبروك» على صورة كتبنا عليها = نصّ جديد يحلّ محلّ القديم.
+         على صورة المستخدم نفسها يبقى الطلب لمسار تبديل النصّ داخل التصميم. */
+      if(!__textSpec.wantsText && !__textSpec.styleEdit && !__isNewImageSource && __textLayerOwnsImage(cur) && window.__imageTextReplace){
+        const __rt = (window.__layerWordSwap && window.__layerWordSwap(text, cur.imageTextLayer.text)) || window.__imageTextReplace(text);
+        if(__rt) __textSpec = window.__parseImageTextSpec('اكتب «' + __rt + '»');
+      }
       const __styleOnly = __textSpec.styleEdit || (cur.imageTextLayer ? __textSpec.styleEditLoose : null);
       if(__styleOnly && cur.imageTextLayer){ __textSpec = Object.assign({}, __textSpec, { styleEdit: __styleOnly }); }
       if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
@@ -4451,7 +4457,10 @@ function __showImgLoading(el, ar, en){
       }
       const __continuesEditChain = !__isNewImageSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
       const __original = latestOriginalUserImage(cur);
-      const __pendingImageEditSource = { b64:__b64, mime:__mime };
+      /* v-text-keep: تعديل بصريّ («غير الخلفية») على صورة كتبنا عليها — المحرّك يأخذ الأساس بلا كتابة (كان يعيد رسم
+         الحروف العربيّة المحروقة فتتشوّه وتضيع الطبقة)، ثمّ يُعاد رسم النصّ نفسه فوق الناتج. طلبٌ يذكر الكتابة نفسها يبقى كالسابق. */
+      const __keepLayer = (!__isNewImageSource && __textLayerOwnsImage(cur) && !/(?:كلام|كتاب|النص|نص\s|الخط|خط\s|مكتوب|عبار|حروف|حرف|كلم[ةه]|كلمات|text|font|writing|letter|word)/i.test(text || '')) ? cur.imageTextLayer : null;
+      const __pendingImageEditSource = __keepLayer ? { b64:__keepLayer.baseB64, mime:__keepLayer.baseMime || 'image/png' } : { b64:__b64, mime:__mime };
       const __combinedEdit = cumulativeImageEditPrompt(cur, text, true);
       const __editShr = await omranShrinkForEdit(__pendingImageEditSource.b64, __pendingImageEditSource.mime); /* v-edit-shrink */
       const __editB64 = __editShr.b64;
@@ -4478,10 +4487,19 @@ function __showImgLoading(el, ar, en){
         const __outMime = __data.mimeType || 'image/png';
         let __editUrl = 'data:' + __outMime + ';base64,' + __data.imageBase64;
         try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
+        let __keptLayer = null;
+        if(__keepLayer){
+          try{
+            const __kBase = __editUrl.split(',')[1] || __data.imageBase64, __kMime = __editUrl.slice(5).split(';')[0] || __outMime;
+            const __kOut = await overlayTextOnImage(__kBase, __kMime, __keepLayer.text, __keepLayer.fontKey, __keepLayer.color, __keepLayer.position);
+            __editUrl = 'data:image/png;base64,' + __kOut;
+            __keptLayer = Object.assign({}, __keepLayer, { baseB64:__kBase, baseMime:__kMime, outTail:__kOut.slice(-64) });
+          }catch(e){ __swallow(e, 'img:text-keep'); }
+        }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */ + __imgEngineLine(__data.engine, __data), attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
         // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
         try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
-        cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
+        cur.lastEditedImage = __keptLayer ? { b64: __editUrl.split(',')[1], mime: 'image/png' } : { b64: __data.imageBase64, mime: __outMime };
         /* v-image-memory: نحفظ الدور (كلمات المستخدم + مصغّر النتيجة 768px، ومصغّر المصدر الأصلي في أول دور) ليراه النموذج في الدور القادم */
         try{
           if(!__continuesEditChain || !Array.isArray(cur.imageTurns)) cur.imageTurns = [];
@@ -4492,7 +4510,7 @@ function __showImgLoading(el, ar, en){
         }catch(e){ __swallow(e, 'img:memory-turn'); }
         cur.imageEditSource = __pendingImageEditSource;
         cur.imageEditInstructions = __pendingImageEditInstructions;
-        cur.imageTextLayer = null;
+        cur.imageTextLayer = __keptLayer;
         cur.lastMsgWasImageEdit = true;
         // 🔄 نحفظ الطلب كما هو ليعيده زر «نسخة ثانية» بتنويعة جديدة
         try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: { prompt: __editPrompt, userText: String(text || '').slice(0, 600), editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs } }; }catch(e){ __swallow(e, 'img:save-req'); }

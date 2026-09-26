@@ -6,7 +6,7 @@
   }
   function findTextMarker(source){
     let strong = firstMatch(source, /(?:أكتب|اكتب(?:ي|وا)?|مكتوب(?:ة)?\s+(?:عليها|عليه|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره))|write)/i);
-    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?(?=[«“"'])/i);
+    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?\s*(?=[«“"'])/i);
     if(placed && (!strong || placed.index < strong.index)) strong = placed;
     const weak = firstMatch(source, /(?:ضع|حط|أضف|اضف|ضيف|put|add)/i);
     if(!weak) return strong;
@@ -184,9 +184,31 @@
       || /^(?:بدون|بلا|من\s+غير)\s+(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص)\s*[.!]*$/i.test(s);
   }
   // «و الصوره تعبر عن…» وصف للمشهد يأتي بعد النصّ بلا علامات تنصيص — لا يُطبع.
-  const DESC_TAIL_RE = /\s+و\s*(?:ال)?(?:صور[ةه]|صوره|خلفي[ةه]|خلفيه|مشهد|رسم[ةه]|رسمه)\s+(?:ت?عبّ?ر|يعبّ?ر|تكون|يكون|فيها|فيه|عن|تبيّ?ن|توضّ?ح|تمثّ?ل|لونها|شكلها)(?=\s|$)|\s+و\s*(?:ت|ي)عبّ?ر\s+عن\s+/i;
+  const DESC_TAIL_RE = /\s+و\s*(?:ال)?(?:صور[ةه]|صوره|خلفي[ةه]|خلفيه|مشهد|رسم[ةه]|رسمه)(?=\s|$)|\s+و\s*(?:ت|ي)عبّ?ر\s+عن\s+|\s+و\s*(?:تكون|يكون|خل|خلي|خلّي|خله|خلها|اجعل|اجعلها|سو|سوي|سوّي|حط|ضيف|أضف|اضف|ارسم)\s+(?:لي\s+)?(?:فيها|فيه|عليها|ال?صور[ةه]|ال?صوره|ال?خلفي[ةه]|ال?خلفيه|المشهد|لونها|لون\s+ال?خلفي)(?=\s|$)/i;
+  // «عمران بالذهبي» و«… في الاعلى»: لون أو موضع في آخر النصّ غير المنصَّص تنسيقٌ لا كلام.
+  const TAIL_STYLE_RE = /\s+(?:(?:و\s*)?(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:و\s*)?(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص))(?:\s+(?:و\s*)?(?:(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص)))?\s*$/i;
+  // «غير الكلام الى مبروك» / «خلي الكتابه مبروك»: استبدال نصّ طبقتنا — يستعمله العميل فقط حين تكون آخر صورة ناتج الطبقة.
+  function textReplaceIntent(input){
+    const s = String(input || '').trim();
+    if(!s || s.length > 160 || findTextMarker(s) || textStyleEdit(s)) return null;
+    const m = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|خل|خلي|خلّي|خليه|خليها|اجعل|صحح|صحّح|عدل|عدّل)\s+(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص|مكتوب|عبار[ةه]|عباره|جمل[ةه]|جمله|كلم[ةه]|كلمه)\s+(?:الى|إلى|لـ|يصير|تصير|يكون|تكون|:)?\s*(.+)$/i.exec(s);
+    if(!m) return null;
+    const q = quotedValue(m[1]);
+    const t = fixKnownPhrases((q ? q.value : m[1]).trim());
+    return t && t.length <= 120 ? t : null;
+  }
   // «اكتب قوف شكراً» = اكتب فوق «شكراً»: كلمة موضع في أوّل النصّ غير المنصَّص.
   const LEAD_POS_RE = /^(?:فوق|قوف|تحت|(?:في|ف|بال)\s*(?:الأعلى|الاعلى|الأسفل|الاسفل|الوسط|النص|المنتصف)|بالنص|بالوسط|فالنص)\s+(?=\S)/;
+  // «غير اخوي الى صديقي» على نصّ طبقتنا: تبديل كلمة داخل النصّ المحفوظ نفسه — null إن لم تكن الكلمة فيه.
+  function layerWordSwap(input, layerText){
+    const s = String(input || '').trim(), t = String(layerText || '');
+    if(!s || !t || s.length > 160) return null;
+    const m = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|استبدل|صحح|صحّح)\s+(?:(?:ال)?(?:كلم[ةه]|كلمه|اسم|جمل[ةه]|جمله)\s+)?[«"']?(.+?)[»"']?\s+(?:الى|إلى|حط|وحط|خلها|خله|تصير|يصير|مكانها|مكانه|بـ|ب(?=\s))\s*[«"']?(.+?)[»"']?\s*[.!]*$/i.exec(s);
+    if(!m) return null;
+    const from = m[1].trim(), to = fixKnownPhrases(m[2].trim());
+    if(!from || !to || from === to || t.indexOf(from) < 0) return null;
+    return t.split(from).join(to);
+  }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
     // v-longtext-noimg (بلاغ المالك «قصّة نوح ما ترد»): نصّ طويل ملصوق ليس طلب
@@ -214,6 +236,8 @@
       if(lead){ styleSource = lead[0].replace(/^قوف/, 'فوق'); rest = rest.trim().slice(lead[0].length); }
       const dc = rest.search(DESC_TAIL_RE);
       if(dc > 0){ descTail = rest.slice(dc).replace(/^[\s،,]*و?\s*/, ''); rest = rest.slice(0, dc); }
+      const ts = rest.search(TAIL_STYLE_RE);
+      if(ts > 0){ styleSource = (styleSource + ' ' + rest.slice(ts)).trim(); rest = rest.slice(0, ts); }
     }
     const leadStyle = styleSource;
     if(quoted){
@@ -266,5 +290,7 @@
   root.__imageTextRemoveIntent = textRemoveIntent;
   root.__fixKnownPhrases = fixKnownPhrases;
   root.__isKnownPhrase = isKnownPhrase;
-  if(typeof module !== 'undefined' && module.exports) module.exports = { parseImageTextSpec, isExplicitImageEdit, imageWriteIntent, textRemoveIntent, fixKnownPhrases, isKnownPhrase };
+  root.__imageTextReplace = textReplaceIntent;
+  root.__layerWordSwap = layerWordSwap;
+  if(typeof module !== 'undefined' && module.exports) module.exports = { parseImageTextSpec, isExplicitImageEdit, imageWriteIntent, textRemoveIntent, textReplaceIntent, layerWordSwap, fixKnownPhrases, isKnownPhrase };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { parseImageTextSpec, textRemoveIntent, fixKnownPhrases } = require('../js/app-08-image-text.js');
+const { parseImageTextSpec, textRemoveIntent, textReplaceIntent, layerWordSwap, fixKnownPhrases } = require('../js/app-08-image-text.js');
 
 const ISTIRJA = 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ';
 const attach = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-09-attach.js'), 'utf8');
@@ -70,4 +70,37 @@ test('٨. أدوات المحادثة لا تقول إنّ العربيّ يتش
   assert.doesNotMatch(edit, /النصوص الكثيفة داخل الصورة \(لقطات شاشة\) قد تتشوّه/);
   const gen = tools.slice(tools.indexOf("name: 'generate_image'"), tools.indexOf("name: 'edit_image'"));
   assert.match(gen, /العربيّة تبقى عربيّة/);
+});
+
+test('٩. ذيول الوصف والتنسيق لا تُطبع (فحص الشكاوى الثاني)', () => {
+  const cases = [
+    ['ابي صوره بحر مكتوب عليها جمعة مباركة و الخلفيه زرقاء', 'جمعة مباركة'],
+    ['سوي لي صورة مكتوب فيها عيد مبارك وتكون فيها العاب نارية', 'عيد مبارك'],
+    ['اكتب مبروك يا احمد و خلي الصوره فيها بالونات', 'مبروك يا احمد'],
+    ['اكتب اسمي عمران بالذهبي', 'عمران'],
+    ['اكتب شكرا لك يا صديقي في الاعلى', 'شكرا لك يا صديقي'],
+    ['صورة قمر وعليها «ليلة سعيدة»', 'ليلة سعيدة'],
+    ['اكتب نور على نور', 'نور على نور'],
+    ['اكتب الحب في القلب', 'الحب في القلب'],
+  ];
+  cases.forEach(([req, want]) => assert.equal(parseImageTextSpec(req).exactText, want, req));
+  assert.equal(parseImageTextSpec('اكتب شكرا لك يا صديقي في الاعلى').position, 'top');
+  assert.equal(parseImageTextSpec('اكتب اسمي عمران بالذهبي').color, '#f4cf65');
+  assert.match(parseImageTextSpec('ابي صوره بحر مكتوب عليها جمعة مباركة و الخلفيه زرقاء').visualPrompt, /الخلفيه زرقاء/);
+});
+
+test('١٠. «غير الكلام الى…» و«غير X الى Y» تستبدل نصّ طبقتنا، والتنسيق يبقى تنسيقًا', () => {
+  assert.equal(textReplaceIntent('غير الكلام الى مبروك'), 'مبروك');
+  assert.equal(textReplaceIntent('خلي الكتابه مبروك'), 'مبروك');
+  assert.equal(textReplaceIntent('بدل الكتابة الى «عيد سعيد»'), 'عيد سعيد');
+  assert.equal(textReplaceIntent('خلي الكتابه ذهبي'), null);
+  assert.equal(textReplaceIntent('غير الخلفية الى البحر'), null);
+  assert.equal(layerWordSwap('غير اخوي الى صديقي', 'شكراً اخوي'), 'شكراً صديقي');
+  assert.equal(layerWordSwap('غير الخلفية الى البحر', 'شكراً اخوي'), null);
+  assert.match(attach, /window\.__layerWordSwap\(text, cur\.imageTextLayer\.text\)\) \|\| window\.__imageTextReplace\(text\)/);
+});
+
+test('١١. تعديل بصريّ على صورة كتبنا عليها: المحرّك يأخذ الأساس ثمّ يُعاد رسم النصّ نفسه', () => {
+  assert.match(attach, /const __pendingImageEditSource = __keepLayer \? \{ b64:__keepLayer\.baseB64/);
+  assert.match(attach, /cur\.imageTextLayer = __keptLayer;/);
 });
