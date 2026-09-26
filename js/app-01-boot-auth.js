@@ -1395,7 +1395,7 @@ const $ = s => document.querySelector(s);
   })();
   window.requireLogin = (reason) => {
     setMode('login');
-    if(reason === 'guestLimit'){ setMode('signup'); errBox.textContent = curT().guestLimitMsg; }
+    if(reason === 'guestLimit'){ setMode('signup'); errBox.textContent = ''; }
     if(reason === 'guestImage'){ setMode('signup'); errBox.textContent = curT().guestImageMsg || curT().guestLimitMsg; }
     if(reason === 'checkout'){ setMode('signup'); errBox.textContent = curT().checkoutLoginFirst || ''; }
     showOverlay();

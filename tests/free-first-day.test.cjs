@@ -51,7 +51,7 @@ test('الخادم يرفض الضيف قبل أيّ عدّ', () => {
 test('الواجهة: الضيف يُحوَّل للتسجيل من أوّل رسالة', () => {
   const a = read('js/app-01-boot-auth.js');
   assert.match(a, /const GUEST_MSG_LIMIT = 0;/);
-  assert.match(a, /if\(reason === 'guestLimit'\)\{ setMode\('signup'\); errBox\.textContent = curT\(\)\.guestLimitMsg; \}/);
+  assert.match(a, /if\(reason === 'guestLimit'\)\{ setMode\('signup'\); errBox\.textContent = ''; \}/, 'بلا نصّ فوق زرّ التسجيل (طلب المالك)');
   assert.match(read('js/app-09-attach.js'), /if\(window\.getGuestMsgCount\(\) >= window\.GUEST_MSG_LIMIT\)\{\s*window\.requireLogin\('guestLimit'\);\s*return;/);
 });
 
