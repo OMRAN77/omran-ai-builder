@@ -5,6 +5,7 @@
 # twice. Edit these, run `npm run bundle`, deploy the bundle.
 js/app-00-swallow.js
 js/app-01-boot-auth.js
+js/app-01-mfa.js
 js/app-02-tts.js
 js/app-03-i18n-data.js
 js/app-04-i18n-state.js

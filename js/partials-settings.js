@@ -96,6 +96,16 @@
       </div>
       <div id="acctPasswordMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
+    <!-- v-account-guard: التحقّق بخطوتين والخروج من كلّ الأجهزة (المنطق في js/app-01-mfa.js) -->
+    <div><button type="button" id="acctSecurityRowBtn" onclick="acctToggleRow('acctRowSecurity',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctSecurityRow">🔐 الأمان وحماية الحساب</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowSecurity" style="display:none; padding:8px 8px 12px;"><div id="acctSecurityBox">
+      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="mfaTitle">🔐 التحقّق بخطوتين</div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.7; margin:2px 0 6px;" data-i18n="mfaExplain">بعد كلمة المرور يطلب التطبيق رمزًا من تطبيق المصادقة في جوالك — لو عرف أحدٌ كلمة مرورك لا يدخل.</div>
+      <div id="mfaStatusLine" style="font-size:12.5px; margin-bottom:8px;"></div>
+      <button type="button" class="btn" id="mfaToggleBtn" style="width:100%; margin-bottom:10px;" data-i18n="mfaEnableBtn">تفعيل التحقّق بخطوتين</button>
+      <button type="button" id="logoutAllBtn" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(239,68,68,.45); background:rgba(239,68,68,.08); color:#ef4444; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="logoutAllBtn">🚪 تسجيل الخروج من كلّ الأجهزة</button>
+      <div id="acctSecurityMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+    </div></div></div>
     <div><button type="button" onclick="acctToggleRow('acctRowEmail',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctEmailLabel">📧 الإيميل الاحتياطي (لاسترجاع كلمة المرور)</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowEmail" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">
