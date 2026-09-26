@@ -1,26 +1,26 @@
 {
   "extName": {
-    "message": "Omran AI"
+    "message": "om ai"
   },
   "extDesc": {
-    "message": "किसी भी पेज से Omran AI से पूछें: टेक्स्ट चुनकर राइट-क्लिक करें, एड्रेस बार में \"om\" लिखें, या टूलबार बटन इस्तेमाल करें।"
+    "message": "किसी भी पेज से om ai से पूछें: टेक्स्ट चुनकर राइट-क्लिक करें, एड्रेस बार में \"om\" लिखें, या टूलबार बटन इस्तेमाल करें।"
   },
   "ctxAsk": {
-    "message": "Omran AI से पूछें: \"%s\""
+    "message": "om ai से पूछें: \"%s\""
   },
   "popupPlaceholder": {
-    "message": "Omran AI से कुछ भी पूछें…"
+    "message": "om ai से कुछ भी पूछें…"
   },
   "popupAsk": {
     "message": "पूछें"
   },
   "popupOpen": {
-    "message": "Omran AI खोलें"
+    "message": "om ai खोलें"
   },
   "popupHint": {
-    "message": "सुझाव: किसी भी पेज पर टेक्स्ट चुनें, राइट-क्लिक करके \"Omran AI से पूछें\" चुनें — या एड्रेस बार में om और स्पेस लिखें।"
+    "message": "सुझाव: किसी भी पेज पर टेक्स्ट चुनें, राइट-क्लिक करके \"om ai से पूछें\" चुनें — या एड्रेस बार में om और स्पेस लिखें।"
   },
   "omniboxHint": {
-    "message": "Omran AI से पूछें: सवाल लिखें और Enter दबाएँ"
+    "message": "om ai से पूछें: सवाल लिखें और Enter दबाएँ"
   }
 }

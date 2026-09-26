@@ -173,7 +173,8 @@ test('إضافة المتصفّح: ١٤ لغة كاملة، الوصف ضمن ح
   for (const lg of dirs) {
     const msgs = JSON.parse(read(EXT + '_locales/' + lg + '/messages.json'));
     for (const k of used) assert.ok(msgs[k] && msgs[k].message, k + ' في ' + lg);
-    assert.ok(msgs.extName.message.length <= 45, 'الاسم ' + lg);
+    assert.equal(msgs.extName.message, 'om ai', 'اسم الإضافة في المتجر ' + lg);
+    assert.doesNotMatch(JSON.stringify(msgs), /Omran AI|عمران AI/, 'الاسم المختصر وحده ' + lg);
     assert.ok(msgs.extDesc.message.length <= 132, 'الوصف ' + lg + ' ' + msgs.extDesc.message.length);
     assert.match(msgs.ctxAsk.message, /%s/, 'النصّ المحدّد في عنوان القائمة ' + lg);
     assert.doesNotMatch(JSON.stringify(msgs), PROVIDERS, lg);

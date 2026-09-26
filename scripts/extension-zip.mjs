@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // scripts/extension-zip.mjs — يحزم إضافة المتصفّح (store/browser-extension) في ملفّ zip واحد يُرفع كما هو
-// إلى Chrome Web Store وEdge Add-ons وFirefox Add-ons. الناتج: store/browser-extension/dist/omran-ai-<الإصدار>.zip
+// إلى Chrome Web Store وEdge Add-ons وFirefox Add-ons. الناتج: store/browser-extension/dist/om-ai-<الإصدار>.zip
 // (*.zip في .gitignore — لا يدخل المستودع). بلا تبعيّات: zlib المدمج في Node.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -58,7 +58,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const files = walk(SRC);
   const outDir = path.join(SRC, 'dist');
   fs.mkdirSync(outDir, { recursive: true });
-  const out = path.join(outDir, 'omran-ai-' + manifest.version + '.zip');
+  const out = path.join(outDir, 'om-ai-' + manifest.version + '.zip');
   fs.writeFileSync(out, buildZip(files));
   console.log('✓ ' + path.relative(ROOT, out) + ' · ' + files.length + ' ملفًّا · ' + fs.statSync(out).size + ' بايت');
 }

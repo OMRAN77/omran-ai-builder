@@ -1,26 +1,26 @@
 {
   "extName": {
-    "message": "Omran AI"
+    "message": "om ai"
   },
   "extDesc": {
-    "message": "Magtanong sa Omran AI mula sa kahit anong page: i-right-click ang napiling text, i-type ang \"om\" sa address bar, o ang button."
+    "message": "Magtanong sa om ai mula sa kahit anong page: i-right-click ang napiling text, i-type ang \"om\" sa address bar, o ang button."
   },
   "ctxAsk": {
-    "message": "Itanong sa Omran AI ang \"%s\""
+    "message": "Itanong sa om ai ang \"%s\""
   },
   "popupPlaceholder": {
-    "message": "Magtanong ng kahit ano sa Omran AI…"
+    "message": "Magtanong ng kahit ano sa om ai…"
   },
   "popupAsk": {
     "message": "Itanong"
   },
   "popupOpen": {
-    "message": "Buksan ang Omran AI"
+    "message": "Buksan ang om ai"
   },
   "popupHint": {
-    "message": "Tip: pumili ng text sa kahit anong page, mag-right-click, at piliin ang \"Itanong sa Omran AI\" — o i-type ang om at space sa address bar."
+    "message": "Tip: pumili ng text sa kahit anong page, mag-right-click, at piliin ang \"Itanong sa om ai\" — o i-type ang om at space sa address bar."
   },
   "omniboxHint": {
-    "message": "Itanong sa Omran AI: i-type ang tanong at pindutin ang Enter"
+    "message": "Itanong sa om ai: i-type ang tanong at pindutin ang Enter"
   }
 }

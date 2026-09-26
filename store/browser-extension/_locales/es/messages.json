@@ -1,26 +1,26 @@
 {
   "extName": {
-    "message": "Omran AI"
+    "message": "om ai"
   },
   "extDesc": {
-    "message": "Pregunta a Omran AI desde cualquier página: clic derecho en el texto, \"om\" en la barra de direcciones o el botón."
+    "message": "Pregunta a om ai desde cualquier página: clic derecho en el texto, \"om\" en la barra de direcciones o el botón."
   },
   "ctxAsk": {
-    "message": "Preguntar a Omran AI sobre \"%s\""
+    "message": "Preguntar a om ai sobre \"%s\""
   },
   "popupPlaceholder": {
-    "message": "Pregunta lo que quieras a Omran AI…"
+    "message": "Pregunta lo que quieras a om ai…"
   },
   "popupAsk": {
     "message": "Preguntar"
   },
   "popupOpen": {
-    "message": "Abrir Omran AI"
+    "message": "Abrir om ai"
   },
   "popupHint": {
-    "message": "Consejo: selecciona texto en cualquier página, haz clic derecho y elige \"Preguntar a Omran AI\", o escribe om y un espacio en la barra de direcciones."
+    "message": "Consejo: selecciona texto en cualquier página, haz clic derecho y elige \"Preguntar a om ai\", o escribe om y un espacio en la barra de direcciones."
   },
   "omniboxHint": {
-    "message": "Preguntar a Omran AI: escribe tu pregunta y pulsa Enter"
+    "message": "Preguntar a om ai: escribe tu pregunta y pulsa Enter"
   }
 }

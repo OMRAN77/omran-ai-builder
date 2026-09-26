@@ -1,26 +1,26 @@
 {
   "extName": {
-    "message": "Omran AI"
+    "message": "om ai"
   },
   "extDesc": {
-    "message": "Tanya Omran AI dari halaman mana pun: pilih teks lalu klik kanan, ketik \"om\" di bilah alamat, atau pakai tombol toolbar."
+    "message": "Tanya om ai dari halaman mana pun: pilih teks lalu klik kanan, ketik \"om\" di bilah alamat, atau pakai tombol toolbar."
   },
   "ctxAsk": {
-    "message": "Tanya Omran AI tentang \"%s\""
+    "message": "Tanya om ai tentang \"%s\""
   },
   "popupPlaceholder": {
-    "message": "Tanya Omran AI apa saja…"
+    "message": "Tanya om ai apa saja…"
   },
   "popupAsk": {
     "message": "Tanya"
   },
   "popupOpen": {
-    "message": "Buka Omran AI"
+    "message": "Buka om ai"
   },
   "popupHint": {
-    "message": "Tips: pilih teks di halaman mana pun, klik kanan, lalu pilih \"Tanya Omran AI\" — atau ketik om dan spasi di bilah alamat."
+    "message": "Tips: pilih teks di halaman mana pun, klik kanan, lalu pilih \"Tanya om ai\" — atau ketik om dan spasi di bilah alamat."
   },
   "omniboxHint": {
-    "message": "Tanya Omran AI: ketik pertanyaan lalu Enter"
+    "message": "Tanya om ai: ketik pertanyaan lalu Enter"
   }
 }

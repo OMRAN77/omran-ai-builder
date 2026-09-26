@@ -1,26 +1,26 @@
 {
   "extName": {
-    "message": "Omran AI"
+    "message": "om ai"
   },
   "extDesc": {
-    "message": "Her sayfadan Omran AI’ya sorun: metni seçip sağ tıklayın, adres çubuğuna \"om\" yazın veya araç çubuğu düğmesini kullanın."
+    "message": "Her sayfadan om ai’ya sorun: metni seçip sağ tıklayın, adres çubuğuna \"om\" yazın veya araç çubuğu düğmesini kullanın."
   },
   "ctxAsk": {
-    "message": "Omran AI’ya sor: \"%s\""
+    "message": "om ai’ya sor: \"%s\""
   },
   "popupPlaceholder": {
-    "message": "Omran AI’ya her şeyi sorun…"
+    "message": "om ai’ya her şeyi sorun…"
   },
   "popupAsk": {
     "message": "Sor"
   },
   "popupOpen": {
-    "message": "Omran AI’yı aç"
+    "message": "om ai’yı aç"
   },
   "popupHint": {
-    "message": "İpucu: herhangi bir sayfada metin seçin, sağ tıklayıp \"Omran AI’ya sor\"u seçin — ya da adres çubuğuna om ve boşluk yazın."
+    "message": "İpucu: herhangi bir sayfada metin seçin, sağ tıklayıp \"om ai’ya sor\"u seçin — ya da adres çubuğuna om ve boşluk yazın."
   },
   "omniboxHint": {
-    "message": "Omran AI’ya sor: sorunuzu yazıp Enter’a basın"
+    "message": "om ai’ya sor: sorunuzu yazıp Enter’a basın"
   }
 }
