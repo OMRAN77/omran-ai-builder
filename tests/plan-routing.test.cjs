@@ -306,7 +306,7 @@ test('٩. abuse-guard: ٢٠ صورة في الساعة ثمّ 429 حتّى ال�
 });
 
 // ── (٥) الواجهة ──
-test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط؛ المجّانيّ/الضيف/Plus/Pro مقفول (الخادم يوجّه)', () => {
+test('١٠. منتقي المزوّد: يظهر للمالك فقط؛ المشتركون بجميع باقاتهم والمجّانيّ والضيف مقفول (plan-locked)', () => {
   const a5 = read('js/app-05-ui.js');
   const i = a5.indexOf('function applyPlanGate(d){');
   const j = a5.indexOf('window.applyPlanGate = applyPlanGate;', i);
@@ -317,18 +317,18 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   const ctx = { window: {}, document: { documentElement: { classList: { toggle: (c, on) => { if (on) cls.add(c); else cls.delete(c); } } } }, __swallow: () => {} };
   vm.runInNewContext(a5.slice(i, j), ctx);
   const locked = (d) => { ctx.applyPlanGate(d); return cls.has('plan-locked'); };
-  assert.equal(locked({ tier: 'owner' }), false);
-  assert.equal(locked({ tier: 'vip' }), false);
-  assert.equal(locked({ tier: 'sub', plan: 'max' }), false);
-  assert.equal(locked({ tier: 'sub', plan: 'pro' }), true);
-  assert.equal(locked({ tier: 'sub', plan: 'basic' }), true);
-  assert.equal(locked({ tier: 'free' }), true);
-  assert.equal(locked({ authed: false, remaining: {} }), true, 'ضيف بلا جلسة');
+  assert.equal(locked({ tier: 'owner' }), false, 'المالك وحده تظهر له القائمة');
+  assert.equal(locked({ tier: 'vip' }), true, 'VIP مقفلة عنه القائمة');
+  assert.equal(locked({ tier: 'sub', plan: 'max' }), true, 'مشترك max مقفلة عنه');
+  assert.equal(locked({ tier: 'sub', plan: 'pro' }), true, 'مشترك pro مقفلة عنه');
+  assert.equal(locked({ tier: 'sub', plan: 'basic' }), true, 'مشترك basic مقفلة عنه');
+  assert.equal(locked({ tier: 'free' }), true, 'مجاني مقفلة عنه');
+  assert.equal(locked({ authed: false, remaining: {} }), true, 'ضيف بلا جلسة مقفلة عنه');
   assert.equal(ctx.window.__omranPlan, 'guest');
-  ctx.applyPlanGate({ tier: 'sub', plan: 'max' }); assert.equal(cls.has('plan-locked'), false);
+  ctx.applyPlanGate({ tier: 'owner' }); assert.equal(cls.has('plan-locked'), false);
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
-  assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
+  assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile, html.plan-locked #omBottomBar{ display:none !important; }'));
   assert.ok(html.includes('/js/partials-settings.js?v=669'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });

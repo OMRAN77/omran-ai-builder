@@ -1790,9 +1790,9 @@ function selectProviderKey(key){
     if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
   }catch(e){ __swallow(e, "ui:app-05-ui#24"); }
 }
-/* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يظهر
-   لمن باقته تسمح باختيار المزوّد (Max) وللمالك وVIP فقط؛ المجّانيّ والضيف وPlus وPro يوجَّهون من الخادم
-   بجدول الباقة (tier.js PLAN_ROUTING) فلا يُعرض لهم اختيار لا أثر له. تُستدعى بنتيجة usage-status
+/* v-plan-routing (قرار المالك ٢٠ سبتمبر، وتحديث ٢٦ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يظهر
+   للمالك فقط؛ المشتركون بجميع باقاتهم (بما فيها Max وPro وPlus) والمجّانيّ والضيف يوجَّهون من الخادم
+   بجدول الباقة (tier.js PLAN_ROUTING) فلا يُعرض لهم اختيار مزوّد. تُستدعى بنتيجة usage-status
    (tier/plan) وبنتيجة رصيد النقاط؛ بلا نتيجة (شبكة مقطوعة) لا تغيّر شيئًا. */
 function applyPlanGate(d){
   try{
@@ -1800,7 +1800,7 @@ function applyPlanGate(d){
     const tier = typeof d.tier === 'string' && d.tier ? d.tier : (d.authed === false ? 'guest' : '');
     if(!tier) return;
     const plan = tier === 'sub' ? String(d.plan || '').toLowerCase() : '';
-    const open = tier === 'owner' || tier === 'vip' || (tier === 'sub' && plan === 'max');
+    const open = tier === 'owner';
     window.__omranPlan = plan || tier;
     document.documentElement.classList.toggle('plan-locked', !open);
   }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }

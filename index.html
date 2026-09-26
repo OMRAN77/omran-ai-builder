@@ -604,10 +604,9 @@ html.omAndroid #omranIntro .oiSheen{mix-blend-mode:normal;opacity:.5}
 html.oiOn body{overflow:hidden}
 </style>
 <style>
-/* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يختفي لمن
-   لا تسمح باقته باختيار المزوّد (المجّانيّ/الضيف/Plus/Pro) — الخادم يوجّههم بجدول الباقة. الفئة plan-locked
-   تضعها applyPlanGate (app-05) من نتيجة usage-status أو رصيد النقاط. الرجوع: احذف الكتلة. */
-html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }
+/* v-plan-routing (قرار المالك ٢٠ سبتمبر، وتحديث ٢٦ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يختفي
+   عن المشتركين والضيوف ويظهر للمالك فقط. الفئة plan-locked تضعها applyPlanGate (app-05) من نتيجة usage-status أو رصيد النقاط. */
+html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile, html.plan-locked #omBottomBar{ display:none !important; }
 </style>
 </head>
 <body>
@@ -979,7 +978,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=baf90bdc"></script>
+    <script defer src="/js/app.bundle.js?v=8d69b4b9"></script>
     <script defer src="/js/modes.js?v=m250925b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

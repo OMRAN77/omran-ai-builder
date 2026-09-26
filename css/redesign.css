@@ -694,7 +694,7 @@ html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button > svg{wid
   }
   html:not(.mobile-ui) #inputbar > #omBottomBar{
     order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
-    display:flex !important; justify-content:flex-end !important;
+    display:flex; justify-content:flex-end !important;
     margin:0 0 0 !important; margin-inline-start:auto !important; margin-inline-end:var(--om-chat-inset) !important;
   }
 }
@@ -711,7 +711,7 @@ html.mobile-ui #inputbar > .inputbar-tools-below{
 }
 html.mobile-ui #inputbar > #omBottomBar{
   order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
-  display:flex !important; justify-content:flex-end !important;
+  display:flex; justify-content:flex-end !important;
   margin:0 0 0 !important; margin-inline-start:auto !important;
 }
 /* v-foldable-composer (طلب المالك، مقيس على أعراض الهواوي/سامسونج): على التابلت/القابل للطيّ
