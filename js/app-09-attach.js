@@ -1700,8 +1700,12 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         /* v-text-strong (شكوى المستخدمين: «الكتابة في الصور ضعيفة جدًا»):
            مساحة أكبر قليلًا + وزن وحدّ أقوى. لا نكبّر الكتلة فوق ٢٨٪ كي لا
            تغطي الموضوع، والنص الطويل ما زال يصغر ويلتف تلقائيًّا. */
-        const maxWidth=c.width*(__side?.[1]?0.32:0.88), maxHeight=c.height*(__side?0.48:0.28);
-        if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
+        const maxWidth=c.width*(__side?.[1]?0.42:0.88), maxHeight=c.height*(__side?0.48:0.28);
+        /* v-voice-image-command: اليمين/اليسار كانا translate على مركز الصورة مع
+           عرض ٣٢٪، فينكسر «مرحبا يا صديقي» إلى ثلاث كلمات عمودية ويُقصّ طرفه.
+           موضع X صريح + عرض ٤٢٪ يبقي العبارة كتلة مقروءة داخل الحواف. */
+        const textX = __side ? c.width * (__side[1] === 'right' ? 0.76 : 0.24) : c.width / 2;
+        if(__side) position=position.slice(__side[0].length);
         let fs = Math.floor(Math.min(c.width / 7.6, c.height / 8.2));
         let lines = [];
         const setF = () => { ctx.font = '800 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
@@ -1742,7 +1746,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
           if(position === 'top'){ g.addColorStop(0,'rgba(0,0,0,.52)'); g.addColorStop(0.7,'rgba(0,0,0,.22)'); g.addColorStop(1,'rgba(0,0,0,0)'); }
           else { g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.3,'rgba(0,0,0,.22)'); g.addColorStop(1,'rgba(0,0,0,.52)'); }
           ctx.fillStyle = g;
-          ctx.fillRect(__side ? -c.width : 0, zt, c.width * 3, zb - zt);
+          ctx.fillRect(0, zt, c.width, zb - zt);
         }catch(e){ __swallow(e, 'img:overlay#scrim'); }
         // التعبئة: ذهب متدرّج للمزخرف/الذهبي، وإلا اللون المطلوب بحدّ ذكي
         const mkGold = (y1, y2) => {
@@ -1772,13 +1776,13 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         ctx.shadowOffsetY = Math.max(2, Math.floor(fs / 24));
         lines.forEach((line, i) => {
           const y = firstY + i * lineHeight;
-          ctx.strokeText(line, c.width / 2, y, maxWidth);
-          ctx.fillText(line, c.width / 2, y, maxWidth);
+          ctx.strokeText(line, textX, y, maxWidth);
+          ctx.fillText(line, textX, y, maxWidth);
         });
         // 🌿 الزخرفة الفاصلة تحت النص — لفّتان متناظرتان ومعيّن مركزي
         if(ornH){
           try{
-            const cx = c.width / 2, oy = blockBot + ornH * 0.55;
+            const cx = textX, oy = blockBot + ornH * 0.55;
             const w = Math.min(maxWidth * 0.62, fs * 6.4);
             const og = goldMode ? mkGold(oy - fs * 0.3, oy + fs * 0.3) : fill;
             ctx.save();

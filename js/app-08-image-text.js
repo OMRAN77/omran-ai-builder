@@ -63,6 +63,11 @@
     if(/(?:في|بال)?\s*(?:وسط|منتصف|المنتصف|المركز)|\b(?:middle|center)\b/i.test(source)) return 'center';
     return 'bottom';
   }
+  function fullTextPosition(input){
+    const source = stripOnImage(input);
+    const side = /(?:يمين|\bright\b)/i.test(source) ? 'right-' : (/(?:يسار|\bleft\b)/i.test(source) ? 'left-' : '');
+    return side + textPosition(source);
+  }
   function cleanVisual(value){
     return String(value || '').replace(/\s*(?:و|and)\s*$/i, '').trim();
   }
@@ -86,13 +91,13 @@
     return 'مشهد أصيل عالي الجودة: ' + visPick(VIS_SCENE[k] || VIS_SCENE.phrase) + '، ' + visPick(VIS_LIGHT)
       + '، ' + visPick(VIS_PALETTE) + '، ' + visPick(VIS_LENS) + '، تفاصيل واقعية دقيقة، بلا أي كتابة أو حروف أو أرقام في الصورة';
   }
-  function textStyleEdit(source){ if(findTextMarker(source)||textRemoveIntent(source)||!/(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source)) return null; const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null, fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null, position=/(?:أعلى|اعلى|فوق|وسط|منتصف|المركز|أسفل|اسفل|تحت|top|middle|center|bottom)/i.test(source)?textPosition(source):null; return color||fontKey||position ? {color,fontKey,position} : null; }
+  function textStyleEdit(source){ if(findTextMarker(source)||textRemoveIntent(source)||!/(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source)) return null; const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null, fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null, position=positionExplicit(source)?fullTextPosition(source):null; return color||fontKey||position ? {color,fontKey,position} : null; }
   // تنسيق بلا ذكر «النص»: يُستخدم فقط حين توجد طبقة نصّ محفوظة على الصورة.
   function textStyleEditLoose(source){
     if(findTextMarker(source) || textRemoveIntent(source)) return null;
     const color = /(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source) ? textColor(source) : null;
     const fontKey = /(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source) ? textFont(source) : null;
-    const position = positionExplicit(source) ? textPosition(source) : null;
+    const position = positionExplicit(source) ? fullTextPosition(source) : null;
     return color || fontKey || position ? { color, fontKey, position } : null;
   }
   // وصف طلب («كلام حلو»، «جمله عن النجاح») مقابل نصّ حرفيّ («عمران»).
@@ -180,7 +185,7 @@
   function textRemoveIntent(input){
     const s = String(input || '').trim();
     if(!s || s.length > 120 || findTextMarker(s)) return false;
-    return /(?:^|[\s،,])(?:احذف|حذف|امسح|مسح|شيل|شيلي|ازل|أزل|ازيل|أزيل|إزال[ةه]|ازال[ةه]|حوز|حوّز|حوزي|نظف|نظّف|remove|delete|erase|clear)\s*(?:لي\s+)?(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص|مكتوب|عبار[ةه]|جمل[ةه]|خط|text|writing|words?|caption)(?=$|[\s،,.!؟?])/i.test(s)
+    return /(?:^|[\s،,])(?:احذف|حذف|امسح|مسح|شيل|شيلي|ازل|أزل|ازيل|أزيل|إزال[ةه]|ازال[ةه]|حوز|حوّز|حوزي|نظف|نظّف|remove|delete|erase|clear)\s*(?:لي\s+)?(?:(?:هذا|هذه|هذي|هاذا|هاذي)\s+)?(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص|مكتوب|عبار[ةه]|جمل[ةه]|خط|text|writing|words?|caption)(?=$|[\s،,.!؟?])/i.test(s)
       || /^(?:بدون|بلا|من\s+غير)\s+(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص)\s*[.!]*$/i.test(s);
   }
   // «و الصوره تعبر عن…» وصف للمشهد يأتي بعد النصّ بلا علامات تنصيص — لا يُطبع.

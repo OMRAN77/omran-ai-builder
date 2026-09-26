@@ -10,6 +10,8 @@ const { parseImageTextSpec, textRemoveIntent, textReplaceIntent, layerWordSwap, 
 const ISTIRJA = 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ';
 const attach = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-09-attach.js'), 'utf8');
 const chat = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'chat.js'), 'utf8');
+const maha = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-08-maha.js'), 'utf8');
+const realtime = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'realtime-session.js'), 'utf8');
 
 test('١. وصف المشهد بعد النصّ لا يُطبع، والاسترجاع يُكتب برسم المصحف', () => {
   const s = parseImageTextSpec('ابغى صوره مكتوب عليها ان الله و ان اليه واجعون و الصوره تعبر عن وفات شخص عزيز');
@@ -106,8 +108,28 @@ test('١١. تعديل بصريّ على صورة كتبنا عليها: الم�
 });
 
 test('١٢. الكتابة على الصور ثقيلة وواضحة، مع حدّ ووشاح قويّين بلا تغطية كبيرة', () => {
-  assert.match(attach, /maxWidth=c\.width\*\(__side\?\.\[1\]\?0\.32:0\.88\), maxHeight=c\.height\*\(__side\?0\.48:0\.28\)/);
+  assert.match(attach, /maxWidth=c\.width\*\(__side\?\.\[1\]\?0\.42:0\.88\), maxHeight=c\.height\*\(__side\?0\.48:0\.28\)/);
   assert.match(attach, /ctx\.font = '800 '/);
   assert.match(attach, /rgba\(0,0,0,\.52\)/);
   assert.match(attach, /ctx\.lineWidth = Math\.max\(3, Math\.floor\(fs \/ 10\)\)/);
+});
+
+test('١٣. أوامر الإنصات تنقل النص يمينًا ويسارًا وتحذف الإشارة الصريحة للكتابة', () => {
+  assert.equal(parseImageTextSpec('حطلي الكتابه يمين').styleEdit.position, 'right-bottom');
+  assert.equal(parseImageTextSpec('حط لي الكتابة يسار فوق').styleEdit.position, 'left-top');
+  assert.equal(parseImageTextSpec('خلي النص يمين الوسط').styleEdit.position, 'right-center');
+  assert.equal(textRemoveIntent('احذف هذا النص'), true);
+  assert.equal(textRemoveIntent('امسح هذي الكتابه'), true);
+  assert.equal(textRemoveIntent('احذف هذا الشي'), false, 'الشيء المبهم لا يُحذف بالتخمين');
+  assert.match(attach, /const textX = __side \? c\.width \* \(__side\[1\] === 'right' \? 0\.76 : 0\.24\)/);
+  assert.doesNotMatch(attach, /ctx\.translate\(\(__side\[1\]===/);
+});
+
+test('١٤. مكالمة الإنصات الحيّة تمرّر موضع النصّ وتحذّر من حذف «هذا الشي» بالتخمين', () => {
+  assert.match(realtime, /text_position: \{ type: 'string', enum: \['auto', 'top', 'center', 'bottom', 'right-top'/);
+  assert.match(realtime, /remove_text_only: \{ type: 'boolean'/);
+  assert.match(realtime, /If the target is vague \("احذف هذا الشي"/);
+  assert.match(maha, /overlayTextOnImage\(mahaLastCleanImg\.b64, mahaLastCleanImg\.mime, textToWrite\.trim\(\), fontStyle, textColor, textPosition \|\| 'auto'\)/);
+  assert.match(maha, /if\(removeTextOnly && mahaLastCleanImg\)/);
+  assert.match(maha, /const __voiceLocalTextEdit =/);
 });
