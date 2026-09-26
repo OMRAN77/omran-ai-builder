@@ -828,13 +828,14 @@ const $ = s => document.querySelector(s);
     try {
       const params = new URLSearchParams(window.location.search);
       const gtoken = params.get('gtoken');
+      const gticket = params.get('gticket');
       const guser = params.get('guser');
       const gavatar = params.get('gavatar');
       const gerror = params.get('gerror');
       const cleanUrl = window.location.origin + window.location.pathname;
       // نرفض أي جلسة لم يبدأها هذا التبويب. بلا هذا الفحص يستطيع مهاجم أن
       // يدفع متصفحك لإكمال تسجيل دخول بحسابه هو، فتعمل داخل حسابه دون أن تدري.
-      if(gtoken && guser){
+      if((gtoken || gticket) && guser){
         let expected = null;
         try { expected = sessionStorage.getItem('aiapp_oauth_state'); } catch(e){ console.warn('[oauth] no sessionStorage', e); }
         const returned = params.get('state');
@@ -847,9 +848,16 @@ const $ = s => document.querySelector(s);
           return;
         }
         try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#11"); }
+        if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
+        if(gticket){
+          // v-account-guard: جوجل أثبت الخطوة الأولى فقط — الرمز قبل الجلسة. setTimeout: جزء الخطوة الثانية يُحمَّل بعد هذا الجزء.
+          noteSession('جوجل-خطوة-ثانية');
+          window.history.replaceState({}, document.title, cleanUrl);
+          setTimeout(() => { if(window.omranMfa) window.omranMfa.start({ mfa: params.get('gmfa') || 'code', ticket: gticket, username: guser, avatar: gavatar || null }, (x) => onAuthed(x.username || guser, gavatar || null)); }, 0);
+          return;
+        }
         authSet('aiapp_auth_token', gtoken);
         authSet('aiapp_username', guser);
-        if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
         // «جوجل-دخل» لا «تحقّق-ناجح»: يميّز في اللوحة أنّ هذا التبويب هو الذي
         // استقبل العودة من جوجل فعلًا. فإن قالت لوحة جهازٍ «لا-توكن» بعد دخول
         // ناجح، عرفنا أنّ العودة هبطت في سياق آخر (نافذة التطبيق المثبَّت
@@ -973,14 +981,17 @@ const $ = s => document.querySelector(s);
         });
         if(r.ok){
           const d = await r.json();
-          if(d && d.token && d.user){
+          if(d && (d.token || d.ticket) && d.user){
             localStorage.removeItem('aiapp_oauth_pending');
             try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, 'auth:claim-ss'); }
-            authSet('aiapp_auth_token', d.token);
-            authSet('aiapp_username', d.user);
             if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
             noteSession('جوجل-جسر-آيفون');
-            onAuthed(d.user, d.avatar || null);
+            if(d.ticket && window.omranMfa){ window.omranMfa.start({ mfa: d.mfa, ticket: d.ticket, username: d.user, avatar: d.avatar || null }, (x) => onAuthed(x.username || d.user, d.avatar || null)); }
+            else {
+              authSet('aiapp_auth_token', d.token);
+              authSet('aiapp_username', d.user);
+              onAuthed(d.user, d.avatar || null);
+            }
           }
         }
       } catch(e){ __swallow(e, 'auth:oauth-claim'); }
@@ -1066,12 +1077,17 @@ const $ = s => document.querySelector(s);
           errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
           return;
         }
+        const afterReset = (d) => {
+          setMode('login');
+          userInput.value = '';
+          passInput.value = '';
+          recoveryInput.value = '';
+          showRecoveryModal(data.recoveryCode, d.username, d.avatar);
+        };
+        // v-account-guard: حساب بالتحقّق بخطوتين يُكمل الرمز قبل أن يأخذ جلسة.
+        if(data.mfa && window.omranMfa){ window.omranMfa.start(data, afterReset); return; }
         authSet('aiapp_auth_token', data.token);
-        setMode('login');
-        userInput.value = '';
-        passInput.value = '';
-        recoveryInput.value = '';
-        showRecoveryModal(data.recoveryCode, data.username);
+        afterReset(data);
       } catch(e){
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
       } finally {
@@ -1124,8 +1140,9 @@ const $ = s => document.querySelector(s);
           errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
           return;
         }
-        authSet('aiapp_auth_token', data.token);
         window.__pendingResetToken = null;
+        if(data.mfa && window.omranMfa){ window.omranMfa.start(data, (d) => onAuthed(d.username, d.avatar)); return; }
+        authSet('aiapp_auth_token', data.token);
         onAuthed(data.username, data.avatar);
       } catch(e){
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
@@ -1151,6 +1168,7 @@ const $ = s => document.querySelector(s);
         errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
         return;
       }
+      if(data.mfa && window.omranMfa){ passInput.value = ''; window.omranMfa.start(data, (d) => onAuthed(d.username, d.avatar)); return; }
       authSet('aiapp_auth_token', data.token);
       if(mode === 'signup'){
         localStorage.removeItem('aiapp_pending_ref');
@@ -1358,6 +1376,7 @@ const $ = s => document.querySelector(s);
           acctPasswordMsg.style.color = '#ef4444';
           return;
         }
+        if(data.token) authSet('aiapp_auth_token', data.token);
         acctCurrentPassword.value = '';
         acctNewPassword.value = '';
         acctPasswordMsg.textContent = t2.acctSaved;
@@ -1666,10 +1685,13 @@ const $ = s => document.querySelector(s);
         if(d.ok){
           // Login successful — apply session the same way the password
           // flow does, then run the shared post-login pipeline.
-          window.authSet('aiapp_auth_token', d.token);
           otpEmailInput.value = '';
           otpCodeInput.value = '';
-          window.onAuthed(d.username, d.avatar || null);
+          if(d.mfa && window.omranMfa){ window.omranMfa.start(d, (x) => window.onAuthed(x.username, x.avatar || null)); }
+          else {
+            window.authSet('aiapp_auth_token', d.token);
+            window.onAuthed(d.username, d.avatar || null);
+          }
         } else {
           otpError.textContent = d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح');
         }

@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getUser, putUser, makeToken } = require('./auth.js'); // داخل _lib
+const { getUser, putUser, loginResult } = require('./auth.js'); // داخل _lib
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -126,7 +126,9 @@ module.exports = async (req, res) => {
       await putUser(key, user);
     }
 
-    const token = makeToken(key);
+    // v-account-guard: الحساب الذي يحتاج الخطوة الثانية يأخذ بطاقة لا جلسة — والتطبيق يطلب الرمز.
+    const lr = loginResult(key, user);
+    const token = lr.token || '';
     // v-ios-bridge: على آيفون المثبَّت تهبط هذه العودة في ورقة متصفّح منفصلة
     // عن التطبيق (تخزينهما منفصل) فيضيع الدخول. نودع الجلسة تحت state
     // (عشوائي ولّده التطبيق نفسه) عشر دقائق، والتطبيق يستلمها عند العودة
@@ -140,7 +142,7 @@ module.exports = async (req, res) => {
       try {
         const { kvPutJSON, kvExpire } = require('./kv.js');
         await kvPutJSON('db/oauth-claim/' + stM[1].toLowerCase(), {
-          token, user: user.username, avatar: user.avatar || '', ts: Date.now(),
+          token, mfa: lr.mfa || '', ticket: lr.ticket || '', user: user.username, avatar: user.avatar || '', ts: Date.now(),
         });
         await kvExpire('db/oauth-claim/' + stM[1].toLowerCase(), 600);
       } catch (e) { console.warn('[oauth] claim store failed:', e && e.message); }
@@ -150,12 +152,12 @@ module.exports = async (req, res) => {
       res.end();
       return;
     }
-    const params = new URLSearchParams({
-      gtoken: token,
+    const params = new URLSearchParams(lr.mfa ? { gmfa: lr.mfa, gticket: lr.ticket } : { gtoken: token });
+    Object.entries({
       guser: user.username,
       gavatar: user.avatar || '',
       state: typeof state === 'string' ? state : '',
-    });
+    }).forEach(([k, v]) => params.set(k, v));
     res.writeHead(302, { Location: siteUrl() + '/?' + params.toString() });
     res.end();
   } catch (e) {

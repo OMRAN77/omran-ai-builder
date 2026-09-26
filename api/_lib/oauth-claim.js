@@ -12,12 +12,12 @@ module.exports = async (req, res) => {
     if (!/^[0-9a-f]{16,64}$/.test(state)) { res.status(400).json({ error: 'bad state' }); return; }
     const key = 'db/oauth-claim/' + state;
     const rec = await kvGetJSON(key);
-    if (!rec || !rec.token || (Date.now() - (rec.ts || 0)) > 10 * 60 * 1000) {
+    if (!rec || !(rec.token || rec.ticket) || (Date.now() - (rec.ts || 0)) > 10 * 60 * 1000) {
       res.status(404).json({ error: 'pending' });
       return;
     }
     await kvDel(key); // استلام واحد — لا يُعاد تسليم الجلسة مرتين
-    res.status(200).json({ token: rec.token, user: rec.user, avatar: rec.avatar || '' });
+    res.status(200).json({ token: rec.token || '', mfa: rec.mfa || '', ticket: rec.ticket || '', user: rec.user, avatar: rec.avatar || '' });
   } catch (e) {
     res.status(500).json({ error: 'server' });
   }

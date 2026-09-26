@@ -13,18 +13,8 @@ const MAX_MEMORY_CHARS = 6000;   // ملف موجز يكفي الهوية وال
 const MEMORY_PROMPT_CHARS = 5000; // سقف ما يُحقن في طلب واحد حتى لا تزاحم الذاكرة سؤال المستخدم
 const MIN_UPDATE_GAP_MS = 20 * 1000; // لا نحدّث أكثر من مرة كل 20 ثانية لكل مستخدم
 
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
+// v-account-guard: الفحص الموحّد (رمز ٢٤ ساعة، وجلسة المالك تحتاج الخطوة الثانية).
+function verifyToken(token) { return require('./session.js').verifySession(token); }
 
 function memPath(username) {
   return 'db/memory/' + encodeURIComponent(String(username).toLowerCase()) + '.json';

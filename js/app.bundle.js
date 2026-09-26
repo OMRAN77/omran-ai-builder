@@ -966,13 +966,14 @@ const $ = s => document.querySelector(s);
     try {
       const params = new URLSearchParams(window.location.search);
       const gtoken = params.get('gtoken');
+      const gticket = params.get('gticket');
       const guser = params.get('guser');
       const gavatar = params.get('gavatar');
       const gerror = params.get('gerror');
       const cleanUrl = window.location.origin + window.location.pathname;
       // نرفض أي جلسة لم يبدأها هذا التبويب. بلا هذا الفحص يستطيع مهاجم أن
       // يدفع متصفحك لإكمال تسجيل دخول بحسابه هو، فتعمل داخل حسابه دون أن تدري.
-      if(gtoken && guser){
+      if((gtoken || gticket) && guser){
         let expected = null;
         try { expected = sessionStorage.getItem('aiapp_oauth_state'); } catch(e){ console.warn('[oauth] no sessionStorage', e); }
         const returned = params.get('state');
@@ -985,9 +986,16 @@ const $ = s => document.querySelector(s);
           return;
         }
         try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#11"); }
+        if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
+        if(gticket){
+          // v-account-guard: جوجل أثبت الخطوة الأولى فقط — الرمز قبل الجلسة. setTimeout: جزء الخطوة الثانية يُحمَّل بعد هذا الجزء.
+          noteSession('جوجل-خطوة-ثانية');
+          window.history.replaceState({}, document.title, cleanUrl);
+          setTimeout(() => { if(window.omranMfa) window.omranMfa.start({ mfa: params.get('gmfa') || 'code', ticket: gticket, username: guser, avatar: gavatar || null }, (x) => onAuthed(x.username || guser, gavatar || null)); }, 0);
+          return;
+        }
         authSet('aiapp_auth_token', gtoken);
         authSet('aiapp_username', guser);
-        if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
         // «جوجل-دخل» لا «تحقّق-ناجح»: يميّز في اللوحة أنّ هذا التبويب هو الذي
         // استقبل العودة من جوجل فعلًا. فإن قالت لوحة جهازٍ «لا-توكن» بعد دخول
         // ناجح، عرفنا أنّ العودة هبطت في سياق آخر (نافذة التطبيق المثبَّت
@@ -1111,14 +1119,17 @@ const $ = s => document.querySelector(s);
         });
         if(r.ok){
           const d = await r.json();
-          if(d && d.token && d.user){
+          if(d && (d.token || d.ticket) && d.user){
             localStorage.removeItem('aiapp_oauth_pending');
             try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, 'auth:claim-ss'); }
-            authSet('aiapp_auth_token', d.token);
-            authSet('aiapp_username', d.user);
             if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
             noteSession('جوجل-جسر-آيفون');
-            onAuthed(d.user, d.avatar || null);
+            if(d.ticket && window.omranMfa){ window.omranMfa.start({ mfa: d.mfa, ticket: d.ticket, username: d.user, avatar: d.avatar || null }, (x) => onAuthed(x.username || d.user, d.avatar || null)); }
+            else {
+              authSet('aiapp_auth_token', d.token);
+              authSet('aiapp_username', d.user);
+              onAuthed(d.user, d.avatar || null);
+            }
           }
         }
       } catch(e){ __swallow(e, 'auth:oauth-claim'); }
@@ -1204,12 +1215,17 @@ const $ = s => document.querySelector(s);
           errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
           return;
         }
+        const afterReset = (d) => {
+          setMode('login');
+          userInput.value = '';
+          passInput.value = '';
+          recoveryInput.value = '';
+          showRecoveryModal(data.recoveryCode, d.username, d.avatar);
+        };
+        // v-account-guard: حساب بالتحقّق بخطوتين يُكمل الرمز قبل أن يأخذ جلسة.
+        if(data.mfa && window.omranMfa){ window.omranMfa.start(data, afterReset); return; }
         authSet('aiapp_auth_token', data.token);
-        setMode('login');
-        userInput.value = '';
-        passInput.value = '';
-        recoveryInput.value = '';
-        showRecoveryModal(data.recoveryCode, data.username);
+        afterReset(data);
       } catch(e){
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
       } finally {
@@ -1262,8 +1278,9 @@ const $ = s => document.querySelector(s);
           errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
           return;
         }
-        authSet('aiapp_auth_token', data.token);
         window.__pendingResetToken = null;
+        if(data.mfa && window.omranMfa){ window.omranMfa.start(data, (d) => onAuthed(d.username, d.avatar)); return; }
+        authSet('aiapp_auth_token', data.token);
         onAuthed(data.username, data.avatar);
       } catch(e){
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
@@ -1289,6 +1306,7 @@ const $ = s => document.querySelector(s);
         errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
         return;
       }
+      if(data.mfa && window.omranMfa){ passInput.value = ''; window.omranMfa.start(data, (d) => onAuthed(d.username, d.avatar)); return; }
       authSet('aiapp_auth_token', data.token);
       if(mode === 'signup'){
         localStorage.removeItem('aiapp_pending_ref');
@@ -1496,6 +1514,7 @@ const $ = s => document.querySelector(s);
           acctPasswordMsg.style.color = '#ef4444';
           return;
         }
+        if(data.token) authSet('aiapp_auth_token', data.token);
         acctCurrentPassword.value = '';
         acctNewPassword.value = '';
         acctPasswordMsg.textContent = t2.acctSaved;
@@ -1804,10 +1823,13 @@ const $ = s => document.querySelector(s);
         if(d.ok){
           // Login successful — apply session the same way the password
           // flow does, then run the shared post-login pipeline.
-          window.authSet('aiapp_auth_token', d.token);
           otpEmailInput.value = '';
           otpCodeInput.value = '';
-          window.onAuthed(d.username, d.avatar || null);
+          if(d.mfa && window.omranMfa){ window.omranMfa.start(d, (x) => window.onAuthed(x.username, x.avatar || null)); }
+          else {
+            window.authSet('aiapp_auth_token', d.token);
+            window.onAuthed(d.username, d.avatar || null);
+          }
         } else {
           otpError.textContent = d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح');
         }
@@ -1827,6 +1849,223 @@ const $ = s => document.querySelector(s);
   if(otpEmailInput) otpEmailInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') otpSubmitBtn.onclick(); });
 })();
 
+/* v-account-guard: الخطوة الثانية للدخول (رمز تطبيق المصادقة أو رمز احتياطيّ)، إعدادها وإيقافها من
+   الإعدادات، «الخروج من كلّ الأجهزة»، وتجديد الجلسة — الرمز يعيش ٢٤ ساعة فيُجدَّد كلّ ساعتين والتطبيق
+   مفتوح وعند العودة إليه بعد ساعة. جلسة أُبطلت من جهاز آخر (revoked) تُخرج هذا الجهاز. */
+(function(){
+  const tx = (k) => {
+    const d = (typeof window.curT === 'function') ? window.curT() : {};
+    return d[k] || ((window.I18N && window.I18N.en) || {})[k] || '';
+  };
+  const lang = () => localStorage.getItem('aiapp_lang') || 'ar';
+  const token = () => (typeof window.authGet === 'function' ? window.authGet('aiapp_auth_token') : '') || '';
+
+  async function post(body){
+    const r = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ lang: lang() }, body)),
+    });
+    let d = {};
+    try { d = await r.json(); } catch(e){ __swallow(e, 'mfa:json'); }
+    return { status: r.status, ok: r.ok && !d.error, d };
+  }
+
+  function el(tag, attrs, text){
+    const n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach((k) => {
+      if(k === 'style') n.style.cssText = attrs[k]; else n.setAttribute(k, attrs[k]);
+    });
+    if(text != null) n.textContent = text;
+    return n;
+  }
+
+  const INPUT_CSS = 'width:100%; box-sizing:border-box; text-align:center; font-size:20px; letter-spacing:4px; direction:ltr; padding:10px; margin:6px 0 2px;';
+
+  // نافذة واحدة تُبنى عند الحاجة وتُعاد تعبئتها لكلّ خطوة.
+  function modal(){
+    let m = document.getElementById('mfaModal');
+    if(m){ m.style.display = 'flex'; return m; }
+    m = el('div', { id: 'mfaModal', role: 'dialog', 'aria-modal': 'true', style: 'position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,.72); display:flex; align-items:center; justify-content:center; padding:20px;' });
+    const card = el('div', { style: 'background:var(--panel,#1b1b1f); color:var(--text,#eee); border:1px solid var(--border,#333); border-radius:16px; max-width:390px; width:100%; max-height:92vh; overflow:auto; padding:20px; text-align:center; box-sizing:border-box;' });
+    card.appendChild(el('h3', { id: 'mfaModalTitle', style: 'margin:0 0 6px; font-size:17px;' }));
+    card.appendChild(el('p', { id: 'mfaModalDesc', style: 'margin:0 0 10px; font-size:13px; line-height:1.7; color:var(--muted,#aaa);' }));
+    card.appendChild(el('div', { id: 'mfaModalBody' }));
+    card.appendChild(el('div', { id: 'mfaModalErr', style: 'color:#ef4444; font-size:12.5px; min-height:18px; margin:6px 0;' }));
+    const row = el('div', { style: 'display:flex; gap:8px;' });
+    row.appendChild(el('button', { type: 'button', id: 'mfaModalCancel', class: 'btn secondary', style: 'flex:1; justify-content:center; text-align:center;' }));
+    row.appendChild(el('button', { type: 'button', id: 'mfaModalOk', class: 'btn', style: 'flex:1; justify-content:center; text-align:center; font-weight:700; background:rgba(212,175,55,.18); border:1px solid rgba(212,175,55,.6); color:var(--text,#eee);' }));
+    card.appendChild(row);
+    m.appendChild(card);
+    document.body.appendChild(m);
+    return m;
+  }
+
+  function screen(o){
+    modal();
+    const $ = (id) => document.getElementById(id);
+    $('mfaModalTitle').textContent = o.title || tx('mfaTitle');
+    $('mfaModalDesc').textContent = o.desc || '';
+    const body = $('mfaModalBody');
+    body.textContent = '';
+    (o.nodes || []).forEach((n) => body.appendChild(n));
+    $('mfaModalErr').textContent = '';
+    const ok = $('mfaModalOk');
+    const cancel = $('mfaModalCancel');
+    ok.textContent = o.okLabel || tx('mfaVerifyBtn');
+    ok.disabled = false;
+    cancel.textContent = tx('mfaCancel');
+    cancel.style.display = o.noCancel ? 'none' : '';
+    cancel.onclick = () => { close(); if(o.onCancel) o.onCancel(); };
+    ok.onclick = async () => {
+      ok.disabled = true;
+      $('mfaModalErr').textContent = '';
+      try { await o.onOk((msg) => { $('mfaModalErr').textContent = msg || tx('mfaGenericError'); }); }
+      catch(e){ __swallow(e, 'mfa:ok'); $('mfaModalErr').textContent = tx('mfaNetError'); }
+      finally { ok.disabled = false; }
+    };
+    const first = body.querySelector('input');
+    if(first){
+      setTimeout(() => first.focus(), 30);
+      body.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { if(e.key === 'Enter') ok.click(); }));
+    }
+  }
+
+  function close(){
+    const m = document.getElementById('mfaModal');
+    if(m) m.style.display = 'none';
+  }
+
+  function codeInput(){
+    return el('input', { type: 'text', id: 'mfaCodeInput', inputmode: 'text', autocomplete: 'one-time-code', maxlength: '11', placeholder: '123456', style: INPUT_CSS });
+  }
+
+  // شاشة الرموز الاحتياطيّة — تظهر مرّة واحدة بعد التفعيل.
+  function showBackup(codes, then){
+    const pre = el('pre', { style: 'direction:ltr; text-align:center; font-size:15px; line-height:1.9; background:rgba(128,128,128,.12); border-radius:10px; padding:10px; margin:6px 0; user-select:all; white-space:pre-wrap;' }, codes.join('\n'));
+    const copy = el('button', { type: 'button', class: 'btn secondary', style: 'width:100%; margin-top:4px; justify-content:center; text-align:center;' }, tx('mfaCopy'));
+    copy.onclick = async () => {
+      try { await navigator.clipboard.writeText(codes.join('\n')); copy.textContent = tx('mfaCopied'); }
+      catch(e){ __swallow(e, 'mfa:copy'); }
+    };
+    screen({ title: tx('mfaBackupTitle'), desc: tx('mfaBackupDesc'), nodes: [pre, copy], okLabel: tx('mfaDone'), noCancel: true, onOk: async () => { close(); then(); } });
+  }
+
+  // الإعداد: via = { ticket } (مالك يُلزَم عند الدخول) أو { token } (من الإعدادات، بكلمة المرور).
+  async function setup(via, done, opts){
+    opts = opts || {};
+    const begin = async (password, fail) => {
+      const r = await post(Object.assign({ action: 'mfa-setup-start', currentPassword: password || undefined }, via));
+      if(!r.ok){ if(fail) fail(r.d.error); return false; }
+      const nodes = [];
+      if(r.d.qr) nodes.push(el('img', { src: r.d.qr, alt: 'QR', width: '190', height: '190', style: 'display:block; margin:4px auto; background:#fff; padding:6px; border-radius:10px; image-rendering:pixelated;' }));
+      const link = el('a', { href: r.d.uri, style: 'display:inline-block; margin:4px 0; font-size:13px; color:var(--accent,#7c6cff);' }, tx('mfaOpenApp'));
+      nodes.push(link);
+      nodes.push(el('div', { style: 'font-size:12px; color:var(--muted,#aaa); margin-top:6px;' }, tx('mfaManualKey')));
+      nodes.push(el('code', { style: 'display:block; direction:ltr; font-size:13px; word-break:break-all; user-select:all; background:rgba(128,128,128,.12); border-radius:8px; padding:6px; margin:4px 0 8px;' }, String(r.d.secret || '').replace(/(.{4})/g, '$1 ').trim()));
+      nodes.push(codeInput());
+      const desc = (opts.ownerForced ? tx('mfaOwnerRequired') + ' ' : '') + tx('mfaSetupScan');
+      screen({ desc, nodes, onOk: async (failConfirm) => {
+        const code = (document.getElementById('mfaCodeInput').value || '').trim();
+        const c = await post(Object.assign({ action: 'mfa-setup-confirm', code }, via));
+        if(!c.ok){ failConfirm(c.d.error); return; }
+        if(c.d.token) window.authSet('aiapp_auth_token', c.d.token);
+        showBackup(c.d.backupCodes || [], () => done(c.d));
+      } });
+      return true;
+    };
+    if(via.ticket){
+      if(!(await begin())) { screen({ desc: tx('mfaGenericError'), nodes: [], noCancel: false, onOk: async () => close() }); }
+      return;
+    }
+    const pass = el('input', { type: 'password', id: 'mfaPassInput', autocomplete: 'current-password', style: 'width:100%; box-sizing:border-box; padding:10px; margin:6px 0;' });
+    screen({ desc: tx('mfaPasswordPrompt'), nodes: [pass], okLabel: tx('mfaContinue'), onOk: async (fail) => { await begin(pass.value, fail); } });
+  }
+
+  // من مسارات الدخول: data = ردّ الخادم { mfa:'code'|'setup', ticket, username, avatar }.
+  function start(data, done){
+    if(data.mfa === 'setup'){
+      setup({ ticket: data.ticket }, (d) => done(Object.assign({}, data, d)), { ownerForced: true });
+      return;
+    }
+    screen({ desc: tx('mfaCodePrompt'), nodes: [codeInput()], onOk: async (fail) => {
+      const code = (document.getElementById('mfaCodeInput').value || '').trim();
+      const r = await post({ action: 'mfa-login', ticket: data.ticket, code });
+      if(!r.ok){ fail(r.d.error); return; }
+      window.authSet('aiapp_auth_token', r.d.token);
+      close();
+      done(Object.assign({}, data, r.d));
+    } });
+  }
+
+  // صندوق «الأمان» في الإعدادات.
+  async function refreshStatus(){
+    const line = document.getElementById('mfaStatusLine');
+    const btn = document.getElementById('mfaToggleBtn');
+    if(!line || !btn) return;
+    if(!token()){ line.textContent = ''; btn.style.display = 'none'; return; }
+    try {
+      const r = await post({ action: 'mfa-status', token: token() });
+      if(!r.ok){ line.textContent = r.d.error || ''; return; }
+      line.textContent = (r.d.on ? tx('mfaStatusOn') + ' ' + r.d.backupLeft : tx('mfaStatusOff')) + (r.d.required ? ' — ' + tx('mfaRequiredNote') : '');
+      btn.dataset.on = r.d.on ? '1' : '';
+      btn.textContent = r.d.on ? tx('mfaDisableBtn') : tx('mfaEnableBtn');
+      btn.style.display = (r.d.on && r.d.required) ? 'none' : '';
+    } catch(e){ __swallow(e, 'mfa:status'); }
+  }
+
+  function toggle(){
+    const btn = document.getElementById('mfaToggleBtn');
+    if(btn && btn.dataset.on){
+      screen({ desc: tx('mfaCodePrompt'), nodes: [codeInput()], okLabel: tx('mfaDisableBtn'), onOk: async (fail) => {
+        const r = await post({ action: 'mfa-disable', token: token(), code: (document.getElementById('mfaCodeInput').value || '').trim() });
+        if(!r.ok){ fail(r.d.error); return; }
+        close();
+        refreshStatus();
+      } });
+      return;
+    }
+    setup({ token: token() }, () => refreshStatus());
+  }
+
+  async function logoutAll(){
+    const msg = document.getElementById('acctSecurityMsg');
+    if(!confirm(tx('logoutAllConfirm'))) return;
+    try {
+      const r = await post({ action: 'logoutAll', token: token() });
+      if(!r.ok){ if(msg){ msg.textContent = r.d.error || tx('mfaGenericError'); msg.style.color = '#ef4444'; } return; }
+      window.authSet('aiapp_auth_token', r.d.token);
+      lastRefresh = Date.now();
+      if(msg){ msg.textContent = tx('logoutAllDone'); msg.style.color = '#22c55e'; }
+    } catch(e){ __swallow(e, 'mfa:logoutAll'); if(msg){ msg.textContent = tx('mfaNetError'); msg.style.color = '#ef4444'; } }
+  }
+
+  let lastRefresh = Date.now();
+  async function refreshSession(){
+    const t = token();
+    if(!t) return;
+    lastRefresh = Date.now();
+    try {
+      const r = await post({ action: 'verify', token: t });
+      if(r.ok && r.d.token){ window.authSet('aiapp_auth_token', r.d.token); return; }
+      if(r.status === 401 && r.d.revoked && typeof window.doLogout === 'function') window.doLogout();
+    } catch(e){ __swallow(e, 'mfa:refresh'); }
+  }
+  setInterval(() => { if(Date.now() - lastRefresh > 2 * 3600 * 1000) refreshSession(); }, 10 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible' && Date.now() - lastRefresh > 3600 * 1000) refreshSession();
+  });
+
+  document.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest ? e.target.closest('#mfaToggleBtn, #logoutAllBtn, #acctPassRowBtn') : null;
+    if(!t) return;
+    if(t.id === 'mfaToggleBtn') toggle();
+    else if(t.id === 'logoutAllBtn') logoutAll();
+    else refreshStatus();
+  });
+
+  window.omranMfa = { start, setup, refreshStatus, refreshSession };
+})();
 // 🎁 v343: رسائل ودّية بدل أكواد الأخطاء عند توليد/تعديل الصور — مع فتح
 // نافذة إنشاء حساب تلقائيًا للضيف الذي استهلك صوره المجانية.
 function imgErrFriendly(err, isAr){
@@ -3612,6 +3851,32 @@ const I18N = {
     installHowDesktop: 'للتثبيت على الكمبيوتر (Chrome أو Edge):\nاضغط أيقونة التثبيت (⊕ أو شاشة صغيرة) في شريط العنوان، أو افتح قائمة المتصفّح (⋮ أو …) واختر «تثبيت» أو «التطبيقات ← تثبيت هذا الموقع كتطبيق».',
     installHowMacSafari: 'للتثبيت على الماك من Safari:\nافتح قائمة «ملف» في الأعلى واختر «إضافة إلى Dock» ثمّ «إضافة».',
     installHowFirefox: 'Firefox على الكمبيوتر لا يثبّت تطبيقات الويب.\nافتح الموقع في Chrome أو Edge ثمّ اضغط «تثبيت التطبيق»، أو ثبّته من الجوّال.',
+    mfaTitle: "🔐 التحقّق بخطوتين",
+    mfaExplain: "بعد كلمة المرور يطلب التطبيق رمزًا من تطبيق المصادقة في جوالك — لو عرف أحدٌ كلمة مرورك لا يدخل.",
+    mfaCodePrompt: "أدخل الرمز المكوّن من ٦ أرقام من تطبيق المصادقة، أو رمزًا احتياطيًّا.",
+    mfaVerifyBtn: "تحقّق",
+    mfaCancel: "إلغاء",
+    mfaSetupScan: "امسح الرمز بتطبيق مصادقة (Google Authenticator أو Microsoft Authenticator)، ثمّ أدخل الرمز المكوّن من ٦ أرقام.",
+    mfaOwnerRequired: "حساب المالك يحتاج التحقّق بخطوتين قبل الدخول.",
+    mfaOpenApp: "فتح في تطبيق المصادقة",
+    mfaManualKey: "أو أدخل هذا المفتاح يدويًّا:",
+    mfaBackupTitle: "🔑 رموز احتياطيّة — احفظها الآن",
+    mfaBackupDesc: "إذا ضاع جوالك تدخل بأحد هذه الرموز، وكلّ رمز يُستعمل مرّة واحدة. لن تظهر مرّة أخرى.",
+    mfaCopy: "نسخ",
+    mfaCopied: "تم النسخ",
+    mfaDone: "تمّ",
+    mfaPasswordPrompt: "كلمة المرور الحالية (اتركها فارغة إن كنت تدخل بجوجل أو برمز الإيميل):",
+    mfaContinue: "متابعة",
+    mfaEnableBtn: "تفعيل التحقّق بخطوتين",
+    mfaDisableBtn: "إيقاف التحقّق بخطوتين",
+    mfaStatusOn: "✅ مفعّل — الرموز الاحتياطيّة المتبقّية:",
+    mfaStatusOff: "غير مفعّل",
+    mfaRequiredNote: "إلزاميّ لحساب المالك",
+    logoutAllBtn: "🚪 تسجيل الخروج من كلّ الأجهزة",
+    logoutAllConfirm: "تسجيل الخروج من كلّ الأجهزة الأخرى؟ هذا الجهاز يبقى داخلًا.",
+    logoutAllDone: "تمّ — الأجهزة الأخرى خرجت، وهذا الجهاز باقٍ.",
+    mfaGenericError: "حدث خطأ، حاول مرة أخرى",
+    mfaNetError: "تعذر الاتصال بالخادم، تحقق من الإنترنت",
     shareAppBtn: 'مشاركة التطبيق',
     refreshBtnTitle: 'تحديث الصفحة',
     langBtn: 'EN',
@@ -4708,6 +4973,32 @@ const I18N = {
     installHowDesktop: 'To install on desktop (Chrome or Edge):\nClick the install icon (⊕ or small monitor) in the address bar, or open the browser menu (⋮ or …) and choose "Install" or "Apps → Install this site as an app".',
     installHowMacSafari: 'To install on Mac from Safari:\nOpen the "File" menu at the top, choose "Add to Dock", then "Add".',
     installHowFirefox: 'Firefox on desktop cannot install web apps.\nOpen this site in Chrome or Edge and click "Install App", or install it from your phone.',
+    mfaTitle: "🔐 Two-step verification",
+    mfaExplain: "After your password, the app asks for a code from the authenticator app on your phone — someone who knows your password still can't get in.",
+    mfaCodePrompt: "Enter the 6-digit code from your authenticator app, or a backup code.",
+    mfaVerifyBtn: "Verify",
+    mfaCancel: "Cancel",
+    mfaSetupScan: "Scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator), then enter the 6-digit code.",
+    mfaOwnerRequired: "The owner account needs two-step verification before signing in.",
+    mfaOpenApp: "Open in authenticator app",
+    mfaManualKey: "Or enter this key manually:",
+    mfaBackupTitle: "🔑 Backup codes — save them now",
+    mfaBackupDesc: "If you lose your phone, sign in with one of these codes. Each code works once. They won't be shown again.",
+    mfaCopy: "Copy",
+    mfaCopied: "Copied",
+    mfaDone: "Done",
+    mfaPasswordPrompt: "Current password (leave empty if you sign in with Google or an email code):",
+    mfaContinue: "Continue",
+    mfaEnableBtn: "Turn on two-step verification",
+    mfaDisableBtn: "Turn off two-step verification",
+    mfaStatusOn: "✅ On — backup codes left:",
+    mfaStatusOff: "Off",
+    mfaRequiredNote: "Mandatory for the owner account",
+    logoutAllBtn: "🚪 Sign out of all devices",
+    logoutAllConfirm: "Sign out of all other devices? This device stays signed in.",
+    logoutAllDone: "Done — other devices are signed out, this one stays.",
+    mfaGenericError: "Something went wrong, try again",
+    mfaNetError: "Could not reach the server, check your connection",
     shareAppBtn: 'Share App',
     refreshBtnTitle: 'Refresh Page',
     langBtn: 'ع',
@@ -4775,7 +5066,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=698'; /* v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=699'; /* v-account-guard: التحقّق بخطوتين والخروج من كلّ الأجهزة. قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];

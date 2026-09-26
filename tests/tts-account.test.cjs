@@ -117,7 +117,7 @@ const times = async (n, f) => { const out = []; for (let i = 0; i < n; i++) out.
 
 test('٣. المالك بلا حدّ في صوت القراءة، والضيف على IP كما كان', async () => {
   await withServer(async ({ call, makeToken }) => {
-    const owner = await times(75, () => call({ token: makeToken('omran') }, '10.0.0.1'));
+    const owner = await times(75, () => call({ token: makeToken('omran', { m: 1 }) }, '10.0.0.1'));
     assert.ok(owner.every((c) => c === 200), 'المالك: ' + owner.filter((c) => c !== 200).length + ' مرفوض');
     // ما كان يحدث: التطبيق لا يرسل الحساب، فالمالك نفسه ضيف على عنوانه ويُرفض بعد ٦٠
     const ownerBefore = await times(61, () => call({}, '10.0.0.9'));

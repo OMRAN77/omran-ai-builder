@@ -19,7 +19,7 @@ const checkout = require('../api/_lib/create-checkout-session.js');
 const paypal = require('../api/_lib/paypal-order.js');
 
 function token(username) {
-  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000 })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000, m: 1 })).toString('base64url');
   const sig = crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
   return payload + '.' + sig;
 }
@@ -135,8 +135,8 @@ test('نافذة الدفع: زرّ صغير للتجديد التلقائيّ،
   assert.doesNotMatch(row[0], /\bchecked\b/);
   assert.match(row[0], /data-i18n="checkoutAutoRenew"/);
   assert.ok(html.indexOf('checkoutAutoRenewRow') > html.indexOf('startStripeCheckout()'), 'تحت زرّ البطاقة');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=675'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=698'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=676'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=699'"));
 });
 
 test('النصّان الجديدان في ١٤ لغة بلا اسم مزوّد', () => {

@@ -38,18 +38,8 @@ function isOwnerUsername(username) {
 // الباقين يمرّ من ذاكرة ٣٠ ثانية داخل العملية لا من نداء لكل رسالة.
 // isVip لا ترمي أبدًا: عطبٌ في القائمة = «ليس VIP» = الحدّ كما كان.
 
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
+// v-account-guard: الفحص الموحّد (رمز ٢٤ ساعة، وجلسة المالك تحتاج الخطوة الثانية).
+function verifyToken(token) { return require('./session.js').verifySession(token); }
 
 function tallyKey(key) {
   return 'db/usage/tally/' + encodeURIComponent(key) + '/' + todayStr();

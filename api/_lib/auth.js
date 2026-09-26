@@ -6,7 +6,7 @@
 // plain text — scrypt hash + random salt per user. Sessions are signed
 // tokens (HMAC-SHA256) — no plaintext secrets ever reach the client.
 const crypto = require('crypto');
-const { kvGetJSON, kvPutJSON } = require('./kv.js');
+const { kvGetJSON, kvPutJSON, kvDel, kvExpire } = require('./kv.js');
 const { logError } = require('./log-error.js');
 
 // ⏳ القراءة مؤجَّلة عمدًا. _secrets.AUTH_SECRET رامٍ (getter)، وقراءته هنا —
@@ -136,26 +136,31 @@ function genRecoveryCode() {
   return bytes.match(/.{1,4}/g).join('-'); // XXXX-XXXX-XXXX-XXXX-XXXX
 }
 
-function makeToken(username) {
-  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 })).toString('base64url');
-  const sig = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
-  return payload + '.' + sig;
+// v-account-guard: الختم والفحص في session.js (رمز ٢٤ ساعة يتجدّد، رقم جلسة v، وعلامة m للمالك).
+const session = require('./session.js');
+const totp = require('./totp.js');
+const { isOwnerName } = require('./_owner.js');
+const makeToken = (username, o) => session.makeSession(username, o);
+const verifyToken = (token) => session.verifySession(token);
+const tokenVersion = (user) => Number(user && user.tokenVersion) || 0;
+const mfaOn = (user) => !!(user && user.totp && user.totp.on && user.totp.s);
+const mfaSetupNeeded = (key, user) => isOwnerName(key) && session.ownerMfaRequired() && !mfaOn(user);
+
+// كلّ مسار دخول (كلمة مرور، رمز الإيميل، رابط الاسترجاع، رمز الاسترجاع، جوجل) يمرّ هنا:
+// إن كان الحساب يحتاج الخطوة الثانية فلا رمز جلسة — بطاقة قصيرة العمر بدلًا منه.
+function loginResult(key, user, extra) {
+  const base = Object.assign({ ok: true, username: user.username, avatar: user.avatar || null }, extra || {});
+  if (mfaOn(user) || mfaSetupNeeded(key, user)) {
+    const kind = mfaOn(user) ? 'code' : 'setup';
+    return Object.assign(base, { mfa: kind, ticket: session.makeTicket(key, kind, tokenVersion(user)) });
+  }
+  return Object.assign(base, { token: makeToken(key, { v: tokenVersion(user) }) });
 }
 
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
-    const a = Buffer.from(String(sig || ''));
-    const b = Buffer.from(expected);
-    if (a.length !== b.length) return null;
-    if (!crypto.timingSafeEqual(a, b)) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+function clientIp(req) {
+  const h = (req && req.headers) || {};
+  const raw = String(h['x-forwarded-for'] || h['x-real-ip'] || (req && req.socket && req.socket.remoteAddress) || 'unknown').split(',')[0].trim();
+  return crypto.createHash('sha256').update('omran-ip:' + raw).digest('hex').slice(0, 20);
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -310,6 +315,184 @@ async function sendOtpEmail(toEmail, otpCode, isEn) {
 }
 
 // ---------------------------------------------------------------------------
+// v-account-guard: التحقّق بخطوتين (تطبيق مصادقة + رموز احتياطيّة) و«الخروج من كلّ الأجهزة».
+
+const MFA_LOCK_AFTER = 5;
+const MFA_LOCK_MS = 15 * 60 * 1000;
+const MFA_PENDING_MS = 15 * 60 * 1000;
+
+// صاحب الطلب: بطاقة من نوع مسموح (دخول ينتظر الخطوة الثانية، أو إعداد المالك الإلزاميّ)،
+// أو جلسة صالحة. كلاهما يجب أن يطابق رقم الجلسة الحاليّ في السجلّ.
+async function mfaSubject(body, ticketKinds, allowSession) {
+  if (body.ticket) {
+    for (const kind of ticketKinds) {
+      const t = session.readTicket(body.ticket, kind);
+      if (!t) continue;
+      const user = await getUser(t.u);
+      if (!user || user.deleted || tokenVersion(user) !== (Number(t.v) || 0)) return null;
+      return { key: t.u, user, via: 'ticket' };
+    }
+    return null;
+  }
+  if (!allowSession) return null;
+  const s = session.readSession(body.token);
+  if (!s) return null;
+  const user = await getUser(s.u);
+  if (!user || user.deleted || tokenVersion(user) !== (Number(s.v) || 0)) return null;
+  return { key: s.u, user, via: 'session', m: s.m };
+}
+
+function mfaLocked(user, res, m) {
+  const until = Number(user.mfaLockUntil) || 0;
+  if (until <= Date.now()) return false;
+  const mins = Math.ceil((until - Date.now()) / 60000);
+  res.status(429).json({ error: m('محاولات خاطئة كثيرة. حاول بعد ' + mins + ' دقيقة', 'Too many wrong codes. Try again in ' + mins + ' min') });
+  return true;
+}
+
+async function mfaFail(key, user, res, m) {
+  const fails = (Number(user.mfaFails) || 0) + 1;
+  if (fails >= MFA_LOCK_AFTER) { user.mfaFails = 0; user.mfaLockUntil = Date.now() + MFA_LOCK_MS; }
+  else user.mfaFails = fails;
+  try { await putUser(key, user); } catch (e) { logError('auth:mfa-fail-write', e); }
+  res.status(401).json({ error: m('الرمز غير صحيح', 'Incorrect code') });
+}
+
+// رمز التطبيق (مع منع إعادة الرمز نفسه) أو رمز احتياطيّ يُستهلك مرّة واحدة.
+function matchSecondFactor(user, code) {
+  const c = String(code || '').trim();
+  const step = totp.verifyTotp(user.totp.s, c, user.totp.lastStep);
+  if (step != null) return { step };
+  if (totp.normBackup(c).length === 10) {
+    const i = (user.totp.backup || []).indexOf(totp.hashBackup(c));
+    if (i >= 0) return { backupIdx: i };
+  }
+  return null;
+}
+
+function applySecondFactor(user, hit) {
+  if (hit.step != null) user.totp.lastStep = hit.step;
+  if (hit.backupIdx != null) user.totp.backup.splice(hit.backupIdx, 1);
+  user.mfaFails = 0;
+  user.mfaLockUntil = 0;
+}
+
+function qrDataUrl(text) {
+  try {
+    const qrcode = require('qrcode-generator');
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    return qr.createDataURL(5, 2);
+  } catch (e) {
+    logError('auth:mfa-qr', e);
+    return null;
+  }
+}
+
+async function mfaActions(action, body, res, m) {
+  const expired = () => res.status(401).json({ error: m('انتهت الجلسة أو صلاحية الخطوة، سجّل الدخول من جديد', 'Session or step expired, please log in again') });
+  const now = Date.now();
+
+  if (action === 'mfa-login') {
+    const subj = await mfaSubject(body, ['code'], false);
+    if (!subj) { expired(); return true; }
+    const { key, user } = subj;
+    if (user.banned) { res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true }); return true; }
+    if (!mfaOn(user)) { expired(); return true; }
+    if (mfaLocked(user, res, m)) return true;
+    const hit = matchSecondFactor(user, body.code);
+    if (!hit) { await mfaFail(key, user, res, m); return true; }
+    applySecondFactor(user, hit);
+    await putUser(key, user);
+    res.status(200).json({ ok: true, token: makeToken(key, { v: tokenVersion(user), m: 1 }), username: user.username, avatar: user.avatar || null, backupLeft: (user.totp.backup || []).length });
+    return true;
+  }
+
+  if (action === 'mfa-status') {
+    const subj = await mfaSubject(body, [], true);
+    if (!subj) { expired(); return true; }
+    res.status(200).json({ ok: true, on: mfaOn(subj.user), backupLeft: mfaOn(subj.user) ? (subj.user.totp.backup || []).length : 0, required: isOwnerName(subj.key) && session.ownerMfaRequired() });
+    return true;
+  }
+
+  if (action === 'mfa-setup-start') {
+    const subj = await mfaSubject(body, ['setup'], true);
+    if (!subj) { expired(); return true; }
+    const { key, user } = subj;
+    if (mfaOn(user)) { res.status(409).json({ error: m('التحقّق بخطوتين مفعّل من قبل', 'Two-step verification is already on') }); return true; }
+    // بجلسة وحدها: كلمة المرور مطلوبة، وإلّا فجلسة مسروقة تفعّل الخطوة الثانية بجوال المهاجم
+    // وتقفل صاحب الحساب خارجه. حسابات جوجل/رمز الإيميل بلا كلمة مرور حقيقيّة تُعفى.
+    if (subj.via === 'session' && !(user.googleAuth || user.otpOnly)) {
+      if (!body.currentPassword || !verifyPassword(String(body.currentPassword), user.salt, user.hash)) {
+        res.status(401).json({ error: m('كلمة المرور الحالية غير صحيحة', 'Current password is incorrect'), needPassword: true });
+        return true;
+      }
+    }
+    const secret = totp.genSecret();
+    user.totpPending = { s: secret, at: now };
+    await putUser(key, user);
+    const uri = totp.otpauthUri(user.username || key, secret);
+    res.status(200).json({ ok: true, secret, uri, qr: qrDataUrl(uri) });
+    return true;
+  }
+
+  if (action === 'mfa-setup-confirm') {
+    const subj = await mfaSubject(body, ['setup'], true);
+    if (!subj) { expired(); return true; }
+    const { key, user } = subj;
+    const pending = user.totpPending;
+    if (!pending || !pending.s || (now - (Number(pending.at) || 0)) > MFA_PENDING_MS) {
+      res.status(400).json({ error: m('انتهت مهلة الإعداد، ابدأ من جديد', 'Setup timed out, start again') });
+      return true;
+    }
+    if (mfaLocked(user, res, m)) return true;
+    const step = totp.verifyTotp(pending.s, body.code, null);
+    if (step == null) { await mfaFail(key, user, res, m); return true; }
+    const codes = totp.genBackupCodes(8);
+    user.totp = { on: true, s: pending.s, lastStep: step, backup: codes.map(totp.hashBackup), at: now };
+    delete user.totpPending;
+    user.mfaFails = 0;
+    user.mfaLockUntil = 0;
+    // تفعيل الخطوة الثانية يُخرج كلّ جلسة سابقة لم تجتزها؛ هذا الجهاز يأخذ رمزًا جديدًا.
+    user.tokenVersion = tokenVersion(user) + 1;
+    await putUser(key, user);
+    res.status(200).json({ ok: true, token: makeToken(key, { v: user.tokenVersion, m: 1 }), backupCodes: codes, username: user.username, avatar: user.avatar || null });
+    return true;
+  }
+
+  if (action === 'mfa-disable') {
+    const subj = await mfaSubject(body, [], true);
+    if (!subj) { expired(); return true; }
+    const { key, user } = subj;
+    if (!mfaOn(user)) { res.status(400).json({ error: m('التحقّق بخطوتين غير مفعّل', 'Two-step verification is not on') }); return true; }
+    if (isOwnerName(key) && session.ownerMfaRequired()) {
+      res.status(403).json({ error: m('التحقّق بخطوتين إلزاميّ لحساب المالك', 'Two-step verification is mandatory for the owner account') });
+      return true;
+    }
+    if (mfaLocked(user, res, m)) return true;
+    const hit = matchSecondFactor(user, body.code);
+    if (!hit) { await mfaFail(key, user, res, m); return true; }
+    user.totp = null;
+    user.mfaFails = 0;
+    user.mfaLockUntil = 0;
+    await putUser(key, user);
+    res.status(200).json({ ok: true });
+    return true;
+  }
+
+  if (action === 'logoutAll') {
+    const subj = await mfaSubject(body, [], true);
+    if (!subj) { expired(); return true; }
+    const { key, user } = subj;
+    user.tokenVersion = tokenVersion(user) + 1;
+    await putUser(key, user);
+    res.status(200).json({ ok: true, token: makeToken(key, { v: user.tokenVersion, m: subj.m }) });
+    return true;
+  }
+
+  return false;
+}
 
 module.exports = async (req, res) => {
   // CORS يُركّبه الموجّه account.js عبر installCors — ولا يُكتب هنا يدويًّا.
@@ -338,7 +521,7 @@ module.exports = async (req, res) => {
     const {
       action, username, password, token, recoveryCode, newPassword,
       newUsername, currentPassword, avatarDataUrl, lang,
-      email, resetToken, otp,
+      email, resetToken, otp, ticket, code,
     } = body;
 
     const isEn = lang === 'en';
@@ -350,6 +533,8 @@ module.exports = async (req, res) => {
     const tooLong = [username, newUsername].some(v => v && String(v).length > 64) ||
       [password, newPassword, currentPassword, recoveryCode].some(v => v && String(v).length > 128) ||
       (otp && String(otp).length > 16) ||
+      (code && String(code).length > 32) ||
+      (ticket && String(ticket).length > 512) ||
       (resetToken && String(resetToken).length > 256) ||
       (email && String(email).length > 254);
     if (tooLong) {
@@ -441,7 +626,8 @@ module.exports = async (req, res) => {
       await putUser(newKey, movedUser);
       // Free up the old key so it can't be logged into or re-claimed while pointing here.
       await putUser(oldKey, { deleted: true, movedTo: newKey });
-      res.status(200).json({ ok: true, token: makeToken(newKey), username: movedUser.username, avatar: movedUser.avatar || null });
+      const cur = session.readSession(token) || {};
+      res.status(200).json({ ok: true, token: makeToken(newKey, { v: tokenVersion(movedUser), m: cur.m }), username: movedUser.username, avatar: movedUser.avatar || null });
       return;
     }
 
@@ -463,8 +649,11 @@ module.exports = async (req, res) => {
       const { salt, hash } = hashPassword(newPassword);
       user.salt = salt;
       user.hash = hash;
+      // رقم جلسة جديد: كلّ جهاز آخر يخرج عند تجديده التالي، وهذا الجهاز يأخذ رمزًا جديدًا.
+      user.tokenVersion = tokenVersion(user) + 1;
       await putUser(u, user);
-      res.status(200).json({ ok: true });
+      const cur = session.readSession(token) || {};
+      res.status(200).json({ ok: true, token: makeToken(u, { v: user.tokenVersion, m: cur.m }) });
       return;
     }
 
@@ -507,8 +696,9 @@ module.exports = async (req, res) => {
       user.hash = hash;
       user.recoverySalt = rec.salt;
       user.recoveryHash = rec.hash;
+      user.tokenVersion = tokenVersion(user) + 1;
       await putUser(key, user);
-      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, recoveryCode: newRec, avatar: user.avatar || null });
+      res.status(200).json(loginResult(key, user, { recoveryCode: newRec }));
       return;
     }
 
@@ -610,8 +800,9 @@ module.exports = async (req, res) => {
       user.hash = hash;
       user.resetTokenHash = null;
       user.resetTokenExpiry = null;
+      user.tokenVersion = tokenVersion(user) + 1;
       await putUser(key, user);
-      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null });
+      res.status(200).json(loginResult(key, user));
       return;
     }
 
@@ -621,23 +812,39 @@ module.exports = async (req, res) => {
         return;
       }
       const { key, user } = await resolveLoginUser(username);
-      // Brute-force protection: lock the account for 15 minutes after 6
-      // consecutive failed attempts. Lockout resets on any successful login.
+      // v-account-guard: كان القفل على الحساب نفسه بعد ٦ أخطاء — فأيّ أحد يعرف اسم المالك يقفله
+      // ربع ساعة متى شاء. القفل الآن على (الحساب + شبكة المحاول) بعد ٦ أخطاء، وسقف للحساب كلّه
+      // ٥٠ خطأً في الساعة من كلّ الشبكات (هجوم موزّع) — والخطوة الثانية تحمي ما بعد كلمة المرور.
       const LOCK_AFTER = 6;
       const LOCK_MS = 15 * 60 * 1000;
-      if (user && user.lockUntil && user.lockUntil > Date.now()) {
-        const mins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+      const ACCOUNT_CAP = 50;
+      const CAP_WINDOW_MS = 60 * 60 * 1000;
+      const now = Date.now();
+      const failBase = 'db/login-fail/' + encodeURIComponent(key) + '/';
+      const ipKey = failBase + clientIp(req);
+      const allKey = failBase + '_all';
+      let ipRec = null, allRec = null;
+      if (key) {
+        try { [ipRec, allRec] = await Promise.all([kvGetJSON(ipKey), kvGetJSON(allKey)]); }
+        catch (e) { logError('auth:lock-read', e); }
+      }
+      const lockedUntil = Math.max(Number(ipRec && ipRec.lockUntil) || 0, Number(allRec && allRec.lockUntil) || 0);
+      if (lockedUntil > now) {
+        const mins = Math.ceil((lockedUntil - now) / 60000);
         res.status(429).json({ error: m('محاولات كثيرة فاشلة. حاول بعد ' + mins + ' دقيقة', 'Too many failed attempts. Try again in ' + mins + ' min') });
         return;
       }
       if (!user || user.deleted || !verifyPassword(password, user.salt, user.hash)) {
         if (user && !user.deleted) {
-          const fails = (user.failedLoginCount || 0) + 1;
-          const updated = Object.assign({}, user, {
-            failedLoginCount: fails,
-            lockUntil: fails >= LOCK_AFTER ? Date.now() + LOCK_MS : (user.lockUntil || null),
-          });
-          try { await putUser(key, updated); } catch (e) { logError('auth:lock-write', e); }
+          const ipFails = ((ipRec && !(ipRec.lockUntil > 0)) ? (Number(ipRec.count) || 0) : 0) + 1;
+          const nextIp = ipFails >= LOCK_AFTER ? { count: 0, lockUntil: now + LOCK_MS } : { count: ipFails, lockUntil: 0 };
+          const fresh = !allRec || !allRec.windowStart || (now - allRec.windowStart) > CAP_WINDOW_MS;
+          const allFails = (fresh ? 0 : (Number(allRec.count) || 0)) + 1;
+          const nextAll = allFails >= ACCOUNT_CAP ? { windowStart: now, count: 0, lockUntil: now + LOCK_MS } : { windowStart: fresh ? now : allRec.windowStart, count: allFails, lockUntil: 0 };
+          try {
+            await Promise.all([kvPutJSON(ipKey, nextIp), kvPutJSON(allKey, nextAll)]);
+            await Promise.all([kvExpire(ipKey, 3600), kvExpire(allKey, 7200)]);
+          } catch (e) { logError('auth:lock-write', e); }
         }
         res.status(401).json({ error: m('اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة', 'Incorrect username, email or password') });
         return;
@@ -646,15 +853,16 @@ module.exports = async (req, res) => {
         res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true });
         return;
       }
-      if (user.failedLoginCount || user.lockUntil) {
-        try { await putUser(key, Object.assign({}, user, { failedLoginCount: 0, lockUntil: null })); } catch (e) { logError('auth:lock-clear', e); }
+      if (ipRec && ipRec.count) {
+        try { await kvDel(ipKey); } catch (e) { logError('auth:lock-clear', e); }
       }
-      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null });
+      res.status(200).json(loginResult(key, user));
       return;
     }
 
     if (action === 'verify') {
-      const u = verifyToken(token);
+      const sess = session.readSession(token, { allowRefresh: true });
+      const u = sess && sess.u;
       if (!u) {
         res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
         return;
@@ -663,6 +871,12 @@ module.exports = async (req, res) => {
       // is momentarily unavailable (e.g. right after signup) — avoids forcing a
       // fresh login due to brief storage propagation delay.
       const user = await getUser(u);
+      // v-account-guard: التجديد بعد انقضاء الـ٢٤ ساعة يحتاج السجلّ، ورقم الجلسة يجب أن يطابقه —
+      // هنا تموت جلسة جهاز بعد «تغيير كلمة المرور» أو «الخروج من كلّ الأجهزة».
+      if ((!user && !(Number(sess.exp) > Date.now())) || (user && tokenVersion(user) !== (Number(sess.v) || 0))) {
+        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), revoked: !!user });
+        return;
+      }
       if (user && user.deleted) {
         res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
         return;
@@ -682,7 +896,7 @@ module.exports = async (req, res) => {
       }
       // 🔄 جلسة منزلقة: توكن جديد بعمر كامل مع كل تحقق ناجح — المستخدم
       // النشط لا يُطرد أبدًا بانتهاء صلاحية الثلاثين يومًا الثابتة.
-      res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
+      res.status(200).json({ ok: true, token: makeToken(u, { v: Number(sess.v) || 0, m: sess.m }), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
       return;
     }
 
@@ -751,7 +965,14 @@ module.exports = async (req, res) => {
       const given = Buffer.from(submitted.padEnd(known.length, '\0'));
       const matches = submitted.length === record.otp.length && given.length === known.length && crypto.timingSafeEqual(given, known);
       if (!matches) {
-        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        // v-account-guard: بلا حدّ كان يكفي تجريب المليون رمز في خمس دقائق لدخول حساب صاحب البريد.
+        // خمس محاولات خاطئة تُسقط الرمز، ويطلب صاحبه رمزًا جديدًا (والطلب نفسه محدود ٣ كلّ ٥ دقائق).
+        const tries = (Number(record.tries) || 0) + 1;
+        const next = tries >= 5 ? { otp: null, exp: 0 } : Object.assign({}, record, { tries });
+        try { await kvPutJSON('db/otp/' + key, next); } catch (e) { logError('auth:otp-tries', e); }
+        res.status(401).json({ error: tries >= 5
+          ? m('محاولات خاطئة كثيرة — اطلب رمزًا جديدًا', 'Too many wrong attempts — request a new code')
+          : m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
         return;
       }
       // Invalidate immediately so the same code can't be replayed — there's no
@@ -821,8 +1042,13 @@ module.exports = async (req, res) => {
         return;
       }
 
-      res.status(200).json({ ok: true, token: makeToken(userKey), username: user.username, avatar: user.avatar || null, isNew });
+      res.status(200).json(loginResult(userKey, user, { isNew }));
       return;
+    }
+
+    if (String(action || '').startsWith('mfa-') || action === 'logoutAll') {
+      const handled = await mfaActions(action, body, res, m);
+      if (handled) return;
     }
 
     res.status(400).json({ error: 'Unknown action' });
@@ -841,6 +1067,7 @@ module.exports.hashPassword = hashPassword;
 module.exports.genRecoveryCode = genRecoveryCode;
 module.exports.makeToken = makeToken;
 module.exports.verifyToken = verifyToken;
+module.exports.loginResult = loginResult;
 module.exports.encryptUserBlob = encryptUserBlob;
 module.exports.decryptUserBlob = decryptUserBlob;
 module.exports.UndecryptableUserRecord = UndecryptableUserRecord;

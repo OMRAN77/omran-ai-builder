@@ -59,18 +59,8 @@ function isOwner(username) {
 // (see _lib/_vip.js). المالك يُفحص أوّلًا دائمًا فلا يمسّ Redis، وقائمة
 // VIP تُقرأ من ذاكرة ٣٠ ثانية. isVip لا ترمي: عطبٌ فيها = مستخدم عاديّ.
 
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
+// v-account-guard: الفحص الموحّد (رمز ٢٤ ساعة، وجلسة المالك تحتاج الخطوة الثانية).
+function verifyToken(token) { return require('./session.js').verifySession(token); }
 
 // يقرأ رصيد المستخدم. الحسابات القديمة اللي انفتحت قبل نظام النقاط
 // ما عندها حقل points — تُمنح هدية الترحيب 70 نقطة تلقائيًا أول قراءة.

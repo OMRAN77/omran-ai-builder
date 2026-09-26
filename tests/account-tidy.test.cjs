@@ -41,5 +41,5 @@ test('٤. الخروج آخر صفّ في الإعدادات للمسجَّل، 
   assert.match(body, /if\(logged\)\{[\s\S]*closeDialogSafe\(settingsDialog\)[\s\S]*doLogout\(\)/);
   assert.doesNotMatch(app05, /settingsEmailRow|settingsFetchEmail/);
   const idx = read('index.html');
-  assert.ok(idx.includes('css/tokens.css?v=724') && idx.includes('/js/partials-settings.js?v=675'));
+  assert.ok(idx.includes('css/tokens.css?v=724') && idx.includes('/js/partials-settings.js?v=676'));
 });

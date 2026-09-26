@@ -38,7 +38,7 @@ test('٢. omni-create: طلب Interactions صحيح ويرجّع رابط veo-do
     }) };
   };
   const res = fakeRes();
-  await handler({ method: 'POST', body: { promptText: 'قطة تلعب', ratio: '720:1280', token: makeToken('omran') } }, res);
+  await handler({ method: 'POST', body: { promptText: 'قطة تلعب', ratio: '720:1280', token: makeToken('omran', { m: 1 }) } }, res);
   global.fetch = realFetch;
   // الطلب: نقطة Interactions، النموذج، وطلب الفيديو كـuri بنسبة عموديّة
   assert.ok(/\/v1beta\/interactions$/.test(sent.url), 'نقطة Interactions');
@@ -59,12 +59,12 @@ test('٣. omni-create: صورة مرفقة تدخل input، والاكتمال �
   let sent = null;
   global.fetch = async (url, init) => { sent = JSON.parse(init.body); return { ok: true, json: async () => ({ status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'video', uri: 'https://generativelanguage.googleapis.com/v1beta/files/Z:download?alt=media' }] }] }) }; };
   let res = fakeRes();
-  await handler({ method: 'POST', body: { promptText: 'حرّكها', imageBase64: 'AAAA', imageMime: 'image/jpeg', token: makeToken('omran') } }, res);
+  await handler({ method: 'POST', body: { promptText: 'حرّكها', imageBase64: 'AAAA', imageMime: 'image/jpeg', token: makeToken('omran', { m: 1 }) } }, res);
   assert.ok(sent.input.some((b) => b.type === 'image' && b.mime_type === 'image/jpeg'), 'صورة في input');
   // اكتمال بلا فيديو (محجوب) → 502
   global.fetch = async () => ({ ok: true, json: async () => ({ status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'text', text: 'blocked' }] }] }) });
   res = fakeRes();
-  await handler({ method: 'POST', body: { promptText: 'x', token: makeToken('omran') } }, res);
+  await handler({ method: 'POST', body: { promptText: 'x', token: makeToken('omran', { m: 1 }) } }, res);
   assert.equal(res.code, 502);
   global.fetch = realFetch;
 });
