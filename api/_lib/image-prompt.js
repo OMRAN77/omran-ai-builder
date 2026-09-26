@@ -152,7 +152,8 @@ function buildGenerationPrompt(userPrompt, options){
     rules.push('This is an architectural visualization. Keep geometry buildable and coherent, use realistic materials and an architectural viewpoint suited to the request. Preserve every named constraint exactly, including floor count, room count, openings, garage capacity, materials and dimensions. Do not add people unless requested.');
   }
   if(opts.reserveTextArea){
-    const area = opts.textPosition === 'top' ? 'upper' : opts.textPosition === 'center' ? 'central' : 'lower';
+    const pos = String(opts.textPosition || '');
+    const area = /^right-/.test(pos) ? 'right-hand' : (/^left-/.test(pos) ? 'left-hand' : (pos === 'top' ? 'upper' : (pos === 'center' ? 'central' : 'lower')));
     rules.push('Do not render any words, letters, numbers, calligraphy, captions, logos, signatures or watermarks. Keep the ' + area + ' portion calm and uncluttered so exact text can be overlaid separately.');
   }else{
     rules.push('Do not render legible words, letters, numbers, calligraphy, captions, logos, signatures or watermarks. Any requested wording is handled separately after generation.');

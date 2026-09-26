@@ -63,7 +63,9 @@ module.exports = async (req, res) => {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    /* GPT الخام/مسار النصّ لا يحتاج مفتاح Gemini. كان مفتاح OpenAI صالحًا
+       يُرفض هنا قبل وصول الطلب إلى محرّكه. */
+    if (!apiKey && !process.env.OPENAI_API_KEY) {
       console.error('[maha-image] image provider is not configured');
       res.status(503).json({ error: 'image_generation_failed', retryable: false });
       return;
@@ -593,14 +595,11 @@ module.exports = async (req, res) => {
       return null;
     }
 
-    // v-free-fallback (المالك: «لين ما خلص الرصيد» — يجب أن تُنتَج صورة حتى بلا
-    // رصيد مدفوع بدل 502 بعد تجميد طويل): Pollinations محرّك مجاني بلا مفتاح،
-    // توليد نصّي→صورة فقط (لا تحرير مصدر، ولا نصّ عربي دقيق). ملاذٌ أخير للتوليد
-    // الجديد بعد فشل المحرّكات المدفوعة. يُعطَّل بـIMAGE_FREE_FALLBACK=off.
+    // Pollinations/Flux أضعف ولا يكتب العربيّة بدقّة؛ لا يعمل إلا بتفعيل صريح.
     let lastFreeErr = '';
     async function freeFallbackImage() {
       if (editImageBase64) { lastFreeErr = 'edit-unsupported'; return null; }
-      if (String(process.env.IMAGE_FREE_FALLBACK || 'on').toLowerCase() === 'off') { lastFreeErr = 'disabled'; return null; }
+      if (String(process.env.IMAGE_FREE_FALLBACK || 'off').toLowerCase() !== 'on') { lastFreeErr = 'disabled'; return null; }
       const dims = rescueAspect === '16:9' ? [1344, 768] : (rescueAspect === '1:1' ? [1024, 1024] : [768, 1024]);
       const base = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(String(rescuePromptText).slice(0, 1800));
       for (let i = 0; i < 2; i++) {
@@ -794,12 +793,13 @@ module.exports = async (req, res) => {
     } /* مراجعة: فشلت البطاقات متأخّرة = لا مسار كامل يتجاوز ٣٠٠ث؛ ٤٢٢ صادقة واسترداد */
     if (__cardsNote && __extraBudget() < 150000) { await refundImageCharge(); res.status(422).json({ error: 'image_unchanged', retryable: true, __diag: process.env.IMG_DIAG === 'off' ? undefined : { cards: __cardsNote } }); return; }
     if (__engineMix) {
-      const pro = await proCandidate().catch(function () { return null; });
-      const polish = (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null;
-      if (pro) { pro.engine = 'mix:' + pro.engine; await deliver(pro, __gptAlt, polish); return; }
+      /* مرشّح مستقلّ من كلّ محرّك بالتوازي، ثمّ الحاكم يختار صورة واحدة. */
       __gptTried = true;
-      const gpt = __extraBudget() >= 25000 ? await gptCandidate('', __extraBudget()).catch(function () { return null; }) : null;
-      if (gpt) { gpt.engine = 'mix:openai'; await deliver(gpt, null); return; }
+      const __mixResults = await Promise.all([proCandidate().catch(function () { return null; }), gptCandidate('', __extraBudget()).catch(function () { return null; })]);
+      const __mixCandidates = __mixResults.filter(Boolean);
+      __mixCandidates.forEach(function (c) { c.engine = 'mix:' + c.engine; });
+      const polish = (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null;
+      if (__mixCandidates.length) { await deliver(__mixCandidates, null, polish); return; }
     }
 
     if (__textRoute && !__engineMix) {

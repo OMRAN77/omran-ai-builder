@@ -186,7 +186,7 @@ test('٦. طلب أفلت من كاشف النيّة (مسار أمين) وال�
   assert.match(r.json.engine, /nano-pro:same,openai:done/, 'البكسل غلب «done» الكاذب');
 });
 
-test('٧. «دمج نانو + GPT» للمالك (خيار «أ»): برو يرسم الوجوه ثمّ GPT يصلّح الكتابة وحدها على ناتجه، والحكم يختار صورة واحدة', async () => {
+test('٧. «دمج نانو + GPT» للمالك: مرشّحان مستقلّان ثمّ تلميع الكتابة للمختار، والحكم يسلّم صورة واحدة', async () => {
   const OWN = { prompt: SWAP_REQ, userText: SWAP_REQ, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'owner', engineMix: true };
   const FIXED = mirror(SWAP); // «برو + تصحيح الكتابة» (صورة مختلفة عن المصدر كما يجب)
   const isPolish = (p) => /^You are given 2 images in this order: \(1\) the RESULT to fix/.test(p);
@@ -196,16 +196,16 @@ test('٧. «دمج نانو + GPT» للمالك (خيار «أ»): برو ير�
   assert.equal(r.status, 200);
   assert.equal(r.json.imageBase64, FIXED);
   assert.equal(r.json.caption, 'بدّلت الوجوه وصحّحت «تهنئة».');
-  assert.deepEqual(r.calls.map((c) => c.kind), ['pro', 'judge', 'gpt-edit', 'judge'], 'برو ← حكم ← GPT للكتابة ← حكم بين الاثنين');
+  assert.deepEqual(r.calls.map((c) => c.kind), ['pro', 'gpt-edit', 'judge', 'gpt-edit', 'judge'], 'برو + GPT مستقلّان ← حكم ← GPT للكتابة ← حكم بين الاثنين');
   assert.equal(r.detects, 1, 'v-img-cards: تبديل المالك يُكشف أوّلًا هل الصورة لوحة بطاقات؛ ليست لوحة = هذا المسار كما كان');
-  const pol = r.calls[2];
+  const pol = r.calls[3];
   assert.ok(isPolish(pol.prompt) && /Change NOTHING else in image 1/.test(pol.prompt) && pol.images === 2, 'التلميع: الكتابة وحدها، والمصدر مرجع الحروف');
-  assert.equal(r.calls[3].n, 2);
+  assert.equal(r.calls[4].n, 2);
   assert.match(r.json.engine, /^mix:nano-pro\+gpt-text\[mix:nano-pro:partial,mix:nano-pro\+gpt-text:done\]$/);
   // (ب) لا كتابة في الصورة ← لا تلميع
   const r2 = await run(OWN, { pro: SWAP, gptEdit: FIXED }, () => ({ verdicts: ['done'], pick: 0, scope: 'big', text: 'none', report: 'y' }));
-  assert.deepEqual(r2.calls.map((c) => c.kind), ['pro', 'judge']);
-  assert.equal(r2.json.engine, 'mix:nano-pro');
+  assert.deepEqual(r2.calls.map((c) => c.kind), ['pro', 'gpt-edit', 'judge']);
+  assert.match(r2.json.engine, /^mix:nano-pro\[mix:nano-pro:done,mix:openai:partial\]$/);
   // (ج) برو يرجّع الصورة نفسها ← GPT ينفّذ الطلب كاملًا (أمر التبديل)، ولا تلميع لناتج GPT
   const r3 = await run(OWN, { pro: SAME, gptEdit: (p) => (isPolish(p) ? FIXED : SWAP) }, () => ({ verdicts: ['done'], pick: 0, scope: 'big', text: 'broken', report: 'z' }));
   assert.equal(r3.json.imageBase64, SWAP);
@@ -214,7 +214,7 @@ test('٧. «دمج نانو + GPT» للمالك (خيار «أ»): برو ير�
   // (د) التلميع أعاد وجوه المصدر ← يسقطه القياس بلا حكم، ويبقى ناتج برو
   const r4 = await run(OWN, { pro: SWAP, gptEdit: (p) => (isPolish(p) ? SAME : null) }, () => ({ verdicts: ['done'], pick: 0, scope: 'big', text: 'broken', report: 'w' }));
   assert.equal(r4.json.imageBase64, SWAP);
-  assert.deepEqual(r4.calls.map((c) => c.kind), ['pro', 'judge', 'gpt-edit']);
+  assert.deepEqual(r4.calls.map((c) => c.kind), ['pro', 'gpt-edit', 'judge', 'gpt-edit']);
   assert.match(r4.json.engine, /nano-pro\+gpt-text:same/);
   // (هـ) غير المالك لا يصله الوضع: برو وحده
   const r5 = await run({ ...OWN, token: 'user' }, { pro: SWAP, gptEdit: SWAP }, done());
@@ -322,7 +322,7 @@ test('١٥. مراجعة: المختار الذي قلبه القياس «ثاب
   assert.equal(r.status, 200);
   assert.equal(r.json.imageBase64, SWAP, 'المنفَّذ لا النسخة الثابتة');
   assert.equal(r.json.caption, 'حكم جديد 3', 'تقرير من حكم جديد على المنفَّذ لا «تمّ» المختار الخطأ');
-  assert.deepEqual(r.calls.map((c) => c.kind), ['pro', 'judge', 'gpt-edit', 'judge', 'judge']);
+  assert.deepEqual(r.calls.map((c) => c.kind), ['pro', 'gpt-edit', 'judge', 'gpt-edit', 'judge', 'judge']);
   // شعاران شفّافان بحبر أسود في مكانين مختلفين
   const logo = (x0) => { const p = new PNG({ width: 120, height: 60 }); for (let y = 20; y < 40; y++) for (let x = x0; x < x0 + 30; x++) { const i = (y * 120 + x) * 4; p.data[i + 3] = 255; } return PNG.sync.write(p).toString('base64'); };
   const c = diff.compareImages(logo(10), logo(80));
