@@ -62,9 +62,9 @@ test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ 
   assert.match(mi, /const mainEngine = nanoPrimary \? \(__pureRaw \? 'nano-raw' : 'nano'\) : \(__pureRaw \? 'nano-pro-raw' : 'nano-pro'\);/);
 });
 
-test('٣. الخام خام: المحرّك المختار وحده، GPT خام بأمانة عالية، وترقية المكان بلا سؤال للنموذج، والتفسير للتوليد فقط', () => {
+test('٣. الخام خام: المحرّك المختار وحده، Sunburst يحفظ المدخل تلقائيًّا، وترقية المكان بلا سؤال للنموذج، والتفسير للتوليد فقط', () => {
   assert.match(mi, /if \(!apiKey && !process\.env\.OPENAI_API_KEY\)/, 'مفتاح GPT وحده يكفي لمساره ولا يُحجب باشتراط نانو');
-  assert.match(mi, /form\.append\('input_fidelity', 'high'\);/);
+  assert.ok(mi.includes("'gpt-image-2.5-sunburst'") && !mi.includes("form.append('input_fidelity'"), 'Sunburst يفرض أمانة المدخل ويرفض الحقل القديم');
   assert.ok(!/'low' : 'high'/.test(mi));
   assert.match(mi, /if \(__optForceEngine === 'gpt'\) \{\n\s+const __gptB64 = await openaiRescueImage\(\);/);
   assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-3\.1-flash-image'/);
