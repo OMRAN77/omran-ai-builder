@@ -164,7 +164,7 @@ function boxToRect(box, w, h, pad) {
 async function openaiMaskedEdit(openaiKey, promptText, imgBuf, mime, maskBuf) {
   const attempt = async (withFidelity) => {
     const form = new FormData();
-    form.append('model', 'gpt-image-2'); /* v-models-latest: gpt-image-1 يُوقف ٢٣ أكتوبر ٢٠٢٦؛ gpt-image-2 يرفض input_fidelity (دقّته عالية دائمًا) */
+    form.append('model', 'gpt-image-2.5-sunburst');
     form.append('prompt', String(promptText).slice(0, 3900));
     form.append('size', 'auto');
     form.append('quality', 'high');

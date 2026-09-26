@@ -5816,7 +5816,7 @@ DESIGN RULES (non-negotiable):
       // كانت تُقصى منه كلها فتسقط لمسار قديم أضعف (سبب تحليل الصور السطحي).
       // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
       const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
-        && (!imageAttachments.length || __effProv === 'claude')
+        && (!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai'))
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){

@@ -36,7 +36,7 @@ test('١. الافتراضيّ = السلوك القديم: صورة وحدة، 
   assert.equal(r.status, 200);
   assert.deepEqual(r.json.options, { count: 12, shape: 'mixed', style: 'real', photos: 1 });
   assert.equal(r.sent[0].images, 1);
-  assert.equal(r.sent[0].model, 'gpt-image-2');
+  assert.equal(r.sent[0].model, 'gpt-image-2.5-sunburst');
   assert.match(r.sent[0].prompt, /12 small stickers/);
   assert.match(r.sent[0].prompt, /all 12 frames must be visibly different/);
   assert.match(r.sent[0].prompt, /must stay EXACTLY as photographed/);

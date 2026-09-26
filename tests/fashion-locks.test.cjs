@@ -27,9 +27,9 @@ const studios = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'),
 const partials = fs.readFileSync(path.join(__dirname, '../js/partials-core.js'), 'utf8');
 assert.ok(create.includes("require('./fashion-locks')") && create.includes('locksFor({'), 'fashion-create يستعمل الأقفال');
 assert.ok(!create.includes('Keep the same person, pose, face and background, but change only'), 'السطر الضعيف القديم أزيل');
-assert.ok(create.includes("engine === 'openai'") && create.includes('gpt-image-1'), 'محرك gpt-image-1 اختياري');
+assert.ok(create.includes("engine === 'openai'") && create.includes('gpt-image-2.5-sunburst'), 'محرك GPT Image الأحدث اختياري');
 assert.ok(create.includes('images/edits') && create.includes('OPENAI_API_KEY'), 'مفتاح OpenAI من الخادم لا من العميل');
-assert.ok(create.includes('images/generations') && create.includes('openaiGenerate(promptText)'), 'الوضع النصّي له مسار gpt-image-1 أيضًا');
+assert.ok(create.includes('images/generations') && create.includes('openaiGenerate(promptText)'), 'الوضع النصّي له مسار GPT Image أيضًا');
 assert.ok(create.includes('v-fashion-rescue'), 'رفض Gemini يهبط تلقائيًا إلى OpenAI قبل إبلاغ الفشل');
 const suggest = fs.readFileSync(path.join(__dirname, '../api/_lib/fashion-suggest.js'), 'utf8');
 assert.ok(suggest.includes('v-fashion-rescue') && suggest.includes('openaiSuggest(promptText'), 'الاقتراحات لها خطّ إنقاذ أيضًا');
@@ -75,7 +75,7 @@ assert.ok(studios.includes('v-decor-ba') && studios.includes('showBeforeAfter(')
 const dThumbs = fs.readFileSync(path.join(__dirname, '../scripts/design-thumbs.mjs'), 'utf8');
 assert.ok(dThumbs.includes("'minimalwhite'") && dThumbs.includes("'garden'") && dThumbs.includes('/api/design-create'), 'مولّد بطاقات الديكور: ٤٨ نمطًا و١٢ مكانًا');
 const designCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/design-create.js'), 'utf8');
-assert.ok(designCreate.includes('v-design-rescue') && designCreate.includes('openaiDesignEdit(promptText'), 'الديكور له خطّ إنقاذ gpt-image-1 أيضًا');
+assert.ok(designCreate.includes('v-design-rescue') && designCreate.includes('openaiDesignEdit(promptText'), 'الديكور له خطّ إنقاذ GPT Image أيضًا');
 assert.ok(designCreate.includes('v-decor-detail') && designCreate.includes("key=[^&\\s\"']+"), '502 النصّية تكشف خطأ المزوّد بعد شطب المفاتيح');
 assert.ok(studios.includes('v-fashion-full-page'), 'نمط الأزياء معرض ملء الشاشة أيضًا');
 assert.ok(designGen.includes("category/women") && !designGen.includes("women/evening'"), 'وجوه الفئات مخصّصة لا معادة');
@@ -96,7 +96,7 @@ assert.ok(studios.includes('PSTYLE_SUBS') && studios.includes('رسم يدوي �
 assert.ok(studios.includes("styleEl.dispatchEvent(new Event('change'"), 'نقر البطاقة يبثّ change للأسلاك التابعة');
 assert.ok(studios.includes('renderPortraitStyleCards()') && studios.includes('favs.includes(v)'), 'المفضلة أولًا بشارة ⭐');
 const portrait = fs.readFileSync(path.join(__dirname, '../api/_lib/portrait-style.js'), 'utf8');
-assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPortraitEdit(promptText'), 'البورتريه له خطّ إنقاذ gpt-image-1 أيضًا');
+assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPortraitEdit(promptText'), 'البورتريه له خطّ إنقاذ GPT Image أيضًا');
 const pThumbs = fs.readFileSync(path.join(__dirname, '../scripts/portrait-thumbs.mjs'), 'utf8');
 assert.ok(pThumbs.includes('STYLE_SOURCE') && pThumbs.includes("wedding: 'w1'") && pThumbs.includes('/api/portrait-style'), 'المعاينات بوجوه متنوعة موزّعة لا وجه واحد');
 assert.ok(studios.includes(".fashionCompareCheck:checked"), 'قارئ المقارنة القديم كما هو');
@@ -145,10 +145,10 @@ console.log('  ✓ v-edu-lab: الدرس الحي مبني ومقفول');
 
 // ⑬ المقاولات: خط الإنقاذ السابع + الجولة ثلاثية الأبعاد من هندسة المخطط.
 const conCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/construction-create.js'), 'utf8');
-assert.ok(conCreate.includes('v-construction-rescue') && conCreate.includes('openaiRescueImage') && conCreate.includes('openaiRescueText'), 'رفض Gemini يهبط لصور gpt-image-1 ونص gpt-4o-mini');
+assert.ok(conCreate.includes('v-construction-rescue') && conCreate.includes('openaiRescueImage') && conCreate.includes('openaiRescueText'), 'رفض Gemini يهبط لصور GPT Image ونص OpenAI الخفيف');
 assert.ok(conCreate.includes(".catch(() => null) /* v-construction-rescue"), 'سقوط النص لا يُسقط الصور');
 const conView = fs.readFileSync(path.join(__dirname, '../api/_lib/construction-view.js'), 'utf8');
-assert.ok(conView.includes('v-construction-rescue') && conView.includes('gpt-image-1'), 'الزوايا والغرف لها إنقاذ أيضًا');
+assert.ok(conView.includes('v-construction-rescue') && conView.includes('gpt-image-2.5-flare'), 'الزوايا والغرف لها إنقاذ أيضًا');
 const fp15 = fs.readFileSync(path.join(__dirname, '../js/app-15-floorplan.js'), 'utf8');
 assert.ok(fp15.includes('function omranTour3d') && fp15.includes('omranTour3d.toString()'), 'مشغّل الجولة يُحقن كدالة في صفحة المخطط');
 assert.ok(fp15.includes('t3dBtn') && fp15.includes('rotateX(90deg)') && fp15.includes('فصل الطوابق'), 'زر الجولة والجدران المرفوعة وفصل الطوابق');

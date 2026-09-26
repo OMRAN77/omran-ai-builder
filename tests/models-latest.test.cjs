@@ -94,10 +94,10 @@ test('٤. لا موديل موقوف أو يُوقف قريبًا في نداء 
   }
   for (const f of ['design-create', 'studio-create', 'portrait-style', 'fashion-create', 'face-lock']) {
     const s = read('api/_lib/' + f + '.js');
-    assert.ok(s.includes("append('model', 'gpt-image-2')"), f);
-    assert.ok(!s.includes("append('input_fidelity'"), f + ': gpt-image-2 يرفض input_fidelity بـ400');
+    assert.ok(s.includes("append('model', 'gpt-image-2.5-sunburst')"), f);
+    assert.ok(!s.includes("append('input_fidelity'"), f + ': Sunburst يرفض input_fidelity بـ400');
   }
-  assert.ok(read('api/_lib/studio-create.js').includes("images.length > 1 ? 'image[]' : 'image'"), 'عدّة صور على gpt-image-2 = image[]');
+  assert.ok(read('api/_lib/studio-create.js').includes("images.length > 1 ? 'image[]' : 'image'"), 'عدّة صور على Sunburst = image[]');
   assert.ok(read('api/_lib/image-merge.js').includes("process.env.IMAGE_EDIT_MODEL || 'gemini-3.1-flash-image'"), 'نانو ٢٫٥ يُوقف ٢ أكتوبر');
   const mi = read('api/_lib/maha-image.js');
   assert.ok(mi.includes("(__optForceEngine === 'nano') ? 'gemini-3.1-flash-image'"));
@@ -162,4 +162,22 @@ test('٨. OpenAI: المالك يختار من موديلاته الحيّة، �
   const checkout = read('js/app-06-checkout.js');
   assert.ok(checkout.includes("replace(/^openai\\//i, '')"), 'المفتاح الشخصي لا يرسل بادئة OpenRouter إلى OpenAI');
   assert.ok(checkout.includes("!/^gpt-[56]/i.test(model)"), 'الموديل الحديث لا يستقبل temperature غير المناسب');
+});
+
+test('٩. OpenAI الصوتيّ: Realtime 2.1 والتفريغ الحي وTTS الموثوق بدل الأسماء القديمة', () => {
+  const rt = read('api/_lib/realtime-session.js');
+  assert.ok(rt.includes("model: 'gpt-realtime-2.1'"), 'المكالمة على إصدار Realtime الحاليّ');
+  assert.ok(rt.includes("transcription: { model: 'gpt-live-transcribe' }"), 'التفريغ الحي على الموديل الموصى به');
+  assert.ok(rt.includes("model: 'gpt-realtime-2.1', mahaBudget"), 'العميل يستلم اسم الموديل الفعليّ');
+
+  const tts = read('api/_lib/tts.js');
+  assert.ok(tts.includes("model: 'gpt-4o-mini-tts'"), 'احتياط مها على أحدث TTS');
+  assert.ok(tts.includes("gender === 'male' ? 'cedar' : 'marin'"), 'أفضل صوتين موصى بهما');
+  assert.ok(tts.includes("const ttsModel = body.model === 'tts-1' ? 'tts-1' : 'gpt-4o-mini-tts';"), 'العامّ حديث افتراضيًّا مع توافق صريح للقديم');
+});
+
+test('١٠. OpenAI مع صورة يبقى في مسار Responses والأدوات بدل الهبوط للمسار القديم', () => {
+  const attach = read('js/app-09-attach.js');
+  assert.ok(attach.includes("(__effProv === 'claude' || __effProv === 'openai')"), 'كلود وOpenAI وحدهما يمران بصور الأدوات');
+  assert.ok(read('api/_lib/oa-direct.js').includes("type: 'input_image'"), 'الجسر يرسل الصورة إلى Responses');
 });

@@ -13,16 +13,17 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const mi = read('api/_lib/maha-image.js');
 const pipeline = read('api/_lib/image-pipeline.js');
 
-test('التعديل عبر GPT: يجرّب Sunburst الأحدث أوّلًا، ثمّ gpt-image-2، ثمّ gpt-image-1 آخر إنقاذ', () => {
-  const i = mi.indexOf("const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2', 'gpt-image-1'];");
+test('التعديل عبر GPT: يجرّب Sunburst الأحدث ثمّ gpt-image-2 فقط بلا الموديل الموقوف', () => {
+  const i = mi.indexOf("const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2'];");
   assert.ok(i > 0, 'قائمة تدرّج موديلات التعديل موجودة بالترتيب الصحيح');
   const block = mi.slice(i, i + 3000); // v-safety-model-fallback: شرط رفض السلامة الجديد وسّع المسافة أكثر قبل continue
-  assert.ok(block.includes("if (m === 'gpt-image-1') form.append('input_fidelity', 'high');"), 'input_fidelity لـgpt-image-1 وحده — الأحدث يفرضها ويرفضها بـ400');
+  assert.ok(!block.includes("form.append('input_fidelity'"), 'الموديلات الحديثة تفرض الأمانة وترفض input_fidelity');
   assert.ok(block.includes('modelUnavailable') && block.includes('continue'), 'ينتقل للموديل التالي عند 400/404 يذكر الموديل فقط');
 });
 
-test('التوليد عبر GPT: يجرّب Flare الأحدث أوّلًا، ثمّ gpt-image-2، ثمّ gpt-image-1', () => {
-  assert.ok(mi.includes("const genModels = ['gpt-image-2.5-flare', 'gpt-image-2', 'gpt-image-1'];"), 'قائمة تدرّج موديلات التوليد بالترتيب الصحيح');
+test('التوليد عبر GPT: يجرّب Flare الأحدث ثمّ gpt-image-2 فقط بلا الموديل الموقوف', () => {
+  assert.ok(mi.includes("const genModels = ['gpt-image-2.5-flare', 'gpt-image-2'];"), 'قائمة تدرّج موديلات التوليد بالترتيب الصحيح');
+  assert.ok(!mi.includes("'gpt-image-1'"), 'الموديل الموقوف خرج من المسار الحيّ نهائيًّا');
 });
 
 test('نانو الاحتياطيّ (بعد فشل المحرّك الأساسيّ): Nano Banana 2 (gemini-3.1-flash-image) قبل ٢٫٥', () => {
@@ -42,6 +43,26 @@ test('الخطّ الأساسيّ (برو) يبقى الأعلى مستوى من
 test('image-pipeline.js (التجريبيّ خلف IMAGE_PIPELINE=1) محدَّث لنفس الموديل الأحدث', () => {
   assert.match(pipeline, /name: "gpt-image-2\.5-flare"/);
   assert.match(pipeline, /model: "gpt-image-2\.5-flare"/);
+});
+
+test('كلّ استوديوهات OpenAI المتخصّصة على 2.5: Sunburst للتعديل وFlare للتوليد', () => {
+  const expected = {
+    'api/_lib/studio-preview.js': ['gpt-image-2.5-flare'],
+    'api/_lib/construction-view.js': ['gpt-image-2.5-flare'],
+    'api/_lib/face-lock.js': ['gpt-image-2.5-sunburst'],
+    'api/_lib/fashion-create.js': ['gpt-image-2.5-sunburst', 'gpt-image-2.5-flare'],
+    'api/_lib/image-merge.js': ['gpt-image-2.5-sunburst', 'gpt-image-2.5-flare'],
+    'api/_lib/design-create.js': ['gpt-image-2.5-sunburst', 'gpt-image-2.5-flare'],
+    'api/_lib/construction-create.js': ['gpt-image-2.5-flare'],
+    'api/_lib/stamps.js': ['gpt-image-2.5-sunburst'],
+    'api/_lib/studio-create.js': ['gpt-image-2.5-sunburst'],
+    'api/_lib/adimage.js': ['gpt-image-2.5-sunburst', 'gpt-image-2.5-flare'],
+    'api/_lib/portrait-style.js': ['gpt-image-2.5-sunburst'],
+  };
+  for (const [file, models] of Object.entries(expected)) {
+    const src = read(file);
+    for (const model of models) assert.ok(src.includes(model), file + ': ' + model);
+  }
 });
 
 test('لا كلود في مسار توليد/تحرير الصور الحيّ: لا anthropic ولا claude في maha-image.js', () => {

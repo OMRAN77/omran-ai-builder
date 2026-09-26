@@ -472,15 +472,15 @@ module.exports = async (req, res) => {
       /* v-gpt-2.5 (٢٠ سبتمبر ٢٠٢٦، طلب المالك: «رقّهم كلهم للأعلى» — GPT/نانو بلا كلود
          في الصور): OpenAI أصدرت GPT Image 2.5 قبل هذا القرار بـ١٢ يومًا — Sunburst
          (الأدقّ في التحكّم بالتعديل) وFlare (أسرع من gpt-image-2 بجودة أعلى للتوليد) —
-         وgpt-image-1 (كان المثبَّت وحده هنا) يُوقَف نهائيًّا ٢٣ أكتوبر ٢٠٢٦. الأحدث أوّلًا
-         مع تدرّج نزولًا لما يبقى متاحًا لمفتاح المالك. Sunburst وgpt-image-2 يفرضان أمانة
-         عالية دائمًا ويرفضان input_fidelity بخطأ 400 لو أُرسل؛ gpt-image-1 وحده يحتاجه. */
+         وgpt-image-1 يُوقَف نهائيًّا ٢٣ أكتوبر ٢٠٢٦ فخرج من المسار الحيّ. الأحدث أوّلًا
+         مع تدرّج إلى gpt-image-2 لما يبقى متاحًا لمفتاح المالك؛ كلاهما يفرض أمانة
+         عالية دائمًا ويرفض input_fidelity بخطأ 400 لو أُرسل. */
       /* v-edit-rescue (لقطة بطاقة التجنيد «غش»): التعديل كان بلا خط إنقاذ —
          إذا انشغل Gemini فشل كل تعديل صورة في المحادثة وسقط العميل على شريط الكانفس. */
       if (__src) {
         const extras = __refs;
         const bytes = Buffer.from(__src.data, 'base64');
-        const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2', 'gpt-image-1'];
+        const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2'];
         for (let i = 0; i < editModels.length; i++) {
           const m = editModels[i];
           try {
@@ -488,9 +488,6 @@ module.exports = async (req, res) => {
             form.append('model', m);
             form.append('prompt', __gptPrompt);
             form.append('size', 'auto');
-            /* v-hifi-edit: gpt-image-1 وحده يحتاج input_fidelity=high صراحةً ليحفظ نصوص
-               وشعارات المصدر؛ الأحدث (Sunburst وgpt-image-2) يفرضها دائمًا. */
-            if (m === 'gpt-image-1') form.append('input_fidelity', 'high');
             form.append('quality', 'high');
             /* v-gpt-multi-merge-fix (لقطة المالك ٢١ سبتمبر: «تعذّر توليد الصورة الآن — 400 Duplicate
                parameter: 'image'»): v-gpt-multi-merge افترض أنّ images/edits يقبل حقل `image` مكرَّرًا
@@ -498,9 +495,9 @@ module.exports = async (req, res) => {
                ٢/٢٫٥) يرفض بـ400 فورًا لو تكرّر اسم الحقل. الاتفاقيّة الصحيحة لتعدّد الملفّات في
                multipart/form-data لهذه النقطة هي `image[]` (صيغة مصفوفة)، لا `image` مكرّرة — تُستعمل
                فقط حين توجد صور دمج فعليّة (extras)؛ صورة واحدة تبقى بحقل `image` المفرد كما كان. */
-            const __imgField = (extras.length && m !== 'gpt-image-1') ? 'image[]' : 'image';
+            const __imgField = extras.length ? 'image[]' : 'image';
             form.append(__imgField, new Blob([bytes], { type: __src.mime || editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
-            if (extras.length && m !== 'gpt-image-1') {
+            if (extras.length) {
               for (const x of extras) form.append('image[]', new Blob([Buffer.from(x.data, 'base64')], { type: x.mime || 'image/jpeg' }), 'ref.jpg');
             }
             if (exactTextEdit) {
@@ -540,7 +537,7 @@ module.exports = async (req, res) => {
           signal: AbortSignal.timeout(__to(90000)),
           body: JSON.stringify({ model, prompt: __gptPrompt, size, quality: 'high', n: 1 }),
         });
-        const genModels = ['gpt-image-2.5-flare', 'gpt-image-2', 'gpt-image-1'];
+        const genModels = ['gpt-image-2.5-flare', 'gpt-image-2'];
         for (let i = 0; i < genModels.length; i++) {
           const r = await genOnce(genModels[i]);
           if (r.ok) {

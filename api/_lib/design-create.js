@@ -14,7 +14,7 @@ async function openaiDesignEdit(promptText, imageBase64, mimeType) {
   try {
     const bytes = Buffer.from(imageBase64, 'base64');
     const form = new FormData();
-    form.append('model', 'gpt-image-2'); /* v-models-latest: gpt-image-1 يُوقف ٢٣ أكتوبر ٢٠٢٦؛ gpt-image-2 يرفض input_fidelity (دقّته عالية دائمًا) */
+    form.append('model', 'gpt-image-2.5-sunburst');
     form.append('prompt', String(promptText).slice(0, 3900));
     form.append('size', 'auto');
     form.append('quality', 'high');
@@ -235,7 +235,7 @@ module.exports = async (req, res) => {
       if (vSrc && vSrc.length > 64) {
         try {
           const fd = new FormData();
-          fd.append('model', 'gpt-image-2');
+          fd.append('model', 'gpt-image-2.5-sunburst');
           fd.append('prompt', 'Create a new variation of this interior photograph. Keep the same overall design style, color palette, materials and camera angle, but vary the furniture arrangement and the decorative details.' + notesPart + ' Photorealistic architectural photography. No people, no text, no watermark, no logo.');
           fd.append('size', '1536x1024');
           /* v-decor-hq (المالك: «الصور لم تعجبني»): أعلى جودة بدل medium وضغط أخفّ */
@@ -268,7 +268,7 @@ module.exports = async (req, res) => {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-image-2',
+          model: 'gpt-image-2.5-flare',
           prompt: base + ' Camera: ' + VIEWS[i % VIEWS.length] + '.',
           size: '1536x1024',
           /* v-decor-hq (المالك: «الصور لم تعجبني»): أعلى جودة بدل medium وضغط أخفّ */
