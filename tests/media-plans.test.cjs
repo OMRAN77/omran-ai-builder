@@ -150,8 +150,8 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     const s = read('i18n/' + l + '.js');
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=670'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=692'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=671'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=693'"));
 });
 
 test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرصيد على المحرّك السريع، و«جودة عالية» في الطلب أو الإعداد = عالية', async () => {
@@ -276,7 +276,9 @@ test('٩. اشتراك مها (v-maha-plans): ٤٦ · ٧٥ · ٤٧٨ دقيقة�
 
 test('١٠. «حسابي» (v-acct-media): سطر لكلّ اشتراك ساري تحت النقاط، ولا شيء لغير المشترك', () => {
   const html = read('js/partials-settings.js');
-  assert.ok(html.indexOf('id="acctMediaBox"') > html.indexOf('id="acctPointsBox"') && html.indexOf('id="acctMediaBox"') < html.indexOf('id="acctPointsLowWarn"'), 'تحت النقاط');
+  // v-acct-recovery: صندوق النقاط حُذف بطلب المالك، فالاشتراكات أوّل ما تحت «مسجّل باسم».
+  assert.ok(!html.includes('id="acctPointsBox"'), 'صندوق النقاط محذوف');
+  assert.ok(html.indexOf('id="acctMediaBox"') > html.indexOf('id="acctSignedInAs"') && html.indexOf('id="acctMediaBox"') < html.indexOf('id="acctPointsLowWarn"'), 'تحت اسم الحساب');
   const co = read('js/app-06-checkout.js');
   const src = co.slice(co.indexOf('function renderAcctMedia('), co.indexOf('async function refreshAcctPoints('));
   const box = { style: {}, innerHTML: '' };
@@ -290,5 +292,5 @@ test('١٠. «حسابي» (v-acct-media): سطر لكلّ اشتراك ساري
   render({});
   assert.equal(box.style.display, 'none');
   assert.equal(box.innerHTML, '');
-  assert.match(co, /box\.style\.display = 'flex';\n {4}renderAcctMedia\(d\.media\);/);
+  assert.match(co, /if\(!\(d && d\.ok && d\.authed\)\)\{[^\n]*\}\n {4}renderAcctMedia\(d\.media\);/);
 });

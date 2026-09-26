@@ -251,7 +251,28 @@ const $ = s => document.querySelector(s);
     const rememberRow = $('#authRememberRow');
     emailRow.style.display = (m === 'signup') ? 'flex' : 'none';
     userInput.readOnly = (m === 'resetToken');
-    if(m === 'reset'){
+    const userRow = $('#authUserRow'), userLabelText = $('#authUserLabelText');
+    const phoneRow = $('#authPhoneRow'), phoneCodeRow = $('#authPhoneCodeRow'), usePhoneLink = $('#authUsePhoneLink');
+    if(userRow) userRow.style.display = (m === 'phoneRecover') ? 'none' : 'flex';
+    if(userLabelText){
+      const k = (m === 'forgotEmail') ? 'authUserOrEmailLabel' : 'authUsernameLabel';
+      userLabelText.setAttribute('data-i18n', k);
+      if(t[k]) userLabelText.textContent = t[k];
+    }
+    if(phoneRow) phoneRow.style.display = (m === 'phoneRecover') ? 'flex' : 'none';
+    if(phoneCodeRow) phoneCodeRow.style.display = (m === 'phoneRecover') ? 'flex' : 'none';
+    if(usePhoneLink) usePhoneLink.style.display = (m === 'forgotEmail') ? '' : 'none';
+    if(m === 'phoneRecover'){
+      tabsRow.style.display = 'none';
+      recoveryRow.style.display = 'none';
+      passwordRow.style.display = 'flex';
+      passLabelText.textContent = t.authNewPasswordLabel;
+      forgotLink.style.display = 'none';
+      useCodeLink.style.display = 'none';
+      backToLoginLink.style.display = '';
+      submitBtn.textContent = t.authSubmitReset;
+      if(rememberRow) rememberRow.style.display = 'none';
+    } else if(m === 'reset'){
       tabsRow.style.display = 'none';
       recoveryRow.style.display = 'flex';
       passwordRow.style.display = 'flex';
@@ -297,6 +318,35 @@ const $ = s => document.querySelector(s);
   forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
   useCodeLink.onclick = (e) => { e.preventDefault(); setMode('reset'); };
   backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
+  const usePhoneLinkEl = $('#authUsePhoneLink');
+  if(usePhoneLinkEl) usePhoneLinkEl.onclick = (e) => { e.preventDefault(); setMode('phoneRecover'); };
+  const authPhoneSendBtn = $('#authPhoneSendBtn');
+  if(authPhoneSendBtn){
+    authPhoneSendBtn.onclick = async () => {
+      const t2 = curT();
+      const phone = ($('#authPhone').value || '').trim();
+      errBox.textContent = '';
+      infoMsg.style.display = 'none';
+      if(!phone){ errBox.textContent = t2.authPhoneInvalid || ''; return; }
+      authPhoneSendBtn.disabled = true;
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'phone-otp-request', purpose: 'recover', phone, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
+        });
+        const data = await res.json();
+        if(!res.ok || data.error){ errBox.textContent = data.error || t2.acctGenericError || ''; return; }
+        infoMsg.textContent = data.message || '';
+        infoMsg.style.display = 'block';
+        const codeEl = $('#authPhoneCode'); if(codeEl) codeEl.focus();
+      } catch(e){
+        errBox.textContent = t2.acctNetError || '';
+      } finally {
+        authPhoneSendBtn.disabled = false;
+      }
+    };
+  }
 
   const togglePassBtn = $('#authTogglePassBtn');
   if(togglePassBtn){
@@ -680,6 +730,36 @@ const $ = s => document.querySelector(s);
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
 
+  /* v-acct-recovery (سؤال عمران «كيف أعرف أنّي داخل الحساب؟»): شريحة دائمة أسفل
+     الشريط الجانبيّ على الحاسوب — صورتك واسمك ونقطة خضراء وتفتح «حسابي»، أو
+     «تسجيل الدخول» للضيف. */
+  function syncUserChip(loggedIn){
+    const chip = $('#omranUserChip');
+    if(!chip) return;
+    const t = curT();
+    const name = loggedIn ? (authGet('aiapp_username') || '') : '';
+    const av = loggedIn ? (localStorage.getItem('aiapp_avatar') || '') : '';
+    const img = chip.querySelector('.ucAv'), em = chip.querySelector('.ucEm');
+    const nm = chip.querySelector('.ucName'), dot = chip.querySelector('.ucDot');
+    chip.classList.toggle('ucIn', !!loggedIn);
+    if(img && em){
+      if(av){ img.src = av; img.style.display = 'block'; em.style.display = 'none'; }
+      else { img.removeAttribute('src'); img.style.display = 'none'; em.style.display = ''; em.textContent = loggedIn ? '👤' : '🔐'; }
+    }
+    if(nm){
+      if(loggedIn) nm.removeAttribute('data-i18n');
+      else nm.setAttribute('data-i18n', 'sbUserChipLogin');
+      nm.textContent = loggedIn ? name : (t.sbUserChipLogin || 'تسجيل الدخول');
+    }
+    if(dot) dot.style.display = loggedIn ? '' : 'none';
+    chip.title = loggedIn ? ((t.sbUserChipTitle || '') + ' — ' + name) : (t.sbUserChipLogin || '');
+    chip.onclick = () => {
+      if(authGet('aiapp_auth_token')){
+        if(typeof window.showSettingsPage === 'function') window.showSettingsPage('accountSection');
+      } else { setMode('login'); showOverlay(); }
+    };
+  }
+
   function setAuthToggleUI(loggedIn){
     const t = curT();
     // v214: قبل الدخول = زر «دخول» في الهيدر فقط؛ بعد الدخول = الاسم داخل قائمة ⋮ + خروج آخر خانة
@@ -706,6 +786,7 @@ const $ = s => document.querySelector(s);
     /* v-auth-optional-3 (أمر عمران ٢٩ أغسطس): الاسم أيضًا يُحذف من الهيدر —
        هويّة الحساب والخروج صارا في الإعدادات → حسابي، وزر الإضاءة يأخذ
        مكان الاسم في زاوية الهيدر تلقائيًا. */
+    syncUserChip(loggedIn);
     const acctNameWrap = $('#acctSignedInAs');
     const acctNameEl = $('#acctSignedInAsName');
     if(acctNameWrap){
@@ -1009,6 +1090,7 @@ const $ = s => document.querySelector(s);
       if(avatar){ mAv.src = avatar; mAv.style.display = 'inline-block'; mFb.style.display = 'none'; }
       else { mAv.style.display = 'none'; mFb.style.display = 'inline-flex'; }
     }
+    syncUserChip(!!authGet('aiapp_auth_token'));
   }
 
   function showRecoveryModal(code, username, avatar){
@@ -1069,9 +1151,11 @@ const $ = s => document.querySelector(s);
       return;
     }
 
-    if(mode === 'forgotEmail'){
-      if(!username){
-        errBox.textContent = isEn ? 'Please enter your username' : 'الرجاء إدخال اسم المستخدم';
+    if(mode === 'phoneRecover'){
+      const phone = ($('#authPhone').value || '').trim();
+      const otp = ($('#authPhoneCode').value || '').trim();
+      if(!phone || !otp || !password){
+        errBox.textContent = isEn ? 'Please fill in all fields' : 'الرجاء تعبئة جميع الحقول';
         return;
       }
       submitBtn.disabled = true;
@@ -1079,7 +1163,38 @@ const $ = s => document.querySelector(s);
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'forgotPassword', username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
+          body: JSON.stringify({ action: 'phone-otp-verify', purpose: 'recover', phone, otp, newPassword: password, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
+        });
+        const data = await res.json();
+        if(!res.ok || data.error){
+          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+          return;
+        }
+        authSet('aiapp_auth_token', data.token);
+        passInput.value = '';
+        onAuthed(data.username, data.avatar);
+      } catch(e){
+        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+      } finally {
+        submitBtn.disabled = false;
+      }
+      return;
+    }
+
+    if(mode === 'forgotEmail'){
+      if(!username){
+        errBox.textContent = isEn ? 'Enter your username or email' : 'أدخل اسم المستخدم أو الإيميل';
+        return;
+      }
+      const byEmail = username.includes('@');
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(byEmail
+            ? { action: 'forgotPassword', email: username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }
+            : { action: 'forgotPassword', username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
         });
         const data = await res.json();
         if(!res.ok || data.error){
@@ -1133,7 +1248,7 @@ const $ = s => document.querySelector(s);
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: mode, username, password, lang: (localStorage.getItem('aiapp_lang') || 'ar'), ref: (mode === 'signup' ? (localStorage.getItem('aiapp_pending_ref') || undefined) : undefined) }),
+        body: JSON.stringify({ action: mode, username, password, email: (mode === 'signup' ? ((($('#authEmail') || {}).value || '').trim() || undefined) : undefined), lang: (localStorage.getItem('aiapp_lang') || 'ar'), ref: (mode === 'signup' ? (localStorage.getItem('aiapp_pending_ref') || undefined) : undefined) }),
       });
       const data = await res.json();
       if(!res.ok || data.error){
@@ -1182,7 +1297,10 @@ const $ = s => document.querySelector(s);
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'getProfile', token }),
         }).then(r => r.json()).then(data => {
-          if(data && data.ok) acctEmail.value = data.email || '';
+          if(data && data.ok){
+            acctEmail.value = data.email || '';
+            const ph = $('#acctPhone'); if(ph) ph.value = data.phone || '';
+          }
         }).catch(() => {});
       }
     }
@@ -1222,6 +1340,45 @@ const $ = s => document.querySelector(s);
         acctEmailSaveBtn.disabled = false;
       }
     };
+  }
+  const acctPhoneSendBtn = $('#acctPhoneSendBtn');
+  const acctPhoneVerifyBtn = $('#acctPhoneVerifyBtn');
+  async function acctPhoneCall(btn, payload, onOk){
+    const t2 = curT();
+    const msg = $('#acctPhoneMsg');
+    const phone = ($('#acctPhone').value || '').trim();
+    if(!phone){ msg.textContent = t2.authPhoneInvalid || ''; msg.style.color = '#ef4444'; return; }
+    msg.textContent = t2.acctSaving; msg.style.color = 'var(--muted,#999)';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ purpose: 'link', token: authGet('aiapp_auth_token'), phone, lang: (localStorage.getItem('aiapp_lang') || 'ar') }, payload)),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){ msg.textContent = data.error || t2.acctGenericError; msg.style.color = '#ef4444'; return; }
+      onOk(data, msg, t2);
+    } catch(e){
+      msg.textContent = t2.acctNetError; msg.style.color = '#ef4444';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  if(acctPhoneSendBtn){
+    acctPhoneSendBtn.onclick = () => acctPhoneCall(acctPhoneSendBtn, { action: 'phone-otp-request' }, (data, msg) => {
+      msg.textContent = data.message || ''; msg.style.color = '#22c55e';
+      $('#acctPhoneCodeWrap').style.display = 'flex';
+      $('#acctPhoneCode').focus();
+    });
+  }
+  if(acctPhoneVerifyBtn){
+    acctPhoneVerifyBtn.onclick = () => acctPhoneCall(acctPhoneVerifyBtn, { action: 'phone-otp-verify', otp: ($('#acctPhoneCode').value || '').trim() }, (data, msg, t2) => {
+      msg.textContent = t2.acctSaved; msg.style.color = '#22c55e';
+      $('#acctPhoneCodeWrap').style.display = 'none';
+      $('#acctPhoneCode').value = '';
+      if(data.phone) $('#acctPhone').value = data.phone;
+    });
   }
   document.addEventListener('DOMContentLoaded', prefillAccountFields);
   // Also refresh right before the settings dialog opens, in case the user

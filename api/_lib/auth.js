@@ -269,6 +269,75 @@ async function sendResetEmail(toEmail, username, resetToken, isEn) {
   return sendMail(toEmail, subject, html);
 }
 
+// مالك البريد الحيّ من الفهرس: مدخل يشير إلى حساب محذوف أو غيّر بريده لا يُحسب.
+async function emailOwner(emailKey) {
+  try {
+    const idx = await kvGetJSON('db/email-index/' + emailKey);
+    if (!idx || !idx.username) return null;
+    const user = await getUserOnce(idx.username);
+    if (user && !user.deleted && user.email === emailKey) return { key: String(idx.username), user };
+  } catch (e) { logError('auth:email-owner', e); }
+  return null;
+}
+
+// الهاتف بصيغة دوليّة E.164 فقط (+ ثمّ ٨–١٥ رقمًا)؛ ٠٠ تُقبل بديلًا عن +.
+function normalizePhone(raw) {
+  if (raw == null) return null;
+  let s = String(raw).replace(/[\s\-().]/g, '');
+  if (s.startsWith('00')) s = '+' + s.slice(2);
+  return /^\+[1-9]\d{7,14}$/.test(s) ? s : null;
+}
+
+async function phoneOwner(phone) {
+  try {
+    const idx = await kvGetJSON('db/phone-index/' + phone);
+    if (!idx || !idx.username) return null;
+    const user = await getUserOnce(idx.username);
+    if (user && !user.deleted && user.phone === phone) return { key: String(idx.username), user };
+  } catch (e) { logError('auth:phone-owner', e); }
+  return null;
+}
+
+// Twilio Verify يولّد الرمز ويخزّنه ويتحقّق منه؛ المفاتيح تُقرأ عند النداء لا عند التحميل.
+// null = الخدمة غير مهيّأة.
+async function twilioVerify(endpoint, params) {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const tok = process.env.TWILIO_AUTH_TOKEN;
+  const svc = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (!sid || !tok || !svc) return null;
+  try {
+    const r = await fetch('https://verify.twilio.com/v2/Services/' + encodeURIComponent(svc) + '/' + endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(sid + ':' + tok).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(params).toString(),
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) logError('auth:twilio', new Error('twilio_' + r.status), { status: r.status });
+    return { ok: r.ok, status: data && data.status };
+  } catch (e) {
+    logError('auth:twilio', e);
+    return { ok: false, status: null };
+  }
+}
+
+async function rateLimited(rateKey, limit, windowMs) {
+  const now = Date.now();
+  let rate = null;
+  try { rate = await kvGetJSON(rateKey); } catch (e) { logError('auth:rate-read', e); rate = null; }
+  if (rate && rate.windowStart && (now - rate.windowStart) < windowMs) {
+    if ((rate.count || 0) >= limit) return Math.ceil((rate.windowStart + windowMs - now) / 60000);
+    rate = { windowStart: rate.windowStart, count: (rate.count || 0) + 1 };
+  } else {
+    rate = { windowStart: now, count: 1 };
+  }
+  await kvPutJSON(rateKey, rate);
+  return 0;
+}
+
 function genNumericOtp() {
   // crypto.randomInt is rejection-free and avoids modulo bias.
   return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
@@ -321,7 +390,7 @@ module.exports = async (req, res) => {
     const {
       action, username, password, token, recoveryCode, newPassword,
       newUsername, currentPassword, avatarDataUrl, lang,
-      email, resetToken, otp,
+      email, resetToken, otp, phone, purpose,
     } = body;
 
     const isEn = lang === 'en';
@@ -334,7 +403,8 @@ module.exports = async (req, res) => {
       [password, newPassword, currentPassword, recoveryCode].some(v => v && String(v).length > 128) ||
       (otp && String(otp).length > 16) ||
       (resetToken && String(resetToken).length > 256) ||
-      (email && String(email).length > 254);
+      (email && String(email).length > 254) ||
+      (phone && String(phone).length > 32);
     if (tooLong) {
       res.status(400).json({ error: m('المدخلات طويلة جدًا', 'Input too long') });
       return;
@@ -357,6 +427,11 @@ module.exports = async (req, res) => {
       }
       if (email && !isValidEmail(email)) {
         res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
+        return;
+      }
+      // الإيميل كالاسم: حساب واحد لكلّ بريد، وإلّا ضاع الاسترجاع بالبريد بين حسابين.
+      if (email && await emailOwner(String(email).trim().toLowerCase())) {
+        res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.') });
         return;
       }
       const { salt, hash } = hashPassword(password);
@@ -506,7 +581,7 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
-      res.status(200).json({ ok: true, email: user.email || null });
+      res.status(200).json({ ok: true, email: user.email || null, phone: user.phone || null });
       return;
     }
 
@@ -548,8 +623,37 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'forgotPassword') {
+      // الاسترجاع بالإيميل وحده: من نسي اسمه يكتب بريده. الردّ واحد وُجد الحساب أم لا
+      // كي لا يصير النموذج أداة لكشف البريد المسجّل.
+      const byEmail = email || (username && String(username).includes('@') ? username : null);
+      if (byEmail) {
+        const emailKey = String(byEmail).trim().toLowerCase();
+        if (!isValidEmail(emailKey)) {
+          res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
+          return;
+        }
+        if (!RESEND_API_KEY) {
+          res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin') });
+          return;
+        }
+        const wait = await rateLimited('db/forgot-rate/' + emailKey, 3, 15 * 60 * 1000);
+        if (wait) {
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') });
+          return;
+        }
+        const owner = await emailOwner(emailKey);
+        if (owner) {
+          const rt = crypto.randomBytes(24).toString('hex');
+          owner.user.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');
+          owner.user.resetTokenExpiry = Date.now() + 1000 * 60 * 30;
+          await putUser(owner.key, owner.user);
+          await sendResetEmail(emailKey, owner.user.username, rt, isEn);
+        }
+        res.status(200).json({ ok: true, message: m('إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.', 'If this email is linked to an account, a reset link will arrive within minutes.') });
+        return;
+      }
       if (!username) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم', 'Enter your username') });
+        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل', 'Enter your username or email') });
         return;
       }
       const key = String(username).trim().toLowerCase();
@@ -807,6 +911,101 @@ module.exports = async (req, res) => {
       }
 
       res.status(200).json({ ok: true, token: makeToken(userKey), username: user.username, avatar: user.avatar || null, isNew });
+      return;
+    }
+
+    // 📱 الهاتف: purpose=link يربط رقمًا بالحساب المسجَّل، وpurpose=recover يعيد
+    // كلمة المرور لمن نسي اسمه وبريده. كلّ رسالة تكلّف مالًا، فلا تُرسل لرقم غير
+    // مرتبط عند الاسترجاع، والحدّ ثلاث لكلّ رقم في عشر دقائق.
+    if (action === 'phone-otp-request' || action === 'phone-otp-verify') {
+      const ph = normalizePhone(phone);
+      if (!ph) {
+        res.status(400).json({ error: m('اكتب الرقم بصيغة دولية مثل +9715xxxxxxxx', 'Enter the number in international format, e.g. +9715xxxxxxxx') });
+        return;
+      }
+      if (purpose !== 'link' && purpose !== 'recover') {
+        res.status(400).json({ error: 'Unknown purpose' });
+        return;
+      }
+      if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_VERIFY_SERVICE_SID) {
+        res.status(503).json({ error: m('خدمة الرسائل غير مهيأة — أبلغ مسؤول التطبيق', 'SMS service is not configured — contact the app admin') });
+        return;
+      }
+      let me = null;
+      if (purpose === 'link') {
+        me = verifyToken(token);
+        if (!me) {
+          res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
+          return;
+        }
+        const owner = await phoneOwner(ph);
+        if (owner && owner.key !== me) {
+          res.status(409).json({ error: m('هذا الرقم مرتبط بحساب آخر.', 'This number is already linked to another account.') });
+          return;
+        }
+      }
+
+      if (action === 'phone-otp-request') {
+        const wait = await rateLimited('db/phone-rate/' + ph, 3, 10 * 60 * 1000);
+        if (wait) {
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') });
+          return;
+        }
+        const generic = m('إن كان الرقم مرتبطًا بحساب فسيصلك رمز التحقق برسالة.', 'If this number is linked to an account, you will receive a code by SMS.');
+        if (purpose === 'recover' && !(await phoneOwner(ph))) {
+          res.status(200).json({ ok: true, message: generic });
+          return;
+        }
+        const r = await twilioVerify('Verifications', { To: ph, Channel: 'sms', Locale: isEn ? 'en' : 'ar' });
+        if (!r || !r.ok) {
+          res.status(502).json({ error: m('تعذر إرسال الرسالة، حاول لاحقًا', 'Could not send the SMS, try again later') });
+          return;
+        }
+        res.status(200).json({ ok: true, message: purpose === 'recover' ? generic : m('تم إرسال رمز التحقق', 'Verification code sent') });
+        return;
+      }
+
+      if (!otp || !/^\d{4,10}$/.test(String(otp).trim())) {
+        res.status(400).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        return;
+      }
+      if (purpose === 'recover' && (!newPassword || String(newPassword).length < MIN_PASSWORD)) {
+        res.status(400).json({ error: m('كلمة المرور الجديدة ' + MIN_PASSWORD + ' أحرف على الأقل', 'New password must be at least ' + MIN_PASSWORD + ' characters') });
+        return;
+      }
+      const check = await twilioVerify('VerificationCheck', { To: ph, Code: String(otp).trim() });
+      if (!check || !check.ok || check.status !== 'approved') {
+        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        return;
+      }
+
+      if (purpose === 'link') {
+        const user = await getUser(me);
+        if (!user || user.deleted) {
+          res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
+          return;
+        }
+        user.phone = ph;
+        await putUser(me, user);
+        await kvPutJSON('db/phone-index/' + ph, { username: me, at: Date.now() });
+        res.status(200).json({ ok: true, phone: ph });
+        return;
+      }
+
+      const owner = await phoneOwner(ph);
+      if (!owner) {
+        res.status(404).json({ error: m('لا يوجد حساب مرتبط بهذا الرقم', 'No account is linked to this number') });
+        return;
+      }
+      if (owner.user.banned) {
+        res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true });
+        return;
+      }
+      const { salt, hash } = hashPassword(newPassword);
+      owner.user.salt = salt;
+      owner.user.hash = hash;
+      await putUser(owner.key, owner.user);
+      res.status(200).json({ ok: true, token: makeToken(owner.key), username: owner.user.username, avatar: owner.user.avatar || null });
       return;
     }
 

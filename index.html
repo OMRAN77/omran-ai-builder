@@ -315,6 +315,18 @@ html[data-mode="light"] .msg-text a{ color:#b8860b !important; }
     border-top: 0 !important;
     background-image: none !important;
   }
+  html:not(.mobile-ui) body #omranUserChip{
+    order: 8; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+    margin: 4px 10px 2px; padding: 7px 10px; min-width: 0;
+    border: 1px solid rgba(212,175,55,.28); border-radius: 10px;
+    background: rgba(212,175,55,.06); color: var(--text);
+    font-size: 13px; font-weight: 600; cursor: pointer; text-align: start;
+  }
+  html:not(.mobile-ui) body #omranUserChip:hover{ background: rgba(212,175,55,.12); }
+  #omranUserChip .ucAv{ width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+  #omranUserChip .ucEm{ width: 26px; text-align: center; font-size: 16px; flex: 0 0 auto; }
+  #omranUserChip .ucName{ flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #omranUserChip .ucDot{ width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.18); flex: 0 0 auto; }
   html:not(.mobile-ui) body #omranNewChatBtn::after{ content: none !important; }
   /* الحدّ يعود حيث توجد لوحة فعلًا: الكود والمعاينة مفتوحان. */
   html:not(.mobile-ui) body:not(.waCollapsedMode) #workarea{
@@ -639,7 +651,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script src="/js/partials-core.js?v=644"></script>
+<script src="/js/partials-core.js?v=645"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
 <script src="/js/design-sels.js?v=560"></script>
@@ -752,6 +764,8 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
       </div>
     </div>
     <div id="history"></div>
+    <!-- v-acct-recovery: شريحة «أنت داخل الحساب» — الحاسوب فقط، تُملأ من syncUserChip -->
+    <button type="button" id="omranUserChip" hidden><img class="ucAv" alt="" style="display:none;"><span class="ucEm">🔐</span><span class="ucName" data-i18n="sbUserChipLogin">تسجيل الدخول</span><span class="ucDot" style="display:none;"></span></button>
     <div id="omranSidebarFoot">
       <button type="button" class="omIconBtn" id="omranFootDelete" title="حذف الكل" data-i18n-title="sbDeleteAll"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
       <button type="button" class="omIconBtn" id="omranFootSettings" title="الإعدادات" data-i18n-title="settings"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
@@ -968,12 +982,12 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=670"></script>
+<script src="/js/partials-settings.js?v=671"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=044fb645"></script>
+    <script defer src="/js/app.bundle.js?v=f764536c"></script>
     <script defer src="/js/modes.js?v=m250925b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
