@@ -23,6 +23,7 @@ const SPEC = {
   MISTRAL_API_KEY:        ['feature', 'محرّك بديل · السلسلة المجانية'],
   // v-tiers: طبقات المحادثة — كلّها لها بديل آمن في tier.js
   FREE_DAILY:             ['tunable', 'بديل: ٥ — رسائل المسجَّل المجاني يوميًّا (v-plan-routing)'],
+  FREE_FIRST_DAY:         ['tunable', 'بديل: ٢٠ — رسائل المسجَّل المجاني في يوم تسجيله (v-free-first-day)'],
   GUEST_DAILY:            ['tunable', 'بديل: ٣ — رسائل الضيف يوميًّا'],
   SUB_DAILY_BASIC:        ['tunable', 'بديل: ٥٠ — سقف حماية باقة عادية'],
   SUB_DAILY_PRO:          ['tunable', 'بديل: ١٠٠ — سقف حماية باقة برو (v-plan-routing)'],
