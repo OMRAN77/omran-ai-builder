@@ -4812,8 +4812,6 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
 function mahaPersonaName(){
   var isAr = false;
   try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { /* guard-ok: unavailable language state falls back to English. */ }
-  /* v-maha-pause: مها موقوفة مؤقتًا لغير المالك — كل نصوص {voice} تصير محايدة */
-  if (window.__mahaPaused) return isAr ? 'المساعد الصوتي' : 'the voice assistant';
   var male = false;
   try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage falls back to the default persona. */ }
   if (male) return isAr ? 'عبدالله' : 'Abdullah';
@@ -15591,7 +15589,7 @@ async function mahaStartRealtimeCall(){
   const tokenData = await tokenRes.json().catch(() => ({}));
   if(tokenRes.status === 402){
     // رصيد النقاط غير كافٍ أو انتهت التجربة المجانية — لا fallback هنا
-    throw new Error('__points__');
+    throw new Error(tokenData && tokenData.error === 'guest_trial_used' ? '__guest__' : '__points__');
   }
   if(!tokenRes.ok || !tokenData.clientSecret){
     throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
@@ -16520,11 +16518,13 @@ async function mahaStartCallInner(mode){
     mahaShowModeTag('hd');
     return;
   }catch(e){
-    if(e && e.message === '__points__'){
-      // v-maha-open: كان يقفل المكالمة كليًا («مها مش مفتوحة») — الآن يهبط
-      // للوضع الأساسي: الصوت الفائق وحده ما يحتاج نقاطًا/رصيدًا.
-      console.warn('[maha] HD needs points/credit — continuing in basic mode');
-      mahaSetState('thinking', 'الصوت الفائق يحتاج نقاطًا — أكمل معك بالوضع الأساسي 🎙️');
+    /* v-maha-subs (أمر المالك ٢٦ سبتمبر «نفس الي في الاشتراكات»): بعد رفع v-maha-pause صارت مها للجميع،
+       فالهبوط للوضع الأساسيّ عند رفض الخادم (لا دقائق مها ولا ١٥ نقطة) كان يعطيها مجّانًا. الآن تُغلق
+       المكالمة وتُفتح اشتراكات مها، والضيف الذي استهلك تجربته يُعرض عليه الدخول. */
+    if(e && (e.message === '__points__' || e.message === '__guest__')){
+      mahaEndCall();
+      mahaOpenPlans(e.message === '__guest__');
+      return;
     }
     console.error('[maha] realtime mode failed, falling back to classic pipeline:', e);
     mahaEndRealtimeCall();
@@ -16556,8 +16556,16 @@ function mahaShowModeTag(mode){
 // once: two microphones and double metering. Thin wrapper only - the original
 // body is untouched, now mahaStartCallInner().
 let mahaCallStarting = false;
+function mahaOpenPlans(guest){
+  try{
+    if(guest || !authGet('aiapp_auth_token')){ if(typeof window.requireLogin === 'function') window.requireLogin('guestLimit'); return; }
+    const sb = document.getElementById('btnSettings');
+    if(sb) sb.click();
+    if(typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+    if(typeof showPriceTab === 'function') showPriceTab('maha');
+  }catch(e){ __swallow(e, 'maha:open-plans'); }
+}
 async function mahaStartCall(mode){
-  if(window.__mahaPaused) return; /* v-maha-pause: موقوفة مؤقتًا لغير المالك */
   if(mahaCallActive || mahaCallStarting) return;
   mahaCallStarting = true;
   try{ return await mahaStartCallInner(mode); }
@@ -16840,47 +16848,6 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
   lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; });
 })();
 
-/* v-maha-pause (طلب عمران ٣١ أغسطس — مؤقت لحين ضبط مها): المكالمة الصوتية
-   موقوفة لغير المالك: زرا مها (الدوك والعائم) يختفيان ويرجع صندوق المحادثة
-   عاديًا، والميزة كاملة تبقى عند حساب المالك. واسما «مها/عبدالله» يُخفيان
-   من نصوص الإعدادات للجميع. للإلغاء لاحقًا: احذف هذا البلوك وحارس
-   mahaStartCall أعلاه. */
-(function(){
-  function __ownerAcct(){
-    try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }
-    catch(e){ return false; }
-  }
-  window.__mahaPaused = !__ownerAcct();
-  if(window.__mahaPaused){
-    var st = document.createElement('style');
-    st.id = 'mahaPauseCss';
-    st.textContent = '#btnMahaDock, #btnMaha{ display:none !important; }';
-    document.head.appendChild(st);
-  }
-  /* أسماء الإعدادات محايدة (كلمة كاملة فقط — «مهام» وأشباهها لا تُمس) */
-  function __scrubNames(){
-    try{
-      var root = document.getElementById('settingsDialog');
-      if(!root) return;
-      var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
-      var n;
-      while((n = w.nextNode())){
-        var s = n.nodeValue;
-        if(!s || !(/مها|عبدالله|Maha|Abdullah/.test(s))) continue;
-        n.nodeValue = s
-          .replace(/[؀-ۿ]+/g, function(word){
-            if(word === 'مها') return 'المساعد الصوتي';
-            if(word === 'عبدالله') return 'المساعد';
-            return word;
-          })
-          .replace(/\bMaha\b/g, 'Assistant')
-          .replace(/\bAbdullah\b/g, 'Assistant');
-      }
-    }catch(e){ /* guard-ok: تنظيف تجميلي — فشله لا يعطل الإعدادات */ }
-  }
-  var sb = document.getElementById('btnSettings');
-  if(sb) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
-})();
 /* v-site-guide3 (المالك ٢٣ سبتمبر «المزوّدين كلّهم أبيهم نفس الطريقة»): نسخة العميل من قاعدة الإرشاد بين المواقع —
    تُرسل رسالة نظام في دور الإرشاد فتصل المسارات التي بلا أدوات (الاحتياط، والمزوّد بلا أدوات)، ونصّها مطابق لـ
    SITE_GUIDE_NOTE في api/_lib/chat.js (اختبار chat-format يطابقهما). */
