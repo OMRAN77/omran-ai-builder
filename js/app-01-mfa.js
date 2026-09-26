@@ -206,7 +206,7 @@
   });
 
   document.addEventListener('click', (e) => {
-    const t = e.target && e.target.closest ? e.target.closest('#mfaToggleBtn, #logoutAllBtn, #acctSecurityRowBtn') : null;
+    const t = e.target && e.target.closest ? e.target.closest('#mfaToggleBtn, #logoutAllBtn, #acctPassRowBtn') : null;
     if(!t) return;
     if(t.id === 'mfaToggleBtn') toggle();
     else if(t.id === 'logoutAllBtn') logoutAll();

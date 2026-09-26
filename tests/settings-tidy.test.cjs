@@ -54,29 +54,30 @@ test('٢. v-settings-groups (أمر المالك ٢٦ سبتمبر) نسخ تر�
   assert.equal(owner[0].title, null);
   assert.deepEqual(owner[0].rows.map(r => r.label), ['صفحة المالك']);
   assert.match(owner[0].rows[0].cls, /settingsNavOwner/);
-  const rest = owner.slice(1);
+  const rest = owner.slice(1, -1);
   assert.deepEqual(rest.map(g => g.title), ['T:setGrpPersonal', 'T:setGrpAccount', 'T:setGrpAppearance', 'T:setGrpGeneral']);
   assert.deepEqual(rest.map(g => g.rows.map(r => r.sid)), [
     ['toneSection', 'memorySection', 'voiceSection'],
-    ['settingsEmailRow', 'pricingSection', 'accountSection', 'statsSection'],
+    ['pricingSection', 'accountSection', 'statsSection'],
     ['themeSection', 'fontFamilySection', 'fontSizeSection', 'langSection'],
     ['notifSection', 'apiKeysSection', 'aboutSection'],
   ]);
   const acct = rest[1].rows;
-  assert.equal(acct[0].label, 'T:setEmailRow');
-  assert.equal(acct[0].sub, 'T:setNoEmail', 'قبل وصول الإيميل');
-  assert.equal(acct[1].value, 'VIP', 'المالك');
-  const all = rest.flatMap(g => g.rows.map(r => r.sid)).filter(s => s !== 'settingsEmailRow');
+  assert.equal(acct[0].value, 'VIP', 'المالك');
+  const all = rest.flatMap(g => g.rows.map(r => r.sid));
   assert.equal(all.length, 13, 'كلّ الأقسام الـ١٣ موجودة');
 });
 
-test('٣. غير المالك: بلا صفّ المالك، وقيمة الاشتراك من الباقة، والضيف بلا صفّ الإيميل', () => {
-  const free = render('ali', { __omranPlan: 'free', __setEmail: 'ali@x.com', __setEmailFor: 'tok' });
-  assert.equal(free.length, 4);
-  assert.equal(free[1].rows[0].sub, 'ali@x.com');
-  assert.equal(free[1].rows[1].value, 'T:setPlanFree');
-  assert.equal(render('ali', { __omranPlan: 'basic' })[1].rows[1].value, 'Plus');
-  assert.equal(render('ali', { __omranPlan: 'max' })[1].rows[1].value, 'Max');
+test('٣. غير المالك: بلا صفّ المالك، وقيمة الاشتراك من الباقة، والضيف بلا صفّ الخروج', () => {
+  const free = render('ali', { __omranPlan: 'free' });
+  assert.equal(free.length, 5);
+  assert.equal(free[1].rows[0].value, 'T:setPlanFree');
+  assert.deepEqual(free[4].rows.map(r => r.sid), ['settingsLogoutRow'], 'الخروج آخر صفّ للمسجَّل');
+  assert.equal(free[4].rows[0].label, 'T:logoutTitle');
+  assert.equal(render('ali', { __omranPlan: 'basic' })[1].rows[0].value, 'Plus');
+  assert.equal(render('ali', { __omranPlan: 'max' })[1].rows[0].value, 'Max');
   const guest = render('');
+  assert.equal(guest.length, 4);
   assert.deepEqual(guest[1].rows.map(r => r.sid), ['pricingSection', 'accountSection', 'statsSection']);
+  assert.ok(!guest.some(g => g.rows.some(r => r.sid === 'settingsLogoutRow')));
 });

@@ -17,5 +17,5 @@ test('١. حاوية الحوار بلا حلقة تركيز — وعناصر ا
 
 test('٢. الجوّال صفحة كاملة بلا حافة (v-settings-full-mobile يُلغي خطّ --border)، والوسم رُفع', () => {
   assert.match(css, /html\.mobile-ui #settingsDialog\{[^}]*?border-radius:0; border:none;/);
-  assert.match(fs.readFileSync('index.html', 'utf8'), /css\/tokens\.css\?v=723/);
+  assert.match(fs.readFileSync('index.html', 'utf8'), /css\/tokens\.css\?v=724/);
 });

@@ -221,7 +221,7 @@ test('العميل: شاشة الخطوة الثانية، تجديد الجلس
   assert.ok((boot.match(/omranMfa\.start\(/g) || []).length >= 6, 'كلّ مسارات الدخول في العميل تمرّ بالخطوة الثانية');
   assert.match(boot, /params\.get\('gticket'\)/);
   assert.match(read('js/partials-settings.js'), /id="acctSecurityBox"/);
-  const keys = ['mfaTitle', 'mfaCodePrompt', 'mfaSetupScan', 'mfaOwnerRequired', 'mfaBackupTitle', 'mfaEnableBtn', 'mfaDisableBtn', 'logoutAllBtn', 'acctSecurityRow'];
+  const keys = ['mfaTitle', 'mfaExplain', 'mfaCodePrompt', 'mfaSetupScan', 'mfaOwnerRequired', 'mfaBackupTitle', 'mfaEnableBtn', 'mfaDisableBtn', 'logoutAllBtn'];
   const base = read('js/app-03-i18n-data.js');
   const has = (src, k) => (src.match(new RegExp('["\']?\\b' + k + '["\']?\\s*:', 'g')) || []).length;
   for (const k of keys) assert.equal(has(base, k), 2, 'ar و en: ' + k);

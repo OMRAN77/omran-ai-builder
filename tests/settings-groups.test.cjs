@@ -54,11 +54,11 @@ test('٣. البنية: الرأس والبطاقة قبل القائمة، وا
   const css = read('css/tokens.css');
   for (const c of ['.setProfile{', '.setUpgrade{', '.settingsNavGroupTitle{', '.settingsNavGroup{', '.settingsNavValue{']) assert.ok(css.includes(c), c);
   const html = read('index.html');
-  assert.ok(html.includes('css/tokens.css?v=723') && html.includes('/js/partials-settings.js?v=675'));
+  assert.ok(html.includes('css/tokens.css?v=724') && html.includes('/js/partials-settings.js?v=676'));
 });
 
 test('٤. النصوص بالـ١٤ لغة، وبلا اسم مزوّد', () => {
-  const keys = ['setGrpPersonal', 'setGrpAccount', 'setGrpAppearance', 'setGrpGeneral', 'setEmailRow', 'setNoEmail', 'setPlanFree', 'setUpgradeTitle', 'setUpgradeSub', 'setUpgradeBtn', 'setChangePhoto'];
+  const keys = ['setGrpPersonal', 'setGrpAccount', 'setGrpAppearance', 'setGrpGeneral', 'setPlanFree', 'setUpgradeTitle', 'setUpgradeSub', 'setUpgradeBtn', 'setChangePhoto'];
   const data = read('js/app-03-i18n-data.js');
   for (const k of keys) assert.equal((data.match(new RegExp('\\b' + k + ': "[^"]+"', 'g')) || []).length, 2, k);
   assert.ok(data.includes('setUpgradeTitle: "أنجز المزيد مع Om ai"'));
@@ -70,7 +70,7 @@ test('٤. النصوص بالـ١٤ لغة، وبلا اسم مزوّد', () => 
       assert.doesNotMatch(m[1], /ChatGPT|Claude|Gemini|GPT|Groq|كلود|جيمناي/i, lg + ': ' + k);
     }
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=698'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=699'/);
 });
 
 test('٥. الجوّال صفحة كاملة بزرّ ✕، والحاسوب بلا تغيير (v-settings-full-mobile)', () => {

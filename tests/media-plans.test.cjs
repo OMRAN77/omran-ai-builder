@@ -150,8 +150,8 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     const s = read('i18n/' + l + '.js');
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=675'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=698'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=676'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=699'"));
 });
 
 test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرصيد على المحرّك السريع، و«جودة عالية» في الطلب أو الإعداد = عالية', async () => {
@@ -202,7 +202,7 @@ test('٨. أقسام الأسعار (v-price-tabs): المحادثة · الصو
   assert.ok(['vid_basic', 'vid_pro', 'vid_max'].every((p) => sec('vid').includes("openCheckout('" + p + "')")) && sec('vid').includes('id="mediaVidStatus"'));
   assert.ok(sec('img').includes('id="mediaQualityBox"'));
   assert.ok(sec('pts').includes('buyPointsPack(100)'));
-  assert.ok(html.includes("showSettingsPage('pricingSection'); if(typeof showPriceTab==='function')showPriceTab('pts')"), 'شحن النقاط يفتح قسم النقاط');
+  assert.ok(!html.includes('id="acctPointsBuyBtn"'), 'v-account-tidy: تحذير النقاط وزرّ شحنها خرجا من «حسابي»؛ الشحن من قسم النقاط نفسه');
   assert.match(read('js/app-06-checkout.js'), /function showPriceTab\(tab\)\{/);
   const keys = ['priceTabChat', 'priceTabImg', 'priceTabVid', 'priceTabPts'];
   const i18n = read('js/app-03-i18n-data.js');
@@ -274,9 +274,9 @@ test('٩. اشتراك مها (v-maha-plans): ٤٦ · ٧٥ · ٤٧٨ دقيقة�
   for (const l of ['fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml']) assert.ok(keys.every((k) => read('i18n/' + l + '.js').includes('"' + k + '"')), l);
 });
 
-test('١٠. «حسابي» (v-acct-media): سطر لكلّ اشتراك ساري تحت النقاط، ولا شيء لغير المشترك', () => {
+test('١٠. v-acct-media: سطر لكلّ اشتراك ساري، ولا شيء لغير المشترك (خارج «حسابي» منذ v-account-tidy)', () => {
   const html = read('js/partials-settings.js');
-  assert.ok(html.indexOf('id="acctMediaBox"') > html.indexOf('id="acctPointsBox"') && html.indexOf('id="acctMediaBox"') < html.indexOf('id="acctPointsLowWarn"'), 'تحت النقاط');
+  assert.doesNotMatch(html, /id="acctMediaBox"|id="acctPointsBox"/, 'v-account-tidy: النقاط والمتبقّي في «الباقات» لا في «حسابي»');
   const co = read('js/app-06-checkout.js');
   const src = co.slice(co.indexOf('function renderAcctMedia('), co.indexOf('async function refreshAcctPoints('));
   const box = { style: {}, innerHTML: '' };
