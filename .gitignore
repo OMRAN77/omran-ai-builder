@@ -19,6 +19,8 @@
 node_modules/
 videos_tmp/
 *.zip
+# v-browser-ext: حزمة الإضافة للرفع على المتاجر يُنزّلها المالك من GitHub (store/ خارج النشر).
+!store/chrome/om-ai-extension.zip
 *.orig
 *.bak
 *.log
