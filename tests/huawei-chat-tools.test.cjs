@@ -95,17 +95,25 @@ test('index.html: استخدام الصور الحقيقية للأدوات بد
   assert.ok(!html.includes('hwCardIcon'), 'لا توجد إيموجيات أطفال كأيقونات');
 });
 
-test('الشاشة مفتوحة من الطرفين والكود النموذجي يبدأ فورًا', () => {
+test('الشاشة مفتوحة من الطرفين بلا تطبيق نموذجيّ في المحادثة الجديدة', () => {
   const html = read('index.html');
   assert.ok(html.includes("localStorage.setItem('waCollapsed','0')"), 'لوحة المعاينة مفتوحة من البداية');
   assert.ok(html.includes("localStorage.setItem('sidebarCollapsed','0')"), 'القائمة الجانبية مفتوحة من البداية');
 
-  const app04 = read('js/app-04-i18n-state.js');
-  assert.ok(app04.includes('window.OMRAN_STARTER_APP_CODE ='), 'تعريف كود التطبيق النموذجي');
-  assert.ok(app04.includes('defaultShowcaseTitle'), 'اسم المشروع النموذجي الافتراضي');
+  for (const f of ['js/app-04-i18n-state.js', 'js/app-05-ui.js', 'js/app.bundle.js']) {
+    assert.ok(!read(f).includes('OMRAN_STARTER_APP_CODE'), f + ': لا «لوحة القيادة الذكية» تُحقن');
+  }
+  assert.ok(!read('js/app-04-i18n-state.js').includes('__starterId'), 'لا مشروع نموذجيّ عند أوّل تشغيل');
+});
 
-  const app05 = read('js/app-05-ui.js');
-  assert.ok(app05.includes('window.OMRAN_STARTER_APP_CODE'), 'عرض التطبيق النموذجي في المعاينة عند خلو الكود');
+test('v-no-starter: كنس نسخ «لوحة القيادة الذكية» المحفوظة بلا رسائل وحدها', () => {
+  const app09 = read('js/app-09-attach.js');
+  const i = app09.indexOf('v-no-starter');
+  assert.ok(i > 0, 'كتلة الكنس موجودة');
+  const block = app09.slice(i, i + 1600);
+  assert.ok(block.includes('!(p.messages || []).length'), 'ما فيه رسائل لا يُمسّ');
+  assert.ok(block.includes('<title>لوحة القيادة الذكية | عمران AI</title>'), 'التعرّف ببصمة الكود النموذجيّ');
+  assert.ok(block.includes('chatsMarkDeleted') && block.includes('chats_delete'), 'شاهد حذف كي لا تعيدها المزامنة');
 });
 
 test('حذف العنوان والشارة العلوية واختفاء بطاقات الأدوات فورًا عند دخول المحادثة', () => {
