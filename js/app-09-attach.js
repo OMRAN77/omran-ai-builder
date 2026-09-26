@@ -225,8 +225,9 @@ function omranGoldBadgeFill(chip, a){
   /* الحجم بالبايت الحقيقيّ لا بعدد الحروف: الحرف العربيّ بايتان في UTF-8. */
   let __bytes = __body.length;
   try{ __bytes = new Blob([__body]).size; }catch(_e){ /* guard-ok */ }
+  if(a.fullBytes > __bytes) __bytes = a.fullBytes;
   const kb = Math.max(1, Math.round(__bytes / 1024));
-  const ln = __body ? __body.split('\n').length : 0;
+  const ln = a.fullLines || (__body ? __body.split('\n').length : 0);
   /* \u2066…\u2069 عزل ثنائيّ الاتجاه — بدونه ينقلب السطر في الواجهة العربيّة. */
   sb.textContent = a.pending
     ? (omranBadgeT('scan') + ' ⏳')
@@ -2957,6 +2958,16 @@ async function __sendPromptCore(){
   // مرفقات جديدة نعتمد الجديدة. هكذا لا تضيع الصورة/الملف بصمت.
   const attachmentsForMsg = pendingAttachments.length ? pendingAttachments.slice() :
     (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
+  /* v-regen-fullfile: المرفق المحفوظ معاينة ٦٠٠٠ حرف (v-attach-light) — إعادة التوليد والتحرير
+     كانت ترسلها للنموذج فيقول «الملفّ مقطوع». النصّ الكامل يُستعاد من IndexedDB في نسخة. */
+  for(let __i = 0; __i < attachmentsForMsg.length; __i++){
+    const __a = attachmentsForMsg[__i];
+    if(!__a || !__a.textFullId || typeof idbGet !== 'function') continue;
+    try{
+      const __full = await idbGet(__a.textFullId);
+      if(typeof __full === 'string' && __full.length > String(__a.text || '').length) attachmentsForMsg[__i] = Object.assign({}, __a, { text: __full });
+    }catch(e){ __swallow(e, 'upload:regen-fullfile'); }
+  }
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
   /* v-file-analyze: ملف نصّي/كودي مرفق بلا أمر بناء صريح = طلب تحليل لا بناء.
@@ -3044,9 +3055,14 @@ async function __sendPromptCore(){
            خفيفة + معرّف الاستعادة؛ العارض يفتح الكامل من المخزن (app-04). الإرسال للنموذج
            لا يتأثّر — يُبنى من المرفق الكامل قبل هذا التخفيف. */
         try{
-          var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-          if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+          if(!a.textFullId){
+            var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+            if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+          }
         }catch(e2){ /* المعاينة تكفي عند تعذّر المخزن */ }
+        /* البطاقة تعرض حجم الملفّ وأسطره الحقيقيّة لا حجم المعاينة */
+        try{ a.fullBytes = new Blob([a.text]).size; }catch(e3){ a.fullBytes = a.text.length; }
+        a.fullLines = a.text.split('\n').length;
         a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — انقر لفتح الملفّ كاملًا)';
       }
     });
