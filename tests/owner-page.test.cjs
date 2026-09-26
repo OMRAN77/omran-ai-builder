@@ -36,22 +36,22 @@ test('٢. صفّ «صفحة المالك» أوّل القائمة للمالك 
   const src = app05.slice(app05.indexOf('// v-owner-page: «صفحة المالك»'), app05.indexOf('window.showSettingsPage = showSettingsPage;'));
   const run = (user) => {
     const rows = []; const shown = [];
-    const el = (extra) => Object.assign({ style: {}, classList: { add(){}, remove(){} }, textContent: '' }, extra);
-    const list = el({ set innerHTML(v){ rows.length = 0; }, appendChild(r){ rows.push(r); } });
+    const el = (extra) => Object.assign({ style: {}, dataset: {}, classList: { add(){}, remove(){} }, textContent: '' }, extra);
+    const list = el({ set innerHTML(v){ rows.length = 0; }, appendChild(n){ if(n.kids) rows.push(...n.kids); } });
     const document = {
       getElementById: (id) => id === 'settingsNavList' ? list : {},
       querySelector: (q) => ({ textContent: q.includes('ownerSection') ? '👑 صفحة المالك' : q }),
       querySelectorAll: () => [],
-      createElement: () => { const r = el({ innerHTML: '' }); r.querySelector = () => r; return r; },
+      createElement: () => { const kids = []; const r = el({ innerHTML: '', kids, appendChild(c){ kids.push(c); } }); r.querySelector = (sel) => { r[sel] = r[sel] || el({}); return r[sel]; }; return r; },
     };
-    const g = new Function('document', 'authGet', 'settingsDialog', '__swallow', 'shown', 'window',
-      src + '\nshowSettingsHome = function(){ shown.push("home"); };\nrenderSettingsNavList();\nreturn (sid) => { showSettingsPage(sid); return shown.slice(); };');
-    return { rows, open: g(document, () => user, null, () => {}, shown, {}) };
+    const g = new Function('document', 'authGet', 'settingsDialog', '__swallow', 'shown', 'window', 't', 'fetch',
+      src.replace(/^\(function\(\)\{\n  const av = [\s\S]*?\n\}\)\(\);\n/m, '') + '\nshowSettingsHome = function(){ shown.push("home"); };\nrenderSettingsNavList();\nreturn (sid) => { showSettingsPage(sid); return shown.slice(); };');
+    return { rows, open: g(document, (k) => (k === 'aiapp_auth_token' ? '' : user), null, () => {}, shown, {}, (k) => k, () => new Promise(() => {})) };
   };
   const owner = run('Omran');
-  assert.equal(owner.rows.length, 14); // v-settings-tidy: حُذف «الوكيل»
+  assert.equal(owner.rows.length, 14); // v-settings-groups: ١٣ قسمًا + صفّ المالك (صفّ الإيميل للمسجَّل فقط)
   assert.equal(owner.rows[0].className, 'settingsNavRow settingsNavOwner');
-  assert.equal(owner.rows[0].textContent, 'صفحة المالك');
+  assert.equal(owner.rows[0]['.settingsNavText'].textContent, 'صفحة المالك');
   const guest = run('ali');
   assert.equal(guest.rows.length, 13);
   assert.ok(guest.rows.every(r => !/Owner/.test(r.className)));
@@ -66,7 +66,7 @@ test('٣. العنوان بالـ١٤ لغة، والقائمة تُعاد بن�
   }
   assert.match(read('js/app-01-boot-auth.js'), /if\(typeof renderSettingsNavList === 'function'\) renderSettingsNavList\(\);/);
   const html = read('index.html');
-  assert.match(html, /js\/partials-settings\.js\?v=671/);
-  assert.match(html, /css\/tokens\.css\?v=722/);
-  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=694'/); // v-reply-export رفع الوسم (قبله 686)
+  assert.match(html, /js\/partials-settings\.js\?v=674/);
+  assert.match(html, /css\/tokens\.css\?v=723/);
+  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=696'/); // v-reply-export رفع الوسم (قبله 686)
 });
