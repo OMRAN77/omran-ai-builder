@@ -54,7 +54,7 @@ test('٣. البنية: الرأس والبطاقة قبل القائمة، وا
   const css = read('css/tokens.css');
   for (const c of ['.setProfile{', '.setUpgrade{', '.settingsNavGroupTitle{', '.settingsNavGroup{', '.settingsNavValue{']) assert.ok(css.includes(c), c);
   const html = read('index.html');
-  assert.ok(html.includes('css/tokens.css?v=723') && html.includes('/js/partials-settings.js?v=672'));
+  assert.ok(html.includes('css/tokens.css?v=723') && html.includes('/js/partials-settings.js?v=673'));
 });
 
 test('٤. النصوص بالـ١٤ لغة، وبلا اسم مزوّد', () => {
@@ -71,4 +71,15 @@ test('٤. النصوص بالـ١٤ لغة، وبلا اسم مزوّد', () => 
     }
   }
   assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=695'/);
+});
+
+test('٥. الجوّال صفحة كاملة بزرّ ✕، والحاسوب بلا تغيير (v-settings-full-mobile)', () => {
+  const css = read('css/tokens.css');
+  const mob = css.slice(css.indexOf('v-settings-full-mobile'), css.indexOf('v-settings-full-mobile') + 400);
+  assert.match(mob, /width:100vw; max-width:100vw;/);
+  assert.doesNotMatch(mob, /80vw/);
+  assert.match(css, /\.setHomeClose\{ display:none;/);
+  assert.match(css, /html\.mobile-ui \.setHomeClose\{ display:flex; \}/);
+  assert.match(partial, /id="setHomeClose"[^>]*data-i18n-title="closeTitle"/);
+  assert.match(app05, /getElementById\('setHomeClose'\)[\s\S]{0,200}closeDialogSafe\(settingsDialog\)/);
 });

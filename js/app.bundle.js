@@ -10644,6 +10644,8 @@ function renderSettingsNavList(){
   if(login) login.onclick = () => { const b = document.getElementById('acctLoginBtn'); if(b) b.click(); };
   const up = document.getElementById('setUpgradeBtn');
   if(up) up.onclick = () => showSettingsPage('pricingSection');
+  const cls = document.getElementById('setHomeClose');
+  if(cls) cls.onclick = () => { try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-close'); } };
 })();
 function showSettingsHome(){
   const home = document.getElementById('settingsHomeView');

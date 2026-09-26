@@ -15,6 +15,7 @@
 <div id="settingsHomeView">
   <!-- v-settings-groups: رأس الحساب وبطاقة الترقية، ثمّ مجموعات الصفوف (تُبنى في renderSettingsNavList) -->
   <div id="settingsProfile" class="setProfile">
+    <button type="button" id="setHomeClose" class="setHomeClose" aria-label="إغلاق" data-i18n-title="closeTitle" title="إغلاق">✕</button>
     <button type="button" id="setProfileAvatar" class="setProfileAvatar" title="" data-i18n-title="setChangePhoto"><img id="setProfileImg" alt="" style="display:none;"><span id="setProfileInitials">?</span><span class="setProfileEdit"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span></button>
     <div id="setProfileName" class="setProfileName"></div>
     <button type="button" id="setProfileLogin" class="setUpgradeBtn" style="display:none;" data-i18n="loginAction">دخول</button>
