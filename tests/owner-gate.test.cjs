@@ -5,10 +5,11 @@ const { isOwner } = require('../api/_lib/_owner.js');
 const { makeToken } = require('../api/_lib/auth.js');   // دالّة الختم الحقيقية
 const q = (o) => ({ query: o });
 const cases = [
-  ['رمز المالك الحقيقي (makeToken)',        q({ token: makeToken('omran') }),               true ],
-  ['رمز المالك في body',                     { body: { token: makeToken('omran') } },        true ],
+  ['رمز المالك الحقيقي (makeToken)',        q({ token: makeToken('omran', { m: 1 }) }),     true ],
+  ['رمز المالك في body',                     { body: { token: makeToken('omran', { m: 1 }) } }, true ],
+  ['رمز مالك بلا الخطوة الثانية (v-account-guard)', q({ token: makeToken('omran') }),         false],
   ['رمز مستخدم عادي',                        q({ token: makeToken('guest') }),               false],
-  ['رمز مالك بحرف كبير OMRAN',               q({ token: makeToken('OMRAN') }),               true ],
+  ['رمز مالك بحرف كبير OMRAN',               q({ token: makeToken('OMRAN', { m: 1 }) }),     true ],
   ['المفتاح الحقيقي',                         q({ key: 'synthetic-monitor-key-123' }),        true ],
   ['مفتاح خاطئ',                              q({ key: 'omran-monitor-2026' }),               false],
   ['مفتاح فارغ',                              q({ key: '' }),                                 false],
@@ -30,5 +31,5 @@ const sig = crypto.createHmac('sha256', process.env.AUTH_SECRET).update(p).diges
 const expired = isOwner(q({ token: p + '.' + sig }));
 console.log(`  ${expired === false ? '✓' : '✗'} ${'رمز مالك منتهي الصلاحية'.padEnd(34)} متوقّع=false فعلي=${expired}`);
 if (expired !== false) bad++;
-console.log(bad ? `\n✗ فشل ${bad}` : `\n✅ ١١/١١ — البوّابة تفتح للمالك وحده`);
+console.log(bad ? `\n✗ فشل ${bad}` : `\n✅ ١٢/١٢ — البوّابة تفتح للمالك وحده`);
 process.exit(bad ? 1 : 0);

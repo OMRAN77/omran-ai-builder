@@ -65,7 +65,7 @@ const mkRes = () => {
   const fresh = reload();
   auth = fresh.auth;
   const admin = fresh.admin;
-  const ownerToken = auth.makeToken('boss');
+  const ownerToken = auth.makeToken('boss', { m: 1 });
   const call = async (body) => { const r = mkRes(); await admin({ method: 'POST', body }, r); return r; };
 
   // ── تحرير الاسم المقفل ──────────────────────────────────────────────

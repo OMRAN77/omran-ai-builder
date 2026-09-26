@@ -38,7 +38,7 @@ const od = require(rp('api/_lib/oa-direct.js'));
 const pm = require(rp('api/_lib/provider-models.js'));
 
 function token(username) {
-  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000 })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000, m: 1 })).toString('base64url');
   const sig = crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
   return payload + '.' + sig;
 }

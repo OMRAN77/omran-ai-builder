@@ -21,7 +21,7 @@ const GH = require('../api/_lib/github-read.js');
 
 function fakeKv() { const m = new Map(); return { get: async (k) => (m.has(k) ? JSON.parse(JSON.stringify(m.get(k))) : null), put: async (k, v) => { m.set(k, JSON.parse(JSON.stringify(v))); }, map: m }; }
 function token(u) {
-  const payload = Buffer.from(JSON.stringify({ u, exp: Date.now() + 60_000 })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ u, exp: Date.now() + 60_000, m: 1 })).toString('base64url');
   const sig = crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
   return payload + '.' + sig;
 }

@@ -99,7 +99,7 @@ test('٣. planRoute: كلّ وظيفة لمزوّدها، حدود كلود ال
 
 // ── (٢) chat.js: التوجيه الفعليّ والالتقاط ──
 function token(username) {
-  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000 })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000, m: 1 })).toString('base64url');
   const sig = crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
   return payload + '.' + sig;
 }

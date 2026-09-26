@@ -10,7 +10,7 @@ const { ownerKnowledge } = require('../api/_lib/_knowledge.js');
 const { makeToken } = require('../api/_lib/auth.js');
 
 // ١) البوّابة: المالك يأخذ المعرفة، غيره نصّ فارغ
-const forOwner = ownerKnowledge({ query: {}, body: {} }, makeToken('omran'));
+const forOwner = ownerKnowledge({ query: {}, body: {} }, makeToken('omran', { m: 1 }));
 const forGuest = ownerKnowledge({ query: {}, body: {} }, makeToken('guest'));
 const forNone = ownerKnowledge({ query: {}, body: {} }, '');
 assert.ok(forOwner.length > 500, 'المالك يأخذ المعرفة');

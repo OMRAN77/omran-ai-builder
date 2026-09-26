@@ -38,7 +38,7 @@ require.cache[rp('api/_lib/github-read.js')] = { id: rp('api/_lib/github-read.js
 const chat = require(rp('api/_lib/chat.js'));
 
 function token(username) {
-  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000 })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000, m: 1 })).toString('base64url');
   const sig = crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
   return payload + '.' + sig;
 }

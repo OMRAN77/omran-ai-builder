@@ -45,19 +45,11 @@ function keyIsValid(key) {
   }
 }
 
+// v-account-guard: الفحص من session.js — جلسة المالك تُقبل هنا فقط إن اجتازت الخطوة الثانية.
+// (session.js يطلب هذا الملفّ، فالطلب داخل الدالّة لا في رأس الوحدة.)
 function sessionIsOwner(token) {
-  try {
-    const [payload, sig] = String(token || '').split('.');
-    if (!payload || !sig) return false;
-    const secret = require('./_secrets.js').AUTH_SECRET;
-    const expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
-    if (!sameSecret(sig, expected)) return false;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (!data || !(data.exp > Date.now())) return false;
-    return isOwnerName(data.u);
-  } catch (e) {
-    return false;
-  }
+  const u = require('./session.js').verifySession(token);
+  return !!u && isOwnerName(u);
 }
 
 // true حين أثبت المنادي أنّه المالك بأحد الإثباتين.
