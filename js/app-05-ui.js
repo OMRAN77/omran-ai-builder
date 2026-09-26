@@ -917,17 +917,6 @@ function renderCodeAndPreview(){
     }
   }catch(e){ /* guard-ok */ }
   if(!cur || !cur.code){
-    // طلب المالك: عرض كود حقيقي في المعاينة بمستوى عالي ومفتوح من الطرفين عند أول تشغيل
-    if(cur && !cur.code && (!cur.messages || !cur.messages.length) && !previewFrame._imageView && typeof window.OMRAN_STARTER_APP_CODE === 'string' && window.OMRAN_STARTER_APP_CODE){
-      cur.code = window.OMRAN_STARTER_APP_CODE;
-      if(!cur.title || cur.title === t('defaultProjectTitle')){
-        cur.title = t('defaultShowcaseTitle');
-      }
-      try{ saveState(); }catch(e){ __swallow(e, 'ui:starter-save'); }
-      try{ renderHistory(); }catch(e){ __swallow(e, 'ui:starter-hist'); }
-    }
-  }
-  if(!cur || !cur.code){
     if(previewFrame._imageView){
       pyConsole.style.display = 'none';
       previewFrame.style.display = 'block';

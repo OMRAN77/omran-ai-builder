@@ -6065,6 +6065,30 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       });
       if(fixed) saveState();
     }catch(e){ __swallow(e, "save:app-09-attach#35"); }
+    // 🧹 v-no-starter: «لوحة القيادة الذكية» كانت تُحقن في كلّ محادثة فارغة — تُكنس النسخ
+    // المحفوظة التي لم يكتب فيها المستخدم شيئًا؛ أيّ مشروع فيه رسالة يبقى كما هو.
+    try{
+      const isStarter = p => p && !(p.messages || []).length && typeof p.code === 'string'
+        && p.code.indexOf('<title>لوحة القيادة الذكية | عمران AI</title>') >= 0;
+      const starterIds = (state.projects || []).filter(isStarter).map(p => p.id);
+      if(starterIds.length){
+        starterIds.forEach(id => { try{ if(window.chatsMarkDeleted) chatsMarkDeleted(id); }catch(err){ __swallow(err, "save:app-09-attach#no-starter-mark"); } });
+        state.projects = state.projects.filter(p => !isStarter(p));
+        if(!state.projects.length){
+          state.projects.push({id: 'p_' + Date.now(), title: t('defaultProjectTitle'), messages: [], code: ''});
+        }
+        if(!state.projects.some(p => p.id === state.currentId)) state.currentId = state.projects[state.projects.length - 1].id;
+        saveState();
+        const tok = (typeof chatsAuthToken === 'function') ? chatsAuthToken() : '';
+        if(tok){
+          fetch('/api/account?action=chats_delete', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: tok, ids: starterIds }),
+          }).catch(() => {});
+        }
+        renderAll();
+      }
+    }catch(e){ __swallow(e, "save:app-09-attach#no-starter"); }
     // 🔁 فتح آخر مشروع تلقائيًا حتى يشوف المستخدم آخر محادثته فورًا.
     if(!state.currentId && state.projects.length){
       const savedId = localStorage.getItem('aiapp_current_id');
