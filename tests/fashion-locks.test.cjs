@@ -588,7 +588,7 @@ console.log('  ✓ v-login-done: سفاري يقول «ارجع للتطبيق»
   assert.ok(it8.includes('v-font-pretty'), '«مزخرف» وأخواتها تختار الديواني');
   const at9 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9.includes('__nameSwap') && at9.includes('REPLACE that existing name'), 'تغيير الاسم = استبدال يمحو القديم');
-  assert.ok(at9.includes('if(!__nameSwap) throw { __localFont: true }'), 'الاستبدال وحده للذكاء — والكانفس لا يمحو');
+  assert.ok(at9.includes('if(!__nameSwap || __prevLayer) throw { __localFont: true }'), 'الاستبدال وحده للذكاء — والكانفس لا يمحو (إلّا طبقتنا: أساسها نظيف، v-text-replace)');
 }
 console.log('  ✓ v-name-swap: «غيّر الاسم» يبدل الاسم داخل التصميم — لا كتابة فوقه');
 
@@ -686,7 +686,7 @@ console.log('  ✓ v-font-pretty: الكلمات الجمالية كلها تو�
 // أن يخطئ إملائيًا)؛ الذكاء فقط لتبديل اسم داخل تصميم.
 {
   const at9g = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
-  assert.ok(at9g.includes('v-exact-canvas') && at9g.includes('if(!__nameSwap) throw { __localFont: true }'), 'النص الحرفي دائمًا للراسم المحلي');
+  assert.ok(at9g.includes('v-exact-canvas') && at9g.includes('if(!__nameSwap || __prevLayer) throw { __localFont: true }'), 'النص الحرفي دائمًا للراسم المحلي');
 }
 console.log('  ✓ v-exact-canvas: الأسماء تُطبع حرفيًا — صفر أخطاء إملائية ممكنة');
 
