@@ -13,8 +13,17 @@
   <h3 id="settingsDlgTitle" data-i18n-title="settingsDlgMaxTitle" style="display:none; margin-top:0; cursor:zoom-in; user-select:none;" title="دبل كلك للتكبير/التصغير" data-i18n="settingsTitle">إعدادات الاتصال بالذكاء الاصطناعي</h3>
 
 <div id="settingsHomeView">
+  <!-- v-settings-groups: رأس الحساب وبطاقة الترقية، ثمّ مجموعات الصفوف (تُبنى في renderSettingsNavList) -->
+  <div id="settingsProfile" class="setProfile">
+    <button type="button" id="setProfileAvatar" class="setProfileAvatar" title="" data-i18n-title="setChangePhoto"><img id="setProfileImg" alt="" style="display:none;"><span id="setProfileInitials">?</span><span class="setProfileEdit"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span></button>
+    <div id="setProfileName" class="setProfileName"></div>
+    <button type="button" id="setProfileLogin" class="setUpgradeBtn" style="display:none;" data-i18n="loginAction">دخول</button>
+  </div>
+  <div id="settingsUpgradeCard" class="setUpgrade" style="display:none;">
+    <div class="setUpgradeText"><div class="setUpgradeTitle" data-i18n="setUpgradeTitle">أنجز المزيد مع Om ai</div><div class="setUpgradeSub" data-i18n="setUpgradeSub">حدود أعلى وإمكانيّة الوصول إلى الميزات المتقدّمة.</div></div>
+    <button type="button" id="setUpgradeBtn" class="setUpgradeBtn" data-i18n="setUpgradeBtn">الترقية</button>
+  </div>
   <div id="settingsNavList"></div>
-  <div id="appVersionLabel" style="text-align:center; color:var(--muted); font-size:12px; opacity:.7; margin-top:22px; padding-bottom:6px; user-select:text;"></div>
 </div>
 <div id="settingsPageHeader" style="display:none; align-items:center; gap:10px; margin-top:26px; margin-bottom:14px;">
   <button type="button" id="settingsPageBackBtn" title="رجوع" data-i18n-title="back" style="background:none; border:none; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:center; padding:4px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" id="settingsBackSvg"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
@@ -634,6 +643,7 @@
         </div>
         <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;" data-i18n="aboutCopyright">© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪</div>
       </div>
+      <div id="appVersionLabel" style="text-align:center; color:var(--muted); font-size:12px; opacity:.7; margin-top:18px; padding-bottom:6px; user-select:text;"></div>
   </div></div>
 
 

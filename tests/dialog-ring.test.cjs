@@ -17,5 +17,5 @@ test('١. حاوية الحوار بلا حلقة تركيز — وعناصر ا
 
 test('٢. حافة الدرج الأصليّة باقية (خطّ رماديّ خافت بـ--border)، والوسم رُفع', () => {
   assert.match(css, /html\.mobile-ui #settingsDialog\{[\s\S]*?border-left:1px solid var\(--border\);/);
-  assert.match(fs.readFileSync('index.html', 'utf8'), /css\/tokens\.css\?v=722/);
+  assert.match(fs.readFileSync('index.html', 'utf8'), /css\/tokens\.css\?v=723/);
 });
