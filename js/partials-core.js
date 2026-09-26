@@ -6,59 +6,41 @@
   var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); position:relative;">
     <button type="button" id="authCloseBtn" aria-label="إغلاق" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
-    <h2 style="margin-top:0; text-align:center;" data-i18n="authTitle">🔐 مرحبًا بك</h2>
-    <p style="text-align:center; font-size: var(--fs-3); color:var(--muted); margin-top:-8px;" data-i18n="authSubtitle">سجّل الدخول أو أنشئ حسابًا جديدًا للمتابعة</p>
-    <div style="display:flex; gap:8px; margin:14px 0;">
-      <button type="button" class="btn" id="authTabLogin" style="flex:1;" data-i18n="authTabLogin">تسجيل الدخول</button>
-      <button type="button" class="btn" id="authTabSignup" style="flex:1;" data-i18n="authTabSignup">حساب جديد</button>
+    <!-- v-simple-login: خانتان وزرّ ورابط، ثمّ جوجل و«إنشاء حساب جديد» — بلا عنوان ولا تبويبات ولا إيميل اختياريّ -->
+    <h2 id="authHeading" style="display:none; margin:4px 0 18px; text-align:center; font-size:18px;"></h2>
+    <div style="display:none;">
+      <button type="button" class="btn" id="authTabLogin" data-i18n="authTabLogin">تسجيل الدخول</button>
+      <button type="button" class="btn" id="authTabSignup" data-i18n="authTabSignup">حساب جديد</button>
     </div>
-    <form id="authForm" autocomplete="on" onsubmit="return false;">
-    <label style="display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
-      <span data-i18n="authUsernameLabel">اسم المستخدم</span>
-      <input type="text" id="authUsername" name="username" autocomplete="username" style="height:40px; padding:0 10px; border-radius:var(--r-2);">
-    </label>
-    <label id="authEmailRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
-      <span data-i18n="authEmailLabel">📧 الإيميل (اختياري - لاسترجاع الحساب)</span>
-      <input type="email" id="authEmail" name="email" autocomplete="email" style="height:40px; padding:0 10px; border-radius:var(--r-2); direction:ltr;">
-    </label>
-    <label id="authRecoveryRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
+    <form id="authForm" autocomplete="on" onsubmit="return false;" style="margin-top:34px;">
+    <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
+    <label id="authRecoveryRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:12px;">
       <span data-i18n="authRecoveryLabel">رمز الاسترجاع</span>
-      <input type="text" id="authRecoveryCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="height:40px; padding:0 10px; border-radius:var(--r-2); direction:ltr; text-align:center;">
+      <input type="text" id="authRecoveryCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; direction:ltr; text-align:center;">
     </label>
-    <label id="authPasswordRow" style="display:flex; flex-direction:column; gap:4px; margin-bottom:6px;">
-      <span id="authPasswordLabelText" data-i18n="authPasswordLabel">كلمة المرور</span>
-      <div style="position:relative;">
-        <input type="password" id="authPassword" name="password" autocomplete="current-password" style="height:40px; padding:0 40px 0 10px; border-radius:var(--r-2); width:100%; box-sizing:border-box;">
-        <button type="button" id="authTogglePassBtn" title="👁" style="position:absolute; inset-inline-end:2px; top:2px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;">🙈</button>
-      </div>
-    </label>
-    <label id="authRememberRow" style="display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size: var(--fs-3); cursor:pointer; user-select:none;">
-      <input type="checkbox" id="authRememberMe" checked style="width:16px; height:16px; cursor:pointer;">
-      <span data-i18n="authRememberMe">تذكرني</span>
-    </label>
+    <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
+      <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
+      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
+      <button type="button" id="authTogglePassBtn" title="👁" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;">🙈</button>
+    </div>
+    <label id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked></label>
     <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
-    <div style="text-align:end; margin-bottom:6px;">
-      <a href="#" id="authForgotLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
-      <a href="#" id="authUseCodeLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
-      <a href="#" id="authBackToLoginLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
+    <div id="authError" style="color:#ef4444; font-size: var(--fs-3); min-height:18px; margin-bottom:6px; text-align:center;"></div>
+    <button type="submit" class="btn primary" id="authSubmitBtn" style="width:100%; height:48px; border-radius:999px; font-weight:bold; font-size:15px; justify-content:center; text-align:center;" data-i18n="authSubmitLogin">دخول</button>
+    <div style="text-align:center; margin-top:16px;">
+      <a href="#" id="authForgotLink" style="font-size:14px; font-weight:700; color:var(--text); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
+      <a href="#" id="authUseCodeLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
+      <a href="#" id="authBackToLoginLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none; margin-inline-start:12px;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
     </div>
-    <div id="authError" style="color:#ef4444; font-size: var(--fs-3); min-height:18px; margin-bottom:6px;"></div>
-    <button type="submit" class="btn primary" id="authSubmitBtn" style="width:100%; height:44px; font-weight:bold;" data-i18n="authSubmitLogin">دخول</button>
     </form>
-    <div style="display:flex; align-items:center; gap:8px; margin:14px 0;">
-      <div style="flex:1; height:1px; background:var(--border,#333);"></div>
-      <span style="font-size:12px; color:var(--muted);" data-i18n="authOrDivider">أو</span>
-      <div style="flex:1; height:1px; background:var(--border,#333);"></div>
-    </div>
-    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:44px; border-radius:var(--r-2); border:1px solid var(--border,#333); background:#fff; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size: var(--fs-3); font-weight: var(--w-bold); color:#3c4043;">
+    <div id="authAltBlock" style="margin-top:34px; display:flex; flex-direction:column; gap:12px;">
+    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
       <span data-i18n="authGoogleBtn">المتابعة بجوجل</span>
     </button>
-    <button type="button" id="authEmailOtpBtn" style="width:100%; height:44px; border-radius:var(--r-2); border:1px solid var(--border,#333); background:transparent; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size: var(--fs-3); font-weight: var(--w-bold); color:var(--text); margin-top:8px;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-      <span data-i18n="authEmailOtpBtn">الدخول بالإيميل</span>
-    </button>
-    
+    <button type="button" id="authSwitchBtn" style="width:100%; height:48px; border-radius:999px; border:1px solid rgba(128,128,128,.5); background:transparent; color:var(--text); cursor:pointer; font-size:15px; font-weight: var(--w-bold);" data-i18n="authCreateAccount">إنشاء حساب جديد</button>
+    </div>
+
     <div id="authEmailOtpSection" style="display:none; margin-top:14px;">
       <label id="authOtpEmailRow" style="display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
         <span data-i18n="authOtpEmailLabel">البريد الإلكتروني</span>
