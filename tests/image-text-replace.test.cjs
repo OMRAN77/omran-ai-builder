@@ -104,3 +104,10 @@ test('١١. تعديل بصريّ على صورة كتبنا عليها: الم�
   assert.match(attach, /const __pendingImageEditSource = __keepLayer \? \{ b64:__keepLayer\.baseB64/);
   assert.match(attach, /cur\.imageTextLayer = __keptLayer;/);
 });
+
+test('١٢. الكتابة على الصور ثقيلة وواضحة، مع حدّ ووشاح قويّين بلا تغطية كبيرة', () => {
+  assert.match(attach, /maxWidth=c\.width\*\(__side\?\.\[1\]\?0\.32:0\.88\), maxHeight=c\.height\*\(__side\?0\.48:0\.28\)/);
+  assert.match(attach, /ctx\.font = '800 '/);
+  assert.match(attach, /rgba\(0,0,0,\.52\)/);
+  assert.match(attach, /ctx\.lineWidth = Math\.max\(3, Math\.floor\(fs \/ 10\)\)/);
+});

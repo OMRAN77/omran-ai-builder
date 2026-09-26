@@ -1697,11 +1697,14 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
           }catch(e){ position = 'bottom'; }
         }
         const __side=/^(right|left)-/.exec(position||'');
-        const maxWidth=c.width*(__side?.[1]?0.30:0.84), maxHeight=c.height*(__side?0.44:0.24);
+        /* v-text-strong (شكوى المستخدمين: «الكتابة في الصور ضعيفة جدًا»):
+           مساحة أكبر قليلًا + وزن وحدّ أقوى. لا نكبّر الكتلة فوق ٢٨٪ كي لا
+           تغطي الموضوع، والنص الطويل ما زال يصغر ويلتف تلقائيًّا. */
+        const maxWidth=c.width*(__side?.[1]?0.32:0.88), maxHeight=c.height*(__side?0.48:0.28);
         if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
-        let fs = Math.floor(Math.min(c.width / 8.5, c.height / 9));
+        let fs = Math.floor(Math.min(c.width / 7.6, c.height / 8.2));
         let lines = [];
-        const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
+        const setF = () => { ctx.font = '800 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
         const wrap = (line) => {
           if(!line) return [''];
           if(ctx.measureText(line).width <= maxWidth) return [line];
@@ -1736,8 +1739,8 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         try{
           const zt = Math.max(0, blockTop - lineHeight), zb = Math.min(c.height, blockBot + ornH + lineHeight * 0.8);
           const g = ctx.createLinearGradient(0, zt, 0, zb);
-          if(position === 'top'){ g.addColorStop(0,'rgba(0,0,0,.36)'); g.addColorStop(0.7,'rgba(0,0,0,.14)'); g.addColorStop(1,'rgba(0,0,0,0)'); }
-          else { g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.3,'rgba(0,0,0,.14)'); g.addColorStop(1,'rgba(0,0,0,.36)'); }
+          if(position === 'top'){ g.addColorStop(0,'rgba(0,0,0,.52)'); g.addColorStop(0.7,'rgba(0,0,0,.22)'); g.addColorStop(1,'rgba(0,0,0,0)'); }
+          else { g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.3,'rgba(0,0,0,.22)'); g.addColorStop(1,'rgba(0,0,0,.52)'); }
           ctx.fillStyle = g;
           ctx.fillRect(__side ? -c.width : 0, zt, c.width * 3, zb - zt);
         }catch(e){ __swallow(e, 'img:overlay#scrim'); }
@@ -1748,7 +1751,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
           return g;
         };
         let fill, strokeCol, shadowCol;
-        if(goldMode){ fill = mkGold(blockTop, blockBot); strokeCol = 'rgba(70,44,8,.55)'; shadowCol = 'rgba(0,0,0,.5)'; }
+        if(goldMode){ fill = mkGold(blockTop, blockBot); strokeCol = 'rgba(54,32,4,.82)'; shadowCol = 'rgba(0,0,0,.72)'; }
         else {
           const base = colorStr || '#ffffff';
           let dark = false;
@@ -1757,16 +1760,16 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
             dark = lum < 128;
           }
           fill = base;
-          strokeCol = dark ? 'rgba(255,255,255,.9)' : 'rgba(0,0,0,.7)';
-          shadowCol = dark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.5)';
+          strokeCol = dark ? 'rgba(255,255,255,.96)' : 'rgba(0,0,0,.88)';
+          shadowCol = dark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.72)';
         }
         ctx.lineJoin = 'round'; ctx.miterLimit = 2;
-        ctx.lineWidth = Math.max(2, Math.floor(fs / 14));
+        ctx.lineWidth = Math.max(3, Math.floor(fs / 10));
         ctx.strokeStyle = strokeCol;
         ctx.fillStyle = fill;
         ctx.shadowColor = shadowCol;
-        ctx.shadowBlur = Math.max(6, Math.floor(fs / 7));
-        ctx.shadowOffsetY = Math.max(1, Math.floor(fs / 30));
+        ctx.shadowBlur = Math.max(8, Math.floor(fs / 6));
+        ctx.shadowOffsetY = Math.max(2, Math.floor(fs / 24));
         lines.forEach((line, i) => {
           const y = firstY + i * lineHeight;
           ctx.strokeText(line, c.width / 2, y, maxWidth);
