@@ -15,7 +15,7 @@ test('١. حاوية الحوار بلا حلقة تركيز — وعناصر ا
   assert.doesNotMatch(css, /dialog :focus-visible\{[^}]*outline:\s*none/);
 });
 
-test('٢. حافة الدرج الأصليّة باقية (خطّ رماديّ خافت بـ--border)، والوسم رُفع', () => {
-  assert.match(css, /html\.mobile-ui #settingsDialog\{[\s\S]*?border-left:1px solid var\(--border\);/);
-  assert.match(fs.readFileSync('index.html', 'utf8'), /css\/tokens\.css\?v=722/);
+test('٢. الجوّال صفحة كاملة بلا حافة (v-settings-full-mobile يُلغي خطّ --border)، والوسم رُفع', () => {
+  assert.match(css, /html\.mobile-ui #settingsDialog\{[^}]*?border-radius:0; border:none;/);
+  assert.match(fs.readFileSync('index.html', 'utf8'), /css\/tokens\.css\?v=723/);
 });

@@ -225,8 +225,9 @@ function omranGoldBadgeFill(chip, a){
   /* الحجم بالبايت الحقيقيّ لا بعدد الحروف: الحرف العربيّ بايتان في UTF-8. */
   let __bytes = __body.length;
   try{ __bytes = new Blob([__body]).size; }catch(_e){ /* guard-ok */ }
+  if(a.fullBytes > __bytes) __bytes = a.fullBytes;
   const kb = Math.max(1, Math.round(__bytes / 1024));
-  const ln = __body ? __body.split('\n').length : 0;
+  const ln = a.fullLines || (__body ? __body.split('\n').length : 0);
   /* \u2066…\u2069 عزل ثنائيّ الاتجاه — بدونه ينقلب السطر في الواجهة العربيّة. */
   sb.textContent = a.pending
     ? (omranBadgeT('scan') + ' ⏳')
@@ -2957,6 +2958,16 @@ async function __sendPromptCore(){
   // مرفقات جديدة نعتمد الجديدة. هكذا لا تضيع الصورة/الملف بصمت.
   const attachmentsForMsg = pendingAttachments.length ? pendingAttachments.slice() :
     (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
+  /* v-regen-fullfile: المرفق المحفوظ معاينة ٦٠٠٠ حرف (v-attach-light) — إعادة التوليد والتحرير
+     كانت ترسلها للنموذج فيقول «الملفّ مقطوع». النصّ الكامل يُستعاد من IndexedDB في نسخة. */
+  for(let __i = 0; __i < attachmentsForMsg.length; __i++){
+    const __a = attachmentsForMsg[__i];
+    if(!__a || !__a.textFullId || typeof idbGet !== 'function') continue;
+    try{
+      const __full = await idbGet(__a.textFullId);
+      if(typeof __full === 'string' && __full.length > String(__a.text || '').length) attachmentsForMsg[__i] = Object.assign({}, __a, { text: __full });
+    }catch(e){ __swallow(e, 'upload:regen-fullfile'); }
+  }
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
   /* v-file-analyze: ملف نصّي/كودي مرفق بلا أمر بناء صريح = طلب تحليل لا بناء.
@@ -3044,9 +3055,14 @@ async function __sendPromptCore(){
            خفيفة + معرّف الاستعادة؛ العارض يفتح الكامل من المخزن (app-04). الإرسال للنموذج
            لا يتأثّر — يُبنى من المرفق الكامل قبل هذا التخفيف. */
         try{
-          var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-          if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+          if(!a.textFullId){
+            var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+            if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+          }
         }catch(e2){ /* المعاينة تكفي عند تعذّر المخزن */ }
+        /* البطاقة تعرض حجم الملفّ وأسطره الحقيقيّة لا حجم المعاينة */
+        try{ a.fullBytes = new Blob([a.text]).size; }catch(e3){ a.fullBytes = a.text.length; }
+        a.fullLines = a.text.split('\n').length;
         a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — انقر لفتح الملفّ كاملًا)';
       }
     });
@@ -4885,6 +4901,31 @@ DESIGN RULES (non-negotiable):
       // ② أدوار محادثة حقيقية بدل ضغط السجل في رسالة system واحدة.
       //    هذا هو الإصلاح الأساسي: النموذج يرى محادثة، لا تعليمات.
       let __turns = [];
+      /* v-history-files: الرسالة المحفوظة تحمل نصّ المستخدم وحده، فالملفّ المرفق كان يصل
+         في دوره فقط ثمّ يغيب — «وش في السطر كذا؟» بعده بلا ملفّ. الكامل من IndexedDB
+         (textFullId) أو المرفق الصغير نفسه، والأحدث أولًا ضمن ميزانيّة تحفظ سقف السياق. */
+      const __histFiles = new Map();
+      if(!__quietSocialTurn || __ownerCtx){
+        let __fileBudget = __ownerCtx ? 200000 : 40000;
+        const __withFiles = __historyMsgs.slice(-MAX_TURNS).filter(m => m && m.role === 'user' && m !== __nextUserMessage
+          && m.apiText === undefined && Array.isArray(m.attachments) && m.attachments.some(a => a && !a.isImage && !a.isVideo && typeof a.text === 'string'));
+        for(let __k = __withFiles.length - 1; __k >= 0 && __fileBudget > 0; __k--){
+          const m = __withFiles[__k];
+          let __out = '';
+          for(const a of m.attachments){
+            if(!a || a.isImage || a.isVideo || typeof a.text !== 'string' || __fileBudget <= 0) continue;
+            let __body = a.text;
+            if(a.textFullId && typeof idbGet === 'function'){
+              try{ const __full = await idbGet(a.textFullId); if(typeof __full === 'string' && __full.length > __body.length) __body = __full; }
+              catch(e){ __swallow(e, 'history:file-full'); }
+            }
+            if(__body.length > __fileBudget) __body = __body.slice(0, __fileBudget) + '\n… [بقيّة الملفّ لم تُرسل في هذا الدور لطول المحادثة — الملفّ عند المستخدم كامل غير مقطوع]';
+            __fileBudget -= __body.length;
+            __out += '\n\n📄 ' + (a.name || 'file') + ':\n```\n' + __body + '\n```';
+          }
+          if(__out) __histFiles.set(m, __out);
+        }
+      }
       if(!__quietSocialTurn || __ownerCtx){ // v-owner-memory: للمالك «زين/ممتاز» وسط الشغل تحمل التاريخ
         __historyMsgs.slice(-MAX_TURNS).forEach(m => {
           if(!m || m._loading || m._failed) return;
@@ -4893,6 +4934,7 @@ DESIGN RULES (non-negotiable):
           if(!txt) return;
           txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
           if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط
+          if(__histFiles.has(m)) txt += __histFiles.get(m);
           const prev = __turns[__turns.length - 1];
           if(prev && prev.role === role) prev.content += '\n\n' + txt; // دمج بدل الرفض
           else __turns.push({role, content: txt});
@@ -6065,6 +6107,30 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       });
       if(fixed) saveState();
     }catch(e){ __swallow(e, "save:app-09-attach#35"); }
+    // 🧹 v-no-starter: «لوحة القيادة الذكية» كانت تُحقن في كلّ محادثة فارغة — تُكنس النسخ
+    // المحفوظة التي لم يكتب فيها المستخدم شيئًا؛ أيّ مشروع فيه رسالة يبقى كما هو.
+    try{
+      const isStarter = p => p && !(p.messages || []).length && typeof p.code === 'string'
+        && p.code.indexOf('<title>لوحة القيادة الذكية | عمران AI</title>') >= 0;
+      const starterIds = (state.projects || []).filter(isStarter).map(p => p.id);
+      if(starterIds.length){
+        starterIds.forEach(id => { try{ if(window.chatsMarkDeleted) chatsMarkDeleted(id); }catch(err){ __swallow(err, "save:app-09-attach#no-starter-mark"); } });
+        state.projects = state.projects.filter(p => !isStarter(p));
+        if(!state.projects.length){
+          state.projects.push({id: 'p_' + Date.now(), title: t('defaultProjectTitle'), messages: [], code: ''});
+        }
+        if(!state.projects.some(p => p.id === state.currentId)) state.currentId = state.projects[state.projects.length - 1].id;
+        saveState();
+        const tok = (typeof chatsAuthToken === 'function') ? chatsAuthToken() : '';
+        if(tok){
+          fetch('/api/account?action=chats_delete', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: tok, ids: starterIds }),
+          }).catch(() => {});
+        }
+        renderAll();
+      }
+    }catch(e){ __swallow(e, "save:app-09-attach#no-starter"); }
     // 🔁 فتح آخر مشروع تلقائيًا حتى يشوف المستخدم آخر محادثته فورًا.
     if(!state.currentId && state.projects.length){
       const savedId = localStorage.getItem('aiapp_current_id');

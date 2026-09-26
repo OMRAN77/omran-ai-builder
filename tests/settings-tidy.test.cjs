@@ -15,20 +15,28 @@ const LABELS = {
   memorySection: 'ذاكرتي', pricingSection: '💳 الباقات والنقاط', aboutSection: 'ℹ️ عن البرنامج والفيديوهات التعريفية',
 };
 
-function render(user){
+function render(user, extra){
   const src = app05.slice(app05.indexOf('function stripUiEmoji'), app05.indexOf('function showSettingsHome'));
   const pre = app05.slice(app05.indexOf('const SETTINGS_NAV_IDS'), app05.indexOf('const SETTINGS_NAV_ICONS'));
-  const rows = [];
-  const el = (x) => Object.assign({ style: {}, classList: { add(){}, remove(){} }, textContent: '' }, x);
-  const list = el({ set innerHTML(v){ rows.length = 0; }, appendChild(r){ rows.push(r); } });
+  const out = [];
+  const el = (x) => Object.assign({ style: {}, dataset: {}, classList: { add(){}, remove(){} }, textContent: '' }, x);
+  const list = el({ set innerHTML(v){ out.length = 0; }, appendChild(n){ out.push(n); } });
   const document = {
     getElementById: (id) => id === 'settingsNavList' ? list : (LABELS[id] ? {} : null),
     querySelector: (q) => { const id = q.slice(1, q.indexOf(' ')); return LABELS[id] ? { textContent: LABELS[id] } : null; },
-    createElement: (tag) => { const r = el({ innerHTML: '' }); r.querySelector = () => r; if(tag === 'canvas') r.getContext = () => ({ measureText: (t) => ({ width: t.length * 7 }) }); return r; },
+    createElement: () => { const kids = []; const r = el({ innerHTML: '', kids, appendChild(c){ kids.push(c); } }); r.querySelector = (sel) => { r[sel] = r[sel] || el({}); return r[sel]; }; return r; },
   };
-  new Function('document', 'authGet', 'getComputedStyle', 'window', pre + 'const SETTINGS_NAV_ICONS = {};\n' +
-    src.replace(/^const SETTINGS_NAV_ICONS[\s\S]*?\n\};\n/m, '') + '\nrenderSettingsNavList();')(document, () => user, () => ({ fontSize: '15px' }), {});
-  return rows.map(r => r.textContent);
+  const w = Object.assign({}, extra || {});
+  new Function('document', 'authGet', 'window', 't', 'fetch', '__swallow', pre + 'const SETTINGS_NAV_ICONS = {};\n' +
+    src.replace(/^const SETTINGS_NAV_ICONS[\s\S]*?\n\};\n/m, '').replace(/^\(function\(\)\{[\s\S]*$/m, '') + '\nrenderSettingsNavList();')(document, (k) => (k === 'aiapp_auth_token' ? (user ? 'tok' : '') : user), w, (k) => 'T:' + k, () => new Promise(() => {}), () => {});
+  // [{ title, rows:[{ label, value, sub }] }] — صفّ المالك مجموعة بلا عنوان
+  const groups = []; let title = null;
+  for(const n of out){
+    if(n.className === 'settingsNavGroupTitle'){ title = n.textContent; continue; }
+    groups.push({ title, rows: n.kids.map(r => ({ sid: r.dataset.sid, label: r['.settingsNavText'].textContent, value: r['.settingsNavValue'].textContent, sub: r['.settingsNavSub'].textContent, cls: r.className })) });
+    title = null;
+  }
+  return groups;
 }
 
 test('١. «الوكيل» خارج الإعدادات، والعنوان الجديد بالـ١٤ لغة', () => {
@@ -41,14 +49,34 @@ test('١. «الوكيل» خارج الإعدادات، والعنوان الج
   }
 });
 
-test('٢. الصفوف من الأقصر فوق إلى الأطول تحت، و«صفحة المالك» أوّلًا للمالك وحده', () => {
+test('٢. v-settings-groups (أمر المالك ٢٦ سبتمبر) نسخ ترتيب الطول: مجموعات بعناوين، و«صفحة المالك» أوّلًا للمالك وحده', () => {
   const owner = render('omran');
-  assert.equal(owner[0], 'صفحة المالك');
+  assert.equal(owner[0].title, null);
+  assert.deepEqual(owner[0].rows.map(r => r.label), ['صفحة المالك']);
+  assert.match(owner[0].rows[0].cls, /settingsNavOwner/);
   const rest = owner.slice(1);
-  for(let i = 1; i < rest.length; i++) assert.ok(rest[i - 1].length <= rest[i].length, rest[i - 1] + ' قبل ' + rest[i]);
-  assert.deepEqual(rest.slice(0, 3), ['اللغة', 'حسابي', 'الصوت'], 'التساوي يحفظ الترتيب الأصليّ');
-  assert.equal(rest[rest.length - 1], 'عن البرنامج والفيديوهات التعريفية');
-  const guest = render('ali');
-  assert.deepEqual(guest, rest, 'لغير المالك: نفس الترتيب بلا صفّ المالك');
-  assert.equal(guest.length, 13);
+  assert.deepEqual(rest.map(g => g.title), ['T:setGrpPersonal', 'T:setGrpAccount', 'T:setGrpAppearance', 'T:setGrpGeneral']);
+  assert.deepEqual(rest.map(g => g.rows.map(r => r.sid)), [
+    ['toneSection', 'memorySection', 'voiceSection'],
+    ['settingsEmailRow', 'pricingSection', 'accountSection', 'statsSection'],
+    ['themeSection', 'fontFamilySection', 'fontSizeSection', 'langSection'],
+    ['notifSection', 'apiKeysSection', 'aboutSection'],
+  ]);
+  const acct = rest[1].rows;
+  assert.equal(acct[0].label, 'T:setEmailRow');
+  assert.equal(acct[0].sub, 'T:setNoEmail', 'قبل وصول الإيميل');
+  assert.equal(acct[1].value, 'VIP', 'المالك');
+  const all = rest.flatMap(g => g.rows.map(r => r.sid)).filter(s => s !== 'settingsEmailRow');
+  assert.equal(all.length, 13, 'كلّ الأقسام الـ١٣ موجودة');
+});
+
+test('٣. غير المالك: بلا صفّ المالك، وقيمة الاشتراك من الباقة، والضيف بلا صفّ الإيميل', () => {
+  const free = render('ali', { __omranPlan: 'free', __setEmail: 'ali@x.com', __setEmailFor: 'tok' });
+  assert.equal(free.length, 4);
+  assert.equal(free[1].rows[0].sub, 'ali@x.com');
+  assert.equal(free[1].rows[1].value, 'T:setPlanFree');
+  assert.equal(render('ali', { __omranPlan: 'basic' })[1].rows[1].value, 'Plus');
+  assert.equal(render('ali', { __omranPlan: 'max' })[1].rows[1].value, 'Max');
+  const guest = render('');
+  assert.deepEqual(guest[1].rows.map(r => r.sid), ['pricingSection', 'accountSection', 'statsSection']);
 });

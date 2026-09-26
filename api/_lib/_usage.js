@@ -164,7 +164,7 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
   // and the owner's nine API keys were effectively open to anyone.
   // api/edu.js already limits by IP — this is the same approach, applied to the
   // path that actually spends money.
-  // v-tiers: الضيف على السلسلة المجانية فقط (GUEST_DAILY، افتراضيًّا ٣ يوميًّا)،
+  // v-tiers: الضيف على السلسلة المجانية فقط (GUEST_DAILY، افتراضيًّا ٠: التسجيل أوّلًا)،
   // والمزوّدات المدفوعة مغلقة أمامه.
   if (tierLib.isPaidProvider(providerKey)) {
     return { allowed: false, reason: 'limit', subscribeOnly: true, username: null, tier: 'guest', subscriber: false, message: tierLib.FREE_TEXT.subscribeOnly };

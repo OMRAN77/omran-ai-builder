@@ -214,7 +214,6 @@ const $ = s => document.querySelector(s);
   const passLabelText = $('#authPasswordLabelText');
   const forgotLink = $('#authForgotLink');
   const backToLoginLink = $('#authBackToLoginLink');
-  const emailRow = $('#authEmailRow');
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
   const useCodeLink = $('#authUseCodeLink');
@@ -249,12 +248,22 @@ const $ = s => document.querySelector(s);
     tabLogin.classList.toggle('primary', m === 'login');
     tabSignup.classList.toggle('primary', m === 'signup');
     const rememberRow = $('#authRememberRow');
-    emailRow.style.display = (m === 'signup') ? 'flex' : 'none';
     userInput.readOnly = (m === 'resetToken');
+    /* v-simple-login: التبويبات مخفيّة دائمًا؛ زرّ واحد تحت جوجل يبدّل بين الدخول والتسجيل، وعنوان صغير خارج الدخول */
+    const heading = $('#authHeading');
+    const altBlock = $('#authAltBlock');
+    const switchBtn = $('#authSwitchBtn');
+    const headText = m === 'signup' ? t.authCreateAccount : (m === 'login' ? '' : t.authForgotLink);
+    if(heading){ heading.textContent = headText || ''; heading.style.display = headText ? 'block' : 'none'; }
+    if(altBlock) altBlock.style.display = (m === 'login' || m === 'signup') ? 'flex' : 'none';
+    if(switchBtn) switchBtn.textContent = m === 'signup' ? t.authHaveAccount : t.authCreateAccount;
+    userInput.placeholder = (m === 'login' || m === 'forgotEmail') ? (t.authIdPlaceholder || '') : (t.authUsernameLabel || '');
+    passInput.placeholder = (m === 'reset' || m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
+    passInput.autocomplete = m === 'login' ? 'current-password' : 'new-password';
     if(m === 'reset'){
       tabsRow.style.display = 'none';
       recoveryRow.style.display = 'flex';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authNewPasswordLabel;
       forgotLink.style.display = 'none';
       useCodeLink.style.display = 'none';
@@ -273,7 +282,7 @@ const $ = s => document.querySelector(s);
     } else if(m === 'resetToken'){
       tabsRow.style.display = 'none';
       recoveryRow.style.display = 'none';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authNewPasswordLabel;
       forgotLink.style.display = 'none';
       useCodeLink.style.display = 'none';
@@ -281,15 +290,15 @@ const $ = s => document.querySelector(s);
       submitBtn.textContent = t.authSubmitReset;
       if(rememberRow) rememberRow.style.display = 'none';
     } else {
-      tabsRow.style.display = 'flex';
+      tabsRow.style.display = 'none';
       recoveryRow.style.display = 'none';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authPasswordLabel;
       forgotLink.style.display = (m === 'login') ? '' : 'none';
       useCodeLink.style.display = 'none';
       backToLoginLink.style.display = 'none';
       submitBtn.textContent = m === 'login' ? t.authSubmitLogin : t.authSubmitSignup;
-      if(rememberRow) rememberRow.style.display = 'flex';
+      if(rememberRow) rememberRow.style.display = 'none';
     }
   }
   tabLogin.onclick = () => setMode('login');
@@ -297,6 +306,8 @@ const $ = s => document.querySelector(s);
   forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
   useCodeLink.onclick = (e) => { e.preventDefault(); setMode('reset'); };
   backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
+  const authSwitchBtn = $('#authSwitchBtn');
+  if(authSwitchBtn) authSwitchBtn.onclick = () => setMode(mode === 'signup' ? 'login' : 'signup');
 
   const togglePassBtn = $('#authTogglePassBtn');
   if(togglePassBtn){
@@ -1071,7 +1082,7 @@ const $ = s => document.querySelector(s);
 
     if(mode === 'forgotEmail'){
       if(!username){
-        errBox.textContent = isEn ? 'Please enter your username' : 'الرجاء إدخال اسم المستخدم';
+        errBox.textContent = isEn ? 'Please enter your username or email' : 'الرجاء إدخال اسم المستخدم أو الإيميل';
         return;
       }
       submitBtn.disabled = true;
@@ -1364,7 +1375,7 @@ const $ = s => document.querySelector(s);
   // GUEST_MSG_LIMIT free messages (tracked locally); once used up, sendPrompt()
   // calls window.requireLogin() to show this same overlay and block further
   // sends until the user logs into an existing account (or signs up).
-  const GUEST_MSG_LIMIT = 20;
+  const GUEST_MSG_LIMIT = 0; /* v-free-first-day (قرار المالك ٢٦ سبتمبر): الضيف لا يرسل شيئًا — التسجيل أوّلًا */
   window.GUEST_MSG_LIMIT = GUEST_MSG_LIMIT;
   window.getGuestMsgCount = () => parseInt(localStorage.getItem('aiapp_guest_msg_count') || '0', 10);
   window.incrementGuestMsgCount = () => localStorage.setItem('aiapp_guest_msg_count', String(window.getGuestMsgCount() + 1));
@@ -1395,7 +1406,7 @@ const $ = s => document.querySelector(s);
   })();
   window.requireLogin = (reason) => {
     setMode('login');
-    if(reason === 'guestLimit'){ errBox.textContent = curT().guestLimitMsg; }
+    if(reason === 'guestLimit'){ setMode('signup'); errBox.textContent = ''; }
     if(reason === 'guestImage'){ setMode('signup'); errBox.textContent = curT().guestImageMsg || curT().guestLimitMsg; }
     if(reason === 'checkout'){ setMode('signup'); errBox.textContent = curT().checkoutLoginFirst || ''; }
     showOverlay();

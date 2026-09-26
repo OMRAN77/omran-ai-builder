@@ -199,7 +199,7 @@ groq · cohere (v-cohere-tools: Cohere عبر الوسيط `cohere/command-a`). 
 ```
 streamFreeChain(args)                             free-chain.js:156
 │
-├─ الترتيب: freeChain(env)                        tier.js:228
+├─ الترتيب: freeChain(env)                        tier.js:231
 │     من FREE_CHAIN في البيئة، وإلّا DEFAULT_CHAIN  tier.js:141
 │     ['groq','gemini','mistral','openrouter']   ← v-plan-routing: Groq أوّلًا (المجّاني ٥ رسائل عليه)
 │     ومزوّد بلا مفتاح يُستبعد من القائمة أصلًا

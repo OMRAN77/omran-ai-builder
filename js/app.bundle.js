@@ -352,7 +352,6 @@ const $ = s => document.querySelector(s);
   const passLabelText = $('#authPasswordLabelText');
   const forgotLink = $('#authForgotLink');
   const backToLoginLink = $('#authBackToLoginLink');
-  const emailRow = $('#authEmailRow');
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
   const useCodeLink = $('#authUseCodeLink');
@@ -387,12 +386,22 @@ const $ = s => document.querySelector(s);
     tabLogin.classList.toggle('primary', m === 'login');
     tabSignup.classList.toggle('primary', m === 'signup');
     const rememberRow = $('#authRememberRow');
-    emailRow.style.display = (m === 'signup') ? 'flex' : 'none';
     userInput.readOnly = (m === 'resetToken');
+    /* v-simple-login: التبويبات مخفيّة دائمًا؛ زرّ واحد تحت جوجل يبدّل بين الدخول والتسجيل، وعنوان صغير خارج الدخول */
+    const heading = $('#authHeading');
+    const altBlock = $('#authAltBlock');
+    const switchBtn = $('#authSwitchBtn');
+    const headText = m === 'signup' ? t.authCreateAccount : (m === 'login' ? '' : t.authForgotLink);
+    if(heading){ heading.textContent = headText || ''; heading.style.display = headText ? 'block' : 'none'; }
+    if(altBlock) altBlock.style.display = (m === 'login' || m === 'signup') ? 'flex' : 'none';
+    if(switchBtn) switchBtn.textContent = m === 'signup' ? t.authHaveAccount : t.authCreateAccount;
+    userInput.placeholder = (m === 'login' || m === 'forgotEmail') ? (t.authIdPlaceholder || '') : (t.authUsernameLabel || '');
+    passInput.placeholder = (m === 'reset' || m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
+    passInput.autocomplete = m === 'login' ? 'current-password' : 'new-password';
     if(m === 'reset'){
       tabsRow.style.display = 'none';
       recoveryRow.style.display = 'flex';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authNewPasswordLabel;
       forgotLink.style.display = 'none';
       useCodeLink.style.display = 'none';
@@ -411,7 +420,7 @@ const $ = s => document.querySelector(s);
     } else if(m === 'resetToken'){
       tabsRow.style.display = 'none';
       recoveryRow.style.display = 'none';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authNewPasswordLabel;
       forgotLink.style.display = 'none';
       useCodeLink.style.display = 'none';
@@ -419,15 +428,15 @@ const $ = s => document.querySelector(s);
       submitBtn.textContent = t.authSubmitReset;
       if(rememberRow) rememberRow.style.display = 'none';
     } else {
-      tabsRow.style.display = 'flex';
+      tabsRow.style.display = 'none';
       recoveryRow.style.display = 'none';
-      passwordRow.style.display = 'flex';
+      passwordRow.style.display = 'block';
       passLabelText.textContent = t.authPasswordLabel;
       forgotLink.style.display = (m === 'login') ? '' : 'none';
       useCodeLink.style.display = 'none';
       backToLoginLink.style.display = 'none';
       submitBtn.textContent = m === 'login' ? t.authSubmitLogin : t.authSubmitSignup;
-      if(rememberRow) rememberRow.style.display = 'flex';
+      if(rememberRow) rememberRow.style.display = 'none';
     }
   }
   tabLogin.onclick = () => setMode('login');
@@ -435,6 +444,8 @@ const $ = s => document.querySelector(s);
   forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
   useCodeLink.onclick = (e) => { e.preventDefault(); setMode('reset'); };
   backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
+  const authSwitchBtn = $('#authSwitchBtn');
+  if(authSwitchBtn) authSwitchBtn.onclick = () => setMode(mode === 'signup' ? 'login' : 'signup');
 
   const togglePassBtn = $('#authTogglePassBtn');
   if(togglePassBtn){
@@ -1209,7 +1220,7 @@ const $ = s => document.querySelector(s);
 
     if(mode === 'forgotEmail'){
       if(!username){
-        errBox.textContent = isEn ? 'Please enter your username' : 'الرجاء إدخال اسم المستخدم';
+        errBox.textContent = isEn ? 'Please enter your username or email' : 'الرجاء إدخال اسم المستخدم أو الإيميل';
         return;
       }
       submitBtn.disabled = true;
@@ -1502,7 +1513,7 @@ const $ = s => document.querySelector(s);
   // GUEST_MSG_LIMIT free messages (tracked locally); once used up, sendPrompt()
   // calls window.requireLogin() to show this same overlay and block further
   // sends until the user logs into an existing account (or signs up).
-  const GUEST_MSG_LIMIT = 20;
+  const GUEST_MSG_LIMIT = 0; /* v-free-first-day (قرار المالك ٢٦ سبتمبر): الضيف لا يرسل شيئًا — التسجيل أوّلًا */
   window.GUEST_MSG_LIMIT = GUEST_MSG_LIMIT;
   window.getGuestMsgCount = () => parseInt(localStorage.getItem('aiapp_guest_msg_count') || '0', 10);
   window.incrementGuestMsgCount = () => localStorage.setItem('aiapp_guest_msg_count', String(window.getGuestMsgCount() + 1));
@@ -1533,7 +1544,7 @@ const $ = s => document.querySelector(s);
   })();
   window.requireLogin = (reason) => {
     setMode('login');
-    if(reason === 'guestLimit'){ errBox.textContent = curT().guestLimitMsg; }
+    if(reason === 'guestLimit'){ setMode('signup'); errBox.textContent = ''; }
     if(reason === 'guestImage'){ setMode('signup'); errBox.textContent = curT().guestImageMsg || curT().guestLimitMsg; }
     if(reason === 'checkout'){ setMode('signup'); errBox.textContent = curT().checkoutLoginFirst || ''; }
     showOverlay();
@@ -2697,7 +2708,7 @@ const I18N = {
     refreshBtn: 'تحديث', worldMarketsTitle: 'الأسواق العالمية', pickStockTitle: 'اختيار سهم', cnProjectData: '📋 بيانات المشروع', cnLandArea: 'مساحة الأرض (م²) — اختياري', cnLandAreaPh: 'مثال: 500',
     cnEmirateOpt: 'الإمارة — اختياري', cnDetailsAnnexes: '🏠 التفاصيل والملاحق', cnExElevator: 'مصعد داخلي', cnExStore: 'مخزن خارجي', cnExWaterTank: 'خزان مياه', cnExSolar: 'ألواح شمسية',
     cnExPlayground: 'ملعب خارجي', cnExCarport: 'مظلة سيارات إضافية', cnBudgetOutputs: '💰 الميزانية والمخرجات', cnDownloadBoq: '📊 تنزيل جدول الكميات', cnPdfReport: '📄 تقرير PDF',
-    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '5 رسائل يوميًا',
+    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '20 رسالة أوّل يوم، ثمّ 3 يوميًا',
     plFreeVoice: 'حتّى 4 دقائق محادثة صوتية', plFreeImgs: 'حتّى 3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '50 رسالة يوميًا', plStVoice: 'حتّى 24 دقيقة محادثة صوتية', plStImgs: 'حتّى 15 صورة',
     plStVideos: 'فيديو واحد', plProMsgs: '100 رسالة يوميًا', plProVoice: 'حتّى 61 دقيقة محادثة صوتية', plProMedia: 'حتّى 40 صورة · 2 فيديو', plProAgent: 'الوكيل الذكي',
     plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro · 250 رسالة يوميًا', plMaxVoice: 'حتّى 213 دقيقة محادثة صوتية', plMaxMedia: 'حتّى 150 صورة · 3 فيديو', plMaxSupport: 'دعم مخصّص',
@@ -2794,6 +2805,20 @@ const I18N = {
     authTabLogin: 'تسجيل الدخول',
     authTabSignup: 'حساب جديد',
     authUsernameLabel: 'اسم المستخدم',
+    authIdPlaceholder: "اسم المستخدم أو الإيميل",
+    authCreateAccount: "إنشاء حساب جديد",
+    authHaveAccount: "عندي حساب — تسجيل الدخول",
+    setGrpPersonal: "التخصيص",
+    setGrpAccount: "الحساب",
+    setGrpAppearance: "المظهر",
+    setGrpGeneral: "عام",
+    setEmailRow: "البريد الإلكتروني",
+    setNoEmail: "أضف إيميلًا لاسترجاع الحساب",
+    setPlanFree: "مجاني",
+    setUpgradeTitle: "أنجز المزيد مع Om ai",
+    setUpgradeSub: "حدود أعلى وإمكانيّة الوصول إلى الميزات المتقدّمة.",
+    setUpgradeBtn: "الترقية",
+    setChangePhoto: "تغيير الصورة",
     authPasswordLabel: 'كلمة المرور',
     authNewPasswordLabel: 'كلمة مرور جديدة',
     authRecoveryLabel: 'رمز الاسترجاع',
@@ -2808,6 +2833,7 @@ const I18N = {
     clockWorldLabel: '🌍 الساعة العالمية',
     authBackToLogin: 'رجوع لتسجيل الدخول',
     authSubmitReset: 'إعادة تعيين كلمة المرور',
+    authSubmitForgotEmail: "أرسل رابط الاسترجاع على الإيميل",
     authRecoveryModalTitle: '🔑 احتفظ برمز الاسترجاع هذا',
     authRecoveryModalDesc: 'هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.',
     authCopyBtn: '📋 نسخ',
@@ -3599,7 +3625,7 @@ const I18N = {
 - طلب بناء/تعديل تطبيق أو موقع أو لعبة = اشرح باختصار (سطرين) ثم أعد ملف HTML+CSS+JS كامل يعمل مباشرة في كتلة \`\`\`html واحدة. يمكنك استخدام CDN. الألعاب 3D = Three.js عبر CDN.
 - تعديل كود موجود = غيّر الجزء المطلوب فقط وأعد الملف كاملاً.
 - بايثون = فقط إذا طُلب صراحة. كتلة \`\`\`python واحدة.`,
-    guestLimitMsg: '🎉 استخدمت رسائلك المجانية العشرين! سجّل الدخول لحسابك (أو أنشئ حسابًا جديدًا) عشان تكمل الدردشة.',
+    guestLimitMsg: 'سجّل حسابًا مجانيًّا لتبدأ الدردشة: 20 رسالة في أوّل يوم، ثمّ 3 رسائل يوميًّا.',
     guestImageMsg: '🎁 خلصت صورك المجانية الثلاث كضيف! أنشئ حسابًا مجانيًا خلال ثوانٍ وبتحصل على 70 نقطة هدية تكمل فيها توليد وتعديل الصور.',
     pricingSectionTitle: 'الباقات والنقاط',
     pricingFreeTitle: 'مجاني',
@@ -3614,7 +3640,7 @@ const I18N = {
     planTag: 'الأكثر اختيارًا',
     planCurrentBtn: 'باقتك الحالية',
     planSoonBtn: 'قريبًا',
-    planFreeFeats: '<li>5 رسائل يوميًا</li><li>حتّى 4 دقائق محادثة صوتية</li><li>حتّى 3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li>',
+    planFreeFeats: '<li>20 رسالة أوّل يوم، ثمّ 3 يوميًا</li><li>حتّى 4 دقائق محادثة صوتية</li><li>حتّى 3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li>',
     planPlusFeats: '<li>50 رسالة يوميًا</li><li>حتّى 24 دقيقة محادثة صوتية</li><li>حتّى 15 صورة</li><li>فيديو واحد</li>',
     planProFeats: '<li>100 رسالة يوميًا</li><li>حتّى 61 دقيقة محادثة صوتية</li><li>حتّى 40 صورة · 2 فيديو</li><li>الوكيل الذكي</li><li>أولوية في السرعة · شارة ذهبية</li>',
     planMaxFeats: '<li>كل مزايا Pro · 250 رسالة يوميًا</li><li>حتّى 213 دقيقة محادثة صوتية</li><li>حتّى 150 صورة · 3 فيديو</li><li>دعم مخصّص</li>',
@@ -3708,7 +3734,7 @@ const I18N = {
     cnLandArea: 'Land area (m²) — optional', cnLandAreaPh: 'e.g. 500', cnEmirateOpt: 'Emirate — optional', cnDetailsAnnexes: '🏠 Details and annexes', cnExElevator: 'Indoor elevator',
     cnExStore: 'Outdoor storeroom', cnExWaterTank: 'Water tank', cnExSolar: 'Solar panels', cnExPlayground: 'Outdoor playground', cnExCarport: 'Extra car canopy',
     cnBudgetOutputs: '💰 Budget and outputs', cnDownloadBoq: '📊 Download bill of quantities', cnPdfReport: '📄 PDF report', keyHowToTitle: '📝 How to get a key for each provider:',
-    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '5 messages a day', plFreeVoice: 'Up to 4 minutes of voice chat', plFreeImgs: 'Up to 3 AI images',
+    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '20 messages on day one, then 3 a day', plFreeVoice: 'Up to 4 minutes of voice chat', plFreeImgs: 'Up to 3 AI images',
     plFreeNoVideo: 'No video', plStMsgs: '50 messages a day', plStVoice: 'Up to 24 minutes of voice chat', plStImgs: 'Up to 15 images', plStVideos: '1 video', plProMsgs: '100 messages a day',
     plProVoice: 'Up to 61 minutes of voice chat', plProMedia: 'Up to 40 images · 2 videos', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
     plMaxAllPro: 'Everything in Pro · 250 messages a day', plMaxVoice: 'Up to 213 minutes of voice chat', plMaxMedia: 'Up to 150 images · 3 videos', plMaxSupport: 'Dedicated support',
@@ -3797,6 +3823,20 @@ const I18N = {
     authTabLogin: 'Log In',
     authTabSignup: 'Sign Up',
     authUsernameLabel: 'Username',
+    authIdPlaceholder: "Username or email",
+    authCreateAccount: "Create new account",
+    authHaveAccount: "I have an account — Log in",
+    setGrpPersonal: "Personalization",
+    setGrpAccount: "Account",
+    setGrpAppearance: "Appearance",
+    setGrpGeneral: "General",
+    setEmailRow: "Email",
+    setNoEmail: "Add an email to recover your account",
+    setPlanFree: "Free",
+    setUpgradeTitle: "Do more with Om ai",
+    setUpgradeSub: "Higher limits and access to advanced features.",
+    setUpgradeBtn: "Upgrade",
+    setChangePhoto: "Change photo",
     authPasswordLabel: 'Password',
     authNewPasswordLabel: 'New password',
     authRecoveryLabel: 'Recovery code',
@@ -3813,6 +3853,7 @@ const I18N = {
     clockWorldLabel: '🌍 World Clock',
     authBackToLogin: 'Back to login',
     authSubmitReset: 'Reset password',
+    authSubmitForgotEmail: "Email me a reset link",
     authRecoveryModalTitle: '🔑 Save this recovery code',
     authRecoveryModalDesc: 'This is the only code you can use to recover your account if you forget your password. Save it somewhere safe — it will not be shown again.',
     authCopyBtn: '📋 Copy',
@@ -3822,7 +3863,7 @@ const I18N = {
     authOrDivider: 'or',
     authGoogleBtn: 'Continue with Google',
     authSubmitSignup: 'Create Account',
-    guestLimitMsg: "🎉 You've used your 20 free messages! Log in to your account (or create one) to keep chatting.",
+    guestLimitMsg: 'Create a free account to start chatting: 20 messages on your first day, then 3 a day.',
     guestImageMsg: '🎁 You have used your 3 free guest images! Create a free account in seconds and get 70 gift points to keep generating and editing images.',
     pricingSectionTitle: 'Plans & Points',
     pricingFreeTitle: 'Free',
@@ -3837,7 +3878,7 @@ const I18N = {
     planTag: 'Most popular',
     planCurrentBtn: 'Your current plan',
     planSoonBtn: 'Soon',
-    planFreeFeats: '<li>5 messages a day</li><li>Up to 4 minutes of voice chat</li><li>Up to 3 AI images</li><li class="off">No video</li>',
+    planFreeFeats: '<li>20 messages on day one, then 3 a day</li><li>Up to 4 minutes of voice chat</li><li>Up to 3 AI images</li><li class="off">No video</li>',
     planPlusFeats: '<li>50 messages a day</li><li>Up to 24 minutes of voice chat</li><li>Up to 15 images</li><li>1 video</li>',
     planProFeats: '<li>100 messages a day</li><li>Up to 61 minutes of voice chat</li><li>Up to 40 images · 2 videos</li><li>The smart agent</li><li>Priority speed · gold badge</li>',
     planMaxFeats: '<li>Everything in Pro · 250 messages a day</li><li>Up to 213 minutes of voice chat</li><li>Up to 150 images · 3 videos</li><li>Dedicated support</li>',
@@ -4734,7 +4775,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=693'; /* v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=697'; /* v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -5149,297 +5190,8 @@ if(!state.currentId && state.projects.length){
     if(__curP) state.currentId = __curP.id;
   }catch(e){ __swallow(e, 'boot:app-04#cur-early'); }
 }
-if(!state.projects.length){
-  const __starterId = 'p_' + Date.now();
-  state.projects = [{
-    id: __starterId,
-    title: (typeof t === 'function' ? t('defaultShowcaseTitle') : 'لوحة القيادة الذكية'),
-    messages: [],
-    code: '',
-  }];
-  state.currentId = __starterId;
-}
 // v522: نكشف state على window حتى يقدر app-22-session-new.js يصل إليه من داخل IIFE
 window.__omrS = state;
-
-// طلب المالك: تطبيق تنفيذي متكامل (Executive Dashboard) بمستوى عالي يظهر فور فتح التطبيق
-window.OMRAN_STARTER_APP_CODE = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>لوحة القيادة الذكية | عمران AI</title>
-  <style>
-    :root {
-      --bg: #090b10;
-      --card-bg: rgba(18, 22, 34, 0.75);
-      --card-border: rgba(212, 160, 23, 0.18);
-      --card-hover: rgba(212, 160, 23, 0.35);
-      --gold: #d4a017;
-      --gold-light: #f5c842;
-      --text: #f0f2f5;
-      --text-dim: #9aa4b2;
-      --accent-green: #10b981;
-      --accent-blue: #38bdf8;
-      --accent-purple: #a855f7;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body {
-      background: radial-gradient(circle at 50% 0%, #151c2e 0%, var(--bg) 70%);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--card-border);
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .brand-title {
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: var(--gold-light);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      letter-spacing: 0.5px;
-    }
-    .badge-live {
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--accent-green);
-      font-size: 0.75rem;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .badge-live::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      background: var(--accent-green);
-      border-radius: 50%;
-      box-shadow: 0 0 8px var(--accent-green);
-    }
-    .grid-stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-    }
-    .stat-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 18px;
-      backdrop-filter: blur(8px);
-      transition: all 0.25s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .stat-card:hover {
-      border-color: var(--card-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    }
-    .stat-title {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      margin-bottom: 8px;
-    }
-    .stat-val {
-      font-size: 1.6rem;
-      font-weight: 800;
-      color: #fff;
-    }
-    .stat-diff {
-      margin-top: 6px;
-      font-size: 0.8rem;
-      color: var(--accent-green);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .grid-main {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 20px;
-    }
-    @media (max-width: 768px) {
-      .grid-main { grid-template-columns: 1fr; }
-    }
-    .chart-panel {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .panel-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .panel-head h3 {
-      font-size: 1rem;
-      color: #fff;
-      font-weight: 600;
-    }
-    .btn-action {
-      background: rgba(212, 160, 23, 0.12);
-      color: var(--gold-light);
-      border: 1px solid var(--card-border);
-      padding: 6px 14px;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .btn-action:hover {
-      background: rgba(212, 160, 23, 0.25);
-      border-color: var(--gold);
-    }
-    .svg-chart {
-      width: 100%;
-      height: 180px;
-      overflow: visible;
-    }
-    .activity-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .activity-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      font-size: 0.85rem;
-    }
-    .act-tag {
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      background: rgba(56, 189, 248, 0.12);
-      color: var(--accent-blue);
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="brand-title">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
-      <span>لوحة العمليات والتحليلات الذكية</span>
-    </div>
-    <div style="display:flex; gap:12px; align-items:center;">
-      <span class="badge-live">النظام متصل</span>
-      <button class="btn-action" id="btnRefresh">تحديث فوري</button>
-    </div>
-  </header>
-
-  <section class="grid-stats">
-    <div class="stat-card">
-      <div class="stat-title">كفاءة المعالجة الذكية</div>
-      <div class="stat-val" id="statEff">99.4%</div>
-      <div class="stat-diff">↑ +1.8% هذا الأسبوع</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">المهام المنجزة تلقائيًا</div>
-      <div class="stat-val" id="statTasks">14,280</div>
-      <div class="stat-diff">↑ +240 مهمة اليوم</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">سرعة الاستجابة اللحظية</div>
-      <div class="stat-val" id="statLatency">42 ms</div>
-      <div class="stat-diff" style="color:var(--accent-blue);">⚡ أداء فائق السرعة</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">الدقة والمطابقة الهندسية</div>
-      <div class="stat-val" id="statAcc">100%</div>
-      <div class="stat-diff">✓ تدقيق شامل معتمد</div>
-    </div>
-  </section>
-
-  <div class="grid-main">
-    <div class="chart-panel">
-      <div class="panel-head">
-        <h3>معدل الإنتاجية والتحليل الحي</h3>
-        <span style="font-size:0.8rem; color:var(--text-dim);">آخر ٧ فترات تدريب</span>
-      </div>
-      <svg class="svg-chart" viewBox="0 0 500 180">
-        <defs>
-          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#d4a017" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="#d4a017" stop-opacity="0.0"/>
-          </linearGradient>
-        </defs>
-        <path d="M 10 150 Q 80 120 160 135 T 320 60 T 490 30 L 490 180 L 10 180 Z" fill="url(#chartGrad)"/>
-        <path id="curvePath" d="M 10 150 Q 80 120 160 135 T 320 60 T 490 30" fill="none" stroke="#d4a017" stroke-width="3" stroke-linecap="round"/>
-        <circle cx="160" cy="135" r="5" fill="#f5c842" stroke="#090b10" stroke-width="2"/>
-        <circle cx="320" cy="60" r="5" fill="#f5c842" stroke="#090b10" stroke-width="2"/>
-        <circle cx="490" cy="30" r="6" fill="#10b981" stroke="#090b10" stroke-width="2"/>
-      </svg>
-    </div>
-
-    <div class="chart-panel">
-      <div class="panel-head">
-        <h3>سجل النشاط المباشر</h3>
-      </div>
-      <div class="activity-list" id="actList">
-        <div class="activity-item">
-          <span>توليد نموذج ثلاثي الأبعاد</span>
-          <span class="act-tag">مكتمل</span>
-        </div>
-        <div class="activity-item">
-          <span>فحص توافق المكونات</span>
-          <span class="act-tag">ناجح</span>
-        </div>
-        <div class="activity-item">
-          <span>تحسين محاذاة العرض</span>
-          <span class="act-tag">محدث</span>
-        </div>
-        <div class="activity-item">
-          <span>مزامنة قواعد المعرفة</span>
-          <span class="act-tag">نشط</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    document.getElementById('btnRefresh').addEventListener('click', function() {
-      var btn = this;
-      btn.textContent = 'جار التحديث...';
-      btn.style.opacity = '0.7';
-      setTimeout(function() {
-        var eff = (99.1 + Math.random() * 0.8).toFixed(1);
-        document.getElementById('statEff').textContent = eff + '%';
-        var tasks = 14280 + Math.floor(Math.random() * 40);
-        document.getElementById('statTasks').textContent = tasks.toLocaleString();
-        var lat = 38 + Math.floor(Math.random() * 8);
-        document.getElementById('statLatency').textContent = lat + ' ms';
-        btn.textContent = 'تم التحديث ✓';
-        btn.style.opacity = '1';
-        setTimeout(function() { btn.textContent = 'تحديث فوري'; }, 1500);
-      }, 400);
-    });
-  </script>
-</body>
-</html>`;
-
 
 // 💾 IndexedDB storage — سعة بالجيجات بدل حد 5MB في localStorage.
 // المشاريع/المحادثات/الصور تنحفظ هنا؛ localStorage يبقى للإعدادات الصغيرة فقط.
@@ -9106,17 +8858,6 @@ function renderCodeAndPreview(){
     }
   }catch(e){ /* guard-ok */ }
   if(!cur || !cur.code){
-    // طلب المالك: عرض كود حقيقي في المعاينة بمستوى عالي ومفتوح من الطرفين عند أول تشغيل
-    if(cur && !cur.code && (!cur.messages || !cur.messages.length) && !previewFrame._imageView && typeof window.OMRAN_STARTER_APP_CODE === 'string' && window.OMRAN_STARTER_APP_CODE){
-      cur.code = window.OMRAN_STARTER_APP_CODE;
-      if(!cur.title || cur.title === t('defaultProjectTitle')){
-        cur.title = t('defaultShowcaseTitle');
-      }
-      try{ saveState(); }catch(e){ __swallow(e, 'ui:starter-save'); }
-      try{ renderHistory(); }catch(e){ __swallow(e, 'ui:starter-hist'); }
-    }
-  }
-  if(!cur || !cur.code){
     if(previewFrame._imageView){
       pyConsole.style.display = 'none';
       previewFrame.style.display = 'block';
@@ -9990,7 +9731,9 @@ function applyPlanGate(d){
     if(!tier) return;
     const plan = tier === 'sub' ? String(d.plan || '').toLowerCase() : '';
     const open = tier === 'owner' || tier === 'vip' || (tier === 'sub' && plan === 'max');
+    const prevPlan = window.__omranPlan;
     window.__omranPlan = plan || tier;
+    if(prevPlan !== window.__omranPlan && typeof renderSettingsNavList === 'function') renderSettingsNavList();
     document.documentElement.classList.toggle('plan-locked', !open);
   }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }
 }
@@ -10824,6 +10567,7 @@ const SETTINGS_NAV_ICONS = {
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
   pricingSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`,
   aboutSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+  settingsEmailRow: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>`,
   ownerSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20"></path><path d="M3 18 2 7l6 4 4-7 4 7 6-4-1 11"></path></svg>`,
   feedbackSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
 };
@@ -10831,37 +10575,109 @@ function stripUiEmoji(t){ try{ return (t||'').replace(/[\u{1F000}-\u{1FAFF}\u{21
 function settingsOwnerUi(){
   try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
 }
-function settingsLabelWidth(listEl){
+/* v-settings-groups (أمر المالك ٢٦ سبتمبر بلقطة إعدادات ChatGPT): رأس بصورة الحساب واسمه، بطاقة «الترقية» لغير
+   المشترك، ثمّ الصفوف في مجموعات بعناوين (التخصيص · الحساب · المظهر · عام) بدل قائمة واحدة مرتّبة بالطول
+   (v-settings-tidy). «صفحة المالك» تبقى أوّلًا للمالك وحده. */
+const SETTINGS_NAV_GROUPS = [
+  ['setGrpPersonal', ['toneSection', 'memorySection', 'voiceSection']],
+  ['setGrpAccount', ['settingsEmailRow', 'pricingSection', 'accountSection', 'statsSection']],
+  ['setGrpAppearance', ['themeSection', 'fontFamilySection', 'fontSizeSection', 'langSection']],
+  ['setGrpGeneral', ['notifSection', 'apiKeysSection', 'aboutSection']],
+];
+const SETTINGS_PLAN_LABEL = { basic: 'Plus', pro: 'Pro', max: 'Max', owner: 'VIP', vip: 'VIP' };
+function settingsTr(k){ try{ return (typeof t === 'function' && t(k)) || ''; }catch(e){ return ''; } }
+function settingsLoggedIn(){ try{ return !!(typeof authGet === 'function' && authGet('aiapp_auth_token')); }catch(e){ return false; } }
+function settingsPaidPlan(){ const p = String(window.__omranPlan || '').toLowerCase(); return settingsOwnerUi() || !!SETTINGS_PLAN_LABEL[p]; }
+function settingsNavRow(sid, label, value, sub){
+  const row = document.createElement('div');
+  row.className = 'settingsNavRow' + (sid === 'ownerSection' ? ' settingsNavOwner' : '');
+  row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
+    '<span class="settingsNavLabel"><span class="settingsNavText"></span><span class="settingsNavSub"></span></span><span class="settingsNavValue"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+  row.querySelector('.settingsNavText').textContent = label;
+  row.querySelector('.settingsNavSub').textContent = sub || '';
+  row.querySelector('.settingsNavValue').textContent = value || '';
+  if(row.dataset) row.dataset.sid = sid;
+  row.onclick = () => showSettingsPage(sid === 'settingsEmailRow' ? 'accountSection' : sid);
+  return row;
+}
+function renderSettingsProfile(){
+  const name = document.getElementById('setProfileName');
+  if(!name) return;
+  const logged = settingsLoggedIn();
+  const uname = logged ? String((typeof authGet === 'function' && authGet('aiapp_username')) || '') : '';
+  name.textContent = uname;
+  const img = document.getElementById('setProfileImg');
+  const ini = document.getElementById('setProfileInitials');
+  let av = ''; try{ av = logged ? (localStorage.getItem('aiapp_avatar') || '') : ''; }catch(e){ av = ''; }
+  if(img){ if(av){ img.src = av; img.style.display = 'block'; } else { img.removeAttribute('src'); img.style.display = 'none'; } }
+  if(ini){ ini.textContent = av ? '' : (uname ? uname.trim().slice(0, 2).toUpperCase() : '?'); }
+  const edit = document.querySelector('#setProfileAvatar .setProfileEdit');
+  if(edit) edit.style.display = logged ? '' : 'none';
+  const loginBtn = document.getElementById('setProfileLogin');
+  if(loginBtn) loginBtn.style.display = logged ? 'none' : '';
+  const up = document.getElementById('settingsUpgradeCard');
+  if(up) up.style.display = settingsPaidPlan() ? 'none' : 'flex';
+}
+window.renderSettingsProfile = renderSettingsProfile;
+function settingsFetchEmail(){
   try{
-    const ctx = document.createElement('canvas').getContext('2d');
-    const cs = getComputedStyle(listEl);
-    ctx.font = (cs.fontWeight || '400') + ' ' + (cs.fontSize || '15px') + ' ' + (cs.fontFamily || 'sans-serif');
-    return (txt) => ctx.measureText(String(txt || '')).width;
-  }catch(e){ return (txt) => String(txt || '').length; }
+    const token = typeof authGet === 'function' ? authGet('aiapp_auth_token') : '';
+    if(!token){ window.__setEmailFor = ''; window.__setEmail = undefined; return; }
+    if(window.__setEmailFor === token) return;
+    window.__setEmailFor = token;
+    window.__setEmail = undefined;
+    fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getProfile', token }) })
+      .then(r => r.json()).then(d => { if(d && d.ok){ window.__setEmail = d.email || ''; renderSettingsNavList(); } })
+      .catch(e => { window.__setEmailFor = ''; __swallow(e, 'ui:settings-email'); });
+  }catch(e){ __swallow(e, 'ui:settings-email#2'); }
 }
 function renderSettingsNavList(){
   const listEl = document.getElementById('settingsNavList');
   if(!listEl) return;
   listEl.innerHTML = '';
   const owner = settingsOwnerUi();
+  const logged = settingsLoggedIn();
   const labelOf = (sid) => { const h = document.querySelector('#' + sid + ' .settingsSectionHeader h3'); return stripUiEmoji(h ? h.textContent : sid); };
-  const ids = SETTINGS_NAV_IDS.filter(sid => document.getElementById(sid) && (sid !== 'ownerSection' || owner));
-  // v-settings-tidy (أمر عمران «رتّب الإعدادات من الأصغر فوق إلى الأكبر»): الصفوف بعرض عنوانها
-  // المقيس بخطّ القائمة، الأقصر فوق؛ «صفحة المالك» تبقى أوّلًا. الترتيب يتبع اللغة الحاليّة.
-  const width = settingsLabelWidth(listEl);
-  const rest = ids.filter(sid => sid !== 'ownerSection').map((sid, i) => ({ sid, i, w: width(labelOf(sid)) }))
-    .sort((a, b) => (a.w - b.w) || (a.i - b.i)).map(x => x.sid);
-  (ids.includes('ownerSection') ? ['ownerSection'].concat(rest) : rest).forEach(sid => {
-    const label = labelOf(sid);
-    const row = document.createElement('div');
-    row.className = 'settingsNavRow' + (sid === 'ownerSection' ? ' settingsNavOwner' : '');
-    row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
-      '<span class="settingsNavLabel"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-    row.querySelector('.settingsNavLabel').textContent = label;
-    row.onclick = () => showSettingsPage(sid);
-    listEl.appendChild(row);
+  const has = (sid) => sid === 'settingsEmailRow' ? logged : !!document.getElementById(sid);
+  if(owner && has('ownerSection')){
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup';
+    card.appendChild(settingsNavRow('ownerSection', labelOf('ownerSection')));
+    listEl.appendChild(card);
+  }
+  const plan = String(window.__omranPlan || '').toLowerCase();
+  const planText = owner ? 'VIP' : (SETTINGS_PLAN_LABEL[plan] || settingsTr('setPlanFree'));
+  SETTINGS_NAV_GROUPS.forEach(([titleKey, ids]) => {
+    const rows = ids.filter(has);
+    if(!rows.length) return;
+    const title = document.createElement('div');
+    title.className = 'settingsNavGroupTitle';
+    title.textContent = settingsTr(titleKey);
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup';
+    rows.forEach(sid => {
+      if(sid === 'settingsEmailRow') card.appendChild(settingsNavRow(sid, settingsTr('setEmailRow'), '', window.__setEmail || settingsTr('setNoEmail')));
+      else card.appendChild(settingsNavRow(sid, labelOf(sid), sid === 'pricingSection' ? planText : ''));
+    });
+    listEl.appendChild(title);
+    listEl.appendChild(card);
   });
+  try{ renderSettingsProfile(); }catch(e){ __swallow(e, 'ui:settings-profile'); }
+  settingsFetchEmail();
 }
+(function(){
+  const av = document.getElementById('setProfileAvatar');
+  if(av) av.onclick = () => {
+    if(!settingsLoggedIn()){ const b = document.getElementById('acctLoginBtn'); if(b) b.click(); return; }
+    const inp = document.getElementById('acctAvatarInput'); if(inp) inp.click();
+  };
+  const login = document.getElementById('setProfileLogin');
+  if(login) login.onclick = () => { const b = document.getElementById('acctLoginBtn'); if(b) b.click(); };
+  const up = document.getElementById('setUpgradeBtn');
+  if(up) up.onclick = () => showSettingsPage('pricingSection');
+  const cls = document.getElementById('setHomeClose');
+  if(cls) cls.onclick = () => { try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-close'); } };
+})();
 function showSettingsHome(){
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');
@@ -17293,8 +17109,9 @@ function omranGoldBadgeFill(chip, a){
   /* الحجم بالبايت الحقيقيّ لا بعدد الحروف: الحرف العربيّ بايتان في UTF-8. */
   let __bytes = __body.length;
   try{ __bytes = new Blob([__body]).size; }catch(_e){ /* guard-ok */ }
+  if(a.fullBytes > __bytes) __bytes = a.fullBytes;
   const kb = Math.max(1, Math.round(__bytes / 1024));
-  const ln = __body ? __body.split('\n').length : 0;
+  const ln = a.fullLines || (__body ? __body.split('\n').length : 0);
   /* \u2066…\u2069 عزل ثنائيّ الاتجاه — بدونه ينقلب السطر في الواجهة العربيّة. */
   sb.textContent = a.pending
     ? (omranBadgeT('scan') + ' ⏳')
@@ -20025,6 +19842,16 @@ async function __sendPromptCore(){
   // مرفقات جديدة نعتمد الجديدة. هكذا لا تضيع الصورة/الملف بصمت.
   const attachmentsForMsg = pendingAttachments.length ? pendingAttachments.slice() :
     (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
+  /* v-regen-fullfile: المرفق المحفوظ معاينة ٦٠٠٠ حرف (v-attach-light) — إعادة التوليد والتحرير
+     كانت ترسلها للنموذج فيقول «الملفّ مقطوع». النصّ الكامل يُستعاد من IndexedDB في نسخة. */
+  for(let __i = 0; __i < attachmentsForMsg.length; __i++){
+    const __a = attachmentsForMsg[__i];
+    if(!__a || !__a.textFullId || typeof idbGet !== 'function') continue;
+    try{
+      const __full = await idbGet(__a.textFullId);
+      if(typeof __full === 'string' && __full.length > String(__a.text || '').length) attachmentsForMsg[__i] = Object.assign({}, __a, { text: __full });
+    }catch(e){ __swallow(e, 'upload:regen-fullfile'); }
+  }
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
   /* v-file-analyze: ملف نصّي/كودي مرفق بلا أمر بناء صريح = طلب تحليل لا بناء.
@@ -20112,9 +19939,14 @@ async function __sendPromptCore(){
            خفيفة + معرّف الاستعادة؛ العارض يفتح الكامل من المخزن (app-04). الإرسال للنموذج
            لا يتأثّر — يُبنى من المرفق الكامل قبل هذا التخفيف. */
         try{
-          var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-          if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+          if(!a.textFullId){
+            var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+            if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+          }
         }catch(e2){ /* المعاينة تكفي عند تعذّر المخزن */ }
+        /* البطاقة تعرض حجم الملفّ وأسطره الحقيقيّة لا حجم المعاينة */
+        try{ a.fullBytes = new Blob([a.text]).size; }catch(e3){ a.fullBytes = a.text.length; }
+        a.fullLines = a.text.split('\n').length;
         a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — انقر لفتح الملفّ كاملًا)';
       }
     });
@@ -21953,6 +21785,31 @@ DESIGN RULES (non-negotiable):
       // ② أدوار محادثة حقيقية بدل ضغط السجل في رسالة system واحدة.
       //    هذا هو الإصلاح الأساسي: النموذج يرى محادثة، لا تعليمات.
       let __turns = [];
+      /* v-history-files: الرسالة المحفوظة تحمل نصّ المستخدم وحده، فالملفّ المرفق كان يصل
+         في دوره فقط ثمّ يغيب — «وش في السطر كذا؟» بعده بلا ملفّ. الكامل من IndexedDB
+         (textFullId) أو المرفق الصغير نفسه، والأحدث أولًا ضمن ميزانيّة تحفظ سقف السياق. */
+      const __histFiles = new Map();
+      if(!__quietSocialTurn || __ownerCtx){
+        let __fileBudget = __ownerCtx ? 200000 : 40000;
+        const __withFiles = __historyMsgs.slice(-MAX_TURNS).filter(m => m && m.role === 'user' && m !== __nextUserMessage
+          && m.apiText === undefined && Array.isArray(m.attachments) && m.attachments.some(a => a && !a.isImage && !a.isVideo && typeof a.text === 'string'));
+        for(let __k = __withFiles.length - 1; __k >= 0 && __fileBudget > 0; __k--){
+          const m = __withFiles[__k];
+          let __out = '';
+          for(const a of m.attachments){
+            if(!a || a.isImage || a.isVideo || typeof a.text !== 'string' || __fileBudget <= 0) continue;
+            let __body = a.text;
+            if(a.textFullId && typeof idbGet === 'function'){
+              try{ const __full = await idbGet(a.textFullId); if(typeof __full === 'string' && __full.length > __body.length) __body = __full; }
+              catch(e){ __swallow(e, 'history:file-full'); }
+            }
+            if(__body.length > __fileBudget) __body = __body.slice(0, __fileBudget) + '\n… [بقيّة الملفّ لم تُرسل في هذا الدور لطول المحادثة — الملفّ عند المستخدم كامل غير مقطوع]';
+            __fileBudget -= __body.length;
+            __out += '\n\n📄 ' + (a.name || 'file') + ':\n```\n' + __body + '\n```';
+          }
+          if(__out) __histFiles.set(m, __out);
+        }
+      }
       if(!__quietSocialTurn || __ownerCtx){ // v-owner-memory: للمالك «زين/ممتاز» وسط الشغل تحمل التاريخ
         __historyMsgs.slice(-MAX_TURNS).forEach(m => {
           if(!m || m._loading || m._failed) return;
@@ -21961,6 +21818,7 @@ DESIGN RULES (non-negotiable):
           if(!txt) return;
           txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
           if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط
+          if(__histFiles.has(m)) txt += __histFiles.get(m);
           const prev = __turns[__turns.length - 1];
           if(prev && prev.role === role) prev.content += '\n\n' + txt; // دمج بدل الرفض
           else __turns.push({role, content: txt});
@@ -23133,6 +22991,30 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       });
       if(fixed) saveState();
     }catch(e){ __swallow(e, "save:app-09-attach#35"); }
+    // 🧹 v-no-starter: «لوحة القيادة الذكية» كانت تُحقن في كلّ محادثة فارغة — تُكنس النسخ
+    // المحفوظة التي لم يكتب فيها المستخدم شيئًا؛ أيّ مشروع فيه رسالة يبقى كما هو.
+    try{
+      const isStarter = p => p && !(p.messages || []).length && typeof p.code === 'string'
+        && p.code.indexOf('<title>لوحة القيادة الذكية | عمران AI</title>') >= 0;
+      const starterIds = (state.projects || []).filter(isStarter).map(p => p.id);
+      if(starterIds.length){
+        starterIds.forEach(id => { try{ if(window.chatsMarkDeleted) chatsMarkDeleted(id); }catch(err){ __swallow(err, "save:app-09-attach#no-starter-mark"); } });
+        state.projects = state.projects.filter(p => !isStarter(p));
+        if(!state.projects.length){
+          state.projects.push({id: 'p_' + Date.now(), title: t('defaultProjectTitle'), messages: [], code: ''});
+        }
+        if(!state.projects.some(p => p.id === state.currentId)) state.currentId = state.projects[state.projects.length - 1].id;
+        saveState();
+        const tok = (typeof chatsAuthToken === 'function') ? chatsAuthToken() : '';
+        if(tok){
+          fetch('/api/account?action=chats_delete', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: tok, ids: starterIds }),
+          }).catch(() => {});
+        }
+        renderAll();
+      }
+    }catch(e){ __swallow(e, "save:app-09-attach#no-starter"); }
     // 🔁 فتح آخر مشروع تلقائيًا حتى يشوف المستخدم آخر محادثته فورًا.
     if(!state.currentId && state.projects.length){
       const savedId = localStorage.getItem('aiapp_current_id');

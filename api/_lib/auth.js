@@ -225,6 +225,23 @@ function isValidEmail(email) {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
+// v-simple-login: خانة الدخول تقبل اسم المستخدم أو الإيميل. الاسم أوّلًا (الأسماء بلا قيد أحرف،
+// فقد يحمل اسمٌ قديم «@»)، ثمّ فهرس الإيميل الذي يكتبه التسجيل وجوجل والدخول بالرمز.
+async function resolveLoginUser(identifier) {
+  const key = String(identifier || '').trim().toLowerCase();
+  const direct = key ? await getUser(key) : null;
+  if ((direct && !direct.deleted) || !isValidEmail(key)) return { key, user: direct };
+  try {
+    const idx = await kvGetJSON('db/email-index/' + key);
+    const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
+    if (uname) {
+      const user = await getUser(uname);
+      if (user && !user.deleted) return { key: uname, user };
+    }
+  } catch (e) { logError('auth:login-email-index', e); }
+  return { key, user: direct };
+}
+
 // يمنع حقن HTML عبر اسم المستخدم في جسم الرسالة.
 function escapeHtml(s) {
   return String(s == null ? '' : s)
@@ -549,13 +566,12 @@ module.exports = async (req, res) => {
 
     if (action === 'forgotPassword') {
       if (!username) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم', 'Enter your username') });
+        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل', 'Enter your username or email') });
         return;
       }
-      const key = String(username).trim().toLowerCase();
-      const user = await getUser(key);
+      const { key, user } = await resolveLoginUser(username);
       if (!user || user.deleted) {
-        res.status(404).json({ error: m('اسم المستخدم غير موجود', 'Username not found') });
+        res.status(404).json({ error: m('الحساب غير موجود', 'Account not found') });
         return;
       }
       if (!user.email) {
@@ -601,11 +617,10 @@ module.exports = async (req, res) => {
 
     if (action === 'login') {
       if (!username || !password) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم وكلمة المرور', 'Enter your username and password') });
+        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل وكلمة المرور', 'Enter your username or email and password') });
         return;
       }
-      const key = String(username).trim().toLowerCase();
-      const user = await getUser(key);
+      const { key, user } = await resolveLoginUser(username);
       // Brute-force protection: lock the account for 15 minutes after 6
       // consecutive failed attempts. Lockout resets on any successful login.
       const LOCK_AFTER = 6;
@@ -624,7 +639,7 @@ module.exports = async (req, res) => {
           });
           try { await putUser(key, updated); } catch (e) { logError('auth:lock-write', e); }
         }
-        res.status(401).json({ error: m('اسم المستخدم أو كلمة المرور غير صحيحة', 'Incorrect username or password') });
+        res.status(401).json({ error: m('اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة', 'Incorrect username, email or password') });
         return;
       }
       if (user.banned) {
