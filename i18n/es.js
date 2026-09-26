@@ -213,7 +213,7 @@ I18N['es'] = {
     "acctUsernameLabel": "Nombre de usuario",
     "acctPasswordRow": "Contraseña",
     "acctSaveBtn": "Guardar",
-    "acctEmailLabel": "📧 Correo de respaldo (para recuperar la contraseña)",
+    "acctEmailLabel": "Correo (si olvidas tu usuario o contraseña)",
     "acctReferralLabel": "🔗 Enlace para invitar amigos",
     "acctCopyBtn": "📋 Copiar",
     "acctReferralHint": "Por cada amigo que se registre con tu enlace, ambos reciben 10 mensajes gratuitos adicionales 🎁",

@@ -212,7 +212,7 @@ I18N['tr'] = {
     "acctUsernameLabel": "Kullanıcı adı",
     "acctPasswordRow": "Şifre",
     "acctSaveBtn": "Kaydet",
-    "acctEmailLabel": "📧 Yedek e-posta (parola kurtarma için)",
+    "acctEmailLabel": "E-posta (kullanıcı adını veya parolayı unutursan)",
     "acctReferralLabel": "🔗 Arkadaşlarını davet et bağlantısı",
     "acctCopyBtn": "📋 Kopyala",
     "acctReferralHint": "Bağlantınızla kayıt olan her arkadaşınız için ikinize de 10 ekstra ücretsiz mesaj verilir 🎁",

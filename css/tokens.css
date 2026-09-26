@@ -797,6 +797,11 @@
   .settingsNavGroup:first-child{ margin-top:6px; }
   .settingsNavGroup .settingsNavRow{ border-radius:0; padding:14px 2px; border-bottom-color:rgba(128,128,128,.18); }
   .settingsNavGroup .settingsNavRow:hover, .settingsNavGroup .settingsNavRow:active{ background:transparent; opacity:.8; }
+  /* v-account-tidy: الخروج آخر صفّ بلون عاديّ؛ صفوف «حسابي» بالرماديّ نفسه عند التمرير */
+  .settingsNavLogoutCard{ margin-top:18px; }
+  .settingsNavLogout .settingsNavChevron{ display:none; }
+  .acctRowBtn{ border-radius:var(--r-2); transition:background .15s; }
+  .acctRowBtn:hover, .acctRowBtn:active{ background:rgba(128,128,128,.12) !important; }
   .settingsNavRow .settingsNavLabel{ display:flex; flex-direction:column; gap:2px; }
   .settingsNavRow .settingsNavSub{ font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .settingsNavRow .settingsNavSub:empty{ display:none; }

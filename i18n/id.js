@@ -212,7 +212,7 @@ I18N['id'] = {
     "acctUsernameLabel": "Nama pengguna",
     "acctPasswordRow": "Kata sandi",
     "acctSaveBtn": "Simpan",
-    "acctEmailLabel": "📧 Email cadangan (untuk pemulihan kata sandi)",
+    "acctEmailLabel": "Email (jika lupa nama pengguna atau kata sandi)",
     "acctReferralLabel": "🔗 Tautan undang teman",
     "acctCopyBtn": "📋 Salin",
     "acctReferralHint": "Untuk setiap teman yang mendaftar dengan tautan Anda, Anda berdua mendapatkan 10 pesan gratis tambahan 🎁",

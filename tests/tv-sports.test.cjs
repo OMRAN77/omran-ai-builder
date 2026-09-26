@@ -134,7 +134,7 @@ test('٥. مفاتيح الجدول في الـ14 لغة ووسم اللغات �
     const s = read('i18n/' + lg + '.js');
     K.forEach((k) => assert.ok(s.includes('"' + k + '":'), lg + ': ' + k));
   });
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=697'"), 'وسم ملفّات اللغات'); // v-reply-export رفع الوسم (قبله v-img-honest)
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=698'"), 'وسم ملفّات اللغات'); // v-reply-export رفع الوسم (قبله v-img-honest)
 });
 
 test('٦. الفاحص يبني الطازجة ويفحص روابطها ويكتب sports وmatches', () => {

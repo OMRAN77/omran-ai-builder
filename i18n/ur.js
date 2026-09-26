@@ -222,7 +222,7 @@ I18N['ur'] = {
     acctAvatarBtn: "📷 تصویر تبدیل کریں",
     acctUsernameLabel: "صارف نام",
     acctSaveBtn: "محفوظ کریں",
-    acctEmailLabel: "📧 بیک اپ ای میل (پاس ورڈ کی بازیابی کے لیے)",
+    acctEmailLabel: "ای میل (اگر یوزرنیم یا پاس ورڈ بھول جائیں)",
     acctReferralLabel: "🔗 دوستوں کو مدعو کرنے کا لنک",
     acctCopyBtn: "📋 کاپی کریں",
     acctReferralHint: "آپ کے لنک سے سائن اپ کرنے والے ہر دوست کے لیے آپ دونوں کو 10 اضافی مفت پیغامات ملتے ہیں 🎁",

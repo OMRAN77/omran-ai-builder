@@ -223,7 +223,7 @@ I18N['hi'] = {
     acctAvatarBtn: "📷 फोटो बदलें",
     acctUsernameLabel: "उपयोगकर्ता नाम",
     acctSaveBtn: "सहेजें",
-    acctEmailLabel: "📧 बैकअप ईमेल (पासवर्ड रिकवरी के लिए)",
+    acctEmailLabel: "ईमेल (यूज़रनेम या पासवर्ड भूलने पर)",
     acctReferralLabel: "🔗 दोस्तों को आमंत्रित करने का लिंक",
     acctCopyBtn: "📋 कॉपी करें",
     acctReferralHint: "आपके लिंक से साइन अप करने वाले हर दोस्त के लिए आप दोनों को 10 अतिरिक्त मुफ़्त संदेश मिलते हैं 🎁",

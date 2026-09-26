@@ -240,7 +240,7 @@ I18N['fr'] = {
     acctAvatarBtn: "📷 Changer la photo",
     acctUsernameLabel: "Nom d'utilisateur",
     acctSaveBtn: "Enregistrer",
-    acctEmailLabel: "📧 E-mail de secours (pour récupérer le mot de passe)",
+    acctEmailLabel: "E-mail (si vous oubliez votre identifiant ou mot de passe)",
     acctReferralLabel: "🔗 Lien d'invitation d'amis",
     acctCopyBtn: "📋 Copier",
     acctReferralHint: "Pour chaque ami qui s'inscrit avec votre lien, vous recevez tous les deux 10 messages gratuits supplémentaires 🎁",
