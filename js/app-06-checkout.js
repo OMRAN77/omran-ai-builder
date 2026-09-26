@@ -123,27 +123,23 @@ function renderAcctMedia(media){
   box.innerHTML = rows.join('');
   box.style.display = rows.length ? 'flex' : 'none';
 }
+// v-acct-recovery (طلب المالك): صندوق «رصيد النقاط» حُذف من «حسابي»؛ الرصيد نفسه
+// لم يُمسّ، والاشتراكات وتحذير النفاد باقية.
 async function refreshAcctPoints(){
-  const box = document.getElementById('acctPointsBox');
-  const val = document.getElementById('acctPointsValue');
   const warn = document.getElementById('acctPointsLowWarn');
   const warnText = document.getElementById('acctPointsLowText');
-  if(!box || !val) return;
   const token = authGet('aiapp_auth_token');
-  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
+  if(!token){ if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
-    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
-    box.style.display = 'flex';
+    if(!(d && d.ok && d.authed)){ if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     renderAcctMedia(d.media);
     if(d.unlimited){
-      val.textContent = '∞';
       if(warn) warn.style.display = 'none';
       return;
     }
     const bal = Math.max(0, Number(d.points) || 0);
-    val.textContent = bal + ' ' + t('pricingPointsUnit');
     window.__pointsBalance = bal;
     if(warn && warnText){
       if(bal <= ACCT_POINTS_LOW){

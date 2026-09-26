@@ -1095,3 +1095,4 @@ Object.assign(I18N["zh"], {"mediaImgPlain": "张图片", "mediaHighEq": "一张�
 /* v-price-tabs: أقسام صفحة الأسعار */
 Object.assign(I18N["zh"], {"priceTabChat": "💬 聊天", "priceTabImg": "🖼️ 图片", "priceTabVid": "🎬 视频", "priceTabPts": "⚡ 积分"});
 Object.assign(I18N["zh"], {"priceTabMaha": "🎙️ 玛哈", "mahaPlanName": "玛哈", "mahaPlansDesc": "用于与玛哈语音通话。每月分钟数仅限玛哈使用；用完后通话将使用你的积分继续。", "mahaMinPlain": "分钟通话", "mahaMinUnit": "分钟", "mahaCapNote": "每次通话最多 10 分钟", "mahaNoChat": "不含聊天、图片或视频", "mahaLeft": "玛哈剩余分钟", "mahaCapEnd": "通话已在 10 分钟上限结束 — 请重新拨打继续", "mahaToPoints": "分钟已用完 — 改用积分继续"});
+Object.assign(I18N['zh'], {"authSubmitForgotEmail":"發送重設連結","authUserOrEmailLabel":"用戶名或電子郵件","authPhoneLabel":"📱 電話號碼（國際格式）","authPhoneSendBtn":"發送驗證碼","authUsePhoneLink":"用電話號碼找回","authPhoneInvalid":"請以國際格式輸入號碼，例如 +9715xxxxxxxx","acctPhoneLabel":"📱 電話號碼（用於找回帳戶）","acctPhoneVerifyBtn":"確認","sbUserChipLogin":"登入","sbUserChipTitle":"我的帳戶"});

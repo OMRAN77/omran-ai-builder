@@ -13,13 +13,24 @@
       <button type="button" class="btn" id="authTabSignup" style="flex:1;" data-i18n="authTabSignup">حساب جديد</button>
     </div>
     <form id="authForm" autocomplete="on" onsubmit="return false;">
-    <label style="display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
-      <span data-i18n="authUsernameLabel">اسم المستخدم</span>
+    <label id="authUserRow" style="display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
+      <span id="authUserLabelText" data-i18n="authUsernameLabel">اسم المستخدم</span>
       <input type="text" id="authUsername" name="username" autocomplete="username" style="height:40px; padding:0 10px; border-radius:var(--r-2);">
     </label>
     <label id="authEmailRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
       <span data-i18n="authEmailLabel">📧 الإيميل (اختياري - لاسترجاع الحساب)</span>
       <input type="email" id="authEmail" name="email" autocomplete="email" style="height:40px; padding:0 10px; border-radius:var(--r-2); direction:ltr;">
+    </label>
+    <div id="authPhoneRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
+      <span data-i18n="authPhoneLabel">📱 رقم الهاتف (بصيغة دولية)</span>
+      <div style="display:flex; gap:6px;">
+        <input type="tel" id="authPhone" autocomplete="tel" placeholder="+971 5X XXX XXXX" style="flex:1; min-width:0; height:40px; padding:0 10px; border-radius:var(--r-2); direction:ltr;">
+        <button type="button" class="btn" id="authPhoneSendBtn" style="height:40px; white-space:nowrap;" data-i18n="authPhoneSendBtn">أرسل الرمز</button>
+      </div>
+    </div>
+    <label id="authPhoneCodeRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
+      <span data-i18n="authOtpCodeLabel">رمز التحقق</span>
+      <input type="text" id="authPhoneCode" autocomplete="one-time-code" inputmode="numeric" maxlength="10" placeholder="000000" style="height:40px; padding:0 10px; border-radius:var(--r-2); direction:ltr; text-align:center; letter-spacing:6px;">
     </label>
     <label id="authRecoveryRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
       <span data-i18n="authRecoveryLabel">رمز الاسترجاع</span>
@@ -37,9 +48,10 @@
       <span data-i18n="authRememberMe">تذكرني</span>
     </label>
     <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
-    <div style="text-align:end; margin-bottom:6px;">
+    <div style="display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px 14px; margin-bottom:6px;">
       <a href="#" id="authForgotLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
       <a href="#" id="authUseCodeLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
+      <a href="#" id="authUsePhoneLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUsePhoneLink">الاسترجاع برقم الهاتف</a>
       <a href="#" id="authBackToLoginLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
     </div>
     <div id="authError" style="color:#ef4444; font-size: var(--fs-3); min-height:18px; margin-bottom:6px;"></div>

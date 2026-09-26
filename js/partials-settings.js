@@ -47,14 +47,10 @@
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('accountSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="acctSectionTitle">👤 حسابي</h3><span class="settingsSectionArrow" id="accountSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="accountSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;"><div style="display:flex; flex-direction:column; width:100%;">
     <button type="button" id="acctLoginBtn" style="display:none; width:100%; padding:12px; margin-bottom:14px; border-radius:var(--r-2); border:1px solid var(--accent-surface,#d4af37); background:rgba(212,175,55,.10); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctLoginBtnLabel">🔐 تسجيل الدخول / حساب جديد</button>
     <div id="acctSignedInAs" style="display:none; align-items:center; justify-content:center; gap:8px; padding:10px 12px; margin-bottom:14px; border-radius:var(--r-2); background:rgba(212,175,55,.08); border:1px solid rgba(212,175,55,.30); font-size: var(--fs-3); font-weight: var(--w-bold); color:var(--text);"><span>👤</span><span id="acctSignedInAsName"></span></div>
-    <!-- v-points-acct (طلب المالك): رصيد النقاط في قائمة الحساب + تحذير تلقائي قبل النفاد -->
-    <div id="acctPointsBox" style="display:none; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; margin-bottom:14px; border-radius:var(--r-2); background:rgba(212,175,55,.08); border:1px solid rgba(212,175,55,.30); font-size: var(--fs-3);">
-      <span style="font-weight: var(--w-bold);">⭐ <span data-i18n="acctPointsLabel">رصيد النقاط</span></span>
-      <span id="acctPointsValue" style="font-weight:800; color:#d4af37; direction:ltr; unicode-bidi:isolate;">—</span>
-    </div>
-    <!-- v-acct-media: المتبقّي من اشتراكات الصور/الفيديو/مها تحت النقاط — سطر لكلّ اشتراك ساري فقط -->
-    <div id="acctMediaBox" style="display:none; flex-direction:column; gap:6px; padding:10px 12px; margin:-8px 0 14px; border-radius:var(--r-2); background:rgba(212,175,55,.05); border:1px solid rgba(212,175,55,.22); font-size: var(--fs-3);"></div>
-    <div id="acctPointsLowWarn" style="display:none; padding:10px 12px; margin:-6px 0 14px; border-radius:var(--r-2); background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.40); color:#ef4444; font-size:12.5px; line-height:1.7;">
+    <!-- v-acct-recovery (طلب المالك): صندوق «رصيد النقاط» حُذف من هنا؛ تحذير النفاد باقٍ -->
+    <!-- v-acct-media: المتبقّي من اشتراكات الصور/الفيديو/مها — سطر لكلّ اشتراك ساري فقط -->
+    <div id="acctMediaBox" style="display:none; flex-direction:column; gap:6px; padding:10px 12px; margin:0 0 14px; border-radius:var(--r-2); background:rgba(212,175,55,.05); border:1px solid rgba(212,175,55,.22); font-size: var(--fs-3);"></div>
+    <div id="acctPointsLowWarn" style="display:none; padding:10px 12px; margin:0 0 14px; border-radius:var(--r-2); background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.40); color:#ef4444; font-size:12.5px; line-height:1.7;">
       <span id="acctPointsLowText" data-i18n="acctPointsLow">⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.</span>
       <button type="button" id="acctPointsBuyBtn" onclick="if(typeof showSettingsPage==='function')showSettingsPage('pricingSection'); if(typeof showPriceTab==='function')showPriceTab('pts')" style="display:block; margin-top:7px; width:100%; padding:9px; border-radius:8px; border:1px solid rgba(212,175,55,.5); background:rgba(212,175,55,.12); color:#d4af37; font-weight:700; cursor:pointer;" data-i18n="acctPointsBuyBtn">💳 شحن النقاط</button>
     </div>
@@ -93,6 +89,18 @@
         <button type="button" class="btn" id="acctEmailSaveBtn" style="width:auto; white-space:nowrap;" data-i18n="acctSaveBtn">حفظ</button>
       </div>
       <div id="acctEmailMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+    </div></div>
+    <div><button type="button" onclick="acctToggleRow('acctRowPhone',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctPhoneLabel">📱 رقم الهاتف (لاسترجاع الحساب)</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowPhone" style="display:none; padding:8px 8px 12px;">
+      <div style="display:flex; gap:8px;">
+        <input type="tel" id="acctPhone" style="flex:1; direction:ltr;" autocomplete="tel" placeholder="+971 5X XXX XXXX">
+        <button type="button" class="btn" id="acctPhoneSendBtn" style="width:auto; white-space:nowrap;" data-i18n="authPhoneSendBtn">أرسل الرمز</button>
+      </div>
+      <div id="acctPhoneCodeWrap" style="display:none; gap:8px; margin-top:8px;">
+        <input type="text" id="acctPhoneCode" style="flex:1; direction:ltr; text-align:center; letter-spacing:4px;" autocomplete="one-time-code" inputmode="numeric" maxlength="10" placeholder="000000">
+        <button type="button" class="btn" id="acctPhoneVerifyBtn" style="width:auto; white-space:nowrap;" data-i18n="acctPhoneVerifyBtn">تأكيد</button>
+      </div>
+      <div id="acctPhoneMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
     <div><button type="button" onclick="acctToggleRow('acctRowRef',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctReferralLabel">🔗 رابط دعوة أصدقائك</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowRef" style="display:none; padding:8px 8px 12px;">
