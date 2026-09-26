@@ -163,7 +163,7 @@ test('٤. تحويل البثّ: نصّ، نداء أداة مقطّع أو كا
   const read = async (resp) => (await new Response(od.responsesToAnthropicStream(resp.body, 'fb')).text()).split('\n').filter((l) => l.startsWith('data: ')).map((l) => JSON.parse(l.slice(6)));
   let evs = await read(rText('مرحبا بك'));
   assert.equal(evs[0].type, 'message_start');
-  assert.equal(evs[0].message.model, 'gpt-5.6-terra');
+  assert.equal(evs[0].message.model, 'gpt-6-sol');
   assert.equal(evs.filter((e) => e.type === 'content_block_delta').map((e) => e.delta.text).join(''), 'مرحبا بك');
   assert.deepEqual(evs.filter((e) => e.type === 'message_start')[1].message, { usage: { input_tokens: 100, cache_read_input_tokens: 20 } });
   let md = evs.find((e) => e.type === 'message_delta');
