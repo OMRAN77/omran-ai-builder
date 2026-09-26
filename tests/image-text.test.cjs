@@ -88,3 +88,33 @@ test('only explicit follow-ups reuse a previous image', () => {
   assert.equal(isExplicitImageEdit('أضف كلبًا إلى صورة ليل جديدة'), false);
   assert.equal(isExplicitImageEdit('أنشئ صورة شمس'), false);
 });
+
+test('scene direction after unquoted wording stays visual and is never printed', () => {
+  const s = parseImageTextSpec('ابغى صوره مكتوب عليها ان الله و ان اليه راجعون و الصوره تعبر عن وفات شخص عزيز');
+  assert.equal(s.exactText, 'ان الله و ان اليه راجعون');
+  assert.match(s.visualPrompt, /الصوره تعبر عن وفات شخص عزيز/);
+  assert.doesNotMatch(s.exactText, /الصوره تعبر/);
+});
+
+test('text layer controls preserve horizontal and vertical placement', () => {
+  assert.equal(parseImageTextSpec('حط الكتابة يمين').styleEditLoose.position, 'right-center');
+  assert.equal(parseImageTextSpec('خل الكتابة يسار فوق').styleEditLoose.position, 'left-top');
+  assert.equal(parseImageTextSpec('حط الكتابة تحت').styleEdit.position, 'bottom');
+  assert.equal(parseImageTextSpec('حط النص يمين').wantsText, false, 'أمر نقل النص ليس نصًا جديدًا اسمه «يمين»');
+});
+
+test('removing saved wording is distinguished from generating or restyling text', () => {
+  for (const phrase of ['احذف الكلام', 'شيل النص', 'امسح الكتابة اللي تحت', 'احذف هذا الشي']) {
+    const s = parseImageTextSpec(phrase);
+    assert.equal(s.removeText, true, phrase);
+    assert.equal(s.wantsText, false, phrase);
+  }
+});
+
+test('client keeps a reversible text layer and uses native Arabic font weights', () => {
+  const client = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
+  assert.match(client, /if\(__textSpec\.removeText && cur\.imageTextLayer\)/);
+  assert.match(client, /cur\.lastEditedImage=\{b64:__l\.baseB64,mime:__l\.baseMime\}/);
+  assert.match(client, /cur\.imageTextLayer = \{ baseB64:__baseB64, baseMime:__baseMime, text:__overlayText/);
+  assert.match(client, /const fontWeight = \/\^\(diwani\|thuluth\|ruqaa\|farsi\)\$\/\.test\(String\(fontKey \|\| ''\)\) \? '400' : '700';/);
+});
