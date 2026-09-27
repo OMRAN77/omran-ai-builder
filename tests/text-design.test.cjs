@@ -98,7 +98,7 @@ test('server routes: layout never fails the write; a failed design falls back to
 test('client: one call sends the photo thumbnail; the boxes live in the layer so restyle/replace never call again', () => {
   assert.match(attach, /__thumb = await omranShrinkForEdit\(__layer0 \? __layer0\.baseB64 : __b64, [^\n]*640, true\)/);
   assert.match(attach, /wantDesign:true, designImageBase64:__thumb \? __thumb\.b64 : undefined/);
-  assert.match(attach, /\(!__avoid && __thumb && !__textSpec\.autoAuthored\)/, 'التأليف يعيد الصناديق معه فلا نداء ثانٍ');
+  assert.match(attach, /\(!__avoid && __thumb && \(!__textSpec\.autoAuthored \|\| __textSpec\.kind === 'prayer'\)\) \? __layoutFetch\(\)/, 'التأليف يعيد الصناديق معه فلا نداء ثانٍ');
   assert.match(attach, /overlayTextOnImage\(__wb64, __wmime, __resolvedText, __textSpec\.fontKey, __textSpec\.color, __pos, __scale, __avoid\)/);
   assert.match(attach, /avoid:__avoid \|\| undefined, outTail:/);
   assert.match(attach, /__l\.position,__l\.scale,__l\.avoid\)/);
@@ -132,4 +132,32 @@ test('client renderer: title leads the block, balanced wrap, kashida only for di
   assert.match(attach, /const goldBusy = \(st\.gold \|\| 0\) > 0\.08 && \(pick\.rel \|\| 0\) > 0\.8;/, 'غيم الغروب ليس نقشًا ذهبيًّا');
   assert.match(attach, /naskhBody:\{css:'Noto Naskh Arabic',gf:'Noto\+Naskh\+Arabic:wght@500;700'\}/);
   assert.match(attach, /getElementById\('gf-' \+ f\.gf\)/, 'وزنان للعائلة نفسها يُحمَّلان');
+});
+
+test('review #805 (bugbot): the love words decide the kind too — «كلام لزوجتي» is romantic, not a generic phrase', () => {
+  for (const p of ['اكتب كلام لزوجتي', 'اكتب كلام حلو لزوجي', 'اكتب كلام لحبيبة قلبي', 'اكتب عليها كلام لخطيبي', 'اكتب كلام للعريس']) {
+    const s = parseImageTextSpec(p);
+    assert.equal(s.autoAuthored, true, p);
+    assert.equal(s.kind, 'flirt', p);
+  }
+  assert.equal(parseImageTextSpec('اكتب كلام جميل عن النجاح').kind, 'phrase', 'بلا كلمة حبّ يبقى عبارة');
+});
+
+test('review #805 (bugbot): quote marks copied around the title or a line are stripped, not a failed design', async () => {
+  const d = design.validateDesign({ title: '«البحر»', lines: ['«يا بَحرُ خُذْ هَمِّي»', '"وَأَعِدْ لِي ضَحِكَتِي"'], topicLabel: 'البحر' });
+  assert.deepEqual([d.title, d.lines], ['البحر', ['يا بَحرُ خُذْ هَمِّي', 'وَأَعِدْ لِي ضَحِكَتِي']]);
+  assert.doesNotMatch(design.buildDesignPrompt('كلام حب', 'flirt', true), /[«»]/, 'الأمثلة بلا علامات تنصيص كي لا تُنسخ');
+  let calls = 0;
+  const out = await design.authorTextDesign('k', 'كلام حب', { kind: 'flirt', imageBase64: IMG, fetchImpl: async () => { calls++; return geminiReply({ title: '«حُبٌّ لا يَنتهي»', lines: ['فِي عَيْنَيْكِ وَطَنِي', 'وَفِي قَلْبِي لَكِ عُمْرٌ'], topicLabel: 'حب', avoid: [] }); } });
+  assert.equal(calls, 1, 'محاولة واحدة تكفي');
+  assert.equal(out.title, 'حُبٌّ لا يَنتهي');
+});
+
+test('review #805 (bugbot): a prayer, or a design that fell back to the classic planner, still gets face boxes', () => {
+  const i = attach.indexOf('const __layoutFetch = () =>');
+  const flow = attach.slice(i, attach.indexOf("__swallow(e, 'img:design-layout-wait')", i));
+  assert.ok(i > 0 && flow.length > 0);
+  assert.match(flow, /\(!__textSpec\.autoAuthored \|\| __textSpec\.kind === 'prayer'\)\) \? __layoutFetch\(\)/, 'الدعاء لا يمرّ بالتصميم: الصناديق بالتوازي');
+  assert.match(flow, /else if\(__planRes\.ok && !__avoid && __thumb && __textSpec\.kind !== 'prayer'\) __avoidP = __layoutFetch\(\);/, 'ردّ بلا صناديق = تصميم فشل: نداء الصناديق الآن');
+  assert.ok(flow.indexOf('__avoidP = __layoutFetch()') < flow.indexOf('await __avoidP'), 'يُنتظر بعد إعادة الإسناد');
 });
