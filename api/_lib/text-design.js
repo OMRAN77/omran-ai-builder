@@ -31,20 +31,23 @@ function buildDesignPrompt(request, kind, hasImage) {
 The user asked: "${cleanRequest(request)}"
 Write ${kindLine(kind)} that fit this request${hasImage ? ' AND what is actually visible in the photo (the people, place, light and mood)' : ''}.
 Return one JSON object with:
-- title: a short poetic Arabic heading of 1 to 3 words (like «البحر» or «حُبٌّ لا يَنتهي»), not a sentence.
+- title: a short poetic Arabic heading of 1 to 3 words (for example: البحر, or: حُبٌّ لا يَنتهي), not a sentence.
 - lines: 3 to 5 short lines, 3 to 7 words each, flowing as one piece (rhyme or rhythm welcome).
 - topicLabel: a 1–3 word Arabic label of the topic.
 Rules: full correct tashkeel (diacritics) on every word of title and lines; flawless spelling and grammar; original wording; no names unless the user gave them; no emoji, quotes, hashtags, English, or explanations; respectful and suitable for families.`;
 }
 
+/* مراجعة #805: علامات التنصيص حول العنوان أو السطر تُنزع ولا تُسقط التصميم كلّه (النموذج ينسخ شكل الأمثلة أحيانًا) */
+const tidy = (v) => String(v || '').replace(/[«»"“”„]/g, '').replace(/\s+/g, ' ').trim();
+
 function validateDesign(value) {
   if (!value || typeof value !== 'object') throw new Error('design_json_missing');
-  const title = String(value.title || '').replace(/\s+/g, ' ').trim();
+  const title = tidy(value.title);
   const lines = (Array.isArray(value.lines) ? value.lines : String(value.lines || '').split('\n'))
-    .map((l) => String(l || '').replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 6);
+    .map(tidy).filter(Boolean).slice(0, 6);
   if (!AR.test(title) || title.length > 40 || title.split(' ').length > 4) throw new Error('design_bad_title');
   if (lines.length < 2 || lines.some((l) => !AR.test(l) || l.length > 70)) throw new Error('design_bad_lines');
-  if (/[a-z]{3,}|https?:|[«»"#@]/i.test(title + lines.join(' '))) throw new Error('design_noise');
+  if (/[a-z]{3,}|https?:|[#@]/i.test(title + lines.join(' '))) throw new Error('design_noise');
   return { title, lines, topicLabel: String(value.topicLabel || '').trim().slice(0, 40) };
 }
 

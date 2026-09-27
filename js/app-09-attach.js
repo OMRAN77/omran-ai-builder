@@ -4491,10 +4491,10 @@ function __showImgLoading(el, ar, en){
         let __thumb = null;
         try{ __thumb = await omranShrinkForEdit(__layer0 ? __layer0.baseB64 : __b64, __layer0 ? (__layer0.baseMime || 'image/png') : __mime, 640, true); }catch(e){ __swallow(e, 'img:design-thumb'); }
         let __avoid = __layer0 && Array.isArray(__layer0.avoid) ? __layer0.avoid : null;
-        const __avoidP = (!__avoid && __thumb && !__textSpec.autoAuthored)
-          ? fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ layoutOnly:true, imageBase64:__thumb.b64, imageMime:__thumb.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) })
-              .then((r) => r.json()).then((d) => Array.isArray(d && d.avoid) ? d.avoid : []).catch((e) => { __swallow(e, 'img:design-layout'); return []; })
-          : Promise.resolve(__avoid);
+        const __layoutFetch = () => fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ layoutOnly:true, imageBase64:__thumb.b64, imageMime:__thumb.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) })
+          .then((r) => r.json()).then((d) => Array.isArray(d && d.avoid) ? d.avoid : []).catch((e) => { __swallow(e, 'img:design-layout'); return []; });
+        /* مراجعة #805: الدعاء لا يمرّ بالتصميم فلا صناديق معه — يُكشف بالتوازي كالنصّ الحرفيّ */
+        let __avoidP = (!__avoid && __thumb && (!__textSpec.autoAuthored || __textSpec.kind === 'prayer')) ? __layoutFetch() : Promise.resolve(__avoid);
         let __resolvedText = __textSpec.exactText;
         if(__resolvedText) __resolvedText = await omranSpellFix(__resolvedText); /* v-spell-quran */
         if(!__resolvedText && __textSpec.autoAuthored){
@@ -4502,7 +4502,8 @@ function __showImgLoading(el, ar, en){
             const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, wantDesign:true, designImageBase64:__thumb ? __thumb.b64 : undefined, designImageMime:__thumb ? __thumb.mime : undefined, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
             const __planData = await __planRes.json().catch(() => ({}));
             if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
-            if(__planRes.ok && Array.isArray(__planData.avoid) && !__avoid) __avoid = __planData.avoid;
+            if(__planRes.ok && Array.isArray(__planData.avoid)){ if(!__avoid) __avoid = __planData.avoid; }
+            else if(__planRes.ok && !__avoid && __thumb && __textSpec.kind !== 'prayer') __avoidP = __layoutFetch(); /* تصميم فشل فرجع المخطّط الكلاسيكيّ بلا صناديق */
           }catch(e){ if(e && e.name === 'AbortError'){ __imgAbortNote(cur); renderAll(); saveState(); return; } }
         }
         try{ const __av = await __avoidP; if(!__avoid) __avoid = __av; }catch(e){ __swallow(e, 'img:design-layout-wait'); }

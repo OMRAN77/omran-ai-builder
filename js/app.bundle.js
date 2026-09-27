@@ -14247,7 +14247,9 @@ async function postWithConfirm(url, payload){
   // وصف طلب («كلام حلو»، «جمله عن النجاح») مقابل نصّ حرفيّ («عمران»).
   const KIND_HEAD_RE = /^(?:أي|اي|شي|شيء)?\s*(كلام|كلمات|كلمتين|جملة|جمله|جمل|عبارة|عباره|عبارات|كلمة|كلمه|حكمة|حكمه|اقتباس|مقولة|مقوله|بيت\s+شعر|أبيات|ابيات|قصيدة|قصيده|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|غزل|تهنئة|تهنئه|معايدة|معايده|رسالة|رساله|خاطرة|خاطره|خواطر)(?=$|[\s،,.!?؟:])/;
   /* v-text-design (لقطة المالك: «اكتب عليها كلا م حب زوجين» طُبعت حرفيًّا فوق وجه الرجل): «كلام حب/غزل/لزوجين/لحبيبتي…» طلب تأليف */
-  const DESCRIBER_RE = /(?:^|[\s،,])(?:حلو|حلوة|حلوه|حلوين|جميل|جميلة|جميله|قصير|قصيرة|قصيره|طويل|طويلة|مؤثر|مؤثرة|مؤثره|قوي|قوية|قويه|رائع|رائعة|أنيق|انيق|مناسب|مناسبة|يناسب|تناسب|يليق|زين|زينة|عن|راقي|راقية|راقيه|فخم|فخمة|فخمه|رومانسي|رومانسية|رومانسيه|[لب]?ل?(?:ال)?(?:حب|غرام|عشق|هوى|زوجين|زوج|زوجة|زوجه|زوجي|زوجتي|حبيب|حبيبي|حبيبتي|حبيبة|حبيبه|عرسان|عروس|عريس|خطيب|خطيبي|خطيبتي)|nice|short|about|love)(?=$|[\s،,.!?؟])/;
+  /* مراجعة #805: قائمة واحدة لكلمات الحبّ — «كلام لزوجتي» غزل لا «عبارة» عامّة */
+  const LOVE_WORDS = 'حب|غرام|عشق|هوى|زوجين|زوج|زوجة|زوجه|زوجي|زوجتي|حبيب|حبيبي|حبيبتي|حبيبة|حبيبه|عرسان|عروس|عريس|خطيب|خطيبي|خطيبتي';
+  const DESCRIBER_RE = new RegExp('(?:^|[\\s،,])(?:حلو|حلوة|حلوه|حلوين|جميل|جميلة|جميله|قصير|قصيرة|قصيره|طويل|طويلة|مؤثر|مؤثرة|مؤثره|قوي|قوية|قويه|رائع|رائعة|أنيق|انيق|مناسب|مناسبة|يناسب|تناسب|يليق|زين|زينة|عن|راقي|راقية|راقيه|فخم|فخمة|فخمه|رومانسي|رومانسية|رومانسيه|[لب]?ل?(?:ال)?(?:' + LOVE_WORDS + ')|nice|short|about|love)(?=$|[\\s،,.!?؟])');
   function looksLikeRequest(value){
     const s = String(value || '').trim().replace(/(^|\s)كلا\s+م(?=\s|$)/g, '$1كلام'); /* «كلا م» خطأ كتابة لـ«كلام» */
     if(!s) return false;
@@ -14258,9 +14260,10 @@ async function postWithConfirm(url, payload){
     if(!head) return false;
     return words.length === 1 || DESCRIBER_RE.test(s.slice(head.index + head[0].length));
   }
+  const LOVE_KIND_RE = new RegExp('(?:^|[\\s،,])[لب]?ل?(?:ال)?(?:' + LOVE_WORDS + ')(?=$|[\\s،,.!?؟])');
   function requestKind(s){
     if(/(?:شعر|قصيدة|قصيده|بيت|أبيات|ابيات)/.test(s)) return 'poetry';
-    if(/(?:غزل|رومانسي|(?:^|[\s،,])[لب]?ل?(?:ال)?(?:حب|غرام|عشق|هوى|زوجين|زوج|زوجة|زوجه|حبيب|حبيبي|حبيبتي|عرسان|عروس)(?=$|[\s،,.!?؟]))/.test(s)) return 'flirt';
+    if(/(?:غزل|رومانسي)/.test(s) || LOVE_KIND_RE.test(s)) return 'flirt';
     if(/(?:دعا[ءدهً]?(?![\u0621-\u064a])|[أا]دعي[ةه])/.test(s)) return 'prayer';
     return 'phrase';
   }
@@ -21631,10 +21634,10 @@ function __showImgLoading(el, ar, en){
         let __thumb = null;
         try{ __thumb = await omranShrinkForEdit(__layer0 ? __layer0.baseB64 : __b64, __layer0 ? (__layer0.baseMime || 'image/png') : __mime, 640, true); }catch(e){ __swallow(e, 'img:design-thumb'); }
         let __avoid = __layer0 && Array.isArray(__layer0.avoid) ? __layer0.avoid : null;
-        const __avoidP = (!__avoid && __thumb && !__textSpec.autoAuthored)
-          ? fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ layoutOnly:true, imageBase64:__thumb.b64, imageMime:__thumb.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) })
-              .then((r) => r.json()).then((d) => Array.isArray(d && d.avoid) ? d.avoid : []).catch((e) => { __swallow(e, 'img:design-layout'); return []; })
-          : Promise.resolve(__avoid);
+        const __layoutFetch = () => fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ layoutOnly:true, imageBase64:__thumb.b64, imageMime:__thumb.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) })
+          .then((r) => r.json()).then((d) => Array.isArray(d && d.avoid) ? d.avoid : []).catch((e) => { __swallow(e, 'img:design-layout'); return []; });
+        /* مراجعة #805: الدعاء لا يمرّ بالتصميم فلا صناديق معه — يُكشف بالتوازي كالنصّ الحرفيّ */
+        let __avoidP = (!__avoid && __thumb && (!__textSpec.autoAuthored || __textSpec.kind === 'prayer')) ? __layoutFetch() : Promise.resolve(__avoid);
         let __resolvedText = __textSpec.exactText;
         if(__resolvedText) __resolvedText = await omranSpellFix(__resolvedText); /* v-spell-quran */
         if(!__resolvedText && __textSpec.autoAuthored){
@@ -21642,7 +21645,8 @@ function __showImgLoading(el, ar, en){
             const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, wantDesign:true, designImageBase64:__thumb ? __thumb.b64 : undefined, designImageMime:__thumb ? __thumb.mime : undefined, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
             const __planData = await __planRes.json().catch(() => ({}));
             if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
-            if(__planRes.ok && Array.isArray(__planData.avoid) && !__avoid) __avoid = __planData.avoid;
+            if(__planRes.ok && Array.isArray(__planData.avoid)){ if(!__avoid) __avoid = __planData.avoid; }
+            else if(__planRes.ok && !__avoid && __thumb && __textSpec.kind !== 'prayer') __avoidP = __layoutFetch(); /* تصميم فشل فرجع المخطّط الكلاسيكيّ بلا صناديق */
           }catch(e){ if(e && e.name === 'AbortError'){ __imgAbortNote(cur); renderAll(); saveState(); return; } }
         }
         try{ const __av = await __avoidP; if(!__avoid) __avoid = __av; }catch(e){ __swallow(e, 'img:design-layout-wait'); }
