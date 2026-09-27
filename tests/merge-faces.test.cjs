@@ -211,3 +211,78 @@ test('١٠. الوحدة: صورة جماعيّة (٣ وجوه فأكثر) بل�
   const two = await mi.faceCrops('k', [P], { fetchImpl: reply([[300, 100, 400, 200], [300, 700, 400, 800]]) });
   assert.deepEqual(two.map((c) => c.who).sort(), ['the person on the left', 'the person on the right']);
 });
+
+/* JPEG بوسم EXIF Orientation (كما يحفظه الهاتف صورةً عرضيّة تُعرض طوليّة) */
+function withOrientation(b64, o) {
+  const buf = Buffer.from(b64, 'base64');
+  const tiff = Buffer.from([0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, o, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+  const body = Buffer.concat([Buffer.from('Exif\0\0', 'binary'), tiff]);
+  const len = Buffer.alloc(2); len.writeUInt16BE(body.length + 2);
+  return Buffer.concat([buf.subarray(0, 2), Buffer.from([0xFF, 0xE1]), len, body, buf.subarray(2)]).toString('base64');
+}
+
+test('١١. مراجعة: صورة بدوران EXIF تُقصّ مستقيمة لا تُتخطّى، والصورة الضخمة لا تُفكّ (سقف ٢٠ ميغابكسل)', async () => {
+  const mi = require(rp('api/_lib/merge-identity.js'));
+  assert.equal(require(rp('api/_lib/face-lock.js')).jpegOrientation(Buffer.from(withOrientation(PHOTO_B, 6), 'base64')), 6, 'الوسم مقروء');
+  const seen = [];
+  const fetchImpl = async (u, init) => {
+    const src = JSON.parse(init.body).contents[0].parts[0].inlineData.data;
+    const d = require(rp('api/_lib/face-composite.js')).decode(Buffer.from(src, 'base64'));
+    seen.push([d.w, d.h]);
+    return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: [{ box_2d: [300, 300, 450, 500] }] }) }] } }] });
+  };
+  const crops = await mi.faceCrops('k', [{ data: PHOTO_A }, { data: withOrientation(PHOTO_B, 6) }], { fetchImpl });
+  assert.equal(crops.length, 2, 'الشخص الثاني (خام من الكاميرا) له لقطته');
+  assert.deepEqual(seen.sort(), [[480, 640], [600, 800]].sort(), 'الكاشف يرى ٦٤٠×٤٨٠ مدارة طوليّة كما يعرضها الهاتف');
+  assert.equal(mi.mergeAspect({ data: withOrientation(PHOTO_B, 6) }, ''), '3:4');
+  /* ترويسة PNG تعلن ١٠٠٠٠×١٠٠٠٠ = لا فكّ (كان PNG.sync.read بلا سقف: ٢ غيغا ذاكرة) */
+  const huge = Buffer.alloc(64); Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(huge); huge.writeUInt32BE(10000, 16); huge.writeUInt32BE(10000, 20);
+  let calls = 0;
+  assert.deepEqual(await mi.faceCrops('k', [{ data: huge.toString('base64') }, { data: huge.toString('base64') }], { fetchImpl: async () => { calls++; return new Response('x', { status: 500 }); } }), []);
+  assert.equal(calls, 0, 'لا كشف لصورة لم تُفكّ');
+});
+
+test('١٢. مراجعة: لقطة زوجين تقف عند منتصف المسافة إلى الوجه الآخر، والموضع بين الوجوه المقصوصة وحدها', async () => {
+  const mi = require(rp('api/_lib/merge-identity.js'));
+  const img = { w: 1200, h: 1600 };
+  const L = [0.22, 0.30, 0.46, 0.54], R = [0.48, 0.30, 0.72, 0.54];
+  const rl = mi.headRect(img, L, R), rr = mi.headRect(img, R, L);
+  assert.ok(rl.x1 <= 0.47 * 1200 + 1 && rr.x0 >= 0.47 * 1200 - 1, 'لا يدخل وجه الشريك لقطة الآخر');
+  assert.ok(rl.x0 <= 0.22 * 1200 && rr.x1 >= 0.72 * 1200, 'الوجه نفسه كامل داخل لقطته');
+  assert.equal(mi.headRect(img, L, [0.40, 0.35, 0.60, 0.60]), null, 'وجهان متداخلان = بلا لقطة');
+  const f = (b) => ({ box: b });
+  const a = f(L), b = f(R);
+  assert.equal(mi.whereIn(a, [a, b]), 'the person on the left');
+  assert.equal(mi.whereIn(b, [a, b]), 'the person on the right');
+  const up = f([0.45, 0.05, 0.55, 0.25]), down = f([0.44, 0.40, 0.56, 0.62]);
+  assert.equal(mi.whereIn(up, [up, down]), 'the upper person', 'طفل على كتفي أبيه');
+  const reply = (boxes) => async () => Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: boxes.map((x) => ({ box_2d: x })) }) }] } }] });
+  const crowd = [0, 1, 2, 3, 4, 5, 6].map((k) => [100, 20 + k * 40, 130, 45 + k * 40]);
+  const one = await mi.faceCrops('k', [{ data: PHOTO_A }], { fetchImpl: reply(crowd.concat([[180, 400, 300, 560]])) });
+  assert.deepEqual(one.map((c) => c.who), ['the person'], 'المارّة الصغار لا يغيّرون التسمية (كانت «the undefined person from the left»)');
+  const dup = await mi.faceCrops('k', [{ data: PHOTO_A }], { fetchImpl: reply([[180, 400, 300, 560], [182, 402, 301, 559]]) });
+  assert.equal(dup.length, 1, 'صندوقان للوجه نفسه = وجه واحد');
+});
+
+test('١٣. مراجعة: كلمة المقاس تغلب شكل الصورة، والخام بلا نسبة مفروضة ويرى الحاكم صورتيه وGPT بترتيب نانو الخام', async () => {
+  const w = await run(MERGE('ادمجهم خلفية جوال'), { pro: RESULT }, DONE);
+  assert.equal(w.calls.find((c) => c.kind === 'pro').cfg.imageConfig.aspectRatio, '9:16', 'كانت ٤:٣ من الصورة الأساسيّة');
+  const raw = await run(MERGE('نانو: ادمجهم', { token: 'owner' }), { pro: RESULT }, DONE);
+  const rp0 = raw.calls.find((c) => c.kind === 'pro' || c.kind === 'nano');
+  assert.equal((rp0.cfg.imageConfig || {}).aspectRatio, undefined, 'الخام يمرّ كما هو');
+  const j = raw.calls.find((c) => c.kind === 'judge');
+  assert.match(j.text, /REFERENCE PHOTO 2/, 'الحاكم يرى صورتي الخام كذلك');
+  const g = await run(MERGE('نانو: ادمجهم', { token: 'owner' }), { pro: null, nano: null, gptEdit: RESULT }, DONE);
+  const raw1 = g.calls.find((c) => c.kind === 'pro' || c.kind === 'nano');
+  assert.equal(inlineOf(raw1.parts)[0], PHOTO_B, 'نانو الخام كما كان: الأساسيّة أوّلًا');
+  assert.ok(g.calls.find((c) => c.kind === 'gpt-edit'), 'GPT أنقذ الخام');
+});
+
+test('١٤. مراجعة: «ادمجهم في صورة وحدة أجمل/واقعية» يبقى فيها فحص الملامح عند الحاكم', async () => {
+  for (const text of ['ادمجهم في صورة وحدة أجمل', 'ادمجهم في صورة وحدة واقعية', 'ادمج الصورتين وخلها احترافية']) {
+    const r = await run(MERGE(text), { pro: RESULT }, DONE);
+    const j = r.calls.find((c) => c.kind === 'judge');
+    assert.match(j.text, /compare every person/, text);
+    assert.match(j.text, /never to who each person is/, text);
+  }
+});

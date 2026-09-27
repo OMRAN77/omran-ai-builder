@@ -303,6 +303,7 @@ module.exports = async (req, res) => {
       /* 🧩 دمج عدّة صور — التاريخ (v-merge-faithful، v-merge-identity-lock v1–v3) والقرار (v-merge-faces) في merge-identity.js.
          الصور بترتيب رفع المستخدم (الأساسيّة آخرًا)؛ الأجزاء تُبنى بعد معرفة الوضع الخام أدناه (لقطات الوجوه تحتاج كشفًا). */
       __mergePhotos = extras.concat([{ data: editImageBase64, mime: editMimeType || 'image/png' }]);
+      __settleCtx.references = __mergePhotos; /* الحاكم يرى صورة كلّ شخص — والخام أيضًا */
     } else if (editImageBase64) {
       /* v-raw-words: كلمات المستخدم الحرفية (intentText) أولًا في المسارات الإبداعية؛ IMAGE_RAW_CREATIVE=on يرسلها وحدها كتطبيق Gemini */
       const __rawCreative = creativeRawEnabled(process.env) && (isElevate || isReimagine || isRestyle);
@@ -344,7 +345,7 @@ module.exports = async (req, res) => {
       parts.push({ text: cleanPrompt });
       if (editImageBase64) parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
-    } else if (__mergePhotos) { __mergeCrops = await mergeIdentity.faceCrops(apiKey, __mergePhotos); parts.push.apply(parts, mergeIdentity.mergeParts(__mergePhotos, __mergeCrops, cleanPrompt)); __settleCtx.references = __mergePhotos; }
+    } else if (__mergePhotos) { __mergeCrops = await mergeIdentity.faceCrops(apiKey, __mergePhotos); parts.push.apply(parts, mergeIdentity.mergeParts(__mergePhotos, __mergeCrops, cleanPrompt)); }
     /* v-nano-edit (مقارنة المالك: «نانو الأصلي» يعيد التخيّل بجرأة، وتطبيقنا
        كان يعدّل تعديلًا خجولًا كفوتوشوب): محرّك التعديل الأساسي كان نانو بنانا
        (gemini-2.5-flash-image). قابل للضبط بمتغيّر IMAGE_EDIT_MODEL للرجوع فورًا بلا نشر.
@@ -407,7 +408,7 @@ module.exports = async (req, res) => {
     const __want4K = __optWant4K || /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || '')) || __maxPlan4K;
     const imageConfig = { imageSize: __want4K ? '4K' : '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
-    else if (__mergePhotos) imageConfig.aspectRatio = mergeIdentity.mergeAspect(__mergePhotos[__mergePhotos.length - 1], intentText + ' ' + cleanPrompt); /* v-merge-faces: لا تتبع لقطة الوجه الأخيرة */
+    else if (__mergePhotos && !__pureRaw) imageConfig.aspectRatio = mergeIdentity.mergeAspect(__mergePhotos[__mergePhotos.length - 1], intentText + ' ' + cleanPrompt); /* v-merge-faces: لا تتبع لقطة الوجه الأخيرة */
     /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
        بلا imageConfig كي لا يرفض الطلب (400). لكنه يحتاج responseModalities:['IMAGE']
        كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) — وهذا ما يفعله
@@ -456,8 +457,9 @@ module.exports = async (req, res) => {
       const __gptPrompt = String(promptOverride || rescuePromptText).slice(0, 3800); /* v-img-honest: المحرّك الآخر قد يُعطى أمر إعادة بلا تناقض */
       /* v-img-mix (خيار «أ»): تلميع الكتابة يرسل ناتج برو أوّلًا والمصدر مرجعًا — مسار الصور المتعدّدة نفسه (image[]).
          المهلة من ميزانيّة الطلب حين تُعطى (مراجعة: نداء إضافيّ بمهلة ١٢٠ث ثابتة كان يتخطّى سقف ٣٠٠ث فتضيع الصورة والنقاط). */
-      const __src = imagesOverride ? imagesOverride[0] : (__mergePhotos ? __mergePhotos[0] : (editImageBase64 ? { data: editImageBase64, mime: editMimeType } : null));
-      const __refs = imagesOverride ? imagesOverride.slice(1) : (__mergePhotos ? __mergePhotos.slice(1).concat(__mergeCrops) : extras); /* v-merge-faces: ترتيب الأمر نفسه */
+      const __ord = __mergePhotos && !__pureRaw ? __mergePhotos.concat(__mergeCrops) : null; /* v-merge-faces: ترتيب الأمر نفسه؛ الخام كترتيب نانو الخام */
+      const __src = imagesOverride ? imagesOverride[0] : (__ord ? __ord[0] : (editImageBase64 ? { data: editImageBase64, mime: editMimeType } : null));
+      const __refs = imagesOverride ? imagesOverride.slice(1) : (__ord ? __ord.slice(1) : extras);
       const __deadline = timeoutMs ? Date.now() + timeoutMs : 0;
       const __to = function (def) { return __deadline ? Math.max(5000, __deadline - Date.now()) : def; };
       const okey = process.env.OPENAI_API_KEY;
