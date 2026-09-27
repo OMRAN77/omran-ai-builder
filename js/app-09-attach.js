@@ -1668,7 +1668,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
   const fontCss = await mahaLoadFont(fontKey || 'default');
   /* الخطوط الزخرفيّة متاحة بوزن 400 فقط؛ طلب 700 كان يصنع تغليظًا اصطناعيًّا
      يشوّه اتصال الحروف العربيّة، بينما الخطوط النصيّة تملك وزن 700 حقيقيًّا. */
-  const fontWeight = /^(diwani|thuluth|ruqaa|farsi)$/.test(String(fontKey || '')) ? '400' : '700';
+  const fontWeight = /^(diwani|thuluth|ruqaa|farsi)$/.test(String(fontKey || '')) ? '400' : '800';
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -1711,7 +1711,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         if(__side) position=position.slice(__side[0].length);
         let fs = Math.floor(Math.min(c.width / 7.6, c.height / 8.2));
         let lines = [];
-        const setF = () => { ctx.font = '800 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
+        const setF = () => { ctx.font = fontWeight + ' ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
         const wrap = (line) => {
           if(!line) return [''];
           if(ctx.measureText(line).width <= maxWidth) return [line];
@@ -4296,6 +4296,16 @@ function __showImgLoading(el, ar, en){
       }
       const __styleOnly = __textSpec.styleEdit || (cur.imageTextLayer ? __textSpec.styleEditLoose : null);
       if(__styleOnly && cur.imageTextLayer){ __textSpec = Object.assign({}, __textSpec, { styleEdit: __styleOnly }); }
+      /* v-merge-image-repair: main أضاف «احذف هذا الشي» لطبقة النصّ الوحيدة،
+         وحلّ تعارض #798 أسقط منفّذه. لا نحذف بالتخمين: يعمل فقط إن كانت آخر
+         صورة بالبصمة هي طبقتنا، فيرجع للأساس النظيف حرفيًّا. */
+      if(__textSpec.removeText && __textLayerOwnsImage(cur)){
+        const __l = cur.imageTextLayer, __lm = __l.baseMime || 'image/png';
+        cur.lastEditedImage = { b64:__l.baseB64, mime:__lm };
+        cur.imageTextLayer = null; cur.lastMsgWasImageEdit = true;
+        cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:__lm, dataUrl:'data:' + __lm + ';base64,' + __l.baseB64 }] });
+        renderAll(); saveState(); return;
+      }
       if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
       if(__textSpec.wantsText){
         let __resolvedText = __textSpec.exactText;

@@ -91,7 +91,7 @@ test('only explicit follow-ups reuse a previous image', () => {
 
 test('scene direction after unquoted wording stays visual and is never printed', () => {
   const s = parseImageTextSpec('ابغى صوره مكتوب عليها ان الله و ان اليه راجعون و الصوره تعبر عن وفات شخص عزيز');
-  assert.equal(s.exactText, 'ان الله و ان اليه راجعون');
+  assert.equal(s.exactText, 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ');
   assert.match(s.visualPrompt, /الصوره تعبر عن وفات شخص عزيز/);
   assert.doesNotMatch(s.exactText, /الصوره تعبر/);
 });
@@ -113,8 +113,8 @@ test('removing saved wording is distinguished from generating or restyling text'
 
 test('client keeps a reversible text layer and uses native Arabic font weights', () => {
   const client = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
-  assert.match(client, /if\(__textSpec\.removeText && cur\.imageTextLayer\)/);
-  assert.match(client, /cur\.lastEditedImage=\{b64:__l\.baseB64,mime:__l\.baseMime\}/);
+  assert.match(client, /if\(__textSpec\.removeText && __textLayerOwnsImage\(cur\)\)/);
+  assert.match(client, /cur\.lastEditedImage = \{ b64:__l\.baseB64, mime:__lm \}/);
   assert.match(client, /cur\.imageTextLayer = \{ baseB64:__baseB64, baseMime:__baseMime, text:__overlayText/);
-  assert.match(client, /const fontWeight = \/\^\(diwani\|thuluth\|ruqaa\|farsi\)\$\/\.test\(String\(fontKey \|\| ''\)\) \? '400' : '700';/);
+  assert.match(client, /const fontWeight = \/\^\(diwani\|thuluth\|ruqaa\|farsi\)\$\/\.test\(String\(fontKey \|\| ''\)\) \? '400' : '800';/);
 });
