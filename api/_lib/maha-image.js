@@ -20,6 +20,7 @@ const { settleCandidates } = require('./image-verify');
 const { runCards, cardsKind } = require('./image-cards');
 const { authorPrayerPlan } = require('./prayer-plan');
 const textDesign = require('./text-design');
+const mergeIdentity = require('./merge-identity');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const pipeline = require('./image-pipeline');
 
@@ -297,24 +298,11 @@ module.exports = async (req, res) => {
       }
     }
 
+    let __mergePhotos = null, __mergeCrops = [];
     if (editImageBase64 && extras.length) {
-      /* 🧩 دمج عدة صور في تصميم واحد
-         v-merge-identity-lock: صيغة أولى («IDENTITY LOCK» كقاعدة ٢ من ٤ وسط إطار «design compose») لم تحلّ لقطة
-         المالك (شخص ثانٍ بوجه مختلف) رغم إصلاح الحرارة (v-merge-faithful). بحث خارجيّ (Google DeepMind، سبتمبر
-         ٢٠٢٦): gemini-3-pro-image يدعم رسميًّا حتى ٥ صور أشخاص كمرجع هويّة مع تتبّع الهويّة عبر تغيّر الوضعيّة/
-         الزاوية — القدرة موجودة، فالمشكلة على الأرجح صياغة/تركيز الأمر لا سقف النموذج. الصيغة الجديدة: الهويّة
-         أوّل جملة لا قاعدة رقم ٢، وتُشير لكل صورة بترتيبها الحرفيّ (بدل «each input image» العامّة) مطابقةً
-         لنمط أمثلة جوجل الرسميّة («the identity of all N people must stay consistent... they can be seen from
-         different angles as is most natural to the scene»).
-         v-merge-identity-lock-v3 (تحقّق حيّ فعليّ — لقطتان متتاليتان من المالك بترتيب رفع معكوس): الصياغة
-         الثانية حلّت الكارثة (شخص بجنس مختلف) لكن كشفت عطبًا أدقّ يتكرّر بنفس الشكل بغضّ النظر عن الترتيب (لا
-         علاقة بـ«الصورة الأساسيّة مقابل المرجع»): المرأة تكتسب حجابًا وتبرّجًا أثقل غير موجودين بالمصدر، والرجل
-         يحتفظ بهويّته مع تغييرات طفيفة بالزيّ. الجذر: الصياغة السابقة صرّحت بتغيير «clothing detail» طالما
-         الوجه ثابت. الإصلاح: الشعر (مغطّى بحجاب أو مكشوف كما بالمصدر) والتبرّج والإكسسوارات والملابس صارت ضمن
-         بند الهويّة الثابتة، وحُذفت «clothing detail» من المسموح تغييره — يبقى المسموح الوضعيّة والزاوية والمشهد. */
-      parts.push({ text: 'You are given ' + (extras.length + 1) + ' separate reference images, attached in this exact order. For any reference image that shows a real human face, that exact person\'s full appearance — face shape, features, skin tone, hair (loose or covered by a hijab/headscarf exactly as photographed; never add, remove, or restyle a head covering), makeup, jewelry, and clothing — MUST be reproduced with full fidelity in the output, precisely as photographed in that image: never invented, never averaged or blended with another person\'s face or style, never swapped onto the wrong body, never restyled to a different look. This holds even when the task changes their pose, camera angle, or places them together in a brand-new shared scene — only the scene, pose and angle change; who each person is and exactly how they look never changes. The same fidelity rule applies to any logo or exact text in a reference image.\n\nTASK: "' + cleanPrompt + '"\n\nNow combine every reference image into ONE single, cohesive, photorealistic result following that task exactly:\n1. Every reference image\'s subject MUST appear in the final result - never drop one.\n2. Arrange them exactly as the task asks (e.g. the people from the separate reference photos placed together, naturally, in one new shared scene; or a logo/text laid out with other elements).\n3. Any Arabic text must remain correct and readable.\nOutput a single finished image only.' });
-      parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
-      for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
+      /* 🧩 دمج عدّة صور — التاريخ (v-merge-faithful، v-merge-identity-lock v1–v3) والقرار (v-merge-faces) في merge-identity.js.
+         الصور بترتيب رفع المستخدم (الأساسيّة آخرًا)؛ الأجزاء تُبنى بعد معرفة الوضع الخام أدناه (لقطات الوجوه تحتاج كشفًا). */
+      __mergePhotos = extras.concat([{ data: editImageBase64, mime: editMimeType || 'image/png' }]);
     } else if (editImageBase64) {
       /* v-raw-words: كلمات المستخدم الحرفية (intentText) أولًا في المسارات الإبداعية؛ IMAGE_RAW_CREATIVE=on يرسلها وحدها كتطبيق Gemini */
       const __rawCreative = creativeRawEnabled(process.env) && (isElevate || isReimagine || isRestyle);
@@ -356,7 +344,7 @@ module.exports = async (req, res) => {
       parts.push({ text: cleanPrompt });
       if (editImageBase64) parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
-    }
+    } else if (__mergePhotos) { __mergeCrops = await mergeIdentity.faceCrops(apiKey, __mergePhotos); parts.push.apply(parts, mergeIdentity.mergeParts(__mergePhotos, __mergeCrops, cleanPrompt)); __settleCtx.references = __mergePhotos; }
     /* v-nano-edit (مقارنة المالك: «نانو الأصلي» يعيد التخيّل بجرأة، وتطبيقنا
        كان يعدّل تعديلًا خجولًا كفوتوشوب): محرّك التعديل الأساسي كان نانو بنانا
        (gemini-2.5-flash-image). قابل للضبط بمتغيّر IMAGE_EDIT_MODEL للرجوع فورًا بلا نشر.
@@ -399,7 +387,8 @@ module.exports = async (req, res) => {
        (extras.length) كان مستثنى من هذا المسار فيعمل دائمًا على حرارة جوجل الافتراضية للإبداع (١.٠) رغم أنّ أمر الدمج
        نفسه يطلب صراحةً «faces stay pixel-faithful» — فيعيد النموذج تخيّل الوجوه بدل نقلها. الدمج غير الإبداعي يحتاج
        نفس الحرارة المنخفضة؛ الدمج الإبداعي (isCreativeEdit=true) يبقى خارج هذا المسار كما كان. */
-    const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;
+    const __faithfulLane = !!editImageBase64 && (__mergePhotos ? !__pureRaw : (!isCreativeEdit && !isPersonSwap && !isBroadEdit)); /* v-merge-faces: «واقعية/أجمل/فخم» لا تُخرج الدمج من الحرارة المنخفضة */
+    const __mergeTemp = __mergePhotos ? mergeIdentity.mergeTemperature(isRestyle, intentText + ' ' + cleanPrompt) : null;
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
     // مع احترام أي طلب صريح (عرضي/مربع/ستوري...). التعديل يحافظ على أبعاد المصدر.
@@ -418,6 +407,7 @@ module.exports = async (req, res) => {
     const __want4K = __optWant4K || /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || '')) || __maxPlan4K;
     const imageConfig = { imageSize: __want4K ? '4K' : '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
+    else if (__mergePhotos) imageConfig.aspectRatio = mergeIdentity.mergeAspect(__mergePhotos[__mergePhotos.length - 1], intentText + ' ' + cleanPrompt); /* v-merge-faces: لا تتبع لقطة الوجه الأخيرة */
     /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
        بلا imageConfig كي لا يرفض الطلب (400). لكنه يحتاج responseModalities:['IMAGE']
        كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) — وهذا ما يفعله
@@ -443,7 +433,7 @@ module.exports = async (req, res) => {
     const __contents = __historyTurns.length ? __historyTurns.concat([{ role: 'user', parts }]) : [{ parts }];
     const reqBody = JSON.stringify(__pureRaw
       ? { contents: __contents, generationConfig: genConfigFor({}) }
-      : { contents: __contents, generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.85 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
+      : { contents: __contents, generationConfig: genConfigFor({ temperature: __mergeTemp != null ? __mergeTemp : editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.85 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
 
     /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
        رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
@@ -466,8 +456,8 @@ module.exports = async (req, res) => {
       const __gptPrompt = String(promptOverride || rescuePromptText).slice(0, 3800); /* v-img-honest: المحرّك الآخر قد يُعطى أمر إعادة بلا تناقض */
       /* v-img-mix (خيار «أ»): تلميع الكتابة يرسل ناتج برو أوّلًا والمصدر مرجعًا — مسار الصور المتعدّدة نفسه (image[]).
          المهلة من ميزانيّة الطلب حين تُعطى (مراجعة: نداء إضافيّ بمهلة ١٢٠ث ثابتة كان يتخطّى سقف ٣٠٠ث فتضيع الصورة والنقاط). */
-      const __src = imagesOverride ? imagesOverride[0] : (editImageBase64 ? { data: editImageBase64, mime: editMimeType } : null);
-      const __refs = imagesOverride ? imagesOverride.slice(1) : extras;
+      const __src = imagesOverride ? imagesOverride[0] : (__mergePhotos ? __mergePhotos[0] : (editImageBase64 ? { data: editImageBase64, mime: editMimeType } : null));
+      const __refs = imagesOverride ? imagesOverride.slice(1) : (__mergePhotos ? __mergePhotos.slice(1).concat(__mergeCrops) : extras); /* v-merge-faces: ترتيب الأمر نفسه */
       const __deadline = timeoutMs ? Date.now() + timeoutMs : 0;
       const __to = function (def) { return __deadline ? Math.max(5000, __deadline - Date.now()) : def; };
       const okey = process.env.OPENAI_API_KEY;
@@ -582,7 +572,7 @@ module.exports = async (req, res) => {
                مهلة 30ث بدل 90ث توصلنا لخط الإنقاذ المجاني بسرعة بدل تجميد 90ث. */
             signal: AbortSignal.timeout(30000),
             /* responseModalities:['IMAGE'] كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) */
-            body: JSON.stringify({ contents: [{ parts: parts }], generationConfig: { responseModalities: ['IMAGE'] } }),
+            body: JSON.stringify({ contents: [{ parts: parts }], generationConfig: Object.assign({ responseModalities: ['IMAGE'] }, (__mergeTemp != null && !__pureRaw) ? { temperature: __mergeTemp } : {}) }), /* v-merge-faces: الإنقاذ لا يعيد تخيّل الوجوه */
           });
           if (!r.ok) { lastNanoErr = models[i] + ' status=' + r.status; continue; }
           const d = await r.json().catch(function () { return null; });
@@ -798,7 +788,7 @@ module.exports = async (req, res) => {
       const __mixResults = await Promise.all([proCandidate().catch(function () { return null; }), gptCandidate('', __extraBudget()).catch(function () { return null; })]);
       const __mixCandidates = __mixResults.filter(Boolean);
       __mixCandidates.forEach(function (c) { c.engine = 'mix:' + c.engine; });
-      const polish = (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null;
+      const polish = !extras.length && (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null; /* v-merge-faces: التلميع يرسل ناتج الدمج وحده لـGPT فيعيد رسم الوجوه */
       if (__mixCandidates.length) { await deliver(__mixCandidates, null, polish); return; }
     }
 

@@ -53,6 +53,7 @@ async function rescueGuarded(promptText, images, apiKey, feature) {
 }
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const faceLock = require('./face-lock.js');
+const mergeIdentity = require('./merge-identity');
 const { judgeBest, duoEnabled } = require('./image-judge');
 
 const STYLE_TEXT = {
@@ -231,9 +232,9 @@ function buildSinglePrompt(feature, style, description, multiAngle) {
 }
 
 /* ───── نداء Gemini واحد: { b64, mime } أو { error, status, detail, why } ───── */
-async function geminiImage(apiKey, parts, feature) {
+async function geminiImage(apiKey, parts, feature, aspectRatio) {
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-  const reqBody = { contents: [{ parts }], generationConfig: { temperature: feature === 'anime' ? 0.65 : 0.15, imageConfig: { imageSize: '2K' } } };
+  const reqBody = { contents: [{ parts }], generationConfig: { temperature: feature === 'anime' ? 0.65 : 0.15, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
   const upstream = await fetch(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
     signal: AbortSignal.timeout(240000), /* v-image-timeout */
@@ -377,23 +378,20 @@ module.exports = async (req, res) => {
     const openaiKey = (process.env.OPENAI_API_KEY || '').trim();
 
     if (feature === 'merge') {
-      const extra = description ? (' Additional instructions: ' + String(description).slice(0, 300) + '.') : '';
-      const promptText =
-        'Merge the two photos provided into a single combined, coherent, photorealistic image. ' +
-        'Keep the people/subjects from both photos recognizable, and blend them naturally together in one consistent scene.' +
-        extra + ' Output a single photorealistic image.';
-      const parts = [
-        { text: promptText },
-        { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
-        { inlineData: { mimeType: mimeTypeB || 'image/jpeg', data: imageBase64B } },
-      ];
-      const out = await geminiImage(apiKey, parts, 'merge');
+      /* v-merge-faces: قالب هويّة الدمج نفسه (maha-image) — كان الأمر يطلب «مزج» الناس معًا (blend) — دعوة صريحة لخلط الوجوه،
+         والناس «recognizable» فقط. كلّ صورة بعنوانها، ولقطة مقرّبة لكلّ وجه، والأمر الكامل آخرًا ويستلمه GPT نفسه. */
+      const task = description ? String(description).slice(0, 300) : 'Place the people/subjects from both photos together naturally in one consistent, photorealistic scene.';
+      const photos = [{ data: imageBase64, mime: mimeType || 'image/jpeg' }, { data: imageBase64B, mime: mimeTypeB || 'image/jpeg' }];
+      const crops = await mergeIdentity.faceCrops(apiKey, photos);
+      const parts = mergeIdentity.mergeParts(photos, crops, task);
+      const promptText = parts[parts.length - 1].text;
+      const out = await geminiImage(apiKey, parts, 'merge', mergeIdentity.mergeAspect(photos[0], task));
       if (out.b64) {
         const rem = await consumeStudio(quota.username);
         res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining: rem, dailyLimit: STUDIO_DAILY_LIMIT });
         return;
       }
-      const rescue = await rescueGuarded(promptText, [[imageBase64, mimeType], [imageBase64B, mimeTypeB]], apiKey, 'merge');
+      const rescue = await rescueGuarded(promptText, photos.concat(crops).map((p) => [p.data, p.mime]), apiKey, 'merge');
       if (rescue) {
         const remR = await consumeStudio(quota.username);
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: STUDIO_DAILY_LIMIT });
