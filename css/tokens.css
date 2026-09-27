@@ -1259,4 +1259,10 @@ html:not(.mobile-ui) body.sbCollapsedMode #sbReopen:hover{ color:var(--text); ba
 .msg .md-line .tts-word.md-mk{position:absolute; top:0; min-width:1.3em; text-align:center; unicode-bidi:isolate; direction:ltr; color:var(--muted,#98a0b3); font-weight:600;}
 .msg .md-line[dir="rtl"] .tts-word.md-mk{right:0; left:auto;}
 .msg .md-line[dir="ltr"] .tts-word.md-mk{left:0; right:auto;}
+/* v-chat-math (لقطة المالك ٢٧ سبتمبر): المعادلة المرسومة معزولة الاتّجاه، ومعادلة العرض ($$…$$ وحدها في سطرها) في الوسط،
+   و«---» خطّ فاصل رفيع. عامّ للحاسوب والجوّال لأنّ الراسم واحد واللقطة من الجوّال. */
+.msg .om-math{unicode-bidi:isolate;}
+.msg .om-math sup, .msg .om-math sub{font-size:.72em; line-height:0;}
+.msg .om-math-block{display:block; text-align:center; margin:.3em 0;}
+.msg .md-line.md-hr{height:0; overflow:hidden; margin:.7em 0; border-top:1px solid var(--omLine, rgba(255,255,255,.09));}
 .msg .omStreamHead, .msg .omStreamTail, .msg .omStreamSeg{display:block;}
