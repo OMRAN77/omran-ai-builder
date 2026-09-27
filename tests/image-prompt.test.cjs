@@ -69,7 +69,7 @@ test('all image-edit entry points apply style preservation except explicit anime
   const fashion = fs.readFileSync('api/_lib/fashion-create.js', 'utf8');
   assert.match(maha, /buildEditPrompt\(cleanPrompt, intentText\)/); // v-remove-target
   assert.match(portrait, /\['hairstyle',[\s\S]*?'outfit'[\s\S]*?\]\.includes\(style\)/);
-  assert.match(portrait, /temperature: isLocalizedEdit \? 0\.15 : 0\.65/);
+  assert.match(portrait, /temperature: \(isLocalizedEdit \|\| isMultiSourceComposition\) \? 0\.15 : 0\.65/); // v-merge-faces: الدمج أمين أيضًا، والأساليب الفنّيّة ٠٫٦٥
   assert.match(studio, /if \(feature !== 'anime'\) promptText \+=/);
   assert.match(studio, /temperature: feature === 'anime' \? 0\.65 : 0\.15/);
   assert.match(sourceStylePreservationRule(), /unless the USER REQUEST explicitly asks/);
