@@ -76,3 +76,16 @@ test('review #803: «احذف الكلام وحط وردة» removes the text an
     assert.equal(parseImageTextSpec(p).exactText, want, p);
   }
 });
+
+test('review #803 (bugbot): longer layer-only clauses are never sent as a visual edit', () => {
+  for (const p of ['احذف الكلام الي تحت واكتب «سيف»', 'غير اسمي واكتب سيف', 'امسح الكتابة اللي فوق واكتب «مبروك»']) {
+    assert.equal(parseImageTextSpec(p).visualEdit, null, p);
+  }
+});
+
+test('review #803 (bugbot): figurative «بموت/للموت» is romance, not mourning', () => {
+  for (const p of ['صورة رومانسية مكتوب عليها بموت عليك', 'قلب أحمر وأحبك للموت', 'صورة قطة تموت من الضحك', 'ارسم فيلم رعب عن ملك الموت الخيالي في قلعة']) {
+    assert.equal(cond(p), false, p);
+  }
+  for (const p of ['الصوره تعبر عن موت شخص عزيز', 'صورة حزينة عن الموت والفقد', 'مشهد عن موت صديق']) assert.equal(cond(p), true, p);
+});
