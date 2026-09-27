@@ -6,7 +6,7 @@
   }
   function findTextMarker(source){
     let strong = firstMatch(source, /(?:أكتب|اكتب(?:ي|وا)?|مكتوب(?:ة)?\s+(?:عليها|عليه|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره))|write)/i);
-    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?(?=[«“"'])/i);
+    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?\s*(?=[«“"'])/i);
     if(placed && (!strong || placed.index < strong.index)) strong = placed;
     const weak = firstMatch(source, /(?:ضع|حط|أضف|اضف|ضيف|put|add)/i);
     if(!weak) return strong;
@@ -63,12 +63,10 @@
     if(/(?:في|بال)?\s*(?:وسط|منتصف|المنتصف|المركز)|\b(?:middle|center)\b/i.test(source)) return 'center';
     return 'bottom';
   }
-  function textPlacement(input){
+  function fullTextPosition(input){
     const source = stripOnImage(input);
-    const side = /(?:يمين|\bright\b)/i.test(source) ? 'right' : (/(?:يسار|\bleft\b)/i.test(source) ? 'left' : '');
-    const verticalNamed = /(?:أعلى|اعلى|فوق|وسط|منتصف|المنتصف|المركز|أسفل|اسفل|تحت|\btop\b|\bmiddle\b|\bcenter\b|\bbottom\b)/i.test(source);
-    const vertical = side && !verticalNamed ? 'center' : textPosition(source);
-    return side ? side + '-' + vertical : vertical;
+    const side = /(?:يمين|\bright\b)/i.test(source) ? 'right-' : (/(?:يسار|\bleft\b)/i.test(source) ? 'left-' : '');
+    return side + textPosition(source);
   }
   function cleanVisual(value){
     return String(value || '').replace(/\s*(?:و|and)\s*$/i, '').trim();
@@ -93,21 +91,13 @@
     return 'مشهد أصيل عالي الجودة: ' + visPick(VIS_SCENE[k] || VIS_SCENE.phrase) + '، ' + visPick(VIS_LIGHT)
       + '، ' + visPick(VIS_PALETTE) + '، ' + visPick(VIS_LENS) + '، تفاصيل واقعية دقيقة، بلا أي كتابة أو حروف أو أرقام في الصورة';
   }
-  function textStyleEdit(source){
-    const hasTextNoun = /(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source);
-    const moveExisting = hasTextNoun && /(?:حط|ضع|خل|خلي|خلّي|اجعل|حرّك|حرك|انقل|نقل|ودّ|ودي|move|put|place)[^\n]{0,28}(?:يمين|يسار|أعلى|اعلى|فوق|وسط|منتصف|المركز|أسفل|اسفل|تحت|\bright\b|\bleft\b|\btop\b|\bmiddle\b|\bcenter\b|\bbottom\b)/i.test(source);
-    if((findTextMarker(source) && !moveExisting) || !hasTextNoun) return null;
-    const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null;
-    const fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null;
-    const position=positionExplicit(source)?textPlacement(source):null;
-    return color||fontKey||position ? {color,fontKey,position} : null;
-  }
+  function textStyleEdit(source){ if(findTextMarker(source)||textRemoveIntent(source)||!/(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source)) return null; const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null, fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null, position=positionExplicit(source)?fullTextPosition(source):null; return color||fontKey||position ? {color,fontKey,position} : null; }
   // تنسيق بلا ذكر «النص»: يُستخدم فقط حين توجد طبقة نصّ محفوظة على الصورة.
   function textStyleEditLoose(source){
-    if(findTextMarker(source)) return null;
+    if(findTextMarker(source) || textRemoveIntent(source)) return null;
     const color = /(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source) ? textColor(source) : null;
     const fontKey = /(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source) ? textFont(source) : null;
-    const position = positionExplicit(source) ? textPlacement(source) : null;
+    const position = positionExplicit(source) ? fullTextPosition(source) : null;
     return color || fontKey || position ? { color, fontKey, position } : null;
   }
   function isTextLayerRemoval(source){
@@ -182,6 +172,54 @@
     return (!v || GENERIC_VISUAL_RE.test(v)) ? '' : v;
   }
   function authorVisual(source, kind){ return visualCore(source) || fallbackVisual(kind, null); }
+  // «ابغى صوره» و«لا في الصوره بس» بلا وصف مشهد = طلب عامّ لا تعديل بصريّ.
+  function isGenericVisual(v){
+    const s = String(v || '').replace(/(?:^|\s)(?:لا|لأ|بس|فقط|ابغى|أبغى|ابغي|أبغي|ابي|أبي|اريد|أريد|ودي|بدي|عطني|اعطني|أعطني|لي|في|على|نفس|هذي|هذه|ال?صور[ةه]|image|picture)(?=\s|$)/gi, ' ').trim();
+    return !s || GENERIC_VISUAL_RE.test(s);
+  }
+  const ISTIRJA = 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ';
+  const KNOWN_PHRASES = [
+    [/(^|[\s«"'])[اإأ]نّ?ن?ّ?[اهى]?\s*(?:ال|ل)?لّ?ل?ه\s*و\s*[اإأ]نّ?ن?ّ?[اهى]?\s*[اإأ]ل[يى]ه\s*[رو]اجع[وي]ن(?=$|[\s.،,!»"'])/g, '$1' + ISTIRJA]
+  ];
+  function fixKnownPhrases(value){
+    let out = String(value == null ? '' : value);
+    KNOWN_PHRASES.forEach(function(p){ out = out.replace(p[0], p[1]); });
+    return out;
+  }
+  function isKnownPhrase(value){ return String(value || '').trim() === ISTIRJA; }
+  // «حوز/احذف/شيل الكلام الي تحت» = إزالة طبقة الكتابة التي رسمناها.
+  function textRemoveIntent(input){
+    const s = String(input || '').trim();
+    if(!s || s.length > 120 || findTextMarker(s)) return false;
+    return /(?:^|[\s،,])(?:احذف|حذف|امسح|مسح|شيل|شيلي|ازل|أزل|ازيل|أزيل|إزال[ةه]|ازال[ةه]|حوز|حوّز|حوزي|نظف|نظّف|remove|delete|erase|clear)\s*(?:لي\s+)?(?:(?:هذا|هذه|هذي|هاذا|هاذي)\s+)?(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص|مكتوب|عبار[ةه]|جمل[ةه]|خط|text|writing|words?|caption)(?=$|[\s،,.!؟?])/i.test(s)
+      || /^(?:بدون|بلا|من\s+غير)\s+(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص)\s*[.!]*$/i.test(s);
+  }
+  // «و الصوره تعبر عن…» وصف للمشهد يأتي بعد النصّ بلا علامات تنصيص — لا يُطبع.
+  const DESC_TAIL_RE = /\s+و\s*(?:ال)?(?:صور[ةه]|صوره|خلفي[ةه]|خلفيه|مشهد|رسم[ةه]|رسمه)(?=\s|$)|\s+و\s*(?:ت|ي)عبّ?ر\s+عن\s+|\s+و\s*(?:تكون|يكون|خل|خلي|خلّي|خله|خلها|اجعل|اجعلها|سو|سوي|سوّي|حط|ضيف|أضف|اضف|ارسم)\s+(?:لي\s+)?(?:فيها|فيه|عليها|ال?صور[ةه]|ال?صوره|ال?خلفي[ةه]|ال?خلفيه|المشهد|لونها|لون\s+ال?خلفي)(?=\s|$)/i;
+  // «عمران بالذهبي» و«… في الاعلى»: لون أو موضع في آخر النصّ غير المنصَّص تنسيقٌ لا كلام.
+  const TAIL_STYLE_RE = /\s+(?:(?:و\s*)?(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:و\s*)?(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص))(?:\s+(?:و\s*)?(?:(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص)))?\s*$/i;
+  // «غير الكلام الى مبروك» / «خلي الكتابه مبروك»: استبدال نصّ طبقتنا — يستعمله العميل فقط حين تكون آخر صورة ناتج الطبقة.
+  function textReplaceIntent(input){
+    const s = String(input || '').trim();
+    if(!s || s.length > 160 || findTextMarker(s) || textStyleEdit(s)) return null;
+    const m = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|خل|خلي|خلّي|خليه|خليها|اجعل|صحح|صحّح|عدل|عدّل)\s+(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص|مكتوب|عبار[ةه]|عباره|جمل[ةه]|جمله|كلم[ةه]|كلمه)\s+(?:الى|إلى|لـ|يصير|تصير|يكون|تكون|:)?\s*(.+)$/i.exec(s);
+    if(!m) return null;
+    const q = quotedValue(m[1]);
+    const t = fixKnownPhrases((q ? q.value : m[1]).trim());
+    return t && t.length <= 120 ? t : null;
+  }
+  // «اكتب قوف شكراً» = اكتب فوق «شكراً»: كلمة موضع في أوّل النصّ غير المنصَّص.
+  const LEAD_POS_RE = /^(?:فوق|قوف|تحت|(?:في|ف|بال)\s*(?:الأعلى|الاعلى|الأسفل|الاسفل|الوسط|النص|المنتصف)|بالنص|بالوسط|فالنص)\s+(?=\S)/;
+  // «غير اخوي الى صديقي» على نصّ طبقتنا: تبديل كلمة داخل النصّ المحفوظ نفسه — null إن لم تكن الكلمة فيه.
+  function layerWordSwap(input, layerText){
+    const s = String(input || '').trim(), t = String(layerText || '');
+    if(!s || !t || s.length > 160) return null;
+    const m = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|استبدل|صحح|صحّح)\s+(?:(?:ال)?(?:كلم[ةه]|كلمه|اسم|جمل[ةه]|جمله)\s+)?[«"']?(.+?)[»"']?\s+(?:الى|إلى|حط|وحط|خلها|خله|تصير|يصير|مكانها|مكانه|بـ|ب(?=\s))\s*[«"']?(.+?)[»"']?\s*[.!]*$/i.exec(s);
+    if(!m) return null;
+    const from = m[1].trim(), to = fixKnownPhrases(m[2].trim());
+    if(!from || !to || from === to || t.indexOf(from) < 0) return null;
+    return t.split(from).join(to);
+  }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
     // v-longtext-noimg (بلاغ المالك «قصّة نوح ما ترد»): نصّ طويل ملصوق ليس طلب
@@ -210,7 +248,16 @@
       rest = rest.slice(kindMatch[0].length);
     }
     const quoted = quotedValue(rest);
-    let exactText = null, suffix = '', styleSource = '';
+    let exactText = null, suffix = '', styleSource = '', descTail = '';
+    if(!quoted){
+      const lead = LEAD_POS_RE.exec(rest.trim());
+      if(lead){ styleSource = lead[0].replace(/^قوف/, 'فوق'); rest = rest.trim().slice(lead[0].length); }
+      const dc = rest.search(DESC_TAIL_RE);
+      if(dc > 0){ descTail = rest.slice(dc).replace(/^[\s،,]*و?\s*/, ''); rest = rest.slice(0, dc); }
+      const ts = rest.search(TAIL_STYLE_RE);
+      if(ts > 0){ styleSource = (styleSource + ' ' + rest.slice(ts)).trim(); rest = rest.slice(0, ts); }
+    }
+    const leadStyle = styleSource;
     if(quoted){
       exactText = quoted.value;
       suffix = rest.slice(quoted.index + quoted.whole.length);
@@ -237,6 +284,9 @@
       // v576: ذيل «بدون تغيير الصورة» طلبٌ لا نصّ — يُنزع قبل الطباعة.
       exactText = exactText.replace(/\s*(?:،|,)?\s*(?:بدون|بلا|دون|من\s+غير)\s*(?:أي\s*)?(?:تغيير|تغير|تعديل|مساس|لمس)(?:\s*(?:في|على|ل)?\s*(?:الصورة|الصوره))?\s*$/i, '').replace(/\s*(?:،|,)?\s*(?:على|فوق|في)\s*(?:هذه\s*|هذي\s*|هال)?(?:الصورة|الصوره)(?:\s*نفسها)?\s*$/i, '').trim();
     }
+    if(leadStyle) styleSource = (leadStyle + ' ' + styleSource).trim();
+    if(descTail) suffix = (suffix + ' ' + descTail).trim();
+    if(exactText) exactText = fixKnownPhrases(exactText);
     if(exactText == null || !exactText.trim() || /^(?:دعا[ءدهً]?|شعر|بيت\s+شعر|قصيدة|نص|كلام|prayer|poem|text)$/i.test(exactText.trim())){
       if(!kind && exactText && exactText.trim()) kind = requestKind(exactText.trim());
       exactText = null;
@@ -249,12 +299,17 @@
     if(visualTail) visualPrompt = (visualPrompt + ' ' + visualTail).trim();
     const visualSuffix = suffix.replace(/(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل)|(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل)|(?:on|in)\s+(?:the\s+)?(?:image|photo|picture|top|middle|center|bottom)/gi, '').replace(/^[\s،,و]+|[\s،,]+$/g, '');
     if(visualSuffix) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim();
-    const visualEdit = (!visualPrompt || GENERIC_VISUAL_RE.test(visualPrompt)) ? null : visualPrompt;
+    const visualEdit = (!visualPrompt || GENERIC_VISUAL_RE.test(visualPrompt) || isGenericVisual(visualPrompt)) ? null : visualPrompt;
     if(!visualEdit) visualPrompt = fallbackVisual(kind, exactText);
     return { wantsText:true, exactText, visualPrompt, visualEdit, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPlacement(styleSource), positionAuto:!positionExplicit(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
   }
   root.__parseImageTextSpec = parseImageTextSpec;
   root.__isExplicitImageEdit = isExplicitImageEdit;
   root.__imageWriteIntent = imageWriteIntent;
-  if(typeof module !== 'undefined' && module.exports) module.exports = { parseImageTextSpec, isExplicitImageEdit, imageWriteIntent };
+  root.__imageTextRemoveIntent = textRemoveIntent;
+  root.__fixKnownPhrases = fixKnownPhrases;
+  root.__isKnownPhrase = isKnownPhrase;
+  root.__imageTextReplace = textReplaceIntent;
+  root.__layerWordSwap = layerWordSwap;
+  if(typeof module !== 'undefined' && module.exports) module.exports = { parseImageTextSpec, isExplicitImageEdit, imageWriteIntent, textRemoveIntent, textReplaceIntent, layerWordSwap, fixKnownPhrases, isKnownPhrase };
 })(typeof window !== 'undefined' ? window : globalThis);

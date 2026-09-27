@@ -14038,7 +14038,7 @@ async function postWithConfirm(url, payload){
   }
   function findTextMarker(source){
     let strong = firstMatch(source, /(?:أكتب|اكتب(?:ي|وا)?|مكتوب(?:ة)?\s+(?:عليها|عليه|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره))|write)/i);
-    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?(?=[«“"'])/i);
+    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?\s*(?=[«“"'])/i);
     if(placed && (!strong || placed.index < strong.index)) strong = placed;
     const weak = firstMatch(source, /(?:ضع|حط|أضف|اضف|ضيف|put|add)/i);
     if(!weak) return strong;
@@ -14095,12 +14095,10 @@ async function postWithConfirm(url, payload){
     if(/(?:في|بال)?\s*(?:وسط|منتصف|المنتصف|المركز)|\b(?:middle|center)\b/i.test(source)) return 'center';
     return 'bottom';
   }
-  function textPlacement(input){
+  function fullTextPosition(input){
     const source = stripOnImage(input);
-    const side = /(?:يمين|\bright\b)/i.test(source) ? 'right' : (/(?:يسار|\bleft\b)/i.test(source) ? 'left' : '');
-    const verticalNamed = /(?:أعلى|اعلى|فوق|وسط|منتصف|المنتصف|المركز|أسفل|اسفل|تحت|\btop\b|\bmiddle\b|\bcenter\b|\bbottom\b)/i.test(source);
-    const vertical = side && !verticalNamed ? 'center' : textPosition(source);
-    return side ? side + '-' + vertical : vertical;
+    const side = /(?:يمين|\bright\b)/i.test(source) ? 'right-' : (/(?:يسار|\bleft\b)/i.test(source) ? 'left-' : '');
+    return side + textPosition(source);
   }
   function cleanVisual(value){
     return String(value || '').replace(/\s*(?:و|and)\s*$/i, '').trim();
@@ -14125,21 +14123,13 @@ async function postWithConfirm(url, payload){
     return 'مشهد أصيل عالي الجودة: ' + visPick(VIS_SCENE[k] || VIS_SCENE.phrase) + '، ' + visPick(VIS_LIGHT)
       + '، ' + visPick(VIS_PALETTE) + '، ' + visPick(VIS_LENS) + '، تفاصيل واقعية دقيقة، بلا أي كتابة أو حروف أو أرقام في الصورة';
   }
-  function textStyleEdit(source){
-    const hasTextNoun = /(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source);
-    const moveExisting = hasTextNoun && /(?:حط|ضع|خل|خلي|خلّي|اجعل|حرّك|حرك|انقل|نقل|ودّ|ودي|move|put|place)[^\n]{0,28}(?:يمين|يسار|أعلى|اعلى|فوق|وسط|منتصف|المركز|أسفل|اسفل|تحت|\bright\b|\bleft\b|\btop\b|\bmiddle\b|\bcenter\b|\bbottom\b)/i.test(source);
-    if((findTextMarker(source) && !moveExisting) || !hasTextNoun) return null;
-    const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null;
-    const fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null;
-    const position=positionExplicit(source)?textPlacement(source):null;
-    return color||fontKey||position ? {color,fontKey,position} : null;
-  }
+  function textStyleEdit(source){ if(findTextMarker(source)||textRemoveIntent(source)||!/(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source)) return null; const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null, fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null, position=positionExplicit(source)?fullTextPosition(source):null; return color||fontKey||position ? {color,fontKey,position} : null; }
   // تنسيق بلا ذكر «النص»: يُستخدم فقط حين توجد طبقة نصّ محفوظة على الصورة.
   function textStyleEditLoose(source){
-    if(findTextMarker(source)) return null;
+    if(findTextMarker(source) || textRemoveIntent(source)) return null;
     const color = /(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source) ? textColor(source) : null;
     const fontKey = /(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source) ? textFont(source) : null;
-    const position = positionExplicit(source) ? textPlacement(source) : null;
+    const position = positionExplicit(source) ? fullTextPosition(source) : null;
     return color || fontKey || position ? { color, fontKey, position } : null;
   }
   function isTextLayerRemoval(source){
@@ -14214,6 +14204,54 @@ async function postWithConfirm(url, payload){
     return (!v || GENERIC_VISUAL_RE.test(v)) ? '' : v;
   }
   function authorVisual(source, kind){ return visualCore(source) || fallbackVisual(kind, null); }
+  // «ابغى صوره» و«لا في الصوره بس» بلا وصف مشهد = طلب عامّ لا تعديل بصريّ.
+  function isGenericVisual(v){
+    const s = String(v || '').replace(/(?:^|\s)(?:لا|لأ|بس|فقط|ابغى|أبغى|ابغي|أبغي|ابي|أبي|اريد|أريد|ودي|بدي|عطني|اعطني|أعطني|لي|في|على|نفس|هذي|هذه|ال?صور[ةه]|image|picture)(?=\s|$)/gi, ' ').trim();
+    return !s || GENERIC_VISUAL_RE.test(s);
+  }
+  const ISTIRJA = 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ';
+  const KNOWN_PHRASES = [
+    [/(^|[\s«"'])[اإأ]نّ?ن?ّ?[اهى]?\s*(?:ال|ل)?لّ?ل?ه\s*و\s*[اإأ]نّ?ن?ّ?[اهى]?\s*[اإأ]ل[يى]ه\s*[رو]اجع[وي]ن(?=$|[\s.،,!»"'])/g, '$1' + ISTIRJA]
+  ];
+  function fixKnownPhrases(value){
+    let out = String(value == null ? '' : value);
+    KNOWN_PHRASES.forEach(function(p){ out = out.replace(p[0], p[1]); });
+    return out;
+  }
+  function isKnownPhrase(value){ return String(value || '').trim() === ISTIRJA; }
+  // «حوز/احذف/شيل الكلام الي تحت» = إزالة طبقة الكتابة التي رسمناها.
+  function textRemoveIntent(input){
+    const s = String(input || '').trim();
+    if(!s || s.length > 120 || findTextMarker(s)) return false;
+    return /(?:^|[\s،,])(?:احذف|حذف|امسح|مسح|شيل|شيلي|ازل|أزل|ازيل|أزيل|إزال[ةه]|ازال[ةه]|حوز|حوّز|حوزي|نظف|نظّف|remove|delete|erase|clear)\s*(?:لي\s+)?(?:(?:هذا|هذه|هذي|هاذا|هاذي)\s+)?(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص|مكتوب|عبار[ةه]|جمل[ةه]|خط|text|writing|words?|caption)(?=$|[\s،,.!؟?])/i.test(s)
+      || /^(?:بدون|بلا|من\s+غير)\s+(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص)\s*[.!]*$/i.test(s);
+  }
+  // «و الصوره تعبر عن…» وصف للمشهد يأتي بعد النصّ بلا علامات تنصيص — لا يُطبع.
+  const DESC_TAIL_RE = /\s+و\s*(?:ال)?(?:صور[ةه]|صوره|خلفي[ةه]|خلفيه|مشهد|رسم[ةه]|رسمه)(?=\s|$)|\s+و\s*(?:ت|ي)عبّ?ر\s+عن\s+|\s+و\s*(?:تكون|يكون|خل|خلي|خلّي|خله|خلها|اجعل|اجعلها|سو|سوي|سوّي|حط|ضيف|أضف|اضف|ارسم)\s+(?:لي\s+)?(?:فيها|فيه|عليها|ال?صور[ةه]|ال?صوره|ال?خلفي[ةه]|ال?خلفيه|المشهد|لونها|لون\s+ال?خلفي)(?=\s|$)/i;
+  // «عمران بالذهبي» و«… في الاعلى»: لون أو موضع في آخر النصّ غير المنصَّص تنسيقٌ لا كلام.
+  const TAIL_STYLE_RE = /\s+(?:(?:و\s*)?(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:و\s*)?(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص))(?:\s+(?:و\s*)?(?:(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص)))?\s*$/i;
+  // «غير الكلام الى مبروك» / «خلي الكتابه مبروك»: استبدال نصّ طبقتنا — يستعمله العميل فقط حين تكون آخر صورة ناتج الطبقة.
+  function textReplaceIntent(input){
+    const s = String(input || '').trim();
+    if(!s || s.length > 160 || findTextMarker(s) || textStyleEdit(s)) return null;
+    const m = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|خل|خلي|خلّي|خليه|خليها|اجعل|صحح|صحّح|عدل|عدّل)\s+(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص|مكتوب|عبار[ةه]|عباره|جمل[ةه]|جمله|كلم[ةه]|كلمه)\s+(?:الى|إلى|لـ|يصير|تصير|يكون|تكون|:)?\s*(.+)$/i.exec(s);
+    if(!m) return null;
+    const q = quotedValue(m[1]);
+    const t = fixKnownPhrases((q ? q.value : m[1]).trim());
+    return t && t.length <= 120 ? t : null;
+  }
+  // «اكتب قوف شكراً» = اكتب فوق «شكراً»: كلمة موضع في أوّل النصّ غير المنصَّص.
+  const LEAD_POS_RE = /^(?:فوق|قوف|تحت|(?:في|ف|بال)\s*(?:الأعلى|الاعلى|الأسفل|الاسفل|الوسط|النص|المنتصف)|بالنص|بالوسط|فالنص)\s+(?=\S)/;
+  // «غير اخوي الى صديقي» على نصّ طبقتنا: تبديل كلمة داخل النصّ المحفوظ نفسه — null إن لم تكن الكلمة فيه.
+  function layerWordSwap(input, layerText){
+    const s = String(input || '').trim(), t = String(layerText || '');
+    if(!s || !t || s.length > 160) return null;
+    const m = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|استبدل|صحح|صحّح)\s+(?:(?:ال)?(?:كلم[ةه]|كلمه|اسم|جمل[ةه]|جمله)\s+)?[«"']?(.+?)[»"']?\s+(?:الى|إلى|حط|وحط|خلها|خله|تصير|يصير|مكانها|مكانه|بـ|ب(?=\s))\s*[«"']?(.+?)[»"']?\s*[.!]*$/i.exec(s);
+    if(!m) return null;
+    const from = m[1].trim(), to = fixKnownPhrases(m[2].trim());
+    if(!from || !to || from === to || t.indexOf(from) < 0) return null;
+    return t.split(from).join(to);
+  }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
     // v-longtext-noimg (بلاغ المالك «قصّة نوح ما ترد»): نصّ طويل ملصوق ليس طلب
@@ -14242,7 +14280,16 @@ async function postWithConfirm(url, payload){
       rest = rest.slice(kindMatch[0].length);
     }
     const quoted = quotedValue(rest);
-    let exactText = null, suffix = '', styleSource = '';
+    let exactText = null, suffix = '', styleSource = '', descTail = '';
+    if(!quoted){
+      const lead = LEAD_POS_RE.exec(rest.trim());
+      if(lead){ styleSource = lead[0].replace(/^قوف/, 'فوق'); rest = rest.trim().slice(lead[0].length); }
+      const dc = rest.search(DESC_TAIL_RE);
+      if(dc > 0){ descTail = rest.slice(dc).replace(/^[\s،,]*و?\s*/, ''); rest = rest.slice(0, dc); }
+      const ts = rest.search(TAIL_STYLE_RE);
+      if(ts > 0){ styleSource = (styleSource + ' ' + rest.slice(ts)).trim(); rest = rest.slice(0, ts); }
+    }
+    const leadStyle = styleSource;
     if(quoted){
       exactText = quoted.value;
       suffix = rest.slice(quoted.index + quoted.whole.length);
@@ -14269,6 +14316,9 @@ async function postWithConfirm(url, payload){
       // v576: ذيل «بدون تغيير الصورة» طلبٌ لا نصّ — يُنزع قبل الطباعة.
       exactText = exactText.replace(/\s*(?:،|,)?\s*(?:بدون|بلا|دون|من\s+غير)\s*(?:أي\s*)?(?:تغيير|تغير|تعديل|مساس|لمس)(?:\s*(?:في|على|ل)?\s*(?:الصورة|الصوره))?\s*$/i, '').replace(/\s*(?:،|,)?\s*(?:على|فوق|في)\s*(?:هذه\s*|هذي\s*|هال)?(?:الصورة|الصوره)(?:\s*نفسها)?\s*$/i, '').trim();
     }
+    if(leadStyle) styleSource = (leadStyle + ' ' + styleSource).trim();
+    if(descTail) suffix = (suffix + ' ' + descTail).trim();
+    if(exactText) exactText = fixKnownPhrases(exactText);
     if(exactText == null || !exactText.trim() || /^(?:دعا[ءدهً]?|شعر|بيت\s+شعر|قصيدة|نص|كلام|prayer|poem|text)$/i.test(exactText.trim())){
       if(!kind && exactText && exactText.trim()) kind = requestKind(exactText.trim());
       exactText = null;
@@ -14281,14 +14331,19 @@ async function postWithConfirm(url, payload){
     if(visualTail) visualPrompt = (visualPrompt + ' ' + visualTail).trim();
     const visualSuffix = suffix.replace(/(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل)|(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل)|(?:on|in)\s+(?:the\s+)?(?:image|photo|picture|top|middle|center|bottom)/gi, '').replace(/^[\s،,و]+|[\s،,]+$/g, '');
     if(visualSuffix) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim();
-    const visualEdit = (!visualPrompt || GENERIC_VISUAL_RE.test(visualPrompt)) ? null : visualPrompt;
+    const visualEdit = (!visualPrompt || GENERIC_VISUAL_RE.test(visualPrompt) || isGenericVisual(visualPrompt)) ? null : visualPrompt;
     if(!visualEdit) visualPrompt = fallbackVisual(kind, exactText);
     return { wantsText:true, exactText, visualPrompt, visualEdit, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPlacement(styleSource), positionAuto:!positionExplicit(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
   }
   root.__parseImageTextSpec = parseImageTextSpec;
   root.__isExplicitImageEdit = isExplicitImageEdit;
   root.__imageWriteIntent = imageWriteIntent;
-  if(typeof module !== 'undefined' && module.exports) module.exports = { parseImageTextSpec, isExplicitImageEdit, imageWriteIntent };
+  root.__imageTextRemoveIntent = textRemoveIntent;
+  root.__fixKnownPhrases = fixKnownPhrases;
+  root.__isKnownPhrase = isKnownPhrase;
+  root.__imageTextReplace = textReplaceIntent;
+  root.__layerWordSwap = layerWordSwap;
+  if(typeof module !== 'undefined' && module.exports) module.exports = { parseImageTextSpec, isExplicitImageEdit, imageWriteIntent, textRemoveIntent, textReplaceIntent, layerWordSwap, fixKnownPhrases, isKnownPhrase };
 })(typeof window !== 'undefined' ? window : globalThis);
 window.postWithConfirm = postWithConfirm;
 // ---- "Maha" (مها): full-screen, voice-only conversational assistant ----
@@ -15221,6 +15276,8 @@ function mahaClearImageRef(){
   mahaEditSourceBase64 = null;
   mahaEditSourceMime = null;
   mahaImageEditInstructions = [];
+  mahaLastCleanImg = null;
+  mahaLastTextLayer = null;
   const mahaImgElClr = document.getElementById('mahaGenImage');
   if(mahaImgElClr){ mahaImgElClr.style.display = 'none'; mahaImgElClr.src = ''; }
 }
@@ -15344,21 +15401,32 @@ async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
 }
 
 let mahaLastCleanImg = null; // آخر صورة نظيفة (بدون نص) — لإعادة كتابة النص بخط/لون جديد بدون رسم جديد
+let mahaLastTextLayer = null; // نصّ/تنسيق/موضع آخر طبقة — أوامر الإنصات تعيد رسمها بلا تخمين
 function mahaCombinedEditPrompt(value){
   const clean = String(value || '').trim();
   const edits = mahaImageEditInstructions.slice();
   if(clean && edits[edits.length - 1] !== clean) edits.push(clean);
   return { edits, prompt: edits.length <= 1 ? clean : ('طبّق جميع التعديلات التالية مجتمعة على الصورة الأصلية:\n' + edits.map((item, i) => (i + 1) + '. ' + item).join('\n') + '\nلا تغيّر أي شيء آخر.') };
 }
-async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontStyle, textColor, rewriteTextOnly){
+async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontStyle, textColor, rewriteTextOnly, textPosition, removeTextOnly){
   try{
+    // «احذف الكتابة/هذا النص» فقط: نرجع للأساس النظيف، بلا محرّك صور.
+    if(removeTextOnly && mahaLastCleanImg){
+      mahaEditSourceBase64 = mahaLastCleanImg.b64;
+      mahaEditSourceMime = mahaLastCleanImg.mime || 'image/png';
+      mahaImageEditInstructions = [];
+      mahaLastTextLayer = null;
+      mahaShowImage(mahaLastCleanImg.b64, mahaLastCleanImg.mime || 'image/png');
+      return { ok: true };
+    }
     // تغيير الخط/اللون/النص فقط: نعيد الكتابة على آخر صورة نظيفة بدون استدعاء الرسم
     if(rewriteTextOnly && mahaLastCleanImg && textToWrite && textToWrite.trim()){
       try{
-        const nb64 = await overlayTextOnImage(mahaLastCleanImg.b64, mahaLastCleanImg.mime, textToWrite.trim(), fontStyle, textColor);
+        const nb64 = await overlayTextOnImage(mahaLastCleanImg.b64, mahaLastCleanImg.mime, textToWrite.trim(), fontStyle, textColor, textPosition || 'auto');
         mahaEditSourceBase64 = nb64;
         mahaEditSourceMime = 'image/png';
         mahaImageEditInstructions = [];
+        mahaLastTextLayer = { text:textToWrite.trim(), fontStyle:fontStyle || 'default', color:textColor || '#ffffff', position:textPosition || 'auto' };
         mahaShowImage(nb64, 'image/png');
         return { ok: true };
       }catch(e){ console.warn('[maha] rewrite-only failed, doing full flow:', e); }
@@ -15385,14 +15453,16 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
     if(textToWrite && textToWrite.trim()){
       mahaLastCleanImg = { b64: r.imageBase64, mime: r.mimeType || 'image/png' };
       try{
-        outB64 = await overlayTextOnImage(r.imageBase64, r.mimeType || 'image/png', textToWrite.trim(), fontStyle, textColor);
+        outB64 = await overlayTextOnImage(r.imageBase64, r.mimeType || 'image/png', textToWrite.trim(), fontStyle, textColor, textPosition || 'auto');
         outMime = 'image/png';
+        mahaLastTextLayer = { text:textToWrite.trim(), fontStyle:fontStyle || 'default', color:textColor || '#ffffff', position:textPosition || 'auto' };
       }catch(e){ console.warn('[maha] text overlay failed, showing plain image:', e); outB64 = r.imageBase64; outMime = r.mimeType; }
     }
     if(!editMode){
       mahaEditSourceBase64 = outB64;
       mahaEditSourceMime = outMime || 'image/png';
       mahaImageEditInstructions = [];
+      if(!(textToWrite && textToWrite.trim())){ mahaLastCleanImg = null; mahaLastTextLayer = null; }
     }else{
       // لا نعتمد المصدر أو التعليمات إلا بعد أن أعاد الخادم نتيجة مقبولة.
       if(!mahaEditSourceBase64 && sourceOverride){
@@ -15891,13 +15961,13 @@ async function mahaHandleRtFunctionCall(ev){
   try{
     mahaSetState('thinking');
     if(ev.name === 'generate_image'){
-      const r = await mahaGenerateOrEditImage(args.prompt || '', false, args.text_to_write || '', args.font_style || '', args.text_color || '', false);
+      const r = await mahaGenerateOrEditImage(args.prompt || '', false, args.text_to_write || '', args.font_style || '', args.text_color || '', false, args.text_position || 'auto', false);
       output = r.ok ? { ok: true, message: 'Image generated and shown to the user on screen.' } : { ok: false, message: 'Image generation failed: ' + (r.error || 'unknown error') };
     }else if(ev.name === 'edit_image'){
       if(!mahaLastImageBase64){
         output = { ok: false, message: 'No image exists yet in this call to edit - tell the user to first ask you to create one.' };
       }else{
-        const r = await mahaGenerateOrEditImage(args.instruction || '', true, args.text_to_write || '', args.font_style || '', args.text_color || '', !!args.rewrite_text_only);
+        const r = await mahaGenerateOrEditImage(args.instruction || '', true, args.text_to_write || '', args.font_style || '', args.text_color || '', !!args.rewrite_text_only, args.text_position || 'auto', !!args.remove_text_only);
         output = r.ok ? { ok: true, message: 'Image edited and shown to the user on screen.' } : { ok: false, message: 'Image edit failed: ' + (r.error || 'unknown error') };
       }
     }else if(ev.name === 'search_web'){
@@ -16199,10 +16269,28 @@ async function mahaCallLoop(){
       // Classic pipeline has no real function-calling like the Realtime mode.
       // A previous image is sent back only when this turn explicitly refers to
       // editing it; a new-image request must always start from a clean canvas.
-      if(mahaNeedsImage(transcript)){
+      const __voiceTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(transcript) : null;
+      const __voiceTextRemove = !!(window.__imageTextRemoveIntent && window.__imageTextRemoveIntent(transcript));
+      const __voiceLocalTextEdit = !!(mahaLastImageBase64 && mahaLastTextLayer && ((__voiceTextSpec && __voiceTextSpec.styleEdit) || __voiceTextRemove));
+      if(mahaNeedsImage(transcript) || __voiceLocalTextEdit){
         mahaSetState('thinking');
-        const editMode = !!mahaLastImageBase64 && !!(window.__isExplicitImageEdit && window.__isExplicitImageEdit(transcript));
-        const imgResult = await mahaGenerateOrEditImage(transcript, editMode);
+        const editMode = !!mahaLastImageBase64 && (!!(window.__isExplicitImageEdit && window.__isExplicitImageEdit(transcript)) || __voiceLocalTextEdit);
+        let __voicePrompt = transcript, __voiceText = '', __voiceFont = '', __voiceColor = '', __voicePos = 'auto', __voiceRewrite = false;
+        if(__voiceTextSpec && __voiceTextSpec.wantsText && __voiceTextSpec.exactText){
+          __voicePrompt = __voiceTextSpec.visualPrompt || transcript;
+          __voiceText = __voiceTextSpec.exactText;
+          __voiceFont = __voiceTextSpec.fontKey;
+          __voiceColor = __voiceTextSpec.color;
+          __voicePos = __voiceTextSpec.positionAuto ? 'auto' : __voiceTextSpec.position;
+        }else if(__voiceTextSpec && __voiceTextSpec.styleEdit && mahaLastTextLayer){
+          const se = __voiceTextSpec.styleEdit;
+          __voiceText = mahaLastTextLayer.text;
+          __voiceFont = se.fontKey || mahaLastTextLayer.fontStyle;
+          __voiceColor = se.color || mahaLastTextLayer.color;
+          __voicePos = se.position || mahaLastTextLayer.position;
+          __voiceRewrite = true;
+        }
+        const imgResult = await mahaGenerateOrEditImage(__voicePrompt, editMode, __voiceText, __voiceFont, __voiceColor, __voiceRewrite, __voicePos, __voiceTextRemove);
         let imgReply;
         if(imgResult.ok){
           imgReply = editMode ? t('mahaImageEditedReply') : t('mahaImageReadyReply');
@@ -18412,6 +18500,8 @@ async function omranSpellFix(txt){
   let t = String(txt || '').trim();
   if(!t || !/[\u0600-\u06FF]/.test(t) || t.length > 300) return txt;
   for(const [re, rep] of __QURAN_FIXES) t = t.replace(re, rep);
+  if(window.__fixKnownPhrases) t = window.__fixKnownPhrases(t);
+  if(window.__isKnownPhrase && window.__isKnownPhrase(t)) return t; /* النصّ المشكول برسم المصحف لا يمرّ على المدقّق فيُسقط تشكيله */
   const sys = 'أنت مدقق إملائي عربي دقيق، مرجعك في الألفاظ والأسماء الدينية رسم المصحف الشريف. صحح الأخطاء الإملائية الواضحة فقط في النص التالي الذي سيُطبع على صورة (أسماء أشخاص، عبارات تهنئة، أدعية): الحروف الناقصة مثل «عبداله» تصير «عبدالله»، والهمزات، و«انشاء الله» تصير «إن شاء الله». لا تغيّر اسمًا يحتمل أن يكون صحيحًا كما هو، ولا تضف ولا تحذف كلمات، ولا تغيّر المعنى. أعد النص المصحح فقط بلا أي شرح ولا علامات اقتباس.';
   try{
     const fixed = await Promise.race([
@@ -18430,6 +18520,17 @@ async function omranSpellFix(txt){
     if(fixed && fixed !== t && __spellGuardOk(t, fixed)) return fixed;
   }catch(e){ __swallow(e, 'img:spell-fix'); }
   return t; /* التصحيحات الحتمية محفوظة حتى لو تعذر الذكاء */
+}
+/* v-text-replace: آخر صورة هي ناتج طبقة الكتابة نفسها؟ عندها الأساس النظيف (baseB64) هو ما يُكتب عليه ويُرجَع إليه —
+   الكتابة على الصورة المحروقة كانت تكدّس النصّ الجديد فوق القديم. */
+function __textLayerOwnsImage(c){
+  const l = c && c.imageTextLayer, e = c && c.lastEditedImage;
+  return !!(l && l.baseB64 && e && e.b64 && (!l.outTail || String(e.b64).slice(-64) === l.outTail));
+}
+function __imgAbortNote(c){
+  c.messages.push({ role:'assistant', content: window.__omranTimedOut
+    ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول الصورة — أعد المحاولة.' : '⚠️ The connection dropped before the image arrived — please try again.')
+    : (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') });
 }
 function extractOverlayText(t){
   const spec = window.__parseImageTextSpec ? window.__parseImageTextSpec(t) : null;
@@ -18603,11 +18704,18 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
           }catch(e){ position = 'bottom'; }
         }
         const __side=/^(right|left)-/.exec(position||'');
-        const maxWidth=c.width*(__side?.[1]?0.30:0.84), maxHeight=c.height*(__side?0.44:0.24);
-        if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
-        let fs = Math.floor(Math.min(c.width / 8.5, c.height / 9));
+        /* v-text-strong (شكوى المستخدمين: «الكتابة في الصور ضعيفة جدًا»):
+           مساحة أكبر قليلًا + وزن وحدّ أقوى. لا نكبّر الكتلة فوق ٢٨٪ كي لا
+           تغطي الموضوع، والنص الطويل ما زال يصغر ويلتف تلقائيًّا. */
+        const maxWidth=c.width*(__side?.[1]?0.42:0.88), maxHeight=c.height*(__side?0.48:0.28);
+        /* v-voice-image-command: اليمين/اليسار كانا translate على مركز الصورة مع
+           عرض ٣٢٪، فينكسر «مرحبا يا صديقي» إلى ثلاث كلمات عمودية ويُقصّ طرفه.
+           موضع X صريح + عرض ٤٢٪ يبقي العبارة كتلة مقروءة داخل الحواف. */
+        const textX = __side ? c.width * (__side[1] === 'right' ? 0.76 : 0.24) : c.width / 2;
+        if(__side) position=position.slice(__side[0].length);
+        let fs = Math.floor(Math.min(c.width / 7.6, c.height / 8.2));
         let lines = [];
-        const setF = () => { ctx.font = fontWeight + ' ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
+        const setF = () => { ctx.font = '800 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
         const wrap = (line) => {
           if(!line) return [''];
           if(ctx.measureText(line).width <= maxWidth) return [line];
@@ -18642,10 +18750,10 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         try{
           const zt = Math.max(0, blockTop - lineHeight), zb = Math.min(c.height, blockBot + ornH + lineHeight * 0.8);
           const g = ctx.createLinearGradient(0, zt, 0, zb);
-          if(position === 'top'){ g.addColorStop(0,'rgba(0,0,0,.36)'); g.addColorStop(0.7,'rgba(0,0,0,.14)'); g.addColorStop(1,'rgba(0,0,0,0)'); }
-          else { g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.3,'rgba(0,0,0,.14)'); g.addColorStop(1,'rgba(0,0,0,.36)'); }
+          if(position === 'top'){ g.addColorStop(0,'rgba(0,0,0,.52)'); g.addColorStop(0.7,'rgba(0,0,0,.22)'); g.addColorStop(1,'rgba(0,0,0,0)'); }
+          else { g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.3,'rgba(0,0,0,.22)'); g.addColorStop(1,'rgba(0,0,0,.52)'); }
           ctx.fillStyle = g;
-          ctx.fillRect(__side ? -c.width : 0, zt, c.width * 3, zb - zt);
+          ctx.fillRect(0, zt, c.width, zb - zt);
         }catch(e){ __swallow(e, 'img:overlay#scrim'); }
         // التعبئة: ذهب متدرّج للمزخرف/الذهبي، وإلا اللون المطلوب بحدّ ذكي
         const mkGold = (y1, y2) => {
@@ -18654,7 +18762,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
           return g;
         };
         let fill, strokeCol, shadowCol;
-        if(goldMode){ fill = mkGold(blockTop, blockBot); strokeCol = 'rgba(70,44,8,.55)'; shadowCol = 'rgba(0,0,0,.5)'; }
+        if(goldMode){ fill = mkGold(blockTop, blockBot); strokeCol = 'rgba(54,32,4,.82)'; shadowCol = 'rgba(0,0,0,.72)'; }
         else {
           const base = colorStr || '#ffffff';
           let dark = false;
@@ -18663,25 +18771,25 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
             dark = lum < 128;
           }
           fill = base;
-          strokeCol = dark ? 'rgba(255,255,255,.9)' : 'rgba(0,0,0,.7)';
-          shadowCol = dark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.5)';
+          strokeCol = dark ? 'rgba(255,255,255,.96)' : 'rgba(0,0,0,.88)';
+          shadowCol = dark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.72)';
         }
         ctx.lineJoin = 'round'; ctx.miterLimit = 2;
-        ctx.lineWidth = Math.max(2, Math.floor(fs / 14));
+        ctx.lineWidth = Math.max(3, Math.floor(fs / 10));
         ctx.strokeStyle = strokeCol;
         ctx.fillStyle = fill;
         ctx.shadowColor = shadowCol;
-        ctx.shadowBlur = Math.max(6, Math.floor(fs / 7));
-        ctx.shadowOffsetY = Math.max(1, Math.floor(fs / 30));
+        ctx.shadowBlur = Math.max(8, Math.floor(fs / 6));
+        ctx.shadowOffsetY = Math.max(2, Math.floor(fs / 24));
         lines.forEach((line, i) => {
           const y = firstY + i * lineHeight;
-          ctx.strokeText(line, c.width / 2, y, maxWidth);
-          ctx.fillText(line, c.width / 2, y, maxWidth);
+          ctx.strokeText(line, textX, y, maxWidth);
+          ctx.fillText(line, textX, y, maxWidth);
         });
         // 🌿 الزخرفة الفاصلة تحت النص — لفّتان متناظرتان ومعيّن مركزي
         if(ornH){
           try{
-            const cx = c.width / 2, oy = blockBot + ornH * 0.55;
+            const cx = textX, oy = blockBot + ornH * 0.55;
             const w = Math.min(maxWidth * 0.62, fs * 6.4);
             const og = goldMode ? mkGold(oy - fs * 0.3, oy + fs * 0.3) : fill;
             ctx.save();
@@ -19309,6 +19417,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة.
       if((typeof __d.caption === 'string' && __d.caption.trim()) || __imgEngineLine(__d.engine, __d)){ cur.messages.push({ role: 'assistant', content: (String(__d.caption || '').trim() + __imgEngineLine(__d.engine, __d)).trim() }); }
       try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok — cleanup, intentional */ }
+      cur.imageTextLayer = __overlayText ? { baseB64:__d.imageBase64, baseMime:__d.mimeType || 'image/png', text:__overlayText, fontKey:textSpec.fontKey, color:textSpec.color, position:textSpec.position, outTail:String(__b64).slice(-64) } : null; /* v-text-replace */
       // 🔄 نحفظ طلب التوليد ليعيده زر «نسخة ثانية» بتنويعة جديدة
       try{ window.__omranLastImageReq = { kind:'gen', promptText: promptText }; }catch(e){ __swallow(e, 'img:save-req-gen'); }
     } else {
@@ -20247,6 +20356,18 @@ function __friendlyErr(e){
     const __supTopicRe = /(الطباع[ةه]|الإعدادات|الاعدادات|الآيفون|الايفون|الأندرويد|الاندرويد|الكمبيوتر|المتصفح|الشاشة|الشاشه|التطبيق|الحساب|الإشعارات|الاشعارات|الصوت|الكاميرا|الموقع|الشبك[ةه]|الواي\s*فاي|print|setting|iphone|android|screen|camera|account|notification|wifi|wi-fi|app\b|براوزر|سیٹنگ|प्रिंट|सेटिंग|প্রিন্ট|সেটিং)/i;
     const __supHowRe = /(?:^|[\s،,])(?:كيف|ليش|وش\s*السبب|ايش\s*السبب|why|how|kaise|kaisay|kese|कैसे|کیسے|কিভাবে)[\s\S]{0,60}(الطباع[ةه]|الإعدادات|الاعدادات|أسوي|اسوي|أعمل|اعمل|أضبط|اضبط|أفعّ?ل|افعل|settings?|print|enable|change|fix|setup|set\s*up)/i;
     const __isSupportQ = !!(text && !__srcImg && ((__supIssueRe.test(text) && __supTopicRe.test(text)) || __supHowRe.test(text)));
+    /* v-text-replace (لقطة المالك: «حوز الكلام الي تحت» قُرئت «انقل النصّ تحت» فتلخبطت الكتابة): حذف الكتابة التي رسمناها
+       = الرجوع للأساس النظيف محليًّا، بلا مولّد يعيد رسم الصورة. */
+    if((!__srcImg || (__srcImg._fromMemory && !__srcImg._screenshot)) && window.__imageTextRemoveIntent && window.__imageTextRemoveIntent(text) && __textLayerOwnsImage(cur)){
+      try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
+      const __rl = cur.imageTextLayer, __rm = __rl.baseMime || 'image/png';
+      cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'image.png', isImage:true, mime:__rm, dataUrl:'data:' + __rm + ';base64,' + __rl.baseB64 }] });
+      cur.lastEditedImage = { b64:__rl.baseB64, mime:__rm };
+      cur.imageTextLayer = null;
+      cur.lastMsgWasImageEdit = true;
+      renderAll(); saveState();
+      return;
+    }
     /* v-font-ask (لقطة عمران: «عدل الخط» وحدها راحت لمحرر الصور فطلعت
        «مشغولة»): أمر الخط الناقص يسأل محليًا عن الخط واللون والمكان —
        ويعرض الخطوط العشرة — بدل مغامرة توليد. */
@@ -21171,18 +21292,15 @@ function __showImgLoading(el, ar, en){
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
       let __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
+      /* v-text-replace: «غير الكلام الى مبروك» / «خلي الكتابه مبروك» على صورة كتبنا عليها = نصّ جديد يحلّ محلّ القديم.
+         على صورة المستخدم نفسها يبقى الطلب لمسار تبديل النصّ داخل التصميم. */
+      if(!__textSpec.wantsText && !__textSpec.styleEdit && !__isNewImageSource && __textLayerOwnsImage(cur) && window.__imageTextReplace){
+        const __rt = (window.__layerWordSwap && window.__layerWordSwap(text, cur.imageTextLayer.text)) || window.__imageTextReplace(text);
+        if(__rt) __textSpec = window.__parseImageTextSpec('اكتب «' + __rt + '»');
+      }
       const __styleOnly = __textSpec.styleEdit || (cur.imageTextLayer ? __textSpec.styleEditLoose : null);
       if(__styleOnly && cur.imageTextLayer){ __textSpec = Object.assign({}, __textSpec, { styleEdit: __styleOnly }); }
-      /* حذف كتابة أضافها التطبيق لا يحتاج إعادة رسم بالذكاء: نعيد طبقة الأساس
-         النظيفة حرفيًّا. «احذف هذا الشي» يعمل فقط حين توجد طبقة نص محفوظة. */
-      if(__textSpec.removeText && cur.imageTextLayer){
-        const __l=cur.imageTextLayer;
-        cur.lastEditedImage={b64:__l.baseB64,mime:__l.baseMime};
-        cur.imageTextLayer=null; cur.lastMsgWasImageEdit=true;
-        cur.messages.push({role:'assistant',content:'',attachments:[{name:'edited.png',isImage:true,mime:__l.baseMime,dataUrl:'data:'+__l.baseMime+';base64,'+__l.baseB64}]});
-        renderAll(); saveState(); return;
-      }
-      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
+      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
       if(__textSpec.wantsText){
         let __resolvedText = __textSpec.exactText;
         if(__resolvedText) __resolvedText = await omranSpellFix(__resolvedText); /* v-spell-quran */
@@ -21191,7 +21309,7 @@ function __showImgLoading(el, ar, en){
             const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
             const __planData = await __planRes.json().catch(() => ({}));
             if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
-          }catch(e){ if(e && e.name === 'AbortError') return; }
+          }catch(e){ if(e && e.name === 'AbortError'){ __imgAbortNote(cur); renderAll(); saveState(); return; } }
         }
         if(!__resolvedText){
           cur.messages.push({ role:'assistant', content:__textSpec.autoAuthored ? (lang==='ar'?'تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.':'Could not author the prayer accurately. Please try again.') : (lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.') });
@@ -21199,10 +21317,21 @@ function __showImgLoading(el, ar, en){
           return;
         }
         try{
+          /* v-text-replace (لقطات المالك: «لا… بس مكتوب فيها…» و«اكتب قوف شكراً اخوي» أبقت النصّ القديم تحت الجديد):
+             نصّ جديد على صورة كتبنا عليها = استبدال — يُكتب على الأساس النظيف وبنفس الخط واللون والموضع ما لم يُطلب غيرها. */
+          const __prevLayer = (!__isNewImageSource && __textLayerOwnsImage(cur)) ? cur.imageTextLayer : null;
+          if(__prevLayer){
+            __textSpec = Object.assign({}, __textSpec, {
+              fontKey: __textSpec.fontKey === 'default' ? (__prevLayer.fontKey || 'default') : __textSpec.fontKey,
+              color: __textSpec.color === '#ffffff' ? (__prevLayer.color || '#ffffff') : __textSpec.color,
+              positionAuto: __textSpec.positionAuto && __prevLayer.position === 'auto',
+              position: __textSpec.positionAuto && __prevLayer.position && __prevLayer.position !== 'auto' ? __prevLayer.position : __textSpec.position
+            });
+          }
           const __pos = __textSpec.positionAuto ? 'auto' : __textSpec.position;
           // 🎨 v576: طلب مركّب (تعديل بصريّ + كتابة) = مرحلتان — المولّد يعدّل الصورة أولًا،
           // ثم نكتب النصّ فوق ناتجه. حاجز v574 محفوظ: بلا visualEdit صريح لا يلمس المولّد الصورة.
-          let __wb64 = __b64, __wmime = __mime;
+          let __wb64 = __prevLayer ? __prevLayer.baseB64 : __b64, __wmime = __prevLayer ? (__prevLayer.baseMime || 'image/png') : __mime;
           const __visRe = /(?:خلفية|خلفيه|background|لون|لوّن|غير|غيّر|بدل|بدّل|حول|حوّل|امسح|احذف|ازل|أزل|اضف|أضف|ضيف|اجعل|خل|صحراء|بحر|سماء|ورد|زهور|ليل|غروب|blur)/i;
           const __noTouchRe = /(?:بدون|بلا|دون|من\s+غير)\s*(?:أي\s*)?(?:تغيير|تغير|تعديل|مساس|لمس)|لا\s*(?:تغير|تغيّر|تعدل|تلمس)|without\s+(?:any\s+)?(?:change|edit|alter)/i;
           const __visEdit = (__textSpec.visualEdit && __visRe.test(__textSpec.visualEdit) && !__noTouchRe.test(text)) ? String(__textSpec.visualEdit).slice(0, 600) : '';
@@ -21218,7 +21347,7 @@ function __showImgLoading(el, ar, en){
               });
               const __vData = await __vRes.json().catch(() => ({}));
               if(__vRes.ok && __vData.imageBase64){ __wb64 = __vData.imageBase64; __wmime = __vData.mimeType || 'image/png'; }
-            }catch(e){ if(e && e.name === 'AbortError') return; __swallow(e, "img:visualEdit-v576"); }
+            }catch(e){ if(e && e.name === 'AbortError'){ __imgAbortNote(cur); renderAll(); saveState(); return; } __swallow(e, "img:visualEdit-v576"); }
             chatPhase('✍️', lang === 'ar' ? 'جاري كتابة النص…' : 'Writing text…', thinkingDiv);
           }
           // 🖌️ v681: الذكاء يرسم الخط أولاً (ضغط لـ800px يمنع 413) → كانفس كبديل احتياطي فقط
@@ -21236,7 +21365,7 @@ function __showImgLoading(el, ar, en){
             __ci2.onerror = function(){ res3({ b64, mime }); };
             __ci2.src = 'data:' + mime + ';base64,' + b64;
           });
-          let __finalB64 = null, __finalMime = 'image/png';
+          let __finalB64 = null, __finalMime = 'image/png', __byCanvas = false;
           /* v-named-font: المستخدم سمّى خطًا (رقعة/ديواني/ثلث…) = يريد ميزة
              الخطوط المحلية بعينها — الكانفس يكتب بخطه المطلوب على صورته
              نفسها بلا أي توليد (رسّام الذكاء يتجاهل اختيار الخط ويعيد رسم
@@ -21256,7 +21385,7 @@ function __showImgLoading(el, ar, en){
                الراسم المحلي دائمًا — حرفيًا بلا خطأ إملائي ممكن، وبخطوطه
                المزخرفة الشغالة (v-font-real). الذكاء فقط لتبديل اسمٍ داخل
                تصميم (الوحيد القادر على المحو). */
-            if(!__nameSwap) throw { __localFont: true }; /* مباشرة للكانفس */
+            if(!__nameSwap || __prevLayer) throw { __localFont: true }; /* مباشرة للكانفس — والاسم القديم طبقتنا فالأساس النظيف يكفي */
             const __cmp = await __compressB64(__wb64, __wmime);
             const __aiTxtPrompt = __nameSwap
               ? 'This image contains a personal name (or short text) written on it. REPLACE that existing name with the EXACT Arabic text \u00AB' + __resolvedText + '\u00BB: erase the old name completely and write the new one in its exact place, matching the original calligraphy style, size, color and orientation as closely as possible. The script MUST be classical ARABIC calligraphy (Thuluth or Diwani), upright and horizontal like the original \u2014 NEVER Urdu Nastaliq, never slanted Persian-style lettering. Do NOT change anything else \u2014 keep every other text, logo, decoration and layout identical.'
@@ -21268,10 +21397,10 @@ function __showImgLoading(el, ar, en){
             });
             const __aiTData = await __aiTRes.json().catch(() => ({}));
             if(__aiTRes.ok && __aiTData.imageBase64){ __finalB64 = __aiTData.imageBase64; __finalMime = __aiTData.mimeType || 'image/jpeg'; }
-          }catch(e){ if(e && e.name === 'AbortError') return; __swallow(e, 'img:aiText-v681'); }
+          }catch(e){ if(e && e.name === 'AbortError'){ __imgAbortNote(cur); renderAll(); saveState(); return; } __swallow(e, 'img:aiText-v681'); }
           /* v-edit-honest: في الاستبدال، الكانفس لا يمحو الاسم القديم —
              الكتابة فوق البطاقة «غش» (كلمة عمران). فشل الرسّام = مصارحة. */
-          if(!__finalB64 && __nameSwap){
+          if(!__finalB64 && __nameSwap && !__prevLayer){
             cur.messages.push({ role:'assistant', content: lang==='ar'
               ? 'ما قدرت أبدّل الاسم داخل التصميم هالمرة — محرك تعديل الصور مشغول أو رفض هذا التصميم. أعد المحاولة بعد دقيقة، وإذا تكررت جرّب صورة أوضح.'
               : 'I could not replace the name inside the design this time — the image editor is busy or declined this design. Try again in a minute.' });
@@ -21280,10 +21409,10 @@ function __showImgLoading(el, ar, en){
           }
           // احتياطي: كانفس إذا فشل الذكاء
           if(!__finalB64){
-            try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos); __finalMime = 'image/png'; }
+            try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos); __finalMime = 'image/png'; __byCanvas = true; }
             catch(e2){ cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة.':'Could not add text to image.' }); renderAll(); saveState(); return; }
           }
-          cur.imageTextLayer = { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos };
+          cur.imageTextLayer = __byCanvas ? { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos, outTail:String(__finalB64).slice(-64) } : null;
           cur.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'edited.png', isImage: true, mime: __finalMime, dataUrl: 'data:' + __finalMime + ';base64,' + __finalB64 }] });
           cur.lastEditedImage = { b64: __finalB64, mime: __finalMime };
           cur.lastMsgWasImageEdit = true;
@@ -21344,7 +21473,10 @@ function __showImgLoading(el, ar, en){
       }
       const __continuesEditChain = !__isNewImageSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
       const __original = latestOriginalUserImage(cur);
-      const __pendingImageEditSource = { b64:__b64, mime:__mime };
+      /* v-text-keep: تعديل بصريّ («غير الخلفية») على صورة كتبنا عليها — المحرّك يأخذ الأساس بلا كتابة (كان يعيد رسم
+         الحروف العربيّة المحروقة فتتشوّه وتضيع الطبقة)، ثمّ يُعاد رسم النصّ نفسه فوق الناتج. طلبٌ يذكر الكتابة نفسها يبقى كالسابق. */
+      const __keepLayer = (!__isNewImageSource && __textLayerOwnsImage(cur) && !/(?:كلام|كتاب|النص|نص\s|الخط|خط\s|مكتوب|عبار|حروف|حرف|كلم[ةه]|كلمات|text|font|writing|letter|word)/i.test(text || '')) ? cur.imageTextLayer : null;
+      const __pendingImageEditSource = __keepLayer ? { b64:__keepLayer.baseB64, mime:__keepLayer.baseMime || 'image/png' } : { b64:__b64, mime:__mime };
       const __combinedEdit = cumulativeImageEditPrompt(cur, text, true);
       const __editShr = await omranShrinkForEdit(__pendingImageEditSource.b64, __pendingImageEditSource.mime); /* v-edit-shrink */
       const __editB64 = __editShr.b64;
@@ -21371,10 +21503,19 @@ function __showImgLoading(el, ar, en){
         const __outMime = __data.mimeType || 'image/png';
         let __editUrl = 'data:' + __outMime + ';base64,' + __data.imageBase64;
         try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
+        let __keptLayer = null;
+        if(__keepLayer){
+          try{
+            const __kBase = __editUrl.split(',')[1] || __data.imageBase64, __kMime = __editUrl.slice(5).split(';')[0] || __outMime;
+            const __kOut = await overlayTextOnImage(__kBase, __kMime, __keepLayer.text, __keepLayer.fontKey, __keepLayer.color, __keepLayer.position);
+            __editUrl = 'data:image/png;base64,' + __kOut;
+            __keptLayer = Object.assign({}, __keepLayer, { baseB64:__kBase, baseMime:__kMime, outTail:__kOut.slice(-64) });
+          }catch(e){ __swallow(e, 'img:text-keep'); }
+        }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */ + __imgEngineLine(__data.engine, __data), attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
         // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
         try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
-        cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
+        cur.lastEditedImage = __keptLayer ? { b64: __editUrl.split(',')[1], mime: 'image/png' } : { b64: __data.imageBase64, mime: __outMime };
         /* v-image-memory: نحفظ الدور (كلمات المستخدم + مصغّر النتيجة 768px، ومصغّر المصدر الأصلي في أول دور) ليراه النموذج في الدور القادم */
         try{
           if(!__continuesEditChain || !Array.isArray(cur.imageTurns)) cur.imageTurns = [];
@@ -21385,7 +21526,7 @@ function __showImgLoading(el, ar, en){
         }catch(e){ __swallow(e, 'img:memory-turn'); }
         cur.imageEditSource = __pendingImageEditSource;
         cur.imageEditInstructions = __pendingImageEditInstructions;
-        cur.imageTextLayer = null;
+        cur.imageTextLayer = __keptLayer;
         cur.lastMsgWasImageEdit = true;
         // 🔄 نحفظ الطلب كما هو ليعيده زر «نسخة ثانية» بتنويعة جديدة
         try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: { prompt: __editPrompt, userText: String(text || '').slice(0, 600), editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs } }; }catch(e){ __swallow(e, 'img:save-req'); }
@@ -21558,7 +21699,10 @@ function __showImgLoading(el, ar, en){
       __showImgLoading(thinkingDiv, 'جاري إنشاء الصورة…', 'Generating image…');
       let __gData = {}; let __gOk = false;
       try{
+        const __gT0 = Date.now();
         for(let __t2 = 0; __t2 < 2 && !__gOk; __t2++){
+          /* v-img-silent-abort: إعادة المحاولة للعطل السريع فقط — بعد محاولة طويلة كانت الثانية تمدّ «جارٍ إنشاء الصورة» لعشر دقائق */
+          if(__t2 && Date.now() - __gT0 > 45000) break;
           const __gRes = await fetch('/api/maha-image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             signal: genAbortController.signal,
@@ -21571,14 +21715,16 @@ function __showImgLoading(el, ar, en){
         if(__gOk){
           let __resolvedText = __genTextSpec.exactText ? await omranSpellFix(__genTextSpec.exactText) : ((__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string') ? __gData.authoredText.trim() : ''); /* v-spell-quran */
           if(__genTextSpec.wantsText && !__resolvedText) throw new Error('missing_authored_prayer');
+          cur.imageTextLayer = null;
           if(__resolvedText){
             cur.imageTextLayer = { baseB64:__gData.imageBase64, baseMime:__gData.mimeType||'image/png', text:__resolvedText, fontKey:__genTextSpec.fontKey, color:__genTextSpec.color, position:__genTextSpec.position };
             __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __resolvedText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
             __gData.mimeType = 'image/png';
+            cur.imageTextLayer.outTail = String(__gData.imageBase64).slice(-64);
           }
         }
       }catch(e){
-        if(e && e.name === 'AbortError'){ renderAll(); saveState(); return; }
+        if(e && e.name === 'AbortError'){ __imgAbortNote(cur); renderAll(); saveState(); return; } /* v-img-silent-abort: كان المربّع يختفي بلا أيّ ردّ */
         __gOk = false;
         __gData = { error: (e && e.message) ? e.message : String(e) };
       }
