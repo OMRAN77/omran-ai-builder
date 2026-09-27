@@ -35,7 +35,7 @@ function loadLayerHelpers(){
     },
   };
   vm.createContext(ctx);
-  vm.runInContext(lev + helpers + fixes + '\nthis.fixes = __QURAN_FIXES; this.api = { __tlFp, __tlItems, __tlLive, __tlMake, __tlRender, __tlSimilar, __tlKeep };', ctx);
+  vm.runInContext(lev + helpers + fixes + '\nthis.fixes = __QURAN_FIXES; this.api = { __tlFp, __tlItems, __tlFor, __tlMake, __tlRender, __tlSimilar, __tlKeep };', ctx);
   return ctx;
 }
 
@@ -113,8 +113,8 @@ test('layers: a correction replaces the old text on the clean base instead of st
   const base = ctx.enc({ bg: 'clean', texts: [] });
   const r1 = await L.__tlRender(base, 'image/png', [{ text: 'ان الله و ان اليه واجعون', position: 'bottom' }]);
   const layer1 = L.__tlMake(base, 'image/png', r1.items, r1.b64);
-  assert.equal(L.__tlLive(layer1, r1.b64), true, 'الصورة الحاليّة ناتج الطبقة');
-  assert.equal(L.__tlLive(layer1, base), false, 'بعد تراجع أو تعديل بالذكاء لا تُستعمل الطبقة');
+  assert.ok(L.__tlFor(layer1, r1.b64), 'الصورة الحاليّة ناتج الطبقة');
+  assert.equal(L.__tlFor(layer1, ctx.enc({ bg: 'ai-edited', texts: [] })), null, 'بعد تعديل بالذكاء لا تُستعمل الطبقة');
   // الدور الثاني: «لا… بس مكتوب فيها X» = X وحده على الأساس النظيف
   const r2 = await L.__tlRender(layer1.baseB64, layer1.baseMime, [{ text: 'إنا لله وإنا إليه راجعون', position: 'auto' }]);
   assert.deepEqual(ctx.dec(r2.b64).texts, [{ text: 'إنا لله وإنا إليه راجعون', position: 'bottom' }], 'لا أثر للنصّ القديم');
@@ -144,12 +144,84 @@ test('layers: two texts, then «remove the bottom / old / new» removes only tha
 });
 
 test('client wiring: new text draws on the clean base, AI never paints over our layer, every path spell-checks', () => {
-  assert.match(CLIENT, /const __tl = \(!__isNewImageSource && __tlLive\(cur\.imageTextLayer, __b64\)\) \? cur\.imageTextLayer : null;/);
-  assert.match(CLIENT, /let __wb64 = __tl \? __tl\.baseB64 : __b64, __wmime = __tl \? __tl\.baseMime : __mime;/);
-  assert.match(CLIENT, /if\(__tl\) throw \{ __localFont: true \};/);
-  assert.match(CLIENT, /const __replaceAll = !!\(__textSpec\.replaceText \|\| __nameSwap\);/);
+  assert.match(CLIENT, /const __tl = !__isNewImageSource \? __tlFor\(cur\.imageTextLayer, __b64\) : null;/);
+  assert.match(CLIENT, /const __tlw = \(__tl && !__tl\.legacy && !\(__nameSwap && __nameAt < 0\)\) \? __tl : null;/);
+  assert.match(CLIENT, /let __wb64 = __tlw \? __tlw\.baseB64 : __b64, __wmime = __tlw \? __tlw\.baseMime : __mime;/);
+  assert.match(CLIENT, /if\(__tlw\) throw \{ __localFont: true \};/);
+  assert.match(CLIENT, /if\(__textSpec\.replaceText\) __wItems = \[__newItem\];/);
   assert.match(CLIENT, /cur\.imageTextLayer = __newLayer;/, 'ما رسمه الذكاء ليس طبقة — لا أساس ملوّث');
   assert.match(CLIENT, /const __overlayText = textSpec\.exactText \? await omranSpellFix\(textSpec\.exactText\)/, 'وضع الصورة يدقّق الإملاء أيضًا');
   assert.match(CLIENT, /if\(info\) info\.position = position;/);
   assert.doesNotMatch(CLIENT, /cur\.imageTextLayer = \{ baseB64:__wb64/, 'لا حفظ لصورة فيها كتابة قديمة أساسًا نظيفًا');
+});
+
+/* مراجعة #803 (٢٧ سبتمبر): كلّ حالة هنا أعادها وكيلان مستقلّان في المتصفّح قبل الإصلاح. */
+test('review: adding is not replacing — «حلوة بس…»، «لا تغيّر الصورة…» keep the existing text', () => {
+  for (const p of ['حلوة بس اكتب «عمران» فوق', 'زينة بس ضيف اسمي عمران', 'تمام بس اكتب اسمي تحت: عمران', 'لا تغير الصورة، اكتب عليها سيف', 'لا تلمس الخلفية واكتب عليها سيف']) {
+    assert.equal(parseImageTextSpec(p).replaceText, undefined, p);
+  }
+  for (const p of ['لا في الصوره بس مكتوب فيها ان الله وآنه اليه راجعون', 'لا، اكتب عليها سيف', 'مو كذا، بس مكتوب عليها سيف', 'غير الكلام واكتب عليها «عمران»', 'احذف الكلام واكتب عمران']) {
+    assert.equal(parseImageTextSpec(p).replaceText, true, p);
+  }
+});
+
+test('review: «المكتوب عليها» describes what to remove; pronoun or negated writing is not new text', () => {
+  for (const p of ['احذف الكلام المكتوب عليها', 'امسح النص المكتوب على الصورة', 'احذف الكتابة، ما ابي شي مكتوب عليها']) {
+    const s = parseImageTextSpec(p);
+    assert.equal(s.removeText, true, p);
+    assert.equal(s.wantsText, false, p);
+  }
+});
+
+test('review: keep clauses never pick the removal target; a targeted removal + write keeps the rest', () => {
+  assert.deepEqual(parseImageTextSpec('احذف الكلام الجديد وخل القديم').removeTarget, { age: 'new', side: '', vertical: '' });
+  assert.deepEqual(parseImageTextSpec('شيل الكلام اللي تحت وخل اللي فوق').removeTarget, { age: '', side: '', vertical: 'bottom' });
+  assert.equal(parseImageTextSpec('خل الكلام الجديد واحذف الباقي').removeTarget.except, true);
+  const s = parseImageTextSpec('احذف الكلام اللي فوق واكتب تهانينا');
+  assert.equal(s.exactText, 'تهانينا');
+  assert.equal(s.replaceText, undefined, 'لا يُحذف كلّ شي');
+  assert.equal(s.removeTarget.vertical, 'top');
+});
+
+test('review: literal names are never cut into a scene, and object removals reach the editor', () => {
+  assert.equal(parseImageTextSpec('ابغي صوره مكتوب عليها مؤسسة الصوت والصورة للإنتاج الفني').exactText, 'مؤسسة الصوت والصورة للإنتاج الفني');
+  assert.equal(parseImageTextSpec('اكتب عليها الحياة مسرح والمشهد الاخير لك').exactText, 'الحياة مسرح والمشهد الاخير لك');
+  assert.equal(parseImageTextSpec('اكتب عليها مهندس برمجيات بخلفية في الذكاء الاصطناعي').exactText, 'مهندس برمجيات بخلفية في الذكاء الاصطناعي');
+  for (const p of ['شل هذا الكرسي', 'حذف هذا الشخص من الصورة']) assert.notEqual(parseImageTextSpec(p).removeText, true, p);
+  for (const p of ['احذف هذا', 'احذف هذا الشي', 'شل هذي']) assert.equal(parseImageTextSpec(p).removeText, true, p);
+});
+
+test('review: greetings and «dear» are not condolence; real condolence words are, even beside a scene', () => {
+  for (const t of ['السلام عليكم ورحمة الله وبركاته', 'أهلا بضيوفنا الأعزاء', 'حجاجنا راجعون بالسلامة', 'رحم الله امرأ عرف قدر نفسه']) {
+    assert.doesNotMatch(parseImageTextSpec('اكتب عليها ' + t).visualPrompt, /تعزية/, t);
+  }
+  assert.match(parseImageTextSpec('اكتب عليها الله يرحمه').visualPrompt, /تعزية/);
+  assert.match(parseImageTextSpec('ابغي صوره مكتوب عليها ان الله و ان اليه واجعون و الصوره تعبر عن موت شخص عزيز').visualPrompt, /^مشهد تعزية/);
+  const cond = (p) => /condolence composition/.test(buildGenerationPrompt(p, { reserveTextArea: true }));
+  for (const p of ['الصوره تعبر عن موت شخص عزيز', 'صورة توفي فيها جدي', 'funeral flowers']) assert.equal(cond(p), true, p);
+  for (const p of ['ارسم صورة حفل افتتاح مطعم مع ضيوفنا الأعزاء', 'بطاقة معايدة السلام عليكم ورحمة الله وبركاته', 'صورة صالة فيها صوفات رمادية', 'a mourning dove on a branch', 'ارسم طيور راجعون لأعشاشها', 'ارسم جدي رحمه الله جالس في المجلس']) assert.equal(cond(p), false, p);
+});
+
+test('review: different short names/dates are separate texts, not corrections', () => {
+  const L = loadLayerHelpers().api;
+  for (const [a, b] of [['أحمد', 'محمد'], ['سارة', 'سامي'], ['2024', '2025'], ['صباح الخير', 'مساء الخير'], ['عمران', 'عثمان'], ['I love you', 'I miss you']]) {
+    assert.equal(L.__tlSimilar(a, b), false, a + '/' + b);
+  }
+  assert.equal(L.__tlSimilar('ان الله و ان اليه واجعون', 'إنا لله وإنا إليه راجعون'), true);
+});
+
+test('review: undo returns to an earlier render and its layer comes back; legacy layers are flagged', async () => {
+  const ctx = loadLayerHelpers(), L = ctx.api;
+  const base = ctx.enc({ bg: 'clean', texts: [] });
+  const r1 = await L.__tlRender(base, 'image/png', [{ text: 'عمران', position: 'bottom' }]);
+  const l1 = L.__tlMake(base, 'image/png', r1.items, r1.b64);
+  const r2 = await L.__tlRender(base, 'image/png', [{ text: 'عمران', position: 'top' }]);
+  const l2 = L.__tlMake(base, 'image/png', r2.items, r2.b64, l1);
+  const back = L.__tlFor(l2, r1.b64); // «رجعها» يعرض ناتج الدور الأوّل
+  assert.ok(back, 'الطبقة تعود مع الصورة السابقة');
+  assert.equal(back.items[0].position, 'bottom');
+  const cleared = L.__tlMake(base, 'image/png', [], base, l2); // «احذف الكلام» ثمّ «رجعها»
+  assert.equal(L.__tlFor(cleared, r2.b64).items[0].position, 'top');
+  assert.equal(L.__tlFor({ baseB64: base, text: 'قديم', position: 'auto' }, 'x').legacy, true, 'طبقة ما قبل الإصدار');
+  assert.deepEqual(plain(L.__tlKeep([{ text: 'أ', position: 'bottom' }, { text: 'ب', position: 'top' }], { age: 'new', side: '', vertical: '', except: true }).map(i => i.text)), ['ب']);
 });

@@ -86,7 +86,7 @@
     /* v-text-layers: عبارة عزاء بلا وصف مشهد كانت تأخذ مشهد «عبارة» عامًّا (ملعب، جسر…) — ChatGPT فهم الحزن من الآية نفسها */
     condolence: ['وردة بيضاء واحدة على حجر داكن في ضوء خافت', 'غصن جافّ على قماش رمادي هادئ', 'مقبرة بسيطة بشواهد حجرية بعيدة وسماء غائمة', 'فانوس صغير مطفأ الضوء بجانب زهرة ذابلة', 'طريق ترابي فارغ في ضباب الفجر', 'قطرات مطر على زجاج نافذة وخلفها أفق رمادي']
   };
-  const CONDOLENCE_TEXT_RE = /(?:راجعون|واجعون|رجعون|رحم[هة]?\s*الله|رحمها\s*الله|البقاء\s*لله|عظم\s*الله\s*[أا]جر|[أا]حسن\s*الله\s*عزاء|تعاز|عزاء|وفا[ةه]|وفات|المرحوم|الفقيد|inna\s+lillahi|rest\s+in\s+peace|condolence)/i;
+  const CONDOLENCE_TEXT_RE = /(?:^|[^\u0621-\u064A])(?:[وف]?(?:بال|لل|ال|ب|ل)?(?:عزاء|تعزي[ةه]|تعازي(?:نا)?|وفا[ةه]|وفات|متوف[ىي]|فقيد|مرحوم)(?:ه|ها|هم|كم|نا)?|توف(?:ي|ى|اه|اها)|[اإ]لي?ه\s+ل?(?:[رو]اجعون|رجعون)|البقاء\s*لله|الله\s*ير[حخ]م(?:ه|ها|هم|ك)|عظم\s*الله\s*[أا]جر|[أا]حسن\s*الله\s*عزاء|في\s*ذم[ةه]\s*الله)(?=$|[^\u0621-\u064A])|inna\s+lillahi|rest\s+in\s+peace|\bcondolence/i;
   const VIS_LIGHT = ['إضاءة جانبية حادّة تصنع ظلالًا طويلة', 'ضوء منتشر ناعم بعد الغيم', 'ضوء خلفي يرسم هالة حول الحوافّ', 'أشعة تتخلّل غبارًا معلّقًا', 'ضوء أزرق بارد قبل الشروق', 'ضوء نهاري ساطع من الأعلى', 'ظلال متقطّعة عبر مشربية', 'وميض خفيف يعكسه سطح مبلّل'];
   const VIS_PALETTE = ['ألوان ترابية هادئة', 'تباين أزرق داكن مع فضّي', 'أخضر عميق مع بنّي', 'رمادي حجري مع لمسة نحاسية', 'أبيض وبيج بلمسة رملية', 'أزرق فيروزي مع رمل فاتح', 'ألوان باردة أحادية شبه رمادية', 'أسود مطفي مع ذهبي خفيف'];
   const VIS_LENS = ['تصوير واسع الزاوية من موضع منخفض', 'منظور علوي عمودي', 'عدسة تقريب طويلة بعمق ميدان ضحل', 'مستوى النظر بتكوين متوازن', 'زاوية منخفضة تُعلي الموضوع', 'تكوين غير متمركز بمساحة فارغة واسعة'];
@@ -123,11 +123,28 @@
     const s = String(source || '');
     const remove = /(?:احذف|امسح|شيل|ازل|أزل|اخف|أخف|remove|erase|delete|clear)/i.test(s) || /(?:^|[\s،,])(?:حذف|شل|ح[ّ]?و[ّ]?ز(?:ي|وا|ه|ها)?)(?=$|[\s،,.!?؟])/.test(s);
     if(!remove) return false;
-    return /(?:النص|الكتابة|الكتابه|الكلام|الكلمات|الحروف|العبارة|العباره|هذا\s+الشي|هالشي|هذا|هذي|text|writing|words?|letters?|this\s+(?:thing|text))/i.test(s);
+    return /(?:النص|الكتابة|الكتابه|الكلام|الكلمات|الحروف|العبارة|العباره|هذا\s+الشي|هالشي|(?:هذا|هذي)(?!\s+(?!الشي)(?:ال)?[\u0621-\u064A])|text|writing|words?|letters?|this\s+(?:thing|text))/i.test(s);
+  }
+  /* أمر كتابة حقيقيّ غير منفيّ بعد الحذف («احذف الكلام واكتب X») — «المكتوب عليها» وصفٌ للمحذوف، و«اكتبه/لا تكتب» ليسا نصًّا جديدًا. */
+  function writeCommandAt(source){
+    const s = String(source || ''), re = /(^|[\s،,و])(اكتب(?:ي|لي)?|أكتب|حط|ضع|ضيف|أضف|اضف|write|put|add)(?=[\s:：«"']|$)/gi;
+    let m;
+    while((m = re.exec(s))){
+      const at = m.index + m[1].length;
+      if(!/(?:^|\s)(?:لا|ما|not|don'?t|never)\s*$/i.test(s.slice(Math.max(0, at - 10), at))) return { index:at, value:m[2] };
+    }
+    return null;
   }
   // أيّ نصّ يُحذف: «اللي تحت/فوق/يمين» أو «القديم/الجديد» — بلا هدف = كلّ الكتابة.
+  const KEEP_CLAUSE_RE = /(?:^|[\s،,]+)و?\s*(?:خل|خلي|خلّي|خله|خليه|اترك|ابق|أبق|ابقي|keep|leave)(?=\s)[^،,]*?(?=[\s،,]+و?\s*(?:احذف|امسح|شيل|شل|حذف|ح[ّ]?و[ّ]?ز|ازل|أزل|remove|delete|erase)|$)/gi;
   function removalTarget(source){
-    const s = stripOnImage(source);
+    const all = stripOnImage(source), s = all.replace(KEEP_CLAUSE_RE, ' ');
+    const t = targetWords(s);
+    if(t || s === all) return t;
+    const kept = targetWords((all.match(KEEP_CLAUSE_RE) || []).join(' '));
+    return kept ? Object.assign(kept, { except:true }) : null; // «خل الجديد واحذف الباقي» = كلّ ما عدا الجديد
+  }
+  function targetWords(s){
     const age = /(?:القديم[ةه]?|الأول|الاول|الأولى|الاولى|السابق[ةه]?|\bold\b|\bfirst\b|\bprevious\b)/i.test(s) ? 'old'
       : (/(?:الجديد[ةه]?|الأخير[ةه]?|الاخير[ةه]?|الثاني[ةه]?|\bnew\b|\blast\b|\blatest\b|\bsecond\b)/i.test(s) ? 'new' : '');
     const side = /(?:يمين|\bright\b)/i.test(s) ? 'right' : (/(?:يسار|\bleft\b)/i.test(s) ? 'left' : '');
@@ -135,10 +152,12 @@
     return (age || side || vertical) ? { age, side, vertical } : null;
   }
   // «لا… بس مكتوب فيها X» / «بدل الكلام» = استبدال الكتابة الموجودة لا إضافة ثانية فوقها.
+  // «لا تغيّر الصورة واكتب…» و«حلوة بس اكتب…» (بس = لكن) إضافة لا استبدال — «لا/مو» ردّ مستقلّ فقط.
   function isReplaceIntent(prefix, source){
-    return /^\s*(?:لا|لأ|مو|مب)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:بس|فقط|only|just)\s*$|\binstead\b|\breplace\b/i.test(prefix || '')
-      || /(?:بدل|بدّل|بدال|مكان|غير|غيّر|غيري|غيّري|استبدل|صحح|صحّح)\s+(?:ال)?(?:كلام|نص|كتابة|كتابه|مكتوب|عبارة|عباره|كلمة|كلمه|قديم)/i.test(source || '')
-      || isTextLayerRemoval(source);
+    const pre = String(prefix || '').trim();
+    return /^(?:لا|لأ|مو|مب)(?:\s*[،,.!?؟]|\s*$|\s+(?:(?:في|على|فوق)\s+)?(?:نفس\s+)?(?:الصورة|الصوره)(?=\s|$)|\s+(?:بس|فقط)(?=\s|$)|\s+(?:كذا|هذا|هذي|صح)(?=\s|$|[،,]))/i.test(pre)
+      || /\binstead\b|\breplace\b/i.test(pre)
+      || /(?:بدل|بدّل|بدال|مكان|غير|غيّر|غيري|غيّري|استبدل|صحح|صحّح)\s+(?:ال)?(?:كلام|نص|كتابة|كتابه|مكتوب|عبارة|عباره|كلمة|كلمه|قديم)/i.test(source || '');
   }
   // وصف طلب («كلام حلو»، «جمله عن النجاح») مقابل نصّ حرفيّ («عمران»).
   const KIND_HEAD_RE = /^(?:أي|اي|شي|شيء)?\s*(كلام|كلمات|كلمتين|جملة|جمله|جمل|عبارة|عباره|عبارات|كلمة|كلمه|حكمة|حكمه|اقتباس|مقولة|مقوله|بيت\s+شعر|أبيات|ابيات|قصيدة|قصيده|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|غزل|تهنئة|تهنئه|معايدة|معايده|رسالة|رساله)(?=$|[\s،,.!?؟:])/;
@@ -203,9 +222,9 @@
   /* v-text-layers: «ابغي صوره» (فيديو المالك) لم تكن عامّة فوصلت المولّد وحدها بلا موضوع ⇒ صورة عشوائيّة. */
   const GENERIC_VISUAL_RE = /^(?:(?:أنشئ|انشئ|اصنع|ولد|ولّد|صمم|ارسم|ابغي|ابغى|أبغى|أبغي|ابي|أبي|ابى|أريد|اريد|بدي|ودي|عطني|أعطني|اعطني|هات|سوي|سوّي|create|generate|make|draw|i\s+want|give\s+me)\s*(?:لي\s*)?)?(?:صورة|صوره|image|picture)?\s*$/i;
   // «لا في الصوره بس» مقدّمة تصحيح لا وصف مشهد.
-  const REPLY_LEADIN_RE = /^(?:لا|لأ|مو|مب)?\s*[،,]?\s*(?:(?:في|على|فوق)\s*)?(?:نفس\s+)?(?:الصورة|الصوره)?\s*(?:بس|فقط)?\s*$/i;
+  const REPLY_LEADIN_RE = /^(?:لا|لأ|مو|مب)?\s*(?:كذا|هذا|هذي|صح)?\s*[،,]?\s*(?:(?:في|على|فوق)\s*)?(?:نفس\s+)?(?:الصورة|الصوره)?\s*(?:بس|فقط)?\s*$/i;
   // «احذف/غيّر الكلام (القديم/اللي تحت) واكتب…»: شطر الحذف أو الاستبدال أمرٌ للطبقة لا تعديلٌ بصريّ يُرسل للمولّد.
-  const REMOVAL_CLAUSE_RE = /^(?:لا\s+)?(?:احذف|امسح|شيل|شل|حذف|ح[ّ]?و[ّ]?ز|ازل|أزل|غير|غيّر|غيري|غيّري|بدل|بدّل|استبدل|صحح|صحّح)\s+(?:ال)?(?:نص|كتابة|كتابه|كلام|كلمات|عبارة|عباره|مكتوب)(?:\s+(?:القديم[ةه]?|الأول|الاول|السابق[ةه]?|(?:اللي|الي|الّي)\s+\S+))?\s*$/i;
+  const REMOVAL_CLAUSE_RE = /^(?:لا\s+)?(?:احذف|امسح|شيل|شل|حذف|ح[ّ]?و[ّ]?ز|ازل|أزل|غير|غيّر|غيري|غيّري|بدل|بدّل|استبدل|صحح|صحّح)\s+(?:ال)?(?:نص|كتابة|كتابه|كلام|كلمات|عبارة|عباره|مكتوب|[إا]سم)(?:\s+(?:القديم[ةه]?|الأول|الاول|السابق[ةه]?|(?:اللي|الي|الّي)\s+\S+))?\s*$/i;
   function isGenericVisual(v){ return !v || GENERIC_VISUAL_RE.test(v) || REPLY_LEADIN_RE.test(v) || REMOVAL_CLAUSE_RE.test(v); }
   function visualCore(source){
     const v = cleanVisual(stripOnImage(source).replace(WRITE_VERB_RE, ' ').replace(WITH_TYPE_RE, ' ').replace(/\s{2,}/g, ' ').replace(/^[\s،,و]+|[\s،,]+$/g, ''));
@@ -220,8 +239,9 @@
     // طلب الكتابة على صورة دائمًا قصير؛ أي نصّ >400 حرف = لا صورة، محادثة عادية.
     if(source.length > 400) return { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null };
     // «احذف الكلام واكتب X» استبدال لا حذف — يكمل لقراءة النصّ الجديد.
-    if(isTextLayerRemoval(source) && !findTextMarker(source)) return { wantsText:false, exactText:null, visualPrompt:source.trim(), removeText:true, removeTarget:removalTarget(source), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null };
-    const styleEdit = textStyleEdit(source), autoPrayer = styleEdit ? null : autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit, styleEditLoose:styleEdit };
+    const removing = isTextLayerRemoval(source), writeCmd = removing ? writeCommandAt(source) : null;
+    if(removing && !writeCmd) return { wantsText:false, exactText:null, visualPrompt:source.trim(), removeText:true, removeTarget:removalTarget(source), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null };
+    const styleEdit = writeCmd ? null : textStyleEdit(source), autoPrayer = (styleEdit || writeCmd) ? null : autoPrayerSpec(source), marker = writeCmd || (autoPrayer ? null : findTextMarker(source)); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit, styleEditLoose:styleEdit };
     if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:authorVisual(source, autoPrayer.kind), visualEdit:visualCore(source) || null, prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:textPlacement(source), positionAuto:!positionExplicit(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:textStyleEditLoose(source) };
     const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
     let rest = source.slice(marker.index + marker.value.length);
@@ -233,10 +253,10 @@
        عبارة عزاء تامّة مناسبةٌ لا جزء منها. داخل علامات الاقتباس لا يُقطع شيء. */
     const tailQuote = quotedValue(rest);
     const tailOk = (at) => at > 0 && (!tailQuote || at >= tailQuote.index + tailQuote.whole.length);
-    let visualTailAt = rest.search(/\s+(?:و\s*)?(?:(?:تكون|يكون|خلي|خلّي|اجعل)\s+)?(?:الصورة|الصوره|المشهد|الخلفية|الخلفيه)\s+(?:تعبر|تعبّر|يعبر|يعبّر|تدل|يدل|توحي|يوحي|تظهر|يظهر|تكون|يكون|فيها|فيه|تحتوي|يحتوي)(?=\s|$)|\s+و\s*(?:الصورة|الصوره|المشهد|الخلفية|الخلفيه)\s+(?=\S)|\s+(?:و\s*)?(?:بخلفية|بخلفيه|بخلفيّة)(?=\s|$)/i);
+    let visualTailAt = rest.search(/\s+(?:و\s*)?(?:(?:تكون|يكون|خلي|خلّي|اجعل)\s+)?(?:الصورة|الصوره|المشهد|الخلفية|الخلفيه)\s+(?:تعبر|تعبّر|يعبر|يعبّر|تدل|يدل|توحي|يوحي|تظهر|يظهر|تكون|يكون|فيها|فيه|تحتوي|يحتوي)(?=\s|$)|\s+و\s*(?:الصورة|الصوره|المشهد|الخلفية|الخلفيه)\s+(?=(?!ال|ل)\S)|\s+(?:و\s*)?(?:بخلفية|بخلفيه|بخلفيّة)(?=\s+(?!(?:في|عن|من|ب)\s)\S|$)/i);
     if(!tailOk(visualTailAt)){
       const occ = /\s+(?:و\s*)?(?:عن|على|بمناسبة|بمناسبه|ل)\s*(?:وفاة|وفات|وفاه|رحيل|فقدان|فقد)(?=\s|$)/i.exec(rest);
-      visualTailAt = (occ && /(?:راجعون|واجعون|رجعون|رحم[هة]?\s*الله|رحمها\s*الله|البقاء\s*لله)\s*$/.test(rest.slice(0, occ.index))) ? occ.index : -1;
+      visualTailAt = (occ && /(?:[اإ]لي?ه\s+ل?(?:[رو]اجعون|رجعون)|البقاء\s*لله|الله\s*ير[حخ]م(?:ه|ها|هم))\s*$/.test(rest.slice(0, occ.index))) ? occ.index : -1;
     }
     if(tailOk(visualTailAt)){
       visualTail = rest.slice(visualTailAt).replace(/^\s*(?:و\s*)?/, '').trim();
@@ -291,7 +311,8 @@
     if(visualSuffix) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim();
     const visualEdit = isGenericVisual(visualPrompt) ? null : visualPrompt;
     if(!visualEdit) visualPrompt = fallbackVisual(kind, exactText);
-    return { wantsText:true, exactText, visualPrompt, visualEdit, replaceText:isReplaceIntent(source.slice(0, marker.index), source) || undefined, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPlacement(styleSource), positionAuto:!positionExplicit(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
+    else if(CONDOLENCE_TEXT_RE.test(exactText || '') && !CONDOLENCE_TEXT_RE.test(visualPrompt)) visualPrompt = 'مشهد تعزية بلا وجوه: ' + visualPrompt;
+    return { wantsText:true, exactText, visualPrompt, visualEdit, replaceText:(isReplaceIntent(source.slice(0, marker.index), source) || (removing && !removalTarget(source.slice(0, marker.index)))) || undefined, removeTarget:(removing && removalTarget(source.slice(0, marker.index))) || undefined, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPlacement(styleSource), positionAuto:!positionExplicit(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
   }
   root.__parseImageTextSpec = parseImageTextSpec;
   root.__isExplicitImageEdit = isExplicitImageEdit;

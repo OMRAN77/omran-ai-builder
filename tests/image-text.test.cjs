@@ -114,7 +114,7 @@ test('removing saved wording is distinguished from generating or restyling text'
 test('client keeps a reversible text layer and uses native Arabic font weights', () => {
   const client = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
   // v-text-layers: الطبقة صارت أساسًا نظيفًا + قائمة نصوص؛ التفاصيل السلوكيّة في image-text-layers.test.cjs
-  assert.match(client, /if\(__textSpec\.removeText && __tl\)/);
+  assert.match(client, /if\(__textSpec\.removeText && __tlHas\)/);
   assert.match(client, /let __rb64 = __tl\.baseB64, __rmime = __tl\.baseMime/);
   assert.match(client, /cur\.imageTextLayer = __tlMake\(__baseB64, __baseMime, __tr\.items, __b64\)/);
   assert.match(client, /const fontWeight = \/\^\(diwani\|thuluth\|ruqaa\|farsi\)\$\/\.test\(String\(fontKey \|\| ''\)\) \? '400' : '700';/);
