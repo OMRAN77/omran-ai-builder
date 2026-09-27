@@ -109,13 +109,14 @@ test('١١. تعديل بصريّ على صورة كتبنا عليها: الم�
 
 test('١٢. الكتابة على الصور ثقيلة وواضحة، مع حدّ ووشاح قويّين بلا تغطية كبيرة', () => {
   assert.match(attach, /maxWidth=c\.width\*\(__side\?\.\[1\]\?0\.42:0\.88\), maxHeight=c\.height\*\(__side\?0\.48:0\.28\)/);
-  assert.match(attach, /ctx\.font = '800 '/);
+  assert.match(attach, /const fontWeight = [^\n]+\? '400' : '800'/);
+  assert.match(attach, /ctx\.font = fontWeight \+ ' '/);
   assert.match(attach, /rgba\(0,0,0,\.52\)/);
   assert.match(attach, /ctx\.lineWidth = Math\.max\(3, Math\.floor\(fs \/ 10\)\)/);
 });
 
 test('١٣. أوامر الإنصات تنقل النص يمينًا ويسارًا وتحذف الإشارة الصريحة للكتابة', () => {
-  assert.equal(parseImageTextSpec('حطلي الكتابه يمين').styleEdit.position, 'right-bottom');
+  assert.equal(parseImageTextSpec('حطلي الكتابه يمين').styleEdit.position, 'right-center');
   assert.equal(parseImageTextSpec('حط لي الكتابة يسار فوق').styleEdit.position, 'left-top');
   assert.equal(parseImageTextSpec('خلي النص يمين الوسط').styleEdit.position, 'right-center');
   assert.equal(textRemoveIntent('احذف هذا النص'), true);
