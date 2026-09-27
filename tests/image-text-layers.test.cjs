@@ -65,3 +65,14 @@ test('the owner\'s exact turn-2 wording «ان الله وآنه اليه راج
   assert.equal(fixKnownPhrases('ان الله وآنه اليه راجعون'), 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ');
   assert.equal(parseImageTextSpec('لا في الصوره بس مكتوب فيها ان الله وآنه اليه راجعون').exactText, 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ');
 });
+
+test('review #803: «احذف الكلام وحط وردة» removes the text and never prints the object word', () => {
+  for (const p of ['احذف الكلام وحط وردة', 'احذف هذا الكلام وحط كرسي', 'امسح الكتابة وضيف شجرة']) {
+    const s = parseImageTextSpec(p);
+    assert.notEqual(s.wantsText, true, p);
+    assert.equal(s.removeText, true, p);
+  }
+  for (const [p, want] of [['احذف الكلام وحط اسمي عمران', 'عمران'], ['احذف الكلام وحط «مبروك»', 'مبروك'], ['امسح الكلام واكتب سيف', 'سيف']]) {
+    assert.equal(parseImageTextSpec(p).exactText, want, p);
+  }
+});

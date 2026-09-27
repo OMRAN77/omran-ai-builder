@@ -14164,7 +14164,10 @@ async function postWithConfirm(url, payload){
     let m;
     while((m = re.exec(s))){
       const at = m.index + m[1].length;
-      if(!/(?:^|\s)(?:لا|ما|not|don'?t|never)\s*$/i.test(s.slice(Math.max(0, at - 10), at))) return { index:at, value:m[2] };
+      if(/(?:^|\s)(?:لا|ما|not|don'?t|never)\s*$/i.test(s.slice(Math.max(0, at - 10), at))) continue;
+      /* «حط/ضع/ضيف» فعل كتابة فقط إن تلاه نصّ أو اسمه — «احذف الكلام وحط وردة» وضعُ شيء في المشهد لا كتابة «وردة» */
+      if(!/^(?:اكتب|أكتب|write)/i.test(m[2]) && !/^\s*(?:لي\s+)?(?:(?:عليها|عليه|فوقها|فيها)\s*)?(?:[«“"']|(?:النص|نص|العبارة|عبارة|الكلام|كلام|كلمة|اسمي|اسم|the\s+text|text|words?|name)(?=\s|[:：«"'\-–—]|$))/i.test(s.slice(at + m[2].length))) continue;
+      return { index:at, value:m[2] };
     }
     return null;
   }
