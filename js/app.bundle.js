@@ -14245,10 +14245,11 @@ async function postWithConfirm(url, payload){
     return null;
   }
   // وصف طلب («كلام حلو»، «جمله عن النجاح») مقابل نصّ حرفيّ («عمران»).
-  const KIND_HEAD_RE = /^(?:أي|اي|شي|شيء)?\s*(كلام|كلمات|كلمتين|جملة|جمله|جمل|عبارة|عباره|عبارات|كلمة|كلمه|حكمة|حكمه|اقتباس|مقولة|مقوله|بيت\s+شعر|أبيات|ابيات|قصيدة|قصيده|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|غزل|تهنئة|تهنئه|معايدة|معايده|رسالة|رساله)(?=$|[\s،,.!?؟:])/;
-  const DESCRIBER_RE = /(?:^|[\s،,])(?:حلو|حلوة|حلوه|حلوين|جميل|جميلة|جميله|قصير|قصيرة|قصيره|طويل|طويلة|مؤثر|مؤثرة|مؤثره|قوي|قوية|قويه|رائع|رائعة|أنيق|انيق|مناسب|مناسبة|زين|زينة|عن|nice|short|about)(?=$|[\s،,.!?؟])/;
+  const KIND_HEAD_RE = /^(?:أي|اي|شي|شيء)?\s*(كلام|كلمات|كلمتين|جملة|جمله|جمل|عبارة|عباره|عبارات|كلمة|كلمه|حكمة|حكمه|اقتباس|مقولة|مقوله|بيت\s+شعر|أبيات|ابيات|قصيدة|قصيده|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|غزل|تهنئة|تهنئه|معايدة|معايده|رسالة|رساله|خاطرة|خاطره|خواطر)(?=$|[\s،,.!?؟:])/;
+  /* v-text-design (لقطة المالك: «اكتب عليها كلا م حب زوجين» طُبعت حرفيًّا فوق وجه الرجل): «كلام حب/غزل/لزوجين/لحبيبتي…» طلب تأليف */
+  const DESCRIBER_RE = /(?:^|[\s،,])(?:حلو|حلوة|حلوه|حلوين|جميل|جميلة|جميله|قصير|قصيرة|قصيره|طويل|طويلة|مؤثر|مؤثرة|مؤثره|قوي|قوية|قويه|رائع|رائعة|أنيق|انيق|مناسب|مناسبة|يناسب|تناسب|يليق|زين|زينة|عن|راقي|راقية|راقيه|فخم|فخمة|فخمه|رومانسي|رومانسية|رومانسيه|[لب]?ل?(?:ال)?(?:حب|غرام|عشق|هوى|زوجين|زوج|زوجة|زوجه|زوجي|زوجتي|حبيب|حبيبي|حبيبتي|حبيبة|حبيبه|عرسان|عروس|عريس|خطيب|خطيبي|خطيبتي)|nice|short|about|love)(?=$|[\s،,.!?؟])/;
   function looksLikeRequest(value){
-    const s = String(value || '').trim();
+    const s = String(value || '').trim().replace(/(^|\s)كلا\s+م(?=\s|$)/g, '$1كلام'); /* «كلا م» خطأ كتابة لـ«كلام» */
     if(!s) return false;
     const words = s.split(/\s+/);
     if(words.length > 9) return false;
@@ -14259,7 +14260,7 @@ async function postWithConfirm(url, payload){
   }
   function requestKind(s){
     if(/(?:شعر|قصيدة|قصيده|بيت|أبيات|ابيات)/.test(s)) return 'poetry';
-    if(/(?:غزل|رومانسي)/.test(s)) return 'flirt';
+    if(/(?:غزل|رومانسي|(?:^|[\s،,])[لب]?ل?(?:ال)?(?:حب|غرام|عشق|هوى|زوجين|زوج|زوجة|زوجه|حبيب|حبيبي|حبيبتي|عرسان|عروس)(?=$|[\s،,.!?؟]))/.test(s)) return 'flirt';
     if(/(?:دعا[ءدهً]?(?![\u0621-\u064a])|[أا]دعي[ةه])/.test(s)) return 'prayer';
     return 'phrase';
   }
@@ -18776,7 +18777,8 @@ function overlayDesignLines(b64, mime, lines){
   });
 }
 const MAHA_FONTS = {
-  default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'}, thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}
+  default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'}, thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'},
+  naskhBody:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@500;700'} /* v-text-design: أسطر الملصق */
 };
 /* حجم الكتابة معامل على الحجم التلقائيّ: «صغير/كبير» قيمة مطلقة، و«أصغر/كبّر» نسبة من الحاليّ؛ محصور كي لا تختفي ولا تغطّي الصورة. */
 function __textScale(prev, size){
@@ -18791,10 +18793,10 @@ async function mahaLoadFont(key){
      @font-face لم تُقرأ بعد، فيسقط الرسم على الخط العادي في كل مرة أولى.
      الآن: ننتظر تحميل ورقة الأنماط ثم نتحقق فعليًا أن الخط جاهز (حتى 3 ثوانٍ).
      الطلب بلا bold لأن الخطوط الزخرفية (Katibeh/Rakkas/Gulzar) وزنها 400 فقط. */
-  if(!document.getElementById('gf-' + f.css)){
+  if(!document.getElementById('gf-' + f.gf)){ /* v-text-design: المعرّف بالورقة لا بالعائلة — Noto Naskh 700 (naskh2) لا يمنع تحميل 500 */
     await new Promise((res) => {
       const l = document.createElement('link');
-      l.id = 'gf-' + f.css; l.rel = 'stylesheet';
+      l.id = 'gf-' + f.gf; l.rel = 'stylesheet';
       l.href = 'https://fonts.googleapis.com/css2?family=' + f.gf + '&display=swap';
       l.onload = res; l.onerror = res;
       document.head.appendChild(l);
@@ -18809,192 +18811,312 @@ async function mahaLoadFont(key){
   }
   return f.css;
 }
-/* v-text-harmony (طلب المالك بعد رفضه شريط الاختيار: «لا ما ابا شريط صغير ابا تنسيق اللون مع الصوره»): لون الكتابة
-   الافتراضيّ لم يعد أبيض ثابتًا — يؤخذ من أبرز لون حيّ في الصورة نفسها (فستان وردي ← كتابة وردية، غروب ← دافئة)، ويُفتَّح
-   فوق خلفية داكنة أو يُغمَّق فوق فاتحة كي يبقى مقروءًا. صورة بلا لون حيّ (رماديّة) تبقى بيضاء، ولون يطلبه المستخدم بالكلام
-   يغلب دائمًا. px بكسلات RGBA لمصغّر الصورة، وbgLum إضاءة ما خلف الكتابة (٠–١) بعد الوشاح. */
-function __hslHex(h, s, l){
-  const a = s * Math.min(l, 1 - l), f = (n) => { const k = (n + h / 30) % 12; const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); return Math.round(c * 255).toString(16).padStart(2, '0'); };
-  return '#' + f(0) + f(8) + f(4);
+/* 🖋️ v-text-design (المالك ٢٧ سبتمبر بعد #804: «ما تغير نفس الشي أخيس من قبل… اريد شي جميل نفس الصوره الي فيها البنات ٤»).
+   مقارنته: هناك عنوان ذهبيّ بخطّ نسخ فخم، وأسطر مشكولة أنيقة بظلّ ناعم، وزخرفة رفيعة، في السماء الفارغة بعيدًا عن الوجوه؛ وعندنا
+   سطر عريض بحدّ أسود سميك فوق وجه الرجل. الراسم صار «مصمّم ملصق»، وضُبطت أرقامه بلجنة ثلاثة محكّمين قاسوا مرجع المالك نفسه:
+   - النصّ «عنوان\n\nأسطر» = عنوان وأبيات؛ عبارة قصيرة (≤٥ كلمات) = عنوان بطل؛ الأطول = أسطر بلا عنوان.
+   - العنوان سيّد الكتلة: عرضه نحو ٠٫٨ من عرض الأسطر (٢٫٦–٥٫٢ ضعف خطّها)، Amiri 700 بذهب شمبانيا مرسوم على حبر الحروف، بحافّة
+     تحت التعبئة (لا فوقها: الحدّ فوق التعبئة يرسم فواصل عند كلّ وصل حرف) وتوهّج دافئ؛ وكشيدة عرضيّة في العنوان المفرد («البحــر»).
+   - الأسطر Noto Naskh Arabic 500 كريميّة بظلّ ناعم، ومسافة ١٫٦٢، وتفاف متوازن بلا كلمة يتيمة، وزخرفة شعريّة تتلاشى أطرافها.
+   - المكان: خريطة بروز منعّمة نسبةً لمتوسّط الصورة، وصناديق الوجوه والأشخاص من الخادم عقوبة ثقيلة، بهامش ٩٪ وتوسيط في أطول
+     امتداد هادئ، وعمق يمنع الكتلة العليا من النزول على الجزر والأشخاص؛ والمزدحمة كلّها شريط متدرّج أعلى أو أسفل.
+   - اللون: ذهبيّ (فضّيّ للصورة الباردة بلا ضوء دافئ)، وبرونزيّ داكن فوق الفاتح؛ لون يطلبه المستخدم يُشتقّ منه طقم نغميّ. وشاح
+     مستطيل مريّش خلف الكتلة وحدها حين يزدحم ما تحتها أو يكثر فيه الذهبيّ. */
+const __DESIGN_TITLE_FONT = 'naskh', __DESIGN_BODY_FONT = 'naskhBody';
+const __KASHIDA_JOIN = 'بتثجحخسشصضطظعغفقكلمنهيئ';
+function __designText(exact){
+  const parts = String(exact || '').split(/\n[ \t]*\n/).map((p) => p.trim()).filter(Boolean);
+  let title = parts.length > 1 ? parts[0].replace(/\s*\n\s*/g, ' ') : '';
+  let lines = (parts.length > 1 ? parts.slice(1).join('\n') : (parts[0] || '')).split('\n').map((l) => l.trim()).filter(Boolean);
+  const words = lines.join(' ').split(/\s+/).filter(Boolean);
+  if(!title && lines.length === 1 && words.length <= 5 && lines[0].replace(/[ً-ْٰـ]/g, '').length <= 34){ title = lines[0]; lines = []; } /* عنوان بطل — الطول بلا تشكيل */
+  return { title, lines, hero: !!title && !lines.length };
 }
-function __pickTextHarmony(px, bgLum){
-  const W = new Array(12).fill(0), S = new Array(12).fill(0), X = new Array(12).fill(0), Y = new Array(12).fill(0);
-  let n = 0;
-  for(let i = 0; i + 3 < px.length; i += 4){
-    n++;
-    const r = px[i] / 255, g = px[i + 1] / 255, b = px[i + 2] / 255;
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
-    if(d < 0.08 || l < 0.12 || l > 0.92) continue;
-    const s = d / (1 - Math.abs(2 * l - 1));
-    if(s < 0.22) continue;
-    const h = ((mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60 + 360) % 360;
-    const w = d * d * (1 - Math.abs(l - 0.5)), k = Math.floor(h / 30) % 12; /* الحيويّة (مدى اللون لا تشبّع HSL الذي يضخّم الفاتح) تُرجَّح: البشرة والبيج لا تغلب لونًا صريحًا */
-    W[k] += w; S[k] += s * w; X[k] += Math.cos(h * Math.PI / 180) * w; Y[k] += Math.sin(h * Math.PI / 180) * w;
+/* كشيدة عرض فقط (النصّ المحفوظ حرفيّ): كلمة عنوان واحدة ≥٤ أحرف، وما قبل الأخير يتّصل من الجهتين — «البَحر» ← «البَحــر» */
+function __kashida(title){
+  const t = String(title || '');
+  if(/\s/.test(t.trim())) return t;
+  const base = [];
+  for(let i = 0; i < t.length; i++) if(!/[ً-ْٰـ]/.test(t[i])) base.push(i);
+  if(base.length < 4) return t;
+  const last = base[base.length - 1], prev = base[base.length - 2];
+  if(__KASHIDA_JOIN.indexOf(t[prev]) < 0 || /ا$/.test(t.slice(0, last + 1).replace(/[ً-ْٰ]/g, ''))) return t;
+  let at = prev + 1; while(at < last && /[ً-ْٰ]/.test(t[at])) at++;
+  return t.slice(0, at) + 'ــ' + t.slice(at);
+}
+function __designSaliency(img){
+  const gw = 80, gh = Math.max(24, Math.min(240, Math.round(80 * (img.naturalHeight || 1) / (img.naturalWidth || 1))));
+  const cv = document.createElement('canvas'); cv.width = gw; cv.height = gh;
+  const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, gw, gh);
+  const d = cx.getImageData(0, 0, gw, gh).data, n = gw * gh;
+  const L = new Float32Array(n), K = new Uint8Array(n), G = new Uint8Array(n), S = new Float32Array(n);
+  let sr = 0, sb = 0, warm = 0;
+  for(let i = 0; i < n; i++){
+    const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2];
+    L[i] = (0.299 * r + 0.587 * g + 0.114 * b) / 255; sr += r; sb += b;
+    const cb = 128 - 0.1687 * r - 0.3313 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.4187 * g - 0.0813 * b;
+    K[i] = (cb >= 77 && cb <= 127 && cr >= 137 && cr <= 173) ? 1 : 0;
+    const mx = Math.max(r, g, b) / 255, mn = Math.min(r, g, b) / 255, l = (mx + mn) / 2, dd = mx - mn;
+    if(dd > 0.02){
+      const s = dd / (1 - Math.abs(2 * l - 1)), h = ((mx === r / 255 ? ((g - b) / 255 / dd) % 6 : mx === g / 255 ? (b - r) / 255 / dd + 2 : (r - g) / 255 / dd + 4) * 60 + 360) % 360;
+      if(h >= 18 && h <= 58 && s > 0.35 && l > 0.3 && l < 0.85) G[i] = 1; /* ذهبيّ النقش: يبتلع العنوان الذهبيّ */
+      if(h >= 8 && h <= 45 && s > 0.45 && l > 0.35) warm++;
+    }
   }
-  let best = -1;
-  for(let k = 0; k < 12; k++) if(W[k] > 0 && (best < 0 || W[k] > W[best])) best = k;
-  if(best < 0 || !n || W[best] < n * 0.002) return '#ffffff';
-  const hue = (Math.atan2(Y[best], X[best]) * 180 / Math.PI + 360) % 360, sat = Math.max(0.45, Math.min(0.85, S[best] / W[best]));
-  return __hslHex(hue, sat, bgLum < 0.5 ? 0.8 : 0.24);
+  const Bl = new Float32Array(n); /* تنعيم ٣×٣ قبل الحوافّ: نسيج الغيم والموج ليس ازدحامًا */
+  for(let y = 0; y < gh; y++) for(let x = 0; x < gw; x++){
+    let a = 0, c = 0;
+    for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++){ const yy = y + dy, xx = x + dx; if(yy >= 0 && yy < gh && xx >= 0 && xx < gw){ a += L[yy * gw + xx]; c++; } }
+    Bl[y * gw + x] = a / c;
+  }
+  for(let y = 1; y < gh - 1; y++) for(let x = 1; x < gw - 1; x++){
+    const i = y * gw + x;
+    const gx = (Bl[i - gw + 1] + 2 * Bl[i + 1] + Bl[i + gw + 1]) - (Bl[i - gw - 1] + 2 * Bl[i - 1] + Bl[i + gw - 1]);
+    const gy = (Bl[i + gw - 1] + 2 * Bl[i + gw] + Bl[i + gw + 1]) - (Bl[i - gw - 1] + 2 * Bl[i - gw] + Bl[i - gw + 1]);
+    const e = Math.min(1, Math.abs(gx) + Math.abs(gy));
+    S[i] = e + K[i] * Math.max(0, e - 0.12) * 1.5; /* البشرة «مع تفاصيل» وجه؛ الجدار البيج والغيم الدافئ ليسا وجوهًا */
+  }
+  const W1 = gw + 1, sz = W1 * (gh + 1), IS = new Float64Array(sz), IL = new Float64Array(sz), IQ = new Float64Array(sz), IG = new Float64Array(sz);
+  let tot = 0;
+  for(let y = 0; y < gh; y++) for(let x = 0; x < gw; x++){
+    const i = y * gw + x, o = (y + 1) * W1 + x + 1, u = y * W1 + x + 1, l = (y + 1) * W1 + x, ul = y * W1 + x;
+    IS[o] = S[i] + IS[u] + IS[l] - IS[ul]; IL[o] = L[i] + IL[u] + IL[l] - IL[ul]; IQ[o] = L[i] * L[i] + IQ[u] + IQ[l] - IQ[ul]; IG[o] = G[i] + IG[u] + IG[l] - IG[ul];
+    tot += S[i];
+  }
+  /* باردة = زرقاء بلا ضوء دافئ (غروب مرجع المالك يبقى ذهبيًّا) */
+  return { gw, gh, W1, IS, IL, IQ, IG, mean: tot / n, cool: (sb - sr) / (n * 255) > 0.04 && warm / n < 0.03 };
 }
-async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, scale){
+function __designRect(m, fx0, fy0, fx1, fy1){
+  const cl = (v, hi) => Math.max(0, Math.min(hi, v));
+  const x0 = cl(Math.floor(fx0 * m.gw), m.gw), x1 = cl(Math.ceil(fx1 * m.gw), m.gw), y0 = cl(Math.floor(fy0 * m.gh), m.gh), y1 = cl(Math.ceil(fy1 * m.gh), m.gh);
+  const a = Math.max(1, (x1 - x0) * (y1 - y0)), q = (I) => I[y1 * m.W1 + x1] - I[y0 * m.W1 + x1] - I[y1 * m.W1 + x0] + I[y0 * m.W1 + x0];
+  const lum = q(m.IL) / a;
+  return { sal: q(m.IS) / a, lum, sd: Math.sqrt(Math.max(0, q(m.IQ) / a - lum * lum)), gold: q(m.IG) / a };
+}
+function __hexHsl(hex){
+  const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if(!d) return [0, 0, l];
+  const s = d / (1 - Math.abs(2 * l - 1)), h = ((mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60 + 360) % 360;
+  return [h, s, l];
+}
+const __hsl = (h, s, l) => 'hsl(' + Math.round(h) + ',' + Math.round(Math.max(0, Math.min(1, s)) * 100) + '%,' + Math.round(Math.max(0, Math.min(1, l)) * 100) + '%)';
+/* avoid: صناديق الوجوه/الأشخاص من الخادم [{box:[x0,y0,x1,y1] من ٠ إلى ١, label:'face'|'person'}] — تُحفظ في الطبقة */
+async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, scale, avoid){
   const exact = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
   if(!exact.trim()) throw new Error('missing_exact_text');
-  const fontCss = await mahaLoadFont(fontKey || 'default');
+  const named = !!(fontKey && fontKey !== 'default' && MAHA_FONTS[fontKey]);
   /* الخطوط الزخرفيّة متاحة بوزن 400 فقط؛ طلب 700 كان يصنع تغليظًا اصطناعيًّا
      يشوّه اتصال الحروف العربيّة، بينما الخطوط النصيّة تملك وزن 700 حقيقيًّا. */
   const fontWeight = /^(diwani|thuluth|ruqaa|farsi)$/.test(String(fontKey || '')) ? '400' : '800';
+  const titleCss = await mahaLoadFont(named ? fontKey : __DESIGN_TITLE_FONT), bodyCss = await mahaLoadFont(named ? fontKey : __DESIGN_BODY_FONT);
+  const titleW = named ? fontWeight : '700', bodyW = named ? fontWeight : '500';
   const __sc = Math.max(0.4, Math.min(1.7, Number(scale) > 0 ? Number(scale) : 1));
+  const T = __designText(exact);
+  const titleShown = !named && T.title ? __kashida(T.title) : T.title;
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
       try{
-        /* v-gold-overlay (أمر عمران ٣٠ أغسطس — «يخرب الصورة، ابدأ من الصفر،
-           أريد أفضل من GPT»): إعادة بناء الراسم كاملًا.
-           1) لا شرائط ولا تمديد كانفس أبدًا — أبعاد الصورة تبقى كما هي والنص
-              يُرسم عليها (شريط v676 الملوّن كان يشوّه الصورة).
-           2) ذهب متدرّج حقيقي + حدّ داكن ناعم + ظل، مع وشاح تعتيم متدرّج
-              خفيف خلف النص فقط ليُقرأ على أي خلفية.
-           3) زخرفة فاصلة (فلوريش) تحت النص مع الخطوط المزخرفة/الذهبية —
-              مثل تصاميم الخطاطين، والإملاء مضمون حرفيًا (رسم محلي لا توليد). */
         const c = document.createElement('canvas');
         c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const W = c.width, H = c.height, base = Math.min(W, H);
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        // اختيار تلقائي: أهدأ طرف (أعلى/أسفل فقط) — الأسفل مفضّل كالتصاميم الاحترافية
-        if(!position || position === 'auto'){
-          position = 'bottom';
-          try{
-            const bandSd = (fy) => {
-              const zy = Math.floor(c.height * fy), zh = Math.max(1, Math.min(c.height - Math.floor(c.height * fy), Math.floor(c.height * 0.22)));
-              const d = ctx.getImageData(0, zy, c.width, zh).data;
-              let sum = 0, sq = 0, n = 0;
-              for(let i = 0; i < d.length; i += 52){ const l = d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114; sum+=l; sq+=l*l; n++; }
-              const mn = sum/n; return Math.sqrt(Math.max(0, sq/n - mn*mn));
-            };
-            if(bandSd(0.02) + 8 < bandSd(0.76)) position = 'top';
-          }catch(e){ position = 'bottom'; }
-        }
-        const __side=/^(right|left)-/.exec(position||'');
-        /* v-text-strong (شكوى المستخدمين: «الكتابة في الصور ضعيفة جدًا»):
-           مساحة أكبر قليلًا + وزن وحدّ أقوى. لا نكبّر الكتلة فوق ٢٨٪ كي لا
-           تغطي الموضوع، والنص الطويل ما زال يصغر ويلتف تلقائيًّا. */
-        const maxWidth=c.width*(__side?.[1]?0.42:0.88), maxHeight=c.height*(__side?0.48:0.28);
-        const __maxH = Math.min(c.height * 0.5, maxHeight * __sc); /* v-text-size: «بخط صغير/كبّر الخط» */
-        /* v-voice-image-command: اليمين/اليسار كانا translate على مركز الصورة مع
-           عرض ٣٢٪، فينكسر «مرحبا يا صديقي» إلى ثلاث كلمات عمودية ويُقصّ طرفه.
-           موضع X صريح + عرض ٤٢٪ يبقي العبارة كتلة مقروءة داخل الحواف. */
-        const textX = __side ? c.width * (__side[1] === 'right' ? 0.76 : 0.24) : c.width / 2;
-        if(__side) position=position.slice(__side[0].length);
-        let fs = Math.floor(Math.min(c.width / 7.6, c.height / 8.2) * __sc);
-        let lines = [];
-        const setF = () => { ctx.font = fontWeight + ' ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
-        const wrap = (line) => {
-          if(!line) return [''];
-          if(ctx.measureText(line).width <= maxWidth) return [line];
-          const words = line.split(/\s+/), out = []; let row = '';
-          words.forEach((word) => {
-            const next = row ? row + ' ' + word : word;
-            if(row && ctx.measureText(next).width > maxWidth){ out.push(row); row = word; }
-            else row = next;
-          });
+        ctx.textAlign = 'center';
+        ctx.direction = /[؀-ۿ]/.test(exact) ? 'rtl' : 'ltr';
+        const fam = (css) => '"' + css + '", "Amiri", "Segoe UI", Tahoma, Arial, sans-serif';
+        const setT = (px) => { ctx.font = titleW + ' ' + px + 'px ' + fam(titleCss); try{ ctx.wordSpacing = '0px'; }catch(e){ __swallow(e, 'img:design-ws'); } };
+        const setB = (px) => { ctx.font = bodyW + ' ' + px + 'px ' + fam(bodyCss); try{ ctx.wordSpacing = '0.06em'; }catch(e){ __swallow(e, 'img:design-ws'); } };
+        const wrap = (text, maxW) => {
+          const words = String(text).split(/\s+/).filter(Boolean), out = []; let row = '';
+          words.forEach((w) => { const next = row ? row + ' ' + w : w; if(row && ctx.measureText(next).width > maxW){ out.push(row); row = w; } else row = next; });
           if(row) out.push(row);
           return out;
         };
-        do{
-          setF();
-          lines = exact.split('\n').flatMap(wrap);
-          if(lines.length * fs * 1.42 <= __maxH && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
-          fs -= 2;
-        }while(fs > Math.max(Math.round(22 * Math.min(1, __sc)), Math.floor(c.width / 68 * Math.min(1, __sc))));
-        setF();
-        const lineHeight = fs * 1.42, totalHeight = lines.length * lineHeight;
-        const decorative = /^(diwani|thuluth|ruqaa|quran|othmani|farsi|kufi)$/.test(String(fontKey || ''));
-        const goldHex = /^#(f4cf65|ffd400|f4d03f|d4af37|c9962e)$/i.test(String(colorStr || ''));
-        const goldMode = goldHex || (decorative && (!colorStr || /^#ffffff$/i.test(colorStr)));
-        const ornH = (decorative || goldMode) ? Math.floor(fs * 0.9) : 0;
-        let firstY = c.height - c.height * 0.055 - (totalHeight + ornH) + lineHeight / 2;
-        if(position === 'top') firstY = c.height * 0.07 + lineHeight / 2;
-        if(position === 'center') firstY = c.height / 2 - (totalHeight + ornH) / 2 + lineHeight / 2;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.direction = /[\u0600-\u06FF]/.test(exact) ? 'rtl' : 'ltr';
-        const blockTop = firstY - lineHeight / 2, blockBot = firstY + (lines.length - 1) * lineHeight + lineHeight / 2;
-        // وشاح قراءة متدرّج خفيف خلف منطقة النص فقط — يذوب في الصورة ولا يغطيها
-        try{
-          const zt = Math.max(0, blockTop - lineHeight), zb = Math.min(c.height, blockBot + ornH + lineHeight * 0.8);
-          const g = ctx.createLinearGradient(0, zt, 0, zb);
-          if(position === 'top'){ g.addColorStop(0,'rgba(0,0,0,.52)'); g.addColorStop(0.7,'rgba(0,0,0,.22)'); g.addColorStop(1,'rgba(0,0,0,0)'); }
-          else { g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.3,'rgba(0,0,0,.22)'); g.addColorStop(1,'rgba(0,0,0,.52)'); }
-          ctx.fillStyle = g;
-          ctx.fillRect(0, zt, c.width, zb - zt);
-        }catch(e){ __swallow(e, 'img:overlay#scrim'); }
-        // التعبئة: ذهب متدرّج للمزخرف/الذهبي، وإلا اللون المطلوب بحدّ ذكي
-        const mkGold = (y1, y2) => {
-          const g = ctx.createLinearGradient(0, y1, 0, y2);
-          g.addColorStop(0,'#fdf3c0'); g.addColorStop(0.38,'#f3d67a'); g.addColorStop(0.62,'#d9a83f'); g.addColorStop(0.82,'#b8862b'); g.addColorStop(1,'#f0cf6f');
-          return g;
+        /* تفاف متوازن: أضيق عرض يعطي عدد الأسطر نفسه — لا كلمة يتيمة («راجعون» وحدها) */
+        const wrapBal = (text, maxW) => {
+          const g = wrap(text, maxW); if(g.length < 2) return g;
+          let lo = maxW / g.length, hi = maxW, best = g;
+          for(let i = 0; i < 9; i++){ const mid = (lo + hi) / 2, r = wrap(text, mid); if(r.length <= g.length){ best = r; hi = mid; } else lo = mid; }
+          return best;
         };
-        let fill, strokeCol, shadowCol;
-        if(goldMode){ fill = mkGold(blockTop, blockBot); strokeCol = 'rgba(54,32,4,.82)'; shadowCol = 'rgba(0,0,0,.72)'; }
-        else {
-          let base = colorStr || '#ffffff';
-          if(/^#ffffff$/i.test(base)){ /* v-text-harmony: الأبيض الافتراضيّ = «لم يُحدَّد لون» (الأبيض الصريح #fdfdfd) */
-            try{
-              const tc = document.createElement('canvas'); tc.width = 96; tc.height = 96;
-              const tx = tc.getContext('2d'); tx.drawImage(img, 0, 0, 96, 96);
-              const bx = Math.max(0, Math.floor(textX - maxWidth / 2)), by = Math.max(0, Math.floor(blockTop)), bw = Math.max(1, Math.min(c.width - bx, Math.ceil(maxWidth))), bh = Math.max(1, Math.min(c.height - by, Math.ceil(blockBot - blockTop)));
-              const bd = ctx.getImageData(bx, by, bw, bh).data; let bl = 0, bn = 0;
-              for(let i = 0; i < bd.length; i += 64){ bl += (bd[i] * 0.2126 + bd[i + 1] * 0.7152 + bd[i + 2] * 0.0722) / 255; bn++; }
-              base = __pickTextHarmony(tx.getImageData(0, 0, 96, 96).data, bn ? bl / bn : 0);
-            }catch(e){ __swallow(e, 'img:text-harmony'); }
+        const widest = (arr) => arr.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+        const ink = (arr) => arr.reduce((m, l) => { const t = ctx.measureText(l); return { a: Math.max(m.a, t.actualBoundingBoxAscent || 0), d: Math.max(m.d, t.actualBoundingBoxDescent || 0) }; }, { a: 0, d: 0 });
+        /* قياس الكتلة: الأسطر أوّلًا، ثمّ العنوان من عرضها (سيّد الكتلة)، والارتفاع من حبر الحروف لا من صندوق السطر */
+        const measure = (maxW, maxH, k0) => {
+          const kk = k0 || 1, bMin = Math.max(10, Math.round(Math.max(base * 0.025, W * 0.026) * __sc));
+          let bFs = Math.max(bMin, Math.round(base * (T.title ? 0.03 : 0.036) * __sc * Math.max(0.9, kk))), tFs = 0, L = null;
+          for(let k = 0; k < 48; k++){
+            setB(bFs); const bl = [].concat.apply([], T.lines.map((l) => wrapBal(l, maxW))), bw = widest(bl);
+            let tl = [], tw = 0, ti = { a: 0, d: 0 };
+            if(titleShown){
+              setT(100); const t100 = Math.max(1, ctx.measureText(titleShown).width / 100);
+              if(!tFs) tFs = T.hero ? Math.round(base * 0.118 * __sc * kk) : Math.round(Math.min(Math.max(0.8 * bw / t100, 2.6 * bFs), 5.2 * bFs, base * 0.15 * __sc));
+              if(!T.hero) tFs = Math.min(tFs, Math.floor(maxW / t100)); /* العنوان القصير سطر واحد */
+              setT(tFs); tl = wrapBal(titleShown, maxW); tw = widest(tl); ti = ink(tl);
+            }
+            const tLH = tFs * 1.15, bLH = bFs * 1.52;
+            const titleH = tl.length ? ti.a + (tl.length - 1) * tLH + ti.d : 0;
+            const gap = tl.length && bl.length ? Math.max(0.45 * bFs, 0.1 * tFs) : 0;
+            const orn = Math.max(bl.length ? bFs : tFs * 0.34, tFs * 0.3) * 1.2;
+            L = { tFs, bFs, tl, bl, tLH, bLH, ti, gap, orn, titleH, maxW, maxH, k0: kk, w: Math.max(tw, bw), h: titleH + gap + bl.length * bLH + orn };
+            if(L.h <= maxH && L.w <= maxW) break;
+            if(tl.length && tw > maxW) tFs = Math.max(12, Math.round(tFs * 0.93));
+            else if(bl.length && bFs > bMin) { bFs = Math.max(bMin, Math.round(bFs * 0.93)); if(!T.hero) tFs = Math.round(tFs * 0.93); }
+            else if(bl.length && tl.length && tFs > 2.6 * bFs) tFs = Math.max(Math.round(2.6 * bFs), Math.round(tFs * 0.93)); /* الأسطر عند حدّ القراءة: العنوان يتنازل أوّلًا */
+            else { tFs = Math.max(12, Math.round(tFs * 0.93)); bFs = Math.max(10, Math.round(bFs * 0.93)); }
           }
-          let dark = false;
-          if(/^#[0-9a-f]{6}$/i.test(base)){
-            const lum = parseInt(base.slice(1,3),16)*0.299 + parseInt(base.slice(3,5),16)*0.587 + parseInt(base.slice(5,7),16)*0.114;
-            dark = lum < 128;
-          }
-          fill = base;
-          strokeCol = dark ? 'rgba(255,255,255,.96)' : 'rgba(0,0,0,.88)';
-          shadowCol = dark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.72)';
+          return L;
+        };
+        let sal = null; try{ sal = __designSaliency(img); }catch(e){ __swallow(e, 'img:design-saliency'); }
+        const boxes = (Array.isArray(avoid) ? avoid : []).filter((o) => o && Array.isArray(o.box) && o.box.length === 4);
+        /* عمود بجانب شخص وحيد: عرضه المساحة الحرّة فعلًا (من صناديقه) لا ٠٫٢٨ ثابتة */
+        let colW = W * 0.28;
+        if(boxes.length){ const bx0 = Math.min.apply(null, boxes.map((o) => o.box[0])), bx1 = Math.max.apply(null, boxes.map((o) => o.box[2])); colW = Math.max(W * 0.22, Math.min(W * 0.44, Math.max(bx0, 1 - bx1) * W - W * 0.08)); }
+        const narrow = measure(W * 0.44, H * 0.5), broad = measure(W * 0.6, H * 0.42), wide = measure(W * 0.84, H * 0.36), mid = measure(W * 0.42, H * 0.42, 0.86), small = measure(W * 0.38, H * 0.34, 0.74), column = measure(colW, H * 0.6, 0.8);
+        const mX = W * 0.09, mY = H * 0.035;
+        const cand = [];
+        const add = (L, cx, top, prior, anchor) => { if(top < 0 || top + L.h > H || cx - L.w / 2 < 0 || cx + L.w / 2 > W) return; cand.push({ L, cx, top, prior, anchor: anchor || 'c' }); };
+        /* توسيط الكتلة في أطول امتداد هادئ عند ارتفاعها — مرجع المالك متوسّط السماء لا لاصق بالحافّة */
+        const runCx = (L, top) => {
+          if(!sal) return null;
+          const N = 50, cols = []; for(let i = 0; i < N; i++){ const r = __designRect(sal, i / N, top / H, (i + 1) / N, (top + L.h) / H); cols.push(r.sal / (sal.mean + 0.01) < 0.55); }
+          let best = null, s0 = -1; for(let i = 0; i <= N; i++){ if(i < N && cols[i]){ if(s0 < 0) s0 = i; } else if(s0 >= 0){ if(!best || i - s0 > best[1] - best[0]) best = [s0, i]; s0 = -1; } }
+          if(!best) return null;
+          return Math.max(mX + L.w / 2, Math.min(W - mX - L.w / 2, ((best[0] + best[1]) / 2 / N) * W));
+        };
+        const pos = String(position || 'auto'), side = /^(right|left)-(top|center|bottom)$/.exec(pos);
+        if(side){
+          const L = narrow, cx = side[1] === 'right' ? W - mX - L.w / 2 : mX + L.w / 2;
+          add(L, cx, side[2] === 'top' ? mY : side[2] === 'bottom' ? H - mY - L.h : (H - L.h) / 2, 0);
+        }else if(pos === 'top' || pos === 'bottom' || pos === 'center'){
+          add(wide, W / 2, pos === 'top' ? mY : pos === 'bottom' ? H - mY - wide.h : (H - wide.h) / 2, 0);
+        }else{
+          [[narrow, 0], [mid, 0.03], [small, 0.08]].forEach(([L, sp]) => [[mY, 0], [H * 0.2, 0.06], [H - mY - L.h, 0.03]].forEach(([top, p]) => {
+            add(L, W - mX - L.w / 2, top, p + sp, 'r'); add(L, mX + L.w / 2, top, p + sp, 'l'); add(L, W / 2, top, p + sp + 0.02);
+            const rc = runCx(L, top); if(rc != null) add(L, rc, top, p + sp - 0.01);
+          }));
+          [[mY, 0.02], [H - mY - broad.h, 0.05]].forEach(([top, p]) => { add(broad, W / 2, top, p); const rc = runCx(broad, top); if(rc != null) add(broad, rc, top, p - 0.01); });
+          [W - W * 0.04 - column.w / 2, W * 0.04 + column.w / 2].forEach((cx, i) => [[mY, 0.05], [(H - column.h) / 2, 0.07], [H - mY - column.h, 0.07]].forEach(([top, p]) => add(column, cx, top, p, i ? 'l' : 'r')));
+          add(wide, W / 2, mY, 0.01); add(wide, W / 2, H - mY - wide.h, 0.04);
         }
-        ctx.lineJoin = 'round'; ctx.miterLimit = 2;
-        ctx.lineWidth = Math.max(3, Math.floor(fs / 10));
-        ctx.strokeStyle = strokeCol;
-        ctx.fillStyle = fill;
-        ctx.shadowColor = shadowCol;
-        ctx.shadowBlur = Math.max(8, Math.floor(fs / 6));
-        ctx.shadowOffsetY = Math.max(2, Math.floor(fs / 24));
-        lines.forEach((line, i) => {
-          const y = firstY + i * lineHeight;
-          ctx.strokeText(line, textX, y, maxWidth);
-          ctx.fillText(line, textX, y, maxWidth);
+        if(!cand.length) add(wide, W / 2, Math.max(0, H - mY - wide.h), 0);
+        /* الوجوه والأشخاص من الخادم: تغطية وجه تكاد تمنع الموضع، والشخص أخفّ */
+        const hit = (x0, y0, x1, y1) => boxes.reduce((acc, o) => {
+          const ix = Math.max(0, Math.min(x1, o.box[2]) - Math.max(x0, o.box[0])), iy = Math.max(0, Math.min(y1, o.box[3]) - Math.max(y0, o.box[1]));
+          const ba = Math.max(1e-4, (o.box[2] - o.box[0]) * (o.box[3] - o.box[1]));
+          return acc + (ix * iy / ba) * (o.label === 'face' ? 4 : 1.1);
+        }, 0);
+        cand.forEach((k) => {
+          const x0 = (k.cx - k.L.w / 2) / W, y0 = k.top / H, x1 = (k.cx + k.L.w / 2) / W, y1 = (k.top + k.L.h) / H;
+          k.st = sal ? __designRect(sal, x0 - 0.03, y0 - 0.02, x1 + 0.03, y1 + 0.045) : { sal: 0, lum: 0.3, sd: 0.2, gold: 0 };
+          k.rel = sal ? k.st.sal / (sal.mean + 0.01) : 0.5; /* الهدوء نسبةً لبقيّة الصورة نفسها */
+          k.cost = k.rel * 0.3 + k.prior + hit(x0, y0, x1, y1);
         });
-        // 🌿 الزخرفة الفاصلة تحت النص — لفّتان متناظرتان ومعيّن مركزي
-        if(ornH){
-          try{
-            const cx = textX, oy = blockBot + ornH * 0.55;
-            const w = Math.min(maxWidth * 0.62, fs * 6.4);
-            const og = goldMode ? mkGold(oy - fs * 0.3, oy + fs * 0.3) : fill;
-            ctx.save();
-            ctx.shadowBlur = Math.max(3, Math.floor(fs / 12));
-            ctx.shadowOffsetY = 1;
-            ctx.lineWidth = Math.max(2, Math.floor(fs / 18));
-            ctx.strokeStyle = og;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(cx + fs * 0.5, oy);
-            ctx.bezierCurveTo(cx + w * 0.24, oy - fs * 0.30, cx + w * 0.32, oy + fs * 0.32, cx + w * 0.5, oy - fs * 0.06);
-            ctx.moveTo(cx - fs * 0.5, oy);
-            ctx.bezierCurveTo(cx - w * 0.24, oy - fs * 0.30, cx - w * 0.32, oy + fs * 0.32, cx - w * 0.5, oy - fs * 0.06);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(cx, oy - fs * 0.17); ctx.lineTo(cx + fs * 0.17, oy); ctx.lineTo(cx, oy + fs * 0.17); ctx.lineTo(cx - fs * 0.17, oy);
-            ctx.closePath();
-            ctx.fillStyle = og;
-            ctx.fill();
-            ctx.restore();
-          }catch(e){ __swallow(e, 'img:overlay#ornament'); }
+        cand.sort((a, b) => a.cost - b.cost);
+        let pick = cand[0];
+        /* صورة مزدحمة كلّها: شريط أعلى أو أسفل بتدرّج معتم كملصقات الأفلام، في الطرف الأقلّ وجوهًا */
+        if(pos === 'auto' && sal && sal.mean > 0.35 && (pick.rel > 1.15 || pick.cost > 0.9 || pick.st.sd > 0.2)){
+          const bands = [{ L: wide, cx: W / 2, top: mY, prior: 0, band: 'top' }, { L: wide, cx: W / 2, top: H - mY - wide.h, prior: 0, band: 'bottom' }].filter((k) => k.top >= 0);
+          bands.forEach((k) => { const y0 = k.top / H, y1 = (k.top + k.L.h) / H; k.st = __designRect(sal, 0.05, y0, 0.95, y1); k.rel = 1; k.cost = hit(0.08, y0, 0.92, y1) + (k.band === 'top' ? 0.02 : 0); });
+          bands.sort((a, b) => a.cost - b.cost);
+          if(bands.length) pick = bands[0];
         }
+        /* كتلة عليا لا تنزل على الجزر والأشخاص: أوّل شريط مزدحم تحتها = عمقها، فتُعاد بأسطر أصغر لتنتهي فوقه */
+        if(pos === 'auto' && sal && !pick.band && pick.top < H * 0.2){
+          const x0 = (pick.cx - pick.L.w / 2) / W - 0.02, x1 = (pick.cx + pick.L.w / 2) / W + 0.02;
+          let depth = 0;
+          for(let y = pick.top / H + 0.12; y < (pick.top + pick.L.h) / H; y += 0.02){ const r = __designRect(sal, x0, y, x1, y + 0.02); if(r.sal / (sal.mean + 0.01) >= 0.9 || hit(x0, y, x1, y + 0.02) > 0.05){ depth = y * H; break; } }
+          if(depth && depth - pick.top >= H * 0.16){
+            const L2 = measure(pick.L.maxW, depth - pick.top, pick.L.k0);
+            if(L2.h <= depth - pick.top + 1){
+              const cx2 = pick.anchor === 'r' ? W - mX - L2.w / 2 : pick.anchor === 'l' ? mX + L2.w / 2 : pick.cx;
+              pick = Object.assign({}, pick, { L: L2, cx: cx2 });
+            }
+          }
+        }
+        const L = pick.L, st = pick.st, cx = pick.cx;
+        try{ window.__lastTextDesign = { w: Math.round(L.w), h: Math.round(L.h), tFs: L.tFs, bFs: L.bFs, lines: L.tl.length + L.bl.length, cx: Math.round(cx), top: Math.round(pick.top), band: pick.band || '', cost: +pick.cost.toFixed(3), n: cand.length }; }catch(e){ __swallow(e, 'img:design-debug'); } /* لمسبار المتصفّح */
+        if(pick.band){
+          try{
+            const topB = pick.band === 'top', edge = topB ? 0 : H, far = topB ? pick.top + L.h + base * 0.08 : pick.top - base * 0.08;
+            const g = ctx.createLinearGradient(0, edge, 0, far);
+            g.addColorStop(0, 'rgba(0,0,0,.66)'); g.addColorStop(0.55, 'rgba(0,0,0,.42)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, Math.min(edge, far), W, Math.abs(far - edge));
+            st.lum = Math.min(st.lum, 0.3); st.sd = Math.min(st.sd, 0.1); st.gold = 0;
+          }catch(e){ __swallow(e, 'img:design-band'); }
+        }
+        /* اللون */
+        const explicit = !!colorStr && /^#[0-9a-f]{6}$/i.test(colorStr) && !/^#ffffff$/i.test(colorStr);
+        const goldHex = /^#(f4cf65|ffd400|f4d03f|d4af37|c9962e)$/i.test(String(colorStr || ''));
+        const darkBg = st.lum < 0.58, cool = !!(sal && sal.cool) && !goldHex;
+        const user = explicit && !goldHex ? __hexHsl(colorStr) : null;
+        const uL = user ? (darkBg ? Math.max(user[2], 0.6) : Math.min(user[2], 0.45)) : 0; /* فوق الفاتح: حبر داكن من اللون نفسه (ورديّ ← توتيّ) لا وشاح رماديّ */
+        const lightInk = user ? uL > 0.5 : darkBg;
+        const stops = user ? [__hsl(user[0], user[1], Math.min(0.93, uL + 0.16)), __hsl(user[0], user[1], uL), __hsl(user[0], user[1], uL), __hsl(user[0], user[1], Math.max(0.12, uL - 0.12)), __hsl(user[0], user[1], Math.min(0.9, uL + 0.08))]
+          : !lightInk ? ['#b98232', '#8f5a17', '#6e4210', '#8f5a17', '#c79342']
+          : cool ? ['#ffffff', '#eef2f7', '#c9d2dc', '#9aa6b5', '#eef2f7'] : ['#fff3d6', '#fcd28a', '#f6b95f', '#e49f4a', '#f9d494'];
+        const grad = (y1, y2) => { const g = ctx.createLinearGradient(0, y1, 0, y2); [0, 0.34, 0.58, 0.8, 1].forEach((p, i) => g.addColorStop(p, stops[i])); return g; };
+        const bodyColor = user ? __hsl(user[0], user[1], uL) : !lightInk ? '#2a1d12' : cool ? '#f5f8fc' : '#fff8ec';
+        /* وشاح مستطيل مريّش خلف الكتلة وحدها حين يزدحم ما تحتها أو يضعف التباين أو يكثر فيه الذهبيّ */
+        const contrast = Math.abs((lightInk ? 0.92 : 0.12) - (st.lum + (lightInk ? st.sd : -st.sd) * 0.5));
+        const busyK = Math.max(0, Math.min(1, ((pick.rel || 0.5) - 0.5) / 0.8 + (st.gold || 0) * 2));
+        const goldBusy = (st.gold || 0) > 0.08 && (pick.rel || 0) > 0.8; /* نقش ذهبيّ مزدحم (تطريز) لا غيم الغروب الناعم */
+        if(!pick.band && (st.sd > 0.14 || contrast < 0.5 || goldBusy || (pick.rel || 0) > 0.95)){
+          try{
+            const a = Math.min(0.62, 0.24 + st.sd * 1.1 + Math.max(0, 0.5 - contrast) * 0.6 + (goldBusy ? st.gold * 0.9 : 0) + Math.max(0, (pick.rel || 0) - 0.95) * 0.2);
+            const pad = Math.max(0.9 * L.bFs, 0.035 * base), rx = cx - L.w / 2 - pad, ry = pick.top - pad * 0.7, rw = L.w + pad * 2, rh = L.h + pad * 1.4, rr = pad;
+            const path = (ox) => { ctx.beginPath(); ctx.moveTo(rx + ox + rr, ry); ctx.lineTo(rx + ox + rw - rr, ry); ctx.quadraticCurveTo(rx + ox + rw, ry, rx + ox + rw, ry + rr); ctx.lineTo(rx + ox + rw, ry + rh - rr); ctx.quadraticCurveTo(rx + ox + rw, ry + rh, rx + ox + rw - rr, ry + rh); ctx.lineTo(rx + ox + rr, ry + rh); ctx.quadraticCurveTo(rx + ox, ry + rh, rx + ox, ry + rh - rr); ctx.lineTo(rx + ox, ry + rr); ctx.quadraticCurveTo(rx + ox, ry, rx + ox + rr, ry); ctx.closePath(); };
+            const feather = (color, op) => { ctx.save(); ctx.globalCompositeOperation = op; ctx.shadowColor = color; ctx.shadowBlur = Math.max(16, 0.08 * base); ctx.shadowOffsetX = 3 * W; ctx.shadowOffsetY = 0; ctx.fillStyle = '#000'; path(-3 * W); ctx.fill(); ctx.restore(); };
+            if(goldBusy && lightInk) feather('rgba(128,128,128,' + Math.min(0.85, st.gold * 2.5) + ')', 'saturation');
+            feather((lightInk ? 'rgba(0,0,0,' : 'rgba(255,255,255,') + a + ')', 'source-over');
+          }catch(e){ __swallow(e, 'img:design-scrim'); }
+        }
+        let y = pick.top;
+        if(L.tl.length){
+          setT(L.tFs);
+          L.tl.forEach((line, i) => {
+            const by = y + L.ti.a + i * L.tLH, m = ctx.measureText(line), ia = m.actualBoundingBoxAscent || L.tFs * 0.8, id = m.actualBoundingBoxDescent || L.tFs * 0.25;
+            ctx.textBaseline = 'alphabetic';
+            /* الحافّة تحت التعبئة (التعبئة تغطّي نصفها الداخليّ فلا فواصل عند الوصل)، بظلّ تلامس خفيف */
+            if(lightInk){
+              ctx.save(); ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+              ctx.shadowColor = 'rgba(0,0,0,' + (0.4 + 0.25 * busyK) + ')'; ctx.shadowBlur = L.tFs * 0.12; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = L.tFs * 0.035;
+              ctx.lineWidth = Math.max(1.2, L.tFs / (user ? 30 : 22)); ctx.strokeStyle = user ? (darkBg ? 'rgba(0,0,0,.45)' : __hsl(user[0], user[1], 0.3)) : 'rgba(84,46,8,' + (0.45 + 0.4 * busyK) + ')';
+              ctx.strokeText(line, cx, by); ctx.restore();
+            }
+            ctx.save();
+            ctx.shadowColor = !lightInk ? 'rgba(255,255,255,.42)' : user ? 'rgba(0,0,0,.35)' : cool ? 'rgba(215,228,255,.28)' : 'rgba(255,196,120,.32)';
+            ctx.shadowBlur = L.tFs * 0.18; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+            ctx.fillStyle = grad(by - ia, by + id); ctx.fillText(line, cx, by); ctx.restore();
+          });
+          y += L.titleH + L.gap;
+        }
+        if(L.bl.length){
+          setB(L.bFs); ctx.textBaseline = 'middle';
+          ctx.save();
+          if(lightInk){ ctx.shadowColor = 'rgba(0,0,0,.62)'; ctx.shadowBlur = Math.max(4, L.bFs * 0.28); ctx.shadowOffsetY = Math.max(1, L.bFs * 0.05); }
+          else { ctx.shadowColor = 'rgba(255,255,255,.42)'; ctx.shadowBlur = L.bFs * 0.18; ctx.shadowOffsetY = 0; }
+          ctx.shadowOffsetX = 0; ctx.fillStyle = bodyColor;
+          L.bl.forEach((line, i) => ctx.fillText(line, cx, y + L.bLH * (i + 0.5)));
+          ctx.restore();
+          y += L.bl.length * L.bLH;
+        }
+        /* 🌿 زخرفة شعريّة: خطّان رفيعان يتلاشى طرفاهما وموجة صغيرة في الوسط، داخل عرض الكتلة */
+        try{
+          const s = Math.max(L.bl.length ? L.bFs : L.tFs * 0.34, base * 0.018), oy = y + L.orn * 0.5;
+          const half = Math.min(Math.max(L.w * 0.45, s * 3.2), Math.max(L.w * 0.5, s * 2.6)), wv = s * 1.2;
+          const col = (a) => user ? __hsl(user[0], user[1], uL).replace('hsl(', 'hsla(').replace(')', ',' + a + ')') : !lightInk ? 'rgba(143,90,23,' + a + ')' : cool ? 'rgba(221,229,238,' + a + ')' : 'rgba(246,185,95,' + a + ')';
+          const hg = ctx.createLinearGradient(cx - half, 0, cx + half, 0);
+          hg.addColorStop(0, col(0)); hg.addColorStop(0.25, col(0.95)); hg.addColorStop(0.5, col(1)); hg.addColorStop(0.75, col(0.95)); hg.addColorStop(1, col(0));
+          ctx.save(); ctx.shadowColor = lightInk ? 'rgba(0,0,0,.45)' : 'rgba(255,255,255,.4)'; ctx.shadowBlur = Math.max(2, s * 0.25); ctx.lineCap = 'round';
+          ctx.strokeStyle = hg; ctx.lineWidth = Math.max(1.1, s / 15);
+          ctx.beginPath(); ctx.moveTo(cx - half, oy); ctx.lineTo(cx - wv, oy); ctx.moveTo(cx + wv, oy); ctx.lineTo(cx + half, oy); ctx.stroke();
+          ctx.strokeStyle = col(1); ctx.lineWidth = Math.max(1.3, s / 12);
+          ctx.beginPath(); ctx.moveTo(cx - wv, oy); ctx.bezierCurveTo(cx - wv * 0.5, oy - s * 0.4, cx - wv * 0.15, oy - s * 0.4, cx, oy); ctx.bezierCurveTo(cx + wv * 0.15, oy + s * 0.4, cx + wv * 0.5, oy + s * 0.4, cx + wv, oy); ctx.stroke();
+          ctx.restore();
+        }catch(e){ __swallow(e, 'img:design-ornament'); }
         resolve(c.toDataURL('image/png').split(',')[1]);
       }catch(e){ reject(e); }
     };
@@ -21493,7 +21615,7 @@ function __showImgLoading(el, ar, en){
         cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:__lm, dataUrl:'data:' + __lm + ';base64,' + __l.baseB64 }] });
         renderAll(); saveState(); return;
       }
-      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(k!=='size'&&__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); if(__textSpec.styleEdit.size) __l.scale=__textScale(__l.scale,__textSpec.styleEdit.size); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position,__l.scale);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
+      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(k!=='size'&&__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); if(__textSpec.styleEdit.size) __l.scale=__textScale(__l.scale,__textSpec.styleEdit.size); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position,__l.scale,__l.avoid);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
       /* v-text-colors: «اكتب بخط صغير ومزخرف» بلا كتابة سابقة = لا نصّ نطبعه ولا تعديل نرسله للمولّد — نطلب النصّ نفسه. */
       if(__textSpec.styleOnlyWrite && !cur.imageTextLayer){
         cur.messages.push({ role:'assistant', content:(lang === 'ar'
@@ -21503,15 +21625,27 @@ function __showImgLoading(el, ar, en){
         renderAll(); saveState(); return;
       }
       if(__textSpec.wantsText){
+        /* v-text-design: الذكاء يرى الصورة نفسها — مصغّرها يذهب مع طلب التأليف (عنوان + أسطر مشكولة عنها) أو وحده لكشف
+           الوجوه والأشخاص فتبتعد عنها الكتابة. الصناديق تُحفظ في الطبقة فلا يُعاد النداء عند التنسيق أو الاستبدال. */
+        const __layer0 = (!__isNewImageSource && __textLayerOwnsImage(cur)) ? cur.imageTextLayer : null;
+        let __thumb = null;
+        try{ __thumb = await omranShrinkForEdit(__layer0 ? __layer0.baseB64 : __b64, __layer0 ? (__layer0.baseMime || 'image/png') : __mime, 640, true); }catch(e){ __swallow(e, 'img:design-thumb'); }
+        let __avoid = __layer0 && Array.isArray(__layer0.avoid) ? __layer0.avoid : null;
+        const __avoidP = (!__avoid && __thumb && !__textSpec.autoAuthored)
+          ? fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ layoutOnly:true, imageBase64:__thumb.b64, imageMime:__thumb.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) })
+              .then((r) => r.json()).then((d) => Array.isArray(d && d.avoid) ? d.avoid : []).catch((e) => { __swallow(e, 'img:design-layout'); return []; })
+          : Promise.resolve(__avoid);
         let __resolvedText = __textSpec.exactText;
         if(__resolvedText) __resolvedText = await omranSpellFix(__resolvedText); /* v-spell-quran */
         if(!__resolvedText && __textSpec.autoAuthored){
           try{
-            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
+            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, wantDesign:true, designImageBase64:__thumb ? __thumb.b64 : undefined, designImageMime:__thumb ? __thumb.mime : undefined, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
             const __planData = await __planRes.json().catch(() => ({}));
             if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
+            if(__planRes.ok && Array.isArray(__planData.avoid) && !__avoid) __avoid = __planData.avoid;
           }catch(e){ if(e && e.name === 'AbortError'){ __imgAbortNote(cur); renderAll(); saveState(); return; } }
         }
+        try{ const __av = await __avoidP; if(!__avoid) __avoid = __av; }catch(e){ __swallow(e, 'img:design-layout-wait'); }
         if(!__resolvedText){
           cur.messages.push({ role:'assistant', content:__textSpec.autoAuthored ? (lang==='ar'?'تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.':'Could not author the prayer accurately. Please try again.') : (lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.') });
           renderAll(); saveState();
@@ -21611,10 +21745,10 @@ function __showImgLoading(el, ar, en){
           }
           // احتياطي: كانفس إذا فشل الذكاء
           if(!__finalB64){
-            try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos, __scale); __finalMime = 'image/png'; __byCanvas = true; }
+            try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos, __scale, __avoid); __finalMime = 'image/png'; __byCanvas = true; }
             catch(e2){ cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة.':'Could not add text to image.' }); renderAll(); saveState(); return; }
           }
-          cur.imageTextLayer = __byCanvas ? { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos, scale:__scale, outTail:String(__finalB64).slice(-64) } : null;
+          cur.imageTextLayer = __byCanvas ? { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos, scale:__scale, avoid:__avoid || undefined, outTail:String(__finalB64).slice(-64) } : null;
           cur.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'edited.png', isImage: true, mime: __finalMime, dataUrl: 'data:' + __finalMime + ';base64,' + __finalB64 }] });
           cur.lastEditedImage = { b64: __finalB64, mime: __finalMime };
           cur.lastMsgWasImageEdit = true;
@@ -21709,7 +21843,7 @@ function __showImgLoading(el, ar, en){
         if(__keepLayer){
           try{
             const __kBase = __editUrl.split(',')[1] || __data.imageBase64, __kMime = __editUrl.slice(5).split(';')[0] || __outMime;
-            const __kOut = await overlayTextOnImage(__kBase, __kMime, __keepLayer.text, __keepLayer.fontKey, __keepLayer.color, __keepLayer.position, __keepLayer.scale);
+            const __kOut = await overlayTextOnImage(__kBase, __kMime, __keepLayer.text, __keepLayer.fontKey, __keepLayer.color, __keepLayer.position, __keepLayer.scale, __keepLayer.avoid);
             __editUrl = 'data:image/png;base64,' + __kOut;
             __keptLayer = Object.assign({}, __keepLayer, { baseB64:__kBase, baseMime:__kMime, outTail:__kOut.slice(-64) });
           }catch(e){ __swallow(e, 'img:text-keep'); }

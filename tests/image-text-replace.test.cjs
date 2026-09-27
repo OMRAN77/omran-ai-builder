@@ -107,12 +107,14 @@ test('١١. تعديل بصريّ على صورة كتبنا عليها: الم�
   assert.match(attach, /cur\.imageTextLayer = __keptLayer;/);
 });
 
-test('١٢. الكتابة على الصور ثقيلة وواضحة، مع حدّ ووشاح قويّين بلا تغطية كبيرة', () => {
-  assert.match(attach, /maxWidth=c\.width\*\(__side\?\.\[1\]\?0\.42:0\.88\), maxHeight=c\.height\*\(__side\?0\.48:0\.28\)/);
-  assert.match(attach, /const fontWeight = [^\n]+\? '400' : '800'/);
-  assert.match(attach, /ctx\.font = fontWeight \+ ' '/);
-  assert.match(attach, /rgba\(0,0,0,\.52\)/);
-  assert.match(attach, /ctx\.lineWidth = Math\.max\(3, Math\.floor\(fs \/ 10\)\)/);
+test('١٢. v-text-design يلغي v-text-strong: ملصق مصمَّم — حافّة تحت التعبئة وظلّ ناعم، لا حدّ أسود سميك (مرجع المالك «البنات ٤»)', () => {
+  assert.match(attach, /const narrow = measure\(W \* 0\.44, H \* 0\.5\)/);
+  assert.match(attach, /wide = measure\(W \* 0\.84, H \* 0\.36\)/);
+  assert.match(attach, /const fontWeight = [^\n]+\? '400' : '800'/, 'الخطّ المسمّى بوزنه الحقيقيّ كما كان');
+  assert.match(attach, /const titleW = named \? fontWeight : '700', bodyW = named \? fontWeight : '500'/);
+  assert.match(attach, /ctx\.strokeText\(line, cx, by\); ctx\.restore\(\);[\s\S]{0,420}ctx\.fillText\(line, cx, by\)/, 'الحافّة قبل التعبئة: لا فواصل عند وصل الحروف');
+  assert.doesNotMatch(attach, /ctx\.lineWidth = Math\.max\(3, Math\.floor\(fs \/ 10\)\)/, 'الحدّ الأسود السميك الذي كرهه المالك');
+  assert.match(attach, /g\.addColorStop\(0, 'rgba\(0,0,0,\.66\)'\)/, 'الصورة المزدحمة كلّها: شريط متدرّج');
 });
 
 test('١٣. أوامر الإنصات تنقل النص يمينًا ويسارًا وتحذف الإشارة الصريحة للكتابة', () => {
@@ -122,7 +124,7 @@ test('١٣. أوامر الإنصات تنقل النص يمينًا ويسار�
   assert.equal(textRemoveIntent('احذف هذا النص'), true);
   assert.equal(textRemoveIntent('امسح هذي الكتابه'), true);
   assert.equal(textRemoveIntent('احذف هذا الشي'), false, 'الشيء المبهم لا يُحذف بالتخمين');
-  assert.match(attach, /const textX = __side \? c\.width \* \(__side\[1\] === 'right' \? 0\.76 : 0\.24\)/);
+  assert.match(attach, /const L = narrow, cx = side\[1\] === 'right' \? W - mX - L\.w \/ 2 : mX \+ L\.w \/ 2;/, 'كتلة مقيسة بعرض ٠٫٤٤ داخل الهامش، لا ٣ كلمات عموديّة مقصوصة');
   assert.doesNotMatch(attach, /ctx\.translate\(\(__side\[1\]===/);
 });
 

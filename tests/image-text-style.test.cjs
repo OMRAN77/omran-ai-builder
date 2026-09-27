@@ -81,8 +81,9 @@ test('client: size is a clamped scale, relative words multiply the current one',
   assert.equal(ctx.f(1.6, 'larger'), 1.7, 'سقف');
   assert.equal(ctx.f(0.45, 'smaller'), 0.4, 'أرضيّة');
   assert.equal(ctx.f(undefined, null), 1);
-  assert.match(attach, /async function overlayTextOnImage\(b64, mime, txt, fontKey, colorStr, position, scale\)/);
-  assert.match(attach, /const __maxH = Math\.min\(c\.height \* 0\.5, maxHeight \* __sc\)/);
+  assert.match(attach, /async function overlayTextOnImage\(b64, mime, txt, fontKey, colorStr, position, scale, avoid\)/);
+  assert.match(attach, /Math\.round\(base \* 0\.118 \* __sc \* kk\)/, 'الحجم يضرب خطّ العنوان');
+  assert.match(attach, /Math\.round\(base \* \(T\.title \? 0\.03 : 0\.036\) \* __sc/, 'ويضرب خطّ الأسطر');
   assert.match(attach, /cur\.imageTextLayer = __byCanvas \? \{[^}]*scale:__scale/, 'الكتابة الجديدة تحفظ حجمها وترثه');
 });
 
@@ -100,23 +101,16 @@ test('client: a style-only write with no text on the image asks for the text ins
   assert.match(attach, /if\(__textSpec\.styleOnlyWrite && !cur\.imageTextLayer\)\{/);
 });
 
-test('client: with no colour asked, the text takes a tint of the image\'s own vivid colour, readable on its background', () => {
-  const a = attach.indexOf('function __hslHex'), b = attach.indexOf('async function overlayTextOnImage');
-  const ctx = {}; vm.createContext(ctx); vm.runInContext(attach.slice(a, b) + ';this.P=__pickTextHarmony;', ctx);
-  const img = (fn, n = 96 * 96) => { const d = new Uint8ClampedArray(n * 4); for (let i = 0; i < n; i++) { const [r, g, bl] = fn(i / n); d[i * 4] = r; d[i * 4 + 1] = g; d[i * 4 + 2] = bl; d[i * 4 + 3] = 255; } return d; };
-  const hue = (hex) => { const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b2 = parseInt(hex.slice(5, 7), 16) / 255, mx = Math.max(r, g, b2), mn = Math.min(r, g, b2), d = mx - mn; return ((mx === r ? ((g - b2) / d) % 6 : mx === g ? (b2 - r) / d + 2 : (r - g) / d + 4) * 60 + 360) % 360; };
-  const lum = (hex) => (parseInt(hex.slice(1, 3), 16) * 0.2126 + parseInt(hex.slice(3, 5), 16) * 0.7152 + parseInt(hex.slice(5, 7), 16) * 0.0722) / 255;
-  /* صورة المالك: فستان وردي على كنبة بيج وبشرة — الوردي يغلب البشرة والبيج */
-  const photo = img((t) => t < 0.12 ? [232, 120, 160] : t < 0.3 ? [235, 200, 175] : [200, 185, 165]);
-  const onDark = ctx.P(photo, 0.2), onLight = ctx.P(photo, 0.8);
-  assert.ok(hue(onDark) > 300 || hue(onDark) < 5, 'ورديّ لا خوخيّ: ' + onDark);
-  assert.ok(lum(onDark) > 0.6, 'فاتح فوق الداكن: ' + onDark);
-  assert.ok(lum(onLight) < 0.2, 'غامق فوق الفاتح: ' + onLight);
-  const dusk = ctx.P(img((t) => t < 0.3 ? [240, 140, 50] : [30, 30, 40]), 0.2);
-  assert.ok(hue(dusk) > 15 && hue(dusk) < 45, 'غروب ← دافئ: ' + dusk);
-  assert.equal(ctx.P(img((t) => [100 + t * 80, 100 + t * 80, 100 + t * 80]), 0.2), '#ffffff', 'صورة رماديّة تبقى بيضاء');
-  assert.match(attach, /if\(\/\^#ffffff\$\/i\.test\(base\)\)\{ \/\* v-text-harmony/, 'الافتراضيّ وحده يتنسّق؛ اللون المطلوب يغلب');
-  assert.doesNotMatch(attach, /__omranTextStyleBar/, 'بلا شريط اختيار — طلب المالك');
+test('client (v-text-design يخلف v-text-harmony): ذهب شمبانيا فوق الداكن، برونز فوق الفاتح، فضّة للصورة الباردة بلا ضوء دافئ، ولون المستخدم طقم نغميّ', () => {
+  assert.match(attach, /\['#fff3d6', '#fcd28a', '#f6b95f', '#e49f4a', '#f9d494'\]/);
+  assert.match(attach, /!lightInk \? \['#b98232', '#8f5a17', '#6e4210', '#8f5a17', '#c79342'\]/);
+  assert.match(attach, /cool: \(sb - sr\) \/ \(n \* 255\) > 0\.04 && warm \/ n < 0\.03/, 'غروب مرجع المالك يبقى ذهبيًّا');
+  assert.match(attach, /const uL = user \? \(darkBg \? Math\.max\(user\[2\], 0\.6\) : Math\.min\(user\[2\], 0\.45\)\) : 0;/, 'ورديّ فوق الفاتح = حبر توتيّ داكن لا وشاح رماديّ');
+  assert.doesNotMatch(attach, /__pickTextHarmony/, 'تنسيق v-text-harmony القديم أُزيل');
+  const a = attach.indexOf('function __hexHsl'), b = attach.indexOf('const __hsl =');
+  const ctx = {}; vm.createContext(ctx); vm.runInContext(attach.slice(a, b) + ';this.H=__hexHsl;', ctx);
+  const [h, s2, l] = ctx.H('#ff4f9a');
+  assert.ok(h > 325 && h < 335 && s2 > 0.99 && Math.abs(l - 0.655) < 0.01);
 });
 
 test('review #804 (bugbot): style first, text after — the words after the style run are still printed', () => {

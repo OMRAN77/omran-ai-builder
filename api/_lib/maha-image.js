@@ -19,6 +19,7 @@ const { detectEditIntent } = require('./image-intent');
 const { settleCandidates } = require('./image-verify');
 const { runCards, cardsKind } = require('./image-cards');
 const { authorPrayerPlan } = require('./prayer-plan');
+const textDesign = require('./text-design');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const pipeline = require('./image-pipeline');
 
@@ -87,6 +88,7 @@ module.exports = async (req, res) => {
       .slice(-4)
       .map(function (h) { return { text: h.text.replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 400), resultBase64: h.resultBase64, resultMime: __okMime(h.resultMime), sourceBase64: (typeof h.sourceBase64 === 'string' && h.sourceBase64.length > 100 && h.sourceBase64.length <= 420000) ? h.sourceBase64 : '', sourceMime: __okMime(h.sourceMime) }; }) : [];
     const prayerRequest = typeof body.prayerRequest === 'string' ? body.prayerRequest.trim().slice(0, 800) : '';
+    if (body.layoutOnly === true) { await textDesign.layoutRoute(body, res, apiKey, () => checkAndConsume(token, guestId, 'text-layout', clientIp(req))); return; } /* v-text-design: صناديق الوجوه */
     if (!prompt && !prayerRequest) {
       res.status(400).json({ error: 'Missing prompt' });
       return;
@@ -101,6 +103,7 @@ module.exports = async (req, res) => {
         res.status(planUsage.reason === 'auth' ? 401 : 402).json({ error: planUsage.reason === 'auth' ? 'auth_required' : 'prayer_plan_limit' });
         return;
       }
+      if (body.wantDesign === true && body.planPrayerOnly === true && body.textKind !== 'prayer' && await textDesign.designRoute(body, res, apiKey, prayerRequest)) return; /* v-text-design: عنوان + أسطر عن الصورة نفسها */
       try {
         prayerPlan = await authorPrayerPlan(apiKey, prayerRequest, { textPosition: body.textPosition, kind: body.textKind });
       } catch (error) {
