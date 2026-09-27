@@ -96,3 +96,8 @@ test('review #803 (bugbot): death of a relative with a possessive ending is cond
   }
   for (const p of ['بموت عليك', 'أحبك للموت', 'مات من الضحك']) assert.equal(cond(p), false, p);
 });
+
+test('review #803 (bugbot): «و/ف» attached to the death verb is still condolence', () => {
+  for (const p of ['ومات ابوي امس وابي صورة', 'وماتت جدتي', 'فتوفي صديقي', 'وتوفيت امي الله يرحمها', 'ولموت اخوي']) assert.equal(cond(p), true, p);
+  for (const p of ['وبموت عليك', 'ومات من الضحك']) assert.equal(cond(p), false, p);
+});
