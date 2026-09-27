@@ -110,7 +110,10 @@ test('client (v-text-design يخلف v-text-harmony): ذهب شمبانيا فو
   assert.match(attach, /\['#fff3d6', '#fcd28a', '#f6b95f', '#e49f4a', '#f9d494'\]/);
   assert.match(attach, /!lightInk \? \['#b98232', '#8f5a17', '#6e4210', '#8f5a17', '#c79342'\]/);
   assert.match(attach, /cool: \(sb - sr\) \/ \(n \* 255\) > 0\.04 && warm \/ n < 0\.03/, 'غروب مرجع المالك يبقى ذهبيًّا');
-  assert.match(attach, /const uL = user \? \(darkBg \? Math\.max\(user\[2\], 0\.6\) : Math\.min\(user\[2\], 0\.45\)\) : 0;/, 'ورديّ فوق الفاتح = حبر توتيّ داكن لا وشاح رماديّ');
+  /* v-text-rebuild: لون المستخدم كما طلبه (أبيض يبقى أبيض)، والتباين بحافّة وظلّ بعكس اللون — كان يُعتَّم فوق الفاتح فخرج «بالأبيض» رماديًّا */
+  assert.match(attach, /const uL = user \? user\[2\] : 0;/);
+  assert.match(attach, /const lowC = !!user && \(lightInk \? !darkBg : darkBg\);/);
+  assert.match(attach, /if\(lightInk \|\| lowC\)\{/);
   assert.doesNotMatch(attach, /__pickTextHarmony/, 'تنسيق v-text-harmony القديم أُزيل');
   const a = attach.indexOf('function __hexHsl'), b = attach.indexOf('const __hsl =');
   const ctx = {}; vm.createContext(ctx); vm.runInContext(attach.slice(a, b) + ';this.H=__hexHsl;', ctx);

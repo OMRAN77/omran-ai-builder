@@ -1812,7 +1812,9 @@ function __textBlockLayout(o){
     }else if(n <= 6){
       const F1 = Math.min(FMAX, maxW / Math.max(1e-6, em(lines[0])));
       F = F1;
-      if(n >= 3 && F1 < HERO_MIN){
+      /* ٣–٦ كلمات: سطران متوازنان حين يكبر بهما الخطّ ٣٠٪ فأكثر (لا حين يضيق عن الحدّ الأدنى وحده) — «ألف مبروك / يا بطل»
+         بخطّ العنوان أجمل من سطر واحد صغير في جانب الصورة؛ كلمتان تبقيان سطرًا واحدًا دائمًا. */
+      if(n >= 3 && F1 < 0.85 * FMAX){
         let best = null;
         for(let k = 1; k < n; k++){
           if(n >= 4 && (k === 1 || k === n - 1)) continue;
@@ -1820,7 +1822,7 @@ function __textBlockLayout(o){
           if(!best || m < best.m) best = { two, m };
         }
         const F2 = best ? Math.min(FMAX, maxW / Math.max(1e-6, best.m)) : 0;
-        if(F2 >= 1.2 * F1){ lines = best.two; F = F2; }
+        if(F2 >= (F1 < HERO_MIN ? 1.2 : 1.3) * F1){ lines = best.two; F = F2; }
       }
     }else{
       let k = Math.min(4, Math.ceil(n / 5));
@@ -2070,8 +2072,12 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
         const busyMid = !poster && !pick.band && st.sd > 0.16 && st.lum < 0.75;
         const darkBg = st.lum < 0.58 || busyMid, cool = !!(sal && sal.cool) && !goldHex;
         const user = explicit && !goldHex ? __hexHsl(colorStr) : null;
-        const uL = user ? (darkBg ? Math.max(user[2], 0.6) : Math.min(user[2], 0.45)) : 0; /* فوق الفاتح: حبر داكن من اللون نفسه (ورديّ ← توتيّ) لا وشاح رماديّ */
+        /* v-text-rebuild (لقطة المالك بعد إعادة البناء: «بالأبيض» خرج رماديًّا): لون المستخدم يُطبع كما طلبه بالضبط — كان يُعتَّم فوق
+           الفاتح (أبيض ← رماديّ، ورديّ ← توتيّ) ويُفتَّح فوق الداكن. التباين الضعيف (فاتح على فاتح أو داكن على داكن) يُعالَج بحافّة
+           وظلّ بعكس اللون حول الحروف، لا بتغيير اللون ولا بوشاح مستطيل. */
+        const uL = user ? user[2] : 0;
         const lightInk = user ? uL > 0.5 : darkBg;
+        const lowC = !!user && (lightInk ? !darkBg : darkBg);
         const stops = user ? [__hsl(user[0], user[1], Math.min(0.93, uL + 0.16)), __hsl(user[0], user[1], uL), __hsl(user[0], user[1], uL), __hsl(user[0], user[1], Math.max(0.12, uL - 0.12)), __hsl(user[0], user[1], Math.min(0.9, uL + 0.08))]
           : !lightInk ? ['#b98232', '#8f5a17', '#6e4210', '#8f5a17', '#c79342']
           : cool ? ['#ffffff', '#eef2f7', '#c9d2dc', '#9aa6b5', '#eef2f7'] : ['#fff3d6', '#fcd28a', '#f6b95f', '#e49f4a', '#f9d494'];
@@ -2081,9 +2087,10 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
         const contrast = Math.abs((lightInk ? 0.92 : 0.12) - (st.lum + (lightInk ? st.sd : -st.sd) * 0.5));
         const busyK = Math.max(0, Math.min(1, ((pick.rel || 0.5) - 0.5) / 0.8 + (st.gold || 0) * 2));
         const goldBusy = (st.gold || 0) > 0.08 && (pick.rel || 0) > 0.8; /* نقش ذهبيّ مزدحم (تطريز) لا غيم الغروب الناعم */
-        if(!pick.band && (st.sd > 0.14 || contrast < 0.5 || goldBusy || (pick.rel || 0) > 0.95)){
+        if(!pick.band && (st.sd > 0.14 || (contrast < 0.5 && !lowC) || goldBusy || (pick.rel || 0) > 0.95)){
           try{
-            const a = Math.min(0.62, 0.24 + st.sd * 1.1 + Math.max(0, 0.5 - contrast) * 0.6 + (goldBusy ? st.gold * 0.9 : 0) + Math.max(0, (pick.rel || 0) - 0.95) * 0.2);
+            /* أخفّ من قبل (المالك رأى الوشاح فوق الشجرة دخانًا ثقيلًا): الحافّة والظلّ يحملان القراءة، والوشاح يهدّئ فقط */
+            const a = Math.min(0.5, 0.18 + st.sd * 0.9 + Math.max(0, 0.5 - contrast) * 0.5 + (goldBusy ? st.gold * 0.9 : 0) + Math.max(0, (pick.rel || 0) - 0.95) * 0.2);
             const pad = Math.max(0.9 * L.bFs, 0.035 * base), rx = cx - L.w / 2 - pad, ry = pick.top - pad * 0.7, rw = L.w + pad * 2, rh = L.h + pad * 1.4, rr = pad;
             const path = (ox) => { ctx.beginPath(); ctx.moveTo(rx + ox + rr, ry); ctx.lineTo(rx + ox + rw - rr, ry); ctx.quadraticCurveTo(rx + ox + rw, ry, rx + ox + rw, ry + rr); ctx.lineTo(rx + ox + rw, ry + rh - rr); ctx.quadraticCurveTo(rx + ox + rw, ry + rh, rx + ox + rw - rr, ry + rh); ctx.lineTo(rx + ox + rr, ry + rh); ctx.quadraticCurveTo(rx + ox, ry + rh, rx + ox, ry + rh - rr); ctx.lineTo(rx + ox, ry + rr); ctx.quadraticCurveTo(rx + ox, ry, rx + ox + rr, ry); ctx.closePath(); };
             const feather = (color, op) => { ctx.save(); ctx.globalCompositeOperation = op; ctx.shadowColor = color; ctx.shadowBlur = Math.max(16, 0.08 * base); ctx.shadowOffsetX = 3 * W; ctx.shadowOffsetY = 0; ctx.fillStyle = '#000'; path(-3 * W); ctx.fill(); ctx.restore(); };
@@ -2098,10 +2105,10 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
             const by = y + L.ti.a + i * L.tLH, m = ctx.measureText(line), ia = m.actualBoundingBoxAscent || L.tFs * 0.8, id = m.actualBoundingBoxDescent || L.tFs * 0.25;
             ctx.textBaseline = 'alphabetic';
             /* الحافّة تحت التعبئة (التعبئة تغطّي نصفها الداخليّ فلا فواصل عند الوصل)، بظلّ تلامس خفيف */
-            if(lightInk){
+            if(lightInk || lowC){
               ctx.save(); ctx.lineJoin = 'round'; ctx.miterLimit = 2;
-              ctx.shadowColor = 'rgba(0,0,0,' + (0.4 + 0.25 * busyK) + ')'; ctx.shadowBlur = L.tFs * 0.12; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = L.tFs * 0.035;
-              ctx.lineWidth = Math.max(1.2, L.tFs / (user ? 30 : 22)); ctx.strokeStyle = user ? (darkBg ? 'rgba(0,0,0,.45)' : __hsl(user[0], user[1], 0.3)) : 'rgba(84,46,8,' + (0.45 + 0.4 * busyK) + ')';
+              ctx.shadowColor = lightInk ? 'rgba(0,0,0,' + (lowC ? 0.6 : 0.4 + 0.25 * busyK) + ')' : 'rgba(255,255,255,.55)'; ctx.shadowBlur = L.tFs * (lowC ? 0.16 : 0.12); ctx.shadowOffsetX = 0; ctx.shadowOffsetY = lightInk ? L.tFs * 0.035 : 0;
+              ctx.lineWidth = Math.max(1.2, L.tFs / (lowC ? 16 : user ? 30 : 22)); ctx.strokeStyle = lowC ? (lightInk ? 'rgba(20,14,8,.7)' : 'rgba(255,255,255,.75)') : user ? 'rgba(0,0,0,.45)' : 'rgba(84,46,8,' + (0.45 + 0.4 * busyK) + ')';
               ctx.strokeText(line, ax, by); ctx.restore();
             }
             ctx.save();
@@ -2114,6 +2121,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
         if(L.bl.length){
           setB(L.bFs); ctx.textBaseline = 'middle';
           ctx.save();
+          if(lowC){ ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.2, L.bFs / 12); ctx.strokeStyle = lightInk ? 'rgba(20,14,8,.7)' : 'rgba(255,255,255,.75)'; L.bl.forEach((line, i) => ctx.strokeText(line, ax, y + L.bLH * (i + 0.5))); }
           if(lightInk){ ctx.shadowColor = 'rgba(0,0,0,.62)'; ctx.shadowBlur = Math.max(4, L.bFs * 0.28); ctx.shadowOffsetY = Math.max(1, L.bFs * 0.05); }
           else { ctx.shadowColor = 'rgba(255,255,255,.42)'; ctx.shadowBlur = L.bFs * 0.18; ctx.shadowOffsetY = 0; }
           ctx.shadowOffsetX = 0; ctx.fillStyle = bodyColor;
