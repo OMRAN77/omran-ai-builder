@@ -690,22 +690,24 @@ console.log('  ✓ v-font-pretty: الكلمات الجمالية كلها تو�
 }
 console.log('  ✓ v-exact-canvas: الأسماء تُطبع حرفيًا — صفر أخطاء إملائية ممكنة');
 
-// 58 v-spell-quran (طلب عمران): تدقيق إملائي ذكي على كل نص يُطبع — الأسماء
-// الناقصة تُصحح والمرجع رسم المصحف، مع حارس يمنع تبديل اسم صحيح بغيره
-// (حتى حرفين بالكلمة، بلا إضافة/حذف كلمات) وقاموس حتمي للعبارات الدينية.
+// 58 v-spell-quran (طلب عمران) ← v-spell-literal (لقطة المالك ٢٧ سبتمبر «اخوي» طُبعت «آخوي»): كلّ نصّ
+// حرفيّ يُطبع يمرّ على قاموس ثابت مرجعه رسم المصحف (الأسماء الناقصة «عبداله» والعبارات الدينيّة)، وعلى مساري
+// الكتابة والتوليد — لكن بلا أيّ ذكاء: لا مزوّد ولا مهلة ولا حارس مسافة تحرير كان يقبل «اخوي→آخوي» و«عمران→عمرن».
 {
   const at9h = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9h.includes('omranSpellFix') && at9h.includes('رسم المصحف'), 'المدقق موجود ومرجعه المصحف');
-  assert.ok(at9h.includes('__QURAN_FIXES') && at9h.includes('إن شاء الله'), 'قاموس حتمي للعبارات الدينية');
-  assert.ok(at9h.includes('__spellGuardOk') && at9h.includes('__omLev'), 'حارس يمنع تبديل الأسماء');
+  assert.ok(at9h.includes('const __SPELL_PHRASES') && at9h.includes('إن شاء الله'), 'قاموس حتمي للعبارات الدينية');
   assert.ok((at9h.match(/v-spell-quran/g) || []).length >= 3, 'مطبق على مساري الكتابة والتوليد');
-  const eStart = at9h.indexOf('function __omLev');
-  const eEnd = at9h.indexOf('async function omranSpellFix');
-  eval(at9h.slice(eStart, at9h.indexOf('const __QURAN_FIXES', eStart)));
-  assert.ok(__spellGuardOk('عبداله عمران', 'عبدالله عمران') === true, 'تصحيح الحرف الناقص مقبول');
-  assert.ok(__spellGuardOk('محمد', 'خالد') === false, 'تبديل اسم كامل مرفوض');
+  const fStart = at9h.indexOf('async function omranSpellFix');
+  const fBody = at9h.slice(fStart, at9h.indexOf('\n}\n', fStart));
+  assert.ok(fStart > 0 && !/callProviderAI|groq|mistral|setTimeout|fetch\(/.test(fBody), 'بلا ذكاء ولا شبكة ولا مهلة');
+  assert.ok(!at9h.includes('function __spellGuardOk') && !at9h.includes('function __omLev'), 'حارس مسافة التحرير أُزيل مع الذكاء');
+  const eStart = at9h.indexOf('const __SPELL_PHRASES');
+  eval(at9h.slice(eStart, fStart));
+  assert.ok(literalSpellFix('عبداله عمران') === 'عبدالله عمران', 'تصحيح الحرف الناقص مقبول');
+  assert.ok(literalSpellFix('محمد') === 'محمد' && literalSpellFix('عمران') === 'عمران', 'الاسم الصحيح لا يُمسّ');
 }
-console.log('  ✓ v-spell-quran: تدقيق ذكي بمرجع المصحف — وبحارس يحمي الأسماء');
+console.log('  ✓ v-spell-literal: قاموس ثابت بمرجع المصحف — بلا ذكاء، والأسماء واللهجة كما كُتبت');
 
 // 59 v-trend-five (طلب عمران ٥ سبتمبر): خمسة ترندات جديدة — انعكاس العصر،
 // تجميد الزمن، البوستر السينمائي، تحول المواد، انفجار الأبعاد — بالـ14 لغة

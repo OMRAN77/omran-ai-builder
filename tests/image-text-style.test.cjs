@@ -82,16 +82,21 @@ test('client: size is a clamped scale, relative words multiply the current one',
   assert.equal(ctx.f(0.45, 'smaller'), 0.4, 'أرضيّة');
   assert.equal(ctx.f(undefined, null), 1);
   assert.match(attach, /async function overlayTextOnImage\(b64, mime, txt, fontKey, colorStr, position, scale, avoid\)/);
-  assert.match(attach, /Math\.round\(base \* 0\.118 \* __sc \* kk\)/, 'الحجم يضرب خطّ العنوان');
-  assert.match(attach, /Math\.round\(base \* \(T\.title \? 0\.03 : 0\.036\) \* __sc/, 'ويضرب خطّ الأسطر');
+  /* v-text-layout: العبارة والأسطر بلا عنوان من __textBlockLayout (سقفها ٠٫١٢W وأسطر ٠٫٠٧٥W مضروبين في الحجم)، والملصق من measure */
+  assert.match(attach, /const FMAX = Math\.min\(0\.12 \* W, 0\.11 \* H\) \* sc, HERO_MIN = 0\.07 \* W, FMIN = 0\.045 \* W \* Math\.min\(1, sc\), BODY_MAX = 0\.075 \* W \* sc;/, 'الحجم يضرب خطّ العبارة والأسطر');
+  assert.match(attach, /pos: P, sc: __sc, boxes,/, 'والراسم يمرّره للكتلة');
+  assert.match(attach, /Math\.round\(base \* 0\.03 \* __sc \* Math\.max\(0\.9, kk\)\)/, 'ويضرب خطّ أسطر الملصق');
   assert.match(attach, /cur\.imageTextLayer = __byCanvas \? \{[^}]*scale:__scale/, 'الكتابة الجديدة تحفظ حجمها وترثه');
 });
 
 test('client: «حبيبه قلبي» is spelled «حبيبة قلبي» before drawing, «قلبه» alone is untouched', () => {
-  const src = /const __QURAN_FIXES = \[[\s\S]*?\n\];/.exec(attach);
-  const ctx = {}; vm.createContext(ctx); vm.runInContext(src[0] + ';this.F=__QURAN_FIXES;', ctx);
-  const fix = (t) => ctx.F.reduce((s, [re, rep]) => s.replace(re, rep), t);
+  /* v-spell-literal: القاعدة نفسها انتقلت من __QURAN_FIXES إلى قاموس literalSpellFix المقطَّع على الكلمات */
+  const a = attach.indexOf('const __SPELL_PHRASES'), b = attach.indexOf('async function omranSpellFix');
+  assert.ok(a > 0 && b > a, 'literalSpellFix موجودة قبل omranSpellFix');
+  const ctx = {}; vm.createContext(ctx); vm.runInContext(attach.slice(a, b) + ';this.fix=literalSpellFix;', ctx);
+  const fix = (t) => ctx.fix(t);
   assert.equal(fix('حبيبه قلبي'), 'حبيبة قلبي');
+  assert.equal(fix('يا حبيبه قلبي، يا غاليه عمري'), 'يا حبيبة قلبي، يا غالية عمري', 'كلّ تكرار، والترقيم حدّ');
   assert.equal(fix('غاليه عمري'), 'غالية عمري');
   assert.equal(fix('قره عيني'), 'قرة عيني');
   assert.equal(fix('حبيبه'), 'حبيبه', 'بلا مضاف إليه يبقى كما هو');
