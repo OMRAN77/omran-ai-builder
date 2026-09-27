@@ -89,3 +89,10 @@ test('review #803 (bugbot): figurative «بموت/للموت» is romance, not m
   }
   for (const p of ['الصوره تعبر عن موت شخص عزيز', 'صورة حزينة عن الموت والفقد', 'مشهد عن موت صديق']) assert.equal(cond(p), true, p);
 });
+
+test('review #803 (bugbot): death of a relative with a possessive ending is condolence', () => {
+  for (const p of ['صورة عن موت ابوي', 'صورة حزينة لموت امي', 'الصوره تعبر عن موت جدي', 'مات اخوي وابي صورة', 'ماتت جدتي', 'توفيت امي الله يرحمها', 'صورة وفاة صديقي']) {
+    assert.equal(cond(p), true, p);
+  }
+  for (const p of ['بموت عليك', 'أحبك للموت', 'مات من الضحك']) assert.equal(cond(p), false, p);
+});
