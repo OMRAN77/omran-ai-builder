@@ -81,13 +81,22 @@
     prayer: ['فناء طيني قديم بعد المطر وقطرات على الجدار الترابي', 'كثبان رملية ناعمة بخطوط ريح دقيقة', 'قمم جبال بازلتية يعلوها ضباب رقيق', 'حقل قمح ناضج تحرّكه نسمة خفيفة', 'ممرّ حجري ضيق بين جدارين عاليين وشعاع ضوء واحد', 'سهل واسع فارغ تحت سحاب رقيق', 'نافورة ماء ساكنة في ساحة حجرية خالية', 'أغصان نخيل عالية تُرى من الأسفل نحو السماء'],
     poetry: ['صحراء ليلية بنجوم كثيفة وأفق منخفض', 'شرفة خشبية عتيقة تطلّ على واد أخضر', 'أزقّة مدينة قديمة بأقواس متتالية', 'ورق شجر متناثر على أرض مبلّطة', 'خيمة في العراء وأثر أقدام على الرمل', 'ضباب صباحي بين أشجار سرو طويلة'],
     flirt: ['حقل زهور برية بضوء ناعم متناثر', 'قماش حريري متموّج بألوان دافئة', 'أضواء مدينة ليلية غير واضحة خلف زجاج مرشوش بالمطر', 'درج رخامي مزيّن بالورد', 'حديقة مسوّرة بياسمين متسلّق', 'فراشة ملوّنة على ساق نبات عالٍ'],
-    phrase: ['قمّة جبل صخرية فوق بحر من السحاب', 'مدرّج ملعب فارغ بخطوط هندسية حادّة', 'واجهات زجاجية عالية تعكس السماء', 'طريق مستقيم يشقّ سهلًا واسعًا', 'جسر معلّق بحبال فولاذية في الضباب', 'سطح ماء أملس تنعكس عليه غيوم مضيئة']
+    phrase: ['قمّة جبل صخرية فوق بحر من السحاب', 'مدرّج ملعب فارغ بخطوط هندسية حادّة', 'واجهات زجاجية عالية تعكس السماء', 'طريق مستقيم يشقّ سهلًا واسعًا', 'جسر معلّق بحبال فولاذية في الضباب', 'سطح ماء أملس تنعكس عليه غيوم مضيئة'],
+    /* v-condolence-scene (فيديو المالك مقابل ChatGPT: عبارة عزاء بلا وصف كانت تأخذ مشهد «عبارة» عامًّا — ملعب، جسر).
+       بنك التعزية وحده يستعمل الفانوس والوردة البيضاء: رموز عزاء لا كليشيه دعاء، ولا يمرّ بمخطّط الأدعية. */
+    condolence: ['وردة بيضاء واحدة على حجر داكن في ضوء خافت', 'غصن جافّ على قماش رمادي هادئ', 'مقبرة بسيطة بشواهد حجرية بعيدة وسماء غائمة', 'فانوس صغير مطفأ الضوء بجانب زهرة ذابلة', 'طريق ترابي فارغ في ضباب الفجر', 'قطرات مطر على زجاج نافذة وخلفها أفق رمادي']
   };
+  // كلمات عزاء كاملة لا مقاطع: لا «الأعزاء» ولا تحيّة «ورحمة الله» ولا «حجاجنا راجعون». التشكيل يُنزع قبل الفحص.
+  const CONDOLENCE_TEXT_RE = /(?:^|[^\u0621-\u064A])(?:[وف]?(?:بال|لل|ال|ب|ل)?(?:عزاء|تعزي[ةه]|تعازي(?:نا)?|وفا[ةه]|وفات|متوف[ىي]|فقيد|مرحوم)(?:ه|ها|هم|كم|نا)?|توف(?:ي|ى|اه|اها)|[اإ]لي?ه\s+ل?(?:[رو]اجعون|رجعون)|البقاء\s*لله|الله\s*ير[حخ]م(?:ه|ها|هم|ك)|عظم\s*الله\s*[أا]جر|[أا]حسن\s*الله\s*عزاء|في\s*ذم[ةه]\s*الله)(?=$|[^\u0621-\u064A])|inna\s+lillahi|rest\s+in\s+peace|\bcondolence/i;
+  function isCondolenceText(t){ return CONDOLENCE_TEXT_RE.test(String(t || '').replace(/[\u064B-\u0652\u0670\u0640]/g, '')); }
   const VIS_LIGHT = ['إضاءة جانبية حادّة تصنع ظلالًا طويلة', 'ضوء منتشر ناعم بعد الغيم', 'ضوء خلفي يرسم هالة حول الحوافّ', 'أشعة تتخلّل غبارًا معلّقًا', 'ضوء أزرق بارد قبل الشروق', 'ضوء نهاري ساطع من الأعلى', 'ظلال متقطّعة عبر مشربية', 'وميض خفيف يعكسه سطح مبلّل'];
   const VIS_PALETTE = ['ألوان ترابية هادئة', 'تباين أزرق داكن مع فضّي', 'أخضر عميق مع بنّي', 'رمادي حجري مع لمسة نحاسية', 'أبيض وبيج بلمسة رملية', 'أزرق فيروزي مع رمل فاتح', 'ألوان باردة أحادية شبه رمادية', 'أسود مطفي مع ذهبي خفيف'];
   const VIS_LENS = ['تصوير واسع الزاوية من موضع منخفض', 'منظور علوي عمودي', 'عدسة تقريب طويلة بعمق ميدان ضحل', 'مستوى النظر بتكوين متوازن', 'زاوية منخفضة تُعلي الموضوع', 'تكوين غير متمركز بمساحة فارغة واسعة'];
   function visPick(list){ return list[Math.floor(Math.random() * list.length)] || ''; }
   function fallbackVisual(kind, exactText){
+    if(isCondolenceText(exactText)){
+      return 'مشهد تعزية هادئ بلا أشخاص ولا وجوه: ' + visPick(VIS_SCENE.condolence) + '، ضوء خافت حزين، ألوان باهتة هادئة، تفاصيل واقعية دقيقة، بلا أي كتابة أو حروف أو أرقام في الصورة';
+    }
     const k = (kind === 'prayer' || /(?:اللهم|ربنا|يا\s+رب)/.test(exactText || '')) ? 'prayer'
       : kind === 'poetry' ? 'poetry' : kind === 'flirt' ? 'flirt' : 'phrase';
     return 'مشهد أصيل عالي الجودة: ' + visPick(VIS_SCENE[k] || VIS_SCENE.phrase) + '، ' + visPick(VIS_LIGHT)
@@ -115,6 +124,20 @@
     const remove = /(?:احذف|امسح|شيل|ازل|أزل|اخف|أخف|remove|erase|delete|clear)/i.test(s);
     if(!remove) return false;
     return /(?:النص|الكتابة|الكتابه|الكلام|الكلمات|الحروف|العبارة|العباره|هذا\s+الشي|هالشي|هذا|هذي|text|writing|words?|letters?|this\s+(?:thing|text))/i.test(s);
+  }
+  /* «احذف الكلام واكتب X» = استبدال لا حذف فقط (كان X يضيع). أمر كتابة حقيقيّ غير منفيّ: «المكتوب عليها» وصفٌ للمحذوف،
+     و«اكتبه/لا تكتب» ليسا نصًّا جديدًا. */
+  function writeCommandAt(source){
+    const s = String(source || ''), re = /(^|[\s،,و])(اكتب(?:ي|لي)?|أكتب|حط|ضع|ضيف|أضف|اضف|write|put|add)(?=[\s:：«"']|$)/gi;
+    let m;
+    while((m = re.exec(s))){
+      const at = m.index + m[1].length;
+      if(/(?:^|\s)(?:لا|ما|not|don'?t|never)\s*$/i.test(s.slice(Math.max(0, at - 10), at))) continue;
+      /* «حط/ضع/ضيف» فعل كتابة فقط إن تلاه نصّ أو اسمه — «احذف الكلام وحط وردة» وضعُ شيء في المشهد لا كتابة «وردة» */
+      if(!/^(?:اكتب|أكتب|write)/i.test(m[2]) && !/^\s*(?:لي\s+)?(?:(?:عليها|عليه|فوقها|فيها)\s*)?(?:[«“"']|(?:النص|نص|العبارة|عبارة|الكلام|كلام|كلمة|اسمي|اسم|the\s+text|text|words?|name)(?=\s|[:：«"'\-–—]|$))/i.test(s.slice(at + m[2].length))) continue;
+      return { index:at, value:m[2] };
+    }
+    return null;
   }
   // وصف طلب («كلام حلو»، «جمله عن النجاح») مقابل نصّ حرفيّ («عمران»).
   const KIND_HEAD_RE = /^(?:أي|اي|شي|شيء)?\s*(كلام|كلمات|كلمتين|جملة|جمله|جمل|عبارة|عباره|عبارات|كلمة|كلمه|حكمة|حكمه|اقتباس|مقولة|مقوله|بيت\s+شعر|أبيات|ابيات|قصيدة|قصيده|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|غزل|تهنئة|تهنئه|معايدة|معايده|رسالة|رساله)(?=$|[\s،,.!?؟:])/;
@@ -184,12 +207,14 @@
   function authorVisual(source, kind){ return visualCore(source) || fallbackVisual(kind, null); }
   // «ابغى صوره» و«لا في الصوره بس» بلا وصف مشهد = طلب عامّ لا تعديل بصريّ.
   function isGenericVisual(v){
+    /* «غيّر الاسم/احذف الكلام واكتب…»: شطر الكتابة أمرٌ للطبقة لا تعديلٌ بصريّ يُرسل للمولّد (كان «غير الاسم» يذهب نداءً مدفوعًا). */
+    if(/^(?:لا\s+)?(?:احذف|امسح|شيل|شل|حذف|ح[ّ]?و[ّ]?ز|ازل|أزل|غير|غيّر|غيري|غيّري|بدل|بدّل|استبدل|صحح|صحّح)\s+(?:ال)?(?:نص|كتابة|كتابه|كلام|كلمات|عبارة|عباره|مكتوب|[إا]سم)(?:ي|ه|ها|ك)?(?:\s+\S+){0,3}\s*$/i.test(String(v || '').trim())) return true; /* «احذف الكلام الي تحت»، «غير اسمي» */
     const s = String(v || '').replace(/(?:^|\s)(?:لا|لأ|بس|فقط|ابغى|أبغى|ابغي|أبغي|ابي|أبي|اريد|أريد|ودي|بدي|عطني|اعطني|أعطني|لي|في|على|نفس|هذي|هذه|ال?صور[ةه]|image|picture)(?=\s|$)/gi, ' ').trim();
     return !s || GENERIC_VISUAL_RE.test(s);
   }
   const ISTIRJA = 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ';
   const KNOWN_PHRASES = [
-    [/(^|[\s«"'])[اإأ]نّ?ن?ّ?[اهى]?\s*(?:ال|ل)?لّ?ل?ه\s*و\s*[اإأ]نّ?ن?ّ?[اهى]?\s*[اإأ]ل[يى]ه\s*[رو]اجع[وي]ن(?=$|[\s.،,!»"'])/g, '$1' + ISTIRJA]
+    [/(^|[\s«"'])[اإأآ]نّ?ن?ّ?[اهى]?\s*(?:ال|ل)?لّ?ل?ه\s*و\s*[اإأآ]نّ?ن?ّ?[اهى]?\s*[اإأ]ل[يى]ه\s*[رو]اجع[وي]ن(?=$|[\s.،,!»"'])/g, '$1' + ISTIRJA] /* «وآنه» كما كتبها المالك في الفيديو */
   ];
   function fixKnownPhrases(value){
     let out = String(value == null ? '' : value);
@@ -205,7 +230,7 @@
       || /^(?:بدون|بلا|من\s+غير)\s+(?:ال)?(?:كلام|كتاب[ةه]|كتابه|نص)\s*[.!]*$/i.test(s);
   }
   // «و الصوره تعبر عن…» وصف للمشهد يأتي بعد النصّ بلا علامات تنصيص — لا يُطبع.
-  const DESC_TAIL_RE = /\s+و\s*(?:ال)?(?:صور[ةه]|صوره|خلفي[ةه]|خلفيه|مشهد|رسم[ةه]|رسمه)(?=\s|$)|\s+و\s*(?:ت|ي)عبّ?ر\s+عن\s+|\s+و\s*(?:تكون|يكون|خل|خلي|خلّي|خله|خلها|اجعل|اجعلها|سو|سوي|سوّي|حط|ضيف|أضف|اضف|ارسم)\s+(?:لي\s+)?(?:فيها|فيه|عليها|ال?صور[ةه]|ال?صوره|ال?خلفي[ةه]|ال?خلفيه|المشهد|لونها|لون\s+ال?خلفي)(?=\s|$)/i;
+  const DESC_TAIL_RE = /\s+و\s*(?:ال)?(?:صور[ةه]|صوره|خلفي[ةه]|خلفيه|مشهد|رسم[ةه]|رسمه)(?=\s+(?!ال|ل)\S|$)|\s+و\s*(?:ت|ي)عبّ?ر\s+عن\s+|\s+و\s*(?:تكون|يكون|خل|خلي|خلّي|خله|خلها|اجعل|اجعلها|سو|سوي|سوّي|حط|ضيف|أضف|اضف|ارسم)\s+(?:لي\s+)?(?:فيها|فيه|عليها|ال?صور[ةه]|ال?صوره|ال?خلفي[ةه]|ال?خلفيه|المشهد|لونها|لون\s+ال?خلفي)(?=\s|$)/i;
   // «عمران بالذهبي» و«… في الاعلى»: لون أو موضع في آخر النصّ غير المنصَّص تنسيقٌ لا كلام.
   const TAIL_STYLE_RE = /\s+(?:(?:و\s*)?(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:و\s*)?(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص))(?:\s+(?:و\s*)?(?:(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص)))?\s*$/i;
   // «غير الكلام الى مبروك» / «خلي الكتابه مبروك»: استبدال نصّ طبقتنا — يستعمله العميل فقط حين تكون آخر صورة ناتج الطبقة.
@@ -237,8 +262,9 @@
     // كانت تُرجع wantsText=true فيُختطف النصّ لمسار توليد صورة النصّ بدل المحادثة.
     // طلب الكتابة على صورة دائمًا قصير؛ أي نصّ >400 حرف = لا صورة، محادثة عادية.
     if(source.length > 400) return { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null };
-    if(isTextLayerRemoval(source)) return { wantsText:false, exactText:null, visualPrompt:source.trim(), removeText:true, fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null };
-    const styleEdit = textStyleEdit(source), autoPrayer = styleEdit ? null : autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit, styleEditLoose:styleEdit };
+    const writeCmd = isTextLayerRemoval(source) ? writeCommandAt(source) : null;
+    if(isTextLayerRemoval(source) && !writeCmd) return { wantsText:false, exactText:null, visualPrompt:source.trim(), removeText:true, fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null };
+    const styleEdit = writeCmd ? null : textStyleEdit(source), autoPrayer = (styleEdit || writeCmd) ? null : autoPrayerSpec(source), marker = writeCmd || (autoPrayer ? null : findTextMarker(source)); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit, styleEditLoose:styleEdit };
     if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:authorVisual(source, autoPrayer.kind), visualEdit:visualCore(source) || null, prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:textPlacement(source), positionAuto:!positionExplicit(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:textStyleEditLoose(source) };
     const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
     let rest = source.slice(marker.index + marker.value.length);
@@ -311,6 +337,7 @@
     if(visualSuffix) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim();
     const visualEdit = (!visualPrompt || GENERIC_VISUAL_RE.test(visualPrompt) || isGenericVisual(visualPrompt)) ? null : visualPrompt;
     if(!visualEdit) visualPrompt = fallbackVisual(kind, exactText);
+    else if(isCondolenceText(exactText) && !isCondolenceText(visualPrompt)) visualPrompt = 'مشهد تعزية بلا وجوه: ' + visualPrompt; /* النصّ عزاء فالمشهد عزاء */
     return { wantsText:true, exactText, visualPrompt, visualEdit, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPlacement(styleSource), positionAuto:!positionExplicit(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
   }
   root.__parseImageTextSpec = parseImageTextSpec;
