@@ -36,19 +36,83 @@
     if(/زخرف|مزخرف|جميل|حلو[ةه]?|مرتب|أنيق|انيق|راقي|فخم|ملكي|مميز|رائع|فني|إبداعي|ابداعي|جذاب|beautiful|fancy|elegant|stylish|decorat|ornate|pretty|nice|royal|calligraph/i.test(source)) return 'diwani';
     return 'default';
   }
+  /* v-text-colors (لقطة المالك: «اكتب حبيبه قلبي بخط لونه وردي» خرجت بيضاء — «وردي» لم يكن لونًا معروفًا، وكلّ قاعدة
+     كانت تحمل قائمة ألوانها الخاصّة): خريطة واحدة تقرؤها textColor وتعديل التنسيق وذيل الأسلوب. كلمات كاملة لا مقاطع
+     («ابني» ليست «بني»، و«hundred» ليست «red»)، بسوابق «ب/بال/ال/و». الترتيب مهمّ: «وردي فاتح» قبل «وردي»، و«سماوي» قبل «أزرق». */
+  const TEXT_COLORS = [
+    ['أصفر|اصفر|صفراء|yellow', '#ffd400'],
+    ['ذهبي|ذهبية|ذهبيه|golden|gold', '#f4cf65'],
+    ['أسود|اسود|سوداء|black', '#111111'],
+    ['أخضر|اخضر|خضراء|green', '#2e8b57'],
+    ['سماوي|سماويه|سماوية|لبني|(?:أزرق|ازرق)\\s+فاتح|sky\\s*blue|light\\s*blue', '#5ec8ff'],
+    ['كحلي|كحليه|كحلية|navy', '#1c2f66'],
+    ['أزرق|ازرق|زرقاء|blue', '#2979ff'],
+    ['وردي\\s+(?:فاتح|خفيف|هادي|هادئ)|light\\s*pink', '#ffb3d1'],
+    ['وردي|ورديه|وردية|زهري|زهريه|زهرية|بمبي|بينك|pink', '#ff4f9a'],
+    ['بنفسجي|بنفسجيه|بنفسجية|موف|ليلكي|purple|violet|lilac', '#a05ad6'],
+    ['برتقالي|برتقاليه|برتقالية|orange', '#ff8a1f'],
+    ['عنابي|عنابيه|عنابية|خمري|maroon|burgundy', '#8e1b3a'],
+    ['أحمر|احمر|حمراء|red', '#d32f2f'],
+    ['تركوازي|تركواز|فيروزي|turquoise|teal', '#18b6a4'],
+    ['فضي|فضيه|فضية|silver', '#d7dbe0'],
+    ['رمادي|رماديه|رمادية|رصاصي|gr[ae]y', '#9aa0a6'],
+    ['بني|بنيه|بنية|brown', '#8b5a2b'],
+    ['بيج|beige', '#ead9bd'],
+    ['أبيض|ابيض|بيضاء|white', '#fdfdfd'] /* أبيض صريح ≠ الافتراضيّ: لا يصير ذهبًا مع الخطّ المزخرف، ويغلب لون الكتابة السابقة */
+  ];
+  const COLOR_WORD = '(?:' + TEXT_COLORS.map(function(c){ return c[0]; }).join('|') + ')';
+  const colorWordRe = function(alt){ return new RegExp('(?:^|[^\\u0621-\\u064Aa-z])(?:و)?(?:بال|ال|ب|باللون\\s+ال|باللون\\s+|بلون\\s+)?(?:' + alt + ')(?=$|[^\\u0621-\\u064Aa-z])', 'i'); };
+  const COLOR_RES = TEXT_COLORS.map(function(c){ return [colorWordRe(c[0]), c[1]]; });
+  const ANY_COLOR_RE = colorWordRe(COLOR_WORD.slice(3, -1));
+  function hasColorWord(source){ return ANY_COLOR_RE.test(String(source || '')); }
+  function hasColorOrSize(source){ return hasColorWord(source) || !!textSize(source); }
   function textColor(source){
-    if(/أصفر|اصفر|yellow/i.test(source)) return '#ffd400';
-    if(/ذهبي|ذهبية|gold/i.test(source)) return '#f4cf65';
-    if(/أسود|اسود|black/i.test(source)) return '#111111';
-    if(/أخضر|اخضر|green/i.test(source)) return '#2e8b57';
-    if(/أزرق|ازرق|blue/i.test(source)) return '#2979ff';
-    if(/أحمر|احمر|red/i.test(source)) return '#d32f2f';
-    if(/بيج|beige/i.test(source)) return '#ead9bd';
+    const s = String(source || '');
+    for(let i = 0; i < COLOR_RES.length; i++) if(COLOR_RES[i][0].test(s)) return COLOR_RES[i][1];
     /* v-gold-overlay: «بخط جميل ومزخرف» بلا لون محدد = ذهب متدرّج (يفعّل
        المعالجة الذهبية الكاملة في الراسم — كالنموذج الذي اعتمده عمران) */
-    if(/زخرف|مزخرف|جميل|حلو[ةه]?|أنيق|انيق|راقي|فخم|ملكي|مميز|رائع|beautiful|fancy|elegant|ornate|royal|decorat|calligraph/i.test(source)) return '#f4cf65';
+    if(/زخرف|مزخرف|جميل|حلو[ةه]?|أنيق|انيق|راقي|فخم|ملكي|مميز|رائع|beautiful|fancy|elegant|ornate|royal|decorat|calligraph/i.test(s)) return '#f4cf65';
     return '#ffffff';
   }
+  /* v-text-size (نفس اللقطة: «بخط صغير» طُبعت كلامًا — الحجم لم يكن يُقرأ أصلًا). مقارنة («أصغر/كبّر») قبل المطلق («صغير»). */
+  const AR_B = '(?:^|[^\\u0621-\\u064Aa-z])', AR_E = '(?=$|[^\\u0621-\\u064Aa-z])';
+  const SIZE_SMALLER_RE = new RegExp(AR_B + '(?:و)?(?:أصغر|اصغر|صغّ?ر|صغّ?ري|صغّ?روا|smaller|shrink)' + AR_E, 'i');
+  const SIZE_LARGER_RE = new RegExp(AR_B + '(?:و)?(?:أكبر|اكبر|كبّ?ر|كبّ?ري|كبّ?روا|bigger|larger|enlarge)' + AR_E, 'i');
+  const SIZE_SMALL_RE = new RegExp(AR_B + '(?:و)?(?:ب)?(?:صغير|صغيره|صغيرة|small|tiny)' + AR_E, 'i');
+  const SIZE_LARGE_RE = new RegExp(AR_B + '(?:و)?(?:ب)?(?:كبير|كبيره|كبيرة|ضخم|ضخمه|ضخمة|عريض|عريضه|عريضة|big|large|huge)' + AR_E, 'i');
+  function textSize(source){
+    const s = String(source || '');
+    if(SIZE_SMALLER_RE.test(s)) return 'smaller';
+    if(SIZE_LARGER_RE.test(s)) return 'larger';
+    if(SIZE_SMALL_RE.test(s)) return 'small';
+    if(SIZE_LARGE_RE.test(s)) return 'large';
+    return null;
+  }
+  /* «جولة تنسيق»: فاتح («بخط/بلون/لونه/بالوردي») ثمّ كلمات وصفه المتتالية (ألوان، فاتح/غامق، أحجام، زخرفة، أسماء خطوط).
+     ما بعدها نصٌّ أو وصفُ مشهد — «اكتب بخط وردي حبيبة قلبي» نصّها «حبيبة قلبي»، و«بخط لونه وردي والخلفية زرقاء» لون كتابتها
+     ورديّ لا أزرق (مراجعة #804). */
+  const STYLE_LEAD_TOKEN = new RegExp('^(?:و)?(?:(?:ا?يكون)|بخط|بالخط|بلون|باللون|ب?لونه|ب?لونها|(?:بال|ب)(?:' + COLOR_WORD.slice(3, -1) + ')[ةه]?)$', 'i');
+  const STYLE_WORD_TOKEN = new RegExp('^(?:و)?(?:بال|ال|ب)?(?:' + COLOR_WORD.slice(3, -1) + '|فاتح|غامق|خفيف|هادي|هادئ|صغير[ةه]?|كبير[ةه]?|أصغر|اصغر|أكبر|اكبر|عريض[ةه]?|ضخم[ةه]?|م?زخرف[ةه]?|زخرفي|حلو[ةه]?|جميل[ةه]?|أنيق[ةه]?|انيق[ةه]?|فخم[ةه]?|راقي[ةه]?|مرتب[ةه]?|ملكي|فني|ديواني|رقع[ةه]|كوفي|عثماني|نسخ|ثلث|فارسي|نستعليق|مصحف|قرآني|نوتو|لون|اللون|لونه|لونها|خط|الخط)$', 'i');
+  function splitStyleRuns(value){
+    const toks = String(value || '').trim().split(/\s+/).filter(Boolean), keep = [], style = [];
+    for(let i = 0; i < toks.length; i++){
+      const lead = STYLE_LEAD_TOKEN.test(toks[i]) && !(/^و?ا?يكون$/.test(toks[i]) && !(toks[i + 1] && STYLE_LEAD_TOKEN.test(toks[i + 1])));
+      if(!lead){ keep.push(toks[i]); continue; }
+      style.push(toks[i]);
+      while(i + 1 < toks.length && (STYLE_WORD_TOKEN.test(toks[i + 1]) || /^و$/.test(toks[i + 1]) && toks[i + 2] && STYLE_WORD_TOKEN.test(toks[i + 2]))) style.push(toks[++i]);
+    }
+    return { style: style.join(' '), rest: keep.join(' ') };
+  }
+  /* الجولة الأولى وحدها إن بدأ بها الكلام — «بخط وردي حبيبة قلبي بخط كبير»: الجولة «بخط وردي» والباقي نصّ وذيله. */
+  function leadingStyleRun(value){
+    const toks = String(value || '').trim().split(/\s+/).filter(Boolean);
+    if(!toks.length || !STYLE_LEAD_TOKEN.test(toks[0]) || /^و?ا?يكون$/.test(toks[0])) return null;
+    let i = 1;
+    while(i < toks.length && (STYLE_WORD_TOKEN.test(toks[i]) || /^و$/.test(toks[i]) && toks[i + 1] && STYLE_WORD_TOKEN.test(toks[i + 1]))) i++;
+    return { style: toks.slice(0, i).join(' '), rest: toks.slice(i).join(' ') };
+  }
+  /* كلمات التنسيق وحدها (لون/حجم/زخرفة/«خط») — ذيلٌ لا يبقى منه شيء بعد نزعها ليس وصف مشهد. */
+  const STYLE_WORDS_RE = new RegExp('(?:^|\\s)(?:و)?(?:بال|ال|ب|باللون\\s+ال|بلون\\s+)?(?:' + COLOR_WORD.slice(3, -1) + '|صغير[ةه]?|كبير[ةه]?|أصغر|اصغر|أكبر|اكبر|عريض[ةه]?|ضخم[ةه]?|م?زخرف[ةه]?|زخرفي|حلو[ةه]?|جميل[ةه]?|أنيق[ةه]?|انيق[ةه]?|فخم[ةه]?|خط)(?=\\s|$)', 'gi');
   // «فوق الصورة/فوقها» تعني «عليها» لا أعلاها — تُنقّى قبل قراءة الموضع.
   function stripOnImage(source){
     return String(source || '').replace(/فوق\s*(?:هذه\s*|هذي\s*|هال)?(?:الصورة|الصوره)|فوقها|فوقه|على\s*(?:هذه\s*)?(?:الصورة|الصوره)/gi, ' ');
@@ -102,22 +166,31 @@
     return 'مشهد أصيل عالي الجودة: ' + visPick(VIS_SCENE[k] || VIS_SCENE.phrase) + '، ' + visPick(VIS_LIGHT)
       + '، ' + visPick(VIS_PALETTE) + '، ' + visPick(VIS_LENS) + '، تفاصيل واقعية دقيقة، بلا أي كتابة أو حروف أو أرقام في الصورة';
   }
+  const NAMED_FONT_RE = /(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i;
+  /* «بخط مزخرف/خط حلو»: كلمة جمال مقرونة بالخط = اختيار الخط المزخرف (بلا «خط» قد تصف المشهد: «صورة حلوة»). */
+  const PRETTY_FONT_RE = /(?:^|[^ء-ي])(?:ب|بال|ال)?خط\s+(?:\S+\s+)?(?:و\s*)?(?:م?زخرف[ةه]?|زخرفي|مزخرف|حلو[ةه]?|جميل[ةه]?|أنيق[ةه]?|انيق[ةه]?|مرتب[ةه]?|راقي[ةه]?|فخم[ةه]?|ملكي|فني|beautiful|fancy|elegant|ornate)/i;
+  const FONT_NOUN_RE = /(?:^|[^ء-ي])(?:ب|بال|ال|و)?(?:خط|الخط)(?=$|[^ء-ي])|font/i;
+  function styleFields(source, withPretty){
+    const color = hasColorWord(source) ? textColor(source) : null;
+    const fontKey = NAMED_FONT_RE.test(source) || (withPretty && PRETTY_FONT_RE.test(source)) ? textFont(source) : null;
+    const position = positionExplicit(source) ? textPlacement(source) : null;
+    const size = textSize(source);
+    /* «بخط مزخرف» بلا لون = الذهب المتدرّج نفسه الذي يأخذه النصّ الجديد بهذا الوصف */
+    const col = color || (fontKey && withPretty && PRETTY_FONT_RE.test(source) && textColor(source) !== '#ffffff' ? textColor(source) : null);
+    return col || fontKey || position || size ? { color:col, fontKey, position, size } : null;
+  }
   function textStyleEdit(source){
-    const hasTextNoun = /(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source);
+    const hasTextNoun = /(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source) || FONT_NOUN_RE.test(source);
     const moveExisting = hasTextNoun && /(?:حط|ضع|خل|خلي|خلّي|اجعل|حرّك|حرك|انقل|نقل|ودّ|ودي|move|put|place)[^\n]{0,28}(?:يمين|يسار|أعلى|اعلى|فوق|وسط|منتصف|المركز|أسفل|اسفل|تحت|\bright\b|\bleft\b|\btop\b|\bmiddle\b|\bcenter\b|\bbottom\b)/i.test(source);
     if(textRemoveIntent(source) || (findTextMarker(source) && !moveExisting) || !hasTextNoun) return null;
-    const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null;
-    const fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null;
-    const position=positionExplicit(source)?textPlacement(source):null;
-    return color||fontKey||position ? {color,fontKey,position} : null;
+    return styleFields(source, true);
   }
   // تنسيق بلا ذكر «النص»: يُستخدم فقط حين توجد طبقة نصّ محفوظة على الصورة.
+  /* «خليه وردي» تنسيقٌ للكتابة، أمّا «خلي الخلفية وردي» فتعديلٌ للمشهد — هدف بصريّ مسمّى لا يُقرأ تنسيقًا للنصّ. */
+  const VISUAL_TARGET_RE = /(?:^|[^ء-ي])(?:و)?(?:بال|ال|لل)?(?:خلفي[ةه]?|خلفيات|سما|سماء|بحر|لبس|ملابس|لبسها|لبسه|فستان|فستانها|قميص|ثوب|شعر|شعرها|شعره|وجه|وجهها|وجهه|عيون|عيونها|جدار|كنب|كنب[ةه]|ورد[ةه]?|ورود|زهر[ةه]?|زهور|سيار[ةه]|غرف[ةه]|أرض|ارض)(?=$|[^ء-ي])|\b(?:background|dress|shirt|hair|sky|wall|sofa|flowers?)\b/i;
   function textStyleEditLoose(source){
-    if(findTextMarker(source) || textRemoveIntent(source)) return null;
-    const color = /(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source) ? textColor(source) : null;
-    const fontKey = /(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source) ? textFont(source) : null;
-    const position = positionExplicit(source) ? textPlacement(source) : null;
-    return color || fontKey || position ? { color, fontKey, position } : null;
+    if(findTextMarker(source) || textRemoveIntent(source) || VISUAL_TARGET_RE.test(source)) return null;
+    return styleFields(source, true);
   }
   function isTextLayerRemoval(source){
     const s = String(source || '');
@@ -232,7 +305,9 @@
   // «و الصوره تعبر عن…» وصف للمشهد يأتي بعد النصّ بلا علامات تنصيص — لا يُطبع.
   const DESC_TAIL_RE = /\s+و\s*(?:ال)?(?:صور[ةه]|صوره|خلفي[ةه]|خلفيه|مشهد|رسم[ةه]|رسمه)(?=\s+(?!ال|ل)\S|$)|\s+و\s*(?:ت|ي)عبّ?ر\s+عن\s+|\s+و\s*(?:تكون|يكون|خل|خلي|خلّي|خله|خلها|اجعل|اجعلها|سو|سوي|سوّي|حط|ضيف|أضف|اضف|ارسم)\s+(?:لي\s+)?(?:فيها|فيه|عليها|ال?صور[ةه]|ال?صوره|ال?خلفي[ةه]|ال?خلفيه|المشهد|لونها|لون\s+ال?خلفي)(?=\s|$)/i;
   // «عمران بالذهبي» و«… في الاعلى»: لون أو موضع في آخر النصّ غير المنصَّص تنسيقٌ لا كلام.
-  const TAIL_STYLE_RE = /\s+(?:(?:و\s*)?(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:و\s*)?(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص))(?:\s+(?:و\s*)?(?:(?:بال|باللون\s+ال?)(?:ذهبي|أصفر|اصفر|أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أبيض|ابيض|أسود|اسود|بيج)[ةه]?|(?:في|ف|بال|على|من)\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص)))?\s*$/i;
+  const TAIL_POS = '(?:و\\s*)?(?:في|ف|بال|على|من)\\s*(?:الأعلى|الاعلى|فوق|الأسفل|الاسفل|تحت|الوسط|المنتصف|النص)';
+  const TAIL_COLOR = '(?:و\\s*)?(?:بال|باللون\\s+ال?)' + COLOR_WORD + '[ةه]?';
+  const TAIL_STYLE_RE = new RegExp('\\s+(?:' + TAIL_COLOR + '|' + TAIL_POS + ')(?:\\s+(?:' + TAIL_COLOR + '|' + TAIL_POS + '))?\\s*$', 'i');
   // «غير الكلام الى مبروك» / «خلي الكتابه مبروك»: استبدال نصّ طبقتنا — يستعمله العميل فقط حين تكون آخر صورة ناتج الطبقة.
   function textReplaceIntent(input){
     const s = String(input || '').trim();
@@ -268,6 +343,8 @@
     if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:authorVisual(source, autoPrayer.kind), visualEdit:visualCore(source) || null, prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:textPlacement(source), positionAuto:!positionExplicit(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:textStyleEditLoose(source) };
     const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
     let rest = source.slice(marker.index + marker.value.length);
+    /* «اكتبه/اكتبها بخط وردي»: ضمير المفعول الملتصق بالفعل يعود على النصّ الموجود، لا يُطبع حرفًا «ه». */
+    if(/^(?:اكتب|أكتب)$/.test(marker.value)) rest = rest.replace(/^(?:ه|ها|هم)(?=\s|$)/, '');
     rest = rest.replace(/^\s*(?:لي\s+)?/i, '');
     rest = rest.replace(/^\s*(?:عليها|عليه|فوقها|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|فوق\s+(?:الصورة|الصوره)|on\s+(?:the\s+)?(?:image|photo|picture))\s*/i, '');
     rest = rest.replace(/^\s*(?:النص|العبارة|الكلام|الكلمة|كلمة|اسمي|اسم|the\s+text|text|words?|name|quote)?\s*(?:هو|وهو|التالي|is)?\s*[:：\-–—]?\s*/i, '');
@@ -304,8 +381,16 @@
          تكتب «ايكون» و«ألون» فلا يمسكها ذيل الفصحى المثبَّت في آخر الجملة.
          أول «بخط/بلون/ويكون/لا تكتب» يقطع النصّ — ما بعده تنسيقٌ وأوامر تُقرأ
          منها الألوان والخط، ولا يُطبع منها حرف ولا يصل لمولّد الصور. */
-      const dialectCut = rest.search(/\s+(?:و\s*)?(?:ا?يكون\s+)?(?:بخط|بالخط|بلون|باللون)\s+|\s+و\s*ا?يكون\s+|\s+(?:و\s*)?[أا]?لل?ون(?:ه|ها)?\s+ا?يكون\s+|\s+لا\s+تكتب\s+/i);
-      if(dialectCut > 0){
+      /* v-text-colors: «اكتب بخط صغير ومزخرف» — القاطع في أوّل الكلام يعني «لا نصّ جديد»، والذيل كلّه تنسيق (كان يُطبع).
+         و«اكتب حبيبة قلبي لونه وردي» بلا «بخط» ذيلُ لونٍ أيضًا. */
+      const dialectCut = rest.search(/(?:^|\s+)(?:و\s*)?(?:ا?يكون\s+)?(?:بخط|بالخط|بلون|باللون)(?:\s+|$)|\s+و\s*ا?يكون\s+|\s+(?:و\s*)?[أا]?لل?ون(?:ه|ها)?\s+ا?يكون\s+|\s+(?:و\s*)?ب?لون(?:ه|ها)\s+(?=\S)|\s+لا\s+تكتب\s+/i);
+      const leadRun = leadingStyleRun(rest);
+      if(leadRun){
+        const leadStyle0 = leadRun.style, leadRest = leadRun.rest;
+        const cut2 = leadRest.search(/\s+(?:و\s*)?(?:ا?يكون\s+)?(?:بخط|بالخط|بلون|باللون)(?:\s+|$)|\s+و\s*ا?يكون\s+|\s+(?:و\s*)?ب?لون(?:ه|ها)\s+(?=\S)|\s+لا\s+تكتب\s+/i);
+        styleSource = (leadStyle0 + ' ' + (cut2 > 0 ? leadRest.slice(cut2) : '')).trim();
+        exactText = (cut2 > 0 ? leadRest.slice(0, cut2) : leadRest).trim();
+      }else if(dialectCut > 0){
         styleSource = rest.slice(dialectCut);
         exactText = rest.slice(0, dialectCut).trim();
       }else{
@@ -322,6 +407,16 @@
     }
     if(leadStyle) styleSource = (leadStyle + ' ' + styleSource).trim();
     if(descTail) suffix = (suffix + ' ' + descTail).trim();
+    /* v-text-colors (لقطة المالك: صورة مرفوعة طُبع عليها «بخط صغير ومزخرف»): أمر كتابة بلا نصّ وذيله تنسيق فقط =
+       إعادة تنسيق الكتابة الموجودة (لون/خط/حجم)، لا نصّ جديد. العميل يطبّقه على الطبقة، أو يطلب النصّ إن لم توجد. */
+    /* «اكتبها بالوردي»: نصٌّ كلّه كلمات تنسيق بسابقة «ب/بال» تنسيقٌ لا كلام («اكتب وردي» بلا سابقة تبقى نصًّا). */
+    if(!quoted && exactText && /^(?:و\s*)?(?:بال|ب)/.test(exactText.trim()) && hasColorOrSize(exactText) && !exactText.replace(STYLE_WORDS_RE, ' ').trim()){
+      styleSource = (exactText + ' ' + styleSource).trim(); exactText = '';
+    }
+    if(!quoted && !kind && !(exactText && exactText.trim())){
+      const se = styleFields(styleSource, true);
+      if(se) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit:se, styleEditLoose:se, styleOnlyWrite:true };
+    }
     if(exactText) exactText = fixKnownPhrases(exactText);
     if(exactText == null || !exactText.trim() || /^(?:دعا[ءدهً]?|شعر|بيت\s+شعر|قصيدة|نص|كلام|prayer|poem|text)$/i.test(exactText.trim())){
       if(!kind && exactText && exactText.trim()) kind = requestKind(exactText.trim());
@@ -333,12 +428,15 @@
     }
     let visualPrompt = cleanVisual(source.slice(0, marker.index));
     if(visualTail) visualPrompt = (visualPrompt + ' ' + visualTail).trim();
-    const visualSuffix = suffix.replace(/(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل)|(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل)|(?:on|in)\s+(?:the\s+)?(?:image|photo|picture|top|middle|center|bottom)/gi, '').replace(/^[\s،,و]+|[\s،,]+$/g, '');
-    if(visualSuffix) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim();
+    const visualSuffix = (quoted ? splitStyleRuns(suffix).rest : suffix).replace(/(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل)|(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل)|(?:on|in)\s+(?:the\s+)?(?:image|photo|picture|top|middle|center|bottom)/gi, '').replace(/^[\s،,و]+|[\s،,]+$/g, '');
+    const visualRest = (quoted ? splitStyleRuns(suffix).rest : suffix).replace(STYLE_WORDS_RE, ' ').replace(/(?:^|\s)(?:و|و?ب?لون(?:ه|ها)?|باللون|بس|فقط)(?=\s|$)/g, ' ').replace(/\s{2,}/g, ' ').replace(/^[\s،,و]+|[\s،,]+$/g, '');
+    if(visualRest) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim(); /* «بخط لونه وردي» بعد النصّ المنصَّص ليس وصفًا يُرسل للمولّد */
     const visualEdit = (!visualPrompt || GENERIC_VISUAL_RE.test(visualPrompt) || isGenericVisual(visualPrompt)) ? null : visualPrompt;
     if(!visualEdit) visualPrompt = fallbackVisual(kind, exactText);
     else if(isCondolenceText(exactText) && !isCondolenceText(visualPrompt)) visualPrompt = 'مشهد تعزية بلا وجوه: ' + visualPrompt; /* النصّ عزاء فالمشهد عزاء */
-    return { wantsText:true, exactText, visualPrompt, visualEdit, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPlacement(styleSource), positionAuto:!positionExplicit(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
+    const runs = quoted ? splitStyleRuns(styleSource) : null;
+    const color = textColor(runs && runs.style ? runs.style : styleSource);
+    return { wantsText:true, exactText, visualPrompt, visualEdit, fontKey:textFont(styleSource), color, colorSet:color !== '#ffffff' || hasColorWord(styleSource), size:textSize(styleSource), position:textPlacement(styleSource), positionAuto:!positionExplicit(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
   }
   root.__parseImageTextSpec = parseImageTextSpec;
   root.__isExplicitImageEdit = isExplicitImageEdit;

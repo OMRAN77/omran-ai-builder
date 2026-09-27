@@ -1491,6 +1491,8 @@ const __QURAN_FIXES = [
   [/(^|\s)عبداله($|\s)/g, '$1عبدالله$2'],
   [/(^|\s)الحمدالله($|\s)/g, '$1الحمد لله$2'],
   [/(^|\s)جزاك\s*اله($|\s)/g, '$1جزاك الله$2'],
+  /* v-text-colors (لقطة المالك «حبيبه قلبي»): تاء مربوطة كُتبت هاءً في مضاف يليه مضاف إليه — «حبيبه» ضميرًا لا يليها اسم */
+  [/(^|\s)(حبيب|غالي|أمير|امير|ملك|قر)ه(\s+(?:قلبي|عمري|روحي|عيني|ابوها|أبوها|امها|أمها|بابا|ماما))(?=$|\s)/g, '$1$2ة$3'],
 ];
 async function omranSpellFix(txt){
   let t = String(txt || '').trim();
@@ -1637,6 +1639,12 @@ function overlayDesignLines(b64, mime, lines){
 const MAHA_FONTS = {
   default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'}, thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}
 };
+/* حجم الكتابة معامل على الحجم التلقائيّ: «صغير/كبير» قيمة مطلقة، و«أصغر/كبّر» نسبة من الحاليّ؛ محصور كي لا تختفي ولا تغطّي الصورة. */
+function __textScale(prev, size){
+  const p = Number(prev) > 0 ? Number(prev) : 1;
+  const v = size === 'small' ? 0.68 : size === 'large' ? 1.3 : size === 'smaller' ? p * 0.8 : size === 'larger' ? p * 1.25 : p;
+  return Math.max(0.4, Math.min(1.7, Math.round(v * 100) / 100));
+}
 async function mahaLoadFont(key){
   const f = MAHA_FONTS[key] || MAHA_FONTS.default;
   /* v-font-real (شكوى: «جربنا كل الخطوط ما في أي خط مرتب»): كان يضيف رابط
@@ -1662,13 +1670,42 @@ async function mahaLoadFont(key){
   }
   return f.css;
 }
-async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
+/* v-text-harmony (طلب المالك بعد رفضه شريط الاختيار: «لا ما ابا شريط صغير ابا تنسيق اللون مع الصوره»): لون الكتابة
+   الافتراضيّ لم يعد أبيض ثابتًا — يؤخذ من أبرز لون حيّ في الصورة نفسها (فستان وردي ← كتابة وردية، غروب ← دافئة)، ويُفتَّح
+   فوق خلفية داكنة أو يُغمَّق فوق فاتحة كي يبقى مقروءًا. صورة بلا لون حيّ (رماديّة) تبقى بيضاء، ولون يطلبه المستخدم بالكلام
+   يغلب دائمًا. px بكسلات RGBA لمصغّر الصورة، وbgLum إضاءة ما خلف الكتابة (٠–١) بعد الوشاح. */
+function __hslHex(h, s, l){
+  const a = s * Math.min(l, 1 - l), f = (n) => { const k = (n + h / 30) % 12; const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); return Math.round(c * 255).toString(16).padStart(2, '0'); };
+  return '#' + f(0) + f(8) + f(4);
+}
+function __pickTextHarmony(px, bgLum){
+  const W = new Array(12).fill(0), S = new Array(12).fill(0), X = new Array(12).fill(0), Y = new Array(12).fill(0);
+  let n = 0;
+  for(let i = 0; i + 3 < px.length; i += 4){
+    n++;
+    const r = px[i] / 255, g = px[i + 1] / 255, b = px[i + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    if(d < 0.08 || l < 0.12 || l > 0.92) continue;
+    const s = d / (1 - Math.abs(2 * l - 1));
+    if(s < 0.22) continue;
+    const h = ((mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60 + 360) % 360;
+    const w = d * d * (1 - Math.abs(l - 0.5)), k = Math.floor(h / 30) % 12; /* الحيويّة (مدى اللون لا تشبّع HSL الذي يضخّم الفاتح) تُرجَّح: البشرة والبيج لا تغلب لونًا صريحًا */
+    W[k] += w; S[k] += s * w; X[k] += Math.cos(h * Math.PI / 180) * w; Y[k] += Math.sin(h * Math.PI / 180) * w;
+  }
+  let best = -1;
+  for(let k = 0; k < 12; k++) if(W[k] > 0 && (best < 0 || W[k] > W[best])) best = k;
+  if(best < 0 || !n || W[best] < n * 0.002) return '#ffffff';
+  const hue = (Math.atan2(Y[best], X[best]) * 180 / Math.PI + 360) % 360, sat = Math.max(0.45, Math.min(0.85, S[best] / W[best]));
+  return __hslHex(hue, sat, bgLum < 0.5 ? 0.8 : 0.24);
+}
+async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, scale){
   const exact = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
   if(!exact.trim()) throw new Error('missing_exact_text');
   const fontCss = await mahaLoadFont(fontKey || 'default');
   /* الخطوط الزخرفيّة متاحة بوزن 400 فقط؛ طلب 700 كان يصنع تغليظًا اصطناعيًّا
      يشوّه اتصال الحروف العربيّة، بينما الخطوط النصيّة تملك وزن 700 حقيقيًّا. */
   const fontWeight = /^(diwani|thuluth|ruqaa|farsi)$/.test(String(fontKey || '')) ? '400' : '800';
+  const __sc = Math.max(0.4, Math.min(1.7, Number(scale) > 0 ? Number(scale) : 1));
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -1704,12 +1741,13 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
            مساحة أكبر قليلًا + وزن وحدّ أقوى. لا نكبّر الكتلة فوق ٢٨٪ كي لا
            تغطي الموضوع، والنص الطويل ما زال يصغر ويلتف تلقائيًّا. */
         const maxWidth=c.width*(__side?.[1]?0.42:0.88), maxHeight=c.height*(__side?0.48:0.28);
+        const __maxH = Math.min(c.height * 0.5, maxHeight * __sc); /* v-text-size: «بخط صغير/كبّر الخط» */
         /* v-voice-image-command: اليمين/اليسار كانا translate على مركز الصورة مع
            عرض ٣٢٪، فينكسر «مرحبا يا صديقي» إلى ثلاث كلمات عمودية ويُقصّ طرفه.
            موضع X صريح + عرض ٤٢٪ يبقي العبارة كتلة مقروءة داخل الحواف. */
         const textX = __side ? c.width * (__side[1] === 'right' ? 0.76 : 0.24) : c.width / 2;
         if(__side) position=position.slice(__side[0].length);
-        let fs = Math.floor(Math.min(c.width / 7.6, c.height / 8.2));
+        let fs = Math.floor(Math.min(c.width / 7.6, c.height / 8.2) * __sc);
         let lines = [];
         const setF = () => { ctx.font = fontWeight + ' ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
         const wrap = (line) => {
@@ -1727,9 +1765,9 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         do{
           setF();
           lines = exact.split('\n').flatMap(wrap);
-          if(lines.length * fs * 1.42 <= maxHeight && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
+          if(lines.length * fs * 1.42 <= __maxH && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
           fs -= 2;
-        }while(fs > Math.max(22, Math.floor(c.width / 68)));
+        }while(fs > Math.max(Math.round(22 * Math.min(1, __sc)), Math.floor(c.width / 68 * Math.min(1, __sc))));
         setF();
         const lineHeight = fs * 1.42, totalHeight = lines.length * lineHeight;
         const decorative = /^(diwani|thuluth|ruqaa|quran|othmani|farsi|kufi)$/.test(String(fontKey || ''));
@@ -1760,7 +1798,17 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         let fill, strokeCol, shadowCol;
         if(goldMode){ fill = mkGold(blockTop, blockBot); strokeCol = 'rgba(54,32,4,.82)'; shadowCol = 'rgba(0,0,0,.72)'; }
         else {
-          const base = colorStr || '#ffffff';
+          let base = colorStr || '#ffffff';
+          if(/^#ffffff$/i.test(base)){ /* v-text-harmony: الأبيض الافتراضيّ = «لم يُحدَّد لون» (الأبيض الصريح #fdfdfd) */
+            try{
+              const tc = document.createElement('canvas'); tc.width = 96; tc.height = 96;
+              const tx = tc.getContext('2d'); tx.drawImage(img, 0, 0, 96, 96);
+              const bx = Math.max(0, Math.floor(textX - maxWidth / 2)), by = Math.max(0, Math.floor(blockTop)), bw = Math.max(1, Math.min(c.width - bx, Math.ceil(maxWidth))), bh = Math.max(1, Math.min(c.height - by, Math.ceil(blockBot - blockTop)));
+              const bd = ctx.getImageData(bx, by, bw, bh).data; let bl = 0, bn = 0;
+              for(let i = 0; i < bd.length; i += 64){ bl += (bd[i] * 0.2126 + bd[i + 1] * 0.7152 + bd[i + 2] * 0.0722) / 255; bn++; }
+              base = __pickTextHarmony(tx.getImageData(0, 0, 96, 96).data, bn ? bl / bn : 0);
+            }catch(e){ __swallow(e, 'img:text-harmony'); }
+          }
           let dark = false;
           if(/^#[0-9a-f]{6}$/i.test(base)){
             const lum = parseInt(base.slice(1,3),16)*0.299 + parseInt(base.slice(3,5),16)*0.587 + parseInt(base.slice(5,7),16)*0.114;
@@ -2402,7 +2450,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       const __overlayText = textSpec.exactText || (textSpec.autoAuthored && typeof __d.authoredText === 'string' ? __d.authoredText.trim() : '');
       if(textSpec.wantsText && !__overlayText) throw new Error('missing_authored_prayer');
       if(__overlayText){
-        __b64 = await overlayTextOnImage(__b64, __mime, __overlayText, textSpec.fontKey, textSpec.color, textSpec.position);
+        __b64 = await overlayTextOnImage(__b64, __mime, __overlayText, textSpec.fontKey, textSpec.color, textSpec.position, __textScale(1, textSpec.size));
         __mime = 'image/png';
         cur.imageTextLayer = { baseB64:__baseB64, baseMime:__baseMime, text:__overlayText, fontKey:textSpec.fontKey, color:textSpec.color, position:textSpec.position };
       }
@@ -2413,7 +2461,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة.
       if((typeof __d.caption === 'string' && __d.caption.trim()) || __imgEngineLine(__d.engine, __d)){ cur.messages.push({ role: 'assistant', content: (String(__d.caption || '').trim() + __imgEngineLine(__d.engine, __d)).trim() }); }
       try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok — cleanup, intentional */ }
-      cur.imageTextLayer = __overlayText ? { baseB64:__d.imageBase64, baseMime:__d.mimeType || 'image/png', text:__overlayText, fontKey:textSpec.fontKey, color:textSpec.color, position:textSpec.position, outTail:String(__b64).slice(-64) } : null; /* v-text-replace */
+      cur.imageTextLayer = __overlayText ? { baseB64:__d.imageBase64, baseMime:__d.mimeType || 'image/png', text:__overlayText, fontKey:textSpec.fontKey, color:textSpec.color, position:textSpec.position, scale:__textScale(1, textSpec.size), outTail:String(__b64).slice(-64) } : null; /* v-text-replace */
       // 🔄 نحفظ طلب التوليد ليعيده زر «نسخة ثانية» بتنويعة جديدة
       try{ window.__omranLastImageReq = { kind:'gen', promptText: promptText }; }catch(e){ __swallow(e, 'img:save-req-gen'); }
     } else {
@@ -4306,7 +4354,15 @@ function __showImgLoading(el, ar, en){
         cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:__lm, dataUrl:'data:' + __lm + ';base64,' + __l.baseB64 }] });
         renderAll(); saveState(); return;
       }
-      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
+      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(k!=='size'&&__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); if(__textSpec.styleEdit.size) __l.scale=__textScale(__l.scale,__textSpec.styleEdit.size); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position,__l.scale);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
+      /* v-text-colors: «اكتب بخط صغير ومزخرف» بلا كتابة سابقة = لا نصّ نطبعه ولا تعديل نرسله للمولّد — نطلب النصّ نفسه. */
+      if(__textSpec.styleOnlyWrite && !cur.imageTextLayer){
+        cur.messages.push({ role:'assistant', content:(lang === 'ar'
+          ? 'أكتبه لك على نفس الصورة بدون أي تغيير فيها — بس حدّد النص بين علامتي تنصيص، مثل: اكتب «عمران» بالأصفر في الأعلى.'
+          : 'I will write it on the same image without altering it — put the exact text in quotes, e.g. write «Omran» in yellow at the top.') });
+        cur.lastMsgWasImageEdit = true;
+        renderAll(); saveState(); return;
+      }
       if(__textSpec.wantsText){
         let __resolvedText = __textSpec.exactText;
         if(__resolvedText) __resolvedText = await omranSpellFix(__resolvedText); /* v-spell-quran */
@@ -4329,12 +4385,13 @@ function __showImgLoading(el, ar, en){
           if(__prevLayer){
             __textSpec = Object.assign({}, __textSpec, {
               fontKey: __textSpec.fontKey === 'default' ? (__prevLayer.fontKey || 'default') : __textSpec.fontKey,
-              color: __textSpec.color === '#ffffff' ? (__prevLayer.color || '#ffffff') : __textSpec.color,
+              color: (__textSpec.colorSet === undefined ? __textSpec.color !== '#ffffff' : __textSpec.colorSet) ? __textSpec.color : (__prevLayer.color || '#ffffff'),
               positionAuto: __textSpec.positionAuto && __prevLayer.position === 'auto',
               position: __textSpec.positionAuto && __prevLayer.position && __prevLayer.position !== 'auto' ? __prevLayer.position : __textSpec.position
             });
           }
           const __pos = __textSpec.positionAuto ? 'auto' : __textSpec.position;
+          const __scale = __textScale(__prevLayer ? __prevLayer.scale : 1, __textSpec.size);
           // 🎨 v576: طلب مركّب (تعديل بصريّ + كتابة) = مرحلتان — المولّد يعدّل الصورة أولًا،
           // ثم نكتب النصّ فوق ناتجه. حاجز v574 محفوظ: بلا visualEdit صريح لا يلمس المولّد الصورة.
           let __wb64 = __prevLayer ? __prevLayer.baseB64 : __b64, __wmime = __prevLayer ? (__prevLayer.baseMime || 'image/png') : __mime;
@@ -4415,10 +4472,10 @@ function __showImgLoading(el, ar, en){
           }
           // احتياطي: كانفس إذا فشل الذكاء
           if(!__finalB64){
-            try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos); __finalMime = 'image/png'; __byCanvas = true; }
+            try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos, __scale); __finalMime = 'image/png'; __byCanvas = true; }
             catch(e2){ cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة.':'Could not add text to image.' }); renderAll(); saveState(); return; }
           }
-          cur.imageTextLayer = __byCanvas ? { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos, outTail:String(__finalB64).slice(-64) } : null;
+          cur.imageTextLayer = __byCanvas ? { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos, scale:__scale, outTail:String(__finalB64).slice(-64) } : null;
           cur.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'edited.png', isImage: true, mime: __finalMime, dataUrl: 'data:' + __finalMime + ';base64,' + __finalB64 }] });
           cur.lastEditedImage = { b64: __finalB64, mime: __finalMime };
           cur.lastMsgWasImageEdit = true;
@@ -4513,7 +4570,7 @@ function __showImgLoading(el, ar, en){
         if(__keepLayer){
           try{
             const __kBase = __editUrl.split(',')[1] || __data.imageBase64, __kMime = __editUrl.slice(5).split(';')[0] || __outMime;
-            const __kOut = await overlayTextOnImage(__kBase, __kMime, __keepLayer.text, __keepLayer.fontKey, __keepLayer.color, __keepLayer.position);
+            const __kOut = await overlayTextOnImage(__kBase, __kMime, __keepLayer.text, __keepLayer.fontKey, __keepLayer.color, __keepLayer.position, __keepLayer.scale);
             __editUrl = 'data:image/png;base64,' + __kOut;
             __keptLayer = Object.assign({}, __keepLayer, { baseB64:__kBase, baseMime:__kMime, outTail:__kOut.slice(-64) });
           }catch(e){ __swallow(e, 'img:text-keep'); }
@@ -4723,8 +4780,8 @@ function __showImgLoading(el, ar, en){
           if(__genTextSpec.wantsText && !__resolvedText) throw new Error('missing_authored_prayer');
           cur.imageTextLayer = null;
           if(__resolvedText){
-            cur.imageTextLayer = { baseB64:__gData.imageBase64, baseMime:__gData.mimeType||'image/png', text:__resolvedText, fontKey:__genTextSpec.fontKey, color:__genTextSpec.color, position:__genTextSpec.position };
-            __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __resolvedText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
+            cur.imageTextLayer = { baseB64:__gData.imageBase64, baseMime:__gData.mimeType||'image/png', text:__resolvedText, fontKey:__genTextSpec.fontKey, color:__genTextSpec.color, position:__genTextSpec.position, scale:__textScale(1, __genTextSpec.size) };
+            __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __resolvedText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position, cur.imageTextLayer.scale);
             __gData.mimeType = 'image/png';
             cur.imageTextLayer.outTail = String(__gData.imageBase64).slice(-64);
           }
