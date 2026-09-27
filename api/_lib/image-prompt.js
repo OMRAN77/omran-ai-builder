@@ -97,6 +97,18 @@ function portraitDirection(prompt){
     bgWords(prompt) <= 6 ? bgPick(PT_SETTING) + ' ' + bgPick(PT_MOOD) : '',
     bgPick(PT_COMP), bgPick(PT_LIGHT), bgPick(PT_PAL), bgPick(PT_LENS));
 }
+/* v-text-layers (فيديو المالك: «الصوره تعبر عن وفات شخص عزيز» — كلمة «شخص» اختارت بورتريه شخص، و«اللمسة الفاخرة»
+   تطلب لمعان منتج؛ ChatGPT رسم مقبرة وفانوسًا ووردة): طلب العزاء مشهد رمزيّ ساكن بلا وجوه ولا بريق تجاريّ. */
+const CONDOLENCE_RE = /وفا[ةه]|وفات|عزاء|تعزي[ةه]|تعاز|متوف[ىي]|الفقيد|المرحوم|رحم[هة]?\s*الله|رحمها\s*الله|راجعون|البقاء\s*لله|condolence|mourning|funeral|passed\s+away|in\s+memoriam|bereave/i;
+const CD_SCENE = ['a single white flower resting on dark stone','a quiet cemetery path with distant simple headstones under an overcast sky','a small unlit lantern beside a wilted rose','an empty dirt road fading into dawn mist','rain drops on a window with a gray horizon beyond','a bare branch against a pale dusk sky'];
+const CD_COMP = ['a calm centered arrangement','a minimal spacious composition','a low respectful angle','a wide contemplative view'];
+const CD_LIGHT = ['soft fading dusk light','overcast diffused light','a single warm low glow in the dark','cold early-morning haze'];
+const CD_PAL = ['muted grays and deep blues','desaturated earth tones','charcoal with a faint warm accent','pale cream and slate'];
+const CD_LENS = ['shallow focus with a soft background','natural standard perspective','loose negative-space framing'];
+function condolenceDirection(){
+  return variedDirection('Use a quiet, dignified condolence composition: symbolic and still, with a subdued grieving mood. Show no faces, portraits or identifiable people, and nothing festive, glossy or commercial.',
+    bgPick(CD_SCENE), bgPick(CD_COMP), bgPick(CD_LIGHT), bgPick(CD_PAL), bgPick(CD_LENS));
+}
 function genericDirection(lead){
   return variedDirection(lead, '', bgPick(GN_COMP), bgPick(GN_LIGHT), bgPick(GN_PAL), bgPick(GN_LENS));
 }
@@ -114,6 +126,7 @@ function environmentDirection(prompt){
 }
 
 function subjectDirection(prompt, reserveTextArea){
+  if(CONDOLENCE_RE.test(prompt)) return condolenceDirection();
   if(!BG_NOT_ENV.test(prompt) && (BG_FAMILY.some(function(p){ return p[1].test(prompt); }) || /شمس|شروق|غروب|سماء|سحاب|أفق|افق|طقس|sun|sunrise|sunset|sky|cloud|horizon|weather/i.test(prompt)))
     return environmentDirection(prompt);
   if(/طعام|قهوة|حلوى|طبق|وجبة|food|coffee|dessert|dish/i.test(prompt))
@@ -141,7 +154,7 @@ function buildGenerationPrompt(userPrompt, options){
     // v-signature-polish (طلب عمران: نفس قوة أيقونات التطبيق): عندما لا يطلب
     // المستخدم أسلوبًا/وسيطًا محددًا، الافتراضي مستوى استوديو فاخر — لا يُطبَّق
     // إن طلب المستخدم صورة واقعية أو أسلوبًا بعينه (تلك تُتَّبع حرفيًا).
-    'SIGNATURE POLISH (default when the user did NOT name a specific style, medium or "realistic photo"): give the image a premium studio-grade finish — a rich deep gradient backdrop with subtle bokeh/particles, a single clean hero subject with glossy tactile materials, elegant rim light and soft glow, refined depth and dimensionality, high-end color grading. Aim for the polish of a top app-store icon / product hero render. If the user DID name a style, medium, or asked for a real/realistic photo, IGNORE this and follow their request exactly.',
+    CONDOLENCE_RE.test(prompt) ? 'MOOD (mandatory): this is a condolence image — keep it sober, calm and respectful: no glossy product-render finish, no bokeh sparkle, no celebratory glow, no bright saturated colors.' : 'SIGNATURE POLISH (default when the user did NOT name a specific style, medium or "realistic photo"): give the image a premium studio-grade finish — a rich deep gradient backdrop with subtle bokeh/particles, a single clean hero subject with glossy tactile materials, elegant rim light and soft glow, refined depth and dimensionality, high-end color grading. Aim for the polish of a top app-store icon / product hero render. If the user DID name a style, medium, or asked for a real/realistic photo, IGNORE this and follow their request exactly.',
     // v668: شكوى عمران — الدعاء/النص كان ينكتب فوق الرسمة نفسها ويخربها.
     'TEXT PLACEMENT (mandatory): if the image contains ANY text, captions or labels, place them ONLY in clean empty areas (top or bottom margins, plain background zones) and NEVER overlapping or covering the main subject, faces or key details. Compose the scene FIRST to reserve that empty space for the text. Text must be fully legible with strong contrast, correct spelling, and consistent typography. Choose a text color that HARMONIZES with the palette of the image itself (e.g. a hue drawn from the scene, lightened or darkened for contrast) — do not default to plain white unless it truly fits. If the requested text is long, shrink the subject or move it aside so the text gets its own dedicated clear area.'
   ];
