@@ -23,8 +23,12 @@ test('١. نيّة النصّ: حذف أو تبديل أو كتابة أو كل�
   assert.ok(mi.indexOf('const __textIntent') > mi.indexOf('const __pureRaw = rawMode'), '__pureRaw معرّف قبل الاستعمال');
   // الحذف والتبديل كما هما معرّفان
   assert.match(mi, /const isTextRemove = !!editImageBase64 && [^\n]*isPureTextRemoval\(intentText\);/);
-  // GPT في التعديل بأمانة عالية إلّا في «GPT خام» للمالك
-  assert.match(mi, /form\.append\('input_fidelity', 'high'\);/, 'v-lanes: أمانة عالية دائمًا في التعديل، حتّى GPT خام');
+  // Sunburst يفرض أمانة المدخل تلقائيًّا ويرفض حقل input_fidelity القديم
+  assert.ok(
+    mi.includes("'gpt-image-2.5-sunburst'") &&
+    !mi.includes("form.append('input_fidelity'"),
+    'Sunburst يفرض أمانة المدخل تلقائيًّا'
+  );
 });
 
 test('٢. فشل GPT (بلا مفتاح أو خطأ) → المسار القائم كما هو، والمزدوج لا يعمل على مسار نصّ فشل', () => {

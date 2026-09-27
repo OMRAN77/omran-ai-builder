@@ -56,15 +56,22 @@ function parseGroqModels(payload) {
    قائمة GPT في السهم كانت من كتالوج الوسيط، والمحادثة ترسل الاختيار إلى OpenAI مباشرةً بمفتاح المالك — فيظهر في القائمة
    موديل لا يملكه المفتاح، وكلّ رسالة عليه = 404 ثمّ الافتراضيّ بسطر «غير متاح». بمفتاح OpenAI تأتي القائمة من OpenAI نفسه
    (/v1/models لا يعرض إلّا ما يملكه المفتاح): موديلات المحادثة فقط (بلا صوت/صورة/تضمين/بحث/فوري/نسخ مؤرَّخة)،
-   الأحدث أوّلًا، ثمانية، والمعرّف ببادئة الوسيط كما يتوقّعه العميل وpickProviderModel (directModel يقصّها). */
+   الموصى بها أولًا ثمّ الأحدث، ثمانية، والمعرّف ببادئة الوسيط كما يتوقّعه العميل وpickProviderModel (directModel يقصّها). */
 const OPENAI_MODELS_URL = 'https://api.openai.com/v1/models';
+const OPENAI_PREFERRED = ['gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna'];
 function parseOpenAIModels(payload) {
   const rows = (payload && Array.isArray(payload.data)) ? payload.data : [];
   return rows
     .filter((m) => m && typeof m.id === 'string' && /^(?:gpt-|o\d|chatgpt-)/i.test(m.id) && /^[a-z0-9][a-z0-9._-]{0,99}$/i.test(m.id))
     .filter((m) => !/audio|realtime|tts|transcribe|image|dall-e|whisper|embedding|moderation|search|instruct|codex|computer-use|deep-research/i.test(m.id))
     .filter((m) => !/-\d{4}-\d{2}-\d{2}$|-\d{4}$/.test(m.id))
-    .sort((a, b) => (Number(b.created) || 0) - (Number(a.created) || 0))
+    // v-openai-pick: «الأحدث» زمنيًّا قد يكون موديلًا تخصّصيًّا؛ أبقِ الثلاثة
+    // العامّة الموصى بها في رأس قائمة المالك إن كان مفتاحه يملكها، ثمّ الأحدث.
+    .sort((a, b) => {
+      const ai = OPENAI_PREFERRED.indexOf(a.id), bi = OPENAI_PREFERRED.indexOf(b.id);
+      if (ai !== -1 || bi !== -1) return ai === -1 ? 1 : (bi === -1 ? -1 : ai - bi);
+      return (Number(b.created) || 0) - (Number(a.created) || 0);
+    })
     .slice(0, PER_PROVIDER)
     .map((m) => ['openai/' + m.id, m.id]);
 }

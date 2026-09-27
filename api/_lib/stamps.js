@@ -1,4 +1,4 @@
-// «طوابع المدرسة» — ورقة طوابع/ملصقات قابلة للطباعة والقص عبر OpenAI (gpt-image-2).
+// «طوابع المدرسة» — ورقة طوابع/ملصقات قابلة للطباعة والقص عبر OpenAI.
 // يأخذ صورة الطفل + اسمه ويعيد ورقة كاملة فيها طوابع صغيرة كثيرة بأشكال جميلة.
 // نفس حرّاس adimage.js: هويّة مُتحقَّقة ثم سقف يومي، وsignal خاص يتخطى حارس الـ٣٠ ثانية.
 // v-ad-suite: عدّاد مستقلّ ('stamps') — كان يشارك عدّاد 'adimage' فتأكل الطوابع رصيد الإعلانات.
@@ -143,7 +143,7 @@ module.exports = async (req, res) => {
       + 'No other text anywhere, no watermark, no logo, no invented letters. Clean, bright, printable, joyful school-stickers style.';
 
     const body = {
-      model: 'gpt-image-2',
+      model: 'gpt-image-2.5-sunburst',
       prompt: p,
       size: '1024x1536',
       quality: 'medium',

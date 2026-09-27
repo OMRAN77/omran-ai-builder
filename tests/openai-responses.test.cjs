@@ -46,22 +46,22 @@ const ask = (t) => [{ role: 'user', content: t }];
 /* بثّ /v1/responses كما يرسله الخادم: سطر event ثمّ سطر data لكلّ حدث */
 const rsse = (events) => new Response(events.map((e) => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
 const rText = (text, model) => rsse([
-  { type: 'response.created', response: { id: 'resp_1', model: model || 'gpt-5.6-terra', status: 'in_progress' } },
+  { type: 'response.created', response: { id: 'resp_1', model: model || 'gpt-6-sol', status: 'in_progress' } },
   { type: 'response.output_item.added', output_index: 0, item: { id: 'rs_1', type: 'reasoning', summary: [] } },
   { type: 'response.output_item.done', output_index: 0, item: { id: 'rs_1', type: 'reasoning', summary: [] } },
   { type: 'response.output_item.added', output_index: 1, item: { id: 'msg_1', type: 'message', role: 'assistant', content: [] } },
   { type: 'response.output_text.delta', item_id: 'msg_1', output_index: 1, content_index: 0, delta: text.slice(0, 3) },
   { type: 'response.output_text.delta', item_id: 'msg_1', output_index: 1, content_index: 0, delta: text.slice(3) },
   { type: 'response.output_item.done', output_index: 1, item: { id: 'msg_1', type: 'message' } },
-  { type: 'response.completed', response: { id: 'resp_1', model: model || 'gpt-5.6-terra', status: 'completed', usage: { input_tokens: 120, input_tokens_details: { cached_tokens: 20 }, output_tokens: 9 } } },
+  { type: 'response.completed', response: { id: 'resp_1', model: model || 'gpt-6-sol', status: 'completed', usage: { input_tokens: 120, input_tokens_details: { cached_tokens: 20 }, output_tokens: 9 } } },
 ]);
 const rCall = (callId, name, args) => rsse([
-  { type: 'response.created', response: { id: 'resp_0', model: 'gpt-5.6-terra', status: 'in_progress' } },
+  { type: 'response.created', response: { id: 'resp_0', model: 'gpt-6-sol', status: 'in_progress' } },
   { type: 'response.output_item.added', output_index: 0, item: { id: 'fc_1', type: 'function_call', call_id: callId, name, arguments: '' } },
   { type: 'response.function_call_arguments.delta', item_id: 'fc_1', output_index: 0, delta: args.slice(0, 5) },
   { type: 'response.function_call_arguments.delta', item_id: 'fc_1', output_index: 0, delta: args.slice(5) },
   { type: 'response.output_item.done', output_index: 0, item: { id: 'fc_1', type: 'function_call', call_id: callId, name, arguments: args } },
-  { type: 'response.completed', response: { id: 'resp_0', model: 'gpt-5.6-terra', status: 'completed', usage: { input_tokens: 80, output_tokens: 12 } } },
+  { type: 'response.completed', response: { id: 'resp_0', model: 'gpt-6-sol', status: 'completed', usage: { input_tokens: 80, output_tokens: 12 } } },
 ]);
 const TERRA_400 = JSON.stringify({ error: { message: 'Function tools with reasoning_effort are not supported for gpt-5.6-terra in /v1/chat/completions. Please use /v1/responses instead.', type: 'invalid_request_error', param: 'reasoning_effort', code: null } });
 const OR_402 = JSON.stringify({ type: 'error', error: { type: 'billing_error', message: 'This request would exceed your available credit' } });
@@ -101,7 +101,7 @@ test('١. العطل نفسه: سؤال بأدوات على GPT المباشر �
     const r = await run({ provider: 'openai', messages: ask('ابحث لي عن آخر أخبار الذكاء الاصطناعي'), responses: [() => rText('هذا جواب GPT')] });
     assert.equal(r.calls[0].url, 'https://api.openai.com/v1/responses', 'الطلب الأوّل إلى responses');
     assert.equal(r.calls[0].headers.Authorization, 'Bearer sk-openai-test');
-    assert.equal(r.calls[0].body.model, 'gpt-5.6-terra');
+    assert.equal(r.calls[0].body.model, 'gpt-6-sol');
     assert.ok(Array.isArray(r.calls[0].body.tools) && r.calls[0].body.tools.length > 3, 'الأدوات عابرة');
     assert.ok(!r.calls.some((c) => /chat\/completions|openrouter/.test(c.url)), 'لا مسار قديم ولا وسيط');
     assert.ok(!r.events.some((e) => e.k === 'stModelFallback'), 'لا سطر «غير متاح»');
@@ -163,7 +163,7 @@ test('٤. تحويل البثّ: نصّ، نداء أداة مقطّع أو كا
   const read = async (resp) => (await new Response(od.responsesToAnthropicStream(resp.body, 'fb')).text()).split('\n').filter((l) => l.startsWith('data: ')).map((l) => JSON.parse(l.slice(6)));
   let evs = await read(rText('مرحبا بك'));
   assert.equal(evs[0].type, 'message_start');
-  assert.equal(evs[0].message.model, 'gpt-5.6-terra');
+  assert.equal(evs[0].message.model, 'gpt-6-sol');
   assert.equal(evs.filter((e) => e.type === 'content_block_delta').map((e) => e.delta.text).join(''), 'مرحبا بك');
   assert.deepEqual(evs.filter((e) => e.type === 'message_start')[1].message, { usage: { input_tokens: 100, cache_read_input_tokens: 20 } });
   let md = evs.find((e) => e.type === 'message_delta');
@@ -197,7 +197,7 @@ test('٥. موديل اختاره المالك ولا يملكه المفتاح 
   try {
     const r = await run({ provider: 'openai', model: 'openai/gpt-6-luna-pro', messages: ask('سؤال'), responses: [
       (body) => { assert.equal(body.model, 'gpt-6-luna-pro'); return new Response(JSON.stringify({ error: { message: 'The model `gpt-6-luna-pro` does not exist or you do not have access to it.', type: 'invalid_request_error', code: 'model_not_found' } }), { status: 404 }); },
-      (body) => { assert.equal(body.model, 'gpt-5.6-terra'); return rText('من الافتراضيّ'); },
+      (body) => { assert.equal(body.model, 'gpt-6-sol'); return rText('من الافتراضيّ'); },
     ] });
     const fb = r.events.find((e) => e.k === 'stModelFallback' && /gpt-6-luna-pro/.test(e.status));
     assert.ok(fb, 'سطر الرجوع');
@@ -279,7 +279,7 @@ test('٩. العميل: الموديل المرفوض يُمسح من الاخت
   const tools = fs.readFileSync(path.join(root, 'js/app-18-chat-tools.js'), 'utf8');
   assert.ok(tools.includes("if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); }"), 'العميل يمسح عند سطر الرجوع');
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('window.omranForgetModel(ev.prov'), 'في الحزمة');
-  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m250925b'), 'وسم كاش modes رُفع');
+  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m260926a'), 'وسم كاش modes رُفع');
 });
 
 test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب الذي رفض والموديل (OpenAI المباشر ثمّ OpenRouter) بدل JSON بلا اسم', async () => {
@@ -290,9 +290,9 @@ test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب ال�
     const log = db.get('db/server-errors/log.json') || [];
     const direct = log.find((e) => e.route === 'swallowed:chat/direct-fail-429');
     const final = log.find((e) => e.route === 'swallowed:chat/upstream-fail');
-    assert.ok(direct && direct.message.startsWith('OpenAI مباشر · gpt-5.6-terra: '), direct && direct.message);
+    assert.ok(direct && direct.message.startsWith('OpenAI مباشر · gpt-6-sol: '), direct && direct.message);
     assert.ok(/insufficient_quota/.test(direct.message), 'نصّ المزوّد باقٍ بعد الاسم');
-    assert.ok(final && final.message.startsWith('402 OpenRouter · openai/gpt-5.6-terra: '), final && final.message);
+    assert.ok(final && final.message.startsWith('402 OpenRouter · openai/gpt-6-sol: '), final && final.message);
   } finally { delete process.env.OPENAI_API_KEY; }
 });
 

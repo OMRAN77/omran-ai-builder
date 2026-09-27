@@ -9,14 +9,15 @@
  *
  * كلّ الدوال تُرجع صورة كـ base64 خام (بلا بادئة data:).
  * المفاتيح: OPENAI_API_KEY · GEMINI_API_KEY
- * النماذج : IMAGE_EDIT_MODEL (نانو، افتراضي gemini-3.1-flash-image) · gpt-image-2
+ * النماذج : IMAGE_EDIT_MODEL (نانو، افتراضي gemini-3.1-flash-image) · GPT Image 2.5
  */
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 // v-models-latest: نانو ٢٫٥ (gemini-2.5-flash-image) تُوقفه Google في ٢ أكتوبر ٢٠٢٦ — بديله الرسميّ نانو ٢ (٣٫١).
 const NANO_MODEL = (process.env.IMAGE_EDIT_MODEL || 'gemini-3.1-flash-image').trim(); // نانو
-const GPT_MODEL  = 'gpt-image-2';
+const GPT_GENERATE_MODEL = 'gpt-image-2.5-flare';
+const GPT_EDIT_MODEL = 'gpt-image-2.5-sunburst';
 const TIMEOUT    = 240000; // ٤ دقائق — التوليد/التعديل عالي الدقّة قد يطول
 
 const GPT_SIZE = { '1:1': '1024x1024', '3:2': '1536x1024', '2:3': '1024x1536', '16:9': '1536x864' };
@@ -24,7 +25,7 @@ const GPT_SIZE = { '1:1': '1024x1024', '3:2': '1536x1024', '2:3': '1024x1536', '
 /* ════════════ 1) GPT (OpenAI) ════════════ */
 
 async function gptGenerate({ prompt, aspect = '1:1', transparent = false }) {
-  const body = { model: GPT_MODEL, prompt, size: GPT_SIZE[aspect] || '1024x1024', n: 1 };
+  const body = { model: GPT_GENERATE_MODEL, prompt, size: GPT_SIZE[aspect] || '1024x1024', n: 1 };
   if (transparent) { body.background = 'transparent'; body.output_format = 'png'; }
   const res = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -40,7 +41,7 @@ async function gptGenerate({ prompt, aspect = '1:1', transparent = false }) {
 
 async function gptEdit({ prompt, imageB64, mime = 'image/png' }) {
   const form = new FormData();
-  form.append('model', GPT_MODEL);
+  form.append('model', GPT_EDIT_MODEL);
   form.append('prompt', prompt);
   form.append('image', new Blob([Buffer.from(imageB64, 'base64')], { type: mime }), 'src.png');
   const res = await fetch('https://api.openai.com/v1/images/edits', {

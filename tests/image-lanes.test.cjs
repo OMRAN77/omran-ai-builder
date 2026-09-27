@@ -62,8 +62,9 @@ test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ 
   assert.match(mi, /const mainEngine = nanoPrimary \? \(__pureRaw \? 'nano-raw' : 'nano'\) : \(__pureRaw \? 'nano-pro-raw' : 'nano-pro'\);/);
 });
 
-test('٣. الخام خام: المحرّك المختار وحده، GPT خام بأمانة عالية، وترقية المكان بلا سؤال للنموذج، والتفسير للتوليد فقط', () => {
-  assert.match(mi, /form\.append\('input_fidelity', 'high'\);/);
+test('٣. الخام خام: المحرّك المختار وحده، Sunburst يحفظ المدخل تلقائيًّا، وترقية المكان بلا سؤال للنموذج، والتفسير للتوليد فقط', () => {
+  assert.match(mi, /if \(!apiKey && !process\.env\.OPENAI_API_KEY\)/, 'مفتاح GPT وحده يكفي لمساره ولا يُحجب باشتراط نانو');
+  assert.ok(mi.includes("'gpt-image-2.5-sunburst'") && !mi.includes("form.append('input_fidelity'"), 'Sunburst يفرض أمانة المدخل ويرفض الحقل القديم');
   assert.ok(!/'low' : 'high'/.test(mi));
   assert.match(mi, /if \(__optForceEngine === 'gpt'\) \{\n\s+const __gptB64 = await openaiRescueImage\(\);/);
   assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-3\.1-flash-image'/);
@@ -78,6 +79,17 @@ test('٣. الخام خام: المحرّك المختار وحده، GPT خام
   assert.match(mi, /const nanoB64 = await geminiNanoBananaImage\(\);/);
   assert.match(mi, /const rescuedB64 = __gptTried \? null : await openaiRescueImage\(\);/); // v-img-mix: الدمج جرّب GPT وفشل = لا نداء ثانٍ
   assert.match(mi, /const freeImg = await freeFallbackImage\(\);/);
+  assert.match(mi, /String\(process\.env\.IMAGE_FREE_FALLBACK \|\| 'off'\)\.toLowerCase\(\) !== 'on'/, 'النتيجة المجانيّة الضعيفة لا تعمل افتراضيًّا');
+});
+
+test('وضع الدمج يولّد مرشّحين مستقلّين من نانو وGPT بالتوازي ثم يختار نتيجة واحدة', () => {
+  const i = mi.indexOf('if (__engineMix) {');
+  const seg = mi.slice(i, mi.indexOf('if (__textRoute && !__engineMix)', i));
+  assert.match(seg, /await Promise\.all\(\[/);
+  assert.match(seg, /proCandidate\(\)\.catch/);
+  assert.match(seg, /gptCandidate\('', __extraBudget\(\)\)\.catch/);
+  assert.match(seg, /await deliver\(__mixCandidates, null, polish\);/);
+  assert.doesNotMatch(seg, /await deliver\(pro, __gptAlt/, 'ليس نانو أولًا وGPT عند فشله فقط');
 });
 
 test('٤. العميل: تبديل الحرف طلب واحد للخادم بلا مرحلتَي الرؤية والقناع؛ آخر طلب فقط على آخر صورة', () => {

@@ -24,7 +24,7 @@ async function openaiRescueImage(promptText, landscape) {
     const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-image-2', prompt: String(promptText).slice(0, 3900), size: landscape ? '1536x1024' : '1024x1024', quality: 'high' }),
+      body: JSON.stringify({ model: 'gpt-image-2.5-flare', prompt: String(promptText).slice(0, 3900), size: landscape ? '1536x1024' : '1024x1024', quality: 'high' }),
       signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
     const d = await r.json();

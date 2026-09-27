@@ -31,6 +31,7 @@ test('reserved exact-text area remains free of model-rendered writing', () => {
   const p = buildGenerationPrompt('غروب هادئ', { reserveTextArea:true, textPosition:'top' });
   assert.match(p, /Do not render any words, letters, numbers/);
   assert.match(p, /Keep the upper portion calm and uncluttered/);
+  assert.match(buildGenerationPrompt('غروب هادئ', { reserveTextArea:true, textPosition:'right-center' }), /Keep the right-hand portion calm and uncluttered/);
 });
 
 test('generation never asks the image model to reproduce user wording', () => {

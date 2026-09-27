@@ -36,7 +36,7 @@ test('١. الافتراضيّ = السلوك القديم: صورة وحدة، 
   assert.equal(r.status, 200);
   assert.deepEqual(r.json.options, { count: 12, shape: 'mixed', style: 'real', photos: 1 });
   assert.equal(r.sent[0].images, 1);
-  assert.equal(r.sent[0].model, 'gpt-image-2');
+  assert.equal(r.sent[0].model, 'gpt-image-2.5-sunburst');
   assert.match(r.sent[0].prompt, /12 small stickers/);
   assert.match(r.sent[0].prompt, /all 12 frames must be visibly different/);
   assert.match(r.sent[0].prompt, /must stay EXACTLY as photographed/);
@@ -100,5 +100,5 @@ test('٦. «صورة 4K» و«صورة بنصّ دقيق» خرجا من «+» �
   const re = /(?:نصّ?|كتابه?ة?|خط)\s*(?:دقيق[هة]?|صحيح[هة]?|مضبوط[هة]?)/;
   assert.ok(re.test('سو دعوة بنص دقيق') && re.test('بكتابة صحيحة') && !re.test('ارسم قطة'));
   assert.ok(/4k|للطباعة/.test(mi.match(/const __want4K = [^\n]+/)[0]), '4K من الكتابة كان قائمًا في الخادم');
-  assert.ok(read('index.html').includes('js/modes.js?v=m250925b'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m260926a'), 'وسم كاش modes رُفع');
 });

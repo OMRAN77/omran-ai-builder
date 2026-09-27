@@ -1,5 +1,5 @@
 // Vercel Serverless Function: mints an ephemeral OpenAI Realtime API client
-// secret for Maha's voice-to-voice call mode (gpt-realtime). This lets the
+// secret for Maha's voice-to-voice call mode (gpt-realtime-2.1). This lets the
 // browser connect directly to OpenAI via WebRTC for natural, low-latency
 // speech-to-speech, using the site owner's own OPENAI_API_KEY (never exposed
 // to the client - only the short-lived ephemeral token is sent to the browser).
@@ -285,7 +285,7 @@ module.exports = async (req, res) => {
     const sessionConfig = {
       session: {
         type: 'realtime',
-        model: 'gpt-realtime',
+        model: 'gpt-realtime-2.1',
         instructions: (mode === 'builder'
           ? BUILDER_REALTIME_INSTRUCTIONS
           : (voiceGender === 'male' ? toMalePersona(MAHA_REALTIME_INSTRUCTIONS) : MAHA_REALTIME_INSTRUCTIONS))
@@ -303,7 +303,7 @@ module.exports = async (req, res) => {
             noise_reduction: { type: 'near_field' },
             // v-maha-captions: تفريغ كلام المستخدم نصًّا ليصل حدث
             // input_audio_transcription.completed فتظهر الترجمة الحية على الشاشة.
-            transcription: { model: 'gpt-4o-mini-transcribe' },
+            transcription: { model: 'gpt-live-transcribe' },
             // v607: الجوّال كان semantic_vad — يقرّر بالمعنى، وينتظر مهلة إن ظنّ الجملة ناقصة
             // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'
@@ -528,7 +528,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime', mahaBudget });
+    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }

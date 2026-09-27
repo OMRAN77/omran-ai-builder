@@ -87,10 +87,9 @@
          مفتاح موديل المزوّد (عبر omranPickProviderModel). المعرّفات من إعدادات التطبيق نفسها. */
       var PROVS = [
         { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-haiku-4-5',     models:[['claude-opus-5-5','Opus 5.5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
-        /* v-provider-models (أمر المالك ٢٢ سبتمبر «كلّ واحد وموديله بالضبط»): المعرّفات هنا معرّفات OpenRouter كما
-           يستعملها الخادم (OR_MODELS في chat.js) — الافتراضيّ الواحد ثابت، والباقي يأتي حيًّا من /api/ai?action=models.
-           الأسماء القديمة (Astra/Sol/Luna…) كانت عرضًا لا يصل الخادم فأُزيلت. */
-        { key:'openai',     name:'OpenAI · GPT',             or:true, store:'aiapp_model',            def:'openai/gpt-5.6-terra',        models:[['openai/gpt-5.6-terra','GPT-5.6 Terra']] },
+        /* v-provider-models/v-openai-pick: المعرّفات هنا هي نفسها التي يرسلها الخادم؛
+           والمالك وحده يأخذ القائمة الحيّة التي يملكها مفتاحه من /api/ai?action=models. */
+        { key:'openai',     name:'OpenAI · GPT',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6-sol','GPT-6 Sol'],['openai/gpt-6-luna','GPT-6 Luna']] },
         { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), or:true, store:'aiapp_gemini_model', def:'google/gemini-3.8-flash', models:[['google/gemini-3.8-flash','Gemini 3.8 Flash']] },
         { key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
         { key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
@@ -136,7 +135,7 @@
          بجسر Railway المكسور — الوكيل يملك صلاحيات Claude Code الكاملة عبر GitHub Actions. */
       function renderPop(){ pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + divider + provsHTML(); }
       renderPop();
-      /* v-provider-models: القائمة الحيّة من الخادم (OpenRouter — الأحدث ثمانية لكلّ مزوّد) تُلحق بالافتراضيّ الثابت. */
+      /* v-provider-models: القائمة الحيّة من الخادم تُلحق بالافتراضيّ الثابت؛ OpenAI يرتّب الثلاثة العامّة أولًا. */
       if(isOwner()){
         try{
           fetch('/api/ai?action=models', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) })
@@ -147,7 +146,8 @@
               for(var i=0;i<PROVS.length;i++){ var p = PROVS[i]; var L = d.models[p.key];
                 if(!p.or || !L || !L.length) continue;
                 var has = false; for(var j=0;j<L.length;j++){ if(L[j][0] === p.def) has = true; }
-                p.models = (has ? [] : [[p.def, p.models[0][1]]]).concat(L); changed = true;
+                var defLabel = p.def; for(j=0;j<p.models.length;j++){ if(p.models[j][0] === p.def){ defLabel = p.models[j][1]; break; } }
+                p.models = (has ? [] : [[p.def, defLabel]]).concat(L); changed = true;
               }
               if(changed){ renderPop(); refresh(); }
             }).catch(function(){ /* guard-ok: القائمة الحيّة تحسينيّة — الافتراضيّ الثابت يبقى */ });

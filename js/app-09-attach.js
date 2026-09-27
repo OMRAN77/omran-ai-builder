@@ -1666,6 +1666,9 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
   const exact = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
   if(!exact.trim()) throw new Error('missing_exact_text');
   const fontCss = await mahaLoadFont(fontKey || 'default');
+  /* الخطوط الزخرفيّة متاحة بوزن 400 فقط؛ طلب 700 كان يصنع تغليظًا اصطناعيًّا
+     يشوّه اتصال الحروف العربيّة، بينما الخطوط النصيّة تملك وزن 700 حقيقيًّا. */
+  const fontWeight = /^(diwani|thuluth|ruqaa|farsi)$/.test(String(fontKey || '')) ? '400' : '700';
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -2395,11 +2398,13 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
     __m._loading = false;
     if(__r.ok && __d && __d.imageBase64){
       let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
+      const __baseB64 = __b64, __baseMime = __mime;
       const __overlayText = textSpec.exactText || (textSpec.autoAuthored && typeof __d.authoredText === 'string' ? __d.authoredText.trim() : '');
       if(textSpec.wantsText && !__overlayText) throw new Error('missing_authored_prayer');
       if(__overlayText){
         __b64 = await overlayTextOnImage(__b64, __mime, __overlayText, textSpec.fontKey, textSpec.color, textSpec.position);
         __mime = 'image/png';
+        cur.imageTextLayer = { baseB64:__baseB64, baseMime:__baseMime, text:__overlayText, fontKey:textSpec.fontKey, color:textSpec.color, position:textSpec.position };
       }
       __m.content = ''; // v666: بلا جملة فوق الصورة — التفسير يُعرض تحتها كرسالة منفصلة
       let __genUrl = 'data:' + __mime + ';base64,' + __b64;
@@ -5869,7 +5874,7 @@ DESIGN RULES (non-negotiable):
       // كانت تُقصى منه كلها فتسقط لمسار قديم أضعف (سبب تحليل الصور السطحي).
       // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
       const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
-        && (!imageAttachments.length || __effProv === 'claude')
+        && (!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai'))
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){

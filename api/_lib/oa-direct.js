@@ -38,7 +38,7 @@ function directModel(prov, requested, env) {
   let id = String(requested || '').trim();
   if (prov === 'openai') {
     if (/^openai\//i.test(id)) id = id.slice(7);
-    const def = String(e.CHAT_OPENAI_MODEL || '').trim() || 'gpt-5.6-terra';
+    const def = String(e.CHAT_OPENAI_MODEL || '').trim() || 'gpt-6-sol';
     return (id && DIRECT_ID_RE.test(id) && id.indexOf('/') === -1) ? { model: id, picked: true, def } : { model: def, picked: false, def };
   }
   if (prov === 'gemini') {
