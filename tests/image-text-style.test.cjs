@@ -118,3 +118,23 @@ test('client: with no colour asked, the text takes a tint of the image\'s own vi
   assert.match(attach, /if\(\/\^#ffffff\$\/i\.test\(base\)\)\{ \/\* v-text-harmony/, 'الافتراضيّ وحده يتنسّق؛ اللون المطلوب يغلب');
   assert.doesNotMatch(attach, /__omranTextStyleBar/, 'بلا شريط اختيار — طلب المالك');
 });
+
+test('review #804 (bugbot): style first, text after — the words after the style run are still printed', () => {
+  for (const [p, t, c] of [['اكتب بخط وردي حبيبة قلبي', 'حبيبة قلبي', '#ff4f9a'], ['اكتب بلون وردي حبيبة قلبي', 'حبيبة قلبي', '#ff4f9a'], ['اكتب بالوردي حبيبة قلبي', 'حبيبة قلبي', '#ff4f9a'], ['اكتب بخط وردي فاتح حبيبة قلبي بخط كبير', 'حبيبة قلبي', '#ffb3d1']]) {
+    const s = parseImageTextSpec(p);
+    assert.equal(s.wantsText, true, p);
+    assert.equal(s.exactText, t, p);
+    assert.equal(s.color, c, p);
+  }
+  const d = parseImageTextSpec('اكتب بخط ديواني عمران');
+  assert.equal(d.exactText, 'عمران');
+  assert.equal(d.fontKey, 'diwani');
+  assert.equal(parseImageTextSpec('اكتب بخط وردي فاتح حبيبة قلبي بخط كبير').size, 'large');
+});
+
+test('review #804 (bugbot): the text colour comes from its own style words, the scene colour goes to the image', () => {
+  const s = parseImageTextSpec('اكتب «حبيبة قلبي» بخط لونه وردي والخلفية زرقاء');
+  assert.equal(s.color, '#ff4f9a', 'الكتابة ورديّة لا زرقاء');
+  assert.equal(s.visualEdit, 'الخلفية زرقاء', 'بلا «ردي» ولا «وردي» في تعديل المشهد');
+  assert.equal(parseImageTextSpec('اكتب «عمران» بالأصفر').color, '#ffd400', 'اللون بلا «بخط» كما كان');
+});
