@@ -73,3 +73,10 @@ test('٦. X الإعدادات مخفي في الهواتف وحدها، ونس�
   assert.match(wiring, /tool-card-images\.css\?v=17/);
   assert.match(wiring, /tool-card-images\.js\?v=16/);
 });
+
+test('٧. v-shelf-scroll-smooth: تمرير الصفّ بالماوس/التراك باد بلا snap قسري (مسبار Playwright أثبت أنّ mandatory وproximity كليهما يبتلعان تمرير العجلة الصغير ثم يقفزان دفعة واحدة)، والمسّ يبقى محاذًى', () => {
+  assert.match(css, /#sectionsToolsPopup \.ptCarousel\{overflow-x:auto; overflow-y:hidden; scrollbar-width:none; scroll-snap-type:x mandatory; overscroll-behavior-inline:contain;\}/, 'المسّ (بلا hover:hover/pointer:fine) يبقى على mandatory — محاذاة أنيقة عند سحب الجوال');
+  assert.match(css, /@media \(hover:hover\) and \(pointer:fine\)\{\s*#sectionsToolsPopup \.ptCarousel\{scroll-snap-type:none;\}\s*\}/, 'مؤشّر دقيق (ماوس/تراك باد) يُلغي الـsnap فلا يقاوم تمرير سطح المكتب');
+  /* moveShelf تعتمد على scrollIntoView البرمجيّة لا على CSS snap، فإلغاء snap لا يكسر أزرار السهم */
+  assert.match(features, /target\.scrollIntoView\(\{ behavior:/);
+});

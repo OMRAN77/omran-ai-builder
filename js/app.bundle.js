@@ -28411,12 +28411,29 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + '.pstyleHero .pstyleHeroT{position:absolute; width:19%; aspect-ratio:1; border-radius:50%; overflow:hidden; border:2px solid rgba(212,175,55,.75); background:#17171b; box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; transform:translate(-50%,-50%); transition:transform .18s, box-shadow .18s;}'
       + '.pstyleHero .pstyleHeroT:hover{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 22px rgba(212,175,55,.6);}'
       + '.pstyleHero .pstyleHeroT img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
-      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}';
+      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}'
+      /* v-psheet-header-collapse (طلب المالك: الرأس يرفع كتابته ويصغر عند تمرير المعرض لأسفل، بدل مساحة ثابتة كبيرة) */
+      + '#portraitStyleSheetHeader{transition:padding .22s ease;}'
+      + '#portraitStyleSheetTitle{transition:font-size .22s ease;}'
+      + '#portraitStyleSheetCount{transition:opacity .18s ease, max-height .22s ease, margin-top .22s ease; overflow:hidden; max-height:16px;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall{padding-top:calc(6px + max(env(safe-area-inset-top,0px), 30px)) !important; padding-bottom:8px !important;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetTitle{font-size:14.5px !important;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}';
     document.head.appendChild(st);
+  }
+  /* الرأس (العنوان + العدّاد) يصغر ويرتفع فور بدء تمرير المعرض، ويعود لحجمه عند القمّة */
+  function bindPsheetHeaderCollapse(scroller){
+    if(!scroller || scroller.__pstyleHeaderBound) return;
+    scroller.__pstyleHeaderBound = true;
+    scroller.addEventListener('scroll', function(){
+      const header = document.getElementById('portraitStyleSheetHeader');
+      if(header) header.classList.toggle('pstyleHeaderSmall', scroller.scrollTop > 20);
+    }, { passive: true });
   }
   function ensurePsheetChrome(){
     ensurePsheetCss();
     const scroller = styleCardsGrid.parentElement; if(!scroller) return;
+    bindPsheetHeaderCollapse(scroller);
     let hero = document.getElementById('portraitStyleHero');
     if(!hero){
       hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';
