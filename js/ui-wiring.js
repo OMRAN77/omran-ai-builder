@@ -254,13 +254,13 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا
   if(!document.querySelector('link[data-omran-tool-photos]')){
     var css = document.createElement('link');
     css.rel = 'stylesheet';
-    css.href = '/css/tool-card-images.css?v=15';
+    css.href = '/css/tool-card-images.css?v=16';
     css.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(css);
   }
   if(!document.querySelector('script[data-omran-tool-photos]')){
     var js = document.createElement('script');
-    js.src = '/js/tool-card-images.js?v=15';
+    js.src = '/js/tool-card-images.js?v=16';
     js.async = false;
     js.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(js);

@@ -54,7 +54,7 @@ test('٣. البنية: الرأس والبطاقة قبل القائمة، وا
   const css = read('css/tokens.css');
   for (const c of ['.setProfile{', '.setUpgrade{', '.settingsNavGroupTitle{', '.settingsNavGroup{', '.settingsNavValue{']) assert.ok(css.includes(c), c);
   const html = read('index.html');
-  assert.ok(html.includes('css/tokens.css?v=725') && html.includes('/js/partials-settings.js?v=675'));
+  assert.ok(html.includes('css/tokens.css?v=726') && html.includes('/js/partials-settings.js?v=675'));
 });
 
 test('٤. النصوص بالـ١٤ لغة، وبلا اسم مزوّد', () => {

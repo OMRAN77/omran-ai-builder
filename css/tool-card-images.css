@@ -1,5 +1,42 @@
 /* v-tools-clean (المالك ٥ سبتمبر): بطاقات الأدوات موحّدة لكل الـ14 لغة — صورة نظيفة بمقاس واحد
    في الأعلى، ثم العنوان والوصف المترجمان وسهم دائري. لا بطاقات مطبوعة ولا قصّ. */
+#sectionsToolsPopup .ptSectionsView{display:flex; flex-direction:column; gap:22px;}
+#sectionsToolsPopup .ptSection{min-width:0;}
+#sectionsToolsPopup .ptSectionHead{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:4px 4px 8px;}
+#sectionsToolsPopup .ptSectionTitle{margin:0; padding:0!important; font-size:14px!important;}
+#sectionsToolsPopup .ptShelfControls{display:flex; align-items:center; gap:6px;}
+#sectionsToolsPopup .ptViewAll,
+#sectionsToolsPopup .ptShelfArrow,
+#sectionsToolsPopup .ptAllBack{
+  border:1px solid rgba(212,175,55,.3); background:rgba(255,255,255,.045); color:var(--text);
+  cursor:pointer; font:inherit;
+}
+#sectionsToolsPopup .ptViewAll{border:0; background:none; color:var(--accent-ink); padding:5px 7px; font-size:12px; font-weight:700;}
+#sectionsToolsPopup .ptShelfArrow{width:30px; height:30px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:21px; line-height:1;}
+html[dir="rtl"] #sectionsToolsPopup .ptShelfArrow{transform:scaleX(-1);}
+#sectionsToolsPopup .ptShelfArrow:hover,
+#sectionsToolsPopup .ptAllBack:hover{border-color:var(--omGold); background:rgba(212,175,55,.1);}
+#sectionsToolsPopup :is(.ptViewAll,.ptShelfArrow,.ptAllBack,.ptTrack > .btn):focus-visible{
+  outline:2px solid var(--omGold); outline-offset:2px;
+}
+#sectionsToolsPopup .ptShelfArrow:disabled{opacity:.3; cursor:default;}
+#sectionsToolsPopup .ptCarousel{overflow-x:auto; overflow-y:hidden; scrollbar-width:none; scroll-snap-type:x mandatory; overscroll-behavior-inline:contain;}
+#sectionsToolsPopup .ptCarousel::-webkit-scrollbar{display:none;}
+#sectionsToolsPopup .ptTrack{display:flex!important; width:max-content; min-width:100%; align-items:stretch; gap:12px!important; padding:2px 2px 6px!important; position:relative;}
+#sectionsToolsPopup .ptTrack > .btn{flex:0 0 220px; scroll-snap-align:start;}
+#sectionsToolsPopup .ptSentinel{position:absolute; inset-block-start:0; width:1px; height:1px; pointer-events:none;}
+#sectionsToolsPopup .ptSentinelStart{inset-inline-start:0;}
+#sectionsToolsPopup .ptSentinelEnd{inset-inline-end:0;}
+#sectionsToolsPopup .ptAllView[hidden],
+#sectionsToolsPopup [hidden]{display:none!important;}
+#sectionsToolsPopup .ptAllHead{display:flex; align-items:center; gap:12px; padding:2px 2px 16px;}
+#sectionsToolsPopup .ptAllTitle{margin:0; font-size:20px; outline:none;}
+#sectionsToolsPopup .ptAllBack{flex:0 0 36px; width:36px; height:36px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;}
+#sectionsToolsPopup .ptAllBack svg{width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+html[dir="rtl"] #sectionsToolsPopup .ptAllBack svg{transform:scaleX(-1);}
+#sectionsToolsPopup .ptAllHost .ptTrack{display:grid!important; grid-template-columns:repeat(auto-fill,minmax(220px,1fr))!important; width:100%; gap:14px!important;}
+#sectionsToolsPopup .ptAllHost .ptTrack > .btn{width:100%; min-width:0;}
+#sectionsToolsPopup .ptAllHost .ptSentinel{display:none;}
 #sectionsToolsPopup .ptGrid{align-items:stretch;}
 #sectionsToolsPopup .ptGrid .btn.hasToolPhoto{
   min-height:0!important; height:auto!important; padding:0!important; gap:0!important; overflow:hidden;
@@ -11,12 +48,15 @@
   box-shadow:0 10px 24px rgba(0,0,0,.28),0 0 0 1px rgba(212,175,55,.12)!important;
   transform:translateY(-2px);
 }
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcMedia{
+  display:block; position:relative; width:100%; aspect-ratio:16/10; overflow:hidden; background:#0b0b10;
+}
 #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{
-  display:block!important; flex:0 0 118px!important; height:118px!important; width:100%!important; max-width:100%!important; margin:0!important;
+  display:block!important; height:100%!important; width:100%!important; max-width:100%!important; margin:0!important;
   object-fit:cover!important; object-position:50% 45%!important; border-radius:0!important; pointer-events:none;
 }
 #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcMeta{
-  display:flex; align-items:center; gap:8px; width:100%; flex:1 0 auto; padding:9px 12px 11px;
+  display:flex; align-items:flex-start; width:100%; flex:1 0 auto; min-height:76px; padding:9px 12px 10px;
   background:#070709; text-align:start; direction:inherit;
 }
 #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcTxt{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px;}
@@ -29,36 +69,36 @@
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
   font-size:11px; font-weight:500; line-height:1.3; color:#b9b3a3; white-space:normal;
 }
-#sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcArrow{
-  flex:0 0 30px; width:30px; height:30px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
-  display:inline-flex; align-items:center; justify-content:center; font-size:20px; line-height:1; color:#f3efe4; padding-bottom:2px;
-}
-html[dir="rtl"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcArrow{transform:scaleX(-1);}
 html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto,
 html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcMeta{background:#fff!important;}
-html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .btnLabel,
-html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcArrow{color:#14161a!important;}
+html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .btnLabel{color:#14161a!important;}
 html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcSub{color:#6b6657;}
-html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcArrow{background:rgba(0,0,0,.05); border-color:rgba(0,0,0,.12);}
 @media (min-width:761px){
   #sectionsToolsPopup{max-width:none!important;}
 }
 @media (max-width:600px){
-  #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(2,1fr)!important; gap:10px!important;}
-  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{flex-basis:96px!important; height:96px!important;}
-  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcMeta{padding:8px 9px 10px; gap:6px;}
+  #sectionsToolsPopup .ptSectionsView{gap:18px;}
+  #sectionsToolsPopup .ptTrack > .btn{flex-basis:min(72vw,250px);}
+  #sectionsToolsPopup .ptShelfArrow{display:none!important;}
+  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcMeta{padding:8px 9px 10px;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .btnLabel{font-size:13px;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcSub{font-size:10.5px;}
-  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcArrow{flex-basis:26px; width:26px; height:26px; font-size:17px;}
 }
 /* v-tools-uniform: مقاس واحد لكل البطاقات (بلا ألوان تمييزية ولا شارات فوق صور المالك النظيفة) */
-#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcMeta{height:92px; flex:0 0 92px; align-items:center;}
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcMeta{align-items:flex-start;}
 #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .btnLabel{-webkit-line-clamp:2;}
-#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcSub{-webkit-line-clamp:1;}
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcSub{-webkit-line-clamp:2;}
 #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcIco{display:none!important;}
 /* v-live-cards: سطر بيانات حيّة تحت الوصف — لا شيء فوق الصورة */
-#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{display:block; font-size:11px; font-weight:800; color:#d4af37; line-height:1.3; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; unicode-bidi:plaintext;}
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{
+  position:absolute; inset-inline-start:8px; inset-block-end:8px; display:block; max-width:calc(100% - 16px);
+  padding:4px 7px; border-radius:999px; background:rgba(0,0,0,.78); border:1px solid rgba(255,255,255,.18);
+  font-size:10px; font-weight:800; color:#d4af37; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; unicode-bidi:plaintext;
+}
 @media (max-width:600px){
-  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcMeta{height:88px; flex-basis:88px;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{font-size:10px;}
+}
+@media (prefers-reduced-motion:reduce){
+  #sectionsToolsPopup .ptCarousel{scroll-behavior:auto;}
+  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto{transition:none!important;}
 }
