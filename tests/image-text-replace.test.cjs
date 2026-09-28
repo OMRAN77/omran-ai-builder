@@ -112,7 +112,7 @@ test('١٢. v-text-design يلغي v-text-strong: ملصق مصمَّم — حا
   assert.match(attach, /wide = measure\(W \* 0\.84, H \* 0\.36\)/);
   assert.match(attach, /const fontWeight = fk === 'kufi' \? '700' : '400';/, 'الخطّ المسمّى بوزنه الحقيقيّ (v-image-fonts)');
   assert.match(attach, /const titleW = named \? fontWeight : '400', bodyW = named \? fontWeight : '400'/, 'الملصق الافتراضيّ ثلث وديواني بوزن واحد');
-  assert.match(attach, /ctx\.strokeText\(line, cx, by\); ctx\.restore\(\);[\s\S]{0,420}ctx\.fillText\(line, cx, by\)/, 'الحافّة قبل التعبئة: لا فواصل عند وصل الحروف');
+  assert.match(attach, /ctx\.strokeText\(line, ax, by\); ctx\.restore\(\);[\s\S]{0,420}ctx\.fillText\(line, ax, by\)/, 'الحافّة قبل التعبئة: لا فواصل عند وصل الحروف (v-text-layout: عند x المرساة)');
   assert.doesNotMatch(attach, /ctx\.lineWidth = Math\.max\(3, Math\.floor\(fs \/ 10\)\)/, 'الحدّ الأسود السميك الذي كرهه المالك');
   assert.match(attach, /g\.addColorStop\(0, 'rgba\(0,0,0,\.66\)'\)/, 'الصورة المزدحمة كلّها: شريط متدرّج');
 });
@@ -124,7 +124,9 @@ test('١٣. أوامر الإنصات تنقل النص يمينًا ويسار�
   assert.equal(textRemoveIntent('احذف هذا النص'), true);
   assert.equal(textRemoveIntent('امسح هذي الكتابه'), true);
   assert.equal(textRemoveIntent('احذف هذا الشي'), false, 'الشيء المبهم لا يُحذف بالتخمين');
-  assert.match(attach, /const L = narrow, cx = side\[1\] === 'right' \? W - mX - L\.w \/ 2 : mX \+ L\.w \/ 2;/, 'كتلة مقيسة بعرض ٠٫٤٤ داخل الهامش، لا ٣ كلمات عموديّة مقصوصة');
+  assert.match(attach, /const L = narrow, cx = P\.side === 'right' \? W - mX - L\.w \/ 2 : mX \+ L\.w \/ 2;/, 'الملصق: كتلة مقيسة بعرض ٠٫٤٤ داخل الهامش، لا ٣ كلمات عموديّة مقصوصة');
+  assert.match(attach, /const x0 = side === 'right' \? W - mX - B\.w : side === 'left' \? mX : \(W - B\.w\) \/ 2;/, 'v-text-layout: الكتلة القصيرة ملتصقة بهامش جهتها، ومحاذاتها تتبعها');
+  assert.match(attach, /const align = pick\.align \|\| 'center', ax = pick\.ax != null \? pick\.ax : cx;\s*ctx\.textAlign = align;/);
   assert.doesNotMatch(attach, /ctx\.translate\(\(__side\[1\]===/);
 });
 

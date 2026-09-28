@@ -82,16 +82,27 @@ test('client: size is a clamped scale, relative words multiply the current one',
   assert.equal(ctx.f(0.45, 'smaller'), 0.4, 'أرضيّة');
   assert.equal(ctx.f(undefined, null), 1);
   assert.match(attach, /async function overlayTextOnImage\(b64, mime, txt, fontKey, colorStr, position, scale, avoid\)/);
-  assert.match(attach, /Math\.round\(base \* 0\.118 \* __sc \* kk\)/, 'الحجم يضرب خطّ العنوان');
-  assert.match(attach, /Math\.round\(base \* \(T\.title \? 0\.03 : 0\.036\) \* __sc/, 'ويضرب خطّ الأسطر');
+  /* v-text-layout: العبارة والأسطر بلا عنوان من __textBlockLayout (سقفها ٠٫١٢W وأسطر ٠٫٠٧٥W)، والملصق من measure.
+     v-text-size: الحجم يُضرب في الخطّ بعد الملاءمة واختيار الموضع (كان يضرب السقوف وحدها فلا يتغيّر شيء حين يحدّ العرض) —
+     سلوكه في text-layout (رتابة الخطّ في كلّ دور وموضع) وtext-render (الراسم الحقيقيّ) */
+  assert.match(attach, /const FMAX = Math\.min\(0\.12 \* W, 0\.11 \* H\), HERO_MIN = 0\.07 \* W, FMIN = 0\.045 \* W, BODY_MAX = 0\.075 \* W;/, 'السقوف بالحجم الطبيعيّ');
+  assert.match(attach, /const want = B0\.F \* sc;/, 'الحجم يضرب خطّ الموضع المختار');
+  assert.match(attach, /pos: P, sc: __sc, boxes,/, 'والراسم يمرّره للكتلة');
+  assert.match(attach, /Math\.round\(base \* 0\.03 \* S \* Math\.max\(0\.9, kk\)\)/, 'ويضرب خطّ أسطر الملصق');
+  /* v-text-face (الجولة الثانية): الملصق يُعاد قياسه بالحجم المطلوب، أو بأكبر حجم دونه (خطوة ٠٫٠١) لا يدخل وجهًا */
+  assert.match(attach, /L2 = measure\(Math\.min\(W \* 0\.92, L0\.maxW \* s\), Math\.min\(H - 2 \* mY, L0\.maxH \* s\), L0\.k0, s\)/, 'والملصق يُعاد قياسه بالحجم في موضعه');
+  assert.match(attach, /const tries = \[__sc\];/);
   assert.match(attach, /cur\.imageTextLayer = __byCanvas \? \{[^}]*scale:__scale/, 'الكتابة الجديدة تحفظ حجمها وترثه');
 });
 
 test('client: «حبيبه قلبي» is spelled «حبيبة قلبي» before drawing, «قلبه» alone is untouched', () => {
-  const src = /const __QURAN_FIXES = \[[\s\S]*?\n\];/.exec(attach);
-  const ctx = {}; vm.createContext(ctx); vm.runInContext(src[0] + ';this.F=__QURAN_FIXES;', ctx);
-  const fix = (t) => ctx.F.reduce((s, [re, rep]) => s.replace(re, rep), t);
+  /* v-spell-literal: القاعدة نفسها انتقلت من __QURAN_FIXES إلى قاموس literalSpellFix المقطَّع على الكلمات */
+  const a = attach.indexOf('const __SPELL_PHRASES'), b = attach.indexOf('async function omranSpellFix');
+  assert.ok(a > 0 && b > a, 'literalSpellFix موجودة قبل omranSpellFix');
+  const ctx = {}; vm.createContext(ctx); vm.runInContext(attach.slice(a, b) + ';this.fix=literalSpellFix;', ctx);
+  const fix = (t) => ctx.fix(t);
   assert.equal(fix('حبيبه قلبي'), 'حبيبة قلبي');
+  assert.equal(fix('يا حبيبه قلبي، يا غاليه عمري'), 'يا حبيبة قلبي، يا غالية عمري', 'كلّ تكرار، والترقيم حدّ');
   assert.equal(fix('غاليه عمري'), 'غالية عمري');
   assert.equal(fix('قره عيني'), 'قرة عيني');
   assert.equal(fix('حبيبه'), 'حبيبه', 'بلا مضاف إليه يبقى كما هو');
@@ -105,7 +116,15 @@ test('client (v-text-design يخلف v-text-harmony): ذهب شمبانيا فو
   assert.match(attach, /\['#fff3d6', '#fcd28a', '#f6b95f', '#e49f4a', '#f9d494'\]/);
   assert.match(attach, /!lightInk \? \['#b98232', '#8f5a17', '#6e4210', '#8f5a17', '#c79342'\]/);
   assert.match(attach, /cool: \(sb - sr\) \/ \(n \* 255\) > 0\.04 && warm \/ n < 0\.03/, 'غروب مرجع المالك يبقى ذهبيًّا');
-  assert.match(attach, /const uL = user \? \(darkBg \? Math\.max\(user\[2\], 0\.6\) : Math\.min\(user\[2\], 0\.45\)\) : 0;/, 'ورديّ فوق الفاتح = حبر توتيّ داكن لا وشاح رماديّ');
+  /* v-text-rebuild: لون المستخدم كما طلبه (أبيض يبقى أبيض)، والتباين بحافّة وظلّ بعكس اللون — كان يُعتَّم فوق الفاتح فخرج «بالأبيض» رماديًّا */
+  /* v-text-ink: القطبيّة بالنصوع النسبيّ (__textInk) لا بإضاءة HSL — سلوكها في text-render */
+  assert.match(attach, /const uL = user \? user\[2\] : 0, tone = user \? __textInk\(colorStr, st\.lum, darkBg\) : null;/);
+  /* v-text-veil (الجولة الثانية): الوشاح بعكس الحبر أمام خلفيّته لا بقطبيّة الخلفيّة */
+  assert.match(attach, /const lowC = !!tone && tone\.lowC;/);
+  assert.match(attach, /const veil = !scrimOn \? '' : tone \? __textInk\(colorStr, st\.lum, darkBg, a\)\.veil : lightInk \? 'dark' : 'light';/);
+  assert.match(attach, /const haloDark = tone \? tone\.haloDark : lightInk;/);
+  assert.doesNotMatch(attach, /scrimDark/, 'وشاح «بقطبيّة الخلفيّة» أُزيل');
+  assert.match(attach, /if\(haloDark \|\| lowC\)\{/);
   assert.doesNotMatch(attach, /__pickTextHarmony/, 'تنسيق v-text-harmony القديم أُزيل');
   const a = attach.indexOf('function __hexHsl'), b = attach.indexOf('const __hsl =');
   const ctx = {}; vm.createContext(ctx); vm.runInContext(attach.slice(a, b) + ';this.H=__hexHsl;', ctx);
