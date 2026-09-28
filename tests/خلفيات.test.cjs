@@ -76,6 +76,19 @@ test('٥. الصور موجودة في المجلد', () => {
   }
 });
 
+test('٧. index.html يحمّل CSS وواجهة الخلفيات، وصفّ «الخلفيات» في الإعدادات يستدعي العرض', () => {
+  const html = read('index.html');
+  const settings = read('js/partials-settings.js');
+
+  assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=\d+">/, 'CSS الخلفيات غير مربوط');
+  assert.match(html, /<script src="\/js\/partials-خلفيات-قسم\.js\?v=\d+"><\/script>/, 'واجهة الخلفيات غير مربوطة');
+  assert.ok(html.indexOf('partials-settings.js') < html.indexOf('partials-خلفيات-قسم.js'), 'الواجهة تُحمَّل بعد الإعدادات');
+
+  assert.match(settings, /toggleSubRow\('backgroundsSub'\)/, 'صفّ الخلفيات مفقود من قسم المظهر');
+  assert.match(settings, /id="backgroundsSubContent"[\s\S]*?id="خلفيات-قسم"/, 'حاوية الشبكة مفقودة');
+  assert.match(settings, /خلفيات_واجهة\.أظهر_قسم_الخلفيات\(\)/, 'النقر لا يستدعي العرض');
+});
+
 test('٦. لا توجد أخطاء في الكود (لا يوجد console.error محاصر)', () => {
   const مدير = read('js/app-25-خلفيات-مدير.js');
   const واجهة = read('js/partials-خلفيات-قسم.js');
