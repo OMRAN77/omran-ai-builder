@@ -2129,6 +2129,8 @@ document.addEventListener('DOMContentLoaded', applyTheme);
 // ===== 3D animated background system (Vanta.js) =====
 const BG3D_EFFECTS = [
   { id: 'none',     emoji: '🚫', ar: 'بدون خلفية',        en: 'No background',   fr: 'Sans arrière-plan',      hi: 'बिना पृष्ठभूमि',        ur: 'بغیر پس منظر',        bn: "কোনো ব্যাকগ্রাউন্ড নেই", ne: "पृष्ठभूमि छैन", lib: null },
+  /* v-bg-galaxy (فيديو المالك ٢٨ سبتمبر «اريد تضيف هذي … خلفية ٣ الابعاد»): مجرّة لا نهائية — نجوم كثيفة تطير نحوك من المركز */
+  { id: 'galaxy',   emoji: '🌠', ar: 'مجرّة لا نهائية',     en: 'Endless Galaxy',    fr: 'Galaxie infinie',        hi: 'अनंत आकाशगंगा',         ur: 'لامتناہی کہکشاں',     bn: "অসীম ছায়াপথ", ne: "अनन्त आकाशगंगा", es: 'Galaxia infinita', zh: '无尽星河', fil: 'Walang-hanggang Galaksiya', ind: 'Galaksi Tanpa Batas', ml: 'അനന്ത ഗാലക്സി', ru: 'Бесконечная галактика', tr: 'Sonsuz Galaksi', lib: 'custom' },
   { id: 'net',      emoji: '🕸️', ar: 'شبكة سلكية',        en: 'Wire Network',    fr: 'Réseau filaire',         hi: 'तार नेटवर्क',          ur: 'تار نیٹ ورک',        bn: "ওয়্যার নেটওয়ার্ক", ne: "तार नेटवर्क", lib: 'three' },
   { id: 'waves',    emoji: '🌊', ar: 'أمواج سائلة',        en: 'Waves',           fr: 'Vagues',                 hi: 'लहरें',                ur: 'لہریں',              bn: "তরঙ্গ", ne: "लहरहरू", lib: 'three' },
   { id: 'fog',      emoji: '🌫️', ar: 'ضباب متحرك',        en: 'Fog',             fr: 'Brouillard',             hi: 'कोहरा',                ur: 'دھند',               bn: "কুয়াশা", ne: "कुहिरो", lib: 'three' },
@@ -2150,7 +2152,8 @@ const BG3D_EFFECTS = [
   { id: 'fireflies',  emoji: '🌳', ar: 'يراعات الغابة',        en: 'Forest Fireflies',  fr: 'Lucioles de forêt',      hi: 'जंगल की जुगनू',         ur: 'جنگل کے جگنو',       bn: "বন ফায়ারফ্লাইস", ne: "वन फायरफ्लाइज", lib: 'custom' }
 ];
 function bgEffLabel(eff){
-  return eff[lang] || eff.en;
+  /* v-bg-galaxy: رمز الإندونيسيّة 'id' هو مفتاح الخيار نفسه — فكان يُعرض المعرّف الخامّ (net/waves…) اسمًا؛ اسمها في 'ind' */
+  return eff[lang === 'id' ? 'ind' : lang] || eff.en;
 }
 const loadedScripts = {};
 function loadScriptOnce(url){
@@ -2200,7 +2203,8 @@ function bg3dPalette(){
     skyTop:'#01030a', skyBot:'#0a1330', star:'255,255,255',
     snowBg:'#0b1220', flake:'255,255,255,0.85',
     rainBg:'rgba(8,12,20,1)', rainLine:'rgba(160,200,255,0.35)',
-    forest:'#020a05', glow:'200,255,120', fly:'220,255,150' };
+    forest:'#020a05', glow:'200,255,120', fly:'220,255,150',
+    galaxyBg:'#000000', galaxyStar:'255,255,255' };
   return { light:true, bgHex:0xeef2f8,
     oceanTop:'#f3f7fc', oceanBot:'#dbe6f2',
     wave:['rgba(120,165,205,0.40)','rgba(95,140,185,0.40)','rgba(70,115,165,0.45)'],
@@ -2208,7 +2212,8 @@ function bg3dPalette(){
     skyTop:'#f4f7fc', skyBot:'#dde6f3', star:'55,72,105',
     snowBg:'#e9eff7', flake:'95,120,155,0.85',
     rainBg:'rgba(234,239,246,1)', rainLine:'rgba(80,120,170,0.45)',
-    forest:'#eef4e8', glow:'110,150,45', fly:'120,160,50' };
+    forest:'#eef4e8', glow:'110,150,45', fly:'120,160,50',
+    galaxyBg:'#eef2f8', galaxyStar:'55,72,105' };
 }
 // مؤثّرات Vanta التي تتجاهل backgroundColor لها مفاتيحها الخاصّة — في الوضع الفاتح فقط
 const BG3D_LIGHT_EXTRA = {
@@ -2218,11 +2223,393 @@ const BG3D_LIGHT_EXTRA = {
   clouds:  { skyColor: 0xdfe9f5, cloudColor: 0xffffff, cloudShadowColor: 0xbecbdc, sunColor: 0xffffff, sunGlareColor: 0xf1f5fa, sunlightColor: 0xffffff },
   clouds2: { skyColor: 0xdfe9f5, cloudColor: 0xffffff, lightColor: 0xffffff }
 };
+// v-bg-galaxy — خلفيّة «مجرّة لا نهائيّة»: حقل نجوم ثلاثيّ الأبعاد حقيقيّ بإسقاط منظوريّ من مركز الشاشة.
+// كلّ نجم (x, y, z) موزّع بانتظام داخل هرم الرؤية؛ الكاميرا تتقدّم (z يتناقص) فيتحرّك النجم على الشاشة نحو الخارج
+// بمعدّل سرعة/z. يولد النجم على المستوى البعيد حيث الضباب يخفيه كاملًا، ويظهر تدريجيًّا كلّما اقترب، ويُعاد إلى
+// البعيد حين يخرج من الشاشة أو يبلغ المستوى القريب — فلا فاصل حلقة ولا نجم يقفز من العدم، والكثافة ثابتة أبدًا.
+// الرسم: canvas 2D بكتابة البكسلات مباشرة (ImageData + putImageData واحد في الإطار). الخافت (الأغلبيّة) يُوزَّع
+// ثنائيّ الخطّ على ٤ بكسلات، والأسطع نواة غاوسيّة محسوبة مسبقًا لكلّ حجم ولكلّ موضع دون البكسل، فالحركة ناعمة بلا
+// قفز بكسليّ. السطوع يُجمع جمعًا ويُلوَّن بجدول (خلفيّة ← نجم) من لوحة الوضع الحاليّ فيتبع الفاتح/الداكن فورًا.
+// الأداء: قائمة الرسم تُرتَّب بالعدّ حسب شريط الصفّ، والمسح يسبق النثر شريطًا شريطًا فتبقى الكتابة في المخبئ؛
+// والإطارات محدودة بـ≤60/ث (≤30/ث على اللمس، أو حين تغلو كلفة الإطار) والحركة بالزمن لا بعدد الإطارات.
+function bg3dGalaxy(canvas, getPalette) {
+  var ctx = canvas.getContext('2d', { alpha: false });
+  // ——— ثوابت المشهد (مضبوطة على قياسات الفيديو) ———
+  var Z_FAR = 1, Z_NEAR = 0.08;
+  var SPEED = 0.156;           // وحدة عمق/ثانية → معدّل التدفّق الشعاعيّ سرعة/z (وسيطه ≈0.24/ث كالفيديو)
+  var FOG_Z = 0.94;            // أبعد من هذا يخفت النجم بالضباب حتّى يختفي عند Z_FAR (ظهور تدريجيّ ≈0.4 ث)
+  var NEAR_Z = 0.2;            // أقرب من هذا يتلاشى قبل المستوى القريب
+  var GAIN_Z = 0.7, GAIN_MAX = 1.35;        // كسب السطوع بالقرب: sqrt(GAIN_Z/z) بسقف
+  var KNEE = 205, KNEE_S = 0.35;            // فوق الركبة يُضغط السطوع: قلّة فقط تبلغ الإشباع كما في الفيديو
+  var POOL_DENS = 12000;       // نجوم الحوض لكلّ ميغابكسل من اللوحة (≈8400 نجم مرئيّ لكلّ ميغابكسل)
+  var MAX_STARS = 52000;
+  // شبكة الرسم بمقياس بكسل الفيديو: بكسل لكلّ بكسل CSS على الحاسوب، وضلع أقصر ≥ GRID على الجوّال (دقّة الفيديو
+  // نفسه على الهاتف)، بسقف E_MAX لكلّ بكسل CSS وسقف بكسلات للذاكرة والكلفة. لا تصغير تحت بكسل الجهاز قبل السقف:
+  // اللوحة المصغَّرة يكبّرها المركّب ببطء على دقّة 1.
+  var GRID = 564, E_MAX = 2, PIX_BUDGET = 4200000, MAX_SIDE = 16384;
+  var LIFT = 4;                // رفع خفيف للخلفيّة الداكنة (سواد الفيديو ليس صفرًا)
+  var LIGHT_K = 0.8;           // النجوم الداكنة على الخلفيّة الفاتحة أهدأ قليلًا
+  var MIN_V = 2.5;             // أخفت مساهمة تُكتب (مستوى من 255)
+  var QP = 8;                  // مواضع دون البكسل لكلّ محور للنوى الغاوسيّة
+  var NORM_P = 0.42;           // تطبيع عبر المواضع: 0 = ثبات الذروة، 0.5 = ثبات معيار L2 — وسط يمنع الوميض أثناء الحركة
+  var SIG0 = 0.40, SIGS = 0.05, NSIG = 18;  // أحجام النوى (σ بالبكسل): 0.40..1.25
+  var SIG_A0 = 100, SIG_K = 0.0012;         // نموّ الحجم مع السطوع
+  var BIG_A0 = 225, BIG_A1 = 340, BIG_SIG = 0.9;  // الأسطع هو الأعرض: σ يرتفع بنعومة إلى BIG_SIG
+  var SOFT_SHARE = 0.006, SOFT_M0 = 90, SOFT_M1 = 190, SOFT_SIG = 1.25; // قلّة ناعمة كبيرة خافتة
+  var BIL_SHARP = 1.6;         // تحديب الكسر دون البكسل للخافت (1 = ثنائيّ خطّيّ صرف)
+  var BIL_A = 150;             // أخفت من هذا: توزيع ثنائيّ الخطّ السريع بدل النواة
+  var ROWS = 16;               // ارتفاع شريط الترتيب والمسح
+  var NBZ = 2048;              // دقّة جدول السطوع بالعمق
+  // الإيقاع: هدف 60 إطارًا/ث (الشاشات 120/144 هرتز ترسم إطارًا من كلّ اثنين أو ثلاثة بإيقاع منتظم)، و30 إطارًا/ث
+  // — معدّل الفيديو نفسه — على أجهزة اللمس (بطّاريّة، ومركّب برمجيّ في WebView) أو حين يتجاوز متوسّط كلفة الإطار
+  // PACE_HI م‌ث، والعودة إلى 60 تحت PACE_LO. الإطارات الأولى بعد تغيير الحجم (تسخين المترجم) لا تُحتسب.
+  var FAST_MS = 1000 / 60, SLOW_MS = 1000 / 30;
+  var PACE_HI = 5.5, PACE_LO = 4, PACE_WARM = 20;
+  // ألوان احتياطيّة لكلّ وضع حين تنقص اللوحة مفاتيح المجرّة أو تفسد
+  var DEF_DARK = ['#000000', '255,255,255'], DEF_LIGHT = ['#eef2f8', '55,72,105'];
+  // توزيع السطوع الذاتيّ (مقلوب التوزيع التراكميّ) — مستوى 0..255 عند كسب 1، مضبوط على ذرى نجوم الفيديو
+  var QU = [0, 0.15, 0.42, 0.73, 0.9, 0.97, 0.995, 1];
+  var QV = [14, 51, 76, 122, 190, 258, 310, 370];
+
+  // ——— الحالة ———
+  var W = 0, H = 0, E = 0, cx = 0, cy = 0, scale = 1, halfX = 1, halfY = 1, margin = 4;
+  var cssW0 = 0, cssH0 = 0, dpr0 = 0;
+  var N = 0, X = null, Y = null, Z = null, M = null;
+  var DK = null, DA = null, DB = null, DX = null, DY = null, DQ = null, order = null, cnt = null, nb = 0; // قائمة الرسم للإطار
+  var img = null, u32 = null;
+  var LUT = new Int32Array(256), INV = new Uint8Array(256), chShift = 0, palKey = null;
+  var KOFF = null, KLEN = null, KD = null, KX = null, KY = null, KW = null, kdW = -1, siSoft = 0;
+  var SF = new Float32Array(16), BN = new Float32Array(256), BZ = new Float32Array(NBZ + 2), SIA = new Uint8Array(1024);
+  var lastT = -1, lastCall = -1, frameMs = FAST_MS, skip = 0, seed = 20260928, cost = 0, halfRate = false, rendered = 0;
+  var LE = new Uint8Array(new Uint32Array([0x01020304]).buffer)[0] === 4;
+  var touch = false;
+  try { touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch (err) { touch = false; /* متصفّح بلا matchMedia: نعامله كحاسوب */ }
+
+  function rnd() { // مولّد حتميّ سريع (mulberry32)
+    seed = (seed + 0x6D2B79F5) | 0;
+    var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function magSample() {
+    var u = rnd(), i = 1;
+    while (i < QU.length - 1 && u > QU[i]) i++;
+    return QV[i - 1] + (QV[i] - QV[i - 1]) * (u - QU[i - 1]) / (QU[i] - QU[i - 1]);
+  }
+  function mag() { return rnd() < SOFT_SHARE ? -(SOFT_M0 + rnd() * (SOFT_M1 - SOFT_M0)) : magSample(); } // الناعمة الكبيرة بسطوع سالب
+  function place(i, z) { // موضع منتظم على مقطع الهرم عند العمق z
+    X[i] = (rnd() * 2 - 1) * halfX * z;
+    Y[i] = (rnd() * 2 - 1) * halfY * z;
+    Z[i] = z;
+    M[i] = mag();
+  }
+  var A3 = Math.pow(Z_NEAR / Z_FAR, 3);
+  function steadyZ() { return Math.cbrt(A3 + rnd() * (1 - A3)) * Z_FAR; } // الحالة المستقرّة: كثافة منتظمة في الحجم (∝ z²)
+
+  // جداول ثابتة: السطوع بالعمق (ضباب × كسب × تلاشٍ قريب)، وتطبيع الثنائيّ الخطّ، وفئة الحجم بالسطوع
+  (function () {
+    for (var j = 0; j <= NBZ + 1; j++) {
+      var z = Z_NEAR + (Z_FAR - Z_NEAR) * Math.min(j, NBZ) / NBZ;
+      var f = Math.min(1, Math.max(0, (Z_FAR - z) / (Z_FAR - FOG_Z)));
+      f = f * f * (3 - 2 * f);
+      if (z < NEAR_Z) { var n = (z - Z_NEAR) / (NEAR_Z - Z_NEAR); f *= n * n * (3 - 2 * n); }
+      BZ[j] = f * Math.min(GAIN_MAX, Math.sqrt(GAIN_Z / z));
+    }
+    for (var e = 0; e < 16; e++) { // الكسر دون البكسل مُحدَّبًا قليلًا نحو أقرب بكسل: نجوم أحدّ والحركة متّصلة
+      var u = e / 16 + 1 / 32, ua = Math.pow(u, BIL_SHARP), ub = Math.pow(1 - u, BIL_SHARP);
+      SF[e] = ua / (ua + ub);
+    }
+    for (var q = 0; q < 256; q++) {
+      var bx = SF[q & 15], by = SF[q >> 4];
+      BN[q] = Math.pow(1 / ((bx * bx + (1 - bx) * (1 - bx)) * (by * by + (1 - by) * (1 - by))), NORM_P);
+    }
+    for (var a = 0; a < 1024; a++) {
+      var t = Math.min(1, Math.max(0, (a - BIG_A0) / (BIG_A1 - BIG_A0)));
+      var sg = SIG0 + (a > SIG_A0 ? (a - SIG_A0) * SIG_K : 0);
+      sg += (BIG_SIG - sg) * t * t * (3 - 2 * t);
+      SIA[a] = Math.max(0, Math.min(NSIG - 1, Math.round((sg - SIG0) / SIGS)));
+    }
+    siSoft = Math.min(NSIG - 1, Math.round((SOFT_SIG - SIG0) / SIGS));
+  })();
+
+  // نوى غاوسيّة (تُبنى مرّة واحدة): لكلّ σ ولكلّ موضع دون البكسل قائمة خلايا (إزاحة، وزن) مرتّبة تنازليًّا بالوزن
+  // (يُقطع عند الخافت)، ذروتها 1 حين يتوسّط النجم البكسل، ومعيارها ثابت عبر المواضع. إزاحة الخليّة في المخزن
+  // (dy·W + dx) وحدها تعتمد على عرض اللوحة فتُعاد في buildOffsets عند تغيّره.
+  (function () {
+    var nk = NSIG * QP * QP, cells = [], k = 0, maxR = 0;
+    KOFF = new Int32Array(nk); KLEN = new Int32Array(nk);
+    for (var s = 0; s < NSIG; s++) {
+      var sig = SIG0 + s * SIGS, i2s = 1 / (2 * sig * sig), R = Math.ceil(sig * 2.4 + 0.5), s0 = 0;
+      if (R > maxR) maxR = R;
+      for (var yy = -R; yy <= R; yy++) for (var xx = -R; xx <= R; xx++) s0 += Math.exp(-2 * (xx * xx + yy * yy) * i2s);
+      for (var qy = 0; qy < QP; qy++) for (var qx = 0; qx < QP; qx++) {
+        var ox = (qx + 0.5) / QP, oy = (qy + 0.5) / QP, list = [], sum = 0, c;
+        for (var dy = -R; dy <= R; dy++) for (var dx = -R; dx <= R; dx++) {
+          var ex = dx + 0.5 - ox, ey = dy + 0.5 - oy, w = Math.exp(-(ex * ex + ey * ey) * i2s);
+          sum += w * w; list.push([dx, dy, w]);
+        }
+        var sc = Math.pow(s0 / sum, NORM_P), kept = [];
+        for (c = 0; c < list.length; c++) { list[c][2] *= sc; if (list[c][2] >= 0.006) kept.push(list[c]); }
+        kept.sort(function (p1, p2) { return p2[2] - p1[2]; });
+        KOFF[k] = cells.length; KLEN[k] = kept.length;
+        for (c = 0; c < kept.length; c++) cells.push(kept[c]);
+        k++;
+      }
+    }
+    KD = new Int32Array(cells.length); KX = new Int8Array(cells.length); KY = new Int8Array(cells.length); KW = new Float32Array(cells.length);
+    for (var j = 0; j < cells.length; j++) { KX[j] = cells[j][0]; KY[j] = cells[j][1]; KW[j] = cells[j][2]; }
+    margin = maxR + 1;
+  })();
+  function buildOffsets(w) {
+    if (kdW === w) return;
+    kdW = w;
+    for (var j = 0; j < KD.length; j++) KD[j] = KY[j] * w + KX[j];
+  }
+
+  // لون من '#rgb' أو '#rrggbb' أو 'r,g,b' أو 'rgb(r,g,b)'؛ null إن لم يصلح (فيُستعمل لون الوضع الاحتياطيّ)
+  function parseColor(s) {
+    s = String(s == null ? '' : s).trim();
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
+    if (m) {
+      var h = m[1];
+      if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+      var v = parseInt(h, 16);
+      return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+    }
+    var p = s.replace(/^rgba?\(|\)$/gi, '').split(','), out = [];
+    if (p.length < 3) return null;
+    for (var k = 0; k < 3; k++) {
+      var c = parseFloat(p[k]);
+      if (!(c === c) || !isFinite(c)) return null;
+      out.push(Math.max(0, Math.min(255, Math.round(c))));
+    }
+    return out;
+  }
+  // جدول اللون لكلّ مستوى، ومقلوبه من القناة الأوسع مدًى (لجمع سطوع النجوم المتراكبة دون مخزن إضافيّ).
+  // يُعاد بناؤه فقط حين تتغيّر نصوص اللوحة، فقلب الوضع حيًّا لا يكلّف شيئًا في الإطارات الأخرى.
+  function updatePalette(P) {
+    P = P || {};
+    var light = !!P.light, key = (light ? 'L' : 'D') + P.galaxyBg + '|' + P.galaxyStar;
+    if (key === palKey) return;
+    palKey = key;
+    var def = light ? DEF_LIGHT : DEF_DARK;
+    var bg = parseColor(P.galaxyBg) || parseColor(def[0]), sc = parseColor(P.galaxyStar) || parseColor(def[1]);
+    var k = light ? LIGHT_K : 1, ch = 0, i, j, col = [];
+    if (!light) for (j = 0; j < 3; j++) bg[j] += (sc[j] - bg[j]) * LIFT / 255;
+    for (j = 1; j < 3; j++) if (Math.abs(sc[j] - bg[j]) > Math.abs(sc[ch] - bg[ch])) ch = j;
+    for (i = 0; i < 256; i++) {
+      var a = Math.min(1, i / 255 * k);
+      var r = Math.round(bg[0] + (sc[0] - bg[0]) * a), g = Math.round(bg[1] + (sc[1] - bg[1]) * a), b = Math.round(bg[2] + (sc[2] - bg[2]) * a);
+      col.push([r, g, b][ch]);
+      LUT[i] = LE ? ((255 << 24) | (b << 16) | (g << 8) | r) : ((r << 24) | (g << 16) | (b << 8) | 255);
+    }
+    chShift = LE ? ch * 8 : (3 - ch) * 8;
+    INV.fill(0);                       // INV[قيمة القناة] = أعلى مستوى يعطيها؛ والخلفيّة نفسها مستوى 0
+    for (i = 0; i < 256; i++) INV[col[i]] = i;
+    INV[col[0]] = 0;
+  }
+
+  function alloc(n) {
+    N = n;
+    X = new Float32Array(N); Y = new Float32Array(N); Z = new Float32Array(N); M = new Float32Array(N);
+    DK = new Int32Array(N); DA = new Float32Array(N); DB = new Int32Array(N); DX = new Int32Array(N); DY = new Int32Array(N); DQ = new Uint16Array(N); order = new Int32Array(N);
+  }
+  function resize(cssW, cssH, devicePR) {
+    cssW = Math.max(1, Math.round(+cssW) || 1); cssH = Math.max(1, Math.round(+cssH) || 1);
+    var dp = +devicePR > 0 && isFinite(+devicePR) ? +devicePR : 1;
+    // لوحة المفاتيح على اللمس تقصّر الارتفاع وحده: الخلفيّة ثابتة بملء الشاشة فتبقى كما هي (تغطّيها اللوحة فقط)،
+    // بلا إعادة بذر ولا انتقال لمركز الطيران؛ وعند إغلاقها يعود الارتفاع نفسه فلا يتغيّر شيء
+    // (المراجعة: قصر الارتفاع وحده بلا حقل كتابة مركَّز ليس لوحة مفاتيح — تقسيم الشاشة في أندرويد مثلًا — فيُحجَّم عاديًّا)
+    var ae = typeof document !== 'undefined' ? document.activeElement : null;
+    var typing = !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || !!ae.isContentEditable);
+    if (touch && typing && X && cssW === cssW0 && dp === dpr0 && cssH < cssH0) return;
+    var e = Math.min(E_MAX, dp, Math.max(1, GRID / Math.min(cssW, cssH)));
+    if (cssW * cssH * e * e > PIX_BUDGET) e = Math.sqrt(PIX_BUDGET / (cssW * cssH));
+    e = Math.min(e, MAX_SIDE / Math.max(cssW, cssH));   // أبعاد شاذّة: لا ضلع فوق حدّ المتصفّح
+    var nw = Math.max(1, Math.round(cssW * e)), nh = Math.max(1, Math.round(cssH * e));
+    canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
+    cssW0 = cssW; cssH0 = cssH; dpr0 = dp;
+    rendered = 0; cost = 0; halfRate = false; skip = 0; // الإيقاع يُقاس من جديد بالحجم الجديد
+    if (X && nw === W && nh === H) return;               // حجم الجهاز نفسه: لا شيء يُعاد بناؤه
+    var oW = W, oH = H, ocx = cx, ocy = cy, oScale = scale, oMargin = margin, k = E ? e / E : 1;
+    canvas.width = nw; canvas.height = nh;
+    skip = 1 << 30;                                      // اللوحة المعاد تحجيمها سوداء (alpha:false): الإطار التالي يُرسم حتمًا ولا يُترك
+    W = nw; H = nh; E = e; cx = W / 2; cy = H / 2;
+    scale = Math.max(W, H) / 2;
+    halfX = (W / 2 + margin) / scale; halfY = (H / 2 + margin) / scale;
+    buildOffsets(W);
+    img = ctx.createImageData(W, H);
+    u32 = new Int32Array(img.data.buffer);
+    nb = Math.ceil((H + 2 * margin) / ROWS) + 1; cnt = new Int32Array(nb + 1);
+    var want = Math.max(300, Math.min(MAX_STARS, Math.round(POOL_DENS * W * H / 1e6)));
+    var oX = X, oY = Y, oZ = Z, oM = M, oN = N, i, j, z, sx, sy;
+    var x0 = -margin, x1 = W + margin, y0 = -margin, y1 = H + margin;
+    if (!X || Math.abs(k - 1) > 0.03) { // أوّل مرّة، أو تغيّر مقياس الشبكة: بذر بالحالة المستقرّة
+      alloc(want);
+      for (i = 0; i < N; i++) place(i, steadyZ());
+      return;
+    }
+    // غير ذلك: كلّ نجم يبقى في موضعه نفسه على الشاشة (اللوحة مثبّتة من أعلى اليسار)، ومن يخرج من الإطار الجديد
+    // يُترك؛ والمساحة المكشوفة حديثًا (لم تكن مرئيّة) تُملأ بنجوم الحالة المستقرّة — فلا قطع ولا فراغ ولا ظهور مفاجئ.
+    var keep = new Int32Array(oN), nk = 0;
+    for (i = 0; i < oN; i++) {
+      z = oZ[i]; sx = (ocx + oX[i] * oScale / z) * k; sy = (ocy + oY[i] * oScale / z) * k;
+      if (sx >= x0 && sx < x1 && sy >= y0 && sy < y1) keep[nk++] = i;
+    }
+    // المستطيل القديم بإحداثيّات اللوحة الجديدة، ومساحة الجديد منه فقط
+    var ox0 = -oMargin * k, ox1 = (oW + oMargin) * k, oy0 = -oMargin * k, oy1 = (oH + oMargin) * k;
+    var area = (x1 - x0) * (y1 - y0);
+    var over = Math.max(0, Math.min(x1, ox1) - Math.max(x0, ox0)) * Math.max(0, Math.min(y1, oy1) - Math.max(y0, oy0));
+    var nFill = Math.round(want * Math.max(0, area - over) / area);
+    alloc(Math.max(want, nk + nFill));
+    for (j = 0; j < nk; j++) {
+      i = keep[j]; z = oZ[i];
+      sx = (ocx + oX[i] * oScale / z) * k; sy = (ocy + oY[i] * oScale / z) * k;
+      X[j] = (sx - cx) * z / scale; Y[j] = (sy - cy) * z / scale; Z[j] = z; M[j] = oM[i];
+    }
+    for (; j < nk + nFill; j++) {
+      for (var tries = 0; tries < 64; tries++) {
+        sx = x0 + rnd() * (x1 - x0); sy = y0 + rnd() * (y1 - y0);
+        if (sx < ox0 || sx >= ox1 || sy < oy0 || sy >= oy1) break;
+      }
+      if (tries === 64) { place(j, Z_FAR - rnd() * 0.02); continue; }
+      z = steadyZ();
+      X[j] = (sx - cx) * z / scale; Y[j] = (sy - cy) * z / scale; Z[j] = z; M[j] = mag();
+    }
+    for (; j < N; j++) place(j, Z_FAR - rnd() * 0.02); // الفائض الإحصائيّ يولد خفيًّا في البعيد
+  }
+
+  function addPx(x, y, v) { // كتابة بكسل مع فحص الحدود (للنجوم على حافّة اللوحة فقط)
+    if (v < MIN_V || x < 0 || y < 0 || x >= W || y >= H) return;
+    var p = y * W + x, lv = INV[(u32[p] >>> chShift) & 255] + ((v + 0.5) | 0);
+    u32[p] = LUT[lv > 255 ? 255 : lv];
+  }
+
+  function draw(now) {
+    now = +now || 0;
+    if (!X || !W) return;
+    // فاصل الإطارات الفعليّ (متوسّط متحرّك) ← نرسم إطارًا من كلّ n بإيقاع منتظم: ≤60/ث، أو ≤30/ث في الوضع البطيء
+    if (lastCall >= 0) { var gap = now - lastCall; if (gap > 1 && gap < 100) frameMs += (gap - frameMs) * 0.1; }
+    lastCall = now;
+    var every = Math.max(1, Math.ceil((halfRate || touch ? SLOW_MS : FAST_MS) / frameMs - 0.3));
+    if (lastT >= 0 && ++skip < every) return;           // إطار متروك: اللوحة كما هي
+    skip = 0;
+    var t0 = performance.now();
+    render(now);
+    var ms = performance.now() - t0;
+    if (++rendered <= PACE_WARM) return;
+    cost = cost ? cost * 0.9 + ms * 0.1 : ms;
+    if (!halfRate && cost > PACE_HI) halfRate = true; else if (halfRate && cost < PACE_LO) halfRate = false;
+  }
+  function render(now) {
+    updatePalette(typeof getPalette === 'function' ? getPalette() : null);
+    var dt = lastT < 0 ? 0 : (now - lastT) / 1000;
+    lastT = now;
+    if (!(dt > 0)) dt = 0; else if (dt > 0.1) dt = 0.1;
+    var Wm = W, Hm = H, mg = margin, rows = ROWS, i, d, b;
+    // ١) الحركة والسطوع لكلّ النجوم، وجمع المرئيّ منها في قائمة رسم مع عدّها بشرائط الصفوف
+    var Xa = X, Ya = Y, Za = Z, Ma = M, Bz = BZ, Sa = SIA;
+    var dz = SPEED * dt, sc = scale, x0 = -mg, x1 = W + mg, y0 = -mg, y1 = H + mg, zn = Z_NEAR, bzk = NBZ / (Z_FAR - Z_NEAR);
+    var QQ = QP * QP, aMin = MIN_V * 1.6, nd = 0;
+    cnt.fill(0);
+    for (i = 0; i < N; i++) {
+      // الكاميرا تتقدّم؛ من يعبر المستوى القريب أو يخرج من الشاشة يولد من جديد في البعيد (خفيًّا في الضباب)
+      var z = Za[i] - dz;
+      if (z <= zn) { place(i, Z_FAR); continue; }
+      Za[i] = z;
+      var iz = sc / z, sx = cx + Xa[i] * iz, sy = cy + Ya[i] * iz;
+      if (sx < x0 || sx >= x1 || sy < y0 || sy >= y1) { place(i, Z_FAR); continue; }
+      // السطوع: ذاتيّ × ضباب البعد × كسب القرب × تلاشي المستوى القريب؛ ثمّ الحجم منه
+      var m = Ma[i], soft = m < 0, A = (soft ? -m : m) * Bz[((z - zn) * bzk) | 0];
+      if (A < aMin) continue;
+      var ai = A | 0; if (ai > 1023) ai = 1023;
+      var si = soft ? siSoft : Sa[ai];
+      if (A > KNEE) A = KNEE + (A - KNEE) * KNEE_S;
+      // الخافت: ثنائيّ الخطّ بين مراكز البكسلات (رمز سالب يحمل الموضع دون البكسل بدقّة 1/16)؛ الأسطع: نواة
+      var bil = A < BIL_A && !soft, ax = sx + (bil ? 1023.5 : 1024), ay = sy + (bil ? 1023.5 : 1024), ix = ax | 0, iy = ay | 0;
+      var qx = ax - ix, qy = ay - iy;
+      DK[nd] = bil ? -1 - ((((qy * 16) | 0) << 4) | ((qx * 16) | 0)) : si * QQ + ((qy * QP) | 0) * QP + ((qx * QP) | 0);
+      ix -= 1024; iy -= 1024;
+      DA[nd] = A;
+      if (ix >= mg && iy >= mg && ix < Wm - mg && iy < Hm - mg) DB[nd] = iy * Wm + ix;
+      else { DB[nd] = -1; DX[nd] = ix; DY[nd] = iy; }
+      var bk = (iy + mg) / rows | 0;
+      DQ[nd] = bk; cnt[bk + 1]++;
+      nd++;
+    }
+    // ٢) ترتيب بالعدّ حسب الشريط لتكون كتابة الذاكرة متتابعة
+    for (b = 1; b <= nb; b++) cnt[b] += cnt[b - 1];
+    for (d = 0; d < nd; d++) order[cnt[DQ[d]]++] = d;
+    // ٣) النثر: المسح يسبق النثر شريطًا شريطًا (فيبقى الشريط الجاري في المخبئ)، والسطوع يُجمع على القناة
+    //    الأوسع مدًى ثمّ يُلوَّن من الجدول
+    var U = u32, L = LUT, IV = INV, sh = chShift, bg0 = LUT[0], Kw = KW, Kd = KD, Ko = KOFF, Kl = KLEN, minV = MIN_V;
+    var filled = 0, o = 0;
+    for (b = 0; b < nb; b++) {
+      var need = (b + 1) * rows; if (need > Hm) need = Hm;
+      if (need > filled) { U.fill(bg0, filled * Wm, need * Wm); filled = need; }
+      for (var oEnd = cnt[b]; o < oEnd; o++) {
+        d = order[o];
+        var kid = DK[d], Aa = DA[d], base = DB[d], c, v, p, lv;
+        if (kid < 0) { // خافت: ٤ بكسلات بأوزان ثنائيّة الخطّ
+          var fq = -1 - kid, fx = SF[fq & 15], fy = SF[fq >> 4], gx = 1 - fx, gy = 1 - fy;
+          Aa *= BN[fq];
+          var v0 = Aa * gx * gy, v1 = Aa * fx * gy, v2 = Aa * gx * fy, v3 = Aa * fx * fy;
+          if (base >= 0) {
+            if (v0 >= minV) { lv = IV[(U[base] >>> sh) & 255] + ((v0 + 0.5) | 0); U[base] = L[lv > 255 ? 255 : lv]; }
+            if (v1 >= minV) { p = base + 1; lv = IV[(U[p] >>> sh) & 255] + ((v1 + 0.5) | 0); U[p] = L[lv > 255 ? 255 : lv]; }
+            if (v2 >= minV) { p = base + Wm; lv = IV[(U[p] >>> sh) & 255] + ((v2 + 0.5) | 0); U[p] = L[lv > 255 ? 255 : lv]; }
+            if (v3 >= minV) { p = base + Wm + 1; lv = IV[(U[p] >>> sh) & 255] + ((v3 + 0.5) | 0); U[p] = L[lv > 255 ? 255 : lv]; }
+          } else {
+            var ex = DX[d], ey = DY[d];
+            addPx(ex, ey, v0); addPx(ex + 1, ey, v1); addPx(ex, ey + 1, v2); addPx(ex + 1, ey + 1, v3);
+          }
+          continue;
+        }
+        var c0 = Ko[kid], c1 = c0 + Kl[kid];
+        if (base >= 0) {
+          for (c = c0; c < c1; c++) {
+            v = Aa * Kw[c];
+            if (v < minV) break;
+            p = base + Kd[c];
+            lv = IV[(U[p] >>> sh) & 255] + ((v + 0.5) | 0);
+            U[p] = L[lv > 255 ? 255 : lv];
+          }
+        } else {
+          var bx = DX[d], by = DY[d];
+          for (c = c0; c < c1; c++) {
+            v = Aa * Kw[c];
+            if (v < minV) break;
+            addPx(bx + KX[c], by + KY[c], v);
+          }
+        }
+      }
+    }
+    if (filled < Hm) U.fill(bg0, filled * Wm, Hm * Wm);
+    ctx.putImageData(img, 0, 0);
+  }
+  return { resize: resize, draw: draw };
+}
 function initCustomBg3D(id){
   const container = document.getElementById('vantaBg');
   if(!container) return;
   const canvas = document.createElement('canvas');
   container.appendChild(canvas);
+  if(id === 'galaxy'){
+    /* v-bg-galaxy: قبل getContext العامّ (المجرّة تطلب سياقًا بلا شفافيّة) وقبل resize العامّ الذي يضع canvas.width =
+       innerWidth بالبكسل CSS فيقصّ الصورة على الجوّال؛ المجرّة تحجّم لوحتها بنفسها على شبكة بكسل الفيديو */
+    canvas.style.display = 'block';
+    const G = bg3dGalaxy(canvas, bg3dPalette);
+    const fit = () => G.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
+    let fitTimer = 0;
+    /* سحب نافذة الحاسوب: بناء واحد بعد التوقّف — ولا بناء إن استُبدلت الخلفيّة خلال المهلة */
+    const onResize = () => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { if(currentCustomBg && currentCustomBg.canvas === canvas) fit(); }, 100); };
+    fit();
+    window.addEventListener('resize', onResize);
+    currentCustomBg = { raf: null, resizeHandler: onResize, canvas };
+    const galaxyLoop = (ts) => { G.draw(ts); currentCustomBg.raf = requestAnimationFrame(galaxyLoop); };
+    currentCustomBg.raf = requestAnimationFrame(galaxyLoop);
+    return;
+  }
   const ctx = canvas.getContext('2d');
   let w, h;
   function resize(){
