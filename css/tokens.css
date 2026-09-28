@@ -852,6 +852,9 @@
   .msgActionBar button:hover{ color:var(--accent-ink); }
   .msgActionBar button.msgThumbActive{ color:var(--accent-ink); }
   .msgActionBar button.msgThumbDownActive{ color:#ef4444; }
+  .msgReplyActions .msgMoreTrigger{ order:1; }
+  .msgActionBar .msgMoreTrigger{ border-inline-start:1px solid var(--border,rgba(255,255,255,.12)); padding-inline-start:12px; }
+  .msgActionBar button:focus-visible, .msgMoreMenu button:focus-visible{ outline:2px solid var(--accent-ink); outline-offset:2px; }
 
   /* v560: تحرير/إعادة توليد بأسلوب ChatGPT — سطح المكتب فقط. */
   html:not(.mobile-ui) #chatEditNotice{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 10px 2px;padding:7px 10px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
@@ -861,6 +864,12 @@
   .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:var(--r-2); box-shadow:var(--sh-2); padding:6px; min-width:170px; font-size: var(--fs-3); }
   .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:var(--r-1); cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }
+  .msgReplyMoreMenu{ position:fixed; max-width:calc(100vw - 16px); max-height:calc(100vh - 16px); overflow-y:auto; }
+  .msgReplyMoreMenu button{ align-items:center; gap:10px; }
+  .msgReplyMoreMenu button svg{ width:17px; height:17px; flex:none; }
+  .msgReplyMoreMenu button.msgMoreActive{ color:var(--accent-ink); background:var(--panel2); }
+  .msgReplyMoreMenu button:disabled{ opacity:.55; cursor:default; }
+  .msgMoreDivider{ border-top:1px solid var(--border,rgba(255,255,255,.12)); margin:5px 4px; }
   .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9; max-width:100%; min-width:0;} /* v-status-tidy: نفس العرض المطويّ على الجوال */
   .chat-status-text{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .chat-status-fold[open] .chat-status-text{white-space:normal;}
