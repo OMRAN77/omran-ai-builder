@@ -26520,8 +26520,15 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     if(photos.length >= MAX_PEOPLE) return;
     var add = slot();
     add.style.cssText += 'border:1px dashed rgba(255,255,255,.28);background:rgba(255,255,255,.03);cursor:pointer;display:flex;align-items:center;justify-content:center;';
-    var plus = document.createElement('div'); plus.textContent = '＋'; plus.style.cssText = 'font-size:26px;color:#9a9a9e;margin-bottom:14px;';
-    add.appendChild(plus); add.appendChild(tag(photos.length));
+    /* صورة شخصيّة (ظلّ رأس وكتفين) + ＋ صغيرة — يُفهم من المربّع أنّه مكان إنسان لا ملفّ */
+    var ghost = document.createElement('div');
+    ghost.innerHTML = '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" aria-hidden="true">'
+      + '<circle cx="12" cy="8" r="4" fill="currentColor" opacity=".55"/>'
+      + '<path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="currentColor" opacity=".55"/></svg>';
+    ghost.style.cssText = 'color:#8b8b90;display:flex;flex-direction:column;align-items:center;margin-bottom:12px;';
+    var plus = document.createElement('div'); plus.textContent = '＋'; plus.style.cssText = 'font-size:15px;line-height:1;color:var(--omGold,#d4af37);margin-top:-2px;';
+    ghost.appendChild(plus);
+    add.appendChild(ghost); add.appendChild(tag(photos.length));
     var fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true; fi.style.display = 'none';
     fi.onchange = function(){
       var files = Array.prototype.slice.call(fi.files || []).slice(0, MAX_PEOPLE - photos.length);
