@@ -1,0 +1,143 @@
+/* أنماط قسم الخلفيات */
+
+#خلفيات-قسم {
+  padding: 30px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+#خلفيات-قسم h2 {
+  font-size: 28px;
+  margin-bottom: 30px;
+  text-align: center;
+  font-weight: 700;
+  color: inherit;
+}
+
+.خلفيات-شبكة {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.خلفية-بطاقة {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 400px;
+}
+
+.خلفية-بطاقة:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.خلفية-صورة {
+  flex: 2;
+  width: 100%;
+  height: 250px;
+}
+
+.خلفية-معلومات {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.خلفية-معلومات h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.خلفية-معلومات p {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.خلفية-زر-اختيار {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #2196F3;
+  color: white;
+}
+
+.خلفية-زر-اختيار:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.خلفية-زر-اختيار:active {
+  transform: scale(0.98);
+}
+
+.خلفية-تحميل {
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 16px;
+  color: #666;
+}
+
+.خلفية-إخطار {
+  font-weight: 500;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes انزلاق-دخول {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* واجه المحمول */
+@media (max-width: 768px) {
+  .خلفيات-شبكة {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
+  }
+
+  .خلفية-بطاقة {
+    height: 350px;
+  }
+
+  #خلفيات-قسم h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+}
+
+/* واجه الهاتف */
+@media (max-width: 480px) {
+  .خلفيات-شبكة {
+    grid-template-columns: 1fr;
+  }
+
+  .خلفية-بطاقة {
+    height: 360px;
+  }
+
+  #خلفيات-قسم {
+    padding: 20px 16px;
+  }
+}
