@@ -281,6 +281,13 @@
   </label>
     </div>
   </div>
+
+  <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
+    <div onclick="toggleSubRow('backgroundsSub'); if(window.خلفيات_واجهة && !document.getElementById('خلفيات-قسم').innerHTML.trim()) { window.خلفيات_واجهة.أظهر_قسم_الخلفيات(); }" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span style="font-size:13px;">🖼️ الخلفيات</span><span id="backgroundsSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div id="backgroundsSubContent" style="display:none; padding-top:10px;">
+  <div id="خلفيات-قسم"></div>
+    </div>
+  </div>
   </div></div>
 
   <div id="fontFamilySection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
