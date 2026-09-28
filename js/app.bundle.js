@@ -33342,8 +33342,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var m = probe.measureText(name);
     var w = Math.ceil(m.width + pad * 2 + Math.abs(shear) * size * 1.8);
     /* v-calligraphy-names: الذيل تحت أدنى حبر فعليّ — أذيال الثلث (ر ن ع ي) أعمق من 1.5 فكان الذيل يقطعها */
-    var fy = Math.max(size * 1.5, size * 1.02 + (m.actualBoundingBoxDescent || 0) + size * 0.1);
-    var h = Math.ceil(state.flourish ? Math.max(size * 2.12, fy + size * 0.62) : size * 1.85);
+    var low = size * 1.02 + (m.actualBoundingBoxDescent || 0);
+    var fy = Math.max(size * 1.5, low + size * 0.1);
+    /* وبلا ذيل: اللوحة تتّسع لأدنى حبر كذلك (تنوين الكسر تحت ع في الثلث كان يُقصّ) */
+    var h = Math.ceil(state.flourish ? Math.max(size * 2.12, fy + size * 0.62) : Math.max(size * 1.85, low + size * 0.08));
     canvas.width = Math.max(2, w * dpr);
     canvas.height = Math.max(2, h * dpr);
     canvas.style.width = w + 'px';
