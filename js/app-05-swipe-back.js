@@ -85,7 +85,7 @@
       if(e.id && COMPARE_DRAG_IDS[e.id]) return true;
       /* صفوف الأدوات سحب أفقي دائمًا؛ لا ندع سحب الرجوع العام ينافسها
          حتى خلال لحظة إعادة الرسم أو قبل اكتمال قياس overflow. */
-      if(e.classList && e.classList.contains('ptCarousel')) return true;
+      if(e.classList && e.classList.contains('ptCarousel') && !(e.closest && e.closest('.ptHwGrid'))) return true; /* v-hw-tools-grid: شبكة هواوي لا تتمرّر جانبيًّا */
       try{
         var cs = getComputedStyle(e);
         if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;
