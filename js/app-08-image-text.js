@@ -10,26 +10,27 @@
   const word = (alt, flags) => new RegExp('(?:^|[^' + AL + 'a-z])(?:' + alt + ')(?![' + AL + 'a-z])', flags || 'i');
 
   /* ── معجم الألوان (خريطة واحدة؛ الترتيب مهمّ: «وردي فاتح» قبل «وردي»، «سماوي» قبل «أزرق») ── */
+  /* v-parser-review: صيغ الخليج بلا همزة («بيضا/سودا/حمرا») و«فوشي» و«بلون الذهب» و«الأزرق الفاتح» ألوانٌ لا نصّ */
   const TEXT_COLORS = [
-    ['أصفر|اصفر|صفراء|yellow', '#ffd400'],
-    ['ذهبي|ذهبية|ذهبيه|golden|gold', '#f4cf65'],
-    ['أسود|اسود|سوداء|black', '#111111'],
-    ['أخضر|اخضر|خضراء|green', '#2e8b57'],
-    ['سماوي|سماويه|سماوية|لبني|(?:أزرق|ازرق)\\s+فاتح|sky\\s*blue|light\\s*blue', '#5ec8ff'],
+    ['أصفر|اصفر|صفراء|صفرا|yellow', '#ffd400'],
+    ['ذهبي|ذهبية|ذهبيه|لون\\s+(?:ال)?ذهب|golden|gold', '#f4cf65'],
+    ['أسود|اسود|سوداء|سودا|black', '#111111'],
+    ['أخضر|اخضر|خضراء|خضرا|green', '#2e8b57'],
+    ['سماوي|سماويه|سماوية|لبني|(?:أزرق|ازرق)\\s+(?:ال)?فاتح|sky\\s*blue|light\\s*blue', '#5ec8ff'],
     ['كحلي|كحليه|كحلية|navy', '#1c2f66'],
-    ['أزرق|ازرق|زرقاء|blue', '#2979ff'],
-    ['وردي\\s+(?:فاتح|خفيف|هادي|هادئ)|light\\s*pink', '#ffb3d1'],
-    ['وردي|ورديه|وردية|زهري|زهريه|زهرية|بمبي|بينك|pink', '#ff4f9a'],
+    ['أزرق|ازرق|زرقاء|زرقا|blue', '#2979ff'],
+    ['وردي\\s+(?:ال)?(?:فاتح|خفيف|هادي|هادئ)|light\\s*pink', '#ffb3d1'],
+    ['وردي|ورديه|وردية|زهري|زهريه|زهرية|بمبي|بينك|فوشيا|فوشي|pink|fuchsia|magenta', '#ff4f9a'],
     ['بنفسجي|بنفسجيه|بنفسجية|موف|ليلكي|purple|violet|lilac', '#a05ad6'],
     ['برتقالي|برتقاليه|برتقالية|orange', '#ff8a1f'],
     ['عنابي|عنابيه|عنابية|خمري|maroon|burgundy', '#8e1b3a'],
-    ['أحمر|احمر|حمراء|red', '#d32f2f'],
+    ['أحمر|احمر|حمراء|حمرا|red', '#d32f2f'],
     ['تركوازي|تركواز|فيروزي|turquoise|teal', '#18b6a4'],
-    ['فضي|فضيه|فضية|silver', '#d7dbe0'],
+    ['فضي|فضيه|فضية|لون\\s+(?:ال)?فض[ةه]|silver', '#d7dbe0'],
     ['رمادي|رماديه|رمادية|رصاصي|gr[ae]y', '#9aa0a6'],
     ['بني|بنيه|بنية|brown', '#8b5a2b'],
     ['بيج|beige', '#ead9bd'],
-    ['أبيض|ابيض|بيضاء|white', '#fdfdfd'] /* أبيض صريح ≠ الافتراضيّ #ffffff (= «انسجم مع الصورة») */
+    ['أبيض|ابيض|بيضاء|بيضا|white', '#fdfdfd'] /* أبيض صريح ≠ الافتراضيّ #ffffff (= «انسجم مع الصورة») */
   ];
   const COLOR = TEXT_COLORS.map((c) => c[0]).join('|');
   const COLOR_RES = TEXT_COLORS.map((c) => [word('[وف]?(?:بال|لل|ال|ب|ل)?(?:' + c[0] + ')'), c[1]]);
@@ -49,7 +50,7 @@
   /* الحجم: المقارن («أصغر/كبّرها») قبل المطلق («صغير») */
   const SIZE_W = 'صغير[ةه]?|كبير[ةه]?|أصغر|اصغر|أكبر|اكبر|عريض[ةه]?|ضخم[ةه]?';
   const SIZES = [['smaller', 'و?(?:أصغر|اصغر|صغّ?ر(?:ه|ها|ي|وا)?|نقص|قلل|smaller|shrink)'], ['larger', 'و?(?:أكبر|اكبر|كبّ?ر(?:ه|ها|ي|وا)?|زيد|bigger|larger|enlarge)'],
-    ['small', 'و?ب?(?:صغير[ةه]?|small|tiny)'], ['large', 'و?ب?(?:كبير[ةه]?|ضخم[ةه]?|عريض[ةه]?|big|large|huge)']].map((x) => [x[0], word(x[1])]);
+    ['small', 'و?(?:بال|ال|ب)?(?:صغير[ةه]?|small|tiny)'], ['large', 'و?(?:بال|ال|ب)?(?:كبير[ةه]?|ضخم[ةه]?|عريض[ةه]?|big|large|huge)']].map((x) => [x[0], word(x[1])]);
   function textSize(s){ const z = SIZES.find((x) => x[1].test(s)); return z ? z[0] : null; }
 
   /* ── معجم المواضع (واحد للقراءة وللتقشير) ── */
@@ -77,46 +78,102 @@
   }
 
   /* ── جداول التقشير: تُنزع من طرفي النصّ غير المنصَّص حتّى يثبت ── */
-  const STYLE_LEAD = '(?:و\\s*)?(?:ا?يكون\\s+)?(?:بخط|بالخط|بلون|باللون|ب?لون(?:ه|ها)|لون\\s+(?:النص|الخط|الكتاب[ةه]|الكلام))|(?:و\\s*)?(?:بال|ب|لل)(?:' + COLOR + ')|in\\s+(?:' + COLOR + ')|big|small|large|bigger|smaller|bold';
+  /* v-parser-review: علامة الترقيم المفصولة والإيموجي بعد عبارة التعليمات لا تحجبها («على اليمين 🙏»، «على اليمين ؟») */
+  const EMO = '(?:[\\u2600-\\u27BF\\u2B50\\uFE0F\\u200D]|\\uD83C[\\uDC00-\\uDFFF]|\\uD83D[\\uDC00-\\uDFFF]|\\uD83E[\\uDD00-\\uDFFF])';
+  const END_TAIL = '(?:\\s*(?:[.!؟?…]|' + EMO + '))*$';
+  /* «…وخليه كبير»، «…وخله صغير»: فعل الربط (بالواو) قائدُ تنسيق — من اليمين يُقرأ ما بعده، و«خلها على الله» بلا واو نصّ */
+  const STYLE_LEAD = '(?:و\\s*)?(?:ا?يكون\\s+)?(?:بخط|بالخط|بلون|باللون|ب?لون(?:ه|ها)|لون\\s+(?:النص|الخط|الكتاب[ةه]|الكلام))|(?:و\\s*)?(?:بال|ب|لل)(?:' + COLOR + ')|(?:و\\s*)?بال(?:' + FONT_W + ')|(?:و\\s*)?ب?حجم|(?:و\\s*)?(?:ال)?خط(?=\\s+(?:' + FONT_W + '))|و\\s*(?:خليه|خله|خلّه|خلها|خليها|خلّيها|اجعله|اجعلها|ا?يكون|تكون|حطه|حطها)|in\\s+(?:' + COLOR + ')|big|small|large|bigger|smaller|bold';
   const STYLE_WORD = '(?:و\\s*)?(?:بال|ال|ب)?(?:' + COLOR + '|' + SIZE_W + '|' + PRETTY + '|' + FONT_W + '|فاتح|غامق|خفيف|هادي|هادئ|خط|لون|لونه|لونها)';
+  const STYLE_RUN = '(?:' + STYLE_LEAD + ')(?:\\s+(?:' + STYLE_LEAD + '|' + STYLE_WORD + ')){0,5}';
+  /* «وخل الكتابة (يمين)»: فاعل التعليمة هو كتابتنا — يُقرأ إن لاصق موضعًا أو تنسيقًا */
+  const SUBJECT = '(?:و\\s*)?(?:خل|خلّ|خلي|خلّي|خليه|خليها|خله|خلها|حط|حطي|اجعل|سو|سوي|ا?يكون|تكون|ابي|أبي|ابغى|أبغى)\\s+(?:لي\\s+)?ال(?:كتاب[ةه]|كلام|نص|خط|مكتوب|كلمات)|و\\s*ال(?:كتاب[ةه]|كلام|نص|خط|مكتوب|كلمات)' +
+    '|(?:و\\s*)?ال(?:كتاب[ةه]|كلام|نص|خط|مكتوب|كلمات)\\s+(?:ا?يكون|تكون|خله|خليه|خلها|خليها|ابيه|أبيه|ابيها|أبيها|ابغاه|ابغاها)';   /* «الكلام يكون يمين، اكتب…» */
   const TABLES = [
-    { name:'filler', L:'لي|لنا|بال(?:عربي|انجليزي|إنجليزي|انقليزي|إنقليزي)|in\\s+(?:english|arabic)|[وف]?(?:عليها|عليه|فيها|فوقها|فوقه)|(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)صور[ةه](?:\\s+نفسها)?|on\\s+(?:it|(?:the|this)\\s+(?:image|photo|picture))|بدال(?:ها|ه)|مكان(?:ها|ه)|لو\\s+سمحت|من\\s+فضلك|please',
-      R:'(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)صور[ةه](?:\\s+نفسها)?|عليها|فيها|لو\\s+سمحت|من\\s+فضلك|please|(?:on|to)\\s+(?:it|(?:the|this)\\s+(?:image|photo|picture))|(?:بدون|بلا|دون|من\\s+غير)\\s*(?:أي\\s*)?(?:تغيير|تغير|تعديل|مساس|لمس)(?:\\s*(?:في|على|ل)?\\s*(?:ال)?صور[ةه])?' },
+    { name:'filler', L:'لي|لنا|(?:له|لها|لهم|لك|لكم)(?!\\s+(?:الله|الحمد|مني|ربي))|تكفى|تكفا|بس|كذا|بال(?:عربي|انجليزي|إنجليزي|انقليزي|إنقليزي)|in\\s+(?:english|arabic)|[وف]?(?:عليها|عليه|فيها|فوقها|فوقه)|(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)صور[ةه](?:\\s+نفسها)?|on\\s+(?:it|(?:the|this)\\s+(?:image|photo|picture))|بدال(?:ها|ه)|مكان(?:ها|ه)|لو\\s+سمحت|من\\s+فضلك|please',
+      R:'(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)صور[ةه](?:\\s+نفسها)?|عليها|فيها|لو\\s+سمحت|لو\\s+تكرمت|من\\s+فضلك|تكفى|تكفا|تكفين|تكفون|و\\s*بس|و?\\s*خلاص|(?:مثل|زي)\\s+ما\\s+قلت(?:\\s+لك)?|please|pls|plz|' +
+        '(?:و\\s*)?(?:(?:ال)?صور[ةه]\\s+)?(?:لا|ما)\\s+(?:تغير|تغيّر|تعدل|تعدّل|تلمس|تمس|تخرب)(?:ها|ين|ون)(?:\\s+(?:ابد[اًا]?|أبد[اًا]?))?|(?:on|to)\\s+(?:it|(?:the|this)\\s+(?:image|photo|picture))|(?:بدون|بلا|دون|من\\s+غير)\\s*(?:أي\\s*)?(?:تغيير|تغير|تعديل|مساس|لمس)(?:\\s*(?:في|على|ل)?\\s*(?:ال)?صور[ةه])?' +
+        '|(?:و\\s*)?(?:(?:لا|ما)\\s+|بدون\\s+ما\\s+)(?:تغير|تغيّر|تعدل|تعدّل|تلمس|تمس|تخرب)(?:\\s+(?:شي|شيء|أي\\s+شي|اي\\s+شي))?(?:\\s+(?:في|على|ب))?\\s*(?:ال)?صور[ةه](?:\\s+(?:ابد[اًا]?|أبد[اًا]?))?' },
     { name:'position', L:POS_RUN, R:POS_RUN },
-    { name:'style', L:'(?:' + STYLE_LEAD + ')(?:\\s+(?:' + STYLE_LEAD + '|' + STYLE_WORD + ')){0,5}', R:'(?:' + STYLE_LEAD + ')(?:\\s+(?:' + STYLE_LEAD + '|' + STYLE_WORD + ')){0,5}' },
-    { name:'bare', R:'(?!بني)(?:' + COLOR + ')(?:\\s+(?:و\\s*)?(?:' + COLOR + '|' + SIZE_W + '))*' },   /* «مشكور اخوي احمر وكبير» */
+    { name:'style', L:STYLE_RUN, R:STYLE_RUN + '|و\\s*(?:' + SIZE_W + ')' },   /* «…بالنص وكبير» */
+    { name:'bare', R:'(?!بني)(?:' + COLOR + ')(?:\\s+(?:و\\s*)?(?:' + COLOR + '|' + SIZE_W + '|(?:ال)?فاتح|(?:ال)?غامق))*' },   /* «مشكور اخوي احمر وكبير»، «احمر غامق» */
+    { name:'subject', L:SUBJECT, R:SUBJECT },
     { name:'link', R:'(?:و\\s*)?(?:يكون|خليه|خله|خلّه|خل|خلي|خلّي|خلها|خليها|حط|حطه|حطها|اجعله|اجعلها|تكون|ايكون)|و' },
-    { name:'label', L:'اسمي|اسم|my\\s+name|the\\s+name|name|the\\s+text|text', textOnly:true }
-  ].map((t) => ({ name:t.name, textOnly:t.textOnly, L:t.L && new RegExp('^(?:' + t.L + ')(?=' + B + '|$)', 'i'), R:t.R && new RegExp('(?:^|' + B + ')(' + t.R + ')[.!؟?]*$', 'i') }));
+    { name:'label', L:'اسمه|اسمها|اسمي|اسم\\s+(?:بنتي|ولدي|ابني|أمي|امي|ابوي|أبوي|زوجتي|زوجي|اختي|أختي|اخوي|أخوي|حبيبي|حبيبتي|صديقي|صديقتي|محلي|شركتي|مطعمي|مشروعي|متجري|فريقي|المحل|الشركة|الشركه|المطعم|المشروع|المتجر|الكافيه|الكوفي|المقهى|العريس|العروس|المولود|المولودة|المولوده|الطفل|الطفلة|البنت|الولد|الفريق)|اسم|my\\s+name|the\\s+name|name|the\\s+text|text', textOnly:true }
+  ].map((t) => ({ name:t.name, textOnly:t.textOnly, L:t.L && new RegExp('^(?:' + t.L + ')(?=' + B + '|$)', 'i'), R:t.R && new RegExp('(?:^|' + B + ')(' + t.R + ')' + END_TAIL, 'i') }));
+  const INSTR_TABLES = TABLES.filter((t) => /^(?:filler|position|style|bare)$/.test(t.name));
+  const LABEL_TABLE = TABLES.find((t) => t.name === 'label');
+  /* الاسمان «يمنى/يسرى» وحدهما بعد الفعل أو الوسم نصٌّ لا موضع («اكتب اسمي يسرى على اليسار») */
+  const NAME_POS_RE = /^[\s،,]*(?:يمنى|يسرى)(?=[\s،,]|$)/;
+  const IDAFA_MID_RE = /(?:^|\s)(?:وسط|منتصف|يمين|يسار)\s*$/;                 /* مجرّدة يليها معرَّف: «وسط البلد»، «يمين الله» */
   /* في النصّ: «ملك اليمين» تبقى (كلمة معرَّفة وحدها بلا حرف جرّ)، و«اكتب وردي» تبقى (لون مجرّد بلا نصّ قبله) */
-  function allowed(t, piece, before, isText){
+  function allowed(t, piece, rest, isText, side, prev){
     if(!isText) return true;
-    if(t.name === 'position' && /^[وف]?ال\S+$/.test(piece.trim())) return false;
-    if(t.name === 'bare' && !before.trim()) return false;
+    if(t.name === 'position'){
+      if(/^[وف]?ال\S+$/.test(piece.trim())) return false;
+      if(NAME_POS_RE.test(piece) && !String(rest).replace(LABEL_TABLE.L, '').replace(TRIM_RE, '')) return false;
+      if(side === 'L' && IDAFA_MID_RE.test(piece) && /^[\s،,]*ال(?!صور)\S/.test(rest)) return false;   /* «وسط البلد» إضافة لا موضع */
+    }
+    if(t.name === 'bare' && !rest.trim()) return false;
+    if(t.name === 'subject') return side === 'R' ? /^(?:position|style|bare)$/.test(prev || '') : INSTR_TABLES.some((x) => x.L && x.L.test(String(rest).replace(TRIM_RE, '')));
     return true;
   }
+  /* ذيل كلاميّ بعد عبارة تعليمات («…على اليمين الله يعافيك / شوي / وخلاص / عشان تبان») لا يحجبها: يُقرأ ولا يُطبع */
+  const TAIL_B_RE = new RegExp('(?:^|' + B + ')((?:[.!؟?…،,]|' + EMO + ')+|الله\\s+(?:يعافيك|يخليك|يسعدك|يحفظك|يجزاك\\s+خير)|يعطيك\\s+العافي[ةه]|يا\\s*(?:ال)?غالي|يالغالي|بس|شوي|و?شكرا|و?شكراً|thanks|thx|(?:عشان|علشان|حتى)(?:\\s+\\S+){1,4}|كبير[ةه]?|صغير[ةه]?|ضخم[ةه]?|عريض[ةه]?)' + END_TAIL, 'i');
+  /* جهةٌ معرَّفة («على اليمين») كاملةٌ لا تضاف لما بعدها: كلمة أو كلمتان مجهولتان بعدها لا تحجبانها — تُقرأ الجهة
+     ويبقى ما بعدها نصًّا («…على اليمين يالطيب»)؛ أمّا «على يمين العرش» فإضافة تبقى نصًّا كما هي */
+  const SIDE_DEF_RE = new RegExp('(?:^|' + B + ')((?:' + PREP + '\\s+){0,3}[وف]?(?:عا?ل|بال|فال|لل|ال)(?:' + SIDE_R + '|' + SIDE_L + ')(?:\\s+(?:من\\s+)?(?:ال|لل)صور[ةه])?(?:\\s+(?:و\\s*)?(?:' + UNIT + ')){0,2})\\s+((?!ال)[^\\s«»"\']+(?:\\s+[^\\s«»"\']+){0,2})' + END_TAIL, 'i');
+  const SIDE_WORD_RE = new RegExp('(?:عا?ل|بال|فال|لل|ال)(?:' + SIDE_R + '|' + SIDE_L + ')\\s+\\S');      /* فحص رخيص قبل التعبير الكبير */
+  const endsWithInstr = (x) => INSTR_TABLES.some((t) => { const r = t.R && t.R.exec(x); return r && allowed(t, r[1], x.slice(0, r.index), true, 'R'); });
+  function peelTail(s, out){
+    const tb = TAIL_B_RE.exec(s), tbBefore = tb ? s.slice(0, tb.index).replace(TRIM_RE, '') : '';
+    if(tbBefore && endsWithInstr(tbBefore)){ out.push(tb[1]); return tbBefore; }
+    const sd = SIDE_WORD_RE.test(s) && SIDE_DEF_RE.exec(s), sdBefore = sd ? s.slice(0, sd.index).replace(TRIM_RE, '') : '';
+    if(sdBefore && allowed(TABLES[1], sd[1], sdBefore, true, 'R')){                   /* ذيلٌ يبدأ بـ«و» جملةُ تعليمات جديدة لا نصّ */
+      out.push(sd[1]); if(/^و/.test(sd[2])){ out.push(sd[2]); return sdBefore; }
+      return sdBefore + ' ' + sd[2];
+    }
+    return null;
+  }
+  /* الطرف الأيمن: أقصر عبارة مقبولة — إن رُفضت «يمنى على اليمين» كلّها جُرّبت «على اليمين» وحدها */
+  function execRight(t, s, isText, prev){
+    for(let from = 0; from < s.length;){
+      const r = t.R.exec(s.slice(from));
+      if(!r) return null;
+      const at = from + r.index;
+      if(allowed(t, r[1], s.slice(0, at), isText, 'R', prev)) return { index:at, piece:r[1] };
+      const sp = s.slice(at + 1).search(/\s/);
+      if(sp < 0) return null;
+      from = at + 1 + sp;
+    }
+    return null;
+  }
   function peel(src, out, isText, skip){
-    let s = String(src || '').replace(TRIM_RE, '');
+    let s = String(src || '').replace(TRIM_RE, ''), prev = '';
     for(let guard = 0; guard < 40; guard++){
       let hit = false;
       for(const t of TABLES){
         if((t.textOnly && !isText) || (skip && skip.indexOf(t.name) >= 0)) continue;
         const l = t.L && t.L.exec(s);
-        if(l && allowed(t, l[0], s.slice(l[0].length), isText)){ out.push(l[0]); s = s.slice(l[0].length); hit = true; break; }
-        const r = t.R && t.R.exec(s);
-        if(r && allowed(t, r[1], s.slice(0, r.index), isText)){ out.push(r[1]); s = s.slice(0, r.index); hit = true; break; }
+        if(l && allowed(t, l[0], s.slice(l[0].length), isText, 'L', prev)){ out.push(l[0]); s = s.slice(l[0].length); hit = t.name; break; }
+        const r = t.R && execRight(t, s, isText, prev);
+        if(r){ out.push(r.piece); s = s.slice(0, r.index); hit = t.name; break; }
       }
+      if(!hit && isText){ const tl = peelTail(s, out); if(tl != null){ s = tl; hit = 'tail'; } }
       s = s.replace(TRIM_RE, '');
       if(!hit) break;
+      prev = hit;
     }
     return s;
   }
   /* ذيل المشهد («و الخلفيه زرقاء»، «وتكون فيها العاب نارية»، «والصورة تعبّر عن…») يذهب للمولّد لا فوق الصورة */
-  const SCENE_RE = /(?:^|\s)و\s*(?:ال)?(?:صور[ةه]|خلفي[ةه]|مشهد|رسم[ةه])(?=\s+(?!ال|ل)\S|$)|(?:^|\s)و\s*(?:ت|ي)عبّ?ر\s+عن\s+|(?:^|\s)و\s*(?:تكون|يكون|خل|خلي|خلّي|خله|خلها|اجعل|اجعلها|سو|سوي|سوّي|حط|ضيف|أضف|اضف|ارسم)\s+(?:لي\s+)?(?:فيها|فيه|عليها|ال?صور[ةه]|ال?خلفي[ةه]|المشهد|لون\s+ال?خلفي[ةه])(?=\s|$)|\s+(?:(?:تكون|يكون|خلي|خلّي|اجعل)\s+)?ال(?:صور[ةه]|مشهد|خلفي[ةه])\s+(?:تعبر|تعبّر|يعبر|يعبّر|تدل|يدل|توحي|يوحي|تظهر|يظهر|تكون|يكون|فيها|فيه|تحتوي|يحتوي)(?=\s|$)/i;
+  const SCENE_RE = /(?:^|\s)و\s*(?:ال)?(?:صور[ةه]|خلفي[ةه]|مشهد|رسم[ةه])(?=\s+(?!ال|ل)\S|$)|(?:^|\s)و\s*(?:ت|ي)عبّ?ر\s+عن\s+|(?:^|\s)و\s*(?:تكون|يكون|خل|خلي|خلّي|خله|خلها|اجعل|اجعلها|سو|سوي|سوّي|حط|ضيف|أضف|اضف|ارسم)\s+(?:لي\s+)?(?:فيها|فيه|عليها|ال?صور[ةه]|ال?خلفي[ةه]|المشهد|لون\s+ال?خلفي[ةه])(?=\s|$)|\s+(?:(?:تكون|يكون|خلي|خلّي|اجعل)\s+)?ال(?:صور[ةه]|مشهد|خلفي[ةه])\s+(?:تعبر|تعبّر|يعبر|يعبّر|تدل|يدل|توحي|يوحي|تظهر|يظهر|تكون|يكون|فيها|فيه|تحتوي|يحتوي)(?=\s|$)|(?:^|\s)(?:و\s*)?مع\s+(?:ال)?خلفي[ةه](?=\s|$)/i;
+  /* v-parser-review: «…وخل الصورة زي ما هي / على حالها / نفسها» طلبُ إبقاء لا وصفُ مشهد — لا يذهب للمولّد */
+  const KEEP_PHOTO_RE = /^(?:(?:خل|خلّ|خلي|خلّي|خليها|خلها|اترك|اتركها|خلوا|ابي|أبي|ابغى|أبغى)\s+)?(?:ال)?(?:صور[ةه]|خلفي[ةه])\s+(?:(?:تبقى|تظل|تكون)\s+)?(?:(?:زي|مثل|كما|كذا)\s*(?:ما\s+)?(?:هي|هو|كانت)|على\s+حال(?:ها|ه)|نفس(?:ها|ه)|بدون\s+(?:أي\s+|اي\s+)?(?:تغيير|تعديل)|(?:ما|لا)\s+(?:تتغير|تتغيّر))\s*[.!؟?]*$/i;
   function cutScene(s, minAt){
     const i = s.search(SCENE_RE);
     return i >= minAt ? [s.slice(0, i), s.slice(i).replace(/^[\s،,]*و?\s*/, '').trim()] : [s, ''];
   }
+  const sceneOf = (clause, ins) => { if(KEEP_PHOTO_RE.test(clause)){ ins.push(clause); return ''; } return clause; };
   /* v-tail-dialect: أوّل «بخط/بلون/ويكون/ألون ايكون/لا تكتب» بعد النصّ يقطعه — ما بعده أوامر تُقرأ ولا تُطبع */
   const CUT_RE = /\s+(?:و\s*)?(?:ا?يكون\s+)?(?:بخط|بالخط|بلون|باللون)(?=\s|$)|\s+و\s*ا?يكون\s+|\s+(?:و\s*)?[أا]?لل?ون(?:ه|ها)?\s+ا?يكون\s+|\s+(?:و\s*)?ب?لون(?:ه|ها)\s+(?=\S)|\s+لا\s+تكتب(?:\s+|$)/i;
   /* قبل «:» كلمات وسمٍ فقط؟ فما بعدها نصّ حرفيّ («اكتب كذا: الله يحفظك»، «النص: دعاء للوالدين») */
@@ -141,11 +198,27 @@
   const unquote = (s) => { s = String(s || ''); let out = '', at = 0; findQuotes(s).forEach((q) => { out += s.slice(at, q.index) + ' «» '; at = q.end; }); return out + s.slice(at); };
   const TEXT_NOUN_W = '(?:ال)?(?:نص|عبار[ةه]|كلام|كلم[ةه]|كلمات|جمل[ةه]|اسمي|اسم|عنوان(?:ًا|ا|اً)?|تعليق|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|تهنئ[ةه]|حكم[ةه]|اقتباس|خاطر[ةه])(?=$|[\\s:：«"\'\\-–—])|(?:(?:the|my|a|an|some)\\s+)?(?:[a-z]+\\s+)?(?:text|name|words?|quote|caption|title|message)\\b';
   const MARKERS = [
-    ['strong', /(?:^|[\s،,.!؟?:«"])([وف]?(?:اكتب(?:ي|وا|لي|يلي|ه|ها|يه|يها)?|أكتب(?:ي|لي)?|كتبلي|كتبيلي|[تي]كتب(?:ي|ين|ون|ها|ه|لي)?|كتاب[ةه]|write|type|مكتوب[ةه]?\s+(?:عليها|عليه|فيها|على\s+(?:هذه\s+)?(?:ال)?صور[ةه])))(?=$|[\s،,.!؟?:：«"'])/gi],
+    ['strong', /(?:^|[\s،,.!؟?:«"])([وف]?(?:اكتب(?:ي|وا|لي|يلي|ه|ها|يه|يها)?|أكتب(?:ي|لي)?|كتبلي|كتبيلي|تكتب(?:ي|ين|ون|ها|ه|لي|يلي|يها|يه)?|كتاب[ةه]|write|type|مكتوب[ةه]?\s+(?:عليها|عليه|فيها|على\s+(?:هذه\s+)?(?:ال)?صور[ةه])))(?=$|[\s،,.!؟?:：«"'])/gi],
     ['placed', /(?:^|[\s،,])([وف]?(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل)|على\s+(?:هذه\s+)?(?:ال)?صور[ةه]|with|containing)(?=\s*(?:(?:عبار[ةه]|النص|نص|كلم[ةه]|الكلام|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?[«“"'])/gi],
     ['weak', /(?:^|[\s،,.!؟?])([وف]?(?:حط(?:لي|ي|وا)?|ضع(?:ي)?|أضف|اضف|ضيف(?:ي|لي)?|put|add))(?=$|[\s:«"'])/gi]
   ];
   const WEAK_OBJ_RE = new RegExp('^\\s*(?:لي\\s+)?(?:(?:عليها|عليه|فوقها|فيها|على\\s+(?:ال)?صور[ةه])\\s+)?(?:' + TEXT_NOUN_W + ')', 'i');
+  /* v-parser-review: الأمر للتطبيق وحده كتابة. «تكتب/كتابة/type» طلبٌ فقط في إطار الطلب («ممكن تكتب»، «ابيك تكتب»،
+     «الرجاء كتابة»، «مع كتابة»، أوّل الرسالة) أو يليها «عليها/لي/تنصيص» — «ولد يكتب»، «آلة كتابة»، «can type fast» وصفٌ للمشهد */
+  const FRAMED_RE = /^[وف]?(?:تكتب|كتاب|type)/i;
+  const ASK_FRAME_RE = /(?:^|[\s،,])(?:ممكن|تقدر|تقدرين|تقدرون|يمديك|لو\s+سمحت|لو\s+تكرمت|من\s+فضلك|ابيك|أبيك|ابغاك|أبغاك|ابغيك|اريدك|أريدك|ودي|بدي|ابي|أبي|ابغى|أبغى|ابغا|ابغي|اريد|أريد|نبي|نبغى|يا\s*ليت|ياليت|عسى|الرجاء|رجاء|رجاءً|مع|please|pls|plz|can\s+you|could\s+you|would\s+you)(?:\s+(?:انك|إنك|ان|أن|إن))?\s*$/i;
+  const AFTER_FRAME_RE = /^\s*(?:(?:عليها|عليه|فيها|فوقها|فوقه|لي|لنا|على\s+(?:هذه\s+|هذي\s+)?(?:ال)?صور[ةه])(?=$|[\s،,.!؟?:«"'])|[«“"'])/;
+  /* النفي: «لا تكتب» (مضارع مجزوم)، «ما ابيك تكتب»؛ أمّا «لا اكتب…» فـ«لا» فيها تصحيح والأمر قائم */
+  const NEG_BEFORE_RE = /(?:^|\s)(?:ما|مو|بدون|بلا|دون|غير|not|don'?t|never)(?:\s+(?:ابي|أبي|ابغى|أبغى|ابغا|اريد|أريد|ودي|بدي|ابيك|أبيك|ابغاك|أبغاك|ابغيك|اريدك|أريدك|بغيتك))?(?:\s+(?:انك|إنك|ان|أن))?\s*$/i;
+  function liveWriteVerb(s, at, end, word){
+    const before = s.slice(Math.max(0, at - 22), at);
+    if(NEG_BEFORE_RE.test(before) || (/(?:^|\s)لا\s*$/.test(before) && /^[وف]?[تي]/.test(word))) return false;
+    if(!FRAMED_RE.test(word)) return true;
+    const lead = s.slice(0, at).replace(/[\s،,.!؟?:«"]+$/, '');
+    if(/^type/i.test(word)) return !lead || /^(?:please|pls|plz|can\s+you|could\s+you|would\s+you)$/i.test(lead);
+    return !lead || ASK_FRAME_RE.test(s.slice(0, at)) || /^[وف]?تكتب(?:لي|يلي)$/.test(word) || AFTER_FRAME_RE.test(s.slice(end))
+      || (/^[وف]?كتاب/.test(word) && /^\s*(?:\S+\s+){0,2}?[«“"']/.test(s.slice(end)));
+  }
   function findMarker(source){
     const raw = String(source || ''), map = [];
     let s = '';
@@ -156,9 +229,7 @@
       re.lastIndex = 0; let m;
       while((m = re.exec(s))){
         const at = m.index + m[0].length - m[1].length, end = m.index + m[0].length;
-        /* النفي: «لا تكتب» (مضارع مجزوم)، أمّا «لا اكتب…» فـ«لا» فيها تصحيح والأمر قائم */
-        const before = s.slice(Math.max(0, at - 14), at);
-        if(/(?:^|\s)(?:ما|مو|بدون|بلا|دون|غير|not|don'?t|never)(?:\s+(?:ابي|أبي|ابغى|أبغى|ابغا|اريد|أريد|ودي|بدي))?\s*$/i.test(before) || (/(?:^|\s)لا\s*$/.test(before) && /^[وف]?[تي]/.test(m[1]))) continue;
+        if(kind === 'strong' ? !liveWriteVerb(s, at, end, m[1]) : NEG_BEFORE_RE.test(s.slice(Math.max(0, at - 22), at))) continue;
         if(kind === 'weak' && !WEAK_OBJ_RE.test(s.slice(end)) && !/[«“"]/.test(s.slice(end))) continue;
         if(!best || at < best.index) best = { index:at, end };
         break;
@@ -170,9 +241,12 @@
   /* ── طلب تأليف (R4): رأس نوع + أيّ تكملة = يؤلَّف؛ رأس يليه معرَّف («كلام الناس…») = نصّ حرفيّ ── */
   const LOVE = 'حب|غرام|عشق|هوى|زوجين|زوج|زوجة|زوجه|زوجي|زوجتي|حبيب|حبيبي|حبيبتي|حبيبة|حبيبه|عرسان|عروس|عريس|خطيب|خطيبي|خطيبتي|love';
   const LOVE_RE = word('[وف]?[لب]?ل?(?:ال)?(?:' + LOVE + ')');
-  const HEAD_RE = /^(?:(?:أي|اي)\s+)?(كلام|كلمات|كلمتين|كلم[ةه]|جمل[ةه]|جمل|عبار[ةه]|عبارات|حكم[ةه]|اقتباس|مقول[ةه]|بيت\s+شعر|[أا]بيات|قصيد[ةه]|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|غزل|تهنئ[ةه]|معايد[ةه]|رسال[ةه]|نكت[ةه]|نكت|خاطر[ةه]|خواطر|تعليق|وصف|نص|شي|شيء|something|(?:(?:an?|some)\s+)?(?:[a-z]+\s+)?(?:quote|poem|caption|message|saying|words))(?=$|[\s،,.!?؟])/i;
+  const HEAD_RE = /^(?:(?:أي|اي)\s+)?(كلام|كلمات|كلمتين|كلم[ةه]|جمل[ةه]|جمل|عبار[ةه]|عبارات|حكم[ةه]|اقتباس|مقول[ةه]|بيت\s+شعر|[أا]بيات|قصيد[ةه]|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|غزل|تهنئ[ةه]|معايد[ةه]|رسال[ةه]|نكت[ةه]|نكت|خاطر[ةه]|خواطر|تعليق|وصف|نص|شي|شيء|آي[ةه]|آيات|اي[ةه]|حديث|ذكر|[أا]ذكار|كابشن|بوست|something|(?:(?:an?|some)\s+)?(?:[a-z]+\s+)?(?:quote|poem|caption|message|saying|words|post))(?=$|[\s،,.!?؟])/i;
   const DESCRIBER_RE = /^(?:[لب]\S+|عن|حلو\S*|جميل\S*|قصير\S*|طويل\S*|مؤثر\S*|قوي\S*|رائع\S*|مناسب\S*|تحفيزي\S*|رومانسي\S*|زين\S*|راقي\S*|فخم\S*|nice|short|about|for)$/i;
+  /* v-parser-review: «آية/حديث/ذكر» طلب تأليف دينيّ (مسار الدعاء)، و«كابشن» عبارة — لا تُطبع جملة الطلب */
+  const SACRED_HEAD_RE = /(?:^|\s)(?:آي[ةه]|آيات|اي[ةه]|حديث|ذكر|[أا]ذكار)(?=\s|$)/;
   function requestKind(s){
+    if(SACRED_HEAD_RE.test(s)) return 'prayer';
     if(/شعر|قصيد|بيت|[أا]بيات|poem/i.test(s)) return 'poetry';
     if(/غزل|رومانسي|romantic/i.test(s) || LOVE_RE.test(s)) return 'flirt';
     if(/دعا[ءدهً]?(?![ء-ي])|[أا]دعي[ةه]|prayer/i.test(s)) return 'prayer';
@@ -197,14 +271,37 @@
   const REMOVE_TEXT_RE = new RegExp('(?:^|[\\s،,])(?:' + REMOVE_VERB + ')\\s*(?:لي\\s+)?(?:(?:هذا|هذه|هذي|هاذا|هاذي)\\s+)?(?:(?:ال)?(?:كلام|كتاب[ةه]|نص|مكتوب|عبار[ةه]|جمل[ةه]|خط|كلمات|حروف)|(?:the\\s+)?(?:text|writing|words?|caption|letters))(?=$|[\\s،,.!؟?])', 'i');
   const WITHOUT_TEXT_RE = /(?:^|\s)(?:بدون|بلا|من\s+غير)\s+(?:ال)?(?:كلام|كتاب[ةه]|نص)(?=$|[\s،,.!؟?])|(?:^|\s)(?:ما|مو)\s+(?:ابي|أبي|ابغى|أبغى|ابغا)\s+(?:ال)?(?:كلام|كتاب[ةه]|نص)|(?:^|\s)(?:امسح|احذف|شيل)\s+(?:اللي|الي)\s+(?:كتبته|كتبتها|مكتوب|انكتب)/i;
   const VAGUE_REMOVE_RE = new RegExp('(?:^|\\s)(?:' + REMOVE_VERB + ')\\s+(?:هذا\\s+الشي|هذا\\s+الشيء|هالشي|هذا|هذي|هذه)\\s*[.!]*$', 'i');  /* «احذف هذا الشي» لا «احذف هذي الشجرة» */
-  const isRemoval = (s) => REMOVE_TEXT_RE.test(s) || WITHOUT_TEXT_RE.test(s) || VAGUE_REMOVE_RE.test(s);
+  /* v-parser-review: الحذف مربوط بكتابتنا. «الكتابة اللي على التيشيرت/بالخلفية» كتابةٌ في الصورة لا طبقتنا */
+  const OTHER_TEXT_RE = /^\s*(?:(?:اللي|الي|التي|الّي|يلي)\s+(?:(?:على|في|فوق|تحت|من|عند|جنب)\s+)?|(?:on|in|from)\s+(?:the\s+)?)([^\s،,.!؟?]+)/i;
+  function removesOurText(s){
+    const m = REMOVE_TEXT_RE.exec(s);
+    if(!m) return false;
+    const q = OTHER_TEXT_RE.exec(s.slice(m.index + m[0].length));
+    if(!q) return true;
+    const w = q[1];
+    if(positionOf(w) || /صور[ةه]|image|photo|picture|top|bottom|left|right/i.test(w)) return true;
+    return !/^(?:ب|بال|عال|ال|فال)\S{2,}|^[a-z]{3,}$/i.test(w);        /* «اللي كتبتها/تحت» لنا؛ «اللي على التيشيرت» لغيرنا */
+  }
+  /* «بدون كتابة» حذفٌ لطبقتنا فقط إن لم يبق في الرسالة غيره («ابيها بدون كتابة»، «ما ابي الكلام») —
+     «سو لي صورة قطة بدون كتابة» صورة جديدة، و«ما ابي كلام كثير اختصر» طلب محادثة */
+  const WITHOUT_KEEP_RE = /(?:^|\s)(?:لا|لأ|بس|خلاص|طيب|ابيها|أبيها|ابغاها|أبغاها|ابيه|أبيه|ابي|أبي|ابغى|أبغى|اريدها|أريدها|رجعها|رجّعها|رجعيها|رجعه|رجّعه|خلها|خليها|خلّيها|خله|خليه|خلّيه|اياها|إياها|هي|نفسها|نفس|ال?صور[ةه]|كذا|اوكي|أوكي|تكفى|لو|سمحت|please|اللي|الي)(?=\s|$)/g;
+  function withoutTextAlone(s){
+    if(!WITHOUT_TEXT_RE.test(s)) return false;
+    const rest = s.replace(new RegExp(WITHOUT_TEXT_RE.source, 'gi'), ' ').replace(WITHOUT_KEEP_RE, ' ');
+    return !peel(rest, [], false).replace(/[\s،,.!؟?]+/g, '');
+  }
+  const isRemoval = (s) => removesOurText(s) || withoutTextAlone(s) || VAGUE_REMOVE_RE.test(s);
   function textRemoveIntent(input){
     const s = String(input || '').trim();
     if(!s || s.length > 120 || findMarker(s)) return false;
-    return REMOVE_TEXT_RE.test(unquote(s)) || WITHOUT_TEXT_RE.test(unquote(s));
+    return removesOurText(unquote(s)) || withoutTextAlone(unquote(s));
   }
-  const TEXT_NOUN_RE = word('[وف]?(?:ال|لل)(?:نص|كتاب[ةه]|كلام|خط|كلمات|حروف|عبار[ةه]|مكتوب)|[وف]?(?:ب|بال|ل)?خط|text|writing|font|words|caption');
-  const IT_RE = word('(?:خل|خلّ|خلي|خلّي|حط|ود|ودّ|نزل|نزّل|ارفع|طلع|طلّع|حرك|حرّك|انقل|اجعل|سو|سوّ|سوي|ابي|أبي|ابغا|ابغى|أبغى|كبر|كبّر|صغر|صغّر|لون|لوّن)ه|it');
+  /* «الاسم» كتابتنا حين يُنقل أو يُنسَّق («خلي الاسم أكبر»، «خل الاسم يمين») */
+  const TEXT_NOUN_RE = word('[وف]?(?:ال|لل)(?:نص|كتاب[ةه]|كلام|خط|كلمات|حروف|عبار[ةه]|مكتوب|اسم)|[وف]?(?:ب|بال|ل)?خط|text|writing|font|words|caption');
+  /* ضمير المتابعة: «خله/خلها/خليها/وديه/رجعه/نزلها» — الطبقة القائمة يقرّرها العميل، والمحلّل يعيد تنسيقًا مرنًا */
+  const IT_RE = word('(?:خل|خلّ|خلي|خلّي|حط|ود|ودّ|ودي|نزل|نزّل|ارفع|طلع|طلّع|حرك|حرّك|انقل|اجعل|سو|سوّ|سوي|ابي|أبي|ابغا|ابغى|أبغى|كبر|كبّر|صغر|صغّر|لون|لوّن|رجع|رجّع)(?:ه|ها|يه|يها)|it');
+  const COLOR_NOUN_RE = word('[وف]?(?:ال|لل)لون');                      /* «اللون ذهبي»، «بدل اللون للأسود» — لا «لون السيارة» */
+  const PHOTO_FILTER_RE = /(?:أبيض|ابيض)\s*(?:و|&)\s*(?:أسود|اسود)|(?:أسود|اسود)\s*(?:و|&)\s*(?:أبيض|ابيض)|black\s*(?:and|&)\s*white|\bb\s*&\s*w\b/i;
   const MOVE_VERB_RE = /(?:حط|ضع|خل|خلي|خلّي|اجعل|حرّ?ك|انقل|نقل|ودّ?|نزّ?ل|ارفع|move|put|place)/i;
   const VISUAL_TARGET_RE = word('[وف]?(?:بال|ال|لل)?(?:خلفي[ةه]?|خلفيات|سما|سماء|بحر|لبس|ملابس|لبسها|لبسه|فستان|فستانها|قميص|ثوب|شعر|شعرها|شعره|وجه|وجهها|وجهه|عيون|عيونها|جدار|كنب[ةه]?|ورد[ةه]?|ورود|زهر[ةه]?|زهور|سيار[ةه]|غرف[ةه]|أرض|ارض|إضاء[ةه]|اضاء[ةه])|background|dress|shirt|hair|sky|wall|sofa|flowers?');
   function styleFields(src){
@@ -216,7 +313,10 @@
   function textStyleEdit(input){
     const s = unquote(input);
     if(!TEXT_NOUN_RE.test(s) || isRemoval(s)) return null;
-    if(findMarker(input) && (s !== String(input) || !MOVE_VERB_RE.test(s) || !positionOf(s))) return null;
+    const marker = findMarker(input);
+    /* «خل الكتابة يمين واكتب مشكور اخوي» كتابةٌ بموضع، لا نقلٌ للقديم يُسقط النصّ الجديد */
+    if(marker && (s !== String(input) || !MOVE_VERB_RE.test(s) || !positionOf(s)
+      || (/^[وف]?(?:اكتب|أكتب|كتبلي|كتبيلي|تكتب|write|type)/i.test(String(input).slice(marker.index, marker.end)) && writeSpec(String(input), marker).wantsText))) return null;
     return styleFields(s);
   }
   function onlyStyle(s){          /* «يمين»، «لا، على اليمين»؛ والرابط «خلها» لا يُحسب تنسيقًا («خلها أبيض وأسود» للصورة) */
@@ -225,29 +325,45 @@
   }
   function textStyleEditLoose(input){
     const s = unquote(input);
-    if(findMarker(input) || isRemoval(s) || VISUAL_TARGET_RE.test(s)) return null;
-    if(!TEXT_NOUN_RE.test(s) && !IT_RE.test(s) && !onlyStyle(s)) return null;
+    if(findMarker(input) || isRemoval(s) || VISUAL_TARGET_RE.test(s) || PHOTO_FILTER_RE.test(s)) return null;
+    if(!TEXT_NOUN_RE.test(s) && !IT_RE.test(s) && !COLOR_NOUN_RE.test(s) && !onlyStyle(s)) return null;
     return styleFields(s);
   }
 
   /* ── الاستبدال على طبقتنا (R14) ── */
   const SWAP_WRITE_RE = /^(?:لا\s+)?(?:(?:ابي|أبي|ابغى|أبغى|ابغي)\s+)?(?:بدال|بدل|مكان)\s+(?!ال?(?:كلام|كتاب|نص))[«"']?([^«»"'\s]+(?:\s+[^«»"'\s]+){0,2}?)[»"']?\s+(?:اكتب|تكتب|حط)\s+[«"']?(.+?)[»"']?\s*[.!]*$/i;
+  /* هدفٌ كلّه لون/حجم/خطّ/موضع («أكبر»، «بيضا»، «يمين») تنسيقٌ لا نصّ جديد */
+  const STYLE_ONLY_WORD_RE = new RegExp('(?:^|\\s)(?:[وف]?(?:بال|ال|ب|لل)?(?:' + SIZE_W + '|' + FONT_W + '|فاتح|غامق|شوي|زيادة|اكثر|أكثر|بعد|شوية))(?=\\s|$)', 'gi');
+  const styleOnlyTarget = (t) => !peel(String(t).replace(STYLE_ONLY_WORD_RE, ' '), [], false).replace(/[\s،,.!؟?]+/g, '');
+  /* «غيرها الى كرتون/ليل/رسم زيتي» تحويلٌ للصورة لا نصٌّ جديد */
+  const RESTYLE_TARGET_RE = /^(?:[وف]?(?:بال|ال|لل|ب|ل)?(?:كرتون|كارتون|كرتوني[ةه]?|انمي|أنمي|ليل|ليلي[ةه]?|نهار|شتا|شتاء|صيف|ربيع|خريف|رسم|رسم[ةه]|زيتي|زيتي[ةه]|مائي|مائي[ةه]|واقعي|واقعي[ةه]|اسلوب|أسلوب|ستايل|كاريكاتير|لوح[ةه]|سينمائي|سينمائي[ةه]|قديم[ةه]?|ريترو|بكسل|ثلاثي|ثري\s*دي|3d|غروب|شروق|ثلج|مطر|ضباب|فن|فني[ةه]?|نسخ[ةه]))(?=\s|$)/i;
   function textReplaceIntent(input){
     const s = String(input || '').trim();
     if(!s || s.length > 160 || findMarker(s) || textStyleEdit(s)) return null;
-    const m = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|خل|خلي|خلّي|خليه|خليها|اجعل|صحح|صحّح|عدل|عدّل)\s+(?:ال)?(?:كلام|كتاب[ةه]|نص|مكتوب|عبار[ةه]|جمل[ةه]|كلم[ةه]|اسم)\s+(?:الى|إلى|لـ|يصير|تصير|يكون|تكون|:)?\s*(.+)$/i.exec(s)
-      || /^(?:غير|غيّر|بدل|بدّل)(?:ها|ه)\s+(?:الى|إلى|لـ|ل)\s*(.+)$/i.exec(s)
-      || /^(?:change|replace|make)\s+(?:the\s+)?(?:text|words?|writing)\s+(?:to|into|with|say)\s+(.+)$/i.exec(s);
+    /* «صحح كتابة الاسم» إضافة (كتابةُ الاسم) لا «اجعل الكتابة: الاسم» */
+    const m1 = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|خل|خلي|خلّي|خليه|خليها|اجعل|صحح|صحّح|عدل|عدّل)\s+(?:ال(?:كلام|كتاب[ةه]|نص|مكتوب|عبار[ةه]|جمل[ةه]|كلم[ةه])\s+|(?:كلام|كتاب[ةه]|نص|مكتوب|عبار[ةه]|جمل[ةه]|كلم[ةه])\s+(?!ال(?!ى\s)))(?:الى|إلى|لـ|يصير|تصير|يكون|تكون|:)?\s*(.+)$/i.exec(s);
+    const m2 = m1 ? null : /^(?:غير|غيّر|بدل|بدّل)(?:ها|ه)\s+(?:الى|إلى|لـ|ل)\s*(.+)$/i.exec(s);
+    const m = m1 || m2 || /^(?:change|replace|make)\s+(?:the\s+)?(?:text|words?|writing)\s+(?:to|into|with|say)\s+(.+)$/i.exec(s);
     if(!m) return null;
     const q = quotedValue(m[1]), t = fixKnownPhrases((q ? q.value : m[1]).trim());
-    return t && t.length <= 120 && peel(t, [], false) ? t : null;          /* «خلي الكتابه ذهبي» تنسيق لا استبدال */
+    if(m2 && !q && (RESTYLE_TARGET_RE.test(t) || VISUAL_TARGET_RE.test(t))) return null;
+    return t && t.length <= 120 && (q || !styleOnlyTarget(t)) ? t : null;          /* «خلي الكتابه ذهبي» تنسيق لا استبدال */
   }
+  /* «للغالي» = «ل» + «الغالي»، و«لسارة» = «ل» + «سارة»؛ الأسماء المبدوءة باللام تبقى */
+  const LAM_NAME_RE = /^(?:ليلى|ليلي|لمى|لما|لمياء|لينا|لين|لانا|لارا|لؤي|لطيفة|لطيفه|لولوة|لولوه|لجين|لبنى|ليث|لبيب|لقمان|لؤلؤ[ةه]?|لوجين|ليان|لميس)(?=\s|$)/;
+  const dropLam = (x) => /^لله(?=\s|$)/.test(x) ? x : (/^لل\S/.test(x) ? 'ال' + x.slice(2) : (/^ل\S{2,}/.test(x) && !LAM_NAME_RE.test(x) ? x.slice(1) : x));
   function layerWordSwap(input, layerText){
     const s = String(input || '').trim(), t = String(layerText || '');
     if(!s || !t || s.length > 160) return null;
-    const m = SWAP_WRITE_RE.exec(s) || /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|استبدل|صحح|صحّح)\s+(?:(?:ال)?(?:كلم[ةه]|اسم|جمل[ةه])\s+)?[«"']?(.+?)[»"']?\s+(?:الى|إلى|حط|وحط|خلها|خله|تصير|يصير|مكانها|مكانه|بـ|ب)\s*[«"']?(.+?)[»"']?\s*[.!]*$/i.exec(s);
+    /* «بدل الاسم الى محمد» على طبقة كلمتها واحدة = الاسم نفسه؛ على عبارة أطول يُترك لمسار تبديل الاسم داخل الصورة */
+    const nm = /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|صحح|صحّح|خل|خلي|خلّي|اجعل)\s+(?:ال)?اسم\s+((?:الى|إلى|يصير|يكون|لـ|:)\s*)?(.+?)\s*[.!]*$/i.exec(s);
+    if(nm){
+      const q = quotedValue(nm[2]), to = q ? q.value.trim() : (nm[1] ? nm[2].trim() : dropLam(nm[2].trim()));
+      return !/\s/.test(t.trim()) && to && to !== t.trim() && (q || !styleOnlyTarget(to)) ? to : null;
+    }
+    const m = SWAP_WRITE_RE.exec(s) || /^(?:لا\s+)?(?:غير|غيّر|غيري|بدل|بدّل|بدلي|استبدل|صحح|صحّح)\s+(?:(?:ال)?(?:كلم[ةه]|اسم|جمل[ةه])\s+)?[«"']?(.+?)[»"']?(?:\s+(?:الى|إلى|حط|وحط|خلها|خله|تصير|يصير|مكانها|مكانه|بـ|ب|لـ)\s*|\s+(?=(ل)\S))[«"']?(.+?)[»"']?\s*[.!]*$/i.exec(s);
     if(!m) return null;
-    const from = m[1].trim(), to = fixKnownPhrases(m[2].trim());
+    const lam = m.length > 3 && m[2] === 'ل', from = m[1].trim(), to = fixKnownPhrases(lam ? dropLam(m[3].trim()) : m[m.length > 3 ? 3 : 2].trim());
     if(!from || !to || from === to || t.indexOf(from) < 0) return null;
     return t.split(from).join(to);
   }
@@ -300,8 +416,14 @@
   function imageWriteIntent(input){                      /* v574: نيّة كتابة ⇒ لا يلمس المولّد الصورة */
     const s = String(input || '').trim();
     if(!s || /(?:خلفية|الخلفيه|ديكور|كرتون|كارتون|أزل|ازل|امسح|احذف|شيل|background|cartoon|remove|delete)/i.test(s)) return false;
-    return /(?:^|[\s،,])(?:اكتب|أكتب|اكتبي|اكتبلي|كتبلي|تكتب|write)(?=$|[\s،,.!?؟:«"'])/i.test(s)
-      || /(?:^|[\s،,])(?:حط|ضع|ضيف|أضف|اضف|put|add)\s*(?:لي\s+)?(?:اسمي|اسم|كلمة|كلمه|نص|النص|عبارة|عباره|كلام|جملة|جمله|name|text)/i.test(s);
+    /* v-parser-review: «لا تكتب شي وخلها ليل» و«ما ابيك تكتب» نفيٌ لا نيّة كتابة — التعديل يمضي للصورة */
+    const re = /(?:^|[\s،,])(اكتب|أكتب|اكتبي|اكتبلي|كتبلي|تكتب|write)(?=$|[\s،,.!?؟:«"'])|(?:^|[\s،,])((?:حط|ضع|ضيف|أضف|اضف|put|add)\s*(?:لي\s+)?(?:اسمي|اسم|كلمة|كلمه|نص|النص|عبارة|عباره|كلام|جملة|جمله|name|text))/gi;
+    let m;
+    while((m = re.exec(s))){
+      const w = m[1] || m[2], at = m.index + m[0].length - w.length;
+      if(liveWriteVerb(s, at, at + w.length, w)) return true;
+    }
+    return SWAP_WRITE_RE.test(s);                                                       /* «ابي بدل مشكور تكتب يعطيك العافية» */
   }
   function isExplicitImageEdit(input){
     const s = String(input || '').trim();
@@ -322,7 +444,7 @@
   }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
-    const none = (extra) => Object.assign({ wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null }, extra);
+    const none = (extra) => Object.assign({ wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', positionFlex:false, styleEditLoose:null }, extra);
     if(source.length > 400) return none();                                             /* v-longtext-noimg */
     const bare = unquote(source), marker = findMarker(source), removal = isRemoval(bare);
     if(removal && !marker) return none({ removeText:true });                             /* «احذف الكلام وحط وردة» حذفٌ فقط */
@@ -331,11 +453,30 @@
     if(SWAP_WRITE_RE.test(source.trim())) return none();                                /* «بدال مشكور اكتب شكراً» تبديل داخل الطبقة */
     const prayer = removal ? null : autoPrayerSpec(source);
     if(prayer){
-      const at = Math.min(marker ? marker.index : Infinity, source.search(PRAYER_WORD_RE)), color = textColor(source);
-      return Object.assign({ wantsText:true, exactText:null }, visualFields(source.slice(0, Math.max(0, at)), prayer.kind, null), { prayerRequest:prayer.request, fontKey:textFont(source), color, colorSet:color !== '#ffffff', size:textSize(source) }, place(source), { kind:prayer.kind, autoAuthored:true });
+      const pw = source.search(PRAYER_WORD_RE), at = Math.min(marker ? marker.index : Infinity, pw), color = textColor(source);
+      /* v-parser-review: ذيل المشهد بعد كلمة الدعاء («…دعاء للوالدين وخل الخلفية بحر») يذهب للمولّد لا يضيع */
+      const tail = sceneOf(cutScene(source.slice(Math.max(0, pw)), 1)[1], []);
+      return Object.assign({ wantsText:true, exactText:null }, visualFields([cleanVisual(source.slice(0, Math.max(0, at))), tail].filter(Boolean).join(' '), prayer.kind, null), { prayerRequest:prayer.request, fontKey:textFont(source), color, colorSet:color !== '#ffffff', size:textSize(source) }, place(source), { kind:prayer.kind, autoAuthored:true });
     }
-    if(!marker) return none({ styleEditLoose:textStyleEditLoose(source) });
+    if(!marker){
+      const loose = textStyleEditLoose(source);                                         /* «خله يمين»: الجانب وحده مرن كصيغة «خل الكتابة يمين» */
+      return none({ styleEditLoose:loose, positionFlex:!!(loose && loose.position && (positionOf(bare) || {}).flex) });
+    }
     return writeSpec(source, marker);
+  }
+  /* نهاية النصّ الحرّ: علامة مفصولة أو إيموجي أو «!» من كلام الطلب لا من النصّ؛ و«؟» في «ممكن تكتب…؟» علامة الطلب */
+  const END_JUNK_RE = new RegExp('(?:\\s+(?:[.!؟?…،,]|' + EMO + ')+|' + EMO + '+|!+)$');
+  const ASK_Q_RE = /^\s*(?:ممكن|تقدر|تقدرين|يمديك|لو\s+سمحت|can\s+you|could\s+you)(?=\s)/i;
+  function trimEnd(t, source){
+    let x = String(t);
+    for(let i = 0; i < 6; i++){
+      let y = x.replace(END_JUNK_RE, '').replace(/([^.])\.$/, '$1');
+      if(ASK_Q_RE.test(source)) y = y.replace(/[؟?]+$/, '');
+      y = y.replace(TRIM_RE, '');
+      if(y === x) break;
+      x = y;
+    }
+    return x.trim() ? x : t;
   }
   function writeSpec(source, marker){
     const ins = [], scene = [], pre = [];
@@ -351,24 +492,24 @@
       if(pq){ scene[scene.length - 1] = cleanVisual(prefix.slice(0, pq.index)); ins.push(prefix.slice(pq.index + pq.whole.length)); q = { index:0, whole:'', value:pq.value }; }
     }
     if(q){                                                                              /* R1: المنصَّص حرفيّ، وما حوله تعليمات */
-      exact = q.value.trim() ? q.value : null;
+      exact = q.value.trim() ? fixKnownPhrases(q.value) : null;                         /* الاسترجاع المنصَّص برسم المصحف في كلّ المسارات */
       const left = rest.slice(0, q.index), cs = cutScene(rest.slice(q.index + q.whole.length), 0);
       ins.push(left);
       if(/دعا|[أا]دعي|شعر|قصيد|بيت/.test(left)) kind = requestKind(left);
       const leftover = peel(cs[0], ins, false);
-      scene.push(isGenericVisual(leftover) ? '' : leftover, cs[1]);
+      scene.push(isGenericVisual(leftover) ? '' : leftover, sceneOf(cs[1], ins));
     }else{
       let t = rest, literal = false;
       const c = /^([^:：\n]{0,40})[:：]\s*/.exec(t);
       if(c && peel(c[1], [], false).split(/\s+/).every((w) => !w || LABEL_WORD_RE.test(w))){ ins.push(c[1]); t = t.slice(c[0].length); literal = true; }
       const cs = cutScene(t, 1);
-      scene.push(cs[1]);
+      scene.push(sceneOf(cs[1], ins));
       t = peel(cs[0], ins, true);
       const cut = t.search(CUT_RE);
       if(cut > 0){ ins.push(t.slice(cut)); t = peel(t.slice(0, cut), ins, true); }
       const r = literal ? { text:t } : classify(t);
       if(r.kind) kind = r.kind;
-      else exact = r.text.trim() ? fixKnownPhrases(r.text.trim()) : null;
+      else exact = r.text.trim() ? fixKnownPhrases(literal ? r.text.trim() : trimEnd(r.text.trim(), source)) : null;
     }
     const insStr = ins.join(' ');
     if(!q && !exact && !kind){                                                          /* R8: «اكتب بخط صغير ومزخرف» = إعادة تنسيق */

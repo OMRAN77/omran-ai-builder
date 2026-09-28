@@ -5,7 +5,7 @@
    وعيّنة من طبقات الأعطاب التي قيست على ٣٨٣ صيغة (٦١٫٤٪ قبل، ١٠٠٪ بعد) و١١٨ صيغة لم يرها المرشّحون. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseImageTextSpec: P, textRemoveIntent } = require('../js/app-08-image-text.js');
+const { parseImageTextSpec: P, textRemoveIntent, textReplaceIntent, layerWordSwap, imageWriteIntent } = require('../js/app-08-image-text.js');
 
 const eq = (input, want) => {
   const s = P(input);
@@ -76,4 +76,162 @@ test('ذيل اللهجة القديم محفوظ (v-tail-dialect)، ولا تج
     P('اكتب مشكور ' + Array(24).fill(unit).join(' ') + ' x');
     assert.ok(Number(process.hrtime.bigint() - t0) / 1e6 < 200, 'لا تراجع أُسّيّ (كانت ٢٫٤–٦٫٣ ثانية في المرشّح قبل التقييد)');
   }
+});
+
+/* v-parser-review: مراجعة عدائيّة لإعادة البناء أثبتت ١٩ عطبًا في المحلّل؛ كلّ صيغة أعادت إنتاجها مثبّتة هنا حرفيًّا. */
+const PINK = '#ff4f9a', GOLD = '#f4cf65', WHITE = '#fdfdfd', BLACK = '#111111', RED = '#d32f2f';
+const ISTIRJA = 'إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ';
+
+test('١) الكتابة أمرٌ للتطبيق فقط: «ولد يكتب»، «آلة كتابة»، «type fast» وصفُ مشهد لا نصّ يُطبع', () => {
+  for (const p of ['ارسم ولد يكتب على السبورة', 'ارسم طفل يكتب واجبه', 'ارسم آلة كتابة قديمة', 'ابي صورة فيها كتابة بخط اليد', 'صورة بنت تكتب رسالة',
+    'ارسم قطة تكتب', 'كبر كتابة التاريخ', 'صحح كتابة الاسم في البطاقة', 'draw a man who can type fast']) eq(p, { wantsText: false, exactText: null });
+  for (const p of ['ارسم قطة تكتب', 'صورة بنت تكتب رسالة']) assert.equal(imageWriteIntent(p), false, p);
+  assert.equal(textReplaceIntent('صحح كتابة الاسم في البطاقة'), null, '«كتابة الاسم» إضافة لا نصّ جديد');
+  /* إطار الطلب يبقى كتابة */
+  eq('ابي تكتب مرحبا يسار', { exactText: 'مرحبا', position: 'left-center' });
+  eq('ابغاك تكتب مبروك المولود', { exactText: 'مبروك المولود' });
+  eq('يا ليت تكتب عليها الله يرحم والديك', { exactText: 'الله يرحم والديك' });
+  eq('أريد كتابة «مرحبًا» على الجانب الأيمن', { exactText: 'مرحبًا', position: 'right-center' });
+  eq('ارسم كيكة مع كتابة عيد ميلاد سعيد', { exactText: 'عيد ميلاد سعيد' });
+  eq('type «Eid Mubarak»', { exactText: 'Eid Mubarak' });
+});
+
+test('٢) «غيرها الى كرتون/ليل/رسم زيتي» تحويلٌ للصورة لا استبدالٌ للنصّ', () => {
+  for (const p of ['غيرها الى كرتون', 'غيرها الى ليل', 'بدلها الى رسم زيتي']) assert.equal(textReplaceIntent(p), null, p);
+  assert.equal(textReplaceIntent('غيرها لـ شكراً جزيلاً'), 'شكراً جزيلاً');
+  assert.equal(textReplaceIntent('غيره الى تسلم يدك'), 'تسلم يدك');
+  assert.equal(textReplaceIntent('غيرها الى «ليل»'), 'ليل', 'المنصَّص نصّ دائمًا');
+});
+
+test('٣) «بدون كتابة» حذفٌ لطبقتنا فقط حين لا يبقى غيره — لا صورة جديدة ولا طلب محادثة', () => {
+  for (const p of ['سو لي صورة قطة بدون كتابة', 'ما ابي كلام كثير اختصر', 'جاوبني بدون كلام كثير', 'غير الخلفية لبحر بدون كتابة']) {
+    assert.equal(textRemoveIntent(p), false, p);
+    eq(p, { removeText: 'FALSY' });
+  }
+  for (const p of ['ابيها بدون كتابة', 'رجعها بدون الكلام', 'ما ابي الكلام', 'بدون كلام']) assert.equal(textRemoveIntent(p), true, p);
+});
+
+test('٤) النفي لا يكتب: «ما ابيك تكتب عليها شي»، «لا تكتب شي وخلها ليل»', () => {
+  for (const p of ['ما ابيك تكتب عليها شي', 'لا تكتب شي وخلها ليل', 'لا تكتب اسمي، بس خل الجو مغيم']) {
+    eq(p, { wantsText: false, exactText: null, autoAuthored: 'FALSY' });
+    assert.equal(imageWriteIntent(p), false, p);
+  }
+});
+
+test('٥) «الاسم» يُنسَّق ويُنقل ولا يُستبدل بكلمة الحجم؛ «غير الاسم لسارة» على الاسم وحده', () => {
+  eq('خلي الاسم أكبر', { wantsText: false, 'styleEdit.size': 'larger' });
+  eq('خلي الاسم أصغر', { 'styleEdit.size': 'smaller' });
+  eq('خل الاسم يمين', { 'styleEdit.position': 'right-center', positionFlex: true });
+  for (const p of ['خلي الاسم أكبر', 'خلي الاسم أصغر', 'غير الاسم لسارة', 'غير الاسم الى سارة']) assert.equal(textReplaceIntent(p), null, p);
+  assert.equal(layerWordSwap('غير الاسم لسارة', 'احمد'), 'سارة');
+  assert.equal(layerWordSwap('بدل الاسم الى محمد', 'عمران'), 'محمد');
+  assert.equal(layerWordSwap('غير الاسم الى سارة', 'مبروك يا احمد'), null, 'العبارة الأطول لمسار تبديل الاسم داخل الصورة');
+});
+
+test('٦) متابعة بضمير المؤنّث أو غيره تعيد تنسيق الكتابة القائمة ولا تذهب للمولّد', () => {
+  const L = (p, k, v) => eq(p, { wantsText: false, ['styleEditLoose.' + k]: v });
+  L('خلها على اليمين', 'position', 'right-center'); L('خلها يمين', 'position', 'right-center'); L('حطها فوق', 'position', 'top');
+  L('نزلها تحت', 'position', 'bottom'); L('وديه يسار', 'position', 'left-center'); L('رجعه تحت', 'position', 'bottom');
+  L('خليها وردي', 'color', PINK); L('خلها بالأبيض', 'color', WHITE); L('خلها اكبر', 'size', 'larger');
+  L('اللون ذهبي', 'color', GOLD); L('بدل اللون للأسود', 'color', BLACK);
+  for (const p of ['خلها أبيض وأسود', 'غير لون السيارة للأحمر', 'خلها أوضح', 'غيرها الى كرتون']) eq(p, { styleEditLoose: null });
+});
+
+test('٧) دعاء على صورة المستخدم مع ذيل مشهد: الذيل يذهب للمولّد لا يضيع', () => {
+  eq('اكتب عليها دعاء للوالدين وخل الخلفية بحر', { autoAuthored: true, kind: 'prayer', visualEdit: 'خل الخلفية بحر' });
+  eq('اكتب دعاء للوالدين والخلفية بحر', { autoAuthored: true, visualEdit: 'الخلفية بحر' });
+  assert.match(P('اكتب شعر عن الام والصورة تعبر عن الحنان').visualEdit, /تعبر عن الحنان/);
+  assert.match(P('صورة فيها دعاء يوم الجمعة مع خلفية مسجد').visualEdit, /خلفية مسجد/);
+});
+
+test('٨) الجهة وحدها في المتابعة مرنة (positionFlex) كصيغة «خل الكتابة يمين» — لا تُثبَّت في الوسط فوق الأجسام', () => {
+  for (const p of ['لا، على اليمين', 'خله يمين', 'على اليمين', 'يمين']) eq(p, { 'styleEditLoose.position': 'right-center', positionFlex: true });
+  eq('حطه يسار', { 'styleEditLoose.position': 'left-center', positionFlex: true });
+  eq('خله تحت يمين', { 'styleEditLoose.position': 'right-bottom', positionFlex: false });
+  eq('حطه فوق', { 'styleEditLoose.position': 'top', positionFlex: false });
+});
+
+test('٩) الاسترجاع المنصَّص برسم المصحف في كلّ المسارات (مسار «إنشاء صورة» لا يمرّ بالمدقّق)', () => {
+  for (const p of ['صمم صورة عزاء واكتب «انا لله وانا اليه راجعون»', 'اكتب "ان الله وانه اليه راجعون"', 'ارسم بحر واكتب عليه «ان الله و ان اليه راجعون»']) eq(p, { exactText: ISTIRJA });
+});
+
+test('١٠) ذيل كلاميّ أو إيموجي أو علامة بعد الموضع لا يحجبه — جملة المالك تبقى «مشكور اخوي» يمينًا', () => {
+  const tails = ['تكفى', '🙏', '❤️', '😍😍', '؟', '.', '!!', '…', 'لو سمحت', 'لو تكرمت', 'الله يعافيك', 'الله يخليك', 'يا الغالي', 'بس', 'شوي',
+    'ولا تغير الصورة', 'بدون ما تغير الصورة', 'وشكرا', 'pls', 'plz', 'وخلاص', 'مثل ما قلت لك', 'عشان تكون واضحة'];
+  for (const t of tails) eq('اكتب مشكور اخوي على اليمين ' + t, RC);
+  for (const t of ['تكفى', '🙏', '؟', '!', 'لو سمحت', 'وخلاص']) eq('اكتب على اليمين مشكور اخوي ' + t, RC);
+  eq('اكتب على اليمين مشكور اخوي!', RC);
+  eq('اكتب مشكور اخوي على اليمين🙏', RC);
+  eq('اكتب مشكور اخوي على اليمين والصورة لا تغيرها', RC);
+  eq('ممكن تكتب مشكور اخوي؟ على اليمين', RC);
+  eq('اكتب مبروك على اليمين يالطيب', { exactText: 'مبروك يالطيب', position: 'right-center' });   /* الجهة تُقرأ والكلمة المجهولة تبقى نصًّا */
+  eq('اكتب الجنة تحت اقدام الامهات', { exactText: 'الجنة تحت اقدام الامهات', positionAuto: true });
+  eq('اكتب يمين الله', { exactText: 'يمين الله', positionAuto: true });
+  eq('اكتب كيف حالك؟', { exactText: 'كيف حالك؟' });
+});
+
+test('١١) «بيضا/حمرا/سودا» بلا همزة ألوانٌ للكتابة لا نصٌّ يحلّ محلّها', () => {
+  eq('خل الكتابة بيضا', { 'styleEdit.color': WHITE });
+  eq('خل الكلام حمرا', { 'styleEdit.color': RED });
+  eq('الكتابة ما تبان، خلها سودا', { 'styleEdit.color': BLACK });
+  for (const p of ['خل الكتابة بيضا', 'خل الكلام حمرا']) assert.equal(textReplaceIntent(p), null, p);
+});
+
+test('١٢) كتابة مع «خل الكتابة يمين» كتابةٌ بموضع — لا نقلٌ للقديم يُسقط الجديد', () => {
+  for (const p of ['خل الكتابة يمين واكتب مشكور اخوي', 'اكتب مشكور اخوي وخل الكتابة على اليمين', 'اكتب مشكور اخوي وحط الكتابة على اليمين']) eq(p, Object.assign({ styleEdit: 'FALSY' }, RC));
+  eq('خل الكتابة يمين واكتب يعطيك العافية', { wantsText: true, exactText: 'يعطيك العافية', position: 'right-center', styleEdit: 'FALSY' });
+  eq('الكلام يكون يمين، اكتب مشكور اخوي', RC);
+  eq('اكتب الحب والكلام', { exactText: 'الحب والكلام' });
+});
+
+test('١٣) الوسم والمستلِم لا يُطبعان، والاسم الذي يشبه الموضع يبقى اسمًا', () => {
+  eq('اكتب اسم بنتي يمنى', { exactText: 'يمنى', positionAuto: true });
+  eq('اكتب اسمها وسن بالوسط', { exactText: 'وسن', position: 'center' });
+  eq('اكتب اسم المحل مطعم الريف فوق', { exactText: 'مطعم الريف', position: 'top' });
+  eq('اكتب لها مبروك فوق', { exactText: 'مبروك', position: 'top' });
+  eq('اكتب اسمي يسرى على اليسار', { wantsText: true, exactText: 'يسرى', position: 'left-center' });
+  eq('اكتب يمنى على اليمين', { wantsText: true, exactText: 'يمنى', position: 'right-center' });
+  eq('اكتب وسط البلد تحت', { exactText: 'وسط البلد', position: 'bottom' });
+  eq('اكتب لك الله يا غزة', { exactText: 'لك الله يا غزة' });
+});
+
+test('١٤) كلمات الحجم والخطّ والدرجة تُقرأ ولا تُطبع', () => {
+  eq('اكتب مبروك يا عريس بالديواني', { exactText: 'مبروك يا عريس', fontKey: 'diwani' });
+  eq('اكتب مبروك بحجم كبير', { exactText: 'مبروك', size: 'large' });
+  eq('اكتب مبروك وخليه كبير', { exactText: 'مبروك', size: 'large' });
+  eq('اكتب مبروك وخله صغير تحت', { exactText: 'مبروك', size: 'small', position: 'bottom' });
+  eq('اكتب مبروك احمر غامق', { exactText: 'مبروك', color: RED });
+  eq('اكتب مشكور بالفوشي', { exactText: 'مشكور', color: PINK });
+  eq('اكتب ولد الديرة خط كوفي', { exactText: 'ولد الديرة', fontKey: 'kufi' });
+  eq('اكتب Eid Mubarak بالنص كبير', { exactText: 'Eid Mubarak', position: 'center', size: 'large' });
+  eq('اكتب عمران بلون الذهب', { exactText: 'عمران', color: GOLD });
+  eq('اكتب عيد سعيد بالأزرق الفاتح', { exactText: 'عيد سعيد', color: '#5ec8ff' });
+  eq('اكتب «أهلًا رمضان» بالنص وكبير', { exactText: 'أهلًا رمضان', position: 'center', size: 'large', visualEdit: null });
+  for (const p of ['اكتب الله اكبر', 'اكتب خلها على الله', 'اكتب ربي كبير']) eq(p, { exactText: p.replace(/^اكتب /, '') });
+});
+
+test('١٥) «آية/حديث/ذكر/كابشن» و«اكتب لها كلام…» طلب تأليف لا جملة تُطبع', () => {
+  eq('اكتب آية عن الصبر فوق', { exactText: null, autoAuthored: true, kind: 'prayer', position: 'top' });
+  for (const p of ['اكتب آية قرآنية', 'اكتب حديث عن الأم', 'اكتب ذكر صباحي', 'اكتب كابشن حلو للصورة', 'اكتب لها كلام حلو بمناسبة عيد ميلادها']) eq(p, { wantsText: true, exactText: null, autoAuthored: true });
+  eq('اكتب ذكر الله يطمئن القلوب', { exactText: 'ذكر الله يطمئن القلوب' });
+});
+
+test('١٦) «…وخل الصورة زي ما هي» إبقاءٌ لا مشهدٌ يُرسل للمولّد', () => {
+  for (const p of ['اكتب مشكور اخوي على اليمين وخل الصورة زي ما هي', 'اكتب مشكور اخوي على اليمين وخل الخلفية مثل ما هي', 'اكتب مشكور اخوي على اليمين وخل الصورة على حالها',
+    'اكتب مشكور اخوي على اليمين وخلي الصورة نفسها']) eq(p, Object.assign({ visualEdit: null }, RC));
+  eq('اكتب مبروك وخل الصورة ليلية', { exactText: 'مبروك', visualEdit: 'خل الصورة ليلية' });
+});
+
+test('١٧) «غير اخوي للغالي» يبدّل الكلمة في الطبقة', () => {
+  assert.equal(layerWordSwap('غير اخوي للغالي', 'مشكور اخوي'), 'مشكور الغالي');
+  assert.equal(layerWordSwap('غير اخوي لـ الغالي', 'مشكور اخوي'), 'مشكور الغالي');
+  assert.equal(layerWordSwap('بدل مشكور لله الحمد', 'مشكور اخوي'), 'لله الحمد اخوي', '«لله» تبقى كما هي');
+});
+
+test('١٨) «شيل الكتابة اللي على التيشيرت» كتابةٌ في الصورة لا طبقتنا', () => {
+  for (const p of ['شيل الكتابة اللي على التيشيرت', 'امسح الكتابة اللي بالخلفية', 'remove the text on the shirt']) {
+    assert.equal(textRemoveIntent(p), false, p);
+    eq(p, { removeText: 'FALSY' });
+  }
+  for (const p of ['امسح الكتابة اللي تحت', 'امسح الكتابة اللي على الصورة', 'امسح الكتابة اللي كتبتها', 'remove the text on top']) assert.equal(textRemoveIntent(p), true, p);
 });
