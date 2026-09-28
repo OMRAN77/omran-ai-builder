@@ -25584,6 +25584,60 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       try{ target.scrollIntoView({ behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest', inline:'start' }); }
       catch(e){ try{ target.scrollIntoView(); }catch(_){ __swallow(_, 'tools:shelf-scroll'); } }
     };
+    /* v-shelf-nocomposite (فيديو المالك ٢٨ سبتمبر ١٧:٤٦، هواوي 1.3.12، بعد طابور v-shelf-paint-throttle):
+       الصفّ الذي يُسحب يفرغ، ثمّ الصفوف الثلاثة معًا، ويرجع صفّ حين يتحرّك وحده — والعناوين و«عرض الكل»
+       والأسهم (في طبقة النافذة نفسها) مرسومة طوال الوقت. الصفوف الأفقيّة جديدة اليوم (v-tools-shelves)،
+       وشبكة الأدوات العموديّة قبلها كانت تُرسم سليمة على الجهاز نفسه بالرسم البرمجيّ (v-cpu-raster).
+       الفرق: كلّ صفّ `overflow-x:auto` ماسح مركّب مستقلّ داخل ماسح النافذة (طبقتان لكلّ صفّ بمسبار
+       LayerTree)، ورسم WebView البرمجيّ يُسقط محتوى هذه الطبقات المتداخلة. داخل غلاف التطبيق (حيث جسر
+       OmranRender) يصير الصفّ `overflow-x:hidden` — لا ماسح مركّب، فيُرسم في طبقة النافذة التي ثبت
+       أنّها سليمة — ويحرّكه الإصبع هنا بـscrollLeft، ثمّ يستقرّ على أقرب بطاقة بالزخم. المتصفّحات لا تتغيّر. */
+    const ptShelfDrag = (viewport) => {
+      let x0 = 0, y0 = 0, s0 = 0, lx = 0, lt = 0, v = 0, axis = '', dragEnd = 0;
+      const settle = () => {
+        const list = cards(viewport.querySelector('.ptTrack') || viewport);
+        if(!list.length) return;
+        const rtl = getComputedStyle(viewport).direction === 'rtl';
+        const vr = viewport.getBoundingClientRect(), cur = viewport.scrollLeft;
+        const aim = cur - v * 180; /* الزخم: ~١٨٠م‌ث إضافيّة بسرعة الإصبع لحظة الإفلات */
+        let best = cur, gap = Infinity;
+        list.forEach((el) => {
+          const r = el.getBoundingClientRect();
+          const at = cur + (rtl ? (r.right - vr.right) : (r.left - vr.left));
+          if(Math.abs(at - aim) < gap){ gap = Math.abs(at - aim); best = at; }
+        });
+        try{ viewport.scrollTo({ left:best, behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
+        catch(e){ viewport.scrollLeft = best; }
+      };
+      viewport.addEventListener('touchstart', (e) => {
+        if(e.touches.length !== 1){ axis = 'n'; return; }
+        const t = e.touches[0];
+        x0 = lx = t.clientX; y0 = t.clientY; s0 = viewport.scrollLeft; lt = e.timeStamp; v = 0; axis = '';
+      }, { passive:true });
+      viewport.addEventListener('touchmove', (e) => {
+        if(axis === 'n' || axis === 'y' || !e.touches.length) return;
+        const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+        if(!axis){
+          if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+          axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+          if(axis === 'y') return; /* تمرير رأسيّ: النافذة تتمرّر بنفسها (touch-action:pan-y) */
+        }
+        viewport.scrollLeft = s0 - dx; /* الصيغة نفسها في RTL (scrollLeft سالب) وLTR */
+        const dt = e.timeStamp - lt;
+        if(dt > 0) v = v * .2 + ((t.clientX - lx) / dt) * .8;
+        lx = t.clientX; lt = e.timeStamp;
+      }, { passive:true });
+      const end = () => {
+        if(axis === 'x'){ dragEnd = Date.now(); settle(); }
+        axis = '';
+      };
+      viewport.addEventListener('touchend', end, { passive:true });
+      viewport.addEventListener('touchcancel', end, { passive:true });
+      /* سحب انتهى فوق بطاقة لا يفتحها */
+      viewport.addEventListener('click', (e) => { if(Date.now() - dragEnd < 350){ e.preventDefault(); e.stopPropagation(); } }, true);
+    };
+    const ptDragShelves = (() => { try{ return !!(window.OmranRender && typeof window.OmranRender.mode === 'function'); }catch(e){ return false; } })();
+    if(ptDragShelves) ptSectionsView.classList.add('ptDragShelves');
     const closeAll = (restoreFocus) => {
       if(!allState) return;
       const s = allState, track = ptAllHost.querySelector('.ptTrack');
@@ -25652,6 +25706,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       prev.onclick = () => moveShelf(section, -1);
       next.onclick = () => moveShelf(section, 1);
       all.onclick = () => openAll(section, all);
+      if(ptDragShelves) ptShelfDrag(viewport);
     });
     if(ptOverlay && window.MutationObserver){
       new MutationObserver(() => {
