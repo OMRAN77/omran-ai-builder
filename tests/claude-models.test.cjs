@@ -59,7 +59,7 @@ test('٣. الخادم: body.model على مسار كلود فقط، رجوع ل
   assert.ok(s.includes('if (__imgCfg) __imgCfg = imageTurnConfig(process.env, viaOR, CHAT_MODEL);'), 'دور الصورة يتبع النموذج بعد الرجوع');
   assert.ok(s.includes('let __imgCfg = (lastUserHasImage && !__direct)'));
   // الرجوع يسبق الفشل النهائيّ (الاحتياط) ويأتي بعد إعادة دور الصورة
-  const imgRetry = s.indexOf("upstream = await callUpstream(false);\n      }\n      // v-claude-models");
+  const imgRetry = s.indexOf("upstream = await callUpstream(false);\n      }\n      // v-owner-auto"); // v-owner-auto: إعادة «بلا تفكير» تسبق الحكم على الموديل
   const fallback = s.indexOf('if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {');
   const finalFail = s.indexOf("await logErrorAndFlush('chat/upstream-fail'");
   assert.ok(imgRetry > 0 && fallback > imgRetry && finalFail > fallback);

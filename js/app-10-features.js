@@ -618,6 +618,14 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       try{ target.scrollIntoView({ behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest', inline:'start' }); }
       catch(e){ try{ target.scrollIntoView(); }catch(_){ __swallow(_, 'tools:shelf-scroll'); } }
     };
+    /* v-hw-tools-grid (المالك ٢٨ سبتمبر بعد نشر v-shelf-nocomposite: «الحين أبطأ كثير، وما توقف آخر صورة، واحذف
+       الدوائر اللي فيها الأسهم»): تطبيق هواوي يرسم بالمعالج المركزيّ (v-cpu-raster)، فالصفّ الأفقيّ يا ماسح مركّب
+       يفرغ (فيديو ١٧:٤٦) يا سحب بـJS يعيد رسم النافذة كلّها مع كلّ حركة إصبع فيبطؤ. داخل تطبيق هواوي لا سحب
+       جانبيّ إذن: كلّ قسم شبكة عموديّة ببطاقاته كلّها (شكل الأدوات قبل الصفوف، وكان سليمًا على الجهاز نفسه)، بلا
+       أسهم ولا «عرض الكل». البوّابة: جسر OmranRender (1.3.12+) أو html.store-safe (selfdiag.js المتزامن يضبطه من
+       ?store=huawei قبل الحزمة). الحاسوب والمتصفّحات على الصفوف كما هي. */
+    const ptHwGrid = (() => { try{ return !!((window.OmranRender && typeof window.OmranRender.mode === 'function') || document.documentElement.classList.contains('store-safe')); }catch(e){ return false; } })();
+    if(ptHwGrid) ptSectionsView.classList.add('ptHwGrid');
     const closeAll = (restoreFocus) => {
       if(!allState) return;
       const s = allState, track = ptAllHost.querySelector('.ptTrack');
