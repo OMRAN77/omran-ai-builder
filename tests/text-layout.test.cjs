@@ -203,3 +203,29 @@ test('size: the owner cases from the review — right/auto phrase and a 20-word 
     assert.deepEqual(layout('سطر أول كتبه المستخدم\nوسطر ثانٍ بعده تمامًا', 'bottom', { sc, role: 'body' }).lines, ['سطر أول كتبه المستخدم', 'وسطر ثانٍ بعده تمامًا'], 'أسطر المستخدم كما هي');
   }
 });
+
+test('الجولة ٣: «كبّر» بجوار وجه لا ترجّع الصورة نفسها بصمت — تنمو في مكان خالٍ من الوجوه، أو تُعلَّم blocked فيصارح العميل', () => {
+  const SELFIE = [{ box: [0.3, 0.18, 0.7, 0.5], label: 'face' }];
+  for (const [text, p] of [['ألف مبروك يا بطل', 'auto'], ['مشكور اخوي', 'top'], ['مشكور اخوي', 'right']]) {
+    const r0 = layout(text, p, { boxes: SELFIE }), r1 = layout(text, p, { boxes: SELFIE, sc: 1.25 });
+    assert.ok(r1.F >= r0.F * 1.1 || r1.blocked === true, text + ' @' + p + ': ' + r0.F + ' → ' + r1.F + ' blocked=' + r1.blocked);
+    faceOv(r1, 960, 1280).forEach((v, i) => assert.ok(v <= faceOv(r0, 960, 1280)[i] + 1, text + ' @' + p + ': لا تغطية وجه جديدة'));
+  }
+  const a9 = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
+  assert.match(a9, /window\.__textGrowBlocked = false;/);
+  assert.match(a9, /ما في مساحة أكبر هنا بدون ما يغطي الوجوه/);
+});
+
+test('الجولة ٣: «ارسم قمر وتكتب تحته مبروك» على صورة مرفوعة — مشهد الرسم يمرّ لمحرّر الصورة والكتابة على اللوحة', () => {
+  const a9 = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
+  const m = /const __visRe = (\/.+\/i);/.exec(a9);
+  assert.ok(m, '__visRe موجود');
+  const visRe = eval(m[1]); // eslint-disable-line no-eval
+  const { parseImageTextSpec: P } = require('../js/app-08-image-text.js');
+  for (const [t, text] of [['ارسم قمر وتكتب تحته مبروك', 'مبروك'], ['ارسم عليها قلب وتكتب احبك', 'احبك'], ['سو لها تاج وتكتب ملكة', 'ملكة'], ['اكتب مبروك وخل الخلفية بحر', 'مبروك']]) {
+    const s = P(t);
+    assert.equal(s.exactText, text, t);
+    assert.ok(s.visualEdit && visRe.test(s.visualEdit), t + ' ← المشهد «' + s.visualEdit + '» يُرسل للتعديل');
+  }
+  for (const t of ['اكتب مشكور اخوي على اليمين', 'اكتب «سوسن»']) assert.ok(!P(t).visualEdit, t + ' لا يلمس الصورة');
+});

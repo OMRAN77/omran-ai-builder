@@ -1943,7 +1943,7 @@ function __textBlockLayout(o){
     for(const t of ts) if(t <= hi + 1e-6 && okAt(p.x0, t, B)) return t;
     return null;
   };
-  let B = B0, top0 = null;
+  let B = B0, top0 = null, blocked = false;
   if(sc !== 1){
     const want = B0.F * sc;
     const grow = (ls) => {
@@ -1965,9 +1965,23 @@ function __textBlockLayout(o){
     }
     B = sized(lines, Math.max(1, Math.floor(g.F)));
     if(g.top != null && faces.length){ const p = at(B), t = okAt(p.x0, p.top, B) ? null : place(B); top0 = okAt(p.x0, p.top, B) ? null : t != null ? t : g.top; }
+    /* الجولة ٣ (المراجعة: وجه ملاصق للكتلة فـ«كبّر» يرجّع الصورة نفسها — شكوى المالك «ما تغير شي»): لم ينمُ ١٠٪؟ أقرب ارتفاع
+       خالٍ من الوجه في الجهة نفسها ولو انتقلت الكتلة. لا مكان أبدًا = لا نغطّي الوجه ولا نسكت: blocked فيقول العميل ذلك صراحة. */
+    const target = Math.min(want, room(lines));
+    if(sc > 1 && faces.length && B.F < B0.F * 1.1 && target >= B0.F * 1.1){
+      let hit = null;
+      for(let f = target; f >= B0.F * 1.1 && !hit; f = Math.ceil(f) - 1){
+        const Bf = sized(lines, f), p = at(Bf), ts = [];
+        for(let t = mY; t <= H - mY - Bf.h + 1e-6; t += 0.01 * H) ts.push(t);
+        ts.sort((u, v) => Math.abs(u - p.top) - Math.abs(v - p.top));
+        for(const t of ts) if(okAt(p.x0, t, Bf)){ hit = { B: Bf, top: t }; break; }
+      }
+      if(hit){ B = hit.B; top0 = hit.top; }
+    }
+    blocked = sc > 1 && B.F < B0.F * 1.05;
   }
   const { x0 } = at(B), top = top0 != null ? top0 : at(B).top;
-  return { lines: B.lines, F: B.F, w: B.w, h: B.h, x0, top, side: k.side, vert: k.vert, align: k.side || 'center', ax: k.side === 'right' ? W - mX : k.side === 'left' ? mX : W / 2, cost: k.cost, rel: k.rel, st: k.st, n: cand.length, words: n };
+  return { lines: B.lines, F: B.F, w: B.w, h: B.h, x0, top, side: k.side, vert: k.vert, align: k.side || 'center', ax: k.side === 'right' ? W - mX : k.side === 'left' ? mX : W / 2, cost: k.cost, rel: k.rel, st: k.st, n: cand.length, words: n, blocked };
 }
 /* القياس بالخطّ المرسوم فعلًا: إن لم يجهز بعد مهلة mahaLoadFont ننتظر document.fonts.ready بحدّ ٢٫٥ث قبل القياس —
    الخطّ الاحتياطيّ أعرض فكان يحوّل ثلاثة أسطر إلى أربعة (لقطة المالك). */
@@ -1985,6 +1999,7 @@ async function __textFontsReady(specs, sample){
 }
 /* avoid: صناديق الوجوه/الأشخاص من الخادم [{box:[x0,y0,x1,y1] من ٠ إلى ١, label:'face'|'person'}] — تُحفظ في الطبقة */
 async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, scale, avoid){
+  window.__textGrowBlocked = false; /* الجولة ٣: «كبّر» بلا مكان خالٍ من الوجوه — يقرؤه مسار التنسيق فيصارح */
   const exact = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
   if(!exact.trim()) throw new Error('missing_exact_text');
   const named = !!(fontKey && fontKey !== 'default' && MAHA_FONTS[fontKey]);
@@ -2146,6 +2161,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
             if(boxes.length && __sc > 1 && faceHit(k2) > face0 + 1e-9) continue;
             pick = k2; break;
           }
+          if(__sc > 1 && pick === p0) window.__textGrowBlocked = true;
         }
         }else{
           /* v-text-layout: عبارة حتّى ٦ كلمات بخطّ العنوان الذهبيّ، وما زاد أسطر بخطّ الأسطر — الكتلة من __textBlockLayout.
@@ -2157,6 +2173,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
           const i100 = ink(shown);
           const B = __textBlockLayout({ W, H, lines: shown, em: (s) => ctx.measureText(s).width / 100, ink: { a: (i100.a || 80) / 100, d: (i100.d || 25) / 100 }, role: hero ? 'hero' : 'body', orn: hero ? 0.408 : 1.2, pos: P, sc: __sc, boxes,
             rate: sal ? (x0, y0, x1, y1) => { const r = __designRect(sal, x0 - 0.03, y0 - 0.02, x1 + 0.03, y1 + 0.045); r.rel = r.sal / (sal.mean + 0.01); return r; } : null });
+          if(B.blocked) window.__textGrowBlocked = true;
           const F = B.F; let Lb;
           if(hero){ setT(F); Lb = { tFs: F, bFs: 0, tl: B.lines, bl: [], tLH: F * 1.3, bLH: 0, ti: ink(B.lines), gap: 0, orn: F * 0.408 }; }
           else Lb = { tFs: 0, bFs: F, tl: [], bl: B.lines, tLH: 0, bLH: F * 1.52, ti: { a: 0, d: 0 }, gap: 0, orn: F * 1.2 };
@@ -4772,7 +4789,7 @@ function __showImgLoading(el, ar, en){
         cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:__lm, dataUrl:'data:' + __lm + ';base64,' + __l.baseB64 }] });
         renderAll(); saveState(); return;
       }
-      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(k!=='size'&&k!=='positionFlex'&&__textSpec.styleEdit[k])__l[k]=k==='position'?__textStylePos(__textSpec,text):__textSpec.styleEdit[k]}); /* v-text-flex: علَم المرونة من المحلّل، وإن غاب فالجانب بلا «وسط» مرن */ if(__textSpec.styleEdit.size) __l.scale=__textScale(__l.scale,__textSpec.styleEdit.size); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position,__l.scale,__l.avoid);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
+      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(k!=='size'&&k!=='positionFlex'&&__textSpec.styleEdit[k])__l[k]=k==='position'?__textStylePos(__textSpec,text):__textSpec.styleEdit[k]}); /* v-text-flex: علَم المرونة من المحلّل، وإن غاب فالجانب بلا «وسط» مرن */ if(__textSpec.styleEdit.size) __l.scale=__textScale(__l.scale,__textSpec.styleEdit.size); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position,__l.scale,__l.avoid);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;const __blk=/^(?:larger|large)$/.test(String(__textSpec.styleEdit.size||''))&&window.__textGrowBlocked; /* الجولة ٣: لا تكبير بلا تغطية وجه = مصارحة لا صورة صامتة */ cur.messages.push({role:'assistant',content:__blk?(lang==='ar'?'ما في مساحة أكبر هنا بدون ما يغطي الوجوه — تبيني أنقل الكتابة فوق أو تحت؟':'There is no room to make it bigger here without covering faces — want me to move the text up or down?'):'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
       /* v-text-colors: «اكتب بخط صغير ومزخرف» بلا كتابة سابقة = لا نصّ نطبعه ولا تعديل نرسله للمولّد — نطلب النصّ نفسه. */
       if(__textSpec.styleOnlyWrite && !cur.imageTextLayer){
         cur.messages.push({ role:'assistant', content:(lang === 'ar'
@@ -4826,7 +4843,8 @@ function __showImgLoading(el, ar, en){
           // 🎨 v576: طلب مركّب (تعديل بصريّ + كتابة) = مرحلتان — المولّد يعدّل الصورة أولًا،
           // ثم نكتب النصّ فوق ناتجه. حاجز v574 محفوظ: بلا visualEdit صريح لا يلمس المولّد الصورة.
           let __wb64 = __prevLayer ? __prevLayer.baseB64 : __b64, __wmime = __prevLayer ? (__prevLayer.baseMime || 'image/png') : __mime;
-          const __visRe = /(?:خلفية|خلفيه|background|لون|لوّن|غير|غيّر|بدل|بدّل|حول|حوّل|امسح|احذف|ازل|أزل|اضف|أضف|ضيف|اجعل|خل|صحراء|بحر|سماء|ورد|زهور|ليل|غروب|blur)/i;
+          /* الجولة ٣: «ارسم قمر وتكتب تحته مبروك» على صورة مرفوعة كان يكتب «مبروك» ويُسقط القمر — أفعال الرسم كلمةً كاملة تعديلُ مشهد */
+          const __visRe = /(?:خلفية|خلفيه|background|لون|لوّن|غير|غيّر|بدل|بدّل|حول|حوّل|امسح|احذف|ازل|أزل|اضف|أضف|ضيف|اجعل|خل|صحراء|بحر|سماء|ورد|زهور|ليل|غروب|blur)|(?:^|\s)(?:ارسم|ارسمي|سو|سوي|سوّي|حط|حطي|ركب|ركّب|draw|add)(?=\s|$)/i;
           const __noTouchRe = /(?:بدون|بلا|دون|من\s+غير)\s*(?:أي\s*)?(?:تغيير|تغير|تعديل|مساس|لمس)|لا\s*(?:تغير|تغيّر|تعدل|تلمس)|without\s+(?:any\s+)?(?:change|edit|alter)/i;
           const __visEdit = (__textSpec.visualEdit && __visRe.test(__textSpec.visualEdit) && !__noTouchRe.test(text)) ? String(__textSpec.visualEdit).slice(0, 600) : '';
           if(__visEdit){
