@@ -745,6 +745,10 @@
     border-radius:0; border:none;
     padding-top:env(safe-area-inset-top, 0px);
   }
+  /* v-settings-no-x-mobile: صفحة الهاتف كاملة ويكفي الرجوع/السحب؛ زر X الدائري
+     كان زائدًا فوق صورة الحساب. يبقى على الحاسوب وحده. */
+  html.mobile-ui #setHomeClose{display:none!important;}
+  @media (max-width:860px){ #setHomeClose{display:none!important;} }
   /* v-drawer-drag: الدرج ينسحب مع الإصبع — pan-y يترك التمرير الرأسي للمتصفح
      ويعطينا الحركة الأفقية بلا تعارض. العصية العمودية حُذفت بطلب عمران. */
   html.mobile-ui #settingsDialog{ touch-action: pan-y; }
