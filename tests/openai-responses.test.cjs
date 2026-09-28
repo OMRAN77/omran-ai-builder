@@ -142,7 +142,7 @@ test('٣. تحويل الجسم: تعليمات، مدخلات، صورة، أد
       { role: 'assistant', content: 'تمّ' },
     ],
     tools: [{ name: 'web_search', description: 'd', input_schema: { type: 'object', properties: { query: { type: 'string' } } } }],
-    thinking: { type: 'disabled' }, output_config: { effort: 'low' },
+    thinking: { type: 'adaptive' }, output_config: { effort: 'low' }, /* v-owner-auto: 'disabled' وحده يُترجم لجهد تفكير (owner-auto.test) */
   });
   assert.equal(b.instructions, 'نظام');
   assert.deepEqual(b.input, [
