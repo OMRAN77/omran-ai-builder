@@ -124,8 +124,9 @@ function makeEnv({ storage = {}, list, fetchFails = false } = {}) {
   const html = mk('html'), body = mk('body'), grid = mk('div');
   grid.id = 'bgImgGrid'; els.bgImgGrid = grid;
   const store = new Map(Object.entries(storage));
-  const calls = { applyBg3D: [], buildBg3DPicker: 0, swallow: [], fetch: 0 };
+  const calls = { applyBg3D: [], buildBg3DPicker: 0, swallow: [], fetch: 0, observer: null, observed: null };
   const ctx = {
+    MutationObserver: function (cb) { this.observe = (target, opts) => { calls.observer = cb; calls.observed = { target, opts }; }; },
     document: { documentElement: html, body, readyState: 'complete', getElementById: (id) => els[id] || null, createElement: mk, addEventListener() {} },
     localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) },
     fetch: () => { calls.fetch++; return fetchFails ? Promise.reject(new Error('down')) : Promise.resolve({ ok: true, json: async () => ({ نسخة: 1, صور: list }) }); },
@@ -185,6 +186,48 @@ test('٦. خلفيّة واحدة: اختيار صورة يطفئ الثلاثي
   assert.equal(body.children[0].style.backgroundImage, '');
   assert.equal(store.has('aiapp_bgimg'), false);
   assert.ok(grid.children[0].classList.contains('active') && !grid.children[1].classList.contains('active'));
+});
+
+test('٨. مرّة واحدة لكلّ فتح: مغادرة شاشة الدخول ترفع الخلفيّة وتبقي الاختيار، ولا ترجع مع محادثة جديدة، وتعود مع الفتح التالي', async () => {
+  const saved = JSON.stringify({ ملف: '01-مدينة.jpg', لون: '#1c2123', فاتحة: false });
+  const a = makeEnv({ list: LIST, storage: { aiapp_bgimg: saved } });
+  assert.ok(a.calls.observer, 'المراقب مركَّب عند الإقلاع');
+  assert.equal(a.calls.observed.target, a.body);
+  // الكائن يُنشأ داخل vm (نموذج Object آخر) فلا deepEqual — الحقول وحدها
+  assert.equal(a.calls.observed.opts.attributes, true);
+  assert.deepEqual([...a.calls.observed.opts.attributeFilter], ['class']);
+  assert.ok(a.html.classList.contains('bgimg'), 'ظاهرة بعد الاسترجاع');
+
+  // الإقلاع: الجسم يصبح شاشة دخول (لا رسائل) — تبقى ظاهرة
+  a.body.classList.add('omranWelcome'); a.calls.observer();
+  assert.ok(a.html.classList.contains('bgimg'));
+
+  // أوّل رسالة: مغادرة الدخول → تُرفع من الشاشة، والاختيار محفوظ
+  a.body.classList.remove('omranWelcome'); a.calls.observer();
+  assert.ok(!a.html.classList.contains('bgimg') && !a.html.classList.contains('bgimg-dark'), 'رُفعت بعد أوّل رسالة');
+  assert.equal(a.body.children[0].style.backgroundImage, '');
+  assert.equal(a.store.get('aiapp_bgimg'), saved, 'الاختيار لم يُمسح');
+
+  // محادثة جديدة (دخول من جديد) → لا ترجع تلقائيًّا
+  a.body.classList.add('omranWelcome'); a.calls.observer();
+  assert.ok(!a.html.classList.contains('bgimg'), 'لا ترجع مع محادثة جديدة في نفس الفتح');
+
+  // الإعدادات بعد الرفع: العلامة ما زالت على الصورة المختارة لا على «بلا خلفيّة»
+  await a.ctx.window.خلفيات.افتح();
+  assert.ok(a.grid.children[1].classList.contains('active') && !a.grid.children[0].classList.contains('active'), 'العلامة على المختارة');
+
+  // اختيار يدويّ من الإعدادات بعد الرفع → تظهر من جديد، ثمّ أوّل رسالة ترفعها ثانية
+  a.grid.children[2].onclick();
+  assert.ok(a.html.classList.contains('bgimg-light'));
+  a.body.classList.remove('omranWelcome'); a.calls.observer();
+  assert.ok(!a.html.classList.contains('bgimg'));
+
+  // فتح جديد (بيئة جديدة بنفس المحفوظ) → تعود
+  const b = makeEnv({ list: LIST, storage: { aiapp_bgimg: saved } });
+  assert.ok(b.html.classList.contains('bgimg'), 'تعود مع الفتح التالي');
+
+  // بلا MutationObserver (بيئة قديمة): لا كسر
+  assert.doesNotThrow(() => { const c = makeEnv({ list: LIST, storage: { aiapp_bgimg: saved } }); delete c.ctx.MutationObserver; });
 });
 
 test('٧. الاسترجاع عند الإقلاع من المحفوظ بلا جلب الفهرس، وفشل الجلب لا يكسر الإعدادات', async () => {

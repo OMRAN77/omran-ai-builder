@@ -1,4 +1,4 @@
-/* v-bg-images — خلفيّات الشاشة.
+/* v-bg-images — خلفيّات الشاشة (v-bg-once: تظهر مرّة واحدة لكلّ فتح — انظر راقب_الدخول).
    الصور في assets/خلفيات/ وفهرسها فهرس.json (يولّده scripts/خلفيات.mjs مع المصغّرات واللون المهيمن).
    الإعدادات ← المظهر ← خلفيّات الشاشة: شبكة مصغّرات بلا أسماء؛ الاختيار يضع الصورة خلف الشاشة كلّها
    (#bgImgLayer) ويضبط ألوان الكتابة على لونها (html.bgimg-dark / html.bgimg-light في css/خلفيات.css)،
@@ -90,6 +90,26 @@
 
   function استرجع(){ var cur = الحاليّ(); if(cur && cur.ملف) طبّق(cur, false); }
 
+  /* v-bg-once (المالك: «ما أريدها تطلع تلقائيّ، فقط مرّة واحدة عند الدخول»): تظهر مع شاشة
+     الدخول الأولى بعد فتح التطبيق، وحين يغادرها المستخدم (أوّل رسالة) تُرفع من الشاشة —
+     الاختيار يبقى محفوظًا وعلامته في الإعدادات كما هي — ولا ترجع مع محادثة جديدة حتّى
+     الفتح التالي، أو حتّى يختارها بنفسه من الإعدادات. */
+  function أخفِ(){
+    var html = document.documentElement;
+    html.classList.remove('bgimg', 'bgimg-dark', 'bgimg-light');
+    var el = document.getElementById('bgImgLayer'); if(el) el.style.backgroundImage = '';
+  }
+  function راقب_الدخول(){
+    if(typeof MutationObserver !== 'function' || !document.body) return;
+    var كان = document.body.classList.contains('omranWelcome');
+    new MutationObserver(function(){
+      var الآن = document.body.classList.contains('omranWelcome');
+      if(كان && !الآن && document.documentElement.classList.contains('bgimg')) أخفِ();
+      كان = الآن;
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }
+
   window.خلفيات = { افتح: افتح, طبّق: طبّق, استرجع: استرجع };
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', استرجع); else استرجع();
+  function ابدأ(){ استرجع(); راقب_الدخول(); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ابدأ); else ابدأ();
 })();
