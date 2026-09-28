@@ -115,6 +115,31 @@
     if(o) o.classList.add('show');
   });
 
+  /* v-hw-cards-once (المالك، لقطة هواوي: «أريدها فقط للدخول إذا أسأل… مرّة واحدة والمرّة الثانية
+     خلاص، في هواوي فقط»): البطاقات تظهر على شاشة الدخول الأولى بعد فتح التطبيق فقط. أوّل مغادرة
+     لها (أوّل رسالة) تضع html.hwCardsDone فلا تعود مع أيّ محادثة جديدة حتّى الفتح التالي.
+     مراقب على صنف body لأنّ omranWelcome يُبدَّل من ثلاثة مواضع (app-04 وapp-09 وsyncWelcome هنا).
+     المراقب يُركَّب دائمًا (رخيص) والقصر على هواوي في CSS بشرط html.store-safe — لأنّ store-safe
+     قد يُضاف أيضًا من selfdiag.js، وشرطٌ هنا وقت التركيب يتعلّق بترتيب التحميل. */
+  /* القرار محفوظ على الجهاز (aiapp_hw_cards_done) لا في الجلسة: المالك «المرّة الثانية خلاص» —
+     الفتح الثاني وما بعده بلا بطاقات. index.html يقرأ المفتاح قبل أوّل رسم؛ هنا احتياط إن سبق. */
+  try{
+    if(localStorage.getItem('aiapp_hw_cards_done') === '1') document.documentElement.classList.add('hwCardsDone');
+  }catch(e){ __swallow(e, 'wiring:hw-cards-once#read'); }
+  try{
+    if(typeof MutationObserver === 'function'){
+      var hwWasWelcome = document.body.classList.contains('omranWelcome');
+      new MutationObserver(function(){
+        var now = document.body.classList.contains('omranWelcome');
+        if(hwWasWelcome && !now){
+          document.documentElement.classList.add('hwCardsDone');
+          try{ localStorage.setItem('aiapp_hw_cards_done', '1'); }catch(e2){ __swallow(e2, 'wiring:hw-cards-once#save'); }
+        }
+        hwWasWelcome = now;
+      }).observe(document.body, { attributes:true, attributeFilter:['class'] });
+    }
+  }catch(e){ __swallow(e, 'wiring:hw-cards-once'); }
+
   /* ---------- 3) وضع الترحيب ---------- */
   var messagesEl = $('#messages');
   function syncWelcome(){

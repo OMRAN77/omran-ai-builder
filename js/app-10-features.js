@@ -670,7 +670,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       /* سحب انتهى فوق بطاقة لا يفتحها */
       viewport.addEventListener('click', (e) => { if(Date.now() - dragEnd < 350){ e.preventDefault(); e.stopPropagation(); } }, true);
     };
-    const ptDragShelves = (() => { try{ return !!(window.OmranRender && typeof window.OmranRender.mode === 'function'); }catch(e){ return false; } })();
+    /* داخل غلاف التطبيق: جسر OmranRender (1.3.12+)، أو علم حزمة هواوي store-safe (?store=huawei — يضبطه selfdiag.js
+       المتزامن قبل الحزمة) فلا يتعلّق الإصلاح بوجود الجسر وحده. */
+    const ptDragShelves = (() => { try{ return !!((window.OmranRender && typeof window.OmranRender.mode === 'function') || document.documentElement.classList.contains('store-safe')); }catch(e){ return false; } })();
     if(ptDragShelves) ptSectionsView.classList.add('ptDragShelves');
     const closeAll = (restoreFocus) => {
       if(!allState) return;

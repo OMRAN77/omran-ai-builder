@@ -14,6 +14,10 @@ window.__swallow = window.__swallow || function (err, ctx) {
    يقرؤها redesign.css ليخفّف ما يرهق معالج الرسوم في أندرويد (ظلال الفلتر المتحرّكة والتغبيش المخفيّ). */
 try { if (/Android|HarmonyOS|HUAWEI|HONOR/i.test(navigator.userAgent || '')) document.documentElement.classList.add('omAndroid'); }
 catch (e) { /* guard-ok: بلا العلامة يبقى الشكل الكامل كما كان */ }
+/* v-hw-cards-once: قرار «شفت بطاقات أدوات هواوي وسألت» محفوظ على الجهاز (ui-wiring يكتبه) —
+   يُطبَّق هنا قبل أوّل رسم فلا تومض البطاقات في الفتحات التالية. */
+try { if (localStorage.getItem('aiapp_hw_cards_done') === '1') document.documentElement.classList.add('hwCardsDone'); }
+catch (e) { /* guard-ok: بلا الصنف تظهر البطاقات كأوّل مرّة */ }
 /* v-art-defer (المالك ٢٤ سبتمبر: «الشاشة كاملة فيها وميض ومشوّشة… والأدوات»): مقياس على مقاس
    جهازه (٧٠٠×٧٧٠ بكثافة ٢٫٦٢٥، محادثة فارغة): ٧٤ صورة تُحمَّل عند الإقلاع = ٥٠٫٤ م.ب بكسلات،
    والمعروض منها ٠٫١٨ م.ب وحدها (الشعار) — ٦٩ صورة داخل نوافذ **مغلقة**: استوديو الأزياء ٤٨
@@ -183,7 +187,7 @@ window.__omranWhenSeen = (function () {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css?v=727">
-<link rel="stylesheet" href="css/redesign.css?v=687">
+<link rel="stylesheet" href="css/redesign.css?v=688">
 <link rel="stylesheet" href="css/modules.css?v=662">
 <link rel="stylesheet" href="css/خلفيات.css?v=2">
 <script>
@@ -970,12 +974,12 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=677"></script>
+<script src="/js/partials-settings.js?v=678"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=cb4cb99c"></script>
+    <script defer src="/js/app.bundle.js?v=a49dba29"></script>
     <script defer src="/js/modes.js?v=m260926a"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -1030,7 +1034,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
   <button type="button" class="omNavBtn" data-omnav="files"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavFiles">الملفات</span></button>
   <button type="button" class="omNavBtn" data-omnav="settings"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span data-i18n="omNavSettings">الإعدادات</span></button>
 </nav>
-<script defer src="/js/ui-wiring.js?v=653"></script>
+<script defer src="/js/ui-wiring.js?v=655"></script>
 <!-- v412 — استوديو صانع الفيديو (كمبيوتر فقط، لا يلمس الجوّال) -->
 <script defer src="/js/video.js?v=423"></script>
 

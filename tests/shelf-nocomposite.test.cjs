@@ -130,7 +130,10 @@ test('٦. إصبعان (تكبير) لا يحرّكان الصفّ، والمس�
 });
 
 test('٧. البوّابة: داخل غلاف التطبيق فقط، والمتصفّحات على الماسح الأصليّ كما كانت', () => {
-  assert.match(SRC, /const ptDragShelves = \(\(\) => \{ try\{ return !!\(window\.OmranRender && typeof window\.OmranRender\.mode === 'function'\); \}/);
+  assert.match(SRC, /const ptDragShelves = \(\(\) => \{ try\{ return !!\(\(window\.OmranRender && typeof window\.OmranRender\.mode === 'function'\) \|\| document\.documentElement\.classList\.contains\('store-safe'\)\); \}/, 'الجسر أو علم حزمة هواوي');
+  const sd = fs.readFileSync('js/selfdiag.js', 'utf8'), html = fs.readFileSync('index.html', 'utf8');
+  assert.ok(sd.includes("classList.add('store-safe')"), 'selfdiag يضبط العلم');
+  assert.ok(html.indexOf('/js/selfdiag.js?v=') < html.indexOf('/js/app.bundle.js?v=') && !/<script defer src="\/js\/selfdiag/.test(html), 'selfdiag متزامن قبل الحزمة');
   assert.match(SRC, /if\(ptDragShelves\) ptSectionsView\.classList\.add\('ptDragShelves'\);/);
   assert.match(SRC, /all\.onclick = \(\) => openAll\(section, all\);\s*if\(ptDragShelves\) ptShelfDrag\(viewport\);/);
   assert.match(CSS, /#sectionsToolsPopup \.ptDragShelves \.ptCarousel\{overflow-x:hidden; scroll-snap-type:none; touch-action:pan-y;\}/);

@@ -233,7 +233,7 @@ I18N['zh'] = {
     "themeUserBubbleLabel": "您的消息气泡颜色",
     "themeSectionLabel": "🎨 自定义颜色与外观",
     "bg3dSectionLabel": "🌌 动态 3D 背景",
-    "bgImgSectionLabel": "🖼️ 屏幕壁纸",
+    "bgImgSectionLabel": "屏幕壁纸",
     "bgImgNone": "无壁纸",
     "bg3dAutoLabel": "🔀 每分钟自动切换背景",
     "deleteProject": "删除项目",

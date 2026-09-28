@@ -239,7 +239,7 @@ I18N['es'] = {
     "themeUserBubbleLabel": "Color de la burbuja de tus mensajes",
     "themeSectionLabel": "🎨 Personalizar colores y apariencia",
     "bg3dSectionLabel": "🌌 Fondo 3D animado",
-    "bgImgSectionLabel": "🖼️ Fondos de pantalla",
+    "bgImgSectionLabel": "Fondos de pantalla",
     "bgImgNone": "Sin fondo",
     "bg3dAutoLabel": "🔀 Cambiar fondos automáticamente cada minuto",
     "deleteProject": "Eliminar proyecto",
