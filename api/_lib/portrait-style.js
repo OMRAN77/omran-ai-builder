@@ -244,6 +244,7 @@ module.exports = async (req, res) => {
     }
 
     let promptText;
+    let isArtRestyle = false; /* v-pstyle-identity: إعادة رسم بأسلوب فنّيّ — تحتاج تذكير هويّة أخيرًا */
     if (style === 'removebg') {
       const backdropDesc = BACKDROP_PROMPTS[backdrop] || BACKDROP_PROMPTS.studio_white;
       promptText =
@@ -383,20 +384,40 @@ module.exports = async (req, res) => {
         'The person and original background must remain fully visible and untouched in the center; the decoration should ' +
         'only affect the border/frame area and a subtle festive lighting glow. Output a single image only.';
     } else {
+      /* v-pstyle-identity (شكوى المالك: «في أنماط الصور تغيّر الشخصيّة»): الأمر القديم كان
+         «Keep the same facial identity … but fully re-render the entire image (face, clothes, and background)»
+         — جملة واحدة ضعيفة في وسط الأمر تأذن صراحةً بوجه جديد. القالب هنا ينقل صياغة الهويّة المثبَتة في
+         merge-identity.js (v-merge-identity-lock-v2/v3): الفقرة أوّلًا، و«MUST … never invented»، ورخصة
+         إعادة الرسم للملابس والخلفيّة والوسيط لا للوجه. */
       const styleDesc = STYLE_PROMPTS[style] || STYLE_PROMPTS.cartoon;
+      isArtRestyle = true;
       promptText =
-        'Redraw the person in this photo into ' + styleDesc + '. ' +
-        'Keep the same facial identity, pose and general framing recognizable, but fully re-render the ' +
-        'entire image (face, clothes, and background) in the requested art style. Output a single image only.';
+        'This photo shows one real person. That exact person\'s appearance — face shape, facial features, eyes, ' +
+        'eyebrows, nose, lips, jawline, skin tone, facial hair, skin marks, apparent age and expression lines, and ' +
+        'hair (loose or covered by a hijab/headscarf exactly as photographed; never add, remove, or restyle a head ' +
+        'covering) — MUST be reproduced with full fidelity in the output: never invented, never averaged or blended ' +
+        'with another person\'s face, never swapped for a different, prettier, younger or more generic face. ' +
+        'Only the drawing medium changes; who this person is never changes, and someone who knows them must ' +
+        'recognize them instantly in the result.\n' +
+        'TASK: redraw this same person in ' + styleDesc + '. ' +
+        'Re-render the clothes, the background and the whole rendering technique in that art style, and keep the pose ' +
+        'and general framing — but draw their own real face in that style instead of inventing a new face. ' +
+        'Output a single image only.';
     }
 
-    const isLocalizedEdit = ['hairstyle', 'beautify', 'ageshift', 'objectremove', 'outfit', 'passport', 'restore', 'colorize', 'upscale', 'eyefix', 'glasses', 'bokeh'].includes(style);
+    /* v-pstyle-identity: «إزالة الخلفيّة» وإطارات المناسبات التسع أمرها نفسه يقول «keep the person completely
+       unchanged»، ومع ذلك كانت تعمل بحرارة الأسلوب الفنّيّ (٠٫٦٥) فيتبدّل الشخص في صورة يُفترض ألّا تُمسّ. */
+    const isLocalizedEdit = ['hairstyle', 'beautify', 'ageshift', 'objectremove', 'outfit', 'passport', 'restore', 'colorize', 'upscale', 'eyefix', 'glasses', 'bokeh', 'removebg', 'eid', 'national', 'ramadan', 'hajj', 'birthday', 'newborn', 'henna', 'firstday', 'flagday'].includes(style);
     if (isLocalizedEdit) promptText += '\n' + sourceStylePreservationRule();
     // v-keep-framing (شكوى المالك ٢٩ أغسطس: «الصورة اللي أحطها ما تطلع كاملة») —
     // النموذج كان يرجّع مقصوصة/مربعة فتضيع أطراف صورة المستخدم. الجواز يعيد
     // التأطير عمدًا، والدمج/العائلة مشهد جديد أصلًا — الباقي يحافظ على الإطار كاملًا.
     if (style !== 'passport' && style !== 'familystyle' && style !== 'merge2') {
       promptText += '\nFRAMING (mandatory): keep the exact same aspect ratio and full framing as the source photo — everything visible in the source must remain visible from edge to edge in the result. Do NOT crop, zoom in, or cut off any part of the person or scene.';
+    }
+    /* v-pstyle-identity: جملة الإطار كانت آخر ما يقرؤه النموذج، فتغلب تذكير الهويّة. الهويّة تُختم بها الأوامر الفنّيّة. */
+    if (isArtRestyle) {
+      promptText += '\nIDENTITY (mandatory): the face in the result must be this same person\'s own face, restyled — not a new, generic or better-looking face. If the art style and their real features ever conflict, their real features win.';
     }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
