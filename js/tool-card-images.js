@@ -14,23 +14,31 @@
   function isAr(){ return String(document.documentElement.lang || 'ar').toLowerCase().indexOf('ar') === 0; }
   function srcFor(id){ return TOOL_PHOTOS[id]; }
 
-  function upgradeButton(id, src){
+  /* v-shelf-paint-throttle (فيديو المالك ٢٨ سبتمبر — بعد ١٫٣٫١٢: صفوف كاملة تفرغ عند تمرير لوحة
+     الأدوات على هواوي، بينما السهمان (طبقة تركيب مستقلّة) يبقيان مرسومين — علامة «تأخّر رسم» الموثّقة
+     في PITFALLS (فخّ ٢٤ سبتمبر v-modal-img-release)، لا تلف ذاكرة (تلك عالجها 1.3.12 بالفعل). السحب
+     السريع يكشف عدّة أزرار دفعة واحدة فيطلق __omranWhenSeen لكلّ واحد فورًا: عدّة new Image() تتزاحم
+     على فكّ الترميز في نفس الإطار فتتأخّر الطبقة الرئيسيّة. طابور بحدّ تزامن يبعثر العمل زمنيًّا
+     بدل تصغير الصور (نزلت أصلًا لـ600×360 في v-gpu-lite) — لم يُختبر على الجهاز نفسه بعد؛ يحتاج تأكيد المالك. */
+  var TC_MAX_CONCURRENT = 3;
+  var tcActive = 0;
+  var tcQueue = [];
+  function tcNext(){
+    if(tcActive >= TC_MAX_CONCURRENT) return;
+    var job = tcQueue.shift();
+    if(!job) return;
+    tcStartLoad(job.id, job.src);
+  }
+  function tcStartLoad(id, src){
     var button = document.getElementById(id);
-    if(!button) return;
-    var cur = button.querySelector('img.stp3d.toolPhotoImage');
-    if(button.classList.contains('hasToolPhoto')){
-      if(cur && cur.getAttribute('src') !== src){ cur.src = src; }
-      button.classList.remove('toolPhotoCard');
-      return;
-    }
-    /* سباق تحميل: نداءان متتاليان قبل اكتمال أول تحميل كانا يضيفان صورتين للزر (لقطة المالك: اقتراحات) */
-    if(button.__tcLoading === src) return;
-    button.__tcLoading = src;
+    if(!button){ tcNext(); return; }
+    tcActive++;
     var preload = new Image();
     preload.onload = function(){
+      tcActive--;
       var oldImage = button.querySelector('img.stp3d');
       var media = button.querySelector('.tcMedia');
-      if(button.classList.contains('hasToolPhoto')) return;
+      if(button.classList.contains('hasToolPhoto')){ tcNext(); return; }
       if(oldImage){
         oldImage.src = src;
         oldImage.classList.add('toolPhotoImage');
@@ -47,9 +55,25 @@
       media.appendChild(oldImage);
       var live = button.querySelector('.tcLive'); if(live) media.appendChild(live);
       button.classList.add('has3d', 'hasToolPhoto');
+      tcNext();
     };
-    preload.onerror = function(){ button.__tcLoading = null; /* Keep the existing icon when a photo cannot load. */ };
+    preload.onerror = function(){ tcActive--; button.__tcLoading = null; /* Keep the existing icon when a photo cannot load. */ tcNext(); };
     preload.src = src;
+  }
+  function upgradeButton(id, src){
+    var button = document.getElementById(id);
+    if(!button) return;
+    var cur = button.querySelector('img.stp3d.toolPhotoImage');
+    if(button.classList.contains('hasToolPhoto')){
+      if(cur && cur.getAttribute('src') !== src){ cur.src = src; }
+      button.classList.remove('toolPhotoCard');
+      return;
+    }
+    /* سباق تحميل: نداءان متتاليان قبل اكتمال أول تحميل كانا يضيفان صورتين للزر (لقطة المالك: اقتراحات) */
+    if(button.__tcLoading === src) return;
+    button.__tcLoading = src;
+    if(tcActive < TC_MAX_CONCURRENT) tcStartLoad(id, src);
+    else tcQueue.push({ id: id, src: src });
   }
 
   /* v-tools-14 (المالك: «ترتب مكان واحد وكأنه ما عندي 14 لغة»): خارج العربية تُبنى البطاقة
