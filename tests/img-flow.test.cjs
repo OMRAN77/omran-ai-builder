@@ -117,5 +117,5 @@ test('١١. «غيّر الصور بدون تكرار الشخصيات» على 
   const pr = ip.buildPersonSwapPrompt('غير الصور بدون تكرار', 'غير الصور بدون تكرار');
   assert.ok(/every piece of text and every label character-for-character/.test(pr), 'الأسماء تبقى');
   assert.ok(/identity must NOT be preserved/.test(pr));
-  assert.ok(read('api/_lib/maha-image.js').includes('const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;'), 'التبديل خارج المسار الأمين');
+  assert.ok(read('api/_lib/maha-image.js').includes(': (!isCreativeEdit && !isPersonSwap && !isBroadEdit));'), 'التبديل خارج المسار الأمين'); // v-merge-faces: فرع الصورة الواحدة
 });

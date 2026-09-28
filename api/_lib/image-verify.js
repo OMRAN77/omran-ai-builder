@@ -13,11 +13,12 @@ const VERDICTS = ['done', 'partial', 'not_done'];
 /* تلميح النيّة: ما الذي يُعدّ «منفّذًا» في هذا النوع من الطلبات تحديدًا */
 function intentHint(f) {
   const o = f || {};
+  /* v-merge-faces (مراجعة): الدمج أوّلًا — «ادمجهم أجمل/واقعية/احترافية» كانت تأخذ تلميح «مظهر جديد» فيسقط فحص الملامح */
+  if (o.merge) return 'This MERGES several reference photos: every reference subject must appear, each person with the same identity as in their own REFERENCE PHOTO — compare every person\'s face with their own photo (eyes, nose, mouth, jaw, skin tone, apparent age, hair or head covering) and their outfit, except anything the request itself asks to change. A person whose face or look clearly differs from their own photo = partial, and the report must say plainly which person came out different.' + (o.restyle || o.reimagine || o.elevate ? ' The request may also ask for a new style or a stronger scene: that applies to the scene and styling, never to who each person is.' : '') + (o.textEdit ? ' Also check the exact letters of any requested words.' : '');
   if (o.personSwap && o.targeted) return 'This is a TARGETED PERSON SWAP: it is executed only if the person(s) the request singles out are replaced by clearly DIFFERENT new people (different face and hair) while everyone else keeps the same face, and every written word stays letter-for-letter identical. The singled-out person unchanged = not_done; other people replaced too = partial.';
   if (o.personSwap) return 'This is a PERSON SWAP: it is executed only if EVERY person in the source is replaced by a clearly DIFFERENT new person (different face and hair; same role, age group, pose and outfit type), no two new people look alike, and every written word (titles, captions, labels) stays letter-for-letter identical. The same faces as the source = not_done; some faces replaced = partial.';
   if (o.textEdit) return 'This is a TEXT edit: check the exact letters of the requested words, and that other text is unchanged and unbroken (Arabic letters must be correct).';
   if (o.restyle || o.reimagine || o.elevate) return 'This asks for a visibly NEW look (style, idea or a clearly stronger design). A result that is practically the same picture as the source = not_done.';
-  if (o.merge) return 'This MERGES several reference images: every reference subject must appear, each person with the same identity as in their own photo.';
   return '';
 }
 
@@ -33,7 +34,9 @@ function buildVerifyParts(o) {
   const n = cands.length;
   const letters = 'ABC';
   const parts = [{ text: 'The user asked, verbatim: "' + String(o.request || '').slice(0, 600) + '".' }];
-  if (o.source && o.source.b64) {
+  if (o.references && o.references.length) { /* v-merge-faces: الدمج — صورة كلّ شخص كما أرسلها، لا الأساسيّة وحدها */
+    o.references.forEach(function (r, i) { parts.push({ text: 'REFERENCE PHOTO ' + (i + 1) + ' (as the user sent it):' }); parts.push({ inlineData: { mimeType: r.mime || 'image/jpeg', data: r.b64 } }); });
+  } else if (o.source && o.source.b64) {
     parts.push({ text: 'SOURCE (the picture the user sent):' });
     parts.push({ inlineData: { mimeType: o.source.mime || 'image/jpeg', data: o.source.b64 } });
   }
@@ -121,6 +124,7 @@ async function settleCandidates(o) {
   const pool = [].concat(o.first).filter(function (c) { return c && c.b64; });
   const srcDec = (o.source && o.measurable) ? decodeImage(o.source.b64) : null;
   const srcVis = o.source ? (visionCopy(srcDec || o.source.b64, 1280) || o.source) : null;
+  const refVis = (o.references || []).map(function (r) { return visionCopy(r.data, 1280) || { b64: r.data, mime: r.mime }; });
   const measure = function (c) {
     if ('unchanged' in c) return;
     const dec = decodeImage(c.b64);
@@ -131,7 +135,7 @@ async function settleCandidates(o) {
   };
   const check = async function (list) {
     if (o.skipJudge) return { best: list[0], report: '' };
-    const v = await verifyAndReport({ apiKey: o.apiKey, request: o.request, source: srcVis, intent: o.intent,
+    const v = await verifyAndReport({ apiKey: o.apiKey, request: o.request, source: srcVis, references: refVis, intent: o.intent,
       candidates: list.map(function (c) { return { b64: (c.vis || c).b64, mime: (c.vis || c).mime, evidence: c.evidence }; }) });
     if (!v.ok) return { best: list[rankCandidates(list)], report: '' };
     list.forEach(function (c, i) { c.verdict = v.verdicts[i]; });

@@ -99,7 +99,7 @@ test('٦. الإرشاد بين المواقع يصل فعلًا: وحدة مش�
   assert.ok(!tn.includes('الإرشاد'), 'القاعدة لم تعد في TOOLS_NOTE غير المحقون');
   assert.ok(c.includes("const siteGuideTurn = toolTurn && typeof lastUserText === 'string' && SITE_GUIDE_RE.test(lastUserText);"));
   assert.ok(c.includes("+ (siteGuideTurn && baseSystem.indexOf(SITE_GUIDE_MARK) === -1 ? SITE_GUIDE_NOTE : '')"), 'نظام المستخدم بلا تكرار');
-  assert.ok(c.includes("const __sysSend = __rawOwner ? (siteGuideTurn ? SITE_GUIDE_NOTE.trim() : '') : system;"), 'نظام المالك الخام');
+  assert.ok(c.includes("const __sysRaw = __rawOwner ? (siteGuideTurn ? SITE_GUIDE_NOTE.trim() : '') : system;"), 'نظام المالك الخام'); // v-cohere-coach: Cohere وحده للمالك يأخذ cohereCoachSystem وفيه الإرشاد أيضًا
 });
 
 test('٦ب. العميل: النصّ نفسه حرفيًّا، يُرسل في دور الإرشاد، و«اسأل الكل» يمرّ بمسار البحث', () => {

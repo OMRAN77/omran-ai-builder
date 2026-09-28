@@ -42,12 +42,12 @@ test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ 
   assert.match(mi, /if \(__textRoute && !__engineMix\) \{\n\s+const denseB64 = await openaiRescueImage\(\);\n\s+if \(denseB64\) \{\n\s+await deliver\(\{ b64: denseB64, mime: 'image\/png', engine: 'openai' \}, function \(\) \{ return proCandidate\(__extraBudget\(\)\); \}\);[^\n]*\n\s+return;/, 'GPT أوّلًا ضربة واحدة؛ برو فقط إن لم يُنفّذ');
   // أمين
   assert.match(mi, /const editModel = \(process\.env\.IMAGE_EDIT_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
-  assert.match(mi, /const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;/);
+  assert.match(mi, /const __faithfulLane = !!editImageBase64 && \(__mergePhotos \? !__pureRaw : \(!isCreativeEdit && !isPersonSwap && !isBroadEdit\)\);/); // v-merge-faces: الدمج أمين دائمًا (إلّا الخام)، والتعديل بصورة واحدة كما كان
   // v-merge-faithful (لقطة المالك «ادمج الصورتين مع الأحضان» أرجعت وجهًا مختلفًا): دمج عدّة صور غير الإبداعيّ
   // يدخل المسار الأمين أيضًا الآن — لا استثناء بـextras.length يُخرجه لحرارة جوجل الافتراضية.
   assert.ok(!/__faithfulLane = !!editImageBase64 && !extras\.length/.test(mi), 'الدمج غير الإبداعي لم يعد مستثنى من المسار الأمين');
   assert.match(mi, /if \(!nanoPrimary && !__faithfulLane\) delete cfg\.temperature;/);
-  assert.match(mi, /temperature: editImageBase64 \? \(isSceneUpgrade \? 0\.5 : \(isReimagine \? 0\.9 : \(isElevate \? 0\.85 : \(isRestyle \? 0\.6 : 0\.15\)\)\)\) : 0\.85/, 'الحرارة 0.15 للتعديل الموضعيّ');
+  assert.match(mi, /temperature: __mergeTemp != null \? __mergeTemp : editImageBase64 \? \(isSceneUpgrade \? 0\.5 : \(isReimagine \? 0\.9 : \(isElevate \? 0\.85 : \(isRestyle \? 0\.6 : 0\.15\)\)\)\) : 0\.85/, 'الحرارة 0.15 للتعديل الموضعيّ');
   // إبداعيّ وتوليد
   assert.match(mi, /const creativeModel = \(process\.env\.IMAGE_CREATIVE_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
   assert.match(mi, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
