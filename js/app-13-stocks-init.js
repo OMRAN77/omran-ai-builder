@@ -1018,6 +1018,11 @@
       { value:'dewy', ar:'💧 ديوي مشرق', en:'💧 Dewy glow' },
       { value:'matte', ar:'🤎 مطفي كامل', en:'🤎 Full matte' },
       { value:'editorial', ar:'🎨 جريء ملوّن', en:'🎨 Editorial' },
+      /* v-studio-variety: أربعة خيارات مكياج جديدة (طلب المالك «زيد من التنويع») */
+      { value:'coral', ar:'🍑 كورال صيفي', en:'🍑 Summer coral' },
+      { value:'goldeye', ar:'🥇 عيون ذهبية', en:'🥇 Gold shimmer eyes' },
+      { value:'glassskin', ar:'🫧 بشرة زجاجية', en:'🫧 Glass skin' },
+      { value:'berry', ar:'🍇 توتي غامق', en:'🍇 Deep berry' },
     ],
     beard: [
       { value:'full', ar:'🧔 لحية كاملة', en:'🧔 Full Beard', fr:'🧔 Barbe complète', hi:'🧔 पूरी दाढ़ी', ur:'🧔 مکمل داڑھی', bn:'🧔 পূর্ণ দাড়ি', ne:'🧔 पूरा दाह्री' },

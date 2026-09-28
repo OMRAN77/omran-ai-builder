@@ -43,15 +43,21 @@ const STYLE_PROMPTS = {
   "quiff": "a textured quiff hairstyle",
   "afro": "a natural afro hairstyle"
  },
+ /* v-studio-variety (شكوى المالك ٢٨ سبتمبر «كلّهم نوع واحد»): كلّ خيار يذكر لونه ونقشه
+    وكثافته وموضعه صراحةً — الوصف السطر الواحد كان يخرج نقشًا عامًّا واحدًا مهما اختار. */
  "henna": {
-  "gulfhenna": "intricate Gulf (Khaleeji) henna with floral vine patterns on the hands",
-  "indianhenna": "dense traditional Indian bridal mehndi patterns covering the hands",
-  "sudanese": "bold Sudanese henna with large geometric floral motifs",
-  "bridalhenna": "elaborate bridal henna covering the hands up to the forearms",
-  "minimal": "a small delicate minimalist henna design on the back of the hand",
-  "feet": "traditional henna patterns on the feet and ankles",
-  "whitehenna": "white henna lace-style patterns on the hands",
-  "khidab": "black khidab-style henna patterns on the hands"
+  "gulfhenna": "delicate Gulf (Khaleeji) henna in a warm reddish-brown stain: thin flowing floral vines, small leaves and fine dotted borders drawn along the fingers and the back of the hand, with plenty of bare skin left between the motifs",
+  "indianhenna": "dense traditional Indian bridal mehndi in a deep reddish-brown stain: paisley (buta) motifs, peacocks, fine lace netting and a mandala centre on the palm, covering the hand almost edge to edge with very little bare skin",
+  "sudanese": "bold Sudanese henna in a very dark, almost black stain: large thick geometric blocks, oversized floral motifs and wide filled bands with sharp empty gaps between them",
+  "bridalhenna": "elaborate bridal henna in a rich reddish-brown stain: a full mandala on the palm with dense vines and jaali netting running from the fingertips up over the wrists to the forearms, edged with tiny pearl-like dots",
+  "minimal": "a small minimalist henna design in a light reddish-brown stain: one single delicate motif only — a thin vine, a tiny flower or a fine bracelet line on the back of one hand — with all the rest of the skin completely bare",
+  "feet": "traditional henna on the feet and ankles in a reddish-brown stain: an anklet-style band around each ankle with floral motifs spreading over the top of the foot and onto the toes, the hands left bare",
+  "whitehenna": "white henna body paint in opaque bright white, NOT brown at all: raised lace-like patterns, fine pearl dots and delicate floral lace cuffs, clearly standing out white against the skin",
+  "khidab": "black khidab henna in a deep glossy black stain: bold thick blocks and heavily filled motifs on the fingertips and the back of the hand, strongly contrasting against the skin",
+  "moroccan": "Moroccan (Berber) henna in a reddish-brown stain: sharp symmetrical geometry — diamonds, triangles, chevrons and straight hatched lines — with no floral motifs at all",
+  "cuff": "a henna cuff in a reddish-brown stain: a wide ornamented bracelet band wrapped around the wrist with fine tassels hanging from it, the fingers and the rest of the hand left completely bare",
+  "fingertips": "the classic Gulf dipped-fingertip henna in a dark reddish-brown stain: the fingertips fully dipped in solid henna up to the first knuckle with a neat straight edge, and nothing else drawn on the hand",
+  "glitterhenna": "festive henna in a reddish-brown stain traced over with gold glitter gel and tiny crystal accents that catch the light along the outlines of the pattern"
  },
  "wedding": {
   "bride": "a classic white bridal gown with a veil, elegant bridal makeup and an updo",
@@ -145,7 +151,9 @@ const INSTR = {
  "hijab": "Change only the head covering and outfit to {s}. Keep the same person, face, pose and background exactly the same. Output a single photorealistic image.",
  "gulfmen": "Change only the outfit and headwear to {s}. Keep the same person, face, pose and background exactly the same. Output a single photorealistic image.",
  "menhair": "Change only the hair to {s}. Keep the same person, face, pose, clothing and background exactly the same, only alter the hairstyle. Output a single photorealistic image.",
- "henna": "Add {s} on the visible hands or feet in this photo, following the natural curves of the skin, realistic reddish-brown henna stain. Keep everything else exactly the same. Output a single photorealistic image.",
+ /* v-studio-variety: كان القالب يفرض «reddish-brown» على كلّ الخيارات — فالحنّاء البيضاء
+    والخضاب الأسود يخرجان بنّيّين مثل غيرهما. اللون صار من الخيار نفسه. */
+ "henna": "Add {s} on the visible hands or feet in this photo, following the natural curves of the skin, as a realistic henna stain in exactly the colour, pattern and placement described above — do not substitute any other colour or pattern. Keep everything else exactly the same. Output a single photorealistic image.",
  "wedding": "Change the outfit, hair styling and makeup to {s}. Keep the same person, face and pose; the identity must stay clearly recognizable. Output a single photorealistic image.",
  "accessories": "Add {s} to the person, placed naturally and realistically. Keep everything else in the photo exactly the same. Output a single photorealistic image.",
  "eyes": "Apply {s}. Keep the same person, identity, pose and background exactly the same and fully realistic. Output a single photorealistic image.",
@@ -215,7 +223,11 @@ const PREVIEW_SUBJECT = {
   "minimal": "w",
   "feet": "w",
   "whitehenna": "w",
-  "khidab": "w"
+  "khidab": "w",
+  "moroccan": "w",
+  "cuff": "w",
+  "fingertips": "w",
+  "glitterhenna": "w"
  },
  "wedding": {
   "__tab": "w",

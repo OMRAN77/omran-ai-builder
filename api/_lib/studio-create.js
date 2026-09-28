@@ -91,17 +91,24 @@ const STYLE_TEXT = {
     marble: 'white marble-effect nail art',
     artnails: 'delicate hand-painted floral nail art',
   },
+  /* v-studio-variety (شكوى المالك ٢٨ سبتمبر «كلّهم نوع واحد»): الأوصاف كانت أسطرًا
+     متقاربة (طبيعي/سوفت قلام/ديوي…) فتخرج بالوجه نفسه — كلّ خيار الآن بألوانه
+     ودرجة تغطيته ولمعته صراحةً كي يُرى الفرق. */
   makeup: {
-    natural: 'light natural everyday makeup look',
-    glam: 'glamorous full evening makeup look',
-    smokey: 'smokey eye makeup look',
-    redlips: 'bold red lipstick makeup look',
-    bridal: 'elegant bridal makeup look',
-    softglam: 'a soft-glam makeup look, luminous skin, neutral shimmer',
-    kohl: 'a striking Arabic kohl-lined eyes makeup look',
-    dewy: 'a dewy fresh-skin makeup look, glowing highlight',
-    matte: 'a full matte velvet-finish makeup look',
-    editorial: 'a bold colorful editorial makeup look, artistic liner',
+    natural: 'a light everyday "no-makeup" look: sheer skin tint only, soft brown mascara, groomed brows and a clear balm lip — no eyeshadow, no liner, no visible contour',
+    glam: 'a full glamorous evening look: full-coverage foundation, sharply contoured and highlighted cheekbones, a dramatic cut-crease eyeshadow in warm bronze, black winged liner, dense false lashes and a glossy nude-beige lip',
+    smokey: 'a dark smokey-eye look: charcoal-grey and black eyeshadow blended heavily all around the eye and along the lower lash line, smudged kohl, heavy lashes, with a deliberately bare matte nude lip and neutral cheeks',
+    redlips: 'a classic red-lip look: a bold true-red matte lipstick with a sharply drawn lip line as the single focus, clean skin, a thin black liner flick and bare neutral eyeshadow',
+    bridal: 'a soft bridal look: satin-finish skin, champagne and rose-gold shimmer on the lids, soft brown blended liner, long natural lashes, rosy blush and a muted pink-nude lip',
+    softglam: 'a soft-glam look: warm taupe and peach eyeshadow lightly blended, thin brown liner, subtle highlighter on the high points, peach blush and a soft pink glossy lip — polished but far lighter than full glam',
+    kohl: 'a striking Arabic kohl look: thick black kohl packed into the waterline and drawn well past the outer corner in a long dramatic wing, dark defined brows, bronzed skin and a deep brown-nude lip',
+    dewy: 'a dewy fresh look: visibly wet-looking glowing skin with strong highlighter on the cheekbones, nose and cupid\'s bow, cream blush, glossy eyelids with no eyeshadow colour, and a clear shiny lip gloss',
+    matte: 'a full matte look: completely shine-free velvet skin, matte warm-brown eyeshadow, matte terracotta blush and a matte brick-brown lipstick — no gloss, no shimmer and no highlighter anywhere',
+    editorial: 'a bold editorial look: a vivid graphic eyeliner in a bright colour drawn in a sharp artistic shape over the lid, colour-blocked eyeshadow, bare glowing skin and a bold matching lip',
+    coral: 'a fresh summer coral look: coral blush swept high on the cheeks, matching coral-peach eyeshadow, brown mascara and a juicy coral lip, with light natural skin coverage',
+    goldeye: 'a gold shimmer eye look: metallic gold glitter packed on the centre of the lids, warm brown blending in the crease, soft black liner, golden highlighter and a warm beige nude lip',
+    glassskin: 'a Korean glass-skin look: luminous poreless dewy skin, straight soft brows, pale pink blush on the cheeks and nose tip, minimal eye makeup and a gradient (ombre) lip darker in the centre',
+    berry: 'a deep berry autumn look: a dark plum-berry lipstick, plum-toned smoked-out liner and berry blush, with matte skin and neutral brown eyeshadow',
   },
   beard: {
     full: 'a full thick well-groomed beard',
@@ -208,8 +215,25 @@ const LOCK_WHAT = {
   iconic: 'the outfit, hair and setting', age: 'the apparent age',
 };
 
+/* v-studio-variety: ميزات «الرسم» — النقش يُرسم من جديد كلّ مرّة، فالخيار نفسه كان
+   يعطي التصميم نفسه بالضبط (حرارة ٠٫١٥ وأمر ثابت). بذرة تنويع + حرارة أعلى قليلًا:
+   الطلب لا يغيّر الستايل المختار، بل ترتيب النقش وتوزيعه. الوجه/الرأس محميّ بالبكسل
+   في الحنّاء والأظافر والتاتو (face-lock: body)، والمكياج يبقى على حرارته لأنّه على الوجه. */
+const DESIGN_FEATURES = ['henna', 'nails', 'tattoo'];
+const VARIETY_NOTE = {
+  henna: 'Draw a brand-new original henna layout inside this exact style: vary the motifs, their sizes, their spacing and the overall composition so it does not repeat an earlier drawing. Keep the described colour, pattern family and placement exactly as asked.',
+  nails: 'Paint a brand-new original nail design inside this exact style: vary the detailing, the accent nails and the finish placement so it does not repeat an earlier design. Keep the described colour and style exactly as asked.',
+  tattoo: 'Draw a brand-new original tattoo artwork inside this exact style: vary the composition, the line work and the shading so it does not repeat an earlier design. Keep the described style, size and placement exactly as asked.',
+};
+function varietyLine(feature, variant) {
+  const note = VARIETY_NOTE[feature];
+  if (!note) return '';
+  const seed = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) % 1000 : Math.floor(Math.random() * 1000);
+  return '\nVARIETY (design seed #' + seed + '): ' + note;
+}
+
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
-function buildSinglePrompt(feature, style, description, multiAngle) {
+function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   const styleMap = STYLE_TEXT[feature] || {};
   let styleDesc = styleMap[style];
   if (!styleDesc) {
@@ -228,13 +252,16 @@ function buildSinglePrompt(feature, style, description, multiAngle) {
   if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
     promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
   }
+  promptText += varietyLine(feature, variant);
   return promptText;
 }
 
 /* ───── نداء Gemini واحد: { b64, mime } أو { error, status, detail, why } ───── */
 async function geminiImage(apiKey, parts, feature, aspectRatio) {
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-  const reqBody = { contents: [{ parts }], generationConfig: { temperature: feature === 'anime' ? 0.65 : 0.15, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
+  /* v-studio-variety: ميزات الرسم بحرارة ٠٫٤٥ — ٠٫١٥ كانت تعيد النقش نفسه حرفيًّا */
+  const temperature = feature === 'anime' ? 0.65 : (DESIGN_FEATURES.indexOf(feature) !== -1 ? 0.45 : 0.15);
+  const reqBody = { contents: [{ parts }], generationConfig: { temperature, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
   const upstream = await fetch(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
     signal: AbortSignal.timeout(240000), /* v-image-timeout */
@@ -427,3 +454,5 @@ module.exports = async (req, res) => {
 };
 module.exports.STYLE_TEXT = STYLE_TEXT;
 module.exports.FEATURE_INSTRUCTIONS = FEATURE_INSTRUCTIONS;
+module.exports.buildSinglePrompt = buildSinglePrompt; /* v-studio-variety: للاختبار */
+module.exports.DESIGN_FEATURES = DESIGN_FEATURES;
