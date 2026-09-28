@@ -43,6 +43,7 @@ test('٣. البطاقة موحّدة 16:10 وبلا سهم دائري، وال�
   assert.match(css, /\.tcMedia\{[\s\S]*?aspect-ratio:16\/10/);
   assert.match(css, /\.tcLive\{[\s\S]*?position:absolute/);
   assert.match(css, /-webkit-line-clamp:2/);
+  assert.match(css, /\.ptTrack > \.btn\):focus-visible/);
 });
 
 test('٤. الجوال يسحب بلا أسهم، والحركة تحترم تقليل الحركة', () => {

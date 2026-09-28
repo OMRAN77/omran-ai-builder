@@ -16,6 +16,9 @@
 html[dir="rtl"] #sectionsToolsPopup .ptShelfArrow{transform:scaleX(-1);}
 #sectionsToolsPopup .ptShelfArrow:hover,
 #sectionsToolsPopup .ptAllBack:hover{border-color:var(--omGold); background:rgba(212,175,55,.1);}
+#sectionsToolsPopup :is(.ptViewAll,.ptShelfArrow,.ptAllBack,.ptTrack > .btn):focus-visible{
+  outline:2px solid var(--omGold); outline-offset:2px;
+}
 #sectionsToolsPopup .ptShelfArrow:disabled{opacity:.3; cursor:default;}
 #sectionsToolsPopup .ptCarousel{overflow-x:auto; overflow-y:hidden; scrollbar-width:none; scroll-snap-type:x mandatory; overscroll-behavior-inline:contain;}
 #sectionsToolsPopup .ptCarousel::-webkit-scrollbar{display:none;}
@@ -77,7 +80,6 @@ html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcSub{col
   #sectionsToolsPopup .ptSectionsView{gap:18px;}
   #sectionsToolsPopup .ptTrack > .btn{flex-basis:min(72vw,250px);}
   #sectionsToolsPopup .ptShelfArrow{display:none!important;}
-  #sectionsToolsPopup .ptAllHost .ptTrack{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important; gap:10px!important;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcMeta{padding:8px 9px 10px;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .btnLabel{font-size:13px;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcSub{font-size:10.5px;}
