@@ -965,15 +965,18 @@ try{
 try{
   var hintShown=false;
   var HINT_RE=/(لخص|لخّص|اختبرني|بطاقات مراجعة|محاضرة|مذاكرة|ذاكر|امتحان|study|summarize lecture|quiz me)/i;
+  /* v-edu-homework: «واجب» في المحادثة → تلميح يفتح «حلّ الواجب» مباشرة (المالك: في المحادثة وفي التعليم، الاثنين) */
+  var HW_RE=/(واجب|ورقة عمل|حل السؤال|حلّ السؤال|homework|worksheet)/i;
   function maybeHint(txt){
-    if(hintShown||!txt||!HINT_RE.test(txt)) return;
+    var hw=!!txt&&HW_RE.test(txt);
+    if(hintShown||!txt||!(hw||HINT_RE.test(txt))) return;
     hintShown=true;
     var h=document.getElementById('eduChatHint'); if(!h) return;
-    document.getElementById('eduChatHintTxt').textContent=T('hint');
+    document.getElementById('eduChatHintTxt').textContent=hw?eduL('📷 عندك واجب؟ صوّره في «حلّ الواجب» وخذ التحليل والحلّ كاملًا.','📷 Got homework? Snap it in the homework solver for the full analysis and solution.'):T('hint');
     document.getElementById('eduChatHintBtn').textContent=T('title');
     h.setAttribute('dir',isRTL()?'rtl':'ltr');
     h.classList.add('show');
-    document.getElementById('eduChatHintBtn').onclick=function(){ h.classList.remove('show'); openModal(); };
+    document.getElementById('eduChatHintBtn').onclick=function(){ h.classList.remove('show'); openModal(); if(hw&&window.__eduPlus&&window.__eduPlus.showSolver) window.__eduPlus.showSolver(); };
     setTimeout(function(){ h.classList.remove('show'); },12000);
   }
   document.addEventListener('click',function(e){
