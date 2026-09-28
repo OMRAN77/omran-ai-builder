@@ -1,17 +1,19 @@
 /* v-bg-images — خلفيّات الشاشة (js/app-25-خلفيات.js). يُحمَّل بعد tokens.css فتعلو قواعد الألوان هنا على الوضعين. */
 
-/* الطبقة خلف الشاشة كلّها — نفس موضع #vantaBg؛ لا يظهر منهما إلّا واحد */
+/* الطبقة خلف الشاشة كلّها — نفس موضع #vantaBg؛ لا يظهر منهما إلّا واحد.
+   v-bg-home-only (المالك: «أريدها فقط للدخول، إذا أسأل» تختفي): تظهر في شاشة الدخول وحدها —
+   body.omranWelcome يضعه app-04 حين لا رسائل في المحادثة — وتختفي مع أوّل رسالة فتُقرأ الردود. */
 #bgImgLayer{position:fixed; inset:0; z-index:-1; pointer-events:none; display:none; background:var(--bgimg-tint,#000) center/cover no-repeat;}
-html.bgimg #bgImgLayer{display:block;}
-html.bgimg body{background:transparent !important; animation:none !important;}
+html.bgimg body.omranWelcome #bgImgLayer{display:block;}
+html.bgimg body.omranWelcome{background:transparent !important; animation:none !important;}
 
 /* طبقة قراءة خفيفة فوق الصورة: تعتيم للصور الداكنة (نصّ فاتح)، تفتيح للفاتحة (نصّ داكن) */
 html.bgimg #bgImgLayer::after{content:""; position:absolute; inset:0; background:rgba(0,0,0,.38);}
 html.bgimg-light #bgImgLayer::after{background:rgba(255,255,255,.42);}
 
-/* ألوان الكتابة تتبع الصورة لا الوضع */
-html.bgimg-dark{--text:#f4f5f8 !important; --muted:#c8ccd4 !important; --accent-ink:#ffffff !important;}
-html.bgimg-light{--text:#101114 !important; --muted:#3d4048 !important; --accent-ink:#101114 !important;}
+/* ألوان الكتابة تتبع الصورة لا الوضع — على شاشة الدخول فقط */
+html.bgimg-dark body.omranWelcome{--text:#f4f5f8 !important; --muted:#c8ccd4 !important; --accent-ink:#ffffff !important;}
+html.bgimg-light body.omranWelcome{--text:#101114 !important; --muted:#3d4048 !important; --accent-ink:#101114 !important;}
 
 /* الشبكة في الإعدادات: مصغّرات فقط، بلا أسماء ولا وسوم */
 .bgImgGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px;}
