@@ -3986,6 +3986,8 @@ const I18N = {
     micNotSupported: 'المتصفح لا يدعم إدخال الصوت. جرّب متصفح Chrome على أندرويد أو الكمبيوتر.',
     themeSectionLabel: '🎨 تخصيص الألوان والمظهر',
     bg3dSectionLabel: '🌌 خلفية ثلاثية الأبعاد متحركة',
+    bgImgSectionLabel: '🖼️ خلفيّات الشاشة',
+    bgImgNone: 'بلا خلفيّة',
     bg3dAutoLabel: '🔀 تبديل تلقائي بين الخلفيات كل دقيقة',
     themeAccentLabel: 'اللون الأساسي (Accent)',
     themeTextLabel: 'لون النص',
@@ -4445,6 +4447,8 @@ const I18N = {
     themeUserBubbleLabel: 'Your message bubble color',
     themeSectionLabel: '🎨 Customize colors & appearance',
     bg3dSectionLabel: '🌌 Animated 3D background',
+    bgImgSectionLabel: '🖼️ Screen wallpapers',
+    bgImgNone: 'No wallpaper',
     bg3dAutoLabel: '🔀 Auto-switch backgrounds every minute',
     deleteProject: 'Delete project',
     deleteAllProjects: '🗑️ Delete all',
@@ -5228,7 +5232,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=699'; /* v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=700'; /* v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -11203,6 +11207,8 @@ async function applyBg3D(id, save){
   destroyBg3D();
   document.body.classList.toggle('vantaActive', id !== 'none');
   if(id === 'none') return;
+  // v-bg-images: خلفيّة واحدة — اختيار ثلاثيّة يزيل صورة الشاشة (والعكس في app-25)
+  try{ if(window.خلفيات) window.خلفيات.طبّق(null); }catch(e){ __swallow(e, 'bg3d:bgimg-off'); }
   const eff = BG3D_EFFECTS.find(e => e.id === id);
   if(!eff) return;
   if(eff.lib === 'custom'){
@@ -36812,107 +36818,101 @@ if(document.readyState === 'loading'){
   if(btn) btn.onclick = openTv;
   window.omranTv = { open: openTv, close: closeTv };
 })();
-/* مدير الخلفيات: تحليل الألوان واختيار تنسيقات مناسبة */
+/* v-bg-images — خلفيّات الشاشة.
+   الصور في assets/خلفيات/ وفهرسها فهرس.json (يولّده scripts/خلفيات.mjs مع المصغّرات واللون المهيمن).
+   الإعدادات ← المظهر ← خلفيّات الشاشة: شبكة مصغّرات بلا أسماء؛ الاختيار يضع الصورة خلف الشاشة كلّها
+   (#bgImgLayer) ويضبط ألوان الكتابة على لونها (html.bgimg-dark / html.bgimg-light في css/خلفيات.css)،
+   ويطفئ الخلفيّة الثلاثيّة — خلفيّة واحدة في كلّ وقت (والعكس في applyBg3D). */
+(function(){
+  var KEY = 'aiapp_bgimg';
+  var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
+  var فهرس = null, تحميل = null;
 
-const خلفيات_جاهزة = [
-  { اسم: 'شاطئ رصيف', صورة: '/assets/خلفيات/شاطئ-رصيف.jpg', علامات: ['طبيعة', 'شاطئ'] },
-  { اسم: 'بنت رسمة', صورة: '/assets/خلفيات/بنت-رسمة.jpg', علامات: ['فن', 'رسمة'] },
-  { اسم: 'أحذية مدينة', صورة: '/assets/خلفيات/أحذية-مدينة.jpg', علامات: ['مدينة', 'ليل'] },
-  { اسم: 'جيتار غروب', صورة: '/assets/خلفيات/جيتار-غروب.jpg', علامات: ['موسيقى', 'طبيعة'] },
-  { اسم: 'كوكب فضاء', صورة: '/assets/خلفيات/كوكب-فضاء.jpg', علامات: ['فضاء', 'تجريدي'] },
-  { اسم: 'كنيسة جبل', صورة: '/assets/خلفيات/كنيسة-جبل.jpg', علامات: ['معمار', 'جبال'] },
-  { اسم: 'شاطئ غروب', صورة: '/assets/خلفيات/شاطئ-غروب.jpg', علامات: ['طبيعة', 'غروب'] },
-  { اسم: 'تاج ذهب', صورة: '/assets/خلفيات/تاج-ذهب.jpg', علامات: ['فن', 'ذهبي'] },
-  { اسم: 'سيارة رياضية', صورة: '/assets/خلفيات/سيارة-رياضية.jpg', علامات: ['سيارات', 'سباق'] },
-  { اسم: 'سيارة مصباح', صورة: '/assets/خلفيات/سيارة-مصباح.jpg', علامات: ['سيارات', 'تفاصيل'] },
-  { اسم: 'فورمولا 1', صورة: '/assets/خلفيات/فورمولا-1.jpg', علامات: ['سياق', 'سيارات'] },
-  { اسم: 'جبل فني', صورة: '/assets/خلفيات/جبل-فني.jpg', علامات: ['جبال', 'فن'] },
-  { اسم: 'رجل قبعة', صورة: '/assets/خلفيات/رجل-قبعة.jpg', علامات: ['شخصيات', 'درامي'] },
-  { اسم: 'فارس سيف', صورة: '/assets/خلفيات/فارس-سيف.jpg', علامات: ['تاريخي', 'غروب'] },
-  { اسم: 'شطرنج ليل', صورة: '/assets/خلفيات/شطرنج-ليل.jpg', علامات: ['ألعاب', 'تجريدي'] },
-  { اسم: 'رسمة أنمي', صورة: '/assets/خلفيات/رسمة-أنمي.jpg', علامات: ['أنمي', 'ديناميكي'] },
-];
+  function رابط(ملف, مصغّر){ return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف); }
+  function طبقة(){
+    var el = document.getElementById('bgImgLayer');
+    if(!el){ el = document.createElement('div'); el.id = 'bgImgLayer'; document.body.insertBefore(el, document.body.firstChild); }
+    return el;
+  }
+  function الحاليّ(){
+    try{ var s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; }
+    catch(e){ __swallow(e, 'bgimg:read'); return null; }
+  }
+  function علّم(ملف){
+    var g = document.getElementById('bgImgGrid'); if(!g) return;
+    g.querySelectorAll('.bgImgOpt').forEach(function(b){ b.classList.toggle('active', (b.dataset.file || '') === (ملف || '')); });
+  }
 
-function احسب_لون_مهيمن(صورة_url) {
-  /* استخراج اللون المهيمن من صورة باستخدام Canvas
-     العودة: {r, g, b} */
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 10; // صغير للسرعة
-      canvas.height = 10;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, 10, 10);
-
-      const data = ctx.getImageData(0, 0, 10, 10).data;
-      let r = 0, g = 0, b = 0;
-
-      for (let i = 0; i < data.length; i += 4) {
-        r += data[i];
-        g += data[i + 1];
-        b += data[i + 2];
+  function طبّق(صورة, حفظ){
+    var html = document.documentElement;
+    if(!صورة){
+      html.classList.remove('bgimg', 'bgimg-dark', 'bgimg-light');
+      var el = document.getElementById('bgImgLayer'); if(el) el.style.backgroundImage = '';
+      if(حفظ !== false){ try{ localStorage.removeItem(KEY); }catch(e){ __swallow(e, 'bgimg:clear'); } }
+      علّم(null);
+      return;
+    }
+    طبقة().style.backgroundImage = 'url("' + رابط(صورة.ملف) + '")';
+    html.style.setProperty('--bgimg-tint', صورة.لون || '#000');
+    html.classList.add('bgimg');
+    html.classList.toggle('bgimg-light', !!صورة.فاتحة);
+    html.classList.toggle('bgimg-dark', !صورة.فاتحة);
+    if(حفظ !== false){
+      try{ localStorage.setItem(KEY, JSON.stringify({ ملف: صورة.ملف, لون: صورة.لون, فاتحة: !!صورة.فاتحة })); }
+      catch(e){ __swallow(e, 'bgimg:save'); }
+    }
+    try{
+      if((localStorage.getItem('aiapp_bg3d') || 'none') !== 'none' && typeof applyBg3D === 'function'){
+        applyBg3D('none');
+        if(typeof buildBg3DPicker === 'function') buildBg3DPicker();
       }
+    }catch(e){ __swallow(e, 'bgimg:3d-off'); }
+    علّم(صورة.ملف);
+  }
 
-      const pixels = data.length / 4;
-      resolve({
-        r: Math.round(r / pixels),
-        g: Math.round(g / pixels),
-        b: Math.round(b / pixels),
+  function حمّل(){
+    if(فهرس) return Promise.resolve(فهرس);
+    if(!تحميل){
+      تحميل = fetch(BASE + encodeURIComponent('فهرس.json'), { cache: 'no-cache' })
+        .then(function(r){ if(!r.ok) throw new Error('فهرس الخلفيّات ' + r.status); return r.json(); })
+        .then(function(j){ فهرس = (j && j.صور) || []; return فهرس; })
+        .catch(function(e){ تحميل = null; __swallow(e, 'bgimg:index'); return []; });
+    }
+    return تحميل;
+  }
+
+  function افتح(){
+    var g = document.getElementById('bgImgGrid');
+    if(!g || g.dataset.ready) return;
+    g.dataset.ready = '1';
+    var cur = الحاليّ();
+    return حمّل().then(function(list){
+      if(!list.length){ g.dataset.ready = ''; return; }
+      g.innerHTML = '';
+      var none = document.createElement('button');
+      none.type = 'button';
+      none.className = 'bgImgOpt bgImgNone' + (cur ? '' : ' active');
+      none.dataset.file = '';
+      none.textContent = (typeof t === 'function' ? t('bgImgNone') : 'بلا خلفيّة');
+      none.onclick = function(){ طبّق(null); };
+      g.appendChild(none);
+      list.forEach(function(ص){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'bgImgOpt' + (cur && cur.ملف === ص.ملف ? ' active' : '');
+        b.dataset.file = ص.ملف;
+        b.style.backgroundImage = 'url("' + رابط(ص.ملف, true) + '")';
+        b.onclick = function(){ طبّق(ص); };
+        g.appendChild(b);
       });
-    };
-
-    img.onerror = () => resolve({ r: 100, g: 150, b: 200 }); // أزرق افتراضي
-    img.src = صورة_url;
-  });
-}
-
-function اختر_لون_نص(rgb) {
-  /* اختيار لون نص بناءً على اللون الخلفية
-     استخدام صيغة الإضاءة النسبية (luminance) */
-  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-  return luminance > 0.5 ? '#000000' : '#ffffff';
-}
-
-function اختر_ألوان_متناسقة(rgb) {
-  /* اختيار مجموعة ألوان متناسقة بناءً على اللون المهيمن */
-  const h = Math.atan2(Math.sqrt(3) * (rgb.g - rgb.b), 2 * rgb.r - rgb.g - rgb.b);
-  const hue = (h * 180 / Math.PI + 360) % 360;
-
-  return {
-    ابتدائي: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
-    نص_رئيسي: اختر_لون_نص(rgb),
-    نص_ثانوي: rgb.r + rgb.g + rgb.b > 384 ? '#333333' : '#e0e0e0',
-    زر_بطاقة: هو_فاتح(rgb) ? '#2196F3' : '#64B5F6', // أزرق ذكي
-    إطار: هو_فاتح(rgb) ? '#cccccc' : '#444444',
-  };
-}
-
-function هو_فاتح(rgb) {
-  return (rgb.r + rgb.g + rgb.b) / 3 > 128;
-}
-
-async function حضّر_خلفيات() {
-  /* تحضير البيانات الكاملة لكل خلفية مع ألوانها */
-  const نتيجة = [];
-
-  for (const خ of خلفيات_جاهزة) {
-    const rgb = await احسب_لون_مهيمن(خ.صورة);
-    const ألوان = اختر_ألوان_متناسقة(rgb);
-
-    نتيجة.push({
-      ...خ,
-      لون_مهيمن: rgb,
-      ألوان,
     });
   }
 
-  return نتيجة;
-}
+  function استرجع(){ var cur = الحاليّ(); if(cur && cur.ملف) طبّق(cur, false); }
 
-window.خلفيات = { خلفيات_جاهزة, احسب_لون_مهيمن, حضّر_خلفيات };
+  window.خلفيات = { افتح: افتح, طبّق: طبّق, استرجع: استرجع };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', استرجع); else استرجع();
+})();
 // 📿 القبلة والمواقيت — مواقيت الصلاة (aladhan) + بوصلة القبلة + تنبيه
 // اختياري قبل كل صلاة (يركب على نظام تذكيرات مها: type:'prayer' + Web Push).
 // المصادر مجانية والواجهة بلغة المستخدم.

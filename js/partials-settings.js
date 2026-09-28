@@ -282,10 +282,11 @@
     </div>
   </div>
 
+  <!-- v-bg-images: خلفيّات الشاشة — مصغّرات بلا أسماء، الشبكة تُبنى عند فتح الصفّ (js/app-25-خلفيات.js) -->
   <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
-    <div onclick="toggleSubRow('backgroundsSub'); if(window.خلفيات_واجهة && !document.getElementById('خلفيات-قسم').innerHTML.trim()) { window.خلفيات_واجهة.أظهر_قسم_الخلفيات(); }" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span style="font-size:13px;">🖼️ الخلفيات</span><span id="backgroundsSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="backgroundsSubContent" style="display:none; padding-top:10px;">
-  <div id="خلفيات-قسم"></div>
+    <div onclick="toggleSubRow('bgImgSub'); if(window.خلفيات) window.خلفيات.افتح();" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="bgImgSectionLabel" style="font-size:13px;">🖼️ خلفيّات الشاشة</span><span id="bgImgSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div id="bgImgSubContent" style="display:none; padding-top:10px;">
+  <div id="bgImgGrid" class="bgImgGrid"></div>
     </div>
   </div>
   </div></div>
