@@ -12,19 +12,20 @@ const ui = fs.readFileSync(path.join(__dirname, '..', 'js/app-05-ui.js'), 'utf8'
 
 /* لوحة وهميّة: ImageData حقيقيّ الذاكرة، وputImageData يحفظ آخر إطار */
 function fakeCanvas(){
-  const canvas = { width: 0, height: 0, style: {}, last: null, ctxOpts: null };
+  const canvas = { width: 0, height: 0, style: {}, last: null, ctxOpts: null, puts: 0 };
   const ctx = {
     createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
-    putImageData: (img) => { canvas.last = { w: img.width, h: img.height, data: Uint8ClampedArray.from(img.data) }; },
+    putImageData: (img) => { canvas.puts++; canvas.last = { w: img.width, h: img.height, data: Uint8ClampedArray.from(img.data) }; },
   };
   canvas.getContext = (type, opts) => { canvas.ctxOpts = opts || null; return ctx; };
   return canvas;
 }
-function loadGalaxy(touch){
+/* doc.activeElement يحاكي حقل الكتابة المركَّز (لوحة المفاتيح) */
+function loadGalaxy(touch, doc){
   const a = ui.indexOf('function bg3dGalaxy('), b = ui.indexOf('function initCustomBg3D(');
   assert.ok(a > 0 && b > a, 'bg3dGalaxy قبل initCustomBg3D');
   const window = { matchMedia: (q) => ({ matches: !!touch && /coarse/.test(q) }) };
-  const ctx = { window, performance, Math, Float32Array, Int32Array, Uint8Array, Uint16Array, Uint32Array, Int8Array, Uint8ClampedArray };
+  const ctx = { window, document: doc || { activeElement: null }, performance, Math, Float32Array, Int32Array, Uint8Array, Uint16Array, Uint32Array, Int8Array, Uint8ClampedArray };
   vm.createContext(ctx);
   vm.runInContext(ui.slice(a, b) + ';this.G = bg3dGalaxy;', ctx);
   return ctx.G;
@@ -106,20 +107,21 @@ test('٣. الشكل كالفيديو: سواد شبه تامّ ونجوم كث�
   assert.ok(bright > 50, 'نجوم ساطعة موجودة');
 });
 
-test('٤. الطيران للأمام من المركز: الإطار اللاحق مصغَّرًا حول المركز يطابق السابق أكثر من نفسه، وبمعدّل الفيديو (≈0.24/ث)', () => {
+/* معدّل الطيران: إطار A عند tA وB عند tB، ثمّ أيّ مقياس حول المركز يُرجع B إلى A (ترابط على حلقة بعيدة عن المركز) */
+function flight(step){
   const G = loadGalaxy(false);
   const c = fakeCanvas(), g = G(c, DARK);
   g.resize(564, 890, 1);
-  for(let t = 0; t <= 6000; t += 33) g.draw(t);
-  const A = gray(c.last);
-  for(let t = 6033; t <= 6400; t += 33) g.draw(t);
-  g.draw(6400);
-  const B = gray(c.last), W = 564, H = 890, cx = W / 2, cy = H / 2, dt = 0.4 - (6000 % 33) / 1000;
-  const corr = (s) => { /* يقارن A بـB بعد إرجاعه بالمقياس s حول المركز، على حلقة بعيدة عن المركز */
+  let t = 0, tA = 0;
+  for(; t <= 6000; t += step) g.draw(t);
+  tA = t - step; const A = gray(c.last);
+  for(; t <= 6400; t += step) g.draw(t);
+  const tB = t - step, B = gray(c.last), W = 564, H = 890, cx = W / 2, cy = H / 2, dt = (tB - tA) / 1000;
+  const corr = (sc) => {
     let sa = 0, sb = 0, sab = 0, saa = 0, sbb = 0, n = 0;
     for(let y = 0; y < H; y += 1) for(let x = 0; x < W; x += 1){
       const r = Math.hypot(x - cx, y - cy); if(r < 120 || r > 400) continue;
-      const bx = Math.round(cx + (x - cx) * s), by = Math.round(cy + (y - cy) * s);
+      const bx = Math.round(cx + (x - cx) * sc), by = Math.round(cy + (y - cy) * sc);
       if(bx < 0 || by < 0 || bx >= W || by >= H) continue;
       const a = A[y * W + x], b = B[by * W + bx];
       sa += a; sb += b; sab += a * b; saa += a * a; sbb += b * b; n++;
@@ -127,10 +129,16 @@ test('٤. الطيران للأمام من المركز: الإطار اللاح
     return (sab - sa * sb / n) / Math.sqrt((saa - sa * sa / n) * (sbb - sb * sb / n));
   };
   let best = 1, bestC = -1;
-  for(let s = 1; s <= 1.2001; s += 0.01){ const v = corr(s); if(v > bestC){ bestC = v; best = s; } }
-  assert.ok(bestC > corr(1) + 0.1, 'الحركة شعاعيّة للخارج: ' + bestC.toFixed(3) + ' مقابل ' + corr(1).toFixed(3));
-  const rate = Math.log(best) / dt;
-  assert.ok(rate > 0.12 && rate < 0.4, 'معدّل الطيران ' + rate.toFixed(3) + '/ث');
+  for(let sc = 1; sc <= 1.2001; sc += 0.005){ const v = corr(sc); if(v > bestC){ bestC = v; best = sc; } }
+  return { gain: bestC - corr(1), rate: Math.log(best) / dt };
+}
+
+test('٤. الطيران للأمام من المركز بمعدّل الفيديو (≈0.24/ث)، بالزمن لا بعدد الإطارات (30 و60 إطارًا/ث سواء)', () => {
+  const r30 = flight(33), r60 = flight(1000 / 60);
+  assert.ok(r30.gain > 0.1, 'الحركة شعاعيّة للخارج: كسب الترابط ' + r30.gain.toFixed(3));
+  assert.ok(r30.rate > 0.18 && r30.rate < 0.32, 'معدّل الطيران عند 30 إطارًا/ث ' + r30.rate.toFixed(3) + '/ث');
+  assert.ok(r60.rate > 0.18 && r60.rate < 0.32, 'معدّل الطيران عند 60 إطارًا/ث ' + r60.rate.toFixed(3) + '/ث');
+  assert.ok(Math.abs(r60.rate - r30.rate) < 0.05, 'المعدّل لا يتبع عدد الإطارات');
 });
 
 test('٥. الوضع الفاتح: خلفيّة فاتحة ونجوم داكنة، واللوحة تُقرأ كلّ إطار (قلب الوضع حيًّا)', () => {
@@ -152,23 +160,64 @@ test('٥. الوضع الفاتح: خلفيّة فاتحة ونجوم داكنة
   assert.equal(median(gray(c2.last)), 0xee);
 });
 
-test('٦. المتانة: أحجام شاذّة، سقف البكسلات، قفزة زمن بعد تبويب مخفيّ، ولوحة المفاتيح على اللمس لا تعيد البذر', () => {
+test('٦. المتانة: أحجام شاذّة، سقف البكسلات، وقفزة زمن بعد تبويب مخفيّ محصورة في الإطار نفسه', () => {
   const G = loadGalaxy(false);
   const c = fakeCanvas(), g = G(c, DARK);
   g.resize(1, 1, 1); g.draw(0); g.draw(16);
   g.resize(5000, 3000, 2); g.draw(1e7); g.draw(1e7 + 33);
   assert.ok(c.width * c.height <= 4.3e6, 'سقف البكسلات ' + c.width + 'x' + c.height);
   assert.equal(c.style.width, '5000px');
-  g.resize(1920, 1080, 1);
-  for(let t = 2e7; t <= 2e7 + 400; t += 33) g.draw(t);
-  const d = starsPerMP(c.last, median(gray(c.last)));
-  assert.ok(d > 5000 && d < 12000, 'الكثافة ثابتة بعد القفزة ' + Math.round(d));
+  /* القفزة بلا تحجيم بينهما: الإطار الأوّل بعد دقيقة غياب والتالي له بالكثافة نفسها (بلا حصر dt تهرب النجوم كلّها) */
+  const c2 = fakeCanvas(), g2 = G(c2, DARK);
+  g2.resize(564, 890, 1);
+  let t = 0; for(; t <= 3000; t += 33) g2.draw(t);
+  for(const j of [60000, 60066]){
+    g2.draw(t + j);
+    const d = starsPerMP(c2.last, median(gray(c2.last)));
+    assert.ok(d > 5000 && d < 12000, 'الكثافة بعد القفزة +' + j + ': ' + Math.round(d));
+  }
+});
+
+test('٧. التحجيم: لوحة المفاتيح لا تعيد البذر، وتقسيم الشاشة يُحجَّم، والحاسوب يبقي النجوم في مواضعها، ولا إطار أسود بعد الدوران', () => {
+  const TEXTAREA = { activeElement: { tagName: 'TEXTAREA' } };
   /* جوّال: شبكة الفيديو (الضلع الأقصر ≥564 بكسل، ≤2 لكلّ بكسل CSS) */
-  const T = loadGalaxy(true), pc = fakeCanvas(), pg = T(pc, DARK);
-  pg.resize(412, 915, 2.625);
-  assert.deepEqual([pc.width, pc.height], [564, 1253]);
-  pg.draw(0); pg.draw(40);
-  pg.resize(412, 560, 2.625);
-  assert.deepEqual([pc.width, pc.height], [564, 1253], 'فتح لوحة المفاتيح لا يغيّر شيئًا');
-  assert.equal(pc.style.height, '915px');
+  const drive = (G, kb) => {
+    const pc = fakeCanvas(), pg = G(pc, DARK);
+    pg.resize(412, 915, 2.625);
+    assert.deepEqual([pc.width, pc.height], [564, 1253]);
+    for(let t = 0; t <= 2000; t += 33){ if(kb && t === 990) pg.resize(412, 560, 2.625); if(kb && t === 1485) pg.resize(412, 915, 2.625); pg.draw(t); }
+    return pc;
+  };
+  const ctrl = drive(loadGalaxy(true, TEXTAREA), false), kb = drive(loadGalaxy(true, TEXTAREA), true);
+  assert.deepEqual([kb.width, kb.height, kb.style.height], [564, 1253, '915px'], 'فتح لوحة المفاتيح لا يغيّر اللوحة');
+  assert.ok(Buffer.from(kb.last.data).equals(Buffer.from(ctrl.last.data)), 'ولا يعيد البذر: الإطار مطابق لمن لم تُفتح له لوحة');
+  /* بلا حقل مركَّز: قصر الارتفاع تقسيمُ شاشة لا لوحة مفاتيح — يُحجَّم ويعود مركز الطيران إلى الوسط */
+  const S = loadGalaxy(true, { activeElement: null }), sc = fakeCanvas(), sg = S(sc, DARK);
+  sg.resize(412, 915, 2.625); sg.draw(0);
+  sg.resize(412, 450, 2.625);
+  assert.equal(sc.style.height, '450px');
+  assert.deepEqual([sc.width, sc.height], [564, 616]);
+  /* الدوران على اللمس (إيقاع 30/ث عند 60 هرتز): الإطار التالي للتحجيم يُرسم حتمًا — اللوحة المعاد تحجيمها سوداء */
+  const R = loadGalaxy(true), rc = fakeCanvas(), rg = R(rc, LIGHT);
+  rg.resize(400, 860, 2); let t = 0;
+  for(; t <= 1000; t += 1000 / 60) rg.draw(t);
+  assert.ok(rc.puts > 20 && rc.puts < 40, 'اللمس بنصف المعدّل: ' + rc.puts + ' إطارًا في ثانية');
+  rg.resize(860, 400, 2);
+  for(let k = 0; k < 3; k++){ const p0 = rc.puts; rg.draw(t); t += 1000 / 60; if(k === 0) assert.equal(rc.puts, p0 + 1, 'الإطار الأوّل بعد الدوران يُرسم'); }
+  assert.deepEqual([rc.last.w, rc.last.h], [rc.width, rc.height]);
+  /* الحاسوب: توسيع النافذة يبقي كلّ نجم في موضعه، والمساحة الجديدة بكثافة الحالة المستقرّة فورًا */
+  const D = loadGalaxy(false), dc = fakeCanvas(), dg = D(dc, DARK);
+  dg.resize(1280, 720, 1);
+  for(t = 0; t <= 3000; t += 33) dg.draw(t);
+  const tl = t - 33, A = gray(dc.last);
+  dg.resize(1300, 720, 1); dg.draw(tl);
+  const B = gray(dc.last);
+  let same = 0, tot = 0;
+  for(let y = 20; y < 700; y++) for(let x = 20; x < 1260; x++){ const a = A[y * 1280 + x], b = B[y * 1300 + x]; if(a > 40 || b > 40){ tot++; if(Math.abs(a - b) <= 2) same++; } }
+  assert.ok(same / tot > 0.98, 'النجوم في مواضعها بعد التوسيع: ' + (same / tot).toFixed(3));
+  dg.resize(1920, 1080, 1); dg.draw(tl);
+  const F = dc.last, g8 = gray(F), sub = (x0, x1, y0, y1) => { const w = x1 - x0, h = y1 - y0, d = new Uint8ClampedArray(w * h * 4); for(let y = 0; y < h; y++) for(let x = 0; x < w; x++) d[(y * w + x) * 4] = g8[(y + y0) * F.w + x + x0]; return { w, h, data: d }; };
+  const dNew = starsPerMP(sub(1340, 1920, 0, 1080), 4), dOld = starsPerMP(sub(0, 1280, 0, 720), 4);
+  assert.ok(dNew > 5000 && dNew < 12000, 'المساحة الجديدة ' + Math.round(dNew));
+  assert.ok(dOld > 5000, 'القديمة ' + Math.round(dOld));
 });

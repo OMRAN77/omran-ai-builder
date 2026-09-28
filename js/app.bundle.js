@@ -10758,7 +10758,10 @@ function bg3dGalaxy(canvas, getPalette) {
     var dp = +devicePR > 0 && isFinite(+devicePR) ? +devicePR : 1;
     // لوحة المفاتيح على اللمس تقصّر الارتفاع وحده: الخلفيّة ثابتة بملء الشاشة فتبقى كما هي (تغطّيها اللوحة فقط)،
     // بلا إعادة بذر ولا انتقال لمركز الطيران؛ وعند إغلاقها يعود الارتفاع نفسه فلا يتغيّر شيء
-    if (touch && X && cssW === cssW0 && dp === dpr0 && cssH < cssH0) return;
+    // (المراجعة: قصر الارتفاع وحده بلا حقل كتابة مركَّز ليس لوحة مفاتيح — تقسيم الشاشة في أندرويد مثلًا — فيُحجَّم عاديًّا)
+    var ae = typeof document !== 'undefined' ? document.activeElement : null;
+    var typing = !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || !!ae.isContentEditable);
+    if (touch && typing && X && cssW === cssW0 && dp === dpr0 && cssH < cssH0) return;
     var e = Math.min(E_MAX, dp, Math.max(1, GRID / Math.min(cssW, cssH)));
     if (cssW * cssH * e * e > PIX_BUDGET) e = Math.sqrt(PIX_BUDGET / (cssW * cssH));
     e = Math.min(e, MAX_SIDE / Math.max(cssW, cssH));   // أبعاد شاذّة: لا ضلع فوق حدّ المتصفّح
@@ -10769,6 +10772,7 @@ function bg3dGalaxy(canvas, getPalette) {
     if (X && nw === W && nh === H) return;               // حجم الجهاز نفسه: لا شيء يُعاد بناؤه
     var oW = W, oH = H, ocx = cx, ocy = cy, oScale = scale, oMargin = margin, k = E ? e / E : 1;
     canvas.width = nw; canvas.height = nh;
+    skip = 1 << 30;                                      // اللوحة المعاد تحجيمها سوداء (alpha:false): الإطار التالي يُرسم حتمًا ولا يُترك
     W = nw; H = nh; E = e; cx = W / 2; cy = H / 2;
     scale = Math.max(W, H) / 2;
     halfX = (W / 2 + margin) / scale; halfY = (H / 2 + margin) / scale;
@@ -10936,7 +10940,8 @@ function initCustomBg3D(id){
     const G = bg3dGalaxy(canvas, bg3dPalette);
     const fit = () => G.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
     let fitTimer = 0;
-    const onResize = () => { clearTimeout(fitTimer); fitTimer = setTimeout(fit, 100); }; /* سحب نافذة الحاسوب: بناء واحد بعد التوقّف */
+    /* سحب نافذة الحاسوب: بناء واحد بعد التوقّف — ولا بناء إن استُبدلت الخلفيّة خلال المهلة */
+    const onResize = () => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { if(currentCustomBg && currentCustomBg.canvas === canvas) fit(); }, 100); };
     fit();
     window.addEventListener('resize', onResize);
     currentCustomBg = { raf: null, resizeHandler: onResize, canvas };
