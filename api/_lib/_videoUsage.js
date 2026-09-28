@@ -90,6 +90,18 @@ async function consumeVideo(username) {
   return VIDEO_DAILY_LIMIT - usage.count;
 }
 
+// v-video-refund: فشل المزوّد **بعد** قبوله المهمّة يعيد حصّة اليوم — الخصم أعلاه معناه
+// «بدأ التوليد»، والفشل (فلتر أمان أو عطب عند المزوّد) ليس من المستخدم فلا يُحاسَب عليه.
+// لا ينزل تحت صفر ولا يمسّ عدّاد يوم آخر (مهمّة عبرت منتصف الليل تُترك كما هي).
+async function releaseVideo(username) {
+  if (!username) return;
+  const today = todayStr();
+  const usage = await getUsage(username);
+  if (!usage || usage.date !== today || !(usage.count > 0)) return;
+  usage.count -= 1;
+  await putUsage(username, usage);
+}
+
 // The one account allowed to bypass the daily quota for the "long video"
 // (multi-minute, many-scene) feature, since that feature can burn a large
 // number of scenes in a single run. Everyone else still goes through the
@@ -111,4 +123,4 @@ function checkOwnerBypass(token) {
   return { allowed: true, username };
 }
 
-module.exports = { checkVideoQuota, consumeVideo, VIDEO_DAILY_LIMIT, isOwner, checkOwnerBypass };
+module.exports = { checkVideoQuota, consumeVideo, releaseVideo, VIDEO_DAILY_LIMIT, isOwner, checkOwnerBypass };

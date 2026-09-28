@@ -173,7 +173,10 @@ module.exports = async (req, res) => {
     // touch the normal daily quota.
     const remaining = (longMode === true) ? null : await consumeVideo(usageResult.username);
     await saveLastTask(picked.index, data.id);
-    res.status(200).json({ id: encodeTaskId(picked.index, data.id), remaining });
+    const clientTaskId = encodeTaskId(picked.index, data.id);
+    // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم والقفل وحصّة اليوم.
+    await require('./video-job.js').rememberVideoJob(clientTaskId, { username: chargedUser, cost: pointsLib.COSTS.runway_video, locked: !!videoLocked, quota: longMode !== true });
+    res.status(200).json({ id: clientTaskId, remaining });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }

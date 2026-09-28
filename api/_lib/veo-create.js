@@ -13,6 +13,10 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
+    /* v-trend-people: شخصيّتان أو ثلاث — الصور الزائدة تصل في imagesBase64 ويُبنى منها أوّل إطار واحد. */
+    const trendPeople = Array.isArray(body.imagesBase64)
+      ? body.imagesBase64.map((d, i) => ({ data: d, mime: (body.imagesMime || [])[i] })).filter((x) => x && x.data)
+      : [];
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند ومدخلات المستخدم */
     if (body.trend) {
       const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
@@ -59,6 +63,19 @@ module.exports = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) { res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' }); return; }
 
+    /* v-trend-people: أوّل إطار فيه كلّ الأشخاص معًا في مشهد الترند، ثمّ يحرّكه المحرّك. بعد القفل
+       عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءات الدمج. فشله = لا خصم ولا قفل (يُردّان هنا). */
+    if (body.trend && trendPeople.length > 1) {
+      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, promptText, ratio);
+      if (frame && frame.b64) { imageBase64 = frame.b64; imageMime = frame.mime; }
+      else if (frame && frame.error) {
+        if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video);
+        if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+        res.status(frame.status || 502).json({ error: frame.error, retryable: !!frame.retryable });
+        return;
+      }
+    }
+
     const model = quality === 'high' ? 'veo-3.1-generate-preview' : 'veo-3.1-fast-generate-preview';
     const aspectRatio = ratio === '720:1280' ? '9:16' : '16:9';
     const prompt = String(promptText).trim().slice(0, 1500);
@@ -89,6 +106,8 @@ module.exports = async (req, res) => {
       res.status(upstream.status).json({ error: 'Veo error: ' + String(msg).slice(0, 500) });
       return;
     }
+    // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.
+    await require('./video-job.js').rememberVideoJob(data.name, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked });
     res.status(200).json({ op: data.name });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
