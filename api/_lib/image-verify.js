@@ -116,7 +116,7 @@ async function verifyAndReport(opts) {
 /* تسوية المرشّحين قبل الإرسال (maha-image ← deliver). لا صورة تخرج قبل أن تُقاس:
    ١) البكسل: هل تغيّر الناتج عن المصدر؟ (لا يرى الطلب، فلا يُخدع به). ٢) نداء رؤية واحد يحكم ويكتب التقرير، ومعه القياس.
    ٣) الحاكم قرأ الطلب «كبيرًا» (كاشف النيّة قد يفلت منه تبديل) والبكسل «نفس الصورة» = لم يُنفَّذ مهما قال.
-   لم يُنفَّذ أو ثابت = المحرّك الآخر مرّة واحدة (altFn) ويُعاد الحكم على الأحياء معًا؛ ثابت في الكلّ و honest = { ok:false }
+    لم يُنفَّذ أو ثابت = المحرّك الآخر مرّة واحدة (altFn) ويُعاد الحكم على الأحياء معًا؛ لا مرشّح صالح في honest = { ok:false }
    (مصارحة ٤٢٢ عند المتّصل). honest=false (الخام/IMAGE_VERIFY=off/الدعاء) = لا محرّك آخر ولا رفض، تقرير صادق فقط.
    o: { first, altFn, polishFn, apiKey, request, source:{b64,mime}|null, measurable, expectBig, intent, honest, skipJudge, deadlineOk }
    → { ok:true, best, report, engine, tried } | { ok:false, tried } */
@@ -147,6 +147,12 @@ async function settleCandidates(o) {
       const rest = list.filter(function (c) { return !c.unchanged; });
       return rest.length ? check(rest) : { best: list[v.pick], report: '', text: v.text };
     }
+    /* في الوضع الأمين لا يجوز اختيار مرشّح قالت الرؤية إنّه لم ينفّذ الطلب،
+       حتى لو اختاره حقل pick. أعد التقرير على المرشّحين الصالحين وحدهم. */
+    if (o.honest && list[v.pick].verdict === 'not_done') {
+      const eligible = list.filter(function (c) { return !c.unchanged && c.verdict !== 'not_done'; });
+      return eligible.length ? check(eligible) : { best: list[v.pick], report: '', text: v.text };
+    }
     return { best: list[v.pick], report: v.report, text: v.text };
   };
   const alive = function () { return pool.filter(function (c) { return !c.unchanged; }); };
@@ -165,10 +171,14 @@ async function settleCandidates(o) {
     if (pol && pol.b64) { measure(pol); pool.push(pol); if (!pol.unchanged) out = await check([base, pol]); }
   }
   const tried = pool.map(function (c) { return c.engine + ':' + (c.unchanged ? 'same' : (c.verdict || '?')); }).join(',');
-  if (!alive().length && o.honest) return { ok: false, tried: tried };
+  const eligible = o.honest ? pool.filter(function (c) { return !isFailed(c); }) : [];
+  if (o.honest && !eligible.length) return { ok: false, tried: tried };
   if (!out) out = await check(pool.slice(0, 1));
-  const best = out.best || pool[0];
-  return { ok: true, best: best, report: out.report, engine: best.engine + (pool.length > 1 ? '[' + tried + ']' : ''), tried: tried };
+  /* التلميع يحكم [الأساس، المصقول] فقط؛ قد يرفضهما معًا بينما مرشّح ثالث من
+     الحكم السابق ما زال صالحًا. لا تُرسل المختار المرفوض ولا تقريره القديم. */
+  const rejectedPick = o.honest && isFailed(out.best);
+  const best = rejectedPick ? eligible[rankCandidates(eligible)] : (out.best || pool[0]);
+  return { ok: true, best: best, report: rejectedPick ? '' : out.report, engine: best.engine + (pool.length > 1 ? '[' + tried + ']' : ''), tried: tried };
 }
 
 module.exports = { verifyAndReport, settleCandidates, buildVerifyParts, parseVerdict, rankCandidates, isFailed, intentHint, VERIFY_MODEL };
