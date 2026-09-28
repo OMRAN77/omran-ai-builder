@@ -3988,6 +3988,15 @@ const I18N = {
     bg3dSectionLabel: '🌌 خلفية ثلاثية الأبعاد متحركة',
     bgImgSectionLabel: 'خلفيّات الشاشة',
     bgImgNone: 'بلا خلفيّة',
+    bgImgAdd: 'صورة من جهازك',
+    bgImgDelete: 'حذف',
+    bgImgFull: 'لا مساحة كافية على الجهاز لهذه الصورة',
+    bgImgBad: 'تعذّر قراءة الصورة',
+    bgImgRotate: 'تبديل تلقائيّ',
+    bgImgRotateOff: 'إيقاف',
+    bgImgEvery10: '١٠ دقائق',
+    bgImgEvery30: '٣٠ دقيقة',
+    bgImgEvery60: 'ساعة',
     bg3dAutoLabel: '🔀 تبديل تلقائي بين الخلفيات كل دقيقة',
     themeAccentLabel: 'اللون الأساسي (Accent)',
     themeTextLabel: 'لون النص',
@@ -4449,6 +4458,15 @@ const I18N = {
     bg3dSectionLabel: '🌌 Animated 3D background',
     bgImgSectionLabel: 'Screen wallpapers',
     bgImgNone: 'No wallpaper',
+    bgImgAdd: 'Photo from your device',
+    bgImgDelete: 'Delete',
+    bgImgFull: 'Not enough space on this device for that photo',
+    bgImgBad: 'Could not read the image',
+    bgImgRotate: 'Auto-change',
+    bgImgRotateOff: 'Off',
+    bgImgEvery10: '10 min',
+    bgImgEvery30: '30 min',
+    bgImgEvery60: '1 hour',
     bg3dAutoLabel: '🔀 Auto-switch backgrounds every minute',
     deleteProject: 'Delete project',
     deleteAllProjects: '🗑️ Delete all',
@@ -5232,7 +5250,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=701'; /* v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=702'; /* v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -36899,13 +36917,32 @@ if(document.readyState === 'loading'){
    الصور في assets/خلفيات/ وفهرسها فهرس.json (يولّده scripts/خلفيات.mjs مع المصغّرات واللون المهيمن).
    الإعدادات ← المظهر ← خلفيّات الشاشة: شبكة مصغّرات بلا أسماء؛ الاختيار يضع الصورة خلف الشاشة كلّها
    (#bgImgLayer) ويضبط ألوان الكتابة على لونها (html.bgimg-dark / html.bgimg-light في css/خلفيات.css)،
-   ويطفئ الخلفيّة الثلاثيّة — خلفيّة واحدة في كلّ وقت (والعكس في applyBg3D). */
+   ويطفئ الخلفيّة الثلاثيّة — خلفيّة واحدة في كلّ وقت (والعكس في applyBg3D).
+   v-bg-custom-rotate: «أضف صورة من جهازك» (تُصغَّر على Canvas وتُحفظ على الجهاز aiapp_bgimg_custom بمعرّف
+   custom:…) مع × لحذفها، و«تبديل تلقائيّ» كلّ ١٠ دقائق / ٣٠ دقيقة / ساعة (aiapp_bgimg_rotate بالدقائق؛
+   آخر تبديل aiapp_bgimg_rotate_at فيُكمل العدّ بعد إعادة الفتح) يمرّ على صور الجهاز ثمّ صور المجلّد بالترتيب. */
 (function(){
-  var KEY = 'aiapp_bgimg';
+  var KEY = 'aiapp_bgimg', KEY_CUSTOM = 'aiapp_bgimg_custom', KEY_ROT = 'aiapp_bgimg_rotate', KEY_ROT_AT = 'aiapp_bgimg_rotate_at';
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
-  var فهرس = null, تحميل = null;
+  var CUSTOM = 'custom:', MAX_PX = 1600, MAX_CUSTOM = 12;
+  var فهرس = null, تحميل = null, مؤقّت = null;
 
-  function رابط(ملف, مصغّر){ return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف); }
+  function نصّ(k, d){ return typeof t === 'function' ? (t(k) || d) : d; }
+  function خاصّة(){
+    try{ var s = localStorage.getItem(KEY_CUSTOM); var a = s ? JSON.parse(s) : []; return Array.isArray(a) ? a : []; }
+    catch(e){ __swallow(e, 'bgimg:custom-read'); return []; }
+  }
+  function احفظ_خاصّة(a){
+    try{ localStorage.setItem(KEY_CUSTOM, JSON.stringify(a)); return true; }
+    catch(e){ __swallow(e, 'bgimg:custom-save'); return false; }
+  }
+  function رابط(ملف, مصغّر){
+    if(ملف.indexOf(CUSTOM) === 0){
+      var id = ملف.slice(CUSTOM.length), hit = خاصّة().filter(function(s){ return s.id === id; })[0];
+      return hit ? hit.data : '';
+    }
+    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف);
+  }
   function طبقة(){
     var el = document.getElementById('bgImgLayer');
     if(!el){ el = document.createElement('div'); el.id = 'bgImgLayer'; document.body.insertBefore(el, document.body.firstChild); }
@@ -36917,7 +36954,7 @@ if(document.readyState === 'loading'){
   }
   function علّم(ملف){
     var g = document.getElementById('bgImgGrid'); if(!g) return;
-    g.querySelectorAll('.bgImgOpt').forEach(function(b){ b.classList.toggle('active', (b.dataset.file || '') === (ملف || '')); });
+    g.querySelectorAll('.bgImgOpt').forEach(function(b){ if(!b.classList.contains('bgImgAdd')) b.classList.toggle('active', (b.dataset.file || '') === (ملف || '')); });
   }
 
   function طبّق(صورة, حفظ){
@@ -36926,10 +36963,13 @@ if(document.readyState === 'loading'){
       html.classList.remove('bgimg', 'bgimg-dark', 'bgimg-light');
       var el = document.getElementById('bgImgLayer'); if(el) el.style.backgroundImage = '';
       if(حفظ !== false){ try{ localStorage.removeItem(KEY); }catch(e){ __swallow(e, 'bgimg:clear'); } }
+      دوّر(0); // بلا خلفيّة = بلا تبديل
       علّم(null);
       return;
     }
-    طبقة().style.backgroundImage = 'url("' + رابط(صورة.ملف) + '")';
+    var src = رابط(صورة.ملف);
+    if(!src){ طبّق(null); return; } // صورة جهاز حُذفت
+    طبقة().style.backgroundImage = 'url("' + src + '")';
     html.style.setProperty('--bgimg-tint', صورة.لون || '#000');
     html.classList.add('bgimg');
     html.classList.toggle('bgimg-light', !!صورة.فاتحة);
@@ -36958,36 +36998,150 @@ if(document.readyState === 'loading'){
     return تحميل;
   }
 
+  // ── صور الجهاز ──
+  function اقرأ(file){
+    // تصغير إلى ١٦٠٠ بكسل على الأكثر (JPEG) ولون مهيمن كما في scripts/خلفيات.mjs
+    return new Promise(function(res, rej){
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function(){
+        try{
+          var k = Math.min(1, MAX_PX / Math.max(img.naturalWidth, img.naturalHeight));
+          var c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          var s = document.createElement('canvas'); s.width = 16; s.height = 16;
+          var sx = s.getContext('2d'); sx.drawImage(c, 0, 0, 16, 16);
+          var d = sx.getImageData(0, 0, 16, 16).data, r = 0, g = 0, b = 0;
+          for(var i = 0; i < d.length; i += 4){ r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+          var n = d.length / 4; r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+          var luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          res({ id: String(Date.now()), data: c.toDataURL('image/jpeg', 0.82),
+                لون: '#' + [r, g, b].map(function(v){ return v.toString(16).padStart(2, '0'); }).join(''), فاتحة: luma > 0.55 });
+        }catch(e){ rej(e); }
+        finally{ URL.revokeObjectURL(url); }
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('صورة غير صالحة')); };
+      img.src = url;
+    });
+  }
+  function أضف(صورة){
+    var a = خاصّة().filter(function(s){ return s.id !== صورة.id; });
+    a.unshift({ id: صورة.id, data: صورة.data, لون: صورة.لون, فاتحة: !!صورة.فاتحة });
+    while(a.length > MAX_CUSTOM) a.pop();
+    if(!احفظ_خاصّة(a)){ if(typeof alert === 'function') alert(نصّ('bgImgFull', 'لا مساحة كافية على الجهاز لهذه الصورة')); return false; }
+    ابنِ();
+    طبّق({ ملف: CUSTOM + صورة.id, لون: صورة.لون, فاتحة: صورة.فاتحة });
+    return true;
+  }
+  function احذف(id){
+    احفظ_خاصّة(خاصّة().filter(function(s){ return s.id !== id; }));
+    var cur = الحاليّ();
+    ابنِ();
+    if(cur && cur.ملف === CUSTOM + id) طبّق(null);
+  }
+  function اختر(){
+    var inp = document.getElementById('bgImgFile'); if(!inp) return;
+    inp.value = '';
+    inp.onchange = function(){
+      var f = inp.files && inp.files[0]; if(!f) return;
+      اقرأ(f).then(أضف).catch(function(e){ __swallow(e, 'bgimg:file'); if(typeof alert === 'function') alert(نصّ('bgImgBad', 'تعذّر قراءة الصورة')); });
+    };
+    inp.click();
+  }
+
+  // ── التبديل التلقائيّ ──
+  function دقائق(){ var v = parseInt(localStorage.getItem(KEY_ROT) || '0', 10); return v > 0 ? v : 0; }
+  function كلّها(){ return خاصّة().map(function(s){ return { ملف: CUSTOM + s.id, لون: s.لون, فاتحة: s.فاتحة }; }).concat(فهرس || []); }
+  function التالي(){
+    return حمّل().then(function(){
+      var list = كلّها(); if(!list.length) return;
+      var cur = الحاليّ(), i = -1;
+      if(cur) list.forEach(function(s, k){ if(s.ملف === cur.ملف) i = k; });
+      طبّق(list[(i + 1) % list.length]);
+      try{ localStorage.setItem(KEY_ROT_AT, String(Date.now())); }catch(e){ __swallow(e, 'bgimg:rotate-at'); }
+    });
+  }
+  function جدول(){
+    if(مؤقّت){ clearTimeout(مؤقّت); مؤقّت = null; }
+    var m = دقائق(); if(!m) return;
+    var آخر = parseInt(localStorage.getItem(KEY_ROT_AT) || '0', 10) || 0;
+    var باقٍ = Math.max(1000, m * 60000 - (Date.now() - آخر));
+    مؤقّت = setTimeout(function(){ مؤقّت = null; التالي().then(جدول); }, باقٍ);
+  }
+  function دوّر(m){
+    m = m > 0 ? m : 0;
+    try{
+      if(m){ localStorage.setItem(KEY_ROT, String(m)); localStorage.setItem(KEY_ROT_AT, String(Date.now())); }
+      else { localStorage.removeItem(KEY_ROT); localStorage.removeItem(KEY_ROT_AT); }
+    }catch(e){ __swallow(e, 'bgimg:rotate-save'); }
+    علّم_تبديل();
+    جدول();
+    if(m && !الحاليّ()) التالي(); // اختار مدّة بلا خلفيّة: نبدأ بأوّل صورة فورًا
+  }
+  function علّم_تبديل(){
+    var box = document.getElementById('bgImgRotateOpts'); if(!box) return;
+    var m = دقائق();
+    box.querySelectorAll('.bgImgRotOpt').forEach(function(b){ b.classList.toggle('active', parseInt(b.dataset.min || '0', 10) === m); });
+  }
+
+  // ── الشبكة ──
+  function ابنِ(){
+    var g = document.getElementById('bgImgGrid');
+    if(!g || !فهرس) return;
+    var cur = الحاليّ();
+    g.innerHTML = '';
+    var none = document.createElement('button');
+    none.type = 'button';
+    none.className = 'bgImgOpt bgImgNone' + (cur ? '' : ' active');
+    none.dataset.file = '';
+    none.textContent = نصّ('bgImgNone', 'بلا خلفيّة');
+    none.onclick = function(){ طبّق(null); };
+    g.appendChild(none);
+    var add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'bgImgOpt bgImgAdd';
+    add.textContent = '+ ' + نصّ('bgImgAdd', 'صورة من جهازك');
+    add.onclick = اختر;
+    g.appendChild(add);
+    كلّها().forEach(function(ص){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bgImgOpt' + (ص.ملف.indexOf(CUSTOM) === 0 ? ' bgImgCustom' : '') + (cur && cur.ملف === ص.ملف ? ' active' : '');
+      b.dataset.file = ص.ملف;
+      b.style.backgroundImage = 'url("' + رابط(ص.ملف, true) + '")';
+      b.onclick = function(){ طبّق(ص); };
+      if(ص.ملف.indexOf(CUSTOM) === 0){
+        var x = document.createElement('span');
+        x.className = 'bgImgDel';
+        x.textContent = '×';
+        x.title = نصّ('bgImgDelete', 'حذف');
+        x.onclick = function(ev){ if(ev && ev.stopPropagation) ev.stopPropagation(); احذف(ص.ملف.slice(CUSTOM.length)); };
+        b.appendChild(x);
+      }
+      g.appendChild(b);
+    });
+  }
   function افتح(){
     var g = document.getElementById('bgImgGrid');
     if(!g || g.dataset.ready) return;
     g.dataset.ready = '1';
-    var cur = الحاليّ();
+    var box = document.getElementById('bgImgRotateOpts');
+    if(box && !box.dataset.ready){
+      box.dataset.ready = '1';
+      box.querySelectorAll('.bgImgRotOpt').forEach(function(b){ b.onclick = function(){ دوّر(parseInt(b.dataset.min || '0', 10)); }; });
+      علّم_تبديل();
+    }
     return حمّل().then(function(list){
       if(!list.length){ g.dataset.ready = ''; return; }
-      g.innerHTML = '';
-      var none = document.createElement('button');
-      none.type = 'button';
-      none.className = 'bgImgOpt bgImgNone' + (cur ? '' : ' active');
-      none.dataset.file = '';
-      none.textContent = (typeof t === 'function' ? t('bgImgNone') : 'بلا خلفيّة');
-      none.onclick = function(){ طبّق(null); };
-      g.appendChild(none);
-      list.forEach(function(ص){
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'bgImgOpt' + (cur && cur.ملف === ص.ملف ? ' active' : '');
-        b.dataset.file = ص.ملف;
-        b.style.backgroundImage = 'url("' + رابط(ص.ملف, true) + '")';
-        b.onclick = function(){ طبّق(ص); };
-        g.appendChild(b);
-      });
+      ابنِ();
     });
   }
 
-  function استرجع(){ var cur = الحاليّ(); if(cur && cur.ملف) طبّق(cur, false); }
+  function استرجع(){
+    var cur = الحاليّ(); if(cur && cur.ملف) طبّق(cur, false);
+    جدول();
+  }
 
-  window.خلفيات = { افتح: افتح, طبّق: طبّق, استرجع: استرجع };
+  window.خلفيات = { افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', استرجع); else استرجع();
 })();
 // 📿 القبلة والمواقيت — مواقيت الصلاة (aladhan) + بوصلة القبلة + تنبيه
