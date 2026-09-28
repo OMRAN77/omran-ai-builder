@@ -164,7 +164,7 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
   // and the owner's nine API keys were effectively open to anyone.
   // api/edu.js already limits by IP — this is the same approach, applied to the
   // path that actually spends money.
-  // v-tiers: الضيف على السلسلة المجانية فقط (GUEST_DAILY، افتراضيًّا ٣ يوميًّا)،
+  // v-tiers: الضيف على السلسلة المجانية فقط (GUEST_DAILY، افتراضيًّا ٠: التسجيل أوّلًا)،
   // والمزوّدات المدفوعة مغلقة أمامه.
   if (tierLib.isPaidProvider(providerKey)) {
     return { allowed: false, reason: 'limit', subscribeOnly: true, username: null, tier: 'guest', subscriber: false, message: tierLib.FREE_TEXT.subscribeOnly };
@@ -286,4 +286,16 @@ function clientIp(req) {
   return null;
 }
 
-module.exports = { checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp };
+// v-plus-haiku: عدد رسائل اليوم في سلّة واحدة بلا استهلاك (قبل التوجيه).
+async function todayCount(username, bucket) {
+  if (!username) return 0;
+  return countTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
+}
+
+// v-plan-jobs: عدّاد يوميّ لحدّ موديل داخل الباقة (Haiku/Sonnet).
+async function bumpCount(username, bucket) {
+  if (!username) return;
+  await addTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
+}
+
+module.exports = { todayCount, bumpCount, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp };

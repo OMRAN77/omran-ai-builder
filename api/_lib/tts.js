@@ -154,7 +154,7 @@ module.exports = async (req, res) => {
           const fbResp = await fetch('https://api.openai.com/v1/audio/speech', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + fallbackKey, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'tts-1', voice: gender === 'male' ? 'onyx' : 'nova', input: String(text).slice(0, 4000), speed: ttsSpeed.openaiSpeed }),
+            body: JSON.stringify({ model: 'gpt-4o-mini-tts', voice: gender === 'male' ? 'cedar' : 'marin', input: String(text).slice(0, 4000), speed: ttsSpeed.openaiSpeed }),
           });
           if (fbResp.ok) {
             const fbBuffer = await fbResp.arrayBuffer();
@@ -176,6 +176,9 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-openai-current: الأحدث والأوثق افتراضيًّا؛ tts-1 يبقى فقط لمن يطلبه
+    // صراحةً للتوافق. marin/cedar هما الصوتان الموصى بهما للجودة.
+    const ttsModel = body.model === 'tts-1' ? 'tts-1' : 'gpt-4o-mini-tts';
     const upstream = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
@@ -185,11 +188,11 @@ module.exports = async (req, res) => {
       // v-tts-promo: نبرة موجَّهة اختياريًا — gpt-4o-mini-tts يقبل «تعليمات أداء»
       // (حماسي، إعلاني، هادئ…) فيصلح للتعليق التسويقي. الافتراضات كما هي حرفيًا.
       body: JSON.stringify({
-        model: body.model === 'gpt-4o-mini-tts' ? 'gpt-4o-mini-tts' : 'tts-1',
-        voice: voice || 'onyx',
+        model: ttsModel,
+        voice: voice || (gender === 'male' ? 'cedar' : 'marin'),
         input: String(text).slice(0, 4000),
         speed: ttsSpeed.openaiSpeed,
-        ...(body.model === 'gpt-4o-mini-tts' && body.instructions
+        ...(ttsModel === 'gpt-4o-mini-tts' && body.instructions
           ? { instructions: String(body.instructions).slice(0, 600) } : {}),
       }),
     });

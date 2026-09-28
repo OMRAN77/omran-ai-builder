@@ -136,8 +136,8 @@ test('٥. كلّ مُنشئ صور داخل نافذة مغلقة يمرّ با�
 
 test('٦. التأجيل على الزرّ في بطاقات الأدوات — الصورة بلا hasToolPhoto بلا ارتفاع فلا تتقاطع', () => {
   const css = R('css/tool-card-images.css');
-  // الارتفاع ١١٨px مشروط بالصنف الذي لا يُضاف إلّا بعد تحميل الصورة — لذلك يُراقَب الزرّ
-  assert.match(css, /\.btn\.hasToolPhoto img\.stp3d\.toolPhotoImage\{[^}]*height:118px!important/);
+  // غلاف الصورة 16:10 مشروط بالصنف الذي لا يُضاف إلّا بعد تحميلها — لذلك يُراقَب الزرّ
+  assert.match(css, /\.btn\.hasToolPhoto \.tcMedia\{[^}]*aspect-ratio:16\/10/);
   const tc = R('js/tool-card-images.js');
   assert.ok(tc.indexOf('__omranWhenSeen(btn') > 0 && !/__omranWhenSeen\((img|oldImage|preload)/.test(tc),
     'الزرّ لا الصورة — وإلّا لا تظهر بطاقة أبدًا');
@@ -145,8 +145,8 @@ test('٦. التأجيل على الزرّ في بطاقات الأدوات — 
 
 test('٧. وسوم الكاش رُفعت لكلّ ملفّ يُحمَّل منفصلًا وتغيّر', () => {
   assert.match(html, /\/js\/design-gen\.js\?v=608/);
-  assert.match(html, /\/js\/ui-wiring\.js\?v=650/);
-  assert.match(R('js/ui-wiring.js'), /\/js\/tool-card-images\.js\?v=15/);
+  assert.match(html, /\/js\/ui-wiring\.js\?v=651/);
+  assert.match(R('js/ui-wiring.js'), /\/js\/tool-card-images\.js\?v=16/);
 });
 
 /* ————— الغلاف الأصليّ: الجذر الذي لم يُفحص في خمس جولات ————— */

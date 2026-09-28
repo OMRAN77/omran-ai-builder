@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "om ai"
+  },
+  "extDesc": {
+    "message": "Magtanong sa om ai mula sa kahit anong page: i-right-click ang napiling text, i-type ang \"om\" sa address bar, o ang button."
+  },
+  "ctxAsk": {
+    "message": "Itanong sa om ai ang \"%s\""
+  },
+  "popupPlaceholder": {
+    "message": "Magtanong ng kahit ano sa om ai…"
+  },
+  "popupAsk": {
+    "message": "Itanong"
+  },
+  "popupOpen": {
+    "message": "Buksan ang om ai"
+  },
+  "popupHint": {
+    "message": "Tip: pumili ng text sa kahit anong page, mag-right-click, at piliin ang \"Itanong sa om ai\" — o i-type ang om at space sa address bar."
+  },
+  "omniboxHint": {
+    "message": "Itanong sa om ai: i-type ang tanong at pindutin ang Enter"
+  }
+}

@@ -9,7 +9,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const mi = fs.readFileSync(path.join(root, 'api/_lib/maha-image.js'), 'utf8');
+// v-merge-faces (٢٧ سبتمبر): أمر الدمج انتقل حرفيًّا إلى merge-identity.js (يستعمله maha-image والاستوديو وأنماط الصور).
+const mi = fs.readFileSync(path.join(root, 'api/_lib/merge-identity.js'), 'utf8');
+assert.match(fs.readFileSync(path.join(root, 'api/_lib/maha-image.js'), 'utf8'), /mergeIdentity\.mergeParts\(__mergePhotos, __mergeCrops, cleanPrompt\)/);
 
 test('١. أمر الدمج يقفل المظهر كامله (شعر/حجاب/تبرّج/إكسسوارات/ملابس) لا الوجه فقط', () => {
   assert.match(mi, /hair \(loose or covered by a hijab\/headscarf exactly as photographed; never add, remove, or restyle a head covering\), makeup, jewelry, and clothing/);

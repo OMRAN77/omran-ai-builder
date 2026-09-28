@@ -27,7 +27,7 @@ I18N['ur'] = {
     cnLandAreaPh: 'مثلاً: 500', cnEmirateOpt: 'امارات — اختیاری', cnDetailsAnnexes: '🏠 تفصیلات اور ضمیمے', cnExElevator: 'اندرونی لفٹ', cnExStore: 'بیرونی اسٹور', cnExWaterTank: 'پانی کی ٹینکی',
     cnExSolar: 'سولر پینلز', cnExPlayground: 'بیرونی کھیل کا میدان', cnExCarport: 'اضافی کار شیڈ', cnBudgetOutputs: '💰 بجٹ اور نتائج', cnDownloadBoq: '📊 مقدار جدول ڈاؤن لوڈ کریں',
     cnPdfReport: '📄 PDF رپورٹ', keyHowToTitle: '📝 ہر فراہم کنندہ کے لیے کلید کیسے حاصل کریں:', showAllPlansCur: 'اپنی کرنسی میں تمام پلانز اور قیمتیں دیکھیں', currencyLabel: 'کرنسی',
-    plFreeMsgs: 'روزانہ 5 پیغامات', plFreeVoice: 'زیادہ سے زیادہ 4 منٹ صوتی چیٹ', plFreeImgs: 'زیادہ سے زیادہ 3 AI تصاویر', plFreeNoVideo: 'کوئی ویڈیو نہیں', plStMsgs: 'روزانہ 50 پیغامات', plStVoice: 'زیادہ سے زیادہ 24 منٹ صوتی چیٹ',
+    plFreeMsgs: 'پہلے دن 20 پیغامات، پھر روزانہ 3', plFreeVoice: 'زیادہ سے زیادہ 4 منٹ صوتی چیٹ', plFreeImgs: 'زیادہ سے زیادہ 3 AI تصاویر', plFreeNoVideo: 'کوئی ویڈیو نہیں', plStMsgs: 'روزانہ 50 پیغامات', plStVoice: 'زیادہ سے زیادہ 24 منٹ صوتی چیٹ',
     plStImgs: 'زیادہ سے زیادہ 15 تصاویر', plStVideos: '1 ویڈیو', plProMsgs: 'روزانہ 100 پیغامات', plProVoice: 'زیادہ سے زیادہ 61 منٹ صوتی چیٹ', plProMedia: 'زیادہ سے زیادہ 40 تصاویر · 2 ویڈیوز', plProAgent: 'سمارٹ ایجنٹ',
     plProPriority: 'ترجیحی رفتار · گولڈ بیج', plMaxAllPro: 'Pro کی تمام خصوصیات · روزانہ 250 پیغامات', plMaxVoice: 'زیادہ سے زیادہ 213 منٹ صوتی چیٹ', plMaxMedia: 'زیادہ سے زیادہ 150 تصاویر · 3 ویڈیوز', plMaxSupport: 'خصوصی سپورٹ',
     adStudioTitle: 'اشتہار اسٹوڈیو', adStudioHint: 'اشتہار اسٹوڈیو — بات چیت کر کے اپنا اشتہار بنائیں', chatToPdfEmpty: 'ابھی تبدیل کرنے کے لیے کوئی جواب نہیں ہے۔', mahaConnectionLost: 'دوبارہ رابطہ نہیں ہو سکا', voiceTabAssistantName: 'اسسٹنٹ',
@@ -127,6 +127,20 @@ I18N['ur'] = {
     authTabLogin: "لاگ ان",
     authTabSignup: "سائن اپ",
     authUsernameLabel: "صارف نام",
+    authIdPlaceholder: "صارف نام یا ای میل",
+    authCreateAccount: "نیا اکاؤنٹ بنائیں",
+    authHaveAccount: "میرا اکاؤنٹ ہے — لاگ ان",
+    setGrpPersonal: "حسبِ ضرورت",
+    setGrpAccount: "اکاؤنٹ",
+    setGrpAppearance: "ظاہری شکل",
+    setGrpGeneral: "عام",
+    setEmailRow: "ای میل",
+    setNoEmail: "اکاؤنٹ بحال کرنے کے لیے ای میل شامل کریں",
+    setPlanFree: "مفت",
+    setUpgradeTitle: "Om ai کے ساتھ مزید کریں",
+    setUpgradeSub: "زیادہ حدیں اور جدید خصوصیات۔",
+    setUpgradeBtn: "اپ گریڈ",
+    setChangePhoto: "تصویر بدلیں",
     authPasswordLabel: "پاس ورڈ",
     authNewPasswordLabel: "نیا پاس ورڈ",
     authRecoveryLabel: "ریکوری کوڈ",
@@ -143,6 +157,7 @@ I18N['ur'] = {
     clockWorldLabel: "🌍 عالمی گھڑی",
     authBackToLogin: "لاگ ان پر واپس جائیں",
     authSubmitReset: "پاس ورڈ ری سیٹ کریں",
+    authSubmitForgotEmail: "ای میل پر ری سیٹ لنک بھیجیں",
     authRecoveryModalTitle: "🔑 یہ ریکوری کوڈ محفوظ کریں",
     authRecoveryModalDesc: "یہ واحد کوڈ ہے جس سے آپ پاس ورڈ بھول جانے کی صورت میں اپنا اکاؤنٹ واپس حاصل کر سکتے ہیں۔ اسے محفوظ جگہ رکھیں — یہ دوبارہ نہیں دکھایا جائے گا۔",
     authCopyBtn: "📋 کاپی کریں",
@@ -150,7 +165,7 @@ I18N['ur'] = {
     authCopied: "✅ کاپی ہو گیا",
     authSubmitLogin: "لاگ ان",
     authSubmitSignup: "اکاؤنٹ بنائیں",
-    guestLimitMsg: "🎉 آپ نے اپنے 20 مفت پیغامات استعمال کر لیے ہیں! چیٹ جاری رکھنے کے لیے لاگ ان کریں (یا اکاؤنٹ بنائیں)۔",
+    guestLimitMsg: 'چیٹ شروع کرنے کے لیے مفت اکاؤنٹ بنائیں: پہلے دن 20 پیغامات، پھر روزانہ 3۔',
     
     
     
@@ -180,6 +195,8 @@ I18N['ur'] = {
     checkoutTitle: "سبسکرپشن مکمل کریں",
     checkoutTestBadge: "🧪 ٹیسٹ موڈ",
     checkoutCardOption: "ویزا / ماسٹر کارڈ",
+    checkoutLoginFirst: "پہلے سائن اپ یا لاگ اِن کریں، پھر سبسکرائب کریں",
+    checkoutAutoRenew: "🔁 کارڈ سے ہر مہینے خودکار تجدید",
     checkoutTelecomOption: "ٹیلی کام بلنگ (Etisalat/du)",
     checkoutComingSoon: "جلد آ رہا ہے",
     checkoutPlanLabelBasic: 'Plus پلان $10/ماہ — 360 پوائنٹس',
@@ -205,7 +222,7 @@ I18N['ur'] = {
     acctAvatarBtn: "📷 تصویر تبدیل کریں",
     acctUsernameLabel: "صارف نام",
     acctSaveBtn: "محفوظ کریں",
-    acctEmailLabel: "📧 بیک اپ ای میل (پاس ورڈ کی بازیابی کے لیے)",
+    acctEmailLabel: "ای میل (اگر یوزرنیم یا پاس ورڈ بھول جائیں)",
     acctReferralLabel: "🔗 دوستوں کو مدعو کرنے کا لنک",
     acctCopyBtn: "📋 کاپی کریں",
     acctReferralHint: "آپ کے لنک سے سائن اپ کرنے والے ہر دوست کے لیے آپ دونوں کو 10 اضافی مفت پیغامات ملتے ہیں 🎁",
@@ -302,6 +319,7 @@ I18N['ur'] = {
     cancel: "منسوخ کریں",
     save: "محفوظ کریں",
     defaultProjectTitle: "نیا پراجیکٹ",
+    defaultShowcaseTitle: "سمارٹ ڈیش بورڈ",
     templatesBtn: "🧩 ٹیمپلیٹس",
     templatesModalTitle: "🧩 ایک ٹیمپلیٹ منتخب کریں",
     useThisTemplate: "✅ یہ ٹیمپلیٹ استعمال کریں",
@@ -892,7 +910,7 @@ I18N['ur'] = {
     designAiPlaceLabel: "جگہ کی قسم", premiumOn: "ایجنٹ آن ہے ⚡ — سیدھا جواب، بغیر اسٹائل لیئرز کے", premiumNeedLogin: "ایجنٹ استعمال کرنے کے لیے سائن ان کریں", memorySectionLabel: "میری میموری", memoryIntro: "ایپ آپ کے، آپ کے پراجیکٹس اور آپ کے بات چیت کے انداز کے بارے میں جو یاد رکھتی ہے وہ یہاں ہے۔ یہ آپ کے اکاؤنٹ کے ذریعے تمام ڈیوائسز پر سنک ہوتا ہے، اور آپ اسے تبدیل یا حذف کر سکتے ہیں۔",
     memorySaveBtn: "تبدیلیاں محفوظ کریں", memoryClearBtn: "میری میموری حذف کریں", memoryEmpty: "ابھی تک آپ کے بارے میں کچھ محفوظ نہیں ہے۔", memoryGuest: "اپنی میموری دیکھنے کے لیے سائن ان کریں۔", memoryConfirm: "ایپ آپ کے بارے میں جو کچھ یاد رکھتی ہے وہ سب حذف کریں؟ اسے واپس نہیں لایا جا سکتا۔", memorySaved: "محفوظ ہو گیا اور آپ کے اکاؤنٹ سے سنک ہو گیا۔",
     memorySaveError: "محفوظ نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔", memoryLoadError: "ابھی میموری لوڈ نہیں ہو سکی۔", fontFamilySectionLabel: "فونٹ اسٹائل", fontFamilyHint: "ڈیسک ٹاپ اور موبائل پر چیٹ میسجز بدلتا ہے، کوڈ بلاکس یا ایپ لے آؤٹ نہیں۔", guestImageMsg: "🎁 آپ اپنی 3 مفت گیسٹ تصاویر استعمال کر چکے ہیں! چند سیکنڈز میں مفت اکاؤنٹ بنائیں اور تصاویر بنانے اور ترمیم کرنے کے لیے 70 گفٹ پوائنٹس حاصل کریں۔",
-    planPer: "ماہانہ", planFreePer: "آزمانے کے لیے", planPtsFree: "ویلکم پوائنٹس — صرف ایک بار", planPtsMo: "ہر ماہ پوائنٹس", planTag: "سب سے مقبول", planCurrentBtn: "آپ کا موجودہ پلان", planSoonBtn: "جلد آ رہا ہے", planFreeFeats: '<li>روزانہ 5 پیغامات</li><li>زیادہ سے زیادہ 4 منٹ صوتی چیٹ</li><li>زیادہ سے زیادہ 3 AI تصاویر</li><li class="off">کوئی ویڈیو نہیں</li>',
+    planPer: "ماہانہ", planFreePer: "آزمانے کے لیے", planPtsFree: "ویلکم پوائنٹس — صرف ایک بار", planPtsMo: "ہر ماہ پوائنٹس", planTag: "سب سے مقبول", planCurrentBtn: "آپ کا موجودہ پلان", planSoonBtn: "جلد آ رہا ہے", planFreeFeats: '<li>پہلے دن 20 پیغامات، پھر روزانہ 3</li><li>زیادہ سے زیادہ 4 منٹ صوتی چیٹ</li><li>زیادہ سے زیادہ 3 AI تصاویر</li><li class="off">کوئی ویڈیو نہیں</li>',
     planPlusFeats: '<li>روزانہ 50 پیغامات</li><li>زیادہ سے زیادہ 24 منٹ صوتی چیٹ</li><li>زیادہ سے زیادہ 15 تصاویر</li><li>1 ویڈیو</li>', planProFeats: '<li>روزانہ 100 پیغامات</li><li>زیادہ سے زیادہ 61 منٹ صوتی چیٹ</li><li>زیادہ سے زیادہ 40 تصاویر · 2 ویڈیوز</li><li>سمارٹ ایجنٹ</li><li>ترجیحی رفتار · گولڈ بیج</li>', planMaxFeats: '<li>Pro کی تمام خصوصیات · روزانہ 250 پیغامات</li><li>زیادہ سے زیادہ 213 منٹ صوتی چیٹ</li><li>زیادہ سے زیادہ 150 تصاویر · 3 ویڈیوز</li><li>خصوصی سپورٹ</li>',
     checkoutPlanLabelMax: 'Max پلان $100/ماہ — 3,200 پوائنٹس', copyCode: "کاپی کریں", copiedMsg: "کاپی ہو گیا ✅", emailAsst_connectText: "AI کو اپنی ای میلز پڑھنے اور بھیجنے سے پہلے آپ کی منظوری کے ساتھ تیار جوابات تجویز کرنے دینے کے لیے اپنا Gmail اکاؤنٹ کنیکٹ کریں۔", emailAsst_connectBtn: "🔗 Gmail کنیکٹ کریں", emailAsst_disclaimer: "⚠️ ہر پیغام پر آپ کی واضح منظوری کے بغیر کبھی کوئی جواب نہیں بھیجا جاتا۔",
     emailAsst_title: "📧 AI ای میل اسسٹنٹ", emailAsst_refresh: "ریفریش کریں", emailAsst_loading: "آپ کا انباکس اسکین ہو رہا ہے…", emailAsst_empty: "ابھی کسی نئی ای میل کو جواب کی ضرورت نہیں ہے۔", emailAsst_notConnected: "Gmail کنیکٹ نہیں ہے، براہ کرم دوبارہ کنیکٹ کریں۔", emailAsst_send: "✅ بھیجیں", emailAsst_ignore: "🚫 اس بھیجنے والے کو نظرانداز کریں", emailAsst_sending: "بھیجا جا رہا ہے…",
@@ -1043,3 +1061,12 @@ Object.assign(I18N["ur"], {"ownerSectionTitle": "👑 مالک کا صفحہ"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["ur"], {"imgUnchanged": "⚠️ ترمیم لاگو نہیں ہوئی: تصویر بغیر تبدیلی کے واپس آئی، اس لیے میں نے اسے نہیں دکھایا اور اس کا شمار آپ پر نہیں ہوا۔ بتائیں کہ بالکل کیا بدلنا ہے، یا کسی اور انداز میں لکھیں۔"});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["ur"], {"mediaPlansTitle": "تصاویر اور ویڈیو کی رکنیت", "mediaPlansDesc": "صرف تصاویر یا ویڈیو چاہنے والوں کے لیے — بغیر چیٹ۔ ہر رکنیت کا اپنا بیلنس ہے جو کسی اور چیز پر خرچ نہیں ہوتا۔", "mediaImgName": "تصاویر", "mediaVidName": "ویڈیو", "mediaImgUnit": "اعلیٰ معیار کی تصاویر", "mediaVidEco": "کفایتی ویڈیوز", "mediaVidCine": "سنیمائی ویڈیوز", "mediaVidSound": "آواز والی ویڈیوز", "mediaOr": "یا", "mediaNoChatVideo": "بغیر چیٹ اور ویڈیو", "mediaNoChatImage": "بغیر چیٹ اور تصاویر", "mediaLeftImg": "تصاویر کی رکنیت میں باقی", "mediaLeftVid": "ویڈیو کی رکنیت میں باقی"});
+Object.assign(I18N["ur"], {"mediaImgPlain": "تصاویر", "mediaHighEq": "ایک اعلیٰ معیار کی تصویر = 2 تصاویر", "mediaQLabel": "تصویر کا معیار", "mediaQNormal": "⚡ عام", "mediaQHigh": "💎 اعلیٰ", "mediaQNormalDesc": "تیز، سوشل میڈیا کے لیے بہترین — بیلنس سے 1 تصویر", "mediaQHighDesc": "زیادہ باریک تفصیل، صاف متن، پرنٹ کے قابل — بیلنس سے 2 تصاویر", "mediaQHint": "یا ایک تصویر کے لیے اپنی درخواست میں «اعلیٰ معیار» لکھیں"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N["ur"], {"priceTabChat": "💬 چیٹ", "priceTabImg": "🖼️ تصاویر", "priceTabVid": "🎬 ویڈیو", "priceTabPts": "⚡ پوائنٹس"});
+Object.assign(I18N["ur"], {"priceTabMaha": "🎙️ مہا", "mahaPlanName": "مہا", "mahaPlansDesc": "مہا کی وائس کالز کے لیے۔ مہینے کے منٹ صرف مہا کے لیے ہیں؛ ختم ہونے پر کالز آپ کے پوائنٹس سے جاری رہیں گی۔", "mahaMinPlain": "کال منٹ", "mahaMinUnit": "منٹ", "mahaCapNote": "ہر کال زیادہ سے زیادہ 10 منٹ", "mahaNoChat": "چیٹ، تصاویر یا ویڈیو نہیں", "mahaLeft": "مہا کے باقی منٹ", "mahaCapEnd": "کال 10 منٹ کی حد پر ختم ہوئی — جاری رکھنے کے لیے دوبارہ کال کریں", "mahaToPoints": "منٹ ختم — اب پوائنٹس سے جاری"});
+/* v-browser-install: خطوات التثبيت لكلّ متصفّح */
+Object.assign(I18N["ur"], {"installHowIOS":"آئی فون یا آئی پیڈ پر انسٹال کرنے کے لیے:\n1) یہ سائٹ Safari میں کھولیں\n2) شیئر بٹن دبائیں (اوپر تیر والا چوکور)\n3) «ہوم اسکرین میں شامل کریں» منتخب کریں، پھر «شامل کریں»","installHowIOSOther":"اس براؤزر سے آئی فون پر انسٹال کرنے کے لیے:\n1) ایڈریس بار کے پاس شیئر بٹن (اوپر تیر والا چوکور) دبائیں\n2) «ہوم اسکرین میں شامل کریں» منتخب کریں\nاگر آپشن نہ دکھے تو یہ سائٹ Safari میں کھولیں۔","installHowAndroid":"اینڈرائیڈ پر انسٹال کرنے کے لیے:\n1) براؤزر مینو (⋮) کھولیں\n2) «ایپ انسٹال کریں» یا «ہوم اسکرین میں شامل کریں» منتخب کریں\n3) انسٹال کی تصدیق کریں","installHowDesktop":"کمپیوٹر پر انسٹال کرنے کے لیے (Chrome یا Edge):\nایڈریس بار میں انسٹال آئیکن (⊕ یا چھوٹی اسکرین) دبائیں، یا براؤزر مینو (⋮ یا …) کھول کر «انسٹال کریں» یا «ایپس ← اس سائٹ کو ایپ کے طور پر انسٹال کریں» منتخب کریں۔","installHowMacSafari":"میک پر Safari سے انسٹال کرنے کے لیے:\nاوپر «File» مینو کھولیں، «Add to Dock» منتخب کریں، پھر «Add»۔","installHowFirefox":"کمپیوٹر پر Firefox ویب ایپس انسٹال نہیں کرتا۔\nیہ سائٹ Chrome یا Edge میں کھولیں اور «ایپ انسٹال کریں» دبائیں، یا اپنے فون سے انسٹال کریں۔"});

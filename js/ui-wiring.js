@@ -77,12 +77,64 @@
   /* v445: إعادة تطبيق الترجمة على البطاقات والأدوات المرسومة ديناميكيًا */
   try{ if(typeof applyLanguage === 'function') applyLanguage(); }catch(e){ __swallow(e, "misc:index#omhome-i18n"); }
 
+  /* ---------- 2ب) بطاقات أدوات هواوي في شاشة الترحيب (v-huawei-welcome-tools) ---------- */
+  try{
+    if(/HUAWEI|HarmonyOS|HONOR|HuaweiBrowser|HMSCore/i.test(navigator.userAgent || '')){
+      document.documentElement.classList.add('store-safe');
+    }
+  }catch(e){ __swallow(e, "wiring:hw-detect"); }
+
+  var hwPortrait = $('#hwCardPortrait');
+  if(hwPortrait) hwPortrait.addEventListener('click', function(){ tap('#btnPortraitStyle'); });
+
+  var hwEdu = $('#hwCardEdu');
+  if(hwEdu) hwEdu.addEventListener('click', function(){ tap('#btnOmranEdu'); });
+
+  var hwQibla = $('#hwCardQibla');
+  if(hwQibla) hwQibla.addEventListener('click', function(){ tap('#btnQibla'); });
+
+  var hwSuggestions = $('#hwCardSuggestions');
+  if(hwSuggestions) hwSuggestions.addEventListener('click', function(){ tap('#btnQuickTemplates'); });
+
+  /* v-huawei-chat-hide: دخول صندوق الكتابة يعني بدء المحادثة — البطاقات تختفي
+     ما دام الصندوق مركّزًا أو فيه نصّ، وتعود إن تركه فارغًا. */
+  var hwPrompt = $('#prompt');
+  function syncHwChatting(){
+    var on = !!hwPrompt && (document.activeElement === hwPrompt || hwPrompt.value.trim() !== '');
+    document.body.classList.toggle('hwChatting', on);
+  }
+  if(hwPrompt){
+    hwPrompt.addEventListener('focus', syncHwChatting);
+    hwPrompt.addEventListener('blur', syncHwChatting);
+    hwPrompt.addEventListener('input', syncHwChatting);
+  }
+
+  var hwAll = $('#hwAllToolsBtn');
+  if(hwAll) hwAll.addEventListener('click', function(){
+    var o = document.getElementById('sectionsToolsOverlay');
+    if(o) o.classList.add('show');
+  });
+
   /* ---------- 3) وضع الترحيب ---------- */
   var messagesEl = $('#messages');
   function syncWelcome(){
-    var empty = !messagesEl || messagesEl.children.length === 0;
+    if(window.__isRenderingMsgs) return;
+    var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    var empty = cur ? (!cur.messages || cur.messages.length === 0) : (!messagesEl || messagesEl.children.length === 0);
     document.body.classList.toggle('omranWelcome', empty);
+    var hwHero = document.getElementById('huaweiHeroWrap');
+    var oHero = document.getElementById('omranHero');
+    if(!empty){
+      if(hwHero) hwHero.style.setProperty('display', 'none', 'important');
+      if(oHero) oHero.style.setProperty('display', 'none', 'important');
+      var oTools = document.getElementById('sectionsToolsOverlay');
+      if(oTools) oTools.classList.remove('show');
+    } else {
+      if(hwHero) hwHero.style.removeProperty('display');
+      if(oHero) oHero.style.removeProperty('display');
+    }
   }
+  window.syncWelcome = syncWelcome;
   if(messagesEl && window.MutationObserver){
     new MutationObserver(syncWelcome).observe(messagesEl, { childList:true });
   }
@@ -202,13 +254,13 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا
   if(!document.querySelector('link[data-omran-tool-photos]')){
     var css = document.createElement('link');
     css.rel = 'stylesheet';
-    css.href = '/css/tool-card-images.css?v=15';
+    css.href = '/css/tool-card-images.css?v=17';
     css.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(css);
   }
   if(!document.querySelector('script[data-omran-tool-photos]')){
     var js = document.createElement('script');
-    js.src = '/js/tool-card-images.js?v=15';
+    js.src = '/js/tool-card-images.js?v=16';
     js.async = false;
     js.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(js);

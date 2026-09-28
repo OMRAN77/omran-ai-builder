@@ -7,6 +7,7 @@ const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const { logError } = require('./log-error.js');
+const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
 const MAX_MEMORY_CHARS = 6000;   // ملف موجز يكفي الهوية والمشاريع والأسلوب بلا سجل محادثة
 const MEMORY_PROMPT_CHARS = 5000; // سقف ما يُحقن في طلب واحد حتى لا تزاحم الذاكرة سؤال المستخدم
@@ -95,15 +96,11 @@ async function callMergeModel(sys, user) {
       }
     } catch (e) { logError('memory/groq', e); }
   }
-  // ② OpenAI (gpt-4.1-mini) — احتياطي أول
+  // ② OpenAI (الخفيف الأحدث — v-models-latest) — احتياطي أول
   const oaKey = process.env.OPENAI_API_KEY;
   if (oaKey) {
     try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + oaKey },
-        body: JSON.stringify({ store: false, model: 'gpt-4.1-mini', messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ], temperature: 0.2, max_tokens: 900 }),
-      });
+      const res = await oaLightFetch(oaKey, { store: false, messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ], temperature: 0.2, max_tokens: 900 });
       if (res.ok) {
         const d = await res.json();
         const out = (((d.choices || [])[0] || {}).message || {}).content || '';

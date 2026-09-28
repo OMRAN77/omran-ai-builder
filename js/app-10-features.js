@@ -145,14 +145,18 @@ const btnInstall = $('#btnInstall');
       'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
       'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
       'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-5',
-      'google/gemini-pro-1.5': 'google/gemini-3.5-flash',
+      'google/gemini-pro-1.5': 'google/gemini-3.8-flash',
       /* v-models-family: بدائل الجيل السابق في المنسدلة المدفوعة → معرّفاتها الحاليّة. */
       'openai/gpt-4o-mini': 'openai/gpt-5.6-terra',
       'openai/gpt-4o': 'openai/gpt-5.6-terra',
       'anthropic/claude-sonnet-4.5': 'anthropic/claude-sonnet-5',
-      'google/gemini-2.5-pro': 'google/gemini-3.5-flash',
+      'google/gemini-2.5-pro': 'google/gemini-3.8-flash',
       'meta-llama/llama-3.1-70b-instruct': 'meta-llama/llama-4-maverick',
-      'deepseek/deepseek-chat': 'deepseek/deepseek-v3.2',
+      'deepseek/deepseek-chat': 'deepseek/deepseek-v4-pro',
+      /* v-models-latest (٢٥ سبتمبر): خيارات المنسدلة التي رُقّيت → معرّفاتها الجديدة. */
+      'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',
+      'google/gemini-3.5-flash': 'google/gemini-3.8-flash',
+      'deepseek/deepseek-v3.2': 'deepseek/deepseek-v4-pro',
     };
     if (__orRemap[__orOld]) localStorage.setItem('aiapp_openrouter_model', __orRemap[__orOld]);
   } catch(e){ __swallow(e, "save:app-10-features#3"); }
@@ -193,23 +197,20 @@ window.addEventListener('beforeinstallprompt', (e) => {
   } catch(err){ __swallow(err, "save:app-10-features#4"); }
 });
 
+/* v-browser-install: المتصفّحات التي لا تطلق beforeinstallprompt (Safari، Firefox، متصفّحات iOS)
+   تحصل على خطوات متصفّحها بلغة الواجهة. iPadOS يعرّف نفسه «Macintosh» فيُميَّز باللمس. */
+function installHowKey(ua, touchPoints){
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && touchPoints > 1);
+  if(isIOS) return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? 'installHowIOSOther' : 'installHowIOS';
+  if(/Android/i.test(ua)) return 'installHowAndroid';
+  if(/Firefox\//.test(ua)) return 'installHowFirefox';
+  if(/Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg\/|OPR\//.test(ua)) return 'installHowMacSafari';
+  return 'installHowDesktop';
+}
 function showManualInstallInstructions(){
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isAndroid = /Android/i.test(ua);
-  let msgAr, msgEn;
-  if(isIOS){
-    msgAr = 'للتثبيت على الآيفون:\n1) افتح الموقع من متصفح Safari\n2) اضغط زر المشاركة (المربع مع السهم للأعلى) في الأسفل\n3) اختر "إضافة إلى الشاشة الرئيسية"\n4) اضغط "إضافة"';
-    msgEn = 'To install on iPhone:\n1) Open this site in Safari\n2) Tap the Share button (square with an up arrow)\n3) Choose "Add to Home Screen"\n4) Tap "Add"';
-  } else if(isAndroid){
-    msgAr = 'للتثبيت على أندرويد:\n1) افتح قائمة المتصفح (⋮) في الأعلى يمين\n2) اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"\n3) اتبع التعليمات لإتمام التثبيت';
-    msgEn = 'To install on Android:\n1) Open the browser menu (⋮) top-right\n2) Choose "Install app" or "Add to Home screen"\n3) Follow the prompts to finish installing';
-  } else {
-    msgAr = 'للتثبيت على الكمبيوتر:\nابحث عن أيقونة التثبيت (⊕ أو شاشة صغيرة) في شريط عنوان المتصفح، ثم اضغط عليها واختر "تثبيت".';
-    msgEn = 'To install on desktop:\nLook for the install icon (⊕ or small monitor) in your browser\'s address bar, click it, then choose "Install".';
-  }
-  const currentLang = (typeof lang !== 'undefined' && lang === 'ar') ? 'ar' : 'en';
-  alert(currentLang === 'ar' ? msgAr : msgEn);
+  const key = installHowKey(navigator.userAgent || '', navigator.maxTouchPoints || 0);
+  const d = (typeof window.curT === 'function') ? window.curT() : {};
+  alert(d[key] || (I18N.en || {})[key] || '');
 }
 
 const onInstallBtnClick = async () => {
@@ -228,6 +229,27 @@ installButtons.forEach(b => { b.onclick = onInstallBtnClick; });
 window.addEventListener('appinstalled', () => {
   showInstallButtons(false);
 });
+
+/* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
+   المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */
+(function(){
+  try {
+    const u = new URL(location.href);
+    const q = (u.searchParams.get('q') || '').trim().slice(0, 4000);
+    if(!q) return;
+    u.searchParams.delete('q');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    const fill = () => {
+      const p = document.getElementById('prompt');
+      if(!p) return;
+      p.value = q;
+      p.dispatchEvent(new Event('input', { bubbles: true }));
+      try { p.focus(); } catch(e){ __swallow(e, "misc:app-10-features#q-focus"); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill, { once: true });
+    else setTimeout(fill, 0);
+  } catch(e){ __swallow(e, "misc:app-10-features#q"); }
+})();
 
 /* ---------- Share App button ---------- */
 const btnShareApp = $('#btnShareApp');
@@ -468,6 +490,26 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   }
   const stpCloseBtn = document.getElementById('stpCloseBtn');
   if(stpCloseBtn && ptOverlay){ stpCloseBtn.onclick = () => ptOverlay.classList.remove('show'); }
+  /* v-tools-shelves: الصفحة الرئيسية صفوف اكتشاف أفقية، و«عرض الكل» يستبدل
+     المحتوى داخل شاشة الأدوات نفسها. لا نافذة متداخلة ولا نسخ للأزرار. */
+  let ptSectionsView = null, ptAllView = null, ptAllTitle = null, ptAllHost = null, ptAllBack = null;
+  if(ptPopup){
+    ptSectionsView = document.createElement('div');
+    ptSectionsView.className = 'ptSectionsView';
+    ptAllView = document.createElement('section');
+    ptAllView.className = 'ptAllView';
+    ptAllView.hidden = true;
+    ptAllView.innerHTML = '<div class="ptAllHead"><button type="button" class="ptAllBack"></button><h2 class="ptAllTitle" tabindex="-1"></h2></div><div class="ptAllHost"></div>';
+    ptAllTitle = ptAllView.querySelector('.ptAllTitle');
+    ptAllHost = ptAllView.querySelector('.ptAllHost');
+    ptAllBack = ptAllView.querySelector('.ptAllBack');
+    ptAllBack.setAttribute('data-i18n-title', 'back');
+    ptAllBack.title = (typeof t === 'function') ? t('back') : 'رجوع';
+    ptAllBack.setAttribute('aria-label', ptAllBack.title);
+    ptAllBack.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>';
+    ptPopup.appendChild(ptSectionsView);
+    ptPopup.appendChild(ptAllView);
+  }
   // v434: أيقونات Microsoft Fluent 3D الرسمية لبطاقات تبويب الأدوات
   const STP_3D = 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/';
   const STP_ICONS = {
@@ -504,17 +546,53 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   }
   groups.forEach(g => {
     if(g.title && ptPopup){
-      const h = document.createElement('div');
+      const section = document.createElement('section');
+      section.className = 'ptSection';
+      section.setAttribute('data-tools-group', g.title);
+      const head = document.createElement('div');
+      head.className = 'ptSectionHead';
+      const h = document.createElement('h2');
       h.className = 'ptSectionTitle';
       const lbl = document.createElement('span');
       lbl.setAttribute('data-i18n', g.title);
       lbl.textContent = (typeof t === 'function') ? t(g.title) : g.title;
       h.appendChild(lbl);
-      ptPopup.appendChild(h);
-      const grid = document.createElement('div');
-      grid.className = 'ptGrid';
-      ptPopup.appendChild(grid);
-      g.ids.forEach(id => { const b = document.getElementById(id); if(b){ grid.appendChild(b); stpApply3d(b, id); } });
+      const controls = document.createElement('div');
+      controls.className = 'ptShelfControls';
+      const all = document.createElement('button');
+      all.type = 'button';
+      all.className = 'ptViewAll';
+      all.setAttribute('data-i18n', 'portraitStyleBrowseAll');
+      all.textContent = (typeof t === 'function') ? t('portraitStyleBrowseAll') : 'عرض الكل';
+      const prev = document.createElement('button');
+      prev.type = 'button'; prev.className = 'ptShelfArrow ptShelfPrev'; prev.innerHTML = '‹';
+      const next = document.createElement('button');
+      next.type = 'button'; next.className = 'ptShelfArrow ptShelfNext'; next.innerHTML = '›';
+      prev.setAttribute('aria-label', '‹ ' + lbl.textContent);
+      next.setAttribute('aria-label', '› ' + lbl.textContent);
+      controls.appendChild(all);
+      head.appendChild(h); head.appendChild(controls);
+      const carouselShell = document.createElement('div');
+      carouselShell.className = 'ptCarouselShell';
+      const viewport = document.createElement('div');
+      viewport.className = 'ptCarousel';
+      const track = document.createElement('div');
+      track.className = 'ptGrid ptTrack';
+      const start = document.createElement('i');
+      start.className = 'ptSentinel ptSentinelStart';
+      start.setAttribute('aria-hidden', 'true');
+      const end = document.createElement('i');
+      end.className = 'ptSentinel ptSentinelEnd';
+      end.setAttribute('aria-hidden', 'true');
+      track.appendChild(start);
+      g.ids.forEach(id => { const b = document.getElementById(id); if(b){ track.appendChild(b); stpApply3d(b, id); } });
+      track.appendChild(end);
+      viewport.appendChild(track);
+      carouselShell.appendChild(viewport);
+      carouselShell.appendChild(prev);
+      carouselShell.appendChild(next);
+      section.appendChild(head); section.appendChild(carouselShell);
+      ptSectionsView.appendChild(section);
       /* v-tools-back (طلب عمران ١ سبتمبر): اختيار ميزة كان يغلق مربع
          الأدوات تحتها — فإغلاق الميزة يرمي المستخدم للمحادثة بدل «نقطة
          خلف». كل الميزات تفتح فوق المربع (تدقيق z-index للسبع عشرة)،
@@ -524,6 +602,100 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) dd.appendChild(b); });
     }
   });
+  if(ptPopup && ptSectionsView && ptAllView){
+    let allState = null, historyToken = 0;
+    const cards = (track) => Array.from(track.children).filter(el => el.matches && el.matches('button.btn'));
+    const moveShelf = (section, delta) => {
+      const viewport = section.querySelector('.ptCarousel'), list = cards(section.querySelector('.ptTrack'));
+      if(!viewport || !list.length) return;
+      const vr = viewport.getBoundingClientRect();
+      const visible = list.map((el, i) => ({ el, i, r:el.getBoundingClientRect() }))
+        .filter(x => x.r.left >= vr.left - 2 && x.r.right <= vr.right + 2);
+      const first = visible.length ? visible[0].i : 0;
+      const amount = Math.max(1, visible.length - 1);
+      const target = list[Math.max(0, Math.min(list.length - 1, first + delta * amount))];
+      if(!target) return;
+      try{ target.scrollIntoView({ behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest', inline:'start' }); }
+      catch(e){ try{ target.scrollIntoView(); }catch(_){ __swallow(_, 'tools:shelf-scroll'); } }
+    };
+    const closeAll = (restoreFocus) => {
+      if(!allState) return;
+      const s = allState, track = ptAllHost.querySelector('.ptTrack');
+      if(track) s.viewport.appendChild(track);
+      ptAllView.hidden = true;
+      ptSectionsView.hidden = false;
+      allState = null;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ptPopup.scrollTop = s.top;
+        s.viewport.scrollLeft = s.left;
+        if(restoreFocus && s.opener) try{ s.opener.focus(); }catch(e){ __swallow(e, 'tools:focus-return'); }
+      }));
+    };
+    const openAll = (section, opener) => {
+      const viewport = section.querySelector('.ptCarousel'), track = section.querySelector('.ptTrack');
+      const title = section.querySelector('.ptSectionTitle');
+      if(!viewport || !track || !title) return;
+      historyToken++;
+      allState = { section, viewport, opener, top:ptPopup.scrollTop, left:viewport.scrollLeft, token:historyToken };
+      ptAllTitle.textContent = title.textContent;
+      ptSectionsView.hidden = true;
+      ptAllView.hidden = false;
+      ptAllHost.appendChild(track);
+      ptPopup.scrollTop = 0;
+      try{ history.pushState({ omranToolsAll:historyToken }, '', location.href); }catch(e){ __swallow(e, 'tools:history-push'); }
+      requestAnimationFrame(() => { try{ ptAllTitle.focus(); }catch(e){ __swallow(e, 'tools:focus-title'); } });
+    };
+    ptAllBack.onclick = () => {
+      if(allState && history.state && history.state.omranToolsAll === allState.token) history.back();
+      else closeAll(true);
+    };
+    if(ptOverlay){
+      ptOverlay.__omranSwipeBackStep = () => {
+        if(!allState) return false;
+        if(history.state && history.state.omranToolsAll === allState.token) history.back();
+        else closeAll(true);
+        return true;
+      };
+    }
+    window.addEventListener('popstate', () => { if(allState) closeAll(true); });
+    ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
+      const viewport = section.querySelector('.ptCarousel');
+      const start = section.querySelector('.ptSentinelStart'), end = section.querySelector('.ptSentinelEnd');
+      const all = section.querySelector('.ptViewAll'), prev = section.querySelector('.ptShelfPrev'), next = section.querySelector('.ptShelfNext');
+      const edge = { start:false, end:false, seenStart:false, seenEnd:false };
+      const paint = () => {
+        if(!edge.seenStart || !edge.seenEnd) return;
+        const noOverflow = edge.start && edge.end;
+        section.classList.toggle('ptNoOverflow', noOverflow);
+        prev.disabled = edge.start; next.disabled = edge.end;
+        prev.hidden = noOverflow || edge.start; next.hidden = noOverflow || edge.end; all.hidden = noOverflow;
+      };
+      try{
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            const k = entry.target === start ? 'start' : 'end';
+            edge[k] = entry.isIntersecting && entry.intersectionRatio >= .9;
+            edge[k === 'start' ? 'seenStart' : 'seenEnd'] = true;
+          });
+          paint();
+        }, { root:viewport, threshold:[0, .9, 1] });
+        observer.observe(start); observer.observe(end);
+      }catch(e){
+        all.hidden = false; prev.hidden = false; next.hidden = false;
+      }
+      prev.onclick = () => moveShelf(section, -1);
+      next.onclick = () => moveShelf(section, 1);
+      all.onclick = () => openAll(section, all);
+    });
+    if(ptOverlay && window.MutationObserver){
+      new MutationObserver(() => {
+        if(ptOverlay.classList.contains('show') || !allState) return;
+        const hadHistory = history.state && history.state.omranToolsAll === allState.token;
+        closeAll(false);
+        if(hadHistory) try{ history.back(); }catch(e){ __swallow(e, 'tools:history-clean'); }
+      }).observe(ptOverlay, { attributes:true, attributeFilter:['class'] });
+    }
+  }
   // v214: تسجيل الخروج دائمًا آخر خانة في القائمة
   const lastLogout = document.getElementById('btnMenuLogout');
   if(lastLogout) dd.appendChild(lastLogout);
@@ -792,24 +964,12 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ /* guard-ok */ }
     try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ /* guard-ok */ }
   };
-  /* v-brand-l10n (طلب المالك ٢٩ أغسطس): شعار ذهبي مخصوص لكل لغة — العربي
-     والإنجليزي كما هما بلا أي تغيير. الأعراض عند ارتفاع 42 من ملفات PNG
-     الفعلية (الأصل 168px = ٤×). لغة بلا شعار خاص ترجع للإنجليزي. */
-  const BRAND_L10N_W = { zh:84, hi:71, es:87, fr:89, bn:80, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
+  /* v-om-brand (طلب عمران ٢٥ سبتمبر): شعار «OM Ai» بنجومه الثلاث واحد لكلّ اللغات
+     ومكتوب في index.html بأبعاده (لا قفزة)، فلا تبديل صورة حسب اللغة — بدّل شعار
+     «عمران» الخاصّ بكلّ لغة (v-brand-l10n). يبقى نسخه إلى رأس القائمة الجانبيّة. */
   const syncBrand = () => {
     const bt = document.getElementById('brandTitle');
-    const l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
     if(bt){
-      /* v-brand-stable (شكوى ٢٩ أغسطس: الشعار يتحرك عند التحديث): أبعاد
-         الصورة تُعلن مسبقًا فيحجز المتصفح مكانها قبل تحميلها — لا قفزة.
-         النِّسب من ملفات PNG الفعلية: عربي 1203×400، إنجليزي 1534×400. */
-      let imgSrc, imgW, imgAlt;
-      /* v-gpu-lite: نسختا عرض 3× لارتفاع 42 (379×126 و483×126) بدل الأصلين 1203×400 و1534×400 — ضجيج الشعار في فيديو المالك */
-      if(l === 'ar'){ imgSrc = 'icons/brand-ar-s.png'; imgW = 126; imgAlt = 'عمران Ai'; }
-      else if(BRAND_L10N_W[l]){ imgSrc = 'icons/brand-' + l + '.png'; imgW = BRAND_L10N_W[l]; imgAlt = 'Omran Ai'; }
-      else { imgSrc = 'icons/brand-en-s.png'; imgW = 161; imgAlt = 'Omran Ai'; }
-      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
-      /* v-sidebar-brand: نسخة رأس القائمة الجانبيّة تتبع الشعار نفسه عند تبديل اللغة */
       const sb = document.getElementById('sidebarBrand');
       if(sb){ sb.innerHTML = bt.innerHTML; if(h1 && !sb.onclick) sb.onclick = h1.onclick; }
     }

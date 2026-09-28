@@ -19,11 +19,9 @@ async function openaiRedress(promptText, imageBase64, mimeType) {
   try {
     const bytes = Buffer.from(imageBase64, 'base64');
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', 'gpt-image-2.5-sunburst');
     form.append('prompt', promptText.slice(0, 3900));
     form.append('size', 'auto');
-    /* v-strong-rescue: حفظ الملامح وجودة عالية */
-    form.append('input_fidelity', 'high');
     form.append('quality', 'high');
     form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
     const r = await fetch('https://api.openai.com/v1/images/edits', {
@@ -48,7 +46,7 @@ async function openaiGenerate(promptText) {
     const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-image-2', prompt: promptText.slice(0, 3900), size: '1024x1536', quality: 'high' }),
+      body: JSON.stringify({ model: 'gpt-image-2.5-flare', prompt: promptText.slice(0, 3900), size: '1024x1536', quality: 'high' }),
       signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
     const d = await r.json();

@@ -13,11 +13,12 @@ const VERDICTS = ['done', 'partial', 'not_done'];
 /* تلميح النيّة: ما الذي يُعدّ «منفّذًا» في هذا النوع من الطلبات تحديدًا */
 function intentHint(f) {
   const o = f || {};
+  /* v-merge-faces (مراجعة): الدمج أوّلًا — «ادمجهم أجمل/واقعية/احترافية» كانت تأخذ تلميح «مظهر جديد» فيسقط فحص الملامح */
+  if (o.merge) return 'This MERGES several reference photos: every reference subject must appear, each person with the same identity as in their own REFERENCE PHOTO — compare every person\'s face with their own photo (eyes, nose, mouth, jaw, skin tone, apparent age, hair or head covering) and their outfit, except anything the request itself asks to change. A person whose face or look clearly differs from their own photo = partial, and the report must say plainly which person came out different.' + (o.restyle || o.reimagine || o.elevate ? ' The request may also ask for a new style or a stronger scene: that applies to the scene and styling, never to who each person is.' : '') + (o.textEdit ? ' Also check the exact letters of any requested words.' : '');
   if (o.personSwap && o.targeted) return 'This is a TARGETED PERSON SWAP: it is executed only if the person(s) the request singles out are replaced by clearly DIFFERENT new people (different face and hair) while everyone else keeps the same face, and every written word stays letter-for-letter identical. The singled-out person unchanged = not_done; other people replaced too = partial.';
   if (o.personSwap) return 'This is a PERSON SWAP: it is executed only if EVERY person in the source is replaced by a clearly DIFFERENT new person (different face and hair; same role, age group, pose and outfit type), no two new people look alike, and every written word (titles, captions, labels) stays letter-for-letter identical. The same faces as the source = not_done; some faces replaced = partial.';
   if (o.textEdit) return 'This is a TEXT edit: check the exact letters of the requested words, and that other text is unchanged and unbroken (Arabic letters must be correct).';
   if (o.restyle || o.reimagine || o.elevate) return 'This asks for a visibly NEW look (style, idea or a clearly stronger design). A result that is practically the same picture as the source = not_done.';
-  if (o.merge) return 'This MERGES several reference images: every reference subject must appear, each person with the same identity as in their own photo.';
   return '';
 }
 
@@ -33,7 +34,9 @@ function buildVerifyParts(o) {
   const n = cands.length;
   const letters = 'ABC';
   const parts = [{ text: 'The user asked, verbatim: "' + String(o.request || '').slice(0, 600) + '".' }];
-  if (o.source && o.source.b64) {
+  if (o.references && o.references.length) { /* v-merge-faces: الدمج — صورة كلّ شخص كما أرسلها، لا الأساسيّة وحدها */
+    o.references.forEach(function (r, i) { parts.push({ text: 'REFERENCE PHOTO ' + (i + 1) + ' (as the user sent it):' }); parts.push({ inlineData: { mimeType: r.mime || 'image/jpeg', data: r.b64 } }); });
+  } else if (o.source && o.source.b64) {
     parts.push({ text: 'SOURCE (the picture the user sent):' });
     parts.push({ inlineData: { mimeType: o.source.mime || 'image/jpeg', data: o.source.b64 } });
   }
@@ -113,7 +116,7 @@ async function verifyAndReport(opts) {
 /* تسوية المرشّحين قبل الإرسال (maha-image ← deliver). لا صورة تخرج قبل أن تُقاس:
    ١) البكسل: هل تغيّر الناتج عن المصدر؟ (لا يرى الطلب، فلا يُخدع به). ٢) نداء رؤية واحد يحكم ويكتب التقرير، ومعه القياس.
    ٣) الحاكم قرأ الطلب «كبيرًا» (كاشف النيّة قد يفلت منه تبديل) والبكسل «نفس الصورة» = لم يُنفَّذ مهما قال.
-   لم يُنفَّذ أو ثابت = المحرّك الآخر مرّة واحدة (altFn) ويُعاد الحكم على الأحياء معًا؛ ثابت في الكلّ و honest = { ok:false }
+    لم يُنفَّذ أو ثابت = المحرّك الآخر مرّة واحدة (altFn) ويُعاد الحكم على الأحياء معًا؛ لا مرشّح صالح في honest = { ok:false }
    (مصارحة ٤٢٢ عند المتّصل). honest=false (الخام/IMAGE_VERIFY=off/الدعاء) = لا محرّك آخر ولا رفض، تقرير صادق فقط.
    o: { first, altFn, polishFn, apiKey, request, source:{b64,mime}|null, measurable, expectBig, intent, honest, skipJudge, deadlineOk }
    → { ok:true, best, report, engine, tried } | { ok:false, tried } */
@@ -121,6 +124,7 @@ async function settleCandidates(o) {
   const pool = [].concat(o.first).filter(function (c) { return c && c.b64; });
   const srcDec = (o.source && o.measurable) ? decodeImage(o.source.b64) : null;
   const srcVis = o.source ? (visionCopy(srcDec || o.source.b64, 1280) || o.source) : null;
+  const refVis = (o.references || []).map(function (r) { return visionCopy(r.data, 1280) || { b64: r.data, mime: r.mime }; });
   const measure = function (c) {
     if ('unchanged' in c) return;
     const dec = decodeImage(c.b64);
@@ -131,7 +135,7 @@ async function settleCandidates(o) {
   };
   const check = async function (list) {
     if (o.skipJudge) return { best: list[0], report: '' };
-    const v = await verifyAndReport({ apiKey: o.apiKey, request: o.request, source: srcVis, intent: o.intent,
+    const v = await verifyAndReport({ apiKey: o.apiKey, request: o.request, source: srcVis, references: refVis, intent: o.intent,
       candidates: list.map(function (c) { return { b64: (c.vis || c).b64, mime: (c.vis || c).mime, evidence: c.evidence }; }) });
     if (!v.ok) return { best: list[rankCandidates(list)], report: '' };
     list.forEach(function (c, i) { c.verdict = v.verdicts[i]; });
@@ -142,6 +146,12 @@ async function settleCandidates(o) {
     if (flipped && list[v.pick].unchanged) {
       const rest = list.filter(function (c) { return !c.unchanged; });
       return rest.length ? check(rest) : { best: list[v.pick], report: '', text: v.text };
+    }
+    /* في الوضع الأمين لا يجوز اختيار مرشّح قالت الرؤية إنّه لم ينفّذ الطلب،
+       حتى لو اختاره حقل pick. أعد التقرير على المرشّحين الصالحين وحدهم. */
+    if (o.honest && list[v.pick].verdict === 'not_done') {
+      const eligible = list.filter(function (c) { return !c.unchanged && c.verdict !== 'not_done'; });
+      return eligible.length ? check(eligible) : { best: list[v.pick], report: '', text: v.text };
     }
     return { best: list[v.pick], report: v.report, text: v.text };
   };
@@ -161,10 +171,14 @@ async function settleCandidates(o) {
     if (pol && pol.b64) { measure(pol); pool.push(pol); if (!pol.unchanged) out = await check([base, pol]); }
   }
   const tried = pool.map(function (c) { return c.engine + ':' + (c.unchanged ? 'same' : (c.verdict || '?')); }).join(',');
-  if (!alive().length && o.honest) return { ok: false, tried: tried };
+  const eligible = o.honest ? pool.filter(function (c) { return !isFailed(c); }) : [];
+  if (o.honest && !eligible.length) return { ok: false, tried: tried };
   if (!out) out = await check(pool.slice(0, 1));
-  const best = out.best || pool[0];
-  return { ok: true, best: best, report: out.report, engine: best.engine + (pool.length > 1 ? '[' + tried + ']' : ''), tried: tried };
+  /* التلميع يحكم [الأساس، المصقول] فقط؛ قد يرفضهما معًا بينما مرشّح ثالث من
+     الحكم السابق ما زال صالحًا. لا تُرسل المختار المرفوض ولا تقريره القديم. */
+  const rejectedPick = o.honest && isFailed(out.best);
+  const best = rejectedPick ? eligible[rankCandidates(eligible)] : (out.best || pool[0]);
+  return { ok: true, best: best, report: rejectedPick ? '' : out.report, engine: best.engine + (pool.length > 1 ? '[' + tried + ']' : ''), tried: tried };
 }
 
 module.exports = { verifyAndReport, settleCandidates, buildVerifyParts, parseVerdict, rankCandidates, isFailed, intentHint, VERIFY_MODEL };

@@ -1,7 +1,7 @@
 // api/_lib/tier.js — v-tiers: طبقات المحادثة الثلاث (قرار المالك ١٢ سبتمبر).
 //
-//   ضيف بلا حساب      → سلسلة مجانية، GUEST_DAILY رسائل يوميًّا (٣)
-//   مسجَّل بلا اشتراك  → سلسلة مجانية، FREE_DAILY رسائل يوميًّا (١٠)
+//   ضيف بلا حساب      → لا شيء، GUEST_DAILY (٠): التسجيل أوّلًا (v-free-first-day)
+//   مسجَّل بلا اشتراك  → سلسلة مجانية، FREE_FIRST_DAY يوم التسجيل (٢٠) ثمّ FREE_DAILY يوميًّا (٣)
 //   مشترك             → المحرّك الاحترافي بكل الأدوات، سقف حماية بحسب الباقة
 //                        (SUB_DAILY_BASIC ٥٠ · SUB_DAILY_PRO ١٥٠ · SUB_DAILY_MAX ٤٠٠)
 //   VIP / المالك       → بلا حدود
@@ -30,32 +30,62 @@ const SUB_WINDOW_MS = SUB_WINDOW_DAYS * 86400000;
 // المجانية والأدوات الصغيرة) يبقى على سقف الطبقة اليومي.
 const PAID_PROVIDERS = ['claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'agent'];
 
-/* v-plan-routing (قرار المالك ٢٠ سبتمبر — جدول الباقات النهائيّ): لكلّ باقة مزوّد للدردشة والأسئلة
-   العاديّة، ومزوّد أقوى لأدوار البرمجة/البناء/الرياضيات/الملفّ الطويل، وقائمة مسموح بها في المنتقي،
-   وسلسلة التقاط داخل الباقة (أرخص فأرخص) تسبق السلسلة المجّانيّة. المالك وVIP والمجّانيّ خارج الجدول.
-   model = موديل كلود من CLAUDE_MODELS في chat.js؛ بلا model = افتراضيّ المزوّد (OR_MODELS). */
+/* v-plan-jobs (قرار المالك ٢٥ سبتمبر: «كلّ واحد ووظيفته، والوكيل يوظّفهم»): كلّ رسالة مشترك تُصنَّف وظيفةً
+   (turnJob) وتذهب لمزوّدها المختصّ — الدردشة Groq (الأرخص)، البرمجة كلود، الرياضيّات والملفّ الطويل DeepSeek،
+   الصور Gemini (يرى ورخيص). كلود بحدّ يوميّ لكلّ باقة (عدّاد مستقلّ لكلّ موديل)، وبعده المزوّد التالي في قائمة
+   الوظيفة. الالتقاط Gemini ثمّ DeepSeek ثمّ Groq بلا كلود. السقف الكلّيّ للباقة في سلّة واحدة «plan».
+   كلّ الحدود متغيّرات بيئة. direct = مفتاح المزوّد نفسه (oa-direct.js) لا الوسيط؛ model = موديل من CLAUDE_MODELS. */
+const LANES = {
+  groq: { prov: 'groq', direct: true },
+  gemini: { prov: 'gemini', direct: true },
+  deepseek: { prov: 'deepseek' },
+  haiku: { prov: 'claude', model: 'claude-haiku-4-5', meter: 'haiku' },
+  sonnet: { prov: 'claude', model: 'claude-sonnet-5', meter: 'sonnet' },
+};
+const PLAN_FALLBACK = ['gemini', 'deepseek', 'groq'];
 const PLAN_ROUTING = {
-  basic: { chat: { prov: 'deepseek' }, strong: { prov: 'deepseek' }, allowed: ['deepseek', 'groq'], fallback: [{ prov: 'groq' }] },
-  pro: { chat: { prov: 'deepseek' }, strong: { prov: 'claude', model: 'claude-haiku-4-5' }, allowed: ['deepseek', 'groq', 'gemini', 'mistral'], fallback: [{ prov: 'gemini' }, { prov: 'deepseek' }] },
-  max: { chat: { prov: 'claude', model: 'claude-haiku-4-5' }, strong: { prov: 'claude', model: 'claude-sonnet-5' }, allowed: ['claude', 'openai', 'gemini', 'mistral', 'deepseek', 'groq', 'cohere'], fallback: [{ prov: 'openai' }, { prov: 'gemini' }, { prov: 'deepseek' }] },
+  basic: { chat: ['groq'], code: ['haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_BASIC', 5] }, allowed: [] },
+  pro: { chat: ['groq'], code: ['haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_PRO', 10] }, allowed: [] },
+  max: { chat: ['haiku', 'groq'], code: ['sonnet', 'haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_MAX', 150], sonnet: ['SUB_SONNET_MAX', 30] }, allowed: ['claude', 'groq', 'gemini', 'deepseek', 'mistral', 'cohere'] },
 };
 // الدور القويّ: نصّ طويل (وثيقة/ملفّ) أو كتلة كود أو كلمات برمجة/بناء/رياضيات.
 const STRONG_TURN_RE = /```|(?:^|[\s،,.:؛()"'«»-])(?:ال|بال|وال|لل|فال|كال)?(?:كود|كودي|برمج|برمجة|سكربت|سكريبت|دالة|دوال|خوارزميّ?ة|bug|error|exception|debug|api|json|sql|regex|html|css|javascript|typescript|python|react|node|docker|ابنِ|ابني|اعمل(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة|برنامج|بوت|لعبة)|صمّ?م(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة)|احسب|معادلة|معادلات|مشتقّ?ة|تكامل|مصفوفة|احتمال|إحصاء|جبر|ضريبة|فائدة\s+مركّ?بة|نسبة\s+مئويّ?ة|calculate|solve|equation|integral|derivative|matrix|probability|statistics|function|class|compile)(?=$|[\s،,.:؛()"'«»?؟!-])/i;
+const MATH_TURN_RE = /(?:^|[\s،,.:؛()"'«»-])(?:ال|بال|وال|لل|فال|كال)?(?:احسب|معادلة|معادلات|مشتقّ?ة|تكامل|مصفوفة|احتمال|إحصاء|جبر|ضريبة|فائدة\s+مركّ?بة|نسبة\s+مئويّ?ة|calculate|solve|equation|integral|derivative|matrix|probability|statistics)(?=$|[\s،,.:؛()"'«»?؟!-])/i;
 function isStrongTurn(text) {
   const s = String(text || '');
   if (s.length >= 600) return true;
   return STRONG_TURN_RE.test(s);
 }
-/* قرار التوجيه لطلب مشترك: الدور القويّ → strong؛ وإلّا المزوّد المطلوب إن كان مسموحًا؛ وإلّا افتراضيّ
-   الباقة. الالتقاط = سلسلة الباقة بلا المزوّد المختار. غير المشترك (مالك/VIP/مجّانيّ/ضيف) → null. */
-function planRoute(tier, requestedProv, lastUserText) {
+// وظيفة الرسالة: image (صورة مرفقة) · code (كود/بناء) · math (حساب، أو نصّ طويل بلا كود = ملفّ) · chat.
+function turnJob(text, hasImage) {
+  if (hasImage) return 'image';
+  const s = String(text || '');
+  if (!isStrongTurn(s)) return 'chat';
+  if (s.indexOf('```') !== -1) return 'code';
+  if (MATH_TURN_RE.test(s)) return 'math';
+  const codeOnly = STRONG_TURN_RE.test(s);
+  return (s.length >= 600 && !codeOnly) ? 'math' : 'code';
+}
+/* قرار التوجيه لطلب مشترك: أوّل مزوّد في قائمة الوظيفة لم يبلغ حدّه اليوميّ (used = { haiku, sonnet })؛ ومنتقي
+   Max يُقبل للدردشة إن كان مسموحًا (كلود = Haiku بحدّه). الالتقاط بلا المختار. غير المشترك → null. */
+function planRoute(tier, requestedProv, lastUserText, used, env, hasImage) {
   const plan = (tier && tier.tier === 'sub') ? String(tier.plan || '').toLowerCase() : '';
   const r = PLAN_ROUTING[plan];
   if (!r) return null;
-  const strong = isStrongTurn(lastUserText);
+  const e = env || process.env;
+  const u = used || {};
+  const open = (name) => { const m = LANES[name].meter; if (!m) return true; const lim = r.meters[m]; return !!lim && (Number(u[m]) || 0) < envInt(e, lim[0], lim[1]); };
+  const job = turnJob(lastUserText, hasImage);
   const req = String(requestedProv || '').toLowerCase();
-  const pick = (strong && r.strong) ? r.strong : ((req && r.allowed.includes(req)) ? (req === r.chat.prov ? r.chat : { prov: req }) : r.chat);
-  return { plan, strong, prov: pick.prov, model: pick.model || '', fallback: r.fallback.filter((f) => f.prov !== pick.prov), allowed: r.allowed.slice() };
+  let names = r[job].filter(open);
+  if (job === 'chat' && req && r.allowed.includes(req)) {
+    const reqName = req === 'claude' ? 'haiku' : req;
+    if (LANES[reqName] ? open(reqName) : true) names = [reqName];
+  }
+  if (!names.length) names = ['groq'];
+  const lane = LANES[names[0]] || { prov: names[0] };
+  const fallback = PLAN_FALLBACK.filter((n) => LANES[n].prov !== lane.prov).map((n) => Object.assign({}, LANES[n]));
+  return { plan, job, strong: job === 'code' || job === 'math', prov: lane.prov, model: lane.model || '', direct: !!lane.direct, meter: lane.meter || '', fallback, allowed: r.allowed.slice(), bucket: 'plan' };
 }
 
 // أسماء النماذج تتغيّر باستمرار (المجسّ ١٢ سبتمبر: gemini-2.5-flash «لم يعد
@@ -81,7 +111,7 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://api.groq.com/openai/v1/models',
     keyVar: 'GROQ_API_KEY',
     modelVar: 'FREE_GROQ_MODEL',
-    models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'],
+    models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.1-8b-instant'], // v-models-latest: Groq أوقف Llama 4/3.x وqwen3-32b (مارس–أغسطس ٢٠٢٦) للمجانيّ والمطوّرين — الحيّ أوّلًا، والميّتان ذيلٌ لحسابات المؤسّسات
     pick: /gpt-oss-120b|llama-4-maverick|llama-4-scout|llama-3\.3-70b|qwen3-32b|kimi-k2|gpt-oss-20b|llama-3\.1-8b/i,
     vision: false,
   },
@@ -121,9 +151,9 @@ function envInt(env, name, def) {
 function caps(env) {
   const e = env || process.env;
   return {
-    // v-plan-routing: الأسقف النهائيّة (قرار المالك ٢٠ سبتمبر): مجّاني ٥ · Plus ٥٠ · Pro ١٠٠ · Max ٢٥٠.
-    guest: envInt(e, 'GUEST_DAILY', 3),
-    free: envInt(e, 'FREE_DAILY', 5),
+    // v-plan-routing + v-free-first-day (٢٦ سبتمبر): ضيف ٠ · مجّاني ٣ (٢٠ يوم التسجيل) · Plus ٥٠ · Pro ١٠٠ · Max ٢٥٠.
+    guest: envInt(e, 'GUEST_DAILY', 0),
+    free: envInt(e, 'FREE_DAILY', 3),
     basic: envInt(e, 'SUB_DAILY_BASIC', 50),
     pro: envInt(e, 'SUB_DAILY_PRO', 100),
     max: envInt(e, 'SUB_DAILY_MAX', 250),
@@ -178,7 +208,10 @@ async function resolveTier(username, opts) {
       const plan = String(user.plan).toLowerCase();
       value = { tier: 'sub', plan, cap: c[plan], subscriber: true };
     } else {
-      value = { tier: 'free', plan: null, cap: c.free, subscriber: false };
+      // v-free-first-day (قرار المالك ٢٦ سبتمبر): يوم التسجيل (بتوقيت UTC كعدّاد اليوم) FREE_FIRST_DAY رسالة، ثمّ FREE_DAILY.
+      const born = Number(user && user.createdAt) || 0;
+      const firstDay = born > 0 && new Date(born).toISOString().slice(0, 10) === new Date(now).toISOString().slice(0, 10);
+      value = { tier: 'free', plan: null, cap: firstDay ? Math.max(c.free, envInt(o.env || process.env, 'FREE_FIRST_DAY', 20)) : c.free, subscriber: false };
     }
   }
   if (!o.noCache) tierCache.set(uname, { at: now, value: Object.assign({}, value) });
@@ -214,7 +247,7 @@ function freeChain(env) {
 // نصوص تراها الطبقة المجانية — بلا اسم أي مزوّد (قرار المالك: «بدون اسم كلاود»).
 const FREE_TEXT = {
   freeLimit: 'انتهت رسائلك المجانية لليوم. اشترك للنسخة الاحترافية بلا حدود.',
-  get guestLimit() { return 'انتهت رسائل التجربة. سجّل حسابًا مجانيًّا لتكمل: ' + caps().free + ' رسائل يوميًّا و٧٠ نقطة ترحيب.'; },
+  get guestLimit() { return 'سجّل حسابًا مجانيًّا لتبدأ الدردشة: ' + envInt(process.env, 'FREE_FIRST_DAY', 20) + ' رسالة في أوّل يوم، ثمّ ' + caps().free + ' رسائل يوميًّا، و٧٠ نقطة ترحيب.'; },
   subLimit: (cap) => 'وصلت سقف باقتك اليومي (' + cap + ' رسالة). يتجدد غدًا.',
   busy: 'الوضع المجاني مشغول الآن. جرّب بعد قليل، أو اشترك للنسخة الاحترافية.',
   // v-img-no-blind: اعتراف صريح بدل تأليف «الصورة غير واضحة» حين لا يتوفّر محرّك يرى الصور.
@@ -225,5 +258,5 @@ const FREE_TEXT = {
 module.exports = {
   PLAN_KEYS, SUB_WINDOW_DAYS, PAID_PROVIDERS, FREE_PROVIDER_SPECS, DEFAULT_CHAIN, FREE_TEXT,
   caps, planActive, resolveTier, invalidateTier, isPaidProvider, freeChain, isOwnerUsername,
-  PLAN_ROUTING, isStrongTurn, planRoute, // v-plan-routing
+  PLAN_ROUTING, LANES, isStrongTurn, turnJob, planRoute, // v-plan-routing · v-plan-jobs
 };

@@ -42,12 +42,12 @@ test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ 
   assert.match(mi, /if \(__textRoute && !__engineMix\) \{\n\s+const denseB64 = await openaiRescueImage\(\);\n\s+if \(denseB64\) \{\n\s+await deliver\(\{ b64: denseB64, mime: 'image\/png', engine: 'openai' \}, function \(\) \{ return proCandidate\(__extraBudget\(\)\); \}\);[^\n]*\n\s+return;/, 'GPT أوّلًا ضربة واحدة؛ برو فقط إن لم يُنفّذ');
   // أمين
   assert.match(mi, /const editModel = \(process\.env\.IMAGE_EDIT_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
-  assert.match(mi, /const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;/);
+  assert.match(mi, /const __faithfulLane = !!editImageBase64 && \(__mergePhotos \? !__pureRaw : \(!isCreativeEdit && !isPersonSwap && !isBroadEdit\)\);/); // v-merge-faces: الدمج أمين دائمًا (إلّا الخام)، والتعديل بصورة واحدة كما كان
   // v-merge-faithful (لقطة المالك «ادمج الصورتين مع الأحضان» أرجعت وجهًا مختلفًا): دمج عدّة صور غير الإبداعيّ
   // يدخل المسار الأمين أيضًا الآن — لا استثناء بـextras.length يُخرجه لحرارة جوجل الافتراضية.
   assert.ok(!/__faithfulLane = !!editImageBase64 && !extras\.length/.test(mi), 'الدمج غير الإبداعي لم يعد مستثنى من المسار الأمين');
   assert.match(mi, /if \(!nanoPrimary && !__faithfulLane\) delete cfg\.temperature;/);
-  assert.match(mi, /temperature: editImageBase64 \? \(isSceneUpgrade \? 0\.5 : \(isReimagine \? 0\.9 : \(isElevate \? 0\.85 : \(isRestyle \? 0\.6 : 0\.15\)\)\)\) : 0\.85/, 'الحرارة 0.15 للتعديل الموضعيّ');
+  assert.match(mi, /temperature: __mergeTemp != null \? __mergeTemp : editImageBase64 \? \(isSceneUpgrade \? 0\.5 : \(isReimagine \? 0\.9 : \(isElevate \? 0\.85 : \(isRestyle \? 0\.6 : 0\.15\)\)\)\) : 0\.85/, 'الحرارة 0.15 للتعديل الموضعيّ');
   // إبداعيّ وتوليد
   assert.match(mi, /const creativeModel = \(process\.env\.IMAGE_CREATIVE_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
   assert.match(mi, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
@@ -62,11 +62,12 @@ test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ 
   assert.match(mi, /const mainEngine = nanoPrimary \? \(__pureRaw \? 'nano-raw' : 'nano'\) : \(__pureRaw \? 'nano-pro-raw' : 'nano-pro'\);/);
 });
 
-test('٣. الخام خام: المحرّك المختار وحده، GPT خام بأمانة عالية، وترقية المكان بلا سؤال للنموذج، والتفسير للتوليد فقط', () => {
-  assert.match(mi, /form\.append\('input_fidelity', 'high'\);/);
+test('٣. الخام خام: المحرّك المختار وحده، Sunburst يحفظ المدخل تلقائيًّا، وترقية المكان بلا سؤال للنموذج، والتفسير للتوليد فقط', () => {
+  assert.match(mi, /if \(!apiKey && !process\.env\.OPENAI_API_KEY\)/, 'مفتاح GPT وحده يكفي لمساره ولا يُحجب باشتراط نانو');
+  assert.ok(mi.includes("'gpt-image-2.5-sunburst'") && !mi.includes("form.append('input_fidelity'"), 'Sunburst يفرض أمانة المدخل ويرفض الحقل القديم');
   assert.ok(!/'low' : 'high'/.test(mi));
   assert.match(mi, /if \(__optForceEngine === 'gpt'\) \{\n\s+const __gptB64 = await openaiRescueImage\(\);/);
-  assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-2\.5-flash-image'/);
+  assert.match(mi, /const primaryModel = \(__optForceEngine === 'nano'\) \? 'gemini-3\.1-flash-image'/);
   assert.match(mi, /if \(isSceneUpgrade && !__intent\.placeUpgradeHint && !__intent\.sameImage\) \{ isSceneUpgrade = false; isElevate = true; \}/);
   // v-img-report (المالك ٢٣ سبتمبر): التقرير للتوليد والتعديل (المصدر + الناتج) — v-img-honest: يكتبه الحاكم نفسه مع القياس
   assert.match(mi, /await sendImg\(r\.best\.b64, r\.best\.mime, r\.engine, r\.report, r\.best\.verdict, r\.best\.noUpscale\);/);
@@ -78,6 +79,17 @@ test('٣. الخام خام: المحرّك المختار وحده، GPT خام
   assert.match(mi, /const nanoB64 = await geminiNanoBananaImage\(\);/);
   assert.match(mi, /const rescuedB64 = __gptTried \? null : await openaiRescueImage\(\);/); // v-img-mix: الدمج جرّب GPT وفشل = لا نداء ثانٍ
   assert.match(mi, /const freeImg = await freeFallbackImage\(\);/);
+  assert.match(mi, /String\(process\.env\.IMAGE_FREE_FALLBACK \|\| 'off'\)\.toLowerCase\(\) !== 'on'/, 'النتيجة المجانيّة الضعيفة لا تعمل افتراضيًّا');
+});
+
+test('وضع الدمج يولّد مرشّحين مستقلّين من نانو وGPT بالتوازي ثم يختار نتيجة واحدة', () => {
+  const i = mi.indexOf('if (__engineMix) {');
+  const seg = mi.slice(i, mi.indexOf('if (__textRoute && !__engineMix)', i));
+  assert.match(seg, /await Promise\.all\(\[/);
+  assert.match(seg, /proCandidate\(\)\.catch/);
+  assert.match(seg, /gptCandidate\('', __extraBudget\(\)\)\.catch/);
+  assert.match(seg, /await deliver\(__mixCandidates, null, polish\);/);
+  assert.doesNotMatch(seg, /await deliver\(pro, __gptAlt/, 'ليس نانو أولًا وGPT عند فشله فقط');
 });
 
 test('٤. العميل: تبديل الحرف طلب واحد للخادم بلا مرحلتَي الرؤية والقناع؛ آخر طلب فقط على آخر صورة', () => {

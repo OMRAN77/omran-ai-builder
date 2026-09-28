@@ -1,4 +1,5 @@
-// v-video-trends: قوالب ترندات الفيديو (٢٥) — الأمر النهائي يُبنى هنا من قالب الترند ومدخلات المستخدم
+// v-video-trends: قوالب ترندات الفيديو — الأمر النهائي يُبنى هنا من قالب الترند ومدخلات المستخدم
+// v-trends-more (٢٤ سبتمبر): ٢٥ ← ٤٥ ترندًا. كلّ ترند: محرّك ونسبة وحاجة الصورة ونوع المدخل وقالب الأمر وإطار المعاينة.
 'use strict';
 const TRENDS = {
  "pixarstory": {
@@ -304,6 +305,246 @@ const TRENDS = {
    "frame": "2.5D parallax art still of a portrait photo separating into floating three-dimensional layers with depth, dust particles between layers, dreamy light",
    "gender": "m"
   }
+ },
+ "realtour": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Cinematic real-estate walkthrough of the exact property in the reference image: a smooth gimbal camera glides forward through the space, revealing the living area, the windows and the view, natural daylight pouring in, realistic materials and furniture unchanged from the reference, slow steady motion, shallow depth of field, calm premium music, no text, no people.",
+   "scenes": null,
+   "preview": {
+     "frame": "cinematic real-estate still of a bright modern living room with floor-to-ceiling windows and a city view, gimbal walkthrough perspective",
+     "gender": "m"
+   }
+ },
+ "carreveal": {
+   "engine": "veo",
+   "ratio": "1280:720",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Luxury car reveal commercial: the exact vehicle from the reference image sits in a dark studio; overhead light bars sweep across the bodywork revealing its lines, the camera orbits slowly from the front three-quarter to the rear, reflections travel along the paint, faint haze on a polished floor, deep cinematic contrast, no text, no people.",
+   "scenes": null,
+   "preview": {
+     "frame": "luxury automotive commercial still of a dark SUV in a black studio with light bars sweeping across the glossy bodywork, reflections on polished floor",
+     "gender": "m"
+   }
+ },
+ "agentpitch": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "sentence",
+   "prompt": "Vertical social-media clip: the person from the reference image stands confidently in front of a modern property, looks at the camera and says clearly in Arabic: '{text}'. Lip-synced natural speech, friendly professional tone, medium shot, bright daylight, soft background blur, same face and clothing as the reference, no text overlay.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a confident Arab man in a white shirt speaking to camera in front of a modern villa, bright daylight, vertical social video",
+     "gender": "m"
+   }
+ },
+ "foodsizzle": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "product",
+   "prompt": "Appetising food commercial of {text}: extreme macro of the exact dish from the reference image, steam rising slowly, a droplet falling in slow motion, glossy sauce catching warm light, the camera drifts in a slow arc across the plate, shallow depth of field, rich saturated colours, no text, no hands.",
+   "scenes": null,
+   "preview": {
+     "frame": "macro food commercial still of a steaming grilled meat platter with rice, glossy sauce and rising steam under warm light",
+     "gender": "m"
+   }
+ },
+ "buildprogress": {
+   "engine": "veo",
+   "ratio": "1280:720",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Construction progress morph: the building in the reference image starts as a bare concrete shell with scaffolding, then time-lapses smoothly into the finished, painted and landscaped building with lit windows, camera locked on the same angle throughout, clouds racing overhead, day turning to evening, photorealistic, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a residential building half concrete shell with scaffolding and half finished with landscaping, split time-lapse feel",
+     "gender": "m"
+   }
+ },
+ "testimonial": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "sentence",
+   "prompt": "Warm customer testimonial clip: the person from the reference image sits in a bright, tidy interior, smiles at the camera and says sincerely in Arabic: '{text}'. Lip-synced natural speech, honest friendly delivery, soft window light, shallow depth of field, same face and clothing as the reference, no text overlay.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a smiling Arab woman in hijab speaking warmly to camera in a bright modern interior, soft window light",
+     "gender": "w"
+   }
+ },
+ "offercountdown": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "product",
+   "prompt": "High-energy promo for {text}: the exact product from the reference image sits centre frame on a clean pedestal while a large glowing countdown ticks down behind it, light streaks sweep past, a bold circular discount badge snaps into the corner with a punch, dynamic camera push-in, vivid contrast, no readable text or numbers other than the countdown digits.",
+   "scenes": null,
+   "preview": {
+     "frame": "energetic product promo still of a boxed product on a pedestal with a glowing countdown and light streaks, bold discount badge",
+     "gender": "m"
+   }
+ },
+ "graduation": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "name",
+   "prompt": "Joyful graduation moment: the person from the reference image wears a graduation gown and cap, throws the cap into the air in slow motion while golden confetti falls, friends cheering softly out of focus behind, campus lawn at golden hour, an elegant Arabic greeting card with the name {name} appears gently at the end, photorealistic, warm uplifting music.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a young Arab graduate in gown and cap throwing the cap into the air with golden confetti at sunset on a campus lawn",
+     "gender": "m"
+   }
+ },
+ "newborn": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "name",
+   "prompt": "Tender newborn announcement: the baby from the reference image sleeps peacefully wrapped in a soft blanket, gentle breathing, tiny fingers moving slightly, soft diffused window light, dust motes floating, a delicate Arabic card with the name {name} fades in at the end, photorealistic, calm lullaby music, no text other than the card.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a sleeping newborn wrapped in a soft cream blanket in gentle window light, dust motes floating",
+     "gender": "w"
+   }
+ },
+ "wedding": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Cinematic wedding film moment: the couple from the reference image in slow motion as rose petals drift around them, warm bokeh string lights behind, the camera circles slowly and pushes in, elegant soft focus, golden warm grade, romantic orchestral music, photorealistic, faces and clothing unchanged from the reference, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "cinematic wedding still of an elegantly dressed couple in slow motion with rose petals and warm bokeh string lights behind them",
+     "gender": "w"
+   }
+ },
+ "ramadan": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "opt",
+   "kind": "name",
+   "prompt": "Ramadan greeting scene: an ornate brass lantern glows in the foreground, a crescent moon hangs in a deep blue sky, a beautifully set iftar table with dates and water waits below, gentle particles of light drift upward, the camera rises slowly, an elegant Arabic greeting with the name {name} appears softly at the end, warm spiritual ambience, no other text.",
+   "scenes": null,
+   "preview": {
+     "frame": "warm Ramadan still of an ornate brass lantern glowing beside a crescent moon over a set iftar table with dates, deep blue night",
+     "gender": "m"
+   }
+ },
+ "nationalday": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "National Day celebration: the person from the reference image stands proudly as UAE flags wave in the wind behind them, fireworks bloom in the evening sky, confetti in national colours drifts down, the camera pushes in slowly, festive uplifting music, photorealistic, same face and clothing as the reference, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person in traditional Gulf dress with UAE flags waving and fireworks blooming in the evening sky",
+     "gender": "m"
+   }
+ },
+ "familywave": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Bring this family photograph to life: every person subtly breathes, blinks, turns slightly to each other, breaks into a warm smile and waves at the camera together, natural micro-movements only, identities, faces, clothing and background exactly as in the reference, gentle warm music, photorealistic, respectful.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a warm Gulf Arab family of four smiling and waving at the camera in a bright living room",
+     "gender": "m"
+   }
+ },
+ "actionhero": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Blockbuster action-hero shot: the person from the reference image walks slowly toward the camera in confident slow motion while a fiery explosion erupts behind them and they never look back, embers and debris flying, heavy contrast and lens flares, low hero angle, epic drum score, photorealistic, same face and clothing as the reference, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "blockbuster action still of a man walking toward camera in slow motion with a fiery explosion behind him, embers flying, low hero angle",
+     "gender": "m"
+   }
+ },
+ "paintingalive": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The reference image becomes a living oil painting: thick visible brush strokes form and shimmer, pigments swirl slowly, the subject breathes and blinks inside the painting, canvas texture and craquelure visible, warm gallery lighting, slow camera drift, artistic and dreamlike, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "living oil painting still of a portrait with thick visible brush strokes and canvas texture, warm gallery light, pigments swirling",
+     "gender": "w"
+   }
+ },
+ "miniature": {
+   "engine": "veo",
+   "ratio": "1280:720",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Tilt-shift miniature effect on the scene from the reference image: strong selective focus makes the whole scene look like a tiny handcrafted model, tiny cars and people move in fast motion, saturated toy-like colours, slight time-lapse of light across the scene, playful light music, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "tilt-shift miniature still of a city street from above looking like a toy model, tiny cars, saturated colours, strong selective focus",
+     "gender": "m"
+   }
+ },
+ "underwater": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Underwater dream scene: the subject from the reference image floats gracefully in clear turquoise water, shafts of sunlight cutting down from the surface, bubbles rising, hair and fabric drifting slowly, colourful fish passing by, gentle slow motion, photorealistic, same face as the reference, calm ambient music, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic underwater still of a person floating in clear turquoise water with sun rays from above, bubbles and colourful fish",
+     "gender": "w"
+   }
+ },
+ "weathershift": {
+   "engine": "veo",
+   "ratio": "1280:720",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "One continuous locked shot of the place from the reference image as the weather transforms: bright sunshine with sharp shadows, then rolling clouds and falling rain with puddles and reflections, then gentle snowfall settling on every surface, seamless transitions, the framing never moves, photorealistic, atmospheric sound, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a street scene split between bright sun, falling rain and settling snow, seamless weather transition",
+     "gender": "m"
+   }
+ },
+ "neonnight": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Cyberpunk neon night: the person from the reference image stands on a rain-soaked street at night, saturated pink and cyan neon signs glowing around them and reflecting in the wet asphalt, light haze and drifting steam, slow camera push-in, cinematic contrast, photorealistic, same face and clothing as the reference, no readable text on the signs.",
+   "scenes": null,
+   "preview": {
+     "frame": "cyberpunk neon night still of a person on a rain-soaked street with pink and cyan neon reflections in the wet asphalt, light haze",
+     "gender": "m"
+   }
+ },
+ "calligraphy": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "none",
+   "kind": "sentence",
+   "prompt": "Elegant Arabic calligraphy animation: glossy black ink flows across warm cream paper and forms the Arabic sentence '{text}' in flowing Thuluth calligraphy, gold leaf accents catching the light as each letter completes, then the ink blooms softly outward into an ornate arabesque pattern, macro detail, warm side light, calm oud music, spelled exactly as written and no other text.",
+   "scenes": null,
+   "preview": {
+     "frame": "macro still of glossy black Arabic Thuluth calligraphy being written in ink on warm cream paper with gold leaf accents, warm side light",
+     "gender": "m"
+   }
  }
 };
 function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 240); }

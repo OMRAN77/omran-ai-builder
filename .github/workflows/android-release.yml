@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'versionName (مثل 1.3.10)'
+        description: 'versionName (مثل 1.3.12)'
         required: true
-        default: '1.3.10'
+        default: '1.3.12'
       version_code:
         description: 'versionCode — أكبر من كلّ إصدار سابق رُفع إلى AppGallery'
         required: true
-        default: '20260918'
+        default: '20260925'
       release:
         description: 'إنشاء Release في GitHub بالـAPK'
         type: boolean

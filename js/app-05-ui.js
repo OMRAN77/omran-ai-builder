@@ -385,7 +385,11 @@ function msgPdfFontSpec(){
 function msgPdfFontHead(font){
   const family = font.family + ", 'Tajawal', Tahoma, Arial, sans-serif";
   const query = (font.google ? 'family=' + font.google + '&family=' : 'family=') + 'Tajawal:wght@400;500;700';
-  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
+  /* v-calligraphy-names: الخطّ المستضاف (الثلث/الديواني) ليس في رابط Google — قاعدته في رأس المستند بعنوان كامل،
+     لأنّ نافذة الطباعة وsrcdoc وجسر PDF في التطبيق تستلم نصّ HTML قد لا يعرف أصل الموقع */
+  const origin = (typeof location !== 'undefined' && location && location.origin && location.origin !== 'null') ? location.origin : '';
+  const face = font.url ? '<style>@font-face{font-family:"' + font.css + '";src:url("' + origin + font.url + '") format("woff2");}</style>' : '';
+  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">' + face};
 }
 function msgPrintAfterFont(view, family, ctx){
   /* v-app-share: داخل تطبيق المتجر window.print() لا يعمل — نرسل مستند
@@ -1790,7 +1794,9 @@ function applyPlanGate(d){
     if(!tier) return;
     const plan = tier === 'sub' ? String(d.plan || '').toLowerCase() : '';
     const open = tier === 'owner' || tier === 'vip' || (tier === 'sub' && plan === 'max');
+    const prevPlan = window.__omranPlan;
     window.__omranPlan = plan || tier;
+    if(prevPlan !== window.__omranPlan && typeof renderSettingsNavList === 'function') renderSettingsNavList();
     document.documentElement.classList.toggle('plan-locked', !open);
   }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }
 }
@@ -2624,6 +2630,7 @@ const SETTINGS_NAV_ICONS = {
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
   pricingSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`,
   aboutSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+  settingsLogoutRow: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`,
   ownerSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20"></path><path d="M3 18 2 7l6 4 4-7 4 7 6-4-1 11"></path></svg>`,
   feedbackSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
 };
@@ -2631,37 +2638,108 @@ function stripUiEmoji(t){ try{ return (t||'').replace(/[\u{1F000}-\u{1FAFF}\u{21
 function settingsOwnerUi(){
   try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
 }
-function settingsLabelWidth(listEl){
-  try{
-    const ctx = document.createElement('canvas').getContext('2d');
-    const cs = getComputedStyle(listEl);
-    ctx.font = (cs.fontWeight || '400') + ' ' + (cs.fontSize || '15px') + ' ' + (cs.fontFamily || 'sans-serif');
-    return (txt) => ctx.measureText(String(txt || '')).width;
-  }catch(e){ return (txt) => String(txt || '').length; }
+/* v-settings-groups (أمر المالك ٢٦ سبتمبر بلقطة إعدادات ChatGPT): رأس بصورة الحساب واسمه، بطاقة «الترقية» لغير
+   المشترك، ثمّ الصفوف في مجموعات بعناوين (التخصيص · الحساب · المظهر · عام) بدل قائمة واحدة مرتّبة بالطول
+   (v-settings-tidy). «صفحة المالك» تبقى أوّلًا للمالك وحده. */
+const SETTINGS_NAV_GROUPS = [
+  ['setGrpPersonal', ['toneSection', 'memorySection', 'voiceSection']],
+  ['setGrpAccount', ['pricingSection', 'accountSection', 'statsSection']],
+  ['setGrpAppearance', ['themeSection', 'fontFamilySection', 'fontSizeSection', 'langSection']],
+  ['setGrpGeneral', ['notifSection', 'apiKeysSection', 'aboutSection']],
+];
+const SETTINGS_PLAN_LABEL = { basic: 'Plus', pro: 'Pro', max: 'Max', owner: 'VIP', vip: 'VIP' };
+function settingsTr(k){ try{ return (typeof t === 'function' && t(k)) || ''; }catch(e){ return ''; } }
+function settingsLoggedIn(){ try{ return !!(typeof authGet === 'function' && authGet('aiapp_auth_token')); }catch(e){ return false; } }
+function settingsPaidPlan(){ const p = String(window.__omranPlan || '').toLowerCase(); return settingsOwnerUi() || !!SETTINGS_PLAN_LABEL[p]; }
+function settingsNavRow(sid, label, value, sub){
+  const row = document.createElement('div');
+  row.className = 'settingsNavRow' + (sid === 'ownerSection' ? ' settingsNavOwner' : '');
+  row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
+    '<span class="settingsNavLabel"><span class="settingsNavText"></span><span class="settingsNavSub"></span></span><span class="settingsNavValue"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+  row.querySelector('.settingsNavText').textContent = label;
+  row.querySelector('.settingsNavSub').textContent = sub || '';
+  row.querySelector('.settingsNavValue').textContent = value || '';
+  if(row.dataset) row.dataset.sid = sid;
+  row.onclick = () => showSettingsPage(sid);
+  return row;
 }
+function renderSettingsProfile(){
+  const name = document.getElementById('setProfileName');
+  if(!name) return;
+  const logged = settingsLoggedIn();
+  const uname = logged ? String((typeof authGet === 'function' && authGet('aiapp_username')) || '') : '';
+  name.textContent = uname;
+  const img = document.getElementById('setProfileImg');
+  const ini = document.getElementById('setProfileInitials');
+  let av = ''; try{ av = logged ? (localStorage.getItem('aiapp_avatar') || '') : ''; }catch(e){ av = ''; }
+  if(img){ if(av){ img.src = av; img.style.display = 'block'; } else { img.removeAttribute('src'); img.style.display = 'none'; } }
+  if(ini){ ini.textContent = av ? '' : (uname ? uname.trim().slice(0, 2).toUpperCase() : '?'); }
+  const edit = document.querySelector('#setProfileAvatar .setProfileEdit');
+  if(edit) edit.style.display = logged ? '' : 'none';
+  const loginBtn = document.getElementById('setProfileLogin');
+  if(loginBtn) loginBtn.style.display = logged ? 'none' : '';
+  const up = document.getElementById('settingsUpgradeCard');
+  if(up) up.style.display = settingsPaidPlan() ? 'none' : 'flex';
+}
+window.renderSettingsProfile = renderSettingsProfile;
 function renderSettingsNavList(){
   const listEl = document.getElementById('settingsNavList');
   if(!listEl) return;
   listEl.innerHTML = '';
   const owner = settingsOwnerUi();
+  const logged = settingsLoggedIn();
   const labelOf = (sid) => { const h = document.querySelector('#' + sid + ' .settingsSectionHeader h3'); return stripUiEmoji(h ? h.textContent : sid); };
-  const ids = SETTINGS_NAV_IDS.filter(sid => document.getElementById(sid) && (sid !== 'ownerSection' || owner));
-  // v-settings-tidy (أمر عمران «رتّب الإعدادات من الأصغر فوق إلى الأكبر»): الصفوف بعرض عنوانها
-  // المقيس بخطّ القائمة، الأقصر فوق؛ «صفحة المالك» تبقى أوّلًا. الترتيب يتبع اللغة الحاليّة.
-  const width = settingsLabelWidth(listEl);
-  const rest = ids.filter(sid => sid !== 'ownerSection').map((sid, i) => ({ sid, i, w: width(labelOf(sid)) }))
-    .sort((a, b) => (a.w - b.w) || (a.i - b.i)).map(x => x.sid);
-  (ids.includes('ownerSection') ? ['ownerSection'].concat(rest) : rest).forEach(sid => {
-    const label = labelOf(sid);
-    const row = document.createElement('div');
-    row.className = 'settingsNavRow' + (sid === 'ownerSection' ? ' settingsNavOwner' : '');
-    row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
-      '<span class="settingsNavLabel"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-    row.querySelector('.settingsNavLabel').textContent = label;
-    row.onclick = () => showSettingsPage(sid);
-    listEl.appendChild(row);
+  const has = (sid) => !!document.getElementById(sid);
+  if(owner && has('ownerSection')){
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup';
+    card.appendChild(settingsNavRow('ownerSection', labelOf('ownerSection')));
+    listEl.appendChild(card);
+  }
+  const plan = String(window.__omranPlan || '').toLowerCase();
+  const planText = owner ? 'VIP' : (SETTINGS_PLAN_LABEL[plan] || settingsTr('setPlanFree'));
+  SETTINGS_NAV_GROUPS.forEach(([titleKey, ids]) => {
+    const rows = ids.filter(has);
+    if(!rows.length) return;
+    const title = document.createElement('div');
+    title.className = 'settingsNavGroupTitle';
+    title.textContent = settingsTr(titleKey);
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup';
+    rows.forEach(sid => {
+      card.appendChild(settingsNavRow(sid, labelOf(sid), sid === 'pricingSection' ? planText : ''));
+    });
+    listEl.appendChild(title);
+    listEl.appendChild(card);
   });
+  /* v-account-tidy (أمر المالك ٢٦ سبتمبر): الخروج آخر صفّ في الإعدادات بلون عاديّ، لا زرًّا أحمر داخل «حسابي». */
+  if(logged){
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup settingsNavLogoutCard';
+    const row = settingsNavRow('settingsLogoutRow', stripUiEmoji(settingsTr('logoutTitle')));
+    row.classList.add('settingsNavLogout');
+    row.onclick = () => {
+      try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-logout#close'); }
+      if(typeof doLogout === 'function') doLogout();
+    };
+    listEl.appendChild(card);
+    card.appendChild(row);
+  }
+  try{ renderSettingsProfile(); }catch(e){ __swallow(e, 'ui:settings-profile'); }
 }
+(function(){
+  const av = document.getElementById('setProfileAvatar');
+  if(av) av.onclick = () => {
+    if(!settingsLoggedIn()){ const b = document.getElementById('acctLoginBtn'); if(b) b.click(); return; }
+    const inp = document.getElementById('acctAvatarInput'); if(inp) inp.click();
+  };
+  const login = document.getElementById('setProfileLogin');
+  if(login) login.onclick = () => { const b = document.getElementById('acctLoginBtn'); if(b) b.click(); };
+  const up = document.getElementById('setUpgradeBtn');
+  if(up) up.onclick = () => showSettingsPage('pricingSection');
+  const cls = document.getElementById('setHomeClose');
+  if(cls) cls.onclick = () => { try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-close'); } };
+})();
 function showSettingsHome(){
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');

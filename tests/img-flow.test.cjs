@@ -16,6 +16,10 @@ test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغ�
     assert.ok(s.includes('const __N = 13, __steps = 2 * (__N - 1);') && s.includes('((__N - 1 - x) + y) / __steps * 1.9'), 'تأخير قُطريّ من فوق يمين');
     assert.ok(!s.includes('omGenWave') && !s.includes('--dx'), 'بلا خطوط وبلا حركة للخارج');
     assert.ok(s.includes('@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}'), 'احترام تقليل الحركة');
+    assert.ok(s.includes('html[data-mode=\\"light\\"] .omGen{background:radial-gradient(circle,') && s.includes('border:0;border-radius:50%;box-shadow:none;overflow:visible}'), 'في الوضع الفاتح خلفية دائرية لا مستطيلة');
+    assert.ok(s.includes('html[data-mode=\\"light\\"] .omGenTxt{top:10%;right:auto;left:50%;transform:translateX(-50%);white-space:nowrap;color:#8a6500;text-shadow:none}'), 'نصّ الفاتح في رأس الدائرة');
+    assert.ok(s.includes('html[data-mode=\\"light\\"] .omDot{left:var(--lx)!important;top:var(--ly)!important;animation-delay:var(--ld)}'), 'الفاتح يستخدم دوّامة لا شبكة مربعة');
+    assert.ok(s.includes('__a = __i * 2.399963') && s.includes('Math.sqrt(__i / (__N * __N - 1)) * 42'), 'توزيع حلزوني ذهبي بلا حدود مستطيلة');
     assert.ok(!s.includes("'rgba(255,255,255,.35)'"), 'لا أبيض');
     assert.ok(s.includes("if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el);"), 'بعد هبوط بحث الصور');
   }
@@ -104,10 +108,15 @@ test('٩. صور الإنترنت فقط بطلب صريح أو بالجمع —
   assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) &&'));
 });
 
-test('١٠. المربّع بلا إطار خارجيّ', () => {
+test('١٠. مؤشّر الصورة بلا إطار خارجيّ، والفاتح دائرة لا مستطيل', () => {
   const a = read('js/app-09-attach.js');
   assert.ok(a.includes('border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}'));
   assert.ok(!a.includes('background:#050505;border:1px solid'));
+  assert.ok(a.includes('html[data-mode=\\"light\\"] .omGen{background:radial-gradient(circle,'));
+  assert.ok(a.includes('border:0;border-radius:50%;box-shadow:none;overflow:visible}'));
+  assert.ok(!a.includes('html[data-mode=\\"light\\"] .omGen{background:#fff'), 'لا مستطيل أبيض في الوضع الفاتح');
+  assert.ok(!a.includes('html[data-mode=\\"light\\"] .omGen{background:transparent'), 'لا حذف للدائرة نفسها');
+  assert.ok(a.includes('--lx:') && a.includes('--ly:') && a.includes('--ld:'), 'مواضع وحركة الفاتح مستقلّة عن شبكة الداكن');
 });
 
 test('١١. «غيّر الصور بدون تكرار الشخصيات» على لقطة بطاقات = تبديل أشخاص لا تعديل أمين يرجّع الصورة نفسها', () => {
@@ -117,5 +126,5 @@ test('١١. «غيّر الصور بدون تكرار الشخصيات» على 
   const pr = ip.buildPersonSwapPrompt('غير الصور بدون تكرار', 'غير الصور بدون تكرار');
   assert.ok(/every piece of text and every label character-for-character/.test(pr), 'الأسماء تبقى');
   assert.ok(/identity must NOT be preserved/.test(pr));
-  assert.ok(read('api/_lib/maha-image.js').includes('const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;'), 'التبديل خارج المسار الأمين');
+  assert.ok(read('api/_lib/maha-image.js').includes(': (!isCreativeEdit && !isPersonSwap && !isBroadEdit));'), 'التبديل خارج المسار الأمين'); // v-merge-faces: فرع الصورة الواحدة
 });

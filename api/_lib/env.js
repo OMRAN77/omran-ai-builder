@@ -22,8 +22,9 @@ const SPEC = {
   GROQ_API_KEY:           ['feature', 'محرّك بديل · السلسلة المجانية'],
   MISTRAL_API_KEY:        ['feature', 'محرّك بديل · السلسلة المجانية'],
   // v-tiers: طبقات المحادثة — كلّها لها بديل آمن في tier.js
-  FREE_DAILY:             ['tunable', 'بديل: ٥ — رسائل المسجَّل المجاني يوميًّا (v-plan-routing)'],
-  GUEST_DAILY:            ['tunable', 'بديل: ٣ — رسائل الضيف يوميًّا'],
+  FREE_DAILY:             ['tunable', 'بديل: ٣ — رسائل المسجَّل المجاني يوميًّا بعد يوم تسجيله (v-free-first-day)'],
+  FREE_FIRST_DAY:         ['tunable', 'بديل: ٢٠ — رسائل المسجَّل المجاني في يوم تسجيله (v-free-first-day)'],
+  GUEST_DAILY:            ['tunable', 'بديل: ٠ — رسائل الضيف يوميًّا (التسجيل أوّلًا)'],
   SUB_DAILY_BASIC:        ['tunable', 'بديل: ٥٠ — سقف حماية باقة عادية'],
   SUB_DAILY_PRO:          ['tunable', 'بديل: ١٠٠ — سقف حماية باقة برو (v-plan-routing)'],
   SUB_DAILY_MAX:          ['tunable', 'بديل: ٢٥٠ — سقف حماية باقة ماكس (v-plan-routing)'],

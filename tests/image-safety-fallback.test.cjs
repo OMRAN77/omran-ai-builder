@@ -18,7 +18,7 @@ const mi = fs.readFileSync(path.join(root, 'api/_lib/maha-image.js'), 'utf8');
 const OWNER_MSG = "Your request was rejected by the safety system. If you believe this is an error, contact us at help.openai.com and include the request ID.";
 
 test('مسار التعديل/الدمج: رفض نظام السلامة على أوّل موديل يجرّب الموديل التالي بالقائمة، لا يستسلم فورًا', () => {
-  const i = mi.indexOf("const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2', 'gpt-image-1'];");
+  const i = mi.indexOf("const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2'];");
   assert.ok(i > 0, 'قائمة الموديلات موجودة');
   const block = mi.slice(i, i + 3200);
   const safetyLine = /const safetyBlocked = r\.status === 400 && \/safety system\|content policy\|rejected by the safety\/i\.test\(msg\);/;
@@ -29,8 +29,8 @@ test('مسار التعديل/الدمج: رفض نظام السلامة على 
   assert.ok(re.test(OWNER_MSG), 'رسالة OpenAI الحقيقية من اللقطة تُطابق الكاشف');
 });
 
-test('مسار التوليد: نفس الحماية — رفض السلامة على gpt-image-2.5-flare يجرّب gpt-image-2 ثمّ gpt-image-1', () => {
-  const i = mi.indexOf("const genModels = ['gpt-image-2.5-flare', 'gpt-image-2', 'gpt-image-1'];");
+test('مسار التوليد: نفس الحماية — رفض السلامة على gpt-image-2.5-flare يجرّب gpt-image-2', () => {
+  const i = mi.indexOf("const genModels = ['gpt-image-2.5-flare', 'gpt-image-2'];");
   assert.ok(i > 0, 'قائمة موديلات التوليد موجودة');
   const block = mi.slice(i, i + 1400);
   assert.match(block, /const safetyBlocked = r\.status === 400 && \/safety system\|content policy\|rejected by the safety\/i\.test\(t1\);/, 'شرط رفض السلامة موجود في مسار التوليد');

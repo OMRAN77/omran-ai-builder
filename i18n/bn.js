@@ -27,7 +27,7 @@ I18N['bn'] = {
     cnLandAreaPh: 'উদাহরণ: 500', cnEmirateOpt: 'আমিরাত — ঐচ্ছিক', cnDetailsAnnexes: '🏠 বিবরণ এবং সংযোজন', cnExElevator: 'ইনডোর লিফট', cnExStore: 'বাইরের গুদাম', cnExWaterTank: 'পানির ট্যাংক',
     cnExSolar: 'সোলার প্যানেল', cnExPlayground: 'বাইরের খেলার মাঠ', cnExCarport: 'অতিরিক্ত গাড়ির শেড', cnBudgetOutputs: '💰 বাজেট এবং ফলাফল', cnDownloadBoq: '📊 পরিমাণ তালিকা ডাউনলোড করুন',
     cnPdfReport: '📄 PDF রিপোর্ট', keyHowToTitle: '📝 প্রতিটি প্রদানকারীর জন্য কী কীভাবে পাবেন:', showAllPlansCur: 'আপনার মুদ্রায় সব প্ল্যান ও দাম দেখুন', currencyLabel: 'মুদ্রা',
-    plFreeMsgs: 'প্রতিদিন 5 বার্তা', plFreeVoice: 'সর্বোচ্চ 4 মিনিট ভয়েস চ্যাট', plFreeImgs: 'সর্বোচ্চ 3 AI ছবি', plFreeNoVideo: 'ভিডিও নেই', plStMsgs: 'প্রতিদিন 50 বার্তা', plStVoice: 'সর্বোচ্চ 24 মিনিট ভয়েস চ্যাট',
+    plFreeMsgs: 'প্রথম দিন 20 বার্তা, তারপর প্রতিদিন 3', plFreeVoice: 'সর্বোচ্চ 4 মিনিট ভয়েস চ্যাট', plFreeImgs: 'সর্বোচ্চ 3 AI ছবি', plFreeNoVideo: 'ভিডিও নেই', plStMsgs: 'প্রতিদিন 50 বার্তা', plStVoice: 'সর্বোচ্চ 24 মিনিট ভয়েস চ্যাট',
     plStImgs: 'সর্বোচ্চ 15 ছবি', plStVideos: '1 ভিডিও', plProMsgs: 'প্রতিদিন 100 বার্তা', plProVoice: 'সর্বোচ্চ 61 মিনিট ভয়েস চ্যাট', plProMedia: 'সর্বোচ্চ 40 ছবি · 2 ভিডিও', plProAgent: 'স্মার্ট এজেন্ট',
     plProPriority: 'অগ্রাধিকার গতি · গোল্ড ব্যাজ', plMaxAllPro: 'Pro-এর সবকিছু · প্রতিদিন 250 বার্তা', plMaxVoice: 'সর্বোচ্চ 213 মিনিট ভয়েস চ্যাট', plMaxMedia: 'সর্বোচ্চ 150 ছবি · 3 ভিডিও',
     plMaxSupport: 'ডেডিকেটেড সাপোর্ট',
@@ -128,6 +128,20 @@ I18N['bn'] = {
     authTabLogin: "লগ ইন করুন",
     authTabSignup: "সাইন আপ করুন",
     authUsernameLabel: "ব্যবহারকারীর নাম",
+    authIdPlaceholder: "ব্যবহারকারীর নাম বা ইমেল",
+    authCreateAccount: "নতুন অ্যাকাউন্ট তৈরি করুন",
+    authHaveAccount: "আমার অ্যাকাউন্ট আছে — লগ ইন",
+    setGrpPersonal: "ব্যক্তিগতকরণ",
+    setGrpAccount: "অ্যাকাউন্ট",
+    setGrpAppearance: "চেহারা",
+    setGrpGeneral: "সাধারণ",
+    setEmailRow: "ইমেল",
+    setNoEmail: "অ্যাকাউন্ট পুনরুদ্ধারে একটি ইমেল যোগ করুন",
+    setPlanFree: "ফ্রি",
+    setUpgradeTitle: "Om ai দিয়ে আরও করুন",
+    setUpgradeSub: "বেশি সীমা ও উন্নত ফিচার।",
+    setUpgradeBtn: "আপগ্রেড",
+    setChangePhoto: "ছবি বদলান",
     authPasswordLabel: "পাসওয়ার্ড",
     authNewPasswordLabel: "নতুন পাসওয়ার্ড",
     authRecoveryLabel: "পুনরুদ্ধার কোড",
@@ -144,6 +158,7 @@ I18N['bn'] = {
     clockWorldLabel: "🌍 বিশ্ব ঘড়ি",
     authBackToLogin: "লগইন এ ফিরে যান",
     authSubmitReset: "পাসওয়ার্ড রিসেট করুন",
+    authSubmitForgotEmail: "ইমেলে রিসেট লিঙ্ক পাঠান",
     authRecoveryModalTitle: "🔑 এই পুনরুদ্ধার কোড সংরক্ষণ করুন",
     authRecoveryModalDesc: "আপনি যদি আপনার পাসওয়ার্ড ভুলে যান তবে এটিই একমাত্র কোড যা আপনি আপনার অ্যাকাউন্ট পুনরুদ্ধার করতে ব্যবহার করতে পারেন৷ এটিকে নিরাপদ কোথাও সংরক্ষণ করুন - এটি আবার দেখানো হবে না।",
     authCopyBtn: "📋 কপি",
@@ -151,7 +166,7 @@ I18N['bn'] = {
     authCopied: "✅ কপি করা হয়েছে",
     authSubmitLogin: "লগ ইন করুন",
     authSubmitSignup: "অ্যাকাউন্ট তৈরি করুন",
-    guestLimitMsg: "🎉 আপনি আপনার 20টি বিনামূল্যের বার্তা ব্যবহার করেছেন! চ্যাটিং চালিয়ে যেতে আপনার অ্যাকাউন্টে লগ ইন করুন (বা একটি তৈরি করুন)।",
+    guestLimitMsg: 'চ্যাট শুরু করতে একটি ফ্রি অ্যাকাউন্ট খুলুন: প্রথম দিন 20 বার্তা, তারপর প্রতিদিন 3টি।',
     
     
     
@@ -181,6 +196,8 @@ I18N['bn'] = {
     checkoutTitle: "সম্পূর্ণ সদস্যতা",
     checkoutTestBadge: "🧪 পরীক্ষা মোড",
     checkoutCardOption: "ভিসা/মাস্টারকার্ড",
+    checkoutLoginFirst: "প্রথমে নিবন্ধন বা লগইন করুন, তারপর সাবস্ক্রাইব করুন",
+    checkoutAutoRenew: "🔁 প্রতি মাসে কার্ডে স্বয়ংক্রিয় নবায়ন",
     checkoutTelecomOption: "ক্যারিয়ার বিলিং (Etisalat/du)",
     checkoutComingSoon: "শীঘ্রই আসছে",
     checkoutPlanLabelBasic: 'Plus প্ল্যান $10/মাস — 360 পয়েন্ট',
@@ -206,7 +223,7 @@ I18N['bn'] = {
     acctAvatarBtn: "📷 ছবি পরিবর্তন করুন",
     acctUsernameLabel: "ব্যবহারকারীর নাম",
     acctSaveBtn: "সংরক্ষণ করুন",
-    acctEmailLabel: "📧 ব্যাকআপ ইমেল (পাসওয়ার্ড পুনরুদ্ধারের জন্য)",
+    acctEmailLabel: "ইমেল (ইউজারনেম বা পাসওয়ার্ড ভুলে গেলে)",
     acctReferralLabel: "🔗 বন্ধুদের আমন্ত্রণ লিঙ্ক",
     acctCopyBtn: "📋 কপি",
     acctReferralHint: "আপনার লিঙ্কে সাইন আপ করা প্রতিটি বন্ধুর জন্য, আপনি উভয়ই 10টি অতিরিক্ত বিনামূল্যের বার্তা পাবেন 🎁৷",
@@ -303,6 +320,7 @@ I18N['bn'] = {
     cancel: "বাতিল করুন",
     save: "সংরক্ষণ করুন",
     defaultProjectTitle: "নতুন প্রকল্প",
+    defaultShowcaseTitle: "স্মার্ট ড্যাশবোর্ড",
     templatesBtn: "🧩 টেমপ্লেট",
     templatesModalTitle: "🧩 একটি টেমপ্লেট চয়ন করুন",
     useThisTemplate: "✅ এই টেমপ্লেটটি ব্যবহার করুন",
@@ -894,7 +912,7 @@ I18N['bn'] = {
     designAiPlaceLabel: "স্থানের ধরন", premiumOn: "এজেন্ট চালু ⚡ — সরাসরি উত্তর, কোনো স্টাইল লেয়ার নেই", premiumNeedLogin: "এজেন্ট ব্যবহার করতে সাইন ইন করুন", memorySectionLabel: "আমার মেমরি", memoryIntro: "অ্যাপটি আপনার, আপনার প্রজেক্ট এবং আপনার কথা বলার ধরন সম্পর্কে যা মনে রাখে তা এখানে। এটি আপনার অ্যাকাউন্টের মাধ্যমে সব ডিভাইসে সিঙ্ক হয়, এবং আপনি এটি সম্পাদনা বা মুছে ফেলতে পারেন।",
     memorySaveBtn: "পরিবর্তন সংরক্ষণ করুন", memoryClearBtn: "আমার মেমরি মুছুন", memoryEmpty: "আপনার সম্পর্কে এখনো কিছু সংরক্ষিত নেই।", memoryGuest: "আপনার মেমরি দেখতে সাইন ইন করুন।", memoryConfirm: "অ্যাপটি আপনার সম্পর্কে যা মনে রাখে তার সবকিছু মুছে ফেলবেন? এটি ফেরানো যাবে না।", memorySaved: "সংরক্ষিত হয়েছে এবং আপনার অ্যাকাউন্টের সাথে সিঙ্ক হয়েছে।", memorySaveError: "সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
     memoryLoadError: "এখন মেমরি লোড করা যাচ্ছে না।", fontFamilySectionLabel: "ফন্ট স্টাইল", fontFamilyHint: "ডেস্কটপ ও মোবাইলে চ্যাট মেসেজ বদলায়, কোড ব্লক বা অ্যাপ লেআউট বদলায় না।", guestImageMsg: "🎁 আপনি আপনার ৩টি ফ্রি গেস্ট ইমেজ ব্যবহার করে ফেলেছেন! কয়েক সেকেন্ডে ফ্রি অ্যাকাউন্ট তৈরি করুন এবং ইমেজ তৈরি ও এডিট চালিয়ে যাওয়ার জন্য ৭০ গিফট পয়েন্ট পান।", planPer: "প্রতি মাসে", planFreePer: "ট্রাই করতে",
-    planPtsFree: "ওয়েলকাম পয়েন্ট — একবার মাত্র", planPtsMo: "প্রতি মাসে পয়েন্ট", planTag: "সবচেয়ে জনপ্রিয়", planCurrentBtn: "আপনার বর্তমান প্ল্যান", planSoonBtn: "শীঘ্রই আসছে", planFreeFeats: '<li>প্রতিদিন 5 বার্তা</li><li>সর্বোচ্চ 4 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 3 AI ছবি</li><li class="off">ভিডিও নেই</li>', planPlusFeats: '<li>প্রতিদিন 50 বার্তা</li><li>সর্বোচ্চ 24 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 15 ছবি</li><li>1 ভিডিও</li>',
+    planPtsFree: "ওয়েলকাম পয়েন্ট — একবার মাত্র", planPtsMo: "প্রতি মাসে পয়েন্ট", planTag: "সবচেয়ে জনপ্রিয়", planCurrentBtn: "আপনার বর্তমান প্ল্যান", planSoonBtn: "শীঘ্রই আসছে", planFreeFeats: '<li>প্রথম দিন 20 বার্তা, তারপর প্রতিদিন 3</li><li>সর্বোচ্চ 4 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 3 AI ছবি</li><li class="off">ভিডিও নেই</li>', planPlusFeats: '<li>প্রতিদিন 50 বার্তা</li><li>সর্বোচ্চ 24 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 15 ছবি</li><li>1 ভিডিও</li>',
     planProFeats: '<li>প্রতিদিন 100 বার্তা</li><li>সর্বোচ্চ 61 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 40 ছবি · 2 ভিডিও</li><li>স্মার্ট এজেন্ট</li><li>অগ্রাধিকার গতি · গোল্ড ব্যাজ</li>', planMaxFeats: '<li>Pro-এর সবকিছু · প্রতিদিন 250 বার্তা</li><li>সর্বোচ্চ 213 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 150 ছবি · 3 ভিডিও</li><li>ডেডিকেটেড সাপোর্ট</li>', checkoutPlanLabelMax: 'Max প্ল্যান $100/মাস — 3,200 পয়েন্ট', copyCode: "কপি করুন",
     copiedMsg: "কপি হয়েছে ✅", emailAsst_connectText: "AI যাতে আপনার ইমেইল পড়তে এবং পাঠানোর আগে আপনার অনুমোদনসহ প্রস্তুত জবাব সাজেস্ট করতে পারে, তার জন্য আপনার Gmail অ্যাকাউন্ট কানেক্ট করুন।", emailAsst_connectBtn: "🔗 Gmail কানেক্ট করুন", emailAsst_disclaimer: "⚠️ প্রতিটি মেসেজে আপনার সুস্পষ্ট অনুমোদন ছাড়া কখনো কোনো জবাব পাঠানো হয় না।", emailAsst_title: "📧 AI ইমেইল অ্যাসিস্ট্যান্ট",
     emailAsst_refresh: "রিফ্রেশ করুন", emailAsst_loading: "আপনার ইনবক্স স্ক্যান করা হচ্ছে…", emailAsst_empty: "এখন কোনো নতুন ইমেইলে জবাবের প্রয়োজন নেই।", emailAsst_notConnected: "Gmail কানেক্ট নেই, দয়া করে পুনরায় কানেক্ট করুন।", emailAsst_send: "✅ পাঠান", emailAsst_ignore: "🚫 এই প্রেরককে উপেক্ষা করুন", emailAsst_sending: "পাঠানো হচ্ছে…", emailAsst_sent: "✅ পাঠানো হয়েছে",
@@ -1045,3 +1063,12 @@ Object.assign(I18N["bn"], {"ownerSectionTitle": "👑 মালিকের প�
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["bn"], {"imgUnchanged": "⚠️ সম্পাদনা প্রয়োগ হয়নি: ছবিটি অপরিবর্তিত ফিরে এসেছে, তাই আমি দেখাইনি এবং আপনার কিছু কাটা হয়নি। ঠিক কী বদলাতে হবে বলুন, অথবা অন্যভাবে লিখুন।"});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["bn"], {"mediaPlansTitle": "ছবি ও ভিডিও সাবস্ক্রিপশন", "mediaPlansDesc": "যারা শুধু ছবি বা ভিডিও চান তাদের জন্য — চ্যাট ছাড়া। প্রতিটি সাবস্ক্রিপশনের নিজস্ব ব্যালেন্স, যা অন্য কিছুতে খরচ হয় না।", "mediaImgName": "ছবি", "mediaVidName": "ভিডিও", "mediaImgUnit": "উচ্চমানের ছবি", "mediaVidEco": "সাশ্রয়ী ভিডিও", "mediaVidCine": "সিনেমাটিক ভিডিও", "mediaVidSound": "শব্দসহ ভিডিও", "mediaOr": "অথবা", "mediaNoChatVideo": "চ্যাট ও ভিডিও নেই", "mediaNoChatImage": "চ্যাট ও ছবি নেই", "mediaLeftImg": "ছবির সাবস্ক্রিপশনে বাকি", "mediaLeftVid": "ভিডিও সাবস্ক্রিপশনে বাকি"});
+Object.assign(I18N["bn"], {"mediaImgPlain": "ছবি", "mediaHighEq": "একটি উচ্চমানের ছবি = ২টি ছবি", "mediaQLabel": "ছবির মান", "mediaQNormal": "⚡ সাধারণ", "mediaQHigh": "💎 উচ্চ", "mediaQNormalDesc": "দ্রুত, সোশ্যাল মিডিয়ার জন্য ভালো — ব্যালেন্স থেকে ১টি ছবি", "mediaQHighDesc": "আরও সূক্ষ্ম বিবরণ, স্পষ্ট লেখা, প্রিন্টের উপযোগী — ব্যালেন্স থেকে ২টি ছবি", "mediaQHint": "অথবা একটি ছবির জন্য অনুরোধে “উচ্চমান” লিখুন"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N["bn"], {"priceTabChat": "💬 চ্যাট", "priceTabImg": "🖼️ ছবি", "priceTabVid": "🎬 ভিডিও", "priceTabPts": "⚡ পয়েন্ট"});
+Object.assign(I18N["bn"], {"priceTabMaha": "🎙️ মাহা", "mahaPlanName": "মাহা", "mahaPlansDesc": "মাহার ভয়েস কলের জন্য। মাসের মিনিট শুধু মাহার জন্য; শেষ হলে কল আপনার পয়েন্টে চলবে।", "mahaMinPlain": "কল মিনিট", "mahaMinUnit": "মিনিট", "mahaCapNote": "প্রতি কলে সর্বোচ্চ 10 মিনিট", "mahaNoChat": "চ্যাট, ছবি বা ভিডিও নেই", "mahaLeft": "মাহার বাকি মিনিট", "mahaCapEnd": "কল 10 মিনিটের সীমায় শেষ হয়েছে — চালিয়ে যেতে আবার কল করুন", "mahaToPoints": "মিনিট শেষ — এখন পয়েন্টে চলছে"});
+/* v-browser-install: خطوات التثبيت لكلّ متصفّح */
+Object.assign(I18N["bn"], {"installHowIOS":"iPhone বা iPad-এ ইনস্টল করতে:\n1) সাইটটি Safari-তে খুলুন\n2) শেয়ার বোতাম চাপুন (উপরে তীরসহ বর্গ)\n3) \"হোম স্ক্রিনে যোগ করুন\" বেছে নিন, তারপর \"যোগ করুন\"","installHowIOSOther":"এই ব্রাউজার থেকে iPhone-এ ইনস্টল করতে:\n1) ঠিকানা বারের পাশে শেয়ার বোতাম (উপরে তীরসহ বর্গ) চাপুন\n2) \"হোম স্ক্রিনে যোগ করুন\" বেছে নিন\nবিকল্পটি না থাকলে সাইটটি Safari-তে খুলুন।","installHowAndroid":"Android-এ ইনস্টল করতে:\n1) ব্রাউজার মেনু (⋮) খুলুন\n2) \"অ্যাপ ইনস্টল করুন\" বা \"হোম স্ক্রিনে যোগ করুন\" বেছে নিন\n3) ইনস্টল নিশ্চিত করুন","installHowDesktop":"কম্পিউটারে ইনস্টল করতে (Chrome বা Edge):\nঠিকানা বারে ইনস্টল আইকন (⊕ বা ছোট স্ক্রিন) চাপুন, অথবা ব্রাউজার মেনু (⋮ বা …) খুলে \"ইনস্টল\" বা \"অ্যাপস → এই সাইটটি অ্যাপ হিসেবে ইনস্টল করুন\" বেছে নিন।","installHowMacSafari":"Mac-এ Safari থেকে ইনস্টল করতে:\nউপরে \"File\" মেনু খুলুন, \"Add to Dock\" বেছে নিন, তারপর \"Add\"।","installHowFirefox":"কম্পিউটারে Firefox ওয়েব অ্যাপ ইনস্টল করতে পারে না।\nসাইটটি Chrome বা Edge-এ খুলে \"অ্যাপ ইনস্টল করুন\" চাপুন, অথবা ফোন থেকে ইনস্টল করুন।"});

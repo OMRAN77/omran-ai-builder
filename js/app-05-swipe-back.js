@@ -49,6 +49,11 @@
     return best;
   }
   function closeTool(el){
+    /* شاشة الأدوات فيها مستوى داخلي («عرض الكل»): السحب يرجع منه إلى الصفوف
+       أولًا، ولا يغلق شاشة الأدوات إلى المحادثة مباشرة. */
+    if(el && typeof el.__omranSwipeBackStep === 'function'){
+      try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ /* guard-ok */ }
+    }
     var btn = el && document.getElementById(MAP[el.id]);
     if(btn){ try{ swipeClickGuardUntil = 0; btn.click(); return true; }catch(e){ /* guard-ok */ } }
     return false;
@@ -78,6 +83,9 @@
       /* الحقول: السحب منها مسموح ما لم تكن قيد الكتابة (شكوى المالك في مولّد السيرة: الصفحة كلها حقول) */
       if((tag === 'input' || tag === 'textarea' || tag === 'select') && document.activeElement === e) return true;
       if(e.id && COMPARE_DRAG_IDS[e.id]) return true;
+      /* صفوف الأدوات سحب أفقي دائمًا؛ لا ندع سحب الرجوع العام ينافسها
+         حتى خلال لحظة إعادة الرسم أو قبل اكتمال قياس overflow. */
+      if(e.classList && e.classList.contains('ptCarousel')) return true;
       try{
         var cs = getComputedStyle(e);
         if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;

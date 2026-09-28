@@ -19,6 +19,8 @@ const { detectEditIntent } = require('./image-intent');
 const { settleCandidates } = require('./image-verify');
 const { runCards, cardsKind } = require('./image-cards');
 const { authorPrayerPlan } = require('./prayer-plan');
+const textDesign = require('./text-design');
+const mergeIdentity = require('./merge-identity');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const pipeline = require('./image-pipeline');
 
@@ -42,7 +44,7 @@ module.exports = async (req, res) => {
   let guestImageCharge = null;
   /* v-img-engine-tag-owner (متابعة): مسار النصّ (__textRoute) يقرّر GPT هو الصحّ لكن قد يفشل نداؤه
      فيسقط بصمت إلى برو/نانو — بلا هذا السطر يرى المالك «nano» بلا أيّ فكرة عن سبب تجاوز GPT له. */
-  let __textRouteFailNote = '';
+  let __textRouteFailNote = '', __mediaQuality = '', __mediaLeft = 0; /* v-media-plans: جودة صورة مشترك الصور ومتبقّيه بعد الخصم من رصيده */
   let __cardsNote = '';
   async function refundImageCharge() {
     if (mahaImgCharged && pointsLib) {
@@ -63,7 +65,9 @@ module.exports = async (req, res) => {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    /* GPT الخام/مسار النصّ لا يحتاج مفتاح Gemini. كان مفتاح OpenAI صالحًا
+       يُرفض هنا قبل وصول الطلب إلى محرّكه. */
+    if (!apiKey && !process.env.OPENAI_API_KEY) {
       console.error('[maha-image] image provider is not configured');
       res.status(503).json({ error: 'image_generation_failed', retryable: false });
       return;
@@ -85,6 +89,7 @@ module.exports = async (req, res) => {
       .slice(-4)
       .map(function (h) { return { text: h.text.replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 400), resultBase64: h.resultBase64, resultMime: __okMime(h.resultMime), sourceBase64: (typeof h.sourceBase64 === 'string' && h.sourceBase64.length > 100 && h.sourceBase64.length <= 420000) ? h.sourceBase64 : '', sourceMime: __okMime(h.sourceMime) }; }) : [];
     const prayerRequest = typeof body.prayerRequest === 'string' ? body.prayerRequest.trim().slice(0, 800) : '';
+    if (body.layoutOnly === true) { await textDesign.layoutRoute(body, res, apiKey, () => checkAndConsume(token, guestId, 'text-layout', clientIp(req))); return; } /* v-text-design: صناديق الوجوه */
     if (!prompt && !prayerRequest) {
       res.status(400).json({ error: 'Missing prompt' });
       return;
@@ -99,6 +104,7 @@ module.exports = async (req, res) => {
         res.status(planUsage.reason === 'auth' ? 401 : 402).json({ error: planUsage.reason === 'auth' ? 'auth_required' : 'prayer_plan_limit' });
         return;
       }
+      if (body.wantDesign === true && body.planPrayerOnly === true && body.textKind !== 'prayer' && await textDesign.designRoute(body, res, apiKey, prayerRequest)) return; /* v-text-design: عنوان + أسطر عن الصورة نفسها */
       try {
         prayerPlan = await authorPrayerPlan(apiKey, prayerRequest, { textPosition: body.textPosition, kind: body.textKind });
       } catch (error) {
@@ -121,7 +127,7 @@ module.exports = async (req, res) => {
        تُقرأ فقط حين يكون الطالب المالك؛ غيره لا يُغيّر شيئًا. المالك غير مخصوم أصلًا. */
     const __isOwnerReq = !!(mahaImgUser && pointsLib.isOwnerUsername(mahaImgUser));
     const __optWant4K = __isOwnerReq && body.want4K === true;
-    const __optTextFaithful = __isOwnerReq && body.textFaithful === true;
+    const __optTextFaithful = __isOwnerReq && (body.textFaithful === true || /(?:نصّ?|كتابه?ة?|خط)\s*(?:دقيق[هة]?|صحيح[هة]?|مضبوط[هة]?)/.test(userText + ' ' + String(prompt || ''))); // v-img-write-modes: من الكتابة بعد خروجه من «+»
     const __optForceEngine = (__isOwnerReq && (body.forceEngine === 'nano' || body.forceEngine === 'gpt')) ? body.forceEngine : '';
     /* v-img-mix (المالك ٢٣ سبتمبر: «خاصيّة + دمج بين نانو وGPT — النتيجة ١»): وضع «+» للمالك وحده — المحرّكان معًا على الأمر
        المهندس نفسه بالتوازي (زمن أبطئهما لا مجموعهما)، والحكم ينفّذ أوّلًا ثمّ يختار صورة واحدة. ليس خامًا. */
@@ -131,8 +137,8 @@ module.exports = async (req, res) => {
         // v-costs-2026-09: 4K بطلب صريح (4k / للطباعة / دقة عالية) تكلف أكثر فتُسعَّر أعلى.
         const __ask4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i
           .test(String(userText || '') + ' ' + String(prompt || ''));
-        const __imgCost = __ask4K ? pointsLib.COSTS.image_4k : pointsLib.COSTS.image;
-        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : 'image');
+        const __imgCost = __ask4K ? pointsLib.COSTS.image_4k : pointsLib.COSTS.image; const __mq = __ask4K ? null : await require('./_mediaPlans.js').imageQuality(mahaImgUser, String(userText || '') + ' ' + String(prompt || '')).catch(() => null); /* v-media-plans: «عاديّة» بنصف الرصيد على المحرّك السريع */
+        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : (__mq === 'normal' ? 'image_normal' : 'image')); if (pay.ok && pay.media === 'image') { __mediaQuality = __mq || 'high'; __mediaLeft = pay.mediaLeft; }
         if (!pay.ok) {
           res.status(402).json({ error: 'points_insufficient', needed: __imgCost, points: pay.points || 0 });
           return;
@@ -245,7 +251,7 @@ module.exports = async (req, res) => {
         upscaled: (__up && __up.ok) ? { scale: __up.scale, width: __up.w, height: __up.h } : undefined,
         authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
         visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
-        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
+        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined, mediaTag: __mediaQuality ? { q: __mediaQuality, left: Math.floor(__mediaLeft / 25) } : undefined, /* v-media-plans: الجودة والمتبقّي بالصور العاديّة */
       });
     }
 
@@ -292,24 +298,12 @@ module.exports = async (req, res) => {
       }
     }
 
+    let __mergePhotos = null, __mergeCrops = [];
     if (editImageBase64 && extras.length) {
-      /* 🧩 دمج عدة صور في تصميم واحد
-         v-merge-identity-lock: صيغة أولى («IDENTITY LOCK» كقاعدة ٢ من ٤ وسط إطار «design compose») لم تحلّ لقطة
-         المالك (شخص ثانٍ بوجه مختلف) رغم إصلاح الحرارة (v-merge-faithful). بحث خارجيّ (Google DeepMind، سبتمبر
-         ٢٠٢٦): gemini-3-pro-image يدعم رسميًّا حتى ٥ صور أشخاص كمرجع هويّة مع تتبّع الهويّة عبر تغيّر الوضعيّة/
-         الزاوية — القدرة موجودة، فالمشكلة على الأرجح صياغة/تركيز الأمر لا سقف النموذج. الصيغة الجديدة: الهويّة
-         أوّل جملة لا قاعدة رقم ٢، وتُشير لكل صورة بترتيبها الحرفيّ (بدل «each input image» العامّة) مطابقةً
-         لنمط أمثلة جوجل الرسميّة («the identity of all N people must stay consistent... they can be seen from
-         different angles as is most natural to the scene»).
-         v-merge-identity-lock-v3 (تحقّق حيّ فعليّ — لقطتان متتاليتان من المالك بترتيب رفع معكوس): الصياغة
-         الثانية حلّت الكارثة (شخص بجنس مختلف) لكن كشفت عطبًا أدقّ يتكرّر بنفس الشكل بغضّ النظر عن الترتيب (لا
-         علاقة بـ«الصورة الأساسيّة مقابل المرجع»): المرأة تكتسب حجابًا وتبرّجًا أثقل غير موجودين بالمصدر، والرجل
-         يحتفظ بهويّته مع تغييرات طفيفة بالزيّ. الجذر: الصياغة السابقة صرّحت بتغيير «clothing detail» طالما
-         الوجه ثابت. الإصلاح: الشعر (مغطّى بحجاب أو مكشوف كما بالمصدر) والتبرّج والإكسسوارات والملابس صارت ضمن
-         بند الهويّة الثابتة، وحُذفت «clothing detail» من المسموح تغييره — يبقى المسموح الوضعيّة والزاوية والمشهد. */
-      parts.push({ text: 'You are given ' + (extras.length + 1) + ' separate reference images, attached in this exact order. For any reference image that shows a real human face, that exact person\'s full appearance — face shape, features, skin tone, hair (loose or covered by a hijab/headscarf exactly as photographed; never add, remove, or restyle a head covering), makeup, jewelry, and clothing — MUST be reproduced with full fidelity in the output, precisely as photographed in that image: never invented, never averaged or blended with another person\'s face or style, never swapped onto the wrong body, never restyled to a different look. This holds even when the task changes their pose, camera angle, or places them together in a brand-new shared scene — only the scene, pose and angle change; who each person is and exactly how they look never changes. The same fidelity rule applies to any logo or exact text in a reference image.\n\nTASK: "' + cleanPrompt + '"\n\nNow combine every reference image into ONE single, cohesive, photorealistic result following that task exactly:\n1. Every reference image\'s subject MUST appear in the final result - never drop one.\n2. Arrange them exactly as the task asks (e.g. the people from the separate reference photos placed together, naturally, in one new shared scene; or a logo/text laid out with other elements).\n3. Any Arabic text must remain correct and readable.\nOutput a single finished image only.' });
-      parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
-      for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
+      /* 🧩 دمج عدّة صور — التاريخ (v-merge-faithful، v-merge-identity-lock v1–v3) والقرار (v-merge-faces) في merge-identity.js.
+         الصور بترتيب رفع المستخدم (الأساسيّة آخرًا)؛ الأجزاء تُبنى بعد معرفة الوضع الخام أدناه (لقطات الوجوه تحتاج كشفًا). */
+      __mergePhotos = extras.concat([{ data: editImageBase64, mime: editMimeType || 'image/png' }]);
+      __settleCtx.references = __mergePhotos; /* الحاكم يرى صورة كلّ شخص — والخام أيضًا */
     } else if (editImageBase64) {
       /* v-raw-words: كلمات المستخدم الحرفية (intentText) أولًا في المسارات الإبداعية؛ IMAGE_RAW_CREATIVE=on يرسلها وحدها كتطبيق Gemini */
       const __rawCreative = creativeRawEnabled(process.env) && (isElevate || isReimagine || isRestyle);
@@ -351,7 +345,7 @@ module.exports = async (req, res) => {
       parts.push({ text: cleanPrompt });
       if (editImageBase64) parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
-    }
+    } else if (__mergePhotos) { __mergeCrops = await mergeIdentity.faceCrops(apiKey, __mergePhotos); parts.push.apply(parts, mergeIdentity.mergeParts(__mergePhotos, __mergeCrops, cleanPrompt)); }
     /* v-nano-edit (مقارنة المالك: «نانو الأصلي» يعيد التخيّل بجرأة، وتطبيقنا
        كان يعدّل تعديلًا خجولًا كفوتوشوب): محرّك التعديل الأساسي كان نانو بنانا
        (gemini-2.5-flash-image). قابل للضبط بمتغيّر IMAGE_EDIT_MODEL للرجوع فورًا بلا نشر.
@@ -374,7 +368,7 @@ module.exports = async (req, res) => {
        فالفرق يُخصم هنا حين تتّضح. رصيد لا يكفي الفرق = ردّ الأساس و402 بالسعر الكامل. المالك وVIP لا يُخصم منهما. */
     if (isCreativeEdit && mahaImgCharged && !__pureRaw) {
       const __extra = Math.max(0, pointsLib.COSTS.image_creative - mahaImgChargedAmount);
-      if (__extra > 0) {
+      if (__extra > 0 && __mediaQuality !== 'normal') { /* v-media-plans: العاديّة على نانو بلا فرق الإبداعيّ */
         const __xp = await pointsLib.spendPoints(mahaImgCharged, __extra, 'image_creative');
         if (!__xp.ok) {
           await refundImageCharge();
@@ -385,16 +379,17 @@ module.exports = async (req, res) => {
       }
     }
     /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
-    /* v-image-modes: توغل «نانو خام» للمالك يفرض نانو ٢.٥ (gemini-2.5-flash-image) بدل برو. */
-    const primaryModel = (__optForceEngine === 'nano') ? 'gemini-2.5-flash-image'
+    /* v-image-modes: توغل «نانو خام» للمالك يفرض نانو بدل برو. v-models-latest: نانو ٢٫٥ يُوقف ٢ أكتوبر ٢٠٢٦ → نانو ٢ (٣٫١) بالصيغة النظيفة نفسها. */
+    const primaryModel = (__optForceEngine === 'nano') ? 'gemini-3.1-flash-image' : (__mediaQuality === 'normal') ? 'gemini-3.1-flash-image' /* v-media-plans: العاديّة */
       : (editImageBase64 ? ((isCreativeEdit || isTextSwap || isPersonSwap || isBroadEdit) ? creativeModel : editModel) : creativeModel);
-    const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
+    const nanoPrimary = /flash-image/.test(primaryModel);
     /* v-lanes: المسار الأمين = تعديل ليس إبداعيًّا ولا تبديل أشخاص ولا تعديلًا واسعًا — يحتفظ بحرارته المنخفضة على أيّ محرّك.
        v-merge-faithful (لقطة المالك: «ادمج الصورتين مع الأحضان» أرجعت الشخص الثاني وجهًا مختلفًا تمامًا): دمج عدّة صور
        (extras.length) كان مستثنى من هذا المسار فيعمل دائمًا على حرارة جوجل الافتراضية للإبداع (١.٠) رغم أنّ أمر الدمج
        نفسه يطلب صراحةً «faces stay pixel-faithful» — فيعيد النموذج تخيّل الوجوه بدل نقلها. الدمج غير الإبداعي يحتاج
        نفس الحرارة المنخفضة؛ الدمج الإبداعي (isCreativeEdit=true) يبقى خارج هذا المسار كما كان. */
-    const __faithfulLane = !!editImageBase64 && !isCreativeEdit && !isPersonSwap && !isBroadEdit;
+    const __faithfulLane = !!editImageBase64 && (__mergePhotos ? !__pureRaw : (!isCreativeEdit && !isPersonSwap && !isBroadEdit)); /* v-merge-faces: «واقعية/أجمل/فخم» لا تُخرج الدمج من الحرارة المنخفضة */
+    const __mergeTemp = __mergePhotos ? mergeIdentity.mergeTemperature(isRestyle, intentText + ' ' + cleanPrompt) : null;
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
     // مع احترام أي طلب صريح (عرضي/مربع/ستوري...). التعديل يحافظ على أبعاد المصدر.
@@ -413,6 +408,7 @@ module.exports = async (req, res) => {
     const __want4K = __optWant4K || /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || '')) || __maxPlan4K;
     const imageConfig = { imageSize: __want4K ? '4K' : '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
+    else if (__mergePhotos && !__pureRaw) imageConfig.aspectRatio = mergeIdentity.mergeAspect(__mergePhotos[__mergePhotos.length - 1], intentText + ' ' + cleanPrompt); /* v-merge-faces: لا تتبع لقطة الوجه الأخيرة */
     /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
        بلا imageConfig كي لا يرفض الطلب (400). لكنه يحتاج responseModalities:['IMAGE']
        كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) — وهذا ما يفعله
@@ -438,7 +434,7 @@ module.exports = async (req, res) => {
     const __contents = __historyTurns.length ? __historyTurns.concat([{ role: 'user', parts }]) : [{ parts }];
     const reqBody = JSON.stringify(__pureRaw
       ? { contents: __contents, generationConfig: genConfigFor({}) }
-      : { contents: __contents, generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.85 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
+      : { contents: __contents, generationConfig: genConfigFor({ temperature: __mergeTemp != null ? __mergeTemp : editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.85 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
 
     /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
        رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
@@ -461,8 +457,9 @@ module.exports = async (req, res) => {
       const __gptPrompt = String(promptOverride || rescuePromptText).slice(0, 3800); /* v-img-honest: المحرّك الآخر قد يُعطى أمر إعادة بلا تناقض */
       /* v-img-mix (خيار «أ»): تلميع الكتابة يرسل ناتج برو أوّلًا والمصدر مرجعًا — مسار الصور المتعدّدة نفسه (image[]).
          المهلة من ميزانيّة الطلب حين تُعطى (مراجعة: نداء إضافيّ بمهلة ١٢٠ث ثابتة كان يتخطّى سقف ٣٠٠ث فتضيع الصورة والنقاط). */
-      const __src = imagesOverride ? imagesOverride[0] : (editImageBase64 ? { data: editImageBase64, mime: editMimeType } : null);
-      const __refs = imagesOverride ? imagesOverride.slice(1) : extras;
+      const __ord = __mergePhotos && !__pureRaw ? __mergePhotos.concat(__mergeCrops) : null; /* v-merge-faces: ترتيب الأمر نفسه؛ الخام كترتيب نانو الخام */
+      const __src = imagesOverride ? imagesOverride[0] : (__ord ? __ord[0] : (editImageBase64 ? { data: editImageBase64, mime: editMimeType } : null));
+      const __refs = imagesOverride ? imagesOverride.slice(1) : (__ord ? __ord.slice(1) : extras);
       const __deadline = timeoutMs ? Date.now() + timeoutMs : 0;
       const __to = function (def) { return __deadline ? Math.max(5000, __deadline - Date.now()) : def; };
       const okey = process.env.OPENAI_API_KEY;
@@ -470,15 +467,15 @@ module.exports = async (req, res) => {
       /* v-gpt-2.5 (٢٠ سبتمبر ٢٠٢٦، طلب المالك: «رقّهم كلهم للأعلى» — GPT/نانو بلا كلود
          في الصور): OpenAI أصدرت GPT Image 2.5 قبل هذا القرار بـ١٢ يومًا — Sunburst
          (الأدقّ في التحكّم بالتعديل) وFlare (أسرع من gpt-image-2 بجودة أعلى للتوليد) —
-         وgpt-image-1 (كان المثبَّت وحده هنا) يُوقَف نهائيًّا ٢٣ أكتوبر ٢٠٢٦. الأحدث أوّلًا
-         مع تدرّج نزولًا لما يبقى متاحًا لمفتاح المالك. Sunburst وgpt-image-2 يفرضان أمانة
-         عالية دائمًا ويرفضان input_fidelity بخطأ 400 لو أُرسل؛ gpt-image-1 وحده يحتاجه. */
+         وgpt-image-1 يُوقَف نهائيًّا ٢٣ أكتوبر ٢٠٢٦ فخرج من المسار الحيّ. الأحدث أوّلًا
+         مع تدرّج إلى gpt-image-2 لما يبقى متاحًا لمفتاح المالك؛ كلاهما يفرض أمانة
+         عالية دائمًا ويرفض input_fidelity بخطأ 400 لو أُرسل. */
       /* v-edit-rescue (لقطة بطاقة التجنيد «غش»): التعديل كان بلا خط إنقاذ —
          إذا انشغل Gemini فشل كل تعديل صورة في المحادثة وسقط العميل على شريط الكانفس. */
       if (__src) {
         const extras = __refs;
         const bytes = Buffer.from(__src.data, 'base64');
-        const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2', 'gpt-image-1'];
+        const editModels = ['gpt-image-2.5-sunburst', 'gpt-image-2'];
         for (let i = 0; i < editModels.length; i++) {
           const m = editModels[i];
           try {
@@ -486,9 +483,6 @@ module.exports = async (req, res) => {
             form.append('model', m);
             form.append('prompt', __gptPrompt);
             form.append('size', 'auto');
-            /* v-hifi-edit: gpt-image-1 وحده يحتاج input_fidelity=high صراحةً ليحفظ نصوص
-               وشعارات المصدر؛ الأحدث (Sunburst وgpt-image-2) يفرضها دائمًا. */
-            if (m === 'gpt-image-1') form.append('input_fidelity', 'high');
             form.append('quality', 'high');
             /* v-gpt-multi-merge-fix (لقطة المالك ٢١ سبتمبر: «تعذّر توليد الصورة الآن — 400 Duplicate
                parameter: 'image'»): v-gpt-multi-merge افترض أنّ images/edits يقبل حقل `image` مكرَّرًا
@@ -496,9 +490,9 @@ module.exports = async (req, res) => {
                ٢/٢٫٥) يرفض بـ400 فورًا لو تكرّر اسم الحقل. الاتفاقيّة الصحيحة لتعدّد الملفّات في
                multipart/form-data لهذه النقطة هي `image[]` (صيغة مصفوفة)، لا `image` مكرّرة — تُستعمل
                فقط حين توجد صور دمج فعليّة (extras)؛ صورة واحدة تبقى بحقل `image` المفرد كما كان. */
-            const __imgField = (extras.length && m !== 'gpt-image-1') ? 'image[]' : 'image';
+            const __imgField = extras.length ? 'image[]' : 'image';
             form.append(__imgField, new Blob([bytes], { type: __src.mime || editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
-            if (extras.length && m !== 'gpt-image-1') {
+            if (extras.length) {
               for (const x of extras) form.append('image[]', new Blob([Buffer.from(x.data, 'base64')], { type: x.mime || 'image/jpeg' }), 'ref.jpg');
             }
             if (exactTextEdit) {
@@ -538,7 +532,7 @@ module.exports = async (req, res) => {
           signal: AbortSignal.timeout(__to(90000)),
           body: JSON.stringify({ model, prompt: __gptPrompt, size, quality: 'high', n: 1 }),
         });
-        const genModels = ['gpt-image-2.5-flare', 'gpt-image-2', 'gpt-image-1'];
+        const genModels = ['gpt-image-2.5-flare', 'gpt-image-2'];
         for (let i = 0; i < genModels.length; i++) {
           const r = await genOnce(genModels[i]);
           if (r.ok) {
@@ -570,7 +564,7 @@ module.exports = async (req, res) => {
        `nanoPrimary`/`IMAGE_EDIT_MODEL` — هذه دالّة إنقاذ فقط بعد فشل المحرّك الأساسيّ. */
     let lastNanoErr = '';
     async function geminiNanoBananaImage() {
-      const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'];
+      const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'].filter(function (m) { return m !== primaryModel; }); // v-models-latest: «نانو خام» فشل عليه = لا يُعاد
       for (let i = 0; i < models.length; i++) {
         try {
           const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {
@@ -580,7 +574,7 @@ module.exports = async (req, res) => {
                مهلة 30ث بدل 90ث توصلنا لخط الإنقاذ المجاني بسرعة بدل تجميد 90ث. */
             signal: AbortSignal.timeout(30000),
             /* responseModalities:['IMAGE'] كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) */
-            body: JSON.stringify({ contents: [{ parts: parts }], generationConfig: { responseModalities: ['IMAGE'] } }),
+            body: JSON.stringify({ contents: [{ parts: parts }], generationConfig: Object.assign({ responseModalities: ['IMAGE'] }, (__mergeTemp != null && !__pureRaw) ? { temperature: __mergeTemp } : {}) }), /* v-merge-faces: الإنقاذ لا يعيد تخيّل الوجوه */
           });
           if (!r.ok) { lastNanoErr = models[i] + ' status=' + r.status; continue; }
           const d = await r.json().catch(function () { return null; });
@@ -593,14 +587,11 @@ module.exports = async (req, res) => {
       return null;
     }
 
-    // v-free-fallback (المالك: «لين ما خلص الرصيد» — يجب أن تُنتَج صورة حتى بلا
-    // رصيد مدفوع بدل 502 بعد تجميد طويل): Pollinations محرّك مجاني بلا مفتاح،
-    // توليد نصّي→صورة فقط (لا تحرير مصدر، ولا نصّ عربي دقيق). ملاذٌ أخير للتوليد
-    // الجديد بعد فشل المحرّكات المدفوعة. يُعطَّل بـIMAGE_FREE_FALLBACK=off.
+    // Pollinations/Flux أضعف ولا يكتب العربيّة بدقّة؛ لا يعمل إلا بتفعيل صريح.
     let lastFreeErr = '';
     async function freeFallbackImage() {
       if (editImageBase64) { lastFreeErr = 'edit-unsupported'; return null; }
-      if (String(process.env.IMAGE_FREE_FALLBACK || 'on').toLowerCase() === 'off') { lastFreeErr = 'disabled'; return null; }
+      if (String(process.env.IMAGE_FREE_FALLBACK || 'off').toLowerCase() !== 'on') { lastFreeErr = 'disabled'; return null; }
       const dims = rescueAspect === '16:9' ? [1344, 768] : (rescueAspect === '1:1' ? [1024, 1024] : [768, 1024]);
       const base = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(String(rescuePromptText).slice(0, 1800));
       for (let i = 0; i < 2; i++) {
@@ -794,12 +785,13 @@ module.exports = async (req, res) => {
     } /* مراجعة: فشلت البطاقات متأخّرة = لا مسار كامل يتجاوز ٣٠٠ث؛ ٤٢٢ صادقة واسترداد */
     if (__cardsNote && __extraBudget() < 150000) { await refundImageCharge(); res.status(422).json({ error: 'image_unchanged', retryable: true, __diag: process.env.IMG_DIAG === 'off' ? undefined : { cards: __cardsNote } }); return; }
     if (__engineMix) {
-      const pro = await proCandidate().catch(function () { return null; });
-      const polish = (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null;
-      if (pro) { pro.engine = 'mix:' + pro.engine; await deliver(pro, __gptAlt, polish); return; }
+      /* مرشّح مستقلّ من كلّ محرّك بالتوازي، ثمّ الحاكم يختار صورة واحدة. */
       __gptTried = true;
-      const gpt = __extraBudget() >= 25000 ? await gptCandidate('', __extraBudget()).catch(function () { return null; }) : null;
-      if (gpt) { gpt.engine = 'mix:openai'; await deliver(gpt, null); return; }
+      const __mixResults = await Promise.all([proCandidate().catch(function () { return null; }), gptCandidate('', __extraBudget()).catch(function () { return null; })]);
+      const __mixCandidates = __mixResults.filter(Boolean);
+      __mixCandidates.forEach(function (c) { c.engine = 'mix:' + c.engine; });
+      const polish = !extras.length && (editImageBase64 || __textCueRe.test(cleanPrompt) || /["«“][^"»”]{2,}["»”]/.test(intentText)) ? textPolish : null; /* v-merge-faces: التلميع يرسل ناتج الدمج وحده لـGPT فيعيد رسم الوجوه */
+      if (__mixCandidates.length) { await deliver(__mixCandidates, null, polish); return; }
     }
 
     if (__textRoute && !__engineMix) {

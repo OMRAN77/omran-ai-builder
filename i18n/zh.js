@@ -23,7 +23,7 @@ I18N['zh'] = {
     emailConnectHint: '连接你的 Gmail 账户，让 AI 阅读你的邮件，并在发送前提供供你审核的回复建议。', voiceSummaryBtn: '语音摘要', refreshBtn: '刷新', worldMarketsTitle: '全球市场', pickStockTitle: '选择股票', cnProjectData: '📋 项目数据',
     cnLandArea: '土地面积（m²）— 可选', cnLandAreaPh: '例如：500', cnEmirateOpt: '酋长国 — 可选', cnDetailsAnnexes: '🏠 详情与附属设施', cnExElevator: '室内电梯', cnExStore: '室外储藏室', cnExWaterTank: '水箱', cnExSolar: '太阳能板',
     cnExPlayground: '室外游乐场', cnExCarport: '额外车棚', cnBudgetOutputs: '💰 预算与输出', cnDownloadBoq: '📊 下载工程量清单', cnPdfReport: '📄 PDF 报告', keyHowToTitle: '📝 如何获取每个提供商的密钥：', showAllPlansCur: '以你的货币显示所有套餐和价格',
-    currencyLabel: '货币', plFreeMsgs: '每天5条消息', plFreeVoice: '最多4分钟语音聊天', plFreeImgs: '最多3张AI图片', plFreeNoVideo: '无视频', plStMsgs: '每天50条消息', plStVoice: '最多24分钟语音聊天', plStImgs: '最多15张图片', plStVideos: '1个视频',
+    currencyLabel: '货币', plFreeMsgs: '第一天20条消息，之后每天3条', plFreeVoice: '最多4分钟语音聊天', plFreeImgs: '最多3张AI图片', plFreeNoVideo: '无视频', plStMsgs: '每天50条消息', plStVoice: '最多24分钟语音聊天', plStImgs: '最多15张图片', plStVideos: '1个视频',
     plProMsgs: '每天100条消息', plProVoice: '最多61分钟语音聊天', plProMedia: '最多40张图片 · 2个视频', plProAgent: '智能代理', plProPriority: '优先速度 · 金色徽章', plMaxAllPro: '包含Pro的所有功能 · 每天250条消息', plMaxVoice: '最多213分钟语音聊天',
     plMaxMedia: '最多150张图片 · 3个视频', plMaxSupport: '专属支持',
     adStudioTitle: '广告工作室', adStudioHint: '广告工作室 — 通过对话制作你的广告', chatToPdfEmpty: '暂无可转换的回复。', mahaConnectionLost: '无法重新连接', voiceTabAssistantName: '助手',
@@ -109,6 +109,20 @@ I18N['zh'] = {
     "authTabLogin": "登录",
     "authTabSignup": "注册",
     "authUsernameLabel": "用户名",
+    "authIdPlaceholder": "用户名或邮箱",
+    "authCreateAccount": "创建新账户",
+    "authHaveAccount": "我有账户 — 登录",
+    "setGrpPersonal": "个性化",
+    "setGrpAccount": "账户",
+    "setGrpAppearance": "外观",
+    "setGrpGeneral": "通用",
+    "setEmailRow": "邮箱",
+    "setNoEmail": "添加邮箱以便找回账户",
+    "setPlanFree": "免费",
+    "setUpgradeTitle": "用 Om ai 做更多",
+    "setUpgradeSub": "更高额度，解锁高级功能。",
+    "setUpgradeBtn": "升级",
+    "setChangePhoto": "更换头像",
     "authPasswordLabel": "密码",
     "authNewPasswordLabel": "新密码",
     "authRecoveryLabel": "恢复代码",
@@ -125,6 +139,7 @@ I18N['zh'] = {
     "clockWorldLabel": "🌍 世界时钟",
     "authBackToLogin": "返回登录",
     "authSubmitReset": "重置密码",
+    "authSubmitForgotEmail": "通过邮箱发送重置链接",
     "authRecoveryModalTitle": "🔑 保存此恢复代码",
     "authRecoveryModalDesc": "如果您忘记密码，这是恢复账户的唯一代码。请将其保存在安全的地方 —— 此代码将不再显示。",
     "authCopyBtn": "📋 复制",
@@ -134,7 +149,7 @@ I18N['zh'] = {
     "authOrDivider": "或",
     "authGoogleBtn": "使用 Google 继续",
     "authSubmitSignup": "创建账户",
-    "guestLimitMsg": "🎉 您已用完 20 条免费消息!登录账户(或创建新账户)以继续对话。",
+    "guestLimitMsg": '注册免费账户即可开始聊天：第一天20条消息，之后每天3条。',
     
     
     
@@ -164,6 +179,8 @@ I18N['zh'] = {
     "checkoutTitle": "完成订阅",
     "checkoutTestBadge": "🧪 测试模式",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "请先注册或登录，然后再订阅",
+    "checkoutAutoRenew": "🔁 每月自动从银行卡续费",
     "checkoutTelecomOption": "运营商代扣(Etisalat/du)",
     "checkoutComingSoon": "即将推出",
     "checkoutPlanLabelBasic": 'Plus 套餐 $10/月 — 360 积分',
@@ -190,7 +207,7 @@ I18N['zh'] = {
     "acctUsernameLabel": "用户名",
     "acctPasswordRow": "密码",
     "acctSaveBtn": "保存",
-    "acctEmailLabel": "📧 备用邮箱(用于找回密码)",
+    "acctEmailLabel": "邮箱(忘记用户名或密码时使用)",
     "acctReferralLabel": "🔗 邀请好友链接",
     "acctCopyBtn": "📋 复制",
     "acctReferralHint": "每有一位好友通过您的链接注册，您和好友均可获得 10 条额外免费消息 🎁",
@@ -300,6 +317,7 @@ I18N['zh'] = {
     "cancel": "取消",
     "save": "保存",
     "defaultProjectTitle": "新项目",
+    "defaultShowcaseTitle": "智能仪表板",
     "templatesBtn": "🧩 模板",
     "templatesModalTitle": "🧩 选择模板",
     "useThisTemplate": "✅ 使用此模板",
@@ -936,7 +954,7 @@ I18N['zh'] = {
     constructionTypeRest: '🌴 度假屋', constructionTypeFarm: '🌾 农场', constructionTypeAnnexhome: '🏘️ 住宅附楼', constructionTypeMall: '🛍️ 购物中心', constructionTypeSchool: '🏫 学校', constructionTypeHall: '💒 婚礼大厅', constructionEmirateNone: '— 无 —', constructionEmirateDubai: '迪拜', constructionEmirateAbudhabi: '阿布扎比', constructionEmirateSharjah: '沙迦', constructionEmirateAjman: '阿治曼', constructionEmirateUmmalquwain: '乌姆盖万', constructionEmirateRasalkhaimah: '哈伊马角', constructionEmirateFujairah: '富查伊拉', constructionStyleAndalusi: '🕌 安达卢西亚风', constructionStyleIslamic: '🌙 现代伊斯兰', constructionStyleMediterranean: '🏖️ 地中海风', constructionStyleNajdi: '🏜️ 纳吉迪', constructionStyleNeoclassic: '🏛️ 新古典', constructionRoomOffice: '🧑‍💻 家庭办公室', constructionRoomKids: '🧸 儿童房', constructionRoomStairs: '🪜 楼梯和入口', constructionRoomRoof: '🌇 屋顶', constructionGrpResidential: '🏠 住宅', constructionGrpCommercial: '🏢 商业和行政', constructionGrpPublic: '🕌 公共和服务',
     /* v601: 30 مفتاحًا مفقودة + 24 مفتاح مساعد البريد (54) */
     designAiPlaceLabel: "地点类型", premiumOn: "智能体已开启⚡——直接回答，无风格层", premiumNeedLogin: "登录以使用智能体", memorySectionLabel: "我的记忆", memoryIntro: "应用记住的关于你、你的项目和你的交流风格的内容都在这里。它会通过你的账户在各设备间同步，你也可以编辑或删除它。", memorySaveBtn: "保存更改", memoryClearBtn: "删除我的记忆", memoryEmpty: "目前还没有保存任何关于你的信息。", memoryGuest: "登录以查看你的记忆。", memoryConfirm: "删除应用记住的所有关于你的信息？此操作无法撤销。", memorySaved: "已保存并与你的账户同步。", memorySaveError: "保存失败，请重试。",
-    memoryLoadError: "目前无法加载记忆。", fontFamilySectionLabel: "字体样式", fontFamilyHint: "更改桌面和手机上的聊天消息，不会更改代码块或应用布局。", guestImageMsg: "🎁你已用完3张免费访客图片！几秒内创建免费账户，即可获得70个礼品积分，继续生成和编辑图片。", planPer: "每月", planFreePer: "试用", planPtsFree: "欢迎积分——仅一次", planPtsMo: "每月积分", planTag: "最受欢迎", planCurrentBtn: "你当前的套餐", planSoonBtn: "即将推出", planFreeFeats: '<li>每天5条消息</li><li>最多4分钟语音聊天</li><li>最多3张AI图片</li><li class="off">无视频</li>',
+    memoryLoadError: "目前无法加载记忆。", fontFamilySectionLabel: "字体样式", fontFamilyHint: "更改桌面和手机上的聊天消息，不会更改代码块或应用布局。", guestImageMsg: "🎁你已用完3张免费访客图片！几秒内创建免费账户，即可获得70个礼品积分，继续生成和编辑图片。", planPer: "每月", planFreePer: "试用", planPtsFree: "欢迎积分——仅一次", planPtsMo: "每月积分", planTag: "最受欢迎", planCurrentBtn: "你当前的套餐", planSoonBtn: "即将推出", planFreeFeats: '<li>第一天20条消息，之后每天3条</li><li>最多4分钟语音聊天</li><li>最多3张AI图片</li><li class="off">无视频</li>',
     planPlusFeats: '<li>每天50条消息</li><li>最多24分钟语音聊天</li><li>最多15张图片</li><li>1个视频</li>', planProFeats: '<li>每天100条消息</li><li>最多61分钟语音聊天</li><li>最多40张图片 · 2个视频</li><li>智能代理</li><li>优先速度 · 金色徽章</li>', planMaxFeats: '<li>包含Pro的所有功能 · 每天250条消息</li><li>最多213分钟语音聊天</li><li>最多150张图片 · 3个视频</li><li>专属支持</li>', checkoutPlanLabelMax: 'Max 套餐 $100/月 — 3,200 积分', copyCode: "复制", copiedMsg: "已复制✅",
     emailAsst_connectText: "连接你的Gmail账户，让AI读取你的邮件并在你审核后建议现成的回复。", emailAsst_connectBtn: "🔗连接Gmail", emailAsst_disclaimer: "⚠️任何回复都不会在未经你对每条消息明确批准的情况下发送。", emailAsst_title: "📧AI邮件助手", emailAsst_refresh: "刷新", emailAsst_loading: "正在扫描你的收件箱…", emailAsst_empty: "目前没有需要回复的新邮件。", emailAsst_notConnected: "Gmail未连接，请重新连接。", emailAsst_send: "✅发送", emailAsst_ignore: "🚫忽略此发件人", emailAsst_sending: "发送中…", emailAsst_sent: "✅已发送",
     emailAsst_ignored: "🚫已忽略——不再显示", emailAsst_error: "❌错误：", emailAsst_voiceBtn: "语音摘要", emailAsst_addToCalendar: "📅添加到日历", emailAsst_addingEvent: "正在添加事件…", emailAsst_eventAdded: "✅已添加到你的日历", emailAsst_calReauth: "请重新连接Gmail以允许访问日历", emailAsst_voiceLoading: "🔊正在准备语音摘要…", emailAsst_voiceEmpty: "没有可摘要的邮件。", emailAsst_urgent: "🔴紧急", emailAsst_normal: "🟡普通", emailAsst_low: "⚪低",
@@ -1085,3 +1103,12 @@ Object.assign(I18N["zh"], {"ownerSectionTitle": "👑 所有者页面"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["zh"], {"imgUnchanged": "⚠️ 编辑未生效：图片原样返回，所以没有显示，也不计费。请说明具体要改什么，或换一种说法。"});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["zh"], {"mediaPlansTitle": "图片与视频订阅", "mediaPlansDesc": "只想要图片或视频的用户——不含聊天。每个订阅都有独立余额，不能用于其他用途。", "mediaImgName": "图片", "mediaVidName": "视频", "mediaImgUnit": "张高质量图片", "mediaVidEco": "个经济视频", "mediaVidCine": "个电影级视频", "mediaVidSound": "个有声视频", "mediaOr": "或", "mediaNoChatVideo": "不含聊天和视频", "mediaNoChatImage": "不含聊天和图片", "mediaLeftImg": "图片订阅剩余", "mediaLeftVid": "视频订阅剩余"});
+Object.assign(I18N["zh"], {"mediaImgPlain": "张图片", "mediaHighEq": "一张高质量图片 = 2张图片", "mediaQLabel": "图片质量", "mediaQNormal": "⚡ 标准", "mediaQHigh": "💎 高质量", "mediaQNormalDesc": "快速，适合社交媒体——扣除余额1张", "mediaQHighDesc": "细节更精细、文字更清晰、可打印——扣除余额2张", "mediaQHint": "或在请求中写“高质量”，仅对该张生效"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N["zh"], {"priceTabChat": "💬 聊天", "priceTabImg": "🖼️ 图片", "priceTabVid": "🎬 视频", "priceTabPts": "⚡ 积分"});
+Object.assign(I18N["zh"], {"priceTabMaha": "🎙️ 玛哈", "mahaPlanName": "玛哈", "mahaPlansDesc": "用于与玛哈语音通话。每月分钟数仅限玛哈使用；用完后通话将使用你的积分继续。", "mahaMinPlain": "分钟通话", "mahaMinUnit": "分钟", "mahaCapNote": "每次通话最多 10 分钟", "mahaNoChat": "不含聊天、图片或视频", "mahaLeft": "玛哈剩余分钟", "mahaCapEnd": "通话已在 10 分钟上限结束 — 请重新拨打继续", "mahaToPoints": "分钟已用完 — 改用积分继续"});
+/* v-browser-install: خطوات التثبيت لكلّ متصفّح */
+Object.assign(I18N["zh"], {"install":"安装应用","installHowIOS":"在 iPhone 或 iPad 上安装：\n1) 用 Safari 打开本网站\n2) 点按“分享”按钮（带向上箭头的方框）\n3) 选择“添加到主屏幕”，再点“添加”","installHowIOSOther":"在此浏览器中安装到 iPhone：\n1) 点按地址栏旁的“分享”按钮（带向上箭头的方框）\n2) 选择“添加到主屏幕”\n如果没有该选项，请用 Safari 打开本网站。","installHowAndroid":"在 Android 上安装：\n1) 打开浏览器菜单（⋮）\n2) 选择“安装应用”或“添加到主屏幕”\n3) 确认安装","installHowDesktop":"在电脑上安装（Chrome 或 Edge）：\n点击地址栏中的安装图标（⊕ 或小屏幕），或打开浏览器菜单（⋮ 或 …）选择“安装”或“应用 → 将此网站作为应用安装”。","installHowMacSafari":"在 Mac 的 Safari 中安装：\n打开顶部的“文件”菜单，选择“添加到程序坞”，再点“添加”。","installHowFirefox":"电脑版 Firefox 无法安装网页应用。\n请用 Chrome 或 Edge 打开本网站并点击“安装应用”，或在手机上安装。"});

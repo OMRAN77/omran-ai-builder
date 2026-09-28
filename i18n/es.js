@@ -27,7 +27,7 @@ I18N['es'] = {
     cnLandArea: 'Área del terreno (m²) — opcional', cnLandAreaPh: 'p. ej.: 500', cnEmirateOpt: 'Emirato — opcional', cnDetailsAnnexes: '🏠 Detalles y anexos', cnExElevator: 'Elevador interior',
     cnExStore: 'Almacén exterior', cnExWaterTank: 'Tanque de agua', cnExSolar: 'Paneles solares', cnExPlayground: 'Área de juegos exterior', cnExCarport: 'Cochera adicional',
     cnBudgetOutputs: '💰 Presupuesto y resultados', cnDownloadBoq: '📊 Descargar el listado de cantidades', cnPdfReport: '📄 Informe en PDF',
-    keyHowToTitle: '📝 Cómo obtener una clave para cada proveedor:', showAllPlansCur: 'Mostrar todos los planes y precios en tu moneda', currencyLabel: 'Moneda', plFreeMsgs: '5 mensajes al día',
+    keyHowToTitle: '📝 Cómo obtener una clave para cada proveedor:', showAllPlansCur: 'Mostrar todos los planes y precios en tu moneda', currencyLabel: 'Moneda', plFreeMsgs: '20 mensajes el primer día, luego 3 al día',
     plFreeVoice: 'Hasta 4 minutos de chat de voz', plFreeImgs: 'Hasta 3 imágenes con IA', plFreeNoVideo: 'Sin video', plStMsgs: '50 mensajes al día', plStVoice: 'Hasta 24 minutos de chat de voz',
     plStImgs: 'Hasta 15 imágenes', plStVideos: '1 video', plProMsgs: '100 mensajes al día', plProVoice: 'Hasta 61 minutos de chat de voz', plProMedia: 'Hasta 40 imágenes · 2 videos',
     plProAgent: 'El agente inteligente', plProPriority: 'Velocidad prioritaria · insignia dorada', plMaxAllPro: 'Todo lo de Pro · 250 mensajes al día', plMaxVoice: 'Hasta 213 minutos de chat de voz',
@@ -115,6 +115,20 @@ I18N['es'] = {
     "authTabLogin": "Iniciar sesión",
     "authTabSignup": "Registrarse",
     "authUsernameLabel": "Nombre de usuario",
+    "authIdPlaceholder": "Usuario o correo",
+    "authCreateAccount": "Crear cuenta nueva",
+    "authHaveAccount": "Ya tengo cuenta — Iniciar sesión",
+    "setGrpPersonal": "Personalización",
+    "setGrpAccount": "Cuenta",
+    "setGrpAppearance": "Apariencia",
+    "setGrpGeneral": "General",
+    "setEmailRow": "Correo",
+    "setNoEmail": "Añade un correo para recuperar tu cuenta",
+    "setPlanFree": "Gratis",
+    "setUpgradeTitle": "Haz más con Om ai",
+    "setUpgradeSub": "Límites más altos y funciones avanzadas.",
+    "setUpgradeBtn": "Mejorar",
+    "setChangePhoto": "Cambiar foto",
     "authPasswordLabel": "Contraseña",
     "authNewPasswordLabel": "Nueva contraseña",
     "authRecoveryLabel": "Código de recuperación",
@@ -131,6 +145,7 @@ I18N['es'] = {
     "clockWorldLabel": "🌍 Reloj mundial",
     "authBackToLogin": "Volver a iniciar sesión",
     "authSubmitReset": "Restablecer contraseña",
+    "authSubmitForgotEmail": "Enviarme un enlace por correo",
     "authRecoveryModalTitle": "🔑 Guarda este código de recuperación",
     "authRecoveryModalDesc": "Este es el único código que puedes usar para recuperar tu cuenta si olvidas tu contraseña. Guárdalo en un lugar seguro — no volverá a mostrarse.",
     "authCopyBtn": "📋 Copiar",
@@ -140,7 +155,7 @@ I18N['es'] = {
     "authOrDivider": "o",
     "authGoogleBtn": "Continuar con Google",
     "authSubmitSignup": "Crear cuenta",
-    "guestLimitMsg": "🎉 ¡Has usado tus 20 mensajes gratuitos! Inicia sesión en tu cuenta (o crea una) para seguir chateando.",
+    "guestLimitMsg": 'Crea una cuenta gratis para empezar a chatear: 20 mensajes el primer día y luego 3 al día.',
     
     
     
@@ -170,6 +185,8 @@ I18N['es'] = {
     "checkoutTitle": "Completar suscripción",
     "checkoutTestBadge": "🧪 Modo de prueba",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Regístrate o inicia sesión primero y luego suscríbete",
+    "checkoutAutoRenew": "🔁 Renovación automática mensual con tarjeta",
     "checkoutTelecomOption": "Facturación por operador (Etisalat/du)",
     "checkoutComingSoon": "Próximamente",
     "checkoutPlanLabelBasic": 'Plan Plus $10/mes — 360 puntos',
@@ -196,7 +213,7 @@ I18N['es'] = {
     "acctUsernameLabel": "Nombre de usuario",
     "acctPasswordRow": "Contraseña",
     "acctSaveBtn": "Guardar",
-    "acctEmailLabel": "📧 Correo de respaldo (para recuperar la contraseña)",
+    "acctEmailLabel": "Correo (si olvidas tu usuario o contraseña)",
     "acctReferralLabel": "🔗 Enlace para invitar amigos",
     "acctCopyBtn": "📋 Copiar",
     "acctReferralHint": "Por cada amigo que se registre con tu enlace, ambos reciben 10 mensajes gratuitos adicionales 🎁",
@@ -306,6 +323,7 @@ I18N['es'] = {
     "cancel": "Cancelar",
     "save": "Guardar",
     "defaultProjectTitle": "Nuevo proyecto",
+    "defaultShowcaseTitle": "Panel de control inteligente",
     "templatesBtn": "🧩 Plantillas",
     "templatesModalTitle": "🧩 Elige una plantilla",
     "useThisTemplate": "✅ Usar esta plantilla",
@@ -944,7 +962,7 @@ I18N['es'] = {
     designAiPlaceLabel: "Tipo de lugar", premiumOn: "Agente ACTIVADO ⚡ — respuesta directa, sin capas de estilo", premiumNeedLogin: "Inicia sesión para usar el Agente", memorySectionLabel: "Mi memoria", memoryIntro: "Esto es lo que la app recuerda sobre ti, tus proyectos y tu estilo de comunicación. Se sincroniza con tu cuenta en todos tus dispositivos, y puedes editarlo o eliminarlo.",
     memorySaveBtn: "Guardar cambios", memoryClearBtn: "Eliminar mi memoria", memoryEmpty: "Aún no hay nada guardado sobre ti.", memoryGuest: "Inicia sesión para ver tu memoria.", memoryConfirm: "¿Eliminar todo lo que la app recuerda sobre ti? Esta acción no se puede deshacer.", memorySaved: "Guardado y sincronizado con tu cuenta.", memorySaveError: "No se pudo guardar. Inténtalo de nuevo.",
     memoryLoadError: "No se pudo cargar la memoria en este momento.", fontFamilySectionLabel: "Estilo de fuente", fontFamilyHint: "Cambia los mensajes del chat en escritorio y móvil, sin modificar los bloques de código ni el diseño de la app.", guestImageMsg: "🎁 ¡Has usado tus 3 imágenes gratuitas de invitado! Crea una cuenta gratis en segundos y obtén 70 puntos de regalo para seguir generando y editando imágenes.",
-    planPer: "al mes", planFreePer: "para probar", planPtsFree: "puntos de bienvenida — una sola vez", planPtsMo: "puntos cada mes", planTag: "Más popular", planCurrentBtn: "Tu plan actual", planSoonBtn: "Próximamente", planFreeFeats: '<li>5 mensajes al día</li><li>Hasta 4 minutos de chat de voz</li><li>Hasta 3 imágenes con IA</li><li class="off">Sin video</li>',
+    planPer: "al mes", planFreePer: "para probar", planPtsFree: "puntos de bienvenida — una sola vez", planPtsMo: "puntos cada mes", planTag: "Más popular", planCurrentBtn: "Tu plan actual", planSoonBtn: "Próximamente", planFreeFeats: '<li>20 mensajes el primer día, luego 3 al día</li><li>Hasta 4 minutos de chat de voz</li><li>Hasta 3 imágenes con IA</li><li class="off">Sin video</li>',
     planPlusFeats: '<li>50 mensajes al día</li><li>Hasta 24 minutos de chat de voz</li><li>Hasta 15 imágenes</li><li>1 video</li>', planProFeats: '<li>100 mensajes al día</li><li>Hasta 61 minutos de chat de voz</li><li>Hasta 40 imágenes · 2 videos</li><li>El agente inteligente</li><li>Velocidad prioritaria · insignia dorada</li>',
     planMaxFeats: '<li>Todo lo de Pro · 250 mensajes al día</li><li>Hasta 213 minutos de chat de voz</li><li>Hasta 150 imágenes · 3 videos</li><li>Soporte dedicado</li>', checkoutPlanLabelMax: 'Plan Max $100/mes — 3,200 puntos', copyCode: "Copiar", copiedMsg: "Copiado ✅", emailAsst_connectText: "Conecta tu cuenta de Gmail para que la IA pueda leer tus correos y sugerir respuestas listas que apruebes antes de enviarlas.",
     emailAsst_connectBtn: "🔗 Conectar Gmail", emailAsst_disclaimer: "⚠️ Nunca se envía una respuesta sin tu aprobación explícita en cada mensaje.", emailAsst_title: "📧 Asistente de correo con IA", emailAsst_refresh: "Actualizar", emailAsst_loading: "Escaneando tu bandeja de entrada…", emailAsst_empty: "No hay correos nuevos que necesiten respuesta por ahora.",
@@ -1095,3 +1113,12 @@ Object.assign(I18N["es"], {"ownerSectionTitle": "👑 Página del propietario"})
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["es"], {"imgUnchanged": "⚠️ La edición no se aplicó: la imagen volvió sin cambios, así que no la mostré y no se te cobró. Di exactamente qué debe cambiar o exprésalo de otra forma."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["es"], {"mediaPlansTitle": "Planes de imágenes y video", "mediaPlansDesc": "Para quien solo quiere imágenes o videos, sin chat. Cada plan tiene su propio saldo y no se gasta en otra cosa.", "mediaImgName": "Imágenes", "mediaVidName": "Video", "mediaImgUnit": "imágenes de alta calidad", "mediaVidEco": "videos económicos", "mediaVidCine": "videos cinematográficos", "mediaVidSound": "videos con sonido", "mediaOr": "o", "mediaNoChatVideo": "Sin chat ni video", "mediaNoChatImage": "Sin chat ni imágenes", "mediaLeftImg": "Restante en tu plan de imágenes", "mediaLeftVid": "Restante en tu plan de video"});
+Object.assign(I18N["es"], {"mediaImgPlain": "imágenes", "mediaHighEq": "Una imagen de alta calidad = 2 imágenes", "mediaQLabel": "Calidad de imagen", "mediaQNormal": "⚡ Estándar", "mediaQHigh": "💎 Alta", "mediaQNormalDesc": "Rápida, ideal para redes sociales — 1 imagen de tu saldo", "mediaQHighDesc": "Más detalle, texto más claro, lista para imprimir — 2 imágenes de tu saldo", "mediaQHint": "O escribe «alta calidad» en tu solicitud para una sola imagen"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N["es"], {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Imágenes", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Puntos"});
+Object.assign(I18N["es"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para llamadas de voz con Maha. Tus minutos mensuales son solo para Maha; cuando se acaban, las llamadas siguen con tus puntos.", "mahaMinPlain": "minutos de llamada", "mahaMinUnit": "min", "mahaCapNote": "Hasta 10 minutos por llamada", "mahaNoChat": "Sin chat, imágenes ni video", "mahaLeft": "Minutos de Maha restantes", "mahaCapEnd": "La llamada terminó en el límite de 10 minutos — vuelve a llamar para continuar", "mahaToPoints": "Minutos agotados — continúa con tus puntos"});
+/* v-browser-install: خطوات التثبيت لكلّ متصفّح */
+Object.assign(I18N["es"], {"install":"Instalar la app","installHowIOS":"Para instalar en iPhone o iPad:\n1) Abre este sitio en Safari\n2) Toca el botón Compartir (cuadro con una flecha hacia arriba)\n3) Elige \"Añadir a pantalla de inicio\" y luego \"Añadir\"","installHowIOSOther":"Para instalar en iPhone desde este navegador:\n1) Toca el botón Compartir (cuadro con una flecha hacia arriba) junto a la barra de direcciones\n2) Elige \"Añadir a pantalla de inicio\"\nSi no aparece la opción, abre este sitio en Safari.","installHowAndroid":"Para instalar en Android:\n1) Abre el menú del navegador (⋮)\n2) Elige \"Instalar aplicación\" o \"Añadir a pantalla de inicio\"\n3) Confirma la instalación","installHowDesktop":"Para instalar en el ordenador (Chrome o Edge):\nHaz clic en el icono de instalar (⊕ o pantalla pequeña) de la barra de direcciones, o abre el menú del navegador (⋮ o …) y elige \"Instalar\" o \"Aplicaciones → Instalar este sitio como aplicación\".","installHowMacSafari":"Para instalar en Mac desde Safari:\nAbre el menú \"Archivo\" arriba, elige \"Añadir al Dock\" y luego \"Añadir\".","installHowFirefox":"Firefox en el ordenador no puede instalar aplicaciones web.\nAbre este sitio en Chrome o Edge y pulsa \"Instalar la app\", o instálala desde tu teléfono."});

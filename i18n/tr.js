@@ -26,7 +26,7 @@ I18N['tr'] = {
     worldMarketsTitle: 'Dünya piyasaları', pickStockTitle: 'Hisse seç', cnProjectData: '📋 Proje verileri', cnLandArea: 'Arsa alanı (m²) — isteğe bağlı', cnLandAreaPh: 'örn.: 500',
     cnEmirateOpt: 'Emirlik — isteğe bağlı', cnDetailsAnnexes: '🏠 Detaylar ve ekler', cnExElevator: 'İç asansör', cnExStore: 'Dış depo', cnExWaterTank: 'Su deposu', cnExSolar: 'Güneş panelleri',
     cnExPlayground: 'Dış oyun alanı', cnExCarport: 'Ek araba gölgeliği', cnBudgetOutputs: '💰 Bütçe ve çıktılar', cnDownloadBoq: '📊 Metraj cetvelini indir', cnPdfReport: '📄 PDF rapor',
-    keyHowToTitle: '📝 Her sağlayıcı için anahtar nasıl alınır:', showAllPlansCur: 'Tüm planları ve fiyatları kendi para biriminizde göster', currencyLabel: 'Para birimi', plFreeMsgs: 'Günde 5 mesaj',
+    keyHowToTitle: '📝 Her sağlayıcı için anahtar nasıl alınır:', showAllPlansCur: 'Tüm planları ve fiyatları kendi para biriminizde göster', currencyLabel: 'Para birimi', plFreeMsgs: 'İlk gün 20 mesaj, sonra günde 3',
     plFreeVoice: 'En fazla 4 dakika sesli sohbet', plFreeImgs: 'En fazla 3 AI görsel', plFreeNoVideo: 'Video yok', plStMsgs: 'Günde 50 mesaj', plStVoice: 'En fazla 24 dakika sesli sohbet', plStImgs: 'En fazla 15 görsel',
     plStVideos: '1 video', plProMsgs: 'Günde 100 mesaj', plProVoice: 'En fazla 61 dakika sesli sohbet', plProMedia: 'En fazla 40 görsel · 2 video', plProAgent: 'Akıllı ajan',
     plProPriority: 'Öncelikli hız · altın rozet', plMaxAllPro: "Pro'daki her şey · günde 250 mesaj", plMaxVoice: 'En fazla 213 dakika sesli sohbet', plMaxMedia: 'En fazla 150 görsel · 3 video',
@@ -114,6 +114,20 @@ I18N['tr'] = {
     "authTabLogin": "Giriş Yap",
     "authTabSignup": "Kayıt Ol",
     "authUsernameLabel": "Kullanıcı adı",
+    "authIdPlaceholder": "Kullanıcı adı veya e-posta",
+    "authCreateAccount": "Yeni hesap oluştur",
+    "authHaveAccount": "Hesabım var — Giriş yap",
+    "setGrpPersonal": "Kişiselleştirme",
+    "setGrpAccount": "Hesap",
+    "setGrpAppearance": "Görünüm",
+    "setGrpGeneral": "Genel",
+    "setEmailRow": "E-posta",
+    "setNoEmail": "Hesabını kurtarmak için e-posta ekle",
+    "setPlanFree": "Ücretsiz",
+    "setUpgradeTitle": "Om ai ile daha fazlası",
+    "setUpgradeSub": "Daha yüksek limitler ve gelişmiş özellikler.",
+    "setUpgradeBtn": "Yükselt",
+    "setChangePhoto": "Fotoğrafı değiştir",
     "authPasswordLabel": "Parola",
     "authNewPasswordLabel": "Yeni parola",
     "authRecoveryLabel": "Kurtarma kodu",
@@ -130,6 +144,7 @@ I18N['tr'] = {
     "clockWorldLabel": "🌍 Dünya Saati",
     "authBackToLogin": "Girişe dön",
     "authSubmitReset": "Parolayı sıfırla",
+    "authSubmitForgotEmail": "E-postaya sıfırlama bağlantısı gönder",
     "authRecoveryModalTitle": "🔑 Bu kurtarma kodunu kaydedin",
     "authRecoveryModalDesc": "Bu, parolanızı unutmanız durumunda hesabınızı kurtarmak için kullanabileceğiniz tek koddur. Güvenli bir yerde saklayın — bir daha gösterilmeyecektir.",
     "authCopyBtn": "📋 Kopyala",
@@ -139,7 +154,7 @@ I18N['tr'] = {
     "authOrDivider": "veya",
     "authGoogleBtn": "Google ile devam et",
     "authSubmitSignup": "Hesap Oluştur",
-    "guestLimitMsg": "🎉 20 ücretsiz mesajınızı kullandınız! Sohbete devam etmek için hesabınıza giriş yapın (veya bir hesap oluşturun).",
+    "guestLimitMsg": 'Sohbete başlamak için ücretsiz hesap oluşturun: ilk gün 20 mesaj, sonra günde 3.',
     
     
     
@@ -169,6 +184,8 @@ I18N['tr'] = {
     "checkoutTitle": "Aboneliği Tamamla",
     "checkoutTestBadge": "🧪 Test Modu",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Önce kaydolun veya giriş yapın, sonra abone olun",
+    "checkoutAutoRenew": "🔁 Kartla her ay otomatik yenileme",
     "checkoutTelecomOption": "Operatör Faturalandırması (Etisalat/du)",
     "checkoutComingSoon": "Yakında geliyor",
     "checkoutPlanLabelBasic": 'Plus Plan 10$/ay — 360 puan',
@@ -195,7 +212,7 @@ I18N['tr'] = {
     "acctUsernameLabel": "Kullanıcı adı",
     "acctPasswordRow": "Şifre",
     "acctSaveBtn": "Kaydet",
-    "acctEmailLabel": "📧 Yedek e-posta (parola kurtarma için)",
+    "acctEmailLabel": "E-posta (kullanıcı adını veya parolayı unutursan)",
     "acctReferralLabel": "🔗 Arkadaşlarını davet et bağlantısı",
     "acctCopyBtn": "📋 Kopyala",
     "acctReferralHint": "Bağlantınızla kayıt olan her arkadaşınız için ikinize de 10 ekstra ücretsiz mesaj verilir 🎁",
@@ -305,6 +322,7 @@ I18N['tr'] = {
     "cancel": "İptal",
     "save": "Kaydet",
     "defaultProjectTitle": "Yeni Proje",
+    "defaultShowcaseTitle": "Akıllı Kontrol Paneli",
     "templatesBtn": "🧩 Şablonlar",
     "templatesModalTitle": "🧩 Bir Şablon Seçin",
     "useThisTemplate": "✅ Bu Şablonu Kullan",
@@ -943,7 +961,7 @@ I18N['tr'] = {
     designAiPlaceLabel: "Mekan türü", premiumOn: "Ajan AÇIK ⚡ — doğrudan yanıt, stil katmanı yok", premiumNeedLogin: "Ajanı kullanmak için giriş yapın", memorySectionLabel: "Hafızam", memoryIntro: "Uygulamanın sizin hakkınızda, projeleriniz ve iletişim tarzınız hakkında hatırladıkları burada. Hesabınız üzerinden tüm cihazlarınızda senkronize olur, düzenleyebilir veya silebilirsiniz.",
     memorySaveBtn: "Değişiklikleri kaydet", memoryClearBtn: "Hafızamı sil", memoryEmpty: "Sizin hakkınızda henüz kaydedilmiş bir şey yok.", memoryGuest: "Hafızanızı görmek için giriş yapın.", memoryConfirm: "Uygulamanın sizin hakkınızda hatırladığı her şey silinsin mi? Bu işlem geri alınamaz.", memorySaved: "Kaydedildi ve hesabınızla senkronize edildi.", memorySaveError: "Kaydedilemedi. Lütfen tekrar deneyin.",
     memoryLoadError: "Hafıza şu anda yüklenemiyor.", fontFamilySectionLabel: "Yazı stili", fontFamilyHint: "Masaüstü ve mobilde sohbet mesajlarını değiştirir, kod bloklarını veya uygulama düzenini değiştirmez.", guestImageMsg: "🎁 3 ücretsiz misafir görselinizi kullandınız! Saniyeler içinde ücretsiz hesap oluşturun ve görsel oluşturmaya, düzenlemeye devam etmek için 70 hediye puan kazanın.", planPer: "aylık",
-    planFreePer: "denemek için", planPtsFree: "hoş geldin puanı — tek seferlik", planPtsMo: "her ay puan", planTag: "En popüler", planCurrentBtn: "Mevcut planınız", planSoonBtn: "Yakında", planFreeFeats: '<li>Günde 5 mesaj</li><li>En fazla 4 dakika sesli sohbet</li><li>En fazla 3 AI görsel</li><li class="off">Video yok</li>', planPlusFeats: '<li>Günde 50 mesaj</li><li>En fazla 24 dakika sesli sohbet</li><li>En fazla 15 görsel</li><li>1 video</li>',
+    planFreePer: "denemek için", planPtsFree: "hoş geldin puanı — tek seferlik", planPtsMo: "her ay puan", planTag: "En popüler", planCurrentBtn: "Mevcut planınız", planSoonBtn: "Yakında", planFreeFeats: '<li>İlk gün 20 mesaj, sonra günde 3</li><li>En fazla 4 dakika sesli sohbet</li><li>En fazla 3 AI görsel</li><li class="off">Video yok</li>', planPlusFeats: '<li>Günde 50 mesaj</li><li>En fazla 24 dakika sesli sohbet</li><li>En fazla 15 görsel</li><li>1 video</li>',
     planProFeats: '<li>Günde 100 mesaj</li><li>En fazla 61 dakika sesli sohbet</li><li>En fazla 40 görsel · 2 video</li><li>Akıllı ajan</li><li>Öncelikli hız · altın rozet</li>', planMaxFeats: "<li>Pro'daki her şey · günde 250 mesaj</li><li>En fazla 213 dakika sesli sohbet</li><li>En fazla 150 görsel · 3 video</li><li>Özel destek</li>", checkoutPlanLabelMax: 'Max Plan 100$/ay — 3.200 puan', copyCode: "Kopyala", copiedMsg: "Kopyalandı ✅",
     emailAsst_connectText: "AI’nin e-postalarınızı okuyup gönderilmeden önce onayladığınız hazır yanıtlar önerebilmesi için Gmail hesabınızı bağlayın.", emailAsst_connectBtn: "🔗 Gmail’i bağla", emailAsst_disclaimer: "⚠️ Her mesaj için açık onayınız olmadan asla yanıt gönderilmez.", emailAsst_title: "📧 AI E-posta Asistanı", emailAsst_refresh: "Yenile", emailAsst_loading: "Gelen kutunuz taranıyor…",
     emailAsst_empty: "Şu anda yanıt gerektiren yeni e-posta yok.", emailAsst_notConnected: "Gmail bağlı değil, lütfen yeniden bağlayın.", emailAsst_send: "✅ Gönder", emailAsst_ignore: "🚫 Bu göndereni yoksay", emailAsst_sending: "Gönderiliyor…", emailAsst_sent: "✅ Gönderildi", emailAsst_ignored: "🚫 Yoksayıldı — tekrar gösterilmeyecek", emailAsst_error: "❌ Hata: ", emailAsst_voiceBtn: "Sesli özet",
@@ -1093,3 +1111,12 @@ Object.assign(I18N["tr"], {"ownerSectionTitle": "👑 Sahip sayfası"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["tr"], {"imgUnchanged": "⚠️ Düzenleme uygulanmadı: görsel değişmeden döndü, bu yüzden göstermedim ve sizden düşülmedi. Tam olarak neyin değişmesi gerektiğini söyleyin ya da farklı ifade edin."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["tr"], {"mediaPlansTitle": "Görsel ve video abonelikleri", "mediaPlansDesc": "Yalnızca görsel veya video isteyenler için — sohbet yok. Her aboneliğin kendi bakiyesi vardır ve başka bir şeye harcanmaz.", "mediaImgName": "Görseller", "mediaVidName": "Video", "mediaImgUnit": "yüksek kaliteli görsel", "mediaVidEco": "ekonomik video", "mediaVidCine": "sinematik video", "mediaVidSound": "sesli video", "mediaOr": "veya", "mediaNoChatVideo": "Sohbet ve video yok", "mediaNoChatImage": "Sohbet ve görsel yok", "mediaLeftImg": "Görsel aboneliğinde kalan", "mediaLeftVid": "Video aboneliğinde kalan"});
+Object.assign(I18N["tr"], {"mediaImgPlain": "görsel", "mediaHighEq": "Yüksek kaliteli görsel = 2 görsel", "mediaQLabel": "Görsel kalitesi", "mediaQNormal": "⚡ Standart", "mediaQHigh": "💎 Yüksek", "mediaQNormalDesc": "Hızlı, sosyal medya için ideal — bakiyenden 1 görsel", "mediaQHighDesc": "Daha ince detay, daha net yazı, baskıya hazır — bakiyenden 2 görsel", "mediaQHint": "Ya da tek bir görsel için isteğine “yüksek kalite” yaz"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N["tr"], {"priceTabChat": "💬 Sohbet", "priceTabImg": "🖼️ Görseller", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Puanlar"});
+Object.assign(I18N["tr"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Maha sesli aramaları için. Aylık dakikalarınız yalnızca Maha içindir; bitince aramalar puanlarınızla devam eder.", "mahaMinPlain": "arama dakikası", "mahaMinUnit": "dk", "mahaCapNote": "Arama başına en fazla 10 dakika", "mahaNoChat": "Sohbet, görsel ve video yok", "mahaLeft": "Kalan Maha dakikası", "mahaCapEnd": "Arama 10 dakika sınırında bitti — devam etmek için tekrar arayın", "mahaToPoints": "Dakikalarınız bitti — puanlarla devam ediliyor"});
+/* v-browser-install: خطوات التثبيت لكلّ متصفّح */
+Object.assign(I18N["tr"], {"install":"Uygulamayı Yükle","installHowIOS":"iPhone veya iPad'e yüklemek için:\n1) Bu siteyi Safari'de açın\n2) Paylaş düğmesine dokunun (yukarı oklu kare)\n3) \"Ana Ekrana Ekle\"yi, ardından \"Ekle\"yi seçin","installHowIOSOther":"Bu tarayıcıdan iPhone'a yüklemek için:\n1) Adres çubuğunun yanındaki Paylaş düğmesine (yukarı oklu kare) dokunun\n2) \"Ana Ekrana Ekle\"yi seçin\nSeçenek yoksa bu siteyi Safari'de açın.","installHowAndroid":"Android'e yüklemek için:\n1) Tarayıcı menüsünü (⋮) açın\n2) \"Uygulamayı yükle\" veya \"Ana ekrana ekle\"yi seçin\n3) Yüklemeyi onaylayın","installHowDesktop":"Bilgisayara yüklemek için (Chrome veya Edge):\nAdres çubuğundaki yükleme simgesine (⊕ veya küçük ekran) tıklayın ya da tarayıcı menüsünü (⋮ veya …) açıp \"Yükle\" veya \"Uygulamalar → Bu siteyi uygulama olarak yükle\"yi seçin.","installHowMacSafari":"Mac'e Safari'den yüklemek için:\nÜstteki \"Dosya\" menüsünü açın, \"Dock'a Ekle\"yi, ardından \"Ekle\"yi seçin.","installHowFirefox":"Bilgisayardaki Firefox web uygulaması yükleyemez.\nBu siteyi Chrome veya Edge'de açıp \"Uygulamayı Yükle\"ye tıklayın ya da telefonunuzdan yükleyin."});

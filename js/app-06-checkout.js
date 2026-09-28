@@ -24,7 +24,8 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499 };
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211 }; // v-media-plans + v-maha-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
+const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
 // money on its own.
@@ -38,6 +39,51 @@ function buyPointsPack(amount){
   settingsToast(t('pricingComingSoon'));
 }
 window.buyPointsPack = buyPointsPack;
+
+// v-price-tabs: كلّ نوع اشتراك في قسمه — زرّ القسم يعرضه ويخفي البقيّة.
+function showPriceTab(tab){
+  const k = ['chat', 'img', 'vid', 'maha', 'pts'].includes(tab) ? tab : 'chat';
+  document.querySelectorAll('#pricingSection .priceTab').forEach(function(el){ el.style.display = el.getAttribute('data-tab') === k ? '' : 'none'; });
+  document.querySelectorAll('#priceTabs .priceTabBtn').forEach(function(b){ const on = b.getAttribute('data-tab') === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+}
+window.showPriceTab = showPriceTab;
+
+// v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
+function renderMediaPlanStatus(media){
+  const box = document.getElementById('mediaPlanStatus');
+  if(!box) return;
+  const m = media || {};
+  const lines = [];
+  if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' (' + t('mediaHighEq') + ')');
+  const vbox = document.getElementById('mediaVidStatus');
+  if(vbox){
+    vbox.innerHTML = (m.video && m.video.counts) ? (t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine')) : '';
+    vbox.style.display = (m.video && m.video.counts) ? 'block' : 'none';
+  }
+  if(!vbox && m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  box.innerHTML = lines.join('<br>');
+  box.style.display = lines.length ? 'block' : 'none';
+  const mbox = document.getElementById('mahaPlanStatus');
+  if(mbox){
+    mbox.innerHTML = (m.maha && m.maha.counts) ? (t('mahaLeft') + ': <b>' + (Number(m.maha.counts.maha_minute) || 0) + '</b> ' + t('mahaMinUnit')) : '';
+    mbox.style.display = (m.maha && m.maha.counts) ? 'block' : 'none';
+  }
+  const qb = document.getElementById('mediaQualityBox');
+  if(qb){
+    qb.style.display = m.image ? 'block' : 'none';
+    const q = (m.image && m.image.quality) === 'high' ? 'high' : 'normal';
+    qb.querySelectorAll('.mediaQBtn').forEach(function(b){ const on = b.getAttribute('data-q') === q; b.style.borderColor = on ? '#c9a227' : ''; b.style.background = on ? 'rgba(201,162,39,.16)' : 'transparent'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  }
+}
+async function setMediaQuality(q){
+  const token = authGet('aiapp_auth_token');
+  if(!token) return;
+  try{
+    const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'media-quality', token, quality:q }) });
+    if(r.ok) refreshPointsWallet();
+  }catch(e){ __swallow(e, 'media:quality'); }
+}
+window.setMediaQuality = setMediaQuality;
 
 // جلب رصيد النقاط وعرضه في صف المحفظة أعلى قسم الباقات
 async function refreshPointsWallet(){
@@ -54,6 +100,7 @@ async function refreshPointsWallet(){
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
+      renderMediaPlanStatus(d.media);
     } else { row.style.display = 'none'; }
   }catch(e){ /* صامت */ }
 }
@@ -63,6 +110,19 @@ window.refreshPointsWallet = refreshPointsWallet;
    تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
    يُستدعى تلقائيًا عند فتح قسم «حسابي» — لا زر ولا خطوة من المستخدم. */
 const ACCT_POINTS_LOW = 20;
+// v-acct-media: سطر لكلّ اشتراك ساري (صور · فيديو · مها) تحت رصيد النقاط في «حسابي».
+function renderAcctMedia(media){
+  const box = document.getElementById('acctMediaBox');
+  if(!box) return;
+  const m = media || {};
+  const row = (label, value) => '<div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-weight: var(--w-bold); white-space:nowrap;">' + label + '</span><span style="font-weight:800; color:#d4af37; text-align:end;">' + value + '</span></div>';
+  const rows = [];
+  if(m.image && m.image.counts) rows.push(row(t('priceTabImg'), (Number(m.image.counts.image_normal) || 0) + ' ' + t('mediaImgPlain')));
+  if(m.video && m.video.counts) rows.push(row(t('priceTabVid'), (Number(m.video.counts.minimax_video) || 0) + ' ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' ' + (Number(m.video.counts.omni_video) || 0) + ' ' + t('mediaVidCine')));
+  if(m.maha && m.maha.counts) rows.push(row(t('priceTabMaha'), (Number(m.maha.counts.maha_minute) || 0) + ' ' + t('mahaMinUnit')));
+  box.innerHTML = rows.join('');
+  box.style.display = rows.length ? 'flex' : 'none';
+}
 async function refreshAcctPoints(){
   const box = document.getElementById('acctPointsBox');
   const val = document.getElementById('acctPointsValue');
@@ -70,12 +130,13 @@ async function refreshAcctPoints(){
   const warnText = document.getElementById('acctPointsLowText');
   if(!box || !val) return;
   const token = authGet('aiapp_auth_token');
-  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
-    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     box.style.display = 'flex';
+    renderAcctMedia(d.media);
     if(d.unlimited){
       val.textContent = '∞';
       if(warn) warn.style.display = 'none';
@@ -112,14 +173,29 @@ function omranIOSStoreApp(){
 }
 
 function openCheckout(plan){
+  // v-checkout-login: الدفع بلا حساب كان يُخصم ولا يصل لأحد — التسجيل أوّلًا، ثمّ تعود النافذة نفسها بعد الدخول.
+  if(!authGet('aiapp_auth_token')){
+    window.__pendingCheckoutPlan = plan;
+    const sd0 = document.getElementById('settingsDialog');
+    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if(typeof window.requireLogin === 'function') window.requireLogin('checkout');
+    else settingsToast(t('checkoutLoginFirst'));
+    return;
+  }
   checkoutCurrentPlan = plan;
+  const arRow = document.getElementById('checkoutAutoRenewRow');
+  const arBox = document.getElementById('checkoutAutoRenew');
+  if (arBox) arBox.checked = false;
+  if (arRow) arRow.style.display = /^pack\d+$/.test(String(plan)) ? 'none' : 'flex';
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
   const overlay = document.getElementById('checkoutModalOverlay');
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
-  if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  const __mp = /^(img|vid|maha)_(basic|pro|max)$/.exec(String(plan));
+  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
+  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually
@@ -160,7 +236,7 @@ async function startStripeCheckout(){
     const r = await fetch('/api/account?action=create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token') }),
+      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token'), autoRenew: !!(document.getElementById('checkoutAutoRenew') || {}).checked }),
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
@@ -345,7 +421,7 @@ async function loadPaypalButtons(){
           const cr = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan }),
+            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan, token: authGet('aiapp_auth_token') }),
           });
           const cd = await cr.json();
           if (!cr.ok) throw new Error(cd.error || 'error');
@@ -1516,7 +1592,9 @@ async function readClaudeStream(res, onDelta){
 
 async function callOpenAILike(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_apikey');
-  const model = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
+  // v-openai-pick: السهم يحفظ معرّفًا بصيغة OpenRouter (openai/…) كي يعمل
+  // في مسار الأدوات؛ المفتاح الشخصي يتصل بـOpenAI نفسها فتُقصّ البادئة هنا.
+  const model = (localStorage.getItem('aiapp_model') || 'gpt-4o-mini').replace(/^openai\//i, '');
   // If the visitor hasn't entered their own OpenAI key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -1534,6 +1612,8 @@ async function callOpenAILike(messages, onDelta){
     const data = await res.json();
     return data.choices[0].message.content;
   }
+  const directBody = { model, messages: toOpenAIVisionMessages(messages), stream: !!onDelta };
+  if(!/^gpt-[56]/i.test(model)) directBody.temperature = 0.7;
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
       signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
     method: 'POST',
@@ -1541,7 +1621,7 @@ async function callOpenAILike(messages, onDelta){
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + apiKey,
     },
-    body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), temperature: 0.7, stream: !!onDelta }),
+    body: JSON.stringify(directBody),
   });
   if(!res.ok){
     const errText = await res.text();

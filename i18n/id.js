@@ -27,7 +27,7 @@ I18N['id'] = {
     cnEmirateOpt: 'Emirat — opsional', cnDetailsAnnexes: '🏠 Detail dan lampiran', cnExElevator: 'Lift dalam ruangan', cnExStore: 'Gudang luar', cnExWaterTank: 'Tangki air', cnExSolar: 'Panel surya',
     cnExPlayground: 'Taman bermain luar ruangan', cnExCarport: 'Kanopi mobil tambahan', cnBudgetOutputs: '💰 Anggaran dan hasil', cnDownloadBoq: '📊 Unduh daftar kuantitas',
     cnPdfReport: '📄 Laporan PDF', keyHowToTitle: '📝 Cara mendapatkan kunci untuk setiap penyedia:', showAllPlansCur: 'Tampilkan semua paket dan harga dalam mata uang Anda', currencyLabel: 'Mata uang',
-    plFreeMsgs: '5 pesan per hari', plFreeVoice: 'Hingga 4 menit obrolan suara', plFreeImgs: 'Hingga 3 gambar AI', plFreeNoVideo: 'Tanpa video', plStMsgs: '50 pesan per hari',
+    plFreeMsgs: '20 pesan di hari pertama, lalu 3 per hari', plFreeVoice: 'Hingga 4 menit obrolan suara', plFreeImgs: 'Hingga 3 gambar AI', plFreeNoVideo: 'Tanpa video', plStMsgs: '50 pesan per hari',
     plStVoice: 'Hingga 24 menit obrolan suara', plStImgs: 'Hingga 15 gambar', plStVideos: '1 video', plProMsgs: '100 pesan per hari', plProVoice: 'Hingga 61 menit obrolan suara',
     plProMedia: 'Hingga 40 gambar · 2 video', plProAgent: 'Agen pintar', plProPriority: 'Kecepatan prioritas · lencana emas', plMaxAllPro: 'Semua yang ada di Pro · 250 pesan per hari',
     plMaxVoice: 'Hingga 213 menit obrolan suara', plMaxMedia: 'Hingga 150 gambar · 3 video', plMaxSupport: 'Dukungan khusus',
@@ -114,6 +114,20 @@ I18N['id'] = {
     "authTabLogin": "Masuk",
     "authTabSignup": "Daftar",
     "authUsernameLabel": "Nama pengguna",
+    "authIdPlaceholder": "Nama pengguna atau email",
+    "authCreateAccount": "Buat akun baru",
+    "authHaveAccount": "Saya punya akun — Masuk",
+    "setGrpPersonal": "Personalisasi",
+    "setGrpAccount": "Akun",
+    "setGrpAppearance": "Tampilan",
+    "setGrpGeneral": "Umum",
+    "setEmailRow": "Email",
+    "setNoEmail": "Tambahkan email untuk memulihkan akun",
+    "setPlanFree": "Gratis",
+    "setUpgradeTitle": "Lebih banyak dengan Om ai",
+    "setUpgradeSub": "Batas lebih tinggi dan fitur lanjutan.",
+    "setUpgradeBtn": "Tingkatkan",
+    "setChangePhoto": "Ganti foto",
     "authPasswordLabel": "Kata sandi",
     "authNewPasswordLabel": "Kata sandi baru",
     "authRecoveryLabel": "Kode pemulihan",
@@ -130,6 +144,7 @@ I18N['id'] = {
     "clockWorldLabel": "🌍 Jam Dunia",
     "authBackToLogin": "Kembali ke halaman masuk",
     "authSubmitReset": "Atur ulang kata sandi",
+    "authSubmitForgotEmail": "Kirim tautan reset ke email",
     "authRecoveryModalTitle": "🔑 Simpan kode pemulihan ini",
     "authRecoveryModalDesc": "Ini adalah satu-satunya kode yang dapat Anda gunakan untuk memulihkan akun jika Anda lupa kata sandi. Simpan di tempat yang aman — kode ini tidak akan ditampilkan lagi.",
     "authCopyBtn": "📋 Salin",
@@ -139,7 +154,7 @@ I18N['id'] = {
     "authOrDivider": "atau",
     "authGoogleBtn": "Lanjutkan dengan Google",
     "authSubmitSignup": "Buat Akun",
-    "guestLimitMsg": "🎉 Anda telah menggunakan 20 pesan gratis! Masuk ke akun Anda (atau buat akun baru) untuk terus mengobrol.",
+    "guestLimitMsg": 'Buat akun gratis untuk mulai mengobrol: 20 pesan di hari pertama, lalu 3 per hari.',
     
     
     
@@ -169,6 +184,8 @@ I18N['id'] = {
     "checkoutTitle": "Selesaikan Langganan",
     "checkoutTestBadge": "🧪 Mode Uji Coba",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Daftar atau masuk dulu, lalu berlangganan",
+    "checkoutAutoRenew": "🔁 Perpanjangan otomatis bulanan dengan kartu",
     "checkoutTelecomOption": "Tagihan Operator (Etisalat/du)",
     "checkoutComingSoon": "Segera hadir",
     "checkoutPlanLabelBasic": 'Paket Plus $10/bln — 360 poin',
@@ -195,7 +212,7 @@ I18N['id'] = {
     "acctUsernameLabel": "Nama pengguna",
     "acctPasswordRow": "Kata sandi",
     "acctSaveBtn": "Simpan",
-    "acctEmailLabel": "📧 Email cadangan (untuk pemulihan kata sandi)",
+    "acctEmailLabel": "Email (jika lupa nama pengguna atau kata sandi)",
     "acctReferralLabel": "🔗 Tautan undang teman",
     "acctCopyBtn": "📋 Salin",
     "acctReferralHint": "Untuk setiap teman yang mendaftar dengan tautan Anda, Anda berdua mendapatkan 10 pesan gratis tambahan 🎁",
@@ -305,6 +322,7 @@ I18N['id'] = {
     "cancel": "Batal",
     "save": "Simpan",
     "defaultProjectTitle": "Proyek Baru",
+    "defaultShowcaseTitle": "Dasbor Pintar",
     "templatesBtn": "🧩 Templat",
     "templatesModalTitle": "🧩 Pilih Templat",
     "useThisTemplate": "✅ Gunakan Templat Ini",
@@ -943,7 +961,7 @@ I18N['id'] = {
     designAiPlaceLabel: "Jenis tempat", premiumOn: "Agen AKTIF ⚡ — jawaban langsung, tanpa lapisan gaya", premiumNeedLogin: "Masuk untuk menggunakan Agen", memorySectionLabel: "Memori saya", memoryIntro: "Ini yang diingat aplikasi tentang Anda, proyek Anda, dan gaya komunikasi Anda. Tersinkron dengan akun Anda di semua perangkat, dan Anda dapat mengedit atau menghapusnya.", memorySaveBtn: "Simpan perubahan",
     memoryClearBtn: "Hapus memori saya", memoryEmpty: "Belum ada yang tersimpan tentang Anda.", memoryGuest: "Masuk untuk melihat memori Anda.", memoryConfirm: "Hapus semua yang diingat aplikasi tentang Anda? Ini tidak dapat dibatalkan.", memorySaved: "Tersimpan dan tersinkron dengan akun Anda.", memorySaveError: "Gagal menyimpan. Silakan coba lagi.", memoryLoadError: "Memori tidak dapat dimuat saat ini.",
     fontFamilySectionLabel: "Gaya font", fontFamilyHint: "Mengubah pesan chat di desktop dan seluler, tanpa mengubah blok kode atau tata letak aplikasi.", guestImageMsg: "🎁 Anda telah menggunakan 3 gambar gratis sebagai tamu! Buat akun gratis dalam hitungan detik dan dapatkan 70 poin hadiah untuk terus membuat dan mengedit gambar.", planPer: "per bulan", planFreePer: "untuk mencoba",
-    planPtsFree: "poin selamat datang — sekali saja", planPtsMo: "poin setiap bulan", planTag: "Paling populer", planCurrentBtn: "Paket Anda saat ini", planSoonBtn: "Segera", planFreeFeats: '<li>5 pesan per hari</li><li>Hingga 4 menit obrolan suara</li><li>Hingga 3 gambar AI</li><li class="off">Tanpa video</li>', planPlusFeats: '<li>50 pesan per hari</li><li>Hingga 24 menit obrolan suara</li><li>Hingga 15 gambar</li><li>1 video</li>',
+    planPtsFree: "poin selamat datang — sekali saja", planPtsMo: "poin setiap bulan", planTag: "Paling populer", planCurrentBtn: "Paket Anda saat ini", planSoonBtn: "Segera", planFreeFeats: '<li>20 pesan di hari pertama, lalu 3 per hari</li><li>Hingga 4 menit obrolan suara</li><li>Hingga 3 gambar AI</li><li class="off">Tanpa video</li>', planPlusFeats: '<li>50 pesan per hari</li><li>Hingga 24 menit obrolan suara</li><li>Hingga 15 gambar</li><li>1 video</li>',
     planProFeats: '<li>100 pesan per hari</li><li>Hingga 61 menit obrolan suara</li><li>Hingga 40 gambar · 2 video</li><li>Agen pintar</li><li>Kecepatan prioritas · lencana emas</li>', planMaxFeats: '<li>Semua yang ada di Pro · 250 pesan per hari</li><li>Hingga 213 menit obrolan suara</li><li>Hingga 150 gambar · 3 video</li><li>Dukungan khusus</li>', checkoutPlanLabelMax: 'Paket Max $100/bln — 3.200 poin', copyCode: "Salin",
     copiedMsg: "Disalin ✅", emailAsst_connectText: "Hubungkan akun Gmail Anda agar AI dapat membaca email Anda dan menyarankan balasan siap pakai yang Anda setujui sebelum dikirim.", emailAsst_connectBtn: "🔗 Hubungkan Gmail", emailAsst_disclaimer: "⚠️ Tidak ada balasan yang pernah dikirim tanpa persetujuan eksplisit Anda pada setiap pesan.", emailAsst_title: "📧 Asisten Email AI", emailAsst_refresh: "Segarkan",
     emailAsst_loading: "Memindai kotak masuk Anda…", emailAsst_empty: "Tidak ada email baru yang perlu dibalas saat ini.", emailAsst_notConnected: "Gmail tidak terhubung, silakan hubungkan kembali.", emailAsst_send: "✅ Kirim", emailAsst_ignore: "🚫 Abaikan pengirim ini", emailAsst_sending: "Mengirim…", emailAsst_sent: "✅ Terkirim", emailAsst_ignored: "🚫 Diabaikan — tidak akan muncul lagi",
@@ -1094,3 +1112,12 @@ Object.assign(I18N["id"], {"ownerSectionTitle": "👑 Halaman pemilik"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["id"], {"imgUnchanged": "⚠️ Edit tidak diterapkan: gambar kembali tanpa perubahan, jadi tidak saya tampilkan dan tidak dihitung ke akunmu. Jelaskan persis apa yang harus berubah atau ucapkan dengan cara lain."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["id"], {"mediaPlansTitle": "Langganan gambar & video", "mediaPlansDesc": "Untuk yang hanya ingin gambar atau video — tanpa chat. Setiap langganan punya saldo sendiri dan tidak bisa dipakai untuk hal lain.", "mediaImgName": "Gambar", "mediaVidName": "Video", "mediaImgUnit": "gambar berkualitas tinggi", "mediaVidEco": "video hemat", "mediaVidCine": "video sinematik", "mediaVidSound": "video bersuara", "mediaOr": "atau", "mediaNoChatVideo": "Tanpa chat dan video", "mediaNoChatImage": "Tanpa chat dan gambar", "mediaLeftImg": "Sisa di langganan gambar", "mediaLeftVid": "Sisa di langganan video"});
+Object.assign(I18N["id"], {"mediaImgPlain": "gambar", "mediaHighEq": "Satu gambar kualitas tinggi = 2 gambar", "mediaQLabel": "Kualitas gambar", "mediaQNormal": "⚡ Standar", "mediaQHigh": "💎 Tinggi", "mediaQNormalDesc": "Cepat, cocok untuk media sosial — 1 gambar dari saldo Anda", "mediaQHighDesc": "Detail lebih halus, teks lebih jelas, siap cetak — 2 gambar dari saldo Anda", "mediaQHint": "Atau tulis “kualitas tinggi” di permintaan Anda untuk satu gambar"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N["id"], {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Gambar", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Poin"});
+Object.assign(I18N["id"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Untuk panggilan suara dengan Maha. Menit bulanan hanya untuk Maha; jika habis, panggilan berlanjut dengan poin Anda.", "mahaMinPlain": "menit panggilan", "mahaMinUnit": "mnt", "mahaCapNote": "Hingga 10 menit per panggilan", "mahaNoChat": "Tanpa chat, gambar, atau video", "mahaLeft": "Sisa menit Maha", "mahaCapEnd": "Panggilan berakhir di batas 10 menit — hubungi lagi untuk melanjutkan", "mahaToPoints": "Menit habis — lanjut dengan poin"});
+/* v-browser-install: خطوات التثبيت لكلّ متصفّح */
+Object.assign(I18N["id"], {"install":"Pasang Aplikasi","installHowIOS":"Untuk memasang di iPhone atau iPad:\n1) Buka situs ini di Safari\n2) Ketuk tombol Bagikan (kotak dengan panah ke atas)\n3) Pilih \"Tambah ke Layar Utama\", lalu \"Tambah\"","installHowIOSOther":"Untuk memasang di iPhone dari browser ini:\n1) Ketuk tombol Bagikan (kotak dengan panah ke atas) di dekat bilah alamat\n2) Pilih \"Tambah ke Layar Utama\"\nJika opsinya tidak ada, buka situs ini di Safari.","installHowAndroid":"Untuk memasang di Android:\n1) Buka menu browser (⋮)\n2) Pilih \"Instal aplikasi\" atau \"Tambahkan ke Layar utama\"\n3) Konfirmasi pemasangan","installHowDesktop":"Untuk memasang di komputer (Chrome atau Edge):\nKlik ikon instal (⊕ atau layar kecil) di bilah alamat, atau buka menu browser (⋮ atau …) lalu pilih \"Instal\" atau \"Aplikasi → Instal situs ini sebagai aplikasi\".","installHowMacSafari":"Untuk memasang di Mac dari Safari:\nBuka menu \"File\" di atas, pilih \"Add to Dock\", lalu \"Add\".","installHowFirefox":"Firefox di komputer tidak dapat memasang aplikasi web.\nBuka situs ini di Chrome atau Edge lalu klik \"Pasang Aplikasi\", atau pasang dari ponsel Anda."});

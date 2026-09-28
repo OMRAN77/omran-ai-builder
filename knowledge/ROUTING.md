@@ -85,37 +85,39 @@ injectNote(action, body, country)                 ai.js:358
 
 ## ٣. مسار المحادثة الرئيسيّ (`action=chat`)
 
-`api/ai.js:31` يسلّم كلّ شيء إلى `api/_lib/chat.js:1059`. **لا يمرّ بـ`injectNote` إطلاقًا.**
+`api/ai.js:31` يسلّم كلّ شيء إلى `api/_lib/chat.js:1076`. **لا يمرّ بـ`injectNote` إطلاقًا.**
 
 ### ٣-أ. اختيار الوجهة والمفتاح
 
 ```
 prov (من body.provider، افتراضه 'claude')
 │
-├─ viaOR ؟                                        chat.js:1080
+├─ viaOR ؟                                        chat.js:1097
 │     claude:  لا ANTHROPIC_API_KEY  و  يوجد OPENROUTER_API_KEY
 │     غيره:    يوجد OPENROUTER_API_KEY
 │
-├─ المفتاح   = viaOR ? OPENROUTER_API_KEY : ANTHROPIC_API_KEY     chat.js:1083
-│     (لا مفتاح → 500 صريح، لا هبوط صامت)                          chat.js:1084
+├─ المفتاح الأوّليّ = viaOR ? OPENROUTER_API_KEY : ANTHROPIC_API_KEY   chat.js:1100
+│     (فحص غيابه بعد اختيار المسار الفعليّ، لا هنا)                chat.js:1468
 │
-├─ العنوان   = viaOR ? openrouter.ai/api/v1/messages              chat.js:1085
+├─ العنوان   = viaOR ? openrouter.ai/api/v1/messages              chat.js:1101
 │                    : api.anthropic.com/v1/messages
 │
-└─ النموذج الافتراضيّ                              chat.js:1091
+└─ النموذج الافتراضيّ                              chat.js:1107
       viaOR → OR_MODELS[prov]        (chat.js:593)
-      وإلّا → CHAT_CLAUDE_MODEL أو 'claude-sonnet-5'
+      وإلّا → CHAT_CLAUDE_MODEL أو 'claude-haiku-4-5'
 ```
 
-**v-plan-routing (قرار المالك ٢٠ سبتمبر):** الحقول الأربعة أعلاه `let` لا `const`، لأنّ `applyRoute(p, model)`
-(`chat.js:1124`) يعيد ضبطها معًا (المزوّد · الوسيط · المفتاح · العنوان · الموديل) بقرار الباقة أو بالالتقاط.
-مزوّد بلا مفتاح في البيئة لا يُختار (تعود false فلا يتغيّر شيء).
+**v-plan-routing (قرار المالك ٢٠ سبتمبر):** الحقول الأربعة أعلاه `let` لا `const`، لأنّ `applyRoute(p, model, direct)`
+(`chat.js:1144`) يعيد ضبط الوجهة مع قرار الباقة أو بالالتقاط (المزوّد · الوسيط · المفتاح · العنوان · الموديل).
+مزوّد بلا مفتاح في البيئة لا يُختار (تعود false فلا يتغيّر شيء). فحص المفتاح النهائيّ يأتي **بعد**
+اختيار المسار الفعليّ: الباقة/المجانيّ/المباشر؛ المسار المجانيّ يستخدم مفاتيح سلسلة الاحتياط،
+والمباشر مفتاح مزوّده، ولا يُطلب مفتاح Anthropic/OpenRouter لهما.
 
-**اختيار المستخدم للنموذج — للمالك وحده:** `chat.js:1098` يستدعي `pickClaudeModel`
+**اختيار المستخدم للنموذج — للمالك وحده:** `chat.js:1114` يستدعي `pickClaudeModel`
 (`chat.js:586`) فقط إن كان `prov === 'claude'` **و**الطالب المالك. القائمة المقبولة حصرًا
 `CLAUDE_MODELS` (`chat.js:580`) — أيّ اسم خارجها يسقط للافتراضيّ بلا خطأ.
 
-**v-owner-direct (أمر المالك ٢٢ سبتمبر) — Groq وGPT مباشرةً للمالك:** `chat.js:1103` — إن كان الطالب المالك والمزوّد
+**v-owner-direct (أمر المالك ٢٢ سبتمبر) — Groq وGPT مباشرةً للمالك:** `chat.js:1119` — إن كان الطالب المالك والمزوّد
 `groq` أو `openai` ومفتاحه (`GROQ_API_KEY` / `OPENAI_API_KEY`) في البيئة، يُرسل الطلب إلى عنوان المزوّد نفسه
 (`api.groq.com` بصيغة chat/completions، و`api.openai.com` بصيغة `/v1/responses` — v-oa-responses: GPT المفكّر لا يقبل
 الأدوات في chat/completions — مع chat/completions احتياطًا إن رفض responses الطلب لسبب غير الموديل) عبر
@@ -126,44 +128,45 @@ prov (من body.provider، افتراضه 'claude')
 ### ٣-ب. بوّابة الطبقة والحصّة
 
 ```
-resolveTier(username)                             tier.js:153
+resolveTier(username)                             tier.js:183
 │  لا اسم           → guest            (cap = caps().guest)
-│  المالك            → owner  · subscriber:true · cap = ∞     tier.js:133
+│  المالك            → owner  · subscriber:true · cap = ∞     tier.js:163
 │  VIP              → vip    · subscriber:true · cap = ∞
-│  باقة سارية        → sub    · subscriber:true · cap = caps()[plan]   planActive: tier.js:138
+│  باقة سارية        → sub    · subscriber:true · cap = caps()[plan]   planActive: tier.js:168
 │  وإلّا             → free   · subscriber:false
 │  (نتيجة مخبّأة TIER_CACHE_MS لكلّ اسم)
 │
-planRoute(tier, reqProv, lastUserText)            tier.js:51  ← v-plan-routing (مشترك فقط)
-│  الجدول PLAN_ROUTING                             tier.js:37
-│    basic (Plus): دردشة DeepSeek · قويّ DeepSeek · مسموح deepseek/groq · التقاط groq
-│    pro:          دردشة DeepSeek · قويّ Claude Haiku 4.5 · مسموح deepseek/groq/gemini/mistral · التقاط gemini→deepseek
-│    max:          دردشة Claude Haiku 4.5 · قويّ Claude Sonnet 5 · مسموح الكلّ · التقاط openai→gemini→deepseek
-│  الدور القويّ = isStrongTurn (tier.js:44): كتلة كود، أو ≥ ٦٠٠ حرف، أو كلمات برمجة/بناء/رياضيات
-│  المطلوب من المنتقي يُقبل إن كان في المسموح، وإلّا افتراضيّ الباقة؛ القويّ يغلب المطلوب
-│  التطبيق في chat.js:1195 (قبل الحصّة كي تُعدّ الرسالة على المزوّد الذي يخدمها فعلًا)
+planRoute(tier, reqProv, lastUserText, used, env, hasImage)   tier.js:71  ← v-plan-routing (مشترك فقط)
+│  الجدول PLAN_ROUTING (tier.js:46، v-plan-jobs): كلّ رسالة وظيفةٌ turnJob (tier.js:60، فوق isStrongTurn tier.js:54) → مزوّدها المختصّ
+│    دردشة: Plus/Pro → Groq مباشر · Max → Haiku (حتّى ١٥٠/يوم) ثمّ Groq
+│    كود: Plus → Haiku (٥/يوم) · Pro → Haiku (١٠/يوم) · Max → Sonnet 5 (٣٠/يوم) ثمّ Haiku — ثمّ DeepSeek
+│    رياضيّات/ملفّ طويل: DeepSeek · صورة مرفقة: Gemini مباشر
+│    الحدود SUB_HAIKU_BASIC/PRO/MAX وSUB_SONNET_MAX، عدّاد لكلّ موديل (plan-haiku/plan-sonnet) يُزاد بعد قبول الحصّة
+│    الالتقاط: Gemini → DeepSeek → Groq (بلا كلود). السقف الكلّيّ في سلّة «plan». منتقي Max للدردشة فقط وبلا GPT
+│  مزوّد مباشر بلا مفتاحه، أو غير كلود بلا مفتاح الوسيط → يُتخطّى (applyRoute تعود false)
+│  التطبيق في chat.js:1216 (قبل الحصّة كي تُعدّ الرسالة على المزوّد الذي يخدمها فعلًا)
 │  المالك · VIP · المجانيّ · الضيف → null (لا يمرّون هنا)
 │
-checkAndConsume(...)                              chat.js:1201
+checkAndConsume(...)                              chat.js:1228
 │  السلّة = غير مشترك ? 'chat' : prov   ← المجانيّ سقفه رقم واحد، والمشترك سلّة مزوّده
 │
-├─ usage.allowed === false                        chat.js:1202
+├─ usage.allowed === false                        chat.js:1229
 │    ├─ reason 'auth'          → «الجلسة منتهية…»
 │    ├─ free / guest           → tier:'free-limit' | 'guest-limit' + نصّ + done
 │    │                            (**لا هبوط لمزوّد آخر** — كلّها مغلقة أمامه)
 │    └─ مشترك تجاوز سقفه        → FREE_TEXT.subLimit(cap)
 │
-└─ __freeLane = usage.tier && !usage.subscriber   chat.js:1217
+└─ __freeLane = usage.tier && !usage.subscriber   chat.js:1245
 ```
 
 ### ٣-ج. بناء تعليمات النظام
 
 ```
-sysParts                                          chat.js:1272
+sysParts                                          chat.js:1300
 ├─ رسائل system من العميل (ما عدا نسخة الذاكرة القديمة — isClientMemoryNote)
 ├─ body.system إن وُجد
 ├─ ذاكرة الحساب (memoryPromptBlock)
-└─ التعليمات المخصّصة                              chat.js:1279
+└─ التعليمات المخصّصة                              chat.js:1307
       customInstructionsBlock(body.customInstructions)   chat.js:63
       سقف 1500 حرفًا · تعلو على الأسلوب الافتراضيّ · تحت الهويّة والأبواب المقفلة
 
@@ -175,10 +178,12 @@ PERSONA_NOTE هو ميثاق الشخصيّة (الهويّة · اللغة · �
 ### ٣-د. الطبقة المجانيّة تنتهي هنا
 
 ```
-if (__freeLane)                                   chat.js:1414
-   send({tier}) ثمّ streamFreeChain(...)           free-chain.js:156
-   بلا أدوات · بلا بحث حيّ · بلا صور · وينتهي الطلب
-   فشل السلسلة كلّها → logError + tierDiag + FREE_TEXT.busy   (لا خطأ تقنيّ للمستخدم)
+if (__freeLane || !__visionRoute)                 chat.js:1453
+   للمجانيّ: send({tier}) ثمّ streamFreeChain(...) free-chain.js:167
+   بلا أدوات · بلا بحث حيّ · الصورة تُمرَّر فقط لمزوّد يرى (Gemini)، وينتهي الطلب
+   الصورة تطلب الرؤية تلقائيًّا؛ لا تُرسل إلى مزوّد نصّيّ أعمى
+   فشل السلسلة كلّها → logError + tierDiag + FREE_TEXT.busy
+   وفشل الصورة → FREE_TEXT.imageBusy صريح (لا تخمين أعمى ولا هبوط للعميل)
 ```
 
 ### ٣-هـ. المشترك: الجولة مع الأدوات
@@ -189,31 +194,34 @@ if (__freeLane)                                   chat.js:1414
 من يمرّ بهذا المسار من العميل: `TOOL_PROVIDERS` في `app-06` — claude · openai · gemini · deepseek · mistral ·
 groq · cohere (v-cohere-tools: Cohere عبر الوسيط `cohere/command-a`). Perplexity و«OpenRouter» العامّ يبقيان
 على المسار المباشر (§٢) **بلا أدوات** — Sonar لا يقبل أدوات وبحثه مدمج.
-دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:560` / `chat.js:1369`.
+دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:560` / `chat.js:1403`.
 
 ---
 
 ## ٤. سلسلة الاحتياط المجانيّة
 
 ```
-streamFreeChain(args)                             free-chain.js:156
+streamFreeChain(args)                             free-chain.js:167
 │
-├─ الترتيب: freeChain(env)                        tier.js:198
-│     من FREE_CHAIN في البيئة، وإلّا DEFAULT_CHAIN  tier.js:111
+├─ الترتيب: freeChain(env)                        tier.js:231
+│     من FREE_CHAIN في البيئة، وإلّا DEFAULT_CHAIN  tier.js:141
 │     ['groq','gemini','mistral','openrouter']   ← v-plan-routing: Groq أوّلًا (المجّاني ٥ رسائل عليه)
 │     ومزوّد بلا مفتاح يُستبعد من القائمة أصلًا
 │
-├─ لكلّ مزوّد: modelsToTry                         free-chain.js:244
+├─ لكلّ مزوّد: modelsToTry                         free-chain.js:257
 │     المفضّل من البيئة أوّلًا، ثمّ مرشّحو المزوّد، ثمّ استكشاف /models
 │     والمتقاعدون مستبعَدون (RETIRED_MODELS)
 │
-├─ نجح → rememberWorking(id, model)               free-chain.js:251
+├─ نجح → rememberWorking(id, model)               free-chain.js:264
 │     يُحفظ في ذاكرة العمليّة فلا تتكرّر المحاولات كلّ رسالة
 │
 ├─ فشل (429 أو أيّ عطل) → المزوّد التالي **بصمت**
 └─ فشل الجميع → {ok:false, errors}
 ```
 
+في دور الصورة تُشتقّ ضرورة الرؤية تلقائيًّا من المحادثة في `free-chain.js:175`؛
+تُستبعد كلّ الوجهات العمياء في `free-chain.js:176`، ولو لم يبقَ مزوّد رؤية يُعاد
+`no-vision-provider` صراحةً (`free-chain.js:184`). لا تحاول السلسلة نصًّا بديلًا بلا بكسلات.
 كلّها بصيغة OpenAI المتوافقة (`chat/completions` + SSE) فدالّة بثّ واحدة تكفي.
 ملاحظة نظامها `FREE_NOTE` — `free-chain.js:18` (بلا اسم أيّ مزوّد — قرار المالك).
 
@@ -223,15 +231,15 @@ streamFreeChain(args)                             free-chain.js:156
 
 | الحالة | أين | ماذا يحدث |
 |--------|-----|-----------|
-| لا `ANTHROPIC_API_KEY` ولا `OPENROUTER_API_KEY` | `chat.js:1084` | 500 صريح — **لا هبوط** |
-| الطبقة المجانيّة | `chat.js:1414` | السلسلة المجانيّة، وينتهي الطلب |
+| لا مفتاح بعد تحديد المسار الفعليّ (وليس قبل اختيار المجانيّ/المباشر/الباقة) | `chat.js:1468` | خطأ صريح عند الحاجة لمفتاح Anthropic/OpenRouter فقط؛ المجانيّ بسلسلته والمباشر بمفتاحه |
+| الطبقة المجانيّة أو صورة بلا مسار رؤية مدفوع متاح | `chat.js:1453` | سلسلة احتياط تستبعد الوجهات العمياء تلقائيًّا للصورة، وينتهي الطلب |
 | 400 على حقول إطفاء التفكير (وسيط OpenRouter، غير كلود) | قبل الفشل النهائيّ (`v-chat-fast`، `chat/or-quick-400`) | إعادة فوريّة بلا الحقل المرفوض (`thinking`/`reasoning`)، ويُذكَر المستوى لبقيّة عمر الدالّة (`__orQuick.level`) |
-| مشترك: تعطّل مزوّد باقته **قبل أوّل حرف** | `chat.js:1533` (`v-plan-routing`، `chat/plan-fallback-<status>`) | التالي في سلسلة الباقة **بصمت** (أرخص فأرخص، مزوّد بلا مفتاح يُتخطّى) قبل الهبوط المجانيّ أدناه |
-| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1548` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
-| … ودور فيه **صورة** | نفس الموضع (`v-img-no-blind`) | `requireVision`: المزوّدات بلا رؤية تُستبعد (Gemini وحده يرى)؛ لا مزوّد يرى → `FREE_TEXT.imageBusy` صريح، **لا تأليف** ولا هبوط للعميل. المالك وحده يرى `modelLabel: احتياط · مزوّد/نموذج`. نفاد الرصيد (402) → إشعار دفع للمالك مرّة كلّ ٦ ساعات (`_owner-alert.js`) |
-| فشل السلسلة أيضًا | نفس الموضع | `tierDiag` + `error` مع `fallback:true` فيهبط العميل بمساره القديم |
+| مشترك: تعطّل مزوّد باقته **قبل أوّل حرف** | `chat.js:1578` (`v-plan-routing`، `chat/plan-fallback-<status>`) | التالي في سلسلة الباقة **بصمت** (أرخص فأرخص، مزوّد بلا مفتاح أو رؤية للصورة يُتخطّى) قبل الهبوط المجانيّ أدناه |
+| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1594` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
+| … ودور فيه **صورة** | نفس الموضع (`v-img-no-blind`) | صورة المحادثة تفرض الرؤية تلقائيًّا؛ المزوّدات العمياء تُستبعد، ولا مزوّد يرى → `FREE_TEXT.imageBusy` صريح، **لا تأليف** ولا هبوط للعميل. المالك وحده يرى `modelLabel: احتياط · مزوّد/نموذج`. نفاد الرصيد (402) → إشعار دفع للمالك مرّة كلّ ٦ ساعات (`_owner-alert.js`) |
+| فشل السلسلة أيضًا في دور نصّيّ | نفس الموضع | `tierDiag` + `error` مع `fallback:true` فيهبط العميل بمساره القديم؛ الصورة تُستثنى فلا هبوط أعمى |
 | انهيار **بعد** بدء البثّ (`anyText`) | نفس الموضع | لا هبوط — النصّ المكتوب يبقى |
-| نفاد حصّة المجانيّ/الضيف | `chat.js:1202` | ردّ عاديّ بزرّ اشتراك، لا خطأ |
+| نفاد حصّة المجانيّ/الضيف | `chat.js:1229` | ردّ عاديّ بزرّ اشتراك، لا خطأ |
 
 القاعدة المستخلصة: **الهبوط الصامت مشروط بألّا يكون كُتب حرف واحد.**
 
@@ -269,7 +277,7 @@ streamFreeChain(args)                             free-chain.js:156
 
 | الأداة | ماذا تفحص | متى تعمل |
 |--------|-----------|----------|
-| `tests/routing-anchors.test.cjs` | **البنية**: كلّ مرساة `ملفّ:سطر` موجودة وتحمل التعريف الذي ادّعته الخريطة (٥١ مرساة، ٦ ملفّات)، والقوائم الحاسمة (`PROVIDERS` · `DEFAULT_CHAIN` · `MODES` · `CLAUDE_MODELS`) مطابقة عنصرًا عنصرًا، والأسلاك المقطوعة في §٦-ب ما زالت مقطوعة فعلًا | داخل `npm run ci` |
+| `tests/routing-anchors.test.cjs` | **البنية**: كلّ مرساة `ملفّ:سطر` موجودة وتحمل التعريف الذي ادّعته الخريطة (٦٣ مرساة، ٦ ملفّات)، والقوائم الحاسمة (`PROVIDERS` · `DEFAULT_CHAIN` · `MODES` · `CLAUDE_MODELS`) مطابقة عنصرًا عنصرًا، والأسلاك المقطوعة في §٦-ب ما زالت مقطوعة فعلًا | داخل `npm run ci` |
 | `scripts/routing-probe.mjs` | **السلوك**: ١٩ نقطة قرار تُستدعى فعلًا (`__resolveMode` · `__injectNote` · `__stripAppSystem` · `resolveTier` · `freeChain`) ويُقارَن الفرع المأخوذ بما تصفه الخريطة. بلا شبكة وبلا مفاتيح | `node scripts/routing-probe.mjs` |
 
 الأوّل يمسك انزياح الكود، والثاني يمسك تغيّر السلوك مع بقاء الشكل. أُثبت أنّ الأوّل يفشل

@@ -28,7 +28,7 @@ I18N['fil'] = {
     cnLandAreaPh: 'hal.: 500', cnEmirateOpt: 'Emirate — opsyonal', cnDetailsAnnexes: '🏠 Mga detalye at annex', cnExElevator: 'Panloob na elevator', cnExStore: 'Panlabas na bodega',
     cnExWaterTank: 'Tangke ng tubig', cnExSolar: 'Solar panel', cnExPlayground: 'Panlabas na palaruan', cnExCarport: 'Karagdagang carport', cnBudgetOutputs: '💰 Badyet at output',
     cnDownloadBoq: '📊 I-download ang bill of quantities', cnPdfReport: '📄 PDF report', keyHowToTitle: '📝 Paano kumuha ng key para sa bawat provider:',
-    showAllPlansCur: 'Ipakita ang lahat ng plano at presyo sa iyong currency', currencyLabel: 'Currency', plFreeMsgs: '5 mensahe bawat araw', plFreeVoice: 'Hanggang 4 minuto ng voice chat',
+    showAllPlansCur: 'Ipakita ang lahat ng plano at presyo sa iyong currency', currencyLabel: 'Currency', plFreeMsgs: '20 mensahe sa unang araw, tapos 3 bawat araw', plFreeVoice: 'Hanggang 4 minuto ng voice chat',
     plFreeImgs: 'Hanggang 3 larawang AI', plFreeNoVideo: 'Walang video', plStMsgs: '50 mensahe bawat araw', plStVoice: 'Hanggang 24 minuto ng voice chat', plStImgs: 'Hanggang 15 larawan', plStVideos: '1 video',
     plProMsgs: '100 mensahe bawat araw', plProVoice: 'Hanggang 61 minuto ng voice chat', plProMedia: 'Hanggang 40 larawan · 2 video', plProAgent: 'Ang smart agent',
     plProPriority: 'Priority speed · gold badge', plMaxAllPro: 'Lahat ng meron sa Pro · 250 mensahe bawat araw', plMaxVoice: 'Hanggang 213 minuto ng voice chat', plMaxMedia: 'Hanggang 150 larawan · 3 video',
@@ -116,6 +116,20 @@ I18N['fil'] = {
     "authTabLogin": "Mag-log In",
     "authTabSignup": "Mag-sign Up",
     "authUsernameLabel": "Username",
+    "authIdPlaceholder": "Username o email",
+    "authCreateAccount": "Gumawa ng bagong account",
+    "authHaveAccount": "May account na ako — Mag-log in",
+    "setGrpPersonal": "Pag-customize",
+    "setGrpAccount": "Account",
+    "setGrpAppearance": "Itsura",
+    "setGrpGeneral": "Pangkalahatan",
+    "setEmailRow": "Email",
+    "setNoEmail": "Magdagdag ng email para ma-recover ang account",
+    "setPlanFree": "Libre",
+    "setUpgradeTitle": "Mas marami pa sa Om ai",
+    "setUpgradeSub": "Mas mataas na limit at mga advanced na feature.",
+    "setUpgradeBtn": "Mag-upgrade",
+    "setChangePhoto": "Palitan ang larawan",
     "authPasswordLabel": "Password",
     "authNewPasswordLabel": "Bagong password",
     "authRecoveryLabel": "Recovery code",
@@ -132,6 +146,7 @@ I18N['fil'] = {
     "clockWorldLabel": "🌍 World Clock",
     "authBackToLogin": "Bumalik sa login",
     "authSubmitReset": "I-reset ang password",
+    "authSubmitForgotEmail": "Ipadala ang reset link sa email",
     "authRecoveryModalTitle": "🔑 I-save ang recovery code na ito",
     "authRecoveryModalDesc": "Ito lang ang code na magagamit mo para ma-recover ang account mo kung makalimutan mo ang password. I-save ito sa ligtas na lugar — hindi na ito ipapakita ulit.",
     "authCopyBtn": "📋 Kopyahin",
@@ -141,7 +156,7 @@ I18N['fil'] = {
     "authOrDivider": "o",
     "authGoogleBtn": "Magpatuloy gamit ang Google",
     "authSubmitSignup": "Gumawa ng Account",
-    "guestLimitMsg": "🎉 Naubos mo na ang iyong 20 libreng mensahe! Mag-log in sa account mo (o gumawa ng bago) para magpatuloy sa pag-chat.",
+    "guestLimitMsg": 'Gumawa ng libreng account para makapag-chat: 20 mensahe sa unang araw, tapos 3 bawat araw.',
     
     
     
@@ -171,6 +186,8 @@ I18N['fil'] = {
     "checkoutTitle": "Kumpletuhin ang Subscription",
     "checkoutTestBadge": "🧪 Test Mode",
     "checkoutCardOption": "Visa / Mastercard",
+    "checkoutLoginFirst": "Mag-sign up o mag-log in muna, saka mag-subscribe",
+    "checkoutAutoRenew": "🔁 Awtomatikong buwanang renewal sa card",
     "checkoutTelecomOption": "Carrier Billing (Etisalat/du)",
     "checkoutComingSoon": "Malapit na",
     "checkoutPlanLabelBasic": 'Plus Plan $10/buwan — 360 puntos',
@@ -197,7 +214,7 @@ I18N['fil'] = {
     "acctUsernameLabel": "Username",
     "acctPasswordRow": "Password",
     "acctSaveBtn": "I-save",
-    "acctEmailLabel": "📧 Backup email (para sa password recovery)",
+    "acctEmailLabel": "Email (kung nakalimutan mo ang username o password)",
     "acctReferralLabel": "🔗 Link para mag-imbita ng kaibigan",
     "acctCopyBtn": "📋 Kopyahin",
     "acctReferralHint": "Para sa bawat kaibigang mag-sign up gamit ang link mo, kayong dalawa ay makakakuha ng 10 karagdagang libreng mensahe 🎁",
@@ -307,6 +324,7 @@ I18N['fil'] = {
     "cancel": "Kanselahin",
     "save": "I-save",
     "defaultProjectTitle": "Bagong Proyekto",
+    "defaultShowcaseTitle": "Matalinong Dashboard",
     "templatesBtn": "🧩 Mga Template",
     "templatesModalTitle": "🧩 Pumili ng Template",
     "useThisTemplate": "✅ Gamitin ang Template na Ito",
@@ -945,7 +963,7 @@ I18N['fil'] = {
     designAiPlaceLabel: "Uri ng lugar", premiumOn: "Nakabukas ang Agent ⚡ — direktang sagot, walang style layers", premiumNeedLogin: "Mag-sign in para gamitin ang Agent", memorySectionLabel: "Aking memorya", memoryIntro: "Ito ang tinatandaan ng app tungkol sa iyo, sa iyong mga proyekto, at sa iyong pamamaraan ng komunikasyon. Naka-sync ito sa iyong account sa lahat ng device, at maaari mo itong i-edit o burahin.",
     memorySaveBtn: "I-save ang mga pagbabago", memoryClearBtn: "Burahin ang aking memorya", memoryEmpty: "Walang naka-save tungkol sa iyo pa.", memoryGuest: "Mag-sign in para makita ang iyong memorya.", memoryConfirm: "Buburahin ba lahat ng tinatandaan ng app tungkol sa iyo? Hindi na ito maibabalik.", memorySaved: "Na-save at na-sync sa iyong account.", memorySaveError: "Hindi na-save. Pakisubukang muli.",
     memoryLoadError: "Hindi ma-load ang memorya sa ngayon.", fontFamilySectionLabel: "Estilo ng font", fontFamilyHint: "Nagbabago ang mga chat message sa desktop at mobile, hindi ang code blocks o layout ng app.", guestImageMsg: "🎁 Naubos na ang iyong 3 libreng guest image! Gumawa ng libreng account sa ilang segundo lang at kumuha ng 70 gift points para makapagpatuloy sa paggawa at pag-edit ng mga larawan.",
-    planPer: "kada buwan", planFreePer: "para subukan", planPtsFree: "welcome points — isang-panahon lang", planPtsMo: "points bawat buwan", planTag: "Pinakasikat", planCurrentBtn: "Iyong kasalukuyang plano", planSoonBtn: "Malapit na", planFreeFeats: '<li>5 mensahe bawat araw</li><li>Hanggang 4 minuto ng voice chat</li><li>Hanggang 3 larawang AI</li><li class="off">Walang video</li>',
+    planPer: "kada buwan", planFreePer: "para subukan", planPtsFree: "welcome points — isang-panahon lang", planPtsMo: "points bawat buwan", planTag: "Pinakasikat", planCurrentBtn: "Iyong kasalukuyang plano", planSoonBtn: "Malapit na", planFreeFeats: '<li>20 mensahe sa unang araw, tapos 3 bawat araw</li><li>Hanggang 4 minuto ng voice chat</li><li>Hanggang 3 larawang AI</li><li class="off">Walang video</li>',
     planPlusFeats: '<li>50 mensahe bawat araw</li><li>Hanggang 24 minuto ng voice chat</li><li>Hanggang 15 larawan</li><li>1 video</li>', planProFeats: '<li>100 mensahe bawat araw</li><li>Hanggang 61 minuto ng voice chat</li><li>Hanggang 40 larawan · 2 video</li><li>Ang smart agent</li><li>Priority speed · gold badge</li>',
     planMaxFeats: '<li>Lahat ng meron sa Pro · 250 mensahe bawat araw</li><li>Hanggang 213 minuto ng voice chat</li><li>Hanggang 150 larawan · 3 video</li><li>Dedikadong support</li>', checkoutPlanLabelMax: 'Max Plan $100/buwan — 3,200 puntos', copyCode: "Kopyahin", copiedMsg: "Nakopya ✅",
     emailAsst_connectText: "Ikonekta ang iyong Gmail account para mabasa ng AI ang iyong mga email at magmungkahi ng mga handang sagot na aaprubahan mo bago ipadala.", emailAsst_connectBtn: "🔗 Ikonekta ang Gmail", emailAsst_disclaimer: "⚠️ Walang sagot na ipinapadala kailanman kung wala ang iyong tahasang aprubasyon sa bawat mensahe.", emailAsst_title: "📧 AI Email Assistant", emailAsst_refresh: "I-refresh",
@@ -1097,3 +1115,12 @@ Object.assign(I18N["fil"], {"ownerSectionTitle": "👑 Pahina ng may-ari"});
 
 /* v-img-honest: التعديل رجع بالصورة نفسها فلم يُعرض */
 Object.assign(I18N["fil"], {"imgUnchanged": "⚠️ Hindi nailapat ang edit: bumalik ang larawan nang walang pagbabago, kaya hindi ko ito ipinakita at hindi ito ibinawas sa iyo. Sabihin kung ano mismo ang dapat magbago o ibahin ang pagkakasabi."});
+
+/* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
+Object.assign(I18N["fil"], {"mediaPlansTitle": "Mga plan para sa larawan at video", "mediaPlansDesc": "Para sa gusto lang ng larawan o video — walang chat. May sariling balanse ang bawat plan at hindi ito magagastos sa iba.", "mediaImgName": "Mga larawan", "mediaVidName": "Video", "mediaImgUnit": "larawang mataas ang kalidad", "mediaVidEco": "matipid na video", "mediaVidCine": "cinematic na video", "mediaVidSound": "video na may tunog", "mediaOr": "o", "mediaNoChatVideo": "Walang chat at video", "mediaNoChatImage": "Walang chat at larawan", "mediaLeftImg": "Natitira sa plan ng larawan", "mediaLeftVid": "Natitira sa plan ng video"});
+Object.assign(I18N["fil"], {"mediaImgPlain": "larawan", "mediaHighEq": "Isang high-quality na larawan = 2 larawan", "mediaQLabel": "Kalidad ng larawan", "mediaQNormal": "⚡ Standard", "mediaQHigh": "💎 Mataas", "mediaQNormalDesc": "Mabilis, bagay sa social media — 1 larawan mula sa balanse mo", "mediaQHighDesc": "Mas pinong detalye, mas malinaw na teksto, pang-print — 2 larawan mula sa balanse mo", "mediaQHint": "O isulat ang “high quality” sa request mo para sa isang larawan"});
+/* v-price-tabs: أقسام صفحة الأسعار */
+Object.assign(I18N["fil"], {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Larawan", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Puntos"});
+Object.assign(I18N["fil"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para sa mga voice call kay Maha. Ang buwanang minuto ay para kay Maha lang; kapag naubos, tuloy ang tawag gamit ang iyong puntos.", "mahaMinPlain": "minutong tawag", "mahaMinUnit": "min", "mahaCapNote": "Hanggang 10 minuto bawat tawag", "mahaNoChat": "Walang chat, larawan o video", "mahaLeft": "Natitirang minuto ni Maha", "mahaCapEnd": "Natapos ang tawag sa 10-minutong limitasyon — tumawag muli para magpatuloy", "mahaToPoints": "Ubos na ang minuto — tuloy gamit ang puntos"});
+/* v-browser-install: خطوات التثبيت لكلّ متصفّح */
+Object.assign(I18N["fil"], {"install":"I-install ang App","installHowIOS":"Para mag-install sa iPhone o iPad:\n1) Buksan ang site na ito sa Safari\n2) I-tap ang Share button (kahon na may pataas na arrow)\n3) Piliin ang \"Add to Home Screen\", saka \"Add\"","installHowIOSOther":"Para mag-install sa iPhone mula sa browser na ito:\n1) I-tap ang Share button (kahon na may pataas na arrow) sa tabi ng address bar\n2) Piliin ang \"Add to Home Screen\"\nKung wala ang opsyon, buksan ang site na ito sa Safari.","installHowAndroid":"Para mag-install sa Android:\n1) Buksan ang menu ng browser (⋮)\n2) Piliin ang \"I-install ang app\" o \"Idagdag sa Home screen\"\n3) Kumpirmahin ang pag-install","installHowDesktop":"Para mag-install sa computer (Chrome o Edge):\nI-click ang install icon (⊕ o maliit na screen) sa address bar, o buksan ang menu ng browser (⋮ o …) at piliin ang \"Install\" o \"Apps → I-install ang site na ito bilang app\".","installHowMacSafari":"Para mag-install sa Mac mula sa Safari:\nBuksan ang menu na \"File\" sa itaas, piliin ang \"Add to Dock\", saka \"Add\".","installHowFirefox":"Hindi nakakapag-install ng web app ang Firefox sa computer.\nBuksan ang site na ito sa Chrome o Edge at i-click ang \"I-install ang App\", o i-install ito mula sa iyong telepono."});

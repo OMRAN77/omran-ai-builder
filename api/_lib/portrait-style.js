@@ -6,23 +6,24 @@
 const { checkPortraitQuota, consumePortrait, PORTRAIT_DAILY_LIMIT } = require('./_portraitUsage');
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
+const mergeIdentity = require('./merge-identity');
 
 // v-portrait-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
 // خطّ إنقاذ الأزياء). يرجع base64 أو null — لا يرمي أبدًا.
-async function openaiPortraitEdit(promptText, imageBase64, mimeType) {
+async function openaiPortraitEdit(promptText, imageBase64, mimeType, refs) {
   const key = (process.env.OPENAI_API_KEY || '').trim();
   if (!key) return null;
   try {
     const bytes = Buffer.from(imageBase64, 'base64');
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', 'gpt-image-2.5-sunburst');
     form.append('prompt', String(promptText).slice(0, 3900));
     form.append('size', 'auto');
-    /* v-strong-rescue: input_fidelity=high يحفظ ملامح الوجه والنصوص —
-       بدونه كان الإنقاذ يعيد رسم الشخص «ضعيف» (شكوى المالك ١ سبتمبر). */
-    form.append('input_fidelity', 'high');
     form.append('quality', 'high');
-    form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
+    /* v-merge-faces: الدمج يرسل كلّ الصور (ولقطات الوجوه) بحقل image[] — كان الإنقاذ يرسل الأولى وحدها فيُخترع الشخص الثاني */
+    const more = Array.isArray(refs) ? refs : [];
+    form.append(more.length ? 'image[]' : 'image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
+    for (const x of more) form.append('image[]', new Blob([Buffer.from(x.data, 'base64')], { type: x.mime || 'image/jpeg' }), 'ref.jpg');
     const r = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key },
@@ -399,15 +400,21 @@ module.exports = async (req, res) => {
     }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const genParts = [
+    /* v-merge-faces: «دمج شخصين» و«ستايل عائلي» على قالب هويّة الدمج نفسه (maha-image): كلّ صورة بعنوانها ولقطة مقرّبة لكلّ وجه،
+       وحرارة منخفضة — كانت ٠٫٦٥ بجملة «recognizable» واحدة، ونوع الصورة الثانية مفروضًا image/jpeg. */
+    const isMultiSourceComposition = style === 'familystyle' || style === 'merge2';
+    let genParts = [
       { text: promptText },
       { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
     ];
-    if ((style === 'familystyle' || style === 'merge2') && Array.isArray(extraImages)) {
-      const maxExtra = style === 'merge2' ? 1 : 3;
-      extraImages.slice(0, maxExtra).forEach((imgB64) => {
-        if (imgB64) genParts.push({ inlineData: { mimeType: 'image/jpeg', data: imgB64 } });
-      });
+    let gptPrompt = promptText, gptRefs = [], mergeAspect = null;
+    if (isMultiSourceComposition) {
+      const photos = [{ data: imageBase64, mime: mimeType || 'image/jpeg' }].concat((Array.isArray(extraImages) ? extraImages : []).filter(Boolean).slice(0, style === 'merge2' ? 1 : 3).map((b) => ({ data: b, mime: mergeIdentity.sniffMime(b) })));
+      const crops = await mergeIdentity.faceCrops(apiKey, photos);
+      genParts = mergeIdentity.mergeParts(photos, crops, promptText);
+      gptPrompt = genParts[genParts.length - 1].text;
+      gptRefs = photos.slice(1).concat(crops);
+      mergeAspect = mergeIdentity.mergeAspect(photos[0], '');
     }
     const reqBody = {
       contents: [
@@ -415,7 +422,7 @@ module.exports = async (req, res) => {
           parts: genParts,
         },
       ],
-      generationConfig: { temperature: isLocalizedEdit ? 0.15 : 0.65, imageConfig: { imageSize: '2K' } },
+      generationConfig: { temperature: (isLocalizedEdit || isMultiSourceComposition) ? 0.15 : 0.65, imageConfig: mergeAspect ? { imageSize: '2K', aspectRatio: mergeAspect } : { imageSize: '2K' } },
     };
 
     const upstream = await fetch(endpoint, {
@@ -433,7 +440,7 @@ module.exports = async (req, res) => {
       // v-portrait-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعطّل الميزة — جرّب
       // gpt-image-1 (تعديل صورة) بمفتاح OPENAI_API_KEY. حارس التحقق نفسه على
       // Gemini فيُتجاوز في مسار الإنقاذ — سيرفض بدوره لو حاولناه.
-      const rescue = await openaiPortraitEdit(promptText, imageBase64, mimeType);
+      const rescue = await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
       if (rescue) {
         const remR = await consumePortrait(quota.username);
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: PORTRAIT_DAILY_LIMIT });
@@ -450,7 +457,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const isMultiSourceComposition = style === 'familystyle' || style === 'merge2';
     if (!isMultiSourceComposition) {
       const guard = await verifyLocalizedImageEdit({
         apiKey,

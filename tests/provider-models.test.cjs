@@ -77,12 +77,12 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
     const re = new RegExp("key:'" + k + "',[^\\n]*or:true,[^\\n]*def:'" + orDefaults[k].replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + "'");
     assert.match(modes, re, 'افتراضيّ السهم لـ' + k + ' = ' + orDefaults[k]);
   }
-  assert.ok(!modes.includes("'gpt-6-astra'"), 'الأسماء غير الموصولة أُزيلت');
+  assert.ok(modes.includes("['openai/gpt-6-astra','GPT-6 Astra']") && modes.includes("['openai/gpt-6-sol','GPT-6 Sol']") && modes.includes("['openai/gpt-6-luna','GPT-6 Luna']"), 'احتياط منتقي OpenAI يطابق الموديلات الرسميّة');
   assert.ok(modes.includes("window.omranModelFor = function(k){"), 'مزوّد الموديل للعميل');
   assert.ok(modes.includes("fetch('/api/ai?action=models'"), 'القائمة الحيّة');
   assert.ok(modes.includes("if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = '';"), 'معرّف قديم بلا بادئة = الافتراضيّ (إلّا Groq المباشر — v-owner-direct)');
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) {
     assert.ok(read(f).includes("window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : '');"), f);
   }
-  assert.ok(read('index.html').includes('js/modes.js?v=m240924b'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m260926a'), 'وسم كاش modes رُفع');
 });

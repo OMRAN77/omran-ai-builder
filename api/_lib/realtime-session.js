@@ -1,5 +1,5 @@
 // Vercel Serverless Function: mints an ephemeral OpenAI Realtime API client
-// secret for Maha's voice-to-voice call mode (gpt-realtime). This lets the
+// secret for Maha's voice-to-voice call mode (gpt-realtime-2.1). This lets the
 // browser connect directly to OpenAI via WebRTC for natural, low-latency
 // speech-to-speech, using the site owner's own OPENAI_API_KEY (never exposed
 // to the client - only the short-lived ephemeral token is sent to the browser).
@@ -192,11 +192,15 @@ module.exports = async (req, res) => {
       const rec = await pointsLib.readPoints(rtUser);
       const pts = rec ? rec.points : 0;
       const trial = !!(rec && !rec.user.mahaTrialUsed);
-      if (pts < pointsLib.COSTS.maha_minute && !trial) {
+      // v-maha-plans: دقائق اشتراك مها تُصرف قبل النقاط، وحدّ المكالمة للمشترك وحده.
+      const mediaLib = require('./_mediaPlans.js');
+      let mahaMin = 0;
+      try { const st = await mediaLib.mediaStatus(rtUser); mahaMin = (st.maha && st.maha.counts.maha_minute) || 0; } catch (e) { mahaMin = 0; }
+      if (pts < pointsLib.COSTS.maha_minute && !trial && mahaMin < 1) {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.maha_minute, points: pts });
         return;
       }
-      mahaBudget = { unlimited: false, points: pts, trial };
+      mahaBudget = { unlimited: false, points: pts, trial, cost: pointsLib.COSTS.maha_minute, mahaMin, capMin: mahaMin > 0 ? mediaLib.MAHA_CALL_CAP_MIN : 0 };
     } else {
       const { kvGetJSON, kvPutJSON } = require('./kv.js');
       // The free guest minute was keyed on an id the browser itself generates, so
@@ -281,7 +285,7 @@ module.exports = async (req, res) => {
     const sessionConfig = {
       session: {
         type: 'realtime',
-        model: 'gpt-realtime',
+        model: 'gpt-realtime-2.1',
         instructions: (mode === 'builder'
           ? BUILDER_REALTIME_INSTRUCTIONS
           : (voiceGender === 'male' ? toMalePersona(MAHA_REALTIME_INSTRUCTIONS) : MAHA_REALTIME_INSTRUCTIONS))
@@ -299,7 +303,7 @@ module.exports = async (req, res) => {
             noise_reduction: { type: 'near_field' },
             // v-maha-captions: تفريغ كلام المستخدم نصًّا ليصل حدث
             // input_audio_transcription.completed فتظهر الترجمة الحية على الشاشة.
-            transcription: { model: 'gpt-4o-mini-transcribe' },
+            transcription: { model: 'gpt-live-transcribe' },
             // v607: الجوّال كان semantic_vad — يقرّر بالمعنى، وينتظر مهلة إن ظنّ الجملة ناقصة
             // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'
@@ -340,8 +344,9 @@ module.exports = async (req, res) => {
               properties: {
                 prompt: { type: 'string', description: 'A short, clear, detailed English description of exactly the image to generate. If the user wants any words/text written on the image, do NOT include those words here - describe the visuals only and explicitly say the image must contain no text or letters.' },
                 text_to_write: { type: 'string', description: 'If the user asked for specific words/text (a name, phrase, greeting) to appear ON the image, put that exact text here VERBATIM in the user\'s own language (e.g. Arabic stays Arabic). It will be drawn on the image with a proper clean font. Leave empty if no text is requested.' },
-                font_style: { type: 'string', enum: ['othmani', 'naskh', 'ruqaa', 'kufi', 'diwani', 'modern'], description: 'Arabic font style for the written text. othmani/naskh = classic Quranic-style, ruqaa = handwritten, kufi = geometric, diwani = ornate, modern = clean contemporary (default). When the user asks for text, SUGGEST font choices by voice (e.g. "تبينه بالخط العثماني ولا الرقعة ولا الحديث؟") if they did not specify one.' },
+                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "تبينه بالديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
                 text_color: { type: 'string', description: 'Hex color for the written text, e.g. #ffd700 for gold, #ff0000 red, #ffffff white (default). Ask or suggest a color if the user did not specify.' },
+                text_position: { type: 'string', enum: ['auto', 'top', 'center', 'bottom', 'right-top', 'right-center', 'right-bottom', 'left-top', 'left-center', 'left-bottom'], description: 'Exact placement of the written text. Arabic voice commands map literally: يمين = right-center, يسار فوق = left-top, يمين الوسط = right-center. Default auto.' },
               },
               required: ['prompt'],
             },
@@ -351,15 +356,17 @@ module.exports = async (req, res) => {
             name: 'edit_image',
             description: mode === 'builder'
               ? 'Modify the exact same picture already shown in this project, keeping everything else unchanged. In builder mode, ALWAYS call this (never generate_image) for any image-related request once a picture already exists in this project, no matter what it asks for - even a completely different subject/type/model - since only ONE image is allowed per project. A brand new image is only ever created when the user starts a new project.'
-              : 'Modify the exact same picture just shown, keeping everything else in it unchanged. Use this by DEFAULT whenever a picture already exists in this call and the user asks to add, remove, change, adjust, resize, recolor, or improve ANY detail, object, or element ON TOP OF that picture (e.g. "add a boat", "ضيف مركب", "زيد عليها كذا", "change its color", "make it bigger", "add a hat") - these all mean edit the current image, not start over. Only call generate_image instead if the user clearly asks for a completely unrelated new subject/scene that has nothing to do with the current picture.',
+              : 'Modify the exact same picture just shown, keeping everything else in it unchanged. Use this by DEFAULT whenever a picture already exists in this call and the user asks to add, remove, change, adjust, resize, recolor, or improve ANY NAMED detail, object, or element ON TOP OF that picture (e.g. "add a boat", "ضيف مركب", "change its color", "add a hat"). If the target is vague ("احذف هذا الشي", "remove this") and the user did not name it, DO NOT call the tool or guess: ask what exactly to remove. Only call generate_image instead if the user clearly asks for a completely unrelated new subject/scene that has nothing to do with the current picture.',
             parameters: {
               type: 'object',
               properties: {
                 instruction: { type: 'string', description: 'A short, clear English instruction describing exactly what to change about the existing image. If the user wants words/text written on it, do NOT include those words here - put them in text_to_write instead and say the image itself must contain no generated text or letters.' },
-                rewrite_text_only: { type: 'boolean', description: 'Set true when the user ONLY wants to change the written text, its font, or its color on the current image (e.g. "غيري اللون أحمر", "خليه بالخط العثماني") with no change to the picture itself. This re-writes the text instantly without regenerating the image. Always pass text_to_write (the full text), font_style and text_color again with the new values.' },
+                rewrite_text_only: { type: 'boolean', description: 'Set true when the user ONLY wants to change the written text, its font, color, or position on the current image (e.g. "خلي الكتابة يمين", "غيري اللون أحمر", "خليه بالخط الديواني") with no change to the picture itself. This re-writes the text instantly without regenerating the image. Always pass text_to_write (the full text), font_style, text_color and text_position again with the new values.' },
+                remove_text_only: { type: 'boolean', description: 'Set true only when the user explicitly asks to delete/remove the written text/words from the current image (e.g. "احذف الكتابة", "امسح هذا النص"). This restores the clean image instantly. Never set this for vague "احذف هذا الشي" — ask what thing first.' },
                 text_to_write: { type: 'string', description: 'If the user asked for specific words/text (a name, phrase, greeting) to appear ON the image, put that exact text here VERBATIM in the user\'s own language (e.g. Arabic stays Arabic). It will be drawn on the image with a proper clean font. Leave empty if no text is requested.' },
-                font_style: { type: 'string', enum: ['othmani', 'naskh', 'ruqaa', 'kufi', 'diwani', 'modern'], description: 'Arabic font style for the written text. othmani/naskh = classic Quranic-style, ruqaa = handwritten, kufi = geometric, diwani = ornate, modern = clean contemporary (default). When the user asks for text, SUGGEST font choices by voice (e.g. "تبينه بالخط العثماني ولا الرقعة ولا الحديث؟") if they did not specify one.' },
+                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "تبينه بالديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
                 text_color: { type: 'string', description: 'Hex color for the written text, e.g. #ffd700 for gold, #ff0000 red, #ffffff white (default). Ask or suggest a color if the user did not specify.' },
+                text_position: { type: 'string', enum: ['auto', 'top', 'center', 'bottom', 'right-top', 'right-center', 'right-bottom', 'left-top', 'left-center', 'left-bottom'], description: 'Exact placement of the full written text. Map the user\'s spoken direction literally.' },
               },
               required: ['instruction'],
             },
@@ -521,7 +528,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime', mahaBudget });
+    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }

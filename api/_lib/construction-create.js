@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { checkConstructionQuota, consumeConstruction, CONSTRUCTION_DAILY_LIMIT } = require('./_constructionUsage');
 const { saveDesign } = require('./_constructionLibrary');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
+const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 const { kvSetIfAbsent, kvDel } = require('./kv');
 const AUTH_SECRET = require('./_secrets').AUTH_SECRET;
 
@@ -23,7 +24,7 @@ async function openaiRescueImage(promptText, landscape) {
     const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-image-2', prompt: String(promptText).slice(0, 3900), size: landscape ? '1536x1024' : '1024x1024', quality: 'high' }),
+      body: JSON.stringify({ model: 'gpt-image-2.5-flare', prompt: String(promptText).slice(0, 3900), size: landscape ? '1536x1024' : '1024x1024', quality: 'high' }),
       signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
     const d = await r.json();
@@ -37,12 +38,7 @@ async function openaiRescueText(promptText) {
   const key = (process.env.OPENAI_API_KEY || '').trim();
   if (!key) return '';
   try {
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 3000, messages: [{ role: 'user', content: String(promptText).slice(0, 12000) }] }),
-      signal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
-    });
+    const r = await oaLightFetch(key, { max_tokens: 3000, messages: [{ role: 'user', content: String(promptText).slice(0, 12000) }] }, { signal: AbortSignal.timeout(TEXT_TIMEOUT_MS) }); // v-models-latest
     const d = await r.json();
     if (!r.ok) return '';
     return String(((d.choices || [])[0] || {}).message && d.choices[0].message.content || '').trim();

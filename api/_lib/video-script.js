@@ -5,6 +5,7 @@
 // (see api/_videoUsage.js -> checkOwnerBypass) because chaining that many
 // AI-generated video scenes costs real money.
 const { checkOwnerBypass, checkVideoQuota, isOwner } = require('./_videoUsage');
+const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
 const SCENE_SECONDS = 8; // each Runway scene is generated at this length
 
@@ -97,23 +98,15 @@ module.exports = async (req, res) => {
       ? `الموضوع: "${topic}"\n\nأنشئ بالضبط ${scenesWanted} مشهدًا متتابعًا. أعد فقط JSON بهذا الشكل بالضبط:\n{\n  "title": "عنوان الفيديو",\n  "scenes": [\n    { "visual": "وصف بصري مختصر ودقيق لما يظهر في هذا المشهد تحديدًا (بالإنجليزية لتوليد أفضل نتيجة من نموذج الفيديو)", "narration": "نص السرد بالعربية الذي سيُقرأ بصوت طبيعي فوق هذا المشهد تحديدًا (جملة أو جملتين قصيرتين تناسب ${SCENE_SECONDS} ثوانٍ)" }\n  ]\n}\nالمشهد الأول يفتتح الفكرة، والمشهد الأخير يختمها بشكل مؤثر.`
       : `Topic: "${topic}"\n\nGenerate exactly ${scenesWanted} consecutive scenes. Return ONLY JSON in exactly this shape:\n{\n  "title": "Video title",\n  "scenes": [\n    { "visual": "Short precise visual description of exactly what appears in this specific scene (for the video generation model)", "narration": "Narration text that will be read aloud over this specific scene (one or two short sentences fitting about ${SCENE_SECONDS} seconds)" }\n  ]\n}\nThe first scene opens the idea, the last scene closes it with impact.`) + heroNote;
 
-    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const upstream = await oaLightFetch(apiKey, { // v-models-latest
         store: false,
-        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: sys },
           { role: 'user', content: userMsg },
         ],
         temperature: 0.8,
         response_format: { type: 'json_object' },
-      }),
-    });
+      });
 
     if (!upstream.ok) {
       const errText = await upstream.text();

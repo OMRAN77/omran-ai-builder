@@ -6,6 +6,7 @@
 const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
+const media = require('./_mediaPlans.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 // v-owner-core: قائمة المالك الموحّدة من _owner.js — ‹omran› مدمج دائمًا
@@ -31,14 +32,14 @@ const COSTS = {
   image_upscale: 5,  // زرّ «دقّة أعلى»: ترقية صورة قائمة بمكبّر دقّة (v-img-upscale)
   screen_guide: 5,   // جلسة إرشاد بصريّ — تُخصم مرة واحدة للجلسة كاملة
   premium_claude: 20,  // رد احترافي 👑 Claude Opus 5
-  premium_openai: 15,  // رد احترافي 👑 GPT-5.6
+  premium_openai: 15,  // رد احترافي 👑 أقوى موديل OpenAI
   premium_gemini: 12,  // رد احترافي 👑 Gemini 3.1 Pro
 };
 
 // خرائط الموديلات البريميوم — المرجع الوحيد في الخادم.
 const PREMIUM_MODELS = {
   claude: 'claude-opus-5',
-  openai: 'gpt-5.6-terra',
+  openai: 'gpt-6-astra',
   gemini: 'gemini-3.1-pro-preview',
 };
 const PREMIUM_COST = {
@@ -148,6 +149,12 @@ async function spendPoints(username, amount, reason) {
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
 
+  // v-media-plans: مشترك الصور/الفيديو يُخصم من رصيد اشتراكه أوّلًا، ونفاده يرجع للنقاط.
+  try {
+    const m = await media.trySpendMedia(username, amt, reason);
+    if (m) return { ok: true, points: 0, spent: 0, reason, media: m.media, mediaLeft: m.left };
+  } catch (e) { console.warn('[points] media spend skipped:', e && e.message); }
+
   let before;
   try {
     before = await ensureBalance(username);
@@ -181,7 +188,9 @@ async function spendPoints(username, amount, reason) {
 async function refundPoints(username, amount) {
   if (!username || isOwner(username)) return;
   if (await isVip(username)) return; // لم يُخصم منه شيء، فلا شيء يُعاد.
-  const amt = Math.max(0, Math.floor(Number(amount) || 0));
+  let amt = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!amt) return;
+  try { amt = await media.refundMedia(username, amt); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); }
   if (!amt) return;
   // Must go through the same atomic counter as the deduction. A read-modify-
   // write refund running next to a concurrent spend would overwrite it and
@@ -226,7 +235,10 @@ module.exports = async (req, res) => {
       // v-plan-routing: الباقة السارية مع الرصيد (الواجهة تقفل منتقي المزوّد لغير Max). عطب القراءة = مجّاني.
       let __t = null;
       try { __t = await require('./tier.js').resolveTier(username); } catch (e) { __t = null; }
+      let __media = {};
+      try { __media = await media.mediaStatus(username); } catch (e) { __media = {}; }
       res.status(200).json({
+        media: __media,
         ok: true, authed: true, owner: false,
         points: rec.points,
         mahaTrialUsed: !!rec.user.mahaTrialUsed,
@@ -246,6 +258,14 @@ module.exports = async (req, res) => {
       if (!allowed.includes(amt)) { res.status(400).json({ ok: false, reason: 'bad_amount' }); return; }
       const result = await spendPoints(username, amt, String(reason || 'client'));
       res.status(200).json(result);
+      return;
+    }
+
+    // v-media-plans: إعداد جودة الصور لمشترك الصور (عاديّة/عالية).
+    if (action === 'media-quality') {
+      if (!username) { res.status(401).json({ ok: false, reason: 'auth' }); return; }
+      const ok = await media.setImageQuality(username, String(body.quality || ''));
+      res.status(ok ? 200 : 400).json({ ok });
       return;
     }
 

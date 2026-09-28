@@ -27,9 +27,9 @@ const studios = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'),
 const partials = fs.readFileSync(path.join(__dirname, '../js/partials-core.js'), 'utf8');
 assert.ok(create.includes("require('./fashion-locks')") && create.includes('locksFor({'), 'fashion-create يستعمل الأقفال');
 assert.ok(!create.includes('Keep the same person, pose, face and background, but change only'), 'السطر الضعيف القديم أزيل');
-assert.ok(create.includes("engine === 'openai'") && create.includes('gpt-image-1'), 'محرك gpt-image-1 اختياري');
+assert.ok(create.includes("engine === 'openai'") && create.includes('gpt-image-2.5-sunburst'), 'محرك GPT Image الأحدث اختياري');
 assert.ok(create.includes('images/edits') && create.includes('OPENAI_API_KEY'), 'مفتاح OpenAI من الخادم لا من العميل');
-assert.ok(create.includes('images/generations') && create.includes('openaiGenerate(promptText)'), 'الوضع النصّي له مسار gpt-image-1 أيضًا');
+assert.ok(create.includes('images/generations') && create.includes('openaiGenerate(promptText)'), 'الوضع النصّي له مسار GPT Image أيضًا');
 assert.ok(create.includes('v-fashion-rescue'), 'رفض Gemini يهبط تلقائيًا إلى OpenAI قبل إبلاغ الفشل');
 const suggest = fs.readFileSync(path.join(__dirname, '../api/_lib/fashion-suggest.js'), 'utf8');
 assert.ok(suggest.includes('v-fashion-rescue') && suggest.includes('openaiSuggest(promptText'), 'الاقتراحات لها خطّ إنقاذ أيضًا');
@@ -75,7 +75,7 @@ assert.ok(studios.includes('v-decor-ba') && studios.includes('showBeforeAfter(')
 const dThumbs = fs.readFileSync(path.join(__dirname, '../scripts/design-thumbs.mjs'), 'utf8');
 assert.ok(dThumbs.includes("'minimalwhite'") && dThumbs.includes("'garden'") && dThumbs.includes('/api/design-create'), 'مولّد بطاقات الديكور: ٤٨ نمطًا و١٢ مكانًا');
 const designCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/design-create.js'), 'utf8');
-assert.ok(designCreate.includes('v-design-rescue') && designCreate.includes('openaiDesignEdit(promptText'), 'الديكور له خطّ إنقاذ gpt-image-1 أيضًا');
+assert.ok(designCreate.includes('v-design-rescue') && designCreate.includes('openaiDesignEdit(promptText'), 'الديكور له خطّ إنقاذ GPT Image أيضًا');
 assert.ok(designCreate.includes('v-decor-detail') && designCreate.includes("key=[^&\\s\"']+"), '502 النصّية تكشف خطأ المزوّد بعد شطب المفاتيح');
 assert.ok(studios.includes('v-fashion-full-page'), 'نمط الأزياء معرض ملء الشاشة أيضًا');
 assert.ok(designGen.includes("category/women") && !designGen.includes("women/evening'"), 'وجوه الفئات مخصّصة لا معادة');
@@ -96,7 +96,7 @@ assert.ok(studios.includes('PSTYLE_SUBS') && studios.includes('رسم يدوي �
 assert.ok(studios.includes("styleEl.dispatchEvent(new Event('change'"), 'نقر البطاقة يبثّ change للأسلاك التابعة');
 assert.ok(studios.includes('renderPortraitStyleCards()') && studios.includes('favs.includes(v)'), 'المفضلة أولًا بشارة ⭐');
 const portrait = fs.readFileSync(path.join(__dirname, '../api/_lib/portrait-style.js'), 'utf8');
-assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPortraitEdit(promptText'), 'البورتريه له خطّ إنقاذ gpt-image-1 أيضًا');
+assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPortraitEdit(promptText'), 'البورتريه له خطّ إنقاذ GPT Image أيضًا');
 const pThumbs = fs.readFileSync(path.join(__dirname, '../scripts/portrait-thumbs.mjs'), 'utf8');
 assert.ok(pThumbs.includes('STYLE_SOURCE') && pThumbs.includes("wedding: 'w1'") && pThumbs.includes('/api/portrait-style'), 'المعاينات بوجوه متنوعة موزّعة لا وجه واحد');
 assert.ok(studios.includes(".fashionCompareCheck:checked"), 'قارئ المقارنة القديم كما هو');
@@ -145,10 +145,10 @@ console.log('  ✓ v-edu-lab: الدرس الحي مبني ومقفول');
 
 // ⑬ المقاولات: خط الإنقاذ السابع + الجولة ثلاثية الأبعاد من هندسة المخطط.
 const conCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/construction-create.js'), 'utf8');
-assert.ok(conCreate.includes('v-construction-rescue') && conCreate.includes('openaiRescueImage') && conCreate.includes('openaiRescueText'), 'رفض Gemini يهبط لصور gpt-image-1 ونص gpt-4o-mini');
+assert.ok(conCreate.includes('v-construction-rescue') && conCreate.includes('openaiRescueImage') && conCreate.includes('openaiRescueText'), 'رفض Gemini يهبط لصور GPT Image ونص OpenAI الخفيف');
 assert.ok(conCreate.includes(".catch(() => null) /* v-construction-rescue"), 'سقوط النص لا يُسقط الصور');
 const conView = fs.readFileSync(path.join(__dirname, '../api/_lib/construction-view.js'), 'utf8');
-assert.ok(conView.includes('v-construction-rescue') && conView.includes('gpt-image-1'), 'الزوايا والغرف لها إنقاذ أيضًا');
+assert.ok(conView.includes('v-construction-rescue') && conView.includes('gpt-image-2.5-flare'), 'الزوايا والغرف لها إنقاذ أيضًا');
 const fp15 = fs.readFileSync(path.join(__dirname, '../js/app-15-floorplan.js'), 'utf8');
 assert.ok(fp15.includes('function omranTour3d') && fp15.includes('omranTour3d.toString()'), 'مشغّل الجولة يُحقن كدالة في صفحة المخطط');
 assert.ok(fp15.includes('t3dBtn') && fp15.includes('rotateX(90deg)') && fp15.includes('فصل الطوابق'), 'زر الجولة والجدران المرفوعة وفصل الطوابق');
@@ -196,7 +196,7 @@ console.log('  ✓ v-chat-direct: المحادثة على الخط المباش�
 const chatToolsCli = fs.readFileSync(path.join(__dirname, '../js/app-18-chat-tools.js'), 'utf8');
 assert.ok(chatToolsCli.includes('v-chat-vision') && chatToolsCli.includes("type: 'image', source: { type: 'base64'"), 'الصور تُحوَّل لكتل رؤية في مسار الأدوات');
 const attachCli = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
-assert.ok(attachCli.includes("(!imageAttachments.length || __effProv === 'claude')"), 'بوابة الأدوات تسمح بالصور مع كلود');
+assert.ok(attachCli.includes("(!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai'))"), 'بوابة الأدوات تسمح بالصور مع كلود وOpenAI');
 assert.ok(!fs.readFileSync(path.join(__dirname, '../js/app-06-checkout.js'), 'utf8').includes('claude-sonnet-4-20250514'), 'لا نموذج قديم في مسار الاحتياط');
 console.log('  ✓ v-chat-vision: تحليل الصور على نفس العقل القوي');
 
@@ -302,9 +302,9 @@ console.log('  ✓ v-sweep: الفحص الشامل — أسلاك حية وتر
   for (const dead of ['anthropic/claude-3.5-sonnet', 'google/gemini-pro-1.5', 'google/gemini-flash-1.5:free', 'mistralai/mistral-7b-instruct:free']) {
     assert.ok(!ps.includes('"' + dead + '"'), 'اسم ميت في المنسدلة: ' + dead);
   }
-  assert.ok(ps.includes('anthropic/claude-sonnet-5') && ps.includes('google/gemini-3.5-flash'), 'البدائل الحية في المنسدلة');
+  assert.ok(ps.includes('anthropic/claude-sonnet-5') && ps.includes('google/gemini-3.8-flash'), 'البدائل الحية في المنسدلة');
   const ft = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
-  assert.ok(ft.includes('__orRemap') && ft.includes("'google/gemini-pro-1.5': 'google/gemini-3.5-flash'"), 'مهاجر القيم المحفوظة الميتة');
+  assert.ok(ft.includes('__orRemap') && ft.includes("'google/gemini-pro-1.5': 'google/gemini-3.8-flash'"), 'مهاجر القيم المحفوظة الميتة');
 }
 console.log('  ✓ v-or-models: قوائم OpenRouter حية ومهاجرة');
 
@@ -336,7 +336,7 @@ console.log('  \u2713 v-dream-tafsir: تفسير حقيقي + أداة ديني�
 // ㉙ v-prayer-rescue: بطاقات الدعاء لا تموت بزحام Gemini — إنقاذ OpenAI.
 {
   const pp = fs.readFileSync(path.join(__dirname, '../api/_lib/prayer-plan.js'), 'utf8');
-  assert.ok(pp.includes('v-prayer-rescue') && pp.includes("'gpt-4o-mini'") && pp.includes('validatePrayerPlan(JSON.parse'), 'مخطط الدعاء له خط إنقاذ بنفس التدقيق');
+  assert.ok(pp.includes('v-prayer-rescue') && pp.includes('oaLightFetch(openaiKey') && pp.includes('validatePrayerPlan(JSON.parse'), 'مخطط الدعاء له خط إنقاذ بنفس التدقيق');
 }
 assert.ok(fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8').split('v-prayer-carry').length >= 2, 'الإنقاذ يمرر الدعاء المؤلف مع الصورة');
 console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود واحد ولا يضيع في الإنقاذ');
@@ -588,7 +588,7 @@ console.log('  ✓ v-login-done: سفاري يقول «ارجع للتطبيق»
   assert.ok(it8.includes('v-font-pretty'), '«مزخرف» وأخواتها تختار الديواني');
   const at9 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9.includes('__nameSwap') && at9.includes('REPLACE that existing name'), 'تغيير الاسم = استبدال يمحو القديم');
-  assert.ok(at9.includes('if(!__nameSwap) throw { __localFont: true }'), 'الاستبدال وحده للذكاء — والكانفس لا يمحو');
+  assert.ok(at9.includes('if(!__nameSwap || __prevLayer) throw { __localFont: true }'), 'الاستبدال وحده للذكاء — والكانفس لا يمحو (إلّا طبقتنا: أساسها نظيف، v-text-replace)');
 }
 console.log('  ✓ v-name-swap: «غيّر الاسم» يبدل الاسم داخل التصميم — لا كتابة فوقه');
 
@@ -624,11 +624,11 @@ console.log('  ✓ v-no-kickout: العودة للتطبيق لا تطرد ال�
 console.log('  ✓ v-edit-rescue: تعديل الصور له إنقاذ — والاستبدال الفاشل يصارح لا يغش');
 
 // 52 v-hifi-edit: مقارنة عمران مع ChatGPT — تطبيقنا بدّل الاسم صح لكن خربش
-// باقي نصوص البطاقة. السببان: تصغير المدخل إلى 800px (يمسح تفاصيل النص)
-// وغياب input_fidelity=high الذي يحفظ نصوص وشعارات الأصل.
+// باقي نصوص البطاقة. المدخل يبقى 1600px، وSunburst يفرض أمانة المدخل تلقائيًّا
+// ويرفض input_fidelity القديم.
 {
   const mi2 = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
-  assert.ok(mi2.includes("form.append('input_fidelity', 'high')"), 'الإنقاذ بدقة مدخل عالية — وGPT خام أيضًا (v-lanes)');
+  assert.ok(mi2.includes("'gpt-image-2.5-sunburst'") && !mi2.includes("form.append('input_fidelity'"), 'الإنقاذ على Sunburst بأمانته العالية المدمجة');
   const at9d = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9d.includes('__mxd2 = 1600'), 'المدخل 1600px لا 800 — نصوص البطاقة تبقى مقروءة');
 }
@@ -686,26 +686,28 @@ console.log('  ✓ v-font-pretty: الكلمات الجمالية كلها تو�
 // أن يخطئ إملائيًا)؛ الذكاء فقط لتبديل اسم داخل تصميم.
 {
   const at9g = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
-  assert.ok(at9g.includes('v-exact-canvas') && at9g.includes('if(!__nameSwap) throw { __localFont: true }'), 'النص الحرفي دائمًا للراسم المحلي');
+  assert.ok(at9g.includes('v-exact-canvas') && at9g.includes('if(!__nameSwap || __prevLayer) throw { __localFont: true }'), 'النص الحرفي دائمًا للراسم المحلي');
 }
 console.log('  ✓ v-exact-canvas: الأسماء تُطبع حرفيًا — صفر أخطاء إملائية ممكنة');
 
-// 58 v-spell-quran (طلب عمران): تدقيق إملائي ذكي على كل نص يُطبع — الأسماء
-// الناقصة تُصحح والمرجع رسم المصحف، مع حارس يمنع تبديل اسم صحيح بغيره
-// (حتى حرفين بالكلمة، بلا إضافة/حذف كلمات) وقاموس حتمي للعبارات الدينية.
+// 58 v-spell-quran (طلب عمران) ← v-spell-literal (لقطة المالك ٢٧ سبتمبر «اخوي» طُبعت «آخوي»): كلّ نصّ
+// حرفيّ يُطبع يمرّ على قاموس ثابت مرجعه رسم المصحف (الأسماء الناقصة «عبداله» والعبارات الدينيّة)، وعلى مساري
+// الكتابة والتوليد — لكن بلا أيّ ذكاء: لا مزوّد ولا مهلة ولا حارس مسافة تحرير كان يقبل «اخوي→آخوي» و«عمران→عمرن».
 {
   const at9h = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9h.includes('omranSpellFix') && at9h.includes('رسم المصحف'), 'المدقق موجود ومرجعه المصحف');
-  assert.ok(at9h.includes('__QURAN_FIXES') && at9h.includes('إن شاء الله'), 'قاموس حتمي للعبارات الدينية');
-  assert.ok(at9h.includes('__spellGuardOk') && at9h.includes('__omLev'), 'حارس يمنع تبديل الأسماء');
+  assert.ok(at9h.includes('const __SPELL_PHRASES') && at9h.includes('إن شاء الله'), 'قاموس حتمي للعبارات الدينية');
   assert.ok((at9h.match(/v-spell-quran/g) || []).length >= 3, 'مطبق على مساري الكتابة والتوليد');
-  const eStart = at9h.indexOf('function __omLev');
-  const eEnd = at9h.indexOf('async function omranSpellFix');
-  eval(at9h.slice(eStart, at9h.indexOf('const __QURAN_FIXES', eStart)));
-  assert.ok(__spellGuardOk('عبداله عمران', 'عبدالله عمران') === true, 'تصحيح الحرف الناقص مقبول');
-  assert.ok(__spellGuardOk('محمد', 'خالد') === false, 'تبديل اسم كامل مرفوض');
+  const fStart = at9h.indexOf('async function omranSpellFix');
+  const fBody = at9h.slice(fStart, at9h.indexOf('\n}\n', fStart));
+  assert.ok(fStart > 0 && !/callProviderAI|groq|mistral|setTimeout|fetch\(/.test(fBody), 'بلا ذكاء ولا شبكة ولا مهلة');
+  assert.ok(!at9h.includes('function __spellGuardOk') && !at9h.includes('function __omLev'), 'حارس مسافة التحرير أُزيل مع الذكاء');
+  const eStart = at9h.indexOf('const __SPELL_PHRASES');
+  eval(at9h.slice(eStart, fStart));
+  assert.ok(literalSpellFix('عبداله عمران') === 'عبدالله عمران', 'تصحيح الحرف الناقص مقبول');
+  assert.ok(literalSpellFix('محمد') === 'محمد' && literalSpellFix('عمران') === 'عمران', 'الاسم الصحيح لا يُمسّ');
 }
-console.log('  ✓ v-spell-quran: تدقيق ذكي بمرجع المصحف — وبحارس يحمي الأسماء');
+console.log('  ✓ v-spell-literal: قاموس ثابت بمرجع المصحف — بلا ذكاء، والأسماء واللهجة كما كُتبت');
 
 // 59 v-trend-five (طلب عمران ٥ سبتمبر): خمسة ترندات جديدة — انعكاس العصر،
 // تجميد الزمن، البوستر السينمائي، تحول المواد، انفجار الأبعاد — بالـ14 لغة

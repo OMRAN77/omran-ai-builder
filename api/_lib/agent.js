@@ -458,6 +458,7 @@ module.exports = async (req, res) => {
       if (!r.ok) return 'claude-sonnet-5';
       const ids = ((await r.json()).data || []).map((m) => m.id);
       return (
+        ids.find((id) => /^claude-opus-5-5$/.test(id)) || // v-models-latest
         ids.find((id) => /^claude-opus-5$/.test(id)) ||
         ids.find((id) => /sonnet-5/.test(id)) ||
         ids.find((id) => /sonnet-4/.test(id)) ||
@@ -477,12 +478,16 @@ module.exports = async (req, res) => {
     /* v-models-two (أمر عمران ١٤ سبتمبر): النماذج محصورة في Sonnet + Opus فقط،
        واختيارها للمالك من قائمة «+». */
     const AGENT_MODELS = {
-      'opus-5': 'claude-opus-5',
+      'opus-5-5': 'claude-opus-5-5', // v-models-latest: الأحدث وأرخص من Opus 5
+      'opus-5': 'claude-opus-5-5', // اختيار محفوظ قديم يُرقّى
       'sonnet-5': 'claude-sonnet-5',
     };
     /* v-agent-opus (أمر عمران ١٣ سبتمبر): الافتراضيّ Opus 5 — أغلب قوّة النموذج
        الأعلى بنصف كلفته. المالك يبدّله إلى Sonnet من قائمة «+». */
-    const AGENT_DEFAULT = 'claude-opus-5';
+    /* v-models-latest (أمر المالك ٢٥ سبتمبر «رقّهم كلّهم»): Opus 5.5 — خليفة Opus 5 بسعر أقلّ ($4/$20 مقابل $5/$25).
+       جهده الافتراضيّ medium لا high كسلفه، فيُرسل high صراحةً (output_config) ليبقى عمق الوكيل كما كان.
+       مفتاح لا يصله = 404 ← resolveModel يختار المتاح كما من قبل. */
+    const AGENT_DEFAULT = 'claude-opus-5-5';
     const picked = (isOwner(runUser) && body.agentModel && AGENT_MODELS[String(body.agentModel)]) || '';
     let model = picked || AGENT_DEFAULT;
     /* v-agent-model-shown: الاسم الودّيّ للنموذج الذي يعمل فعلًا — يُبثّ للمالك وحده في
@@ -518,14 +523,14 @@ module.exports = async (req, res) => {
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
         },
-        body: JSON.stringify({
+        body: JSON.stringify(Object.assign({
           model: m,
           max_tokens: 32000,
           system,
           messages: convo,
           tools: toolsFor(runUser),
           stream: true,
-        }),
+        }, /^claude-opus-5-5/.test(m) ? { output_config: { effort: 'high' } } : {})),
       });
       let upstream = await doCall(model);
       let modelFellBack = false;
@@ -542,7 +547,7 @@ module.exports = async (req, res) => {
         const errText = await upstream.text();
         // فشل Claude → جرّب مزودين بدلاء (DeepSeek ثم Mistral ثم Groq) بدون أدوات.
         const fallbacks = [
-          { name: 'DeepSeek', url: 'https://api.deepseek.com/chat/completions', key: process.env.DEEPSEEK_API_KEY, model: 'deepseek-chat' },
+          { name: 'DeepSeek', url: 'https://api.deepseek.com/chat/completions', key: process.env.DEEPSEEK_API_KEY, model: 'deepseek-v4-pro' }, // v-models-latest
           // v-free-models: large خارج طبقة Mistral المجانية (403)، وGroq يأخذ النموذج الناجح/المرشّح الأول من free-chain.js.
           { name: 'Mistral', url: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: require('./free-chain.js').defaultModel('mistral') },
           { name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: require('./free-chain.js').defaultModel('groq') },
