@@ -70,15 +70,21 @@ test('v-hw-cards-once: البطاقات مرّة واحدة لكلّ فتح — 
   const wiring = read('js/ui-wiring.js');
   const i = wiring.indexOf('v-hw-cards-once');
   assert.ok(i > 0, 'كتلة v-hw-cards-once موجودة');
-  const block = wiring.slice(i, i + 1400);
+  const block = wiring.slice(i, i + 2600);
   assert.ok(!block.includes("classList.contains('store-safe')"), 'لا شرط store-safe وقت التركيب — القصر على هواوي في CSS');
   assert.ok(block.includes("typeof MutationObserver === 'function'"), 'حارس البيئة القديمة');
   assert.ok(block.includes("observe(document.body, { attributes:true, attributeFilter:['class'] })"), 'مراقب صنف body وحده');
-  assert.ok(block.includes("if(hwWasWelcome && !now) document.documentElement.classList.add('hwCardsDone')"), 'الانتقال ترحيب→محادثة وحده يضع الصنف');
-  assert.ok(!block.includes("classList.remove('hwCardsDone')"), 'لا يُرفع أبدًا في نفس الفتح');
+  assert.match(block, /if\(hwWasWelcome && !now\)\{\s*document\.documentElement\.classList\.add\('hwCardsDone'\);/, 'الانتقال ترحيب→محادثة وحده يضع الصنف');
+  assert.ok(!block.includes("classList.remove('hwCardsDone')"), 'لا يُرفع أبدًا');
+  // مرّة واحدة في العمر لا في الجلسة: القرار يُحفظ على الجهاز ويُقرأ قبل أوّل رسم
+  assert.ok(block.includes("localStorage.setItem('aiapp_hw_cards_done', '1')"), 'يُحفظ على الجهاز عند أوّل سؤال');
+  assert.ok(block.includes("localStorage.getItem('aiapp_hw_cards_done') === '1'"), 'يُقرأ عند التركيب احتياطًا');
+  const early = read('index.html');
+  const inl = early.indexOf("localStorage.getItem('aiapp_hw_cards_done') === '1') document.documentElement.classList.add('hwCardsDone')");
+  assert.ok(inl > 0 && inl < early.indexOf('<link rel="stylesheet"'), 'سكربت مبكّر في الرأس قبل أيّ ورقة أنماط — بلا وميض');
 
   const html = read('index.html');
-  assert.ok(html.includes('css/redesign.css?v=688') && html.includes('/js/ui-wiring.js?v=653'), 'وسما الكاش ارتفعا');
+  assert.ok(html.includes('css/redesign.css?v=688') && html.includes('/js/ui-wiring.js?v=654'), 'وسما الكاش ارتفعا');
 });
 
 test('زرّ «جرّبه لي» 🧪 محذوف من الواجهة', () => {
