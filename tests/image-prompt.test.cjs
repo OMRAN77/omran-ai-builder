@@ -71,7 +71,9 @@ test('all image-edit entry points apply style preservation except explicit anime
   assert.match(portrait, /\['hairstyle',[\s\S]*?'outfit'[\s\S]*?\]\.includes\(style\)/);
   assert.match(portrait, /temperature: \(isLocalizedEdit \|\| isMultiSourceComposition\) \? 0\.15 : 0\.65/); // v-merge-faces: الدمج أمين أيضًا، والأساليب الفنّيّة ٠٫٦٥
   assert.match(studio, /if \(feature !== 'anime'\) promptText \+=/);
-  assert.match(studio, /temperature: feature === 'anime' \? 0\.65 : 0\.15/);
+  // v-studio-variety: الأنمي ٠٫٦٥، وميزات الرسم (حنّاء/أظافر/تاتو) ٠٫٤٥ كي لا يتكرّر النقش نفسه، والباقي ٠٫١٥ كما كان
+  assert.match(studio, /feature === 'anime' \? 0\.65 : \(DESIGN_FEATURES\.indexOf\(feature\) !== -1 \? 0\.45 : 0\.15\)/);
+  assert.match(studio, /const DESIGN_FEATURES = \['henna', 'nails', 'tattoo'\]/);
   assert.match(sourceStylePreservationRule(), /unless the USER REQUEST explicitly asks/);
   assert.ok(!/verifyLocalizedImageEdit/.test(maha), 'v-lanes: لا حارس رافض في maha-image'); // يبقى في portrait/studio
   assert.match(portrait, /if \(!isMultiSourceComposition\)/);

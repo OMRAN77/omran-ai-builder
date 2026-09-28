@@ -124,7 +124,8 @@ test('٥. كلّ مُنشئ صور داخل نافذة مغلقة يمرّ با�
   // البطاقة المصغّرة الموحّدة (الديكور + المناسبة + الموسم) ومصغّرة الاستوديو
   assert.match(R('js/app-05-ui.js'), /window\.__omranWhenSeen\(im, function\(\)\{ im\.src = s\.img; \}\)/);
   const a13 = R('js/app-13-stocks-init.js');
-  assert.match(a13, /window\.__omranWhenSeen\(img, function\(\)\{ img\.src = __sSrc; \}\)/);
+  // v-studio-more-looks: المصدر صار من optionImgs (المعاينة المولّدة أوّلًا للمكياج)، والتأجيل كما هو
+  assert.match(a13, /window\.__omranWhenSeen\(img, function\(\)\{ img\.src = __srcs\.img; \}\)/);
   assert.doesNotMatch(a13, /img\.src = 'assets\/studio\/options\/' \+ feature/);
 
   // كلّ موضع له طريق رجوع إن غاب المساعد

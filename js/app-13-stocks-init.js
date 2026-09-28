@@ -992,6 +992,17 @@
       { value:'bob', ar:'💇 بوب قصير', en:'💇 Bob cut' },
       { value:'pixie', ar:'🧚 بيكسي', en:'🧚 Pixie cut' },
       { value:'longlayers', ar:'👩‍🦱 طبقات طويلة', en:'👩‍🦱 Long layers' },
+      /* v-studio-more-looks: دفعة الأشكال الجديدة (طلب المالك «زيد الأشكال») */
+      { value:'balayage', ar:'🎨 بالياج مدمج', en:'🎨 Balayage' },
+      { value:'copper', ar:'🔶 نحاسي لامع', en:'🔶 Copper' },
+      { value:'ashbrown', ar:'🌫️ بني رمادي', en:'🌫️ Ash brown' },
+      { value:'honey', ar:'🍯 عسلي', en:'🍯 Honey beige' },
+      { value:'braids', ar:'🪢 ضفائر', en:'🪢 Braids' },
+      { value:'updo', ar:'👑 شينيون مرفوع', en:'👑 Elegant updo' },
+      { value:'bangs', ar:'✂️ غرة أمامية', en:'✂️ Full bangs' },
+      { value:'shag', ar:'🎸 شاغ طبقات', en:'🎸 Shag cut' },
+      { value:'jetwaves', ar:'🌀 موجات كلاسيكية', en:'🌀 Finger waves' },
+      { value:'darkroots', ar:'🌓 جذور غامقة', en:'🌓 Shadow roots' },
     ],
     nails: [
       { value:'red', ar:'🔴 أحمر', en:'🔴 Red', fr:'🔴 Rouge', hi:'🔴 लाल', ur:'🔴 سرخ', bn:'🔴 লাল', ne:'🔴 रातो' },
@@ -1006,6 +1017,19 @@
       { value:'chrome', ar:'🪞 كروم مرايا', en:'🪞 Chrome' },
       { value:'marble', ar:'🏛️ رخامي', en:'🏛️ Marble art' },
       { value:'artnails', ar:'🌸 رسم زهري', en:'🌸 Floral art' },
+      /* v-studio-more-looks */
+      { value:'coffin', ar:'⚰️ كوفن طويل', en:'⚰️ Coffin' },
+      { value:'stiletto', ar:'📌 ستيليتو مدبب', en:'📌 Stiletto' },
+      { value:'squareshort', ar:'◼️ مربع قصير', en:'◼️ Short square' },
+      { value:'almond', ar:'🌰 لوزي', en:'🌰 Almond' },
+      { value:'babyboomer', ar:'🤍 بيبي بومر', en:'🤍 Baby boomer' },
+      { value:'velvetnails', ar:'🟣 مخملي', en:'🟣 Velvet' },
+      { value:'auranails', ar:'🌈 أورا متوهج', en:'🌈 Aura' },
+      { value:'catseyenails', ar:'🐈 عين القطة', en:'🐈 Cat-eye' },
+      { value:'pearlnails', ar:'🦪 لؤلؤي', en:'🦪 Pearl' },
+      { value:'animalprint', ar:'🐆 نمري', en:'🐆 Leopard print' },
+      { value:'khaleejinails', ar:'✨ خليجي بالفويل', en:'✨ Gulf gold foil' },
+      { value:'frenchcolor', ar:'🎀 فرنشي ملوّن', en:'🎀 Colour French' },
     ],
     makeup: [
       { value:'natural', ar:'🌿 طبيعي خفيف', en:'🌿 Natural', fr:'🌿 Naturel', hi:'🌿 प्राकृतिक', ur:'🌿 قدرتی', bn:'🌿 প্রাকৃতিক', ne:'🌿 प्राकृतिक' },
@@ -1018,6 +1042,20 @@
       { value:'dewy', ar:'💧 ديوي مشرق', en:'💧 Dewy glow' },
       { value:'matte', ar:'🤎 مطفي كامل', en:'🤎 Full matte' },
       { value:'editorial', ar:'🎨 جريء ملوّن', en:'🎨 Editorial' },
+      /* v-studio-variety: أربعة خيارات مكياج جديدة (طلب المالك «زيد من التنويع») */
+      { value:'coral', ar:'🍑 كورال صيفي', en:'🍑 Summer coral' },
+      { value:'goldeye', ar:'🥇 عيون ذهبية', en:'🥇 Gold shimmer eyes' },
+      { value:'glassskin', ar:'🫧 بشرة زجاجية', en:'🫧 Glass skin' },
+      { value:'berry', ar:'🍇 توتي غامق', en:'🍇 Deep berry' },
+      /* v-studio-more-looks */
+      { value:'bronzed', ar:'🥉 برونزي شمسي', en:'🥉 Bronzed' },
+      { value:'cutcrease', ar:'✂️ كت كريز', en:'✂️ Cut crease' },
+      { value:'siren', ar:'🐍 عيون سايرن', en:'🐍 Siren eyes' },
+      { value:'dolleyes', ar:'🎀 عيون دمية', en:'🎀 Doll eyes' },
+      { value:'latte', ar:'☕ لاتيه ترابي', en:'☕ Latte' },
+      { value:'cherry', ar:'🍒 كرزي لامع', en:'🍒 Cherry' },
+      { value:'festival', ar:'🎉 قليتر مهرجانات', en:'🎉 Festival glitter' },
+      { value:'softmatteGulf', ar:'🖤 سهرة خليجية', en:'🖤 Gulf soirée' },
     ],
     beard: [
       { value:'full', ar:'🧔 لحية كاملة', en:'🧔 Full Beard', fr:'🧔 Barbe complète', hi:'🧔 पूरी दाढ़ी', ur:'🧔 مکمل داڑھی', bn:'🧔 পূর্ণ দাড়ি', ne:'🧔 पूरा दाह्री' },
@@ -1030,6 +1068,13 @@
       { value:'faded', ar:'💈 متدرجة فيد', en:'💈 Faded' },
       { value:'longbeard', ar:'🧔‍♂️ طويلة كثة', en:'🧔‍♂️ Long thick' },
       { value:'anchor', ar:'⚓ أنكور', en:'⚓ Anchor' },
+      /* v-studio-more-looks */
+      { value:'ducktail', ar:'🦆 ذيل البطة', en:'🦆 Ducktail' },
+      { value:'chinstrap', ar:'➰ خط الفك', en:'➰ Chinstrap' },
+      { value:'circlebeard', ar:'⭕ دائرية', en:'⭕ Circle beard' },
+      { value:'mutton', ar:'🧔‍♂️ سوالف عريضة', en:'🧔‍♂️ Mutton chops' },
+      { value:'greybeard', ar:'🩶 ملح وفلفل', en:'🩶 Salt & pepper' },
+      { value:'shapedbeard', ar:'💈 حواف مرسومة', en:'💈 Barber-shaped' },
     ],
     skin: [
       { value:'subtle', ar:'✨ تنعيم خفيف', en:'✨ Subtle Smoothing', fr:'✨ Lissage subtil', hi:'✨ हल्का स्मूदिंग', ur:'✨ ہلکی ہمواری', bn:'✨ হালকা মসৃণতা', ne:'✨ हल्का चिल्लो' },
@@ -1038,6 +1083,13 @@
       { value:'tan', ar:'🌞 تان ذهبي', en:'🌞 Golden tan' },
       { value:'matteskin', ar:'🧴 مطفي بلا لمعة', en:'🧴 Matte finish' },
       { value:'freckles', ar:'✨ نمش طبيعي', en:'✨ Freckles' },
+      /* v-studio-more-looks */
+      { value:'poreless', ar:'🫧 بلا مسام', en:'🫧 Poreless' },
+      { value:'acneclear', ar:'🧼 إزالة الحبوب', en:'🧼 Clear blemishes' },
+      { value:'scarfree', ar:'🩹 تخفيف الآثار', en:'🩹 Fade scars' },
+      { value:'hydrated', ar:'💦 ترطيب ممتلئ', en:'💦 Hydrated' },
+      { value:'evenTone', ar:'🎚️ توحيد اللون', en:'🎚️ Even tone' },
+      { value:'softfilter', ar:'🌫️ نعومة الاستوديو', en:'🌫️ Soft focus' },
     ],
     glasses: [
       { value:'sunglasses', ar:'🕶️ شمسية كلاسيكية', en:'🕶️ Classic Sunglasses', fr:'🕶️ Lunettes de soleil classiques', hi:'🕶️ क्लासिक सनग्लासेज़', ur:'🕶️ کلاسک دھوپ کے چشمے', bn:'🕶️ ক্লাসিক সানগ্লাস', ne:'🕶️ क्लासिक घाम चश्मा' },
@@ -1052,6 +1104,13 @@
       { value:'retroglasses', ar:'🕰️ ريترو ملوّنة', en:'🕰️ Retro tinted' },
       { value:'hexagon', ar:'⬡ سداسية', en:'⬡ Hexagon' },
       { value:'clearframe', ar:'🧊 إطار شفاف', en:'🧊 Clear frame' },
+      /* v-studio-more-looks */
+      { value:'browline', ar:'🕶️ براولاين', en:'🕶️ Browline' },
+      { value:'octagon', ar:'🛑 ثمانية أضلاع', en:'🛑 Octagon' },
+      { value:'halfrim', ar:'➗ نصف إطار', en:'➗ Half-rim' },
+      { value:'bluelight', ar:'💻 حماية الشاشات', en:'💻 Blue-light' },
+      { value:'mirrored', ar:'🪩 عاكسة', en:'🪩 Mirrored' },
+      { value:'tinyframe', ar:'🔹 صغيرة ترند', en:'🔹 Tiny frame' },
     ],
     tattoo: [
       { value:'sleeve', ar:'💪 كم كامل', en:'💪 Full Sleeve', fr:'💪 Manche complète', hi:'💪 फुल स्लीव', ur:'💪 فل سلیو', bn:'💪 ফুল স্লিভ', ne:'💪 पूरा स्लिभ' },
@@ -1063,6 +1122,14 @@
       { value:'minimalline', ar:'➖ خط بسيط', en:'➖ Minimal line' },
       { value:'arabictattoo', ar:'🖋️ خط عربي', en:'🖋️ Arabic calligraphy' },
       { value:'floraltattoo', ar:'🌿 نباتي مفصّل', en:'🌿 Floral' },
+      /* v-studio-more-looks */
+      { value:'japanese', ar:'🌊 ياباني إيرزومي', en:'🌊 Japanese irezumi' },
+      { value:'blackwork', ar:'⬛ بلاك ورك', en:'⬛ Blackwork' },
+      { value:'watercolortattoo', ar:'🎨 ألوان مائية', en:'🎨 Watercolour' },
+      { value:'necktattoo', ar:'👤 على الرقبة', en:'👤 Neck' },
+      { value:'chesttattoo', ar:'🫀 على الصدر', en:'🫀 Chest piece' },
+      { value:'ankletattoo', ar:'🦶 حول الكاحل', en:'🦶 Ankle band' },
+      { value:'dotwork', ar:'⚪ نقطي ماندالا', en:'⚪ Dotwork mandala' },
     ],
     anime: [
       { value:'classic', ar:'🎌 أنمي ياباني كلاسيكي', en:'🎌 Classic Anime', fr:'🎌 Anime classique', hi:'🎌 क्लासिक एनीमे', ur:'🎌 کلاسک اینیمے', bn:'🎌 ক্লাসিক অ্যানিমে', ne:'🎌 क्लासिक एनिमे' },
@@ -1074,6 +1141,14 @@
       { value:'kawaii', ar:'🌸 كاواي باستيل', en:'🌸 Kawaii' },
       { value:'webtoon', ar:'📱 ويبتون', en:'📱 Webtoon' },
       { value:'retro90s', ar:'📼 أنمي التسعينات', en:'📼 Retro 90s' },
+      /* v-studio-more-looks */
+      { value:'seinen', ar:'🎬 سينين واقعي', en:'🎬 Seinen' },
+      { value:'mecha', ar:'🤖 ميكا وروبوت', en:'🤖 Mecha' },
+      { value:'isekai', ar:'🗡️ إيسيكاي فانتازي', en:'🗡️ Isekai fantasy' },
+      { value:'magicalgirl', ar:'🪄 فتاة سحرية', en:'🪄 Magical girl' },
+      { value:'cinematicanime', ar:'🎞️ أنمي سينمائي', en:'🎞️ Cinematic anime' },
+      { value:'sportanime', ar:'⚽ أنمي رياضي', en:'⚽ Sports anime' },
+      { value:'shojo', ar:'🌷 شوجو بريق', en:'🌷 Shojo sparkle' },
     ],
     heritage: [
       { value:'kandora', ar:'👳 كندورة وغترة خليجية', en:'👳 Gulf Kandora & Ghutra', fr:'👳 Kandora du Golfe', hi:'👳 खाड़ी कंदुरा', ur:'👳 خلیجی کندورہ', bn:'👳 উপসাগরীয় কান্দুরা', ne:'👳 खाडी कान्दुरा' },
@@ -1086,6 +1161,15 @@
       { value:'saudimen2', ar:'🧥 بشت وشماغ', en:'🧥 Bisht & shemagh' },
       { value:'moroccanher', ar:'🇲🇦 جلباب مغربي', en:'🇲🇦 Moroccan djellaba' },
       { value:'palestinian', ar:'🇵🇸 ثوب مطرّز', en:'🇵🇸 Embroidered thobe' },
+      /* v-studio-more-looks */
+      { value:'kuwaitiher', ar:'🇰🇼 دراعة كويتية', en:'🇰🇼 Kuwaiti daraa' },
+      { value:'qatarither', ar:'🇶🇦 ثوب نشل قطري', en:'🇶🇦 Qatari nashal' },
+      { value:'bahrainiher', ar:'🇧🇭 ثوب بحريني', en:'🇧🇭 Bahraini dress' },
+      { value:'omaniwomen', ar:'🇴🇲 زيّ عماني نسائي', en:'🇴🇲 Omani women\'s dress' },
+      { value:'yemeni', ar:'🇾🇪 زيّ يمني', en:'🇾🇪 Yemeni' },
+      { value:'egyptian', ar:'🇪🇬 جلابية مصرية', en:'🇪🇬 Egyptian galabeya' },
+      { value:'sudanesedress', ar:'🇸🇩 زيّ سوداني', en:'🇸🇩 Sudanese' },
+      { value:'levantine', ar:'🌿 زيّ شامي', en:'🌿 Levantine' },
     ],
     merge: [],
   };
@@ -1093,6 +1177,15 @@
   const MORE = window.__STUDIO_MORE || { features: [], options: {} };
   Object.keys(MORE.options).forEach((k) => { STUDIO_OPTIONS[k] = MORE.options[k]; });
   const PREVIEW_API = (f, v) => '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v);
+  /* v-studio-more-looks: صور خيارات المكياج الجاهزة لقطات جسم كامل لا يظهر فيها المكياج،
+     فبدت العشرة صورة واحدة في المنتقي. لهذه الميزات المعاينة المولّدة (وجه قريب من
+     /api/studio-preview، تُولَّد مرّة وتُخزَّن) أوّلًا، والصورة الجاهزة احتياطًا. */
+  const PREVIEW_FIRST = ['makeup'];
+  function optionImgs(f, v){
+    const asset = 'assets/studio/options/' + f + '-' + v + '.webp';
+    const gen = PREVIEW_API(f, v);
+    return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
+  }
   const IS_MORE = (f) => !!MORE.options[f];
   function moreLabel(obj){
     const lg = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar');
@@ -1260,11 +1353,9 @@
     window.omranPicker.open({
       title: featureTitle() || (bT('✨ ستايل الذكاء الاصطناعي','✨ AI style')),
       count: opts.length + (bT(' خيارًا — اختر ما يناسبك',' options — pick yours')),
-      items: opts.map((opt) => ({
+      items: opts.map((opt) => Object.assign({
         v: opt.value, title: opt.textContent.trim(), active: opt.value === styleEl.value,
-        img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
-        img2: PREVIEW_API(feature, opt.value), /* v-studio-14: معاينة مولّدة على الخادم إن لم توجد صورة جاهزة */
-      })),
+      }, optionImgs(feature, opt.value))), /* v-studio-14 + v-studio-more-looks: معاينة مولّدة على الخادم */
       onPick: function(v){ styleEl.value = v; renderStudioStyleCards(); },
     });
   }
@@ -1283,10 +1374,10 @@
     img.alt = cur.textContent.trim(); img.loading = 'lazy';
     img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
     /* v-art-defer: داخل #studioAiModal المغلق — المقاس ثابت 44×58 فالتأجيل آمن. */
-    const __sSrc = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
-    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __sSrc; });
-    else img.src = __sSrc;
-    img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = PREVIEW_API(feature, cur.value); } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
+    const __srcs = optionImgs(feature, cur.value); /* v-studio-more-looks */
+    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __srcs.img; });
+    else img.src = __srcs.img;
+    img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = __srcs.img2; } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');

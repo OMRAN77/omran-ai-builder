@@ -5,6 +5,10 @@
 'use strict';
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent } = require('./kv.js');
 const MORE = require('./studio-more.js');
+/* v-studio-more-looks: الميزات الأساسيّة أيضًا (شعر، أظافر، مكياج…) — صور المكياج
+   الجاهزة كانت لقطات جسم كامل لا يظهر فيها المكياج، فبدت الخيارات صورة واحدة.
+   ملفّ البيانات صرف بلا أسرار، فلا يُحمَّل studio-create (يقرأ الحصص في نطاق الوحدة). */
+const BASE = require('./studio-styles.js');
 
 function reqOrigin(req) {
   const h = String((req && req.headers && (req.headers['x-forwarded-host'] || req.headers.host)) || '').split(',')[0].trim();
@@ -27,7 +31,10 @@ module.exports = async (req, res) => {
   /* v-video-trends: feature=trend → معاينة بطاقات ترندات الفيديو من نفس المولّد */
   const TRENDS = require('./video-trends.js').TRENDS;
   const isTrend = feature === 'trend';
-  const map = isTrend ? Object.fromEntries(Object.keys(TRENDS).map((k) => [k, TRENDS[k].preview.frame])) : MORE.STYLE_PROMPTS[feature];
+  const isBase = !isTrend && !MORE.STYLE_PROMPTS[feature] && !!BASE.STYLE_TEXT[feature];
+  const map = isTrend
+    ? Object.fromEntries(Object.keys(TRENDS).map((k) => [k, TRENDS[k].preview.frame]))
+    : (MORE.STYLE_PROMPTS[feature] || BASE.STYLE_TEXT[feature]);
   if (!map) { res.status(404).json({ error: 'unknown feature' }); return; }
   if (value === '__tab') value = Object.keys(map)[0];
   if (!map[value]) { res.status(404).json({ error: 'unknown value' }); return; }
@@ -68,15 +75,20 @@ module.exports = async (req, res) => {
       try { await kvSetRaw(key, tb); } catch (e) { /* يُقدَّم الآن */ }
       sendImage(res, tb); return;
     }
-    const gender = ((MORE.PREVIEW_SUBJECT[feature] || {})[value]) || ((MORE.PREVIEW_SUBJECT[feature] || {}).__tab) || 'w';
+    const subjects = (isBase ? BASE.PREVIEW_SUBJECT : MORE.PREVIEW_SUBJECT)[feature] || {};
+    const gender = subjects[value] || subjects.__tab || 'w';
     const who = (feature === 'age') ? ('an Arab ' + (gender === 'm' ? 'man' : 'woman')) : ('a young Arab ' + (gender === 'm' ? 'man' : 'woman'));
-    const frame = MORE.PREVIEW_FRAME[feature] || 'three-quarter portrait';
-    const fname = MORE.PREVIEW_FEATURE_NAME[feature] || 'the requested style';
+    const frames = isBase ? BASE.PREVIEW_FRAME : MORE.PREVIEW_FRAME;
+    const names = isBase ? BASE.PREVIEW_FEATURE_NAME : MORE.PREVIEW_FEATURE_NAME;
+    const frame = frames[feature] || 'three-quarter portrait';
+    const fname = names[feature] || 'the requested style';
     const desc = map[value];
     const bg = (feature === 'background' || feature === 'idphoto' || feature === 'iconic' || feature === 'seasons')
       ? ''
       : ' Dark warm brown studio backdrop with soft golden light.';
-    const prompt = 'Photorealistic editorial studio photograph of ' + who + ', ' + frame + ', ' + desc + ' — the image must clearly and prominently show ' + fname + '.' +
+    /* الأنمي رسمة لا صورة — «photorealistic» كان يناقض الستايل نفسه */
+    const head = feature === 'anime' ? 'A character illustration of ' : 'Photorealistic editorial studio photograph of ';
+    const prompt = head + who + ', ' + frame + ', ' + desc + ' — the image must clearly and prominently show ' + fname + '.' +
       bg + ' Consistent premium studio style, natural skin texture, high detail. No text, no watermark, no logo.';
     const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
