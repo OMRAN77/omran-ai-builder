@@ -1,0 +1,231 @@
+'use strict';
+/* v-text-layout — لقطة المالك ٢٧ سبتمبر: «اكتب على اليمين مشكور اخوي» على صورته خرجت «على / اليمين / مشكور / آخوي» كلمةً في
+   كلّ سطر، في عمود ضيّق على اليسار. الكتلة القصيرة تُبنى الآن بقواعد __textBlockLayout الخالصة (تُشغَّل هنا في vm بقياس
+   تقريبيّ لا متصفّح)، والمواضع تُطبَّع بـ__textPosNorm، والمستهلكون يمرّرون «auto» أو الجانب وحده بـ__textPosArg. */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const attach = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-09-attach.js'), 'utf8');
+
+const a = attach.indexOf('function __textPosNorm'), b = attach.indexOf('async function __textFontsReady');
+const ctx = {}; vm.createContext(ctx);
+vm.runInContext(attach.slice(a, b) + ';this.norm=__textPosNorm;this.arg=__textPosArg;this.lay=__textBlockLayout;', ctx);
+const plain = (x) => JSON.parse(JSON.stringify(x));
+/* قياس تقريبيّ لخطّ النسخ العريض: نحو ٠٫٤٥ من الخطّ لكلّ حرف (مشكور اخوي ≈ ٤٫٥ em كما قيس في المتصفّح) */
+const em = (s) => 0.45 * String(s).length;
+const layout = (text, position, o = {}) => plain(ctx.lay(Object.assign({ W: 960, H: 1280, lines: String(text).split('\n'), em, role: String(text).split(/\s+/).length <= 6 ? 'hero' : 'body', pos: ctx.norm(position), sc: 1, boxes: [], rate: null }, o)));
+const POS = ['auto', 'right', 'left', 'right-top', 'right-center', 'bottom-right', 'right-bottom', 'bottom-left', 'left-top', 'top', 'center', 'bottom'];
+const SIZES = [[960, 1280], [1280, 960], [1024, 1024], [720, 1280], [1600, 900]];
+
+test('a 2-word phrase is one line on a portrait photo, at every position', () => {
+  for (const p of POS) {
+    const r = layout('مشكور اخوي', p);
+    assert.equal(r.lines.length, 1, p);
+    assert.deepEqual(r.lines, ['مشكور اخوي'], p);
+    assert.ok(r.F >= 0.07 * 960, p + ' — خطّ بطل لا نصّ صغير: ' + r.F);
+  }
+  const long = layout('عبدالرحمنالعظيم محمدالعبدالهادي', 'right');
+  assert.equal(long.lines.length, 1, 'كلمتان سطر واحد دائمًا حتّى أرضيّة ٠٫٠٤٥W');
+  assert.ok(long.w <= 960 * 0.88 + 1, 'ولا يخرج عن الصورة');
+});
+
+test("'right' puts the block's right edge at the margin and right-aligns it; 'left' mirrors it", () => {
+  for (const [W, H] of SIZES) for (const p of ['right', 'right-top', 'right-center', 'bottom-right', 'right-bottom']) {
+    const r = layout('مشكور اخوي', p, { W, H });
+    assert.equal(r.side, 'right', p);
+    assert.equal(r.align, 'right', p);
+    assert.ok(W - (r.x0 + r.w) <= 0.07 * W && r.x0 + r.w <= W, p + ' حافّة يمنى عند الهامش');
+    assert.equal(r.ax, W - 0.06 * W);
+  }
+  for (const p of ['left', 'left-top', 'bottom-left']) {
+    const r = layout('مشكور اخوي', p);
+    assert.deepEqual([r.side, r.align], ['left', 'left'], p);
+    assert.ok(r.x0 <= 0.07 * 960 && r.x0 >= 0, p);
+  }
+  const c = layout('مشكور اخوي', 'top');
+  assert.equal(c.align, 'center');
+  assert.ok(Math.abs(c.x0 + c.w / 2 - 480) < 1);
+  assert.equal(layout('مشكور اخوي', 'bottom-right').vert, 'bottom', 'bottom-right لا يسقط إلى تلقائيّ');
+  assert.equal(layout('مشكور اخوي', 'right-bottom').vert, 'bottom');
+});
+
+test('≤6 words never take more than 2 lines, and never one word per line', () => {
+  const words = ['على', 'اليمين', 'مشكور', 'اخوي', 'ألف', 'مبروك', 'يا', 'بطل', 'عيد', 'مبارك', 'وكل', 'عام', 'وانتم', 'بخير', 'عبدالرحمن', 'الحبيب'];
+  for (let n = 1; n <= 6; n++) for (let off = 0; off < 10; off++) {
+    const text = words.slice(off, off + n).join(' ');
+    for (const p of POS) for (const [W, H] of SIZES) for (const sc of [0.68, 1, 1.3]) {
+      const r = layout(text, p, { W, H, sc });
+      assert.ok(r.lines.length <= 2, text + ' @' + p + ' ' + W + 'x' + H + ' → ' + r.lines.length + ' أسطر');
+      if (n === 2) assert.equal(r.lines.length, 1, text + ' @' + p);
+      if (n >= 4 && r.lines.length === 2) r.lines.forEach((l) => assert.ok(l.split(' ').length >= 2, 'كلمة يتيمة: ' + JSON.stringify(r.lines)));
+      assert.ok(r.x0 >= 0 && r.x0 + r.w <= W + 0.5 && r.top >= 0 && r.top + r.h <= H + 0.5, 'داخل الصورة: ' + text + ' @' + p);
+    }
+  }
+  /* نصّ المالك نفسه لو وصل كاملًا (محلّل قديم): سطران على الأكثر لا أربعة */
+  for (const p of ['auto', 'right', 'right-center']) assert.ok(layout('على اليمين مشكور اخوي', p).lines.length <= 2, p);
+});
+
+test('7+ words: balanced lines (≤4 up to 20 words) with a font of at least 0.045W — no 0.036 cliff', () => {
+  const seven = 'كل عام وانتم بخير يا أحلى عائلة';
+  for (const p of POS) for (const [W, H] of SIZES) {
+    const r = layout(seven, p, { W, H, role: 'body' });
+    assert.ok(r.F >= Math.floor(0.045 * W), seven + ' @' + p + ' F=' + r.F + ' W=' + W);
+    assert.ok(r.lines.length >= 2 && r.lines.length <= 4, p + ' ' + r.lines.length);
+    assert.equal(r.lines.join(' '), seven, 'لا كلمة تضيع ولا تتكرّر');
+  }
+  const twenty = Array.from({ length: 20 }, (_, i) => ['اللهم', 'اجعل', 'هذا', 'اليوم', 'خيرا'][i % 5]).join(' ');
+  const r = layout(twenty, 'auto', { role: 'body' });
+  assert.ok(r.lines.length <= 4 && r.F >= Math.floor(0.045 * 960), JSON.stringify([r.lines.length, r.F]));
+  const user = layout('سطر أول كتبه المستخدم\nوسطر ثانٍ بعده تمامًا', 'bottom', { role: 'body' });
+  assert.deepEqual(user.lines, ['سطر أول كتبه المستخدم', 'وسطر ثانٍ بعده تمامًا'], 'أسطر المستخدم تُحترم');
+});
+
+test('positions: every spelling is normalised, the side alone is flexible, and an unknown value is flagged — never a silent auto', () => {
+  const n = (p) => { const r = plain(ctx.norm(p)); return [r.side, r.vert, r.flex, r.auto, r.unknown]; };
+  assert.deepEqual(n('right'), ['right', '', true, false, false]);
+  assert.deepEqual(n('left'), ['left', '', true, false, false]);
+  assert.deepEqual(n('right-center'), ['right', 'center', false, false, false]);
+  assert.deepEqual(n('bottom-right'), n('right-bottom'));
+  assert.deepEqual(n('bottom-right'), ['right', 'bottom', false, false, false]);
+  assert.deepEqual(n('top-left'), ['left', 'top', false, false, false]);
+  assert.deepEqual(n('middle'), ['', 'center', false, false, false]);
+  assert.deepEqual(n('top'), ['', 'top', false, false, false]);
+  for (const p of ['auto', '', null, undefined]) assert.deepEqual(n(p), ['', '', false, true, false], String(p));
+  for (const p of ['upper-right', 'يمين', 'right-left', 'nowhere']) assert.deepEqual(n(p), ['', '', false, true, true], p);
+  /* المستهلكون: بلا موضع مسمّى = «auto» (كان المولَّد الجديد يُكتب أسفل دائمًا)، والجانب وحده = «right»/«left» */
+  assert.equal(ctx.arg('bottom', true, false), 'auto');
+  assert.equal(ctx.arg('right-center', false, true), 'right');
+  assert.equal(ctx.arg('left-center', false, true), 'left');
+  assert.equal(ctx.arg('right-center', false, undefined), 'right-center', 'بلا علَم المحلّل: كما كان');
+  assert.equal(ctx.arg('right-top', false, true), 'right-top', 'ارتفاع مسمّى لا يلين');
+  assert.equal(ctx.arg('', false, false), 'auto');
+});
+
+test('an explicit side is a hard constraint; a named vertical moves only off a face', () => {
+  const faceRightTop = [{ box: [0.62, 0.02, 0.98, 0.3], label: 'face' }];
+  const flex = layout('مشكور اخوي', 'right', { boxes: faceRightTop });
+  assert.equal(flex.side, 'right', 'الوجه لا ينقل الكتابة إلى اليسار');
+  assert.notEqual(flex.vert, 'top', 'الجانب وحده يختار ارتفاعًا بلا وجه');
+  const fixed = layout('مشكور اخوي', 'right-top', { boxes: faceRightTop });
+  assert.equal(fixed.side, 'right');
+  assert.ok(fixed.top / 1280 >= 0.3, 'انزلق تحت الوجه على الجهة نفسها: ' + fixed.top);
+  const person = layout('مشكور اخوي', 'right-top', { boxes: [{ box: [0.5, 0, 1, 1], label: 'person' }] });
+  assert.equal(Math.round(person.top), Math.round(0.045 * 1280), 'الشخص (لا الوجه) لا يزيح موضعًا مسمّى — الوشاح يكفي');
+  const busy = layout('مشكور اخوي', 'right-top', { rate: (x0) => ({ rel: x0 > 0.5 ? 3 : 0.1, sd: 0.3, lum: 0.5 }) });
+  assert.deepEqual([busy.side, busy.vert], ['right', 'top'], 'الازدحام تحت موضع مسمّى لا ينقله');
+  const auto = layout('مشكور اخوي', 'auto', { rate: (x0, y0, x1) => ({ rel: y0 > 0.5 && x1 < 0.6 ? 0.05 : 2 }) });
+  assert.deepEqual([auto.side, auto.vert], ['left', 'bottom'], 'التلقائيّ يذهب إلى الأهدأ');
+});
+
+test('client wiring: fonts measured as drawn, the poster kept, and every writer passes auto or the side', () => {
+  assert.match(attach, /const fontsOk = await __textFontsReady\(\[titleW \+ ' 40px "' \+ titleCss \+ '"', bodyW \+ ' 40px "' \+ bodyCss \+ '"'\]/, 'خطّ احتياطيّ عريض حوّل ٣ أسطر إلى ٤');
+  assert.match(attach, /new Promise\(\(r\) => setTimeout\(r, 2500\)\)/, 'الانتظار محدود');
+  assert.match(attach, /const poster = !!\(T\.title && T\.lines\.length\), P = __textPosNorm\(position\);/, 'الملصق «عنوان\\n\\nأسطر» كما صُمّم');
+  assert.match(attach, /const __pos = __textPosArg\(__textSpec\.position, __textSpec\.positionAuto, __textSpec\.positionFlex\);/);
+  assert.match(attach, /const __genPos = __textPosArg\(textSpec\.position, textSpec\.positionAuto, textSpec\.positionFlex\);/);
+  assert.match(attach, /position:__textPosArg\(__genTextSpec\.position, __genTextSpec\.positionAuto, __genTextSpec\.positionFlex\)/);
+  /* v-text-flex: إعادة التنسيق تمرّ على __textStylePos (علَم المحلّل، وإن غاب فالجانب بلا «وسط» مرن) — اختبارها في text-render */
+  assert.match(attach, /__textSpec\.styleEdit\[k\]\)__l\[k\]=k==='position'\?__textStylePos\(__textSpec,text\)/);
+  assert.doesNotMatch(attach, /overlayTextOnImage\([^)]*__genTextSpec\.position,/, 'المولَّد الجديد لا يُكتب أسفل دائمًا');
+});
+
+/* v-text-size — مراجعة إعادة البناء: «كبّر الخط» أعاد الصورة نفسها بايتًا ببايت (الحجم كان سقفًا يحدّه عرض الجهة)، و«صغّر» كبّرت
+   الخطّ حين قلبت الموضع. الحجم الآن يُطبَّق بعد الملاءمة واختيار الموضع، فالخطّ يتبعه في كلّ دور وكلّ موضع. */
+const GIRLS = [{ box: [0.17, 0.4, 0.33, 0.55], label: 'face' }, { box: [0.37, 0.41, 0.5, 0.54], label: 'face' }, { box: [0.52, 0.42, 0.64, 0.55], label: 'face' }, { box: [0.66, 0.42, 0.82, 0.56], label: 'face' }, { box: [0.05, 0.38, 0.95, 1], label: 'person' }];
+const LONG20 = 'اللهم اجعل هذا اليوم بداية خير وبركة لنا ولأهلنا ولكل من نحب واحفظهم من كل سوء يا رب العالمين';
+const TEXTS = ['مشكور اخوي', 'ألف مبروك يا بطل', 'كل عام وانتم بخير يا أحلى عائلة', LONG20];
+const SCALES = [0.4, 0.54, 0.68, 0.8, 1, 1.25, 1.3, 1.56, 1.7];
+/* تغطية كلّ وجه بالبكسل (المستطيل المرسوم × صندوق الوجه) */
+const faceOv = (r, W, H) => GIRLS.filter((g) => g.label === 'face').map((g) => Math.max(0, Math.min(r.x0 + r.w, g.box[2] * W) - Math.max(r.x0, g.box[0] * W)) * Math.max(0, Math.min(r.top + r.h, g.box[3] * H) - Math.max(r.top, g.box[1] * H)));
+
+test('size: «كبّر» grows and «صغّر» shrinks the font for every role and position — side, auto, flex, named, long text', () => {
+  for (const text of TEXTS) for (const p of ['right', 'left', 'auto', 'top', 'bottom', 'right-top', 'center']) for (const [W, H] of SIZES) for (const boxes of [[], GIRLS]) {
+    const role = text.split(' ').length <= 6 ? 'hero' : 'body';
+    const rs = SCALES.map((sc) => layout(text, p, { W, H, sc, boxes, role }));
+    const tag = text.slice(0, 12) + ' @' + p + ' ' + W + 'x' + H + (boxes.length ? ' +وجوه' : '');
+    const one = rs[SCALES.indexOf(1)];
+    rs.forEach((r, i) => {
+      assert.deepEqual([r.side, r.vert], [one.side, one.vert], tag + ' — الحجم لا ينقل الكتابة (sc=' + SCALES[i] + ')');
+      assert.ok(r.x0 >= 0 && r.x0 + r.w <= W + 0.5 && r.top >= 0 && r.top + r.h <= H + 0.5, tag + ' داخل الصورة sc=' + SCALES[i]);
+      if (i) assert.ok(r.F >= rs[i - 1].F, tag + ' رتيب: ' + rs.map((x) => x.F).join(','));
+    });
+    const [s08, s1, s125] = [rs[SCALES.indexOf(0.8)], one, rs[SCALES.indexOf(1.25)]];
+    assert.ok(s08.F < s1.F, tag + ' «صغّر» يصغّر: ' + s08.F + ' < ' + s1.F);
+    /* يكبر ما بقي في الصورة مكان (هامش ٠٫٠٦W/٠٫٠٤٥H)، وبالنسبة كاملة (١٫٢٥ إلّا التقريب) حين تكون الكتلة أقلّ من نصف الصورة.
+       v-text-face (الجولة الثانية): بوجوه، المكان ما خلا منها — لا يزيد النموّ تغطية أيّ وجه، ويكبر ما دامت الكتلة الطبيعيّة بعيدة عنها */
+    const room = Math.min((0.88 * W) / s1.w, (0.91 * H) / s1.h), ov = rs.map((r) => faceOv(r, W, H));
+    if (boxes.length) rs.forEach((r, i) => { if (SCALES[i] > 1) assert.ok(ov[i].every((v, j) => v <= ov[SCALES.indexOf(1)][j] + 1), tag + ' لا يدخل وجهًا عند sc=' + SCALES[i] + ': ' + ov[i].map(Math.round) + ' (F=' + r.F + ')'); });
+    /* بوجوه: يكبر حتمًا متى وسع المكانَ الحرّ الكتلةُ الطبيعيّة مكبّرة ١٫١ من مرساها داخل الهوامش وبعيدًا عن الوجوه */
+    const g = 1.1, gw = s1.w * g, gh = s1.h * g;
+    const gx = s1.side === 'right' ? s1.x0 + s1.w - gw : s1.side === 'left' ? s1.x0 : s1.x0 + (s1.w - gw) / 2;
+    const gy = s1.vert === 'bottom' ? s1.top + s1.h - gh : s1.vert === 'center' ? s1.top + (s1.h - gh) / 2 : s1.top;
+    const fits = gx >= 0.06 * W - 1 && gx + gw <= 0.94 * W + 1 && gy >= Math.min(s1.top, 0.045 * H) - 1 && gy + gh <= Math.max(0.955 * H, s1.top + s1.h) + 1 && faceOv({ x0: gx, top: gy, w: gw, h: gh }, W, H).every((v) => !v);
+    if (room > 1.05 && (!boxes.length || fits)) assert.ok(s125.F > s1.F, tag + ' «كبّر» يكبر فعلًا: ' + s1.F + ' → ' + s125.F);
+    if (!boxes.length && s1.w <= 0.5 * W && s1.h <= 0.5 * H) assert.ok(s125.F >= Math.floor(s1.F * 1.2), tag + ' بالنسبة كاملة: ' + s1.F + ' → ' + s125.F);
+  }
+});
+
+test('size near faces: enlarging never writes over a face — the girls cases from the round-2 review (1083×1452, avoid boxes)', () => {
+  /* المراجِع: girls_long_R/auto/top وgirls_four_R/auto/top غطّت الوجوه عند ١٫٥٦ و١٫٧ (٣٠–٩١ ألف px²) وكانت صفرًا عند ١ */
+  const W = 1083, H = 1452;
+  for (const text of [LONG20, 'ألف مبروك يا بطل', 'مشكور اخوي']) for (const p of ['right', 'auto', 'top']) {
+    const role = text.split(' ').length <= 6 ? 'hero' : 'body';
+    const rs = [1, 1.25, 1.3, 1.56, 1.63, 1.7].map((sc) => layout(text, p, { W, H, sc, boxes: GIRLS, role }));
+    const tag = text.slice(0, 12) + ' @' + p + ' F=' + rs.map((r) => r.F).join(',');
+    rs.forEach((r) => assert.deepEqual(faceOv(r, W, H).map(Math.round), [0, 0, 0, 0], tag + ' — تغطية الوجوه px² عند F=' + r.F + ' top=' + Math.round(r.top) + ' h=' + Math.round(r.h)));
+    rs.forEach((r, i) => { if (i) assert.ok(r.F >= rs[i - 1].F, tag + ' — رتيب: «كبّر» لا تصغّر'); assert.deepEqual([r.side, r.vert], [rs[0].side, rs[0].vert], tag + ' — لا تنقل الكتابة'); });
+    assert.ok(rs[1].F > rs[0].F, tag + ' — «كبّر» الأولى تكبر (المكان الحرّ يتّسع)');
+  }
+  /* الوسط الملاصق لوجه ينمو بعيدًا عنه (لا يتجمّد، ولا يقفز: يحتوي الكتلة الطبيعيّة) */
+  const c = [1, 1.25, 1.56].map((sc) => layout('مشكور اخوي', 'center', { sc, boxes: GIRLS }));
+  assert.ok(c[1].F > c[0].F && c[2].F > c[1].F, 'center بوجوه: ' + c.map((r) => r.F));
+  c.forEach((r) => { assert.deepEqual(faceOv(r, 960, 1280).map(Math.round), [0, 0, 0, 0]); assert.ok(r.top <= c[0].top + 0.5 && r.top + r.h >= c[0].top + c[0].h - 0.5, 'يحتوي الكتلة الطبيعيّة'); });
+});
+
+test('size: the owner cases from the review — right/auto phrase and a 20-word prayer change with every step', () => {
+  const Fs = (text, p, o) => [1, 1.25, 1.56, 1.7, 0.8, 0.68].map((sc) => layout(text, p, Object.assign({ sc, role: text.split(' ').length <= 6 ? 'hero' : 'body' }, o)).F);
+  const r = Fs('مشكور اخوي', 'right');
+  assert.ok(r[1] > r[0] && r[2] > r[1] && r[3] > r[2], 'كبّر ×٣ على اليمين: ' + r);
+  assert.ok(r[4] < r[0] && r[5] < r[4], 'صغّر: ' + r);
+  const a = Fs('مشكور اخوي', 'auto', { boxes: GIRLS });
+  assert.ok(a[1] > a[0] && a[3] > a[1], 'التلقائيّ بوجوه: ' + a);
+  const l = Fs(LONG20, 'right', { boxes: GIRLS });
+  assert.ok(l[1] > l[0] && l[4] < l[0], 'النصّ الطويل يمينًا: ' + l);
+  const t = Fs(LONG20, 'top', { boxes: GIRLS });
+  assert.ok(t[4] < t[0] && t[5] < t[4], '«صغّر» لا تكبّر بقلب الموضع (كانت ٥٢ ← ٦٤): ' + t);
+  /* «أكبر» لا يكسر قواعد الأسطر: كلمتان سطر واحد، و٣–٦ كلمات سطران على الأكثر بلا كلمة يتيمة */
+  for (const sc of [1.25, 1.56, 1.7]) {
+    assert.equal(layout('مشكور اخوي', 'top', { sc }).lines.length, 1);
+    const four = layout('ألف مبروك يا بطل', 'top', { sc });
+    assert.ok(four.lines.length <= 2 && four.lines.every((x) => x.split(' ').length >= 2), JSON.stringify(four.lines));
+    assert.deepEqual(layout('سطر أول كتبه المستخدم\nوسطر ثانٍ بعده تمامًا', 'bottom', { sc, role: 'body' }).lines, ['سطر أول كتبه المستخدم', 'وسطر ثانٍ بعده تمامًا'], 'أسطر المستخدم كما هي');
+  }
+});
+
+test('الجولة ٣: «كبّر» بجوار وجه لا ترجّع الصورة نفسها بصمت — تنمو في مكان خالٍ من الوجوه، أو تُعلَّم blocked فيصارح العميل', () => {
+  const SELFIE = [{ box: [0.3, 0.18, 0.7, 0.5], label: 'face' }];
+  for (const [text, p] of [['ألف مبروك يا بطل', 'auto'], ['مشكور اخوي', 'top'], ['مشكور اخوي', 'right']]) {
+    const r0 = layout(text, p, { boxes: SELFIE }), r1 = layout(text, p, { boxes: SELFIE, sc: 1.25 });
+    assert.ok(r1.F >= r0.F * 1.1 || r1.blocked === true, text + ' @' + p + ': ' + r0.F + ' → ' + r1.F + ' blocked=' + r1.blocked);
+    faceOv(r1, 960, 1280).forEach((v, i) => assert.ok(v <= faceOv(r0, 960, 1280)[i] + 1, text + ' @' + p + ': لا تغطية وجه جديدة'));
+  }
+  const a9 = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
+  assert.match(a9, /window\.__textGrowBlocked = false;/);
+  assert.match(a9, /ما في مساحة أكبر هنا بدون ما يغطي الوجوه/);
+});
+
+test('الجولة ٣: «ارسم قمر وتكتب تحته مبروك» على صورة مرفوعة — مشهد الرسم يمرّ لمحرّر الصورة والكتابة على اللوحة', () => {
+  const a9 = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
+  const m = /const __visRe = (\/.+\/i);/.exec(a9);
+  assert.ok(m, '__visRe موجود');
+  const visRe = eval(m[1]); // eslint-disable-line no-eval
+  const { parseImageTextSpec: P } = require('../js/app-08-image-text.js');
+  for (const [t, text] of [['ارسم قمر وتكتب تحته مبروك', 'مبروك'], ['ارسم عليها قلب وتكتب احبك', 'احبك'], ['سو لها تاج وتكتب ملكة', 'ملكة'], ['اكتب مبروك وخل الخلفية بحر', 'مبروك']]) {
+    const s = P(t);
+    assert.equal(s.exactText, text, t);
+    assert.ok(s.visualEdit && visRe.test(s.visualEdit), t + ' ← المشهد «' + s.visualEdit + '» يُرسل للتعديل');
+  }
+  for (const t of ['اكتب مشكور اخوي على اليمين', 'اكتب «سوسن»']) assert.ok(!P(t).visualEdit, t + ' لا يلمس الصورة');
+});
