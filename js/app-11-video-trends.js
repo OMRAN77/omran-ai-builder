@@ -100,7 +100,7 @@
     var j = null; try{ j = await r.json(); }catch(e){ j = null; }
     if(r.status === 428) throw new Error('cancelled');
     if(r.status === 401 || (j && j.error === 'auth_required')) throw new Error(ui('login'));
-    if(!r.ok || !j) throw new Error((j && j.error) || ('HTTP ' + r.status));
+    if(!r.ok || !j) throw Object.assign(new Error((j && j.error) || ('HTTP ' + r.status)), { code: (j && j.error) || '', retryAfter: (j && j.retryAfter) || 0 });
     for(var i = 0; i < 45; i++){
       await sleep(t.engine === 'veo' ? 8000 : 5000);
       var sr = await fetch(t.engine === 'veo' ? ('/api/video?action=veo-status&op=' + encodeURIComponent(j.op || '')) : ('/api/video-status?id=' + encodeURIComponent(j.id || '')));
@@ -109,6 +109,15 @@
       if(sj && sj.status === 'FAILED') throw new Error(sj.failure || sj.error || 'failed');
     }
     throw new Error('timeout');
+  }
+
+  /* v-video-refund: رمز الخادم الخام كان يظهر للمستخدم («تعذّر: video_cooldown») — نترجمه. */
+  function errText(e){
+    if(e && e.code === 'video_cooldown'){
+      var m = Math.max(1, Math.ceil((Number(e.retryAfter) || 180) / 60));
+      return ui('cooldown').replace('{m}', String(m));
+    }
+    return ui('fail') + ': ' + String((e && e.message) || e).slice(0, 160);
   }
 
   async function make(t){
@@ -145,7 +154,7 @@
       status(ui('done'));
       try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ /* guard-ok */ }
     }catch(e){
-      if(String(e && e.message) !== 'cancelled') status(ui('fail') + ': ' + String((e && e.message) || e).slice(0, 160));
+      if(String(e && e.message) !== 'cancelled') status(errText(e));
       else status('');
     }finally{ busy = false; if($('vtGo')) $('vtGo').disabled = false; }
   }

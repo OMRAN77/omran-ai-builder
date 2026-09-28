@@ -89,6 +89,8 @@ module.exports = async (req, res) => {
       res.status(upstream.status).json({ error: 'Veo error: ' + String(msg).slice(0, 500) });
       return;
     }
+    // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.
+    await require('./video-job.js').rememberVideoJob(data.name, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked });
     res.status(200).json({ op: data.name });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

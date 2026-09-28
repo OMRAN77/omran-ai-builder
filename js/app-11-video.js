@@ -697,7 +697,7 @@
       body: JSON.stringify(payload),
     }));
     const data = await res.json();
-    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error });
+    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error, retryAfter: data.retryAfter || 0 });
     return data.id;
   }
 
@@ -721,6 +721,8 @@
         if(e && e.code === 'auth_required') throw e;
         if(e && e.code === 'daily_limit_reached') throw e;
         if(e && e.code === 'owner_only') throw e;
+        /* v-video-refund: مهلة الثلاث دقائق لا تُعالَج بإعادة بعد ٦ ثوانٍ — ارفعها للمستخدم برسالة مفهومة. */
+        if(e && e.code === 'video_cooldown') throw e;
         if(attempt < maxAttempts){
           if(onRetryStatus) onRetryStatus(attempt, maxAttempts);
           await new Promise((r) => setTimeout(r, 6000 * attempt));
@@ -831,6 +833,11 @@
       const code = err && err.code;
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
+      /* v-video-refund: بدل رمز «video_cooldown» الخام — مهلة بين فيديو وآخر، والانتظار بالدقائق. */
+      if(code === 'video_cooldown'){
+        const m = Math.max(1, Math.ceil((Number(err && err.retryAfter) || 180) / 60));
+        return isEn() ? ('⏳ One video every few minutes. Try again in about ' + m + ' min.') : ('⏳ فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
+      }
       return (bT('❌ خطأ: ','❌ Error: ')) + (err && err.message ? err.message : String(err));
     }
 
