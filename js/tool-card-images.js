@@ -29,6 +29,7 @@
     var preload = new Image();
     preload.onload = function(){
       var oldImage = button.querySelector('img.stp3d');
+      var media = button.querySelector('.tcMedia');
       if(button.classList.contains('hasToolPhoto')) return;
       if(oldImage){
         oldImage.src = src;
@@ -39,8 +40,12 @@
         oldImage.loading = 'lazy';
         oldImage.alt = '';
         oldImage.src = src;
-        button.insertBefore(oldImage, button.firstChild);
       }
+      oldImage.width = 600;
+      oldImage.height = 360;
+      if(!media){ media = document.createElement('span'); media.className = 'tcMedia'; button.insertBefore(media, button.firstChild); }
+      media.appendChild(oldImage);
+      var live = button.querySelector('.tcLive'); if(live) media.appendChild(live);
       button.classList.add('has3d', 'hasToolPhoto');
     };
     preload.onerror = function(){ button.__tcLoading = null; /* Keep the existing icon when a photo cannot load. */ };
@@ -72,9 +77,8 @@
       meta = document.createElement('span'); meta.className = 'tcMeta';
       var txt = document.createElement('span'); txt.className = 'tcTxt';
       var sub = document.createElement('span'); sub.className = 'tcSub'; sub.setAttribute('data-i18n', 'tcSub_' + id);
-      var arr = document.createElement('span'); arr.className = 'tcArrow'; arr.setAttribute('aria-hidden', 'true'); arr.textContent = '›';
       lab.parentNode.insertBefore(meta, lab);
-      txt.appendChild(lab); txt.appendChild(sub); meta.appendChild(txt); meta.appendChild(arr);
+      txt.appendChild(lab); txt.appendChild(sub); meta.appendChild(txt);
     }
     var s = meta.querySelector('.tcSub'); if(s){ var v = subFor(id); if(v) s.textContent = v; }
     /* العنوان نظيف بلا إيموجي في أوله (بعض المفاتيح تبدأ برمز) */
@@ -86,7 +90,7 @@
     var b = document.getElementById(id); if(!b) return;
     var c = b.querySelector('.tcLive');
     if(!txt){ if(c) c.remove(); return; }
-    if(!c){ c = document.createElement('span'); c.className = 'tcLive'; var host = b.querySelector('.tcTxt') || b; host.appendChild(c); }
+    if(!c){ c = document.createElement('span'); c.className = 'tcLive'; var host = b.querySelector('.tcMedia') || b.querySelector('.tcTxt') || b; host.appendChild(c); }
     c.textContent = txt;
   }
   function fmtNum(n){ try{ return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }); }catch(e){ return String(n); } }

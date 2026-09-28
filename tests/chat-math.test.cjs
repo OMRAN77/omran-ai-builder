@@ -433,7 +433,7 @@ test('١٠. الربط: الأنماط في tokens.css (عامّة لا للحا
   assert.ok(css.includes('.msg .om-vec{'));
   assert.ok(css.includes('.msg .om-math-nw{white-space:nowrap;}'));
   assert.ok(css.indexOf('.msg .md-line.md-hr{') > css.indexOf('.msg .md-line, .msg-text div.md-line{'), 'بعد قاعدة md-line كي يغلب هامشها');
-  assert.match(read('index.html'), /css\/tokens\.css\?v=725/);
+  assert.match(read('index.html'), /css\/tokens\.css\?v=726/);
   const src = read('js/app-02-tts.js');
   assert.ok(!/\(\?<[!=]/.test(src), 'لا lookbehind (سفاري قديم)');
   assert.ok(!/[\uE000-\uF8FF\u200B\u2060\u20D7\u0338\uFEFF]/.test(src), 'الرموز الخاصّة مكتوبة بالهروب لا حرفيًّا');
