@@ -138,6 +138,17 @@ const BACKDROP_PROMPTS = {
   marble: 'a luxurious polished marble wall backdrop',
 };
 
+/* v-pstyle-closeup: عنوان لقطة الوجه وقواعدها. العنوان مكيَّف من merge-identity.js («نفس الشخص، مقرَّبًا؛
+   مرجع هويّة لا شخص إضافيّ»)، والقواعد تمنع الخطر المعاكس المثبَت في PITFALLS: مرجع فوتوغرافيّ يسحب
+   الناتج نحو الواقعيّة فيضعف الأسلوب الفنّيّ. */
+const CLOSEUP_LABEL =
+  'Close-up reference — the face of the same single person in Photo 1, cropped and zoomed in from that same photo (identity reference only: this is NOT a second person, NOT an extra character, and it must never be drawn as an additional face, an inset, a portrait-within-the-portrait, or a frame):';
+const CLOSEUP_RULES =
+  'Use the close-up for ONE purpose only: to see exactly who this person is and to copy their real features — the shape of their eyes, eyebrows, nose, lips, jawline, facial hair, skin marks, apparent age and expression lines — and then draw those same features in the requested art style.\n' +
+  'The close-up is an ordinary photograph, not a style reference: do NOT copy its photographic realism, its lighting, its background, or its tight square crop, and do NOT let it pull the result back toward a photo. The whole result, the face included, must be fully in the requested art style.\n' +
+  'The result must show exactly one person, and must keep the full framing, pose, body, scene and aspect ratio of Photo 1 — never the close-up\'s crop.\n' +
+  'IDENTITY (mandatory): the face in the result must be this same person\'s own face, restyled — not a new, generic or better-looking face. If the art style and their real features ever conflict, their real features win.';
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -415,8 +426,21 @@ module.exports = async (req, res) => {
     if (style !== 'passport' && style !== 'familystyle' && style !== 'merge2') {
       promptText += '\nFRAMING (mandatory): keep the exact same aspect ratio and full framing as the source photo — everything visible in the source must remain visible from edge to edge in the result. Do NOT crop, zoom in, or cut off any part of the person or scene.';
     }
-    /* v-pstyle-identity: جملة الإطار كانت آخر ما يقرؤه النموذج، فتغلب تذكير الهويّة. الهويّة تُختم بها الأوامر الفنّيّة. */
-    if (isArtRestyle) {
+    /* v-pstyle-closeup (المالك: صورته «شخص واقف كامل» — الوجه ~١٢٪ من الإطار): الفخّ المثبَت في PITFALLS
+       «المرجع يُرى بميزانيّة رموز ثابتة مهما كبر» ينطبق على الأسلوب الفنّيّ المفرد كما على الدمج، فالوجه الصغير
+       يُعاد رسمه تقريبًا. اللقطة من faceCrops نفسها ببوّاباتها: جماعيّة (٣ وجوه فأكثر) أو وجه ≥٤٥٪ من الارتفاع
+       أو أصغر من ٣٢ بكسل = بلا لقطة، أي السلوك السابق حرفيًّا. وجه واحد بارز فقط — لقطة أحد وجهين تسحب
+       ملامحه إلى الآخر. تعطّل الكشف يرجع [] ولا يُسقط الطلب. الإطفاء بلا نشر: PSTYLE_FACE_CROP=off. */
+    let styleCrop = null;
+    if (isArtRestyle && String(process.env.PSTYLE_FACE_CROP || 'on').toLowerCase() !== 'off') {
+      try {
+        const cs = await mergeIdentity.faceCrops(apiKey, [{ data: imageBase64, mime: mimeType || 'image/jpeg' }]);
+        if (cs.length === 1) styleCrop = cs[0];
+      } catch (e) { console.warn('[portrait-style] closeup ' + (e && e.message)); styleCrop = null; }
+    }
+    /* v-pstyle-identity: جملة الإطار كانت آخر ما يقرؤه النموذج، فتغلب تذكير الهويّة. الهويّة تُختم بها الأوامر
+       الفنّيّة — ومع لقطة تنتقل إلى الجزء النصّيّ الأخير بعدها (CLOSEUP_RULES) فلا تُقال مرّتين. */
+    if (isArtRestyle && !styleCrop) {
       promptText += '\nIDENTITY (mandatory): the face in the result must be this same person\'s own face, restyled — not a new, generic or better-looking face. If the art style and their real features ever conflict, their real features win.';
     }
 
@@ -436,6 +460,20 @@ module.exports = async (req, res) => {
       gptPrompt = genParts[genParts.length - 1].text;
       gptRefs = photos.slice(1).concat(crops);
       mergeAspect = mergeIdentity.mergeAspect(photos[0], '');
+    } else if (styleCrop) {
+      /* v-pstyle-closeup: الصورة الكاملة بعنوانها، ثمّ اللقطة بعنوان يمنع «الشخص الثاني»، ثمّ قواعدها أخيرًا.
+         لا إعادة استعمال لـmergeInstruction: نصّها «combine every reference photo … photorealistic» ينقض «ارسمه أنمي». */
+      genParts = [
+        { text: promptText + '\nPhoto 1 — the full photo to restyle:' },
+        { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
+        { text: CLOSEUP_LABEL },
+        { inlineData: { mimeType: styleCrop.mime, data: styleCrop.data } },
+        { text: CLOSEUP_RULES },
+      ];
+      gptPrompt = promptText + '\n' + CLOSEUP_RULES;
+      gptRefs = [styleCrop];
+      /* v-keep-framing: بلا نسبة صريحة يتبع الناتج آخر صورة مرفقة — أي مربّع اللقطة (سبب mergeAspect نفسه) */
+      mergeAspect = mergeIdentity.mergeAspect({ data: imageBase64, mime: mimeType || 'image/jpeg' }, '');
     }
     const reqBody = {
       contents: [
