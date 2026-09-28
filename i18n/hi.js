@@ -253,6 +253,8 @@ I18N['hi'] = {
     themeUserBubbleLabel: "आपके संदेश बबल का रंग",
     themeSectionLabel: "🎨 रंग और दिखावट अनुकूलित करें",
     bg3dSectionLabel: "🌌 एनिमेटेड 3D पृष्ठभूमि",
+    bgImgSectionLabel: "🖼️ स्क्रीन वॉलपेपर",
+    bgImgNone: "कोई वॉलपेपर नहीं",
     bg3dAutoLabel: "🔀 हर मिनट अपने आप पृष्ठभूमि बदलें",
     deleteProject: "प्रोजेक्ट हटाएं",
     deleteAllProjects: "🗑️ सभी हटाएं",

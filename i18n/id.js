@@ -238,6 +238,8 @@ I18N['id'] = {
     "themeUserBubbleLabel": "Warna gelembung pesan Anda",
     "themeSectionLabel": "🎨 Sesuaikan warna & tampilan",
     "bg3dSectionLabel": "🌌 Latar belakang 3D animasi",
+    "bgImgSectionLabel": "🖼️ Wallpaper layar",
+    "bgImgNone": "Tanpa wallpaper",
     "bg3dAutoLabel": "🔀 Ganti latar belakang otomatis setiap menit",
     "deleteProject": "Hapus proyek",
     "deleteAllProjects": "🗑️ Hapus semua",

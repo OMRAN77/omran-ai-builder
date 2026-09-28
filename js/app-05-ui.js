@@ -2783,6 +2783,8 @@ async function applyBg3D(id, save){
   destroyBg3D();
   document.body.classList.toggle('vantaActive', id !== 'none');
   if(id === 'none') return;
+  // v-bg-images: خلفيّة واحدة — اختيار ثلاثيّة يزيل صورة الشاشة (والعكس في app-25)
+  try{ if(window.خلفيات) window.خلفيات.طبّق(null); }catch(e){ __swallow(e, 'bg3d:bgimg-off'); }
   const eff = BG3D_EFFECTS.find(e => e.id === id);
   if(!eff) return;
   if(eff.lib === 'custom'){
