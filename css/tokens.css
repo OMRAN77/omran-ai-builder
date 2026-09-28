@@ -1259,4 +1259,17 @@ html:not(.mobile-ui) body.sbCollapsedMode #sbReopen:hover{ color:var(--text); ba
 .msg .md-line .tts-word.md-mk{position:absolute; top:0; min-width:1.3em; text-align:center; unicode-bidi:isolate; direction:ltr; color:var(--muted,#98a0b3); font-weight:600;}
 .msg .md-line[dir="rtl"] .tts-word.md-mk{right:0; left:auto;}
 .msg .md-line[dir="ltr"] .tts-word.md-mk{left:0; right:auto;}
+/* v-chat-math (لقطة المالك ٢٧ سبتمبر): المعادلة المرسومة معزولة الاتّجاه، ومعادلة العرض ($$…$$ وحدها في سطرها) جدول في
+   الوسط سطوره من بدايتها (aligned)، والأسّ والدليل معزولان (تسمية عربيّة فوق السهم لا تسحب ما بعدها)، وعلامة ^( ) للمشاركة
+   مخفيّة بخطّ صفريّ لا display:none ولا position:absolute (الأوّل يُسقطها من innerText والثاني يكسر السطر حولها)، وسهم المتّجه فوق الاسم كلّه (AB)، و«---» خطّ فاصل رفيع. عامّ للحاسوب والجوّال لأنّ الراسم واحد واللقطة من الجوّال. */
+.msg .om-math{unicode-bidi:isolate;}
+.msg .om-math-nw{white-space:nowrap;}
+.msg .om-math sup, .msg .om-math sub{font-size:.72em; line-height:0; unicode-bidi:isolate;}
+.msg .om-math-block{display:table; margin:.3em auto; text-align:start;}
+.msg .om-math-sr{font-size:0; line-height:0; letter-spacing:0; color:transparent;}
+.msg .om-rows{display:inline-block; vertical-align:middle; text-align:start; white-space:pre-line;}
+.msg .om-vec{position:relative; display:inline-block; padding-top:.32em; line-height:1;}
+.msg .om-vec::before{content:''; position:absolute; top:.12em; left:.04em; right:.12em; border-top:1px solid currentColor;}
+.msg .om-vec::after{content:''; position:absolute; top:calc(.12em - 2.5px); right:.1em; width:5px; height:5px; border-top:1px solid currentColor; border-right:1px solid currentColor; transform:rotate(45deg);}
+.msg .md-line.md-hr{height:0; overflow:hidden; margin:.7em 0; border-top:1px solid var(--omLine, rgba(255,255,255,.09));}
 .msg .omStreamHead, .msg .omStreamTail, .msg .omStreamSeg{display:block;}
