@@ -67,14 +67,14 @@ test('requireVision + صورة + Gemini معطّل (429): لا ينزل للأع
   fc.__workingModel.clear();
 });
 
-test('بلا requireVision (الطبقة المجانيّة) السلوك القديم كما هو: الأعمى يستلم الملاحظة النصّيّة', async () => {
+test('الصورة تفرض الرؤية تلقائيًّا حتى دون requireVision؛ النصّ وحده يبقى كما هو', async () => {
   const env = { GROQ_API_KEY: 'q' };
   const calls = [];
   const fetchImpl = async (url, init) => { calls.push(JSON.parse(init.body)); return new Response(sse(['ok']), { status: 200 }); };
   const r = await fc.streamFreeChain({ system: 'SYS', convo: IMG_CONVO, send: () => {}, env, fetchImpl, log: () => {} });
-  assert.equal(r.ok, true); assert.equal(r.provider, 'groq');
-  const last = calls[0].messages[calls[0].messages.length - 1];
-  assert.match(String(last.content), /صورة مرفقة/);
+  assert.equal(r.ok, false);
+  assert.equal(calls.length, 0, 'لا إرسال لصورة مستبدلة بملاحظة نصّيّة');
+  assert.ok(r.errors.includes('no-vision-provider'));
   // ونصّ بلا صورة مع requireVision لا يغيّر شيئًا
   const r2 = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, env, fetchImpl, log: () => {}, requireVision: true });
   assert.equal(r2.ok, true); assert.equal(r2.provider, 'groq');
@@ -87,8 +87,8 @@ test('chat.js: هبوط الملك يطلب الرؤية لدور الصورة،
   assert.match(chat, /if \(lastUserHasImage\) \{ send\(\{ delta: tierLib\.FREE_TEXT\.imageBusy \}\); send\(\{ done: true \}\); res\.end\(\); return; \}/);
   assert.match(chat, /if \(__ownerReq\) send\(\{ modelId: 'fallback', modelLabel: 'احتياط · ' \+ __fb\.provider \+ ' \/ ' \+ __fb\.model \}\);/);
   assert.match(chat, /require\('\.\/_owner-alert\.js'\)\.alertOwnerCredit\(\{ status: upstream\.status, text: errText \}\)/);
-  // الطبقة المجانيّة لم تتغيّر: بلا requireVision (قراءة الصور للنسخة الاحترافيّة كما قرّر المالك)
-  assert.match(chat, /const __fr = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);/);
+  // الفرع المجّاني أيضًا يحفظ شرط رؤية الصورة، ولا يعتمد على نسيان المستدعي للعلم.
+  assert.match(chat, /const __fr = await streamFreeChain\(\{[^\n]*convo, send, requireVision: lastUserHasImage \}\);/);
   assert.ok(tierLib.FREE_TEXT.imageBusy && tierLib.FREE_TEXT.imageBusy.length > 20);
   assert.doesNotMatch(tierLib.FREE_TEXT.imageBusy, /gemini|claude|groq|mistral/i, 'لا اسم مزوّد في نصّ يراه المستخدم');
 });
