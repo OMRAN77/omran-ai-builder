@@ -124,7 +124,8 @@ test('client renderer: title leads the block, balanced wrap, kashida only for di
   assert.equal(ctx.K('حبيبة قلبي'), 'حبيبة قلبي', 'أكثر من كلمة: بلا كشيدة');
   assert.equal(ctx.K('سما'), 'سما');
   assert.match(attach, /const titleShown = !named && T\.title \? __kashida\(T\.title\) : T\.title;/, 'العرض وحده؛ نصّ الطبقة حرفيّ');
-  assert.match(attach, /Math\.min\(Math\.max\(0\.8 \* bw \/ t100, 2\.6 \* bFs\), 5\.2 \* bFs, base \* 0\.15 \* __sc\)/, 'العنوان ٠٫٨ من عرض الأسطر');
+  /* v-text-size: الحجم معامل measure (S) — المرشّحون بالطبيعيّ والمختار بحجم المستخدم */
+  assert.match(attach, /Math\.min\(Math\.max\(0\.8 \* bw \/ t100, 2\.6 \* bFs\), 5\.2 \* bFs, base \* 0\.15 \* S\)/, 'العنوان ٠٫٨ من عرض الأسطر');
   assert.match(attach, /const wrapBal = \(text, maxW\) =>/);
   assert.match(attach, /\(o\.label === 'face' \? 4 : 1\.1\)/);
   assert.match(attach, /const mX = W \* 0\.09, mY = H \* 0\.035;/);
