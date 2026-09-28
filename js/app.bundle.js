@@ -8209,6 +8209,11 @@ function renderMessages(keepScroll){
     return best;
   }
   function closeTool(el){
+    /* شاشة الأدوات فيها مستوى داخلي («عرض الكل»): السحب يرجع منه إلى الصفوف
+       أولًا، ولا يغلق شاشة الأدوات إلى المحادثة مباشرة. */
+    if(el && typeof el.__omranSwipeBackStep === 'function'){
+      try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ /* guard-ok */ }
+    }
     var btn = el && document.getElementById(MAP[el.id]);
     if(btn){ try{ swipeClickGuardUntil = 0; btn.click(); return true; }catch(e){ /* guard-ok */ } }
     return false;
@@ -8238,6 +8243,9 @@ function renderMessages(keepScroll){
       /* الحقول: السحب منها مسموح ما لم تكن قيد الكتابة (شكوى المالك في مولّد السيرة: الصفحة كلها حقول) */
       if((tag === 'input' || tag === 'textarea' || tag === 'select') && document.activeElement === e) return true;
       if(e.id && COMPARE_DRAG_IDS[e.id]) return true;
+      /* صفوف الأدوات سحب أفقي دائمًا؛ لا ندع سحب الرجوع العام ينافسها
+         حتى خلال لحظة إعادة الرسم أو قبل اكتمال قياس overflow. */
+      if(e.classList && e.classList.contains('ptCarousel')) return true;
       try{
         var cs = getComputedStyle(e);
         if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;
@@ -24607,8 +24615,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       next.type = 'button'; next.className = 'ptShelfArrow ptShelfNext'; next.innerHTML = '›';
       prev.setAttribute('aria-label', '‹ ' + lbl.textContent);
       next.setAttribute('aria-label', '› ' + lbl.textContent);
-      controls.appendChild(all); controls.appendChild(prev); controls.appendChild(next);
+      controls.appendChild(all);
       head.appendChild(h); head.appendChild(controls);
+      const carouselShell = document.createElement('div');
+      carouselShell.className = 'ptCarouselShell';
       const viewport = document.createElement('div');
       viewport.className = 'ptCarousel';
       const track = document.createElement('div');
@@ -24623,7 +24633,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       g.ids.forEach(id => { const b = document.getElementById(id); if(b){ track.appendChild(b); stpApply3d(b, id); } });
       track.appendChild(end);
       viewport.appendChild(track);
-      section.appendChild(head); section.appendChild(viewport);
+      carouselShell.appendChild(viewport);
+      carouselShell.appendChild(prev);
+      carouselShell.appendChild(next);
+      section.appendChild(head); section.appendChild(carouselShell);
       ptSectionsView.appendChild(section);
       /* v-tools-back (طلب عمران ١ سبتمبر): اختيار ميزة كان يغلق مربع
          الأدوات تحتها — فإغلاق الميزة يرمي المستخدم للمحادثة بدل «نقطة
@@ -24681,6 +24694,14 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       if(allState && history.state && history.state.omranToolsAll === allState.token) history.back();
       else closeAll(true);
     };
+    if(ptOverlay){
+      ptOverlay.__omranSwipeBackStep = () => {
+        if(!allState) return false;
+        if(history.state && history.state.omranToolsAll === allState.token) history.back();
+        else closeAll(true);
+        return true;
+      };
+    }
     window.addEventListener('popstate', () => { if(allState) closeAll(true); });
     ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
       const viewport = section.querySelector('.ptCarousel');

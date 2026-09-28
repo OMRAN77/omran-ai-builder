@@ -570,8 +570,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       next.type = 'button'; next.className = 'ptShelfArrow ptShelfNext'; next.innerHTML = '›';
       prev.setAttribute('aria-label', '‹ ' + lbl.textContent);
       next.setAttribute('aria-label', '› ' + lbl.textContent);
-      controls.appendChild(all); controls.appendChild(prev); controls.appendChild(next);
+      controls.appendChild(all);
       head.appendChild(h); head.appendChild(controls);
+      const carouselShell = document.createElement('div');
+      carouselShell.className = 'ptCarouselShell';
       const viewport = document.createElement('div');
       viewport.className = 'ptCarousel';
       const track = document.createElement('div');
@@ -586,7 +588,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       g.ids.forEach(id => { const b = document.getElementById(id); if(b){ track.appendChild(b); stpApply3d(b, id); } });
       track.appendChild(end);
       viewport.appendChild(track);
-      section.appendChild(head); section.appendChild(viewport);
+      carouselShell.appendChild(viewport);
+      carouselShell.appendChild(prev);
+      carouselShell.appendChild(next);
+      section.appendChild(head); section.appendChild(carouselShell);
       ptSectionsView.appendChild(section);
       /* v-tools-back (طلب عمران ١ سبتمبر): اختيار ميزة كان يغلق مربع
          الأدوات تحتها — فإغلاق الميزة يرمي المستخدم للمحادثة بدل «نقطة
@@ -644,6 +649,14 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       if(allState && history.state && history.state.omranToolsAll === allState.token) history.back();
       else closeAll(true);
     };
+    if(ptOverlay){
+      ptOverlay.__omranSwipeBackStep = () => {
+        if(!allState) return false;
+        if(history.state && history.state.omranToolsAll === allState.token) history.back();
+        else closeAll(true);
+        return true;
+      };
+    }
     window.addEventListener('popstate', () => { if(allState) closeAll(true); });
     ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
       const viewport = section.querySelector('.ptCarousel');

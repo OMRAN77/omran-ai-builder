@@ -5,6 +5,7 @@
 #sectionsToolsPopup .ptSectionHead{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:4px 4px 8px;}
 #sectionsToolsPopup .ptSectionTitle{margin:0; padding:0!important; font-size:14px!important;}
 #sectionsToolsPopup .ptShelfControls{display:flex; align-items:center; gap:6px;}
+#sectionsToolsPopup .ptCarouselShell{position:relative;}
 #sectionsToolsPopup .ptViewAll,
 #sectionsToolsPopup .ptShelfArrow,
 #sectionsToolsPopup .ptAllBack{
@@ -12,8 +13,14 @@
   cursor:pointer; font:inherit;
 }
 #sectionsToolsPopup .ptViewAll{border:0; background:none; color:var(--accent-ink); padding:5px 7px; font-size:12px; font-weight:700;}
-#sectionsToolsPopup .ptShelfArrow{width:30px; height:30px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:21px; line-height:1;}
-html[dir="rtl"] #sectionsToolsPopup .ptShelfArrow{transform:scaleX(-1);}
+#sectionsToolsPopup .ptShelfArrow{
+  position:absolute; z-index:2; inset-block-start:50%; transform:translateY(-50%);
+  width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+  font-size:22px; line-height:1; box-shadow:0 3px 12px rgba(0,0,0,.45);
+}
+#sectionsToolsPopup .ptShelfPrev{inset-inline-start:8px;}
+#sectionsToolsPopup .ptShelfNext{inset-inline-end:8px;}
+html[dir="rtl"] #sectionsToolsPopup .ptShelfArrow{transform:translateY(-50%) scaleX(-1);}
 #sectionsToolsPopup .ptShelfArrow:hover,
 #sectionsToolsPopup .ptAllBack:hover{border-color:var(--omGold); background:rgba(212,175,55,.1);}
 #sectionsToolsPopup :is(.ptViewAll,.ptShelfArrow,.ptAllBack,.ptTrack > .btn):focus-visible{
