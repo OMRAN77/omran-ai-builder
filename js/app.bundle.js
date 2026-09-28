@@ -14501,12 +14501,12 @@ async function postWithConfirm(url, payload){
     return best;
   }
   function textFont(source){
+    /* v-image-fonts: أربعة خطوط فقط للصور — والأسماء الأخرى إلى أقربها: رقعة ← ديواني، نسخ/قرآني/عثماني ← ثلث، نستعليق ← فارسي */
     if(/ديواني|diwani/i.test(source)) return 'diwani';
-    if(/رقعة|رقعه|ruqaa|ruqa/i.test(source)) return 'ruqaa';
+    if(/رقعة|رقعه|ruqaa|ruqa/i.test(source)) return 'diwani';
     if(/كوفي|kufi/i.test(source)) return 'kufi';
-    if(/عثماني|othmani/i.test(source)) return 'othmani';
-    if(/نسخ\s*نوتو|نوتو|noto\s*naskh/i.test(source)) return 'naskh2'; if(/ثلث|thuluth/i.test(source)) return 'thuluth'; if(/فارسي|نستعليق|farsi|nastaliq/i.test(source)) return 'farsi'; if(/مصحف|قرآني|quran/i.test(source)) return 'quran';
-    if(/نسخ|naskh/i.test(source)) return 'naskh';
+    if(/ثلث|thuluth/i.test(source)) return 'thuluth'; if(/فارسي|نستعليق|farsi|nastaliq/i.test(source)) return 'farsi';
+    if(/عثماني|othmani|نسخ|نوتو|naskh|مصحف|قرآني|quran/i.test(source)) return 'thuluth';
     /* v-font-pretty (طلب عمران): كل كلمة جمالية = الخط المزخرف، لا العادي */
     if(/زخرف|مزخرف|جميل|حلو[ةه]?|مرتب|أنيق|انيق|راقي|فخم|ملكي|مميز|رائع|فني|إبداعي|ابداعي|جذاب|beautiful|fancy|elegant|stylish|decorat|ornate|pretty|nice|royal|calligraph/i.test(source)) return 'diwani';
     return 'default';
@@ -19190,42 +19190,22 @@ async function competeDesignLines(t){
   // بدون حكم: الأطول محتوى (غالبًا الأغنى صياغة)
   return cands.sort((a, b) => b.join('').length - a.join('').length)[0];
 }
-// 🖋️ كتابة سطور عربية سليمة في وسط التصميم (عنوان كبير + سطور أصغر)
-function overlayDesignLines(b64, mime, lines){
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      try{
-        const c = document.createElement('canvas');
-        c.width = img.naturalWidth; c.height = img.naturalHeight;
-        const ctx = c.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const x = c.width / 2;
-        const sizes = [Math.floor(c.width / 10), Math.floor(c.width / 16), Math.floor(c.width / 20)];
-        const gap = Math.floor(c.height / 9);
-        const startY = c.height / 2 - ((lines.length - 1) * gap) / 2;
-        lines.forEach((txt, i) => {
-          let fs = sizes[Math.min(i, sizes.length - 1)];
-          const setF = () => { ctx.font = 'bold ' + fs + 'px "Segoe UI", Tahoma, Arial, sans-serif'; };
-          setF();
-          while(ctx.measureText(txt).width > c.width * 0.82 && fs > 14){ fs -= 2; setF(); }
-          const y = startY + i * gap;
-          ctx.lineWidth = Math.max(3, Math.floor(fs / 8));
-          ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.strokeText(txt, x, y);
-          ctx.fillStyle = '#5a3e1b'; ctx.fillText(txt, x, y);
-        });
-        resolve((c.toDataURL('image/png')).split(',')[1]);
-      }catch(e){ reject(e); }
-    };
-    img.onerror = reject;
-    img.src = 'data:' + mime + ';base64,' + b64;
-  });
-}
+/* v-image-fonts (المالك ٢٨ سبتمبر: «احذف الخط العادي من الصور نهائي وتخلي الخطوط ٤: الديواني والفارسي والكوفي والثلث»؛
+   وقبلها بالتدقيق: «ثلث» كان Aref Ruqaa وهو خطّ رقعة، و«ديواني» كان Katibeh وهو نسخ عناوين). الكتابة على الصور بأربعة خطوط
+   فقط، كلّ واحد باسمه الحقيقيّ: الثلث Tholoth والديواني UKIJ Diwani Tom مستضافان في assets/fonts (ليسا في Google Fonts؛
+   رخصتاهما هناك)، والكوفي Reem Kufi والفارسي Gulzar من Google Fonts. لا Tajawal ولا Amiri ولا Noto في أيّ راسم صور. */
 const MAHA_FONTS = {
-  default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'}, thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'},
-  naskhBody:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@500;700'} /* v-text-design: أسطر الملصق */
+  thuluth:{css:'Tholoth', url:'/assets/fonts/tholoth.woff2'},
+  diwani:{css:'UKIJ Diwani Tom', url:'/assets/fonts/ukij-diwani-tom.woff2'},
+  kufi:{css:'Reem Kufi', gf:'Reem+Kufi:wght@700'},
+  farsi:{css:'Gulzar', gf:'Gulzar'}
 };
+/* الأسماء القديمة (طلبات المستخدم وطبقات محفوظة في المحادثات) ← أقرب الأربعة؛ وما سواها (default/modern/'') = الملصق الافتراضيّ */
+const MAHA_FONT_ALIAS = { naskh:'thuluth', naskh2:'thuluth', naskhBody:'thuluth', quran:'thuluth', othmani:'thuluth', ruqaa:'diwani', nastaliq:'farsi' };
+function mahaImageFont(key){
+  const k = String(key || ''), own = Object.prototype.hasOwnProperty;
+  return own.call(MAHA_FONTS, k) ? k : own.call(MAHA_FONT_ALIAS, k) ? MAHA_FONT_ALIAS[k] : null;
+}
 /* حجم الكتابة معامل على الحجم التلقائيّ: «صغير/كبير» قيمة مطلقة، و«أصغر/كبّر» نسبة من الحاليّ؛ محصور كي لا تختفي ولا تغطّي الصورة. */
 function __textScale(prev, size){
   const p = Number(prev) > 0 ? Number(prev) : 1;
@@ -19233,13 +19213,21 @@ function __textScale(prev, size){
   return Math.max(0.4, Math.min(1.7, Math.round(v * 100) / 100));
 }
 async function mahaLoadFont(key){
-  const f = MAHA_FONTS[key] || MAHA_FONTS.default;
+  const f = MAHA_FONTS[mahaImageFont(key) || __DESIGN_BODY_FONT];
   /* v-font-real (شكوى: «جربنا كل الخطوط ما في أي خط مرتب»): كان يضيف رابط
      الخط ويرسم فورًا قبل وصول الملف — fonts.load ترجع فارغة لأن قاعدة
      @font-face لم تُقرأ بعد، فيسقط الرسم على الخط العادي في كل مرة أولى.
      الآن: ننتظر تحميل ورقة الأنماط ثم نتحقق فعليًا أن الخط جاهز (حتى 3 ثوانٍ).
      الطلب بلا bold لأن الخطوط الزخرفية (Katibeh/Rakkas/Gulzar) وزنها 400 فقط. */
-  if(!document.getElementById('gf-' + f.gf)){ /* v-text-design: المعرّف بالورقة لا بالعائلة — Noto Naskh 700 (naskh2) لا يمنع تحميل 500 */
+  if(f.url){ /* v-image-fonts: خطّ مستضاف — قاعدة @font-face مرّة واحدة، ثمّ الانتظار نفسه أدناه حتّى يجهز */
+    const fid = 'ff-' + f.url.replace(/^.*\//, '').replace(/\W/g, '-');
+    if(!document.getElementById(fid)){
+      const st = document.createElement('style');
+      st.id = fid;
+      st.textContent = '@font-face{font-family:"' + f.css + '";src:url("' + f.url + '") format("woff2");font-display:swap;}';
+      document.head.appendChild(st);
+    }
+  } else if(!document.getElementById('gf-' + f.gf)){ /* v-text-design: المعرّف بالورقة لا بالعائلة — Noto Naskh 700 (naskh2) لا يمنع تحميل 500 */
     await new Promise((res) => {
       const l = document.createElement('link');
       l.id = 'gf-' + f.gf; l.rel = 'stylesheet';
@@ -19268,7 +19256,8 @@ async function mahaLoadFont(key){
      امتداد هادئ، وعمق يمنع الكتلة العليا من النزول على الجزر والأشخاص؛ والمزدحمة كلّها شريط متدرّج أعلى أو أسفل.
    - اللون: ذهبيّ (فضّيّ للصورة الباردة بلا ضوء دافئ)، وبرونزيّ داكن فوق الفاتح؛ لون يطلبه المستخدم يُشتقّ منه طقم نغميّ. وشاح
      مستطيل مريّش خلف الكتلة وحدها حين يزدحم ما تحتها أو يكثر فيه الذهبيّ. */
-const __DESIGN_TITLE_FONT = 'naskh', __DESIGN_BODY_FONT = 'naskhBody';
+/* v-image-fonts: الملصق بلا خطّ مسمّى — العنوان ثلث والأسطر ديواني (كانا Amiri وNoto Naskh) */
+const __DESIGN_TITLE_FONT = 'thuluth', __DESIGN_BODY_FONT = 'diwani';
 const __KASHIDA_JOIN = 'بتثجحخسشصضطظعغفقكلمنهيئ';
 function __designText(exact){
   const parts = String(exact || '').split(/\n[ \t]*\n/).map((p) => p.trim()).filter(Boolean);
@@ -19351,12 +19340,11 @@ const __hsl = (h, s, l) => 'hsl(' + Math.round(h) + ',' + Math.round(Math.max(0,
 async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, scale, avoid){
   const exact = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
   if(!exact.trim()) throw new Error('missing_exact_text');
-  const named = !!(fontKey && fontKey !== 'default' && MAHA_FONTS[fontKey]);
-  /* الخطوط الزخرفيّة متاحة بوزن 400 فقط؛ طلب 700 كان يصنع تغليظًا اصطناعيًّا
-     يشوّه اتصال الحروف العربيّة، بينما الخطوط النصيّة تملك وزن 700 حقيقيًّا. */
-  const fontWeight = /^(diwani|thuluth|ruqaa|farsi)$/.test(String(fontKey || '')) ? '400' : '800';
-  const titleCss = await mahaLoadFont(named ? fontKey : __DESIGN_TITLE_FONT), bodyCss = await mahaLoadFont(named ? fontKey : __DESIGN_BODY_FONT);
-  const titleW = named ? fontWeight : '700', bodyW = named ? fontWeight : '500';
+  const fk = mahaImageFont(fontKey), named = !!fk;
+  /* الثلث والديواني والفارسي بوزن واحد 400 — طلب 700 كان يصنع تغليظًا اصطناعيًّا يشوّه اتصال الحروف؛ والكوفي 700 حقيقيّ */
+  const fontWeight = fk === 'kufi' ? '700' : '400';
+  const titleCss = await mahaLoadFont(named ? fk : __DESIGN_TITLE_FONT), bodyCss = await mahaLoadFont(named ? fk : __DESIGN_BODY_FONT);
+  const titleW = named ? fontWeight : '400', bodyW = named ? fontWeight : '400';
   const __sc = Math.max(0.4, Math.min(1.7, Number(scale) > 0 ? Number(scale) : 1));
   const T = __designText(exact);
   const titleShown = !named && T.title ? __kashida(T.title) : T.title;
@@ -19371,7 +19359,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
         ctx.drawImage(img, 0, 0);
         ctx.textAlign = 'center';
         ctx.direction = /[؀-ۿ]/.test(exact) ? 'rtl' : 'ltr';
-        const fam = (css) => '"' + css + '", "Amiri", "Segoe UI", Tahoma, Arial, sans-serif';
+        const fam = (css) => '"' + css + '", "Tholoth", "UKIJ Diwani Tom", "Reem Kufi", serif'; /* v-image-fonts: لا خطّ عاديّ احتياطًا */
         const setT = (px) => { ctx.font = titleW + ' ' + px + 'px ' + fam(titleCss); try{ ctx.wordSpacing = '0px'; }catch(e){ __swallow(e, 'img:design-ws'); } };
         const setB = (px) => { ctx.font = bodyW + ' ' + px + 'px ' + fam(bodyCss); try{ ctx.wordSpacing = '0.06em'; }catch(e){ __swallow(e, 'img:design-ws'); } };
         const wrap = (text, maxW) => {
@@ -19402,7 +19390,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
               if(!T.hero) tFs = Math.min(tFs, Math.floor(maxW / t100)); /* العنوان القصير سطر واحد */
               setT(tFs); tl = wrapBal(titleShown, maxW); tw = widest(tl); ti = ink(tl);
             }
-            const tLH = tFs * 1.15, bLH = bFs * 1.52;
+            const tLH = tFs * 1.15, bLH = bFs * (fk === 'farsi' ? 1.85 : 1.52); /* النستعليق ينحدر: مسافة أكبر */
             const titleH = tl.length ? ti.a + (tl.length - 1) * tLH + ti.d : 0;
             const gap = tl.length && bl.length ? Math.max(0.45 * bFs, 0.1 * tFs) : 0;
             const orn = Math.max(bl.length ? bFs : tFs * 0.34, tFs * 0.3) * 1.2;
@@ -19732,7 +19720,7 @@ function __cardRoundRect(x, px, py, pw, ph, r){
   x.closePath();
 }
 async function renderTidyCardCanvas(spec, srcDataUrl){
-  await mahaLoadFont('default'); /* Tajawal — الخط المرتب */
+  await mahaLoadFont('kufi'); /* v-image-fonts: الكوفي أوضح الأربعة للبطاقة المرتّبة (كان Tajawal العاديّ) */
   const img = await new Promise((res, rej) => {
     const i = new Image();
     i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image'));
@@ -19792,7 +19780,7 @@ async function renderTidyCardCanvas(spec, srcDataUrl){
   let y0 = 120;
   if(spec.title){
     x.fillStyle = th.main; x.textAlign = 'center';
-    x.font = '700 54px "Tajawal", sans-serif';
+    x.font = '700 54px "Reem Kufi", serif';
     x.fillText(String(spec.title), Math.round((LL + RR) / 2), 140);
     y0 = 210;
   }
@@ -19806,7 +19794,7 @@ async function renderTidyCardCanvas(spec, srcDataUrl){
       x.textAlign = 'right';
       let vx = RR;
       if(label){
-        x.fillStyle = th.main; x.font = '700 ' + fs + 'px "Tajawal", sans-serif';
+        x.fillStyle = th.main; x.font = '700 ' + fs + 'px "Reem Kufi", serif';
         /* تسمية لاتينية (Name) تُرسم LTR وإلا انقلبت النقطتان لبدايتها */
         const lLtr = /^[\x20-\x7e]+$/.test(label);
         const ltxt = lLtr ? (label.replace(/\s*[:：]\s*$/, '') + ':') : (label.replace(/\s*[:：]\s*$/, '') + ' :');
@@ -19816,7 +19804,7 @@ async function renderTidyCardCanvas(spec, srcDataUrl){
         vx = RR - x.measureText(ltxt).width - 22;
       }
       if(value){
-        x.fillStyle = '#33303a'; x.font = '700 ' + Math.round(fs * 0.95) + 'px "Tajawal", sans-serif';
+        x.fillStyle = '#33303a'; x.font = '700 ' + Math.round(fs * 0.95) + 'px "Reem Kufi", serif';
         /* أرقام/لاتيني صِرف تُرسم LTR حتى لا تنقلب خانات الهاتف */
         const ltr = /^[\x20-\x7e]+$/.test(value);
         if(ltr){ x.direction = 'ltr'; }
@@ -21121,12 +21109,12 @@ function __friendlyErr(e){
     }
     /* v-font-ask (لقطة عمران: «عدل الخط» وحدها راحت لمحرر الصور فطلعت
        «مشغولة»): أمر الخط الناقص يسأل محليًا عن الخط واللون والمكان —
-       ويعرض الخطوط العشرة — بدل مغامرة توليد. */
+       ويعرض الخطوط الأربعة (v-image-fonts) — بدل مغامرة توليد. */
     if(/^\s*(?:عدل|عدّل|غير|غيّر|تعديل)\s*(?:الخط|النص|الكتاب[ةه])\s*[.!؟?]*\s*$/i.test(text || '') && cur.imageTextLayer && cur.imageTextLayer.baseB64){
       try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
       cur.messages.push({role:'assistant',content: lang==='ar'
-        ? 'أبشر! قل لي وش تبي بالضبط وأعدّله فورًا على نفس الصورة ✍️\n\n• الخط: ديواني · ثلث · كوفي · نسخ · رقعة · فارسي · قرآني · عثماني\n• اللون: ذهبي · أبيض · أسود · أخضر · أزرق · أحمر · بيج\n• المكان: الأعلى · الوسط · الأسفل\n\nمثال: «غيّر الخط إلى ديواني ولونه ذهبي في الوسط»'
-        : 'Sure! Tell me exactly what to change ✍️ Font: diwani · thuluth · kufi · naskh · ruqaa · farsi · quran — Color: gold · white · black · green · blue · red — Position: top · middle · bottom'});
+        ? 'أبشر! قل لي وش تبي بالضبط وأعدّله فورًا على نفس الصورة ✍️\n\n• الخط: ديواني · فارسي · كوفي · ثلث\n• اللون: ذهبي · أبيض · أسود · أخضر · أزرق · أحمر · بيج\n• المكان: الأعلى · الوسط · الأسفل\n\nمثال: «غيّر الخط إلى ديواني ولونه ذهبي في الوسط»'
+        : 'Sure! Tell me exactly what to change ✍️ Font: diwani · farsi · kufi · thuluth — Color: gold · white · black · green · blue · red — Position: top · middle · bottom'});
       renderAll(); saveState();
       return;
     }
