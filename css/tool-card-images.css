@@ -28,6 +28,15 @@ html[dir="rtl"] #sectionsToolsPopup .ptShelfArrow{transform:translateY(-50%) sca
 }
 #sectionsToolsPopup .ptShelfArrow:disabled{opacity:.3; cursor:default;}
 #sectionsToolsPopup .ptCarousel{overflow-x:auto; overflow-y:hidden; scrollbar-width:none; scroll-snap-type:x mandatory; overscroll-behavior-inline:contain;}
+/* v-shelf-scroll-smooth (طلب المالك: تمرير الصفّ بالماوس/التراك باد «سريع ويختفي» — مسبار
+   Playwright أثبت أنّ mandatory وproximity كليهما يبلعان أيّ تمرير صغير بعجلة الماوس بصمت ثم
+   يقفزان دفعة واحدة لأقرب بطاقة (نفس السلوك بالضبط لكليهما، لا فرق) بينما none يتابع حركة العجلة
+   طبيعيًّا بلا ابتلاع ولا قفزة. القرار: إبقاء الـsnap للمسّ (يُنتج محاذاة أنيقة عند السحب باللمس على
+   الجوّال) وإلغاؤه فقط لمؤشّر دقيق (ماوس/تراك باد) حتى لا يقاوم تمرير سطح المكتب — الأسهم برمجيّة
+   أصلًا (moveShelf←scrollIntoView) فلا تعتمد على snap. */
+@media (hover:hover) and (pointer:fine){
+  #sectionsToolsPopup .ptCarousel{scroll-snap-type:none;}
+}
 #sectionsToolsPopup .ptCarousel::-webkit-scrollbar{display:none;}
 #sectionsToolsPopup .ptTrack{display:flex!important; width:max-content; min-width:100%; align-items:stretch; gap:12px!important; padding:2px 2px 6px!important; position:relative;}
 #sectionsToolsPopup .ptTrack > .btn{flex:0 0 220px; scroll-snap-align:start;}

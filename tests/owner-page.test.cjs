@@ -67,6 +67,6 @@ test('٣. العنوان بالـ١٤ لغة، والقائمة تُعاد بن�
   assert.match(read('js/app-01-boot-auth.js'), /if\(typeof renderSettingsNavList === 'function'\) renderSettingsNavList\(\);/);
   const html = read('index.html');
   assert.match(html, /js\/partials-settings\.js\?v=675/);
-  assert.match(html, /css\/tokens\.css\?v=726/);
-  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=698'/); // v-reply-export رفع الوسم (قبله 686)
+  assert.match(html, /css\/tokens\.css\?v=727/);
+  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=699'/); // وسم تحميل اللغات الحاليّ
 });
