@@ -87,6 +87,31 @@ test('خيارات الواجهة والخادم متطابقة بعد الإض�
   );
 });
 
+/* ───── v-studio-skin-lock + v-studio-guard-retry: صورة كفّ المالك + «حناء خليجية» ⇒ image_edit_identity_mismatch ───── */
+test('ميزات الرسم: قفل الجلد يمنع استبدال اليد — ووصف الحنّاء يتبع السطح الظاهر', () => {
+  for (const feature of studioCreate.DESIGN_FEATURES) {
+    const style = Object.keys(studioCreate.STYLE_TEXT[feature])[0];
+    const p = studioCreate.buildSinglePrompt(feature, style, '', false, 3);
+    assert.match(p, /SKIN LOCK \(highest priority\)/, feature + ': بلا قفل جلد');
+    assert.match(p, /Never replace them with someone else's hands or feet/, feature + ': لا منع لاستبدال اليد');
+    assert.match(p, /more feminine/, feature + ': لا منع لتنعيم اليد وتأنيثها');
+  }
+  // المكياج والشعر على الوجه — لا قفل جلد لهما
+  assert.ok(!/SKIN LOCK/.test(studioCreate.buildSinglePrompt('makeup', 'natural', '', false, 1)), 'قفل الجلد يجب أن يبقى لميزات الرسم');
+  const henna = studioMore.FEATURE_INSTRUCTIONS.henna('X');
+  assert.match(henna, /palm or back of the hand/, 'الحنّاء لا تتبع السطح الظاهر فعلًا');
+  assert.match(henna, /adapt the same design naturally onto the surface that is/, 'لا تكيّف عند اختلاف السطح');
+});
+
+test('رفض الحارس يُعاد مرّة بقفل أشدّ قبل الخطأ الأحمر', () => {
+  const src = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
+  assert.match(src, /second attempt with a stronger lock/, 'لا محاولة ثانية بعد رفض الحارس');
+  assert.match(src, /geminiImage\(o\.apiKey, retryParts, o\.feature, null, 0\.15\)/, 'المحاولة الثانية يجب أن تكون بحرارة ٠٫١٥ مفروضة');
+  assert.match(src, /if \(again\.b64 && await guardOf\(again\.b64, again\.mime\)\) return finish/, 'نتيجة المحاولة الثانية لا تمرّ بالحارس');
+  assert.match(src, /throw \{ status: 422, payload: \{ error: publicGuardError\(guard\)/, 'الفشل المتكرّر يجب أن يبقى فشلًا');
+  assert.match(src, /async function geminiImage\(apiKey, parts, feature, aspectRatio, tempOverride\)/, 'لا تجاوز للحرارة');
+});
+
 /* ───── v-studio-more-looks: «ولّد المعاينات» + «زيد الأشكال» (أمر المالك ٢٨ سبتمبر) ───── */
 const studioStyles = require(path.join(root, 'api/_lib/studio-styles.js'));
 const app13 = fs.readFileSync(path.join(root, 'js/app-13-stocks-init.js'), 'utf8');
