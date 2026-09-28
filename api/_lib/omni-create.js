@@ -14,6 +14,10 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  /* v-omni-refund: خارج try — مهلة الشبكة وأيّ رمية أخرى تسقط في الـcatch الأخير، وكان يردّ ٥٠٠
+     بلا استرجاع نقاط ولا فكّ قفل، خلافًا لمسارات الفشل الثلاثة الأخرى. */
+  let chargedUser = null;
+  let videoLocked = null;
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -33,8 +37,6 @@ module.exports = async (req, res) => {
     // omni_video نقطة (الأغلى). يُسترجع الرصيد تلقائيًا لو فشل الطلب.
     const pointsLib = require('./points.js');
     const gate = await checkOwnerBypass(token);
-    let chargedUser = null;
-    let videoLocked = null;
     if (!gate.allowed) {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
@@ -62,7 +64,8 @@ module.exports = async (req, res) => {
     if (!apiKey) {
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.omni_video);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      console.error('[omni-create] missing provider key');
+      res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' });
       return;
     }
 
@@ -79,6 +82,10 @@ module.exports = async (req, res) => {
     }
     input.push({ type: 'text', text: prompt });
 
+    /* v-omni-store: النداء متزامن ويحجب دقيقة إلى ثلاث حتّى ينتهي التوليد، وحارس المهلة العامّ
+       (_fetch-timeout.js) يقطع كلّ نداء بلا signal عند ٣٠ ثانية — فكان يُجهَض قبل أن يردّ المزوّد.
+       من يمرّر signal خاصًّا يتركه الحارس وشأنه. ٢٧٠ث دون maxDuration المضبوط للدالّة. */
+    const OMNI_TIMEOUT_MS = Number(process.env.OMNI_TIMEOUT_MS || 270000);
     const upstream = await fetch(GL + '/interactions', {
       method: 'POST',
       headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
@@ -86,8 +93,13 @@ module.exports = async (req, res) => {
         model,
         input,
         response_format: { type: 'video', resolution, aspect_ratio: aspect, delivery: 'uri' },
-        background: false, store: false, stream: false,
+        /* v-omni-store: طلب الفيديو كرابط (delivery:'uri') يشترط store:true — الرابط مرجع إلى
+           مخرَج مخزَّن، فبلا تخزين لا شيء يُشار إليه ويُرفض الطلب كلّه («store=true is required
+           when response format has video delivery set to URI»). توصية store:false في التوثيق
+           تخصّ التسليم المضمَّن، وهو محجوب علينا: سقفه ٤م ومقاطعنا 720p/1080p أكبر منه. */
+        background: false, store: true, stream: false,
       }),
+      signal: AbortSignal.timeout(OMNI_TIMEOUT_MS),
     });
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
@@ -121,6 +133,13 @@ module.exports = async (req, res) => {
       res.status(200).json({ dataUrl: 'data:' + mime + ';base64,' + b64 });
     }
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    /* v-omni-refund: الاسترجاع أفضل جهد ولا يحجب الردّ — بلا هذا تحترق نقاط المستخدم عند كلّ انقطاع */
+    try {
+      const pl = require('./points.js');
+      if (chargedUser) await pl.refundPoints(chargedUser, pl.COSTS.omni_video);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    console.error('[omni-create] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.', retryable: true });
   }
 };
