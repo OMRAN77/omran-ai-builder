@@ -957,25 +957,54 @@ module.exports = withErrorCapture('edu', async (req, res) => {
           return;
         }
       }
-      const sys = 'أنت معلّم يحلّ مسألة خطوة بخطوة ليتعلّم الطالب الطريقة. اقرأ المسألة بدقّة (من الصورة أو النصّ) وحلّها صحيحًا.\n'
-        + 'أعد JSON فقط بهذه الصيغة: {"problem":"نصّ المسألة كما فهمتها","topic":"الموضوع","steps":[{"hint":"تلميح قصير يوجّه للخطوة دون كشفها","work":"الخطوة كاملة بالحساب"}],"answer":"الجواب النهائيّ","check":"كيف نتحقّق أنّ الجواب صحيح","tip":"الفكرة العامّة لحلّ المسائل المشابهة"}\n'
-        + 'من ٢ إلى ٨ خطوات. المعادلات بصيغة $…$، والكود في ```…```. إن كانت الصورة غير مقروءة أو ليست مسألة فأعد {"error":"السبب باختصار"}. '
+      /* v-edu-homework (طلب المالك ٢٨ سبتمبر مع صورة بطاقة تقييم بوستر): أيّ واجب من أيّ مادّة ومنهج —
+         مسألة، ورقة أسئلة، تعبير، أو مشروع/بوستر. كان يرفض كلّ ما ليس مسألة حسابيّة. */
+      const sys = 'أنت معلّم خبير في كلّ المواد والمناهج الدراسيّة (الإماراتيّ والخليجيّ والعربيّ والدوليّ، من الروضة إلى الجامعة). '
+        + 'الطالب يرسل واجبه (صورة أو نصًّا) ويريد تحليله وحلّه كاملًا صحيحًا. اقرأ الواجب بدقّة، وحدّد المادّة والصفّ والمنهج من محتواه، '
+        + 'ثمّ حلّه بمستوى يناسب ذلك الصفّ وأسلوب منهجه.\n'
+        + 'نوع الواجب (kind): "problem" مسألة واحدة · "questions" ورقة فيها عدّة أسئلة (حلّ كلّ سؤال برقمه في خطوة مستقلّة، ولا تترك سؤالًا) · '
+        + '"writing" تعبير أو إنشاء أو بحث قصير (اكتب النصّ النموذجيّ كاملًا في answer) · "project" مشروع أو بوستر أو نشاط عمليّ أو بطاقة تقييم مهمّة '
+        + '(اشرح المطلوب، وخطّة التنفيذ خطوات، والمحتوى الجاهز، وكيف ينال الدرجة الكاملة في كلّ معيار).\n'
+        + 'أعد JSON فقط بهذه الصيغة: {"kind":"problem|questions|writing|project","subject":"المادّة","grade":"الصفّ والمنهج كما يظهر أو تستنتجه",'
+        + '"problem":"نصّ الواجب كما فهمته","topic":"الموضوع","understand":"المطلوب بجملة أو جملتين",'
+        + '"steps":[{"hint":"تلميح قصير يوجّه للخطوة دون كشفها","work":"الخطوة كاملة"}],"answer":"الجواب النهائيّ كاملًا (لكلّ الأسئلة مرقّمة)",'
+        + '"check":"كيف نتحقّق أنّ الجواب صحيح","tip":"الفكرة العامّة للواجبات المشابهة",'
+        + '"project":{"content":["النصوص الجاهزة التي تُكتب في العمل: العنوان ثمّ العناصر"],"design":["أفكار تصميم وألوان ورسوم"],'
+        + '"checklist":[{"criterion":"المعيار كما في البطاقة","points":2,"how":"كيف تحقّقه"}],'
+        + '"poster":"English description of one finished poster for this task, child-friendly, with the exact title and labels in the original language in quotes"}}\n'
+        + 'المفتاح project للنوع "project" فقط. من ٢ إلى ١٢ خطوة. المعادلات بصيغة $…$، والكود في ```…```. '
+        + 'إن كانت الصورة غير مقروءة أو لا علاقة لها بالدراسة فأعد {"error":"السبب باختصار"}. '
         + 'لا تذكر اسم أيّ نموذج ذكاء اصطناعيّ أو شركة.\n' + languageRules(body.lang, body.nativeLang, '');
       const blocks = [];
       if (img) blocks.push({ type: 'image', source: { type: 'base64', media_type: /^image\/(png|jpeg|gif|webp)$/i.test(img.mime || '') ? img.mime : 'image/jpeg', data: img.base64 } });
-      blocks.push({ type: 'text', text: (text ? 'المسألة:\n' + text : 'المسألة في الصورة.') + '\n\nحلّها الآن وأعد JSON فقط.' });
+      blocks.push({ type: 'text', text: (text ? 'الواجب:\n' + text : 'الواجب في الصورة.') + '\n\nحلّه الآن كاملًا وأعد JSON فقط.' });
       let result = null;
-      try { result = await anthropicJSON(apiKey, sys, blocks, 4000); }
+      try { result = await anthropicJSON(apiKey, sys, blocks, 8000); }
       catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الحلّ الآن — حاول مرة أخرى.' }); return; }
       if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300) }); return; }
       const steps = (result && Array.isArray(result.steps) ? result.steps : [])
-        .filter((st) => st && (st.work || st.hint)).slice(0, 10)
+        .filter((st) => st && (st.work || st.hint)).slice(0, 12)
         .map((st) => ({ hint: String(st.hint || '').slice(0, 600), work: String(st.work || '').slice(0, 2500) }));
       if (!steps.length || !result.answer) { res.status(502).json({ error: 'تعذّر فهم الحلّ — حاول مرة أخرى.' }); return; }
-      res.status(200).json({ ok: true, solution: {
-        problem: String(result.problem || text).slice(0, 3000), topic: String(result.topic || '').slice(0, 120), steps,
-        answer: String(result.answer).slice(0, 1500), check: String(result.check || '').slice(0, 1500), tip: String(result.tip || '').slice(0, 800),
-      } });
+      const kind = ['problem', 'questions', 'writing', 'project'].includes(result.kind) ? result.kind : 'problem';
+      const strList = (a, n, len) => (Array.isArray(a) ? a : []).filter((x) => x && typeof x !== 'object').slice(0, n).map((x) => String(x).slice(0, len));
+      const solution = {
+        kind, subject: String(result.subject || '').slice(0, 80), grade: String(result.grade || '').slice(0, 120),
+        problem: String(result.problem || text).slice(0, 3000), topic: String(result.topic || '').slice(0, 120),
+        understand: String(result.understand || '').slice(0, 800), steps,
+        answer: String(result.answer).slice(0, 6000), check: String(result.check || '').slice(0, 1500), tip: String(result.tip || '').slice(0, 800),
+      };
+      if (kind === 'project') {
+        const pj = (result.project && typeof result.project === 'object') ? result.project : {};
+        solution.project = {
+          content: strList(pj.content, 20, 300), design: strList(pj.design, 10, 300),
+          checklist: (Array.isArray(pj.checklist) ? pj.checklist : []).filter((c) => c && c.criterion).slice(0, 10).map((c) => ({
+            criterion: String(c.criterion).slice(0, 200), points: Number.isFinite(Number(c.points)) ? Number(c.points) : null, how: String(c.how || '').slice(0, 400),
+          })),
+          poster: String(pj.poster || '').slice(0, 1200),
+        };
+      }
+      res.status(200).json({ ok: true, solution });
       return;
     }
 
