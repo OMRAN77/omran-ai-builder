@@ -8,6 +8,30 @@
 'use strict';
 /* نصوص الإضافات بالـ14 لغة: العربيّة والأرديّة ← النصّ العربيّ، الإنجليزيّة ← الثاني، والبقيّة من هنا (eduL في edu.js يقرأه) */
 window.__EDU_XL2 = {
+/* v-edu-homework: حلّ الواجب، الوضعان، المشروع والبوستر، وتلميح المحادثة */
+"حلّ الواجب — أيّ مادّة":{"fr": "Aide aux devoirs — toutes matières", "hi": "होमवर्क हल — कोई भी विषय", "bn": "হোমওয়ার্ক সমাধান — যেকোনো বিষয়", "ne": "गृहकार्य समाधान — कुनै पनि विषय", "id": "Penyelesai PR — semua mata pelajaran", "fil": "Tagalutas ng takdang-aralin — anumang asignatura", "tr": "Ödev çözücü — her ders", "zh": "作业解答——任何科目", "ru": "Решение домашки — любой предмет", "es": "Resolver tareas — cualquier materia", "ml": "ഹോംവർക്ക് പരിഹാരം — ഏത് വിഷയവും"},
+"صوّر الواجب أو اكتبه: مسألة، ورقة أسئلة، تعبير، أو مشروع وبوستر — من أيّ مادّة ومنهج. تحصل على التحليل والحلّ كاملًا.":{"fr": "Photographie ou tape ton devoir : un problème, une fiche d’exercices, une rédaction, ou un projet et une affiche — toute matière et tout programme. Tu obtiens l’analyse et la solution complète.", "hi": "अपना होमवर्क फ़ोटो लें या लिखें: सवाल, वर्कशीट, निबंध, या प्रोजेक्ट और पोस्टर — कोई भी विषय या पाठ्यक्रम। आपको विश्लेषण और पूरा हल मिलेगा।", "bn": "হোমওয়ার্কের ছবি তুলুন বা লিখুন: সমস্যা, ওয়ার্কশিট, রচনা, বা প্রকল্প ও পোস্টার — যেকোনো বিষয় ও পাঠ্যক্রম। বিশ্লেষণ ও সম্পূর্ণ সমাধান পাবেন।", "ne": "गृहकार्यको फोटो खिच्नुहोस् वा लेख्नुहोस्: समस्या, वर्कशिट, निबन्ध, वा परियोजना र पोस्टर — कुनै पनि विषय र पाठ्यक्रम। विश्लेषण र पूरा समाधान पाउनुहुन्छ।", "id": "Foto atau ketik PR-mu: soal, lembar kerja, karangan, atau proyek dan poster — mata pelajaran dan kurikulum apa pun. Kamu dapat analisis dan penyelesaian lengkap.", "fil": "Kunan ng larawan o i-type ang takdang-aralin: problema, worksheet, sanaysay, o proyekto at poster — anumang asignatura at kurikulum. Makukuha mo ang pagsusuri at buong solusyon.", "tr": "Ödevini fotoğrafla ya da yaz: bir soru, çalışma kâğıdı, kompozisyon ya da proje ve poster — her ders ve müfredat. Analizi ve tam çözümü alırsın.", "zh": "拍下或输入你的作业：题目、练习卷、作文，或项目和海报——任何科目和课程。你会得到分析和完整解答。", "ru": "Сфотографируй или напиши задание: задача, рабочий лист, сочинение, проект или плакат — любой предмет и программа. Получишь разбор и полное решение.", "es": "Fotografía o escribe tu tarea: un problema, una ficha, una redacción, o un proyecto y póster — cualquier materia y plan de estudios. Obtienes el análisis y la solución completa.", "ml": "ഹോംവർക്കിന്റെ ഫോട്ടോ എടുക്കൂ അല്ലെങ്കിൽ ടൈപ്പ് ചെയ്യൂ: പ്രശ്നം, വർക്ക്ഷീറ്റ്, ഉപന്യാസം, അല്ലെങ്കിൽ പ്രോജക്റ്റും പോസ്റ്ററും — ഏത് വിഷയവും സിലബസും. വിശകലനവും പൂർണ്ണ പരിഹാരവും ലഭിക്കും."},
+"الحلّ الكامل":{"fr": "Solution complète", "hi": "पूरा हल", "bn": "সম্পূর্ণ সমাধান", "ne": "पूरा समाधान", "id": "Penyelesaian lengkap", "fil": "Buong solusyon", "tr": "Tam çözüm", "zh": "完整解答", "ru": "Полное решение", "es": "Solución completa", "ml": "പൂർണ്ണ പരിഹാരം"},
+"علّمني خطوة خطوة":{"fr": "Apprends-moi pas à pas", "hi": "मुझे कदम-दर-कदम सिखाएँ", "bn": "ধাপে ধাপে শেখান", "ne": "मलाई चरणबद्ध सिकाउनुहोस्", "id": "Ajari aku langkah demi langkah", "fil": "Turuan ako hakbang-hakbang", "tr": "Adım adım öğret", "zh": "一步步教我", "ru": "Научи шаг за шагом", "es": "Enséñame paso a paso", "ml": "ഘട്ടം ഘട്ടമായി പഠിപ്പിക്കൂ"},
+"صوّر الواجب أو ارفع صورته":{"fr": "Photographie ou importe le devoir", "hi": "होमवर्क की फ़ोटो लें या अपलोड करें", "bn": "হোমওয়ার্কের ছবি তুলুন বা আপলোড করুন", "ne": "गृहकार्यको फोटो खिच्नुहोस् वा अपलोड गर्नुहोस्", "id": "Foto atau unggah PR", "fil": "Kunan o i-upload ang takdang-aralin", "tr": "Ödevi fotoğrafla ya da yükle", "zh": "拍摄或上传作业", "ru": "Сфотографируй или загрузи задание", "es": "Fotografía o sube la tarea", "ml": "ഹോംവർക്കിന്റെ ഫോട്ടോ എടുക്കൂ അല്ലെങ്കിൽ അപ്‌ലോഡ് ചെയ്യൂ"},
+"أو اكتب الواجب هنا…":{"fr": "Ou tape le devoir ici…", "hi": "या होमवर्क यहाँ लिखें…", "bn": "অথবা হোমওয়ার্ক এখানে লিখুন…", "ne": "वा गृहकार्य यहाँ लेख्नुहोस्…", "id": "Atau ketik PR di sini…", "fil": "O i-type dito ang takdang-aralin…", "tr": "Ya da ödevi buraya yaz…", "zh": "或在此输入作业…", "ru": "Или напиши задание здесь…", "es": "O escribe la tarea aquí…", "ml": "അല്ലെങ്കിൽ ഹോംവർക്ക് ഇവിടെ ടൈപ്പ് ചെയ്യൂ…"},
+"✨ حلّ الواجب":{"fr": "✨ Résoudre le devoir", "hi": "✨ होमवर्क हल करें", "bn": "✨ হোমওয়ার্ক সমাধান করুন", "ne": "✨ गृहकार्य हल गर्नुहोस्", "id": "✨ Selesaikan PR", "fil": "✨ Lutasin ang takdang-aralin", "tr": "✨ Ödevi çöz", "zh": "✨ 解答作业", "ru": "✨ Решить задание", "es": "✨ Resolver la tarea", "ml": "✨ ഹോംവർക്ക് പരിഹരിക്കൂ"},
+"⏳ نحلّل الواجب ونحلّه…":{"fr": "⏳ Analyse et résolution…", "hi": "⏳ विश्लेषण और हल हो रहा है…", "bn": "⏳ বিশ্লেষণ ও সমাধান করা হচ্ছে…", "ne": "⏳ विश्लेषण र समाधान गर्दै…", "id": "⏳ Menganalisis dan menyelesaikan…", "fil": "⏳ Sinusuri at nilulutas…", "tr": "⏳ İnceleniyor ve çözülüyor…", "zh": "⏳ 正在分析并解答…", "ru": "⏳ Разбираем и решаем…", "es": "⏳ Analizando y resolviendo…", "ml": "⏳ വിശകലനം ചെയ്ത് പരിഹരിക്കുന്നു…"},
+"المطلوب:":{"fr": "Ce qui est demandé :", "hi": "क्या पूछा गया है:", "bn": "যা চাওয়া হয়েছে:", "ne": "के सोधिएको छ:", "id": "Yang diminta:", "fil": "Ang hinihingi:", "tr": "İstenen:", "zh": "题目要求：", "ru": "Что требуется:", "es": "Lo que se pide:", "ml": "ആവശ്യപ്പെടുന്നത്:"},
+"واجب جديد":{"fr": "Nouveau devoir", "hi": "नया होमवर्क", "bn": "নতুন হোমওয়ার্ক", "ne": "नयाँ गृहकार्य", "id": "PR baru", "fil": "Bagong takdang-aralin", "tr": "Yeni ödev", "zh": "新作业", "ru": "Новое задание", "es": "Nueva tarea", "ml": "പുതിയ ഹോംവർക്ക്"},
+"المحتوى الجاهز للعمل:":{"fr": "Contenu prêt pour le travail :", "hi": "काम के लिए तैयार सामग्री:", "bn": "কাজের জন্য প্রস্তুত বিষয়বস্তু:", "ne": "कामका लागि तयार सामग्री:", "id": "Konten siap pakai:", "fil": "Handang nilalaman para sa gawa:", "tr": "Çalışma için hazır içerik:", "zh": "可直接使用的内容：", "ru": "Готовое содержание для работы:", "es": "Contenido listo para el trabajo:", "ml": "പ്രവൃത്തിക്ക് തയ്യാറായ ഉള്ളടക്കം:"},
+"أفكار التصميم:":{"fr": "Idées de design :", "hi": "डिज़ाइन के विचार:", "bn": "ডিজাইনের ধারণা:", "ne": "डिजाइनका विचार:", "id": "Ide desain:", "fil": "Mga ideya sa disenyo:", "tr": "Tasarım fikirleri:", "zh": "设计思路：", "ru": "Идеи оформления:", "es": "Ideas de diseño:", "ml": "ഡിസൈൻ ആശയങ്ങൾ:"},
+"للدرجة الكاملة في كلّ معيار:":{"fr": "Pour la note maximale à chaque critère :", "hi": "हर मानदंड में पूरे अंक के लिए:", "bn": "প্রতিটি মানদণ্ডে পূর্ণ নম্বরের জন্য:", "ne": "हरेक मापदण्डमा पूरा अङ्कका लागि:", "id": "Untuk nilai penuh di setiap kriteria:", "fil": "Para sa buong marka sa bawat pamantayan:", "tr": "Her ölçütte tam puan için:", "zh": "每项标准拿满分：", "ru": "Для максимального балла по каждому критерию:", "es": "Para la nota máxima en cada criterio:", "ml": "ഓരോ മാനദണ്ഡത്തിലും മുഴുവൻ മാർക്കിന്:"},
+"صمّم البوستر":{"fr": "Créer l’affiche", "hi": "पोस्टर डिज़ाइन करें", "bn": "পোস্টার ডিজাইন করুন", "ne": "पोस्टर डिजाइन गर्नुहोस्", "id": "Desain posternya", "fil": "Idisenyo ang poster", "tr": "Posteri tasarla", "zh": "设计海报", "ru": "Создать плакат", "es": "Diseñar el póster", "ml": "പോസ്റ്റർ ഡിസൈൻ ചെയ്യൂ"},
+"يُحسب كصورة من رصيدك.":{"fr": "Compte comme une image de ton solde.", "hi": "यह आपके बैलेंस से एक छवि के रूप में गिना जाएगा।", "bn": "এটি আপনার ব্যালেন্স থেকে একটি ছবি হিসেবে গণ্য হবে।", "ne": "यो तपाईंको ब्यालेन्सबाट एउटा तस्बिरको रूपमा गनिन्छ।", "id": "Dihitung sebagai satu gambar dari saldomu.", "fil": "Binibilang bilang isang larawan mula sa iyong balanse.", "tr": "Bakiyenden bir görsel olarak sayılır.", "zh": "将按一张图片从你的余额中计算。", "ru": "Считается как одно изображение с твоего баланса.", "es": "Cuenta como una imagen de tu saldo.", "ml": "നിങ്ങളുടെ ബാലൻസിൽ നിന്ന് ഒരു ചിത്രമായി കണക്കാക്കും."},
+"⏳ نصمّم البوستر…":{"fr": "⏳ Création de l’affiche…", "hi": "⏳ पोस्टर बन रहा है…", "bn": "⏳ পোস্টার তৈরি হচ্ছে…", "ne": "⏳ पोस्टर बनाउँदै…", "id": "⏳ Mendesain poster…", "fil": "⏳ Dinidisenyo ang poster…", "tr": "⏳ Poster tasarlanıyor…", "zh": "⏳ 正在设计海报…", "ru": "⏳ Создаём плакат…", "es": "⏳ Diseñando el póster…", "ml": "⏳ പോസ്റ്റർ ഡിസൈൻ ചെയ്യുന്നു…"},
+"احفظ البوستر":{"fr": "Enregistrer l’affiche", "hi": "पोस्टर सहेजें", "bn": "পোস্টার সংরক্ষণ করুন", "ne": "पोस्टर सुरक्षित गर्नुहोस्", "id": "Simpan poster", "fil": "I-save ang poster", "tr": "Posteri kaydet", "zh": "保存海报", "ru": "Сохранить плакат", "es": "Guardar el póster", "ml": "പോസ്റ്റർ സേവ് ചെയ്യൂ"},
+"صمّم نسخة أخرى":{"fr": "Créer une autre version", "hi": "एक और संस्करण बनाएँ", "bn": "আরেকটি সংস্করণ তৈরি করুন", "ne": "अर्को संस्करण बनाउनुहोस्", "id": "Desain versi lain", "fil": "Magdisenyo ng ibang bersyon", "tr": "Başka bir sürüm tasarla", "zh": "再设计一个版本", "ru": "Создать другой вариант", "es": "Diseñar otra versión", "ml": "മറ്റൊരു പതിപ്പ് ഡിസൈൻ ചെയ്യൂ"},
+"رصيدك لا يكفي لتصميم البوستر.":{"fr": "Ton solde ne suffit pas pour créer l’affiche.", "hi": "पोस्टर बनाने के लिए आपका बैलेंस पर्याप्त नहीं है।", "bn": "পোস্টার ডিজাইনের জন্য আপনার ব্যালেন্স যথেষ্ট নয়।", "ne": "पोस्टर डिजाइन गर्न तपाईंको ब्यालेन्स पुग्दैन।", "id": "Saldomu tidak cukup untuk mendesain poster.", "fil": "Hindi sapat ang iyong balanse para idisenyo ang poster.", "tr": "Bakiyen posteri tasarlamaya yetmiyor.", "zh": "你的余额不足以设计海报。", "ru": "Твоего баланса не хватает для создания плаката.", "es": "Tu saldo no alcanza para diseñar el póster.", "ml": "പോസ്റ്റർ ഡിസൈൻ ചെയ്യാൻ നിങ്ങളുടെ ബാലൻസ് മതിയാകില്ല."},
+"سجّل الدخول لتصميم البوستر.":{"fr": "Connecte-toi pour créer l’affiche.", "hi": "पोस्टर बनाने के लिए साइन इन करें।", "bn": "পোস্টার ডিজাইন করতে সাইন ইন করুন।", "ne": "पोस्टर डिजाइन गर्न साइन इन गर्नुहोस्।", "id": "Masuk untuk mendesain poster.", "fil": "Mag-sign in para idisenyo ang poster.", "tr": "Posteri tasarlamak için giriş yap.", "zh": "登录后即可设计海报。", "ru": "Войди, чтобы создать плакат.", "es": "Inicia sesión para diseñar el póster.", "ml": "പോസ്റ്റർ ഡിസൈൻ ചെയ്യാൻ സൈൻ ഇൻ ചെയ്യൂ."},
+"تعذّر تصميم البوستر — حاول مرة أخرى.":{"fr": "Impossible de créer l’affiche — réessaie.", "hi": "पोस्टर नहीं बन सका — फिर से कोशिश करें।", "bn": "পোস্টার ডিজাইন করা যায়নি — আবার চেষ্টা করুন।", "ne": "पोस्टर डिजाइन गर्न सकिएन — फेरि प्रयास गर्नुहोस्।", "id": "Gagal mendesain poster — coba lagi.", "fil": "Hindi naidisenyo ang poster — subukan muli.", "tr": "Poster tasarlanamadı — tekrar dene.", "zh": "无法设计海报——请重试。", "ru": "Не удалось создать плакат — попробуй снова.", "es": "No se pudo diseñar el póster — inténtalo de nuevo.", "ml": "പോസ്റ്റർ ഡിസൈൻ ചെയ്യാനായില്ല — വീണ്ടും ശ്രമിക്കൂ."},
+"صوّر الواجب أو اكتبه":{"fr": "Photographie ou tape ton devoir", "hi": "होमवर्क की फ़ोटो लें या लिखें", "bn": "হোমওয়ার্কের ছবি তুলুন বা লিখুন", "ne": "गृहकार्यको फोटो खिच्नुहोस् वा लेख्नुहोस्", "id": "Foto atau ketik PR-mu", "fil": "Kunan o i-type ang takdang-aralin", "tr": "Ödevini fotoğrafla ya da yaz", "zh": "拍下或输入作业", "ru": "Сфотографируй или напиши задание", "es": "Fotografía o escribe tu tarea", "ml": "ഹോംവർക്കിന്റെ ഫോട്ടോ എടുക്കൂ അല്ലെങ്കിൽ ടൈപ്പ് ചെയ്യൂ"},
+"📷 عندك واجب؟ صوّره في «حلّ الواجب» وخذ التحليل والحلّ كاملًا.":{"fr": "📷 Un devoir ? Photographie-le dans l’aide aux devoirs pour l’analyse et la solution complète.", "hi": "📷 होमवर्क है? होमवर्क हल में उसकी फ़ोटो लें और पूरा विश्लेषण व हल पाएँ।", "bn": "📷 হোমওয়ার্ক আছে? হোমওয়ার্ক সমাধানে ছবি তুলুন, পূর্ণ বিশ্লেষণ ও সমাধান পান।", "ne": "📷 गृहकार्य छ? गृहकार्य समाधानमा फोटो खिच्नुहोस् र पूरा विश्लेषण र समाधान पाउनुहोस्।", "id": "📷 Ada PR? Foto di penyelesai PR untuk analisis dan penyelesaian lengkap.", "fil": "📷 May takdang-aralin? Kunan ito sa tagalutas para sa buong pagsusuri at solusyon.", "tr": "📷 Ödevin mi var? Ödev çözücüde fotoğrafla, tam analiz ve çözümü al.", "zh": "📷 有作业？在作业解答中拍下它，获取完整分析和解答。", "ru": "📷 Есть домашка? Сфотографируй её в «Решении домашки» — получишь разбор и полное решение.", "es": "📷 ¿Tienes tarea? Fotografíala en el solucionador y obtén el análisis y la solución completa.", "ml": "📷 ഹോംവർക്ക് ഉണ്ടോ? ഹോംവർക്ക് പരിഹാരത്തിൽ ഫോട്ടോ എടുത്ത് പൂർണ്ണ വിശകലനവും പരിഹാരവും നേടൂ."},
 "💬 اسأل المعلّم":{"fr": "💬 Demander au tuteur", "hi": "💬 शिक्षक से पूछें", "bn": "💬 শিক্ষককে জিজ্ঞাসা করুন", "ne": "💬 शिक्षकलाई सोध्नुहोस्", "id": "💬 Tanya tutor", "fil": "💬 Magtanong sa tutor", "tr": "💬 Öğretmene sor", "zh": "💬 问老师", "ru": "💬 Спросить учителя", "es": "💬 Pregunta al tutor", "ml": "💬 അധ്യാപകനോട് ചോദിക്കൂ"},
 "أعد المحاولة":{"fr": "Réessayer", "hi": "फिर से कोशिश करें", "bn": "আবার চেষ্টা করুন", "ne": "फेरि प्रयास गर्नुहोस्", "id": "Coba lagi", "fil": "Subukan muli", "tr": "Tekrar dene", "zh": "重试", "ru": "Попробовать снова", "es": "Reintentar", "ml": "വീണ്ടും ശ്രമിക്കൂ"},
 "لا توجد بطاقات مستحقّة اليوم.":{"fr": "Aucune carte à réviser aujourd’hui.", "hi": "आज कोई कार्ड दोहराने के लिए नहीं है।", "bn": "আজ পুনরালোচনার কোনো কার্ড নেই।", "ne": "आज दोहोर्याउने कुनै कार्ड छैन।", "id": "Tidak ada kartu yang jatuh tempo hari ini.", "fil": "Walang kard na dapat balikan ngayon.", "tr": "Bugün tekrar edilecek kart yok.", "zh": "今天没有到期的卡片。", "ru": "Сегодня нет карточек для повторения.", "es": "Hoy no hay tarjetas pendientes.", "ml": "ഇന്ന് ആവർത്തിക്കാൻ കാർഡുകളില്ല."},
@@ -304,15 +328,31 @@ function shrinkImage(file){
     im.src = url;
   });
 }
+/* v-edu-homework: وضعان — «الحلّ الكامل» (افتراضيّ: المالك طلب الجواب كاملًا) و«علّمني خطوة خطوة» (التلميح ثمّ الخطوة) */
+var SOLVE_MODE_KEY = 'eduSolveMode';
+function solveMode(){ return lsGet(SOLVE_MODE_KEY, 'full') === 'teach' ? 'teach' : 'full'; }
+function setSolveMode(m){ lsSet(SOLVE_MODE_KEY, m === 'teach' ? 'teach' : 'full'); }
 function showSolver(){
   go(function(body){
     var img = null;
-    body.innerHTML = '<div class="eduSecTitle" style="margin-top:0;">🧩 ' + esc(L('حلّ مسألة خطوة بخطوة', 'Solve a problem step by step')) + '</div>'
-      + '<p style="font-size:var(--fs-3);opacity:.8;line-height:1.8;margin:0 0 10px;">' + esc(L('صوّر السؤال أو اكتبه. تظهر لك الخطوات واحدة واحدة مع تلميح قبل كلّ خطوة — لتتعلّم الطريقة لا تنسخ الجواب.', 'Snap or type the question. Steps appear one at a time with a hint before each — so you learn the method, not just copy the answer.')) + '</p>'
-      + '<button class="eduUploadBtn" id="eduSolvePick"><span style="font-size:20px;">📷</span><span id="eduSolvePickTxt">' + esc(L('صوّر المسألة أو ارفع صورتها', 'Snap or upload the problem')) + '</span></button>'
+    body.innerHTML = '<div class="eduSecTitle" style="margin-top:0;">🧩 ' + esc(L('حلّ الواجب — أيّ مادّة', 'Homework solver — any subject')) + '</div>'
+      + '<p style="font-size:var(--fs-3);opacity:.8;line-height:1.8;margin:0 0 10px;">' + esc(L('صوّر الواجب أو اكتبه: مسألة، ورقة أسئلة، تعبير، أو مشروع وبوستر — من أيّ مادّة ومنهج. تحصل على التحليل والحلّ كاملًا.', 'Snap or type your homework: a problem, a worksheet, an essay, or a project or poster — any subject or curriculum. You get the analysis and the full solution.')) + '</p>'
+      + '<div class="eduModeRow" role="radiogroup"><button class="eduChip" data-m="full">📘 ' + esc(L('الحلّ الكامل', 'Full solution')) + '</button>'
+      + '<button class="eduChip" data-m="teach">🎓 ' + esc(L('علّمني خطوة خطوة', 'Teach me step by step')) + '</button></div>'
+      + '<button class="eduUploadBtn" id="eduSolvePick"><span style="font-size:20px;">📷</span><span id="eduSolvePickTxt">' + esc(L('صوّر الواجب أو ارفع صورته', 'Snap or upload the homework')) + '</span></button>'
       + '<input type="file" id="eduSolveFile" accept="image/*" style="display:none;">'
-      + '<textarea id="eduSolveTxt" rows="4" class="eduField" placeholder="' + esc(L('أو اكتب المسألة هنا…', 'Or type the problem here…')) + '"></textarea>'
-      + '<button class="eduPrimary" id="eduSolveGo" style="width:100%;">' + esc(L('✨ حلّها خطوة بخطوة', '✨ Solve it step by step')) + '</button>';
+      + '<textarea id="eduSolveTxt" rows="4" class="eduField" placeholder="' + esc(L('أو اكتب الواجب هنا…', 'Or type the homework here…')) + '"></textarea>'
+      + '<button class="eduPrimary" id="eduSolveGo" style="width:100%;">' + esc(L('✨ حلّ الواجب', '✨ Solve the homework')) + '</button>';
+    function paintMode(){
+      var m = solveMode();
+      Array.prototype.forEach.call(body.querySelectorAll('.eduModeRow [data-m]'), function(b){
+        var on = b.getAttribute('data-m') === m; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); b.setAttribute('role', 'radio');
+      });
+    }
+    Array.prototype.forEach.call(body.querySelectorAll('.eduModeRow [data-m]'), function(b){
+      b.onclick = function(){ setSolveMode(b.getAttribute('data-m')); paintMode(); };
+    });
+    paintMode();
     $id('eduSolvePick').onclick = function(){ $id('eduSolveFile').click(); };
     $id('eduSolveFile').onchange = function(){
       var f = this.files && this.files[0]; if(!f) return;
@@ -329,21 +369,26 @@ function showSolver(){
 }
 function solve(body, text, img){
   var c = C();
-  busy(body, L('⏳ نحلّ المسألة…', '⏳ Solving…'));
+  busy(body, L('⏳ نحلّل الواجب ونحلّه…', '⏳ Analysing and solving…'));
   c.api({ action: 'solve', text: text, image: img || undefined, lang: c.appLang(), nativeLang: c.nativeLang() })
     .then(function(j){ showSolution(body, j.solution || {}); })
     .catch(function(e){ errBox(body, (e && e.message) || c.T('err'), function(){ solve(body, text, img); }); });
 }
 function showSolution(body, s){
-  var c = C(), steps = s.steps || [], shown = 0;
+  var c = C(), steps = s.steps || [], shown = 0, teach = solveMode() === 'teach';
+  var meta = [s.subject, s.grade].filter(Boolean).join(' · ');
   body.innerHTML = '<div class="eduSecTitle" style="margin-top:0;">🧩 ' + esc(s.topic || L('الحلّ', 'Solution')) + '</div>'
-    + '<div class="eduSolveProblem eduSummary">' + c.md(s.problem) + '</div><div id="eduSteps"></div><div id="eduSolveEnd"></div>';
+    + (meta ? '<div class="eduSolveMeta">📘 ' + esc(meta) + '</div>' : '')
+    + '<div class="eduSolveProblem eduSummary">' + c.md(s.problem) + '</div>'
+    + (s.understand ? '<div class="eduExplain">🔍 <b>' + esc(L('المطلوب:', 'What is asked:')) + '</b><div class="eduSummary">' + c.md(s.understand) + '</div></div>' : '')
+    + '<div id="eduSteps"></div><div id="eduSolveEnd"></div>';
   var box = $id('eduSteps'), end = $id('eduSolveEnd');
+  function stepHead(n){ return '<div class="eduStepHead">' + esc(L('الخطوة', 'Step')) + ' ' + (n + 1) + ' / ' + steps.length + '</div>'; }
   function addStep(){
     var n = shown, st = steps[n];
     var d = document.createElement('div');
     d.className = 'eduStep';
-    d.innerHTML = '<div class="eduStepHead">' + esc(L('الخطوة', 'Step')) + ' ' + (n + 1) + ' / ' + steps.length + '</div>'
+    d.innerHTML = stepHead(n)
       + '<div class="eduStepHint" style="display:none;">💡 <span class="eduSummary">' + c.md(st.hint) + '</span></div>'
       + '<div class="eduStepWork eduSummary" style="display:none;">' + c.md(st.work) + '</div>'
       + '<div class="eduStepBtns">' + (st.hint ? '<button class="eduChip" data-a="hint">💡 ' + esc(L('تلميح', 'Hint')) + '</button>' : '')
@@ -360,20 +405,77 @@ function showSolution(body, s){
   }
   function finish(){
     end.innerHTML = '<button class="eduPrimary" id="eduShowAns" style="width:100%;">✅ ' + esc(L('أظهر الجواب النهائيّ', 'Show the final answer')) + '</button>';
-    $id('eduShowAns').onclick = function(){
-      end.innerHTML = '<div class="eduAnswer"><b>✅ ' + esc(L('الجواب:', 'Answer:')) + '</b><div class="eduSummary">' + c.md(s.answer) + '</div></div>'
-        + (s.check ? '<div class="eduExplain">🔎 <b>' + esc(L('التحقّق:', 'Check:')) + '</b><div class="eduSummary">' + c.md(s.check) + '</div></div>' : '')
-        + (s.tip ? '<div class="eduExplain">🎯 <b>' + esc(L('الفكرة للمسائل المشابهة:', 'The idea for similar problems:')) + '</b><div class="eduSummary">' + c.md(s.tip) + '</div></div>' : '')
-        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="eduPrimary" id="eduSolveAsk">💬 ' + esc(L('اسأل المعلّم عن هذه المسألة', 'Ask the tutor about this problem')) + '</button>'
-        + '<button class="eduPrimary eduGhost" id="eduSolveNew">🧩 ' + esc(L('مسألة جديدة', 'New problem')) + '</button></div>';
-      $id('eduSolveNew').onclick = showSolver;
-      $id('eduSolveAsk').onclick = function(){
-        var summary = s.problem + '\n\n' + steps.map(function(x, i){ return (i + 1) + ') ' + x.work; }).join('\n') + '\n\n' + s.answer;
-        showTutorView({ id: 'solve-' + hashStr(s.problem), title: s.topic || L('مسألة', 'Problem'), summary: summary }, showSolver);
-      };
-    };
+    $id('eduShowAns').onclick = showTail;
   }
-  if(steps.length) addStep(); else finish();
+  function showTail(){
+    var pj = s.kind === 'project' && s.project ? s.project : null;
+    end.innerHTML = '<div class="eduAnswer"><b>✅ ' + esc(L('الجواب:', 'Answer:')) + '</b><div class="eduSummary">' + c.md(s.answer) + '</div></div>'
+      + (pj ? projectHtml(pj) : '')
+      + (s.check ? '<div class="eduExplain">🔎 <b>' + esc(L('التحقّق:', 'Check:')) + '</b><div class="eduSummary">' + c.md(s.check) + '</div></div>' : '')
+      + (s.tip ? '<div class="eduExplain">🎯 <b>' + esc(L('الفكرة للمسائل المشابهة:', 'The idea for similar problems:')) + '</b><div class="eduSummary">' + c.md(s.tip) + '</div></div>' : '')
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="eduPrimary" id="eduSolveAsk">💬 ' + esc(L('اسأل المعلّم عن هذه المسألة', 'Ask the tutor about this problem')) + '</button>'
+      + '<button class="eduPrimary eduGhost" id="eduSolveNew">🧩 ' + esc(L('واجب جديد', 'New homework')) + '</button></div>';
+    $id('eduSolveNew').onclick = showSolver;
+    $id('eduSolveAsk').onclick = function(){
+      var summary = s.problem + '\n\n' + steps.map(function(x, i){ return (i + 1) + ') ' + x.work; }).join('\n') + '\n\n' + s.answer;
+      showTutorView({ id: 'solve-' + hashStr(s.problem), title: s.topic || L('مسألة', 'Problem'), summary: summary }, showSolver);
+    };
+    if(pj) $id('eduPosterGo').onclick = function(){ makePoster(s, $id('eduPosterOut'), $id('eduPosterGo')); };
+  }
+  if(!teach){
+    /* الحلّ الكامل: كلّ الخطوات مكشوفة والجواب مباشرة */
+    box.innerHTML = steps.map(function(st, n){ return '<div class="eduStep">' + stepHead(n) + '<div class="eduStepWork eduSummary">' + c.md(st.work) + '</div></div>'; }).join('');
+    showTail();
+  } else if(steps.length) addStep(); else finish();
+}
+
+/* ---------- 🎨 المشروع والبوستر (v-edu-homework) ---------- */
+function projectHtml(pj){
+  var c = C();
+  function list(a){ return '<ul>' + a.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; }
+  return (pj.content && pj.content.length ? '<div class="eduExplain">📝 <b>' + esc(L('المحتوى الجاهز للعمل:', 'Ready content for the work:')) + '</b><div class="eduSummary">' + list(pj.content) + '</div></div>' : '')
+    + (pj.design && pj.design.length ? '<div class="eduExplain">🎨 <b>' + esc(L('أفكار التصميم:', 'Design ideas:')) + '</b><div class="eduSummary">' + list(pj.design) + '</div></div>' : '')
+    + (pj.checklist && pj.checklist.length ? '<div class="eduExplain">🏆 <b>' + esc(L('للدرجة الكاملة في كلّ معيار:', 'Full marks on every criterion:')) + '</b><div class="eduSummary"><ul>'
+      + pj.checklist.map(function(k){ return '<li><b>' + esc(k.criterion) + (k.points != null ? ' (' + esc(k.points) + ')' : '') + '</b>' + (k.how ? ' — ' + esc(k.how) : '') + '</li>'; }).join('') + '</ul></div></div>' : '')
+    + '<div class="eduPosterBox"><button class="eduPrimary" id="eduPosterGo" style="width:100%;">🎨 ' + esc(L('صمّم البوستر', 'Design the poster')) + '</button>'
+    + '<div class="eduPosterNote">' + esc(L('يُحسب كصورة من رصيدك.', 'Counts as one image from your balance.')) + '</div><div id="eduPosterOut"></div></div>';
+}
+/* وصف البوستر: ما كتبه النموذج + العنوان والأسماء بلغتها الأصليّة كما هي لتُكتب على البوستر */
+function posterPrompt(s){
+  var pj = (s && s.project) || {}, labels = (pj.content || []).slice(0, 12).join(' | ');
+  var base = pj.poster || ('A colorful, child-friendly school poster about "' + String((s && s.topic) || '') + '"');
+  var out = base + '. Style: bright, clean, kid-friendly illustrated school poster for students' + (s && s.grade ? ' (' + s.grade + ')' : '') + ', clear layout, large readable text.'
+    + (labels ? ' Write these exact texts on the poster, spelled exactly as given: ' + labels : '');
+  return out.slice(0, 1800);
+}
+function makePoster(s, out, btn){
+  var c = C();
+  if(!out || !btn) return;
+  btn.disabled = true;
+  busy(out, L('⏳ نصمّم البوستر…', '⏳ Designing the poster…'));
+  fetch('/api/maha-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    prompt: posterPrompt(s), token: c.getToken() || undefined, guestId: (typeof window.getGuestId === 'function' ? window.getGuestId() : undefined),
+  }) }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(d){
+      btn.disabled = false;
+      if(r.ok && d.imageBase64){
+        var src = 'data:' + (d.mimeType || 'image/png') + ';base64,' + d.imageBase64;
+        out.innerHTML = '<img class="eduPosterImg" alt="" src="' + src + '"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'
+          + '<a class="eduPrimary" id="eduPosterSave" style="text-decoration:none;">⬇️ ' + esc(L('احفظ البوستر', 'Save the poster')) + '</a></div>';
+        var a = $id('eduPosterSave'); a.href = src; a.download = 'poster-' + hashStr(s.topic || s.problem) + '.png';
+        btn.textContent = '🔁 ' + L('صمّم نسخة أخرى', 'Design another version');
+        return;
+      }
+      var e = d && d.error;
+      var msg = e === 'points_insufficient' ? L('رصيدك لا يكفي لتصميم البوستر.', 'Your balance is not enough to design the poster.')
+        : e === 'guest_image_used' ? L('سجّل الدخول لتصميم البوستر.', 'Sign in to design the poster.')
+        : (d && d.message_ar) || L('تعذّر تصميم البوستر — حاول مرة أخرى.', 'Could not design the poster — try again.');
+      out.innerHTML = '<div class="eduExplain">⚠️ ' + esc(msg) + '</div>';
+    });
+  }).catch(function(){
+    btn.disabled = false;
+    out.innerHTML = '<div class="eduExplain">⚠️ ' + esc(L('تعذّر تصميم البوستر — حاول مرة أخرى.', 'Could not design the poster — try again.')) + '</div>';
+  });
 }
 
 /* ---------- 📊 تقدّمي + خطّة الامتحان ---------- */
@@ -498,7 +600,7 @@ function home(el){
   function t(id, icon, title, sub, hot){ return '<button class="eduPlusTile' + (hot ? ' hot' : '') + '" id="' + id + '"><span class="eduPlusIcon">' + icon + '</span><span class="eduPlusTitle">' + esc(title) + '</span><span class="eduPlusSub">' + esc(sub) + '</span></button>'; }
   el.innerHTML = '<div class="eduPlusGrid">'
     + t('eduPlusAlgo', '🎮', L('خوارزميات الألعاب', 'Game algorithms'), L('مسار جاهز: ٨ دروس بألعاب حيّة', 'Ready track: 8 lessons with live games') + ' · ' + algoDone + '/8')
-    + t('eduPlusSolve', '🧩', L('حلّ مسألة خطوة بخطوة', 'Solve a problem step by step'), L('صوّر السؤال أو اكتبه', 'Snap or type the question'))
+    + t('eduPlusSolve', '🧩', L('حلّ الواجب — أيّ مادّة', 'Homework solver — any subject'), L('صوّر الواجب أو اكتبه', 'Snap or type your homework'))
     + t('eduPlusReview', '🔁', L('مراجعة اليوم', "Today's review"), dueN ? dueN + ' ' + L('بطاقة مستحقّة', 'cards due') : L('لا شيء اليوم ✓', 'Nothing due today ✓'), dueN > 0)
     + t('eduPlusProg', '📊', L('تقدّمي وخطّة الامتحان', 'Progress & exam plan'), todayPlan ? L('📅 عندك مهمّة اليوم', '📅 You have a task today') : L('نقاط ضعفك وخطّة المذاكرة', 'Weak points and study plan'), !!todayPlan)
     + '</div>';
@@ -552,6 +654,10 @@ function home(el){
       + '#eduHubModal .eduSolveProblem{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);margin-bottom:10px;}'
       + '#eduHubModal .eduStep{padding:10px 12px;border-radius:12px;border:1px solid rgba(212,175,55,.25);margin:8px 0;}#eduHubModal .eduStepHead{font-weight:var(--w-bold,700);color:#f1d98a;margin-bottom:6px;font-size:13px;}'
       + '#eduHubModal .eduStepHint{padding:6px 10px;border-radius:8px;background:rgba(99,102,241,.1);margin-bottom:6px;}'
+      + '#eduHubModal .eduModeRow{display:flex;flex-wrap:wrap;margin:0 -4px 6px;}#eduHubModal .eduChip.on{background:rgba(212,175,55,.3);border-color:#d4af37;font-weight:var(--w-bold,700);}'
+      + '#eduHubModal .eduSolveMeta{font-size:12.5px;opacity:.8;margin:-4px 0 8px;}'
+      + '#eduHubModal .eduPosterBox{margin-top:12px;}#eduHubModal .eduPosterNote{font-size:11.5px;opacity:.65;text-align:center;margin-top:4px;}'
+      + '#eduHubModal .eduPosterImg{display:block;width:100%;max-width:560px;margin:10px auto 0;border-radius:12px;border:1px solid rgba(212,175,55,.35);}'
       + '#eduHubModal .eduAnswer{padding:12px;border-radius:12px;background:rgba(46,158,107,.12);border:1px solid rgba(46,158,107,.4);}'
       /* التقدّم والخطّة */
       + '#eduHubModal .eduStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}'
@@ -576,6 +682,6 @@ function home(el){
 window.__eduPlus = {
   home: home, tutor: tutor, showTutorView: showTutorView, listenBtn: listenBtn, srsMark: srsMark,
   showReview: showReview, showSolver: showSolver, showProgress: showProgress, openAlgo: openAlgo,
-  lib: { srsNext: srsNext, srsDue: srsDue, buildExamPlan: buildExamPlan, plainText: plainText, INTERVAL_DAYS: INTERVAL_DAYS }
+  lib: { solveMode: solveMode, setSolveMode: setSolveMode, posterPrompt: posterPrompt, srsNext: srsNext, srsDue: srsDue, buildExamPlan: buildExamPlan, plainText: plainText, INTERVAL_DAYS: INTERVAL_DAYS }
 };
 })();
