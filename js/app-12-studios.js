@@ -1440,6 +1440,26 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{ return (window.omranFashionExtras && window.omranFashionExtras().gender) || 'women'; }
     catch(e){ return 'women'; }
   }
+  /* v-fashion-variety (المالك: «الديزينات واحده… الشكل واحد»): عدّاد لكلّ فئة×نمط يُرسَل مع كلّ توليد، والخادم
+     يحوّله إلى تصميم من ≥١٠٠ للنمط لا يتكرّر حتّى تنفد (api/_lib/fashion-variety.js). يبدأ من رقم عشوائيّ لكلّ
+     جهاز فلا يرى الجميع التصميم نفسه أوّلًا، ويتقدّم عند الإرسال فتعطي المحاولة التالية تصميمًا آخر. */
+  const FX_VARIANT_KEY = 'aiapp_fashion_variant';
+  function fxNextVariant(styleVal){
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(FX_VARIANT_KEY) || '{}') || {}; }catch(e){ map = {}; }
+    const k = currentGender() + '|' + styleVal;
+    let n = Number(map[k]);
+    if(!Number.isSafeInteger(n) || n < 0) n = Math.floor(Math.random() * 100000);
+    map[k] = n + 1;
+    try{ localStorage.setItem(FX_VARIANT_KEY, JSON.stringify(map)); }catch(e){ __swallow(e, 'fashion:variant'); }
+    return n;
+  }
+  // «التصميم رقم ٣٧ من ٢١٦ لهذا النمط» — من ردّ الخادم؛ فارغ لخادم قديم بلا الحقل.
+  function fxDesignLine(d){
+    if(!d || !(d.n > 0) || !(d.total > 0)) return '';
+    const tpl = t('fxDesignNo');
+    return (tpl && tpl !== 'fxDesignNo' ? tpl : 'Design {n} of {total}').replace('{n}', d.n).replace('{total}', d.total);
+  }
   function lookImg(gender, value, alt){
     const img = document.createElement('img');
     img.alt = alt;
@@ -1500,6 +1520,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
     sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (bT('نمطًا لهذه الفئة','styles for this category')));
+    const __plus = t('fxStylesPlus'); /* v-fashion-variety: «أكثر من 100 تصميم لكل نمط» */
+    if(__plus && __plus !== 'fxStylesPlus') sub.textContent += ' · ' + __plus;
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
@@ -1743,7 +1765,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{
       const __engineEl = $('#fashionAiEngine');
       window.__fashionEngine = (__engineEl && __engineEl.value) || '';
-      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine };
+      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine, variant: fxNextVariant(styleEl.value) };
       try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
       if(mode === 'image'){
         payload.imageBase64 = selectedBase64;
@@ -1774,7 +1796,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       setupBeforeAfter(dataUrl);
       /* v-fashion-refine: احفظ النتيجة كمصدر للتعديل الموضعي وأظهر صفّه */
       __refineRemember(data.imageBase64, data.mimeType || 'image/png');
-      setStatus(t('fashionAiDone'));
+      const __dl = fxDesignLine(data.design);
+      setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
       setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
@@ -1958,7 +1981,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const results = await Promise.all(stylesToRun.map(async (styleVal) => {
         // v-fashion-locks: fairness يفعّل قفل عدالة المقارنة في الخادم —
         // نفس الاستوديو والإضاءة والوقفة في كل الخيارات، فتُقارن الملابس لا الإضاءة.
-        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '' };
+        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '', variant: fxNextVariant(styleVal) };
         try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
         if(mode === 'image'){ payload.imageBase64 = selectedBase64; payload.mimeType = selectedMime; }
         else { payload.description = descriptionEl.value.trim(); }

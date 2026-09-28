@@ -25,12 +25,18 @@ const MODEST_LOCK =
 // الأنماط التي تستوجب الاحتشام تلقائيًّا حتى بلا طلب صريح.
 const MODEST_STYLES = ['abaya', 'traditional'];
 
+// v-fashion-variety: شرط الاحتشام نفسه يحتاجه كتالوج التنويع (يُسقط الخيارات المكشوفة) — مصدر واحد.
+function needsModest(opts) {
+  const o = opts || {};
+  return !!(o.modest || MODEST_STYLES.indexOf(o.style) !== -1 || o.occasion === 'religious');
+}
+
 function locksFor(opts) {
   const o = opts || {};
   let out = IDENTITY_LOCK;
   if (o.fairness) out += FAIRNESS_LOCK;
-  if (o.modest || MODEST_STYLES.indexOf(o.style) !== -1 || o.occasion === 'religious') out += MODEST_LOCK;
+  if (needsModest(o)) out += MODEST_LOCK;
   return out;
 }
 
-module.exports = { IDENTITY_LOCK, FAIRNESS_LOCK, MODEST_LOCK, MODEST_STYLES, locksFor };
+module.exports = { IDENTITY_LOCK, FAIRNESS_LOCK, MODEST_LOCK, MODEST_STYLES, locksFor, needsModest };

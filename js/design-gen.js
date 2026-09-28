@@ -55,20 +55,51 @@
     });
     return w;
   }
+  /* v-fashion-acc-cards (\u0627\u0644\u0645\u0627\u0644\u0643 \u0628\u0644\u0642\u0637\u0629\u060c \u0662\u0668 \u0633\u0628\u062a\u0645\u0628\u0631: \u00ab\u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062a \u0645\u0634 \u0648\u0627\u0636\u062d\u0647\u00bb): \u0627\u0644\u0631\u0642\u0627\u0642\u0629 \u0643\u0627\u0646\u062a flex \u0641\u064a \u0635\u0641\u0651 \u064a\u0644\u062a\u0641\u0651\u060c
+     \u0648photoize \u064a\u062c\u0639\u0644 \u0627\u0633\u0645\u0647\u0627 \u0648\u0639\u0644\u0627\u0645\u062a\u0647\u0627 absolute \u0628\u0639\u062f \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0635\u0648\u0631\u0629 \u0641\u0644\u0627 \u064a\u0628\u0642\u0649 \u0641\u064a \u062a\u062f\u0641\u0651\u0642\u0647\u0627 \u0634\u064a\u0621 \u2014 \u0641\u0627\u0646\u0643\u0645\u0634\u062a \u0625\u0644\u0649 \u0639\u0631\u0636
+     \u062d\u0634\u0648\u0647\u0627 (~\u0663\u0660 \u0628\u0643\u0633\u0644) \u0648\u0642\u064f\u0635\u0651 \u0627\u0644\u0627\u0633\u0645 \u062a\u062d\u062a \u062f\u0627\u0626\u0631\u0629 \u0627\u0644\u0627\u062e\u062a\u064a\u0627\u0631. \u0627\u0644\u0622\u0646 \u0634\u0628\u0643\u0629 \u0628\u0637\u0627\u0642\u0627\u062a: \u0635\u0648\u0631\u0629 \u0645\u0631\u0628\u0651\u0639\u0629 \u0645\u0642\u0631\u0651\u0628\u0629 \u0639\u0644\u0649 \u0627\u0644\u0625\u0636\u0627\u0641\u0629
+     \u0646\u0641\u0633\u0647\u0627 (\u0627\u0644\u0635\u0648\u0631 \u0644\u0642\u0637\u0627\u062a \u0643\u0627\u0645\u0644\u0629 \u0662:\u0663 \u2014 \u0627\u0644\u0633\u0627\u0639\u0629 \u0648\u0627\u0644\u062d\u0630\u0627\u0621 \u0648\u0627\u0644\u0645\u0643\u064a\u0627\u062c \u0644\u0627 \u062a\u064f\u0631\u0649 \u0641\u064a \u0642\u0635\u0651 \u0627\u0644\u0648\u0633\u0637) \u0648\u0627\u0644\u0627\u0633\u0645 \u062a\u062d\u062a\u0647\u0627 \u0644\u0627 \u0641\u0648\u0642\u0647\u0627.
+     EXT_FOCUS: [x, y] \u0645\u0648\u0636\u0639 \u0627\u0644\u0625\u0636\u0627\u0641\u0629 \u0641\u064a \u0627\u0644\u0635\u0648\u0631\u0629 (\u0646\u0633\u0628\u0629) \u0648[z] \u0627\u0644\u062a\u0643\u0628\u064a\u0631. */
+  var EXT_FOCUS={Glasses:[.56,.17,2],Watch:[.46,.53,2.4],Handbag:[.44,.49,2],Shoes:[.46,.93,2],Scarf:[.49,.37,1.6],Makeup:[.48,.11,2.4]};
+  function focusCss(f){
+    var z=f[2], l=.5-f[0]*z, tp=.5-f[1]*1.5*z;
+    l=Math.min(0,Math.max(1-z,l)); tp=Math.min(0,Math.max(1-1.5*z,tp)); // \u0644\u0627 \u0641\u0631\u0627\u063a \u062f\u0627\u062e\u0644 \u0627\u0644\u0645\u0631\u0628\u0651\u0639
+    return 'position:absolute;z-index:1;max-width:none;height:auto;aspect-ratio:2/3;width:'+(z*100)+'%;left:'+(l*100).toFixed(1)+'%;top:'+(tp*100).toFixed(1)+'%;';
+  }
+  function paintAcc(d,on){
+    d.classList.toggle('sel',on);
+    var ck=d.querySelector('.ck');
+    ck.style.background=on?'#d4af37':'rgba(0,0,0,.45)'; ck.style.color=on?'#141414':'transparent'; ck.style.borderColor=on?'#d4af37':'rgba(212,175,55,.7)';
+    d.style.boxShadow=on?'0 0 0 1px #d4af37,0 6px 18px -8px rgba(212,175,55,.6)':'none';
+  }
   function extrasRow(){
-    var w=document.createElement('div'); w.className='chipGrid f417';
+    var w=document.createElement('div'); w.className='fxAccGrid f417';
+    w.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:6px;';
     EXT.forEach(function(r){
-      var d=document.createElement('div'); d.className='optChip'+(st.extras.indexOf(r[0])>=0?' sel':'');
-      d.innerHTML='<span class="ck"></span><span class="ct"></span>';
-      d.querySelector('.ck').textContent='\u2713';
-      d.querySelector('.ct').textContent=r[1]+' '+T(r[2]);
-      photoize(d,LOOKS+'extras/'+r[0].toLowerCase()+'.webp',false);
-      d.style.aspectRatio='1'; d.style.minWidth='0';
-      d.onclick=function(){ var i=st.extras.indexOf(r[0]); if(i>=0) st.extras.splice(i,1); else st.extras.push(r[0]); d.classList.toggle('sel',i<0); };
+      var d=document.createElement('div'); d.className='optChip fxAccCard';
+      d.style.cssText='display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;min-width:0;border-radius:12px;overflow:hidden;';
+      d.innerHTML='<div class="fxAccPic"><span class="oi"></span><span class="ck"></span></div><div class="ct"></div>';
+      var pic=d.querySelector('.fxAccPic'), oi=d.querySelector('.oi'), ck=d.querySelector('.ck'), ct=d.querySelector('.ct');
+      pic.style.cssText='position:relative;aspect-ratio:1;overflow:hidden;background:linear-gradient(160deg,#23232a,#101014);';
+      oi.textContent=r[1]; oi.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;';
+      ck.textContent='\u2713'; ck.style.cssText='position:absolute;top:6px;inset-inline-end:6px;z-index:2;width:22px;height:22px;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;';
+      ct.textContent=r[1]+' '+T(r[2]); ct.style.cssText='padding:7px 4px 8px;font-size:12.5px;font-weight:700;text-align:center;line-height:1.25;overflow-wrap:anywhere;';
+      var im=document.createElement('img'); im.alt=''; im.loading='lazy';
+      im.style.cssText=focusCss(EXT_FOCUS[r[0]]||[.5,.5,1]);
+      im.onerror=function(){ im.remove(); };
+      pic.insertBefore(im,ck);
+      /* التأجيل على المربّع لا على الصورة: الصورة المزاحة للتقريب تقع خارج قصّ المربّع قبل تحميلها فلا تتقاطع أبدًا */
+      var url=LOOKS+'extras/'+r[0].toLowerCase()+'.webp';
+      if(window.__omranWhenSeen) window.__omranWhenSeen(pic,function(){ im.src=url; });
+      else im.src=url;
+      paintAcc(d,st.extras.indexOf(r[0])>=0);
+      d.onclick=function(){ var i=st.extras.indexOf(r[0]); if(i>=0) st.extras.splice(i,1); else st.extras.push(r[0]); paintAcc(d,i<0); };
       w.appendChild(d);
     });
     return w;
   }
+  /* v-fashion-variety: \u0633\u0637\u0631 \u064a\u0634\u0631\u062d \u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062a \u2014 \u0634\u0643\u0644\u0647\u0627 \u064a\u062a\u063a\u064a\u0651\u0631 \u0645\u0639 \u0643\u0644\u0651 \u062a\u0635\u0645\u064a\u0645 (\u0627\u0644\u062e\u0627\u062f\u0645 \u064a\u062e\u062a\u0627\u0631 \u0646\u0648\u0639\u064b\u0627 \u0645\u0646 \u0643\u062a\u0627\u0644\u0648\u062c\u0647\u0627). */
+  function hint(k){ var d=document.createElement('div'); d.className='f417'; d.style.cssText='font-size:11.5px;color:var(--muted);margin:-2px 0 2px;'; d.textContent=T(k); return d; }
   function build(){
     var U=window.__optUI, occ=document.getElementById('fashionAiOccasion'), sea=document.getElementById('fashionAiSeason'), sty=document.getElementById('fashionAiStyle');
     if(!U||!occ||!sea||!sty) return;
@@ -109,6 +140,7 @@
     row.parentElement.insertBefore(genderGrid(),row);
     row.parentElement.insertBefore(lbl('\u{1F464}','fxCatLbl'),row.previousSibling);
     row.insertAdjacentElement('afterend',extrasRow());
+    row.insertAdjacentElement('afterend',hint('fxAccHint'));
     row.insertAdjacentElement('afterend',lbl('\u{1F48E}','fxAccLbl'));
     row.insertAdjacentElement('afterend',colorRow());
     row.insertAdjacentElement('afterend',lbl('\u{1F3A8}','fxColorsLbl'));

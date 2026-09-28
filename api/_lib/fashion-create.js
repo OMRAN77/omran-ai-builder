@@ -9,7 +9,8 @@ const { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT } = require('./_f
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { judgeBest, duoEnabled } = require('./image-judge');
-const { locksFor } = require('./fashion-locks');
+const { locksFor, needsModest } = require('./fashion-locks');
+const variety = require('./fashion-variety');
 
 // 🎨 محرك بديل اختياري: gpt-image-1 (نفس محرك صور ChatGPT) بمفتاح OPENAI_API_KEY.
 // وضع الصورة فقط (تعديل صورة المستخدمة). فشله يهبط صامتًا إلى Gemini.
@@ -195,7 +196,7 @@ module.exports = async (req, res) => {
       body = JSON.parse(body || '{}');
     }
     const { mode, imageBase64, mimeType, style, description, token, multiAngle,
-      gender, colors, extras, season, occasion, fairness, modest, engine, editRequest } = body;
+      gender, colors, extras, season, occasion, fairness, modest, engine, editRequest, variant } = body;
 
     if (mode === 'image' && !imageBase64) {
       res.status(400).json({ error: 'Missing imageBase64' });
@@ -226,10 +227,25 @@ module.exports = async (req, res) => {
     const styleDesc = styleDescFor(style, gender);
     const subject = SUBJECTS[gender] || 'a woman';
     const colorList = joinList(colors);
-    const extraList = joinList(extras);
+    /* v-fashion-variety (المالك: «الديزينات واحده… الشكل واحد»): وصف النمط جملة ثابتة، فكان الأمر نفسه حرفيًّا
+       في كلّ ضغطة. الآن تصميم محدّد من ≥١٠٠ لكلّ نمط (هيئة · ياقة وأكمام · قماش وتفاصيل) يختاره عدّاد العميل،
+       ونوع محدّد لكلّ إضافة، ولوحة ألوان تتبدّل حين لا يختار المستخدم ألوانه. التعديل الموضعيّ بلا شيء منها. */
+    const vOpts = { gender, style, variant: variety.resolveVariant(variant), modest: needsModest({ modest: !!modest, style, occasion }) };
+    const design = mode === 'refine' ? null : variety.designFor(vOpts);
+    const designOut = design ? { n: design.index + 1, total: design.total } : undefined;
+    const colourStory = colorList ? '' : variety.colourStoryFor(vOpts);
+    const extraList = variety.accessoriesText(extras, vOpts);
+    const kidsNote = design && design.kidsPair
+      ? ' The design names a girl version and a boy version: use only the one that matches the child' +
+        (mode === 'image' ? ' in the photo.' : ' described (if the description does not say, choose one).')
+      : '';
+    const designClause = design
+      ? ' SPECIFIC DESIGN (follow it exactly: one distinct design within this style, not its usual default look): ' + design.text + '.' + kidsNote
+      : '';
     const detailClause =
       (WEAR[gender] ? ' The outfit must be ' + WEAR[gender] + '.' : '') +
       (colorList ? ' Preferred colour palette: ' + colorList + '.' : '') +
+      (colourStory ? ' Colour story for this design: ' + colourStory + '.' : '') +
       (extraList ? ' Add these accessories: ' + extraList + '.' : '') +
       (SEASON_HINTS[season] ? ' Dress for ' + SEASON_HINTS[season] + '.' : '') +
       (OCCASIONS[occasion] ? ' The look is intended for ' + OCCASIONS[occasion] + '.' : '');
@@ -263,7 +279,7 @@ module.exports = async (req, res) => {
       parts.push({ inlineData: { mimeType: mimeType || 'image/png', data: imageBase64 } });
     } else if (mode === 'image') {
       promptText =
-        'Redress the person in this photo into a new outfit in ' + styleDesc + '.' +
+        'Redress the person in this photo into a new outfit in ' + styleDesc + '.' + designClause +
         locks + ' ' +
         (fairness ? '' : 'Keep the same pose and background as the source photo. ') +
         // v-keep-framing: النتيجة كانت ترجع مقصوصة فتضيع أطراف صورة المستخدم.
@@ -275,7 +291,7 @@ module.exports = async (req, res) => {
         const oa = await openaiRedress(promptText, imageBase64, mimeType);
         if (oa) {
           const remOa = await consumeFashion(quota.username);
-          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT });
+          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT, design: designOut });
           return;
         }
       }
@@ -285,6 +301,8 @@ module.exports = async (req, res) => {
       promptText =
         'Generate a photorealistic fashion design image of ' + subject + ' wearing ' + styleDesc + '. ' +
         'Specific description: ' + String(description).slice(0, 500) + '. ' +
+        // v-fashion-variety: وصف المستخدم يغلب — التصميم يملأ ما تركه الوصف مفتوحًا فقط.
+        (design ? 'Design direction for anything the description leaves open (the description wins wherever they differ): ' + design.text + '.' + kidsNote + ' ' : '') +
         'Full-body studio fashion photography, elegant pose, clean background.' +
         (fairness ? require('./fashion-locks').FAIRNESS_LOCK + ' Use the same model appearance across this comparison set.' : '') +
         detailClause + multiAngleClause;
@@ -293,7 +311,7 @@ module.exports = async (req, res) => {
         const oa = await openaiGenerate(promptText);
         if (oa) {
           const remOa = await consumeFashion(quota.username);
-          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT });
+          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT, design: designOut });
           return;
         }
       }
@@ -326,7 +344,7 @@ module.exports = async (req, res) => {
         : await openaiGenerate(promptText));
       if (rescue) {
         const remR = await consumeFashion(quota.username);
-        res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: FASHION_DAILY_LIMIT });
+        res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: FASHION_DAILY_LIMIT, design: designOut });
         return;
       }
       res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
@@ -347,7 +365,7 @@ module.exports = async (req, res) => {
         sourceMime: mimeType || 'image/jpeg',
         resultBase64: imgPart.inlineData.data,
         resultMime: imgPart.inlineData.mimeType || 'image/png',
-        userPrompt: [styleDesc, description, detailClause, multiAngleClause].filter(Boolean).join(' '),
+        userPrompt: [styleDesc, design && design.text, description, detailClause, multiAngleClause].filter(Boolean).join(' '),
       });
       /* v-guard-fail-open: تعطّل الحارس نفسه (مهلة/حصة) لا يُسقط صورةً جاهزة —
          نعرضها ونسجّل؛ الرفض فقط عند حكمٍ صريح بتغيير الهوية أو الأسلوب. */
@@ -365,7 +383,7 @@ module.exports = async (req, res) => {
         if (alt && alt.imageBase64) {
           let altOk = true;
           if (mode === 'image') {
-            const g2 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: imageBase64, sourceMime: mimeType || 'image/jpeg', resultBase64: alt.imageBase64, resultMime: alt.mimeType || 'image/png', userPrompt: [styleDesc, description, detailClause, multiAngleClause].filter(Boolean).join(' ') });
+            const g2 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: imageBase64, sourceMime: mimeType || 'image/jpeg', resultBase64: alt.imageBase64, resultMime: alt.mimeType || 'image/png', userPrompt: [styleDesc, design && design.text, description, detailClause, multiAngleClause].filter(Boolean).join(' ') });
             altOk = !!(g2 && (g2.ok || g2.reason === 'validation_unavailable'));
           }
           if (altOk) {
@@ -382,6 +400,7 @@ module.exports = async (req, res) => {
       engine: outEngine,
       remaining,
       dailyLimit: FASHION_DAILY_LIMIT,
+      design: designOut,
     });
   } catch (e) {
     console.error('[fashion-create] exception: ' + (e && e.stack ? e.stack : e));
