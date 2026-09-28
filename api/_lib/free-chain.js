@@ -2,8 +2,8 @@
 // مزوّدات لها طبقة مجانية (Gemini Flash → Groq → Mistral → OpenRouter)، كلّها
 // بصيغة OpenAI المتوافقة (chat/completions + SSE) فدالّة بثّ واحدة تكفي.
 //
-// بلا أدوات: لا بحث حي ولا صور ولا وكيل — تلك للنسخة الاحترافية. الصور المرفقة
-// تمرّ للمزوّد الذي يرى (Gemini) وتُستبدل بملاحظة نصّية عند الباقين.
+// بلا أدوات: لا بحث حي ولا توليد صور ولا وكيل — تلك للنسخة الاحترافية. الصور المرفقة
+// تمرّ للمزوّد الذي يرى فقط، ولا يُستدعى مزوّد أعمى لدور الصورة.
 // امتلاء حصة مزوّد (429) أو أي عطل يمرّر الطلب للتالي بصمت؛ فشل الجميع يرجع
 // {ok:false, errors} والمستدعي يعرض رسالة «مشغول» لا خطأ تقنيًّا.
 //
@@ -25,7 +25,17 @@ function blockText(b) {
   return '';
 }
 
-// تحويل محادثة بصيغة Anthropic إلى صيغة OpenAI. vision=false يستبدل الصور بنصّ.
+function validImageSource(b) {
+  return b && b.source && b.source.type === 'base64'
+    && typeof b.source.data === 'string' && !!b.source.data.trim();
+}
+
+function hasUnsupportedImage(convo) {
+  return (Array.isArray(convo) ? convo : []).some((m) => m && m.role === 'user' && Array.isArray(m.content)
+    && m.content.some((b) => b && b.type === 'image' && !validImageSource(b)));
+}
+
+// تحويل محادثة بصيغة Anthropic إلى صيغة OpenAI. المصدر غير المدعوم خطأ صريح لا صورة محذوفة.
 function toOpenAIMessages(system, convo, vision) {
   const out = [];
   if (system) out.push({ role: 'system', content: String(system) });
@@ -36,7 +46,8 @@ function toOpenAIMessages(system, convo, vision) {
     const texts = [];
     const images = [];
     for (const b of m.content) {
-      if (b && b.type === 'image' && b.source && b.source.type === 'base64' && b.source.data) {
+      if (b && b.type === 'image') {
+        if (!validImageSource(b)) throw new Error('unsupported-image-source');
         images.push('data:' + (b.source.media_type || 'image/jpeg') + ';base64,' + b.source.data);
       } else {
         const t = blockText(b);
@@ -154,12 +165,14 @@ function candidateModels(spec, now) {
 // يجرّب السلسلة بالترتيب. {ok:true, provider, model, text} عند أوّل نجاح؛ وإن فشل
 // مزوّد بعد أن بثّ نصًّا جزئيًّا لا ننتقل (لئلّا يتكرّر الردّ) بل نرجع ما وصل.
 async function streamFreeChain(args) {
+  // قبل أيّ طلب شبكة: URL أو كتلة بلا بيانات لا تملك بكسلات نمرّرها إلى المزوّد.
+  if (hasUnsupportedImage(args.convo)) return { ok: false, provider: null, model: null, text: '', attempts: 0, errors: ['unsupported-image-source'] };
   const all = freeChain(args.env || process.env);
   // v-img-no-blind (شكوى المالك ١٨ سبتمبر: عند نفاد رصيد المحرّك الاحترافيّ يردّ الاحتياط
   // «الصورة غير واضحة، أرسل لقطة أوضح» على صورة سليمة): مزوّد بلا رؤية يستلم بدل الصورة
-  // سطرًا نصّيًّا ثمّ يؤلّف حكمًا عليها. مع requireVision ودور فيه صورة تُستبعد المزوّدات
+  // سطرًا نصّيًّا ثمّ يؤلّف حكمًا عليها. أيّ دور فيه صورة يستبعد المزوّدات
   // العمياء كلّها؛ ولا مزوّد يرى = فشل صريح (no-vision-provider) يقوله المستدعي بصدق.
-  const needVision = !!args.requireVision && convoHasImage(args.convo);
+  const needVision = convoHasImage(args.convo);
   const chain = needVision ? all.filter((s) => s.vision) : all;
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
