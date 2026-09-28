@@ -89,7 +89,9 @@ test('client: size is a clamped scale, relative words multiply the current one',
   assert.match(attach, /const want = B0\.F \* sc;/, 'الحجم يضرب خطّ الموضع المختار');
   assert.match(attach, /pos: P, sc: __sc, boxes,/, 'والراسم يمرّره للكتلة');
   assert.match(attach, /Math\.round\(base \* 0\.03 \* S \* Math\.max\(0\.9, kk\)\)/, 'ويضرب خطّ أسطر الملصق');
-  assert.match(attach, /L2 = measure\(Math\.min\(W \* 0\.92, L0\.maxW \* __sc\), Math\.min\(H - 2 \* mY, L0\.maxH \* __sc\), L0\.k0, __sc\)/, 'والملصق يُعاد قياسه بالحجم في موضعه');
+  /* v-text-face (الجولة الثانية): الملصق يُعاد قياسه بالحجم المطلوب، أو بأكبر حجم دونه (خطوة ٠٫٠١) لا يدخل وجهًا */
+  assert.match(attach, /L2 = measure\(Math\.min\(W \* 0\.92, L0\.maxW \* s\), Math\.min\(H - 2 \* mY, L0\.maxH \* s\), L0\.k0, s\)/, 'والملصق يُعاد قياسه بالحجم في موضعه');
+  assert.match(attach, /const tries = \[__sc\];/);
   assert.match(attach, /cur\.imageTextLayer = __byCanvas \? \{[^}]*scale:__scale/, 'الكتابة الجديدة تحفظ حجمها وترثه');
 });
 
@@ -117,7 +119,11 @@ test('client (v-text-design يخلف v-text-harmony): ذهب شمبانيا فو
   /* v-text-rebuild: لون المستخدم كما طلبه (أبيض يبقى أبيض)، والتباين بحافّة وظلّ بعكس اللون — كان يُعتَّم فوق الفاتح فخرج «بالأبيض» رماديًّا */
   /* v-text-ink: القطبيّة بالنصوع النسبيّ (__textInk) لا بإضاءة HSL — سلوكها في text-render */
   assert.match(attach, /const uL = user \? user\[2\] : 0, tone = user \? __textInk\(colorStr, st\.lum, darkBg\) : null;/);
-  assert.match(attach, /const lowC = !!tone && tone\.lowC, haloDark = tone \? tone\.haloDark : lightInk, scrimDark = tone \? tone\.scrimDark : lightInk;/);
+  /* v-text-veil (الجولة الثانية): الوشاح بعكس الحبر أمام خلفيّته لا بقطبيّة الخلفيّة */
+  assert.match(attach, /const lowC = !!tone && tone\.lowC;/);
+  assert.match(attach, /const veil = !scrimOn \? '' : tone \? __textInk\(colorStr, st\.lum, darkBg, a\)\.veil : lightInk \? 'dark' : 'light';/);
+  assert.match(attach, /const haloDark = tone \? tone\.haloDark : lightInk;/);
+  assert.doesNotMatch(attach, /scrimDark/, 'وشاح «بقطبيّة الخلفيّة» أُزيل');
   assert.match(attach, /if\(haloDark \|\| lowC\)\{/);
   assert.doesNotMatch(attach, /__pickTextHarmony/, 'تنسيق v-text-harmony القديم أُزيل');
   const a = attach.indexOf('function __hexHsl'), b = attach.indexOf('const __hsl =');

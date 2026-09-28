@@ -28,8 +28,8 @@ function makeEnv(bg) {
       drawImage() {}, beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, bezierCurveTo() {}, closePath() {}, stroke() {},
       measureText(s) { const p = px(); return { width: 0.45 * String(s).length * p, actualBoundingBoxAscent: 0.8 * p, actualBoundingBoxDescent: 0.25 * p }; },
       createLinearGradient() { const g = { stops: [], addColorStop(o, col) { g.stops.push(col); } }; return g; },
-      fillText(t) { log.push({ op: 'fillText', t, fill: st.fillStyle, shadow: st.shadowColor, px: px() }); },
-      strokeText(t) { log.push({ op: 'strokeText', t, stroke: st.strokeStyle, shadow: st.shadowColor }); },
+      fillText(t) { log.push({ op: 'fillText', t, fill: st.fillStyle, shadow: st.shadowColor, blur: this.shadowBlur, px: px() }); },
+      strokeText(t) { log.push({ op: 'strokeText', t, stroke: st.strokeStyle, shadow: st.shadowColor, blur: this.shadowBlur, lw: this.lineWidth, px: px() }); },
       fill() { log.push({ op: 'fill', shadow: st.shadowColor, gco: st.globalCompositeOperation }); },
       fillRect() { log.push({ op: 'fillRect' }); },
       getImageData(x, y, w, h) { const d = new Uint8ClampedArray(w * h * 4); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const p = pixel(i, j), o = (j * w + i) * 4; d[o] = p[0]; d[o + 1] = p[1]; d[o + 2] = p[2]; d[o + 3] = 255; } return { data: d }; },
@@ -54,50 +54,106 @@ function makeEnv(bg) {
 }
 const LIGHT = [238, 232, 222], DARK = [22, 24, 40];
 const LIGHT_BUSY = (x, y) => ((x + y) % 2 ? [248, 246, 240] : [150, 150, 146]); /* جدار فاتح بنسيج (sd≈0.18، إضاءة ≈٠٫٧٧) كصورة المالك */
-async function draw(bg, text, color, pos, scale) {
+const TREE = (x, y) => ((x + y) % 2 ? [235, 235, 228] : [95, 112, 88]); /* شجرة المالك على اليمين: متوسّطة الإضاءة مزدحمة (≈٠٫٦٧، sd≈0.25) فتُعدّ «داكنة» */
+const DARK_BUSY = (x, y) => ((x + y) % 2 ? [0, 0, 0] : [100, 100, 120]); /* سماء داكنة بنسيج (≈٠٫٢، sd≈0.2) */
+async function draw(bg, text, color, pos, scale, avoid) {
   const env = makeEnv(bg);
-  await env.sb.overlay('QUJD', 'image/png', text, 'default', color, pos, scale);
+  await env.sb.overlay('QUJD', 'image/png', text, 'default', color, pos, scale, avoid);
   return { log: env.log, info: plain(env.sb.__lastTextDesign) };
 }
 const feathers = (log) => log.filter((e) => e.op === 'fill' && e.gco === 'source-over').map((e) => e.shadow);
 const blackFeather = (log) => feathers(log).some((c) => /^rgba\(0,0,0,/.test(c));
 const hue = (s) => { const m = /^hsla?\((\d+),(\d+)%,(\d+)%/.exec(String(s)); return m ? [+m[1], +m[2], +m[3]] : null; };
 
-test('v-text-ink: exact user colours are classed light/dark by relative luminance, not HSL lightness', () => {
+test('v-text-ink/veil: colours are classed by relative luminance, and the veil always pushes the background away from the ink', () => {
   const { sb } = makeEnv(LIGHT);
-  const k = (hex, lum, dark) => plain(sb.ink(hex, lum, dark));
+  const k = (hex, lum, dark, a) => plain(sb.ink(hex, lum, dark, a));
+  const pick = (r) => [r.lowC, r.haloDark, r.veil];
   /* الأحمر والأزرق والبنفسجيّ والورديّ «فاتحة» في HSL (L>0.5) ونصوعها ٠٫١٦–٠٫٢٩ */
   for (const hex of ['#d32f2f', '#2979ff', '#a05ad6', '#ff4f9a', '#2e8b57', '#8e1b3a', '#111111', '#1c2f66']) assert.equal(k(hex, 0.8, false).lightInk, false, hex + ' حبر داكن');
   for (const hex of ['#fdfdfd', '#ffd400', '#5ec8ff', '#d7dbe0', '#ead9bd', '#ffb3d1']) assert.equal(k(hex, 0.8, false).lightInk, true, hex + ' حبر فاتح');
-  /* فوق جدار فاتح: الأحمر والأزرق والبنفسجيّ مقروءة بلا حافّة ولا وشاح داكن؛ الوشاح أبيض */
-  for (const hex of ['#d32f2f', '#2979ff', '#a05ad6']) { const r = k(hex, 0.8, false); assert.deepEqual([r.lowC, r.haloDark, r.scrimDark], [false, false, false], hex); }
-  /* ورديّ/برتقاليّ/رماديّ على فاتح: تباين < ٢٫٢ ← حافّة داكنة (لا وشاح داكن) */
-  for (const hex of ['#ff4f9a', '#ff8a1f', '#9aa0a6']) { const r = k(hex, 0.8, false); assert.ok(r.cr < 2.2, hex + ' ' + r.cr); assert.deepEqual([r.lowC, r.haloDark, r.scrimDark], [true, true, false], hex); }
-  /* فاتح على فاتح: حافّة داكنة ووشاح أبيض — كان وشاحًا أسود («الدخان») */
-  for (const hex of ['#fdfdfd', '#ffd400']) assert.deepEqual([k(hex, 0.85, false).lowC, k(hex, 0.85, false).haloDark, k(hex, 0.85, false).scrimDark], [true, true, false], hex);
-  /* فوق الداكن: الداكن حافّة فاتحة، والفاتح (الأصفر والأبيض) حبر فاتح بلا تباين ضعيف */
-  for (const hex of ['#d32f2f', '#2979ff', '#1c2f66']) assert.deepEqual([k(hex, 0.15, true).lowC, k(hex, 0.15, true).haloDark, k(hex, 0.15, true).scrimDark], [true, false, true], hex);
-  for (const hex of ['#fdfdfd', '#ffd400']) assert.deepEqual([k(hex, 0.15, true).lowC, k(hex, 0.15, true).haloDark], [false, true], hex);
+  /* جدار فاتح: الأحمر والأزرق والبنفسجيّ بلا حافّة ووشاحها أبيض؛ الورديّ/البرتقاليّ/الرماديّ (تباين < ٢٫٢) حافّة داكنة ووشاح أبيض */
+  for (const hex of ['#d32f2f', '#2979ff', '#a05ad6']) assert.deepEqual(pick(k(hex, 0.8, false)), [false, false, 'light'], hex);
+  for (const hex of ['#ff4f9a', '#ff8a1f', '#9aa0a6']) { const r = k(hex, 0.8, false); assert.ok(r.cr < 2.2, hex + ' ' + r.cr); assert.deepEqual(pick(r), [true, true, 'light'], hex); }
+  /* فاتح على فاتح (أبيض/أصفر على الجدار): حافّة داكنة وحدها — لا ضباب أبيض من قطبيّة الحبر ولا «دخان» أسود */
+  for (const hex of ['#fdfdfd', '#ffd400']) assert.deepEqual(pick(k(hex, 0.85, false)), [true, true, ''], hex);
+  /* جدول المراجِع (الجولة الثانية) على شجرة المالك (إضاءة ٠٫٦٨ مزدحمة ← darkBg): الداكن والمتوسّط وراءه ضباب فاتح لا وشاح أسود،
+     والتباين بعده أعلى ممّا قبله؛ الكحليّ والأسود والعنّابيّ والأخضر والأحمر والأزرق بحافّة فاتحة كما في dc3df69 */
+  for (const hex of ['#1c2f66', '#111111', '#8e1b3a', '#2e8b57', '#d32f2f', '#2979ff', '#ff4f9a']) {
+    const r = k(hex, 0.68, true, 0.38);
+    assert.equal(r.veil, 'light', hex + ' على الشجرة: ضباب فاتح لا وشاح أسود');
+    assert.ok(r.crLight > r.cr && r.crLight > r.crDark, hex + ' ' + [r.cr, r.crLight, r.crDark].map((v) => v.toFixed(2)));
+  }
+  for (const hex of ['#1c2f66', '#111111', '#8e1b3a', '#2e8b57', '#d32f2f', '#2979ff']) assert.equal(k(hex, 0.68, true).haloDark, false, hex);
+  for (const [hex, lum, a] of [['#1c2f66', 0.58, 0.4], ['#8e1b3a', 0.58, 0.4], ['#111111', 0.58, 0.4], ['#1c2f66', 0.4, 0.33], ['#111111', 0.4, 0.33], ['#111111', 0.09, 0.28]]) assert.equal(k(hex, lum, true, a).veil, 'light', hex + '@' + lum);
+  /* الأبيض على الشجرة: ظلّ داكن (الحبر فاتح)؛ والمتوسّط (برتقاليّ/فيروزيّ/رماديّ) فوق منطقة فاتحة: لا دخان أسود، وحافّة داكنة */
+  assert.equal(k('#fdfdfd', 0.68, true, 0.38).veil, 'dark');
+  for (const hex of ['#ff8a1f', '#18b6a4', '#9aa0a6']) { const r = k(hex, 0.68, true, 0.38); assert.notEqual(r.veil, 'dark', hex); assert.equal(r.haloDark, true, hex); }
+  /* البرتقاليّ فوق سماء داكنة أفتح منها: الوشاح الداكن يبعد الخلفيّة عنه */
+  assert.equal(k('#ff8a1f', 0.27, true, 0.3).veil, 'dark');
+  /* الثابت: الوشاح لا يقرّب الخلفيّة من الحبر أبدًا، ولا فاتح خلف حبر فاتح، ولا داكن فوق منطقة فاتحة خلف حبر غير فاتح */
+  const inks = ['#fdfdfd', '#ffd400', '#5ec8ff', '#ff8a1f', '#18b6a4', '#9aa0a6', '#ff4f9a', '#2979ff', '#2e8b57', '#a05ad6', '#d32f2f', '#8e1b3a', '#1c2f66', '#111111'];
+  for (const hex of inks) for (let l = 0; l <= 1.0001; l += 0.05) for (const dark of [false, true]) for (const a of [0.2, 0.35, 0.5]) {
+    const r = k(hex, l, dark, a), tag = hex + ' lum=' + l.toFixed(2) + ' dark=' + dark + ' a=' + a;
+    assert.ok(['', 'light', 'dark'].includes(r.veil), tag);
+    if (r.veil) assert.ok((r.veil === 'light' ? r.crLight : r.crDark) > r.cr, tag + ' — وشاح يخفض التباين');
+    if (r.lightInk) assert.notEqual(r.veil, 'light', tag + ' — ضباب أبيض خلف حبر فاتح');
+    if (!r.lightInk && l >= 0.5) assert.notEqual(r.veil, 'dark', tag + ' — دخان أسود فوق منطقة فاتحة');
+    if (r.lightInk && !dark) assert.equal(r.veil, '', tag + ' — الفاتح فوق الفاتح بالحافّة وحدها');
+  }
 });
 
-test('v-text-ink: red/blue/purple/pink on a light textured photo get no black (smoky) scrim; lowC never draws a black feather on a light background', async () => {
-  for (const [hex, name] of [['#d32f2f', 'أحمر'], ['#2979ff', 'أزرق'], ['#a05ad6', 'بنفسجيّ'], ['#ff4f9a', 'ورديّ'], ['#fdfdfd', 'أبيض'], ['#ffd400', 'أصفر'], ['#9aa0a6', 'رماديّ']]) {
-    const r = await draw(LIGHT_BUSY, 'مشكور اخوي', hex, 'top', 1);
+test('v-text-veil: the real renderer paints no black feather behind dark ink on the tree, the dark sky or the light wall; white on a light wall is outline only', async () => {
+  const feather = async (bg, hex) => { const r = await draw(bg, 'مشكور اخوي', hex, 'top', 1); return { f: feathers(r.log), info: r.info, log: r.log }; };
+  /* جدار فاتح بنسيج: وشاح أبيض واحد للداكن والمتوسّط، ولا وشاح للأبيض والأصفر */
+  for (const [hex, name] of [['#d32f2f', 'أحمر'], ['#2979ff', 'أزرق'], ['#a05ad6', 'بنفسجيّ'], ['#ff4f9a', 'ورديّ'], ['#9aa0a6', 'رماديّ']]) {
+    const r = await feather(LIGHT_BUSY, hex);
     assert.ok(r.info.lum >= 0.7 && r.info.sd > 0.14, 'خلفيّة فاتحة مزدحمة: ' + JSON.stringify([r.info.lum, r.info.sd]));
-    assert.ok(feathers(r.log).length >= 1, name + ' — الوشاح يهدّئ النسيج');
-    assert.equal(blackFeather(r.log), false, name + ' — لا وشاح أسود فوق الجدار الفاتح: ' + feathers(r.log).join(' | '));
+    assert.ok(r.f.length === 1 && /^rgba\(255,255,255,/.test(r.f[0]), name + ' — وشاح أبيض يهدّئ النسيج: ' + r.f.join(' | '));
   }
-  /* الأحمر فوق الفاتح: لا حافّة (التباين كافٍ)؛ الورديّ: حافّة داكنة حول الحروف */
+  for (const [hex, name] of [['#fdfdfd', 'أبيض'], ['#ffd400', 'أصفر']]) assert.deepEqual((await feather(LIGHT_BUSY, hex)).f, [], name + ' على الجدار الفاتح: لا وشاح (لا ضباب باهت ولا دخان)');
+  /* الشجرة (مزدحمة متوسّطة ← darkBg): جدول المراجِع — الكحليّ والأسود والعنّابيّ والأخضر والأحمر والأزرق والورديّ وراءها ضباب فاتح */
+  for (const hex of ['#1c2f66', '#111111', '#8e1b3a', '#2e8b57', '#d32f2f', '#2979ff', '#ff4f9a']) {
+    const r = await feather(TREE, hex);
+    assert.ok(r.info.sd > 0.16 && r.info.lum < 0.75 && r.info.lum >= 0.58, 'منطقة الشجرة: ' + JSON.stringify([r.info.lum, r.info.sd]));
+    assert.ok(r.f.length === 1 && /^rgba\(255,255,255,/.test(r.f[0]), hex + ' على الشجرة: لا وشاح أسود حول حبر داكن — ' + r.f.join(' | '));
+  }
+  const navy = await feather(TREE, '#1c2f66');
+  assert.ok(navy.log.filter((e) => e.op === 'strokeText').every((e) => /^rgba\(255,255,255,/.test(e.stroke)), 'الكحليّ بحافّة فاتحة');
+  assert.ok((await feather(TREE, '#ff8a1f')).f.every((c) => !/^rgba\(0,0,0,/.test(c)), 'البرتقاليّ فوق الشجرة: لا دخان أسود');
+  assert.ok(/^rgba\(0,0,0,/.test((await feather(TREE, '#fdfdfd')).f[0] || ''), 'الأبيض على الشجرة: ظلّ داكن (الحبر فاتح)');
+  /* سماء داكنة بنسيج: الكحليّ والأسود ضباب فاتح (كانا وشاحًا أسود فوق الداكن)؛ البرتقاليّ أفتح من السماء فظلّ داكن */
+  for (const hex of ['#1c2f66', '#111111']) { const r = await feather(DARK_BUSY, hex); assert.ok(r.info.lum < 0.4 && r.info.sd > 0.14, JSON.stringify([r.info.lum, r.info.sd])); assert.ok(r.f.length === 1 && /^rgba\(255,255,255,/.test(r.f[0]), hex + ' على الداكن: ' + r.f.join(' | ')); }
+  assert.ok(/^rgba\(0,0,0,/.test((await feather(DARK_BUSY, '#ff8a1f')).f[0] || ''));
+  /* الأحمر على الجدار بلا حافّة (التباين كافٍ)؛ الورديّ بحافّة داكنة */
   const red = await draw(LIGHT_BUSY, 'مشكور اخوي', '#d32f2f', 'top', 1);
   assert.equal(red.log.filter((e) => e.op === 'strokeText').length, 0, 'الأحمر بلا حافّة');
   const pink = await draw(LIGHT_BUSY, 'مشكور اخوي', '#ff4f9a', 'top', 1);
   const ps = pink.log.filter((e) => e.op === 'strokeText');
-  assert.ok(ps.length && ps.every((e) => /^rgba\(20,14,8,/.test(e.stroke)), 'الورديّ بحافّة داكنة: ' + ps.map((e) => e.stroke).join(','));
-  /* الداكن فوق الداكن: حافّة فاتحة، والوشاح (إن رُسم) أسود لا ضباب أبيض */
-  const navy = await draw(DARK, 'مشكور اخوي', '#1c2f66', 'top', 1);
-  const ns = navy.log.filter((e) => e.op === 'strokeText');
-  assert.ok(ns.length && ns.every((e) => /^rgba\(255,255,255,/.test(e.stroke)), 'الكحليّ على الداكن بحافّة فاتحة');
-  assert.ok(feathers(navy.log).every((c) => /^rgba\(0,0,0,/.test(c)), 'لا ضباب أبيض فوق الداكن');
+  assert.ok(ps.length && ps.every((e) => /^rgba\(16,12,8,/.test(e.stroke)), 'الورديّ بحافّة داكنة: ' + ps.map((e) => e.stroke).join(','));
+});
+
+test('v-text-crisp: white on a light wall keeps its white and reads through a crisp dark outline — no wide black glow, no grey gradient', async () => {
+  for (const bg of [LIGHT, LIGHT_BUSY]) {
+    const r = await draw(bg, 'مشكور اخوي', '#fdfdfd', 'top', 1);
+    const st = r.log.filter((e) => e.op === 'strokeText'), fl = r.log.filter((e) => e.op === 'fillText' && e.t === 'مشكور اخوي');
+    assert.equal(st.length, 1); assert.equal(fl.length, 1);
+    assert.match(st[0].stroke, /^rgba\(16,12,8,\.9\d?\)$/, 'حافّة شبه معتمة');
+    assert.ok(st[0].lw >= st[0].px / 13.5, 'حافّة أعرض: ' + st[0].lw + ' @' + st[0].px);
+    assert.ok(st[0].blur <= st[0].px * 0.05, 'ظلّ الحافّة قصير لا توهّج عريض: ' + st[0].blur + ' @' + st[0].px);
+    assert.equal(fl[0].shadow, 'rgba(0,0,0,0)', 'لا ضباب أسود حول التعبئة');
+    const ls = fl[0].fill.stops.map((c) => hue(c)[2]);
+    assert.ok(ls.every((l) => l >= 94), 'الأبيض أبيض (لا ينزل إلى رماديّ ٨٧٪): ' + ls.join(','));
+    assert.deepEqual(feathers(r.log), [], 'بلا وشاح');
+  }
+  /* الأسطر الطويلة بالأبيض على الجدار: حافّة داكنة وظلّ قصير */
+  const long = await draw(LIGHT_BUSY, 'اللهم اجعل هذا اليوم بداية خير وبركة لنا ولأهلنا ولكل من نحب', '#fdfdfd', 'top', 1);
+  const lf = long.log.filter((e) => e.op === 'fillText'), lst = long.log.filter((e) => e.op === 'strokeText');
+  assert.ok(lst.length >= 2 && lst.every((e) => /^rgba\(16,12,8,/.test(e.stroke)));
+  assert.ok(lf.length >= 2 && lf.every((e) => e.blur <= e.px * 0.07), 'ظلّ الأسطر قصير: ' + lf.map((e) => e.blur + '@' + e.px).join(','));
+  /* الأبيض فوق الداكن كما هو: ظلّ داكن عريض يحمله (لا يمسّه هذا الإصلاح) */
+  const dark = await draw(DARK, 'مشكور اخوي', '#fdfdfd', 'top', 1);
+  assert.equal(dark.log.find((e) => e.op === 'fillText').shadow, 'rgba(0,0,0,.35)');
 });
 
 test('v-text-ink: «بالأصفر» (#ffd400) prints yellow on light and dark photos — the gold gradient is for #f4cf65 only', async () => {
@@ -130,6 +186,22 @@ test('v-text-size: the real renderer grows and shrinks the text with the scale, 
     assert.ok(rs[3].F > rs[2].F && rs[1].F < rs[2].F, tag + ' — «كبّر» و«صغّر» مرّة واحدة تغيّران دائمًا');
     assert.ok(rs.every((r) => r.side === rs[2].side && r.vert === rs[2].vert), tag + ' — الحجم لا ينقل الكتابة');
     if (!rs[2].poster) assert.ok(rs.every((r) => r.align === rs[2].align), tag);
+  }
+});
+
+test('v-text-face: the real renderer never enlarges a phrase, a prayer or a poster onto a face (girls avoid boxes, «كبّر» ×1–3)', async () => {
+  const GIRLS = [{ box: [0.17, 0.4, 0.33, 0.55], label: 'face' }, { box: [0.37, 0.41, 0.5, 0.54], label: 'face' }, { box: [0.52, 0.42, 0.64, 0.55], label: 'face' }, { box: [0.66, 0.42, 0.82, 0.56], label: 'face' }, { box: [0.05, 0.38, 0.95, 1], label: 'person' }];
+  const MID = 'كل عام وانتم بخير يا أحلى عائلة'; /* النصّ الطويل (٢٠ كلمة) لا يسع فوق الوجوه في اللوحة المربّعة — مثبّت بقياس صورة البنات في text-layout */
+  const POSTER = 'البَحر\n\nيا بَحرُ خُذْ هَمِّي بَعيدًا\nوَأَعِدْ لِي ضَحِكَتي الأُولى\nفَفيكَ الحَياةُ تَبتَسِمُ';
+  /* اللوحة المزيّفة ١٠٠٠×١٠٠٠؛ الكتلة المرسومة من __lastTextDesign (cx, w, top, h) */
+  const ov = (i) => GIRLS.filter((g) => g.label === 'face').reduce((a, g) => a + Math.max(0, Math.min(i.cx + i.w / 2, g.box[2] * 1000) - Math.max(i.cx - i.w / 2, g.box[0] * 1000)) * Math.max(0, Math.min(i.top + i.h, g.box[3] * 1000) - Math.max(i.top, g.box[1] * 1000)), 0);
+  for (const [text, pos] of [[POSTER, 'top'], [POSTER, 'auto'], [POSTER, 'right'], ['ألف مبروك يا بطل', 'top'], ['ألف مبروك يا بطل', 'right'], ['مشكور اخوي', 'auto'], [MID, 'right'], [MID, 'top']]) {
+    const rs = [];
+    for (const sc of [1, 1.25, 1.56, 1.7]) rs.push(Object.assign({ sc }, (await draw(LIGHT, text, '#ffffff', pos, sc, GIRLS)).info));
+    const tag = text.slice(0, 8) + ' @' + pos + ' F=' + rs.map((r) => r.F + (r.bFs && r.tFs ? '/' + r.bFs : '')).join(',');
+    assert.equal(ov(rs[0]), 0, tag + ' — الطبيعيّ بعيد عن الوجوه');
+    rs.forEach((r) => assert.ok(ov(r) <= 2, tag + ' — تغطية الوجوه عند ' + r.sc + ': ' + Math.round(ov(r)) + 'px²'));
+    rs.forEach((r, i) => { if (i) assert.ok(r.F >= rs[i - 1].F && (r.bFs || 0) >= (rs[i - 1].bFs || 0), tag + ' — «كبّر» لا تصغّر'); });
   }
 });
 

@@ -1751,13 +1751,26 @@ const __hsl = (h, s, l) => 'hsl(' + Math.round(h) + ',' + Math.round(Math.max(0,
    - حبر فاتح = نصوع > ٠٫٤ (الأبيض والأصفر والسماويّ والفضّيّ والبيج)، وما دونه داكن.
    - تباين ضعيف (lowC): حبر من قطبيّة الخلفيّة نفسها، أو حبر متوسّط فوق فاتحة بتباين < ٢٫٢ (ورديّ/برتقاليّ/رماديّ على جدار فاتح)،
      فحافّة وظلّ بعكس الخلفيّة (haloDark) — اللون نفسه لا يُمسّ.
-   - الوشاح بقطبيّة الخلفيّة دائمًا (أبيض فوق الفاتح، أسود فوق الداكن): يهدّئ النسيج ولا يقلب التباين أبدًا. دالّة خالصة تُختبر في vm. */
-function __textInk(hex, lum, darkBg){
+   - الوشاح (v-text-veil، الجولة الثانية): كان «بقطبيّة الخلفيّة»، و«الشجرة» منطقة مزدحمة تُعدّ داكنة، فصار الكحليّ والأسود والعنّابيّ
+     والأخضر والأحمر فوقها بوشاح أسود (دخان داكن حول حبر داكن، تباين ١٫٢–٣٫٦ بعد ٥–١٥). الآن الوشاح بعكس الحبر أمام هذه الخلفيّة:
+     يُقاس التباين بعد وشاح أبيض وبعد أسود بشفافيّته (a) ويُختار ما يُبعد الخلفيّة عن الحبر أكثر — فالحبر الداكن وراءه ضباب فاتح،
+     والفاتح وراءه ظلّ داكن، ولا يُرسم وشاح يقرّب الخلفيّة من الحبر أبدًا (veil = '' إن لم يرفع التباين). والفاتح فوق الفاتح (أبيض على
+     جدار) بلا وشاح: الأسود وراءه هو «الدخان» الذي رفضه المالك، والأبيض من قطبيّته — الحافّة وحدها تحمله. دالّة خالصة تُختبر في vm. */
+function __textInk(hex, lum, darkBg, a){
   const lin = (i) => { const v = parseInt(String(hex).slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
   const inkY = 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5), bgY = Math.pow(Math.max(0, Math.min(1, Number(lum) || 0)), 2.2);
   const cr = (Math.max(inkY, bgY) + 0.05) / (Math.min(inkY, bgY) + 0.05);
   const lightInk = inkY > 0.4, lowC = (lightInk ? !darkBg : !!darkBg) || (!darkBg && cr < 2.2);
-  return { inkY, bgY, cr, lightInk, lowC, haloDark: lowC ? !darkBg : lightInk, scrimDark: !!darkBg };
+  const l0 = Math.max(0, Math.min(1, Number(lum) || 0)), va = Number(a) > 0 ? Math.min(1, Number(a)) : 0.35;
+  const crTo = (y) => (Math.max(inkY, y) + 0.05) / (Math.min(inkY, y) + 0.05);
+  const crLight = crTo(Math.pow(l0 + va * (1 - l0), 2.2)), crDark = crTo(Math.pow(l0 * (1 - va), 2.2));
+  /* ولا ضباب فاتح خلف حبر فاتح أبدًا، ولا وشاح داكن فوق منطقة فاتحة (≥ ٠٫٥) خلف حبر غير فاتح (برتقاليّ/فيروزيّ/رماديّ على الشجرة):
+     هو الدخان نفسه ولو رفع الرقم */
+  const darkOk = lightInk || l0 < 0.5, best = !lightInk && (!darkOk || crLight >= crDark) ? 'light' : darkOk ? 'dark' : '';
+  const veil = lightInk && !darkBg ? '' : (best === 'light' ? crLight : best === 'dark' ? crDark : 0) > cr ? best : '';
+  /* الحافّة للحبر المتوسّط (نصوع > ٠٫٢٥: ورديّ/فيروزيّ/رماديّ/برتقاليّ) فوق منطقة فاتحة مزدحمة (الشجرة) داكنة كما فوق الجدار: الوشاح
+     هناك فاتح، والحافّة البيضاء حول حبر متوسّط فوق ضباب فاتح تذيب الحروف */
+  return { inkY, bgY, cr, lightInk, lowC, haloDark: lowC ? !darkBg || (!lightInk && inkY > 0.25 && l0 >= 0.5) : lightInk, veil, crLight, crDark };
 }
 /* 📐 v-text-layout (لقطة المالك ٢٧ سبتمبر: «اكتب على اليمين مشكور اخوي» ← «على / اليمين / مشكور / آخوي» كلمةً في كلّ سطر، في
    عمود ضيّق على اليسار): العبارة القصيرة كانت «عنوانًا بطلًا» بخطّ ٠٫١١٨ من الضلع لا يُقاس على العرض فيلتفّ كلمةً كلمةً داخل
@@ -1910,20 +1923,50 @@ function __textBlockLayout(o){
      الجانب ينمو إلى الداخل، والأعلى إلى أسفل، والأسفل إلى أعلى، والوسط من مركزه. */
   const k = cand[0], B0 = k.L;
   const room = (ls) => Math.min((W - 2 * mX) / Math.max(1e-6, widest(ls)), (H - 2 * mY) / Math.max(1e-6, hOf(ls.length, 1)));
-  let B = B0;
+  const at = (B) => ({ x0: k.side === 'right' ? W - mX - B.w : k.side === 'left' ? mX : (W - B.w) / 2,
+    top: Math.max(0, Math.min(H - B.h, k.vert === 'bottom' ? k.top + B0.h - B.h : k.vert === 'center' ? k.top + (B0.h - B.h) / 2 : k.top)) });
+  /* v-text-face (الجولة الثانية: «كبّر» الثانية والثالثة كتبتا «يا بطل» فوق رؤوس البنات): النموّ لا يزيد تغطية أيّ وجه عمّا كانت
+     بالحجم الطبيعيّ (بهامش ~٠٫٤٪ للتقريب). الكتلة الكبيرة تحتوي الصغيرة رأسيًّا (لا تقفز): مكانها المرسى أوّلًا، ثمّ أقرب ارتفاع بين
+     الحدّين يخلو فيه الوجه (الوسط الملاصق لوجه ينمو بعيدًا عنه)، ثمّ خطّ أصغر؛ ويُجرَّب سطر أقلّ (نموّ عرضًا لا نزولًا) أو أكثر،
+     ويُؤخذ أكبرها. بلا وجوه كما كان. */
+  const gap = 0.004, faces = boxes.filter((b) => b.label === 'face');
+  const ovs = (x0, top, B) => faces.map((b) => Math.max(0, Math.min((x0 + B.w) / W + gap, b.box[2]) - Math.max(x0 / W - gap, b.box[0])) * Math.max(0, Math.min((top + B.h) / H + gap, b.box[3]) - Math.max(top / H - gap, b.box[1])));
+  const ov0 = ovs(k.x0, k.top, B0), okAt = (x0, top, B) => ovs(x0, top, B).every((v, i) => v <= ov0[i] + 1e-9);
+  const sized = (ls, F) => { const lw = widest(ls); return { lines: ls, F, w: lw * F, h: hOf(ls.length, F), maxW: B0.maxW }; };
+  const place = (B) => { /* ارتفاع بلا وجه جديد أو null */
+    const p = at(B); if(!faces.length || okAt(p.x0, p.top, B)) return p.top;
+    /* داخل هامش الصورة (لا تلتصق بحافّتها) ما لم تكن الكتلة الطبيعيّة خارجه */
+    const lo = Math.max(Math.min(k.top, mY), k.top + B0.h - B.h), hi = Math.min(k.top, Math.max(H - mY, k.top + B0.h) - B.h), ts = [lo, hi];
+    if(hi < lo - 1e-6) return null;
+    for(let t = lo + 0.01 * H; t < hi; t += 0.01 * H) ts.push(t);
+    ts.sort((u, v) => Math.abs(u - p.top) - Math.abs(v - p.top));
+    for(const t of ts) if(t <= hi + 1e-6 && okAt(p.x0, t, B)) return t;
+    return null;
+  };
+  let B = B0, top0 = null;
   if(sc !== 1){
     const want = B0.F * sc;
-    let lines = B0.lines, F = Math.min(want, room(lines));
-    if(sc > 1 && F < want && src.length <= 1 && n >= 3){
+    const grow = (ls) => {
+      const F = Math.min(want, room(ls));
+      if(sc < 1 || !faces.length) return { F, top: null };
+      for(let f = F; f > B0.F; f = Math.ceil(f) - 1){ const t = place(sized(ls, f)); if(t != null) return { F: f, top: t }; }
+      return { F: B0.F, top: null };
+    };
+    let lines = B0.lines, g = grow(lines);
+    if(sc > 1 && g.F < want && src.length <= 1 && n >= 3){
       const t2 = n <= 6 && lines.length < 2 ? twoLines() : null, opts = t2 ? [t2.two] : [];
       for(let kk = lines.length + 1; n > 6 && kk <= Math.min(n, lines.length + 4); kk++) opts.push(balanced(words, kk));
-      opts.forEach((ls) => { const f = Math.min(want, room(ls)); if(f > F){ lines = ls; F = f; } });
+      /* وجه تحت النموّ؟ أسطر أقلّ (أعرض وأقصر) */
+      if(faces.length && g.F < Math.min(want, room(lines))){
+        if(n <= 6 && lines.length > 1) opts.push([words.join(' ')]);
+        for(let kk = lines.length - 1; n > 6 && kk >= Math.max(1, lines.length - 3); kk--) opts.push(balanced(words, kk));
+      }
+      opts.forEach((ls) => { const r = grow(ls); if(r.F > g.F){ lines = ls; g = r; } });
     }
-    F = Math.max(1, Math.floor(F));
-    B = { lines, F, w: widest(lines) * F, h: hOf(lines.length, F), maxW: B0.maxW };
+    B = sized(lines, Math.max(1, Math.floor(g.F)));
+    if(g.top != null && faces.length){ const p = at(B), t = okAt(p.x0, p.top, B) ? null : place(B); top0 = okAt(p.x0, p.top, B) ? null : t != null ? t : g.top; }
   }
-  const x0 = k.side === 'right' ? W - mX - B.w : k.side === 'left' ? mX : (W - B.w) / 2;
-  const top = Math.max(0, Math.min(H - B.h, k.vert === 'bottom' ? k.top + B0.h - B.h : k.vert === 'center' ? k.top + (B0.h - B.h) / 2 : k.top));
+  const { x0 } = at(B), top = top0 != null ? top0 : at(B).top;
   return { lines: B.lines, F: B.F, w: B.w, h: B.h, x0, top, side: k.side, vert: k.vert, align: k.side || 'center', ax: k.side === 'right' ? W - mX : k.side === 'left' ? mX : W / 2, cost: k.cost, rel: k.rel, st: k.st, n: cand.length, words: n };
 }
 /* القياس بالخطّ المرسوم فعلًا: إن لم يجهز بعد مهلة mahaLoadFont ننتظر document.fonts.ready بحدّ ٢٫٥ث قبل القياس —
@@ -2086,12 +2129,22 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
            بالصورة) — كان الحجم يغيّر المرشّحين نفسهم فيقلب الموضع، و«كبّر» تصغّر أحيانًا (١٠٥ ← ٩٤). الحافّة المرساة ثابتة، ولا
            يُقبل قياس يعاكس الطلب. */
         if(__sc !== 1){
-          const L0 = pick.L, L2 = measure(Math.min(W * 0.92, L0.maxW * __sc), Math.min(H - 2 * mY, L0.maxH * __sc), L0.k0, __sc);
-          const up = L2.tFs >= L0.tFs && L2.bFs >= L0.bFs && (L2.tFs > L0.tFs || L2.bFs > L0.bFs), down = L2.tFs <= L0.tFs && L2.bFs <= L0.bFs && (L2.tFs < L0.tFs || L2.bFs < L0.bFs);
-          if(__sc > 1 ? up : down){
-            const cx2 = pick.anchor === 'r' ? pick.cx + (L0.w - L2.w) / 2 : pick.anchor === 'l' ? pick.cx - (L0.w - L2.w) / 2 : pick.cx;
-            const top2 = pick.band === 'bottom' || (!pick.band && pick.top + L0.h >= H * 0.8) ? pick.top + L0.h - L2.h : pick.band === 'top' || pick.top <= H * 0.2 ? pick.top : pick.top + (L0.h - L2.h) / 2;
-            pick = Object.assign({}, pick, { L: L2, cx: Math.max(L2.w / 2, Math.min(W - L2.w / 2, cx2)), top: Math.max(0, Math.min(H - L2.h, top2)) });
+          const L0 = pick.L, p0 = pick;
+          const g = 0.004, faceHit = (k) => boxes.reduce((acc, o) => { if(o.label !== 'face') return acc; const x0 = (k.cx - k.L.w / 2) / W - g, x1 = (k.cx + k.L.w / 2) / W + g, y0 = k.top / H - g, y1 = (k.top + k.L.h) / H + g; return acc + Math.max(0, Math.min(x1, o.box[2]) - Math.max(x0, o.box[0])) * Math.max(0, Math.min(y1, o.box[3]) - Math.max(y0, o.box[1])); }, 0);
+          const face0 = faceHit(p0);
+          /* v-text-face: «كبّر» للملصق لا تُدخله على وجه لم يكن تحته — يُجرَّب الحجم المطلوب ثمّ أصغر منه بخطوة ٠٫٠١ نحو ١ حتّى تخلو
+             الوجوه (الخطوة الثابتة تجعل «كبّر» الثالثة لا تصغّر ما كبّرته الثانية) */
+          const tries = [__sc];
+          if(__sc > 1 && boxes.length) for(let i = Math.round(__sc * 100) - 1; i > 100; i--) tries.push(i / 100);
+          for(const s of tries){
+            const L2 = measure(Math.min(W * 0.92, L0.maxW * s), Math.min(H - 2 * mY, L0.maxH * s), L0.k0, s);
+            const up = L2.tFs >= L0.tFs && L2.bFs >= L0.bFs && (L2.tFs > L0.tFs || L2.bFs > L0.bFs), down = L2.tFs <= L0.tFs && L2.bFs <= L0.bFs && (L2.tFs < L0.tFs || L2.bFs < L0.bFs);
+            if(!(__sc > 1 ? up : down)) continue;
+            const cx2 = p0.anchor === 'r' ? p0.cx + (L0.w - L2.w) / 2 : p0.anchor === 'l' ? p0.cx - (L0.w - L2.w) / 2 : p0.cx;
+            const top2 = p0.band === 'bottom' || (!p0.band && p0.top + L0.h >= H * 0.8) ? p0.top + L0.h - L2.h : p0.band === 'top' || p0.top <= H * 0.2 ? p0.top : p0.top + (L0.h - L2.h) / 2;
+            const k2 = Object.assign({}, p0, { L: L2, cx: Math.max(L2.w / 2, Math.min(W - L2.w / 2, cx2)), top: Math.max(0, Math.min(H - L2.h, top2)) });
+            if(boxes.length && __sc > 1 && faceHit(k2) > face0 + 1e-9) continue;
+            pick = k2; break;
           }
         }
         }else{
@@ -2141,8 +2194,10 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
            وظلّ بعكس اللون حول الحروف، لا بتغيير اللون ولا بوشاح مستطيل. */
         const uL = user ? user[2] : 0, tone = user ? __textInk(colorStr, st.lum, darkBg) : null;
         const lightInk = tone ? tone.lightInk : darkBg;
-        const lowC = !!tone && tone.lowC, haloDark = tone ? tone.haloDark : lightInk, scrimDark = tone ? tone.scrimDark : lightInk;
-        const stops = user ? [__hsl(user[0], user[1], Math.min(0.93, uL + 0.16)), __hsl(user[0], user[1], uL), __hsl(user[0], user[1], uL), __hsl(user[0], user[1], Math.max(0.12, uL - 0.12)), __hsl(user[0], user[1], Math.min(0.9, uL + 0.08))]
+        const lowC = !!tone && tone.lowC;
+        /* v-text-crisp: الحبر الفاتح فوق الفاتح (أبيض/أصفر على جدار) بتعبئة مسطّحة — تدرّجه كان ينزل بالأبيض إلى رماديّ ٨٧٪ فيبهت */
+        const flat = !!tone && tone.lightInk && !darkBg;
+        const stops = user ? (flat ? [uL, uL, uL, Math.max(0.12, uL - 0.05), uL].map((l) => __hsl(user[0], user[1], l)) : [__hsl(user[0], user[1], Math.min(0.93, uL + 0.16)), __hsl(user[0], user[1], uL), __hsl(user[0], user[1], uL), __hsl(user[0], user[1], Math.max(0.12, uL - 0.12)), __hsl(user[0], user[1], Math.min(0.9, uL + 0.08))])
           : !lightInk ? ['#b98232', '#8f5a17', '#6e4210', '#8f5a17', '#c79342']
           : cool ? ['#ffffff', '#eef2f7', '#c9d2dc', '#9aa6b5', '#eef2f7'] : ['#fff3d6', '#fcd28a', '#f6b95f', '#e49f4a', '#f9d494'];
         const grad = (y1, y2) => { const g = ctx.createLinearGradient(0, y1, 0, y2); [0, 0.34, 0.58, 0.8, 1].forEach((p, i) => g.addColorStop(p, stops[i])); return g; };
@@ -2151,15 +2206,22 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
         const contrast = Math.abs((lightInk ? 0.92 : 0.12) - (st.lum + (lightInk ? st.sd : -st.sd) * 0.5));
         const busyK = Math.max(0, Math.min(1, ((pick.rel || 0.5) - 0.5) / 0.8 + (st.gold || 0) * 2));
         const goldBusy = (st.gold || 0) > 0.08 && (pick.rel || 0) > 0.8; /* نقش ذهبيّ مزدحم (تطريز) لا غيم الغروب الناعم */
-        if(!pick.band && (st.sd > 0.14 || (contrast < 0.5 && !lowC) || goldBusy || (pick.rel || 0) > 0.95)){
+        /* أخفّ من قبل (المالك رأى الوشاح فوق الشجرة دخانًا ثقيلًا): الحافّة والظلّ يحملان القراءة، والوشاح يهدّئ فقط */
+        const scrimOn = !pick.band && (st.sd > 0.14 || (contrast < 0.5 && !lowC) || goldBusy || (pick.rel || 0) > 0.95);
+        const a = Math.min(0.5, 0.18 + st.sd * 0.9 + Math.max(0, 0.5 - contrast) * 0.5 + (goldBusy ? st.gold * 0.9 : 0) + Math.max(0, (pick.rel || 0) - 0.95) * 0.2);
+        /* v-text-veil: لون المستخدم — الوشاح بعكس الحبر أمام هذه الخلفيّة بشفافيّته الفعليّة، أو لا وشاح (الحافّة وحدها) */
+        const veil = !scrimOn ? '' : tone ? __textInk(colorStr, st.lum, darkBg, a).veil : lightInk ? 'dark' : 'light';
+        const haloDark = tone ? tone.haloDark : lightInk;
+        /* v-text-crisp (الجولة الثانية: «الأبيض على الجدار الفاتح» صار يُقرأ بحافّة رفيعة فوق ضباب باهت): الحافّة الداكنة للتباين الضعيف
+           خطّ شبه معتم أعرض وظلّ مسقط قصير، بلا توهّج أسود عريض حول الحروف (ذاك «دخان» صغير) — الأبيض أبيض واضح */
+        const crisp = lowC && haloDark;
+        if(scrimOn){
           try{
-            /* أخفّ من قبل (المالك رأى الوشاح فوق الشجرة دخانًا ثقيلًا): الحافّة والظلّ يحملان القراءة، والوشاح يهدّئ فقط */
-            const a = Math.min(0.5, 0.18 + st.sd * 0.9 + Math.max(0, 0.5 - contrast) * 0.5 + (goldBusy ? st.gold * 0.9 : 0) + Math.max(0, (pick.rel || 0) - 0.95) * 0.2);
             const pad = Math.max(0.9 * L.bFs, 0.035 * base), rx = cx - L.w / 2 - pad, ry = pick.top - pad * 0.7, rw = L.w + pad * 2, rh = L.h + pad * 1.4, rr = pad;
             const path = (ox) => { ctx.beginPath(); ctx.moveTo(rx + ox + rr, ry); ctx.lineTo(rx + ox + rw - rr, ry); ctx.quadraticCurveTo(rx + ox + rw, ry, rx + ox + rw, ry + rr); ctx.lineTo(rx + ox + rw, ry + rh - rr); ctx.quadraticCurveTo(rx + ox + rw, ry + rh, rx + ox + rw - rr, ry + rh); ctx.lineTo(rx + ox + rr, ry + rh); ctx.quadraticCurveTo(rx + ox, ry + rh, rx + ox, ry + rh - rr); ctx.lineTo(rx + ox, ry + rr); ctx.quadraticCurveTo(rx + ox, ry, rx + ox + rr, ry); ctx.closePath(); };
             const feather = (color, op) => { ctx.save(); ctx.globalCompositeOperation = op; ctx.shadowColor = color; ctx.shadowBlur = Math.max(16, 0.08 * base); ctx.shadowOffsetX = 3 * W; ctx.shadowOffsetY = 0; ctx.fillStyle = '#000'; path(-3 * W); ctx.fill(); ctx.restore(); };
             if(goldBusy && lightInk) feather('rgba(128,128,128,' + Math.min(0.85, st.gold * 2.5) + ')', 'saturation');
-            feather((scrimDark ? 'rgba(0,0,0,' : 'rgba(255,255,255,') + a + ')', 'source-over'); /* v-text-ink: بقطبيّة الخلفيّة — لا وشاح أسود فوق الفاتح */
+            if(veil) feather((veil === 'dark' ? 'rgba(0,0,0,' : 'rgba(255,255,255,') + a + ')', 'source-over');
           }catch(e){ __swallow(e, 'img:design-scrim'); }
         }
         let y = pick.top;
@@ -2171,12 +2233,12 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
             /* الحافّة تحت التعبئة (التعبئة تغطّي نصفها الداخليّ فلا فواصل عند الوصل)، بظلّ تلامس خفيف */
             if(haloDark || lowC){
               ctx.save(); ctx.lineJoin = 'round'; ctx.miterLimit = 2;
-              ctx.shadowColor = haloDark ? 'rgba(0,0,0,' + (lowC ? 0.6 : 0.4 + 0.25 * busyK) + ')' : 'rgba(255,255,255,.55)'; ctx.shadowBlur = L.tFs * (lowC ? 0.16 : 0.12); ctx.shadowOffsetX = 0; ctx.shadowOffsetY = haloDark ? L.tFs * 0.035 : 0;
-              ctx.lineWidth = Math.max(1.2, L.tFs / (lowC ? 16 : user ? 30 : 22)); ctx.strokeStyle = lowC ? (haloDark ? 'rgba(20,14,8,.7)' : 'rgba(255,255,255,.75)') : user ? 'rgba(0,0,0,.45)' : 'rgba(84,46,8,' + (0.45 + 0.4 * busyK) + ')';
+              ctx.shadowColor = haloDark ? 'rgba(0,0,0,' + (crisp ? 0.5 : lowC ? 0.6 : 0.4 + 0.25 * busyK) + ')' : 'rgba(255,255,255,.55)'; ctx.shadowBlur = L.tFs * (crisp ? 0.04 : lowC ? 0.16 : 0.12); ctx.shadowOffsetX = 0; ctx.shadowOffsetY = haloDark ? L.tFs * (crisp ? 0.03 : 0.035) : 0;
+              ctx.lineWidth = Math.max(1.2, L.tFs / (crisp ? 13 : lowC ? 16 : user ? 30 : 22)); ctx.strokeStyle = lowC ? (haloDark ? 'rgba(16,12,8,.92)' : 'rgba(255,255,255,.75)') : user ? 'rgba(0,0,0,.45)' : 'rgba(84,46,8,' + (0.45 + 0.4 * busyK) + ')';
               ctx.strokeText(line, ax, by); ctx.restore();
             }
             ctx.save();
-            ctx.shadowColor = !haloDark ? 'rgba(255,255,255,.42)' : user ? 'rgba(0,0,0,.35)' : cool ? 'rgba(215,228,255,.28)' : 'rgba(255,196,120,.32)';
+            ctx.shadowColor = crisp ? 'rgba(0,0,0,0)' : !haloDark ? 'rgba(255,255,255,.42)' : user ? 'rgba(0,0,0,.35)' : cool ? 'rgba(215,228,255,.28)' : 'rgba(255,196,120,.32)';
             ctx.shadowBlur = L.tFs * 0.18; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
             ctx.fillStyle = grad(by - ia, by + id); ctx.fillText(line, ax, by); ctx.restore();
           });
@@ -2185,8 +2247,9 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position, s
         if(L.bl.length){
           setB(L.bFs); ctx.textBaseline = 'middle';
           ctx.save();
-          if(lowC){ ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.2, L.bFs / 12); ctx.strokeStyle = haloDark ? 'rgba(20,14,8,.7)' : 'rgba(255,255,255,.75)'; L.bl.forEach((line, i) => ctx.strokeText(line, ax, y + L.bLH * (i + 0.5))); }
-          if(haloDark){ ctx.shadowColor = 'rgba(0,0,0,.62)'; ctx.shadowBlur = Math.max(4, L.bFs * 0.28); ctx.shadowOffsetY = Math.max(1, L.bFs * 0.05); }
+          if(lowC){ ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.2, L.bFs / (crisp ? 10 : 12)); ctx.strokeStyle = haloDark ? 'rgba(16,12,8,.92)' : 'rgba(255,255,255,.75)'; L.bl.forEach((line, i) => ctx.strokeText(line, ax, y + L.bLH * (i + 0.5))); }
+          if(crisp){ ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = Math.max(2, L.bFs * 0.06); ctx.shadowOffsetY = Math.max(1, L.bFs * 0.05); }
+          else if(haloDark){ ctx.shadowColor = 'rgba(0,0,0,.62)'; ctx.shadowBlur = Math.max(4, L.bFs * 0.28); ctx.shadowOffsetY = Math.max(1, L.bFs * 0.05); }
           else { ctx.shadowColor = 'rgba(255,255,255,.42)'; ctx.shadowBlur = L.bFs * 0.18; ctx.shadowOffsetY = 0; }
           ctx.shadowOffsetX = 0; ctx.fillStyle = bodyColor;
           L.bl.forEach((line, i) => ctx.fillText(line, ax, y + L.bLH * (i + 0.5)));
