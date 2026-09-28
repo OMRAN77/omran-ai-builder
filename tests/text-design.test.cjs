@@ -131,7 +131,7 @@ test('client renderer: title leads the block, balanced wrap, kashida only for di
   assert.match(attach, /const mX = W \* 0\.09, mY = H \* 0\.035;/);
   assert.match(attach, /sal\.mean > 0\.35 && \(pick\.rel > 1\.15 \|\| pick\.cost > 0\.9 \|\| pick\.st\.sd > 0\.2\)/, 'الشريط للمزدحمة كلّها فقط');
   assert.match(attach, /const goldBusy = \(st\.gold \|\| 0\) > 0\.08 && \(pick\.rel \|\| 0\) > 0\.8;/, 'غيم الغروب ليس نقشًا ذهبيًّا');
-  assert.match(attach, /naskhBody:\{css:'Noto Naskh Arabic',gf:'Noto\+Naskh\+Arabic:wght@500;700'\}/);
+  assert.match(attach, /const __DESIGN_TITLE_FONT = 'thuluth', __DESIGN_BODY_FONT = 'diwani';/, 'v-image-fonts: العنوان ثلث والأسطر ديواني');
   assert.match(attach, /getElementById\('gf-' \+ f\.gf\)/, 'وزنان للعائلة نفسها يُحمَّلان');
 });
 

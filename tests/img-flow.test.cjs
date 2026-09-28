@@ -16,6 +16,8 @@ test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغ�
     assert.ok(s.includes('const __N = 13, __steps = 2 * (__N - 1);') && s.includes('((__N - 1 - x) + y) / __steps * 1.9'), 'تأخير قُطريّ من فوق يمين');
     assert.ok(!s.includes('omGenWave') && !s.includes('--dx'), 'بلا خطوط وبلا حركة للخارج');
     assert.ok(s.includes('@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}'), 'احترام تقليل الحركة');
+    assert.ok(s.includes('html[data-mode=\\"light\\"] .omGen{background:#fff;border:0;border-radius:0;box-shadow:none}'), 'في الوضع الفاتح أبيض بلا إطار');
+    assert.ok(s.includes('html[data-mode=\\"light\\"] .omGenTxt{color:#8a6500;text-shadow:none}'), 'نصّ الفاتح مقروء بلا هالة سوداء');
     assert.ok(!s.includes("'rgba(255,255,255,.35)'"), 'لا أبيض');
     assert.ok(s.includes("if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el);"), 'بعد هبوط بحث الصور');
   }
@@ -104,10 +106,11 @@ test('٩. صور الإنترنت فقط بطلب صريح أو بالجمع —
   assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) &&'));
 });
 
-test('١٠. المربّع بلا إطار خارجيّ', () => {
+test('١٠. مؤشّر الصورة بلا إطار خارجيّ، والفاتح بلا زوايا إطار', () => {
   const a = read('js/app-09-attach.js');
   assert.ok(a.includes('border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}'));
   assert.ok(!a.includes('background:#050505;border:1px solid'));
+  assert.ok(a.includes('html[data-mode=\\"light\\"] .omGen{background:#fff;border:0;border-radius:0;box-shadow:none}'));
 });
 
 test('١١. «غيّر الصور بدون تكرار الشخصيات» على لقطة بطاقات = تبديل أشخاص لا تعديل أمين يرجّع الصورة نفسها', () => {

@@ -117,5 +117,6 @@ test('client keeps a reversible text layer and uses native Arabic font weights',
   assert.match(client, /cur\.lastEditedImage = \{ b64:__l\.baseB64, mime:__lm \}/);
   /* v-text-mode: إسناد واحد للطبقة في «+» بالأساس النظيف والموضع الذي رُسمت عنده (كان إسنادان والثاني يحفظ موضعًا غير المرسوم) */
   assert.match(client, /cur\.imageTextLayer = __overlayText \? \{ baseB64:__baseB64, baseMime:__baseMime, text:__overlayText, [^}]*position:__genPos,/);
-  assert.match(client, /const fontWeight = \/\^\(diwani\|thuluth\|ruqaa\|farsi\)\$\/\.test\(String\(fontKey \|\| ''\)\) \? '400' : '800';/);
+  // v-image-fonts: الثلث والديواني والفارسي بوزن 400 وحده، والكوفي 700 حقيقيّ
+  assert.match(client, /const fontWeight = fk === 'kufi' \? '700' : '400';/);
 });

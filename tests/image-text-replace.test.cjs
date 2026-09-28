@@ -110,8 +110,8 @@ test('١١. تعديل بصريّ على صورة كتبنا عليها: الم�
 test('١٢. v-text-design يلغي v-text-strong: ملصق مصمَّم — حافّة تحت التعبئة وظلّ ناعم، لا حدّ أسود سميك (مرجع المالك «البنات ٤»)', () => {
   assert.match(attach, /const narrow = measure\(W \* 0\.44, H \* 0\.5\)/);
   assert.match(attach, /wide = measure\(W \* 0\.84, H \* 0\.36\)/);
-  assert.match(attach, /const fontWeight = [^\n]+\? '400' : '800'/, 'الخطّ المسمّى بوزنه الحقيقيّ كما كان');
-  assert.match(attach, /const titleW = named \? fontWeight : '700', bodyW = named \? fontWeight : '500'/);
+  assert.match(attach, /const fontWeight = fk === 'kufi' \? '700' : '400';/, 'الخطّ المسمّى بوزنه الحقيقيّ (v-image-fonts)');
+  assert.match(attach, /const titleW = named \? fontWeight : '400', bodyW = named \? fontWeight : '400'/, 'الملصق الافتراضيّ ثلث وديواني بوزن واحد');
   assert.match(attach, /ctx\.strokeText\(line, ax, by\); ctx\.restore\(\);[\s\S]{0,420}ctx\.fillText\(line, ax, by\)/, 'الحافّة قبل التعبئة: لا فواصل عند وصل الحروف (v-text-layout: عند x المرساة)');
   assert.doesNotMatch(attach, /ctx\.lineWidth = Math\.max\(3, Math\.floor\(fs \/ 10\)\)/, 'الحدّ الأسود السميك الذي كرهه المالك');
   assert.match(attach, /g\.addColorStop\(0, 'rgba\(0,0,0,\.66\)'\)/, 'الصورة المزدحمة كلّها: شريط متدرّج');

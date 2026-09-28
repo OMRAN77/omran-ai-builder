@@ -37,7 +37,8 @@
   const hasColor = (s) => COLOR_RES.some((c) => c[0].test(s));
   /* v-font-pretty: كلمة جمال واحدة = الخطّ المزخرف (ديواني)، وبلا لون = الذهب المتدرّج */
   const PRETTY = 'م?زخرف[ةه]?|زخرفي|جميل[ةه]?|حلو[ةه]?|مرتب[ةه]?|أنيق[ةه]?|انيق[ةه]?|راقي[ةه]?|فخم[ةه]?|ملكي|مميز|رائع|فني|إبداعي|ابداعي|جذاب|beautiful|fancy|elegant|stylish|ornate|royal|decorative|calligraphy';
-  const FONTS = [['diwani', 'ديواني|diwani'], ['ruqaa', 'رقعة|رقعه|ruqaa|ruqa'], ['kufi', 'كوفي|kufi'], ['othmani', 'عثماني|othmani'], ['naskh2', 'نسخ\\s*نوتو|نوتو|noto\\s*naskh'], ['thuluth', 'ثلث|thuluth'], ['farsi', 'فارسي|نستعليق|farsi|nastaliq'], ['quran', 'مصحف|قرآني|quran'], ['naskh', 'نسخ|naskh']];
+  /* v-image-fonts: أربعة خطوط فقط للصور — والأسماء الأخرى إلى أقربها: رقعة ← ديواني، نسخ/قرآني/عثماني ← ثلث، نستعليق ← فارسي */
+  const FONTS = [['diwani', 'ديواني|diwani'], ['diwani', 'رقعة|رقعه|ruqaa|ruqa'], ['kufi', 'كوفي|kufi'], ['thuluth', 'ثلث|thuluth'], ['farsi', 'فارسي|نستعليق|farsi|nastaliq'], ['thuluth', 'عثماني|othmani|نسخ\\s*نوتو|نوتو|noto\\s*naskh|مصحف|قرآني|quran|نسخ|naskh']];
   const FONT_W = FONTS.map((f) => f[1]).join('|');
   const namedFont = (s) => { const f = FONTS.find((x) => new RegExp(x[1], 'i').test(s)); return f ? f[0] : null; };
   const PRETTY_RE = new RegExp(PRETTY, 'i');
