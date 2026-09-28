@@ -325,3 +325,12 @@ test('الجولة ٣ من المراجعة: شخص يكتب في المشهد �
   eq('كبّر الصورة', { styleEditLoose: 'FALSY' });
   eq('اكتب مشكور اخوي. على اليمين', { exactText: 'مشكور اخوي', position: 'right-center' });
 });
+
+test('لقطة المالك «غيرالخلفيه واكتب دعاء الاولاد»: المشهد يصل المحرّر نظيفًا بأيّ ترتيب، والدعاء يؤلَّف', () => {
+  for (const p of ['غيرالخلفيه واكتب دعاء الاولاد', 'غير الخلفيه واكتب دعاء الاولاد', 'اكتب دعاء الاولاد وغير الخلفيه']) eq(p, { wantsText: true, exactText: null, autoAuthored: true, kind: 'prayer', visualEdit: 'غير الخلفيه' });
+  eq('اكتب عليها دعاء للوالدين وخل الخلفية بحر', { visualEdit: 'خل الخلفية بحر' });
+  eq('اكتب دعاء للأولاد', { visualEdit: 'FALSY' });
+  const a9 = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
+  assert.match(a9, /__visEdit = 'غيّر الخلفية بالكامل وراء الأشخاص إلى ' \+ \(__planVisual \|\| /, '«غير الخلفية» بلا هدف = أمر صريح بهدف من المخطّط');
+  assert.match(a9, /content: __visFailed \? \(lang === 'ar' \? 'كتبت على صورتك، بس تغيير الخلفية ما نجح هالمرة/, 'فشل تعديل الخلفيّة يُقال ولا يُسكَت عنه');
+});

@@ -482,8 +482,10 @@
 
   /* ── المحلّل: حذف ← إعادة تنسيق/نقل ← تبديل كلمة ← تأليف دعاء ← كتابة ← لا شيء نصّيّ ── */
   function place(ins){ const p = positionOf(ins); return { position:p ? p.position : 'bottom', positionAuto:!p, positionFlex:!!(p && p.flex) }; }
+  /* لقطة المالك «غيرالخلفيه واكتب دعاء الاولاد»: فعل التعديل ملتصق بـ«ال» — يُفصل كي يفهمه محرّر الصورة */
+  const GLUED_EDIT_RE = /(^|\s)(غير|غيّر|بدل|بدّل|شيل|امسح|احذف|خل|خلي|حط|ضيف|لون|لوّن)(ال)(?=\S)/g;
   function visualFields(scene, kind, exact){
-    const v = cleanVisual(scene), visualEdit = v && !isGenericVisual(v) ? v : null;
+    const v = cleanVisual(scene).replace(GLUED_EDIT_RE, '$1$2 $3'), visualEdit = v && !isGenericVisual(v) ? v : null;
     return { visualPrompt:!visualEdit ? fallbackVisual(kind, exact) : (isCondolence(exact) && !isCondolence(v) ? 'مشهد تعزية بلا وجوه: ' + v : v), visualEdit };
   }
   function parseImageTextSpec(input){
@@ -499,7 +501,9 @@
     if(prayer){
       const pw = source.search(PRAYER_WORD_RE), at = Math.min(marker ? marker.index : Infinity, pw), color = textColor(source);
       /* v-parser-review: ذيل المشهد بعد كلمة الدعاء («…دعاء للوالدين وخل الخلفية بحر») يذهب للمولّد لا يضيع */
-      const tail = sceneOf(cutScene(source.slice(Math.max(0, pw)), 1)[1], []);
+      const after = source.slice(Math.max(0, pw)), edit = /(?:^|\s)و\s*((?:غير|غيّر|بدل|بدّل|خل|خلّ|خلي|خلّي|حط|ضيف|اضف|أضف|شيل|امسح|احذف|ارسم|سو|سوي|سوّي|اجعل)(?:ال)?\s*\S[\s\S]*)$/.exec(after);
+      /* «اكتب دعاء الاولاد وغير الخلفيه»: «و + فعل تعديل» بعد كلمة الدعاء مشهدٌ للمحرّر وإن لم يسمِّ الخلفيّة بلونها */
+      const tail = sceneOf(cutScene(after, 1)[1], []) || (edit ? edit[1] : '');
       return Object.assign({ wantsText:true, exactText:null }, visualFields([cleanVisual(source.slice(0, Math.max(0, at))), tail].filter(Boolean).join(' '), prayer.kind, null), { prayerRequest:prayer.request, fontKey:textFont(source), color, colorSet:color !== '#ffffff', size:textSize(source) }, place(source), { kind:prayer.kind, autoAuthored:true });
     }
     if(!marker){
