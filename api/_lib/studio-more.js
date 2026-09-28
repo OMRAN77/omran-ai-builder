@@ -19,7 +19,12 @@ const STYLE_PROMPTS = {
   "colored": "a colored abaya in a rich jewel tone with a matching hijab",
   "embroidered": "a black abaya with fine gold embroidery and a matching embroidered sheila",
   "sport": "a sport hijab with a modest athletic outfit",
-  "bridal": "a bridal white hijab with delicate lace and pearls over an elegant white gown"
+  "bridal": "a bridal white hijab with delicate lace and pearls over an elegant white gown",
+  /* v-studio-more-looks (طلب المالك «زيد الأشكال») */
+  "khaleejiwrap": "a Gulf evening wrap: a sheer embellished sheila draped over one shoulder with a crystal-trimmed edge and an elegant kaftan",
+  "layered": "a layered hijab: an inner cap with two contrasting soft scarves wrapped one over the other, one falling long at the back",
+  "turban": "a neatly wrapped turban-style hijab with a knot at the front and a matching modern outfit",
+  "silkprint": "a printed silk hijab in a patterned design, loosely wrapped, with a plain matching outfit"
  },
  "gulfmen": {
   "whiteghutra": "a white kandora with a crisp white ghutra and black agal",
@@ -29,7 +34,12 @@ const STYLE_PROMPTS = {
   "hamdaniya": "a white kandora with a white hamdaniya headscarf wrapped Emirati style without agal",
   "coloredkandora": "a colored kandora in soft grey or beige with a white ghutra and agal",
   "qatari": "a Qatari-style white thobe with a stiff white ghutra draped in the Qatari way and agal",
-  "kuwaiti": "a Kuwaiti-style white dishdasha with a Kuwaiti collar, white ghutra and agal"
+  "kuwaiti": "a Kuwaiti-style white dishdasha with a Kuwaiti collar, white ghutra and agal",
+  /* v-studio-more-looks */
+  "winterbisht": "a dark winter bisht with heavy gold zari trim worn over a white kandora, with a white ghutra and agal",
+  "omanikummah": "an Omani dishdasha with an embroidered kummah cap and a silver khanjar belt",
+  "wintercoat": "a white kandora with a tailored dark wool overcoat and a white ghutra, a modern Gulf winter look",
+  "bahrainiattire": "a Bahraini-style white thobe with a lightly starched white ghutra and a black agal"
  },
  "menhair": {
   "fade": "a clean skin-fade haircut with a short textured top",
@@ -67,7 +77,12 @@ const STYLE_PROMPTS = {
   "indianbride": "an Indian bridal lehenga in red and gold with heavy jewelry and bridal makeup",
   "moroccanbride": "a Moroccan bridal caftan with an ornate gold belt and jewelry",
   "engagement": "an elegant engagement outfit in soft pastel with refined makeup",
-  "hennanight": "a henna-night look: traditional embroidered dress in green and gold tones with festive jewelry"
+  "hennanight": "a henna-night look: traditional embroidered dress in green and gold tones with festive jewelry",
+  /* v-studio-more-looks */
+  "milkah": "a Gulf katb-al-kitab (milkah) look: a modest white embroidered gown with a light veil and delicate gold jewellery",
+  "receptionsuit": "a reception look: a tailored ivory tuxedo with a black bow tie and a boutonniere",
+  "turkishbride": "a Turkish bridal look: a fitted lace gown with long sleeves and a cathedral veil with a jewelled headband",
+  "gardenparty": "a garden-wedding guest look: a flowing pastel chiffon gown with floral hair styling and light jewellery"
  },
  "accessories": {
   "watch": "a luxury wristwatch",
@@ -77,7 +92,12 @@ const STYLE_PROMPTS = {
   "cap": "a sporty baseball cap",
   "bag": "a luxury designer handbag",
   "bracelet": "stacked gold bracelets",
-  "scarf": "a silk scarf"
+  "scarf": "a silk scarf",
+  /* v-studio-more-looks */
+  "ring": "an elegant statement ring on the hand",
+  "brooch": "a jewelled brooch pinned on the shoulder",
+  "hairclip": "a decorative pearl hair clip",
+  "cufflinks": "polished gold cufflinks on the shirt cuffs"
  },
  "eyes": {
   "blue": "a natural blue eye color",
@@ -105,7 +125,12 @@ const STYLE_PROMPTS = {
   "desert": "golden desert dunes at sunset",
   "garden": "a lush green garden",
   "luxury": "a luxurious palace interior with marble and chandeliers",
-  "plainwhite": "a plain pure white background"
+  "plainwhite": "a plain pure white background",
+  /* v-studio-more-looks */
+  "mosque": "a grand mosque courtyard with arches and soft evening light",
+  "library": "a warm wood-panelled library wall of books",
+  "snow": "a snowy mountain slope with soft falling snow",
+  "cafe": "a cosy modern cafe interior with warm lamps softly blurred"
  },
  "palette": {
   "spring": "a warm light spring color palette (peach, coral, warm greens)",
@@ -135,7 +160,12 @@ const STYLE_PROMPTS = {
   "footballer": "a football star look in a professional kit on a stadium pitch",
   "royal": "a royal look with an ornate gown, a tiara and a palace setting",
   "streetstyle": "a trendy street-style look with sneakers and oversized outerwear on a city street",
-  "bollywood": "a Bollywood glamour look with a vibrant embellished outfit"
+  "bollywood": "a Bollywood glamour look with a vibrant embellished outfit",
+  /* v-studio-more-looks */
+  "businesscover": "a business-magazine cover look: a sharp tailored suit, arms crossed, confident lighting against a plain dark wall",
+  "desertsafari": "a desert-safari look: light linen clothing and a wrapped scarf on golden dunes at sunset",
+  "racing": "a motorsport look: a racing suit with sponsor patches, helmet under the arm, beside a race car in a pit lane",
+  "chefstar": "a celebrity-chef look: a crisp white chef jacket in a bright professional kitchen"
  },
  "age": {
   "child": "a child around 7 years old",
@@ -188,7 +218,11 @@ const PREVIEW_SUBJECT = {
   "colored": "w",
   "embroidered": "w",
   "sport": "w",
-  "bridal": "w"
+  "bridal": "w",
+  "khaleejiwrap": "w",
+  "layered": "w",
+  "turban": "w",
+  "silkprint": "w"
  },
  "gulfmen": {
   "__tab": "m",
@@ -199,7 +233,11 @@ const PREVIEW_SUBJECT = {
   "hamdaniya": "m",
   "coloredkandora": "m",
   "qatari": "m",
-  "kuwaiti": "m"
+  "kuwaiti": "m",
+  "winterbisht": "m",
+  "omanikummah": "m",
+  "wintercoat": "m",
+  "bahrainiattire": "m"
  },
  "menhair": {
   "__tab": "m",
@@ -238,7 +276,11 @@ const PREVIEW_SUBJECT = {
   "indianbride": "w",
   "moroccanbride": "w",
   "engagement": "w",
-  "hennanight": "w"
+  "hennanight": "w",
+  "milkah": "w",
+  "receptionsuit": "m",
+  "turkishbride": "w",
+  "gardenparty": "w"
  },
  "accessories": {
   "__tab": "w",
@@ -249,7 +291,11 @@ const PREVIEW_SUBJECT = {
   "cap": "m",
   "bag": "w",
   "bracelet": "w",
-  "scarf": "w"
+  "scarf": "w",
+  "ring": "w",
+  "brooch": "w",
+  "hairclip": "w",
+  "cufflinks": "m"
  },
  "eyes": {
   "__tab": "w",
@@ -280,7 +326,11 @@ const PREVIEW_SUBJECT = {
   "desert": "m",
   "garden": "w",
   "luxury": "w",
-  "plainwhite": "w"
+  "plainwhite": "w",
+  "mosque": "m",
+  "library": "m",
+  "snow": "w",
+  "cafe": "w"
  },
  "palette": {
   "__tab": "w",
@@ -313,7 +363,11 @@ const PREVIEW_SUBJECT = {
   "footballer": "m",
   "royal": "w",
   "streetstyle": "m",
-  "bollywood": "w"
+  "bollywood": "w",
+  "businesscover": "m",
+  "desertsafari": "m",
+  "racing": "m",
+  "chefstar": "w"
  },
  "age": {
   "__tab": "w",
