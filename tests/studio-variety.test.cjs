@@ -79,7 +79,7 @@ test('خيارات الواجهة والخادم متطابقة بعد الإض�
     const srv = Object.keys(studioMore.STYLE_PROMPTS[feature] || {});
     assert.deepEqual(cli.slice().sort(), srv.slice().sort(), feature + ': خيارات الواجهة لا تطابق الخادم');
   }
-  assert.equal(Object.keys(studioMore.STYLE_PROMPTS.henna).length, 12, 'خيارات الحنّاء يجب أن تكون ١٢');
+  assert.ok(Object.keys(studioMore.STYLE_PROMPTS.henna).length >= 100, 'خيارات الحنّاء يجب ألّا تقلّ عن ١٠٠');
   assert.deepEqual(
     clientMakeupValues().slice().sort(),
     Object.keys(studioCreate.STYLE_TEXT.makeup).slice().sort(),
@@ -151,7 +151,8 @@ test('المكياج يأخذ المعاينة المولّدة أوّلًا (ص
 });
 
 test('دفعة الأشكال الجديدة: كلّ ميزة أساسيّة توسّعت وخياراتها مطابقة بين الواجهة والخادم', () => {
-  const MIN = { hair: 28, nails: 24, makeup: 22, beard: 16, skin: 12, glasses: 18, tattoo: 16, anime: 16, heritage: 18 };
+  /* v-studio-100 + v-henna-100: المالك «في كل شي على الأقلّ ١٠٠ نوع وشكل» — الدفعة الأولى (حنّاء، شعر، أظافر، مكياج) */
+  const MIN = { hair: 100, nails: 100, makeup: 100, beard: 16, skin: 12, glasses: 18, tattoo: 16, anime: 16, heritage: 18 };
   for (const [feature, min] of Object.entries(MIN)) {
     const srv = Object.keys(studioStyles.STYLE_TEXT[feature]);
     assert.ok(srv.length >= min, feature + ': ' + srv.length + ' خيارًا فقط (المطلوب ' + min + ')');
@@ -160,7 +161,7 @@ test('دفعة الأشكال الجديدة: كلّ ميزة أساسيّة ت�
       assert.ok(v.length >= 30, feature + '/' + k + ': وصف قصير جدًّا');
     }
   }
-  const MORE_MIN = { hijab: 12, gulfmen: 12, wedding: 12, accessories: 12, background: 12, iconic: 12, henna: 12 };
+  const MORE_MIN = { hijab: 12, gulfmen: 12, wedding: 12, accessories: 12, background: 12, iconic: 12, henna: 100 };
   for (const [feature, min] of Object.entries(MORE_MIN)) {
     assert.ok(Object.keys(studioMore.STYLE_PROMPTS[feature]).length >= min, feature + ': لم تتوسّع إلى ' + min);
   }
