@@ -26,12 +26,12 @@
     return best;
   }
   function textFont(source){
+    /* v-image-fonts: أربعة خطوط فقط للصور — والأسماء الأخرى إلى أقربها: رقعة ← ديواني، نسخ/قرآني/عثماني ← ثلث، نستعليق ← فارسي */
     if(/ديواني|diwani/i.test(source)) return 'diwani';
-    if(/رقعة|رقعه|ruqaa|ruqa/i.test(source)) return 'ruqaa';
+    if(/رقعة|رقعه|ruqaa|ruqa/i.test(source)) return 'diwani';
     if(/كوفي|kufi/i.test(source)) return 'kufi';
-    if(/عثماني|othmani/i.test(source)) return 'othmani';
-    if(/نسخ\s*نوتو|نوتو|noto\s*naskh/i.test(source)) return 'naskh2'; if(/ثلث|thuluth/i.test(source)) return 'thuluth'; if(/فارسي|نستعليق|farsi|nastaliq/i.test(source)) return 'farsi'; if(/مصحف|قرآني|quran/i.test(source)) return 'quran';
-    if(/نسخ|naskh/i.test(source)) return 'naskh';
+    if(/ثلث|thuluth/i.test(source)) return 'thuluth'; if(/فارسي|نستعليق|farsi|nastaliq/i.test(source)) return 'farsi';
+    if(/عثماني|othmani|نسخ|نوتو|naskh|مصحف|قرآني|quran/i.test(source)) return 'thuluth';
     /* v-font-pretty (طلب عمران): كل كلمة جمالية = الخط المزخرف، لا العادي */
     if(/زخرف|مزخرف|جميل|حلو[ةه]?|مرتب|أنيق|انيق|راقي|فخم|ملكي|مميز|رائع|فني|إبداعي|ابداعي|جذاب|beautiful|fancy|elegant|stylish|decorat|ornate|pretty|nice|royal|calligraph/i.test(source)) return 'diwani';
     return 'default';
