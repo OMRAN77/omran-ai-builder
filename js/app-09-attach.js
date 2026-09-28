@@ -1632,7 +1632,7 @@ async function mahaLoadFont(key){
      الخط ويرسم فورًا قبل وصول الملف — fonts.load ترجع فارغة لأن قاعدة
      @font-face لم تُقرأ بعد، فيسقط الرسم على الخط العادي في كل مرة أولى.
      الآن: ننتظر تحميل ورقة الأنماط ثم نتحقق فعليًا أن الخط جاهز (حتى 3 ثوانٍ).
-     الطلب بلا bold لأن الخطوط الزخرفية (Katibeh/Rakkas/Gulzar) وزنها 400 فقط. */
+     الطلب بلا bold لأن الثلث والديواني والفارسي (Tholoth/UKIJ Diwani Tom/Gulzar) وزنها 400 فقط. */
   if(f.url){ /* v-image-fonts: خطّ مستضاف — قاعدة @font-face مرّة واحدة، ثمّ الانتظار نفسه أدناه حتّى يجهز */
     const fid = 'ff-' + f.url.replace(/^.*\//, '').replace(/\W/g, '-');
     if(!document.getElementById(fid)){

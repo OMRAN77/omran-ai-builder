@@ -8769,7 +8769,11 @@ function msgPdfFontSpec(){
 function msgPdfFontHead(font){
   const family = font.family + ", 'Tajawal', Tahoma, Arial, sans-serif";
   const query = (font.google ? 'family=' + font.google + '&family=' : 'family=') + 'Tajawal:wght@400;500;700';
-  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
+  /* v-calligraphy-names: الخطّ المستضاف (الثلث/الديواني) ليس في رابط Google — قاعدته في رأس المستند بعنوان كامل،
+     لأنّ نافذة الطباعة وsrcdoc وجسر PDF في التطبيق تستلم نصّ HTML قد لا يعرف أصل الموقع */
+  const origin = (typeof location !== 'undefined' && location && location.origin && location.origin !== 'null') ? location.origin : '';
+  const face = font.url ? '<style>@font-face{font-family:"' + font.css + '";src:url("' + origin + font.url + '") format("woff2");}</style>' : '';
+  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">' + face};
 }
 function msgPrintAfterFont(view, family, ctx){
   /* v-app-share: داخل تطبيق المتجر window.print() لا يعمل — نرسل مستند
@@ -19218,7 +19222,7 @@ async function mahaLoadFont(key){
      الخط ويرسم فورًا قبل وصول الملف — fonts.load ترجع فارغة لأن قاعدة
      @font-face لم تُقرأ بعد، فيسقط الرسم على الخط العادي في كل مرة أولى.
      الآن: ننتظر تحميل ورقة الأنماط ثم نتحقق فعليًا أن الخط جاهز (حتى 3 ثوانٍ).
-     الطلب بلا bold لأن الخطوط الزخرفية (Katibeh/Rakkas/Gulzar) وزنها 400 فقط. */
+     الطلب بلا bold لأن الثلث والديواني والفارسي (Tholoth/UKIJ Diwani Tom/Gulzar) وزنها 400 فقط. */
   if(f.url){ /* v-image-fonts: خطّ مستضاف — قاعدة @font-face مرّة واحدة، ثمّ الانتظار نفسه أدناه حتّى يجهز */
     const fid = 'ff-' + f.url.replace(/^.*\//, '').replace(/\W/g, '-');
     if(!document.getElementById(fid)){
@@ -32960,10 +32964,13 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     {id:'kufi', ar:'الكوفي', en:'Kufi', family:"'Reem Kufi'", google:'Reem+Kufi:wght@400..700', line:1.85},
     {id:'naskh', ar:'النسخ', en:'Naskh', family:"'Amiri'", google:'Amiri:ital,wght@0,400;0,700;1,400', line:1.95},
     {id:'naskh2', ar:'نسخ نوتو', en:'Noto Naskh', family:"'Noto Naskh Arabic'", google:'Noto+Naskh+Arabic:wght@400..700', line:1.9},
-    {id:'thuluth', ar:'الثلث', en:'Thuluth', family:"'Aref Ruqaa'", google:'Aref+Ruqaa:wght@400;700', line:2.05, alt:true},
+    /* v-calligraphy-names (المالك ٢٨ سبتمبر «صلحها»): الخطوط الثلاثة بأسمائها الحقيقيّة كما في الصور (v-image-fonts) —
+       «الثلث» كان Aref Ruqaa وهو رقعة، و«الديواني» كان Katibeh وهو نسخ عناوين، و«الرقعة» Rakkas عرض ثقيل.
+       الثلث والديواني مستضافان (assets/fonts، ليسا في Google Fonts) بلا google كي لا يُفسدا رابط PDF المجمّع. */
+    {id:'thuluth', ar:'الثلث', en:'Thuluth', family:"'Tholoth'", google:'', url:'/assets/fonts/tholoth.woff2', css:'Tholoth', line:2.05},
     {id:'farsi', ar:'الفارسي', en:'Nastaliq', family:"'Gulzar'", google:'Gulzar', line:2.45},
-    {id:'diwani', ar:'الديواني', en:'Diwani', family:"'Katibeh'", google:'Katibeh', line:2.05, alt:true},
-    {id:'ruqaa', ar:'الرقعة', en:'Ruqaa', family:"'Rakkas'", google:'Rakkas', line:1.95, alt:true},
+    {id:'diwani', ar:'الديواني', en:'Diwani', family:"'UKIJ Diwani Tom'", google:'', url:'/assets/fonts/ukij-diwani-tom.woff2', css:'UKIJ Diwani Tom', line:2.05},
+    {id:'ruqaa', ar:'الرقعة', en:'Ruqaa', family:"'Aref Ruqaa'", google:'Aref+Ruqaa:wght@400;700', line:2.05},
     {id:'quran', ar:'المصحف', en:'Quranic', family:"'Scheherazade New'", google:'Scheherazade+New:wght@400;700', line:2.15}
   ];
 
@@ -32981,9 +32988,19 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   }
   function isArabic(){ return (document.documentElement.lang || 'ar').toLowerCase() === 'ar'; }
   function load(font){
-    if(!font.google || loaded[font.id]) return;
+    if((!font.google && !font.url) || loaded[font.id]) return;
     loaded[font.id] = true;
     try{
+      if(font.url){
+        /* خطّ مستضاف: قاعدة @font-face نفسها وبمعرّف mahaLoadFont نفسه — تُعرَّف مرّة للصور والمحادثة والتوقيع */
+        var fid = 'ff-' + font.url.replace(/^.*\//, '').replace(/\W/g, '-');
+        if(document.getElementById(fid)) return;
+        var face = document.createElement('style');
+        face.id = fid;
+        face.textContent = '@font-face{font-family:"' + font.css + '";src:url("' + font.url + '") format("woff2");font-display:swap;}';
+        document.head.appendChild(face);
+        return;
+      }
       var link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://fonts.googleapis.com/css2?family=' + font.google + '&display=swap';
@@ -33086,10 +33103,12 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
 (function(){
   'use strict';
 
+  /* v-calligraphy-names: كلّ خطّ باسمه الحقيقيّ (كان «الثلث» Aref Ruqaa و«الديواني» Katibeh و«الرقعة» Rakkas).
+     الثلث والديواني مستضافان في assets/fonts بوزن واحد 400 — طلب 700 يرسم تغليظًا اصطناعيًّا على اللوحة. */
   var FONTS = [
-    { id:'ruqaa',   ar:'الرقعة',   en:'Ruqaa',    family:"'Rakkas'",      g:'Rakkas',                    w:'400' },
-    { id:'thuluth', ar:'الثلث',    en:'Thuluth',  family:"'Aref Ruqaa'",  g:'Aref+Ruqaa:wght@400;700',   w:'700' },
-    { id:'diwani',  ar:'الديواني', en:'Diwani',   family:"'Katibeh'",     g:'Katibeh',                   w:'400' },
+    { id:'ruqaa',   ar:'الرقعة',   en:'Ruqaa',    family:"'Aref Ruqaa'",  g:'Aref+Ruqaa:wght@400;700',   w:'700' },
+    { id:'thuluth', ar:'الثلث',    en:'Thuluth',  family:"'Tholoth'",     url:'/assets/fonts/tholoth.woff2', css:'Tholoth', w:'400' },
+    { id:'diwani',  ar:'الديواني', en:'Diwani',   family:"'UKIJ Diwani Tom'", url:'/assets/fonts/ukij-diwani-tom.woff2', css:'UKIJ Diwani Tom', w:'400' },
     { id:'naskh',   ar:'النسخ',    en:'Naskh',    family:"'Amiri'",       g:'Amiri:wght@400;700',        w:'700' },
     { id:'kufi',    ar:'الكوفي',   en:'Kufi',     family:"'Reem Kufi'",   g:'Reem+Kufi:wght@400..700',   w:'600' },
     { id:'farsi',   ar:'الفارسي',  en:'Nastaliq', family:"'Gulzar'",      g:'Gulzar',                    w:'400' }
@@ -33140,11 +33159,21 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     }catch(e){ tell(e, 'sig:restore'); }
   }
 
-  /* الخطوط تُحمّل عند الطلب من Google Fonts — CSP يسمح بـfont-src/style-src https:. */
+  /* الخطوط تُحمّل عند الطلب من Google Fonts — CSP يسمح بـfont-src/style-src https:.
+     والمستضاف (url) بقاعدة @font-face بمعرّف mahaLoadFont نفسه، فلا تُعرَّف مرّتين. */
   function link(f){
     if(linked[f.id]) return;
     linked[f.id] = true;
     try{
+      if(f.url){
+        var fid = 'ff-' + f.url.replace(/^.*\//, '').replace(/\W/g, '-');
+        if(document.getElementById(fid)) return;
+        var face = document.createElement('style');
+        face.id = fid;
+        face.textContent = '@font-face{font-family:"' + f.css + '";src:url("' + f.url + '") format("woff2");font-display:swap;}';
+        document.head.appendChild(face);
+        return;
+      }
       var el = document.createElement('link');
       el.rel = 'stylesheet';
       el.href = 'https://fonts.googleapis.com/css2?family=' + f.g + '&display=swap';
@@ -33172,8 +33201,12 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     if(!probe || !canvas.getContext) return null;
     probe.font = f.w + ' ' + size + 'px ' + f.family + ', Tahoma, Arial, sans-serif';
     var shear = Math.tan(state.slant * Math.PI / 180);
-    var w = Math.ceil(probe.measureText(name).width + pad * 2 + Math.abs(shear) * size * 1.8);
-    var h = Math.ceil(size * (state.flourish ? 2.12 : 1.85));
+    probe.textBaseline = 'middle';
+    var m = probe.measureText(name);
+    var w = Math.ceil(m.width + pad * 2 + Math.abs(shear) * size * 1.8);
+    /* v-calligraphy-names: الذيل تحت أدنى حبر فعليّ — أذيال الثلث (ر ن ع ي) أعمق من 1.5 فكان الذيل يقطعها */
+    var fy = Math.max(size * 1.5, size * 1.02 + (m.actualBoundingBoxDescent || 0) + size * 0.1);
+    var h = Math.ceil(state.flourish ? Math.max(size * 2.12, fy + size * 0.62) : size * 1.85);
     canvas.width = Math.max(2, w * dpr);
     canvas.height = Math.max(2, h * dpr);
     canvas.style.width = w + 'px';
@@ -33195,7 +33228,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       x.lineWidth = Math.max(2, size * 0.042);
       x.lineCap = 'round';
       x.beginPath();
-      var y = size * 1.5;
+      var y = fy;
       x.moveTo(pad * 0.95, y);
       x.quadraticCurveTo(w / 2, y + size * 0.36, w - pad * 0.95, y - size * 0.05);
       x.stroke();

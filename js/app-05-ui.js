@@ -385,7 +385,11 @@ function msgPdfFontSpec(){
 function msgPdfFontHead(font){
   const family = font.family + ", 'Tajawal', Tahoma, Arial, sans-serif";
   const query = (font.google ? 'family=' + font.google + '&family=' : 'family=') + 'Tajawal:wght@400;500;700';
-  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
+  /* v-calligraphy-names: الخطّ المستضاف (الثلث/الديواني) ليس في رابط Google — قاعدته في رأس المستند بعنوان كامل،
+     لأنّ نافذة الطباعة وsrcdoc وجسر PDF في التطبيق تستلم نصّ HTML قد لا يعرف أصل الموقع */
+  const origin = (typeof location !== 'undefined' && location && location.origin && location.origin !== 'null') ? location.origin : '';
+  const face = font.url ? '<style>@font-face{font-family:"' + font.css + '";src:url("' + origin + font.url + '") format("woff2");}</style>' : '';
+  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">' + face};
 }
 function msgPrintAfterFont(view, family, ctx){
   /* v-app-share: داخل تطبيق المتجر window.print() لا يعمل — نرسل مستند
