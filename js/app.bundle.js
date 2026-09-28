@@ -21789,13 +21789,15 @@ function __showImgLoading(el, ar, en){
      prefers-reduced-motion. معاينة: https://claude.ai/artifact/PG7aNWPP9TXwohqE8KaVrJ */
   if(!document.getElementById('omran-imggen-css2')){
     const st = document.createElement('style'); st.id = 'omran-imggen-css2';
-    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGen{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}html[data-mode=\"light\"] .omGenTxt{color:#8a6500;text-shadow:none}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
+    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGen{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}html[data-mode=\"light\"] .omGenTxt{color:#8a6500;text-shadow:none}html[data-mode=\"light\"] .omDot{left:var(--lx)!important;top:var(--ly)!important;animation-delay:var(--ld)}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
     document.head.appendChild(st);
   }
   const __N = 13, __steps = 2 * (__N - 1);
   let __dots = '';
   for(let y = 0; y < __N; y++) for(let x = 0; x < __N; x++){
-    __dots += '<i class="omDot" style="left:' + (12 + x * 76 / (__N - 1)).toFixed(2) + '%;top:' + (18 + y * 76 / (__N - 1)).toFixed(2) + '%;--d:' + (((__N - 1 - x) + y) / __steps * 1.9).toFixed(3) + 's"></i>';
+    const __i = y * __N + x, __r = Math.sqrt(__i / (__N * __N - 1)) * 42, __a = __i * 2.399963;
+    const __lx = 50 + Math.cos(__a) * __r, __ly = 55 + Math.sin(__a) * __r * .78;
+    __dots += '<i class="omDot" style="left:' + (12 + x * 76 / (__N - 1)).toFixed(2) + '%;top:' + (18 + y * 76 / (__N - 1)).toFixed(2) + '%;--d:' + (((__N - 1 - x) + y) / __steps * 1.9).toFixed(3) + 's;--lx:' + __lx.toFixed(2) + '%;--ly:' + __ly.toFixed(2) + '%;--ld:' + (__r / 42 * 1.9).toFixed(3) + 's"></i>';
   }
   el.innerHTML = '<div class="omGen" role="status" aria-label="جارٍ إنشاء الصورة"><div class="omGenTxt" dir="rtl">جارٍ إنشاء الصورة</div>' + __dots + '</div>';
 }

@@ -18,6 +18,8 @@ test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغ�
     assert.ok(s.includes('@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}'), 'احترام تقليل الحركة');
     assert.ok(s.includes('html[data-mode=\\"light\\"] .omGen{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}'), 'في الوضع الفاتح النقاط مباشرة بلا مستطيل');
     assert.ok(s.includes('html[data-mode=\\"light\\"] .omGenTxt{color:#8a6500;text-shadow:none}'), 'نصّ الفاتح مقروء بلا هالة سوداء');
+    assert.ok(s.includes('html[data-mode=\\"light\\"] .omDot{left:var(--lx)!important;top:var(--ly)!important;animation-delay:var(--ld)}'), 'الفاتح يستخدم دوّامة لا شبكة مربعة');
+    assert.ok(s.includes('__a = __i * 2.399963') && s.includes('Math.sqrt(__i / (__N * __N - 1)) * 42'), 'توزيع حلزوني ذهبي بلا حدود مستطيلة');
     assert.ok(!s.includes("'rgba(255,255,255,.35)'"), 'لا أبيض');
     assert.ok(s.includes("if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el);"), 'بعد هبوط بحث الصور');
   }
@@ -112,6 +114,7 @@ test('١٠. مؤشّر الصورة بلا إطار خارجيّ، والفات�
   assert.ok(!a.includes('background:#050505;border:1px solid'));
   assert.ok(a.includes('html[data-mode=\\"light\\"] .omGen{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}'));
   assert.ok(!a.includes('html[data-mode=\\"light\\"] .omGen{background:#fff'), 'لا مستطيل أبيض في الوضع الفاتح');
+  assert.ok(a.includes('--lx:') && a.includes('--ly:') && a.includes('--ld:'), 'مواضع وحركة الفاتح مستقلّة عن شبكة الداكن');
 });
 
 test('١١. «غيّر الصور بدون تكرار الشخصيات» على لقطة بطاقات = تبديل أشخاص لا تعديل أمين يرجّع الصورة نفسها', () => {
