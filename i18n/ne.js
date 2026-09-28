@@ -253,7 +253,7 @@ I18N['ne'] = {
     themeUserBubbleLabel: "तपाईंको सन्देश बबल रंग",
     themeSectionLabel: "🎨 रंग र उपस्थिति अनुकूलित गर्नुहोस्",
     bg3dSectionLabel: "🌌 एनिमेटेड 3D पृष्ठभूमि",
-    bgImgSectionLabel: "🖼️ स्क्रिन वालपेपरहरू",
+    bgImgSectionLabel: "स्क्रिन वालपेपरहरू",
     bgImgNone: "वालपेपर छैन",
     bg3dAutoLabel: "🔀 प्रत्येक मिनेट पृष्ठभूमिहरू स्वतः स्विच गर्नुहोस्",
     deleteProject: "परियोजना मेटाउनुहोस्",

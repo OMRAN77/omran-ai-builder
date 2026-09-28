@@ -282,14 +282,15 @@
     </div>
   </div>
 
-  <!-- v-bg-images: خلفيّات الشاشة — مصغّرات بلا أسماء، الشبكة تُبنى عند فتح الصفّ (js/app-25-خلفيات.js) -->
-  <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
-    <div onclick="toggleSubRow('bgImgSub'); if(window.خلفيات) window.خلفيات.افتح();" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="bgImgSectionLabel" style="font-size:13px;">🖼️ خلفيّات الشاشة</span><span id="bgImgSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="bgImgSubContent" style="display:none; padding-top:10px;">
-  <div id="bgImgGrid" class="bgImgGrid"></div>
-    </div>
-  </div>
   </div></div>
+
+  <!-- v-bg-images-row (المالك: «خلّ خلفيّات الشاشة برّع في قسم المظهر… والصورة رسميّة من غير الإيموجي»):
+       صفّ مستقلّ في قائمة الإعدادات (مجموعة المظهر) بأيقونة SVG كبقيّة الصفوف؛ الشبكة تُبنى عند فتح الصفحة
+       (showSettingsPage في app-05) وعند نقر الرأس. -->
+  <div id="bgImgSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('bgImgSection'); if(window.خلفيات) window.خلفيات.افتح();" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:var(--fs-3);" data-i18n="bgImgSectionLabel">خلفيّات الشاشة</h3><span class="settingsSectionArrow" id="bgImgSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="bgImgSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <div id="bgImgGrid" class="bgImgGrid"></div>
+    </div></div>
 
   <div id="fontFamilySection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontFamilySection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:var(--fs-3);" data-i18n="fontFamilySectionLabel">نوع الخط</h3><span class="settingsSectionArrow" id="fontFamilySectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontFamilySectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">

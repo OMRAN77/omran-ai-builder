@@ -240,7 +240,7 @@ I18N['fil'] = {
     "themeUserBubbleLabel": "Kulay ng bubble ng iyong mensahe",
     "themeSectionLabel": "🎨 I-customize ang mga kulay at itsura",
     "bg3dSectionLabel": "🌌 Animated na 3D na background",
-    "bgImgSectionLabel": "🖼️ Mga wallpaper ng screen",
+    "bgImgSectionLabel": "Mga wallpaper ng screen",
     "bgImgNone": "Walang wallpaper",
     "bg3dAutoLabel": "🔀 Auto-palit ng background bawat minuto",
     "deleteProject": "Burahin ang proyekto",

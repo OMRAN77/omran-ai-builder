@@ -253,7 +253,7 @@ I18N['bn'] = {
     themeUserBubbleLabel: "আপনার বার্তা বুদ্বুদ রঙ",
     themeSectionLabel: "🎨 রং এবং চেহারা কাস্টমাইজ করুন",
     bg3dSectionLabel: "🌌 অ্যানিমেটেড 3D ব্যাকগ্রাউন্ড",
-    bgImgSectionLabel: "🖼️ স্ক্রিন ওয়ালপেপার",
+    bgImgSectionLabel: "স্ক্রিন ওয়ালপেপার",
     bgImgNone: "ওয়ালপেপার নেই",
     bg3dAutoLabel: "🔀 প্রতি মিনিটে ব্যাকগ্রাউন্ড অটো-সুইচ করুন",
     deleteProject: "প্রকল্প মুছুন",

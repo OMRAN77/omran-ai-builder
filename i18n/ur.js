@@ -252,7 +252,7 @@ I18N['ur'] = {
     themeUserBubbleLabel: "آپ کے پیغام کے بلبلے کا رنگ",
     themeSectionLabel: "🎨 رنگ اور ظاہری شکل حسب ضرورت بنائیں",
     bg3dSectionLabel: "🌌 اینیمیٹڈ 3D پس منظر",
-    bgImgSectionLabel: "🖼️ اسکرین وال پیپرز",
+    bgImgSectionLabel: "اسکرین وال پیپرز",
     bgImgNone: "کوئی وال پیپر نہیں",
     bg3dAutoLabel: "🔀 ہر منٹ خودکار طور پر پس منظر تبدیل کریں",
     deleteProject: "پراجیکٹ حذف کریں",
