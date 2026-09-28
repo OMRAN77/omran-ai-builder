@@ -19,7 +19,12 @@ const STYLE_PROMPTS = {
   "colored": "a colored abaya in a rich jewel tone with a matching hijab",
   "embroidered": "a black abaya with fine gold embroidery and a matching embroidered sheila",
   "sport": "a sport hijab with a modest athletic outfit",
-  "bridal": "a bridal white hijab with delicate lace and pearls over an elegant white gown"
+  "bridal": "a bridal white hijab with delicate lace and pearls over an elegant white gown",
+  /* v-studio-more-looks (طلب المالك «زيد الأشكال») */
+  "khaleejiwrap": "a Gulf evening wrap: a sheer embellished sheila draped over one shoulder with a crystal-trimmed edge and an elegant kaftan",
+  "layered": "a layered hijab: an inner cap with two contrasting soft scarves wrapped one over the other, one falling long at the back",
+  "turban": "a neatly wrapped turban-style hijab with a knot at the front and a matching modern outfit",
+  "silkprint": "a printed silk hijab in a patterned design, loosely wrapped, with a plain matching outfit"
  },
  "gulfmen": {
   "whiteghutra": "a white kandora with a crisp white ghutra and black agal",
@@ -29,7 +34,12 @@ const STYLE_PROMPTS = {
   "hamdaniya": "a white kandora with a white hamdaniya headscarf wrapped Emirati style without agal",
   "coloredkandora": "a colored kandora in soft grey or beige with a white ghutra and agal",
   "qatari": "a Qatari-style white thobe with a stiff white ghutra draped in the Qatari way and agal",
-  "kuwaiti": "a Kuwaiti-style white dishdasha with a Kuwaiti collar, white ghutra and agal"
+  "kuwaiti": "a Kuwaiti-style white dishdasha with a Kuwaiti collar, white ghutra and agal",
+  /* v-studio-more-looks */
+  "winterbisht": "a dark winter bisht with heavy gold zari trim worn over a white kandora, with a white ghutra and agal",
+  "omanikummah": "an Omani dishdasha with an embroidered kummah cap and a silver khanjar belt",
+  "wintercoat": "a white kandora with a tailored dark wool overcoat and a white ghutra, a modern Gulf winter look",
+  "bahrainiattire": "a Bahraini-style white thobe with a lightly starched white ghutra and a black agal"
  },
  "menhair": {
   "fade": "a clean skin-fade haircut with a short textured top",
@@ -43,15 +53,21 @@ const STYLE_PROMPTS = {
   "quiff": "a textured quiff hairstyle",
   "afro": "a natural afro hairstyle"
  },
+ /* v-studio-variety (شكوى المالك ٢٨ سبتمبر «كلّهم نوع واحد»): كلّ خيار يذكر لونه ونقشه
+    وكثافته وموضعه صراحةً — الوصف السطر الواحد كان يخرج نقشًا عامًّا واحدًا مهما اختار. */
  "henna": {
-  "gulfhenna": "intricate Gulf (Khaleeji) henna with floral vine patterns on the hands",
-  "indianhenna": "dense traditional Indian bridal mehndi patterns covering the hands",
-  "sudanese": "bold Sudanese henna with large geometric floral motifs",
-  "bridalhenna": "elaborate bridal henna covering the hands up to the forearms",
-  "minimal": "a small delicate minimalist henna design on the back of the hand",
-  "feet": "traditional henna patterns on the feet and ankles",
-  "whitehenna": "white henna lace-style patterns on the hands",
-  "khidab": "black khidab-style henna patterns on the hands"
+  "gulfhenna": "delicate Gulf (Khaleeji) henna in a warm reddish-brown stain: thin flowing floral vines, small leaves and fine dotted borders drawn along the fingers and the back of the hand, with plenty of bare skin left between the motifs",
+  "indianhenna": "dense traditional Indian bridal mehndi in a deep reddish-brown stain: paisley (buta) motifs, peacocks, fine lace netting and a mandala centre on the palm, covering the hand almost edge to edge with very little bare skin",
+  "sudanese": "bold Sudanese henna in a very dark, almost black stain: large thick geometric blocks, oversized floral motifs and wide filled bands with sharp empty gaps between them",
+  "bridalhenna": "elaborate bridal henna in a rich reddish-brown stain: a full mandala on the palm with dense vines and jaali netting running from the fingertips up over the wrists to the forearms, edged with tiny pearl-like dots",
+  "minimal": "a small minimalist henna design in a light reddish-brown stain: one single delicate motif only — a thin vine, a tiny flower or a fine bracelet line on the back of one hand — with all the rest of the skin completely bare",
+  "feet": "traditional henna on the feet and ankles in a reddish-brown stain: an anklet-style band around each ankle with floral motifs spreading over the top of the foot and onto the toes, the hands left bare",
+  "whitehenna": "white henna body paint in opaque bright white, NOT brown at all: raised lace-like patterns, fine pearl dots and delicate floral lace cuffs, clearly standing out white against the skin",
+  "khidab": "black khidab henna in a deep glossy black stain: bold thick blocks and heavily filled motifs on the fingertips and the back of the hand, strongly contrasting against the skin",
+  "moroccan": "Moroccan (Berber) henna in a reddish-brown stain: sharp symmetrical geometry — diamonds, triangles, chevrons and straight hatched lines — with no floral motifs at all",
+  "cuff": "a henna cuff in a reddish-brown stain: a wide ornamented bracelet band wrapped around the wrist with fine tassels hanging from it, the fingers and the rest of the hand left completely bare",
+  "fingertips": "the classic Gulf dipped-fingertip henna in a dark reddish-brown stain: the fingertips fully dipped in solid henna up to the first knuckle with a neat straight edge, and nothing else drawn on the hand",
+  "glitterhenna": "festive henna in a reddish-brown stain traced over with gold glitter gel and tiny crystal accents that catch the light along the outlines of the pattern"
  },
  "wedding": {
   "bride": "a classic white bridal gown with a veil, elegant bridal makeup and an updo",
@@ -61,7 +77,12 @@ const STYLE_PROMPTS = {
   "indianbride": "an Indian bridal lehenga in red and gold with heavy jewelry and bridal makeup",
   "moroccanbride": "a Moroccan bridal caftan with an ornate gold belt and jewelry",
   "engagement": "an elegant engagement outfit in soft pastel with refined makeup",
-  "hennanight": "a henna-night look: traditional embroidered dress in green and gold tones with festive jewelry"
+  "hennanight": "a henna-night look: traditional embroidered dress in green and gold tones with festive jewelry",
+  /* v-studio-more-looks */
+  "milkah": "a Gulf katb-al-kitab (milkah) look: a modest white embroidered gown with a light veil and delicate gold jewellery",
+  "receptionsuit": "a reception look: a tailored ivory tuxedo with a black bow tie and a boutonniere",
+  "turkishbride": "a Turkish bridal look: a fitted lace gown with long sleeves and a cathedral veil with a jewelled headband",
+  "gardenparty": "a garden-wedding guest look: a flowing pastel chiffon gown with floral hair styling and light jewellery"
  },
  "accessories": {
   "watch": "a luxury wristwatch",
@@ -71,7 +92,12 @@ const STYLE_PROMPTS = {
   "cap": "a sporty baseball cap",
   "bag": "a luxury designer handbag",
   "bracelet": "stacked gold bracelets",
-  "scarf": "a silk scarf"
+  "scarf": "a silk scarf",
+  /* v-studio-more-looks */
+  "ring": "an elegant statement ring on the hand",
+  "brooch": "a jewelled brooch pinned on the shoulder",
+  "hairclip": "a decorative pearl hair clip",
+  "cufflinks": "polished gold cufflinks on the shirt cuffs"
  },
  "eyes": {
   "blue": "a natural blue eye color",
@@ -99,7 +125,12 @@ const STYLE_PROMPTS = {
   "desert": "golden desert dunes at sunset",
   "garden": "a lush green garden",
   "luxury": "a luxurious palace interior with marble and chandeliers",
-  "plainwhite": "a plain pure white background"
+  "plainwhite": "a plain pure white background",
+  /* v-studio-more-looks */
+  "mosque": "a grand mosque courtyard with arches and soft evening light",
+  "library": "a warm wood-panelled library wall of books",
+  "snow": "a snowy mountain slope with soft falling snow",
+  "cafe": "a cosy modern cafe interior with warm lamps softly blurred"
  },
  "palette": {
   "spring": "a warm light spring color palette (peach, coral, warm greens)",
@@ -129,7 +160,12 @@ const STYLE_PROMPTS = {
   "footballer": "a football star look in a professional kit on a stadium pitch",
   "royal": "a royal look with an ornate gown, a tiara and a palace setting",
   "streetstyle": "a trendy street-style look with sneakers and oversized outerwear on a city street",
-  "bollywood": "a Bollywood glamour look with a vibrant embellished outfit"
+  "bollywood": "a Bollywood glamour look with a vibrant embellished outfit",
+  /* v-studio-more-looks */
+  "businesscover": "a business-magazine cover look: a sharp tailored suit, arms crossed, confident lighting against a plain dark wall",
+  "desertsafari": "a desert-safari look: light linen clothing and a wrapped scarf on golden dunes at sunset",
+  "racing": "a motorsport look: a racing suit with sponsor patches, helmet under the arm, beside a race car in a pit lane",
+  "chefstar": "a celebrity-chef look: a crisp white chef jacket in a bright professional kitchen"
  },
  "age": {
   "child": "a child around 7 years old",
@@ -145,7 +181,9 @@ const INSTR = {
  "hijab": "Change only the head covering and outfit to {s}. Keep the same person, face, pose and background exactly the same. Output a single photorealistic image.",
  "gulfmen": "Change only the outfit and headwear to {s}. Keep the same person, face, pose and background exactly the same. Output a single photorealistic image.",
  "menhair": "Change only the hair to {s}. Keep the same person, face, pose, clothing and background exactly the same, only alter the hairstyle. Output a single photorealistic image.",
- "henna": "Add {s} on the visible hands or feet in this photo, following the natural curves of the skin, realistic reddish-brown henna stain. Keep everything else exactly the same. Output a single photorealistic image.",
+ /* v-studio-variety: كان القالب يفرض «reddish-brown» على كلّ الخيارات — فالحنّاء البيضاء
+    والخضاب الأسود يخرجان بنّيّين مثل غيرهما. اللون صار من الخيار نفسه. */
+ "henna": "Add {s} on the visible hands or feet in this photo, following the natural curves of the skin, as a realistic henna stain in exactly the colour, pattern and placement described above — do not substitute any other colour or pattern. Keep everything else exactly the same. Output a single photorealistic image.",
  "wedding": "Change the outfit, hair styling and makeup to {s}. Keep the same person, face and pose; the identity must stay clearly recognizable. Output a single photorealistic image.",
  "accessories": "Add {s} to the person, placed naturally and realistically. Keep everything else in the photo exactly the same. Output a single photorealistic image.",
  "eyes": "Apply {s}. Keep the same person, identity, pose and background exactly the same and fully realistic. Output a single photorealistic image.",
@@ -180,7 +218,11 @@ const PREVIEW_SUBJECT = {
   "colored": "w",
   "embroidered": "w",
   "sport": "w",
-  "bridal": "w"
+  "bridal": "w",
+  "khaleejiwrap": "w",
+  "layered": "w",
+  "turban": "w",
+  "silkprint": "w"
  },
  "gulfmen": {
   "__tab": "m",
@@ -191,7 +233,11 @@ const PREVIEW_SUBJECT = {
   "hamdaniya": "m",
   "coloredkandora": "m",
   "qatari": "m",
-  "kuwaiti": "m"
+  "kuwaiti": "m",
+  "winterbisht": "m",
+  "omanikummah": "m",
+  "wintercoat": "m",
+  "bahrainiattire": "m"
  },
  "menhair": {
   "__tab": "m",
@@ -215,7 +261,11 @@ const PREVIEW_SUBJECT = {
   "minimal": "w",
   "feet": "w",
   "whitehenna": "w",
-  "khidab": "w"
+  "khidab": "w",
+  "moroccan": "w",
+  "cuff": "w",
+  "fingertips": "w",
+  "glitterhenna": "w"
  },
  "wedding": {
   "__tab": "w",
@@ -226,7 +276,11 @@ const PREVIEW_SUBJECT = {
   "indianbride": "w",
   "moroccanbride": "w",
   "engagement": "w",
-  "hennanight": "w"
+  "hennanight": "w",
+  "milkah": "w",
+  "receptionsuit": "m",
+  "turkishbride": "w",
+  "gardenparty": "w"
  },
  "accessories": {
   "__tab": "w",
@@ -237,7 +291,11 @@ const PREVIEW_SUBJECT = {
   "cap": "m",
   "bag": "w",
   "bracelet": "w",
-  "scarf": "w"
+  "scarf": "w",
+  "ring": "w",
+  "brooch": "w",
+  "hairclip": "w",
+  "cufflinks": "m"
  },
  "eyes": {
   "__tab": "w",
@@ -268,7 +326,11 @@ const PREVIEW_SUBJECT = {
   "desert": "m",
   "garden": "w",
   "luxury": "w",
-  "plainwhite": "w"
+  "plainwhite": "w",
+  "mosque": "m",
+  "library": "m",
+  "snow": "w",
+  "cafe": "w"
  },
  "palette": {
   "__tab": "w",
@@ -301,7 +363,11 @@ const PREVIEW_SUBJECT = {
   "footballer": "m",
   "royal": "w",
   "streetstyle": "m",
-  "bollywood": "w"
+  "bollywood": "w",
+  "businesscover": "m",
+  "desertsafari": "m",
+  "racing": "m",
+  "chefstar": "w"
  },
  "age": {
   "__tab": "w",
