@@ -16,6 +16,7 @@ I18N['tr'] = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Kategori', fxGenWomen: 'Kadın', fxGenMen: 'Erkek', fxGenKids: 'Çocuk', fxColorsLbl: 'Tercih edilen renkler', fxColBlack: 'Siyah', fxColWhite: 'Beyaz', fxColNavy: 'Lacivert', fxColRed: 'Kırmızı', fxColGold: 'Altın',
     fxColGreen: 'Yeşil', fxColBeige: 'Bej', fxColMulti: 'Çok renkli', fxAccLbl: 'Aksesuarlar', fxAccGlasses: 'Gözlük', fxAccWatch: 'Saat', fxAccHandbag: 'El çantası', fxAccShoes: 'Ayakkabı', fxAccScarf: 'Atkı', fxAccMakeup: 'Makyaj',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "Bu stil için {total} tasarımdan {n}. tasarım — farklı biri için tekrar dokunun", fxStylesPlus: "Her stil için 100+ tasarım", fxAccHint: "Görünümüne ne ekleneceğini seç — tarzı her tasarımda değişir",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Yan menü', lightModeTitle: 'Aydınlık mod', darkModeTitle: 'Karanlık mod', provSearchPh: 'Model ara...', jumpLatestTitle: 'En son mesaj', editMsgNotice: 'Mesaj düzenleniyor', modesTitle: 'Modlar',
     attachFileTitle: 'Dosya ekle', chipExam: 'Sınav çöz', chipBook: 'Kitap özetle', chipArticle: 'Profesyonel makale yaz', chipIdeas: 'Proje fikirleri', tryItTitle: 'Benim için dene',

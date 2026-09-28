@@ -23,6 +23,7 @@ const I18N = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
     fxColGreen: 'أخضر', fxColBeige: 'بيج', fxColMulti: 'متعدد', fxAccLbl: 'إضافات', fxAccGlasses: 'نظارات', fxAccWatch: 'ساعة', fxAccHandbag: 'حقيبة', fxAccShoes: 'أحذية', fxAccScarf: 'وشاح', fxAccMakeup: 'مكياج',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "التصميم رقم {n} من {total} لهذا النمط — اضغط مرّة ثانية لتصميم مختلف", fxStylesPlus: "أكثر من 100 تصميم لكل نمط", fxAccHint: "اختر ما تضيفه لإطلالتك — شكله يتغيّر مع كل تصميم",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', darkModeTitle: 'الوضع الداكن', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
     attachFileTitle: 'إرفاق ملف', chipExam: 'حل امتحان', chipBook: 'تلخيص كتاب', chipArticle: 'كتابة مقال احترافي', chipIdeas: 'أفكار لمشروع', tryItTitle: 'جرّبه لي', closeTitle: 'إغلاق',
@@ -1063,6 +1064,7 @@ const I18N = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
     fxColGreen: 'Green', fxColBeige: 'Beige', fxColMulti: 'Multicolour', fxAccLbl: 'Accessories', fxAccGlasses: 'Glasses', fxAccWatch: 'Watch', fxAccHandbag: 'Handbag', fxAccShoes: 'Shoes', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "Design {n} of {total} for this style — tap again for a different one", fxStylesPlus: "100+ designs per style", fxAccHint: "Pick what to add to your look — its style changes with every design",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', darkModeTitle: 'Dark mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
     attachFileTitle: 'Attach a file', chipExam: 'Solve an exam', chipBook: 'Summarize a book', chipArticle: 'Write a professional article', chipIdeas: 'Project ideas', tryItTitle: 'Try it for me',

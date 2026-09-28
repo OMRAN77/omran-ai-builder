@@ -3142,6 +3142,7 @@ const I18N = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
     fxColGreen: 'أخضر', fxColBeige: 'بيج', fxColMulti: 'متعدد', fxAccLbl: 'إضافات', fxAccGlasses: 'نظارات', fxAccWatch: 'ساعة', fxAccHandbag: 'حقيبة', fxAccShoes: 'أحذية', fxAccScarf: 'وشاح', fxAccMakeup: 'مكياج',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "التصميم رقم {n} من {total} لهذا النمط — اضغط مرّة ثانية لتصميم مختلف", fxStylesPlus: "أكثر من 100 تصميم لكل نمط", fxAccHint: "اختر ما تضيفه لإطلالتك — شكله يتغيّر مع كل تصميم",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', darkModeTitle: 'الوضع الداكن', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
     attachFileTitle: 'إرفاق ملف', chipExam: 'حل امتحان', chipBook: 'تلخيص كتاب', chipArticle: 'كتابة مقال احترافي', chipIdeas: 'أفكار لمشروع', tryItTitle: 'جرّبه لي', closeTitle: 'إغلاق',
@@ -4182,6 +4183,7 @@ const I18N = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
     fxColGreen: 'Green', fxColBeige: 'Beige', fxColMulti: 'Multicolour', fxAccLbl: 'Accessories', fxAccGlasses: 'Glasses', fxAccWatch: 'Watch', fxAccHandbag: 'Handbag', fxAccShoes: 'Shoes', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "Design {n} of {total} for this style — tap again for a different one", fxStylesPlus: "100+ designs per style", fxAccHint: "Pick what to add to your look — its style changes with every design",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', darkModeTitle: 'Dark mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
     attachFileTitle: 'Attach a file', chipExam: 'Solve an exam', chipBook: 'Summarize a book', chipArticle: 'Write a professional article', chipIdeas: 'Project ideas', tryItTitle: 'Try it for me',
@@ -5250,7 +5252,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=702'; /* v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=703'; /* v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -29472,6 +29474,26 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{ return (window.omranFashionExtras && window.omranFashionExtras().gender) || 'women'; }
     catch(e){ return 'women'; }
   }
+  /* v-fashion-variety (المالك: «الديزينات واحده… الشكل واحد»): عدّاد لكلّ فئة×نمط يُرسَل مع كلّ توليد، والخادم
+     يحوّله إلى تصميم من ≥١٠٠ للنمط لا يتكرّر حتّى تنفد (api/_lib/fashion-variety.js). يبدأ من رقم عشوائيّ لكلّ
+     جهاز فلا يرى الجميع التصميم نفسه أوّلًا، ويتقدّم عند الإرسال فتعطي المحاولة التالية تصميمًا آخر. */
+  const FX_VARIANT_KEY = 'aiapp_fashion_variant';
+  function fxNextVariant(styleVal){
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(FX_VARIANT_KEY) || '{}') || {}; }catch(e){ map = {}; }
+    const k = currentGender() + '|' + styleVal;
+    let n = Number(map[k]);
+    if(!Number.isSafeInteger(n) || n < 0) n = Math.floor(Math.random() * 100000);
+    map[k] = n + 1;
+    try{ localStorage.setItem(FX_VARIANT_KEY, JSON.stringify(map)); }catch(e){ __swallow(e, 'fashion:variant'); }
+    return n;
+  }
+  // «التصميم رقم ٣٧ من ٢١٦ لهذا النمط» — من ردّ الخادم؛ فارغ لخادم قديم بلا الحقل.
+  function fxDesignLine(d){
+    if(!d || !(d.n > 0) || !(d.total > 0)) return '';
+    const tpl = t('fxDesignNo');
+    return (tpl && tpl !== 'fxDesignNo' ? tpl : 'Design {n} of {total}').replace('{n}', d.n).replace('{total}', d.total);
+  }
   function lookImg(gender, value, alt){
     const img = document.createElement('img');
     img.alt = alt;
@@ -29532,6 +29554,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
     sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (bT('نمطًا لهذه الفئة','styles for this category')));
+    const __plus = t('fxStylesPlus'); /* v-fashion-variety: «أكثر من 100 تصميم لكل نمط» */
+    if(__plus && __plus !== 'fxStylesPlus') sub.textContent += ' · ' + __plus;
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
@@ -29775,7 +29799,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{
       const __engineEl = $('#fashionAiEngine');
       window.__fashionEngine = (__engineEl && __engineEl.value) || '';
-      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine };
+      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine, variant: fxNextVariant(styleEl.value) };
       try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
       if(mode === 'image'){
         payload.imageBase64 = selectedBase64;
@@ -29806,7 +29830,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       setupBeforeAfter(dataUrl);
       /* v-fashion-refine: احفظ النتيجة كمصدر للتعديل الموضعي وأظهر صفّه */
       __refineRemember(data.imageBase64, data.mimeType || 'image/png');
-      setStatus(t('fashionAiDone'));
+      const __dl = fxDesignLine(data.design);
+      setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
       setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
@@ -29990,7 +30015,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const results = await Promise.all(stylesToRun.map(async (styleVal) => {
         // v-fashion-locks: fairness يفعّل قفل عدالة المقارنة في الخادم —
         // نفس الاستوديو والإضاءة والوقفة في كل الخيارات، فتُقارن الملابس لا الإضاءة.
-        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '' };
+        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '', variant: fxNextVariant(styleVal) };
         try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
         if(mode === 'image'){ payload.imageBase64 = selectedBase64; payload.mimeType = selectedMime; }
         else { payload.description = descriptionEl.value.trim(); }
