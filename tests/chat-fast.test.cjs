@@ -126,13 +126,13 @@ test('٣. الخادم: البنية — الحقول خارج تعريف callUp
   const req = s.slice(i, s.indexOf('let upstream = await callUpstream(true);', i));
   assert.ok(req.includes('__quickFields()'), 'الدمج في الجسم');
   assert.ok(!/thinking|reasoning/.test(req), 'لا حرف من الحقول داخل التعريف');
-  const qf = s.indexOf('const __quickFields = () => {');
+  const qf = s.indexOf('const __quickFields = () =>');
   assert.ok(qf > 0 && qf < i, 'التعريف يسبق callUpstream');
   const cache400 = s.indexOf("await logErrorAndFlush('chat/prompt-cache-400'");
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");
   const finalFail = s.indexOf("await logErrorAndFlush('chat/upstream-fail'");
   assert.ok(cache400 > 0 && quick400 > cache400 && finalFail > quick400);
-  assert.ok(s.includes("if (!viaOR || prov === 'claude' || __ownerReq) return {};"), 'كلود لا يُمسّ');
+  assert.ok(s.includes("if (!viaOR || prov === 'claude' || (__ownerReq && __ownerThink)) return {};"), 'كلود الوسيط لا يُمسّ، ودور المالك الصعب يفكّر (v-owner-auto)');
 });
 
 // ── العميل ──

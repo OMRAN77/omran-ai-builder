@@ -112,7 +112,8 @@ function toOpenAIBody(ab, prov) {
 // v-oa-responses: جسم أنثروبيك ← جسم /v1/responses. النظام ← instructions؛ الرسائل ← عناصر input؛ نداء الأداة
 // ← function_call ونتيجتها ← function_call_output بنفس call_id (بلا معرّفات fc_/rs_: لا يُطلب معها عنصر التفكير)؛
 // الأدوات مسطّحة وstrict:false (الافتراضيّ هنا صارم ومخطّطاتنا غير صارمة)؛ store:false فلا تُحفظ محادثة المالك عند
-// المزوّد؛ ولا reasoning: الموديل يفكّر بإعداده الافتراضيّ كما في تطبيقه. الكاش والتفكير وجهد أنثروبيك تُسقط.
+// المزوّد؛ ولا reasoning: الموديل يفكّر بإعداده الافتراضيّ كما في تطبيقه — إلّا دور المالك العاديّ (v-owner-auto أدناه).
+// الكاش والتفكير وجهد أنثروبيك تُسقط.
 function toResponsesBody(ab) {
   const input = [];
   for (const m of ab.messages || []) {
@@ -144,6 +145,10 @@ function toResponsesBody(ab) {
     if (parts.length) input.push({ role: 'user', content: parts.every((p) => p.type === 'input_text') ? parts.map((p) => p.text).join('\n') : parts });
   }
   const body = { model: ab.model, input, stream: true, store: false };
+  /* v-owner-auto: دور المالك العاديّ يصل بـthinking:{type:'disabled'} (صيغة أنثروبيك) ← أدنى جهد تفكير يقبله
+     الموديل. الأسماء تختلف بين أجيال GPT فالسلّم none → minimal → low، وما رفضه الموديل يُذكَر (quickEffortFor). */
+  const qe = (ab.thinking && ab.thinking.type === 'disabled') ? quickEffortFor(ab.model) : '';
+  if (qe) body.reasoning = { effort: qe };
   const sys = textOf(ab.system);
   if (sys) body.instructions = sys;
   if (ab.max_tokens) body.max_output_tokens = ab.max_tokens;
@@ -367,12 +372,21 @@ async function directFetch(route, anthropicBody, opts) {
   if (route.responsesUrl) {
     let rb = toResponsesBody(anthropicBody);
     let rl = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    let capDropped = false;
+    for (let attempt = 0; attempt < 2 + QUICK_EFFORTS.length; attempt++) {
       const r = await f(route.responsesUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) });
       if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model) };
       const t = await r.text().catch(() => '');
       rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t };
-      if (attempt === 0 && r.status === 400 && rb.max_output_tokens && /max_output_tokens/i.test(t)) { rb = Object.assign({}, rb); delete rb.max_output_tokens; continue; }
+      // v-owner-auto: جهد مرفوض = الدرجة التالية من السلّم، وبعد آخرها بلا reasoning (سلوك ما قبل الإصلاح).
+      if (r.status === 400 && rb.reasoning && /reasoning|effort/i.test(t)) {
+        quickEffortRejected(rb.model, rb.reasoning.effort);
+        rb = Object.assign({}, rb);
+        const next = quickEffortFor(rb.model);
+        if (next) rb.reasoning = { effort: next }; else delete rb.reasoning;
+        continue;
+      }
+      if (!capDropped && r.status === 400 && rb.max_output_tokens && /max_output_tokens/i.test(t)) { capDropped = true; rb = Object.assign({}, rb); delete rb.max_output_tokens; continue; }
       break;
     }
     // موديل مرفوض = يُعاد كما هو فيرجع chat.js للافتراضيّ بسطر حالة؛ مفتاح/رصيد/حدّ (401/402/403/429/5xx) = كذلك
@@ -410,4 +424,18 @@ async function directFetch(route, anthropicBody, opts) {
 }
 const deadModels = new Set();
 
-module.exports = { directRoute, directModel, directFetch, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels };
+// v-owner-auto: سلّم «بلا تفكير» لكلّ موديل في هذه الدالّة الدافئة: أوّل درجة لم يرفضها. '' = الموديل رفضها كلّها.
+const QUICK_EFFORTS = ['none', 'minimal', 'low'];
+const quickRejected = new Map();
+function quickEffortFor(model) {
+  const bad = quickRejected.get(String(model || '')) || [];
+  return QUICK_EFFORTS.find((e) => bad.indexOf(e) === -1) || '';
+}
+function quickEffortRejected(model, effort) {
+  const k = String(model || '');
+  const bad = quickRejected.get(k) || [];
+  if (effort && bad.indexOf(effort) === -1) bad.push(effort);
+  quickRejected.set(k, bad);
+}
+
+module.exports = { directRoute, directModel, directFetch, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected };

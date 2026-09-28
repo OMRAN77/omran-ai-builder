@@ -67,7 +67,7 @@ test('chat.js: الطلب يحمل النظام كتلًا معلَّمة وال
   assert.match(s, /if \(\/cache_control\/i\.test\(__cc\)\) \{\n\s+__cacheOn = false;\n\s+await logErrorAndFlush\('chat\/prompt-cache-400'/);
   // العدّاد من message_start وmessage_delta، والعرض للمالك وحده
   assert.match(s, /ev\.type === 'message_start'[\s\S]*?cache_read_input_tokens/);
-  assert.match(s, /if \(__ownerReq\) send\(\{ modelId: __pick\.picked \? __pick\.id : 'default', modelLabel: \(__pick\.label \|\| 'الافتراضيّ'\) \+ ' · ' \+ usageLabel\(__usage\) \}\);/);
+  assert.match(s, /if \(__ownerReq\) send\(\{ modelId: __pick\.picked \? __pick\.id : 'default', modelLabel: \(__pick\.label \|\| 'الافتراضيّ'\) \+ ' · ' \+ usageLabel\(__usage\) \+ \(__ownerThink \? ' · 🧠' : ' · ⚡'\) \}\);/);
   // الثابت لا يحوي الوقت: nowNote يُلحق بعد baseSystem في نصّ النظام لا داخل sysParts
   assert.ok(!/sysParts\.push\([^)]*nowNote/.test(s), 'الوقت يجب أن يبقى خارج الكتلة الثابتة');
   // المتغيّر موثّق
