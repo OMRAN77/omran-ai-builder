@@ -6,7 +6,13 @@ async function أظهر_قسم_الخلفيات() {
   حاوي.innerHTML = '<div class="خلفيات-تحميل">جاري التحضير...</div>';
 
   if (!document.getElementById('خلفيات-قسم')) {
-    document.body.append(حاوي);
+    // أضفه بعد الشريط الجانبي أو في بداية الجسم
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.parentNode) {
+      sidebar.parentNode.insertBefore(حاوي, sidebar.nextSibling);
+    } else {
+      document.body.prepend(حاوي);
+    }
   }
 
   const خلفيات = await window.خلفيات.حضّر_خلفيات();
@@ -97,6 +103,9 @@ function استرجع_خلفية_المحفوظة() {
 }
 
 // تشغيل عند التحميل
-document.addEventListener('DOMContentLoaded', استرجع_خلفية_المحفوظة);
+document.addEventListener('DOMContentLoaded', async () => {
+  استرجع_خلفية_المحفوظة();
+  await أظهر_قسم_الخلفيات();
+});
 
 window.خلفيات_واجهة = { أظهر_قسم_الخلفيات, اختر_خلفية, استرجع_خلفية_المحفوظة };
