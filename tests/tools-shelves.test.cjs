@@ -71,7 +71,7 @@ test('٦. X الإعدادات مخفي في الهواتف وحدها، ونس�
   assert.doesNotMatch(tokens, /(?:^|\n)\s*#setHomeClose\{display:none!important;\}/);
   assert.match(read('index.html'), /css\/tokens\.css\?v=727/);
   assert.match(wiring, /tool-card-images\.css\?v=17/);
-  assert.match(wiring, /tool-card-images\.js\?v=16/);
+  assert.match(wiring, /tool-card-images\.js\?v=17/);
 });
 
 test('٧. v-shelf-scroll-smooth: تمرير الصفّ بالماوس/التراك باد بلا snap قسري (مسبار Playwright أثبت أنّ mandatory وproximity كليهما يبتلعان تمرير العجلة الصغير ثم يقفزان دفعة واحدة)، والمسّ يبقى محاذًى', () => {
