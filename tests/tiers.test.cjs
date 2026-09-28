@@ -188,7 +188,15 @@ test('chat.js wiring: tier first, free lane before the tool loop, limit as a rep
   assert.match(chat, /checkAndConsume\(token, guestId, \(__tier && !__tier\.subscriber\) \? 'chat' : \(\(__planRoute && __planRoute\.bucket\) \|\| prov\), clientIp\(req\), \{ tier: __tier \|\| undefined \}\)/);
   assert.match(chat, /send\(\{ tier: usage\.tier === 'guest' \? 'guest-limit' : 'free-limit' \}\);\n\s+send\(\{ delta: usage\.message \|\| tierLib\.FREE_TEXT\.freeLimit \}\);\n\s+send\(\{ done: true \}\);/);
   assert.match(chat, /const __freeLane = !!\(usage\.tier && !usage\.subscriber\);/);
-  assert.match(chat, /if \(__freeLane\) \{\n\s+send\(\{ tier: usage\.tier \}\);\n\s+const __fr = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(!__fr\.ok\) \{[\s\S]*?send\(\{ tierDiag: \(__fr\.errors \|\| \[\]\)\.slice\(0, 6\) \}\);\n\s+send\(\{ delta: tierLib\.FREE_TEXT\.busy \}\);\n\s+\}\n\s+send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;\n\s+\}\n\s+while \(steps < MAX_STEPS\) \{/);
+  const freeStart = chat.indexOf('if (__freeLane || !__visionRoute) {');
+  const toolStart = chat.indexOf('while (steps < MAX_STEPS) {');
+  assert.ok(freeStart >= 0 && freeStart < toolStart, 'المجاني وفشل الرؤية ينتهيان قبل حلقة الأدوات');
+  const freeBranch = chat.slice(freeStart, toolStart);
+  assert.match(freeBranch, /if \(__freeLane\) send\(\{ tier: usage\.tier \}\);/);
+  assert.match(freeBranch, /const __fr = await streamFreeChain\(\{[^\n]*convo, send, requireVision: lastUserHasImage \}\);/);
+  assert.match(freeBranch, /send\(\{ tierDiag: \(__fr\.errors \|\| \[\]\)\.slice\(0, 6\) \}\);/);
+  assert.match(freeBranch, /lastUserHasImage \? tierLib\.FREE_TEXT\.imageBusy : tierLib\.FREE_TEXT\.busy/);
+  assert.match(freeBranch, /send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;/);
 });
 
 test('_usage.js wiring: tier caps, paid providers closed to non-subscribers, guest cap from env', () => {

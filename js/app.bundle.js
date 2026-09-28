@@ -3212,6 +3212,11 @@ const I18N = {
     moreOptionsTitle: "خيارات إضافية",
     shareMsgTitle: "مشاركة",
     copiedToast: "تم النسخ",
+    msgRegenerate: "إعادة الرد",
+    msgStopListening: "إيقاف الاستماع",
+    msgCopyFailed: "تعذّر النسخ، حاول مرة أخرى",
+    msgReportFailed: "تعذّر إرسال البلاغ، حاول مرة أخرى",
+    msgToolbarLabel: "إجراءات الرد",
     thumbDownTitle: "غير مفيد",
     thumbUpTitle: "مفيد",
     reportMsgTitle: "الإبلاغ عن محتوى غير لائق",
@@ -4230,6 +4235,11 @@ const I18N = {
     moreOptionsTitle: "More options",
     shareMsgTitle: "Share",
     copiedToast: "Copied",
+    msgRegenerate: "Regenerate reply",
+    msgStopListening: "Stop listening",
+    msgCopyFailed: "Could not copy. Try again.",
+    msgReportFailed: "Could not send the report. Try again.",
+    msgToolbarLabel: "Reply actions",
     thumbDownTitle: "Not helpful",
     thumbUpTitle: "Helpful",
     reportMsgTitle: "Report inappropriate content",
@@ -5218,7 +5228,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=698'; /* v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=699'; /* v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7232,61 +7242,76 @@ function renderMessages(keepScroll){
     if((m.content && m.content.trim()) || (m.role !== 'user' && m.attachments && m.attachments.some(a => a && (a.isImage || a.isVideo)))){ // v669: الأيقونات تظهر تحت الصور حتى بلا نص
       const actionBar = document.createElement('div');
       actionBar.className = 'msgActionBar';
+      if(m.role !== 'user'){
+        actionBar.classList.add('msgReplyActions');
+        actionBar.setAttribute('dir', 'rtl');
+        actionBar.setAttribute('role', 'toolbar');
+        actionBar.setAttribute('aria-label', t('msgToolbarLabel'));
+      }
       const copyIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
       const checkIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      let moreBtnEl = null;
+      const moreActions = [];
       if(m.role !== 'user'){
-        // ↻ إعادة توليد آخر الدور من سؤال المستخدم نفسه — بلا فقاعة مكررة.
+        // إعادة توليد آخر الدور من سؤال المستخدم نفسه — بلا فقاعة مكررة.
         if(!document.documentElement.classList.contains('mobile-ui') && !m._loading && !m.askAllReply && !m.isAskAllPrep){
           const retryBtn = document.createElement('button');
           retryBtn.type = 'button';
-          retryBtn.title = lang === 'ar' ? 'إعادة توليد الرد' : 'Regenerate response';
+          retryBtn.title = t('msgRegenerate');
           retryBtn.setAttribute('aria-label', retryBtn.title);
           retryBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"></path><path d="M4 17v-5h5"></path><path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 9"></path><path d="M17.9 15a7 7 0 0 1-11.5 2.6L4 15"></path></svg>';
           retryBtn.onclick = () => { if(window.chatRegenerateMessage) window.chatRegenerateMessage(mIdx); };
           actionBar.appendChild(retryBtn);
         }
-        // ⋮ more (convert) menu
+        // قائمة الإجراءات الإضافية تأتي بعد فاصل مستقل.
         const moreBtn = document.createElement('button');
+        moreBtnEl = moreBtn;
         moreBtn.type = 'button';
         moreBtn.title = t('moreOptionsTitle') || 'خيارات إضافية';
+        moreBtn.setAttribute('aria-label', moreBtn.title);
+        moreBtn.setAttribute('aria-haspopup', 'menu');
+        moreBtn.setAttribute('aria-expanded', 'false');
+        moreBtn.className = 'msgMoreTrigger';
         moreBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
-        moreBtn.onclick = (e) => { e.stopPropagation(); openMsgMoreMenu(moreBtn, m.content); };
         actionBar.appendChild(moreBtn);
 
-        // 🔗 v631 — أمر عمران: زرّ مشاركة الرسالة محذوف (الإرسال كان رابطًا لا محتوى).
-
-        // 🔊 listen — exact existing speakSmart logic, icon-based
+        // يحتفظ زر الاستماع بمسار الإيقاف واستدعاء انتهاء التشغيل الأصليين.
         const speakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>';
         const stopSpeakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg>';
         const speakBtn = document.createElement('button');
         speakBtn.type = 'button';
-        speakBtn.title = t('speakBtn') || 'استماع';
+        const listenLabel = (t('speakBtn') || 'استماع').replace(/\s*🔊\s*/g, '');
+        speakBtn.title = listenLabel;
+        speakBtn.setAttribute('aria-label', speakBtn.title);
         speakBtn.innerHTML = speakIconSVG;
+        const resetSpeakBtn = () => { speakBtn.innerHTML = speakIconSVG; speakBtn.style.color = ''; speakBtn._speaking = false; speakBtn.title = listenLabel; speakBtn.setAttribute('aria-label', listenLabel); };
         speakBtn.onclick = () => {
           if(speakBtn._speaking){
             stopAllSpeaking();
-            speakBtn.innerHTML = speakIconSVG;
-            speakBtn.style.color = '';
-            speakBtn._speaking = false;
+            resetSpeakBtn();
             return;
           }
           speakBtn._speaking = true;
           speakBtn.innerHTML = stopSpeakIconSVG;
           speakBtn.style.color = 'var(--accent2,#00e0b8)';
-          speakSmart(m.content, null, () => { speakBtn.innerHTML = speakIconSVG; speakBtn.style.color = ''; speakBtn._speaking = false; }, true, msgWordEls);
+          speakBtn.title = t('msgStopListening');
+          speakBtn.setAttribute('aria-label', speakBtn.title);
+          speakSmart(m.content, null, resetSpeakBtn, true, msgWordEls);
         };
-        actionBar.appendChild(speakBtn);
+        actionBar.insertBefore(speakBtn, actionBar.firstChild);
 
-        // 👎 / 👍 feedback (mutually exclusive, in-memory only)
+        // التقييم متبادل الحصر ويُقرأ من الرسالة عند كل فتح للقائمة.
         const thumbDownIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>';
         const thumbUpIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
         const thumbDownBtn = document.createElement('button');
         thumbDownBtn.type = 'button';
         thumbDownBtn.title = t('thumbDownTitle') || 'غير مفيد';
+        thumbDownBtn.setAttribute('aria-label', thumbDownBtn.title);
         thumbDownBtn.innerHTML = thumbDownIconSVG;
         const thumbUpBtn = document.createElement('button');
         thumbUpBtn.type = 'button';
         thumbUpBtn.title = t('thumbUpTitle') || 'مفيد';
+        thumbUpBtn.setAttribute('aria-label', thumbUpBtn.title);
         thumbUpBtn.innerHTML = thumbUpIconSVG;
         thumbDownBtn.onclick = () => {
           m._feedback = m._feedback === 'down' ? null : 'down';
@@ -7300,29 +7325,33 @@ function renderMessages(keepScroll){
         };
         if(m._feedback === 'down') thumbDownBtn.classList.add('msgThumbDownActive');
         if(m._feedback === 'up') thumbUpBtn.classList.add('msgThumbActive');
-        actionBar.appendChild(thumbDownBtn);
-        actionBar.appendChild(thumbUpBtn);
+        moreActions.push({ label: thumbUpBtn.title, icon: thumbUpIconSVG, checkable: true, active: () => m._feedback === 'up', fn: () => thumbUpBtn.click() });
+        moreActions.push({ label: thumbDownBtn.title, icon: thumbDownIconSVG, checkable: true, active: () => m._feedback === 'down', fn: () => thumbDownBtn.click() });
 
-        // 🚩 report inappropriate AI content (Store policy 11.16)
+        // لا يُؤكَّد البلاغ قبل نجاح الطلب، ويُمنع تكراره أثناء الإرسال.
         const flagIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>';
         const reportBtn = document.createElement('button');
         reportBtn.type = 'button';
         reportBtn.title = t('reportMsgTitle') || 'الإبلاغ عن محتوى غير لائق';
+        reportBtn.setAttribute('aria-label', reportBtn.title);
         reportBtn.innerHTML = flagIconSVG;
         reportBtn.onclick = async () => {
-          if(reportBtn._done) return;
+          if(m._reportPending || m._reported) return;
           if(!confirm(t('reportConfirm') || 'هل تريد الإبلاغ عن هذا الرد كمحتوى غير لائق؟')) return;
-          reportBtn._done = true;
-          reportBtn.style.color = '#ff5c6c';
+          m._reportPending = true;
           try{
             let u='guest'; try{ u = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ __swallow(_, "ui:app-04-i18n-state#39"); }
-            fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
-          }catch(e){ /* ignore */ }
-          if(typeof settingsToast === 'function') settingsToast(t('reportSentToast') || 'تم استلام البلاغ — شكرًا لك');
+            const response = await fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
+            if(!response.ok) throw new Error('Report request failed: ' + response.status);
+            const result = await response.json();
+            if(!result || result.ok !== true) throw new Error('Report not accepted');
+            m._reported = true;
+            if(typeof settingsToast === 'function') settingsToast(t('reportSentToast') || 'تم استلام البلاغ — شكرًا لك');
+          }catch(e){
+            if(typeof settingsToast === 'function') settingsToast(t('msgReportFailed'));
+          }finally{ m._reportPending = false; }
         };
-        actionBar.appendChild(reportBtn);
-
-        // ✨ v631 — أمر عمران: أيقونة «شنو أقدر أسوي» محذوفة من شريط الرسالة.
+        moreActions.push({ label: reportBtn.title, icon: flagIconSVG, active: () => !!m._reported, disabled: () => !!(m._reported || m._reportPending), fn: () => reportBtn.click() });
       } else if(!document.documentElement.classList.contains('mobile-ui')){
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
@@ -7333,25 +7362,14 @@ function renderMessages(keepScroll){
         actionBar.appendChild(editBtn);
       }
 
-      // v204 fix: this used to be built directly into the `copyMsgBtn`
-      // variable, which was then REASSIGNED a few lines below to the whole
-      // `actionBar` (so it could be appended alongside the message bubble).
-      // Because the onclick/onmouseenter/onmouseleave closures below
-      // captured that same variable by reference (not by value), by the
-      // time the user actually clicked, `copyMsgBtn` inside the closures
-      // pointed at `actionBar`, not the button — so
-      // `copyMsgBtn.innerHTML = checkIconSVG` wiped out the ENTIRE action
-      // bar's HTML (all buttons for that message, i.e. the whole message's
-      // action row) instead of just swapping the copy icon. Using a
-      // dedicated `copyBtnEl` for the button itself (never reassigned)
-      // fixes this: only the copy icon markup ever changes, nothing else
-      // in the DOM is touched.
+      // يُحدَّث زر النسخ وحده؛ لا تُستبدل أيقونات الشريط الأخرى عند النسخ.
       const copyBtnEl = document.createElement('button');
       copyBtnEl.type = 'button';
       copyBtnEl.onmouseenter = () => { copyBtnEl.style.color = 'var(--accent2,#00e0b8)'; };
       copyBtnEl.onmouseleave = () => { copyBtnEl.style.color = 'var(--muted,#98a0b3)'; };
       copyBtnEl.innerHTML = copyIconSVG;
       copyBtnEl.title = t('copyMsgTitle') || 'نسخ';
+      copyBtnEl.setAttribute('aria-label', copyBtnEl.title);
       copyBtnEl.onclick = async (e) => {
         e.stopPropagation();
         try{
@@ -7363,32 +7381,42 @@ function renderMessages(keepScroll){
             ta.style.position = 'fixed';
             ta.style.opacity = '0';
             document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
+            try{
+              ta.select();
+              if(!document.execCommand('copy')) throw new Error('Copy failed');
+            }finally{ ta.remove(); }
           }
           copyBtnEl.innerHTML = checkIconSVG;
-          setTimeout(() => { copyBtnEl.innerHTML = copyIconSVG; }, 1500);
-        }catch(e2){ /* never let a copy failure affect the rest of the UI */ }
+          const copiedLabel = t('copiedToast');
+          copyBtnEl.title = copiedLabel;
+          copyBtnEl.setAttribute('aria-label', copiedLabel);
+          if(typeof settingsToast === 'function') settingsToast(copiedLabel);
+          clearTimeout(copyBtnEl._copyTimer);
+          copyBtnEl._copyTimer = setTimeout(() => {
+            copyBtnEl.innerHTML = copyIconSVG;
+            copyBtnEl.title = t('copyMsgTitle');
+            copyBtnEl.setAttribute('aria-label', copyBtnEl.title);
+          }, 1500);
+        }catch(e2){
+          if(typeof settingsToast === 'function') settingsToast(t('msgCopyFailed'));
+        }
       };
-      actionBar.appendChild(copyBtnEl);
-      /* v-share-reply (المالك ٤ سبتمبر: «شعار المشاركة غير موجود في آخر شي»): كل ردّ نصّي يحمل زرّ
-         المشاركة في الموضع الأخير نفسه الذي يحمله ردّ الصورة؛ يشارك نصّ الردّ نفسه لا رابطًا.
-         ردود الصور لها زرّها الخاص من __omranImgTools فلا تكرار. */
-      /* الدالة تُعرَّف في جزء لاحق من الحزمة (app-05-share-text) — لا نشترطها وقت الرسم الأول للسجل */
+      if(m.role === 'user') actionBar.appendChild(copyBtnEl);
+      else actionBar.insertBefore(copyBtnEl, actionBar.firstChild);
+      /* مشاركة الردّ النصّي ضمن القائمة؛ الصور لها زرّ المشاركة الخاص فلا نكرّره. */
       if(m.role !== 'user' && !m._loading
          && !((m.attachments || []).some(a => a && (a.isImage || a.isVideo)))
          && !(typeof m.content === 'string' && m.content.indexOf('__IMG_') !== -1)){
-        const shareBtnEl = document.createElement('button');
-        shareBtnEl.type = 'button'; shareBtnEl.className = 'oSendOut oShareText';
-        shareBtnEl.title = (t('msgShareReply') !== 'msgShareReply' ? t('msgShareReply') : (lang === 'ar' ? 'مشاركة الردّ' : 'Share reply'));
-        shareBtnEl.setAttribute('aria-label', shareBtnEl.title);
-        shareBtnEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:17px;height:17px;display:block"><circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/></svg>';
-        shareBtnEl.onclick = (e) => { e.stopPropagation(); try{ if(typeof window.omranShareText === 'function') window.omranShareText((textDiv && textDiv.innerText) || String(m.content || ''), shareBtnEl); }catch(err){ /* guard-ok */ } };
-        actionBar.appendChild(shareBtnEl);
+        const shareIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/></svg>';
+        moreActions.unshift({ label: t('msgShareReply'), icon: shareIconSVG, fn: (menuBtn) => {
+          if(typeof window.omranShareText === 'function') window.omranShareText((textDiv && textDiv.innerText) || String(m.content || ''), menuBtn);
+        } });
       }
-      // زر النسخ يبقى تحت رسالة المستخدم على الجوال؛ بقية الإجراءات لا تظهر
-      // للمستخدم هناك، لذلك لا يعود الشريط طافيًا أو مزدحمًا.
+      if(moreBtnEl) moreBtnEl.onclick = (e) => {
+        e.stopPropagation();
+        openMsgMoreMenu(moreBtnEl, m.content, moreActions);
+      };
+      // يحتفظ المستخدم بزرّ النسخ؛ وتبقى إعادة التوليد مخفية على الجوّال.
       copyMsgBtn = actionBar;
     }
     if(m.code && m.providerLabel){
@@ -8881,8 +8909,32 @@ function msgSaveExport(blob, filename){
   msgDownloadBlob(blob, filename);
 }
 let __msgMoreMenuOpen = null;
+let __msgMoreMenuAnchor = null;
+let __msgMoreMenuCounter = 0;
 function closeMsgMoreMenu(){
   if(__msgMoreMenuOpen){ __msgMoreMenuOpen.remove(); __msgMoreMenuOpen = null; }
+  if(__msgMoreMenuAnchor){
+    __msgMoreMenuAnchor.setAttribute('aria-expanded', 'false');
+    __msgMoreMenuAnchor.removeAttribute('aria-controls');
+    __msgMoreMenuAnchor = null;
+  }
+  document.removeEventListener('keydown', __msgMoreMenuKeydown);
+  window.removeEventListener('resize', closeMsgMoreMenu);
+  window.removeEventListener('scroll', closeMsgMoreMenu);
+}
+function __msgMoreMenuKeydown(e){
+  if(!__msgMoreMenuOpen || !__msgMoreMenuAnchor) return;
+  if(e.key === 'Escape'){
+    e.preventDefault();
+    const anchor = __msgMoreMenuAnchor;
+    closeMsgMoreMenu();
+    anchor.focus();
+  }else if(e.key === 'Tab'){
+    const buttons = Array.from(__msgMoreMenuOpen.querySelectorAll('button:not(:disabled)'));
+    if(!buttons.length) return;
+    if(e.shiftKey && document.activeElement === buttons[0]){ e.preventDefault(); buttons[buttons.length - 1].focus(); }
+    else if(!e.shiftKey && document.activeElement === buttons[buttons.length - 1]){ e.preventDefault(); buttons[0].focus(); }
+  }
 }
 document.addEventListener('click', closeMsgMoreMenu);
 // ✨ v363: قدرات التطبيق داخل المحادثة نفسها — أيقونة سريعة تحت كل رد
@@ -8953,34 +9005,63 @@ function openCapabilitiesMenu(anchorBtn){
   __msgMoreMenuOpen = menu;
 }
 
-function openMsgMoreMenu(anchorBtn, text){
+function openMsgMoreMenu(anchorBtn, text, actions){
+  if(__msgMoreMenuAnchor === anchorBtn){ closeMsgMoreMenu(); return; }
   closeMsgMoreMenu();
   const menu = document.createElement('div');
-  menu.className = 'msgMoreMenu';
-  const items = [
+  menu.className = 'msgMoreMenu msgReplyMoreMenu';
+  menu.id = 'msgMoreMenu-' + (++__msgMoreMenuCounter);
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', t('msgToolbarLabel'));
+  const items = (actions || []).concat([
     { label: t('convertToPdf') || 'تحويل إلى PDF', fn: () => exportReplyAsPdf(text) },
     { label: t('convertToWord') || 'تحويل إلى Word', fn: () => exportReplyAsWord(text) },
     { label: t('convertToImage') || 'تحويل إلى صورة', fn: () => exportReplyAsImage(text) },
     { label: t('downloadTxt') || 'تنزيل نص TXT', fn: () => exportReplyAsTxt(text) },
-  ];
-  items.forEach(it => {
+  ]);
+  items.forEach((it, index) => {
+    if(index === (actions || []).length && index){
+      const divider = document.createElement('div');
+      divider.className = 'msgMoreDivider';
+      divider.setAttribute('role', 'separator');
+      menu.appendChild(divider);
+    }
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = it.label;
-    b.onclick = (e) => { e.stopPropagation(); it.fn(); closeMsgMoreMenu(); };
+    b.setAttribute('role', 'menuitem');
+    b.title = it.label;
+    b.setAttribute('aria-label', it.label);
+    if(it.checkable){
+      b.setAttribute('role', 'menuitemcheckbox');
+      b.setAttribute('aria-checked', it.active && it.active() ? 'true' : 'false');
+    }
+    if(it.icon) b.innerHTML = it.icon;
+    const label = document.createElement('span');
+    label.textContent = it.label;
+    b.appendChild(label);
+    if(it.active && it.active()) b.classList.add('msgMoreActive');
+    if(it.disabled && it.disabled()) b.disabled = true;
+    b.onclick = (e) => { e.stopPropagation(); it.fn(b); closeMsgMoreMenu(); };
     menu.appendChild(b);
   });
   document.body.appendChild(menu);
   const rect = anchorBtn.getBoundingClientRect();
   const menuW = menu.offsetWidth || 170;
   const menuH = menu.offsetHeight || 180;
-  let left = rect.left + window.scrollX;
-  if(left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
-  menu.style.left = Math.max(8, left) + 'px';
-  let top = rect.top + window.scrollY - menuH - 6;
-  if(top < window.scrollY + 8) top = rect.bottom + window.scrollY + 4;
-  menu.style.top = top + 'px';
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuW - 8));
+  menu.style.left = left + 'px';
+  const above = rect.top - menuH - 6;
+  const below = rect.bottom + 4;
+  menu.style.top = Math.max(8, Math.min(above >= 8 ? above : below, window.innerHeight - menuH - 8)) + 'px';
   __msgMoreMenuOpen = menu;
+  __msgMoreMenuAnchor = anchorBtn;
+  anchorBtn.setAttribute('aria-controls', menu.id);
+  anchorBtn.setAttribute('aria-expanded', 'true');
+  document.addEventListener('keydown', __msgMoreMenuKeydown);
+  window.addEventListener('resize', closeMsgMoreMenu);
+  window.addEventListener('scroll', closeMsgMoreMenu);
+  const first = menu.querySelector('button:not(:disabled)');
+  if(first) first.focus();
 }
 
 /* v-code-viewer: عارض قراءة داخل تبويب «الكود» — ترقيم أسطر وتلوين خفيف.
@@ -22621,7 +22702,7 @@ function __showImgLoading(el, ar, en){
      prefers-reduced-motion. معاينة: https://claude.ai/artifact/PG7aNWPP9TXwohqE8KaVrJ */
   if(!document.getElementById('omran-imggen-css2')){
     const st = document.createElement('style'); st.id = 'omran-imggen-css2';
-    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGen{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}html[data-mode=\"light\"] .omGenTxt{color:#8a6500;text-shadow:none}html[data-mode=\"light\"] .omDot{left:var(--lx)!important;top:var(--ly)!important;animation-delay:var(--ld)}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
+    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGen{background:radial-gradient(circle,rgba(255,255,255,.98) 0 64%,rgba(255,251,238,.9) 75%,rgba(255,255,255,0) 76%);border:0;border-radius:50%;box-shadow:none;overflow:visible}html[data-mode=\"light\"] .omGenTxt{top:10%;right:auto;left:50%;transform:translateX(-50%);white-space:nowrap;color:#8a6500;text-shadow:none}html[data-mode=\"light\"] .omDot{left:var(--lx)!important;top:var(--ly)!important;animation-delay:var(--ld)}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
     document.head.appendChild(st);
   }
   const __N = 13, __steps = 2 * (__N - 1);
@@ -28717,12 +28798,29 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + '.pstyleHero .pstyleHeroT{position:absolute; width:19%; aspect-ratio:1; border-radius:50%; overflow:hidden; border:2px solid rgba(212,175,55,.75); background:#17171b; box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; transform:translate(-50%,-50%); transition:transform .18s, box-shadow .18s;}'
       + '.pstyleHero .pstyleHeroT:hover{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 22px rgba(212,175,55,.6);}'
       + '.pstyleHero .pstyleHeroT img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
-      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}';
+      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}'
+      /* v-psheet-header-collapse (طلب المالك: الرأس يرفع كتابته ويصغر عند تمرير المعرض لأسفل، بدل مساحة ثابتة كبيرة) */
+      + '#portraitStyleSheetHeader{transition:padding .22s ease;}'
+      + '#portraitStyleSheetTitle{transition:font-size .22s ease;}'
+      + '#portraitStyleSheetCount{transition:opacity .18s ease, max-height .22s ease, margin-top .22s ease; overflow:hidden; max-height:16px;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall{padding-top:calc(6px + max(env(safe-area-inset-top,0px), 30px)) !important; padding-bottom:8px !important;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetTitle{font-size:14.5px !important;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}';
     document.head.appendChild(st);
+  }
+  /* الرأس (العنوان + العدّاد) يصغر ويرتفع فور بدء تمرير المعرض، ويعود لحجمه عند القمّة */
+  function bindPsheetHeaderCollapse(scroller){
+    if(!scroller || scroller.__pstyleHeaderBound) return;
+    scroller.__pstyleHeaderBound = true;
+    scroller.addEventListener('scroll', function(){
+      const header = document.getElementById('portraitStyleSheetHeader');
+      if(header) header.classList.toggle('pstyleHeaderSmall', scroller.scrollTop > 20);
+    }, { passive: true });
   }
   function ensurePsheetChrome(){
     ensurePsheetCss();
     const scroller = styleCardsGrid.parentElement; if(!scroller) return;
+    bindPsheetHeaderCollapse(scroller);
     let hero = document.getElementById('portraitStyleHero');
     if(!hero){
       hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';

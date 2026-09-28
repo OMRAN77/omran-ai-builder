@@ -489,8 +489,32 @@ function msgSaveExport(blob, filename){
   msgDownloadBlob(blob, filename);
 }
 let __msgMoreMenuOpen = null;
+let __msgMoreMenuAnchor = null;
+let __msgMoreMenuCounter = 0;
 function closeMsgMoreMenu(){
   if(__msgMoreMenuOpen){ __msgMoreMenuOpen.remove(); __msgMoreMenuOpen = null; }
+  if(__msgMoreMenuAnchor){
+    __msgMoreMenuAnchor.setAttribute('aria-expanded', 'false');
+    __msgMoreMenuAnchor.removeAttribute('aria-controls');
+    __msgMoreMenuAnchor = null;
+  }
+  document.removeEventListener('keydown', __msgMoreMenuKeydown);
+  window.removeEventListener('resize', closeMsgMoreMenu);
+  window.removeEventListener('scroll', closeMsgMoreMenu);
+}
+function __msgMoreMenuKeydown(e){
+  if(!__msgMoreMenuOpen || !__msgMoreMenuAnchor) return;
+  if(e.key === 'Escape'){
+    e.preventDefault();
+    const anchor = __msgMoreMenuAnchor;
+    closeMsgMoreMenu();
+    anchor.focus();
+  }else if(e.key === 'Tab'){
+    const buttons = Array.from(__msgMoreMenuOpen.querySelectorAll('button:not(:disabled)'));
+    if(!buttons.length) return;
+    if(e.shiftKey && document.activeElement === buttons[0]){ e.preventDefault(); buttons[buttons.length - 1].focus(); }
+    else if(!e.shiftKey && document.activeElement === buttons[buttons.length - 1]){ e.preventDefault(); buttons[0].focus(); }
+  }
 }
 document.addEventListener('click', closeMsgMoreMenu);
 // ✨ v363: قدرات التطبيق داخل المحادثة نفسها — أيقونة سريعة تحت كل رد
@@ -561,34 +585,63 @@ function openCapabilitiesMenu(anchorBtn){
   __msgMoreMenuOpen = menu;
 }
 
-function openMsgMoreMenu(anchorBtn, text){
+function openMsgMoreMenu(anchorBtn, text, actions){
+  if(__msgMoreMenuAnchor === anchorBtn){ closeMsgMoreMenu(); return; }
   closeMsgMoreMenu();
   const menu = document.createElement('div');
-  menu.className = 'msgMoreMenu';
-  const items = [
+  menu.className = 'msgMoreMenu msgReplyMoreMenu';
+  menu.id = 'msgMoreMenu-' + (++__msgMoreMenuCounter);
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', t('msgToolbarLabel'));
+  const items = (actions || []).concat([
     { label: t('convertToPdf') || 'تحويل إلى PDF', fn: () => exportReplyAsPdf(text) },
     { label: t('convertToWord') || 'تحويل إلى Word', fn: () => exportReplyAsWord(text) },
     { label: t('convertToImage') || 'تحويل إلى صورة', fn: () => exportReplyAsImage(text) },
     { label: t('downloadTxt') || 'تنزيل نص TXT', fn: () => exportReplyAsTxt(text) },
-  ];
-  items.forEach(it => {
+  ]);
+  items.forEach((it, index) => {
+    if(index === (actions || []).length && index){
+      const divider = document.createElement('div');
+      divider.className = 'msgMoreDivider';
+      divider.setAttribute('role', 'separator');
+      menu.appendChild(divider);
+    }
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = it.label;
-    b.onclick = (e) => { e.stopPropagation(); it.fn(); closeMsgMoreMenu(); };
+    b.setAttribute('role', 'menuitem');
+    b.title = it.label;
+    b.setAttribute('aria-label', it.label);
+    if(it.checkable){
+      b.setAttribute('role', 'menuitemcheckbox');
+      b.setAttribute('aria-checked', it.active && it.active() ? 'true' : 'false');
+    }
+    if(it.icon) b.innerHTML = it.icon;
+    const label = document.createElement('span');
+    label.textContent = it.label;
+    b.appendChild(label);
+    if(it.active && it.active()) b.classList.add('msgMoreActive');
+    if(it.disabled && it.disabled()) b.disabled = true;
+    b.onclick = (e) => { e.stopPropagation(); it.fn(b); closeMsgMoreMenu(); };
     menu.appendChild(b);
   });
   document.body.appendChild(menu);
   const rect = anchorBtn.getBoundingClientRect();
   const menuW = menu.offsetWidth || 170;
   const menuH = menu.offsetHeight || 180;
-  let left = rect.left + window.scrollX;
-  if(left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
-  menu.style.left = Math.max(8, left) + 'px';
-  let top = rect.top + window.scrollY - menuH - 6;
-  if(top < window.scrollY + 8) top = rect.bottom + window.scrollY + 4;
-  menu.style.top = top + 'px';
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuW - 8));
+  menu.style.left = left + 'px';
+  const above = rect.top - menuH - 6;
+  const below = rect.bottom + 4;
+  menu.style.top = Math.max(8, Math.min(above >= 8 ? above : below, window.innerHeight - menuH - 8)) + 'px';
   __msgMoreMenuOpen = menu;
+  __msgMoreMenuAnchor = anchorBtn;
+  anchorBtn.setAttribute('aria-controls', menu.id);
+  anchorBtn.setAttribute('aria-expanded', 'true');
+  document.addEventListener('keydown', __msgMoreMenuKeydown);
+  window.addEventListener('resize', closeMsgMoreMenu);
+  window.addEventListener('scroll', closeMsgMoreMenu);
+  const first = menu.querySelector('button:not(:disabled)');
+  if(first) first.focus();
 }
 
 /* v-code-viewer: عارض قراءة داخل تبويب «الكود» — ترقيم أسطر وتلوين خفيف.

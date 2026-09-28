@@ -155,6 +155,22 @@ function toResponsesBody(ab) {
 
 // v-oa-responses: بثّ /v1/responses (أحداث response.*) ← أحداث أنثروبيك بالأسطر نفسها التي تقرؤها الحلقة.
 // عناصر التفكير لا تُمرَّر (لا يُبثّ منها شيء للمستخدم)؛ وسائط النداء تصل دلتا أو كاملةً عند done — مرّة واحدة.
+// رفض البثّ عبر reader.read() يصل إلى catch المحادثة كـ chat error؛ لا تُنهِ رسالةً ناجحةً عند سقوط المزوّد.
+function streamProtocolError(reason, detail) {
+  const err = new Error('OA_STREAM_PROTOCOL_ERROR: ' + reason + (detail ? ' — ' + String(detail).slice(0, 240) : ''));
+  err.code = 'OA_STREAM_PROTOCOL_ERROR';
+  return err;
+}
+function providerStreamError(error) {
+  const e = error || {};
+  return streamProtocolError('provider error', [e.type, e.code, e.message].filter(Boolean).join(': ') || 'unknown error');
+}
+function validToolArguments(args) {
+  try {
+    const input = JSON.parse(args);
+    return !!input && typeof input === 'object' && !Array.isArray(input);
+  } catch (e) { return false; }
+}
 function responsesToAnthropicStream(upstreamBody, fallbackModel) {
   const enc = new TextEncoder();
   const dec = new TextDecoder();
@@ -166,15 +182,16 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
       let started = false;
       let next = 0;
       let textIdx = -1;
-      const calls = new Map(); // output_index ← { idx, sent }
+      const calls = new Map(); // output_index ← { idx, sent, args, done }
       let stop = null;
       let usage = null;
+      let terminal = false;
       const begin = (model) => { if (!started) { started = true; emit({ type: 'message_start', message: { model: model || fallbackModel, usage: { input_tokens: 0, output_tokens: 0 } } }); } };
       const closeText = () => { if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; } };
       const openCall = (oi, item) => {
         closeText();
         const idx = next++;
-        const c = { idx, sent: false };
+        const c = { idx, sent: false, args: '', done: false };
         calls.set(oi, c);
         emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id: String(item.call_id || item.id || ('call_' + idx)), name: String(item.name || ''), input: {} } });
         return c;
@@ -192,8 +209,10 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
             const payload = line.slice(5).trim();
             if (!payload || payload === '[DONE]') continue;
             let ev;
-            try { ev = JSON.parse(payload); } catch (e) { continue; }
+            try { ev = JSON.parse(payload); } catch (e) { throw streamProtocolError('invalid SSE JSON'); }
             const t = String(ev.type || '');
+            if (t === 'error' || t === 'response.failed') throw providerStreamError((ev.response && ev.response.error) || ev.error || ev);
+            if (terminal) continue;
             if (t === 'response.created' || t === 'response.in_progress') { begin(ev.response && ev.response.model); continue; }
             begin('');
             if (t === 'response.output_text.delta' && typeof ev.delta === 'string' && ev.delta) {
@@ -201,22 +220,31 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
               emit({ type: 'content_block_delta', index: textIdx, delta: { type: 'text_delta', text: ev.delta } });
             } else if (t === 'response.output_item.added' && ev.item && ev.item.type === 'function_call') {
               const c = openCall(ev.output_index, ev.item);
-              if (ev.item.arguments) { emit({ type: 'content_block_delta', index: c.idx, delta: { type: 'input_json_delta', partial_json: String(ev.item.arguments) } }); c.sent = true; }
+              if (ev.item.arguments) { c.args = String(ev.item.arguments); emit({ type: 'content_block_delta', index: c.idx, delta: { type: 'input_json_delta', partial_json: c.args } }); c.sent = true; }
             } else if (t === 'response.function_call_arguments.delta' && ev.delta) {
               const c = calls.get(ev.output_index);
-              if (c) { emit({ type: 'content_block_delta', index: c.idx, delta: { type: 'input_json_delta', partial_json: String(ev.delta) } }); c.sent = true; }
+              if (c) { c.args += String(ev.delta); emit({ type: 'content_block_delta', index: c.idx, delta: { type: 'input_json_delta', partial_json: String(ev.delta) } }); c.sent = true; }
             } else if (t === 'response.output_item.done' && ev.item && ev.item.type === 'function_call') {
               const c = calls.get(ev.output_index) || openCall(ev.output_index, ev.item);
-              if (!c.sent && ev.item.arguments) { emit({ type: 'content_block_delta', index: c.idx, delta: { type: 'input_json_delta', partial_json: String(ev.item.arguments) } }); c.sent = true; }
+              if (!c.sent && ev.item.arguments) { c.args = String(ev.item.arguments); emit({ type: 'content_block_delta', index: c.idx, delta: { type: 'input_json_delta', partial_json: c.args } }); c.sent = true; }
+              c.done = !ev.item.status || ev.item.status === 'completed';
             } else if (t === 'response.output_item.done' && ev.item && ev.item.type === 'message') {
               closeText();
-            } else if (t === 'response.completed' || t === 'response.incomplete' || t === 'response.failed') {
+            } else if (t === 'response.completed' || t === 'response.incomplete') {
               const r = ev.response || {};
               if (r.usage) usage = r.usage;
               const why = r.incomplete_details && r.incomplete_details.reason;
-              if (t === 'response.incomplete' && /max_output_tokens/.test(String(why || ''))) stop = 'max_tokens';
+              if (t === 'response.incomplete') {
+                if (why !== 'max_output_tokens' || calls.size) throw streamProtocolError('response.incomplete', why || 'unknown reason');
+                stop = 'max_tokens';
+              }
+              terminal = true;
             }
           }
+        }
+        if (!terminal) throw streamProtocolError('stream ended without response terminal event');
+        for (const c of calls.values()) {
+          if (!c.done || !validToolArguments(c.args)) throw streamProtocolError('incomplete function_call arguments');
         }
         begin('');
         closeText();
@@ -254,8 +282,10 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
       let next = 0;          // فهرس الكتلة التالية
       let textIdx = -1;      // كتلة النصّ المفتوحة
       const toolIdx = new Map(); // فهرس نداء OpenAI ← فهرس كتلة أنثروبيك
+      const toolArgs = new Map();
       let stop = null;
       let usage = null;
+      let doneMarker = false;
       const begin = (model) => { if (!started) { started = true; emit({ type: 'message_start', message: { model: model || fallbackModel, usage: { input_tokens: 0, output_tokens: 0 } } }); } };
       const closeText = () => { if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; } };
       try {
@@ -269,9 +299,12 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
             const line = raw.trim();
             if (!line.startsWith('data:')) continue;
             const payload = line.slice(5).trim();
-            if (!payload || payload === '[DONE]') continue;
+            if (!payload) continue;
+            if (payload === '[DONE]') { doneMarker = true; continue; }
             let ch;
-            try { ch = JSON.parse(payload); } catch (e) { continue; }
+            try { ch = JSON.parse(payload); } catch (e) { throw streamProtocolError('invalid SSE JSON'); }
+            if (ch.error || ch.type === 'error') throw providerStreamError(ch.error || ch);
+            if (doneMarker) continue;
             begin(ch.model);
             const u = ch.usage || (ch.x_groq && ch.x_groq.usage);
             if (u) usage = u;
@@ -288,12 +321,22 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
                 closeText();
                 const idx = next++;
                 toolIdx.set(k, idx);
+                toolArgs.set(k, '');
                 emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id: tc.id || ('call_' + idx), name: (tc.function && tc.function.name) || '', input: {} } });
               }
               const args = tc.function && tc.function.arguments;
-              if (args) emit({ type: 'content_block_delta', index: toolIdx.get(k), delta: { type: 'input_json_delta', partial_json: String(args) } });
+              if (args) {
+                toolArgs.set(k, toolArgs.get(k) + String(args));
+                emit({ type: 'content_block_delta', index: toolIdx.get(k), delta: { type: 'input_json_delta', partial_json: String(args) } });
+              }
             }
             if (c.finish_reason) stop = STOP[c.finish_reason] || 'end_turn';
+          }
+        }
+        if (!doneMarker || !stop) throw streamProtocolError('stream ended without [DONE] and finish_reason');
+        if (stop === 'tool_use') {
+          for (const args of toolArgs.values()) {
+            if (!validToolArguments(args)) throw streamProtocolError('incomplete tool arguments JSON');
           }
         }
         begin('');
