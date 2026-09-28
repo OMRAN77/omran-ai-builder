@@ -3,7 +3,8 @@
 // يقرأ assets/خلفيات/*.jpg ويكتب: مصغّرات/<الاسم> (٣٦٠ بكسل عرضًا) وفهرس.json
 // (الملفّ، المقاس، اللون المهيمن، فاتحة؟) الذي تقرؤه الواجهة — بلا قائمة يدويّة في الكود.
 //
-// لإضافة خلفيّة: ضع الصورة في assets/خلفيات/ باسم «NN-اسم.jpg» (NN = ترتيب العرض) ثمّ:
+// لإضافة خلفيّة: ضع الصورة في assets/خلفيات/ باسم «NNN-اسم.jpg» (NNN = ترتيب العرض بثلاث خانات:
+// 001، 042، 109 — الفرز حرفيّ فبلا الأصفار يسبق 100 الرقم 93) ثمّ:
 //   node scripts/خلفيات.mjs            → مصغّرات + فهرس فقط (لا يمسّ الصور)
 //   node scripts/خلفيات.mjs --قص       → قبلها: أيّ صورة تبدو لقطة شاشة هاتف (إطار داكن موحّد
 //                                        حول مستطيل أضيق من ٨٠٪ من العرض) تُقصّ إلى الصورة الداخليّة
@@ -155,6 +156,27 @@ const PAGE_FN = async ({ src, crop, thumbW }) => {
         box = [Math.round(X0), Math.round(Y0), Math.round(X1 - X0), Math.round(Y1 - Y0)];
       }
     }
+  }
+  if (box) {
+    // أشرطة موحّدة اللون (بيضاء أو سوداء) على حوافّ المستطيل — منشور ضيّق داخل إطار مربّع — تُقصّ
+    // (بحدّ ٤٠٪ من كلّ بُعد حتّى لا تأكل سماءً سوداء حقيقيّة)
+    const fx = full.getContext('2d');
+    const uni = (x, y, ww, hh) => {
+      const d = fx.getImageData(x, y, ww, hh).data;
+      let s = 0, s2 = 0; const n = d.length / 4;
+      for (let k = 0; k < d.length; k += 4) { const l = 0.299 * d[k] + 0.587 * d[k + 1] + 0.114 * d[k + 2]; s += l; s2 += l * l; }
+      const m = s / n, sd = Math.sqrt(Math.max(0, s2 / n - m * m));
+      return sd < 4 && (m > 230 || m < 22);
+    };
+    let [bx, by, bwid, bhei] = box;
+    const st = Math.max(2, Math.round(bwid / 200)), minW = Math.round(bwid * 0.6), minH = Math.round(bhei * 0.6);
+    // الأشرطة الجانبيّة تُفحص تحت أعلى ١٢٪ — شارة العدّاد تجلس على الشريط نفسه
+    const top12 = Math.round(bhei * 0.12);
+    while (bwid > minW && uni(bx, by + top12, st, bhei - top12)) { bx += st; bwid -= st; }
+    while (bwid > minW && uni(bx + bwid - st, by + top12, st, bhei - top12)) bwid -= st;
+    while (bhei > minH && uni(bx, by, bwid, st)) { by += st; bhei -= st; }
+    while (bhei > minH && uni(bx, by + bhei - st, bwid, st)) bhei -= st;
+    box = [bx, by, bwid, bhei];
   }
   let out = full;
   if (box) {

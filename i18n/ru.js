@@ -239,7 +239,7 @@ I18N['ru'] = {
     "themeUserBubbleLabel": "Цвет пузыря вашего сообщения",
     "themeSectionLabel": "🎨 Настройка цветов и внешнего вида",
     "bg3dSectionLabel": "🌌 Анимированный 3D-фон",
-    "bgImgSectionLabel": "🖼️ Обои экрана",
+    "bgImgSectionLabel": "Обои экрана",
     "bgImgNone": "Без обоев",
     "bg3dAutoLabel": "🔀 Автосмена фона каждую минуту",
     "deleteProject": "Удалить проект",

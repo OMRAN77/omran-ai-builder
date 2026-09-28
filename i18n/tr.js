@@ -238,7 +238,7 @@ I18N['tr'] = {
     "themeUserBubbleLabel": "Mesaj balonunuzun rengi",
     "themeSectionLabel": "🎨 Renkleri ve görünümü özelleştir",
     "bg3dSectionLabel": "🌌 Animasyonlu 3D arka plan",
-    "bgImgSectionLabel": "🖼️ Ekran duvar kağıtları",
+    "bgImgSectionLabel": "Ekran duvar kağıtları",
     "bgImgNone": "Duvar kağıdı yok",
     "bg3dAutoLabel": "🔀 Arka planları her dakika otomatik değiştir",
     "deleteProject": "Projeyi sil",

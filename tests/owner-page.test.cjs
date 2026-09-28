@@ -49,11 +49,11 @@ test('٢. صفّ «صفحة المالك» أوّل القائمة للمالك 
     return { rows, open: g(document, (k) => (k === 'aiapp_auth_token' ? '' : user), null, () => {}, shown, {}, (k) => k, () => new Promise(() => {})) };
   };
   const owner = run('Omran');
-  assert.equal(owner.rows.length, 14); // v-settings-groups: ١٣ قسمًا + صفّ المالك (صفّ الإيميل للمسجَّل فقط)
+  assert.equal(owner.rows.length, 15); // v-settings-groups: ١٤ قسمًا (v-bg-images-row أضاف «خلفيّات الشاشة») + صفّ المالك (صفّ الإيميل للمسجَّل فقط)
   assert.equal(owner.rows[0].className, 'settingsNavRow settingsNavOwner');
   assert.equal(owner.rows[0]['.settingsNavText'].textContent, 'صفحة المالك');
   const guest = run('ali');
-  assert.equal(guest.rows.length, 13);
+  assert.equal(guest.rows.length, 14); // ١٤ قسمًا بعد v-bg-images-row
   assert.ok(guest.rows.every(r => !/Owner/.test(r.className)));
   assert.deepEqual(guest.open('ownerSection'), ['home'], 'غير المالك يُعاد للقائمة');
 });
@@ -66,7 +66,7 @@ test('٣. العنوان بالـ١٤ لغة، والقائمة تُعاد بن�
   }
   assert.match(read('js/app-01-boot-auth.js'), /if\(typeof renderSettingsNavList === 'function'\) renderSettingsNavList\(\);/);
   const html = read('index.html');
-  assert.match(html, /js\/partials-settings\.js\?v=677/);
+  assert.match(html, /js\/partials-settings\.js\?v=678/);
   assert.match(html, /css\/tokens\.css\?v=727/);
-  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=700'/); // وسم تحميل اللغات الحاليّ
+  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=701'/); // وسم تحميل اللغات الحاليّ
 });

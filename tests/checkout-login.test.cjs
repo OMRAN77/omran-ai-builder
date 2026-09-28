@@ -135,8 +135,8 @@ test('نافذة الدفع: زرّ صغير للتجديد التلقائيّ،
   assert.doesNotMatch(row[0], /\bchecked\b/);
   assert.match(row[0], /data-i18n="checkoutAutoRenew"/);
   assert.ok(html.indexOf('checkoutAutoRenewRow') > html.indexOf('startStripeCheckout()'), 'تحت زرّ البطاقة');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=677'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=700'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=678'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=701'"));
 });
 
 test('النصّان الجديدان في ١٤ لغة بلا اسم مزوّد', () => {

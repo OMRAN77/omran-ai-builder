@@ -32,6 +32,10 @@ test('١. الفهرس مطابق للمجلّد: كلّ صورة فيه بمق�
   const files = images();
   assert.ok(files.length >= 16, 'توقّعت ١٦ خلفيّة على الأقلّ');
   assert.deepEqual(m.صور.map((s) => s.ملف), files, 'الفهرس لا يطابق الملفّات — شغّل node scripts/خلفيات.mjs');
+  // الترتيب حرفيّ: ثلاث خانات لكلّ رقم وإلّا سبق 100 الرقم 93
+  for (const f of files) assert.match(f, /^\d{3}-/, f + ' — الاسم يبدأ برقم من ثلاث خانات');
+  const nums = files.map((f) => Number(f.slice(0, 3)));
+  assert.deepEqual(nums, [...nums].sort((a, b) => a - b), 'ترتيب الفهرس ليس رقميًّا');
   for (const s of m.صور) {
     const dim = jpegSize(path.join(DIR, s.ملف));
     assert.ok(dim, s.ملف + ' ليست JPEG صالحة');
@@ -61,15 +65,24 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   const html = rd('index.html');
   assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=2">/, 'CSS الخلفيّات');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
-  assert.match(html, /partials-settings\.js\?v=677/, 'وسم الإعدادات ارتفع');
-  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=700'/, 'وسم اللغات ارتفع');
+  assert.match(html, /partials-settings\.js\?v=678/, 'وسم الإعدادات ارتفع');
+  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=701'/, 'وسم اللغات ارتفع');
   for (const old of ['js/app-25-خلفيات-مدير.js', 'js/partials-خلفيات-قسم.js']) assert.ok(!fs.existsSync(path.join(root, old)), old + ' يجب أن يُحذف');
 
   const settings = rd('js/partials-settings.js');
-  assert.match(settings, /toggleSubRow\('bgImgSub'\); if\(window\.خلفيات\) window\.خلفيات\.افتح\(\);/, 'الصفّ يفتح الشبكة');
-  assert.match(settings, /data-i18n="bgImgSectionLabel"/, 'عنوان الصفّ مترجَم');
-  assert.match(settings, /id="bgImgSubContent"[\s\S]*?id="bgImgGrid" class="bgImgGrid"/, 'حاوية الشبكة');
-  assert.doesNotMatch(settings, /backgroundsSub|خلفيات-قسم/, 'بقايا الصفّ القديم');
+  // v-bg-images-row: صفّ مستقلّ في قائمة الإعدادات (مجموعة المظهر) لا مطويّ داخل «تخصيص الألوان»
+  assert.match(settings, /<div id="bgImgSection" class="settingsPageSection"/, 'قسم مستقلّ');
+  assert.match(settings, /toggleSettingsSection\('bgImgSection'\); if\(window\.خلفيات\) window\.خلفيات\.افتح\(\);/, 'نقر الرأس يفتح الشبكة');
+  assert.match(settings, /<h3[^>]*data-i18n="bgImgSectionLabel">خلفيّات الشاشة<\/h3>/, 'العنوان بلا إيموجي');
+  assert.match(settings, /id="bgImgSectionContent"[\s\S]*?id="bgImgGrid" class="bgImgGrid"/, 'حاوية الشبكة');
+  assert.doesNotMatch(settings, /bgImgSub|backgroundsSub|خلفيات-قسم/, 'بقايا الصفّ المطويّ القديم');
+  const themeBlock = settings.slice(settings.indexOf('<div id="themeSection"'), settings.indexOf('<div id="bgImgSection"'));
+  assert.ok(!themeBlock.includes('bgImgGrid'), 'الشبكة لم تعد داخل قسم المظهر');
+  const app05 = rd('js/app-05-ui.js');
+  assert.match(app05, /const SETTINGS_NAV_IDS = \[[^\]]*'themeSection','bgImgSection','fontFamilySection'/, 'مسجَّل في قائمة الأقسام بعد المظهر');
+  assert.match(app05, /\['setGrpAppearance', \['themeSection', 'bgImgSection', 'fontFamilySection'/, 'في مجموعة المظهر بعد «تخصيص الألوان»');
+  assert.match(app05, /bgImgSection: `<svg [^`]*<rect x="3" y="3" width="18" height="18" rx="2" ry="2"><\/rect><circle cx="8\.5" cy="8\.5" r="1\.5"><\/circle><polyline points="21 15 16 10 5 21"><\/polyline><\/svg>`/, 'أيقونة SVG رسميّة (صورة) لا إيموجي');
+  assert.match(app05, /if\(sid === 'bgImgSection' && window\.خلفيات\) window\.خلفيات\.افتح\(\);/, 'فتح الصفحة من القائمة يبني الشبكة');
 
   assert.match(rd('js/app.bundle.js'), /window\.خلفيات = \{ افتح: افتح, طبّق: طبّق, استرجع: استرجع \};/, 'الجزء داخل الحزمة');
   const ui = rd('js/app-05-ui.js');
@@ -85,6 +98,12 @@ test('٤. الترجمة: المفتاحان في العربيّة والإنج�
   for (const k of ['bgImgSectionLabel', 'bgImgNone']) {
     assert.equal((data.match(new RegExp('\\b' + k + ': ', 'g')) || []).length, 2, k + ' في ar+en');
     for (const lg of LANGS) assert.match(rd('i18n/' + lg + '.js'), new RegExp('"?' + k + '"?: "'), k + ' في ' + lg);
+  }
+  // v-bg-images-row: عنوان الصفّ بلا إيموجي في الـ14 لغة (الأيقونة SVG في القائمة)
+  assert.match(data, /bgImgSectionLabel: 'خلفيّات الشاشة'/, 'العربيّة بلا إيموجي');
+  assert.match(data, /bgImgSectionLabel: 'Screen wallpapers'/, 'الإنجليزيّة بلا إيموجي');
+  for (const f of ['js/app-03-i18n-data.js', ...LANGS.map((lg) => 'i18n/' + lg + '.js')]) {
+    for (const m of rd(f).match(/bgImgSectionLabel"?:\s*["'][^"']*["']/g) || []) assert.doesNotMatch(m, /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u, f + ': ' + m);
   }
 });
 

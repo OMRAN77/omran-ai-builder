@@ -10,7 +10,7 @@ const app05 = read('js/app-05-ui.js');
 
 const LABELS = {
   ownerSection: '👑 صفحة المالك', langSection: '🌐 اللغة', accountSection: '👤 حسابي', statsSection: '📊 مشاريعي والنسخ الاحتياطي',
-  apiKeysSection: '🔑 مفاتيح API لمزوّدي الخدمة', themeSection: '🎨 تخصيص الألوان والمظهر', fontFamilySection: 'نوع الخط',
+  apiKeysSection: '🔑 مفاتيح API لمزوّدي الخدمة', themeSection: '🎨 تخصيص الألوان والمظهر', bgImgSection: 'خلفيّات الشاشة', fontFamilySection: 'نوع الخط',
   fontSizeSection: 'حجم الخط', notifSection: '🔔 التنبيهات', voiceSection: 'الصوت', toneSection: 'التعليمات المخصّصة',
   memorySection: 'ذاكرتي', pricingSection: '💳 الباقات والنقاط', aboutSection: 'ℹ️ عن البرنامج والفيديوهات التعريفية',
 };
@@ -59,13 +59,13 @@ test('٢. v-settings-groups (أمر المالك ٢٦ سبتمبر) نسخ تر�
   assert.deepEqual(rest.map(g => g.rows.map(r => r.sid)), [
     ['toneSection', 'memorySection', 'voiceSection'],
     ['pricingSection', 'accountSection', 'statsSection'],
-    ['themeSection', 'fontFamilySection', 'fontSizeSection', 'langSection'],
+    ['themeSection', 'bgImgSection', 'fontFamilySection', 'fontSizeSection', 'langSection'],
     ['notifSection', 'apiKeysSection', 'aboutSection'],
   ]);
   const acct = rest[1].rows;
   assert.equal(acct[0].value, 'VIP', 'المالك');
   const all = rest.flatMap(g => g.rows.map(r => r.sid));
-  assert.equal(all.length, 13, 'كلّ الأقسام الـ١٣ موجودة');
+  assert.equal(all.length, 14, 'كلّ الأقسام الـ١٤ موجودة (v-bg-images-row أضاف خلفيّات الشاشة)');
 });
 
 test('٣. غير المالك: بلا صفّ المالك، وقيمة الاشتراك من الباقة، والضيف بلا صفّ الخروج', () => {

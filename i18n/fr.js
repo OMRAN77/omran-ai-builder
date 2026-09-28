@@ -270,7 +270,7 @@ I18N['fr'] = {
     themeUserBubbleLabel: "Couleur de la bulle de votre message",
     themeSectionLabel: "🎨 Personnaliser les couleurs et l'apparence",
     bg3dSectionLabel: "🌌 Arrière-plan animé 3D",
-    bgImgSectionLabel: "🖼️ Fonds d’écran",
+    bgImgSectionLabel: "Fonds d’écran",
     bgImgNone: "Aucun fond",
     bg3dAutoLabel: "🔀 Changer automatiquement d'arrière-plan chaque minute",
     deleteProject: "Supprimer le projet",
