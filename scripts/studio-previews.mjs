@@ -6,7 +6,7 @@
 //   node scripts/studio-previews.mjs [BASE_URL] [feature|all]
 //
 // ملاحظة: كلّ خيار جديد = صورة واحدة تُولَّد مرّة واحدة في العمر (مفتاح المالك).
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const BASE = (process.argv[2] || 'https://omran-ai-builder.vercel.app').replace(/\/$/, '');
 const ONLY = process.argv[3] || 'all';
@@ -27,8 +27,13 @@ for (const [feature, map] of Object.entries(STYLE_TEXT)) {
 for (const [feature, list] of Object.entries(win.__STUDIO_MORE.options)) {
   for (const o of list) jobs.push({ feature, value: o.value });
 }
-const todo = jobs.filter((j) => ONLY === 'all' || j.feature === ONLY);
-console.log('المعاينات المطلوبة: ' + todo.length + ' على ' + BASE);
+/* لا نُنفق على خيار له صورة جاهزة أصلًا — إلّا المكياج، فصوره الجاهزة جسم كامل
+   لا يظهر فيها المكياج والواجهة تطلب المولّدة أوّلًا (PREVIEW_FIRST في app-13). */
+const PREVIEW_FIRST = ['makeup'];
+const hasAsset = (f, v) => existsSync(new URL('../assets/studio/options/' + f + '-' + v + '.webp', import.meta.url));
+const todo = jobs.filter((j) => (ONLY === 'all' || j.feature === ONLY)
+  && (PREVIEW_FIRST.includes(j.feature) || !hasAsset(j.feature, j.value)));
+console.log('المعاينات المطلوبة: ' + todo.length + ' على ' + BASE + ' (تُخطّى الخيارات التي لها صورة جاهزة)');
 
 let done = 0; let made = 0; let failed = 0;
 async function run(job) {
