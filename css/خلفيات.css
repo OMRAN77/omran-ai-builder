@@ -20,3 +20,13 @@ html.bgimg-light{--text:#101114 !important; --muted:#3d4048 !important; --accent
 .bgImgOpt.active{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent) inset;}
 .bgImgOpt.active::after{content:"✓"; position:absolute; top:6px; inset-inline-end:6px; width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:13px; line-height:22px; text-align:center;}
 .bgImgNone{font-size:12px; background:var(--panel2,#111);}
+
+/* v-bg-custom-rotate: زرّ «صورة من جهازك»، × على صور الجهاز، وصفّ «تبديل تلقائيّ» */
+.bgImgAdd{font-size:12px; background:var(--panel2,#111); border-style:dashed;}
+.bgImgDel{position:absolute; top:6px; inset-inline-start:6px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,.65); color:#fff; font-size:16px; line-height:22px; text-align:center; cursor:pointer;}
+.bgImgDel:hover{background:#c0392b;}
+.bgImgRotate{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+.bgImgRotateLabel{font-size:13px; color:var(--muted);}
+.bgImgRotateOpts{display:flex; gap:6px; flex-wrap:wrap;}
+.bgImgRotOpt{font:inherit; font-size:12px; padding:5px 12px; border-radius:999px; border:1px solid var(--border,rgba(255,255,255,.12)); background:var(--panel2,#111); color:var(--text); cursor:pointer;}
+.bgImgRotOpt.active{background:var(--accent); border-color:var(--accent); color:#fff;}

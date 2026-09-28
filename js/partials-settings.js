@@ -289,7 +289,10 @@
        (showSettingsPage في app-05) وعند نقر الرأس. -->
   <div id="bgImgSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('bgImgSection'); if(window.خلفيات) window.خلفيات.افتح();" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:var(--fs-3);" data-i18n="bgImgSectionLabel">خلفيّات الشاشة</h3><span class="settingsSectionArrow" id="bgImgSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="bgImgSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <!-- v-bg-custom-rotate: تبديل تلقائيّ بمدّة يختارها المالك (الأزرار تُربط في app-25 عند الفتح) -->
+      <div class="bgImgRotate"><span class="bgImgRotateLabel" data-i18n="bgImgRotate">تبديل تلقائيّ</span><div id="bgImgRotateOpts" class="bgImgRotateOpts"><button type="button" class="bgImgRotOpt" data-min="0" data-i18n="bgImgRotateOff">إيقاف</button><button type="button" class="bgImgRotOpt" data-min="10" data-i18n="bgImgEvery10">١٠ دقائق</button><button type="button" class="bgImgRotOpt" data-min="30" data-i18n="bgImgEvery30">٣٠ دقيقة</button><button type="button" class="bgImgRotOpt" data-min="60" data-i18n="bgImgEvery60">ساعة</button></div></div>
       <div id="bgImgGrid" class="bgImgGrid"></div>
+      <input type="file" id="bgImgFile" accept="image/*" hidden>
     </div></div>
 
   <div id="fontFamilySection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
