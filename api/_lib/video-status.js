@@ -45,6 +45,10 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-video-refund: المهمّة انتهت فاشلة (أو أُلغيت) → ردّ الخصم والقفل وحصّة اليوم مرّة واحدة.
+    const st = String((data && data.status) || '').toUpperCase();
+    if (st === 'FAILED' || st === 'CANCELLED') await require('./video-job.js').settleVideoJob(id, false);
+    else if (st === 'SUCCEEDED') await require('./video-job.js').settleVideoJob(id, true);
     res.status(200).json(data);
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

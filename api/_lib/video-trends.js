@@ -563,6 +563,14 @@ function buildTrendPrompt(key, params) {
       .replace('{look}', p.hasImage ? ' whose look is based on the reference image, rendered in Pixar 3D style' : '');
   }
   prompt = prompt.replace(/\{name\}/g, name).replace(/\{text\}/g, text || 'a joyful moment');
-  return { prompt, engine: t.engine, ratio: t.ratio, sceneCount: (t.scenes && t.scenes.length) || 1 };
+  /* v-trend-people: أكثر من شخص في أوّل إطار — القوالب الـ٤٥ مكتوبة بصيغة «الشخص»، فنُلحق
+     شرطًا واحدًا بدل تعديلها كلّها: كلّهم يظهرون، وكلّ واحد بوجهه هو، ولا يُدمجون في واحد. */
+  const people = Math.max(1, Math.min(3, parseInt(p.people, 10) || 1));
+  if (people > 1) {
+    prompt += ' IMPORTANT — the reference image contains ' + people + ' different people: all ' + people
+      + ' of them must appear together throughout the video, each keeping their own exact face and identity from the reference image;'
+      + ' never merge them into one person, never replace anyone with an invented person, and never drop anyone out of frame.';
+  }
+  return { prompt, engine: t.engine, ratio: t.ratio, people, sceneCount: (t.scenes && t.scenes.length) || 1 };
 }
 module.exports = { TRENDS, buildTrendPrompt };

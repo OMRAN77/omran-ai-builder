@@ -22,7 +22,12 @@ module.exports = async (req, res) => {
     if (!q.ok) { res.status(q.status).json({ error: 'MiniMax error: ' + JSON.stringify(qd).slice(0, 400) }); return; }
 
     const raw = String(qd.status || '').toLowerCase();
-    if (raw === 'fail' || raw === 'failed') { res.status(200).json({ status: 'FAILED' }); return; }
+    // v-video-refund: الفشل يردّ الخصم ويفكّ قفل الثلاث دقائق (تذكرة سجّلها minimax-create).
+    if (raw === 'fail' || raw === 'failed') {
+      await require('./video-job.js').settleVideoJob(taskId, false);
+      res.status(200).json({ status: 'FAILED' });
+      return;
+    }
     if (raw !== 'success' && raw !== 'succeeded') {
       // Preparing / Queueing / Processing — لسّا شغّال.
       res.status(200).json({ status: 'RUNNING' });
@@ -38,6 +43,7 @@ module.exports = async (req, res) => {
     const url = fd && fd.file && (fd.file.download_url || fd.file.backup_download_url);
     if (!f.ok || !url) { res.status(f.ok ? 502 : f.status).json({ error: 'MiniMax file retrieve failed: ' + JSON.stringify(fd).slice(0, 300) }); return; }
 
+    await require('./video-job.js').settleVideoJob(taskId, true);
     res.status(200).json({ status: 'SUCCEEDED', output: [url] });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

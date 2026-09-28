@@ -94,6 +94,8 @@ module.exports = async (req, res) => {
       res.status(upstream.ok ? 502 : upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات. (' + tech + ')', retryable: true });
       return;
     }
+    // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.
+    await require('./video-job.js').rememberVideoJob(data.task_id, { username: chargedUser, cost: pointsLib.COSTS.minimax_video, locked: !!videoLocked });
     res.status(200).json({ task_id: data.task_id });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
