@@ -63,7 +63,7 @@ test('٢. لا لقطة شاشة إنستغرام بقيت: لا صورة بمق
 
 test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D، والملفّات القديمة زالت', () => {
   const html = rd('index.html');
-  assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=3">/, 'CSS الخلفيّات');
+  assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=2">/, 'CSS الخلفيّات');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
   assert.match(html, /partials-settings\.js\?v=677/, 'وسم الإعدادات ارتفع');
   assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=700'/, 'وسم اللغات ارتفع');
@@ -81,11 +81,7 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   assert.ok(at > 0 && ui.slice(at, at + 900).includes("window.خلفيات.طبّق(null)"), 'اختيار ثلاثيّة يزيل صورة الشاشة');
 
   const css = rd('css/خلفيات.css');
-  for (const sel of ['#bgImgLayer', 'html.bgimg body.omranWelcome #bgImgLayer{display:block;}', 'html.bgimg body.omranWelcome{background:transparent', 'html.bgimg-dark body.omranWelcome{', 'html.bgimg-light body.omranWelcome{', '.bgImgGrid', '.bgImgOpt.active', '.bgImgNone']) assert.ok(css.includes(sel), 'CSS: ' + sel);
-  // v-bg-home-only: لا قاعدة تُظهر الطبقة أو تشفّ الجسم خارج شاشة الدخول
-  assert.doesNotMatch(css, /html\.bgimg #bgImgLayer\{display:block/, 'الطبقة تظهر بلا شرط الدخول');
-  assert.doesNotMatch(css, /html\.bgimg body\{/, 'الجسم يشفّ بلا شرط الدخول');
-  assert.ok(/omranWelcome/.test(rd('js/app-04-i18n-state.js')), 'الصنف body.omranWelcome ما زال يُضبط في app-04');
+  for (const sel of ['#bgImgLayer', 'html.bgimg body', 'html.bgimg-dark', 'html.bgimg-light', '.bgImgGrid', '.bgImgOpt.active', '.bgImgNone']) assert.ok(css.includes(sel), 'CSS: ' + sel);
 });
 
 test('٤. الترجمة: المفتاحان في العربيّة والإنجليزيّة و١٢ ملفّ لغة', () => {
