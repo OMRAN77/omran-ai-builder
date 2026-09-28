@@ -32,6 +32,10 @@ test('١. الفهرس مطابق للمجلّد: كلّ صورة فيه بمق�
   const files = images();
   assert.ok(files.length >= 16, 'توقّعت ١٦ خلفيّة على الأقلّ');
   assert.deepEqual(m.صور.map((s) => s.ملف), files, 'الفهرس لا يطابق الملفّات — شغّل node scripts/خلفيات.mjs');
+  // الترتيب حرفيّ: ثلاث خانات لكلّ رقم وإلّا سبق 100 الرقم 93
+  for (const f of files) assert.match(f, /^\d{3}-/, f + ' — الاسم يبدأ برقم من ثلاث خانات');
+  const nums = files.map((f) => Number(f.slice(0, 3)));
+  assert.deepEqual(nums, [...nums].sort((a, b) => a - b), 'ترتيب الفهرس ليس رقميًّا');
   for (const s of m.صور) {
     const dim = jpegSize(path.join(DIR, s.ملف));
     assert.ok(dim, s.ملف + ' ليست JPEG صالحة');
