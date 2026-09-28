@@ -2047,12 +2047,15 @@ function omranMathPlain(s){
 // شيفرة لا معادلة: هروب regex (\d \w \s \b)، صنف [^…]، snake_case بلا أمر LaTeX، أو | في طرف واحد فقط
 function omranMathCodey(b){
   const t = String(b).trim();
-  return /\\[dwsDWSbB](?![A-Za-z])|\[\^/.test(t) || (t.charAt(0) === '|') !== (t.charAt(t.length - 1) === '|')
+  // الحدّ المطلق والمعيار (\left| x \right|، \|x\|، |x| + 1) ليسا شيفرة: أنبوب واحد فرديّ في طرف هو regex («|^\s+»)
+  const p = t.replace(/\\(?:left|right|[bB]igg?[lr]?)(?![A-Za-z])/g, '').replace(/\\\|/g, '|').trim();
+  return /\\[dwsDWSbB](?![A-Za-z])|\[\^/.test(t) || ((p.match(/\|/g) || []).length % 2 === 1 && (p.charAt(0) === '|' || p.charAt(p.length - 1) === '|'))
     || (/[A-Za-z0-9]{2,}_[A-Za-z]{2,}/.test(t) && !/\\[A-Za-z]{2,}/.test(t));
 }
 function omranMathOkInline(src, m, d, prev, next, cmd){
   const end = m.index + m[0].length;
-  const lead = /^[\^_](?:\{[^{}]*\}|\\?[A-Za-z0-9+\-−]+)$/.test(d); // CO$_2$، Na$^+$، $^{14}$C، 25$^\circ$C
+  // CO$_2$، Na$^+$، $^{14}$C، 25$^\circ$C، Ca$^{2+}$ — لا $_GET$ (اسم متغيّر PHP)
+  const lead = /^[\^_](?:\{[^{}]*\}|\\[A-Za-z]+|[A-Za-z]|\d+[+\-−]?|[+\-−])$/.test(d);
   const arVar = /^[\u0621-\u064A]{1,3}$/.test(d);                   // «حيث $ف$ المسافة»
   const oneCmd = /^\\[A-Za-z]+$/.test(d);                          // 3$\times$3، 5$\pm$0.1، $\sim$10
   if(d.length > 300 || (!arVar && !lead && !(omranMathArOk(d) && /[A-Za-z0-9\\\u0621-\u064A]/.test(d)))) return false;
@@ -2061,21 +2064,26 @@ function omranMathOkInline(src, m, d, prev, next, cmd){
   // بعدها: لا رقم/حرف/$/(/{/_ ($5-$10، $HOME$PATH، ${a}${b}، $(pwd)) — إلّا الأسّ والأمر المفرد، وحرفًا أو قوسًا بعد معادلة
   // فيها أمر أو أسّ ($25^\circ$C، $H_2O$(l)، $x_i$s)، ولاحقة ترتيبيّة ($(k+1)$th)، وحرفًا بعد متغيّر مفرد ($n$th)
   if(!lead && !oneCmd && /[0-9A-Za-z$({_\\]/.test(next)){
-    const okNext = (/[\\^_]/.test(d) && /[A-Za-z(]/.test(next)) || /^(?:th|st|nd|rd)\b/.test(src.slice(end, end + 3))
-      || (/^[A-Za-z]$/.test(d) && /[A-Za-z]/.test(next));
+    const okNext = (/[\\^_]/.test(d) && /[A-Za-z(]/.test(next)) || /^(?:th|st|nd|rd|s)(?![A-Za-z])/.test(src.slice(end, end + 4));
     if(!okNext) return false;
   }
   if(/^[\/"']|[\/"]$|[^A-Za-z0-9')]'$/.test(d)) return false; // اقتباس أو مسار — f' وf'' مقبولتان
-  if(!lead && /[-+*\/=^_,.:;]$/.test(d)) return false;          // «$5-$» أثناء البثّ، و«=$A2^$B2» (لا شحنة Na$^+$)
+  if(!lead && /[-+*\/=^_,.:;]$/.test(d.replace(/\\(?:left|right)\s*\.$/, ''))) return false;          // «$5-$» أثناء البثّ، و«=$A2^$B2» (لا شحنة Na$^+$)
   // رمز عملة بعد رقم: «$5 (A$ 7)»، «$5 vs A$ 8»، «from $2 to R$ 10»
   if(/^\d/.test(d) && /[A-Z]$/.test(d) && (/[\s(][A-Z]{1,3}$/.test(d) || /^ \d/.test(src.slice(end, end + 2)))) return false;
+  // تبدأ بـ_ أو ^ وليست أسًّا ملتصقًا ($_GET$HOME)، أو بقوس معقوف بلا أمر (${a}C$): شيفرة لا معادلة
+  if((/^[\^_]/.test(d) && !lead) || (/^\{/.test(d) && !cmd)) return false;
   if(cmd || /[\^_]/.test(d) || arVar) return true;
   // بلا أمر ولا أسّ: أقواس متوازنة، ولا كلام (كلمتان متتاليتان، أو رقم يليه كلام، أو كلمة من ٤ أحرف إلّا صيغة
   // كيميائيّة أو اسم شكل بلا مسافات ($NaOH$، $ABCD$) أو دالّة معروفة أو طرف علاقة ($Area = lw$))
   if((d.match(/[(\[]/g) || []).length !== (d.match(/[)\]]/g) || []).length) return false;
+  // أرقام أو رموز بمسافة أو فاصلة بلا معامل بينها (خارج الأقواس): أسعار لا معادلة («$5 ,20$»، «$BTC 10$»، «$1,000 20$»)
+  const noGrp = d.replace(/\([^()]*\)|\[[^\[\]]*\]/g, 'X');
+  if(/\S\s+\S/.test(noGrp) && !/[=+\-*\/<>×÷·!|:]/.test(noGrp)) return false;
+  if(/\d,\d{3}(?!\d)/.test(d) || /^\d[\d.,]*\s*[-–—]\s*\d[\d.,]*$/.test(d)) return false; // فاصل آلاف أو مدى «$5 - 10$»: سعر
   if(/[A-Za-z]{2,}\s+[A-Za-z]{2,}/.test(d) || (/^\d/.test(d) && /(?:^|[^A-Za-z])[A-Za-z]{2,}(?![A-Za-z])/.test(d))) return false;
   const noFn = d.replace(/(?:arcsin|arccos|arctan|sinh|cosh|tanh|sin|cos|tan|cot|sec|csc|log|exp|lim|max|min|det|gcd)(?![A-Za-z])/g, ' ');
-  return !/[A-Za-z]{4,}/.test(noFn) || /^[A-Za-z0-9]{2,10}$/.test(d) || /[=<>]/.test(d);
+  return !/[A-Za-z]{4,}/.test(noFn) || /^(?:[A-Z][a-z]?\d*){1,6}$/.test(d) || /^[A-Za-z]{2,6}$/.test(d) || /[=<>]/.test(d);
 }
 function omranMathOk(src, m, a, b, c, d, block){
   const body = a != null ? a : b != null ? b : c != null ? c : d;
@@ -2089,7 +2097,7 @@ function omranMathOk(src, m, a, b, c, d, block){
   if(a != null){
     if(prev === '$' || a.charAt(0) === '$' || next === '$' || !omranMathArOk(a)) return false;
     // معادلة عرض في سطرها: تكفيها حروف أو أرقام؛ وعلامة «+ 456» أو «- (…)» داخل بيئة ليست بند قائمة
-    if(block) return /[A-Za-z0-9\\]/.test(a) && (/\\begin|&|\\\\/.test(a) || !/\n\s*(?:[-*+•]|\d+[.)])\s/.test(a));
+    if(block) return /[A-Za-z0-9\\\u0621-\u064A]/.test(a) && (/\\begin|&|\\\\/.test(a) || !/\n\s*(?:[-*+•]|\d+[.)])\s/.test(a));
     // $$ داخل السطر: فيها أمر أو ^ _ = < > +، ولا شيفرة (; أو علامات تنصيص: PID، $$name) ولا كلام إنجليزيّ (SQL)
     return a.indexOf('\n') < 0 && /\\[A-Za-z]|[\^_=<>+]/.test(a) && !/;\s|['"]/.test(a)
       && (cmd || !/[A-Za-z]{4,}/.test(a)) && !/[A-Za-z]{2,}\s+[A-Za-z]{2,}\s+[A-Za-z]{2,}/.test(omranMathPlain(a));
@@ -2174,12 +2182,19 @@ function omranMathRows(body, cellSep){
 // LaTeX بسيط ⇐ نصّ؛ \u0001…\u0002 أسّ، \u0003…\u0004 دليل، \u0005…\u0006 سهم متّجه فوق اسم من حرفين فأكثر
 function omranMathText(src, block){
   let s = String(src).trim()
+    .replace(/\\text\s*\{[^{}]*\}|'{1,3}/g, function(x){ return x.charAt(0) === '\\' ? x : ['′', '″', '‴'][x.length - 1]; }) // f' ⇐ f′
     .replace(/\\begin\s*\{([pbvBV]?)matrix\*?\}([\s\S]*?)\\end\s*\{[pbvBV]?matrix\*?\}/g, function(m0, k, body){
       const L = { p: '(', b: '[', v: '|', V: '‖', B: '\uE011' }[k] || '', R = { p: ')', b: ']', v: '|', V: '‖', B: '\uE012' }[k] || '';
       return L + omranMathRows(body, ' ').join('; ') + R;
     })
+    // الحالات والمصفوفة array: صفوف معادلة العرض كتلة داخليّة (\u0007…\u0008) تبدأ كلّها بعد «{» على خطّ واحد
     .replace(/\\begin\s*\{cases\*?\}([\s\S]*?)\\end\s*\{cases\*?\}/g, function(m0, body){
-      return '\uE011 ' + omranMathRows(body, ', ').join(block ? '\n\u2060\u00A0\u00A0\u00A0' : '; ');
+      const rows = omranMathRows(body, ', ');
+      return '\uE011 ' + (block && rows.length > 1 ? '\u0007' + rows.join('\n') + '\u0008' : rows.join('; '));
+    })
+    .replace(/\\begin\s*\{array\}\s*(?:\{[^{}]*\})?([\s\S]*?)\\end\s*\{array\}/g, function(m0, body){
+      const rows = omranMathRows(body, ', ');
+      return block && rows.length > 1 ? '\u0007' + rows.join('\n') + '\u0008' : rows.join('; ');
     })
     .replace(/\\begin\s*\{[A-Za-z*]+\}(?:\{[^{}]*\})?|\\end\s*\{[A-Za-z*]+\}/g, '')
     .replace(/\\\\(?:\[[^\]]*\])?/g, block ? '\n' : '; ')
@@ -2233,8 +2248,8 @@ function omranMathText(src, block){
     // المسافة بعد اسم الأمر فاصل لا مسافة: «\Delta x» ⇐ Δx و«\pi r^2» ⇐ πr²
     return sym + (sp && !(OMRAN_MATH_ORD.test(sym) && /[A-Za-z0-9(]/.test(nx)) ? sp : '');
   })
-    .replace(/\^\s*([^\s{}\\\u0001-\u0006])/g, function(m0, ch){ return omranMathScript(ch, true); })
-    .replace(/_\s*([^\s{}\\\u0001-\u0006])/g, function(m0, ch){ return omranMathScript(ch, false); })
+    .replace(/\^\s*([^\s{}\\\u0001-\u0008])/g, function(m0, ch){ return omranMathScript(ch, true); })
+    .replace(/_\s*([^\s{}\\\u0001-\u0008])/g, function(m0, ch){ return omranMathScript(ch, false); })
     .replace(/[{}]/g, '').replace(/&/g, ' ').replace(/~/g, ' ')
     .replace(/\uE011/g, '{').replace(/\uE012/g, '}').replace(/\uE013/g, '_').replace(/\uE014/g, '&')
     .replace(/[ \t]+/g, ' ');
@@ -2242,6 +2257,7 @@ function omranMathText(src, block){
 }
 // للمشاركة والنسخ (innerText): e^(-x) لا «e-x» — علامة ^( ) أو _( ) مخفيّة بصريًّا حول الأسّ والدليل المرسومين بعنصر
 function omranMathSr(x){
+  if(/\bom-rows\b/.test(x.className)) return;
   const t = x.textContent, many = t.length > 1;
   const a = document.createElement('span');
   a.className = 'om-math-sr';
@@ -2251,7 +2267,7 @@ function omranMathSr(x){
 }
 function omranMathEl(item){
   let txt = omranMathText(item.src, item.block);
-  if(!txt.replace(/[\u0001-\u0006]/g, '').trim()) return document.createTextNode(item.raw);
+  if(!txt.replace(/[\u0001-\u0008]/g, '').trim()) return document.createTextNode(item.raw);
   // لا حروف لاتينيّة خارج \text{} ⇐ معادلة عربيّة (ع = ف/ز، 2س + 3 = 11): rtl وتنعكس الأسهم كي تشير إلى النواتج.
   // وإلّا لاتينيّة ولو بتسميات عربيّة (6CO₂ →^{ضوء الشمس} …): ltr كي لا ينقلب التفاعل
   const rtl = OMRAN_MATH_AR.test(txt) && !/[A-Za-z]/.test(omranMathPlain(item.src));
@@ -2260,22 +2276,23 @@ function omranMathEl(item){
   // بعد المعاملات وبين المجموعات الكيميائيّة (…)₆|(OH) لا بين حرف وأسّه
   const nw = !item.block && txt.length <= 32;
   txt = txt.replace(/\//g, '\u2060/\u2060');
-  if(txt.length > 32) txt = txt.replace(/([+=×·<>≤≥→⇌−])(?=[^\s\u00A0\u0002\u0004\u0006])/g, '$1\u200B')
+  if(txt.length > 32) txt = txt.replace(/([+=×·<>≤≥→⇌−])(?=[^\s\u00A0\u0002\u0004\u0006\u0008])/g, '$1\u200B')
     .replace(/([\u2080-\u2089\u00B2\u00B3\u00B9\u2070-\u2079)])(?=[A-Z(])/g, '$1\u200B');
   const el = document.createElement('span');
   el.className = 'om-math' + (item.block ? ' om-math-block' : '') + (nw ? ' om-math-nw' : '');
   el.setAttribute('dir', rtl ? 'rtl' : 'ltr');
   el.style.unicodeBidi = 'isolate';
   const stack = [el];
-  txt.split(/([\u0001-\u0006])/).forEach(function(p){
+  txt.split(/([\u0001-\u0008])/).forEach(function(p){
     if(!p) return;
     const top = stack[stack.length - 1];
-    if(p === '\u0001' || p === '\u0003' || p === '\u0005'){
+    if(p === '\u0001' || p === '\u0003' || p === '\u0005' || p === '\u0007'){
       const x = document.createElement(p === '\u0001' ? 'sup' : p === '\u0003' ? 'sub' : 'span');
       if(p === '\u0005') x.className = 'om-vec';
+      if(p === '\u0007') x.className = 'om-rows';
       top.appendChild(x); stack.push(x);
     }
-    else if(p === '\u0002' || p === '\u0004' || p === '\u0006'){ if(stack.length > 1) omranMathSr(stack.pop()); }
+    else if(p === '\u0002' || p === '\u0004' || p === '\u0006' || p === '\u0008'){ if(stack.length > 1) omranMathSr(stack.pop()); }
     else top.appendChild(document.createTextNode(p));
   });
   while(stack.length > 1) omranMathSr(stack.pop());
@@ -2299,9 +2316,15 @@ function omranMathIsoTok(span){
     while(i > 0){ const ch = t.charAt(i - 1); if(/[،؛؟.,:;!?»"']/.test(ch)) i--; else if(/[)\]]/.test(ch) && cl > op){ cl--; i--; } else break; }
     tail = t.slice(i);
   }
+  // زوج أقواس يحيط بالتوكن كلّه «(وCO$_2$)»: القوسان خارج العزل، ثمّ تُطلب السابقة العربيّة بعد القوس
+  let outer = 0;
+  if(first && last && /^[(\[]/.test(first.textContent)){
+    const lt = last.textContent.slice(0, last.textContent.length - tail.length), close = first.textContent.charAt(0) === '(' ? ')' : ']';
+    if(lt.charAt(lt.length - 1) === close){ tail = close + tail; op--; cl--; outer = 1; }
+  }
   if(first){
     const t = first.textContent;
-    let i = 0;
+    let i = outer;
     while(i < t.length){ const ch = t.charAt(i); if(/[\u0621-\u064A«"']/.test(ch)) i++; else if(/[(\[]/.test(ch) && op > cl){ op--; i++; } else break; }
     lead = t.slice(0, i);
   }
@@ -2997,9 +3020,14 @@ function streamingMarkdownDisplayText(text){
 }
 // v-chat-math: «[» داخل معادلة مغلقة ($x \in [0, 1)$) ليس رابطًا ناقصًا — لا يُحذف أثناء البثّ
 function omranStreamKeepMathBracket(m0, g1, off, all){
+  // بالتقاط العرض النهائيّ نفسه على السطر: «[» داخل معادلة ($…$ أو \(…\)، ولو بعد سعر) يبقى
   const ls = all.lastIndexOf('\n', off - 1) + 1;
-  const before = all.slice(ls, off).replace(/\$\$/g, '');
-  return (before.match(/\$/g) || []).length % 2 === 1 && all.indexOf('$', off) > off ? m0 : g1;
+  let le = all.indexOf('\n', off); if(le < 0) le = all.length;
+  const p = off - ls + m0.indexOf('[');
+  try{
+    if(omranMathMark(all.slice(ls, le)).list.some(function(it){ return p >= it.start && p < it.end; })) return m0;
+  }catch(e){ __swallow(e, 'md:math-bracket'); }
+  return g1;
 }
 /* v-stream-incremental (شكوى المالك ١٣ سبتمبر: «الشاشة ثقيلة كثير وتعلق»):
    الرسم الحيّ كان يمسح الفقاعة ويعيد بناء الردّ كلّه كلمةً كلمةً في كلّ نبضة

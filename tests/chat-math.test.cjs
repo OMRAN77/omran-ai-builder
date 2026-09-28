@@ -244,6 +244,13 @@ test('٤. لا تُمسّ: الأسعار والكود والمتغيّرات و
     // $$ و\[ لا تعبران كتلة كود، ومعادلة ملتصقة بعلامة كود غالقة
     'Use $$ for PID, e.g.\n```bash\necho $$\nkill -9 $$\n```\nand then continue.',
     'Escape brackets like \\[ in a regex:\n```js\nconst re = /\\]/;\n```\nDone.',
+    // جولة ٣: رموز الأسهم والعملات الرقميّة ومراجع Excel وأسماء متغيّرات PHP ومدى الأسعار
+    '$AAPL and $TSLA are up today', '$AAPL, $TSLA and $MSFT', '$AAPL/$TSLA pair', 'Buy $BTC at $60k', '$BTC hit $100k and $ETH $3,500',
+    'سهم $AAPL وسهم $TSLA ارتفعا', '$AAPL ($TSLA)', '$AAPL rose 5% while $TSLA fell 2%', '$NVDA: $120 → $135', '$BTC 10$',
+    '=$A$1+$B$2', '=SUM($A$1:$A$10)', 'use $A$1 as an absolute reference and $B2 as mixed', '=VLOOKUP($A2,$D$2:$E$100,2,FALSE)',
+    'echo $a$b', 'echo $HOME/bin:$PATH', 'export PATH=$PATH:$HOME/bin', 'cost is $5.99/mo or $59/yr', '$5 + $10 = $15', 'I have $2 and you have $3',
+    'jQuery $(".x").hide(); $("#y")', 'SQL: WHERE price > $1 AND qty < $2', 'Perl: my $x = $y + $z;', 'من بين $BTC $_GET$HOME درهم',
+    '$5 ,20$ فقط', 'السعر $5 - 10$ تقريبًا', 'costs $1,000 20$', '${a} A$ هنا',
   ];
   for(const s of keep){
     const { box, words: w } = render(s);
@@ -421,7 +428,8 @@ test('١٠. الربط: الأنماط في tokens.css (عامّة لا للحا
   assert.ok(css.includes('.msg .md-line.md-hr{height:0; overflow:hidden; margin:.7em 0; border-top:1px solid var(--omLine'));
   assert.ok(css.includes('.msg .om-math-block{display:table; margin:.3em auto; text-align:start;}'));
   assert.ok(css.includes('.msg .om-math sup, .msg .om-math sub{font-size:.72em; line-height:0; unicode-bidi:isolate;}'));
-  assert.ok(css.includes('.msg .om-math-sr{position:absolute;'), 'علامة المشاركة مخفيّة بصريًّا لا display:none');
+  assert.ok(css.includes('.msg .om-math-sr{font-size:0;'), 'علامة المشاركة بخطّ صفريّ: لا display:none (تسقط من innerText) ولا position:absolute (تكسر السطر)');
+  assert.ok(css.includes('.msg .om-rows{display:inline-block;'));
   assert.ok(css.includes('.msg .om-vec{'));
   assert.ok(css.includes('.msg .om-math-nw{white-space:nowrap;}'));
   assert.ok(css.indexOf('.msg .md-line.md-hr{') > css.indexOf('.msg .md-line, .msg-text div.md-line{'), 'بعد قاعدة md-line كي يغلب هامشها');
