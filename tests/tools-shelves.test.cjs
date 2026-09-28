@@ -27,7 +27,7 @@ test('١. كل قسم صف أفقي مراقب بطرفين، وغياب overflo
 
 test('٢. «عرض الكل» يستبدل المحتوى، يحفظ الموضع، ويرتبط برجوع المتصفح', () => {
   assert.match(features, /ptAllView\.hidden = true/);
-  assert.match(features, /grid-template-columns:repeat\(auto-fill,minmax\(220px,1fr\)\)/);
+  assert.match(css, /grid-template-columns:repeat\(auto-fill,minmax\(220px,1fr\)\)/);
   assert.match(features, /top:ptPopup\.scrollTop, left:viewport\.scrollLeft/);
   assert.match(features, /history\.pushState\(\{ omranToolsAll:historyToken \}/);
   assert.match(features, /addEventListener\('popstate', \(\) => \{ if\(allState\) closeAll\(true\); \}\)/);
