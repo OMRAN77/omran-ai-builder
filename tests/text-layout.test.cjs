@@ -126,6 +126,54 @@ test('client wiring: fonts measured as drawn, the poster kept, and every writer 
   assert.match(attach, /const __pos = __textPosArg\(__textSpec\.position, __textSpec\.positionAuto, __textSpec\.positionFlex\);/);
   assert.match(attach, /const __genPos = __textPosArg\(textSpec\.position, textSpec\.positionAuto, textSpec\.positionFlex\);/);
   assert.match(attach, /position:__textPosArg\(__genTextSpec\.position, __genTextSpec\.positionAuto, __genTextSpec\.positionFlex\)/);
-  assert.match(attach, /__textSpec\.styleEdit\[k\]\)__l\[k\]=k==='position'\?__textPosArg\(__textSpec\.styleEdit\[k\],false,__textSpec\.positionFlex\)/);
+  /* v-text-flex: إعادة التنسيق تمرّ على __textStylePos (علَم المحلّل، وإن غاب فالجانب بلا «وسط» مرن) — اختبارها في text-render */
+  assert.match(attach, /__textSpec\.styleEdit\[k\]\)__l\[k\]=k==='position'\?__textStylePos\(__textSpec,text\)/);
   assert.doesNotMatch(attach, /overlayTextOnImage\([^)]*__genTextSpec\.position,/, 'المولَّد الجديد لا يُكتب أسفل دائمًا');
+});
+
+/* v-text-size — مراجعة إعادة البناء: «كبّر الخط» أعاد الصورة نفسها بايتًا ببايت (الحجم كان سقفًا يحدّه عرض الجهة)، و«صغّر» كبّرت
+   الخطّ حين قلبت الموضع. الحجم الآن يُطبَّق بعد الملاءمة واختيار الموضع، فالخطّ يتبعه في كلّ دور وكلّ موضع. */
+const GIRLS = [{ box: [0.17, 0.4, 0.33, 0.55], label: 'face' }, { box: [0.37, 0.41, 0.5, 0.54], label: 'face' }, { box: [0.52, 0.42, 0.64, 0.55], label: 'face' }, { box: [0.66, 0.42, 0.82, 0.56], label: 'face' }, { box: [0.05, 0.38, 0.95, 1], label: 'person' }];
+const LONG20 = 'اللهم اجعل هذا اليوم بداية خير وبركة لنا ولأهلنا ولكل من نحب واحفظهم من كل سوء يا رب العالمين';
+const TEXTS = ['مشكور اخوي', 'ألف مبروك يا بطل', 'كل عام وانتم بخير يا أحلى عائلة', LONG20];
+const SCALES = [0.4, 0.54, 0.68, 0.8, 1, 1.25, 1.3, 1.56, 1.7];
+
+test('size: «كبّر» grows and «صغّر» shrinks the font for every role and position — side, auto, flex, named, long text', () => {
+  for (const text of TEXTS) for (const p of ['right', 'left', 'auto', 'top', 'bottom', 'right-top', 'center']) for (const [W, H] of SIZES) for (const boxes of [[], GIRLS]) {
+    const role = text.split(' ').length <= 6 ? 'hero' : 'body';
+    const rs = SCALES.map((sc) => layout(text, p, { W, H, sc, boxes, role }));
+    const tag = text.slice(0, 12) + ' @' + p + ' ' + W + 'x' + H + (boxes.length ? ' +وجوه' : '');
+    const one = rs[SCALES.indexOf(1)];
+    rs.forEach((r, i) => {
+      assert.deepEqual([r.side, r.vert], [one.side, one.vert], tag + ' — الحجم لا ينقل الكتابة (sc=' + SCALES[i] + ')');
+      assert.ok(r.x0 >= 0 && r.x0 + r.w <= W + 0.5 && r.top >= 0 && r.top + r.h <= H + 0.5, tag + ' داخل الصورة sc=' + SCALES[i]);
+      if (i) assert.ok(r.F >= rs[i - 1].F, tag + ' رتيب: ' + rs.map((x) => x.F).join(','));
+    });
+    const [s08, s1, s125] = [rs[SCALES.indexOf(0.8)], one, rs[SCALES.indexOf(1.25)]];
+    assert.ok(s08.F < s1.F, tag + ' «صغّر» يصغّر: ' + s08.F + ' < ' + s1.F);
+    /* يكبر ما بقي في الصورة مكان (هامش ٠٫٠٦W/٠٫٠٤٥H)، وبالنسبة كاملة (١٫٢٥ إلّا التقريب) حين تكون الكتلة أقلّ من نصف الصورة */
+    const room = Math.min((0.88 * W) / s1.w, (0.91 * H) / s1.h);
+    if (room > 1.05) assert.ok(s125.F > s1.F, tag + ' «كبّر» يكبر فعلًا: ' + s1.F + ' → ' + s125.F);
+    if (s1.w <= 0.5 * W && s1.h <= 0.5 * H) assert.ok(s125.F >= Math.floor(s1.F * 1.2), tag + ' بالنسبة كاملة: ' + s1.F + ' → ' + s125.F);
+  }
+});
+
+test('size: the owner cases from the review — right/auto phrase and a 20-word prayer change with every step', () => {
+  const Fs = (text, p, o) => [1, 1.25, 1.56, 1.7, 0.8, 0.68].map((sc) => layout(text, p, Object.assign({ sc, role: text.split(' ').length <= 6 ? 'hero' : 'body' }, o)).F);
+  const r = Fs('مشكور اخوي', 'right');
+  assert.ok(r[1] > r[0] && r[2] > r[1] && r[3] > r[2], 'كبّر ×٣ على اليمين: ' + r);
+  assert.ok(r[4] < r[0] && r[5] < r[4], 'صغّر: ' + r);
+  const a = Fs('مشكور اخوي', 'auto', { boxes: GIRLS });
+  assert.ok(a[1] > a[0] && a[3] > a[1], 'التلقائيّ بوجوه: ' + a);
+  const l = Fs(LONG20, 'right', { boxes: GIRLS });
+  assert.ok(l[1] > l[0] && l[4] < l[0], 'النصّ الطويل يمينًا: ' + l);
+  const t = Fs(LONG20, 'top', { boxes: GIRLS });
+  assert.ok(t[4] < t[0] && t[5] < t[4], '«صغّر» لا تكبّر بقلب الموضع (كانت ٥٢ ← ٦٤): ' + t);
+  /* «أكبر» لا يكسر قواعد الأسطر: كلمتان سطر واحد، و٣–٦ كلمات سطران على الأكثر بلا كلمة يتيمة */
+  for (const sc of [1.25, 1.56, 1.7]) {
+    assert.equal(layout('مشكور اخوي', 'top', { sc }).lines.length, 1);
+    const four = layout('ألف مبروك يا بطل', 'top', { sc });
+    assert.ok(four.lines.length <= 2 && four.lines.every((x) => x.split(' ').length >= 2), JSON.stringify(four.lines));
+    assert.deepEqual(layout('سطر أول كتبه المستخدم\nوسطر ثانٍ بعده تمامًا', 'bottom', { sc, role: 'body' }).lines, ['سطر أول كتبه المستخدم', 'وسطر ثانٍ بعده تمامًا'], 'أسطر المستخدم كما هي');
+  }
 });

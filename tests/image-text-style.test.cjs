@@ -82,10 +82,14 @@ test('client: size is a clamped scale, relative words multiply the current one',
   assert.equal(ctx.f(0.45, 'smaller'), 0.4, 'أرضيّة');
   assert.equal(ctx.f(undefined, null), 1);
   assert.match(attach, /async function overlayTextOnImage\(b64, mime, txt, fontKey, colorStr, position, scale, avoid\)/);
-  /* v-text-layout: العبارة والأسطر بلا عنوان من __textBlockLayout (سقفها ٠٫١٢W وأسطر ٠٫٠٧٥W مضروبين في الحجم)، والملصق من measure */
-  assert.match(attach, /const FMAX = Math\.min\(0\.12 \* W, 0\.11 \* H\) \* sc, HERO_MIN = 0\.07 \* W, FMIN = 0\.045 \* W \* Math\.min\(1, sc\), BODY_MAX = 0\.075 \* W \* sc;/, 'الحجم يضرب خطّ العبارة والأسطر');
+  /* v-text-layout: العبارة والأسطر بلا عنوان من __textBlockLayout (سقفها ٠٫١٢W وأسطر ٠٫٠٧٥W)، والملصق من measure.
+     v-text-size: الحجم يُضرب في الخطّ بعد الملاءمة واختيار الموضع (كان يضرب السقوف وحدها فلا يتغيّر شيء حين يحدّ العرض) —
+     سلوكه في text-layout (رتابة الخطّ في كلّ دور وموضع) وtext-render (الراسم الحقيقيّ) */
+  assert.match(attach, /const FMAX = Math\.min\(0\.12 \* W, 0\.11 \* H\), HERO_MIN = 0\.07 \* W, FMIN = 0\.045 \* W, BODY_MAX = 0\.075 \* W;/, 'السقوف بالحجم الطبيعيّ');
+  assert.match(attach, /const want = B0\.F \* sc;/, 'الحجم يضرب خطّ الموضع المختار');
   assert.match(attach, /pos: P, sc: __sc, boxes,/, 'والراسم يمرّره للكتلة');
-  assert.match(attach, /Math\.round\(base \* 0\.03 \* __sc \* Math\.max\(0\.9, kk\)\)/, 'ويضرب خطّ أسطر الملصق');
+  assert.match(attach, /Math\.round\(base \* 0\.03 \* S \* Math\.max\(0\.9, kk\)\)/, 'ويضرب خطّ أسطر الملصق');
+  assert.match(attach, /L2 = measure\(Math\.min\(W \* 0\.92, L0\.maxW \* __sc\), Math\.min\(H - 2 \* mY, L0\.maxH \* __sc\), L0\.k0, __sc\)/, 'والملصق يُعاد قياسه بالحجم في موضعه');
   assert.match(attach, /cur\.imageTextLayer = __byCanvas \? \{[^}]*scale:__scale/, 'الكتابة الجديدة تحفظ حجمها وترثه');
 });
 
@@ -111,9 +115,10 @@ test('client (v-text-design يخلف v-text-harmony): ذهب شمبانيا فو
   assert.match(attach, /!lightInk \? \['#b98232', '#8f5a17', '#6e4210', '#8f5a17', '#c79342'\]/);
   assert.match(attach, /cool: \(sb - sr\) \/ \(n \* 255\) > 0\.04 && warm \/ n < 0\.03/, 'غروب مرجع المالك يبقى ذهبيًّا');
   /* v-text-rebuild: لون المستخدم كما طلبه (أبيض يبقى أبيض)، والتباين بحافّة وظلّ بعكس اللون — كان يُعتَّم فوق الفاتح فخرج «بالأبيض» رماديًّا */
-  assert.match(attach, /const uL = user \? user\[2\] : 0;/);
-  assert.match(attach, /const lowC = !!user && \(lightInk \? !darkBg : darkBg\);/);
-  assert.match(attach, /if\(lightInk \|\| lowC\)\{/);
+  /* v-text-ink: القطبيّة بالنصوع النسبيّ (__textInk) لا بإضاءة HSL — سلوكها في text-render */
+  assert.match(attach, /const uL = user \? user\[2\] : 0, tone = user \? __textInk\(colorStr, st\.lum, darkBg\) : null;/);
+  assert.match(attach, /const lowC = !!tone && tone\.lowC, haloDark = tone \? tone\.haloDark : lightInk, scrimDark = tone \? tone\.scrimDark : lightInk;/);
+  assert.match(attach, /if\(haloDark \|\| lowC\)\{/);
   assert.doesNotMatch(attach, /__pickTextHarmony/, 'تنسيق v-text-harmony القديم أُزيل');
   const a = attach.indexOf('function __hexHsl'), b = attach.indexOf('const __hsl =');
   const ctx = {}; vm.createContext(ctx); vm.runInContext(attach.slice(a, b) + ';this.H=__hexHsl;', ctx);
