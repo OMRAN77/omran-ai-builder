@@ -111,6 +111,37 @@ test('readGithub: pull request and issue', async () => {
   assert.ok(is.includes('🐛 Issue #9: Bug — open · u · bug') && is.includes('it breaks') && is.includes('— v: me too please'));
 });
 
+/* v-github-code-search (المالك: «نفس الفكرة عندما يقرأ الكود» — أراد الوكيل يبحث في المستودع
+   كما يبحث Claude Code، لا يتصفّح ملفًّا فملفًّا). */
+test('readGithub: query = بحث كود GitHub، مقتطفات، حصر بمسار، لا نتائج، حدّ الطلبات', async () => {
+  const net = fakeNet([
+    [/\/search\/code\?per_page=15&q=/, jsonRes({
+      total_count: 2, incomplete_results: false, items: [
+        { path: 'api/_lib/video-trends.js', text_matches: [{ fragment: 'function buildTrendPrompt(key, params) {' }] },
+        { path: 'tests/trend-people.test.cjs', text_matches: [{ fragment: 'TRENDS.buildTrendPrompt(k, {' }] },
+      ],
+    })],
+  ]);
+  const out = await GH.readGithub({ url: 'a/b', query: 'buildTrendPrompt' }, net.opts);
+  assert.ok(out.includes('🔎 «buildTrendPrompt» في a/b — 2 نتيجة'));
+  assert.ok(out.includes('📄 api/_lib/video-trends.js') && out.includes('function buildTrendPrompt(key, params)'));
+  assert.ok(out.includes('📄 tests/trend-people.test.cjs'));
+  assert.equal(net.calls[0].accept, 'application/vnd.github.text-match+json');
+  assert.match(net.calls[0].url, /q=buildTrendPrompt%20repo%3Aa%2Fb(?!%20path)/, 'بلا path لا حصر');
+
+  net.calls.length = 0;
+  await GH.readGithub({ url: 'a/b', path: 'api/_lib', query: 'x' }, net.opts);
+  assert.match(net.calls[0].url, /path%3Aapi%2F_lib/, 'path يحصر البحث فيه');
+
+  const empty = fakeNet([[/\/search\/code/, jsonRes({ total_count: 0, items: [] })]]);
+  assert.match(await GH.readGithub({ url: 'a/b', query: 'nope' }, empty.opts), /لا نتائج لـ«nope»/);
+
+  const limited = fakeNet([[/\/search\/code/, jsonRes({ message: 'rate limited' }, 403)]]);
+  assert.match(await GH.readGithub({ url: 'a/b', query: 'x' }, limited.opts), /حدّ البحث/);
+
+  assert.match(await GH.readSearch(GH.parseTarget({ url: 'a/b' }), net.opts, ''), /أعطِ نصّ البحث/);
+});
+
 test('readGithub: failures are messages, never throws', async () => {
   const net = fakeNet([[/\/repos\/a\/private$/, jsonRes({}, 404)], [/\/repos\/a\/limited$/, jsonRes({}, 403)]]);
   assert.match(await GH.readGithub({ url: 'a/private' }, net.opts), /غير موجود أو خاصّ.*GITHUB_TOKEN/);

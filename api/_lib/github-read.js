@@ -79,7 +79,7 @@ async function resolveGithubToken(opts) {
 async function ghFetch(pathname, opts) {
   const o = opts || {};
   const headers = {
-    'Accept': o.raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json',
+    'Accept': o.textMatch ? 'application/vnd.github.text-match+json' : (o.raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json'),
     'User-Agent': 'OmranAgent/1.0 (+https://omran-ai-builder.vercel.app)',
     'X-GitHub-Api-Version': '2022-11-28',
   };
@@ -222,6 +222,39 @@ async function readIssue(t, o) {
   return out.join('\n');
 }
 
+/* ---------- بحث نصّي داخل الشيفرة (v-github-code-search: المالك «نفس الفكرة عندما يقرأ الكود» —
+   القراءة العميقة (v-claude-deep-github) توسّع كلّ قراءة لكن تبقى تصفّحًا: ملفّ فملفّ بلا بحث، خلافًا
+   لـGrep الذي يبحث كلّ المستودع دفعة واحدة. بحث كود GitHub الرسميّ (/search/code) يسدّ الفجوة: يرجع
+   كلّ الملفّات المطابقة مع مقتطف من كلّ واحد، فلا حاجة لتخمين أين يُعرَّف رمز أو يُستعمَل. حدّه أشدّ من
+   بقيّة الواجهة (١٠/دقيقة) فرسالة الفشل تشرحه لا تُسقطه صامتًا. ---------- */
+async function readSearch(t, o, query, limit) {
+  const q = String(query || '').trim();
+  if (!q) return 'أعطِ نصّ البحث (query) — اسم دالّة أو ثابت أو رسالة خطأ تريد إيجاد كلّ الملفّات التي تذكره.';
+  const n = Math.max(1, Math.min((o && o.deep) ? 40 : 15, parseInt(limit, 10) || ((o && o.deep) ? 40 : 15)));
+  const scoped = q + ' repo:' + repoOf(t) + (t.path ? ' path:' + t.path : '');
+  const r = await ghFetch('/search/code?per_page=' + n + '&q=' + encodeURIComponent(scoped), Object.assign({}, o, { textMatch: true }));
+  if (!r.ok) {
+    if (r.status === 403 || r.status === 422 || r.status === 429) return 'حدّ البحث في GitHub وصل حدّه (عشرة طلبات بالدقيقة) أو الطلب مرفوض — أعد المحاولة بعد قليل، أو اقرأ ملفًّا بعينه إن عرفت مكانه.';
+    return ghError(r, 'بحث «' + q + '» في ' + repoOf(t), o && o.env, o && o.anonymous);
+  }
+  const j = await r.json().catch(() => ({}));
+  const items = Array.isArray(j.items) ? j.items : [];
+  if (!items.length) return 'لا نتائج لـ«' + q + '» في ' + repoOf(t) + (t.path ? '/' + t.path : '') + '. جرّب كلمة أدقّ أو أقصر، أو تأكّد من التهجئة.';
+  const total = Number(j.total_count) || items.length;
+  const out = ['🔎 «' + q + '» في ' + repoOf(t) + (t.path ? '/' + t.path : '') + ' — ' + total + (j.incomplete_results ? '+' : '') + ' نتيجة'
+    + (items.length < total ? '، أوّل ' + items.length : '') + ':'];
+  for (const it of items) {
+    out.push('\n📄 ' + (it.path || it.name || '؟'));
+    const matches = Array.isArray(it.text_matches) ? it.text_matches : [];
+    for (const m of matches.slice(0, 3)) {
+      const frag = String(m.fragment || '').replace(/\s+/g, ' ').trim().slice(0, 220);
+      if (frag) out.push('  … ' + frag + ' …');
+    }
+  }
+  out.push('\nلقراءة ملفّ كاملًا: read_github بمساره.');
+  return out.join('\n');
+}
+
 /* ---------- الواجهة الموحّدة للأداة ---------- */
 /* ---------- آخر الدفعات (v-secret-vault) ---------- */
 async function readCommits(t, o, limit) {
@@ -247,8 +280,10 @@ async function readCommits(t, o, limit) {
 
 async function readGithub(input, opts) {
   const t = parseTarget(input);
-  if (!t) return 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ أو pull أو issue أو commits، أو owner/repo مع path (وwhat=commits لآخر الدفعات).';
+  if (!t) return 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ أو pull أو issue أو commits، أو owner/repo مع path (وwhat=commits لآخر الدفعات)، أو مع query للبحث.';
+  const query = input && typeof input === 'object' ? String(input.query || '').trim() : '';
   try {
+    if (query) return await readSearch(t, opts, query, input && input.limit);
     if (t.kind === 'pr') return await readPR(t, opts);
     if (t.kind === 'issue') return await readIssue(t, opts);
     if (t.kind === 'commits') return await readCommits(t, opts, input && typeof input === 'object' ? input.limit : undefined); // v-secret-vault
@@ -292,4 +327,4 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, readCommits, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX };
+module.exports = { parseTarget, readGithub, readSearch, readCommits, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX };
