@@ -16,6 +16,7 @@ I18N['ur'] = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'زمرہ', fxGenWomen: 'خواتین', fxGenMen: 'مرد', fxGenKids: 'بچے', fxColorsLbl: 'پسندیدہ رنگ', fxColBlack: 'سیاہ', fxColWhite: 'سفید', fxColNavy: 'نیوی بلیو', fxColRed: 'سرخ', fxColGold: 'سنہری',
     fxColGreen: 'سبز', fxColBeige: 'بیج', fxColMulti: 'کثیر رنگ', fxAccLbl: 'ایکسسریز', fxAccGlasses: 'چشمہ', fxAccWatch: 'گھڑی', fxAccHandbag: 'ہینڈ بیگ', fxAccShoes: 'جوتے', fxAccScarf: 'اسکارف', fxAccMakeup: 'میک اپ',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "اس اسٹائل کا ڈیزائن {n} از {total} — مختلف ڈیزائن کے لیے دوبارہ ٹیپ کریں", fxStylesPlus: "ہر اسٹائل میں 100 سے زیادہ ڈیزائن", fxAccHint: "اپنی لُک میں کیا شامل کرنا ہے چنیں — ہر ڈیزائن کے ساتھ اس کا انداز بدلتا ہے",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'سائیڈ مینو', lightModeTitle: 'لائٹ موڈ', darkModeTitle: 'ڈارک موڈ', provSearchPh: 'ماڈل تلاش کریں...', jumpLatestTitle: 'تازہ ترین پیغام', editMsgNotice: 'پیغام میں ترمیم', modesTitle: 'موڈز',
     attachFileTitle: 'فائل منسلک کریں', chipExam: 'امتحان حل کریں', chipBook: 'کتاب کا خلاصہ', chipArticle: 'پیشہ ورانہ مضمون لکھیں', chipIdeas: 'پروجیکٹ کے آئیڈیاز', tryItTitle: 'میرے لیے آزمائیں',

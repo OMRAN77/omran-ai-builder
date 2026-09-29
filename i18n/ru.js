@@ -16,6 +16,7 @@ I18N['ru'] = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Категория', fxGenWomen: 'Женское', fxGenMen: 'Мужское', fxGenKids: 'Детское', fxColorsLbl: 'Предпочитаемые цвета', fxColBlack: 'Чёрный', fxColWhite: 'Белый', fxColNavy: 'Тёмно-синий', fxColRed: 'Красный', fxColGold: 'Золотой',
     fxColGreen: 'Зелёный', fxColBeige: 'Бежевый', fxColMulti: 'Многоцветный', fxAccLbl: 'Аксессуары', fxAccGlasses: 'Очки', fxAccWatch: 'Часы', fxAccHandbag: 'Сумка', fxAccShoes: 'Обувь', fxAccScarf: 'Шарф', fxAccMakeup: 'Макияж',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "Дизайн {n} из {total} для этого стиля — нажмите ещё раз, чтобы получить другой", fxStylesPlus: "Более 100 дизайнов для каждого стиля", fxAccHint: "Выберите, что добавить к образу, — его вид меняется с каждым дизайном",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Боковое меню', lightModeTitle: 'Светлая тема', darkModeTitle: 'Тёмная тема', provSearchPh: 'Поиск модели...', jumpLatestTitle: 'Последнее сообщение', editMsgNotice: 'Редактирование сообщения',
     modesTitle: 'Режимы', attachFileTitle: 'Прикрепить файл', chipExam: 'Решить экзамен', chipBook: 'Кратко пересказать книгу', chipArticle: 'Написать профессиональную статью',

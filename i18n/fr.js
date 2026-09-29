@@ -16,6 +16,7 @@ I18N['fr'] = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Catégorie', fxGenWomen: 'Femme', fxGenMen: 'Homme', fxGenKids: 'Enfants', fxColorsLbl: 'Couleurs préférées', fxColBlack: 'Noir', fxColWhite: 'Blanc', fxColNavy: 'Bleu marine', fxColRed: 'Rouge', fxColGold: 'Doré',
     fxColGreen: 'Vert', fxColBeige: 'Beige', fxColMulti: 'Multicolore', fxAccLbl: 'Accessoires', fxAccGlasses: 'Lunettes', fxAccWatch: 'Montre', fxAccHandbag: 'Sac à main', fxAccShoes: 'Chaussures', fxAccScarf: 'Écharpe', fxAccMakeup: 'Maquillage',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "Création {n} sur {total} pour ce style — touchez à nouveau pour une autre", fxStylesPlus: "Plus de 100 créations par style", fxAccHint: "Choisissez ce que vous ajoutez à votre tenue — son style change à chaque création",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Menu latéral', lightModeTitle: 'Mode clair', darkModeTitle: 'Mode sombre', provSearchPh: 'Rechercher un modèle...', jumpLatestTitle: 'Dernier message', editMsgNotice: 'Modification du message',
     modesTitle: 'Modes', attachFileTitle: 'Joindre un fichier', chipExam: 'Résoudre un examen', chipBook: 'Résumer un livre', chipArticle: 'Écrire un article professionnel',

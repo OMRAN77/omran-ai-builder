@@ -16,6 +16,7 @@ I18N['id'] = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Kategori', fxGenWomen: 'Wanita', fxGenMen: 'Pria', fxGenKids: 'Anak', fxColorsLbl: 'Warna favorit', fxColBlack: 'Hitam', fxColWhite: 'Putih', fxColNavy: 'Biru dongker', fxColRed: 'Merah', fxColGold: 'Emas',
     fxColGreen: 'Hijau', fxColBeige: 'Krem', fxColMulti: 'Multiwarna', fxAccLbl: 'Aksesori', fxAccGlasses: 'Kacamata', fxAccWatch: 'Jam tangan', fxAccHandbag: 'Tas tangan', fxAccShoes: 'Sepatu', fxAccScarf: 'Syal', fxAccMakeup: 'Makeup',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "Desain {n} dari {total} untuk gaya ini — ketuk lagi untuk desain lain", fxStylesPlus: "Lebih dari 100 desain per gaya", fxAccHint: "Pilih yang ingin ditambahkan ke tampilanmu — gayanya berubah di setiap desain",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Menu samping', lightModeTitle: 'Mode terang', darkModeTitle: 'Mode gelap', provSearchPh: 'Cari model...', jumpLatestTitle: 'Pesan terbaru', editMsgNotice: 'Mengedit pesan', modesTitle: 'Mode',
     attachFileTitle: 'Lampirkan file', chipExam: 'Selesaikan ujian', chipBook: 'Ringkas buku', chipArticle: 'Tulis artikel profesional', chipIdeas: 'Ide proyek', tryItTitle: 'Coba untuk saya',
