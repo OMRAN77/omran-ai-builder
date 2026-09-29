@@ -15,7 +15,8 @@ const SWIPE = R('js/app-05-swipe-back.js');
 const BUNDLE = R('js/app.bundle.js');
 
 test('١. البوّابة: جسر OmranRender أو علم حزمة هواوي store-safe، والعلم يُضبط قبل الحزمة', () => {
-  assert.match(SRC, /const ptHwGrid = \(\(\) => \{ try\{ return !!\(\(window\.OmranRender && typeof window\.OmranRender\.mode === 'function'\) \|\| document\.documentElement\.classList\.contains\('store-safe'\)\); \}/);
+  /* v-tools-one-col: البوّابة صارت هواوي **أو** هاتف — الشرطان الأوّلان كما هما (الاختبار ٧ يغطّي الثالث) */
+  assert.match(SRC, /if\(\(window\.OmranRender && typeof window\.OmranRender\.mode === 'function'\) \|\| document\.documentElement\.classList\.contains\('store-safe'\)\) return true;/);
   assert.match(SRC, /if\(ptHwGrid\) ptSectionsView\.classList\.add\('ptHwGrid'\);/);
   const sd = R('js/selfdiag.js'), html = R('index.html');
   assert.ok(sd.includes("classList.add('store-safe')"), 'selfdiag يضبط العلم من ?store=huawei');
@@ -30,7 +31,9 @@ test('٢. لا سحب JS بعد اليوم: كان يعيد رسم النافذ�
 
 test('٣. الشبكة: القسم كلّه ظاهر بلا ماسح، بلا أسهم ودوائرها، بلا «عرض الكل»', () => {
   assert.match(CSS, /#sectionsToolsPopup \.ptHwGrid \.ptCarousel\{overflow:visible; scroll-snap-type:none;\}/, 'لا ماسح جانبيّ = لا طبقة مركّبة');
-  assert.match(CSS, /#sectionsToolsPopup \.ptHwGrid \.ptTrack\{display:grid!important; grid-template-columns:repeat\(auto-fill,minmax\(160px,1fr\)\)!important; width:100%;/);
+  /* v-tools-one-col: عمود واحد بعرض كامل بدل عمودين (شكل لقطة المالك) */
+  assert.match(CSS, /#sectionsToolsPopup \.ptHwGrid \.ptTrack\{display:grid!important; grid-template-columns:1fr!important; width:100%;/);
+  assert.doesNotMatch(CSS, /minmax\(160px,1fr\)/, 'شبكة العمودين رجعت');
   assert.match(CSS, /#sectionsToolsPopup \.ptHwGrid \.ptTrack > \.btn\{width:100%; min-width:0; flex:none;\}/);
   assert.match(CSS, /#sectionsToolsPopup \.ptHwGrid :is\(\.ptShelfArrow,\.ptViewAll,\.ptSentinel\)\{display:none!important;\}/, 'الأسهم ودوائرها و«عرض الكل» تُحذف');
 });
@@ -49,6 +52,25 @@ test('٥. سحب الرجوع يعمل فوق شبكة هواوي، ويبقى �
 test('٦. الحزمة ووسوم الكاش', () => {
   assert.ok(BUNDLE.includes("if(ptHwGrid) ptSectionsView.classList.add('ptHwGrid');"), 'الحزمة تحمل الجزء');
   assert.ok(!BUNDLE.includes('ptShelfDrag'), 'لا بقايا السحب في الحزمة');
-  assert.match(R('js/ui-wiring.js'), /\/css\/tool-card-images\.css\?v=19/);
-  assert.match(R('index.html'), /\/js\/ui-wiring\.js\?v=656/);
+  assert.match(R('js/ui-wiring.js'), /\/css\/tool-card-images\.css\?v=20/);
+  assert.match(R('index.html'), /\/js\/ui-wiring\.js\?v=657/);
+});
+
+/* v-tools-one-col (المالك بلقطة من جهازه: «رجّعلي في الأدوات نفس قبل… نفس الهواوي اللي
+   الحين موجودة في الهواتف، نفس هاذي»): الشكل بطاقة واحدة بعرض كامل في الصفّ. */
+test('٧. البوّابة تشمل الهواتف لا هواوي وحدها، والحاسوب خارجها', () => {
+  assert.match(SRC, /window\.matchMedia\('\(max-width:720px\)'\)\.matches/, 'الهواتف خارج بوّابة الشبكة');
+  // البوّابة الحقيقيّة في vm: هواوي، هاتف، حاسوب
+  const vm = require('node:vm');
+  const body = SRC.slice(SRC.indexOf('const ptHwGrid = (() => { try{'), SRC.indexOf('})();', SRC.indexOf('const ptHwGrid')) + 5);
+  const run = (w) => { const ctx = { window: w, document: { documentElement: { classList: { contains: (c) => !!(w.__cls || []).includes(c) } } } };
+    ctx.window.matchMedia = w.matchMedia; vm.runInNewContext(body + '\nglobalThis.__r = ptHwGrid;', ctx); return ctx.__r; };
+  const mm = (px) => (q) => ({ matches: px <= Number((q.match(/(\d+)px/) || [])[1] || 0) });
+  assert.equal(run({ matchMedia: mm(412) }), true, 'هاتف ٤١٢ خارج الشبكة');
+  assert.equal(run({ matchMedia: mm(720) }), true, 'حدّ ٧٢٠ خارج الشبكة');
+  assert.equal(run({ matchMedia: mm(1280) }), false, 'الحاسوب دخل الشبكة — صفوفه يجب أن تبقى');
+  assert.equal(run({ matchMedia: mm(1280), __cls: ['store-safe'] }), true, 'حزمة هواوي على الحاسوب');
+  assert.equal(run({ matchMedia: mm(1280), OmranRender: { mode: () => 'cpu' } }), true, 'جسر هواوي');
+  // وبلا matchMedia إطلاقًا لا ينكسر
+  assert.equal(run({}), false);
 });

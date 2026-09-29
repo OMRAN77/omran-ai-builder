@@ -40,7 +40,7 @@ html[dir="rtl"] #sectionsToolsPopup .ptShelfArrow{transform:translateY(-50%) sca
 /* v-hw-tools-grid: تطبيق هواوي (رسم بالمعالج المركزيّ) بلا سحب جانبيّ — كلّ قسم شبكة عموديّة، بلا ماسح ولا أسهم
    ولا «عرض الكل». الحاسوب والمتصفّحات على الصفوف كما هي. */
 #sectionsToolsPopup .ptHwGrid .ptCarousel{overflow:visible; scroll-snap-type:none;}
-#sectionsToolsPopup .ptHwGrid .ptTrack{display:grid!important; grid-template-columns:repeat(auto-fill,minmax(160px,1fr))!important; width:100%; min-width:0; gap:12px!important;}
+#sectionsToolsPopup .ptHwGrid .ptTrack{display:grid!important; grid-template-columns:1fr!important; width:100%; min-width:0; gap:12px!important;}
 #sectionsToolsPopup .ptHwGrid .ptTrack > .btn{width:100%; min-width:0; flex:none;}
 #sectionsToolsPopup .ptHwGrid :is(.ptShelfArrow,.ptViewAll,.ptSentinel){display:none!important;}
 #sectionsToolsPopup .ptCarousel::-webkit-scrollbar{display:none;}
