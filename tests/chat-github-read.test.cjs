@@ -87,6 +87,29 @@ test('١. الأداة معرّفة لكلّ مسار الأدوات، قراء�
   assert.ok(!/^const .*require\('\.\/github-read\.js'\)/m.test(s), 'لا تحميل للقارئ في نطاق الوحدة');
 });
 
+/* v-github-code-search (المالك: «نفس الفكرة عندما يقرأ الكود» — بحث بدل تصفّح عشوائيّ). */
+test('١ب. أداة read_github تحمل query للبحث، والمالك على كلود يمرّره كما هو', async () => {
+  const s = read('api/_lib/chat.js');
+  const tools = s.slice(s.indexOf('\nconst TOOLS = ['), s.indexOf('\nconst TOOLS_NOTE'));
+  const gh = tools.slice(tools.indexOf("name: 'read_github'"));
+  assert.match(gh, /query:\s*\{\s*type:\s*'string'/, 'معامل query معرَّف');
+  assert.ok(s.includes('ابحث عنه أوّلًا بـquery'), 'التوجيه يشجّع البحث قبل التصفّح العشوائيّ');
+  assert.ok(s.includes('knowledge/DECISIONS.md') && s.includes('knowledge/PITFALLS.md'), 'التوجيه يذكر سجلّ القرارات والفخاخ');
+
+  const saveOwners = process.env.OWNER_USERNAMES;
+  process.env.OWNER_USERNAMES = 'gh-owner';
+  try {
+    ghCalls.length = 0;
+    const r = await ask('claude', 'gh-owner', { query: 'buildTrendPrompt' });
+    assert.equal(ghCalls.length, 1);
+    assert.equal(ghCalls[0].input.query, 'buildTrendPrompt');
+    assert.deepEqual(ghCalls[0].opts, { deep: true }, 'العمق نفسه يشمل البحث على مسار كلود');
+    assert.equal(r.bodies.length, 2);
+  } finally {
+    if (saveOwners === undefined) delete process.env.OWNER_USERNAMES; else process.env.OWNER_USERNAMES = saveOwners;
+  }
+});
+
 test('٢. غير المالك (على أيّ مزوّد، كلود ضمنًا): read_github ممنوعة كليًّا — بلا نداء شبكة (v-github-owner-only)', async () => {
   for (const prov of ['claude', 'deepseek', 'openai']) {
     ghCalls.length = 0;
