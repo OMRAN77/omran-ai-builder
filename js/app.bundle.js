@@ -32038,6 +32038,18 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     ['pointerup', 'pointercancel'].forEach((evt) => resultWrap.addEventListener(evt, () => { __studioBaDragging = false; }));
   }
 
+  /* v-studio-variants (طلب المالك «أكثر من ١٠٠ في كلّ شكل»): عدّاد على الجهاز لكلّ
+     ميزة+خيار يرتفع مع كلّ توليد، فيصل الخادم رقم شكلٍ جديد في كلّ ضغطة — المشترك
+     لا يرى التصميم نفسه مرّتين. تعذّر التخزين لا يوقف التوليد: رقم عشوائيّ. */
+  function nextVariant(f, v){
+    const key = 'aiapp_studio_var_' + f + '_' + v;
+    try{
+      const n = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1;
+      localStorage.setItem(key, String(n));
+      return n;
+    }catch(e){ return Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
+  }
+
   /* ---- 📊 compare checkboxes (built from style options) ---- */
   function buildCompareChecks(){
     compareChecksEl.innerHTML = '';
@@ -32268,6 +32280,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         imageBase64: selectedBase64A,
         mimeType: selectedMimeA,
         multiAngle: !!(multiAngleEl && multiAngleEl.checked),
+        variant: nextVariant(feature, styleEl.value), /* v-studio-variants */
       };
       if(feature === 'merge'){
         payload.imageBase64B = selectedBase64B;
@@ -32376,7 +32389,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
 
     try{
       const results = await Promise.all(stylesToRun.map(async (styleVal) => {
-        const payload = { feature, style: styleVal, token, imageBase64: selectedBase64A, mimeType: selectedMimeA, multiAngle: false };
+        const payload = { feature, style: styleVal, token, imageBase64: selectedBase64A, mimeType: selectedMimeA, multiAngle: false, variant: nextVariant(feature, styleVal) }; /* v-studio-variants */
         try{
           const res = await fetch('/api/studio-create', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -32434,6 +32447,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const payload = {
           feature: 'heritage', style: styleEl.value, token,
           imageBase64: selectedBase64A, mimeType: selectedMimeA, multiAngle: false,
+          variant: nextVariant('heritage', styleEl.value), /* v-studio-variants */
           description: (baseDesc ? (baseDesc + '. ') : '') + v.extra,
         };
         try{
