@@ -56,122 +56,9 @@ const faceLock = require('./face-lock.js');
 const mergeIdentity = require('./merge-identity');
 const { judgeBest, duoEnabled } = require('./image-judge');
 
-const STYLE_TEXT = {
-  hair: {
-    black: 'jet black hair color',
-    brown: 'natural chestnut brown hair color',
-    blonde: 'golden blonde hair color',
-    red: 'vivid auburn red hair color',
-    silver: 'silver/gray hair color',
-    colorful: 'vivid multicolor fantasy hair color (pink/blue/purple highlights)',
-    ombre: 'a stylish ombre hair color fading dark roots to light ends',
-    highlights: 'natural sun-kissed highlights through the hair',
-    platinum: 'icy platinum blonde hair color',
-    burgundy: 'deep burgundy wine hair color',
-    blue: 'bold electric blue hair color',
-    rose: 'soft rose-gold pink hair color',
-    curly: 'a voluminous curly hairstyle, defined bouncy curls',
-    straight: 'a sleek straight glossy hairstyle',
-    waves: 'soft glamorous hollywood waves hairstyle',
-    bob: 'a chic short bob haircut',
-    pixie: 'a modern pixie cut hairstyle',
-    longlayers: 'long layered flowing hairstyle',
-  },
-  nails: {
-    red: 'classic glossy red nail polish',
-    nude: 'nude/beige nail polish',
-    black: 'matte black nail polish',
-    french: 'classic French manicure (white tips)',
-    pink: 'soft pink nail polish',
-    gold: 'metallic gold glitter nail polish',
-    ombrenails: 'elegant ombre gradient nails',
-    glitter: 'sparkling glitter party nails',
-    mattegray: 'matte greige minimal nails',
-    chrome: 'mirror chrome metallic nails',
-    marble: 'white marble-effect nail art',
-    artnails: 'delicate hand-painted floral nail art',
-  },
-  makeup: {
-    natural: 'light natural everyday makeup look',
-    glam: 'glamorous full evening makeup look',
-    smokey: 'smokey eye makeup look',
-    redlips: 'bold red lipstick makeup look',
-    bridal: 'elegant bridal makeup look',
-    softglam: 'a soft-glam makeup look, luminous skin, neutral shimmer',
-    kohl: 'a striking Arabic kohl-lined eyes makeup look',
-    dewy: 'a dewy fresh-skin makeup look, glowing highlight',
-    matte: 'a full matte velvet-finish makeup look',
-    editorial: 'a bold colorful editorial makeup look, artistic liner',
-  },
-  beard: {
-    full: 'a full thick well-groomed beard',
-    stubble: 'light designer stubble',
-    mustache: 'a mustache only, clean shaved cheeks',
-    goatee: 'a neat goatee beard style',
-    clean: 'a completely clean-shaven face',
-    boxed: 'a short boxed beard, sharply groomed edges',
-    vandyke: 'a Van Dyke beard style, pointed goatee with detached mustache',
-    faded: 'a skin-faded beard blending into the haircut',
-    longbeard: 'a thick long well-groomed beard',
-    anchor: 'an anchor-shaped chin beard with mustache',
-  },
-  skin: {
-    subtle: 'subtle natural skin smoothing, keep realistic skin texture and pores',
-    glow: 'a healthy natural glow and even skin tone',
-    circles: 'reduced dark circles under the eyes, refreshed look',
-    tan: 'a healthy sun-kissed golden tan skin tone',
-    matteskin: 'shine-free matte refined skin finish',
-    freckles: 'charming natural light freckles',
-  },
-  glasses: {
-    sunglasses: 'classic black sunglasses',
-    round: 'round vintage-style glasses',
-    catseye: 'cat-eye shaped glasses',
-    aviator: 'aviator style glasses',
-    rimless: 'thin rimless glasses',
-    wayfarer: 'classic wayfarer frame glasses',
-    oversized: 'fashionable oversized frame glasses',
-    sportglasses: 'sleek wraparound sport sunglasses',
-    goldframe: 'luxury thin gold-frame glasses',
-    retroglasses: 'retro 70s tinted glasses',
-    hexagon: 'modern hexagonal frame glasses',
-    clearframe: 'trendy clear transparent frame glasses',
-  },
-  tattoo: {
-    sleeve: 'a detailed full arm sleeve tattoo design',
-    wrist: 'a small delicate wrist tattoo',
-    back: 'a large detailed back piece tattoo',
-    tribal: 'a bold black tribal-style tattoo',
-    geometric: 'a fine-line geometric pattern tattoo',
-    minimalline: 'a tiny minimalist single-line tattoo',
-    arabictattoo: 'an elegant Arabic calligraphy tattoo',
-    floraltattoo: 'a detailed floral botanical tattoo',
-    custom: 'a custom tattoo design as described',
-  },
-  anime: {
-    classic: 'a classic Japanese anime art style illustration',
-    chibi: 'a cute chibi cartoon style illustration',
-    ghibli: 'a Studio Ghibli-inspired hand-painted anime style illustration',
-    cyberpunk: 'a cyberpunk anime art style illustration with neon accents',
-    manga: 'a black and white manga ink illustration style',
-    shonenstudio: 'a dynamic shonen action anime style with speed lines and energy',
-    kawaii: 'a cute kawaii pastel anime style',
-    webtoon: 'a clean modern webtoon comic style',
-    retro90s: 'a nostalgic 1990s cel anime style',
-  },
-  heritage: {
-    kandora: 'a traditional Gulf men\'s kandora (dishdasha) with a matching ghutra headscarf and agal',
-    bisht: 'a luxurious traditional Gulf bisht cloak worn over a white kandora',
-    abaya: 'an elegant traditional women\'s black abaya with a matching sheila headscarf',
-    embroidered: 'a richly embroidered traditional Gulf women\'s dress (thobe nashal) with gold detailing',
-    saudi: 'a traditional Saudi men\'s thobe with a red-and-white shemagh headscarf',
-    emirati: 'a traditional Emirati women\'s kaftan with delicate hand embroidery',
-    omani: "a traditional Omani men's dishdasha with an embroidered kummah cap",
-    saudimen2: "a Saudi winter bisht over thobe with red shemagh, stately look",
-    moroccanher: 'a Moroccan djellaba with hood, fine stitching',
-    palestinian: 'a Palestinian embroidered thobe with traditional tatreez patterns',
-  },
-};
+/* v-studio-more-looks: أوصاف الخيارات انتقلت إلى ملفّ بيانات صرف يقرأه مولّد المعاينات أيضًا */
+/* نسخة سطحيّة: دمج الميزات الـ١٤ أدناه يجب ألّا يلوّث بيانات الملفّ المشتركة (يقرأها مولّد المعاينات) */
+const STYLE_TEXT = Object.assign({}, require('./studio-styles.js').STYLE_TEXT);
 
 const FEATURE_INSTRUCTIONS = {
   hair: (style) => 'Change only the hair to ' + style + '. Keep the same person, face, pose, clothing and background exactly the same, only alter the hair color/style. Output a single photorealistic image.',
@@ -208,8 +95,35 @@ const LOCK_WHAT = {
   iconic: 'the outfit, hair and setting', age: 'the apparent age',
 };
 
+/* v-studio-variety: ميزات «الرسم» — النقش يُرسم من جديد كلّ مرّة، فالخيار نفسه كان
+   يعطي التصميم نفسه بالضبط (حرارة ٠٫١٥ وأمر ثابت). بذرة تنويع + حرارة أعلى قليلًا:
+   الطلب لا يغيّر الستايل المختار، بل ترتيب النقش وتوزيعه. الوجه/الرأس محميّ بالبكسل
+   في الحنّاء والأظافر والتاتو (face-lock: body)، والمكياج يبقى على حرارته لأنّه على الوجه. */
+const DESIGN_FEATURES = ['henna', 'nails', 'tattoo'];
+const VARIETY_NOTE = {
+  henna: 'Draw a brand-new original henna layout inside this exact style: vary the motifs, their sizes, their spacing and the overall composition so it does not repeat an earlier drawing. Keep the described colour, pattern family and placement exactly as asked.',
+  nails: 'Paint a brand-new original nail design inside this exact style: vary the detailing, the accent nails and the finish placement so it does not repeat an earlier design. Keep the described colour and style exactly as asked.',
+  tattoo: 'Draw a brand-new original tattoo artwork inside this exact style: vary the composition, the line work and the shading so it does not repeat an earlier design. Keep the described style, size and placement exactly as asked.',
+};
+/* v-studio-skin-lock (شكوى المالك ٢٨ سبتمبر: صورة كفّ رجل + «حناء خليجية» ⇒ خطأ
+   image_edit_identity_mismatch): وصف الحنّاء «على اليدين» يجرّ الموديل إلى **يد أخرى**
+   ناعمة بلا شعر (يد عروس)، فيحكم الحارس بتغيّر الهويّة ويسقط الطلب كلّه. النقش يُضاف
+   فوق الجلد نفسه لا على يد بديلة. */
+const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP of the exact skin already in the photo. ' +
+  'Keep the same hands/limbs pixel-for-pixel apart from the added design: same skin tone and shade, same body hair, same veins, knuckles and wrinkles, ' +
+  'same nail shape and length, same size, same pose and same background. ' +
+  'Never replace them with someone else\'s hands or feet, never make them look younger, smoother, slimmer, lighter or more feminine, ' +
+  'and never add jewellery, rings, bracelets, sleeves or clothing that is not already there.';
+
+function varietyLine(feature, variant) {
+  const note = VARIETY_NOTE[feature];
+  if (!note) return '';
+  const seed = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) % 1000 : Math.floor(Math.random() * 1000);
+  return '\nVARIETY (design seed #' + seed + '): ' + note;
+}
+
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
-function buildSinglePrompt(feature, style, description, multiAngle) {
+function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   const styleMap = STYLE_TEXT[feature] || {};
   let styleDesc = styleMap[style];
   if (!styleDesc) {
@@ -228,13 +142,19 @@ function buildSinglePrompt(feature, style, description, multiAngle) {
   if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
     promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
   }
+  if (DESIGN_FEATURES.indexOf(feature) !== -1) promptText += SKIN_LOCK;
+  promptText += varietyLine(feature, variant);
   return promptText;
 }
 
 /* ───── نداء Gemini واحد: { b64, mime } أو { error, status, detail, why } ───── */
-async function geminiImage(apiKey, parts, feature, aspectRatio) {
+async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-  const reqBody = { contents: [{ parts }], generationConfig: { temperature: feature === 'anime' ? 0.65 : 0.15, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
+  /* v-studio-variety: ميزات الرسم بحرارة ٠٫٤٥ — ٠٫١٥ كانت تعيد النقش نفسه حرفيًّا.
+     v-studio-guard-retry: المحاولة الثانية بحرارة منخفضة مفروضة (أمانة قبل تنويع). */
+  const temperature = Number.isFinite(tempOverride) ? tempOverride
+    : (feature === 'anime' ? 0.65 : (DESIGN_FEATURES.indexOf(feature) !== -1 ? 0.45 : 0.15));
+  const reqBody = { contents: [{ parts }], generationConfig: { temperature, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
   const upstream = await fetch(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
     signal: AbortSignal.timeout(240000), /* v-image-timeout */
@@ -312,7 +232,16 @@ async function runEdit(o) {
     });
     /* v-guard-fail-open: تعطّل الحارس نفسه لا يُسقط صورةً جاهزة */
     if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
-    else if (!guard.ok) throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
+    else if (!guard.ok) {
+      /* v-studio-guard-retry (شكوى المالك: «image_edit_identity_mismatch» على صورة كفّ):
+         رسمةٌ واحدة شاردة كانت تُسقط الطلب كلّه بخطأ أحمر. محاولة ثانية واحدة بقفل
+         أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر. */
+      console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
+      const retryParts = [{ text: o.promptText + STRONGER_LOCK }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+      const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
+      if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
+      throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
+    }
   }
   return finish(out.b64, out.mime, 'gemini');
 }
@@ -427,3 +356,5 @@ module.exports = async (req, res) => {
 };
 module.exports.STYLE_TEXT = STYLE_TEXT;
 module.exports.FEATURE_INSTRUCTIONS = FEATURE_INSTRUCTIONS;
+module.exports.buildSinglePrompt = buildSinglePrompt; /* v-studio-variety: للاختبار */
+module.exports.DESIGN_FEATURES = DESIGN_FEATURES;

@@ -16,6 +16,7 @@ I18N['fil'] = {
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Kategorya', fxGenWomen: 'Pambabae', fxGenMen: 'Panlalaki', fxGenKids: 'Pambata', fxColorsLbl: 'Mga paboritong kulay', fxColBlack: 'Itim', fxColWhite: 'Puti', fxColNavy: 'Navy blue', fxColRed: 'Pula', fxColGold: 'Ginto',
     fxColGreen: 'Berde', fxColBeige: 'Beige', fxColMulti: 'Multikolor', fxAccLbl: 'Mga accessory', fxAccGlasses: 'Salamin', fxAccWatch: 'Relo', fxAccHandbag: 'Handbag', fxAccShoes: 'Sapatos', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
+    /* v-fashion-variety: رقم التصميم، و«١٠٠+ تصميم لكل نمط»، وشرح الإضافات */ fxDesignNo: "Disenyo {n} sa {total} para sa estilong ito — pindutin ulit para sa iba", fxStylesPlus: "Mahigit 100 disenyo bawat estilo", fxAccHint: "Piliin ang idaragdag sa iyong look — nagbabago ang estilo nito sa bawat disenyo",
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', darkModeTitle: 'Dark mode', provSearchPh: 'Maghanap ng modelo...', jumpLatestTitle: 'Pinakabagong mensahe', editMsgNotice: 'Ine-edit ang mensahe',
     modesTitle: 'Mga mode', attachFileTitle: 'Maglakip ng file', chipExam: 'Sagutan ang isang exam', chipBook: 'Buod ng libro', chipArticle: 'Sumulat ng propesyonal na artikulo',
