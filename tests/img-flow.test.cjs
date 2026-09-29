@@ -15,14 +15,17 @@ test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغ�
        v-img-dots-nobox (المالك: «أريده فقط الإضاءة بدون المستطيل البرواز»): البطاقة السوداء أُزيلت. */
     assert.ok(s.includes("st.id = 'omran-imggen-css2'") && s.includes('background:#e0ac2b'), f);
     assert.ok(!s.includes('background:#050505'), f + ': البطاقة السوداء رجعت خلف النقاط');
-    assert.ok(s.includes('.omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;overflow:visible;margin:6px 0;background:transparent}'), f + ': شكل الحاوية — بلا إطار ولا قصّ للهالة');
-    assert.ok(s.includes('const __N = 13, __steps = 2 * (__N - 1);') && s.includes('((__N - 1 - x) + y) / __steps * 1.9'), 'تأخير قُطريّ من فوق يمين');
+    assert.ok(s.includes('.omGen{position:relative;width:min(220px,55vw);aspect-ratio:9/14;max-width:100%;overflow:visible;margin:6px 0;background:transparent}'), f + ': شكل الحاوية — عموديّة بلا إطار ولا قصّ للهالة');
+    /* v-img-dots-15x10: ١٥ صفًّا × ١٠ أعمدة، وقوس ٤٫٥ على زاويتَي اليسار، والتأخير القُطريّ كما هو */
+    assert.ok(s.includes('const __C = 10, __R = 15, __steps = (__C - 1) + (__R - 1), __arc = 1;'), f + ': أبعاد الشبكة أو نصف القوس تغيّرا');
+    assert.ok(s.includes('((__C - 1 - x) + y) / __steps * 1.9'), 'تأخير قُطريّ من فوق يمين');
+    assert.ok(s.includes('if(x < __arc && y < __arc && Math.hypot(x - __arc, y - __arc) > __arc + 0.01) continue;'), 'قوس الزاوية العليا اليسرى وحدها');
     assert.ok(!s.includes('omGenWave') && !s.includes('--dx'), 'بلا خطوط وبلا حركة للخارج');
     assert.ok(s.includes('@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}'), 'احترام تقليل الحركة');
-    assert.ok(s.includes('html[data-mode=\\"light\\"] .omGen{background:radial-gradient(circle,') && s.includes('border:0;border-radius:50%;box-shadow:none;overflow:visible}'), 'في الوضع الفاتح خلفية دائرية لا مستطيلة');
-    assert.ok(s.includes('html[data-mode=\\"light\\"] .omGenTxt{top:10%;right:auto;left:50%;transform:translateX(-50%);white-space:nowrap;color:#8a6500;text-shadow:none}'), 'نصّ الفاتح في رأس الدائرة');
-    assert.ok(s.includes('html[data-mode=\\"light\\"] .omDot{left:var(--lx)!important;top:var(--ly)!important;animation-delay:var(--ld)}'), 'الفاتح يستخدم دوّامة لا شبكة مربعة');
-    assert.ok(s.includes('__a = __i * 2.399963') && s.includes('Math.sqrt(__i / (__N * __N - 1)) * 42'), 'توزيع حلزوني ذهبي بلا حدود مستطيلة');
+    /* الوضع الفاتح صار مطابقًا للداكن: لا دائرة بيضاء ولا دوّامة، ولا يبقى له إلّا لون العنوان */
+    assert.ok(!s.includes('.omGen{background:radial-gradient(circle,'), f + ': الدائرة البيضاء رجعت');
+    assert.ok(!s.includes('--lx:') && !s.includes('var(--lx)'), f + ': دوّامة الفاتح رجعت');
+    assert.ok(s.includes('html[data-mode=\\"light\\"] .omGenTxt{color:#8a6500;text-shadow:none}'), 'عنوان الفاتح يبقى مقروءًا على أبيض');
     assert.ok(!s.includes("'rgba(255,255,255,.35)'"), 'لا أبيض');
     assert.ok(s.includes("if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el);"), 'بعد هبوط بحث الصور');
   }
@@ -111,17 +114,32 @@ test('٩. صور الإنترنت فقط بطلب صريح أو بالجمع —
   assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) &&'));
 });
 
-test('١٠. مؤشّر الصورة بلا إطار خارجيّ، والفاتح دائرة لا مستطيل', () => {
+test('١٠. مؤشّر الصورة بلا إطار، والوضعان سواء، والشبكة ١٥×١٠ بقوس الزاوية العليا اليسرى', () => {
   const a = read('js/app-09-attach.js');
-  /* v-img-dots-nobox: لا بطاقة سوداء ولا زوايا ولا قصّ في الوضع الداكن — الإضاءة وحدها فوق ما خلفها */
-  assert.ok(a.includes('overflow:visible;margin:6px 0;background:transparent}'), 'حاوية الداكن ما زالت بإطار');
+  /* v-img-dots-nobox + v-img-dots-15x10: الوضعان سواء — إضاءة وحدها بلا بطاقة ولا دائرة بيضاء */
+  assert.ok(a.includes('overflow:visible;margin:6px 0;background:transparent}'), 'الحاوية ما زالت بإطار');
   assert.ok(!a.includes('background:#050505'), 'البطاقة السوداء رجعت');
   assert.ok(!a.includes('border-radius:24px'), 'زوايا البرواز رجعت');
-  assert.ok(a.includes('html[data-mode=\\"light\\"] .omGen{background:radial-gradient(circle,'));
-  assert.ok(a.includes('border:0;border-radius:50%;box-shadow:none;overflow:visible}'));
-  assert.ok(!a.includes('html[data-mode=\\"light\\"] .omGen{background:#fff'), 'لا مستطيل أبيض في الوضع الفاتح');
-  assert.ok(!a.includes('html[data-mode=\\"light\\"] .omGen{background:transparent'), 'لا حذف للدائرة نفسها');
-  assert.ok(a.includes('--lx:') && a.includes('--ly:') && a.includes('--ld:'), 'مواضع وحركة الفاتح مستقلّة عن شبكة الداكن');
+  assert.ok(!a.includes('html[data-mode=\\"light\\"] .omGen{'), 'للوضع الفاتح حاوية خاصّة — يجب أن يطابق الداكن');
+  assert.ok(!a.includes('html[data-mode=\\"light\\"] .omDot{'), 'للوضع الفاتح نقاط خاصّة — يجب أن يطابق الداكن');
+  assert.ok(a.includes('html[data-mode=\\"light\\"] .omGenTxt{color:#8a6500;text-shadow:none}'), 'عنوان الفاتح يبقى مقروءًا');
+  // ١٥ صفًّا × ١٠ أعمدة ناقصةً ما يقطعه قوس اليسار — العدد محسوب لا مخمَّن
+  const C = 10, R = 15, ARC = 1; let n = 0, corners = { tl: 0, bl: 0, tr: 0, br: 0 }, rowsCut = [];
+  for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) {
+    if (x < ARC && y < ARC && Math.hypot(x - ARC, y - ARC) > ARC + 0.01) continue;
+    n++;
+    if (x === 0 && y === 0) corners.tl++;
+    if (x === 0 && y === R - 1) corners.bl++;
+    if (x === C - 1 && y === 0) corners.tr++;
+    if (x === C - 1 && y === R - 1) corners.br++;
+  }
+  assert.equal(C * R, 150, 'الشبكة ١٥ صفًّا × ١٠ أعمدة');
+  assert.equal(n, 149, 'القوس الخفيف يقتطع نقطة الزاوية وحدها');
+  // «أخفّ قليل»: لا يُمسّ إلّا الصفّ الأوّل — وفيه نقطة واحدة
+  for (let y = 0; y < R; y++) { let cut = 0; for (let x = 0; x < C; x++) if (x < ARC && y < ARC && Math.hypot(x - ARC, y - ARC) > ARC + 0.01) cut++; if (cut) rowsCut.push(y); }
+  assert.deepEqual(rowsCut, [0], 'القوس يمتدّ تحت الصفّ الأوّل — الحافّة اليسرى يجب أن تكون مستقيمة تحته');
+  // الزاوية العليا اليسرى وحدها مقصوصة، والثلاث الباقية قائمة (رسمة المالك)
+  assert.deepEqual(corners, { tl: 0, bl: 1, tr: 1, br: 1 }, 'قُصّت زاوية غير العليا اليسرى، أو بقيت هي');
 });
 
 test('١١. «غيّر الصور بدون تكرار الشخصيات» على لقطة بطاقات = تبديل أشخاص لا تعديل أمين يرجّع الصورة نفسها', () => {
