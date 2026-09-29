@@ -15,6 +15,7 @@ const fnSrc = src.slice(start, end) + '\n}';
   let sent = null;
   const env = {
     makeChatStatus: () => ({ step: () => ({ done() {} }) }),
+    __agLogLive: () => ({ pill: { style: {} }, text() {}, act() {}, split: () => null }), // v-agent-log: السجلّ الحيّ داخل الفقاعة
     lang: 'ar',
     __stripCodeForHistory: (role, t) => String(t || ''),
     authGet: () => '',

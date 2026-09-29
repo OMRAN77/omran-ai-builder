@@ -3987,6 +3987,7 @@ const I18N = {
     building: 'جارٍ البناء...',
     buildSuccess: 'تم إنشاء/تحديث التطبيق بنجاح ✅ يمكنك معاينته من تبويب "المعاينة".',
     buildNoCode: '⚠️ لم يصل كود من المزوّد — المعاينة فارغة. أعد إرسال الطلب أو جرّب مزوّدًا آخر.',
+    agThought: 'فكّر لمدّة {n} ث', agExplored: 'استكشف {n} ملفّات', agNoOutput: 'بلا ناتج', // v-agent-log
     selfHealing: '🔧 اكتشفت أخطاء في الكود... جاري الإصلاح الذاتي',
     noCodeToDownload: 'لا يوجد كود لتنزيله بعد.',
     geminiApiKeyLabel: 'مفتاح API — Google Gemini',
@@ -4652,6 +4653,7 @@ const I18N = {
     building: 'Building...',
     buildSuccess: 'App created/updated successfully ✅ You can preview it in the "Preview" tab.',
     buildNoCode: '⚠️ No code came back from the provider — the preview is empty. Send the request again or try another provider.',
+    agThought: 'Thought for {n}s', agExplored: 'Explored {n} files', agNoOutput: 'No output', // v-agent-log
     selfHealing: '🔧 Errors detected in the code... self-healing in progress',
     noCodeToDownload: 'No code to download yet.',
     runPythonBtn: '▶️ Run code',
@@ -5308,7 +5310,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=704'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=705'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7118,6 +7120,10 @@ function renderMessages(keepScroll){
         imgStrip.appendChild(img);
       });
       div.appendChild(imgStrip);
+    }
+    // v-agent-log: ردّ الوكيل بسجلّ خطواته (كلامه، «$ خطوة»، «فكّر N ثانية»، «استكشف N ملفّات») — السجلّ قبل نصّ الردّ
+    if(m.role !== 'user' && Array.isArray(m._agParts) && m._agParts.length && window.omranAgentLog){
+      try{ div.appendChild(window.omranAgentLog.render(m._agParts)); }catch(e){ __swallow(e, 'agent:log'); }
     }
     div.appendChild(textDiv);
     // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
@@ -11129,6 +11135,9 @@ function bg3dGalaxy(canvas, getPalette) {
   }
   return { resize: resize, draw: draw };
 }
+/* v-cpu-calm: في رسم هواوي البرمجيّ (html.omCpu من index.html) الخلفيّة المتحرّكة لقطة ثابتة — كانت ٦٠ إطارًا/ث
+   كلّ واحد يعيد رسم الشاشة كلّها في المعالج فيثقل التطبيق كلّه والكتابة. */
+function bg3dStill(){ try{ return document.documentElement.classList.contains('omCpu'); }catch(e){ return false; } }
 function initCustomBg3D(id){
   const container = document.getElementById('vantaBg');
   if(!container) return;
@@ -11146,6 +11155,16 @@ function initCustomBg3D(id){
     fit();
     window.addEventListener('resize', onResize);
     currentCustomBg = { raf: null, resizeHandler: onResize, canvas };
+    if(bg3dStill()){
+      /* لقطة واحدة (النداءات المتتالية تتجاوز تخطّي الإطار في draw)، وتُعاد بعد التحجيم فقط */
+      const still = () => { const t = performance.now(); for(let i = 0; i < 4; i++) G.draw(t + i * 17); };
+      still();
+      const onStill = () => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { if(currentCustomBg && currentCustomBg.canvas === canvas){ fit(); still(); } }, 100); };
+      window.removeEventListener('resize', onResize);
+      window.addEventListener('resize', onStill);
+      currentCustomBg.resizeHandler = onStill;
+      return;
+    }
     const galaxyLoop = (ts) => { G.draw(ts); currentCustomBg.raf = requestAnimationFrame(galaxyLoop); };
     currentCustomBg.raf = requestAnimationFrame(galaxyLoop);
     return;
@@ -11309,6 +11328,14 @@ function initCustomBg3D(id){
     currentCustomBg.raf = requestAnimationFrame(loop);
   }
   currentCustomBg = { raf: null, resizeHandler: resizeAndReset, canvas };
+  if(bg3dStill()){
+    draw();
+    const onStill = () => { resizeAndReset(); draw(); };
+    window.removeEventListener('resize', resizeAndReset);
+    window.addEventListener('resize', onStill);
+    currentCustomBg.resizeHandler = onStill;
+    return;
+  }
   loop();
 }
 function getBg3DAccentColorHex(){
@@ -11349,6 +11376,11 @@ async function applyBg3D(id, save){
       color: color,
       backgroundColor: P.bgHex
     }, P.light ? (BG3D_LIGHT_EXTRA[id] || {}) : {}));
+    /* v-cpu-calm: Vanta يرسم نفسه في حلقة rAF — في رسم هواوي البرمجيّ تُوقف الحلقة بعد أوّل إطارات فتبقى لقطة */
+    if(bg3dStill() && currentVantaEffect){
+      const eff0 = currentVantaEffect;
+      setTimeout(() => { try{ if(currentVantaEffect === eff0 && eff0.req){ cancelAnimationFrame(eff0.req); eff0.req = null; } }catch(e){ __swallow(e, 'bg3d:vanta-still'); } }, 1500);
+    }
   } catch(e){ console.warn('bg3d init failed', e); }
 }
 // v443/v444: تبديل الوضع يعيد بناء الخلفيّة الحاليّة أيًّا كان محرّكها — applyBg3D يوزّع
@@ -20985,8 +21017,156 @@ async function __agentResumeOnLoad(){
   saveState();
   renderAll();
 }
+/* v-agent-log (المالك ٢٩ سبتمبر، لقطتا Claude Code: «نفس الفكرة بالضبط عند قراءة الكود»): عمل الوكيل سجلّ بترتيبه —
+   جملته قبل كلّ خطوة كلامًا، وكلّ أداة سطر «$ عنوان» ينفتح على الأمر وناتجه، و«فكّر N ثانية» ينفتح على ملخّص تفكيره،
+   وقراءات الملفّات المتتالية تحت «استكشف N ملفّات». يُبنى حيًّا أثناء العمل (إلحاق لا إعادة رسم) ويُحفظ في الرسالة
+   (m._agParts) فيبقى بعد الانتهاء؛ نصّ الرسالة نفسه هو الردّ بعد آخر خطوة. */
+const AG_LOG_BUDGET = 40000;
+function __agLogPre(text, err){
+  const p = document.createElement('pre');
+  p.className = 'agPre' + (err ? ' agErr' : '');
+  p.dir = 'ltr';
+  p.textContent = text;
+  return p;
+}
+function __agLogFillTool(d, p){
+  while(d.childNodes.length > 1) d.removeChild(d.lastChild);
+  d.classList.toggle('agRun', !!p.run);
+  d.classList.toggle('agStepErr', !!p.err);
+  if(p.cmd) d.appendChild(__agLogPre(p.cmd, false));
+  if(p.out) d.appendChild(__agLogPre(p.out, !!p.err));
+  else if(!p.run){ const e = document.createElement('div'); e.className = 'agNone'; e.textContent = t('agNoOutput'); d.appendChild(e); }
+}
+function __agLogToolEl(p){
+  const d = document.createElement('details');
+  d.className = 'agStep';
+  const s = document.createElement('summary');
+  const ic = document.createElement('span'); ic.className = 'agIc'; ic.textContent = '$';
+  const tx = document.createElement('span'); tx.className = 'agTt'; tx.textContent = p.title || p.name || '';
+  s.appendChild(ic); s.appendChild(tx); d.appendChild(s);
+  __agLogFillTool(d, p);
+  return d;
+}
+function __agLogThinkEl(p){
+  const label = t('agThought').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000))));
+  if(!p.s){ const r = document.createElement('div'); r.className = 'agThink'; r.textContent = label; return r; }
+  const d = document.createElement('details'); d.className = 'agThink';
+  const s = document.createElement('summary'); s.textContent = label; d.appendChild(s);
+  const b = document.createElement('div'); b.className = 'agThinkBody'; b.textContent = p.s; d.appendChild(b);
+  return d;
+}
+function __agLogGroupEl(els){
+  const d = document.createElement('details'); d.className = 'agGroup';
+  d.appendChild(document.createElement('summary'));
+  els.forEach(function(e){ d.appendChild(e); });
+  d.firstChild.textContent = t('agExplored').replace('{n}', String(els.length));
+  return d;
+}
+function __agLogTextEl(s){
+  const d = document.createElement('div'); d.className = 'agText';
+  buildSpokenWordSpans(d, s);
+  return d;
+}
+/** يستدعيه renderMessages لكلّ ردّ وكيل يحمل سجلًّا محفوظًا: عنصر السجلّ يسبق نصّ الردّ. */
+function __agLogRender(parts){
+  const root = document.createElement('div'); root.className = 'agLog';
+  for(let i = 0; i < parts.length; i++){
+    const p = parts[i];
+    if(!p) continue;
+    if(p.t === 'text'){ if(String(p.s || '').trim()) root.appendChild(__agLogTextEl(p.s)); continue; }
+    if(p.t === 'think'){ root.appendChild(__agLogThinkEl(p)); continue; }
+    if(p.t !== 'tool') continue;
+    if(p.g){
+      const run = [];
+      while(i < parts.length && parts[i] && parts[i].t === 'tool' && parts[i].g){ run.push(__agLogToolEl(parts[i])); i++; }
+      i--;
+      root.appendChild(run.length > 1 ? __agLogGroupEl(run) : run[0]);
+      continue;
+    }
+    root.appendChild(__agLogToolEl(p));
+  }
+  return root;
+}
+window.omranAgentLog = { render: __agLogRender };
+/** السجلّ الحيّ داخل فقاعة الوكيل: text() لكلام البثّ، act() لأحداث الخادم، split() للحفظ عند الانتهاء. */
+function __agLogLive(host){
+  host.innerHTML = '';
+  const root = document.createElement('div'); root.className = 'agLog';
+  const pill = document.createElement('div'); pill.className = 'agPill';
+  host.appendChild(root); host.appendChild(pill);
+  const parts = [];
+  let cur = null, lastPaint = 0, trail = 0, grp = null;
+  const byId = {};
+  function paint(force){
+    if(!cur) return;
+    const now = Date.now();
+    if(!force && document.documentElement.classList.contains('mobile-ui') && now - lastPaint < 150){
+      if(!trail) trail = setTimeout(function(){ trail = 0; paint(true); }, 150 - (now - lastPaint));
+      return;
+    }
+    if(trail){ clearTimeout(trail); trail = 0; }
+    lastPaint = now;
+    const clean = stripCodeFromChat(cur.s).trim();
+    if(clean) renderStreamingAssistant(cur.el, (parts[0] === cur ? '🤖 ' : '') + clean);
+    else {
+      const w = '🤖 ' + (lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…');
+      if(cur.el.textContent !== w) cur.el.textContent = w;
+    }
+  }
+  function closeText(){ if(cur){ paint(true); cur = null; } }
+  function add(p, el){ p.el = el; parts.push(p); root.appendChild(el); }
+  return {
+    pill: pill,
+    text: function(delta){
+      if(!cur){ cur = { t: 'text', s: '' }; add(cur, document.createElement('div')); cur.el.className = 'agText'; grp = null; }
+      cur.s += delta;
+      paint(false);
+    },
+    act: function(a){
+      if(!a || !a.k) return;
+      if(a.k === 'done'){
+        const p = byId[a.id]; if(!p) return;
+        p.run = false; p.err = !a.ok; p.out = String(a.out || '');
+        __agLogFillTool(p.el, p);
+        return;
+      }
+      closeText();
+      if(a.k === 'note'){ add({ t: 'text', s: String(a.s || ''), note: 1 }, __agLogTextEl(String(a.s || ''))); grp = null; return; }
+      if(a.k === 'think'){ const p = { t: 'think', ms: a.ms, s: String(a.s || '') }; add(p, __agLogThinkEl(p)); grp = null; return; }
+      if(a.k !== 'tool') return;
+      const p = { t: 'tool', id: a.id, name: a.name, title: a.t, cmd: String(a.cmd || ''), g: a.g ? 1 : 0, run: true };
+      p.el = __agLogToolEl(p); parts.push(p);
+      if(a.id) byId[a.id] = p;
+      if(p.g && grp){
+        if(!grp.box){ const first = grp.items[0].el; grp.box = __agLogGroupEl([]); root.replaceChild(grp.box, first); grp.box.appendChild(first); }
+        grp.items.push(p); grp.box.appendChild(p.el);
+        grp.box.firstChild.textContent = t('agExplored').replace('{n}', String(grp.items.length));
+      } else {
+        root.appendChild(p.el);
+        grp = p.g ? { items: [p], box: null } : null;
+      }
+    },
+    /* للحفظ: السجلّ حتّى آخر خطوة (بلا كود، بسقف حجم)، والنصّ الخامّ بعدها هو الردّ. بلا خطوات = null (المسار القديم). */
+    split: function(){
+      closeText();
+      let last = -1;
+      parts.forEach(function(p, i){ if(p.t !== 'text') last = i; });
+      if(last < 0) return null;
+      let used = 0;
+      const cap = function(s, n){ s = String(s || ''); if(s.length > n) s = s.slice(0, n) + '…'; if(used + s.length > AG_LOG_BUDGET) return ''; used += s.length; return s; };
+      const log = parts.slice(0, last + 1).map(function(p){
+        if(p.t === 'text') return { t: 'text', s: cap(p.note ? p.s : stripCodeFromChat(p.s).trim(), 4000) };
+        if(p.t === 'think') return { t: 'think', ms: Number(p.ms) || 0, s: cap(p.s, 2000) };
+        return { t: 'tool', name: p.name, title: p.title, cmd: cap(p.cmd, 700), out: cap(p.out, 1500), err: p.err ? 1 : 0, g: p.g };
+      }).filter(function(p){ return p.t !== 'text' || p.s; });
+      const tail = parts.slice(last + 1).filter(function(p){ return p.t === 'text' && !p.note; }).map(function(p){ return p.s; }).join('');
+      return { log: log, tail: tail };
+    },
+  };
+}
 async function runOmranAgent(cur, apiText, thinkingDiv){
-  const agentStatus = makeChatStatus(thinkingDiv);
+  const agLog = __agLogLive(thinkingDiv);
+  const agentStatus = makeChatStatus(agLog.pill);
   window.__chatStatus = agentStatus;
   let __agentStep = agentStatus.step('🤖', lang === 'ar' ? 'وكيل عمران يخطط…' : 'Omran Agent planning…');
   const history = cur.messages.slice(-8).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: __stripCodeForHistory(m.role, m.apiText || m.content) }));
@@ -21023,7 +21203,8 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
     for(const line of lines){
       if(!line.startsWith('data: ')) continue;
       let ev; try{ ev = JSON.parse(line.slice(6)); }catch(e){ continue; }
-      if(ev.status){
+      // v-agent-log: سطر «↳ فعلتُ — فحصلتُ» صار سطر خطوة في السجلّ نفسه — لا يتكرّر في الحبّة
+      if(ev.status && !/^↳/.test(String(ev.status))){
         // Each server step closes the previous one and opens its own line, so
         // the whole trail stays visible instead of being overwritten.
         if(__agentStep) __agentStep.done();
@@ -21031,6 +21212,11 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         /* v656 — نترجم الحالة بمفتاحها قبل العرض */
         const __st = (typeof tStatus === 'function') ? tStatus(ev) : ev.status;
         __agentStep = agentStatus.step(__phaseIcon, String(__st).replace(/^[^\p{L}\p{N}]+/u, '').trim() || __st);
+        agLog.pill.style.display = '';
+      }
+      if(ev.act){
+        agLog.act(ev.act);
+        if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight;
       }
       if(ev.clientTool && window.omranAgentTools){
         // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
@@ -21049,22 +21235,12 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
       }
       if(ev.delta){
         if(__agentStep){ __agentStep.done(); __agentStep = null; }
-        agentStatus.release();
+        agLog.pill.style.display = 'none';
         full += ev.delta;
-        const clean = stripCodeFromChat(full).trim();
-        /* v-stream-full-agent (لقطة عمران ١٤ سبتمبر «الكلام يطلع مخربط ويوم يخلص يكون تمام»):
-           كانت الفقاعة تعرض آخر ٤٠٠ حرف فقط نصًّا خامًا — بداية مقطوعة وترقيم متداخل — ثمّ
-           تُستبدل بالرسالة كاملة عند الانتهاء. الآن النصّ كلّه بالمنسّق التدريجيّ نفسه
-           الذي تستعمله المحادثة (رأس ثابت + ذيل يُعاد رسمه)، وكبح ١٥٠مل على الجوال. */
-        if(clean){
-          const __now = Date.now();
-          if(!document.documentElement.classList.contains('mobile-ui') || !thinkingDiv._omLastRender || __now - thinkingDiv._omLastRender >= 150){
-            thinkingDiv._omLastRender = __now;
-            renderStreamingAssistant(thinkingDiv, '🤖 ' + clean);
-          }
-        } else {
-          thinkingDiv.textContent = '🤖 ' + (lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…');
-        }
+        /* v-stream-full-agent (لقطة عمران ١٤ سبتمبر «الكلام يطلع مخربط ويوم يخلص يكون تمام»): النصّ كلّه بالمنسّق
+           التدريجيّ نفسه الذي تستعمله المحادثة، وكبح ١٥٠مل على الجوال. v-agent-log: كلّ مقطع كلام بين خطوتين يُرسم
+           في عنصره داخل السجلّ (__agLogLive.text) — المقاطع السابقة لا يُعاد رسمها. */
+        agLog.text(ev.delta);
         if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight;
       }
       if(ev.error) serverErr = ev.error;
@@ -21078,13 +21254,17 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
     if(!full) throw streamBroke;
   }
   if(serverErr && !full) throw new Error(serverErr);
-  await __agentApplyResult(cur, full);
+  await __agentApplyResult(cur, full, streamBroke ? null : agLog.split()); // انقطاعٌ استُعيد من الدفتر = نصّ لا يطابق السجلّ الحيّ
   try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* العلامة ترفٌ */ }
 }
 // 🕯️ الدوام٢: تركيب ناتج الوكيل في المشروع (كود + رسالة + إصلاح ذاتي). كان
 // محبوسًا في ذيل runOmranAgent، فمسارُ الاستئناف لم يملك طريقًا لتطبيق عملٍ
 // اكتمل على الخادم. استُخرج كما هو — بلا تغيير سلوك — ليخدم المسارين.
-async function __agentApplyResult(cur, full){
+async function __agentApplyResult(cur, full, agLog){
+  /* v-agent-log: بسجلّ خطوات، الكلام قبل آخر خطوة محفوظ في السجلّ، ونصّ الرسالة هو الردّ بعدها (كما يختم Claude Code
+     بجوابه). الكود يُلتقط من البثّ كلّه كما كان. */
+  const __log = (agLog && Array.isArray(agLog.log) && agLog.log.some(function(p){ return p.t !== 'text'; })) ? agLog : null;
+  const chatSrc = __log ? String(__log.tail || '') : full;
   const parsed = extractReply(full);
   let chatText;
   let codeProducedThisTurn = false;
@@ -21092,7 +21272,7 @@ async function __agentApplyResult(cur, full){
     cur.code = parsed.code;
     cur.codeType = parsed.codeType || 'html';
     codeProducedThisTurn = true;
-    chatText = stripCodeFromChat(full).trim();
+    chatText = stripCodeFromChat(chatSrc).trim();
   } else {
     // 🛟 كود ناقص/غير مغلق (```html بلا إغلاق أو <!DOCTYPE بلا نهاية) → نلتقطه للوحة الكود بدل ما يطيح في الشات
     const fenceIdx = full.search(/```(?:html|HTML)?\s*\n/);
@@ -21103,10 +21283,10 @@ async function __agentApplyResult(cur, full){
       cur.code = codePart;
       cur.codeType = 'html';
       codeProducedThisTurn = true;
-      chatText = full.slice(0, idx).replace(/```\s*$/, '').trim();
+      chatText = __log ? stripCodeFromChat(chatSrc).trim() : full.slice(0, idx).replace(/```\s*$/, '').trim();
       if(chatText) chatText += '\n\n' + (lang === 'ar' ? '⚠️ يبدو أن الكود انقطع قبل اكتماله — اكتب "كمل الكود" وسأكمله.' : '⚠️ The code seems truncated — type "continue" and I will finish it.');
     } else {
-      chatText = stripCodeFromChat(full).trim();
+      chatText = stripCodeFromChat(chatSrc).trim();
       // ⚠️ v490: مسار الوكيل كان صامتًا — كود مُلغى/محذوف ⇒ رسالة صريحة بدل معاينة فارغة.
       if(/```|<\/[a-z]+>|<!doctype|<html[\s>]/i.test(full || '')){
         chatText = (chatText ? chatText + '\n\n' : '') + t('buildNoCode');
@@ -21117,6 +21297,7 @@ async function __agentApplyResult(cur, full){
     ? (lang === 'ar' ? 'تم بناء التطبيق ✅ افتح المعاينة وجرّبه — وإذا شي ما اشتغل اكتب لي: "صلح المشكلة".' : 'App built ✅ Open the preview and try it — if something is broken, tell me: "fix it".')
     : (lang === 'ar' ? 'تم ✅' : 'Done ✅');
   const agentMsg = { role: 'assistant', content: '🤖 ' + chatText };
+  if(__log) agentMsg._agParts = __log.log;
   if(codeProducedThisTurn && cur.code){
     // 🛠️ إصلاح ذاتي: يفحص كود الوكيل في iframe مخفي ويصلح أخطاء التشغيل تلقائيًا
     try{

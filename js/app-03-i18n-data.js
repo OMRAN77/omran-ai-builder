@@ -818,6 +818,7 @@ const I18N = {
     building: 'جارٍ البناء...',
     buildSuccess: 'تم إنشاء/تحديث التطبيق بنجاح ✅ يمكنك معاينته من تبويب "المعاينة".',
     buildNoCode: '⚠️ لم يصل كود من المزوّد — المعاينة فارغة. أعد إرسال الطلب أو جرّب مزوّدًا آخر.',
+    agThought: 'فكّر لمدّة {n} ث', agExplored: 'استكشف {n} ملفّات', agNoOutput: 'بلا ناتج', // v-agent-log
     selfHealing: '🔧 اكتشفت أخطاء في الكود... جاري الإصلاح الذاتي',
     noCodeToDownload: 'لا يوجد كود لتنزيله بعد.',
     geminiApiKeyLabel: 'مفتاح API — Google Gemini',
@@ -1483,6 +1484,7 @@ const I18N = {
     building: 'Building...',
     buildSuccess: 'App created/updated successfully ✅ You can preview it in the "Preview" tab.',
     buildNoCode: '⚠️ No code came back from the provider — the preview is empty. Send the request again or try another provider.',
+    agThought: 'Thought for {n}s', agExplored: 'Explored {n} files', agNoOutput: 'No output', // v-agent-log
     selfHealing: '🔧 Errors detected in the code... self-healing in progress',
     noCodeToDownload: 'No code to download yet.',
     runPythonBtn: '▶️ Run code',

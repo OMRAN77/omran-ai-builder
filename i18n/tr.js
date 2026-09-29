@@ -35,6 +35,7 @@ I18N['tr'] = {
     adStudioTitle: 'Reklam Stüdyosu', adStudioHint: 'Reklam Stüdyosu — sohbet ederek reklamını oluştur', chatToPdfEmpty: 'Dönüştürülecek bir yanıt yok.', mahaConnectionLost: 'Yeniden bağlanılamadı', voiceTabAssistantName: 'Asistan',
     acctCleanupConfirm: 'Tüm sohbetler ve projeler kalıcı olarak silinecek. Emin misiniz?',
     buildNoCode: '⚠️ Sağlayıcıdan kod gelmedi — önizleme boş. İsteği tekrar gönderin veya başka bir sağlayıcı deneyin.',
+    agThought: '{n} sn düşündü', agExplored: '{n} dosya inceledi', agNoOutput: 'Çıktı yok', // v-agent-log
     convertToImage: 'Görsele Dönüştür',
     convertToPdf: 'PDF\'ye Dönüştür',
     convertToWord: 'Word\'e Dönüştür',

@@ -36,6 +36,7 @@ I18N['ru'] = {
     adStudioTitle: 'Рекламная студия', adStudioHint: 'Рекламная студия — создайте рекламу в чате', chatToPdfEmpty: 'Пока нет ответа для конвертации.', mahaConnectionLost: 'Не удалось переподключиться', voiceTabAssistantName: 'Ассистент',
     acctCleanupConfirm: 'Все чаты и проекты будут удалены навсегда. Вы уверены?',
     buildNoCode: '⚠️ От провайдера не получен код — предпросмотр пуст. Отправьте запрос повторно или попробуйте другого провайдера.',
+    agThought: 'Думал {n} с', agExplored: 'Просмотрено файлов: {n}', agNoOutput: 'Нет вывода', // v-agent-log
     convertToImage: 'Преобразовать в изображение',
     convertToPdf: 'Преобразовать в PDF',
     convertToWord: 'Преобразовать в Word',

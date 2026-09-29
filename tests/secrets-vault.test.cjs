@@ -149,7 +149,7 @@ test('source guards: server redacts on both handlers, client intercepts pasted t
   const chat = read('api/_lib/chat.js'); const agent = read('api/_lib/agent.js');
   assert.ok(chat.includes('const messages = redactMessages(body.messages);'), 'chat.js');
   assert.ok(agent.includes('const messages = redactMessages(body.messages);'), 'agent.js');
-  assert.ok(agent.includes("what: { type: 'string', enum: ['auto', 'commits']") && agent.includes('25-و. الأسرار'), 'أداة الوكيل وقاعدته');
+  assert.ok(agent.includes("what: { type: 'string', enum: ['auto', 'commits', 'commit']") && agent.includes('25-و. الأسرار'), 'أداة الوكيل وقاعدته');
   assert.ok(read('api/system.js').includes("case 'secrets': return require('./_lib/secrets.js');"), 'المسار');
   const attach = read('js/app-09-attach.js');
   assert.ok(attach.includes("window.omranVaultStore('github_token', __gh)") && attach.includes("text = text.replace(__secRe,"), 'اعتراض اللصق في العميل');

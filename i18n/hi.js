@@ -34,6 +34,7 @@ I18N['hi'] = {
     plMaxSupport: 'समर्पित सहायता',
     adStudioTitle: 'विज्ञापन स्टूडियो', adStudioHint: 'विज्ञापन स्टूडियो — चैट करके अपना विज्ञापन बनाएं।', chatToPdfEmpty: 'बदलने के लिए अभी कोई जवाब नहीं है।', mahaConnectionLost: 'फिर से कनेक्ट नहीं हो सका', voiceTabAssistantName: 'असिस्टेंट',
     buildNoCode: '⚠️ प्रोवाइडर से कोई कोड नहीं मिला — प्रीव्यू खाली है। अनुरोध फिर से भेजें या किसी दूसरे प्रोवाइडर को आज़माएँ।',
+    agThought: '{n} सेकंड सोचा', agExplored: '{n} फ़ाइलें देखीं', agNoOutput: 'कोई आउटपुट नहीं', // v-agent-log
     convertToImage: 'इमेज में बदलें',
     convertToPdf: 'PDF में बदलें',
     convertToWord: 'Word में बदलें',
