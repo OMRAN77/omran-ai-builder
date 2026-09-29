@@ -37,6 +37,7 @@ I18N['fil'] = {
     adStudioTitle: 'Ad Studio', adStudioHint: 'Ad Studio — gawin ang iyong ad sa pamamagitan ng chat', chatToPdfEmpty: 'Wala pang sagot na pwedeng i-convert.', mahaConnectionLost: 'Hindi na-reconnect', voiceTabAssistantName: 'Assistant',
     acctCleanupConfirm: 'Permanenteng mabubura ang lahat ng chat at proyekto. Sigurado ka ba?',
     buildNoCode: '⚠️ Walang natanggap na code mula sa provider — walang laman ang preview. Ipadala muli ang request o subukan ang ibang provider.',
+    agThought: 'Nag-isip nang {n} seg', agExplored: 'Sinuri ang {n} file', agNoOutput: 'Walang output', // v-agent-log
     convertToImage: 'I-convert sa Image',
     convertToPdf: 'I-convert sa PDF',
     convertToWord: 'I-convert sa Word',

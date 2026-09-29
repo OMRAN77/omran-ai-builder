@@ -35,6 +35,7 @@ I18N['id'] = {
     adStudioTitle: 'Studio Iklan', adStudioHint: 'Studio Iklan — buat iklanmu lewat obrolan', chatToPdfEmpty: 'Belum ada balasan untuk dikonversi.', mahaConnectionLost: 'Tidak dapat tersambung kembali', voiceTabAssistantName: 'Asisten',
     acctCleanupConfirm: 'Semua obrolan dan proyek akan dihapus permanen. Anda yakin?',
     buildNoCode: '⚠️ Tidak ada kode yang diterima dari penyedia — pratinjau kosong. Kirim ulang permintaan atau coba penyedia lain.',
+    agThought: 'Berpikir {n} dtk', agExplored: 'Menjelajahi {n} file', agNoOutput: 'Tidak ada keluaran', // v-agent-log
     convertToImage: 'Ubah ke Gambar',
     convertToPdf: 'Ubah ke PDF',
     convertToWord: 'Ubah ke Word',

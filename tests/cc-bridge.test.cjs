@@ -139,7 +139,8 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.ok(ui09.indexOf("window.__omMode === 'cc'") < ui09.indexOf('if(window.__agentModeOn && !imageAttachments.length){'), 'فحص cc قبل فحص الوكيل');
   assert.ok(ui09.includes('!__lastA._cc &&'), 'ردود Claude Code لا تدخل ذاكرة المستخدم');
   // v-stream-full-agent («الكلام يطلع مخربط ويوم يخلص يكون تمام»): البثّ كاملًا بالمنسّق التدريجيّ لا ذيل ٤٠٠ حرف
-  assert.ok(ui09.includes("renderStreamingAssistant(thinkingDiv, '🤖 ' + clean)") && !ui09.includes('clean.slice(-400)'), 'الوكيل يعرض النصّ كلّه منسّقًا أثناء البثّ');
+  // v-agent-log: كلّ مقطع كلام بين خطوتين يُرسم كاملًا بالمنسّق نفسه في عنصره داخل السجلّ
+  assert.ok(ui09.includes("renderStreamingAssistant(cur.el, (parts[0] === cur ? '🤖 ' : '') + clean)") && ui09.includes('const clean = stripCodeFromChat(cur.s).trim();') && !ui09.includes('clean.slice(-400)'), 'الوكيل يعرض النصّ كلّه منسّقًا أثناء البثّ');
   assert.ok(ui.includes("renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full)") && !ui.includes('full.slice(-400)'), 'Claude Code يعرض النصّ كلّه منسّقًا أثناء البثّ');
   assert.ok(ui.includes("result.models.join(' + ')") && ui.includes("' · الجهد: ' + result.effort"), 'ذيل الردّ يذكر النموذج الذي عمل فعلًا والجهد');
   assert.ok(!ui.includes('S.retries > 6') && ui.includes('S.retries > 20') && ui.includes('S.retries = 0; if(done) return true;'), 'المتابعة بلا سقف: الالتحاق يتكرّر بعد كلّ قطع نظيف، والسقف على الأخطاء المتتالية فقط');

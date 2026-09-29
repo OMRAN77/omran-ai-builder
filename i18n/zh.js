@@ -30,6 +30,7 @@ I18N['zh'] = {
     adStudioTitle: '广告工作室', adStudioHint: '广告工作室 — 通过对话制作你的广告', chatToPdfEmpty: '暂无可转换的回复。', mahaConnectionLost: '无法重新连接', voiceTabAssistantName: '助手',
     acctCleanupConfirm: '所有聊天和项目将被永久删除。确定要继续吗？',
     buildNoCode: '⚠️ 未收到提供方返回的代码——预览为空。请重新发送请求或尝试其他提供方。',
+    agThought: '思考了 {n} 秒', agExplored: '浏览了 {n} 个文件', agNoOutput: '无输出', // v-agent-log
     convertToImage: '转换为图片',
     convertToPdf: '转换为 PDF',
     convertToWord: '转换为 Word',

@@ -36,6 +36,7 @@ I18N['es'] = {
     adStudioTitle: 'Estudio de Anuncios', adStudioHint: 'Estudio de Anuncios — crea tu anuncio chateando', chatToPdfEmpty: 'Aún no hay respuesta para convertir.', mahaConnectionLost: 'No se pudo reconectar', voiceTabAssistantName: 'Asistente',
     acctCleanupConfirm: 'Se eliminarán permanentemente todos los chats y proyectos. ¿Estás seguro?',
     buildNoCode: '⚠️ No se recibió código del proveedor — la vista previa está vacía. Vuelve a enviar la solicitud o prueba con otro proveedor.',
+    agThought: 'Pensó durante {n} s', agExplored: 'Exploró {n} archivos', agNoOutput: 'Sin salida', // v-agent-log
     convertToImage: 'Convertir a Imagen',
     convertToPdf: 'Convertir a PDF',
     convertToWord: 'Convertir a Word',
