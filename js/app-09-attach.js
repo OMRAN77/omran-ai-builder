@@ -2942,7 +2942,11 @@ async function __agentApplyResult(cur, full, agLog){
     }catch(e){ __swallow(e, "misc:app-09-attach#5"); }
     agentMsg.code = cur.code;
     agentMsg.codeType = cur.codeType || 'html';
-    agentMsg.providerLabel = '🤖 ' + (lang === 'ar' ? 'وكيل عمران' : 'Omran Agent');
+    /* v-agent-badge-star (طلب المالك: احذف إيموجي 🤖 وحطّ مكانه وميض نجمة ذهبية — شرارة
+       تفكير الوكيل نفسها لا إيموجي ثابت): agentBadge تُقرأ في app-04-i18n-state.js فترسم
+       شرارة ✦ متحرّكة بدل نصّ الإيموجي. */
+    agentMsg.providerLabel = lang === 'ar' ? 'وكيل عمران' : 'Omran Agent';
+    agentMsg.agentBadge = true;
   }
   cur.messages.push(agentMsg);
 }

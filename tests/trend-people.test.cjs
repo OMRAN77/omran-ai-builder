@@ -250,3 +250,66 @@ test('١٢. تناقض النصّ على الإطار انحلّ: أربعة ص�
   assert.doesNotMatch(poster, /No on-screen text/, 'ملصق الفيلم يُستثنى');
   assert.match(poster, /bold glowing title 'الأسطورة'/, 'عنوان الملصق ضاع');
 });
+
+/* v-trend-dl-fix (بلاغ المالك عبر وكيل عمران: زرّ تحميل الترند لا يعمل، ومشهد الترند متعدّد
+   المشاهد يظهر رابطه /[object Blob] بعد الدمج): __omranConcatScenes يرجّع Blob فعليًّا،
+   وdl.onclick كان يعترض النقرة بـpreventDefault ثمّ يستدعي autoSaveVideo — دالّة فارغة عمدًا
+   في app-11-video.js (v526: الزرّ يعمل بنفسه عبر href/download، لا نقر برمجيّ). */
+function trendResultBody() {
+  const i = SRC.indexOf('      var finalUrl = urls[0];');
+  const j = SRC.indexOf('      var again = document.createElement', i);
+  assert.ok(i > 0 && j > i, 'مقطع عرض نتيجة الترند موجود في المصدر');
+  return SRC.slice(i, j);
+}
+
+test('١٣. دمج مشاهد الترند: Blob الدمج يتحوّل لرابط تشغيل حقيقيّ لا [object Blob]', async () => {
+  const body = trendResultBody();
+  const fakeBlob = { __isBlob: true, toString() { return '[object Blob]'; } };
+  const out = mk('div');
+  let capturedBlobArg = null;
+  const ctx = {
+    urls: ['https://cdn.example/scene0.mp4', 'https://cdn.example/scene1.mp4'],
+    t: { key: 'pixarstory' },
+    window: {
+      __omranConcatScenes: async () => fakeBlob,
+      __omranProxyVideoUrl: (u) => '/api/video-download?url=' + encodeURIComponent(u),
+    },
+    URL: { createObjectURL: (b) => { capturedBlobArg = b; return 'blob:mock://merged'; } },
+    $: (id) => { assert.equal(id, 'vtOut'); return out; },
+    ui: (k) => k,
+    document: { createElement: mk },
+  };
+  await vm.runInNewContext('(async () => {\n' + body + '\n})()', ctx);
+
+  assert.equal(capturedBlobArg, fakeBlob, 'Blob الدمج نفسه يصل لـURL.createObjectURL لا نتيجة toString');
+  const video = out.children.find((c) => c.tag === 'video');
+  const link = out.children.find((c) => c.tag === 'a');
+  assert.equal(video.src, 'blob:mock://merged', 'المشغّل يعرض رابط الـBlob لا [object Blob]');
+  assert.equal(link.href, 'blob:mock://merged', 'رابط التحميل أيضًا رابط الـBlob (أصل ذاتيّ أصلًا)');
+});
+
+test('١٤. مشهد ترند واحد بلا دمج: رابط التحميل يمرّ ببروكسي الخادم لا الرابط الخارجيّ الخام', async () => {
+  const body = trendResultBody();
+  const out = mk('div');
+  const rawUrl = 'https://cdn.example/scene0.mp4';
+  const ctx = {
+    urls: [rawUrl],
+    t: { key: 'babyversion' },
+    window: { __omranProxyVideoUrl: (u) => '/api/video-download?url=' + encodeURIComponent(u) },
+    URL: { createObjectURL: () => { throw new Error('لا دمج بمشهد واحد — لا يُستدعى'); } },
+    $: () => out,
+    ui: (k) => k,
+    document: { createElement: mk },
+  };
+  await vm.runInNewContext('(async () => {\n' + body + '\n})()', ctx);
+  const video = out.children.find((c) => c.tag === 'video');
+  const link = out.children.find((c) => c.tag === 'a');
+  assert.equal(video.src, rawUrl, 'التشغيل مباشر من الرابط الخارجيّ (لا قيد CORS على src وحده)');
+  assert.equal(link.href, '/api/video-download?url=' + encodeURIComponent(rawUrl), 'التحميل يمرّ بالبروكسي');
+  assert.equal(link.download, 'omran-trend-babyversion.mp4');
+});
+
+test('١٥. لا اعتراض على نقرة التحميل بدالّة فارغة — الرابط يعمل بـhref/download افتراضيًّا', () => {
+  assert.doesNotMatch(SRC, /dl\.onclick\s*=\s*function/, 'زرّ تحميل الترند ما عاد يعترض النقرة');
+  assert.doesNotMatch(SRC, /window\.autoSaveVideo\(u,/, 'ما عاد يستدعي autoSaveVideo الفارغة عمدًا');
+});
