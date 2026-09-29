@@ -13000,15 +13000,28 @@ function populateClockTZSelect(){
   else sel.value = 'Asia/Riyadh';
 }
 
+// v-perf-idle-timers: #btnClock (الحاوية) مخفيّة بلا أيّ كود يُظهرها — كان هذا يبني
+// Intl.DateTimeFormat جديدًا ويكتب في DOM كلّ ثانية للأبد لعنصر لا يراه أحد إطلاقًا. الآن
+// يبدأ فقط لو ظهر العنصر فعلًا (احتياط لتفعيل مستقبليّ)، ويتوقّف تلقائيًّا لو اختفى مجدَّدًا.
+const __headerClockFmt = { ar: new Intl.DateTimeFormat('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+  en: new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) };
 function updateHeaderClock(){
   const el = $('#headerClockTime');
   if (!el) return;
-  el.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-  }).format(new Date());
+  el.textContent = (lang === 'ar' ? __headerClockFmt.ar : __headerClockFmt.en).format(new Date());
 }
-updateHeaderClock();
-setInterval(updateHeaderClock, 1000);
+let __headerClockTimer = null;
+function __headerClockSync(){
+  const btn = $('#btnClock');
+  const visible = !!btn && getComputedStyle(btn).display !== 'none';
+  if (visible && !__headerClockTimer) { updateHeaderClock(); __headerClockTimer = setInterval(updateHeaderClock, 1000); }
+  else if (!visible && __headerClockTimer) { clearInterval(__headerClockTimer); __headerClockTimer = null; }
+}
+__headerClockSync();
+try {
+  const __btnClockEl = $('#btnClock');
+  if (__btnClockEl) new MutationObserver(__headerClockSync).observe(__btnClockEl, { attributes: true, attributeFilter: ['style', 'class'] });
+} catch(e){ /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
 
 function renderClockWorldStrip(){
   const box = $('#clockWorldStrip');
@@ -26771,8 +26784,11 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
     window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key; })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
   }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  setTimeout(boot, 900);
+  // v-perf-idle-timers: boot() كانت تُستدعى عند DOMContentLoaded (مرّتين: فورًا و٩٠٠مل ثانية لاحقًا) فتبني
+  // شبكة ٤٥ بطاقة (٤٥ صورة معاينة) داخل نافذة صانع الفيديو حتّى لو لم يفتحها المستخدم إطلاقًا في تلك
+  // الجلسة. الآن تُبنى فقط عند أوّل فتح فعليّ لصانع الفيديو (omranOpenVideoMaker في app-11-video.js
+  // يستدعي هذا المعرّف — نفس الحزمة، لا تحميل شبكة منفصل فلا سباق تزامن).
+  window.__videoTrendsBoot = boot;
 })();
 /* ---------- 🎬 AI Video Maker (Runway / Veo 3, server-side owner key) ---------- */
 (function(){
@@ -27006,6 +27022,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   }
 
   btnOpen.onclick = () => {
+    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ /* guard-ok */ } }
     modal.style.display = 'flex';
     closeHeaderMenu();
     const owner = isOwnerAccount();
@@ -27018,6 +27035,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
   // v524: فتح صانع الفيديو من المحادثة — يقبل prompt اختياري + صورة hero اختيارية
   window.omranOpenVideoMaker = function(prompt, heroDataUrl, heroMimeType){
+    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ /* guard-ok */ } }
     try{
       if(promptEl && prompt) promptEl.value = String(prompt).trim();
       // صورة hero — تُعرض في المعاينة وتُستخدم في الفيلم
@@ -39383,8 +39401,14 @@ if(document.readyState === 'loading'){
   if(!host) return;
 
   /* v-maha-stars: نجوم الشاشة كلّها أثناء المكالمة — كثافة نجوم الشريط الجانبيّ نفسها (~نجمة لكلّ ١٢٥٠٠ بكسل²)،
-     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة. */
-  (function(){
+     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة.
+     v-perf-idle-timers: كانت تُبنى فور تحميل كلّ صفحة (١٥٠-٥٥٠ عملية DOM) رغم أنّ #mahaGoldWave مخفيّ دائمًا
+     إلّا أثناء مكالمة فعليّة — بُنيت الآن كسولةً عند أوّل استدعاء حقيقيّ (ensureCtx، يجيء من إيماءة المستخدم
+     الأولى لبدء المكالمة عبر mahaUnlockAudio) بدل IIFE فور تحميل الصفحة. */
+  let __skyBuilt = false;
+  function buildSkyStars(){
+    if(__skyBuilt || document.getElementById('mahaSkyLayer')) return;
+    __skyBuilt = true;
     const sky = document.createElement('div');
     sky.id = 'mahaSkyLayer';
     sky.setAttribute('aria-hidden', 'true');
@@ -39400,7 +39424,7 @@ if(document.readyState === 'loading'){
       sky.appendChild(s);
     }
     document.body.appendChild(sky);
-  })();
+  }
   const TILE = '/assets/maha/maha-wave-tile.webp';
   const SPEED = 36, BANDS = 24, RATE = 60;
   const VIS = 0.5, CY = 0.46, ASPECT = 1534 / 1235; // الشريط يعرض نصف ارتفاع الصورة حول خطّ الموجة (٤٦٪)
@@ -39431,6 +39455,7 @@ if(document.readyState === 'loading'){
   let tracked = null, env = null;
 
   function ensureCtx(){
+    try{ buildSkyStars(); }catch(e){ __swallow(e, 'maha:goldwave-sky'); }
     try{
       if(!ctx){
         const C = window.AudioContext || window.webkitAudioContext;
