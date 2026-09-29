@@ -211,3 +211,26 @@ test('١٠. لا كتابة على الإطار في كلّ الترندات إ�
   assert.match(noImg, /No on-screen text/);
   assert.doesNotMatch(noImg, /IDENTITY \(mandatory\)/);
 });
+
+/* v-trend-identity-2 (المالك: «الفيديوات كلّها تغيّر الأشكال... أريد نفس شكل الشخصيّة الي أحطّها»):
+   قفل الهويّة كان في الذيل وحده — نفس ضعف أنماط الصور قبل v-pstyle-identity (الموضع لا الوجود). */
+test('١١. قفل الهويّة صار في المقدّمة أيضًا (أولويّة) لا الذيل وحده (حداثة)، وبلا صورة لا يُلحق', () => {
+  const keys = Object.keys(TRENDS.TRENDS);
+  for (const k of keys) {
+    const withImg = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'عمران', text: 'مرحبا' }).prompt;
+    const noImg = TRENDS.buildTrendPrompt(k, { hasImage: false, name: 'عمران', text: 'مرحبا' }).prompt;
+    assert.match(withImg, /^WHO THEY ARE \(read first\)/, k + ': لا فقرة أولويّة في المقدّمة');
+    assert.match(withImg, /not a character to invent\./, k);
+    assert.doesNotMatch(noImg, /WHO THEY ARE \(read first\)/, k + ': فقرة أولويّة بلا صورة مرجعيّة');
+    // أولويّة وحداثة معًا: فقرة المقدّمة قبل «SCENE:»، وقبل قفل الذيل، وقفل الذيل يبقى كما كان
+    assert.ok(withImg.indexOf('WHO THEY ARE') < withImg.indexOf('SCENE:'), k);
+    assert.ok(withImg.indexOf('SCENE:') < withImg.indexOf('IDENTITY (mandatory)'), k);
+  }
+  // أمر الترند نفسه لم يضع (بيبي ستايل مثالًا)، ولا فقد التحويل الفنّيّ (بيكسار) نصّه
+  const baby = TRENDS.buildTrendPrompt('babyversion', { hasImage: true }).prompt;
+  assert.match(baby, /toddler version of themselves/, 'أمر الترند نفسه ضاع');
+  const pixar = TRENDS.buildTrendPrompt('pixarstory', { hasImage: true, name: 'سالم', sceneIndex: 0 }).prompt;
+  assert.match(pixar, /wakes up smiling/, 'مشهد بيكسار الأوّل ضاع');
+  // الفقرة الجديدة لا تفرض «كما صُوِّر» — تتوافق مع الأساليب الفنّيّة (بيكسار/جيبلي/الخ)
+  assert.doesNotMatch(baby, /precisely as photographed/, 'صياغة تصادم التحويل الفنّيّ');
+});
