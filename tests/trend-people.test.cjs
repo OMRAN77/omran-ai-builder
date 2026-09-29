@@ -118,7 +118,7 @@ test('٦. صور الشخصيّات تُصغَّر قبل الإرسال — ل�
   assert.doesNotMatch(SRC, /photos\.push\(\{\s*dataUrl:\s*String\(r\.result\)/, 'ما زالت الصورة تُقرأ خامًا');
   assert.match(SRC, /shrink\(f, function\(dataUrl\)\{/, 'اختيار الملفّ لا يمرّ على التصغير');
   // وصفة التصغير نفسها المثبَتة في مودالات الاستوديو (v530)
-  assert.match(SRC, /var SHRINK_MAX = 1024, SHRINK_Q = 0\.85;/, 'حدّ التصغير أو الجودة تغيّرا');
+  assert.match(SRC, /var SHRINK_MAX = 1400, SHRINK_Q = 0.85;/, 'حدّ التصغير أو الجودة تغيّرا');
   assert.match(SRC, /c\.getContext\('2d'\)\.drawImage\(img, 0, 0, w, h\)/, 'لا رسم على canvas');
   assert.match(SRC, /toDataURL\('image\/jpeg', SHRINK_Q\)/, 'لا إعادة ترميز JPEG');
   assert.match(SRC, /photos\.push\(\{ dataUrl: dataUrl, mime: 'image\/jpeg' \}\)/, 'نوع الصورة بعد التصغير');
@@ -131,11 +131,11 @@ test('٦. صور الشخصيّات تُصغَّر قبل الإرسال — ل�
   const got = [];
   for (const [w, h] of sizes) {
     ctx.Image = function () { const self = this; setImmediate(() => {}); Object.defineProperty(self, 'src', { set() { self.width = w; self.height = h; self.onload(); } }); };
-    const c2 = Object.assign({ SHRINK_MAX: 1024, SHRINK_Q: 0.85 }, ctx);
+    const c2 = Object.assign({ SHRINK_MAX: 1400, SHRINK_Q: 0.85 }, ctx);
     c2.document.createElement = () => { const c = { width: 0, height: 0, getContext: () => ({ drawImage() {} }), toDataURL: () => 'data:image/jpeg;base64,QUJD' }; got.push(c); return c; };
     vm.runInNewContext(body + '\nshrink({}, function(){});', c2);
   }
-  assert.deepEqual(got.map((c) => [c.width, c.height]), [[1024, 768], [800, 600]], 'التصغير لا يحترم الحدّ أو يكبّر الصغيرة');
+  assert.deepEqual(got.map((c) => [c.width, c.height]), [[1400, 1050], [800, 600]], 'التصغير لا يحترم الحدّ أو يكبّر الصغيرة');
 });
 
 test('٧. «٤١٣» يُترجَم لرسالة مفهومة بالـ14 لغة، لا رمزًا خامًا', () => {
@@ -146,4 +146,68 @@ test('٧. «٤١٣» يُترجَم لرسالة مفهومة بالـ14 لغة�
     assert.ok(String(UI.tooBig[l]).trim().length > 8, l);
     assert.doesNotMatch(String(UI.tooBig[l]), /413|HTTP|Veo|MiniMax|Gemini|Runway/i, l + ': رمز تقنيّ أو اسم مزوّد في نصّ المستخدم');
   }
+});
+
+/* v-trend-identity (المالك بلقطتين: صورة ابنه مقابل ناتج «بيبي ستايل» — «يغيّر الأشكال، شوف
+   الاختلاف الكبير»): قوالب الترندات «حوّل الشخص إلى…» وأقوى حفظ فيها ثلاث كلمات في الذيل. */
+const TRENDS = require('../api/_lib/video-trends.js');
+
+test('٨. كلّ ترند معه صورة يُختم بقفل هويّة، وبلا صورة لا يُلحق', () => {
+  const keys = Object.keys(TRENDS.TRENDS);
+  assert.ok(keys.length >= 40, 'عدد الترندات');
+  let withPhoto = 0;
+  for (const k of keys) {
+    const withImg = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'عمران', text: 'مرحبا' });
+    const noImg = TRENDS.buildTrendPrompt(k, { hasImage: false, name: 'عمران', text: 'مرحبا' });
+    assert.ok(withImg && noImg, k);
+    assert.match(withImg.prompt, /IDENTITY \(mandatory\)/, k + ': بلا قفل هويّة مع الصورة');
+    assert.match(withImg.prompt, /same real person as in the reference image/, k);
+    assert.match(withImg.prompt, /Never replace them with a different, prettier or more generic face/, k);
+    assert.doesNotMatch(noImg.prompt, /IDENTITY \(mandatory\)/, k + ': قفل هويّة بلا صورة مرجعيّة');
+    // القفل آخر ما يُقرأ حين يكون شخصًا واحدًا (شرط الأشخاص يليه عمدًا حين يزيدون)
+    assert.ok(withImg.prompt.trimEnd().endsWith('more generic face.'), k + ': القفل ليس في الذيل');
+    withPhoto++;
+  }
+  assert.equal(withPhoto, keys.length);
+  // القفل يحفظ الهويّة عبر التحويل لا ضدّه — «بيبي ستايل» يبقى أمره قائمًا
+  const baby = TRENDS.buildTrendPrompt('babyversion', { hasImage: true }).prompt;
+  assert.match(baby, /toddler version of themselves/, 'أمر الترند نفسه ضاع');
+  assert.ok(baby.indexOf('IDENTITY (mandatory)') > baby.indexOf('toddler version'), 'القفل قبل أمر الترند');
+  // وشرط تعدّد الأشخاص يبقى بعده
+  const two = TRENDS.buildTrendPrompt('babyversion', { hasImage: true, people: 2 }).prompt;
+  assert.ok(two.indexOf('IMPORTANT — the reference image contains 2') > two.indexOf('IDENTITY (mandatory)'));
+});
+
+test('٩. مع إطار أوّل مبنيّ: أمر صريح بتحريكه بدل إعادة التحويل فوقه', () => {
+  const src = read('api/_lib/veo-create.js');
+  const at = src.indexOf('if (frame && frame.b64) {');
+  assert.ok(at > 0, 'فرع نجاح الإطار الأوّل');
+  const blk = src.slice(at, at + 1200);
+  assert.match(blk, /imageBase64 = frame\.b64; imageMime = frame\.mime;/);
+  assert.match(blk, /promptText \+= ' The attached first frame ALREADY shows every person/, 'لا أمر بتحريك الإطار الجاهز');
+  assert.match(blk, /do not apply the transformation again/, 'لا منع لإعادة التحويل');
+  // يُلحق بعد بناء أمر الترند لا قبله (وإلّا غلبته قوالب «حوّل الشخص إلى…»)
+  assert.ok(src.indexOf('buildTrendPrompt') < at, 'الإلحاق قبل بناء أمر الترند');
+});
+
+/* v-trend-notext (المالك بلقطة: ترجمة محروقة حروفها مكسورة «غيوييةامة يه حادافلا سخحلں»):
+   محرّكات الفيديو لا تصل العربيّة ولا تعكس اتّجاهها، و{text} في القوالب كلام مسموع لا مكتوب. */
+test('١٠. لا كتابة على الإطار في كلّ الترندات إلّا الخطّ العربيّ، والهويّة تبقى آخر ما يُقرأ', () => {
+  const keys = Object.keys(TRENDS.TRENDS);
+  for (const k of keys) {
+    const p = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'عمران', text: 'يا مرحبا' }).prompt;
+    if (k === 'calligraphy') {
+      assert.doesNotMatch(p, /No on-screen text/, 'ترند الخطّ العربيّ موضوعه رسم الجملة — لا يُمنع');
+      continue;
+    }
+    assert.match(p, /No on-screen text: no subtitles, no captions, no titles, no watermarks/, k + ': بلا منع للكتابة');
+    assert.match(p, /Spoken or sung words are heard only, never written/, k);
+    // الترتيب: منع الكتابة ثمّ قفل الهويّة، فالهويّة آخر ما يقرؤه المحرّك (وشرط الأشخاص يليها عمدًا)
+    assert.ok(p.indexOf('No on-screen text') < p.indexOf('IDENTITY (mandatory)'), k + ': المنع بعد قفل الهويّة');
+    assert.ok(p.trimEnd().endsWith('more generic face.'), k + ': قفل الهويّة ليس في الذيل');
+  }
+  // بلا صورة: المنع يبقى والقفل لا
+  const noImg = TRENDS.buildTrendPrompt('heritagesing', { hasImage: false, text: 'x' }).prompt;
+  assert.match(noImg, /No on-screen text/);
+  assert.doesNotMatch(noImg, /IDENTITY \(mandatory\)/);
 });
