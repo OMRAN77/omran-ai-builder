@@ -565,6 +565,17 @@ function buildTrendPrompt(key, params) {
   prompt = prompt.replace(/\{name\}/g, name).replace(/\{text\}/g, text || 'a joyful moment');
   /* v-trend-people: أكثر من شخص في أوّل إطار — القوالب الـ٤٥ مكتوبة بصيغة «الشخص»، فنُلحق
      شرطًا واحدًا بدل تعديلها كلّها: كلّهم يظهرون، وكلّ واحد بوجهه هو، ولا يُدمجون في واحد. */
+  /* v-trend-identity (المالك بلقطتين: صورة ابنه مقابل ناتج ترند «بيبي ستايل» — «يغيّر الأشكال، شوف
+     الاختلاف الكبير»): ٤٥ قالبًا مكتوبة بصيغة «حوّل الشخص إلى…»، وأقوى ما فيها «same facial features»
+     ثلاث كلمات في ذيل الأمر — وهو بعينه الضعف الذي عولج في أنماط الصور (v-pstyle-identity). القفل
+     يُلحق أخيرًا فيكون آخر ما يقرؤه المحرّك، وصيغته تحفظ الهويّة **عبر** ما يغيّره الترند (سنًّا أو
+     زيًّا أو أسلوبًا) لا ضدّه — كصياغة ageshift المثبَتة. */
+  if (p.hasImage) {
+    prompt += ' IDENTITY (mandatory): the person in the video is the same real person as in the reference image —'
+      + ' same face shape, eyes, eyebrows, nose, lips, jawline, skin tone, and hair. Whatever this scene changes'
+      + ' (age, outfit, style, setting), who they are never changes: someone who knows them must recognize them'
+      + ' instantly. Never replace them with a different, prettier or more generic face.';
+  }
   const people = Math.max(1, Math.min(3, parseInt(p.people, 10) || 1));
   if (people > 1) {
     prompt += ' IMPORTANT — the reference image contains ' + people + ' different people: all ' + people
