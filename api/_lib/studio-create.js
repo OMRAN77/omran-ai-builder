@@ -55,6 +55,7 @@ const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-gua
 const faceLock = require('./face-lock.js');
 const mergeIdentity = require('./merge-identity');
 const { judgeBest, duoEnabled } = require('./image-judge');
+const variants = require('./studio-variants.js'); /* v-studio-variants */
 
 /* v-studio-more-looks: أوصاف الخيارات انتقلت إلى ملفّ بيانات صرف يقرأه مولّد المعاينات أيضًا */
 /* نسخة سطحيّة: دمج الميزات الـ١٤ أدناه يجب ألّا يلوّث بيانات الملفّ المشتركة (يقرأها مولّد المعاينات) */
@@ -115,11 +116,15 @@ const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP o
   'Never replace them with someone else\'s hands or feet, never make them look younger, smoother, slimmer, lighter or more feminine, ' +
   'and never add jewellery, rings, bracelets, sleeves or clothing that is not already there.';
 
+/* v-studio-variants: التنويع صار **داخل الخيار نفسه** لكلّ الميزات لا للرسم وحده —
+   توجيه محسوس من محاور studio-variants (آلاف الأشكال لكلّ خيار) بدل جملة «نوّع» عامّة
+   يتجاهلها الموديل. الرقم يصل من العميل (عدّاد لكلّ ميزة+خيار) فلا يتكرّر شكلٌ للمستخدم. */
 function varietyLine(feature, variant) {
-  const note = VARIETY_NOTE[feature];
-  if (!note) return '';
-  const seed = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) % 1000 : Math.floor(Math.random() * 1000);
-  return '\nVARIETY (design seed #' + seed + '): ' + note;
+  const total = variants.variantCount(feature);
+  const n = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) : Math.floor(Math.random() * total);
+  const directive = variants.variantDirective(feature, n);
+  const note = VARIETY_NOTE[feature] || 'Produce a fresh original execution of this exact style; do not repeat an earlier one. Keep the described style, colour and placement exactly as asked.';
+  return '\nVARIATION #' + (n % total) + ' (within this exact style — never change the style itself): ' + directive + '.\n' + note;
 }
 
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
@@ -276,7 +281,7 @@ module.exports = async (req, res) => {
       feature, style, description, token,
       imageBase64, mimeType,
       imageBase64B, mimeTypeB,
-      multiAngle,
+      multiAngle, variant, /* v-studio-variants: رقم الشكل داخل الخيار (عدّاد العميل) */
     } = body;
 
     if (!feature) {
@@ -332,7 +337,7 @@ module.exports = async (req, res) => {
 
     if (feature === 'combo') { res.status(410).json({ error: 'combo_removed' }); return; } /* v-studio-combo-removed: أمر المالك */
 
-    const promptText = buildSinglePrompt(feature, style, description, multiAngle);
+    const promptText = buildSinglePrompt(feature, style, description, multiAngle, Number(variant));
     if (!promptText) { res.status(400).json({ error: 'Unknown feature' }); return; }
     let guardOpts = null;
     if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime' };
