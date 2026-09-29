@@ -1575,6 +1575,17 @@
     }catch(e){ return Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
   }
 
+  /* v-edit-no-change: كود الخطأ يُترجَم برسائل imgErrFriendly القائمة، وما لا ترجمة له يبقى كما هو */
+  function studioErrText(e){
+    const code = (e && e.message) ? String(e.message) : String(e);
+    try{
+      const isAr = !((typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar')).startsWith('en');
+      const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, isAr) : null;
+      if(friendly) return '⚠️ ' + friendly;
+    }catch(err){ /* guard-ok — بلا ترجمة نعرض الكود */ }
+    return (bT('❌ خطأ: ','❌ Error: ')) + code;
+  }
+
   /* ---- 📊 compare checkboxes (built from style options) ---- */
   function buildCompareChecks(){
     compareChecksEl.innerHTML = '';
@@ -1884,7 +1895,8 @@
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('studioAiNeedImage'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      /* v-edit-no-change: رسالة عربيّة مفهومة بدل كود الخطأ الخام (المالك رأى image_edit_identity_mismatch) */
+      setStatus(studioErrText(e));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -1940,7 +1952,7 @@
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = studioErrText(e);
     } finally {
       compareBtn.disabled = false;
     }
@@ -2000,7 +2012,7 @@
       heritageCompareResultsEl.style.display = 'grid';
       heritageCompareStatusEl.style.display = 'none';
     } catch(e){
-      heritageCompareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      heritageCompareStatusEl.textContent = studioErrText(e);
     } finally {
       heritageCompareBtn.disabled = false;
     }

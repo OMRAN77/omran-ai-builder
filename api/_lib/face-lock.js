@@ -109,8 +109,13 @@ function maskPng(w, h, rects) {
 const PROTECT = {
   hair: 'face', menhair: 'face', hijab: 'face', gulfmen: 'face', iconic: 'face', accessories: 'face', wedding: 'face',
   idphoto: 'head', background: 'head',
-  /* body: القابل للتعديل هو ما تحت الرأس فقط (الملابس/الجسم/اليدان) — الرأس والخلفية فوقه محفوظان بالبكسل */
-  nails: 'body', tattoo: 'body', heritage: 'body', henna: 'body', body: 'body', palette: 'body', seasons: 'body',
+  /* body: القابل للتعديل هو ما تحت الرأس فقط (الملابس/الجسم) — الرأس والخلفية فوقه محفوظان بالبكسل */
+  heritage: 'body', body: 'body', palette: 'body', seasons: 'body',
+  /* v-hands-unlocked (شكوى المالك ٢٩ سبتمبر: «أرفق صورة فما غيّر أي شيء»): الحنّاء والأظافر
+     والتاتو كانت 'body' — وقفل 'body' يحمي **كلّ ما فوق خطّ الرقبة** بالبكسل. ووقفة الحنّاء
+     المعتادة يدان مرفوعتان بجانب الوجه: فتقع اليدان داخل المنطقة المحميّة، فتُلصق من الأصل
+     فوق الناتج وترجع الصورة كما هي. الوجه وحده يُقفل الآن، واليدان حرّتان أينما كانتا. */
+  nails: 'face', tattoo: 'face', henna: 'face',
 };
 const RANK = { none: 0, face: 1, head: 2, body: 3 };
 function protectLevel(feature, comboItems) {

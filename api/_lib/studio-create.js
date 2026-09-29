@@ -86,6 +86,8 @@ const EDIT_LOCK = (what) =>
   'the same camera angle, framing, crop, lighting and background — pixel-for-pixel wherever not touched. ' +
   'Change ONLY ' + what + '. If the requested change does not mention headwear, keep the existing headwear exactly as it is. ' +
   'Do not beautify, restyle, re-pose or regenerate anything else.';
+/* v-edit-no-change: الناتج جاء مطابقًا للأصل — المحاولة الثانية تطلب التنفيذ صراحةً */
+const NO_CHANGE_RETRY = '\nSECOND ATTEMPT — the previous result came back identical to the source photo: the requested change was not applied at all. You MUST visibly apply it this time, clearly and unmistakably, while still keeping the same person, pose, framing and background.';
 const STRONGER_LOCK = '\nSECOND ATTEMPT — the previous result changed the person. Preserve the reference photo exactly; apply the single requested change as a thin overlay on the original pixels only.';
 const LOCK_WHAT = {
   hair: 'the hair', nails: 'the fingernails', makeup: 'the facial makeup', beard: 'the facial hair', skin: 'the skin finish',
@@ -196,7 +198,7 @@ async function runEdit(o) {
   let gemP = null;
   const guardOf = async (b64, mime) => {
     if (o.skipGuard) return true;
-    const g = await verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange) });
+    const g = await verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange), requireChange: !!(o.guard && o.guard.requireChange) });
     return !!(g && (g.ok || g.reason === 'validation_unavailable'));
   };
   if (prep) {
@@ -234,6 +236,7 @@ async function runEdit(o) {
       resultBase64: out.b64, resultMime: out.mime,
       userPrompt: (o.guard && o.guard.userPrompt) || o.feature,
       allowStyleChange: !!(o.guard && o.guard.allowStyleChange),
+      requireChange: !!(o.guard && o.guard.requireChange), /* v-edit-no-change */
     });
     /* v-guard-fail-open: تعطّل الحارس نفسه لا يُسقط صورةً جاهزة */
     if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
@@ -242,7 +245,8 @@ async function runEdit(o) {
          رسمةٌ واحدة شاردة كانت تُسقط الطلب كلّه بخطأ أحمر. محاولة ثانية واحدة بقفل
          أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر. */
       console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
-      const retryParts = [{ text: o.promptText + STRONGER_LOCK }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+      const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK;
+      const retryParts = [{ text: o.promptText + retryNote }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
       const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
       if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
       throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
@@ -340,7 +344,9 @@ module.exports = async (req, res) => {
     const promptText = buildSinglePrompt(feature, style, description, multiAngle, Number(variant));
     if (!promptText) { res.status(400).json({ error: 'Unknown feature' }); return; }
     let guardOpts = null;
-    if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime' };
+    /* v-edit-no-change: الميزات الخفيّة (بشرة، عيون، جسم، عمر) تغييرها دقيق فلا يُفرض عليها */
+    const SUBTLE = ['skin', 'eyes', 'body', 'age'];
+    if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime', requireChange: SUBTLE.indexOf(feature) === -1 };
     try {
       const r = await runEdit({
         apiKey, openaiKey, feature, promptText, imageBase64, mimeType,

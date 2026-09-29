@@ -1866,6 +1866,12 @@ function imgErrFriendly(err, isAr){
       ? 'أوقفت النتيجة لأنها غيّرت هوية الشخص أو أشياء لم تطلبها. بقيت الصورة الأصلية محفوظة.'
       : 'I stopped the result because it changed the person or unrelated details. The original remains saved.';
   }
+  /* v-edit-no-change: الناتج رجع مطابقًا للأصل (التعديل لم يُطبَّق) — بعد محاولتين */
+  if(err === 'image_edit_no_change'){
+    return isAr
+      ? 'النتيجة رجعت مطابقة لصورتك بلا أيّ تعديل، فلم أعرضها. جرّب مرّة أخرى أو اختر خيارًا آخر، ويفضّل صورة تظهر فيها المنطقة المطلوبة بوضوح.'
+      : 'The result came back identical to your photo with no edit applied, so I did not show it. Try again or pick another option — a photo that clearly shows the area works best.';
+  }
   /* v-img-honest: الخادم قاس الناتج فوجده الصورة نفسها (حتّى بعد المحرّك الآخر) فلم يعرضه وردّ النقاط — بدل «تمّ» على صورة لم تتغيّر */
   if(err === 'image_unchanged'){
     return t('imgUnchanged');
@@ -32127,6 +32133,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     }catch(e){ return Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
   }
 
+  /* v-edit-no-change: كود الخطأ يُترجَم برسائل imgErrFriendly القائمة، وما لا ترجمة له يبقى كما هو */
+  function studioErrText(e){
+    const code = (e && e.message) ? String(e.message) : String(e);
+    try{
+      const isAr = !((typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar')).startsWith('en');
+      const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, isAr) : null;
+      if(friendly) return '⚠️ ' + friendly;
+    }catch(err){ /* guard-ok — بلا ترجمة نعرض الكود */ }
+    return (bT('❌ خطأ: ','❌ Error: ')) + code;
+  }
+
   /* ---- 📊 compare checkboxes (built from style options) ---- */
   function buildCompareChecks(){
     compareChecksEl.innerHTML = '';
@@ -32436,7 +32453,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('studioAiNeedImage'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      /* v-edit-no-change: رسالة عربيّة مفهومة بدل كود الخطأ الخام (المالك رأى image_edit_identity_mismatch) */
+      setStatus(studioErrText(e));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -32492,7 +32510,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = studioErrText(e);
     } finally {
       compareBtn.disabled = false;
     }
@@ -32552,7 +32570,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       heritageCompareResultsEl.style.display = 'grid';
       heritageCompareStatusEl.style.display = 'none';
     } catch(e){
-      heritageCompareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      heritageCompareStatusEl.textContent = studioErrText(e);
     } finally {
       heritageCompareBtn.disabled = false;
     }
