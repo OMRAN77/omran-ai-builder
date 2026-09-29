@@ -216,17 +216,24 @@
         if(n > 1) status(ui('scene').replace('{i}', i + 1).replace('{n}', n) + ' ' + ui('working'));
         urls.push(await oneClip(t, Object.assign({ sceneIndex: i }, params), token));
       }
+      /* v-trend-dl-fix (بلاغ: تحميل الترند لا يعمل، ومشهد الدمج يظهر [object Blob]):
+         __omranConcatScenes يرجّع Blob لا رابطًا — يلزمه URL.createObjectURL قبل أي src/href.
+         ورابط خارجيّ خام (Runway/Veo) لا يُحمَّل بوسم download عبر أصل مختلف؛ يمرّ ببروكسي الخادم
+         (نفس ما يفعله app-11-video.js دائمًا)، والزرّ يعمل افتراضيًّا بلا اعتراض نقرة. */
       var finalUrl = urls[0];
+      var finalIsBlob = false;
       if(urls.length > 1 && window.__omranConcatScenes){
-        try{ finalUrl = await window.__omranConcatScenes(urls); }catch(e){ finalUrl = null; }
+        try{ finalUrl = URL.createObjectURL(await window.__omranConcatScenes(urls)); finalIsBlob = true; }catch(e){ finalUrl = null; finalIsBlob = false; }
       }
       var out = $('vtOut');
       (finalUrl ? [finalUrl] : urls).forEach(function(u){
+        var isBlobUrl = finalUrl ? finalIsBlob : false;
         var v = document.createElement('video'); v.src = u; v.controls = true; v.playsInline = true; v.style.cssText = 'width:100%;border-radius:12px;background:#000;margin-top:6px;';
         out.appendChild(v);
-        var dl = document.createElement('a'); dl.href = u; dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
+        var dl = document.createElement('a');
+        dl.href = isBlobUrl ? u : (window.__omranProxyVideoUrl ? window.__omranProxyVideoUrl(u) : u);
+        dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
         dl.textContent = ui('download');
-        dl.onclick = function(e){ if(window.autoSaveVideo){ e.preventDefault(); window.autoSaveVideo(u, 'omran-trend-' + t.key + '.mp4'); } };
         out.appendChild(dl);
       });
       var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };

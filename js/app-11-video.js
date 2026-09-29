@@ -22,6 +22,9 @@
     if(!url || /^blob:/.test(url) || /^\//.test(url)) return url;
     return '/api/video-download?url=' + encodeURIComponent(url);
   }
+  // v-trend-dl-fix: تتيح لملفّ الترندات (app-11-video-trends.js، إغلاق مستقلّ) استخدام نفس البروكسي
+  // بدل رابط Runway/Veo الخام — بلا هذا كان زرّ تحميل الترند يفشل صامتًا على الجوّال وهواوي.
+  window.__omranProxyVideoUrl = proxyVideoUrl;
 
   /* v-video-poll (المالك: «⏳ يولّد الفيديو» ما ينتهي): حلقات الاستطلاع الأربع كانت بلا سقف عمر
      وتبتلع كلّ خطأ شبكة بصمت (`catch(e){ keep polling }`)، فأيّ فشل لا يُعلَن — أو حالة لا يعرفها
