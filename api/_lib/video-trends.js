@@ -215,7 +215,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "opt",
   "kind": "name",
-  "prompt": "Festive Eid greeting video: the person (from the reference image if provided) in elegant Eid attire waves warmly and says in Arabic 'عيد مبارك {name}', decorated background with lanterns and a crescent moon, joyful music, elegant animated Arabic calligraphy 'عيد مبارك' appears.",
+  "prompt": "Festive Eid greeting video: the person (from the reference image if provided) in elegant Eid attire waves warmly and says joyfully in Arabic 'عيد مبارك {name}', decorated background with lanterns and a crescent moon, joyful music.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic festive still of a smiling Arab family in Eid attire with lanterns and crescent decorations, golden light",
@@ -395,7 +395,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "name",
-   "prompt": "Joyful graduation moment: the person from the reference image wears a graduation gown and cap, throws the cap into the air in slow motion while golden confetti falls, friends cheering softly out of focus behind, campus lawn at golden hour, an elegant Arabic greeting card with the name {name} appears gently at the end, photorealistic, warm uplifting music.",
+   "prompt": "Joyful graduation moment: the person from the reference image wears a graduation gown and cap, throws the cap into the air in slow motion while golden confetti falls, campus lawn at golden hour, friends cheering warmly out of focus behind and calling out their name '{name}' with joy, photorealistic, warm uplifting music.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a young Arab graduate in gown and cap throwing the cap into the air with golden confetti at sunset on a campus lawn",
@@ -407,7 +407,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "name",
-   "prompt": "Tender newborn announcement: the baby from the reference image sleeps peacefully wrapped in a soft blanket, gentle breathing, tiny fingers moving slightly, soft diffused window light, dust motes floating, a delicate Arabic card with the name {name} fades in at the end, photorealistic, calm lullaby music, no text other than the card.",
+   "prompt": "Tender newborn announcement: the baby from the reference image sleeps peacefully wrapped in a soft blanket, gentle breathing, tiny fingers moving slightly, soft diffused window light, dust motes floating, a soft off-screen voice-over gently welcomes them by name, saying '{name}' warmly, photorealistic, calm lullaby music.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a sleeping newborn wrapped in a soft cream blanket in gentle window light, dust motes floating",
@@ -431,7 +431,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "opt",
    "kind": "name",
-   "prompt": "Ramadan greeting scene: an ornate brass lantern glows in the foreground, a crescent moon hangs in a deep blue sky, a beautifully set iftar table with dates and water waits below, gentle particles of light drift upward, the camera rises slowly, an elegant Arabic greeting with the name {name} appears softly at the end, warm spiritual ambience, no other text.",
+   "prompt": "Ramadan greeting scene: an ornate brass lantern glows in the foreground, a crescent moon hangs in a deep blue sky, a beautifully set iftar table with dates and water waits below, gentle particles of light drift upward, the camera rises slowly, a warm off-screen voice softly says the Ramadan greeting 'رمضان مبارك {name}', warm spiritual ambience.",
    "scenes": null,
    "preview": {
      "frame": "warm Ramadan still of an ornate brass lantern glowing beside a crescent moon over a set iftar table with dates, deep blue night",
@@ -703,8 +703,15 @@ function buildTrendPrompt(key, params) {
   /* v-trend-notext (المالك بلقطة: ترجمة محروقة في ناتج «سوق التراث» حروفها مكسورة — «غيوييةامة يه
      حادافلا سخحلں»): محرّكات الفيديو لا تصل العربيّة ولا تعكس اتّجاهها، فكلّ نصّ تكتبه على الإطار يخرج
      ركامًا. و{text} في القوالب **كلام مسموع** لا مكتوب. المنع يُلحق لكلّ الترندات إلّا `calligraphy`
-     الذي موضوعه رسم الجملة نفسها. النمط نفسه مستعمل في وضع الممثّل بصانع الفيديو. */
-  if (key !== 'calligraphy') {
+     الذي موضوعه رسم الجملة نفسها، وعنوان `movieposter` (تحته). النمط نفسه مستعمل في وضع الممثّل
+     بصانع الفيديو. */
+  /* v-trend-notext-2 (وُجد أثناء v-trend-identity-2، أمر المالك «عالجها»): خمسة قوالب كانت تطلب في
+     نصّها نصًّا على الإطار (بطاقة اسم/عنوان) ثمّ يُلحق بها هذا المنع نفسه فيناقضها — العنوان لا يظهر
+     أصلًا. أربعة منها (تخرّج/مولود/رمضان/عيد) حُوِّلت أعلاه إلى **كلام مسموع** بدل بطاقة مكتوبة (نفس
+     مبدأ {text} أعلاه، ونفس درس v-trend-notext) فصار المنع صحيحًا لها بلا تعديل هنا. `movieposter`
+     وحده جوهره عنوان مقروء (لا بديل مسموع لملصق فيلم) — يُستثنى كـ`calligraphy` تمامًا، بالمخاطرة
+     الموثَّقة نفسها (حروف عربيّة قد تخرج مكسورة إن كتب المستخدم عنوانًا عربيًّا). */
+  if (key !== 'calligraphy' && key !== 'movieposter') {
     prompt += ' No on-screen text: no subtitles, no captions, no titles, no watermarks, and no letters or'
       + ' words anywhere in the frame. Spoken or sung words are heard only, never written.';
   }

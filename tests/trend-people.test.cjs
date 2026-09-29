@@ -192,12 +192,12 @@ test('٩. مع إطار أوّل مبنيّ: أمر صريح بتحريكه بد
 
 /* v-trend-notext (المالك بلقطة: ترجمة محروقة حروفها مكسورة «غيوييةامة يه حادافلا سخحلں»):
    محرّكات الفيديو لا تصل العربيّة ولا تعكس اتّجاهها، و{text} في القوالب كلام مسموع لا مكتوب. */
-test('١٠. لا كتابة على الإطار في كلّ الترندات إلّا الخطّ العربيّ، والهويّة تبقى آخر ما يُقرأ', () => {
+test('١٠. لا كتابة على الإطار في كلّ الترندات إلّا الخطّ العربيّ وملصق الفيلم، والهويّة تبقى آخر ما يُقرأ', () => {
   const keys = Object.keys(TRENDS.TRENDS);
   for (const k of keys) {
     const p = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'عمران', text: 'يا مرحبا' }).prompt;
-    if (k === 'calligraphy') {
-      assert.doesNotMatch(p, /No on-screen text/, 'ترند الخطّ العربيّ موضوعه رسم الجملة — لا يُمنع');
+    if (k === 'calligraphy' || k === 'movieposter') {
+      assert.doesNotMatch(p, /No on-screen text/, k + ': موضوعه نصّ مقروء — لا يُمنع');
       continue;
     }
     assert.match(p, /No on-screen text: no subtitles, no captions, no titles, no watermarks/, k + ': بلا منع للكتابة');
@@ -233,4 +233,20 @@ test('١١. قفل الهويّة صار في المقدّمة أيضًا (أو�
   assert.match(pixar, /wakes up smiling/, 'مشهد بيكسار الأوّل ضاع');
   // الفقرة الجديدة لا تفرض «كما صُوِّر» — تتوافق مع الأساليب الفنّيّة (بيكسار/جيبلي/الخ)
   assert.doesNotMatch(baby, /precisely as photographed/, 'صياغة تصادم التحويل الفنّيّ');
+});
+
+/* v-trend-notext-2 (وُجد أثناء v-trend-identity-2، أمر المالك «عالجها»): خمسة قوالب كانت تطلب نصًّا
+   على الإطار ثمّ يُلحق بها منع الكتابة العامّ فيناقضها — العنوان/البطاقة لا يظهر أصلًا. */
+test('١٢. تناقض النصّ على الإطار انحلّ: أربعة صارت كلامًا مسموعًا، وملصق الفيلم وحده استُثني', () => {
+  const spoken = ['graduation', 'newborn', 'ramadan', 'eidgreeting'];
+  for (const k of spoken) {
+    const p = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'سالم', text: 'سالم' }).prompt;
+    assert.match(p, /No on-screen text/, k + ': لازم يخضع للمنع العامّ الآن بلا تناقض');
+    assert.doesNotMatch(p, /\bcard\b|\bappears\b|\bfades in\b/, k + ': بقيّة وعد بطاقة/ظهور مكتوب');
+    assert.match(p, /سالم/, k + ': الاسم ضاع بعد التحويل لكلام مسموع');
+  }
+  // ملصق الفيلم جوهره عنوان مقروء — يُستثنى كالخطّ العربيّ، والعنوان نفسه يبقى في الأمر
+  const poster = TRENDS.buildTrendPrompt('movieposter', { hasImage: true, text: 'الأسطورة' }).prompt;
+  assert.doesNotMatch(poster, /No on-screen text/, 'ملصق الفيلم يُستثنى');
+  assert.match(poster, /bold glowing title 'الأسطورة'/, 'عنوان الملصق ضاع');
 });
