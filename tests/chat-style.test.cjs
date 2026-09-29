@@ -143,7 +143,9 @@ check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخا�
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
 
-check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا');
+// v-provider-errors: القائمة صارت دالّة (أداة المالك وحدها تُضاف له) — والبوّابة نفسها لم تتغيّر: toolTurn.
+check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq) : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا');
+check(chatServer.includes('const toolsFor = (owner) => (owner ? TOOLS.concat(OWNER_TOOLS) : TOOLS);'), 'أدوات المالك تُضاف له وحده ولا تُعرض لغيره');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
 // — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
 check(chatServer.includes('const toolTurn = !quietSocialTurn && !__analyzeDoc;'), 'كل دور غير اجتماعي (عدا تحليل مستند) يحمل الأدوات والتاريخ والموقع');

@@ -28,7 +28,14 @@ const { logError } = require('./log-error.js');
 const zipLib = require('./analyze-zip.js');
 const gh = require('./github-read.js'); // v-agent-github: رابط مستودع/مجلّد/ملفّ على GitHub
 
-const LIMITS = { files: 60, perFile: 200000, total: 500000, perFileFree: 60000, totalFree: 60000, ask: 1200 };
+/* v-provider-errors (أمر المالك: «صلاحيّة كاملة للمزوّد عندما يفحص الكود أو التطبيق»):
+   عدد الملفّات للمالك ٣٠٠ لا ٦٠ — `api/_lib` وحده ١٨٠ ملفًّا، فكان ثلثه يُحلَّل والباقي
+   يسقط بصمت في `skipped.why='limit'` فيحكم النموذج على مجلّد لم يره.
+   وما لم يُرفع ولماذا (لا تُعَد صلاحيّةً ناقصة): السقف الكلّيّ ٥٠٠ ألف حرف = سقف نافذة
+   النموذج لا سقف صلاحيّة (رفعُه يعني ردّ ٤٠٠ بدل تقرير)؛ وسقف الأرشيف ٣ ميجابايت = سقف
+   **جسم الطلب** على الحافّة (٤٫٥م وbase64 يزيد الثلث — نفس فخّ v-trend-413)، فرفعُه هنا
+   يعطي 413 قبل أن يعمل الخادم. الأكبر من ذلك يُحلَّل مجلّدًا مجلّدًا برابط GitHub. */
+const LIMITS = { files: 60, filesOwner: 300, perFile: 200000, total: 500000, perFileFree: 60000, totalFree: 60000, ask: 1200 };
 const ZIP_MAX = 3 * 1024 * 1024;
 const NUL = String.fromCharCode(0);
 const DEFAULT_MODEL = 'claude-opus-5-5'; // v-models-latest: خليفة Opus 5 وأرخص؛ الجهد يُرسل صراحةً هنا أصلًا
@@ -175,9 +182,10 @@ function numbered(text) {
   return String(text || '').split('\n').map((l, i) => (i + 1) + '| ' + l).join('\n');
 }
 
-function buildPrompt(files, metrics, ask, lang) {
+function buildPrompt(files, metrics, ask, lang, liveErrors) {
   const outLang = reportLanguage(lang);
-  const system = [
+  const live = String(liveErrors || '').trim();
+  let system = [
     'أنت كبير مراجعي الكود (مهندس أوّل يراجع قبل الدمج): خبير في الصحّة والأمان والأداء والقابليّة للصيانة عبر كلّ اللغات. تقرأ كلّ سطر، ولا تخترع مشكلة غير موجودة، ولا تُغفل مشكلة حقيقيّة، ولا تكتفي بالعموميّات.',
     'المطلوب: تحليل شامل للملفّات المرفقة وتقييمها، ثمّ إعطاء أفضل ما يمكن فعله بها.',
     '',
@@ -206,7 +214,15 @@ function buildPrompt(files, metrics, ask, lang) {
     '  "verdict": "حكم نهائيّ حاسم في جملتين"',
     '}',
     'النصوص داخل JSON بلغة: ' + outLang + '. أسماء المتغيّرات والدوالّ ومقتطفات الكود تبقى كما هي. الأسطر الجديدة داخل النصوص تُكتب \\n. لا تعليقات داخل JSON.',
-  ].join('\n');
+  ];
+  /* v-provider-errors: أخطاء الإنتاج الحيّة تُرفق للمالك — دليلٌ قاطع على عطل وقع فعلًا،
+     يعلو على أيّ استنتاج نظريّ من قراءة الكود. القاعدة تسبق شكل الإخراج في الأهمّيّة فتُلحق
+     بذيل النظام (الأحدث أوزن) وتُربط بحقول التقرير القائمة بلا حقل جديد. */
+  if (live) {
+    system.push('',
+      '[أخطاء حيّة مرفقة — أعلى من أيّ تحليل نظريّ]: مع الملفّات سجلّ أخطاء وقعت فعلًا في إنتاج هذا التطبيق. كلّ خطأ فيه يخصّ ملفًّا مرفقًا = **مشكلة مؤكّدة لا احتمال**: اذكرها في issues بخطورة لا تقلّ عن high، وضع في detail أنّها مسجَّلة حيًّا مع تكرارها وآخر ظهورها، وفي fix الإصلاح الفعليّ في ذلك الموضع. وخطأ لا يظهر مصدره في الملفّات المرفقة: اذكره في summary أو recommendations وقل أيّ ملفّ يجب أن يُرفق ليُشخَّص. لا تتجاهل خطأً مسجَّلًا ولا تسمّه «محتملًا»، ولا تخترع خطأً ليس في السجلّ ولا في الكود.');
+  }
+  system = system.join('\n');
 
   const blocks = files.map((f) => {
     const n = String(f.content || '').split('\n').length;
@@ -223,6 +239,7 @@ function buildPrompt(files, metrics, ask, lang) {
   }
   let user = '[الملفّات تحت التحليل — ' + files.length + ' ملفًّا' + (mt ? ' · ' + mt.lines + ' سطرًا' : '') + ']\n\n' + blocks.join('\n\n');
   if (hints.length) user += '\n\n[قياسات آليّة أوّليّة — تحقّق منها ولا تعتمدها عمياء]: ' + hints.join(' · ');
+  if (live) user += '\n\n' + live; // v-provider-errors: السجلّ الحيّ يحمل ترويسته وشرح استعماله من app-errors.js
   const a = String(ask || '').trim().slice(0, LIMITS.ask);
   if (a) user += '\n\n[تركيز إضافيّ طلبه المستخدم]: ' + a;
   user += '\n\nحلّل كلّ شيء بعمق: ابدأ بـ' + MARK_A + ' ثمّ ' + MARK_R + ' ثمّ JSON التقرير.';
@@ -432,9 +449,12 @@ module.exports = async function handler(req, res) {
   try {
     send({ status: '📂 يقرأ الملفّات…', k: 'stReading' });
     let tier = null;
+    let owner = false; // v-provider-errors: المالك — صلاحيّة أوسع وسجلّ الأخطاء الحيّ
     try {
       const { verifyToken } = require('./auth.js');
-      tier = await tierLib.resolveTier(token ? verifyToken(token) : null);
+      const who = token ? verifyToken(token) : null;
+      owner = require('./_owner.js').isOwnerName(who);
+      tier = await tierLib.resolveTier(who);
     } catch (e) { tier = null; }
     const subscriber = !!(tier && tier.subscriber);
     const usage = await checkAndConsume(token, guestId, subscriber ? 'claude' : 'chat', clientIp(req), { tier: tier || undefined });
@@ -465,7 +485,8 @@ module.exports = async function handler(req, res) {
         send({ error: 'تعذّر جلب GitHub: ' + String((e && e.message) || e).slice(0, 200) }); finish(); return;
       }
     }
-    const col = collectFiles(body, pro ? null : { total: LIMITS.totalFree, perFile: LIMITS.perFileFree });
+    const col = collectFiles(body, owner ? { files: LIMITS.filesOwner }
+      : (pro ? null : { total: LIMITS.totalFree, perFile: LIMITS.perFileFree }));
     if (!col.files.length) {
       const bad = col.skipped.find((s) => s.why === 'badzip' || s.why === 'toolarge');
       send({ error: bad ? (bad.why === 'badzip' ? 'الملفّ ليس أرشيف zip صالحًا.' : 'الأرشيف أكبر من ٣ ميجابايت — احذف node_modules والملفّات الثقيلة.') : 'لم يصل أيّ ملفّ نصّيّ قابل للتحليل.' });
@@ -473,7 +494,13 @@ module.exports = async function handler(req, res) {
     }
     const metrics = metricsOf(col.files);
     send({ status: '🔎 يقرأ ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا ويفكّر…', k: 'stAnalyze', tier: usage.tier });
-    const prompt = buildPrompt(col.files, metrics, body.ask, body.lang);
+    /* v-provider-errors: للمالك وحده — أخطاء الإنتاج الحيّة ترافق الكود، فيفحص بما وقع فعلًا لا بما قد يقع. */
+    let live = '';
+    if (owner) {
+      live = await require('./app-errors.js').appErrorsText();
+      send({ status: '🩺 يرفق أخطاء الإنتاج الحيّة…' });
+    }
+    const prompt = buildPrompt(col.files, metrics, body.ask, body.lang, live);
     let lastSent = 0;
     const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'stWriting' }); } };
     let text = '';
