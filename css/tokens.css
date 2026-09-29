@@ -887,6 +887,10 @@
   .chat-status-fold summary{padding:7px 13px; border-radius:999px; background:linear-gradient(90deg, rgba(212,175,55,.12), rgba(212,175,55,.03)); border:1px solid rgba(212,175,55,.28); box-shadow:inset 0 0 18px rgba(212,175,55,.06), 0 2px 12px rgba(0,0,0,.18);}
   .chat-status-fold[open] summary{border-radius:16px;}
   .chat-status-spark{color:var(--omGold,#d4af37) !important; display:inline-block; animation:omranSpark 1.6s ease-in-out infinite; text-shadow:0 0 8px rgba(212,175,55,.65);}
+  /* v-agent-badge-star (طلب المالك: احذف إيموجي 🤖 وحطّ مكانه وميض نجمة ذهبية — شرارة تفكير
+     الوكيل نفسها): لون ثابت هنا لا var(--omGold) — المتغيّر مُحيَّد عمدًا (gold-kill.ts) في كل
+     التطبيق فيطفئ الوميض رماديًّا بدل الذهبيّ لو استُعمل هنا. */
+  .agent-badge-spark{color:#d4af37; display:inline-block; margin-inline-end:4px; animation:omranSpark 1.6s ease-in-out infinite; text-shadow:0 0 6px rgba(212,175,55,.6);}
   .chat-status-running{animation:none; background:linear-gradient(90deg, var(--muted,#98a0b3) 0%, var(--muted,#98a0b3) 35%, #fff 48%, var(--omGold,#d4af37) 52%, var(--muted,#98a0b3) 65%, var(--muted,#98a0b3) 100%); background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:omranShimmer 2.2s linear infinite;}
   .chat-status-dots{display:inline-flex; gap:3px; align-items:center; margin-inline-start:2px;}
   .chat-status-dots i{width:4px; height:4px; border-radius:50%; background:var(--omGold,#d4af37); opacity:.35; animation:omranDots 1.2s ease-in-out infinite;}
@@ -898,7 +902,7 @@
   @keyframes omranSpark{0%,100%{transform:scale(.85) rotate(0deg); opacity:.75} 50%{transform:scale(1.2) rotate(25deg); opacity:1}}
   @keyframes omranShimmer{from{background-position:220% 0} to{background-position:-20% 0}}
   @keyframes omranDots{0%,100%{opacity:.25; transform:translateY(0)} 50%{opacity:1; transform:translateY(-2px)}}
-  @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
+  @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running, .agent-badge-spark{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.

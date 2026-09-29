@@ -1691,7 +1691,18 @@ function renderMessages(keepScroll){
          كان الحدث يُلتقط ولا يُعرض في أيّ مكان. بقيّة المستخدمين: كما كان (v464 — «اسأل الكل» فقط). */
       const __ownerBadge = (typeof omranOwnerUi === 'function' && omranOwnerUi());
       if(__ownerBadge && m.model) __plbl = (__plbl ? __plbl + ' · ' : '') + m.model;
-      label.textContent = __plbl;
+      /* v-agent-badge-star (طلب المالك: احذف إيموجي 🤖 وحطّ مكانه وميض نجمة ذهبية — شرارة
+         تفكير الوكيل نفسها): شارة الوكيل وحدها ترسم شرارة ✦ متحرّكة قبل النصّ بدل إيموجي ثابت. */
+      if(m.agentBadge){
+        const spark = document.createElement('span');
+        spark.className = 'agent-badge-spark';
+        spark.setAttribute('aria-hidden', 'true');
+        spark.textContent = '✦';
+        label.appendChild(spark);
+        label.appendChild(document.createTextNode(__plbl));
+      } else {
+        label.textContent = __plbl;
+      }
       // v-badge-white (طلب المالك): شارة الموديل فوق الردّ بالأبيض (كالكتابة والأرقام)،
       // لا بلون المزوّد — يبقى لون المزوّد لتمييز «اسأل الكل» فقط.
       if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
