@@ -189,3 +189,25 @@ test('٩. مع إطار أوّل مبنيّ: أمر صريح بتحريكه بد
   // يُلحق بعد بناء أمر الترند لا قبله (وإلّا غلبته قوالب «حوّل الشخص إلى…»)
   assert.ok(src.indexOf('buildTrendPrompt') < at, 'الإلحاق قبل بناء أمر الترند');
 });
+
+/* v-trend-notext (المالك بلقطة: ترجمة محروقة حروفها مكسورة «غيوييةامة يه حادافلا سخحلں»):
+   محرّكات الفيديو لا تصل العربيّة ولا تعكس اتّجاهها، و{text} في القوالب كلام مسموع لا مكتوب. */
+test('١٠. لا كتابة على الإطار في كلّ الترندات إلّا الخطّ العربيّ، والهويّة تبقى آخر ما يُقرأ', () => {
+  const keys = Object.keys(TRENDS.TRENDS);
+  for (const k of keys) {
+    const p = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'عمران', text: 'يا مرحبا' }).prompt;
+    if (k === 'calligraphy') {
+      assert.doesNotMatch(p, /No on-screen text/, 'ترند الخطّ العربيّ موضوعه رسم الجملة — لا يُمنع');
+      continue;
+    }
+    assert.match(p, /No on-screen text: no subtitles, no captions, no titles, no watermarks/, k + ': بلا منع للكتابة');
+    assert.match(p, /Spoken or sung words are heard only, never written/, k);
+    // الترتيب: منع الكتابة ثمّ قفل الهويّة، فالهويّة آخر ما يقرؤه المحرّك (وشرط الأشخاص يليها عمدًا)
+    assert.ok(p.indexOf('No on-screen text') < p.indexOf('IDENTITY (mandatory)'), k + ': المنع بعد قفل الهويّة');
+    assert.ok(p.trimEnd().endsWith('more generic face.'), k + ': قفل الهويّة ليس في الذيل');
+  }
+  // بلا صورة: المنع يبقى والقفل لا
+  const noImg = TRENDS.buildTrendPrompt('heritagesing', { hasImage: false, text: 'x' }).prompt;
+  assert.match(noImg, /No on-screen text/);
+  assert.doesNotMatch(noImg, /IDENTITY \(mandatory\)/);
+});

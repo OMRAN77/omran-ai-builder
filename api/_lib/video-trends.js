@@ -565,6 +565,14 @@ function buildTrendPrompt(key, params) {
   prompt = prompt.replace(/\{name\}/g, name).replace(/\{text\}/g, text || 'a joyful moment');
   /* v-trend-people: أكثر من شخص في أوّل إطار — القوالب الـ٤٥ مكتوبة بصيغة «الشخص»، فنُلحق
      شرطًا واحدًا بدل تعديلها كلّها: كلّهم يظهرون، وكلّ واحد بوجهه هو، ولا يُدمجون في واحد. */
+  /* v-trend-notext (المالك بلقطة: ترجمة محروقة في ناتج «سوق التراث» حروفها مكسورة — «غيوييةامة يه
+     حادافلا سخحلں»): محرّكات الفيديو لا تصل العربيّة ولا تعكس اتّجاهها، فكلّ نصّ تكتبه على الإطار يخرج
+     ركامًا. و{text} في القوالب **كلام مسموع** لا مكتوب. المنع يُلحق لكلّ الترندات إلّا `calligraphy`
+     الذي موضوعه رسم الجملة نفسها. النمط نفسه مستعمل في وضع الممثّل بصانع الفيديو. */
+  if (key !== 'calligraphy') {
+    prompt += ' No on-screen text: no subtitles, no captions, no titles, no watermarks, and no letters or'
+      + ' words anywhere in the frame. Spoken or sung words are heard only, never written.';
+  }
   /* v-trend-identity (المالك بلقطتين: صورة ابنه مقابل ناتج ترند «بيبي ستايل» — «يغيّر الأشكال، شوف
      الاختلاف الكبير»): ٤٥ قالبًا مكتوبة بصيغة «حوّل الشخص إلى…»، وأقوى ما فيها «same facial features»
      ثلاث كلمات في ذيل الأمر — وهو بعينه الضعف الذي عولج في أنماط الصور (v-pstyle-identity). القفل
