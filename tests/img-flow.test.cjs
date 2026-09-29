@@ -11,8 +11,11 @@ const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغمق)، ويعود للصفحة إن أُعيد رسم القائمة', () => {
   for (const f of ['js/app-09-attach.js', 'js/app.bundle.js']) {
     const s = read(f);
-    /* v-img-gold-dots: أسود، نقاط ذهبيّة ثابتة، إضاءة قُطريّة مرتّبة — لا خطوط ولا انفجار */
-    assert.ok(s.includes("st.id = 'omran-imggen-css2'") && s.includes('background:#050505') && s.includes('background:#e0ac2b'), f);
+    /* v-img-gold-dots: نقاط ذهبيّة ثابتة، إضاءة قُطريّة مرتّبة — لا خطوط ولا انفجار.
+       v-img-dots-nobox (المالك: «أريده فقط الإضاءة بدون المستطيل البرواز»): البطاقة السوداء أُزيلت. */
+    assert.ok(s.includes("st.id = 'omran-imggen-css2'") && s.includes('background:#e0ac2b'), f);
+    assert.ok(!s.includes('background:#050505'), f + ': البطاقة السوداء رجعت خلف النقاط');
+    assert.ok(s.includes('.omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;overflow:visible;margin:6px 0;background:transparent}'), f + ': شكل الحاوية — بلا إطار ولا قصّ للهالة');
     assert.ok(s.includes('const __N = 13, __steps = 2 * (__N - 1);') && s.includes('((__N - 1 - x) + y) / __steps * 1.9'), 'تأخير قُطريّ من فوق يمين');
     assert.ok(!s.includes('omGenWave') && !s.includes('--dx'), 'بلا خطوط وبلا حركة للخارج');
     assert.ok(s.includes('@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}'), 'احترام تقليل الحركة');
@@ -110,8 +113,10 @@ test('٩. صور الإنترنت فقط بطلب صريح أو بالجمع —
 
 test('١٠. مؤشّر الصورة بلا إطار خارجيّ، والفاتح دائرة لا مستطيل', () => {
   const a = read('js/app-09-attach.js');
-  assert.ok(a.includes('border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}'));
-  assert.ok(!a.includes('background:#050505;border:1px solid'));
+  /* v-img-dots-nobox: لا بطاقة سوداء ولا زوايا ولا قصّ في الوضع الداكن — الإضاءة وحدها فوق ما خلفها */
+  assert.ok(a.includes('overflow:visible;margin:6px 0;background:transparent}'), 'حاوية الداكن ما زالت بإطار');
+  assert.ok(!a.includes('background:#050505'), 'البطاقة السوداء رجعت');
+  assert.ok(!a.includes('border-radius:24px'), 'زوايا البرواز رجعت');
   assert.ok(a.includes('html[data-mode=\\"light\\"] .omGen{background:radial-gradient(circle,'));
   assert.ok(a.includes('border:0;border-radius:50%;box-shadow:none;overflow:visible}'));
   assert.ok(!a.includes('html[data-mode=\\"light\\"] .omGen{background:#fff'), 'لا مستطيل أبيض في الوضع الفاتح');

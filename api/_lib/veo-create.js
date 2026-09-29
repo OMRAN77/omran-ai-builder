@@ -30,6 +30,11 @@ module.exports = async (req, res) => {
       return;
     }
 
+    /* v-video-stream: فحص المفتاح قبل أيّ خصم — كان بعد spendPoints وvideoLock ويردّ ٥٠٠ بلا
+       استرجاع ولا فكّ قفل، فغياب المفتاح يحرق نقاط المستخدم في كلّ محاولة. */
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) { console.error('[veo-create] missing provider key'); res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' }); return; }
+
     // 💰 نظام النقاط: Veo 3 متاح للجميع — المالك بلا حدود، وغيره يدفع
     // 400 نقطة للفيديو الواحد. يُسترجع الرصيد تلقائيًا لو فشل الطلب.
     const pointsLib = require('./points.js');
@@ -60,8 +65,6 @@ module.exports = async (req, res) => {
       }
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) { res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' }); return; }
 
     /* v-trend-people: أوّل إطار فيه كلّ الأشخاص معًا في مشهد الترند، ثمّ يحرّكه المحرّك. بعد القفل
        عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءات الدمج. فشله = لا خصم ولا قفل (يُردّان هنا). */

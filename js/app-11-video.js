@@ -23,6 +23,32 @@
     return '/api/video-download?url=' + encodeURIComponent(url);
   }
 
+  /* v-video-poll (المالك: «⏳ يولّد الفيديو» ما ينتهي): حلقات الاستطلاع الأربع كانت بلا سقف عمر
+     وتبتلع كلّ خطأ شبكة بصمت (`catch(e){ keep polling }`)، فأيّ فشل لا يُعلَن — أو حالة لا يعرفها
+     الخادم فيردّها «لسّا شغّال» — يترك المستخدم ينتظر إلى الأبد. هذا الحارس يحدّ العمر ويحدّ
+     الأخطاء المتتالية (العابر منها يُتسامح معه) ويعطي رسالة صريحة بدل الانتظار الصامت. */
+  function makePollGuard(reject, everyMs, maxMs){
+    const step = everyMs || 8000;
+    const life = maxMs || 15 * 60 * 1000;
+    let ticks = 0, errors = 0;
+    return {
+      // أوّل كلّ دورة: false = انتهى العمر وأُبلغ المستخدم
+      tick(iv){
+        if(++ticks * step < life) return true;
+        clearInterval(iv);
+        reject(new Error(bT('طال انتظار الفيديو بلا نتيجة — أعد المحاولة.','The video took too long with no result — please try again.')));
+        return false;
+      },
+      ok(){ errors = 0; },
+      // خطأ شبكة: نتسامح مع العابر ونستسلم بعد ستّ محاولات متتالية فاشلة
+      fail(iv){
+        if(++errors < 6) return;
+        clearInterval(iv);
+        reject(new Error(bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.')));
+      },
+    };
+  }
+
   // v526: autoSaveVideo — النقر البرمجي محظور على هواوي/أندرويد
   // الزر يظهر للمستخدم ليضغط عليه بنفسه (رابط البروكسي مع Content-Disposition: attachment)
   function autoSaveVideo(url, name){
@@ -445,10 +471,13 @@
 
   function pollTaskOnce(id){
     return new Promise((resolve, reject) => {
+      const guard = makePollGuard(reject, 5000);
       const iv = setInterval(async () => {
+        if(!guard.tick(iv)) return;
         try{
           const res = await fetch('/api/video-status?id=' + encodeURIComponent(id));
           const data = await res.json();
+          guard.ok();
           if(data.error){ clearInterval(iv); reject(new Error(data.error)); return; }
           if(data.status === 'SUCCEEDED'){
             clearInterval(iv);
@@ -463,7 +492,7 @@
           } else {
             setStatus((bT('⏳ الحالة: ','⏳ Status: ')) + (data.status || '...'));
           }
-        } catch(e){ /* transient network hiccup; keep polling */ }
+        } catch(e){ guard.fail(iv); }
       }, 5000);
     });
   }
@@ -871,14 +900,17 @@
       const crData = await cr.json();
       if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
       return await new Promise((resolve, reject) => {
+        const guard = makePollGuard(reject, 8000);
         const iv = setInterval(async () => {
+          if(!guard.tick(iv)) return;
           try{
             const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
             const d = await st.json();
+            guard.ok();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
             else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
-          } catch(e){ /* keep polling */ }
+          } catch(e){ guard.fail(iv); }
         }, 8000);
       });
     }
@@ -1079,15 +1111,18 @@
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error });
         const videoUrl = await new Promise((resolve, reject) => {
+          const guard = makePollGuard(reject, 8000);
           const iv = setInterval(async () => {
+            if(!guard.tick(iv)) return;
             try{
               const st = await fetch('/api/video?action=minimax-status&task_id=' + encodeURIComponent(crData.task_id));
               const d = await st.json();
+              guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED' && d.output && d.output[0]){ clearInterval(iv); resolve(d.output[0]); }
               else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error(bT('فشل توليد الفيديو — أعد المحاولة.','Video generation failed — try again.'))); }
               else setStatus(bT('⏳ يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Generating the video (may take 1-3 min)...'));
-            } catch(e){ /* keep polling */ }
+            } catch(e){ guard.fail(iv); }
           }, 8000);
         });
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
@@ -1136,15 +1171,18 @@
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
         const videoUrl = await new Promise((resolve, reject) => {
+          const guard = makePollGuard(reject, 8000);
           const iv = setInterval(async () => {
+            if(!guard.tick(iv)) return;
             try{
               const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
               const d = await st.json();
+              guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
               else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
               else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
-            } catch(e){ /* keep polling */ }
+            } catch(e){ guard.fail(iv); }
           }, 8000);
         });
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));

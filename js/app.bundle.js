@@ -22726,12 +22726,16 @@ function __showImgLoading(el, ar, en){
      يجد صورًا في البحث فيهبط للتوليد — فكانت البطاقة تُرسم في عنصر خرج من الصفحة ولا تظهر. تُعاد إلى آخر المحادثة. */
   try{ if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el); }catch(e){ /* guard-ok — العرض اختياريّ */ }
   /* v-img-gold-dots (المالك ٢٣ سبتمبر، بعد ثلاث معاينات: «الخلفية سوداء، والنقاط بدرجة هذا الذهبي، هي اللي تتحرّك في المربّع
-     كامل منظّمة مش عشوائيّة»؛ رفض الموجة بخطوط ثمّ «الانفجار» من الوسط): شبكة ١٣×١٣ نقطة ذهبيّة ثابتة على أسود، وإضاءة تمشي
+     كامل منظّمة مش عشوائيّة»؛ رفض الموجة بخطوط ثمّ «الانفجار» من الوسط): شبكة ١٣×١٣ نقطة ذهبيّة، وإضاءة تمشي
      عليها بخطوط قُطريّة من فوق يمين إلى تحت يسار — كلّ قُطر يلمع معًا ثمّ الذي بعده. CSS + تأخير لكلّ نقطة، وتتوقّف مع
-     prefers-reduced-motion. معاينة: https://claude.ai/artifact/PG7aNWPP9TXwohqE8KaVrJ */
+     prefers-reduced-motion.
+     v-img-dots-nobox (المالك بلقطة: «عند إنشاء الصور أريده فقط الإضاءة بدون المستطيل البرواز»): البطاقة
+     السوداء ذات الزوايا المستديرة وقصّها أُزيلت كلّها — تبقى النقاط
+     والعنوان وحدها فوق ما خلفها. الأبعاد باقية لأنّها هندسة الشبكة لا إطارًا، وoverflow:visible كي لا
+     تُقصّ هالة النقاط الطرفيّة. الوضع الفاتح كان بلا إطار أصلًا فلم يُمسّ. */
   if(!document.getElementById('omran-imggen-css2')){
     const st = document.createElement('style'); st.id = 'omran-imggen-css2';
-    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;border-radius:24px;overflow:hidden;margin:6px 0;background:#050505}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGen{background:radial-gradient(circle,rgba(255,255,255,.98) 0 64%,rgba(255,251,238,.9) 75%,rgba(255,255,255,0) 76%);border:0;border-radius:50%;box-shadow:none;overflow:visible}html[data-mode=\"light\"] .omGenTxt{top:10%;right:auto;left:50%;transform:translateX(-50%);white-space:nowrap;color:#8a6500;text-shadow:none}html[data-mode=\"light\"] .omDot{left:var(--lx)!important;top:var(--ly)!important;animation-delay:var(--ld)}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
+    st.textContent = ".omGen{position:relative;width:min(340px,85vw);aspect-ratio:1/1;max-width:100%;overflow:visible;margin:6px 0;background:transparent}.omGenTxt{position:absolute;top:16px;right:20px;z-index:2;color:#ffd978;font-size:15px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGen{background:radial-gradient(circle,rgba(255,255,255,.98) 0 64%,rgba(255,251,238,.9) 75%,rgba(255,255,255,0) 76%);border:0;border-radius:50%;box-shadow:none;overflow:visible}html[data-mode=\"light\"] .omGenTxt{top:10%;right:auto;left:50%;transform:translateX(-50%);white-space:nowrap;color:#8a6500;text-shadow:none}html[data-mode=\"light\"] .omDot{left:var(--lx)!important;top:var(--ly)!important;animation-delay:var(--ld)}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
     document.head.appendChild(st);
   }
   const __N = 13, __steps = 2 * (__N - 1);
@@ -26672,6 +26676,32 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     return '/api/video-download?url=' + encodeURIComponent(url);
   }
 
+  /* v-video-poll (المالك: «⏳ يولّد الفيديو» ما ينتهي): حلقات الاستطلاع الأربع كانت بلا سقف عمر
+     وتبتلع كلّ خطأ شبكة بصمت (`catch(e){ keep polling }`)، فأيّ فشل لا يُعلَن — أو حالة لا يعرفها
+     الخادم فيردّها «لسّا شغّال» — يترك المستخدم ينتظر إلى الأبد. هذا الحارس يحدّ العمر ويحدّ
+     الأخطاء المتتالية (العابر منها يُتسامح معه) ويعطي رسالة صريحة بدل الانتظار الصامت. */
+  function makePollGuard(reject, everyMs, maxMs){
+    const step = everyMs || 8000;
+    const life = maxMs || 15 * 60 * 1000;
+    let ticks = 0, errors = 0;
+    return {
+      // أوّل كلّ دورة: false = انتهى العمر وأُبلغ المستخدم
+      tick(iv){
+        if(++ticks * step < life) return true;
+        clearInterval(iv);
+        reject(new Error(bT('طال انتظار الفيديو بلا نتيجة — أعد المحاولة.','The video took too long with no result — please try again.')));
+        return false;
+      },
+      ok(){ errors = 0; },
+      // خطأ شبكة: نتسامح مع العابر ونستسلم بعد ستّ محاولات متتالية فاشلة
+      fail(iv){
+        if(++errors < 6) return;
+        clearInterval(iv);
+        reject(new Error(bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.')));
+      },
+    };
+  }
+
   // v526: autoSaveVideo — النقر البرمجي محظور على هواوي/أندرويد
   // الزر يظهر للمستخدم ليضغط عليه بنفسه (رابط البروكسي مع Content-Disposition: attachment)
   function autoSaveVideo(url, name){
@@ -27094,10 +27124,13 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
   function pollTaskOnce(id){
     return new Promise((resolve, reject) => {
+      const guard = makePollGuard(reject, 5000);
       const iv = setInterval(async () => {
+        if(!guard.tick(iv)) return;
         try{
           const res = await fetch('/api/video-status?id=' + encodeURIComponent(id));
           const data = await res.json();
+          guard.ok();
           if(data.error){ clearInterval(iv); reject(new Error(data.error)); return; }
           if(data.status === 'SUCCEEDED'){
             clearInterval(iv);
@@ -27112,7 +27145,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           } else {
             setStatus((bT('⏳ الحالة: ','⏳ Status: ')) + (data.status || '...'));
           }
-        } catch(e){ /* transient network hiccup; keep polling */ }
+        } catch(e){ guard.fail(iv); }
       }, 5000);
     });
   }
@@ -27520,14 +27553,17 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       const crData = await cr.json();
       if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
       return await new Promise((resolve, reject) => {
+        const guard = makePollGuard(reject, 8000);
         const iv = setInterval(async () => {
+          if(!guard.tick(iv)) return;
           try{
             const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
             const d = await st.json();
+            guard.ok();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
             else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
-          } catch(e){ /* keep polling */ }
+          } catch(e){ guard.fail(iv); }
         }, 8000);
       });
     }
@@ -27728,15 +27764,18 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error });
         const videoUrl = await new Promise((resolve, reject) => {
+          const guard = makePollGuard(reject, 8000);
           const iv = setInterval(async () => {
+            if(!guard.tick(iv)) return;
             try{
               const st = await fetch('/api/video?action=minimax-status&task_id=' + encodeURIComponent(crData.task_id));
               const d = await st.json();
+              guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED' && d.output && d.output[0]){ clearInterval(iv); resolve(d.output[0]); }
               else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error(bT('فشل توليد الفيديو — أعد المحاولة.','Video generation failed — try again.'))); }
               else setStatus(bT('⏳ يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Generating the video (may take 1-3 min)...'));
-            } catch(e){ /* keep polling */ }
+            } catch(e){ guard.fail(iv); }
           }, 8000);
         });
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
@@ -27785,15 +27824,18 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
         const videoUrl = await new Promise((resolve, reject) => {
+          const guard = makePollGuard(reject, 8000);
           const iv = setInterval(async () => {
+            if(!guard.tick(iv)) return;
             try{
               const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
               const d = await st.json();
+              guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
               else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
               else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
-            } catch(e){ /* keep polling */ }
+            } catch(e){ guard.fail(iv); }
           }, 8000);
         });
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
