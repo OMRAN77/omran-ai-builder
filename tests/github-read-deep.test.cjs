@@ -66,4 +66,21 @@ test('readGithub: deep=true يوسّع عدد نتائج البحث (query) با
   assert.match(net.calls[0], /per_page=40/, 'العميقة ٤٠');
 });
 
+/* v-github-code-search-2: بحث المحتوى (query مع path) يرفع حدّ عدد ملفّات المسار الواحد في العمق أيضًا،
+   نفس مبدأ بقيّة التوسيع (شجرة/ملفّ/README) — لا يبقى على القيمة العاديّة الأشدّ. */
+test('readGithub: deep=true يرفع حدّ عدد ملفّات بحث المحتوى (path) أيضًا', async () => {
+  assert.ok(GH.SEARCH_MAX_FILES_DEEP > GH.SEARCH_MAX_FILES, 'الحدّ العميق أعلى');
+  const between = GH.SEARCH_MAX_FILES + 1; // يرفضه العاديّ ويقبله العميق
+  const tree = Array.from({ length: between }, (_, i) => ({ path: 'big/f' + i + '.js', type: 'blob', size: 10 }));
+  const net = fakeNet([
+    [/\/repos\/a\/b$/, jsonRes({ default_branch: 'main' })],
+    [/\/git\/trees\/main\?recursive=1$/, jsonRes({ tree })],
+    [/\/contents\/big\//, () => jsonRes({ message: 'skip' }, 404)],
+  ]);
+  const shallow = await GH.readGithub({ url: 'a/b', path: 'big', query: 'x' }, net.opts);
+  assert.match(shallow, /أكثر من حدّ البحث الواحد/, 'يُرفض في الوضع العاديّ');
+  const deep = await GH.readGithub({ url: 'a/b', path: 'big', query: 'x' }, Object.assign({}, net.opts, { deep: true }));
+  assert.doesNotMatch(deep, /أكثر من حدّ البحث الواحد/, 'يُقبل في الوضع العميق (يمضي للبحث الفعليّ)');
+});
+
 console.log('✓ github-read-deep: opts.deep يوسّع الملفّ والشجرة وREADME وحدّ الحجم بلا أثر حين يُترك افتراضيًّا');
