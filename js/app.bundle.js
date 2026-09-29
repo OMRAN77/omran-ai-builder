@@ -11112,6 +11112,9 @@ function bg3dGalaxy(canvas, getPalette) {
   }
   return { resize: resize, draw: draw };
 }
+/* v-cpu-calm: في رسم هواوي البرمجيّ (html.omCpu من index.html) الخلفيّة المتحرّكة لقطة ثابتة — كانت ٦٠ إطارًا/ث
+   كلّ واحد يعيد رسم الشاشة كلّها في المعالج فيثقل التطبيق كلّه والكتابة. */
+function bg3dStill(){ try{ return document.documentElement.classList.contains('omCpu'); }catch(e){ return false; } }
 function initCustomBg3D(id){
   const container = document.getElementById('vantaBg');
   if(!container) return;
@@ -11129,6 +11132,16 @@ function initCustomBg3D(id){
     fit();
     window.addEventListener('resize', onResize);
     currentCustomBg = { raf: null, resizeHandler: onResize, canvas };
+    if(bg3dStill()){
+      /* لقطة واحدة (النداءات المتتالية تتجاوز تخطّي الإطار في draw)، وتُعاد بعد التحجيم فقط */
+      const still = () => { const t = performance.now(); for(let i = 0; i < 4; i++) G.draw(t + i * 17); };
+      still();
+      const onStill = () => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { if(currentCustomBg && currentCustomBg.canvas === canvas){ fit(); still(); } }, 100); };
+      window.removeEventListener('resize', onResize);
+      window.addEventListener('resize', onStill);
+      currentCustomBg.resizeHandler = onStill;
+      return;
+    }
     const galaxyLoop = (ts) => { G.draw(ts); currentCustomBg.raf = requestAnimationFrame(galaxyLoop); };
     currentCustomBg.raf = requestAnimationFrame(galaxyLoop);
     return;
@@ -11292,6 +11305,14 @@ function initCustomBg3D(id){
     currentCustomBg.raf = requestAnimationFrame(loop);
   }
   currentCustomBg = { raf: null, resizeHandler: resizeAndReset, canvas };
+  if(bg3dStill()){
+    draw();
+    const onStill = () => { resizeAndReset(); draw(); };
+    window.removeEventListener('resize', resizeAndReset);
+    window.addEventListener('resize', onStill);
+    currentCustomBg.resizeHandler = onStill;
+    return;
+  }
   loop();
 }
 function getBg3DAccentColorHex(){
@@ -11332,6 +11353,11 @@ async function applyBg3D(id, save){
       color: color,
       backgroundColor: P.bgHex
     }, P.light ? (BG3D_LIGHT_EXTRA[id] || {}) : {}));
+    /* v-cpu-calm: Vanta يرسم نفسه في حلقة rAF — في رسم هواوي البرمجيّ تُوقف الحلقة بعد أوّل إطارات فتبقى لقطة */
+    if(bg3dStill() && currentVantaEffect){
+      const eff0 = currentVantaEffect;
+      setTimeout(() => { try{ if(currentVantaEffect === eff0 && eff0.req){ cancelAnimationFrame(eff0.req); eff0.req = null; } }catch(e){ __swallow(e, 'bg3d:vanta-still'); } }, 1500);
+    }
   } catch(e){ console.warn('bg3d init failed', e); }
 }
 // v443/v444: تبديل الوضع يعيد بناء الخلفيّة الحاليّة أيًّا كان محرّكها — applyBg3D يوزّع
