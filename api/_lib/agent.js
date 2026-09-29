@@ -88,7 +88,23 @@ const TOOLS = [
 
 // v-agent-github-push: أداة الرفع تُعرض للمالك وحده — المفتاح مفتاحه، ولا يرفع به غيره.
 function isOwner(user) { return !!user && ownerList().includes(String(user).trim().toLowerCase()); }
-function toolsFor(user) { return isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL]) : TOOLS; }
+/* v-agent-log (المالك ٢٩ سبتمبر، لقطتا Claude Code: «نفس الفكرة بالضبط عند قراءة الكود»): كلّ أداة تحمل عنوان خطوتها
+   القصير — يظهر سطرًا في سجلّ العمل كما يظهر وصف الأمر في Claude Code. أوّل الخصائص كي يُكتب قبل غيره. */
+const STEP_TITLE = { type: 'string', description: 'عنوان قصير لهذه الخطوة يراه المستخدم سطرًا في سجلّ العمل: ٣–٧ كلمات بلغته، مثل «البحث عن مستهلكي code-analyze» أو «قراءة api/_lib/chat.js كاملًا».' };
+function withStepTitle(t) { return Object.assign({}, t, { input_schema: Object.assign({}, t.input_schema, { properties: Object.assign({ step_title: STEP_TITLE }, (t.input_schema || {}).properties) }) }); }
+function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL]) : TOOLS).map(withStepTitle); }
+// الأمر كما يُعرض تحت عنوان الخطوة: اسم الأداة ومدخلها بلا العنوان، والنصوص الطويلة (كود، ملفّات) مختصرة.
+function stepCmd(name, input) {
+  const o = {};
+  Object.keys(input || {}).forEach((k) => {
+    if (k === 'step_title') return;
+    let v = input[k];
+    if (Array.isArray(v)) v = v.length + ' عنصرًا';
+    else if (typeof v === 'string' && v.length > 400) v = v.slice(0, 400) + '…';
+    o[k] = v;
+  });
+  return (name + ' ' + JSON.stringify(o)).slice(0, 700);
+}
 
 // 🪞 الأثر المرئي — «فعلتُ س فحصلت ص». كل سطر يُشتقّ من مُدخل الأداة الحقيقي
 // ومن ناتجها الحقيقي، لا من ادّعاء النموذج. فما يقرأه المستخدم هو ما جرى فعلًا.
@@ -263,7 +279,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 41. "كمّل" أو "تابع" = واصل آخر عمل في هذا المشروع من حيث توقف بالضبط — لا تعِد البناء من الصفر ولا تسأل "أكمل ماذا؟" إلا إذا لا يوجد عمل سابق فعلًا.
 42. تقرير ختام للمهام الكبيرة (بناء أو تعديل متعدد الخطوات): سطران في النهاية — ماذا أنجزت وماذا اختبرت. الأسئلة العادية بلا تقرير.
 43. مستوى استشاري في كل مجال: سؤال طبي/قانوني/مالي/هندسي/تسويقي = إجابة بعمق مختص حقيقي (أرقام، خطوات، تحذيرات مهمة) لا كلام عام — وابحث بـ web_search إذا كانت الدقة تتطلب معلومة حديثة.
-44-ب. التعمّق في حلّ المسائل (كود، مستودع، عطل، رياضيّات، منطق): (١) افهم المطلوب بدقّة وحدّد ما يثبت أنّه حُلّ. (٢) اجمع الدليل قبل الرأي: ابحث واقرأ الملفّات كاملة، ولا تحكم على ما لم تقرأه. (٣) الجذر لا العَرَض: تتبّع السبب حتّى أصله وسمِّه بالملفّ والسطر (مسار:سطر) أو بالخطوة الرياضيّة. (٤) تحقّق: شغّل الحلّ أو الحساب بـrun_js، وجرّب حالة حدّيّة واحدة على الأقلّ. (٥) إن بقي احتمالان فاذكر ما يفصل بينهما وافحصه بدل الاختيار العشوائيّ. (٦) الجواب: الجذر بدليله، ثمّ الحلّ، ثمّ ما تحقّقت منه وما لم تتحقّق منه — صراحةً.
+44-ب. التعمّق في حلّ المسائل (كود، مستودع، عطل، رياضيّات، منطق): (٠) اقرأ المستودع كمهندس يفتحه لأوّل مرّة وبهذا الترتيب: خريطته أوّلًا (read_github على المستودع: الشجرة بأحجامها، ثمّ what=commits لآخر ما تغيّر) ← سجلّ قراراته وفخاخه إن وُجدا (knowledge/DECISIONS.md وknowledge/PITFALLS.md، رأسهما) ← بحث query عن كلّ استعمال للرمز أو السلوك ← قراءة الملفّات المطابقة كاملة مع اختباراتها ← تتبّع من يستدعيها حتّى الجذر. الملفّات المستقلّة تُقرأ معًا في خطوة واحدة (عدّة استدعاءات في الردّ نفسه). قبل كلّ مجموعة أدوات اكتب للمستخدم جملة واحدة بما ستفعله ولماذا، وأعطِ كلّ استدعاء step_title قصيرًا. (١) افهم المطلوب بدقّة وحدّد ما يثبت أنّه حُلّ. (٢) اجمع الدليل قبل الرأي: ابحث واقرأ الملفّات كاملة، ولا تحكم على ما لم تقرأه. (٣) الجذر لا العَرَض: تتبّع السبب حتّى أصله وسمِّه بالملفّ والسطر (مسار:سطر) أو بالخطوة الرياضيّة. (٤) تحقّق: شغّل الحلّ أو الحساب بـrun_js، وجرّب حالة حدّيّة واحدة على الأقلّ. (٥) إن بقي احتمالان فاذكر ما يفصل بينهما وافحصه بدل الاختيار العشوائيّ. (٦) الجواب: الجذر بدليله، ثمّ الحلّ، ثمّ ما تحقّقت منه وما لم تتحقّق منه — صراحةً.
 44. استخدم أدواتك بلا تردد: معلومة حية → web_search فورًا؛ كود يحتاج تحققًا → test_html أو run_js فورًا؛ حسبة معقدة → run_js. الأداة المناسبة في اللحظة المناسبة هي قوتك — لا تخمّن ما تستطيع التحقق منه.
 
 ═══ الحماية ═══
@@ -514,6 +530,10 @@ module.exports = async (req, res) => {
     const EFFORT_MODEL_RE = /^claude-(?:opus-5|sonnet-5|fable)/;
     const agentEffort = (m) => (deepRun && EFFORT_MODEL_RE.test(m)) ? { output_config: { effort: 'xhigh' } }
       : (/^claude-opus-5-5/.test(m) ? { output_config: { effort: 'high' } } : {});
+    /* v-agent-log: على هذه النماذج التفكير دائم وعرضه «omitted» افتراضًا — كتله فارغة، وملاحظات الوكيل بين الأدوات تصل
+       كتل تفكير فارغة أيضًا (Opus 5.5 وSonnet 5.5)، فيبدو صامتًا دقائق. «summarized» يعيد ملخّص التفكير والملاحظات نصًّا؛
+       العرض وحده يتغيّر، والفوترة والتفكير كما هما. النماذج الأقدم بلا تغيير (إرسالها يشغّل تفكيرًا لم يكن). */
+    const agentThink = (m) => (EFFORT_MODEL_RE.test(m) ? { thinking: { type: 'adaptive', display: 'summarized' } } : {});
     const MAX_STEPS = Math.max(1, Math.min(40, Number(process.env.AGENT_MAX_STEPS) || 30));
     const MAX_TASK_MS = Math.max(30000, Number(process.env.AGENT_MAX_MS) || 240000);
     const taskStart = Date.now();
@@ -541,8 +561,9 @@ module.exports = async (req, res) => {
           messages: convo,
           tools: toolsFor(runUser),
           stream: true,
-        }, agentEffort(m))),
+        }, agentThink(m), agentEffort(m))),
       });
+      let markAt = Date.now(); // v-agent-log: بداية الخطوة — مدّة «فكّر N ثانية» من آخر حدث إلى نهاية كتلة التفكير
       let upstream = await doCall(model);
       let modelFellBack = false;
       if (!upstream.ok && upstream.status === 404) {
@@ -630,6 +651,16 @@ module.exports = async (req, res) => {
       let stopReason = null;
       const contentBlocks = []; // {type, text, name, id, inputJson}
       let curIdx = -1;
+      /* v-agent-log: كتلة التفكير تُمسك حتّى تبدأ الكتلة بعدها — إن تلتها أداة وكانت قصيرة فهي ملاحظة الوكيل قبل خطوته
+         («سأبدأ بقراءة بنية المستودع…»، تظهر كلامًا)، وإلّا فتفكير («فكّر N ثانية» ينفتح على ملخّصه). */
+      let heldThink = null;
+      const flushThink = (beforeTool) => {
+        if (!heldThink) return;
+        const h = heldThink, s = String(h.s || '').trim();
+        heldThink = null;
+        if (beforeTool && s && s.length <= 400) send({ act: { k: 'note', s } });
+        else if (s || h.ms >= 1500) send({ act: { k: 'think', ms: h.ms, s: s.slice(0, 2000) } });
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -644,6 +675,7 @@ module.exports = async (req, res) => {
           if (ev.type === 'content_block_start') {
             curIdx = ev.index;
             const cb = ev.content_block || {};
+            flushThink(cb.type === 'tool_use');
             contentBlocks[curIdx] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
             /* v-agent-deep: التفكير يُحفظ كما وصل (نصّه — فارغ افتراضًا — وتوقيعه) ليعود في الخطوة التالية */
             if (cb.type === 'thinking') { contentBlocks[curIdx].thinking = cb.thinking || ''; contentBlocks[curIdx].signature = cb.signature || ''; }
@@ -664,11 +696,16 @@ module.exports = async (req, res) => {
             else if (ev.delta && ev.delta.type === 'input_json_delta') cb.inputJson += ev.delta.partial_json;
             else if (ev.delta && ev.delta.type === 'thinking_delta') cb.thinking = (cb.thinking || '') + (ev.delta.thinking || '');
             else if (ev.delta && ev.delta.type === 'signature_delta') cb.signature = (cb.signature || '') + (ev.delta.signature || '');
+          } else if (ev.type === 'content_block_stop') {
+            const cb = contentBlocks[ev.index];
+            if (cb && (cb.type === 'thinking' || cb.type === 'redacted_thinking')) heldThink = { ms: Date.now() - markAt, s: cb.thinking || '' };
+            markAt = Date.now();
           } else if (ev.type === 'message_delta') {
             if (ev.delta && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
           }
         }
       }
+      flushThink(false);
 
       // نهاية كل خطوة تُقيَّد في الدفتر: ما وصل هنا لم يبقَ رهنًا ببقاء المستمع.
       run.step = steps; run.updatedAt = Date.now();
@@ -703,6 +740,9 @@ module.exports = async (req, res) => {
           let input = {};
           try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('agent/tool-input-parse', e); }
           let result = 'أداة غير معروفة';
+          // v-agent-log: سطر الخطوة يظهر قبل تنفيذها (جارية)، ثمّ يكتمل بناتجها — كما في Claude Code
+          const stepTitle = String(input.step_title || '').replace(/\s+/g, ' ').trim().slice(0, 90) || trailDid(cb.name, input);
+          send({ act: { k: 'tool', id: cb.id, name: cb.name, t: stepTitle, cmd: stepCmd(cb.name, input), g: (cb.name === 'read_github' && !input.query && input.what !== 'commits' && input.what !== 'commit') ? 1 : 0 } });
           if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           /* v-owner-token: مفتاح GitHub (البيئة أو الخزنة) للمالك وحده — غيره يقرأ العامّ بلا مفتاح. */
@@ -744,6 +784,8 @@ module.exports = async (req, res) => {
           // سطر واحد صادق لكل أداة: ماذا فعلتُ وماذا حصلتُ. يُبثّ حالًا ويُقيَّد
           // في الدفتر — فالأثر يبقى وإن سقط الاتصال أو أُغلق التبويب.
           const did = trailDid(cb.name, input), got = trailGot(cb.name, result);
+          // v-agent-log: الخطوة تكتمل بناتجها، والفشل بحكم الأثر نفسه (غير موجود، خطأ تشغيل، لم يُنشر)
+          send({ act: { k: 'done', id: cb.id, ok: !/^(ففشلت|فظهر خطأ|فلم يُنشر)/.test(got), out: String(result).slice(0, 1500) } });
           send({ phase: cb.name === 'run_js' || cb.name === 'test_html' ? 'verifying' : 'executing', status: '↳ ' + did + ' — ' + got });
           if (!Array.isArray(run.trail)) run.trail = [];
           run.trail.push({ n: run.trail.length + 1, did: did, got: got, at: Date.now() });

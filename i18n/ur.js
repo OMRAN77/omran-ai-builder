@@ -33,6 +33,7 @@ I18N['ur'] = {
     plProPriority: 'ترجیحی رفتار · گولڈ بیج', plMaxAllPro: 'Pro کی تمام خصوصیات · روزانہ 250 پیغامات', plMaxVoice: 'زیادہ سے زیادہ 213 منٹ صوتی چیٹ', plMaxMedia: 'زیادہ سے زیادہ 150 تصاویر · 3 ویڈیوز', plMaxSupport: 'خصوصی سپورٹ',
     adStudioTitle: 'اشتہار اسٹوڈیو', adStudioHint: 'اشتہار اسٹوڈیو — بات چیت کر کے اپنا اشتہار بنائیں', chatToPdfEmpty: 'ابھی تبدیل کرنے کے لیے کوئی جواب نہیں ہے۔', mahaConnectionLost: 'دوبارہ رابطہ نہیں ہو سکا', voiceTabAssistantName: 'اسسٹنٹ',
     buildNoCode: '⚠️ فراہم کنندہ سے کوئی کوڈ موصول نہیں ہوا — پیش منظر خالی ہے۔ درخواست دوبارہ بھیجیں یا کوئی اور فراہم کنندہ آزمائیں۔',
+    agThought: '{n} سیکنڈ سوچا', agExplored: '{n} فائلیں دیکھیں', agNoOutput: 'کوئی نتیجہ نہیں', // v-agent-log
     convertToImage: 'تصویر میں تبدیل کریں',
     convertToPdf: 'PDF میں تبدیل کریں',
     convertToWord: 'Word میں تبدیل کریں',

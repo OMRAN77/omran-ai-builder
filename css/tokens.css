@@ -904,6 +904,26 @@
   html.omCpu :is(.chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running){animation:none;}
   html.omCpu .chat-status-running{color:var(--text,#fff); background:none;}
   html.omCpu .chat-status-dots i{opacity:.7;}
+  /* v-agent-log: سجلّ عمل الوكيل كما في Claude Code — كلامه، وكلّ خطوة سطر «$ عنوان» مؤطّر ينفتح على الأمر وناتجه،
+     و«فكّر N ثانية ›» و«استكشف N ملفّات ›». ساكن تمامًا (لا حركة) فلا يكلّف رسم المعالج شيئًا. */
+  .agLog{display:flex; flex-direction:column; gap:8px; margin:2px 0 10px;}
+  .agLog .agText{line-height:1.7;}
+  .agStep{border:1px solid var(--border, rgba(128,128,128,.28)); border-radius:12px; padding:0 12px; background:rgba(128,128,128,.06); font-size:13.5px;}
+  .agStep > summary, .agThink > summary, .agGroup > summary{cursor:pointer; list-style:none;}
+  .agStep > summary::-webkit-details-marker, .agThink > summary::-webkit-details-marker, .agGroup > summary::-webkit-details-marker{display:none;}
+  .agStep > summary{display:flex; align-items:center; gap:10px; padding:9px 0; color:var(--text); overflow-wrap:anywhere;}
+  .agIc{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); flex:0 0 auto;}
+  .agRun .agTt::after{content:' …'; color:var(--muted);}
+  .agStepErr .agIc{color:#f87171;}
+  .agPre{margin:0 0 8px; padding:8px 10px; max-height:280px; overflow:auto; border-radius:8px; background:rgba(128,128,128,.12); font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; word-break:break-word; text-align:left;}
+  .agPre.agErr{color:#f87171;}
+  .agNone{color:var(--muted); font-size:12px; padding:0 0 8px;}
+  .agThink, .agGroup > summary{color:var(--muted); font-size:13.5px;}
+  .agThink > summary::after, .agGroup > summary::after{content:' ›';}
+  .agThink[open] > summary::after, .agGroup[open] > summary::after{content:' ⌄';}
+  .agThinkBody{color:var(--muted); font-size:13px; white-space:pre-wrap; margin:6px 0 2px; padding-inline-start:10px; border-inline-start:2px solid rgba(128,128,128,.28);}
+  .agGroup > .agStep{margin-top:6px;}
+  .agPill:empty{display:none;}
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.

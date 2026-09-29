@@ -35,6 +35,7 @@ I18N['fr'] = {
     plMaxVoice: "Jusqu'à 213 minutes de chat vocal", plMaxMedia: "Jusqu'à 150 images · 3 vidéos", plMaxSupport: 'Support dédié',
     adStudioTitle: 'Studio Publicitaire', adStudioHint: 'Studio Publicitaire — créez votre publicité en discutant', chatToPdfEmpty: 'Aucune réponse à convertir pour l\'instant.', mahaConnectionLost: 'Reconnexion impossible', voiceTabAssistantName: 'Assistant',
     buildNoCode: '⚠️ Aucun code reçu du fournisseur — l\'aperçu est vide. Renvoyez la demande ou essayez un autre fournisseur.',
+    agThought: 'A réfléchi {n} s', agExplored: 'A exploré {n} fichiers', agNoOutput: 'Aucune sortie', // v-agent-log
     convertToImage: 'Convertir en image',
     convertToPdf: 'Convertir en PDF',
     convertToWord: 'Convertir en Word',
