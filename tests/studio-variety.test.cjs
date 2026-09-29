@@ -62,7 +62,7 @@ test('بذرة التنويع: الخيار نفسه يعطي أمرًا مخت�
     const style = Object.keys(studioCreate.STYLE_TEXT[feature])[0];
     const a = studioCreate.buildSinglePrompt(feature, style, '', false, 1);
     const b = studioCreate.buildSinglePrompt(feature, style, '', false, 2);
-    assert.match(a, /VARIETY \(design seed #1\)/, feature + ': لا بذرة تنويع في الأمر');
+    assert.match(a, /VARIATION #\d+ \(within this exact style/, feature + ': لا توجيه تنويع في الأمر');
     assert.notEqual(a, b, feature + ': بذرتان مختلفتان تعطيان الأمر نفسه');
     assert.match(a, /brand-new original/, feature + ': لا طلب تصميم جديد');
     // التنويع لا يُفلت الستايل المختار
@@ -85,6 +85,59 @@ test('خيارات الواجهة والخادم متطابقة بعد الإض�
     Object.keys(studioCreate.STYLE_TEXT.makeup).slice().sort(),
     'خيارات المكياج في الواجهة لا تطابق الخادم',
   );
+});
+
+/* ───── v-studio-variants: المالك «أريد أكثر من ١٠٠ في كلّ شكل… ١٠٠ حنّاء هندي، ١٠٠ شكل نظّارة» ─────
+   التنويع داخل الخيار الواحد، لا قائمة خيارات أطول: محاور × محاور = آلاف الأشكال لكلّ خيار. */
+const variants = require(path.join(root, 'api/_lib/studio-variants.js'));
+
+test('كلّ ميزة تعطي أكثر من ١٠٠ شكل داخل الخيار الواحد', () => {
+  const features = Object.keys(studioCreate.STYLE_TEXT).concat(Object.keys(studioMore.STYLE_PROMPTS));
+  for (const f of features) {
+    const n = variants.variantCount(f);
+    assert.ok(n >= 100, f + ': ' + n + ' شكلًا فقط داخل الخيار (المطلوب ١٠٠ فأكثر)');
+  }
+  // الحنّاء والنظّارات — مثالا المالك نفسه
+  assert.ok(variants.variantCount('henna') >= 1000, 'الحنّاء تحتاج آلاف الأشكال داخل الخيار');
+  assert.ok(variants.variantCount('glasses') >= 100, 'النظّارات تحتاج ١٠٠ شكل داخل الخيار');
+});
+
+test('الأرقام المتتالية تعطي توجيهات مختلفة ولا تتكرّر قبل استنفاد الدورة', () => {
+  const seen = new Set();
+  for (let i = 0; i < 500; i++) seen.add(variants.variantDirective('henna', i));
+  assert.equal(seen.size, 500, 'تكرّر شكلٌ قبل استنفاد الدورة');
+  // متتاليان يختلفان في أكثر من محور واحد (الخلط البيجكتيفي)
+  const a = variants.variantDirective('henna', 7).split('; ');
+  const b = variants.variantDirective('henna', 8).split('; ');
+  const differing = a.filter((x, i) => x !== b[i]).length;
+  assert.ok(differing >= 2, 'الضغطتان المتتاليتان تختلفان في محور واحد فقط (' + differing + ')');
+  // الدورة كاملة: الرقم يعود بعد استنفاد كلّ الأشكال
+  assert.equal(variants.variantDirective('glasses', 0), variants.variantDirective('glasses', variants.variantCount('glasses')), 'الدورة لا تُغلق');
+});
+
+test('التوجيه محسوس ويصل كلّ ميزة في الأمر، ولا يمسّ الشخص ولا الوقفة', () => {
+  for (const f of ['henna', 'glasses', 'makeup', 'hair', 'heritage', 'nails']) {
+    const style = Object.keys((studioCreate.STYLE_TEXT[f] || studioMore.STYLE_PROMPTS[f]))[0];
+    const p = studioCreate.buildSinglePrompt(f, style, '', false, 12);
+    assert.match(p, /VARIATION #\d+ \(within this exact style — never change the style itself\)/, f + ': لا توجيه تنويع في الأمر');
+    assert.notEqual(p, studioCreate.buildSinglePrompt(f, style, '', false, 13), f + ': رقمان مختلفان يعطيان الأمر نفسه');
+  }
+  const src = fs.readFileSync(path.join(root, 'api/_lib/studio-variants.js'), 'utf8');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''); // بلا تعليقات
+  assert.ok(!/process\.env|require\(/.test(code), 'ملفّ المحاور يجب أن يبقى بيانات صرف');
+  for (const bad of ['camera angle', 'change the pose', 'different person']) {
+    assert.ok(!src.includes(bad), 'محور يمسّ ما يجب أن يبقى ثابتًا: ' + bad);
+  }
+});
+
+test('العميل يرسل رقم الشكل ويرفع العدّاد في كلّ توليد', () => {
+  const src = fs.readFileSync(path.join(root, 'js/app-13-stocks-init.js'), 'utf8');
+  assert.match(src, /function nextVariant\(f, v\)/, 'لا عدّاد أشكال في العميل');
+  assert.match(src, /aiapp_studio_var_/, 'العدّاد بلا مفتاح تخزين لكلّ ميزةوخيار');
+  assert.equal((src.match(/variant: nextVariant\(/g) || []).length, 3, 'مسارات التوليد الثلاثة يجب أن ترسل رقم الشكل');
+  const srv = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
+  assert.match(srv, /multiAngle, variant,/, 'الخادم لا يقرأ رقم الشكل من الطلب');
+  assert.match(srv, /buildSinglePrompt\(feature, style, description, multiAngle, Number\(variant\)\)/, 'رقم الشكل لا يصل بناء الأمر');
 });
 
 /* ───── v-studio-skin-lock + v-studio-guard-retry: صورة كفّ المالك + «حناء خليجية» ⇒ image_edit_identity_mismatch ───── */
