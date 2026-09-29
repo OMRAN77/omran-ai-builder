@@ -766,6 +766,34 @@
     throw lastErr;
   }
 
+  /* v-video-seq-cooldown (بلاغ مُثبَت: قفل «فيديو واحد كلّ ٣ دقائق» يبدأ عند قبول المشهد ولا يُفكّ إلّا
+     بالفشل، وسلسلة المشاهد — فيلم متكامل، ٢٠ ثانية — كانت تطلب التالي فور جهوز الأوّل فيُرفض
+     بـvideo_cooldown وتموت كلّها والمشهد الأوّل مدفوع). ليست إعادة عمياء (v-video-refund): ننتظر
+     المتبقّي الذي يعلنه الخادم بعدّ تنازليّ ظاهر ثمّ نعيد المشهد نفسه، مرّتين على الأكثر. المشهد الوحيد
+     كما كان (رسالة المهلة بلا انتظار)، والمالك وVIP بلا قفل أصلًا فلا ينتظرون شيئًا. */
+  const SEQ_COOLDOWN_WAITS_MAX = 2;
+  function sceneWaitText(sceneNo, total, secs){
+    const tpl = (typeof window.t === 'function' && window.t('videoSceneWait') !== 'videoSceneWait') ? window.t('videoSceneWait')
+      : bT('⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.', '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.');
+    return String(tpl).replace('{i}', sceneNo).replace('{n}', total).replace('{s}', secs);
+  }
+  async function waitOutCooldown(err, sceneNo, total){
+    const secs = Math.max(1, Math.ceil(Number(err && err.retryAfter) || 180));
+    for(let left = secs; left > 0; left--){
+      setStatus(sceneWaitText(sceneNo, total, left));
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+  async function sceneInSequence(sceneNo, total, run){
+    for(let waits = 0; ; waits++){
+      try{ return await run(); }
+      catch(e){
+        if(!(e && e.code === 'video_cooldown') || waits >= SEQ_COOLDOWN_WAITS_MAX) throw e;
+        await waitOutCooldown(e, sceneNo, total);
+      }
+    }
+  }
+
   /* 📸 صورتك بطل الفيلم — hero photo state */
   let filmHeroBase64 = null, filmHeroMime = 'image/jpeg';
 
@@ -903,7 +931,8 @@
         body: JSON.stringify({ promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast' }),
       });
       const crData = await cr.json();
-      if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
+      /* v-video-seq-cooldown: الرمز والمهلة يصلان كما في createScene — فتعرفهما سلسلة المشاهد وfriendlyError. */
+      if(!cr.ok || crData.error || !crData.op) throw Object.assign(new Error(crData.error || 'veo create failed'), { code: crData.error, retryAfter: crData.retryAfter || 0 });
       return await new Promise((resolve, reject) => {
         const guard = makePollGuard(reject, 8000);
         const iv = setInterval(async () => {
@@ -923,6 +952,16 @@
     if(durationEl.value === 'film'){
       try{
         const filmUseVeo = (creationMode === 'veo');
+        /* v-film-mode-gate (بلاغ مُثبَت: فحص «فيلم متكامل» يسبق فحص الوضع كلّه، فكانفا المجّانيّ والاقتصاديّ
+           والسينمائيّ والدمج والممثّل كانت تُرسَل بصمت إلى محرّك الفيديو الأساسيّ المدفوع): الفيلم مبنيّ على
+           محرّكين فقط — غيرهما يُوقَف هنا قبل أيّ نداء أو خصم، برسالة واضحة لا تحويل صامت. */
+        if(creationMode !== 'runway' && !filmUseVeo){
+          setStatus((typeof window.t === 'function' && window.t('videoFilmModeOnly') !== 'videoFilmModeOnly') ? window.t('videoFilmModeOnly')
+            : bT('🎬 «فيلم متكامل» يعمل مع وضع «فيديو AI» فقط — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
+                 '🎬 "Full mini-film" works with the "AI video" mode only — change the mode or pick another length. Nothing was charged.'));
+          btnGenerate.disabled = false;
+          return;
+        }
         if(filmUseVeo && !isOwnerAccount()){
           setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
           btnGenerate.disabled = false;
@@ -968,13 +1007,13 @@
             ? 'Hero centered in frame, medium shot, consistent camera angle. '
             : '';
           const scenePromptWithHero = heroAnchor + baseScenePrompt;
-          const videoUrl = filmUseVeo
-            ? await createVeoScene(scenePromptWithHero, ratio, token, wantQuality)
-            : await createSceneWithRetry(scenePromptWithHero, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
+          const videoUrl = await sceneInSequence(i + 1, scenes.length, () => filmUseVeo
+            ? createVeoScene(scenePromptWithHero, ratio, token, wantQuality)
+            : createSceneWithRetry(scenePromptWithHero, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
                 setStatus(isEn()
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
-              }, filmHeroBase64, filmHeroMime);
+              }, filmHeroBase64, filmHeroMime));
           setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
@@ -1322,11 +1361,11 @@
         ];
         for(let i = 0; i < scenePrompts.length; i++){
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenePrompts.length + '...');
-          const url = await createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
+          const url = await sceneInSequence(i + 1, scenePrompts.length, () => createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-          }, filmHeroBase64, filmHeroMime);
+          }, filmHeroBase64, filmHeroMime));
           sceneUrls.push(url);
         }
       } else {
