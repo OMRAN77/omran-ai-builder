@@ -25632,7 +25632,14 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
        جانبيّ إذن: كلّ قسم شبكة عموديّة ببطاقاته كلّها (شكل الأدوات قبل الصفوف، وكان سليمًا على الجهاز نفسه)، بلا
        أسهم ولا «عرض الكل». البوّابة: جسر OmranRender (1.3.12+) أو html.store-safe (selfdiag.js المتزامن يضبطه من
        ?store=huawei قبل الحزمة). الحاسوب والمتصفّحات على الصفوف كما هي. */
-    const ptHwGrid = (() => { try{ return !!((window.OmranRender && typeof window.OmranRender.mode === 'function') || document.documentElement.classList.contains('store-safe')); }catch(e){ return false; } })();
+    /* v-tools-one-col (المالك بلقطة من جهازه: «رجّعلي في الأدوات نفس قبل… نفس هاذي»): الشكل المطلوب
+       بطاقة واحدة بعرض كامل في الصفّ. البوّابة نفسها تُوسَّع للهواتف والتابلت (حتّى ١٠٢٤) بدل قاعدة CSS مستقلّة — فتُعاد
+       استعمال قواعد الشبكة القائمة وإخفاء الأسهم و«عرض الكل»، ويبقى سحب الرجوع يعمل (app-05-swipe-back
+       يسمح به فوق .ptHwGrid ويحجبه فوق الصفّ الأفقيّ). الحاسوب على صفوفه كما هو. */
+    const ptHwGrid = (() => { try{
+      if((window.OmranRender && typeof window.OmranRender.mode === 'function') || document.documentElement.classList.contains('store-safe')) return true;
+      return !!(window.matchMedia && window.matchMedia('(max-width:1024px)').matches);
+    }catch(e){ return false; } })();
     if(ptHwGrid) ptSectionsView.classList.add('ptHwGrid');
     const closeAll = (restoreFocus) => {
       if(!allState) return;
@@ -26456,8 +26463,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   /* v-trend-413 (المالك بلقطة «❌ تعذّر: HTTP 413» مع شخصيّتين): الصور كانت تُقرأ خامًا بـreadAsDataURL،
      وصورة جوّال واحدة ٣–١٢م تصير بـbase64 أكبر بالثلث — فيتجاوز الطلب حدّ حجم الجسم ويُرفض عند حافّة
      الاستضافة قبل أن يصل الخادم أصلًا. التصغير هنا بنفس وصفة __compressImg المثبَتة (v530) في مودالات
-     الاستوديو: أطول ضلع ١٠٢٤ وJPEG ٠٫٨٥ ⇒ ~٢٠٠ كيلوبايت للصورة. الملفّ الذي يتعذّر فكّه يُتخطّى. */
-  var SHRINK_MAX = 1024, SHRINK_Q = 0.85;
+     الاستوديو، لكن بأطول ضلع ١٤٠٠ لا ١٠٢٤ (v-trend-identity): وجه الطفل في صورة واقف كامل ~١٢٪ من
+     الإطار، فعند ١٠٢٤ يصل ~١٢٠ بكسل وتُعاد ملامحه تقريبًا. ١٤٠٠ ⇒ ~١٧٠ بكسل، والحمولة في أسوأ حال
+     (ثلاث شخصيّات) ~١٫٩م وهو دون الحدّ بمريح. الملفّ الذي يتعذّر فكّه يُتخطّى. */
+  var SHRINK_MAX = 1400, SHRINK_Q = 0.85;
   function shrink(file, done){
     var r = new FileReader();
     r.onload = function(){

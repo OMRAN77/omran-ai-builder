@@ -178,3 +178,56 @@ test('٨. لا اسم مزوّد ولا مفتاح في رسائل المستخ�
   for (const m of shown) assert.doesNotMatch(m, /MiniMax|MINIMAX|Proxy error|Veo|Gemini/, m);
   assert.ok(shown.length >= 3, 'لم تُقرأ رسائل المستخدم');
 });
+
+/* v-video-retrieve-refund (المالك: «نعم ترد عادي»): التوليد نجح ورابط الملفّ لم يصل —
+   المستخدم دفع ولم يستلم، فتُسوّى التذكرة فشلًا وتُردّ النقاط. */
+test('٩. فشل جلب الملفّ بعد نجاح التوليد يردّ النقاط، ومرّة واحدة لا مرّتين', async () => {
+  process.env.MINIMAX_API_KEY = 'test-key';
+  const jobPath = require.resolve('../api/_lib/video-job.js');
+  const realJob = require.cache[jobPath];
+  const settled = [];
+  require.cache[jobPath] = { id: jobPath, filename: jobPath, loaded: true, exports: {
+    settleVideoJob: async (id, ok) => { settled.push([id, ok]); return { settled: true, refunded: !ok }; },
+    rememberVideoJob: async () => {},
+  } };
+  delete require.cache[require.resolve('../api/_lib/minimax-status.js')];
+  const handler = require('../api/_lib/minimax-status.js');
+  const realFetch = global.fetch;
+  try {
+    // الاستعلام ينجح ومعه file_id، وجلب الملفّ يفشل
+    global.fetch = async (url) => (/files\/retrieve/.test(String(url))
+      ? { ok: false, status: 502, json: async () => ({ base_resp: { status_code: 2013 } }) }
+      : { ok: true, json: async () => ({ status: 'Success', file_id: 'F9', base_resp: { status_code: 0 } }) });
+    let res = fakeRes();
+    await handler({ method: 'GET', query: { task_id: 'T5' } }, res);
+    assert.equal(res.code, 502);
+    assert.deepEqual(settled, [['T5', false]], 'لم تُسوَّ التذكرة فشلًا فلا تُردّ النقاط');
+    assert.doesNotMatch(String(res.body.error), /MiniMax|2013|HTTP/, 'رمز تقنيّ في رسالة المستخدم');
+
+    // ردّ ٢٠٠ بلا رابط تنزيل = نفس المعاملة
+    settled.length = 0;
+    global.fetch = async (url) => (/files\/retrieve/.test(String(url))
+      ? { ok: true, json: async () => ({ file: {} }) }
+      : { ok: true, json: async () => ({ status: 'Success', file_id: 'F9' }) });
+    res = fakeRes();
+    await handler({ method: 'GET', query: { task_id: 'T6' } }, res);
+    assert.equal(res.code, 502);
+    assert.deepEqual(settled, [['T6', false]]);
+
+    // والنجاح الكامل ما زال يسوّي بـtrue (لا استرجاع)
+    settled.length = 0;
+    global.fetch = async (url) => (/files\/retrieve/.test(String(url))
+      ? { ok: true, json: async () => ({ file: { download_url: 'https://cdn/ok.mp4' } }) }
+      : { ok: true, json: async () => ({ status: 'Success', file_id: 'F9' }) });
+    res = fakeRes();
+    await handler({ method: 'GET', query: { task_id: 'T7' } }, res);
+    assert.equal(res.body.status, 'SUCCEEDED');
+    assert.deepEqual(settled, [['T7', true]]);
+  } finally {
+    global.fetch = realFetch;
+    if (realJob) require.cache[jobPath] = realJob; else delete require.cache[jobPath];
+    delete require.cache[require.resolve('../api/_lib/minimax-status.js')];
+  }
+  // حارس «مرّة واحدة» في الوحدة نفسها، لا في المتّصل
+  assert.match(read('api/_lib/video-job.js'), /kvSetIfAbsent\(key \+ ':done'/, 'حارس الاسترجاع المزدوج');
+});

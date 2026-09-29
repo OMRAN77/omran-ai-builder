@@ -70,7 +70,16 @@ module.exports = async (req, res) => {
        عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءات الدمج. فشله = لا خصم ولا قفل (يُردّان هنا). */
     if (body.trend && trendPeople.length > 1) {
       const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, promptText, ratio);
-      if (frame && frame.b64) { imageBase64 = frame.b64; imageMime = frame.mime; }
+      if (frame && frame.b64) {
+        imageBase64 = frame.b64; imageMime = frame.mime;
+        /* v-trend-identity: الإطار الأوّل بُني للتوّ بوجوه الأشخاص الحقيقيّة داخل مشهد الترند، لكنّ أمر
+           الترند نفسه يبقى «Transform the person … into …» — فيعيد المحرّك تنفيذ التحويل فوق إطار
+           نُفِّذ فيه أصلًا، ويرسم وجوهًا جديدة. هذا السطر يُلحق أخيرًا فيغلب: التحويل انتهى، والمطلوب
+           تحريك ما في الإطار كما هو. */
+        promptText += ' The attached first frame ALREADY shows every person exactly as they must look in this'
+          + ' video: animate that frame. Keep each face, hairstyle, skin tone and outfit exactly as they appear'
+          + ' in it — do not re-age, restyle, redraw or replace anyone, and do not apply the transformation again.';
+      }
       else if (frame && frame.error) {
         if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video);
         if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
