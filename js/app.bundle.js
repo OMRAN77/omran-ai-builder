@@ -337,6 +337,10 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
 const $ = s => document.querySelector(s);
 
 // --- Account system: signup / login / session, backed by api/auth.js ---
+/* v-perf-boot-defer: حماية إضافيّة — أيّ استثناء غير متوقَّع داخل authSystem() (١٢٧٢ سطرًا) لا يوقف
+   باقي أجزاء الحزمة الملصَقة بعده (app-02 إلى app-41: الدردشة، الأدوات، كلّ شي). الحارس أعلاه يمنع
+   الحالة المعروفة (عناصر ناقصة)؛ هذا يمنع أيّ حالة أخرى غير معروفة بعد. */
+try{
 (function authSystem(){
   const overlay = $('#authOverlay');
   const tabLogin = $('#authTabLogin');
@@ -355,6 +359,13 @@ const $ = s => document.querySelector(s);
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
   const useCodeLink = $('#authUseCodeLink');
+  /* v-perf-boot-defer: partials-core.js يحقن مودال الدخول ديناميكيًّا؛ فشل تحميله (شبكة جوّال متقطّعة) كان
+     يترك tabLogin=null فيرمي .parentElement استثناءً غير ملتقَط يوقف باقي أجزاء الحزمة الملصَقة بعد هذا
+     الملف بالكامل — نفس فخّ curT أعلاه (متغيّر مشابه غير مُعرَّف بعد، حادثة ٦ أغسطس). لا نكمل بعناصر ناقصة. */
+  if(!overlay || !tabLogin || !tabSignup || !submitBtn){
+    window.__swallow(new Error('auth modal elements missing — partials-core.js لم يُحمَّل بعد'), 'authSystem:missing-elements');
+    return;
+  }
   const tabsRow = tabLogin.parentElement;
   const recoveryModal = $('#authRecoveryModal');
   const recoveryCodeDisplay = $('#authRecoveryCodeDisplay');
@@ -520,16 +531,26 @@ const $ = s => document.querySelector(s);
   // ويُحقن في بداية كل محادثة ليتذكره التطبيق عبر الجلسات.
   let userMemory = '';
   let userTopics = []; // 🗂️ v326: ملخصات آخر 10 محادثات (عبر الأيام والأجهزة)
+  // v-perf-boot-defer: عند كلّ إقلاع لمستخدم بتوكن محفوظ، تُستدعى memoryLoad() مرّتين متقاربتين
+  // (فور تحميل الحزمة أدناه، وثانيةً بعد نجاح verify() عبر authSet) فتتزاحم مع نداء verify نفسه
+  // على نطاق الجوّال المحدود. لا نحذف أيًّا من النداءين — الأوّل ضروريّ لو فشل verify مؤقّتًا
+  // (خلل خادم/بلا اتصال، السطر ~1490) والمستخدم استمرّ بجلسته المخبَّأة — بل نُدمج النداءين
+  // المتزامنين في طلب شبكة واحد بوعدٍ مشترك.
+  let __memoryLoadPromise = null;
   async function memoryLoad(){
-    try{
-      const token = authGet('aiapp_auth_token');
-      if(!token){ userMemory = ''; return; }
-      const r = await fetch('/api/system?action=memory', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ token, op: 'get' })
-      });
-      if(r.ok){ const d = await r.json(); userMemory = d.memory || ''; userTopics = Array.isArray(d.topics) ? d.topics : []; }
-    }catch(e){ __swallow(e, "misc:app-01-boot-auth#4"); }
+    if(__memoryLoadPromise) return __memoryLoadPromise;
+    __memoryLoadPromise = (async () => {
+      try{
+        const token = authGet('aiapp_auth_token');
+        if(!token){ userMemory = ''; return; }
+        const r = await fetch('/api/system?action=memory', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ token, op: 'get' })
+        });
+        if(r.ok){ const d = await r.json(); userMemory = d.memory || ''; userTopics = Array.isArray(d.topics) ? d.topics : []; }
+      }catch(e){ __swallow(e, "misc:app-01-boot-auth#4"); }
+    })();
+    try{ await __memoryLoadPromise; } finally { __memoryLoadPromise = null; }
   }
   function memoryUpdate(userText, aiText){
     try{
@@ -1108,6 +1129,8 @@ const $ = s => document.querySelector(s);
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ state: st }),
+          signal: AbortSignal.timeout(10000), // v-perf-boot-defer: بلا هذا، تعليق الشبكة (شائع عند عودة سفاري
+          // على آيفون المثبَّت) يبقي busy=true للأبد فتُعطَّل كلّ محاولات claim() اللاحقة بصمت
         });
         if(r.ok){
           const d = await r.json();
@@ -1185,6 +1208,10 @@ const $ = s => document.querySelector(s);
     const password = passInput.value;
     errBox.textContent = '';
     const isEn = (localStorage.getItem('aiapp_lang') === 'en');
+    // v-perf-boot-defer: الزرّ كان يُعطَّل بصمت بلا أيّ إشارة أنّ شيئًا يحدث (بخلاف مسار OTP في هذا
+    // الملف الذي يغيّر النصّ فعلًا) — على شبكة بطيئة يبدو التطبيق معلّقًا. نلتقط النصّ الأصليّ هنا
+    // ونعيده في finally كلّ فرع، بلا حاجة لمعرفة مفتاح الترجمة لكلّ وضع (reset/forgot/login/signup).
+    const submitBtnLabel = submitBtn.textContent;
 
     if(mode === 'reset'){
       const code = recoveryInput.value.trim();
@@ -1193,11 +1220,13 @@ const $ = s => document.querySelector(s);
         return;
       }
       submitBtn.disabled = true;
+      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'reset', username, recoveryCode: code, newPassword: password }),
+          signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
         const data = await res.json();
         if(!res.ok || data.error){
@@ -1214,6 +1243,7 @@ const $ = s => document.querySelector(s);
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
       } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = submitBtnLabel;
       }
       return;
     }
@@ -1224,11 +1254,13 @@ const $ = s => document.querySelector(s);
         return;
       }
       submitBtn.disabled = true;
+      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'forgotPassword', username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
+          signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
         const data = await res.json();
         if(!res.ok || data.error){
@@ -1241,6 +1273,7 @@ const $ = s => document.querySelector(s);
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
       } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = submitBtnLabel;
       }
       return;
     }
@@ -1251,11 +1284,13 @@ const $ = s => document.querySelector(s);
         return;
       }
       submitBtn.disabled = true;
+      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password }),
+          signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
         const data = await res.json();
         if(!res.ok || data.error){
@@ -1269,6 +1304,7 @@ const $ = s => document.querySelector(s);
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
       } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = submitBtnLabel;
       }
       return;
     }
@@ -1278,11 +1314,13 @@ const $ = s => document.querySelector(s);
       return;
     }
     submitBtn.disabled = true;
+    submitBtn.textContent = isEn ? 'Please wait…' : 'جاري الدخول…';
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: mode, username, password, lang: (localStorage.getItem('aiapp_lang') || 'ar'), ref: (mode === 'signup' ? (localStorage.getItem('aiapp_pending_ref') || undefined) : undefined) }),
+        signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600) — «أحيانًا ما يدخل»
       });
       const data = await res.json();
       if(!res.ok || data.error){
@@ -1302,6 +1340,7 @@ const $ = s => document.querySelector(s);
       errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
     } finally {
       submitBtn.disabled = false;
+      submitBtn.textContent = submitBtnLabel;
     }
   };
 
@@ -1372,8 +1411,10 @@ const $ = s => document.querySelector(s);
       }
     };
   }
-  document.addEventListener('DOMContentLoaded', prefillAccountFields);
-  // Also refresh right before the settings dialog opens, in case the user
+  // v-perf-boot-defer: كان يُستدعى أيضًا عند DOMContentLoaded — نداء fetch(getProfile) إضافيّ يتزاحم
+  // مع verify الحرج عند كلّ إقلاع، لحقل بريد في لوحة إعدادات لا يراها أحد قبل فتحها فعليًّا. النداء
+  // الوحيد الباقي (أدناه) يُحدَّث حين يُفتح فعلًا، وهو يكفي — لا فرق مرئيّ لأنّ اللوحة مخفيّة أصلًا.
+  // Refresh right before the settings dialog opens, in case the user
   // changed their name/avatar earlier in the same session.
   const settingsBtnForAcct = document.getElementById('btnSettings');
   if(settingsBtnForAcct) settingsBtnForAcct.addEventListener('click', prefillAccountFields);
@@ -1574,6 +1615,8 @@ const $ = s => document.querySelector(s);
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'verify', token }),
+        signal: AbortSignal.timeout(10000), // v-perf-boot-defer: بلا هذا، تعليق الشبكة يبقي شاشة
+        // الدخول معلَّقة بلا قرار؛ التعليق الآن يسقط في مسار «تعذّر الاتّصال» أدناه (جلسة مخبَّأة).
       });
       const data = await res.json();
       if(res.ok && data.ok){
@@ -1610,6 +1653,7 @@ const $ = s => document.querySelector(s);
     }
   });
 })();
+}catch(e){ window.__swallow(e, 'authSystem:uncaught'); }
 
 // ===== لوحة تشخيص الجلسة: /?diag=1 =====
 //
@@ -6439,7 +6483,6 @@ function codeForApi(code){
 }
 
 function renderHistory(){
-  historyEl.innerHTML = '';
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
   const provKey = localStorage.getItem('aiapp_provider') || 'openai';
   let provDirty = false;
@@ -6449,7 +6492,37 @@ function renderHistory(){
   // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
   // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
   const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
-  [...state.projects].sort((a, b) => __histTs(b) - __histTs(a)).forEach(p => {
+  const __histSorted = [...state.projects].sort((a, b) => __histTs(b) - __histTs(a));
+  // v-perf-history-guard (المالك ٢٩ سبتمبر: «الشاشة تتأخر وتعلّق»): renderHistory تبني <iframe>
+  // كاملة لكلّ محادثة فيها كود، وتُستدعى بعد كلّ رسالة وعند كلّ نبضة مزامنة حيّة (٢٠ث) حتّى لو لم
+  // يتغيّر شيء فعليًّا. بصمة خفيفة بنفس فكرة v-render-guard في renderMessages أعلاه: إن طابقت آخر
+  // رسم والقائمة معروضة فعلًا نتخطّى كليًّا — لا مسح، لا إعادة بناء iframes حيّة بلا داعٍ.
+  try{
+    const __sig = state.currentId + '|' + (window.__histShowAll ? 1 : 0) + '|' +
+      __histSorted.map(p => p.id + ':' + p.title + ':' + (p.code && p.codeType !== 'python' ? 1 : 0)).join(',');
+    if(window.__renderHistSig === __sig && historyEl.childElementCount > 0) return;
+    window.__renderHistSig = __sig;
+  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أيّ خطأ نرسم كالمعتاد */ }
+  historyEl.innerHTML = '';
+  // v-perf-history-guard: نافذة عرض بنفس فكرة __MSGWIN في renderMessages — أقدم ٣٠ محادثة
+  // تُبنى iframes حيّة لها فقط لو طلب المستخدم صراحةً؛ الأقدم تظهر بزرّ عند الطلب.
+  const __HIST_WINDOW = 30;
+  // المحادثة المفتوحة حاليًّا يجب أن تبقى ظاهرة في قائمتها حتى لو كانت أقدم من النافذة
+  // (تُفتح أحيانًا من البحث أو رابط مباشر لا من هذه القائمة نفسها).
+  const __curIdx = state.currentId ? __histSorted.findIndex(p => p.id === state.currentId) : -1;
+  const __histWinEnd = window.__histShowAll ? __histSorted.length
+    : Math.min(Math.max(__HIST_WINDOW, __curIdx + 1), __histSorted.length);
+  if(__histWinEnd < __histSorted.length){
+    const __OLDHT = { ar:'عرض محادثات أقدم', en:'Show older chats', fr:'Afficher les discussions plus anciennes', hi:'पुरानी बातचीत दिखाएँ', ur:'پرانی بات چیت دکھائیں', bn:'পুরনো চ্যাট দেখান', ne:'पुरानो कुराकानी देखाउनुहोस्', id:'Tampilkan obrolan lama', fil:'Ipakita ang mga lumang chat', tr:'Eski sohbetleri göster', zh:'显示较早的对话', ru:'Показать старые чаты', es:'Mostrar chats anteriores', ml:'പഴയ ചാറ്റുകൾ കാണിക്കുക' };
+    const __uiL2 = localStorage.getItem('aiapp_lang') || 'ar';
+    const olderHistBtn = document.createElement('button');
+    olderHistBtn.type = 'button';
+    olderHistBtn.textContent = '⬇ ' + (__OLDHT[__uiL2] || __OLDHT.en) + ' (' + (__histSorted.length - __histWinEnd) + ')';
+    olderHistBtn.style.cssText = 'display:block; width:100%; margin:6px 0 10px; padding:7px 16px; border-radius:20px; border:1px solid var(--border,rgba(255,255,255,.15)); background:transparent; color:var(--accent2,#a78bfa); font-size:12.5px; cursor:pointer;';
+    olderHistBtn.onclick = () => { window.__histShowAll = true; window.__renderHistSig = null; renderHistory(); };
+    historyEl.appendChild(olderHistBtn);
+  }
+  __histSorted.slice(0, __histWinEnd).forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
     div.dataset.pid = String(p.id); // v-chat-search: يربط العنصر بمشروعه للبحث داخل المحتوى
@@ -12927,15 +13000,28 @@ function populateClockTZSelect(){
   else sel.value = 'Asia/Riyadh';
 }
 
+// v-perf-idle-timers: #btnClock (الحاوية) مخفيّة بلا أيّ كود يُظهرها — كان هذا يبني
+// Intl.DateTimeFormat جديدًا ويكتب في DOM كلّ ثانية للأبد لعنصر لا يراه أحد إطلاقًا. الآن
+// يبدأ فقط لو ظهر العنصر فعلًا (احتياط لتفعيل مستقبليّ)، ويتوقّف تلقائيًّا لو اختفى مجدَّدًا.
+const __headerClockFmt = { ar: new Intl.DateTimeFormat('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+  en: new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) };
 function updateHeaderClock(){
   const el = $('#headerClockTime');
   if (!el) return;
-  el.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-  }).format(new Date());
+  el.textContent = (lang === 'ar' ? __headerClockFmt.ar : __headerClockFmt.en).format(new Date());
 }
-updateHeaderClock();
-setInterval(updateHeaderClock, 1000);
+let __headerClockTimer = null;
+function __headerClockSync(){
+  const btn = $('#btnClock');
+  const visible = !!btn && getComputedStyle(btn).display !== 'none';
+  if (visible && !__headerClockTimer) { updateHeaderClock(); __headerClockTimer = setInterval(updateHeaderClock, 1000); }
+  else if (!visible && __headerClockTimer) { clearInterval(__headerClockTimer); __headerClockTimer = null; }
+}
+__headerClockSync();
+try {
+  const __btnClockEl = $('#btnClock');
+  if (__btnClockEl) new MutationObserver(__headerClockSync).observe(__btnClockEl, { attributes: true, attributeFilter: ['style', 'class'] });
+} catch(e){ /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
 
 function renderClockWorldStrip(){
   const box = $('#clockWorldStrip');
@@ -26699,8 +26785,11 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
     window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key; })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
   }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  setTimeout(boot, 900);
+  // v-perf-idle-timers: boot() كانت تُستدعى عند DOMContentLoaded (مرّتين: فورًا و٩٠٠مل ثانية لاحقًا) فتبني
+  // شبكة ٤٥ بطاقة (٤٥ صورة معاينة) داخل نافذة صانع الفيديو حتّى لو لم يفتحها المستخدم إطلاقًا في تلك
+  // الجلسة. الآن تُبنى فقط عند أوّل فتح فعليّ لصانع الفيديو (omranOpenVideoMaker في app-11-video.js
+  // يستدعي هذا المعرّف — نفس الحزمة، لا تحميل شبكة منفصل فلا سباق تزامن).
+  window.__videoTrendsBoot = boot;
 })();
 /* ---------- 🎬 AI Video Maker (Runway / Veo 3, server-side owner key) ---------- */
 (function(){
@@ -26934,6 +27023,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   }
 
   btnOpen.onclick = () => {
+    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ /* guard-ok */ } }
     modal.style.display = 'flex';
     closeHeaderMenu();
     const owner = isOwnerAccount();
@@ -26946,6 +27036,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
   // v524: فتح صانع الفيديو من المحادثة — يقبل prompt اختياري + صورة hero اختيارية
   window.omranOpenVideoMaker = function(prompt, heroDataUrl, heroMimeType){
+    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ /* guard-ok */ } }
     try{
       if(promptEl && prompt) promptEl.value = String(prompt).trim();
       // صورة hero — تُعرض في المعاينة وتُستخدم في الفيلم
@@ -34876,8 +34967,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var m = probe.measureText(name);
     var w = Math.ceil(m.width + pad * 2 + Math.abs(shear) * size * 1.8);
     /* v-calligraphy-names: الذيل تحت أدنى حبر فعليّ — أذيال الثلث (ر ن ع ي) أعمق من 1.5 فكان الذيل يقطعها */
-    var fy = Math.max(size * 1.5, size * 1.02 + (m.actualBoundingBoxDescent || 0) + size * 0.1);
-    var h = Math.ceil(state.flourish ? Math.max(size * 2.12, fy + size * 0.62) : size * 1.85);
+    var low = size * 1.02 + (m.actualBoundingBoxDescent || 0);
+    var fy = Math.max(size * 1.5, low + size * 0.1);
+    /* وبلا ذيل: اللوحة تتّسع لأدنى حبر كذلك (تنوين الكسر تحت ع في الثلث كان يُقصّ) */
+    var h = Math.ceil(state.flourish ? Math.max(size * 2.12, fy + size * 0.62) : Math.max(size * 1.85, low + size * 0.08));
     canvas.width = Math.max(2, w * dpr);
     canvas.height = Math.max(2, h * dpr);
     canvas.style.width = w + 'px';
@@ -39315,8 +39408,14 @@ if(document.readyState === 'loading'){
   if(!host) return;
 
   /* v-maha-stars: نجوم الشاشة كلّها أثناء المكالمة — كثافة نجوم الشريط الجانبيّ نفسها (~نجمة لكلّ ١٢٥٠٠ بكسل²)،
-     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة. */
-  (function(){
+     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة.
+     v-perf-idle-timers: كانت تُبنى فور تحميل كلّ صفحة (١٥٠-٥٥٠ عملية DOM) رغم أنّ #mahaGoldWave مخفيّ دائمًا
+     إلّا أثناء مكالمة فعليّة — بُنيت الآن كسولةً عند أوّل استدعاء حقيقيّ (ensureCtx، يجيء من إيماءة المستخدم
+     الأولى لبدء المكالمة عبر mahaUnlockAudio) بدل IIFE فور تحميل الصفحة. */
+  let __skyBuilt = false;
+  function buildSkyStars(){
+    if(__skyBuilt || document.getElementById('mahaSkyLayer')) return;
+    __skyBuilt = true;
     const sky = document.createElement('div');
     sky.id = 'mahaSkyLayer';
     sky.setAttribute('aria-hidden', 'true');
@@ -39332,7 +39431,7 @@ if(document.readyState === 'loading'){
       sky.appendChild(s);
     }
     document.body.appendChild(sky);
-  })();
+  }
   const TILE = '/assets/maha/maha-wave-tile.webp';
   const SPEED = 36, BANDS = 24, RATE = 60;
   const VIS = 0.5, CY = 0.46, ASPECT = 1534 / 1235; // الشريط يعرض نصف ارتفاع الصورة حول خطّ الموجة (٤٦٪)
@@ -39363,6 +39462,7 @@ if(document.readyState === 'loading'){
   let tracked = null, env = null;
 
   function ensureCtx(){
+    try{ buildSkyStars(); }catch(e){ __swallow(e, 'maha:goldwave-sky'); }
     try{
       if(!ctx){
         const C = window.AudioContext || window.webkitAudioContext;

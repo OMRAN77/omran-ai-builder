@@ -12,8 +12,14 @@
   if(!host) return;
 
   /* v-maha-stars: نجوم الشاشة كلّها أثناء المكالمة — كثافة نجوم الشريط الجانبيّ نفسها (~نجمة لكلّ ١٢٥٠٠ بكسل²)،
-     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة. */
-  (function(){
+     ظهورها بفئة maha-band-on على الجسم (css/modules.css) فلا منطق هنا غير بنائها مرّة.
+     v-perf-idle-timers: كانت تُبنى فور تحميل كلّ صفحة (١٥٠-٥٥٠ عملية DOM) رغم أنّ #mahaGoldWave مخفيّ دائمًا
+     إلّا أثناء مكالمة فعليّة — بُنيت الآن كسولةً عند أوّل استدعاء حقيقيّ (ensureCtx، يجيء من إيماءة المستخدم
+     الأولى لبدء المكالمة عبر mahaUnlockAudio) بدل IIFE فور تحميل الصفحة. */
+  let __skyBuilt = false;
+  function buildSkyStars(){
+    if(__skyBuilt || document.getElementById('mahaSkyLayer')) return;
+    __skyBuilt = true;
     const sky = document.createElement('div');
     sky.id = 'mahaSkyLayer';
     sky.setAttribute('aria-hidden', 'true');
@@ -29,7 +35,7 @@
       sky.appendChild(s);
     }
     document.body.appendChild(sky);
-  })();
+  }
   const TILE = '/assets/maha/maha-wave-tile.webp';
   const SPEED = 36, BANDS = 24, RATE = 60;
   const VIS = 0.5, CY = 0.46, ASPECT = 1534 / 1235; // الشريط يعرض نصف ارتفاع الصورة حول خطّ الموجة (٤٦٪)
@@ -60,6 +66,7 @@
   let tracked = null, env = null;
 
   function ensureCtx(){
+    try{ buildSkyStars(); }catch(e){ __swallow(e, 'maha:goldwave-sky'); }
     try{
       if(!ctx){
         const C = window.AudioContext || window.webkitAudioContext;

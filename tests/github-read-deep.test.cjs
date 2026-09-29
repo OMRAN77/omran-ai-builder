@@ -57,4 +57,13 @@ test('readGithub: deep=true يرفع سقف حجم الملفّ المسموح �
   assert.doesNotMatch(deep, /أكبر من/, 'يُقرأ في الوضع العميق');
 });
 
+test('readGithub: deep=true يوسّع عدد نتائج البحث (query) بالدفعة الواحدة', async () => {
+  const net = fakeNet([[/\/search\/code/, jsonRes({ total_count: 0, incomplete_results: false, items: [] })]]);
+  await GH.readGithub({ url: 'a/b', query: 'x' }, net.opts);
+  assert.match(net.calls[0], /per_page=15/, 'العاديّة ١٥');
+  net.calls.length = 0;
+  await GH.readGithub({ url: 'a/b', query: 'x' }, Object.assign({}, net.opts, { deep: true }));
+  assert.match(net.calls[0], /per_page=40/, 'العميقة ٤٠');
+});
+
 console.log('✓ github-read-deep: opts.deep يوسّع الملفّ والشجرة وREADME وحدّ الحجم بلا أثر حين يُترك افتراضيًّا');

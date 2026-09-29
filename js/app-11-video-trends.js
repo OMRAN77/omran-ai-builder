@@ -253,6 +253,9 @@
     try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
     window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key; })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
   }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  setTimeout(boot, 900);
+  // v-perf-idle-timers: boot() كانت تُستدعى عند DOMContentLoaded (مرّتين: فورًا و٩٠٠مل ثانية لاحقًا) فتبني
+  // شبكة ٤٥ بطاقة (٤٥ صورة معاينة) داخل نافذة صانع الفيديو حتّى لو لم يفتحها المستخدم إطلاقًا في تلك
+  // الجلسة. الآن تُبنى فقط عند أوّل فتح فعليّ لصانع الفيديو (omranOpenVideoMaker في app-11-video.js
+  // يستدعي هذا المعرّف — نفس الحزمة، لا تحميل شبكة منفصل فلا سباق تزامن).
+  window.__videoTrendsBoot = boot;
 })();

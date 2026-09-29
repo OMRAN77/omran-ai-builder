@@ -199,6 +199,10 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
 const $ = s => document.querySelector(s);
 
 // --- Account system: signup / login / session, backed by api/auth.js ---
+/* v-perf-boot-defer: حماية إضافيّة — أيّ استثناء غير متوقَّع داخل authSystem() (١٢٧٢ سطرًا) لا يوقف
+   باقي أجزاء الحزمة الملصَقة بعده (app-02 إلى app-41: الدردشة، الأدوات، كلّ شي). الحارس أعلاه يمنع
+   الحالة المعروفة (عناصر ناقصة)؛ هذا يمنع أيّ حالة أخرى غير معروفة بعد. */
+try{
 (function authSystem(){
   const overlay = $('#authOverlay');
   const tabLogin = $('#authTabLogin');
@@ -217,6 +221,13 @@ const $ = s => document.querySelector(s);
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
   const useCodeLink = $('#authUseCodeLink');
+  /* v-perf-boot-defer: partials-core.js يحقن مودال الدخول ديناميكيًّا؛ فشل تحميله (شبكة جوّال متقطّعة) كان
+     يترك tabLogin=null فيرمي .parentElement استثناءً غير ملتقَط يوقف باقي أجزاء الحزمة الملصَقة بعد هذا
+     الملف بالكامل — نفس فخّ curT أعلاه (متغيّر مشابه غير مُعرَّف بعد، حادثة ٦ أغسطس). لا نكمل بعناصر ناقصة. */
+  if(!overlay || !tabLogin || !tabSignup || !submitBtn){
+    window.__swallow(new Error('auth modal elements missing — partials-core.js لم يُحمَّل بعد'), 'authSystem:missing-elements');
+    return;
+  }
   const tabsRow = tabLogin.parentElement;
   const recoveryModal = $('#authRecoveryModal');
   const recoveryCodeDisplay = $('#authRecoveryCodeDisplay');
@@ -382,16 +393,26 @@ const $ = s => document.querySelector(s);
   // ويُحقن في بداية كل محادثة ليتذكره التطبيق عبر الجلسات.
   let userMemory = '';
   let userTopics = []; // 🗂️ v326: ملخصات آخر 10 محادثات (عبر الأيام والأجهزة)
+  // v-perf-boot-defer: عند كلّ إقلاع لمستخدم بتوكن محفوظ، تُستدعى memoryLoad() مرّتين متقاربتين
+  // (فور تحميل الحزمة أدناه، وثانيةً بعد نجاح verify() عبر authSet) فتتزاحم مع نداء verify نفسه
+  // على نطاق الجوّال المحدود. لا نحذف أيًّا من النداءين — الأوّل ضروريّ لو فشل verify مؤقّتًا
+  // (خلل خادم/بلا اتصال، السطر ~1490) والمستخدم استمرّ بجلسته المخبَّأة — بل نُدمج النداءين
+  // المتزامنين في طلب شبكة واحد بوعدٍ مشترك.
+  let __memoryLoadPromise = null;
   async function memoryLoad(){
-    try{
-      const token = authGet('aiapp_auth_token');
-      if(!token){ userMemory = ''; return; }
-      const r = await fetch('/api/system?action=memory', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ token, op: 'get' })
-      });
-      if(r.ok){ const d = await r.json(); userMemory = d.memory || ''; userTopics = Array.isArray(d.topics) ? d.topics : []; }
-    }catch(e){ __swallow(e, "misc:app-01-boot-auth#4"); }
+    if(__memoryLoadPromise) return __memoryLoadPromise;
+    __memoryLoadPromise = (async () => {
+      try{
+        const token = authGet('aiapp_auth_token');
+        if(!token){ userMemory = ''; return; }
+        const r = await fetch('/api/system?action=memory', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ token, op: 'get' })
+        });
+        if(r.ok){ const d = await r.json(); userMemory = d.memory || ''; userTopics = Array.isArray(d.topics) ? d.topics : []; }
+      }catch(e){ __swallow(e, "misc:app-01-boot-auth#4"); }
+    })();
+    try{ await __memoryLoadPromise; } finally { __memoryLoadPromise = null; }
   }
   function memoryUpdate(userText, aiText){
     try{
@@ -970,6 +991,8 @@ const $ = s => document.querySelector(s);
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ state: st }),
+          signal: AbortSignal.timeout(10000), // v-perf-boot-defer: بلا هذا، تعليق الشبكة (شائع عند عودة سفاري
+          // على آيفون المثبَّت) يبقي busy=true للأبد فتُعطَّل كلّ محاولات claim() اللاحقة بصمت
         });
         if(r.ok){
           const d = await r.json();
@@ -1047,6 +1070,10 @@ const $ = s => document.querySelector(s);
     const password = passInput.value;
     errBox.textContent = '';
     const isEn = (localStorage.getItem('aiapp_lang') === 'en');
+    // v-perf-boot-defer: الزرّ كان يُعطَّل بصمت بلا أيّ إشارة أنّ شيئًا يحدث (بخلاف مسار OTP في هذا
+    // الملف الذي يغيّر النصّ فعلًا) — على شبكة بطيئة يبدو التطبيق معلّقًا. نلتقط النصّ الأصليّ هنا
+    // ونعيده في finally كلّ فرع، بلا حاجة لمعرفة مفتاح الترجمة لكلّ وضع (reset/forgot/login/signup).
+    const submitBtnLabel = submitBtn.textContent;
 
     if(mode === 'reset'){
       const code = recoveryInput.value.trim();
@@ -1055,11 +1082,13 @@ const $ = s => document.querySelector(s);
         return;
       }
       submitBtn.disabled = true;
+      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'reset', username, recoveryCode: code, newPassword: password }),
+          signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
         const data = await res.json();
         if(!res.ok || data.error){
@@ -1076,6 +1105,7 @@ const $ = s => document.querySelector(s);
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
       } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = submitBtnLabel;
       }
       return;
     }
@@ -1086,11 +1116,13 @@ const $ = s => document.querySelector(s);
         return;
       }
       submitBtn.disabled = true;
+      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'forgotPassword', username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
+          signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
         const data = await res.json();
         if(!res.ok || data.error){
@@ -1103,6 +1135,7 @@ const $ = s => document.querySelector(s);
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
       } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = submitBtnLabel;
       }
       return;
     }
@@ -1113,11 +1146,13 @@ const $ = s => document.querySelector(s);
         return;
       }
       submitBtn.disabled = true;
+      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password }),
+          signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
         const data = await res.json();
         if(!res.ok || data.error){
@@ -1131,6 +1166,7 @@ const $ = s => document.querySelector(s);
         errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
       } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = submitBtnLabel;
       }
       return;
     }
@@ -1140,11 +1176,13 @@ const $ = s => document.querySelector(s);
       return;
     }
     submitBtn.disabled = true;
+    submitBtn.textContent = isEn ? 'Please wait…' : 'جاري الدخول…';
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: mode, username, password, lang: (localStorage.getItem('aiapp_lang') || 'ar'), ref: (mode === 'signup' ? (localStorage.getItem('aiapp_pending_ref') || undefined) : undefined) }),
+        signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600) — «أحيانًا ما يدخل»
       });
       const data = await res.json();
       if(!res.ok || data.error){
@@ -1164,6 +1202,7 @@ const $ = s => document.querySelector(s);
       errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
     } finally {
       submitBtn.disabled = false;
+      submitBtn.textContent = submitBtnLabel;
     }
   };
 
@@ -1234,8 +1273,10 @@ const $ = s => document.querySelector(s);
       }
     };
   }
-  document.addEventListener('DOMContentLoaded', prefillAccountFields);
-  // Also refresh right before the settings dialog opens, in case the user
+  // v-perf-boot-defer: كان يُستدعى أيضًا عند DOMContentLoaded — نداء fetch(getProfile) إضافيّ يتزاحم
+  // مع verify الحرج عند كلّ إقلاع، لحقل بريد في لوحة إعدادات لا يراها أحد قبل فتحها فعليًّا. النداء
+  // الوحيد الباقي (أدناه) يُحدَّث حين يُفتح فعلًا، وهو يكفي — لا فرق مرئيّ لأنّ اللوحة مخفيّة أصلًا.
+  // Refresh right before the settings dialog opens, in case the user
   // changed their name/avatar earlier in the same session.
   const settingsBtnForAcct = document.getElementById('btnSettings');
   if(settingsBtnForAcct) settingsBtnForAcct.addEventListener('click', prefillAccountFields);
@@ -1436,6 +1477,8 @@ const $ = s => document.querySelector(s);
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'verify', token }),
+        signal: AbortSignal.timeout(10000), // v-perf-boot-defer: بلا هذا، تعليق الشبكة يبقي شاشة
+        // الدخول معلَّقة بلا قرار؛ التعليق الآن يسقط في مسار «تعذّر الاتّصال» أدناه (جلسة مخبَّأة).
       });
       const data = await res.json();
       if(res.ok && data.ok){
@@ -1472,6 +1515,7 @@ const $ = s => document.querySelector(s);
     }
   });
 })();
+}catch(e){ window.__swallow(e, 'authSystem:uncaught'); }
 
 // ===== لوحة تشخيص الجلسة: /?diag=1 =====
 //
