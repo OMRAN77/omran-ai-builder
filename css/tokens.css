@@ -899,6 +899,11 @@
   @keyframes omranShimmer{from{background-position:220% 0} to{background-position:-20% 0}}
   @keyframes omranDots{0%,100%{opacity:.25; transform:translateY(0)} 50%{opacity:1; transform:translateY(-2px)}}
   @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
+  /* v-cpu-status (المالك ٢٩ سبتمبر: «يعلّق إذا يقرأ الوكيل»): تطبيق هواوي يرسم بالمعالج (html.omCpu، v-cpu-calm)، وحبّة
+     الحالة ستّ حركات لا تنتهي طوال عمل الوكيل أو تفكير المزوّد = الشاشة كلّها تُعاد ٦٠ مرّة/ث. تسكن هنا كما في «تقليل الحركة». */
+  html.omCpu :is(.chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running){animation:none;}
+  html.omCpu .chat-status-running{color:var(--text,#fff); background:none;}
+  html.omCpu .chat-status-dots i{opacity:.7;}
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.
