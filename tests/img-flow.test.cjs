@@ -19,7 +19,7 @@ test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغ�
     /* v-img-dots-15x10: ١٥ صفًّا × ١٠ أعمدة، وقوس ٤٫٥ على زاويتَي اليسار، والتأخير القُطريّ كما هو */
     assert.ok(s.includes('const __C = 10, __R = 15, __steps = (__C - 1) + (__R - 1), __arc = 4.5;'), f + ': أبعاد الشبكة أو نصف القوس تغيّرا');
     assert.ok(s.includes('((__C - 1 - x) + y) / __steps * 1.9'), 'تأخير قُطريّ من فوق يمين');
-    assert.ok(s.includes('Math.hypot(x - __arc, y - __cy) > __arc + 0.01) continue;'), 'قوس اليسار');
+    assert.ok(s.includes('if(x < __arc && y < __arc && Math.hypot(x - __arc, y - __arc) > __arc + 0.01) continue;'), 'قوس الزاوية العليا اليسرى وحدها');
     assert.ok(!s.includes('omGenWave') && !s.includes('--dx'), 'بلا خطوط وبلا حركة للخارج');
     assert.ok(s.includes('@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}'), 'احترام تقليل الحركة');
     /* الوضع الفاتح صار مطابقًا للداكن: لا دائرة بيضاء ولا دوّامة، ولا يبقى له إلّا لون العنوان */
@@ -114,7 +114,7 @@ test('٩. صور الإنترنت فقط بطلب صريح أو بالجمع —
   assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) &&'));
 });
 
-test('١٠. مؤشّر الصورة بلا إطار، والوضعان سواء، والشبكة ١٥×١٠ بقوس يسار', () => {
+test('١٠. مؤشّر الصورة بلا إطار، والوضعان سواء، والشبكة ١٥×١٠ بقوس الزاوية العليا اليسرى', () => {
   const a = read('js/app-09-attach.js');
   /* v-img-dots-nobox + v-img-dots-15x10: الوضعان سواء — إضاءة وحدها بلا بطاقة ولا دائرة بيضاء */
   assert.ok(a.includes('overflow:visible;margin:6px 0;background:transparent}'), 'الحاوية ما زالت بإطار');
@@ -124,13 +124,19 @@ test('١٠. مؤشّر الصورة بلا إطار، والوضعان سواء�
   assert.ok(!a.includes('html[data-mode=\\"light\\"] .omDot{'), 'للوضع الفاتح نقاط خاصّة — يجب أن يطابق الداكن');
   assert.ok(a.includes('html[data-mode=\\"light\\"] .omGenTxt{color:#8a6500;text-shadow:none}'), 'عنوان الفاتح يبقى مقروءًا');
   // ١٥ صفًّا × ١٠ أعمدة ناقصةً ما يقطعه قوس اليسار — العدد محسوب لا مخمَّن
-  const C = 10, R = 15, ARC = 4.5; let n = 0;
+  const C = 10, R = 15, ARC = 4.5; let n = 0, corners = { tl: 0, bl: 0, tr: 0, br: 0 };
   for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) {
-    if (x < ARC) { const cy = y < ARC ? ARC : (y > R - 1 - ARC ? R - 1 - ARC : y); if (Math.hypot(x - ARC, y - cy) > ARC + 0.01) continue; }
+    if (x < ARC && y < ARC && Math.hypot(x - ARC, y - ARC) > ARC + 0.01) continue;
     n++;
+    if (x === 0 && y === 0) corners.tl++;
+    if (x === 0 && y === R - 1) corners.bl++;
+    if (x === C - 1 && y === 0) corners.tr++;
+    if (x === C - 1 && y === R - 1) corners.br++;
   }
   assert.equal(C * R, 150, 'الشبكة ١٥ صفًّا × ١٠ أعمدة');
-  assert.equal(n, 130, 'قوس اليسار يقتطع ٢٠ نقطة من الزاويتين');
+  assert.equal(n, 140, 'قوس الزاوية العليا اليسرى يقتطع ١٠ نقاط');
+  // الزاوية العليا اليسرى وحدها مقصوصة، والثلاث الباقية قائمة (رسمة المالك)
+  assert.deepEqual(corners, { tl: 0, bl: 1, tr: 1, br: 1 }, 'قُصّت زاوية غير العليا اليسرى، أو بقيت هي');
 });
 
 test('١١. «غيّر الصور بدون تكرار الشخصيات» على لقطة بطاقات = تبديل أشخاص لا تعديل أمين يرجّع الصورة نفسها', () => {

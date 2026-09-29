@@ -4516,16 +4516,15 @@ function __showImgLoading(el, ar, en){
     st.textContent = ".omGen{position:relative;width:min(220px,55vw);aspect-ratio:9/14;max-width:100%;overflow:visible;margin:6px 0;background:transparent}.omGenTxt{position:absolute;top:0;right:6px;z-index:2;color:#ffd978;font-size:14px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGenTxt{color:#8a6500;text-shadow:none}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
     document.head.appendChild(st);
   }
-  /* الشبكة ١٥ طولًا × ١٠ عرضًا (أمر المالك)، وقوس على زاويتَي اليسار بنصف قطر ٤٫٥ نقطة
-     («٤ إلى ٥ تقريبًا من طرف اليسار») بينما الطرف الأيمن — عند الكتابة — يبقى مستقيمًا.
+  /* الشبكة ١٥ طولًا × ١٠ عرضًا (أمر المالك)، وقوس على الزاوية العليا اليسرى بنصف قطر ٤٫٥ نقطة
+     («٤ إلى ٥ تقريبًا من طرف اليسار») على **الزاوية العليا اليسرى وحدها** كما رسمها المالك بيده،
+     والزوايا الثلاث الباقية قائمة.
      الإضاءة القُطريّة كما هي: كلّ قُطر من فوق يمين إلى تحت يسار يلمع معًا ثمّ الذي بعده. */
   const __C = 10, __R = 15, __steps = (__C - 1) + (__R - 1), __arc = 4.5;
   let __dots = '';
   for(let y = 0; y < __R; y++) for(let x = 0; x < __C; x++){
-    if(x < __arc){
-      const __cy = y < __arc ? __arc : (y > __R - 1 - __arc ? __R - 1 - __arc : y);
-      if(Math.hypot(x - __arc, y - __cy) > __arc + 0.01) continue;
-    }
+    /* الزاوية العليا اليسرى وحدها مقوّسة؛ الثلاث الباقية قائمة (رسمة المالك) */
+    if(x < __arc && y < __arc && Math.hypot(x - __arc, y - __arc) > __arc + 0.01) continue;
     __dots += '<i class="omDot" style="left:' + (8 + x * 84 / (__C - 1)).toFixed(2) + '%;top:' + (12 + y * 84 / (__R - 1)).toFixed(2) + '%;--d:' + (((__C - 1 - x) + y) / __steps * 1.9).toFixed(3) + 's"></i>';
   }
   el.innerHTML = '<div class="omGen" role="status" aria-label="جارٍ إنشاء الصورة"><div class="omGenTxt" dir="rtl">جارٍ إنشاء الصورة</div>' + __dots + '</div>';
