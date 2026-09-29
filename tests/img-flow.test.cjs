@@ -17,7 +17,7 @@ test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغ�
     assert.ok(!s.includes('background:#050505'), f + ': البطاقة السوداء رجعت خلف النقاط');
     assert.ok(s.includes('.omGen{position:relative;width:min(220px,55vw);aspect-ratio:9/14;max-width:100%;overflow:visible;margin:6px 0;background:transparent}'), f + ': شكل الحاوية — عموديّة بلا إطار ولا قصّ للهالة');
     /* v-img-dots-15x10: ١٥ صفًّا × ١٠ أعمدة، وقوس ٤٫٥ على زاويتَي اليسار، والتأخير القُطريّ كما هو */
-    assert.ok(s.includes('const __C = 10, __R = 15, __steps = (__C - 1) + (__R - 1), __arc = 2;'), f + ': أبعاد الشبكة أو نصف القوس تغيّرا');
+    assert.ok(s.includes('const __C = 10, __R = 15, __steps = (__C - 1) + (__R - 1), __arc = 1;'), f + ': أبعاد الشبكة أو نصف القوس تغيّرا');
     assert.ok(s.includes('((__C - 1 - x) + y) / __steps * 1.9'), 'تأخير قُطريّ من فوق يمين');
     assert.ok(s.includes('if(x < __arc && y < __arc && Math.hypot(x - __arc, y - __arc) > __arc + 0.01) continue;'), 'قوس الزاوية العليا اليسرى وحدها');
     assert.ok(!s.includes('omGenWave') && !s.includes('--dx'), 'بلا خطوط وبلا حركة للخارج');
@@ -124,7 +124,7 @@ test('١٠. مؤشّر الصورة بلا إطار، والوضعان سواء�
   assert.ok(!a.includes('html[data-mode=\\"light\\"] .omDot{'), 'للوضع الفاتح نقاط خاصّة — يجب أن يطابق الداكن');
   assert.ok(a.includes('html[data-mode=\\"light\\"] .omGenTxt{color:#8a6500;text-shadow:none}'), 'عنوان الفاتح يبقى مقروءًا');
   // ١٥ صفًّا × ١٠ أعمدة ناقصةً ما يقطعه قوس اليسار — العدد محسوب لا مخمَّن
-  const C = 10, R = 15, ARC = 2; let n = 0, corners = { tl: 0, bl: 0, tr: 0, br: 0 }, rowsCut = [];
+  const C = 10, R = 15, ARC = 1; let n = 0, corners = { tl: 0, bl: 0, tr: 0, br: 0 }, rowsCut = [];
   for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) {
     if (x < ARC && y < ARC && Math.hypot(x - ARC, y - ARC) > ARC + 0.01) continue;
     n++;
@@ -134,10 +134,10 @@ test('١٠. مؤشّر الصورة بلا إطار، والوضعان سواء�
     if (x === C - 1 && y === R - 1) corners.br++;
   }
   assert.equal(C * R, 150, 'الشبكة ١٥ صفًّا × ١٠ أعمدة');
-  assert.equal(n, 147, 'القوس الخفيف يقتطع ٣ نقاط لا أكثر');
-  // «بس قليل يعني خفيف… ومن تحت خلّه سيده»: لا يُمسّ إلّا الصفّان الأوّلان
+  assert.equal(n, 149, 'القوس الخفيف يقتطع نقطة الزاوية وحدها');
+  // «أخفّ قليل»: لا يُمسّ إلّا الصفّ الأوّل — وفيه نقطة واحدة
   for (let y = 0; y < R; y++) { let cut = 0; for (let x = 0; x < C; x++) if (x < ARC && y < ARC && Math.hypot(x - ARC, y - ARC) > ARC + 0.01) cut++; if (cut) rowsCut.push(y); }
-  assert.deepEqual(rowsCut, [0, 1], 'القوس يمتدّ تحت الصفّ الثاني — الحافّة اليسرى يجب أن تكون مستقيمة تحته');
+  assert.deepEqual(rowsCut, [0], 'القوس يمتدّ تحت الصفّ الأوّل — الحافّة اليسرى يجب أن تكون مستقيمة تحته');
   // الزاوية العليا اليسرى وحدها مقصوصة، والثلاث الباقية قائمة (رسمة المالك)
   assert.deepEqual(corners, { tl: 0, bl: 1, tr: 1, br: 1 }, 'قُصّت زاوية غير العليا اليسرى، أو بقيت هي');
 });
