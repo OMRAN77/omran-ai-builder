@@ -37,6 +37,12 @@ function imgErrFriendly(err, isAr){
       ? 'أوقفت النتيجة لأنها غيّرت هوية الشخص أو أشياء لم تطلبها. بقيت الصورة الأصلية محفوظة.'
       : 'I stopped the result because it changed the person or unrelated details. The original remains saved.';
   }
+  /* v-edit-no-change: الناتج رجع مطابقًا للأصل (التعديل لم يُطبَّق) — بعد محاولتين */
+  if(err === 'image_edit_no_change'){
+    return isAr
+      ? 'النتيجة رجعت مطابقة لصورتك بلا أيّ تعديل، فلم أعرضها. جرّب مرّة أخرى أو اختر خيارًا آخر، ويفضّل صورة تظهر فيها المنطقة المطلوبة بوضوح.'
+      : 'The result came back identical to your photo with no edit applied, so I did not show it. Try again or pick another option — a photo that clearly shows the area works best.';
+  }
   /* v-img-honest: الخادم قاس الناتج فوجده الصورة نفسها (حتّى بعد المحرّك الآخر) فلم يعرضه وردّ النقاط — بدل «تمّ» على صورة لم تتغيّر */
   if(err === 'image_unchanged'){
     return t('imgUnchanged');

@@ -87,6 +87,44 @@ test('خيارات الواجهة والخادم متطابقة بعد الإض�
   );
 });
 
+/* ───── v-hands-unlocked + v-edit-no-change: «أرفق صورة في الاستايل فما غيّر أي شيء» ───── */
+const faceLock = require(path.join(root, 'api/_lib/face-lock.js'));
+const guard = require(path.join(root, 'api/_lib/image-edit-guard.js'));
+
+test('اليدان لا تُقفلان بالبكسل: الحنّاء والأظافر والتاتو تحمي الوجه وحده', () => {
+  // قفل body يحمي كلّ ما فوق خطّ الرقبة — ووقفة الحنّاء يدان مرفوعتان بجانب الوجه،
+  // فكانت اليدان تُلصقان من الأصل فوق الناتج وترجع الصورة بلا تغيير.
+  for (const f of ['henna', 'nails', 'tattoo']) {
+    assert.equal(faceLock.protectLevel(f), 'face', f + ': ما زال يقفل كلّ ما فوق الرقبة');
+  }
+  // الميزات التي تغيّر الملابس/الخلفيّة تبقى على قفل الجسم
+  for (const f of ['heritage', 'body', 'palette', 'seasons']) {
+    assert.equal(faceLock.protectLevel(f), 'body', f + ': يجب أن يبقى قفل الجسم');
+  }
+  assert.equal(faceLock.protectLevel('makeup'), 'none', 'المكياج على الوجه — بلا قفل بكسل');
+});
+
+test('النتيجة المطابقة للأصل تُرفض عند طلب التغيير، وتمرّ للميزات الخفيّة', () => {
+  const verdict = { identityPreserved: true, onlyRequestedChange: true, requestedChangeApplied: false };
+  assert.deepEqual(guard.assessEditVerdict(verdict, { requireChange: true }), { ok: false, reason: 'no_change' });
+  assert.equal(guard.assessEditVerdict(verdict, {}).ok, true, 'بلا requireChange يجب ألّا يتغيّر السلوك القائم');
+  assert.equal(guard.publicGuardError({ reason: 'no_change' }), 'image_edit_no_change');
+  const src = fs.readFileSync(path.join(root, 'api/_lib/image-edit-guard.js'), 'utf8');
+  assert.match(src, /requestedChangeApplied: the RESULT visibly applies/, 'الحارس لا يسأل عن تطبيق التغيير');
+
+  const srv = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
+  assert.match(srv, /const SUBTLE = \['skin', 'eyes', 'body', 'age'\]/, 'لا استثناء للميزات الخفيّة');
+  assert.match(srv, /requireChange: SUBTLE\.indexOf\(feature\) === -1/, 'requireChange لا يصل الحارس');
+  assert.match(srv, /guard\.reason === 'no_change' \? NO_CHANGE_RETRY : STRONGER_LOCK/, 'المحاولة الثانية لا تفرّق بين سببي الرفض');
+  assert.match(srv, /the requested change was not applied at all/, 'نصّ المحاولة الثانية لا يطلب التنفيذ صراحةً');
+
+  const cli = fs.readFileSync(path.join(root, 'js/app-02-tts.js'), 'utf8');
+  assert.match(cli, /image_edit_no_change/, 'لا رسالة عربيّة للكود الجديد');
+  const studio = fs.readFileSync(path.join(root, 'js/app-13-stocks-init.js'), 'utf8');
+  assert.match(studio, /function studioErrText\(e\)/, 'الستوديو ما زال يعرض كود الخطأ الخام');
+  assert.equal((studio.match(/studioErrText\(e\)/g) || []).length, 4, 'مواضع عرض الخطأ الثلاثة يجب أن تستعمل الترجمة');
+});
+
 /* ───── v-studio-variants: المالك «أريد أكثر من ١٠٠ في كلّ شكل… ١٠٠ حنّاء هندي، ١٠٠ شكل نظّارة» ─────
    التنويع داخل الخيار الواحد، لا قائمة خيارات أطول: محاور × محاور = آلاف الأشكال لكلّ خيار. */
 const variants = require(path.join(root, 'api/_lib/studio-variants.js'));

@@ -52,7 +52,11 @@ module.exports = async (req, res) => {
     const fd = await f.json().catch(() => ({}));
     const url = fd && fd.file && (fd.file.download_url || fd.file.backup_download_url);
     if (!f.ok || !url) {
+      /* v-video-retrieve-refund (بموافقة المالك): التوليد نجح لكنّ رابط الملفّ لم يصل — المستخدم دفع
+         ولم يستلم. تُسوّى التذكرة فشلًا فتُردّ النقاط ويُفكّ القفل وتُعاد حصّة اليوم. حارس «مرّة واحدة»
+         في settleVideoJob يمنع الاسترجاع المزدوج لو نجح استطلاع لاحق. */
       console.error('[minimax-status] retrieve HTTP ' + f.status + ' ' + JSON.stringify(fd).slice(0, 300));
+      await require('./video-job.js').settleVideoJob(taskId, false);
       res.status(f.ok ? 502 : f.status).json({ error: 'تعذّر تحميل الفيديو الآن. أعد المحاولة.' });
       return;
     }

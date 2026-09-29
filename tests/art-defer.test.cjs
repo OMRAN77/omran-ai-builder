@@ -146,7 +146,7 @@ test('٦. التأجيل على الزرّ في بطاقات الأدوات — 
 
 test('٧. وسوم الكاش رُفعت لكلّ ملفّ يُحمَّل منفصلًا وتغيّر', () => {
   assert.match(html, /\/js\/design-gen\.js\?v=609/);
-  assert.match(html, /\/js\/ui-wiring\.js\?v=656/); // v-hw-tools-grid
+  assert.match(html, /\/js\/ui-wiring\.js\?v=658/); // v-hw-tools-grid
   assert.match(R('js/ui-wiring.js'), /\/js\/tool-card-images\.js\?v=17/);
 });
 

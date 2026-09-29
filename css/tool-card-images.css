@@ -40,9 +40,14 @@ html[dir="rtl"] #sectionsToolsPopup .ptShelfArrow{transform:translateY(-50%) sca
 /* v-hw-tools-grid: تطبيق هواوي (رسم بالمعالج المركزيّ) بلا سحب جانبيّ — كلّ قسم شبكة عموديّة، بلا ماسح ولا أسهم
    ولا «عرض الكل». الحاسوب والمتصفّحات على الصفوف كما هي. */
 #sectionsToolsPopup .ptHwGrid .ptCarousel{overflow:visible; scroll-snap-type:none;}
-#sectionsToolsPopup .ptHwGrid .ptTrack{display:grid!important; grid-template-columns:repeat(auto-fill,minmax(160px,1fr))!important; width:100%; min-width:0; gap:12px!important;}
+#sectionsToolsPopup .ptHwGrid .ptTrack{display:grid!important; grid-template-columns:1fr!important; width:100%; min-width:0; gap:12px!important;}
 #sectionsToolsPopup .ptHwGrid .ptTrack > .btn{width:100%; min-width:0; flex:none;}
 #sectionsToolsPopup .ptHwGrid :is(.ptShelfArrow,.ptViewAll,.ptSentinel){display:none!important;}
+/* v-tools-two-col (المالك: «التابلت سطرين والهواتف العاديّة سطر»): الهاتف بطاقة في الصفّ،
+   والتابلت بطاقتان. الحاسوب فوق ١٠٢٤ خارج الشبكة أصلًا (البوّابة في app-10-features).
+   التخصيص `html[lang] body` ضروريّ: tokens.css يفرض `minmax(190px,1fr)` على `.ptGrid` فوق ٧٦١
+   بالتخصيص نفسه زائد نوعين، فكان يغلب القاعدة ويعطي ثلاثة أعمدة على ٨٢٠ (قِيس بمسبار). */
+@media (min-width:601px){ html[lang] body #sectionsToolsPopup .ptHwGrid .ptTrack{grid-template-columns:repeat(2,1fr)!important;} }
 #sectionsToolsPopup .ptCarousel::-webkit-scrollbar{display:none;}
 #sectionsToolsPopup .ptTrack{display:flex!important; width:max-content; min-width:100%; align-items:stretch; gap:12px!important; padding:2px 2px 6px!important; position:relative;}
 #sectionsToolsPopup .ptTrack > .btn{flex:0 0 220px; scroll-snap-align:start;}
