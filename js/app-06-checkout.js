@@ -2108,10 +2108,9 @@ async function callClaude(messages, onDelta){
 }
 
 // providerKey: 'default' uses the selected default provider (openai/openrouter/gemini/groq/claude/perplexity), or explicitly named
-// 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات الخمس (مُتحقَّق حيًّا).
-// cohere وperplexity وopenrouter خارجها عمدًا: الأوّلان لا يدعمان الأدوات على
-// هذا الطريق، والثالث مفتاح المستخدم نفسه.
-const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة */
+// 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات (مُتحقَّق حيًّا).
+// Perplexity وحده خارجها عمدًا: موديلات Sonar لا تقبل الأدوات أصلًا (بحثها مدمج).
+const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة · v-openrouter-tools: والمزوّد العامّ كذلك، بالمفتاح نفسه */
 
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;

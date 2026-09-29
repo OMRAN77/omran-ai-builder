@@ -86,8 +86,9 @@ function withOwner(fn) {
 }
 const toolResultOf = (bodies) => String(bodies[1].body.messages.at(-1).content.find((b) => b.type === 'tool_result').content);
 
-/* المزوّدون الذين تخدمهم المحادثة فعلًا (OR_MODELS في chat.js) — هم «كلّهم» في أمر المالك. */
-const PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere'];
+/* المزوّدون الذين تخدمهم المحادثة فعلًا (OR_MODELS في chat.js) — هم «كلّهم» في أمر المالك.
+   v-openrouter-tools: المزوّد العامّ انضمّ إليهم بأمر «سوّه». */
+const PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter'];
 
 test('١. كلّ مزوّد يقرأ GitHub بالعمق نفسه للمالك — لا كلود وحده', withOwner(async () => {
   for (const prov of PROVIDERS) {
@@ -157,14 +158,43 @@ test('٧. الوكيل على القاعدة نفسها (لا يتفرّق ال�
   assert.match(a, /cb\.name === 'read_github'\) \? 30000 : 8000/, 'الوكيل: السقف الواسع لقراءة GitHub');
 });
 
-test('٨. حدود معروفة موثّقة: Perplexity وOpenRouter خارج مسار الأدوات — لا تُقرأ بهما GitHub', () => {
-  const t = "const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere'];";
+test('٨. القائمة ثمانية في العميل والحزمة، وOR_MODELS يخدمهم كلّهم؛ Perplexity وحده خارجها (Sonar لا يقبل أدوات)', () => {
+  const t = "const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter'];";
   for (const f of ['js/app-06-checkout.js', 'js/app.bundle.js']) {
-    assert.ok(read(f).includes(t), f + ': قائمة مسار الأدوات كما هي — سبعة');
+    assert.ok(read(f).includes(t), f + ': قائمة مسار الأدوات ثمانية');
   }
   const chatSrc = read('api/_lib/chat.js');
   const or = chatSrc.slice(chatSrc.indexOf('const OR_MODELS = {'), chatSrc.indexOf('};', chatSrc.indexOf('const OR_MODELS = {')));
   for (const prov of PROVIDERS) assert.ok(or.includes(prov + ':'), 'OR_MODELS يخدم ' + prov);
-  assert.ok(!or.includes('perplexity:') && !or.includes('openrouter:'),
-    'المزوّدان خارج المحادثة بالأدوات: Sonar لا يقبل أدوات، وOpenRouter العامّ قرار قائم — أيّ إدخال لهما تغييرٌ مقصود لا صامت');
+  assert.ok(!or.includes('perplexity:'),
+    'Perplexity خارج مسار الأدوات: موديلات Sonar لا تقبل أدوات — أيّ إدخال له تغييرٌ مقصود لا صامت');
+});
+
+/* v-openrouter-tools (أمر المالك «سوّه»): المزوّد العامّ كان آخر من في منتقي المالك بلا أدوات. */
+test('٩. OpenRouter: موديل المالك يصل كما اختاره (أيّ شركة)، والمفتاح والعنوان هما نفسهما — لا كلفة جديدة', withOwner(async () => {
+  ghCalls.length = 0;
+  const bodies = await ask('openrouter', 'gh-owner', { url: 'OMRAN77/omran-ai-builder', path: 'README.md' });
+  assert.match(bodies[0].url, /openrouter\.ai\/api\/v1\/messages/, 'العنوان هو الوسيط نفسه');
+  assert.equal(bodies[0].body.model, 'anthropic/claude-sonnet-5', 'الافتراضيّ = افتراضيّ المنتقي');
+  assert.ok(bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تصله');
+  assert.deepEqual(ghCalls[0].opts, { deep: true }, 'وبالعمق نفسه');
+
+  const { pickProviderModel } = require(rp('api/_lib/provider-models.js'));
+  // المزوّد العامّ ليس شركةً واحدة: أيّ معرّف صالح يُقبل…
+  for (const id of ['openai/gpt-6-sol', 'meta-llama/llama-4-maverick', 'anthropic/claude-opus-5.5']) {
+    assert.equal(pickProviderModel('openrouter', id, 'ف').model, id, id);
+  }
+  // …والفاسد يرجع للافتراضيّ بلا خطأ، وبقيّة المزوّدين تبقى محصورة ببادئة شركتها.
+  for (const bad of ['', 'بلا-شرطة', 'x/', '/y']) assert.equal(pickProviderModel('openrouter', bad, 'ف').model, 'ف', JSON.stringify(bad));
+  assert.equal(pickProviderModel('gemini', 'openai/gpt-6-sol', 'ف').model, 'ف', 'حصر البادئة لبقيّة المزوّدين لم يُمسّ');
+}));
+
+test('١٠. OpenRouter في المنتقي: or:true كي يصل اختيار المالك، ووسم الكاش مرفوع', () => {
+  const m = read('js/modes.js');
+  assert.match(m, /key:'openrouter',[^}]*or:true/, 'or:true على مدخل المزوّد العامّ');
+  assert.ok(m.includes("window.omranModelFor = function(k){"), 'الدالّة التي تقرأ الاختيار قائمة');
+  const idx = read('index.html');
+  const v = /js\/modes\.js\?v=([^"]+)/.exec(idx);
+  assert.ok(v, 'وسم modes.js موجود');
+  assert.notEqual(v[1], 'm290926a', 'الوسم رُفع — الملفّ يُحمَّل منفصلًا فلا يُخدَم من الكاش القديم');
 });
