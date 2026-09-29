@@ -165,9 +165,10 @@ test('٩. تحليل الكود: حدّ ملفّات المالك ٣٠٠ لا ٦
   assert.equal(CA.collectFiles(many, { files: CA.LIMITS.filesOwner }).files.length, 200, 'المالك يرى المجلّد كلّه');
   const h = read('api/_lib/code-analyze.js');
   assert.match(h, /owner = require\('\.\/_owner\.js'\)\.isOwnerName\(who\)/);
-  assert.match(h, /collectFiles\(body, owner \? \{ files: LIMITS\.filesOwner \}/);
+  assert.match(h, /collectFiles\(body, owner \? \{ files: LIMITS\.filesOwner, pool: deepRead \}/);
   assert.match(h, /live = await require\('\.\/app-errors\.js'\)\.appErrorsText\(\)/);
-  assert.match(h, /buildPrompt\(col\.files, metrics, body\.ask, body\.lang, live\)/);
+  // v-code-deep-read: صار للتعليمة وسيط سادس (الفهرس)، والسجلّ الحيّ في موضعه الخامس كما هو
+  assert.match(h, /buildPrompt\(col\.files, metrics, body\.ask, body\.lang, live,\n\s+reader \? \{ index: deepIndex\(col\.pool, col\.files\) \} : null\)/);
 });
 
 test('١٠. لوحة فحص النظام تقرأ قاعدة فصل القياسات من app-errors (مصدر واحد)', () => {

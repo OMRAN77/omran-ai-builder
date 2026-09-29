@@ -37,6 +37,24 @@ const gh = require('./github-read.js'); // v-agent-github: رابط مستودع
    يعطي 413 قبل أن يعمل الخادم. الأكبر من ذلك يُحلَّل مجلّدًا مجلّدًا برابط GitHub. */
 const LIMITS = { files: 60, filesOwner: 300, perFile: 200000, total: 500000, perFileFree: 60000, totalFree: 60000, ask: 1200 };
 const ZIP_MAX = 3 * 1024 * 1024;
+
+/* v-code-deep-read (أمر المالك: «الفحص الكود… ويقرأ في عمق نفس كلود الأنثروبيك بالضبط»):
+   العمق لم يكن ينقصه نموذج أقوى — كان نداءً واحدًا: كلّ الملفّات تُلصق مرّة، والنموذج
+   يكتب الحكم في ردّ واحد بلا أن يستطيع طلب شيء. فملفّ اقتُطع لطوله، أو `require` لملفّ لم
+   يُرفع، أو دالّة في ملفّ آخر = تخمين. وعمق كلود في Claude Code آليّتُه أنّه **يطلب**:
+   يفتح ملفًّا، يفتّش عن رمز، يتبع الاستدعاء، ثمّ يحكم. هذه الحدود تحكم تلك الحلقة:
+   جولات محدودة، وميزانيّة زمن دون حدّ الدالّة (٣٠٠ث في vercel.json) كي ينتهي الطلب
+   بتقرير دائمًا لا بمهلة. */
+const DEEP = {
+  rounds: 10,        // أقصى جولات أدوات قبل إلزامه بالتقرير
+  budgetMs: 170000,  // ميزانيّة القراءة؛ بعدها تُسحب الأدوات ويُطلب التقرير
+  totalMs: 250000,   // سقف الطلب كلّه دون حدّ الدالّة
+  readChars: 60000,  // أقصى ما يعيده read_file في نداء واحد (والتتمّة بـfrom)
+  poolPerFile: 400000,
+  poolTotal: 8000000,
+  searchMax: 40,
+  deepText: 120000,  // سقف التحليل الحرّ المعروض (كان ٣٠ ألفًا يبتره في منتصفه)
+};
 const NUL = String.fromCharCode(0);
 const DEFAULT_MODEL = 'claude-opus-5-5'; // v-models-latest: خليفة Opus 5 وأرخص؛ الجهد يُرسل صراحةً هنا أصلًا
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -62,13 +80,25 @@ function collectFiles(body, limits) {
   const L = Object.assign({}, LIMITS, limits || {});
   const files = [];
   const skipped = [];
+  /* v-code-deep-read: كلّ ملفّ نصّيّ وصل — كاملًا بلا قصّ — يبقى في الذاكرة ليخدم read_file
+     وsearch_code. فما لم يدخل التعليمة (حدّ العدد أو السقف الكلّيّ أو ذيل ملفّ طويل) يبقى
+     **مقروءًا عند الطلب** بدل أن يسقط بصمت. يُبنى للمسار العميق وحده (limits.pool). */
+  const pool = [];
+  let poolChars = 0;
   let total = 0;
   const push = (name, content) => {
     const nm = String(name || 'file').slice(0, 200);
-    if (files.length >= L.files) { skipped.push({ name: nm, why: 'limit' }); return; }
     let text = String(content == null ? '' : content);
-    if (!text.trim()) { skipped.push({ name: nm, why: 'empty' }); return; }
-    if (text.indexOf(NUL) !== -1) { skipped.push({ name: nm, why: 'binary' }); return; }
+    const blank = !text.trim();
+    const binary = text.indexOf(NUL) !== -1;
+    if (L.pool && !blank && !binary && poolChars < DEEP.poolTotal) {
+      const full = text.slice(0, DEEP.poolPerFile);
+      pool.push({ name: nm, content: full, whole: full.length === text.length });
+      poolChars += full.length;
+    }
+    if (files.length >= L.files) { skipped.push({ name: nm, why: 'limit' }); return; }
+    if (blank) { skipped.push({ name: nm, why: 'empty' }); return; }
+    if (binary) { skipped.push({ name: nm, why: 'binary' }); return; }
     let truncated = false;
     if (text.length > L.perFile) { text = text.slice(0, L.perFile); truncated = true; }
     if (total + text.length > L.total) {
@@ -106,7 +136,7 @@ function collectFiles(body, limits) {
   }
   // مدخلات فُكّت مسبقًا (أرشيف GitHub جُلب في المعالج) — نفس المرشّحات.
   if (Array.isArray(body._zipEntries)) pushEntries(body._zipEntries);
-  return { files, skipped, total };
+  return { files, skipped, total, pool };
 }
 
 /* ---------- القياسات المحلّية ---------- */
@@ -182,9 +212,118 @@ function numbered(text) {
   return String(text || '').split('\n').map((l, i) => (i + 1) + '| ' + l).join('\n');
 }
 
-function buildPrompt(files, metrics, ask, lang, liveErrors) {
+/* ---------- v-code-deep-read: القراءة بالطلب (أداتان بلا شبكة ولا كلفة) ---------- */
+const DEEP_TOOLS = [
+  {
+    name: 'read_file',
+    description: 'اقرأ ملفًّا من الملفّات الموجودة تحت التحليل الآن، بأسطر مرقّمة كما هي في الملفّ. استعملها إلزاميًّا قبل أيّ حكم على ملفّ لم يصلك كاملًا: الملفّ الموسوم في الفهرس «غير مرفق» أو «مقتطع»، وأيّ ملفّ يُستدعى من كود قرأته (require/import/include) وتحتاج محتواه لتعرف ما يفعل فعلًا. الملفّ الطويل يعود مقطّعًا: أعد النداء نفسه مع from برقم السطر التالي حتّى تقرأه كلّه. لا تحكم على كود لم تقرأه بهذه الأداة.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'اسم الملفّ كما في الفهرس (أو نهايته، مثل kv.js)' },
+        from: { type: 'integer', description: 'رقم السطر الذي تبدأ منه القراءة (الافتراضيّ ١)' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'search_code',
+    description: 'فتّش كلّ الملفّات الموجودة (حتّى ما لم يُرفق في التعليمة) عن نصّ أو رمز — اسم دالّة، متغيّر، مفتاح بيئة، استدعاء — وأعد المواضع باسم الملفّ ورقم السطر ونصّ السطر. استعملها لتتبّع من يستدعي دالّةً ومن يقرأ متغيّرًا قبل أن تحكم أنّ شيئًا ميّت أو مكسور أو غير مستعمل.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'النصّ أو الرمز المطلوب (بحث حرفيّ غير حسّاس لحالة الأحرف)' },
+        max: { type: 'integer', description: 'أقصى عدد مواضع (الافتراضيّ ٤٠)' },
+      },
+      required: ['query'],
+    },
+  },
+];
+
+const baseName = (n) => String(n || '').split('/').pop();
+
+/** قارئ فوق ملفّات الطلب في الذاكرة: يخدم read_file وsearch_code بلا أيّ نداء خارجيّ. */
+function poolReader(pool) {
+  const list = Array.isArray(pool) ? pool.filter((f) => f && typeof f.content === 'string') : [];
+  const find = (name) => {
+    const q = String(name || '').trim().replace(/^\.?\//, '');
+    if (!q) return null;
+    const lower = q.toLowerCase();
+    return list.find((f) => f.name === q)
+      || list.find((f) => f.name.toLowerCase() === lower)
+      || list.find((f) => f.name.toLowerCase().endsWith('/' + lower))
+      || list.find((f) => baseName(f.name).toLowerCase() === lower)
+      || null;
+  };
+  const near = (name) => {
+    const b = baseName(name).toLowerCase().replace(/\.[a-z0-9]+$/, '');
+    const hits = b ? list.filter((f) => f.name.toLowerCase().indexOf(b) !== -1) : [];
+    return (hits.length ? hits : list).slice(0, 12).map((f) => f.name);
+  };
+  return {
+    count: list.length,
+    names: list.map((f) => f.name),
+    readFile(name, from) {
+      const f = find(name);
+      if (!f) return 'لا ملفّ بهذا الاسم بين ملفّات هذا الطلب: «' + String(name || '').slice(0, 120) + '». الموجود أقربه: ' + near(name).join(' · ') + ' — اطلب باسمه كما في الفهرس.';
+      const lines = f.content.split('\n');
+      const start = Math.max(1, Math.min(parseInt(from, 10) || 1, lines.length));
+      // الميزانيّة تُحسب على النصّ المعاد فعلًا (مع بادئة الترقيم) لا على الملفّ الخام،
+      // وإلّا تضاعف حجم الردّ في ملفّ ألوف الأسطر القصيرة.
+      let end = start - 1;
+      let chars = 0;
+      while (end < lines.length) {
+        const cost = String(end + 1).length + 2 + Math.min(lines[end].length, 4000) + 1;
+        if (chars + cost > DEEP.readChars) break;
+        chars += cost; end++;
+      }
+      if (end < start) end = start; // سطر واحد أطول من السقف: يعود مقتطعًا لا فارغًا
+      const body = lines.slice(start - 1, end).map((l, i) => (start + i) + '| ' + l.slice(0, 4000)).join('\n');
+      const head = '=== FILE: ' + f.name + ' (' + langOf(f.name) + ' · ' + lines.length + ' سطرًا'
+        + (start > 1 || end < lines.length ? ' · الأسطر ' + start + '–' + end : ' · كاملًا')
+        + (f.whole ? '' : ' · الملفّ نفسه أطول من الحدّ المحفوظ') + ') ===';
+      const tail = end < lines.length
+        ? '\n=== الباقي ' + (lines.length - end) + ' سطرًا — أعد read_file باسم الملفّ وfrom=' + (end + 1) + ' ==='
+        : '\n=== END FILE ===';
+      return head + '\n' + body + tail;
+    },
+    search(query, max) {
+      const q = String(query || '').trim();
+      if (!q) return 'أعطِ نصًّا للبحث.';
+      const cap = Math.max(1, Math.min(parseInt(max, 10) || DEEP.searchMax, 100));
+      const needle = q.toLowerCase();
+      const out = [];
+      let total = 0;
+      for (const f of list) {
+        const lines = f.content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].toLowerCase().indexOf(needle) === -1) continue;
+          total++;
+          if (out.length < cap) out.push(f.name + ':' + (i + 1) + ': ' + lines[i].trim().slice(0, 200));
+        }
+      }
+      if (!total) return 'لا موضع لـ«' + q.slice(0, 120) + '» في أيّ ملفّ من ملفّات هذا الطلب (' + list.length + ' ملفًّا). لا تفترض وجوده.';
+      return '[' + total + ' موضعًا لـ«' + q.slice(0, 120) + '»' + (total > out.length ? ' — أوّل ' + out.length : '') + ']\n' + out.join('\n');
+    },
+  };
+}
+
+/** فهرس كلّ ما وصل الخادم: ما أُرفق كاملًا، وما اقتُطع، وما لم يُرفق فيُطلب بالأداة. */
+function deepIndex(pool, files) {
+  const inlined = {};
+  for (const f of files || []) inlined[f.name] = f.truncated ? 'مُرفق مقتطعًا — اطلب تتمّته بـread_file' : 'مُرفق كاملًا';
+  const rows = (pool || []).map((f) => {
+    const lines = f.content.split('\n').length;
+    return '- ' + f.name + ' · ' + langOf(f.name) + ' · ' + lines + ' سطرًا · '
+      + (inlined[f.name] || 'غير مرفق — اقرأه بـread_file إن احتجته');
+  });
+  return '[فهرس كامل لملفّات هذا الطلب — ' + rows.length + ' ملفًّا]\n' + rows.join('\n');
+}
+
+function buildPrompt(files, metrics, ask, lang, liveErrors, deep) {
   const outLang = reportLanguage(lang);
   const live = String(liveErrors || '').trim();
+  const index = deep && deep.index ? String(deep.index) : '';
   let system = [
     'أنت كبير مراجعي الكود (مهندس أوّل يراجع قبل الدمج): خبير في الصحّة والأمان والأداء والقابليّة للصيانة عبر كلّ اللغات. تقرأ كلّ سطر، ولا تخترع مشكلة غير موجودة، ولا تُغفل مشكلة حقيقيّة، ولا تكتفي بالعموميّات.',
     'المطلوب: تحليل شامل للملفّات المرفقة وتقييمها، ثمّ إعطاء أفضل ما يمكن فعله بها.',
@@ -218,6 +357,18 @@ function buildPrompt(files, metrics, ask, lang, liveErrors) {
   /* v-provider-errors: أخطاء الإنتاج الحيّة تُرفق للمالك — دليلٌ قاطع على عطل وقع فعلًا،
      يعلو على أيّ استنتاج نظريّ من قراءة الكود. القاعدة تسبق شكل الإخراج في الأهمّيّة فتُلحق
      بذيل النظام (الأحدث أوزن) وتُربط بحقول التقرير القائمة بلا حقل جديد. */
+  /* v-code-deep-read: قواعد القراءة بالطلب. تُلحق بذيل النظام (الأحدث أوزن) وتسبق قاعدة
+     الأخطاء الحيّة كي تبقى تلك آخر ما يقرأ. بلا أدوات لا تُلحق حرفًا — المسار القديم كما كان. */
+  if (index) {
+    system.push('',
+      '[كيف تقرأ — إلزاميّ، وهو ما يفرّق التحليل العميق من النظرة السطحيّة]: عندك أداتان تعملان على ملفّات هذا الطلب نفسها: read_file (ملفّ بأسطر مرقّمة، وتتمّته بـfrom) وsearch_code (كلّ مواضع رمز أو نصّ). اعمل بهما كمهندس يفتح المشروع لا كقارئ نصّ ملصوق:',
+      '(١) ابدأ بالفهرس أدناه: ما هو موسوم «غير مرفق» أو «مقتطع» لم يصلك — اقرأه بـread_file قبل أن تذكره في تقريرك بحكم أو درجة.',
+      '(٢) كلّ ملفّ يُستدعى من كود قرأته (require / import / include / استدعاء دالّة من ملفّ آخر) وتحتاج محتواه لتعرف ما يحدث فعلًا: اقرأه. «يبدو أنّه يفعل كذا» ليست قراءة.',
+      '(٣) قبل أن تقول إنّ شيئًا غير مستعمل أو ميّت أو مكسور أو مكرّر: فتّش بـsearch_code عن كلّ مواضعه. وقبل أن تدّعي غياب تحقّق أو حارس أو معالجة خطأ: فتّش عنه — قد يكون في ملفّ آخر.',
+      '(٤) الملفّ الطويل يعود مقطّعًا: أعد read_file مع from حتّى نهايته. لا تحكم على ملفّ قرأت أوّله فقط، وقل صريحًا في تقريرك أيّ ملفّ لم تقرأه كاملًا ولماذا.',
+      '(٥) اقرأ أوّلًا وحلّل ثانيًا: لا تكتب ' + MARK_A + ' ولا التقرير قبل أن تنتهي من القراءة. وأثناء القراءة لا تكتب نصًّا إلّا سطرًا واحدًا قصيرًا يقول ماذا تقرأ ولماذا.',
+      '(٦) ميزانيّة القراءة محدودة بالزمن؛ فإن أُبلغت بانتهائها فاكتب التقرير فورًا مِمّا قرأت، وصرّح بما لم تقرأه — ولا تخترع ما كنت ستقرؤه.');
+  }
   if (live) {
     system.push('',
       '[أخطاء حيّة مرفقة — أعلى من أيّ تحليل نظريّ]: مع الملفّات سجلّ أخطاء وقعت فعلًا في إنتاج هذا التطبيق. كلّ خطأ فيه يخصّ ملفًّا مرفقًا = **مشكلة مؤكّدة لا احتمال**: اذكرها في issues بخطورة لا تقلّ عن high، وضع في detail أنّها مسجَّلة حيًّا مع تكرارها وآخر ظهورها، وفي fix الإصلاح الفعليّ في ذلك الموضع. وخطأ لا يظهر مصدره في الملفّات المرفقة: اذكره في summary أو recommendations وقل أيّ ملفّ يجب أن يُرفق ليُشخَّص. لا تتجاهل خطأً مسجَّلًا ولا تسمّه «محتملًا»، ولا تخترع خطأً ليس في السجلّ ولا في الكود.');
@@ -226,7 +377,11 @@ function buildPrompt(files, metrics, ask, lang, liveErrors) {
 
   const blocks = files.map((f) => {
     const n = String(f.content || '').split('\n').length;
-    return '=== FILE: ' + f.name + ' (' + langOf(f.name) + ' · ' + n + ' سطرًا' + (f.truncated ? ' · مقتطع لطوله — حلّل ما وصل واذكر أنّ الباقي لم يصل' : '') + ') ===\n'
+    // v-code-deep-read: المقتطع صار له مخرج — تتمّته تُطلب بالأداة بدل «الباقي لم يصل».
+    const cut = f.truncated
+      ? (index ? ' · مقتطع هنا — اقرأ تتمّته بـread_file باسمه وfrom=' + n : ' · مقتطع لطوله — حلّل ما وصل واذكر أنّ الباقي لم يصل')
+      : '';
+    return '=== FILE: ' + f.name + ' (' + langOf(f.name) + ' · ' + n + ' سطرًا' + cut + ') ===\n'
       + numbered(f.content) + '\n=== END FILE ===';
   });
   const mt = metrics && metrics.totals ? metrics.totals : null;
@@ -238,6 +393,7 @@ function buildPrompt(files, metrics, ask, lang, liveErrors) {
     }
   }
   let user = '[الملفّات تحت التحليل — ' + files.length + ' ملفًّا' + (mt ? ' · ' + mt.lines + ' سطرًا' : '') + ']\n\n' + blocks.join('\n\n');
+  if (index) user += '\n\n' + index; // v-code-deep-read: ما لم يُرفق يبقى معروفًا ومقروءًا بالأداة لا مسقطًا بصمت
   if (hints.length) user += '\n\n[قياسات آليّة أوّليّة — تحقّق منها ولا تعتمدها عمياء]: ' + hints.join(' · ');
   if (live) user += '\n\n' + live; // v-provider-errors: السجلّ الحيّ يحمل ترويسته وشرح استعماله من app-errors.js
   const a = String(ask || '').trim().slice(0, LIMITS.ask);
@@ -247,17 +403,18 @@ function buildPrompt(files, metrics, ask, lang, liveErrors) {
 }
 
 /* ---------- فصل الجزأين واستخراج JSON بتسامح ---------- */
-function splitOutput(text) {
+function splitOutput(text, max) {
   const t = String(text || '');
+  const cap = max || 30000; // v-code-deep-read: المسار العميق يرفعه — كان يبتر التحليل في منتصفه
   const iR = t.lastIndexOf(MARK_R);
   if (iR === -1) {
     const iA0 = t.indexOf(MARK_A);
-    return { deep: iA0 === -1 ? '' : t.slice(iA0 + MARK_A.length).trim().slice(0, 30000), jsonText: t };
+    return { deep: iA0 === -1 ? '' : t.slice(iA0 + MARK_A.length).trim().slice(0, cap), jsonText: t };
   }
   let deep = t.slice(0, iR);
   const iA = deep.indexOf(MARK_A);
   if (iA !== -1) deep = deep.slice(iA + MARK_A.length);
-  return { deep: deep.trim().slice(0, 30000), jsonText: t.slice(iR + MARK_R.length) };
+  return { deep: deep.trim().slice(0, cap), jsonText: t.slice(iR + MARK_R.length) };
 }
 
 function escapeCtrlInStrings(s) {
@@ -302,7 +459,7 @@ function clamp100(v) { const n = Number(v); return Number.isFinite(n) ? Math.max
 function str(v, max) { return (typeof v === 'string' ? v : (v == null ? '' : String(v))).trim().slice(0, max || 2000); }
 function strList(v, max, each) { return (Array.isArray(v) ? v : []).map((x) => str(typeof x === 'object' && x ? (x.text || x.title || JSON.stringify(x)) : x, each || 600)).filter(Boolean).slice(0, max); }
 
-function normalizeReport(raw, rawText, deep) {
+function normalizeReport(raw, rawText, deep, deepMax) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const categories = {};
   for (const c of CATS) categories[c] = clamp100(r.categories && r.categories[c]);
@@ -332,7 +489,7 @@ function normalizeReport(raw, rawText, deep) {
     return { name: str(o.name, 200), score: clamp100(o.score), note: str(o.note, 500) };
   }).filter((f) => f.name);
   files.sort((x, y) => (y.score == null ? -1 : y.score) - (x.score == null ? -1 : x.score));
-  const deepText = str(deep, 30000);
+  const deepText = str(deep, deepMax || 30000);
   // بلا JSON وبلا تحليل حرّ: يُعرض نصّ النموذج الخام ملخّصًا كي لا يضيع شيء.
   const summary = str(r.summary, 3000) || ((raw || deepText) ? '' : str(rawText, 4000));
   return {
@@ -344,6 +501,78 @@ function normalizeReport(raw, rawText, deep) {
 
 /* ---------- المحرّكان ---------- */
 function pickEffort(v) { const e = String(v || '').trim().toLowerCase(); return EFFORTS.indexOf(e) === -1 ? 'xhigh' : e; }
+
+/* v-code-deep-read: جولة بثّ واحدة. فُصلت عن callPro لأنّ حلقة الأدوات تعيدها مرّات،
+   وتحفظ كتل الردّ كما جاءت (نصّ · تفكير بتوقيعه · نداء أداة) — كتل التفكير تُعاد كما هي
+   في الدور التالي، وإلّا رفض المزوّد الطلب مع التفكير الممتدّ والأدوات معًا. */
+async function streamStep(fetchImpl, url, headers, body, o) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), o.timeoutMs || 280000);
+  const blocks = [];
+  const at = (i, type) => (blocks[i] || (blocks[i] = { type: type, text: '', thinking: '', signature: '', inputJson: '' }));
+  let text = '';
+  let stopReason = null;
+  let refusalCategory = '';
+  try {
+    const r = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
+    if (!r.ok || !r.body) {
+      const e = r && r.text ? await r.text().catch(() => '') : '';
+      throw new Error('code-analyze upstream ' + (r && r.status) + ': ' + String(e).slice(0, 200));
+    }
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
+        if (ev.type === 'content_block_start') {
+          const cb = ev.content_block || {};
+          const b = at(ev.index, cb.type || 'text');
+          b.type = cb.type || 'text';
+          b.name = cb.name; b.id = cb.id; b.data = cb.data;
+        } else if (ev.type === 'content_block_delta') {
+          const d = ev.delta || {};
+          if (d.type === 'text_delta') {
+            at(ev.index, 'text').text += d.text;
+            text += d.text;
+            if (o.onProgress) o.onProgress((o.charsBefore || 0) + text.length);
+          } else if (d.type === 'thinking_delta') at(ev.index, 'thinking').thinking += (d.thinking || '');
+          else if (d.type === 'signature_delta') at(ev.index, 'thinking').signature += (d.signature || '');
+          else if (d.type === 'input_json_delta') at(ev.index, 'tool_use').inputJson += (d.partial_json || '');
+        } else if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason) {
+          stopReason = ev.delta.stop_reason;
+          if (stopReason === 'refusal' && ev.delta.stop_details) refusalCategory = String(ev.delta.stop_details.category || '');
+        } else if (ev.type === 'error') {
+          throw new Error('code-analyze upstream error: ' + String((ev.error && ev.error.message) || '').slice(0, 200));
+        }
+      }
+    }
+  } finally { clearTimeout(timer); }
+  const toolUses = [];
+  const assistant = [];
+  for (const b of blocks) {
+    if (!b) continue;
+    if (b.type === 'tool_use') {
+      let input = {};
+      try { input = JSON.parse(b.inputJson || '{}'); } catch (e) { input = {}; } // مدخل تالف = أداة بلا وسائط، لا سقوط للطلب
+      if (!input || typeof input !== 'object') input = {};
+      toolUses.push({ id: b.id, name: b.name, input });
+      assistant.push({ type: 'tool_use', id: b.id, name: b.name, input });
+    } else if (b.type === 'thinking') {
+      if (b.thinking) assistant.push({ type: 'thinking', thinking: b.thinking, signature: b.signature });
+    } else if (b.type === 'redacted_thinking') {
+      if (b.data) assistant.push({ type: 'redacted_thinking', data: b.data });
+    } else if (b.text) assistant.push({ type: 'text', text: b.text });
+  }
+  return { text, stopReason, refusalCategory, toolUses, assistant };
+}
 
 async function callPro(prompt, opts) {
   const o = opts || {};
@@ -367,49 +596,52 @@ async function callPro(prompt, opts) {
     if (/^claude-(?:opus-5|fable)/.test(base)) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
   }
   const fetchImpl = o.fetchImpl || fetch;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), o.timeoutMs || 280000);
+  /* v-code-deep-read: حلقة القراءة. بلا أدوات = نداء واحد كما كان حرفيًّا (المسار المجانيّ
+     والمشترك لم يُمسّ). ومعها: كتلة الملفّات تُختم بعلامة الكاش فتُقرأ في كلّ جولة بعُشر
+     السعر — بدونها ثماني جولات على نصف مليون حرف كلفةٌ ثقيلة على مفتاح المالك. */
+  const tools = Array.isArray(o.tools) && o.tools.length ? o.tools : null;
+  const runTool = typeof o.runTool === 'function' ? o.runTool : null;
+  const loop = !!(tools && runTool);
+  const cacheOn = loop && !viaOR;
+  const messages = [{ role: 'user', content: cacheOn ? [{ type: 'text', text: prompt.user, cache_control: { type: 'ephemeral' } }] : prompt.user }];
+  const maxRounds = loop ? Math.max(1, o.rounds || DEEP.rounds) : 1;
+  const t0 = Date.now();
+  const readUntil = t0 + (o.budgetMs || DEEP.budgetMs);
+  const stopBy = t0 + (o.totalMs || DEEP.totalMs);
   let text = '';
-  let stopReason = null;
-  let refusalCategory = '';
-  try {
-    const r = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
-    if (!r.ok || !r.body) {
-      const e = r && r.text ? await r.text().catch(() => '') : '';
-      throw new Error('code-analyze upstream ' + (r && r.status) + ': ' + String(e).slice(0, 200));
-    }
-    const reader = r.body.getReader();
-    const dec = new TextDecoder();
-    let buf = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split('\n');
-      buf = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        let ev;
-        try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
-        if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
-          text += ev.delta.text;
-          if (o.onProgress) o.onProgress(text.length);
-        } else if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason) {
-          stopReason = ev.delta.stop_reason;
-          if (stopReason === 'refusal' && ev.delta.stop_details) refusalCategory = String(ev.delta.stop_details.category || '');
-        } else if (ev.type === 'error') {
-          throw new Error('code-analyze upstream error: ' + String((ev.error && ev.error.message) || '').slice(0, 200));
-        }
-      }
-    }
-    if (stopReason === 'refusal') {
-      const e = new Error('refusal' + (refusalCategory ? ': ' + refusalCategory : ''));
+  let charsBefore = 0;
+  let rounds = 0;
+  let toolCalls = 0;
+  for (let round = 1; round <= maxRounds; round++) {
+    rounds = round;
+    const offer = loop && round < maxRounds && Date.now() < readUntil;
+    const step = await streamStep(fetchImpl, url, headers,
+      Object.assign({}, body, { messages, tools: offer ? tools : undefined }),
+      { timeoutMs: Math.max(20000, Math.min(o.timeoutMs || 280000, stopBy - Date.now())), onProgress: o.onProgress, charsBefore });
+    if (step.stopReason === 'refusal') {
+      const e = new Error('refusal' + (step.refusalCategory ? ': ' + step.refusalCategory : ''));
       e.refusal = true;
       throw e;
     }
-    if (stopReason === 'max_tokens') logError('code-analyze/max-tokens', new Error('report cut at max_tokens after ' + text.length + ' chars'));
-    return text;
-  } finally { clearTimeout(timer); }
+    if (step.stopReason === 'max_tokens') logError('code-analyze/max-tokens', new Error('report cut at max_tokens after ' + step.text.length + ' chars'));
+    if (!step.toolUses.length) { text = step.text || text; break; }
+    charsBefore += step.text.length;
+    messages.push({ role: 'assistant', content: step.assistant });
+    const results = [];
+    for (const t of step.toolUses) {
+      toolCalls++;
+      let out = '';
+      try { out = await runTool(t.name, t.input); } catch (e) { out = 'تعذّرت الأداة: ' + String((e && e.message) || e).slice(0, 200); }
+      out = String(out == null ? '' : out).slice(0, 200000);
+      if (o.onTool) { try { o.onTool(t.name, t.input, out.length); } catch (e) { /* الإبلاغ للواجهة لا يُسقط التحليل */ } }
+      results.push({ type: 'tool_result', tool_use_id: t.id, content: out });
+    }
+    const last = round + 1 >= maxRounds || Date.now() >= readUntil;
+    if (last) results.push({ type: 'text', text: '[انتهت ميزانيّة القراءة]: اكتب الآن ' + MARK_A + ' ثمّ ' + MARK_R + ' مِمّا قرأته فعلًا، وصرّح صريحًا بأيّ ملفّ لم تقرأه ولماذا. لا تطلب أداة أخرى.' });
+    messages.push({ role: 'user', content: results });
+  }
+  if (o.onDone) { try { o.onDone({ rounds, toolCalls }); } catch (e) { /* إحصاء للواجهة فقط */ } }
+  return text;
 }
 
 async function callFree(prompt, opts) {
@@ -485,8 +717,12 @@ module.exports = async function handler(req, res) {
         send({ error: 'تعذّر جلب GitHub: ' + String((e && e.message) || e).slice(0, 200) }); finish(); return;
       }
     }
-    const col = collectFiles(body, owner ? { files: LIMITS.filesOwner }
-      : (pro ? null : { total: LIMITS.totalFree, perFile: LIMITS.perFileFree }));
+    /* v-code-deep-read: القراءة العميقة (حلقة أدوات) للمالك — كلفتها على مفتاحه وباب المال
+       مقفول بلا أمره؛ وCODE_ANALYZE_DEEP=all يفتحها للمشتركين بلا نشر إن أمر، وoff يعطّلها. */
+    const deepEnv = String(process.env.CODE_ANALYZE_DEEP || '').trim().toLowerCase();
+    const deepRead = deepEnv !== 'off' && (owner || (pro && deepEnv === 'all'));
+    const col = collectFiles(body, owner ? { files: LIMITS.filesOwner, pool: deepRead }
+      : (pro ? { pool: deepRead } : { total: LIMITS.totalFree, perFile: LIMITS.perFileFree }));
     if (!col.files.length) {
       const bad = col.skipped.find((s) => s.why === 'badzip' || s.why === 'toolarge');
       send({ error: bad ? (bad.why === 'badzip' ? 'الملفّ ليس أرشيف zip صالحًا.' : 'الأرشيف أكبر من ٣ ميجابايت — احذف node_modules والملفّات الثقيلة.') : 'لم يصل أيّ ملفّ نصّيّ قابل للتحليل.' });
@@ -500,12 +736,30 @@ module.exports = async function handler(req, res) {
       live = await require('./app-errors.js').appErrorsText();
       send({ status: '🩺 يرفق أخطاء الإنتاج الحيّة…' });
     }
-    const prompt = buildPrompt(col.files, metrics, body.ask, body.lang, live);
+    /* v-code-deep-read: الفهرس والأداتان — يقرأ ما يحتاجه من ملفّات الطلب نفسها كما يفتح
+       المهندس المشروع، بلا شبكة وبلا كلفة نداء. وسطر الحالة يُظهر ما يقرأه فعلًا. */
+    const reader = deepRead && col.pool.length ? poolReader(col.pool) : null;
+    const prompt = buildPrompt(col.files, metrics, body.ask, body.lang, live,
+      reader ? { index: deepIndex(col.pool, col.files) } : null);
     let lastSent = 0;
     const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'stWriting' }); } };
     let text = '';
+    let readStats = null;
     try {
-      text = pro ? await callPro(prompt, { onProgress }) : await callFree(prompt, { onProgress });
+      const deepOpts = reader ? {
+        tools: DEEP_TOOLS,
+        runTool: async (name, input) => (name === 'read_file'
+          ? reader.readFile(input && input.name, input && input.from)
+          : (name === 'search_code' ? reader.search(input && input.query, input && input.max)
+            : 'أداة غير معروفة: ' + String(name || '').slice(0, 60))),
+        onTool: (name, input) => send({
+          status: name === 'read_file'
+            ? '📖 يقرأ ' + String((input && input.name) || '').slice(0, 80) + ((input && input.from) ? ' من السطر ' + input.from : '') + '…'
+            : '🔎 يفتّش عن «' + String((input && input.query) || '').slice(0, 60) + '» في كلّ الملفّات…',
+        }),
+        onDone: (s) => { readStats = s; },
+      } : {};
+      text = pro ? await callPro(prompt, Object.assign({ onProgress }, deepOpts)) : await callFree(prompt, { onProgress });
     } catch (e) {
       logError('code-analyze/engine', e);
       const msg = e && e.refusal ? 'رفض النموذج تحليل هذا الكود (تصنيف أمان). جرّب ملفًّا آخر أو أزل الجزء الحسّاس.'
@@ -513,13 +767,16 @@ module.exports = async function handler(req, res) {
       send({ error: msg });
       finish(); return;
     }
-    const parts = splitOutput(text);
+    const deepCap = reader ? DEEP.deepText : 30000;
+    const parts = splitOutput(text, deepCap);
     const parsed = extractJson(parts.jsonText);
     if (!parsed) logError('code-analyze/parse', new Error('no JSON in model output (' + String(text || '').length + ' chars, deep=' + parts.deep.length + ')'));
-    const report = normalizeReport(parsed, parts.jsonText, parts.deep);
+    const report = normalizeReport(parsed, parts.jsonText, parts.deep, deepCap);
     report.metrics = metrics;
     report.skipped = col.skipped.slice(0, 40);
     report.engine = pro ? 'pro' : 'free';
+    // v-code-deep-read: كم ملفًّا قرأه بنفسه وكم جولة — أثر القراءة لا ادّعاؤها.
+    if (readStats) report.reading = { rounds: readStats.rounds, toolCalls: readStats.toolCalls, pool: col.pool.length };
     report.tier = usage.tier || null;
     send({ report });
     send({ done: true });
@@ -531,4 +788,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-module.exports.__test = { LIMITS, DEFAULT_MODEL, FLAG_DEFS, collectFiles, metricsOf, fileMetrics, buildPrompt, splitOutput, extractJson, normalizeReport, gradeOf, langOf, callPro, callFree, numbered, pickEffort };
+module.exports.__test = { LIMITS, DEEP, DEEP_TOOLS, DEFAULT_MODEL, FLAG_DEFS, collectFiles, metricsOf, fileMetrics, buildPrompt, splitOutput, extractJson, normalizeReport, gradeOf, langOf, callPro, callFree, numbered, pickEffort, poolReader, deepIndex };
