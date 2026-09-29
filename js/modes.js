@@ -134,7 +134,10 @@
       /* v-cc-remove (طلب المالك «شيله عشان ما يلخبط»): أُزيل زرّ «Claude Code» المربوط
          بجسر Railway المكسور — الوكيل يملك صلاحيات Claude Code الكاملة عبر GitHub Actions. */
       function renderPop(){ pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + divider + provsHTML(); }
-      renderPop();
+      // v-perf-idle-timers: الميزة كلّها «للمالك وحده» (bar.style.display أعلاه none لغير المالك، وpop
+      // داخله فلا يُرى أبدًا) لكنّ renderPop() كانت تُستدعى فورًا للجميع — بناء DOM كامل لتسعة مزوّدين
+      // وعشرات الأزرار غير مستخدَم أصلًا. الآن تُبنى فقط للمالك؛ لا فرق مرئيّ لغير المالك (كان مخفيًّا دومًا).
+      if(isOwner()) renderPop();
       /* v-provider-models: القائمة الحيّة من الخادم تُلحق بالافتراضيّ الثابت؛ OpenAI يرتّب الثلاثة العامّة أولًا. */
       if(isOwner()){
         try{

@@ -272,16 +272,22 @@ test('١٠. النشاط يُسجَّل من مصادره الثلاثة', () =>
 });
 
 test('١١. نجوم الشاشة كلّها أثناء مكالمة مها: نجوم الجانبيّ نفسها بكثافتها، خلف الشريط، ونجوم الجانبيّ تبقى ظاهرة', () => {
-  const { body } = load({ w: 1280, h: 900 });
+  // v-perf-idle-timers: الطبقة صارت تُبنى كسولةً عند أوّل استدعاء حقيقيّ (prime/ensureCtx يجيء من
+  // إيماءة المستخدم الأولى) لا فور تحميل الصفحة — لم تعد مبنيّة قبل أن يبدأ المستخدم مكالمة فعليًّا.
+  const loaded = load({ w: 1280, h: 900 });
+  assert.equal(loaded.body.children.find((c) => c.id === 'mahaSkyLayer'), undefined, 'لا تُبنى قبل أوّل استدعاء فعليّ (prime)');
+  loaded.api.prime();
+  const { body } = loaded;
   const sky = body.children.find((c) => c.id === 'mahaSkyLayer');
-  assert.ok(sky, 'الطبقة في الجسم');
+  assert.ok(sky, 'الطبقة في الجسم بعد prime()');
   assert.equal(sky.attrs['aria-hidden'], 'true');
   assert.equal(sky.children.length, 92, '١٢٨٠×٩٠٠ ÷ ١٢٥٠٠');
   const st = sky.children[0];
   assert.equal(st.className, 'omSkyStar', 'نجمة الجانبيّ نفسها');
   for (const k of ['--sz', '--dur', '--dly']) assert.ok(st.style[k], k);
   for (const c of sky.children) { const z = parseFloat(c.style['--sz']); assert.ok(z >= 6 && z <= 13, 'أكبر شوي (٦–١٣): ' + z); }
-  assert.equal(load({ w: 390, h: 800 }).body.children.find((c) => c.id === 'mahaSkyLayer').children.length, 30, 'الجوّال: ٣٠ على الأقلّ');
+  const mobileLoaded = load({ w: 390, h: 800 }); mobileLoaded.api.prime();
+  assert.equal(mobileLoaded.body.children.find((c) => c.id === 'mahaSkyLayer').children.length, 30, 'الجوّال: ٣٠ على الأقلّ');
   const css = read('css/modules.css');
   assert.ok(css.includes('#mahaSkyLayer{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:99998; display:none;}'), 'الشاشة كلّها، بلا ضغطات، تحت الشريط (99999)');
   assert.ok(css.includes('body.maha-band-on #mahaSkyLayer{display:block;}'), 'تظهر مع المكالمة وتختفي بعدها');
