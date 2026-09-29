@@ -79,12 +79,37 @@ test('خيارات الواجهة والخادم متطابقة بعد الإض�
     const srv = Object.keys(studioMore.STYLE_PROMPTS[feature] || {});
     assert.deepEqual(cli.slice().sort(), srv.slice().sort(), feature + ': خيارات الواجهة لا تطابق الخادم');
   }
-  assert.equal(Object.keys(studioMore.STYLE_PROMPTS.henna).length, 12, 'خيارات الحنّاء يجب أن تكون ١٢');
+  assert.ok(Object.keys(studioMore.STYLE_PROMPTS.henna).length >= 100, 'خيارات الحنّاء يجب ألّا تقلّ عن ١٠٠');
   assert.deepEqual(
     clientMakeupValues().slice().sort(),
     Object.keys(studioCreate.STYLE_TEXT.makeup).slice().sort(),
     'خيارات المكياج في الواجهة لا تطابق الخادم',
   );
+});
+
+/* ───── v-studio-skin-lock + v-studio-guard-retry: صورة كفّ المالك + «حناء خليجية» ⇒ image_edit_identity_mismatch ───── */
+test('ميزات الرسم: قفل الجلد يمنع استبدال اليد — ووصف الحنّاء يتبع السطح الظاهر', () => {
+  for (const feature of studioCreate.DESIGN_FEATURES) {
+    const style = Object.keys(studioCreate.STYLE_TEXT[feature])[0];
+    const p = studioCreate.buildSinglePrompt(feature, style, '', false, 3);
+    assert.match(p, /SKIN LOCK \(highest priority\)/, feature + ': بلا قفل جلد');
+    assert.match(p, /Never replace them with someone else's hands or feet/, feature + ': لا منع لاستبدال اليد');
+    assert.match(p, /more feminine/, feature + ': لا منع لتنعيم اليد وتأنيثها');
+  }
+  // المكياج والشعر على الوجه — لا قفل جلد لهما
+  assert.ok(!/SKIN LOCK/.test(studioCreate.buildSinglePrompt('makeup', 'natural', '', false, 1)), 'قفل الجلد يجب أن يبقى لميزات الرسم');
+  const henna = studioMore.FEATURE_INSTRUCTIONS.henna('X');
+  assert.match(henna, /palm or back of the hand/, 'الحنّاء لا تتبع السطح الظاهر فعلًا');
+  assert.match(henna, /adapt the same design naturally onto the surface that is/, 'لا تكيّف عند اختلاف السطح');
+});
+
+test('رفض الحارس يُعاد مرّة بقفل أشدّ قبل الخطأ الأحمر', () => {
+  const src = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
+  assert.match(src, /second attempt with a stronger lock/, 'لا محاولة ثانية بعد رفض الحارس');
+  assert.match(src, /geminiImage\(o\.apiKey, retryParts, o\.feature, null, 0\.15\)/, 'المحاولة الثانية يجب أن تكون بحرارة ٠٫١٥ مفروضة');
+  assert.match(src, /if \(again\.b64 && await guardOf\(again\.b64, again\.mime\)\) return finish/, 'نتيجة المحاولة الثانية لا تمرّ بالحارس');
+  assert.match(src, /throw \{ status: 422, payload: \{ error: publicGuardError\(guard\)/, 'الفشل المتكرّر يجب أن يبقى فشلًا');
+  assert.match(src, /async function geminiImage\(apiKey, parts, feature, aspectRatio, tempOverride\)/, 'لا تجاوز للحرارة');
 });
 
 /* ───── v-studio-more-looks: «ولّد المعاينات» + «زيد الأشكال» (أمر المالك ٢٨ سبتمبر) ───── */
@@ -126,7 +151,8 @@ test('المكياج يأخذ المعاينة المولّدة أوّلًا (ص
 });
 
 test('دفعة الأشكال الجديدة: كلّ ميزة أساسيّة توسّعت وخياراتها مطابقة بين الواجهة والخادم', () => {
-  const MIN = { hair: 28, nails: 24, makeup: 22, beard: 16, skin: 12, glasses: 18, tattoo: 16, anime: 16, heritage: 18 };
+  /* v-studio-100 + v-henna-100: المالك «في كل شي على الأقلّ ١٠٠ نوع وشكل» — الدفعة الأولى (حنّاء، شعر، أظافر، مكياج) */
+  const MIN = { hair: 100, nails: 100, makeup: 100, beard: 16, skin: 12, glasses: 18, tattoo: 16, anime: 16, heritage: 18 };
   for (const [feature, min] of Object.entries(MIN)) {
     const srv = Object.keys(studioStyles.STYLE_TEXT[feature]);
     assert.ok(srv.length >= min, feature + ': ' + srv.length + ' خيارًا فقط (المطلوب ' + min + ')');
@@ -135,7 +161,7 @@ test('دفعة الأشكال الجديدة: كلّ ميزة أساسيّة ت�
       assert.ok(v.length >= 30, feature + '/' + k + ': وصف قصير جدًّا');
     }
   }
-  const MORE_MIN = { hijab: 12, gulfmen: 12, wedding: 12, accessories: 12, background: 12, iconic: 12, henna: 12 };
+  const MORE_MIN = { hijab: 12, gulfmen: 12, wedding: 12, accessories: 12, background: 12, iconic: 12, henna: 100 };
   for (const [feature, min] of Object.entries(MORE_MIN)) {
     assert.ok(Object.keys(studioMore.STYLE_PROMPTS[feature]).length >= min, feature + ': لم تتوسّع إلى ' + min);
   }
