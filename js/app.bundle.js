@@ -38389,6 +38389,7 @@ if(document.readyState === 'loading'){
       unparsed: 'لم يصل تقرير مُهيكل — هذا نصّ النموذج كما هو:', skipped: 'تُخطّيت', rank: '#',
       upgrade: 'اشترك للنسخة الاحترافية', signup: 'سجّل مجانًا', commentRatio: 'نسبة التعليقات', truncated: 'مقتطع',
       deep: 'التحليل التفصيليّ — ملفًّا ملفًّا ودالّةً دالّة', freeNote: 'هذا تقرير الوضع المجانيّ. النسخة الاحترافيّة تحلّل بعمق أكبر وبملفّات أكبر.',
+      readNote: 'قرأ بنفسه: {n} فتحًا وتفتيشًا في {r} جولة · {f} ملفًّا متاحًا للقراءة',
       sev: { critical: 'حرِج', high: 'عالٍ', medium: 'متوسّط', low: 'منخفض', info: 'ملاحظة' },
       cat: { correctness: 'الصحّة', security: 'الأمان', performance: 'الأداء', readability: 'الوضوح', maintainability: 'الصيانة', best_practices: 'أفضل الممارسات' },
     },
@@ -38408,6 +38409,7 @@ if(document.readyState === 'loading'){
       unparsed: 'No structured report arrived — raw model text:', skipped: 'skipped', rank: '#',
       upgrade: 'Upgrade to Pro', signup: 'Sign up free', commentRatio: 'comment ratio', truncated: 'truncated',
       deep: 'Detailed analysis — file by file, function by function', freeNote: 'This is the free-tier report. The Pro engine analyzes deeper and accepts larger files.',
+      readNote: 'Read on its own: {n} opens & searches across {r} rounds · {f} files available to read',
       sev: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' },
       cat: { correctness: 'Correctness', security: 'Security', performance: 'Performance', readability: 'Readability', maintainability: 'Maintainability', best_practices: 'Best practices' },
     },
@@ -38703,7 +38705,11 @@ if(document.readyState === 'loading'){
 
     /* v-code-depth: التحليل التفصيليّ الحرّ — النموذج يمرّ على كلّ ملفّ ودالّة قبل الحكم */
     if (r.deep) {
+      /* v-code-deep-read: أثر القراءة لا ادّعاؤها — كم ملفًّا فتحه بنفسه وفي كم جولة. */
+      var rd = r.reading;
       h += '<details style="' + CARD + '"><summary style="cursor:pointer;font-weight:700;">' + esc(t('deep')) + '</summary>'
+        + (rd && rd.toolCalls ? '<div style="margin-top:6px;font-size:11.5px;' + MUTED + '">' + esc(t('readNote')
+          .replace('{n}', rd.toolCalls).replace('{r}', rd.rounds).replace('{f}', rd.pool)) + '</div>' : '')
         + '<div style="margin-top:8px;line-height:1.85;font-size:12.5px;">' + mdLite(r.deep) + '</div></details>';
     }
 
