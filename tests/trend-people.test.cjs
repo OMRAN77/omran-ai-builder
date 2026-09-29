@@ -110,3 +110,40 @@ test('٥. الحزمة مبنيّة من الأجزاء', () => {
   const b = read('js/app.bundle.js');
   assert.ok(b.includes('function renderPeople(strip, t){'), 'الجزء داخل الحزمة');
 });
+
+/* v-trend-413 (المالك بلقطة «❌ تعذّر: HTTP 413» مع شخصيّتين): الصور كانت تُقرأ خامًا،
+   وصورة جوّال واحدة تكفي لتجاوز حدّ حجم جسم الطلب عند حافّة الاستضافة. */
+test('٦. صور الشخصيّات تُصغَّر قبل الإرسال — لا قراءة خام', () => {
+  // لا تُدفع نتيجة readAsDataURL مباشرة إلى photos
+  assert.doesNotMatch(SRC, /photos\.push\(\{\s*dataUrl:\s*String\(r\.result\)/, 'ما زالت الصورة تُقرأ خامًا');
+  assert.match(SRC, /shrink\(f, function\(dataUrl\)\{/, 'اختيار الملفّ لا يمرّ على التصغير');
+  // وصفة التصغير نفسها المثبَتة في مودالات الاستوديو (v530)
+  assert.match(SRC, /var SHRINK_MAX = 1024, SHRINK_Q = 0\.85;/, 'حدّ التصغير أو الجودة تغيّرا');
+  assert.match(SRC, /c\.getContext\('2d'\)\.drawImage\(img, 0, 0, w, h\)/, 'لا رسم على canvas');
+  assert.match(SRC, /toDataURL\('image\/jpeg', SHRINK_Q\)/, 'لا إعادة ترميز JPEG');
+  assert.match(SRC, /photos\.push\(\{ dataUrl: dataUrl, mime: 'image\/jpeg' \}\)/, 'نوع الصورة بعد التصغير');
+
+  // حساب الأبعاد الحقيقيّ من المصدر: ٤٠٠٠×٣٠٠٠ ⇒ ١٠٢٤×٧٦٨، والصغيرة لا تُكبَّر
+  const body = SRC.slice(SRC.indexOf('function shrink(file, done){'), SRC.indexOf('\n  }', SRC.indexOf('r.readAsDataURL(file);')) + 4);
+  const ctx = { document: { createElement: () => ({ width: 0, height: 0, getContext: () => ({ drawImage() {} }), toDataURL: () => 'data:image/jpeg;base64,QUJD' }) }, Math, String, out: null };
+  ctx.FileReader = function () { this.readAsDataURL = () => { this.result = 'x'; this.onload(); }; };
+  const sizes = [[4000, 3000], [800, 600]];
+  const got = [];
+  for (const [w, h] of sizes) {
+    ctx.Image = function () { const self = this; setImmediate(() => {}); Object.defineProperty(self, 'src', { set() { self.width = w; self.height = h; self.onload(); } }); };
+    const c2 = Object.assign({ SHRINK_MAX: 1024, SHRINK_Q: 0.85 }, ctx);
+    c2.document.createElement = () => { const c = { width: 0, height: 0, getContext: () => ({ drawImage() {} }), toDataURL: () => 'data:image/jpeg;base64,QUJD' }; got.push(c); return c; };
+    vm.runInNewContext(body + '\nshrink({}, function(){});', c2);
+  }
+  assert.deepEqual(got.map((c) => [c.width, c.height]), [[1024, 768], [800, 600]], 'التصغير لا يحترم الحدّ أو يكبّر الصغيرة');
+});
+
+test('٧. «٤١٣» يُترجَم لرسالة مفهومة بالـ14 لغة، لا رمزًا خامًا', () => {
+  assert.match(SRC, /if\(\/\\b413\\b\/\.test\(String\(\(e && e\.message\) \|\| ''\)\)\) return ui\('tooBig'\);/, 'لا ترجمة لرمز ٤١٣');
+  assert.ok(UI.tooBig, 'نصّ tooBig غير موجود');
+  assert.deepEqual(Object.keys(UI.tooBig).sort(), LANGS.slice().sort(), 'tooBig ناقص في بعض اللغات');
+  for (const l of LANGS) {
+    assert.ok(String(UI.tooBig[l]).trim().length > 8, l);
+    assert.doesNotMatch(String(UI.tooBig[l]), /413|HTTP|Veo|MiniMax|Gemini|Runway/i, l + ': رمز تقنيّ أو اسم مزوّد في نصّ المستخدم');
+  }
+});
