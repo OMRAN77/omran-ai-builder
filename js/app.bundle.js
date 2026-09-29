@@ -6483,7 +6483,6 @@ function codeForApi(code){
 }
 
 function renderHistory(){
-  historyEl.innerHTML = '';
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
   const provKey = localStorage.getItem('aiapp_provider') || 'openai';
   let provDirty = false;
@@ -6493,7 +6492,37 @@ function renderHistory(){
   // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
   // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
   const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
-  [...state.projects].sort((a, b) => __histTs(b) - __histTs(a)).forEach(p => {
+  const __histSorted = [...state.projects].sort((a, b) => __histTs(b) - __histTs(a));
+  // v-perf-history-guard (المالك ٢٩ سبتمبر: «الشاشة تتأخر وتعلّق»): renderHistory تبني <iframe>
+  // كاملة لكلّ محادثة فيها كود، وتُستدعى بعد كلّ رسالة وعند كلّ نبضة مزامنة حيّة (٢٠ث) حتّى لو لم
+  // يتغيّر شيء فعليًّا. بصمة خفيفة بنفس فكرة v-render-guard في renderMessages أعلاه: إن طابقت آخر
+  // رسم والقائمة معروضة فعلًا نتخطّى كليًّا — لا مسح، لا إعادة بناء iframes حيّة بلا داعٍ.
+  try{
+    const __sig = state.currentId + '|' + (window.__histShowAll ? 1 : 0) + '|' +
+      __histSorted.map(p => p.id + ':' + p.title + ':' + (p.code && p.codeType !== 'python' ? 1 : 0)).join(',');
+    if(window.__renderHistSig === __sig && historyEl.childElementCount > 0) return;
+    window.__renderHistSig = __sig;
+  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أيّ خطأ نرسم كالمعتاد */ }
+  historyEl.innerHTML = '';
+  // v-perf-history-guard: نافذة عرض بنفس فكرة __MSGWIN في renderMessages — أقدم ٣٠ محادثة
+  // تُبنى iframes حيّة لها فقط لو طلب المستخدم صراحةً؛ الأقدم تظهر بزرّ عند الطلب.
+  const __HIST_WINDOW = 30;
+  // المحادثة المفتوحة حاليًّا يجب أن تبقى ظاهرة في قائمتها حتى لو كانت أقدم من النافذة
+  // (تُفتح أحيانًا من البحث أو رابط مباشر لا من هذه القائمة نفسها).
+  const __curIdx = state.currentId ? __histSorted.findIndex(p => p.id === state.currentId) : -1;
+  const __histWinEnd = window.__histShowAll ? __histSorted.length
+    : Math.min(Math.max(__HIST_WINDOW, __curIdx + 1), __histSorted.length);
+  if(__histWinEnd < __histSorted.length){
+    const __OLDHT = { ar:'عرض محادثات أقدم', en:'Show older chats', fr:'Afficher les discussions plus anciennes', hi:'पुरानी बातचीत दिखाएँ', ur:'پرانی بات چیت دکھائیں', bn:'পুরনো চ্যাট দেখান', ne:'पुरानो कुराकानी देखाउनुहोस्', id:'Tampilkan obrolan lama', fil:'Ipakita ang mga lumang chat', tr:'Eski sohbetleri göster', zh:'显示较早的对话', ru:'Показать старые чаты', es:'Mostrar chats anteriores', ml:'പഴയ ചാറ്റുകൾ കാണിക്കുക' };
+    const __uiL2 = localStorage.getItem('aiapp_lang') || 'ar';
+    const olderHistBtn = document.createElement('button');
+    olderHistBtn.type = 'button';
+    olderHistBtn.textContent = '⬇ ' + (__OLDHT[__uiL2] || __OLDHT.en) + ' (' + (__histSorted.length - __histWinEnd) + ')';
+    olderHistBtn.style.cssText = 'display:block; width:100%; margin:6px 0 10px; padding:7px 16px; border-radius:20px; border:1px solid var(--border,rgba(255,255,255,.15)); background:transparent; color:var(--accent2,#a78bfa); font-size:12.5px; cursor:pointer;';
+    olderHistBtn.onclick = () => { window.__histShowAll = true; window.__renderHistSig = null; renderHistory(); };
+    historyEl.appendChild(olderHistBtn);
+  }
+  __histSorted.slice(0, __histWinEnd).forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
     div.dataset.pid = String(p.id); // v-chat-search: يربط العنصر بمشروعه للبحث داخل المحتوى
