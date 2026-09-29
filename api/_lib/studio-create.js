@@ -105,6 +105,16 @@ const VARIETY_NOTE = {
   nails: 'Paint a brand-new original nail design inside this exact style: vary the detailing, the accent nails and the finish placement so it does not repeat an earlier design. Keep the described colour and style exactly as asked.',
   tattoo: 'Draw a brand-new original tattoo artwork inside this exact style: vary the composition, the line work and the shading so it does not repeat an earlier design. Keep the described style, size and placement exactly as asked.',
 };
+/* v-studio-skin-lock (شكوى المالك ٢٨ سبتمبر: صورة كفّ رجل + «حناء خليجية» ⇒ خطأ
+   image_edit_identity_mismatch): وصف الحنّاء «على اليدين» يجرّ الموديل إلى **يد أخرى**
+   ناعمة بلا شعر (يد عروس)، فيحكم الحارس بتغيّر الهويّة ويسقط الطلب كلّه. النقش يُضاف
+   فوق الجلد نفسه لا على يد بديلة. */
+const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP of the exact skin already in the photo. ' +
+  'Keep the same hands/limbs pixel-for-pixel apart from the added design: same skin tone and shade, same body hair, same veins, knuckles and wrinkles, ' +
+  'same nail shape and length, same size, same pose and same background. ' +
+  'Never replace them with someone else\'s hands or feet, never make them look younger, smoother, slimmer, lighter or more feminine, ' +
+  'and never add jewellery, rings, bracelets, sleeves or clothing that is not already there.';
+
 function varietyLine(feature, variant) {
   const note = VARIETY_NOTE[feature];
   if (!note) return '';
@@ -132,15 +142,18 @@ function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
     promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
   }
+  if (DESIGN_FEATURES.indexOf(feature) !== -1) promptText += SKIN_LOCK;
   promptText += varietyLine(feature, variant);
   return promptText;
 }
 
 /* ───── نداء Gemini واحد: { b64, mime } أو { error, status, detail, why } ───── */
-async function geminiImage(apiKey, parts, feature, aspectRatio) {
+async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-  /* v-studio-variety: ميزات الرسم بحرارة ٠٫٤٥ — ٠٫١٥ كانت تعيد النقش نفسه حرفيًّا */
-  const temperature = feature === 'anime' ? 0.65 : (DESIGN_FEATURES.indexOf(feature) !== -1 ? 0.45 : 0.15);
+  /* v-studio-variety: ميزات الرسم بحرارة ٠٫٤٥ — ٠٫١٥ كانت تعيد النقش نفسه حرفيًّا.
+     v-studio-guard-retry: المحاولة الثانية بحرارة منخفضة مفروضة (أمانة قبل تنويع). */
+  const temperature = Number.isFinite(tempOverride) ? tempOverride
+    : (feature === 'anime' ? 0.65 : (DESIGN_FEATURES.indexOf(feature) !== -1 ? 0.45 : 0.15));
   const reqBody = { contents: [{ parts }], generationConfig: { temperature, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
   const upstream = await fetch(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
@@ -219,7 +232,16 @@ async function runEdit(o) {
     });
     /* v-guard-fail-open: تعطّل الحارس نفسه لا يُسقط صورةً جاهزة */
     if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
-    else if (!guard.ok) throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
+    else if (!guard.ok) {
+      /* v-studio-guard-retry (شكوى المالك: «image_edit_identity_mismatch» على صورة كفّ):
+         رسمةٌ واحدة شاردة كانت تُسقط الطلب كلّه بخطأ أحمر. محاولة ثانية واحدة بقفل
+         أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر. */
+      console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
+      const retryParts = [{ text: o.promptText + STRONGER_LOCK }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+      const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
+      if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
+      throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
+    }
   }
   return finish(out.b64, out.mime, 'gemini');
 }
