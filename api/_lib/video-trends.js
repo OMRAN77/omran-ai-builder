@@ -215,7 +215,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "opt",
   "kind": "name",
-  "prompt": "Festive Eid greeting video: the person (from the reference image if provided) in elegant Eid attire waves warmly and says in Arabic 'عيد مبارك {name}', decorated background with lanterns and a crescent moon, joyful music, elegant animated Arabic calligraphy 'عيد مبارك' appears.",
+  "prompt": "Festive Eid greeting video: the person (from the reference image if provided) in elegant Eid attire waves warmly and says joyfully in Arabic 'عيد مبارك {name}', decorated background with lanterns and a crescent moon, joyful music.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic festive still of a smiling Arab family in Eid attire with lanterns and crescent decorations, golden light",
@@ -395,7 +395,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "name",
-   "prompt": "Joyful graduation moment: the person from the reference image wears a graduation gown and cap, throws the cap into the air in slow motion while golden confetti falls, friends cheering softly out of focus behind, campus lawn at golden hour, an elegant Arabic greeting card with the name {name} appears gently at the end, photorealistic, warm uplifting music.",
+   "prompt": "Joyful graduation moment: the person from the reference image wears a graduation gown and cap, throws the cap into the air in slow motion while golden confetti falls, campus lawn at golden hour, friends cheering warmly out of focus behind and calling out their name '{name}' with joy, photorealistic, warm uplifting music.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a young Arab graduate in gown and cap throwing the cap into the air with golden confetti at sunset on a campus lawn",
@@ -407,7 +407,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "name",
-   "prompt": "Tender newborn announcement: the baby from the reference image sleeps peacefully wrapped in a soft blanket, gentle breathing, tiny fingers moving slightly, soft diffused window light, dust motes floating, a delicate Arabic card with the name {name} fades in at the end, photorealistic, calm lullaby music, no text other than the card.",
+   "prompt": "Tender newborn announcement: the baby from the reference image sleeps peacefully wrapped in a soft blanket, gentle breathing, tiny fingers moving slightly, soft diffused window light, dust motes floating, a soft off-screen voice-over gently welcomes them by name, saying '{name}' warmly, photorealistic, calm lullaby music.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a sleeping newborn wrapped in a soft cream blanket in gentle window light, dust motes floating",
@@ -431,7 +431,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "opt",
    "kind": "name",
-   "prompt": "Ramadan greeting scene: an ornate brass lantern glows in the foreground, a crescent moon hangs in a deep blue sky, a beautifully set iftar table with dates and water waits below, gentle particles of light drift upward, the camera rises slowly, an elegant Arabic greeting with the name {name} appears softly at the end, warm spiritual ambience, no other text.",
+   "prompt": "Ramadan greeting scene: an ornate brass lantern glows in the foreground, a crescent moon hangs in a deep blue sky, a beautifully set iftar table with dates and water waits below, gentle particles of light drift upward, the camera rises slowly, a warm off-screen voice softly says the Ramadan greeting 'رمضان مبارك {name}', warm spiritual ambience.",
    "scenes": null,
    "preview": {
      "frame": "warm Ramadan still of an ornate brass lantern glowing beside a crescent moon over a set iftar table with dates, deep blue night",
@@ -545,6 +545,127 @@ const TRENDS = {
      "frame": "macro still of glossy black Arabic Thuluth calligraphy being written in ink on warm cream paper with gold leaf accents, warm side light",
      "gender": "m"
    }
+ },
+ /* v-trends-more-2 (المالك: «أريد أزيد في الفيديوهات — الترندات»): +١٠ ترندات جديدة، لا تكرار لموضوع قائم. */
+ "actionfigure": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image is reimagined as a collectible action-figure toy sealed in plastic blister packaging on a toy-store shelf, with small plastic accessories beside them in the tray; the camera slowly orbits the package under bright store lighting, then the plastic blister flexes gently and the figure inside blinks and gives a small wave before freezing back into toy pose, playful studio light, photorealistic toy product look, same face as the reference.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a collectible action-figure toy of a young man sealed in plastic blister packaging with small accessories, on a toy-store shelf under bright light",
+     "gender": "m"
+   }
+ },
+ "superhero": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image stands as energy swirls around them and their clothing transforms into a sleek superhero suit with a flowing cape, wind whipping, a city skyline glowing at dusk behind them; they plant their feet and look up heroically, dramatic rim light, powerful orchestral score, photorealistic, same face as the reference.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person in a sleek superhero suit with a flowing cape standing heroically before a glowing dusk city skyline, dramatic rim light",
+     "gender": "m"
+   }
+ },
+ "catwalk": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image walks confidently down a lit fashion-runway catwalk wearing their own outfit exactly as photographed, camera flashes popping from the audience on both sides, dramatic runway music, slow-motion strides, professional runway lighting, photorealistic, same face and outfit as the reference.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a woman walking confidently down a lit fashion runway catwalk with camera flashes popping from the audience, dramatic lighting",
+     "gender": "w"
+   }
+ },
+ "animeaction": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Transform the scene into a high-energy Japanese shonen-anime style: bold ink outlines, dramatic speed lines and impact frames, the person from the reference image strikes a confident dynamic pose as their hair and clothes whip with sudden wind, vivid saturated color flashes, intense orchestral hit, same person recognizable in anime form.",
+   "scenes": null,
+   "preview": {
+     "frame": "high-energy shonen anime still of a young man in a dynamic pose with bold ink outlines, dramatic speed lines and vivid color flashes",
+     "gender": "m"
+   }
+ },
+ "claymation": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Transform the reference image into a handcrafted claymation stop-motion character: visible clay texture, fingerprint dents and sculpting seams, subtle jittery stop-motion movement frame to frame, a miniature handmade set behind them, warm soft studio light, playful plinky music, same person recognizable in clay form.",
+   "scenes": null,
+   "preview": {
+     "frame": "claymation stop-motion still of a character with visible clay texture and fingerprint dents standing in a miniature handmade set, warm soft light",
+     "gender": "w"
+   }
+ },
+ "legofy": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Transform the person from the reference image into a LEGO minifigure version of themselves: blocky plastic body, cylindrical head, painted-on facial features matching their real face, standing on a LEGO baseplate inside a small LEGO-brick diorama that echoes their outfit's colors; the camera orbits slowly, cheerful bright light, playful music, same person recognizable as a LEGO figure.",
+   "scenes": null,
+   "preview": {
+     "frame": "still of a LEGO minifigure version of a person with a cylindrical head and blocky plastic body standing on a baseplate in a small brick diorama",
+     "gender": "m"
+   }
+ },
+ "vhsflashback": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image is seen through a nostalgic 1990s VHS home-camcorder look: soft glow, gentle scan lines, slight tracking wobble and warm color bleed, subtle grain; they smile and wave naturally at the camera in a cozy home setting, handheld camera sway, same face and outfit as the reference, warm nostalgic feel.",
+   "scenes": null,
+   "preview": {
+     "frame": "nostalgic 1990s VHS camcorder-style still of a person smiling and waving in a cozy home setting, soft glow, gentle scan lines, warm grain",
+     "gender": "w"
+   }
+ },
+ "podcastclip": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "sentence",
+   "prompt": "Vertical podcast-style clip: the person from the reference image sits at a studio desk with a professional microphone and soft LED panel lighting behind them, leans in and says energetically in Arabic: '{text}'. Lip-synced natural speech, confident engaging delivery, shallow depth of field, same face and clothing as the reference, no text overlay.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person sitting at a studio podcast desk with a professional microphone and soft LED panel lighting behind them, confident expression",
+     "gender": "m"
+   }
+ },
+ "dayinlife": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Fast rhythmic day-in-the-life montage of the person from the reference image (same face, same general style): waking up and stretching in soft morning light, sipping coffee by a sunny window, stepping out of the front door with a smile, walking energetically down a city street; quick cuts, upbeat music, photorealistic, natural candid feel.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person sipping coffee by a sunny window in a warm morning montage moment, candid natural feel",
+     "gender": "w"
+   }
+ },
+ "birthdaybash": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Joyful birthday celebration: the person from the reference image sits before a beautifully decorated birthday cake with lit candles, friends clapping softly out of focus behind them; they smile and blow out the candles as balloons and warm confetti drift down, warm party lighting, cheerful music, photorealistic, same face and outfit as the reference.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person smiling before a decorated birthday cake with lit candles, balloons and warm confetti drifting, cheerful party light",
+     "gender": "w"
+   }
  }
 };
 function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 240); }
@@ -563,13 +684,34 @@ function buildTrendPrompt(key, params) {
       .replace('{look}', p.hasImage ? ' whose look is based on the reference image, rendered in Pixar 3D style' : '');
   }
   prompt = prompt.replace(/\{name\}/g, name).replace(/\{text\}/g, text || 'a joyful moment');
+  /* v-trend-identity-2 (المالك: «الفيديوات كلّها تغيّر الأشكال… أريد نفس شكل الشخصيّة الي أحطّها»):
+     قفل الهويّة (v-trend-identity) كان يُلحق مرّة واحدة في الذيل فقط — نفس الضعف الذي شُخِّص وعُولج
+     في أنماط الصور (v-pstyle-identity): «جملة احفظ الهويّة لا تُقاس بوجودها بل بموضعها وبما يليها»،
+     وهناك الحلّ كان فقرة هويّة **أوّلًا** (أولويّة) مع تذكير أخير (حداثة) معًا لا أحدهما. القوالب الـ٤٥
+     تبدأ كلّها بأمر التحويل/المشهد مباشرة («Transform the person…» أو نظيره) بلا مرساة هويّة قبله؛
+     هذه الفقرة تُلحق أوّلًا هنا (والقفل القائم في الذيل يبقى كما هو). بلا نداء إضافيّ ولا كلفة، ومتوافقة
+     مع الأساليب الفنّيّة (بيكسار/جيبلي/الخ) لأنّها تقول «مهما أعاد المشهد رسمه» لا «كما صُوِّر». */
+  if (p.hasImage) {
+    prompt = 'WHO THEY ARE (read first): the reference image shows a real, specific person — not a character'
+      + ' to invent. Their face shape, eyes, eyebrows, nose, lips, jawline, skin tone, and hair belong to them'
+      + ' and must carry through recognizably into the video, however the scene below restyles, ages, dresses'
+      + ' or animates them. Never invent a new face, never average it into a generic one, never swap it for'
+      + ' someone else\'s.\n\nSCENE: ' + prompt;
+  }
   /* v-trend-people: أكثر من شخص في أوّل إطار — القوالب الـ٤٥ مكتوبة بصيغة «الشخص»، فنُلحق
      شرطًا واحدًا بدل تعديلها كلّها: كلّهم يظهرون، وكلّ واحد بوجهه هو، ولا يُدمجون في واحد. */
   /* v-trend-notext (المالك بلقطة: ترجمة محروقة في ناتج «سوق التراث» حروفها مكسورة — «غيوييةامة يه
      حادافلا سخحلں»): محرّكات الفيديو لا تصل العربيّة ولا تعكس اتّجاهها، فكلّ نصّ تكتبه على الإطار يخرج
      ركامًا. و{text} في القوالب **كلام مسموع** لا مكتوب. المنع يُلحق لكلّ الترندات إلّا `calligraphy`
-     الذي موضوعه رسم الجملة نفسها. النمط نفسه مستعمل في وضع الممثّل بصانع الفيديو. */
-  if (key !== 'calligraphy') {
+     الذي موضوعه رسم الجملة نفسها، وعنوان `movieposter` (تحته). النمط نفسه مستعمل في وضع الممثّل
+     بصانع الفيديو. */
+  /* v-trend-notext-2 (وُجد أثناء v-trend-identity-2، أمر المالك «عالجها»): خمسة قوالب كانت تطلب في
+     نصّها نصًّا على الإطار (بطاقة اسم/عنوان) ثمّ يُلحق بها هذا المنع نفسه فيناقضها — العنوان لا يظهر
+     أصلًا. أربعة منها (تخرّج/مولود/رمضان/عيد) حُوِّلت أعلاه إلى **كلام مسموع** بدل بطاقة مكتوبة (نفس
+     مبدأ {text} أعلاه، ونفس درس v-trend-notext) فصار المنع صحيحًا لها بلا تعديل هنا. `movieposter`
+     وحده جوهره عنوان مقروء (لا بديل مسموع لملصق فيلم) — يُستثنى كـ`calligraphy` تمامًا، بالمخاطرة
+     الموثَّقة نفسها (حروف عربيّة قد تخرج مكسورة إن كتب المستخدم عنوانًا عربيًّا). */
+  if (key !== 'calligraphy' && key !== 'movieposter') {
     prompt += ' No on-screen text: no subtitles, no captions, no titles, no watermarks, and no letters or'
       + ' words anywhere in the frame. Spoken or sung words are heard only, never written.';
   }

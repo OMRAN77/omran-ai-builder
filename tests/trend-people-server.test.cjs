@@ -35,9 +35,9 @@ test('١. الأمر: شخص واحد كما كان، وأكثر يُلحق شر
   assert.ok(!/different people/.test(one.prompt), 'لا شرط لشخص واحد');
   assert.equal(buildTrendPrompt('heritagesing', { people: 99 }).people, 3, 'الحدّ ٣');
   assert.equal(buildTrendPrompt('heritagesing', { people: 'x' }).people, 1);
-  // القوالب الـ٤٥ كلّها تقبل الشرط بلا تعديل أيّ منها
+  // القوالب كلّها تقبل الشرط بلا تعديل أيّ منها (v-trends-more-2: ٤٥ ← ٥٥)
   const keys = Object.keys(require('../api/_lib/video-trends.js').TRENDS);
-  assert.equal(keys.length, 45);
+  assert.ok(keys.length >= 55, 'عدد الترندات نقص: ' + keys.length);
   for (const k of keys) assert.match(buildTrendPrompt(k, { people: 3, text: 'x', name: 'x' }).prompt, /all 3 of them must appear together/, k);
 });
 

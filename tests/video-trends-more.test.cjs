@@ -58,3 +58,11 @@ test('٥. ترندات الأعمال الجديدة موجودة — عقار �
     'actionhero', 'paintingalive', 'miniature', 'underwater', 'weathershift', 'neonnight', 'calligraphy']
     .forEach((k) => assert.ok(keys.includes(k), 'ترند ناقص: ' + k));
 });
+
+/* v-trends-more-2 (المالك: «أريد أزيد في الفيديوهات — الترندات»): +١٠. */
+test('٦. الدفعة الثانية من الترندات موجودة — ٤٥ ← ٥٥', () => {
+  const keys = D.trends.map((t) => t.key);
+  assert.ok(keys.length >= 55, 'عدد الترندات نقص: ' + keys.length);
+  ['actionfigure', 'superhero', 'catwalk', 'animeaction', 'claymation', 'legofy', 'vhsflashback',
+    'podcastclip', 'dayinlife', 'birthdaybash'].forEach((k) => assert.ok(keys.includes(k), 'ترند ناقص: ' + k));
+});

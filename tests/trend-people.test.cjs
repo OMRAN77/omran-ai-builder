@@ -192,12 +192,12 @@ test('٩. مع إطار أوّل مبنيّ: أمر صريح بتحريكه بد
 
 /* v-trend-notext (المالك بلقطة: ترجمة محروقة حروفها مكسورة «غيوييةامة يه حادافلا سخحلں»):
    محرّكات الفيديو لا تصل العربيّة ولا تعكس اتّجاهها، و{text} في القوالب كلام مسموع لا مكتوب. */
-test('١٠. لا كتابة على الإطار في كلّ الترندات إلّا الخطّ العربيّ، والهويّة تبقى آخر ما يُقرأ', () => {
+test('١٠. لا كتابة على الإطار في كلّ الترندات إلّا الخطّ العربيّ وملصق الفيلم، والهويّة تبقى آخر ما يُقرأ', () => {
   const keys = Object.keys(TRENDS.TRENDS);
   for (const k of keys) {
     const p = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'عمران', text: 'يا مرحبا' }).prompt;
-    if (k === 'calligraphy') {
-      assert.doesNotMatch(p, /No on-screen text/, 'ترند الخطّ العربيّ موضوعه رسم الجملة — لا يُمنع');
+    if (k === 'calligraphy' || k === 'movieposter') {
+      assert.doesNotMatch(p, /No on-screen text/, k + ': موضوعه نصّ مقروء — لا يُمنع');
       continue;
     }
     assert.match(p, /No on-screen text: no subtitles, no captions, no titles, no watermarks/, k + ': بلا منع للكتابة');
@@ -210,4 +210,43 @@ test('١٠. لا كتابة على الإطار في كلّ الترندات إ�
   const noImg = TRENDS.buildTrendPrompt('heritagesing', { hasImage: false, text: 'x' }).prompt;
   assert.match(noImg, /No on-screen text/);
   assert.doesNotMatch(noImg, /IDENTITY \(mandatory\)/);
+});
+
+/* v-trend-identity-2 (المالك: «الفيديوات كلّها تغيّر الأشكال... أريد نفس شكل الشخصيّة الي أحطّها»):
+   قفل الهويّة كان في الذيل وحده — نفس ضعف أنماط الصور قبل v-pstyle-identity (الموضع لا الوجود). */
+test('١١. قفل الهويّة صار في المقدّمة أيضًا (أولويّة) لا الذيل وحده (حداثة)، وبلا صورة لا يُلحق', () => {
+  const keys = Object.keys(TRENDS.TRENDS);
+  for (const k of keys) {
+    const withImg = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'عمران', text: 'مرحبا' }).prompt;
+    const noImg = TRENDS.buildTrendPrompt(k, { hasImage: false, name: 'عمران', text: 'مرحبا' }).prompt;
+    assert.match(withImg, /^WHO THEY ARE \(read first\)/, k + ': لا فقرة أولويّة في المقدّمة');
+    assert.match(withImg, /not a character to invent\./, k);
+    assert.doesNotMatch(noImg, /WHO THEY ARE \(read first\)/, k + ': فقرة أولويّة بلا صورة مرجعيّة');
+    // أولويّة وحداثة معًا: فقرة المقدّمة قبل «SCENE:»، وقبل قفل الذيل، وقفل الذيل يبقى كما كان
+    assert.ok(withImg.indexOf('WHO THEY ARE') < withImg.indexOf('SCENE:'), k);
+    assert.ok(withImg.indexOf('SCENE:') < withImg.indexOf('IDENTITY (mandatory)'), k);
+  }
+  // أمر الترند نفسه لم يضع (بيبي ستايل مثالًا)، ولا فقد التحويل الفنّيّ (بيكسار) نصّه
+  const baby = TRENDS.buildTrendPrompt('babyversion', { hasImage: true }).prompt;
+  assert.match(baby, /toddler version of themselves/, 'أمر الترند نفسه ضاع');
+  const pixar = TRENDS.buildTrendPrompt('pixarstory', { hasImage: true, name: 'سالم', sceneIndex: 0 }).prompt;
+  assert.match(pixar, /wakes up smiling/, 'مشهد بيكسار الأوّل ضاع');
+  // الفقرة الجديدة لا تفرض «كما صُوِّر» — تتوافق مع الأساليب الفنّيّة (بيكسار/جيبلي/الخ)
+  assert.doesNotMatch(baby, /precisely as photographed/, 'صياغة تصادم التحويل الفنّيّ');
+});
+
+/* v-trend-notext-2 (وُجد أثناء v-trend-identity-2، أمر المالك «عالجها»): خمسة قوالب كانت تطلب نصًّا
+   على الإطار ثمّ يُلحق بها منع الكتابة العامّ فيناقضها — العنوان/البطاقة لا يظهر أصلًا. */
+test('١٢. تناقض النصّ على الإطار انحلّ: أربعة صارت كلامًا مسموعًا، وملصق الفيلم وحده استُثني', () => {
+  const spoken = ['graduation', 'newborn', 'ramadan', 'eidgreeting'];
+  for (const k of spoken) {
+    const p = TRENDS.buildTrendPrompt(k, { hasImage: true, name: 'سالم', text: 'سالم' }).prompt;
+    assert.match(p, /No on-screen text/, k + ': لازم يخضع للمنع العامّ الآن بلا تناقض');
+    assert.doesNotMatch(p, /\bcard\b|\bappears\b|\bfades in\b/, k + ': بقيّة وعد بطاقة/ظهور مكتوب');
+    assert.match(p, /سالم/, k + ': الاسم ضاع بعد التحويل لكلام مسموع');
+  }
+  // ملصق الفيلم جوهره عنوان مقروء — يُستثنى كالخطّ العربيّ، والعنوان نفسه يبقى في الأمر
+  const poster = TRENDS.buildTrendPrompt('movieposter', { hasImage: true, text: 'الأسطورة' }).prompt;
+  assert.doesNotMatch(poster, /No on-screen text/, 'ملصق الفيلم يُستثنى');
+  assert.match(poster, /bold glowing title 'الأسطورة'/, 'عنوان الملصق ضاع');
 });
