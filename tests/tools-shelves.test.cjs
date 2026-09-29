@@ -70,7 +70,7 @@ test('٦. X الإعدادات مخفي في الهواتف وحدها، ونس�
   assert.match(tokens, /@media \(max-width:860px\)\{ #setHomeClose\{display:none!important;\} \}/);
   assert.doesNotMatch(tokens, /(?:^|\n)\s*#setHomeClose\{display:none!important;\}/);
   assert.match(read('index.html'), /css\/tokens\.css\?v=727/);
-  assert.match(wiring, /tool-card-images\.css\?v=20/);
+  assert.match(wiring, /tool-card-images\.css\?v=21/);
   assert.match(wiring, /tool-card-images\.js\?v=17/);
 });
 
