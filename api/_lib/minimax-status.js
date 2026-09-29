@@ -13,22 +13,32 @@ module.exports = async (req, res) => {
     const taskId = req.query && (req.query.task_id || req.query.id);
     if (!taskId) { res.status(400).json({ error: 'Missing task_id' }); return; }
     const apiKey = process.env.MINIMAX_API_KEY;
-    if (!apiKey) { res.status(500).json({ error: 'Server is missing MINIMAX_API_KEY' }); return; }
+    if (!apiKey) { console.error('[minimax-status] missing provider key'); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' }); return; }
     const auth = { 'Authorization': 'Bearer ' + apiKey };
     const groupId = process.env.MINIMAX_GROUP_ID || '';
 
     const q = await fetch(MM_BASE + '/v1/query/video_generation?task_id=' + encodeURIComponent(taskId), { headers: auth });
     const qd = await q.json().catch(() => ({}));
-    if (!q.ok) { res.status(q.status).json({ error: 'MiniMax error: ' + JSON.stringify(qd).slice(0, 400) }); return; }
+    if (!q.ok) {
+      console.error('[minimax-status] query HTTP ' + q.status + ' ' + JSON.stringify(qd).slice(0, 300));
+      res.status(q.status).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
+      return;
+    }
 
     const raw = String(qd.status || '').toLowerCase();
+    const done = raw === 'success' || raw === 'succeeded';
+    /* v-video-poll: المزوّد يردّ ٢٠٠ مع base_resp.status_code≠0 عند الرفض المنطقيّ، وبلا حقل status
+       إطلاقًا — فكان يقع في فرع «لسّا شغّال» فيبقى المستخدم على «⏳ يولّد الفيديو» أبدًا ولا تُسوّى
+       تذكرته فلا تُردّ نقاطه. الإنشاء يفحص base_resp من قبل، والاستطلاع لم يكن يفحصه. */
+    const rejected = !done && !!(qd && qd.base_resp && Number(qd.base_resp.status_code) !== 0);
     // v-video-refund: الفشل يردّ الخصم ويفكّ قفل الثلاث دقائق (تذكرة سجّلها minimax-create).
-    if (raw === 'fail' || raw === 'failed') {
+    if (raw === 'fail' || raw === 'failed' || rejected) {
+      if (rejected) console.error('[minimax-status] base_resp ' + JSON.stringify(qd.base_resp).slice(0, 200));
       await require('./video-job.js').settleVideoJob(taskId, false);
       res.status(200).json({ status: 'FAILED' });
       return;
     }
-    if (raw !== 'success' && raw !== 'succeeded') {
+    if (!done) {
       // Preparing / Queueing / Processing — لسّا شغّال.
       res.status(200).json({ status: 'RUNNING' });
       return;
@@ -41,11 +51,16 @@ module.exports = async (req, res) => {
     const f = await fetch(retrieveUrl, { headers: auth });
     const fd = await f.json().catch(() => ({}));
     const url = fd && fd.file && (fd.file.download_url || fd.file.backup_download_url);
-    if (!f.ok || !url) { res.status(f.ok ? 502 : f.status).json({ error: 'MiniMax file retrieve failed: ' + JSON.stringify(fd).slice(0, 300) }); return; }
+    if (!f.ok || !url) {
+      console.error('[minimax-status] retrieve HTTP ' + f.status + ' ' + JSON.stringify(fd).slice(0, 300));
+      res.status(f.ok ? 502 : f.status).json({ error: 'تعذّر تحميل الفيديو الآن. أعد المحاولة.' });
+      return;
+    }
 
     await require('./video-job.js').settleVideoJob(taskId, true);
     res.status(200).json({ status: 'SUCCEEDED', output: [url] });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[minimax-status] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
   }
 };
