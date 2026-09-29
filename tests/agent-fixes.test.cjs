@@ -14,7 +14,7 @@ const agent = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'agent.j
 // v-models-latest (٢٥ سبتمبر): Opus 5 ← Opus 5.5 بجهد high صريح (افتراضيّه medium)، والرجوع يفضّل 5.5 ثمّ 5.
 assert.ok(agent.includes("const AGENT_DEFAULT = 'claude-opus-5-5';"), 'الافتراضيّ Opus 5.5');
 assert.ok(agent.includes("ids.find((id) => /^claude-opus-5-5$/.test(id)) || // v-models-latest\n        ids.find((id) => /^claude-opus-5$/.test(id)) ||"), 'الرجوع عند 404 يفضّل Opus 5.5 ثمّ 5');
-assert.ok(agent.includes("/^claude-opus-5-5/.test(m) ? { output_config: { effort: 'high' } } : {}"), 'جهد high صريح على 5.5');
+assert.ok(agent.includes(": (/^claude-opus-5-5/.test(m) ? { output_config: { effort: 'high' } } : {});"), 'جهد high صريح على 5.5 لغير المالك (v-agent-deep: المالك xhigh)');
 assert.ok(agent.includes("'opus-5': 'claude-opus-5-5',"), 'اختيار الوكيل المحفوظ القديم يُرقّى');
 assert.ok(!/'claude-sonnet-5'\s*;\s*\n\s*let steps/.test(agent), 'لا افتراضيّ Sonnet قديم');
 // ① الإعلان عن النموذج للمالك
@@ -31,7 +31,7 @@ for (const l of publicStatuses) assert.ok(!/Claude|DeepSeek|Mistral|Groq|Anthrop
 assert.ok(agent.includes("تسعة محرّكات ذكاء اصطناعي تعمل كلّها بمفاتيح الخادم"), 'تعليمات التطبيق بلا أسماء');
 assert.ok(!agent.includes("المزودون التسعة (كلهم يعملون بمفاتيح السيرفر"), 'السطر القديم بالأسماء حُذف');
 // ④ مفتاح GitHub للمالك وحده
-assert.ok(agent.includes("readGithub(input, isOwner(runUser) ? undefined : { anonymous: true })"), 'غير المالك يقرأ بلا مفتاح');
+assert.ok(agent.includes("readGithub(input, isOwner(runUser) ? { deep: true } : { anonymous: true })"), 'غير المالك يقرأ بلا مفتاح، والمالك بمفتاحه وعميقًا (v-agent-deep)');
 const GH = require('../api/_lib/github-read.js');
 (async () => {
   assert.strictEqual(await GH.resolveGithubToken({ anonymous: true, env: { GITHUB_TOKEN: 'tok' } }), '', 'anonymous يتجاهل مفتاح البيئة');

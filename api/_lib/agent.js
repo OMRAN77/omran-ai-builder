@@ -58,7 +58,7 @@ const TOOLS = [
   {
     // v-agent-github (طلب المالك ١٢ سبتمبر «يقرأ الجيت هوب»): قراءة عبر واجهة GitHub لا صفحاته.
     name: 'read_github',
-    description: 'اقرأ من GitHub مباشرةً عبر واجهته الرسميّة: مستودع (وصفه وشجرة ملفّاته وREADME)، أو مجلّدًا، أو ملفًّا بأسطر مرقّمة، أو آخر الدفعات/الالتزامات على الفرع (what=commits)، أو طلب سحب (وصفه وملفّاته المتغيّرة)، أو مسألة (نصّها وتعليقاتها)، أو بحث نصّي داخل المستودع (query). أعطها رابط GitHub كما هو أو owner/repo مع path. الملفّ الطويل يعود مقطّعًا: أعد الاستدعاء نفسه مع from لقراءة التتمّة. استخدمها بدل fetch_page لأيّ رابط github.com.',
+    description: 'اقرأ من GitHub مباشرةً عبر واجهته الرسميّة: مستودع (وصفه وشجرة ملفّاته وREADME)، أو مجلّدًا، أو ملفًّا بأسطر مرقّمة، أو آخر الدفعات/الالتزامات على الفرع (what=commits)، أو التزامًا واحدًا بفرقه (رابط /commit/<sha> أو what=commit مع ref)، أو طلب سحب (وصفه وملفّاته المتغيّرة وفرقه diff)، أو مسألة (نصّها وتعليقاتها)، أو بحث نصّي داخل المستودع (query). أعطها رابط GitHub كما هو أو owner/repo مع path. الملفّ الطويل يعود مقطّعًا: أعد الاستدعاء نفسه مع from لقراءة التتمّة. استخدمها بدل fetch_page لأيّ رابط github.com.',
     input_schema: {
       type: 'object',
       properties: {
@@ -66,7 +66,7 @@ const TOOLS = [
         path: { type: 'string', description: 'مسار ملفّ أو مجلّد داخل المستودع (اختياريّ مع owner/repo)' },
         ref: { type: 'string', description: 'فرع أو وسم أو commit (اختياريّ؛ الافتراضيّ الفرع الرئيسيّ)' },
         from: { type: 'integer', description: 'رقم السطر الذي تبدأ منه قراءة ملفّ طويل (اختياريّ)' },
-        what: { type: 'string', enum: ['auto', 'commits'], description: 'commits = آخر الدفعات (الالتزامات) على المستودع/الفرع بدل محتواه (اختياريّ)' },
+        what: { type: 'string', enum: ['auto', 'commits', 'commit'], description: 'commits = آخر الدفعات (الالتزامات) على المستودع/الفرع بدل محتواه؛ commit = التزام واحد بفرقه (ref = sha) (اختياريّ)' },
         limit: { type: 'integer', description: 'عدد الالتزامات المطلوب مع what=commits، أو عدد نتائج query (الافتراضيّ ١٥، الأقصى ٤٠)' },
         query: { type: 'string', description: 'بحث نصّي داخل المستودع (اسم دالّة، ثابت، رسالة خطأ…) — يرجع كلّ الملفّات المطابقة مع مقتطف من كلّ واحد بدل تخمين مكانها. يُحصر بـpath إن ذُكر.' },
       },
@@ -138,6 +138,7 @@ function trailDid(name, input) {
   if (name === 'delegate_code_task') return 'سلّمتُ مهمّة كود إلى Claude Code في GitHub Actions: «' + (s(input.task, 70) || '؟') + '»';
   if (name === 'check_code_task') return 'تحقّقتُ من مهمّة الكود #' + (s(input.issue, 10) || '؟');
   if (name === 'read_app_errors') return 'قرأتُ سجلّ أخطاء التطبيق الحيّ';
+  if (name === 'read_github' && input.query) return 'بحثتُ في كود ' + (s(input.url, 50) || '') + ' عن «' + s(input.query, 50) + '»'; // v-agent-deep
   if (name === 'read_github') return 'قرأتُ من GitHub ' + (s(input.url, 70) || '') + (input.path ? ' ' + s(input.path, 40) : '') + (input.from > 1 ? ' من السطر ' + input.from : '') + (input.what === 'commits' ? ' — آخر الدفعات' : '');
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
@@ -181,7 +182,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 
 ═══ ذكاء الردود ═══
 1. آخر رسالة من المستخدم هي مهمتك الوحيدة الآن — إذا غيّر الموضوع اتبع الموضوع الجديد فورًا وانسَ القديم تمامًا؛ السجل خلفية فقط وليس قائمة مهام. التزم بآخر موضوع فقط. ممنوع منعًا باتًا ذكر أي مشروع أو محادثة سابقة (لعبة، تطبيق، أي شي) في التحية أو من نفسك — فقط إذا المستخدم سأل عنها بنفسه.
-1ب. الرد الافتراضي = 3-4 أسطر كحد أقصى. ممنوع دفق قوائم وتفاصيل طويلة إلا إذا المستخدم طلب "تفاصيل" أو "اشرح" صراحةً.
+1ب. الرد الافتراضي = 3-4 أسطر كحد أقصى. ممنوع دفق قوائم وتفاصيل طويلة إلا إذا المستخدم طلب "تفاصيل" أو "اشرح" صراحةً. الاستثناء: تحليل كود أو مستودع، أو تشخيص عطل، أو حلّ مسألة — طوله بقدر ما يحتاجه الحلّ الكامل بدليله (القاعدة 44-ب)، بلا حشو.
 2. ممنوع منعًا باتًا ترد بـ"جاري البناء" أو "تم ✅" أو أي رد فارغ بدون نتيجة فعلية. إما تنفذ فعليًا في نفس الرد، أو تقول بصراحة "ما قدرت لأن...".
 3. الحسابات والدفع والإجراءات الرسمية والحكومية: إذا ما عندك معلومة مؤكدة من بحث حقيقي، قل "ما عندي معلومات مؤكدة، راجع المصدر الرسمي". ممنوع التخمين نهائيًا.
 4. تذكّر كل ما دار في المحادثة الحالية وابنِ عليه — لا تعيد سؤالًا أجاب عنه المستخدم.
@@ -218,7 +219,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 25. أي رابط تعطيه: تأكد منه بـ web_search أو fetch_page أولًا — ممنوع روابط من الذاكرة.
 25-ب. قبل أول أداة في أي مهمة تحتاج أكثر من خطوة واحدة: اكتب سطرًا واحدًا فقط يبدأ بـ🗺️ يعلن خطتك بـ١٥ كلمة أو أقل، ثم انطلق فورًا. سطر واحد لا قائمة، ولا تنتظر موافقة عليه، ولا تكرره لاحقًا. المهمة التي تُنجزها بلا أدوات لا تحتاج هذا السطر.
 25-ج. أداة publish تنشر ما بنيتَه في هذا التشغيل وتعيد رابطًا حقيقيًا: لا تستدعها إلا إذا طلب المستخدم النشر أو رابطًا صراحة، ولا تعطِ إلا الرابط الذي أعادته الأداة حرفًا بحرف (ممنوع تأليف رابط)، ولا تضعه في صفحة «استكشف» العامة إلا بطلب صريح. وبعد النشر اذكر أن الرابط عام لمن يملكه.
-25-د. أي رابط github.com أو ذكر مستودع أو ملف على GitHub: استخدم read_github لا fetch_page — تعطيك شجرة الملفات، والملف بأسطر مرقمة، وطلبات السحب والمسائل. الملف الطويل يعود مقطعًا فأعد الاستدعاء مع from حتى تقرأه كله قبل أن تحكم عليه. لا تحلل ولا تعدل كودًا من GitHub قبل قراءته فعلًا بهذه الأداة. ولآخر الدفعات (الالتزامات) على المستودع استخدمها مع what=commits (وref للفرع وlimit للعدد). لا تخمّن أيّ ملفّ يحوي رمزًا أو سلوكًا: ابحث عنه أوّلًا بـquery (اسم الدالّة أو الثابت أو النصّ) بدل تصفّح ملفّات عشوائيًّا، ثم اقرأ الملفّ المطابق كاملًا.
+25-د. أي رابط github.com أو ذكر مستودع أو ملف على GitHub: استخدم read_github لا fetch_page — تعطيك شجرة الملفات، والملف بأسطر مرقمة، وطلبات السحب والمسائل. الملف الطويل يعود مقطعًا فأعد الاستدعاء مع from حتى تقرأه كله قبل أن تحكم عليه. لا تحلل ولا تعدل كودًا من GitHub قبل قراءته فعلًا بهذه الأداة. ولآخر الدفعات (الالتزامات) على المستودع استخدمها مع what=commits (وref للفرع وlimit للعدد). لا تخمّن أيّ ملفّ يحوي رمزًا أو سلوكًا: ابحث عنه أوّلًا بـquery (اسم الدالّة أو الثابت أو النصّ) بدل تصفّح ملفّات عشوائيًّا، ثم اقرأ الملفّ المطابق كاملًا، وتتبّع كلّ دالّة يستدعيها أو تستدعيه حتّى تصل الجذر. ولطلب سحب أو التزام اقرأ الفرق (diff) نفسه لا أسماء الملفّات وحدها (what=commit مع ref للالتزام).
 25-هـ. write_github (تظهر للمالك فقط): ترفع ملفات إلى مستودعه على فرع جديد بالتزام واحد وتفتح طلب سحب — لا تدفع إلى الفرع الرئيسي أبدًا؛ الدمج والنشر بيد المالك. لا ترفع إلا بطلب صريح («ارفع» / «ادفع» / «سوّ PR»)، واقرأ الملف الحالي بـread_github قبل تعديله وأعده كاملًا لا مقتطفًا، وأعطِ المستخدم رابط طلب السحب حرفًا بحرف ولا تقل إنه نُشر.
 25-ز. delegate_code_task وcheck_code_task (للمالك وحده): تغيير حقيقيّ في مستودع المالك (إصلاح عطل، ميزة، إعادة هيكلة، أيّ شيء يحتاج اختبارًا) لا تكتبه أنت بـwrite_github بل تسلّمه بـdelegate_code_task إلى Claude Code في GitHub Actions — يقرأ المستودع كاملًا ويعدّل ويشغّل npm run ci ويدفع فرعًا. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا ولماذا وأين (مسارات الملفّات) ومعيار النجاح، وبلا أسرار. الأداة تعود فورًا بمسألة وروابط والتنفيذ يأخذ دقائق: قل ذلك للمستخدم وأعطه الروابط حرفًا بحرف ولا تدّعِ وجود طلب سحب. حين يسأل «شو صار» أو يمرّ وقت: check_code_task برقم المسألة — هي تفتح طلب السحب عند اكتمال الدفع وتعيد حالة الفحوص. write_github يبقى للرفع المباشر الصغير (ملفّ أو اثنان بلا حاجة لاختبار).
 25-ح. مستودعك أنت: عمران AI Builder نفسه مصدره على GitHub في OMRAN77/omran-ai-builder. أيّ سؤال عن سلوك حقيقيّ في كوده — لماذا يصير كذا بالضبط، فيه عطل، كيف مبني شيء تقنيًّا، أو مراجعة/فهم جزء منه — لا تجاوب من وصف الخريطة أعلاه وحده ولا من التخمين: اقرأه فعليًّا بـread_github أوّلًا (ابحث بـquery إن لم تعرف الملفّ، واقرأ مجلّد knowledge/ فيه DECISIONS.md لتاريخ القرارات وأسبابها وPITFALLS.md للفخاخ المثبَتة) ثمّ جاوب على ما قرأته فعلًا. سؤال «وين ألقى كذا» في الواجهة يكفيه وصف الخريطة — هذا لسؤال «ليش» و«كيف مبني» و«فيه خلل»، وغير بناء تطبيق جديد للمستخدم (نقطة 18).
@@ -265,6 +266,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 41. "كمّل" أو "تابع" = واصل آخر عمل في هذا المشروع من حيث توقف بالضبط — لا تعِد البناء من الصفر ولا تسأل "أكمل ماذا؟" إلا إذا لا يوجد عمل سابق فعلًا.
 42. تقرير ختام للمهام الكبيرة (بناء أو تعديل متعدد الخطوات): سطران في النهاية — ماذا أنجزت وماذا اختبرت. الأسئلة العادية بلا تقرير.
 43. مستوى استشاري في كل مجال: سؤال طبي/قانوني/مالي/هندسي/تسويقي = إجابة بعمق مختص حقيقي (أرقام، خطوات، تحذيرات مهمة) لا كلام عام — وابحث بـ web_search إذا كانت الدقة تتطلب معلومة حديثة.
+44-ب. التعمّق في حلّ المسائل (كود، مستودع، عطل، رياضيّات، منطق): (١) افهم المطلوب بدقّة وحدّد ما يثبت أنّه حُلّ. (٢) اجمع الدليل قبل الرأي: ابحث واقرأ الملفّات كاملة، ولا تحكم على ما لم تقرأه. (٣) الجذر لا العَرَض: تتبّع السبب حتّى أصله وسمِّه بالملفّ والسطر (مسار:سطر) أو بالخطوة الرياضيّة. (٤) تحقّق: شغّل الحلّ أو الحساب بـrun_js، وجرّب حالة حدّيّة واحدة على الأقلّ. (٥) إن بقي احتمالان فاذكر ما يفصل بينهما وافحصه بدل الاختيار العشوائيّ. (٦) الجواب: الجذر بدليله، ثمّ الحلّ، ثمّ ما تحقّقت منه وما لم تتحقّق منه — صراحةً.
 44. استخدم أدواتك بلا تردد: معلومة حية → web_search فورًا؛ كود يحتاج تحققًا → test_html أو run_js فورًا؛ حسبة معقدة → run_js. الأداة المناسبة في اللحظة المناسبة هي قوتك — لا تخمّن ما تستطيع التحقق منه.
 
 ═══ الحماية ═══
@@ -508,6 +510,13 @@ module.exports = async (req, res) => {
     // لكن الرفع بلا قيد يفتح بابًا على فاتورتك: كل خطوة استدعاء كامل بسياق
     // متراكم، فالخطوة العشرون أغلى من الأولى بكثير. لذلك سقفان لا واحد:
     // عدد الخطوات، وميزانية وقت للمهمة كلها.
+    /* v-agent-deep (طلب المالك ٢٩ سبتمبر «تحليل قويّ… يتعمّق في حلّ المسائل»): تشغيل المالك بجهد xhigh — أنسب
+       مستوى للبرمجة والعمل الوكيليّ على Opus 5.5/Sonnet 5 — وسقف إخراج ٦٤ ألفًا (التفكير + الردّ معًا). غير المالك كما
+       كان (5.5 → high، ٣٢ ألفًا) كي لا يُستنزف رصيد المالك. */
+    const deepRun = isOwner(runUser);
+    const EFFORT_MODEL_RE = /^claude-(?:opus-5|sonnet-5|fable)/;
+    const agentEffort = (m) => (deepRun && EFFORT_MODEL_RE.test(m)) ? { output_config: { effort: 'xhigh' } }
+      : (/^claude-opus-5-5/.test(m) ? { output_config: { effort: 'high' } } : {});
     const MAX_STEPS = Math.max(1, Math.min(40, Number(process.env.AGENT_MAX_STEPS) || 30));
     const MAX_TASK_MS = Math.max(30000, Number(process.env.AGENT_MAX_MS) || 240000);
     const taskStart = Date.now();
@@ -530,12 +539,12 @@ module.exports = async (req, res) => {
         },
         body: JSON.stringify(Object.assign({
           model: m,
-          max_tokens: 32000,
+          max_tokens: deepRun ? 64000 : 32000,
           system,
           messages: convo,
           tools: toolsFor(runUser),
           stream: true,
-        }, /^claude-opus-5-5/.test(m) ? { output_config: { effort: 'high' } } : {})),
+        }, agentEffort(m))),
       });
       let upstream = await doCall(model);
       let modelFellBack = false;
@@ -543,6 +552,18 @@ module.exports = async (req, res) => {
         model = await resolveModel();
         modelFellBack = true;
         upstream = await doCall(model);
+      }
+      /* v-agent-deep: كتلة تفكير مرفوضة (توقيع/ترتيب) = تُنزع كلّ كتل التفكير من السجلّ وإعادة واحدة — الاسترداد
+         الموثَّق؛ الخطوة تكمل بلا تفكير ما قبلها بدل أن يسقط التشغيل كلّه. */
+      if (!upstream.ok && upstream.status === 400 && convo.some((c) => Array.isArray(c.content) && c.content.some((b) => b && (b.type === 'thinking' || b.type === 'redacted_thinking')))) {
+        const why = await upstream.text().catch(() => '');
+        if (/thinking|signature/i.test(why)) {
+          logError('agent/thinking-replay', new Error(why.slice(0, 300)));
+          convo.forEach((c) => { if (Array.isArray(c.content)) c.content = c.content.filter((b) => !(b && (b.type === 'thinking' || b.type === 'redacted_thinking'))); });
+          upstream = await doCall(model);
+        } else {
+          upstream = { ok: false, status: 400, text: async () => why };
+        }
       }
       if (upstream.ok && !modelAnnounced && isOwner(runUser)) {
         modelAnnounced = true;
@@ -627,6 +648,9 @@ module.exports = async (req, res) => {
             curIdx = ev.index;
             const cb = ev.content_block || {};
             contentBlocks[curIdx] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
+            /* v-agent-deep: التفكير يُحفظ كما وصل (نصّه — فارغ افتراضًا — وتوقيعه) ليعود في الخطوة التالية */
+            if (cb.type === 'thinking') { contentBlocks[curIdx].thinking = cb.thinking || ''; contentBlocks[curIdx].signature = cb.signature || ''; }
+            else if (cb.type === 'redacted_thinking') contentBlocks[curIdx].data = cb.data || '';
             if (cb.type === 'tool_use' && cb.name === 'web_search') send({ phase: 'executing', status: '🔍 الوكيل يتحقق من المصادر الحية…' });
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ phase: 'executing', status: '🌐 الوكيل يقرأ صفحة ويب…' });
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ phase: 'executing', status: '🐙 الوكيل يقرأ من GitHub…' });
@@ -642,6 +666,8 @@ module.exports = async (req, res) => {
             if (!cb) continue;
             if (ev.delta && ev.delta.type === 'text_delta') { cb.text += ev.delta.text; send({ phase: 'reporting', delta: ev.delta.text }); }
             else if (ev.delta && ev.delta.type === 'input_json_delta') cb.inputJson += ev.delta.partial_json;
+            else if (ev.delta && ev.delta.type === 'thinking_delta') cb.thinking = (cb.thinking || '') + (ev.delta.thinking || '');
+            else if (ev.delta && ev.delta.type === 'signature_delta') cb.signature = (cb.signature || '') + (ev.delta.signature || '');
           } else if (ev.type === 'message_delta') {
             if (ev.delta && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
           }
@@ -661,14 +687,18 @@ module.exports = async (req, res) => {
 
       if (stopReason === 'tool_use') {
         // Append assistant turn + tool results, then continue the loop.
+        /* v-agent-deep: كتل التفكير (والمحجوبة) تعود بلا تعديل وبترتيبها — التوثيق يطلبها في حلقة الأدوات، وحذفها
+           كان يبدأ كلّ خطوة من الثلاثين بلا تفكير ما قبلها. */
         const assistantContent = contentBlocks.filter(Boolean).map((cb) => {
+          if (cb.type === 'thinking') return { type: 'thinking', thinking: cb.thinking || '', signature: cb.signature || '' };
+          if (cb.type === 'redacted_thinking') return { type: 'redacted_thinking', data: cb.data || '' };
           if (cb.type === 'tool_use') {
             let input = {};
             try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('agent/tool-input-parse', e); }
             return { type: 'tool_use', id: cb.id, name: cb.name, input };
           }
           return { type: 'text', text: cb.text || ' ' };
-        }).filter((c) => c.type === 'tool_use' || (c.text && c.text.trim()));
+        }).filter((c) => c.type === 'tool_use' || (c.type === 'thinking' && c.signature) || (c.type === 'redacted_thinking' && c.data) || (c.text && c.text.trim()));
         convo.push({ role: 'assistant', content: assistantContent });
 
         const toolResults = [];
@@ -680,7 +710,7 @@ module.exports = async (req, res) => {
           if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           /* v-owner-token: مفتاح GitHub (البيئة أو الخزنة) للمالك وحده — غيره يقرأ العامّ بلا مفتاح. */
-          else if (cb.name === 'read_github') result = await readGithub(input, isOwner(runUser) ? undefined : { anonymous: true });
+          else if (cb.name === 'read_github') result = await readGithub(input, isOwner(runUser) ? { deep: true } : { anonymous: true }); // v-agent-deep: قراءة عميقة للمالك
           else if (cb.name === 'write_github') {
             // للمالك وحده، وبسقف ثلاث رفعات في التشغيل: حلقة ترفع بلا حدّ تُغرق المستودع بالفروع.
             if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
@@ -717,7 +747,7 @@ module.exports = async (req, res) => {
               ? '✗ نشرتَ ثلاث مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المستخدم آخر رابط حصلتَ عليه.'
               : await doPublish(input, lastCodeIn(run.text) || lastTested, runUser, req.headers && req.headers.host);
           }
-          toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, 8000) });
+          toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, (deepRun && cb.name === 'read_github') ? 30000 : 8000) }); // v-agent-deep: الدفعة العميقة (٢٤ ألفًا) لا تُقصّ
 
           // سطر واحد صادق لكل أداة: ماذا فعلتُ وماذا حصلتُ. يُبثّ حالًا ويُقيَّد
           // في الدفتر — فالأثر يبقى وإن سقط الاتصال أو أُغلق التبويب.
