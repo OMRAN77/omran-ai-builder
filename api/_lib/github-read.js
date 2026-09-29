@@ -228,27 +228,98 @@ async function readIssue(t, o) {
   return out.join('\n');
 }
 
-/* ---------- بحث نصّي داخل الشيفرة (v-github-code-search: المالك «نفس الفكرة عندما يقرأ الكود» —
-   القراءة العميقة (v-claude-deep-github) توسّع كلّ قراءة لكن تبقى تصفّحًا: ملفّ فملفّ بلا بحث، خلافًا
-   لـGrep الذي يبحث كلّ المستودع دفعة واحدة. بحث كود GitHub الرسميّ (/search/code) يسدّ الفجوة: يرجع
-   كلّ الملفّات المطابقة مع مقتطف من كلّ واحد، فلا حاجة لتخمين أين يُعرَّف رمز أو يُستعمَل. حدّه أشدّ من
-   بقيّة الواجهة (١٠/دقيقة) فرسالة الفشل تشرحه لا تُسقطه صامتًا. ---------- */
+/* ---------- بحث نصّي حقيقيّ في محتوى الملفّات، محصور بمسار (v-github-code-search-2) ----------
+   لقطة المالك: بحث GitHub الرسميّ (/search/code) رجع «لا نتائج» لـomranAgentTools رغم وجوده فعلًا في
+   app-17-agent-tools.js — فهرسه (نسخة GitHub القديمة، لا محرّك الموقع الجديد) ناقص التغطية بإثبات حيّ،
+   لا نظريّ. البديل «نزّل المستودع كلّه واغرب محليًّا» (نفس أسلوب fetchRepoZip) فُحص وفشل: أرشيف هذا
+   المستودع ١٣٧م.ب (وسائط كبيرة غير مستخدمة تبقى — قرار مالك) مقابل ZIP_MAX ٨م.ب، فلا ينزل أصلًا.
+   الحلّ العمليّ: شجرة الملفّات الكاملة نداء واحد رخيص (بلا محتوى)، ثمّ قراءة محتوى كلّ ملفّ **تحت
+   المسار المطلوب فقط** بنداءات متوازية محدودة (لا حدّ جسم كنزول المستودع، فقط عدد ملفّات المسار —
+   api/_lib مثلًا ١٦٢ ملفًّا، tests ١٩٨ — كلاهما دون السقف). مطابقة حرفيّة حسّاسة لحالة الأحرف، تمامًا
+   كـGrep — موثوقة بلا فهرسة خارجيّة قد تتخلّف. */
+const SEARCH_MAX_FILES = 400;   // أكثر من api/_lib (١٦٢) وtests (١٩٨) بمريح؛ أكبر يُطلب تضييق المسار
+const SEARCH_MAX_FILES_DEEP = 700;
+const SEARCH_CONCURRENCY = 15;  // نداءات متوازية — لا تُغرق GitHub ولا الدالّة
+const SEARCH_FILE_BYTES_MAX = 400000; // فوقه ليس كودًا منطقيًّا (صورة/بيانات) — يُتخطّى بلا تنزيله
+const SEARCH_BUDGET_MS = 25000;
+
+async function resolveDefaultRef(t, o) {
+  if (t.ref) return t.ref;
+  const r = await ghFetch('/repos/' + repoOf(t), o);
+  if (!r.ok) return 'main';
+  const j = await r.json().catch(() => ({}));
+  return j.default_branch || 'main';
+}
+
+async function readContentSearch(t, o, query, limit) {
+  const deep = !!(o && o.deep);
+  const n = Math.max(1, Math.min(deep ? 40 : 15, parseInt(limit, 10) || (deep ? 40 : 15)));
+  const ref = await resolveDefaultRef(t, o);
+  const tr = await ghFetch('/repos/' + repoOf(t) + '/git/trees/' + encodeURIComponent(ref) + '?recursive=1', o);
+  if (!tr.ok) return ghError(tr, 'شجرة ' + repoOf(t), o && o.env, o && o.anonymous);
+  const tj = await tr.json().catch(() => ({}));
+  const prefix = t.path.replace(/\/+$/, '') + '/';
+  const candidates = (tj.tree || []).filter((e) => e.type === 'blob' && (e.path + '/').indexOf(prefix) === 0
+    && Number(e.size) > 0 && Number(e.size) <= SEARCH_FILE_BYTES_MAX
+    && !zipLib.SKIP_DIR_PATTERNS.some((p) => p.test(e.path)));
+  if (!candidates.length) return 'لا ملفّات كود تحت ' + repoOf(t) + '/' + t.path + ' (أو المسار غير موجود على ' + ref + ').';
+  const cap = deep ? SEARCH_MAX_FILES_DEEP : SEARCH_MAX_FILES;
+  if (candidates.length > cap) return 'المسار ' + t.path + ' فيه ' + candidates.length + ' ملفًّا — أكثر من حدّ البحث الواحد (' + cap + '). ضيّق المسار لمجلّد أصغر داخله.';
+
+  const deadline = Date.now() + SEARCH_BUDGET_MS;
+  const hits = [];
+  let cursor = 0;
+  async function worker() {
+    while (cursor < candidates.length && hits.length < n && Date.now() < deadline) {
+      const e = candidates[cursor++];
+      let text;
+      try {
+        const fr = await ghFetch('/repos/' + repoOf(t) + '/contents/' + encPath(e.path) + '?ref=' + encodeURIComponent(ref),
+          Object.assign({}, o, { raw: true, timeoutMs: 8000 }));
+        if (!fr.ok) continue;
+        text = await fr.text();
+      } catch (err) { continue; } // ملفّ واحد فشل لا يوقف البحث كلّه
+      if (text.indexOf(String.fromCharCode(0)) !== -1 || text.indexOf(query) === -1) continue;
+      const lines = text.split('\n');
+      const matchLines = [];
+      for (let li = 0; li < lines.length && matchLines.length < 3; li++) if (lines[li].indexOf(query) !== -1) matchLines.push({ n: li + 1, text: lines[li] });
+      hits.push({ path: e.path, lines: matchLines });
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(SEARCH_CONCURRENCY, candidates.length) }, worker));
+
+  if (!hits.length) return 'لا نتائج لـ«' + query + '» في ' + repoOf(t) + '/' + t.path + ' (بحث فعليّ في محتوى ' + candidates.length + ' ملفًّا — لا فهرسة). جرّب كلمة أدقّ أو أقصر، أو تأكّد من التهجئة.';
+  const shown = hits.slice(0, n).sort((a, b) => (a.path < b.path ? -1 : 1));
+  const out = ['🔎 «' + query + '» في ' + repoOf(t) + '/' + t.path + ' — ' + shown.length + (hits.length > shown.length ? '+' : '') + ' ملفّ (بحث فعليّ في محتوى ' + candidates.length + ' ملفًّا):'];
+  for (const h of shown) {
+    out.push('\n📄 ' + h.path);
+    for (const l of h.lines) out.push('  ' + l.n + '| ' + l.text.trim().slice(0, 200));
+  }
+  out.push('\nلقراءة ملفّ كاملًا: read_github بمساره.');
+  return out.join('\n');
+}
+
+/* ---------- بحث بفهرس GitHub الرسميّ (/search/code) — بلا مسار محدَّد فقط ---------- */
+/* المسار المحدَّد يذهب لـreadContentSearch (فوق) الموثوقة دائمًا؛ بلا مسار لا بديل غير هذا الفهرس (تنزيل
+   المستودع كلّه للبحث بلا حصر مستحيل هنا — ١٣٧م.ب). فهرسه قد ينقص رموزًا موجودة فعلًا (مُثبَت حيًّا)،
+   فالرسالة عند «لا نتائج» توجّه صراحةً لتضييق المسار بدل الإيحاء بأنّ الرمز غير موجود. */
 async function readSearch(t, o, query, limit) {
   const q = String(query || '').trim();
   if (!q) return 'أعطِ نصّ البحث (query) — اسم دالّة أو ثابت أو رسالة خطأ تريد إيجاد كلّ الملفّات التي تذكره.';
+  if (t.path) return readContentSearch(t, o, q, limit);
   const n = Math.max(1, Math.min((o && o.deep) ? 40 : 15, parseInt(limit, 10) || ((o && o.deep) ? 40 : 15)));
-  const scoped = q + ' repo:' + repoOf(t) + (t.path ? ' path:' + t.path : '');
+  const scoped = q + ' repo:' + repoOf(t);
   const r = await ghFetch('/search/code?per_page=' + n + '&q=' + encodeURIComponent(scoped), Object.assign({}, o, { textMatch: true }));
   if (!r.ok) {
-    if (r.status === 403 || r.status === 422 || r.status === 429) return 'حدّ البحث في GitHub وصل حدّه (عشرة طلبات بالدقيقة) أو الطلب مرفوض — أعد المحاولة بعد قليل، أو اقرأ ملفًّا بعينه إن عرفت مكانه.';
+    if (r.status === 403 || r.status === 422 || r.status === 429) return 'حدّ البحث في GitHub وصل حدّه (عشرة طلبات بالدقيقة) أو الطلب مرفوض — أعد المحاولة بعد قليل، أو ضيّق البحث بمسار (path) فيبحث في المحتوى الفعليّ بدل الفهرس.';
     return ghError(r, 'بحث «' + q + '» في ' + repoOf(t), o && o.env, o && o.anonymous);
   }
   const j = await r.json().catch(() => ({}));
   const items = Array.isArray(j.items) ? j.items : [];
-  if (!items.length) return 'لا نتائج لـ«' + q + '» في ' + repoOf(t) + (t.path ? '/' + t.path : '') + '. جرّب كلمة أدقّ أو أقصر، أو تأكّد من التهجئة.';
+  if (!items.length) return 'لا نتائج لـ«' + q + '» في ' + repoOf(t) + ' — تنبيه: هذا فهرس بحث GitHub وقد لا يشمل كلّ رمز موجود فعلًا. للتأكّد: كرّر النداء مع path لمجلّد محدَّد (مثل api/_lib أو js أو tests) فيبحث في المحتوى الفعليّ حرفيًّا لا فهرسًا.';
   const total = Number(j.total_count) || items.length;
-  const out = ['🔎 «' + q + '» في ' + repoOf(t) + (t.path ? '/' + t.path : '') + ' — ' + total + (j.incomplete_results ? '+' : '') + ' نتيجة'
-    + (items.length < total ? '، أوّل ' + items.length : '') + ':'];
+  const out = ['🔎 «' + q + '» في ' + repoOf(t) + ' — ' + total + (j.incomplete_results ? '+' : '') + ' نتيجة'
+    + (items.length < total ? '، أوّل ' + items.length : '') + ' (فهرس GitHub — للتأكّد الكامل كرّر مع path):'];
   for (const it of items) {
     out.push('\n📄 ' + (it.path || it.name || '؟'));
     const matches = Array.isArray(it.text_matches) ? it.text_matches : [];
@@ -371,4 +442,4 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX };
+module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP };
