@@ -15,6 +15,30 @@
   var root, grid, panel, cur = null, photos = [], busy = false;
   /* v-trend-people: حتّى ثلاث شخصيّات في الفيديو الواحد — صورة لكلّ واحد، والكلّ يظهر معًا. */
   var MAX_PEOPLE = 3;
+  /* v-trend-413 (المالك بلقطة «❌ تعذّر: HTTP 413» مع شخصيّتين): الصور كانت تُقرأ خامًا بـreadAsDataURL،
+     وصورة جوّال واحدة ٣–١٢م تصير بـbase64 أكبر بالثلث — فيتجاوز الطلب حدّ حجم الجسم ويُرفض عند حافّة
+     الاستضافة قبل أن يصل الخادم أصلًا. التصغير هنا بنفس وصفة __compressImg المثبَتة (v530) في مودالات
+     الاستوديو: أطول ضلع ١٠٢٤ وJPEG ٠٫٨٥ ⇒ ~٢٠٠ كيلوبايت للصورة. الملفّ الذي يتعذّر فكّه يُتخطّى. */
+  var SHRINK_MAX = 1024, SHRINK_Q = 0.85;
+  function shrink(file, done){
+    var r = new FileReader();
+    r.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var w = img.width, h = img.height;
+          if(Math.max(w, h) > SHRINK_MAX){ var k = SHRINK_MAX / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+          var c = document.createElement('canvas'); c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          done(c.toDataURL('image/jpeg', SHRINK_Q));
+        }catch(e){ done(''); }
+      };
+      img.onerror = function(){ done(''); };
+      img.src = String(r.result || '');
+    };
+    r.onerror = function(){ done(''); };
+    r.readAsDataURL(file);
+  }
 
   function card(t){
     var c = document.createElement('div');
@@ -86,10 +110,10 @@
       var files = Array.prototype.slice.call(fi.files || []).slice(0, MAX_PEOPLE - photos.length);
       var left = files.length; if(!left) return;
       files.forEach(function(f){
-        var r = new FileReader();
-        r.onload = function(){ photos.push({ dataUrl: String(r.result), mime: f.type || 'image/jpeg' }); if(!--left) renderPeople(strip, t); };
-        r.onerror = function(){ if(!--left) renderPeople(strip, t); };
-        r.readAsDataURL(f);
+        shrink(f, function(dataUrl){
+          if(dataUrl) photos.push({ dataUrl: dataUrl, mime: 'image/jpeg' });
+          if(!--left) renderPeople(strip, t);
+        });
       });
     };
     add.onclick = function(){ if(!busy) fi.click(); };
@@ -169,6 +193,8 @@
       var m = Math.max(1, Math.ceil((Number(e.retryAfter) || 180) / 60));
       return ui('cooldown').replace('{m}', String(m));
     }
+    /* v-trend-413: «HTTP 413» رمز حافّة لا رسالة — الصور أثقل من أن تُرسَل */
+    if(/\b413\b/.test(String((e && e.message) || ''))) return ui('tooBig');
     return ui('fail') + ': ' + String((e && e.message) || e).slice(0, 160);
   }
 
