@@ -185,7 +185,12 @@ window.__omranWhenSeen = (function () {
 <meta name="apple-mobile-web-app-title" content="Omran AI Builder">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- v-perf-fonts-async: خطّ جوجل كان <link rel=stylesheet> عاديًّا يحجب الرسم الأوّل كاملًا حتى يستقرّ الاتصال
+     بجوجل (لا مهلة)؛ الآن غير حاجب (نمط loadCSS: media=print يحمّله بأولويّة منخفضة، onload يفعّله) مع
+     noscript احتياطيّ لمن عطّل JS. Tajawal تبقى fallback لأيّ فشل (v-fonts في tokens.css). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap"></noscript>
 <link rel="stylesheet" href="css/tokens.css?v=727">
 <link rel="stylesheet" href="css/redesign.css?v=688">
 <link rel="stylesheet" href="css/modules.css?v=662">
@@ -645,12 +650,12 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script src="/js/partials-core.js?v=645"></script>
+<script defer src="/js/partials-core.js?v=645"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
-<script src="/js/design-sels.js?v=560"></script>
+<script defer src="/js/design-sels.js?v=560"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
-<script src="/js/design-gen.js?v=609"></script>
+<script defer src="/js/design-gen.js?v=609"></script>
 
 
 <header>
@@ -974,7 +979,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=679"></script>
+<script defer src="/js/partials-settings.js?v=679"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
