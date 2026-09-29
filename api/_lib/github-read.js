@@ -48,6 +48,7 @@ function parseTarget(input) {
     } else if ((seg[0] === 'pull' || seg[0] === 'pulls') && /^\d+$/.test(seg[1] || '')) { kind = 'pr'; number = Number(seg[1]); }
     else if (seg[0] === 'issues' && /^\d+$/.test(seg[1] || '')) { kind = 'issue'; number = Number(seg[1]); }
     else if (seg[0] === 'commits') { kind = 'commits'; ref = ref || (seg[1] || ''); path = path || seg.slice(2).join('/'); } // v-secret-vault: آخر الدفعات
+    else if (seg[0] === 'commit' && seg[1]) { kind = 'commit'; ref = ref || seg[1]; } // v-agent-deep: التزام واحد بفرقه
     else kind = path ? 'path' : 'repo';
   } else if ((m = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:\/(.*))?$/.exec(raw))) {
     owner = m[1]; repo = m[2].replace(/\.git$/, '');
@@ -58,6 +59,7 @@ function parseTarget(input) {
   if (path && /(^|\/)\.\.(\/|$)/.test(path)) return null;
   if (ref && !/^[A-Za-z0-9_.\/-]{1,200}$/.test(ref)) return null;
   if (String(o.what || '').toLowerCase() === 'commits') kind = 'commits'; // v-secret-vault: what=commits
+  if (String(o.what || '').toLowerCase() === 'commit' && ref) kind = 'commit'; // v-agent-deep: التزام واحد (ref = sha)
   const from = parseInt(o.from, 10);
   return { owner, repo, ref, path, kind, number, from: Number.isFinite(from) && from > 1 ? from : 1 };
 }
@@ -194,11 +196,14 @@ async function readPR(t, o) {
   const out = ['🔀 PR #' + j.number + ': ' + (j.title || '') + ' — ' + (j.merged ? 'مدموج' : j.state) + ' · ' + ((j.user && j.user.login) || '؟'),
     'من ' + ((head.repo && head.repo.full_name) || '') + ':' + (head.ref || '') + ' إلى ' + (base.ref || '') + ' · +' + (j.additions || 0) + '/−' + (j.deletions || 0) + ' في ' + (j.changed_files || 0) + ' ملفًّا' + (j.mergeable_state ? ' · ' + j.mergeable_state : ''),
     j.body ? '\n' + String(j.body).slice(0, 2500) : ''];
-  const fr = await ghFetch('/repos/' + repoOf(t) + '/pulls/' + t.number + '/files?per_page=60', o);
+  const fr = await ghFetch('/repos/' + repoOf(t) + '/pulls/' + t.number + '/files?per_page=' + ((o && o.deep) ? 100 : 60), o);
   if (fr.ok) {
     const files = await fr.json();
+    const list = Array.isArray(files) ? files : [];
     out.push('\nالملفّات المتغيّرة:');
-    out.push((Array.isArray(files) ? files : []).map((f) => '- ' + f.filename + ' (' + f.status + ' +' + (f.additions || 0) + '/−' + (f.deletions || 0) + ')').join('\n'));
+    out.push(list.map((f) => '- ' + f.filename + ' (' + f.status + ' +' + (f.additions || 0) + '/−' + (f.deletions || 0) + ')').join('\n'));
+    const diff = formatPatches(list, o && o.deep); // v-agent-deep: الفرق نفسه لا أسماء الملفّات وحدها
+    if (diff) out.push(diff);
     if (head.ref) out.push('\nلقراءة ملفّ منها: read_github برابط blob على الفرع ' + head.ref + (head.repo && head.repo.full_name ? ' في ' + head.repo.full_name : '') + '.');
   }
   return out.join('\n');
@@ -255,6 +260,43 @@ async function readSearch(t, o, query, limit) {
   return out.join('\n');
 }
 
+/* ---------- v-agent-deep: الفرق (diff) والتزام واحد ---------- */
+/* طلب المالك ٢٩ سبتمبر «تقوّي الوكيل يقرأ الجيت هوب — تحليل قويّ، يتعمّق في حلّ المسائل»: كان يرى أسماء الملفّات
+   المتغيّرة في طلب السحب بلا الفرق، ولا يفتح التزامًا واحدًا — فيحكم على تغيير لم يره. */
+const PATCH_FILE = 1500, PATCH_TOTAL = 6000;
+const DEEP_PATCH_FILE = 6000, DEEP_PATCH_TOTAL = 20000;
+function formatPatches(files, deep) {
+  const perFile = deep ? DEEP_PATCH_FILE : PATCH_FILE, total = deep ? DEEP_PATCH_TOTAL : PATCH_TOTAL;
+  const parts = [];
+  let used = 0, skipped = 0;
+  for (const f of files || []) {
+    if (!f || typeof f.patch !== 'string' || !f.patch) continue;
+    if (used >= total) { skipped++; continue; }
+    const room = Math.min(perFile, total - used);
+    const p = f.patch.length > room ? f.patch.slice(0, room) + '\n… (الفرق أطول — اقرأ الملفّ نفسه)' : f.patch;
+    parts.push('### ' + f.filename + '\n```diff\n' + p + '\n```');
+    used += p.length;
+  }
+  if (!parts.length) return '';
+  return '\nالفرق (diff):\n' + parts.join('\n') + (skipped ? '\n… و' + skipped + ' ملفًّا آخر بلا فرق معروض (السقف) — اقرأه بـread_github.' : '');
+}
+
+async function readCommit(t, o) {
+  const r = await ghFetch('/repos/' + repoOf(t) + '/commits/' + encodeURIComponent(t.ref), o);
+  if (!r.ok) return ghError(r, 'التزام ' + t.ref + ' في ' + repoOf(t), o && o.env, o && o.anonymous);
+  const j = await r.json();
+  const cm = (j && j.commit) || {};
+  const st = (j && j.stats) || {};
+  const files = Array.isArray(j && j.files) ? j.files : [];
+  const out = ['🔖 التزام ' + String(j.sha || t.ref).slice(0, 12) + ' في ' + repoOf(t) + ' · ' + ((j.author && j.author.login) || (cm.author && cm.author.name) || '؟') + ' · ' + String((cm.author && cm.author.date) || '').replace('T', ' ').replace(/:\d\dZ$/, ''),
+    String(cm.message || '').slice(0, 2000),
+    '+' + (st.additions || 0) + '/−' + (st.deletions || 0) + ' في ' + files.length + ' ملفًّا:',
+    files.map((f) => '- ' + f.filename + ' (' + f.status + ' +' + (f.additions || 0) + '/−' + (f.deletions || 0) + ')').join('\n')];
+  const diff = formatPatches(files, o && o.deep);
+  if (diff) out.push(diff);
+  return out.join('\n');
+}
+
 /* ---------- الواجهة الموحّدة للأداة ---------- */
 /* ---------- آخر الدفعات (v-secret-vault) ---------- */
 async function readCommits(t, o, limit) {
@@ -287,6 +329,7 @@ async function readGithub(input, opts) {
     if (t.kind === 'pr') return await readPR(t, opts);
     if (t.kind === 'issue') return await readIssue(t, opts);
     if (t.kind === 'commits') return await readCommits(t, opts, input && typeof input === 'object' ? input.limit : undefined); // v-secret-vault
+    if (t.kind === 'commit') return await readCommit(t, opts); // v-agent-deep
     if (t.kind === 'repo' && !t.path) return await readRepo(t, opts);
     const c = await getContents(t, opts);
     if (c.error) return c.error;
@@ -327,4 +370,4 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, readSearch, readCommits, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX };
+module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX };
