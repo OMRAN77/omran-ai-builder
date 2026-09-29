@@ -92,3 +92,89 @@ test('٥. الواجهة: خيار المحرّك في القائمة، وفرع
 });
 
 console.log('✓ minimax-video: المحرّك الاقتصاديّ مضاف بجانب Runway/Veo — موجّه، تطبيع حالة، واجهة، وترجمات');
+
+/* v-video-poll (المالك: «⏳ يولّد الفيديو» ما ينتهي): رفض منطقيّ يرجع ٢٠٠ بلا حقل status وبـ
+   base_resp.status_code≠0 كان يُقرأ «لسّا شغّال» فينتظر المستخدم للأبد ولا تُردّ نقاطه. */
+test('٦. الرفض المنطقيّ (٢٠٠ بلا status وبـbase_resp) = FAILED وتسوية التذكرة، لا RUNNING أبديّ', async () => {
+  process.env.MINIMAX_API_KEY = 'test-key';
+  const jobPath = require.resolve('../api/_lib/video-job.js');
+  const realJob = require.cache[jobPath];
+  const settled = [];
+  require.cache[jobPath] = { id: jobPath, filename: jobPath, loaded: true, exports: {
+    settleVideoJob: async (id, ok) => { settled.push([id, ok]); },
+    rememberVideoJob: async () => {},
+  } };
+  delete require.cache[require.resolve('../api/_lib/minimax-status.js')];
+  const handler = require('../api/_lib/minimax-status.js');
+  const realFetch = global.fetch;
+  try {
+    // رفض منطقيّ: ٢٠٠، لا حقل status إطلاقًا، وbase_resp.status_code ≠ 0
+    global.fetch = async () => ({ ok: true, json: async () => ({ base_resp: { status_code: 1002, status_msg: 'rate limit' } }) });
+    let res = fakeRes();
+    await handler({ method: 'GET', query: { task_id: 'T9' } }, res);
+    assert.equal(res.body.status, 'FAILED', 'الرفض المنطقيّ ما زال يُقرأ «لسّا شغّال»');
+    assert.deepEqual(settled, [['T9', false]], 'التذكرة لم تُسوَّ فلا تُردّ النقاط');
+
+    // نجاح فعليّ مع base_resp سليم لا يتأثّر
+    settled.length = 0;
+    global.fetch = async (url) => (/files\/retrieve/.test(String(url))
+      ? { ok: true, json: async () => ({ file: { download_url: 'https://cdn/ok.mp4' } }) }
+      : { ok: true, json: async () => ({ status: 'Success', file_id: 'F2', base_resp: { status_code: 0 } }) });
+    res = fakeRes();
+    await handler({ method: 'GET', query: { task_id: 'T8' } }, res);
+    assert.equal(res.body.status, 'SUCCEEDED');
+    assert.deepEqual(settled, [['T8', true]]);
+
+    // حالة وسط سليمة تبقى RUNNING
+    settled.length = 0;
+    global.fetch = async () => ({ ok: true, json: async () => ({ status: 'Queueing', base_resp: { status_code: 0 } }) });
+    res = fakeRes();
+    await handler({ method: 'GET', query: { task_id: 'T7' } }, res);
+    assert.equal(res.body.status, 'RUNNING');
+    assert.deepEqual(settled, []);
+  } finally {
+    global.fetch = realFetch;
+    if (realJob) require.cache[jobPath] = realJob; else delete require.cache[jobPath];
+    delete require.cache[require.resolve('../api/_lib/minimax-status.js')];
+  }
+});
+
+test('٧. حلقات الاستطلاع الأربع محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
+  const src = read('js/app-11-video.js');
+  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 4, 'حلقة استطلاع بلا حارس');
+  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 4, 'خطأ شبكة ما زال يُبتلع بصمت');
+  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 4, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
+  assert.doesNotMatch(src, /catch\(e\)\{ \/\* keep polling \*\/ \}/, 'بقي ابتلاع صامت');
+  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 4, 'عدد الحلقات تغيّر — راجع الحراسة');
+  assert.match(src, /function makePollGuard\(reject, everyMs, maxMs\)/);
+  assert.ok(read('js/app.bundle.js').includes('function makePollGuard('), 'الحارس ليس في الحزمة — شغّل npm run bundle');
+  // سلوك الحارس نفسه: العمر ينتهي، والأخطاء المتتالية تُنهي، والنجاح يصفّرها
+  const vm = require('node:vm');
+  const body = src.slice(src.indexOf('function makePollGuard('), src.indexOf('\n  }', src.indexOf('fail(iv){')) + 4);
+  const ctx = { bT: (a) => a, clearInterval: () => { ctx.cleared++; }, cleared: 0 };
+  vm.runInNewContext(body + '\nglobalThis.__g = makePollGuard;', ctx);
+  let err = null;
+  let g = ctx.__g((e) => { err = e; }, 1000, 3000);
+  assert.equal(g.tick(1), true); assert.equal(g.tick(1), true);
+  assert.equal(g.tick(1), false, 'العمر لم ينتهِ عند السقف');
+  assert.match(String(err.message), /طال انتظار الفيديو/);
+  err = null;
+  g = ctx.__g((e) => { err = e; }, 8000, 900000);
+  for (let i = 0; i < 5; i++) g.fail(1);
+  assert.equal(err, null, 'استسلم قبل ستّ محاولات — العابر لا يُحتمل');
+  g.fail(1);
+  assert.match(String(err.message), /انقطع الاتّصال/);
+  err = null;
+  g = ctx.__g((e) => { err = e; }, 8000, 900000);
+  for (let i = 0; i < 5; i++) g.fail(1);
+  g.ok();
+  for (let i = 0; i < 5; i++) g.fail(1);
+  assert.equal(err, null, 'نجاح دورة لا يصفّر عدّاد الأخطاء');
+});
+
+test('٨. لا اسم مزوّد ولا مفتاح في رسائل المستخدم من نقطة الحالة', () => {
+  const src = read('api/_lib/minimax-status.js');
+  const shown = src.match(/error: '[^']*'/g) || [];
+  for (const m of shown) assert.doesNotMatch(m, /MiniMax|MINIMAX|Proxy error|Veo|Gemini/, m);
+  assert.ok(shown.length >= 3, 'لم تُقرأ رسائل المستخدم');
+});
