@@ -715,15 +715,28 @@ function populateClockTZSelect(){
   else sel.value = 'Asia/Riyadh';
 }
 
+// v-perf-idle-timers: #btnClock (الحاوية) مخفيّة بلا أيّ كود يُظهرها — كان هذا يبني
+// Intl.DateTimeFormat جديدًا ويكتب في DOM كلّ ثانية للأبد لعنصر لا يراه أحد إطلاقًا. الآن
+// يبدأ فقط لو ظهر العنصر فعلًا (احتياط لتفعيل مستقبليّ)، ويتوقّف تلقائيًّا لو اختفى مجدَّدًا.
+const __headerClockFmt = { ar: new Intl.DateTimeFormat('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+  en: new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) };
 function updateHeaderClock(){
   const el = $('#headerClockTime');
   if (!el) return;
-  el.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-  }).format(new Date());
+  el.textContent = (lang === 'ar' ? __headerClockFmt.ar : __headerClockFmt.en).format(new Date());
 }
-updateHeaderClock();
-setInterval(updateHeaderClock, 1000);
+let __headerClockTimer = null;
+function __headerClockSync(){
+  const btn = $('#btnClock');
+  const visible = !!btn && getComputedStyle(btn).display !== 'none';
+  if (visible && !__headerClockTimer) { updateHeaderClock(); __headerClockTimer = setInterval(updateHeaderClock, 1000); }
+  else if (!visible && __headerClockTimer) { clearInterval(__headerClockTimer); __headerClockTimer = null; }
+}
+__headerClockSync();
+try {
+  const __btnClockEl = $('#btnClock');
+  if (__btnClockEl) new MutationObserver(__headerClockSync).observe(__btnClockEl, { attributes: true, attributeFilter: ['style', 'class'] });
+} catch(e){ /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
 
 function renderClockWorldStrip(){
   const box = $('#clockWorldStrip');

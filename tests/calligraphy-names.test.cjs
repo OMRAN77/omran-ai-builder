@@ -156,13 +156,13 @@ test('٦. ذيل التوقيع تحت أدنى حبر فعليّ (أذيال ا
   const src = read('js/app-20-signature.js');
   const a = src.indexOf('  function paint(canvas, txt, scale){'), b = src.indexOf('  function blobOf(canvas){');
   assert.ok(a > 0 && b > a, 'paint موجودة');
-  function draw(descent){
+  function draw(descent, flourish){
     const log = { moveY: null, h: null };
     const ctx2d = () => ({ measureText: () => ({ width: 300, actualBoundingBoxDescent: descent }), clearRect(){}, scale(){}, transform(){}, translate(){}, fillText(){},
       beginPath(){}, moveTo(x, y){ log.moveY = y; }, quadraticCurveTo(){}, stroke(){} });
     const canvas = { style: {}, getContext: ctx2d };
     const ctx = { document: { createElement: () => ({ getContext: ctx2d }) }, Math,
-      state: { font: 'thuluth', size: 100, slant: 0, ink: 'white', flourish: true }, fontById: () => ({ w: '400', family: "'Tholoth'" }),
+      state: { font: 'thuluth', size: 100, slant: 0, ink: 'white', flourish: flourish !== false }, fontById: () => ({ w: '400', family: "'Tholoth'" }),
       inkVal: () => '#fff', T: (x) => x };
     vm.runInNewContext(src.slice(a, b) + ';this.r = paint(canvas, "عمران", 1);', Object.assign(ctx, { canvas }));
     log.h = ctx.r.h;
@@ -174,6 +174,11 @@ test('٦. ذيل التوقيع تحت أدنى حبر فعليّ (أذيال ا
   const shallow = draw(30);
   assert.equal(shallow.moveY, 150, 'الخطّ القصير: الذيل في مكانه القديم');
   assert.equal(shallow.h, 212);
+  // بلا ذيل (Bugbot على #812): «عٍ» في الثلث ينزل حبرها ١٫١٣ من ارتفاع اللوحة الثابت 1.85 فتُقصّ
+  const bare = draw(108, false);
+  assert.equal(bare.moveY, null, 'بلا ذيل لا خطّ');
+  assert.ok(bare.h >= 102 + 108 + 8, 'اللوحة تتّسع لأدنى حبر بلا ذيل: ' + bare.h);
+  assert.equal(draw(30, false).h, 185, 'الخطّ القصير بلا ذيل: الارتفاع القديم');
 });
 
 test('٧. الحزمة مطابقة', () => {
