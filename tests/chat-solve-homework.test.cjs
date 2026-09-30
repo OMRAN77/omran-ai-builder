@@ -20,7 +20,7 @@ test('chat.js: أداة solve_homework معرَّفة، وتُوجَّه لـrun
   const toolsSrc = chat.slice(chat.indexOf('const TOOLS = ['), chat.indexOf('\n];\n', chat.indexOf('const TOOLS = [')) + 4);
   assert.match(toolsSrc, /name: 'solve_homework'/);
   assert.match(toolsSrc, /input_schema:[\s\S]{0,300}text:[\s\S]{0,150}string/);
-  assert.match(chat, /else if \(cb\.name === 'solve_homework'\) result = await runInClient\(send, 'solve_homework', input, 200000\);/, 'توجيه بمهلة تكفي ورقة عمل كاملة');
+  assert.match(chat, /else if \(cb\.name === 'solve_homework'\) result = await runInClient\(send, 'solve_homework', input, 285000\);/, 'توجيه بمهلة تكفي ورقة عمل كاملة — أطول من مهلة anthropicJSON نفسها (٢٨٠ث) لا أقصر منها');
   const imgRule = chat.slice(chat.indexOf('[الصورة المرفقة — اقرأها أولًا'), chat.indexOf('[الصورة المرفقة — اقرأها أولًا') + 1200);
   assert.match(imgRule, /استدعِ solve_homework فورًا بدل تحليلك النصّي الخاصّ/, 'استثناء الواجب/الامتحان من التحليل الذاتي');
   assert.match(chat, /• solve_homework — واجب أو سؤال دراسيّ/, 'بند مستقلّ في TOOLS_NOTE');
