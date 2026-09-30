@@ -81,7 +81,11 @@
       '<div style="display:flex;gap:6px;align-items:stretch;"><input id="cxIdeaText" type="text" maxlength="200" style="flex:1;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.04);color:inherit;font-family:inherit;"><button type="button" class="btn primary" id="cxIdeaGo" style="width:auto;white-space:nowrap;"></button></div>' +
       '<div id="cxIdeaStatus" style="display:none;font-size:12.5px;margin-top:8px;line-height:1.7;"></div>' +
       '<div id="cxIdeaGallery" style="display:none;columns:2;column-gap:6px;margin-top:8px;"></div>';
-    desc.insertAdjacentElement('afterend', box);
+    /* v-cx-brief: المعرض معرضُ صورٍ لا يولّد شيئًا، وكان أعلى النافذة فيلعب فيه الداخل ولا
+       يخرج بنتيجة (شكوى المالك «الي يدخل يضيع فيه»). مكانه الآن آخر النافذة بعد النتيجة
+       وزواياها، وأعلى النافذة صار سطر الوصف الذي يولّد فعلًا (app-15-cx-brief.js). */
+    var tail = $('constructionViewsSection') || $('constructionPlanText') || desc;
+    tail.insertAdjacentElement('afterend', box);
     status = $('cxIdeaStatus'); gallery = $('cxIdeaGallery'); input = $('cxIdeaText');
     $('cxIdeaGo').onclick = load;
     input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); load(); } });
