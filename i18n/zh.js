@@ -839,7 +839,6 @@ I18N['zh'] = {
     "studioSlotChange": "🔄 更换",
     "studioSrcCamera": "📷 相机",
     "studioSrcGallery": "🖼️ 相册",
-    "studioSrcRecent": "🕘 最近的照片",
     "studioMoreOptions": "⚙️ 更多选项",
     "studioAddPhotoCta": "📷 请先添加照片",
     "studioAiGenerateBtn": "✨ 生成",

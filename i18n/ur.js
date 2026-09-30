@@ -728,7 +728,6 @@ I18N['ur'] = {
     studioSlotChange: '🔄 تبدیل کریں',
     studioSrcCamera: '📷 کیمرا',
     studioSrcGallery: '🖼️ گیلری',
-    studioSrcRecent: '🕘 حالیہ تصاویر',
     studioMoreOptions: '⚙️ مزید اختیارات',
     studioAddPhotoCta: '📷 پہلے اپنی تصویر شامل کریں',
     studioAiGenerateBtn: '✨ بنائیں',

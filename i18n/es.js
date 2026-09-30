@@ -845,7 +845,6 @@ I18N['es'] = {
     "studioSlotChange": "🔄 Cambiar",
     "studioSrcCamera": "📷 Cámara",
     "studioSrcGallery": "🖼️ Galería",
-    "studioSrcRecent": "🕘 Fotos recientes",
     "studioMoreOptions": "⚙️ Más opciones",
     "studioAddPhotoCta": "📷 Primero añade tu foto",
     "studioAiGenerateBtn": "✨ Generar",

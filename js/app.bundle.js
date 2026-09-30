@@ -3847,7 +3847,6 @@ const I18N = {
     studioSlotChange: '🔄 تبديل',
     studioSrcCamera: '📷 الكاميرا',
     studioSrcGallery: '🖼️ المعرض',
-    studioSrcRecent: '🕘 آخر صوري',
     studioMoreOptions: '⚙️ خيارات إضافية',
     studioAddPhotoCta: '📷 أضف صورتك أولًا',
     studioAiGenerateBtn: '✨ ولّد الصورة',
@@ -5130,7 +5129,6 @@ const I18N = {
     studioSlotChange: '🔄 Change',
     studioSrcCamera: '📷 Camera',
     studioSrcGallery: '🖼️ Gallery',
-    studioSrcRecent: '🕘 Recent photos',
     studioMoreOptions: '⚙️ More options',
     studioAddPhotoCta: '📷 Add your photo first',
     studioAiGenerateBtn: '✨ Generate',
@@ -5330,7 +5328,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=706'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=707'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -33121,19 +33119,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     });
   }
   /* v-studio-slots (أمر المالك ٣٠ سبتمبر «ترتيب تسهيل للمستخدم في إضافة الصور»): خانتا الصورة مصدر واحد —
-     كاميرا / معرض / آخر صوري، وسحب وإفلات ولصق، وحذف وتبديل. الصورتان تمرّان بـnormalizeStudioPhoto
-     (الثانية كانت تُرفع بحجمها الأصليّ فتتخطّى حدّ الرفع). آخر ٣ صور تُحفظ على الجهاز وحده. */
+     كاميرا / معرض، وسحب وإفلات ولصق، وحذف وتبديل. الصورتان تمرّان بـnormalizeStudioPhoto
+     (الثانية كانت تُرفع بحجمها الأصليّ فتتخطّى حدّ الرفع). */
   const slotEls = { A: $('#studioAiSlotA'), B: $('#studioAiSlotB') };
-  const STUDIO_RECENT_KEY = 'omStudioRecent';
-  function studioRecent(){ try{ const a = JSON.parse(localStorage.getItem(STUDIO_RECENT_KEY) || '[]'); return Array.isArray(a) ? a.filter((x) => typeof x === 'string' && x.indexOf('data:image/') === 0) : []; }catch(e){ return []; } }
-  function studioRemember(dataUrl){
-    let list = [dataUrl].concat(studioRecent().filter((x) => x !== dataUrl)).slice(0, 3);
-    while(list.length){
-      try{ localStorage.setItem(STUDIO_RECENT_KEY, JSON.stringify(list)); return; }
-      catch(e){ list = list.slice(0, list.length - 1); } /* guard-ok: التخزين ممتلئ = نحفظ أقلّ، وبلا شيء إن لم يتّسع */
-    }
-    try{ localStorage.removeItem(STUDIO_RECENT_KEY); }catch(e){ /* guard-ok: تخزين محجوب */ }
-  }
+  /* v-studio-no-recent (أمر المالك «احذف آخر صوري عندما أرفع الصور»): «آخر صوري» أُزيلت — لا تُحفظ صورة على الجهاز،
+     وما حُفظ سابقًا يُمسح مرّة عند الإقلاع. */
+  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
   function studioRenderSlot(which){
     const el = slotEls[which]; if(!el) return;
     const has = which === 'A' ? !!selectedBase64A : !!selectedBase64B;
@@ -33155,7 +33146,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(which === 'A'){ selectedMimeA = r.mime; selectedBase64A = r.b64; if(fileNameA) fileNameA.textContent = file.name || ''; }
       else { selectedMimeB = r.mime; selectedBase64B = r.b64; if(fileNameB) fileNameB.textContent = file.name || ''; }
       if(pv){ pv.src = r.dataUrl; pv.style.display = 'block'; }
-      studioRemember(r.dataUrl);
       studioRenderSlot(which);
       setStatus('');
     });
@@ -33164,12 +33154,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(which === 'A'){ selectedBase64A = ''; if(fileInputA) fileInputA.value = ''; if(fileNameA) fileNameA.textContent = ''; beforeWrap.style.display = 'none'; }
     else { selectedBase64B = ''; if(fileInputB) fileInputB.value = ''; if(fileNameB) fileNameB.textContent = ''; }
     studioRenderSlot(which);
-  }
-  function dataUrlToFile(u){
-    const m = /^data:([^;]+);base64,(.*)$/.exec(u || ''); if(!m) return null;
-    const bin = atob(m[2]); const arr = new Uint8Array(bin.length);
-    for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    return new File([arr], 'recent.jpg', { type: m[1] });
   }
   let studioCam = null;
   function studioCamera(which){
@@ -33190,13 +33174,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     let coarse = false; try{ coarse = window.matchMedia('(pointer:coarse)').matches; }catch(e){ coarse = false; }
     if(coarse) add(t('studioSrcCamera'), () => studioCamera(which));
     add(t('studioSrcGallery'), () => (which === 'A' ? fileInputA : fileInputB).click());
-    const rec = studioRecent();
-    if(rec.length){
-      const h = document.createElement('div'); h.textContent = t('studioSrcRecent'); h.style.cssText = 'font-size:12px; color:var(--muted); padding:8px 12px 2px;'; menu.appendChild(h);
-      const row = document.createElement('div'); row.className = 'stRecent';
-      rec.forEach((u) => { const im = document.createElement('img'); im.src = u; im.alt = ''; im.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); const f = dataUrlToFile(u); if(f) studioSetPhoto(which, f); }; row.appendChild(im); });
-      menu.appendChild(row);
-    }
     /* v-studio-sheet (لقطة المالك «شوف وين تتحرك عند الإضافة»): القائمة كانت تطفو وسط الشاشة فوق الميزات بعيدًا
        عن الخانة. اللمس: ورقة من أسفل الشاشة بخلفيّة معتمة (نمط الجوّال المعتاد)؛ الحاسوب: تحت الخانة مباشرةً،
        وفوقها إن لم يتّسع ما تحتها. */

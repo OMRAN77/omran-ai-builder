@@ -28,12 +28,13 @@ test('١. الترتيب: صورتك ← الميزة والخيار ← الخ�
   for (const id of ['studioAiFileInputA', 'studioAiFileInputB', 'studioAiFileBtnA', 'studioAiFileNameA', 'studioAiSourcePreviewA', 'studioAiImageBWrap', 'studioAiImageALabelEl']) pos('id="' + id + '"');
 });
 
-test('٢. الخانة: كاميرا (للّمس) ومعرض وآخر صوري، سحب وإفلات ولصق، حذف وتبديل', () => {
+test('٢. الخانة: كاميرا (للّمس) ومعرض — بلا «آخر صوري» (أمر المالك) — وسحب وإفلات ولصق، حذف وتبديل', () => {
   assert.match(js, /if\(coarse\) add\(t\('studioSrcCamera'\), \(\) => studioCamera\(which\)\);/);
   assert.match(js, /studioCam\.setAttribute\('capture', 'user'\)/);
   assert.match(js, /add\(t\('studioSrcGallery'\), \(\) => \(which === 'A' \? fileInputA : fileInputB\)\.click\(\)\);/);
-  assert.match(js, /const rec = studioRecent\(\);/);
-  assert.match(js, /\.slice\(0, 3\);/, 'آخر ٣ صور');
+  assert.doesNotMatch(js, /studioRecent|studioRemember|studioSrcRecent|dataUrlToFile/, 'لا «آخر صوري» ولا حفظ للصور');
+  assert.match(js, /try\{ localStorage\.removeItem\('omStudioRecent'\); \}/, 'المحفوظ سابقًا يُمسح');
+  assert.doesNotMatch(html, /stRecent/);
   assert.match(js, /el\.addEventListener\('drop', \(e\) => \{/);
   assert.match(js, /document\.addEventListener\('paste', \(e\) => \{/);
   assert.match(js, /if\(act === 'remove'\)\{ studioClearPhoto\(which\); return; \}/);
@@ -49,7 +50,8 @@ test('٣. الصورتان تُضغطان، والزرّ يرشد إلى الخ�
 });
 
 test('٤. النصوص الجديدة بالـ١٤ لغة، والحزمة والوسوم', () => {
-  const K = ['studioStepPhoto', 'studioStepWhat', 'studioSlotAdd', 'studioSlotDropHint', 'studioSlotChange', 'studioSrcCamera', 'studioSrcGallery', 'studioSrcRecent', 'studioMoreOptions', 'studioAddPhotoCta'];
+  for (const f of ['js/app-03-i18n-data.js', 'i18n/fr.js']) assert.ok(!read(f).includes('studioSrcRecent'), 'مفتاح «آخر صوري» حُذف');
+  const K = ['studioStepPhoto', 'studioStepWhat', 'studioSlotAdd', 'studioSlotDropHint', 'studioSlotChange', 'studioSrcCamera', 'studioSrcGallery', 'studioMoreOptions', 'studioAddPhotoCta'];
   const d = read('js/app-03-i18n-data.js');
   for (const k of K) assert.equal((d.match(new RegExp('\\b' + k + ':', 'g')) || []).length, 2, k + ' ar+en');
   for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) {
@@ -57,8 +59,8 @@ test('٤. النصوص الجديدة بالـ١٤ لغة، والحزمة وا�
     for (const k of K) assert.ok(new RegExp('"?' + k + '"?:').test(s), lg + ' ' + k);
   }
   assert.ok(read('js/app.bundle.js').includes("function studioSetPhoto(which, file){"), 'الحزمة أُعيد بناؤها');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=649'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=706'"));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=650'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=707'"));
 });
 
 test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف الشكل»): بطاقات مصوّرة مطويّة، وثلاثة كحدّ أقصى', () => {
@@ -71,7 +73,7 @@ test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف �
   assert.match(b, /querySelectorAll\('\.studioCompareCheck:checked'\)\.length > 3\)\{ cb\.checked = false; return; \}/);
   assert.doesNotMatch(b, /innerHTML = '<input type="checkbox"/, 'لا مربّعات نصّيّة');
   assert.match(js, /compareChecksEl\.querySelectorAll\('\.studioCompareCheck:checked'\)/, 'قارئ المقارنة كما هو');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=649'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=650'));
 });
 
 test('٦. قائمة المصدر (لقطة المالك «شوف وين تتحرك عند الإضافة»): ورقة من الأسفل للّمس، وتحت الخانة للحاسوب', () => {
@@ -80,5 +82,5 @@ test('٦. قائمة المصدر (لقطة المالك «شوف وين تتح�
   assert.match(js, /const below = r\.bottom \+ 8, above = r\.top - mh - 8;/, 'تحت الخانة، وفوقها إن ضاق ما تحتها');
   assert.doesNotMatch(js, /r\.top \+ r\.height \/ 2/, 'لا وسط الخانة فوق الميزات');
   assert.match(html, /\.stSrcMenu\.sheet\{left:0; right:0; bottom:0;/);
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=649'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=650'));
 });
