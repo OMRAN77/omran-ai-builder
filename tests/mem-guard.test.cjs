@@ -23,10 +23,10 @@ const vaultLib = (vault, reads = [], w = {}, mk = { calls: 0, live: 0, maxLive: 
   'function getCurrent(){ return (state.projects || []).find(p => p.id === state.currentId) || null; }' +
   slice('function __vaultRead(a){', 'function idbImgSweep(liveIds){') +
   'function __makeView(src){ mk.calls++; mk.live++; mk.maxLive = Math.max(mk.maxLive, mk.live); return new Promise(r => setTimeout(() => { mk.live--; r("data:image/jpeg;base64,VIEW" + src.length); }, 8)); }' +
-  slice('async function __vaultSave(){', '/* الاستعادة: صور مشروع') +
+  slice('let __vaultGen = 0;', '/* الاستعادة: صور مشروع') +
   slice('async function hydrateProjectImages(p, fromIdx){', 'window.__hydrateProjectImages') +
-  slice('function __vaultJsonSize(){', 'function saveStateLocal(){') +
-  '; return { hydrateProjectImages, __imgWindowStart, __vaultJsonSize, __IMG_WINDOW, __vaultRead, __vaultRelease, __imgView, __vaultSave, __vaultReplacer, __projectsToJson, __vaultProjBlobs, __collectVaultIds, idbSetCalls: () => idbSetCalls };');
+  slice('// ⚡ v320:', 'function saveStateLocal(){') +
+  '; return { hydrateProjectImages, __imgWindowStart, vaultLastLen: () => __vaultLastLen, __IMG_WINDOW, __vaultRead, __vaultRelease, __imgView, __vaultSave, __vaultReplacer, __projectsToJson, __vaultProjBlobs, __collectVaultIds, idbSetCalls: () => idbSetCalls };');
 
 test('١. الاستعادة لنافذة العرض وحدها (آخر ٣٠ رسالة)، وكلّها حين يطلب «عرض الأقدم»', async () => {
   const vault = {}; const msgs = [];
@@ -46,11 +46,12 @@ test('١. الاستعادة لنافذة العرض وحدها (آخر ٣٠ ر�
   assert.match(src, /const __MSGWIN = __IMG_WINDOW;/, 'renderMessages يرسم النافذة نفسها');
 });
 
-test('٢. حارس حجم الحفظ لا يبني نصّ الصور: يقيس ما يُكتب فعلًا (صور المخزن معرّفات)', () => {
+test('٢. حارس حجم الحفظ لا يبني نصّ الصور: يقيس ما يُكتب فعلًا (صور المخزن معرّفات) — ومن الحفظ السابق بلا تسلسل جديد (v-perf-save-slices)', async () => {
   const p = { id: 'p', messages: [{ role: 'assistant', attachments: [{ isImage: true, vaultId: 'v1', dataUrl: big('B') }] }, { role: 'user', content: 'مرحبا' }] };
   const L = vaultLib({})({}, { projects: [p] }, [], {}, { calls: 0, live: 0, maxLive: 0 });
-  assert.ok(L.__vaultJsonSize() < 1000, 'بلا base64 المخزون');
-  assert.match(src, /const __sz = __vaultJsonSize\(\);/);
+  await L.__vaultSave();
+  assert.ok(L.vaultLastLen() > 0 && L.vaultLastLen() < 1000, 'بلا base64 المخزون: ' + L.vaultLastLen());
+  assert.match(src, /const __sz = __vaultLastLen;/);
   assert.ok(!/const __sz = __projectsToJson\(\)\.length;/.test(src), 'لم يعد يبني نصّ المشروع بصوره في كلّ حفظ');
 });
 
@@ -218,7 +219,7 @@ test('١٣. الحفظ يكتب base64 المشروع في مخزن الصور �
   assert.ok(JSON.stringify(rec).length < 3000, 'السجلّ بلا base64');
   const live = L.__collectVaultIds([A]);
   assert.ok(live.has(A.lastEditedImage.vaultId) && live.has(A.decorHistory['مودرن'].vaultId), 'الكنس لا يمسحها');
-  assert.ok(L.__vaultJsonSize() < 3000, 'حارس الحجم يقيس السجلّ بلا base64');
+  assert.ok(L.vaultLastLen() > 0 && L.vaultLastLen() < 3000, 'حارس الحجم يقيس السجلّ بلا base64');
 });
 
 test('١٤. base64 المشاريع الأخرى يُفرَج عنه عند فتح غيرها ويعود حين يُفتح مشروعه (قراءة واحدة لكلّ كائن)؛ المعلّق لا يُمسّ', async () => {

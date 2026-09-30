@@ -5963,13 +5963,35 @@ function idbImgSweep(liveIds){
   }));
 }
 /* الحفظ: الصور الجديدة إلى المخزن أولًا، ثم سجلّ المشاريع بلا base64؛ أي تعثّر في المخزن = الحفظ الكامل كما كان */
-async function __vaultSave(){
+/* v-perf-save-slices (المالك ٣٠ سبتمبر: «إذا أدخل أيّ مكان يكون معلّق ويفتح»): الحفظ بعد أيّ تغيير (فتح محادثة، رسالة)
+   كان يسلسل السجلّ كلّه دفعة واحدة مرّتين — مرّة لحارس الحجم ومرّة للنسخة — والمُستبدِل يُنادى لكلّ مفتاح. مسبار حساب ثقيل
+   (٣٦ م.ب، المعالج ×٤): ٢٫٩ث للحارس و٢٫٩ث للنسخة في مهمّة واحدة تجمّد الشاشة. الآن مشروعًا مشروعًا بمهلة للرسم كلّ ٤٠مل
+   (والحفظ عند الخروج دفعة واحدة كما كان)، والحارس يأخذ حجم الحفظ السابق بلا تسلسل جديد. حفظٌ أحدث يبدأ = الأقدم يتوقّف
+   قبل الكتابة، فلا تكتب نسخة قديمة فوق أحدث. */
+let __vaultGen = 0;
+let __vaultLastLen = 0;
+async function __vaultSave(sync){
+  const gen = ++__vaultGen;
   const puts = __vaultAssign(state.projects, Date.now());
   let vaulted = true;
   /* v-img-view: نسخة عرض صُنعت قبل أن يُكتب الأصل تُكتب معه */
   try{ await idbImgPutAll(puts.concat(puts.filter(x => x.ref && x.ref.viewUrl).map(x => ({ id: x.id + '~v', dataUrl: x.ref.viewUrl })))); puts.forEach(x => { delete x.ref.vaultPending; }); }
   catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
-  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects, __noViewReplacer));
+  const rep = vaulted ? __vaultReplacer : __noViewReplacer;
+  const projs = state.projects.slice(), copy = [];
+  let len = 1, t0 = Date.now();
+  for(let i = 0; i < projs.length; i++){
+    const js = JSON.stringify(projs[i], rep);
+    len += (js === undefined ? 4 : js.length) + 1;
+    copy.push(js === undefined ? null : JSON.parse(js)); /* كالسابق: عنصر لا يُسلسَل = null في المصفوفة */
+    if(!sync && i < projs.length - 1 && Date.now() - t0 > 40){
+      await new Promise(r => setTimeout(r, 0));
+      if(gen !== __vaultGen) return;
+      t0 = Date.now();
+    }
+  }
+  if(gen !== __vaultGen) return;
+  __vaultLastLen = len;
   await idbSet('aiapp_projects', copy);
   /* v-proj-vault: ما كُتب للتوّ في المخزن من غير المحادثة المفتوحة يخرج من الذاكرة الآن لا عند الرسم التالي (أوّل حفظ بعد النشر
      ينقل base64 كلّ المشاريع إلى المخزن دفعة واحدة) */
@@ -6063,6 +6085,9 @@ function pushCodeSnapshot(){
    ونكتب مرة كل 1.5 ثانية كحد أقصى، مع حفظة فورية مضمونة عند إخفاء/إغلاق الصفحة. */
 let __saveTimer = null;
 let __saveDirty = false;
+/* v-perf-slim-once: نسخة المزامنة المنحّفة تُحسب مرّة لكلّ تغيير — المرآة (عند الحفظ) والرفع (بعده بثوانٍ) كانا يبنيانها
+   مرّتين لنفس الحالة (~١ث لكلّ مرّة في حساب ثقيل على جوّال). saveState — باب كلّ تغيير محفوظ — يُبطلها. */
+let __slimCache = null;
 // v-idb-mirror: كتابة المرآة المنحّفة — chatsSlimForServer تُعرَّف لاحقًا في هذا
 // الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
 let __mirrorAt = 0;
@@ -6085,14 +6110,14 @@ function __saveFlush(force){
          الصفحة يُحفظ فورًا. المنظّف بقي لمسار localStorage الاحتياطي وحده لأن سقفه 5MB فعليًا. */
       if(!force){
         try{
-          const __sz = __vaultJsonSize(); /* v-mem-guard: كان __projectsToJson() يبني نصّ المشروع المفتوح بصوره كاملة في كلّ حفظ */
+          const __sz = __vaultLastLen; /* v-mem-guard + v-perf-save-slices: حجم ما كتبه الحفظ السابق فعلًا (صور المخزن معرّفات) — بلا تسلسل للسجلّ كلّه في كلّ حفظ */
           const __gap = __sz > 60000000 ? 30000 : (__sz > 12000000 ? 10000 : 0);
           const __wait = __gap - (Date.now() - __idbSavedAt);
           if(__gap && __wait > 0){ __saveDirty = true; __saveTimer = setTimeout(__saveFlush, __wait); return; }
         }catch(e){ __swallow(e, 'save:sizeGuard#v714'); }
       }
       __idbSavedAt = Date.now();
-      __vaultSave().catch(err => {
+      __vaultSave(!!force || document.visibilityState === 'hidden').catch(err => { /* الخروج من التطبيق: دفعة واحدة قبل التجميد */
         console.error('IDB save failed → fallback to localStorage', err);
         __idbBroken = true;
         saveStateLocal();
@@ -6115,6 +6140,7 @@ window.addEventListener('pagehide', __saveFlush);
 window.addEventListener('pagehide', __writeChatsMirror); /* v-idb-mirror: مرآة طازجة عند كل مغادرة */
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
 function saveState(){
+  __slimCache = null;
   pushCodeSnapshot();
   try{ localStorage.setItem('aiapp_current_id', state.currentId || ''); }catch(e){ __swallow(e, "save:app-04-i18n-state#12"); }
   // ☁️ v306: مزامنة صامتة مؤجَّلة مع السيرفر للمستخدمين المسجّلين.
@@ -6122,10 +6148,6 @@ function saveState(){
   __saveDirty = true;
   if(__saveTimer) return;
   __saveTimer = setTimeout(__saveFlush, 1500);
-}
-/* v-mem-guard: حجم ما يكتبه __vaultSave فعلًا (صور المخزن معرّفات لا base64) — حارس التباعد لا يبني نصّ الصور */
-function __vaultJsonSize(){
-  try{ return JSON.stringify(state.projects, __vaultReplacer).length; }catch(e){ return 0; } /* guard-ok — الحارس تحسين؛ الفشل = حفظ فوريّ كما قبل */
 }
 // ⚡ v320: الحفظ يعالج المشروع المفتوح فقط — الباقي من نسخة نصية جاهزة (كاش).
 let __projJsonCache = new WeakMap();
@@ -6211,6 +6233,7 @@ function __msgForServer(m){
   }catch(e){ return m; }
 }
 function chatsSlimForServer(){
+  if(__slimCache) return __slimCache;
   let list = (state.projects || []).map(p => ({
     id: p.id,
     title: p.title || '',
@@ -6218,15 +6241,28 @@ function chatsSlimForServer(){
     messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
     code: (typeof p.code === 'string') ? p.code : '',
   })).filter(p => p.id);
-  const size = l => { try{ return JSON.stringify(l).length; }catch(e){ return Infinity; } };
   // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
+  /* v-perf-slim-linear (المالك ٢٩ سبتمبر: «إذا أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية، وإذا أدخل أيّ مكان مجمّد ويفتح»):
+     كان كلّ دور في الحلقتين يعيد JSON.stringify للقائمة كلّها — مئات النسخ لعدّة ميغا (تربيعيّ). مسبار حساب ثقيل
+     (٤٠ محادثة، المعالج ×٤): ٤٫٣ ثانية للنداء الواحد، وهو يُنادى عند الإقلاع (المرآة) وكلّ حفظ ومزامنة وعند الخروج.
+     الآن يُقاس كلّ مشروع مرّة: طول نصّ المصفوفة = '[' + العناصر مفصولة بفواصل + ']'، والناتج هو نفسه حرفيًّا. */
+  const LIMIT = 2000000;
+  let lens;
+  try{ lens = list.map(p => JSON.stringify(p).length); }catch(e){ return []; } /* guard-ok — كالسابق: قائمة لا تُسلسَل = Infinity فتُفرَّغ كلّها */
+  let total = list.length ? 2 + (list.length - 1) + lens.reduce((a, b) => a + b, 0) : 2;
   let i = 0;
-  while(size(list) > 2000000 && i < list.length){
-    if(list[i].code) list[i] = Object.assign({}, list[i], { code: '' });
+  while(total > LIMIT && i < list.length){
+    if(list[i].code){
+      const np = Object.assign({}, list[i], { code: '' });
+      const nl = JSON.stringify(np).length;
+      total += nl - lens[i]; lens[i] = nl; list[i] = np;
+    }
     i++;
   }
-  while(size(list) > 2000000 && list.length > 0) list.shift();
-  return list;
+  let k = 0;
+  while(total > LIMIT && k < list.length){ total -= lens[k] + (list.length - k > 1 ? 1 : 0); k++; }
+  __slimCache = k ? list.slice(k) : list;
+  return __slimCache;
 }
 // v311: أي صورة داخل المحادثة يفشل تحميلها (انحذفت من المزامنة) تختفي
 // بهدوء بدل ما يظهر «⚠️ Load failed» ويشوه المحادثة.
@@ -6484,6 +6520,33 @@ function codeForApi(code){
   return c;
 }
 
+/* v-perf-hist-lazy (المالك ٣٠ سبتمبر: «أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية» — ومقترح وكيله: «معاينات iframe في سجلّ
+   المحادثات… تحميلها فقط عند ظهورها»): كلّ مشروع بكود كان يبني عند الإقلاع iframe بصفحة التطبيق كاملة (تحليل وتخطيط ورسم)
+   حتّى والقائمة مخفيّة في الجوّال — loading=lazy لا يؤجّل srcdoc. مسبار حساب ثقيل: ١٤ صفحة تُبنى قبل أن يرى المستخدم شيئًا.
+   الآن تُبنى المعاينة حين تقترب من الظهور فقط (IntersectionObserver)، وبلا مراقب كما كانت. */
+let __histThumbIO = null;
+function __histThumbLazy(thumb, p){
+  const make = () => {
+    if(thumb.querySelector('iframe')) return;
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('sandbox', '');
+    iframe.setAttribute('loading', 'lazy');
+    iframe.srcdoc = String(p.code || '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    thumb.appendChild(iframe);
+  };
+  if(typeof IntersectionObserver !== 'function'){ make(); return; }
+  if(!__histThumbIO) __histThumbIO = new IntersectionObserver(function(ents){
+    ents.forEach(function(en){
+      if(!en.isIntersecting || !en.target.__histMake) return;
+      const f = en.target.__histMake;
+      en.target.__histMake = null;
+      __histThumbIO.unobserve(en.target);
+      f();
+    });
+  }, { rootMargin: '200px' });
+  thumb.__histMake = make;
+  __histThumbIO.observe(thumb);
+}
 function renderHistory(){
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
   const provKey = localStorage.getItem('aiapp_provider') || 'openai';
@@ -6505,6 +6568,7 @@ function renderHistory(){
     if(window.__renderHistSig === __sig && historyEl.childElementCount > 0) return;
     window.__renderHistSig = __sig;
   }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أيّ خطأ نرسم كالمعتاد */ }
+  if(__histThumbIO) __histThumbIO.disconnect(); // v-perf-hist-lazy: صفوف الرسم السابق لا تُراقَب بعد مسحها
   historyEl.innerHTML = '';
   // v-perf-history-guard: نافذة عرض بنفس فكرة __MSGWIN في renderMessages — أقدم ٣٠ محادثة
   // تُبنى iframes حيّة لها فقط لو طلب المستخدم صراحةً؛ الأقدم تظهر بزرّ عند الطلب.
@@ -6532,11 +6596,7 @@ function renderHistory(){
     const thumb = document.createElement('div');
     thumb.className = 'hist-thumb';
     if(p.code && p.codeType !== 'python'){
-      const iframe = document.createElement('iframe');
-      iframe.setAttribute('sandbox', '');
-      iframe.setAttribute('loading', 'lazy');
-      iframe.srcdoc = p.code.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-      thumb.appendChild(iframe);
+      __histThumbLazy(thumb, p);
     } else {
       const ph = document.createElement('span');
       ph.className = 'hist-thumb-emoji';
