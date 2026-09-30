@@ -916,7 +916,65 @@
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="studioAiDesc">اختر ميزة، ارفع صورتك (أو صورتين للدمج)، واختر الخيار المناسب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
 
-    <div id="studioAiTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
+    <!-- v-studio-slots (أمر المالك ٣٠ سبتمبر «ترتيب تسهيل للمستخدم في إضافة الصور في ستايل»): الصورة أوّلًا في خانة كبيرة
+         (كاميرا / معرض / آخر صوري، سحب وإفلات ولصق)، والدمج خانتان جنبًا إلى جنب، ثمّ الميزة والخيار، والاختياريّ مطويّ قبل الزرّ.
+         المعرّفات القديمة كلّها باقية فالأسلاك في app-13 كما هي. -->
+    <style id="stSlotCss">
+      .stStep{font-size:13px; font-weight:800; color:#d4af37; margin:16px 2px 8px;}
+      .stSlots{display:flex; gap:10px;}
+      .stSlotWrap{flex:1; min-width:0;}
+      .stSlotLbl{font-size:12px; color:var(--muted); display:none; margin-bottom:4px;}
+      .stSlots.two .stSlotLbl{display:block;}
+      .stSlot{position:relative; height:190px; border:2px dashed rgba(212,175,55,.55); border-radius:16px; background:rgba(212,175,55,.05); cursor:pointer; overflow:hidden; display:flex; align-items:center; justify-content:center; text-align:center; transition:border-color .15s, background .15s;}
+      .stSlot:hover,.stSlot:focus-visible,.stSlot.drag{border-color:#d4af37; background:rgba(212,175,55,.12); outline:none;}
+      .stSlot img{width:100%; height:100%; object-fit:contain; background:#000;}
+      .stSlotEmpty{display:flex; flex-direction:column; gap:6px; padding:10px; color:var(--text);}
+      .stSlotEmpty b{font-size:14.5px;}
+      .stSlotEmpty small{font-size:11.5px; color:var(--muted);}
+      .stSlot.has{border-style:solid;}
+      .stSlot.has .stSlotEmpty{display:none;}
+      .stSlotX,.stSlotSwap{position:absolute; display:none; border:none; cursor:pointer; background:rgba(0,0,0,.72); color:#fff; font-weight:700;}
+      .stSlotX{top:8px; left:8px; width:30px; height:30px; border-radius:50%; font-size:14px;}
+      .stSlotSwap{bottom:8px; left:50%; transform:translateX(-50%); border-radius:999px; padding:6px 14px; font-size:12.5px; white-space:nowrap;}
+      .stSlot.has .stSlotX,.stSlot.has .stSlotSwap{display:block;}
+      .stSrcMenu{position:fixed; z-index:10060; min-width:190px; background:var(--panel,#1a1a1a); border:1px solid rgba(212,175,55,.4); border-radius:14px; padding:6px; box-shadow:0 14px 40px rgba(0,0,0,.6);}
+      .stSrcMenu button{display:block; width:100%; text-align:start; padding:10px 12px; border:none; background:none; color:var(--text); font-size:14px; border-radius:10px; cursor:pointer;}
+      .stSrcMenu button:hover{background:rgba(212,175,55,.14);}
+      .stRecent{display:flex; gap:6px; flex-wrap:wrap; padding:4px 8px 8px;}
+      .stRecent img{width:52px; height:52px; object-fit:cover; border-radius:10px; cursor:pointer; border:1px solid rgba(255,255,255,.15);}
+      #studioAiMore{margin-top:14px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:8px 10px;}
+      #studioAiMore > summary{cursor:pointer; font-size:13px; color:var(--muted);}
+    </style>
+    <div class="stStep" data-i18n="studioStepPhoto">① صورتك</div>
+    <div id="studioAiSlots" class="stSlots">
+      <div id="studioAiImageAWrap" class="stSlotWrap">
+        <label class="stSlotLbl" id="studioAiImageALabelEl" data-i18n="studioAiImageALabel">الصورة الأولى</label>
+        <input type="file" id="studioAiFileInputA" accept="image/*" style="display:none;">
+        <div class="stSlot" id="studioAiSlotA" data-slot="A" role="button" tabindex="0">
+          <img id="studioAiSourcePreviewA" alt="" style="display:none;">
+          <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
+          <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
+          <button type="button" class="stSlotSwap" data-act="change" data-i18n="studioSlotChange">🔄 تبديل</button>
+        </div>
+        <button type="button" class="btn" id="studioAiFileBtnA" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
+        <span id="studioAiFileNameA" style="display:none;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
+      </div>
+      <div id="studioAiImageBWrap" class="stSlotWrap" style="display:none;">
+        <label class="stSlotLbl" data-i18n="studioAiImageBLabel">الصورة الثانية</label>
+        <input type="file" id="studioAiFileInputB" accept="image/*" style="display:none;">
+        <div class="stSlot" id="studioAiSlotB" data-slot="B" role="button" tabindex="0">
+          <img id="studioAiSourcePreviewB" alt="" style="display:none;">
+          <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
+          <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
+          <button type="button" class="stSlotSwap" data-act="change" data-i18n="studioSlotChange">🔄 تبديل</button>
+        </div>
+        <button type="button" class="btn" id="studioAiFileBtnB" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
+        <span id="studioAiFileNameB" style="display:none;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
+      </div>
+    </div>
+
+    <div class="stStep" data-i18n="studioStepWhat">② اختر التعديل</div>
+    <div id="studioAiTabs" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;">
       <button type="button" class="btn studioAiTabBtn active" data-feature="hair" style="white-space:nowrap;" data-i18n="studioAiTabHair">💇 الشعر</button>
       <button type="button" class="btn studioAiTabBtn" data-feature="nails" style="white-space:nowrap;" data-i18n="studioAiTabNails">💅 الأظافر</button>
       <button type="button" class="btn studioAiTabBtn" data-feature="makeup" style="white-space:nowrap;" data-i18n="studioAiTabMakeup">💄 مكياج</button>
@@ -929,6 +987,16 @@
       <button type="button" class="btn studioAiTabBtn" data-feature="merge" style="white-space:nowrap;" data-i18n="studioAiTabMerge">🖼️ دمج صور</button>
     </div>
 
+    <div id="studioAiStyleWrap" style="margin-top:12px;">
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiStyleLabel">اختر الخيار</label>
+      <!-- v-studio-cards: خيارات كل ميزة بطاقات مصوّرة (نفس نمط بقية الاستوديوهات)؛
+           السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
+      <div id="studioStyleCards" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
+      <select id="studioAiStyle" style="display:none;"></select>
+    </div>
+
+    <details id="studioAiMore">
+      <summary data-i18n="studioMoreOptions">⚙️ خيارات إضافية</summary>
     <details style="margin-top:12px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:6px 10px;">
       <summary style="cursor:pointer; font-size:12.5px; color:var(--muted);" data-i18n="studioProfileTitle">👤 بروفايل الوجه (اختياري)</summary>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
@@ -962,34 +1030,6 @@
     <button type="button" class="btn" id="studioAiSuggestBtn" style="width:100%; margin-top:10px;" data-i18n="studioSuggestBtn">💡 اقترح لي ستايل</button>
     <div id="studioAiSuggestions" style="display:none; margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
 
-    <div id="studioAiImageAWrap" style="margin-top:14px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" id="studioAiImageALabelEl" data-i18n="studioAiImageALabel">الصورة الأولى</label>
-      <input type="file" id="studioAiFileInputA" accept="image/*" style="display:none;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button type="button" class="btn" id="studioAiFileBtnA" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-        <span id="studioAiFileNameA" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
-      </div>
-      <img id="studioAiSourcePreviewA" style="display:none; width:100%; margin-top:8px; border-radius:var(--r-2); max-height:180px; object-fit:contain; background:#000;">
-    </div>
-
-    <div id="studioAiImageBWrap" style="display:none; margin-top:14px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiImageBLabel">الصورة الثانية</label>
-      <input type="file" id="studioAiFileInputB" accept="image/*" style="display:none;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button type="button" class="btn" id="studioAiFileBtnB" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-        <span id="studioAiFileNameB" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
-      </div>
-      <img id="studioAiSourcePreviewB" style="display:none; width:100%; margin-top:8px; border-radius:var(--r-2); max-height:180px; object-fit:contain; background:#000;">
-    </div>
-
-    <div id="studioAiStyleWrap" style="margin-top:14px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiStyleLabel">اختر الخيار</label>
-      <!-- v-studio-cards: خيارات كل ميزة بطاقات مصوّرة (نفس نمط بقية الاستوديوهات)؛
-           السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
-      <div id="studioStyleCards" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
-      <select id="studioAiStyle" style="display:none;"></select>
-    </div>
-
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiDescLabel">وصف إضافي (اختياري)</label>
       <div class="mini-mic-field-row">
@@ -1002,6 +1042,7 @@
       <input type="checkbox" id="studioAiMultiAngle">
       <span data-i18n="studioMultiAngleLabel">🕶️ عرض من زوايا متعددة (أمام / جانب / خلف)</span>
     </label>
+    </details>
 
     <button type="button" class="btn primary" id="studioAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="studioAiGenerateBtn">✨ ولّد الصورة</button>
 
