@@ -5976,6 +5976,60 @@ function idbImgSweep(liveIds){
    قبل الكتابة، فلا تكتب نسخة قديمة فوق أحدث. */
 let __vaultGen = 0;
 let __vaultLastLen = 0;
+/* v-code-dedupe (المالك ٣٠ سبتمبر: «كمل على نسخ آلة الزمن»): كلّ إصدار كود كان يُكتب في السجلّ مرّتين أو ثلاثًا — في رسالة البناء
+   (m.code لزرّ «استخدم هذا الإصدار») وفي لقطة آلة الزمن، والحاليّ في p.code أيضًا — فيتضخّم السجلّ وتطول قراءته عند الإقلاع وكلّ
+   حفظ. عند الكتابة في IndexedDB وحدها: ما يساوي p.code يصير «\0omcode:cur»، وما يتكرّر غيره يُكتب مرّة في p.__omCodes ويصير
+   «\0omcode:N»؛ p.code والمفرد يبقيان نصًّا كما هما. القراءة (__codeExpand) تعيد كلّ شيء كما كان — والصيغة القديمة تمرّ بلا مساس.
+   الذاكرة والمزامنة والمرآة لا ترى إلّا النصوص الكاملة. */
+const OMCODE_PFX = '\u0000omcode:', OMCODE_MIN = 1000;
+/* بصمة رخيصة (الطول والطرفان و٦٤ عيّنة موزّعة) لا تجزئة للنصّ كلّه: V8 لا يجزّئ النصّ الأطول من ١٦ ألفًا إلّا بطوله، فمفتاح Map بنصّ كود
+   كامل يتصادم مع كلّ إصدار بالطول نفسه ويُقارَن كاملًا (قيس: ٤٣٤مل للحفظ الواحد). المطابقة الفعليّة بـ=== داخل البصمة الواحدة. */
+function __codeFp(str){
+  const n = str.length, step = Math.max(1, Math.floor(n / 64));
+  let h = n + ':' + str.slice(0, 32) + '|' + str.slice(-32) + '|'; /* تعديل في الآخر (أكثر التعديلات) يغيّر البصمة */
+  for(let i = 0; i < n; i += step) h += str.charCodeAt(i).toString(36) + ',';
+  return h;
+}
+function __codeDedupePlan(p){
+  if(!p || typeof p !== 'object') return null;
+  const groups = new Map(), entries = [];
+  const see = (o) => {
+    if(!o || typeof o !== 'object' || typeof o.code !== 'string' || o.code.length < OMCODE_MIN) return;
+    const fp = __codeFp(o.code);
+    let g = groups.get(fp);
+    if(!g){ g = []; groups.set(fp, g); }
+    let e = null;
+    for(let i = 0; i < g.length; i++) if(g[i].str === o.code){ e = g[i]; break; }
+    if(!e){ e = { str: o.code, holders: [] }; g.push(e); entries.push(e); }
+    e.holders.push(o);
+  };
+  (Array.isArray(p.codeHistory) ? p.codeHistory : []).forEach(see);
+  (Array.isArray(p.messages) ? p.messages : []).forEach(see);
+  if(!entries.length) return null;
+  const cur = typeof p.code === 'string' ? p.code : null, tokenOf = new Map(), table = [];
+  entries.forEach(e => {
+    let tok = null;
+    if(cur !== null && e.str === cur) tok = OMCODE_PFX + 'cur';
+    else if(e.holders.length >= 2){ tok = OMCODE_PFX + table.length; table.push(e.str); }
+    if(tok) e.holders.forEach(o => tokenOf.set(o, tok));
+  });
+  return tokenOf.size ? { tokenOf: tokenOf, table: table } : null;
+}
+function __codeExpand(list){
+  (Array.isArray(list) ? list : []).forEach(p => {
+    if(!p || typeof p !== 'object') return;
+    const tbl = Array.isArray(p.__omCodes) ? p.__omCodes : [];
+    const fix = (o) => {
+      if(!o || typeof o.code !== 'string' || o.code.charCodeAt(0) !== 0 || o.code.indexOf(OMCODE_PFX) !== 0) return;
+      const r = o.code.slice(OMCODE_PFX.length);
+      o.code = r === 'cur' ? (typeof p.code === 'string' ? p.code : '') : (typeof tbl[+r] === 'string' ? tbl[+r] : '');
+    };
+    (Array.isArray(p.codeHistory) ? p.codeHistory : []).forEach(fix);
+    (Array.isArray(p.messages) ? p.messages : []).forEach(fix);
+    delete p.__omCodes;
+  });
+  return list;
+}
 async function __vaultSave(sync){
   const gen = ++__vaultGen;
   const puts = __vaultAssign(state.projects, Date.now());
@@ -5987,9 +6041,15 @@ async function __vaultSave(sync){
   const projs = state.projects.slice(), copy = [];
   let len = 1, t0 = Date.now();
   for(let i = 0; i < projs.length; i++){
-    const js = JSON.stringify(projs[i], rep);
-    len += (js === undefined ? 4 : js.length) + 1;
-    copy.push(js === undefined ? null : JSON.parse(js)); /* كالسابق: عنصر لا يُسلسَل = null في المصفوفة */
+    const plan = __codeDedupePlan(projs[i]);
+    const js = JSON.stringify(projs[i], plan ? function(k, v){
+      if(k === 'code' && typeof v === 'string' && plan.tokenOf.has(this)) return plan.tokenOf.get(this);
+      return rep.call(this, k, v);
+    } : rep);
+    const obj = js === undefined ? null : JSON.parse(js); /* كالسابق: عنصر لا يُسلسَل = null في المصفوفة */
+    if(obj && plan && plan.table.length) obj.__omCodes = plan.table;
+    len += (js === undefined ? 4 : js.length) + 1 + (plan ? plan.table.reduce((a, t) => a + t.length + 3, 0) : 0);
+    copy.push(obj);
     if(!sync && i < projs.length - 1 && Date.now() - t0 > 40){
       await new Promise(r => setTimeout(r, 0));
       if(gen !== __vaultGen) return;
@@ -25222,7 +25282,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
     const migrated = localStorage.getItem('aiapp_idb_on') === '1';
     if(!migrated){
       // أول تشغيل: بيانات localStorage هي المصدر → ننسخها إلى IndexedDB ثم نحرر المساحة.
-      const idbOld = await idbGetGuarded('aiapp_projects');
+      const idbOld = __codeExpand(await idbGetGuarded('aiapp_projects')); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
       const merged = Array.isArray(idbOld) && idbOld.length
         ? idbOld.filter(p => !state.projects.some(q => q.id === p.id)).concat(state.projects)
         : state.projects;
@@ -25232,7 +25292,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "save:app-09-attach#33"); }
       renderAll();
     } else {
-      const idbProjects = await idbGetGuarded('aiapp_projects');
+      const idbProjects = __codeExpand(await idbGetGuarded('aiapp_projects')); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
       if(Array.isArray(idbProjects) && idbProjects.length){
         // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان — وإن كان
         // المعروض مرآةً وكتب المستخدم فيها رسالة قبل وصول الكاملة، تُحفظ نسخته

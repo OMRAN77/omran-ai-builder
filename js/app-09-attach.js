@@ -6796,7 +6796,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
     const migrated = localStorage.getItem('aiapp_idb_on') === '1';
     if(!migrated){
       // أول تشغيل: بيانات localStorage هي المصدر → ننسخها إلى IndexedDB ثم نحرر المساحة.
-      const idbOld = await idbGetGuarded('aiapp_projects');
+      const idbOld = __codeExpand(await idbGetGuarded('aiapp_projects')); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
       const merged = Array.isArray(idbOld) && idbOld.length
         ? idbOld.filter(p => !state.projects.some(q => q.id === p.id)).concat(state.projects)
         : state.projects;
@@ -6806,7 +6806,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "save:app-09-attach#33"); }
       renderAll();
     } else {
-      const idbProjects = await idbGetGuarded('aiapp_projects');
+      const idbProjects = __codeExpand(await idbGetGuarded('aiapp_projects')); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
       if(Array.isArray(idbProjects) && idbProjects.length){
         // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان — وإن كان
         // المعروض مرآةً وكتب المستخدم فيها رسالة قبل وصول الكاملة، تُحفظ نسخته
