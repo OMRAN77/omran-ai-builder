@@ -32655,11 +32655,23 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
 
   /* ---- 📊 compare checkboxes (built from style options) ---- */
   function buildCompareChecks(){
+    /* v-studio-compare-cards (لقطة المالك «كيف الشخص يعرف الشكل»): كلّ خيار بطاقة بصورته (optionImgs نفسها)
+       بدل مربّع نصّيّ، وثلاثة كحدّ أقصى. الصور تُحمَّل عند ظهورها فقط. */
     compareChecksEl.innerHTML = '';
     Array.from(styleEl.options).forEach(opt => {
       const label = document.createElement('label');
-      label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted,#999); border:1px solid var(--border,#333); border-radius:6px; padding:4px 8px; cursor:pointer;';
-      label.innerHTML = '<input type="checkbox" class="studioCompareCheck" value="' + opt.value + '"> ' + opt.textContent;
+      label.className = 'stCmp';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'studioCompareCheck'; cb.value = opt.value;
+      const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
+      const srcs = optionImgs(feature, opt.value);
+      if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = srcs.img; }); else img.src = srcs.img;
+      img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = srcs.img2; } else img.style.visibility = 'hidden'; };
+      const nm = document.createElement('span'); nm.textContent = opt.textContent.trim();
+      cb.onchange = () => {
+        if(cb.checked && compareChecksEl.querySelectorAll('.studioCompareCheck:checked').length > 3){ cb.checked = false; return; }
+        label.classList.toggle('on', cb.checked);
+      };
+      label.appendChild(cb); label.appendChild(img); label.appendChild(nm);
       compareChecksEl.appendChild(label);
     });
   }
@@ -32886,7 +32898,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     studioCam.onchange = () => { const f = studioCam.files && studioCam.files[0]; studioCam.value = ''; if(f) studioSetPhoto(which, f); };
     studioCam.click();
   }
-  function studioCloseMenu(){ const m = document.getElementById('studioSrcMenu'); if(m) m.remove(); }
+  function studioCloseMenu(){ const m = document.getElementById('studioSrcMenu'); if(m) m.remove(); const bd = document.getElementById('studioSrcBackdrop'); if(bd) bd.remove(); }
   function studioOpenMenu(which){
     studioCloseMenu();
     const anchor = slotEls[which]; if(!anchor) return;
@@ -32902,11 +32914,22 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       rec.forEach((u) => { const im = document.createElement('img'); im.src = u; im.alt = ''; im.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); const f = dataUrlToFile(u); if(f) studioSetPhoto(which, f); }; row.appendChild(im); });
       menu.appendChild(row);
     }
-    document.body.appendChild(menu);
-    const r = anchor.getBoundingClientRect();
-    const top = Math.min(r.top + r.height / 2, window.innerHeight - menu.offsetHeight - 10);
-    menu.style.top = Math.max(10, top) + 'px';
-    menu.style.left = Math.max(10, Math.min(r.left + r.width / 2 - menu.offsetWidth / 2, window.innerWidth - menu.offsetWidth - 10)) + 'px';
+    /* v-studio-sheet (لقطة المالك «شوف وين تتحرك عند الإضافة»): القائمة كانت تطفو وسط الشاشة فوق الميزات بعيدًا
+       عن الخانة. اللمس: ورقة من أسفل الشاشة بخلفيّة معتمة (نمط الجوّال المعتاد)؛ الحاسوب: تحت الخانة مباشرةً،
+       وفوقها إن لم يتّسع ما تحتها. */
+    if(coarse){
+      menu.classList.add('sheet');
+      const bd = document.createElement('div'); bd.id = 'studioSrcBackdrop'; bd.className = 'stSrcBackdrop';
+      bd.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); };
+      document.body.appendChild(bd);
+      document.body.appendChild(menu);
+    } else {
+      document.body.appendChild(menu);
+      const r = anchor.getBoundingClientRect(), mh = menu.offsetHeight, mw = menu.offsetWidth;
+      const below = r.bottom + 8, above = r.top - mh - 8;
+      menu.style.top = ((below + mh <= window.innerHeight - 10 || above < 10) ? Math.min(below, window.innerHeight - mh - 10) : above) + 'px';
+      menu.style.left = Math.max(10, Math.min(r.left + r.width / 2 - mw / 2, window.innerWidth - mw - 10)) + 'px';
+    }
     setTimeout(() => document.addEventListener('click', studioCloseMenu, { once: true }), 0);
   }
   ['A', 'B'].forEach((which) => {

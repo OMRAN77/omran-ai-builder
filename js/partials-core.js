@@ -938,10 +938,24 @@
       .stSlotSwap{bottom:8px; left:50%; transform:translateX(-50%); border-radius:999px; padding:6px 14px; font-size:12.5px; white-space:nowrap;}
       .stSlot.has .stSlotX,.stSlot.has .stSlotSwap{display:block;}
       .stSrcMenu{position:fixed; z-index:10060; min-width:190px; background:var(--panel,#1a1a1a); border:1px solid rgba(212,175,55,.4); border-radius:14px; padding:6px; box-shadow:0 14px 40px rgba(0,0,0,.6);}
+      .stSrcMenu.sheet{left:0; right:0; bottom:0; top:auto; min-width:0; border-radius:20px 20px 0 0; padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px)); border-width:1px 0 0; animation:stSheetUp .18s ease-out;}
+      .stSrcMenu.sheet button{font-size:16px; padding:14px 14px;}
+      .stSrcMenu.sheet .stRecent img{width:72px; height:72px;}
+      .stSrcBackdrop{position:fixed; inset:0; z-index:10059; background:rgba(0,0,0,.55);}
+      @keyframes stSheetUp{from{transform:translateY(100%)}to{transform:none}}
       .stSrcMenu button{display:block; width:100%; text-align:start; padding:10px 12px; border:none; background:none; color:var(--text); font-size:14px; border-radius:10px; cursor:pointer;}
       .stSrcMenu button:hover{background:rgba(212,175,55,.14);}
       .stRecent{display:flex; gap:6px; flex-wrap:wrap; padding:4px 8px 8px;}
       .stRecent img{width:52px; height:52px; object-fit:cover; border-radius:10px; cursor:pointer; border:1px solid rgba(255,255,255,.15);}
+      /* v-studio-compare-cards: نفس شكل بطاقات «عرض الكل» (omranPicker) — صورة ٣:٤ واسم عريض وعلامة ✓ ذهبيّة */
+      .stCmpGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; margin-top:10px;}
+      .stCmp{position:relative; display:flex; flex-direction:column; border:1px solid var(--border,#2a2a30); border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;}
+      .stCmp input{position:absolute; opacity:0; pointer-events:none;}
+      .stCmp img{width:100%; aspect-ratio:3/4; object-fit:cover; background:linear-gradient(160deg,#23232a,#101014); display:block;}
+      .stCmp span{font-size:12px; font-weight:700; color:#eef0f6; padding:8px 6px 9px; text-align:center; line-height:1.3;}
+      .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);}
+      .stCmp.on span{color:#d4af37;}
+      .stCmp.on::after{content:"✓"; position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;}
       #studioAiMore{margin-top:14px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:8px 10px;}
       #studioAiMore > summary{cursor:pointer; font-size:13px; color:var(--muted);}
     </style>
@@ -1071,9 +1085,13 @@
       <strong style="font-size:13px;" data-i18n="studioCompareTitle">📊 قارن بين ستايلات</strong>
       <button type="button" class="btn" id="studioAiFavoritesBtn" style="padding:4px 10px; font-size:12px;" data-i18n="studioFavoritesBtn">❤️ المفضلة</button>
     </div>
-    <p style="font-size: var(--fs-5); color:var(--muted); margin:4px 0 8px;" data-i18n="studioCompareHint">اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب</p>
-    <div id="studioAiCompareChecks" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
-    <button type="button" class="btn" id="studioAiCompareBtn" style="width:100%; margin-top:8px;" data-i18n="studioCompareBtn">📊 قارن الستايلات</button>
+    <!-- v-studio-compare-cards (لقطة المالك: «تحت كيف الشخص يعرف الشكل»): الخيارات بطاقات مصوّرة بدل ١٠٤ مربّع نصّيّ،
+         والقائمة مطويّة حتّى تُفتح -->
+    <details id="studioAiCompareMore" style="margin-top:6px;">
+      <summary style="cursor:pointer; font-size: var(--fs-5); color:var(--muted); padding:4px 0;" data-i18n="studioCompareHint">اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب</summary>
+      <div id="studioAiCompareChecks" class="stCmpGrid"></div>
+      <button type="button" class="btn" id="studioAiCompareBtn" style="width:100%; margin-top:8px;" data-i18n="studioCompareBtn">📊 قارن الستايلات</button>
+    </details>
     <div id="studioAiCompareStatus" style="display:none; margin-top:10px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="studioAiCompareResults" style="display:none; margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
 
