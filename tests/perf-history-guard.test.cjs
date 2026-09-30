@@ -16,6 +16,7 @@ function mockEl(){
   const node = { className: '', style: {}, dataset: {}, title: '', type: '', textContent: '', onclick: null, children: [], attrs: {} };
   node.appendChild = (c) => { node.children.push(c); return c; };
   node.setAttribute = (k, v) => { node.attrs[k] = v; };
+  node.querySelector = (q) => node.children.find((c) => c.__tag === q) || null; // v-perf-hist-lazy
   Object.defineProperty(node, 'innerHTML', { get(){ return node.__html || ''; }, set(v){ node.__html = v; if(v === '') node.children = []; } });
   Object.defineProperty(node, 'childElementCount', { get(){ return node.children.length; } });
   return node;
@@ -30,7 +31,7 @@ function buildCtx({ projects, currentId, showAll }){
     state,
     saveState(){},
     localStorage: { getItem: (k) => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => ls.set(k, String(v)), removeItem: (k) => ls.delete(k) },
-    document: { createElement: () => mockEl() },
+    document: { createElement: (tag) => { const e = mockEl(); e.__tag = tag; return e; } },
     window: {},
     openHistItemMenu(){}, renderAll(){}, mahaClearImageRef(){}, updateProviderQuickBarActive: undefined,
     __swallow(){},
@@ -43,7 +44,10 @@ function buildCtx({ projects, currentId, showAll }){
 function extractFn(){
   const m = FN_RE.exec(SRC);
   assert.ok(m, 'renderHistory() لم تُستخرَج — راجع الرابط في الاختبار');
-  return m[0].replace(/\n\/\/ v202:$/, '');
+  // v-perf-hist-lazy: المعاينة الكسولة دالّة مساعدة قبلها — بلا IntersectionObserver هنا تُبنى فورًا كما كانت
+  const i = SRC.indexOf('let __histThumbIO = null;'), j = SRC.indexOf('function renderHistory(){');
+  assert.ok(i > 0 && j > i, 'المساعد قبل renderHistory');
+  return SRC.slice(i, j) + m[0].replace(/\n\/\/ v202:$/, '');
 }
 
 function proj(n, opts){
