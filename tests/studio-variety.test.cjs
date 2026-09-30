@@ -62,7 +62,7 @@ test('بذرة التنويع: الخيار نفسه يعطي أمرًا مخت�
     const style = Object.keys(studioCreate.STYLE_TEXT[feature])[0];
     const a = studioCreate.buildSinglePrompt(feature, style, '', false, 1);
     const b = studioCreate.buildSinglePrompt(feature, style, '', false, 2);
-    assert.match(a, /VARIATION #\d+ \(within this exact style/, feature + ': لا توجيه تنويع في الأمر');
+    assert.match(a, /VARIATION #\d+ — a fresh execution of the chosen style/, feature + ': لا توجيه تنويع في الأمر');
     assert.notEqual(a, b, feature + ': بذرتان مختلفتان تعطيان الأمر نفسه');
     assert.match(a, /brand-new original/, feature + ': لا طلب تصميم جديد');
     // التنويع لا يُفلت الستايل المختار
@@ -113,7 +113,7 @@ test('النتيجة المطابقة للأصل تُرفض عند طلب الت
   assert.match(src, /requestedChangeApplied: the RESULT visibly applies/, 'الحارس لا يسأل عن تطبيق التغيير');
 
   const srv = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
-  assert.match(srv, /const SUBTLE = \['skin', 'eyes', 'body', 'age'\]/, 'لا استثناء للميزات الخفيّة');
+  assert.match(srv, /const SUBTLE = \['skin'\]/, 'البشرة وحدها دقيقة — العيون والجسم والعمر تغييرها ظاهر');
   assert.match(srv, /requireChange: SUBTLE\.indexOf\(feature\) === -1/, 'requireChange لا يصل الحارس');
   assert.match(srv, /guard\.reason === 'no_change' \? NO_CHANGE_RETRY : STRONGER_LOCK/, 'المحاولة الثانية لا تفرّق بين سببي الرفض');
   assert.match(srv, /the requested change was not applied at all/, 'نصّ المحاولة الثانية لا يطلب التنفيذ صراحةً');
@@ -125,15 +125,45 @@ test('النتيجة المطابقة للأصل تُرفض عند طلب الت
   assert.equal((studio.match(/studioErrText\(e\)/g) || []).length, 4, 'مواضع عرض الخطأ الثلاثة يجب أن تستعمل الترجمة');
 });
 
+/* ───── v-visible-change: «في الاستايل إذا اختار شيئًا — العين مثلًا — الشيء اللي اختاره ما يتغيّر» ───── */
+test('التنويع لا يُضعف التعديل ولا يناقض الخيار', () => {
+  const src = fs.readFileSync(path.join(root, 'api/_lib/studio-variants.js'), 'utf8');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const weak of ['barely there', 'lightest', 'barely perceptible', "'at a light level'", 'emphasised on the left side', 'emphasised on the right side', 'with completely clear lenses', 'a soft muted shade']) {
+    assert.ok(!code.includes(weak), 'محور يُضعف التعديل أو يناقض الخيار ما زال موجودًا: ' + weak);
+  }
+  const p = studioCreate.buildSinglePrompt('glasses', 'sunglasses', '', false, 4);
+  assert.match(p, /The chosen style described above is the authority/, 'الخيار ليس هو المرجع');
+  assert.match(p, /skip any idea that contradicts it/, 'لا قاعدة لتخطّي ما يناقض الخيار');
+  assert.match(p, /must be clearly and unmistakably visible/, 'لا اشتراط لظهور التغيير');
+});
+
+test('العيون: القزحيّة في العينين معًا بلون واضح — والتعديلات الدقيقة بلا تنويع', () => {
+  for (const c of ['blue', 'green', 'hazel', 'grey']) {
+    const p = studioCreate.buildSinglePrompt('eyes', c, '', false, 9);
+    assert.match(p, /iris colour of BOTH eyes/, c + ': الوصف لا يحدّد القزحيّة في العينين معًا');
+    assert.match(p, /plainly visible at first glance/, c + ': الوصف لا يطلب لونًا ظاهرًا');
+    assert.match(p, /^Make this change clearly and visibly:/, c + ': القالب لا يطلب التغيير صراحةً');
+    assert.ok(variants.variantCount('eyes', c) >= 100, c + ': أقلّ من ١٠٠ درجة قزحيّة');
+    assert.match(p, /shade|streaks|flecks|ring/, c + ': تنويع القزحيّة لا يصل الأمر');
+  }
+  for (const [f, style] of [['eyes', 'whiteteeth'], ['eyes', 'lashes'], ['age', 'child'], ['body', 'athletic']]) {
+    assert.ok(!/VARIATION/.test(studioCreate.buildSinglePrompt(f, style, '', false, 3)), f + '/' + style + ': تعديل دقيق يجب ألّا يأخذ تنويعًا');
+  }
+});
+
 /* ───── v-studio-variants: المالك «أريد أكثر من ١٠٠ في كلّ شكل… ١٠٠ حنّاء هندي، ١٠٠ شكل نظّارة» ─────
    التنويع داخل الخيار الواحد، لا قائمة خيارات أطول: محاور × محاور = آلاف الأشكال لكلّ خيار. */
 const variants = require(path.join(root, 'api/_lib/studio-variants.js'));
 
 test('كلّ ميزة تعطي أكثر من ١٠٠ شكل داخل الخيار الواحد', () => {
-  const features = Object.keys(studioCreate.STYLE_TEXT).concat(Object.keys(studioMore.STYLE_PROMPTS));
-  for (const f of features) {
-    const n = variants.variantCount(f);
-    assert.ok(n >= 100, f + ': ' + n + ' شكلًا فقط داخل الخيار (المطلوب ١٠٠ فأكثر)');
+  const all = Object.assign({}, studioCreate.STYLE_TEXT, studioMore.STYLE_PROMPTS);
+  for (const f of Object.keys(all)) {
+    for (const style of Object.keys(all[f])) {
+      if (!variants.hasVariation(f, style)) continue; // تعديل دقيق مطلوب بعينه — بلا تنويع بتصميم
+      const n = variants.variantCount(f, style);
+      assert.ok(n >= 100, f + '/' + style + ': ' + n + ' شكلًا فقط داخل الخيار (المطلوب ١٠٠ فأكثر)');
+    }
   }
   // الحنّاء والنظّارات — مثالا المالك نفسه
   assert.ok(variants.variantCount('henna') >= 1000, 'الحنّاء تحتاج آلاف الأشكال داخل الخيار');
@@ -157,7 +187,7 @@ test('التوجيه محسوس ويصل كلّ ميزة في الأمر، ول�
   for (const f of ['henna', 'glasses', 'makeup', 'hair', 'heritage', 'nails']) {
     const style = Object.keys((studioCreate.STYLE_TEXT[f] || studioMore.STYLE_PROMPTS[f]))[0];
     const p = studioCreate.buildSinglePrompt(f, style, '', false, 12);
-    assert.match(p, /VARIATION #\d+ \(within this exact style — never change the style itself\)/, f + ': لا توجيه تنويع في الأمر');
+    assert.match(p, /VARIATION #\d+ — a fresh execution of the chosen style\. The chosen style described above is the authority/, f + ': لا توجيه تنويع في الأمر');
     assert.notEqual(p, studioCreate.buildSinglePrompt(f, style, '', false, 13), f + ': رقمان مختلفان يعطيان الأمر نفسه');
   }
   const src = fs.readFileSync(path.join(root, 'api/_lib/studio-variants.js'), 'utf8');
