@@ -14,6 +14,9 @@ const GRID = 64;
 const MAX_PIXELS = 20e6;
 const BG = 128; /* خلفيّة الشفافيّة (رماديّ متوسّط) في القياس ونسخة الرؤية */
 const CELL_T = 18; /* فرق متوسّط القنوات في الخليّة (من ٢٥٥) فوقه = الخليّة تغيّرت فعلًا لا ضجيج إعادة رسم */
+/* v-img-same-robust: متوسّط فرق الخلايا كلّها فوقه = الصورة تغيّرت فعلًا ولو لم تشتدّ خليّة واحدة (إعادة رسم
+   الصورة نفسها بأيّ مقاس وإزاحة وغاما وضجيج تقيس ≤٧؛ إعادة تلوين عامّة للصورة كلّها بـ+١٠ درجات تقيس ٩٫٦). */
+const SAME_MEAN = 9;
 
 function toBuffer(x) {
   if (!x) return null;
@@ -118,13 +121,20 @@ function compareImages(sourceB64, resultB64, opts) {
 }
 
 /* الحكم: «لم يتغيّر شيء يُذكر». المعايرة (tests/image-honest.test.cjs على لقطة المالك نفسها):
-   تبديل الأشخاص الحقيقيّ ٤٠٪ خلايا متغيّرة و٢٣٪ بشدّة؛ بطاقة واحدة من ثمانٍ ٤٫٦٪؛ إعادة رسم الصورة نفسها
-   بدقّة 2K وإزاحة وغاما وضجيج ١٫٨٪ و٠ بشدّة؛ كلمة واحدة سُوّدت ٠٫١٪.
-   - expectBig (تبديل أشخاص/تعديل واسع/أسلوب/فكرة جديدة/ترقية): أقلّ من ٣٪ وأقلّ من ٠٫٤٪ بشدّة = لم يُنفَّذ.
-   - غير ذلك: البكسل لا يفرّق حرفًا مبدّلًا عن ضجيج إعادة الرسم، فلا يُحكم بالفشل إلّا على تطابق حرفيّ. */
+   تبديل الأشخاص الحقيقيّ ٤٠٪ خلايا متغيّرة و٢٣٪ بشدّة ومتوسّط ٢٩؛ بطاقة واحدة من ثمانٍ ٥٪ و٣٪ بشدّة؛
+   إعادة رسم الصورة نفسها بمقاس أعلى وإزاحة وغاما وضجيج ٠٫١–٩٫٥٪ خلايا متغيّرة و٠–٠٫١٪ بشدّة ومتوسّط ٣–٧.
+   - expectBig (تبديل أشخاص/تعديل واسع/أسلوب/فكرة جديدة/ترقية): أقلّ من ٠٫٤٪ بشدّة ومتوسّط دون SAME_MEAN = لم يُنفَّذ.
+   - غير ذلك: البكسل لا يفرّق حرفًا مبدّلًا عن ضجيج إعادة الرسم، فلا يُحكم بالفشل إلّا على تطابق حرفيّ.
+   v-img-same-robust (٢٩ سبتمبر ٢٠٢٦): شرط expectBig كان `changedFrac < 0.03` — ونسبة الخلايا المتغيّرة عند عتبة
+   CELL_T كمّيّة فوضويّة لا مقياس: الصورة نفسها بمقاس ×١٫٦ تقيس ٢٫٧٪، وبإزاحة بكسل واحد ٠٫١٪، وبلا إزاحة ٣٫٥٪،
+   وبمقاس ×١٫٢٥ ‏٩٫٥٪ — لأنّ الخليّة ٧٫٥ بكسل، فانزياح بكسل عند حرفٍ حادّ يحرّك متوسّطها ٤٢ من ٢٥٥ (أكثر من ١٨).
+   فكان الشرط واقفًا على ١١ خليّة من ٤٠٩٦، ومن يعبره تخرج صورة المصدر نفسها تحت تقرير «تمّ». نسبة الخلايا
+   **الشديدة** (٤٥+) لا تتحرّك بالانزياح إطلاقًا: ٠ لكلّ صور «نفسها» و٢٣٪ للتبديل الحقيقيّ — فرق ستّين ضعفًا،
+   والمتوسّط يسند عنها ما اتّسع بلا شدّة (إعادة تلوين عامّة). شبكة أخشن أو أدقّ لا تصلح changedFrac: قيست
+   ١٦ و٢٤ و٣٢ و٤٨ و٩٦ و١٢٨ وبقيت تتأرجح بين ٠٫٤٪ و٩٫٨٪ للصورة نفسها. */
 function looksUnchanged(cmp, expectBig) {
   if (!cmp || !cmp.ok) return false;
-  if (expectBig) return cmp.changedFrac < 0.03 && cmp.strongFrac < 0.004;
+  if (expectBig) return cmp.strongFrac < 0.004 && cmp.meanDiff < SAME_MEAN;
   return cmp.changedFrac === 0 && cmp.strongFrac === 0 && cmp.meanDiff < 1;
 }
 
@@ -163,4 +173,4 @@ function describeChange(cmp) {
   return 'Objective pixel measurement between the source and this result: ' + pct + '% of the image area changed visibly (' + strong + '% strongly). Near 0% means the two pictures are practically identical, whatever the request asked.';
 }
 
-module.exports = { decodeImage, compareImages, looksUnchanged, describeChange, visionCopy, GRID, CELL_T };
+module.exports = { decodeImage, compareImages, looksUnchanged, describeChange, visionCopy, GRID, CELL_T, SAME_MEAN };

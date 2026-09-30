@@ -17,8 +17,15 @@ const OR_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 function pickProviderModel(prov, requested, fallback) {
   const id = String(requested || '').trim();
-  const vendor = OR_VENDOR[String(prov || '').toLowerCase()];
+  const key = String(prov || '').toLowerCase();
   const slash = id.indexOf('/');
+  /* v-openrouter-tools: المزوّد العامّ ليس شركةً واحدة — أيّ معرّف صالح عند الوسيط يُقبل (كلود،
+     GPT، Llama…) خلافًا لبقيّة المزوّدين المحصورين ببادئة شركتهم. البوّابة نفسها (المالك) في chat.js. */
+  if (key === 'openrouter') {
+    if (!OR_ID_RE.test(id)) return { model: fallback, picked: false, id: '', label: '' };
+    return { model: id, picked: true, id, label: id.slice(slash + 1) };
+  }
+  const vendor = OR_VENDOR[key];
   if (!vendor || !OR_ID_RE.test(id) || id.slice(0, slash).toLowerCase() !== vendor) return { model: fallback, picked: false, id: '', label: '' };
   return { model: id, picked: true, id, label: id.slice(slash + 1) };
 }
