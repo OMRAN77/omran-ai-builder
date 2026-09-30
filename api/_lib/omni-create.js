@@ -27,6 +27,9 @@ module.exports = async (req, res) => {
       const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
       if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
       promptText = built.prompt; ratio = ratio || built.ratio;
+    } else if (imageBase64 && String(imageBase64).trim() && promptText) {
+      /* v-video-identity: الوصف الحرّ مع صورة — قفل الهويّة نفسه كالترندات */
+      promptText = require('./video-trends.js').withIdentityLock(promptText, 1500);
     }
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });

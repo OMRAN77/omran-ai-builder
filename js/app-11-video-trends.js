@@ -142,10 +142,18 @@
     if(t.kind !== 'none'){
       var lab = document.createElement('label'); lab.style.cssText = 'display:block;font-size:12px;color:#9a9a9e;margin:10px 0 4px;';
       lab.textContent = ui('k_' + t.kind) || ui('k_sentence');
-      var inp = document.createElement('input'); inp.type = 'text'; inp.id = 'vtText'; inp.maxLength = 240;
+      /* v-trend-extra: سطر واحد بحدّ ٢٤٠ ← خانة متعدّدة الأسطر بحدّ ٤٠٠ (أكثر من جملة) */
+      var inp = document.createElement('textarea'); inp.rows = 2; inp.id = 'vtText'; inp.maxLength = 400;
       inp.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;';
       panel.appendChild(lab); panel.appendChild(inp);
     }
+    /* v-trend-extra (المالك: «ليش ما أقدر أكتب اللي أريده؟»): ٤٦ من ٥٥ ترندًا كانت بلا خانة كتابة —
+       الآن لكلّ ترند «اكتب اللي تبيه» اختياريّة تُدمج في الأمر توجيهًا يعدّل الترند. */
+    var xlab = document.createElement('label'); xlab.style.cssText = 'display:block;font-size:12px;color:#9a9a9e;margin:10px 0 4px;';
+    xlab.textContent = ui('extra');
+    var xinp = document.createElement('textarea'); xinp.rows = 2; xinp.id = 'vtExtra'; xinp.maxLength = 400; xinp.placeholder = ui('extraPh');
+    xinp.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;resize:vertical;';
+    panel.appendChild(xlab); panel.appendChild(xinp);
     var go = document.createElement('button'); go.type = 'button'; go.className = 'btn primary'; go.id = 'vtGo'; go.style.cssText = 'width:100%;margin-top:12px;font-weight:800;';
     go.textContent = ui('make') + (t.scenes > 1 ? ' (' + t.scenes + ')' : '');
     go.onclick = function(){ make(t); };
@@ -225,6 +233,14 @@
     if(t.photo === 'req' && !photos.length){ status(ui('photoReq')); return; }
     var txt = ($('vtText') ? $('vtText').value.trim() : '');
     var params = { name: txt, text: txt };
+    /* v-trend-extra + v-trend-backdrops: ما كتبه المستخدم، ورقم خلفيّة جديد لكلّ فيديو من هذا الترند */
+    var extra = ($('vtExtra') ? $('vtExtra').value.trim() : '');
+    if(extra) params.extra = extra;
+    try{
+      var bk = 'aiapp_trend_bg_' + t.key;
+      params.bg = (parseInt(localStorage.getItem(bk) || '0', 10) || 0) + 1;
+      localStorage.setItem(bk, String(params.bg));
+    }catch(e){ params.bg = Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
     status(ui('working'));
     try{
