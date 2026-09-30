@@ -933,10 +933,9 @@
       .stSlotEmpty small{font-size:11.5px; color:var(--muted);}
       .stSlot.has{border-style:solid;}
       .stSlot.has .stSlotEmpty{display:none;}
-      .stSlotX,.stSlotSwap{position:absolute; display:none; border:none; cursor:pointer; background:rgba(0,0,0,.72); color:#fff; font-weight:700;}
+      .stSlotX{position:absolute; display:none; border:none; cursor:pointer; background:rgba(0,0,0,.72); color:#fff; font-weight:700;}
       .stSlotX{top:8px; left:8px; width:30px; height:30px; border-radius:50%; font-size:14px;}
-      .stSlotSwap{bottom:8px; left:50%; transform:translateX(-50%); border-radius:999px; padding:6px 14px; font-size:12.5px; white-space:nowrap;}
-      .stSlot.has .stSlotX,.stSlot.has .stSlotSwap{display:block;}
+      .stSlot.has .stSlotX{display:block;} /* v-no-swap-btn: زرّ «🔄 تبديل» حُذف بأمر المالك — النقر على الصورة نفسها يفتح قائمة التغيير */
       .stSrcMenu{position:fixed; z-index:10060; min-width:190px; background:var(--panel,#1a1a1a); border:1px solid rgba(212,175,55,.4); border-radius:14px; padding:6px; box-shadow:0 14px 40px rgba(0,0,0,.6);}
       .stSrcMenu.sheet{left:0; right:0; bottom:0; top:auto; min-width:0; border-radius:20px 20px 0 0; padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px)); border-width:1px 0 0; animation:stSheetUp .18s ease-out;}
       .stSrcMenu.sheet button{font-size:16px; padding:14px 14px;}
@@ -965,7 +964,6 @@
           <img id="studioAiSourcePreviewA" alt="" style="display:none;">
           <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
-          <button type="button" class="stSlotSwap" data-act="change" data-i18n="studioSlotChange">🔄 تبديل</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnA" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
         <span id="studioAiFileNameA" style="display:none;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
@@ -977,7 +975,6 @@
           <img id="studioAiSourcePreviewB" alt="" style="display:none;">
           <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
-          <button type="button" class="stSlotSwap" data-act="change" data-i18n="studioSlotChange">🔄 تبديل</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnB" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
         <span id="studioAiFileNameB" style="display:none;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
