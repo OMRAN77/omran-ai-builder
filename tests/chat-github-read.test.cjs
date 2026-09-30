@@ -83,7 +83,7 @@ test('١. الأداة معرّفة لكلّ مسار الأدوات، قراء�
   assert.ok(s.includes("'• read_github — أي رابط github.com"), 'ملاحظة الأدوات توجّه إليها');
   assert.ok(s.includes("cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' })"), 'سطر الحالة بمفتاح ترجمة قائم');
   assert.ok(s.includes("else if (cb.name === 'read_github') {") && s.includes("if (!__ownerReq) {"), 'التنفيذ: بوابة المالك أوّل شيء');
-  assert.ok(s.includes("result = await require('./github-read.js').readGithub(input, prov === 'claude' ? { deep: true } : undefined);"), 'v-claude-deep-github: عمق إضافيّ على مسار كلود للمالك');
+  assert.ok(s.includes("result = await require('./github-read.js').readGithub(input, { deep: true });"), 'v-github-all-providers: العمق لكلّ مزوّد — والفرع للمالك وحده');
   assert.ok(!/^const .*require\('\.\/github-read\.js'\)/m.test(s), 'لا تحميل للقارئ في نطاق الوحدة');
 });
 
@@ -103,7 +103,7 @@ test('١ب. أداة read_github تحمل query للبحث، والمالك عل
     const r = await ask('claude', 'gh-owner', { query: 'buildTrendPrompt' });
     assert.equal(ghCalls.length, 1);
     assert.equal(ghCalls[0].input.query, 'buildTrendPrompt');
-    assert.deepEqual(ghCalls[0].opts, { deep: true }, 'العمق نفسه يشمل البحث على مسار كلود');
+    assert.deepEqual(ghCalls[0].opts, { deep: true }, 'العمق نفسه يشمل البحث');
     assert.equal(r.bodies.length, 2);
   } finally {
     if (saveOwners === undefined) delete process.env.OWNER_USERNAMES; else process.env.OWNER_USERNAMES = saveOwners;
@@ -136,14 +136,16 @@ test('٣. المالك على كلود: القراءة بمفتاحه (بلا an
   }
 });
 
-test('٣ب. المالك على غير كلود: القراءة بمفتاحه بلا عمق إضافيّ (بلا تغيير عن السابق)', async () => {
+/* v-github-all-providers (أمر المالك ٢٩ سبتمبر): كان هذا الاختبار يثبّت «بلا عمق لغير كلود» — وهو
+   الفرق الذي أمر المالك بإزالته. الآن العمق نفسه على كلّ مزوّد، والحصر على الطالب: المالك. */
+test('٣ب. المالك على غير كلود: القراءة بمفتاحه وبالعمق نفسه', async () => {
   ghCalls.length = 0;
   const saveOwners = process.env.OWNER_USERNAMES;
   process.env.OWNER_USERNAMES = 'gh-owner';
   try {
     const r = await ask('openai', 'gh-owner', { url: 'OMRAN77/omran-ai-builder', what: 'commits', limit: 5 });
     assert.equal(ghCalls.length, 1);
-    assert.equal(ghCalls[0].opts, undefined);
+    assert.deepEqual(ghCalls[0].opts, { deep: true });
     assert.equal(ghCalls[0].input.what, 'commits');
     assert.equal(r.bodies.length, 2);
   } finally {
@@ -153,7 +155,8 @@ test('٣ب. المالك على غير كلود: القراءة بمفتاحه �
 
 test('٥. v-cohere-tools: Cohere يمرّ بمسار الأدوات عبر الوسيط فيحمل read_github (كان مباشرًا بلا أدوات)؛ التنفيذ الآن ممنوع لغير المالك', async () => {
   for (const f of ['js/app-06-checkout.js', 'js/app.bundle.js']) {
-    assert.ok(read(f).includes("const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere'];"), f + ': Cohere في قائمة مسار الأدوات');
+    // v-openrouter-tools: انضمّ المزوّد العامّ إلى القائمة — Cohere فيها كما كان
+    assert.ok(read(f).includes("const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter'];"), f + ': Cohere في قائمة مسار الأدوات');
   }
   ghCalls.length = 0;
   const r = await ask('cohere', 'gh-user', { url: 'https://github.com/OMRAN77/omran-ai-builder' });
@@ -185,7 +188,7 @@ test('٦. v-github-default-repo: بلا رابط — المالك يقرأ مس�
     await ask('openai', 'gh-owner', {});
     assert.equal(ghCalls.length, 1);
     assert.equal(ghCalls[0].input.url, 'OMRAN77/omran-ai-builder');
-    assert.equal(ghCalls[0].opts, undefined);
+    assert.deepEqual(ghCalls[0].opts, { deep: true }); // v-github-all-providers: العمق لكلّ مزوّد للمالك
     process.env.GITHUB_DEFAULT_REPO = 'OMRAN77/other-repo';
     ghCalls.length = 0;
     await ask('openai', 'gh-owner', { path: 'README.md' });

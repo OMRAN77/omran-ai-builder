@@ -32,7 +32,21 @@ async function imageHourlyGuard(username, o) {
   }
 }
 
-/** قفل فيديو: SET NX EX ثلاث دقائق؛ موجود = فيديو سابق خلال المهلة → رفض. */
+/* v-video-seq-cooldown: المتبقّي الفعليّ من المهلة لا طولها كلّه — سلسلة مشاهد (فيلم متكامل، ٢٠ ثانية،
+   ترند بيكسار) تنتظره بدقّة بين مشهد وآخر بدل أن تموت والمشهد الأوّل مدفوع. القيمة المخزونة هي وقت القفل؛
+   تعذّر قراءتها (عطب أو kv بلا kvGetRaw) = المهلة كاملة، أسوأ حالاته انتظار أطول لا أقصر. */
+async function cooldownLeft(kv, key, ttl) {
+  try {
+    const at = Number(await kv.kvGetRaw(key));
+    if (Number.isFinite(at) && at > 0) {
+      const left = Math.ceil(ttl - (Date.now() - at) / 1000);
+      if (left >= 1 && left <= ttl) return left;
+    }
+  } catch (e) { /* أفضل جهد — المهلة كاملة أدناه */ }
+  return ttl;
+}
+
+/** قفل فيديو: SET NX EX ثلاث دقائق؛ موجود = فيديو سابق خلال المهلة → رفض مع المتبقّي الفعليّ. */
 async function videoLock(username, o) {
   const opt = o || {};
   const kv = opt.kv || require('./kv.js');
@@ -41,7 +55,7 @@ async function videoLock(username, o) {
   const key = 'abuse:video:' + userKey(username);
   try {
     const got = await kv.kvSetIfAbsent(key, String(Date.now()), ttl);
-    if (!got) return { ok: false, reason: 'video_cooldown', retryAfter: ttl };
+    if (!got) return { ok: false, reason: 'video_cooldown', retryAfter: await cooldownLeft(kv, key, ttl) };
     return { ok: true, key };
   } catch (e) {
     console.error('[abuse-guard] video lock unavailable: ' + (e && e.message));

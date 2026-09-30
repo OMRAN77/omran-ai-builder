@@ -200,6 +200,24 @@
     return ui('fail') + ': ' + String((e && e.message) || e).slice(0, 160);
   }
 
+  /* v-video-seq-cooldown: ترند بأكثر من مشهد (قصّة بيكسار: ٣) كان يموت عند المشهد الثاني بـvideo_cooldown
+     والأوّل مدفوع — ننتظر المتبقّي الذي يعلنه الخادم بعدّ تنازليّ ظاهر ثمّ نعيد المشهد نفسه (مرّتين على
+     الأكثر). المشهد الوحيد كما كان: رسالة المهلة بلا انتظار. */
+  var SEQ_WAITS_MAX = 2;
+  async function clipInSequence(t, params, token, sceneNo, total){
+    for(var waits = 0; ; waits++){
+      try{ return await oneClip(t, params, token); }
+      catch(e){
+        if(total < 2 || !(e && e.code === 'video_cooldown') || waits >= SEQ_WAITS_MAX) throw e;
+        var secs = Math.max(1, Math.ceil(Number(e.retryAfter) || 180));
+        for(var left = secs; left > 0; left--){
+          status(ui('waitNext').replace('{i}', String(sceneNo)).replace('{n}', String(total)).replace('{s}', String(left)));
+          await sleep(1000);
+        }
+      }
+    }
+  }
+
   async function make(t){
     if(busy) return;
     var token = tokenOf();
@@ -214,19 +232,26 @@
       var n = t.scenes || 1;
       for(var i = 0; i < n; i++){
         if(n > 1) status(ui('scene').replace('{i}', i + 1).replace('{n}', n) + ' ' + ui('working'));
-        urls.push(await oneClip(t, Object.assign({ sceneIndex: i }, params), token));
+        urls.push(await clipInSequence(t, Object.assign({ sceneIndex: i }, params), token, i + 1, n));
       }
+      /* v-trend-dl-fix (بلاغ: تحميل الترند لا يعمل، ومشهد الدمج يظهر [object Blob]):
+         __omranConcatScenes يرجّع Blob لا رابطًا — يلزمه URL.createObjectURL قبل أي src/href.
+         ورابط خارجيّ خام (Runway/Veo) لا يُحمَّل بوسم download عبر أصل مختلف؛ يمرّ ببروكسي الخادم
+         (نفس ما يفعله app-11-video.js دائمًا)، والزرّ يعمل افتراضيًّا بلا اعتراض نقرة. */
       var finalUrl = urls[0];
+      var finalIsBlob = false;
       if(urls.length > 1 && window.__omranConcatScenes){
-        try{ finalUrl = await window.__omranConcatScenes(urls); }catch(e){ finalUrl = null; }
+        try{ finalUrl = URL.createObjectURL(await window.__omranConcatScenes(urls)); finalIsBlob = true; }catch(e){ finalUrl = null; finalIsBlob = false; }
       }
       var out = $('vtOut');
       (finalUrl ? [finalUrl] : urls).forEach(function(u){
+        var isBlobUrl = finalUrl ? finalIsBlob : false;
         var v = document.createElement('video'); v.src = u; v.controls = true; v.playsInline = true; v.style.cssText = 'width:100%;border-radius:12px;background:#000;margin-top:6px;';
         out.appendChild(v);
-        var dl = document.createElement('a'); dl.href = u; dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
+        var dl = document.createElement('a');
+        dl.href = isBlobUrl ? u : (window.__omranProxyVideoUrl ? window.__omranProxyVideoUrl(u) : u);
+        dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
         dl.textContent = ui('download');
-        dl.onclick = function(e){ if(window.autoSaveVideo){ e.preventDefault(); window.autoSaveVideo(u, 'omran-trend-' + t.key + '.mp4'); } };
         out.appendChild(dl);
       });
       var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };

@@ -18,20 +18,34 @@ const SWAP = fs.readFileSync(path.join(root, 'tests/fixtures/styles-grid-swapped
 const diff = require(rp('api/_lib/image-diff.js'));
 const verify = require(rp('api/_lib/image-verify.js'));
 
-/* «إعادة رسم الصورة نفسها» كما يرجّعها المحرّك حين لا ينفّذ: دقّة أعلى، إزاحة بكسل، غاما خفيفة، ضجيج، PNG */
-function rerender(b64) {
+/* «إعادة رسم الصورة نفسها» كما يرجّعها المحرّك حين لا ينفّذ: دقّة أعلى، إزاحة بكسل، غاما خفيفة، ضجيج، PNG.
+   v-img-same-robust: المقاس والإزاحة والغاما والضجيج صارت خيارات — لأنّ المحرّك لا يرجّع الصورة نفسها بمقاس
+   واحد، ونسبة الخلايا المتغيّرة تتأرجح بين ٠٫١٪ و٩٫٥٪ بينها. تُقاس كلّها هنا لا حالة واحدة. */
+function rerender(b64, o) {
+  const dx = (o && o.dx !== undefined) ? o.dx : 2, dy = (o && o.dy !== undefined) ? o.dy : 1;
+  const scale = (o && o.scale) || 1.6, gamma = (o && o.gamma) || 1.04, noise = (o && o.noise !== undefined) ? o.noise : 6;
   const s = diff.decodeImage(b64);
-  const W = Math.round(s.w * 1.6), H = Math.round(s.h * 1.6);
+  const W = Math.round(s.w * scale), H = Math.round(s.h * scale);
   const p = new PNG({ width: W, height: H });
   let seed = 7;
   const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff - 0.5; };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const sx = Math.min(s.w - 1, Math.floor((x + 2) * s.w / W)), sy = Math.min(s.h - 1, Math.floor((y + 1) * s.h / H));
-    const i = (sy * s.w + sx) * 4, o = (y * W + x) * 4;
-    for (let c = 0; c < 3; c++) p.data[o + c] = Math.max(0, Math.min(255, 255 * Math.pow(s.data[i + c] / 255, 1.04) + 6 * rnd()));
-    p.data[o + 3] = 255;
+    const sx = Math.min(s.w - 1, Math.floor((x + dx) * s.w / W)), sy = Math.min(s.h - 1, Math.floor((y + dy) * s.h / H));
+    const i = (sy * s.w + sx) * 4, o2 = (y * W + x) * 4;
+    for (let c = 0; c < 3; c++) p.data[o2 + c] = Math.max(0, Math.min(255, 255 * Math.pow(s.data[i + c] / 255, gamma) + noise * rnd()));
+    p.data[o2 + 3] = 255;
   }
   return PNG.sync.write(p).toString('base64');
+}
+/* إعادة تلوين عامّة: تغيير حقيقيّ واسع بلا خليّة «شديدة» — يجب ألّا يُعدّ ثباتًا */
+function tint(b64, delta) {
+  const s = diff.decodeImage(b64);
+  const out = Buffer.alloc(s.w * s.h * 4);
+  for (let i = 0; i < s.w * s.h; i++) {
+    for (let c = 0; c < 3; c++) out[i * 4 + c] = Math.max(0, Math.min(255, s.data[i * 4 + c] + delta));
+    out[i * 4 + 3] = 255;
+  }
+  return Buffer.from(jpeg.encode({ width: s.w, height: s.h, data: out }, 92).data).toString('base64');
 }
 function mirror(b64) {
   const s = diff.decodeImage(b64);
@@ -49,8 +63,20 @@ test('١. القياس بالبكسل على لقطة المالك: التبدي
   assert.ok(real.ok && real.changedFrac > 0.3 && real.strongFrac > 0.15, JSON.stringify(real));
   assert.equal(diff.looksUnchanged(real, true), false);
   const same = diff.compareImages(SRC, SAME);
-  assert.ok(same.ok && same.changedFrac < 0.03, JSON.stringify(same));
   assert.equal(diff.looksUnchanged(same, true), true, 'الصورة نفسها معادة الرسم بدقّة أعلى = لم يُنفَّذ');
+  /* v-img-same-robust: الصورة نفسها بكلّ مقاس وإزاحة يرجّعها بها محرّك لم ينفّذ — كلّها «لم يُنفَّذ»، وبهامش.
+     ×١٫٢٥ و×٢ وإزاحة ٠ تقيس ٤٫٧–٩٫٥٪ خلايا متغيّرة، أي **فوق** عتبة الـ٣٪ التي كان الحكم عليها: هذه الحالات
+     بالضبط كانت تُخرج صورة المصدر تحت تقرير «تمّ»، وهي التي أسقطت CI مرّتين على `main` وفرعٍ آخر. */
+  for (const o of [{}, { dx: 1 }, { dx: 0, dy: 0 }, { scale: 2 }, { scale: 1.25 }, { noise: 12 }, { gamma: 1.1 }]) {
+    const c = diff.compareImages(SRC, rerender(SRC, o));
+    const tag = JSON.stringify(o) + ' ' + JSON.stringify(c);
+    assert.equal(diff.looksUnchanged(c, true), true, 'الصورة نفسها = لم يُنفَّذ: ' + tag);
+    assert.ok(c.strongFrac <= 0.001, 'الخلايا الشديدة لا تتحرّك بالمقاس ولا بالإزاحة (بوّابة ٠٫٠٠٤): ' + tag);
+    assert.ok(c.meanDiff <= 7.2, 'المتوسّط بهامش دون بوّابة ' + diff.SAME_MEAN + ': ' + tag);
+  }
+  /* الجهة الأخرى: تغيير حقيقيّ لا يُتّهم بالثبات — واسع بلا شدّة (إعادة تلوين) أو موضعيّ بشدّة (بطاقة واحدة) */
+  assert.equal(diff.looksUnchanged(diff.compareImages(SRC, tint(SRC, 12)), true), false, 'إعادة تلوين عامّة تغيّر فعليّ');
+  assert.ok(diff.SAME_MEAN >= 9 && diff.CELL_T === 18, 'الثوابت المعايَرة');
   assert.equal(diff.looksUnchanged(same, false), false, 'التعديل الموضعيّ لا يُتّهم بالثبات بالبكسل وحده (حرف قد يمسّ ٠٫١٪)');
   assert.equal(diff.looksUnchanged(diff.compareImages(SRC, SRC), false), true, 'تطابق حرفيّ = ثابت لأيّ نيّة');
   assert.equal(diff.compareImages('not-an-image', SWAP).ok, false, 'ما لا يُفكّ = لا قياس (لا اتّهام)');
@@ -151,6 +177,12 @@ test('٣. لقطة المالك: برو يرجّع الصورة نفسها ← �
   assert.match(r.calls[0].text, /PEOPLE REPLACEMENT/, 'الطلب صار تبديل أشخاص لا تعديلًا أمينًا');
   assert.match(r.calls[1].prompt, /PEOPLE REPLACEMENT/, 'GPT يستلم أمر التبديل نفسه');
   assert.ok(!r.ledger.some((l) => l[0] === 'refund'), 'نُفّذ فلا ردّ');
+  /* v-img-same-robust: برو أرجع الصورة نفسها بمقاس ×١٫٢٥ (٩٫٥٪ خلايا متغيّرة، فوق عتبة الـ٣٪ القديمة) — على
+     الحكم السابق كان الموجِّه يسلّمها للحاكم ويرسلها بتقرير «تمّ» بلا نداء GPT أصلًا. المسار نفسه لا يتغيّر. */
+  const r2 = await run({ prompt: SWAP_REQ, userText: SWAP_REQ, editImageBase64: SRC, editMimeType: 'image/jpeg', token: 'user' }, { pro: rerender(SRC, { scale: 1.25 }), gptEdit: SWAP }, done());
+  assert.equal(r2.status, 200);
+  assert.equal(r2.json.imageBase64, SWAP, 'مقاس آخر للصورة نفسها = ثابت كذلك، والمنفَّذ هو ما يُرسل');
+  assert.deepEqual(r2.calls.map((c) => c.kind), ['pro', 'gpt-edit', 'judge']);
 });
 
 test('٤. المحرّكان يرجّعان الصورة نفسها ← مصارحة ٤٢٢ وردّ النقاط، بلا نداء حكم وبلا صورة كاذبة', async () => {

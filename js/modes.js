@@ -96,7 +96,8 @@
         { key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
         { key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
         { key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
-        { key:'openrouter', name:'OpenRouter',               store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.8-flash','Gemini 3.8 Flash'],['deepseek/deepseek-v4-pro','DeepSeek V4 Pro'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
+        /* v-openrouter-tools: or:true كي يصل اختيار المالك إلى الخادم (omranModelFor) كبقيّة مزوّدي الوسيط */
+        { key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.8-flash','Gemini 3.8 Flash'],['deepseek/deepseek-v4-pro','DeepSeek V4 Pro'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
