@@ -248,6 +248,19 @@ test('حلّ الواجب: صورة ← تدقيق نصّ الصورة أوّل�
   assert.match(confirmFn, /\$id\('eduReadRetry'\)\.onclick = function\(\)\{ showSolver\(\); \};/, 'رفض القراءة يعيد لالتقاط صورة جديدة');
 });
 
+/* ---------- صورة الجواب (v-edu-answer-card) ---------- */
+test('بطاقة الجواب: نصّ مبنيّ من الحلّ نفسه (لا رسم بذكاء اصطناعيّ)، وترسم بـomranShareTextCard القائمة', () => {
+  const text = P.__eduPlus.lib.answerCardText({
+    topic: 'همزة القطع والوصل', problem: 'صنّف الكلمات', answer: 'قطع: أرنب — وصل: ابن', check: 'انطق بعد واو',
+  });
+  assert.strictEqual(text, 'همزة القطع والوصل\n\nصنّف الكلمات\n\nالجواب:\nقطع: أرنب — وصل: ابن\n\nالتحقّق:\nانطق بعد واو');
+  assert.strictEqual(P.__eduPlus.lib.answerCardText({ answer: 'فقط الجواب' }), 'الجواب:\nفقط الجواب', 'الحقول الفارغة لا تترك أسطرًا خاوية');
+  const cardFn = plus.slice(plus.indexOf('function showAnswerCard(s, out){'), plus.indexOf('/* ---------- 🎨 المشروع والبوستر'));
+  assert.match(cardFn, /window\.omranShareTextCard\(answerCardText\(s\)\)/, 'يستعمل راسم البطاقة القائم في app-05-share-text.js — لا رسم جديد ولا نداء ذكاء اصطناعيّ');
+  assert.match(cardFn, /canvas\.toDataURL\('image\/png'\)/);
+  assert.match(cardFn, /a\.download = 'homework-answer-'/);
+});
+
 /* ---------- الخادم ---------- */
 test('الخادم: المعلّم يرى الدرس والمحادثة ويردّ، والحلّ يُنقّى، والسقف يعمل', async () => {
   const rp = (p) => require.resolve(R(p));

@@ -157,7 +157,10 @@ window.__EDU_XL2 = {
 /* v-edu-confirm-read: تدقيق قبل الحلّ — يظهر فقط حين يكون المصدر صورة */
 "هذا اللي قريناه من صورتك":{"fr": "Voici ce qu’on a lu sur ta photo", "hi": "यह है जो हमने आपकी फ़ोटो से पढ़ा", "bn": "এটাই আমরা আপনার ছবি থেকে পড়েছি", "ne": "यो हो हामीले तपाईंको फोटोबाट पढेको", "id": "Ini yang kami baca dari fotomu", "fil": "Ito ang nabasa namin sa larawan mo", "tr": "Fotoğrafından okuduğumuz bu", "zh": "这是我们从你的照片里读到的内容", "ru": "Вот что мы прочитали на твоём фото", "es": "Esto es lo que leímos en tu foto", "ml": "നിങ്ങളുടെ ഫോട്ടോയിൽ നിന്ന് ഞങ്ങൾ വായിച്ചത് ഇതാണ്"},
 "صحيح، ورّني الحلّ":{"fr": "Correct, montre-moi la solution", "hi": "सही है, हल दिखाइए", "bn": "ঠিক আছে, সমাধান দেখান", "ne": "ठिक छ, समाधान देखाउनुहोस्", "id": "Benar, tunjukkan penyelesaiannya", "fil": "Tama, ipakita ang solusyon", "tr": "Doğru, çözümü göster", "zh": "没错，给我看解答", "ru": "Верно, покажи решение", "es": "Correcto, muéstrame la solución", "ml": "ശരിയാണ്, പരിഹാരം കാണിക്കൂ"},
-"مو واضح، صوّرها من جديد":{"fr": "Pas net, reprends la photo", "hi": "साफ़ नहीं है, दोबारा फ़ोटो लें", "bn": "স্পষ্ট নয়, আবার ছবি তুলুন", "ne": "स्पष्ट छैन, फेरि फोटो खिच्नुहोस्", "id": "Kurang jelas, foto ulang", "fil": "Hindi malinaw, kunan ulit ng larawan", "tr": "Net değil, tekrar fotoğrafla", "zh": "看不清，重新拍照", "ru": "Не разборчиво, сфотографируй заново", "es": "No se ve claro, vuelve a fotografiar", "ml": "വ്യക്തമല്ല, വീണ്ടും ഫോട്ടോ എടുക്കൂ"}
+"مو واضح، صوّرها من جديد":{"fr": "Pas net, reprends la photo", "hi": "साफ़ नहीं है, दोबारा फ़ोटो लें", "bn": "স্পষ্ট নয়, আবার ছবি তুলুন", "ne": "स्पष्ट छैन, फेरि फोटो खिच्नुहोस्", "id": "Kurang jelas, foto ulang", "fil": "Hindi malinaw, kunan ulit ng larawan", "tr": "Net değil, tekrar fotoğrafla", "zh": "看不清，重新拍照", "ru": "Не разборчиво, сфотографируй заново", "es": "No se ve claro, vuelve a fotografiar", "ml": "വ്യക്തമല്ല, വീണ്ടും ഫോട്ടോ എടുക്കൂ"},
+/* v-edu-answer-card: بطاقة صورة للجواب — نصّ مبنيّ مسبقًا لا رسم بالذكاء الاصطناعيّ */
+"صورة الجواب":{"fr": "Image de la réponse", "hi": "उत्तर की छवि", "bn": "উত্তরের ছবি", "ne": "उत्तरको तस्बिर", "id": "Gambar jawaban", "fil": "Larawan ng sagot", "tr": "Cevap görseli", "zh": "答案图片", "ru": "Изображение ответа", "es": "Imagen de la respuesta", "ml": "ഉത്തരത്തിന്റെ ചിത്രം"},
+"احفظ الصورة":{"fr": "Enregistrer l’image", "hi": "छवि सहेजें", "bn": "ছবি সংরক্ষণ করুন", "ne": "तस्बिर सुरक्षित गर्नुहोस्", "id": "Simpan gambar", "fil": "I-save ang larawan", "tr": "Görseli kaydet", "zh": "保存图片", "ru": "Сохранить изображение", "es": "Guardar la imagen", "ml": "ചിത്രം സേവ് ചെയ്യൂ"}
 };
 var DAY = 86400000;
 function C(){ return window.__eduCore; }
@@ -437,12 +440,15 @@ function showSolution(body, s){
       + (s.check ? '<div class="eduExplain">🔎 <b>' + esc(L('التحقّق:', 'Check:')) + '</b><div class="eduSummary">' + c.md(s.check) + '</div></div>' : '')
       + (s.tip ? '<div class="eduExplain">🎯 <b>' + esc(L('الفكرة للمسائل المشابهة:', 'The idea for similar problems:')) + '</b><div class="eduSummary">' + c.md(s.tip) + '</div></div>' : '')
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="eduPrimary" id="eduSolveAsk">💬 ' + esc(L('اسأل المعلّم عن هذه المسألة', 'Ask the tutor about this problem')) + '</button>'
-      + '<button class="eduPrimary eduGhost" id="eduSolveNew">🧩 ' + esc(L('واجب جديد', 'New homework')) + '</button></div>';
+      + '<button class="eduPrimary eduGhost" id="eduAnswerCardGo">🖼️ ' + esc(L('صورة الجواب', 'Answer as image')) + '</button>'
+      + '<button class="eduPrimary eduGhost" id="eduSolveNew">🧩 ' + esc(L('واجب جديد', 'New homework')) + '</button></div>'
+      + '<div id="eduAnswerCardOut"></div>';
     $id('eduSolveNew').onclick = showSolver;
     $id('eduSolveAsk').onclick = function(){
       var summary = s.problem + '\n\n' + steps.map(function(x, i){ return (i + 1) + ') ' + x.work; }).join('\n') + '\n\n' + s.answer;
       showTutorView({ id: 'solve-' + hashStr(s.problem), title: s.topic || L('مسألة', 'Problem'), summary: summary }, showSolver);
     };
+    $id('eduAnswerCardGo').onclick = function(){ showAnswerCard(s, $id('eduAnswerCardOut')); };
     if(pj) $id('eduPosterGo').onclick = function(){ makePoster(s, $id('eduPosterOut'), $id('eduPosterGo')); };
   }
   if(!teach){
@@ -450,6 +456,29 @@ function showSolution(body, s){
     box.innerHTML = steps.map(function(st, n){ return '<div class="eduStep">' + stepHead(n) + '<div class="eduStepWork eduSummary">' + c.md(st.work) + '</div></div>'; }).join('');
     showTail();
   } else if(steps.length) addStep(); else finish();
+}
+
+/* v-edu-answer-card (طلب المالك ٣٠ سبتمبر: «صورة جواب نفس السؤال» — بعد تجربة تعديل الصورة
+   بالذكاء الاصطناعيّ وطلوع الجواب خطأ): لا رسم بالذكاء الاصطناعيّ إطلاقًا — نفس نصّ الجواب المحلَّل
+   (المؤكَّد أصلًا عبر شاشة تدقيق نصّ الصورة) يُرسم بطاقة بـomranShareTextCard الموجودة أصلًا
+   (app-05-share-text.js: كانفاس بخط الصفحة نفسه ودعم RTL) — الجواب مضمون الصحّة لأنه كتابة حقيقية
+   لا بكسلات مرسومة. */
+function answerCardText(s){
+  var parts = [];
+  if(s.topic) parts.push(s.topic);
+  if(s.problem) parts.push(s.problem);
+  if(s.answer) parts.push(L('الجواب:', 'Answer:') + '\n' + s.answer);
+  if(s.check) parts.push(L('التحقّق:', 'Check:') + '\n' + s.check);
+  return parts.join('\n\n');
+}
+function showAnswerCard(s, out){
+  if(!out || typeof window.omranShareTextCard !== 'function') return;
+  var canvas = window.omranShareTextCard(answerCardText(s));
+  var src = canvas.toDataURL('image/png');
+  out.innerHTML = '<img class="eduPosterImg" alt="" src="' + src + '"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'
+    + '<a class="eduPrimary" id="eduAnswerCardSave" style="text-decoration:none;">⬇️ ' + esc(L('احفظ الصورة', 'Save the image')) + '</a></div>';
+  var a = $id('eduAnswerCardSave');
+  a.href = src; a.download = 'homework-answer-' + hashStr(s.problem || s.answer || '') + '.png';
 }
 
 /* ---------- 🎨 المشروع والبوستر (v-edu-homework) ---------- */
@@ -705,6 +734,6 @@ function home(el){
 window.__eduPlus = {
   home: home, tutor: tutor, showTutorView: showTutorView, listenBtn: listenBtn, srsMark: srsMark,
   showReview: showReview, showSolver: showSolver, showProgress: showProgress, openAlgo: openAlgo,
-  lib: { solveMode: solveMode, setSolveMode: setSolveMode, posterPrompt: posterPrompt, srsNext: srsNext, srsDue: srsDue, buildExamPlan: buildExamPlan, plainText: plainText, INTERVAL_DAYS: INTERVAL_DAYS }
+  lib: { solveMode: solveMode, setSolveMode: setSolveMode, posterPrompt: posterPrompt, srsNext: srsNext, srsDue: srsDue, buildExamPlan: buildExamPlan, plainText: plainText, INTERVAL_DAYS: INTERVAL_DAYS, answerCardText: answerCardText }
 };
 })();
