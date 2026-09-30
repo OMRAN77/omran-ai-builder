@@ -121,12 +121,21 @@ const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP o
 /* v-studio-variants: التنويع صار **داخل الخيار نفسه** لكلّ الميزات لا للرسم وحده —
    توجيه محسوس من محاور studio-variants (آلاف الأشكال لكلّ خيار) بدل جملة «نوّع» عامّة
    يتجاهلها الموديل. الرقم يصل من العميل (عدّاد لكلّ ميزة+خيار) فلا يتكرّر شكلٌ للمستخدم. */
-function varietyLine(feature, variant) {
-  const total = variants.variantCount(feature);
+/* v-visible-change (شكوى المالك ٣٠ سبتمبر: «في الاستايل إذا اختار شيئًا — العين مثلًا — الشيء اللي
+   اختاره ما يتغيّر»): سطر التنويع كان يُضعف التعديل أو يناقضه — «أخفّ مستوى»، «التركيز على الجهة
+   اليسرى» للعيون، «عدسة شفّافة» لنظّارة شمسيّة، «مطفي» لخيار لامع. الآن: الخيار المختار هو المرجع،
+   والتنويع لا يمسّ إلّا ما تركه الخيار مفتوحًا، والتغيير يجب أن يكون ظاهرًا. والتعديلات الدقيقة
+   المطلوبة بعينها (العمر، الجسم، تبييض الأسنان…) بلا تنويع أصلًا. */
+function varietyLine(feature, variant, style) {
+  if (!variants.hasVariation(feature, style)) return '';
+  const total = variants.variantCount(feature, style);
   const n = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) : Math.floor(Math.random() * total);
-  const directive = variants.variantDirective(feature, n);
-  const note = VARIETY_NOTE[feature] || 'Produce a fresh original execution of this exact style; do not repeat an earlier one. Keep the described style, colour and placement exactly as asked.';
-  return '\nVARIATION #' + (n % total) + ' (within this exact style — never change the style itself): ' + directive + '.\n' + note;
+  const directive = variants.variantDirective(feature, n, style);
+  const note = VARIETY_NOTE[feature] || 'Produce a fresh original execution of this exact style; do not repeat an earlier one.';
+  return '\nVARIATION #' + (n % total) + ' — a fresh execution of the chosen style. The chosen style described above is the authority: ' +
+    'keep every colour, finish, shape, size and placement it names exactly. Use the following ideas only for details the style leaves open, ' +
+    'and skip any idea that contradicts it: ' + directive + '.\n' + note +
+    '\nThe requested change must be clearly and unmistakably visible in the result.';
 }
 
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
@@ -150,7 +159,7 @@ function buildSinglePrompt(feature, style, description, multiAngle, variant) {
     promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
   }
   if (DESIGN_FEATURES.indexOf(feature) !== -1) promptText += SKIN_LOCK;
-  promptText += varietyLine(feature, variant);
+  promptText += varietyLine(feature, variant, style);
   return promptText;
 }
 
@@ -345,7 +354,8 @@ module.exports = async (req, res) => {
     if (!promptText) { res.status(400).json({ error: 'Unknown feature' }); return; }
     let guardOpts = null;
     /* v-edit-no-change: الميزات الخفيّة (بشرة، عيون، جسم، عمر) تغييرها دقيق فلا يُفرض عليها */
-    const SUBTLE = ['skin', 'eyes', 'body', 'age'];
+    /* v-visible-change: العيون والجسم والعمر تغييرها ظاهر — «ما تغيّر» يُكشف ويُعاد؛ البشرة وحدها دقيقة بطبعها */
+    const SUBTLE = ['skin'];
     if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime', requireChange: SUBTLE.indexOf(feature) === -1 };
     try {
       const r = await runEdit({

@@ -200,15 +200,17 @@ const STYLE_PROMPTS = {
   "hairclip": "a decorative pearl hair clip",
   "cufflinks": "polished gold cufflinks on the shirt cuffs"
  },
+ /* v-visible-change: «a natural blue eye color» وحدها كانت أضعف من أقفال «الوجه نفسه بالبكسل» فيرجع
+    الموديل العينين كما هما. الآن: القزحيّة في العينين معًا، بلون واضح لا لبس فيه، وما سواها ثابت. */
  "eyes": {
-  "blue": "a natural blue eye color",
-  "green": "a natural green eye color",
-  "hazel": "a natural hazel eye color",
-  "grey": "a natural grey eye color",
-  "whiteteeth": "naturally whiter, brighter teeth",
-  "bigsmile": "a bright natural wide smile",
-  "lashes": "fuller, longer natural eyelashes",
-  "brows": "neatly shaped, defined eyebrows"
+  "blue": "the iris colour of BOTH eyes changed to a clear natural blue, the same blue in both eyes and plainly visible at first glance, with the pupils, eye shape, eyelids, lashes and gaze unchanged",
+  "green": "the iris colour of BOTH eyes changed to a clear natural green, the same green in both eyes and plainly visible at first glance, with the pupils, eye shape, eyelids, lashes and gaze unchanged",
+  "hazel": "the iris colour of BOTH eyes changed to a warm natural hazel (golden-brown with green), the same in both eyes and plainly visible at first glance, with the pupils, eye shape, eyelids, lashes and gaze unchanged",
+  "grey": "the iris colour of BOTH eyes changed to a clear natural grey, the same grey in both eyes and plainly visible at first glance, with the pupils, eye shape, eyelids, lashes and gaze unchanged",
+  "whiteteeth": "visibly whiter, brighter teeth — a clean natural white, not an artificial glowing white — with the teeth shape, lips and smile unchanged",
+  "bigsmile": "a bright, natural, wide open smile showing the teeth, with the same face, eyes and head position",
+  "lashes": "clearly fuller, longer and darker natural eyelashes on both eyes, top and bottom, with the eye shape and gaze unchanged",
+  "brows": "neatly shaped, fuller and clearly defined eyebrows in the person's own hair colour, with the rest of the face unchanged"
  },
  "body": {
   "athletic": "a lean athletic build",
@@ -288,7 +290,7 @@ const INSTR = {
  "henna": "Add {s}. Draw it onto the exact hands or feet already visible in this photo, on whichever surface is actually facing the camera (palm or back of the hand) — if the placement described above is not visible in this photo, adapt the same design naturally onto the surface that is — following the real curves, folds and perspective of that skin. Render it as a realistic dried henna stain in exactly the colour, pattern and placement described above — do not substitute any other colour or pattern. Fine crisp lines, high detail, matching the photo's own lighting and shadows. Keep the same hands and everything else in the photo exactly the same. Output a single photorealistic image.",
  "wedding": "Change the outfit, hair styling and makeup to {s}. Keep the same person, face and pose; the identity must stay clearly recognizable. Output a single photorealistic image.",
  "accessories": "Add {s} to the person, placed naturally and realistically. Keep everything else in the photo exactly the same. Output a single photorealistic image.",
- "eyes": "Apply {s}. Keep the same person, identity, pose and background exactly the same and fully realistic. Output a single photorealistic image.",
+ "eyes": "Make this change clearly and visibly: {s}. Keep the same person, identity, pose and background exactly the same and fully realistic. Output a single photorealistic image.",
  "body": "Change the body shape to {s} while keeping the same face, identity, clothing style, pose and background; keep proportions realistic. Output a single photorealistic image.",
  "background": "Replace only the background with {s}, matching the lighting and perspective naturally. Keep the person, pose and outfit exactly the same. Output a single photorealistic image.",
  "palette": "Recolor the outfit and accessories in {s} that flatters the person's skin tone. Keep the same person, face, pose and background. Output a single photorealistic image.",

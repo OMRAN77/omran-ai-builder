@@ -39,7 +39,8 @@ const AXES = {
     shapeNuance: ['kept exactly as the natural nail shape', 'filed slightly squarer', 'filed slightly rounder', 'a touch longer', 'a touch shorter'],
   },
   makeup: {
-    intensity: ['barely there, the lightest version of this look', 'soft and wearable', 'balanced everyday-to-evening strength', 'strong and defined', 'maximum intensity within this exact look'],
+    /* v-visible-change: «barely there» حُذفت — كانت تُخرج وجهًا بلا مكياج ظاهر فيقول المالك «ما تغيّر» */
+    intensity: ['clearly visible and wearable', 'balanced everyday-to-evening strength', 'strong and defined', 'maximum intensity within this exact look'],
     eyeNuance: ['blended rounder for an open eye', 'lifted at the outer corner', 'elongated outwards', 'softly diffused with no hard edges', 'sharply defined with clean edges', 'concentrated in the centre of the lid'],
     blushPlacement: ['high on the cheekbones', 'on the apples of the cheeks', 'draped up towards the temples', 'sweeping lightly across the nose too', 'barely visible, just a hint of warmth'],
     lipFinish: ['matte', 'satin', 'high gloss', 'blurred at the edges', 'sharply lined'],
@@ -62,12 +63,13 @@ const AXES = {
   glasses: {
     frameThickness: ['with a hairline-thin frame', 'with a slim frame', 'with a medium frame', 'with a bold thick frame'],
     material: ['in polished metal', 'in matte metal', 'in glossy acetate', 'in matte acetate', 'in a metal-and-acetate combination'],
-    lensTint: ['with completely clear lenses', 'with a light tint', 'with a strong dark tint', 'with a gradient tint, darker at the top', 'with a mirrored finish'],
+    /* v-visible-change: «عدسة شفّافة تمامًا» كانت تقلب الشمسيّة إلى طبّيّة — درجة العدسة تبقى كما في الخيار */
+    lensEdge: ['with slightly rounded lens corners', 'with sharper lens corners', 'with a thin lens bevel catching the light', 'with a flat lens edge', 'with a subtle lens-edge highlight'],
     size: ['in a small narrow size', 'in a medium size', 'in an oversized size'],
     detail: ['with plain temples', 'with a fine decorative detail at the hinge', 'with a keyhole bridge', 'with a double bridge bar', 'with a subtle two-tone colour'],
   },
   skin: {
-    strength: ['at the lightest, barely perceptible level', 'at a light level', 'at a moderate level', 'at a strong but still believable level'],
+    strength: ['at a clearly noticeable but natural level', 'at a moderate, obvious level', 'at a strong but still believable level'],
     texture: ['keeping every pore and fine line visible', 'keeping most natural texture', 'smoothing texture noticeably while staying real'],
     tone: ['keeping the exact current tone', 'evening the tone very slightly', 'warming the tone a touch', 'cooling the tone a touch'],
     finish: ['with a completely matte finish', 'with a soft satin finish', 'with a fresh dewy finish'],
@@ -94,12 +96,20 @@ const AXES = {
     weather: ['under a clear sky', 'with light haze', 'with soft clouds', 'with dramatic clouds'],
     accent: ['with no added elements', 'with a few subtle foreground elements', 'with soft light flares', 'with reflective surfaces catching light'],
   },
+  /* v-visible-change: حُذف «أخفّ مستوى» و«التركيز على اليسار/اليمين» (للعيون = عين واحدة تتلوّن أو لا شيء) و«اللمعة» */
   DEFAULT: {
-    strength: ['at its lightest believable level', 'at a light level', 'at a balanced level', 'at a strong level', 'at its fullest level within this exact style'],
+    strength: ['clearly visible', 'bold and obvious', 'at its fullest level within this exact style'],
     detail: ['kept simple and clean', 'with a little added detail', 'with rich detail', 'with maximum fine detail'],
-    finish: ['with a matte finish', 'with a satin finish', 'with a glossy finish', 'with a subtle shimmer'],
-    emphasis: ['balanced evenly', 'emphasised on the left side', 'emphasised on the right side', 'emphasised in the centre'],
+    finish: ['with a matte finish', 'with a satin finish', 'with a glossy finish'],
+    styling: ['in a classic interpretation', 'in a modern interpretation', 'in a minimal interpretation'],
     tone: ['in a cooler tone', 'in a neutral tone', 'in a warmer tone', 'in a deeper tone', 'in a lighter tone'],
+  },
+  /* v-visible-change: لون القزحيّة وحده — بدرجاته ونقشه الطبيعيّ، في العينين معًا دائمًا */
+  IRIS: {
+    shade: ['a light clear shade', 'a medium natural shade', 'a deep rich shade', 'a vivid saturated shade'],
+    pattern: ['with fine radial streaks in the iris', 'with a few lighter flecks near the pupil', 'with an evenly toned iris', 'with a subtle golden ring around the pupil'],
+    ring: ['with a defined darker outer ring', 'with a soft outer ring', 'with no visible outer ring'],
+    clarity: ['crisp and bright', 'natural and soft', 'luminous and clear'],
   },
 };
 
@@ -108,11 +118,31 @@ const OUTFIT_FEATURES = ['heritage', 'hijab', 'gulfmen', 'wedding', 'seasons', '
 for (const f of OUTFIT_FEATURES) if (!AXES[f]) AXES[f] = AXES.outfit;
 if (!AXES.menhair) AXES.menhair = AXES.hair;
 
-function axesOf(feature) { return AXES[feature] || AXES.DEFAULT; }
+/* v-visible-change: تعديلات دقيقة مطلوبة بعينها — التنويع فيها يُضعفها («أيّ شكل» لعمرٍ أو
+   لتبييض أسنان لا معنى له، وكان يُخرج النتيجة بلا تغيير). لا سطر تنويع لها أصلًا. */
+const NO_VARIATION = {
+  eyes: ['whiteteeth', 'bigsmile', 'lashes', 'brows'],
+  body: '*',
+  age: '*',
+};
+/* محاور خاصّة بخيار بعينه داخل الميزة */
+const STYLE_AXES = { eyes: { blue: 'IRIS', green: 'IRIS', hazel: 'IRIS', grey: 'IRIS' } };
+
+function hasVariation(feature, style) {
+  const nv = NO_VARIATION[feature];
+  if (!nv) return true;
+  if (nv === '*') return false;
+  return nv.indexOf(style) === -1;
+}
+function axesOf(feature, style) {
+  const own = STYLE_AXES[feature] && STYLE_AXES[feature][style];
+  if (own) return AXES[own];
+  return AXES[feature] || AXES.DEFAULT;
+}
 
 /* عدد الأشكال الممكنة داخل الخيار الواحد */
-function variantCount(feature) {
-  return Object.values(axesOf(feature)).reduce((n, list) => n * list.length, 1);
+function variantCount(feature, style) {
+  return Object.values(axesOf(feature, style)).reduce((n, list) => n * list.length, 1);
 }
 
 /* خلط بيجكتيفي: الضغطتان المتتاليتان تختلفان في عدّة محاور لا في المحور الأوّل وحده،
@@ -121,10 +151,10 @@ function variantCount(feature) {
 const MIX = 7919;
 
 /* n → توجيه محسوس (فكّ على المحاور بنظام أساس مختلط) */
-function variantDirective(feature, n) {
-  const axes = axesOf(feature);
+function variantDirective(feature, n, style) {
+  const axes = axesOf(feature, style);
   const keys = Object.keys(axes);
-  const total = variantCount(feature);
+  const total = variantCount(feature, style);
   let x = ((Math.abs(Math.floor(Number(n) || 0)) % total) * MIX) % total;
   const picked = [];
   for (const k of keys) {
@@ -135,4 +165,4 @@ function variantDirective(feature, n) {
   return picked.join('; ');
 }
 
-module.exports = { AXES, axesOf, variantCount, variantDirective, OUTFIT_FEATURES };
+module.exports = { AXES, axesOf, variantCount, variantDirective, hasVariation, NO_VARIATION, STYLE_AXES, OUTFIT_FEATURES };
