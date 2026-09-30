@@ -49,7 +49,9 @@ test('save path, boot hydration and lazy render hydration are wired', () => {
   assert.match(src, /try\{ await idbImgPutAll\(puts\.concat\(puts\.filter\(x => x\.ref && x\.ref\.viewUrl\)\.map\(x => \(\{ id: x\.id \+ '~v', dataUrl: x\.ref\.viewUrl \}\)\)\)\); puts\.forEach\(x => \{ delete x\.ref\.vaultPending; \}\); \}/);
   // v-perf-save-slices: المُستبدِل نفسه بحسب نجاح المخزن، مشروعًا مشروعًا
   assert.match(src, /const rep = vaulted \? __vaultReplacer : __noViewReplacer;/);
-  assert.match(src, /const js = JSON\.stringify\(projs\[i\], rep\);/);
+  // v-code-dedupe: المُستبدِل يُغلَّف لرموز الكود المكرّر ويُحيل كلّ ما عداها إليه
+  assert.match(src, /const js = JSON\.stringify\(projs\[i\], plan \? function\(k, v\)\{/);
+  assert.match(src, /return rep\.call\(this, k, v\);\n\s+\} : rep\);/);
   /* v-mem-guard2: الرسم يقرأ عبر القارئ المشترك __vaultRead (قراءة واحدة لكلّ صورة) — وهو يعيد الأصل للمرفق ويزيل purged */
   /* v-img-view: المخزونة تُرسم بنسخة العرض (من المخزن أو تُصنع من الأصل)، والأصل يُقرأ للأدوات وحدها */
   assert.match(src, /else if\(__isBigDataImg\(a\.dataUrl\) \|\| __vaultDegraded\(a\)\)\{/);
