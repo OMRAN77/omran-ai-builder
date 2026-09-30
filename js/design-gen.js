@@ -50,6 +50,7 @@
       d.innerHTML='<div class="cc"></div><div class="cn"></div>';
       d.querySelector('.cc').style.background=r[1];
       d.querySelector('.cn').textContent=T(r[2]);
+      d.setAttribute('data-col',r[0]); /* v-fx-simple: مرساة ثابتة للشريط المطويّ واقتراحات ما بعد النتيجة */
       d.onclick=function(){ var i=st.colors.indexOf(r[0]); if(i>=0) st.colors.splice(i,1); else st.colors.push(r[0]); d.classList.toggle('sel',i<0); };
       w.appendChild(d);
     });
@@ -92,6 +93,7 @@
       var url=LOOKS+'extras/'+r[0].toLowerCase()+'.webp';
       if(window.__omranWhenSeen) window.__omranWhenSeen(pic,function(){ im.src=url; });
       else im.src=url;
+      d.setAttribute('data-ext',r[0]); /* v-fx-simple: مرساة ثابتة للشريط المطويّ واقتراحات ما بعد النتيجة */
       paintAcc(d,st.extras.indexOf(r[0])>=0);
       d.onclick=function(){ var i=st.extras.indexOf(r[0]); if(i>=0) st.extras.splice(i,1); else st.extras.push(r[0]); paintAcc(d,i<0); };
       w.appendChild(d);
