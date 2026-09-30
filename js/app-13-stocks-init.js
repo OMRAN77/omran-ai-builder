@@ -1588,11 +1588,23 @@
 
   /* ---- 📊 compare checkboxes (built from style options) ---- */
   function buildCompareChecks(){
+    /* v-studio-compare-cards (لقطة المالك «كيف الشخص يعرف الشكل»): كلّ خيار بطاقة بصورته (optionImgs نفسها)
+       بدل مربّع نصّيّ، وثلاثة كحدّ أقصى. الصور تُحمَّل عند ظهورها فقط. */
     compareChecksEl.innerHTML = '';
     Array.from(styleEl.options).forEach(opt => {
       const label = document.createElement('label');
-      label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted,#999); border:1px solid var(--border,#333); border-radius:6px; padding:4px 8px; cursor:pointer;';
-      label.innerHTML = '<input type="checkbox" class="studioCompareCheck" value="' + opt.value + '"> ' + opt.textContent;
+      label.className = 'stCmp';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'studioCompareCheck'; cb.value = opt.value;
+      const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
+      const srcs = optionImgs(feature, opt.value);
+      if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = srcs.img; }); else img.src = srcs.img;
+      img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = srcs.img2; } else img.style.visibility = 'hidden'; };
+      const nm = document.createElement('span'); nm.textContent = opt.textContent.trim();
+      cb.onchange = () => {
+        if(cb.checked && compareChecksEl.querySelectorAll('.studioCompareCheck:checked').length > 3){ cb.checked = false; return; }
+        label.classList.toggle('on', cb.checked);
+      };
+      label.appendChild(cb); label.appendChild(img); label.appendChild(nm);
       compareChecksEl.appendChild(label);
     });
   }

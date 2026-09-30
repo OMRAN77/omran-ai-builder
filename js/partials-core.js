@@ -942,6 +942,13 @@
       .stSrcMenu button:hover{background:rgba(212,175,55,.14);}
       .stRecent{display:flex; gap:6px; flex-wrap:wrap; padding:4px 8px 8px;}
       .stRecent img{width:52px; height:52px; object-fit:cover; border-radius:10px; cursor:pointer; border:1px solid rgba(255,255,255,.15);}
+      .stCmpGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px; margin-top:8px;}
+      .stCmp{position:relative; display:flex; flex-direction:column; border:1px solid var(--border,#333); border-radius:12px; overflow:hidden; cursor:pointer; background:#111;}
+      .stCmp input{position:absolute; opacity:0; pointer-events:none;}
+      .stCmp img{width:100%; height:96px; object-fit:cover; object-position:center top; background:linear-gradient(160deg,#23232a,#101014);}
+      .stCmp span{font-size:11px; color:var(--text); padding:5px 4px; text-align:center; line-height:1.3;}
+      .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);}
+      .stCmp.on::after{content:"✓"; position:absolute; top:6px; left:6px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center;}
       #studioAiMore{margin-top:14px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:8px 10px;}
       #studioAiMore > summary{cursor:pointer; font-size:13px; color:var(--muted);}
     </style>
@@ -1071,9 +1078,13 @@
       <strong style="font-size:13px;" data-i18n="studioCompareTitle">📊 قارن بين ستايلات</strong>
       <button type="button" class="btn" id="studioAiFavoritesBtn" style="padding:4px 10px; font-size:12px;" data-i18n="studioFavoritesBtn">❤️ المفضلة</button>
     </div>
-    <p style="font-size: var(--fs-5); color:var(--muted); margin:4px 0 8px;" data-i18n="studioCompareHint">اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب</p>
-    <div id="studioAiCompareChecks" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
-    <button type="button" class="btn" id="studioAiCompareBtn" style="width:100%; margin-top:8px;" data-i18n="studioCompareBtn">📊 قارن الستايلات</button>
+    <!-- v-studio-compare-cards (لقطة المالك: «تحت كيف الشخص يعرف الشكل»): الخيارات بطاقات مصوّرة بدل ١٠٤ مربّع نصّيّ،
+         والقائمة مطويّة حتّى تُفتح -->
+    <details id="studioAiCompareMore" style="margin-top:6px;">
+      <summary style="cursor:pointer; font-size: var(--fs-5); color:var(--muted); padding:4px 0;" data-i18n="studioCompareHint">اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب</summary>
+      <div id="studioAiCompareChecks" class="stCmpGrid"></div>
+      <button type="button" class="btn" id="studioAiCompareBtn" style="width:100%; margin-top:8px;" data-i18n="studioCompareBtn">📊 قارن الستايلات</button>
+    </details>
     <div id="studioAiCompareStatus" style="display:none; margin-top:10px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="studioAiCompareResults" style="display:none; margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
 
