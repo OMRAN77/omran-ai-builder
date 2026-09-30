@@ -60,3 +60,17 @@ test('الإضافات لا تدفع قفل الهويّة ولا شرط الأ�
   assert.ok(two.length <= Math.max(bare.length, 1170), 'الإضافات زادت أمرًا بلا متّسع');
   assert.match(two, /all 2 of them must appear together/, 'شرط الأشخاص قُصّ');
 });
+
+/* v-video-identity: فيديو المالك من صانع الفيديو الحرّ (Omni) خرج بوجه آخر — المسار الحرّ بلا قفل هويّة */
+test('صانع الفيديو الحرّ مع صورة: قفل الهويّة أوّلًا وأخيرًا داخل حدّ المحرّك', () => {
+  const { withIdentityLock } = require(path.join(root, 'api/_lib/video-trends.js'));
+  const p = withIdentityLock('سفينة حربية تبحر والرجل في غرفة القيادة '.repeat(80), 1500);
+  assert.ok(p.length <= 1500);
+  assert.match(p, /^MAIN CHARACTER: the real person in the attached reference photo/);
+  assert.match(p, /IDENTITY \(mandatory\): whenever a person appears, it is this same real person/);
+  for (const f of ['api/_lib/omni-create.js', 'api/_lib/veo-create.js']) {
+    const src = fs.readFileSync(path.join(root, f), 'utf8');
+    assert.match(src, /\} else if \(imageBase64 && String\(imageBase64\)\.trim\(\) && promptText\) \{\n\s+\/\* v-video-identity/, f + ': المسار الحرّ بلا قفل هويّة');
+    assert.match(src, /withIdentityLock\(promptText, 1500\)/, f);
+  }
+});
