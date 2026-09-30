@@ -33489,6 +33489,134 @@ window.updateVersionLabel();
     }
   });
 })();
+/* ───────── v-cx-brief: «صف مشروعك بسطر واحد» في أعلى المقاولات ─────────
+ * شكوى المالك: «في المقاولات كثر الاختيارات… الي يدخل يضيع فيه» — النموذج ٧٧ خيارًا في
+ * أربعة أقسام قبل أن يضغط زرًّا واحدًا. هذه الطبقة الأولى: خانة واحدة + زرّ. الجملة تُقرأ
+ * على الخادم (`construction-brief`) وتُعبّئ حقول النموذج نفسها، ثمّ يُضغط «ولّد» آليًّا.
+ * النموذج الكامل باقٍ تحته كما هو للتدقيق — لا شيء حُذف ولا منطق توليد لُمس.
+ * النصوص بالـ14 لغة في هذا الملفّ (نفس نمط app-15-cx-ideas.js). */
+(function(){
+  'use strict';
+  var TX = {
+    title: { ar:'⚡ صف مشروعك بسطر واحد — ونعبّي الباقي عنك', en:'⚡ Describe your project in one line — we fill the rest', fr:'⚡ Décrivez votre projet en une ligne — on remplit le reste', es:'⚡ Describe tu proyecto en una línea — llenamos el resto', tr:'⚡ Projenizi tek satırda anlatın — gerisini biz dolduralım', ru:'⚡ Опишите проект одной строкой — остальное заполним мы', hi:'⚡ अपना प्रोजेक्ट एक लाइन में बताएं — बाकी हम भर देंगे', ur:'⚡ اپنا منصوبہ ایک سطر میں بتائیں — باقی ہم بھر دیں گے', bn:'⚡ এক লাইনে আপনার প্রকল্প বলুন — বাকিটা আমরা পূরণ করব', ne:'⚡ आफ्नो परियोजना एक हरफमा भन्नुहोस् — बाँकी हामी भर्छौं', fil:'⚡ Ilarawan ang proyekto sa isang linya — kami na ang bahala sa iba', id:'⚡ Jelaskan proyek Anda dalam satu baris — sisanya kami isi', zh:'⚡ 一句话描述你的项目 — 其余我们来填', ml:'⚡ നിങ്ങളുടെ പദ്ധതി ഒരു വരിയിൽ പറയൂ — ബാക്കി ഞങ്ങൾ പൂരിപ്പിക്കാം' },
+    ph: { ar:'مثال: فيلا دورين ٤٠٠ متر مودرن بمسبح ومجلس في دبي', en:'e.g. two-storey 400 m² modern villa with pool and majlis in Dubai', fr:'ex. villa moderne 400 m² à deux étages avec piscine à Dubaï', es:'ej. villa moderna de 400 m², dos plantas, con piscina en Dubái', tr:'örn. Dubai\'de havuzlu 400 m² iki katlı modern villa', ru:'напр. двухэтажная вилла 400 м² с бассейном в Дубае', hi:'जैसे दुबई में पूल के साथ 400 म² दो मंज़िला मॉडर्न विला', ur:'مثلاً دبئی میں پول کے ساتھ 400 م² دو منزلہ ماڈرن ولا', bn:'যেমন দুবাইয়ে পুলসহ ৪০০ বর্গমিটার দোতলা মডার্ন ভিলা', ne:'जस्तै दुबईमा पोखरीसहित ४०० म² दुई तले मोडर्न भिल्ला', fil:'hal. dalawang palapag na 400 m² modernong villa na may pool sa Dubai', id:'mis. vila modern dua lantai 400 m² dengan kolam di Dubai', zh:'例：迪拜 400 平米两层现代别墅，带泳池和majlis', ml:'ഉദാ: ദുബായിൽ പൂളുള്ള 400 m² ഇരുനില മോഡേൺ വില്ല' },
+    go: { ar:'✨ ولّد التصميم', en:'✨ Generate the design', fr:'✨ Générer le design', es:'✨ Generar el diseño', tr:'✨ Tasarımı oluştur', ru:'✨ Создать проект', hi:'✨ डिज़ाइन बनाएं', ur:'✨ ڈیزائن بنائیں', bn:'✨ ডিজাইন তৈরি করুন', ne:'✨ डिजाइन बनाउनुहोस्', fil:'✨ Gumawa ng disenyo', id:'✨ Buat desain', zh:'✨ 生成设计', ml:'✨ ഡിസൈൻ ഉണ്ടാക്കൂ' },
+    reading: { ar:'⏳ أقرأ وصفك…', en:'⏳ Reading your description…', fr:'⏳ Lecture de votre description…', es:'⏳ Leyendo tu descripción…', tr:'⏳ Açıklamanız okunuyor…', ru:'⏳ Читаю описание…', hi:'⏳ आपका विवरण पढ़ रहे हैं…', ur:'⏳ آپ کی تفصیل پڑھ رہے ہیں…', bn:'⏳ আপনার বর্ণনা পড়ছি…', ne:'⏳ तपाईंको विवरण पढ्दै…', fil:'⏳ Binabasa ang paglalarawan…', id:'⏳ Membaca deskripsi Anda…', zh:'⏳ 正在阅读你的描述…', ml:'⏳ നിങ്ങളുടെ വിവരണം വായിക്കുന്നു…' },
+    got: { ar:'✅ فهمت: {s} — عدّلها من النموذج تحت إن أردت', en:'✅ Understood: {s} — adjust below if you like', fr:'✅ Compris : {s} — ajustez ci-dessous si besoin', es:'✅ Entendido: {s} — ajústalo abajo si quieres', tr:'✅ Anladım: {s} — istersen aşağıdan düzenle', ru:'✅ Понял: {s} — можно поправить ниже', hi:'✅ समझ गए: {s} — नीचे से बदल सकते हैं', ur:'✅ سمجھ گیا: {s} — نیچے سے تبدیل کریں', bn:'✅ বুঝেছি: {s} — নিচে থেকে বদলাতে পারেন', ne:'✅ बुझें: {s} — तल परिवर्तन गर्न सक्नुहुन्छ', fil:'✅ Naintindihan: {s} — baguhin sa ibaba kung gusto', id:'✅ Dimengerti: {s} — ubah di bawah bila perlu', zh:'✅ 已理解：{s} — 可在下方调整', ml:'✅ മനസ്സിലായി: {s} — താഴെ മാറ്റാം' },
+    unclear: { ar:'🤔 ما وضح لي الوصف — اكتب تفاصيل أكثر، أو عبّي النموذج تحت.', en:'🤔 I could not read that — add more detail, or use the form below.', fr:'🤔 Description peu claire — précisez, ou utilisez le formulaire.', es:'🤔 No lo entendí — añade detalles o usa el formulario.', tr:'🤔 Anlayamadım — daha fazla ayrıntı yazın veya aşağıdaki formu kullanın.', ru:'🤔 Не понял — добавьте деталей или заполните форму ниже.', hi:'🤔 समझ नहीं आया — और विवरण दें, या नीचे का फ़ॉर्म भरें।', ur:'🤔 سمجھ نہیں آیا — مزید تفصیل لکھیں یا نیچے فارم بھریں۔', bn:'🤔 বুঝতে পারিনি — আরও বিস্তারিত লিখুন, বা নিচের ফর্ম ব্যবহার করুন।', ne:'🤔 बुझिनँ — थप विवरण लेख्नुहोस्, वा तलको फारम भर्नुहोस्।', fil:'🤔 Hindi ko naintindihan — magdagdag ng detalye, o gamitin ang form sa ibaba.', id:'🤔 Tidak terbaca — tambah detail, atau isi formulir di bawah.', zh:'🤔 没读懂 — 请补充细节，或使用下方表单。', ml:'🤔 മനസ്സിലായില്ല — കൂടുതൽ വിശദാംശം ചേർക്കൂ, അല്ലെങ്കിൽ താഴെയുള്ള ഫോം ഉപയോഗിക്കൂ.' },
+    login: { ar:'🔑 سجّل الدخول أولًا.', en:'🔑 Please log in first.', fr:'🔑 Connectez-vous d\'abord.', es:'🔑 Inicia sesión primero.', tr:'🔑 Önce giriş yapın.', ru:'🔑 Сначала войдите.', hi:'🔑 पहले लॉग इन करें।', ur:'🔑 پہلے لاگ اِن کریں۔', bn:'🔑 আগে লগ ইন করুন।', ne:'🔑 पहिले लगइन गर्नुहोस्।', fil:'🔑 Mag-log in muna.', id:'🔑 Masuk dulu.', zh:'🔑 请先登录。', ml:'🔑 ആദ്യം ലോഗിൻ ചെയ്യൂ.' },
+    busy: { ar:'⚠️ تعذّرت القراءة الآن — عبّي النموذج تحت.', en:'⚠️ Could not read it now — use the form below.', fr:'⚠️ Lecture impossible — utilisez le formulaire.', es:'⚠️ No se pudo leer — usa el formulario.', tr:'⚠️ Şu an okunamadı — aşağıdaki formu kullanın.', ru:'⚠️ Сейчас не получилось — заполните форму ниже.', hi:'⚠️ अभी नहीं पढ़ सके — नीचे का फ़ॉर्म भरें।', ur:'⚠️ ابھی نہیں پڑھ سکے — نیچے فارم بھریں۔', bn:'⚠️ এখন পড়া গেল না — নিচের ফর্ম ব্যবহার করুন।', ne:'⚠️ अहिले पढ्न सकिएन — तलको फारम भर्नुहोस्।', fil:'⚠️ Hindi mabasa ngayon — gamitin ang form sa ibaba.', id:'⚠️ Tidak terbaca sekarang — isi formulir di bawah.', zh:'⚠️ 暂时读不了 — 请使用下方表单。', ml:'⚠️ ഇപ്പോൾ വായിക്കാനായില്ല — താഴെയുള്ള ഫോം ഉപയോഗിക്കൂ.' },
+  };
+  var $ = function(id){ return document.getElementById(id); };
+  function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
+  function T(o){ return (o && (o[lg()] || o.en || o.ar)) || ''; }
+  function tokenOf(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+
+  var busy = false;
+
+  /* يضع القيمة في الحقل ويُطلق change كي يسمعه أيّ مستمع قائم (لا نلمس منطق النموذج) */
+  function setVal(id, v){
+    var el = $(id); if(!el || v === null || v === undefined || v === '') return false;
+    el.value = String(v);
+    try{ el.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ /* guard-ok — القيمة وُضعت */ }
+    return true;
+  }
+  function setSelect(id, v){
+    var el = $(id); if(!el || !v) return false;
+    var ok = Array.prototype.some.call(el.options, function(o){ return o.value === v; });
+    if(!ok) return false;
+    return setVal(id, v);
+  }
+  /* الملاحق: المذكورة تُفعَّل، وغير المذكورة تبقى كما هي (المستخدم قد يكون أشّرها بيده) */
+  function setAnnexes(list){
+    var on = [];
+    (list || []).forEach(function(k){
+      var box = document.querySelector('.constructionAnnex[value="' + k + '"]');
+      if(box && !box.checked){ box.checked = true; try{ box.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ /* guard-ok */ } }
+      if(box) on.push(box);
+    });
+    return on.length;
+  }
+  /* ملخّص ما فُهم بلغة المستخدم: نقرأ نصّ الخيار المختار من النموذج نفسه فيأتي مترجمًا مجّانًا */
+  function summarize(f){
+    var out = [];
+    var opt = function(id){ var e = $(id); return (e && e.selectedIndex >= 0) ? (e.options[e.selectedIndex].text || '').trim() : ''; };
+    if(f.buildingType) out.push(opt('constructionType'));
+    if(f.floors) { var fl = $('constructionFloors'); if(fl) out.push((fl.previousElementSibling ? fl.previousElementSibling.textContent.trim() : '') + ' ' + f.floors); }
+    if(f.area) out.push(f.area + ' m²');
+    if(f.style) out.push(opt('constructionStyle'));
+    if(f.budget) out.push(opt('constructionBudget'));
+    if(f.emirate) out.push(opt('constructionEmirate'));
+    if(f.annexes && f.annexes.length) out.push('+' + f.annexes.length);
+    return out.filter(Boolean).join(' · ');
+  }
+
+  function status(el, txt){ el.textContent = txt || ''; el.style.display = txt ? 'block' : 'none'; }
+
+  async function run(input, st){
+    if(busy) return;
+    var text = (input.value || '').trim();
+    if(!text) { input.focus(); return; }
+    var token = tokenOf();
+    if(!token){ status(st, T(TX.login)); return; }
+    busy = true; var go = $('cxBriefGo'); if(go) go.disabled = true;
+    status(st, T(TX.reading));
+    try{
+      var r = await fetch('/api/tools?action=construction-brief', {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 240), token: token }),
+      });
+      var j = null; try{ j = await r.json(); }catch(e){ j = null; }
+      var f = j && j.fields;
+      if(!f){
+        status(st, (j && j.reason === 'unclear') ? T(TX.unclear) : (j && j.reason === 'auth') ? T(TX.login) : T(TX.busy));
+        return;
+      }
+      setSelect('constructionType', f.buildingType);
+      setSelect('constructionStyle', f.style);
+      setSelect('constructionBudget', f.budget);
+      setSelect('constructionEmirate', f.emirate);
+      setVal('constructionFloors', f.floors);
+      setVal('constructionArea', f.area);
+      setVal('constructionPlot', f.plotArea);
+      setAnnexes(f.annexes);
+      if(f.notes){ var n = $('constructionNotes'); if(n && !n.value.trim()) setVal('constructionNotes', f.notes); }
+      status(st, T(TX.got).replace('{s}', summarize(f)));
+      var btn = $('constructionRunBtn');
+      if(btn && !btn.disabled) btn.click();
+    }catch(e){
+      status(st, T(TX.busy));
+    }finally{ busy = false; var g = $('cxBriefGo'); if(g) g.disabled = false; }
+  }
+
+  function render(){
+    var t = $('cxBriefTitle'); if(t) t.textContent = T(TX.title);
+    var i = $('cxBriefText'); if(i) i.placeholder = T(TX.ph);
+    var g = $('cxBriefGo'); if(g) g.textContent = T(TX.go);
+  }
+
+  function boot(){
+    var modal = $('constructionModal'); if(!modal || $('cxBrief')) return;
+    var desc = modal.querySelector('[data-i18n="constructionDesc"]'); if(!desc) return;
+    var box = document.createElement('div'); box.id = 'cxBrief'; box.className = 'cx-sec';
+    box.style.cssText = 'border-color:var(--omGoldSoft,rgba(212,175,55,.45)); background:rgba(212,175,55,.08);';
+    box.innerHTML = '<h4 class="cx-h" id="cxBriefTitle" style="font-weight:800;"></h4>' +
+      '<div class="mini-mic-field-row" style="display:flex;gap:6px;align-items:stretch;">' +
+        '<input id="cxBriefText" type="text" maxlength="240" style="flex:1;min-width:0;padding:11px 12px;border-radius:10px;border:1px solid rgba(212,175,55,.35);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;font-size:13.5px;">' +
+        '<button type="button" class="mini-mic-btn" data-target="cxBriefText" title="🎤" data-i18n-title="micTitle" style="flex:none;">🎤</button>' +
+      '</div>' +
+      '<button type="button" class="btn primary" id="cxBriefGo" style="width:100%;margin-top:8px;font-weight:800;"></button>' +
+      '<div id="cxBriefStatus" style="display:none;font-size:12.5px;margin-top:8px;line-height:1.7;"></div>';
+    desc.insertAdjacentElement('afterend', box);
+    var input = $('cxBriefText'); var st = $('cxBriefStatus');
+    $('cxBriefGo').onclick = function(){ run(input, st); };
+    input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); run(input, st); } });
+    render();
+    try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  setTimeout(boot, 900);
+})();
 /* ───────── v-cx-ideas (طلب المالك): أفكار تصاميم جاهزة في المقاولات ─────────
  * نفس فكرة معرض الديكور، لكن كل شيء يخص الشيء نفسه: يختار المستخدم ما يريد
  * (واجهة خارجية / مخطط / داخلي…) وعدد الأدوار (أرضي / طابقين / ثلاثة) والطراز،
@@ -33572,7 +33700,11 @@ window.updateVersionLabel();
       '<div style="display:flex;gap:6px;align-items:stretch;"><input id="cxIdeaText" type="text" maxlength="200" style="flex:1;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.04);color:inherit;font-family:inherit;"><button type="button" class="btn primary" id="cxIdeaGo" style="width:auto;white-space:nowrap;"></button></div>' +
       '<div id="cxIdeaStatus" style="display:none;font-size:12.5px;margin-top:8px;line-height:1.7;"></div>' +
       '<div id="cxIdeaGallery" style="display:none;columns:2;column-gap:6px;margin-top:8px;"></div>';
-    desc.insertAdjacentElement('afterend', box);
+    /* v-cx-brief: المعرض معرضُ صورٍ لا يولّد شيئًا، وكان أعلى النافذة فيلعب فيه الداخل ولا
+       يخرج بنتيجة (شكوى المالك «الي يدخل يضيع فيه»). مكانه الآن آخر النافذة بعد النتيجة
+       وزواياها، وأعلى النافذة صار سطر الوصف الذي يولّد فعلًا (app-15-cx-brief.js). */
+    var tail = $('constructionViewsSection') || $('constructionPlanText') || desc;
+    tail.insertAdjacentElement('afterend', box);
     status = $('cxIdeaStatus'); gallery = $('cxIdeaGallery'); input = $('cxIdeaText');
     $('cxIdeaGo').onclick = load;
     input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); load(); } });
@@ -33582,6 +33714,148 @@ window.updateVersionLabel();
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   setTimeout(boot, 800);
+})();
+/* ───────── v-cx-simple: الطبقتان ٢ و٣ من تبسيط المقاولات ─────────
+ * الطبقة ٢: ستّ بطاقات بدء (فيلا · استراحة · ملحق · عمارة · محل · مسجد) — ضغطة واحدة تملأ
+ *   النوع والأدوار والمساحة والطراز والملاحق الشائعة، فلا يدور المستخدم في ١٢ نوعًا و١٠ طرز.
+ * الطبقة ٣: كلّ الأقسام الثلاثة تُطوى تحت «⚙️ تفاصيل أكثر ▾»، ويبقى ظاهرًا ما يغيّره الناس
+ *   فعلًا: عدد الأدوار والمساحة (تُنقل عقدتهما كما هي، بلا نسخ ولا حالة ثانية).
+ *
+ * لا يُحذف حقل ولا يُلمس منطق التوليد: العقد تُنقل لا تُبنى، والقيَم تُوضع بـchange، وزرّ
+ * «ولّد» هو نفسه. أسماء البطاقات تُقرأ من خيارات `#constructionType` فتأتي بالـ14 لغة مجّانًا.
+ * ما لم يُغيَّر عمدًا: افتراضات المخرجات (تغييرها يزيد كلفة كلّ توليد = باب المالك)، والميزانيّة. */
+(function(){
+  'use strict';
+  var TX = {
+    start: { ar:'🏗️ ابدأ من هنا — اختر نوع مشروعك', en:'🏗️ Start here — pick your project type', fr:'🏗️ Commencez ici — choisissez le type', es:'🏗️ Empieza aquí — elige el tipo', tr:'🏗️ Buradan başla — proje türünü seç', ru:'🏗️ Начните здесь — выберите тип проекта', hi:'🏗️ यहाँ से शुरू करें — प्रोजेक्ट का प्रकार चुनें', ur:'🏗️ یہاں سے شروع کریں — منصوبے کی قسم چنیں', bn:'🏗️ এখান থেকে শুরু করুন — প্রকল্পের ধরন বাছুন', ne:'🏗️ यहाँबाट सुरु गर्नुहोस् — परियोजनाको प्रकार छान्नुहोस्', fil:'🏗️ Magsimula dito — piliin ang uri ng proyekto', id:'🏗️ Mulai di sini — pilih jenis proyek', zh:'🏗️ 从这里开始 — 选择项目类型', ml:'🏗️ ഇവിടെ തുടങ്ങൂ — പദ്ധതിയുടെ തരം തിരഞ്ഞെടുക്കൂ' },
+    more: { ar:'⚙️ تفاصيل أكثر', en:'⚙️ More details', fr:'⚙️ Plus de détails', es:'⚙️ Más detalles', tr:'⚙️ Daha fazla ayrıntı', ru:'⚙️ Больше деталей', hi:'⚙️ और विवरण', ur:'⚙️ مزید تفصیلات', bn:'⚙️ আরও বিবরণ', ne:'⚙️ थप विवरण', fil:'⚙️ Higit pang detalye', id:'⚙️ Detail lainnya', zh:'⚙️ 更多细节', ml:'⚙️ കൂടുതൽ വിശദാംശങ്ങൾ' },
+    less: { ar:'إخفاء التفاصيل', en:'Hide details', fr:'Masquer les détails', es:'Ocultar detalles', tr:'Ayrıntıları gizle', ru:'Скрыть детали', hi:'विवरण छिपाएँ', ur:'تفصیلات چھپائیں', bn:'বিবরণ লুকান', ne:'विवरण लुकाउनुहोस्', fil:'Itago ang detalye', id:'Sembunyikan detail', zh:'隐藏细节', ml:'വിശദാംശങ്ങൾ മറയ്ക്കുക' },
+    ready: { ar:'✅ جاهز: {s} — اضغط «ولّد التصميم»، أو افتح التفاصيل لتعديلها', en:'✅ Ready: {s} — press “Generate”, or open details to adjust', fr:'✅ Prêt : {s} — appuyez sur « Générer », ou ouvrez les détails', es:'✅ Listo: {s} — pulsa «Generar», o abre los detalles', tr:'✅ Hazır: {s} — “Oluştur”a bas veya ayrıntıları aç', ru:'✅ Готово: {s} — нажмите «Создать» или откройте детали', hi:'✅ तैयार: {s} — «बनाएं» दबाएँ, या विवरण खोलें', ur:'✅ تیار: {s} — «بنائیں» دبائیں، یا تفصیلات کھولیں', bn:'✅ প্রস্তুত: {s} — «তৈরি করুন» চাপুন, বা বিবরণ খুলুন', ne:'✅ तयार: {s} — «बनाउनुहोस्» थिच्नुहोस्, वा विवरण खोल्नुहोस्', fil:'✅ Handa: {s} — pindutin ang “Gumawa”, o buksan ang detalye', id:'✅ Siap: {s} — tekan “Buat”, atau buka detail', zh:'✅ 已就绪：{s} — 点击“生成”，或展开细节调整', ml:'✅ തയ്യാർ: {s} — “ഉണ്ടാക്കൂ” അമർത്തൂ, അല്ലെങ്കിൽ വിശദാംശങ്ങൾ തുറക്കൂ' },
+  };
+  /* القيَم الشائعة لكلّ نوع — تُملأ بضغطة، ويعدّلها من يريد من التفاصيل. */
+  var PRESETS = [
+    { type:'villa',     floors:2, area:400, style:'modern',  annexes:['majlis','carport','garden'] },
+    { type:'rest',      floors:1, area:250, style:'gulf',    annexes:['majlis','pool','garden'] },
+    { type:'annexhome', floors:1, area:80,  style:'modern',  annexes:[] },
+    { type:'apartment', floors:4, area:800, style:'modern',  annexes:['elevator','carport'] },
+    { type:'shop',      floors:1, area:120, style:'modern',  annexes:['carport'] },
+    { type:'mosque',    floors:1, area:300, style:'islamic', annexes:['carport'] },
+  ];
+  var EMIRATE_KEY = 'aiapp_cx_emirate';
+
+  var $ = function(id){ return document.getElementById(id); };
+  function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
+  function T(o){ return (o && (o[lg()] || o.en || o.ar)) || ''; }
+
+  function fire(el){ try{ el.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ /* guard-ok — القيمة وُضعت */ } }
+  function setVal(id, v){ var el = $(id); if(!el || v === null || v === undefined || v === '') return; el.value = String(v); fire(el); }
+  function setSelect(id, v){
+    var el = $(id); if(!el || !v) return;
+    if(!Array.prototype.some.call(el.options, function(o){ return o.value === v; })) return;
+    el.value = v; fire(el);
+  }
+  /* اسم الخيار كما يراه المستخدم — مصدر أسماء البطاقات وملخّصها، فتأتي بالـ14 لغة بلا جدول جديد */
+  function optText(selId, value){
+    var el = $(selId); if(!el) return '';
+    for(var i = 0; i < el.options.length; i++) if(el.options[i].value === value) return (el.options[i].text || '').trim();
+    return '';
+  }
+  /* البطاقة بداية جديدة: ملاحقها هي المطلوبة، وما بقي من اختيار سابق يُطفأ */
+  function applyAnnexes(list){
+    var want = list || [];
+    document.querySelectorAll('.constructionAnnex').forEach(function(box){
+      var on = want.indexOf(box.value) !== -1;
+      if(box.checked !== on){ box.checked = on; fire(box); }
+    });
+  }
+
+  function apply(p, st){
+    setSelect('constructionType', p.type);
+    setSelect('constructionStyle', p.style);
+    setVal('constructionFloors', p.floors);
+    setVal('constructionArea', p.area);
+    applyAnnexes(p.annexes);
+    var bits = [optText('constructionType', p.type), optText('constructionStyle', p.style), p.floors + '×', p.area + ' m²'];
+    if(p.annexes.length) bits.push('+' + p.annexes.length);
+    st.textContent = T(TX.ready).replace('{s}', bits.filter(Boolean).join(' · '));
+    st.style.display = 'block';
+  }
+
+  function card(p, st, all){
+    var b = document.createElement('button'); b.type = 'button';
+    b.setAttribute('data-cx-preset', p.type);
+    b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.03);color:inherit;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.35;cursor:pointer;text-align:center;';
+    var txt = optText('constructionType', p.type) || p.type;
+    var m = txt.match(/^(\p{Extended_Pictographic}️?)\s*(.*)$/u);
+    var em = document.createElement('span'); em.textContent = m ? m[1] : '🏗️'; em.style.cssText = 'font-size:22px;';
+    var nm = document.createElement('span'); nm.textContent = m ? m[2] : txt;
+    b.appendChild(em); b.appendChild(nm);
+    b.onclick = function(){
+      all.forEach(function(x){ x.style.borderColor = 'var(--border,rgba(255,255,255,.14))'; x.style.background = 'rgba(255,255,255,.03)'; });
+      b.style.borderColor = 'var(--omGold,#d4af37)'; b.style.background = 'rgba(212,175,55,.14)';
+      apply(p, st);
+    };
+    return b;
+  }
+
+  function render(){
+    var t = $('cxStartTitle'); if(t) t.textContent = T(TX.start);
+    var m = $('cxMoreBtn');
+    if(m) m.textContent = ($('cxMore') && $('cxMore').style.display !== 'none') ? ('▴ ' + T(TX.less)) : (T(TX.more) + ' ▾');
+  }
+
+  function boot(){
+    var modal = $('constructionModal'); if(!modal || $('cxStart')) return;
+    var brief = $('cxBrief'); if(!brief) return; /* الطبقة ١ تُركّب أوّلًا (app-15-cx-brief.js) */
+    var secs = Array.prototype.filter.call(modal.querySelectorAll('.cx-sec'), function(s){ return s.id !== 'cxBrief' && s.id !== 'cxIdeas'; });
+    if(secs.length < 3) return; /* بنية غير متوقّعة: لا نلمس شيئًا */
+
+    var box = document.createElement('div'); box.id = 'cxStart'; box.className = 'cx-sec';
+    box.innerHTML = '<h4 class="cx-h" id="cxStartTitle"></h4>' +
+      '<div id="cxStartCards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;"></div>' +
+      '<div id="cxStartQuick" style="margin-top:12px;"></div>' +
+      '<div id="cxStartStatus" style="display:none;font-size:12.5px;margin-top:9px;line-height:1.7;"></div>' +
+      '<button type="button" class="btn" id="cxMoreBtn" style="width:100%;margin-top:10px;" aria-expanded="false" aria-controls="cxMore"></button>';
+    brief.insertAdjacentElement('afterend', box);
+
+    var st = $('cxStartStatus'), cards = $('cxStartCards');
+    var made = [];
+    PRESETS.forEach(function(p){ var c = card(p, st, made); made.push(c); cards.appendChild(c); });
+
+    /* عدد الأدوار والمساحة يبقيان ظاهرين: تُنقل عقدتهما كما هي (لا نسخة، لا حالة ثانية) */
+    var fl = $('constructionFloors');
+    var row = fl && fl.parentElement && fl.parentElement.parentElement;
+    if(row && row.contains($('constructionArea'))) $('cxStartQuick').appendChild(row);
+    else $('cxStartQuick').remove();
+
+    /* الأقسام الثلاثة تُطوى كما هي بلا حذف حقل واحد */
+    var more = document.createElement('div'); more.id = 'cxMore'; more.style.display = 'none';
+    box.insertAdjacentElement('afterend', more);
+    secs.forEach(function(s){ more.appendChild(s); });
+
+    $('cxMoreBtn').onclick = function(){
+      var open = more.style.display === 'none';
+      more.style.display = open ? 'block' : 'none';
+      $('cxMoreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+      render();
+      if(open) try{ more.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(e){ /* guard-ok */ }
+    };
+
+    /* الإمارة: آخر اختيار يُحفظ ويعود — بدل إعادة اختيارها من سبعٍ كلّ مرّة */
+    var em = $('constructionEmirate');
+    if(em){
+      try{
+        var saved = localStorage.getItem(EMIRATE_KEY);
+        if(saved && Array.prototype.some.call(em.options, function(o){ return o.value === saved; })) { em.value = saved; }
+      }catch(e){ /* guard-ok — بلا تخزين تبقى الافتراضيّة */ }
+      em.addEventListener('change', function(){ try{ localStorage.setItem(EMIRATE_KEY, em.value); }catch(e){ /* guard-ok */ } });
+    }
+
+    render();
+    try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  setTimeout(boot, 950);
 })();
 /* js/app-15-floorplan.js — 🏗️ مولّد المخططات.
  *
