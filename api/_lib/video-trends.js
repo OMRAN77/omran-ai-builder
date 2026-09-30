@@ -668,7 +668,9 @@ const TRENDS = {
    }
  }
 };
-function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 240); }
+/* v-trend-extra: الحدّ ٢٤٠ ← ٤٠٠ — المالك يكتب أكثر من جملة («دمج الكلمات») */
+function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 400); }
+const BACKDROPS = require('./video-backdrops.js');
 /** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, hasImage} */
 function buildTrendPrompt(key, params) {
   const t = TRENDS[key];
@@ -711,6 +713,17 @@ function buildTrendPrompt(key, params) {
      مبدأ {text} أعلاه، ونفس درس v-trend-notext) فصار المنع صحيحًا لها بلا تعديل هنا. `movieposter`
      وحده جوهره عنوان مقروء (لا بديل مسموع لملصق فيلم) — يُستثنى كـ`calligraphy` تمامًا، بالمخاطرة
      الموثَّقة نفسها (حروف عربيّة قد تخرج مكسورة إن كتب المستخدم عنوانًا عربيًّا). */
+  /* v-trend-backdrops: خلفيّة جديدة لكلّ فيديو من مكتبة ١٠٠ (رقم العميل) — للترندات التي مكانها مرن.
+     المكتوب من المستخدم يغلب: إن سمّى مكانًا فهو المكان. */
+  const bd = (p.bg !== undefined && p.bg !== null && p.bg !== '') ? BACKDROPS.backdropFor(key, p.bg) : null; /* بلا رقم من العميل = السلوك القديم */
+  let addons = '';
+  if (bd) addons += ' SETTING (replaces the default location, same action and style): ' + bd + '.';
+  /* v-trend-extra (المالك: «ليش ما أقدر أكتب اللي أريده؟»): ٤٦ من ٥٥ ترندًا بلا خانة كتابة أصلًا.
+     الآن لكلّ ترند خانة «اكتب اللي تبيه» اختياريّة تُدمج هنا توجيهًا يعدّل الترند ولا يلغيه. */
+  const extra = clean(p.extra);
+  if (extra) addons += ' USER DIRECTION (follow it; it wins over the setting if it names a place): ' + extra + '.';
+  const base = prompt;
+  prompt = '';
   if (key !== 'calligraphy' && key !== 'movieposter') {
     prompt += ' No on-screen text: no subtitles, no captions, no titles, no watermarks, and no letters or'
       + ' words anywhere in the frame. Spoken or sung words are heard only, never written.';
@@ -732,6 +745,13 @@ function buildTrendPrompt(key, params) {
       + ' of them must appear together throughout the video, each keeping their own exact face and identity from the reference image;'
       + ' never merge them into one person, never replace anyone with an invented person, and never drop anyone out of frame.';
   }
+  /* v-trend-extra: المحرّكات تقصّ الأمر (Veo/Omni/MiniMax عند ١٥٠٠ حرف، ويُلحق بعده سطر الإطار الأوّل)
+     — والذيل (منع الكتابة، قفل الهويّة، شرط الأشخاص) هو الأهمّ. الإضافات تأخذ ما يتبقّى من الميزانيّة
+     فقط، فتُقصّ هي ولا يُقصّ الذيل أبدًا. */
+  const tail = prompt;
+  /* شخص واحد: حدّ المحرّك ١٥٠٠؛ أكثر: يُلحق بعد البناء سطر الإطار الأوّل (≈٣٣٠ حرفًا) فيُحجز له */
+  const room = Math.max(0, (people > 1 ? 1170 : 1480) - base.length - tail.length);
+  prompt = base + (addons.length > room ? addons.slice(0, room) : addons) + tail;
   return { prompt, engine: t.engine, ratio: t.ratio, people, sceneCount: (t.scenes && t.scenes.length) || 1 };
 }
 module.exports = { TRENDS, buildTrendPrompt };
