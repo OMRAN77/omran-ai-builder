@@ -34391,6 +34391,46 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           var ev = ej.verdict === 'not_done' ? ' — الفحص: الطلب لم يظهر في الصورة' : (ej.verdict === 'partial' ? ' — الفحص: نُفّذ جزء فقط' : (ej.verdict === 'done' ? ' — الفحص: نُفّذ' : ''));
           return (ej.verdict === 'not_done' ? '⚠️' : '✅') + ' عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + ')' + ev + (ej.caption ? '. ما يُرى فعلًا: «' + String(ej.caption).slice(0, 400) + '» — صِف للمستخدم هذا وحده ولا تدّعِ أكثر منه' : '') + '. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
         }
+        /* v-chat-solve-homework (طلب المالك ٣٠ سبتمبر: «نفس الفكرة، ارفع الصورة ويعطيني الجواب
+           الدقيق، لكن في التعليم خلّيها نفس ماهي»): نفس /api/edu (action=solve) الذي يستعمله
+           «حلّ الواجب» داخل قسم التعليم حرفيًّا — صفر تعديل هناك، هذه واجهة إضافيّة من المحادثة
+           العامّة لنفس المحرّك المتخصّص (لا تحليل مختصر هنا). */
+        if (name === 'solve_homework') {
+          var hwText = String((args && args.text) || '').trim();
+          var hwRef = window.__chatVideoReference;
+          var hwB64 = hwRef && hwRef.dataUrl ? String(hwRef.dataUrl).split(',')[1] : '';
+          if (!hwText && !hwB64) return 'لا صورة مرفقة ولا نصّ واجب في هذا الدور — اطلب من المستخدم إرفاق صورة الواجب أو كتابته.';
+          var hwResp, hwJson;
+          try {
+            hwResp = await fetch('/api/edu', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'solve',
+                text: hwText,
+                image: hwB64 ? { base64: hwB64, mime: hwRef.mime || 'image/jpeg' } : undefined,
+                lang: document.documentElement.lang || 'ar',
+                nativeLang: document.documentElement.lang || 'ar',
+                token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
+                guestId: window.getGuestId ? window.getGuestId() : '',
+              }),
+            });
+            try { hwJson = await hwResp.json(); } catch (e) { hwJson = null; }
+          } catch (e) { return 'تعذّر الاتصال بمحرّك حلّ الواجب: ' + String((e && e.message) || e).slice(0, 120); }
+          if (!hwResp.ok || !hwJson || !hwJson.solution) {
+            return 'تعذّر حلّ الواجب: ' + String((hwJson && hwJson.error) || ('HTTP ' + hwResp.status)).slice(0, 160);
+          }
+          var hw = hwJson.solution;
+          var hwOut = [];
+          if (hw.subject || hw.grade) hwOut.push('المادّة: ' + (hw.subject || '') + (hw.grade ? ' · الصفّ: ' + hw.grade : ''));
+          if (hw.problem) hwOut.push('المسألة: ' + hw.problem);
+          if (hw.understand) hwOut.push('المطلوب: ' + hw.understand);
+          (hw.steps || []).forEach(function (st, i) { hwOut.push('خطوة ' + (i + 1) + ': ' + (st.work || st.hint || '')); });
+          if (hw.answer) hwOut.push('الجواب: ' + hw.answer);
+          if (hw.check) hwOut.push('التحقّق: ' + hw.check);
+          if (hw.tip) hwOut.push('الفكرة للمسائل المشابهة: ' + hw.tip);
+          return hwOut.join('\n');
+        }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
         // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل
         // وتُنسى: لا تُكتب في localStorage ولا في أي سجلّ دائم.
