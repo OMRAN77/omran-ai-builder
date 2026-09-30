@@ -4,6 +4,7 @@
 const { checkOwnerBypass } = require('./_videoUsage');
 
 const GL = 'https://generativelanguage.googleapis.com/v1beta';
+const VEO_PROMPT_MAX = 2600;
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -93,7 +94,10 @@ module.exports = async (req, res) => {
 
     const model = quality === 'high' ? 'veo-3.1-generate-preview' : 'veo-3.1-fast-generate-preview';
     const aspectRatio = ratio === '720:1280' ? '9:16' : '16:9';
-    const prompt = String(promptText).trim().slice(0, 1500);
+    /* v-video-photo-identity: حدّ ١٥٠٠ كان يقصّ قفل «الإطار الأوّل يُظهر كلّ شخص… لا تحوّل مرّة ثانية»
+       في كلّ ترند متعدّد الأشخاص (٣٣٠ من ٣٣٠ قياسًا، أطولها ٢٤٦٩) لأنّه يُلحق بعد بناء الأمر. الحدّ حدّنا
+       لا حدّ المحرّك (١٠٢٤ رمزًا ≈ ٤ آلاف حرف إنجليزيّ) — ٢٦٠٠ تتّسع لأطول أمر بلا قصّ. */
+    const prompt = String(promptText).trim().slice(0, VEO_PROMPT_MAX);
 
     // Veo 3.1 image-to-video: attach a starting image when provided so the
     // generated clip animates that exact character (with native audio/speech).
@@ -128,3 +132,4 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };
+module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;

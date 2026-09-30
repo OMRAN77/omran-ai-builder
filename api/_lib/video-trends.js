@@ -758,9 +758,11 @@ function buildTrendPrompt(key, params) {
    الحرّ (Omni وVeo) كان يرسل الصورة مع وصف المستخدم **بلا أيّ أمر يحفظ الوجه** — الترندات وحدها كان لها
    قفل. فيأخذ المحرّك الصورة إلهامًا ويخترع وجهًا (في الفيديو: وجه أنحف، أنف آخر، لحية أخفّ، بلا ابتسامته).
    الغلاف نفسه: مرساة أوّلًا وقفل أخيرًا، ووصف المستخدم يُقصّ هو ليبقى القفلان داخل حدّ المحرّك. */
-function withIdentityLock(promptText, max) {
+/* v-video-photo-identity: `subject` يسمّي الصورة كما يفهمها المحرّك — Omni يربط الصورة بدورها بوسم
+   <IMAGE_REF_0> داخل النصّ (بلا وسم «يقرّر النموذج كيف يستعملها» — توثيق المزوّد). الافتراضيّ كما كان. */
+function withIdentityLock(promptText, max, subject) {
   const cap = max || 1500;
-  const pre = 'MAIN CHARACTER: the real person in the attached reference photo — keep their exact face (face shape, eyes, eyebrows, nose, lips, jawline, beard, skin tone, hair) in every shot. ';
+  const pre = 'MAIN CHARACTER: the real person in ' + (subject || 'the attached reference photo') + ' — keep their exact face (face shape, eyes, eyebrows, nose, lips, jawline, beard, skin tone, hair) in every shot. ';
   const post = ' IDENTITY (mandatory): whenever a person appears, it is this same real person from the photo — never a different, prettier or generic face; someone who knows them must recognize them instantly.';
   const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
   return pre + body + post;

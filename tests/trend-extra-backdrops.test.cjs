@@ -71,6 +71,7 @@ test('صانع الفيديو الحرّ مع صورة: قفل الهويّة أ
   for (const f of ['api/_lib/omni-create.js', 'api/_lib/veo-create.js']) {
     const src = fs.readFileSync(path.join(root, f), 'utf8');
     assert.match(src, /\} else if \(imageBase64 && String\(imageBase64\)\.trim\(\) && promptText\) \{\n\s+\/\* v-video-identity/, f + ': المسار الحرّ بلا قفل هويّة');
-    assert.match(src, /withIdentityLock\(promptText, 1500\)/, f);
+    /* v-video-photo-identity: Omni يسمّي الصورة بوسمها <IMAGE_REF_0> (tests/video-photo-identity.test.cjs) */
+    assert.match(src, f.includes('omni') ? /withIdentityLock\(promptText, 1500, 'the reference image <IMAGE_REF_0>'\)/ : /withIdentityLock\(promptText, 1500\)/, f);
   }
 });

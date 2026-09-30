@@ -3431,7 +3431,14 @@ async function __sendPromptCore(){
   if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
     const __heroAtt = pendingAttachments.find(function(a){ return a.isImage && a.dataUrl; });
     promptEl.value = '';
-    if(__heroAtt && __heroAtt.dataUrl){
+    /* v-video-photo-identity: «سوّي فيديو لي وأنا أمشي في دبي» + صورة كان يُرمى فيها كلام المستخدم كلّه
+       ويُستبدل بوصف آليّ للصورة من عشرين كلمة — فيخرج فيديو لا يطلبه، وأمره يصف الشخص نصًّا بدل أن يحرّكه.
+       كلام المستخدم يبقى أمر الفيديو متى قال شيئًا غير «سوّ فيديو من الصورة»؛ الوصف الآليّ لذاك وحده. */
+    const __VID_FILLER = /^(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع|صنعلي|لي|فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|من|هذي|هذه|هاي|الصورة|الصوره|صورة|صوره|صورتي|بالصورة|للصورة|عن|لو|سمحت|ممكن|create|make|generate|produce|a|an|the|of|from|me|my|this|that|photo|image|picture|video|clip|film|reel|short|animation|please)$/i;
+    const __vidOwnWords = String(text || '').split(/[\s،,.!؟?()"'«»:؛\-]+/).filter(function(w){ return w && !__VID_FILLER.test(w); }).join(' ');
+    if(__heroAtt && __heroAtt.dataUrl && __vidOwnWords.length >= 4){
+      window.omranOpenVideoMaker(text, __heroAtt.dataUrl, __heroAtt.mime || 'image/jpeg');
+    } else if(__heroAtt && __heroAtt.dataUrl){
       // صورة مرفقة — نولّد prompt إنجليزي دقيق منها أولاً
       (async function(){
         try{
@@ -4584,6 +4591,9 @@ function __friendlyErr(e){
             const __fixed = await new Promise((resolve) => {
               const __im = new Image();
               __im.onload = () => {
+                /* v-video-photo-identity: النسبة كانت عرضيّة ثابتة، فالمحرّك يقصّ صورة الجوّال الطوليّة من
+                   وسطها ويضيع الرأس — الطوليّة والمربّعة ⇒ ٩:١٦، والعرضيّة ⇒ ١٦:٩. */
+                __vp.ratio = (__im.height >= __im.width) ? '720:1280' : '1280:720';
                 const __r2 = __im.width / __im.height;
                 if(__r2 >= 0.5 && __r2 <= 2) return resolve(null);
                 let __cw = __im.width, __ch = __im.height;
