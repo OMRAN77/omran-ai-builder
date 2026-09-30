@@ -128,13 +128,18 @@ const NO_VARIATION = {
 /* محاور خاصّة بخيار بعينه داخل الميزة */
 const STYLE_AXES = { eyes: { blue: 'IRIS', green: 'IRIS', hazel: 'IRIS', grey: 'IRIS' } };
 
+/* v-studio-catalog-100: خيارات القزحيّة الجديدة (ir…) تأخذ محاور القزحيّة، وباقي لمسات العيون
+   الخفيفة (ابتسامة، رموش، حواجب، أسنان…) تعديل دقيق بعينه بلا تنويع */
+function isIris(feature, style) { return feature === 'eyes' && (/^ir[a-z]/.test(String(style || '')) || ['blue', 'green', 'hazel', 'grey'].indexOf(style) !== -1); }
 function hasVariation(feature, style) {
+  if (feature === 'eyes') return isIris(feature, style);
   const nv = NO_VARIATION[feature];
   if (!nv) return true;
   if (nv === '*') return false;
   return nv.indexOf(style) === -1;
 }
 function axesOf(feature, style) {
+  if (isIris(feature, style)) return AXES.IRIS;
   const own = STYLE_AXES[feature] && STYLE_AXES[feature][style];
   if (own) return AXES[own];
   return AXES[feature] || AXES.DEFAULT;

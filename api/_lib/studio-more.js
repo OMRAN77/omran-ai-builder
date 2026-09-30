@@ -606,4 +606,14 @@ const PREVIEW_FEATURE_NAME = {
   body: 'the body shape', background: 'the background', palette: 'the color palette', seasons: 'the occasion outfit',
   iconic: 'the iconic style', age: 'the apparent age',
 };
+/* v-studio-catalog-100: بقيّة الميزات إلى ١٠٠+ خيار (كتالوج بيانات صرف) */
+(function () {
+  const CAT = require('./studio-catalog.js');
+  for (const f of Object.keys(CAT.more)) {
+    Object.assign(STYLE_PROMPTS[f], CAT.more[f]);
+    PREVIEW_SUBJECT[f] = PREVIEW_SUBJECT[f] || {};
+    for (const k of Object.keys(CAT.more[f])) PREVIEW_SUBJECT[f][k] = (CAT.subjects[f] || {})[k] || PREVIEW_SUBJECT[f].__tab || 'w';
+  }
+})();
+
 module.exports = { STYLE_PROMPTS, FEATURE_INSTRUCTIONS, PREVIEW_SUBJECT, PREVIEW_FRAME, PREVIEW_FEATURE_NAME };
