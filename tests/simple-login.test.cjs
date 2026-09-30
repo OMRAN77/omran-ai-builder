@@ -73,7 +73,7 @@ test('الواجهة: خانة واحدة وكلمة مرور وزرّ وراب�
   const order = ['id="authUsername"', 'id="authPassword"', 'id="authSubmitBtn"', 'id="authForgotLink"', 'id="authGoogleBtn"', 'id="authSwitchBtn"'].map((k) => ov.indexOf(k));
   assert.ok(order.every((i, j) => i > 0 && (j === 0 || i > order[j - 1])), 'الترتيب كما في لقطة المالك: ' + order);
   assert.match(ov, /id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked>/, '«تذكّرني» مخفيّ ومفعّل');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=646'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=649'));
 });
 
 test('الواجهة: setMode يبدّل بزرّ واحد، والتبويبات مخفيّة دائمًا', () => {
