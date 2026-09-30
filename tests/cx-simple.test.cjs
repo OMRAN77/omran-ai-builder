@@ -27,7 +27,7 @@ function evalBlock(startMark, endMark, extra, keepEnd) {
 }
 
 test('١. القيَم الشائعة: ستّ بطاقات، ومفاتيحها كلّها موجودة في النموذج نفسه', () => {
-  const ctx = evalBlock('var PRESETS = [', 'var EMIRATE_KEY', { __tail: 'this.PRESETS = PRESETS;' });
+  const ctx = evalBlock('var PRESETS = [', '\n  ];', { __tail: 'this.PRESETS = PRESETS;' }, true);
   const P = ctx.PRESETS;
   assert.equal(P.length, 6);
   assert.equal(P.map((p) => p.type).join(','), 'villa,rest,annexhome,apartment,shop,mosque');
@@ -58,8 +58,11 @@ test('٢. لا حذف ولا بناء: العقد تُنقل، وزرّ التو
   // المطويّ يبدأ مخفيًّا ويُدرج بعد بطاقة البدء — فزرّ التوليد وما بعده يبقى ظاهرًا
   assert.match(SRC, /more\.style\.display = 'none';/);
   assert.match(SRC, /box\.insertAdjacentElement\('afterend', more\);/);
-  // المخرجات والميزانيّة لم تُمسّ افتراضاتهما (تغييرها كلفة توليد = باب المالك)
-  assert.ok(!/constructionModePhoto|constructionModePlan|constructionIncludeInterior|constructionBudget'/.test(SRC.replace(/\/\*[\s\S]*?\*\//g, '')), 'لم تُلمس المخرجات ولا الميزانيّة');
+  // المخرجات لم تُمسّ افتراضاتها (تغييرها كلفة توليد = باب المالك): سطر «ما في الداخل» يقرؤها ولا يكتبها —
+  // الكتابة الوحيدة على خانة في الملفّ كلّه هي ملاحق البطاقة (applyAnnexes)
+  const writes = SRC.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.checked\s*=[^=]/g) || [];
+  assert.equal(writes.length, 1, 'كتابة واحدة فقط على .checked: ' + writes.join(' | '));
+  assert.match(SRC, /if\(box\.checked !== on\)\{ box\.checked = on;/, 'وهي ملاحق البطاقة');
 });
 
 test('٣. البطاقة بداية نظيفة: ملاحقها تُشعل وما عداها يُطفأ', () => {
@@ -86,10 +89,16 @@ test('٤. أسماء البطاقات من النموذج نفسه — لا جد
   assert.match(SRC, /optText\('constructionStyle', p\.style\)/, 'الطراز في الملخّص من القائمة');
   // الإيموجي يُفصل عن الاسم بتعبير يونيكودي لا بقصّ ثابت
   assert.match(SRC, /Extended_Pictographic/);
-  // الإمارة: آخر اختيار يُحفظ ويعود
-  assert.match(SRC, /localStorage\.setItem\(EMIRATE_KEY/);
-  assert.match(SRC, /localStorage\.getItem\(EMIRATE_KEY\)/);
-  assert.match(SRC, /o\.value === saved/, 'لا يُستعاد خيار غير موجود');
+  // v-fx-simple: كود «تذكّر الإمارة» كان ميّتًا — #constructionEmirate حُذف من الواجهة (v-cx-noprice)
+  assert.ok(!/constructionEmirate|EMIRATE_KEY/.test(SRC), 'لا كود لعنصر غير موجود');
+  assert.ok(!/id="constructionEmirate"|id="constructionBudget"/.test(PARTIAL), 'الواجهة فعلًا بلا إمارة ولا ميزانيّة');
+  // سطر «ما في الداخل» تحت زرّ التفاصيل — من نصوص النموذج نفسها
+  assert.match(SRC, /id="cxMorePeek"/);
+  assert.match(SRC, /function peek\(\)\{/);
+  assert.match(SRC, /sel\('constructionType'\)/);
+  assert.match(SRC, /sel\('constructionStyle'\)/);
+  assert.match(SRC, /'🏠 ' \+ ann \+ '\/' \+ all/);
+  assert.match(SRC, /modal\.addEventListener\('change', function\(\)\{ requestAnimationFrame\(render\); \}\);/, 'السطر يتبع كلّ تغيير');
 });
 
 test('٥. النصوص بالـ14 لغة وبلا اسم مزوّد', () => {

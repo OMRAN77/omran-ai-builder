@@ -1443,6 +1443,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-fashion-variety (المالك: «الديزينات واحده… الشكل واحد»): عدّاد لكلّ فئة×نمط يُرسَل مع كلّ توليد، والخادم
      يحوّله إلى تصميم من ≥١٠٠ للنمط لا يتكرّر حتّى تنفد (api/_lib/fashion-variety.js). يبدأ من رقم عشوائيّ لكلّ
      جهاز فلا يرى الجميع التصميم نفسه أوّلًا، ويتقدّم عند الإرسال فتعطي المحاولة التالية تصميمًا آخر. */
+  let fxStyleManual = ''; /* v-fx-simple: نمط اختاره المستخدم بيده من المعرض */
   const FX_VARIANT_KEY = 'aiapp_fashion_variant';
   function fxNextVariant(styleVal){
     let map = {};
@@ -1495,7 +1496,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
       }).filter(Boolean),
-      onPick: function(v){ styleEl.value = v; renderStyleCards(); },
+      onPick: function(v){ styleEl.value = v; fxStyleManual = v; renderStyleCards(); },
     });
   }
   function renderStyleCards(){
@@ -1534,6 +1535,39 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   renderStyleCards();
   // تبديل الفئة (نسائي/رجالي/أطفال) يعيد رسم البطاقات وصفّ المقارنة بصور الفئة.
   window.addEventListener('fashion-gender-change', function(){ renderStyleCards(); buildCompareChecks(); });
+
+  /* v-fx-simple (تبسيط الأزياء): الخادم يبني التصميم من النمط («SPECIFIC DESIGN» من ≥١٠٠ للنمط) ثمّ يقول
+     «مخصّص لـ{المناسبة}». فلمّا طُوي منتقي النمط تحت «خصّصها» صار افتراضه («سهرة» أوّل القائمة) يُطبَّق بصمت:
+     مناسبة «كاجوال» + نمط «سهرة» = فستان سهرة لطلعة كاجوال. الآن المناسبة الظاهرة تختار النمط المطابق لها
+     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب). */
+  const FX_OCC_STYLE = {
+    wedding:    { women:'wedding', men:'wedding',     kids:'wedding' },
+    work:       { women:'office',  men:'office',      kids:'school' },
+    casual:     { women:'casual',  men:'casual',      kids:'casual' },
+    sport:      { women:'sporty',  men:'sporty',      kids:'sporty' },
+    travel:     { women:'casual',  men:'smartcasual', kids:'casual' },
+    formal:     { women:'formal',  men:'formal',      kids:'formal' },
+    graduation: { women:'formal',  men:'formal',      kids:'formal' },
+    religious:  { women:'abaya',   men:'traditional', kids:'eidkids' },
+  };
+  function fxStyleForOccasion(){
+    const g = currentGender();
+    const m = occasionEl && FX_OCC_STYLE[occasionEl.value];
+    const v = m && m[g];
+    return (v && (GENDER_STYLES[g] || []).indexOf(v) >= 0) ? v : '';
+  }
+  function fxApplyOccasionStyle(){
+    const v = fxStyleForOccasion();
+    if(v && styleEl.value !== v){ styleEl.value = v; renderStyleCards(); }
+  }
+  if(occasionEl) occasionEl.addEventListener('change', function(){ fxStyleManual = ''; fxApplyOccasionStyle(); });
+  window.addEventListener('fashion-gender-change', function(){
+    const list = GENDER_STYLES[currentGender()] || [];
+    if(fxStyleManual && list.indexOf(fxStyleManual) >= 0){ styleEl.value = fxStyleManual; renderStyleCards(); }
+    else { fxStyleManual = ''; fxApplyOccasionStyle(); }
+  });
+  fxApplyOccasionStyle(); /* الافتراضيّ نفسه كان متناقضًا: كاجوال + سهرة */
+  window.__fxStyleForOccasion = fxStyleForOccasion; /* للاختبار */
 
   /* ---- 👤 saved measurements profile ---- */
   const PROFILE_KEY = 'aiapp_fashion_profile';
