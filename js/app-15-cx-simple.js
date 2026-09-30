@@ -6,7 +6,8 @@
  *
  * لا يُحذف حقل ولا يُلمس منطق التوليد: العقد تُنقل لا تُبنى، والقيَم تُوضع بـchange، وزرّ
  * «ولّد» هو نفسه. أسماء البطاقات تُقرأ من خيارات `#constructionType` فتأتي بالـ14 لغة مجّانًا.
- * ما لم يُغيَّر عمدًا: افتراضات المخرجات (تغييرها يزيد كلفة كلّ توليد = باب المالك)، والميزانيّة. */
+ * ما لم يُغيَّر عمدًا: افتراضات المخرجات (تغييرها يزيد كلفة كلّ توليد = باب المالك).
+ * (لا ميزانيّة ولا إمارة في الواجهة أصلًا — حُذفتا في v-cx-noprice.) */
 (function(){
   'use strict';
   var TX = {
@@ -24,7 +25,6 @@
     { type:'shop',      floors:1, area:120, style:'modern',  annexes:['carport'] },
     { type:'mosque',    floors:1, area:300, style:'islamic', annexes:['carport'] },
   ];
-  var EMIRATE_KEY = 'aiapp_cx_emirate';
 
   var $ = function(id){ return document.getElementById(id); };
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
@@ -81,10 +81,25 @@
     return b;
   }
 
+  /* v-fx-simple (سؤال المالك «كيف يعرف الشخص فيه خاصيّة داخل إذا كانت مطويّة؟»): سطر تحت الزرّ يعرض ما في
+     الداخل بقيمه الحاليّة — الطراز · نوع المبنى · الملاحق · المخرجات — من نصوص النموذج نفسها فيُترجم مجّانًا. */
+  function peek(){
+    var bits = [];
+    var sel = function(id){ var e = $(id); return (e && e.selectedIndex >= 0) ? (e.options[e.selectedIndex].text || '').trim() : ''; };
+    var ty = sel('constructionType'); if(ty) bits.push(ty);
+    var st = sel('constructionStyle'); if(st) bits.push(st);
+    var ann = document.querySelectorAll('.constructionAnnex:checked').length;
+    var all = document.querySelectorAll('.constructionAnnex').length;
+    if(all) bits.push('🏠 ' + ann + '/' + all);
+    var outs = ['constructionModePlan', 'constructionModePhoto', 'constructionIncludeInterior'].filter(function(id){ var e = $(id); return e && e.checked; }).length;
+    bits.push('🖼️ ' + outs + '/3');
+    return bits.join(' · ');
+  }
   function render(){
     var t = $('cxStartTitle'); if(t) t.textContent = T(TX.start);
     var m = $('cxMoreBtn');
     if(m) m.textContent = ($('cxMore') && $('cxMore').style.display !== 'none') ? ('▴ ' + T(TX.less)) : (T(TX.more) + ' ▾');
+    var p = $('cxMorePeek'); if(p) p.textContent = peek();
   }
 
   function boot(){
@@ -98,7 +113,8 @@
       '<div id="cxStartCards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;"></div>' +
       '<div id="cxStartQuick" style="margin-top:12px;"></div>' +
       '<div id="cxStartStatus" style="display:none;font-size:12.5px;margin-top:9px;line-height:1.7;"></div>' +
-      '<button type="button" class="btn" id="cxMoreBtn" style="width:100%;margin-top:10px;" aria-expanded="false" aria-controls="cxMore"></button>';
+      '<button type="button" class="btn" id="cxMoreBtn" style="width:100%;margin-top:10px;" aria-expanded="false" aria-controls="cxMore"></button>' +
+      '<div id="cxMorePeek" style="font-size:11.5px;color:var(--muted,#999);margin-top:5px;line-height:1.6;text-align:center;"></div>';
     brief.insertAdjacentElement('afterend', box);
 
     var st = $('cxStartStatus'), cards = $('cxStartCards');
@@ -124,16 +140,8 @@
       if(open) try{ more.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(e){ /* guard-ok */ }
     };
 
-    /* الإمارة: آخر اختيار يُحفظ ويعود — بدل إعادة اختيارها من سبعٍ كلّ مرّة */
-    var em = $('constructionEmirate');
-    if(em){
-      try{
-        var saved = localStorage.getItem(EMIRATE_KEY);
-        if(saved && Array.prototype.some.call(em.options, function(o){ return o.value === saved; })) { em.value = saved; }
-      }catch(e){ /* guard-ok — بلا تخزين تبقى الافتراضيّة */ }
-      em.addEventListener('change', function(){ try{ localStorage.setItem(EMIRATE_KEY, em.value); }catch(e){ /* guard-ok */ } });
-    }
-
+    modal.addEventListener('change', function(){ requestAnimationFrame(render); });
+    modal.addEventListener('click', function(){ requestAnimationFrame(render); });
     render();
     try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
   }
