@@ -184,8 +184,11 @@ test('٩. مع إطار أوّل مبنيّ: أمر صريح بتحريكه بد
   assert.ok(at > 0, 'فرع نجاح الإطار الأوّل');
   const blk = src.slice(at, at + 1200);
   assert.match(blk, /imageBase64 = frame\.b64; imageMime = frame\.mime;/);
-  assert.match(blk, /promptText \+= ' The attached first frame ALREADY shows every person/, 'لا أمر بتحريك الإطار الجاهز');
-  assert.match(blk, /do not apply the transformation again/, 'لا منع لإعادة التحويل');
+  /* v-video-photo-identity: الجملة صارت ثابتًا FRAME_LOCK (يُحجز له مكانه عند البناء فلا يُقصّ) */
+  assert.match(blk, /promptText \+= FRAME_LOCK;/, 'لا أمر بتحريك الإطار الجاهز');
+  const { FRAME_LOCK } = require('../api/_lib/veo-create.js');
+  assert.match(FRAME_LOCK, /^ The attached first frame ALREADY shows every person/, 'لا أمر بتحريك الإطار الجاهز');
+  assert.match(FRAME_LOCK, /do not apply the transformation again/, 'لا منع لإعادة التحويل');
   // يُلحق بعد بناء أمر الترند لا قبله (وإلّا غلبته قوالب «حوّل الشخص إلى…»)
   assert.ok(src.indexOf('buildTrendPrompt') < at, 'الإلحاق قبل بناء أمر الترند');
 });

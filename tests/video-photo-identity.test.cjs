@@ -130,24 +130,53 @@ test('٤. السينمائيّ مع صورة: الصورة مسمّاة بوسم
   assert.match(withIdentityLock('x', 1500), /^MAIN CHARACTER: the real person in the attached reference photo/);
 });
 
-test('٥. ترندات الأشخاص: قفل «الإطار الأوّل يُظهر كلّ شخص… لا تحوّل مرّة ثانية» لا يُقصّ بعد الآن', () => {
+/* معالج Veo الحقيقيّ بتبعيّات مستبدَلة — يُلتقط الأمر المُرسَل فعلًا للمحرّك */
+async function veoSent(body) {
+  const saved = process.env.GEMINI_API_KEY; process.env.GEMINI_API_KEY = 'test-key';
+  let sent = null;
+  try {
+    await runHandler('api/_lib/veo-create.js', {
+      'api/_lib/_videoUsage.js': ownerUsage, 'api/_lib/video-job.js': noJob,
+      'api/_lib/trend-people.js': { groupFirstFrame: async () => ({ b64: PHOTO, mime: 'image/jpeg' }) },
+    }, body, async (u, o) => { sent = JSON.parse(o.body); return { ok: true, json: async () => ({ name: 'op/1' }) }; });
+  } finally { if (saved === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = saved; }
+  return sent && sent.instances && sent.instances[0];
+}
+
+test('٥. ترندات الأشخاص: قفل «الإطار الأوّل يُظهر كلّ شخص… لا تحوّل مرّة ثانية» يصل كاملًا في كلّ ترند — بأطول مدخل', async () => {
   const T = require('../api/_lib/video-trends.js');
-  const { VEO_PROMPT_MAX } = require('../api/_lib/veo-create.js');
-  const src = read('api/_lib/veo-create.js');
-  const m = src.match(/promptText \+= ' The attached first frame ALREADY[^;]*;/);
-  assert.ok(m, 'جملة القفل في veo-create');
-  const suffix = eval(m[0].replace(/^promptText \+= /, '').replace(/;$/, ''));
-  let max = 0, n = 0;
-  const long = 'ا'.repeat(240);
-  for (const k of Object.keys(T.TRENDS)) for (const people of [2, 3]) for (const txt of ['', 'Ali', long]) {
-    const b = T.buildTrendPrompt(k, { hasImage: true, people, name: txt, text: txt });
-    if (!b) continue; n++;
-    max = Math.max(max, (b.prompt + suffix).length);
+  const { VEO_PROMPT_MAX, FRAME_LOCK } = require('../api/_lib/veo-create.js');
+  assert.ok(VEO_PROMPT_MAX <= 2600, 'يبقى بعيدًا عن حدّ المحرّك (١٠٢٤ رمزًا)');
+  const long = 'ا'.repeat(400); // حدّ خانة الترند وclean() الفعليّ
+  let n = 0;
+  for (const k of Object.keys(T.TRENDS)) for (const people of [2, 3]) {
+    if (!T.buildTrendPrompt(k, { hasImage: true, people, name: long, text: long })) continue;
+    const inst = await veoSent({ trend: k, params: { name: long, text: long, people }, token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg', imagesBase64: Array(people).fill(PHOTO), imagesMime: Array(people).fill('image/jpeg') });
+    assert.ok(inst, k + ': لم يُلتقط الطلب');
+    assert.ok(inst.prompt.length <= VEO_PROMPT_MAX, k + '/' + people + ': ' + inst.prompt.length);
+    assert.ok(inst.prompt.endsWith(FRAME_LOCK.trim()), k + '/' + people + ': قفل الإطار الأوّل قُصّ');
+    assert.match(inst.prompt, /IDENTITY \(mandatory\)/, k + '/' + people + ': قفل الهويّة ضاع بإعادة البناء');
+    n++;
   }
-  assert.ok(n > 300, 'عدد المتغيّرات');
-  assert.ok(max <= VEO_PROMPT_MAX, 'أطول أمر ' + max + ' يتجاوز الحدّ ' + VEO_PROMPT_MAX);
-  assert.ok(VEO_PROMPT_MAX <= 3000, 'يبقى تحت حدّ المحرّك (١٠٢٤ رمزًا)');
-  assert.match(src, /String\(promptText\)\.trim\(\)\.slice\(0, VEO_PROMPT_MAX\)/);
+  assert.ok(n > 100, 'عدد الترندات المفحوصة ' + n);
+});
+
+test('٥ب. المحترف/الممثّل مع صورة: كلام الممثّل وتزامن الشفاه و«بلا ترجمة» لا تُقصّ بقفل الهويّة', async () => {
+  const { VEO_FREE_IMAGE_MAX } = require('../api/_lib/veo-create.js');
+  const speech = 'مرحبا '.repeat(50).trim(); // ٣٠٠ حرف = حدّ خانة الكلام
+  const desc = 'رجل إماراتي بكندورة بيضاء يقف في مجلس تراثي '.repeat(16); // ~٧٠٠ حرف
+  const p = desc + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
+    + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
+  const inst = await veoSent({ promptText: p, token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg' });
+  assert.ok(inst.image, 'الصورة إطار أوّل');
+  assert.ok(inst.prompt.length <= VEO_FREE_IMAGE_MAX);
+  assert.ok(inst.prompt.includes('"' + speech + '"'), 'كلام الممثّل قُصّ');
+  assert.ok(inst.prompt.includes('No subtitles, no captions, no text on screen.'), '«بلا ترجمة» قُصّت');
+  assert.match(inst.prompt, /^MAIN CHARACTER:/);
+  // بلا صورة: كما كان حرفيًّا (١٥٠٠)
+  const plain = await veoSent({ promptText: 'س'.repeat(3000), token: 't' });
+  assert.equal(plain.prompt.length, 1500);
+  assert.equal(plain.image, undefined);
 });
 
 /* ── الواجهة: تُنفَّذ الدوالّ الحقيقيّة من app-11-video.js ── */
@@ -212,15 +241,20 @@ test('٨. الصورة تصل كلّ محرّك في صانع الفيديو: ا
 });
 
 test('٩. المحادثة: كلام المستخدم يبقى أمر الفيديو، والوصف الآليّ لـ«سوّ فيديو من الصورة» وحده', () => {
-  const re = eval(ATTACH.match(/const __VID_FILLER = (\/.*\/i);/)[1]);
-  const own = (t) => String(t).split(/[\s،,.!؟?()"'«»:؛\-]+/).filter((w) => w && !re.test(w)).join(' ');
-  for (const t of ['سوي فيديو', 'سوي فيديو من هذي الصورة', 'ابغى فيديو من صورتي لو سمحت', 'make a video from this photo']) {
-    assert.ok(own(t).length < 4, 'طلب بلا مضمون يجب أن يأخذ الوصف الآليّ: ' + t);
+  // الدالّة الحقيقيّة من المصدر (لا نسخة منها)
+  const a = ATTACH.indexOf('    const __VID_FILLER = ');
+  const b = ATTACH.indexOf('    const __vidOwnWords = __vidOwnWordsOf(text);');
+  assert.ok(a > 0 && b > a, 'مرشِّح كلام المستخدم في المصدر');
+  const ctx = {}; vm.runInNewContext(ATTACH.slice(a, b) + '\nthis.own = __vidOwnWordsOf;', ctx);
+  for (const t of ['سوي فيديو', 'سوي فيديو من هذي الصورة', 'ابغى فيديو من صورتي لو سمحت', 'make a video from this photo',
+    'سوي لي فيديو من هالصورة', 'سويلي فيديو بهالصوره تكفى', 'ابي فيديو للصوره حقتي 🎬🔥', 'ودي فيديو من الصور', 'make a video of this pic please']) {
+    assert.equal(ctx.own(t).length, 0, 'طلب بلا مضمون يجب أن يأخذ الوصف الآليّ: ' + t);
   }
-  for (const t of ['سوي فيديو لي وأنا أمشي في دبي', 'سوي فيديو وهو يرقص', 'فيديو لي في الفضاء', 'make a video of me surfing']) {
-    assert.ok(own(t).length >= 4, 'كلام المستخدم ضاع: ' + t);
+  for (const t of ['سوي فيديو لي وأنا أمشي في دبي', 'سوي فيديو وهو يرقص', 'فيديو لي في الفضاء', 'make a video of me surfing',
+    'سوي فيديو رقص', 'فيديو مطر', 'سوي فيديو في البحر']) {
+    assert.ok(ctx.own(t).length > 0, 'كلام المستخدم ضاع: ' + t);
   }
-  assert.match(ATTACH, /if\(__heroAtt && __heroAtt\.dataUrl && __vidOwnWords\.length >= 4\)\{\n\s+window\.omranOpenVideoMaker\(text, __heroAtt\.dataUrl/);
+  assert.match(ATTACH, /if\(__heroAtt && __heroAtt\.dataUrl && __vidOwnWords\.length > 0\)\{\n\s+window\.omranOpenVideoMaker\(text, __heroAtt\.dataUrl/);
   // المسار المباشر «حرّكها»: النسبة من اتّجاه الصورة لا عرضيّة ثابتة
   assert.match(ATTACH, /__vp\.ratio = \(__im\.height >= __im\.width\) \? '720:1280' : '1280:720';/);
   // أداة الوكيل: بلا نسبة صريحة ⇒ من الصورة المرجعيّة

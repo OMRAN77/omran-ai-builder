@@ -21938,9 +21938,16 @@ async function __sendPromptCore(){
     /* v-video-photo-identity: «سوّي فيديو لي وأنا أمشي في دبي» + صورة كان يُرمى فيها كلام المستخدم كلّه
        ويُستبدل بوصف آليّ للصورة من عشرين كلمة — فيخرج فيديو لا يطلبه، وأمره يصف الشخص نصًّا بدل أن يحرّكه.
        كلام المستخدم يبقى أمر الفيديو متى قال شيئًا غير «سوّ فيديو من الصورة»؛ الوصف الآليّ لذاك وحده. */
-    const __VID_FILLER = /^(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع|صنعلي|لي|فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|من|هذي|هذه|هاي|الصورة|الصوره|صورة|صوره|صورتي|بالصورة|للصورة|عن|لو|سمحت|ممكن|create|make|generate|produce|a|an|the|of|from|me|my|this|that|photo|image|picture|video|clip|film|reel|short|animation|please)$/i;
-    const __vidOwnWords = String(text || '').split(/[\s،,.!؟?()"'«»:؛\-]+/).filter(function(w){ return w && !__VID_FILLER.test(w); }).join(' ');
-    if(__heroAtt && __heroAtt.dataUrl && __vidOwnWords.length >= 4){
+    const __VID_FILLER = /^(?:اعمل|اصنع|سوّي|سوي|سولي|سوّلي|سويلي|سوّيلي|سوولي|اسوي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|ابغا|أبغا|ابي|أبي|ابا|أبا|نبي|نبغى|ودي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع|صنعلي|لي|ليا|فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|من|منها|هذي|هذه|هذا|ذي|هاي|هاذي|بهذي|لهذي|حق|حقي|حقتي|عن|لو|سمحت|فضلك|ممكن|تكفى|تكفا|بليز|يعافيك|يخليك|create|make|generate|produce|a|an|the|of|from|me|my|this|that|photo|pic|image|picture|video|clip|film|reel|short|animation|please|for|it)$/i;
+    const __VID_PHOTO_WORD = /^[وبل]{0,2}(?:ال|هال|ل)?صور(?:ة|ه|تي|ي|ته)?$/;
+    /* كلمة حقيقيّة = حرفان على الأقلّ (عربيّ/لاتينيّ)، ليست حشوًا ولا «الصورة» بأشكالها — «رقص»/«بحر» كلام، والرموز لا. */
+    const __vidOwnWordsOf = function(t){
+      return String(t || '').split(/[\s،,.!؟?()"'«»:؛\-]+/).filter(function(w){
+        return /[ء-يA-Za-z]{2,}/.test(w) && !__VID_FILLER.test(w) && !__VID_PHOTO_WORD.test(w);
+      });
+    };
+    const __vidOwnWords = __vidOwnWordsOf(text);
+    if(__heroAtt && __heroAtt.dataUrl && __vidOwnWords.length > 0){
       window.omranOpenVideoMaker(text, __heroAtt.dataUrl, __heroAtt.mime || 'image/jpeg');
     } else if(__heroAtt && __heroAtt.dataUrl){
       // صورة مرفقة — نولّد prompt إنجليزي دقيق منها أولاً
