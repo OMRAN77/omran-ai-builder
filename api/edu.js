@@ -978,8 +978,13 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const blocks = [];
       if (img) blocks.push({ type: 'image', source: { type: 'base64', media_type: /^image\/(png|jpeg|gif|webp)$/i.test(img.mime || '') ? img.mime : 'image/jpeg', data: img.base64 } });
       blocks.push({ type: 'text', text: (text ? 'الواجب:\n' + text : 'الواجب في الصورة.') + '\n\nحلّه الآن كاملًا وأعد JSON فقط.' });
+      /* v-edu-solve-budget (شكوى مستخدمين ٣٠ سبتمبر: «تعذّر فهم الحلّ» على واجب فيه عدّة أسئلة):
+         ٨٠٠٠ رمز تكفي مسألة واحدة، لكن kind="questions"/"project" يطلب حلّ كلّ سؤال في الورقة
+         (حتى ١٢ خطوة كاملة + إجابة شاملة لكلّ الأرقام) في نداء JSON واحد — أعلى غالبًا ممّا
+         يحتاجه استدعاءا process المنفصلان (٨٠٠٠+٩٠٠٠) معًا. الرد المقطوع عند السقف لا يُفكّ JSON
+         فيسقط في نفس رسالة الفشل. لا حلّ جذريّ غير رفع السقف — لا داعي لتعقيد جولة إتمام هنا. */
       let result = null;
-      try { result = await anthropicJSON(apiKey, sys, blocks, 8000); }
+      try { result = await anthropicJSON(apiKey, sys, blocks, 16000); }
       catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الحلّ الآن — حاول مرة أخرى.' }); return; }
       if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300) }); return; }
       const steps = (result && Array.isArray(result.steps) ? result.steps : [])
