@@ -938,6 +938,11 @@
       .stSlotSwap{bottom:8px; left:50%; transform:translateX(-50%); border-radius:999px; padding:6px 14px; font-size:12.5px; white-space:nowrap;}
       .stSlot.has .stSlotX,.stSlot.has .stSlotSwap{display:block;}
       .stSrcMenu{position:fixed; z-index:10060; min-width:190px; background:var(--panel,#1a1a1a); border:1px solid rgba(212,175,55,.4); border-radius:14px; padding:6px; box-shadow:0 14px 40px rgba(0,0,0,.6);}
+      .stSrcMenu.sheet{left:0; right:0; bottom:0; top:auto; min-width:0; border-radius:20px 20px 0 0; padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px)); border-width:1px 0 0; animation:stSheetUp .18s ease-out;}
+      .stSrcMenu.sheet button{font-size:16px; padding:14px 14px;}
+      .stSrcMenu.sheet .stRecent img{width:72px; height:72px;}
+      .stSrcBackdrop{position:fixed; inset:0; z-index:10059; background:rgba(0,0,0,.55);}
+      @keyframes stSheetUp{from{transform:translateY(100%)}to{transform:none}}
       .stSrcMenu button{display:block; width:100%; text-align:start; padding:10px 12px; border:none; background:none; color:var(--text); font-size:14px; border-radius:10px; cursor:pointer;}
       .stSrcMenu button:hover{background:rgba(212,175,55,.14);}
       .stRecent{display:flex; gap:6px; flex-wrap:wrap; padding:4px 8px 8px;}
