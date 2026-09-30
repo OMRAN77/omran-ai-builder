@@ -238,6 +238,16 @@ test('الربط: edu-plus بعد edu، والخطافات، وبلا سقف ١�
   assert.ok(plus.includes("s.src = '/js/edu-algo.js?v="), 'المسار يُحمَّل عند الطلب');
 });
 
+/* ---------- تدقيق قبل الجواب (v-edu-confirm-read) ---------- */
+test('حلّ الواجب: صورة ← تدقيق نصّ الصورة أوّلًا (بضغطة واحدة)، نصّ بحت ← الحلّ مباشرة بلا بوّابة', () => {
+  const solveFn = plus.slice(plus.indexOf('function solve(body, text, img){'), plus.indexOf('function showConfirmRead('));
+  assert.ok(/if\(img\) showConfirmRead\(body, s\); else showSolution\(body, s\);/.test(solveFn), 'الصورة فقط تمرّ بالتدقيق — لا نداء خادم إضافيّ ولا تأخير لمن يكتب نصًّا');
+  const confirmFn = plus.slice(plus.indexOf('function showConfirmRead(body, s){'), plus.indexOf('/* ---------- 🎨 المشروع والبوستر'));
+  assert.match(confirmFn, /c\.md\(s\.problem \|\| ''\)/, 'يعرض ما فهمه النموذج من الصورة حرفيًّا قبل الحلّ');
+  assert.match(confirmFn, /\$id\('eduReadOk'\)\.onclick = function\(\)\{ showSolution\(body, s\); \};/, 'تأكيد صحّة القراءة يكمل بلا نداء خادم ثانٍ (الحلّ محسوب مسبقًا)');
+  assert.match(confirmFn, /\$id\('eduReadRetry'\)\.onclick = function\(\)\{ showSolver\(\); \};/, 'رفض القراءة يعيد لالتقاط صورة جديدة');
+});
+
 /* ---------- الخادم ---------- */
 test('الخادم: المعلّم يرى الدرس والمحادثة ويردّ، والحلّ يُنقّى، والسقف يعمل', async () => {
   const rp = (p) => require.resolve(R(p));

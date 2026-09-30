@@ -2133,16 +2133,19 @@ async function callAI(messages){
   return await callProviderAI('default', messages);
 }
 
-// Providers tried in order after the user's chosen default, skipping ones that
-// need a personal API key the visitor hasn't entered (only Perplexity today).
-const AUTO_FALLBACK_ORDER = ['claude', 'gemini', 'openai', 'groq'];
+/* v-fallback-nine (طلب المالك ٣٠ سبتمبر: «أريد ٩ مزودين كلهم، إذا فشل الأول للثاني... اللي أريد
+   يدخل ما أريد يطلع» — مستخدمون يتنرفزون سريعًا من فشل صامت، أمّهات وطلاب لا يعيدون المحاولة يدويًّا):
+   كانت أربعة فقط بتعليق «تُستثنى ما يحتاج مفتاح شخصيّ (بيربلكسيتي فقط اليوم)» — لم يعد صحيحًا: كلّ
+   دالّة callOpenRouter/callPerplexity/callMistral/callDeepSeek/callCohere تسقط تلقائيًّا لوكيل الخادم
+   بمفتاح المالك حين لا يوجد مفتاح شخصيّ (نفس نمط الأربعة الأصليّين). التسعة مطابقة لـPROVIDERS في
+   api/ai.js — الحلقة أدناه أصلًا تجرّب أيّ فشل (لا ٤٢٩/٤٠٢ فقط، انظر continue بعد أيّ خطأ). */
+const AUTO_FALLBACK_ORDER = ['claude', 'gemini', 'openai', 'groq', 'cohere', 'deepseek', 'mistral', 'openrouter', 'perplexity'];
 
-// Sends the chat to the user's chosen default provider; if it fails with a
-// rate-limit (429) or daily-quota (402) error, automatically retries with the
-// next available provider (server-side ones use the owner's keys, so this is
-// invisible to the visitor besides a small "🔄 switched" note on the reply).
-// Any other kind of error (auth, bad request, etc.) fails immediately instead
-// of trying every provider.
+// Sends the chat to the user's chosen default provider; on ANY failure (rate-limit,
+// daily-quota, auth, bad request, refusal, empty reply…) it automatically retries
+// with the next provider in AUTO_FALLBACK_ORDER — all nine run server-side with the
+// owner's keys when the visitor hasn't set a personal one, so this is invisible to
+// the visitor besides a small "🔄 switched" note on the reply.
 // If onDelta is given, the reply streams in live (word by word); onDelta is
 // called with the accumulated text so far, and is reset to empty each time a
 // new provider is attempted after a fallback switch.

@@ -153,7 +153,11 @@ window.__EDU_XL2 = {
 "التالي ←":{"fr": "Suivant →", "hi": "अगला →", "bn": "পরের →", "ne": "अर्को →", "id": "Berikutnya →", "fil": "Susunod →", "tr": "Sonraki →", "zh": "下一课 →", "ru": "Далее →", "es": "Siguiente →", "ml": "അടുത്തത് →"},
 "جرّب بيدك الآن":{"fr": "Essaie maintenant", "hi": "अभी आज़माएँ", "bn": "এখনই চেষ্টা করুন", "ne": "अहिले नै प्रयास गर्नुहोस्", "id": "Coba sekarang", "fil": "Subukan ngayon", "tr": "Şimdi dene", "zh": "现在试试", "ru": "Попробуй сейчас", "es": "Pruébalo ahora", "ml": "ഇപ്പോൾ പരീക്ഷിക്കൂ"},
 "ممتاز! فهمت الخوارزميّة 🌟":{"fr": "Excellent ! Tu as compris l’algorithme 🌟", "hi": "शानदार! आपने एल्गोरिदम समझ लिया 🌟", "bn": "চমৎকার! আপনি অ্যালগরিদম বুঝেছেন 🌟", "ne": "उत्कृष्ट! तपाईंले एल्गोरिदम बुझ्नुभयो 🌟", "id": "Hebat! Kamu paham algoritmanya 🌟", "fil": "Magaling! Naintindihan mo ang algorithm 🌟", "tr": "Harika! Algoritmayı anladın 🌟", "zh": "太棒了！你理解了这个算法 🌟", "ru": "Отлично! Ты понял алгоритм 🌟", "es": "¡Excelente! Entendiste el algoritmo 🌟", "ml": "മികച്ചത്! നിങ്ങൾ അൽഗോരിതം മനസ്സിലാക്കി 🌟"},
-"راجع الشرح وجرّب اللعبة ثمّ أعد الاختبار 💪":{"fr": "Relis l’explication, joue au jeu, puis réessaie 💪", "hi": "व्याख्या दोबारा पढ़ें, गेम खेलें, फिर क्विज़ दोहराएँ 💪", "bn": "ব্যাখ্যা আবার পড়ুন, গেম খেলুন, তারপর আবার কুইজ দিন 💪", "ne": "व्याख्या फेरि पढ्नुहोस्, खेल खेल्नुहोस्, अनि फेरि क्विज दिनुहोस् 💪", "id": "Baca lagi penjelasannya, mainkan game-nya, lalu ulangi kuis 💪", "fil": "Balikan ang paliwanag, laruin ang laro, saka ulitin ang pagsusulit 💪", "tr": "Açıklamayı tekrar oku, oyunu oyna, sonra testi tekrarla 💪", "zh": "复习讲解、玩玩游戏，再重做测验 💪", "ru": "Перечитай объяснение, поиграй и пройди тест снова 💪", "es": "Repasa la explicación, juega y vuelve a intentar la prueba 💪", "ml": "വിശദീകരണം വീണ്ടും വായിക്കൂ, ഗെയിം കളിക്കൂ, പിന്നെ ക്വിസ് വീണ്ടും ചെയ്യൂ 💪"}
+"راجع الشرح وجرّب اللعبة ثمّ أعد الاختبار 💪":{"fr": "Relis l’explication, joue au jeu, puis réessaie 💪", "hi": "व्याख्या दोबारा पढ़ें, गेम खेलें, फिर क्विज़ दोहराएँ 💪", "bn": "ব্যাখ্যা আবার পড়ুন, গেম খেলুন, তারপর আবার কুইজ দিন 💪", "ne": "व्याख्या फेरि पढ्नुहोस्, खेल खेल्नुहोस्, अनि फेरि क्विज दिनुहोस् 💪", "id": "Baca lagi penjelasannya, mainkan game-nya, lalu ulangi kuis 💪", "fil": "Balikan ang paliwanag, laruin ang laro, saka ulitin ang pagsusulit 💪", "tr": "Açıklamayı tekrar oku, oyunu oyna, sonra testi tekrarla 💪", "zh": "复习讲解、玩玩游戏，再重做测验 💪", "ru": "Перечитай объяснение, поиграй и пройди тест снова 💪", "es": "Repasa la explicación, juega y vuelve a intentar la prueba 💪", "ml": "വിശദീകരണം വീണ്ടും വായിക്കൂ, ഗെയിം കളിക്കൂ, പിന്നെ ക്വിസ് വീണ്ടും ചെയ്യൂ 💪"},
+/* v-edu-confirm-read: تدقيق قبل الحلّ — يظهر فقط حين يكون المصدر صورة */
+"هذا اللي قريناه من صورتك":{"fr": "Voici ce qu’on a lu sur ta photo", "hi": "यह है जो हमने आपकी फ़ोटो से पढ़ा", "bn": "এটাই আমরা আপনার ছবি থেকে পড়েছি", "ne": "यो हो हामीले तपाईंको फोटोबाट पढेको", "id": "Ini yang kami baca dari fotomu", "fil": "Ito ang nabasa namin sa larawan mo", "tr": "Fotoğrafından okuduğumuz bu", "zh": "这是我们从你的照片里读到的内容", "ru": "Вот что мы прочитали на твоём фото", "es": "Esto es lo que leímos en tu foto", "ml": "നിങ്ങളുടെ ഫോട്ടോയിൽ നിന്ന് ഞങ്ങൾ വായിച്ചത് ഇതാണ്"},
+"صحيح، ورّني الحلّ":{"fr": "Correct, montre-moi la solution", "hi": "सही है, हल दिखाइए", "bn": "ঠিক আছে, সমাধান দেখান", "ne": "ठिक छ, समाधान देखाउनुहोस्", "id": "Benar, tunjukkan penyelesaiannya", "fil": "Tama, ipakita ang solusyon", "tr": "Doğru, çözümü göster", "zh": "没错，给我看解答", "ru": "Верно, покажи решение", "es": "Correcto, muéstrame la solución", "ml": "ശരിയാണ്, പരിഹാരം കാണിക്കൂ"},
+"مو واضح، صوّرها من جديد":{"fr": "Pas net, reprends la photo", "hi": "साफ़ नहीं है, दोबारा फ़ोटो लें", "bn": "স্পষ্ট নয়, আবার ছবি তুলুন", "ne": "स्पष्ट छैन, फेरि फोटो खिच्नुहोस्", "id": "Kurang jelas, foto ulang", "fil": "Hindi malinaw, kunan ulit ng larawan", "tr": "Net değil, tekrar fotoğrafla", "zh": "看不清，重新拍照", "ru": "Не разборчиво, сфотографируй заново", "es": "No se ve claro, vuelve a fotografiar", "ml": "വ്യക്തമല്ല, വീണ്ടും ഫോട്ടോ എടുക്കൂ"}
 };
 var DAY = 86400000;
 function C(){ return window.__eduCore; }
@@ -371,8 +375,27 @@ function solve(body, text, img){
   var c = C();
   busy(body, L('⏳ نحلّل الواجب ونحلّه…', '⏳ Analysing and solving…'));
   c.api({ action: 'solve', text: text, image: img || undefined, lang: c.appLang(), nativeLang: c.nativeLang() })
-    .then(function(j){ showSolution(body, j.solution || {}); })
+    .then(function(j){
+      var s = j.solution || {};
+      /* v-edu-confirm-read: مصدر نصّي بحت لا خطر قراءة خاطئة فيه — يذهب مباشرة للحلّ
+         بلا خطوة إضافية (سرعة لمن لا يريد أن «يبحث»). الصورة فقط تمرّ بالتدقيق أولًا. */
+      if(img) showConfirmRead(body, s); else showSolution(body, s);
+    })
     .catch(function(e){ errBox(body, (e && e.message) || c.T('err'), function(){ solve(body, text, img); }); });
+}
+/* v-edu-confirm-read (طلب المالك ٣٠ سبتمبر: «اريد نص الصوره فقط قبل لا يبني» + «تدقيق قبل الجوابات»):
+   الحلّ الكامل محسوب مسبقًا في نفس الردّ (لا نداء خادم إضافيّ، لا تأخير) — هذه فقط بوّابة عرض: نصّ
+   الواجب كما فهمه النموذج من الصورة أوّلًا، بضغطة واحدة للمتابعة أو إعادة التصوير لو أخطأ القراءة —
+   يمنع طالبًا أو أمًّا من قراءة حلّ كامل مبنيّ على تصحيف الصورة قبل أن يلاحظاه. */
+function showConfirmRead(body, s){
+  var c = C();
+  body.innerHTML = '<div class="eduSecTitle" style="margin-top:0;">📷 ' + esc(L('هذا اللي قريناه من صورتك', 'This is what we read from your photo')) + '</div>'
+    + '<div class="eduSolveProblem eduSummary">' + c.md(s.problem || '') + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">'
+    + '<button class="eduPrimary" id="eduReadOk" style="flex:1;min-width:160px;">✅ ' + esc(L('صحيح، ورّني الحلّ', 'Correct, show me the solution')) + '</button>'
+    + '<button class="eduPrimary eduGhost" id="eduReadRetry" style="flex:1;min-width:160px;">📷 ' + esc(L('مو واضح، صوّرها من جديد', 'Not clear, retake the photo')) + '</button></div>';
+  $id('eduReadOk').onclick = function(){ showSolution(body, s); };
+  $id('eduReadRetry').onclick = function(){ showSolver(); };
 }
 function showSolution(body, s){
   var c = C(), steps = s.steps || [], shown = 0, teach = solveMode() === 'teach';
