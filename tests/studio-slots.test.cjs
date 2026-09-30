@@ -57,7 +57,7 @@ test('٤. النصوص الجديدة بالـ١٤ لغة، والحزمة وا�
     for (const k of K) assert.ok(new RegExp('"?' + k + '"?:').test(s), lg + ' ' + k);
   }
   assert.ok(read('js/app.bundle.js').includes("function studioSetPhoto(which, file){"), 'الحزمة أُعيد بناؤها');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=647'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=648'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=706'"));
 });
 
@@ -71,5 +71,5 @@ test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف �
   assert.match(b, /querySelectorAll\('\.studioCompareCheck:checked'\)\.length > 3\)\{ cb\.checked = false; return; \}/);
   assert.doesNotMatch(b, /innerHTML = '<input type="checkbox"/, 'لا مربّعات نصّيّة');
   assert.match(js, /compareChecksEl\.querySelectorAll\('\.studioCompareCheck:checked'\)/, 'قارئ المقارنة كما هو');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=647'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=648'));
 });

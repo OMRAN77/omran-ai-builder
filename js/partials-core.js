@@ -942,13 +942,15 @@
       .stSrcMenu button:hover{background:rgba(212,175,55,.14);}
       .stRecent{display:flex; gap:6px; flex-wrap:wrap; padding:4px 8px 8px;}
       .stRecent img{width:52px; height:52px; object-fit:cover; border-radius:10px; cursor:pointer; border:1px solid rgba(255,255,255,.15);}
-      .stCmpGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px; margin-top:8px;}
-      .stCmp{position:relative; display:flex; flex-direction:column; border:1px solid var(--border,#333); border-radius:12px; overflow:hidden; cursor:pointer; background:#111;}
+      /* v-studio-compare-cards: نفس شكل بطاقات «عرض الكل» (omranPicker) — صورة ٣:٤ واسم عريض وعلامة ✓ ذهبيّة */
+      .stCmpGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; margin-top:10px;}
+      .stCmp{position:relative; display:flex; flex-direction:column; border:1px solid var(--border,#2a2a30); border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;}
       .stCmp input{position:absolute; opacity:0; pointer-events:none;}
-      .stCmp img{width:100%; height:96px; object-fit:cover; object-position:center top; background:linear-gradient(160deg,#23232a,#101014);}
-      .stCmp span{font-size:11px; color:var(--text); padding:5px 4px; text-align:center; line-height:1.3;}
-      .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);}
-      .stCmp.on::after{content:"✓"; position:absolute; top:6px; left:6px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center;}
+      .stCmp img{width:100%; aspect-ratio:3/4; object-fit:cover; background:linear-gradient(160deg,#23232a,#101014); display:block;}
+      .stCmp span{font-size:12px; font-weight:700; color:#eef0f6; padding:8px 6px 9px; text-align:center; line-height:1.3;}
+      .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);}
+      .stCmp.on span{color:#d4af37;}
+      .stCmp.on::after{content:"✓"; position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;}
       #studioAiMore{margin-top:14px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:8px 10px;}
       #studioAiMore > summary{cursor:pointer; font-size:13px; color:var(--muted);}
     </style>
