@@ -21935,7 +21935,21 @@ async function __sendPromptCore(){
   if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
     const __heroAtt = pendingAttachments.find(function(a){ return a.isImage && a.dataUrl; });
     promptEl.value = '';
-    if(__heroAtt && __heroAtt.dataUrl){
+    /* v-video-photo-identity: «سوّي فيديو لي وأنا أمشي في دبي» + صورة كان يُرمى فيها كلام المستخدم كلّه
+       ويُستبدل بوصف آليّ للصورة من عشرين كلمة — فيخرج فيديو لا يطلبه، وأمره يصف الشخص نصًّا بدل أن يحرّكه.
+       كلام المستخدم يبقى أمر الفيديو متى قال شيئًا غير «سوّ فيديو من الصورة»؛ الوصف الآليّ لذاك وحده. */
+    const __VID_FILLER = /^(?:اعمل|اصنع|سوّي|سوي|سولي|سوّلي|سويلي|سوّيلي|سوولي|اسوي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|ابغا|أبغا|ابي|أبي|ابا|أبا|نبي|نبغى|ودي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع|صنعلي|لي|ليا|فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|من|منها|هذي|هذه|هذا|ذي|هاي|هاذي|بهذي|لهذي|حق|حقي|حقتي|عن|لو|سمحت|فضلك|ممكن|تكفى|تكفا|بليز|يعافيك|يخليك|create|make|generate|produce|a|an|the|of|from|me|my|this|that|photo|pic|image|picture|video|clip|film|reel|short|animation|please|for|it)$/i;
+    const __VID_PHOTO_WORD = /^[وبل]{0,2}(?:ال|هال|ل)?صور(?:ة|ه|تي|ي|ته)?$/;
+    /* كلمة حقيقيّة = حرفان على الأقلّ (عربيّ/لاتينيّ)، ليست حشوًا ولا «الصورة» بأشكالها — «رقص»/«بحر» كلام، والرموز لا. */
+    const __vidOwnWordsOf = function(t){
+      return String(t || '').split(/[\s،,.!؟?()"'«»:؛\-]+/).filter(function(w){
+        return /[ء-يA-Za-z]{2,}/.test(w) && !__VID_FILLER.test(w) && !__VID_PHOTO_WORD.test(w);
+      });
+    };
+    const __vidOwnWords = __vidOwnWordsOf(text);
+    if(__heroAtt && __heroAtt.dataUrl && __vidOwnWords.length > 0){
+      window.omranOpenVideoMaker(text, __heroAtt.dataUrl, __heroAtt.mime || 'image/jpeg');
+    } else if(__heroAtt && __heroAtt.dataUrl){
       // صورة مرفقة — نولّد prompt إنجليزي دقيق منها أولاً
       (async function(){
         try{
@@ -23088,6 +23102,9 @@ function __friendlyErr(e){
             const __fixed = await new Promise((resolve) => {
               const __im = new Image();
               __im.onload = () => {
+                /* v-video-photo-identity: النسبة كانت عرضيّة ثابتة، فالمحرّك يقصّ صورة الجوّال الطوليّة من
+                   وسطها ويضيع الرأس — الطوليّة والمربّعة ⇒ ٩:١٦، والعرضيّة ⇒ ١٦:٩. */
+                __vp.ratio = (__im.height >= __im.width) ? '720:1280' : '1280:720';
                 const __r2 = __im.width / __im.height;
                 if(__r2 >= 0.5 && __r2 <= 2) return resolve(null);
                 let __cw = __im.width, __ch = __im.height;
@@ -27432,7 +27449,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           filmHeroMime   = heroMimeType || 'image/jpeg';
           if(prev){ prev.src = heroDataUrl; prev.style.display = 'inline-block'; }
           if(clr)  { clr.style.display = 'inline-block'; }
-          if(heroRowEl){ heroRowEl.style.display = ''; }
+          if(heroRowEl){ syncFilmHeroRow(); } /* v-video-photo-identity: حسب الوضع لا إظهار أعمى */
+          applyHeroRatioFromDataUrl(heroDataUrl);
           // v525: عند وجود صورة → واقعي تلقائياً لأن الأنيمي يُضيّع تفاصيل الصورة الأصلية
           if(styleEl && styleEl.value !== 'realistic') styleEl.value = 'realistic';
         }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
@@ -27450,15 +27468,35 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
+  /* v-video-photo-identity (المالك: «الفيديوات عامّة تغيّر الأشكال… مش ترندات، في الفيديوات العاديّة»):
+     (١) كانت كلّ نقرة على وضع كانفا/المحترف/الممثّل تمسح صورة البطل المحفوظة نهائيًّا بلا إشعار — الآن
+     تُخفى في كانفا وحده (لا يستعمل صورًا) وتبقى محفوظة. (٢) «المحترف لا يقبل صورًا» خطأ قديم: خادمه
+     يحرّك الصورة إطارًا أوّل (veo-create: instance.image) — فالصورة تُرسل له وللممثّل أيضًا. */
   function syncFilmHeroRow(){
     const heroRowEl = document.getElementById('videoMakerHeroRow');
     const noteEl = document.getElementById('videoMakerHeroVeoNote');
-    const modeVal = modeEl.value;
-    // البطل مدعوم في كل الأوضاع ما عدا: veo (لا يقبل صور)، actor (veo-based)، canvas (مبني على التوقيع)
-    const heroSupported = (modeVal !== 'veo' && modeVal !== 'actor' && modeVal !== 'canvas');
+    const heroSupported = (modeEl.value !== 'canvas');
     if(heroRowEl) heroRowEl.style.display = heroSupported ? 'block' : 'none';
-    if(noteEl) noteEl.style.display = (modeVal === 'veo') ? 'block' : 'none';
-    if(!heroSupported && window.__clearFilmHero) window.__clearFilmHero();
+    if(noteEl) noteEl.style.display = 'none';
+  }
+  /* v-video-photo-identity: المحرّك يقصّ الصورة من وسطها إلى نسبة الفيديو المطلوبة، والنسبة الافتراضيّة
+     عرضيّة — فصورة جوّال طوليّة (سيلفي/وقوف كامل) تفقد أعلاها وأسفلها، والوجه غالبًا في الأعلى، فيخترع
+     المحرّك وجهًا بدل وجه مقصوص. النسبة تتبع اتّجاه الصورة لحظة اختيارها (ظاهرة في الواجهة، ويغيّرها
+     المستخدم إن شاء): الطوليّة والمربّعة ⇒ ٩:١٦ (القصّ من الجانبين لا من الرأس)، والعرضيّة ⇒ ١٦:٩. */
+  function heroRatioFor(w, h){ return (h >= w) ? '720:1280' : '1280:720'; }
+  function applyHeroRatio(w, h){
+    if(!ratioEl || !(w > 0) || !(h > 0)) return;
+    const want = heroRatioFor(w, h);
+    if(ratioEl.value === want) return;
+    ratioEl.value = want;
+    try{ ratioEl.dispatchEvent(new Event('change')); }catch(e){ /* guard-ok — مزامنة حبّات العرض ترف */ }
+  }
+  function applyHeroRatioFromDataUrl(dataUrl){
+    try{
+      const probe = new Image();
+      probe.onload = () => applyHeroRatio(probe.naturalWidth || probe.width, probe.naturalHeight || probe.height);
+      probe.src = dataUrl;
+    }catch(e){ /* guard-ok — بلا أبعاد تبقى النسبة كما اختارها المستخدم */ }
   }
   // 📋 معاينة وتعديل السيناريو قبل التوليد
   function showScriptPreview(title, scenes){
@@ -27832,11 +27870,12 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     });
 
     setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
+    /* v-video-photo-identity: وضع الدمج يُظهر خانة صورة البطل لكنّه كان لا يرسلها — فيخترع المحرّك شخصًا. */
     const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
       setStatus(isEn()
         ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
         : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-    });
+    }, filmHeroBase64, filmHeroMime);
     setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
 
     const ffmpeg = await getFFmpeg();
@@ -27991,6 +28030,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         filmHeroBase64 = savedB64; filmHeroMime = savedMime;
         if(prev){ prev.src = 'data:' + savedMime + ';base64,' + savedB64; prev.style.display = 'inline-block'; }
         if(clr) clr.style.display = 'inline-block';
+        applyHeroRatioFromDataUrl('data:' + savedMime + ';base64,' + savedB64);
       }
     } catch(_){ /* استعادة صورة البطل المحفوظة ترفٌ: تخزين محجوب أو قيمة تالفة
          يعني بلا معاينة سابقة فقط — لا يمنع اختيار صورة جديدة. */ }
@@ -28009,8 +28049,11 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       if(!f) return;
       const img = new Image();
       img.onload = () => {
-        const max = 768;
+        /* v-video-photo-identity: ٧٦٨ كانت أصغر من الحدّ الأدنى الموصى به عند المحرّك (٦٤٠×٦٤٠ بعد القصّ)،
+           ووجه صورة الوقوف الكامل يصل بكسلات قليلة فيُعاد رسمه تقريبًا — ١٤٠٠ كالترندات (v-trend-identity). */
+        const max = 1400;
         let w = img.width, h = img.height;
+        applyHeroRatio(w, h);
         if(Math.max(w, h) > max){ const k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
         // Runway requires width/height ratio between 0.5 and 2 — pad if outside
         let cw = w, ch = h;
@@ -28032,7 +28075,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         // حفظ البطل في localStorage (أفاتار ثابت عبر الجلسات)
         try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); }
         catch(_){ /* الحصّة ممتلئة أو التخزين محجوب: البطل يبقى في الذاكرة لهذه
-             الجلسة ولا يُحفظ عبرها — والفيديو يُبنى منه كما هو. */ }
+             الجلسة ولا يُحفظ عبرها — والفيديو يُبنى منه كما هو.
+             v-video-photo-identity: ويُمحى المحفوظ القديم، وإلّا عاد بعد إعادة التحميل شخصٌ سابق بطلًا. */
+          try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); }
+          catch(__){ /* guard-ok — التخزين محجوب أصلًا */ } }
       };
       img.src = URL.createObjectURL(f);
     };
@@ -28097,11 +28143,13 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     }
 
     /* Helper: generate ONE scene via Google Veo 3 (create + poll) and return its video URL. */
-    async function createVeoScene(prompt, sceneRatio, sceneToken, hq){
+    async function createVeoScene(prompt, sceneRatio, sceneToken, hq, heroB64, heroMime){
+      const payload = { promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast' };
+      if(heroB64){ payload.imageBase64 = heroB64; payload.imageMime = heroMime || 'image/jpeg'; } /* v-video-photo-identity */
       const cr = await fetch('/api/video?action=veo-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast' }),
+        body: JSON.stringify(payload),
       });
       const crData = await cr.json();
       /* v-video-seq-cooldown: الرمز والمهلة يصلان كما في createScene — فتعرفهما سلسلة المشاهد وfriendlyError. */
@@ -28167,21 +28215,15 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           const ok = await ensureRunwayCredits(scenes.length * 50);
           if(!ok){ btnGenerate.disabled = false; return; }
         }
-        if(filmUseVeo && filmHeroBase64){
-          setStatus(bT('ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...','ℹ️ Hero photo is supported with Runway only; continuing without it...'));
-        }
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
           setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
-          // إذا كان هناك بطل: نثبّت موضعه في كل prompt حتى يبدو بنفس المكان عبر المشاهد
-          const baseScenePrompt = sc.visual || text;
-          const heroAnchor = filmHeroBase64
-            ? 'Hero centered in frame, medium shot, consistent camera angle. '
-            : '';
-          const scenePromptWithHero = heroAnchor + baseScenePrompt;
+          /* v-video-photo-identity: كان يُلحق «ضعه في وسط الإطار بلقطة متوسّطة» — أمر إعادة تأطير يعاكس
+             الإطار الأوّل (الصورة نفسها) فيُعاد رسم الوجه بمقاس آخر. قفل الهويّة يبنيه الخادم لكلّ محرّك. */
+          const scenePromptWithHero = sc.visual || text;
           const videoUrl = await sceneInSequence(i + 1, scenes.length, () => filmUseVeo
-            ? createVeoScene(scenePromptWithHero, ratio, token, wantQuality)
+            ? createVeoScene(scenePromptWithHero, ratio, token, wantQuality, filmHeroBase64, filmHeroMime)
             : createSceneWithRetry(scenePromptWithHero, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
                 setStatus(isEn()
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
@@ -28375,15 +28417,17 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
             return;
           }
-          veoPrompt = (text || 'An Emirati man in traditional white kandura and ghutra, warm friendly face')
+          veoPrompt = (text || (filmHeroBase64 ? 'The real person in the reference photo' : 'An Emirati man in traditional white kandura and ghutra, warm friendly face'))
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
         setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
+        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         const cr = await fetch('/api/video?action=veo-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast' }),
+          body: JSON.stringify(veoPayload),
         });
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
@@ -28481,8 +28525,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenes.length + '...');
-          const lmHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
-          const videoUrl = await createSceneWithRetry(lmHeroAnchor + (sc.visual || text), style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
+          const videoUrl = await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
@@ -28526,11 +28569,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       let sceneUrls = [];
       const okBal2 = await ensureRunwayCredits(isLong ? 100 : 50);
       if(!okBal2){ btnGenerate.disabled = false; return; }
-      const singleHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
       if(isLong){
         const scenePrompts = [
-          singleHeroAnchor + text + (bT(' (اللحظة الافتتاحية للمشهد)',' (opening moment of the scene)')),
-          singleHeroAnchor + text + (bT(' (استكمال نفس المشهد، اللحظة التالية)',' (continuing the same scene, next moment)')),
+          text + (bT(' (اللحظة الافتتاحية للمشهد)',' (opening moment of the scene)')),
+          text + (bT(' (استكمال نفس المشهد، اللحظة التالية)',' (continuing the same scene, next moment)')),
         ];
         for(let i = 0; i < scenePrompts.length; i++){
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenePrompts.length + '...');
@@ -28543,7 +28585,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         }
       } else {
         setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
-        const url = await createSceneWithRetry(singleHeroAnchor + text, style, durationEl.value, ratio, token, false, (attempt, max) => {
+        const url = await createSceneWithRetry(text, style, durationEl.value, ratio, token, false, (attempt, max) => {
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
             : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
@@ -36097,6 +36139,19 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           var vr = String(va.ratio || '').toLowerCase();
           var ratio = trendMeta ? trendMeta.ratio : (vr === 'portrait' || vr === '9:16' ? '720:1280' : '1280:720');
           var ref = va.use_reference_image === false ? null : window.__chatVideoReference;
+          /* v-video-photo-identity: بلا نسبة صريحة من النموذج كانت عرضيّة دائمًا، فتُقصّ صورة الجوّال الطوليّة
+             من وسطها ويضيع الرأس — النسبة تتبع اتّجاه الصورة المرجعيّة (طوليّة/مربّعة ⇒ ٩:١٦). */
+          if (!trendMeta && !vr && ref && ref.dataUrl) {
+            try {
+              var dims = await new Promise(function (resolve) {
+                var im = new Image();
+                im.onload = function () { resolve({ w: im.naturalWidth || im.width, h: im.naturalHeight || im.height }); };
+                im.onerror = function () { resolve(null); };
+                im.src = ref.dataUrl;
+              });
+              if (dims && dims.w > 0 && dims.h > 0) ratio = dims.h >= dims.w ? '720:1280' : '1280:720';
+            } catch (e) { /* guard-ok — بلا أبعاد تبقى النسبة الافتراضيّة */ }
+          }
           var token = (window.authGet && window.authGet('aiapp_auth_token')) || '';
           var payload;
           var endpoint;

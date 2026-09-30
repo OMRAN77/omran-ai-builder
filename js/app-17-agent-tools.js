@@ -94,6 +94,19 @@
           var vr = String(va.ratio || '').toLowerCase();
           var ratio = trendMeta ? trendMeta.ratio : (vr === 'portrait' || vr === '9:16' ? '720:1280' : '1280:720');
           var ref = va.use_reference_image === false ? null : window.__chatVideoReference;
+          /* v-video-photo-identity: بلا نسبة صريحة من النموذج كانت عرضيّة دائمًا، فتُقصّ صورة الجوّال الطوليّة
+             من وسطها ويضيع الرأس — النسبة تتبع اتّجاه الصورة المرجعيّة (طوليّة/مربّعة ⇒ ٩:١٦). */
+          if (!trendMeta && !vr && ref && ref.dataUrl) {
+            try {
+              var dims = await new Promise(function (resolve) {
+                var im = new Image();
+                im.onload = function () { resolve({ w: im.naturalWidth || im.width, h: im.naturalHeight || im.height }); };
+                im.onerror = function () { resolve(null); };
+                im.src = ref.dataUrl;
+              });
+              if (dims && dims.w > 0 && dims.h > 0) ratio = dims.h >= dims.w ? '720:1280' : '1280:720';
+            } catch (e) { /* guard-ok — بلا أبعاد تبقى النسبة الافتراضيّة */ }
+          }
           var token = (window.authGet && window.authGet('aiapp_auth_token')) || '';
           var payload;
           var endpoint;

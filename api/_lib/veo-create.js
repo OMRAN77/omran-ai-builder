@@ -4,6 +4,15 @@
 const { checkOwnerBypass } = require('./_videoUsage');
 
 const GL = 'https://generativelanguage.googleapis.com/v1beta';
+/* v-video-photo-identity: حدود الأمر حدودنا لا حدّ المحرّك (١٠٢٤ رمزًا) — مقسّمة حسب المسار كي لا يتجاوز
+   نصّ عربيّ طويل حدّ الرموز: قوالب الترندات (إنجليزيّة غالبًا) ٢٦٠٠؛ الوصف الحرّ مع صورة ٢٠٠٠ (قفل الهويّة
+   ~٣٧٠ + وصف يتّسع لأمر الممثّل كاملًا: كلامه وتزامن الشفاه و«بلا ترجمة» في آخره)؛ وبلا صورة ١٥٠٠ كما كان. */
+const VEO_PROMPT_MAX = 2600;
+const VEO_FREE_IMAGE_MAX = 2000;
+const VEO_FREE_MAX = 1500;
+const FRAME_LOCK = ' The attached first frame ALREADY shows every person exactly as they must look in this'
+  + ' video: animate that frame. Keep each face, hairstyle, skin tone and outfit exactly as they appear'
+  + ' in it — do not re-age, restyle, redraw or replace anyone, and do not apply the transformation again.';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,13 +27,22 @@ module.exports = async (req, res) => {
       ? body.imagesBase64.map((d, i) => ({ data: d, mime: (body.imagesMime || [])[i] })).filter((x) => x && x.data)
       : [];
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند ومدخلات المستخدم */
+    const hasImage = !!(imageBase64 && String(imageBase64).trim());
     if (body.trend) {
-      const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
+      const trendsLib = require('./video-trends.js');
+      const bParams = Object.assign({}, body.params || {}, { hasImage });
+      let built = trendsLib.buildTrendPrompt(String(body.trend), bParams);
       if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
+      /* v-video-photo-identity: قفل الإطار الأوّل (FRAME_LOCK) يُلحق بعد البناء لترندات الأشخاص — فيُحجز له
+         مكانه هنا: يُقصّ كلام المستخدم وحده (الاسم يتكرّر في بعض القوالب) لا الأقفال. أطول حالة قيست: ٢٧٨٩. */
+      for (let keep = 360; trendPeople.length > 1 && built.prompt.length + FRAME_LOCK.length > VEO_PROMPT_MAX && keep >= 0; keep -= 40) {
+        const cut = (v) => String(v || '').slice(0, keep);
+        built = trendsLib.buildTrendPrompt(String(body.trend), Object.assign({}, bParams, { name: cut(bParams.name), text: cut(bParams.text), extra: cut(bParams.extra) })) || built;
+      }
       promptText = built.prompt; ratio = ratio || built.ratio; if (!durationSeconds) durationSeconds = 8;
-    } else if (imageBase64 && String(imageBase64).trim() && promptText) {
+    } else if (hasImage && promptText) {
       /* v-video-identity: الوصف الحرّ مع صورة — قفل الهويّة نفسه كالترندات */
-      promptText = require('./video-trends.js').withIdentityLock(promptText, 1500);
+      promptText = require('./video-trends.js').withIdentityLock(promptText, VEO_FREE_IMAGE_MAX);
     }
     let durSec = parseInt(durationSeconds, 10);
     if (![4, 6, 8].includes(durSec)) durSec = 0; // 0 = default (leave to Veo)
@@ -79,9 +97,7 @@ module.exports = async (req, res) => {
            الترند نفسه يبقى «Transform the person … into …» — فيعيد المحرّك تنفيذ التحويل فوق إطار
            نُفِّذ فيه أصلًا، ويرسم وجوهًا جديدة. هذا السطر يُلحق أخيرًا فيغلب: التحويل انتهى، والمطلوب
            تحريك ما في الإطار كما هو. */
-        promptText += ' The attached first frame ALREADY shows every person exactly as they must look in this'
-          + ' video: animate that frame. Keep each face, hairstyle, skin tone and outfit exactly as they appear'
-          + ' in it — do not re-age, restyle, redraw or replace anyone, and do not apply the transformation again.';
+        promptText += FRAME_LOCK;
       }
       else if (frame && frame.error) {
         if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video);
@@ -93,7 +109,10 @@ module.exports = async (req, res) => {
 
     const model = quality === 'high' ? 'veo-3.1-generate-preview' : 'veo-3.1-fast-generate-preview';
     const aspectRatio = ratio === '720:1280' ? '9:16' : '16:9';
-    const prompt = String(promptText).trim().slice(0, 1500);
+    /* v-video-photo-identity: حدّ ١٥٠٠ كان يقصّ قفل «الإطار الأوّل يُظهر كلّ شخص… لا تحوّل مرّة ثانية»
+       في كلّ ترند متعدّد الأشخاص (٣٣٠ من ٣٣٠ قياسًا) لأنّه يُلحق بعد بناء الأمر — الحدّ الآن حسب المسار
+       (انظر رأس الملفّ)، وللقفل مكانه محجوز عند البناء. */
+    const prompt = String(promptText).trim().slice(0, body.trend ? VEO_PROMPT_MAX : (hasImage ? VEO_FREE_IMAGE_MAX : VEO_FREE_MAX));
 
     // Veo 3.1 image-to-video: attach a starting image when provided so the
     // generated clip animates that exact character (with native audio/speech).
@@ -128,3 +147,7 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };
+module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;
+module.exports.VEO_FREE_IMAGE_MAX = VEO_FREE_IMAGE_MAX;
+module.exports.VEO_FREE_MAX = VEO_FREE_MAX;
+module.exports.FRAME_LOCK = FRAME_LOCK;

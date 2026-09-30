@@ -8,6 +8,28 @@ const { pickKey, encodeTaskId, clearStuckTask, saveLastTask, RUNWAY_API_BASE } =
 
 const RUNWAY_VERSION = '2024-11-06';
 
+/* v-video-photo-identity (المالك: «الفيديوات عامّة تغيّر الأشكال… مش ترندات، في الفيديوات العاديّة»):
+   أمر Runway مع صورة كان: بادئة «ضعه في وسط الإطار بلقطة متوسّطة، نفس التأطير في كلّ مشهد» — أمر إعادة
+   تأطير يعاكس الإطار الأوّل (الصورة نفسها) فيعيد المحرّك رسم الوجه بمقاس آخر؛ ولاحقة الأسلوب تُلحق قبل
+   البادئة ثمّ يُقصّ الكلّ على ١٠٠٠ فتضيع اللاحقة كلّها بعد ~٤٦١ حرفًا؛ ولا قفل في الذيل؛ والأنمي يطلب
+   «EXACT … UNCHANGED» و«NOT photographic» معًا. الآن: مرساة هويّة أوّلًا بلا أمر تأطير (أسلوبيّة مع
+   الأنمي)، والوصف يُقصّ هو وحده، ثمّ لاحقة الأسلوب، ثمّ قفل الهويّة أخيرًا — الكلّ داخل ١٠٠٠. */
+const RUNWAY_PROMPT_MAX = 1000;
+const RW_STYLE_ANIME = ', 2D anime cartoon animation, illustrated characters, bold outlines, cel-shaded, Studio Ghibli style, NOT realistic, NOT photographic';
+const RW_STYLE_REAL = ', ultra-realistic live-action footage, real camera recording, natural lighting, photographic quality, shot on 4K camera, cinematic depth of field — absolutely no cartoon, no animation, no illustration, no digital art, no anime, no CGI characters';
+const RW_ID_PRE_REAL = 'The opening frame is a real photo of a real person. Keep this exact person — same face shape, eyes, nose, lips, jawline, beard, skin tone and hair — in every frame, whatever they do. ';
+const RW_ID_PRE_ANIME = 'The opening frame is a photo of a real person. Keep them clearly recognizable — same face shape, eyes, nose, lips, beard, skin tone and hair — while the scene is drawn in the style below. ';
+const RW_ID_TAIL = '. IDENTITY (mandatory): it is this same person from the photo throughout, never a different or generic face.';
+
+function buildRunwayPrompt(promptText, style, useImage) {
+  const anime = style === 'anime';
+  const suffix = anime ? RW_STYLE_ANIME : RW_STYLE_REAL;
+  const pre = useImage ? (anime ? RW_ID_PRE_ANIME : RW_ID_PRE_REAL) : '';
+  const tail = useImage ? RW_ID_TAIL : '';
+  const room = Math.max(0, RUNWAY_PROMPT_MAX - pre.length - suffix.length - tail.length);
+  return pre + String(promptText || '').trim().slice(0, room) + suffix + tail;
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -107,14 +129,6 @@ module.exports = async (req, res) => {
     // Runway only accepts 5 or 10 seconds — snap anything else
     finalDuration = finalDuration <= 7 ? 5 : 10;
 
-    // الأنيمي: نصّ واضح بأنه رسوم متحركة ثنائية الأبعاد لا يُشبه الواقع أبداً
-    // الواقعي: نرفض صراحةً كل أشكال الرسوم والديجيتال آرت حتى يلتزم Runway
-    const styleSuffix = (style === 'anime')
-      ? ', 2D anime cartoon animation, illustrated characters, bold outlines, cel-shaded, Studio Ghibli style, NOT realistic, NOT photographic'
-      : ', ultra-realistic live-action footage, real camera recording, natural lighting, photographic quality, shot on 4K camera, cinematic depth of field — absolutely no cartoon, no animation, no illustration, no digital art, no anime, no CGI characters';
-    // Runway hard limit: promptText <= 1000 chars TOTAL (base + suffix)
-    let finalPrompt = String(promptText).trim().slice(0, 1000 - styleSuffix.length) + styleSuffix;
-
     // Auto-cancel any previous stuck task on this key so it doesn't hog the
     // account's single concurrency slot forever (see runway-keys.js).
     await clearStuckTask(picked.index, apiKey);
@@ -126,12 +140,8 @@ module.exports = async (req, res) => {
     const endpoint = useImage
       ? RUNWAY_API_BASE + '/v1/image_to_video'
       : RUNWAY_API_BASE + '/v1/text_to_video';
-    // عندما تُرفق صورة نُضيف تعليمة الحفاظ على هوية الشخص في مقدمة الـ prompt
-    // بدونها يتجاهل Runway الصورة ويولّد شخصية عشوائية مختلفة تمامًا
-    if (useImage) {
-      const preservePrefix = 'CRITICAL: The person in the reference image is the HERO of this video. Keep their EXACT face, identity, clothing, hair, and body UNCHANGED. Place them in the CENTER of the frame at medium shot distance — same framing and camera angle in every scene. Never change, replace, or obscure the hero. ';
-      finalPrompt = (preservePrefix + finalPrompt).slice(0, 1000);
-    }
+    // Runway hard limit: promptText <= 1000 chars TOTAL — مع صورة: مرساة هويّة أوّلًا وقفل أخيرًا (v-video-photo-identity)
+    const finalPrompt = buildRunwayPrompt(promptText, style, useImage);
 
     /* v-runway-model (لقطات المالك: «Validation of body failed … expected one of
        gen4.5 | kling3.0_pro | veo3.1 …»): Runway أوقف اسم gen4_turbo فصار كل
@@ -181,3 +191,5 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };
+module.exports.buildRunwayPrompt = buildRunwayPrompt;
+module.exports.RUNWAY_PROMPT_MAX = RUNWAY_PROMPT_MAX;

@@ -68,9 +68,12 @@ test('صانع الفيديو الحرّ مع صورة: قفل الهويّة أ
   assert.ok(p.length <= 1500);
   assert.match(p, /^MAIN CHARACTER: the real person in the attached reference photo/);
   assert.match(p, /IDENTITY \(mandatory\): whenever a person appears, it is this same real person/);
-  for (const f of ['api/_lib/omni-create.js', 'api/_lib/veo-create.js']) {
-    const src = fs.readFileSync(path.join(root, f), 'utf8');
-    assert.match(src, /\} else if \(imageBase64 && String\(imageBase64\)\.trim\(\) && promptText\) \{\n\s+\/\* v-video-identity/, f + ': المسار الحرّ بلا قفل هويّة');
-    assert.match(src, /withIdentityLock\(promptText, 1500\)/, f);
-  }
+  /* v-video-photo-identity: Omni يسمّي الصورة بوسمها <IMAGE_REF_0>، وVeo يتّسع لأمر الممثّل كاملًا
+     (VEO_FREE_IMAGE_MAX) — الطلب الفعليّ مفحوص في tests/video-photo-identity.test.cjs */
+  const omni = fs.readFileSync(path.join(root, 'api/_lib/omni-create.js'), 'utf8');
+  assert.match(omni, /\} else if \(imageBase64 && String\(imageBase64\)\.trim\(\) && promptText\) \{\n\s+\/\* v-video-identity/, 'omni: المسار الحرّ بلا قفل هويّة');
+  assert.match(omni, /withIdentityLock\(promptText, 1500, 'the reference image <IMAGE_REF_0>'\)/);
+  const veo = fs.readFileSync(path.join(root, 'api/_lib/veo-create.js'), 'utf8');
+  assert.match(veo, /\} else if \(hasImage && promptText\) \{\n\s+\/\* v-video-identity/, 'veo: المسار الحرّ بلا قفل هويّة');
+  assert.match(veo, /withIdentityLock\(promptText, VEO_FREE_IMAGE_MAX\)/);
 });
