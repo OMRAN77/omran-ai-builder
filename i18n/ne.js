@@ -735,7 +735,6 @@ I18N['ne'] = {
     studioSlotChange: '🔄 बदल्नुहोस्',
     studioSrcCamera: '📷 क्यामेरा',
     studioSrcGallery: '🖼️ ग्यालेरी',
-    studioSrcRecent: '🕘 हालका फोटो',
     studioMoreOptions: '⚙️ थप विकल्प',
     studioAddPhotoCta: '📷 पहिले फोटो थप्नुहोस्',
     studioAiGenerateBtn: '✨ बनाउनुहोस्',

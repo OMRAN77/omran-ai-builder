@@ -845,7 +845,6 @@ I18N['ru'] = {
     "studioSlotChange": "🔄 Заменить",
     "studioSrcCamera": "📷 Камера",
     "studioSrcGallery": "🖼️ Галерея",
-    "studioSrcRecent": "🕘 Недавние фото",
     "studioMoreOptions": "⚙️ Дополнительно",
     "studioAddPhotoCta": "📷 Сначала добавьте фото",
     "studioAiGenerateBtn": "✨ Создать",

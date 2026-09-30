@@ -700,7 +700,6 @@ I18N['bn'] = {
     studioSlotChange: '🔄 পরিবর্তন',
     studioSrcCamera: '📷 ক্যামেরা',
     studioSrcGallery: '🖼️ গ্যালারি',
-    studioSrcRecent: '🕘 সাম্প্রতিক ছবি',
     studioMoreOptions: '⚙️ আরও অপশন',
     studioAddPhotoCta: '📷 আগে আপনার ছবি যোগ করুন',
     studioAiGenerateBtn: '✨ তৈরি করুন',

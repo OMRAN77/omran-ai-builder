@@ -700,7 +700,6 @@ I18N['hi'] = {
     studioSlotChange: '🔄 बदलें',
     studioSrcCamera: '📷 कैमरा',
     studioSrcGallery: '🖼️ गैलरी',
-    studioSrcRecent: '🕘 हाल की फोटो',
     studioMoreOptions: '⚙️ और विकल्प',
     studioAddPhotoCta: '📷 पहले अपनी फोटो जोड़ें',
     studioAiGenerateBtn: '✨ बनाएं',

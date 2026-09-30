@@ -846,7 +846,6 @@ I18N['fil'] = {
     "studioSlotChange": "🔄 Palitan",
     "studioSrcCamera": "📷 Kamera",
     "studioSrcGallery": "🖼️ Gallery",
-    "studioSrcRecent": "🕘 Mga kamakailang larawan",
     "studioMoreOptions": "⚙️ Iba pang opsyon",
     "studioAddPhotoCta": "📷 Magdagdag muna ng larawan",
     "studioAiGenerateBtn": "✨ Gumawa",

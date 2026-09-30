@@ -844,7 +844,6 @@ I18N['tr'] = {
     "studioSlotChange": "🔄 Değiştir",
     "studioSrcCamera": "📷 Kamera",
     "studioSrcGallery": "🖼️ Galeri",
-    "studioSrcRecent": "🕘 Son fotoğraflar",
     "studioMoreOptions": "⚙️ Daha fazla seçenek",
     "studioAddPhotoCta": "📷 Önce fotoğrafınızı ekleyin",
     "studioAiGenerateBtn": "✨ Oluştur",

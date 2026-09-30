@@ -844,7 +844,6 @@ I18N['id'] = {
     "studioSlotChange": "🔄 Ganti",
     "studioSrcCamera": "📷 Kamera",
     "studioSrcGallery": "🖼️ Galeri",
-    "studioSrcRecent": "🕘 Foto terbaru",
     "studioMoreOptions": "⚙️ Opsi lainnya",
     "studioAddPhotoCta": "📷 Tambahkan foto dulu",
     "studioAiGenerateBtn": "✨ Buat",

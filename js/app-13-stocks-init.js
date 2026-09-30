@@ -1771,19 +1771,12 @@
     });
   }
   /* v-studio-slots (أمر المالك ٣٠ سبتمبر «ترتيب تسهيل للمستخدم في إضافة الصور»): خانتا الصورة مصدر واحد —
-     كاميرا / معرض / آخر صوري، وسحب وإفلات ولصق، وحذف وتبديل. الصورتان تمرّان بـnormalizeStudioPhoto
-     (الثانية كانت تُرفع بحجمها الأصليّ فتتخطّى حدّ الرفع). آخر ٣ صور تُحفظ على الجهاز وحده. */
+     كاميرا / معرض، وسحب وإفلات ولصق، وحذف وتبديل. الصورتان تمرّان بـnormalizeStudioPhoto
+     (الثانية كانت تُرفع بحجمها الأصليّ فتتخطّى حدّ الرفع). */
   const slotEls = { A: $('#studioAiSlotA'), B: $('#studioAiSlotB') };
-  const STUDIO_RECENT_KEY = 'omStudioRecent';
-  function studioRecent(){ try{ const a = JSON.parse(localStorage.getItem(STUDIO_RECENT_KEY) || '[]'); return Array.isArray(a) ? a.filter((x) => typeof x === 'string' && x.indexOf('data:image/') === 0) : []; }catch(e){ return []; } }
-  function studioRemember(dataUrl){
-    let list = [dataUrl].concat(studioRecent().filter((x) => x !== dataUrl)).slice(0, 3);
-    while(list.length){
-      try{ localStorage.setItem(STUDIO_RECENT_KEY, JSON.stringify(list)); return; }
-      catch(e){ list = list.slice(0, list.length - 1); } /* guard-ok: التخزين ممتلئ = نحفظ أقلّ، وبلا شيء إن لم يتّسع */
-    }
-    try{ localStorage.removeItem(STUDIO_RECENT_KEY); }catch(e){ /* guard-ok: تخزين محجوب */ }
-  }
+  /* v-studio-no-recent (أمر المالك «احذف آخر صوري عندما أرفع الصور»): «آخر صوري» أُزيلت — لا تُحفظ صورة على الجهاز،
+     وما حُفظ سابقًا يُمسح مرّة عند الإقلاع. */
+  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
   function studioRenderSlot(which){
     const el = slotEls[which]; if(!el) return;
     const has = which === 'A' ? !!selectedBase64A : !!selectedBase64B;
@@ -1805,7 +1798,6 @@
       if(which === 'A'){ selectedMimeA = r.mime; selectedBase64A = r.b64; if(fileNameA) fileNameA.textContent = file.name || ''; }
       else { selectedMimeB = r.mime; selectedBase64B = r.b64; if(fileNameB) fileNameB.textContent = file.name || ''; }
       if(pv){ pv.src = r.dataUrl; pv.style.display = 'block'; }
-      studioRemember(r.dataUrl);
       studioRenderSlot(which);
       setStatus('');
     });
@@ -1814,12 +1806,6 @@
     if(which === 'A'){ selectedBase64A = ''; if(fileInputA) fileInputA.value = ''; if(fileNameA) fileNameA.textContent = ''; beforeWrap.style.display = 'none'; }
     else { selectedBase64B = ''; if(fileInputB) fileInputB.value = ''; if(fileNameB) fileNameB.textContent = ''; }
     studioRenderSlot(which);
-  }
-  function dataUrlToFile(u){
-    const m = /^data:([^;]+);base64,(.*)$/.exec(u || ''); if(!m) return null;
-    const bin = atob(m[2]); const arr = new Uint8Array(bin.length);
-    for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    return new File([arr], 'recent.jpg', { type: m[1] });
   }
   let studioCam = null;
   function studioCamera(which){
@@ -1840,13 +1826,6 @@
     let coarse = false; try{ coarse = window.matchMedia('(pointer:coarse)').matches; }catch(e){ coarse = false; }
     if(coarse) add(t('studioSrcCamera'), () => studioCamera(which));
     add(t('studioSrcGallery'), () => (which === 'A' ? fileInputA : fileInputB).click());
-    const rec = studioRecent();
-    if(rec.length){
-      const h = document.createElement('div'); h.textContent = t('studioSrcRecent'); h.style.cssText = 'font-size:12px; color:var(--muted); padding:8px 12px 2px;'; menu.appendChild(h);
-      const row = document.createElement('div'); row.className = 'stRecent';
-      rec.forEach((u) => { const im = document.createElement('img'); im.src = u; im.alt = ''; im.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); const f = dataUrlToFile(u); if(f) studioSetPhoto(which, f); }; row.appendChild(im); });
-      menu.appendChild(row);
-    }
     /* v-studio-sheet (لقطة المالك «شوف وين تتحرك عند الإضافة»): القائمة كانت تطفو وسط الشاشة فوق الميزات بعيدًا
        عن الخانة. اللمس: ورقة من أسفل الشاشة بخلفيّة معتمة (نمط الجوّال المعتاد)؛ الحاسوب: تحت الخانة مباشرةً،
        وفوقها إن لم يتّسع ما تحتها. */

@@ -846,7 +846,6 @@ I18N['ml'] = {
     "studioSlotChange": "🔄 മാറ്റുക",
     "studioSrcCamera": "📷 ക്യാമറ",
     "studioSrcGallery": "🖼️ ഗാലറി",
-    "studioSrcRecent": "🕘 അടുത്തിടെയുള്ള ഫോട്ടോകൾ",
     "studioMoreOptions": "⚙️ കൂടുതൽ ഓപ്ഷനുകൾ",
     "studioAddPhotoCta": "📷 ആദ്യം ഫോട്ടോ ചേർക്കുക",
     "studioAiGenerateBtn": "✨ ഉണ്ടാക്കുക",
