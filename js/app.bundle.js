@@ -3840,6 +3840,16 @@ const I18N = {
     studioAiDescPlaceholder: 'أضف تفاصيل إضافية إذا أردت...',
     studioAiImageALabel: 'الصورة الأولى',
     studioAiImageBLabel: 'الصورة الثانية',
+    studioStepPhoto: '① صورتك',
+    studioStepWhat: '② اختر التعديل',
+    studioSlotAdd: '📷 اضغط لإضافة صورتك',
+    studioSlotDropHint: 'أو اسحبها هنا أو الصقها (Ctrl+V)',
+    studioSlotChange: '🔄 تبديل',
+    studioSrcCamera: '📷 الكاميرا',
+    studioSrcGallery: '🖼️ المعرض',
+    studioSrcRecent: '🕘 آخر صوري',
+    studioMoreOptions: '⚙️ خيارات إضافية',
+    studioAddPhotoCta: '📷 أضف صورتك أولًا',
     studioAiGenerateBtn: '✨ ولّد الصورة',
     studioAiDownloadBtn: '⬇️ تحميل الصورة',
     studioAiNeedImage: '⚠️ الرجاء رفع صورة أولًا.',
@@ -5113,6 +5123,16 @@ const I18N = {
     studioAiDescPlaceholder: 'Add extra details if you want...',
     studioAiImageALabel: 'First photo',
     studioAiImageBLabel: 'Second photo',
+    studioStepPhoto: '① Your photo',
+    studioStepWhat: '② Choose the look',
+    studioSlotAdd: '📷 Tap to add your photo',
+    studioSlotDropHint: 'or drag it here or paste it (Ctrl+V)',
+    studioSlotChange: '🔄 Change',
+    studioSrcCamera: '📷 Camera',
+    studioSrcGallery: '🖼️ Gallery',
+    studioSrcRecent: '🕘 Recent photos',
+    studioMoreOptions: '⚙️ More options',
+    studioAddPhotoCta: '📷 Add your photo first',
     studioAiGenerateBtn: '✨ Generate',
     studioAiDownloadBtn: '⬇️ Download image',
     studioAiNeedImage: '⚠️ Please upload a photo first.',
@@ -5310,7 +5330,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=705'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=706'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -33010,6 +33030,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       b.classList.toggle('active', b.dataset.feature === next);
       b.classList.toggle('primary', b.dataset.feature === next);
     });
+    const slotsRow = $('#studioAiSlots'); if(slotsRow) slotsRow.classList.toggle('two', feature === 'merge'); /* v-studio-slots */
     if(feature === 'merge'){
       imageBWrap.style.display = 'block';
       styleWrap.style.display = 'none';
@@ -33029,6 +33050,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
     setStatus('');
+    if(typeof studioUpdateCta === 'function') studioUpdateCta();
   }
 
   Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
@@ -33086,41 +33108,130 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       reader.readAsDataURL(file);
     });
   }
-  fileInputA.onchange = () => {
-    const file = fileInputA.files && fileInputA.files[0];
-    if(!file) return;
-    if(fileNameA) fileNameA.textContent = file.name;
+  /* v-studio-slots (أمر المالك ٣٠ سبتمبر «ترتيب تسهيل للمستخدم في إضافة الصور»): خانتا الصورة مصدر واحد —
+     كاميرا / معرض / آخر صوري، وسحب وإفلات ولصق، وحذف وتبديل. الصورتان تمرّان بـnormalizeStudioPhoto
+     (الثانية كانت تُرفع بحجمها الأصليّ فتتخطّى حدّ الرفع). آخر ٣ صور تُحفظ على الجهاز وحده. */
+  const slotEls = { A: $('#studioAiSlotA'), B: $('#studioAiSlotB') };
+  const STUDIO_RECENT_KEY = 'omStudioRecent';
+  function studioRecent(){ try{ const a = JSON.parse(localStorage.getItem(STUDIO_RECENT_KEY) || '[]'); return Array.isArray(a) ? a.filter((x) => typeof x === 'string' && x.indexOf('data:image/') === 0) : []; }catch(e){ return []; } }
+  function studioRemember(dataUrl){
+    let list = [dataUrl].concat(studioRecent().filter((x) => x !== dataUrl)).slice(0, 3);
+    while(list.length){
+      try{ localStorage.setItem(STUDIO_RECENT_KEY, JSON.stringify(list)); return; }
+      catch(e){ list = list.slice(0, list.length - 1); } /* guard-ok: التخزين ممتلئ = نحفظ أقلّ، وبلا شيء إن لم يتّسع */
+    }
+    try{ localStorage.removeItem(STUDIO_RECENT_KEY); }catch(e){ /* guard-ok: تخزين محجوب */ }
+  }
+  function studioRenderSlot(which){
+    const el = slotEls[which]; if(!el) return;
+    const has = which === 'A' ? !!selectedBase64A : !!selectedBase64B;
+    el.classList.toggle('has', has);
+    const pv = which === 'A' ? previewA : previewB;
+    if(!has && pv){ pv.removeAttribute('src'); pv.style.display = 'none'; }
+    studioUpdateCta();
+  }
+  function studioMissing(){ return !selectedBase64A ? 'A' : ((feature === 'merge' && !selectedBase64B) ? 'B' : ''); }
+  function studioUpdateCta(){
+    if(!btnGenerate) return;
+    btnGenerate.textContent = studioMissing() ? t('studioAddPhotoCta') : t('studioAiGenerateBtn');
+  }
+  function studioSetPhoto(which, file){
+    if(!file || !/^image\//.test(file.type || 'image/')) return;
     normalizeStudioPhoto(file).then((r) => {
       if(!r) return;
-      selectedMimeA = r.mime; selectedBase64A = r.b64;
-      previewA.src = r.dataUrl;
-      previewA.style.display = 'block';
+      const pv = which === 'A' ? previewA : previewB;
+      if(which === 'A'){ selectedMimeA = r.mime; selectedBase64A = r.b64; if(fileNameA) fileNameA.textContent = file.name || ''; }
+      else { selectedMimeB = r.mime; selectedBase64B = r.b64; if(fileNameB) fileNameB.textContent = file.name || ''; }
+      if(pv){ pv.src = r.dataUrl; pv.style.display = 'block'; }
+      studioRemember(r.dataUrl);
+      studioRenderSlot(which);
+      setStatus('');
     });
-  };
-
-  fileInputB.onchange = () => {
-    const file = fileInputB.files && fileInputB.files[0];
-    if(!file) return;
-    selectedMimeB = file.type || 'image/jpeg';
-    if(fileNameB) fileNameB.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
-      selectedBase64B = dataUrl.split(',')[1] || '';
-      previewB.src = dataUrl;
-      previewB.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-  };
+  }
+  function studioClearPhoto(which){
+    if(which === 'A'){ selectedBase64A = ''; if(fileInputA) fileInputA.value = ''; if(fileNameA) fileNameA.textContent = ''; beforeWrap.style.display = 'none'; }
+    else { selectedBase64B = ''; if(fileInputB) fileInputB.value = ''; if(fileNameB) fileNameB.textContent = ''; }
+    studioRenderSlot(which);
+  }
+  function dataUrlToFile(u){
+    const m = /^data:([^;]+);base64,(.*)$/.exec(u || ''); if(!m) return null;
+    const bin = atob(m[2]); const arr = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new File([arr], 'recent.jpg', { type: m[1] });
+  }
+  let studioCam = null;
+  function studioCamera(which){
+    if(!studioCam){
+      studioCam = document.createElement('input');
+      studioCam.type = 'file'; studioCam.accept = 'image/*'; studioCam.setAttribute('capture', 'user'); studioCam.style.display = 'none';
+      document.body.appendChild(studioCam);
+    }
+    studioCam.onchange = () => { const f = studioCam.files && studioCam.files[0]; studioCam.value = ''; if(f) studioSetPhoto(which, f); };
+    studioCam.click();
+  }
+  function studioCloseMenu(){ const m = document.getElementById('studioSrcMenu'); if(m) m.remove(); }
+  function studioOpenMenu(which){
+    studioCloseMenu();
+    const anchor = slotEls[which]; if(!anchor) return;
+    const menu = document.createElement('div'); menu.id = 'studioSrcMenu'; menu.className = 'stSrcMenu';
+    const add = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); fn(); }; menu.appendChild(b); };
+    let coarse = false; try{ coarse = window.matchMedia('(pointer:coarse)').matches; }catch(e){ coarse = false; }
+    if(coarse) add(t('studioSrcCamera'), () => studioCamera(which));
+    add(t('studioSrcGallery'), () => (which === 'A' ? fileInputA : fileInputB).click());
+    const rec = studioRecent();
+    if(rec.length){
+      const h = document.createElement('div'); h.textContent = t('studioSrcRecent'); h.style.cssText = 'font-size:12px; color:var(--muted); padding:8px 12px 2px;'; menu.appendChild(h);
+      const row = document.createElement('div'); row.className = 'stRecent';
+      rec.forEach((u) => { const im = document.createElement('img'); im.src = u; im.alt = ''; im.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); const f = dataUrlToFile(u); if(f) studioSetPhoto(which, f); }; row.appendChild(im); });
+      menu.appendChild(row);
+    }
+    document.body.appendChild(menu);
+    const r = anchor.getBoundingClientRect();
+    const top = Math.min(r.top + r.height / 2, window.innerHeight - menu.offsetHeight - 10);
+    menu.style.top = Math.max(10, top) + 'px';
+    menu.style.left = Math.max(10, Math.min(r.left + r.width / 2 - menu.offsetWidth / 2, window.innerWidth - menu.offsetWidth - 10)) + 'px';
+    setTimeout(() => document.addEventListener('click', studioCloseMenu, { once: true }), 0);
+  }
+  ['A', 'B'].forEach((which) => {
+    const el = slotEls[which]; if(!el) return;
+    el.addEventListener('click', (e) => {
+      const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+      e.stopPropagation();
+      if(act === 'remove'){ studioClearPhoto(which); return; }
+      studioOpenMenu(which);
+    });
+    el.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); studioOpenMenu(which); } });
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drag'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault(); el.classList.remove('drag');
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f) studioSetPhoto(which, f);
+    });
+  });
+  /* اللصق (Ctrl+V) والنافذة مفتوحة: الخانة الفارغة أوّلًا، وإلّا الأولى */
+  document.addEventListener('paste', (e) => {
+    if(modal.style.display !== 'flex') return;
+    const tg = e.target; if(tg && (tg.tagName === 'TEXTAREA' || tg.tagName === 'INPUT')) return;
+    const items = (e.clipboardData && e.clipboardData.items) ? Array.from(e.clipboardData.items) : [];
+    const it = items.find((x) => x.kind === 'file' && /^image\//.test(x.type)); if(!it) return;
+    const f = it.getAsFile(); if(!f) return;
+    e.preventDefault();
+    studioSetPhoto(studioMissing() || 'A', f);
+  });
+  fileInputA.onchange = () => { const f = fileInputA.files && fileInputA.files[0]; if(f) studioSetPhoto('A', f); };
+  fileInputB.onchange = () => { const f = fileInputB.files && fileInputB.files[0]; if(f) studioSetPhoto('B', f); };
 
   btnGenerate.onclick = async () => {
     if(feature === 'merge'){
       if(!selectedBase64A || !selectedBase64B){
         setStatus(t('studioAiNeedTwoImages'));
+        studioOpenMenu(studioMissing()); /* v-studio-slots: الزرّ يرشد إلى الخانة الناقصة */
         return;
       }
     } else if(!selectedBase64A){
       setStatus(t('studioAiNeedImage'));
+      studioOpenMenu('A');
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
