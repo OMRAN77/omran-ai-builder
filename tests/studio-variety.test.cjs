@@ -122,7 +122,8 @@ test('النتيجة المطابقة للأصل تُرفض عند طلب الت
   assert.match(cli, /image_edit_no_change/, 'لا رسالة عربيّة للكود الجديد');
   const studio = fs.readFileSync(path.join(root, 'js/app-13-stocks-init.js'), 'utf8');
   assert.match(studio, /function studioErrText\(e\)/, 'الستوديو ما زال يعرض كود الخطأ الخام');
-  assert.equal((studio.match(/studioErrText\(e\)/g) || []).length, 4, 'مواضع عرض الخطأ الثلاثة يجب أن تستعمل الترجمة');
+  assert.ok((studio.match(/studioErrText\(/g) || []).length >= 6, 'مواضع عرض الخطأ يجب أن تستعمل الترجمة');
+  assert.ok(!/setStatus\(\(lang === 'ar' \? '❌ خطأ: '/.test(studio), 'زرّ «ولّد» ما زال يعرض كود الخطأ الخامّ');
 });
 
 /* ───── v-visible-change: «في الاستايل إذا اختار شيئًا — العين مثلًا — الشيء اللي اختاره ما يتغيّر» ───── */
@@ -202,7 +203,7 @@ test('العميل يرسل رقم الشكل ويرفع العدّاد في ك�
   const src = fs.readFileSync(path.join(root, 'js/app-13-stocks-init.js'), 'utf8');
   assert.match(src, /function nextVariant\(f, v\)/, 'لا عدّاد أشكال في العميل');
   assert.match(src, /aiapp_studio_var_/, 'العدّاد بلا مفتاح تخزين لكلّ ميزةوخيار');
-  assert.equal((src.match(/variant: nextVariant\(/g) || []).length, 3, 'مسارات التوليد الثلاثة يجب أن ترسل رقم الشكل');
+  assert.equal((src.match(/variant: nextVariant\(/g) || []).length, 4, 'مسارات التوليد الأربعة (والسلسلة) يجب أن ترسل رقم الشكل');
   const srv = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
   assert.match(srv, /multiAngle, variant,/, 'الخادم لا يقرأ رقم الشكل من الطلب');
   assert.match(srv, /buildSinglePrompt\(feature, style, description, multiAngle, Number\(variant\)\)/, 'رقم الشكل لا يصل بناء الأمر');
@@ -245,7 +246,10 @@ function clientBaseValues(feature) {
 test('ملفّ أوصاف الميزات الأساسيّة بيانات صرف — لا أسرار ولا قراءة بيئة في نطاق الوحدة', () => {
   const src = fs.readFileSync(path.join(root, 'api/_lib/studio-styles.js'), 'utf8');
   assert.ok(!/process\.env/.test(src), 'ملفّ البيانات يقرأ البيئة — مولّد المعاينات يُحمَّل في بيئة عارية');
-  assert.ok(!/require\(/.test(src), 'ملفّ البيانات يجب أن يبقى بلا اعتماديّات');
+  // v-studio-catalog-100: الاعتماديّة الوحيدة المسموحة كتالوج بيانات صرف مثله
+  assert.ok(!/require\((?!'\.\/studio-catalog\.js'\))/.test(src), 'ملفّ البيانات يجب أن يبقى بلا اعتماديّات غير الكتالوج');
+  const cat = fs.readFileSync(path.join(root, 'api/_lib/studio-catalog.js'), 'utf8');
+  assert.ok(!/process\.env|require\(/.test(cat), 'الكتالوج يجب أن يبقى بيانات صرف');
   assert.equal(studioStyles.STYLE_TEXT.makeup.natural, require(path.join(root, 'api/_lib/studio-create.js')).STYLE_TEXT.makeup.natural, 'studio-create لا يقرأ من ملفّ البيانات نفسه');
 });
 
@@ -304,4 +308,33 @@ test('الخيارات الجديدة مترجَمة بالـ١٤ لغة، ول�
     assert.ok(studioCreate.STYLE_TEXT.makeup[value], value + ': لا أمر خادم');
     assert.match(src, new RegExp("value:'" + value + "'"), value + ': لا خيار في الواجهة');
   }
+});
+
+/* ───── v-studio-catalog-100 + v-studio-chain: «في كلّ المميّزات أكثر من ١٠٠» و«يختار كذا شيء» ───── */
+test('كلّ ميزة في الستوديو فيها ١٠٠ خيار فأكثر، ومطابقة بين الواجهة والخادم', () => {
+  const all = Object.assign({}, studioCreate.STYLE_TEXT, studioMore.STYLE_PROMPTS);
+  for (const [f, map] of Object.entries(all)) {
+    assert.ok(Object.keys(map).length >= 100, f + ': ' + Object.keys(map).length + ' خيارًا فقط');
+  }
+  const more = clientMore();
+  for (const f of Object.keys(more.options)) {
+    assert.deepEqual(more.options[f].map((o) => o.value).sort(), Object.keys(studioMore.STYLE_PROMPTS[f]).sort(), f + ': الواجهة لا تطابق الخادم');
+    for (const o of more.options[f]) assert.ok(o.ar && o.en, f + '/' + o.value + ': بلا تسمية عربيّة وإنجليزيّة');
+  }
+  assert.ok(Object.keys(studioMore.STYLE_PROMPTS.eyes).length >= 100, 'العيون والابتسامة كانت ٨ فقط');
+  assert.ok(Object.keys(studioMore.STYLE_PROMPTS.body).length >= 100, 'الجسم كان ٦ فقط');
+});
+
+test('السلسلة: خطوات من العميل، ضغط بين الخطوات، وفحص الهويّة مقابل الأصل قبل الخصم', () => {
+  const cli = fs.readFileSync(path.join(root, 'js/app-13-stocks-init.js'), 'utf8');
+  assert.match(cli, /async function studioChainOne\(combo, token, onStep\)/, 'لا سلسلة من العميل');
+  assert.match(cli, /payload\.originalBase64 = selectedBase64A/, 'الخطوات التالية لا ترسل الأصل');
+  assert.match(cli, /normalizeStudioPhoto\(new File\(\[blob\]/, 'الناتج لا يُضغط قبل الخطوة التالية (حدّ جسم الطلب)');
+  assert.match(cli, /const STUDIO_BASKET_MAX = 5, STUDIO_IMAGES_MAX = 3;/, 'حدود السلّة غير مضبوطة');
+  assert.match(cli, /stoppedAt/, 'الفشل في منتصف السلسلة لا يُظهر ما تمّ');
+  const srv = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
+  const i = srv.indexOf('if (originalBase64 && originalBase64 !== imageBase64)');
+  const j = srv.indexOf('const remaining = await consumeStudio(quota.username);', i);
+  assert.ok(i > 0 && j > i, 'فحص الهويّة مقابل الأصل يجب أن يسبق الخصم');
+  assert.match(srv.slice(i, j), /allowBroadChange: true/, 'فحص الأصل يجب أن يسمح بالتعديلات المطلوبة كلّها');
 });

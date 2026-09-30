@@ -480,4 +480,11 @@ const PREVIEW_SUBJECT = {
   },
 };
 
+/* v-studio-catalog-100: بقيّة الميزات إلى ١٠٠+ خيار (كتالوج بيانات صرف) */
+(function () {
+  const CAT = require('./studio-catalog.js');
+  for (const f of Object.keys(CAT.base)) Object.assign(STYLE_TEXT[f], CAT.base[f]);
+  for (const f of Object.keys(CAT.base)) if (PREVIEW_SUBJECT[f]) Object.assign(PREVIEW_SUBJECT[f], CAT.subjects[f] || {});
+})();
+
 module.exports = { STYLE_TEXT, PREVIEW_FRAME, PREVIEW_FEATURE_NAME, PREVIEW_SUBJECT };

@@ -295,6 +295,7 @@ module.exports = async (req, res) => {
       imageBase64, mimeType,
       imageBase64B, mimeTypeB,
       multiAngle, variant, /* v-studio-variants: رقم الشكل داخل الخيار (عدّاد العميل) */
+      originalBase64, originalMime, /* v-studio-chain: الصورة الأصليّة حين يكون هذا تعديلًا تاليًا في سلسلة */
     } = body;
 
     if (!feature) {
@@ -364,6 +365,22 @@ module.exports = async (req, res) => {
         collage: !!(multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')),
         guard: guardOpts, skipGuard: !guardOpts,
       });
+      /* v-studio-chain (طلب المالك ٣٠ سبتمبر: «يختار كذا شي… وشوف يغيّر شكل الشخصيّة»): في السلسلة كلّ
+         خطوة تُعدِّل ناتج السابقة، فحارس الخطوة يقارن بالناتج السابق لا بصورة المستخدم — والانزياح في
+         الهويّة يتراكم خطوة بعد خطوة. هنا فحص هويّة إضافيّ مقابل **الأصل** نفسه قبل الخصم: التعديلات
+         المطلوبة كلّها مسموحة (allowBroadChange)، والمرفوض وحده أن يصير شخصًا آخر. */
+      if (originalBase64 && originalBase64 !== imageBase64) {
+        const idg = await verifyLocalizedImageEdit({
+          apiKey, sourceBase64: originalBase64, sourceMime: originalMime || 'image/jpeg',
+          resultBase64: r.b64, resultMime: r.mime,
+          userPrompt: 'Identity check only: several intended style edits (hair, makeup, eyes, outfit, accessories, background) were applied on purpose. Judge only whether it is still the same person.',
+          allowBroadChange: true, allowStyleChange: feature === 'anime',
+        });
+        if (!idg.ok && idg.reason === 'identity_or_scope_mismatch') {
+          res.status(422).json({ error: 'image_edit_identity_mismatch', retryable: false, chainStep: true });
+          return;
+        }
+      }
       const remaining = await consumeStudio(quota.username);
       res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, engine: r.engine, remaining, dailyLimit: STUDIO_DAILY_LIMIT });
     } catch (err) {
