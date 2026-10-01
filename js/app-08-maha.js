@@ -262,6 +262,14 @@ function mahaUpdatePersonaUI(){
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
   if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
   if(btnMahaEl) btnMahaEl.title = name;
+  /* v-voice-letter (المالك ١ أكتوبر «إذا اختار مها تخليها م تحت، وإذا اختار عبدالله يطلع حرف ع»): حرف زرّ الكتابة. */
+  const glyph = document.querySelector('#btnMahaDock .mahaGlyph');
+  if(glyph && glyph.textContent !== (male ? 'ع' : 'م')){
+    glyph.textContent = male ? 'ع' : 'م';
+    try{ if(typeof window.__mahaGlyphFix === 'function') window.__mahaGlyphFix(); }catch(e){ __swallow(e, 'maha:glyph-fix'); }
+  }
+  const dock = document.getElementById('btnMahaDock');
+  if(dock) dock.title = name;
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
@@ -1394,9 +1402,10 @@ async function mahaStartRealtimeCall(){
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
     try{
       const receiver = e.receiver;
-      // v-voice-stutter (المالك ١ أكتوبر «الصوت يتقطّع ويوشوش»): v-maha-natural خفّضه إلى ٠٫١ث — على شبكة الجوّال
-      // يجوع المخزن فيُرقَّع الصوت (وشوشة وتقطّع). رجع ٠٫٢٥ث للوضعين: ١٥٠م.ث أبطأ ولا تقطّع.
-      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
+      // v-voice-pace (المالك ١ أكتوبر بعد v-voice-stutter: «كانت أفضل قبل عبدالله… تحسّ فيها سريعة وبطيئة نفس الوقت»):
+      // حدّ أدنى ثابت ٠٫٢٥ث يجعل المخزن يسرّع ويبطّئ الصوت ليحافظ عليه. يرجع ٠٫١ث كما كان حين قال «تمام»
+      // (v-maha-natural)، والتقطّع الذي جاء بعدها كان مع filter الحلقة (أُزيل في v-voice-stutter).
+      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = mahaRtNatural ? 0.1 : 0.25; }
     }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };
   pc.addTrack(mahaRtStream.getTracks()[0], mahaRtStream);

@@ -3690,7 +3690,7 @@ async function postWithConfirm(url, payload){
       const cs = getComputedStyle(g);
       const ctx = document.createElement('canvas').getContext('2d');
       ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-      const m = ctx.measureText('م');
+      const m = ctx.measureText(g.textContent || 'م'); // v-voice-letter: «م» أو «ع» حسب الشخصيّة
       if(m.fontBoundingBoxAscent === undefined) return; // متصفح قديم: تبقى إزاحة CSS الافتراضية
       const spanH = g.getBoundingClientRect().height;
       const baselineTop = (spanH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
@@ -3703,6 +3703,7 @@ async function postWithConfirm(url, payload){
     }catch(e){ __swallow(e, 'ui:maha-center'); }
   };
   fix();
+  window.__mahaGlyphFix = fix; // v-voice-letter: يُعاد التوسيط عند تبديل الحرف
   try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
 })();
 

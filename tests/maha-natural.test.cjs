@@ -145,12 +145,12 @@ test('٥. العميل: الخادم يبدأ الردّ فحارس العميل
   assert.deepEqual(nat.armed, [1500, 20000], 'شبكة أمان بدء الكلام كما هي');
 });
 
-test('٦. العميل: نوع الإنصات يُقرأ من الخادم قبل الاتّصال، ومخزن التشغيل ٠٫٢٥ث (v-voice-stutter) — والحزمة محدَّثة', () => {
+test('٦. العميل: نوع الإنصات يُقرأ من الخادم قبل الاتّصال، ومخزن التشغيل ٠٫١ث (v-voice-pace) — والحزمة محدَّثة', () => {
   for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
     const s = read(f);
     const call = s.slice(s.indexOf('async function mahaStartRealtimeCall(){'));
     const set = call.indexOf("mahaRtNatural = tokenData.turn === 'natural';");
     assert.ok(set > 0 && set < call.indexOf('new RTCPeerConnection()'), f + ': قبل الاتّصال');
-    assert.ok(s.includes("receiver.playoutDelayHint = 0.25; }"), f + ': v-voice-stutter — ٠٫١ث جوّع المخزن فتقطّع الصوت، رجع ٠٫٢٥ث');
+    assert.ok(s.includes("receiver.playoutDelayHint = mahaRtNatural ? 0.1 : 0.25; }"), f + ': v-voice-pace — ٠٫١ث كما كان حين قال المالك «تمام»');
   }
 });
