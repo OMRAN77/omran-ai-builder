@@ -113,13 +113,17 @@ test('٣. الاقتصاديّ مع صورة: قفل الهويّة يصل في 
   assert.equal(plain.prompt, 'غروب فوق البحر');
 });
 
-test('٤. السينمائيّ مع صورة: الصورة مسمّاة بوسمها <IMAGE_REF_0> داخل النصّ (بلا وسم يقرّر المحرّك دورها)', async () => {
+/* v-omni-first-frame: هذا صار المسار الاحتياطيّ (إطفاء أوّل الإطار أو عطبه) — المسار الأساسيّ بأوّل إطار بوجهه
+   مفحوص في tests/omni-first-frame.test.cjs، ومساواة الاحتياطيّ للطلب السابق حرفيًّا هناك أيضًا. */
+test('٤. السينمائيّ مع صورة (المسار الاحتياطيّ): الصورة مسمّاة بوسمها <IMAGE_REF_0> داخل النصّ', async () => {
   const saved = process.env.GEMINI_API_KEY; process.env.GEMINI_API_KEY = 'test-key';
+  const savedFF = process.env.OMNI_FIRST_FRAME; process.env.OMNI_FIRST_FRAME = 'off';
   let sent = null;
   await runHandler('api/_lib/omni-create.js', { 'api/_lib/_videoUsage.js': ownerUsage, 'api/_lib/video-job.js': noJob },
     { promptText: 'على سفينة حربيّة ثمّ في غرفة القيادة', token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg' },
     async (u, o) => { sent = JSON.parse(o.body); throw new Error('stop-after-capture'); });
   if (saved === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = saved;
+  if (savedFF === undefined) delete process.env.OMNI_FIRST_FRAME; else process.env.OMNI_FIRST_FRAME = savedFF;
   assert.ok(sent && Array.isArray(sent.input), 'لم يُلتقط الطلب');
   assert.equal(sent.input[0].type, 'image', 'الصورة أوّل عنصر = IMAGE_REF_0');
   const txt = sent.input.find((x) => x.type === 'text').text;
