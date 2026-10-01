@@ -16990,6 +16990,8 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
  * server missing the key, etc.) so the feature never just stops working. */
 let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false, mahaRtReady = false;
     let mahaRtResponseWatchdog = null;
+    // v-maha-natural: الخادم يردّ بنفسه لحظة انتهاء الجملة (semantic_vad) — حارس العميل احتياط متأخّر فقط.
+    let mahaRtNatural = false;
 
     // Realtime normally starts a reply after server VAD detects the end of speech.
     // This one-shot guard prevents a silent first turn from making a caller speak
@@ -17206,6 +17208,7 @@ async function mahaStartRealtimeCall(){
     throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
   }
   mahaStartPointsMeter(tokenData.mahaBudget);
+  mahaRtNatural = tokenData.turn === 'natural';
   const EPHEMERAL_KEY = tokenData.clientSecret;
   if(mahaRtCancelled) throw new Error('cancelled');
 
@@ -17236,7 +17239,8 @@ async function mahaStartRealtimeCall(){
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
     try{
       const receiver = e.receiver;
-      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
+      // v-maha-natural: ٠٫١ث بدل ٠٫٢٥ث — المخزن يتّسع وحده عند تذبذب الشبكة، والردّ يُسمع أبكر.
+      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = mahaRtNatural ? 0.1 : 0.25; }
     }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };
   pc.addTrack(mahaRtStream.getTracks()[0], mahaRtStream);
@@ -17268,7 +17272,9 @@ async function mahaStartRealtimeCall(){
       }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){
         mahaSetState('thinking');
-        mahaArmRtResponseWatchdog(350);
+        // v-maha-natural: الخادم بدأ الردّ؛ الطلب من العميل يُرسل فقط إن لم يصل response.created خلال ١٫٥ث.
+        if(mahaRtNatural) mahaArmRtResponseWatchdog(1500);
+        else mahaArmRtResponseWatchdog(350);
       }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }

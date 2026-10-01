@@ -11,9 +11,11 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const src = fs.readFileSync(path.join(root, 'api/_lib/realtime-session.js'), 'utf8');
 
-test('assistant (مها): silence_duration_ms رُفعت إلى 1100 — خطوة ثانية بعد أن لم يكفِ 700', () => {
-  const start = src.indexOf("turn_detection: mode === 'builder'");
-  const assistantBlock = src.slice(src.indexOf(': {', start), src.indexOf('},', start));
+test('assistant (مها) بالإعداد السابق: silence_duration_ms رُفعت إلى 1100 — خطوة ثانية بعد أن لم يكفِ 700', () => {
+  // v-maha-natural: هذا الإعداد صار احتياطًا مسمًّى (MAHA_TURN=classic أو رفض semantic_vad) — قيمه كما هي حرفيًّا.
+  const start = src.indexOf('const MAHA_CLASSIC_TURN = {');
+  assert.ok(start > 0 && src.includes(': MAHA_CLASSIC_TURN,'), 'الإعداد السابق باقٍ وموصول بجلسة مها');
+  const assistantBlock = src.slice(start, src.indexOf('};', start));
   // v-maha-listen: العتبة كانت 0.08 وتُركت عمدًا هنا («ليست السبب») — لكنّها كانت أصل السلسلة: ضجيج = كلام، فلا
   // speech_stopped، فحارس ٣ث يطلق الردّ وسط الجملة. الآن الافتراضيّ الموثّق 0.5 والحارس شبكة أمان فقط (أدناه).
   assert.match(assistantBlock, /threshold: 0\.5,/, 'الحساسيّة على الافتراضيّ الموثّق — الضجيج والصدى لا يُحسبان كلامًا');
