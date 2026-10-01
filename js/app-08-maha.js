@@ -1508,6 +1508,13 @@ async function mahaStartRealtimeCall(){
       if(preBufSent) mahaArmRtResponseWatchdog(900);
       mahaSetState('listening');
       mahaPlayReadyBeep();
+      /* v-maha-greet (المالك ١ أكتوبر «من أوّل ما تفتح تردّ عليك»): مها تبادر بتحيّة قصيرة لحظة الجاهزية كالمكالمة الحقيقيّة.
+         لا تحيّة إن قال المستخدم شيئًا أثناء التجهيز (جملته تأخذ ردّها)، ولا في إعادة الاتّصال، ولا في البنّاء. كلامه يقاطعها. */
+      if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){
+        try{
+          dc.send(JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now, like a real person answering: greet the user warmly in ONE short natural sentence, say your name, and invite them to talk. Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. If USER MEMORY has their name, greet them by it. Nothing else.' } }));
+        }catch(e){ __swallow(e, 'maha:greet'); }
+      }
       // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
       // عمدًا حتى تجهز الجلسة — المستخدم كان يتكلم بدري ويظن مها ما ترد.
       if(mahaStateLabelEl && mahaStateLabelEl.textContent) mahaStateLabelEl.textContent = '🟢 ' + mahaStateLabelEl.textContent;
