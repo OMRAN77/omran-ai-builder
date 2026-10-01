@@ -241,7 +241,7 @@ group('إزالة التكرار بين استدعاءات البحث');
 
 check(chatServer.includes('const seenHostnames = new Set()'), 'يُنشئ مجموعة المواقع المرئية قبل حلقة الأدوات');
 check(chatServer.includes('function filterDuplicateUrls('), 'دالة فرز التكرار موجودة في مسار الخادم');
-check(chatServer.includes('filterDuplicateUrls(await tavilySearch('), 'نتيجة البحث تمرّ عبر فرز التكرار قبل إرسالها للنموذج');
+check(chatServer.includes('filterDuplicateUrls(__ls.mergeWebSocial(__web, __social))'), 'نتيجة البحث (الويب + التواصل) تمرّ عبر فرز التكرار قبل إرسالها للنموذج'); // v-live-social
 check(chatServer.includes('seenHostnames.has(host)'), 'يتحقق من الـ hostname قبل تمرير الموقع');
 check(chatServer.includes('seenHostnames.add(host)'), 'يسجّل الـ hostname بعد أول ظهور');
 

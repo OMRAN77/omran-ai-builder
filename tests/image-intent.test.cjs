@@ -253,7 +253,8 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(chat, /if \(cb\.name === 'generate_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.slice\(0, 600\)/);
   assert.match(chat, /if \(cb\.name === 'edit_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.slice\(0, 600\)/);
   assert.match(chat, /const IMAGE_TURN_NOTE = lastUserHasImage/);
-  assert.match(chat, /ownerKnowledge \+ IMAGE_TURN_NOTE/);
+  /* v-live-social: قاعدة البحث تسبق ملاحظة الصورة، والملاحظة باقية في نظام دور الأدوات */
+  assert.match(chat, /ownerKnowledge \+ SEARCH_RULE_NOTE \+ IMAGE_TURN_NOTE/);
   assert.match(chat, /edit_image لأي تغيير أو ترقية أو نسخة أقوى/);
   /* generate_image على صورة مرفوعة + طلب إبداعي من كلمات المستخدم = يبني على المصدر لا من الوصف وحده */
   assert.match(tools, /if \(gCreative\) return await window\.omranAgentTools\.run\('edit_image', \{ instruction: prompt, userText: gUserText \}\)/);
