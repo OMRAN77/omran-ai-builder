@@ -301,9 +301,11 @@ module.exports = async (req, res) => {
             // الجوّال far_field ⇒ كبت عدوانيّ يبتر أوّل جملة، خاصّة في الضوضاء.
             // كلّ أجهزتنا مايك قريب (الهاتف باليد · لابتوب المستخدم قريب منه) ⇒ near_field للجميع.
             noise_reduction: { type: 'near_field' },
-            // v-maha-captions: تفريغ كلام المستخدم نصًّا ليصل حدث
-            // input_audio_transcription.completed فتظهر الترجمة الحية على الشاشة.
-            transcription: { model: 'gpt-live-transcribe' },
+            // v-maha-firstreply: حُذف «transcription» — لا شيء في العميل يستقبل أحداث التفريغ
+            // (input_audio_transcription.*)، فكان كلفة بلا فائدة، و«gpt-live-transcribe» موثَّق لجلسات
+            // التفريغ ولا يدعم server_vad المستعمل هنا (رفض الجلسة = هبوط مها إلى الوضع الأساسيّ الأضعف).
+            // نموذج المكالمة يسمع الصوت نفسه مباشرةً؛ التفريغ لا يغيّر فهمه. إن بُنيت ترجمة حيّة لاحقًا
+            // فاختر نموذجًا موثَّقًا لجلسات المحادثة.
             // v607: الجوّال كان semantic_vad — يقرّر بالمعنى، وينتظر مهلة إن ظنّ الجملة ناقصة
             // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'

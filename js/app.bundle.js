@@ -17133,7 +17133,11 @@ function mahaStopPreBuffer(){
 // يُستدعى عند mahaRtReady قبل فتح المايك الحيّ: يبثّ المخزَّن لو فيه كلام
 // فعليّ (append مجزَّأ + commit واحد)، ثم يوقف المسجّل المؤقّت ويُفرغه —
 // حتى لا يتكرّر بثّ نفس الصوت من المسارين معًا.
+/* v-maha-firstreply (المالك ١ أكتوبر «مع المرّة الثانية تستجيب»): ترجع true إن أُرسل كلام — منذ create_response:false
+   (v-maha-realtime-vad) لا يردّ الخادم على commit وحده، والإرسال اليدويّ لا يمرّ دائمًا بـspeech_stopped الذي يطلب
+   الردّ، فكانت أوّل جملة (قيلت أثناء التجهيز) تُسلَّم ولا يُجاب عليها حتّى يعيدها المستخدم. */
 function mahaFlushPreBuffer(dc){
+  let sent = false;
   try{
     const hasSpeech = mahaPreBufChunks.some((c) => c.hasSpeech);
     if(hasSpeech && dc && dc.readyState === 'open' && mahaPreBufChunks.length){
@@ -17151,9 +17155,11 @@ function mahaFlushPreBuffer(dc){
         dc.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: btoa(binary) }));
       }
       dc.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+      sent = true;
     }
   }catch(e){ console.warn('[maha] pre-buffer flush failed, first words may be lost:', e); }
   finally{ mahaStopPreBuffer(); }
+  return sent;
 }
 // نغمة استعداد قصيرة جدًّا (≤120م.ث) تؤكّد للمستخدم أن المايك فتح فعليًّا؛
 // تُعاد استعمال سياق مؤشّر المايك القائم بدل إنشاء AudioContext جديد.
@@ -17333,11 +17339,14 @@ async function mahaStartRealtimeCall(){
       mahaRtActive = true;
       // v-maha-firstword: أفرغ المخزَّن المؤقّت (لو فيه كلام فعلي) قبل فتح
       // المسار الحيّ — حتى لا يُبثّ نفس الصوت مرتين (مرة من المخزن ومرة حيّة).
-      mahaFlushPreBuffer(dc);
+      const preBufSent = mahaFlushPreBuffer(dc);
       if(inputTrack) inputTrack.enabled = true;
       // Let the browser resume the WebRTC audio encoder before saying "listening".
       await new Promise(resolve => setTimeout(resolve, 250));
       mahaRtReady = true;
+      /* v-maha-firstreply: الجملة الأولى المخزَّنة تأخذ ردًّا بعد مهلة قصيرة — إن كان المستخدم ما زال يتكلّم
+         (يكمل جملته في المايك الحيّ) فـspeech_started يلغي هذا الحارس، وspeech_stopped يطلب ردًّا واحدًا على الكلّ. */
+      if(preBufSent) mahaArmRtResponseWatchdog(900);
       mahaSetState('listening');
       mahaPlayReadyBeep();
       // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
