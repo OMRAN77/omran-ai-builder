@@ -4110,8 +4110,9 @@ const I18N = {
     mahaImageFailedReply: "ما قدرت أسوي الصورة، جرب توصيف ثاني",
     voiceGenderLabel: 'نوع الصوت المفضل',
     voiceGenderDefault: 'افتراضي (صوت الجهاز)',
-    voiceGenderMale: 'صوت رجل',
-    voiceGenderFemale: 'صوت امرأة',
+    voiceGenderMale: 'عبدالله',
+    voiceGenderFemale: 'مها',
+    voiceSampleIntro: 'هلا والله، أنا {name}. كيف أقدر أساعدك اليوم؟', // v-voice-names
     voiceSpeedLabel: 'سرعة الصوت',
     voiceSpeedSlow: 'بطيء',
     voiceSpeedNormal: 'عادي',
@@ -5236,8 +5237,9 @@ const I18N = {
     mahaImageFailedReply: "I couldn't make the picture, try describing it differently",
     voiceGenderLabel: 'Preferred voice type',
     voiceGenderDefault: 'Default (device voice)',
-    voiceGenderMale: 'Male voice',
-    voiceGenderFemale: 'Female voice',
+    voiceGenderMale: 'Abdullah',
+    voiceGenderFemale: 'Maha',
+    voiceSampleIntro: 'Hi, I\'m {name}. How can I help you today?', // v-voice-names
     voiceSpeedLabel: 'Voice speed',
     voiceSpeedSlow: 'Slow',
     voiceSpeedNormal: 'Normal',
@@ -5328,7 +5330,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=707'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=708'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -14878,10 +14880,18 @@ btnStop.onclick = () => {
 function setVoiceGenderUI(val){
   document.querySelectorAll('.voiceGenderBtn').forEach(b => b.classList.toggle('active', b.dataset.gender === val));
 }
+/* v-voice-names (المالك ١ أكتوبر «ضيف عبدالله… ويكون في الإعدادات صوت تجريبيّ: مها وعبدالله»): الزرّان باسميهما،
+   والضغط يختار الصوت ويُسمعك تعريفه بنفسه فورًا («أنا مها…»/«أنا عبدالله…») — وزرّ التجربة يُسمع المختار. */
+function voicePersonaSample(gender){
+  const name = t(gender === 'male' ? 'voiceGenderMale' : 'voiceGenderFemale');
+  const tpl = t('voiceSampleIntro');
+  return (tpl && tpl !== 'voiceSampleIntro' ? tpl : "Hi, I'm {name}. How can I help you today?").split('{name}').join(name);
+}
 document.querySelectorAll('.voiceGenderBtn').forEach(b => {
   b.onclick = () => {
     localStorage.setItem('aiapp_voice_gender', b.dataset.gender);
     setVoiceGenderUI(b.dataset.gender);
+    try{ speakSmart(voicePersonaSample(b.dataset.gender), null, null, true); }catch(e){ __swallow(e, 'voice:persona-sample'); }
   };
 });
 // v-maha-voice-speed: نفس نمط أزرار الجنس أعلاه لأزرار السرعة — يُزامَن عند فتح
@@ -14899,14 +14909,8 @@ document.querySelectorAll('.voiceSpeedBtn').forEach(b => {
 const btnTestVoice = $('#btnTestVoice');
 if(btnTestVoice){
   btnTestVoice.onclick = () => {
-    const testTextByLang = {
-      ar: 'مرحبًا، هذا اختبار للصوت.',
-      en: 'Hello, this is a voice test.',
-      fr: 'Bonjour, ceci est un test de la voix.',
-      hi: 'नमस्ते, यह आवाज़ का परीक्षण है।',
-      ur: 'ہیلو، یہ آواز کا امتحان ہے۔'
-    };
-    speakSmart(testTextByLang[lang] || testTextByLang.en, null, null, true);
+    // v-voice-names: التجربة صارت تعريف الشخصيّة المختارة بلغة الواجهة
+    speakSmart(voicePersonaSample(localStorage.getItem('aiapp_voice_gender') === 'male' ? 'male' : 'female'), null, null, true);
   };
 }
 // ---- Mic: record audio (works on ALL devices: Android + iPhone + desktop) and
@@ -41379,6 +41383,32 @@ if(document.readyState === 'loading'){
   let reduce = false;
   try{ reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ __swallow(e, 'maha:goldwave-rm'); }
 
+  /* v-maha-ring (المالك ١ أكتوبر: «تقدر تسويها الذهبيّة دائرة» — اختار: حلقة ذهبيّة مضيئة، وسط الشاشة متوسّطة، تنبض
+     مع صوتها، والشريط يروح): data-shape="ring" على العنصر = حلقة بدل الشرائح. الصوت ومصادره كما هي (level نفسه):
+     الحلقة تكبر قليلًا والهالة تشتدّ مع صوتها، وفي السكوت تتنفّس تنفّسًا خفيفًا جدًّا. بلا canvas. */
+  const RING = !!(host.getAttribute && host.getAttribute('data-shape') === 'ring');
+  let ringEl = null, haloEl = null, ringStill = true;
+  function buildRing(){
+    if(ringEl) return;
+    haloEl = document.createElement('div');
+    haloEl.style.cssText = 'position:absolute; inset:-14%; border-radius:50%; background:radial-gradient(circle, rgba(255,190,60,0) 50%, rgba(255,196,70,.55) 60%, rgba(255,170,40,.18) 68%, rgba(255,170,40,0) 74%); opacity:.45; will-change:transform,opacity;';
+    ringEl = document.createElement('div');
+    ringEl.style.cssText = 'position:absolute; inset:0; border-radius:50%; background:conic-gradient(from 0deg, #8a5a12, #ffd36a, #fff3c4, #e2a93b, #8a5a12, #ffcf5a, #fff1b8, #b07a1c, #8a5a12); -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask:radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); will-change:transform;';
+    host.appendChild(haloEl);
+    host.appendChild(ringEl);
+    host.style.backgroundImage = 'none';
+  }
+  function renderRing(){
+    if(!ringEl) buildRing();
+    const breathe = 0.012 * Math.sin(phase * 2.2);
+    const s = 1 + breathe + 0.12 * level;
+    ringEl.style.transform = 'scale(' + s.toFixed(4) + ')';
+    haloEl.style.transform = 'scale(' + (1 + breathe + 0.22 * level).toFixed(4) + ')';
+    haloEl.style.opacity = (0.45 + 0.55 * level).toFixed(3);
+    ringStill = false;
+  }
+  if(RING) buildRing();
+
   // الشرائح تُبنى عند أوّل إطار ظاهر بعدد يتبع العرض، وتُعاد إن تغيّر العرض كثيرًا (تدوير الجوّال)
   const strips = [];
   let N = 0, en = [], tmp = [];
@@ -41501,6 +41531,7 @@ if(document.readyState === 'loading'){
   }
 
   function render(){
+    if(RING){ renderRing(); return; }
     const W = host.clientWidth, h = host.clientHeight;
     if(!W || !h) return;
     const want = Math.min(160, Math.max(40, Math.round(W / 10)));
@@ -41558,6 +41589,7 @@ if(document.readyState === 'loading'){
     bands.fill(0);
     for(let j = 0; j < strips.length; j++) strips[j].style.transform = '';
     still = true;
+    if(ringEl && !ringStill){ ringEl.style.transform = ''; haloEl.style.transform = ''; haloEl.style.opacity = '.45'; ringStill = true; }
   }
 
   window.mahaGoldWave = { prime: ensureCtx, start, stop, end, attachStream, detachStream, trackAudio };
