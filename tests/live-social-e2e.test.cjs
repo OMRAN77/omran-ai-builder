@@ -31,7 +31,8 @@ stub('api/_lib/_usage.js', {
   },
 });
 stub('api/_lib/_knowledge.js', { ownerKnowledge: () => '' });
-stub('api/_lib/search.js', { fetchPlaces: async () => [] });
+const places = { list: [], calls: [] }; // v-loc-offers: بطاقات الأماكن قابلة للضبط لكلّ اختبار
+stub('api/_lib/search.js', { fetchPlaces: async (key, q) => { places.calls.push(q); return places.list; }, isPlacesAsk: () => false, regionOf: () => '' });
 const chat = require(rp('api/_lib/chat.js'));
 
 function token(u) {
@@ -175,4 +176,51 @@ test('٦. Perplexity: نافذة سنة وتاريخ اليوم في تعليم�
     assert.ok(web.messages[0].content.includes('اليوم ' + today()), 'تاريخ اليوم في تعليمة محرّك البحث');
     assert.match(r.toolResult, /Insect hearts \(2026-03-04\)\nhttps:\/\/www\.nature\.com\/x/);
   } finally { delete process.env.PERPLEXITY_API_KEY; }
+});
+
+/* v-loc-offers (لقطتا المالك ١ أكتوبر: «اريد عروضات في عجمان» رجعت أسماء سوبرماركتات بلا أيّ عرض، و«دي تو دي عجمان —
+   عطني الموقع» رجعت فارغة) — الخادم: العروض تبحث في العروض لا في الخرائط، وطلب الموقع يأخذ العنوان ورابط الخريطة. */
+const SHOPS = [{ name: 'نستو هايبرماركت', address: 'Al Mushairef, Ajman', url: 'https://maps.google.com/?cid=11' }, { name: 'D2D Ajman', address: 'Al Nuaimiya 1, Ajman', url: 'https://maps.google.com/?cid=42' }];
+
+test('٧. العروض: لا بطاقات أماكن، بل بحث العروض بقيد البلد ونافذة شهر وروابط العروض', async () => {
+  quota.calls.length = 0; quota.allow = true; places.list = SHOPS; places.calls.length = 0;
+  const r = await ask('اريد عروضات في عجمان', 'عروضات سوبرماركت عجمان', {
+    tavily: (b) => (b.include_domains ? posts(1) : { results: [{ url: 'https://www.offers.ae/ajman/nesto', title: 'Nesto Ajman weekly offers', content: '50% off', published_date: '2026-09-29' }] }),
+  });
+  places.list = [];
+  assert.equal(places.calls.length, 0, 'سؤال العروض لا يُختصر في بطاقات الخرائط');
+  const web = r.log.tavily.find((b) => !b.include_domains);
+  assert.ok(web, 'بحث عروض فعليّ');
+  assert.equal(web.country, 'united arab emirates');
+  assert.equal(web.time_range, 'month');
+  assert.match(web.query, /^deals discounts offers /);
+  assert.match(r.toolResult, /offers\.ae\/ajman\/nesto/);
+  assert.ok(!/اكتب الأسماء فقط/.test(r.toolResult));
+});
+
+test('٨. طلب الموقع: العنوان ورابط الخريطة لكلّ مكان (لا «الأسماء فقط»)، والرابطان يبقيان', async () => {
+  quota.calls.length = 0; quota.allow = true; places.list = SHOPS; places.calls.length = 0;
+  const r = await ask('دي تو دي عجمان\n\n\nعطني الموقع', 'D2D Ajman');
+  places.list = [];
+  assert.equal(places.calls.length, 1);
+  assert.match(r.toolResult, /D2D Ajman — Al Nuaimiya 1, Ajman\nhttps:\/\/maps\.google\.com\/\?cid=42/);
+  assert.match(r.toolResult, /https:\/\/maps\.google\.com\/\?cid=11/, 'فرز التكرار بالنطاق لا يُسقط المكان الثاني');
+  assert.match(r.toolResult, /\[📍 الموقع على الخريطة\]\(الرابط\)/);
+  assert.ok(!/اكتب الأسماء فقط/.test(r.toolResult));
+});
+
+test('٩. قائمة أماكن بلا طلب موقع: الأسماء فقط كما قرّر المالك', async () => {
+  quota.calls.length = 0; quota.allow = true; places.list = SHOPS; places.calls.length = 0;
+  const r = await ask('هايبرماركتات في عجمان', 'هايبرماركت عجمان');
+  places.list = [];
+  assert.match(r.toolResult, /^1\. نستو هايبرماركت\n2\. D2D Ajman\n\n\[إلزاميّ في عرض هذه الأماكن\]: اختر/);
+  assert.ok(!/maps\.google\.com|Al Nuaimiya/.test(r.toolResult), 'لا عنوان ولا رابط خريطة في القائمة');
+});
+
+test('١٠. «عروس» ليست «عروض»: فساتين العروس تبقى بطاقات أماكن', async () => {
+  quota.calls.length = 0; quota.allow = true; places.list = SHOPS; places.calls.length = 0;
+  const r = await ask('فساتين عروس في عجمان', 'فساتين عروس عجمان');
+  places.list = [];
+  assert.equal(places.calls.length, 1);
+  assert.ok(!r.log.tavily.some((b) => !b.include_domains && /^deals/.test(b.query)), 'لا بحث عروض');
 });

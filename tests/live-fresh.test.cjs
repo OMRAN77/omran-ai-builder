@@ -117,7 +117,7 @@ test('٨. chat.js: النافذة تصل محرّكات الويب الثلاث�
   assert.match(CHAT, /const live = await liveSearch\(query, foreign, country, city, win\);/);
   // حلقة الأدوات: الاستعلام المنظَّف والنافذة لكلا البحثين، وسطر الحداثة لغير المخصّص
   assert.match(CHAT, /const __sq = __lf\.stripStaleYears\(_q, __said\);/);
-  assert.match(CHAT, /tavilySearch\(__sq, reC, __plateAsk, country, city, __win\),\n\s+__ls\.socialSearch\(__sq, \{ recency: __win \}\),/);
+  assert.match(CHAT, /tavilySearch\(__sq, reC, __plateAsk, country, city, __win, [^\n]+\),\n\s+__ls\.socialSearch\(__sq, \{ recency: __win \}\),/); // v-loc-offers: + طلب الموقع
   assert.match(CHAT, /\+ \(__curated \? '' : __lf\.freshNote\(__win, body && body\.tz\)\);/);
   // بطاقات الأماكن قائمة مخصّصة تُعرف بعلامتها
   assert.match(CHAT, /return cards \+ '\\n\\n' \+ PLACES_MARK \+ ': اختر/);

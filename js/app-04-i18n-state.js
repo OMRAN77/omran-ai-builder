@@ -55,6 +55,20 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
   } catch(e){ __swallow(e, "save:app-04-i18n-state#3"); }
 })();
 
+/* v-loc-not-build (لقطة المالك ١ أكتوبر: «دي تو دي عجمان — عطني الموقع» فظهرت فقاعة فارغة): طلب موقع مكان — رابط الخريطة
+   جوابه فلا يُخفى. نفس نمط WHERE_ASK_RE في الخادم (chat.js) — يثبّت تطابقهما tests/loc-ask. */
+function omranIsLocationAsk(t){
+  return /الموقع|موقع(?:ه|ها|هم|ك|كم)(?![ء-ي])|لوكيشن|لوكيشين|العنوان|عنوان(?:ه|ها|هم)(?![ء-ي])|خريط|وين\s+(?:مكان|محل|فرع|يقع|موقع)|[أا]ين\s+(?:يقع|تقع|مكان|موقع)|\blocation\b|\baddress\b|\bdirections?\b|\bwhere\s+is\b|\bmaps?\b/i.test(String(t || ''));
+}
+/* روابط خرائط Google تُحذف من ردود القوائم (الأماكن بأسمائها فقط — قرار المالك)، إلّا لمن طلب الموقع؛ ولا يُمحى الردّ
+   كلّه أبدًا: سطر الرابط كان يُحذف بنصّه فصار ردّ «موقع X: رابط» فقاعة فارغة بلا تشخيص (المحتوى غير فارغ). */
+function omranMapFilter(text, prevUserText){
+  const s = String(text || '');
+  if(!s || omranIsLocationAsk(prevUserText)) return s;
+  const mapUrlRe = /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i;
+  const kept = s.split('\n').filter(line => !mapUrlRe.test(line)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return kept || s;
+}
 function mahaPersonaName(){
   var isAr = false;
   try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { /* guard-ok: unavailable language state falls back to English. */ }
@@ -1905,9 +1919,11 @@ function renderMessages(keepScroll){
     }
     // روابط خرائط Google لا تُعرض في المحادثة: الأماكن تظهر بأسمائها فقط.
     // يزيل ذلك أيضًا روابط محفوظة في ردود قديمة.
+    // v-loc-not-build: إلّا لمن طلب الموقع نفسه (الرابط جوابه)، ولا يُمحى الردّ كلّه أبدًا — كان يصير فقاعة فارغة.
     if(m.role !== 'user' && typeof __mc === 'string'){
-      const __mapUrlRe = /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i;
-      __mc = __mc.split('\n').filter(line => !__mapUrlRe.test(line)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      let __prevU = '';
+      for(let __k = mIdx - 1; __k >= 0; __k--){ const __u = cur.messages[__k]; if(__u && __u.role === 'user'){ __prevU = String(__u.apiText !== undefined ? __u.apiText : (__u.content || '')); break; } }
+      __mc = omranMapFilter(__mc, __prevU);
     }
     let msgWordEls = null;
     if(m.role !== 'user' && __mc){

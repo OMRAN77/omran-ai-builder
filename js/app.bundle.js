@@ -5362,6 +5362,20 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
   } catch(e){ __swallow(e, "save:app-04-i18n-state#3"); }
 })();
 
+/* v-loc-not-build (لقطة المالك ١ أكتوبر: «دي تو دي عجمان — عطني الموقع» فظهرت فقاعة فارغة): طلب موقع مكان — رابط الخريطة
+   جوابه فلا يُخفى. نفس نمط WHERE_ASK_RE في الخادم (chat.js) — يثبّت تطابقهما tests/loc-ask. */
+function omranIsLocationAsk(t){
+  return /الموقع|موقع(?:ه|ها|هم|ك|كم)(?![ء-ي])|لوكيشن|لوكيشين|العنوان|عنوان(?:ه|ها|هم)(?![ء-ي])|خريط|وين\s+(?:مكان|محل|فرع|يقع|موقع)|[أا]ين\s+(?:يقع|تقع|مكان|موقع)|\blocation\b|\baddress\b|\bdirections?\b|\bwhere\s+is\b|\bmaps?\b/i.test(String(t || ''));
+}
+/* روابط خرائط Google تُحذف من ردود القوائم (الأماكن بأسمائها فقط — قرار المالك)، إلّا لمن طلب الموقع؛ ولا يُمحى الردّ
+   كلّه أبدًا: سطر الرابط كان يُحذف بنصّه فصار ردّ «موقع X: رابط» فقاعة فارغة بلا تشخيص (المحتوى غير فارغ). */
+function omranMapFilter(text, prevUserText){
+  const s = String(text || '');
+  if(!s || omranIsLocationAsk(prevUserText)) return s;
+  const mapUrlRe = /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i;
+  const kept = s.split('\n').filter(line => !mapUrlRe.test(line)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return kept || s;
+}
 function mahaPersonaName(){
   var isAr = false;
   try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { /* guard-ok: unavailable language state falls back to English. */ }
@@ -7212,9 +7226,11 @@ function renderMessages(keepScroll){
     }
     // روابط خرائط Google لا تُعرض في المحادثة: الأماكن تظهر بأسمائها فقط.
     // يزيل ذلك أيضًا روابط محفوظة في ردود قديمة.
+    // v-loc-not-build: إلّا لمن طلب الموقع نفسه (الرابط جوابه)، ولا يُمحى الردّ كلّه أبدًا — كان يصير فقاعة فارغة.
     if(m.role !== 'user' && typeof __mc === 'string'){
-      const __mapUrlRe = /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i;
-      __mc = __mc.split('\n').filter(line => !__mapUrlRe.test(line)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      let __prevU = '';
+      for(let __k = mIdx - 1; __k >= 0; __k--){ const __u = cur.messages[__k]; if(__u && __u.role === 'user'){ __prevU = String(__u.apiText !== undefined ? __u.apiText : (__u.content || '')); break; } }
+      __mc = omranMapFilter(__mc, __prevU);
     }
     let msgWordEls = null;
     if(m.role !== 'user' && __mc){
@@ -22036,6 +22052,11 @@ async function __sendPromptCore(){
     const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
     const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
     const GATE_FIX_RE = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
+    /* v-loc-not-build (لقطة المالك ١ أكتوبر: «دي تو دي عجمان — عطني الموقع» فرجع ردّ فارغ): «موقع» + «عطني» كانتا تفتحان
+       بوّابة البناء فتُطفأ الأدوات (لا بحث) ويُطلب من النموذج «تبيني أبدأ البناء؟». «الموقع/موقعه» المعرّف أو المضاف طلبُ
+       مكان أو رابط موجود لا بناء موقع — يُحذف من نصّ الفحص ما لم يكن في الرسالة فعل بناء صريح (ابني/سوّي/صمّم…). */
+    const GATE_HARD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|سولي|سوّلي|build|create|make|design|develop)/i;
+    const __gateText = (text && !GATE_HARD_RE.test(text)) ? String(text).replace(/(?:ال|بال|لل)موقع(?![ء-ي])|موقع(?:ه|ها|هم|هن|ك|كم|ي|نا)(?![ء-ي])/g, ' ') : text;
     const GATE_APPROVE_RE = /^\s*(نعم|أجل|اجل|اي(?:ه|وه|وا)?|إيه?|أيوه|ايوه|يلا|يالله|ابدأ|أبدأ|ابدا|ابدي|ابنيه?|ابنيها|سو|سوه|سوها|سويها|سوي|تمام|اوك|أوك|اوكي|اوكيه|موافق|زين|طيب|وافقت|yes|ok|okay|go|start|build)[\sء-ي!.،؟]{0,30}$/i;
     // الطلب المعلّق يُحفظ في localStorage أيضًا حتى لا يضيع عند تحديث الصفحة
     // بين سؤال «تبيني أبدأ؟» وموافقة المستخدم.
@@ -22051,7 +22072,7 @@ async function __sendPromptCore(){
       /[📋⬜☐🔹▪•✔️]/.test(text) ||
       /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
     ));
-    const __isFullBuildReq = !!(text && !__looksPasted && ((GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)));
+    const __isFullBuildReq = !!(text && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)));
     // 🤝 v345: موافقة قصيرة («نعم/تمام/يلا») بعد عرض بناء من المزود نفسه في
     // رده السابق («أقدر أبنيلك أداة... تبيني أبدأ فيها؟») = موافقة تنفيذ فورية
     // على ما عرضه المزود، لا إعادة تشغيل الطلب السابق المرفوض.
@@ -22096,7 +22117,7 @@ async function __sendPromptCore(){
       __gateApprovedText = text;
       text = __pend;
       __setPend(null);
-    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)){
+    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)){
       __setPend(text);
       __gateNoBuild = true;
     } else if(text){

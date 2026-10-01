@@ -111,7 +111,7 @@ test('٦. السقف: المشترك ١٠٠ يوميًّا، والرفض نصّ
 
 test('٧. التوصيل في chat.js: السقف أوّلًا، ثمّ الويب والتواصل بالتوازي لكلّ بحث، والمخصّص يُدمج بصيغته', () => {
   const i = CHAT.indexOf("const __quota = await __ls.searchQuota(token, clientIp(req));");
-  const j = CHAT.indexOf('await Promise.all([\n                  tavilySearch(__sq, reC, __plateAsk, country, city, __win),');
+  const j = CHAT.indexOf('await Promise.all([\n                  tavilySearch(__sq, reC, __plateAsk, country, city, __win, '); // v-loc-offers: + طلب الموقع
   assert.ok(i > 0 && j > i, 'السقف قبل البحث');
   assert.match(CHAT, /if \(!__quota\.ok\) result = __ls\.QUOTA_TEXT;/);
   // v-live-fresh (المالك: «نعم ضيفها»): التواصل لكلّ بحث بلا استثناء، والمسار المخصّص يحدّد صيغة الدمج لا وجود التواصل
