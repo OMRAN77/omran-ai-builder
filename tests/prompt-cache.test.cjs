@@ -63,7 +63,7 @@ test('chat.js: الطلب يحمل النظام كتلًا معلَّمة وال
   assert.match(s, /let __cacheOn = String\(process\.env\.CHAT_PROMPT_CACHE \|\| ''\)\.trim\(\)\.toLowerCase\(\) !== 'off';/);
   // v-cohere-coach: Cohere للمالك ثابته ملاحظة التوجيه بلا التاريخ؛ الباقون كما كانوا
   assert.match(s, /const __sysBlocks = splitSystemForCache\(__sysSend, __coach\n\s+\? cohereCoachSystem\(\{ customInstr, ownerKnowledge, siteGuide: siteGuideTurn \? SITE_GUIDE_NOTE : '' \}\)\n\s+: PERSONA_NOTE \+ '\\n' \+ baseSystem\);/);
-  assert.match(s, /system: __cacheOn \? __sysBlocks : \(__sysSend \|\| undefined\), messages: __cacheOn \? markLastForCache\(convo\) : convo, tools: toolTurn \? TOOLS : undefined, stream: true/);
+  assert.match(s, /system: __cacheOn \? __sysBlocks : \(__sysSend \|\| undefined\), messages: __cacheOn \? markLastForCache\(convo\) : convo, tools: toolTurn \? \(isClarifyTurn\(lastUserText\) \? TOOLS_NO_MEDIA : TOOLS\) : undefined, stream: true/); // v-img-ask
   assert.match(s, /if \(\/cache_control\/i\.test\(__cc\)\) \{\n\s+__cacheOn = false;\n\s+await logErrorAndFlush\('chat\/prompt-cache-400'/);
   // العدّاد من message_start وmessage_delta، والعرض للمالك وحده
   assert.match(s, /ev\.type === 'message_start'[\s\S]*?cache_read_input_tokens/);
