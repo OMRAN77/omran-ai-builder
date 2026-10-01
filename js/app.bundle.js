@@ -14891,6 +14891,7 @@ document.querySelectorAll('.voiceGenderBtn').forEach(b => {
   b.onclick = () => {
     localStorage.setItem('aiapp_voice_gender', b.dataset.gender);
     setVoiceGenderUI(b.dataset.gender);
+    try{ if(typeof mahaUpdatePersonaUI === 'function') mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'voice:persona-ui'); } // الأيقونة والاسم فورًا
     try{ speakSmart(voicePersonaSample(b.dataset.gender), null, null, true); }catch(e){ __swallow(e, 'voice:persona-sample'); }
   };
 });
@@ -16094,24 +16095,25 @@ else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'mah
 const MAHA_ICON = '/icons/maha-m3.svg'; // v-maha-solo: أيقونة مها الجديدة
 const ABDULLAH_ICON = '/icons/abdullah-icon.svg';
 function mahaUpdatePersonaUI(){
-  // v-maha-solo: مها وحدها الآن — عبدالله يُرتَّب لاحقًا بطلب المالك.
-  // الشخصية مثبتة أنثوية أيًّا كان الإعداد القديم المحفوظ.
-  mahaDetectedGender = 'female';
-  try{ if(localStorage.getItem('aiapp_voice_gender') !== 'female') localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo'); }
+  /* v-voice-names (المالك ١ أكتوبر «إذا اخترت عبدالله من الإعدادات تطلع مها»): v-maha-solo كان يعيد الإعداد إلى
+     female عند الإقلاع وكلّ مكالمة («عبدالله يُرتَّب لاحقًا بطلب المالك») — والطلب جاء. الشخصيّة الآن من المحفوظ. */
+  const male = mahaReadVoiceGender() === 'male';
+  mahaDetectedGender = male ? 'male' : 'female';
+  const name = male ? 'عبدالله' : 'مها', icon = male ? ABDULLAH_ICON : MAHA_ICON;
   const old = document.getElementById('mahaPersonaSwitch');
   if(old) old.remove();
   const nameEl = document.getElementById('mahaCallNameLabel');
-  if(nameEl) nameEl.textContent = 'مها';
+  if(nameEl) nameEl.textContent = name;
   const orb = document.getElementById('mahaOrb');
   if(orb){
     orb.textContent = '';
-    orb.style.background = "url('" + MAHA_ICON + "') center/cover no-repeat, #0a0908";
+    orb.style.background = "url('" + icon + "') center/cover no-repeat, #0a0908";
     orb.style.boxShadow = '0 0 35px rgba(212,175,55,.55)';
     orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
-  if(fabImg && fabImg.getAttribute('src') !== MAHA_ICON){ fabImg.src = MAHA_ICON; fabImg.alt = 'مها'; }
-  if(btnMahaEl) btnMahaEl.title = 'مها';
+  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
+  if(btnMahaEl) btnMahaEl.title = name;
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
@@ -16119,7 +16121,8 @@ function mahaEnsureVoiceChosen(){
   return new Promise(resolve => {
     let already = null;
     try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ /* guard-ok: unavailable storage shows the safe first-run picker. */ }
-    // v-maha-solo: مها وحدها — لا سؤال في أول تشغيل.
+    // v-maha-solo: لا سؤال في أول تشغيل — مها افتراضيًّا. v-voice-names: اختيار عبدالله المحفوظ يبقى كما هو.
+    if(already === 'male' || already === 'female') return resolve(already);
     try{ localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo-first'); }
     return resolve('female');
     /* eslint-disable no-unreachable */
@@ -17243,8 +17246,9 @@ async function mahaStartRealtimeCall(){
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
     try{
       const receiver = e.receiver;
-      // v-maha-natural: ٠٫١ث بدل ٠٫٢٥ث — المخزن يتّسع وحده عند تذبذب الشبكة، والردّ يُسمع أبكر.
-      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = mahaRtNatural ? 0.1 : 0.25; }
+      // v-voice-stutter (المالك ١ أكتوبر «الصوت يتقطّع ويوشوش»): v-maha-natural خفّضه إلى ٠٫١ث — على شبكة الجوّال
+      // يجوع المخزن فيُرقَّع الصوت (وشوشة وتقطّع). رجع ٠٫٢٥ث للوضعين: ١٥٠م.ث أبطأ ولا تقطّع.
+      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
     }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };
   pc.addTrack(mahaRtStream.getTracks()[0], mahaRtStream);
@@ -41385,13 +41389,14 @@ if(document.readyState === 'loading'){
 
   /* v-maha-ring (المالك ١ أكتوبر: «تقدر تسويها الذهبيّة دائرة» — اختار: حلقة ذهبيّة مضيئة، وسط الشاشة متوسّطة، تنبض
      مع صوتها، والشريط يروح): data-shape="ring" على العنصر = حلقة بدل الشرائح. الصوت ومصادره كما هي (level نفسه):
-     الحلقة تكبر قليلًا والهالة تشتدّ مع صوتها، وفي السكوت تتنفّس تنفّسًا خفيفًا جدًّا. بلا canvas. */
+     الحلقة تكبر قليلًا والهالة تشتدّ مع صوتها، وفي السكوت تتنفّس تنفّسًا خفيفًا جدًّا. بلا canvas.
+     v-voice-stutter: التوهّج من الهالة وحدها — filter على الحاوية كان يُعاد رسمه كلّ إطار مع تحويل أبنائها (ثقيل على الجوّال). */
   const RING = !!(host.getAttribute && host.getAttribute('data-shape') === 'ring');
   let ringEl = null, haloEl = null, ringStill = true;
   function buildRing(){
     if(ringEl) return;
     haloEl = document.createElement('div');
-    haloEl.style.cssText = 'position:absolute; inset:-14%; border-radius:50%; background:radial-gradient(circle, rgba(255,190,60,0) 50%, rgba(255,196,70,.55) 60%, rgba(255,170,40,.18) 68%, rgba(255,170,40,0) 74%); opacity:.45; will-change:transform,opacity;';
+    haloEl.style.cssText = 'position:absolute; inset:-14%; border-radius:50%; background:radial-gradient(circle, rgba(255,190,60,0) 48%, rgba(255,196,70,.7) 59%, rgba(255,170,40,.25) 67%, rgba(255,170,40,0) 75%); opacity:.45; will-change:transform,opacity;';
     ringEl = document.createElement('div');
     ringEl.style.cssText = 'position:absolute; inset:0; border-radius:50%; background:conic-gradient(from 0deg, #8a5a12, #ffd36a, #fff3c4, #e2a93b, #8a5a12, #ffcf5a, #fff1b8, #b07a1c, #8a5a12); -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask:radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); will-change:transform;';
     host.appendChild(haloEl);
