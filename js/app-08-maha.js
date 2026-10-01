@@ -393,7 +393,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: 'normal' /* v-speed-chat-only: «بطيء وسريع للدردشة فقط، ليس لمها وعبدالله» */, token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
@@ -1358,7 +1358,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       voiceGender: mahaReadVoiceGender(),
-      voiceSpeed: mahaReadVoiceSpeed(),
+      voiceSpeed: 'normal', // v-speed-chat-only
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -1402,10 +1402,9 @@ async function mahaStartRealtimeCall(){
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
     try{
       const receiver = e.receiver;
-      // v-voice-pace (المالك ١ أكتوبر بعد v-voice-stutter: «كانت أفضل قبل عبدالله… تحسّ فيها سريعة وبطيئة نفس الوقت»):
-      // حدّ أدنى ثابت ٠٫٢٥ث يجعل المخزن يسرّع ويبطّئ الصوت ليحافظ عليه. يرجع ٠٫١ث كما كان حين قال «تمام»
-      // (v-maha-natural)، والتقطّع الذي جاء بعدها كان مع filter الحلقة (أُزيل في v-voice-stutter).
-      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = mahaRtNatural ? 0.1 : 0.25; }
+      // v-voice-stutter (المالك ١ أكتوبر «الصوت يتقطّع ويوشوش»): v-maha-natural خفّضه إلى ٠٫١ث فتقطّع على الجوّال.
+      // ٠٫٢٥ث للوضعين — وأكّده المالك بعد النشر: «بعدها كانت أفضل».
+      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
     }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };
   pc.addTrack(mahaRtStream.getTracks()[0], mahaRtStream);
