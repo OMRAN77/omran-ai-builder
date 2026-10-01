@@ -151,6 +151,6 @@ test('٦. العميل: نوع الإنصات يُقرأ من الخادم قب�
     const call = s.slice(s.indexOf('async function mahaStartRealtimeCall(){'));
     const set = call.indexOf("mahaRtNatural = tokenData.turn === 'natural';");
     assert.ok(set > 0 && set < call.indexOf('new RTCPeerConnection()'), f + ': قبل الاتّصال');
-    assert.ok(s.includes("receiver.playoutDelayHint = 0.25; }"), f + ': v-voice-stutter — ٠٫١ث جوّع المخزن فتقطّع الصوت، رجع ٠٫٢٥ث');
+    assert.ok(s.includes("receiver.playoutDelayHint = 0.25; }"), f + ': v-voice-stutter — ٠٫٢٥ث، وأكّده المالك «بعدها كانت أفضل»');
   }
 });

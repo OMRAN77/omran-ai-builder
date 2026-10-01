@@ -12376,7 +12376,7 @@ async function postWithConfirm(url, payload){
       const cs = getComputedStyle(g);
       const ctx = document.createElement('canvas').getContext('2d');
       ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-      const m = ctx.measureText('م');
+      const m = ctx.measureText(g.textContent || 'م'); // v-voice-letter: «م» أو «ع» حسب الشخصيّة
       if(m.fontBoundingBoxAscent === undefined) return; // متصفح قديم: تبقى إزاحة CSS الافتراضية
       const spanH = g.getBoundingClientRect().height;
       const baselineTop = (spanH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
@@ -12389,6 +12389,7 @@ async function postWithConfirm(url, payload){
     }catch(e){ __swallow(e, 'ui:maha-center'); }
   };
   fix();
+  window.__mahaGlyphFix = fix; // v-voice-letter: يُعاد التوسيط عند تبديل الحرف
   try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
 })();
 
@@ -16114,6 +16115,14 @@ function mahaUpdatePersonaUI(){
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
   if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
   if(btnMahaEl) btnMahaEl.title = name;
+  /* v-voice-letter (المالك ١ أكتوبر «إذا اختار مها تخليها م تحت، وإذا اختار عبدالله يطلع حرف ع»): حرف زرّ الكتابة. */
+  const glyph = document.querySelector('#btnMahaDock .mahaGlyph');
+  if(glyph && glyph.textContent !== (male ? 'ع' : 'م')){
+    glyph.textContent = male ? 'ع' : 'م';
+    try{ if(typeof window.__mahaGlyphFix === 'function') window.__mahaGlyphFix(); }catch(e){ __swallow(e, 'maha:glyph-fix'); }
+  }
+  const dock = document.getElementById('btnMahaDock');
+  if(dock) dock.title = name;
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
@@ -16237,7 +16246,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: 'normal' /* v-speed-chat-only: «بطيء وسريع للدردشة فقط، ليس لمها وعبدالله» */, token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
@@ -17202,7 +17211,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       voiceGender: mahaReadVoiceGender(),
-      voiceSpeed: mahaReadVoiceSpeed(),
+      voiceSpeed: 'normal', // v-speed-chat-only
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -17246,8 +17255,8 @@ async function mahaStartRealtimeCall(){
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
     try{
       const receiver = e.receiver;
-      // v-voice-stutter (المالك ١ أكتوبر «الصوت يتقطّع ويوشوش»): v-maha-natural خفّضه إلى ٠٫١ث — على شبكة الجوّال
-      // يجوع المخزن فيُرقَّع الصوت (وشوشة وتقطّع). رجع ٠٫٢٥ث للوضعين: ١٥٠م.ث أبطأ ولا تقطّع.
+      // v-voice-stutter (المالك ١ أكتوبر «الصوت يتقطّع ويوشوش»): v-maha-natural خفّضه إلى ٠٫١ث فتقطّع على الجوّال.
+      // ٠٫٢٥ث للوضعين — وأكّده المالك بعد النشر: «بعدها كانت أفضل».
       if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
     }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };

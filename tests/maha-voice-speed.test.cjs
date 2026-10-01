@@ -61,16 +61,18 @@ test('mahaReadVoiceSpeed: افتراضي normal، يقرأ المحفوظ، وي
   assert.equal(ctx.read(), 'normal', 'قيمة تالفة تسقط على normal لا تُمرَّر كما هي');
 });
 
-test('mahaSpeak (الأساسيّ) يرسل speed ضمن جسم /api/tts', () => {
+// v-speed-chat-only (المالك ١ أكتوبر «خلّ بطيء وسريع للمحادثة في الدردشة فقط وليس لمها وعبدالله»): المكالمة بسرعتها العاديّة.
+test('mahaSpeak (الأساسيّ) يرسل speed عاديًّا ثابتًا — الدرجة للدردشة وحدها', () => {
   const start = mahaSrc.indexOf('async function mahaSpeak(');
   const body = mahaSrc.slice(start, start + 400);
-  assert.match(body, /speed:\s*mahaReadVoiceSpeed\(\)/, 'الحقل يُرسَل مع كل طلب نطق');
+  assert.match(body, /speed: 'normal' \/\* v-speed-chat-only/, 'المكالمة لا تتبع درجة السرعة');
 });
 
-test('mahaStartRealtimeCall يرسل voiceSpeed ضمن جسم /api/realtime-session', () => {
+test('mahaStartRealtimeCall يرسل voiceSpeed عاديًّا ثابتًا — الدرجة للدردشة وحدها', () => {
   const start = mahaSrc.indexOf('async function mahaStartRealtimeCall(');
   const body = mahaSrc.slice(start, start + 700);
-  assert.match(body, /voiceSpeed:\s*mahaReadVoiceSpeed\(\)/, 'الحقل يُرسَل عند طلب الجلسة الفائقة');
+  assert.match(body, /voiceSpeed: 'normal', \/\/ v-speed-chat-only/, 'الجلسة بسرعتها الطبيعيّة');
+  assert.ok(!/mahaReadVoiceSpeed\(\)/.test(body));
 });
 
 test('api/_lib/tts.js: خريطة السرعة الأربع صحيحة (Azure % وOpenAI رقمي)، وvoice آخر بلا speed لا ينكسر', async () => {
