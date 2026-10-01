@@ -52,3 +52,32 @@ test('٢. الضغط يختار ويُسمع تعريف الشخصيّة؛ وا�
   assert.equal(said.at(-1), 'هلا والله، أنا عبدالله. كيف أقدر أساعدك اليوم؟');
   assert.ok(read('js/app.bundle.js').includes('function voicePersonaSample(gender){'), 'الحزمة');
 });
+
+test('٣. اختيار عبدالله يبقى: الإقلاع وبداية المكالمة لا يعيدانه إلى مها، والاسم والأيقونة تتبعه', async () => {
+  const src = read('js/app-08-maha.js');
+  const a = src.indexOf("const MAHA_ICON = '/icons/maha-m3.svg';");
+  const b = src.indexOf('// All pitch samples collected', a);
+  const store = { aiapp_voice_gender: 'male' };
+  const els = { mahaCallNameLabel: { textContent: '' }, mahaOrb: { textContent: 'x', style: {} } };
+  const fab = { title: '', img: { src: '', alt: '', getAttribute() { return this.src; } } };
+  const ctx = {
+    localStorage: { getItem: (k) => store[k] || null, setItem: (k, v) => { store[k] = v; } },
+    document: { getElementById: (id) => els[id] || null, createElement: () => ({}) },
+    btnMahaEl: { get title() { return fab.title; }, set title(v) { fab.title = v; }, querySelector: () => fab.img },
+    __swallow() {}, Promise,
+  };
+  vm.createContext(ctx);
+  vm.runInContext('let mahaDetectedGender = "female";\n' + src.slice(src.indexOf('function mahaReadVoiceGender(){'), src.indexOf('let mahaDetectedGender')) + src.slice(a, b) + '\nthis.ui = mahaUpdatePersonaUI; this.ensure = mahaEnsureVoiceChosen; this.g = () => mahaDetectedGender;', ctx);
+  ctx.ui();
+  assert.equal(store.aiapp_voice_gender, 'male', 'الإقلاع لا يعيده إلى مها');
+  assert.equal(ctx.g(), 'male');
+  assert.equal(els.mahaCallNameLabel.textContent, 'عبدالله');
+  assert.equal(fab.img.src, '/icons/abdullah-icon.svg');
+  assert.equal(await ctx.ensure(), 'male', 'بداية المكالمة لا تعيده');
+  assert.equal(store.aiapp_voice_gender, 'male');
+  store.aiapp_voice_gender = 'female';
+  ctx.ui();
+  assert.equal(els.mahaCallNameLabel.textContent, 'مها');
+  delete store.aiapp_voice_gender;
+  assert.equal(await ctx.ensure(), 'female', 'أوّل تشغيل = مها');
+});

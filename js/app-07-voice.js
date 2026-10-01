@@ -41,6 +41,7 @@ document.querySelectorAll('.voiceGenderBtn').forEach(b => {
   b.onclick = () => {
     localStorage.setItem('aiapp_voice_gender', b.dataset.gender);
     setVoiceGenderUI(b.dataset.gender);
+    try{ if(typeof mahaUpdatePersonaUI === 'function') mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'voice:persona-ui'); } // الأيقونة والاسم فورًا
     try{ speakSmart(voicePersonaSample(b.dataset.gender), null, null, true); }catch(e){ __swallow(e, 'voice:persona-sample'); }
   };
 });

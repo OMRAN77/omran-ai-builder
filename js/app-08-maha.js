@@ -243,24 +243,25 @@ else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'mah
 const MAHA_ICON = '/icons/maha-m3.svg'; // v-maha-solo: أيقونة مها الجديدة
 const ABDULLAH_ICON = '/icons/abdullah-icon.svg';
 function mahaUpdatePersonaUI(){
-  // v-maha-solo: مها وحدها الآن — عبدالله يُرتَّب لاحقًا بطلب المالك.
-  // الشخصية مثبتة أنثوية أيًّا كان الإعداد القديم المحفوظ.
-  mahaDetectedGender = 'female';
-  try{ if(localStorage.getItem('aiapp_voice_gender') !== 'female') localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo'); }
+  /* v-voice-names (المالك ١ أكتوبر «إذا اخترت عبدالله من الإعدادات تطلع مها»): v-maha-solo كان يعيد الإعداد إلى
+     female عند الإقلاع وكلّ مكالمة («عبدالله يُرتَّب لاحقًا بطلب المالك») — والطلب جاء. الشخصيّة الآن من المحفوظ. */
+  const male = mahaReadVoiceGender() === 'male';
+  mahaDetectedGender = male ? 'male' : 'female';
+  const name = male ? 'عبدالله' : 'مها', icon = male ? ABDULLAH_ICON : MAHA_ICON;
   const old = document.getElementById('mahaPersonaSwitch');
   if(old) old.remove();
   const nameEl = document.getElementById('mahaCallNameLabel');
-  if(nameEl) nameEl.textContent = 'مها';
+  if(nameEl) nameEl.textContent = name;
   const orb = document.getElementById('mahaOrb');
   if(orb){
     orb.textContent = '';
-    orb.style.background = "url('" + MAHA_ICON + "') center/cover no-repeat, #0a0908";
+    orb.style.background = "url('" + icon + "') center/cover no-repeat, #0a0908";
     orb.style.boxShadow = '0 0 35px rgba(212,175,55,.55)';
     orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
-  if(fabImg && fabImg.getAttribute('src') !== MAHA_ICON){ fabImg.src = MAHA_ICON; fabImg.alt = 'مها'; }
-  if(btnMahaEl) btnMahaEl.title = 'مها';
+  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
+  if(btnMahaEl) btnMahaEl.title = name;
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
@@ -268,7 +269,8 @@ function mahaEnsureVoiceChosen(){
   return new Promise(resolve => {
     let already = null;
     try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ /* guard-ok: unavailable storage shows the safe first-run picker. */ }
-    // v-maha-solo: مها وحدها — لا سؤال في أول تشغيل.
+    // v-maha-solo: لا سؤال في أول تشغيل — مها افتراضيًّا. v-voice-names: اختيار عبدالله المحفوظ يبقى كما هو.
+    if(already === 'male' || already === 'female') return resolve(already);
     try{ localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo-first'); }
     return resolve('female');
     /* eslint-disable no-unreachable */
@@ -1392,8 +1394,9 @@ async function mahaStartRealtimeCall(){
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
     try{
       const receiver = e.receiver;
-      // v-maha-natural: ٠٫١ث بدل ٠٫٢٥ث — المخزن يتّسع وحده عند تذبذب الشبكة، والردّ يُسمع أبكر.
-      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = mahaRtNatural ? 0.1 : 0.25; }
+      // v-voice-stutter (المالك ١ أكتوبر «الصوت يتقطّع ويوشوش»): v-maha-natural خفّضه إلى ٠٫١ث — على شبكة الجوّال
+      // يجوع المخزن فيُرقَّع الصوت (وشوشة وتقطّع). رجع ٠٫٢٥ث للوضعين: ١٥٠م.ث أبطأ ولا تقطّع.
+      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
     }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };
   pc.addTrack(mahaRtStream.getTracks()[0], mahaRtStream);
