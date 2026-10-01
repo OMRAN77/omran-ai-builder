@@ -18538,8 +18538,10 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
       }
     }catch(e){ /* guard-ok: تنظيف تجميلي — فشله لا يعطل الإعدادات */ }
   }
+  /* v-voice-names-show (المالك ١ أكتوبر، لقطة الإعدادات «المساعد / المساعد الصوتي» بدل «عبدالله / مها»): التحييد كان
+     «للجميع» حتّى حساب المالك الذي تعمل عنده المكالمة. الآن لمن مها موقوفة عنده وحده. */
   var sb = document.getElementById('btnSettings');
-  if(sb) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
+  if(sb && window.__mahaPaused) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
 })();
 /* v-site-guide3 (المالك ٢٣ سبتمبر «المزوّدين كلّهم أبيهم نفس الطريقة»): نسخة العميل من قاعدة الإرشاد بين المواقع —
    تُرسل رسالة نظام في دور الإرشاد فتصل المسارات التي بلا أدوات (الاحتياط، والمزوّد بلا أدوات)، ونصّها مطابق لـ

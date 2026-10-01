@@ -86,3 +86,20 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
   delete store.aiapp_voice_gender;
   assert.equal(await ctx.ensure(), 'female', 'أوّل تشغيل = مها');
 });
+
+test('٤. v-voice-names-show: الاسمان يظهران في إعدادات المالك؛ التحييد لمن مها موقوفة عنده وحده', () => {
+  const src = read('js/app-08-maha.js');
+  const a = src.indexOf('/* v-maha-pause (طلب عمران ٣١ أغسطس');
+  const block = src.slice(a, src.indexOf('})();', a) + 5);
+  for (const [user, wantListener] of [['omran', false], ['sara', true]]) {
+    let listeners = 0;
+    const ctx = {
+      authGet: () => user, window: {},
+      document: { createElement: () => ({}), head: { appendChild() {} }, getElementById: (id) => (id === 'btnSettings' ? { addEventListener() { listeners++; } } : null) },
+    };
+    vm.createContext(ctx);
+    vm.runInContext(block, ctx);
+    assert.equal(listeners > 0, wantListener, user);
+    assert.equal(ctx.window.__mahaPaused, user !== 'omran');
+  }
+});
