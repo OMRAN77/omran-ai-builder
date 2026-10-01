@@ -167,7 +167,7 @@ test('٨. OpenAI: المالك يختار من موديلاته الحيّة، �
 test('٩. OpenAI الصوتيّ: Realtime 2.1 والتفريغ الحي وTTS الموثوق بدل الأسماء القديمة', () => {
   const rt = read('api/_lib/realtime-session.js');
   assert.ok(rt.includes("model: 'gpt-realtime-2.1'"), 'المكالمة على إصدار Realtime الحاليّ');
-  assert.ok(rt.includes("transcription: { model: 'gpt-live-transcribe' }"), 'التفريغ الحي على الموديل الموصى به');
+  assert.ok(!/transcription: \{ model:/.test(rt), 'v-maha-firstreply: لا تفريغ غير مستعمل في جلسة المكالمة (لا مستقبل له في العميل)');
   assert.ok(rt.includes("model: 'gpt-realtime-2.1', mahaBudget"), 'العميل يستلم اسم الموديل الفعليّ');
 
   const tts = read('api/_lib/tts.js');
