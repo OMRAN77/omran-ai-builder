@@ -4519,7 +4519,8 @@ function __friendlyErr(e){
           ? 'The character stands still in place, only the head and mouth move naturally while talking (minimal body motion)'
           : 'The character is lively and animated: gentle body movement, waving hand gestures and expressive motion while talking';
         const __talkPrompt = 'A cute chibi 3D cartoon character standing and talking directly to the camera, with natural mouth movement and accurate lip-sync, lively friendly facial expression. ' + __motionDesc + '. The character speaks out loud in ' + __voiceLang + (__dialogue ? (', clearly saying: "' + __dialogue.slice(0,300) + '"') : '') + '. Clear spoken voice audio, no background music. Keep the character exactly as in the provided image.';
-        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime };
+        /* v-video-first-frame: الشخصيّة الكرتونيّة رُسمت للتوّ لتكون أوّل إطار — keepPhoto يمنع الخادم من رسم إطار ثانٍ فوقها */
+        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true };
         let __op = null, __verr = '';
         for(let __a = 0; __a < 2 && !__op; __a++){
           const __r = await fetch('/api/video?action=veo-create', { method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal, body: JSON.stringify(__vp) });
@@ -4619,6 +4620,10 @@ function __friendlyErr(e){
           }catch(e){ __swallow(e, "misc:app-09-attach#17"); }
           __vp.imageBase64 = __vidSrc.b64;
           __vp.imageMime = __vidSrc.mime;
+          /* v-video-first-frame: «حرّكها» وحدها (بلا مشهد ولا وصف) = حرّك الصورة كما هي — صورتك نفسها أوّل إطار، لا إطار
+             مرسوم (أدقّ ما يكون وبلا كلفة). كلمة مشهد واحدة («حرّكها وهي ترقص في السوق») = يُبنى أوّل إطار بوجهك فيه. */
+          const __ANIM_ONLY_RE = /^(?:[وف]?(?:حرك|حرّك)\S*|animate\S*|سوي|سوّي|سويلي|سوّيلي|سولي|اعمل|اصنع|فيديو|ڤيديو|video|لي|منها|من|هذي|هذه|هذا|هاي|الصور[ةه]|صورتي|هالصور[ةه]|this|the|image|photo|picture|it|please|لو|سمحت|ممكن|تكفى|بليز)$/i;
+          __vp.keepPhoto = String(text || '').split(/[\s،,.!؟?()"'«»:؛\-]+/).filter(Boolean).every(function(w){ return __ANIM_ONLY_RE.test(w); });
         }
         let __vid = null, __verr = '';
         for(let __a = 0; __a < 2 && !__vid; __a++){

@@ -17,6 +17,11 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
+    const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
+    const tp = require('./trend-people.js');
+    /* v-video-first-frame: أنمي/كرتون الواجهة — سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
+    if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
+    const styledDesc = promptText;
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند */
     if (body.trend) {
       const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
@@ -71,6 +76,17 @@ module.exports = async (req, res) => {
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       res.status(500).json({ error: 'Server is missing MINIMAX_API_KEY' });
       return;
+    }
+
+    /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة ووصف يُبنى أوّل إطار بوجهه في مشهد الوصف وأسلوبه، ثمّ
+       قفل «الإطار جاهز — حرّكه كما هو». keepPhoto = الصورة نفسها. أيّ عطب = الصورة نفسها والأمر السابق حرفيًّا. */
+    if (!body.trend && imageBase64 && String(imageBase64).trim() && !body.keepPhoto && rawDesc && String(rawDesc).trim() && tp.firstFrameOn() && process.env.GEMINI_API_KEY) {
+      const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64).trim(), mime: imageMime }, String(rawDesc), ratio, { style: body.style, budgetMs: 90000 });
+      if (solo && solo.b64) {
+        imageBase64 = solo.b64; imageMime = solo.mime;
+        promptText = require('./video-trends.js').withIdentityLock(styledDesc, 1500 - tp.FRAME_LOCK.length) + tp.FRAME_LOCK;
+        console.log('[minimax-create] first frame ready' + (solo.cached ? ' (cached)' : ''));
+      } else console.warn('[minimax-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
 
     const model = process.env.MINIMAX_VIDEO_MODEL || 'MiniMax-Hailuo-02';

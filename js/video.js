@@ -10,12 +10,15 @@
   function short(t){return t.replace(/\s*\([^)]*\)\s*$/,'').trim();}
   function build(){
     var card=M.firstElementChild; if(!card||card.dataset.vmk) return;
-    var kids=[].slice.call(card.children), desc=kids[1];
+    /* v-trends-top (المالك: «لو تخلي الفيديو تحت والترندات فوق أفضل»): الوصف كان «الابن الثاني» للبطاقة — وحين تُبنى
+       الترندات قبل الاستوديو (فتح النافذة من الصانع) يصير الابن الثاني صندوقَ الترندات فيُنقل إلى أسفل عمود المعاينة.
+       الوصف يُعرف بوسمه، وصندوق الترندات يبقى في مكانه: تحت الرأس مباشرة وفوق الاستوديو كلّه. */
+    var kids=[].slice.call(card.children), vt=id('vtRoot'), desc=card.querySelector('[data-i18n="videoMakerDesc"]');
     var side=document.createElement('div'); side.className='vmk-side';
     var main=document.createElement('div'); main.className='vmk-main';
     side.innerHTML='<div class="vmk-stage"><div class="vmk-ph">🎬</div><span class="vmk-dim"></span></div><div class="vmk-chips"></div>';
     card.classList.add('vmk-studio'); card.appendChild(side); card.appendChild(main);
-    kids.slice(1).forEach(function(k){ main.appendChild(k); });
+    kids.slice(1).forEach(function(k){ if(k!==vt) main.appendChild(k); });
     var stage=side.querySelector('.vmk-stage');
     if(id('videoMakerResult')) stage.appendChild(id('videoMakerResult'));
     [id('videoMakerStatus'),id('videoMakerDownloadLink'),desc].forEach(function(e){ if(e) side.appendChild(e); });
@@ -77,7 +80,14 @@
       var dm=stage.querySelector('.vmk-dim'); if(dm) dm.textContent=r[0]+'×'+r[1];
     }
   }
-  function enhance(){ if(!on()) return; build(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); sync(); }
+  /* v-trends-top: أيًّا كان ترتيب البناء (الترندات قبل الاستوديو أو بعده)، الصندوق تحت الرأس وفوق الاستوديو في كلّ فتح */
+  function trendsTop(){
+    var card=M.firstElementChild, vt=id('vtRoot'), side=card&&card.querySelector('.vmk-side');
+    if(!vt||!side||!card.classList.contains('vmk-studio')) return;
+    card.classList.add('vmk-trends-top');
+    if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
+  }
+  function enhance(){ if(!on()) return; build(); trendsTop(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); sync(); }
   new MutationObserver(function(){ if(M.style.display&&M.style.display!=='none') enhance(); }).observe(M,{attributes:true,attributeFilter:['style']});
   G.forEach(function(d){ var s=id(d[0]); if(s) s.addEventListener('change',sync); });
 })();

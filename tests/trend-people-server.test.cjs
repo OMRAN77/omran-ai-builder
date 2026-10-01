@@ -125,26 +125,48 @@ test('٤. veo-create: شخصيّتان تبنيان أوّل إطار قبل ا�
   assert.ok(calls.some((c) => typeof c === 'string' && /gemini-3-pro-image/.test(c)), 'نداء الدمج تمّ');
 });
 
-test('٥. صورة واحدة: لا نداء دمج ولا تغيّر في المسار القائم', async () => {
+/* v-video-first-frame (المالك ١ أكتوبر ٢٠٢٦: «كل الفيديوات»): صورة واحدة لم تعد «بلا نداء صورة» — ترند الشخص الواحد
+   في SOLO_FRAME_TRENDS يُبنى له أوّل إطار بوجهه (مهمّة شخص واحد لا دمج مجموعة). والمسار القائم حرفيًّا حين يُطفأ. */
+test('٥. صورة واحدة: لا دمج مجموعة — أوّل إطار للشخص الواحد، والمسار القائم حرفيًّا عند الإطفاء', async () => {
   process.env.GEMINI_API_KEY = 'test-key';
   process.env.OWNER_USERNAMES = 'omran';
   const crypto = require('crypto');
   const payload = Buffer.from(JSON.stringify({ u: 'omran', exp: Date.now() + 60000 })).toString('base64url');
   const token = payload + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
-  const urls = []; let inst = null;
-  const realFetch = global.fetch;
-  global.fetch = async (url, init) => {
-    urls.push(String(url));
-    inst = JSON.parse(init.body).instances[0];
-    return { ok: true, json: async () => ({ name: 'operations/x2' }) };
+  const run = async () => {
+    require('../api/_lib/trend-people.js').FRAME_CACHE.clear();
+    const imageCalls = []; let inst = null;
+    const realFetch = global.fetch;
+    global.fetch = async (url, init) => {
+      if (/gemini-3-pro-image/.test(String(url))) {
+        imageCalls.push(JSON.parse(init.body));
+        return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { data: 'SOLOFRAME', mimeType: 'image/png' } }] } }] }) };
+      }
+      inst = JSON.parse(init.body).instances[0];
+      return { ok: true, json: async () => ({ name: 'operations/x2' }) };
+    };
+    const res = fakeRes();
+    try {
+      await require('../api/_lib/veo-create.js')({ method: 'POST', body: {
+        trend: 'heritagesing', params: { text: 'يا هلا' }, token, imageBase64: 'ONLYONE', imageMime: 'image/png',
+      } }, res);
+    } finally { global.fetch = realFetch; }
+    assert.equal(res.code, 200, JSON.stringify(res.body));
+    return { imageCalls, inst };
   };
-  const res = fakeRes();
-  await require('../api/_lib/veo-create.js')({ method: 'POST', body: {
-    trend: 'heritagesing', params: { text: 'يا هلا' }, token, imageBase64: 'ONLYONE', imageMime: 'image/png',
-  } }, res);
-  global.fetch = realFetch;
-  assert.equal(res.code, 200, JSON.stringify(res.body));
-  assert.ok(!urls.some((u) => /gemini-3-pro-image/.test(u)), 'لا نداء دمج لصورة واحدة');
-  assert.equal(inst.image.bytesBase64Encoded, 'ONLYONE');
-  assert.ok(!/different people/.test(inst.prompt), 'لا شرط أشخاص');
+  const on = await run();
+  assert.equal(on.imageCalls.length, 1, 'نداء صورة واحد: أوّل إطار الشخص');
+  const task = on.imageCalls[0].contents[0].parts.slice(-1)[0].text;
+  assert.match(task, /OPENING FRAME of a video — one single still image/, 'مهمّة شخص واحد');
+  assert.doesNotMatch(task, /Place ALL/, 'لا مهمّة دمج مجموعة');
+  assert.equal(on.inst.image.bytesBase64Encoded, 'SOLOFRAME', 'أوّل إطار هو الإطار المبنيّ');
+  assert.ok(on.inst.prompt.endsWith(require('../api/_lib/veo-create.js').FRAME_LOCK.trim()), 'قفل «حرّك الإطار كما هو» آخرًا');
+  assert.ok(!/different people/.test(on.inst.prompt), 'لا شرط أشخاص');
+  process.env.VIDEO_FIRST_FRAME = 'off';
+  try {
+    const off = await run();
+    assert.equal(off.imageCalls.length, 0, 'الإطفاء: لا نداء صورة');
+    assert.equal(off.inst.image.bytesBase64Encoded, 'ONLYONE');
+    assert.ok(!/ALREADY shows every person/.test(off.inst.prompt));
+  } finally { delete process.env.VIDEO_FIRST_FRAME; }
 });

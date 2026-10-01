@@ -700,7 +700,10 @@
       setStatus(bT('✍️ جاري إضافة توقيعك على الفيديو...','✍️ Adding your signature watermark...'));
       const wmBlob = await makeWatermarkPng(signature, ratio);
       await ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
-      await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h:shortest=1', '-c:a', 'copy', 'main_wm.mp4']);
+      /* v-video-first-frame (فيديو المالك ٣٫٩ث: مقدّمة + إطار واحد من الفيديو + خاتمة): «shortest=1» مع صورة ثابتة
+         (wm.png إطار واحد) يُنهي الناتج عند أقصر الدخلين — فيُقصّ فيديو الذكاء كلّه إلى إطار واحد (قيس: ١٢٠ ← ١).
+         بلا shortest يتكرّر آخر إطار للتوقيع (eof_action=repeat) طوال الفيديو، والطول طول الفيديو نفسه. */
+      await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h', '-c:a', 'copy', 'main_wm.mp4']);
       mainForConcat = 'main_wm.mp4';
     }
 
@@ -954,7 +957,7 @@
 
     /* Helper: generate ONE scene via Google Veo 3 (create + poll) and return its video URL. */
     async function createVeoScene(prompt, sceneRatio, sceneToken, hq, heroB64, heroMime){
-      const payload = { promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast' };
+      const payload = { promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast', style: styleEl.value }; /* v-video-first-frame: الأسلوب يصل كلّ محرّك */
       if(heroB64){ payload.imageBase64 = heroB64; payload.imageMime = heroMime || 'image/jpeg'; } /* v-video-photo-identity */
       const cr = await fetch('/api/video?action=veo-create', {
         method: 'POST',
@@ -1138,7 +1141,7 @@
     if(creationMode === 'omni'){
       try{
         setStatus(bT('🎬 جاري توليد الفيديو السينمائيّ (قد يستغرق ١-٣ دقائق)...','🎬 Generating the cinematic video (may take 1-3 min)...'));
-        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame: الأسلوب كان لا يصل */
         if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=omni-create', payload)
@@ -1172,7 +1175,7 @@
     if(creationMode === 'minimax'){
       try{
         setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
-        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame: الأسلوب كان لا يصل */
         if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=minimax-create', payload)
@@ -1232,7 +1235,7 @@
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
         setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
-        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         const cr = await fetch('/api/video?action=veo-create', {
           method: 'POST',

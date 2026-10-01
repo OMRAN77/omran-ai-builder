@@ -20,11 +20,14 @@ const RW_STYLE_REAL = ', ultra-realistic live-action footage, real camera record
 const RW_ID_PRE_REAL = 'The opening frame is a real photo of a real person. Keep this exact person — same face shape, eyes, nose, lips, jawline, beard, skin tone and hair — in every frame, whatever they do. ';
 const RW_ID_PRE_ANIME = 'The opening frame is a photo of a real person. Keep them clearly recognizable — same face shape, eyes, nose, lips, beard, skin tone and hair — while the scene is drawn in the style below. ';
 const RW_ID_TAIL = '. IDENTITY (mandatory): it is this same person from the photo throughout, never a different or generic face.';
+/* v-video-first-frame: الإطار الأوّل صار مرسومًا بوجهه في مشهد الوصف (وبالأنمي إن اختير) — المرساة تقول ذلك: حرّكه كما هو. */
+const RW_ID_PRE_FRAME_REAL = 'The opening frame already shows the real person from the user\'s photo in this scene. Keep this exact person — same face shape, eyes, nose, lips, jawline, beard, skin tone, hair and body — in every frame; animate that frame as it is, never redraw or replace them. ';
+const RW_ID_PRE_FRAME_ANIME = 'The opening frame already shows the real person from the user\'s photo, drawn in the style below. Keep them exactly as drawn there — same face and features — in every frame; animate that frame as it is, never redraw or replace them. ';
 
-function buildRunwayPrompt(promptText, style, useImage) {
+function buildRunwayPrompt(promptText, style, useImage, framed) {
   const anime = style === 'anime';
   const suffix = anime ? RW_STYLE_ANIME : RW_STYLE_REAL;
-  const pre = useImage ? (anime ? RW_ID_PRE_ANIME : RW_ID_PRE_REAL) : '';
+  const pre = useImage ? (framed ? (anime ? RW_ID_PRE_FRAME_ANIME : RW_ID_PRE_FRAME_REAL) : (anime ? RW_ID_PRE_ANIME : RW_ID_PRE_REAL)) : '';
   const tail = useImage ? RW_ID_TAIL : '';
   const room = Math.max(0, RUNWAY_PROMPT_MAX - pre.length - suffix.length - tail.length);
   return pre + String(promptText || '').trim().slice(0, room) + suffix + tail;
@@ -135,13 +138,25 @@ module.exports = async (req, res) => {
 
     // 🎬 صورة مرفقة → image_to_video (تحريك الصورة نفسها)، بدونها → text_to_video
     const useImage = !!(imageBase64 && String(imageBase64).length > 50);
+    /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة ووصف يُبنى أوّل إطار بوجهه في مشهد الوصف وأسلوبه
+       (الأنمي يُرسم أنمي — صورة حقيقيّة كإطار أوّل لا تصير أنمي)، بالنسبة نفسها فلا قصّ. keepPhoto («حرّكها» وحدها
+       من المحادثة) = الصورة نفسها كما كانت. أيّ عطب = الصورة نفسها، فلا يفشل فيديو بسبب الإطار. */
+    let framed = false;
+    const tp = require('./trend-people.js');
+    if (useImage && !body.trend && !body.keepPhoto && tp.firstFrameOn() && process.env.GEMINI_API_KEY) {
+      const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64), mime: imageMime }, String(promptText), finalRatio, { style, budgetMs: 90000 });
+      if (solo && solo.b64) {
+        imageBase64 = solo.b64; imageMime = solo.mime; framed = true;
+        console.log('[video-create] first frame ready' + (solo.cached ? ' (cached)' : ''));
+      } else console.warn('[video-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+    }
     // v-runway-host: مفاتيح الـAPI العامة تخدمها api.dev.runwayml.com حصرًا —
     // النداء على api.runwayml.com يرجع «Incorrect hostname for API key».
     const endpoint = useImage
       ? RUNWAY_API_BASE + '/v1/image_to_video'
       : RUNWAY_API_BASE + '/v1/text_to_video';
     // Runway hard limit: promptText <= 1000 chars TOTAL — مع صورة: مرساة هويّة أوّلًا وقفل أخيرًا (v-video-photo-identity)
-    const finalPrompt = buildRunwayPrompt(promptText, style, useImage);
+    const finalPrompt = buildRunwayPrompt(promptText, style, useImage, framed);
 
     /* v-runway-model (لقطات المالك: «Validation of body failed … expected one of
        gen4.5 | kling3.0_pro | veo3.1 …»): Runway أوقف اسم gen4_turbo فصار كل

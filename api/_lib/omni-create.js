@@ -43,6 +43,9 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     let { promptText, ratio, token, quality, imageBase64, imageMime } = body;
     const userDesc = promptText; /* v-omni-first-frame: وصف المستخدم قبل القفل — مشهد أوّل الإطار */
+    /* v-video-first-frame: أنمي/كرتون الواجهة — سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا)، والإطار يُرسم به */
+    if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = require('./trend-people.js').STYLE_ANIME_VIDEO + String(promptText).trim();
+    const styledDesc = promptText;
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند */
     if (body.trend) {
       const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
@@ -104,8 +107,8 @@ module.exports = async (req, res) => {
     /* v-omni-first-frame: الوصف الحرّ مع صورة — أوّل إطار بوجهه أوّلًا. OMNI_FIRST_FRAME=off يوقفه بلا نشر،
        وأيّ عطب (كشف، توليد، حجب، مهلة) = الطلب السابق حرفيًّا أدناه، فلا يفشل فيديو بسبب الإطار. */
     let frame = null;
-    if (!body.trend && hasImage && userDesc && String(process.env.OMNI_FIRST_FRAME || 'on').toLowerCase() !== 'off') {
-      frame = await require('./trend-people.js').soloFirstFrame(apiKey, { data: String(imageBase64).trim(), mime: imageMime }, String(userDesc), ratio, { budgetMs: FRAME_BUDGET_MS });
+    if (!body.trend && hasImage && userDesc && !body.keepPhoto && require('./trend-people.js').firstFrameOn() && String(process.env.OMNI_FIRST_FRAME || 'on').toLowerCase() !== 'off') {
+      frame = await require('./trend-people.js').soloFirstFrame(apiKey, { data: String(imageBase64).trim(), mime: imageMime }, String(userDesc), ratio, { style: body.style, budgetMs: FRAME_BUDGET_MS });
       if (frame && frame.b64) console.log('[omni-create] first frame ready in ' + Math.round((Date.now() - t0) / 1000) + 's (face close-up: ' + (frame.ref ? 'yes' : 'no') + ')');
       else console.warn('[omni-create] first frame skipped: ' + ((frame && frame.error) || 'none'));
     }
@@ -118,7 +121,7 @@ module.exports = async (req, res) => {
       input.push(frame.ref
         ? { type: 'image', data: frame.ref.data, mime_type: frame.ref.mime }
         : { type: 'image', data: String(imageBase64).trim(), mime_type: imageMime || 'image/png' });
-      prompt = framedPrompt(String(userDesc));
+      prompt = framedPrompt(String(styledDesc));
     } else if (hasImage) {
       input.push({ type: 'image', data: String(imageBase64).trim(), mime_type: imageMime || 'image/png' });
     }

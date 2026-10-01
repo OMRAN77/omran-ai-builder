@@ -267,6 +267,13 @@
 #videoMakerModal .vmk-main::-webkit-scrollbar-track{background:transparent}
 #videoMakerModal .vmk-main::-webkit-scrollbar-thumb{background:rgba(232,161,60,.28);border-radius:var(--r-2)}
 #videoMakerModal .vmk-main{padding-bottom:2px;overflow-y:auto;max-height:calc(90vh - 150px);scrollbar-width:thin;scrollbar-color:rgba(232,161,60,.35) transparent}
+/* v-trends-top (طلب المالك): الترندات أعلى الاستوديو بعرضه كاملًا والصانع تحتها — النافذة كلّها تُمرَّر (بلا قصّ
+   عمودَي المعاينة والخيارات تحت صندوق طويل)، وشبكة البطاقات أعمدة أكثر على الشاشة العريضة كي لا تطول. */
+#videoMakerModal .vmk-studio>#vtRoot{grid-column:1/-1;margin:0!important}
+#videoMakerModal .vmk-studio.vmk-trends-top{overflow-y:auto;overscroll-behavior:contain}
+#videoMakerModal .vmk-studio.vmk-trends-top .vmk-side{position:static;max-height:none;overflow:visible}
+#videoMakerModal .vmk-studio.vmk-trends-top .vmk-main{max-height:none;overflow:visible}
+@media (min-width:861px){#videoMakerModal .vmk-studio>#vtRoot #vtGrid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))!important}}
 
 
 /* ── من index.html سطر 3870 ── */
