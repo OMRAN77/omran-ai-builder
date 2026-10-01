@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
       const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64).trim(), mime: imageMime }, String(rawDesc), ratio, { style: body.style, budgetMs: 90000 });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
-        promptText = require('./video-trends.js').withIdentityLock(styledDesc, 1500 - tp.FRAME_LOCK.length) + tp.FRAME_LOCK;
+        promptText = require('./video-trends.js').withIdentityLock(styledDesc, 1500 - tp.FRAME_LOCK.length, undefined, solo.people) + tp.FRAME_LOCK; /* v-two-people: الجمع إن كُشف شخصان */
         console.log('[minimax-create] first frame ready' + (solo.cached ? ' (cached)' : ''));
       } else console.warn('[minimax-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }

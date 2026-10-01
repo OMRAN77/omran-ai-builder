@@ -96,12 +96,17 @@ const SOLO_CLOSEUP_LABEL = 'Close-up — the face of the same person in Photo 1,
  *  o: { closeup، art، styleText (سطر أسلوب صريح يغلب سطر art — أنمي الواجهة) } */
 function soloFrameTask(scene, o) {
   const opt = o || {};
+  /* v-two-people: صورة فيها شخصان — كلّ واحد بوجهه ولقطته، ولا تبادل؛ المفرد كما كان حرفيًّا */
+  const identity = opt.people > 1
+    ? 'IDENTITY (mandatory): Photo 1 shows ' + opt.people + ' different real people and ALL of them appear, each one exactly themselves — their own face shape, eyes, eyebrows, nose, lips, jawline, facial hair, skin tone and marks, apparent age, and their own body shape and size — copied from Photo 1'
+      + (opt.closeup ? ' and from the close-up of their own face' : '') + '. Never swap faces between them, never merge them into one face, never replace either with a different, younger, slimmer, prettier or more generic person; someone who knows them must recognize every one of them instantly.\n'
+    : 'IDENTITY (mandatory): it is this exact same real person — the same face shape, eyes, eyebrows, nose, lips, jawline, facial hair, skin tone and marks, apparent age, and the same body shape and size — copied from Photo 1'
+      + (opt.closeup ? ' and the close-up of their face' : '') + '. Never a different, younger, slimmer, prettier or more generic person; someone who knows them must recognize them instantly.\n';
   return 'TASK: create the OPENING FRAME of a video — one single still image — for this video description: "'
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 900) + '".\n'
     + 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video. '
     + 'The setting, clothing, hairstyle, pose and lighting follow the description; anything it does not mention stays as in Photo 1. Never remove a hijab or headscarf that Photo 1 shows.\n'
-    + 'IDENTITY (mandatory): it is this exact same real person — the same face shape, eyes, eyebrows, nose, lips, jawline, facial hair, skin tone and marks, apparent age, and the same body shape and size — copied from Photo 1'
-    + (opt.closeup ? ' and the close-up of their face' : '') + '. Never a different, younger, slimmer, prettier or more generic person; someone who knows them must recognize them instantly.\n'
+    + identity
     + (opt.styleText || (opt.art ? 'Use the art style the description asks for, drawing their own real features in that style.' : 'Photorealistic, like a real film still.'))
     + ' Their face is clearly visible, unobstructed and sharp. No text, captions, logos or watermarks.';
 }
@@ -162,20 +167,26 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const art = anime || !!opt.artHint || ART_STYLE_RE.test(text);
     const key = frameKey(shaped, text, aspectOf(ratio), anime ? 'anime' : '', art);
     const hit = FRAME_CACHE.get(key);
-    if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return { b64: hit.b64, mime: hit.mime, ref: hit.ref, cached: true };
+    if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return { b64: hit.b64, mime: hit.mime, ref: hit.ref, people: hit.people, cached: true };
     let crops = [];
     try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
-    /* وجه واحد بارز فقط (v-pstyle-closeup): لقطة أحد وجهين تسحب ملامحه إلى الآخر */
-    const crop = crops.length === 1 ? crops[0] : null;
-    const parts = [{ text: 'Photo 1 — the user\'s own photo of the real person to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
+    /* وجه واحد بارز: لقطته (v-pstyle-closeup). v-two-people: وجهان بارزان ولكلٍّ لقطته = كلّ لقطة بعنوان موضعها
+       («the person on the left/right» كخطّ الدمج v-merge-faces) — كان الوجهان بلا لقطة فيُرسم الثاني من جديد.
+       لقطة لأحد الوجهين وحده تبقى ممنوعة: تسحب ملامحه إلى الآخر. */
+    const two = crops.length === 2 && crops.every((c) => c.who && c.who !== 'the person');
+    const crop = (crops.length === 1 && crops[0].who === 'the person') ? crops[0] : null;
+    const people = two ? 2 : (crop ? 1 : 0);
+    const parts = [{ text: 'Photo 1 — the user\'s own photo of the real ' + (two ? 'people' : 'person') + ' to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
     if (crop) parts.push({ text: SOLO_CLOSEUP_LABEL }, { inlineData: { mimeType: crop.mime, data: crop.data } });
-    parts.push({ text: soloFrameTask(text, { closeup: !!crop, art, styleText: anime ? ANIME_FRAME_STYLE : '' }) });
+    if (two) crops.forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of ' + c.who + ' in Photo 1, cropped and zoomed in from that same photo (identity reference for that one person only: NOT an extra person, never drawn as an extra face, an inset or a frame):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
+    parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '' }) });
     const left = budget - (Date.now() - started);
     if (left < 20000) return { error: 'budget' };
     /* 1K: الفيديو 720p/1080p، والسعر نفسه لـ1K و2K — وحمولة أصغر للمحرّك. الأسلوب الفنّيّ بحرارة الأسلوب (mergeTemperature). */
     const out = await (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, { timeoutMs: left, temperature: mergeIdentity.mergeTemperature(art, text), imageSize: '1K', tag: 'solo' });
     if (!out || !out.b64) return { error: (out && (out.why || out.status)) || 'no image' };
-    const res = { b64: out.b64, mime: out.mime || 'image/png', ref: crop ? { data: crop.data, mime: crop.mime } : null };
+    /* ref: لقطة الوجه الواحد مرجعًا للمحرّك؛ مع شخصين الصورة نفسها (فيها الاثنان). people: عدد من كشفناهم (٠ = لا نعرف) */
+    const res = { b64: out.b64, mime: out.mime || 'image/png', ref: crop ? { data: crop.data, mime: crop.mime } : null, people };
     FRAME_CACHE.set(key, Object.assign({ t: Date.now() }, res));
     while (FRAME_CACHE.size > 4) FRAME_CACHE.delete(FRAME_CACHE.keys().next().value);
     return res;

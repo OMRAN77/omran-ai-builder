@@ -161,15 +161,25 @@ test('٣. أيّ عطب في أوّل الإطار (فشل، حجب، انقطا
   assert.equal(nod.omni.input[0].data, FRAME);
 });
 
-test('٤. بلا وجه مكشوف أو بوجهين: إطار بلا لقطة، ومرجع الملامح الصورةُ نفسها', async () => {
-  for (const faces of [[], [FACE_BOX, [120, 100, 220, 260]]]) {
-    const r = await runOmni(FREE(), { faces });
-    const parts = r.image.contents[0].parts;
-    assert.equal(parts.length, 3, 'عنوان الصورة، الصورة، المهمّة — لقطة أحد وجهين تسحب ملامحه إلى الآخر');
-    assert.doesNotMatch(parts[2].text, /close-up/);
-    assert.deepEqual(r.omni.input[0], { type: 'image', data: FRAME, mime_type: 'image/png' });
-    assert.deepEqual(r.omni.input[1], { type: 'image', data: PHOTO, mime_type: 'image/jpeg' });
-  }
+/* v-two-people (المالك: «إذا حطيت صورة شخصيّتين يغيّر الشخصيّة الثانية فقط»): الوجهان كانا بلا لقطة فيُرسم الثاني من جديد —
+   صار لكلٍّ لقطته بعنوان موضعه (كخطّ الدمج) والهويّة بصيغة الجمع. بلا وجه: كما كان. وفي الحالتين مرجع الملامح الصورة نفسها. */
+test('٤. بلا وجه مكشوف: إطار بلا لقطة؛ وبوجهين: لقطتان بعنوان موضعهما والهويّة للاثنين — ومرجع الملامح الصورة نفسها', async () => {
+  const none = await runOmni(FREE(), { faces: [] });
+  const p0 = none.image.contents[0].parts;
+  assert.equal(p0.length, 3, 'عنوان الصورة، الصورة، المهمّة');
+  assert.doesNotMatch(p0[2].text, /close-up/);
+  assert.deepEqual(none.omni.input[1], { type: 'image', data: PHOTO, mime_type: 'image/jpeg' });
+  const two = await runOmni(FREE(), { faces: [FACE_BOX, [120, 100, 220, 260]] });
+  const p2 = two.image.contents[0].parts;
+  assert.equal(p2.length, 7, 'عنوان الصورة، الصورة، لقطتان بعنوانيهما، المهمّة');
+  const labels = p2.filter((x) => x.text).map((x) => x.text);
+  assert.ok(labels.some((t) => /^Close-up 1 — the face of the person on the (left|right) in Photo 1/.test(t)));
+  assert.ok(labels.some((t) => /^Close-up 2 — the face of the person on the (left|right) in Photo 1/.test(t)));
+  assert.match(labels[labels.length - 1], /IDENTITY \(mandatory\): Photo 1 shows 2 different real people and ALL of them appear/);
+  assert.match(labels[labels.length - 1], /Never swap faces between them/);
+  assert.deepEqual(two.omni.input[0], { type: 'image', data: FRAME, mime_type: 'image/png' });
+  assert.deepEqual(two.omni.input[1], { type: 'image', data: PHOTO, mime_type: 'image/jpeg' }, 'مرجع الملامح الصورة التي فيها الاثنان');
+  assert.match(two.omni.input[2].text, /MAIN CHARACTERS: the 2 real people in the reference image <IMAGE_REF_0>/);
 });
 
 test('٥. بلا صورة، أو ترند: لا كشف ولا توليد صورة — الطلب كما كان', async () => {
