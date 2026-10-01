@@ -22,6 +22,7 @@ function el() {
 function load(opts) {
   const o = opts || {};
   const host = el();
+  if (o.ring) host.getAttribute = (k) => (k === 'data-shape' ? 'ring' : null);
   host.style.display = 'none';
   const queue = [];
   const audioNodes = [];
@@ -156,7 +157,8 @@ test('٥. تقليل الحركة من الجهاز: الصورة ثابتة ك�
 
 test('٦. الربط في مها: مكان الدائرة في مكالمتها لا في البنّاء، والصوت من مصدريه، والإنهاء، والحزمة', () => {
   const html = read('index.html');
-  assert.match(html, /<div id="mahaGoldWave" aria-hidden="true" style="display:none; position:relative; width:100vw; max-width:none; height:clamp\(110px, 18vh, 170px\);[^"]*url\('\/assets\/maha\/maha-wave-tile\.webp'\) 0 46% \/ auto 200% repeat-x;"><\/div>/);
+  // v-maha-ring: الشريط صار حلقة ذهبيّة (أمر المالك ١ أكتوبر) — العنصر نفسه بمعرّفه، والشرائح تبقى لمن لا يحمل data-shape
+  assert.match(html, /<div id="mahaGoldWave" data-shape="ring" aria-hidden="true" style="display:none; position:relative; width:clamp\(150px, 26vw, 230px\); height:clamp\(150px, 26vw, 230px\);[^"]*"><\/div>/);
   for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
     const s = read(f);
     assert.ok(s.includes("if(mahaOrbEl) mahaOrbEl.style.display = (show && !mahaGoldWaveEl) ? 'flex' : 'none';"), f + ': الدائرة مخفيّة ما دامت الموجة');
@@ -172,7 +174,10 @@ test('٦. الربط في مها: مكان الدائرة في مكالمتها 
   }
   assert.ok(read('js/app.bundle.js').includes(SRC), 'الجزء في الحزمة كما هو');
   assert.ok(!/getContext\(|<canvas/.test(SRC), 'بلا canvas');
-  assert.ok(!/brightness|glow|box-shadow|opacity/.test(SRC), 'بلا وميض ولا توهّج');
+  // v-maha-ring: المالك اختار «حلقة ذهبيّة مضيئة» — الهالة (opacity) للحلقة وحدها؛ الشرائح تبقى بلا وميض ولا توهّج
+  const bandSrc = SRC.slice(SRC.indexOf('  function render(){'), SRC.indexOf('  function frame('));
+  assert.ok(!/brightness|glow|box-shadow|opacity/.test(bandSrc.replace('if(RING){ renderRing(); return; }', '')), 'الشرائح بلا وميض ولا توهّج');
+  assert.ok(!/brightness|box-shadow/.test(SRC), 'بلا وميض');
 });
 
 test('٧. الشريط في مكالمة مها: بعرض الشاشة، الكاميرا فوق، بلا اسم ولا ✕، ولا سحب — والبنّاء كما كان', () => {
@@ -296,4 +301,32 @@ test('١١. نجوم الشاشة كلّها أثناء مكالمة مها: ن�
   assert.ok(css.includes('body.maha-band-on #omSkyLayer{z-index:100001;}'), 'نجوم الجانبيّ فوق الجانبيّ المرفوع');
   assert.ok(css.includes('@media (prefers-reduced-motion:reduce){ #mahaSkyLayer{display:none !important;} }'));
   assert.ok(read('index.html').includes('@keyframes omSkyTwinkle{'), 'الحركة معرّفة في الصفحة');
+});
+
+function loadRing(opts) {
+  const r = load(Object.assign({ ring: true }, opts));
+  return r;
+}
+
+test('١٣. v-maha-ring: حلقة ذهبيّة مضيئة بدل الشرائح — تنبض مع صوتها، تتنفّس بخفّة في السكوت، والإنهاء يعيدها', () => {
+  const { host, api, tick, audioNodes } = loadRing();
+  assert.equal(host.children.length, 2, 'هالة + حلقة تُبنيان فورًا (تظهر حتّى مع تقليل الحركة)');
+  const [halo, ring] = host.children;
+  assert.match(ring.style.cssText, /conic-gradient\(from 0deg, #8a5a12, #ffd36a/);
+  assert.match(ring.style.cssText, /mask:radial-gradient\(farthest-side, transparent calc\(100% - 7px\)/, 'حلقة مفرّغة لا قرص');
+  host.style.display = 'block';
+  api.start();
+  for (let t = 0; t <= 300; t += 16) tick(t);
+  assert.equal(host.children.length, 2, 'لا شرائح');
+  const idle = parseFloat(ring.style.transform.slice(6));
+  assert.ok(Math.abs(idle - 1) <= 0.013, 'السكوت: تنفّس خفيف ' + idle);
+  api.attachStream({ id: 'remote' });
+  for (let t = 316; t <= 900; t += 16) tick(t);
+  const loud = parseFloat(ring.style.transform.slice(6));
+  assert.ok(loud > 1.05 && loud <= 1.135, 'صوتها: تنبض ' + loud);
+  assert.ok(parseFloat(halo.style.opacity) > 0.8, 'الهالة تشتدّ');
+  assert.ok(audioNodes.length >= 2);
+  api.end();
+  assert.equal(ring.style.transform, '');
+  assert.equal(halo.style.opacity, '.45');
 });
