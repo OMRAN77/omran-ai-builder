@@ -185,7 +185,8 @@ test('٧. الشريط في مكالمة مها: بعرض الشاشة، الك�
   assert.ok(/id="mahaCallScreen" style="[^"]*z-index:99999;/.test(read('index.html')), 'نافذة المكالمة تحتهما مباشرةً');
   const html = read('index.html');
   assert.ok(html.includes('<div id="mahaCallBtns" style="display:flex; align-items:center; gap:13px;">') && html.includes('<div id="mahaAvatarBox"'));
-  assert.ok(html.includes('css/modules.css?v=662'), 'وسم الكاش رُفع');
+  /* وسم الكاش رُفع إلى ٦٦٢ على الأقلّ (ترفعه التغييرات اللاحقة — v-trends-top: ٦٦٣) */
+  assert.ok(Number((html.match(/css\/modules\.css\?v=(\d+)/) || [])[1]) >= 662, 'وسم الكاش رُفع');
   for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
     const s2 = read(f);
     assert.ok(s2.includes("if(mahaCallScreenEl) mahaCallScreenEl.classList.toggle('maha-goldband', mahaCallMode !== 'builder'); // v-maha-band") && s2.includes("  if(mahaCallMode !== 'builder') mahaStartCloseWatch();"), f + ': للمكالمة لا للبنّاء');

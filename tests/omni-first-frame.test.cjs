@@ -34,6 +34,7 @@ const DESC = 'امرأة تغني أغنية تراثية أمام بيت طين
 /* يشغّل معالج omni-create الحقيقيّ؛ الشبكة تُوجَّه بالعنوان: كشف الوجوه، توليد الإطار، المحرّك. */
 async function runOmni(body, opt) {
   const o = Object.assign({ faces: [FACE_BOX], image: 'ok', env: {} }, opt || {});
+  TP.FRAME_CACHE.clear(); /* v-video-first-frame: ذاكرة إعادة المحاولة لا تعبر بين حالات الاختبار */
   const calls = [];
   const envKeys = ['GEMINI_API_KEY', 'OMNI_FIRST_FRAME', 'MERGE_FACE_CROPS', 'OMNI_TIMEOUT_MS', 'OMNI_VIDEO_MODEL'];
   const savedEnv = {};
@@ -202,12 +203,14 @@ test('٧. الوقت: أوّل الإطار ≤ ٩٠ث، والمحرّك ما �
   assert.ok(M.omniTimeoutFor(worst, 270000) >= 180000, 'المحرّك يبقى له ٣ دقائق على الأقلّ');
   // الإطار يأخذ مهلته من الميزانيّة المتبقّية، وميزانيّة لا تتّسع لتوليد = لا نداء أصلًا
   const seen = [];
+  TP.FRAME_CACHE.clear();
   const fake = async (k, parts, aspect, f, cfg) => { seen.push(cfg); return { b64: 'F', mime: 'image/png' }; };
   const ok = await TP.soloFirstFrame('K', { data: PHOTO, mime: 'image/jpeg' }, 'x', '720:1280', { budgetMs: 90000, faceCrops: async () => [], callImage: fake });
   assert.equal(ok.b64, 'F');
   assert.ok(seen[0].timeoutMs <= 90000 && seen[0].timeoutMs > 80000, String(seen[0].timeoutMs));
   assert.equal(seen[0].imageSize, '1K');
   assert.equal(seen[0].tag, 'solo');
+  TP.FRAME_CACHE.clear();
   const tight = await TP.soloFirstFrame('K', { data: PHOTO }, 'x', '720:1280', { budgetMs: 15000, faceCrops: async () => [], callImage: fake });
   assert.deepEqual(tight, { error: 'budget' });
   assert.equal(seen.length, 1, 'لا توليد بميزانيّة لا تتّسع له');

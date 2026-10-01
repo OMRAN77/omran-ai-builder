@@ -23032,7 +23032,8 @@ function __friendlyErr(e){
           ? 'The character stands still in place, only the head and mouth move naturally while talking (minimal body motion)'
           : 'The character is lively and animated: gentle body movement, waving hand gestures and expressive motion while talking';
         const __talkPrompt = 'A cute chibi 3D cartoon character standing and talking directly to the camera, with natural mouth movement and accurate lip-sync, lively friendly facial expression. ' + __motionDesc + '. The character speaks out loud in ' + __voiceLang + (__dialogue ? (', clearly saying: "' + __dialogue.slice(0,300) + '"') : '') + '. Clear spoken voice audio, no background music. Keep the character exactly as in the provided image.';
-        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime };
+        /* v-video-first-frame: الشخصيّة الكرتونيّة رُسمت للتوّ لتكون أوّل إطار — keepPhoto يمنع الخادم من رسم إطار ثانٍ فوقها */
+        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true };
         let __op = null, __verr = '';
         for(let __a = 0; __a < 2 && !__op; __a++){
           const __r = await fetch('/api/video?action=veo-create', { method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal, body: JSON.stringify(__vp) });
@@ -23132,6 +23133,10 @@ function __friendlyErr(e){
           }catch(e){ __swallow(e, "misc:app-09-attach#17"); }
           __vp.imageBase64 = __vidSrc.b64;
           __vp.imageMime = __vidSrc.mime;
+          /* v-video-first-frame: «حرّكها» وحدها (بلا مشهد ولا وصف) = حرّك الصورة كما هي — صورتك نفسها أوّل إطار، لا إطار
+             مرسوم (أدقّ ما يكون وبلا كلفة). كلمة مشهد واحدة («حرّكها وهي ترقص في السوق») = يُبنى أوّل إطار بوجهك فيه. */
+          const __ANIM_ONLY_RE = /^(?:[وف]?(?:حرك|حرّك)\S*|animate\S*|سوي|سوّي|سويلي|سوّيلي|سولي|اعمل|اصنع|فيديو|ڤيديو|video|لي|منها|من|هذي|هذه|هذا|هاي|الصور[ةه]|صورتي|هالصور[ةه]|this|the|image|photo|picture|it|please|لو|سمحت|ممكن|تكفى|بليز)$/i;
+          __vp.keepPhoto = String(text || '').split(/[\s،,.!؟?()"'«»:؛\-]+/).filter(Boolean).every(function(w){ return __ANIM_ONLY_RE.test(w); });
         }
         let __vid = null, __verr = '';
         for(let __a = 0; __a < 2 && !__vid; __a++){
@@ -27899,7 +27904,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       setStatus(bT('✍️ جاري إضافة توقيعك على الفيديو...','✍️ Adding your signature watermark...'));
       const wmBlob = await makeWatermarkPng(signature, ratio);
       await ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
-      await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h:shortest=1', '-c:a', 'copy', 'main_wm.mp4']);
+      /* v-video-first-frame (فيديو المالك ٣٫٩ث: مقدّمة + إطار واحد من الفيديو + خاتمة): «shortest=1» مع صورة ثابتة
+         (wm.png إطار واحد) يُنهي الناتج عند أقصر الدخلين — فيُقصّ فيديو الذكاء كلّه إلى إطار واحد (قيس: ١٢٠ ← ١).
+         بلا shortest يتكرّر آخر إطار للتوقيع (eof_action=repeat) طوال الفيديو، والطول طول الفيديو نفسه. */
+      await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h', '-c:a', 'copy', 'main_wm.mp4']);
       mainForConcat = 'main_wm.mp4';
     }
 
@@ -28153,7 +28161,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
     /* Helper: generate ONE scene via Google Veo 3 (create + poll) and return its video URL. */
     async function createVeoScene(prompt, sceneRatio, sceneToken, hq, heroB64, heroMime){
-      const payload = { promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast' };
+      const payload = { promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast', style: styleEl.value }; /* v-video-first-frame: الأسلوب يصل كلّ محرّك */
       if(heroB64){ payload.imageBase64 = heroB64; payload.imageMime = heroMime || 'image/jpeg'; } /* v-video-photo-identity */
       const cr = await fetch('/api/video?action=veo-create', {
         method: 'POST',
@@ -28337,7 +28345,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     if(creationMode === 'omni'){
       try{
         setStatus(bT('🎬 جاري توليد الفيديو السينمائيّ (قد يستغرق ١-٣ دقائق)...','🎬 Generating the cinematic video (may take 1-3 min)...'));
-        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame: الأسلوب كان لا يصل */
         if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=omni-create', payload)
@@ -28371,7 +28379,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     if(creationMode === 'minimax'){
       try{
         setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
-        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame: الأسلوب كان لا يصل */
         if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=minimax-create', payload)
@@ -28431,7 +28439,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
         setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
-        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast' };
+        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         const cr = await fetch('/api/video?action=veo-create', {
           method: 'POST',

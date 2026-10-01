@@ -10,9 +10,8 @@ const GL = 'https://generativelanguage.googleapis.com/v1beta';
 const VEO_PROMPT_MAX = 2600;
 const VEO_FREE_IMAGE_MAX = 2000;
 const VEO_FREE_MAX = 1500;
-const FRAME_LOCK = ' The attached first frame ALREADY shows every person exactly as they must look in this'
-  + ' video: animate that frame. Keep each face, hairstyle, skin tone and outfit exactly as they appear'
-  + ' in it — do not re-age, restyle, redraw or replace anyone, and do not apply the transformation again.';
+/* v-video-first-frame: قفل «الإطار جاهز — حرّكه كما هو» صار في trend-people.js يشترك فيه كلّ محرّك (نصّه كما هو). */
+const { FRAME_LOCK } = require('./trend-people.js');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,12 +21,22 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
+    const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
     /* v-trend-people: شخصيّتان أو ثلاث — الصور الزائدة تصل في imagesBase64 ويُبنى منها أوّل إطار واحد. */
     const trendPeople = Array.isArray(body.imagesBase64)
       ? body.imagesBase64.map((d, i) => ({ data: d, mime: (body.imagesMime || [])[i] })).filter((x) => x && x.data)
       : [];
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند ومدخلات المستخدم */
     const hasImage = !!(imageBase64 && String(imageBase64).trim());
+    /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة يُبنى أوّل إطار بوجه الشخص في مشهد الوصف أو الترند ثمّ
+       يحرّكه المحرّك (trend-people.soloFirstFrame) — للوصف الحرّ، ولترندات الشخص الواحد في SOLO_FRAME_TRENDS.
+       keepPhoto (شخصيّة المحادثة الكرتونيّة الجاهزة) = الصورة نفسها أوّل إطار كما كانت. */
+    const tp = require('./trend-people.js');
+    const soloWanted = hasImage && !body.keepPhoto && tp.firstFrameOn() && (body.trend
+      ? (trendPeople.length <= 1 && tp.SOLO_FRAME_TRENDS.has(String(body.trend)))
+      : !!(rawDesc && String(rawDesc).trim()));
+    /* أنمي/كرتون الواجهة: سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
+    if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
       const bParams = Object.assign({}, body.params || {}, { hasImage });
@@ -35,7 +44,7 @@ module.exports = async (req, res) => {
       if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
       /* v-video-photo-identity: قفل الإطار الأوّل (FRAME_LOCK) يُلحق بعد البناء لترندات الأشخاص — فيُحجز له
          مكانه هنا: يُقصّ كلام المستخدم وحده (الاسم يتكرّر في بعض القوالب) لا الأقفال. أطول حالة قيست: ٢٧٨٩. */
-      for (let keep = 360; trendPeople.length > 1 && built.prompt.length + FRAME_LOCK.length > VEO_PROMPT_MAX && keep >= 0; keep -= 40) {
+      for (let keep = 360; (trendPeople.length > 1 || soloWanted) && built.prompt.length + FRAME_LOCK.length > VEO_PROMPT_MAX && keep >= 0; keep -= 40) {
         const cut = (v) => String(v || '').slice(0, keep);
         built = trendsLib.buildTrendPrompt(String(body.trend), Object.assign({}, bParams, { name: cut(bParams.name), text: cut(bParams.text), extra: cut(bParams.extra) })) || built;
       }
@@ -107,12 +116,27 @@ module.exports = async (req, res) => {
       }
     }
 
+    /* v-video-first-frame: شخص واحد — أوّل إطار بوجهه في المشهد (الترند: مشهد القالب وحده وأسلوبه)، ثمّ القفل نفسه
+       كإطار المجموعة. أيّ عطب = الصورة نفسها أوّل إطار كما كانت، فلا يفشل فيديو بسبب الإطار. */
+    let framed = false;
+    if (soloWanted) {
+      const solo = await tp.soloFirstFrame(apiKey, { data: String(imageBase64).trim(), mime: imageMime },
+        body.trend ? tp.trendScene(promptText) : String(rawDesc), ratio,
+        { style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000 });
+      if (solo && solo.b64) {
+        imageBase64 = solo.b64; imageMime = solo.mime;
+        promptText += FRAME_LOCK;
+        framed = true;
+        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
+      } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+    }
+
     const model = quality === 'high' ? 'veo-3.1-generate-preview' : 'veo-3.1-fast-generate-preview';
     const aspectRatio = ratio === '720:1280' ? '9:16' : '16:9';
     /* v-video-photo-identity: حدّ ١٥٠٠ كان يقصّ قفل «الإطار الأوّل يُظهر كلّ شخص… لا تحوّل مرّة ثانية»
        في كلّ ترند متعدّد الأشخاص (٣٣٠ من ٣٣٠ قياسًا) لأنّه يُلحق بعد بناء الأمر — الحدّ الآن حسب المسار
        (انظر رأس الملفّ)، وللقفل مكانه محجوز عند البناء. */
-    const prompt = String(promptText).trim().slice(0, body.trend ? VEO_PROMPT_MAX : (hasImage ? VEO_FREE_IMAGE_MAX : VEO_FREE_MAX));
+    const prompt = String(promptText).trim().slice(0, body.trend ? VEO_PROMPT_MAX : (framed ? VEO_FREE_IMAGE_MAX + FRAME_LOCK.length : (hasImage ? VEO_FREE_IMAGE_MAX : VEO_FREE_MAX)));
 
     // Veo 3.1 image-to-video: attach a starting image when provided so the
     // generated clip animates that exact character (with native audio/speech).

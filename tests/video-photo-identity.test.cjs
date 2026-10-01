@@ -141,7 +141,12 @@ async function veoSent(body) {
   try {
     await runHandler('api/_lib/veo-create.js', {
       'api/_lib/_videoUsage.js': ownerUsage, 'api/_lib/video-job.js': noJob,
-      'api/_lib/trend-people.js': { groupFirstFrame: async () => ({ b64: PHOTO, mime: 'image/jpeg' }) },
+      /* v-video-first-frame: الوحدة المشتركة حقيقيّة (القفل والأسلوب وقائمة الترندات)، وإطار الشخص الواحد غير متاح هنا —
+         فتبقى هذه الحالات على المسار الاحتياطيّ الذي تقيس حدوده؛ المسار بالإطار في tests/video-first-frame.test.cjs. */
+      'api/_lib/trend-people.js': Object.assign({}, require('../api/_lib/trend-people.js'), {
+        groupFirstFrame: async () => ({ b64: PHOTO, mime: 'image/jpeg' }),
+        soloFirstFrame: async () => ({ error: 'unavailable in this test' }),
+      }),
     }, body, async (u, o) => { sent = JSON.parse(o.body); return { ok: true, json: async () => ({ name: 'op/1' }) }; });
   } finally { if (saved === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = saved; }
   return sent && sent.instances && sent.instances[0];
