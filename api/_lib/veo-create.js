@@ -37,9 +37,11 @@ module.exports = async (req, res) => {
       : !!(rawDesc && String(rawDesc).trim()));
     /* أنمي/كرتون الواجهة: سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
     if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
+    let trendParams = null; /* v-two-people: لإعادة بناء أمر الترند بصيغة الجمع إن كشف الإطار شخصين في صورة واحدة */
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
       const bParams = Object.assign({}, body.params || {}, { hasImage });
+      trendParams = bParams;
       let built = trendsLib.buildTrendPrompt(String(body.trend), bParams);
       if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
       /* v-video-photo-identity: قفل الإطار الأوّل (FRAME_LOCK) يُلحق بعد البناء لترندات الأشخاص — فيُحجز له
@@ -99,7 +101,8 @@ module.exports = async (req, res) => {
     /* v-trend-people: أوّل إطار فيه كلّ الأشخاص معًا في مشهد الترند، ثمّ يحرّكه المحرّك. بعد القفل
        عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءات الدمج. فشله = لا خصم ولا قفل (يُردّان هنا). */
     if (body.trend && trendPeople.length > 1) {
-      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, promptText, ratio);
+      /* v-two-people: مشهد القالب وحده — فقرة «WHO THEY ARE» ليست مشهدًا (كانت أوّل ٧٠٠ حرف من «المشهد») */
+      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio);
       if (frame && frame.b64) {
         imageBase64 = frame.b64; imageMime = frame.mime;
         /* v-trend-identity: الإطار الأوّل بُني للتوّ بوجوه الأشخاص الحقيقيّة داخل مشهد الترند، لكنّ أمر
@@ -125,6 +128,16 @@ module.exports = async (req, res) => {
         { style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000 });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
+        /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */
+        if (solo.people > 1) {
+          const vt = require('./video-trends.js');
+          if (body.trend) {
+            const b2 = vt.buildTrendPrompt(String(body.trend), Object.assign({}, trendParams, { people: solo.people }));
+            if (b2 && b2.prompt.length + FRAME_LOCK.length <= VEO_PROMPT_MAX) promptText = b2.prompt;
+          } else {
+            promptText = vt.withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, undefined, solo.people);
+          }
+        }
         promptText += FRAME_LOCK;
         framed = true;
         console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));

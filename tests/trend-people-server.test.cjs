@@ -26,8 +26,14 @@ test('١. الأمر: شخص واحد كما كان، وأكثر يُلحق شر
   const two = buildTrendPrompt('heritagesing', { text: 'يا هلا', hasImage: true, people: 2 });
   assert.equal(one.people, 1);
   assert.equal(two.people, 2);
-  assert.ok(two.prompt.startsWith(one.prompt), 'الشرط يُلحق ولا يعيد كتابة القالب');
-  const extra = two.prompt.slice(one.prompt.length);
+  /* v-two-people (المالك: «يغيّر الشخصيّة الثانية فقط»): فقرة الأولويّة وقفل الهويّة صارا بصيغة الجمع لأكثر من شخص —
+     كانا يحميان «الشخص» المفرد وحده. مشهد القالب نفسه لم يُمسّ، والشرط يُلحق كما كان. */
+  const TPL = require('../api/_lib/trend-people.js');
+  assert.equal(TPL.trendScene(two.prompt), TPL.trendScene(one.prompt), 'مشهد القالب لم يتغيّر');
+  assert.match(two.prompt, /^WHO THEY ARE \(read first\): the reference image shows 2 real, specific people/);
+  assert.match(two.prompt, /IDENTITY \(mandatory\): every one of the 2 people in the video is the same real person/);
+  assert.match(one.prompt, /^WHO THEY ARE \(read first\): the reference image shows a real, specific person/, 'الشخص الواحد كما كان');
+  const extra = two.prompt.slice(two.prompt.indexOf(' IMPORTANT — '));
   assert.match(extra, /contains 2 different people/);
   assert.match(extra, /all 2 of them must appear together/);
   assert.match(extra, /never merge them into one person/);
@@ -86,7 +92,8 @@ test('٤. veo-create: شخصيّتان تبنيان أوّل إطار قبل ا�
   const src = read('api/_lib/veo-create.js');
   assert.match(src, /const trendPeople = Array\.isArray\(body\.imagesBase64\)/);
   assert.match(src, /if \(body\.trend && trendPeople\.length > 1\) \{/);
-  assert.match(src, /groupFirstFrame\(apiKey, trendPeople, promptText, ratio\)/);
+  /* v-two-people: مشهد القالب وحده إلى إطار المجموعة — لا فقرة «WHO THEY ARE» المفردة */
+  assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio\)/);
   assert.match(src, /if \(chargedUser\) await pointsLib\.refundPoints\(chargedUser, pointsLib\.COSTS\.veo_video\);\n\s+if \(videoLocked\) await require\('\.\/abuse-guard\.js'\)\.releaseVideoLock\(videoLocked\);\n\s+res\.status\(frame\.status \|\| 502\)/, 'الفشل يردّ الاثنين');
   // الدمج بعد القفل عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءاته
   assert.ok(src.indexOf('videoLocked = username;') < src.indexOf('groupFirstFrame'), 'بعد القفل');

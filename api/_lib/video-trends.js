@@ -693,7 +693,17 @@ function buildTrendPrompt(key, params) {
      تبدأ كلّها بأمر التحويل/المشهد مباشرة («Transform the person…» أو نظيره) بلا مرساة هويّة قبله؛
      هذه الفقرة تُلحق أوّلًا هنا (والقفل القائم في الذيل يبقى كما هو). بلا نداء إضافيّ ولا كلفة، ومتوافقة
      مع الأساليب الفنّيّة (بيكسار/جيبلي/الخ) لأنّها تقول «مهما أعاد المشهد رسمه» لا «كما صُوِّر». */
-  if (p.hasImage) {
+  /* v-two-people (المالك: «إذا حطيت صورة شخصيّتين يغيّر الشخصيّة الثانية فقط — وحدة تمام والثانية يغيّر الشكل كامل»):
+     فقرة الأولويّة وقفل الذيل كانا بصيغة «الشخص» المفرد — يحميان شخصًا واحدًا، والثاني لا يحرسه إلّا سطر «IMPORTANT».
+     مع أكثر من شخص تصيران بصيغة الجمع: كلّ واحد بوجهه هو. الشخص الواحد كما كان حرفيًّا. */
+  const nPeople = Math.max(1, Math.min(3, parseInt(p.people, 10) || 1));
+  if (p.hasImage && nPeople > 1) {
+    prompt = 'WHO THEY ARE (read first): the reference image shows ' + nPeople + ' real, specific people — not characters'
+      + ' to invent. Each one\'s face shape, eyes, eyebrows, nose, lips, jawline, skin tone, hair and build belong to'
+      + ' that person alone and must carry through recognizably into the video, however the scene below restyles, ages,'
+      + ' dresses or animates them. Never invent a new face for any of them, never average them into generic faces,'
+      + ' never swap faces between them.\n\nSCENE: ' + prompt;
+  } else if (p.hasImage) {
     prompt = 'WHO THEY ARE (read first): the reference image shows a real, specific person — not a character'
       + ' to invent. Their face shape, eyes, eyebrows, nose, lips, jawline, skin tone, and hair belong to them'
       + ' and must carry through recognizably into the video, however the scene below restyles, ages, dresses'
@@ -733,7 +743,12 @@ function buildTrendPrompt(key, params) {
      ثلاث كلمات في ذيل الأمر — وهو بعينه الضعف الذي عولج في أنماط الصور (v-pstyle-identity). القفل
      يُلحق أخيرًا فيكون آخر ما يقرؤه المحرّك، وصيغته تحفظ الهويّة **عبر** ما يغيّره الترند (سنًّا أو
      زيًّا أو أسلوبًا) لا ضدّه — كصياغة ageshift المثبَتة. */
-  if (p.hasImage) {
+  if (p.hasImage && nPeople > 1) {
+    prompt += ' IDENTITY (mandatory): every one of the ' + nPeople + ' people in the video is the same real person as in the reference image —'
+      + ' each keeps their own face shape, eyes, eyebrows, nose, lips, jawline, skin tone, and hair. Whatever this scene changes'
+      + ' (age, outfit, style, setting), who each of them is never changes: someone who knows them must recognize every one of them'
+      + ' instantly. Never replace any of them with a different, prettier or more generic face.';
+  } else if (p.hasImage) {
     prompt += ' IDENTITY (mandatory): the person in the video is the same real person as in the reference image —'
       + ' same face shape, eyes, eyebrows, nose, lips, jawline, skin tone, and hair. Whatever this scene changes'
       + ' (age, outfit, style, setting), who they are never changes: someone who knows them must recognize them'
@@ -760,10 +775,17 @@ function buildTrendPrompt(key, params) {
    الغلاف نفسه: مرساة أوّلًا وقفل أخيرًا، ووصف المستخدم يُقصّ هو ليبقى القفلان داخل حدّ المحرّك. */
 /* v-video-photo-identity: `subject` يسمّي الصورة كما يفهمها المحرّك — Omni يربط الصورة بدورها بوسم
    <IMAGE_REF_0> داخل النصّ (بلا وسم «يقرّر النموذج كيف يستعملها» — توثيق المزوّد). الافتراضيّ كما كان. */
-function withIdentityLock(promptText, max, subject) {
+/* v-two-people: `people` (اختياريّ) — صورة فيها شخصان أو أكثر (عدّهم كشف الوجوه في أوّل الإطار): القفلان بصيغة الجمع،
+   كلّ واحد بوجهه ولا تبادل بينهم. بلا عدد = المفرد كما كان حرفيًّا. */
+function withIdentityLock(promptText, max, subject, people) {
   const cap = max || 1500;
-  const pre = 'MAIN CHARACTER: the real person in ' + (subject || 'the attached reference photo') + ' — keep their exact face (face shape, eyes, eyebrows, nose, lips, jawline, beard, skin tone, hair) in every shot. ';
-  const post = ' IDENTITY (mandatory): whenever a person appears, it is this same real person from the photo — never a different, prettier or generic face; someone who knows them must recognize them instantly.';
+  const n = Math.max(1, Math.min(3, parseInt(people, 10) || 1));
+  const pre = n > 1
+    ? 'MAIN CHARACTERS: the ' + n + ' real people in ' + (subject || 'the attached reference photo') + ' — keep each person\'s own exact face (face shape, eyes, eyebrows, nose, lips, jawline, beard, skin tone, hair) in every shot, never swapped or merged. '
+    : 'MAIN CHARACTER: the real person in ' + (subject || 'the attached reference photo') + ' — keep their exact face (face shape, eyes, eyebrows, nose, lips, jawline, beard, skin tone, hair) in every shot. ';
+  const post = n > 1
+    ? ' IDENTITY (mandatory): every person who appears is one of these same ' + n + ' real people from the photo, each with their own face — never a different, prettier or generic face; someone who knows them must recognize every one of them instantly.'
+    : ' IDENTITY (mandatory): whenever a person appears, it is this same real person from the photo — never a different, prettier or generic face; someone who knows them must recognize them instantly.';
   const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
   return pre + body + post;
 }

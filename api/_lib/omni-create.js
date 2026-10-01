@@ -16,8 +16,9 @@ const GL = (process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapi
    Use Image2 as a reference for the video generation.» — Image1 الإطار، وImage2 لقطة الوجه (أو الصورة نفسها). */
 const FRAME_DECL = '[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2] ';
 const FRAME_GUIDE = ' Use Image1 as the starting frame. Use Image2 as a reference for the video generation: it shows the same real person as Image1 — use it only to keep their face and identity; the clothing and setting come from Image1 and the description, not from Image2.';
-function framedPrompt(desc) {
-  const lock = require('./video-trends.js').withIdentityLock(desc, 1500 - FRAME_DECL.length - FRAME_GUIDE.length, 'the reference image <IMAGE_REF_0>');
+function framedPrompt(desc, people) {
+  /* v-two-people: people > 1 = صورة فيها شخصان كشفهما أوّل الإطار — القفل بصيغة الجمع */
+  const lock = require('./video-trends.js').withIdentityLock(desc, 1500 - FRAME_DECL.length - FRAME_GUIDE.length, 'the reference image <IMAGE_REF_0>', people);
   return FRAME_DECL + lock + FRAME_GUIDE;
 }
 /* الإطار والمحرّك داخل نداء واحد متزامن: maxDuration لـapi/*.js في vercel.json ٣٠٠ث. الإطار (كشف + توليد) ≤ ٩٠ث،
@@ -121,7 +122,7 @@ module.exports = async (req, res) => {
       input.push(frame.ref
         ? { type: 'image', data: frame.ref.data, mime_type: frame.ref.mime }
         : { type: 'image', data: String(imageBase64).trim(), mime_type: imageMime || 'image/png' });
-      prompt = framedPrompt(String(styledDesc));
+      prompt = framedPrompt(String(styledDesc), frame.people);
     } else if (hasImage) {
       input.push({ type: 'image', data: String(imageBase64).trim(), mime_type: imageMime || 'image/png' });
     }
