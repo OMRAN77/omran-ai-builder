@@ -53,15 +53,18 @@ const textTurn = (t) => sse([
   { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } },
 ]);
 
-async function ask(question, q) {
-  const log = { model: [], tavily: [] };
+async function ask(question, q, opts) {
+  const o = opts || {};
+  const log = { model: [], tavily: [], pplx: [] };
   const saved = global.fetch;
   let turn = 0;
   global.fetch = async (url, init) => {
     const u = String(url);
     if (/openrouter\.ai/.test(u)) { log.model.push(JSON.parse(init.body)); return turn++ === 0 ? toolTurn(q) : textTurn('تم'); }
+    if (/api\.perplexity\.ai/.test(u) && o.pplx) { const b = JSON.parse(init.body); log.pplx.push(b); return new Response(JSON.stringify(o.pplx(b)), { status: 200 }); }
     if (/api\.tavily\.com/.test(u)) {
       const b = JSON.parse(init.body); log.tavily.push(b);
+      if (o.tavily) return new Response(JSON.stringify(o.tavily(b)), { status: 200 });
       return new Response(JSON.stringify(b.include_domains
         ? { results: [{ url: 'https://www.reddit.com/r/ants/comments/1', title: 'Do ants have hearts?', content: 'Yes, a dorsal vessel that pulses slowly.' }] }
         : { results: [{ url: 'https://www.britannica.com/animal/ant', title: 'Ant | Britannica', content: 'Ants have an open circulatory system.' }] }), { status: 200 });
@@ -109,4 +112,67 @@ test('٢. نفاد السقف: نصّ صادق للنموذج، وصفر ندا�
   assert.match(r.toolResult, /انتهى حدّ البحث الحيّ اليوميّ لهذا الحساب \(100 بحث\)/);
   assert.match(r.toolResult, /بلا بحث حيّ/);
   quota.allow = true;
+});
+
+/* v-live-fresh (المالك: «نعم ضيفها… اريد المعلومات التواريخ الجديدة، ما اريد ابحث اليوم ويعطيني تاريخ قديم») */
+const today = () => new Date().toISOString().slice(0, 10);
+const posts = (n) => ({ results: Array.from({ length: n }, (_, i) => ({ url: 'https://www.reddit.com/r/gold/comments/' + (i + 1), title: 'Gold post ' + (i + 1), content: 'price talk', published_date: '2026-09-2' + i })) });
+
+test('٣. الحداثة: سنة ذاكرة النموذج تُحذف، والويب والتواصل مقيّدان بآخر سنة، ومع النتيجة تاريخ اليوم', async () => {
+  quota.calls.length = 0; quota.allow = true;
+  const r = await ask('كم سعر الذهب في دبي؟', 'gold price Dubai 2024', {
+    tavily: (b) => (b.include_domains ? posts(3) : { results: [{ url: 'https://www.goldprice.org/ae', title: 'Gold price UAE', content: '...', published_date: '2026-09-30' }] }),
+  });
+  const web = r.log.tavily.find((b) => !b.include_domains);
+  const social = r.log.tavily.find((b) => b.include_domains);
+  assert.equal(web.query, 'gold price Dubai', 'سنة لم يذكرها المستخدم تُحذف من استعلام الويب');
+  assert.equal(social.query, 'gold price Dubai', 'ومن استعلام التواصل');
+  assert.equal(web.time_range, 'year');
+  assert.equal(social.time_range, 'year');
+  assert.match(r.toolResult, /\[الحداثة — إلزاميّ\]: اليوم \d{4}-\d{2}-\d{2}، والبحث مقيّد بـآخر سنة/);
+  assert.ok(r.toolResult.includes('اليوم ' + today()), 'تاريخ اليوم الفعليّ');
+  assert.match(r.toolResult, /أحدث ما وجدته بتاريخ كذا/);
+  // ثلاثة منشورات من منصّة واحدة تبقى ثلاثة (فرز التكرار كان يطويها في أوّلها) — وكلّ منشور بتاريخه
+  for (const i of [1, 2, 3]) assert.match(r.toolResult, new RegExp('\\[Reddit\\] Gold post ' + i + ' \\(2026-09-2' + (i - 1) + '\\)'));
+});
+
+test('٤. سؤال عن الماضي: السنة التي ذكرها المستخدم تبقى، وبلا قيد زمنيّ', async () => {
+  quota.calls.length = 0; quota.allow = true;
+  const r = await ask('من فاز بكأس العالم ٢٠٢٢؟', 'World Cup 2022 winner');
+  const web = r.log.tavily.find((b) => !b.include_domains);
+  const social = r.log.tavily.find((b) => b.include_domains);
+  assert.equal(web.query, 'World Cup 2022 winner');
+  assert.equal(web.time_range, undefined);
+  assert.equal(social.time_range, undefined);
+  assert.match(r.toolResult, /\[التاريخ\]: اليوم \d{4}-\d{2}-\d{2}\. اذكر تاريخ كلّ معلومة/);
+  assert.ok(!/\[الحداثة/.test(r.toolResult));
+});
+
+test('٥. المسار المخصّص (الأرقام): القائمة كما هي حرفيًّا، ثمّ قسم التواصل بعدها بأمر عرضه', async () => {
+  quota.calls.length = 0; quota.allow = true;
+  const r = await ask('ابي رقم سيارة مميز', 'ارقام سيارات مميزة للبيع دبي');
+  assert.equal(r.log.tavily.length, 1, 'نداء التواصل وحده — قائمة الأرقام ثابتة بلا بحث ويب');
+  assert.ok(r.log.tavily[0].include_domains);
+  assert.ok(r.toolResult.startsWith('1. إكس بليت'), 'القائمة أوّلًا وبلا عنوان «من الويب»');
+  assert.match(r.toolResult, /اعرض هذه الروابط السبعة كلّها بالترتيب/, 'أمر القائمة الأصليّ باقٍ');
+  const i = r.toolResult.indexOf('📱 من التواصل الاجتماعي (منشورات عامّة):');
+  assert.ok(i > r.toolResult.indexOf('mourjan.com'), 'التواصل بعد القائمة');
+  assert.match(r.toolResult, /اعرض القائمة أعلاه أوّلًا كما أُمرت بحرفها وتنسيقها/);
+  assert.match(r.toolResult, /تخصّ القائمة أعلاه ولا تمنع هذا القسم/);
+  assert.match(r.toolResult, /ألّا يُدفع مال لصاحب منشور قبل التحقّق/);
+  assert.ok(!/🌐 من الويب|\[الحداثة/.test(r.toolResult));
+});
+
+test('٦. Perplexity: نافذة سنة وتاريخ اليوم في تعليمته، وتاريخ كلّ مصدر بجانبه', async () => {
+  quota.calls.length = 0; quota.allow = true;
+  process.env.PERPLEXITY_API_KEY = 'test-pplx';
+  try {
+    const r = await ask('كم دقة قلب النملة؟', 'ant heart rate', {
+      pplx: () => ({ choices: [{ message: { content: 'ant heart pulses slowly' } }], search_results: [{ url: 'https://www.nature.com/x', title: 'Insect hearts', date: '2026-03-04' }] }),
+    });
+    const web = r.log.pplx.find((b) => b.model === 'sonar-pro');
+    assert.equal(web.search_recency_filter, 'year');
+    assert.ok(web.messages[0].content.includes('اليوم ' + today()), 'تاريخ اليوم في تعليمة محرّك البحث');
+    assert.match(r.toolResult, /Insect hearts \(2026-03-04\)\nhttps:\/\/www\.nature\.com\/x/);
+  } finally { delete process.env.PERPLEXITY_API_KEY; }
 });

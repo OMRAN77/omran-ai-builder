@@ -138,7 +138,8 @@ test('٦د. قراءة الصفحة تُرجع روابطها (نصّ الزرّ
   assert.ok(out.indexOf('icp.gov.ae') < out.indexOf('x.com'), 'روابط الموقع نفسه أوّلًا');
   assert.ok(!/mailto|#top|مكرّر|\/empty/.test(out), 'بلا بريد ولا مرساة ولا مكرّر ولا بلا نصّ');
   assert.ok(c.includes('return text ? text.slice(0, 6000) + links :'));
-  assert.ok(c.includes("const host = siteGuideTurn ? urlMatch[0]"), 'التكرار بالرابط الكامل في دور الإرشاد');
+  // v-live-fresh: روابط التواصل بالرابط الكامل أيضًا — ودور الإرشاد كما كان
+  assert.ok(c.includes("const host = (siteGuideTurn || require('./live-social.js').isSocialUrl(urlMatch[0])) ? urlMatch[0]"), 'التكرار بالرابط الكامل في دور الإرشاد');
 });
 
 test('٧. «اسأل الكل» بسرعة المزوّد نفسه ومنسّق حيًّا — لا وتيرة ٦٦ حرفًا/ث ولا نصّ خام', () => {

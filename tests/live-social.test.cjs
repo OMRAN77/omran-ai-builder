@@ -1,7 +1,8 @@
 // tests/live-social.test.cjs — v-live-social (طلب المالك أوّل أكتوبر: «معلومات… من الجوجل و… من التواصل الاجتماعي…
 // عن كل شي… اريده ai فعلن وليس كلام فقط»، وقراره: «ليس للمجاني فقط المشتركين وانا بلا حد»).
 // يثبّت: بحث التواصل (سلسلة المزوّدين بقيد المنصّات، وإسقاط ما ليس اجتماعيًّا)، والدمج بقسمين مع تنبيه الأمانة،
-// وسقف المشترك ١٠٠ والمالك بلا حدّ، والتوصيل في chat.js (بالتوازي، والمسارات المخصّصة بلا تواصل، والمجّانيّ بلا أداة)،
+// وسقف المشترك ١٠٠ والمالك بلا حدّ، والتوصيل في chat.js (بالتوازي، والمجّانيّ بلا أداة؛ والمسارات المخصّصة تأخذ التواصل
+// بعد قائمتها منذ v-live-fresh)،
 // وقاعدة «ابحث في كلّ سؤال معلومة» في وصف الأداة ودور الأدوات وحده.
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 'x'.repeat(40);
 const test = require('node:test');
@@ -108,20 +109,23 @@ test('٦. السقف: المشترك ١٠٠ يوميًّا، والرفض نصّ
   assert.match(usage.slice(i, i + 600), /if \(isOwnerUsername\(username\) \|\| await isVip\(username\)\) \{\n\s+return \{ allowed: true, username, remaining: Infinity \};/);
 });
 
-test('٧. التوصيل في chat.js: السقف أوّلًا، ثمّ الويب والتواصل بالتوازي، والمسارات المخصّصة بلا تواصل', () => {
+test('٧. التوصيل في chat.js: السقف أوّلًا، ثمّ الويب والتواصل بالتوازي لكلّ بحث، والمخصّص يُدمج بصيغته', () => {
   const i = CHAT.indexOf("const __quota = await __ls.searchQuota(token, clientIp(req));");
-  const j = CHAT.indexOf('await Promise.all([\n                  tavilySearch(_q, reC, __plateAsk, country, city),');
+  const j = CHAT.indexOf('await Promise.all([\n                  tavilySearch(__sq, reC, __plateAsk, country, city, __win),');
   assert.ok(i > 0 && j > i, 'السقف قبل البحث');
   assert.match(CHAT, /if \(!__quota\.ok\) result = __ls\.QUOTA_TEXT;/);
-  assert.match(CHAT, /isCuratedSearch\(_q, reC, __plateAsk\) \? Promise\.resolve\(null\) : __ls\.socialSearch\(_q\)/);
-  assert.match(CHAT, /result = filterDuplicateUrls\(__ls\.mergeWebSocial\(__web, __social\)\);/);
+  // v-live-fresh (المالك: «نعم ضيفها»): التواصل لكلّ بحث بلا استثناء، والمسار المخصّص يحدّد صيغة الدمج لا وجود التواصل
+  assert.match(CHAT, /\n\s+__ls\.socialSearch\(__sq, \{ recency: __win \}\),\n/);
+  assert.ok(!/Promise\.resolve\(null\) : __ls\.socialSearch/.test(CHAT));
+  assert.match(CHAT, /const __curated = isCuratedSearch\(__sq, reC, __plateAsk\) \|\| String\(__web \|\| ''\)\.indexOf\(PLACES_MARK\) >= 0;/);
+  assert.match(CHAT, /result = filterDuplicateUrls\(__ls\.mergeWebSocial\(__web, __social, \{ curated: __curated \}\)\)/);
   // السقف بعد فرعي «سؤال عن التطبيق» و«سقف البحثين» فلا يُعدّ ما لم يُبحث فيه
   assert.ok(CHAT.indexOf('} else if (mySearchNo > 2) {') < i);
-  // حارس واحد: الوحدة تُستدعى في حلقة الأدوات وحدها
-  assert.equal(CHAT.split("require('./live-social.js')").length - 1, 1);
+  // الوحدة لا تُحمَّل في نطاق الملفّ: كلّ استدعاء داخل المعالج (حلقة الأدوات، وفرز التكرار)
+  for (const ln of CHAT.split('\n').filter((l) => l.includes("require('./live-social.js')"))) assert.match(ln, /^\s{6,}/, ln.trim().slice(0, 80));
 });
 
-test('٨. المسارات المخصّصة: الأرقام وعقار الإمارات والفنادق بلا تواصل، والأجنبيّ منها يأخذه', () => {
+test('٨. المسارات المخصّصة (صيغة الدمج): الأرقام وعقار الإمارات والفنادق، والأجنبيّ منها بحث عامّ', () => {
   const s = CHAT.indexOf('function isCuratedSearch(query, reC, plateAsk) {');
   const e = CHAT.indexOf('\n}\n', s);
   const ctx = {
@@ -133,10 +137,10 @@ test('٨. المسارات المخصّصة: الأرقام وعقار الإم�
   vm.runInNewContext(CHAT.slice(s, e + 2) + '\nthis.f = isCuratedSearch;', ctx);
   assert.equal(ctx.f('رقم مميز للبيع', null, false), true);
   assert.equal(ctx.f('عقار في دبي', null, false), true);
-  assert.equal(ctx.f('عقار في لندن', null, false), false, 'الأجنبيّ يمرّ بالبحث العامّ فيأخذ التواصل');
+  assert.equal(ctx.f('عقار في لندن', null, false), false, 'الأجنبيّ يمرّ بالبحث العامّ');
   assert.equal(ctx.f('المزيد', { layer: 1 }, false), true, 'متابعة سياق العقار');
   assert.equal(ctx.f('فندق في لندن', null, false), true, 'الفنادق مسارها المخصّص في كلّ مكان');
-  assert.equal(ctx.f('دقات قلب النملة', null, false), false, 'سؤال المعرفة العامّة يأخذ التواصل');
+  assert.equal(ctx.f('دقات قلب النملة', null, false), false, 'سؤال المعرفة العامّة بحث عامّ');
   assert.equal(ctx.f('x', null, true), true, 'سؤال الأرقام من سياق المحادثة');
 });
 

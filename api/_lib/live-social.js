@@ -11,7 +11,11 @@
 
    الكلفة (قرار المالك: «ليس للمجاني فقط المشتركين وانا بلا حد»): الطبقة المجانيّة لا تملك الأداة أصلًا. المشترك
    ١٠٠ نداء بحث في اليوم (النداء = ويب + تواصل)، والمالك وVIP بلا حدّ (معاملة `checkAndConsumeCustom` القائمة).
-   أرخص الأعماق في كلّ مزوّد للقسم الاجتماعيّ (Tavily basic، Perplexity sonar) لأنّه مكمّل لا بديل. */
+   أرخص الأعماق في كلّ مزوّد للقسم الاجتماعيّ (Tavily basic، Perplexity sonar) لأنّه مكمّل لا بديل.
+
+   v-live-fresh: نافذة زمنيّة لكلّ بحث (live-fresh.js) وتاريخ كلّ منشور بجانبه متى أعطاه المزوّد؛ والمسارات المخصّصة
+   (الأرقام، عقار الإمارات، الفنادق، بطاقات الأماكن) تأخذ القسم الاجتماعيّ بعد قائمتها لا مكانها (طلب المالك «نعم ضيفها»). */
+const { GOOGLE_RESTRICT } = require('./live-fresh.js');
 
 const SOCIAL_DOMAINS = [
   'youtube.com', 'reddit.com', 'instagram.com', 'tiktok.com', 'x.com',
@@ -46,47 +50,55 @@ async function timed(fetchImpl, url, opts, ms) {
 }
 function asJSON(t) { try { return JSON.parse(t); } catch (e) { return null; } }
 const clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
+/* تاريخ المنشور YYYY-MM-DD إن كان صالحًا — وإلّا لا شيء (لا تاريخ مخمَّن) */
+function dayOf(v) {
+  const m = String(v || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[0];
+  const t = Date.parse(String(v || ''));
+  return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : '';
+}
 
 /* بند واحد لكلّ نتيجة: «[المنصّة] العنوان / الرابط / مقتطف» — والنتيجة غير الاجتماعيّة تُسقط (المزوّد قد يتجاوز القيد) */
 function lines(items) {
   const out = [];
   for (const x of items) {
     if (!x || !x.url || !isSocialUrl(x.url)) continue;
-    out.push((out.length + 1) + '. [' + platformOf(x.url) + '] ' + clip(x.title || x.url, 140) + '\n' + x.url + (x.text ? '\n' + clip(x.text, 380) : ''));
+    const day = dayOf(x.date);
+    out.push((out.length + 1) + '. [' + platformOf(x.url) + '] ' + clip(x.title || x.url, 140) + (day ? ' (' + day + ')' : '') + '\n' + x.url + (x.text ? '\n' + clip(x.text, 380) : ''));
     if (out.length >= 7) break;
   }
   return out.length ? out.join('\n\n') : null;
 }
 
-async function viaTavily(query, f) {
+async function viaTavily(query, f, win) {
   const key = (process.env.TAVILY_API_KEY || '').trim();
   if (!key) return null;
   const r = await timed(f, 'https://api.tavily.com/search', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: key, query: String(query || '').slice(0, 380), max_results: 8, search_depth: 'basic', include_domains: SOCIAL_DOMAINS }),
+    body: JSON.stringify(Object.assign({ api_key: key, query: String(query || '').slice(0, 380), max_results: 8, search_depth: 'basic', include_domains: SOCIAL_DOMAINS }, win ? { time_range: win } : {})),
   }, 12000);
   if (!r.ok) { console.warn('[social] tavily HTTP ' + r.status); return null; }
   const d = asJSON(r.body) || {};
-  return lines((d.results || []).map((x) => ({ url: x.url, title: x.title, text: x.content })));
+  return lines((d.results || []).map((x) => ({ url: x.url, title: x.title, text: x.content, date: x.published_date })));
 }
 
-async function viaPerplexity(query, f) {
+async function viaPerplexity(query, f, win) {
   const key = (process.env.PERPLEXITY_API_KEY || '').trim();
   if (!key) return null;
   const r = await timed(f, 'https://api.perplexity.ai/chat/completions', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-    body: JSON.stringify({
+    body: JSON.stringify(Object.assign({
       model: 'sonar', max_tokens: 500, temperature: 0.2,
       search_domain_filter: SOCIAL_DOMAINS,
       messages: [
         { role: 'system', content: 'Summarise what people publicly say about the question on social platforms: concrete experiences, prices, names, places. Note disagreement. Be brief.' },
         { role: 'user', content: String(query || '').slice(0, 500) },
       ],
-    }),
+    }, win ? { search_recency_filter: win } : {})),
   }, 15000);
   if (!r.ok) { console.warn('[social] perplexity HTTP ' + r.status); return null; }
   const d = asJSON(r.body) || {};
-  const items = (Array.isArray(d.search_results) ? d.search_results : []).map((x) => ({ url: x && x.url, title: x && x.title }));
+  const items = (Array.isArray(d.search_results) ? d.search_results : []).map((x) => ({ url: x && x.url, title: x && x.title, date: x && (x.date || x.last_updated) }));
   if (!items.length && Array.isArray(d.citations)) d.citations.forEach((u) => { if (typeof u === 'string') items.push({ url: u, title: u }); });
   const list = lines(items);
   if (!list) return null; /* ملخّص بلا رابط اجتماعيّ واحد = لا دليل أنّه من التواصل */
@@ -94,34 +106,44 @@ async function viaPerplexity(query, f) {
   return (sum ? sum + '\n\n' : '') + list;
 }
 
-async function viaGoogle(query, f) {
+async function viaGoogle(query, f, win) {
   const k = (process.env.GOOGLE_SEARCH_API_KEY || '').trim();
   const cx = (process.env.GOOGLE_SEARCH_CX || '').trim();
   if (!k || !cx) return null;
   const q = String(query || '').slice(0, 240) + ' (' + SOCIAL_DOMAINS.map((d) => 'site:' + d).join(' OR ') + ')';
-  const r = await timed(f, 'https://www.googleapis.com/customsearch/v1?key=' + encodeURIComponent(k) + '&cx=' + encodeURIComponent(cx) + '&num=8&q=' + encodeURIComponent(q), {}, 12000);
+  const r = await timed(f, 'https://www.googleapis.com/customsearch/v1?key=' + encodeURIComponent(k) + '&cx=' + encodeURIComponent(cx) + '&num=8&q=' + encodeURIComponent(q) + (win && GOOGLE_RESTRICT[win] ? '&dateRestrict=' + GOOGLE_RESTRICT[win] : ''), {}, 12000);
   if (!r.ok) { console.warn('[social] google HTTP ' + r.status); return null; }
   const d = asJSON(r.body) || {};
-  return lines((d.items || []).map((x) => ({ url: x.link, title: x.title, text: x.snippet })));
+  const meta = (x) => ((x.pagemap && Array.isArray(x.pagemap.metatags) && x.pagemap.metatags[0]) || {});
+  return lines((d.items || []).map((x) => ({ url: x.link, title: x.title, text: x.snippet, date: meta(x)['article:published_time'] })));
 }
 
-/** بحث التواصل الاجتماعيّ: أوّل مزوّد يرجع منشورات اجتماعيّة فعلًا يفوز. لا يرمي — الفشل null. */
+/** بحث التواصل الاجتماعيّ: أوّل مزوّد يرجع منشورات اجتماعيّة فعلًا يفوز. لا يرمي — الفشل null.
+    opts.recency: نافذة live-fresh ('week' | 'month' | 'year' | '' بلا قيد) تُمرَّر لكلّ مزوّد بلغته. */
 async function socialSearch(query, opts) {
   const o = opts || {};
   const f = o.fetchImpl || fetch;
   const chain = o.chain || [viaTavily, viaPerplexity, viaGoogle];
   for (const step of chain) {
     let out = null;
-    try { out = await step(query, f); } catch (e) { console.warn('[social] ' + (step.name || 'step') + ' ' + (e && e.message)); }
+    try { out = await step(query, f, o.recency || ''); } catch (e) { console.warn('[social] ' + (step.name || 'step') + ' ' + (e && e.message)); }
     if (out) return out;
   }
   return null;
 }
 
-/** يدمج الويب والتواصل في نتيجة واحدة بقسمين، مع تنبيه أمانة: منشورات التواصل تجارب أفراد لا حقائق موثّقة */
-function mergeWebSocial(web, social) {
+/** يدمج الويب والتواصل في نتيجة واحدة بقسمين، مع تنبيه أمانة: منشورات التواصل تجارب أفراد لا حقائق موثّقة.
+    opts.curated: نتيجة مسار مخصّص بقائمة وأمر عرض — تبقى كما هي حرفيًّا، والتواصل قسم منفصل بعدها. */
+function mergeWebSocial(web, social, opts) {
   const w = String(web || '').trim();
   if (!social) return w;
+  if (opts && opts.curated) {
+    return w + '\n\n📱 من التواصل الاجتماعي (منشورات عامّة):\n' + social
+      + '\n\n[عند العرض]: اعرض القائمة أعلاه أوّلًا كما أُمرت بحرفها وتنسيقها. ثمّ تحتها قسمًا منفصلًا بعنوان «📱 من التواصل الاجتماعي:» '
+      + 'فيه أبرز ما وجدته (من ٢ إلى ٤ بنود): لكلّ بند المنصّة وتاريخه إن ظهر وجملة قصيرة، ورابطه وحده في سطر مستقلّ بصيغة [اسم قصير](الرابط). '
+      + 'أوامر «لا تذكر أيّ موقع آخر» و«بلا روابط» و«لا سطر ختاميّ» تخصّ القائمة أعلاه ولا تمنع هذا القسم. '
+      + 'منشورات التواصل إعلانات وتجارب أفراد لا معلومات موثّقة — قلها كذلك، ونبّه ألّا يُدفع مال لصاحب منشور قبل التحقّق منه.';
+  }
   return (w ? '🌐 من الويب:\n' + w + '\n\n' : '')
     + '📱 من التواصل الاجتماعي (منشورات عامّة):\n' + social
     + '\n\n[عند العرض]: افصل ما جاء من الويب عمّا جاء من التواصل الاجتماعي، واذكر المنصّة بجانب كلّ معلومة منه. '
