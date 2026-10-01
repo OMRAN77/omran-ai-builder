@@ -33,19 +33,22 @@ function frameTask(n, scene) {
     + 'and never add a person who is not in the reference photos. A single photorealistic still frame, all ' + n + ' faces sharp.';
 }
 
-async function callImage(apiKey, parts, aspect, fetchImpl) {
+/* cfg اختياريّ (v-omni-first-frame): { timeoutMs, temperature, imageSize, tag } — بلا cfg تبقى إعدادات إطار
+   المجموعة حرفيًّا كما كانت (٠٫١٥، 2K، ٢٤٠ث). */
+async function callImage(apiKey, parts, aspect, fetchImpl, cfg) {
+  const c = cfg || {};
   const f = fetchImpl || fetch;
   const upstream = await f(IMAGE_URL + apiKey, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.15, imageConfig: { imageSize: '2K', aspectRatio: aspect } } }),
-    signal: AbortSignal.timeout(IMAGE_TIMEOUT),
+    body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: c.temperature != null ? c.temperature : 0.15, imageConfig: { imageSize: c.imageSize || '2K', aspectRatio: aspect } } }),
+    signal: AbortSignal.timeout(c.timeoutMs || IMAGE_TIMEOUT),
   });
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
     // المفتاح لا يُطبع أبدًا في السجلّ ولا في ردّ المستخدم.
     const detail = String((data && data.error && data.error.message) || 'unknown').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
-    console.error('[trend-people] group frame failed status=' + upstream.status + ' detail=' + detail);
+    console.error('[trend-people] ' + (c.tag || 'group') + ' frame failed status=' + upstream.status + ' detail=' + detail);
     return { error: 'تعذّر تجهيز الأشخاص معًا الآن. أعد المحاولة بعد لحظات.', status: 502, retryable: true };
   }
   const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
@@ -75,4 +78,64 @@ async function groupFirstFrame(apiKey, photos, scene, ratio, o) {
   return (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl);
 }
 
-module.exports = { MAX_PEOPLE, aspectOf, frameTask, groupFirstFrame };
+/* ── v-omni-first-frame (١ أكتوبر ٢٠٢٦، المالك بعد فشل قفل النصّ مرّتين بالدليل: «مافي شي تغيّر… شوف الفرق الشخصيّة»؛
+   واختار صراحةً «أوّل لقطة بوجهها» بكلفتها ≈ ٠٫١٣٤$ لكلّ فيديو سينمائيّ بصورة، على مفتاحه، ونقاط المستخدم كما هي).
+   المحرّك السينمائيّ لا يجعل الصورة أوّل إطار — يأخذها مرجعًا ويرسم الشخص من جديد، ووجه صورة «واقف كامل» صغير يُرى
+   خشنًا فيُعاد رسمه تقريبًا (PITFALLS: ميزانيّة الرموز الثابتة). فنبني أوّل إطار من وصف المستخدم بوجهه هو — بخطّ إطار
+   المجموعة نفسه (برو، حرارة ٠٫١٥، لقطة وجه مقرّبة) — ثمّ يحرّكه المحرّك. لا يرمي أبدًا: أيّ عطب = { error } فيعود
+   المتّصل لمساره السابق حرفيًّا. */
+
+/* أسلوب فنّيّ صريح في الوصف — بحدود عربيّة (\b لاتينيّ فقط، انظر image-intent.js): «كرتونة» صندوق لا أسلوب،
+   و«ديزني/ليغو» تُذكر مكانًا ولعبة أكثر منها أسلوبًا، و«واقعي» ليس أسلوبًا هنا (الأصل صورة فوتوغرافيّة). */
+const ART_STYLE_RE = /(?:^|[\s،,])(?:ب|ك|ال|بال|كال|لل)?(?:أنمي|انمي|أنيمي|انيمي|مانجا|كرتون|كارتون|بيكسار|جيبلي)(?:ي|ية|يه)?(?=$|[\s،,.!؟?])|\b(?:anime|manga|cartoon(?:ish)?|pixar|ghibli|claymation|pixel\s*art)\b/i;
+
+/* عنوان اللقطة مكيَّف من v-pstyle-closeup: مرجع هويّة لا شخص إضافيّ */
+const SOLO_CLOSEUP_LABEL = 'Close-up — the face of the same person in Photo 1, cropped and zoomed in from that same photo (identity reference only: NOT a second person, never drawn as an extra face, an inset or a frame):';
+
+/** مهمّة أوّل إطار لشخص الصورة داخل مشهد الوصف — الوجه والجسم منه، والمكان واللبس من الوصف. */
+function soloFrameTask(scene, o) {
+  const opt = o || {};
+  return 'TASK: create the OPENING FRAME of a video — one single still image — for this video description: "'
+    + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 900) + '".\n'
+    + 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video. '
+    + 'The setting, clothing, hairstyle, pose and lighting follow the description; anything it does not mention stays as in Photo 1. Never remove a hijab or headscarf that Photo 1 shows.\n'
+    + 'IDENTITY (mandatory): it is this exact same real person — the same face shape, eyes, eyebrows, nose, lips, jawline, facial hair, skin tone and marks, apparent age, and the same body shape and size — copied from Photo 1'
+    + (opt.closeup ? ' and the close-up of their face' : '') + '. Never a different, younger, slimmer, prettier or more generic person; someone who knows them must recognize them instantly.\n'
+    + (opt.art ? 'Use the art style the description asks for, drawing their own real features in that style.' : 'Photorealistic, like a real film still.')
+    + ' Their face is clearly visible, unobstructed and sharp. No text, captions, logos or watermarks.';
+}
+
+/**
+ * أوّل إطار لشخص صورة واحدة داخل مشهد وصف المستخدم.
+ * photo: { data, mime? }؛ o: { budgetMs (الكشف + التوليد معًا)، faceCrops، callImage، fetchImpl }.
+ * يرجع { b64, mime, ref } — ref لقطة الوجه (مرجع الملامح للمحرّك) أو null — أو { error } أو null بلا مدخلات.
+ */
+async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
+  const opt = o || {};
+  if (!apiKey || !photo || !photo.data) return null;
+  const started = Date.now();
+  const budget = opt.budgetMs || 90000;
+  try {
+    const shaped = { data: String(photo.data), mime: photo.mime || mergeIdentity.sniffMime(photo.data) };
+    let crops = [];
+    try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
+    /* وجه واحد بارز فقط (v-pstyle-closeup): لقطة أحد وجهين تسحب ملامحه إلى الآخر */
+    const crop = crops.length === 1 ? crops[0] : null;
+    const text = String(scene || '');
+    const art = ART_STYLE_RE.test(text);
+    const parts = [{ text: 'Photo 1 — the user\'s own photo of the real person to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
+    if (crop) parts.push({ text: SOLO_CLOSEUP_LABEL }, { inlineData: { mimeType: crop.mime, data: crop.data } });
+    parts.push({ text: soloFrameTask(text, { closeup: !!crop, art }) });
+    const left = budget - (Date.now() - started);
+    if (left < 20000) return { error: 'budget' };
+    /* 1K: الفيديو 720p/1080p، والسعر نفسه لـ1K و2K — وحمولة أصغر للمحرّك */
+    const out = await (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, { timeoutMs: left, temperature: mergeIdentity.mergeTemperature(art, text), imageSize: '1K', tag: 'solo' });
+    if (!out || !out.b64) return { error: (out && (out.why || out.status)) || 'no image' };
+    return { b64: out.b64, mime: out.mime || 'image/png', ref: crop ? { data: crop.data, mime: crop.mime } : null };
+  } catch (e) {
+    // يصل السجلّ — والمفتاح لا يُطبع أبدًا (كما في callImage).
+    return { error: e && e.name === 'TimeoutError' ? 'timeout' : String((e && e.message) || e).replace(/key=[^&\s"']+/g, 'key=***').slice(0, 120) };
+  }
+}
+
+module.exports = { MAX_PEOPLE, aspectOf, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame };
