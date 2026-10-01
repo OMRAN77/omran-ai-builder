@@ -941,8 +941,9 @@ const I18N = {
     mahaImageFailedReply: "ما قدرت أسوي الصورة، جرب توصيف ثاني",
     voiceGenderLabel: 'نوع الصوت المفضل',
     voiceGenderDefault: 'افتراضي (صوت الجهاز)',
-    voiceGenderMale: 'صوت رجل',
-    voiceGenderFemale: 'صوت امرأة',
+    voiceGenderMale: 'عبدالله',
+    voiceGenderFemale: 'مها',
+    voiceSampleIntro: 'هلا والله، أنا {name}. كيف أقدر أساعدك اليوم؟', // v-voice-names
     voiceSpeedLabel: 'سرعة الصوت',
     voiceSpeedSlow: 'بطيء',
     voiceSpeedNormal: 'عادي',
@@ -2067,8 +2068,9 @@ const I18N = {
     mahaImageFailedReply: "I couldn't make the picture, try describing it differently",
     voiceGenderLabel: 'Preferred voice type',
     voiceGenderDefault: 'Default (device voice)',
-    voiceGenderMale: 'Male voice',
-    voiceGenderFemale: 'Female voice',
+    voiceGenderMale: 'Abdullah',
+    voiceGenderFemale: 'Maha',
+    voiceSampleIntro: 'Hi, I\'m {name}. How can I help you today?', // v-voice-names
     voiceSpeedLabel: 'Voice speed',
     voiceSpeedSlow: 'Slow',
     voiceSpeedNormal: 'Normal',

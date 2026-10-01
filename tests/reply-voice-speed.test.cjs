@@ -57,7 +57,7 @@ test('٢. صوت الردود (fetchCloudSpeech) يرسل السرعة مع ال
   await ctx.f('مرحبا');
   assert.equal(calls[1].body.speed, 'xfast');
   // المستدعون الثلاثة يمرّون بـspeakSmart (← fetchCloudSpeech) فلا يحتاج أيّ منهم تعديلًا
-  assert.ok(read('js/app-07-voice.js').includes('speakSmart(testTextByLang[lang] || testTextByLang.en, null, null, true);'), 'تجربة الصوت');
+  assert.ok(read('js/app-07-voice.js').includes("speakSmart(voicePersonaSample(localStorage.getItem('aiapp_voice_gender') === 'male' ? 'male' : 'female'), null, null, true);"), 'تجربة الصوت (v-voice-names: تعريف الشخصيّة المختارة)');
   assert.ok(read('js/app-04-i18n-state.js').includes('speakSmart(m.content, null,'), 'استمع');
   assert.ok(read('js/app-09-attach.js').includes('speakSmart(lastMsg.content, null, null, false, wordEls);'), 'القراءة التلقائيّة');
 });

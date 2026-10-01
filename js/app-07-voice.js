@@ -30,10 +30,18 @@ btnStop.onclick = () => {
 function setVoiceGenderUI(val){
   document.querySelectorAll('.voiceGenderBtn').forEach(b => b.classList.toggle('active', b.dataset.gender === val));
 }
+/* v-voice-names (المالك ١ أكتوبر «ضيف عبدالله… ويكون في الإعدادات صوت تجريبيّ: مها وعبدالله»): الزرّان باسميهما،
+   والضغط يختار الصوت ويُسمعك تعريفه بنفسه فورًا («أنا مها…»/«أنا عبدالله…») — وزرّ التجربة يُسمع المختار. */
+function voicePersonaSample(gender){
+  const name = t(gender === 'male' ? 'voiceGenderMale' : 'voiceGenderFemale');
+  const tpl = t('voiceSampleIntro');
+  return (tpl && tpl !== 'voiceSampleIntro' ? tpl : "Hi, I'm {name}. How can I help you today?").split('{name}').join(name);
+}
 document.querySelectorAll('.voiceGenderBtn').forEach(b => {
   b.onclick = () => {
     localStorage.setItem('aiapp_voice_gender', b.dataset.gender);
     setVoiceGenderUI(b.dataset.gender);
+    try{ speakSmart(voicePersonaSample(b.dataset.gender), null, null, true); }catch(e){ __swallow(e, 'voice:persona-sample'); }
   };
 });
 // v-maha-voice-speed: نفس نمط أزرار الجنس أعلاه لأزرار السرعة — يُزامَن عند فتح
@@ -51,14 +59,8 @@ document.querySelectorAll('.voiceSpeedBtn').forEach(b => {
 const btnTestVoice = $('#btnTestVoice');
 if(btnTestVoice){
   btnTestVoice.onclick = () => {
-    const testTextByLang = {
-      ar: 'مرحبًا، هذا اختبار للصوت.',
-      en: 'Hello, this is a voice test.',
-      fr: 'Bonjour, ceci est un test de la voix.',
-      hi: 'नमस्ते, यह आवाज़ का परीक्षण है।',
-      ur: 'ہیلو، یہ آواز کا امتحان ہے۔'
-    };
-    speakSmart(testTextByLang[lang] || testTextByLang.en, null, null, true);
+    // v-voice-names: التجربة صارت تعريف الشخصيّة المختارة بلغة الواجهة
+    speakSmart(voicePersonaSample(localStorage.getItem('aiapp_voice_gender') === 'male' ? 'male' : 'female'), null, null, true);
   };
 }
 // ---- Mic: record audio (works on ALL devices: Android + iPhone + desktop) and
