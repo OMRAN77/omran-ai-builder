@@ -269,7 +269,7 @@ test('مولّد المعاينات يشمل الميزات الأساسيّة �
 });
 
 test('المكياج يأخذ المعاينة المولّدة أوّلًا (صوره الجاهزة جسم كامل لا يظهر فيها)', () => {
-  assert.match(app13, /const PREVIEW_FIRST = \['makeup'\]/, 'لا قائمة معاينة-أوّلًا');
+  assert.match(app13, /const PREVIEW_FIRST = \['makeup', 'nails'\]/, 'لا قائمة معاينة-أوّلًا (v-nails-previews: والأظافر)');
   assert.match(app13, /function optionImgs\(f, v\)/, 'لا دالّة اختيار صورة الخيار');
   assert.match(app13, /PREVIEW_FIRST\.indexOf\(f\) !== -1 \? \{ img: gen, img2: asset \}/, 'الترتيب معكوس');
   assert.ok(!/img: 'assets\/studio\/options\/' \+ feature \+ '-' \+ opt\.value/.test(app13), 'المنتقي ما زال يثبّت الصورة الجاهزة');

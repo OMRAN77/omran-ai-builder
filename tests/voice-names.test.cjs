@@ -65,7 +65,7 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
   els.btnMahaDock = { title: '', querySelector: () => gimg, appendChild: (x) => { gimg = x; } };
   const ctx = {
     localStorage: { getItem: (k) => store[k] || null, setItem: (k, v) => { store[k] = v; } },
-    document: { getElementById: (id) => els[id] || null, createElement: () => ({ style: {}, setAttribute() {} }), querySelector: (q) => (q === '#btnMahaDock .mahaGlyph' ? glyph : null) },
+    document: { getElementById: (id) => els[id] || null, createElement: () => ({ style: {}, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; } }), querySelector: (q) => (q === '#btnMahaDock .mahaGlyph' ? glyph : null) },
     btnMahaEl: { get title() { return fab.title; }, set title(v) { fab.title = v; }, querySelector: () => fab.img },
     __swallow() {}, Promise,
   };
@@ -76,8 +76,8 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
   assert.equal(ctx.g(), 'male');
   assert.equal(els.mahaCallNameLabel.textContent, 'عبدالله');
   assert.equal(fab.img.src, '/icons/abdullah-icon.svg');
-  assert.equal(glyph.style.display, 'none', 'v-abdullah-glyph: حرف «م» يختفي لعبدالله');
-  assert.equal(gimg.src, '/icons/abdullah-glyph.png', 'وصورة «ع» المقصوصة من لقطة المالك مكانه');
+  assert.equal(glyph.style.display, 'none', 'v-persona-medallions: الحرف النصّيّ مخفيّ');
+  assert.equal(gimg.getAttribute('src'), '/icons/abdullah-glyph.png', 'ميداليّة «ع» من لقطة المالك');
   assert.equal(gimg.style.display, 'block');
   assert.equal(els.btnMahaDock.title, 'عبدالله');
   assert.equal(await ctx.ensure(), 'male', 'بداية المكالمة لا تعيده');
@@ -86,8 +86,9 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
   ctx.ui();
   assert.equal(els.mahaCallNameLabel.textContent, 'مها');
   assert.equal(glyph.textContent, 'م');
-  assert.equal(glyph.style.display, '');
-  assert.equal(gimg.style.display, 'none', 'مها: «م» نصًّا والصورة مخفيّة');
+  assert.equal(gimg.getAttribute('src'), '/icons/maha-glyph.png', 'مها: ميداليّة «م» من لقطة المالك');
+  assert.equal(gimg.style.display, 'block');
+  for (const f of ['icons/maha-glyph.png', 'icons/abdullah-glyph.png']) assert.ok(fs.statSync(path.join(root, f)).size < 40000, f + ' خفيفة');
   delete store.aiapp_voice_gender;
   assert.equal(await ctx.ensure(), 'female', 'أوّل تشغيل = مها');
 });
