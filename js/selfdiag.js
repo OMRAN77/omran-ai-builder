@@ -28,6 +28,20 @@
     try{ localStorage.removeItem('aiapp_store'); }catch(e){ /* guard-ok */ }
     if((sessionStorage.getItem('aiapp_store') || '') === 'huawei'){
       document.documentElement.classList.add('store-safe');
+      /* v-hw-nomarkets (رفض هواوي ٢٩ سبتمبر بقاعدة 11.4 «عملات أجنبيّة وكريبتو» — بعد v-store-safe-revert؛ قرار المالك
+         ٢ أكتوبر: «شيلها من هواوي فقط وخلّها لي المالك والتطبيقات الأخرى»): داخل حزمة هواوي تُخفى الأسواق كلّها (شريط
+         الأسهم وزرّه، سوق الأسهم بقسم العملات، بطاقة «عن») لكلّ حساب غير المالك — المراجع لا يراها. الموقع والمتاجر
+         الأخرى وحساب المالك بلا تغيير، وsticker الطيّ لا يُحذف (قرار مالك) بل يُخفى مع شريطه. */
+      try{
+        var __u = String(sessionStorage.getItem('aiapp_username') || localStorage.getItem('aiapp_username') || '').trim().toLowerCase();
+        if(__u !== 'omran'){
+          document.documentElement.classList.add('store-nomarkets');
+          var __st = document.createElement('style');
+          __st.id = 'hwNoMarketsCss';
+          __st.textContent = 'html.store-nomarkets #stockTicker, html.store-nomarkets #stockTickerToggle, html.store-nomarkets #btnStocks, html.store-nomarkets #stocksModal, html.store-nomarkets #aboutStocksCard{display:none !important;}';
+          (document.head || document.documentElement).appendChild(__st);
+        }
+      }catch(e){ /* guard-ok: بلا الإخفاء تبقى النسخة الكاملة */ }
       /* v-store-twa (رفض هواوي 4.1 مرة ثانية — 1.3.9): مدخل المتجر يحمل بيان
          الحزمة الخاص به (manifest-huawei.json: start_url = /?store=huawei) حتى
          يبقى العلم بعد التثبيت من المتصفح ويقرأه مولّد الحزمة من الصفحة نفسها. */

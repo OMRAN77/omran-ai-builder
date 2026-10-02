@@ -31660,6 +31660,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   const modal = $('#stocksModal');
   const btnOpen = $('#btnStocks');
   if(!modal || !btnOpen) return;
+  /* v-hw-nomarkets: داخل حزمة هواوي لغير المالك لا نداء أسعار واحد (الواجهة مخفيّة من selfdiag.js) */
+  if(document.documentElement.classList.contains('store-nomarkets')) return;
   const btnClose = $('#stocksCloseBtn');
   const input = $('#stockSymbolInput');
   const loadBtn = $('#stockLoadBtn');
