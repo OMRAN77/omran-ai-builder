@@ -16294,14 +16294,26 @@ function mahaUpdatePersonaUI(){
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
   if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
   if(btnMahaEl) btnMahaEl.title = name;
-  /* v-voice-letter (المالك ١ أكتوبر «إذا اختار مها تخليها م تحت، وإذا اختار عبدالله يطلع حرف ع»): حرف زرّ الكتابة. */
+  /* v-voice-letter (المالك ١ أكتوبر «إذا اختار مها تخليها م تحت، وإذا اختار عبدالله يطلع حرف ع»): حرف زرّ الكتابة.
+     v-abdullah-glyph (المالك ٢ أكتوبر، لقطة الزرّ: «قصّ الي أرسلتلك وحطّها بدل القديم»): «ع» صورة مقصوصة من لقطته
+     (/icons/abdullah-glyph.png، خلفيّة شفّافة) بدل حرف الخطّ؛ «م» نصّ كما هو. */
   const glyph = document.querySelector('#btnMahaDock .mahaGlyph');
-  if(glyph && glyph.textContent !== (male ? 'ع' : 'م')){
-    glyph.textContent = male ? 'ع' : 'م';
-    try{ if(typeof window.__mahaGlyphFix === 'function') window.__mahaGlyphFix(); }catch(e){ __swallow(e, 'maha:glyph-fix'); }
-  }
   const dock = document.getElementById('btnMahaDock');
-  if(dock) dock.title = name;
+  if(glyph){
+    if(glyph.textContent !== 'م'){ glyph.textContent = 'م'; try{ if(typeof window.__mahaGlyphFix === 'function') window.__mahaGlyphFix(); }catch(e){ __swallow(e, 'maha:glyph-fix'); } }
+    glyph.style.display = male ? 'none' : '';
+  }
+  if(dock){
+    let gi = dock.querySelector('.abdullahGlyph');
+    if(male && !gi){
+      gi = document.createElement('img');
+      gi.className = 'abdullahGlyph'; gi.alt = ''; gi.setAttribute('aria-hidden', 'true'); gi.src = '/icons/abdullah-glyph.png';
+      gi.style.cssText = 'width:22px; height:22px; object-fit:contain; display:block; pointer-events:none;';
+      dock.appendChild(gi);
+    }
+    if(gi) gi.style.display = male ? 'block' : 'none';
+    dock.title = name;
+  }
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
