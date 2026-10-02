@@ -4171,6 +4171,14 @@ const I18N = {
     voiceGenderMale: 'عبدالله',
     voiceGenderFemale: 'مها',
     voiceSampleIntro: 'هلا والله، أنا {name}. كيف أقدر أساعدك اليوم؟', // v-voice-names
+    fontSizeTiny: 'أصغر', // v-font-tuner
+    fontSizeMedium: 'متوسط', // v-font-tuner
+    fontSizeHuge: 'الأكبر', // v-font-tuner
+    fontWeightLabel: 'سماكة الخط', // v-font-tuner
+    fontWeightThin: 'رفيع', // v-font-tuner
+    fontWeightBold: 'سميك', // v-font-tuner
+    fontPreviewQ: 'هل تعرف إنه صار ممكن تغيّر حجم الخط وسماكته؟', // v-font-tuner
+    fontPreviewA: 'إي! اسحب الشريط تحت وجرّبها الحين.', // v-font-tuner
     voiceSpeedLabel: 'سرعة الصوت',
     voiceSpeedSlow: 'بطيء',
     voiceSpeedNormal: 'عادي',
@@ -5310,6 +5318,14 @@ const I18N = {
     voiceGenderMale: 'Abdullah',
     voiceGenderFemale: 'Maha',
     voiceSampleIntro: 'Hi, I\'m {name}. How can I help you today?', // v-voice-names
+    fontSizeTiny: 'Smallest', // v-font-tuner
+    fontSizeMedium: 'Medium', // v-font-tuner
+    fontSizeHuge: 'Largest', // v-font-tuner
+    fontWeightLabel: 'Font weight', // v-font-tuner
+    fontWeightThin: 'Thin', // v-font-tuner
+    fontWeightBold: 'Bold', // v-font-tuner
+    fontPreviewQ: 'Did you know you can now change the font size and weight?', // v-font-tuner
+    fontPreviewA: 'Yes! Just drag the slider below and try it now.', // v-font-tuner
     voiceSpeedLabel: 'Voice speed',
     voiceSpeedSlow: 'Slow',
     voiceSpeedNormal: 'Normal',
@@ -5400,7 +5416,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=709'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=710'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -10245,21 +10261,57 @@ document.querySelectorAll('.tab').forEach(tab => {
   };
 });
 
-/* v338: حجم خط المحادثة */
+/* v338: حجم خط المحادثة — v-font-tuner (المالك ٢ أكتوبر، لقطة «حجم الخط / سماكة الخط» بمعاينة محادثة): الأزرار الأربعة
+   صارت شريطين بمعاينة حيّة — الحجم ٧ درجات (العاديّ الثالثة = حجم المحادثة الافتراضيّ كما هو) والسماكة ٤.
+   الاختيار القديم (chatFontSize) يُنقل مرّة: صغير ٠، عاديّ ٢، كبير ٣، كبير جدًّا ٥ — بنفس مقاساته تقريبًا. */
+const FT_SIZES = [12, 13, 0, 15.5, 17, 18.5, 20]; // ٠ = العاديّ (لا يُفرض شيء)
+const FT_SIZE_KEYS = ['fontSizeTiny', 'fontSizeSmall', 'fontSizeNormal', 'fontSizeMedium', 'fontSizeLarge', 'fontSizeXLarge', 'fontSizeHuge'];
+const FT_WEIGHTS = [300, 400, 500, 700];
+const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'fontWeightBold'];
 (function(){
-  function applyFS(v){
-    document.documentElement.classList.remove('fs-small','fs-large','fs-xlarge');
-    if(v && v !== 'normal') document.documentElement.classList.add('fs-' + v);
-    document.querySelectorAll('.fontSizeBtn').forEach(b => b.classList.toggle('active', b.dataset.fs === v));
+  try{
+    const st = document.createElement('style');
+    st.id = 'ftChatCss';
+    st.textContent = 'html[data-chat-fs] .msg{font-size:var(--omran-chat-fs);} html[data-chat-fw] .msg-text{font-weight:var(--omran-chat-fw);}';
+    document.head.appendChild(st);
+  }catch(e){ __swallow(e, 'ui:font-tuner-css'); }
+  function readStep(key, def, max){
+    let v = NaN;
+    try{ v = parseInt(localStorage.getItem(key), 10); }catch(e){ __swallow(e, 'ui:font-tuner-read'); }
+    return (v >= 0 && v <= max) ? v : def;
   }
-  let saved = 'normal';
-  try{ saved = localStorage.getItem('chatFontSize') || 'normal'; }catch(e){ __swallow(e, "ui:app-05-ui#15"); }
-  applyFS(saved);
-  document.querySelectorAll('.fontSizeBtn').forEach(b => {
-    b.onclick = function(){
-      try{ localStorage.setItem('chatFontSize', b.dataset.fs); }catch(e){ __swallow(e, "save:app-05-ui#16"); }
-      applyFS(b.dataset.fs);
-    };
+  function migrate(){
+    try{
+      if(localStorage.getItem('chatFontStep') !== null) return;
+      const old = localStorage.getItem('chatFontSize');
+      const map = { small: 0, normal: 2, large: 3, xlarge: 5 };
+      if(old && map[old] !== undefined) localStorage.setItem('chatFontStep', String(map[old]));
+    }catch(e){ __swallow(e, 'ui:font-tuner-migrate'); }
+  }
+  function apply(){
+    const root = document.documentElement;
+    const si = readStep('chatFontStep', 2, 6), wi = readStep('chatFontWeight', 1, 3);
+    root.classList.remove('fs-small','fs-large','fs-xlarge'); // v338 القديمة
+    if(FT_SIZES[si]){ root.setAttribute('data-chat-fs', String(si)); root.style.setProperty('--omran-chat-fs', FT_SIZES[si] + 'px'); }
+    else { root.removeAttribute('data-chat-fs'); root.style.removeProperty('--omran-chat-fs'); }
+    if(wi !== 1){ root.setAttribute('data-chat-fw', String(wi)); root.style.setProperty('--omran-chat-fw', String(FT_WEIGHTS[wi])); }
+    else { root.removeAttribute('data-chat-fw'); root.style.removeProperty('--omran-chat-fw'); }
+    const sz = document.getElementById('ftSize'), wt = document.getElementById('ftWeight');
+    if(sz) sz.value = String(si);
+    if(wt) wt.value = String(wi);
+    const sn = document.getElementById('ftSizeName'), wn = document.getElementById('ftWeightName');
+    try{ if(sn) sn.textContent = t(FT_SIZE_KEYS[si]); if(wn) wn.textContent = t(FT_WEIGHT_KEYS[wi]); }catch(e){ __swallow(e, 'ui:font-tuner-names'); }
+  }
+  window.omranApplyFontTuner = apply;
+  migrate();
+  apply();
+  [['ftSize', 'chatFontStep'], ['ftWeight', 'chatFontWeight']].forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', () => {
+      try{ localStorage.setItem(key, el.value); }catch(e){ __swallow(e, 'ui:font-tuner-save'); }
+      apply();
+    });
   });
 })();
 
@@ -13143,6 +13195,7 @@ $('#btnSettings').onclick = () => {
   $('#chkIncludeCohere').checked = localStorage.getItem('aiapp_include_cohere') !== 'false';
   try { setVoiceGenderUI(localStorage.getItem('aiapp_voice_gender') || 'female'); } catch(e) { console.error(e); }
   try { syncAutoRenewUI(); } catch(e) { console.error(e); }
+  try { if (window.omranApplyFontTuner) window.omranApplyFontTuner(); } catch(e) { console.error(e); } // v-font-tuner: الأسماء بلغة الواجهة
   try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }

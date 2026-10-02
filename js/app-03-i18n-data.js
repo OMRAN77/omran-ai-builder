@@ -944,6 +944,14 @@ const I18N = {
     voiceGenderMale: 'عبدالله',
     voiceGenderFemale: 'مها',
     voiceSampleIntro: 'هلا والله، أنا {name}. كيف أقدر أساعدك اليوم؟', // v-voice-names
+    fontSizeTiny: 'أصغر', // v-font-tuner
+    fontSizeMedium: 'متوسط', // v-font-tuner
+    fontSizeHuge: 'الأكبر', // v-font-tuner
+    fontWeightLabel: 'سماكة الخط', // v-font-tuner
+    fontWeightThin: 'رفيع', // v-font-tuner
+    fontWeightBold: 'سميك', // v-font-tuner
+    fontPreviewQ: 'هل تعرف إنه صار ممكن تغيّر حجم الخط وسماكته؟', // v-font-tuner
+    fontPreviewA: 'إي! اسحب الشريط تحت وجرّبها الحين.', // v-font-tuner
     voiceSpeedLabel: 'سرعة الصوت',
     voiceSpeedSlow: 'بطيء',
     voiceSpeedNormal: 'عادي',
@@ -2083,6 +2091,14 @@ const I18N = {
     voiceGenderMale: 'Abdullah',
     voiceGenderFemale: 'Maha',
     voiceSampleIntro: 'Hi, I\'m {name}. How can I help you today?', // v-voice-names
+    fontSizeTiny: 'Smallest', // v-font-tuner
+    fontSizeMedium: 'Medium', // v-font-tuner
+    fontSizeHuge: 'Largest', // v-font-tuner
+    fontWeightLabel: 'Font weight', // v-font-tuner
+    fontWeightThin: 'Thin', // v-font-tuner
+    fontWeightBold: 'Bold', // v-font-tuner
+    fontPreviewQ: 'Did you know you can now change the font size and weight?', // v-font-tuner
+    fontPreviewA: 'Yes! Just drag the slider below and try it now.', // v-font-tuner
     voiceSpeedLabel: 'Voice speed',
     voiceSpeedSlow: 'Slow',
     voiceSpeedNormal: 'Normal',
