@@ -263,7 +263,7 @@ function mahaUpdatePersonaUI(){
   if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
   if(btnMahaEl) btnMahaEl.title = name;
   /* v-voice-letter → v-abdullah-glyph → v-persona-medallions (المالك ٢ أكتوبر، لقطتان: «بدّل الحرفين (م) و(ع) اللي تحت
-     المحادثة بهاذيل»): ميداليّتان ذهبيّتان مقصوصتان من لقطتيه (icons/maha-glyph.png وabdullah-glyph.png) بدل الحرف النصّيّ،
+     المحادثة بهاذيل»): ميداليّتان ذهبيّتان مقصوصتان من لقطتيه (icons/maha-medallion.png وabdullah-medallion.png) بدل الحرف النصّيّ،
      كلٌّ بشخصيّته. نصّ «م» يبقى في الصفحة مخفيًّا احتياطًا إن لم تُحمَّل الصورة. */
   const glyph = document.querySelector('#btnMahaDock .mahaGlyph');
   const dock = document.getElementById('btnMahaDock');
@@ -276,7 +276,7 @@ function mahaUpdatePersonaUI(){
       gi.onerror = () => { gi.style.display = 'none'; if(glyph) glyph.style.display = ''; };
       dock.appendChild(gi);
     }
-    const want = male ? '/icons/abdullah-glyph.png' : '/icons/maha-glyph.png';
+    const want = male ? '/icons/abdullah-medallion.png' : '/icons/maha-medallion.png';
     if(gi.getAttribute('src') !== want) gi.setAttribute('src', want);
     gi.style.display = 'block';
     if(glyph) glyph.style.display = 'none';

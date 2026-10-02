@@ -366,6 +366,10 @@
   #voiceSection .voiceGenderBtn, #voiceSection .voiceSpeedBtn, #voiceSection #btnTestVoice{border:2px solid rgba(201,162,39,.38) !important;}
   #voiceSection .voiceGenderBtn.active, #voiceSection .voiceSpeedBtn.active{border-color:#c9a227 !important; box-shadow:0 0 14px rgba(201,162,39,.28);}
   #voiceSection .voiceGenderBtn svg{color:#c9a227;}
+  /* v-voice-calligraphy2 (المالك: «شيل الأيقونة الشخصيّة، خلّهم في الوسط»): الاسم وحده في منتصف البطاقة */
+  #voiceGenderBtns .voiceGenderBtn:has(.vgName.on) svg{display:none;}
+  #voiceGenderBtns .voiceGenderBtn:has(.vgName.on){justify-content:center; min-height:120px;}
+  #voiceGenderBtns .vgName.on{height:56px;}
   #voiceGenderBtns .vgName{display:none; height:48px; max-width:100%; object-fit:contain;}
   #voiceGenderBtns .vgName.on{display:block;}
   #voiceGenderBtns .vgName.on + span{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
