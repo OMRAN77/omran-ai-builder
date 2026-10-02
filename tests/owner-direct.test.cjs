@@ -161,9 +161,9 @@ test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمف
       assert.equal(c.headers.Authorization, 'Bearer gsk-test');
       assert.equal(c.body.model, 'openai/gpt-oss-120b');
       assert.ok(Array.isArray(c.body.tools) && c.body.tools.some((t) => t.function.name === 'web_search'), 'الأدوات عابرة');
-      assert.ok(!c.body.messages.some((m) => m.role === 'system'), 'المالك خام: لا نظام');
+      assert.ok(c.body.messages.some((m) => m.role === 'system' && String(m.content).includes('أنت «عمران»')), 'v-owner-full: المالك يأخذ النظام الكامل افتراضيًّا');
     }
-    const second = r.calls[1].body.messages;
+    const second = r.calls[1].body.messages.filter((m) => m.role !== 'system'); // v-owner-full: النظام أوّلًا
     assert.deepEqual(second[1].tool_calls[0].function, { name: 'web_search', arguments: '{"query":"عمران"}' });
     assert.equal(second[2].role, 'tool');
     assert.equal(second[2].tool_call_id, 'call_a');

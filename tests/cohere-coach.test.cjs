@@ -46,14 +46,15 @@ const textStream = (text) => new Response([
   { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 3 } },
 ].map((e) => 'data: ' + JSON.stringify(e) + '\n').join('') + '\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
 
-async function ask(provider, user) {
+async function ask(provider, user, raw, text) {
   const bodies = [];
   const saveFetch = global.fetch;
   global.fetch = async (url, options) => { bodies.push(JSON.parse(options.body)); return textStream('تمام'); };
   const req = { method: 'POST', headers: {}, body: {
-    messages: [{ role: 'user', content: 'وش آخر تحديثات الهواتف هالشهر؟' }],
+    messages: [{ role: 'user', content: text || 'وش آخر تحديثات الهواتف هالشهر؟' }],
     token: token(user), provider, tz: 'Asia/Dubai',
     customInstructions: 'علّمتك: قارن دائمًا بالسعر قبل المواصفات.',
+    ...(raw ? { raw: true } : {}),
   } };
   const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('unexpected json ' + JSON.stringify(v)); }, write() {}, end() {} };
   try { await chat(req, res); } finally { global.fetch = saveFetch; }
@@ -62,7 +63,7 @@ async function ask(provider, user) {
 }
 
 test('١. المالك على Cohere: توجيه + بحث + تعليماته + ملفّه + التاريخ', async () => {
-  const r = await ask('cohere', 'coach-owner');
+  const r = await ask('cohere', 'coach-owner', true); // v-owner-full: الخام/التوجيه صار اختياريًّا
   assert.equal(r.body.model, 'cohere/command-a');
   assert.ok(r.body.tools.some((t) => t.name === 'web_search'), 'أداة البحث موصولة');
   assert.match(r.sysText, /بيانات تدريبك قديمة/);
@@ -76,8 +77,8 @@ test('١. المالك على Cohere: توجيه + بحث + تعليماته + �
   assert.ok(Array.isArray(sys) && sys.length === 2 && sys[0].cache_control && !/التاريخ والوقت الآن/.test(sys[0].text), 'الثابت مخزّن والتاريخ خارج الكاش');
 });
 
-test('٢. المالك على غير Cohere: خام كما كان (v-owner-raw2)', async () => {
-  const r = await ask('mistral', 'coach-owner');
+test('٢. المالك على غير Cohere مع raw:true: خام كما كان (v-owner-raw2)', async () => {
+  const r = await ask('mistral', 'coach-owner', true);
   assert.equal(r.sysText, '');
 });
 
@@ -85,4 +86,20 @@ test('٣. غير المالك على Cohere: النظام العامّ كما ك
   const r = await ask('cohere', 'someone-else');
   assert.ok(r.sysText.includes('أنت «عمران»'));
   assert.ok(!/بيانات تدريبك قديمة/.test(r.sysText));
+});
+
+/* v-owner-full (أمر المالك ٢ أكتوبر: «رجع كل شي القديم مع الجديد»): الخام كان يحرم المالك من التاريخ
+   وقاعدة «ابحث أوّلًا» فصار المحرّك يطلب منه الأسماء بدل أن يبحث. الافتراضيّ الآن النظام الكامل. */
+test('٤. المالك افتراضيًّا: النظام الكامل — البصمة + البحث أوّلًا + التاريخ + قواعد الصور + تعليماته', async () => {
+  for (const prov of ['cohere', 'mistral']) {
+    const r = await ask(prov, 'coach-owner');
+    assert.ok(r.sysText.includes('أنت «عمران»'), prov + ': البصمة');
+    assert.ok(r.sysText.includes('[البحث]: لأيّ سؤال يطلب معلومة أو حقيقة استدعِ web_search أوّلًا'), prov + ': ابحث أوّلًا');
+    assert.match(r.sysText, /التاريخ والوقت الآن/, prov);
+    assert.ok(r.sysText.includes('generate_image للرسم'), prov + ': رسم الصور من الكلام');
+    assert.ok(r.sysText.includes('علّمتك: قارن دائمًا بالسعر قبل المواصفات.'), prov + ': تعليماته');
+    const d = await ask(prov, 'coach-owner', false, 'ارسم لي صورة قطة على شاطئ وقت الغروب');
+    assert.ok(d.body.tools.some((t) => t.name === 'generate_image'), prov + ': بناء الصورة من الكلام — أداة الرسم موصولة');
+    assert.ok(d.sysText.includes('أنت «عمران»'), prov + ': والنظام الكامل في دور الرسم');
+  }
 });
