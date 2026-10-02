@@ -373,6 +373,14 @@
 
   <div id="pricingSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('pricingSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="pricingSectionTitle">💳 خطط الأسعار</h3><span class="settingsSectionArrow" id="pricingSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="pricingSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <!-- v-autorenew-toggle (المالك ٢ أكتوبر «زرّ يفتح ويغلق في أوّل الصفحة: خصم شهريّ ولا عاديّ») -->
+  <label id="autoRenewRow" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px; border:1px solid rgba(201,162,39,.35); border-radius:12px; cursor:pointer;">
+    <span style="display:flex; flex-direction:column; gap:3px; flex:1;">
+      <span data-i18n="autoRenewLabel" style="font-size:14px; font-weight:700;">🔁 الخصم الشهري التلقائي</span>
+      <span id="autoRenewHint" style="font-size:12px; color:var(--muted);"></span>
+    </span>
+    <input type="checkbox" id="chkAutoRenew" role="switch" style="width:20px; height:20px; margin:0; accent-color:#c9a227; cursor:pointer;">
+  </label>
   <div id="pricingWalletRow" style="display:none; align-items:center; gap:8px; padding:10px 4px; font-size: var(--fs-3);">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
     <span data-i18n="pricingWalletLabel">رصيدك من النقاط</span>
