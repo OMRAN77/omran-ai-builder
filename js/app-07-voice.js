@@ -29,6 +29,13 @@ btnStop.onclick = () => {
 // v246 — قسم الصوت المبسط: زران (رجل/امرأة) يحفظان الاختيار فورًا + زر تجربة.
 function setVoiceGenderUI(val){
   document.querySelectorAll('.voiceGenderBtn').forEach(b => b.classList.toggle('active', b.dataset.gender === val));
+  /* v-voice-calligraphy: اسم الشخصيّة صورة خطّ ذهبيّ — العربيّة للواجهة العربيّة، والإنجليزيّة لكلّ لغة أخرى (طلب المالك). */
+  const __vl = (typeof lang === 'string' && lang === 'ar') ? 'ar' : 'en';
+  document.querySelectorAll('#voiceGenderBtns .vgName').forEach(img => {
+    const want = '/icons/name-' + img.dataset.persona + '-' + __vl + '.png';
+    if(img.getAttribute('src') !== want){ img.onerror = () => img.classList.remove('on'); img.setAttribute('src', want); }
+    img.classList.toggle('on', !window.__mahaPaused); // من مها موقوفة عنده يرى الأسماء محايدة (v-maha-pause) لا صورها
+  });
 }
 /* v-voice-names (المالك ١ أكتوبر «ضيف عبدالله… ويكون في الإعدادات صوت تجريبيّ: مها وعبدالله»): الزرّان باسميهما،
    والضغط يختار الصوت ويُسمعك تعريفه بنفسه فورًا («أنا مها…»/«أنا عبدالله…») — وزرّ التجربة يُسمع المختار. */

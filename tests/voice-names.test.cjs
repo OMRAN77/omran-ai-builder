@@ -36,7 +36,7 @@ test('٢. الضغط يختار ويُسمع تعريف الشخصيّة؛ وا�
   const testBtn = {};
   const dict = { voiceGenderMale: 'عبدالله', voiceGenderFemale: 'مها', voiceSampleIntro: 'هلا والله، أنا {name}. كيف أقدر أساعدك اليوم؟' };
   const ctx = {
-    document: { querySelectorAll: () => btns },
+    document: { querySelectorAll: (q) => (q === '.voiceGenderBtn' ? btns : []) }, window: {},
     localStorage: { setItem: (k, v) => { store[k] = v; }, getItem: (k) => store[k] || null },
     t: (k) => dict[k] || k, speakSmart: (x) => said.push(x), __swallow() {}, $: () => testBtn,
   };
@@ -108,4 +108,28 @@ test('٤. v-voice-names-show: الاسمان يظهران في إعدادات ا
     assert.equal(listeners > 0, wantListener, user);
     assert.equal(ctx.window.__mahaPaused, user !== 'omran');
   }
+});
+
+test('٥. v-voice-calligraphy: اسم الشخصيّة صورة خطّ — عربيّة للعربيّة وإنجليزيّة لغيرها، ومخفيّة لمن مها موقوفة عنده', () => {
+  const src = read('js/app-07-voice.js');
+  const fn = src.slice(src.indexOf('function setVoiceGenderUI(val){'), src.indexOf('/* v-voice-names (المالك ١ أكتوبر'));
+  const mk = (persona) => ({ dataset: { persona }, attrs: {}, cls: new Set(), setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, classList: { add(c) { this.o.cls.add(c); }, remove(c) { this.o.cls.delete(c); }, toggle(c, on) { on ? this.o.cls.add(c) : this.o.cls.delete(c); } } });
+  const run = (lg, paused) => {
+    const imgs = [mk('maha'), mk('abdullah')];
+    imgs.forEach((i) => { i.classList.o = i; });
+    const ctx = { lang: lg, window: { __mahaPaused: paused }, document: { querySelectorAll: (q) => (q === '.voiceGenderBtn' ? [] : imgs) } };
+    vm.createContext(ctx);
+    vm.runInContext(fn + '\nsetVoiceGenderUI("female");', ctx);
+    return imgs;
+  };
+  let r = run('ar', false);
+  assert.equal(r[0].getAttribute('src'), '/icons/name-maha-ar.png');
+  assert.equal(r[1].getAttribute('src'), '/icons/name-abdullah-ar.png');
+  assert.ok(r[0].cls.has('on'));
+  for (const lg of ['en', 'fr', 'ur', 'zh']) assert.equal(run(lg, false)[1].getAttribute('src'), '/icons/name-abdullah-en.png', lg);
+  assert.ok(!run('ar', true)[0].cls.has('on'), 'موقوفة = بلا صورة الاسم');
+  for (const f of ['maha-ar', 'maha-en', 'abdullah-ar', 'abdullah-en']) assert.ok(fs.statSync(path.join(root, 'icons/name-' + f + '.png')).size < 40000, f);
+  const part = read('js/partials-settings.js');
+  assert.ok(part.includes('<img class="vgName" data-persona="abdullah"') && part.includes('<img class="vgName" data-persona="maha"'));
+  assert.match(part, /#voiceSection \.voiceGenderBtn, #voiceSection \.voiceSpeedBtn, #voiceSection #btnTestVoice\{border:2px solid rgba\(201,162,39/, 'البراويز ذهبيّة');
 });
