@@ -308,6 +308,49 @@ async function verifyPaymentIntent(req, res) {
   }
 }
 
+/* v-autorenew-toggle (المالك ٢ أكتوبر «في الاشتراكات زرّ يلغي الاشتراك الشهريّ — خصم شهريّ ولا عاديّ — يفتح ويغلق في
+   أوّل الصفحة»): الاشتراك المتجدّد كان يُلغى من لوحة Stripe وحدها. هنا: بلا on = حالة اشتراكات الحساب المتجدّدة؛
+   on=false = إيقاف التجديد عند نهاية الشهر المدفوع (cancel_at_period_end، بلا استرجاع ولا قطع)؛ on=true = إعادته قبل نهايته.
+   الاشتراكات تُعرف بـmetadata.username التي يضعها createCheckoutSession — فلا يلمس الحساب إلّا اشتراكاته. */
+function subPeriodEnd(sub) {
+  const top = Number(sub && sub.current_period_end) || 0;
+  const items = (sub && sub.items && Array.isArray(sub.items.data)) ? sub.items.data : [];
+  return items.reduce((m, it) => Math.max(m, Number(it && it.current_period_end) || 0), top); // الإصدارات الأحدث تضعه على البند
+}
+async function autoRenewToggle(req, res, fetchImpl) {
+  const f = fetchImpl || fetch;
+  try {
+    let body = req.body;
+    if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
+    const username = verifyToken(body.token);
+    if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) { res.status(200).json({ ok: true, subs: 0, configured: false }); return; }
+    const auth = { Authorization: 'Bearer ' + secretKey };
+    const q = "metadata['username']:'" + String(username).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "' AND status:'active'";
+    const sr = await f('https://api.stripe.com/v1/subscriptions/search?limit=10&query=' + encodeURIComponent(q), { headers: auth });
+    const sd = await sr.json().catch(() => ({}));
+    if (!sr.ok) { res.status(502).json({ error: (sd.error && sd.error.message) || 'stripe search failed' }); return; }
+    const subs = (Array.isArray(sd.data) ? sd.data : []).filter((x) => x && x.metadata && x.metadata.username === username);
+    let periodEnd = subs.reduce((m, x) => Math.max(m, subPeriodEnd(x)), 0);
+    if (typeof body.on !== 'boolean') {
+      res.status(200).json({ ok: true, subs: subs.length, on: subs.some((x) => !x.cancel_at_period_end), periodEnd });
+      return;
+    }
+    for (const x of subs) {
+      const ur = await f('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(x.id), {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded' }, auth),
+        body: new URLSearchParams({ cancel_at_period_end: body.on ? 'false' : 'true' }).toString(),
+      });
+      if (!ur.ok) { const ud = await ur.json().catch(() => ({})); res.status(502).json({ error: (ud.error && ud.error.message) || 'stripe update failed' }); return; }
+    }
+    res.status(200).json({ ok: true, subs: subs.length, on: body.on, periodEnd });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Server error' });
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -320,6 +363,7 @@ module.exports = async (req, res) => {
   if (routedAction === 'verify-checkout') return verifyCheckout(req, res);
   if (routedAction === 'create-payment-intent') return createPaymentIntent(req, res);
   if (routedAction === 'verify-payment-intent') return verifyPaymentIntent(req, res);
+  if (routedAction === 'auto-renew') return autoRenewToggle(req, res);
   return createCheckoutSession(req, res);
 };
 
@@ -327,3 +371,4 @@ module.exports = async (req, res) => {
 // وأمان التكرار، فلا ازدواج بين مسار العودة والويب هوك.
 module.exports.grantPlanToUser = grantPlanToUser;
 module.exports.PLANS = PLANS;
+module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — للاختبار

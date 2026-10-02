@@ -977,8 +977,8 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     <div id="mahaOrb" class="maha-orb-idle" style="width:105px; height:105px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:39px; box-shadow:0 0 28px rgba(123,92,255,.5);">💁‍♀️</div>
     <img id="mahaGenImage" alt="" style="display:none; width:105px; height:105px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(123,92,255,.5); cursor:zoom-in;" />
     <div id="mahaWave" class="maha-wave-idle" style="display:none; width:77px; height:77px; border-radius:50%;"></div>
-    <!-- v-maha-goldwave + v-maha-band: موجة مها الذهبيّة شريطًا بعرض الشاشة كلّه مثل شريط الأسهم — الشرائح يبنيها js/app-30-maha-wave.js؛ الخلفيّة للإطار الأوّل فقط -->
-    <div id="mahaGoldWave" aria-hidden="true" style="display:none; position:relative; width:100vw; max-width:none; height:clamp(110px, 18vh, 170px); overflow:hidden; background:#030201 url('/assets/maha/maha-wave-tile.webp') 0 46% / auto 200% repeat-x;"></div>
+    <!-- v-maha-ring (المالك ١ أكتوبر: «الذهبيّة دائرة» — حلقة ذهبيّة مضيئة متوسّطة في الوسط تنبض مع صوتها بدل الشريط): الحلقة يبنيها js/app-30-maha-wave.js -->
+    <div id="mahaGoldWave" data-shape="ring" aria-hidden="true" style="display:none; position:relative; width:clamp(150px, 26vw, 230px); height:clamp(150px, 26vw, 230px); max-width:none; overflow:visible;"></div>
   </div>
   <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:auto; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); width:59px; height:78px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
   <div id="mahaCallBtns" style="display:flex; align-items:center; gap:13px;">
@@ -991,12 +991,12 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script defer src="/js/partials-settings.js?v=679"></script>
+<script defer src="/js/partials-settings.js?v=681"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-7"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=93a9f077"></script>
+    <script defer src="/js/app.bundle.js?v=c6258027"></script>
     <script defer src="/js/modes.js?v=m290926b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

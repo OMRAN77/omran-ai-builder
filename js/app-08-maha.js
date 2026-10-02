@@ -243,24 +243,45 @@ else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'mah
 const MAHA_ICON = '/icons/maha-m3.svg'; // v-maha-solo: أيقونة مها الجديدة
 const ABDULLAH_ICON = '/icons/abdullah-icon.svg';
 function mahaUpdatePersonaUI(){
-  // v-maha-solo: مها وحدها الآن — عبدالله يُرتَّب لاحقًا بطلب المالك.
-  // الشخصية مثبتة أنثوية أيًّا كان الإعداد القديم المحفوظ.
-  mahaDetectedGender = 'female';
-  try{ if(localStorage.getItem('aiapp_voice_gender') !== 'female') localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo'); }
+  /* v-voice-names (المالك ١ أكتوبر «إذا اخترت عبدالله من الإعدادات تطلع مها»): v-maha-solo كان يعيد الإعداد إلى
+     female عند الإقلاع وكلّ مكالمة («عبدالله يُرتَّب لاحقًا بطلب المالك») — والطلب جاء. الشخصيّة الآن من المحفوظ. */
+  const male = mahaReadVoiceGender() === 'male';
+  mahaDetectedGender = male ? 'male' : 'female';
+  const name = male ? 'عبدالله' : 'مها', icon = male ? ABDULLAH_ICON : MAHA_ICON;
   const old = document.getElementById('mahaPersonaSwitch');
   if(old) old.remove();
   const nameEl = document.getElementById('mahaCallNameLabel');
-  if(nameEl) nameEl.textContent = 'مها';
+  if(nameEl) nameEl.textContent = name;
   const orb = document.getElementById('mahaOrb');
   if(orb){
     orb.textContent = '';
-    orb.style.background = "url('" + MAHA_ICON + "') center/cover no-repeat, #0a0908";
+    orb.style.background = "url('" + icon + "') center/cover no-repeat, #0a0908";
     orb.style.boxShadow = '0 0 35px rgba(212,175,55,.55)';
     orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
-  if(fabImg && fabImg.getAttribute('src') !== MAHA_ICON){ fabImg.src = MAHA_ICON; fabImg.alt = 'مها'; }
-  if(btnMahaEl) btnMahaEl.title = 'مها';
+  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
+  if(btnMahaEl) btnMahaEl.title = name;
+  /* v-voice-letter (المالك ١ أكتوبر «إذا اختار مها تخليها م تحت، وإذا اختار عبدالله يطلع حرف ع»): حرف زرّ الكتابة.
+     v-abdullah-glyph (المالك ٢ أكتوبر، لقطة الزرّ: «قصّ الي أرسلتلك وحطّها بدل القديم»): «ع» صورة مقصوصة من لقطته
+     (/icons/abdullah-glyph.png، خلفيّة شفّافة) بدل حرف الخطّ؛ «م» نصّ كما هو. */
+  const glyph = document.querySelector('#btnMahaDock .mahaGlyph');
+  const dock = document.getElementById('btnMahaDock');
+  if(glyph){
+    if(glyph.textContent !== 'م'){ glyph.textContent = 'م'; try{ if(typeof window.__mahaGlyphFix === 'function') window.__mahaGlyphFix(); }catch(e){ __swallow(e, 'maha:glyph-fix'); } }
+    glyph.style.display = male ? 'none' : '';
+  }
+  if(dock){
+    let gi = dock.querySelector('.abdullahGlyph');
+    if(male && !gi){
+      gi = document.createElement('img');
+      gi.className = 'abdullahGlyph'; gi.alt = ''; gi.setAttribute('aria-hidden', 'true'); gi.src = '/icons/abdullah-glyph.png';
+      gi.style.cssText = 'width:22px; height:22px; object-fit:contain; display:block; pointer-events:none;';
+      dock.appendChild(gi);
+    }
+    if(gi) gi.style.display = male ? 'block' : 'none';
+    dock.title = name;
+  }
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
@@ -268,7 +289,8 @@ function mahaEnsureVoiceChosen(){
   return new Promise(resolve => {
     let already = null;
     try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ /* guard-ok: unavailable storage shows the safe first-run picker. */ }
-    // v-maha-solo: مها وحدها — لا سؤال في أول تشغيل.
+    // v-maha-solo: لا سؤال في أول تشغيل — مها افتراضيًّا. v-voice-names: اختيار عبدالله المحفوظ يبقى كما هو.
+    if(already === 'male' || already === 'female') return resolve(already);
     try{ localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo-first'); }
     return resolve('female');
     /* eslint-disable no-unreachable */
@@ -383,7 +405,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: 'normal' /* v-speed-chat-only: «بطيء وسريع للدردشة فقط، ليس لمها وعبدالله» */, token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
@@ -1143,6 +1165,8 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
  * server missing the key, etc.) so the feature never just stops working. */
 let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false, mahaRtReady = false;
     let mahaRtResponseWatchdog = null;
+    // v-maha-natural: الخادم يردّ بنفسه لحظة انتهاء الجملة (semantic_vad) — حارس العميل احتياط متأخّر فقط.
+    let mahaRtNatural = false;
 
     // Realtime normally starts a reply after server VAD detects the end of speech.
     // This one-shot guard prevents a silent first turn from making a caller speak
@@ -1346,7 +1370,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       voiceGender: mahaReadVoiceGender(),
-      voiceSpeed: mahaReadVoiceSpeed(),
+      voiceSpeed: 'normal', // v-speed-chat-only
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -1359,6 +1383,7 @@ async function mahaStartRealtimeCall(){
     throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
   }
   mahaStartPointsMeter(tokenData.mahaBudget);
+  mahaRtNatural = tokenData.turn === 'natural';
   const EPHEMERAL_KEY = tokenData.clientSecret;
   if(mahaRtCancelled) throw new Error('cancelled');
 
@@ -1389,6 +1414,8 @@ async function mahaStartRealtimeCall(){
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
     try{
       const receiver = e.receiver;
+      // v-voice-stutter (المالك ١ أكتوبر «الصوت يتقطّع ويوشوش»): v-maha-natural خفّضه إلى ٠٫١ث فتقطّع على الجوّال.
+      // ٠٫٢٥ث للوضعين — وأكّده المالك بعد النشر: «بعدها كانت أفضل».
       if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
     }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };
@@ -1421,7 +1448,9 @@ async function mahaStartRealtimeCall(){
       }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){
         mahaSetState('thinking');
-        mahaArmRtResponseWatchdog(350);
+        // v-maha-natural: الخادم بدأ الردّ؛ الطلب من العميل يُرسل فقط إن لم يصل response.created خلال ١٫٥ث.
+        if(mahaRtNatural) mahaArmRtResponseWatchdog(1500);
+        else mahaArmRtResponseWatchdog(350);
       }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
@@ -1502,6 +1531,13 @@ async function mahaStartRealtimeCall(){
       if(preBufSent) mahaArmRtResponseWatchdog(900);
       mahaSetState('listening');
       mahaPlayReadyBeep();
+      /* v-maha-greet (المالك ١ أكتوبر «من أوّل ما تفتح تردّ عليك»): مها تبادر بتحيّة قصيرة لحظة الجاهزية كالمكالمة الحقيقيّة.
+         لا تحيّة إن قال المستخدم شيئًا أثناء التجهيز (جملته تأخذ ردّها)، ولا في إعادة الاتّصال، ولا في البنّاء. كلامه يقاطعها. */
+      if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){
+        try{
+          dc.send(JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now, like a real person answering: greet the user warmly in ONE short natural sentence, say your name, and invite them to talk. Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. If USER MEMORY has their name, greet them by it. Nothing else.' } }));
+        }catch(e){ __swallow(e, 'maha:greet'); }
+      }
       // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
       // عمدًا حتى تجهز الجلسة — المستخدم كان يتكلم بدري ويظن مها ما ترد.
       if(mahaStateLabelEl && mahaStateLabelEl.textContent) mahaStateLabelEl.textContent = '🟢 ' + mahaStateLabelEl.textContent;
@@ -2661,6 +2697,8 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
       }
     }catch(e){ /* guard-ok: تنظيف تجميلي — فشله لا يعطل الإعدادات */ }
   }
+  /* v-voice-names-show (المالك ١ أكتوبر، لقطة الإعدادات «المساعد / المساعد الصوتي» بدل «عبدالله / مها»): التحييد كان
+     «للجميع» حتّى حساب المالك الذي تعمل عنده المكالمة. الآن لمن مها موقوفة عنده وحده. */
   var sb = document.getElementById('btnSettings');
-  if(sb) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
+  if(sb && window.__mahaPaused) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
 })();

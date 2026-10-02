@@ -123,7 +123,8 @@ test('العميل: البطاقة ترسل اختيار التجديد، وPayP
   const src = read('js/app-06-checkout.js');
   assert.match(src, /autoRenew: !!\(document\.getElementById\('checkoutAutoRenew'\) \|\| \{\}\)\.checked/);
   assert.match(src, /action: 'create', plan: checkoutCurrentPlan, token: authGet\('aiapp_auth_token'\)/);
-  assert.match(src, /if \(arBox\) arBox\.checked = false;/, 'كلّ فتح يبدأ يدويًّا');
+  assert.match(src, /if \(arBox\) arBox\.checked = autoRenewPref\(\);/, 'v-autorenew-toggle: يتبع زرّ أوّل الصفحة');
+  assert.match(src, /function autoRenewPref\(\)\{ try\{ return localStorage\.getItem\('aiapp_autorenew'\) === '1'; \}/, 'والافتراضيّ متوقّف (يدويّ) كما كان');
   assert.match(src, /arRow\.style\.display = \/\^pack\\d\+\$\/\.test/, 'الخيار مخفيّ لرزم النقاط');
 });
 
@@ -135,8 +136,8 @@ test('نافذة الدفع: زرّ صغير للتجديد التلقائيّ،
   assert.doesNotMatch(row[0], /\bchecked\b/);
   assert.match(row[0], /data-i18n="checkoutAutoRenew"/);
   assert.ok(html.indexOf('checkoutAutoRenewRow') > html.indexOf('startStripeCheckout()'), 'تحت زرّ البطاقة');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=679'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=707'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=681'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=710'"));
 });
 
 test('النصّان الجديدان في ١٤ لغة بلا اسم مزوّد', () => {

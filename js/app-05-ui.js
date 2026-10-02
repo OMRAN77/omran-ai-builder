@@ -1486,21 +1486,57 @@ document.querySelectorAll('.tab').forEach(tab => {
   };
 });
 
-/* v338: حجم خط المحادثة */
+/* v338: حجم خط المحادثة — v-font-tuner (المالك ٢ أكتوبر، لقطة «حجم الخط / سماكة الخط» بمعاينة محادثة): الأزرار الأربعة
+   صارت شريطين بمعاينة حيّة — الحجم ٧ درجات (العاديّ الثالثة = حجم المحادثة الافتراضيّ كما هو) والسماكة ٤.
+   الاختيار القديم (chatFontSize) يُنقل مرّة: صغير ٠، عاديّ ٢، كبير ٣، كبير جدًّا ٥ — بنفس مقاساته تقريبًا. */
+const FT_SIZES = [12, 13, 0, 15.5, 17, 18.5, 20]; // ٠ = العاديّ (لا يُفرض شيء)
+const FT_SIZE_KEYS = ['fontSizeTiny', 'fontSizeSmall', 'fontSizeNormal', 'fontSizeMedium', 'fontSizeLarge', 'fontSizeXLarge', 'fontSizeHuge'];
+const FT_WEIGHTS = [300, 400, 500, 700];
+const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'fontWeightBold'];
 (function(){
-  function applyFS(v){
-    document.documentElement.classList.remove('fs-small','fs-large','fs-xlarge');
-    if(v && v !== 'normal') document.documentElement.classList.add('fs-' + v);
-    document.querySelectorAll('.fontSizeBtn').forEach(b => b.classList.toggle('active', b.dataset.fs === v));
+  try{
+    const st = document.createElement('style');
+    st.id = 'ftChatCss';
+    st.textContent = 'html[data-chat-fs] .msg{font-size:var(--omran-chat-fs);} html[data-chat-fw] .msg-text{font-weight:var(--omran-chat-fw);}';
+    document.head.appendChild(st);
+  }catch(e){ __swallow(e, 'ui:font-tuner-css'); }
+  function readStep(key, def, max){
+    let v = NaN;
+    try{ v = parseInt(localStorage.getItem(key), 10); }catch(e){ __swallow(e, 'ui:font-tuner-read'); }
+    return (v >= 0 && v <= max) ? v : def;
   }
-  let saved = 'normal';
-  try{ saved = localStorage.getItem('chatFontSize') || 'normal'; }catch(e){ __swallow(e, "ui:app-05-ui#15"); }
-  applyFS(saved);
-  document.querySelectorAll('.fontSizeBtn').forEach(b => {
-    b.onclick = function(){
-      try{ localStorage.setItem('chatFontSize', b.dataset.fs); }catch(e){ __swallow(e, "save:app-05-ui#16"); }
-      applyFS(b.dataset.fs);
-    };
+  function migrate(){
+    try{
+      if(localStorage.getItem('chatFontStep') !== null) return;
+      const old = localStorage.getItem('chatFontSize');
+      const map = { small: 0, normal: 2, large: 3, xlarge: 5 };
+      if(old && map[old] !== undefined) localStorage.setItem('chatFontStep', String(map[old]));
+    }catch(e){ __swallow(e, 'ui:font-tuner-migrate'); }
+  }
+  function apply(){
+    const root = document.documentElement;
+    const si = readStep('chatFontStep', 2, 6), wi = readStep('chatFontWeight', 1, 3);
+    root.classList.remove('fs-small','fs-large','fs-xlarge'); // v338 القديمة
+    if(FT_SIZES[si]){ root.setAttribute('data-chat-fs', String(si)); root.style.setProperty('--omran-chat-fs', FT_SIZES[si] + 'px'); }
+    else { root.removeAttribute('data-chat-fs'); root.style.removeProperty('--omran-chat-fs'); }
+    if(wi !== 1){ root.setAttribute('data-chat-fw', String(wi)); root.style.setProperty('--omran-chat-fw', String(FT_WEIGHTS[wi])); }
+    else { root.removeAttribute('data-chat-fw'); root.style.removeProperty('--omran-chat-fw'); }
+    const sz = document.getElementById('ftSize'), wt = document.getElementById('ftWeight');
+    if(sz) sz.value = String(si);
+    if(wt) wt.value = String(wi);
+    const sn = document.getElementById('ftSizeName'), wn = document.getElementById('ftWeightName');
+    try{ if(sn) sn.textContent = t(FT_SIZE_KEYS[si]); if(wn) wn.textContent = t(FT_WEIGHT_KEYS[wi]); }catch(e){ __swallow(e, 'ui:font-tuner-names'); }
+  }
+  window.omranApplyFontTuner = apply;
+  migrate();
+  apply();
+  [['ftSize', 'chatFontStep'], ['ftWeight', 'chatFontWeight']].forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', () => {
+      try{ localStorage.setItem(key, el.value); }catch(e){ __swallow(e, 'ui:font-tuner-save'); }
+      apply();
+    });
   });
 })();
 
@@ -3690,7 +3726,7 @@ async function postWithConfirm(url, payload){
       const cs = getComputedStyle(g);
       const ctx = document.createElement('canvas').getContext('2d');
       ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-      const m = ctx.measureText('م');
+      const m = ctx.measureText(g.textContent || 'م'); // v-voice-letter: «م» أو «ع» حسب الشخصيّة
       if(m.fontBoundingBoxAscent === undefined) return; // متصفح قديم: تبقى إزاحة CSS الافتراضية
       const spanH = g.getBoundingClientRect().height;
       const baselineTop = (spanH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
@@ -3703,6 +3739,7 @@ async function postWithConfirm(url, payload){
     }catch(e){ __swallow(e, 'ui:maha-center'); }
   };
   fix();
+  window.__mahaGlyphFix = fix; // v-voice-letter: يُعاد التوسيط عند تبديل الحرف
   try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
 })();
 

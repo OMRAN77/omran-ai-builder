@@ -303,11 +303,34 @@
 
   <div id="fontSizeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontSizeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="fontSizeSectionLabel">حجم الخط</h3><span class="settingsSectionArrow" id="fontSizeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontSizeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-      <div id="fontSizeBtns" style="display:flex; flex-direction:column; gap:2px;">
-        <button type="button" class="fontSizeBtn" data-fs="small"><span data-i18n="fontSizeSmall">صغير</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
-        <button type="button" class="fontSizeBtn" data-fs="normal"><span data-i18n="fontSizeNormal">عادي</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
-        <button type="button" class="fontSizeBtn" data-fs="large"><span data-i18n="fontSizeLarge">كبير</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
-        <button type="button" class="fontSizeBtn" data-fs="xlarge"><span data-i18n="fontSizeXLarge">كبير جدًا</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <!-- v-font-tuner (المالك ٢ أكتوبر، لقطة إعدادات الهاتف «حجم الخط / سماكة الخط» بمعاينة محادثة: «مكان الخطوط حطّ لي نفس الفكرة») -->
+      <style>
+      #fontTuner .ftPreview{display:flex; flex-direction:column; gap:10px; padding:6px 2px 14px;}
+      #fontTuner .ftBubble{max-width:85%; padding:10px 14px; border-radius:18px; line-height:1.6; font-family:var(--omran-chat-font); font-size:var(--omran-chat-fs,14px); font-weight:var(--omran-chat-fw,400);}
+      #fontTuner .ftUser{align-self:flex-start; background:rgba(201,162,39,.16); border:1px solid rgba(201,162,39,.35);}
+      #fontTuner .ftBot{align-self:flex-end; background:var(--panel2); border:1px solid var(--line,rgba(128,128,128,.18));}
+      #fontTuner .ftLabel, #autoRenewRow .ftLabel{font-size:13px; color:var(--muted); margin:10px 2px 6px;}
+      #fontTuner .ftCard, .ftCard{background:var(--panel2); border:1px solid var(--line,rgba(128,128,128,.18)); border-radius:16px; padding:12px 14px;}
+      #fontTuner .ftName{text-align:center; font-size:13px; margin-bottom:8px;}
+      #fontTuner .ftRow{display:flex; align-items:center; gap:12px;}
+      #fontTuner .ftA{font-size:15px; color:var(--text); width:20px; text-align:center;}
+      #fontTuner .ftA.big{font-size:24px;}
+      #fontTuner input[type=range]{flex:1; accent-color:#c9a227; height:28px; cursor:pointer;}
+      </style>
+      <div id="fontTuner">
+        <div class="ftPreview">
+          <div class="ftBubble ftUser" data-i18n="fontPreviewQ">هل تعرف إنه صار ممكن تغيّر حجم الخط وسماكته؟</div>
+          <div class="ftBubble ftBot" data-i18n="fontPreviewA">إي! اسحب الشريط تحت وجرّبها الحين.</div>
+        </div>
+        <div class="ftCard">
+          <div class="ftName" id="ftSizeName"></div>
+          <div class="ftRow" dir="ltr"><span class="ftA">A</span><input type="range" id="ftSize" min="0" max="6" step="1" value="2"><span class="ftA big">A</span></div>
+        </div>
+        <div class="ftLabel" data-i18n="fontWeightLabel">سماكة الخط</div>
+        <div class="ftCard">
+          <div class="ftName" id="ftWeightName"></div>
+          <div class="ftRow" dir="ltr"><span class="ftA" style="font-weight:300;">A</span><input type="range" id="ftWeight" min="0" max="3" step="1" value="1"><span class="ftA big" style="font-weight:800;">A</span></div>
+        </div>
       </div>
     </div></div>
 
@@ -549,6 +572,14 @@
     </div>
   </div>
   
+  <!-- v-autorenew-toggle (المالك ٢ أكتوبر «زرّ يفتح ويغلق في أوّل الصفحة: خصم شهريّ ولا عاديّ») -->
+  <label id="autoRenewRow" class="ftCard" style="display:flex; align-items:center; gap:10px; margin-top:14px; cursor:pointer;">
+    <span style="display:flex; flex-direction:column; gap:3px; flex:1;">
+      <span data-i18n="autoRenewLabel" style="font-size:14px; font-weight:700;">🔁 الخصم الشهري التلقائي</span>
+      <span id="autoRenewHint" style="font-size:12px; color:var(--muted);"></span>
+    </span>
+    <input type="checkbox" id="chkAutoRenew" role="switch" style="width:20px; height:20px; margin:0; accent-color:#c9a227; cursor:pointer;">
+  </label>
   <div style="margin-top:10px; display:flex; gap:14px; font-size:12px;">
     <a href="/terms.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="termsLink">📜 الشروط والأحكام</a>
     <a href="/privacy.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="privacyLink">🔒 سياسة الخصوصية</a>

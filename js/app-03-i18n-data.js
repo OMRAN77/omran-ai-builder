@@ -941,8 +941,17 @@ const I18N = {
     mahaImageFailedReply: "ما قدرت أسوي الصورة، جرب توصيف ثاني",
     voiceGenderLabel: 'نوع الصوت المفضل',
     voiceGenderDefault: 'افتراضي (صوت الجهاز)',
-    voiceGenderMale: 'صوت رجل',
-    voiceGenderFemale: 'صوت امرأة',
+    voiceGenderMale: 'عبدالله',
+    voiceGenderFemale: 'مها',
+    voiceSampleIntro: 'هلا والله، أنا {name}. كيف أقدر أساعدك اليوم؟', // v-voice-names
+    fontSizeTiny: 'أصغر', // v-font-tuner
+    fontSizeMedium: 'متوسط', // v-font-tuner
+    fontSizeHuge: 'الأكبر', // v-font-tuner
+    fontWeightLabel: 'سماكة الخط', // v-font-tuner
+    fontWeightThin: 'رفيع', // v-font-tuner
+    fontWeightBold: 'سميك', // v-font-tuner
+    fontPreviewQ: 'هل تعرف إنه صار ممكن تغيّر حجم الخط وسماكته؟', // v-font-tuner
+    fontPreviewA: 'إي! اسحب الشريط تحت وجرّبها الحين.', // v-font-tuner
     voiceSpeedLabel: 'سرعة الصوت',
     voiceSpeedSlow: 'بطيء',
     voiceSpeedNormal: 'عادي',
@@ -1006,6 +1015,12 @@ const I18N = {
     checkoutCardOption: 'بطاقة',
     checkoutLoginFirst: 'سجّل حسابك أو ادخل أوّلًا، ثمّ اشترك',
     checkoutAutoRenew: '🔁 تجديد تلقائيّ كلّ شهر بالبطاقة',
+    autoRenewLabel: '🔁 الخصم الشهري التلقائي',
+    autoRenewOnHint: 'مفعّل — يتجدّد اشتراكك ويُخصم كل شهر تلقائيًا',
+    autoRenewOffHint: 'متوقّف — تدفع لشهر واحد فقط وتجدّد يدويًا متى شئت',
+    autoRenewStopped: 'أُوقف الخصم الشهري — اشتراكك يبقى حتى {date}',
+    autoRenewResumed: 'رجع الخصم الشهري التلقائي',
+    autoRenewFailed: 'تعذّر التغيير الآن، حاول لاحقًا',
     checkoutApplePay: 'Apple Pay',
     checkoutGooglePay: 'Google Pay',
     checkoutWalletUnavailable: 'غير متوفر على هذا الجهاز',
@@ -1267,6 +1282,12 @@ const I18N = {
     checkoutCardOption: 'Card',
     checkoutLoginFirst: 'Sign up or log in first, then subscribe',
     checkoutAutoRenew: '🔁 Auto-renew monthly by card',
+    autoRenewLabel: '🔁 Monthly auto-charge',
+    autoRenewOnHint: 'On — your plan renews and is charged every month automatically',
+    autoRenewOffHint: 'Off — you pay for one month only and renew manually whenever you like',
+    autoRenewStopped: 'Monthly charge stopped — your plan stays active until {date}',
+    autoRenewResumed: 'Monthly auto-charge is back on',
+    autoRenewFailed: 'Could not change it right now, try again later',
     checkoutApplePay: 'Apple Pay',
     checkoutGooglePay: 'Google Pay',
     checkoutWalletUnavailable: 'Not available on this device',
@@ -2067,8 +2088,17 @@ const I18N = {
     mahaImageFailedReply: "I couldn't make the picture, try describing it differently",
     voiceGenderLabel: 'Preferred voice type',
     voiceGenderDefault: 'Default (device voice)',
-    voiceGenderMale: 'Male voice',
-    voiceGenderFemale: 'Female voice',
+    voiceGenderMale: 'Abdullah',
+    voiceGenderFemale: 'Maha',
+    voiceSampleIntro: 'Hi, I\'m {name}. How can I help you today?', // v-voice-names
+    fontSizeTiny: 'Smallest', // v-font-tuner
+    fontSizeMedium: 'Medium', // v-font-tuner
+    fontSizeHuge: 'Largest', // v-font-tuner
+    fontWeightLabel: 'Font weight', // v-font-tuner
+    fontWeightThin: 'Thin', // v-font-tuner
+    fontWeightBold: 'Bold', // v-font-tuner
+    fontPreviewQ: 'Did you know you can now change the font size and weight?', // v-font-tuner
+    fontPreviewA: 'Yes! Just drag the slider below and try it now.', // v-font-tuner
     voiceSpeedLabel: 'Voice speed',
     voiceSpeedSlow: 'Slow',
     voiceSpeedNormal: 'Normal',

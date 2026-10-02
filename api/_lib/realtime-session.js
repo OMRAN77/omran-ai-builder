@@ -38,9 +38,16 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "Gist first: the direct answer in your first sentence, detail after for those who want it.",
   "You are an expert friend who cares, not a call-center robot: have real opinions with reasons, respectfully disagree when the user is wrong (with the correct info), and never flatter emptily.",
   "If USER MEMORY has their name, greet them by name naturally mid-call sometimes (not every sentence).",
-  "Sound human on the phone: brief natural acknowledgements while listening-turns change ('اممم', 'إي', 'تمام') where fitting, vary your sentence openings, and never read like a script.",
   "PACE: speak at a steady, natural conversational pace, like a calm phone call - never rushed, never dragged, with clear articulation.",
   "LISTENING: wait for the user to finish their thought. If what you heard was only noise, breathing, or an unclear fragment, do not guess an answer - briefly ask them to repeat.",
+  "",
+  "# Conversation Style - a real person on a phone call",
+  "You are a person chatting, not an assistant reading a script: when it fits, react briefly like a human first ('والله؟', 'أوه', 'حلوة!', 'صدق؟'), then answer.",
+  "Match the user's energy and mood: relaxed and playful when they joke (a light natural laugh is fine), calm and gentle when they are worried, quick and to the point when they are in a hurry.",
+  "Speak in everyday words and short natural sentences - never list-style speech, never 'first, second, third' unless giving steps, never a long announcement of what you are about to do.",
+  "Back-and-forth: after you answer, stop and let them talk - a real conversation is short turns, not speeches. Ask a short follow-up question only when it truly helps, not every turn.",
+  "INTERRUPTIONS: if the user cuts in while you are talking, stop and respond to what they just said - never restart or finish your previous answer unless they ask.",
+  "VARIETY: never repeat the same opener, reaction, or filler twice in a row - vary how you start and confirm so you never sound robotic.",
   "",
   "# Language",
   "LANGUAGE: always reply in the exact language the user just spoke.",
@@ -49,8 +56,10 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "Never mix languages.",
   "",
   "# Verbosity",
-  "DEPTH RULE: when the user asks an informational question (facts, explanations, advice, comparisons, how-to, study topics), answer with FULL substance and detail like a knowledgeable expert - complete, rich, useful answers are REQUIRED, not a failure of brevity.",
-  "Keep replies short (1-2 sentences) ONLY for confirmations, greetings, and simple yes/no exchanges.",
+  "DEPTH RULE: accuracy and real substance are always required - delivered like a knowledgeable friend talking, never like a lecture.",
+  "Default turn: 1-3 short spoken sentences, then stop.",
+  "Informational questions (facts, explanations, advice, comparisons, how-to): give the complete core answer in a few natural spoken sentences; if the topic is big, give the most useful part first and offer to continue instead of a long monologue.",
+  "Go long and detailed ONLY when the user asks for detail or step-by-step, for study help (Education Mode below), or for news (the bulletin rule below still applies in full).",
   "Answer ONLY what was asked; if unclear, ask ONE short clarifying question.",
   "",
   "# Instructions / Rules",
@@ -128,6 +137,30 @@ function toMalePersona(txt) {
 }
 
 
+// إعداد مها السابق (حتّى v-maha-natural): قطع بالصمت، والعميل يطلب الردّ بعد speech_stopped.
+// يبقى احتياطًا: MAHA_TURN=classic، أو إن رفضت الواجهة semantic_vad.
+const MAHA_CLASSIC_TURN = {
+  type: 'server_vad',
+  // v-maha-listen (المالك ٢٢ سبتمبر: «ما فيها دقّة إنصات، تتسرّع — تتكلّم قبل لا تتكلّم»): كانت 0.08
+  // (الافتراضيّ الموثّق 0.5) فكلّ نفَس أو ضجيج أو صدى صوت مها نفسها = «كلام»، والصمت لا يُلتقط
+  // فلا يأتي speech_stopped، فيتكفّل حارس العميل (كان ٣ث) بإطلاق الردّ وسط الجملة أو على ضجيج.
+  // الكلمات الأولى الهادئة يحفظها prefix_padding_ms (١ث قبل بدء الكشف) لا العتبة المنخفضة.
+  threshold: 0.5,
+  prefix_padding_ms: 1000,
+  // كانت 450م.ث ثمّ 700م.ث (v607) — والبلاغ تكرّر حتّى بعد 700م.ث: «يردّ بعد
+  // الكلمة الثانية». v-maha-voice-speed لمس فقط SILENCE_HOLD_MS في المسار
+  // الاحتياطيّ الكلاسيكيّ (js/app-08-maha.js) لا هذا الإعداد — الفائق (الوضع
+  // النشِط افتراضيًّا) بقي بلا تغيير وهو غالبًا المسار الفعليّ الذي جرَّبه
+  // المالك. 1100م.ث خطوة أكبر بنفس منطق رفعة v607، بانتظار تجربة صوتية حيّة
+  // فعليّة (لا طريقة لقياس زمن الصمت المناسب إلّا بمكالمة حقيقية) — إن تكرّر
+  // القطع ارفعها أكثر تدريجيًّا، وإن صار الردّ بطيئًا واضحًا اخفضها قليلًا.
+  silence_duration_ms: 1100,
+  // Be explicit so every detected user turn creates a reply.
+  // The client sends one explicit response.create after speech_stopped.
+  // Avoid racing the server's automatic response on mobile.
+  create_response: false,
+};
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -169,6 +202,13 @@ module.exports = async (req, res) => {
       xfast: ' SPEAKING PACE: noticeably quicker than usual - still natural, every word clear, never rushed or slurred.',
     };
     const voiceSpeedInstruction = VOICE_SPEED_INSTRUCTIONS[voiceSpeed] || '';
+    // v-maha-natural (المالك ١ أكتوبر «كأنه شخص يكلمني» مثل محادثة GPT الصوتيّة): مها تكشف نهاية كلامك بالمعنى
+    // (semantic_vad) والخادم يردّ فورًا، بدل صمت ١١٠٠م.ث ثابت ثمّ طلب من العميل بعد ٣٥٠م.ث. «high» يحدّ انتظار
+    // الجملة الناقصة بأقصر مهلة — v607 أزال semantic_vad لأنّ مهلته الافتراضيّة الأطول بدت «لا تردّ حتّى تتكلّم ثانية».
+    // مفتاح طوارئ بلا تعديل كود: MAHA_TURN=classic يعيد الإعداد السابق حرفيًّا، وlow|medium|high يضبط الانتظار.
+    const mahaTurnEnv = String(process.env.MAHA_TURN || '').trim().toLowerCase();
+    let naturalTurn = mode !== 'builder' && mahaTurnEnv !== 'classic';
+    const naturalEagerness = ['low', 'medium', 'high'].includes(mahaTurnEnv) ? mahaTurnEnv : 'high';
 
     const usage = await checkAndConsume(token, guestId, 'maha-realtime', clientIp(req));
     if (!usage.allowed) {
@@ -310,27 +350,10 @@ module.exports = async (req, res) => {
             // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'
               ? { type: 'server_vad', threshold: 0.88, prefix_padding_ms: 300, silence_duration_ms: 800 }
-              : {
-                  type: 'server_vad',
-                  // v-maha-listen (المالك ٢٢ سبتمبر: «ما فيها دقّة إنصات، تتسرّع — تتكلّم قبل لا تتكلّم»): كانت 0.08
-                  // (الافتراضيّ الموثّق 0.5) فكلّ نفَس أو ضجيج أو صدى صوت مها نفسها = «كلام»، والصمت لا يُلتقط
-                  // فلا يأتي speech_stopped، فيتكفّل حارس العميل (كان ٣ث) بإطلاق الردّ وسط الجملة أو على ضجيج.
-                  // الكلمات الأولى الهادئة يحفظها prefix_padding_ms (١ث قبل بدء الكشف) لا العتبة المنخفضة.
-                  threshold: 0.5,
-                  prefix_padding_ms: 1000,
-                  // كانت 450م.ث ثمّ 700م.ث (v607) — والبلاغ تكرّر حتّى بعد 700م.ث: «يردّ بعد
-                  // الكلمة الثانية». v-maha-voice-speed لمس فقط SILENCE_HOLD_MS في المسار
-                  // الاحتياطيّ الكلاسيكيّ (js/app-08-maha.js) لا هذا الإعداد — الفائق (الوضع
-                  // النشِط افتراضيًّا) بقي بلا تغيير وهو غالبًا المسار الفعليّ الذي جرَّبه
-                  // المالك. 1100م.ث خطوة أكبر بنفس منطق رفعة v607، بانتظار تجربة صوتية حيّة
-                  // فعليّة (لا طريقة لقياس زمن الصمت المناسب إلّا بمكالمة حقيقية) — إن تكرّر
-                  // القطع ارفعها أكثر تدريجيًّا، وإن صار الردّ بطيئًا واضحًا اخفضها قليلًا.
-                  silence_duration_ms: 1100,
-                  // Be explicit so every detected user turn creates a reply.
-                  // The client sends one explicit response.create after speech_stopped.
-                // Avoid racing the server's automatic response on mobile.
-                create_response: false,
-                },
+              : naturalTurn
+              // v-maha-natural: الخادم يبدأ الردّ لحظة انتهاء الجملة، ومقاطعتها تُسكتها فورًا.
+              ? { type: 'semantic_vad', eagerness: naturalEagerness, create_response: true, interrupt_response: true }
+              : MAHA_CLASSIC_TURN,
           },
         },
         tools: [
@@ -504,12 +527,22 @@ module.exports = async (req, res) => {
 
     let upstream = await postSession();
     let rawText = await upstream.text();
+    // v-maha-natural: إن رفضت الواجهة كشف المعنى فالإعداد السابق حرفيًّا — المكالمة لا تهبط للوضع الأساسيّ بسببه.
+    // يُجرَّب أوّلًا متى سمّى الخطأ الحقل (فتبقى السرعة)، وأخيرًا متى رُفض الطلب بلا تسمية.
+    const useClassicTurn = async () => {
+      naturalTurn = false;
+      sessionConfig.session.audio.input.turn_detection = MAHA_CLASSIC_TURN;
+      upstream = await postSession();
+      rawText = await upstream.text();
+    };
+    if (!upstream.ok && naturalTurn && /turn_detection|semantic|eagerness|interrupt_response|create_response/i.test(rawText)) await useClassicTurn();
     // بعض إصدارات واجهة realtime لا تقبل حقل السرعة — أعِد المحاولة بدونه
     if (!upstream.ok && sessionConfig.session.audio.output.speed != null) {
       delete sessionConfig.session.audio.output.speed;
       upstream = await postSession();
       rawText = await upstream.text();
     }
+    if (!upstream.ok && naturalTurn && upstream.status === 400) await useClassicTurn();
     // وكذلك حقل التفريغ النصي (v-maha-captions): رفضُه لا يُسقط المكالمة —
     // تكمل بلا ترجمة حية لكلام المستخدم (كلمات مها تصل من مسار آخر أصلًا).
     if (!upstream.ok && sessionConfig.session.audio.input.transcription) {
@@ -530,7 +563,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget });
+    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic' });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }

@@ -42,6 +42,33 @@
   let reduce = false;
   try{ reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ __swallow(e, 'maha:goldwave-rm'); }
 
+  /* v-maha-ring (المالك ١ أكتوبر: «تقدر تسويها الذهبيّة دائرة» — اختار: حلقة ذهبيّة مضيئة، وسط الشاشة متوسّطة، تنبض
+     مع صوتها، والشريط يروح): data-shape="ring" على العنصر = حلقة بدل الشرائح. الصوت ومصادره كما هي (level نفسه):
+     الحلقة تكبر قليلًا والهالة تشتدّ مع صوتها، وفي السكوت تتنفّس تنفّسًا خفيفًا جدًّا. بلا canvas.
+     v-voice-stutter: التوهّج من الهالة وحدها — filter على الحاوية كان يُعاد رسمه كلّ إطار مع تحويل أبنائها (ثقيل على الجوّال). */
+  const RING = !!(host.getAttribute && host.getAttribute('data-shape') === 'ring');
+  let ringEl = null, haloEl = null, ringStill = true;
+  function buildRing(){
+    if(ringEl) return;
+    haloEl = document.createElement('div');
+    haloEl.style.cssText = 'position:absolute; inset:-14%; border-radius:50%; background:radial-gradient(circle, rgba(255,190,60,0) 48%, rgba(255,196,70,.7) 59%, rgba(255,170,40,.25) 67%, rgba(255,170,40,0) 75%); opacity:.45; will-change:transform,opacity;';
+    ringEl = document.createElement('div');
+    ringEl.style.cssText = 'position:absolute; inset:0; border-radius:50%; background:conic-gradient(from 0deg, #8a5a12, #ffd36a, #fff3c4, #e2a93b, #8a5a12, #ffcf5a, #fff1b8, #b07a1c, #8a5a12); -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask:radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); will-change:transform;';
+    host.appendChild(haloEl);
+    host.appendChild(ringEl);
+    host.style.backgroundImage = 'none';
+  }
+  function renderRing(){
+    if(!ringEl) buildRing();
+    const breathe = 0.012 * Math.sin(phase * 2.2);
+    const s = 1 + breathe + 0.12 * level;
+    ringEl.style.transform = 'scale(' + s.toFixed(4) + ')';
+    haloEl.style.transform = 'scale(' + (1 + breathe + 0.22 * level).toFixed(4) + ')';
+    haloEl.style.opacity = (0.45 + 0.55 * level).toFixed(3);
+    ringStill = false;
+  }
+  if(RING) buildRing();
+
   // الشرائح تُبنى عند أوّل إطار ظاهر بعدد يتبع العرض، وتُعاد إن تغيّر العرض كثيرًا (تدوير الجوّال)
   const strips = [];
   let N = 0, en = [], tmp = [];
@@ -164,6 +191,7 @@
   }
 
   function render(){
+    if(RING){ renderRing(); return; }
     const W = host.clientWidth, h = host.clientHeight;
     if(!W || !h) return;
     const want = Math.min(160, Math.max(40, Math.round(W / 10)));
@@ -221,6 +249,7 @@
     bands.fill(0);
     for(let j = 0; j < strips.length; j++) strips[j].style.transform = '';
     still = true;
+    if(ringEl && !ringStill){ ringEl.style.transform = ''; haloEl.style.transform = ''; haloEl.style.opacity = '.45'; ringStill = true; }
   }
 
   window.mahaGoldWave = { prime: ensureCtx, start, stop, end, attachStream, detachStream, trackAudio };

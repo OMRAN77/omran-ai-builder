@@ -143,7 +143,7 @@ check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخا�
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
 
-check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا');
+check(chatServer.includes('tools: toolTurn ? (isClarifyTurn(lastUserText) ? TOOLS_NO_MEDIA : TOOLS) : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا'); // v-img-ask: دور الاستيضاح بلا أدوات الصورة
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
 // — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
 check(chatServer.includes('const toolTurn = !quietSocialTurn && !__analyzeDoc;'), 'كل دور غير اجتماعي (عدا تحليل مستند) يحمل الأدوات والتاريخ والموقع');

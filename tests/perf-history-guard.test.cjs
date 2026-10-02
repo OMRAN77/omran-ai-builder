@@ -35,6 +35,7 @@ function buildCtx({ projects, currentId, showAll }){
     window: {},
     openHistItemMenu(){}, renderAll(){}, mahaClearImageRef(){}, updateProviderQuickBarActive: undefined,
     __swallow(){},
+    setTimeout(){}, // v-hist-autoload: بلا IntersectionObserver هنا يُؤجَّل الكشف — الاختبار يستدعيه يدويًّا
   };
   ctx.window.__histShowAll = !!showAll;
   vm.createContext(ctx);
@@ -74,19 +75,21 @@ test('٢. تغيّر فعليّ (عنوان محادثة) يبطل البصمة 
   assert.equal(ctx.historyEl.children.length, 2);
 });
 
-test('٣. نافذة العرض: ٣٥ محادثة → ٣٠ فقط + زرّ «عرض محادثات أقدم» يكشف الباقي', () => {
+test('٣. نافذة العرض: ٣٥ محادثة → ٣٠ فقط + علامة آخر القائمة (بلا زرّ) تكشف الباقي — v-hist-autoload', () => {
   const projects = Array.from({ length: 35 }, (_, i) => proj(i));
   const ctx = buildCtx({ projects });
   vm.runInContext(extractFn() + '\nrenderHistory();', ctx);
   const rows = ctx.historyEl.children.filter((c) => c.dataset && c.dataset.pid);
   assert.equal(rows.length, 30, 'الأحدث ٣٠ فقط تُبنى (لا ٣٥ iframe/صفّ)');
-  const btn = ctx.historyEl.children.find((c) => !c.dataset.pid);
-  assert.ok(btn, 'زرّ «عرض محادثات أقدم» موجود');
-  assert.match(btn.textContent, /عرض محادثات أقدم.*\(5\)/, 'يذكر عدد المتبقّي (٥)');
-  btn.onclick();
-  assert.equal(ctx.window.__histShowAll, true, 'الضغط يكشف الكلّ');
+  assert.ok(!ctx.historyEl.children.some((c) => /عرض محادثات أقدم/.test(c.textContent)), 'لا زرّ «عرض محادثات أقدم» (طلب المالك)');
+  const sentinel = ctx.historyEl.children.at(-1);
+  assert.equal(sentinel.className, 'hist-more-sentinel', 'علامة غير مرئيّة في آخر القائمة');
+  assert.equal(sentinel.textContent, '');
+  sentinel.__reveal(); // ما يفعله IntersectionObserver حين يصل التمرير آخر القائمة
+  assert.equal(ctx.window.__histShowAll, true, 'الوصول للآخر يكشف الكلّ');
   const rows2 = ctx.historyEl.children.filter((c) => c.dataset && c.dataset.pid);
-  assert.equal(rows2.length, 35, 'بعد الضغط: كلّ المحادثات الـ٣٥');
+  assert.equal(rows2.length, 35, 'بعد الوصول: كلّ المحادثات الـ٣٥');
+  assert.ok(!ctx.historyEl.children.some((c) => c.className === 'hist-more-sentinel'), 'لا علامة بعد كشف الكلّ');
 });
 
 test('٤. محادثة مفتوحة أقدم من النافذة تبقى ظاهرة رغم ذلك (لا تختفي عن قائمتها)', () => {

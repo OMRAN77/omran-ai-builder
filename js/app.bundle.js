@@ -2835,6 +2835,53 @@ function unlockCloudAudio(){
     }catch(e){ __swallow(e, 'tts:device-unlock'); }
   }
 }
+/* v-tts-sync: وزن الكلمة ≈ زمن نطقها — الحروف بلا تشكيل، والرقم أطول نطقًا (٣ لكلّ خانة)، وعلامة الوقف تضيف وقفة. */
+function ttsWordWeight(w){
+  const s = String(w || '');
+  const letters = s.replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[^\p{L}]/gu, '').length;
+  const digits = (s.match(/[0-9\u0660-\u0669]/g) || []).length;
+  return Math.max(1, letters + digits * 3);
+}
+function ttsWeightStarts(els, t0, t1){
+  const ws = els.map(el => ttsWordWeight(el.textContent));
+  const total = ws.reduce((a, b) => a + b, 0) || 1;
+  let acc = 0;
+  return ws.map(w => { const s = t0 + (acc / total) * (t1 - t0); acc += w; return s; });
+}
+/* أزمنة الكلمات من الصوت: غلاف الطاقة (١٠م.ث) ← المقاطع المسموعة (الصمت ≥ ١٢٠م.ث وقفة) ← الكلمات تُوزَّع على زمن
+   الكلام وحده بأوزانها، فالتظليل يثبت أثناء الوقفة ويبدأ مع أوّل صوت لا مع أوّل الملفّ. */
+let ttsSyncCtx = null;
+async function ttsVoicedStarts(url, els){
+  const C = window.AudioContext || window.webkitAudioContext;
+  if(!C || !els.length) return null;
+  if(!ttsSyncCtx) ttsSyncCtx = new C();
+  const ab = await (await fetch(url)).arrayBuffer();
+  const buf = await new Promise((res, rej) => { const p = ttsSyncCtx.decodeAudioData(ab, res, rej); if(p && p.then) p.then(res, rej); });
+  const ch = buf.getChannelData(0), sr = buf.sampleRate, hop = Math.max(1, Math.round(sr / 100));
+  const env = [];
+  for(let a = 0; a < ch.length; a += hop){
+    let e = 0; const z = Math.min(ch.length, a + hop);
+    for(let k = a; k < z; k++) e += ch[k] * ch[k];
+    env.push(Math.sqrt(e / Math.max(1, z - a)));
+  }
+  const peak = env.reduce((m, v) => v > m ? v : m, 0);
+  if(!peak) return null;
+  const thr = peak * 0.06;
+  const voiced = env.map(v => v > thr);
+  // وقفة أقصر من ١٢٠م.ث داخل كلمة/بين كلمتين متّصلتين تُحسب كلامًا
+  for(let i = 0; i < voiced.length;){
+    if(voiced[i]){ i++; continue; }
+    let j = i; while(j < voiced.length && !voiced[j]) j++;
+    if(i > 0 && j < voiced.length && j - i < 12) for(let k = i; k < j; k++) voiced[k] = true;
+    i = j;
+  }
+  const frames = []; voiced.forEach((v, i) => { if(v) frames.push(i); });
+  if(frames.length < 5) return null;
+  const ws = els.map(el => ttsWordWeight(el.textContent));
+  const total = ws.reduce((a, b) => a + b, 0) || 1;
+  let acc = 0;
+  return ws.map(w => { const f = frames[Math.min(frames.length - 1, Math.floor((acc / total) * frames.length))]; acc += w; return f / 100; });
+}
 async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   if(!text) return;
   unlockCloudAudio(); // يجب أن يحدث قبل أي await حتى يبقى ضمن ضغطة المستخدم
@@ -2937,25 +2984,36 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         audio.onended = () => { if(currentCloudToken === token) playChunk(i + 1); };
         audio.onerror = () => { if(currentCloudToken === token) playChunk(i + 1); };
         if(wordEls && wordEls.length){
+          /* v-tts-sync (المالك ٢ أكتوبر «الكتابة ما تتبع الصوت، تتأخّر — أريد تطابق الاثنين»): كان التقدير قسمة مدّة المقطع
+             على عدد الحروف — يتجاهل صمت البداية والنهاية ووقفات الفواصل والأرقام الطويلة النطق، فينزاح التظليل. وإن بدأ
+             الحساب قبل التشغيل (paused) توقّفت الحلقة نهائيًّا. الآن: التقدير القديم فورًا، ثمّ أزمنة من الصوت نفسه
+             (ttsVoicedStarts: المقاطع المسموعة فعلًا والوقفات)، والحلقة تبدأ مع «playing». */
           const chunkWordEls = wordEls.slice(chunks[i].wordStart, chunks[i].wordStart + chunks[i].wordCount);
+          let starts = null;
+          const tick = () => {
+            ttsHighlightRaf = null;
+            if(currentCloudToken !== token || currentCloudAudio !== audio || audio.ended || audio.src !== url) return; // العنصر نفسه يُعاد لكلّ مقطع
+            if(starts && !audio.paused){
+              const cur = audio.currentTime + 0.05;
+              let idx = 0;
+              for(let k = 0; k < starts.length; k++){ if(starts[k] <= cur) idx = k; else break; }
+              setActiveWord(wordEls, chunks[i].wordStart + idx);
+            }
+            if(!audio.paused) ttsHighlightRaf = requestAnimationFrame(tick);
+          };
+          const arm = () => {
+            if(audio.src !== url || currentCloudToken !== token){ audio.removeEventListener('playing', arm); return; }
+            if(!ttsHighlightRaf) ttsHighlightRaf = requestAnimationFrame(tick);
+          };
           audio.addEventListener('loadedmetadata', () => {
             if(currentCloudToken !== token) return;
             const duration = audio.duration;
             if(!isFinite(duration) || duration <= 0) return;
-            const lens = chunkWordEls.map(el => (el.textContent || '').length + 1);
-            const totalChars = lens.reduce((a,b) => a + b, 0) || 1;
-            let acc = 0;
-            const starts = lens.map(len => { const s = (acc / totalChars) * duration; acc += len; return s; });
-            const tick = () => {
-              if(currentCloudToken !== token || !currentCloudAudio || audio.paused || audio.ended) return;
-              const cur = audio.currentTime;
-              let idx = 0;
-              for(let k = 0; k < starts.length; k++){ if(starts[k] <= cur) idx = k; else break; }
-              setActiveWord(wordEls, chunks[i].wordStart + idx);
-              ttsHighlightRaf = requestAnimationFrame(tick);
-            };
-            ttsHighlightRaf = requestAnimationFrame(tick);
+            if(!starts) starts = ttsWeightStarts(chunkWordEls, 0, duration);
+            arm();
           }, { once: true });
+          audio.addEventListener('playing', arm);
+          ttsVoicedStarts(url, chunkWordEls).then((st) => { if(st && currentCloudToken === token) starts = st; }).catch(() => {}); // guard-ok: يبقى التقدير
         }
         await audio.play();
       };
@@ -4110,8 +4168,17 @@ const I18N = {
     mahaImageFailedReply: "ما قدرت أسوي الصورة، جرب توصيف ثاني",
     voiceGenderLabel: 'نوع الصوت المفضل',
     voiceGenderDefault: 'افتراضي (صوت الجهاز)',
-    voiceGenderMale: 'صوت رجل',
-    voiceGenderFemale: 'صوت امرأة',
+    voiceGenderMale: 'عبدالله',
+    voiceGenderFemale: 'مها',
+    voiceSampleIntro: 'هلا والله، أنا {name}. كيف أقدر أساعدك اليوم؟', // v-voice-names
+    fontSizeTiny: 'أصغر', // v-font-tuner
+    fontSizeMedium: 'متوسط', // v-font-tuner
+    fontSizeHuge: 'الأكبر', // v-font-tuner
+    fontWeightLabel: 'سماكة الخط', // v-font-tuner
+    fontWeightThin: 'رفيع', // v-font-tuner
+    fontWeightBold: 'سميك', // v-font-tuner
+    fontPreviewQ: 'هل تعرف إنه صار ممكن تغيّر حجم الخط وسماكته؟', // v-font-tuner
+    fontPreviewA: 'إي! اسحب الشريط تحت وجرّبها الحين.', // v-font-tuner
     voiceSpeedLabel: 'سرعة الصوت',
     voiceSpeedSlow: 'بطيء',
     voiceSpeedNormal: 'عادي',
@@ -4175,6 +4242,12 @@ const I18N = {
     checkoutCardOption: 'بطاقة',
     checkoutLoginFirst: 'سجّل حسابك أو ادخل أوّلًا، ثمّ اشترك',
     checkoutAutoRenew: '🔁 تجديد تلقائيّ كلّ شهر بالبطاقة',
+    autoRenewLabel: '🔁 الخصم الشهري التلقائي',
+    autoRenewOnHint: 'مفعّل — يتجدّد اشتراكك ويُخصم كل شهر تلقائيًا',
+    autoRenewOffHint: 'متوقّف — تدفع لشهر واحد فقط وتجدّد يدويًا متى شئت',
+    autoRenewStopped: 'أُوقف الخصم الشهري — اشتراكك يبقى حتى {date}',
+    autoRenewResumed: 'رجع الخصم الشهري التلقائي',
+    autoRenewFailed: 'تعذّر التغيير الآن، حاول لاحقًا',
     checkoutApplePay: 'Apple Pay',
     checkoutGooglePay: 'Google Pay',
     checkoutWalletUnavailable: 'غير متوفر على هذا الجهاز',
@@ -4436,6 +4509,12 @@ const I18N = {
     checkoutCardOption: 'Card',
     checkoutLoginFirst: 'Sign up or log in first, then subscribe',
     checkoutAutoRenew: '🔁 Auto-renew monthly by card',
+    autoRenewLabel: '🔁 Monthly auto-charge',
+    autoRenewOnHint: 'On — your plan renews and is charged every month automatically',
+    autoRenewOffHint: 'Off — you pay for one month only and renew manually whenever you like',
+    autoRenewStopped: 'Monthly charge stopped — your plan stays active until {date}',
+    autoRenewResumed: 'Monthly auto-charge is back on',
+    autoRenewFailed: 'Could not change it right now, try again later',
     checkoutApplePay: 'Apple Pay',
     checkoutGooglePay: 'Google Pay',
     checkoutWalletUnavailable: 'Not available on this device',
@@ -5236,8 +5315,17 @@ const I18N = {
     mahaImageFailedReply: "I couldn't make the picture, try describing it differently",
     voiceGenderLabel: 'Preferred voice type',
     voiceGenderDefault: 'Default (device voice)',
-    voiceGenderMale: 'Male voice',
-    voiceGenderFemale: 'Female voice',
+    voiceGenderMale: 'Abdullah',
+    voiceGenderFemale: 'Maha',
+    voiceSampleIntro: 'Hi, I\'m {name}. How can I help you today?', // v-voice-names
+    fontSizeTiny: 'Smallest', // v-font-tuner
+    fontSizeMedium: 'Medium', // v-font-tuner
+    fontSizeHuge: 'Largest', // v-font-tuner
+    fontWeightLabel: 'Font weight', // v-font-tuner
+    fontWeightThin: 'Thin', // v-font-tuner
+    fontWeightBold: 'Bold', // v-font-tuner
+    fontPreviewQ: 'Did you know you can now change the font size and weight?', // v-font-tuner
+    fontPreviewA: 'Yes! Just drag the slider below and try it now.', // v-font-tuner
     voiceSpeedLabel: 'Voice speed',
     voiceSpeedSlow: 'Slow',
     voiceSpeedNormal: 'Normal',
@@ -5328,7 +5416,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=707'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=710'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6676,16 +6764,6 @@ function renderHistory(){
   const __curIdx = state.currentId ? __histSorted.findIndex(p => p.id === state.currentId) : -1;
   const __histWinEnd = window.__histShowAll ? __histSorted.length
     : Math.min(Math.max(__HIST_WINDOW, __curIdx + 1), __histSorted.length);
-  if(__histWinEnd < __histSorted.length){
-    const __OLDHT = { ar:'عرض محادثات أقدم', en:'Show older chats', fr:'Afficher les discussions plus anciennes', hi:'पुरानी बातचीत दिखाएँ', ur:'پرانی بات چیت دکھائیں', bn:'পুরনো চ্যাট দেখান', ne:'पुरानो कुराकानी देखाउनुहोस्', id:'Tampilkan obrolan lama', fil:'Ipakita ang mga lumang chat', tr:'Eski sohbetleri göster', zh:'显示较早的对话', ru:'Показать старые чаты', es:'Mostrar chats anteriores', ml:'പഴയ ചാറ്റുകൾ കാണിക്കുക' };
-    const __uiL2 = localStorage.getItem('aiapp_lang') || 'ar';
-    const olderHistBtn = document.createElement('button');
-    olderHistBtn.type = 'button';
-    olderHistBtn.textContent = '⬇ ' + (__OLDHT[__uiL2] || __OLDHT.en) + ' (' + (__histSorted.length - __histWinEnd) + ')';
-    olderHistBtn.style.cssText = 'display:block; width:100%; margin:6px 0 10px; padding:7px 16px; border-radius:20px; border:1px solid var(--border,rgba(255,255,255,.15)); background:transparent; color:var(--accent2,#a78bfa); font-size:12.5px; cursor:pointer;';
-    olderHistBtn.onclick = () => { window.__histShowAll = true; window.__renderHistSig = null; renderHistory(); };
-    historyEl.appendChild(olderHistBtn);
-  }
   __histSorted.slice(0, __histWinEnd).forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
@@ -6755,6 +6833,19 @@ function renderHistory(){
 
     historyEl.appendChild(div);
   });
+  /* v-hist-autoload (المالك ٢ أكتوبر «احذف عرض محادثات أقدم»): الزرّ حُذف — الأقدم تُحمَّل وحدها حين يصل التمرير
+     آخر القائمة (علامة غير مرئيّة)، فتبقى نافذة الـ٣٠ وسرعتها (v-perf-history-guard) بلا زرّ. */
+  if(__histWinEnd < __histSorted.length){
+    const sentinel = document.createElement('div');
+    sentinel.className = 'hist-more-sentinel';
+    sentinel.style.cssText = 'height:1px;';
+    sentinel.__reveal = () => { if(window.__histShowAll) return; window.__histShowAll = true; window.__renderHistSig = null; renderHistory(); };
+    historyEl.appendChild(sentinel);
+    if(typeof IntersectionObserver === 'function'){
+      const io = new IntersectionObserver((ents) => { if(ents.some(e => e.isIntersecting)){ io.disconnect(); sentinel.__reveal(); } }, { rootMargin: '300px' });
+      io.observe(sentinel);
+    } else { setTimeout(sentinel.__reveal, 0); }
+  }
 }
 
 // v202: قائمة ⋮ الصغيرة لكل مشروع — إعادة تسمية / حذف (بتأكيد) / مشاركة
@@ -10186,21 +10277,57 @@ document.querySelectorAll('.tab').forEach(tab => {
   };
 });
 
-/* v338: حجم خط المحادثة */
+/* v338: حجم خط المحادثة — v-font-tuner (المالك ٢ أكتوبر، لقطة «حجم الخط / سماكة الخط» بمعاينة محادثة): الأزرار الأربعة
+   صارت شريطين بمعاينة حيّة — الحجم ٧ درجات (العاديّ الثالثة = حجم المحادثة الافتراضيّ كما هو) والسماكة ٤.
+   الاختيار القديم (chatFontSize) يُنقل مرّة: صغير ٠، عاديّ ٢، كبير ٣، كبير جدًّا ٥ — بنفس مقاساته تقريبًا. */
+const FT_SIZES = [12, 13, 0, 15.5, 17, 18.5, 20]; // ٠ = العاديّ (لا يُفرض شيء)
+const FT_SIZE_KEYS = ['fontSizeTiny', 'fontSizeSmall', 'fontSizeNormal', 'fontSizeMedium', 'fontSizeLarge', 'fontSizeXLarge', 'fontSizeHuge'];
+const FT_WEIGHTS = [300, 400, 500, 700];
+const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'fontWeightBold'];
 (function(){
-  function applyFS(v){
-    document.documentElement.classList.remove('fs-small','fs-large','fs-xlarge');
-    if(v && v !== 'normal') document.documentElement.classList.add('fs-' + v);
-    document.querySelectorAll('.fontSizeBtn').forEach(b => b.classList.toggle('active', b.dataset.fs === v));
+  try{
+    const st = document.createElement('style');
+    st.id = 'ftChatCss';
+    st.textContent = 'html[data-chat-fs] .msg{font-size:var(--omran-chat-fs);} html[data-chat-fw] .msg-text{font-weight:var(--omran-chat-fw);}';
+    document.head.appendChild(st);
+  }catch(e){ __swallow(e, 'ui:font-tuner-css'); }
+  function readStep(key, def, max){
+    let v = NaN;
+    try{ v = parseInt(localStorage.getItem(key), 10); }catch(e){ __swallow(e, 'ui:font-tuner-read'); }
+    return (v >= 0 && v <= max) ? v : def;
   }
-  let saved = 'normal';
-  try{ saved = localStorage.getItem('chatFontSize') || 'normal'; }catch(e){ __swallow(e, "ui:app-05-ui#15"); }
-  applyFS(saved);
-  document.querySelectorAll('.fontSizeBtn').forEach(b => {
-    b.onclick = function(){
-      try{ localStorage.setItem('chatFontSize', b.dataset.fs); }catch(e){ __swallow(e, "save:app-05-ui#16"); }
-      applyFS(b.dataset.fs);
-    };
+  function migrate(){
+    try{
+      if(localStorage.getItem('chatFontStep') !== null) return;
+      const old = localStorage.getItem('chatFontSize');
+      const map = { small: 0, normal: 2, large: 3, xlarge: 5 };
+      if(old && map[old] !== undefined) localStorage.setItem('chatFontStep', String(map[old]));
+    }catch(e){ __swallow(e, 'ui:font-tuner-migrate'); }
+  }
+  function apply(){
+    const root = document.documentElement;
+    const si = readStep('chatFontStep', 2, 6), wi = readStep('chatFontWeight', 1, 3);
+    root.classList.remove('fs-small','fs-large','fs-xlarge'); // v338 القديمة
+    if(FT_SIZES[si]){ root.setAttribute('data-chat-fs', String(si)); root.style.setProperty('--omran-chat-fs', FT_SIZES[si] + 'px'); }
+    else { root.removeAttribute('data-chat-fs'); root.style.removeProperty('--omran-chat-fs'); }
+    if(wi !== 1){ root.setAttribute('data-chat-fw', String(wi)); root.style.setProperty('--omran-chat-fw', String(FT_WEIGHTS[wi])); }
+    else { root.removeAttribute('data-chat-fw'); root.style.removeProperty('--omran-chat-fw'); }
+    const sz = document.getElementById('ftSize'), wt = document.getElementById('ftWeight');
+    if(sz) sz.value = String(si);
+    if(wt) wt.value = String(wi);
+    const sn = document.getElementById('ftSizeName'), wn = document.getElementById('ftWeightName');
+    try{ if(sn) sn.textContent = t(FT_SIZE_KEYS[si]); if(wn) wn.textContent = t(FT_WEIGHT_KEYS[wi]); }catch(e){ __swallow(e, 'ui:font-tuner-names'); }
+  }
+  window.omranApplyFontTuner = apply;
+  migrate();
+  apply();
+  [['ftSize', 'chatFontStep'], ['ftWeight', 'chatFontWeight']].forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', () => {
+      try{ localStorage.setItem(key, el.value); }catch(e){ __swallow(e, 'ui:font-tuner-save'); }
+      apply();
+    });
   });
 })();
 
@@ -12390,7 +12517,7 @@ async function postWithConfirm(url, payload){
       const cs = getComputedStyle(g);
       const ctx = document.createElement('canvas').getContext('2d');
       ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-      const m = ctx.measureText('م');
+      const m = ctx.measureText(g.textContent || 'م'); // v-voice-letter: «م» أو «ع» حسب الشخصيّة
       if(m.fontBoundingBoxAscent === undefined) return; // متصفح قديم: تبقى إزاحة CSS الافتراضية
       const spanH = g.getBoundingClientRect().height;
       const baselineTop = (spanH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
@@ -12403,6 +12530,7 @@ async function postWithConfirm(url, payload){
     }catch(e){ __swallow(e, 'ui:maha-center'); }
   };
   fix();
+  window.__mahaGlyphFix = fix; // v-voice-letter: يُعاد التوسيط عند تبديل الحرف
   try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
 })();
 
@@ -12673,7 +12801,7 @@ function openCheckout(plan){
   checkoutCurrentPlan = plan;
   const arRow = document.getElementById('checkoutAutoRenewRow');
   const arBox = document.getElementById('checkoutAutoRenew');
-  if (arBox) arBox.checked = false;
+  if (arBox) arBox.checked = autoRenewPref(); // v-autorenew-toggle: يتبع زرّ أوّل الصفحة (الافتراضيّ متوقّف كما كان)
   if (arRow) arRow.style.display = /^pack\d+$/.test(String(plan)) ? 'none' : 'flex';
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
@@ -13082,6 +13210,8 @@ $('#btnSettings').onclick = () => {
   $('#chkIncludeDeepSeek').checked = localStorage.getItem('aiapp_include_deepseek') !== 'false';
   $('#chkIncludeCohere').checked = localStorage.getItem('aiapp_include_cohere') !== 'false';
   try { setVoiceGenderUI(localStorage.getItem('aiapp_voice_gender') || 'female'); } catch(e) { console.error(e); }
+  try { syncAutoRenewUI(); } catch(e) { console.error(e); }
+  try { if (window.omranApplyFontTuner) window.omranApplyFontTuner(); } catch(e) { console.error(e); } // v-font-tuner: الأسماء بلغة الواجهة
   try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }
@@ -14862,6 +14992,58 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+
+
+/* v-autorenew-toggle (المالك ٢ أكتوبر «خاصيّة في الاشتراكات تلغي الاشتراك الشهريّ — خصم شهريّ ولا عاديّ — زرّ يفتح ويغلق
+   في أوّل الصفحة»): زرّ واحد أعلى «خطط الأسعار». للشراء الجديد: مفعّل = اشتراك شهريّ متجدّد، متوقّف = شهر واحد (الافتراضيّ).
+   ولمن عنده اشتراك متجدّد فعلًا: الإيقاف يوقف التجديد عند نهاية الشهر المدفوع (لا استرجاع ولا قطع)، والتفعيل يعيده.
+   حالة الزرّ تُقرأ من Stripe عند فتح الإعدادات إن وُجد اشتراك، وإلّا من التفضيل المحفوظ. */
+function autoRenewPref(){ try{ return localStorage.getItem('aiapp_autorenew') === '1'; }catch(e){ return false; } }
+function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffHint'); }
+function setAutoRenewUI(on){
+  const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
+  if (chk) chk.checked = !!on;
+  if (hint) hint.textContent = autoRenewHintText(!!on);
+}
+async function autoRenewCall(on){
+  const tk = authGet('aiapp_auth_token');
+  if (!tk) return null;
+  const r = await fetch('/api/account?action=auto-renew', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(on === undefined ? { token: tk } : { token: tk, on: !!on }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+async function syncAutoRenewUI(){
+  setAutoRenewUI(autoRenewPref());
+  try{
+    const j = await autoRenewCall();
+    if (j && j.subs > 0){ localStorage.setItem('aiapp_autorenew', j.on ? '1' : '0'); setAutoRenewUI(j.on); }
+  }catch(e){ __swallow(e, 'checkout:autorenew-sync'); }
+}
+(function wireAutoRenew(){
+  const chk = document.getElementById('chkAutoRenew');
+  if (!chk || chk.dataset.wired === '1') return;
+  chk.dataset.wired = '1';
+  setAutoRenewUI(autoRenewPref());
+  chk.addEventListener('change', async () => {
+    const on = chk.checked;
+    const prev = autoRenewPref();
+    try{ localStorage.setItem('aiapp_autorenew', on ? '1' : '0'); }catch(e){ __swallow(e, 'checkout:autorenew-save'); }
+    setAutoRenewUI(on);
+    try{
+      const j = await autoRenewCall(on);
+      if (j && j.subs > 0){
+        const d = j.periodEnd ? new Date(j.periodEnd * 1000).toLocaleDateString(lang === 'ar' ? 'ar-AE' : undefined) : '';
+        settingsToast(on ? t('autoRenewResumed') : t('autoRenewStopped').replace('{date}', d));
+      }
+    }catch(e){
+      __swallow(e, 'checkout:autorenew-set');
+      try{ localStorage.setItem('aiapp_autorenew', prev ? '1' : '0'); }catch(e2){ __swallow(e2, 'checkout:autorenew-revert'); }
+      setAutoRenewUI(prev);
+      settingsToast(t('autoRenewFailed'));
+    }
+  });
+})();
 window.postWithConfirm = postWithConfirm;
 // ---- Voice chat: speech-to-text (mic) + auto-read replies ----
 const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -14894,10 +15076,19 @@ btnStop.onclick = () => {
 function setVoiceGenderUI(val){
   document.querySelectorAll('.voiceGenderBtn').forEach(b => b.classList.toggle('active', b.dataset.gender === val));
 }
+/* v-voice-names (المالك ١ أكتوبر «ضيف عبدالله… ويكون في الإعدادات صوت تجريبيّ: مها وعبدالله»): الزرّان باسميهما،
+   والضغط يختار الصوت ويُسمعك تعريفه بنفسه فورًا («أنا مها…»/«أنا عبدالله…») — وزرّ التجربة يُسمع المختار. */
+function voicePersonaSample(gender){
+  const name = t(gender === 'male' ? 'voiceGenderMale' : 'voiceGenderFemale');
+  const tpl = t('voiceSampleIntro');
+  return (tpl && tpl !== 'voiceSampleIntro' ? tpl : "Hi, I'm {name}. How can I help you today?").split('{name}').join(name);
+}
 document.querySelectorAll('.voiceGenderBtn').forEach(b => {
   b.onclick = () => {
     localStorage.setItem('aiapp_voice_gender', b.dataset.gender);
     setVoiceGenderUI(b.dataset.gender);
+    try{ if(typeof mahaUpdatePersonaUI === 'function') mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'voice:persona-ui'); } // الأيقونة والاسم فورًا
+    try{ speakSmart(voicePersonaSample(b.dataset.gender), null, null, true); }catch(e){ __swallow(e, 'voice:persona-sample'); }
   };
 });
 // v-maha-voice-speed: نفس نمط أزرار الجنس أعلاه لأزرار السرعة — يُزامَن عند فتح
@@ -14915,14 +15106,8 @@ document.querySelectorAll('.voiceSpeedBtn').forEach(b => {
 const btnTestVoice = $('#btnTestVoice');
 if(btnTestVoice){
   btnTestVoice.onclick = () => {
-    const testTextByLang = {
-      ar: 'مرحبًا، هذا اختبار للصوت.',
-      en: 'Hello, this is a voice test.',
-      fr: 'Bonjour, ceci est un test de la voix.',
-      hi: 'नमस्ते, यह आवाज़ का परीक्षण है।',
-      ur: 'ہیلو، یہ آواز کا امتحان ہے۔'
-    };
-    speakSmart(testTextByLang[lang] || testTextByLang.en, null, null, true);
+    // v-voice-names: التجربة صارت تعريف الشخصيّة المختارة بلغة الواجهة
+    speakSmart(voicePersonaSample(localStorage.getItem('aiapp_voice_gender') === 'male' ? 'male' : 'female'), null, null, true);
   };
 }
 // ---- Mic: record audio (works on ALL devices: Android + iPhone + desktop) and
@@ -16106,24 +16291,45 @@ else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'mah
 const MAHA_ICON = '/icons/maha-m3.svg'; // v-maha-solo: أيقونة مها الجديدة
 const ABDULLAH_ICON = '/icons/abdullah-icon.svg';
 function mahaUpdatePersonaUI(){
-  // v-maha-solo: مها وحدها الآن — عبدالله يُرتَّب لاحقًا بطلب المالك.
-  // الشخصية مثبتة أنثوية أيًّا كان الإعداد القديم المحفوظ.
-  mahaDetectedGender = 'female';
-  try{ if(localStorage.getItem('aiapp_voice_gender') !== 'female') localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo'); }
+  /* v-voice-names (المالك ١ أكتوبر «إذا اخترت عبدالله من الإعدادات تطلع مها»): v-maha-solo كان يعيد الإعداد إلى
+     female عند الإقلاع وكلّ مكالمة («عبدالله يُرتَّب لاحقًا بطلب المالك») — والطلب جاء. الشخصيّة الآن من المحفوظ. */
+  const male = mahaReadVoiceGender() === 'male';
+  mahaDetectedGender = male ? 'male' : 'female';
+  const name = male ? 'عبدالله' : 'مها', icon = male ? ABDULLAH_ICON : MAHA_ICON;
   const old = document.getElementById('mahaPersonaSwitch');
   if(old) old.remove();
   const nameEl = document.getElementById('mahaCallNameLabel');
-  if(nameEl) nameEl.textContent = 'مها';
+  if(nameEl) nameEl.textContent = name;
   const orb = document.getElementById('mahaOrb');
   if(orb){
     orb.textContent = '';
-    orb.style.background = "url('" + MAHA_ICON + "') center/cover no-repeat, #0a0908";
+    orb.style.background = "url('" + icon + "') center/cover no-repeat, #0a0908";
     orb.style.boxShadow = '0 0 35px rgba(212,175,55,.55)';
     orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
-  if(fabImg && fabImg.getAttribute('src') !== MAHA_ICON){ fabImg.src = MAHA_ICON; fabImg.alt = 'مها'; }
-  if(btnMahaEl) btnMahaEl.title = 'مها';
+  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
+  if(btnMahaEl) btnMahaEl.title = name;
+  /* v-voice-letter (المالك ١ أكتوبر «إذا اختار مها تخليها م تحت، وإذا اختار عبدالله يطلع حرف ع»): حرف زرّ الكتابة.
+     v-abdullah-glyph (المالك ٢ أكتوبر، لقطة الزرّ: «قصّ الي أرسلتلك وحطّها بدل القديم»): «ع» صورة مقصوصة من لقطته
+     (/icons/abdullah-glyph.png، خلفيّة شفّافة) بدل حرف الخطّ؛ «م» نصّ كما هو. */
+  const glyph = document.querySelector('#btnMahaDock .mahaGlyph');
+  const dock = document.getElementById('btnMahaDock');
+  if(glyph){
+    if(glyph.textContent !== 'م'){ glyph.textContent = 'م'; try{ if(typeof window.__mahaGlyphFix === 'function') window.__mahaGlyphFix(); }catch(e){ __swallow(e, 'maha:glyph-fix'); } }
+    glyph.style.display = male ? 'none' : '';
+  }
+  if(dock){
+    let gi = dock.querySelector('.abdullahGlyph');
+    if(male && !gi){
+      gi = document.createElement('img');
+      gi.className = 'abdullahGlyph'; gi.alt = ''; gi.setAttribute('aria-hidden', 'true'); gi.src = '/icons/abdullah-glyph.png';
+      gi.style.cssText = 'width:22px; height:22px; object-fit:contain; display:block; pointer-events:none;';
+      dock.appendChild(gi);
+    }
+    if(gi) gi.style.display = male ? 'block' : 'none';
+    dock.title = name;
+  }
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
@@ -16131,7 +16337,8 @@ function mahaEnsureVoiceChosen(){
   return new Promise(resolve => {
     let already = null;
     try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ /* guard-ok: unavailable storage shows the safe first-run picker. */ }
-    // v-maha-solo: مها وحدها — لا سؤال في أول تشغيل.
+    // v-maha-solo: لا سؤال في أول تشغيل — مها افتراضيًّا. v-voice-names: اختيار عبدالله المحفوظ يبقى كما هو.
+    if(already === 'male' || already === 'female') return resolve(already);
     try{ localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo-first'); }
     return resolve('female');
     /* eslint-disable no-unreachable */
@@ -16246,7 +16453,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: mahaReadVoiceSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: 'normal' /* v-speed-chat-only: «بطيء وسريع للدردشة فقط، ليس لمها وعبدالله» */, token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
@@ -17006,6 +17213,8 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
  * server missing the key, etc.) so the feature never just stops working. */
 let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false, mahaRtReady = false;
     let mahaRtResponseWatchdog = null;
+    // v-maha-natural: الخادم يردّ بنفسه لحظة انتهاء الجملة (semantic_vad) — حارس العميل احتياط متأخّر فقط.
+    let mahaRtNatural = false;
 
     // Realtime normally starts a reply after server VAD detects the end of speech.
     // This one-shot guard prevents a silent first turn from making a caller speak
@@ -17209,7 +17418,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       voiceGender: mahaReadVoiceGender(),
-      voiceSpeed: mahaReadVoiceSpeed(),
+      voiceSpeed: 'normal', // v-speed-chat-only
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -17222,6 +17431,7 @@ async function mahaStartRealtimeCall(){
     throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
   }
   mahaStartPointsMeter(tokenData.mahaBudget);
+  mahaRtNatural = tokenData.turn === 'natural';
   const EPHEMERAL_KEY = tokenData.clientSecret;
   if(mahaRtCancelled) throw new Error('cancelled');
 
@@ -17252,6 +17462,8 @@ async function mahaStartRealtimeCall(){
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
     try{
       const receiver = e.receiver;
+      // v-voice-stutter (المالك ١ أكتوبر «الصوت يتقطّع ويوشوش»): v-maha-natural خفّضه إلى ٠٫١ث فتقطّع على الجوّال.
+      // ٠٫٢٥ث للوضعين — وأكّده المالك بعد النشر: «بعدها كانت أفضل».
       if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
     }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };
@@ -17284,7 +17496,9 @@ async function mahaStartRealtimeCall(){
       }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){
         mahaSetState('thinking');
-        mahaArmRtResponseWatchdog(350);
+        // v-maha-natural: الخادم بدأ الردّ؛ الطلب من العميل يُرسل فقط إن لم يصل response.created خلال ١٫٥ث.
+        if(mahaRtNatural) mahaArmRtResponseWatchdog(1500);
+        else mahaArmRtResponseWatchdog(350);
       }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
@@ -17365,6 +17579,13 @@ async function mahaStartRealtimeCall(){
       if(preBufSent) mahaArmRtResponseWatchdog(900);
       mahaSetState('listening');
       mahaPlayReadyBeep();
+      /* v-maha-greet (المالك ١ أكتوبر «من أوّل ما تفتح تردّ عليك»): مها تبادر بتحيّة قصيرة لحظة الجاهزية كالمكالمة الحقيقيّة.
+         لا تحيّة إن قال المستخدم شيئًا أثناء التجهيز (جملته تأخذ ردّها)، ولا في إعادة الاتّصال، ولا في البنّاء. كلامه يقاطعها. */
+      if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){
+        try{
+          dc.send(JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now, like a real person answering: greet the user warmly in ONE short natural sentence, say your name, and invite them to talk. Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. If USER MEMORY has their name, greet them by it. Nothing else.' } }));
+        }catch(e){ __swallow(e, 'maha:greet'); }
+      }
       // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
       // عمدًا حتى تجهز الجلسة — المستخدم كان يتكلم بدري ويظن مها ما ترد.
       if(mahaStateLabelEl && mahaStateLabelEl.textContent) mahaStateLabelEl.textContent = '🟢 ' + mahaStateLabelEl.textContent;
@@ -18524,8 +18745,10 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
       }
     }catch(e){ /* guard-ok: تنظيف تجميلي — فشله لا يعطل الإعدادات */ }
   }
+  /* v-voice-names-show (المالك ١ أكتوبر، لقطة الإعدادات «المساعد / المساعد الصوتي» بدل «عبدالله / مها»): التحييد كان
+     «للجميع» حتّى حساب المالك الذي تعمل عنده المكالمة. الآن لمن مها موقوفة عنده وحده. */
   var sb = document.getElementById('btnSettings');
-  if(sb) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
+  if(sb && window.__mahaPaused) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
 })();
 /* v-site-guide3 (المالك ٢٣ سبتمبر «المزوّدين كلّهم أبيهم نفس الطريقة»): نسخة العميل من قاعدة الإرشاد بين المواقع —
    تُرسل رسالة نظام في دور الإرشاد فتصل المسارات التي بلا أدوات (الاحتياط، والمزوّد بلا أدوات)، ونصّها مطابق لـ
@@ -41387,6 +41610,33 @@ if(document.readyState === 'loading'){
   let reduce = false;
   try{ reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ __swallow(e, 'maha:goldwave-rm'); }
 
+  /* v-maha-ring (المالك ١ أكتوبر: «تقدر تسويها الذهبيّة دائرة» — اختار: حلقة ذهبيّة مضيئة، وسط الشاشة متوسّطة، تنبض
+     مع صوتها، والشريط يروح): data-shape="ring" على العنصر = حلقة بدل الشرائح. الصوت ومصادره كما هي (level نفسه):
+     الحلقة تكبر قليلًا والهالة تشتدّ مع صوتها، وفي السكوت تتنفّس تنفّسًا خفيفًا جدًّا. بلا canvas.
+     v-voice-stutter: التوهّج من الهالة وحدها — filter على الحاوية كان يُعاد رسمه كلّ إطار مع تحويل أبنائها (ثقيل على الجوّال). */
+  const RING = !!(host.getAttribute && host.getAttribute('data-shape') === 'ring');
+  let ringEl = null, haloEl = null, ringStill = true;
+  function buildRing(){
+    if(ringEl) return;
+    haloEl = document.createElement('div');
+    haloEl.style.cssText = 'position:absolute; inset:-14%; border-radius:50%; background:radial-gradient(circle, rgba(255,190,60,0) 48%, rgba(255,196,70,.7) 59%, rgba(255,170,40,.25) 67%, rgba(255,170,40,0) 75%); opacity:.45; will-change:transform,opacity;';
+    ringEl = document.createElement('div');
+    ringEl.style.cssText = 'position:absolute; inset:0; border-radius:50%; background:conic-gradient(from 0deg, #8a5a12, #ffd36a, #fff3c4, #e2a93b, #8a5a12, #ffcf5a, #fff1b8, #b07a1c, #8a5a12); -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask:radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); will-change:transform;';
+    host.appendChild(haloEl);
+    host.appendChild(ringEl);
+    host.style.backgroundImage = 'none';
+  }
+  function renderRing(){
+    if(!ringEl) buildRing();
+    const breathe = 0.012 * Math.sin(phase * 2.2);
+    const s = 1 + breathe + 0.12 * level;
+    ringEl.style.transform = 'scale(' + s.toFixed(4) + ')';
+    haloEl.style.transform = 'scale(' + (1 + breathe + 0.22 * level).toFixed(4) + ')';
+    haloEl.style.opacity = (0.45 + 0.55 * level).toFixed(3);
+    ringStill = false;
+  }
+  if(RING) buildRing();
+
   // الشرائح تُبنى عند أوّل إطار ظاهر بعدد يتبع العرض، وتُعاد إن تغيّر العرض كثيرًا (تدوير الجوّال)
   const strips = [];
   let N = 0, en = [], tmp = [];
@@ -41509,6 +41759,7 @@ if(document.readyState === 'loading'){
   }
 
   function render(){
+    if(RING){ renderRing(); return; }
     const W = host.clientWidth, h = host.clientHeight;
     if(!W || !h) return;
     const want = Math.min(160, Math.max(40, Math.round(W / 10)));
@@ -41566,6 +41817,7 @@ if(document.readyState === 'loading'){
     bands.fill(0);
     for(let j = 0; j < strips.length; j++) strips[j].style.transform = '';
     still = true;
+    if(ringEl && !ringStill){ ringEl.style.transform = ''; haloEl.style.transform = ''; haloEl.style.opacity = '.45'; ringStill = true; }
   }
 
   window.mahaGoldWave = { prime: ensureCtx, start, stop, end, attachStream, detachStream, trackAudio };
