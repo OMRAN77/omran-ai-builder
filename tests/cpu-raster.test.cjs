@@ -91,5 +91,5 @@ test('٦. الجسر في رأس الصفحة، والمسبار يبلّغ وض
   assert.match(sd, /'رسم=' \+ \(window\.OmranRender && window\.OmranRender\.mode/);
   assert.doesNotMatch(sd.slice(sd.indexOf('(function memProbe(){')), /getContext\(/, 'المسبار لا يلمس معالج الرسوم');
   assert.ok(fs.existsSync('gpu-test.html') && /UNMASKED_RENDERER_WEBGL/.test(fs.readFileSync('gpu-test.html', 'utf8')), 'اسم المعالج في صفحة الفحص');
-  assert.match(HTML, /\/js\/selfdiag\.js\?v=hw-twa-7/);
+  assert.match(HTML, /\/js\/selfdiag\.js\?v=hw-twa-8/);
 });
