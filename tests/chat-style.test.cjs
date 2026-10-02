@@ -160,7 +160,7 @@ check(!/LIVE_EAGER_RE = [^\n]*اليوم/.test(chatServer), 'كلمة «اليو
 check(!chatServer.includes('LIVE_EAGER_RE'), 'v-one-brain: محفزات البحث الاستباقي أزيلت كليًا');
 // v-fresh-news: سؤال الأخبار يقيّد المحركات بالحديث ويذكر تاريخ النشر.
 check(chatServer.includes("topic: 'news', days: 7"), 'تافيلي: أخبار آخر أسبوع فقط');
-check(chatServer.includes("search_recency_filter: 'week'"), 'بيربلكسيتي: حداثة أسبوع للأخبار');
+check(chatServer.includes("w ? { search_recency_filter: w }") && chatServer.includes("(FRESH_RE.test(String(query || '')) ? 'week'"), 'بيربلكسيتي: حداثة أسبوع للأخبار'); // v-live-fresh: النافذة مُمرَّرة، والأخبار أسبوع
 check(chatServer.includes('dateRestrict=m1&sort=date'), 'جوجل: آخر شهر مرتب بالأحدث');
 check(chatServer.includes('حداثة الأخبار — إلزامي'), 'النموذج ملزم بذكر تاريخ الخبر ورفض القديم');
 check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة العادية تستخدم تعليمات خفيفة');
@@ -241,7 +241,7 @@ group('إزالة التكرار بين استدعاءات البحث');
 
 check(chatServer.includes('const seenHostnames = new Set()'), 'يُنشئ مجموعة المواقع المرئية قبل حلقة الأدوات');
 check(chatServer.includes('function filterDuplicateUrls('), 'دالة فرز التكرار موجودة في مسار الخادم');
-check(chatServer.includes('filterDuplicateUrls(await tavilySearch('), 'نتيجة البحث تمرّ عبر فرز التكرار قبل إرسالها للنموذج');
+check(chatServer.includes('filterDuplicateUrls(__ls.mergeWebSocial(__web, __social, { curated: __curated }))'), 'نتيجة البحث (الويب + التواصل) تمرّ عبر فرز التكرار قبل إرسالها للنموذج'); // v-live-social
 check(chatServer.includes('seenHostnames.has(host)'), 'يتحقق من الـ hostname قبل تمرير الموقع');
 check(chatServer.includes('seenHostnames.add(host)'), 'يسجّل الـ hostname بعد أول ظهور');
 

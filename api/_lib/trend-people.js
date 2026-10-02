@@ -197,6 +197,6 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
 }
 
 module.exports = {
-  MAX_PEOPLE, aspectOf, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame,
+  MAX_PEOPLE, aspectOf, callImage /* v-actor-lipsync: بورتريه الممثّل */, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame,
   ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, trendScene, firstFrameOn, FRAME_CACHE,
 };

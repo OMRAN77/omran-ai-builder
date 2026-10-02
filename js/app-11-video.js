@@ -357,6 +357,8 @@
     signatureRow.style.display = (m === 'canvas' || m === 'hybrid') ? 'flex' : 'none';
     const actorRowEl = document.getElementById('videoMakerActorRow');
     if(actorRowEl) actorRowEl.style.display = (m === 'actor') ? 'flex' : 'none';
+    const actorVoiceRowEl = document.getElementById('videoMakerActorVoiceRow'); /* v-actor-lipsync */
+    if(actorVoiceRowEl) actorVoiceRowEl.style.display = (m === 'actor') ? 'block' : 'none';
     syncFilmHeroRow();
   }
   modeEl.onchange = updateModeUI;
@@ -1230,6 +1232,45 @@
             setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
             return;
           }
+          /* v-actor-lipsync (المالك ٢ أكتوبر: «الصوت المتحدث ليس دقيق في اللهجة الإماراتية والكلام عربي ضعيف جدًّا»): Veo يخترع
+             الصوت من وصف إنجليزيّ. الآن الكلام بالحرف بصوت إماراتيّ أصيل (حمدان/فاطمة) والوجه يتحرّك عليه؛ Veo احتياط فقط
+             حين يقول الخادم fallback (قبل أيّ خصم: لا مفتاح، أو تعذّر الصوت أو الوجه). */
+          const actorVoiceEl = document.getElementById('videoMakerActorVoice');
+          const actorGender = (actorVoiceEl && actorVoiceEl.value === 'female') ? 'female' : 'male';
+          setStatus(bT('🎙️ يسجّل كلام الممثل بصوت إماراتي...','🎙️ Recording the actor\'s line in an Emirati voice...'));
+          const acPayload = { speech, promptText: text, voiceGender: actorGender, ratio, token };
+          if(filmHeroBase64){ acPayload.imageBase64 = filmHeroBase64; acPayload.imageMime = filmHeroMime || 'image/jpeg'; }
+          const ac = await fetch('/api/video?action=actor-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(acPayload) });
+          const acData = await ac.json().catch(() => ({}));
+          if(ac.ok && acData.id){
+            setStatus(bT('🎬 يحرّك وجه الممثل على صوته (قد يستغرق ١-٣ دقائق)...','🎬 Animating the actor to the voice (may take 1-3 min)...'));
+            const actorUrl = await new Promise((resolve, reject) => {
+              const guard = makePollGuard(reject, 8000);
+              const iv = setInterval(async () => {
+                if(!guard.tick(iv)) return;
+                try{
+                  const st = await fetch('/api/video?action=actor-status&id=' + encodeURIComponent(acData.id));
+                  const d = await st.json();
+                  guard.ok();
+                  if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
+                  if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
+                  else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error(bT('تعذّر توليد الممثل — رجعت نقاطك، أعد المحاولة.','Actor generation failed — points refunded, try again.') + (d.failure ? ' — ' + d.failure : ''))); }
+                } catch(e){ guard.fail(iv); }
+              }, 8000);
+            });
+            setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
+            const avres = await fetch(proxyVideoUrl(actorUrl));
+            if(!avres.ok) throw new Error('download failed ' + avres.status);
+            const avurl = URL.createObjectURL(await avres.blob());
+            setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+            resultEl.src = avurl;
+            resultEl.style.display = 'block';
+            downloadEl.href = proxyVideoUrl(actorUrl);
+            downloadEl.style.display = 'block';
+            return;
+          }
+          if(!acData.fallback) throw new Error(acData.error || ('actor ' + ac.status));
+          console.warn('[actor] lipsync path unavailable — Veo fallback:', acData.error);
           veoPrompt = (text || (filmHeroBase64 ? 'The real person in the reference photo' : 'An Emirati man in traditional white kandura and ghutra, warm friendly face'))
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';

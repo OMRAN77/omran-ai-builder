@@ -19,6 +19,8 @@ function load(action) {
     case 'minimax-create': return require('./_lib/minimax-create.js');
     case 'minimax-status': return require('./_lib/minimax-status.js');
     case 'omni-create': return require('./_lib/omni-create.js');
+    case 'actor-create': return require('./_lib/actor-create.js'); // v-actor-lipsync: صوت إماراتيّ + تحريك الشفاه
+    case 'actor-status': return require('./_lib/actor-status.js');
     default: return null;
   }
 }

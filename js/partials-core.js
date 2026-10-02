@@ -109,7 +109,7 @@
         <option value="omni" data-i18n="videoModeOmni">🎬 فيديو سينمائيّ — أعلى جودة (أغلى)</option>
         <option value="hybrid" data-i18n="videoModeHybrid">🔗 دمج الاثنين (الأفضل)</option>
         <option value="veo" data-i18n="videoModeVeo">🚀 Veo 3 — جوجل (أعلى جودة + صوت)</option>
-        <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)</option>
+        <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية</option>
       </select>
     </div>
 
@@ -119,6 +119,14 @@
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoActorSpeechLabel">🗣️ شو يقول الممثل؟ (بالحرف)</label>
       <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق عمران AI، أقوى منصة ذكاء اصطناعي"></textarea>
       <button type="button" class="mini-mic-btn" data-target="videoMakerActorSpeech" title="🎤" data-i18n-title="micTitle">🎤</button>
+    </div>
+    <!-- v-actor-lipsync: الكلام يُنطق بصوت إماراتيّ أصيل — رجل أو امرأة حسب الممثّل -->
+    <div id="videoMakerActorVoiceRow" style="margin-top:8px; display:none;">
+      <label for="videoMakerActorVoice" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoActorVoiceLabel">🎙️ صوت الممثل</label>
+      <select id="videoMakerActorVoice" style="width:100%;">
+        <option value="male" selected data-i18n="videoActorVoiceMale">🧔 رجل — صوت إماراتي</option>
+        <option value="female" data-i18n="videoActorVoiceFemale">🧕 امرأة — صوت إماراتي</option>
+      </select>
     </div>
 
     <div class="mini-mic-field-row" id="videoMakerSignatureRow" style="margin-top:12px; display:none;">
