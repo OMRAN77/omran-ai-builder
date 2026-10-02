@@ -15081,6 +15081,13 @@ btnStop.onclick = () => {
 // v246 — قسم الصوت المبسط: زران (رجل/امرأة) يحفظان الاختيار فورًا + زر تجربة.
 function setVoiceGenderUI(val){
   document.querySelectorAll('.voiceGenderBtn').forEach(b => b.classList.toggle('active', b.dataset.gender === val));
+  /* v-voice-calligraphy: اسم الشخصيّة صورة خطّ ذهبيّ — العربيّة للواجهة العربيّة، والإنجليزيّة لكلّ لغة أخرى (طلب المالك). */
+  const __vl = (typeof lang === 'string' && lang === 'ar') ? 'ar' : 'en';
+  document.querySelectorAll('#voiceGenderBtns .vgName').forEach(img => {
+    const want = '/icons/name-' + img.dataset.persona + '-' + __vl + '.png';
+    if(img.getAttribute('src') !== want){ img.onerror = () => img.classList.remove('on'); img.setAttribute('src', want); }
+    img.classList.toggle('on', !window.__mahaPaused); // من مها موقوفة عنده يرى الأسماء محايدة (v-maha-pause) لا صورها
+  });
 }
 /* v-voice-names (المالك ١ أكتوبر «ضيف عبدالله… ويكون في الإعدادات صوت تجريبيّ: مها وعبدالله»): الزرّان باسميهما،
    والضغط يختار الصوت ويُسمعك تعريفه بنفسه فورًا («أنا مها…»/«أنا عبدالله…») — وزرّ التجربة يُسمع المختار. */
@@ -16316,24 +16323,24 @@ function mahaUpdatePersonaUI(){
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
   if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
   if(btnMahaEl) btnMahaEl.title = name;
-  /* v-voice-letter (المالك ١ أكتوبر «إذا اختار مها تخليها م تحت، وإذا اختار عبدالله يطلع حرف ع»): حرف زرّ الكتابة.
-     v-abdullah-glyph (المالك ٢ أكتوبر، لقطة الزرّ: «قصّ الي أرسلتلك وحطّها بدل القديم»): «ع» صورة مقصوصة من لقطته
-     (/icons/abdullah-glyph.png، خلفيّة شفّافة) بدل حرف الخطّ؛ «م» نصّ كما هو. */
+  /* v-voice-letter → v-abdullah-glyph → v-persona-medallions (المالك ٢ أكتوبر، لقطتان: «بدّل الحرفين (م) و(ع) اللي تحت
+     المحادثة بهاذيل»): ميداليّتان ذهبيّتان مقصوصتان من لقطتيه (icons/maha-medallion.png وabdullah-medallion.png) بدل الحرف النصّيّ،
+     كلٌّ بشخصيّته. نصّ «م» يبقى في الصفحة مخفيًّا احتياطًا إن لم تُحمَّل الصورة. */
   const glyph = document.querySelector('#btnMahaDock .mahaGlyph');
   const dock = document.getElementById('btnMahaDock');
-  if(glyph){
-    if(glyph.textContent !== 'م'){ glyph.textContent = 'م'; try{ if(typeof window.__mahaGlyphFix === 'function') window.__mahaGlyphFix(); }catch(e){ __swallow(e, 'maha:glyph-fix'); } }
-    glyph.style.display = male ? 'none' : '';
-  }
   if(dock){
-    let gi = dock.querySelector('.abdullahGlyph');
-    if(male && !gi){
+    let gi = dock.querySelector('.personaGlyph');
+    if(!gi){
       gi = document.createElement('img');
-      gi.className = 'abdullahGlyph'; gi.alt = ''; gi.setAttribute('aria-hidden', 'true'); gi.src = '/icons/abdullah-glyph.png';
-      gi.style.cssText = 'width:22px; height:22px; object-fit:contain; display:block; pointer-events:none;';
+      gi.className = 'personaGlyph'; gi.alt = ''; gi.setAttribute('aria-hidden', 'true');
+      gi.style.cssText = 'width:28px; height:28px; object-fit:contain; display:block; pointer-events:none; border-radius:50%;';
+      gi.onerror = () => { gi.style.display = 'none'; if(glyph) glyph.style.display = ''; };
       dock.appendChild(gi);
     }
-    if(gi) gi.style.display = male ? 'block' : 'none';
+    const want = male ? '/icons/abdullah-medallion.png' : '/icons/maha-medallion.png';
+    if(gi.getAttribute('src') !== want) gi.setAttribute('src', want);
+    gi.style.display = 'block';
+    if(glyph) glyph.style.display = 'none';
     dock.title = name;
   }
 }
@@ -33750,7 +33757,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-studio-more-looks: صور خيارات المكياج الجاهزة لقطات جسم كامل لا يظهر فيها المكياج،
      فبدت العشرة صورة واحدة في المنتقي. لهذه الميزات المعاينة المولّدة (وجه قريب من
      /api/studio-preview، تُولَّد مرّة وتُخزَّن) أوّلًا، والصورة الجاهزة احتياطًا. */
-  const PREVIEW_FIRST = ['makeup'];
+  /* v-nails-previews (المالك ٢ أكتوبر، لقطة المقارنة: «غيّر الأشكال، السطر كامل اللي فوق مع ٣ اللي تحتهم، على نفس الأسامي»):
+     صور الأظافر الجاهزة الاثنتا عشرة (assets/studio/options/nails-*.webp) فساتين وأيادٍ عامّة لا تُظهر اللون ولا الشكل.
+     الأظافر صارت معاينة-أوّلًا كالمكياج: يد قريبة بالأظافر المطلوبة من وصفها نفسه، تُولَّد مرّة وتُخزَّن للجميع. */
+  const PREVIEW_FIRST = ['makeup', 'nails'];
   function optionImgs(f, v){
     const asset = 'assets/studio/options/' + f + '-' + v + '.webp';
     const gen = PREVIEW_API(f, v);
