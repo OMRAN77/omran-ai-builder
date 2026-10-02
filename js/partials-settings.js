@@ -360,10 +360,20 @@
 
   <div id="voiceSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('voiceSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="voiceSectionLabel">الصوت</h3><span class="settingsSectionArrow" id="voiceSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="voiceSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <!-- v-voice-calligraphy (المالك ٢ أكتوبر، صورتان «عبدالله/Abdullah» و«مها/Maha» بالذهب: «عطِ كلّ اسم بالعربي عربي والإنجليزي
+       بالإنجليزي والباقين بالإنجليزي… في الإعدادات فقط، والبراويز الموجودة خلّها باللون الذهبيّ») -->
+  <style>
+  #voiceSection .voiceGenderBtn, #voiceSection .voiceSpeedBtn, #voiceSection #btnTestVoice{border:2px solid rgba(201,162,39,.38) !important;}
+  #voiceSection .voiceGenderBtn.active, #voiceSection .voiceSpeedBtn.active{border-color:#c9a227 !important; box-shadow:0 0 14px rgba(201,162,39,.28);}
+  #voiceSection .voiceGenderBtn svg{color:#c9a227;}
+  #voiceGenderBtns .vgName{display:none; height:48px; max-width:100%; object-fit:contain;}
+  #voiceGenderBtns .vgName.on{display:block;}
+  #voiceGenderBtns .vgName.on + span{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+  </style>
   <label data-i18n="voiceGenderLabel">نوع الصوت المفضل</label>
   <div id="voiceGenderBtns" style="display:flex; gap:12px; margin-top:10px;">
-    <button type="button" class="voiceGenderBtn" data-gender="male"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span data-i18n="voiceGenderMale">صوت رجل</span></button>
-    <button type="button" class="voiceGenderBtn" data-gender="female"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><path d="M8 3.5C9 2.5 10.4 2 12 2s3 .5 4 1.5"></path></svg><span data-i18n="voiceGenderFemale">صوت امرأة</span></button>
+    <button type="button" class="voiceGenderBtn" data-gender="male"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><img class="vgName" data-persona="abdullah" alt="" aria-hidden="true"><span data-i18n="voiceGenderMale">صوت رجل</span></button>
+    <button type="button" class="voiceGenderBtn" data-gender="female"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><path d="M8 3.5C9 2.5 10.4 2 12 2s3 .5 4 1.5"></path></svg><img class="vgName" data-persona="maha" alt="" aria-hidden="true"><span data-i18n="voiceGenderFemale">صوت امرأة</span></button>
   </div>
   <!-- v-maha-voice-speed (طلب المالك «صوت مها بطيء سريع سريع جدًا»): سرعة كلام مها —
        تُطبَّق على الوضعين (الفائق عبر تعليمة نبرة، والأساسيّ عبر معامل TTS حقيقيّ). -->

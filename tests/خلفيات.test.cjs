@@ -65,7 +65,7 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   const html = rd('index.html');
   assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=3">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
-  assert.match(html, /partials-settings\.js\?v=681/, 'وسم الإعدادات ارتفع');
+  assert.match(html, /partials-settings\.js\?v=682/, 'وسم الإعدادات ارتفع');
   assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=710'/, 'وسم اللغات ارتفع');
   for (const old of ['js/app-25-خلفيات-مدير.js', 'js/partials-خلفيات-قسم.js']) assert.ok(!fs.existsSync(path.join(root, old)), old + ' يجب أن يُحذف');
 
