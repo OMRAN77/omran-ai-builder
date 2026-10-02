@@ -282,7 +282,19 @@ const server = createServer(async (req, res) => {
   }
 });
 
+/* v-news-hourly (المالك ٢ أكتوبر «الأخبار تعمل على طول… كلّ ساعة»): إرسال الأخبار العاجلة (check-reminders) لا يتحرّك
+   إلّا بنبض تطبيق مفتوح (خطة Vercel المجانيّة بلا كرون دقيقيّ) — فإن أُغلق التطبيق عند الجميع لا يصل خبر. الجسر يعمل
+   ٢٤ ساعة، فينبض مرّة كلّ ساعة. CC_PULSE_URL=off يوقفه. قفل الخادم (٥٥ث) يمنع التكرار مع نبض التطبيقات. */
+const PULSE_URL = String(env.CC_PULSE_URL || 'https://omran-ai-builder.vercel.app/api/check-reminders?tick=1');
+const PULSE_MS = 3600 * 1000;
+async function pulse() {
+  if (PULSE_URL === 'off') return;
+  try { await fetch(PULSE_URL, { signal: AbortSignal.timeout(30000) }); } catch (e) { console.warn('[cc] news pulse failed', e && e.message); }
+}
+
 await loadState();
 await loadWatch();
 setInterval(watchLoop, 60000).unref();
+setTimeout(pulse, 60000).unref();
+setInterval(pulse, PULSE_MS).unref();
 server.listen(PORT, () => console.log('[cc-bridge] listening on ' + PORT + ' · repo ' + REPO_DIR + ' · model ' + MODEL));

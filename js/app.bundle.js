@@ -6664,16 +6664,6 @@ function renderHistory(){
   const __curIdx = state.currentId ? __histSorted.findIndex(p => p.id === state.currentId) : -1;
   const __histWinEnd = window.__histShowAll ? __histSorted.length
     : Math.min(Math.max(__HIST_WINDOW, __curIdx + 1), __histSorted.length);
-  if(__histWinEnd < __histSorted.length){
-    const __OLDHT = { ar:'عرض محادثات أقدم', en:'Show older chats', fr:'Afficher les discussions plus anciennes', hi:'पुरानी बातचीत दिखाएँ', ur:'پرانی بات چیت دکھائیں', bn:'পুরনো চ্যাট দেখান', ne:'पुरानो कुराकानी देखाउनुहोस्', id:'Tampilkan obrolan lama', fil:'Ipakita ang mga lumang chat', tr:'Eski sohbetleri göster', zh:'显示较早的对话', ru:'Показать старые чаты', es:'Mostrar chats anteriores', ml:'പഴയ ചാറ്റുകൾ കാണിക്കുക' };
-    const __uiL2 = localStorage.getItem('aiapp_lang') || 'ar';
-    const olderHistBtn = document.createElement('button');
-    olderHistBtn.type = 'button';
-    olderHistBtn.textContent = '⬇ ' + (__OLDHT[__uiL2] || __OLDHT.en) + ' (' + (__histSorted.length - __histWinEnd) + ')';
-    olderHistBtn.style.cssText = 'display:block; width:100%; margin:6px 0 10px; padding:7px 16px; border-radius:20px; border:1px solid var(--border,rgba(255,255,255,.15)); background:transparent; color:var(--accent2,#a78bfa); font-size:12.5px; cursor:pointer;';
-    olderHistBtn.onclick = () => { window.__histShowAll = true; window.__renderHistSig = null; renderHistory(); };
-    historyEl.appendChild(olderHistBtn);
-  }
   __histSorted.slice(0, __histWinEnd).forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
@@ -6743,6 +6733,19 @@ function renderHistory(){
 
     historyEl.appendChild(div);
   });
+  /* v-hist-autoload (المالك ٢ أكتوبر «احذف عرض محادثات أقدم»): الزرّ حُذف — الأقدم تُحمَّل وحدها حين يصل التمرير
+     آخر القائمة (علامة غير مرئيّة)، فتبقى نافذة الـ٣٠ وسرعتها (v-perf-history-guard) بلا زرّ. */
+  if(__histWinEnd < __histSorted.length){
+    const sentinel = document.createElement('div');
+    sentinel.className = 'hist-more-sentinel';
+    sentinel.style.cssText = 'height:1px;';
+    sentinel.__reveal = () => { if(window.__histShowAll) return; window.__histShowAll = true; window.__renderHistSig = null; renderHistory(); };
+    historyEl.appendChild(sentinel);
+    if(typeof IntersectionObserver === 'function'){
+      const io = new IntersectionObserver((ents) => { if(ents.some(e => e.isIntersecting)){ io.disconnect(); sentinel.__reveal(); } }, { rootMargin: '300px' });
+      io.observe(sentinel);
+    } else { setTimeout(sentinel.__reveal, 0); }
+  }
 }
 
 // v202: قائمة ⋮ الصغيرة لكل مشروع — إعادة تسمية / حذف (بتأكيد) / مشاركة
