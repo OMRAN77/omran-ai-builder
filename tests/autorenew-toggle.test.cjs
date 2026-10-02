@@ -68,10 +68,13 @@ test('٤. بلا اشتراك = subs 0 بلا تعديل؛ عطل سترايب =
   try { assert.equal((await call({ token: token('sara') })).json.configured, false); } finally { process.env.STRIPE_SECRET_KEY = k; }
 });
 
-test('٥. العميل: الزرّ أعلى «خطط الأسعار»، يتبعه الشراء الجديد، ومربوط بالموجّه، والنصوص بالـ١٤ لغة', () => {
+test('٥. العميل: الزرّ آخر «خطط الأسعار»، يتبعه الشراء الجديد، ومربوط بالموجّه، والنصوص بالـ١٤ لغة', () => {
   const part = read('js/partials-settings.js');
   const sec = part.indexOf('id="pricingSectionContent"');
-  assert.ok(sec > 0 && part.indexOf('id="chkAutoRenew"', sec) > sec && part.indexOf('id="chkAutoRenew"', sec) < part.indexOf('id="pricingWalletRow"', sec), 'أوّل القسم');
+  // المالك بعدها: «خلّها آخر شي» — آخر القسم قبل روابط الشروط، ببطاقة الخطوط نفسها (ftCard)
+  const at = part.indexOf('id="chkAutoRenew"', sec);
+  assert.ok(sec > 0 && at > part.indexOf('id="pricingWalletRow"', sec) && at < part.indexOf('data-i18n="termsLink"', sec), 'آخر القسم');
+  assert.match(part, /<label id="autoRenewRow" class="ftCard"/);
   for (const f of ['js/app-06-checkout.js', 'js/app.bundle.js']) {
     const s = read(f);
     assert.ok(s.includes('if (arBox) arBox.checked = autoRenewPref();'), f);
@@ -87,5 +90,5 @@ test('٥. العميل: الزرّ أعلى «خطط الأسعار»، يتبع
     for (const k of keys) assert.ok(new RegExp('"?' + k + '"?: "').test(s), lg + ':' + k);
     assert.match(s, /"?autoRenewStopped"?: "[^"]*\{date\}/, lg);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=680'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=681'));
 });

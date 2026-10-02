@@ -21,7 +21,7 @@ test('١. الاسمان وجملة التعريف في اللغات الـ١٤�
     assert.match(s, /"?voiceSampleIntro"?: "[^"]*\{name\}[^"]*"/, lg);
     assert.doesNotMatch(s, /"?voiceGenderMale"?: "(?:Male voice|Voz masculina|Мужской голос)"/, lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=709'"), 'وسم الكاش ارتفع');
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=710'"), 'وسم الكاش ارتفع');
 });
 
 test('٢. الضغط يختار ويُسمع تعريف الشخصيّة؛ والتجربة تُسمع المختار', () => {
@@ -60,11 +60,12 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
   const store = { aiapp_voice_gender: 'male' };
   const els = { mahaCallNameLabel: { textContent: '' }, mahaOrb: { textContent: 'x', style: {} } };
   const fab = { title: '', img: { src: '', alt: '', getAttribute() { return this.src; } } };
-  const glyph = { textContent: 'م' };
-  els.btnMahaDock = { title: '' };
+  const glyph = { textContent: 'م', style: {} };
+  let gimg = null;
+  els.btnMahaDock = { title: '', querySelector: () => gimg, appendChild: (x) => { gimg = x; } };
   const ctx = {
     localStorage: { getItem: (k) => store[k] || null, setItem: (k, v) => { store[k] = v; } },
-    document: { getElementById: (id) => els[id] || null, createElement: () => ({}), querySelector: (q) => (q === '#btnMahaDock .mahaGlyph' ? glyph : null) },
+    document: { getElementById: (id) => els[id] || null, createElement: () => ({ style: {}, setAttribute() {} }), querySelector: (q) => (q === '#btnMahaDock .mahaGlyph' ? glyph : null) },
     btnMahaEl: { get title() { return fab.title; }, set title(v) { fab.title = v; }, querySelector: () => fab.img },
     __swallow() {}, Promise,
   };
@@ -75,7 +76,9 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
   assert.equal(ctx.g(), 'male');
   assert.equal(els.mahaCallNameLabel.textContent, 'عبدالله');
   assert.equal(fab.img.src, '/icons/abdullah-icon.svg');
-  assert.equal(glyph.textContent, 'ع', 'v-voice-letter: حرف زرّ الكتابة');
+  assert.equal(glyph.style.display, 'none', 'v-abdullah-glyph: حرف «م» يختفي لعبدالله');
+  assert.equal(gimg.src, '/icons/abdullah-glyph.png', 'وصورة «ع» المقصوصة من لقطة المالك مكانه');
+  assert.equal(gimg.style.display, 'block');
   assert.equal(els.btnMahaDock.title, 'عبدالله');
   assert.equal(await ctx.ensure(), 'male', 'بداية المكالمة لا تعيده');
   assert.equal(store.aiapp_voice_gender, 'male');
@@ -83,6 +86,8 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
   ctx.ui();
   assert.equal(els.mahaCallNameLabel.textContent, 'مها');
   assert.equal(glyph.textContent, 'م');
+  assert.equal(glyph.style.display, '');
+  assert.equal(gimg.style.display, 'none', 'مها: «م» نصًّا والصورة مخفيّة');
   delete store.aiapp_voice_gender;
   assert.equal(await ctx.ensure(), 'female', 'أوّل تشغيل = مها');
 });
