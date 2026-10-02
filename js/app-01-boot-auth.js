@@ -987,6 +987,11 @@ try{
         return st;
       } catch(e){ return null; }
     }
+    // v-google-app-fail: فشل الدخول في سفاري — الخادم أودع السبب فنعرضه بدل انتظار صامت.
+    function claimFail(err){
+      try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-fail'); }
+      showGoogleAuthError(String(err));
+    }
     let busy = false;
     async function claim(){
       const st = pending();
@@ -998,8 +1003,7 @@ try{
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ state: st }),
-          signal: AbortSignal.timeout(10000), // v-perf-boot-defer: بلا هذا، تعليق الشبكة (شائع عند عودة سفاري
-          // على آيفون المثبَّت) يبقي busy=true للأبد فتُعطَّل كلّ محاولات claim() اللاحقة بصمت
+          signal: AbortSignal.timeout(10000), // v-perf-boot-defer: تعليق الشبكة كان يبقي busy=true للأبد
         });
         if(r.ok){
           const d = await r.json();
@@ -1011,13 +1015,7 @@ try{
             if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
             noteSession('جوجل-جسر-آيفون');
             onAuthed(d.user, d.avatar || null);
-          } else if(d && d.error){
-            // v-google-app-fail: فشل الدخول في سفاري — الخادم أودع السبب، فنعرضه هنا
-            // بدل انتظار صامت عشر دقائق.
-            localStorage.removeItem('aiapp_oauth_pending');
-            noteSession('جوجل-' + d.error);
-            showGoogleAuthError(String(d.error));
-          }
+          } else if(d && d.error) claimFail(d.error);
         }
       } catch(e){ __swallow(e, 'auth:oauth-claim'); }
       busy = false;

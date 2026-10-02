@@ -90,10 +90,16 @@
       const data = await res.json();
       const items = data && Array.isArray(data.items) ? data.items : [];
       const seen  = getSeenIds();
+      // v-alert-gate (فيديو المالك ٢ أكتوبر): نافذة «تحذير طارئ» إنجليزيّة فوق شاشة الدخول.
+      // فوق شاشة الدخول لا شيء — نؤجّل للاستطلاع التالي بلا تعليم «شوهد».
+      const ov = document.getElementById('authOverlay');
+      if(ov && ov.style.display && ov.style.display !== 'none') return;
 
       for(const item of items){
         if(seen.has(item.id)) continue;
         markSeen(item.id);
+        // واجهة عربيّة: خبر بعنوان بلا حرف عربيّ لا يُعرض (يُعلَّم ويُتخطّى).
+        if(isAr() && !/[\u0600-\u06FF]/.test(String(item.title || ''))) continue;
         if(item.level === 'emergency'){
           showEmergencyModal(item);
           break; // نافذة واحدة كافية

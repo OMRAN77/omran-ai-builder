@@ -74,7 +74,7 @@ test('٤. العميل: الزرّ يعيد تشغيل النبضة، والجس
     assert.ok(s.indexOf('window.__armOauthClaim()', click) - click < 200, f + ': الزرّ يعيد النبضة');
     assert.ok(s.includes('window.__armOauthClaim = arm;'), f);
     assert.ok(s.includes("document.addEventListener('resume', claim);"), f);
-    assert.ok(s.includes('showGoogleAuthError(String(d.error));'), f + ': الجسر يعرض السبب');
+    assert.ok(s.includes('else if(d && d.error) claimFail(d.error);') && s.includes('showGoogleAuthError(String(err));'), f + ': الجسر يعرض السبب');
     const fn = s.slice(s.indexOf('function showGoogleAuthError('));
     assert.ok(fn.slice(0, 2500).includes("setMode('login'); showOverlay();"), f + ': يفتح الشاشة');
   }
