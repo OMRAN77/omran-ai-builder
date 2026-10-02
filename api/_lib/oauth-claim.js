@@ -12,6 +12,12 @@ module.exports = async (req, res) => {
     if (!/^[0-9a-f]{16,64}$/.test(state)) { res.status(400).json({ error: 'bad state' }); return; }
     const key = 'db/oauth-claim/' + state;
     const rec = await kvGetJSON(key);
+    // v-google-app-fail: فشل مودع من الكولباك — يُسلَّم مرّة ليعرض التطبيق سببه.
+    if (rec && rec.error && !rec.token && (Date.now() - (rec.ts || 0)) <= 10 * 60 * 1000) {
+      await kvDel(key);
+      res.status(200).json({ error: String(rec.error) });
+      return;
+    }
     if (!rec || !rec.token || (Date.now() - (rec.ts || 0)) > 10 * 60 * 1000) {
       res.status(404).json({ error: 'pending' });
       return;

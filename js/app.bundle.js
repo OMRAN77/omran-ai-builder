@@ -981,6 +981,32 @@ try{
     } catch(e){ /* ignore */ }
   })();
 
+  // v-google-app-fail: عرض سبب فشل جوجل — من رابط العودة (?gerror) أو من جسر
+  // الآيفون. كان يضغط #headerLoginBtn وهو غير موجود (الزرّ #btnHeaderLogin)،
+  // فيبقى الزائر ضيفًا والرسالة في صندوق مخفيّ، فإذا فتح شاشة الدخول بنفسه
+  // مسحها setMode — شاشة دخول فارغة بلا سبب (فيديو المالك ٢ أكتوبر).
+  function showGoogleAuthError(gerror){
+    const isEn = (localStorage.getItem('aiapp_lang') === 'en');
+    const box = $('#authError');
+    const M = {
+      google_not_configured: ['إعداد جوجل ناقص في الخادم — GOOGLE_CLIENT_ID أو GOOGLE_CLIENT_SECRET غير مضبوط', 'Google is not configured on the server (missing client id/secret)'],
+      token_exchange_failed: ['رفضت جوجل إتمام الدخول — غالبًا سرّ العميل في الخادم لا يطابق ما في Google Console', 'Google rejected the sign-in — the server\'s client secret likely does not match Google Console'],
+      missing_code:          ['عاد المتصفّح من جوجل بلا رمز — أعد المحاولة', 'Returned from Google without a code — try again'],
+      profile_fetch_failed:  ['تعذّر جلب ملفّك من جوجل — أعد المحاولة', 'Could not fetch your Google profile — try again'],
+      email_not_verified:    ['بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة', 'Your Google email is not verified'],
+      access_denied:         ['ألغيتَ الدخول من شاشة جوجل', 'You cancelled the Google sign-in'],
+      server_error:          ['خطأ في الخادم أثناء إتمام الدخول — أعد المحاولة', 'Server error while completing sign-in'],
+    };
+    const pair = M[gerror];
+    const text = pair ? (isEn ? pair[1] : pair[0])
+      : (isEn ? 'Google sign-in failed (' + gerror + ')' : 'تعذر تسجيل الدخول بجوجل (' + gerror + ')');
+    try { setMode('login'); showOverlay(); } catch(e){ /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
+    if(box){ box.style.color = ''; box.textContent = text; }
+    // setMode('login') عند الإقلاع يمسح errBox — نعيد الكتابة بعده،
+    // فالرسالة أهمّ من نظافة الصندوق: بدونها يعود «حاول مرة أخرى» الأعمى.
+    setTimeout(() => { if(box && !box.textContent) box.textContent = text; }, 1500);
+  }
+
   // If the page was reached via the Google login redirect
   // (?gtoken=...&guser=...&gavatar=...), finish the login immediately.
   (function checkGoogleAuthUrl(){
@@ -1023,27 +1049,7 @@ try{
         // (تعرضه لوحة ?diag=1) ويُعرض للمستخدم نصًّا يخصّ سببه هو.
         noteSession('جوجل-' + gerror);
         window.history.replaceState({}, document.title, cleanUrl);
-        setTimeout(() => {
-          const isEn = (localStorage.getItem('aiapp_lang') === 'en');
-          const box = $('#authError');
-          const M = {
-            google_not_configured: ['إعداد جوجل ناقص في الخادم — GOOGLE_CLIENT_ID أو GOOGLE_CLIENT_SECRET غير مضبوط', 'Google is not configured on the server (missing client id/secret)'],
-            token_exchange_failed: ['رفضت جوجل إتمام الدخول — غالبًا سرّ العميل في الخادم لا يطابق ما في Google Console', 'Google rejected the sign-in — the server\'s client secret likely does not match Google Console'],
-            missing_code:          ['عاد المتصفّح من جوجل بلا رمز — أعد المحاولة', 'Returned from Google without a code — try again'],
-            profile_fetch_failed:  ['تعذّر جلب ملفّك من جوجل — أعد المحاولة', 'Could not fetch your Google profile — try again'],
-            email_not_verified:    ['بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة', 'Your Google email is not verified'],
-            access_denied:         ['ألغيتَ الدخول من شاشة جوجل', 'You cancelled the Google sign-in'],
-            server_error:          ['خطأ في الخادم أثناء إتمام الدخول — أعد المحاولة', 'Server error while completing sign-in'],
-          };
-          const pair = M[gerror];
-          const text = pair ? (isEn ? pair[1] : pair[0])
-            : (isEn ? 'Google sign-in failed (' + gerror + ')' : 'تعذر تسجيل الدخول بجوجل (' + gerror + ')');
-          try { const hb = $('#headerLoginBtn'); if(hb) hb.click(); } catch(e){ /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
-          if(box) box.textContent = text;
-          // setMode('login') عند الإقلاع يمسح errBox — نعيد الكتابة بعده،
-          // فالرسالة أهمّ من نظافة الصندوق: بدونها يعود «حاول مرة أخرى» الأعمى.
-          setTimeout(() => { if(box && !box.textContent) box.textContent = text; }, 1500);
-        }, 700);
+        setTimeout(() => showGoogleAuthError(gerror), 700);
       }
     } catch(e){ /* ignore */ }
   })();
@@ -1070,6 +1076,7 @@ try{
       // v-ios-bridge: على آيفون المثبَّت تكمل جوجل في ورقة منفصلة — نحفظ
       // الرمز في localStorage (يبقى بعد تعليق التطبيق) لاستلام الجلسة عند العودة.
       try { localStorage.setItem('aiapp_oauth_pending', oauthState + ':' + Date.now()); } catch(e){ __swallow(e, 'auth:oauth-pending'); }
+      try { if(window.__armOauthClaim) window.__armOauthClaim(); } catch(e){ __swallow(e, 'auth:oauth-arm'); }
       const gStartUrl = '/api/system?action=google-start&state=' + encodeURIComponent(oauthState);
       // v-google-safari: داخل تطبيق الآيفون (غلاف WKWebView — نعرفه من جسوره
       // omranShare/omranPdf) دخول جوجل داخل الويب-فيو يفشل: الباسكيز لا تكتمل،
@@ -1142,14 +1149,31 @@ try{
             if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
             noteSession('جوجل-جسر-آيفون');
             onAuthed(d.user, d.avatar || null);
+          } else if(d && d.error){
+            // v-google-app-fail: فشل الدخول في سفاري — الخادم أودع السبب، فنعرضه هنا
+            // بدل انتظار صامت عشر دقائق.
+            localStorage.removeItem('aiapp_oauth_pending');
+            noteSession('جوجل-' + d.error);
+            showGoogleAuthError(String(d.error));
           }
         }
       } catch(e){ __swallow(e, 'auth:oauth-claim'); }
       busy = false;
     }
     window.addEventListener('focus', claim);
+    window.addEventListener('pageshow', claim);
+    document.addEventListener('resume', claim); // غلاف كاباسيتور يطلقه عند العودة للتطبيق
     document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
-    const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 3000);
+    // v-google-app-fail: النبضة كانت تُنشأ مرّة عند الإقلاع وتتوقّف بعد ٣ث إن لم يكن
+    // دخول معلّق — فمن خرج ثمّ ضغط جوجل بلا إعادة فتح التطبيق بقي بلا نبضة،
+    // معلّقًا على أحداث تركيز لا يطلقها غلاف الآيفون دائمًا. الآن يعيد زرّ جوجل تشغيلها.
+    let iv = 0;
+    function arm(){
+      if(iv) return;
+      iv = setInterval(() => { if(!pending()){ clearInterval(iv); iv = 0; return; } claim(); }, 3000);
+    }
+    window.__armOauthClaim = arm;
+    arm();
     claim();
   })();
 
