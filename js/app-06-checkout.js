@@ -185,7 +185,7 @@ function openCheckout(plan){
   checkoutCurrentPlan = plan;
   const arRow = document.getElementById('checkoutAutoRenewRow');
   const arBox = document.getElementById('checkoutAutoRenew');
-  if (arBox) arBox.checked = false;
+  if (arBox) arBox.checked = autoRenewPref(); // v-autorenew-toggle: يتبع زرّ أوّل الصفحة (الافتراضيّ متوقّف كما كان)
   if (arRow) arRow.style.display = /^pack\d+$/.test(String(plan)) ? 'none' : 'flex';
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
@@ -594,6 +594,7 @@ $('#btnSettings').onclick = () => {
   $('#chkIncludeDeepSeek').checked = localStorage.getItem('aiapp_include_deepseek') !== 'false';
   $('#chkIncludeCohere').checked = localStorage.getItem('aiapp_include_cohere') !== 'false';
   try { setVoiceGenderUI(localStorage.getItem('aiapp_voice_gender') || 'female'); } catch(e) { console.error(e); }
+  try { syncAutoRenewUI(); } catch(e) { console.error(e); }
   try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }
@@ -2374,3 +2375,55 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+
+
+/* v-autorenew-toggle (المالك ٢ أكتوبر «خاصيّة في الاشتراكات تلغي الاشتراك الشهريّ — خصم شهريّ ولا عاديّ — زرّ يفتح ويغلق
+   في أوّل الصفحة»): زرّ واحد أعلى «خطط الأسعار». للشراء الجديد: مفعّل = اشتراك شهريّ متجدّد، متوقّف = شهر واحد (الافتراضيّ).
+   ولمن عنده اشتراك متجدّد فعلًا: الإيقاف يوقف التجديد عند نهاية الشهر المدفوع (لا استرجاع ولا قطع)، والتفعيل يعيده.
+   حالة الزرّ تُقرأ من Stripe عند فتح الإعدادات إن وُجد اشتراك، وإلّا من التفضيل المحفوظ. */
+function autoRenewPref(){ try{ return localStorage.getItem('aiapp_autorenew') === '1'; }catch(e){ return false; } }
+function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffHint'); }
+function setAutoRenewUI(on){
+  const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
+  if (chk) chk.checked = !!on;
+  if (hint) hint.textContent = autoRenewHintText(!!on);
+}
+async function autoRenewCall(on){
+  const tk = authGet('aiapp_auth_token');
+  if (!tk) return null;
+  const r = await fetch('/api/account?action=auto-renew', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(on === undefined ? { token: tk } : { token: tk, on: !!on }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+async function syncAutoRenewUI(){
+  setAutoRenewUI(autoRenewPref());
+  try{
+    const j = await autoRenewCall();
+    if (j && j.subs > 0){ localStorage.setItem('aiapp_autorenew', j.on ? '1' : '0'); setAutoRenewUI(j.on); }
+  }catch(e){ __swallow(e, 'checkout:autorenew-sync'); }
+}
+(function wireAutoRenew(){
+  const chk = document.getElementById('chkAutoRenew');
+  if (!chk || chk.dataset.wired === '1') return;
+  chk.dataset.wired = '1';
+  setAutoRenewUI(autoRenewPref());
+  chk.addEventListener('change', async () => {
+    const on = chk.checked;
+    const prev = autoRenewPref();
+    try{ localStorage.setItem('aiapp_autorenew', on ? '1' : '0'); }catch(e){ __swallow(e, 'checkout:autorenew-save'); }
+    setAutoRenewUI(on);
+    try{
+      const j = await autoRenewCall(on);
+      if (j && j.subs > 0){
+        const d = j.periodEnd ? new Date(j.periodEnd * 1000).toLocaleDateString(lang === 'ar' ? 'ar-AE' : undefined) : '';
+        settingsToast(on ? t('autoRenewResumed') : t('autoRenewStopped').replace('{date}', d));
+      }
+    }catch(e){
+      __swallow(e, 'checkout:autorenew-set');
+      try{ localStorage.setItem('aiapp_autorenew', prev ? '1' : '0'); }catch(e2){ __swallow(e2, 'checkout:autorenew-revert'); }
+      setAutoRenewUI(prev);
+      settingsToast(t('autoRenewFailed'));
+    }
+  });
+})();

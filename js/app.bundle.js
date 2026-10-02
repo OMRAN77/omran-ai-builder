@@ -4234,6 +4234,12 @@ const I18N = {
     checkoutCardOption: 'بطاقة',
     checkoutLoginFirst: 'سجّل حسابك أو ادخل أوّلًا، ثمّ اشترك',
     checkoutAutoRenew: '🔁 تجديد تلقائيّ كلّ شهر بالبطاقة',
+    autoRenewLabel: '🔁 الخصم الشهري التلقائي',
+    autoRenewOnHint: 'مفعّل — يتجدّد اشتراكك ويُخصم كل شهر تلقائيًا',
+    autoRenewOffHint: 'متوقّف — تدفع لشهر واحد فقط وتجدّد يدويًا متى شئت',
+    autoRenewStopped: 'أُوقف الخصم الشهري — اشتراكك يبقى حتى {date}',
+    autoRenewResumed: 'رجع الخصم الشهري التلقائي',
+    autoRenewFailed: 'تعذّر التغيير الآن، حاول لاحقًا',
     checkoutApplePay: 'Apple Pay',
     checkoutGooglePay: 'Google Pay',
     checkoutWalletUnavailable: 'غير متوفر على هذا الجهاز',
@@ -4495,6 +4501,12 @@ const I18N = {
     checkoutCardOption: 'Card',
     checkoutLoginFirst: 'Sign up or log in first, then subscribe',
     checkoutAutoRenew: '🔁 Auto-renew monthly by card',
+    autoRenewLabel: '🔁 Monthly auto-charge',
+    autoRenewOnHint: 'On — your plan renews and is charged every month automatically',
+    autoRenewOffHint: 'Off — you pay for one month only and renew manually whenever you like',
+    autoRenewStopped: 'Monthly charge stopped — your plan stays active until {date}',
+    autoRenewResumed: 'Monthly auto-charge is back on',
+    autoRenewFailed: 'Could not change it right now, try again later',
     checkoutApplePay: 'Apple Pay',
     checkoutGooglePay: 'Google Pay',
     checkoutWalletUnavailable: 'Not available on this device',
@@ -5388,7 +5400,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=708'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=709'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -12721,7 +12733,7 @@ function openCheckout(plan){
   checkoutCurrentPlan = plan;
   const arRow = document.getElementById('checkoutAutoRenewRow');
   const arBox = document.getElementById('checkoutAutoRenew');
-  if (arBox) arBox.checked = false;
+  if (arBox) arBox.checked = autoRenewPref(); // v-autorenew-toggle: يتبع زرّ أوّل الصفحة (الافتراضيّ متوقّف كما كان)
   if (arRow) arRow.style.display = /^pack\d+$/.test(String(plan)) ? 'none' : 'flex';
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
@@ -13130,6 +13142,7 @@ $('#btnSettings').onclick = () => {
   $('#chkIncludeDeepSeek').checked = localStorage.getItem('aiapp_include_deepseek') !== 'false';
   $('#chkIncludeCohere').checked = localStorage.getItem('aiapp_include_cohere') !== 'false';
   try { setVoiceGenderUI(localStorage.getItem('aiapp_voice_gender') || 'female'); } catch(e) { console.error(e); }
+  try { syncAutoRenewUI(); } catch(e) { console.error(e); }
   try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }
@@ -14910,6 +14923,58 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+
+
+/* v-autorenew-toggle (المالك ٢ أكتوبر «خاصيّة في الاشتراكات تلغي الاشتراك الشهريّ — خصم شهريّ ولا عاديّ — زرّ يفتح ويغلق
+   في أوّل الصفحة»): زرّ واحد أعلى «خطط الأسعار». للشراء الجديد: مفعّل = اشتراك شهريّ متجدّد، متوقّف = شهر واحد (الافتراضيّ).
+   ولمن عنده اشتراك متجدّد فعلًا: الإيقاف يوقف التجديد عند نهاية الشهر المدفوع (لا استرجاع ولا قطع)، والتفعيل يعيده.
+   حالة الزرّ تُقرأ من Stripe عند فتح الإعدادات إن وُجد اشتراك، وإلّا من التفضيل المحفوظ. */
+function autoRenewPref(){ try{ return localStorage.getItem('aiapp_autorenew') === '1'; }catch(e){ return false; } }
+function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffHint'); }
+function setAutoRenewUI(on){
+  const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
+  if (chk) chk.checked = !!on;
+  if (hint) hint.textContent = autoRenewHintText(!!on);
+}
+async function autoRenewCall(on){
+  const tk = authGet('aiapp_auth_token');
+  if (!tk) return null;
+  const r = await fetch('/api/account?action=auto-renew', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(on === undefined ? { token: tk } : { token: tk, on: !!on }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+async function syncAutoRenewUI(){
+  setAutoRenewUI(autoRenewPref());
+  try{
+    const j = await autoRenewCall();
+    if (j && j.subs > 0){ localStorage.setItem('aiapp_autorenew', j.on ? '1' : '0'); setAutoRenewUI(j.on); }
+  }catch(e){ __swallow(e, 'checkout:autorenew-sync'); }
+}
+(function wireAutoRenew(){
+  const chk = document.getElementById('chkAutoRenew');
+  if (!chk || chk.dataset.wired === '1') return;
+  chk.dataset.wired = '1';
+  setAutoRenewUI(autoRenewPref());
+  chk.addEventListener('change', async () => {
+    const on = chk.checked;
+    const prev = autoRenewPref();
+    try{ localStorage.setItem('aiapp_autorenew', on ? '1' : '0'); }catch(e){ __swallow(e, 'checkout:autorenew-save'); }
+    setAutoRenewUI(on);
+    try{
+      const j = await autoRenewCall(on);
+      if (j && j.subs > 0){
+        const d = j.periodEnd ? new Date(j.periodEnd * 1000).toLocaleDateString(lang === 'ar' ? 'ar-AE' : undefined) : '';
+        settingsToast(on ? t('autoRenewResumed') : t('autoRenewStopped').replace('{date}', d));
+      }
+    }catch(e){
+      __swallow(e, 'checkout:autorenew-set');
+      try{ localStorage.setItem('aiapp_autorenew', prev ? '1' : '0'); }catch(e2){ __swallow(e2, 'checkout:autorenew-revert'); }
+      setAutoRenewUI(prev);
+      settingsToast(t('autoRenewFailed'));
+    }
+  });
+})();
 window.postWithConfirm = postWithConfirm;
 // ---- Voice chat: speech-to-text (mic) + auto-read replies ----
 const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
