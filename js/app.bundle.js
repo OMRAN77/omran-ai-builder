@@ -3510,9 +3510,12 @@ const I18N = {
     videoModeOmni: '🎬 فيديو سينمائيّ — أعلى جودة (أغلى)',
     videoModeHybrid: '🔗 دمج الاثنين (الأفضل)',
     videoModeVeo: '🚀 Veo 3 — جوجل (أعلى جودة + صوت)',
-    videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)",
+    videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية",
     videoActorSpeechLabel: "🗣️ شو يقول الممثل؟ (بالحرف)",
     videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق عمران AI",
+    videoActorVoiceLabel: "🎙️ صوت الممثل",
+    videoActorVoiceMale: "🧔 رجل — صوت إماراتي",
+    videoActorVoiceFemale: "🧕 امرأة — صوت إماراتي",
     videoSignatureLabel: 'التوقيع (اسمك)',
     videoSignaturePlaceholder: 'اكتب اسمك أو أي نص ليظهر كتوقيع ثابت على الفيديو',
     videoMakerGenerateBtn: '✨ إنشاء الفيديو',
@@ -4813,9 +4816,12 @@ const I18N = {
     videoModeOmni: '🎬 Cinematic video — top quality (pricier)',
     videoModeHybrid: '🔗 Merge both (best)',
     videoModeVeo: '🚀 Veo 3 — Google (top quality + sound)',
-    videoModeActor: "🗣️ Talking actor — Emirati dialect (Veo 3)",
+    videoModeActor: "🗣️ Talking actor — Emirati dialect",
     videoActorSpeechLabel: "🗣️ What does the actor say? (exactly)",
     videoActorSpeechPlaceholder: "Example: Welcome to Omran AI, the best AI platform!",
+    videoActorVoiceLabel: "🎙️ Actor's voice",
+    videoActorVoiceMale: "🧔 Man — Emirati voice",
+    videoActorVoiceFemale: "🧕 Woman — Emirati voice",
     videoSignatureLabel: 'Signature (your name)',
     videoSignaturePlaceholder: 'Type your name or any text to show as a watermark signature on the video',
     videoMakerGenerateBtn: '✨ Generate video',
@@ -5416,7 +5422,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=710'; /* v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=711'; /* v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -27805,6 +27811,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     signatureRow.style.display = (m === 'canvas' || m === 'hybrid') ? 'flex' : 'none';
     const actorRowEl = document.getElementById('videoMakerActorRow');
     if(actorRowEl) actorRowEl.style.display = (m === 'actor') ? 'flex' : 'none';
+    const actorVoiceRowEl = document.getElementById('videoMakerActorVoiceRow'); /* v-actor-lipsync */
+    if(actorVoiceRowEl) actorVoiceRowEl.style.display = (m === 'actor') ? 'block' : 'none';
     syncFilmHeroRow();
   }
   modeEl.onchange = updateModeUI;
@@ -28678,6 +28686,45 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
             return;
           }
+          /* v-actor-lipsync (المالك ٢ أكتوبر: «الصوت المتحدث ليس دقيق في اللهجة الإماراتية والكلام عربي ضعيف جدًّا»): Veo يخترع
+             الصوت من وصف إنجليزيّ. الآن الكلام بالحرف بصوت إماراتيّ أصيل (حمدان/فاطمة) والوجه يتحرّك عليه؛ Veo احتياط فقط
+             حين يقول الخادم fallback (قبل أيّ خصم: لا مفتاح، أو تعذّر الصوت أو الوجه). */
+          const actorVoiceEl = document.getElementById('videoMakerActorVoice');
+          const actorGender = (actorVoiceEl && actorVoiceEl.value === 'female') ? 'female' : 'male';
+          setStatus(bT('🎙️ يسجّل كلام الممثل بصوت إماراتي...','🎙️ Recording the actor\'s line in an Emirati voice...'));
+          const acPayload = { speech, promptText: text, voiceGender: actorGender, ratio, token };
+          if(filmHeroBase64){ acPayload.imageBase64 = filmHeroBase64; acPayload.imageMime = filmHeroMime || 'image/jpeg'; }
+          const ac = await fetch('/api/video?action=actor-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(acPayload) });
+          const acData = await ac.json().catch(() => ({}));
+          if(ac.ok && acData.id){
+            setStatus(bT('🎬 يحرّك وجه الممثل على صوته (قد يستغرق ١-٣ دقائق)...','🎬 Animating the actor to the voice (may take 1-3 min)...'));
+            const actorUrl = await new Promise((resolve, reject) => {
+              const guard = makePollGuard(reject, 8000);
+              const iv = setInterval(async () => {
+                if(!guard.tick(iv)) return;
+                try{
+                  const st = await fetch('/api/video?action=actor-status&id=' + encodeURIComponent(acData.id));
+                  const d = await st.json();
+                  guard.ok();
+                  if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
+                  if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
+                  else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error(bT('تعذّر توليد الممثل — رجعت نقاطك، أعد المحاولة.','Actor generation failed — points refunded, try again.') + (d.failure ? ' — ' + d.failure : ''))); }
+                } catch(e){ guard.fail(iv); }
+              }, 8000);
+            });
+            setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
+            const avres = await fetch(proxyVideoUrl(actorUrl));
+            if(!avres.ok) throw new Error('download failed ' + avres.status);
+            const avurl = URL.createObjectURL(await avres.blob());
+            setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+            resultEl.src = avurl;
+            resultEl.style.display = 'block';
+            downloadEl.href = proxyVideoUrl(actorUrl);
+            downloadEl.style.display = 'block';
+            return;
+          }
+          if(!acData.fallback) throw new Error(acData.error || ('actor ' + ac.status));
+          console.warn('[actor] lipsync path unavailable — Veo fallback:', acData.error);
           veoPrompt = (text || (filmHeroBase64 ? 'The real person in the reference photo' : 'An Emirati man in traditional white kandura and ghutra, warm friendly face'))
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
