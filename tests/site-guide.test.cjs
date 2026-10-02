@@ -56,7 +56,7 @@ const oaText = (text, model) => sse([
   '[DONE]',
 ]);
 
-async function run({ user, provider, messages, model, script }) {
+async function run({ user, provider, messages, model, script, raw }) {
   usageUser = user;
   const calls = [];
   const save = global.fetch;
@@ -67,7 +67,7 @@ async function run({ user, provider, messages, model, script }) {
     return typeof step === 'function' ? step() : step;
   };
   let written = '';
-  const req = { method: 'POST', headers: {}, body: { messages, token: token(user), provider, model } };
+  const req = { method: 'POST', headers: {}, body: Object.assign({ messages, token: token(user), provider, model }, raw ? { raw: true } : {}) };
   const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('unexpected json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {}, flush() {} };
   try { await chat(req, res); } finally { global.fetch = save; }
   const events = written.split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return null; } }).filter(Boolean);
@@ -86,8 +86,8 @@ const sysOf = (call) => {
 const MARK = '[الإرشاد بين المواقع والصفحات';
 
 for (const provider of ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']) {
-  test('المالك (خام) عبر ' + provider + ': دور الإرشاد يحمل القاعدة وحدها والأدوات، وغيره خام تمامًا', async () => {
-    const r1 = await run({ user: 'omran', provider, messages: ask('وين ألقى تجديد الإقامة في موقع الهجرة؟'), script: [anthropicText('تمام'), oaText('تمام')] });
+  test('المالك (خام، raw:true — v-owner-full) عبر ' + provider + ': دور الإرشاد يحمل القاعدة وحدها والأدوات، وغيره خام تمامًا', async () => {
+    const r1 = await run({ user: 'omran', raw: true, provider, messages: ask('وين ألقى تجديد الإقامة في موقع الهجرة؟'), script: [anthropicText('تمام'), oaText('تمام')] });
     assert.ok(r1.calls.length >= 1, 'وصل المزوّد');
     const s1 = sysOf(r1.calls[0]);
     assert.ok(s1.includes(MARK), 'القاعدة في النظام: ' + s1.slice(0, 80));
@@ -95,7 +95,7 @@ for (const provider of ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'gr
     const tools = r1.calls[0].body.tools || [];
     const names = tools.map((x) => x.name || (x.function && x.function.name));
     assert.ok(names.includes('web_search') && names.includes('fetch_page'), 'البحث وقراءة الصفحة متاحان: ' + names.join(','));
-    const r2 = await run({ user: 'omran', provider, messages: ask('اكتب قصيدة قصيرة عن البحر'), script: [anthropicText('تمام'), oaText('تمام')] });
+    const r2 = await run({ user: 'omran', raw: true, provider, messages: ask('اكتب قصيدة قصيرة عن البحر'), script: [anthropicText('تمام'), oaText('تمام')] });
     assert.ok(!sysOf(r2.calls[0]).includes(MARK), 'غير الإرشاد: بلا القاعدة');
   });
 }
