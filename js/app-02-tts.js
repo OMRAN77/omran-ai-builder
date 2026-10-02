@@ -962,6 +962,53 @@ function unlockCloudAudio(){
     }catch(e){ __swallow(e, 'tts:device-unlock'); }
   }
 }
+/* v-tts-sync: وزن الكلمة ≈ زمن نطقها — الحروف بلا تشكيل، والرقم أطول نطقًا (٣ لكلّ خانة)، وعلامة الوقف تضيف وقفة. */
+function ttsWordWeight(w){
+  const s = String(w || '');
+  const letters = s.replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[^\p{L}]/gu, '').length;
+  const digits = (s.match(/[0-9\u0660-\u0669]/g) || []).length;
+  return Math.max(1, letters + digits * 3);
+}
+function ttsWeightStarts(els, t0, t1){
+  const ws = els.map(el => ttsWordWeight(el.textContent));
+  const total = ws.reduce((a, b) => a + b, 0) || 1;
+  let acc = 0;
+  return ws.map(w => { const s = t0 + (acc / total) * (t1 - t0); acc += w; return s; });
+}
+/* أزمنة الكلمات من الصوت: غلاف الطاقة (١٠م.ث) ← المقاطع المسموعة (الصمت ≥ ١٢٠م.ث وقفة) ← الكلمات تُوزَّع على زمن
+   الكلام وحده بأوزانها، فالتظليل يثبت أثناء الوقفة ويبدأ مع أوّل صوت لا مع أوّل الملفّ. */
+let ttsSyncCtx = null;
+async function ttsVoicedStarts(url, els){
+  const C = window.AudioContext || window.webkitAudioContext;
+  if(!C || !els.length) return null;
+  if(!ttsSyncCtx) ttsSyncCtx = new C();
+  const ab = await (await fetch(url)).arrayBuffer();
+  const buf = await new Promise((res, rej) => { const p = ttsSyncCtx.decodeAudioData(ab, res, rej); if(p && p.then) p.then(res, rej); });
+  const ch = buf.getChannelData(0), sr = buf.sampleRate, hop = Math.max(1, Math.round(sr / 100));
+  const env = [];
+  for(let a = 0; a < ch.length; a += hop){
+    let e = 0; const z = Math.min(ch.length, a + hop);
+    for(let k = a; k < z; k++) e += ch[k] * ch[k];
+    env.push(Math.sqrt(e / Math.max(1, z - a)));
+  }
+  const peak = env.reduce((m, v) => v > m ? v : m, 0);
+  if(!peak) return null;
+  const thr = peak * 0.06;
+  const voiced = env.map(v => v > thr);
+  // وقفة أقصر من ١٢٠م.ث داخل كلمة/بين كلمتين متّصلتين تُحسب كلامًا
+  for(let i = 0; i < voiced.length;){
+    if(voiced[i]){ i++; continue; }
+    let j = i; while(j < voiced.length && !voiced[j]) j++;
+    if(i > 0 && j < voiced.length && j - i < 12) for(let k = i; k < j; k++) voiced[k] = true;
+    i = j;
+  }
+  const frames = []; voiced.forEach((v, i) => { if(v) frames.push(i); });
+  if(frames.length < 5) return null;
+  const ws = els.map(el => ttsWordWeight(el.textContent));
+  const total = ws.reduce((a, b) => a + b, 0) || 1;
+  let acc = 0;
+  return ws.map(w => { const f = frames[Math.min(frames.length - 1, Math.floor((acc / total) * frames.length))]; acc += w; return f / 100; });
+}
 async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   if(!text) return;
   unlockCloudAudio(); // يجب أن يحدث قبل أي await حتى يبقى ضمن ضغطة المستخدم
@@ -1064,25 +1111,36 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         audio.onended = () => { if(currentCloudToken === token) playChunk(i + 1); };
         audio.onerror = () => { if(currentCloudToken === token) playChunk(i + 1); };
         if(wordEls && wordEls.length){
+          /* v-tts-sync (المالك ٢ أكتوبر «الكتابة ما تتبع الصوت، تتأخّر — أريد تطابق الاثنين»): كان التقدير قسمة مدّة المقطع
+             على عدد الحروف — يتجاهل صمت البداية والنهاية ووقفات الفواصل والأرقام الطويلة النطق، فينزاح التظليل. وإن بدأ
+             الحساب قبل التشغيل (paused) توقّفت الحلقة نهائيًّا. الآن: التقدير القديم فورًا، ثمّ أزمنة من الصوت نفسه
+             (ttsVoicedStarts: المقاطع المسموعة فعلًا والوقفات)، والحلقة تبدأ مع «playing». */
           const chunkWordEls = wordEls.slice(chunks[i].wordStart, chunks[i].wordStart + chunks[i].wordCount);
+          let starts = null;
+          const tick = () => {
+            ttsHighlightRaf = null;
+            if(currentCloudToken !== token || currentCloudAudio !== audio || audio.ended || audio.src !== url) return; // العنصر نفسه يُعاد لكلّ مقطع
+            if(starts && !audio.paused){
+              const cur = audio.currentTime + 0.05;
+              let idx = 0;
+              for(let k = 0; k < starts.length; k++){ if(starts[k] <= cur) idx = k; else break; }
+              setActiveWord(wordEls, chunks[i].wordStart + idx);
+            }
+            if(!audio.paused) ttsHighlightRaf = requestAnimationFrame(tick);
+          };
+          const arm = () => {
+            if(audio.src !== url || currentCloudToken !== token){ audio.removeEventListener('playing', arm); return; }
+            if(!ttsHighlightRaf) ttsHighlightRaf = requestAnimationFrame(tick);
+          };
           audio.addEventListener('loadedmetadata', () => {
             if(currentCloudToken !== token) return;
             const duration = audio.duration;
             if(!isFinite(duration) || duration <= 0) return;
-            const lens = chunkWordEls.map(el => (el.textContent || '').length + 1);
-            const totalChars = lens.reduce((a,b) => a + b, 0) || 1;
-            let acc = 0;
-            const starts = lens.map(len => { const s = (acc / totalChars) * duration; acc += len; return s; });
-            const tick = () => {
-              if(currentCloudToken !== token || !currentCloudAudio || audio.paused || audio.ended) return;
-              const cur = audio.currentTime;
-              let idx = 0;
-              for(let k = 0; k < starts.length; k++){ if(starts[k] <= cur) idx = k; else break; }
-              setActiveWord(wordEls, chunks[i].wordStart + idx);
-              ttsHighlightRaf = requestAnimationFrame(tick);
-            };
-            ttsHighlightRaf = requestAnimationFrame(tick);
+            if(!starts) starts = ttsWeightStarts(chunkWordEls, 0, duration);
+            arm();
           }, { once: true });
+          audio.addEventListener('playing', arm);
+          ttsVoicedStarts(url, chunkWordEls).then((st) => { if(st && currentCloudToken === token) starts = st; }).catch(() => {}); // guard-ok: يبقى التقدير
         }
         await audio.play();
       };
