@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'mistral', clientIp(req));
+    // v-free-20-daily: سلّة 'chat' المشتركة لغير المشترك — لا يضاعف سقفه بتبديل المزوّد.
+    const usage = await checkAndConsume(token, guestId, 'mistral', clientIp(req), { chatBucket: true });
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });

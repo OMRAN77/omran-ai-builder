@@ -116,6 +116,12 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
   // fall back to a generic bucket ("general") to stay backward compatible.
   const providerKey = provider ? String(provider).toLowerCase() : 'general';
   const o = opts || {};
+  // v-free-20-daily: مسارات المحادثة النصّية المستقلّة (groq.js/mistral.js/gemini.js/
+  // openrouter.js) تمرّر chatBucket:true — غير المشترك (مجّاني/ضيف) يُعدّ فيها على سلّة
+  // 'chat' نفسها التي يستعملها chat.js بدل سلّة مستقلّة لكل مزوّد، وإلا يقدر يضاعف سقفه
+  // اليومي بتبديل المزوّد (تعطيل الأدوات أو إرفاق صورة يهبطان على هذه المسارات). المشترك
+  // والمالك وVIP لا يتأثّرون: بقيّة الاستدعاءات (card-extract/text-swap…) بلا هذا الخيار.
+  const chatBucket = !!o.chatBucket;
 
   const username = verifyToken(token);
   if (username) {
@@ -137,7 +143,8 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
     // Tally key includes today's date, so yesterday's marks simply stop
     // counting (no cleanup needed) and the limit naturally resets at UTC
     // midnight.
-    const key = username + '_' + todayStr() + '_' + providerKey;
+    const bucketKey = (chatBucket && !tier.subscriber) ? 'chat' : providerKey;
+    const key = username + '_' + todayStr() + '_' + bucketKey;
     const count = await countTally(key);
     if (count >= limit) {
       // Daily free quota for this provider is used up — fall back to the
@@ -172,7 +179,7 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
   const guestLimit = tierLib.caps().guest;
   const addr = ip && String(ip).trim() ? String(ip).trim() : null;
   if (addr) {
-    const key = 'guestip_' + addr + '_' + providerKey;
+    const key = 'guestip_' + addr + '_' + (chatBucket ? 'chat' : providerKey);
     const count = await countTally(key);
     if (count >= guestLimit) {
       return { allowed: false, reason: 'limit', username: null, tier: 'guest', subscriber: false, limit: guestLimit, message: tierLib.FREE_TEXT.guestLimit };
