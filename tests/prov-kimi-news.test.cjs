@@ -81,14 +81,15 @@ test('٤. القائمة: ثلاث مجموعات مرتّبة بخطّ بينه
   const m = read('js/modes.js');
   const i = m.indexOf('var PROVS = ['); const block = m.slice(i, m.indexOf('\n      ];', i));
   const rows = [...block.matchAll(/\{ grp:(\d), key:'(\w+)',\s+name:'([^']+)'/g)].map((x) => [Number(x[1]), x[2], x[3]]);
-  assert.deepEqual(rows.map((r) => r[1]), ['claude', 'openai', 'gemini', 'kimi', 'deepseek', 'mistral', 'groq', 'perplexity', 'cohere', 'openrouter']);
-  assert.deepEqual(rows.map((r) => r[0]), [1, 1, 1, 2, 2, 2, 2, 3, 3, 3]);
+  // v-prov-dedupe: صفّ OpenRouter أُزيل (اختبار ٧)
+  assert.deepEqual(rows.map((r) => r[1]), ['claude', 'openai', 'gemini', 'kimi', 'deepseek', 'mistral', 'groq', 'perplexity', 'cohere']);
+  assert.deepEqual(rows.map((r) => r[0]), [1, 1, 1, 2, 2, 2, 2, 3, 3]);
   assert.deepEqual(rows.slice(0, 4).map((r) => r[2]), ['Claude · Anthropic', 'GPT · OpenAI', 'Gemini · Google', 'Kimi · Moonshot']);
   assert.ok(!/كلود|جوجل جيميني/.test(block), 'لا أسماء معرّبة بين اللاتينيّة');
   assert.match(block, /key:'kimi',\s+name:'Kimi · Moonshot',\s+or:true, direct:true, store:'aiapp_kimi_model',\s+def:'kimi-k3',\s+models:\[\['kimi-k3','Kimi K3'\],\['kimi-k2\.6','Kimi K2\.6'\]\]/);
   assert.match(m, /if\(i && p\.grp !== PROVS\[i-1\]\.grp\) out \+= divider;/);
   assert.match(m, /kimi:'provNickDeep'/);
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m031026a/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m031026b/);
 });
 
 test('٥. العميل: Kimi على مسار الأدوات وحده، باسمه للمالك، وإغلاق الإعدادات لا يمسح الاختيار', () => {
@@ -117,4 +118,37 @@ test('٦. الأخبار أُزيلت كلّها: لا ملفّات ولا نا�
   assert.ok(!cr.includes('newsItems') && !cr.includes('breaking-news'));
   assert.match(cr, /if \(r\.type === 'news'\) \{\n[^\n]*\n\s+nextList\.push\(r\);\n\s+continue;\n\s+\}/, 'سجلّ الأخبار القديم يبقى كما هو بلا دفع');
   assert.match(cr, /title: 'مها',/, 'تذكيرات مها باقية');
+});
+
+/* v-prov-dedupe (لقطة المالك ٣ أكتوبر «المزودين متكررين فوق وتحت، قلتلك رتب»): صفّ OpenRouter كان يفتح سبعة موديلات كلّها
+   موجودة فوق تحت شركتها (Opus/Sonnet، GPT، Gemini Flash، DeepSeek، Mistral، Llama). يُقيَّم مصفوفة PROVS الحقيقيّة نفسها. */
+test('٧. لا موديل يظهر تحت صفّين، ولا صفّ وسيط يكرّر الشركات', () => {
+  const m = read('js/modes.js');
+  const i = m.indexOf('var PROVS = ['); const src = m.slice(i, m.indexOf('\n      ];', i) + 9);
+  const PROVS = new Function(src + '\nreturn PROVS;')();
+  // الاسم المعروض بلا اسم الشركة («Claude Opus 5.5» = «Opus 5.5»)، والمعرّف بلا بادئة الوسيط ولا فرق النقطة والشرطة.
+  const norm = (s) => String(s).toLowerCase().replace(/^[a-z0-9-]+\//, '').replace(/^(claude|gpt|gemini|deepseek|mistral|llama|kimi)[\s-]+(?=\S)/, '').replace(/[.\s_-]+/g, '');
+  const seen = new Map();
+  for (const p of PROVS) for (const [id, label] of p.models) {
+    for (const k of [norm(id), norm(label)]) {
+      assert.ok(!seen.has(k) || seen.get(k) === p.key, `«${label}» تحت ${p.key} وتحت ${seen.get(k)}`);
+      seen.set(k, p.key);
+    }
+  }
+  assert.ok(!PROVS.some((p) => p.key === 'openrouter'), 'صفّ الوسيط أُزيل — موديلاته كلّها تحت شركاتها');
+  assert.equal(PROVS.length, 9);
+});
+
+/* v-owner-bar-hide (المالك ٣ أكتوبر «هذي فقط للمالك، شيلها من المستخدمين»): modes.js يخفي شريط المزوّد لغير المالك بـ
+   style.display='none'، لكنّ قاعدتين في redesign.css فرضتا display:flex !important — و!important في ورقة الأنماط يغلب
+   الأسلوب المضمّن العاديّ، فرأى كلّ مستخدم «العميق ⌄» وقائمة فارغة. الإظهار والإخفاء للسكربت وحده. */
+test('٨. شريط المزوّد للمالك وحده: لا قاعدة CSS تفرض ظهوره فوق إخفاء السكربت', () => {
+  const css = ['css/redesign.css', 'css/modules.css'].filter((f) => fs.existsSync(path.join(root, f))).map((f) => read(f)).join('\n');
+  const rules = [...css.matchAll(/([^{}]*#omBottomBar[^{}]*)\{([^}]*)\}/g)];
+  assert.ok(rules.length >= 3, 'قواعد التخطيط باقية');
+  for (const r of rules) assert.ok(!/(^|[;\s])display\s*:/.test(r[2]), 'لا display في: ' + r[1].trim());
+  const m = read('js/modes.js');
+  assert.match(m, /bar\.style\.cssText = 'align-self:flex-end; margin-top:-2px; display:' \+ \(isOwner\(\) \? 'inline-flex' : 'none'\)/);
+  assert.match(m, /if\(bar\) bar\.style\.display = on \? 'flex' : 'none';/);
+  assert.match(read('index.html'), /css\/redesign\.css\?v=689/);
 });
