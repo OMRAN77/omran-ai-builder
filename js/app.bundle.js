@@ -11935,6 +11935,35 @@ function collapseAllSettingsSections(){
   });
 }
 
+// دوال التفاعل مع صفوف قسم «حسابي» والباركود والمشاركة
+window.acctToggleRow = function(id, btn) {
+  var p = document.getElementById(id);
+  if (!p) return;
+  var open = p.style.display === 'none' || !p.style.display;
+  p.style.display = open ? 'block' : 'none';
+  var s = btn ? (btn.querySelector('svg:last-of-type') || btn.querySelector('svg')) : null;
+  if (s) s.style.transform = open ? 'rotate(90deg)' : '';
+};
+window.acctToggleQr = function() {
+  var q = document.getElementById('acctQrBox');
+  if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
+};
+window.acctShareApp = async function() {
+  var u = document.getElementById('acctReferralLink');
+  var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+  var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
+  if (navigator.share) {
+    try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+  } else {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+    } catch (e2) {
+      prompt('انسخ الرابط:', shareUrl);
+    }
+  }
+};
+
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
 // v-owner-page: «صفحة المالك» أوّل القائمة، وتُتخطّى لغير المالك (settingsOwnerUi)
 const SETTINGS_NAV_IDS = ['ownerSection','langSection','accountSection','statsSection','apiKeysSection','themeSection','bgImgSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];

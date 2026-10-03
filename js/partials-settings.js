@@ -117,26 +117,6 @@
       <button type="button" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(128,128,128,.3); background:rgba(128,128,128,.12); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
     </div></div>
     </div>
-    <script src="/js/themes.js?v=441"></script>
-    <script>
-      window.acctToggleRow=function(id,btn){var p=document.getElementById(id);var open=p.style.display==='none';p.style.display=open?'block':'none';var s=btn.querySelector('svg');if(s)s.style.transform=open?'rotate(90deg)':'';};
-      window.acctToggleQr=function(){var q=document.getElementById('acctQrBox');if(q)q.style.display=(q.style.display==='none'?'block':'none');};
-      window.acctShareApp=async function(){
-        var u=document.getElementById('acctReferralLink');
-        var shareUrl=(u&&u.value)?u.value:'https://omran-ai-builder.vercel.app/download';
-        var txt='جرّب تطبيق عمران AI لكافة المتاجر:';
-        if(navigator.share){
-          try{await navigator.share({title:'عمران AI',text:txt,url:shareUrl});}catch(e){/* guard-ok */}
-        }else{
-          try{
-            await navigator.clipboard.writeText(shareUrl);
-            alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
-          }catch(e2){
-            prompt('انسخ الرابط:',shareUrl);
-          }
-        }
-      };
-    </script>
   </div></div>
 
   <div id="statsSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
@@ -901,10 +881,46 @@
       document.head.appendChild(g);
     } else { g.addEventListener('load', loadCur); }
   }
-  if (document.readyState === 'loading') { document.write(H); __mountCur(); return; }
+  // — دوال التفاعل في قسم «حسابي» والباركود والمشاركة —
+  window.acctToggleRow = function(id, btn) {
+    var p = document.getElementById(id);
+    if (!p) return;
+    var open = p.style.display === 'none' || !p.style.display;
+    p.style.display = open ? 'block' : 'none';
+    var s = btn ? (btn.querySelector('svg:last-of-type') || btn.querySelector('svg')) : null;
+    if (s) s.style.transform = open ? 'rotate(90deg)' : '';
+  };
+  window.acctToggleQr = function() {
+    var q = document.getElementById('acctQrBox');
+    if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
+  };
+  window.acctShareApp = async function() {
+    var u = document.getElementById('acctReferralLink');
+    var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+    var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
+    if (navigator.share) {
+      try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+      } catch (e2) {
+        prompt('انسخ الرابط:', shareUrl);
+      }
+    }
+  };
+  function __loadThemes() {
+    if (window.applyAppTheme) return;
+    var sc = document.createElement('script');
+    sc.src = '/js/themes.js?v=441';
+    sc.charset = 'utf-8';
+    document.head.appendChild(sc);
+  }
+  if (document.readyState === 'loading') { document.write(H); __mountCur(); __loadThemes(); return; }
   var d = document.createElement('div'); d.innerHTML = H;
   var f = document.createDocumentFragment();
   while (d.firstChild) f.appendChild(d.firstChild);
   (S && S.parentNode ? S.parentNode : document.body).insertBefore(f, S || null);
   __mountCur();
+  __loadThemes();
 })();
