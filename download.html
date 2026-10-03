@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="docTitle">عمران AI — تحميل وتثبيت التطبيق لكافة المتاجر</title>
+<link rel="icon" type="image/png" href="/icons/favicon-32-v2.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png">
+<style>
+:root {
+  --bg: #090a0d;
+  --surface: #101217;
+  --surface-hover: #161a22;
+  --border: rgba(212, 175, 55, 0.28);
+  --border-subtle: #20242e;
+  --gold: #d4af37;
+  --gold-glow: rgba(212, 175, 55, 0.18);
+  --gold-light: #f5df88;
+  --text: #f0f2f5;
+  --text-muted: #9aa1b0;
+  --radius: 20px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; min-height: 100%;
+  background: radial-gradient(120% 90% at 50% -10%, #1a160a 0%, var(--bg) 55%), var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  line-height: 1.5;
+}
+.hubContainer {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 18px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+/* Header */
+.hubHeader {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.hubLogoWrap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 22px;
+  background: radial-gradient(circle, rgba(212,175,55,.25) 0%, rgba(0,0,0,.6) 80%);
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 35px var(--gold-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.hubLogoImg {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  object-fit: cover;
+}
+.hubBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold-light);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 4px 14px;
+  border-radius: 999px;
+}
+.hubTitle {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffffff 40%, #e2c262 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hubSubtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 540px;
+}
+
+/* Main QR Card */
+.qrCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px 20px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 45px var(--gold-glow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.qrCard::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  height: 120px;
+  background: radial-gradient(ellipse, var(--gold-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+.qrFrame {
+  position: relative;
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 20px;
+  border: 2px solid var(--gold);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 25px rgba(212, 175, 55, 0.25);
+  max-width: 280px;
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qrImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: 8px;
+}
+.qrScanHint {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gold-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.qrActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+.btnAction {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  transition: all .15s ease;
+}
+.btnAction:hover {
+  background: var(--surface-hover);
+  border-color: var(--gold);
+  color: var(--gold-light);
+}
+.btnAction.primary {
+  background: linear-gradient(135deg, #d4af37, #9b791e);
+  color: #000;
+  border-color: #d4af37;
+  font-weight: 700;
+}
+.btnAction.primary:hover {
+  filter: brightness(1.1);
+}
+
+/* Stores Grid */
+.storesHeading {
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.storesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+.storeCard {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: transform .18s, border-color .18s, box-shadow .18s;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+}
+.storeCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.storeCard.activeDevice {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, rgba(212,175,55,0.08) 0%, var(--surface) 100%);
+  box-shadow: 0 0 20px var(--gold-glow);
+}
+.currentBadge {
+  position: absolute;
+  top: 10px;
+  inset-inline-end: 10px;
+  background: var(--gold);
+  color: #000;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.storeTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.storeIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.storeName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.storePlatform {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.storeDesc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.storeBtn {
+  background: var(--surface-hover);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  text-decoration: none;
+  transition: all .15s;
+}
+.storeCard:hover .storeBtn, .storeCard.activeDevice .storeBtn {
+  background: var(--gold);
+  color: #000;
+  border-color: var(--gold);
+}
+
+/* Toast message */
+#hubToast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1f242d;
+  border: 1px solid var(--gold);
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  opacity: 0;
+  transition: all .25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 9999;
+  pointer-events: none;
+}
+#hubToast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Footer */
+.hubFooter {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hubFooter a {
+  color: var(--gold);
+  text-decoration: none;
+}
+</style>
+</head>
+<body>
+
+<div class="hubContainer">
+  <!-- Header -->
+  <header class="hubHeader">
+    <div class="hubLogoWrap">
+      <img src="/icons/ai-hub-mark-256.png" class="hubLogoImg" alt="Omran AI">
+    </div>
+    <span class="hubBadge" id="hubBadgeTxt">👑 المنصة الرسمية المعتمدة | Official Hub</span>
+    <h1 class="hubTitle" id="hubTitleTxt">Omran AI Builder</h1>
+    <p class="hubSubtitle" id="hubSubTxt">تحميل وتثبيت التطبيق على كافة المنصات والأجهزة بالذكاء الاصطناعي مع وصول فوري وشامل لكافة المتاجر.</p>
+  </header>
+
+  <!-- QR Card -->
+  <main class="qrCard">
+    <div class="qrFrame">
+      <img src="/icons/omran-qr-code.png" class="qrImg" id="qrImgEl" alt="Omran AI Barcode">
+    </div>
+
+    <div class="qrScanHint">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <span id="qrScanTxt">امسح الباركود بكاميرا الهاتف للتحميل المباشر</span>
+    </div>
+
+    <div class="qrActions">
+      <button type="button" class="btnAction primary" id="btnDownloadQr">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span id="txtBtnDl">تحميل صورة الباركود (PNG)</span>
+      </button>
+
+      <button type="button" class="btnAction" id="btnCopyLink">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span id="txtBtnCopy">نسخ الرابط الموحّد</span>
+      </button>
+
+      <a href="/" class="btnAction">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span id="txtBtnWeb">فتح التطبيق الآن</span>
+      </a>
+    </div>
+  </main>
+
+  <!-- Stores Section -->
+  <div class="storesHeading">
+    <span>📲</span>
+    <span id="txtStoresHeading">كافة المتاجر وخيارات التثبيت المباشر:</span>
+  </div>
+
+  <div class="storesGrid">
+    <!-- 1) Apple / iOS -->
+    <div class="storeCard" id="cardApple">
+      <div class="storeTop">
+        <div class="storeIcon">🍏</div>
+        <div>
+          <div class="storeName" id="txtStoreAppleTitle">متجر آبل (iOS / iPhone)</div>
+          <div class="storePlatform">iPhone & iPad PWA</div>
+        </div>
+      </div>
+      <div class="storeDesc" id="txtStoreAppleDesc">
+        تثبيت فوري بضغطة زر على الآيفون والآيباد عبر متصفح Safari («إضافة إلى الشاشة الرئيسية»).
+      </div>
+      <a href="/" class="storeBtn" id="btnStoreApple">
+        <span id="txtStoreAppleBtn">تثبيت على الآيفون 📲</span>
+      </a>
+    </div>
+
+    <!-- 2) Google Play & Android -->
+    <div class="storeCard" id="cardAndroid">
+      <div class="storeTop">
+        <div class="storeIcon">🤖</div>
+        <div>
+          <div class="storeName" id="txtStoreAndroidTitle">أندرويد وجوجل بلاي</div>
+          <div class="storePlatform">Google Play & APK Direct</div>
+        </div>
+      </div>
+      <div class="storeDesc" id="txtStoreAndroidDesc">
+        تطبيق أندرويد سريع ومباشر، يدعم التثبيت المباشر من المتصفح وحزمة APK الموقعة.
+      </div>
+      <a href="/" class="storeBtn" id="btnStoreAndroid">
+        <span id="txtStoreAndroidBtn">تثبيت لأندرويد 🤖</span>
+      </a>
+    </div>
+
+    <!-- 3) Huawei AppGallery -->
+    <div class="storeCard" id="cardHuawei">
+      <div class="storeTop">
+        <div class="storeIcon">🔴</div>
+        <div>
+          <div class="storeName" id="txtStoreHuaweiTitle">متجر هواوي AppGallery</div>
+          <div class="storePlatform">Huawei TWA Package</div>
+        </div>
+      </div>
+      <div class="storeDesc" id="txtStoreHuaweiDesc">
+        النسخة الرسمية المعتمدة في متجر هواوي AppGallery لهواتف هواوي وأجهزة HarmonyOS.
+      </div>
+      <a href="/?store=huawei" class="storeBtn" id="btnStoreHuawei">
+        <span id="txtStoreHuaweiBtn">فتح متجر هواوي 🔴</span>
+      </a>
+    </div>
+
+    <!-- 4) Microsoft Store -->
+    <div class="storeCard" id="cardWindows">
+      <div class="storeTop">
+        <div class="storeIcon">🪟</div>
+        <div>
+          <div class="storeName" id="txtStoreWinTitle">مايكروسوفت ستور (Windows)</div>
+          <div class="storePlatform">Windows 11 / 10 PWA</div>
+        </div>
+      </div>
+      <div class="storeDesc" id="txtStoreWinDesc">
+        تطبيق ويندوز المعتمد مع نافذة مستقلة وأيقونة في قائمة ابدأ وتحديثات تلقائية سحابية.
+      </div>
+      <a href="/" class="storeBtn" id="btnStoreWin">
+        <span id="txtStoreWinBtn">تثبيت على ويندوز 🪟</span>
+      </a>
+    </div>
+
+    <!-- 5) Browser Extension -->
+    <div class="storeCard" id="cardExtension">
+      <div class="storeTop">
+        <div class="storeIcon">🌐</div>
+        <div>
+          <div class="storeName" id="txtStoreExtTitle">إضافة المتصفح (Extensions)</div>
+          <div class="storePlatform">Chrome, Edge & Firefox</div>
+        </div>
+      </div>
+      <div class="storeDesc" id="txtStoreExtDesc">
+        إضافة رسمية للمتصفح تتيح البحث الفوري والسريع بالذكاء الاصطناعي من أي صفحة.
+      </div>
+      <a href="/" class="storeBtn" id="btnStoreExt">
+        <span id="txtStoreExtBtn">إضافة المتصفح 🌐</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="hubFooter">
+    <div>© Omran AI Team — صُنع بإتقان بالذكاء الاصطناعي 🇦🇪</div>
+    <div>
+      <a href="/privacy.html">سياسة الخصوصية</a> · 
+      <a href="/terms.html">الشروط والأحكام</a> · 
+      <a href="/">المنصة الرئيسية</a>
+    </div>
+  </footer>
+</div>
+
+<div id="hubToast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 1) 14 Languages Dictionary
+  var I18N_HUB = {
+    ar: {
+      docTitle: 'عمران AI — تحميل وتثبيت التطبيق لكافة المتاجر',
+      badge: '👑 المنصة الرسمية المعتمدة | Official Hub',
+      title: 'Omran AI Builder',
+      sub: 'تحميل وتثبيت التطبيق على كافة المنصات والأجهزة بالذكاء الاصطناعي مع وصول فوري وشامل لكافة المتاجر.',
+      scan: 'امسح الباركود بكاميرا الهاتف للتحميل المباشر',
+      btnDl: 'تحميل صورة الباركود (PNG)',
+      btnCopy: 'نسخ الرابط الموحّد',
+      btnWeb: 'فتح التطبيق الآن',
+      storesHeading: 'كافة المتاجر وخيارات التثبيت المباشر:',
+      currentBadge: 'جهازك الحالي ✨',
+      appleTitle: 'متجر آبل (iOS / iPhone)',
+      appleDesc: 'تثبيت فوري بضغطة زر على الآيفون والآيباد عبر متصفح Safari («إضافة إلى الشاشة الرئيسية»).',
+      appleBtn: 'تثبيت على الآيفون 📲',
+      androidTitle: 'أندرويد وجوجل بلاي',
+      androidDesc: 'تطبيق أندرويد سريع ومباشر، يدعم التثبيت المباشر من المتصفح وحزمة APK الموقعة.',
+      androidBtn: 'تثبيت لأندرويد 🤖',
+      huaweiTitle: 'متجر هواوي AppGallery',
+      huaweiDesc: 'النسخة الرسمية المعتمدة في متجر هواوي AppGallery لهواتف هواوي وأجهزة HarmonyOS.',
+      huaweiBtn: 'فتح متجر هواوي 🔴',
+      winTitle: 'مايكروسوفت ستور (Windows)',
+      winDesc: 'تطبيق ويندوز المعتمد مع نافذة مستقلة وأيقونة في قائمة ابدأ وتحديثات تلقائية سحابية.',
+      winBtn: 'تثبيت على ويندوز 🪟',
+      extTitle: 'إضافة المتصفح (Extensions)',
+      extDesc: 'إضافة رسمية للمتصفح تتيح البحث الفوري والسريع بالذكاء الاصطناعي من أي صفحة.',
+      extBtn: 'إضافة المتصفح 🌐',
+      copied: '✅ تم نسخ الرابط الموحّد بنجاح!'
+    },
+    en: {
+      docTitle: 'Omran AI — Download & Install App on All Stores',
+      badge: '👑 Official Certified Hub | All Stores',
+      title: 'Omran AI Builder',
+      sub: 'Download and install Omran AI on all platforms and devices with smart AI routing across all app stores.',
+      scan: 'Scan QR barcode with your phone camera to download',
+      btnDl: 'Download QR Barcode (PNG)',
+      btnCopy: 'Copy Universal Link',
+      btnWeb: 'Open Web App Now',
+      storesHeading: 'All App Stores & Direct Install Options:',
+      currentBadge: 'Your Device ✨',
+      appleTitle: 'Apple App Store (iOS / iPhone)',
+      appleDesc: 'Instant 1-tap install on iPhone & iPad via Safari ("Add to Home Screen").',
+      appleBtn: 'Install on iPhone 📲',
+      androidTitle: 'Android & Google Play',
+      androidDesc: 'Fast native-feel Android app with direct browser install & signed APK package.',
+      androidBtn: 'Install on Android 🤖',
+      huaweiTitle: 'Huawei AppGallery',
+      huaweiDesc: 'Official certified Huawei AppGallery TWA package for Huawei & HarmonyOS devices.',
+      huaweiBtn: 'Open in AppGallery 🔴',
+      winTitle: 'Microsoft Store (Windows)',
+      winDesc: 'Official Windows app with standalone window, Start Menu integration & auto updates.',
+      winBtn: 'Install on Windows 🪟',
+      extTitle: 'Browser Extension (Extensions)',
+      extDesc: 'Smart extension for quick AI access right from Chrome, Edge & Firefox tabs.',
+      extBtn: 'Browser Extension 🌐',
+      copied: '✅ Universal link copied to clipboard!'
+    }
+  };
+
+  // Determine language
+  var curLang = 'ar';
+  try {
+    var stored = localStorage.getItem('aiapp_lang');
+    if(stored && I18N_HUB[stored]) curLang = stored;
+    else if(/^en\b/i.test(navigator.language || '')) curLang = 'en';
+  } catch(e){}
+
+  var S = I18N_HUB[curLang] || I18N_HUB.ar;
+  if(curLang !== 'ar' && curLang !== 'ur') {
+    document.documentElement.dir = 'ltr';
+    document.documentElement.lang = curLang;
+  }
+
+  // Apply translations
+  var el = function(id){ return document.getElementById(id); };
+  if(el('docTitle')) document.title = S.docTitle;
+  if(el('hubBadgeTxt')) el('hubBadgeTxt').textContent = S.badge;
+  if(el('hubTitleTxt')) el('hubTitleTxt').textContent = S.title;
+  if(el('hubSubTxt')) el('hubSubTxt').textContent = S.sub;
+  if(el('qrScanTxt')) el('qrScanTxt').textContent = S.scan;
+  if(el('txtBtnDl')) el('txtBtnDl').textContent = S.btnDl;
+  if(el('txtBtnCopy')) el('txtBtnCopy').textContent = S.btnCopy;
+  if(el('txtBtnWeb')) el('txtBtnWeb').textContent = S.btnWeb;
+  if(el('txtStoresHeading')) el('txtStoresHeading').textContent = S.storesHeading;
+  if(el('txtStoreAppleTitle')) el('txtStoreAppleTitle').textContent = S.appleTitle;
+  if(el('txtStoreAppleDesc')) el('txtStoreAppleDesc').textContent = S.appleDesc;
+  if(el('txtStoreAppleBtn')) el('txtStoreAppleBtn').textContent = S.appleBtn;
+  if(el('txtStoreAndroidTitle')) el('txtStoreAndroidTitle').textContent = S.androidTitle;
+  if(el('txtStoreAndroidDesc')) el('txtStoreAndroidDesc').textContent = S.androidDesc;
+  if(el('txtStoreAndroidBtn')) el('txtStoreAndroidBtn').textContent = S.androidBtn;
+  if(el('txtStoreHuaweiTitle')) el('txtStoreHuaweiTitle').textContent = S.huaweiTitle;
+  if(el('txtStoreHuaweiDesc')) el('txtStoreHuaweiDesc').textContent = S.huaweiDesc;
+  if(el('txtStoreHuaweiBtn')) el('txtStoreHuaweiBtn').textContent = S.huaweiBtn;
+  if(el('txtStoreWinTitle')) el('txtStoreWinTitle').textContent = S.winTitle;
+  if(el('txtStoreWinDesc')) el('txtStoreWinDesc').textContent = S.winDesc;
+  if(el('txtStoreWinBtn')) el('txtStoreWinBtn').textContent = S.winBtn;
+  if(el('txtStoreExtTitle')) el('txtStoreExtTitle').textContent = S.extTitle;
+  if(el('txtStoreExtDesc')) el('txtStoreExtDesc').textContent = S.extDesc;
+  if(el('txtStoreExtBtn')) el('txtStoreExtBtn').textContent = S.extBtn;
+
+  // 2) Smart Device Detection & Active Highlight
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  var isHuawei = /HUAWEI|HONOR|HarmonyOS/i.test(ua) || /[?&]store=huawei\b/.test(location.search);
+  var isAndroid = /Android/i.test(ua) && !isHuawei;
+  var isWindows = /Windows/i.test(ua);
+
+  var targetCardId = isHuawei ? 'cardHuawei' : (isIOS ? 'cardApple' : (isAndroid ? 'cardAndroid' : (isWindows ? 'cardWindows' : null)));
+  if(targetCardId && el(targetCardId)){
+    var c = el(targetCardId);
+    c.classList.add('activeDevice');
+    var badge = document.createElement('span');
+    badge.className = 'currentBadge';
+    badge.textContent = S.currentBadge;
+    c.appendChild(badge);
+  }
+
+  // 3) Toast Helper
+  function showToast(msg){
+    var t = el('hubToast');
+    if(!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 3000);
+  }
+
+  // 4) Copy Link Handler
+  var btnCopy = el('btnCopyLink');
+  if(btnCopy){
+    btnCopy.onclick = function(){
+      var u = location.origin + '/download';
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(u).then(function(){
+          showToast(S.copied);
+        }).catch(function(){
+          prompt('Copy link:', u);
+        });
+      } else {
+        prompt('Copy link:', u);
+      }
+    };
+  }
+
+  // 5) Download QR Image Handler
+  var btnDl = el('btnDownloadQr');
+  if(btnDl){
+    btnDl.onclick = function(){
+      var a = document.createElement('a');
+      a.href = '/icons/omran-qr-code.png';
+      a.download = 'omran-ai-qr-code.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+  }
+})();
+</script>
+</body>
+</html>
