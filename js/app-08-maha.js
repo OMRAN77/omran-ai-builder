@@ -162,7 +162,7 @@ function mahaAvatarDisplay(show){
 
 function mahaSetState(state, customLabel){
   mahaState = state;
-  if(state !== 'listening') mahaLastActivity = Date.now(); // v-maha-band: مهلة السكوت تُحسب من آخر نشاط
+  mahaLastActivity = Date.now(); // v-maha-band: مهلة السكوت من آخر نشاط — v-maha-long-reply: ومن لحظة دخول الانتظار، لا من بداية ردّ طويل
   if(mahaOrbEl) mahaOrbEl.className = 'maha-orb-' + (state === 'error' ? 'thinking' : state);
   if(mahaWaveEl) mahaWaveEl.className = 'maha-wave-' + (state === 'error' ? 'thinking' : state);
   if(mahaStateLabelEl){
@@ -1164,6 +1164,7 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
  * reason (e.g. browser without WebRTC support, network blocking WebRTC,
  * server missing the key, etc.) so the feature never just stops working. */
 let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false, mahaRtReady = false;
+let mahaRtPlaying = false; // v-maha-long-reply: صوت مها يُشغَّل الآن (بين started وstopped/cleared)
     let mahaRtResponseWatchdog = null;
     // v-maha-natural: الخادم يردّ بنفسه لحظة انتهاء الجملة (semantic_vad) — حارس العميل احتياط متأخّر فقط.
     let mahaRtNatural = false;
@@ -1453,8 +1454,10 @@ async function mahaStartRealtimeCall(){
         else mahaArmRtResponseWatchdog(350);
       }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
-      else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
-    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
+      else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaRtPlaying = true; mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
+    // v-maha-long-reply: response.done = انتهى التوليد لا الكلام — كان يعيد «انتظار» ومها تتكلّم فتُقفلها مهلة السكوت.
+    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'output_audio_buffer.cleared'){ mahaRtPlaying = false; mahaSetState('listening'); }
+    else if(ev.type === 'response.done'){ if(!mahaRtPlaying) mahaSetState('listening'); }
     else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
     else if(ev.type === 'error'){ console.error('[maha-realtime] server error:', ev); }
   });
@@ -1869,6 +1872,7 @@ function mahaEndRealtimeCall(){
     mahaRtCancelled = true;
     mahaRtActive = false;
     mahaRtReady = false;
+    mahaRtPlaying = false; // v-maha-long-reply
     mahaClearRtResponseWatchdog();
       if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#17"); } mahaRtDc = null; }
   if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#18"); } mahaRtPc = null; }
