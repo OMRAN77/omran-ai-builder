@@ -229,10 +229,17 @@ assert.ok(at21.includes('idbGetGuarded') && at21.includes('v-idb-hang'), 'تحم
 assert.ok(at21.includes('(sp.messages || []).length > (ip.messages || []).length'), 'دمج لا يسحق رسالة كُتبت على المرآة');
 console.log('  ✓ v-idb-mirror: المحادثات من أول لحظة مهما تجمد IndexedDB');
 
-// ㉒ v-chat-parallel-tools: أدوات الدور تنفذ معًا + سقف بحثين لكل رد.
+// ㉒ Parallel tools share a finite allowance: two quick / four owner analysis.
 const chat22 = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
 assert.ok(chat22.includes('v-chat-parallel-tools') && chat22.includes('Promise.all(toolBlocks.map'), 'أدوات الدور تنطلق بالتوازي');
-assert.ok(chat22.includes('mySearchNo > 2') && chat22.includes('بلغتَ سقف البحث لهذا الردّ'), 'سقف البحثين مفروض بالكود');
+assert.ok(chat22.includes('requestBudget.search(_q)'), 'حلقة الأدوات تطبّق الميزانية المشتركة');
+const { createBudget: budget22 } = require('../api/_lib/chat-budget.js');
+for (const deep of [false, true]) {
+  const b = budget22(deep);
+  for (let i = 0; i < (deep ? 4 : 2); i++) assert.equal(b.search('query ' + i), '');
+  assert.match(b.search('extra query'), /بلغتَ سقف البحث لهذا الردّ/);
+  b.close();
+}
 assert.ok(chat22.includes('فشل تنفيذ الأداة:'), 'فشل أداة واحدة لا يسقط الرد');
 assert.ok(chat22.includes('سرعة الردّ أولوية عليا'), 'قاعدة السرعة في التوجيهات');
 console.log('  ✓ v-chat-parallel-tools: الرد أسرع — توازٍ وسقف بحث');
