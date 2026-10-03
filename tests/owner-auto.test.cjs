@@ -36,6 +36,68 @@ require.cache[rp('api/_lib/search.js')] = { id: rp('api/_lib/search.js'), filena
 const chat = require(rp('api/_lib/chat.js'));
 const ot = require(rp('api/_lib/owner-think.js'));
 const od = require(rp('api/_lib/oa-direct.js'));
+const { createBudget, PROFILES } = require(rp('api/_lib/chat-budget.js'));
+
+test('bounded analysis: informal diagnosis and follow-ups retain depth, greetings stay quick', () => {
+  for (const text of ['افحص', 'تأكد من صحة المعلومات', 'وش سبب العطل', 'الموقع ما يحفظ', 'investigate this failure']) {
+    assert.equal(ot.ownerThinks(text, {}), true, text);
+  }
+  const history = [{ role: 'user', content: 'افحص سبب المشكلة' }, { role: 'assistant', content: 'هناك احتمالان' }, { role: 'user', content: 'ليش؟' }];
+  assert.equal(ot.ownerThinks('ليش؟', { history }), true);
+  assert.equal(ot.ownerThinks('هلا', { greeting: true, history }), false);
+  assert.equal(ot.ownerThinks('ليش؟', { history: [{ role: 'user', content: 'مرحبا' }] }), false);
+});
+
+test('bounded analysis: search reservations are parallel-safe, duplicate-free and finite', async () => {
+  for (const deep of [false, true]) {
+    const b = createBudget(deep);
+    try {
+      const results = await Promise.all(Array.from({ length: 6 }, (_, i) => Promise.resolve(b.search('query ' + i))));
+      assert.equal(results.filter((x) => !x).length, deep ? 4 : 2);
+      assert.match(b.search('  QUERY   0 '), /بالفعل/);
+      assert.match(b.search(''), /فارغ/);
+    } finally { b.close(); }
+  }
+});
+
+test('bounded analysis: deadlines cannot be raised by configuration and stop new work', async () => {
+  let now = 1000, fetched = 0;
+  const b = createBudget(true, { now: () => now, ms: 999999, fetchImpl: async () => { fetched++; return new Response('ok'); } });
+  assert.equal(b.remaining(), 120000);
+  now += 120001;
+  assert.match(b.search('query'), /الوقت/);
+  await assert.rejects(b.fetch('https://test.invalid'), { code: 'CHAT_BUDGET' });
+  assert.equal(fetched, 0);
+  b.close();
+});
+
+test('bounded analysis: hanging upstream and stream reads time out', async () => {
+  let signal;
+  const b = createBudget(false, { ms: 15, fetchImpl: (_u, init) => {
+    signal = init.signal;
+    return new Promise(() => {});
+  } });
+  try {
+    await assert.rejects(b.fetch('https://test.invalid'), { code: 'CHAT_BUDGET' });
+    assert.equal(signal.aborted, true);
+  } finally { b.close(); }
+  const stream = createBudget(false, { ms: 15 });
+  let cancelled = false;
+  try {
+    await assert.rejects(stream.wait(new Promise(() => {}), () => { cancelled = true; }), { code: 'CHAT_BUDGET' });
+    assert.equal(cancelled, true);
+  } finally { stream.close(); }
+});
+
+test('bounded analysis: direct-provider retries share the same upstream call ceiling', async () => {
+  let calls = 0;
+  const b = createBudget(false, { fetchImpl: async () => { calls++; return err400('unsupported request'); } });
+  try {
+    for (let i = 0; i < PROFILES.quick.calls; i++) await b.fetch('https://test.invalid');
+    await assert.rejects(b.fetch('https://test.invalid'), { code: 'CHAT_BUDGET' });
+    assert.equal(calls, 8);
+  } finally { b.close(); }
+});
 
 function token(username) {
   const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 60_000 })).toString('base64url');
@@ -188,4 +250,28 @@ test('٨. GPT يرفض كلّ درجات السلّم → الطلب بلا reas
     assert.equal(r.ok, true);
     assert.deepEqual(calls.map((b) => b.reasoning && b.reasoning.effort), ['none', 'minimal', 'low', undefined]);
   } finally { od.__quickRejected.clear(); }
+});
+
+test('bounded analysis: every tool-chat provider retains native reasoning on an inspection request', async () => {
+  for (const provider of ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter']) {
+    const r = await run({ user: 'omran', provider, messages: ask('افحص'), script: [() => anthropicText('تم')] });
+    assert.equal(r.calls[0].body.thinking, undefined, provider);
+    assert.equal(r.calls[0].body.reasoning, undefined, provider);
+    assert.equal(r.calls[0].body.max_tokens, 16000, provider);
+    assert.match(badge(r), / · 🧠$/);
+  }
+});
+
+test('bounded analysis: a stalled handler stops visibly without asking the client to retry elsewhere', async () => {
+  const saved = process.env.CHAT_MAX_MS;
+  process.env.CHAT_MAX_MS = '20';
+  try {
+    const r = await run({ user: 'omran', provider: 'deepseek', messages: ask('افحص'), script: [() => new Promise(() => {})] });
+    assert.equal(r.calls.length, 1);
+    assert.match(r.text, /انتهت مهلة الردّ/);
+    assert.ok(r.events.some((e) => e.done));
+    assert.ok(!r.events.some((e) => e.fallback));
+  } finally {
+    if (saved === undefined) delete process.env.CHAT_MAX_MS; else process.env.CHAT_MAX_MS = saved;
+  }
 });
