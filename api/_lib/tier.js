@@ -134,6 +134,10 @@ const FREE_PROVIDER_SPECS = {
     models: ['meta-llama/llama-4-maverick:free', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-235b-a22b:free', 'google/gemma-3-27b-it:free', 'deepseek/deepseek-chat-v3-0324:free', 'mistralai/mistral-small-3.2-24b-instruct:free'],
     pick: /^(?:meta-llama\/llama-4|meta-llama\/llama-3\.3|qwen\/qwen3|google\/gemma-3|deepseek\/deepseek-chat|mistralai\/mistral-small)[\w.-]*:free$/i,
     vision: false,
+    /* v-img-why (لقطة المالك ٣ أكتوبر: «ما قدرت أقرأ الصورة الحين» مرّتين): Gemini كان وحده من يرى في الاحتياط المجّانيّ،
+       فتعثّره مع تعثّر المحرّك الأساسيّ = لا قراءة. هذه نماذج مجّانيّة ترى الصور (نصّ + صورة) — تُجرَّب في دور الصورة وحده
+       وبعد Gemini، ولا يُرسَل إليها غيرها في هذا الدور (لا نموذج أعمى يستلم صورة). */
+    visionModels: ['google/gemma-3-27b-it:free', 'meta-llama/llama-4-maverick:free', 'mistralai/mistral-small-3.2-24b-instruct:free', 'qwen/qwen2.5-vl-72b-instruct:free'],
   },
 };
 // v-plan-routing (قرار المالك ٢٠ سبتمبر: «المجّاني ٥ رسائل على Groq من غير أيّ شي»): Groq أوّلًا،
@@ -239,7 +243,7 @@ function freeChain(env) {
     if (!key) continue;
     const pref = e[spec.modelVar] && String(e[spec.modelVar]).trim();
     const models = (pref ? [pref] : []).concat(spec.models.filter((m) => m !== pref));
-    out.push({ id: n, name: spec.name, url: spec.url, modelsUrl: spec.modelsUrl, key, model: models[0], models, pick: spec.pick, vision: !!spec.vision });
+    out.push({ id: n, name: spec.name, url: spec.url, modelsUrl: spec.modelsUrl, key, model: models[0], models, pick: spec.pick, vision: !!spec.vision, visionModels: spec.visionModels || [] });
   }
   return out;
 }
