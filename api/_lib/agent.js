@@ -10,6 +10,7 @@ const { readGithub } = require('./github-read.js'); // v-agent-github
 const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
 const githubWrite = require('./github-write.js'); // v-agent-github-push: للمالك وحده
 const delegate = require('./agent-delegate.js'); // v-agent-delegate: Claude Code في GitHub Actions — للمالك وحده
+const device = require('./device.js'); // v-device-control: شاشة جهاز المالك وأوامره — للمالك وحده
 const { ownerList } = require('./_owner.js');
 
 const TOOLS = [
@@ -92,7 +93,7 @@ function isOwner(user) { return !!user && ownerList().includes(String(user).trim
    القصير — يظهر سطرًا في سجلّ العمل كما يظهر وصف الأمر في Claude Code. أوّل الخصائص كي يُكتب قبل غيره. */
 const STEP_TITLE = { type: 'string', description: 'عنوان قصير لهذه الخطوة يراه المستخدم سطرًا في سجلّ العمل: ٣–٧ كلمات بلغته، مثل «البحث عن مستهلكي code-analyze» أو «قراءة api/_lib/chat.js كاملًا».' };
 function withStepTitle(t) { return Object.assign({}, t, { input_schema: Object.assign({}, t.input_schema, { properties: Object.assign({ step_title: STEP_TITLE }, (t.input_schema || {}).properties) }) }); }
-function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL]) : TOOLS).map(withStepTitle); }
+function toolsFor(user, dev) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL]).map(withStepTitle).concat([device.PAIR_TOOL], dev ? device.TOOLS : []) : TOOLS.map(withStepTitle)); }
 // الأمر كما يُعرض تحت عنوان الخطوة: اسم الأداة ومدخلها بلا العنوان، والنصوص الطويلة (كود، ملفّات) مختصرة.
 function stepCmd(name, input) {
   const o = {};
@@ -157,6 +158,12 @@ function trailDid(name, input) {
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
   if (name === 'publish') return 'نشرتُ «' + (s(input.title, 40) || 'مشروعًا') + '»';
+  if (name === 'device_pair_code') return 'أصدرتُ رمز ربط للجهاز';
+  if (name === 'device_tap') return 'ضغطتُ على الشاشة عند ' + (input.x | 0) + '،' + (input.y | 0);
+  if (name === 'device_swipe') return 'سحبتُ على الشاشة';
+  if (name === 'device_type') return 'كتبتُ «' + s(input.text, 40) + '»';
+  if (name === 'device_key') return 'ضغطتُ زرّ ' + s(input.key, 20);
+  if (name === 'device_screenshot') return 'صوّرتُ شاشة الجهاز';
   return 'استخدمتُ ' + name;
 }
 function trailGot(name, result) {
@@ -391,6 +398,20 @@ async function runInClient(send, name, input) {
 // المستمع — فانقطاع شبكة كان يمحو عملًا اكتمل على الخادم فعلًا. الدفتر مفتاح
 // KV واحد لكل مستخدم، يُحدَّث عند كل خطوة ويعيش ساعة، وكتابته تفشل بصمت:
 // ترفٌ لا يجوز أن يُسقط تشغيلًا ناجحًا.
+/* v-device-control: كلّ أمر جهاز يعيد لقطة — تراكمها في السجلّ عبر ثلاثين خطوة يضخّم كلّ استدعاء. تبقى آخر n لقطات؛
+   الأقدم يصير سطرًا نصّيًّا. */
+function trimDeviceImages(convo, keep) {
+  let seen = 0;
+  for (let i = convo.length - 1; i >= 0; i--) {
+    const c = convo[i];
+    if (!c || c.role !== 'user' || !Array.isArray(c.content)) continue;
+    c.content.forEach((b) => {
+      if (!b || b.type !== 'tool_result' || !Array.isArray(b.content) || !b.content.some((x) => x && x.type === 'image')) return;
+      if (++seen > keep) b.content = b.content.filter((x) => x && x.type !== 'image').concat([{ type: 'text', text: '(لقطة أقدم حُذفت)' }]);
+    });
+  }
+}
+
 const RUN_TTL_SEC = 3600;
 function runKey(user) {
   return 'db/agentrun/' + encodeURIComponent(String(user).toLowerCase()) + '.json';
@@ -549,6 +570,7 @@ module.exports = async (req, res) => {
     const MAX_STEPS = Math.max(1, Math.min(40, Number(process.env.AGENT_MAX_STEPS) || 30));
     const MAX_TASK_MS = Math.max(30000, Number(process.env.AGENT_MAX_MS) || 240000);
     const taskStart = Date.now();
+    let devSeen = null; // v-device-control: الجهاز الحاضر في هذه الخطوة — أدواته لا تظهر بدونه
 
     while (steps < MAX_STEPS) {
       if (Date.now() - taskStart > MAX_TASK_MS) {
@@ -559,6 +581,12 @@ module.exports = async (req, res) => {
       steps++;
       // يرى المستخدم أين وصل بدل انتظار صامت طويل
       if (steps > 1) send({ phase: 'executing', status: '🔄 الخطوة ' + steps + ' من ' + MAX_STEPS });
+      if (isOwner(runUser)) {
+        const devNow = await device.deviceOnline(runUser);
+        if (devNow && system.indexOf('[جهاز المالك حاضر الآن') === -1) system = system.replace(OWNER_COMMAND_NOTE, '') + device.NOTE(devNow) + OWNER_COMMAND_NOTE;
+        devSeen = devNow;
+        trimDeviceImages(convo, 2);
+      }
       const doCall = (m) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -571,7 +599,7 @@ module.exports = async (req, res) => {
           max_tokens: deepRun ? 64000 : 32000,
           system,
           messages: convo,
-          tools: toolsFor(runUser),
+          tools: toolsFor(runUser, devSeen),
           stream: true,
         }, agentThink(m), agentEffort(m))),
       });
@@ -752,6 +780,7 @@ module.exports = async (req, res) => {
           let input = {};
           try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('agent/tool-input-parse', e); }
           let result = 'أداة غير معروفة';
+          let resultImage = null; // v-device-control: لقطة الجهاز تصل النموذج صورةً
           // v-agent-log: سطر الخطوة يظهر قبل تنفيذها (جارية)، ثمّ يكتمل بناتجها — كما في Claude Code
           const stepTitle = String(input.step_title || '').replace(/\s+/g, ' ').trim().slice(0, 90) || trailDid(cb.name, input);
           send({ act: { k: 'tool', id: cb.id, name: cb.name, t: stepTitle, cmd: stepCmd(cb.name, input), g: (cb.name === 'read_github' && !input.query && input.what !== 'commits' && input.what !== 'commit') ? 1 : 0 } });
@@ -784,6 +813,11 @@ module.exports = async (req, res) => {
             result = await runInClient(send, cb.name, input);
             // ما اختُبر فعلًا يصلح مصدرًا للنشر: بناه الآن وشغّله الآن.
             if (cb.name === 'test_html' && input.html) lastTested = String(input.html);
+          } else if (cb.name === 'device_pair_code') {
+            result = isOwner(runUser) ? '🔗 رمز الربط: ' + await device.createPairCode(runUser) + ' — يعيش ١٠ دقائق. أعطه للمالك كما هو ليكتبه في برنامج الجهاز (الكمبيوتر: omran_device.py · أندرويد: تطبيق Omran Device).' : '✗ للمالك وحده.';
+          } else if (/^device_/.test(cb.name)) {
+            if (!isOwner(runUser) || !devSeen) result = '✗ لا جهاز مربوط حاضر الآن — أصدر رمز ربط بـdevice_pair_code.';
+            else { const d = await device.runOnDevice(runUser, cb.name.slice(7), input); result = d.text; resultImage = d.image ? { data: d.image, mime: d.mime } : null; }
           } else if (cb.name === 'publish') {
             // سقف ثلاث نشرات في التشغيل الواحد: حلقة تنشر بلا حدّ تُغرق تخزينك.
             run.pubs = (run.pubs || 0) + 1;
@@ -791,7 +825,8 @@ module.exports = async (req, res) => {
               ? '✗ نشرتَ ثلاث مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المستخدم آخر رابط حصلتَ عليه.'
               : await doPublish(input, lastCodeIn(run.text) || lastTested, runUser, req.headers && req.headers.host);
           }
-          toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, (deepRun && cb.name === 'read_github') ? 30000 : 8000) }); // v-agent-deep: الدفعة العميقة (٢٤ ألفًا) لا تُقصّ
+          const resultText = result.slice(0, (deepRun && cb.name === 'read_github') ? 30000 : 8000);
+          toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: resultImage ? [{ type: 'image', source: { type: 'base64', media_type: resultImage.mime, data: resultImage.data } }, { type: 'text', text: resultText }] : resultText }); // v-agent-deep: الدفعة العميقة (٢٤ ألفًا) لا تُقصّ
 
           // سطر واحد صادق لكل أداة: ماذا فعلتُ وماذا حصلتُ. يُبثّ حالًا ويُقيَّد
           // في الدفتر — فالأثر يبقى وإن سقط الاتصال أو أُغلق التبويب.
@@ -848,4 +883,4 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports.__test = { runInClient, toolsFor, isOwner }; // v-agent-send-scope · v-agent-github-push — للاختبار
+module.exports.__test = { runInClient, toolsFor, isOwner, trimDeviceImages }; // v-agent-send-scope · v-agent-github-push — للاختبار
