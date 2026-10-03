@@ -97,14 +97,21 @@ test('free image on blind-only key fails explicitly; Gemini-only free image reta
 });
 test('paid image excludes DeepSeek/Groq fallbacks even when Gemini fails', async () => {
   const account = { tier: 'sub', plan: 'basic', subscriber: true };
+  // v-img-why: نماذج OpenRouter المجّانيّة التي ترى تدخل دور الصورة (وحدها) — النيّة نفسها: لا Groq ولا DeepSeek ولا نموذج أعمى
+  const VISION = tier.FREE_PROVIDER_SPECS.openrouter.visionModels;
+  const seesOnly = (calls) => calls.every((x) => /googleapis/.test(x.url)
+    || (/openrouter\.ai/.test(x.url) && VISION.includes(x.body.model) && x.body.messages.at(-1).content.some((c) => c.type === 'image_url')));
   const noVision = await ask({ who: 'sara', account, image: true, keys: { GROQ_API_KEY: 'q', OPENROUTER_API_KEY: 'or' } });
-  assert.equal(noVision.calls.length, 0);
+  assert.ok(noVision.calls.length && seesOnly(noVision.calls), JSON.stringify(noVision.calls.map((x) => x.url + ' ' + x.body.model)));
+  assert.ok(!noVision.calls.some((x) => /groq|deepseek/i.test(x.url + ' ' + x.body.model)));
   assert.match(noVision.text, new RegExp(tier.FREE_TEXT.imageBusy));
   const r = await ask({ who: 'sara', account, image: true,
     keys: { GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q', OPENROUTER_API_KEY: 'or' },
     upstream: () => new Response('quota', { status: 429 }) });
   assert.ok(r.calls.length);
-  assert.ok(r.calls.every((x) => /googleapis/.test(x.url)), JSON.stringify(r.calls.map((x) => x.url)));
+  assert.ok(seesOnly(r.calls), JSON.stringify(r.calls.map((x) => x.url + ' ' + x.body.model)));
+  assert.ok(/googleapis/.test(r.calls[0].url), 'Gemini أوّلًا');
+  assert.ok(!r.calls.some((x) => /groq|deepseek/i.test(x.url + ' ' + x.body.model)));
   assert.match(r.text, new RegExp(tier.FREE_TEXT.imageBusy));
 });
 test('owner Groq image cannot be routed to text-only direct model', async () => {

@@ -156,7 +156,8 @@ test('٣ب. المالك على غير كلود: القراءة بمفتاحه �
 test('٥. v-cohere-tools: Cohere يمرّ بمسار الأدوات عبر الوسيط فيحمل read_github (كان مباشرًا بلا أدوات)؛ التنفيذ الآن ممنوع لغير المالك', async () => {
   for (const f of ['js/app-06-checkout.js', 'js/app.bundle.js']) {
     // v-openrouter-tools: انضمّ المزوّد العامّ إلى القائمة — Cohere فيها كما كان
-    assert.ok(read(f).includes("const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter'];"), f + ': Cohere في قائمة مسار الأدوات');
+    // v-kimi: انضمّ Kimi إلى القائمة — Cohere فيها كما كان
+    assert.ok(read(f).includes("const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter', 'kimi'];"), f + ': Cohere في قائمة مسار الأدوات');
   }
   ghCalls.length = 0;
   const r = await ask('cohere', 'gh-user', { url: 'https://github.com/OMRAN77/omran-ai-builder' });

@@ -157,7 +157,7 @@ const MODEL_CACHE_MS = 6 * 3600000;
 const workingModel = new Map();
 
 function candidateModels(spec, now) {
-  const hit = workingModel.get(spec.id);
+  const hit = workingModel.get(spec.cacheId || spec.id); // v-img-why: نماذج الرؤية لها ذاكرتها — لا يُقدَّم ناجح نصّيّ أعمى لدور صورة
   const cached = hit && now - hit.at < MODEL_CACHE_MS ? hit.model : null;
   return (cached ? [cached] : []).concat(spec.models.filter((m) => m !== cached));
 }
@@ -173,7 +173,12 @@ async function streamFreeChain(args) {
   // سطرًا نصّيًّا ثمّ يؤلّف حكمًا عليها. أيّ دور فيه صورة يستبعد المزوّدات
   // العمياء كلّها؛ ولا مزوّد يرى = فشل صريح (no-vision-provider) يقوله المستدعي بصدق.
   const needVision = convoHasImage(args.convo);
-  const chain = needVision ? all.filter((s) => s.vision) : all;
+  /* v-img-why: مزوّد أعمى له نماذج ترى (visionModels) يدخل دور الصورة بها وحدها، بعد من يرى أصلًا، وبلا استكشاف /models
+     (قد يلتقط نموذجًا أعمى). */
+  const chain = needVision
+    ? all.filter((s) => s.vision).concat(all.filter((s) => !s.vision && Array.isArray(s.visionModels) && s.visionModels.length)
+      .map((s) => Object.assign({}, s, { vision: true, visionOnly: true, models: s.visionModels.slice(), model: s.visionModels[0], cacheId: s.id + ':vision' })))
+    : all;
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
   const system = args.raw ? '' : String(args.system || '') + FREE_NOTE; // v-owner-free: raw للمالك المتحقَّق منه فقط (chat.js)
@@ -192,7 +197,7 @@ async function streamFreeChain(args) {
     const tryModel = async (model) => {
       const text = await streamOne(spec, model, messages, send, args);
       if (text && text.trim()) {
-        workingModel.set(spec.id, { model, at: now });
+        workingModel.set(spec.cacheId || spec.id, { model, at: now });
         return { ok: true, provider: spec.id, model, text, attempts, errors };
       }
       errors.push(spec.id + '/' + model + ': empty');
@@ -215,6 +220,7 @@ async function streamFreeChain(args) {
       }
     }
     if (providerDead) continue;
+    if (spec.visionOnly) { errors.push(spec.id + ': no vision model answered'); continue; } // v-img-why: لا استكشاف قد يلتقط أعمى
     // كل المرشّحين «غير موجود» → اسأل المزوّد نفسه عن نماذجه.
     const found = await discoverModel(spec, args);
     if (found && !tried.includes(found)) {

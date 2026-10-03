@@ -60,12 +60,12 @@ test('٢. v-settings-groups (أمر المالك ٢٦ سبتمبر) نسخ تر�
     ['toneSection', 'memorySection', 'voiceSection'],
     ['pricingSection', 'accountSection', 'statsSection'],
     ['themeSection', 'bgImgSection', 'fontFamilySection', 'fontSizeSection', 'langSection'],
-    ['notifSection', 'apiKeysSection', 'aboutSection'],
+    ['apiKeysSection', 'aboutSection'], // v-news-off: «التنبيهات» أُزيل مع الأخبار (أمر المالك ٣ أكتوبر)
   ]);
   const acct = rest[1].rows;
   assert.equal(acct[0].value, 'VIP', 'المالك');
   const all = rest.flatMap(g => g.rows.map(r => r.sid));
-  assert.equal(all.length, 14, 'كلّ الأقسام الـ١٤ موجودة (v-bg-images-row أضاف خلفيّات الشاشة)');
+  assert.equal(all.length, 13, 'كلّ الأقسام الـ١٣ موجودة (v-bg-images-row أضاف خلفيّات الشاشة، وv-news-off أزال التنبيهات)');
 });
 
 test('٣. غير المالك: بلا صفّ المالك، وقيمة الاشتراك من الباقة، والضيف بلا صفّ الخروج', () => {

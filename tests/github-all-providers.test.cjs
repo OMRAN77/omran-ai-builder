@@ -158,14 +158,15 @@ test('٧. الوكيل على القاعدة نفسها (لا يتفرّق ال�
   assert.match(a, /cb\.name === 'read_github'\) \? 30000 : 8000/, 'الوكيل: السقف الواسع لقراءة GitHub');
 });
 
-test('٨. القائمة ثمانية في العميل والحزمة، وOR_MODELS يخدمهم كلّهم؛ Perplexity وحده خارجها (Sonar لا يقبل أدوات)', () => {
-  const t = "const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter'];";
+test('٨. القائمة تسعة في العميل والحزمة (v-kimi أضاف Kimi)، وOR_MODELS يخدمهم كلّهم؛ Perplexity وحده خارجها (Sonar لا يقبل أدوات)', () => {
+  const t = "const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter', 'kimi'];";
   for (const f of ['js/app-06-checkout.js', 'js/app.bundle.js']) {
-    assert.ok(read(f).includes(t), f + ': قائمة مسار الأدوات ثمانية');
+    assert.ok(read(f).includes(t), f + ': قائمة مسار الأدوات تسعة');
   }
   const chatSrc = read('api/_lib/chat.js');
   const or = chatSrc.slice(chatSrc.indexOf('const OR_MODELS = {'), chatSrc.indexOf('};', chatSrc.indexOf('const OR_MODELS = {')));
   for (const prov of PROVIDERS) assert.ok(or.includes(prov + ':'), 'OR_MODELS يخدم ' + prov);
+  assert.ok(or.includes('kimi:'), 'OR_MODELS يخدم kimi (احتياط الوسيط)');
   assert.ok(!or.includes('perplexity:'),
     'Perplexity خارج مسار الأدوات: موديلات Sonar لا تقبل أدوات — أيّ إدخال له تغييرٌ مقصود لا صامت');
 });

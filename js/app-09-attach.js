@@ -2921,7 +2921,9 @@ async function __agentApplyResult(cur, full, agLog){
     } else {
       chatText = stripCodeFromChat(chatSrc).trim();
       // ⚠️ v490: مسار الوكيل كان صامتًا — كود مُلغى/محذوف ⇒ رسالة صريحة بدل معاينة فارغة.
-      if(/```|<\/[a-z]+>|<!doctype|<html[\s>]/i.test(full || '')){
+      /* v-agent-nocode (لقطة المالك ٣ أكتوبر: الوكيل يشرح إصلاحًا ويسلّمه لـClaude Code فيُلصَق «لم يصل كود من المزوّد»): أيّ
+         ``` أو وسم إغلاق كان يكفي — ومقتطف ```js في شرح إصلاح ليس تطبيقًا ضاع. التحذير لصفحة تطبيق بدأت ولم تصل وحدها. */
+      if(/```html|<!doctype|<html[\s>]/i.test(full || '')){
         chatText = (chatText ? chatText + '\n\n' : '') + t('buildNoCode');
       }
     }
