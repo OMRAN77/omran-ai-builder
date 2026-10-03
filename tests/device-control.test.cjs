@@ -17,6 +17,7 @@ const kv = {
   kvGetJSON: async (k) => (store.has(k) ? structuredClone(store.get(k)) : null),
   kvDel: async (k) => { store.delete(k); },
   kvExpire: async () => {},
+  kvSetRaw: async (k, v, ttl) => { assert.ok(ttl > 0, 'TTL في الأمر نفسه: ' + k); store.set(k, JSON.parse(v)); },
   kvIncr: async () => 1,
 };
 const stub = (f, exports) => { const p = rp(f); require.cache[p] = { id: p, filename: p, loaded: true, exports }; };

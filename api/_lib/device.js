@@ -23,6 +23,12 @@ function kvOf(o) {
   if (o && o.kv) return o.kv;
   return require('./kv.js');
 }
+/* TTL في الأمر نفسه (SET … EX): نبضة الجهاز تتكرّر، فأمر واحد لا اثنان، ولا مفتاح أبديّ إن تعثّر EXPIRE. */
+async function putTTL(kv, key, obj, ttl) {
+  if (kv.kvSetRaw) return kv.kvSetRaw(key, JSON.stringify(obj), ttl);
+  await kv.kvPutJSON(key, obj);
+  await kv.kvExpire(key, ttl);
+}
 const sha = (s) => crypto.createHash('sha256').update('omran-device:' + String(s)).digest('hex');
 const ownerKey = (u) => String(u || '').trim().toLowerCase();
 
@@ -39,8 +45,7 @@ const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').
 async function createPairCode(owner, o) {
   const kv = kvOf(o);
   const code = newCode();
-  await kv.kvPutJSON('device/code/' + code, { owner: ownerKey(owner), at: Date.now() });
-  await kv.kvExpire('device/code/' + code, CODE_TTL);
+  await putTTL(kv, 'device/code/' + code, { owner: ownerKey(owner), at: Date.now() }, CODE_TTL);
   return code;
 }
 
@@ -71,8 +76,7 @@ async function poll(body, o) {
   if (!dev) return { status: 403, json: { error: 'unknown device' } };
   const seen = { at: Date.now(), type: dev.type, name: dev.name };
   if (body.w && body.h) { seen.w = Math.trunc(Number(body.w)) || 0; seen.h = Math.trunc(Number(body.h)) || 0; }
-  await kv.kvPutJSON('device/seen/' + dev.owner, seen);
-  await kv.kvExpire('device/seen/' + dev.owner, SEEN_TTL);
+  await putTTL(kv, 'device/seen/' + dev.owner, seen, SEEN_TTL);
   const q = await kv.kvGetJSON('device/q/' + dev.owner);
   if (!q || !q.id) return { status: 200, json: { ok: true, action: null } };
   await kv.kvDel('device/q/' + dev.owner);
@@ -92,8 +96,7 @@ async function result(body, o) {
   let note = '';
   if (image.length > MAX_IMAGE_B64) { image = ''; note = ' (اللقطة أكبر من الحدّ فلم تُرسَل — صغّرها)'; }
   const mime = body.mime === 'image/png' ? 'image/png' : 'image/jpeg';
-  await kv.kvPutJSON('device/res/' + id, { output: String(body.output || '').slice(0, 4000) + note, image, mime, w: Math.trunc(Number(body.w)) || 0, h: Math.trunc(Number(body.h)) || 0, at: Date.now() });
-  await kv.kvExpire('device/res/' + id, RES_TTL);
+  await putTTL(kv, 'device/res/' + id, { output: String(body.output || '').slice(0, 4000) + note, image, mime, w: Math.trunc(Number(body.w)) || 0, h: Math.trunc(Number(body.h)) || 0, at: Date.now() }, RES_TTL);
   return { status: 200, json: { ok: true } };
 }
 
@@ -113,10 +116,8 @@ async function runOnDevice(owner, name, input, o) {
   const who = ownerKey(owner);
   if (ACTIONS.indexOf(name) === -1) return { text: '✗ أمر جهاز غير معروف: ' + name };
   const id = 'd' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
-  await kv.kvPutJSON('device/wait/' + id, { owner: who, at: Date.now() });
-  await kv.kvExpire('device/wait/' + id, WAIT_TTL);
-  await kv.kvPutJSON('device/q/' + who, { id, name, input: input || {}, at: Date.now() });
-  await kv.kvExpire('device/q/' + who, WAIT_TTL);
+  await putTTL(kv, 'device/wait/' + id, { owner: who, at: Date.now() }, WAIT_TTL);
+  await putTTL(kv, 'device/q/' + who, { id, name, input: input || {}, at: Date.now() }, WAIT_TTL);
   const deadline = Date.now() + (opt.waitMs || 30000);
   const every = opt.everyMs || 500;
   while (Date.now() < deadline) {

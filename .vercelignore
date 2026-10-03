@@ -26,6 +26,9 @@ js/app-17-agent-tools.js
 # Change specs — internal notes, not part of the product.
 specs/
 
+# Device-bridge companion programs (desktop / Android) — installed on the owner's devices, not served.
+companion/
+
 # Never publish a source archive from the web root: it hands an attacker the
 # full server logic, and the old copy still contained the hardcoded
 # 'fallback-dev-secret-change-me' default.
