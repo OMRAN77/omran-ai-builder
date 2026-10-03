@@ -50,9 +50,14 @@ module.exports = async (req, res) => {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
       if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
-      const gateMM = pointsLib.requireConfirmation(body, pointsLib.COSTS.minimax_video, 'فيديو المحرّك الاقتصادي');
-      if (gateMM) { res.status(gateMM.status).json(gateMM.payload); return; }
-      const pay = await pointsLib.spendPoints(username, pointsLib.COSTS.minimax_video, 'minimax_video');
+      /* v-plan-videos: مشترك Pro/Max يصرف من صلاحيّة فيديوهات باقته أوّلًا — بلا تأكيد خصم نقاط لأنّه لا خصم. نفادها = كما كان. */
+      let pay = (await require('./_planVideos.js').planVideoLeft(username)) > 0
+        ? await pointsLib.spendPoints(username, pointsLib.COSTS.minimax_video, 'minimax_video', { planVideoOnly: true }) : null;
+      if (!pay || !pay.ok) {
+        const gateMM = pointsLib.requireConfirmation(body, pointsLib.COSTS.minimax_video, 'فيديو المحرّك الاقتصادي');
+        if (gateMM) { res.status(gateMM.status).json(gateMM.payload); return; }
+        pay = await pointsLib.spendPoints(username, pointsLib.COSTS.minimax_video, 'minimax_video');
+      }
       if (!pay.ok) {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.minimax_video, points: pay.points || 0 });
         return;
