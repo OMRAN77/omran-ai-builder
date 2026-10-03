@@ -77,3 +77,10 @@ test('٨. حارس guard.mjs يحمي download.html ضمن ملفّات CLIENT',
   const guard = read('scripts/guard.mjs');
   assert.ok(guard.includes("'download.html'"), 'download.html مسجّلة في CLIENT في guard.mjs');
 });
+
+test('٩. تكامل قسم حسابي: زر الباركود والمشاركة المباشرة وصورة الباركود', () => {
+  const partials = read('js/partials-settings.js');
+  assert.ok(partials.includes('id="acctShareBtn"') && partials.includes('id="acctQrBtn"'), 'أزرار المشاركة والباركود في حسابي');
+  assert.ok(partials.includes('id="acctQrBox"') && partials.includes('/icons/omran-qr-code.png'), 'صندوق وصورة الباركود في حسابي');
+  assert.ok(partials.includes('window.acctToggleQr') && partials.includes('window.acctShareApp'), 'دوال التفاعل المباشرة موجودة');
+});

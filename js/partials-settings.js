@@ -97,7 +97,18 @@
         <input type="text" id="acctReferralLink" readonly style="flex:1;">
         <button type="button" class="btn" id="acctReferralCopyBtn" style="width:auto; white-space:nowrap;" data-i18n="acctCopyBtn">📋 نسخ</button>
       </div>
-      <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:4px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية 🎁</div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button type="button" class="btn" id="acctShareBtn" onclick="acctShareApp()" style="flex:1; background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.45); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">📲 إرسال ومشاركة</button>
+        <button type="button" class="btn" id="acctQrBtn" onclick="acctToggleQr()" style="flex:1; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">📷 فتح الباركود</button>
+      </div>
+      <div id="acctQrBox" style="display:none; margin-top:12px; padding:12px; background:rgba(0,0,0,.35); border-radius:var(--r-2); text-align:center; border:1px solid rgba(212,175,55,.25);">
+        <img id="acctQrImg" src="/icons/omran-qr-code.png" alt="QR" style="width:180px; height:180px; border-radius:12px; background:#fff; padding:6px; box-shadow:0 4px 16px rgba(0,0,0,.4); display:inline-block;">
+        <div style="display:flex; gap:8px; margin-top:10px; justify-content:center;">
+          <a href="/icons/omran-qr-code.png" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;">⬇️ تحميل الباركود</a>
+          <a href="/download" target="_blank" rel="noopener" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text);">🔗 صفحة المتاجر</a>
+        </div>
+      </div>
+      <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية 🎁</div>
       <div id="acctReferralBonus" style="font-size: var(--fs-3); font-weight: var(--w-bold); margin-top:6px;"></div>
     </div></div>
     <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowCleanup',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span style="display:flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg><span data-i18n="acctCleanupLabel">تنظيف التطبيق</span></span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
@@ -107,7 +118,25 @@
     </div></div>
     </div>
     <script src="/js/themes.js?v=441"></script>
-    <script>window.acctToggleRow=function(id,btn){var p=document.getElementById(id);var open=p.style.display==='none';p.style.display=open?'block':'none';var s=btn.querySelector('svg');if(s)s.style.transform=open?'rotate(90deg)':'';};</script>
+    <script>
+      window.acctToggleRow=function(id,btn){var p=document.getElementById(id);var open=p.style.display==='none';p.style.display=open?'block':'none';var s=btn.querySelector('svg');if(s)s.style.transform=open?'rotate(90deg)':'';};
+      window.acctToggleQr=function(){var q=document.getElementById('acctQrBox');if(q)q.style.display=(q.style.display==='none'?'block':'none');};
+      window.acctShareApp=async function(){
+        var u=document.getElementById('acctReferralLink');
+        var shareUrl=(u&&u.value)?u.value:'https://omran-ai-builder.vercel.app/download';
+        var txt='جرّب تطبيق عمران AI لكافة المتاجر:';
+        if(navigator.share){
+          try{await navigator.share({title:'عمران AI',text:txt,url:shareUrl});}catch(e){/* guard-ok */}
+        }else{
+          try{
+            await navigator.clipboard.writeText(shareUrl);
+            alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+          }catch(e2){
+            prompt('انسخ الرابط:',shareUrl);
+          }
+        }
+      };
+    </script>
   </div></div>
 
   <div id="statsSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
