@@ -136,6 +136,9 @@
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
     var __model = ''; /* v-claude-models: اسم النموذج الذي أجاب فعلًا (من الخادم) */
+    /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
+       سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
+    var __t0 = Date.now(), __tFirst = 0, __steps = [];
 
     while (true) {
       var chunk;
@@ -159,8 +162,13 @@
         /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
         else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
+        if (ev.status && /^↳/.test(String(ev.status)) && __steps.length < 24) {
+          var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
+          __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
+        }
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
         if (ev.delta) {
+          if (!__tFirst) __tFirst = Date.now();
           noteEnd();
           full += ev.delta;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:delta'); } }
@@ -188,7 +196,8 @@
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
+    var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log };
   };
 })();
 
