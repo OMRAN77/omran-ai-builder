@@ -81,15 +81,15 @@ test('٤. القائمة: ثلاث مجموعات مرتّبة بخطّ بينه
   const m = read('js/modes.js');
   const i = m.indexOf('var PROVS = ['); const block = m.slice(i, m.indexOf('\n      ];', i));
   const rows = [...block.matchAll(/\{ grp:(\d), key:'(\w+)',\s+name:'([^']+)'/g)].map((x) => [Number(x[1]), x[2], x[3]]);
-  // v-prov-dedupe: صفّ OpenRouter أُزيل (اختبار ٧)
-  assert.deepEqual(rows.map((r) => r[1]), ['claude', 'openai', 'gemini', 'kimi', 'deepseek', 'mistral', 'groq', 'perplexity', 'cohere']);
-  assert.deepEqual(rows.map((r) => r[0]), [1, 1, 1, 2, 2, 2, 2, 3, 3]);
+  // v-prov-or-unique: صفّ OpenRouter عاد بشركات ليس لها صفّ (اختبار ٧)
+  assert.deepEqual(rows.map((r) => r[1]), ['claude', 'openai', 'gemini', 'kimi', 'deepseek', 'mistral', 'groq', 'perplexity', 'cohere', 'openrouter']);
+  assert.deepEqual(rows.map((r) => r[0]), [1, 1, 1, 2, 2, 2, 2, 3, 3, 3]);
   assert.deepEqual(rows.slice(0, 4).map((r) => r[2]), ['Claude · Anthropic', 'GPT · OpenAI', 'Gemini · Google', 'Kimi · Moonshot']);
   assert.ok(!/كلود|جوجل جيميني/.test(block), 'لا أسماء معرّبة بين اللاتينيّة');
   assert.match(block, /key:'kimi',\s+name:'Kimi · Moonshot',\s+or:true, direct:true, store:'aiapp_kimi_model',\s+def:'kimi-k3',\s+models:\[\['kimi-k3','Kimi K3'\],\['kimi-k2\.6','Kimi K2\.6'\]\]/);
   assert.match(m, /if\(i && p\.grp !== PROVS\[i-1\]\.grp\) out \+= divider;/);
   assert.match(m, /kimi:'provNickDeep'/);
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m031026b/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m031026c/);
 });
 
 test('٥. العميل: Kimi على مسار الأدوات وحده، باسمه للمالك، وإغلاق الإعدادات لا يمسح الاختيار', () => {
@@ -135,8 +135,15 @@ test('٧. لا موديل يظهر تحت صفّين، ولا صفّ وسيط ي
       seen.set(k, p.key);
     }
   }
-  assert.ok(!PROVS.some((p) => p.key === 'openrouter'), 'صفّ الوسيط أُزيل — موديلاته كلّها تحت شركاتها');
-  assert.equal(PROVS.length, 9);
+  // v-prov-or-unique («في واحد ناقص»): الصفّ باقٍ، وموديلاته من شركات ليس لها صفّ — لا Claude ولا GPT ولا Llama عبر الوسيط.
+  assert.equal(PROVS.length, 10);
+  const or = PROVS.find((p) => p.key === 'openrouter');
+  assert.ok(or && or.or === true && or.models.length >= 2, 'صفّ الوسيط موجود وفيه موديلات');
+  const OWN = /^(anthropic|openai|google|moonshotai|deepseek|mistralai|meta-llama|perplexity|cohere)\//;
+  for (const [id] of or.models) assert.ok(!OWN.test(id), id + ': شركته لها صفّ فوق');
+  assert.ok(or.models.some((x) => x[0] === or.def), 'الافتراضيّ من القائمة نفسها');
+  // واختيار قديم مكرّر محفوظ (Claude عبر الوسيط) لا يبقى مرسَلًا خفيًّا: الافتراضيّ بدله
+  assert.match(m, /if\(pv\.key === 'openrouter' && v && !pv\.models\.some\(function\(m\)\{ return m\[0\] === v; \}\)\) v = '';/);
 });
 
 /* v-owner-bar-hide (المالك ٣ أكتوبر «هذي فقط للمالك، شيلها من المستخدمين»): modes.js يخفي شريط المزوّد لغير المالك بـ
