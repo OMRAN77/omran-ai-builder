@@ -213,7 +213,7 @@ test('_usage.js wiring: tier caps, paid providers closed to non-subscribers, gue
 
 test('client wiring: tier flows from the stream to the stored message to the badge', () => {
   assert.match(read('js/app-18-chat-tools.js'), /if \(typeof ev\.tier === 'string' && ev\.tier\) __tier = ev\.tier;/);
-  assert.match(read('js/app-18-chat-tools.js'), /tier: __tier \|\| undefined \};/);
+  assert.match(read('js/app-18-chat-tools.js'), /tier: __tier \|\| undefined[,}]/);
   const a9 = read('js/app-09-attach.js');
   assert.match(a9, /if\(__ct\.tier\) __ctTier = __ct\.tier;/);
   assert.match(a9, /tier: __ctTier \|\| undefined, \/\* v-tiers \*\//);
