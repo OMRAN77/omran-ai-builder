@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 const media = require('./_mediaPlans.js');
+const planVideos = require('./_planVideos.js'); // v-plan-videos
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 // v-owner-core: قائمة المالك الموحّدة من _owner.js — ‹omran› مدمج دائمًا
@@ -137,7 +138,7 @@ async function mirrorToUser(username, points) {
 
 // يخصم نقاطًا من رصيد المستخدم. المالك لا يُخصم منه.
 // يرجع { ok:true, points } أو { ok:false, reason:'insufficient'|'auth', points }.
-async function spendPoints(username, amount, reason) {
+async function spendPoints(username, amount, reason, opts) {
   if (!username) return { ok: false, reason: 'auth', points: 0 };
   // owner:true للـVIP أيضًا وعن قصد: نداءٌ واحد على الأقل يقرأ هذا الحقل
   // ليقرّر «هل أجدول استرجاعًا؟» (api/_lib/openai.js). VIP لم يُخصم منه
@@ -148,6 +149,16 @@ async function spendPoints(username, amount, reason) {
   if (await isBanned(username)) return { ok: false, reason: 'auth', banned: true, points: 0 };
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
+
+  // v-plan-videos: صلاحيّة فيديوهات الباقة (Pro ٢ · Max ٣) وحدها — للاقتصاديّ والترند. لا نقاط ولا رصيد اشتراك هنا:
+  // نفادها يرجع ok:false فيكمل المتّصل بالتأكيد والخصم العاديّ كما كان.
+  if (opts && opts.planVideoOnly) {
+    try {
+      const pv = await planVideos.trySpendPlanVideo(username, amt);
+      if (pv) return { ok: true, points: 0, spent: 0, reason, planVideo: true, planVideosLeft: pv.left };
+    } catch (e) { console.warn('[points] plan video skipped:', e && e.message); }
+    return { ok: false, reason: 'plan_video', points: 0 };
+  }
 
   // v-media-plans: مشترك الصور/الفيديو يُخصم من رصيد اشتراكه أوّلًا، ونفاده يرجع للنقاط.
   try {
@@ -189,6 +200,8 @@ async function refundPoints(username, amount) {
   if (!username || isOwner(username)) return;
   if (await isVip(username)) return; // لم يُخصم منه شيء، فلا شيء يُعاد.
   let amt = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!amt) return;
+  try { amt = await planVideos.refundPlanVideo(username, amt); } catch (e) { console.warn('[points] plan video refund skipped:', e && e.message); } // v-plan-videos
   if (!amt) return;
   try { amt = await media.refundMedia(username, amt); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); }
   if (!amt) return;
