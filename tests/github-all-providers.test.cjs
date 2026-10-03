@@ -190,9 +190,9 @@ test('٩. OpenRouter: موديل المالك يصل كما اختاره (أيّ
   assert.equal(pickProviderModel('gemini', 'openai/gpt-6-sol', 'ف').model, 'ف', 'حصر البادئة لبقيّة المزوّدين لم يُمسّ');
 }));
 
-test('١٠. OpenRouter في المنتقي: or:true كي يصل اختيار المالك، ووسم الكاش مرفوع', () => {
+test('١٠. OpenRouter: صفّه في المنتقي أُزيل (v-prov-dedupe — موديلاته مكرّرة تحت شركاتها)، والقراءة باقية، ووسم الكاش مرفوع', () => {
   const m = read('js/modes.js');
-  assert.match(m, /key:'openrouter',[^}]*or:true/, 'or:true على مدخل المزوّد العامّ');
+  assert.ok(!/key:'openrouter'/.test(m), 'لا صفّ للوسيط في المنتقي');
   assert.ok(m.includes("window.omranModelFor = function(k){"), 'الدالّة التي تقرأ الاختيار قائمة');
   const idx = read('index.html');
   const v = /js\/modes\.js\?v=([^"]+)/.exec(idx);

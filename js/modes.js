@@ -99,9 +99,9 @@
         { grp:2, key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
         { grp:2, key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
         { grp:3, key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
-        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
-        /* v-openrouter-tools: or:true كي يصل اختيار المالك إلى الخادم (omranModelFor) كبقيّة مزوّدي الوسيط */
-        { grp:3, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.8-flash','Gemini 3.8 Flash'],['deepseek/deepseek-v4-pro','DeepSeek V4 Pro'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
+        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] }
+        /* v-prov-dedupe (لقطة المالك ٣ أكتوبر «المزودين متكررين فوق وتحت»): صفّ OpenRouter أُزيل — موديلاته السبعة كلّها
+           موجودة فوق تحت شركتها. الوسيط نفسه باقٍ يعمل من خلف الصفوف (Gemini وDeepSeek وMistral وCohere تمرّ به). */
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
