@@ -128,16 +128,16 @@ prov (من body.provider، افتراضه 'claude')
 ### ٣-ب. بوّابة الطبقة والحصّة
 
 ```
-resolveTier(username)                             tier.js:183
+resolveTier(username)                             tier.js:185
 │  لا اسم           → guest            (cap = caps().guest)
-│  المالك            → owner  · subscriber:true · cap = ∞     tier.js:163
+│  المالك            → owner  · subscriber:true · cap = ∞     tier.js:165
 │  VIP              → vip    · subscriber:true · cap = ∞
-│  باقة سارية        → sub    · subscriber:true · cap = caps()[plan]   planActive: tier.js:168
+│  باقة سارية        → sub    · subscriber:true · cap = caps()[plan]   planActive: tier.js:170
 │  وإلّا             → free   · subscriber:false
 │  (نتيجة مخبّأة TIER_CACHE_MS لكلّ اسم)
 │
-planRoute(tier, reqProv, lastUserText, used, env, hasImage)   tier.js:71  ← v-plan-routing (مشترك فقط)
-│  الجدول PLAN_ROUTING (tier.js:46، v-plan-jobs): كلّ رسالة وظيفةٌ turnJob (tier.js:60، فوق isStrongTurn tier.js:54) → مزوّدها المختصّ
+planRoute(tier, reqProv, lastUserText, used, env, hasImage)   tier.js:72  ← v-plan-routing (مشترك فقط)
+│  الجدول PLAN_ROUTING (tier.js:47، v-plan-jobs): كلّ رسالة وظيفةٌ turnJob (tier.js:61، فوق isStrongTurn tier.js:55) → مزوّدها المختصّ
 │    دردشة: Plus/Pro → Groq مباشر · Max → Haiku (حتّى ١٥٠/يوم) ثمّ Groq
 │    كود: Plus → Haiku (٥/يوم) · Pro → Haiku (١٠/يوم) · Max → Sonnet 5 (٣٠/يوم) ثمّ Haiku — ثمّ DeepSeek
 │    رياضيّات/ملفّ طويل: DeepSeek · صورة مرفقة: Gemini مباشر
@@ -203,8 +203,8 @@ groq · cohere (v-cohere-tools: Cohere عبر الوسيط `cohere/command-a`). 
 ```
 streamFreeChain(args)                             free-chain.js:167
 │
-├─ الترتيب: freeChain(env)                        tier.js:231
-│     من FREE_CHAIN في البيئة، وإلّا DEFAULT_CHAIN  tier.js:141
+├─ الترتيب: freeChain(env)                        tier.js:234
+│     من FREE_CHAIN في البيئة، وإلّا DEFAULT_CHAIN  tier.js:142
 │     ['groq','gemini','mistral','openrouter']   ← v-plan-routing: Groq أوّلًا (المجّاني ٥ رسائل عليه)
 │     ومزوّد بلا مفتاح يُستبعد من القائمة أصلًا
 │
