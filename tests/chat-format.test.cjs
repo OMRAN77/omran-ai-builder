@@ -97,7 +97,7 @@ test('٦. الإرشاد بين المواقع يصل فعلًا: وحدة مش�
   const c = read('api/_lib/chat.js');
   const tn = c.slice(c.indexOf('const TOOLS_NOTE'), c.indexOf('const IMAGE_TOPICS_NOTE'));
   assert.ok(!tn.includes('الإرشاد'), 'القاعدة لم تعد في TOOLS_NOTE غير المحقون');
-  assert.ok(c.includes("const siteGuideTurn = toolTurn && typeof lastUserText === 'string' && SITE_GUIDE_RE.test(lastUserText);"));
+  assert.ok(c.includes("const siteGuideTurn = toolTurn && isGuideTurn(messages);")); // v-guide-next
   assert.ok(c.includes("+ (siteGuideTurn && baseSystem.indexOf(SITE_GUIDE_MARK) === -1 ? SITE_GUIDE_NOTE : '')"), 'نظام المستخدم بلا تكرار');
   assert.ok(c.includes("const __sysRaw = __rawOwner ? (siteGuideTurn ? SITE_GUIDE_NOTE.trim() : '') : system;"), 'نظام المالك الخام'); // v-cohere-coach: Cohere وحده للمالك يأخذ cohereCoachSystem وفيه الإرشاد أيضًا
 });
