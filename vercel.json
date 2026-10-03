@@ -359,6 +359,14 @@
       "destination": "/api/system?action=email-calendar"
     },
     {
+      "source": "/download",
+      "destination": "/download.html"
+    },
+    {
+      "source": "/install",
+      "destination": "/download.html"
+    },
+    {
       "source": "/ar",
       "destination": "/index.html"
     },
