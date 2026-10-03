@@ -91,7 +91,7 @@ for (const provider of ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'gr
     assert.ok(r1.calls.length >= 1, 'وصل المزوّد');
     const s1 = sysOf(r1.calls[0]);
     assert.ok(s1.includes(MARK), 'القاعدة في النظام: ' + s1.slice(0, 80));
-    assert.ok(s1.length < 2500, 'القاعدة وحدها لا طبقة التطبيق: ' + s1.length);
+    assert.ok(s1.length < 3500, 'القاعدة وحدها لا طبقة التطبيق: ' + s1.length); // v-guide-next: القاعدة طالت بالبندين ٦ و٧؛ طبقة التطبيق عشرة آلاف حرف فأكثر
     const tools = r1.calls[0].body.tools || [];
     const names = tools.map((x) => x.name || (x.function && x.function.name));
     assert.ok(names.includes('web_search') && names.includes('fetch_page'), 'البحث وقراءة الصفحة متاحان: ' + names.join(','));
