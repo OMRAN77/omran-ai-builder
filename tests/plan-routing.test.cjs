@@ -220,7 +220,8 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
   assert.ok(s.includes('const applyRoute = (p, model, direct) => {'));
   for (const v of ['let prov', 'let viaOR', 'let apiKey', 'let CHAT_URL', 'let DEFAULT_MODEL']) assert.ok(s.includes(v + ' '), v);
   assert.ok(s.includes("callUpstream = (withImg) => __upFetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
-  assert.ok(s.includes("let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai'))"), 'Gemini ليس في مسار المالك المباشر');
+  // v-kimi: Kimi انضمّ لمسار المالك المباشر (مفتاح Moonshot) — Gemini ما زال خارجه
+  assert.ok(s.includes("let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */))"), 'Gemini ليس في مسار المالك المباشر');
   assert.ok(s.includes('if (!upstream.ok && __direct && __ownerReq && !anyText'), 'سطر «النموذج غير متاح» للمالك وحده');
 });
 
@@ -331,7 +332,7 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=684'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=685'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 

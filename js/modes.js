@@ -85,19 +85,23 @@
       /* v-provider-arrow (أمر عمران «كل المزودين ٩، كل شركة تفتح موديلاتها»): قائمة
          متداخلة للمالك وحده — كلّ مزوّد يفتح موديلاته، والاختيار يضبط aiapp_provider +
          مفتاح موديل المزوّد (عبر omranPickProviderModel). المعرّفات من إعدادات التطبيق نفسها. */
+      /* v-prov-order (أمر المالك ٣ أكتوبر «رتب المزودين وتنظمهم صح»): ثلاث مجموعات بخطّ رفيع بينها — الأساسيّة، ثمّ
+         المفتوحة والسريعة، ثمّ البحث والوسيط — وكلّ اسم بصيغة واحدة «الاسم · الشركة» (كانت «كلود» و«جوجل جيميني» بين
+         أسماء لاتينيّة). Kimi جديد (v-kimi): مسار Moonshot المباشر بمفتاح المالك، ومعرّفاته بلا بادئة كـGroq. */
       var PROVS = [
-        { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-haiku-4-5',     models:[['claude-opus-5-5','Opus 5.5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
+        { grp:1, key:'claude',     name:'Claude · Anthropic',      store:'aiapp_claude_model',     def:'claude-haiku-4-5',     models:[['claude-opus-5-5','Opus 5.5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
         /* v-provider-models/v-openai-pick: المعرّفات هنا هي نفسها التي يرسلها الخادم؛
            والمالك وحده يأخذ القائمة الحيّة التي يملكها مفتاحه من /api/ai?action=models. */
-        { key:'openai',     name:'OpenAI · GPT',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6-sol','GPT-6 Sol'],['openai/gpt-6-luna','GPT-6 Luna']] },
-        { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), or:true, store:'aiapp_gemini_model', def:'google/gemini-3.8-flash', models:[['google/gemini-3.8-flash','Gemini 3.8 Flash']] },
-        { key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
-        { key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
-        { key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
-        { key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
-        { key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
+        { grp:1, key:'openai',     name:'GPT · OpenAI',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6-sol','GPT-6 Sol'],['openai/gpt-6-luna','GPT-6 Luna']] },
+        { grp:1, key:'gemini',     name:'Gemini · Google', or:true, store:'aiapp_gemini_model', def:'google/gemini-3.8-flash', models:[['google/gemini-3.8-flash','Gemini 3.8 Flash']] },
+        { grp:2, key:'kimi',       name:'Kimi · Moonshot',          or:true, direct:true, store:'aiapp_kimi_model',       def:'kimi-k3',                     models:[['kimi-k3','Kimi K3'],['kimi-k2.6','Kimi K2.6']] },
+        { grp:2, key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
+        { grp:2, key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
+        { grp:2, key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
+        { grp:3, key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
+        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
         /* v-openrouter-tools: or:true كي يصل اختيار المالك إلى الخادم (omranModelFor) كبقيّة مزوّدي الوسيط */
-        { key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.8-flash','Gemini 3.8 Flash'],['deepseek/deepseek-v4-pro','DeepSeek V4 Pro'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
+        { grp:3, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.8-flash','Gemini 3.8 Flash'],['deepseek/deepseek-v4-pro','DeepSeek V4 Pro'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
@@ -115,7 +119,7 @@
       /* v-chip-func-name (أمر المالك ٢٣ سبتمبر «أبدله باسم وظيفي»): الشريحة تحت صندوق الكتابة كانت تعرض اسم النموذج
          («Sonnet 5»، «GPT-5.6 Terra») — صارت اللقب الوظيفيّ للمزوّد المختار (الكينج/السريع/العميق، مفاتيح provNick* بـ١٤ لغة،
          نفس خريطة PROVIDER_NICK_KEYS في app-05). القائمة المنسدلة تبقى بأسماء النماذج (أمر المالك «كلّ واحد وموديله بالضبط»). */
-      var NICK = { claude:'provNickKing', gemini:'provNickFast', groq:'provNickFast', mistral:'provNickFast', openai:'provNickDeep', deepseek:'provNickDeep', perplexity:'provNickDeep', cohere:'provNickDeep', openrouter:'provNickDeep' };
+      var NICK = { claude:'provNickKing', gemini:'provNickFast', groq:'provNickFast', mistral:'provNickFast', openai:'provNickDeep', deepseek:'provNickDeep', perplexity:'provNickDeep', cohere:'provNickDeep', openrouter:'provNickDeep', kimi:'provNickDeep' /* v-kimi */ };
       var NICK_FB = { provNickKing:(AR?'الكينج':'The King'), provNickFast:(AR?'السريع':'The Fast'), provNickDeep:(AR?'العميق':'The Deep') };
       function curProvFuncLabel(){ var k = NICK[curProv()] || 'provNickDeep'; try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok: i18n لم يجهز — الاحتياط */ } return NICK_FB[k]; }
 
@@ -125,6 +129,7 @@
       function provsHTML(){
         var out = '';
         for(var i=0;i<PROVS.length;i++){ var p = PROVS[i];
+          if(i && p.grp !== PROVS[i-1].grp) out += divider; // v-prov-order: خطّ رفيع بين المجموعات
           out += '<button type="button" class="omProvHead" data-prov="' + p.key + '" style="' + ROW + ' display:flex; align-items:center; justify-content:space-between; gap:8px;"><span>' + p.name + '</span><span class="omProvChev" style="color:var(--muted,#9a958a); font-size:11px;">▸</span></button>';
           out += '<div class="omProvModels" data-for="' + p.key + '" hidden style="padding-inline-start:10px;">';
           for(var j=0;j<p.models.length;j++){ out += '<button type="button" class="omProvModel" data-prov="' + p.key + '" data-store="' + p.store + '" data-model="' + p.models[j][0] + '" style="' + ROW + ' font-weight:500; opacity:.9;">' + p.models[j][1] + '</button>'; }

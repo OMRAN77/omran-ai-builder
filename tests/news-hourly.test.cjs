@@ -16,8 +16,9 @@ test('١. الجسر ينبض check-reminders كلّ ساعة (بعد دقيقة
   assert.ok(srv.indexOf('setInterval(pulse, PULSE_MS)') < srv.indexOf('server.listen('), 'قبل الاستماع، في المستوى الأعلى');
 });
 
-test('٢. الخادم: نبضة ?tick=1 مقفولة ٥٥ث فلا يتكرّر الإرسال مع نبض التطبيقات، والأخبار تُدفع مرّة لكلّ خبر', () => {
+test('٢. الخادم: نبضة ?tick=1 مقفولة ٥٥ث فلا يتكرّر الإرسال مع نبض التطبيقات، والأخبار لا تُدفع بعد v-news-off', () => {
   const cr = fs.readFileSync(path.join(root, 'api/_lib/check-reminders.js'), 'utf8');
   assert.ok(cr.includes("kvSetIfAbsent('reminders:tick-lock', String(Date.now()), 55)"));
-  assert.ok(cr.includes('!sentIds.includes(it.id)'));
+  // v-news-off (أمر المالك ٣ أكتوبر «شيل موضوع الأخبار»): النبض باقٍ للتذكيرات، ولا جلب أخبار ولا دفعها
+  assert.ok(!cr.includes('newsItems') && !cr.includes('breaking-news'));
 });

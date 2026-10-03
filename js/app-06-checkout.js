@@ -810,7 +810,9 @@ $('#btnCancelSettings').onclick = () => closeDialogSafe(settingsDialog);
 /* v-settings-sheet (طلب عمران): زرا حفظ/إلغاء أُخفيا — الحفظ صار تلقائيًا
    عند إغلاق النافذة، والسحب لأسفل من أعلى المحتوى يغلقها كورقة جوال. */
 const saveSettingsNow = () => {
-  localStorage.setItem('aiapp_provider', $('#provider').value);
+  /* v-prov-order: قائمة الإعدادات فيها أربعة مزوّدين فقط؛ مزوّد اختاره المالك من السهم (Kimi، DeepSeek، OpenRouter…) لا يُطابق
+     خيارًا فتكون القيمة فارغة — وكان إغلاق الإعدادات يكتبها فيرجع الاختيار إلى GPT. القيمة الفارغة لا تمسح الاختيار. */
+  if ($('#provider').value) localStorage.setItem('aiapp_provider', $('#provider').value);
   localStorage.setItem('aiapp_apikey', $('#apiKey').value.trim());
   localStorage.setItem('aiapp_model', $('#modelName').value.trim() || 'gpt-4o-mini');
   localStorage.setItem('aiapp_gemini_apikey', $('#geminiApiKey').value.trim());
@@ -2112,7 +2114,7 @@ async function callClaude(messages, onDelta){
 // providerKey: 'default' uses the selected default provider (openai/openrouter/gemini/groq/claude/perplexity), or explicitly named
 // 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات (مُتحقَّق حيًّا).
 // Perplexity وحده خارجها عمدًا: موديلات Sonar لا تقبل الأدوات أصلًا (بحثها مدمج).
-const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة · v-openrouter-tools: والمزوّد العامّ كذلك، بالمفتاح نفسه */
+const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter', 'kimi']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة · v-openrouter-tools: والمزوّد العامّ كذلك، بالمفتاح نفسه */
 
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
@@ -2127,6 +2129,9 @@ async function callProviderAI(providerKey, messages, onDelta){
   if(effective === 'mistral') return await callMistral(messages, onDelta);
   if(effective === 'deepseek') return await callDeepSeek(messages, onDelta);
   if(effective === 'cohere') return await callCohere(messages, onDelta);
+  /* v-kimi: Kimi على مسار الأدوات وحده (chat.js → Moonshot مباشرةً أو عبر الوسيط). كان أيّ اسم غير معروف يسقط إلى GPT هنا
+     فيُكتب الردّ باسم Kimi وهو من GPT — يُرمى فيكمل الاحتياط بأسماء من ردّ فعلًا. */
+  if(effective === 'kimi') throw new Error('kimi: tools path only');
   return await callOpenAILike(messages, onDelta);
 }
 

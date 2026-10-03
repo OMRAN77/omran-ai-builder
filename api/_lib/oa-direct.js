@@ -16,6 +16,9 @@ const DIRECT = {
   groq: { url: 'https://api.groq.com/openai/v1/chat/completions', keyVar: 'GROQ_API_KEY', label: 'Groq' },
   openai: { url: 'https://api.openai.com/v1/chat/completions', responses: 'https://api.openai.com/v1/responses', keyVar: 'OPENAI_API_KEY', label: 'OpenAI' },
   gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', keyVar: 'GEMINI_API_KEY', label: 'Gemini' }, // v-plus-haiku: احتياط باقة ١٠$
+  /* v-kimi (أمر المالك ٣ أكتوبر «اريد إضافة kimi مزود جديد المفتاح موجود»): Moonshot بصيغة OpenAI (chat/completions + أدوات).
+     اسم المتغيّر غير معروف لنا فيُقبل الشائعان: KIMI_API_KEY ثمّ MOONSHOT_API_KEY. */
+  kimi: { url: 'https://api.moonshot.ai/v1/chat/completions', keyVar: 'KIMI_API_KEY', altKeyVars: ['MOONSHOT_API_KEY'], label: 'Kimi' },
 };
 
 // مسار مباشر لهذا المزوّد إن كان مفتاحه في البيئة، وإلّا null (يبقى على الوسيط كما كان).
@@ -23,7 +26,7 @@ function directRoute(prov, env) {
   const d = DIRECT[String(prov || '').toLowerCase()];
   const e = env || process.env;
   if (!d) return null;
-  const key = String(e[d.keyVar] || '').trim();
+  const key = [d.keyVar].concat(d.altKeyVars || []).map((v) => String(e[v] || '').trim()).find(Boolean) || '';
   if (!key) return null;
   const r = { prov: String(prov).toLowerCase(), url: d.url, key, label: d.label };
   if (d.responses) r.responsesUrl = d.responses;
@@ -44,6 +47,11 @@ function directModel(prov, requested, env) {
   if (prov === 'gemini') {
     const def = String(e.CHAT_GEMINI_MODEL || '').trim() || 'gemini-flash-latest';
     return { model: def, picked: false, def };
+  }
+  if (prov === 'kimi') { // v-kimi: معرّفات Moonshot نفسها (kimi-k3، kimi-k2.6…)؛ بادئة الوسيط moonshotai/ تُقصّ
+    if (/^moonshotai\//i.test(id)) id = id.slice(11);
+    const def = String(e.CHAT_KIMI_MODEL || '').trim() || 'kimi-k3';
+    return (id && /^(?:kimi|moonshot)-[a-z0-9._-]{1,60}$/i.test(id)) ? { model: id, picked: true, def } : { model: def, picked: false, def };
   }
   // افتراضيّ السهم «Llama 4 Maverick» معرّف الوسيط؛ عند Groq اسمه الكامل. تعطّله = مرشّحو السلسلة (directFetch).
   const def = String(e.CHAT_GROQ_MODEL || '').trim() || GROQ_ALIAS['meta-llama/llama-4-maverick'];

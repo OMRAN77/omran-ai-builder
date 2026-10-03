@@ -280,7 +280,7 @@ test('١١. قائمة Groq في السهم من Groq نفسه: محادثة ف�
   assert.deepEqual(out, [['openai/gpt-oss-120b', 'openai/gpt-oss-120b'], ['qwen/qwen3-32b', 'qwen/qwen3-32b'], ['llama-3.1-8b-instant', 'llama-3.1-8b-instant']]);
   assert.deepEqual(pm.parseGroqModels(null), []);
   const modes = read('js/modes.js');
-  assert.ok(modes.includes("{ key:'groq',       name:'Groq',                     or:true, direct:true,"), 'Groq في السهم مباشر');
+  assert.ok(modes.includes("{ grp:2, key:'groq',       name:'Groq',                     or:true, direct:true,"), 'Groq في السهم مباشر'); // v-prov-order: بمجموعته
   assert.ok(modes.includes("if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = '';"), 'معرّفات Groq بلا بادئة تبقى');
 });
 
