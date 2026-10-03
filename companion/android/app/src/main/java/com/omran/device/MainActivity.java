@@ -26,6 +26,7 @@ public class MainActivity extends Activity {
     private TextView state;
     private EditText code;
     private Button pairBtn;
+    private TextView step1;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -45,7 +46,8 @@ public class MainActivity extends Activity {
         state.setPadding(0, pad, 0, pad);
         col.addView(state);
 
-        col.addView(text("١. في تطبيق عمران قل للوكيل: «اربط جوّالي» واكتب الرمز هنا:", 15));
+        step1 = text("١. في تطبيق عمران قل للوكيل: «اربط جوّالي» واكتب الرمز هنا:", 15);
+        col.addView(step1);
         code = new EditText(this);
         code.setHint("ABCD-EFGH");
         code.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -93,6 +95,7 @@ public class MainActivity extends Activity {
         boolean on = DeviceService.instance != null;
         String s = !paired ? "⚪ غير مربوط" : !on ? "🟡 مربوط — فعّل الخدمة من إمكانيّة الوصول" : "🟢 " + DeviceService.status;
         state.setText(s);
+        step1.setVisibility(paired ? View.GONE : View.VISIBLE);
         code.setVisibility(paired ? View.GONE : View.VISIBLE);
         pairBtn.setVisibility(paired ? View.GONE : View.VISIBLE);
     }
