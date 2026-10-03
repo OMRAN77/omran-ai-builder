@@ -1,0 +1,62 @@
+# v-device-control: يبني برنامجَي «جهاز عمران» وينشرهما في Release ثابت (device-companion) لا يُعلَّم «الأحدث»:
+#   omran-device.apk (أندرويد ١١+) · omran-device-desktop.zip (ويندوز/ماك/لينكس، بايثون).
+# التوقيع بمفتاح المالك نفسه (أسرار android-release) إن وُجد فتتحدّث الحزمة فوق القديمة؛ وإلّا مفتاح تصحيح.
+name: device-companion
+
+on:
+  push:
+    branches: [main]
+    paths: ['companion/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: بناء APK
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          DEVICE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          DEVICE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          DEVICE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -e
+          if [ -n "$KS_B64" ] && [ -n "$DEVICE_KEYSTORE_PASSWORD" ] && [ -n "$DEVICE_KEY_ALIAS" ]; then
+            echo "$KS_B64" | tr -d ' \n\r' | base64 -d > "$RUNNER_TEMP/release.keystore"
+            export DEVICE_KEYSTORE="$RUNNER_TEMP/release.keystore"
+          else
+            echo "::warning::لا مفتاح توقيع في الأسرار — الحزمة بمفتاح تصحيح (التحديث يتطلّب حذف القديمة أوّلًا)"
+          fi
+          cd companion/android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          rm -f "$RUNNER_TEMP/release.keystore"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/omran-device.apk"
+
+      - name: حزمة الكمبيوتر
+        run: cd companion && zip -r "$GITHUB_WORKSPACE/omran-device-desktop.zip" desktop -x '*/__pycache__/*'
+
+      - name: Release device-companion
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG=device-companion
+          NOTES="برنامجا «جهاز عمران» لوكيلك — $(git rev-parse --short HEAD). أندرويد ١١+: نزّل omran-device.apk وثبّته. الكمبيوتر: فكّ omran-device-desktop.zip وشغّل start-windows.bat أو start-mac.command (يحتاج بايثون ٣)."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" omran-device.apk omran-device-desktop.zip --clobber
+            gh release edit "$TAG" --notes "$NOTES" --latest=false
+          else
+            gh release create "$TAG" omran-device.apk omran-device-desktop.zip --title "جهاز عمران — برنامج الكمبيوتر وتطبيق أندرويد" --notes "$NOTES" --latest=false
+          fi
+          echo "- $(gh release view "$TAG" --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"

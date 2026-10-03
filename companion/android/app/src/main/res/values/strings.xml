@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">جهاز عمران</string>
+    <string name="service_name">جهاز عمران — تحكّم الوكيل</string>
+    <string name="service_desc">يسمح لوكيلك في تطبيق عمران أن يرى الشاشة ويضغط ويكتب ويسحب حين تطلب منه. يعمل فقط بعد ربطه برمز من الوكيل، ويتوقّف تلقائيًّا بعد ٣٠ دقيقة بلا أوامر. أوقفه من هنا متى شئت.</string>
+</resources>

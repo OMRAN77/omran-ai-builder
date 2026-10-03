@@ -1,0 +1,17 @@
+// v-device-control: تطبيق جهاز عمران (أندرويد) — خدمة إمكانيّة الوصول تنفّذ أوامر وكيله.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.9.1'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}

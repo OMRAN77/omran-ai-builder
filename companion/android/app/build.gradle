@@ -1,0 +1,39 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.omran.device'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.omran.device'
+        // takeScreenshot في خدمة إمكانيّة الوصول من أندرويد ١١
+        minSdk 30
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            def ks = System.getenv('DEVICE_KEYSTORE')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('DEVICE_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('DEVICE_KEY_ALIAS')
+                keyPassword System.getenv('DEVICE_KEY_PASSWORD') ?: System.getenv('DEVICE_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv('DEVICE_KEYSTORE') ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
