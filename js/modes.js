@@ -99,13 +99,15 @@
         { grp:2, key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
         { grp:2, key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
         { grp:3, key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
-        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] }
-        /* v-prov-dedupe (لقطة المالك ٣ أكتوبر «المزودين متكررين فوق وتحت»): صفّ OpenRouter أُزيل — موديلاته السبعة كلّها
-           موجودة فوق تحت شركتها. الوسيط نفسه باقٍ يعمل من خلف الصفوف (Gemini وDeepSeek وMistral وCohere تمرّ به). */
+        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
+        /* v-openrouter-tools: or:true كي يصل اختيار المالك إلى الخادم (omranModelFor) كبقيّة مزوّدي الوسيط.
+           v-prov-or-unique (المالك ٣ أكتوبر «متكررين فوق وتحت» ثمّ «في واحد ناقص»): الصفّ باقٍ، لكن بشركات ليس لها صفّ
+           فوق (xAI وQwen) — موديلاته السبعة القديمة كانت كلّها تحت شركاتها. المعرّفات من كتالوج OpenRouter. */
+        { grp:3, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'x-ai/grok-4.6',            models:[['x-ai/grok-4.6','Grok 4.6'],['x-ai/grok-4.20','Grok 4.20'],['qwen/qwen3.6-27b','Qwen 3.6 27B']] }
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
-      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
+      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; if(pv.key === 'openrouter' && v && !pv.models.some(function(m){ return m[0] === v; })) v = ''; /* v-prov-or-unique: اختيار قديم مكرّر (Claude/GPT عبر الوسيط) لا يبقى خفيًّا */ /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
       /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
       window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
       /* v-oa-models (لقطة «فحص النظام» ٢٣ سبتمبر: gpt-6-luna-pro ×4): الخادم رفض الموديل المختار (غير موجود أو لا يملكه
