@@ -138,3 +138,17 @@ test('٧. لا موديل يظهر تحت صفّين، ولا صفّ وسيط ي
   assert.ok(!PROVS.some((p) => p.key === 'openrouter'), 'صفّ الوسيط أُزيل — موديلاته كلّها تحت شركاتها');
   assert.equal(PROVS.length, 9);
 });
+
+/* v-owner-bar-hide (المالك ٣ أكتوبر «هذي فقط للمالك، شيلها من المستخدمين»): modes.js يخفي شريط المزوّد لغير المالك بـ
+   style.display='none'، لكنّ قاعدتين في redesign.css فرضتا display:flex !important — و!important في ورقة الأنماط يغلب
+   الأسلوب المضمّن العاديّ، فرأى كلّ مستخدم «العميق ⌄» وقائمة فارغة. الإظهار والإخفاء للسكربت وحده. */
+test('٨. شريط المزوّد للمالك وحده: لا قاعدة CSS تفرض ظهوره فوق إخفاء السكربت', () => {
+  const css = ['css/redesign.css', 'css/modules.css'].filter((f) => fs.existsSync(path.join(root, f))).map((f) => read(f)).join('\n');
+  const rules = [...css.matchAll(/([^{}]*#omBottomBar[^{}]*)\{([^}]*)\}/g)];
+  assert.ok(rules.length >= 3, 'قواعد التخطيط باقية');
+  for (const r of rules) assert.ok(!/(^|[;\s])display\s*:/.test(r[2]), 'لا display في: ' + r[1].trim());
+  const m = read('js/modes.js');
+  assert.match(m, /bar\.style\.cssText = 'align-self:flex-end; margin-top:-2px; display:' \+ \(isOwner\(\) \? 'inline-flex' : 'none'\)/);
+  assert.match(m, /if\(bar\) bar\.style\.display = on \? 'flex' : 'none';/);
+  assert.match(read('index.html'), /css\/redesign\.css\?v=689/);
+});
