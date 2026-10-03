@@ -271,7 +271,7 @@ test('٩. السكوت ٢٠ ثانية وهي تنتظر يُنهي المكال
 
 test('١٠. النشاط يُسجَّل من مصادره الثلاثة', () => {
   const src = read('js/app-08-maha.js');
-  assert.ok(src.includes("  mahaState = state;\n  if(state !== 'listening') mahaLastActivity = Date.now();"), 'أيّ حالة غير الانتظار (تفكير · كلام مها)');
+  assert.ok(src.includes("  mahaState = state;\n  mahaLastActivity = Date.now();"), 'كلّ تغيّر حالة — والانتظار يُحسب من لحظة دخوله (v-maha-long-reply)');
   assert.ok(src.includes('lastLoudAt = now; everLoud = true; mahaLastActivity = now; // v-maha-band'), 'كلام المستخدم في الوضع الأساسيّ');
   assert.ok(src.includes("if(ev.type === 'input_audio_buffer.speech_started'){\n        mahaLastActivity = Date.now(); // v-maha-band"), 'كلام المستخدم في المكالمة المباشرة');
   assert.ok(src.indexOf('let mahaLastActivity = 0;') < src.indexOf('function mahaSetState('), 'معرَّف قبل أوّل استعمال');
