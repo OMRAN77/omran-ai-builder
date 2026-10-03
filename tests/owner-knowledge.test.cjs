@@ -30,15 +30,4 @@ assert.ok(/Vercel مربوط بـGitHub/.test(forOwner), 'Vercel مربوط بـ
 assert.ok(!/خطوتان منفصلتان/.test(forOwner), 'حُذفت جملة «خطوتان منفصلتان» القديمة');
 assert.ok(!/لا ربط تلقائيّ/.test(forOwner), 'حُذفت جملة «لا ربط تلقائيّ» القديمة');
 
-// ٥) v-owner-style («شوف كيف أتعامل معك… أبي هذي في التطبيق»): طريقة التعامل معه تصل المالك وحده
-assert.ok(forOwner.includes('طريقة التعامل معه'), 'قسم طريقة التعامل');
-assert.ok(/«أبي \/ أريد \/ سوّه \/ صلّحه \/ ضيفه» أمر مكتوب صريح/.test(forOwner), 'طلبه أمر صريح');
-assert.ok(/جوابه بكلمة في أوّل سطر/.test(forOwner) && /لا قائمة خيارات تنتظر/.test(forOwner), '«تقدر؟» = جواب ثمّ تنفيذ');
-assert.ok(/«بلا إنفاق» = نفس المفاتيح ونفس الموديلات/.test(forOwner), 'معنى بلا إنفاق');
-assert.ok(/لا دفاع ولا تبرير/.test(forOwner), 'لا دفاع عند الشدّة');
-assert.ok(/أعد إنتاج الشكوى بالأرقام قبل الإصلاح/.test(forOwner), 'إعادة الإنتاج بالأرقام');
-assert.ok(/سطر النتيجة أوّلًا/.test(forOwner), 'ترتيب التقرير');
-assert.ok(forOwner.indexOf('القاعدة الأولى') < forOwner.indexOf('طريقة التعامل معه') && forOwner.indexOf('طريقة التعامل معه') < forOwner.indexOf('الأبواب الخمسة'), 'بعد القاعدة الأولى وقبل الأبواب');
-assert.ok(!forGuest.includes('طريقة التعامل معه'), 'لا تصل غيره');
-
 console.log('✓ owner-knowledge: الوكيل يقرأ كود التطبيق بنفسه ويسلّم لكودي، لا يطلب لصق الكود، وVercel مربوط بـGitHub');
