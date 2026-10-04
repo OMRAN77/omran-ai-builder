@@ -21,7 +21,9 @@ test('١. للكمبيوتر وحده: كلّ قاعدة داخل min-width:861p
   assert.equal(before.trim(), '.frameHome, #sbSearchWrap, #sidebarBrandSub, #omFrameCenter{display:none;}', 'خارج الكتلة: الإخفاء وحده');
   const sels = [...inside.slice(inside.indexOf('{') + 1).matchAll(/([^{}]+)\{[^{}]*\}/g)].map((m) => m[1].trim()).filter(Boolean);
   assert.ok(sels.length > 40);
-  for (const list of sels) for (const sel of list.split(',').map((s) => s.trim())) {
+  // الفصل على الفواصل العليا وحدها — فواصل :is(…) جزء من المحدِّد نفسه
+  const top = (list) => { const out = []; let d = 0, cur = ''; for (const ch of list) { if (ch === '(') d++; if (ch === ')') d--; if (ch === ',' && !d) { out.push(cur.trim()); cur = ''; } else cur += ch; } out.push(cur.trim()); return out; };
+  for (const list of sels) for (const sel of top(list)) {
     assert.ok(/:not\(\.mobile-ui\)/.test(sel) || /^\.frame[A-Z]/.test(sel), 'قاعدة قد تمسّ الجوّال: ' + sel);
   }
 });
@@ -55,7 +57,15 @@ test('٣. الربط: CSS قبل الثيم الخشبيّ، إطار اللوح
 });
 
 test('٤. الأدوات: لا سهم ذهبيّ ولا أسهم دائريّة على الكمبيوتر؛ ومكان الكود بلون الصفحة (العاجيّ والأسود والخشبيّ)', () => {
-  assert.match(CSS, /html:not\(\.mobile-ui\) #sidebarCloseBtn\{ display:none !important; \}/);
+  // سهم طيّ القائمة رجع (أمر المالك بعد النشر: «رجّعه وين المحادثة الجديدة») — على سطرها، وداخل سياق تكديس القائمة
+  // (isolation) فلا يعلو شاشة الأدوات كما كان بـz-index:9999
+  assert.doesNotMatch(CSS, /#sidebarCloseBtn\{ display:none/);
+  assert.match(CSS, /html:not\(\.mobile-ui\) #sidebarCloseBtn\{ top:var\(--sb-arrow-top, 120px\) !important;[^}]*z-index:3;/);
+  assert.match(CSS, /position:relative; isolation:isolate;/);
+  assert.match(rd('js/app-31-إطارات.js'), /setProperty\('--sb-arrow-top', Math\.max\(0, Math\.round\(جديد\.offsetTop \+ \(جديد\.offsetHeight - h\) \/ 2\)\) \+ 'px'\)/);
+  // الإعدادات والنوافذ عاجيّة في الفاتح (كانت رماديّة #EBEBEB)
+  assert.match(CSS, /html\[data-mode="light"\]:not\(\.mobile-ui\):not\(\.bgimg\) :is\(dialog, [^)]*\)\{ background:#fbf5e9 !important;/);
+  assert.match(CSS, /\.settingsNavGroup\{ background:#f3ead6 !important; \}/);
   assert.match(CSS, /html:not\(\.mobile-ui\) #sectionsToolsPopup \.ptShelfArrow\{ display:none !important; \}/);
   assert.match(CSS, /html\[data-mode="light"\]:not\(\.mobile-ui\):not\(\.bgimg\) #code\{ background:#f9f2e4 !important;/);
   assert.match(CSS, /html:not\(\[data-mode="light"\]\):not\(\.mobile-ui\):not\(\.bgimg\) #code\{ background:#101013 !important; \}/);

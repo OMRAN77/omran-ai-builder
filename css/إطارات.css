@@ -66,7 +66,10 @@
   html.bgimg:not(.mobile-ui) #omFrameCenter{ background:transparent; }
 
   /* ── القائمة الجانبيّة كما في الصورة ── */
-  html:not(.mobile-ui) #sidebarCloseBtn{ display:none !important; } /* السهم الذهبيّ (أمر المالك: «احذفه») */
+  /* سهم طيّ القائمة (أمر المالك بعد النشر: «رجّع السهم الخارجيّ والداخليّ — وين المحادثة الجديدة»): على سطر «محادثة جديدة»
+     في طرفه (الارتفاع ‎--sb-arrow-top‎ من js/app-31-إطارات.js)، وداخل سياق تكديس القائمة (isolation) فلا يعلو شاشة الأدوات
+     كما كان بـz-index:9999. إعادة الفتح (#sbReopen) كما هي. */
+  html:not(.mobile-ui) #sidebarCloseBtn{ top:var(--sb-arrow-top, 120px) !important; inset-inline-end:12px; width:30px; height:30px; z-index:3; color:var(--frame-gold2); filter:none; }
   html:not(.mobile-ui) #sidebarBrand{ justify-content:center !important; }
   /* «محادثة جديدة» سطر بلا خلفيّة كسطر «لوحة التحكّم» في الصورة */
   html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn, html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn:hover{ background:transparent !important; background-image:none !important; border-color:transparent !important; justify-content:center !important; color:var(--frame-ink) !important; }
@@ -87,6 +90,13 @@
   /* الأسماء تحت الأيقونات (الشريط يُخفيها تحت ٢١٠px من عرضه) — حشوة أقلّ تُبقيها كما في الصورة */
   html:not(.mobile-ui) #omranSidebarFoot{ border-top:1px solid var(--frame-line2) !important; margin:0 8px; padding-inline:4px !important; }
   html:not(.mobile-ui) #omranSidebarFoot .omNavBtn, html:not(.mobile-ui) #omranSidebarFoot .omModeNav{ color:var(--frame-muted); }
+
+  /* الإعدادات والنوافذ والقوائم في العاجيّ (أمر المالك: «غيّر اللون هذا» — كانت رماديّة #EBEBEB من v520) */
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) :is(dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu, .dlg-actions, #provDropdownPanel, #omModelPopup){ background:#fbf5e9 !important; color:var(--frame-ink); }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) .settingsNavGroup{ background:#f3ead6 !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) :is(#eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap, #videoMakerModal .vmk-stage){ background:#fbf5e9 !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) :is(#eduHubModal .eduHead, #expModal .expHead, .xm .xmHead){ background:#f3ead6 !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcMeta{ background:#fdf8ec !important; }
 
   /* ── المحادثة: فقاعتك بإطار رفيع، والإرسال دائرة ذهبيّة ── */
   html:not(.mobile-ui):not(.bgimg) #messages .msg.user{ background:transparent !important; border:1px solid var(--frame-pill-line) !important; border-radius:22px !important; padding:8px 16px !important; color:var(--frame-ink) !important; }

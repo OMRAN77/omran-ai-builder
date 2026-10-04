@@ -41997,6 +41997,18 @@ if(document.readyState === 'loading'){
     }
   }
   window.omFrameAvatar = صورة;
+
+  /* ③ سهم طيّ القائمة على سطر «محادثة جديدة» (أمر المالك: «رجّعه وين المحادثة الجديدة»): ارتفاعه من موضع الزرّ نفسه
+     لا رقمًا ثابتًا — الشعار صورة يتغيّر ارتفاعها مع التحميل واللغة. */
+  var سهم = document.getElementById('sidebarCloseBtn'), جديد = document.getElementById('omranNewChatBtn'), قائمة = document.getElementById('sidebar');
+  function ضع(){
+    if(!سهم || !جديد || !قائمة || document.documentElement.classList.contains('mobile-ui')) return;
+    var h = سهم.offsetHeight || 30;
+    قائمة.style.setProperty('--sb-arrow-top', Math.max(0, Math.round(جديد.offsetTop + (جديد.offsetHeight - h) / 2)) + 'px');
+  }
+  if(قائمة && typeof ResizeObserver === 'function'){ try{ new ResizeObserver(ضع).observe(قائمة); }catch(e){ __swallow(e, 'frame:arrow-ro'); } }
+  window.addEventListener('load', ضع);
+  ضع();
   window.addEventListener('storage', function(e){ if(!e || e.key === 'aiapp_avatar' || e.key === 'aiapp_username') صورة(); });
   صورة();
 })();
