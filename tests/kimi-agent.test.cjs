@@ -1,0 +1,1 @@
+// tests/kimi-agent.test.cjs — placeholder
