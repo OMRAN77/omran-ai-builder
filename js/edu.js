@@ -434,7 +434,9 @@ function showHome(){
   document.getElementById('eduFileInput').onchange=function(){
     // احتفظ بالملفات قبل تفريغ الحقل (خصوصًا في Safari)، واستدعِ النسخة
     // المعلنة صراحةً كي لا تنكسر صفحات/كاش قديمة كانت تستدعي handleFiles عالميًا.
-    var selected=this.files;
+    // v-edu-ios-files (فيديو المالك ٤ أكتوبر: آيفون — اختار الملف وضغط «فتح» ولا شيء يحدث): this.files في سفاري قائمة حيّة
+    // يفرّغها this.value='' فيصل handleFiles صفر ملفّات ويرجع بصمت (كروم يعطي قائمة جديدة فكان يعمل هناك). نسخة مصفوفة أوّلًا.
+    var selected=Array.prototype.slice.call(this.files||[]);
     this.value='';
     if(typeof window.handleFiles==='function') window.handleFiles(selected);
     else if(typeof handleFiles==='function') handleFiles(selected);
