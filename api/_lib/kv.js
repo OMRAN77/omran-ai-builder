@@ -128,4 +128,20 @@ async function kvSetRaw(key, value, ttlSec) {
   await command(cmd);
 }
 
-module.exports = { kvGetJSON, kvPutJSON, kvDel, kvList, kvIncr, kvExpire, kvIncrBy, kvDecrBy, kvSetIfAbsent, kvGetRaw, kvSetRaw };
+// v-media-purge: أوامر كثيرة في طلب واحد (Upstash REST /pipeline) — تنظيف آلاف المفاتيح بطلبات قليلة
+// لا بطلب لكلّ مفتاح (حدّ الطلبات اليوميّ في الباقة المجانيّة).
+async function kvPipeline(cmds) {
+  if (!REST_URL || !REST_TOKEN) {
+    throw new Error('Server is missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN');
+  }
+  const res = await fetch(REST_URL.replace(/\/$/, '') + '/pipeline', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + REST_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify(cmds),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !Array.isArray(data)) throw new Error('Upstash pipeline error: HTTP ' + res.status);
+  return data.map((x) => (x && 'result' in x ? x.result : null));
+}
+
+module.exports = { kvGetJSON, kvPutJSON, kvDel, kvList, kvIncr, kvExpire, kvIncrBy, kvDecrBy, kvSetIfAbsent, kvGetRaw, kvSetRaw, kvPipeline };

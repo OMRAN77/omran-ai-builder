@@ -1228,6 +1228,8 @@ function chatsServerSave(){
   });
 }
 window.appFullCleanup = function(){
+  // v-media-purge: عند المالك الزرّ نفسه ينظّف روابط المشاركة القديمة (لا يحذف محادثاته). غيره كما كان.
+  try{ if(String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && window.purgeOldMedia){ window.purgeOldMedia(); return; } }catch(e){ __swallow(e, 'misc:app-04-media-purge'); }
   var msg = 'سيتم حذف كل المحادثات والمشاريع نهائيًا. هل أنت متأكد؟';
   try{ var m = (typeof t === 'function') ? t('acctCleanupConfirm') : ''; if(m && m !== 'acctCleanupConfirm') msg = m; }catch(e){ __swallow(e, "misc:app-04-i18n-state#25"); }
   if(!confirm(msg)) return;

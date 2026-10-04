@@ -945,6 +945,9 @@ try{
       const isAdminUI = (loggedIn && uname === 'omran');
       adminWrap.style.display = isAdminUI ? '' : 'none';
       /* v-secret-vault: خزنة الأسرار للمالك وحده — بجانب لوحة التحكّم */
+      /* v-media-purge (أمر المالك ٤ أكتوبر: «فيه زر في الحساب تنظيف التطبيق… فعل هذا»): زرّ «تنظيف التطبيق» نفسه
+         عند المالك ينظّف روابط المشاركة القديمة من قاعدة البيانات (appFullCleanup)، فنصّه يقول ذلك. */
+      try{ if(isAdminUI){ const __h = $('#acctCleanupHintEl'), __b = $('#acctCleanupBtnEl'); if(__h){ __h.removeAttribute('data-i18n'); __h.textContent = 'يحذف صور وملفّات المشاركة الأقدم من ٧ أيّام من قاعدة البيانات لتحرير المساحة. الحسابات والمحادثات لا تُمسّ.'; } if(__b){ __b.removeAttribute('data-i18n'); __b.textContent = '🧹 نظّف الآن'; } } }catch(e){ /* guard-ok — نصّ المالك تجميليّ */ }
       try{ const __vw = $('#vaultSectionWrap'); if(__vw){ __vw.style.display = isAdminUI ? '' : 'none'; if(isAdminUI && window.vaultRefresh) window.vaultRefresh(); } }catch(e){ /* guard-ok — قسم اختياريّ لا يُسقط الإعدادات */ }
       // القائمة تُملأ عند كشف القسم لا عند فتحه: زرّ «تحديث» موجود
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
@@ -6743,6 +6746,8 @@ function chatsServerSave(){
   });
 }
 window.appFullCleanup = function(){
+  // v-media-purge: عند المالك الزرّ نفسه ينظّف روابط المشاركة القديمة (لا يحذف محادثاته). غيره كما كان.
+  try{ if(String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && window.purgeOldMedia){ window.purgeOldMedia(); return; } }catch(e){ __swallow(e, 'misc:app-04-media-purge'); }
   var msg = 'سيتم حذف كل المحادثات والمشاريع نهائيًا. هل أنت متأكد؟';
   try{ var m = (typeof t === 'function') ? t('acctCleanupConfirm') : ''; if(m && m !== 'acctCleanupConfirm') msg = m; }catch(e){ __swallow(e, "misc:app-04-i18n-state#25"); }
   if(!confirm(msg)) return;
@@ -27798,6 +27803,26 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       const r = await fetch('/api/system?action=health&clear=errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
     }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
+  };
+  /* v-media-purge: «تنظيف التطبيق» عند المالك — يحذف روابط المشاركة الأقدم من ٧ أيّام (الخادم يتحقّق من المالك). */
+  window.purgeOldMedia = async function(){
+    const btn = document.getElementById('acctCleanupBtnEl');
+    if(!confirm('حذف صور وملفّات المشاركة الأقدم من ٧ أيّام؟ روابطها القديمة ستتوقّف — الحسابات والمحادثات لا تُمسّ.')) return;
+    const label = btn ? btn.textContent : '';
+    if(btn){ btn.disabled = true; btn.textContent = '⏳ جارِ التنظيف…'; }
+    let msg = '';
+    try{
+      const r = await fetch('/api/system?action=health&purge=media&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
+      const d = await r.json().catch(() => ({}));
+      if(r.ok && d && d.purged){
+        const p = d.purged, b = p.byPrefix || {}, n = (k) => (b[k] && b[k].deleted) || 0;
+        msg = '✅ حُذف ' + p.deleted + ' من ' + p.scanned + ' مفتاحًا\nصور: ' + n('db/img/') + ' · ملفّات: ' + n('db/file/') + ' · PDF: ' + n('db/pdf/');
+      } else {
+        msg = '❌ فشل التنظيف (' + r.status + ')' + (d && d.message ? ': ' + d.message : '');
+      }
+    }catch(e){ msg = '❌ فشل التنظيف: ' + e.message; }
+    if(btn){ btn.disabled = false; btn.textContent = label; }
+    alert(msg);
   };
   function setStatus(text){
     statusEl.style.display = text ? 'block' : 'none';

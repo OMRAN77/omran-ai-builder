@@ -3,6 +3,8 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **`node a.test.cjs b.test.cjs` يشغّل الأوّل وحده:** الثاني يصير وسيطًا في `process.argv` لا ملفًّا يُشغَّل، والفحص الذي يبحث عن
+  اسم الملفّ في `package.json` يمرّ. فاختبار ربط الهاتف لم يجرِ قطّ (v-skin-wood). كلّ ملفّ بـ`node` خاصّ به بين `&&`.
 - **ثيم فوق الواجهة يخسر أمام قواعدها بمعرّفين:** قواعد مثل `html #composerBox > #btnSend` و`html #inputbar #btnPlusTools` (معرّفان)
   تعلو على `html.skin-wood #btnSend` (معرّف واحد) مهما كان `!important` وترتيب الملفّ. فبقي زرّ الإرسال أسود و«+» والمايك بلون
   الخلفيّة (v-skin-wood). اقرأ القاعدة الفائزة من `document.styleSheets` (مسبار يطابق `el.matches(rule.selectorText)`) وطابق

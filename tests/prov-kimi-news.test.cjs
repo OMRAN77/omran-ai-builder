@@ -113,7 +113,7 @@ test('٦. الأخبار أُزيلت كلّها: لا ملفّات ولا نا�
   assert.ok(!st.includes('id="notifSection"') && !st.includes('chkNewsAlerts'));
   assert.ok(!read('js/app-05-ui.js').match(/SETTINGS_NAV_IDS = \[[^\]]*notifSection/));
   const html = read('index.html');
-  assert.ok(html.includes('/js/partials-core.js?v=654') && html.includes('/js/partials-settings.js?v=686'));
+  assert.ok(html.includes('/js/partials-core.js?v=654') && html.includes('/js/partials-settings.js?v=687'));
   const cr = read('api/_lib/check-reminders.js');
   assert.ok(!cr.includes('newsItems') && !cr.includes('breaking-news'));
   assert.match(cr, /if \(r\.type === 'news'\) \{\n[^\n]*\n\s+nextList\.push\(r\);\n\s+continue;\n\s+\}/, 'سجلّ الأخبار القديم يبقى كما هو بلا دفع');

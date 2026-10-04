@@ -75,6 +75,17 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // v-media-purge: حذف روابط المشاركة الأقدم من ٧ أيّام لتحرير القاعدة — للمالك وحده (isOwner أعلاه). ...&purge=media
+  if (req.query && req.query.purge === 'media') {
+    try {
+      const out = await require('./media-purge.js').purgeOldShares(require('./kv.js'), { maxAgeDays: 7 });
+      res.status(200).json({ ok: true, purged: out });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'purge_failed', message: String((e && e.message) || e).slice(0, 200) });
+    }
+    return;
+  }
+
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,
     Gemini: !!process.env.GEMINI_API_KEY,
@@ -82,6 +93,10 @@ module.exports = async (req, res) => {
     Claude: !!process.env.ANTHROPIC_API_KEY,
     OpenRouter: !!process.env.OPENROUTER_API_KEY,
     Mistral: !!process.env.MISTRAL_API_KEY,
+    // v-health-kimi: Kimi (Moonshot) مزوّد محادثة كامل منذ v-kimi، ومساره المباشر يقبل
+    // KIMI_API_KEY أو البديل MOONSHOT_API_KEY — وبغيابه من اللوحة كان المالك لا يرى
+    // أبدًا لماذا سهم Kimi يسقط لغيره بصمت.
+    Kimi: !!(process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY),
     DeepSeek: !!process.env.DEEPSEEK_API_KEY,
     Cohere: !!process.env.COHERE_API_KEY,
     Perplexity: !!process.env.PERPLEXITY_API_KEY,
