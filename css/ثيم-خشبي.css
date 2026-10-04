@@ -35,13 +35,15 @@ html.skin-wood.mobile-ui #sidebar:not(.open), html.skin-wood.mobile-ui #workarea
 html.skin-wood.mobile-ui #sidebar.open{box-shadow:0 10px 40px rgba(60,38,18,.45) !important;}
 html.skin-wood #sidebar .omStars{display:none;}
 html.skin-wood #sidebarBrand .brandImg{filter:sepia(1) saturate(1.5) hue-rotate(-18deg) brightness(.72) contrast(1.15);}
-html.skin-wood #omranNewChatBtn{margin:10px 12px 6px !important; padding:9px 16px !important; border-radius:999px !important; background:var(--wood-copper) !important; color:var(--wood-ink) !important; box-shadow:inset 0 1px 0 rgba(255,240,225,.75), inset 0 -2px 3px rgba(90,50,25,.35), 0 4px 10px rgba(80,48,24,.35) !important; justify-content:center !important; text-shadow:0 1px 0 rgba(255,235,215,.5);}
+/* المحدِّد الثاني يعادل قاعدة الوضع الفاتح (html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn) ويأتي بعدها فيبقى نحاسيًّا */
+html.skin-wood #omranNewChatBtn, html.skin-wood:not(.mobile-ui) #omranNewChatBtn, html.skin-wood:not(.mobile-ui) #omranNewChatBtn:hover{margin:10px 12px 6px !important; padding:9px 16px !important; border-radius:999px !important; background:var(--wood-copper) !important; color:var(--wood-ink) !important; box-shadow:inset 0 1px 0 rgba(255,240,225,.75), inset 0 -2px 3px rgba(90,50,25,.35), 0 4px 10px rgba(80,48,24,.35) !important; justify-content:center !important; text-shadow:0 1px 0 rgba(255,235,215,.5);}
 html.skin-wood #omranNewChatBtn svg{background:rgba(255,240,220,.5); border-radius:50%; padding:2px; box-sizing:content-box;}
 html.skin-wood #omranHistTitle, html.skin-wood #btnProjMenuToggle, html.skin-wood #projMenuWrap{color:var(--wood-ink) !important;}
 html.skin-wood #history{padding:2px 10px 8px !important;}
 html.skin-wood .hist-item{background:var(--wood-plank) !important; border:1px solid rgba(140,98,60,.5) !important; border-radius:12px !important; margin:7px 0 !important; padding:7px 10px !important; box-shadow:var(--wood-shadow) !important; min-height:42px;}
 html.skin-wood .hist-item:hover{filter:brightness(1.04);}
-html.skin-wood .hist-item.active{border:1.5px solid #9a5f3a !important; box-shadow:var(--wood-shadow), 0 0 0 2px rgba(181,119,80,.35) !important;}
+/* المختارة بلوحها (v-themes): redesign.css يفرّغ خلفيّتها على الكمبيوتر (0,3,1) والوضع الفاتح يبيّضها — المحدِّد الثاني أعلى منهما */
+html.skin-wood .hist-item.active, html.skin-wood:not(.mobile-ui) #history .hist-item.active{background:var(--wood-plank) !important; border:1.5px solid #9a5f3a !important; box-shadow:var(--wood-shadow), 0 0 0 2px rgba(181,119,80,.35) !important;}
 html.skin-wood .hist-title{color:var(--wood-ink) !important; font-weight:600 !important; opacity:1 !important;}
 html.skin-wood .hist-thumb{background:rgba(255,248,236,.55) !important; border:1px solid rgba(120,84,50,.45) !important; border-radius:6px !important; color:#7a5434 !important;}
 html.skin-wood .hist-menu-btn{color:var(--wood-ink2) !important;}
@@ -87,26 +89,7 @@ html.skin-wood #tabs .tab, html.skin-wood #workarea .omIconBtn, html.skin-wood #
 html.skin-wood #tabs .tab.active{border-color:#e7c29d !important;}
 html.skin-wood .resizer{background:linear-gradient(90deg,rgba(90,58,30,.35),rgba(255,240,220,.25)) !important;}
 
-/* «بيت» اللوحة الفارغة — كما في الصورة: شعار نحاسيّ كبير، زرّ +، «المحادثات الجديدة»، آخر خمس محادثات، أزرار دائريّة */
-.woodHome{display:none;}
-html.skin-wood #emptyState .woodHome{display:flex; flex-direction:column; align-items:center; gap:14px; width:min(92%,460px); margin:0 auto; padding:18px 0 24px; direction:rtl;}
-html.skin-wood #emptyState{overflow:auto;}
-.woodLogo{font-family:Georgia,"Times New Roman",serif; font-weight:900; line-height:1; display:flex; align-items:flex-end; gap:6px; direction:ltr;}
-.woodLogo b{font-size:68px; background:linear-gradient(180deg,#f6d9bd 0%,#d9a17a 38%,#a9683f 70%,#7d4a2b 100%); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 2px 0 rgba(60,34,16,.55)) drop-shadow(0 6px 10px rgba(30,16,6,.45));}
-.woodLogo i{font-style:normal; font-size:24px; font-family:inherit; color:#e9cfb3; letter-spacing:1px; margin-bottom:8px;}
-.woodPlus{width:62px; height:62px; border-radius:50%; border:none; cursor:pointer; background:var(--wood-plank); box-shadow:var(--wood-shadow), 0 6px 12px rgba(30,16,6,.45); color:#7a4f2f; font-size:38px; line-height:62px; font-weight:300; padding:0;}
-.woodHomeTitle{align-self:stretch; color:#f1e4cf; font-size:20px; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,.4); margin:6px 4px 0;}
-.woodHomeList{align-self:stretch; display:flex; flex-direction:column; gap:10px;}
-html.skin-wood #workarea .woodHomeItem{color:var(--wood-ink) !important;}
-html.skin-wood #workarea .woodRound{color:#f1e4cf !important;}
-html.skin-wood #workarea .woodPlus{color:#7a4f2f !important;}
-.woodHomeItem{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; padding:10px 14px; border-radius:14px; border:1px solid rgba(140,98,60,.55); background:var(--wood-plank); box-shadow:var(--wood-shadow), 0 4px 8px rgba(30,16,6,.35); color:var(--wood-ink); font:inherit; font-size:17px; font-weight:600; cursor:pointer; text-align:start;}
-.woodHomeItem span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.woodHomeItem em{flex:0 0 auto; width:34px; height:30px; border-radius:6px; background:rgba(255,248,236,.55); border:1px solid rgba(120,84,50,.45); display:flex; align-items:center; justify-content:center; color:#7a5434; font-style:normal;}
-.woodHomeBtns{align-self:stretch; display:flex; justify-content:space-between; gap:10px; margin-top:10px;}
-.woodRound{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:none; cursor:pointer; color:#f1e4cf; font:inherit; font-size:13px; font-weight:700; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.45);}
-.woodRound span{width:64px; height:64px; border-radius:50%; background:var(--wood-copper); box-shadow:inset 0 2px 0 rgba(255,236,214,.7), inset 0 -3px 5px rgba(80,44,20,.45), 0 6px 12px rgba(30,16,6,.45); display:flex; align-items:center; justify-content:center; color:#4a2c18;}
-html.skin-wood #emptyState h2, html.skin-wood #emptyState p{color:#f1e4cf !important;}
+/* «بيت» اللوحة الفارغة (الشعار والزرّ والمحادثات والأزرار الدائريّة) شيل بأمر المالك بعد الثيمات: «شيل هذا من البنّيّ» */
 
-/* مصغّر الثيم في شبكة الخلفيّات */
-.bgImgOpt.bgImgTheme{background-position:left center;}
+/* مصغّرات الثيمات في شبكة الخلفيّات (كلّها): الخانة ٣:٤ تُظهر اللوحة الوسطى وطرف القائمة — لوحة المعاينة صارت فارغة */
+.bgImgOpt.bgImgTheme{background-position:70% center;}

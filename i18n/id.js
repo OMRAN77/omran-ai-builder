@@ -1170,7 +1170,7 @@ Object.assign(I18N["id"], {"videoSceneWait":"⏳ Adegan {i}/{n}: jeda antar vide
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["id"], {"acctPhoneLabel": "📱 Nomor telepon (untuk pemulihan)", "phoneNotLinked": "Belum ditautkan", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Kirim pesan yang sudah disiapkan atau bagikan nomormu, lalu kembali ke sini…", "phoneLinkedOk": "✓ Nomor ditautkan", "phoneTaken": "Nomor ini tertaut ke akun lain", "phoneNoUser": "Tidak ada akun yang tertaut ke nomor ini", "phoneExpired": "Tautan kedaluwarsa — coba lagi", "phoneRecoverTitle": "Atau pulihkan akunmu dengan telepon:", "phoneRecoverSent": "✓ Kami mengirim tautan kata sandi baru ke obrolanmu di sana"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
-Object.assign(I18N["id"], {"bgThemeWood": "Kayu", "woodRecentTitle": "Obrolan terbaru"});
+Object.assign(I18N["id"], {"bgThemeWood": "Kayu"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["id"], {"brandSubtitle": "Platform AI"});
 Object.assign(I18N["id"], {"bgThemeDarkwood": "Kayu gelap", "bgThemeMarble": "Marmer", "bgThemeCode": "Kode", "bgThemeCars": "Mobil", "bgThemeKids": "Anak-anak", "bgThemeCuisine": "Memasak", "bgThemeSunset": "Senja", "bgThemeBeach": "Pantai", "bgThemeWinter": "Musim dingin", "bgThemeGarage": "Garasi", "bgThemeAnime": "Anime", "bgThemeCyber": "Keamanan siber", "bgThemeSchool": "Ruang kelas"});

@@ -31,7 +31,7 @@ test('١. كلّ قاعدة محصورة: html.skin-wood أو أصناف الث�
   assert.ok(sels.length > 40, 'القواعد قُرئت: ' + sels.length);
   for (const list of sels) {
     for (const sel of list.split(',').map((s) => s.trim())) {
-      assert.match(sel, /^(html\.skin-wood\b|\.wood[A-Z]|\.bgImgOpt\.bgImgTheme\b)/, 'قاعدة غير محصورة: ' + sel);
+      assert.match(sel, /^(html\.skin-wood\b|\.bgImgOpt\.bgImgTheme\b)/, 'قاعدة غير محصورة: ' + sel);
     }
   }
 });
@@ -50,30 +50,34 @@ test('٢. الخامات: كلّ url في CSS موجود وخفيف، والمص
   assert.ok(fs.existsSync(path.join(root, 'scripts', 'ثيم-خشبي.mjs')), 'الخامات تُعاد توليدًا بالسكربت');
 });
 
-test('٣. الربط والترجمة: CSS بعد خلفيات.css، والنصّان بالـ١٤ لغة، ووسم اللغات مرفوع', () => {
+test('٣. الربط والترجمة: CSS بعد خلفيات.css، واسم الثيم بالـ١٤ لغة، ووسم اللغات مرفوع', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/ثيم-خشبي.css?v=2');
+  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/ثيم-خشبي.css?v=3');
   assert.ok(a > 0 && b > a, 'يُحمَّل بعد خلفيات.css فيعلو عليه');
   const data = rd('js/app-03-i18n-data.js');
-  for (const k of ['bgThemeWood', 'woodRecentTitle']) {
+  for (const k of ['bgThemeWood']) {
     assert.equal((data.match(new RegExp('^    ' + k + ': ', 'gm')) || []).length, 2, 'ar+en: ' + k);
     for (const lg of LANGS) assert.ok(rd('i18n/' + lg + '.js').includes('"' + k + '":'), lg + ': ' + k);
   }
   assert.match(data, /bgThemeWood: 'خشبي'/);
-  assert.match(data, /woodRecentTitle: 'المحادثات الجديدة'/);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=718'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=719'"));
 });
 
-test('٤. «بيت» لوحة المعاينة الفارغة كما في الصورة: من صفوف القائمة نفسها وأزرار الشريط السفليّ، والنقر يمرّ إلى الأصل', () => {
+test('٤. «بيت» لوحة المعاينة الفارغة شيل (أمر المالك بعد الثيمات: «شيل هذا من البنّيّ»): لا دالّة ولا مراقب ولا CSS ولا نصّ', () => {
   const src = rd('js/app-25-خلفيات.js');
-  const body = src.slice(src.indexOf('function بيت()'), src.indexOf('function حمّل()'));
-  assert.match(body, /getElementById\('emptyState'\)/, 'داخل حالة اللوحة الفارغة');
-  assert.match(body, /querySelectorAll\('#history \.hist-item'\)/);
-  assert.match(body, /i < rows\.length && i < 5/, 'آخر خمس محادثات');
-  assert.match(body, /b\.onclick = function\(\)\{ title\.click\(\); \};/, 'فتح المحادثة بمنطق القائمة');
-  assert.match(body, /'#omranSidebarFoot \.omNavBtn, #omranSidebarFoot \.omModeNav'/, 'الأدوات والملفات والإعدادات والوضع الفاتح');
-  assert.match(body, /getElementById\('omranNewChatBtn'\); if\(b\) b\.click\(\);/, 'زرّ + = محادثة جديدة');
+  assert.doesNotMatch(src, /function بيت\(|MutationObserver|woodHome|woodRecentTitle/);
+  assert.match(src, /ثيم: ثيم \};/, 'لا «بيت» في window.خلفيات');
+  assert.doesNotMatch(rd(CSS).replace(/\/\*[\s\S]*?\*\//g, ''), /\.wood(Home|Logo|Plus|Round)/);
+  assert.doesNotMatch(rd('js/app-03-i18n-data.js'), /woodRecentTitle/);
+  for (const lg of LANGS) assert.doesNotMatch(rd('i18n/' + lg + '.js'), /woodRecentTitle/, lg);
+});
+
+// أمر المالك بعد الثيمات («الخشبي»): المشروع المفتوح بلا لوحه، و«محادثة جديدة» بيضاء في الوضع الفاتح — قاعدتا التطبيق كانتا أعلى
+test('٥. المختارة بلوحها و«محادثة جديدة» نحاسيّة في الوضعين: محدِّد ثانٍ يغلب redesign.css والوضع الفاتح', () => {
   const css = rd(CSS);
-  assert.match(css, /\.woodHome\{display:none;\}/, 'مخفيّ بلا الثيم');
-  assert.match(css, /html\.skin-wood #emptyState \.woodHome\{display:flex;/);
+  assert.match(css, /html\.skin-wood \.hist-item\.active, html\.skin-wood:not\(\.mobile-ui\) #history \.hist-item\.active\{background:var\(--wood-plank\) !important;/);
+  assert.match(css, /html\.skin-wood #omranNewChatBtn, html\.skin-wood:not\(\.mobile-ui\) #omranNewChatBtn, html\.skin-wood:not\(\.mobile-ui\) #omranNewChatBtn:hover\{[^}]*background:var\(--wood-copper\) !important;/);
+  // القاعدتان اللتان كانتا تغلبان ما زالتا هناك — فالمحدِّد الثاني لازم
+  assert.match(rd('css/redesign.css'), /html:not\(\.mobile-ui\) \.hist-item\.active\{background:transparent !important;/);
+  assert.match(rd('css/tokens.css'), /html\[data-mode="light"\]:not\(\.mobile-ui\) #omranNewChatBtn/);
 });

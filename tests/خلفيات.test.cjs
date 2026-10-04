@@ -66,7 +66,7 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=3">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
   assert.match(html, /partials-settings\.js\?v=690/, 'وسم الإعدادات ارتفع');
-  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=718'/, 'وسم اللغات ارتفع');
+  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=719'/, 'وسم اللغات ارتفع');
   for (const old of ['js/app-25-خلفيات-مدير.js', 'js/partials-خلفيات-قسم.js']) assert.ok(!fs.existsSync(path.join(root, old)), old + ' يجب أن يُحذف');
 
   const settings = rd('js/partials-settings.js');
@@ -87,7 +87,7 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   assert.match(app05, /bgImgSection: `<svg [^`]*<rect x="3" y="3" width="18" height="18" rx="2" ry="2"><\/rect><circle cx="8\.5" cy="8\.5" r="1\.5"><\/circle><polyline points="21 15 16 10 5 21"><\/polyline><\/svg>`/, 'أيقونة SVG رسميّة (صورة) لا إيموجي');
   assert.match(app05, /if\(sid === 'bgImgSection' && window\.خلفيات\) window\.خلفيات\.افتح\(\);/, 'فتح الصفحة من القائمة يبني الشبكة');
 
-  assert.match(rd('js/app.bundle.js'), /window\.خلفيات = \{ افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي, ثيم: ثيم, بيت: بيت \};/, 'الجزء داخل الحزمة (+ ثيم وبيت: v-skin-wood)');
+  assert.match(rd('js/app.bundle.js'), /window\.خلفيات = \{ افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي, ثيم: ثيم \};/, 'الجزء داخل الحزمة (+ ثيم: v-skin-wood؛ و«بيت» شيل بأمر المالك)');
   const ui = rd('js/app-05-ui.js');
   const at = ui.indexOf('async function applyBg3D(');
   assert.ok(at > 0 && ui.slice(at, at + 900).includes("window.خلفيات.طبّق(null)"), 'اختيار ثلاثيّة يزيل صورة الشاشة');

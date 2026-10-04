@@ -1821,7 +1821,8 @@ async function callGroq(messages, onDelta){
   try{ return await __groqSend(GROQ_VISION_MODEL, toOpenAIVisionMessages(messages), onDelta); }
   catch(e){
     const __t = String((e && (e.upstreamText || e.message)) || '');
-    const __modelErr = !!(e && (e.status === 404 || /model_not_found|does not exist|decommissioned|has been deprecated|not supported/i.test(__t)));
+    /* v-groq-image-turn: «content must be a string» = نموذج نصّيّ استلم الصورة (الخادم القديم يجرّب المرشّحين بها) — غياب رؤية كذلك */
+    const __modelErr = !!(e && (e.status === 404 || /model_not_found|does not exist|decommissioned|has been deprecated|not supported|content must be a string/i.test(__t)));
     if(!__modelErr || (e && e.name === 'AbortError')) throw e;
     return await __groqSend(textModel, await stripImagesWithDescription(messages), onDelta);
   }

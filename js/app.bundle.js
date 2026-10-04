@@ -3542,7 +3542,6 @@ const I18N = {
     // v-frame-design
     brandSubtitle: 'منصة الذكاء',
     bgThemeWood: 'خشبي', // v-skin-wood
-    woodRecentTitle: 'المحادثات الجديدة',
     bgThemeDarkwood: 'خشب داكن', // v-themes
     bgThemeMarble: 'رخام',
     bgThemeCode: 'برمجة',
@@ -4712,7 +4711,6 @@ const I18N = {
     // v-frame-design
     brandSubtitle: 'AI Platform',
     bgThemeWood: 'Wood', // v-skin-wood
-    woodRecentTitle: 'Recent chats',
     bgThemeDarkwood: 'Dark wood', // v-themes
     bgThemeMarble: 'Marble',
     bgThemeCode: 'Code',
@@ -5586,7 +5584,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=718'; /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=719'; /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -14645,7 +14643,8 @@ async function callGroq(messages, onDelta){
   try{ return await __groqSend(GROQ_VISION_MODEL, toOpenAIVisionMessages(messages), onDelta); }
   catch(e){
     const __t = String((e && (e.upstreamText || e.message)) || '');
-    const __modelErr = !!(e && (e.status === 404 || /model_not_found|does not exist|decommissioned|has been deprecated|not supported/i.test(__t)));
+    /* v-groq-image-turn: «content must be a string» = نموذج نصّيّ استلم الصورة (الخادم القديم يجرّب المرشّحين بها) — غياب رؤية كذلك */
+    const __modelErr = !!(e && (e.status === 404 || /model_not_found|does not exist|decommissioned|has been deprecated|not supported|content must be a string/i.test(__t)));
     if(!__modelErr || (e && e.name === 'AbortError')) throw e;
     return await __groqSend(textModel, await stripImagesWithDescription(messages), onDelta);
   }
@@ -39861,8 +39860,9 @@ if(document.readyState === 'loading'){
    آخر تبديل aiapp_bgimg_rotate_at فيُكمل العدّ بعد إعادة الفتح) يمرّ على صور الجهاز ثمّ صور المجلّد بالترتيب.
    v-skin-wood (أمر المالك ٤ أكتوبر بصورة «أعطني بالضبط مرتّبة نفس هذي في الخلفيّات، إذا اختارها يستوي نفسها»): الثيمات
    خلفيّات تكسو الواجهة كلّها لا الشاشة وحدها — «خشبي» أوّلها (css/ثيم-خشبي.css، خاماته assets/ثيمات/خشبي/). مصغّره في
-   الشبكة بعد «صورة من جهازك»، ويُحفظ كأيّ خلفيّة ({ ملف:'ثيم:خشبي', ثيم:'wood' })، ولا يدخل التبديل التلقائيّ. ولوحة
-   المعاينة الفارغة تعرض فيه «بيت» الصورة: الشعار النحاسيّ، زرّ +، آخر خمس محادثات، وأزرار الشريط السفليّ دائريّة. */
+   الشبكة بعد «صورة من جهازك»، ويُحفظ كأيّ خلفيّة ({ ملف:'ثيم:خشبي', ثيم:'wood' })، ولا يدخل التبديل التلقائيّ.
+   («بيت» لوحة المعاينة الفارغة — الشعار النحاسيّ وزرّ + وآخر المحادثات والأزرار الدائريّة — شيل بأمر المالك بعد الثيمات:
+   «شيل هذا من البنّيّ»؛ اللوحة الفارغة بكتّانها وحده كبقيّة الثيمات.) */
 (function(){
   var KEY = 'aiapp_bgimg', KEY_CUSTOM = 'aiapp_bgimg_custom', KEY_ROT = 'aiapp_bgimg_rotate', KEY_ROT_AT = 'aiapp_bgimg_rotate_at';
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
@@ -39947,7 +39947,6 @@ if(document.readyState === 'loading'){
   }
 
   // ── الثيمات (v-skin-wood) ──
-  var مراقب = null;
   function كسوة(اسم){
     var html = document.documentElement;
     var مدخل = null;
@@ -39956,53 +39955,7 @@ if(document.readyState === 'loading'){
     // الخشبيّ بملفّه (css/ثيم-خشبي.css)؛ الباقي بالمتغيّرات العامّة، والمشهد يُعرف من السجلّ لا من المحفوظ
     html.classList.toggle('skin', !!مدخل && اسم !== 'wood');
     html.classList.toggle('skin-scene', !!(مدخل && مدخل.مشهد));
-    if(اسم === 'wood'){
-      بيت();
-      var h = document.getElementById('history');
-      if(h && !مراقب && typeof MutationObserver === 'function'){ مراقب = new MutationObserver(function(){ بيت(); }); مراقب.observe(h, { childList: true, subtree: true, characterData: true }); }
-    } else if(مراقب){ مراقب.disconnect(); مراقب = null; }
   }
-  function بيت(){
-    var box = document.getElementById('emptyState'); if(!box) return;
-    var home = box.querySelector('.woodHome');
-    if(!home){
-      home = document.createElement('div');
-      home.className = 'woodHome';
-      home.innerHTML = '<div class="woodLogo"><b>OM</b><i>AI</i></div>'
-        + '<button type="button" class="woodPlus" aria-label="+">+</button>'
-        + '<div class="woodHomeTitle"></div><div class="woodHomeList"></div><div class="woodHomeBtns"></div>';
-      home.querySelector('.woodPlus').onclick = function(){ var b = document.getElementById('omranNewChatBtn'); if(b) b.click(); };
-      box.appendChild(home);
-    }
-    home.querySelector('.woodHomeTitle').textContent = نصّ('woodRecentTitle', 'المحادثات الجديدة');
-    var newBtn = document.getElementById('omranNewChatBtn');
-    if(newBtn) home.querySelector('.woodPlus').title = newBtn.textContent.trim();
-    // آخر خمس محادثات كما في القائمة الجانبيّة (ترتيبها نفسه)، والنقر يفتحها بمنطق القائمة نفسه
-    var list = home.querySelector('.woodHomeList'); list.innerHTML = '';
-    var rows = document.querySelectorAll('#history .hist-item');
-    for(var i = 0; i < rows.length && i < 5; i++){
-      (function(row){
-        var title = row.querySelector('.hist-title'); if(!title) return;
-        var b = document.createElement('button'); b.type = 'button'; b.className = 'woodHomeItem';
-        var sp = document.createElement('span'); sp.textContent = title.textContent; b.appendChild(sp);
-        var ic = document.createElement('em'); var th = row.querySelector('.hist-thumb svg'); ic.innerHTML = th ? th.outerHTML : '📄'; b.appendChild(ic);
-        b.onclick = function(){ title.click(); };
-        list.appendChild(b);
-      })(rows[i]);
-    }
-    // أزرار الشريط السفليّ الظاهرة نفسها، دائريّة نحاسيّة بأسمائها
-    var btns = home.querySelector('.woodHomeBtns'); btns.innerHTML = '';
-    document.querySelectorAll('#omranSidebarFoot .omNavBtn, #omranSidebarFoot .omModeNav').forEach(function(src){
-      if(src.offsetParent === null) return;
-      var label = (src.textContent || '').trim(); if(!label) return;
-      var r = document.createElement('button'); r.type = 'button'; r.className = 'woodRound';
-      var circle = document.createElement('span'); var svg = src.querySelector('svg'); circle.innerHTML = svg ? svg.outerHTML : ''; r.appendChild(circle);
-      r.appendChild(document.createTextNode(label));
-      r.onclick = function(){ src.click(); setTimeout(بيت, 60); }; // «الوضع الفاتح» يبدّل اسمه بعد النقر
-      btns.appendChild(r);
-    });
-  }
-
   function حمّل(){
     if(فهرس) return Promise.resolve(فهرس);
     if(!تحميل){
@@ -40168,7 +40121,7 @@ if(document.readyState === 'loading'){
     جدول();
   }
 
-  window.خلفيات = { افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي, ثيم: ثيم, بيت: بيت };
+  window.خلفيات = { افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي, ثيم: ثيم };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', استرجع); else استرجع();
 })();
 // 📿 القبلة والمواقيت — مواقيت الصلاة (aladhan) + بوصلة القبلة + تنبيه
