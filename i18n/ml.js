@@ -1173,7 +1173,7 @@ Object.assign(I18N["ml"], {"videoSceneWait":"⏳ രംഗം {i}/{n}: വീഡ
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["ml"], {"acctPhoneLabel": "📱 ഫോൺ നമ്പർ (വീണ്ടെടുക്കാൻ)", "phoneNotLinked": "ബന്ധിപ്പിച്ചിട്ടില്ല", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "തയ്യാറാക്കിയ സന്ദേശം അയയ്ക്കുക അല്ലെങ്കിൽ നിങ്ങളുടെ നമ്പർ പങ്കിടുക, എന്നിട്ട് ഇവിടെ തിരികെ വരൂ…", "phoneLinkedOk": "✓ നമ്പർ ബന്ധിപ്പിച്ചു", "phoneTaken": "ഈ നമ്പർ മറ്റൊരു അക്കൗണ്ടുമായി ബന്ധിപ്പിച്ചിരിക്കുന്നു", "phoneNoUser": "ഈ നമ്പറുമായി ഒരു അക്കൗണ്ടും ബന്ധിപ്പിച്ചിട്ടില്ല", "phoneExpired": "ലിങ്കിന്റെ കാലാവധി കഴിഞ്ഞു — വീണ്ടും ശ്രമിക്കുക", "phoneRecoverTitle": "അല്ലെങ്കിൽ ഫോൺ ഉപയോഗിച്ച് അക്കൗണ്ട് വീണ്ടെടുക്കുക:", "phoneRecoverSent": "✓ പുതിയ പാസ്‌വേഡിനുള്ള ലിങ്ക് അവിടെ നിങ്ങളുടെ ചാറ്റിലേക്ക് അയച്ചു"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
-Object.assign(I18N["ml"], {"bgThemeWood": "മരം", "woodRecentTitle": "പുതിയ ചാറ്റുകൾ"});
+Object.assign(I18N["ml"], {"bgThemeWood": "മരം"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["ml"], {"brandSubtitle": "എഐ പ്ലാറ്റ്‌ഫോം"});
 Object.assign(I18N["ml"], {"bgThemeDarkwood": "ഇരുണ്ട മരം", "bgThemeMarble": "മാർബിൾ", "bgThemeCode": "കോഡ്", "bgThemeCars": "കാറുകൾ", "bgThemeKids": "കുട്ടികൾ", "bgThemeCuisine": "പാചകം", "bgThemeSunset": "സൂര്യാസ്തമയം", "bgThemeBeach": "കടൽത്തീരം", "bgThemeWinter": "ശൈത്യം", "bgThemeGarage": "ഗാരേജ്", "bgThemeAnime": "ആനിമേ", "bgThemeCyber": "സൈബർ സുരക്ഷ", "bgThemeSchool": "ക്ലാസ് മുറി"});
