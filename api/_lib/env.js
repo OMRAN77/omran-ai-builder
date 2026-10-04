@@ -35,6 +35,7 @@ const SPEC = {
   FREE_OPENROUTER_MODEL:  ['tunable', 'يُجرَّب أولًا ثم قائمة مرشّحين ثم استكشاف /models'],
   CHAT_PROMPT_CACHE:      ['tunable', 'off يعطّل التخزين المؤقّت للموجّه في المحادثة الرئيسيّة (chat.js) — الافتراضيّ مفعّل'],
   GITHUB_DEFAULT_REPO:    ['tunable', 'owner/repo الذي تقرؤه أداة read_github للمالك حين يقول «اقرأ الجيت هوب» بلا رابط — الافتراضيّ OMRAN77/omran-ai-builder'],
+  CODE_ANALYZE_DEEP:      ['tunable', 'القراءة العميقة في فحص الكود (يطلب الملفّات ويفتّش ثمّ يحكم — v-code-deep-read): للمالك افتراضًا · all تفتحها للمشتركين · off تعطّلها'],
   DEEPSEEK_API_KEY:       ['feature', 'محرّك بديل'],
   COHERE_API_KEY:         ['feature', 'ترتيب النتائج'],
   OPENROUTER_API_KEY:     ['feature', 'محرّك بديل'],

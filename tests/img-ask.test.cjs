@@ -28,7 +28,7 @@ test('٣. قائمة الأدوات في دور الكلام بلا صورة و�
   assert.deepEqual(names(TOOLS_NO_MEDIA), names(TOOLS).filter((n) => !['generate_image', 'edit_image', 'generate_video'].includes(n)));
   assert.ok(TOOLS_NO_MEDIA.length >= 3);
   const src = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
-  assert.ok(src.includes('tools: toolTurn ? (isClarifyTurn(lastUserText) ? TOOLS_NO_MEDIA : TOOLS) : undefined'));
+  assert.ok(src.includes('tools: toolTurn ? (isClarifyTurn(lastUserText) ? TOOLS_NO_MEDIA : toolsFor(__ownerReq)) : undefined')); // دمج v-provider-errors: غير الاستيضاح = أدوات المستخدم (وأداة المالك له وحده)
 });
 
 test('٤. وصف edit_image: الاستيضاح ليس طلبًا، والوثيقة الرسميّة لا تُعدَّل', () => {
