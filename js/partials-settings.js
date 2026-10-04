@@ -723,6 +723,14 @@
     </div>
   </div>
 
+  <!-- v-living-memory: الذاكرة الحيّة — آخر ١٠ حقائق تعلّمها الوكيل، وزرّ «امسح» لكلّ واحدة (المالك وحده) -->
+  <div id="livingMemWrap" class="ownerCard">
+    <div class="ownerCardTitle" data-i18n="livingMemTitle">الذاكرة الحيّة</div>
+    <div style="font-size:12.5px; line-height:1.8; opacity:.85;" data-i18n="livingMemIntro">آخر ما تعلّمه الوكيل عنك من محادثاتك. يستعمل منها في كلّ ردّ ما يخصّ سؤالك فقط. امسح أيّ حقيقة ليتناساها.</div>
+    <div id="livingMemList" style="margin-top:10px; background:var(--panel); border-radius:var(--r-2); padding:4px 10px;"></div>
+    <div id="livingMemStatus" style="margin-top:6px; font-size:12px; min-height:16px;"></div>
+  </div>
+
   <div id="adminSectionWrap" class="ownerCard" style="display:none;">
     <div class="ownerCardTitle" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</div>
     <div id="adminSectionContent">

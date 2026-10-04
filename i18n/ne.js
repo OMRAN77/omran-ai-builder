@@ -1124,3 +1124,5 @@ Object.assign(I18N["ne"], {"bgThemeWood": "काठ", "woodRecentTitle": "ह�
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["ne"], {"brandSubtitle": "एआई प्लेटफर्म"});
 Object.assign(I18N["ne"], {"bgThemeDarkwood": "गाढा काठ", "bgThemeMarble": "संगमरमर", "bgThemeCode": "कोड", "bgThemeCars": "कारहरू", "bgThemeKids": "बालबालिका", "bgThemeCuisine": "खाना पकाउने", "bgThemeSunset": "सूर्यास्त", "bgThemeBeach": "समुद्र तट", "bgThemeWinter": "जाडो", "bgThemeGarage": "ग्यारेज", "bgThemeAnime": "एनिमे", "bgThemeCyber": "साइबर सुरक्षा", "bgThemeSchool": "कक्षा कोठा"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["ne"], {"livingMemTitle": "जीवित मेमोरी", "livingMemIntro": "तपाईंका कुराकानीबाट एजेन्टले तपाईंको बारेमा हालसालै सिकेका कुरा। हरेक जवाफमा यसले तपाईंको प्रश्नसँग सम्बन्धित कुरा मात्र प्रयोग गर्छ। कुनै तथ्य बिर्साउन त्यसलाई मेटाउनुहोस्।", "livingMemEmpty": "एजेन्टले अहिलेसम्म तपाईंको बारेमा केही सिकेको छैन।", "livingMemDelete": "मेटाउनुहोस्", "livingMemLoadError": "जीवित मेमोरी अहिले लोड गर्न सकिएन।", "livingMemDeleteError": "मेटाउन सकिएन। कृपया फेरि प्रयास गर्नुहोस्।"});

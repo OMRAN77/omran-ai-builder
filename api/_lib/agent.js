@@ -12,6 +12,7 @@ const githubWrite = require('./github-write.js'); // v-agent-github-push: للم
 const delegate = require('./agent-delegate.js'); // v-agent-delegate: Claude Code في GitHub Actions — للمالك وحده
 const appErrors = require('./app-errors.js'); // v-provider-errors: أخطاء الإنتاج الحيّة — للمالك وحده
 const { ownerList } = require('./_owner.js');
+const living = require('./living-memory.js'); // v-living-memory: حقائق منظَّمة تُختار بصلتها بالسؤال — للمالك وحده
 
 const TOOLS = [
   {
@@ -470,6 +471,15 @@ module.exports = async (req, res) => {
       system += memoryPromptBlock(mem && mem.memory);
     } catch (e) { console.warn('[agent] memory read failed', e && e.message); }
   }
+  /* v-living-memory (طلب المالك ٤ أكتوبر: «ذاكرة حيّة تتعلّم من كلّ محادثة وتغيّر سلوكه»): للمالك وحده، من Redis. تُبنى لهذا الدور
+     من الحقائق ذات الصلة بسؤاله فقط (≤ ٥٠٠ توكن) وتُضاف كتلةً ثانية بعد ملفّ الذاكرة — حقل system في Anthropic واحد، فالكتلة
+     الثانية تُلحق به لا رسالة منفصلة، وتصل كلّ مزوّد (مباشر · وسيط · احتياطيّ) لأنّ الجميع يأخذ system نفسه. التعلّم بعد الردّ
+     يجري بطلب منفصل من العميل (living_learn في memory.js) كي لا يتأخّر ختام البثّ بنداء نموذج. */
+  const livingOn = isOwner(runUser);
+  if (livingOn) {
+    try { system += living.buildContext(await living.readFacts(runUser), living.lastUserText(messages)); }
+    catch (e) { console.warn('[agent] living memory read failed', e && e.message); }
+  }
 
   // v545 — المعرفة الجماعيّة (لا تُحقن لمها الصوتيّة: شخصيّتها ومعلوماتها لا تُمَسّ).
   try { system += await require('./collective.js').blockAsync(); } catch (e) { /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
@@ -479,9 +489,10 @@ module.exports = async (req, res) => {
   }
   if (isOwner(runUser)) system += OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله
 
-  const convo = messages
+  const convoAll = messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({ role: m.role, content: String(m.content || '').slice(0, 30000) }));
+  const convo = livingOn ? living.shortTerm(convoAll) : convoAll; // الذاكرة القصيرة: آخر ٥٠ رسالة كاملة، والأقدم يحمله ملخّص الحقائق
 
   // Resolve the best available Claude model on this key (mirrors claude.js
   // fallback): prefer sonnet-5, then sonnet-4, then 3.5.

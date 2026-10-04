@@ -2802,7 +2802,9 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   const agentStatus = makeChatStatus(agLog.pill);
   window.__chatStatus = agentStatus;
   let __agentStep = agentStatus.step('🤖', lang === 'ar' ? 'وكيل عمران يخطط…' : 'Omran Agent planning…');
-  const history = cur.messages.slice(-8).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: __stripCodeForHistory(m.role, m.apiText || m.content) }));
+  /* v-living-memory: الذاكرة القصيرة للمالك آخر ٥٠ رسالة كاملة (الكود مجرَّد منها)، وغيره آخر ٨ كما كان؛ الأقدم يحمله ملخّص الحقائق في الخادم. */
+  const __histN = (typeof settingsOwnerUi === 'function' && settingsOwnerUi()) ? 50 : 8;
+  const history = cur.messages.slice(-__histN).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: __stripCodeForHistory(m.role, m.apiText || m.content) }));
   /* v-agent-attach (لقطة المالك: أرفق sw.js فردّ الوكيل «ما وصلني شي أحلله»): الرسالة المحفوظة تحمل
      نصّ المستخدم وحده («مرفقات» إن كان فارغًا)، ونصّ الملفّ المرفق في apiText لهذا الدور فقط —
      فالدور الحاليّ يُرسل بـapiText كاملًا كما في المحادثة العاديّة ووضع Claude Code. */
@@ -2888,6 +2890,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   }
   if(serverErr && !full) throw new Error(serverErr);
   await __agentApplyResult(cur, full, streamBroke ? null : agLog.split()); // انقطاعٌ استُعيد من الدفتر = نصّ لا يطابق السجلّ الحيّ
+  try{ if(window.livingLearn) window.livingLearn(cur.messages); }catch(e){ __swallow(e, 'misc:living-learn'); } // v-living-memory: التعلّم بعد الردّ الناجح — طلب منفصل لا ينتظره أحد
   try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* العلامة ترفٌ */ }
 }
 // 🕯️ الدوام٢: تركيب ناتج الوكيل في المشروع (كود + رسالة + إصلاح ذاتي). كان

@@ -106,5 +106,5 @@ test('٥. الترجمة: أسماء الثلاثة عشر بالـ١٤ لغة،
   }
   assert.match(data, /bgThemeCyber: 'أمن سيبراني'/);
   assert.match(data, /bgThemeSchool: 'فصل دراسي'/);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=716'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=717'"));
 });
