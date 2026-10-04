@@ -23,6 +23,6 @@
     "ci": "npm run check && npm run guard && npm run coldstart && npm run verify && npm test",
     "smoke": "node scripts/smoke.mjs",
     "extension:zip": "node scripts/extension-zip.mjs",
-    "test": "__TEST_SCRIPT__"
+    "test": "FULL_TEST_SCRIPT_HERE"
   }
 }
