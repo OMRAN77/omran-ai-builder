@@ -41,7 +41,9 @@ async function purgeOldShares(kv, opts) {
 // v-media-autopurge (المالك ٤ أكتوبر: «لا تسأل… صلحه»): حفظ رابط مشاركة رُفض لأنّ القاعدة ممتلئة = تنظيف
 // روابط المشاركة القديمة (القاعدة نفسها التي وافق عليها المالك) مرّة كلّ ١٠ دقائق للعمليّة، ثمّ إعادة الحفظ مرّة.
 // حدّ الطلبات اليوميّ ليس امتلاءً — لا يُنظَّف له.
-const FULL_RE = /OOM|maxmemory|max(imum)? (database|data|db) size|database size limit|exceeds? .*(storage|size) limit/i;
+/* v-redis-capacity (تنبيه المالك ٤ أكتوبر ٩:٠٨): رسالة Upstash الحقيقيّة عند امتلاء السعة «ERR DB capacity quota exceeded. Threshold: 268435456 bytes»
+   لم تكن في النمط (كُتب من تخمين OOM/maxmemory) فلم يعمل التنظيف التلقائيّ قطّ. حدّ الطلبات «max requests limit exceeded» ليس امتلاءً ويبقى خارجه. */
+const FULL_RE = /OOM|maxmemory|DB capacity|capacity quota|max(imum)? (database|data|db) size|database size limit|exceeds? .*(storage|size) limit/i;
 let lastAuto = 0, running = null;
 function isStoreFull(e) { return FULL_RE.test(String((e && e.message) || e || '')); }
 async function setIfAbsentWithRoom(kv, key, value, ttlSec) {

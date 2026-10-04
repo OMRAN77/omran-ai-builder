@@ -47,6 +47,15 @@ test('٢. بالدفعات: ٤٥٠ مفتاحًا = طلبات قليلة لا �
   assert.ok(kv.calls.length <= 6, 'طلبات: ' + kv.calls.length);
 });
 
+test('٢ب. التنظيف التلقائيّ يعرف رسالة Upstash الحقيقيّة «DB capacity quota exceeded»، وحدّ الطلبات ليس امتلاءً', () => {
+  const { isStoreFull } = require('../api/_lib/media-purge.js');
+  for (const m of [
+    'Upstash error: ERR DB capacity quota exceeded. Threshold: 268435456 bytes, Usage: 274604636 bytes. See for details',
+    "Upstash error: OOM command not allowed when used memory > 'maxmemory'.",
+  ]) assert.equal(isStoreFull(new Error(m)), true, m);
+  for (const m of ['Upstash error: ERR max requests limit exceeded. Limit: 500000, Usage: 500000', 'fetch failed', 'Upstash error: HTTP 401 Unauthorized']) assert.equal(isStoreFull(new Error(m)), false, m);
+});
+
 test('٣. عمر الصور ٧ أيّام، والمسار للمالك وحده، وزرّ «تنظيف التطبيق» القائم نفسه ينظّف عند المالك (لا إضافة جديدة) — والحزمة محدَّثة', () => {
   const img = read('api/_lib/img-share.js');
   assert.ok(img.includes('const TTL_SEC = 60 * 60 * 24 * 7;') && img.includes('ttlDays: 7'));
@@ -63,5 +72,5 @@ test('٣. عمر الصور ٧ أيّام، والمسار للمالك وحده
   const b = read('js/app.bundle.js');
   assert.ok(b.includes("window.purgeOldMedia = async function(){") && b.includes("'/api/system?action=health&purge=media&token='"));
   assert.ok(b.includes("__b.textContent = '🧹 نظّف الآن';"));
-  assert.ok(read('index.html').includes('partials-settings.js?v=688'));
+  assert.ok(read('index.html').includes('partials-settings.js?v=690'));
 });

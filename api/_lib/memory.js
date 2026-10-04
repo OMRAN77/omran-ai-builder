@@ -164,7 +164,12 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     const { token, op } = body;
     const username = verifyToken(token);
-    if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
+    if (!username) {
+      // v-living-all: الذاكرة الحيّة لكلّ مسجَّل — الزائر بلا حساب 403 (لا 401: لا حساب كي يُطلب منه تجديد جلسته).
+      if (typeof op === 'string' && op.indexOf('living_') === 0) { res.status(403).json({ error: 'account_required' }); return; }
+      res.status(401).json({ error: 'auth_required' });
+      return;
+    }
 
     if (op === 'get') {
       const cur = await readMemory(username);
@@ -186,16 +191,21 @@ module.exports = async (req, res) => {
       return;
     }
 
-    /* v-living-memory: الذاكرة الحيّة (حقائق منظَّمة في Redis) — للمالك وحده. living_get يعرضها، living_del يمسح حقيقة بمعرّفها،
-       living_learn يتعلّم من آخر الرسائل بعد ردّ الوكيل (طلب منفصل من العميل فلا يؤخّر ختام البثّ). */
-    if (op === 'living_get' || op === 'living_del' || op === 'living_learn') {
-      if (!require('./_owner.js').isOwnerName(username)) { res.status(403).json({ error: 'owner_only' }); return; }
+    /* v-living-memory + v-living-all: الذاكرة الحيّة (حقائق منظَّمة في Redis) لكلّ مستخدم مسجَّل. العزل إلزاميّ: المفتاح db/living/<username>
+       يُشتقّ من اسم صاحب رمز الجلسة وحده، ولا يُقرأ أيّ حقل في الطلب يسمّي مستخدمًا — فلا مسار لقراءة حقائق غيرك أو مسحها.
+       living_get يعرضها، living_del يمسح حقيقة بمعرّفها، living_clear يمسحها كلّها، living_learn يتعلّم من آخر الرسائل بعد الردّ
+       (طلب منفصل من العميل فلا يؤخّر ختام البثّ، ويتخطّى ما لا يستحقّ نداء نموذج). */
+    if (op === 'living_get' || op === 'living_del' || op === 'living_clear' || op === 'living_learn') {
       const living = require('./living-memory.js');
-      let facts;
-      if (op === 'living_del') facts = await living.removeFact(username, String(body.id || '').slice(0, 20));
-      else if (op === 'living_learn') facts = (await living.learn(username, body.messages)).facts;
-      else facts = await living.readFacts(username);
-      res.status(200).json({ ok: true, total: facts.length, facts });
+      let out;
+      if (op === 'living_learn') {
+        const r = await living.learn(username, body.messages);
+        out = { learned: r.learned || 0, skipped: r.skipped, facts: r.facts };
+      } else {
+        out = { facts: op === 'living_del' ? await living.removeFact(username, String(body.id || '').slice(0, 20))
+          : op === 'living_clear' ? await living.clearFacts(username) : await living.readFacts(username) };
+      }
+      res.status(200).json(Object.assign({ ok: true, total: out.facts ? out.facts.length : undefined }, out));
       return;
     }
 
