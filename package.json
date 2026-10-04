@@ -1,1 +1,28 @@
-PLACEHOLDER_PKG
+{
+  "name": "omran-ai-builder",
+  "version": "1.0.0",
+  "engines": {
+    "node": "24.x"
+  },
+  "private": true,
+  "dependencies": {
+    "@vercel/blob": "^0.27.1",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
+    "web-push": "^3.6.7"
+  },
+  "scripts": {
+    "bundle": "node scripts/build.mjs",
+    "verify": "node scripts/verify-bundle.mjs",
+    "check": "for f in *.js js/*.js api/*.js api/_lib/*.js i18n/*.js; do node --check \"$f\" || exit 1; done",
+    "guard": "node scripts/guard.mjs",
+    "coldstart": "node scripts/cold-start.mjs",
+    "test:gpt-images": "node --test tests/chat-route-credentials.test.cjs tests/chat-vision-fallback.test.cjs tests/openai-terminal-stream.test.cjs tests/image-rejected-verdict.test.cjs",
+    "test:reply-toolbar": "node --test tests/reply-toolbar.test.cjs",
+    "pretest": "npm run test:gpt-images && npm run test:reply-toolbar",
+    "ci": "npm run check && npm run guard && npm run coldstart && npm run verify && npm test",
+    "smoke": "node scripts/smoke.mjs",
+    "extension:zip": "node scripts/extension-zip.mjs",
+    "test": "__TEST_SCRIPT__"
+  }
+}
