@@ -113,9 +113,9 @@ test('٦. الأداة تُعرض للمالك وحده في الوكيل وال
   const a = read('api/_lib/agent.js');
   assert.match(a, /cb\.name === 'read_app_errors'\)? \{\n\s+result = isOwner\(runUser\) \? await appErrors\.appErrorsText\(\) : '✗ قراءة أخطاء التطبيق للمالك وحده\.'/);
   const c = read('api/_lib/chat.js');
-  assert.match(c, /const OWNER_TOOLS = \[require\('\.\/app-errors\.js'\)\.TOOL\];/);
-  assert.match(c, /const toolsFor = \(owner\) => \(owner \? TOOLS\.concat\(OWNER_TOOLS\) : TOOLS\);/);
-  assert.match(c, /tools: toolTurn \? \(isClarifyTurn\(lastUserText\) \? TOOLS_NO_MEDIA : toolsFor\(__ownerReq\)\) : undefined/); // دمج مع v-img-ask: الاستيضاح بلا أدوات الصورة
+  assert.match(c, /const OWNER_TOOLS = \[require\('\.\/app-errors\.js'\)\.TOOL, /); // v-providers-like-agent: ومعها أدوات الوكيل
+  assert.match(c, /const toolsFor = \(owner, noMedia\) => \(noMedia \? TOOLS_NO_MEDIA : TOOLS\)\.concat\(owner \? OWNER_TOOLS : \[\]\);/);
+  assert.match(c, /tools: toolTurn \? toolsFor\(__ownerReq, isClarifyTurn\(lastUserText\) \|\| __analyzeDoc\) : undefined/); // v-img-ask · v-providers-like-agent
   assert.match(c, /result = __ownerReq \? await require\('\.\/app-errors\.js'\)\.appErrorsText\(\)/);
   assert.ok(!/TOOLS\.push|TOOLS\.concat\(OWNER_TOOLS\)[\s\S]*TOOLS\.concat\(OWNER_TOOLS\)/.test(c), 'الأدوات لا تُحوَّر مرّتين');
   // وصف الأداة يحمل تعليمتها: المالك يصله المزوّد خامًا بلا نظام (v-owner-raw2)

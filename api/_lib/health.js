@@ -5,14 +5,26 @@ const { kvPutJSON, kvGetJSON } = require('./kv.js');
 const { isOwner } = require('./_owner.js');
 const { envReport } = require('./env.js');
 
+/* v-redis-why (تنبيه المالك ٤ أكتوبر «قاعدة البيانات (Redis) لا تستجيب» بلا سبب): الفحص كان يبتلع الخطأ ويعيد false، فلا
+   يُعرف أهو حدّ طلبات Upstash أم رمز مرفوض أم متغيّر ناقص أم انقطاع. الآن يعيد السبب بعربيّة قصيرة ونصّ Upstash نفسه
+   (بلا الرمز ولا العنوان). */
+function redisWhy(e) {
+  const m = String((e && e.message) || e || '').replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (/missing UPSTASH_REDIS_REST/i.test(m)) return 'متغيّرا UPSTASH_REDIS_REST_URL/TOKEN ناقصان في Vercel';
+  if (/limit exceeded|max (?:daily )?requests?|quota/i.test(m)) return 'تجاوز حدّ الطلبات في باقة Upstash — ' + m;
+  if (/\b(?:401|403)\b|unauthori[sz]ed|invalid token|WRONGPASS|NOPERM/i.test(m)) return 'رمز Upstash مرفوض (تغيّر أو حُذف؟) — ' + m;
+  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|aborted|timeout|network/i.test(m)) return 'لا اتّصال بخادم Upstash — ' + m;
+  return m || 'سبب غير معروف';
+}
 async function checkRedis() {
   try {
     const key = 'db/health/check.json';
     const marker = { at: Date.now() };
     await kvPutJSON(key, marker);
     const readBack = await kvGetJSON(key);
-    return !!readBack && readBack.at === marker.at;
-  } catch (e) { return false; }
+    if (readBack && readBack.at === marker.at) return { ok: true, why: '' };
+    return { ok: false, why: 'الكتابة نجحت والقراءة لم ترجع ما كُتب (قراءة متعثّرة أو قاعدة أخرى)' };
+  } catch (e) { return { ok: false, why: redisWhy(e) }; }
 }
 
 /* v-health-split (لقطة «فحص النظام» ٢٣ سبتمبر ٢٣:٤٢: «أخطاء مسجلة من المستخدمين: 3» كلّها أسطر v-mem-probe): المسبار
@@ -79,7 +91,8 @@ module.exports = async (req, res) => {
     Resend: !!process.env.RESEND_API_KEY
   };
 
-  const [redisOk, clientLog, serverErrors] = await Promise.all([checkRedis(), readClientLog(), readServerErrors()]);
+  const [redis, clientLog, serverErrors] = await Promise.all([checkRedis(), readClientLog(), readServerErrors()]);
+  const redisOk = redis.ok;
   const clientErrors = clientLog.filter((e) => !isDiag(e)).slice(0, 10);
   const clientDiag = clientLog.filter(isDiag).slice(0, 6);
 
@@ -87,6 +100,7 @@ module.exports = async (req, res) => {
     ok: redisOk && Object.values(envKeys).every(Boolean) ? true : false,
     time: new Date().toISOString(),
     redisOk,
+    redisWhy: redis.why, // v-redis-why
     envKeys,
     env: envReport(), // فهرس الـ٥٠ متغيّرًا — حضور فقط، لا قيم
 
@@ -99,3 +113,4 @@ module.exports = async (req, res) => {
   });
 };
 module.exports.isDiag = isDiag;
+module.exports.__redis = { checkRedis, redisWhy }; // v-redis-why — للاختبار
