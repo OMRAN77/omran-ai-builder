@@ -47,7 +47,7 @@ test('٢. الرفع: الصور تُصغَّر JPEG، والـPDF الكبير 
   assert.ok(s.includes("return persistLesson(lesson).catch(function(){"), 'فشل الحفظ لا يرمي التحليل');
   assert.ok(s.includes("return listLessons().catch(function(){ return {lessons:[]}; })"));
   assert.ok(read('js/app.bundle.js').includes('async function extractPdfText(file){'), 'الدالة متاحة عالميًّا من الحزمة');
-  assert.ok(read('index.html').includes('/js/edu.js?v=667'));
+  assert.ok(read('index.html').includes('/js/edu.js?v=668'));
 });
 
 test('٣. حفظ رابط مشاركة في قاعدة ممتلئة: تنظيف القديم مرّة ثمّ إعادة الحفظ — وخطأ آخر (حدّ الطلبات) يُرمى بلا تنظيف', async () => {
@@ -82,4 +82,20 @@ test('٤. نقاط المشاركة الثلاث تمرّ بالحفظ مع ال
     assert.ok(!/await kvSetIfAbsent\(/.test(s), f + ': لا حفظ مباشر');
     assert.ok(s.includes('await setIfAbsentWithRoom(KV, '), f);
   }
+});
+
+test('٥. v-edu-ios-files: قائمة ملفّات حيّة (سفاري) تُنسخ قبل تفريغ الحقل — handleFiles يستلم الملفّ لا صفرًا', () => {
+  const src = read('js/edu.js');
+  const a = src.indexOf("document.getElementById('eduFileInput').onchange=function(){");
+  const b = src.indexOf('};', a) + 2;
+  let got = null;
+  const live = { 0: { name: 'Student_Card.pdf', type: 'application/pdf', size: 190000 }, length: 1 };
+  const input = { get files() { return live; }, set value(v) { if (v === '') { delete live[0]; live.length = 0; } } };
+  const ctx = { document: { getElementById: () => input }, window: { handleFiles: (f) => { got = f; } }, alert() {}, T: (k) => k };
+  vm.createContext(ctx);
+  vm.runInContext(src.slice(a, b), ctx);
+  input.onchange.call(input);
+  assert.equal(got && got.length, 1, 'الملفّ وصل بعد تفريغ الحقل');
+  assert.equal(got[0].name, 'Student_Card.pdf');
+  assert.ok(read('index.html').includes('/js/edu.js?v=668'));
 });
