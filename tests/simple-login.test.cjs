@@ -59,7 +59,8 @@ test('الخادم: نسيت كلمة المرور يقبل الإيميل أي�
   assert.match(src, /if \(action === 'forgotPassword'\) \{[\s\S]*?const \{ key, user \} = await resolveLoginUser\(username\);/);
   assert.match(src, /if \(action === 'login'\) \{[\s\S]*?const \{ key, user \} = await resolveLoginUser\(username\);/);
   const r = await call({ action: 'forgotPassword', username: 'ghost@example.com' });
-  assert.equal(r.code, 404);
+  assert.notEqual(r.code, 404, 'v-account-email: البريد غير المسجَّل لا يُكشف بـ«الحساب غير موجود»');
+  assert.equal((await call({ action: 'forgotPassword', username: 'ghost-name' })).code, 404, 'الاسم كما كان');
 });
 
 test('الواجهة: خانة واحدة وكلمة مرور وزرّ ورابط، ثمّ جوجل و«إنشاء حساب جديد» — بلا إيميل اختياريّ ولا زرّ الإيميل', () => {
