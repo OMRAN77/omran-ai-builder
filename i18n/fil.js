@@ -1173,7 +1173,7 @@ Object.assign(I18N["fil"], {"videoSceneWait":"⏳ Eksena {i}/{n}: paghihintay sa
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["fil"], {"acctPhoneLabel": "📱 Numero ng telepono (para sa pag-recover)", "phoneNotLinked": "Hindi naka-link", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Ipadala ang handang mensahe o i-share ang numero mo, saka bumalik dito…", "phoneLinkedOk": "✓ Naka-link na ang numero", "phoneTaken": "Naka-link ang numerong ito sa ibang account", "phoneNoUser": "Walang account na naka-link sa numerong ito", "phoneExpired": "Nag-expire ang link — subukan ulit", "phoneRecoverTitle": "O i-recover ang account mo gamit ang telepono:", "phoneRecoverSent": "✓ Nagpadala kami ng link para sa bagong password sa chat mo roon"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
-Object.assign(I18N["fil"], {"bgThemeWood": "Kahoy", "woodRecentTitle": "Mga bagong chat"});
+Object.assign(I18N["fil"], {"bgThemeWood": "Kahoy"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["fil"], {"brandSubtitle": "AI Platform"});
 Object.assign(I18N["fil"], {"bgThemeDarkwood": "Madilim na kahoy", "bgThemeMarble": "Marmol", "bgThemeCode": "Code", "bgThemeCars": "Mga kotse", "bgThemeKids": "Mga bata", "bgThemeCuisine": "Pagluluto", "bgThemeSunset": "Paglubog ng araw", "bgThemeBeach": "Dalampasigan", "bgThemeWinter": "Taglamig", "bgThemeGarage": "Garahe", "bgThemeAnime": "Anime", "bgThemeCyber": "Cybersecurity", "bgThemeSchool": "Silid-aralan"});

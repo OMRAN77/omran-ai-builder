@@ -225,7 +225,6 @@ const I18N = {
     // v-frame-design
     brandSubtitle: 'منصة الذكاء',
     bgThemeWood: 'خشبي', // v-skin-wood
-    woodRecentTitle: 'المحادثات الجديدة',
     bgThemeDarkwood: 'خشب داكن', // v-themes
     bgThemeMarble: 'رخام',
     bgThemeCode: 'برمجة',
@@ -1393,7 +1392,6 @@ const I18N = {
     // v-frame-design
     brandSubtitle: 'AI Platform',
     bgThemeWood: 'Wood', // v-skin-wood
-    woodRecentTitle: 'Recent chats',
     bgThemeDarkwood: 'Dark wood', // v-themes
     bgThemeMarble: 'Marble',
     bgThemeCode: 'Code',

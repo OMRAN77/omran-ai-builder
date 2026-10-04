@@ -1119,7 +1119,7 @@ Object.assign(I18N["ur"], {"videoSceneWait":"⏳ منظر {i}/{n}: ویڈیوز 
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["ur"], {"acctPhoneLabel": "📱 فون نمبر (بحالی کے لیے)", "phoneNotLinked": "منسلک نہیں", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "تیار پیغام بھیجیں یا اپنا نمبر شیئر کریں، پھر یہاں واپس آئیں…", "phoneLinkedOk": "✓ نمبر منسلک ہو گیا", "phoneTaken": "یہ نمبر کسی دوسرے اکاؤنٹ سے منسلک ہے", "phoneNoUser": "اس نمبر سے کوئی اکاؤنٹ منسلک نہیں", "phoneExpired": "لنک کی میعاد ختم ہو گئی — دوبارہ کوشش کریں", "phoneRecoverTitle": "یا اپنے فون سے اکاؤنٹ بحال کریں:", "phoneRecoverSent": "✓ ہم نے وہاں آپ کی چیٹ میں نئے پاس ورڈ کا لنک بھیج دیا ہے"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
-Object.assign(I18N["ur"], {"bgThemeWood": "لکڑی", "woodRecentTitle": "حالیہ چیٹس"});
+Object.assign(I18N["ur"], {"bgThemeWood": "لکڑی"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["ur"], {"brandSubtitle": "اے آئی پلیٹ فارم"});
 Object.assign(I18N["ur"], {"bgThemeDarkwood": "گہری لکڑی", "bgThemeMarble": "سنگ مرمر", "bgThemeCode": "کوڈ", "bgThemeCars": "گاڑیاں", "bgThemeKids": "بچے", "bgThemeCuisine": "کھانا پکانا", "bgThemeSunset": "غروب آفتاب", "bgThemeBeach": "ساحل", "bgThemeWinter": "سردی", "bgThemeGarage": "گیراج", "bgThemeAnime": "اینیمے", "bgThemeCyber": "سائبر سیکیورٹی", "bgThemeSchool": "کلاس روم"});

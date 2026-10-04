@@ -1122,7 +1122,7 @@ Object.assign(I18N["fr"], {"videoSceneWait":"⏳ Scène {i}/{n} : pause entre le
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["fr"], {"acctPhoneLabel": "📱 Numéro de téléphone (pour la récupération)", "phoneNotLinked": "Non lié", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envoyez le message prêt ou partagez votre numéro, puis revenez ici…", "phoneLinkedOk": "✓ Numéro lié", "phoneTaken": "Ce numéro est lié à un autre compte", "phoneNoUser": "Aucun compte n’est lié à ce numéro", "phoneExpired": "Le lien a expiré — réessayez", "phoneRecoverTitle": "Ou récupérez votre compte avec votre téléphone :", "phoneRecoverSent": "✓ Nous avons envoyé un lien de nouveau mot de passe dans votre discussion là-bas"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
-Object.assign(I18N["fr"], {"bgThemeWood": "Bois", "woodRecentTitle": "Discussions récentes"});
+Object.assign(I18N["fr"], {"bgThemeWood": "Bois"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["fr"], {"brandSubtitle": "Plateforme IA"});
 Object.assign(I18N["fr"], {"bgThemeDarkwood": "Bois sombre", "bgThemeMarble": "Marbre", "bgThemeCode": "Code", "bgThemeCars": "Voitures", "bgThemeKids": "Enfants", "bgThemeCuisine": "Cuisine", "bgThemeSunset": "Coucher de soleil", "bgThemeBeach": "Plage", "bgThemeWinter": "Hiver", "bgThemeGarage": "Garage", "bgThemeAnime": "Anime", "bgThemeCyber": "Cybersécurité", "bgThemeSchool": "Salle de classe"});

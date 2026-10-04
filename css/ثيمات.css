@@ -100,7 +100,7 @@ html.skin :is(dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown,
 html.skin dialog::backdrop{background:rgba(0,0,0,.5);}
 html.skin select option{background:var(--th-dlg); color:var(--th-ink);}
 
-/* ── زينة المحادثة: زهور ذهبيّة (الخشب الداكن والرخام)، شبكة العُقَد (برمجة)، الأحجية (أطفال)، أدوات المطبخ (طهي) ── */
+/* ── زينة المحادثة: زهور ذهبيّة (الخشب الداكن والرخام)، شبكة العُقَد (برمجة)، الأحجية (أطفال)، أدوات المطبخ (طهي)؛ وسيارة «سيارات» مع كتلته ── */
 html.skin-darkwood #chatcol::after, html.skin-marble #chatcol::after{content:""; position:absolute; z-index:0; pointer-events:none; inset-inline-end:16px; bottom:150px; width:150px; height:188px; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B2%D9%87%D9%88%D8%B1-%D8%B0%D9%87%D8%A8%D9%8A%D8%A9.svg") center/contain no-repeat; opacity:.85;}
 html.skin-marble #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; inset-inline-end:170px; bottom:150px; width:104px; height:130px; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B2%D9%87%D9%88%D8%B1-%D8%B0%D9%87%D8%A8%D9%8A%D8%A9.svg") center/contain no-repeat; opacity:.7; transform:scaleX(-1);}
 html.skin-code body.omranWelcome #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; top:9%; left:50%; transform:translateX(-50%); width:min(72%,420px); aspect-ratio:360/220; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A8%D8%B1%D9%85%D8%AC%D8%A9/%D8%B4%D8%A8%D9%83%D8%A9.svg") center/contain no-repeat; opacity:.9;}
@@ -145,7 +145,7 @@ html.skin-code{
   --th-user:#13212a; --th-user-line:rgba(240,160,80,.5); --th-ai:rgba(13,20,25,.92);
   --th-work:linear-gradient(rgba(53,194,176,.04) 1px, transparent 1px) 0 0 / 28px 28px, #0c1216;
 }
-/* سيارات: كربون للمحادثة، فضّة مصقولة للقائمة والمعاينة، ونيون سماويّ (صورة المالك) */
+/* سيارات: كربون للمحادثة، فضّة مصقولة للقائمة والمعاينة، ونيون سماويّ، والسيارة المتوهّجة في البداية (صورة المالك) */
 html.skin-cars{
   --th-page:#0e0f11; --th-layer:radial-gradient(120% 60% at 50% 0%, rgba(88,214,255,.1), transparent 60%), repeating-linear-gradient(45deg,#17181b 0 4px,#1e2024 4px 8px), #16171a;
   --th-ink:#e9edf2; --th-muted:#9aa3ad; --th-gold:#58d6ff; --th-line:rgba(205,212,220,.6); --th-line2:rgba(205,212,220,.22); --th-glow:rgba(88,214,255,.3);
@@ -159,6 +159,11 @@ html.skin-cars{
 }
 html.skin-cars #sidebar #sbSearchWrap{background:rgba(255,255,255,.62) !important; border-color:rgba(0,0,0,.18) !important;}
 html.skin-cars #sidebar #sbSearch{color:#1d2126 !important;}
+/* كما في صورة المالك (أمره: «وهذي بعد»): السيارة المتوهّجة في شاشة البداية (screen يُذيب خلفيّتها الداكنة في الكربون، والقناع
+   يُخفي حوافّ مستطيلها)، ولسان فضّيّ أعلى اللوحة الوسطى، وإطار فضّيّ حول خانة الكتابة */
+html.skin-cars body.omranWelcome #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; top:9%; left:50%; transform:translateX(-50%); width:min(90%,560px); aspect-ratio:600/352; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D8%B3%D9%8A%D8%A7%D8%B1%D8%A9.jpg") center / contain no-repeat; mix-blend-mode:screen; -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%); mask-image:radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);}
+html.skin-cars:not(.mobile-ui) #omFrameCenter::before{content:""; position:absolute; z-index:1; pointer-events:none; top:5px; left:50%; transform:translateX(-50%); width:190px; height:15px; background:linear-gradient(180deg,#f6f8fa,#b9bfc6 55%,#8d949c); clip-path:polygon(0 0, 100% 0, 91% 100%, 9% 100%);}
+html.skin-cars #composerBox{border:3px solid transparent !important; background:linear-gradient(180deg,#26292e,#1b1d21) padding-box, linear-gradient(180deg,#f4f6f8,#8e959d 50%,#d7dbe0) border-box !important;}
 html.skin-cars #sidebar #sbSearch::placeholder, html.skin-cars #sidebar #sbSearchWrap{color:#4b525a !important;}
 /* أطفال: ألوان باستيل، خانات ملوّنة بالتناوب، وأحجية في البداية (صورة المالك) */
 html.skin-kids{
@@ -283,6 +288,3 @@ html.skin-school{
   --th-ai:rgba(24,36,30,.9); --th-ai-line:rgba(255,255,255,.15);
   --th-work:rgba(29,48,39,.66);
 }
-
-/* مصغّرها في شبكة الخلفيّات (بلا ثيم مختار): الخانة ٣:٤ تُظهر اللوحة الوسطى وطرف القائمة، لا لوحة المعاينة كالخشبيّ */
-.bgImgOpt.bgImgTheme:not([data-file="ثيم:خشبي"]){background-position:70% center;}

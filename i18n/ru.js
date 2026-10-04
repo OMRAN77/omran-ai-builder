@@ -1172,7 +1172,7 @@ Object.assign(I18N["ru"], {"videoSceneWait":"⏳ Сцена {i}/{n}: пауза 
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["ru"], {"acctPhoneLabel": "📱 Номер телефона (для восстановления)", "phoneNotLinked": "Не привязан", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Отправьте готовое сообщение или поделитесь номером, затем вернитесь сюда…", "phoneLinkedOk": "✓ Номер привязан", "phoneTaken": "Этот номер привязан к другому аккаунту", "phoneNoUser": "К этому номеру не привязан ни один аккаунт", "phoneExpired": "Срок действия ссылки истёк — попробуйте снова", "phoneRecoverTitle": "Или восстановите аккаунт по телефону:", "phoneRecoverSent": "✓ Мы отправили ссылку для нового пароля в ваш чат там"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
-Object.assign(I18N["ru"], {"bgThemeWood": "Дерево", "woodRecentTitle": "Недавние чаты"});
+Object.assign(I18N["ru"], {"bgThemeWood": "Дерево"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["ru"], {"brandSubtitle": "ИИ-платформа"});
 Object.assign(I18N["ru"], {"bgThemeDarkwood": "Тёмное дерево", "bgThemeMarble": "Мрамор", "bgThemeCode": "Код", "bgThemeCars": "Автомобили", "bgThemeKids": "Детский", "bgThemeCuisine": "Кулинария", "bgThemeSunset": "Закат", "bgThemeBeach": "Пляж", "bgThemeWinter": "Зима", "bgThemeGarage": "Гараж", "bgThemeAnime": "Аниме", "bgThemeCyber": "Кибербезопасность", "bgThemeSchool": "Класс"});
