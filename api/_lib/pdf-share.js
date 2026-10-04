@@ -7,6 +7,8 @@
 // بعمر ٧ أيام (الملف يُنزَّل فورًا — لا حاجة لعمر أطول).
 const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+const KV = require('./kv.js');
+const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
 
 const MAX_B64 = 4 * 1024 * 1024; // ≈3MB ملف فعلي — تحت حدّ جسم الطلب في Vercel
 const TTL_SEC = 60 * 60 * 24 * 7;
@@ -82,18 +84,18 @@ module.exports = async (req, res) => {
     const CHUNK = 700 * 1024; /* أقل من حدّ حجم الطلب في Upstash */
     let ok;
     if (data.length <= CHUNK) {
-      ok = await kvSetIfAbsent(KEY(id), name + ':' + data, TTL_SEC);
+      ok = await setIfAbsentWithRoom(KV, KEY(id), name + ':' + data, TTL_SEC);
     } else {
       const n = Math.ceil(data.length / CHUNK);
       ok = true;
       const failed = [];
       for (let i = 0; i < n && ok; i++) {
-        const ok_i = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
+        const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
         if (!ok_i) failed.push(i);
         ok = ok && ok_i;
       }
       // إذا أي جزء فشل، لا تحفظ الفهرس (لا تترك أجزاء يتيمة)
-      if (ok) ok = await kvSetIfAbsent(KEY(id), 'chunks:' + n + ':' + name, TTL_SEC);
+      if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + name, TTL_SEC);
       if (!ok) {
         res.status(500).json({ error: 'store_failed', detail: 'فشل حفظ جزء من الملف' });
         return;

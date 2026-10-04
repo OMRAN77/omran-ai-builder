@@ -171,8 +171,81 @@ var EDU_XL = {
 function getToken(){ try{ return (typeof authGet==='function'?authGet('aiapp_auth_token'):null)||localStorage.getItem('aiapp_auth_token')||sessionStorage.getItem('aiapp_auth_token')||''; }catch(e){ return ''; } }
 function api(payload){
   payload=payload||{}; payload.token=getToken()||undefined;
-  return fetch('/api/edu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-    .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error((j&&j.error)||('HTTP '+r.status)); return j; }); });
+  /* v-edu-upload (المالك ٤ أكتوبر: «طالبة رفعت الملف بدون أي تحليل»): ردّ غير JSON (413 من Vercel فوق ~4.5 م.ب، أو صفحة خطأ)
+     كان يُرمى كخطأ تحليل غامض؛ وطلب معلّق لا ينتهي. الآن رسالة مفهومة ومهلة. */
+  var ctl=null, tm=null; try{ ctl=new AbortController(); tm=setTimeout(function(){ try{ ctl.abort(); }catch(e){ /* guard-ok */ } },290000); }catch(e){ ctl=null; }
+  return fetch('/api/edu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined})
+    .then(function(r){
+      return r.text().then(function(txt){
+        var j=null; try{ j=JSON.parse(txt); }catch(e){ j=null; }
+        if(!r.ok||!j) throw new Error((j&&j.error)||(r.status===413?T('tooBig'):T('err')));
+        return j;
+      });
+    }, function(){ throw new Error(T('err')); })
+    .finally(function(){ if(tm) clearTimeout(tm); });
+}
+/* v-edu-upload: جسم الطلب في Vercel حدّه ~4.5 م.ب — والملفّ يكبر الثلث بالترميز. صور الآيفون (HEIC/عدّة م.ب) تُصغَّر
+   وتُحوَّل JPEG في المتصفّح، والـPDF الكبير يُقرأ نصّه هنا (أو تُصوَّر صفحاته إن كان ممسوحًا) بدل إرساله كاملًا. */
+var EDU_B64_BUDGET=3200000;
+function eduShrinkImage(file,maxDim,q){
+  return new Promise(function(res){
+    try{
+      var u=URL.createObjectURL(file), im=new Image();
+      im.onload=function(){
+        try{
+          var k=Math.min(1,maxDim/Math.max(im.naturalWidth||1,im.naturalHeight||1));
+          var c=document.createElement('canvas'); c.width=Math.max(1,Math.round((im.naturalWidth||1)*k)); c.height=Math.max(1,Math.round((im.naturalHeight||1)*k));
+          var cx=c.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,c.width,c.height); cx.drawImage(im,0,0,c.width,c.height);
+          URL.revokeObjectURL(u);
+          res({base64:String(c.toDataURL('image/jpeg',q)).split(',')[1]||'',mime:'image/jpeg'});
+        }catch(e){ res(null); }
+      };
+      im.onerror=function(){ try{ URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } res(null); };
+      im.src=u;
+    }catch(e){ res(null); }
+  });
+}
+function eduImagesForUpload(files){
+  var steps=[[1600,0.82],[1200,0.72],[900,0.62]];
+  function round(i){
+    var st=steps[i];
+    return Promise.all(files.map(function(f){
+      return eduShrinkImage(f,st[0],st[1]).then(function(r){ return r||fileToBase64(f).then(function(b){ return {base64:b,mime:f.type}; }); });
+    })).then(function(arr){
+      var tot=arr.reduce(function(a,x){ return a+((x&&x.base64)||'').length; },0);
+      if(tot>EDU_B64_BUDGET&&i<steps.length-1) return round(i+1);
+      return arr;
+    });
+  }
+  return round(0);
+}
+function eduPdfPayload(file){
+  return fileToBase64(file).then(function(b64){
+    if(b64.length<=EDU_B64_BUDGET) return {fileBase64:b64,mime:'application/pdf',fileName:file.name};
+    if(typeof window.extractPdfText!=='function') throw new Error(T('tooBig'));
+    return window.extractPdfText(file).then(function(txt){
+      txt=String(txt||'').trim();
+      if(txt.replace(/\s+/g,'').length>=300) return {text:txt.slice(0,200000),fileName:file.name};
+      /* ممسوح ضوئيًّا (بلا نصّ): صفحات أولى كصور */
+      return file.arrayBuffer().then(function(buf){ return window.__pdfjs.getDocument({data:buf}).promise; }).then(function(pdf){
+        var out=[], used=0, n=Math.min(pdf.numPages,8);
+        function page(i){
+          if(i>n) return Promise.resolve();
+          return pdf.getPage(i).then(function(pg){
+            var vp0=pg.getViewport({scale:1}), sc=Math.min(2,1400/vp0.width), vp=pg.getViewport({scale:sc});
+            var c=document.createElement('canvas'); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
+            return pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise.then(function(){
+              var b=String(c.toDataURL('image/jpeg',0.7)).split(',')[1]||'';
+              if(used+b.length>EDU_B64_BUDGET) return;
+              used+=b.length; out.push({base64:b,mime:'image/jpeg'});
+              return page(i+1);
+            });
+          });
+        }
+        return page(1).then(function(){ if(!out.length) throw new Error(T('tooBig')); return {images:out,fileName:file.name}; });
+      });
+    });
+  });
 }
 /* ---------- guest local store ---------- */
 function localLessons(){ try{ return JSON.parse(localStorage.getItem(LS_GUEST)||'[]')||[]; }catch(e){ return []; } }
@@ -823,7 +896,7 @@ function processContent(payload,__act){
   showBusy();
   api(Object.assign({action:__act||'process',nativeLang:eduNativeLang(),examLang:eduExamLang()},payload)).then(function(j){
     var L=j.lesson||{};
-    return listLessons().then(function(r){
+    return listLessons().catch(function(){ return {lessons:[]}; }).then(function(r){
       var subs=[]; (r.lessons||[]).forEach(function(x){ if(subs.indexOf(x.subject||'—')<0) subs.push(x.subject||'—'); });
       var subj=L.subject||eduL('عام','General');
       var lesson={
@@ -834,7 +907,9 @@ function processContent(payload,__act){
         written:L.written||[],
         createdAt:Date.now(), bestScore:null, scores:{}, cardsKnown:0
       };
-      return persistLesson(lesson).then(function(){ showLesson(lesson,showHome); });
+      /* v-edu-upload: فشل الحفظ في السحابة (القاعدة ممتلئة) كان يرمي التحليل الجاهز ويعرض «خطأ» — يُحفظ على الجهاز ويُعرض. */
+      return persistLesson(lesson).catch(function(){ var arr=localLessons().filter(function(l){return l.id!==lesson.id;}); arr.unshift(lesson); saveLocalLessons(arr); })
+        .then(function(){ showLesson(lesson,showHome); });
     });
   }).catch(function(err){
     body.innerHTML='<div class="eduCenter"><p style="color:#f87171;font-size: var(--fs-3);line-height:1.8;">'+esc(err.message||T('err'))+'</p>'
@@ -855,7 +930,9 @@ function handleFiles(files){
   files=Array.prototype.slice.call(files||[]);
   if(!files.length) return;
   var total=files.reduce(function(a,f){return a+f.size;},0);
-  if(total>10*1024*1024){ alert(T('tooBig')); return; }
+  // v-edu-upload: الصور تُصغَّر قبل الإرسال — حدّ ١٠ م.ب للملفّات الأخرى فقط (عدّة صور آيفون كانت تُرفض قبل التصغير)
+  var allImg=files.every(function(f){ return /^image\//.test(f.type); });
+  if(!allImg&&total>10*1024*1024){ alert(T('tooBig')); return; }
   var f0=files[0];
   var name=(f0.name||'').toLowerCase();
   if(/\.docx$/.test(name)){ handleDocx(f0); return; }
@@ -863,7 +940,7 @@ function handleFiles(files){
   if(/\.(zip|jar)$/.test(name)){ handleArchive(f0); return; }
   if(/pdf/.test(f0.type)||/\.pdf$/.test(name)){
     showBusy();
-    fileToBase64(f0).then(function(b64){ processContent({fileBase64:b64,mime:'application/pdf',fileName:f0.name,lang:appLang()}); })
+    eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl); })
       .catch(function(e){ alert(e.message||T('err')); showHome(); });
     return;
   }
@@ -877,7 +954,7 @@ function handleFiles(files){
     return;
   }
   showBusy();
-  Promise.all(imgs.map(function(f){ return fileToBase64(f).then(function(b64){ return {base64:b64,mime:f.type}; }); }))
+  eduImagesForUpload(imgs)
     .then(function(arr){ processContent({images:arr,lang:appLang()}); })
     .catch(function(e){ alert(e.message||T('err')); showHome(); });
 }
