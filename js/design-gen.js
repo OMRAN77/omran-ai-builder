@@ -30,7 +30,7 @@
   }
   var LOOKS='assets/fashion/looks/';
   // صور مخصّصة للفئات (بورتريه) — لا تعيد صور بطاقات الأنماط.
-  var GENDER_FACE={women:'category/women',men:'category/men',kids':'category/kids'};
+  var GENDER_FACE={women:'category/women',men:'category/men',kids:'category/kids'};
   function genderGrid(){
     var g=document.createElement('div'); g.className='optGrid f417'; g.style.gridTemplateColumns='repeat(3,1fr)';
     GEN.forEach(function(r){
