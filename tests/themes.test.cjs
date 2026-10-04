@@ -84,6 +84,12 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
   assert.ok(!/skin-cars body\.omranWelcome/.test(CSS));
   const car = CSS.slice(CSS.indexOf('\nhtml.skin-cars #chatcol::before{')).split('}')[0];
   assert.ok(car.includes(encodeURIComponent('سيارة.jpg')) && car.includes('mix-blend-mode:screen;') && car.includes('z-index:0;'), 'السيارة خلف الفقاعات');
+  // والفقاعتان نصف شفّافتين فتُرى السيارة من خلالهما (أمره: «السيارة تختفي» — كانتا شبه معتمتين فتغطّيانها في المحادثة الطويلة)
+  const carsVars = CSS.slice(CSS.indexOf('\nhtml.skin-cars{'), CSS.indexOf('\n}', CSS.indexOf('\nhtml.skin-cars{')));
+  for (const v of ['--th-user', '--th-ai']) {
+    const m = carsVars.match(new RegExp(v + ':rgba\\(\\d+,\\d+,\\d+,(\\.\\d+)\\)'));
+    assert.ok(m && Number(m[1]) <= 0.6, 'سيارات ' + v + ' نصف شفّافة');
+  }
   const gen = rd('scripts/ثيمات.mjs');
   assert.match(gen, /function guidedFill\(/, 'المربّعات المرسومة على صور المالك تُمسح بالتعبئة الموجَّهة');
   for (const f of ['20.webp', '23.webp', '24.webp', '17.webp', '19.webp']) assert.ok(gen.includes("'" + f + "'"), 'من صور المالك: ' + f);
@@ -91,7 +97,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
 
 test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد يترك الخانات والإرسال للثيم، والمختار والزرّ يغلبان قاعدتي التطبيق', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=3');
+  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=4');
   assert.ok(a > 0 && b > a, 'يُحمَّل آخرًا فيعلو');
   const frame = rd('css/إطارات.css');
   assert.doesNotMatch(frame, /:not\(\.skin-wood\) (\.hist-item|#composerBox)/, 'قواعد الإطار للخانات والإرسال تستثني html.skin');
