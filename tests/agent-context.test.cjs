@@ -13,7 +13,6 @@ const path = require('path');
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'test-secret-for-parity';
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-const IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
 
 const res = (obj, status) => ({ ok: !status || status < 400, status: status || 200, json: async () => obj });
 function fakeNet(routes) {
@@ -118,8 +117,11 @@ test('٤. CLAUDE.md موجود ويحمل الأساسيّات', () => {
 test('٥. delegate_code_task: النموذج اختياريّ من القائمة نفسها ويُمرَّر إلى الورك فلو عند اختياره فقط', async () => {
   const D = require('../api/_lib/agent-delegate.js');
   const m = D.START_TOOL.input_schema.properties.model;
-  assert.ok(m && Array.isArray(m.enum));
-  assert.deepEqual(m.enum, IDS);
+  /* v-kimi-agent: model نصّ عاديّ بلا enum — موديلات engine=claude غير موديلات engine=kimi، والخادم يرشّح بحسب الأخ المنفّذ.
+     (كان enum بموديلات كلود وحدها قبل أن يصير للمهمّة أخوان.) */
+  assert.ok(m && m.type === 'string');
+  assert.ok(!('enum' in m), 'لا enum على model');
+  assert.deepEqual(D.START_TOOL.input_schema.properties.engine.enum, ['claude', 'kimi']);
   assert.ok(!D.START_TOOL.input_schema.required.includes('model'));
   const lookup = async () => [{ address: '140.82.112.3', family: 4 }];
   const bodies = [];
@@ -139,4 +141,11 @@ test('٥. delegate_code_task: النموذج اختياريّ من القائم�
   assert.ok(!('model' in bodies[1].inputs), 'نموذج خارج القائمة = الافتراضيّ في الورك فلو');
   await D.startTask({ task: TASK, repo: 'o/r' }, opts);
   assert.ok(!('model' in bodies[2].inputs));
+  // كلّ أخ بموديلاته: موديل Kimi يمرّ لـengine=kimi ويسقط عند كلود، وموديل كلود يسقط عند Kimi
+  await D.startTask({ task: TASK, repo: 'o/r', engine: 'kimi', model: 'kimi-k2.5' }, opts);
+  assert.equal(bodies[3].inputs.model, 'kimi-k2.5');
+  await D.startTask({ task: TASK, repo: 'o/r', engine: 'kimi', model: 'claude-opus-5' }, opts);
+  assert.ok(!('model' in bodies[4].inputs), 'موديل كلود لا يُمرَّر إلى Kimi');
+  await D.startTask({ task: TASK, repo: 'o/r', model: 'kimi-k2.5' }, opts);
+  assert.ok(!('model' in bodies[5].inputs), 'موديل Kimi لا يُمرَّر إلى Claude');
 });
