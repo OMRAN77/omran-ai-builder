@@ -1119,3 +1119,5 @@ Object.assign(I18N["ne"], {"installHowIOS":"iPhone वा iPad मा स्थ�
 Object.assign(I18N["ne"], {"videoSceneWait":"⏳ दृश्य {i}/{n}: भिडियोबीच पर्खाइ — {s} सेकेन्डमा आफैँ सुरु हुन्छ।","videoFilmModeOnly":"🎬 «पूरा फिल्म» «AI भिडियो» मोडमा मात्र चल्छ — मोड बदल्नुहोस् वा अर्को अवधि छान्नुहोस्। केही कटौती भएको छैन।"}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["ne"], {"acctPhoneLabel": "📱 फोन नम्बर (पुनःप्राप्तिका लागि)", "phoneNotLinked": "जोडिएको छैन", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "तयार सन्देश पठाउनुहोस् वा आफ्नो नम्बर साझा गर्नुहोस्, अनि यहाँ फर्कनुहोस्…", "phoneLinkedOk": "✓ नम्बर जोडियो", "phoneTaken": "यो नम्बर अर्को खातासँग जोडिएको छ", "phoneNoUser": "यो नम्बरसँग कुनै खाता जोडिएको छैन", "phoneExpired": "लिङ्कको म्याद सकियो — फेरि प्रयास गर्नुहोस्", "phoneRecoverTitle": "वा आफ्नो फोनबाट खाता फिर्ता पाउनुहोस्:", "phoneRecoverSent": "✓ त्यहाँ तपाईंको च्याटमा नयाँ पासवर्डको लिङ्क पठाइयो"});
+/* v-skin-wood: ثيم «خشبي» في الخلفيّات */
+Object.assign(I18N["ne"], {"bgThemeWood": "काठ", "woodRecentTitle": "हालका च्याटहरू"});

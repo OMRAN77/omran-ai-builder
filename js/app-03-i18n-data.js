@@ -222,6 +222,8 @@ const I18N = {
     acctPasswordRow: 'كلمة المرور',
     acctSaveBtn: 'حفظ',
     acctEmailLabel: 'الإيميل (لو نسيت اسمك أو كلمة المرور)',
+    bgThemeWood: 'خشبي', // v-skin-wood
+    woodRecentTitle: 'المحادثات الجديدة',
     // v-phone-link
     acctPhoneLabel: '📱 رقم الهاتف (للاسترجاع)',
     phoneNotLinked: 'غير مربوط',
@@ -1367,6 +1369,8 @@ const I18N = {
     acctPasswordRow: 'Password',
     acctSaveBtn: 'Save',
     acctEmailLabel: 'Email (if you forget your username or password)',
+    bgThemeWood: 'Wood', // v-skin-wood
+    woodRecentTitle: 'Recent chats',
     // v-phone-link
     acctPhoneLabel: '📱 Phone number (for recovery)',
     phoneNotLinked: 'Not linked',
