@@ -5,12 +5,18 @@
    ويطفئ الخلفيّة الثلاثيّة — خلفيّة واحدة في كلّ وقت (والعكس في applyBg3D).
    v-bg-custom-rotate: «أضف صورة من جهازك» (تُصغَّر على Canvas وتُحفظ على الجهاز aiapp_bgimg_custom بمعرّف
    custom:…) مع × لحذفها، و«تبديل تلقائيّ» كلّ ١٠ دقائق / ٣٠ دقيقة / ساعة (aiapp_bgimg_rotate بالدقائق؛
-   آخر تبديل aiapp_bgimg_rotate_at فيُكمل العدّ بعد إعادة الفتح) يمرّ على صور الجهاز ثمّ صور المجلّد بالترتيب. */
+   آخر تبديل aiapp_bgimg_rotate_at فيُكمل العدّ بعد إعادة الفتح) يمرّ على صور الجهاز ثمّ صور المجلّد بالترتيب.
+   v-skin-wood (أمر المالك ٤ أكتوبر بصورة «أعطني بالضبط مرتّبة نفس هذي في الخلفيّات، إذا اختارها يستوي نفسها»): الثيمات
+   خلفيّات تكسو الواجهة كلّها لا الشاشة وحدها — «خشبي» أوّلها (css/ثيم-خشبي.css، خاماته assets/ثيمات/خشبي/). مصغّره في
+   الشبكة بعد «صورة من جهازك»، ويُحفظ كأيّ خلفيّة ({ ملف:'ثيم:خشبي', ثيم:'wood' })، ولا يدخل التبديل التلقائيّ. ولوحة
+   المعاينة الفارغة تعرض فيه «بيت» الصورة: الشعار النحاسيّ، زرّ +، آخر خمس محادثات، وأزرار الشريط السفليّ دائريّة. */
 (function(){
   var KEY = 'aiapp_bgimg', KEY_CUSTOM = 'aiapp_bgimg_custom', KEY_ROT = 'aiapp_bgimg_rotate', KEY_ROT_AT = 'aiapp_bgimg_rotate_at';
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
   var CUSTOM = 'custom:', MAX_PX = 1600, MAX_CUSTOM = 12;
   var فهرس = null, تحميل = null, مؤقّت = null;
+  var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
+  function ثيم(اسم){ return ثيمات[اسم] || null; }
 
   function نصّ(k, d){ return typeof t === 'function' ? (t(k) || d) : d; }
   function خاصّة(){
@@ -44,6 +50,7 @@
 
   function طبّق(صورة, حفظ){
     var html = document.documentElement;
+    كسوة(صورة && صورة.ثيم ? صورة.ثيم : '');
     if(!صورة){
       html.classList.remove('bgimg', 'bgimg-dark', 'bgimg-light');
       var el = document.getElementById('bgImgLayer'); if(el) el.style.backgroundImage = '';
@@ -52,15 +59,15 @@
       علّم(null);
       return;
     }
-    var src = رابط(صورة.ملف);
-    if(!src){ طبّق(null); return; } // صورة جهاز حُذفت
-    طبقة().style.backgroundImage = 'url("' + src + '")';
+    var src = صورة.ثيم ? '' : رابط(صورة.ملف);
+    if(!src && !صورة.ثيم){ طبّق(null); return; } // صورة جهاز حُذفت
+    طبقة().style.backgroundImage = src ? 'url("' + src + '")' : ''; // الثيم: خامة الطبقة من CSS الثيم
     html.style.setProperty('--bgimg-tint', صورة.لون || '#000');
     html.classList.add('bgimg');
     html.classList.toggle('bgimg-light', !!صورة.فاتحة);
     html.classList.toggle('bgimg-dark', !صورة.فاتحة);
     if(حفظ !== false){
-      try{ localStorage.setItem(KEY, JSON.stringify({ ملف: صورة.ملف, لون: صورة.لون, فاتحة: !!صورة.فاتحة })); }
+      try{ localStorage.setItem(KEY, JSON.stringify(صورة.ثيم ? { ملف: صورة.ملف, ثيم: صورة.ثيم, لون: صورة.لون, فاتحة: !!صورة.فاتحة } : { ملف: صورة.ملف, لون: صورة.لون, فاتحة: !!صورة.فاتحة })); }
       catch(e){ __swallow(e, 'bgimg:save'); }
     }
     try{
@@ -70,6 +77,59 @@
       }
     }catch(e){ __swallow(e, 'bgimg:3d-off'); }
     علّم(صورة.ملف);
+  }
+
+  // ── الثيمات (v-skin-wood) ──
+  var مراقب = null;
+  function كسوة(اسم){
+    var html = document.documentElement;
+    Object.keys(ثيمات).forEach(function(k){ var c = 'skin-' + ثيمات[k].ثيم; if(c !== 'skin-' + اسم) html.classList.remove(c); });
+    if(اسم) html.classList.add('skin-' + اسم);
+    if(اسم === 'wood'){
+      بيت();
+      var h = document.getElementById('history');
+      if(h && !مراقب && typeof MutationObserver === 'function'){ مراقب = new MutationObserver(function(){ بيت(); }); مراقب.observe(h, { childList: true, subtree: true, characterData: true }); }
+    } else if(مراقب){ مراقب.disconnect(); مراقب = null; }
+  }
+  function بيت(){
+    var box = document.getElementById('emptyState'); if(!box) return;
+    var home = box.querySelector('.woodHome');
+    if(!home){
+      home = document.createElement('div');
+      home.className = 'woodHome';
+      home.innerHTML = '<div class="woodLogo"><b>OM</b><i>AI</i></div>'
+        + '<button type="button" class="woodPlus" aria-label="+">+</button>'
+        + '<div class="woodHomeTitle"></div><div class="woodHomeList"></div><div class="woodHomeBtns"></div>';
+      home.querySelector('.woodPlus').onclick = function(){ var b = document.getElementById('omranNewChatBtn'); if(b) b.click(); };
+      box.appendChild(home);
+    }
+    home.querySelector('.woodHomeTitle').textContent = نصّ('woodRecentTitle', 'المحادثات الجديدة');
+    var newBtn = document.getElementById('omranNewChatBtn');
+    if(newBtn) home.querySelector('.woodPlus').title = newBtn.textContent.trim();
+    // آخر خمس محادثات كما في القائمة الجانبيّة (ترتيبها نفسه)، والنقر يفتحها بمنطق القائمة نفسه
+    var list = home.querySelector('.woodHomeList'); list.innerHTML = '';
+    var rows = document.querySelectorAll('#history .hist-item');
+    for(var i = 0; i < rows.length && i < 5; i++){
+      (function(row){
+        var title = row.querySelector('.hist-title'); if(!title) return;
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'woodHomeItem';
+        var sp = document.createElement('span'); sp.textContent = title.textContent; b.appendChild(sp);
+        var ic = document.createElement('em'); var th = row.querySelector('.hist-thumb svg'); ic.innerHTML = th ? th.outerHTML : '📄'; b.appendChild(ic);
+        b.onclick = function(){ title.click(); };
+        list.appendChild(b);
+      })(rows[i]);
+    }
+    // أزرار الشريط السفليّ الظاهرة نفسها، دائريّة نحاسيّة بأسمائها
+    var btns = home.querySelector('.woodHomeBtns'); btns.innerHTML = '';
+    document.querySelectorAll('#omranSidebarFoot .omNavBtn, #omranSidebarFoot .omModeNav').forEach(function(src){
+      if(src.offsetParent === null) return;
+      var label = (src.textContent || '').trim(); if(!label) return;
+      var r = document.createElement('button'); r.type = 'button'; r.className = 'woodRound';
+      var circle = document.createElement('span'); var svg = src.querySelector('svg'); circle.innerHTML = svg ? svg.outerHTML : ''; r.appendChild(circle);
+      r.appendChild(document.createTextNode(label));
+      r.onclick = function(){ src.click(); setTimeout(بيت, 60); }; // «الوضع الفاتح» يبدّل اسمه بعد النقر
+      btns.appendChild(r);
+    });
   }
 
   function حمّل(){
@@ -187,6 +247,17 @@
     add.textContent = '+ ' + نصّ('bgImgAdd', 'صورة من جهازك');
     add.onclick = اختر;
     g.appendChild(add);
+    Object.keys(ثيمات).forEach(function(اسم){
+      var ث = ثيمات[اسم], b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bgImgOpt bgImgTheme' + (cur && cur.ملف === ث.ملف ? ' active' : '');
+      b.dataset.file = ث.ملف;
+      b.title = نصّ('bgThemeWood', 'خشبي');
+      b.setAttribute('aria-label', b.title);
+      b.style.backgroundImage = 'url("' + ث.مصغّر + '")';
+      b.onclick = function(){ طبّق(ث); };
+      g.appendChild(b);
+    });
     كلّها().forEach(function(ص){
       var b = document.createElement('button');
       b.type = 'button';
@@ -226,6 +297,6 @@
     جدول();
   }
 
-  window.خلفيات = { افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي };
+  window.خلفيات = { افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي, ثيم: ثيم, بيت: بيت };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', استرجع); else استرجع();
 })();

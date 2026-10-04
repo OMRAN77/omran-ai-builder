@@ -66,7 +66,7 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=3">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
   assert.match(html, /partials-settings\.js\?v=686/, 'وسم الإعدادات ارتفع');
-  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=713'/, 'وسم اللغات ارتفع');
+  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=714'/, 'وسم اللغات ارتفع');
   for (const old of ['js/app-25-خلفيات-مدير.js', 'js/partials-خلفيات-قسم.js']) assert.ok(!fs.existsSync(path.join(root, old)), old + ' يجب أن يُحذف');
 
   const settings = rd('js/partials-settings.js');
@@ -87,7 +87,7 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   assert.match(app05, /bgImgSection: `<svg [^`]*<rect x="3" y="3" width="18" height="18" rx="2" ry="2"><\/rect><circle cx="8\.5" cy="8\.5" r="1\.5"><\/circle><polyline points="21 15 16 10 5 21"><\/polyline><\/svg>`/, 'أيقونة SVG رسميّة (صورة) لا إيموجي');
   assert.match(app05, /if\(sid === 'bgImgSection' && window\.خلفيات\) window\.خلفيات\.افتح\(\);/, 'فتح الصفحة من القائمة يبني الشبكة');
 
-  assert.match(rd('js/app.bundle.js'), /window\.خلفيات = \{ افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي \};/, 'الجزء داخل الحزمة');
+  assert.match(rd('js/app.bundle.js'), /window\.خلفيات = \{ افتح: افتح, طبّق: طبّق, استرجع: استرجع, أضف: أضف, احذف: احذف, دوّر: دوّر, التالي: التالي, ثيم: ثيم, بيت: بيت \};/, 'الجزء داخل الحزمة (+ ثيم وبيت: v-skin-wood)');
   const ui = rd('js/app-05-ui.js');
   const at = ui.indexOf('async function applyBg3D(');
   assert.ok(at > 0 && ui.slice(at, at + 900).includes("window.خلفيات.طبّق(null)"), 'اختيار ثلاثيّة يزيل صورة الشاشة');
@@ -125,6 +125,7 @@ function makeEnv({ storage = {}, list, fetchFails = false, now = 1_000_000 } = {
         toggle: (c, f) => { if (f === undefined) f = !set.has(c); if (f) set.add(c); else set.delete(c); return f; },
         contains: (c) => set.has(c),
       },
+      setAttribute(k, v) { this['@' + k] = String(v); }, // v-skin-wood: aria-label لمصغّر الثيم
       appendChild(c) { this.children.push(c); if (c.id) els[c.id] = c; return c; },
       insertBefore(c) { this.children.unshift(c); if (c.id) els[c.id] = c; return c; },
       querySelectorAll(sel) { return this.children.filter((c) => c.classList.contains(sel.replace('.', ''))); },
@@ -173,8 +174,10 @@ test('٥. الشبكة: «بلا خلفيّة» ثمّ مصغّر لكلّ صو�
   const { ctx, html, body, grid, store, calls } = makeEnv({ list: LIST });
   assert.ok(!html.classList.contains('bgimg'), 'لا خلفيّة قبل الاختيار');
   await ctx.window.خلفيات.افتح();
-  assert.equal(grid.children.length, 4, 'بلا خلفيّة + صورة من جهازك + صورتان');
-  const [none, add, b1] = grid.children;
+  // v-skin-wood: مصغّر ثيم «خشبي» بعد «صورة من جهازك» — فتنزاح الصور خانة
+  assert.equal(grid.children.length, 5, 'بلا خلفيّة + صورة من جهازك + ثيم خشبي + صورتان');
+  const [none, add, wood, b1] = grid.children;
+  assert.ok(wood.classList.contains('bgImgTheme') && wood.dataset.file === 'ثيم:خشبي', 'مصغّر الثيم');
   assert.equal(none.textContent, 'بلا خلفيّة (مترجَم)');
   assert.ok(none.classList.contains('active'), '«بلا خلفيّة» مختارة افتراضيًّا');
   assert.ok(add.classList.contains('bgImgAdd') && !add.classList.contains('active') && add.dataset.file === undefined, 'زرّ الإضافة لا يُعلَّم');
@@ -192,26 +195,26 @@ test('٥. الشبكة: «بلا خلفيّة» ثمّ مصغّر لكلّ صو�
   assert.deepEqual(calls.applyBg3D, [], 'لا نداء للثلاثيّة وهي مطفأة أصلًا');
   assert.deepEqual(calls.swallow, []);
 
-  grid.children[3].onclick();
+  grid.children[4].onclick();
   assert.ok(html.classList.contains('bgimg-light') && !html.classList.contains('bgimg-dark'), 'صورة فاتحة → كتابة داكنة');
   assert.ok(!add.classList.contains('active'), 'زرّ الإضافة لا يُعلَّم بعد الاختيار');
 
   await ctx.window.خلفيات.افتح();
-  assert.equal(grid.children.length, 4, 'فتح ثانٍ لا يكرّر البناء');
+  assert.equal(grid.children.length, 5, 'فتح ثانٍ لا يكرّر البناء');
   assert.equal(calls.fetch, 1, 'الفهرس يُجلب مرّة واحدة');
 });
 
 test('٦. خلفيّة واحدة: اختيار صورة يطفئ الثلاثيّة ويعيد بناء منتقيها؛ و«بلا خلفيّة» تزيل كلّ شيء', async () => {
   const { ctx, html, body, grid, store, calls } = makeEnv({ list: LIST, storage: { aiapp_bg3d: 'galaxy' } });
   await ctx.window.خلفيات.افتح();
-  grid.children[2].onclick();
+  grid.children[3].onclick(); // أوّل صورة (بعد مصغّر الثيم)
   assert.deepEqual(calls.applyBg3D, ['none']);
   assert.equal(calls.buildBg3DPicker, 1);
   grid.children[0].onclick();
   assert.ok(!html.classList.contains('bgimg') && !html.classList.contains('bgimg-dark'));
   assert.equal(body.children[0].style.backgroundImage, '');
   assert.equal(store.has('aiapp_bgimg'), false);
-  assert.ok(grid.children[0].classList.contains('active') && !grid.children[2].classList.contains('active'));
+  assert.ok(grid.children[0].classList.contains('active') && !grid.children[3].classList.contains('active'));
 });
 
 test('٧. الاسترجاع عند الإقلاع من المحفوظ بلا جلب الفهرس، وفشل الجلب لا يكسر الإعدادات', async () => {
@@ -237,8 +240,8 @@ test('٨. صورة من الجهاز: تُحفظ على الجهاز بمعرّ�
   await ctx.window.خلفيات.افتح();
   assert.equal(ctx.window.خلفيات.أضف(PIC), true);
   assert.deepEqual(JSON.parse(store.get('aiapp_bgimg_custom')), [PIC]);
-  assert.equal(grid.children.length, 5, 'أُعيد بناء الشبكة بصورة الجهاز');
-  const c = grid.children[2];
+  assert.equal(grid.children.length, 6, 'أُعيد بناء الشبكة بصورة الجهاز');
+  const c = grid.children[3]; // بعد بلا خلفيّة وصورة من جهازك والثيم
   assert.ok(c.classList.contains('bgImgCustom') && c.classList.contains('active') && c.dataset.file === 'custom:1700');
   assert.ok(c.style.backgroundImage.includes(PIC.data), 'مصغّر صورة الجهاز من بياناتها');
   assert.equal(c.children[0].className, 'bgImgDel');
@@ -255,7 +258,7 @@ test('٨. صورة من الجهاز: تُحفظ على الجهاز بمعرّ�
   c.children[0].onclick({ stopPropagation() { stopped++; } });
   assert.equal(stopped, 1);
   assert.deepEqual(JSON.parse(store.get('aiapp_bgimg_custom')), []);
-  assert.equal(grid.children.length, 4);
+  assert.equal(grid.children.length, 5);
   assert.ok(!html.classList.contains('bgimg') && !store.has('aiapp_bgimg'), 'حذف الحاليّة = بلا خلفيّة');
 
   // امتلاء التخزين: تنبيه مترجَم ولا تطبيق
@@ -303,7 +306,7 @@ test('٩. التبديل التلقائيّ: المدّة تُحفظ وتُعل�
   assert.equal(JSON.parse(store.get('aiapp_bgimg')).ملف, 'custom:1700', 'ثمّ صورة الجهاز أوّل الدورة');
 
   // اختيار يدويّ لا يطفئ التبديل؛ «بلا خلفيّة» تطفئه
-  grid.children[3].onclick();
+  grid.children[4].onclick(); // 01 (بعد الثيم وصورة الجهاز)
   assert.equal(store.get('aiapp_bgimg_rotate'), '10');
   grid.children[0].onclick();
   assert.equal(store.has('aiapp_bgimg_rotate'), false);
@@ -322,4 +325,38 @@ test('٩. التبديل التلقائيّ: المدّة تُحفظ وتُعل�
   // فتح الإعدادات بعدها يعلّم «ساعة»
   await b.ctx.window.خلفيات.افتح();
   assert.ok(b.rot.children[3].classList.contains('active'));
+});
+
+// v-skin-wood (أمر المالك ٤ أكتوبر بصورة: «أعطني بالضبط مرتّبة نفس هذي في الخلفيّات، إذا اختارها يستوي نفسها»)
+test('١٠. ثيم «خشبي»: مصغّره في الشبكة، واختياره يكسو الواجهة (skin-wood فاتح) ويُحفظ ويُسترجع، وغيره يزيله', async () => {
+  const { ctx, html, body, grid, store, calls } = makeEnv({ list: LIST });
+  await ctx.window.خلفيات.افتح();
+  const wood = grid.children[2];
+  assert.equal(wood.title, 'bgThemeWood', 'الاسم من الترجمة');
+  assert.ok(wood.style.backgroundImage.includes('/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg')), 'مصغّره لقطة الثيم');
+  wood.onclick();
+  assert.ok(html.classList.contains('skin-wood') && html.classList.contains('bgimg') && html.classList.contains('bgimg-light') && !html.classList.contains('bgimg-dark'));
+  assert.equal(body.children[0].style.backgroundImage, '', 'خامة الطبقة من CSS الثيم لا صورة');
+  assert.deepEqual(JSON.parse(store.get('aiapp_bgimg')), { ملف: 'ثيم:خشبي', ثيم: 'wood', لون: '#ece3d3', فاتحة: true });
+  assert.ok(wood.classList.contains('active'));
+  // صورة عاديّة بعده تزيل الكسوة، و«بلا خلفيّة» كذلك
+  grid.children[3].onclick();
+  assert.ok(!html.classList.contains('skin-wood') && html.classList.contains('bgimg-dark'));
+  wood.onclick(); grid.children[0].onclick();
+  assert.ok(!html.classList.contains('skin-wood') && !html.classList.contains('bgimg'));
+  assert.deepEqual(calls.swallow, []);
+  // الاسترجاع عند الإقلاع بلا جلب الفهرس
+  const b = makeEnv({ list: LIST, storage: { aiapp_bgimg: JSON.stringify({ ملف: 'ثيم:خشبي', ثيم: 'wood', لون: '#ece3d3', فاتحة: true }) } });
+  assert.ok(b.html.classList.contains('skin-wood') && b.html.classList.contains('bgimg-light'));
+  assert.equal(b.calls.fetch, 0);
+});
+
+test('١١. التبديل التلقائيّ لا يمرّ على الثيم: يدور على الصور وحدها ولو بدأ من الثيم', async () => {
+  const { ctx, grid, rot, store, clock, tick } = makeEnv({ list: LIST });
+  await ctx.window.خلفيات.افتح();
+  grid.children[2].onclick(); // الثيم
+  rot.children[1].onclick(); await tick(); // ١٠ دقائق
+  const seen = [];
+  for (let i = 0; i < 4; i++) { clock.tick(10 * 60000); await tick(); seen.push(JSON.parse(store.get('aiapp_bgimg')).ملف); }
+  assert.ok(seen.every((f) => !f.startsWith('ثيم:')), seen.join(','));
 });
