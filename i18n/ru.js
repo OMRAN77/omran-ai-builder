@@ -1174,4 +1174,5 @@ Object.assign(I18N["ru"], {"acctPhoneLabel": "📱 Номер телефона (
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["ru"], {"bgThemeWood": "Дерево", "woodRecentTitle": "Недавние чаты"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
-Object.assign(I18N["ru"], {"brandSubtitle": "ИИ-платформа", "frameHomeTitle1": "Здесь начинаются", "frameHomeTitle2": "ваши великие идеи", "frameHomeSub": "Ваш умный помощник всегда рядом"});
+Object.assign(I18N["ru"], {"brandSubtitle": "ИИ-платформа"});
+Object.assign(I18N["ru"], {"bgThemeDarkwood": "Тёмное дерево", "bgThemeMarble": "Мрамор", "bgThemeCode": "Код", "bgThemeCars": "Автомобили", "bgThemeKids": "Детский", "bgThemeCuisine": "Кулинария", "bgThemeSunset": "Закат", "bgThemeBeach": "Пляж", "bgThemeWinter": "Зима", "bgThemeGarage": "Гараж", "bgThemeAnime": "Аниме", "bgThemeCyber": "Кибербезопасность", "bgThemeSchool": "Класс"});

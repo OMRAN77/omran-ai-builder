@@ -13,18 +13,18 @@ const rd = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const CSS = rd('css/إطارات.css');
 const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'];
 
-test('١. للكمبيوتر وحده: كلّ قاعدة داخل min-width:861px وفيها :not(.mobile-ui) أو صنف «البيت» — الجوّال لا يتغيّر', () => {
+test('١. للكمبيوتر وحده: كلّ قاعدة داخل min-width:861px وفيها :not(.mobile-ui) — الجوّال لا يتغيّر', () => {
   const css = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
   const at = css.indexOf('@media (min-width:861px){');
   assert.ok(at > 0, 'كتلة الكمبيوتر');
   const before = css.slice(0, at), inside = css.slice(at);
-  assert.equal(before.trim(), '.frameHome, #sbSearchWrap, #sidebarBrandSub, #omFrameCenter{display:none;}', 'خارج الكتلة: الإخفاء وحده');
+  assert.equal(before.trim(), '#sbSearchWrap, #sidebarBrandSub, #omFrameCenter{display:none;}', 'خارج الكتلة: الإخفاء وحده');
   const sels = [...inside.slice(inside.indexOf('{') + 1).matchAll(/([^{}]+)\{[^{}]*\}/g)].map((m) => m[1].trim()).filter(Boolean);
   assert.ok(sels.length > 40);
   // الفصل على الفواصل العليا وحدها — فواصل :is(…) جزء من المحدِّد نفسه
   const top = (list) => { const out = []; let d = 0, cur = ''; for (const ch of list) { if (ch === '(') d++; if (ch === ')') d--; if (ch === ',' && !d) { out.push(cur.trim()); cur = ''; } else cur += ch; } out.push(cur.trim()); return out; };
   for (const list of sels) for (const sel of top(list)) {
-    assert.ok(/:not\(\.mobile-ui\)/.test(sel) || /^\.frame[A-Z]/.test(sel), 'قاعدة قد تمسّ الجوّال: ' + sel);
+    assert.ok(/:not\(\.mobile-ui\)/.test(sel), 'قاعدة قد تمسّ الجوّال: ' + sel);
   }
 });
 
@@ -45,13 +45,16 @@ test('٢. المقاسات والألوان المقيسة من صورتيه: ١
   assert.match(CSS, /html:not\(\[data-mode="light"\]\):not\(\.mobile-ui\):not\(\.bgimg\) #workarea\{[^}]*#101013/);
 });
 
-test('٣. الربط: CSS قبل الثيم الخشبيّ، إطار اللوحة الوسطى أوّل <main>، «البيت» في اللوحة الفارغة، وخانة البحث', () => {
+test('٣. الربط: CSS قبل الثيم الخشبيّ، إطار اللوحة الوسطى أوّل <main>، اللوحة الفارغة بلا «بيت»، وخانة البحث', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/إطارات.css?v=1'), c = html.indexOf('css/ثيم-خشبي.css?v=2');
+  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/إطارات.css?v=3'), c = html.indexOf('css/ثيم-خشبي.css?v=2');
   assert.ok(a > 0 && b > a && c > b, 'الترتيب: خلفيات ← إطارات ← الخشبيّ');
   assert.match(html, /<main>\n  <div id="omFrameCenter" aria-hidden="true"><\/div>/);
   const empty = html.slice(html.indexOf('<div class="empty" id="emptyState">'), html.indexOf('<iframe id="previewFrame"'));
-  assert.match(empty, /class="frameHome"[\s\S]*class="frameArch"[\s\S]*data-i18n="frameHomeTitle1">هنا تبدأ[\s\S]*data-i18n="frameHomeTitle2">أفكارك العظيمة[\s\S]*data-i18n="frameHomeSub">مساعدك الذكي دائماً معك/);
+  // أمر المالك بعد الثيمات: «شيل هنا تبدأ الأفكار… كاملة مع الصورة والأيقونة» — القوس والهلال والعنوان والسطر تحته خارج الصفحة
+  assert.doesNotMatch(empty, /frameHome|frameArch|frameDivider|frameSub/);
+  const live = html.replace(/<!--[\s\S]*?-->/g, '') + CSS.replace(/\/\*[\s\S]*?\*\//g, ''); // التعليقات تحكي القرار
+  assert.doesNotMatch(live, /frameHome|frameArch|frameTitle|frameDivider|frameSub|هنا تبدأ|مساعدك الذكي دائماً معك/);
   assert.match(html, /<div id="sidebarBrandSub" data-i18n="brandSubtitle">منصة الذكاء<\/div>/);
   assert.match(html, /<div id="sbSearchWrap">[\s\S]*?<input type="search" id="sbSearch"[^>]*data-i18n-placeholder="projSearchLabel"/);
 });
@@ -107,11 +110,13 @@ test('٥. صورة المستخدم بجانب رسائله: صورته من «�
   assert.match(CSS, /html\.has-user-av:not\(\.mobile-ui\) #messages \.msg\.user::before\{\s*content:var\(--user-initial, ""\);[\s\S]*background:var\(--user-av, linear-gradient/);
 });
 
-test('٦. النصوص الأربعة بالـ١٤ لغة، ووسم اللغات مرفوع', () => {
+test('٦. «منصّة الذكاء» بالـ١٤ لغة، ونصوص «البيت» المحذوف في أيّ منها، ووسم اللغات مرفوع', () => {
   const data = rd('js/app-03-i18n-data.js');
-  for (const k of ['brandSubtitle', 'frameHomeTitle1', 'frameHomeTitle2', 'frameHomeSub']) {
+  for (const k of ['brandSubtitle']) {
     assert.equal((data.match(new RegExp('^    ' + k + ': ', 'gm')) || []).length, 2, 'ar+en: ' + k);
     for (const lg of LANGS) assert.ok(rd('i18n/' + lg + '.js').includes('"' + k + '":'), lg + ': ' + k);
   }
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=715'"));
+  assert.doesNotMatch(data, /frameHome/);
+  for (const lg of LANGS) assert.doesNotMatch(rd('i18n/' + lg + '.js'), /frameHome/, lg);
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=716'"));
 });

@@ -3541,11 +3541,21 @@ const I18N = {
     acctEmailLabel: 'الإيميل (لو نسيت اسمك أو كلمة المرور)',
     // v-frame-design
     brandSubtitle: 'منصة الذكاء',
-    frameHomeTitle1: 'هنا تبدأ',
-    frameHomeTitle2: 'أفكارك العظيمة',
-    frameHomeSub: 'مساعدك الذكي دائماً معك',
     bgThemeWood: 'خشبي', // v-skin-wood
     woodRecentTitle: 'المحادثات الجديدة',
+    bgThemeDarkwood: 'خشب داكن', // v-themes
+    bgThemeMarble: 'رخام',
+    bgThemeCode: 'برمجة',
+    bgThemeCars: 'سيارات',
+    bgThemeKids: 'أطفال',
+    bgThemeCuisine: 'طهي',
+    bgThemeSunset: 'غروب',
+    bgThemeBeach: 'شاطئ',
+    bgThemeWinter: 'شتاء',
+    bgThemeGarage: 'كراج',
+    bgThemeAnime: 'أنمي',
+    bgThemeCyber: 'أمن سيبراني',
+    bgThemeSchool: 'فصل دراسي',
     // v-phone-link
     acctPhoneLabel: '📱 رقم الهاتف (للاسترجاع)',
     phoneNotLinked: 'غير مربوط',
@@ -4693,11 +4703,21 @@ const I18N = {
     acctEmailLabel: 'Email (if you forget your username or password)',
     // v-frame-design
     brandSubtitle: 'AI Platform',
-    frameHomeTitle1: 'Your great ideas',
-    frameHomeTitle2: 'start here',
-    frameHomeSub: 'Your smart assistant, always with you',
     bgThemeWood: 'Wood', // v-skin-wood
     woodRecentTitle: 'Recent chats',
+    bgThemeDarkwood: 'Dark wood', // v-themes
+    bgThemeMarble: 'Marble',
+    bgThemeCode: 'Code',
+    bgThemeCars: 'Cars',
+    bgThemeKids: 'Kids',
+    bgThemeCuisine: 'Cooking',
+    bgThemeSunset: 'Sunset',
+    bgThemeBeach: 'Beach',
+    bgThemeWinter: 'Winter',
+    bgThemeGarage: 'Garage',
+    bgThemeAnime: 'Anime',
+    bgThemeCyber: 'Cybersecurity',
+    bgThemeSchool: 'Classroom',
     // v-phone-link
     acctPhoneLabel: '📱 Phone number (for recovery)',
     phoneNotLinked: 'Not linked',
@@ -5550,7 +5570,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=715'; /* v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=716'; /* v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -39737,7 +39757,21 @@ if(document.readyState === 'loading'){
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
   var CUSTOM = 'custom:', MAX_PX = 1600, MAX_CUSTOM = 12;
   var فهرس = null, تحميل = null, مؤقّت = null;
-  var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
+  var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', عنوان: 'bgThemeWood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
+  /* v-themes (أمر المالك ٤ أكتوبر: «كمّل الثيمات الباقية» — نفس فكرة الخشبيّ على التصميم الجديد): ثلاثة عشر ثيمًا تكسوها
+     css/ثيمات.css بمتغيّرات --th-* تحت html.skin + skin-<معرّف>؛ ثيمات المشهد (صور المالك: الغروب والشاطئ والشتاء، وشاشات
+     الترحيب الأربع بلا كتابتها) تضيف skin-scene: الصورة خلف الشاشة واللوحتان الجانبيّتان زجاج ملوّن فوقها. خاماتها
+     assets/ثيمات/<المجلّد>/ يولّدها scripts/ثيمات.mjs. [المجلّد، المعرّف، مفتاح الاسم، اللون، فاتحة؟، مشهد؟] */
+  [['خشب-داكن', 'darkwood', 'bgThemeDarkwood', '#2a1c12', false], ['رخام', 'marble', 'bgThemeMarble', '#111112', false],
+   ['برمجة', 'code', 'bgThemeCode', '#0f161b', false], ['مركبات', 'cars', 'bgThemeCars', '#17181b', false],
+   ['أطفال', 'kids', 'bgThemeKids', '#efe9fb', true], ['طهي', 'cuisine', 'bgThemeCuisine', '#f7f1ee', true],
+   ['غروب', 'sunset', 'bgThemeSunset', '#7a4a5a', false, true], ['شاطئ', 'beach', 'bgThemeBeach', '#8fd0e0', true, true],
+   ['شتاء', 'winter', 'bgThemeWinter', '#d5dce4', true, true], ['كراج', 'garage', 'bgThemeGarage', '#141416', false, true],
+   ['أنمي', 'anime', 'bgThemeAnime', '#1d1430', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', '#06121f', false, true],
+   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true]].forEach(function(a){
+    ثيمات[a[0]] = { ملف: 'ثيم:' + a[0], ثيم: a[1], عنوان: a[2], لون: a[3], فاتحة: a[4], مشهد: !!a[5],
+      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' };
+  });
   function ثيم(اسم){ return ثيمات[اسم] || null; }
 
   function نصّ(k, d){ return typeof t === 'function' ? (t(k) || d) : d; }
@@ -39805,8 +39839,12 @@ if(document.readyState === 'loading'){
   var مراقب = null;
   function كسوة(اسم){
     var html = document.documentElement;
-    Object.keys(ثيمات).forEach(function(k){ var c = 'skin-' + ثيمات[k].ثيم; if(c !== 'skin-' + اسم) html.classList.remove(c); });
+    var مدخل = null;
+    Object.keys(ثيمات).forEach(function(k){ var c = 'skin-' + ثيمات[k].ثيم; if(c !== 'skin-' + اسم) html.classList.remove(c); else مدخل = ثيمات[k]; });
     if(اسم) html.classList.add('skin-' + اسم);
+    // الخشبيّ بملفّه (css/ثيم-خشبي.css)؛ الباقي بالمتغيّرات العامّة، والمشهد يُعرف من السجلّ لا من المحفوظ
+    html.classList.toggle('skin', !!مدخل && اسم !== 'wood');
+    html.classList.toggle('skin-scene', !!(مدخل && مدخل.مشهد));
     if(اسم === 'wood'){
       بيت();
       var h = document.getElementById('history');
@@ -39974,7 +40012,7 @@ if(document.readyState === 'loading'){
       b.type = 'button';
       b.className = 'bgImgOpt bgImgTheme' + (cur && cur.ملف === ث.ملف ? ' active' : '');
       b.dataset.file = ث.ملف;
-      b.title = نصّ('bgThemeWood', 'خشبي');
+      b.title = نصّ(ث.عنوان, اسم);
       b.setAttribute('aria-label', b.title);
       b.style.backgroundImage = 'url("' + ث.مصغّر + '")';
       b.onclick = function(){ طبّق(ث); };

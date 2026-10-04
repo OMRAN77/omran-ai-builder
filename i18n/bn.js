@@ -1123,4 +1123,5 @@ Object.assign(I18N["bn"], {"acctPhoneLabel": "📱 ফোন নম্বর (�
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["bn"], {"bgThemeWood": "কাঠ", "woodRecentTitle": "সাম্প্রতিক চ্যাট"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
-Object.assign(I18N["bn"], {"brandSubtitle": "এআই প্ল্যাটফর্ম", "frameHomeTitle1": "এখান থেকেই শুরু", "frameHomeTitle2": "আপনার দারুণ ভাবনাগুলো", "frameHomeSub": "আপনার স্মার্ট সহকারী সবসময় আপনার সাথে"});
+Object.assign(I18N["bn"], {"brandSubtitle": "এআই প্ল্যাটফর্ম"});
+Object.assign(I18N["bn"], {"bgThemeDarkwood": "গাঢ় কাঠ", "bgThemeMarble": "মার্বেল", "bgThemeCode": "কোড", "bgThemeCars": "গাড়ি", "bgThemeKids": "শিশু", "bgThemeCuisine": "রান্না", "bgThemeSunset": "সূর্যাস্ত", "bgThemeBeach": "সৈকত", "bgThemeWinter": "শীত", "bgThemeGarage": "গ্যারেজ", "bgThemeAnime": "অ্যানিমে", "bgThemeCyber": "সাইবার নিরাপত্তা", "bgThemeSchool": "শ্রেণিকক্ষ"});

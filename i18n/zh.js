@@ -1163,4 +1163,5 @@ Object.assign(I18N["zh"], {"acctPhoneLabel": "📱 手机号（用于找回账�
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["zh"], {"bgThemeWood": "木纹", "woodRecentTitle": "最近的对话"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
-Object.assign(I18N["zh"], {"brandSubtitle": "智能平台", "frameHomeTitle1": "伟大的想法", "frameHomeTitle2": "从这里开始", "frameHomeSub": "你的智能助手，一直陪着你"});
+Object.assign(I18N["zh"], {"brandSubtitle": "智能平台"});
+Object.assign(I18N["zh"], {"bgThemeDarkwood": "深色木纹", "bgThemeMarble": "大理石", "bgThemeCode": "代码", "bgThemeCars": "汽车", "bgThemeKids": "儿童", "bgThemeCuisine": "烹饪", "bgThemeSunset": "日落", "bgThemeBeach": "海滩", "bgThemeWinter": "冬日", "bgThemeGarage": "车库", "bgThemeAnime": "动漫", "bgThemeCyber": "网络安全", "bgThemeSchool": "教室"});

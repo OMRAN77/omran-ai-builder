@@ -66,7 +66,7 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=3">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
   assert.match(html, /partials-settings\.js\?v=687/, 'وسم الإعدادات ارتفع');
-  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=715'/, 'وسم اللغات ارتفع');
+  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=716'/, 'وسم اللغات ارتفع');
   for (const old of ['js/app-25-خلفيات-مدير.js', 'js/partials-خلفيات-قسم.js']) assert.ok(!fs.existsSync(path.join(root, old)), old + ' يجب أن يُحذف');
 
   const settings = rd('js/partials-settings.js');
@@ -165,6 +165,8 @@ function makeEnv({ storage = {}, list, fetchFails = false, now = 1_000_000 } = {
   const tick = () => new Promise((r) => setImmediate(r));
   return { ctx, html, body, grid, rot, store, calls, clock, tick };
 }
+// v-themes: ١٤ ثيمًا في الشبكة (خشبي + ١٣) بين «صورة من جهازك» والصور — أوّل صورة في الخانة 2 + TH
+const TH = 14;
 const LIST = [
   { ملف: '01-مدينة.jpg', عرض: 1000, ارتفاع: 1000, لون: '#1c2123', فاتحة: false },
   { ملف: '02-ثلج.jpg', عرض: 1000, ارتفاع: 1000, لون: '#e8e8ea', فاتحة: true },
@@ -175,8 +177,8 @@ test('٥. الشبكة: «بلا خلفيّة» ثمّ مصغّر لكلّ صو�
   assert.ok(!html.classList.contains('bgimg'), 'لا خلفيّة قبل الاختيار');
   await ctx.window.خلفيات.افتح();
   // v-skin-wood: مصغّر ثيم «خشبي» بعد «صورة من جهازك» — فتنزاح الصور خانة
-  assert.equal(grid.children.length, 5, 'بلا خلفيّة + صورة من جهازك + ثيم خشبي + صورتان');
-  const [none, add, wood, b1] = grid.children;
+  assert.equal(grid.children.length, 4 + TH, 'بلا خلفيّة + صورة من جهازك + ١٤ ثيمًا + صورتان');
+  const [none, add, wood] = grid.children, b1 = grid.children[2 + TH];
   assert.ok(wood.classList.contains('bgImgTheme') && wood.dataset.file === 'ثيم:خشبي', 'مصغّر الثيم');
   assert.equal(none.textContent, 'بلا خلفيّة (مترجَم)');
   assert.ok(none.classList.contains('active'), '«بلا خلفيّة» مختارة افتراضيًّا');
@@ -195,26 +197,26 @@ test('٥. الشبكة: «بلا خلفيّة» ثمّ مصغّر لكلّ صو�
   assert.deepEqual(calls.applyBg3D, [], 'لا نداء للثلاثيّة وهي مطفأة أصلًا');
   assert.deepEqual(calls.swallow, []);
 
-  grid.children[4].onclick();
+  grid.children[3 + TH].onclick();
   assert.ok(html.classList.contains('bgimg-light') && !html.classList.contains('bgimg-dark'), 'صورة فاتحة → كتابة داكنة');
   assert.ok(!add.classList.contains('active'), 'زرّ الإضافة لا يُعلَّم بعد الاختيار');
 
   await ctx.window.خلفيات.افتح();
-  assert.equal(grid.children.length, 5, 'فتح ثانٍ لا يكرّر البناء');
+  assert.equal(grid.children.length, 4 + TH, 'فتح ثانٍ لا يكرّر البناء');
   assert.equal(calls.fetch, 1, 'الفهرس يُجلب مرّة واحدة');
 });
 
 test('٦. خلفيّة واحدة: اختيار صورة يطفئ الثلاثيّة ويعيد بناء منتقيها؛ و«بلا خلفيّة» تزيل كلّ شيء', async () => {
   const { ctx, html, body, grid, store, calls } = makeEnv({ list: LIST, storage: { aiapp_bg3d: 'galaxy' } });
   await ctx.window.خلفيات.افتح();
-  grid.children[3].onclick(); // أوّل صورة (بعد مصغّر الثيم)
+  grid.children[2 + TH].onclick(); // أوّل صورة (بعد مصغّرات الثيمات)
   assert.deepEqual(calls.applyBg3D, ['none']);
   assert.equal(calls.buildBg3DPicker, 1);
   grid.children[0].onclick();
   assert.ok(!html.classList.contains('bgimg') && !html.classList.contains('bgimg-dark'));
   assert.equal(body.children[0].style.backgroundImage, '');
   assert.equal(store.has('aiapp_bgimg'), false);
-  assert.ok(grid.children[0].classList.contains('active') && !grid.children[3].classList.contains('active'));
+  assert.ok(grid.children[0].classList.contains('active') && !grid.children[2 + TH].classList.contains('active'));
 });
 
 test('٧. الاسترجاع عند الإقلاع من المحفوظ بلا جلب الفهرس، وفشل الجلب لا يكسر الإعدادات', async () => {
@@ -240,8 +242,8 @@ test('٨. صورة من الجهاز: تُحفظ على الجهاز بمعرّ�
   await ctx.window.خلفيات.افتح();
   assert.equal(ctx.window.خلفيات.أضف(PIC), true);
   assert.deepEqual(JSON.parse(store.get('aiapp_bgimg_custom')), [PIC]);
-  assert.equal(grid.children.length, 6, 'أُعيد بناء الشبكة بصورة الجهاز');
-  const c = grid.children[3]; // بعد بلا خلفيّة وصورة من جهازك والثيم
+  assert.equal(grid.children.length, 5 + TH, 'أُعيد بناء الشبكة بصورة الجهاز');
+  const c = grid.children[2 + TH]; // بعد بلا خلفيّة وصورة من جهازك والثيمات
   assert.ok(c.classList.contains('bgImgCustom') && c.classList.contains('active') && c.dataset.file === 'custom:1700');
   assert.ok(c.style.backgroundImage.includes(PIC.data), 'مصغّر صورة الجهاز من بياناتها');
   assert.equal(c.children[0].className, 'bgImgDel');
@@ -258,7 +260,7 @@ test('٨. صورة من الجهاز: تُحفظ على الجهاز بمعرّ�
   c.children[0].onclick({ stopPropagation() { stopped++; } });
   assert.equal(stopped, 1);
   assert.deepEqual(JSON.parse(store.get('aiapp_bgimg_custom')), []);
-  assert.equal(grid.children.length, 5);
+  assert.equal(grid.children.length, 4 + TH);
   assert.ok(!html.classList.contains('bgimg') && !store.has('aiapp_bgimg'), 'حذف الحاليّة = بلا خلفيّة');
 
   // امتلاء التخزين: تنبيه مترجَم ولا تطبيق
@@ -306,7 +308,7 @@ test('٩. التبديل التلقائيّ: المدّة تُحفظ وتُعل�
   assert.equal(JSON.parse(store.get('aiapp_bgimg')).ملف, 'custom:1700', 'ثمّ صورة الجهاز أوّل الدورة');
 
   // اختيار يدويّ لا يطفئ التبديل؛ «بلا خلفيّة» تطفئه
-  grid.children[4].onclick(); // 01 (بعد الثيم وصورة الجهاز)
+  grid.children[3 + TH].onclick(); // 01 (بعد الثيمات وصورة الجهاز)
   assert.equal(store.get('aiapp_bgimg_rotate'), '10');
   grid.children[0].onclick();
   assert.equal(store.has('aiapp_bgimg_rotate'), false);
@@ -340,7 +342,7 @@ test('١٠. ثيم «خشبي»: مصغّره في الشبكة، واختيار
   assert.deepEqual(JSON.parse(store.get('aiapp_bgimg')), { ملف: 'ثيم:خشبي', ثيم: 'wood', لون: '#ece3d3', فاتحة: true });
   assert.ok(wood.classList.contains('active'));
   // صورة عاديّة بعده تزيل الكسوة، و«بلا خلفيّة» كذلك
-  grid.children[3].onclick();
+  grid.children[2 + TH].onclick();
   assert.ok(!html.classList.contains('skin-wood') && html.classList.contains('bgimg-dark'));
   wood.onclick(); grid.children[0].onclick();
   assert.ok(!html.classList.contains('skin-wood') && !html.classList.contains('bgimg'));
@@ -359,4 +361,28 @@ test('١١. التبديل التلقائيّ لا يمرّ على الثيم: �
   const seen = [];
   for (let i = 0; i < 4; i++) { clock.tick(10 * 60000); await tick(); seen.push(JSON.parse(store.get('aiapp_bgimg')).ملف); }
   assert.ok(seen.every((f) => !f.startsWith('ثيم:')), seen.join(','));
+});
+
+// v-themes (أمر المالك ٤ أكتوبر: «كمّل الثيمات الباقية» على التصميم الجديد) — CSS والخامات في tests/themes.test.cjs
+test('١٢. الثيمات الثلاثة عشر: مصغّراتها بعد الخشبيّ بأسمائها، والاختيار يضع skin وskin-<معرّف> (وskin-scene للمشهد) ويزيل غيرها، ويُسترجع', async () => {
+  const { ctx, html, grid, store, calls } = makeEnv({ list: LIST });
+  await ctx.window.خلفيات.افتح();
+  const sunset = grid.children[9], kids = grid.children[7], wood = grid.children[2];
+  assert.equal(sunset.title, 'bgThemeSunset'); assert.equal(sunset['@aria-label'], 'bgThemeSunset');
+  assert.equal(kids.dataset.file, 'ثيم:أطفال');
+  assert.equal(grid.children[15].dataset.file, 'ثيم:فصل', 'آخرها الفصل ثمّ الصور');
+  sunset.onclick();
+  for (const c of ['skin', 'skin-sunset', 'skin-scene', 'bgimg', 'bgimg-dark']) assert.ok(html.classList.contains(c), c);
+  assert.deepEqual(JSON.parse(store.get('aiapp_bgimg')), { ملف: 'ثيم:غروب', ثيم: 'sunset', لون: '#7a4a5a', فاتحة: false });
+  kids.onclick();
+  assert.ok(html.classList.contains('skin') && html.classList.contains('skin-kids') && html.classList.contains('bgimg-light'));
+  assert.ok(!html.classList.contains('skin-sunset') && !html.classList.contains('skin-scene'), 'ثيم بلا مشهد يزيل skin-scene');
+  wood.onclick();
+  assert.ok(html.classList.contains('skin-wood') && !html.classList.contains('skin') && !html.classList.contains('skin-kids'), 'الخشبيّ بملفّه لا بالعامّ');
+  grid.children[0].onclick();
+  assert.ok(!html.classList.contains('skin-wood') && !html.classList.contains('skin') && !html.classList.contains('bgimg'));
+  assert.deepEqual(calls.swallow, []);
+  const b = makeEnv({ list: LIST, storage: { aiapp_bgimg: JSON.stringify({ ملف: 'ثيم:شاطئ', ثيم: 'beach', لون: '#8fd0e0', فاتحة: true }) } });
+  for (const c of ['skin', 'skin-beach', 'skin-scene', 'bgimg-light']) assert.ok(b.html.classList.contains(c), 'مسترجَع: ' + c);
+  assert.equal(b.calls.fetch, 0);
 });

@@ -15,7 +15,21 @@
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
   var CUSTOM = 'custom:', MAX_PX = 1600, MAX_CUSTOM = 12;
   var فهرس = null, تحميل = null, مؤقّت = null;
-  var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
+  var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', عنوان: 'bgThemeWood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
+  /* v-themes (أمر المالك ٤ أكتوبر: «كمّل الثيمات الباقية» — نفس فكرة الخشبيّ على التصميم الجديد): ثلاثة عشر ثيمًا تكسوها
+     css/ثيمات.css بمتغيّرات --th-* تحت html.skin + skin-<معرّف>؛ ثيمات المشهد (صور المالك: الغروب والشاطئ والشتاء، وشاشات
+     الترحيب الأربع بلا كتابتها) تضيف skin-scene: الصورة خلف الشاشة واللوحتان الجانبيّتان زجاج ملوّن فوقها. خاماتها
+     assets/ثيمات/<المجلّد>/ يولّدها scripts/ثيمات.mjs. [المجلّد، المعرّف، مفتاح الاسم، اللون، فاتحة؟، مشهد؟] */
+  [['خشب-داكن', 'darkwood', 'bgThemeDarkwood', '#2a1c12', false], ['رخام', 'marble', 'bgThemeMarble', '#111112', false],
+   ['برمجة', 'code', 'bgThemeCode', '#0f161b', false], ['مركبات', 'cars', 'bgThemeCars', '#17181b', false],
+   ['أطفال', 'kids', 'bgThemeKids', '#efe9fb', true], ['طهي', 'cuisine', 'bgThemeCuisine', '#f7f1ee', true],
+   ['غروب', 'sunset', 'bgThemeSunset', '#7a4a5a', false, true], ['شاطئ', 'beach', 'bgThemeBeach', '#8fd0e0', true, true],
+   ['شتاء', 'winter', 'bgThemeWinter', '#d5dce4', true, true], ['كراج', 'garage', 'bgThemeGarage', '#141416', false, true],
+   ['أنمي', 'anime', 'bgThemeAnime', '#1d1430', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', '#06121f', false, true],
+   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true]].forEach(function(a){
+    ثيمات[a[0]] = { ملف: 'ثيم:' + a[0], ثيم: a[1], عنوان: a[2], لون: a[3], فاتحة: a[4], مشهد: !!a[5],
+      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' };
+  });
   function ثيم(اسم){ return ثيمات[اسم] || null; }
 
   function نصّ(k, d){ return typeof t === 'function' ? (t(k) || d) : d; }
@@ -83,8 +97,12 @@
   var مراقب = null;
   function كسوة(اسم){
     var html = document.documentElement;
-    Object.keys(ثيمات).forEach(function(k){ var c = 'skin-' + ثيمات[k].ثيم; if(c !== 'skin-' + اسم) html.classList.remove(c); });
+    var مدخل = null;
+    Object.keys(ثيمات).forEach(function(k){ var c = 'skin-' + ثيمات[k].ثيم; if(c !== 'skin-' + اسم) html.classList.remove(c); else مدخل = ثيمات[k]; });
     if(اسم) html.classList.add('skin-' + اسم);
+    // الخشبيّ بملفّه (css/ثيم-خشبي.css)؛ الباقي بالمتغيّرات العامّة، والمشهد يُعرف من السجلّ لا من المحفوظ
+    html.classList.toggle('skin', !!مدخل && اسم !== 'wood');
+    html.classList.toggle('skin-scene', !!(مدخل && مدخل.مشهد));
     if(اسم === 'wood'){
       بيت();
       var h = document.getElementById('history');
@@ -252,7 +270,7 @@
       b.type = 'button';
       b.className = 'bgImgOpt bgImgTheme' + (cur && cur.ملف === ث.ملف ? ' active' : '');
       b.dataset.file = ث.ملف;
-      b.title = نصّ('bgThemeWood', 'خشبي');
+      b.title = نصّ(ث.عنوان, اسم);
       b.setAttribute('aria-label', b.title);
       b.style.backgroundImage = 'url("' + ث.مصغّر + '")';
       b.onclick = function(){ طبّق(ث); };
