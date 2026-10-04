@@ -222,6 +222,11 @@ const I18N = {
     acctPasswordRow: 'كلمة المرور',
     acctSaveBtn: 'حفظ',
     acctEmailLabel: 'الإيميل (لو نسيت اسمك أو كلمة المرور)',
+    // v-frame-design
+    brandSubtitle: 'منصة الذكاء',
+    frameHomeTitle1: 'هنا تبدأ',
+    frameHomeTitle2: 'أفكارك العظيمة',
+    frameHomeSub: 'مساعدك الذكي دائماً معك',
     bgThemeWood: 'خشبي', // v-skin-wood
     woodRecentTitle: 'المحادثات الجديدة',
     // v-phone-link
@@ -1369,6 +1374,11 @@ const I18N = {
     acctPasswordRow: 'Password',
     acctSaveBtn: 'Save',
     acctEmailLabel: 'Email (if you forget your username or password)',
+    // v-frame-design
+    brandSubtitle: 'AI Platform',
+    frameHomeTitle1: 'Your great ideas',
+    frameHomeTitle2: 'start here',
+    frameHomeSub: 'Your smart assistant, always with you',
     bgThemeWood: 'Wood', // v-skin-wood
     woodRecentTitle: 'Recent chats',
     // v-phone-link

@@ -1123,3 +1123,5 @@ Object.assign(I18N["fr"], {"videoSceneWait":"⏳ Scène {i}/{n} : pause entre le
 Object.assign(I18N["fr"], {"acctPhoneLabel": "📱 Numéro de téléphone (pour la récupération)", "phoneNotLinked": "Non lié", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envoyez le message prêt ou partagez votre numéro, puis revenez ici…", "phoneLinkedOk": "✓ Numéro lié", "phoneTaken": "Ce numéro est lié à un autre compte", "phoneNoUser": "Aucun compte n’est lié à ce numéro", "phoneExpired": "Le lien a expiré — réessayez", "phoneRecoverTitle": "Ou récupérez votre compte avec votre téléphone :", "phoneRecoverSent": "✓ Nous avons envoyé un lien de nouveau mot de passe dans votre discussion là-bas"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["fr"], {"bgThemeWood": "Bois", "woodRecentTitle": "Discussions récentes"});
+/* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
+Object.assign(I18N["fr"], {"brandSubtitle": "Plateforme IA", "frameHomeTitle1": "Ici commencent", "frameHomeTitle2": "vos grandes idées", "frameHomeSub": "Votre assistant intelligent, toujours avec vous"});

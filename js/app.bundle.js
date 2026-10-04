@@ -1182,6 +1182,7 @@ try{
 
   function updateAvatarUI(){
     const avatar = localStorage.getItem('aiapp_avatar') || '';
+    if(typeof window.omFrameAvatar === 'function') window.omFrameAvatar(); // v-frame-design: صورته بجانب رسائله
     const img = $('#authUserAvatarImg');
     const emoji = $('#authUserBadgeEmoji');
     if(img && emoji){
@@ -3538,6 +3539,11 @@ const I18N = {
     acctPasswordRow: 'كلمة المرور',
     acctSaveBtn: 'حفظ',
     acctEmailLabel: 'الإيميل (لو نسيت اسمك أو كلمة المرور)',
+    // v-frame-design
+    brandSubtitle: 'منصة الذكاء',
+    frameHomeTitle1: 'هنا تبدأ',
+    frameHomeTitle2: 'أفكارك العظيمة',
+    frameHomeSub: 'مساعدك الذكي دائماً معك',
     bgThemeWood: 'خشبي', // v-skin-wood
     woodRecentTitle: 'المحادثات الجديدة',
     // v-phone-link
@@ -4685,6 +4691,11 @@ const I18N = {
     acctPasswordRow: 'Password',
     acctSaveBtn: 'Save',
     acctEmailLabel: 'Email (if you forget your username or password)',
+    // v-frame-design
+    brandSubtitle: 'AI Platform',
+    frameHomeTitle1: 'Your great ideas',
+    frameHomeTitle2: 'start here',
+    frameHomeSub: 'Your smart assistant, always with you',
     bgThemeWood: 'Wood', // v-skin-wood
     woodRecentTitle: 'Recent chats',
     // v-phone-link
@@ -5539,7 +5550,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=714'; /* v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=715'; /* v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -41953,4 +41964,39 @@ if(document.readyState === 'loading'){
   }
 
   window.mahaGoldWave = { prime: ensureCtx, start, stop, end, attachStream, detachStream, trackAudio };
+})();
+/* v-frame-design — التصميم الجديد للكمبيوتر (css/إطارات.css). هنا ما لا يفعله CSS وحده:
+   ① خانة البحث الظاهرة في القائمة (#sbSearch) تمرّر ما يُكتب إلى بحث المشاريع القائم (#projSearchInput) — بحثه في
+      العناوين ونصوص الرسائل والكود كما هو، بلا منطق ثانٍ.
+   ② صورة المستخدم بجانب رسائله (أمر المالك ٤ أكتوبر: «في المحادثة تطلع جنب رسالة المستخدم الصورة اللي حاطّها في حسابه»):
+      ‎--user-av‎ صورته من «حسابي» (aiapp_avatar)، وبلا صورة ‎--user-initial‎ أوّل حرف من اسمه في دائرة ذهبيّة؛
+      والصنف html.has-user-av للمسجَّل وحده. تُحدَّث عند الإقلاع وكلّما بدّل صورته (updateAvatarUI) أو دخل أو خرج. */
+(function(){
+  var sb = document.getElementById('sbSearch');
+  if(sb){
+    sb.addEventListener('input', function(){
+      var real = document.getElementById('projSearchInput');
+      if(!real) return;
+      real.value = sb.value;
+      try{ real.dispatchEvent(new Event('input')); }catch(e){ __swallow(e, 'frame:search'); }
+    });
+  }
+
+  function صورة(){
+    var html = document.documentElement, name = '', av = '';
+    try{ name = String(localStorage.getItem('aiapp_username') || '').trim(); av = localStorage.getItem('aiapp_avatar') || ''; }
+    catch(e){ __swallow(e, 'frame:avatar-read'); }
+    html.classList.toggle('has-user-av', !!name);
+    if(!name){ html.style.removeProperty('--user-av'); html.style.removeProperty('--user-initial'); return; }
+    if(av){
+      html.style.setProperty('--user-av', 'url("' + av.replace(/"/g, '%22') + '")');
+      html.style.setProperty('--user-initial', '""');
+    } else {
+      html.style.removeProperty('--user-av');
+      html.style.setProperty('--user-initial', JSON.stringify(Array.from(name)[0].toUpperCase()));
+    }
+  }
+  window.omFrameAvatar = صورة;
+  window.addEventListener('storage', function(e){ if(!e || e.key === 'aiapp_avatar' || e.key === 'aiapp_username') صورة(); });
+  صورة();
 })();
