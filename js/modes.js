@@ -124,6 +124,15 @@
       var NICK = { claude:'provNickKing', gemini:'provNickFast', groq:'provNickFast', mistral:'provNickFast', openai:'provNickDeep', deepseek:'provNickDeep', perplexity:'provNickDeep', cohere:'provNickDeep', openrouter:'provNickDeep', kimi:'provNickDeep' /* v-kimi */ };
       var NICK_FB = { provNickKing:(AR?'الكينج':'The King'), provNickFast:(AR?'السريع':'The Fast'), provNickDeep:(AR?'العميق':'The Deep') };
       function curProvFuncLabel(){ var k = NICK[curProv()] || 'provNickDeep'; try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok: i18n لم يجهز — الاحتياط */ } return NICK_FB[k]; }
+      /* v-chip-own-name (أمر المالك ٤ أكتوبر «المزوّدين اللي تحت… أريد كلّ واحد واسمه»): الشريط للمالك وحده، واللقب الوظيفيّ
+         كان يجمع ستّة مزوّدين تحت «العميق» وثلاثة تحت «السريع» — فأيّ اختيار يظهر بالكلمة نفسها. صارت الشريحة باسم المزوّد
+         المختار نفسه (الجزء الأوّل من اسمه في القائمة: Claude، GPT، Kimi، DeepSeek…)، وصفّ الوسيط باسم موديله (Grok/Qwen). */
+      var OR_NAMES = { 'x-ai/':'Grok', 'qwen/':'Qwen' };
+      function curProvName(){
+        var pv = provOf(curProv()); if(!pv) return curProvFuncLabel();
+        if(pv.key === 'openrouter'){ var mid = curModelId(pv); for(var pre in OR_NAMES){ if(mid.indexOf(pre) === 0) return OR_NAMES[pre]; } }
+        return pv.name.split(' · ')[0];
+      }
 
       var ROW = 'display:block; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:9px 12px; border-radius:8px; cursor:pointer;';
       function optRow(act, label, key){ var a = key ? ' data-i18n="' + key + '"' : ''; return '<button type="button" class="omModelOpt" data-act="' + act + '" style="' + ROW + '"><span' + a + '>' + label + '</span></button>'; }
@@ -175,7 +184,7 @@
       var ACCENT = 'var(--accent,#f0c040)', INK = 'var(--text,#eee)';
       function refresh(){
         var nm = wrap.querySelector('.omModelName');
-        if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true) ? agentLabel() : curProvFuncLabel();
+        if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true) ? agentLabel() : curProvName();
         try{
           var pk = curProv(); var pv = provOf(pk); var mid = pv ? curModelId(pv) : '';
           var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ heads[i].style.color = (heads[i].getAttribute('data-prov') === pk) ? ACCENT : INK; }
