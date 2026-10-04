@@ -131,7 +131,12 @@
       function curProvName(){
         var pv = provOf(curProv()); if(!pv) return curProvFuncLabel();
         if(pv.key === 'openrouter'){ var mid = curModelId(pv); for(var pre in OR_NAMES){ if(mid.indexOf(pre) === 0) return OR_NAMES[pre]; } }
-        return pv.name.split(' · ')[0];
+        /* v-chip-model (المالك ٤ أكتوبر «كلاود ١ و٢ و٣… شو عرفني أيّ كلاود اختار وكلهم بالمثل»): اسم المزوّد وحده لا يفرّق
+           بين موديلاته — الشريحة تحمل الموديل المختار نفسه: «Claude Opus 5.5»، «GPT-6 Sol»، «Groq Llama 4 Maverick». */
+        var nm = pv.name.split(' · ')[0], cm = curModelId(pv), ml = '';
+        for(var i=0;i<pv.models.length;i++){ if(pv.models[i][0] === cm){ ml = pv.models[i][1]; break; } }
+        if(!ml) return nm;
+        return ml.toLowerCase().indexOf(nm.toLowerCase()) === 0 ? ml : nm + ' ' + ml;
       }
 
       var ROW = 'display:block; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:9px 12px; border-radius:8px; cursor:pointer;';

@@ -5,6 +5,8 @@
 // الجسم مضغوط من المتصفّح (JPEG ≤1600px) فيبقى دون حدّ جسم الطلب في Vercel.
 const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+const KV = require('./kv.js');
+const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
 
 const MAX_B64 = 3 * 1024 * 1024; // حدّ أمان لكلّ صورة
 const TTL_SEC = 60 * 60 * 24 * 7; // v-media-purge: كان ٣٠ يومًا فامتلأت القاعدة المجانيّة — ٧ كالفيديو والـPDF
@@ -136,15 +138,15 @@ module.exports = async (req, res) => {
     const CHUNK = 700 * 1024;
     let ok;
     if (data.length <= CHUNK) {
-      ok = await kvSetIfAbsent(KEY(id), prefix + data, TTL_SEC);
+      ok = await setIfAbsentWithRoom(KV, KEY(id), prefix + data, TTL_SEC);
     } else {
       const n = Math.ceil(data.length / CHUNK);
       ok = true;
       for (let i = 0; i < n && ok; i++) {
-        const ok_i = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
+        const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
         ok = ok && ok_i;
       }
-      if (ok) ok = await kvSetIfAbsent(KEY(id), 'chunks:' + n + ':' + prefix, TTL_SEC);
+      if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + prefix, TTL_SEC);
       if (!ok) {
         res.status(500).json({ error: 'store_failed', detail: 'فشل حفظ جزء من الصورة' });
         return;

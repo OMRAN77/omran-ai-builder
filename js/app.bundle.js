@@ -6621,6 +6621,9 @@ function __chatsMergeServer(server, deletedIds){
   // v383: بناء قائمة المحذوفات من السيرفر
   var delSet = Object.create(null);
   if(hasDeleted) for(var di=0; di<deletedIds.length; di++) delSet[deletedIds[di]] = 1;
+  // v-del-stick (المالك ٤ أكتوبر «احذف الكل وأضغط مشروع جديد ولا كأني حذفت»): سجلّ الحذف المحلّيّ (v375) كان يُكتب ولا يُقرأ —
+  // فإن فشل حذف السيرفر (القاعدة ممتلئة أو انقطاع) رجعت نسخته في المزامنة التالية. المحذوف محلّيًّا لا يعود أبدًا.
+  try{ var __locDel = chatsDeletedIds(); for(var li=0; li<__locDel.length; li++) delSet[__locDel[li]] = 1; }catch(e){ __swallow(e, 'sync:del-stick'); }
   // v382: بصمة سريعة قبل الدمج — لو ما تغيّر شي نتجاوز إعادة الرسم
   var __fingerprint = function(list){
     var fp = '';
@@ -6639,7 +6642,7 @@ function __chatsMergeServer(server, deletedIds){
   const result = [];
   const seen = Object.create(null);
   server.forEach(sp => {
-    if(!sp || !sp.id) return;
+    if(!sp || !sp.id || delSet[sp.id]) return; // v-del-stick
     seen[sp.id] = 1;
     const local = localById[sp.id];
     if(local){
