@@ -132,7 +132,7 @@ test('٣. الخادم: البنية — الحقول خارج تعريف callUp
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");
   const finalFail = s.indexOf("await logErrorAndFlush('chat/upstream-fail'");
   assert.ok(cache400 > 0 && quick400 > cache400 && finalFail > quick400);
-  assert.ok(s.includes("if (!viaOR || prov === 'claude' || (__ownerReq && __ownerThink)) return {};"), 'كلود الوسيط لا يُمسّ، ودور المالك الصعب يفكّر (v-owner-auto)');
+  assert.ok(s.includes("if (!viaOR || prov === 'claude' || prov === 'cohere' || (__ownerReq && __ownerThink)) return {};"), 'كلود الوسيط لا يُمسّ، ودور المالك الصعب يفكّر (v-owner-auto)، وCohere موديل تفكير لا يُطفأ تفكيره (v-cohere-reasoning)');
 });
 
 // ── العميل ──
