@@ -292,7 +292,11 @@ test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب ال�
     const final = log.find((e) => e.route === 'swallowed:chat/upstream-fail');
     assert.ok(direct && direct.message.startsWith('OpenAI مباشر · gpt-6-sol: '), direct && direct.message);
     assert.ok(/insufficient_quota/.test(direct.message), 'نصّ المزوّد باقٍ بعد الاسم');
-    assert.ok(final && final.message.startsWith('402 OpenRouter · openai/gpt-6-sol: '), final && final.message);
+    /* v-owner-swap: بعد رفض المختار يكمل المالك على بدلاء بأدواتهم — رفض المختار نفسه يُسجَّل باسم حسابه وموديله في سطر التبديل،
+       والفشل النهائيّ يسمّي آخر من رفض (لا JSON بلا اسم). */
+    const swap = log.find((e) => /^swallowed:chat\/plan-fallback-402$/.test(e.route) && e.message.startsWith('OpenRouter · openai/gpt-6-sol: '));
+    assert.ok(swap, JSON.stringify(log.map((e) => e.route + ' ' + String(e.message).slice(0, 60))));
+    assert.ok(final && /^402 OpenRouter · \S+: /.test(final.message), final && final.message);
   } finally { delete process.env.OPENAI_API_KEY; }
 });
 

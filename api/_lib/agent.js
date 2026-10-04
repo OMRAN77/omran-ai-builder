@@ -552,6 +552,24 @@ module.exports = async (req, res) => {
     const MAX_STEPS = Math.max(1, Math.min(40, Number(process.env.AGENT_MAX_STEPS) || 30));
     const MAX_TASK_MS = Math.max(30000, Number(process.env.AGENT_MAX_MS) || 240000);
     const taskStart = Date.now();
+    /* v-owner-swap (أمر المالك ٤ أكتوبر: «إذا ما في رصيد، للمالك فقط يطلع تحت»؛ لقطة: اختار الوكيل فأجاب «open» بلا أدوات):
+       فشل كلود المباشر كان يهبط بصمت إلى DeepSeek ثمّ Mistral ثمّ Groq (openai/gpt-oss) **بلا أيّ أداة**. للمالك الآن: الطلب
+       نفسه بأدواته على كلود عبر الوسيط (البروتوكول نفسه)، وبقيّة التشغيل عليه، وسطر السبب تحت الردّ. */
+    let agentViaOR = false, agentFail = null;
+    const orModel = (m) => 'anthropic/' + String(m || '').replace(/-(\d+)-(\d+)$/, '-$1.$2');
+    const doCallOR = (m) => fetch('https://openrouter.ai/api/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + String(process.env.OPENROUTER_API_KEY || '').trim(), 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: orModel(m), max_tokens: deepRun ? 64000 : 32000, system, messages: convo, tools: toolsFor(runUser), stream: true }),
+    });
+    const swapNote = (nowWho) => {
+      const f = agentFail || {};
+      let raw = String(f.text || '');
+      try { const j = JSON.parse(raw); raw = String((j.error && (j.error.message || j.error)) || j.message || raw); } catch (e) { /* نصّ لا JSON */ }
+      const t = raw.replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').trim();
+      const credit = /credit|balance|billing|insufficient|quota|payment|402/i.test(t + ' ' + (f.status || ''));
+      return '\n\n🔧 للمالك فقط — ' + (f.who || 'Anthropic مباشر') + ' فشل: ' + (credit ? 'لا رصيد كافٍ' : 'خطأ ' + (f.status || '؟')) + (t ? ' (' + t.slice(0, 140) + ')' : '') + ' · أجاب بدله: ' + nowWho;
+    };
 
     while (steps < MAX_STEPS) {
       if (Date.now() - taskStart > MAX_TASK_MS) {
@@ -579,9 +597,9 @@ module.exports = async (req, res) => {
         }, agentThink(m), agentEffort(m))),
       });
       let markAt = Date.now(); // v-agent-log: بداية الخطوة — مدّة «فكّر N ثانية» من آخر حدث إلى نهاية كتلة التفكير
-      let upstream = await doCall(model);
+      let upstream = await (agentViaOR ? doCallOR : doCall)(model);
       let modelFellBack = false;
-      if (!upstream.ok && upstream.status === 404) {
+      if (!upstream.ok && upstream.status === 404 && !agentViaOR) {
         model = await resolveModel();
         modelFellBack = true;
         upstream = await doCall(model);
@@ -597,6 +615,17 @@ module.exports = async (req, res) => {
         } else {
           upstream = { ok: false, status: 400, text: async () => why };
         }
+      }
+      if (!upstream.ok && !agentViaOR && isOwner(runUser) && String(process.env.OPENROUTER_API_KEY || '').trim()) {
+        const why0 = (await upstream.text().catch(() => '')).slice(0, 300);
+        agentFail = { who: 'Anthropic مباشر · ' + modelLabel(model), status: upstream.status, text: why0 };
+        logError('agent/owner-swap', new Error(upstream.status + ' ' + why0));
+        try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: why0 }); } catch (e) { /* guard-ok — الإشعار تحسين لا شرط */ }
+        agentViaOR = true;
+        convo.forEach((c) => { if (Array.isArray(c.content)) c.content = c.content.filter((b) => !(b && (b.type === 'thinking' || b.type === 'redacted_thinking'))); }); // توقيعات المباشر لا تُقبل عند الوسيط
+        upstream = await doCallOR(model);
+        if (!upstream.ok) { const w2 = (await upstream.text().catch(() => '')).slice(0, 160); const st = upstream.status; upstream = { ok: false, status: st, text: async () => why0 + ' | OpenRouter ' + st + ': ' + w2 }; }
+        else send({ status: '🔁 المحرّك المباشر فشل — أكمل على المسار الاحتياطيّ بأدواته' });
       }
       if (upstream.ok && !modelAnnounced && isOwner(runUser)) {
         modelAnnounced = true;
@@ -649,6 +678,7 @@ module.exports = async (req, res) => {
               }
             }
             run.status = 'fallback'; run.updatedAt = Date.now(); await journal(runUser, run);
+            if (isOwner(runUser)) { if (!agentFail) agentFail = { who: (agentViaOR ? 'كلود عبر الوسيط' : 'Anthropic مباشر') + ' · ' + modelLabel(model), status: upstream.status, text: errText.slice(0, 300) }; send({ phase: 'reporting', delta: swapNote(fb.name + ' بلا أدوات') }); } // v-owner-swap
             send({ phase: 'reporting', done: true });
             res.end();
             return;
@@ -840,6 +870,7 @@ module.exports = async (req, res) => {
 
       // Finished normally.
       run.status = 'done'; await journal(runUser, run);
+      if (agentFail && isOwner(runUser)) send({ phase: 'reporting', delta: swapNote('كلود عبر الوسيط · ' + orModel(model)) }); // v-owner-swap: للمالك وحده، تحت الردّ
       send({ phase: 'reporting', done: true });
       res.end();
       return;

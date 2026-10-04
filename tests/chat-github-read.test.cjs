@@ -79,7 +79,11 @@ test('١. الأداة معرّفة لكلّ مسار الأدوات، قراء�
   assert.ok(tools.includes("name: 'read_github'"), 'الأداة في TOOLS');
   assert.ok(tools.includes("required: [], /* v-github-default-repo"), 'الرابط اختياريّ: بلا url = مستودع التطبيق للمالك');
   assert.ok(!tools.includes("name: 'write_github'"), 'لا كتابة في أدوات المحادثة');
-  assert.ok(!s.includes("name: 'write_github'") && !s.includes("cb.name === 'write_github'"), 'لا write_github في المحادثة إطلاقًا — تعريفًا ولا تنفيذًا');
+  /* v-providers-like-agent (أمر المالك ٤ أكتوبر «نفس الي عند الوكيل، نفس الخاصيّة في الكتابة وكلّ شي»): الرفع صار للمالك في
+     المحادثة كما في وكيله — خارج TOOLS العامّة (أعلاه)، ومن OWNER_TOOLS وحدها، وبحارس المالك أوّل التنفيذ. */
+  assert.ok(!s.includes("name: 'write_github'"), 'لا تعريف محلّيّ للرفع — أداة الوكيل نفسها');
+  assert.ok(s.includes("require('./github-write.js').TOOL") && /const OWNER_TOOLS = \[[^\]]*github-write/.test(s), 'الرفع في أدوات المالك وحدها');
+  assert.ok(s.includes("else if (cb.name === 'write_github') {\n            if (!__ownerReq) result = '✗ الرفع إلى GitHub للمالك وحده.';"), 'حارس المالك أوّل التنفيذ');
   assert.ok(s.includes("'• read_github — أي رابط github.com"), 'ملاحظة الأدوات توجّه إليها');
   assert.ok(s.includes("cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' })"), 'سطر الحالة بمفتاح ترجمة قائم');
   assert.ok(s.includes("else if (cb.name === 'read_github') {") && s.includes("if (!__ownerReq) {"), 'التنفيذ: بوابة المالك أوّل شيء');

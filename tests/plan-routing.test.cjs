@@ -217,7 +217,7 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
   const finalFail = s.indexOf('if (!upstream.ok) {\n        const errText = (await upstream.text()).slice(0, 300);');
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");
   assert.ok(loop > 0 && quick400 < loop && loop < finalFail, 'الالتقاط بعد إعادة الحقول السريعة وقبل الفشل النهائيّ');
-  assert.ok(s.includes('const applyRoute = (p, model, direct) => {'));
+  assert.ok(s.includes('const applyRoute = (p, model, direct, forceOR) => {')); // v-owner-swap: كلود عبر الوسيط حين يفشل مفتاحه المباشر
   for (const v of ['let prov', 'let viaOR', 'let apiKey', 'let CHAT_URL', 'let DEFAULT_MODEL']) assert.ok(s.includes(v + ' '), v);
   assert.ok(s.includes("callUpstream = (withImg) => __upFetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
   // v-kimi: Kimi انضمّ لمسار المالك المباشر (مفتاح Moonshot) — Gemini ما زال خارجه
