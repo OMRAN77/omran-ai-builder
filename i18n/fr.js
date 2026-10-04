@@ -1125,3 +1125,5 @@ Object.assign(I18N["fr"], {"acctPhoneLabel": "📱 Numéro de téléphone (pour 
 Object.assign(I18N["fr"], {"bgThemeWood": "Bois", "woodRecentTitle": "Discussions récentes"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["fr"], {"brandSubtitle": "Plateforme IA", "frameHomeTitle1": "Ici commencent", "frameHomeTitle2": "vos grandes idées", "frameHomeSub": "Votre assistant intelligent, toujours avec vous"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["fr"], {"livingMemTitle": "Mémoire vivante", "livingMemIntro": "Ce que l’agent a appris de vous au fil de vos conversations. À chaque réponse, il n’utilise que ce qui concerne votre question. Supprimez un fait pour qu’il l’oublie.", "livingMemEmpty": "L’agent n’a encore rien appris sur vous.", "livingMemDelete": "Supprimer", "livingMemLoadError": "Impossible de charger la mémoire vivante pour le moment.", "livingMemDeleteError": "Suppression impossible. Réessayez."});

@@ -1123,3 +1123,5 @@ Object.assign(I18N["ne"], {"acctPhoneLabel": "📱 फोन नम्बर (�
 Object.assign(I18N["ne"], {"bgThemeWood": "काठ", "woodRecentTitle": "हालका च्याटहरू"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["ne"], {"brandSubtitle": "एआई प्लेटफर्म", "frameHomeTitle1": "यहीँबाट सुरु हुन्छन्", "frameHomeTitle2": "तपाईंका ठूला विचारहरू", "frameHomeSub": "तपाईंको स्मार्ट सहायक, सधैं तपाईंसँग"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["ne"], {"livingMemTitle": "जीवित मेमोरी", "livingMemIntro": "तपाईंका कुराकानीबाट एजेन्टले तपाईंको बारेमा हालसालै सिकेका कुरा। हरेक जवाफमा यसले तपाईंको प्रश्नसँग सम्बन्धित कुरा मात्र प्रयोग गर्छ। कुनै तथ्य बिर्साउन त्यसलाई मेटाउनुहोस्।", "livingMemEmpty": "एजेन्टले अहिलेसम्म तपाईंको बारेमा केही सिकेको छैन।", "livingMemDelete": "मेटाउनुहोस्", "livingMemLoadError": "जीवित मेमोरी अहिले लोड गर्न सकिएन।", "livingMemDeleteError": "मेटाउन सकिएन। कृपया फेरि प्रयास गर्नुहोस्।"});

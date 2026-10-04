@@ -103,5 +103,5 @@ test('٦. النصوص الأربعة بالـ١٤ لغة، ووسم اللغا�
     assert.equal((data.match(new RegExp('^    ' + k + ': ', 'gm')) || []).length, 2, 'ar+en: ' + k);
     for (const lg of LANGS) assert.ok(rd('i18n/' + lg + '.js').includes('"' + k + '":'), lg + ': ' + k);
   }
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=715'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=716'"));
 });

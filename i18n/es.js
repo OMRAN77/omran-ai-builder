@@ -1174,3 +1174,5 @@ Object.assign(I18N["es"], {"acctPhoneLabel": "📱 Número de teléfono (para re
 Object.assign(I18N["es"], {"bgThemeWood": "Madera", "woodRecentTitle": "Chats recientes"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["es"], {"brandSubtitle": "Plataforma de IA", "frameHomeTitle1": "Aquí empiezan", "frameHomeTitle2": "tus grandes ideas", "frameHomeSub": "Tu asistente inteligente, siempre contigo"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["es"], {"livingMemTitle": "Memoria viva", "livingMemIntro": "Lo último que el agente ha aprendido de ti en tus conversaciones. En cada respuesta usa solo lo que se relaciona con tu pregunta. Elimina un dato para que lo olvide.", "livingMemEmpty": "El agente aún no ha aprendido nada sobre ti.", "livingMemDelete": "Eliminar", "livingMemLoadError": "No se pudo cargar la memoria viva ahora.", "livingMemDeleteError": "No se pudo eliminar. Inténtalo de nuevo."});

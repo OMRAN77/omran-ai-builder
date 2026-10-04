@@ -1172,3 +1172,5 @@ Object.assign(I18N["tr"], {"acctPhoneLabel": "📱 Telefon numarası (kurtarma i
 Object.assign(I18N["tr"], {"bgThemeWood": "Ahşap", "woodRecentTitle": "Son sohbetler"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["tr"], {"brandSubtitle": "Yapay Zekâ Platformu", "frameHomeTitle1": "Büyük fikirlerin", "frameHomeTitle2": "burada başlar", "frameHomeSub": "Akıllı asistanın her zaman yanında"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["tr"], {"livingMemTitle": "Canlı hafıza", "livingMemIntro": "Ajanın sohbetlerinizden sizin hakkınızda öğrendiği son şeyler. Her yanıtta yalnızca sorunuzla ilgili olanları kullanır. Unutması için bir bilgiyi silin.", "livingMemEmpty": "Ajan henüz sizin hakkınızda bir şey öğrenmedi.", "livingMemDelete": "Sil", "livingMemLoadError": "Canlı hafıza şu an yüklenemedi.", "livingMemDeleteError": "Silinemedi. Lütfen tekrar deneyin."});

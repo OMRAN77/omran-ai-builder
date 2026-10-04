@@ -1176,3 +1176,5 @@ Object.assign(I18N["fil"], {"acctPhoneLabel": "📱 Numero ng telepono (para sa 
 Object.assign(I18N["fil"], {"bgThemeWood": "Kahoy", "woodRecentTitle": "Mga bagong chat"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["fil"], {"brandSubtitle": "AI Platform", "frameHomeTitle1": "Dito nagsisimula", "frameHomeTitle2": "ang malalaking ideya mo", "frameHomeSub": "Ang matalino mong katulong, laging kasama mo"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["fil"], {"livingMemTitle": "Buhay na memorya", "livingMemIntro": "Ang mga pinakabagong natutunan ng agent tungkol sa iyo mula sa iyong mga usapan. Sa bawat sagot, ginagamit lang nito ang may kinalaman sa tanong mo. Burahin ang anumang impormasyon para makalimutan ito.", "livingMemEmpty": "Wala pang natututunan ang agent tungkol sa iyo.", "livingMemDelete": "Burahin", "livingMemLoadError": "Hindi ma-load ang buhay na memorya ngayon.", "livingMemDeleteError": "Hindi nabura. Pakisubukang muli."});

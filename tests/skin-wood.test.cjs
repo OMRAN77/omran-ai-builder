@@ -61,7 +61,7 @@ test('٣. الربط والترجمة: CSS بعد خلفيات.css، والنص�
   }
   assert.match(data, /bgThemeWood: 'خشبي'/);
   assert.match(data, /woodRecentTitle: 'المحادثات الجديدة'/);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=715'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=716'"));
 });
 
 test('٤. «بيت» لوحة المعاينة الفارغة كما في الصورة: من صفوف القائمة نفسها وأزرار الشريط السفليّ، والنقر يمرّ إلى الأصل', () => {

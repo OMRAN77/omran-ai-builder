@@ -186,6 +186,19 @@ module.exports = async (req, res) => {
       return;
     }
 
+    /* v-living-memory: الذاكرة الحيّة (حقائق منظَّمة في Redis) — للمالك وحده. living_get يعرضها، living_del يمسح حقيقة بمعرّفها،
+       living_learn يتعلّم من آخر الرسائل بعد ردّ الوكيل (طلب منفصل من العميل فلا يؤخّر ختام البثّ). */
+    if (op === 'living_get' || op === 'living_del' || op === 'living_learn') {
+      if (!require('./_owner.js').isOwnerName(username)) { res.status(403).json({ error: 'owner_only' }); return; }
+      const living = require('./living-memory.js');
+      let facts;
+      if (op === 'living_del') facts = await living.removeFact(username, String(body.id || '').slice(0, 20));
+      else if (op === 'living_learn') facts = (await living.learn(username, body.messages)).facts;
+      else facts = await living.readFacts(username);
+      res.status(200).json({ ok: true, total: facts.length, facts });
+      return;
+    }
+
     if (op === 'topic') {
       // 🗂️ v326 ذاكرة المواضيع: ملخص سطرين عن كل محادثة (بدون نموذج — رخيص).
       // upsert بمعرّف المحادثة، ونحتفظ بآخر 10 مواضيع فقط.

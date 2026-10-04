@@ -1164,3 +1164,5 @@ Object.assign(I18N["zh"], {"acctPhoneLabel": "📱 手机号（用于找回账�
 Object.assign(I18N["zh"], {"bgThemeWood": "木纹", "woodRecentTitle": "最近的对话"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["zh"], {"brandSubtitle": "智能平台", "frameHomeTitle1": "伟大的想法", "frameHomeTitle2": "从这里开始", "frameHomeSub": "你的智能助手，一直陪着你"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["zh"], {"livingMemTitle": "动态记忆", "livingMemIntro": "智能体从你的对话中最近了解到的关于你的内容。每次回答它只会使用与你的问题相关的部分。删除任何一条，它就会忘记。", "livingMemEmpty": "智能体还没有了解到关于你的任何信息。", "livingMemDelete": "删除", "livingMemLoadError": "暂时无法加载动态记忆。", "livingMemDeleteError": "删除失败，请重试。"});
