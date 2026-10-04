@@ -79,8 +79,11 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
   }
   // السيارة المتوهّجة من صورة المالك (أمره: «وهذي بعد») في بداية «سيارات»: ضعفا حجمها، وتذوب خلفيّتها الداكنة في الكربون
   assert.equal(jpegSize(path.join(root, 'assets', 'ثيمات', 'مركبات', 'سيارة.jpg'))[0], 600);
-  const car = CSS.slice(CSS.indexOf('html.skin-cars body.omranWelcome #chatcol::before{')).split('}')[0];
-  assert.ok(car.includes(encodeURIComponent('سيارة.jpg')) && car.includes('mix-blend-mode:screen;'), 'السيارة في بداية «سيارات»');
+  // وخلفيّة دائمة لا في البداية وحدها (أمره بعدها: «صورة السيارة غير موجودة الخلفيّة» — كانت تختفي مع أوّل رسالة)
+  assert.ok(CSS.includes('\nhtml.skin-cars #chatcol::before{'), 'بلا شرط omranWelcome');
+  assert.ok(!/skin-cars body\.omranWelcome/.test(CSS));
+  const car = CSS.slice(CSS.indexOf('\nhtml.skin-cars #chatcol::before{')).split('}')[0];
+  assert.ok(car.includes(encodeURIComponent('سيارة.jpg')) && car.includes('mix-blend-mode:screen;') && car.includes('z-index:0;'), 'السيارة خلف الفقاعات');
   const gen = rd('scripts/ثيمات.mjs');
   assert.match(gen, /function guidedFill\(/, 'المربّعات المرسومة على صور المالك تُمسح بالتعبئة الموجَّهة');
   for (const f of ['20.webp', '23.webp', '24.webp', '17.webp', '19.webp']) assert.ok(gen.includes("'" + f + "'"), 'من صور المالك: ' + f);
@@ -88,7 +91,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
 
 test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد يترك الخانات والإرسال للثيم، والمختار والزرّ يغلبان قاعدتي التطبيق', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=2');
+  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=3');
   assert.ok(a > 0 && b > a, 'يُحمَّل آخرًا فيعلو');
   const frame = rd('css/إطارات.css');
   assert.doesNotMatch(frame, /:not\(\.skin-wood\) (\.hist-item|#composerBox)/, 'قواعد الإطار للخانات والإرسال تستثني html.skin');

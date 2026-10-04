@@ -159,9 +159,10 @@ html.skin-cars{
 }
 html.skin-cars #sidebar #sbSearchWrap{background:rgba(255,255,255,.62) !important; border-color:rgba(0,0,0,.18) !important;}
 html.skin-cars #sidebar #sbSearch{color:#1d2126 !important;}
-/* كما في صورة المالك (أمره: «وهذي بعد»): السيارة المتوهّجة في شاشة البداية (screen يُذيب خلفيّتها الداكنة في الكربون، والقناع
-   يُخفي حوافّ مستطيلها)، ولسان فضّيّ أعلى اللوحة الوسطى، وإطار فضّيّ حول خانة الكتابة */
-html.skin-cars body.omranWelcome #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; top:9%; left:50%; transform:translateX(-50%); width:min(90%,560px); aspect-ratio:600/352; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D8%B3%D9%8A%D8%A7%D8%B1%D8%A9.jpg") center / contain no-repeat; mix-blend-mode:screen; -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%); mask-image:radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);}
+/* كما في صورة المالك (أمره: «وهذي بعد»): السيارة المتوهّجة خلفيّة المحادثة دائمًا — لا في البداية وحدها (أمره بعدها: «صورة السيارة
+   غير موجودة الخلفيّة» — كانت تختفي مع أوّل رسالة) — في وسط اللوحة تحت الفقاعات كصور ثيمات المشهد (screen يُذيب خلفيّتها
+   الداكنة في الكربون، والقناع يُخفي حوافّ مستطيلها)، ولسان فضّيّ أعلى اللوحة الوسطى، وإطار فضّيّ حول خانة الكتابة */
+html.skin-cars #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; top:44%; left:50%; transform:translate(-50%,-50%); width:min(90%,560px); aspect-ratio:600/352; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D8%B3%D9%8A%D8%A7%D8%B1%D8%A9.jpg") center / contain no-repeat; mix-blend-mode:screen; -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%); mask-image:radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);}
 html.skin-cars:not(.mobile-ui) #omFrameCenter::before{content:""; position:absolute; z-index:1; pointer-events:none; top:5px; left:50%; transform:translateX(-50%); width:190px; height:15px; background:linear-gradient(180deg,#f6f8fa,#b9bfc6 55%,#8d949c); clip-path:polygon(0 0, 100% 0, 91% 100%, 9% 100%);}
 html.skin-cars #composerBox{border:3px solid transparent !important; background:linear-gradient(180deg,#26292e,#1b1d21) padding-box, linear-gradient(180deg,#f4f6f8,#8e959d 50%,#d7dbe0) border-box !important;}
 html.skin-cars #sidebar #sbSearch::placeholder, html.skin-cars #sidebar #sbSearchWrap{color:#4b525a !important;}
