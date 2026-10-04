@@ -11,6 +11,9 @@ const { envReport } = require('./env.js');
 function redisWhy(e) {
   const m = String((e && e.message) || e || '').replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 160);
   if (/missing UPSTASH_REDIS_REST/i.test(m)) return 'متغيّرا UPSTASH_REDIS_REST_URL/TOKEN ناقصان في Vercel';
+  /* v-redis-capacity: «DB capacity quota exceeded» = السعة (٢٥٦ م.ب في المجّانيّة) لا الطلبات — كانت تُلتقط بكلمة quota فيُقال «حدّ الطلبات»
+     والمالك يبحث في المكان الخطأ. الكتابة وحدها مرفوضة، والعلاج حذف شيء أو رفع الباقة. */
+  if (/capacity quota|DB capacity|OOM|maxmemory|max(?:imum)? (?:database|data|db) size/i.test(m)) return 'سعة قاعدة Upstash امتلأت — كلّ كتابة مرفوضة. «تنظيف التطبيق» في الحساب يحذف مشاركات أقدم من ٧ أيّام — ' + m;
   if (/limit exceeded|max (?:daily )?requests?|quota/i.test(m)) return 'تجاوز حدّ الطلبات في باقة Upstash — ' + m;
   if (/\b(?:401|403)\b|unauthori[sz]ed|invalid token|WRONGPASS|NOPERM/i.test(m)) return 'رمز Upstash مرفوض (تغيّر أو حُذف؟) — ' + m;
   if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|aborted|timeout|network/i.test(m)) return 'لا اتّصال بخادم Upstash — ' + m;
