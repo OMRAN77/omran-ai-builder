@@ -4252,12 +4252,14 @@ const I18N = {
     downloadSourceBtn: 'تحميل الكود المصدري (ZIP)',
     voiceSectionLabel: 'الصوت',
     memorySectionLabel: 'ذاكرتي',
-    livingMemTitle: "الذاكرة الحيّة",
-    livingMemIntro: "آخر ما تعلّمه الوكيل عنك من محادثاتك. يستعمل منها في كلّ ردّ ما يخصّ سؤالك فقط. امسح أيّ حقيقة ليتناساها.",
-    livingMemEmpty: "لم يتعلّم الوكيل شيئًا عنك بعد.",
+    livingMemTitle: "ذاكرتي الحيّة",
+    livingMemIntro: "آخر ما تعلّمه المساعد عنك من محادثاتك. يستعمل منها في كلّ ردّ ما يخصّ سؤالك فقط، ويطبّق أسلوبك المفضّل. امسح أيّ حقيقة ليتناساها.",
+    livingMemEmpty: "لم يتعلّم المساعد شيئًا عنك بعد.",
     livingMemDelete: "امسح",
-    livingMemLoadError: "تعذّر تحميل الذاكرة الحيّة الآن.",
+    livingMemLoadError: "تعذّر تحميل ذاكرتك الحيّة الآن.",
     livingMemDeleteError: "تعذّر المسح. حاول مرّة أخرى.",
+    livingMemClearAll: "امسح كل شي",
+    livingMemClearConfirm: "مسح كلّ ما تعلّمه المساعد عنك؟ لا يمكن التراجع.",
     memoryIntro: 'ما يتذكّره التطبيق عنك وعن مشاريعك وأسلوبك. محفوظ في حسابك ويتزامن بين أجهزتك، ويمكنك تعديله أو حذفه.',
     memorySaveBtn: 'حفظ التعديلات',
     memoryClearBtn: 'حذف ذاكرتي',
@@ -5437,12 +5439,14 @@ const I18N = {
     downloadSourceBtn: 'Download Source Code (ZIP)',
     voiceSectionLabel: 'Voice',
     memorySectionLabel: 'My memory',
-    livingMemTitle: "Living memory",
-    livingMemIntro: "The latest things the agent has learned about you from your chats. In each reply it uses only what relates to your question. Delete any fact to make it forget.",
-    livingMemEmpty: "The agent hasn’t learned anything about you yet.",
+    livingMemTitle: "My living memory",
+    livingMemIntro: "The latest things the assistant has learned about you from your chats. In each reply it uses only what relates to your question, and applies your preferred style. Delete any fact to make it forget.",
+    livingMemEmpty: "The assistant hasn’t learned anything about you yet.",
     livingMemDelete: "Delete",
-    livingMemLoadError: "Could not load living memory right now.",
+    livingMemLoadError: "Could not load your living memory right now.",
     livingMemDeleteError: "Could not delete. Please try again.",
+    livingMemClearAll: "Delete everything",
+    livingMemClearConfirm: "Delete everything the assistant has learned about you? This cannot be undone.",
     memoryIntro: 'What the app remembers about you, your projects, and your communication style. It syncs with your account across devices, and you can edit or delete it.',
     memorySaveBtn: 'Save changes',
     memoryClearBtn: 'Delete my memory',
@@ -5582,7 +5586,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=717'; /* v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=718'; /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -12277,7 +12281,7 @@ function showSettingsPage(sid){
     if(sid === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
     // v-bg-images-row: صفحة «خلفيّات الشاشة» تبني شبكة المصغّرات عند فتحها من القائمة
     if(sid === 'bgImgSection' && window.خلفيات) window.خلفيات.افتح();
-    if(sid === 'ownerSection' && window.livingRefresh) window.livingRefresh(); // v-living-memory: آخر الحقائق المتعلَّمة
+    if(sid === 'memorySection' && window.livingRefresh) window.livingRefresh(); // v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل
   }catch(e){ __swallow(e, 'points:acct-refresh'); }
 }
 window.showSettingsPage = showSettingsPage;
@@ -21832,7 +21836,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   }
   if(serverErr && !full) throw new Error(serverErr);
   await __agentApplyResult(cur, full, streamBroke ? null : agLog.split()); // انقطاعٌ استُعيد من الدفتر = نصّ لا يطابق السجلّ الحيّ
-  try{ if(window.livingLearn) window.livingLearn(cur.messages); }catch(e){ __swallow(e, 'misc:living-learn'); } // v-living-memory: التعلّم بعد الردّ الناجح — طلب منفصل لا ينتظره أحد
+  try{ if(window.livingLearn && settingsOwnerUi()) window.livingLearn(cur.messages); }catch(e){ __swallow(e, 'misc:living-learn'); } // v-living-memory: التعلّم بعد ردّ الوكيل للمالك وحده كما كان — المحادثة الرئيسيّة لكلّ مسجَّل (أدناه)
   try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* العلامة ترفٌ */ }
 }
 // 🕯️ الدوام٢: تركيب ناتج الوكيل في المشروع (كود + رسالة + إصلاح ذاتي). كان
@@ -25720,6 +25724,7 @@ DESIGN RULES (non-negotiable):
       const __lastA = cur.messages.filter(m => m.role === 'assistant').slice(-1)[0];
       if(__lastA && __lastA.content && !__lastA._cc && !String(__lastA.content).startsWith('⚠️') && !(isPureGreeting(text) || isCasualCheckIn(text))){ // v-cc-chat: ردود Claude Code لا تدخل ذاكرة المستخدم
         memoryUpdate(text, String(__lastA.content));
+        try{ if(window.livingLearn) window.livingLearn(cur.messages); }catch(e){ __swallow(e, 'misc:living-learn-chat'); } // v-living-all: «ذاكرتي الحيّة» — بعد الردّ، طلب منفصل، وبلا تحيّة/مجاملة
         // 🗂️ v326: تحديث ملخص موضوع هذه المحادثة في الذاكرة السحابية
         try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){ __swallow(e, "misc:app-09-attach#31"); }
       }
@@ -37156,29 +37161,39 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   }, true);
 })();
 
-/* v-living-memory (طلب المالك ٤ أكتوبر): «الذاكرة الحيّة» في صفحة المالك — آخر ١٠ حقائق تعلّمها الوكيل وزرّ «امسح» لكلّ واحدة.
-   المصدر Redis عبر memory.js (عمليّات living_*، للمالك وحده)، ونسخة في localStorage تُرسم فورًا وتبقى إن تعذّر الخادم.
-   livingLearn يُستدعى بعد اكتمال ردّ الوكيل: طلب منفصل لا يؤخّر ختام البثّ. */
+/* v-living-memory + v-living-all (طلب المالك ٤ أكتوبر): «ذاكرتي الحيّة» في إعدادات «ذاكرتي» لكلّ مستخدم مسجَّل — آخر ١٠ حقائق
+   تعلّمها المساعد عنه، وزرّ «امسح» لكلّ واحدة، و«امسح كل شي». المصدر Redis عبر memory.js (living_*، ملفّ صاحب الجلسة وحده)،
+   ونسخة في localStorage تُرسم فورًا وتبقى إن تعذّر الخادم — موسومة باسم صاحبها فلا يراها مستخدم آخر على الجهاز نفسه.
+   livingLearn يُستدعى بعد اكتمال الردّ: طلب منفصل لا يؤخّر ختام البثّ، والخادم يتخطّى ما لا يستحقّ نداء نموذج. */
 (function(){
-  var KEY = 'aiapp_living_memory';
+  var KEY = 'aiapp_living_memory', lastLearnAt = 0;
   function tok(){ try{ return sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token') || ''; }catch(e){ return ''; } }
   function tr(k, fb){ try{ var d = window.__i18nDict ? window.__i18nDict(document.documentElement.lang || 'ar') : null; return (d && d[k]) || fb; }catch(e){ return fb; } }
-  function isOwner(){ try{ return typeof settingsOwnerUi === 'function' && settingsOwnerUi(); }catch(e){ return false; } }
   function call(op, extra){
     var t = tok(); if(!t) return Promise.resolve(null);
     return fetch('/api/system?action=memory', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign({ token: t, op: op }, extra || {})) })
       .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
   }
-  function readMirror(){ try{ var d = JSON.parse(localStorage.getItem(KEY) || 'null'); return d && Array.isArray(d.facts) ? d.facts : []; }catch(e){ return []; } }
-  function writeMirror(facts){ try{ localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), facts: facts })); }catch(e){ if(window.__swallow) window.__swallow(e, 'living:mirror'); } }
+  function who(){ try{ return String(sessionStorage.getItem('aiapp_username') || localStorage.getItem('aiapp_username') || '').trim().toLowerCase(); }catch(e){ return ''; } }
+  function readMirror(){
+    try{
+      var d = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if(d && d.u === who() && Array.isArray(d.facts)) return d.facts;
+      if(d) localStorage.removeItem(KEY); // نسخة مستخدم آخر على هذا الجهاز — لا تُعرض ولا تبقى
+      return [];
+    }catch(e){ return []; }
+  }
+  function writeMirror(facts){ try{ localStorage.setItem(KEY, JSON.stringify({ u: who(), at: Date.now(), facts: facts })); }catch(e){ if(window.__swallow) window.__swallow(e, 'living:mirror'); } }
   function status(text, bad){ var el = document.getElementById('livingMemStatus'); if(!el) return; el.textContent = text || ''; el.style.color = bad ? '#e05555' : ''; }
   function draw(facts){
     var box = document.getElementById('livingMemList'); if(!box) return;
     box.textContent = '';
+    var all = document.getElementById('livingMemClearAll');
     var shown = (facts || []).slice().sort(function(a, b){ return (b.at || 0) - (a.at || 0); }).slice(0, 10);
+    if(all) all.style.display = shown.length ? '' : 'none';
     if(!shown.length){
       var empty = document.createElement('div'); empty.style.cssText = 'padding:8px 2px; font-size:12.5px; opacity:.75;';
-      empty.textContent = tr('livingMemEmpty', 'لم يتعلّم الوكيل شيئًا عنك بعد.'); box.appendChild(empty); return;
+      empty.textContent = tr('livingMemEmpty', 'لم يتعلّم المساعد شيئًا عنك بعد.'); box.appendChild(empty); return;
     }
     shown.forEach(function(f){
       var row = document.createElement('div'); row.className = 'livingMemRow'; row.style.cssText = 'display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--border);';
@@ -37189,26 +37204,31 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     });
   }
   window.livingRefresh = function(){
-    if(!isOwner() || !tok()) return;
+    var wrap = document.getElementById('livingMemWrap');
+    if(wrap) wrap.style.display = tok() ? '' : 'none'; // الزائر بلا حساب: لا بطاقة
+    if(!tok()) return;
     draw(readMirror()); status('');
     call('living_get').then(function(d){
-      if(!d || !Array.isArray(d.facts)){ status(tr('livingMemLoadError', 'تعذّر تحميل الذاكرة الحيّة الآن.'), true); return; } // ردّ بلا قائمة لا يمحو المرآة
+      if(!d || !Array.isArray(d.facts)){ status(tr('livingMemLoadError', 'تعذّر تحميل ذاكرتك الحيّة الآن.'), true); return; } // ردّ بلا قائمة لا يمحو المرآة
       writeMirror(d.facts); draw(d.facts);
     });
   };
   window.livingLearn = function(messages){
-    if(!isOwner() || !tok()) return;
+    if(!tok() || Date.now() - lastLearnAt < 8000) return; // نفس حدّ الخادم (MIN_LEARN_GAP_MS): لا طلب يضيع في الطريق
     var win = (messages || []).filter(function(m){ return m && (m.role === 'user' || m.role === 'assistant') && !m._diag && !m._cc && typeof m.content === 'string' && m.content.trim(); })
       .slice(-20).map(function(m){ return { role: m.role, content: m.content.replace(/```[\s\S]*?(?:```|$)/g, ' ').slice(0, 700) }; });
     if(!win.length) return;
+    lastLearnAt = Date.now();
     call('living_learn', { messages: win }).then(function(d){ if(d && Array.isArray(d.facts)) writeMirror(d.facts); });
   };
   document.addEventListener('click', function(e){
-    var b = e.target && e.target.closest ? e.target.closest('[data-living-del]') : null;
-    if(!b) return;
-    b.disabled = true;
-    call('living_del', { id: b.getAttribute('data-living-del') }).then(function(d){
-      if(!d || !Array.isArray(d.facts)){ b.disabled = false; status(tr('livingMemDeleteError', 'تعذّر المسح. حاول مرّة أخرى.'), true); return; }
+    var t = e.target, b = t && t.closest ? t.closest('[data-living-del]') : null, all = t && t.closest ? t.closest('#livingMemClearAll') : null;
+    if(!b && !all) return;
+    if(all && !confirm(tr('livingMemClearConfirm', 'مسح كلّ ما تعلّمه المساعد عنك؟ لا يمكن التراجع.'))) return;
+    var btn = b || all; btn.disabled = true;
+    call(b ? 'living_del' : 'living_clear', b ? { id: b.getAttribute('data-living-del') } : {}).then(function(d){
+      btn.disabled = false;
+      if(!d || !Array.isArray(d.facts)){ status(tr('livingMemDeleteError', 'تعذّر المسح. حاول مرّة أخرى.'), true); return; }
       writeMirror(d.facts); draw(d.facts); status('');
     });
   });

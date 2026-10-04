@@ -19,6 +19,7 @@ stub('api/_lib/kv.js', {
   kvGetJSON: async (k) => (store.has(k) ? structuredClone(store.get(k)) : null),
   kvPutJSON: async (k, v) => { store.set(k, structuredClone(v)); },
   kvDel: async (k) => { store.delete(k); }, kvExpire: async () => {}, kvIncr: async () => 1,
+  kvSetIfAbsent: async (k) => { if (store.has(k)) return false; store.set(k, '1'); return true; }, // قفل MIN_LEARN_GAP_MS (v-living-all)
 });
 let usageUser = 'omran';
 stub('api/_lib/_usage.js', { DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', checkAndConsume: async () => ({ allowed: true, username: usageUser }) });
@@ -185,7 +186,7 @@ test('٥. agent.js: المالك يحصل على كتلة الذاكرة الح�
   store.set('db/living/omran.json', { facts: MEMORY, updatedAt: NOW });
   store.set('db/living/someone.json', { facts: MEMORY, updatedAt: NOW });
   const img = await agentRequest('omran', [user('ارسم لي صورة قطة')]);
-  assert.match(img.system, /\[الذاكرة الحيّة — حقائق تعلّمها الوكيل/);
+  assert.match(img.system, /\[الذاكرة الحيّة — حقائق تعلّمها المساعد/);
   assert.match(img.system, /فشل سابق: طلب صورة فشلت بسبب المحتوى/);
   assert.ok(!img.system.includes('نادي العين') && !img.system.includes('موقع عقارات للإمارات'), 'غير ذي الصلة لا يصل');
   assert.ok(img.system.indexOf('[الذاكرة الحيّة') < img.system.indexOf('[أوامر المالك'), 'أوامر المالك تبقى آخر النظام');
@@ -209,7 +210,7 @@ test('٥ب. agent.js: سجلّ المالك آخر ٥٠ رسالة يبدأ بم
   assert.equal((await agentRequest('someone', convo)).messages.length, 71, 'غير المالك لم يتغيّر');
 });
 
-// ── ٦. memory.js: العمليّات للمالك وحده، والتعلّم يُخزَّن في Redis ────────────────────────────────
+// ── ٦. memory.js: التعلّم يُخزَّن في Redis (الصلاحيّات والعزل: tests/living-all-users.test.cjs) ──────────
 async function memOp(who, op, extra) {
   let code = 200, result;
   const res = { setHeader() {}, status(v) { code = v; return this; }, json(v) { result = v; return this; }, end() {} };
@@ -217,14 +218,8 @@ async function memOp(who, op, extra) {
   return { code, result };
 }
 
-test('٦. memory.js: living_get/del/learn للمالك وحده؛ المسح بمعرّفه؛ التعلّم يدمج ويخزّن ويخنق التكرار', async () => {
+test('٦. memory.js: living_learn يدمج ويخزّن ويخنق التكرار؛ المسح بمعرّفه، ومعرّف مجهول لا يمسح شيئًا', async () => {
   store.clear();
-  for (const op of ['living_get', 'living_del', 'living_learn']) {
-    const r = await memOp('someone', op, { id: 'aaaaaaaaaa', messages: [user('اسمي ماجد')] });
-    assert.equal(r.code, 403, op + ' مرفوض لغير المالك');
-  }
-  assert.equal(store.size, 0, 'لا شيء كُتب لغير المالك');
-
   const stubModel = (json) => { memoryHandler.callMergeModel = async () => JSON.stringify(json); };
   stubModel([fact('interest', 'قهوة', 'يحب القهوة'), fact('failure', 'صور', 'طلب صورة فشلت بسبب المحتوى')]);
   const first = await memOp('omran', 'living_learn', { messages: [user('أحب القهوة'), bot('تمام'), user('ارسم صورة'), bot('⚠️ فشلت')] });
@@ -235,9 +230,9 @@ test('٦. memory.js: living_get/del/learn للمالك وحده؛ المسح ب�
   // خنق: نداء ثانٍ خلال ٨ ثوانٍ لا يستدعي النموذج
   memoryHandler.callMergeModel = async () => assert.fail('الخنق');
   const quick = await memOp('omran', 'living_learn', { messages: [user('ترك القهوة')] });
-  assert.equal(quick.result.facts.length, 2);
-  // ندع الخنق ينتهي ثمّ يتعارض الجديد مع القديم
-  const rec = store.get('db/living/omran.json'); rec.updatedAt -= 60_000; store.set('db/living/omran.json', rec);
+  assert.equal(quick.result.skipped, 'throttled');
+  // ندع القفل ينتهي ثمّ يتعارض الجديد مع القديم
+  store.delete('living/gap/omran');
   stubModel([fact('interest', 'قهوة', 'ترك القهوة', { polarity: -1 })]);
   const second = await memOp('omran', 'living_learn', { messages: [user('تركت القهوة')] });
   assert.deepEqual(second.result.facts.filter((f) => /قهوة/.test(f.text)).map((f) => f.text), ['ترك القهوة']);
@@ -255,122 +250,9 @@ test('٦ب. المسح أثناء تشغيل طويل لا تُعيده كتاب
   store.set('db/living/omran.json', { facts: L.mergeFacts([], [fact('interest', 'قهوة', 'يحب القهوة'), fact('interest', 'شاي', 'يحب الشاي')], NOW - 99_000), updatedAt: NOW - 99_000 });
   const coffeeId = store.get('db/living/omran.json').facts.find((f) => /قهوة/.test(f.text)).id;
   await L.removeFact('omran', coffeeId);                         // المالك مسح أثناء التشغيل
-  const rec = store.get('db/living/omran.json'); rec.updatedAt -= 60_000; store.set('db/living/omran.json', rec);
   const out = await L.learn('omran', [user('أحبّ الرياضة')], { callModel: async () => JSON.stringify([fact('interest', 'رياضة', 'يحب الرياضة')]) });
   assert.ok(!out.facts.some((f) => /قهوة/.test(f.text)), 'المحذوف لم يرجع');
   assert.ok(out.facts.some((f) => /الرياضة/.test(f.text)) && out.facts.some((f) => /الشاي/.test(f.text)));
-});
-
-// ── ٧. واجهة صفحة المالك ─────────────────────────────────────────────────────────────────────────
-function fakeEl(tag) {
-  const e = { tag, children: [], style: {}, attrs: {}, _t: '', disabled: false, className: '', type: '' };
-  Object.defineProperty(e, 'textContent', { get() { return e._t; }, set(v) { e._t = v; if (v === '') e.children = []; } });
-  e.appendChild = (c) => { e.children.push(c); return c; };
-  e.setAttribute = (k, v) => { e.attrs[k] = v; };
-  e.getAttribute = (k) => e.attrs[k];
-  e.closest = (sel) => (sel === '[data-living-del]' && 'data-living-del' in e.attrs ? e : null);
-  return e;
-}
-function boot(owner, serverFacts) {
-  const src = read('js/app-18-chat-tools.js');
-  const code = src.slice(src.indexOf('/* v-living-memory (طلب المالك ٤ أكتوبر): «الذاكرة الحيّة»'));
-  const els = { livingMemList: fakeEl('div'), livingMemStatus: fakeEl('div') };
-  let click = null;
-  const ls = new Map();
-  const calls = [];
-  const document = { documentElement: { lang: 'ar' }, getElementById: (id) => els[id] || null, createElement: fakeEl, addEventListener: (t, fn) => { if (t === 'click') click = fn; } };
-  const fetchStub = async (url, init) => {
-    const body = JSON.parse(init.body); calls.push(body);
-    if (body.op === 'living_del') serverFacts = serverFacts.filter((f) => f.id !== body.id);
-    return { ok: true, json: async () => ({ ok: true, total: (serverFacts || []).length, facts: serverFacts }) };
-  };
-  const win = { __swallow() {} };
-  const localStorage = { getItem: (k) => (ls.has(k) ? ls.get(k) : (k === 'aiapp_auth_token' ? 'tok' : null)), setItem: (k, v) => ls.set(k, v) };
-  new Function('window', 'document', 'localStorage', 'sessionStorage', 'fetch', 'settingsOwnerUi', code)(win, document, localStorage, { getItem: () => 'tok' }, fetchStub, () => owner);
-  return { win, els, click: (t) => click({ target: t }), ls, calls, setFacts: (f) => { serverFacts = f; } };
-}
-const mk = (n) => Array.from({ length: n }, (_, i) => ({ id: ('a' + i).padEnd(10, '0'), kind: 'interest', text: 'حقيقة ' + i, at: NOW + i }));
-const tick = () => new Promise((r) => setImmediate(r));
-
-test('٧. الواجهة: آخر ١٠ حقائق (الأحدث أوّلًا) وزرّ «امسح» لكلّ واحدة، ونسخة localStorage', async () => {
-  const ui = boot(true, mk(14));
-  ui.ls.set('aiapp_living_memory', JSON.stringify({ at: 1, facts: mk(3) }));
-  ui.win.livingRefresh();
-  assert.equal(ui.els.livingMemList.children.length, 3, 'النسخة المحلّيّة تُرسم فورًا قبل الخادم');
-  await tick(); await tick();
-  const rows = ui.els.livingMemList.children;
-  assert.equal(rows.length, 10, 'عشر حقائق لا أكثر');
-  assert.equal(rows[0].children[0].textContent, 'حقيقة 13', 'الأحدث أوّلًا');
-  assert.ok(rows.every((r) => r.children[1].tag === 'button' && r.children[1].textContent === 'امسح' && r.children[1].getAttribute('data-living-del')));
-  assert.equal(JSON.parse(ui.ls.get('aiapp_living_memory')).facts.length, 14, 'المرآة المحلّيّة حُدّثت بما رجع من الخادم');
-  // «امسح» لحقيقة واحدة
-  const target = rows[2].children[1];
-  ui.click(target);
-  assert.equal(ui.calls[ui.calls.length - 1].op, 'living_del');
-  assert.equal(ui.calls[ui.calls.length - 1].id, target.getAttribute('data-living-del'));
-  await tick(); await tick();
-  assert.equal(ui.els.livingMemList.children.length, 10, 'يعاد ملء العشر من الأحدث');
-  assert.ok(!ui.els.livingMemList.children.some((r) => r.children[1].getAttribute('data-living-del') === target.getAttribute('data-living-del')), 'الممسوحة اختفت');
-  assert.equal(JSON.parse(ui.ls.get('aiapp_living_memory')).facts.length, 13);
-  // ردّ بلا قائمة (خطأ خادم بجسم غريب) لا يمحو المرآة ولا القائمة المرسومة
-  const odd = boot(true, mk(4));
-  odd.ls.set('aiapp_living_memory', JSON.stringify({ at: 1, facts: mk(4) }));
-  odd.setFacts(undefined);
-  odd.win.livingRefresh(); await tick(); await tick();
-  assert.equal(odd.els.livingMemList.children.length, 4, 'القائمة باقية');
-  assert.equal(JSON.parse(odd.ls.get('aiapp_living_memory')).facts.length, 4, 'والمرآة لم تُمحَ');
-  assert.match(odd.els.livingMemStatus.textContent, /تعذّر تحميل الذاكرة الحيّة/);
-  // فارغة
-  const empty = boot(true, []); empty.win.livingRefresh(); await tick(); await tick();
-  assert.equal(empty.els.livingMemList.children[0].textContent, 'لم يتعلّم الوكيل شيئًا عنك بعد.');
-});
-
-test('٧ب. التعلّم من العميل: آخر ٢٠ رسالة بلا كود ولا تشخيص، وللمالك وحده', async () => {
-  const owner = boot(true, []);
-  const msgs = [];
-  for (let i = 0; i < 30; i++) msgs.push({ role: i % 2 ? 'assistant' : 'user', content: 'م' + i });
-  msgs.push({ role: 'assistant', content: 'تفضّل\n```html\n<b>كود طويل</b>\n```\nانتهى' }, { role: 'assistant', _diag: true, content: 'تشخيص' }, { role: 'assistant', _cc: true, content: 'ردّ كود' });
-  owner.win.livingLearn(msgs);
-  const sent = owner.calls[0];
-  assert.equal(sent.op, 'living_learn');
-  assert.equal(sent.messages.length, 20);
-  assert.ok(sent.messages.every((m) => !/```|كود طويل|تشخيص|ردّ كود/.test(m.content)));
-  assert.ok(sent.messages[sent.messages.length - 1].content.includes('انتهى'));
-  const guest = boot(false, []); guest.win.livingLearn(msgs); guest.win.livingRefresh();
-  assert.equal(guest.calls.length, 0, 'غير المالك: لا طلب أصلًا');
-});
-
-test('٧ج. الربط: البطاقة داخل صفحة المالك، وفتح الصفحة يحدّثها، والتعلّم بعد الردّ، وسجلّ الوكيل ٥٠ للمالك', () => {
-  const partial = read('js/partials-settings.js');
-  const s = partial.indexOf('<div id="ownerSection"'), card = partial.indexOf('id="livingMemWrap"');
-  const e = partial.indexOf('<button type="button" id="settingsLogoutBtn"');
-  assert.ok(s >= 0 && card > s && card < e, 'البطاقة داخل صفحة المالك');
-  for (const id of ['livingMemList', 'livingMemStatus']) assert.ok(partial.includes('id="' + id + '"'));
-  assert.match(partial, /data-i18n="livingMemTitle"/);
-  assert.match(partial, /data-i18n="livingMemIntro"/);
-  assert.match(read('js/app-05-ui.js'), /if\(sid === 'ownerSection' && window\.livingRefresh\) window\.livingRefresh\(\);/);
-  const a09 = read('js/app-09-attach.js');
-  assert.match(a09, /await __agentApplyResult\(cur, full, streamBroke \? null : agLog\.split\(\)\);[^\n]*\n\s*try\{ if\(window\.livingLearn\) window\.livingLearn\(cur\.messages\); \}catch\(e\)\{ __swallow\(e, 'misc:living-learn'\); \}/);
-  assert.match(a09, /const __histN = \(typeof settingsOwnerUi === 'function' && settingsOwnerUi\(\)\) \? 50 : 8;\n\s*const history = cur\.messages\.slice\(-__histN\)/);
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=688'), 'وسم الجزء ارتفع');
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=717'"), 'وسم اللغات ارتفع');
-  const bundle = read('js/app.bundle.js');
-  assert.ok(bundle.includes('window.livingLearn') && bundle.includes('livingRefresh'), 'الحزمة تحمل التعديل');
-});
-
-test('٧د. ست نصوص في الـ١٤ لغة، ولا اسم مزوّد في أيّ منها', () => {
-  const KEYS = ['livingMemTitle', 'livingMemIntro', 'livingMemEmpty', 'livingMemDelete', 'livingMemLoadError', 'livingMemDeleteError'];
-  const data = read('js/app-03-i18n-data.js');
-  const all = [];
-  for (const k of KEYS) assert.equal((data.match(new RegExp('\\n    ' + k + ': ', 'g')) || []).length, 2, 'ar وen: ' + k);
-  const LANGS = ['fr', 'es', 'ru', 'tr', 'id', 'fil', 'hi', 'ne', 'bn', 'ur', 'ml', 'zh'];
-  for (const lg of LANGS) {
-    const src = read('i18n/' + lg + '.js');
-    for (const k of KEYS) assert.ok(src.includes('"' + k + '":'), lg + ': ' + k);
-    all.push(src.slice(src.indexOf('Object.assign(I18N["' + lg + '"], {"livingMemTitle"')));
-  }
-  all.push(...KEYS.map((k) => data.split('\n    ' + k + ': ')[1].split('\n')[0]), ...KEYS.map((k) => data.split('\n    ' + k + ': ')[2].split('\n')[0]));
-  assert.ok(all.every((t) => !/claude|gemini|gpt|openai|groq|كلاود|جيميناي/i.test(t)), 'أسماء وظيفيّة فقط');
 });
 
 test('٨. لا سرّ في الملفّ، ولا قراءة بيئة في نطاق الوحدة (الإقلاع البارد)', () => {

@@ -361,6 +361,16 @@
         <button type="button" id="memoryClearBtn" style="padding:9px 16px; border-radius:10px; border:1px solid rgba(220,70,70,.45); background:transparent; color:#e05555; cursor:pointer; font-size:var(--fs-6);" data-i18n="memoryClearBtn">حذف ذاكرتي</button>
         <span id="memoryStatus" role="status" aria-live="polite" style="font-size:var(--fs-6); opacity:.75;"></span>
       </div>
+      <!-- v-living-all: «ذاكرتي الحيّة» — حقائق منظَّمة يتعلّمها المساعد من محادثاتك: آخر ١٠، «امسح» لكلّ واحدة، و«امسح كل شي» -->
+      <div id="livingMemWrap" style="margin-top:22px; padding-top:16px; border-top:1px solid var(--border); display:none;">
+        <div style="font-size:var(--fs-3); font-weight:700; margin-bottom:6px;" data-i18n="livingMemTitle">ذاكرتي الحيّة</div>
+        <p style="margin:0 0 10px; opacity:.75; font-size:var(--fs-6); line-height:1.7;" data-i18n="livingMemIntro">آخر ما تعلّمه المساعد عنك من محادثاتك. يستعمل منها في كلّ ردّ ما يخصّ سؤالك فقط، ويطبّق أسلوبك المفضّل. امسح أيّ حقيقة ليتناساها.</p>
+        <div id="livingMemList" style="background:var(--panel2); border-radius:var(--r-2); padding:4px 10px;"></div>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px;">
+          <button type="button" id="livingMemClearAll" style="display:none; padding:9px 16px; border-radius:10px; border:1px solid rgba(220,70,70,.45); background:transparent; color:#e05555; cursor:pointer; font-size:var(--fs-6);" data-i18n="livingMemClearAll">امسح كل شي</button>
+          <span id="livingMemStatus" role="status" aria-live="polite" style="font-size:var(--fs-6); opacity:.75;"></span>
+        </div>
+      </div>
     </div></div>
 
   <!-- v-news-off: قسم «🔔 التنبيهات» كان فيه مفتاح الأخبار العاجلة وحده — أُزيل مع الميزة (أمر المالك ٣ أكتوبر). -->
@@ -721,14 +731,6 @@
       </div>
       <div id="vaultTestBox" style="display:none; margin-top:8px; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px; white-space:pre-wrap;"></div>
     </div>
-  </div>
-
-  <!-- v-living-memory: الذاكرة الحيّة — آخر ١٠ حقائق تعلّمها الوكيل، وزرّ «امسح» لكلّ واحدة (المالك وحده) -->
-  <div id="livingMemWrap" class="ownerCard">
-    <div class="ownerCardTitle" data-i18n="livingMemTitle">الذاكرة الحيّة</div>
-    <div style="font-size:12.5px; line-height:1.8; opacity:.85;" data-i18n="livingMemIntro">آخر ما تعلّمه الوكيل عنك من محادثاتك. يستعمل منها في كلّ ردّ ما يخصّ سؤالك فقط. امسح أيّ حقيقة ليتناساها.</div>
-    <div id="livingMemList" style="margin-top:10px; background:var(--panel); border-radius:var(--r-2); padding:4px 10px;"></div>
-    <div id="livingMemStatus" style="margin-top:6px; font-size:12px; min-height:16px;"></div>
   </div>
 
   <div id="adminSectionWrap" class="ownerCard" style="display:none;">
