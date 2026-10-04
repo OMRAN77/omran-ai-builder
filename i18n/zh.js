@@ -1162,3 +1162,5 @@ Object.assign(I18N["zh"], {"videoSceneWait":"⏳ 第{i}/{n}幕：视频之间需
 Object.assign(I18N["zh"], {"acctPhoneLabel": "📱 手机号（用于找回账号）", "phoneNotLinked": "未绑定", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "发送预设消息或分享你的号码，然后回到这里…", "phoneLinkedOk": "✓ 号码已绑定", "phoneTaken": "该号码已绑定其他账号", "phoneNoUser": "没有账号绑定此号码", "phoneExpired": "链接已过期 — 请重试", "phoneRecoverTitle": "或用手机号找回账号：", "phoneRecoverSent": "✓ 我们已在那边的聊天中发送了设置新密码的链接"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["zh"], {"bgThemeWood": "木纹", "woodRecentTitle": "最近的对话"});
+/* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
+Object.assign(I18N["zh"], {"brandSubtitle": "智能平台", "frameHomeTitle1": "伟大的想法", "frameHomeTitle2": "从这里开始", "frameHomeSub": "你的智能助手，一直陪着你"});

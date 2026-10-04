@@ -1171,3 +1171,5 @@ Object.assign(I18N["id"], {"videoSceneWait":"⏳ Adegan {i}/{n}: jeda antar vide
 Object.assign(I18N["id"], {"acctPhoneLabel": "📱 Nomor telepon (untuk pemulihan)", "phoneNotLinked": "Belum ditautkan", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Kirim pesan yang sudah disiapkan atau bagikan nomormu, lalu kembali ke sini…", "phoneLinkedOk": "✓ Nomor ditautkan", "phoneTaken": "Nomor ini tertaut ke akun lain", "phoneNoUser": "Tidak ada akun yang tertaut ke nomor ini", "phoneExpired": "Tautan kedaluwarsa — coba lagi", "phoneRecoverTitle": "Atau pulihkan akunmu dengan telepon:", "phoneRecoverSent": "✓ Kami mengirim tautan kata sandi baru ke obrolanmu di sana"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["id"], {"bgThemeWood": "Kayu", "woodRecentTitle": "Obrolan terbaru"});
+/* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
+Object.assign(I18N["id"], {"brandSubtitle": "Platform AI", "frameHomeTitle1": "Di sinilah dimulai", "frameHomeTitle2": "ide-ide besarmu", "frameHomeSub": "Asisten pintarmu, selalu bersamamu"});

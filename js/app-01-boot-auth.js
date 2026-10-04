@@ -1044,6 +1044,7 @@ try{
 
   function updateAvatarUI(){
     const avatar = localStorage.getItem('aiapp_avatar') || '';
+    if(typeof window.omFrameAvatar === 'function') window.omFrameAvatar(); // v-frame-design: صورته بجانب رسائله
     const img = $('#authUserAvatarImg');
     const emoji = $('#authUserBadgeEmoji');
     if(img && emoji){

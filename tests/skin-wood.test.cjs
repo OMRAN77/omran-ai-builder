@@ -52,7 +52,7 @@ test('٢. الخامات: كلّ url في CSS موجود وخفيف، والمص
 
 test('٣. الربط والترجمة: CSS بعد خلفيات.css، والنصّان بالـ١٤ لغة، ووسم اللغات مرفوع', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/ثيم-خشبي.css?v=1');
+  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/ثيم-خشبي.css?v=2');
   assert.ok(a > 0 && b > a, 'يُحمَّل بعد خلفيات.css فيعلو عليه');
   const data = rd('js/app-03-i18n-data.js');
   for (const k of ['bgThemeWood', 'woodRecentTitle']) {
@@ -61,7 +61,7 @@ test('٣. الربط والترجمة: CSS بعد خلفيات.css، والنص�
   }
   assert.match(data, /bgThemeWood: 'خشبي'/);
   assert.match(data, /woodRecentTitle: 'المحادثات الجديدة'/);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=714'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=715'"));
 });
 
 test('٤. «بيت» لوحة المعاينة الفارغة كما في الصورة: من صفوف القائمة نفسها وأزرار الشريط السفليّ، والنقر يمرّ إلى الأصل', () => {

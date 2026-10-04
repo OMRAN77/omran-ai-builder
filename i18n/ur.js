@@ -1120,3 +1120,5 @@ Object.assign(I18N["ur"], {"videoSceneWait":"⏳ منظر {i}/{n}: ویڈیوز 
 Object.assign(I18N["ur"], {"acctPhoneLabel": "📱 فون نمبر (بحالی کے لیے)", "phoneNotLinked": "منسلک نہیں", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "تیار پیغام بھیجیں یا اپنا نمبر شیئر کریں، پھر یہاں واپس آئیں…", "phoneLinkedOk": "✓ نمبر منسلک ہو گیا", "phoneTaken": "یہ نمبر کسی دوسرے اکاؤنٹ سے منسلک ہے", "phoneNoUser": "اس نمبر سے کوئی اکاؤنٹ منسلک نہیں", "phoneExpired": "لنک کی میعاد ختم ہو گئی — دوبارہ کوشش کریں", "phoneRecoverTitle": "یا اپنے فون سے اکاؤنٹ بحال کریں:", "phoneRecoverSent": "✓ ہم نے وہاں آپ کی چیٹ میں نئے پاس ورڈ کا لنک بھیج دیا ہے"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["ur"], {"bgThemeWood": "لکڑی", "woodRecentTitle": "حالیہ چیٹس"});
+/* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
+Object.assign(I18N["ur"], {"brandSubtitle": "اے آئی پلیٹ فارم", "frameHomeTitle1": "یہیں سے شروع ہوتے ہیں", "frameHomeTitle2": "آپ کے بڑے خیالات", "frameHomeSub": "آپ کا اسمارٹ معاون، ہمیشہ آپ کے ساتھ"});
