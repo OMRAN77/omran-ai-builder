@@ -65,30 +65,30 @@ const NAMED = [
   ['api/ai.js', 440, 'function applyNote('],
   ['api/ai.js', 477, 'const PROVIDERS'],
   ['api/ai.js', 479, "withErrorCapture('ai'"],
-  ['api/_lib/chat.js', 63, 'function customInstructionsBlock('],
-  ['api/_lib/chat.js', 570, 'function imageTurnConfig('],
-  ['api/_lib/chat.js', 590, 'const CLAUDE_MODELS'],
-  ['api/_lib/chat.js', 596, 'function pickClaudeModel('],
-  ['api/_lib/chat.js', 603, 'const OR_MODELS'],
-  ['api/_lib/chat.js', 1157, 'module.exports = async'],
-  ['api/_lib/chat.js', 1178, 'let viaOR'],
-  ['api/_lib/chat.js', 1181, 'let apiKey'],
-  ['api/_lib/chat.js', 1561, 'ANTHROPIC_API_KEY / OPENROUTER_API_KEY'],
-  ['api/_lib/chat.js', 1182, 'let CHAT_URL'],
-  ['api/_lib/chat.js', 1188, 'let DEFAULT_MODEL'],
-  ['api/_lib/chat.js', 1227, 'const applyRoute'], // v-plan-routing
-  ['api/_lib/chat.js', 1200, 'let __direct = (__ownerReq'], // v-owner-direct
-  ['api/_lib/chat.js', 1195, 'pickClaudeModel('], // v-provider-models: سطران تعليق قبله
-  ['api/_lib/chat.js', 1299, '__planRoute = tierLib.planRoute('], // v-plan-routing
-  ['api/_lib/chat.js', 1314, 'checkAndConsume('],
-  ['api/_lib/chat.js', 1315, 'usage.allowed'],
-  ['api/_lib/chat.js', 1331, '__freeLane'],
-  ['api/_lib/chat.js', 1388, 'const sysParts'],
-  ['api/_lib/chat.js', 1396, 'customInstructionsBlock('],
-  ['api/_lib/chat.js', 1495, 'imageTurnConfig('],
-  ['api/_lib/chat.js', 1546, 'if (__freeLane || !__visionRoute)'],
-  ['api/_lib/chat.js', 1706, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
-  ['api/_lib/chat.js', 1722, 'v-king-fallback'],
+  ['api/_lib/chat.js', 64, 'function customInstructionsBlock('],
+  ['api/_lib/chat.js', 571, 'function imageTurnConfig('],
+  ['api/_lib/chat.js', 591, 'const CLAUDE_MODELS'],
+  ['api/_lib/chat.js', 597, 'function pickClaudeModel('],
+  ['api/_lib/chat.js', 604, 'const OR_MODELS'],
+  ['api/_lib/chat.js', 1158, 'module.exports = async'],
+  ['api/_lib/chat.js', 1179, 'let viaOR'],
+  ['api/_lib/chat.js', 1182, 'let apiKey'],
+  ['api/_lib/chat.js', 1579, 'ANTHROPIC_API_KEY / OPENROUTER_API_KEY'],
+  ['api/_lib/chat.js', 1183, 'let CHAT_URL'],
+  ['api/_lib/chat.js', 1189, 'let DEFAULT_MODEL'],
+  ['api/_lib/chat.js', 1228, 'const applyRoute'], // v-plan-routing
+  ['api/_lib/chat.js', 1201, 'let __direct = (__ownerReq'], // v-owner-direct
+  ['api/_lib/chat.js', 1196, 'pickClaudeModel('], // v-provider-models: سطران تعليق قبله
+  ['api/_lib/chat.js', 1304, '__planRoute = tierLib.planRoute('], // v-plan-routing
+  ['api/_lib/chat.js', 1319, 'checkAndConsume('],
+  ['api/_lib/chat.js', 1320, 'usage.allowed'],
+  ['api/_lib/chat.js', 1336, '__freeLane'],
+  ['api/_lib/chat.js', 1403, 'const sysParts'],
+  ['api/_lib/chat.js', 1413, 'customInstructionsBlock('],
+  ['api/_lib/chat.js', 1513, 'imageTurnConfig('],
+  ['api/_lib/chat.js', 1564, 'if (__freeLane || !__visionRoute)'],
+  ['api/_lib/chat.js', 1724, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
+  ['api/_lib/chat.js', 1740, 'v-king-fallback'],
   ['api/_lib/tier.js', 46, 'const PLAN_ROUTING'], // v-plan-routing
   ['api/_lib/tier.js', 54, 'function isStrongTurn('],
   ['api/_lib/tier.js', 71, 'function planRoute('],
