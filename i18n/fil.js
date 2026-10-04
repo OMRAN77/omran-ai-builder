@@ -1175,4 +1175,5 @@ Object.assign(I18N["fil"], {"acctPhoneLabel": "📱 Numero ng telepono (para sa 
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["fil"], {"bgThemeWood": "Kahoy", "woodRecentTitle": "Mga bagong chat"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
-Object.assign(I18N["fil"], {"brandSubtitle": "AI Platform", "frameHomeTitle1": "Dito nagsisimula", "frameHomeTitle2": "ang malalaking ideya mo", "frameHomeSub": "Ang matalino mong katulong, laging kasama mo"});
+Object.assign(I18N["fil"], {"brandSubtitle": "AI Platform"});
+Object.assign(I18N["fil"], {"bgThemeDarkwood": "Madilim na kahoy", "bgThemeMarble": "Marmol", "bgThemeCode": "Code", "bgThemeCars": "Mga kotse", "bgThemeKids": "Mga bata", "bgThemeCuisine": "Pagluluto", "bgThemeSunset": "Paglubog ng araw", "bgThemeBeach": "Dalampasigan", "bgThemeWinter": "Taglamig", "bgThemeGarage": "Garahe", "bgThemeAnime": "Anime", "bgThemeCyber": "Cybersecurity", "bgThemeSchool": "Silid-aralan"});

@@ -1,0 +1,288 @@
+/* v-themes — الثيمات الثلاثة عشر بعد «خشبي» (أمر المالك ٤ أكتوبر: «كمّل الثيمات الباقية» — «نفس فكرة الخشبيّة لكن في التصميم
+   الجديد»، وشاشات الترحيب الأربع «شيل الأسامي عنها وسوّها نفس الخشبيّة»). تُختار من «خلفيّات الشاشة» (js/app-25-خلفيات.js
+   يضع html.skin + skin-<معرّف>، وskin-scene لثيمات المشهد). كلّ ثيم كتلة متغيّرات --th-* وحدها؛ القواعد العامّة أدناه تكسو بها
+   الواجهة كلّها كما كسا الخشبيّ: خلفيّة الشاشة، القائمة وخاناتها، زرّ «محادثة جديدة» والإرسال، خانة الكتابة، الفقاعات، لوحة
+   المعاينة ومكان الكود (بلون اللوحة نفسها)، والنوافذ والقوائم. ثيمات المشهد: الصورة خلف الشاشة كلّها، والقائمة ولوحة المعاينة
+   زجاج ملوّن فوقها (كما في صور المالك: القائمة الدافئة فوق الغروب)، واللوحة الوسطى شفّافة. الخامات assets/ثيمات/ يولّدها
+   scripts/ثيمات.mjs. كلّ القواعد تحت html.skin فلا يتأثّر من لم يختر ثيمًا ولا الخشبيّ. */
+
+/* ── الافتراضات (تغيّرها كتلة كلّ ثيم) ── */
+html.skin{
+  --th-scheme:dark; --th-page:#0d0d0f; --th-layer:var(--th-page); --th-veil:transparent;
+  --th-ink:#f2efe8; --th-muted:#b9b3a6; --th-over:var(--th-ink); --th-over-muted:var(--th-muted); --th-over-shadow:none; --th-over-drop:none;
+  --th-gold:#d4af5a; --th-line:rgba(212,175,90,.55); --th-line2:rgba(212,175,90,.24);
+  --th-dlg:#141416; --th-dlg2:#1d1d20;
+  --th-side:#111113; --th-side-ink:var(--th-ink); --th-side-muted:var(--th-muted);
+  --th-tile:#1b1b1e; --th-tile-line:rgba(212,175,90,.3); --th-tile-ink:var(--th-side-ink); --th-tile-r:12px;
+  --th-tile-shadow:0 3px 8px rgba(0,0,0,.35); --th-thumb:rgba(255,255,255,.08); --th-glow:rgba(212,175,90,.35);
+  --th-btn:linear-gradient(160deg,#e9c766,#b8902a); --th-btn-ink:#2b1d02; --th-btn-shadow:0 3px 10px rgba(0,0,0,.35);
+  --th-field:rgba(255,255,255,.06); --th-field-line:var(--th-line2); --th-field-ink:var(--th-ink); --th-field-muted:var(--th-muted);
+  --th-user:rgba(255,255,255,.08); --th-user-line:var(--th-line); --th-user-ink:var(--th-ink);
+  --th-ai:rgba(20,20,22,.84); --th-ai-line:var(--th-line2); --th-ai-ink:var(--th-ink); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.22);
+  --th-work:#101013; --th-work-ink:var(--th-ink); --th-work-muted:var(--th-muted); --th-foot:transparent;
+  /* متغيّرات التطبيق نفسها: الكتابة والأسطح (الإعدادات والقوائم) من الثيم */
+  --text:var(--th-ink) !important; --muted:var(--th-muted) !important; --accent-ink:var(--th-ink) !important;
+  --accent:var(--th-gold) !important; --border:var(--th-line2) !important; --omLine:var(--th-line2) !important; --omGold:var(--th-gold) !important;
+  --bg:var(--th-dlg) !important; --bg2:var(--th-dlg) !important; --panel:var(--th-dlg) !important; --panel2:var(--th-dlg2) !important;
+  --accent-surface:var(--th-dlg2) !important; --accent-on-surface:var(--th-ink) !important;
+  color-scheme:var(--th-scheme); background:var(--th-page) !important;
+}
+
+/* ── خلفيّة الشاشة ── */
+html.skin #bgImgLayer{background:var(--th-layer) !important;}
+html.skin #bgImgLayer::after{background:var(--th-veil) !important;}
+html.skin-scene #bgImgLayer{background:var(--th-scene) var(--th-pos, center) / cover no-repeat, var(--th-page) !important;}
+html.skin-scene.mobile-ui #bgImgLayer{background-position:var(--th-pos-m, center) !important;}
+html.skin body::before, html.skin body::after{display:none !important;}
+
+/* ── الإطارات (التصميم الجديد) ── */
+html.skin:not(.mobile-ui){
+  --frame-line:var(--th-line); --frame-line2:var(--th-line2); --frame-gold:var(--th-gold); --frame-gold2:var(--th-gold);
+  --frame-ink:var(--th-side-ink); --frame-muted:var(--th-side-muted); --frame-field:var(--th-field);
+  --frame-pill-line:var(--th-line); --frame-shadow:0 8px 22px rgba(0,0,0,.25);
+}
+
+/* ── القائمة الجانبيّة ── */
+html.skin #sidebar{background:var(--th-side) !important; color:var(--th-side-ink); --text:var(--th-side-ink) !important; --muted:var(--th-side-muted) !important;}
+html.skin-scene #sidebar, html.skin-scene #workarea{-webkit-backdrop-filter:blur(18px) saturate(1.15); backdrop-filter:blur(18px) saturate(1.15);}
+html.skin.mobile-ui #sidebar:not(.open), html.skin.mobile-ui #workarea:not(.open){box-shadow:none !important;}
+html.skin #sidebar .omStars{display:none;}
+/* المحدِّد الثاني يعادل قاعدة الوضع الفاتح (html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn) ويأتي بعدها */
+html.skin #omranNewChatBtn, html.skin:not(.mobile-ui) #omranNewChatBtn, html.skin:not(.mobile-ui) #omranNewChatBtn:hover{margin:10px 12px 6px !important; padding:9px 16px !important; border-radius:999px !important; background:var(--th-btn) !important; border:none !important; color:var(--th-btn-ink) !important; box-shadow:var(--th-btn-shadow) !important; justify-content:center !important;}
+html.skin #omranNewChatBtn svg{color:var(--th-btn-ink) !important;}
+html.skin #omranHistTitle, html.skin #btnProjMenuToggle, html.skin #projMenuWrap{color:var(--th-side-ink) !important;}
+html.skin #sbSearchWrap{background:var(--th-field) !important; border:1px solid var(--th-field-line) !important; color:var(--th-field-muted) !important;}
+html.skin #sbSearch{color:var(--th-field-ink) !important;}
+html.skin #sbSearch::placeholder{color:var(--th-field-muted) !important;}
+html.skin #history{padding:2px 10px 8px !important;}
+html.skin .hist-item{background:var(--th-tile) !important; border:1px solid var(--th-tile-line) !important; border-radius:var(--th-tile-r) !important; margin:7px 0 !important; padding:7px 12px !important; box-shadow:var(--th-tile-shadow) !important; min-height:42px; color:var(--th-tile-ink) !important;}
+html.skin .hist-item:hover{filter:brightness(1.06);}
+/* المختار: redesign.css يُفرغ خلفيّته على الكمبيوتر (html:not(.mobile-ui) .hist-item.active) — المحدِّد الثاني أعلى منه */
+html.skin .hist-item.active, html.skin:not(.mobile-ui) #history .hist-item.active{background:var(--th-tile) !important; border:1.5px solid var(--th-gold) !important; box-shadow:var(--th-tile-shadow), 0 0 0 2px var(--th-glow) !important;}
+html.skin .hist-title{color:var(--th-tile-ink) !important; font-weight:600 !important; opacity:1 !important;}
+html.skin .hist-thumb{background:var(--th-thumb) !important; border:1px solid var(--th-tile-line) !important; border-radius:6px !important; color:var(--th-tile-ink) !important;}
+html.skin .hist-menu-btn{color:var(--th-tile-ink) !important;}
+html.skin #omranSidebarFoot{background:var(--th-foot) !important; border-top:1px solid var(--th-line2) !important; border-radius:0 0 14px 14px;}
+html.skin #omranSidebarFoot .omNavBtn, html.skin #omranSidebarFoot .omIconBtn, html.skin #omranSidebarFoot .omModeNav{color:var(--th-side-ink) !important; opacity:1 !important;}
+html.skin #omranBottomNav{background:var(--th-side) !important; border-top:1px solid var(--th-line2) !important;}
+html.skin #omranBottomNav .omNavBtn, html.skin #omranBottomNav button{color:var(--th-side-ink) !important; opacity:1 !important;}
+
+/* ── المحادثة ── */
+html.skin #chatcol, html.skin #chatcol > header, html.skin header, html.skin #inputbar, html.skin #omranBelowComposer{background:transparent !important; border-color:transparent !important;}
+html.skin #chatcol, html.skin body > header{--text:var(--th-over) !important; --muted:var(--th-over-muted) !important; color:var(--th-over);}
+html.skin #chatcol{position:relative;}
+html.skin #messages{position:relative; z-index:1;}
+html.skin #messages::before, html.skin #messages::after{display:none !important;}
+html.skin body > header, html.skin #omranBelowComposer, html.skin #messages .msgActions{text-shadow:var(--th-over-shadow);}
+html.skin body > header svg, html.skin #omranBelowComposer svg, html.skin #inputbar #btnPlusTools svg, html.skin #btnMic svg{filter:var(--th-over-drop);}
+html.skin #messages .msg.user{background:var(--th-user) !important; border:1px solid var(--th-user-line) !important; border-radius:18px !important; color:var(--th-user-ink) !important; padding:9px 14px !important; box-shadow:var(--th-bubble-shadow) !important; --text:var(--th-user-ink) !important; text-shadow:none;}
+html.skin #messages .msg.assistant{background:var(--th-ai) !important; border:1px solid var(--th-ai-line) !important; border-radius:16px !important; color:var(--th-ai-ink) !important; padding:12px 16px !important; box-shadow:var(--th-bubble-shadow) !important; --text:var(--th-ai-ink) !important; text-shadow:none;}
+html.skin #askAllHintTip{background:var(--th-field) !important; color:var(--th-field-ink) !important; border:1px solid var(--th-field-line); text-shadow:none;}
+/* خانة الكتابة والإرسال (محدِّدا الإرسال بمعرّفين كقاعدة التطبيق — فخّ مثبت في PITFALLS) */
+html.skin #composerBox{background:var(--th-field) !important; border:1px solid var(--th-field-line) !important; border-radius:28px !important; box-shadow:0 6px 16px rgba(0,0,0,.18) !important;}
+html.skin #prompt{color:var(--th-field-ink) !important;}
+html.skin #prompt::placeholder{color:var(--th-field-muted) !important;}
+html.skin #composerBox > #btnSend, html.skin #btnSend{background:var(--th-btn) !important; border:none !important; color:var(--th-btn-ink) !important; box-shadow:var(--th-btn-shadow) !important; opacity:1 !important;}
+html.skin #composerBox > #btnSend svg{color:var(--th-btn-ink) !important; stroke:var(--th-btn-ink) !important;}
+html.skin #composerBox:not(.typing) > #btnSend{opacity:1 !important;}
+html.skin #omranBelowComposer, html.skin #omranBelowComposer button, html.skin #omModelChip, html.skin #omModeBtn,
+html.skin #inputbar .inputbar-tools-left > .btn, html.skin #inputbar .inputbar-tools-left > button, html.skin #inputbar .inputbar-tools button, html.skin #btnMic, html.skin #inputbar #btnPlusTools{color:var(--th-over) !important;}
+
+/* ── لوحة المعاينة ومكان الكود (بلون اللوحة نفسها — أمر المالك) ── */
+html.skin #workarea{background:var(--th-work) !important; color:var(--th-work-ink); --text:var(--th-work-ink) !important; --muted:var(--th-work-muted) !important;}
+html.skin #code{background:transparent !important; color:var(--th-work-ink) !important; caret-color:var(--th-work-ink);}
+html.skin #tabs{background:transparent !important; border-color:var(--th-line2) !important;}
+html.skin #tabs .tab, html.skin #workarea .omIconBtn, html.skin #workarea button{color:var(--th-work-ink) !important;}
+html.skin #tabs .tab.active{border-color:var(--th-gold) !important;}
+
+/* ── النوافذ والقوائم المنبثقة ── */
+html.skin :is(dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu, .dlg-actions, #provDropdownPanel, #omModelPopup){background:var(--th-dlg) !important; color:var(--th-ink) !important; --text:var(--th-ink) !important; --muted:var(--th-muted) !important; text-shadow:none;}
+html.skin dialog::backdrop{background:rgba(0,0,0,.5);}
+html.skin select option{background:var(--th-dlg); color:var(--th-ink);}
+
+/* ── زينة المحادثة: زهور ذهبيّة (الخشب الداكن والرخام)، شبكة العُقَد (برمجة)، الأحجية (أطفال)، أدوات المطبخ (طهي) ── */
+html.skin-darkwood #chatcol::after, html.skin-marble #chatcol::after{content:""; position:absolute; z-index:0; pointer-events:none; inset-inline-end:16px; bottom:150px; width:150px; height:188px; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B2%D9%87%D9%88%D8%B1-%D8%B0%D9%87%D8%A8%D9%8A%D8%A9.svg") center/contain no-repeat; opacity:.85;}
+html.skin-marble #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; inset-inline-end:170px; bottom:150px; width:104px; height:130px; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B2%D9%87%D9%88%D8%B1-%D8%B0%D9%87%D8%A8%D9%8A%D8%A9.svg") center/contain no-repeat; opacity:.7; transform:scaleX(-1);}
+html.skin-code body.omranWelcome #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; top:9%; left:50%; transform:translateX(-50%); width:min(72%,420px); aspect-ratio:360/220; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A8%D8%B1%D9%85%D8%AC%D8%A9/%D8%B4%D8%A8%D9%83%D8%A9.svg") center/contain no-repeat; opacity:.9;}
+html.skin-cuisine body.omranWelcome #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; top:12%; left:50%; transform:translateX(-50%); width:min(54%,300px); aspect-ratio:260/200; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B7%D9%87%D9%8A/%D8%A3%D8%AF%D9%88%D8%A7%D8%AA.svg") center/contain no-repeat;}
+html.skin-kids body.omranWelcome #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; top:11%; left:50%; transform:translateX(-50%); width:min(46%,250px); aspect-ratio:220/210; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A3%D8%B7%D9%81%D8%A7%D9%84/%D8%A3%D8%AD%D8%AC%D9%8A%D8%A9.svg") center/contain no-repeat;}
+
+/* ══ الثيمات ══ */
+
+/* خشب داكن: خشب عروقه عموديّة، ألواح بأطراف نحاسيّة، جلد أسود للمعاينة (صورة المالك) */
+html.skin-darkwood{
+  --th-page:#140d08; --th-layer:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8-%D8%AF%D8%A7%D9%83%D9%86/%D8%AE%D8%B4%D8%A8.jpg") center top / 512px auto repeat, #2a1c12;
+  --th-ink:#f1e3c6; --th-muted:#c4ab84; --th-gold:#d6a85a; --th-line:rgba(214,168,90,.55); --th-line2:rgba(214,168,90,.22); --th-glow:rgba(214,168,90,.3);
+  --th-dlg:#1e140d; --th-dlg2:#2a1c12;
+  --th-side:linear-gradient(rgba(0,0,0,.28),rgba(0,0,0,.28)), url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8-%D8%AF%D8%A7%D9%83%D9%86/%D8%AE%D8%B4%D8%A8.jpg") center top / 512px auto repeat, #241810;
+  --th-tile:linear-gradient(180deg,#f0cf8a,#a8742e) left / 7px 100% no-repeat, linear-gradient(180deg,#f0cf8a,#a8742e) right / 7px 100% no-repeat, url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8-%D8%AF%D8%A7%D9%83%D9%86/%D9%84%D9%88%D8%AD.jpg") center / cover;
+  --th-tile-line:rgba(20,12,6,.85); --th-tile-shadow:inset 0 1px 0 rgba(255,220,170,.14), 0 3px 8px rgba(0,0,0,.55); --th-thumb:rgba(0,0,0,.32);
+  --th-btn:linear-gradient(180deg,#f3d595,#c99645 50%,#8f6326); --th-btn-ink:#2a1a08;
+  --th-field:rgba(20,12,6,.74); --th-field-line:rgba(214,168,90,.45); --th-field-muted:#a88c66;
+  --th-user:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8-%D8%AF%D8%A7%D9%83%D9%86/%D9%84%D9%88%D8%AD.jpg") center / cover; --th-user-line:rgba(214,168,90,.45); --th-ai:rgba(18,11,6,.86);
+  --th-work:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8-%D8%AF%D8%A7%D9%83%D9%86/%D8%AC%D9%84%D8%AF.jpg") center / 256px repeat, #141012; --th-foot:rgba(0,0,0,.35);
+}
+/* رخام أسود بعروق ذهبيّة، أقراص داكنة بطرف ذهبيّ، ومعدن مصقول للمعاينة (صورة المالك) */
+html.skin-marble{
+  --th-page:#0a0a0b; --th-layer:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B1%D8%AE%D8%A7%D9%85/%D8%B1%D8%AE%D8%A7%D9%85.jpg") center / cover no-repeat, #0d0d0e;
+  --th-ink:#efe7d4; --th-muted:#a79f8c; --th-gold:#d9b25c; --th-line:rgba(217,178,92,.55); --th-line2:rgba(217,178,92,.2);
+  --th-dlg:#121214; --th-dlg2:#1c1c1f; --th-side:linear-gradient(180deg,#1c1c1f,#0c0c0d);
+  --th-tile:linear-gradient(180deg,#f6d886,#b5832a) left / 9px 100% no-repeat, linear-gradient(180deg,#2a2b2e,#141517); --th-tile-r:999px;
+  --th-tile-line:rgba(255,255,255,.07); --th-tile-shadow:0 3px 8px rgba(0,0,0,.5);
+  --th-btn:radial-gradient(circle at 35% 30%,#fff1c4,#e2b85a 45%,#a37728); --th-btn-ink:#2b1d02;
+  --th-field:linear-gradient(180deg,#1f2023,#151618); --th-field-line:rgba(255,255,255,.09);
+  --th-user:linear-gradient(180deg,#26272a,#18191b); --th-user-line:rgba(217,178,92,.35); --th-ai:rgba(14,14,15,.86);
+  --th-work:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B1%D8%AE%D8%A7%D9%85/%D9%85%D8%B9%D8%AF%D9%86.jpg") center / cover, #141416;
+}
+/* برمجة: لوح داكن بشبكة خفيفة، فيروزيّ وبرتقاليّ، وشبكة عُقَد في البداية (صورة المالك) */
+html.skin-code{
+  --th-page:#0b1014; --th-layer:linear-gradient(rgba(53,194,176,.05) 1px, transparent 1px) 0 0 / 28px 28px, linear-gradient(90deg, rgba(53,194,176,.05) 1px, transparent 1px) 0 0 / 28px 28px, #0f161b;
+  --th-ink:#d5e3ea; --th-muted:#7f98a6; --th-gold:#35c2b0; --th-line:rgba(53,194,176,.45); --th-line2:rgba(53,194,176,.17); --th-glow:rgba(53,194,176,.3);
+  --th-dlg:#0f161c; --th-dlg2:#15202a; --th-side:#0d1317;
+  --th-tile:#121b21; --th-tile-line:rgba(53,194,176,.22); --th-tile-shadow:inset 3px 0 0 #35c2b0, 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#47d6c3,#1f9e8f); --th-btn-ink:#04221e;
+  --th-field:#111a20; --th-field-line:rgba(53,194,176,.3);
+  --th-user:#13212a; --th-user-line:rgba(240,160,80,.5); --th-ai:rgba(13,20,25,.92);
+  --th-work:linear-gradient(rgba(53,194,176,.04) 1px, transparent 1px) 0 0 / 28px 28px, #0c1216;
+}
+/* سيارات: كربون للمحادثة، فضّة مصقولة للقائمة والمعاينة، ونيون سماويّ (صورة المالك) */
+html.skin-cars{
+  --th-page:#0e0f11; --th-layer:radial-gradient(120% 60% at 50% 0%, rgba(88,214,255,.1), transparent 60%), repeating-linear-gradient(45deg,#17181b 0 4px,#1e2024 4px 8px), #16171a;
+  --th-ink:#e9edf2; --th-muted:#9aa3ad; --th-gold:#58d6ff; --th-line:rgba(205,212,220,.6); --th-line2:rgba(205,212,220,.22); --th-glow:rgba(88,214,255,.3);
+  --th-dlg:#17191c; --th-dlg2:#202328;
+  --th-side:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D9%85%D8%B9%D8%AF%D9%86.jpg") center / cover, #b9bec5; --th-side-ink:#1d2126; --th-side-muted:#4b525a;
+  --th-tile:linear-gradient(180deg,#4d535b,#2c3036); --th-tile-ink:#f1f4f7; --th-tile-line:rgba(0,0,0,.45); --th-tile-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 2px 5px rgba(0,0,0,.35);
+  --th-btn:linear-gradient(180deg,#f4f6f8,#aab1b9); --th-btn-ink:#1d2126; --th-btn-shadow:inset 0 1px 0 #fff, 0 3px 8px rgba(0,0,0,.35);
+  --th-field:linear-gradient(180deg,#26292e,#1b1d21); --th-field-line:rgba(205,212,220,.3);
+  --th-user:linear-gradient(180deg,#30343a,#22252a); --th-user-line:rgba(88,214,255,.45); --th-ai:rgba(20,21,24,.9);
+  --th-work:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D9%85%D8%B9%D8%AF%D9%86.jpg") center / cover, #b9bec5; --th-work-ink:#1d2126; --th-work-muted:#4b525a;
+}
+html.skin-cars #sidebar #sbSearchWrap{background:rgba(255,255,255,.62) !important; border-color:rgba(0,0,0,.18) !important;}
+html.skin-cars #sidebar #sbSearch{color:#1d2126 !important;}
+html.skin-cars #sidebar #sbSearch::placeholder, html.skin-cars #sidebar #sbSearchWrap{color:#4b525a !important;}
+/* أطفال: ألوان باستيل، خانات ملوّنة بالتناوب، وأحجية في البداية (صورة المالك) */
+html.skin-kids{
+  --th-scheme:light; --th-page:#efe9fb; --th-layer:linear-gradient(135deg,#ece6fc 0%,#fde6ef 50%,#e1f2fc 100%);
+  --th-ink:#3b3355; --th-muted:#7a7194; --th-gold:#ff7a6b; --th-line:rgba(155,123,224,.45); --th-line2:rgba(155,123,224,.2); --th-glow:rgba(255,122,107,.3);
+  --th-dlg:#fffaf3; --th-dlg2:#f6efff;
+  --th-side:radial-gradient(circle, rgba(255,170,120,.18) 1.6px, transparent 2px) 0 0 / 18px 18px, #fff7ea;
+  --th-tile:#fff; --th-tile-line:rgba(155,123,224,.25); --th-tile-r:14px; --th-tile-shadow:0 3px 0 rgba(155,123,224,.18); --th-thumb:rgba(255,255,255,.7);
+  --th-btn:linear-gradient(160deg,#ff9a8b,#ff6f61); --th-btn-ink:#fff; --th-btn-shadow:0 3px 0 #e2574a;
+  --th-field:#fff; --th-field-line:rgba(155,123,224,.35);
+  --th-user:#ffe9c7; --th-user-line:rgba(255,170,90,.5); --th-ai:rgba(255,255,255,.92); --th-ai-line:rgba(155,123,224,.2); --th-bubble-shadow:0 3px 10px rgba(120,100,180,.12);
+  --th-work:linear-gradient(180deg,#f6f9ff,#eef4ff);
+}
+html.skin-kids .hist-item:nth-child(4n+1){--th-tile:#ffe4e0;}
+html.skin-kids .hist-item:nth-child(4n+2){--th-tile:#dff5f2;}
+html.skin-kids .hist-item:nth-child(4n+3){--th-tile:#ece6fc;}
+html.skin-kids .hist-item:nth-child(4n+4){--th-tile:#fff1cf;}
+/* طهي: باستيل قزحيّ ناعم وذهب ورديّ (صورة المالك)، وأدوات مطبخ مرسومة في البداية */
+html.skin-cuisine{
+  --th-scheme:light; --th-page:#f5eef0;
+  --th-layer:radial-gradient(60% 50% at 15% 10%, #f9d9d1, transparent 70%), radial-gradient(55% 45% at 85% 20%, #dff0e6, transparent 70%), radial-gradient(60% 55% at 70% 90%, #e9def7, transparent 70%), radial-gradient(50% 50% at 20% 85%, #fde9d6, transparent 70%), #f7f1ee;
+  --th-ink:#4a3a3d; --th-muted:#8a7579; --th-gold:#c48b7c; --th-line:rgba(196,139,124,.5); --th-line2:rgba(196,139,124,.22); --th-glow:rgba(196,139,124,.3);
+  --th-dlg:#fff8f6; --th-dlg2:#f7eeee; --th-side:linear-gradient(180deg,#fff6f2,#f7eefa);
+  --th-tile:linear-gradient(120deg,#fde9e4,#f3eefc 55%,#e6f6ef); --th-tile-line:rgba(196,139,124,.3); --th-tile-r:14px; --th-tile-shadow:0 2px 6px rgba(150,100,90,.12); --th-thumb:rgba(255,255,255,.7);
+  --th-btn:radial-gradient(circle at 35% 30%,#fbe3dc,#d9a293 50%,#b07466); --th-btn-ink:#fff; --th-btn-shadow:0 3px 8px rgba(150,100,90,.3);
+  --th-field:rgba(255,255,255,.88); --th-field-line:rgba(196,139,124,.35);
+  --th-user:linear-gradient(120deg,#fde3dc,#f6e9fb); --th-user-line:rgba(196,139,124,.35); --th-ai:rgba(255,255,255,.9); --th-bubble-shadow:0 3px 10px rgba(150,100,90,.1);
+  --th-work:linear-gradient(160deg,#fbf3f1,#f1f5f3);
+}
+/* غروب: صورة المالك، قائمة زجاج دافئ وخانات كريميّة عليها السعف */
+html.skin-sunset{
+  --th-page:#3a1f24; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%BA%D8%B1%D9%88%D8%A8/%D9%85%D8%B4%D9%87%D8%AF.jpg"); --th-pos:100% 50%; --th-pos-m:88% 50%;
+  --th-veil:linear-gradient(180deg, rgba(40,10,30,.16), transparent 30%, transparent 70%, rgba(40,10,20,.22));
+  --th-ink:#fff6ee; --th-muted:#f0d4c1; --th-over:#fff8f1; --th-over-muted:#ffe8d8; --th-over-shadow:0 1px 3px rgba(60,20,20,.6); --th-over-drop:drop-shadow(0 1px 2px rgba(60,20,20,.6));
+  --th-gold:#f6c27a; --th-line:rgba(255,226,190,.7); --th-line2:rgba(255,226,190,.3); --th-glow:rgba(246,194,122,.4);
+  --th-dlg:#2c1b22; --th-dlg2:#3a2430;
+  --th-side:linear-gradient(180deg, rgba(222,140,96,.62), rgba(170,80,58,.74)); --th-side-ink:#fff7ef; --th-side-muted:#ffe2cf;
+  --th-tile:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%BA%D8%B1%D9%88%D8%A8/%D8%B3%D8%B9%D9%81.jpg") center / cover, #f6e6cc; --th-tile-line:rgba(150,96,50,.35); --th-tile-ink:#4a2c1c; --th-thumb:rgba(255,255,255,.5); --th-tile-shadow:0 3px 8px rgba(90,30,20,.25);
+  --th-btn:linear-gradient(160deg,#ffd9a0,#f08c5a); --th-btn-ink:#4a1f10;
+  --th-field:rgba(255,248,238,.93); --th-field-line:rgba(255,226,190,.85); --th-field-ink:#4a2c1c; --th-field-muted:#9a7560;
+  --th-user:rgba(255,246,234,.94); --th-user-line:rgba(255,226,190,.9); --th-user-ink:#4a2c1c;
+  --th-ai:rgba(255,250,244,.93); --th-ai-line:rgba(255,226,190,.6); --th-ai-ink:#3b241a;
+  --th-work:linear-gradient(180deg, rgba(120,60,80,.42), rgba(80,40,60,.55));
+}
+/* شاطئ: صورة المالك، زجاج فيروزيّ فاتح وخانات رمل بإطار فيروزيّ */
+html.skin-beach{
+  --th-scheme:light; --th-page:#bfe3e6; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B4%D8%A7%D8%B7%D8%A6/%D9%85%D8%B4%D9%87%D8%AF.jpg"); --th-pos:45% 50%; --th-pos-m:52% 50%;
+  --th-ink:#0f3a46; --th-muted:#3f6b77; --th-over:#0b3340; --th-over-muted:#1f4f5c; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
+  --th-gold:#1a9da2; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(26,157,162,.3);
+  --th-dlg:#f2fbfa; --th-dlg2:#dff2f0;
+  --th-side:linear-gradient(180deg, rgba(214,240,238,.72), rgba(178,224,221,.8));
+  --th-tile:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B4%D8%A7%D8%B7%D8%A6/%D8%B1%D9%85%D9%84.jpg") center / cover, #f1e4c8; --th-tile-line:#3fa9a8; --th-tile-ink:#3b3020; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(20,90,100,.2);
+  --th-btn:linear-gradient(160deg,#5ad1cf,#1a9da2); --th-btn-ink:#fff;
+  --th-field:rgba(255,255,255,.93); --th-field-line:#3fa9a8;
+  --th-user:rgba(255,255,255,.93); --th-user-line:rgba(63,169,168,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(20,80,100,.15);
+  --th-work:rgba(225,245,244,.55);
+}
+/* شتاء: صورة المالك، زجاج رماديّ باهت وخانات صقيع */
+html.skin-winter{
+  --th-scheme:light; --th-page:#c9d1da; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B4%D8%AA%D8%A7%D8%A1/%D9%85%D8%B4%D9%87%D8%AF.jpg"); --th-pos:90% 50%; --th-pos-m:66% 50%;
+  --th-ink:#1c2834; --th-muted:#4e5d6c; --th-over:#172330; --th-over-muted:#2e3d4c; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
+  --th-gold:#4f7396; --th-line:rgba(255,255,255,.85); --th-line2:rgba(255,255,255,.4); --th-glow:rgba(79,115,150,.3);
+  --th-dlg:#f1f4f8; --th-dlg2:#e1e7ee;
+  --th-side:linear-gradient(180deg, rgba(196,206,216,.64), rgba(160,172,184,.74)); --th-side-ink:#16222d; --th-side-muted:#3b4a59;
+  --th-tile:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B4%D8%AA%D8%A7%D8%A1/%D8%B5%D9%82%D9%8A%D8%B9.jpg") center / cover, #e6edf3; --th-tile-line:rgba(255,255,255,.9); --th-thumb:rgba(255,255,255,.6); --th-tile-shadow:0 2px 6px rgba(40,60,80,.2);
+  --th-btn:linear-gradient(160deg,#8fb1d1,#4f7396); --th-btn-ink:#fff;
+  --th-field:rgba(255,255,255,.9); --th-field-line:rgba(255,255,255,.95);
+  --th-user:rgba(255,255,255,.92); --th-user-line:rgba(79,115,150,.4); --th-ai:rgba(250,252,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(40,60,80,.14);
+  --th-work:rgba(230,236,242,.55);
+}
+/* كراج: شاشة الترحيب الأولى بلا كتابتها، كربون وأحمر */
+html.skin-garage{
+  --th-page:#0b0b0d; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%83%D8%B1%D8%A7%D8%AC/%D9%85%D8%B4%D9%87%D8%AF.jpg"); --th-pos:50% 50%; --th-pos-m:62% 50%; --th-veil:rgba(0,0,0,.12);
+  --th-ink:#f2f2f4; --th-muted:#a9a9b2; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+  --th-gold:#ff3b3b; --th-line:rgba(255,70,70,.55); --th-line2:rgba(255,255,255,.12); --th-glow:rgba(255,59,59,.3);
+  --th-dlg:#141416; --th-dlg2:#1e1e22;
+  --th-side:repeating-linear-gradient(45deg, rgba(22,22,25,.9) 0 4px, rgba(31,31,35,.9) 4px 8px);
+  --th-tile:linear-gradient(180deg,#26262b,#18181b); --th-tile-line:rgba(255,59,59,.35); --th-tile-shadow:0 0 10px rgba(255,40,40,.08), 0 2px 6px rgba(0,0,0,.5);
+  --th-btn:linear-gradient(160deg,#ff5a5a,#c51d23); --th-btn-ink:#fff;
+  --th-field:rgba(18,18,20,.9); --th-field-line:rgba(255,59,59,.45);
+  --th-user:rgba(30,30,34,.92); --th-user-line:rgba(255,59,59,.5); --th-ai:rgba(12,12,14,.88);
+  --th-work:rgba(12,12,14,.62);
+}
+/* أنمي: شاشة الترحيب الثانية، بنفسجيّ داكن ووهج ورديّ */
+html.skin-anime{
+  --th-page:#120b1f; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A3%D9%86%D9%85%D9%8A/%D9%85%D8%B4%D9%87%D8%AF.jpg"); --th-pos:50% 50%; --th-pos-m:50% 50%; --th-veil:rgba(10,4,24,.12);
+  --th-ink:#f6ecff; --th-muted:#c6b2e0; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(10,0,30,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(10,0,30,.7));
+  --th-gold:#ff5fa2; --th-line:rgba(255,95,162,.6); --th-line2:rgba(155,107,255,.3); --th-glow:rgba(255,95,162,.3);
+  --th-dlg:#1a1128; --th-dlg2:#24183a;
+  --th-side:linear-gradient(180deg, rgba(36,20,62,.82), rgba(22,12,40,.88));
+  --th-tile:linear-gradient(90deg,#2b1948,#1d1233); --th-tile-line:rgba(155,107,255,.45); --th-tile-shadow:0 0 12px rgba(255,95,162,.12), 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#ff7ab6,#9b6bff); --th-btn-ink:#fff;
+  --th-field:rgba(24,14,42,.9); --th-field-line:rgba(255,95,162,.45);
+  --th-user:rgba(48,26,80,.92); --th-user-line:rgba(255,95,162,.5); --th-ai:rgba(18,10,32,.88);
+  --th-work:rgba(20,10,36,.6);
+}
+/* أمن سيبرانيّ: شاشة الترحيب الثالثة، كحليّ وسماويّ */
+html.skin-cyber{
+  --th-page:#040b14; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A3%D9%85%D9%86-%D8%B3%D9%8A%D8%A8%D8%B1%D8%A7%D9%86%D9%8A/%D9%85%D8%B4%D9%87%D8%AF.jpg"); --th-pos:50% 50%; --th-pos-m:40% 50%;
+  --th-ink:#dcf6ff; --th-muted:#8fb3c4; --th-over:#e8fbff; --th-over-shadow:0 1px 3px rgba(0,8,20,.8); --th-over-drop:drop-shadow(0 1px 2px rgba(0,8,20,.8));
+  --th-gold:#22d3ee; --th-line:rgba(34,211,238,.55); --th-line2:rgba(34,211,238,.2); --th-glow:rgba(34,211,238,.3);
+  --th-dlg:#07121e; --th-dlg2:#0c1b2c;
+  --th-side:linear-gradient(180deg, rgba(6,18,34,.86), rgba(3,10,20,.9));
+  --th-tile:linear-gradient(180deg,#0b1e33,#081626); --th-tile-line:rgba(34,211,238,.35); --th-tile-shadow:0 0 10px rgba(34,211,238,.08), 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#4fe3f6,#0e8fb0); --th-btn-ink:#021018;
+  --th-field:rgba(5,14,26,.9); --th-field-line:rgba(34,211,238,.45);
+  --th-user:rgba(10,30,50,.92); --th-user-line:rgba(34,211,238,.5); --th-ai:rgba(4,12,22,.88);
+  --th-work:rgba(4,12,22,.62);
+}
+/* فصل: شاشة الترحيب الرابعة، قائمة سبّورة خضراء وخانات ورق مسطّر وخردليّ */
+html.skin-school{
+  --th-page:#1b231e; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%81%D8%B5%D9%84/%D9%85%D8%B4%D9%87%D8%AF.jpg"); --th-pos:100% 50%; --th-pos-m:65% 50%;
+  --th-ink:#f6f1e3; --th-muted:#c9c0a8; --th-over:#fffaf0; --th-over-shadow:0 1px 3px rgba(20,14,6,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(20,14,6,.7));
+  --th-gold:#e3b341; --th-line:rgba(227,179,65,.6); --th-line2:rgba(255,255,255,.15); --th-glow:rgba(227,179,65,.3);
+  --th-dlg:#1d2b24; --th-dlg2:#263a30;
+  --th-side:radial-gradient(120% 80% at 30% 20%, rgba(255,255,255,.06), transparent 60%), linear-gradient(180deg, rgba(42,66,54,.94), rgba(29,48,39,.95)); --th-side-ink:#f4f1e4;
+  --th-tile:repeating-linear-gradient(180deg, transparent 0 11px, rgba(70,110,190,.3) 11px 12px), linear-gradient(270deg, transparent 18px, rgba(214,70,70,.5) 18px 19px, transparent 19px), #fbf7ea;
+  --th-tile-ink:#2b2a26; --th-tile-line:rgba(0,0,0,.15); --th-tile-r:6px; --th-thumb:rgba(255,255,255,.7); --th-tile-shadow:0 2px 4px rgba(0,0,0,.35);
+  --th-btn:linear-gradient(160deg,#f0c75e,#c9922a); --th-btn-ink:#2b1d02;
+  --th-field:rgba(251,247,234,.94); --th-field-line:rgba(227,179,65,.6); --th-field-ink:#2b2a26; --th-field-muted:#7d7563;
+  --th-user:rgba(251,247,234,.94); --th-user-line:rgba(227,179,65,.6); --th-user-ink:#2b2a26;
+  --th-ai:rgba(24,36,30,.9); --th-ai-line:rgba(255,255,255,.15);
+  --th-work:rgba(29,48,39,.66);
+}
+
+/* مصغّرها في شبكة الخلفيّات (بلا ثيم مختار): الخانة ٣:٤ تُظهر اللوحة الوسطى وطرف القائمة، لا لوحة المعاينة كالخشبيّ */
+.bgImgOpt.bgImgTheme:not([data-file="ثيم:خشبي"]){background-position:70% center;}

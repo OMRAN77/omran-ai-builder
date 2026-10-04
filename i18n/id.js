@@ -1172,4 +1172,5 @@ Object.assign(I18N["id"], {"acctPhoneLabel": "📱 Nomor telepon (untuk pemuliha
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["id"], {"bgThemeWood": "Kayu", "woodRecentTitle": "Obrolan terbaru"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
-Object.assign(I18N["id"], {"brandSubtitle": "Platform AI", "frameHomeTitle1": "Di sinilah dimulai", "frameHomeTitle2": "ide-ide besarmu", "frameHomeSub": "Asisten pintarmu, selalu bersamamu"});
+Object.assign(I18N["id"], {"brandSubtitle": "Platform AI"});
+Object.assign(I18N["id"], {"bgThemeDarkwood": "Kayu gelap", "bgThemeMarble": "Marmer", "bgThemeCode": "Kode", "bgThemeCars": "Mobil", "bgThemeKids": "Anak-anak", "bgThemeCuisine": "Memasak", "bgThemeSunset": "Senja", "bgThemeBeach": "Pantai", "bgThemeWinter": "Musim dingin", "bgThemeGarage": "Garasi", "bgThemeAnime": "Anime", "bgThemeCyber": "Keamanan siber", "bgThemeSchool": "Ruang kelas"});

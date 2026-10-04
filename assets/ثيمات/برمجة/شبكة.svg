@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" fill="none" stroke-linecap="round" stroke-linejoin="round">
+<defs><filter id="g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g stroke-width="1.6" filter="url(#g)">
+<path d="M76 50C112 50 110 110 146 110" stroke="#35c2b0"/><path d="M76 170C112 170 110 110 146 110" stroke="#35c2b0"/>
+<path d="M214 110C240 110 240 60 266 60" stroke="#f0a050"/><path d="M214 110C240 110 240 160 266 160" stroke="#9b7bff"/>
+<path d="M296 80V140" stroke="#5aa9ff" stroke-dasharray="3 5"/>
+</g>
+<g stroke-width="1.6">
+<rect x="16" y="30" width="60" height="40" rx="8" fill="#0f181e" stroke="#35c2b0"/><rect x="16" y="150" width="60" height="40" rx="8" fill="#0f181e" stroke="#35c2b0"/>
+<rect x="146" y="80" width="68" height="60" rx="11" fill="#141b22" stroke="#f0a050"/>
+<rect x="266" y="40" width="60" height="40" rx="8" fill="#0f181e" stroke="#f0a050"/><rect x="266" y="140" width="60" height="40" rx="8" fill="#131626" stroke="#9b7bff"/>
+</g>
+<g stroke-width="2.2" opacity=".75"><path d="M26 42H52M26 50H64M26 58H46" stroke="#35c2b0"/><path d="M26 162H58M26 170H44M26 178H62" stroke="#35c2b0"/>
+<path d="M276 52H300M276 60H314M276 68H292" stroke="#f0a050"/><path d="M276 152H306M276 160H290M276 168H312" stroke="#9b7bff"/></g>
+<path d="M168 100L160 110L168 120M192 100L200 110L192 120M184 96L176 124" stroke="#f0a050" stroke-width="2.4"/>
+<g fill="#35c2b0"><circle cx="76" cy="50" r="3"/><circle cx="76" cy="170" r="3"/><circle cx="146" cy="110" r="3"/></g>
+<g fill="#f0a050"><circle cx="214" cy="110" r="3"/><circle cx="266" cy="60" r="3"/></g><circle cx="266" cy="160" r="3" fill="#9b7bff"/>
+</svg>
