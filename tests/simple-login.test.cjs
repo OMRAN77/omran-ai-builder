@@ -59,7 +59,8 @@ test('الخادم: نسيت كلمة المرور يقبل الإيميل أي�
   assert.match(src, /if \(action === 'forgotPassword'\) \{[\s\S]*?const \{ key, user \} = await resolveLoginUser\(username\);/);
   assert.match(src, /if \(action === 'login'\) \{[\s\S]*?const \{ key, user \} = await resolveLoginUser\(username\);/);
   const r = await call({ action: 'forgotPassword', username: 'ghost@example.com' });
-  assert.equal(r.code, 404);
+  assert.notEqual(r.code, 404, 'v-account-email: البريد غير المسجَّل لا يُكشف بـ«الحساب غير موجود»');
+  assert.equal((await call({ action: 'forgotPassword', username: 'ghost-name' })).code, 404, 'الاسم كما كان');
 });
 
 test('الواجهة: خانة واحدة وكلمة مرور وزرّ ورابط، ثمّ جوجل و«إنشاء حساب جديد» — بلا إيميل اختياريّ ولا زرّ الإيميل', () => {
@@ -73,7 +74,7 @@ test('الواجهة: خانة واحدة وكلمة مرور وزرّ وراب�
   const order = ['id="authUsername"', 'id="authPassword"', 'id="authSubmitBtn"', 'id="authForgotLink"', 'id="authGoogleBtn"', 'id="authSwitchBtn"'].map((k) => ov.indexOf(k));
   assert.ok(order.every((i, j) => i > 0 && (j === 0 || i > order[j - 1])), 'الترتيب كما في لقطة المالك: ' + order);
   assert.match(ov, /id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked>/, '«تذكّرني» مخفيّ ومفعّل');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=653'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=654'));
 });
 
 test('الواجهة: setMode يبدّل بزرّ واحد، والتبويبات مخفيّة دائمًا', () => {
@@ -97,5 +98,5 @@ test('النصوص الجديدة بالـ١٤ لغة', () => {
     const s = read('i18n/' + l + '.js');
     for (const k of ['authIdPlaceholder', 'authCreateAccount', 'authHaveAccount', 'authSubmitForgotEmail']) assert.match(s, new RegExp('"?' + k + '"?:\\s*"[^"]+"'), l + ': ' + k);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=712'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=713'/);
 });

@@ -9,13 +9,15 @@ const app05 = fs.readFileSync('js/app-05-ui.js', 'utf8');
 
 const nickOf = (src, re) => { const m = src.match(re); assert.ok(m, 'الخريطة موجودة'); return Function('return (' + m[1] + ')')(); };
 
-test('١. الشريحة تعرض اللقب الوظيفيّ لا اسم النموذج، والخريطة مطابقة لـapp-05', () => {
-  assert.match(modes, /\(window\.__agentModeOn === true\) \? agentLabel\(\) : curProvFuncLabel\(\);/);
+// v-chip-own-name (أمر المالك ٤ أكتوبر «المزوّدين اللي تحت… أريد كلّ واحد واسمه»): الشريحة صارت باسم المزوّد المختار
+// (الشريط للمالك وحده)؛ اللقب الوظيفيّ باقٍ احتياطًا لمزوّد غير معروف، وخريطته مطابقة لـapp-05 كما كانت.
+test('١. الشريحة باسم المزوّد المختار لا اسم النموذج، والخريطة الوظيفيّة الاحتياطيّة مطابقة لـapp-05', () => {
+  assert.match(modes, /\(window\.__agentModeOn === true\) \? agentLabel\(\) : curProvName\(\);/);
   assert.doesNotMatch(modes, /curProvModelLabel/);
   const a = nickOf(modes, /var NICK = (\{[^}]+\});/);
   const b = nickOf(app05, /const PROVIDER_NICK_KEYS = (\{[\s\S]*?\});/);
   assert.deepEqual(a, b);
-  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m031026c/);
+  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m041026a/);
 });
 
 test('٢. اللقب يُقرأ من الترجمة (١٤ لغة) مع احتياط، وبلا اسم مزوّد', () => {
@@ -31,4 +33,21 @@ test('٢. اللقب يُقرأ من الترجمة (١٤ لغة) مع احتي�
   const packs = fs.readdirSync('i18n').filter((f) => /provNickKing/.test(fs.readFileSync('i18n/' + f, 'utf8')));
   assert.ok(packs.length >= 12, 'اللقب مترجم في ١٢ حزمة + العربيّة والإنجليزيّة في app-03');
   assert.equal((fs.readFileSync('js/app-03-i18n-data.js', 'utf8').match(/provNickKing:/g) || []).length, 2);
+});
+
+test('٣. كلّ مزوّد باسمه: Claude وGPT وGemini وKimi وDeepSeek… والوسيط باسم موديله (Grok/Qwen)', () => {
+  const i = modes.indexOf('var PROVS = [');
+  const j = modes.indexOf('var ROW =', i);
+  const store = {};
+  const ls = { getItem: (k) => (k in store ? store[k] : null) };
+  const run = new Function('localStorage', 'AR', 't', 'window', modes.slice(i, j) + '; return curProvName;');
+  const name = run(ls, true, (k) => ({ provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق' }[k] || k), {});
+  const want = { claude: 'Claude', openai: 'GPT', gemini: 'Gemini', kimi: 'Kimi', deepseek: 'DeepSeek', mistral: 'Mistral', groq: 'Groq', perplexity: 'Perplexity', cohere: 'Cohere', openrouter: 'Grok' };
+  const seen = new Set();
+  for (const [k, v] of Object.entries(want)) { store.aiapp_provider = k; assert.equal(name(), v, k); seen.add(name()); }
+  assert.equal(seen.size, Object.keys(want).length, 'لا اسمان متشابهان');
+  store.aiapp_provider = 'openrouter'; store.aiapp_openrouter_model = 'qwen/qwen3.6-27b';
+  assert.equal(name(), 'Qwen');
+  store.aiapp_provider = 'unknown';
+  assert.equal(name(), 'العميق', 'مزوّد غير معروف → اللقب الوظيفيّ');
 });

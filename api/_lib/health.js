@@ -93,6 +93,10 @@ module.exports = async (req, res) => {
     Claude: !!process.env.ANTHROPIC_API_KEY,
     OpenRouter: !!process.env.OPENROUTER_API_KEY,
     Mistral: !!process.env.MISTRAL_API_KEY,
+    // v-health-kimi: Kimi (Moonshot) مزوّد محادثة كامل منذ v-kimi، ومساره المباشر يقبل
+    // KIMI_API_KEY أو البديل MOONSHOT_API_KEY — وبغيابه من اللوحة كان المالك لا يرى
+    // أبدًا لماذا سهم Kimi يسقط لغيره بصمت.
+    Kimi: !!(process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY),
     DeepSeek: !!process.env.DEEPSEEK_API_KEY,
     Cohere: !!process.env.COHERE_API_KEY,
     Perplexity: !!process.env.PERPLEXITY_API_KEY,

@@ -47,7 +47,37 @@ function verifyStripeSig(payload, sigHeader, secret) {
   } catch (e) { return false; }
 }
 
+/* v-phone-link (أمر المالك ٤ أكتوبر «ربط الهاتف بالواتساب… اللي يرسل بالمجان»): ويب هوك واتساب على الدالّة نفسها (جسم خامّ،
+   وحدّ الـ١٢ دالّة) — ‎?src=wa‎. ‏GET تحقّق Meta بـWHATSAPP_VERIFY_TOKEN، وPOST موقَّع بـWHATSAPP_APP_SECRET (بلا سرّ = رفض،
+   وإلّا ربط أيّ أحد أيّ رقم). الرمز في نصّ الرسالة ورقم المرسل من واتساب نفسه؛ والردّ (رابط الاسترجاع) رسالة خدمة مجّانيّة. */
+async function waWebhook(req, res) {
+  const pl = require('./_lib/phone-link.js');
+  if (req.method === 'GET') {
+    const q = req.query || {};
+    const vt = String(process.env.WHATSAPP_VERIFY_TOKEN || '').trim();
+    if (vt && q['hub.mode'] === 'subscribe' && q['hub.verify_token'] === vt) { res.status(200).end(String(q['hub.challenge'] || '')); return; }
+    res.status(403).end('forbidden');
+    return;
+  }
+  if (req.method !== 'POST') { res.status(405).end('Method Not Allowed'); return; }
+  const appSecret = String(process.env.WHATSAPP_APP_SECRET || '').trim();
+  if (!appSecret) { res.status(503).json({ error: 'WHATSAPP_APP_SECRET missing' }); return; }
+  let payload;
+  try {
+    const buf = await rawBody(req);
+    if (!pl.verifyMetaSig(buf, req.headers['x-hub-signature-256'], appSecret)) { res.status(401).json({ error: 'bad signature' }); return; }
+    payload = JSON.parse(buf.toString('utf8'));
+  } catch (e) { res.status(400).json({ error: 'bad payload' }); return; }
+  for (const m of pl.waMessages(payload)) {
+    const code = pl.CODE_RE.exec(m.text.toUpperCase());
+    if (!code) continue;
+    try { const r = await pl.complete(code[0], m.from, 'whatsapp'); if (r.status !== 'dup') await pl.waSend(m.from, pl.replyText(r)); } catch (e) { console.error('[webhook/wa]', e && e.message); }
+  }
+  res.status(200).json({ received: true });
+}
+
 module.exports = async (req, res) => {
+  if (req.query && req.query.src === 'wa') return waWebhook(req, res); // v-phone-link
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).end('Method Not Allowed'); return; }
   const secret = (process.env.STRIPE_WEBHOOK_SECRET || '').trim();
   if (!secret) { res.status(503).json({ error: 'STRIPE_WEBHOOK_SECRET missing' }); return; }
