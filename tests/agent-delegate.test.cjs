@@ -110,7 +110,8 @@ test('parseStatuses tolerates junk and picks every status line in order', () => 
 
 test('agent wiring: both tools for the owner only, dispatched with a per-run limit, rule 25-ز present', () => {
   const agent = read('api/_lib/agent.js');
-  assert.ok(agent.includes('TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL])'), 'الأداتان مع أدوات المالك فقط');
+  // v-provider-errors: انضمّت أداة أخطاء التطبيق إلى قائمة المالك نفسها — الأداتان تبقيان فيها.
+  assert.ok(agent.includes('TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL])'), 'الأداتان مع أدوات المالك فقط');
   assert.ok(agent.includes("cb.name === 'delegate_code_task'") && agent.includes('run.delegates > 1'), 'تسليم واحد في التشغيل');
   assert.ok(agent.includes("cb.name === 'check_code_task'") && agent.includes("isOwner(runUser) ? delegate.formatCheck(await delegate.checkTask(input))"), 'التحقّق للمالك وحده');
   assert.ok(agent.includes('25-ز. delegate_code_task وcheck_code_task'), 'قاعدة النظام');

@@ -10,6 +10,7 @@ const { readGithub } = require('./github-read.js'); // v-agent-github
 const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
 const githubWrite = require('./github-write.js'); // v-agent-github-push: للمالك وحده
 const delegate = require('./agent-delegate.js'); // v-agent-delegate: Claude Code في GitHub Actions — للمالك وحده
+const appErrors = require('./app-errors.js'); // v-provider-errors: أخطاء الإنتاج الحيّة — للمالك وحده
 const { ownerList } = require('./_owner.js');
 
 const TOOLS = [
@@ -92,7 +93,7 @@ function isOwner(user) { return !!user && ownerList().includes(String(user).trim
    القصير — يظهر سطرًا في سجلّ العمل كما يظهر وصف الأمر في Claude Code. أوّل الخصائص كي يُكتب قبل غيره. */
 const STEP_TITLE = { type: 'string', description: 'عنوان قصير لهذه الخطوة يراه المستخدم سطرًا في سجلّ العمل: ٣–٧ كلمات بلغته، مثل «البحث عن مستهلكي code-analyze» أو «قراءة api/_lib/chat.js كاملًا».' };
 function withStepTitle(t) { return Object.assign({}, t, { input_schema: Object.assign({}, t.input_schema, { properties: Object.assign({ step_title: STEP_TITLE }, (t.input_schema || {}).properties) }) }); }
-function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL]) : TOOLS).map(withStepTitle); }
+function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]) : TOOLS).map(withStepTitle); }
 // الأمر كما يُعرض تحت عنوان الخطوة: اسم الأداة ومدخلها بلا العنوان، والنصوص الطويلة (كود، ملفّات) مختصرة.
 function stepCmd(name, input) {
   const o = {};
@@ -152,6 +153,7 @@ function trailDid(name, input) {
   if (name === 'write_github') return 'رفعتُ إلى GitHub ' + (s(input.repo, 50) || '') + ' (' + (Array.isArray(input.files) ? input.files.length : 0) + ' ملفًّا)';
   if (name === 'delegate_code_task') return 'سلّمتُ مهمّة كود إلى Claude Code في GitHub Actions: «' + (s(input.task, 70) || '؟') + '»';
   if (name === 'check_code_task') return 'تحقّقتُ من مهمّة الكود #' + (s(input.issue, 10) || '؟');
+  if (name === 'read_app_errors') return 'قرأتُ سجلّ أخطاء التطبيق الحيّ';
   if (name === 'read_github' && input.query) return 'بحثتُ في كود ' + (s(input.url, 50) || '') + ' عن «' + s(input.query, 50) + '»'; // v-agent-deep
   if (name === 'read_github') return 'قرأتُ من GitHub ' + (s(input.url, 70) || '') + (input.path ? ' ' + s(input.path, 40) : '') + (input.from > 1 ? ' من السطر ' + input.from : '') + (input.what === 'commits' ? ' — آخر الدفعات' : '');
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
@@ -173,6 +175,7 @@ function trailGot(name, result) {
   if (name === 'check_code_task') { const u = r.match(/https?:\/\/\S+\/pull\/\d+/); return u ? ('فوجدتُ طلب سحب: ' + u[0]) : /قيد التنفيذ/.test(r) ? 'فهي قيد التنفيذ' : /لم يبدأ/.test(r) ? 'فلم تبدأ بعد' : ('فحصلتُ: ' + r.split('\n')[1] || r.slice(0, 60)); }
   if (name === 'write_github') { const u = r.match(/https?:\/\/\S+\/pull\/\d+/); return /^✅/.test(r.trim()) ? ('فحصلتُ ' + (u ? 'طلب سحب: ' + u[0] : 'التزامًا')) : ('ففشلت: ' + r.trim().slice(0, 80)); }
   if (name === 'read_github') { const h = r.split('\n')[0] || ''; return /^(غير موجود|GitHub|تعذّر|رابط)/.test(h) ? 'ففشلت: ' + h.slice(0, 80) : 'فحصلتُ ' + r.length + ' حرفًا: ' + h.slice(0, 70); }
+  if (name === 'read_app_errors') { const n = appErrors.countErrors(r); return /^تعذّر/.test(r.trim()) ? 'ففشلت: ' + r.trim().slice(0, 80) : (n ? ('فوجدتُ ' + n + ' خطأً مسجَّلًا') : 'فلا خطأ مسجَّل'); }
   if (name === 'publish') { const u = r.match(/https?:\/\/\S+/); return u ? ('فحصلتُ رابطًا: ' + u[0]) : ('فلم يُنشر: ' + r.trim().slice(0, 70)); }
   if (name === 'test_html') {
     if (/^✅/.test(r.trim())) return 'فما ظهر خطأ تشغيل';
@@ -698,6 +701,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'write_github') send({ phase: 'executing', status: '⬆️ الوكيل يرفع إلى GitHub ويفتح طلب سحب…' });
             else if (cb.type === 'tool_use' && cb.name === 'delegate_code_task') send({ phase: 'executing', status: '🚀 الوكيل يسلّم المهمّة إلى Claude Code في GitHub Actions…' });
             else if (cb.type === 'tool_use' && cb.name === 'check_code_task') send({ phase: 'executing', status: '🔎 الوكيل يتحقّق من حالة مهمّة الكود…' });
+            else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ phase: 'executing', status: '🩺 الوكيل يقرأ أخطاء التطبيق الحيّة…' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
             else if (cb.type === 'tool_use' && cb.name === 'publish') send({ phase: 'executing', status: '🔗 الوكيل ينشر التطبيق…' });
@@ -777,6 +781,10 @@ module.exports = async (req, res) => {
           }
           else if (cb.name === 'check_code_task') {
             result = isOwner(runUser) ? delegate.formatCheck(await delegate.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
+          }
+          /* v-provider-errors: أخطاء الإنتاج الحيّة — للمالك وحده، وحارسٌ ثانٍ هنا لا في إخفاء الأداة وحده. */
+          else if (cb.name === 'read_app_errors') {
+            result = isOwner(runUser) ? await appErrors.appErrorsText() : '✗ قراءة أخطاء التطبيق للمالك وحده.';
           }
           else if (cb.name === 'run_js' || cb.name === 'test_html') {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة

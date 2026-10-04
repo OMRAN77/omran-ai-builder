@@ -17,10 +17,9 @@ async function checkRedis() {
 
 /* v-health-split (لقطة «فحص النظام» ٢٣ سبتمبر ٢٣:٤٢: «أخطاء مسجلة من المستخدمين: 3» كلّها أسطر v-mem-probe): المسبار
    يكتب أرقام ذاكرة جهاز المالك في سجلّ الأخطاء عمدًا (قناة القراءة الوحيدة من الجهاز)، فكانت تُعدّ أخطاءً وتُنذر بها.
-   تُفصل هنا: clientErrors للأخطاء وحدها، وclientDiag لقياسات المسبار — تُعرض بعنوانها ولا تُحسب. */
-function isDiag(e) {
-  return !!e && (/^diag:/.test(String(e.source || '')) || /^v-mem-probe\b/.test(String(e.message || '')));
-}
+   تُفصل هنا: clientErrors للأخطاء وحدها، وclientDiag لقياسات المسبار — تُعرض بعنوانها ولا تُحسب.
+   v-provider-errors: القاعدة نفسها يحتاجها نصّ الأخطاء الذي يقرؤه النموذج، فمصدرها الوحيد صار app-errors.js. */
+const { isDiag } = require('./app-errors.js');
 async function readClientLog() {
   try {
     const items = await kvGetJSON('db/client-errors/log.json');
