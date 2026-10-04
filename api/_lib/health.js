@@ -75,6 +75,17 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // v-media-purge: حذف روابط المشاركة الأقدم من ٧ أيّام لتحرير القاعدة — للمالك وحده (isOwner أعلاه). ...&purge=media
+  if (req.query && req.query.purge === 'media') {
+    try {
+      const out = await require('./media-purge.js').purgeOldShares(require('./kv.js'), { maxAgeDays: 7 });
+      res.status(200).json({ ok: true, purged: out });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'purge_failed', message: String((e && e.message) || e).slice(0, 200) });
+    }
+    return;
+  }
+
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,
     Gemini: !!process.env.GEMINI_API_KEY,

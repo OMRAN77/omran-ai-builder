@@ -115,6 +115,12 @@
     <div id="acctRowCleanup" style="display:none; padding:8px 8px 12px;">
       <div style="font-size:12px; color:var(--muted); margin-bottom:8px;" data-i18n="acctCleanupHint">يحذف كل المحادثات والمشاريع نهائيًا من هذا الجهاز ومن السحابة. حسابك ولغتك يبقيان.</div>
       <button type="button" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(128,128,128,.3); background:rgba(128,128,128,.12); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
+      <!-- v-media-purge: للمالك وحده (يُظهره app-01 مع لوحة التحكّم) — يحرّر قاعدة البيانات من روابط المشاركة القديمة -->
+      <div id="acctMediaPurgeWrap" style="display:none; margin-top:12px; padding-top:10px; border-top:1px solid rgba(128,128,128,.15);">
+        <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">للمالك: يحذف صور وملفّات المشاركة الأقدم من ٧ أيّام من قاعدة البيانات لتحرير المساحة. الحسابات والمحادثات لا تُمسّ.</div>
+        <button type="button" id="acctMediaPurgeBtn" onclick="purgeOldMedia()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;">🧹 تنظيف روابط المشاركة القديمة</button>
+        <div id="acctMediaPurgeBox" style="display:none; margin-top:8px; font-size:12.5px; line-height:1.8; white-space:pre-wrap;"></div>
+      </div>
     </div></div>
     </div>
   </div></div>
