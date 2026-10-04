@@ -91,8 +91,8 @@ test('٢ب. الدمج: التأكيد يزيد العدّاد، والاسم و
   assert.equal(m.length, 1);
   assert.equal(m[0].n, 2, 'الفشل المتكرّر نفسه: تأكيد لا تكرار');
   m = L.mergeFacts(m, [fact('name', '', 'اسمه عمران')], NOW - 1000);
-  m = L.mergeFacts(m, [fact('name', '', 'اسمه عمران الشامسي')], NOW);
-  assert.deepEqual(m.filter((f) => f.kind === 'name').map((f) => f.text), ['اسمه عمران الشامسي'], 'اسم واحد: الأحدث');
+  m = L.mergeFacts(m, [fact('name', '', 'اسمه عمران أبو محمد')], NOW);
+  assert.deepEqual(m.filter((f) => f.kind === 'name').map((f) => f.text), ['اسمه عمران أبو محمد'], 'اسم واحد: الأحدث');
   const many = [];
   for (let i = 0; i < 80; i++) many.push(fact('interest', 'موضوع' + String.fromCharCode(1570 + (i % 20)) + String.fromCharCode(1570 + Math.floor(i / 20)) + 'xy' + i, 'يهتمّ بالموضوع رقم ' + i));
   const capped = L.mergeFacts(m, many, NOW);
