@@ -22,7 +22,6 @@
     "pretest": "npm run test:gpt-images && npm run test:reply-toolbar",
     "ci": "npm run check && npm run guard && npm run coldstart && npm run verify && npm test",
     "smoke": "node scripts/smoke.mjs",
-    "extension:zip": "node scripts/extension-zip.mjs",
-    "test": "FULL_TEST_SCRIPT_HERE"
+    "extension:zip": "node scripts/extension-zip.mjs"
   }
 }
