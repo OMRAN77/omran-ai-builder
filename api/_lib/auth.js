@@ -249,6 +249,30 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/* v-account-email (أمر المالك ٤ أكتوبر، بعد فحص #792): مالك البريد الحيّ من الفهرس — مدخل يشير إلى حساب محذوف أو غيّر
+   بريده لا يُحسب. يمنع حسابين ببريد واحد (كان الاسترجاع بالبريد يذهب للأوّل). */
+async function emailOwner(emailKey) {
+  try {
+    const idx = await kvGetJSON('db/email-index/' + emailKey);
+    if (!idx || !idx.username) return null;
+    const user = await getUser(String(idx.username).trim().toLowerCase());
+    if (user && !user.deleted && user.email === emailKey) return { key: String(idx.username).trim().toLowerCase(), user };
+  } catch (e) { logError('auth:email-owner', e); }
+  return null;
+}
+/* v-account-email: نافذة محاولات بسيطة في KV — يرجع دقائق الانتظار، أو ٠ إن سُمح. */
+async function rateWait(rateKey, limit, windowMs) {
+  const now = Date.now();
+  let rate = null;
+  try { rate = await kvGetJSON(rateKey); } catch (e) { logError('auth:rate-read', e); rate = null; }
+  if (rate && rate.windowStart && (now - rate.windowStart) < windowMs) {
+    if ((rate.count || 0) >= limit) return Math.ceil((rate.windowStart + windowMs - now) / 60000);
+    rate = { windowStart: rate.windowStart, count: (rate.count || 0) + 1 };
+  } else rate = { windowStart: now, count: 1 };
+  try { await kvPutJSON(rateKey, rate); } catch (e) { logError('auth:rate-write', e); }
+  return 0;
+}
+
 async function sendMail(toEmail, subject, html) {
   if (!RESEND_API_KEY) return false;
   try {
@@ -376,6 +400,11 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
         return;
       }
+      // v-account-email: الإيميل كالاسم — حساب واحد لكلّ بريد، وإلّا ضاع الاسترجاع بالبريد بين حسابين.
+      if (email && await emailOwner(String(email).trim().toLowerCase())) {
+        res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.') });
+        return;
+      }
       const { salt, hash } = hashPassword(password);
       const recCode = genRecoveryCode();
       const rec = hashPassword(recCode);
@@ -397,7 +426,8 @@ module.exports = async (req, res) => {
       if (user.email) {
         try {
           const existingIdx = await kvGetJSON('db/email-index/' + user.email);
-          if (!existingIdx || !existingIdx.username) {
+          // v-account-email: مدخل لحساب محذوف أو غيّر بريده لا يحجز البريد — لا مالك حيّ (فُحص قبل الإنشاء) = يُكتب للجديد.
+          if (!existingIdx || !existingIdx.username || !(await emailOwner(user.email))) {
             await kvPutJSON('db/email-index/' + user.email, { username: key, at: Date.now() });
           }
         } catch (e) { logError('auth:email-index', e); }
@@ -523,7 +553,7 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
-      res.status(200).json({ ok: true, email: user.email || null });
+      res.status(200).json({ ok: true, email: user.email || null, phone: user.phone || null }); // v-phone-link
       return;
     }
 
@@ -565,6 +595,37 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'forgotPassword') {
+      /* v-account-email: من كتب بريدًا يأخذ ردًّا واحدًا وُجد الحساب أم لا — كان «الحساب غير موجود» يكشف أيّ بريد مسجَّل —
+         وثلاث محاولات لكلّ بريد في ربع ساعة. الاسم يبقى كما كان (الاسم يُكشف أصلًا عند التسجيل «مستخدم من قبل»). */
+      const byEmail = email || (username && isValidEmail(String(username).trim()) ? username : null);
+      if (byEmail) {
+        const emailKey = String(byEmail).trim().toLowerCase();
+        if (!isValidEmail(emailKey)) {
+          res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
+          return;
+        }
+        if (!RESEND_API_KEY) {
+          res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin') });
+          return;
+        }
+        const wait = await rateWait('db/forgot-rate/' + emailKey, 3, 15 * 60 * 1000);
+        if (wait) {
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') });
+          return;
+        }
+        const found = await resolveLoginUser(emailKey);
+        const owner = (found.user && !found.user.deleted && found.user.email) ? found : null;
+        if (owner) {
+          const rt = crypto.randomBytes(24).toString('hex');
+          owner.user.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');
+          owner.user.resetTokenExpiry = Date.now() + 1000 * 60 * 30;
+          await putUser(owner.key, owner.user);
+          const sent = await sendResetEmail(owner.user.email, owner.user.username, rt, isEn);
+          if (!sent) logError('auth:forgot-send', new Error('reset mail not sent'));
+        }
+        res.status(200).json({ ok: true, message: m('إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.', 'If this email is linked to an account, a reset link will reach you within minutes.') });
+        return;
+      }
       if (!username) {
         res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل', 'Enter your username or email') });
         return;
@@ -683,6 +744,33 @@ module.exports = async (req, res) => {
       // 🔄 جلسة منزلقة: توكن جديد بعمر كامل مع كل تحقق ناجح — المستخدم
       // النشط لا يُطرد أبدًا بانتهاء صلاحية الثلاثين يومًا الثابتة.
       res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
+      return;
+    }
+
+    /* v-phone-link (أمر المالك ٤ أكتوبر «ربط الهاتف بالواتساب أو تيليجرام، اللي يرسل بالمجان»): رمز يعيش ١٠ دقائق،
+       والمستخدم يرسله بنفسه (واتساب) أو يشارك رقمه في البوت (تيليجرام) — لا رسالة مدفوعة. الربط لحساب مسجَّل،
+       والاسترجاع لمن نسي؛ والحالة لصاحب الرمز وحده (الرمز سرّه). حدود: ٥ رموز لكلّ حساب أو عنوان في ربع ساعة. */
+    if (action === 'phone-link-start' || action === 'phone-recover-start' || action === 'phone-link-status') {
+      const pl = require('./phone-link.js');
+      if (action === 'phone-link-status') {
+        res.status(200).json(Object.assign({ ok: true }, await pl.status(body.code)));
+        return;
+      }
+      const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'telegram';
+      let me = null;
+      if (action === 'phone-link-start') {
+        me = verifyToken(token);
+        if (!me) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
+      }
+      const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
+      const wait = await rateWait('db/phone-start-rate/' + (me ? 'u/' + me : 'ip/' + (ip || 'none')), 5, 15 * 60 * 1000);
+      if (wait) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') }); return; }
+      const r = await pl.start({ purpose: me ? 'link' : 'recover', channel, username: me });
+      if (r.error === 'channel_unavailable') {
+        res.status(503).json({ error: channel === 'whatsapp' ? m('الربط عبر واتساب غير مهيّأ بعد — جرّب تيليجرام', 'WhatsApp linking is not set up yet — try Telegram') : m('الربط عبر تيليجرام غير مهيّأ', 'Telegram linking is not set up') });
+        return;
+      }
+      res.status(200).json({ ok: true, code: r.code, link: r.link, expiresIn: r.expiresIn, channel: r.channel });
       return;
     }
 

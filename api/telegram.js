@@ -66,6 +66,32 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
     const chatId = msg.chat.id;
     const text = (msg.text || msg.caption || '').trim();
 
+    /* v-phone-link (أمر المالك ٤ أكتوبر «ربط الهاتف… اللي يرسل بالمجان»): رابط التطبيق ‎/start PL…‎ ← زرّ «شارك رقمي»،
+       وتيليجرام يعطي رقم صاحب الحساب نفسه (contact.user_id = from.id) فيُربط بحسابه أو يُسترجع به. بلا أيّ كلفة. */
+    const __pl = require('./_lib/phone-link.js');
+    const __start = /^\/start\s+(PL[A-HJ-NP-Z2-9]{8})$/i.exec(text);
+    if (__start) {
+      const pk = 'db/phone-link/tg/' + chatId;
+      await kvPutJSON(pk, { code: __start[1].toUpperCase(), at: Date.now() });
+      try { await kvExpire(pk, __pl.CODE_TTL_SEC); } catch (e) { /* guard-ok — الرمز نفسه يسقط بعد ١٠ دقائق */ }
+      await tg(token, 'sendMessage', {
+        chat_id: chatId,
+        text: 'لتأكيد رقمك في Omran AI اضغط الزرّ بالأسفل «📱 شارك رقمي».\n\nلا تضغطه إن لم تطلب الربط أو الاسترجاع بنفسك من التطبيق.',
+        reply_markup: { keyboard: [[{ text: '📱 شارك رقمي', request_contact: true }]], one_time_keyboard: true, resize_keyboard: true },
+      });
+      ack(); return;
+    }
+    if (msg.contact) {
+      const pend = await kvGetJSON('db/phone-link/tg/' + chatId);
+      const done = (t) => tg(token, 'sendMessage', { chat_id: chatId, text: t, reply_markup: { remove_keyboard: true } });
+      if (!pend || !pend.code) { await done('افتح رابط الربط من التطبيق أوّلًا (حسابي ← رقم الهاتف).'); ack(); return; }
+      if (!msg.from || msg.contact.user_id !== msg.from.id) { await done('شارك رقمك أنت من زرّ «📱 شارك رقمي».'); ack(); return; }
+      const r = await __pl.complete(pend.code, msg.contact.phone_number, 'telegram');
+      try { await kvPutJSON('db/phone-link/tg/' + chatId, {}); } catch (e) { /* guard-ok — الرمز صار غير «pending» فلا يُعاد استعماله */ }
+      await done(__pl.replyText(r)); // الاسترجاع: رابط إعادة كلمة المرور هنا في محادثة الرقم نفسه
+      ack(); return;
+    }
+
     // /start welcome
     if (text === '/start' || text.indexOf('/start ') === 0) {
       await tg(token, 'sendMessage', {

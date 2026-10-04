@@ -21,7 +21,7 @@ test('١. الاسمان وجملة التعريف في اللغات الـ١٤�
     assert.match(s, /"?voiceSampleIntro"?: "[^"]*\{name\}[^"]*"/, lg);
     assert.doesNotMatch(s, /"?voiceGenderMale"?: "(?:Male voice|Voz masculina|Мужской голос)"/, lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=712'"), 'وسم الكاش ارتفع');
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=713'"), 'وسم الكاش ارتفع');
 });
 
 test('٢. الضغط يختار ويُسمع تعريف الشخصيّة؛ والتجربة تُسمع المختار', () => {
@@ -93,21 +93,10 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
   assert.equal(await ctx.ensure(), 'female', 'أوّل تشغيل = مها');
 });
 
-test('٤. v-voice-names-show: الاسمان يظهران في إعدادات المالك؛ التحييد لمن مها موقوفة عنده وحده', () => {
+test('٤. v-voice-names-show + v-maha-subs: قفل v-maha-pause وتحييد الأسماء أُزيلا — الاسمان للجميع', () => {
   const src = read('js/app-08-maha.js');
-  const a = src.indexOf('/* v-maha-pause (طلب عمران ٣١ أغسطس');
-  const block = src.slice(a, src.indexOf('})();', a) + 5);
-  for (const [user, wantListener] of [['omran', false], ['sara', true]]) {
-    let listeners = 0;
-    const ctx = {
-      authGet: () => user, window: {},
-      document: { createElement: () => ({}), head: { appendChild() {} }, getElementById: (id) => (id === 'btnSettings' ? { addEventListener() { listeners++; } } : null) },
-    };
-    vm.createContext(ctx);
-    vm.runInContext(block, ctx);
-    assert.equal(listeners > 0, wantListener, user);
-    assert.equal(ctx.window.__mahaPaused, user !== 'omran');
-  }
+  assert.ok(!src.includes('/* v-maha-pause (طلب عمران ٣١ أغسطس'), 'بلوك القفل أُزيل');
+  assert.ok(!/__scrubNames|window\.__mahaPaused = /.test(src), 'لا تحييد ولا قفل');
 });
 
 test('٥. v-voice-calligraphy: اسم الشخصيّة صورة خطّ — عربيّة للعربيّة وإنجليزيّة لغيرها، ومخفيّة لمن مها موقوفة عنده', () => {

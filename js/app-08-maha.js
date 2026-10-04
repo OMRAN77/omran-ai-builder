@@ -1377,8 +1377,8 @@ async function mahaStartRealtimeCall(){
   });
   const tokenData = await tokenRes.json().catch(() => ({}));
   if(tokenRes.status === 402){
-    // رصيد النقاط غير كافٍ أو انتهت التجربة المجانية — لا fallback هنا
-    throw new Error('__points__');
+    // رصيد النقاط غير كافٍ أو انتهت التجربة المجانية — لا fallback هنا (v-maha-subs)
+    throw new Error(tokenData && tokenData.error === 'guest_trial_used' ? '__guest__' : '__points__');
   }
   if(!tokenRes.ok || !tokenData.clientSecret){
     throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
@@ -2343,11 +2343,12 @@ async function mahaStartCallInner(mode){
     mahaShowModeTag('hd');
     return;
   }catch(e){
-    if(e && e.message === '__points__'){
-      // v-maha-open: كان يقفل المكالمة كليًا («مها مش مفتوحة») — الآن يهبط
-      // للوضع الأساسي: الصوت الفائق وحده ما يحتاج نقاطًا/رصيدًا.
-      console.warn('[maha] HD needs points/credit — continuing in basic mode');
-      mahaSetState('thinking', 'الصوت الفائق يحتاج نقاطًا — أكمل معك بالوضع الأساسي 🎙️');
+    /* v-maha-subs (أمر المالك ٤ أكتوبر، بعد فحص #800): مها صارت للجميع بعد رفع v-maha-pause، فالهبوط للوضع الأساسيّ عند
+       رفض الخادم (لا دقائق مها ولا ١٥ نقطة) كان يعطيها مجّانًا. الآن تُغلق المكالمة وتُفتح اشتراكات مها، والضيف يُعرض عليه الدخول. */
+    if(e && (e.message === '__points__' || e.message === '__guest__')){
+      mahaEndCall();
+      mahaOpenPlans(e.message === '__guest__');
+      return;
     }
     console.error('[maha] realtime mode failed, falling back to classic pipeline:', e);
     mahaEndRealtimeCall();
@@ -2379,8 +2380,17 @@ function mahaShowModeTag(mode){
 // once: two microphones and double metering. Thin wrapper only - the original
 // body is untouched, now mahaStartCallInner().
 let mahaCallStarting = false;
+/* v-maha-subs: المسجَّل بلا دقائق ولا نقاط ← الإعدادات ← الباقات ← قسم مها؛ الضيف ← شاشة الدخول. */
+function mahaOpenPlans(guest){
+  try{
+    if(guest || !authGet('aiapp_auth_token')){ if(typeof window.requireLogin === 'function') window.requireLogin('guestLimit'); return; }
+    const sb = document.getElementById('btnSettings');
+    if(sb) sb.click();
+    if(typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+    if(typeof showPriceTab === 'function') showPriceTab('maha');
+  }catch(e){ __swallow(e, 'maha:open-plans'); }
+}
 async function mahaStartCall(mode){
-  if(window.__mahaPaused) return; /* v-maha-pause: موقوفة مؤقتًا لغير المالك */
   if(mahaCallActive || mahaCallStarting) return;
   mahaCallStarting = true;
   try{ return await mahaStartCallInner(mode); }
@@ -2663,46 +2673,6 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
   lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; });
 })();
 
-/* v-maha-pause (طلب عمران ٣١ أغسطس — مؤقت لحين ضبط مها): المكالمة الصوتية
-   موقوفة لغير المالك: زرا مها (الدوك والعائم) يختفيان ويرجع صندوق المحادثة
-   عاديًا، والميزة كاملة تبقى عند حساب المالك. واسما «مها/عبدالله» يُخفيان
-   من نصوص الإعدادات للجميع. للإلغاء لاحقًا: احذف هذا البلوك وحارس
-   mahaStartCall أعلاه. */
-(function(){
-  function __ownerAcct(){
-    try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }
-    catch(e){ return false; }
-  }
-  window.__mahaPaused = !__ownerAcct();
-  if(window.__mahaPaused){
-    var st = document.createElement('style');
-    st.id = 'mahaPauseCss';
-    st.textContent = '#btnMahaDock, #btnMaha{ display:none !important; }';
-    document.head.appendChild(st);
-  }
-  /* أسماء الإعدادات محايدة (كلمة كاملة فقط — «مهام» وأشباهها لا تُمس) */
-  function __scrubNames(){
-    try{
-      var root = document.getElementById('settingsDialog');
-      if(!root) return;
-      var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
-      var n;
-      while((n = w.nextNode())){
-        var s = n.nodeValue;
-        if(!s || !(/مها|عبدالله|Maha|Abdullah/.test(s))) continue;
-        n.nodeValue = s
-          .replace(/[؀-ۿ]+/g, function(word){
-            if(word === 'مها') return 'المساعد الصوتي';
-            if(word === 'عبدالله') return 'المساعد';
-            return word;
-          })
-          .replace(/\bMaha\b/g, 'Assistant')
-          .replace(/\bAbdullah\b/g, 'Assistant');
-      }
-    }catch(e){ /* guard-ok: تنظيف تجميلي — فشله لا يعطل الإعدادات */ }
-  }
-  /* v-voice-names-show (المالك ١ أكتوبر، لقطة الإعدادات «المساعد / المساعد الصوتي» بدل «عبدالله / مها»): التحييد كان
-     «للجميع» حتّى حساب المالك الذي تعمل عنده المكالمة. الآن لمن مها موقوفة عنده وحده. */
-  var sb = document.getElementById('btnSettings');
-  if(sb && window.__mahaPaused) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
-})();
+/* v-maha-subs (أمر المالك ٤ أكتوبر، بعد فحص #800): قفل v-maha-pause (٣١ أغسطس «مؤقت لحين ضبط مها») أُزيل — كان يُخفي زرّي مها
+   ويُرجع mahaStartCall فورًا لغير المالك، بينما اشتراكات مها تُباع منذ ٢٥ سبتمبر. الحكم للخادم (realtime-session): دقائق مها
+   ثمّ النقاط، والمالك بلا حدّ؛ ورفضه يفتح اشتراكات مها (mahaOpenPlans). */
