@@ -38,4 +38,24 @@ async function purgeOldShares(kv, opts) {
   return out;
 }
 
-module.exports = { purgeOldShares, GROUPS };
+// v-media-autopurge (المالك ٤ أكتوبر: «لا تسأل… صلحه»): حفظ رابط مشاركة رُفض لأنّ القاعدة ممتلئة = تنظيف
+// روابط المشاركة القديمة (القاعدة نفسها التي وافق عليها المالك) مرّة كلّ ١٠ دقائق للعمليّة، ثمّ إعادة الحفظ مرّة.
+// حدّ الطلبات اليوميّ ليس امتلاءً — لا يُنظَّف له.
+const FULL_RE = /OOM|maxmemory|max(imum)? (database|data|db) size|database size limit|exceeds? .*(storage|size) limit/i;
+let lastAuto = 0, running = null;
+function isStoreFull(e) { return FULL_RE.test(String((e && e.message) || e || '')); }
+async function setIfAbsentWithRoom(kv, key, value, ttlSec) {
+  try {
+    return await kv.kvSetIfAbsent(key, value, ttlSec);
+  } catch (e) {
+    if (!isStoreFull(e)) throw e;
+    if (!running && Date.now() - lastAuto > 10 * 60 * 1000) {
+      lastAuto = Date.now();
+      running = purgeOldShares(kv, { maxAgeDays: 7 }).catch(() => null).finally(() => { running = null; });
+    }
+    if (running) await running;
+    return await kv.kvSetIfAbsent(key, value, ttlSec);
+  }
+}
+
+module.exports = { purgeOldShares, GROUPS, setIfAbsentWithRoom, isStoreFull, _resetAuto: () => { lastAuto = 0; running = null; } };

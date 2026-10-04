@@ -2,6 +2,8 @@
 // نمط مطابق لـ img-share.js و pdf-share.js: Redis تحت db/file/<id> بعمر ٧ أيام.
 const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+const KV = require('./kv.js');
+const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
 
 const MAX_B64 = 5 * 1024 * 1024; // ≈4MB ملف فعلي
 const TTL_SEC = 60 * 60 * 24 * 7;
@@ -84,12 +86,12 @@ module.exports = async (req, res) => {
     const CHUNK = 700 * 1024;
     let ok;
     if (data.length <= CHUNK) {
-      ok = await kvSetIfAbsent(KEY(id), mime + ':' + name + ':' + data, TTL_SEC);
+      ok = await setIfAbsentWithRoom(KV, KEY(id), mime + ':' + name + ':' + data, TTL_SEC);
     } else {
       const n = Math.ceil(data.length / CHUNK);
       ok = true;
-      for (let i = 0; i < n && ok; i++) ok = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
-      if (ok) ok = await kvSetIfAbsent(KEY(id), 'chunks:' + n + ':' + mime + ':' + name, TTL_SEC);
+      for (let i = 0; i < n && ok; i++) ok = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
+      if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + mime + ':' + name, TTL_SEC);
     }
     if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
     res.status(200).json({ id, url: '/f/' + id, ttlDays: 7 });
