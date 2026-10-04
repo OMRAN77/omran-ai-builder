@@ -437,7 +437,7 @@ test('٧د. الربط: البطاقة داخل «ذاكرتي» لا صفحة �
   const a09 = read('js/app-09-attach.js');
   assert.match(a09, /memoryUpdate\(text, String\(__lastA\.content\)\);\n\s*try\{ if\(window\.livingLearn\) window\.livingLearn\(cur\.messages\); \}catch\(e\)\{ __swallow\(e, 'misc:living-learn-chat'\); \}/);
   assert.match(a09, /if\(window\.livingLearn && settingsOwnerUi\(\)\) window\.livingLearn\(cur\.messages\);/, 'الوكيل: للمالك وحده كما كان');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=689'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=690'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=718'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('livingMemClearAll') && bundle.includes('window.livingLearn'));

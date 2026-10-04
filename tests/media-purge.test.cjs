@@ -72,5 +72,5 @@ test('٣. عمر الصور ٧ أيّام، والمسار للمالك وحده
   const b = read('js/app.bundle.js');
   assert.ok(b.includes("window.purgeOldMedia = async function(){") && b.includes("'/api/system?action=health&purge=media&token='"));
   assert.ok(b.includes("__b.textContent = '🧹 نظّف الآن';"));
-  assert.ok(read('index.html').includes('partials-settings.js?v=689'));
+  assert.ok(read('index.html').includes('partials-settings.js?v=690'));
 });

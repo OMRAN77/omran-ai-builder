@@ -90,5 +90,5 @@ test('٥. العميل: الزرّ آخر «خطط الأسعار»، يتبعه
     for (const k of keys) assert.ok(new RegExp('"?' + k + '"?: "').test(s), lg + ':' + k);
     assert.match(s, /"?autoRenewStopped"?: "[^"]*\{date\}/, lg);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=689'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=690'));
 });

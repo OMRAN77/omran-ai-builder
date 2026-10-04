@@ -89,6 +89,16 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // v-redis-capacity: «ما الذي يملأ القاعدة؟» — قياس بالقراءة فقط (للمالك وحده، isOwner أعلاه). ...&usage=1
+  if (req.query && req.query.usage === '1') {
+    try {
+      res.status(200).json({ ok: true, usage: await require('./redis-usage.js').redisUsage(require('./kv.js')) });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'usage_failed', message: String((e && e.message) || e).slice(0, 200) });
+    }
+    return;
+  }
+
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,
     Gemini: !!process.env.GEMINI_API_KEY,
