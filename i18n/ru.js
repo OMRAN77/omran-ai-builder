@@ -1173,3 +1173,5 @@ Object.assign(I18N["ru"], {"videoSceneWait":"⏳ Сцена {i}/{n}: пауза 
 Object.assign(I18N["ru"], {"acctPhoneLabel": "📱 Номер телефона (для восстановления)", "phoneNotLinked": "Не привязан", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Отправьте готовое сообщение или поделитесь номером, затем вернитесь сюда…", "phoneLinkedOk": "✓ Номер привязан", "phoneTaken": "Этот номер привязан к другому аккаунту", "phoneNoUser": "К этому номеру не привязан ни один аккаунт", "phoneExpired": "Срок действия ссылки истёк — попробуйте снова", "phoneRecoverTitle": "Или восстановите аккаунт по телефону:", "phoneRecoverSent": "✓ Мы отправили ссылку для нового пароля в ваш чат там"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["ru"], {"bgThemeWood": "Дерево", "woodRecentTitle": "Недавние чаты"});
+/* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
+Object.assign(I18N["ru"], {"brandSubtitle": "ИИ-платформа", "frameHomeTitle1": "Здесь начинаются", "frameHomeTitle2": "ваши великие идеи", "frameHomeSub": "Ваш умный помощник всегда рядом"});

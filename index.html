@@ -207,7 +207,8 @@ window.__omranWhenSeen = (function () {
 <link rel="stylesheet" href="css/redesign.css?v=689">
 <link rel="stylesheet" href="css/modules.css?v=663">
 <link rel="stylesheet" href="css/خلفيات.css?v=3">
-<link rel="stylesheet" href="css/ثيم-خشبي.css?v=1"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
+<link rel="stylesheet" href="css/إطارات.css?v=1"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
+<link rel="stylesheet" href="css/ثيم-خشبي.css?v=2"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -742,6 +743,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <div id="drawerBackdrop"></div>
 
 <main>
+  <div id="omFrameCenter" aria-hidden="true"></div><!-- v-frame-design: إطار لوحة المحادثة خلف الهيدر والمحادثة -->
   <div id="sidebar" style="background:#000;">
     <!-- v-drawer-close (طلب المالك): زرّ طيّ درج المحادثات على الجوّال — سهم (داخل/خارج) بلا دائرة ولا ✕ (مع السحب القائم). يظهر على الجوّال فقط. -->
     <button type="button" id="sidebarCloseBtn" aria-label="إغلاق القائمة" data-i18n="[aria-label]closeTitle" title="إغلاق" data-i18n-title="closeTitle"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg></button>
@@ -749,7 +751,10 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     <div id="sidebarBrand" class="sidebarBrand" title="OM Ai"><span class="omBrand" dir="ltr"><img src="icons/brand-om-s.png" alt="OM Ai" class="brandImg" width="141" height="42"><svg class="omStars" viewBox="0 0 22 42" width="22" height="42" aria-hidden="true"><g transform="translate(7.5 14) scale(0.42)"><path class="omBrandStar s1" fill="#04BAEC" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(15 19) scale(0.62)"><path class="omBrandStar s2" fill="#FEED01" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(7.5 28) scale(0.38)"><path class="omBrandStar s3" fill="#F049D7" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g></svg></span></div>
     <script>/* v-sidebar-brand: يتبع شعار الرأس (بُدّل أثناء التحليل حسب اللغة المحفوظة) فلا وميض */
     (function(){try{var b=document.getElementById('brandTitle'),s=document.getElementById('sidebarBrand');if(b&&s)s.innerHTML=b.innerHTML;}catch(e){}})();</script>
+    <div id="sidebarBrandSub" data-i18n="brandSubtitle">منصة الذكاء</div><!-- v-frame-design -->
     <button type="button" id="omranNewChatBtn"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="ncLabel" data-i18n="ncNewChatLabel">محادثة جديدة ✨</span></button>
+    <!-- v-frame-design: خانة بحث ظاهرة كما في الصورة — تمرّر إلى بحث المشاريع القائم (projSearchInput) -->
+    <div id="sbSearchWrap"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><input type="search" id="sbSearch" autocomplete="off" data-i18n-placeholder="projSearchLabel" placeholder="بحث عن مشروع"></div>
     <div id="omranHistTitle"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> <span data-i18n="omNavChats">المحادثات</span></div>
     <div id="providerGridSidebar">
       <button id="provDropdownBtn" type="button"><span id="provDDLogo"></span><span class="provDDName" id="provDDName"></span><svg class="provDDChev" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
@@ -943,6 +948,13 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
           <div id="emptyStateSpinner" class="spinner" style="width:38px; height:38px; border-width:4px; margin-bottom:18px; display:none;"></div>
           <h2 id="emptyTitleEl" data-i18n="emptyTitle" style="display:none;">ابدأ ببناء أول تطبيق لك</h2>
           <p id="emptyDescEl" data-i18n="emptyDesc" style="display:none;">اكتب وصفًا في المربع على اليسار، مثال:<br>"لعبة كسر الطوب"، "موقع لمطعم بيتزا"، "قائمة مهام يومية"</p>
+          <!-- v-frame-design: «بيت» اللوحة الفارغة كما في صورة المالك — القوس والهلال و«هنا تبدأ أفكارك العظيمة» (الكمبيوتر وحده) -->
+          <div class="frameHome" aria-hidden="true">
+            <div class="frameArch"><div class="frameArchIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.3A8.6 8.6 0 0 1 9.7 3.5a8.6 8.6 0 1 0 10.8 10.8z"/></svg></div></div>
+            <p class="frameTitle"><span data-i18n="frameHomeTitle1">هنا تبدأ</span><br><span data-i18n="frameHomeTitle2">أفكارك العظيمة</span></p>
+            <div class="frameDivider">✦</div>
+            <div class="frameSub" data-i18n="frameHomeSub">مساعدك الذكي دائماً معك</div>
+          </div>
         </div>
         <iframe id="previewFrame" style="display:none;"></iframe>
         <div id="pyConsole" style="display:none;">
@@ -997,7 +1009,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-8"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=29cdf6eb"></script>
+    <script defer src="/js/app.bundle.js?v=5fa2ea08"></script>
     <script defer src="/js/modes.js?v=m041026a"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
