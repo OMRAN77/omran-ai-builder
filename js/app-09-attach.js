@@ -2890,7 +2890,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   }
   if(serverErr && !full) throw new Error(serverErr);
   await __agentApplyResult(cur, full, streamBroke ? null : agLog.split()); // انقطاعٌ استُعيد من الدفتر = نصّ لا يطابق السجلّ الحيّ
-  try{ if(window.livingLearn) window.livingLearn(cur.messages); }catch(e){ __swallow(e, 'misc:living-learn'); } // v-living-memory: التعلّم بعد الردّ الناجح — طلب منفصل لا ينتظره أحد
+  try{ if(window.livingLearn && settingsOwnerUi()) window.livingLearn(cur.messages); }catch(e){ __swallow(e, 'misc:living-learn'); } // v-living-memory: التعلّم بعد ردّ الوكيل للمالك وحده كما كان — المحادثة الرئيسيّة لكلّ مسجَّل (أدناه)
   try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* العلامة ترفٌ */ }
 }
 // 🕯️ الدوام٢: تركيب ناتج الوكيل في المشروع (كود + رسالة + إصلاح ذاتي). كان
@@ -6778,6 +6778,7 @@ DESIGN RULES (non-negotiable):
       const __lastA = cur.messages.filter(m => m.role === 'assistant').slice(-1)[0];
       if(__lastA && __lastA.content && !__lastA._cc && !String(__lastA.content).startsWith('⚠️') && !(isPureGreeting(text) || isCasualCheckIn(text))){ // v-cc-chat: ردود Claude Code لا تدخل ذاكرة المستخدم
         memoryUpdate(text, String(__lastA.content));
+        try{ if(window.livingLearn) window.livingLearn(cur.messages); }catch(e){ __swallow(e, 'misc:living-learn-chat'); } // v-living-all: «ذاكرتي الحيّة» — بعد الردّ، طلب منفصل، وبلا تحيّة/مجاملة
         // 🗂️ v326: تحديث ملخص موضوع هذه المحادثة في الذاكرة السحابية
         try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){ __swallow(e, "misc:app-09-attach#31"); }
       }

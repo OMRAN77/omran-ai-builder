@@ -3315,7 +3315,7 @@ function showSettingsPage(sid){
     if(sid === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
     // v-bg-images-row: صفحة «خلفيّات الشاشة» تبني شبكة المصغّرات عند فتحها من القائمة
     if(sid === 'bgImgSection' && window.خلفيات) window.خلفيات.افتح();
-    if(sid === 'ownerSection' && window.livingRefresh) window.livingRefresh(); // v-living-memory: آخر الحقائق المتعلَّمة
+    if(sid === 'memorySection' && window.livingRefresh) window.livingRefresh(); // v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل
   }catch(e){ __swallow(e, 'points:acct-refresh'); }
 }
 window.showSettingsPage = showSettingsPage;

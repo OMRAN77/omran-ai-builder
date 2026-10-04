@@ -49,8 +49,15 @@ module.exports = async (req, res) => {
   if (!oaKey) { res.status(503).json({ error: 'preview generator not configured' }); return; }
 
   // قفل: توليد واحد فقط لكل خيار مهما تزامنت الطلبات؛ الباقون ينتظرون الكاش
+  /* v-redis-capacity: القفل كان يفتح على الفشل (got = true) — فحين تمتلئ القاعدة (كلّ كتابة مرفوضة) يُولَّد كلّ طلب صورةً مدفوعة
+     ولا تُحفظ، فيُولَّد مثلها عند الطلب التالي: كلّ مصغّر في شبكة الاستوديو = توليد جديد. امتلاء القاعدة = لا توليد (٥٠٣)، وأيّ عطل
+     عابر آخر يبقى كما كان (يفتح). */
   let got = false;
-  try { got = await kvSetIfAbsent(key + ':lock', String(Date.now()), 120); } catch (e) { got = true; }
+  try { got = await kvSetIfAbsent(key + ':lock', String(Date.now()), 120); }
+  catch (e) {
+    if (require('./media-purge.js').isStoreFull(e)) { res.setHeader('Retry-After', '600'); res.status(503).json({ error: 'preview store full' }); return; }
+    got = true;
+  }
   if (!got) {
     for (let i = 0; i < 12; i++) {
       await sleep(2500);
@@ -72,7 +79,7 @@ module.exports = async (req, res) => {
       const td = await tr.json();
       const tb = td && td.data && td.data[0] && td.data[0].b64_json;
       if (!tr.ok || !tb) throw new Error('openai ' + tr.status);
-      try { await kvSetRaw(key, tb); } catch (e) { /* يُقدَّم الآن */ }
+      try { await kvSetRaw(key, tb); } catch (e) { require('./log-error.js').logError('studio-preview/save', e); /* يُقدَّم الآن */ }
       sendImage(res, tb); return;
     }
     const subjects = (isBase ? BASE.PREVIEW_SUBJECT : MORE.PREVIEW_SUBJECT)[feature] || {};
@@ -99,7 +106,7 @@ module.exports = async (req, res) => {
     const d = await r.json();
     const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
     if (!r.ok || !b64) throw new Error('openai ' + r.status + ' ' + String((d && d.error && d.error.message) || '').slice(0, 120));
-    try { await kvSetRaw(key, b64); } catch (e) { /* الصورة تُقدَّم الآن ولو تعذّر الحفظ */ }
+    try { await kvSetRaw(key, b64); } catch (e) { require('./log-error.js').logError('studio-preview/save', e); /* الصورة تُقدَّم الآن ولو تعذّر الحفظ — وتُسجَّل لأنّها توليد مدفوع ضاع */ }
     sendImage(res, b64);
   } catch (e) {
     console.error('[studio-preview] ' + feature + '/' + value + ': ' + (e && e.message));

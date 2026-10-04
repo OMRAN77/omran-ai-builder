@@ -150,8 +150,8 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     const s = read('i18n/' + l + '.js');
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=688'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=718'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=690'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=719'"));
 });
 
 test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرصيد على المحرّك السريع، و«جودة عالية» في الطلب أو الإعداد = عالية', async () => {

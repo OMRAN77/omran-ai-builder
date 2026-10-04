@@ -49,6 +49,20 @@ test('٢. كلّ عطل بسببه: حدّ الطلبات، رمز مرفوض، 
   fail = null;
 });
 
+test('٢ب. امتلاء السعة ليس «حدّ الطلبات» (تنبيه المالك ٤ أكتوبر): رسالة Upstash الحقيقيّة تُسمّى باسمها وتدلّ على العلاج', async () => {
+  fail = 'Upstash error: ERR DB capacity quota exceeded. Threshold: 268435456 bytes, Usage: 274604636 bytes. See https://upstash.com/docs for details';
+  const { j } = await call();
+  assert.equal(j.redisOk, false);
+  assert.match(j.redisWhy, /سعة قاعدة Upstash امتلأت/);
+  assert.match(j.redisWhy, /تنظيف التطبيق/);
+  assert.match(j.redisWhy, /Threshold: 268435456 bytes, Usage: 274604636 bytes/, 'نصّ Upstash نفسه باقٍ');
+  assert.doesNotMatch(j.redisWhy, /حدّ الطلبات/, 'لا تسمية خاطئة');
+  assert.ok(!/https?:\/\//.test(j.redisWhy));
+  fail = 'Upstash error: ERR max requests limit exceeded. Limit: 500000, Usage: 500000';
+  assert.match((await call()).j.redisWhy, /حدّ الطلبات/, 'حدّ الطلبات الحقيقيّ يبقى كما هو');
+  fail = null;
+});
+
 test('٣. التنبيه ولوحة «فحص النظام» يعرضان السبب للمالك', () => {
   const v = fs.readFileSync(path.join(root, 'js/app-11-video.js'), 'utf8');
   assert.match(v, /problems\.push\('قاعدة البيانات \(Redis\) لا تستجيب' \+ \(d\.redisWhy \? ' — السبب: '/);
