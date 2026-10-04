@@ -97,7 +97,7 @@ prov (من body.provider، افتراضه 'claude')
 │     غيره:    يوجد OPENROUTER_API_KEY
 │
 ├─ المفتاح الأوّليّ = viaOR ? OPENROUTER_API_KEY : ANTHROPIC_API_KEY   chat.js:1169
-│     (فحص غيابه بعد اختيار المسار الفعليّ، لا هنا)                chat.js:1544
+│     (فحص غيابه بعد اختيار المسار الفعليّ، لا هنا)                chat.js:1547
 │
 ├─ العنوان   = viaOR ? openrouter.ai/api/v1/messages              chat.js:1170
 │                    : api.anthropic.com/v1/messages
@@ -142,31 +142,31 @@ planRoute(tier, reqProv, lastUserText, used, env, hasImage)   tier.js:71  ← v-
 │    كود: Plus → Haiku (٥/يوم) · Pro → Haiku (١٠/يوم) · Max → Sonnet 5 (٣٠/يوم) ثمّ Haiku — ثمّ DeepSeek
 │    رياضيّات/ملفّ طويل: DeepSeek · صورة مرفقة: Gemini مباشر
 │    الحدود SUB_HAIKU_BASIC/PRO/MAX وSUB_SONNET_MAX، عدّاد لكلّ موديل (plan-haiku/plan-sonnet) يُزاد بعد قبول الحصّة
-│    الالتقاط: Gemini → DeepSeek → Groq (بلا كلود). السقف الكلّيّ في سلّة «plan». منتقي Max للدردشة فقط وبلا GPT
+│    الالتقاط: Gemini → DeepSeek → Groq (بلا كلود). السقف الكلّيّ في سلّة «plan». لا منتقٍ لأيّ باقة (v-providers-owner: المنتقي للمالك وحده؛ VIP على افتراضيّ التطبيق GPT)
 │  مزوّد مباشر بلا مفتاحه، أو غير كلود بلا مفتاح الوسيط → يُتخطّى (applyRoute تعود false)
 │  التطبيق في chat.js:1285 (قبل الحصّة كي تُعدّ الرسالة على المزوّد الذي يخدمها فعلًا)
 │  المالك · VIP · المجانيّ · الضيف → null (لا يمرّون هنا)
 │
-checkAndConsume(...)                              chat.js:1297
+checkAndConsume(...)                              chat.js:1300
 │  السلّة = غير مشترك ? 'chat' : prov   ← المجانيّ سقفه رقم واحد، والمشترك سلّة مزوّده
 │
-├─ usage.allowed === false                        chat.js:1298
+├─ usage.allowed === false                        chat.js:1301
 │    ├─ reason 'auth'          → «الجلسة منتهية…»
 │    ├─ free / guest           → tier:'free-limit' | 'guest-limit' + نصّ + done
 │    │                            (**لا هبوط لمزوّد آخر** — كلّها مغلقة أمامه)
 │    └─ مشترك تجاوز سقفه        → FREE_TEXT.subLimit(cap)
 │
-└─ __freeLane = usage.tier && !usage.subscriber   chat.js:1314
+└─ __freeLane = usage.tier && !usage.subscriber   chat.js:1317
 ```
 
 ### ٣-ج. بناء تعليمات النظام
 
 ```
-sysParts                                          chat.js:1371
+sysParts                                          chat.js:1374
 ├─ رسائل system من العميل (ما عدا نسخة الذاكرة القديمة — isClientMemoryNote)
 ├─ body.system إن وُجد
 ├─ ذاكرة الحساب (memoryPromptBlock)
-└─ التعليمات المخصّصة                              chat.js:1379
+└─ التعليمات المخصّصة                              chat.js:1382
       customInstructionsBlock(body.customInstructions)   chat.js:63
       سقف 1500 حرفًا · تعلو على الأسلوب الافتراضيّ · تحت الهويّة والأبواب المقفلة
 
@@ -178,7 +178,7 @@ PERSONA_NOTE هو ميثاق الشخصيّة (الهويّة · اللغة · �
 ### ٣-د. الطبقة المجانيّة تنتهي هنا
 
 ```
-if (__freeLane || !__visionRoute)                 chat.js:1529
+if (__freeLane || !__visionRoute)                 chat.js:1532
    للمجانيّ: send({tier}) ثمّ streamFreeChain(...) free-chain.js:167
    بلا أدوات · بلا بحث حيّ · الصورة تُمرَّر فقط لمزوّد يرى (Gemini)، وينتهي الطلب
    الصورة تطلب الرؤية تلقائيًّا؛ لا تُرسل إلى مزوّد نصّيّ أعمى
@@ -194,7 +194,7 @@ if (__freeLane || !__visionRoute)                 chat.js:1529
 من يمرّ بهذا المسار من العميل: `TOOL_PROVIDERS` في `app-06` — claude · openai · gemini · deepseek · mistral ·
 groq · cohere (v-cohere-tools: Cohere عبر الوسيط `cohere/command-a`). Perplexity و«OpenRouter» العامّ يبقيان
 على المسار المباشر (§٢) **بلا أدوات** — Sonar لا يقبل أدوات وبحثه مدمج.
-دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:568` / `chat.js:1478`.
+دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:568` / `chat.js:1481`.
 
 ---
 
@@ -231,16 +231,16 @@ streamFreeChain(args)                             free-chain.js:167
 
 | الحالة | أين | ماذا يحدث |
 |--------|-----|-----------|
-| لا مفتاح بعد تحديد المسار الفعليّ (وليس قبل اختيار المجانيّ/المباشر/الباقة) | `chat.js:1544` | خطأ صريح عند الحاجة لمفتاح Anthropic/OpenRouter فقط؛ المجانيّ بسلسلته والمباشر بمفتاحه |
-| الطبقة المجانيّة أو صورة بلا مسار رؤية مدفوع متاح | `chat.js:1529` | سلسلة احتياط تستبعد الوجهات العمياء تلقائيًّا للصورة، وينتهي الطلب |
+| لا مفتاح بعد تحديد المسار الفعليّ (وليس قبل اختيار المجانيّ/المباشر/الباقة) | `chat.js:1547` | خطأ صريح عند الحاجة لمفتاح Anthropic/OpenRouter فقط؛ المجانيّ بسلسلته والمباشر بمفتاحه |
+| الطبقة المجانيّة أو صورة بلا مسار رؤية مدفوع متاح | `chat.js:1532` | سلسلة احتياط تستبعد الوجهات العمياء تلقائيًّا للصورة، وينتهي الطلب |
 | 400 على حقول إطفاء التفكير (وسيط OpenRouter، غير كلود) | قبل الفشل النهائيّ (`v-chat-fast`، `chat/or-quick-400`) | إعادة فوريّة بلا الحقل المرفوض (`thinking`/`reasoning`)، ويُذكَر المستوى لبقيّة عمر الدالّة (`__orQuick.level`) |
 | المالك: 400 على حقول «بلا تفكير» لدوره العاديّ (جهد كلود `low`، أو حقول الوسيط) | بعد إعادة دور الصورة وقبل رجوع الموديل المختار (`v-owner-auto`، `chat/owner-quick-400`) | إعادة فوريّة بالموديل نفسه بلا الحقل المرفوض، ويُذكَر (`owner-think.js` للجهد، `__orQuick.level` للوسيط). GPT المباشر يعالجها داخل `oa-direct.js`: سلّم `none → minimal → low` ثمّ بلا reasoning |
-| مشترك: تعطّل مزوّد باقته **قبل أوّل حرف** | `chat.js:1674` (`v-plan-routing`، `chat/plan-fallback-<status>`) | التالي في سلسلة الباقة **بصمت** (أرخص فأرخص، مزوّد بلا مفتاح أو رؤية للصورة يُتخطّى) قبل الهبوط المجانيّ أدناه |
-| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1690` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
+| مشترك: تعطّل مزوّد باقته **قبل أوّل حرف** | `chat.js:1677` (`v-plan-routing`، `chat/plan-fallback-<status>`) | التالي في سلسلة الباقة **بصمت** (أرخص فأرخص، مزوّد بلا مفتاح أو رؤية للصورة يُتخطّى) قبل الهبوط المجانيّ أدناه |
+| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1693` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
 | … ودور فيه **صورة** | نفس الموضع (`v-img-no-blind`) | صورة المحادثة تفرض الرؤية تلقائيًّا؛ المزوّدات العمياء تُستبعد، ولا مزوّد يرى → `FREE_TEXT.imageBusy` صريح، **لا تأليف** ولا هبوط للعميل. المالك وحده يرى `modelLabel: احتياط · مزوّد/نموذج`. نفاد الرصيد (402) → إشعار دفع للمالك مرّة كلّ ٦ ساعات (`_owner-alert.js`) |
 | فشل السلسلة أيضًا في دور نصّيّ | نفس الموضع | `tierDiag` + `error` مع `fallback:true` فيهبط العميل بمساره القديم؛ الصورة تُستثنى فلا هبوط أعمى |
 | انهيار **بعد** بدء البثّ (`anyText`) | نفس الموضع | لا هبوط — النصّ المكتوب يبقى |
-| نفاد حصّة المجانيّ/الضيف | `chat.js:1298` | ردّ عاديّ بزرّ اشتراك، لا خطأ |
+| نفاد حصّة المجانيّ/الضيف | `chat.js:1301` | ردّ عاديّ بزرّ اشتراك، لا خطأ |
 
 القاعدة المستخلصة: **الهبوط الصامت مشروط بألّا يكون كُتب حرف واحد.**
 

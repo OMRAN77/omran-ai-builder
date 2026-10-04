@@ -46,7 +46,7 @@ const PLAN_FALLBACK = ['gemini', 'deepseek', 'groq'];
 const PLAN_ROUTING = {
   basic: { chat: ['groq'], code: ['haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_BASIC', 5] }, allowed: [] },
   pro: { chat: ['groq'], code: ['haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_PRO', 10] }, allowed: [] },
-  max: { chat: ['haiku', 'groq'], code: ['sonnet', 'haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_MAX', 150], sonnet: ['SUB_SONNET_MAX', 30] }, allowed: ['claude', 'groq', 'gemini', 'deepseek', 'mistral', 'cohere'] },
+  max: { chat: ['haiku', 'groq'], code: ['sonnet', 'haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_MAX', 150], sonnet: ['SUB_SONNET_MAX', 30] }, allowed: [] /* v-providers-owner (أمر المالك ٤ أكتوبر): المنتقي للمالك وحده — Max يُوجَّه بجدوله، لا باختيار قديم محفوظ */ },
 };
 // الدور القويّ: نصّ طويل (وثيقة/ملفّ) أو كتلة كود أو كلمات برمجة/بناء/رياضيات.
 const STRONG_TURN_RE = /```|(?:^|[\s،,.:؛()"'«»-])(?:ال|بال|وال|لل|فال|كال)?(?:كود|كودي|برمج|برمجة|سكربت|سكريبت|دالة|دوال|خوارزميّ?ة|bug|error|exception|debug|api|json|sql|regex|html|css|javascript|typescript|python|react|node|docker|ابنِ|ابني|اعمل(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة|برنامج|بوت|لعبة)|صمّ?م(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة)|احسب|معادلة|معادلات|مشتقّ?ة|تكامل|مصفوفة|احتمال|إحصاء|جبر|ضريبة|فائدة\s+مركّ?بة|نسبة\s+مئويّ?ة|calculate|solve|equation|integral|derivative|matrix|probability|statistics|function|class|compile)(?=$|[\s،,.:؛()"'«»?؟!-])/i;

@@ -72,7 +72,7 @@ test('٢. isStrongTurn وturnJob: دردشة · كود · رياضيّات/مل�
   assert.equal(tierLib.isStrongTurn(''), false); assert.equal(tierLib.isStrongTurn(null), false);
 });
 
-test('٣. planRoute: كلّ وظيفة لمزوّدها، حدود كلود اليوميّة، المنتقي لـMax وحده، والالتقاط بلا كلود', () => {
+test('٣. planRoute: كلّ وظيفة لمزوّدها، حدود كلود اليوميّة، المنتقي لا يغيّر أيّ باقة (v-providers-owner)، والالتقاط بلا كلود', () => {
   const sub = (plan) => ({ tier: 'sub', plan, subscriber: true, cap: 1 });
   for (const t of [null, { tier: 'owner', subscriber: true }, { tier: 'vip', subscriber: true }, { tier: 'free', subscriber: false }, { tier: 'guest', subscriber: false }, { tier: 'sub', plan: 'gold', subscriber: true }]) assert.equal(tierLib.planRoute(t, 'claude', 'اكتب كود'), null);
   const pick = (r) => [r.job, r.prov, r.model, r.direct, r.fallback.map((f) => f.prov).join('>')];
@@ -90,7 +90,7 @@ test('٣. planRoute: كلّ وظيفة لمزوّدها، حدود كلود ال
   assert.equal(tierLib.planRoute(sub('max'), '', 'ابني لي صفحة', {}, {}).model, 'claude-sonnet-5');
   assert.equal(tierLib.planRoute(sub('max'), '', 'ابني لي صفحة', { sonnet: 30 }, {}).model, 'claude-haiku-4-5', 'بعد ٣٠ Sonnet → Haiku');
   assert.equal(tierLib.planRoute(sub('max'), '', 'ابني لي صفحة', { sonnet: 30, haiku: 150 }, {}).prov, 'deepseek');
-  assert.equal(tierLib.planRoute(sub('max'), 'deepseek', 'هلا', {}, {}).prov, 'deepseek', 'Max يختار للدردشة');
+  assert.equal(tierLib.planRoute(sub('max'), 'deepseek', 'هلا', {}, {}).model, 'claude-haiku-4-5', 'v-providers-owner: اختيار Max القديم المحفوظ لا يغيّر جدوله');
   assert.equal(tierLib.planRoute(sub('max'), 'openai', 'هلا', {}, {}).model, 'claude-haiku-4-5', 'GPT غير مسموح → افتراضيّ Max');
   assert.equal(tierLib.planRoute(sub('max'), 'claude', 'هلا', { haiku: 150 }, {}).prov, 'groq', 'اختيار كلود يخضع لحدّ Haiku');
   assert.equal(tierLib.planRoute(sub('max'), 'deepseek', 'اكتب كود', {}, {}).model, 'claude-sonnet-5', 'الكود يغلب المنتقي');
@@ -309,7 +309,7 @@ test('٩. abuse-guard: ٢٠ صورة في الساعة ثمّ 429 حتّى ال�
 });
 
 // ── (٥) الواجهة ──
-test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط؛ المجّانيّ/الضيف/Plus/Pro مقفول (الخادم يوجّه)', () => {
+test('١٠. منتقي المزوّد: يظهر للمالك وحده (v-providers-owner)؛ VIP وكلّ الباقات والمجّانيّ والضيف مقفول (الخادم يوجّه)', () => {
   const a5 = read('js/app-05-ui.js');
   const i = a5.indexOf('function applyPlanGate(d){');
   const j = a5.indexOf('window.applyPlanGate = applyPlanGate;', i);
@@ -321,14 +321,14 @@ test('١٠. منتقي المزوّد: يظهر للمالك وVIP وMax فقط�
   vm.runInNewContext(a5.slice(i, j), ctx);
   const locked = (d) => { ctx.applyPlanGate(d); return cls.has('plan-locked'); };
   assert.equal(locked({ tier: 'owner' }), false);
-  assert.equal(locked({ tier: 'vip' }), false);
-  assert.equal(locked({ tier: 'sub', plan: 'max' }), false);
+  assert.equal(locked({ tier: 'vip' }), true, 'v-providers-owner: VIP بلا منتقٍ');
+  assert.equal(locked({ tier: 'sub', plan: 'max' }), true, 'v-providers-owner: Max بلا منتقٍ');
   assert.equal(locked({ tier: 'sub', plan: 'pro' }), true);
   assert.equal(locked({ tier: 'sub', plan: 'basic' }), true);
   assert.equal(locked({ tier: 'free' }), true);
   assert.equal(locked({ authed: false, remaining: {} }), true, 'ضيف بلا جلسة');
   assert.equal(ctx.window.__omranPlan, 'guest');
-  ctx.applyPlanGate({ tier: 'sub', plan: 'max' }); assert.equal(cls.has('plan-locked'), false);
+  ctx.applyPlanGate({ tier: 'owner' }); assert.equal(cls.has('plan-locked'), false);
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));

@@ -10695,14 +10695,16 @@ function selectProviderKey(key){
 /* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يظهر
    لمن باقته تسمح باختيار المزوّد (Max) وللمالك وVIP فقط؛ المجّانيّ والضيف وPlus وPro يوجَّهون من الخادم
    بجدول الباقة (tier.js PLAN_ROUTING) فلا يُعرض لهم اختيار لا أثر له. تُستدعى بنتيجة usage-status
-   (tier/plan) وبنتيجة رصيد النقاط؛ بلا نتيجة (شبكة مقطوعة) لا تغيّر شيئًا. */
+   (tier/plan) وبنتيجة رصيد النقاط؛ بلا نتيجة (شبكة مقطوعة) لا تغيّر شيئًا.
+   v-providers-owner (أمر المالك ٤ أكتوبر «رجّع المزوّدين إلى المالك فقط»): المنتقي للمالك وحده — Max وVIP صاروا
+   كبقيّة الباقات، والخادم يتجاهل اختيارهم القديم المحفوظ (tier.js وchat.js) فلا يعلق أحد على مزوّد اختاره قبل الإخفاء. */
 function applyPlanGate(d){
   try{
     if(!d || typeof d !== 'object') return;
     const tier = typeof d.tier === 'string' && d.tier ? d.tier : (d.authed === false ? 'guest' : '');
     if(!tier) return;
     const plan = tier === 'sub' ? String(d.plan || '').toLowerCase() : '';
-    const open = tier === 'owner' || tier === 'vip' || (tier === 'sub' && plan === 'max');
+    const open = tier === 'owner'; // v-providers-owner
     const prevPlan = window.__omranPlan;
     window.__omranPlan = plan || tier;
     if(prevPlan !== window.__omranPlan && typeof renderSettingsNavList === 'function') renderSettingsNavList();
