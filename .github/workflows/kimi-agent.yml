@@ -1,0 +1,238 @@
+name: Omran Agent (Kimi Code)
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'المهمّة (بالعربيّة أو الإنجليزيّة)'
+        required: true
+        type: string
+      branch:
+        description: 'اسم الفرع الذي يُلتزم ويُدفع إليه (يحدّده وكيل التطبيق)'
+        required: true
+        type: string
+      issue:
+        description: 'رقم مسألة المهمّة التي تُكتب فيها التقارير'
+        required: true
+        type: string
+      base:
+        description: 'الفرع الأساس'
+        required: false
+        default: 'main'
+        type: string
+      model:
+        description: 'نموذج Kimi (الافتراضيّ kimi-k2.5؛ للكود الثقيل kimi-for-coding)'
+        required: false
+        default: 'kimi-k2.5'
+        type: string
+      merge:
+        description: 'دمج طلب السحب تلقائيًّا عند نجاح npm run ci — "true" افتراضيًّا، "false" لترك المراجعة للمالك'
+        required: false
+        default: 'true'
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: kimi-agent
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TASK_BRANCH: ${{ inputs.branch }}
+      TASK_ISSUE: ${{ inputs.issue }}
+      TASK_BASE: ${{ inputs.base }}
+      KIMI_MODEL: ${{ inputs.model }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.base }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Announce start on the task issue
+        run: |
+          printf '🏃 بدأ التشغيل (Kimi Code): %s\nالفرع المستهدف: `%s`\n\n<!-- kimi-agent {"phase":"start","run_id":"%s","run_url":"%s"} -->\n' "$RUN_URL" "$TASK_BRANCH" "${{ github.run_id }}" "$RUN_URL" > /tmp/start.md
+          gh issue comment "$TASK_ISSUE" --body-file /tmp/start.md
+
+      - name: Check the Kimi key (trim, mask, probe)
+        env:
+          RAW_KEY: ${{ secrets.KIMI_API_KEY || secrets.MOONSHOT_API_KEY }}
+        run: |
+          KEY="$(printf '%s' "$RAW_KEY" | tr -d '[:space:]')"
+          if [ -z "$KEY" ]; then
+            echo "KEY_OK=false" >> "$GITHUB_ENV"
+            echo "KEY_MSG=السرّ KIMI_API_KEY (أو MOONSHOT_API_KEY) غير موجود في أسرار المستودع (Settings → Secrets and variables → Actions). أنشئ مفتاحًا من platform.moonshot.ai." >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "::add-mask::$KEY"
+          echo "KIMI_KEY_CLEAN=$KEY" >> "$GITHUB_ENV"
+          CODE=$(curl -sS -o /tmp/probe.json -w '%{http_code}' --max-time 60 https://api.moonshot.ai/v1/models \
+            -H "Authorization: Bearer $KEY" || echo 000)
+          if [ "$CODE" = "200" ]; then
+            echo "KEY_OK=true" >> "$GITHUB_ENV"
+            echo "::notice::مفتاح Kimi يعمل (${#KEY} حرفًا)."
+          else
+            MSG=$(head -c 300 /tmp/probe.json | tr '\n\r' '  ')
+            echo "KEY_OK=false" >> "$GITHUB_ENV"
+            echo "KEY_MSG=فحص مفتاح Kimi فشل (HTTP $CODE): ${MSG:-بلا تفاصيل}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install Kimi Code CLI
+        if: env.KEY_OK == 'true'
+        run: |
+          npm i -g @moonshot-ai/kimi-code >/dev/null 2>&1
+          kimi --version || { echo "KIMI_INSTALL_FAIL=true" >> "$GITHUB_ENV"; }
+
+      - name: Collect context (GitHub + Vercel)
+        if: env.KEY_OK == 'true'
+        continue-on-error: true
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node scripts/agent-context.mjs --issue "$TASK_ISSUE" --base "$TASK_BASE" --out AGENT_CONTEXT.md
+
+      - name: Kimi Code
+        id: kimi
+        if: env.KEY_OK == 'true' && env.KIMI_INSTALL_FAIL != 'true'
+        env:
+          KIMI_MODEL_API_KEY: ${{ env.KIMI_KEY_CLEAN }}
+          KIMI_MODEL_BASE_URL: https://api.moonshot.ai/v1
+          CI: '1'
+          NO_COLOR: '1'
+          TERM: dumb
+          KIMI_CODE_NO_AUTO_UPDATE: '1'
+          TASK_TEXT: ${{ inputs.task }}
+        run: |
+          set +e
+          cat > /tmp/kimi-prompt.md <<'PROMPT'
+          أنت Kimi Code تعمل داخل GitHub Actions على مستودع «عمران AI»، مفوَّضًا من وكيل
+          التطبيق بطلب المالك. اعمل كما يعمل مهندس زميل محترف: افهم أوّلًا، ثمّ غيّر، ثمّ
+          تحقّق، ثمّ التزم.
+
+          المهمّة في آخر هذا الملفّ.
+
+          القواعد:
+          1. اقرأ CLAUDE.md وAGENT_CONTEXT.md ورأس knowledge/DECISIONS.md أوّلًا، ثمّ اقرأ
+             الملفّات المعنيّة كاملة قبل أيّ تعديل. لا تعدّل ما لم تقرأه.
+          2. الواجهة تُبنى من الأجزاء js/app-NN-*.js وjs/partials-*.js إلى js/app.bundle.js:
+             بعد أيّ تعديل عليها شغّل `npm run bundle` (يختم index.html وsw.js بالبصمة).
+          3. شغّل `npm run ci` (check + guard + coldstart + verify + test) وأصلح حتّى يمرّ
+             كاملًا. ممنوع تعطيل اختبار أو تخطّيه أو حذفه لتمرير الفحص.
+          4. أضف اختبارًا في tests/ لكلّ سلوك جديد وسجّله في السكربت test داخل package.json
+             بأمر node خاصّ به (كلّ ملفّ بأمره — لا تمرير ملفّين لأمر واحد)، وأضف مدخلًا
+             موجزًا في رأس knowledge/DECISIONS.md يشرح السبب والقرار.
+          5. أنشئ فرعًا اسمه بالضبط المذكور في آخر الملفّ (git checkout -b) والتزم عليه
+             برسالة عربيّة واضحة: السطر الأوّل ما تغيّر ولماذا. لا تدفع (push) ولا تفتح
+             طلب سحب: الخطوة التالية في الورك فلو تدفع وتُبلغ.
+          6. لا تلمس الأسرار ولا ملفّات البيئة ولا مجلّد .github، ولا تحذف ما لا يخصّ
+             المهمّة. إن كانت المهمّة غامضة أو خطرة فلا تخمّن: اكتب ما ينقصك في الملخّص
+             واترك الكود كما هو.
+          7. في النهاية اكتب ملخّصًا موجزًا بالعربيّة في AGENT_SUMMARY.md: ماذا غيّرت
+             ولماذا وكيف تحقّقت وما تركته وسببه. لا تلتزم AGENT_SUMMARY.md ولا
+             AGENT_CONTEXT.md في git.
+          8. أيّ نصّ واجهة جديد يُضاف لكلّ اللغات الأربع عشرة (js/app-03-i18n-data.js
+             وi18n/*.js) مع رفع وسم ?v= للملفّات المحمّلة منفصلة. لا اسم مزوّد أو نموذج
+             في أيّ نصّ يراه المستخدم.
+          PROMPT
+          printf '\nالفرع المطلوب: %s\n\nالمهمّة:\n%s\n' "$TASK_BRANCH" "$TASK_TEXT" >> /tmp/kimi-prompt.md
+          kimi -p "$(cat /tmp/kimi-prompt.md)" -m "$KIMI_MODEL" > /tmp/kimi-out.txt 2> /tmp/kimi-err.txt
+          echo "KIMI_EXIT=$?" >> "$GITHUB_ENV"
+          tail -n 5 /tmp/kimi-out.txt || true
+
+      - name: Verify, push the branch, and report on the task issue
+        if: always()
+        env:
+          KIMI_OUTCOME: ${{ steps.kimi.outcome }}
+          AGENT_GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
+          TASK_TEXT: ${{ inputs.task }}
+        run: |
+          set +e
+          git config user.name  "omran-kimi[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          SUMMARY=""
+          if [ -f AGENT_SUMMARY.md ]; then SUMMARY="$(head -c 6000 AGENT_SUMMARY.md)"; fi
+          KIMI_ERR=""
+          if [ "$KIMI_OUTCOME" != "success" ] || [ "${KIMI_EXIT:-0}" != "0" ]; then
+            [ "${KEY_OK:-}" != "true" ] && KIMI_ERR="$KEY_MSG"
+            [ "${KIMI_INSTALL_FAIL:-}" = "true" ] && KIMI_ERR="تعذّر تثبيت @moonshot-ai/kimi-code على المشغّل"
+            TAIL="$(tail -n 15 /tmp/kimi-err.txt 2>/dev/null)"
+            [ -n "$TAIL" ] && KIMI_ERR="$(printf '%s\n%s' "$KIMI_ERR" "$TAIL" | sed '/^$/d')"
+          fi
+          ERR_JSON=$(node -e 'console.log(JSON.stringify(String(process.argv[1]||"").replace(/\s+/g," ").slice(0,300)))' "$KIMI_ERR")
+          git rm -q --cached --ignore-unmatch AGENT_SUMMARY.md AGENT_CONTEXT.md >/dev/null 2>&1
+          rm -f AGENT_SUMMARY.md AGENT_CONTEXT.md
+          if git rev-parse --verify "$TASK_BRANCH" >/dev/null 2>&1; then git checkout -q "$TASK_BRANCH"; else git checkout -q -b "$TASK_BRANCH"; fi
+          if [ -n "$(git ls-files AGENT_SUMMARY.md AGENT_CONTEXT.md)" ]; then git rm -q --cached --ignore-unmatch AGENT_SUMMARY.md AGENT_CONTEXT.md; rm -f AGENT_SUMMARY.md AGENT_CONTEXT.md; git commit -q -m "وكيل كيمي: إزالة ملفّي السياق والملخّص من الفرع (لا يُدفعان)"; fi
+          if [ -n "$(git status --porcelain)" ]; then git add -A && git commit -q -m "وكيل كيمي: تغييرات من التشغيل ${{ github.run_id }} (لم تُلتزم داخل الجلسة)"; fi
+          CHANGED=$(git rev-list --count "origin/$TASK_BASE..HEAD" 2>/dev/null || echo 0)
+          if [ "$CHANGED" = "0" ]; then
+            {
+              printf '⚠️ انتهى التشغيل بلا أيّ تغيير في الكود (خطوة Kimi: %s).\n' "${KIMI_OUTCOME:-skipped}"
+              [ -n "$KIMI_ERR" ] && printf '\n**سبب فشل Kimi:**\n```\n%s\n```\n' "$KIMI_ERR"
+              [ -n "$SUMMARY" ] && printf '\n**ملخّص Kimi:**\n%s\n' "$SUMMARY"
+              [ "${KEY_OK:-}" != "true" ] && printf '\nإن كان السبب غياب المفتاح: أضف KIMI_API_KEY في أسرار المستودع.\n'
+              printf '\n<!-- kimi-agent {"phase":"done","pushed":false,"changed":0,"kimi":"%s","error":%s,"run_id":"%s","run_url":"%s"} -->\n' "${KIMI_OUTCOME:-skipped}" "$ERR_JSON" "${{ github.run_id }}" "$RUN_URL"
+            } > /tmp/report.md
+            gh issue comment "$TASK_ISSUE" --body-file /tmp/report.md
+            exit 0
+          fi
+          npm run ci > /tmp/ci.log 2>&1; CI=$?
+          CIRES=fail; [ "$CI" = "0" ] && CIRES=pass
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config --local http."https://github.com/".extraheader "AUTHORIZATION: basic $(printf '%s' "x-access-token:${GH_TOKEN}" | base64 -w0)"
+          git push -u origin "$TASK_BRANCH" > /tmp/push.log 2>&1; PUSHED=$?
+          SHA=$(git rev-parse HEAD)
+          PR_URL=""; MERGED=false; : > /tmp/pr.log; : > /tmp/merged.flag
+          if [ "$PUSHED" = "0" ] && [ -n "${AGENT_GITHUB_TOKEN:-}" ]; then
+            PR_URL=$(SUMMARY="$SUMMARY" CIRES="$CIRES" MERGE_ON_PASS="${{ inputs.merge }}" node -e '
+              const e = process.env;
+              const H = { Authorization: "Bearer " + e.AGENT_GITHUB_TOKEN, Accept: "application/vnd.github+json", "Content-Type": "application/json", "User-Agent": "omran-kimi" };
+              const api = "https://api.github.com/repos/" + e.GITHUB_REPOSITORY;
+              const willMerge = e.CIRES === "pass" && String(e.MERGE_ON_PASS) === "true";
+              const merged = (v) => { try { require("fs").writeFileSync("/tmp/merged.flag", v); } catch (x) {} };
+              const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+              const title = (e.CIRES === "pass" ? "" : "⚠️ ") + (String(e.TASK_TEXT || "").split("\n")[0].trim().slice(0, 200) || ("مهمّة كيمي #" + e.TASK_ISSUE));
+              const body = "يغلق #" + e.TASK_ISSUE + "\n\n" + (e.CIRES === "pass" ? "✅ npm run ci نجح داخل التشغيل." : "⚠️ npm run ci فشل داخل التشغيل — راجع تعليقات المسألة.") + "\nالتشغيل: " + e.RUN_URL + "\n\n" + (e.SUMMARY ? "**ملخّص Kimi:**\n" + String(e.SUMMARY).slice(0, 5000) + "\n\n" : "") + "— نفّذها Kimi Code في GitHub Actions بتفويض من وكيل عمران." + (willMerge ? " الدمج التلقائيّ مفعَّل بعد نجاح الفحص." : " المراجعة والدمج بيد المالك.");
+              (async () => {
+                const r = await fetch(api + "/pulls", { method: "POST", headers: H, body: JSON.stringify({ title, head: e.TASK_BRANCH, base: e.TASK_BASE, body }) });
+                const j = await r.json().catch(() => ({}));
+                if (!r.ok || !j.html_url) { console.error("PR: " + r.status + " " + JSON.stringify(j).slice(0, 200)); return; }
+                console.log(j.html_url);
+                if (!willMerge) return;
+                let mergeable = j.mergeable;
+                for (let i = 0; i < 6 && mergeable == null; i++) { await sleep(2500); const g = await fetch(api + "/pulls/" + j.number, { headers: H }); const gj = await g.json().catch(() => ({})); mergeable = gj.mergeable; }
+                if (mergeable === false) { console.error("MERGE: تعذّر — الطلب غير قابل للدمج (تعارض؟)"); return; }
+                const m = await fetch(api + "/pulls/" + j.number + "/merge", { method: "PUT", headers: H, body: JSON.stringify({ merge_method: "squash" }) });
+                const mj = await m.json().catch(() => ({}));
+                if (m.ok && mj.merged) { merged("true"); } else { console.error("MERGE: " + m.status + " " + JSON.stringify(mj).slice(0, 200)); }
+              })().catch((err) => console.error("PR: " + err.message));
+            ' 2>>/tmp/pr.log)
+            [ "$(cat /tmp/merged.flag 2>/dev/null)" = "true" ] && MERGED=true
+          fi
+          {
+            if [ "$PUSHED" = "0" ]; then printf '✅ دُفع الفرع `%s` (%s التزامًا، آخره %s).\n' "$TASK_BRANCH" "$CHANGED" "${SHA:0:7}"; else printf '❌ فشل دفع الفرع `%s`:\n```\n%s\n```\n' "$TASK_BRANCH" "$(tail -n 5 /tmp/push.log)"; fi
+            if [ -n "$PR_URL" ]; then printf '🔗 طلب السحب: %s\n' "$PR_URL"; elif [ "$PUSHED" = "0" ] && [ -n "${AGENT_GITHUB_TOKEN:-}" ]; then printf '⚠️ لم يُفتح طلب السحب برمز المالك: %s\n' "$(tail -n 2 /tmp/pr.log | tr -d '`')"; fi
+            if [ "$MERGED" = "true" ]; then printf '🚀 دُمج تلقائيًّا في `%s` — Vercel ينشر الآن.\n' "$TASK_BASE"; elif [ -n "$PR_URL" ] && [ "$CIRES" = "pass" ] && [ "${{ inputs.merge }}" = "true" ]; then printf '⚠️ لم يُدمج تلقائيًّا: %s\n' "$(grep -m1 MERGE: /tmp/pr.log | tr -d '`')"; fi
+            if [ "$CIRES" = "pass" ]; then printf 'npm run ci: ✅ نجح.\n'; else printf 'npm run ci: ❌ فشل — آخر السطور:\n```\n%s\n```\n' "$(tail -n 25 /tmp/ci.log | sed 's/`//g')"; fi
+            [ -n "$KIMI_ERR" ] && printf '\n**خطوة Kimi لم تنجح (%s):**\n```\n%s\n```\n' "${KIMI_OUTCOME:-skipped}" "$KIMI_ERR"
+            [ -n "$SUMMARY" ] && printf '\n**ملخّص Kimi:**\n%s\n' "$SUMMARY"
+            printf '\n<!-- kimi-agent {"phase":"done","pushed":%s,"changed":%s,"ci":"%s","sha":"%s","kimi":"%s","error":%s,"pr":%s,"merged":%s,"run_id":"%s","run_url":"%s"} -->\n' "$([ "$PUSHED" = "0" ] && echo true || echo false)" "$CHANGED" "$CIRES" "$SHA" "${KIMI_OUTCOME:-skipped}" "$ERR_JSON" "$(node -e 'console.log(JSON.stringify(String(process.argv[1]||"")))' "$PR_URL")" "$MERGED" "${{ github.run_id }}" "$RUN_URL"
+          } > /tmp/report.md
+          gh issue comment "$TASK_ISSUE" --body-file /tmp/report.md
+          [ "$PUSHED" = "0" ] || exit 1

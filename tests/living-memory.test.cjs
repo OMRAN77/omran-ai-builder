@@ -353,7 +353,7 @@ test('٧ج. الربط: البطاقة داخل صفحة المالك، وفتح
   assert.match(a09, /await __agentApplyResult\(cur, full, streamBroke \? null : agLog\.split\(\)\);[^\n]*\n\s*try\{ if\(window\.livingLearn\) window\.livingLearn\(cur\.messages\); \}catch\(e\)\{ __swallow\(e, 'misc:living-learn'\); \}/);
   assert.match(a09, /const __histN = \(typeof settingsOwnerUi === 'function' && settingsOwnerUi\(\)\) \? 50 : 8;\n\s*const history = cur\.messages\.slice\(-__histN\)/);
   assert.ok(read('index.html').includes('/js/partials-settings.js?v=688'), 'وسم الجزء ارتفع');
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=716'"), 'وسم اللغات ارتفع');
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=717'"), 'وسم اللغات ارتفع');
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.livingLearn') && bundle.includes('livingRefresh'), 'الحزمة تحمل التعديل');
 });

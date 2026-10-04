@@ -1174,6 +1174,7 @@ Object.assign(I18N["ru"], {"acctPhoneLabel": "📱 Номер телефона (
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["ru"], {"bgThemeWood": "Дерево", "woodRecentTitle": "Недавние чаты"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
-Object.assign(I18N["ru"], {"brandSubtitle": "ИИ-платформа", "frameHomeTitle1": "Здесь начинаются", "frameHomeTitle2": "ваши великие идеи", "frameHomeSub": "Ваш умный помощник всегда рядом"});
+Object.assign(I18N["ru"], {"brandSubtitle": "ИИ-платформа"});
+Object.assign(I18N["ru"], {"bgThemeDarkwood": "Тёмное дерево", "bgThemeMarble": "Мрамор", "bgThemeCode": "Код", "bgThemeCars": "Автомобили", "bgThemeKids": "Детский", "bgThemeCuisine": "Кулинария", "bgThemeSunset": "Закат", "bgThemeBeach": "Пляж", "bgThemeWinter": "Зима", "bgThemeGarage": "Гараж", "bgThemeAnime": "Аниме", "bgThemeCyber": "Кибербезопасность", "bgThemeSchool": "Класс"});
 /* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
 Object.assign(I18N["ru"], {"livingMemTitle": "Живая память", "livingMemIntro": "Последнее, что агент узнал о вас из ваших бесед. В каждом ответе он использует только то, что относится к вашему вопросу. Удалите факт, чтобы агент его забыл.", "livingMemEmpty": "Агент пока ничего о вас не узнал.", "livingMemDelete": "Удалить", "livingMemLoadError": "Не удалось загрузить живую память.", "livingMemDeleteError": "Не удалось удалить. Попробуйте ещё раз."});

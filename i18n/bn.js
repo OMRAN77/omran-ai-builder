@@ -1123,6 +1123,7 @@ Object.assign(I18N["bn"], {"acctPhoneLabel": "📱 ফোন নম্বর (�
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["bn"], {"bgThemeWood": "কাঠ", "woodRecentTitle": "সাম্প্রতিক চ্যাট"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
-Object.assign(I18N["bn"], {"brandSubtitle": "এআই প্ল্যাটফর্ম", "frameHomeTitle1": "এখান থেকেই শুরু", "frameHomeTitle2": "আপনার দারুণ ভাবনাগুলো", "frameHomeSub": "আপনার স্মার্ট সহকারী সবসময় আপনার সাথে"});
+Object.assign(I18N["bn"], {"brandSubtitle": "এআই প্ল্যাটফর্ম"});
+Object.assign(I18N["bn"], {"bgThemeDarkwood": "গাঢ় কাঠ", "bgThemeMarble": "মার্বেল", "bgThemeCode": "কোড", "bgThemeCars": "গাড়ি", "bgThemeKids": "শিশু", "bgThemeCuisine": "রান্না", "bgThemeSunset": "সূর্যাস্ত", "bgThemeBeach": "সৈকত", "bgThemeWinter": "শীত", "bgThemeGarage": "গ্যারেজ", "bgThemeAnime": "অ্যানিমে", "bgThemeCyber": "সাইবার নিরাপত্তা", "bgThemeSchool": "শ্রেণিকক্ষ"});
 /* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
 Object.assign(I18N["bn"], {"livingMemTitle": "জীবন্ত মেমরি", "livingMemIntro": "আপনার কথোপকথন থেকে এজেন্ট আপনার সম্পর্কে সম্প্রতি যা শিখেছে। প্রতিটি উত্তরে সে কেবল আপনার প্রশ্নের সঙ্গে সম্পর্কিত অংশই ব্যবহার করে। কোনো তথ্য ভুলিয়ে দিতে সেটি মুছুন।", "livingMemEmpty": "এজেন্ট এখনও আপনার সম্পর্কে কিছু শেখেনি।", "livingMemDelete": "মুছুন", "livingMemLoadError": "জীবন্ত মেমরি এখন লোড করা যায়নি।", "livingMemDeleteError": "মোছা যায়নি। আবার চেষ্টা করুন।"});

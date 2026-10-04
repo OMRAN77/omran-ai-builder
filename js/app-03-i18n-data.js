@@ -224,11 +224,21 @@ const I18N = {
     acctEmailLabel: 'الإيميل (لو نسيت اسمك أو كلمة المرور)',
     // v-frame-design
     brandSubtitle: 'منصة الذكاء',
-    frameHomeTitle1: 'هنا تبدأ',
-    frameHomeTitle2: 'أفكارك العظيمة',
-    frameHomeSub: 'مساعدك الذكي دائماً معك',
     bgThemeWood: 'خشبي', // v-skin-wood
     woodRecentTitle: 'المحادثات الجديدة',
+    bgThemeDarkwood: 'خشب داكن', // v-themes
+    bgThemeMarble: 'رخام',
+    bgThemeCode: 'برمجة',
+    bgThemeCars: 'سيارات',
+    bgThemeKids: 'أطفال',
+    bgThemeCuisine: 'طهي',
+    bgThemeSunset: 'غروب',
+    bgThemeBeach: 'شاطئ',
+    bgThemeWinter: 'شتاء',
+    bgThemeGarage: 'كراج',
+    bgThemeAnime: 'أنمي',
+    bgThemeCyber: 'أمن سيبراني',
+    bgThemeSchool: 'فصل دراسي',
     // v-phone-link
     acctPhoneLabel: '📱 رقم الهاتف (للاسترجاع)',
     phoneNotLinked: 'غير مربوط',
@@ -1382,11 +1392,21 @@ const I18N = {
     acctEmailLabel: 'Email (if you forget your username or password)',
     // v-frame-design
     brandSubtitle: 'AI Platform',
-    frameHomeTitle1: 'Your great ideas',
-    frameHomeTitle2: 'start here',
-    frameHomeSub: 'Your smart assistant, always with you',
     bgThemeWood: 'Wood', // v-skin-wood
     woodRecentTitle: 'Recent chats',
+    bgThemeDarkwood: 'Dark wood', // v-themes
+    bgThemeMarble: 'Marble',
+    bgThemeCode: 'Code',
+    bgThemeCars: 'Cars',
+    bgThemeKids: 'Kids',
+    bgThemeCuisine: 'Cooking',
+    bgThemeSunset: 'Sunset',
+    bgThemeBeach: 'Beach',
+    bgThemeWinter: 'Winter',
+    bgThemeGarage: 'Garage',
+    bgThemeAnime: 'Anime',
+    bgThemeCyber: 'Cybersecurity',
+    bgThemeSchool: 'Classroom',
     // v-phone-link
     acctPhoneLabel: '📱 Phone number (for recovery)',
     phoneNotLinked: 'Not linked',

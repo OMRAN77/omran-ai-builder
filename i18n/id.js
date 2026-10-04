@@ -1172,6 +1172,7 @@ Object.assign(I18N["id"], {"acctPhoneLabel": "📱 Nomor telepon (untuk pemuliha
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["id"], {"bgThemeWood": "Kayu", "woodRecentTitle": "Obrolan terbaru"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
-Object.assign(I18N["id"], {"brandSubtitle": "Platform AI", "frameHomeTitle1": "Di sinilah dimulai", "frameHomeTitle2": "ide-ide besarmu", "frameHomeSub": "Asisten pintarmu, selalu bersamamu"});
+Object.assign(I18N["id"], {"brandSubtitle": "Platform AI"});
+Object.assign(I18N["id"], {"bgThemeDarkwood": "Kayu gelap", "bgThemeMarble": "Marmer", "bgThemeCode": "Kode", "bgThemeCars": "Mobil", "bgThemeKids": "Anak-anak", "bgThemeCuisine": "Memasak", "bgThemeSunset": "Senja", "bgThemeBeach": "Pantai", "bgThemeWinter": "Musim dingin", "bgThemeGarage": "Garasi", "bgThemeAnime": "Anime", "bgThemeCyber": "Keamanan siber", "bgThemeSchool": "Ruang kelas"});
 /* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
 Object.assign(I18N["id"], {"livingMemTitle": "Memori hidup", "livingMemIntro": "Hal-hal terbaru yang dipelajari agen tentang Anda dari percakapan Anda. Di setiap jawaban, agen hanya memakai yang berkaitan dengan pertanyaan Anda. Hapus fakta apa pun agar dilupakan.", "livingMemEmpty": "Agen belum mempelajari apa pun tentang Anda.", "livingMemDelete": "Hapus", "livingMemLoadError": "Memori hidup tidak dapat dimuat saat ini.", "livingMemDeleteError": "Gagal menghapus. Silakan coba lagi."});
