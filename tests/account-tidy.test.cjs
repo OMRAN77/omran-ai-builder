@@ -9,8 +9,9 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const html = read('js/partials-settings.js');
 const acct = html.slice(html.indexOf('<div id="accountSection"'), html.indexOf('<div id="statsSection"'));
 
-test('١. الترتيب: الصورة ← اسم المستخدم ← كلمة المرور ← الإيميل ← رابط الدعوة ← تنظيف التطبيق', () => {
-  const order = ['id="acctAvatarInput"', "'acctRowUser'", "'acctRowPass'", "'acctRowEmail'", "'acctRowRef'", "'acctRowCleanup'"].map((k) => acct.indexOf(k));
+// v-phone-link (أمر المالك ٤ أكتوبر): صفّ «رقم الهاتف» بعد الإيميل — كلاهما للاسترجاع.
+test('١. الترتيب: الصورة ← اسم المستخدم ← كلمة المرور ← الإيميل ← رقم الهاتف ← رابط الدعوة ← تنظيف التطبيق', () => {
+  const order = ['id="acctAvatarInput"', "'acctRowUser'", "'acctRowPass'", "'acctRowEmail'", "'acctRowPhone'", "'acctRowRef'", "'acctRowCleanup'"].map((k) => acct.indexOf(k));
   assert.ok(order.every((i) => i > 0), JSON.stringify(order));
   assert.deepEqual([...order].sort((a, b) => a - b), order);
 });
@@ -28,7 +29,7 @@ test('٢. الاسم الذهبيّ والنقاط والخروج الأحمر �
 
 test('٣. ألوان عاديّة: لا أحمر في الصفحة، والصفوف رماديّة عند التمرير', () => {
   assert.doesNotMatch(acct, /#ef4444|239,\s*68,\s*68/);
-  assert.equal((acct.match(/class="acctRowBtn"/g) || []).length, 5);
+  assert.equal((acct.match(/class="acctRowBtn"/g) || []).length, 6); // + رقم الهاتف (v-phone-link)
   const css = read('css/tokens.css');
   assert.match(css, /\.acctRowBtn:hover, \.acctRowBtn:active\{ background:rgba\(128,128,128,\.12\) !important; \}/);
   assert.match(css, /\.settingsNavLogout \.settingsNavChevron\{ display:none; \}/);
@@ -41,5 +42,5 @@ test('٤. الخروج آخر صفّ في الإعدادات للمسجَّل، 
   assert.match(body, /if\(logged\)\{[\s\S]*closeDialogSafe\(settingsDialog\)[\s\S]*doLogout\(\)/);
   assert.doesNotMatch(app05, /settingsEmailRow|settingsFetchEmail/);
   const idx = read('index.html');
-  assert.ok(idx.includes('css/tokens.css?v=729') && idx.includes('/js/partials-settings.js?v=685'));
+  assert.ok(idx.includes('css/tokens.css?v=729') && idx.includes('/js/partials-settings.js?v=686'));
 });

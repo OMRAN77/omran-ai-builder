@@ -397,6 +397,8 @@ try{
     tabLogin.classList.toggle('primary', m === 'login');
     tabSignup.classList.toggle('primary', m === 'signup');
     const rememberRow = $('#authRememberRow');
+    const phoneRecover = $('#authPhoneRecover'); // v-phone-link: الاسترجاع بالرقم في «نسيت كلمة المرور» وحدها
+    if(phoneRecover) phoneRecover.style.display = m === 'forgotEmail' ? 'block' : 'none';
     userInput.readOnly = (m === 'resetToken');
     /* v-simple-login: التبويبات مخفيّة دائمًا؛ زرّ واحد تحت جوجل يبدّل بين الدخول والتسجيل، وعنوان صغير خارج الدخول */
     const heading = $('#authHeading');
@@ -1384,7 +1386,7 @@ try{
   function prefillAccountFields(){
     if(acctUsername) acctUsername.value = authGet('aiapp_username') || '';
     updateAvatarUI();
-    if(acctEmail){
+    if(acctEmail || $('#acctPhoneVal')){
       const token = authGet('aiapp_auth_token');
       if(token){
         fetch('/api/auth', {
@@ -1392,11 +1394,73 @@ try{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'getProfile', token }),
         }).then(r => r.json()).then(data => {
-          if(data && data.ok) acctEmail.value = data.email || '';
+          if(!data || !data.ok) return;
+          if(acctEmail) acctEmail.value = data.email || '';
+          // v-phone-link: الرقم المربوط مكان «غير مربوط» — بلا data-i18n كي لا يعيده تبديل اللغة
+          const pv = $('#acctPhoneVal');
+          if(pv && data.phone){ pv.removeAttribute('data-i18n'); pv.textContent = data.phone; }
         }).catch(() => {});
       }
     }
   }
+
+  /* v-phone-link (أمر المالك ٤ أكتوبر «ربط الهاتف… واتساب أو تيليجرام، اللي يرسل بالمجان»): زرّا القناتين في «حسابي»
+     (ربط) وفي «نسيت كلمة المرور» (data-recover — استرجاع). الخادم يصدر رمزًا ورابطًا، والمستخدم يرسل الرمز بنفسه؛
+     هنا ننتظر النتيجة كلّ ٣ ثوانٍ. رابط إعادة كلمة المرور لا يمرّ من هنا أبدًا: يصل محادثة الرقم نفسه. */
+  let phonePoll = null;
+  function phoneSay(el, txt, color){ if(el){ el.textContent = txt || ''; el.style.color = color || 'var(--muted,#999)'; } }
+  async function phoneFlow(btn){
+    const t2 = curT();
+    const recover = btn.getAttribute('data-recover') === '1';
+    const channel = btn.getAttribute('data-phone-link') === 'whatsapp' ? 'whatsapp' : 'telegram';
+    const msgEl = $(recover ? '#authPhoneMsg' : '#acctPhoneMsg');
+    // النافذة تُفتح لحظة النقر (بعد await يحجبها المتصفّح)، ثمّ يوضع فيها الرابط
+    let win = null;
+    try { win = window.open('', '_blank'); } catch(e){ window.__swallow(e, 'phone-link:open'); }
+    phoneSay(msgEl, t2.acctSaving);
+    let data = null;
+    try {
+      const body = { action: recover ? 'phone-recover-start' : 'phone-link-start', channel };
+      if(!recover) body.token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      data = await res.json();
+      if(!res.ok || !data || !data.link) throw Object.assign(new Error('start'), { said: (data && data.error) || t2.acctGenericError });
+    } catch(e){
+      if(win) try { win.close(); } catch(e2){ window.__swallow(e2, 'phone-link:close'); }
+      phoneSay(msgEl, e && e.said ? e.said : t2.acctNetError, '#ef4444');
+      return;
+    }
+    if(win && !win.closed){ win.opener = null; win.location.href = data.link; }
+    phoneSay(msgEl, t2.phoneWaiting);
+    if(!win || win.closed){ // النوافذ محجوبة: رابط يُضغط بدلها
+      const a = document.createElement('a');
+      a.href = data.link; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = ' ↗ ' + (channel === 'whatsapp' ? t2.phoneViaWa : t2.phoneViaTg);
+      msgEl.appendChild(a);
+    }
+    if(phonePoll) clearInterval(phonePoll);
+    const until = Date.now() + (data.expiresIn || 600) * 1000;
+    const code = data.code;
+    phonePoll = setInterval(async () => {
+      if(Date.now() > until){ clearInterval(phonePoll); phonePoll = null; phoneSay(msgEl, t2.phoneExpired, '#ef4444'); return; }
+      let st = null;
+      try {
+        const r = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'phone-link-status', code }) });
+        st = await r.json();
+      } catch(e){ window.__swallow(e, 'phone-link:poll'); return; }
+      if(!st || st.status === 'pending') return;
+      clearInterval(phonePoll); phonePoll = null;
+      const said = { linked: [t2.phoneLinkedOk, '#22c55e'], verified: [t2.phoneRecoverSent, '#22c55e'], taken: [t2.phoneTaken, '#ef4444'], nouser: [t2.phoneNoUser, '#ef4444'] }[st.status] || [t2.phoneExpired, '#ef4444'];
+      phoneSay(msgEl, said[0], said[1]);
+      if(st.status === 'linked') prefillAccountFields();
+    }, 3000);
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target && e.target.closest && e.target.closest('[data-phone-link]');
+    if(!b) return;
+    e.preventDefault();
+    phoneFlow(b);
+  });
   if(acctEmailSaveBtn){
     acctEmailSaveBtn.onclick = async () => {
       const t2 = curT();
@@ -3471,6 +3535,18 @@ const I18N = {
     acctPasswordRow: 'كلمة المرور',
     acctSaveBtn: 'حفظ',
     acctEmailLabel: 'الإيميل (لو نسيت اسمك أو كلمة المرور)',
+    // v-phone-link
+    acctPhoneLabel: '📱 رقم الهاتف (للاسترجاع)',
+    phoneNotLinked: 'غير مربوط',
+    phoneViaWa: 'واتساب',
+    phoneViaTg: 'تيليجرام',
+    phoneWaiting: 'أرسل الرسالة الجاهزة أو شارك رقمك، ثمّ ارجع هنا…',
+    phoneLinkedOk: '✓ تمّ ربط الرقم',
+    phoneTaken: 'هذا الرقم مرتبط بحساب آخر',
+    phoneNoUser: 'لا يوجد حساب مرتبط بهذا الرقم',
+    phoneExpired: 'انتهت صلاحيّة الرابط — حاول مرّة ثانية',
+    phoneRecoverTitle: 'أو استرجع حسابك برقم هاتفك:',
+    phoneRecoverSent: '✓ أرسلنا رابط كلمة المرور الجديدة إلى محادثتك هناك',
     acctInvalidEmail: 'صيغة الإيميل غير صحيحة',
     acctReferralLabel: '🔗 رابط دعوة أصدقائك',
     acctCopyBtn: '📋 نسخ',
@@ -4604,6 +4680,18 @@ const I18N = {
     acctPasswordRow: 'Password',
     acctSaveBtn: 'Save',
     acctEmailLabel: 'Email (if you forget your username or password)',
+    // v-phone-link
+    acctPhoneLabel: '📱 Phone number (for recovery)',
+    phoneNotLinked: 'Not linked',
+    phoneViaWa: 'WhatsApp',
+    phoneViaTg: 'Telegram',
+    phoneWaiting: 'Send the ready message or share your number, then come back here…',
+    phoneLinkedOk: '✓ Number linked',
+    phoneTaken: 'This number is linked to another account',
+    phoneNoUser: 'No account is linked to this number',
+    phoneExpired: 'The link expired — try again',
+    phoneRecoverTitle: 'Or recover your account with your phone:',
+    phoneRecoverSent: '✓ We sent a new-password link to your chat there',
     acctReferralLabel: '🔗 Invite friends link',
     acctCopyBtn: '📋 Copy',
     acctReferralHint: 'For every friend who signs up with your link, you both get 10 extra free messages 🎁',
@@ -5444,7 +5532,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=712'; /* v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=713'; /* v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];

@@ -553,7 +553,7 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
-      res.status(200).json({ ok: true, email: user.email || null });
+      res.status(200).json({ ok: true, email: user.email || null, phone: user.phone || null }); // v-phone-link
       return;
     }
 
@@ -744,6 +744,33 @@ module.exports = async (req, res) => {
       // 🔄 جلسة منزلقة: توكن جديد بعمر كامل مع كل تحقق ناجح — المستخدم
       // النشط لا يُطرد أبدًا بانتهاء صلاحية الثلاثين يومًا الثابتة.
       res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
+      return;
+    }
+
+    /* v-phone-link (أمر المالك ٤ أكتوبر «ربط الهاتف بالواتساب أو تيليجرام، اللي يرسل بالمجان»): رمز يعيش ١٠ دقائق،
+       والمستخدم يرسله بنفسه (واتساب) أو يشارك رقمه في البوت (تيليجرام) — لا رسالة مدفوعة. الربط لحساب مسجَّل،
+       والاسترجاع لمن نسي؛ والحالة لصاحب الرمز وحده (الرمز سرّه). حدود: ٥ رموز لكلّ حساب أو عنوان في ربع ساعة. */
+    if (action === 'phone-link-start' || action === 'phone-recover-start' || action === 'phone-link-status') {
+      const pl = require('./phone-link.js');
+      if (action === 'phone-link-status') {
+        res.status(200).json(Object.assign({ ok: true }, await pl.status(body.code)));
+        return;
+      }
+      const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'telegram';
+      let me = null;
+      if (action === 'phone-link-start') {
+        me = verifyToken(token);
+        if (!me) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
+      }
+      const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
+      const wait = await rateWait('db/phone-start-rate/' + (me ? 'u/' + me : 'ip/' + (ip || 'none')), 5, 15 * 60 * 1000);
+      if (wait) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') }); return; }
+      const r = await pl.start({ purpose: me ? 'link' : 'recover', channel, username: me });
+      if (r.error === 'channel_unavailable') {
+        res.status(503).json({ error: channel === 'whatsapp' ? m('الربط عبر واتساب غير مهيّأ بعد — جرّب تيليجرام', 'WhatsApp linking is not set up yet — try Telegram') : m('الربط عبر تيليجرام غير مهيّأ', 'Telegram linking is not set up') });
+        return;
+      }
+      res.status(200).json({ ok: true, code: r.code, link: r.link, expiresIn: r.expiresIn, channel: r.channel });
       return;
     }
 

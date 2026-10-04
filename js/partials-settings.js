@@ -91,6 +91,15 @@
       </div>
       <div id="acctEmailMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
+    <!-- v-phone-link (أمر المالك ٤ أكتوبر): ربط الرقم مجّانًا — المستخدم يرسل الرمز من واتساب أو يشارك رقمه في بوت تيليجرام -->
+    <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowPhone',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctPhoneLabel">📱 رقم الهاتف (للاسترجاع)</span><span id="acctPhoneVal" style="font-size:12px; color:var(--muted,#9a958a); direction:ltr; unicode-bidi:isolate;" data-i18n="phoneNotLinked">غير مربوط</span></button>
+    <div id="acctRowPhone" style="display:none; padding:8px 8px 12px;">
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn" data-phone-link="whatsapp" style="flex:1; justify-content:center; text-align:center;" data-i18n="phoneViaWa">واتساب</button>
+        <button type="button" class="btn" data-phone-link="telegram" style="flex:1; justify-content:center; text-align:center;" data-i18n="phoneViaTg">تيليجرام</button>
+      </div>
+      <div id="acctPhoneMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+    </div></div>
     <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowRef',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctReferralLabel">🔗 رابط دعوة أصدقائك</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowRef" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">

@@ -32,6 +32,15 @@
       <a href="#" id="authUseCodeLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
       <a href="#" id="authBackToLoginLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none; margin-inline-start:12px;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
     </div>
+    <!-- v-phone-link: في «نسيت كلمة المرور» — الاسترجاع برقم مربوط، مجّانًا عبر واتساب أو تيليجرام -->
+    <div id="authPhoneRecover" style="display:none; text-align:center; margin-top:14px;">
+      <div style="font-size:13px; color:var(--accent,#6b7280); margin-bottom:8px;" data-i18n="phoneRecoverTitle">أو استرجع حسابك برقم هاتفك:</div>
+      <div style="display:flex; gap:8px; justify-content:center;">
+        <button type="button" class="btn" data-phone-link="whatsapp" data-recover="1" style="flex:1; justify-content:center; text-align:center;" data-i18n="phoneViaWa">واتساب</button>
+        <button type="button" class="btn" data-phone-link="telegram" data-recover="1" style="flex:1; justify-content:center; text-align:center;" data-i18n="phoneViaTg">تيليجرام</button>
+      </div>
+      <div id="authPhoneMsg" style="font-size:12px; min-height:16px; margin-top:6px;"></div>
+    </div>
     </form>
     <div id="authAltBlock" style="margin-top:34px; display:flex; flex-direction:column; gap:12px;">
     <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
