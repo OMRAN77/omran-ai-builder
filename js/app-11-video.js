@@ -209,25 +209,25 @@
       if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
     }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
   };
-  /* v-media-purge: زرّ المالك في «تنظيف التطبيق» — يحذف روابط المشاركة الأقدم من ٧ أيّام (الخادم يتحقّق من المالك). */
+  /* v-media-purge: «تنظيف التطبيق» عند المالك — يحذف روابط المشاركة الأقدم من ٧ أيّام (الخادم يتحقّق من المالك). */
   window.purgeOldMedia = async function(){
-    const box = document.getElementById('acctMediaPurgeBox');
-    const btn = document.getElementById('acctMediaPurgeBtn');
-    const show = (txt) => { if(box){ box.style.display = 'block'; box.textContent = txt; } };
+    const btn = document.getElementById('acctCleanupBtnEl');
     if(!confirm('حذف صور وملفّات المشاركة الأقدم من ٧ أيّام؟ روابطها القديمة ستتوقّف — الحسابات والمحادثات لا تُمسّ.')) return;
-    if(btn) btn.disabled = true;
-    show('⏳ جارِ التنظيف…');
+    const label = btn ? btn.textContent : '';
+    if(btn){ btn.disabled = true; btn.textContent = '⏳ جارِ التنظيف…'; }
+    let msg = '';
     try{
       const r = await fetch('/api/system?action=health&purge=media&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
       if(r.ok && d && d.purged){
         const p = d.purged, b = p.byPrefix || {}, n = (k) => (b[k] && b[k].deleted) || 0;
-        show('✅ حُذف ' + p.deleted + ' من ' + p.scanned + ' مفتاحًا\nصور: ' + n('db/img/') + ' · ملفّات: ' + n('db/file/') + ' · PDF: ' + n('db/pdf/'));
+        msg = '✅ حُذف ' + p.deleted + ' من ' + p.scanned + ' مفتاحًا\nصور: ' + n('db/img/') + ' · ملفّات: ' + n('db/file/') + ' · PDF: ' + n('db/pdf/');
       } else {
-        show('❌ فشل التنظيف (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''));
+        msg = '❌ فشل التنظيف (' + r.status + ')' + (d && d.message ? ': ' + d.message : '');
       }
-    }catch(e){ show('❌ فشل التنظيف: ' + e.message); }
-    if(btn) btn.disabled = false;
+    }catch(e){ msg = '❌ فشل التنظيف: ' + e.message; }
+    if(btn){ btn.disabled = false; btn.textContent = label; }
+    alert(msg);
   };
   function setStatus(text){
     statusEl.style.display = text ? 'block' : 'none';

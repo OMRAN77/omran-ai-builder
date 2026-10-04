@@ -47,17 +47,21 @@ test('٢. بالدفعات: ٤٥٠ مفتاحًا = طلبات قليلة لا �
   assert.ok(kv.calls.length <= 6, 'طلبات: ' + kv.calls.length);
 });
 
-test('٣. عمر الصور الجديدة ٧ أيّام، والمسار للمالك وحده، والزرّ ظاهر للمالك وحده — والحزمة محدَّثة', () => {
+test('٣. عمر الصور ٧ أيّام، والمسار للمالك وحده، وزرّ «تنظيف التطبيق» القائم نفسه ينظّف عند المالك (لا إضافة جديدة) — والحزمة محدَّثة', () => {
   const img = read('api/_lib/img-share.js');
   assert.ok(img.includes('const TTL_SEC = 60 * 60 * 24 * 7;') && img.includes('ttlDays: 7'));
   const h = read('api/_lib/health.js');
   assert.ok(h.indexOf('if (!isOwner(req))') > 0 && h.indexOf('if (!isOwner(req))') < h.indexOf("req.query.purge === 'media'"), 'التحقّق من المالك قبل الحذف');
-  assert.ok(read('js/partials-settings.js').includes('<div id="acctMediaPurgeWrap" style="display:none;'));
-  for (const f of ['js/app-01-boot-auth.js', 'js/app.bundle.js']) {
+  const ps = read('js/partials-settings.js');
+  assert.ok(!ps.includes('acctMediaPurge'), 'لا زرّ جديد');
+  assert.ok(ps.includes('id="acctCleanupBtnEl" onclick="appFullCleanup()"'));
+  for (const f of ['js/app-04-i18n-state.js', 'js/app.bundle.js']) {
     const s = read(f);
-    assert.ok(s.includes("const __mp = $('#acctMediaPurgeWrap'); if(__mp) __mp.style.display = isAdminUI ? '' : 'none';"), f);
+    const fn = s.slice(s.indexOf('window.appFullCleanup = function(){'));
+    assert.ok(fn.indexOf("window.purgeOldMedia(); return;") > 0 && fn.indexOf("window.purgeOldMedia(); return;") < fn.indexOf('if(!confirm(msg)) return;'), f + ': المالك ينظّف قبل مسار حذف المحادثات');
   }
   const b = read('js/app.bundle.js');
   assert.ok(b.includes("window.purgeOldMedia = async function(){") && b.includes("'/api/system?action=health&purge=media&token='"));
+  assert.ok(b.includes("__b.textContent = '🧹 نظّف الآن';"));
   assert.ok(read('index.html').includes('partials-settings.js?v=686'));
 });
