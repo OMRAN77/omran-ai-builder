@@ -1165,3 +1165,5 @@ Object.assign(I18N["zh"], {"bgThemeWood": "木纹"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["zh"], {"brandSubtitle": "智能平台"});
 Object.assign(I18N["zh"], {"bgThemeDarkwood": "深色木纹", "bgThemeMarble": "大理石", "bgThemeCode": "代码", "bgThemeCars": "汽车", "bgThemeKids": "儿童", "bgThemeCuisine": "烹饪", "bgThemeSunset": "日落", "bgThemeBeach": "海滩", "bgThemeWinter": "冬日", "bgThemeGarage": "车库", "bgThemeAnime": "动漫", "bgThemeCyber": "网络安全", "bgThemeSchool": "教室"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["zh"], {"livingMemTitle": "动态记忆", "livingMemIntro": "智能体从你的对话中最近了解到的关于你的内容。每次回答它只会使用与你的问题相关的部分。删除任何一条，它就会忘记。", "livingMemEmpty": "智能体还没有了解到关于你的任何信息。", "livingMemDelete": "删除", "livingMemLoadError": "暂时无法加载动态记忆。", "livingMemDeleteError": "删除失败，请重试。"});

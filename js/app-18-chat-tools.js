@@ -272,3 +272,61 @@
     }, 60);
   }, true);
 })();
+
+/* v-living-memory (طلب المالك ٤ أكتوبر): «الذاكرة الحيّة» في صفحة المالك — آخر ١٠ حقائق تعلّمها الوكيل وزرّ «امسح» لكلّ واحدة.
+   المصدر Redis عبر memory.js (عمليّات living_*، للمالك وحده)، ونسخة في localStorage تُرسم فورًا وتبقى إن تعذّر الخادم.
+   livingLearn يُستدعى بعد اكتمال ردّ الوكيل: طلب منفصل لا يؤخّر ختام البثّ. */
+(function(){
+  var KEY = 'aiapp_living_memory';
+  function tok(){ try{ return sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token') || ''; }catch(e){ return ''; } }
+  function tr(k, fb){ try{ var d = window.__i18nDict ? window.__i18nDict(document.documentElement.lang || 'ar') : null; return (d && d[k]) || fb; }catch(e){ return fb; } }
+  function isOwner(){ try{ return typeof settingsOwnerUi === 'function' && settingsOwnerUi(); }catch(e){ return false; } }
+  function call(op, extra){
+    var t = tok(); if(!t) return Promise.resolve(null);
+    return fetch('/api/system?action=memory', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign({ token: t, op: op }, extra || {})) })
+      .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  }
+  function readMirror(){ try{ var d = JSON.parse(localStorage.getItem(KEY) || 'null'); return d && Array.isArray(d.facts) ? d.facts : []; }catch(e){ return []; } }
+  function writeMirror(facts){ try{ localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), facts: facts })); }catch(e){ if(window.__swallow) window.__swallow(e, 'living:mirror'); } }
+  function status(text, bad){ var el = document.getElementById('livingMemStatus'); if(!el) return; el.textContent = text || ''; el.style.color = bad ? '#e05555' : ''; }
+  function draw(facts){
+    var box = document.getElementById('livingMemList'); if(!box) return;
+    box.textContent = '';
+    var shown = (facts || []).slice().sort(function(a, b){ return (b.at || 0) - (a.at || 0); }).slice(0, 10);
+    if(!shown.length){
+      var empty = document.createElement('div'); empty.style.cssText = 'padding:8px 2px; font-size:12.5px; opacity:.75;';
+      empty.textContent = tr('livingMemEmpty', 'لم يتعلّم الوكيل شيئًا عنك بعد.'); box.appendChild(empty); return;
+    }
+    shown.forEach(function(f){
+      var row = document.createElement('div'); row.className = 'livingMemRow'; row.style.cssText = 'display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--border);';
+      var txt = document.createElement('div'); txt.style.cssText = 'flex:1; min-width:0; font-size:13px; line-height:1.7; word-break:break-word;'; txt.textContent = f.text;
+      var del = document.createElement('button'); del.type = 'button'; del.setAttribute('data-living-del', f.id); del.textContent = tr('livingMemDelete', 'امسح');
+      del.style.cssText = 'flex:none; padding:5px 12px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel); color:var(--text); font-size:12px; cursor:pointer;';
+      row.appendChild(txt); row.appendChild(del); box.appendChild(row);
+    });
+  }
+  window.livingRefresh = function(){
+    if(!isOwner() || !tok()) return;
+    draw(readMirror()); status('');
+    call('living_get').then(function(d){
+      if(!d || !Array.isArray(d.facts)){ status(tr('livingMemLoadError', 'تعذّر تحميل الذاكرة الحيّة الآن.'), true); return; } // ردّ بلا قائمة لا يمحو المرآة
+      writeMirror(d.facts); draw(d.facts);
+    });
+  };
+  window.livingLearn = function(messages){
+    if(!isOwner() || !tok()) return;
+    var win = (messages || []).filter(function(m){ return m && (m.role === 'user' || m.role === 'assistant') && !m._diag && !m._cc && typeof m.content === 'string' && m.content.trim(); })
+      .slice(-20).map(function(m){ return { role: m.role, content: m.content.replace(/```[\s\S]*?(?:```|$)/g, ' ').slice(0, 700) }; });
+    if(!win.length) return;
+    call('living_learn', { messages: win }).then(function(d){ if(d && Array.isArray(d.facts)) writeMirror(d.facts); });
+  };
+  document.addEventListener('click', function(e){
+    var b = e.target && e.target.closest ? e.target.closest('[data-living-del]') : null;
+    if(!b) return;
+    b.disabled = true;
+    call('living_del', { id: b.getAttribute('data-living-del') }).then(function(d){
+      if(!d || !Array.isArray(d.facts)){ b.disabled = false; status(tr('livingMemDeleteError', 'تعذّر المسح. حاول مرّة أخرى.'), true); return; }
+      writeMirror(d.facts); draw(d.facts); status('');
+    });
+  });
+})();

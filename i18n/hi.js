@@ -1124,3 +1124,5 @@ Object.assign(I18N["hi"], {"bgThemeWood": "लकड़ी"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["hi"], {"brandSubtitle": "एआई प्लेटफ़ॉर्म"});
 Object.assign(I18N["hi"], {"bgThemeDarkwood": "गहरी लकड़ी", "bgThemeMarble": "संगमरमर", "bgThemeCode": "कोड", "bgThemeCars": "कारें", "bgThemeKids": "बच्चे", "bgThemeCuisine": "खाना पकाना", "bgThemeSunset": "सूर्यास्त", "bgThemeBeach": "समुद्र तट", "bgThemeWinter": "सर्दी", "bgThemeGarage": "गैराज", "bgThemeAnime": "एनीमे", "bgThemeCyber": "साइबर सुरक्षा", "bgThemeSchool": "कक्षा"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["hi"], {"livingMemTitle": "जीवंत मेमोरी", "livingMemIntro": "आपकी बातचीत से एजेंट ने आपके बारे में हाल ही में जो सीखा है। हर जवाब में वह केवल वही इस्तेमाल करता है जो आपके सवाल से जुड़ा हो। कोई भी तथ्य हटाएँ ताकि वह उसे भूल जाए।", "livingMemEmpty": "एजेंट ने अभी तक आपके बारे में कुछ नहीं सीखा है।", "livingMemDelete": "हटाएँ", "livingMemLoadError": "जीवंत मेमोरी अभी लोड नहीं हो सकी।", "livingMemDeleteError": "हटाया नहीं जा सका। कृपया फिर कोशिश करें।"});

@@ -1123,3 +1123,5 @@ Object.assign(I18N["ur"], {"bgThemeWood": "لکڑی"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["ur"], {"brandSubtitle": "اے آئی پلیٹ فارم"});
 Object.assign(I18N["ur"], {"bgThemeDarkwood": "گہری لکڑی", "bgThemeMarble": "سنگ مرمر", "bgThemeCode": "کوڈ", "bgThemeCars": "گاڑیاں", "bgThemeKids": "بچے", "bgThemeCuisine": "کھانا پکانا", "bgThemeSunset": "غروب آفتاب", "bgThemeBeach": "ساحل", "bgThemeWinter": "سردی", "bgThemeGarage": "گیراج", "bgThemeAnime": "اینیمے", "bgThemeCyber": "سائبر سیکیورٹی", "bgThemeSchool": "کلاس روم"});
+/* v-living-memory: «الذاكرة الحيّة» في صفحة المالك */
+Object.assign(I18N["ur"], {"livingMemTitle": "زندہ میموری", "livingMemIntro": "آپ کی گفتگو سے ایجنٹ نے آپ کے بارے میں حال ہی میں جو سیکھا ہے۔ ہر جواب میں وہ صرف وہی استعمال کرتا ہے جو آپ کے سوال سے متعلق ہو۔ کوئی بھی بات حذف کریں تاکہ وہ اسے بھول جائے۔", "livingMemEmpty": "ایجنٹ نے ابھی تک آپ کے بارے میں کچھ نہیں سیکھا۔", "livingMemDelete": "حذف کریں", "livingMemLoadError": "زندہ میموری ابھی لوڈ نہیں ہو سکی۔", "livingMemDeleteError": "حذف نہیں ہو سکا۔ دوبارہ کوشش کریں۔"});
