@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
 
 const MAX_B64 = 3 * 1024 * 1024; // حدّ أمان لكلّ صورة
-const TTL_SEC = 60 * 60 * 24 * 30;
+const TTL_SEC = 60 * 60 * 24 * 7; // v-media-purge: كان ٣٠ يومًا فامتلأت القاعدة المجانيّة — ٧ كالفيديو والـPDF
 const KEY = (id) => 'db/img/' + id;
 
 module.exports = async (req, res) => {
@@ -155,7 +155,7 @@ module.exports = async (req, res) => {
     // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
     // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
     const outExt = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
-    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 30 });
+    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 7 });
     return;
   }
 
