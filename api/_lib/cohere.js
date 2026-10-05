@@ -45,7 +45,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'cohere', clientIp(req));
+    // v-model-lock: المشترك في سلّة الباقة الواحدة (plan) لا سلّة لكلّ مزوّد.
+    const usage = await checkAndConsume(token, guestId, 'cohere', clientIp(req), { chatBucket: true });
+    if (!require('./_model-guard.js').isPrivileged(usage)) model = COHERE_DEFAULT; // v-model-lock: الافتراضيّ لغير المالك وVIP
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });

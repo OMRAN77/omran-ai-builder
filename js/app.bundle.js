@@ -3353,7 +3353,7 @@ const I18N = {
     keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '20 رسالة يوميًّا',
     plFreeVoice: 'حتّى 4 دقائق محادثة صوتية', plFreeImgs: 'حتّى 3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '50 رسالة يوميًا', plStVoice: 'حتّى 24 دقيقة محادثة صوتية', plStImgs: 'حتّى 15 صورة',
     plStVideos: 'فيديو واحد', plProMsgs: '100 رسالة يوميًا', plProVoice: 'حتّى 61 دقيقة محادثة صوتية', plProMedia: 'حتّى 40 صورة · 2 فيديو', plProAgent: 'الوكيل الذكي',
-    plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro · 250 رسالة يوميًا', plMaxVoice: 'حتّى 213 دقيقة محادثة صوتية', plMaxMedia: 'حتّى 150 صورة · 3 فيديو', plMaxSupport: 'دعم مخصّص',
+    plProPriority: 'شارة ذهبية', plMaxAllPro: 'كل مزايا Pro · 250 رسالة يوميًا', plMaxVoice: 'حتّى 213 دقيقة محادثة صوتية', plMaxMedia: 'حتّى 150 صورة · 3 فيديو', plMaxSupport: 'دعم مخصّص',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 صورة جواز/هوية رسمية', portraitStyleRestore: '🔧 ترميم صورة قديمة', portraitStyleColorize: '🎨 تلوين أبيض وأسود', portraitStyleUpscale: '🔍 رفع الدقة والوضوح', portraitStyleObjectremove: '🧹 إزالة شخص أو عنصر', portraitStyleOutfit: '👕 تبديل الملابس', portraitStyleProductshot: '📦 تصوير منتج احترافي', portraitStyleHajj: '🕋 تهنئة حج وعمرة', portraitStyleBirthday: '🎂 إطار عيد ميلاد', portraitStyleNewborn: '👶 تهنئة مولود جديد', portraitStyleFigurine: '🧸 مجسّم أكشن في علبة', portraitStyleGhibli: '🍃 ستايل جيبلي', portraitStyleLego: '🧱 شخصية ليغو', portraitStyleStickerpack: '💬 ملصقات واتساب (٦ تعبيرات)', portraitStyleChibi: '🐣 شيبي لطيف', portraitStyleStatue: '🗿 تمثال رخامي', portraitStylePolaroid: '📸 بولارويد قديمة', portraitStyleCelebtoon: '🦸 شخصية كرتونية مفضلة', portraitStyleProfession: '👩‍⚕️ مهنة (طبيب · طيار · شرطي...)', portraitStyleSuperhero: '🦸‍♂️ بطل خارق بزي كامل', portraitStyleAstronaut: '🚀 رائد فضاء', portraitOutfitKandura: '👔 كندورة إماراتية + غترة', portraitOutfitAbaya: '🧕 عباية + شيلة', portraitOutfitThobe: '🧣 ثوب خليجي + شماغ', portraitOutfitSuit: '🧵 بدلة رسمية', portraitOutfitDress: '👗 فستان سهرة', portraitOutfitCasual: '🧥 كاجوال أنيق', portraitOutfitSport: '🎽️ ملابس رياضية', portraitOutfitWinter: '🧤 معطف شتوي', portraitProfDoctor: '👩‍⚕️ طبيب', portraitProfPilot: '🧑‍✈️ طيار', portraitProfPolice: '👮 شرطي', portraitProfChef: '🧑‍🍳 طبّاخ', portraitProfEngineer: '👷 مهندس موقع', portraitProfTeacher: '🧑‍🏫 معلم', portraitProfFirefighter: '🧑‍🚒 إطفائي', portraitProfScientist: '🧑‍🔬 عالم مختبر', portraitGrpTools: '🛠️ أدوات عملية', portraitGrpOccasions: '🎉 مناسبات', portraitGrpTrending: '🔥 رائجة', portraitGrpDressup: '🎭 تلبيس', portraitStyleClaymation: '🏺 صلصال متحرك (كلاي)', portraitStyleLowpoly: '🔷 ثلاثي الأبعاد هندسي (Low Poly)', portraitStyleGraffiti: '🎨 جرافيتي شوارع', portraitStyleMosaic: '🧩 فسيفساء', portraitStyleStainedglass: '🪟 زجاج معشّق', portraitStylePapercraft: '📄 فن الورق الطبقي', portraitStyleCrochet: '🧶 دمية كروشيه', portraitStyleInflatable: '🎈 مجسّم بالون لامع', portraitStyleUkiyoe: '🌊 طباعة يابانية قديمة', portraitStyleSandart: '🏜️ رسم بالرمل الخليجي', portraitStyleNeonsign: '💡 نيون مضيء', portraitStyleDoubleexposure: '🌆 تعريض مزدوج فني', portraitGrpNew: '🆕 ستايلات جديدة', portraitStyleSheikh: '👑 إطلالة شيخ أو شيخة', portraitStyleFalconry: '🦅 صيد بالصقر', portraitStyleArabianHorse: '🐎 فروسية عربية', portraitStyleSaudiHeritage: '🇸🇦 تراث سعودي', portraitStyleKuwaitiHeritage: '🇰🇼 تراث كويتي', portraitStyleOmaniHeritage: '🇴🇲 تراث عماني', portraitStyleQatariHeritage: '🇶🇦 تراث قطري', portraitStyleBahrainiHeritage: '🇧🇭 تراث بحريني', portraitStyleEyefix: '👀 تصحيح عين مغمضة', portraitStyleGlasses: '🕶️ إضافة أو إزالة نظارة', portraitStyleBokeh: '🌫️ ضبابية الخلفية فقط', portraitStyleHenna: '💍 ليلة حنّاء أو خطوبة', portraitStyleFirstday: '🎒 أول يوم دراسة', portraitStyleFlagday: '🇦🇪 يوم العلم الإماراتي', portraitStyleTarot: '🃏 بطاقة تاروت', portraitStyleStamp: '📮 طابع بريد قديم', portraitStyleMoviePoster: '🎬 بوستر فيلم أكشن', portraitStyleDiorama: '🏠 ديوراما مصغّرة', portraitStyleEmoji3d: '😊 إيموجي ثلاثي الأبعاد', portraitStyleY2k: '📼 ستايل Y2K', portraitStyleAlbumCover: '🎵 بوستر ألبوم غنائي',
     designAiPlaceFromPhoto: '📷 من صورتي', designAiPlaceRestaurant: '🍽️ مطعم', designAiPlaceCafe: '☕ كافيه', designAiPlaceBedroom: '🛏️ غرفة نوم', designAiPlaceMajlis: '🪑 مجلس', designAiPlaceLiving: '🛋️ صالة', designAiPlaceKitchen: '🍳 مطبخ', designAiPlaceOffice: '💼 مكتب', designAiPlaceShop: '🛍️ محل', designAiPlaceBath: '🛁 حمام', designAiPlaceKids: '🧸 غرفة أطفال', designAiPlaceEntrance: '🚪 مدخل', designAiPlaceGarden: '🌳 حديقة', designAiStyleNajdi: '🏜️ نجدي', designAiStyleIslamic: '✳️ إسلامي معاصر', designAiStyleAndalusi: '🏛️ أندلسي', fashionAiOccasionGraduation: '🎓 تخرج', fashionAiOccasionReligious: '🕌 مناسبة دينية', fashionAiSeasonAutumn: '🍂 خريفي', fashionAiSeasonSpring: '🌸 ربيعي',
@@ -3367,7 +3367,7 @@ const I18N = {
     sbProjSearch: 'بحث عن مشروع',
     sbDeleteAll: 'حذف الكل',
     pricingPointsTitle: 'باقات النقاط',
-    pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو سينمائي: 275',
+    pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو بالصوت: 175 • فيديو سينمائي: 120',
     pricingWalletLabel: 'رصيدك من النقاط',
     pricingPointsUnit: 'نقطة',
     pricingBuyBtn: 'شراء',
@@ -4365,7 +4365,7 @@ const I18N = {
     planSoonBtn: 'قريبًا',
     planFreeFeats: '<li>20 رسالة يوميًّا</li><li>حتّى 4 دقائق محادثة صوتية</li><li>حتّى 3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li>',
     planPlusFeats: '<li>50 رسالة يوميًا</li><li>حتّى 24 دقيقة محادثة صوتية</li><li>حتّى 15 صورة</li><li>فيديو واحد</li>',
-    planProFeats: '<li>100 رسالة يوميًا</li><li>حتّى 61 دقيقة محادثة صوتية</li><li>حتّى 40 صورة · 2 فيديو</li><li>الوكيل الذكي</li><li>أولوية في السرعة · شارة ذهبية</li>',
+    planProFeats: '<li>100 رسالة يوميًا</li><li>حتّى 61 دقيقة محادثة صوتية</li><li>حتّى 40 صورة · 2 فيديو</li><li>الوكيل الذكي</li><li>شارة ذهبية</li>',
     planMaxFeats: '<li>كل مزايا Pro · 250 رسالة يوميًا</li><li>حتّى 213 دقيقة محادثة صوتية</li><li>حتّى 150 صورة · 3 فيديو</li><li>دعم مخصّص</li>',
     pricingProDesc: 'رسائل بلا حدود + وكيل عمران + 200 نقطة شهريًا + أولوية سرعة + شارة ذهبية',
     pricingComingSoon: 'قريبًا 🚀 — الاشتراك غير متاح حاليًا',
@@ -4393,6 +4393,7 @@ const I18N = {
     checkoutError: 'حدث خطأ ما، حاول مرة أخرى',
     checkoutNotConfigured: 'الدفع غير مفعّل من الإدارة بعد',
     checkoutSuccessMsg: '✅ تم الاشتراك بنجاح (وضع تجريبي)! شكرًا لك 🎉',
+    checkoutPaidPending: '✅ وصلنا دفعك، لكن إضافة رصيدك تأخّرت — نكمّلها تلقائيًّا أوّل ما ترجع للتطبيق. إذا ما وصلك خلال ساعة راسلنا.', // v-paypal-honest
     checkoutCancelMsg: '⚠️ تم إلغاء عملية الدفع',
     pricingTestNote: '🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية',
     termsLink: '📜 الشروط والأحكام',
@@ -4466,7 +4467,7 @@ const I18N = {
     cnBudgetOutputs: '💰 Budget and outputs', cnDownloadBoq: '📊 Download bill of quantities', cnPdfReport: '📄 PDF report', keyHowToTitle: '📝 How to get a key for each provider:',
     showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '20 messages a day', plFreeVoice: 'Up to 4 minutes of voice chat', plFreeImgs: 'Up to 3 AI images',
     plFreeNoVideo: 'No video', plStMsgs: '50 messages a day', plStVoice: 'Up to 24 minutes of voice chat', plStImgs: 'Up to 15 images', plStVideos: '1 video', plProMsgs: '100 messages a day',
-    plProVoice: 'Up to 61 minutes of voice chat', plProMedia: 'Up to 40 images · 2 videos', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
+    plProVoice: 'Up to 61 minutes of voice chat', plProMedia: 'Up to 40 images · 2 videos', plProAgent: 'The smart agent', plProPriority: 'Gold badge',
     plMaxAllPro: 'Everything in Pro · 250 messages a day', plMaxVoice: 'Up to 213 minutes of voice chat', plMaxMedia: 'Up to 150 images · 3 videos', plMaxSupport: 'Dedicated support',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 Passport/ID photo', portraitStyleRestore: '🔧 Restore old photo', portraitStyleColorize: '🎨 Colorize B&W', portraitStyleUpscale: '🔍 Upscale', portraitStyleObjectremove: '🧹 Remove person or object', portraitStyleOutfit: '👕 Change outfit', portraitStyleProductshot: '📦 Pro product shot', portraitStyleHajj: '🕋 Hajj & Umrah greeting', portraitStyleBirthday: '🎂 Birthday frame', portraitStyleNewborn: '👶 Newborn greeting', portraitStyleFigurine: '🧸 Boxed action figure', portraitStyleGhibli: '🍃 Ghibli style', portraitStyleLego: '🧱 LEGO character', portraitStyleStickerpack: '💬 WhatsApp stickers (6 emotions)', portraitStyleChibi: '🐣 Cute Chibi', portraitStyleStatue: '🗿 Marble statue', portraitStylePolaroid: '📸 Vintage Polaroid', portraitStyleCelebtoon: '🦸 Favorite cartoon character', portraitStyleProfession: '👩‍⚕️ Profession (doctor, pilot, police...)', portraitStyleSuperhero: '🦸‍♂️ Superhero full costume', portraitStyleAstronaut: '🚀 Astronaut', portraitOutfitKandura: '👔 Emirati Kandura + Ghutra', portraitOutfitAbaya: '🧕 Abaya + Shayla', portraitOutfitThobe: '🧣 Gulf Thobe + Shemagh', portraitOutfitSuit: '🧵 Formal suit', portraitOutfitDress: '👗 Evening dress', portraitOutfitCasual: '🧥 Smart casual', portraitOutfitSport: '🎽️ Sportswear', portraitOutfitWinter: '🧤 Winter coat', portraitProfDoctor: '👩‍⚕️ Doctor', portraitProfPilot: '🧑‍✈️ Pilot', portraitProfPolice: '👮 Police officer', portraitProfChef: '🧑‍🍳 Chef', portraitProfEngineer: '👷 Site engineer', portraitProfTeacher: '🧑‍🏫 Teacher', portraitProfFirefighter: '🧑‍🚒 Firefighter', portraitProfScientist: '🧑‍🔬 Lab scientist', portraitGrpTools: '🛠️ Practical tools', portraitGrpOccasions: '🎉 Occasions', portraitGrpTrending: '🔥 Trending', portraitGrpDressup: '🎭 Dress up', portraitStyleClaymation: '🏺 Claymation', portraitStyleLowpoly: '🔷 Low-poly 3D', portraitStyleGraffiti: '🎨 Street graffiti', portraitStyleMosaic: '🧩 Mosaic', portraitStyleStainedglass: '🪟 Stained glass', portraitStylePapercraft: '📄 Layered paper art', portraitStyleCrochet: '🧶 Crochet doll', portraitStyleInflatable: '🎈 Glossy 3D balloon', portraitStyleUkiyoe: '🌊 Japanese Ukiyo-e', portraitStyleSandart: '🏜️ Gulf sand art', portraitStyleNeonsign: '💡 Neon sign', portraitStyleDoubleexposure: '🌆 Double exposure', portraitGrpNew: '🆕 New styles', portraitStyleSheikh: '👑 Sheikh/Sheikha Look', portraitStyleFalconry: '🦅 Falconry Portrait', portraitStyleArabianHorse: '🐎 Arabian Horse Equestrian', portraitStyleSaudiHeritage: '🇸🇦 Saudi Heritage Style', portraitStyleKuwaitiHeritage: '🇰🇼 Kuwaiti Heritage Style', portraitStyleOmaniHeritage: '🇴🇲 Omani Heritage Style', portraitStyleQatariHeritage: '🇶🇦 Qatari Heritage Style', portraitStyleBahrainiHeritage: '🇧🇭 Bahraini Heritage Style', portraitStyleEyefix: '👀 Fix Closed Eyes', portraitStyleGlasses: '🕶️ Add/Remove Glasses', portraitStyleBokeh: '🌫️ Background Blur Only', portraitStyleHenna: '💍 Henna Night / Engagement', portraitStyleFirstday: '🎒 First Day of School', portraitStyleFlagday: '🇦🇪 UAE Flag Day', portraitStyleTarot: '🃏 Tarot Card Portrait', portraitStyleStamp: '📮 Vintage Postage Stamp', portraitStyleMoviePoster: '🎬 Action Movie Poster', portraitStyleDiorama: '🏠 Miniature Diorama', portraitStyleEmoji3d: '😊 3D Emoji Style', portraitStyleY2k: '📼 Y2K Aesthetic', portraitStyleAlbumCover: '🎵 Music Album Cover',
@@ -4481,7 +4482,7 @@ const I18N = {
     sbProjSearch: 'Search projects',
     sbDeleteAll: 'Delete all',
     pricingPointsTitle: 'Points Packs',
-    pricingPointsDesc: 'Points are one universal currency — spend them on Maha voice, videos and images, no subscription needed. Maha: 15 pts/min • Image: 20 • Creative image: 35 • Video: 55 • Cinematic video: 275',
+    pricingPointsDesc: 'Points are one universal currency — spend them on Maha voice, videos and images, no subscription needed. Maha: 15 pts/min • Image: 20 • Creative image: 35 • Video: 55 • Video with sound: 175 • Cinematic video: 120',
     pricingWalletLabel: 'Your points balance',
     pricingPointsUnit: 'pts',
     pricingBuyBtn: 'Buy',
@@ -4615,7 +4616,7 @@ const I18N = {
     planSoonBtn: 'Soon',
     planFreeFeats: '<li>20 messages a day</li><li>Up to 4 minutes of voice chat</li><li>Up to 3 AI images</li><li class="off">No video</li>',
     planPlusFeats: '<li>50 messages a day</li><li>Up to 24 minutes of voice chat</li><li>Up to 15 images</li><li>1 video</li>',
-    planProFeats: '<li>100 messages a day</li><li>Up to 61 minutes of voice chat</li><li>Up to 40 images · 2 videos</li><li>The smart agent</li><li>Priority speed · gold badge</li>',
+    planProFeats: '<li>100 messages a day</li><li>Up to 61 minutes of voice chat</li><li>Up to 40 images · 2 videos</li><li>The smart agent</li><li>Gold badge</li>',
     planMaxFeats: '<li>Everything in Pro · 250 messages a day</li><li>Up to 213 minutes of voice chat</li><li>Up to 150 images · 3 videos</li><li>Dedicated support</li>',
     pricingProDesc: 'Unlimited messages + Omran Agent + 200 points/month + priority speed + gold badge',
     pricingComingSoon: 'Coming soon 🚀 — subscriptions aren\'t available yet',
@@ -4660,6 +4661,7 @@ const I18N = {
     checkoutError: 'Something went wrong, please try again',
     checkoutNotConfigured: 'Payments not configured by admin yet',
     checkoutSuccessMsg: '✅ Subscribed successfully (test mode)! Thank you 🎉',
+    checkoutPaidPending: '✅ We received your payment, but adding it to your account is delayed — it will complete automatically next time you open the app. If it has not arrived within an hour, contact us.', // v-paypal-honest
     checkoutCancelMsg: '⚠️ Payment was cancelled',
     logoutTitle: 'Log out',
     loginAction: 'Login',
@@ -5592,7 +5594,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=720'; /* v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=721'; /* v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -10965,6 +10967,13 @@ function applyPlanGate(d){
     window.__omranPlan = plan || tier;
     if(prevPlan !== window.__omranPlan && typeof renderSettingsNavList === 'function') renderSettingsNavList();
     document.documentElement.classList.toggle('plan-locked', !open);
+    // v-gold-badge-plan (قرار المالك ٥ أكتوبر، الجدول الثاني): بطاقة Pro تعد «شارة ذهبية» ولم يكن لها تنفيذ — تظهر بجانب
+    // الاسم في رأس الإعدادات (#setProfileName؛ الرأس العلويّ بلا اسم منذ v-auth-optional-3) لمشترك Pro وMax («كل مزايا Pro»).
+    // متغيّر CSS على html لا سمة على العنصر: جزء الإعدادات يُحقن بعد هذا النداء أحيانًا. الاسم PRO/MAX كما في البطاقات.
+    const gold = plan === 'pro' || plan === 'max';
+    const root = document.documentElement;
+    root.classList.toggle('plan-gold', gold);
+    if(gold) root.style.setProperty('--plan-badge', JSON.stringify(plan.toUpperCase())); else root.style.removeProperty('--plan-badge');
   }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }
 }
 window.applyPlanGate = applyPlanGate;
@@ -12959,6 +12968,8 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
 const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211 }; // v-media-plans + v-maha-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
 const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
+// v-fair-video: نقاط كلّ رزمة كما يمنحها الخادم — مفتاح pack900 يمنح ١٬٠٥٠ (الاسم من المفتاح كان سيقول ٩٠٠).
+const PACK_POINTS = { pack100: 100, pack300: 300, pack700: 700, pack900: 1050 };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
 // money on its own.
@@ -13128,7 +13139,7 @@ function openCheckout(plan){
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
   const __mp = /^(img|vid|maha)_(basic|pro|max)$/.exec(String(plan));
   if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
-  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (Number(PACK_POINTS[plan] || String(plan).slice(4)).toLocaleString('en-US') + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually
@@ -13324,6 +13335,18 @@ function clickGooglePay(){
 window.clickGooglePay = clickGooglePay;
 
 // ===== PayPal =====
+// v-paypal-honest: إعادة شحن طلب مكتمل لم يُشحن — 'ok' شُحن (أو سبق شحنه)، 'stop' لا فائدة من الإعادة، 'retry' عطل عابر.
+async function paypalClaim(orderId){
+  const token = authGet('aiapp_auth_token');
+  if(!orderId || !token) return 'retry';
+  try{
+    const r = await fetch('/api/account?action=paypal-order', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'claim', orderId, token }) });
+    const d = await r.json().catch(() => ({}));
+    if(r.ok && d.credited === true) return 'ok';
+    if(r.status === 404 || r.status === 409 || (r.ok && /^(not_owner|no_plan|account)$/.test(String(d.reason || '')))) return 'stop';
+  }catch(e){ __swallow(e, 'checkout:pp-claim'); }
+  return 'retry';
+}
 async function loadPaypalButtons(){
   const container = document.getElementById('paypalButtonContainer');
   const fallbackBtn = document.getElementById('paypalFallbackBtn');
@@ -13367,14 +13390,26 @@ async function loadPaypalButtons(){
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
           });
-          const capData = await cap.json();
-          if (cap.ok && (capData.status === 'COMPLETED' || capData.status === 'APPROVED')) {
-            if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
-            if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
-            setTimeout(closeCheckout, 2500);
+          const capData = await cap.json().catch(() => ({}));
+          if (cap.ok && capData.status === 'COMPLETED') {
+            /* v-paypal-honest: «تمّ» كانت تظهر بحالة الدفع وحدها ولو فشل الشحن بعد السحب. الآن بالشحن نفسه، ومحاولات
+               إعادة على الخادم (claim آمن التكرار)، وإلّا رسالة صادقة ويبقى الطلب معلّقًا يُستكمل عند العودة للتطبيق. */
+            let credited = capData.credited === true;
+            for (let i = 0; !credited && i < 3; i++) {
+              await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+              credited = await paypalClaim(data.orderID) === 'ok';
+            }
+            if (credited) {
+              if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
+              if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
+              setTimeout(closeCheckout, 2500);
+            } else {
+              try { localStorage.setItem('aiapp_pp_pending', data.orderID + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pp-pending'); }
+              if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutPaidPending'); }
+            }
           } else if (statusMsg) {
             statusMsg.style.color = '';
-            statusMsg.textContent = t('checkoutError');
+            statusMsg.textContent = capData.error || t('checkoutError');
           }
         },
         onError: () => {
@@ -13470,10 +13505,28 @@ window.startPaypalCheckout = startPaypalCheckout;
     } catch(e){ __swallow(e, 'checkout:claim'); }
     busy = false;
   }
-  window.addEventListener('focus', claim);
-  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
+  // v-paypal-honest: طلب PayPal سُحب مبلغه ولم يُشحن — يُعاد شحنه عند كلّ عودة للتطبيق حتّى أسبوع.
+  let ppBusy = false;
+  async function claimPaypal(){
+    let raw = null;
+    try { raw = localStorage.getItem('aiapp_pp_pending'); } catch(e){ return; }
+    if(!raw || ppBusy) return;
+    const i = raw.lastIndexOf(':');
+    const id = raw.slice(0, i), ts = Number(raw.slice(i + 1) || 0);
+    const drop = () => { try { localStorage.removeItem('aiapp_pp_pending'); } catch(e){ __swallow(e, 'checkout:pp-clear'); } };
+    if(!id || (Date.now() - ts) > 7 * 86400000){ drop(); return; }
+    ppBusy = true;
+    const res = await paypalClaim(id);
+    ppBusy = false;
+    if(res === 'retry') return;
+    drop();
+    if(res === 'ok'){ alert(t('checkoutSuccessMsg')); if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }
+  }
+  window.addEventListener('focus', () => { claim(); claimPaypal(); });
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ claim(); claimPaypal(); } });
   const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 5000);
   claim();
+  claimPaypal();
 })();
 const btnExportProjectsEl = $('#btnExportProjects');
 if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;
@@ -18456,7 +18509,7 @@ function mahaStartPointsMeter(budget){
     const cost = Number(budget.cost) || 15;
     let mahaMin = Math.max(0, Math.floor(Number(budget.mahaMin) || 0));
     const capMin = Math.max(0, Math.floor(Number(budget.capMin) || 0));
-    let callMin = 0;
+    let callMin = budget.prepaid === 'media' ? 1 : 0; // v-maha-server-bill: دقيقة الافتتاح دفعها الخادم من رصيد مها
     const show = ()=>{ val.textContent = mahaMin > 0 ? ('🎙️ ' + mahaMin + ' ' + t('mahaMinUnit')) : String(pts); };
     if(trial) val.textContent = '🎁 1:00'; else show();
     el.style.display = 'flex';
@@ -18477,17 +18530,13 @@ function mahaStartPointsMeter(budget){
     mahaPointsTimer = setInterval(async ()=>{
       if(!mahaCallActive){ mahaStopPointsMeter(); return; }
       try{
+        /* v-maha-server-bill: الدقيقة الأولى (أو التجربة) دُفعت في الخادم عند فتح الجلسة، والتجربة عُلِّمت هناك. كلّ نبضة
+           هنا تخصم الدقيقة التي تبدأ الآن (لا التي انتهت) — فالمكالمة تُحسب بالدقيقة المبدوءة، ولا تمرّ أقلّ من دقيقة مجّانًا. */
         if(trial){
           trial = false;
           if(isGuest){ endGently(); return; } // ضيف: دقيقة تجريبية وحدة فقط
-          try{
-            await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ action:'maha-trial-used', token: authGet('aiapp_auth_token') }) });
-          }catch(e){ __swallow(e, "auth:app-08-maha#24"); }
-          if(pts < cost && mahaMin < 1){ endGently(); return; }
-          show();
-          return;
         }
+        if(capMin && callMin >= capMin){ endGently(true); return; } // حدّ مكالمة مشترك مها: لا تُفتح دقيقة بعده
         const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ action:'consume', amount:cost, reason:'maha_minute', token: authGet('aiapp_auth_token') }) });
         const d = await r.json().catch(()=>({}));
@@ -18496,7 +18545,6 @@ function mahaStartPointsMeter(budget){
             mahaMin = Math.floor((Number(d.mediaLeft) || 0) / 55);
             callMin++;
             show();
-            if(capMin && callMin >= capMin){ endGently(true); return; }
           } else {
             if(mahaMin > 0){ try{ settingsToast(t('mahaToPoints')); }catch(e){ __swallow(e, "points:app-08-maha#topts"); } }
             mahaMin = 0;
@@ -28105,6 +28153,25 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       (u.biggest || []).forEach(function(b){ lines.push('• ' + b.key + ' — ' + mb(b.bytes)); });
       if(box) box.textContent = lines.join('\n');
     }catch(e){ if(box) box.textContent = '❌ فشل القياس: ' + e.message; }
+  };
+  /* v-cost-meter: «تكلفة المشتركين» — تكلفة كلّ حساب علينا هذا الشهر مجمّعة لكلّ باقة، مقابل ما يدفعه (قراءة فقط). */
+  window.subscriberCostsCheck = async function(){
+    const box = document.getElementById('adminHealthBox');
+    const usd = (n) => (Number(n) || 0).toFixed(2) + '$';
+    const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: 'مجّاني', vip: 'VIP', owner: 'المالك' };
+    const NET = { basic: 9.41, pro: 19.12, max: 96.80 }; // ما يصلك من الاشتراك الشهريّ بعد رسوم الدفع
+    if(box) box.textContent = '⏳ أجمع تكلفة الشهر لكلّ باقة… (قراءة فقط)';
+    try{
+      const r = await fetch('/api/system?action=health&costs=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
+      const d = await r.json().catch(() => ({}));
+      if(!r.ok || !d.costs){ if(box) box.textContent = '❌ فشل التقرير (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      const c = d.costs;
+      const lines = ['💵 تكلفة الحسابات علينا — ' + c.month + ' (من أوّل الشهر حتّى الآن)', 'المجموع ' + usd(c.total) + ' على ' + c.users + ' حسابًا', ''];
+      (c.byPlan || []).forEach(function(g){ lines.push('• ' + (NAME[g.plan] || g.plan) + ': ' + g.users + ' · متوسّط ' + usd(g.avg) + ' · الأعلى ' + usd(g.max) + (NET[g.plan] ? ' · يدفع ' + usd(NET[g.plan]) : '')); });
+      lines.push('', 'أعلى الحسابات تكلفةً:');
+      (c.top || []).forEach(function(u){ lines.push('• ' + u.user + ' (' + (NAME[u.plan] || u.plan) + ') — ' + usd(u.total) + '  [رسائل ' + usd(u.chat) + ' · وسائط ' + usd(u.media) + ' · صوت ' + usd(u.voice) + ']'); });
+      if(box) box.textContent = lines.join('\n');
+    }catch(e){ if(box) box.textContent = '❌ فشل التقرير: ' + e.message; }
   };
   /* v-media-purge: «تنظيف التطبيق» عند المالك — يحذف روابط المشاركة الأقدم من ٧ أيّام (الخادم يتحقّق من المالك). */
   window.purgeOldMedia = async function(){

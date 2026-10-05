@@ -8,19 +8,21 @@ const MEDIA_WINDOW_DAYS = 35;
 const MEDIA_WINDOW_MS = MEDIA_WINDOW_DAYS * 86400000;
 
 // الرصيد بالفلس = تكلفتنا المسموحة بعد ربح المالك ورسوم الدفع:
-// صور: ٣٧٫٥ ← ربح ~٢٠ · ٧٥ ← ~٥٣ · ٣٧٥ ← ~١٦٠ درهم (المالك: «قلّل الربح وزِد الصور»).
-// فيديو: ٣٧٫٥ ← ~٢٨ · ٧٥ ← ~٦٢ · ٣٧٥ ← ~٢٠٠ درهم.
+// صور: ٣٧٫٥ ← ربح ~٢٠ · ٧٥ ← ~٤١ · ٣٧٥ ← ~١٦٠ درهم (المالك: «قلّل الربح وزِد الصور»).
+// فيديو: ٣٧٫٥ ← ~٢٣ · ٧٥ ← ~٤٨ · ٣٧٥ ← ~٢٠٠ درهم (v-fair-video).
 // المبالغ بالدولار مطابقة للدرهم (÷٣٫٦٧٢٥) ومميّزة عن باقات المحادثة لأنّ PayPal يطابق بالمبلغ.
 const MEDIA_PLANS = {
   img_basic: { media: 'image', amount: 1021, paypal: '10.21', budget: 1531, name: 'صور — 37.5 درهم / Images — 37.5 AED' },
-  img_pro: { media: 'image', amount: 2042, paypal: '20.42', budget: 1872, name: 'صور — 75 درهم / Images — 75 AED' },
+  // v-fair-video (قرار المالك ٥ أكتوبر): الوسطى ضعف الأساسيّة بضعف السعر (كانت ٧٤ صورة مقابل ٦١) — ربحها ~٤١ درهم لا ~٥٣.
+  img_pro: { media: 'image', amount: 2042, paypal: '20.42', budget: 3050, name: 'صور — 75 درهم / Images — 75 AED' },
   img_max: { media: 'image', amount: 10211, paypal: '102.11', budget: 20302, name: 'صور — 375 درهم / Images — 375 AED' },
-  vid_basic: { media: 'video', amount: 1021, paypal: '10.21', budget: 736, name: 'فيديو — 37.5 درهم / Video — 37.5 AED' },
-  vid_pro: { media: 'video', amount: 2042, paypal: '20.42', budget: 927, name: 'فيديو — 75 درهم / Video — 75 AED' },
+  // v-fair-video: اشتراك الفيديو وحده كان يعطي اقتصاديًّا أقلّ من Plus (٧ مقابل ٩) — الأساسيّ ١١ والوسطى ٢٣ (ربح ~٢٣ · ~٤٨ درهم).
+  vid_basic: { media: 'video', amount: 1021, paypal: '10.21', budget: 1200, name: 'فيديو — 37.5 درهم / Video — 37.5 AED' },
+  vid_pro: { media: 'video', amount: 2042, paypal: '20.42', budget: 2400, name: 'فيديو — 75 درهم / Video — 75 AED' },
   vid_max: { media: 'video', amount: 10211, paypal: '102.11', budget: 16280, name: 'فيديو — 375 درهم / Video — 375 AED' },
-  // v-maha-plans: دقائق مها الصوتيّة (المالك: «خلّ الناس تستفيد») — ربح ~١٠ · ~٣٠ · ~١٠٠ درهم ⇒ ٤٦ · ٧٥ · ٤٧٨ دقيقة.
+  // v-maha-plans: دقائق مها الصوتيّة (المالك: «خلّ الناس تستفيد») — ربح ~١٠ · ~٢١ · ~١٠٠ درهم ⇒ ٤٦ · ٩٢ · ٤٧٨ دقيقة.
   maha_basic: { media: 'maha', amount: 1021, paypal: '10.21', budget: 2530, name: 'مها — 37.5 درهم / Maha — 37.5 AED' },
-  maha_pro: { media: 'maha', amount: 2042, paypal: '20.42', budget: 4125, name: 'مها — 75 درهم / Maha — 75 AED' },
+  maha_pro: { media: 'maha', amount: 2042, paypal: '20.42', budget: 5060, name: 'مها — 75 درهم / Maha — 75 AED' }, // v-fair-video: ٩٢ دقيقة (ربح ~٢١ درهم)
   maha_max: { media: 'maha', amount: 10211, paypal: '102.11', budget: 26290, name: 'مها — 375 درهم / Maha — 375 AED' },
 };
 
@@ -138,6 +140,11 @@ async function refundMedia(username, pts) {
   return left;
 }
 
+// v-maha-server-bill: دقيقة الافتتاح دُفعت من رصيد مها ثمّ لم تُفتح الجلسة عند المزوّد — تعود إلى رصيدها نفسه.
+async function refundMahaMinute(username) {
+  await kvIncrBy(budgetKey(username, 'maha'), UNIT_COST.maha_minute);
+}
+
 const QUALITIES = ['normal', 'high'];
 const HIGH_ASK_RE = /(?:جود[ةه]\s*عالي[ةه]|عالي[ةه]\s*الجود[ةه]|\bhigh[-\s]?quality\b|\bHD\b)/i;
 // الكتابة داخل الصورة تذهب لمسار النصّ الأغلى، فتُحسب عالية دائمًا.
@@ -183,5 +190,5 @@ async function mediaStatus(username, opts) {
 
 module.exports = {
   MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS, MAHA_CALL_CAP_MIN,
-  mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, mediaStatus, imageQuality, setImageQuality,
+  mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, refundMahaMinute, mediaStatus, imageQuality, setImageQuality,
 };

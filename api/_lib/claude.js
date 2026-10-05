@@ -68,7 +68,8 @@ module.exports = async (req, res) => {
     }
 
     let premiumRefund = null;
-    const usage = await checkAndConsume(token, guestId, 'claude', clientIp(req));
+    // v-model-lock: المشترك في سلّة الباقة الواحدة (plan) لا سلّة لكلّ مزوّد.
+    const usage = await checkAndConsume(token, guestId, 'claude', clientIp(req), { chatBucket: true });
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -80,6 +81,23 @@ module.exports = async (req, res) => {
 
     let useModel = model || 'claude-sonnet-5';
     if (useModel === 'claude-3-5-sonnet-latest' || useModel === 'claude-sonnet-4-20250514') useModel = 'claude-sonnet-5';
+    /* v-model-lock (فحص الاشتراكات ٥ أكتوبر): لغير المالك وVIP كان اسم النموذج من العميل (Opus مثلًا) بلا خصم نقاط، و«ابني»
+       يرسل لهذا الرابط دائمًا بـSonnet خارج حدود الباقة. الآن نموذج الباقة للكود وحدوده اليوميّة نفسها (tier.js PLAN_ROUTING):
+       Plus/Pro ‏Haiku، وMax ‏Sonnet ثمّ Haiku؛ بعد الحدّ لا كلود اليوم (402) — المزوّدون الآخرون في «ابني» يكملون. */
+    const privileged = require('./_model-guard.js').isPrivileged(usage);
+    const meterUser = (!privileged && usage.username) ? usage.username : null; // v-cost-meter
+    if (!privileged) {
+      const tierLib = require('./tier.js');
+      const meters = require('./_usage');
+      const used = { haiku: await meters.todayCount(usage.username, 'plan-haiku'), sonnet: await meters.todayCount(usage.username, 'plan-sonnet') };
+      const route = tierLib.planRoute({ tier: 'sub', plan: usage.plan, subscriber: true }, 'claude', 'اكتب كود', used, process.env);
+      if (!route || route.prov !== 'claude' || !route.model) {
+        res.status(402).json({ error: tierLib.FREE_TEXT.engineLimit, reason: 'engine_limit' });
+        return;
+      }
+      useModel = route.model;
+      if (route.meter) await meters.bumpCount(usage.username, 'plan-' + route.meter);
+    }
     const wantStream = !!body.stream;
 
     const doRequest = (m, stream) => fetch('https://api.anthropic.com/v1/messages', {
@@ -92,7 +110,7 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         model: m,
-        max_tokens: 32000,
+        max_tokens: privileged ? 32000 : 16000, // v-model-lock: سقف الخرج نفسه في مسار الباقة (chat.js)
         // v465: removed duplicate server-side rules — client already sends comprehensive system prompt
         system: (system || '') || undefined,
         messages,
@@ -151,18 +169,30 @@ module.exports = async (req, res) => {
       res.setHeader('Connection', 'keep-alive');
       if (res.flushHeaders) res.flushHeaders();
       const reader = upstream.body.getReader();
+      // v-cost-meter: توكنات المزوّد من البثّ نفسه (يمرّ كما هو) — تكلفة الطلب في عدّاد شهر الحساب، غير المالك وVIP.
+      const tap = meterUser ? require('./cost-meter.js').anthropicUsageTap() : null;
+      const dec = tap ? new TextDecoder() : null;
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           res.write(value);
+          if (tap) tap.push(dec.decode(value, { stream: true }));
         }
       } catch (e) { /* client likely disconnected */ }
+      if (tap) { try { const cm = require('./cost-meter.js'); await cm.addCost(meterUser, cm.tokenCostUsd(useModel, tap.usage()), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
       res.end();
       return;
     }
 
     const data = await upstream.text();
+    if (meterUser && upstream.ok) { // v-cost-meter: الردّ غير المتدفّق يحمل usage كاملًا
+      try {
+        const u = (JSON.parse(data) || {}).usage || {};
+        const cm = require('./cost-meter.js');
+        await cm.addCost(meterUser, cm.tokenCostUsd(useModel, { input: u.input_tokens, cacheRead: u.cache_read_input_tokens, cacheWrite: u.cache_creation_input_tokens, output: u.output_tokens }), 'chat');
+      } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+    }
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {

@@ -1993,6 +1993,13 @@ function applyPlanGate(d){
     window.__omranPlan = plan || tier;
     if(prevPlan !== window.__omranPlan && typeof renderSettingsNavList === 'function') renderSettingsNavList();
     document.documentElement.classList.toggle('plan-locked', !open);
+    // v-gold-badge-plan (قرار المالك ٥ أكتوبر، الجدول الثاني): بطاقة Pro تعد «شارة ذهبية» ولم يكن لها تنفيذ — تظهر بجانب
+    // الاسم في رأس الإعدادات (#setProfileName؛ الرأس العلويّ بلا اسم منذ v-auth-optional-3) لمشترك Pro وMax («كل مزايا Pro»).
+    // متغيّر CSS على html لا سمة على العنصر: جزء الإعدادات يُحقن بعد هذا النداء أحيانًا. الاسم PRO/MAX كما في البطاقات.
+    const gold = plan === 'pro' || plan === 'max';
+    const root = document.documentElement;
+    root.classList.toggle('plan-gold', gold);
+    if(gold) root.style.setProperty('--plan-badge', JSON.stringify(plan.toUpperCase())); else root.style.removeProperty('--plan-badge');
   }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }
 }
 window.applyPlanGate = applyPlanGate;

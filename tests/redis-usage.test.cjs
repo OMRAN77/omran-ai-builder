@@ -86,7 +86,7 @@ test('٤. زرّ «ما يملأ القاعدة» في لوحة المالك ي�
   assert.match(v, /'العائلات الأكبر:'/);
   assert.match(v, /'أكبر المفاتيح:'/);
   assert.ok(read('js/app.bundle.js').includes('window.redisUsageCheck'));
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=690'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=691'));
   const h = read('api/_lib/health.js');
   assert.ok(h.indexOf('if (!isOwner(req))') < h.indexOf("req.query.usage === '1'"), 'التحقّق من المالك قبل القياس');
 });

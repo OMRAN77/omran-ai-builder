@@ -228,7 +228,8 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
 // ── (٣) النقاط والأسعار ──
 test('٧. الأسعار: صورة ٢٠ · إبداعيّة ٣٥ · Runway ٥٥ · Veo ٢٧٥ · مها ١٥؛ الفرق الإبداعيّ يُخصم بعد التصنيف ويُردّ كاملًا', () => {
   const { COSTS } = require('../api/_lib/points.js');
-  assert.deepEqual([COSTS.image, COSTS.image_creative, COSTS.image_4k, COSTS.runway_video, COSTS.veo_video, COSTS.maha_minute], [20, 35, 30, 55, 275, 15]);
+  assert.deepEqual([COSTS.image, COSTS.image_creative, COSTS.image_4k, COSTS.runway_video, COSTS.veo_video, COSTS.maha_minute], [20, 35, 30, 55, 175, 15]); // v-fair-video: Veo 275→175
+  assert.equal(COSTS.omni_video, 120, 'v-fair-video: السينمائيّ 350→120 (≈ ٣ أضعاف تكلفته كبقيّة الخدمات)');
   const mi = read('api/_lib/maha-image.js');
   const creative = mi.indexOf('if (isCreativeEdit && mahaImgCharged && !__pureRaw) {');
   assert.ok(creative > mi.indexOf('const isCreativeEdit = '), 'بعد معرفة النيّة');
@@ -245,7 +246,7 @@ test('٨. الباقات ٣٦٠/٩٢٠/٣٬٢٠٠ متطابقة في Stripe وP
   const paypal = parse(read('api/_lib/paypal-order.js'));
   assert.deepEqual(stripe, {
     basic: { amount: 1000, points: 360, pack: false }, pro: { amount: 2000, points: 920, pack: false }, max: { amount: 10000, points: 3200, pack: false },
-    pack100: { amount: 499, points: 100, pack: true }, pack300: { amount: 1299, points: 300, pack: true }, pack700: { amount: 2499, points: 700, pack: true }, pack900: { amount: 3499, points: 900, pack: true },
+    pack100: { amount: 499, points: 100, pack: true }, pack300: { amount: 1299, points: 300, pack: true }, pack700: { amount: 2499, points: 700, pack: true }, pack900: { amount: 3499, points: 1050, pack: true }, // v-fair-video: ١٬٠٥٠ بالسعر نفسه
   });
   assert.deepEqual(Object.keys(paypal), Object.keys(stripe));
   for (const k of Object.keys(stripe)) { assert.equal(paypal[k].points, stripe[k].points, k); assert.equal(Math.round(paypal[k].amount * 100), stripe[k].amount, k + ' المبلغ'); assert.equal(paypal[k].pack, stripe[k].pack, k); }
@@ -258,7 +259,8 @@ test('٨. الباقات ٣٦٠/٩٢٠/٣٬٢٠٠ متطابقة في Stripe وP
   assert.match(ccs, /params\.append\('mode', recurring \? 'subscription' : 'payment'\);/);
   assert.match(ccs, /if \(recurring\) params\.append\('line_items\[0\]\[price_data\]\[recurring\]\[interval\]', 'month'\);/);
   const pp = read('api/_lib/paypal-order.js');
-  assert.match(pp, /if \(!PLANS\[matchedPlan\]\.pack\) \{ user\.plan = matchedPlan; user\.planUpdatedAt = Date\.now\(\); \}/);
+  // v-paypal-honest: PayPal يشحن بـgrantPlanToUser نفسها (الرزمة لا تمسّ الباقة هناك — مُختبَر أعلاه في ccs).
+  assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id\)/);
   // العميل: الأزرار الأربعة تفتح نافذة الدفع بنفس الأسعار المعروضة
   const a6 = read('js/app-06-checkout.js');
   assert.match(a6, /const CHECKOUT_PLAN_AMOUNTS = \{ basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499(, img_basic: 1021[^}]*)? \};/); // v-media-plans: اشتراكات الصور/الفيديو بعد الرزم
@@ -332,14 +334,14 @@ test('١٠. منتقي المزوّد: يظهر للمالك وحده (v-provide
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=690'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=691'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 
 test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا اسم موديل في وصف النقاط', () => {
   const val = (src, key) => [...src.matchAll(new RegExp('(?:^|[\\s,{])' + key + '\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')', 'g'))].map((m) => m[1]);
   const files = ['js/app-03-i18n-data.js'].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((l) => 'i18n/' + l + '.js'));
-  const expect = { planFreeFeats: [/20/, /4/, /3/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/, /15/, /1/], planProFeats: [/100/, /61/, /40/, /2/], planMaxFeats: [/250/, /213/, /150/, /3/], plFreeMsgs: [/20/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/1|واحد/], plProMedia: [/40/, /2/], plMaxMedia: [/150/, /3/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /275/] };
+  const expect = { planFreeFeats: [/20/, /4/, /3/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/, /15/, /1/], planProFeats: [/100/, /61/, /40/, /2/], planMaxFeats: [/250/, /213/, /150/, /3/], plFreeMsgs: [/20/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/1|واحد/], plProMedia: [/40/, /2/], plMaxMedia: [/150/, /3/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /175/, /120/] }; // v-fair-video
   for (const f of files) {
     const src = read(f);
     const n = f.startsWith('i18n/') ? 1 : 2;
@@ -351,10 +353,10 @@ test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا �
     }
   }
   const ps = read('js/partials-settings.js');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'صورة إبداعية: 35', 'فيديو: 55', 'فيديو سينمائي: 275']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'صورة إبداعية: 35', 'فيديو: 55', 'فيديو بالصوت: 175', 'فيديو سينمائي: 120']) assert.ok(ps.includes(s), 'partials-settings: ' + s); // v-fair-video
   for (const s of ['<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '10 رسائل يوميًا', 'احترافية يوميًا', 'Veo 3']) assert.ok(!ps.includes(s), 'partials-settings stale: ' + s);
   const ph = read('pricing.html');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '<div class="val">35</div>', '<div class="val">55</div>', '<div class="val">275</div>', '<th>300 نقطة</th>', 'loc(12.99,x)']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '<div class="val">35</div>', '<div class="val">55</div>', '<div class="val">175</div>', '<div class="val">120</div>', '<th>300 نقطة</th>', 'loc(12.99,x)']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
   for (const s of ['<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '10 رسائل يوميًا', '<div class="val">60</div>', '<div class="val">400</div>']) assert.ok(!ph.includes(s), 'pricing.html stale: ' + s);
   assert.ok(read('js/app.bundle.js').includes('function applyPlanGate(d){'), 'الحزمة مبنيّة');
 });

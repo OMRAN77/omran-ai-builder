@@ -26,6 +26,8 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
 const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211 }; // v-media-plans + v-maha-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
 const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
+// v-fair-video: نقاط كلّ رزمة كما يمنحها الخادم — مفتاح pack900 يمنح ١٬٠٥٠ (الاسم من المفتاح كان سيقول ٩٠٠).
+const PACK_POINTS = { pack100: 100, pack300: 300, pack700: 700, pack900: 1050 };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
 // money on its own.
@@ -195,7 +197,7 @@ function openCheckout(plan){
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
   const __mp = /^(img|vid|maha)_(basic|pro|max)$/.exec(String(plan));
   if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
-  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (Number(PACK_POINTS[plan] || String(plan).slice(4)).toLocaleString('en-US') + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually
@@ -391,6 +393,18 @@ function clickGooglePay(){
 window.clickGooglePay = clickGooglePay;
 
 // ===== PayPal =====
+// v-paypal-honest: إعادة شحن طلب مكتمل لم يُشحن — 'ok' شُحن (أو سبق شحنه)، 'stop' لا فائدة من الإعادة، 'retry' عطل عابر.
+async function paypalClaim(orderId){
+  const token = authGet('aiapp_auth_token');
+  if(!orderId || !token) return 'retry';
+  try{
+    const r = await fetch('/api/account?action=paypal-order', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'claim', orderId, token }) });
+    const d = await r.json().catch(() => ({}));
+    if(r.ok && d.credited === true) return 'ok';
+    if(r.status === 404 || r.status === 409 || (r.ok && /^(not_owner|no_plan|account)$/.test(String(d.reason || '')))) return 'stop';
+  }catch(e){ __swallow(e, 'checkout:pp-claim'); }
+  return 'retry';
+}
 async function loadPaypalButtons(){
   const container = document.getElementById('paypalButtonContainer');
   const fallbackBtn = document.getElementById('paypalFallbackBtn');
@@ -434,14 +448,26 @@ async function loadPaypalButtons(){
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
           });
-          const capData = await cap.json();
-          if (cap.ok && (capData.status === 'COMPLETED' || capData.status === 'APPROVED')) {
-            if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
-            if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
-            setTimeout(closeCheckout, 2500);
+          const capData = await cap.json().catch(() => ({}));
+          if (cap.ok && capData.status === 'COMPLETED') {
+            /* v-paypal-honest: «تمّ» كانت تظهر بحالة الدفع وحدها ولو فشل الشحن بعد السحب. الآن بالشحن نفسه، ومحاولات
+               إعادة على الخادم (claim آمن التكرار)، وإلّا رسالة صادقة ويبقى الطلب معلّقًا يُستكمل عند العودة للتطبيق. */
+            let credited = capData.credited === true;
+            for (let i = 0; !credited && i < 3; i++) {
+              await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+              credited = await paypalClaim(data.orderID) === 'ok';
+            }
+            if (credited) {
+              if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
+              if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
+              setTimeout(closeCheckout, 2500);
+            } else {
+              try { localStorage.setItem('aiapp_pp_pending', data.orderID + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pp-pending'); }
+              if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutPaidPending'); }
+            }
           } else if (statusMsg) {
             statusMsg.style.color = '';
-            statusMsg.textContent = t('checkoutError');
+            statusMsg.textContent = capData.error || t('checkoutError');
           }
         },
         onError: () => {
@@ -537,10 +563,28 @@ window.startPaypalCheckout = startPaypalCheckout;
     } catch(e){ __swallow(e, 'checkout:claim'); }
     busy = false;
   }
-  window.addEventListener('focus', claim);
-  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
+  // v-paypal-honest: طلب PayPal سُحب مبلغه ولم يُشحن — يُعاد شحنه عند كلّ عودة للتطبيق حتّى أسبوع.
+  let ppBusy = false;
+  async function claimPaypal(){
+    let raw = null;
+    try { raw = localStorage.getItem('aiapp_pp_pending'); } catch(e){ return; }
+    if(!raw || ppBusy) return;
+    const i = raw.lastIndexOf(':');
+    const id = raw.slice(0, i), ts = Number(raw.slice(i + 1) || 0);
+    const drop = () => { try { localStorage.removeItem('aiapp_pp_pending'); } catch(e){ __swallow(e, 'checkout:pp-clear'); } };
+    if(!id || (Date.now() - ts) > 7 * 86400000){ drop(); return; }
+    ppBusy = true;
+    const res = await paypalClaim(id);
+    ppBusy = false;
+    if(res === 'retry') return;
+    drop();
+    if(res === 'ok'){ alert(t('checkoutSuccessMsg')); if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }
+  }
+  window.addEventListener('focus', () => { claim(); claimPaypal(); });
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ claim(); claimPaypal(); } });
   const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 5000);
   claim();
+  claimPaypal();
 })();
 const btnExportProjectsEl = $('#btnExportProjects');
 if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;

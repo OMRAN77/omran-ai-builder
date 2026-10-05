@@ -229,7 +229,7 @@ test('٨. الوصلات: الحلقة تمرّر الأحداث وتحفظ ال
   const r4 = read('js/app-04-i18n-state.js');
   const hook = r4.indexOf('window.omranAgentLog.render(m._agParts)');
   assert.ok(hook > 0 && hook < r4.indexOf('div.appendChild(textDiv);', hook), 'السجلّ قبل نصّ الردّ');
-  assert.ok(r4.includes("sc.src = 'i18n/' + lg + '.js?v=720';"));
+  assert.ok(r4.includes("sc.src = 'i18n/' + lg + '.js?v=721';"));
   const ar = read('js/app-03-i18n-data.js');
   assert.equal((ar.match(/agThought: '[^']+', agExplored: '[^']+\{n\}[^']*', agNoOutput: '[^']+'/g) || []).length, 2, 'العربيّة والإنجليزيّة');
   for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'id', 'fil', 'ml']) {

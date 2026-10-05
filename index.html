@@ -634,6 +634,8 @@ html.oiOn body{overflow:hidden}
    لا تسمح باقته باختيار المزوّد (المجّانيّ/الضيف/Plus/Pro) — الخادم يوجّههم بجدول الباقة. الفئة plan-locked
    تضعها applyPlanGate (app-05) من نتيجة usage-status أو رصيد النقاط. الرجوع: احذف الكتلة. */
 html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }
+/* v-gold-badge-plan: شارة Pro الذهبيّة بجانب الاسم في رأس الإعدادات (Pro وMax) — تضعها applyPlanGate. الرجوع: احذف السطر. */
+html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:inline-block; margin-inline-start:6px; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:.4px; line-height:16px; color:#1a1300; background:linear-gradient(90deg,#f1d878,#d4af37); box-shadow:0 0 0 1px rgba(212,175,55,.45); vertical-align:middle; }
 </style>
 </head>
 <body>
@@ -998,12 +1000,12 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script defer src="/js/partials-settings.js?v=690"></script>
+<script defer src="/js/partials-settings.js?v=691"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-8"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=d62b283d"></script>
+    <script defer src="/js/app.bundle.js?v=14bc26ee"></script>
     <script defer src="/js/modes.js?v=m041026b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

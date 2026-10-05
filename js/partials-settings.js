@@ -489,7 +489,7 @@
       <div class="pprice"><span class="pnum" data-usd="20">20</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>920</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">100 رسالة يوميًا</li><li data-i18n="plProVoice">حتّى 61 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">حتّى 40 صورة · 2 فيديو</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">أولوية في السرعة · شارة ذهبية</li></ul>
+      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">100 رسالة يوميًا</li><li data-i18n="plProVoice">حتّى 61 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">حتّى 40 صورة · 2 فيديو</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">شارة ذهبية</li></ul>
       <button type="button" class="pbtn primary" onclick="openCheckout('pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
@@ -525,7 +525,7 @@
       <div class="pname" data-i18n="mediaImgName">صور</div>
       <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>74</b> <span data-i18n="mediaImgPlain">صورة</span></li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mediaNoChatVideo">بلا محادثة ولا فيديو</li></ul>
+      <ul><li><b>122</b> <span data-i18n="mediaImgPlain">صورة</span></li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mediaNoChatVideo">بلا محادثة ولا فيديو</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('img_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
@@ -545,14 +545,14 @@
       <div class="pname" data-i18n="mediaVidName">فيديو</div>
       <div class="pprice"><span class="pnum" data-usd="10.21">10.21</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>7</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>2</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>1</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
+      <ul><li><b>11</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>4</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>2</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('vid_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
       <div class="pname" data-i18n="mediaVidName">فيديو</div>
       <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>9</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>3</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>2</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
+      <ul><li><b>23</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>8</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>5</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('vid_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
@@ -580,7 +580,7 @@
       <div class="pname" data-i18n="mahaPlanName">مها</div>
       <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>75</b> <span data-i18n="mahaMinPlain">دقيقة مكالمة</span></li><li data-i18n="mahaCapNote">حتّى 10 دقائق للمكالمة الواحدة</li><li class="off" data-i18n="mahaNoChat">بلا محادثة ولا صور ولا فيديو</li></ul>
+      <ul><li><b>92</b> <span data-i18n="mahaMinPlain">دقيقة مكالمة</span></li><li data-i18n="mahaCapNote">حتّى 10 دقائق للمكالمة الواحدة</li><li class="off" data-i18n="mahaNoChat">بلا محادثة ولا صور ولا فيديو</li></ul>
       <button type="button" class="pbtn primary" onclick="openCheckout('maha_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
@@ -594,12 +594,12 @@
   </div>
   <div class="priceTab" data-tab="pts" style="display:none;">
     <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingPointsTitle">باقات النقاط</div>
-    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو سينمائي: 275</div>
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو بالصوت: 175 • فيديو سينمائي: 120</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(100)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">100</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="4.99">4.99</span> <span class="cursym">$</span></span></button>
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(300)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">300</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="12.99">12.99</span> <span class="cursym">$</span></span></button>
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(700)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">700</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="24.99">24.99</span> <span class="cursym">$</span></span></button>
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">900</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="34.99">34.99</span> <span class="cursym">$</span></span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">1,050</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="34.99">34.99</span> <span class="cursym">$</span></span></button>
     </div>
   </div>
   
@@ -757,6 +757,9 @@
         <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🩺 افحص الآن</button>
         <button type="button" id="adminRedisUsageBtn" onclick="redisUsageCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">💾 ما يملأ القاعدة</button>
         <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🧹 مسح سجل الأخطاء</button>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button type="button" id="adminCostsBtn" onclick="subscriberCostsCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">💵 تكلفة المشتركين هذا الشهر</button>
       </div>
       <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "افحص الآن" لتشغيل الفحص...</div>
     </div>

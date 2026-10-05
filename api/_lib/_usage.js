@@ -143,7 +143,9 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
     // Tally key includes today's date, so yesterday's marks simply stop
     // counting (no cleanup needed) and the limit naturally resets at UTC
     // midnight.
-    const bucketKey = (chatBucket && !tier.subscriber) ? 'chat' : providerKey;
+    // v-model-lock (فحص الاشتراكات ٥ أكتوبر): والمشترك في سلّة باقته الواحدة 'plan' — نفس سلّة chat.js — بدل سلّة لكلّ
+    // مزوّد كانت تضاعف «٥٠ رسالة يوميًّا» بعدد الروابط المباشرة.
+    const bucketKey = chatBucket ? (tier.subscriber ? 'plan' : 'chat') : providerKey;
     const key = username + '_' + todayStr() + '_' + bucketKey;
     const count = await countTally(key);
     if (count >= limit) {
@@ -305,4 +307,19 @@ async function bumpCount(username, bucket) {
   await addTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
 }
 
-module.exports = { todayCount, bumpCount, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp };
+// v-rename-move: تغيير الاسم لا يصفّر حدّ اليوم — حصص اليوم تنتقل مع الحساب (طلبان مجمّعان، أفضل جهد).
+const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'maha-realtime', 'agent', 'claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'gemini', 'groq', 'mistral', 'openrouter', 'stt', 'general'];
+async function moveTodayTallies(oldUser, newUser) {
+  if (!oldUser || !newUser) return;
+  try {
+    const { kvPipeline } = require('./kv.js');
+    const d = todayStr();
+    const pairs = MOVE_BUCKETS.map((b) => [tallyKey(oldUser + '_' + d + '_' + b), tallyKey(newUser + '_' + d + '_' + b)]);
+    const vals = await kvPipeline(pairs.map((p) => ['GET', p[0]]));
+    const cmds = [];
+    vals.forEach((v, i) => { const n = parseInt(v, 10); if (n > 0) cmds.push(['INCRBY', pairs[i][1], String(n)], ['EXPIRE', pairs[i][1], '172800']); });
+    if (cmds.length) await kvPipeline(cmds);
+  } catch (e) { console.warn('[usage] rename tallies not moved:', e && e.message); }
+}
+
+module.exports = { todayCount, bumpCount, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp, moveTodayTallies };

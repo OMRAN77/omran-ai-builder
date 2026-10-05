@@ -64,8 +64,10 @@ module.exports = async (req, res) => {
     // نموذج الرؤية الذي طلبه العميل وحده. المرشّحون نصّيّون فيرفضون المصفوفة بـ400 يدفن خطأ الرؤية الحقيقيّ (404 النموذج
     // أُوقف) — فلا يهبط العميل إلى «وصف الصورة ثمّ النصّيّ» ويسقط الاحتياط كلّه.
     const imageTurn = Array.isArray(messages) && messages.some((x) => x && Array.isArray(x.content));
-    const tried = fc.modelsToTry(spec, typeof model === 'string' ? model : '');
-    if (imageTurn && typeof model === 'string' && tried[0] === model.trim()) tried.length = 1;
+    const mg = require('./_model-guard.js'); // v-model-lock: لغير المالك وVIP نموذج من قائمة Groq المعروفة وحدها
+    const reqModel = mg.guardModel('groq', typeof model === 'string' ? model : '', mg.isPrivileged(usage));
+    const tried = fc.modelsToTry(spec, reqModel);
+    if (imageTurn && reqModel && tried[0] === reqModel) tried.length = 1;
     for (const m of tried) {
       const r = await callGroq(m);
       if (r.ok) { upstream = r; fc.rememberWorking('groq', m); break; }

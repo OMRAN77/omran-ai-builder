@@ -226,7 +226,7 @@ test('client wiring: tier flows from the stream to the stored message to the bad
 test('points: image 20 (4K 30), maha minute 15; refunds return the charged amount', () => {
   const { COSTS } = require('../api/_lib/points.js');
   assert.equal(COSTS.image, 20); assert.equal(COSTS.image_4k, 30); assert.equal(COSTS.maha_minute, 15);
-  assert.equal(COSTS.runway_video, 55); assert.equal(COSTS.veo_video, 275); assert.equal(COSTS.premium_claude, 20); // v-plan-routing
+  assert.equal(COSTS.runway_video, 55); assert.equal(COSTS.veo_video, 175); assert.equal(COSTS.omni_video, 120); assert.equal(COSTS.premium_claude, 20); // v-plan-routing · v-fair-video (175/120)
   const mi = read('api/_lib/maha-image.js');
   assert.match(mi, /const __imgCost = __ask4K \? pointsLib\.COSTS\.image_4k : pointsLib\.COSTS\.image;/);
   assert.match(mi, /mahaImgChargedAmount = __imgCost;/);
@@ -258,8 +258,10 @@ test('plans: 360 / 920 / 3,200 (v-plan-routing) — identical in Stripe and PayP
 });
 
 test('paypal capture is idempotent per order id', () => {
+  // v-paypal-honest: الالتقاط يشحن عبر grantPlanToUser نفسها (حجز ذرّيّ لرقم الطلب) — السلوك مُختبَر في pay-once.
   const pp = read('api/_lib/paypal-order.js');
-  assert.match(pp, /if \(user && !user\.deleted && user\.lastPaypalOrderId === data\.id\) \{[\s\S]*?pointsAdded = 0;[\s\S]*?\} else if \(user && !user\.deleted\) \{\n[^\n]*\n\s+if \(!PLANS\[matchedPlan\]\.pack\) \{ user\.plan = matchedPlan;/);
+  assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id\)/);
+  assert.match(read('api/_lib/create-checkout-session.js'), /kvSetIfAbsent\(claim, username, CLAIM_TTL_SEC\)/);
 });
 
 test('completeJson: retired preferred name ignored, 404 tries the next candidate, other errors pass through', async () => {
@@ -311,7 +313,7 @@ test('chat.js: king unavailable before the first character → SILENT server-sid
   // v-silent-fallback (طلب المالك «يبدّل بدون ما أحد يعرف»): لا بادئة مرئيّة في الردّ.
   assert.ok(!/فهذا ردّ من المحرّك الاحتياطي بلا أدوات/.test(chat), 'يجب ألّا تظهر بادئة التبديل للمستخدم');
   const groq = read('api/_lib/groq.js');
-  assert.match(groq, /const tried = fc\.modelsToTry\(spec, typeof model === 'string' \? model : ''\);/);
+  assert.match(groq, /const tried = fc\.modelsToTry\(spec, reqModel\);/); // v-model-lock: الاسم بعد الحارس
   assert.match(groq, /if \(!fc\.isModelErrorStatus\(r\.status, txt\)\) break;/);
 });
 

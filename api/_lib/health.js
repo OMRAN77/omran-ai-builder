@@ -99,6 +99,16 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // v-cost-meter: «كم يكلّفني كلّ مشترك؟» — تقرير الشهر لكلّ باقة وأعلى الحسابات (للمالك وحده، isOwner أعلاه). ...&costs=1[&month=YYYY-MM]
+  if (req.query && req.query.costs === '1') {
+    try {
+      res.status(200).json({ ok: true, costs: await require('./cost-meter.js').monthReport(req.query.month) });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'costs_failed', message: String((e && e.message) || e).slice(0, 200) });
+    }
+    return;
+  }
+
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,
     Gemini: !!process.env.GEMINI_API_KEY,

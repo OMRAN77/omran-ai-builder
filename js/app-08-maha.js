@@ -2078,7 +2078,7 @@ function mahaStartPointsMeter(budget){
     const cost = Number(budget.cost) || 15;
     let mahaMin = Math.max(0, Math.floor(Number(budget.mahaMin) || 0));
     const capMin = Math.max(0, Math.floor(Number(budget.capMin) || 0));
-    let callMin = 0;
+    let callMin = budget.prepaid === 'media' ? 1 : 0; // v-maha-server-bill: دقيقة الافتتاح دفعها الخادم من رصيد مها
     const show = ()=>{ val.textContent = mahaMin > 0 ? ('🎙️ ' + mahaMin + ' ' + t('mahaMinUnit')) : String(pts); };
     if(trial) val.textContent = '🎁 1:00'; else show();
     el.style.display = 'flex';
@@ -2099,17 +2099,13 @@ function mahaStartPointsMeter(budget){
     mahaPointsTimer = setInterval(async ()=>{
       if(!mahaCallActive){ mahaStopPointsMeter(); return; }
       try{
+        /* v-maha-server-bill: الدقيقة الأولى (أو التجربة) دُفعت في الخادم عند فتح الجلسة، والتجربة عُلِّمت هناك. كلّ نبضة
+           هنا تخصم الدقيقة التي تبدأ الآن (لا التي انتهت) — فالمكالمة تُحسب بالدقيقة المبدوءة، ولا تمرّ أقلّ من دقيقة مجّانًا. */
         if(trial){
           trial = false;
           if(isGuest){ endGently(); return; } // ضيف: دقيقة تجريبية وحدة فقط
-          try{
-            await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ action:'maha-trial-used', token: authGet('aiapp_auth_token') }) });
-          }catch(e){ __swallow(e, "auth:app-08-maha#24"); }
-          if(pts < cost && mahaMin < 1){ endGently(); return; }
-          show();
-          return;
         }
+        if(capMin && callMin >= capMin){ endGently(true); return; } // حدّ مكالمة مشترك مها: لا تُفتح دقيقة بعده
         const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ action:'consume', amount:cost, reason:'maha_minute', token: authGet('aiapp_auth_token') }) });
         const d = await r.json().catch(()=>({}));
@@ -2118,7 +2114,6 @@ function mahaStartPointsMeter(budget){
             mahaMin = Math.floor((Number(d.mediaLeft) || 0) / 55);
             callMin++;
             show();
-            if(capMin && callMin >= capMin){ endGently(true); return; }
           } else {
             if(mahaMin > 0){ try{ settingsToast(t('mahaToPoints')); }catch(e){ __swallow(e, "points:app-08-maha#topts"); } }
             mahaMin = 0;

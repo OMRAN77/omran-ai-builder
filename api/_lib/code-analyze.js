@@ -689,7 +689,7 @@ module.exports = async function handler(req, res) {
       tier = await tierLib.resolveTier(who);
     } catch (e) { tier = null; }
     const subscriber = !!(tier && tier.subscriber);
-    const usage = await checkAndConsume(token, guestId, subscriber ? 'claude' : 'chat', clientIp(req), { tier: tier || undefined });
+    const usage = await checkAndConsume(token, guestId, subscriber ? 'plan' : 'chat', clientIp(req), { tier: tier || undefined }); // v-model-lock: سلّة الباقة الواحدة
     if (!usage.allowed) {
       if (usage.reason === 'auth') send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
       else if (usage.tier === 'guest' || usage.tier === 'free') send({ tier: usage.tier + '-limit', error: usage.message || (usage.tier === 'guest' ? tierLib.FREE_TEXT.guestLimit : tierLib.FREE_TEXT.freeLimit) });
