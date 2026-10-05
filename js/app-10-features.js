@@ -877,9 +877,129 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       fr.readAsDataURL(file);
     });
   }
+  /* v-pdf-docs (شكوى عمران: «فقط صورة أقدر أحمّل»): الزرّ كان يقبل الصور وحدها (accept=image/* يفتح
+     المعرض فقط في أندرويد). الآن: صور + Word (.docx) + نصوص (txt/md/csv/log/json…) — كلّها داخل
+     المتصفّح بلا خادم ولا رصيد. «PDF» و«.doc» القديم وExcel/PowerPoint تُتخطّى برسالة تسمّيها. */
+  const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  function pdfKindOf(f){
+    const n = String((f && f.name) || ''), ty = String((f && f.type) || '');
+    if(ty.indexOf('image/') === 0 || /\.(jpe?g|png|gif|webp|bmp|hei[cf]|avif)$/i.test(n)) return 'image';
+    if(ty === DOCX_MIME || /\.docx$/i.test(n)) return 'docx';
+    if(/\.(html?|rtf|xml)$/i.test(n) || ty === 'text/html' || ty === 'text/rtf') return 'other';
+    if(ty.indexOf('text/') === 0 || /\.(txt|md|markdown|csv|tsv|log|json|ini|ya?ml)$/i.test(n)) return 'text';
+    return 'other';
+  }
+  function fmtPdf(key, vars){
+    return String(t(key)).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined) ? vars[k] : m);
+  }
+  /* «نوت باد» العربيّ القديم يحفظ بترميز ويندوز ١٢٥٦ لا UTF-8 — بلا هذا يخرج النصّ رموزًا */
+  async function readTextFile(file){
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if(bytes[0] === 0xFF && bytes[1] === 0xFE) return new TextDecoder('utf-16le').decode(bytes);
+    if(bytes[0] === 0xFE && bytes[1] === 0xFF) return new TextDecoder('utf-16be').decode(bytes);
+    try{ return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+    catch(e){ __swallow(e, 'pdf:not-utf8'); }
+    try{ return new TextDecoder('windows-1256').decode(bytes); }
+    catch(e){ __swallow(e, 'pdf:no-1256'); return new TextDecoder('utf-8').decode(bytes); }
+  }
+  /* كلّ سطر كتلة: السطر لا يُقطع عند حافّة الصفحة، واتّجاهه يُكتشف من حروفه (عربيّ/إنجليزيّ) */
+  function textBlocks(text, title){
+    const lines = String(text || '').slice(0, 400000).replace(/\r\n?/g, '\n').split('\n').slice(0, 20000);
+    const out = [];
+    if(title) out.push({ html: '<div dir="auto" style="font-weight:700;font-size:18px;margin-bottom:10px;">' + msgEscapeHtml(title) + '</div>' });
+    lines.forEach((ln) => out.push({ html: '<div dir="auto" style="white-space:pre-wrap;word-break:break-word;">' + (ln.trim() ? msgEscapeHtml(ln.replace(/\t/g, '    ')) : '&nbsp;') + '</div>' }));
+    if(out.length) out[0].newpage = true;
+    return out;
+  }
+  /* mammoth يحوّل Word إلى HTML (عناوين/قوائم/جداول/صور)؛ نمرّره بقائمة بيضاء قبل أن يلمس الصفحة
+     فلا وسم ولا خاصّية (onerror/href/style) من ملفّ غريب تصل إلى DOM التطبيق */
+  async function docxBlocks(file, title){
+    await omranLoadMammoth();
+    const res = await window.mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+    const doc = new DOMParser().parseFromString('<!doctype html><body>' + res.value, 'text/html');
+    doc.querySelectorAll('script,style,iframe,object,embed,link,meta,form,svg,audio,video').forEach((n) => n.remove());
+    doc.body.querySelectorAll('*').forEach((el) => {
+      Array.from(el.attributes).forEach((a) => {
+        const n = a.name.toLowerCase();
+        const ok = n === 'colspan' || n === 'rowspan' || n === 'alt' || (n === 'src' && el.tagName === 'IMG' && /^data:image\//i.test(a.value));
+        if(!ok) el.removeAttribute(a.name);
+      });
+      if(/^(P|H[1-6]|LI|TD|TH|UL|OL)$/.test(el.tagName)) el.setAttribute('dir', 'auto');
+    });
+    const out = [];
+    if(title) out.push({ html: '<div dir="auto" style="font-weight:700;font-size:18px;margin-bottom:10px;">' + msgEscapeHtml(title) + '</div>' });
+    Array.from(doc.body.children).forEach((el) => {
+      const tag = el.tagName;
+      if(tag === 'UL' || tag === 'OL'){
+        /* القائمة الطويلة تُوزَّع بنودها على الصفحات؛ start يحفظ الترقيم */
+        Array.from(el.children).forEach((li, k) => out.push({ html: '<' + tag.toLowerCase() + ' dir="auto"' + (tag === 'OL' ? ' start="' + (k + 1) + '"' : '') + '>' + li.outerHTML + '</' + tag.toLowerCase() + '>' }));
+      } else out.push({ html: el.outerHTML });
+    });
+    if(!out.length || (title && out.length === 1)) throw new Error('empty-doc');
+    out[0].newpage = true;
+    return out;
+  }
+  async function imageBlock(file){
+    const dec = await readImage(await omranNormalizeImageFile(file));
+    const img = dec.img;
+    const cv = document.createElement('canvas');
+    const sc = Math.min(1, 1600 / Math.max(img.width, img.height));
+    cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+    const cx = cv.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+    cx.drawImage(img, 0, 0, cv.width, cv.height);
+    return [{ html: '<img alt="" src="' + cv.toDataURL('image/jpeg', 0.82) + '">', newpage: true, alone: true }];
+  }
+  /* ملفّات مختلطة أو وثائق: تُرتَّب كما اختارها المستخدم في ملفّ PDF واحد، والتالف يُتخطّى ويُسمّى */
+  async function runPdfDocs(all){
+    const failed = [], skipped = [];
+    let added = 0, outcome = null;
+    btn.disabled = true;
+    try{
+      const blocks = [];
+      const multi = all.length > 1;
+      for(const f of all){
+        const kind = pdfKindOf(f);
+        if(kind === 'other'){ skipped.push(f.name || f.type || '?'); continue; }
+        try{
+          const part = kind === 'image' ? await imageBlock(f)
+            : kind === 'docx' ? await docxBlocks(f, multi ? f.name : '')
+            : textBlocks(await readTextFile(f), multi ? f.name : '');
+          if(part.length){ part.forEach((b) => blocks.push(b)); added++; } /* لا spread: آلاف الكتل تتجاوز حدّ وسائط الدالّة */
+        }catch(e){
+          failed.push((f.name || '?') + ' (' + String((e && e.message) || e).slice(0, 60) + ')');
+          __swallow(e, 'pdf:doc-read');
+        }
+      }
+      if(added){
+        const only = all.length === 1 ? String(all[0].name || '').replace(/\.[^.]*$/, '').replace(/[\\/:*?"<>|]+/g, '_').trim() : '';
+        outcome = await omranExportPagedPdfFile(blocks, { fileName: (only || 'omran-docs') + '.pdf' });
+      }
+    }catch(err){
+      try{
+        fetch('/api/system?action=client-errors', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            message: 'DOC2PDF FAIL: ' + String((err && err.message) || err).slice(0,120)
+              + ' — types: ' + all.map(f => f.type || f.name || '?').slice(0,5).join(','),
+            source: 'doc-to-pdf', url: location.href, ua: navigator.userAgent
+          }), keepalive: true
+        }).catch(function(){ /* guard-ok: الإبلاغ لا يعطل شيئًا */ });
+      }catch(e2){ __swallow(e2, 'doc2pdf:report'); }
+      failed.push(String((err && err.message) || err).slice(0, 120));
+    }
+    btn.disabled = false;
+    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    const notes = [];
+    if(outcome && outcome.truncated) notes.push(fmtPdf('pdfDocTruncated', { n: outcome.pages }));
+    if(skipped.length) notes.push(fmtPdf('pdfDocSkipped', { n: skipped.length, names: skipped.slice(0, 3).join('، ') }));
+    if(failed.length) notes.push(fmtPdf('pdfDocFail', { why: failed.slice(0, 3).join(' | ') }));
+    if(notes.length) alert(notes.join('\n'));
+  }
   let __pdfPickHandled = false;
   async function runPdfFiles(rawFiles){
-    const files = Array.from(rawFiles || []).filter(f => f.type.indexOf('image/') === 0);
+    const all = Array.from(rawFiles || []);
+    if(all.some(f => pdfKindOf(f) !== 'image')) return runPdfDocs(all);
+    const files = all;
     /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
        مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
        (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */

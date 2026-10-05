@@ -889,7 +889,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
               <button class="btn" id="btnFeedback" type="button" title="رأيك يهمنا" data-i18n-title="fbMenuLabel"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg> <span class="btnLabel" data-i18n="fbMenuLabel">رأيك يهمنا</span></button>
               <button class="btn" id="btnChatToPdf" type="button" title="تحويل إلى PDF" data-i18n-title="chatToPdfLabel" style="display:none !important;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 18 15 15"></polyline></svg> <span class="btnLabel" data-i18n="chatToPdfLabel">تحويل إلى PDF</span></button>
               <button class="btn" id="btnDeleteChat" type="button" title="حذف المحادثة" data-i18n-title="deleteChatLabel" style="color:#e66;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> <span class="btnLabel" data-i18n="deleteChatLabel">حذف المحادثة</span></button>
-              <input type="file" id="imgToPdfInput" accept="image/*" multiple style="display:none;">
+              <input type="file" id="imgToPdfInput" multiple style="display:none;"> <!-- v-pdf-docs: بلا accept — image/* كان يفتح المعرض وحده في أندرويد ويخفي الملفّات -->
               <!-- 📸 «ورّني وأبنيه»: capture="environment" يفتح الكاميرا الخلفية مباشرة على الجوال -->
               <input type="file" id="snapInput" accept="image/*" capture="environment" multiple style="display:none;">
             </div>
@@ -1003,7 +1003,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <script src="/js/selfdiag.js?v=hw-twa-8"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=216916e1"></script>
+    <script defer src="/js/app.bundle.js?v=d62b283d"></script>
     <script defer src="/js/modes.js?v=m041026b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

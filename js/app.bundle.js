@@ -3810,6 +3810,10 @@ const I18N = {
     portraitBtnTitle: 'أنماط الصور',
     quickTemplatesTitle: 'اقتراحات',
     imgToPdfTitle: 'PDF',
+    pdfDocPage: "⏳ جاري تجهيز الصفحة {i} من {n}…",
+    pdfDocSkipped: "تخطّيت {n} ملفّ (صيغته غير مدعومة، أو هو PDF أصلًا): {names}. المدعوم: الصور وWord (docx) والنصوص (txt، md، csv…).",
+    pdfDocTruncated: "الوثيقة طويلة: حوّلت أوّل {n} صفحة فقط.",
+    pdfDocFail: "تعذّر تحويل الملفّ: {why}",
     previewToggleLabel: 'المتصفح',
     portraitStyleAnime: '🎬 أنيمي ياباني',
     portraitStyleCartoon: '🖼️ كارتون واقعي',
@@ -5152,6 +5156,10 @@ const I18N = {
     portraitBtnTitle: 'Portrait styles',
     quickTemplatesTitle: 'Suggestions',
     imgToPdfTitle: 'PDF',
+    pdfDocPage: "⏳ Preparing page {i} of {n}…",
+    pdfDocSkipped: "Skipped {n} file(s) (unsupported format, or already a PDF): {names}. Supported: images, Word (docx) and text files (txt, md, csv…).",
+    pdfDocTruncated: "The document is long: only the first {n} pages were converted.",
+    pdfDocFail: "Could not convert the file: {why}",
     previewToggleLabel: 'Browser',
     portraitStyleAnime: '🎬 Japanese Anime',
     portraitStyleCartoon: '🖼️ Semi-realistic Cartoon',
@@ -5584,7 +5592,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=719'; /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=720'; /* v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -9335,6 +9343,109 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
     throw err;
   } finally {
     holder.remove();
+    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
+  }
+}
+/* v-pdf-docs (شكوى عمران: «مااقدر احمل الملفات لتحويل PDF — فقط صورة»): زرّ «PDF» كان يقبل الصور
+   وحدها. الآن Word (.docx) والنصوص أيضًا، كلّها داخل المتصفّح بلا خادم ولا رصيد. المصدّر أعلاه يرسم
+   المحتوى كلّه في لوحة واحدة ثمّ يقصّها — فوثيقة من ١٠ صفحات تتجاوز حدّ لوحة آيفون (≈١٦ ميغابكسل)
+   وتخرج بيضاء، ويقطع السطر عند حافّة الصفحة. هنا: الكتل تُقاس ثمّ تُوزَّع على صفحات (لا كتلة تُقطع إلا
+   إن كانت أطول من صفحة)، وكلّ صفحة تُرسم بلوحتها الخاصّة — فلا سقف لطول الوثيقة إلا عدد الصفحات. */
+let __omranMammothLoading = null;
+function omranLoadMammoth(){
+  if(window.mammoth) return Promise.resolve();
+  if(__omranMammothLoading) return __omranMammothLoading;
+  __omranMammothLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/mammoth.browser.min.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranMammothLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranMammothLoading;
+}
+/* heights: ارتفاع كلّ كتلة (px)، pageH: ارتفاع محتوى الصفحة، breaks[i]: الكتلة i تبدأ صفحة جديدة.
+   الناتج: [{items:[فهارس الكتل]}] أو لكتلة أطول من صفحة شرائح [{items:[i], clipTop, clipH}]. */
+function omranPaginateBlocks(heights, pageH, breaks){
+  const pages = [];
+  let cur = null, used = 0;
+  heights.forEach((h0, i) => {
+    const h = Math.max(0, Number(h0) || 0);
+    if(h > pageH){
+      for(let top = 0; top < h; top += pageH) pages.push({ items: [i], clipTop: top, clipH: pageH });
+      cur = null; used = 0;
+      return;
+    }
+    if(!cur || (breaks && breaks[i]) || used + h > pageH){ cur = { items: [] }; pages.push(cur); used = 0; }
+    cur.items.push(i); used += h;
+  });
+  return pages;
+}
+async function omranExportPagedPdfFile(blocks, opts){
+  opts = opts || {};
+  const PW = 794, PH = 1123, PADV = 40, PADH = 44;
+  const contentH = PH - PADV * 2 - 6;
+  const maxPages = opts.maxPages || 80;
+  const css = '<style>p{margin:0 0 .6em}h1,h2,h3,h4,h5,h6{margin:.4em 0 .3em;line-height:1.5}h1{font-size:24px}h2{font-size:20px}h3{font-size:17px}ul,ol{margin:0 0 .6em;padding-inline-start:1.6em}table{border-collapse:collapse;width:100%;margin:0 0 .6em}td,th{border:1px solid #999;padding:3px 8px;vertical-align:top}img{max-width:100%;max-height:' + (contentH - 20) + 'px;display:block;margin:0 auto}</style>';
+  const mk = () => {
+    const h = document.createElement('div');
+    h.dir = opts.rtl === false ? 'ltr' : 'rtl';
+    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + PW + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+    h.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
+    return h;
+  };
+  const wrap = (html) => '<div style="display:flow-root">' + html + '</div>';
+  let pill = null;
+  try{
+    pill = document.createElement('div');
+    pill.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:2147483000;background:rgba(20,20,26,.96);color:#f3efe4;border:1px solid rgba(212,175,55,.45);border-radius:999px;padding:9px 16px;font-size:13.5px;font-weight:700;';
+    pill.textContent = '⏳ …';
+    document.body.appendChild(pill);
+  }catch(e){ pill = null; }
+  const measure = mk();
+  try{
+    await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
+    try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
+    /* القياس: كلّ كتلة في غلاف flow-root فلا تُهرَّب هوامشها خارج ارتفاعها، وعرضه كعرض صفحة الرسم */
+    measure.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
+    document.body.appendChild(measure);
+    await Promise.all(Array.from(measure.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
+    const heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+    measure.remove();
+    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone)));
+    let pages = omranPaginateBlocks(heights, contentH, breaks);
+    const total = pages.length;
+    if(!total) throw new Error('empty-doc');
+    if(total > maxPages) pages = pages.slice(0, maxPages);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    for(let k = 0; k < pages.length; k++){
+      if(pill) pill.textContent = String(t('pdfDocPage')).replace('{i}', k + 1).replace('{n}', pages.length);
+      await new Promise((r) => setTimeout(r, 0));
+      const pg = pages[k];
+      const inner = pg.items.map((i) => wrap(blocks[i].html)).join('');
+      const holder = mk();
+      holder.innerHTML = css + (pg.clipH ? '<div style="height:' + pg.clipH + 'px;overflow:hidden"><div style="margin-top:-' + pg.clipTop + 'px">' + inner + '</div></div>' : inner);
+      document.body.appendChild(holder);
+      let canvas;
+      try{
+        await Promise.all(Array.from(holder.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
+        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 1.3, style: { position: 'static', left: '0', top: '0' } });
+      } finally { holder.remove(); }
+      if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
+      if(k > 0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير */
+    }
+    await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-docs.pdf');
+    return { pages: pages.length, total, truncated: total > pages.length };
+  } catch(err){
+    try{
+      const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
+      if(errPill){ errPill.textContent = '❌ ' + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
+    }catch(e){ /* guard-ok */ }
+    throw err;
+  } finally {
+    try{ measure.remove(); }catch(e){ /* guard-ok */ }
     try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
   }
 }
@@ -26786,9 +26897,129 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       fr.readAsDataURL(file);
     });
   }
+  /* v-pdf-docs (شكوى عمران: «فقط صورة أقدر أحمّل»): الزرّ كان يقبل الصور وحدها (accept=image/* يفتح
+     المعرض فقط في أندرويد). الآن: صور + Word (.docx) + نصوص (txt/md/csv/log/json…) — كلّها داخل
+     المتصفّح بلا خادم ولا رصيد. «PDF» و«.doc» القديم وExcel/PowerPoint تُتخطّى برسالة تسمّيها. */
+  const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  function pdfKindOf(f){
+    const n = String((f && f.name) || ''), ty = String((f && f.type) || '');
+    if(ty.indexOf('image/') === 0 || /\.(jpe?g|png|gif|webp|bmp|hei[cf]|avif)$/i.test(n)) return 'image';
+    if(ty === DOCX_MIME || /\.docx$/i.test(n)) return 'docx';
+    if(/\.(html?|rtf|xml)$/i.test(n) || ty === 'text/html' || ty === 'text/rtf') return 'other';
+    if(ty.indexOf('text/') === 0 || /\.(txt|md|markdown|csv|tsv|log|json|ini|ya?ml)$/i.test(n)) return 'text';
+    return 'other';
+  }
+  function fmtPdf(key, vars){
+    return String(t(key)).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined) ? vars[k] : m);
+  }
+  /* «نوت باد» العربيّ القديم يحفظ بترميز ويندوز ١٢٥٦ لا UTF-8 — بلا هذا يخرج النصّ رموزًا */
+  async function readTextFile(file){
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if(bytes[0] === 0xFF && bytes[1] === 0xFE) return new TextDecoder('utf-16le').decode(bytes);
+    if(bytes[0] === 0xFE && bytes[1] === 0xFF) return new TextDecoder('utf-16be').decode(bytes);
+    try{ return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+    catch(e){ __swallow(e, 'pdf:not-utf8'); }
+    try{ return new TextDecoder('windows-1256').decode(bytes); }
+    catch(e){ __swallow(e, 'pdf:no-1256'); return new TextDecoder('utf-8').decode(bytes); }
+  }
+  /* كلّ سطر كتلة: السطر لا يُقطع عند حافّة الصفحة، واتّجاهه يُكتشف من حروفه (عربيّ/إنجليزيّ) */
+  function textBlocks(text, title){
+    const lines = String(text || '').slice(0, 400000).replace(/\r\n?/g, '\n').split('\n').slice(0, 20000);
+    const out = [];
+    if(title) out.push({ html: '<div dir="auto" style="font-weight:700;font-size:18px;margin-bottom:10px;">' + msgEscapeHtml(title) + '</div>' });
+    lines.forEach((ln) => out.push({ html: '<div dir="auto" style="white-space:pre-wrap;word-break:break-word;">' + (ln.trim() ? msgEscapeHtml(ln.replace(/\t/g, '    ')) : '&nbsp;') + '</div>' }));
+    if(out.length) out[0].newpage = true;
+    return out;
+  }
+  /* mammoth يحوّل Word إلى HTML (عناوين/قوائم/جداول/صور)؛ نمرّره بقائمة بيضاء قبل أن يلمس الصفحة
+     فلا وسم ولا خاصّية (onerror/href/style) من ملفّ غريب تصل إلى DOM التطبيق */
+  async function docxBlocks(file, title){
+    await omranLoadMammoth();
+    const res = await window.mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+    const doc = new DOMParser().parseFromString('<!doctype html><body>' + res.value, 'text/html');
+    doc.querySelectorAll('script,style,iframe,object,embed,link,meta,form,svg,audio,video').forEach((n) => n.remove());
+    doc.body.querySelectorAll('*').forEach((el) => {
+      Array.from(el.attributes).forEach((a) => {
+        const n = a.name.toLowerCase();
+        const ok = n === 'colspan' || n === 'rowspan' || n === 'alt' || (n === 'src' && el.tagName === 'IMG' && /^data:image\//i.test(a.value));
+        if(!ok) el.removeAttribute(a.name);
+      });
+      if(/^(P|H[1-6]|LI|TD|TH|UL|OL)$/.test(el.tagName)) el.setAttribute('dir', 'auto');
+    });
+    const out = [];
+    if(title) out.push({ html: '<div dir="auto" style="font-weight:700;font-size:18px;margin-bottom:10px;">' + msgEscapeHtml(title) + '</div>' });
+    Array.from(doc.body.children).forEach((el) => {
+      const tag = el.tagName;
+      if(tag === 'UL' || tag === 'OL'){
+        /* القائمة الطويلة تُوزَّع بنودها على الصفحات؛ start يحفظ الترقيم */
+        Array.from(el.children).forEach((li, k) => out.push({ html: '<' + tag.toLowerCase() + ' dir="auto"' + (tag === 'OL' ? ' start="' + (k + 1) + '"' : '') + '>' + li.outerHTML + '</' + tag.toLowerCase() + '>' }));
+      } else out.push({ html: el.outerHTML });
+    });
+    if(!out.length || (title && out.length === 1)) throw new Error('empty-doc');
+    out[0].newpage = true;
+    return out;
+  }
+  async function imageBlock(file){
+    const dec = await readImage(await omranNormalizeImageFile(file));
+    const img = dec.img;
+    const cv = document.createElement('canvas');
+    const sc = Math.min(1, 1600 / Math.max(img.width, img.height));
+    cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+    const cx = cv.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+    cx.drawImage(img, 0, 0, cv.width, cv.height);
+    return [{ html: '<img alt="" src="' + cv.toDataURL('image/jpeg', 0.82) + '">', newpage: true, alone: true }];
+  }
+  /* ملفّات مختلطة أو وثائق: تُرتَّب كما اختارها المستخدم في ملفّ PDF واحد، والتالف يُتخطّى ويُسمّى */
+  async function runPdfDocs(all){
+    const failed = [], skipped = [];
+    let added = 0, outcome = null;
+    btn.disabled = true;
+    try{
+      const blocks = [];
+      const multi = all.length > 1;
+      for(const f of all){
+        const kind = pdfKindOf(f);
+        if(kind === 'other'){ skipped.push(f.name || f.type || '?'); continue; }
+        try{
+          const part = kind === 'image' ? await imageBlock(f)
+            : kind === 'docx' ? await docxBlocks(f, multi ? f.name : '')
+            : textBlocks(await readTextFile(f), multi ? f.name : '');
+          if(part.length){ part.forEach((b) => blocks.push(b)); added++; } /* لا spread: آلاف الكتل تتجاوز حدّ وسائط الدالّة */
+        }catch(e){
+          failed.push((f.name || '?') + ' (' + String((e && e.message) || e).slice(0, 60) + ')');
+          __swallow(e, 'pdf:doc-read');
+        }
+      }
+      if(added){
+        const only = all.length === 1 ? String(all[0].name || '').replace(/\.[^.]*$/, '').replace(/[\\/:*?"<>|]+/g, '_').trim() : '';
+        outcome = await omranExportPagedPdfFile(blocks, { fileName: (only || 'omran-docs') + '.pdf' });
+      }
+    }catch(err){
+      try{
+        fetch('/api/system?action=client-errors', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            message: 'DOC2PDF FAIL: ' + String((err && err.message) || err).slice(0,120)
+              + ' — types: ' + all.map(f => f.type || f.name || '?').slice(0,5).join(','),
+            source: 'doc-to-pdf', url: location.href, ua: navigator.userAgent
+          }), keepalive: true
+        }).catch(function(){ /* guard-ok: الإبلاغ لا يعطل شيئًا */ });
+      }catch(e2){ __swallow(e2, 'doc2pdf:report'); }
+      failed.push(String((err && err.message) || err).slice(0, 120));
+    }
+    btn.disabled = false;
+    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    const notes = [];
+    if(outcome && outcome.truncated) notes.push(fmtPdf('pdfDocTruncated', { n: outcome.pages }));
+    if(skipped.length) notes.push(fmtPdf('pdfDocSkipped', { n: skipped.length, names: skipped.slice(0, 3).join('، ') }));
+    if(failed.length) notes.push(fmtPdf('pdfDocFail', { why: failed.slice(0, 3).join(' | ') }));
+    if(notes.length) alert(notes.join('\n'));
+  }
   let __pdfPickHandled = false;
   async function runPdfFiles(rawFiles){
-    const files = Array.from(rawFiles || []).filter(f => f.type.indexOf('image/') === 0);
+    const all = Array.from(rawFiles || []);
+    if(all.some(f => pdfKindOf(f) !== 'image')) return runPdfDocs(all);
+    const files = all;
     /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
        مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
        (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */
