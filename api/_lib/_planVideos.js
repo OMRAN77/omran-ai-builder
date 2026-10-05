@@ -12,7 +12,8 @@
 // بالضبط ويعيدها، لا نقاطًا.
 const { kvGetRaw, kvSetRaw, kvIncrBy, kvDecrBy, kvExpire } = require('./kv.js');
 
-const PLAN_VIDEOS = { pro: 2, max: 3 };
+// v-fair-video (قرار المالك ٥ أكتوبر): Plus فيديو واحد كما تعد بطاقته (تكلفته ١٠٣ فلسات) — كانت الشكوى نفسها ستتكرّر معه.
+const PLAN_VIDEOS = { basic: 1, pro: 2, max: 3 };
 const PERIOD_TTL_SEC = 40 * 86400;   // أطول من نافذة الاشتراك (٣٥ يومًا)
 const TICKET_TTL_SEC = 7200;         // كتذاكر مهامّ الفيديو: أطول مهمّة تنتهي قبلها
 
@@ -24,7 +25,7 @@ async function readUser(username, o) {
   try { return await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { return null; }
 }
 
-/** عدد فيديوهات الفترة الحاليّة لهذا الحساب: ٠ لغير المشترك أو المنتهي أو Plus. */
+/** عدد فيديوهات الفترة الحاليّة لهذا الحساب: ٠ لغير المشترك أو المنتهي. */
 function allowanceOf(user, now) {
   if (!require('./tier.js').planActive(user, now)) return 0;
   return PLAN_VIDEOS[String(user.plan || '').toLowerCase()] || 0;

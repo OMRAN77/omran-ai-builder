@@ -75,12 +75,12 @@ async function call(handler, body) {
 const econ = (u, extra) => call(minimax, Object.assign({ token: token(u), promptText: 'قطّة ترقص على الشاطئ', durationSeconds: 6 }, extra || {}));
 const trend = (u, extra) => call(veo, Object.assign({ token: token(u), trend: 'pixarstory', params: { name: 'سلمى' } }, extra || {}));
 
-test('١. الصلاحيّة: Max ٣ · Pro ٢ · Plus والمنتهي وغير المشترك صفر، والتجديد يفتح فترة جديدة', async () => {
-  assert.deepEqual(pv.PLAN_VIDEOS, { pro: 2, max: 3 });
+test('١. الصلاحيّة: Max ٣ · Pro ٢ · Plus ١ (v-fair-video) · المنتهي وغير المشترك صفر، والتجديد يفتح فترة جديدة', async () => {
+  assert.deepEqual(pv.PLAN_VIDEOS, { basic: 1, pro: 2, max: 3 });
   const now = Date.now();
   assert.equal(pv.allowanceOf({ plan: 'max', planUpdatedAt: now - DAY }, now), 3);
   assert.equal(pv.allowanceOf({ plan: 'pro', planUpdatedAt: now - DAY }, now), 2);
-  assert.equal(pv.allowanceOf({ plan: 'basic', planUpdatedAt: now - DAY }, now), 0);
+  assert.equal(pv.allowanceOf({ plan: 'basic', planUpdatedAt: now - DAY }, now), 1, 'Plus فيديو واحد كما تعد بطاقته');
   assert.equal(pv.allowanceOf({ plan: 'max', planUpdatedAt: now - 40 * DAY }, now), 0, 'منتهٍ');
   assert.equal(pv.allowanceOf({ points: 5000 }, now), 0, 'نقاط بلا باقة');
   sub('renew', 'pro', 0);
@@ -133,9 +133,11 @@ test('٤. الفشل يعيد الفيديو إلى الصلاحيّة لا نق
   assert.equal(bal('huda'), 0, 'لا نقاط من العدم');
 });
 
-test('٥. غير المشترك وPlus بلا تغيير: التأكيد ثمّ النقاط كما كانت', async () => {
+test('٥. Plus: فيديوه الواحد بلا تأكيد ولا نقاط، ثمّ التأكيد والنقاط كما كانت؛ وغير المشترك بلا تغيير', async () => {
   sub('ali', 'basic', 100);
-  assert.equal((await econ('ali')).code, 428);
+  const first = await econ('ali');
+  assert.equal(first.code, 200, 'فيديو Plus المجّانيّ (v-fair-video)'); assert.equal(bal('ali'), 100, 'النقاط لم تُمسّ');
+  assert.equal((await econ('ali')).code, 428, 'بعد فيديو الباقة: التأكيد كما كان');
   const r = await econ('ali', { confirmed: true });
   assert.equal(r.code, 200); assert.equal(bal('ali'), 100 - points.COSTS.minimax_video);
   users.set('guest1', { username: 'guest1', points: 0 }); kv.set('points:guest1', '0');

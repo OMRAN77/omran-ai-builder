@@ -39,7 +39,7 @@ module.exports = async (req, res) => {
     }
 
     // v-models-latest: الافتراضيّ (والأسماء القديمة) = الخفيف الأحدث بقائمة مرشّحين (_oa-light) بدل gpt-4.1 الثابت.
-    const useDefault = !model || model === 'gpt-4.1-mini' || model === 'gpt-4o-mini' || model === 'gpt-4.1';
+    let useDefault = !model || model === 'gpt-4.1-mini' || model === 'gpt-4o-mini' || model === 'gpt-4.1';
     let useModel = useDefault ? 'gpt-4.1' : String(model);
     if (useModel.indexOf('/') !== -1) useModel = useModel.split('/').pop(); // v-provider-models: معرّف OpenRouter (openai/…) على المسار المباشر
     // 👑 الرد الاحترافي: موديل بريميوم مقابل نقاط (المالك بلا حدود).
@@ -54,7 +54,8 @@ module.exports = async (req, res) => {
       useModel = PREMIUM_MODELS.openai;
       isPremium = true;
     } else {
-      const usage = await checkAndConsume(token, guestId, 'openai', clientIp(req));
+      // v-model-lock: المشترك في سلّة الباقة الواحدة (plan) لا سلّة لكلّ مزوّد.
+      const usage = await checkAndConsume(token, guestId, 'openai', clientIp(req), { chatBucket: true });
       if (!usage.allowed) {
         if (usage.reason === 'auth') {
           res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -63,6 +64,8 @@ module.exports = async (req, res) => {
         }
         return;
       }
+      // v-model-lock: بلا 👑 (نقاط) النموذج الخفيف الافتراضيّ لغير المالك وVIP — كان اسم الاحترافيّ في model يتخطّى خصم ١٥ نقطة.
+      if (!require('./_model-guard.js').isPrivileged(usage)) { useDefault = true; useModel = 'gpt-4.1'; }
     }
 
     const wantStream = !!body.stream;

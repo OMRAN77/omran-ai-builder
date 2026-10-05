@@ -81,7 +81,7 @@ test('٣. المهامّ الخفيفة تمرّ بـ_oa-light، ولا gpt-4o-m
     assert.ok(s.includes('oaLightFetch('), f + ' يستعمل oaLightFetch');
     assert.ok(!/model:\s*'gpt-4o-mini'|model:\s*'gpt-4\.1-mini'/.test(s), f + ' ما زال يثبّت موديلًا قديمًا');
   }
-  assert.ok(read('api/_lib/openrouter.js').includes("model || 'openai/gpt-6-luna'"));
+  assert.ok(read('api/_lib/openrouter.js').includes("useModel || 'openai/gpt-6-luna'")); // v-model-lock: الاسم بعد الحارس (المالك وحده يصل الافتراضيّ المدفوع)
 });
 
 test('٤. لا موديل موقوف أو يُوقف قريبًا في نداء صور أو بحث', () => {
@@ -134,7 +134,7 @@ test('٧. كلود: Opus 5.5 في الوكيل وتحليل الكود والم�
   assert.ok(m.includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"));
   assert.ok(read('js/app.bundle.js').includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"), 'الحزمة أُعيد بناؤها');
   assert.ok(read('js/modes.js').includes("['claude-opus-5-5','Opus 5.5']"));
-  assert.ok(read('index.html').includes('js/modes.js?v=m041026b') && read('index.html').includes('js/partials-settings.js?v=690'), 'وسوم الكاش رُفعت');
+  assert.ok(read('index.html').includes('js/modes.js?v=m041026b') && read('index.html').includes('js/partials-settings.js?v=691'), 'وسوم الكاش رُفعت');
   assert.ok(read('js/app-10-features.js').includes("'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',"), 'اختيار الوسيط المحفوظ يهاجر');
 });
 

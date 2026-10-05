@@ -37,7 +37,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'deepseek', clientIp(req));
+    // v-model-lock: المشترك في سلّة الباقة الواحدة (plan) لا سلّة لكلّ مزوّد.
+    const usage = await checkAndConsume(token, guestId, 'deepseek', clientIp(req), { chatBucket: true });
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });

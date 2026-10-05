@@ -48,6 +48,8 @@ module.exports = async (req, res) => {
     }
 
     const wantStream = !!body.stream;
+    const mg = require('./_model-guard.js'); // v-model-lock
+    const useModel = mg.guardModel('mistral', model, mg.isPrivileged(usage));
     const upstream = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -55,7 +57,7 @@ module.exports = async (req, res) => {
         'Authorization': 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
-        model: model || 'mistral-small-latest',
+        model: useModel || 'mistral-small-latest',
         messages,
         temperature: 0.7,
         stream: wantStream,

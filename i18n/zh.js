@@ -25,7 +25,7 @@ I18N['zh'] = {
     cnLandArea: '土地面积（m²）— 可选', cnLandAreaPh: '例如：500', cnEmirateOpt: '酋长国 — 可选', cnDetailsAnnexes: '🏠 详情与附属设施', cnExElevator: '室内电梯', cnExStore: '室外储藏室', cnExWaterTank: '水箱', cnExSolar: '太阳能板',
     cnExPlayground: '室外游乐场', cnExCarport: '额外车棚', cnBudgetOutputs: '💰 预算与输出', cnDownloadBoq: '📊 下载工程量清单', cnPdfReport: '📄 PDF 报告', keyHowToTitle: '📝 如何获取每个提供商的密钥：', showAllPlansCur: '以你的货币显示所有套餐和价格',
     currencyLabel: '货币', plFreeMsgs: '每天20条消息', plFreeVoice: '最多4分钟语音聊天', plFreeImgs: '最多3张AI图片', plFreeNoVideo: '无视频', plStMsgs: '每天50条消息', plStVoice: '最多24分钟语音聊天', plStImgs: '最多15张图片', plStVideos: '1个视频',
-    plProMsgs: '每天100条消息', plProVoice: '最多61分钟语音聊天', plProMedia: '最多40张图片 · 2个视频', plProAgent: '智能代理', plProPriority: '优先速度 · 金色徽章', plMaxAllPro: '包含Pro的所有功能 · 每天250条消息', plMaxVoice: '最多213分钟语音聊天',
+    plProMsgs: '每天100条消息', plProVoice: '最多61分钟语音聊天', plProMedia: '最多40张图片 · 2个视频', plProAgent: '智能代理', plProPriority: '金色徽章', plMaxAllPro: '包含Pro的所有功能 · 每天250条消息', plMaxVoice: '最多213分钟语音聊天',
     plMaxMedia: '最多150张图片 · 3个视频', plMaxSupport: '专属支持',
     adStudioTitle: '广告工作室', adStudioHint: '广告工作室 — 通过对话制作你的广告', chatToPdfEmpty: '暂无可转换的回复。', mahaConnectionLost: '无法重新连接', voiceTabAssistantName: '助手',
     acctCleanupConfirm: '所有聊天和项目将被永久删除。确定要继续吗？',
@@ -69,7 +69,7 @@ I18N['zh'] = {
     pricingProTitle: 'Pro — 每月$20',
     pricingProDesc: '无限消息 + Omran智能体 + 每月200积分 + 优先速度 + 金色徽章',
     pricingPointsTitle: '积分套餐',
-    pricingPointsDesc: '积分是通用货币——用于Maha语音、视频和图片，无需订阅。Maha：15积分/分钟 • 图片：20 • 创意图片：35 • 视频：55 • 电影级视频：275',
+    pricingPointsDesc: '积分是通用货币——用于Maha语音、视频和图片，无需订阅。Maha：15积分/分钟 • 图片：20 • 创意图片：35 • 视频：55 • 有声视频：175 • 电影级视频：120',
     pricingWalletLabel: '您的积分余额',
     pricingPointsUnit: '积分',
     pricingBuyBtn: '购买',
@@ -1000,7 +1000,7 @@ I18N['zh'] = {
     /* v601: 30 مفتاحًا مفقودة + 24 مفتاح مساعد البريد (54) */
     designAiPlaceLabel: "地点类型", premiumOn: "智能体已开启⚡——直接回答，无风格层", premiumNeedLogin: "登录以使用智能体", memorySectionLabel: "我的记忆", memoryIntro: "应用记住的关于你、你的项目和你的交流风格的内容都在这里。它会通过你的账户在各设备间同步，你也可以编辑或删除它。", memorySaveBtn: "保存更改", memoryClearBtn: "删除我的记忆", memoryEmpty: "目前还没有保存任何关于你的信息。", memoryGuest: "登录以查看你的记忆。", memoryConfirm: "删除应用记住的所有关于你的信息？此操作无法撤销。", memorySaved: "已保存并与你的账户同步。", memorySaveError: "保存失败，请重试。",
     memoryLoadError: "目前无法加载记忆。", fontFamilySectionLabel: "字体样式", fontFamilyHint: "更改桌面和手机上的聊天消息，不会更改代码块或应用布局。", guestImageMsg: "🎁你已用完3张免费访客图片！几秒内创建免费账户，即可获得70个礼品积分，继续生成和编辑图片。", planPer: "每月", planFreePer: "试用", planPtsFree: "欢迎积分——仅一次", planPtsMo: "每月积分", planTag: "最受欢迎", planCurrentBtn: "你当前的套餐", planSoonBtn: "即将推出", planFreeFeats: '<li>每天20条消息</li><li>最多4分钟语音聊天</li><li>最多3张AI图片</li><li class="off">无视频</li>',
-    planPlusFeats: '<li>每天50条消息</li><li>最多24分钟语音聊天</li><li>最多15张图片</li><li>1个视频</li>', planProFeats: '<li>每天100条消息</li><li>最多61分钟语音聊天</li><li>最多40张图片 · 2个视频</li><li>智能代理</li><li>优先速度 · 金色徽章</li>', planMaxFeats: '<li>包含Pro的所有功能 · 每天250条消息</li><li>最多213分钟语音聊天</li><li>最多150张图片 · 3个视频</li><li>专属支持</li>', checkoutPlanLabelMax: 'Max 套餐 $100/月 — 3,200 积分', copyCode: "复制", copiedMsg: "已复制✅",
+    planPlusFeats: '<li>每天50条消息</li><li>最多24分钟语音聊天</li><li>最多15张图片</li><li>1个视频</li>', planProFeats: '<li>每天100条消息</li><li>最多61分钟语音聊天</li><li>最多40张图片 · 2个视频</li><li>智能代理</li><li>金色徽章</li>', planMaxFeats: '<li>包含Pro的所有功能 · 每天250条消息</li><li>最多213分钟语音聊天</li><li>最多150张图片 · 3个视频</li><li>专属支持</li>', checkoutPlanLabelMax: 'Max 套餐 $100/月 — 3,200 积分', copyCode: "复制", copiedMsg: "已复制✅",
     emailAsst_connectText: "连接你的Gmail账户，让AI读取你的邮件并在你审核后建议现成的回复。", emailAsst_connectBtn: "🔗连接Gmail", emailAsst_disclaimer: "⚠️任何回复都不会在未经你对每条消息明确批准的情况下发送。", emailAsst_title: "📧AI邮件助手", emailAsst_refresh: "刷新", emailAsst_loading: "正在扫描你的收件箱…", emailAsst_empty: "目前没有需要回复的新邮件。", emailAsst_notConnected: "Gmail未连接，请重新连接。", emailAsst_send: "✅发送", emailAsst_ignore: "🚫忽略此发件人", emailAsst_sending: "发送中…", emailAsst_sent: "✅已发送",
     emailAsst_ignored: "🚫已忽略——不再显示", emailAsst_error: "❌错误：", emailAsst_voiceBtn: "语音摘要", emailAsst_addToCalendar: "📅添加到日历", emailAsst_addingEvent: "正在添加事件…", emailAsst_eventAdded: "✅已添加到你的日历", emailAsst_calReauth: "请重新连接Gmail以允许访问日历", emailAsst_voiceLoading: "🔊正在准备语音摘要…", emailAsst_voiceEmpty: "没有可摘要的邮件。", emailAsst_urgent: "🔴紧急", emailAsst_normal: "🟡普通", emailAsst_low: "⚪低",
 };
@@ -1169,3 +1169,5 @@ Object.assign(I18N["zh"], {"bgThemeDarkwood": "深色木纹", "bgThemeMarble": "
 Object.assign(I18N["zh"], {"livingMemTitle": "我的动态记忆", "livingMemIntro": "助手从你的对话中最近了解到的关于你的内容。每次回答它只会使用与你的问题相关的部分，并应用你偏好的风格。删除任何一条，它就会忘记。", "livingMemEmpty": "助手还没有了解到关于你的任何信息。", "livingMemDelete": "删除", "livingMemLoadError": "暂时无法加载你的动态记忆。", "livingMemDeleteError": "删除失败，请重试。", "livingMemClearAll": "全部删除", "livingMemClearConfirm": "删除助手了解到的关于你的所有内容？此操作无法撤销。"});
 /* v-pdf-docs: «PDF» يقبل Word والنصوص لا الصور وحدها */
 Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…", "pdfDocSkipped": "已跳过 {n} 个文件（格式不受支持，或本身就是 PDF）：{names}。支持：图片、Word (docx) 和文本文件（txt、md、csv…）。", "pdfDocTruncated": "文档较长：仅转换了前 {n} 页。", "pdfDocFail": "无法转换该文件：{why}"});
+
+/* v-paypal-honest */ Object.assign(I18N['zh'], {"checkoutPaidPending":"✅ 已收到您的付款，但入账有所延迟——下次打开应用时会自动完成。如一小时内仍未到账，请联系我们。"});

@@ -1,17 +1,13 @@
 // Vercel Serverless Function: creates & captures PayPal orders using the
 // PayPal REST API directly (no SDK dependency). Uses PAYPAL_CLIENT_ID +
-// PAYPAL_SECRET env vars. Auto-detects sandbox vs live based on key type is
-// not reliable, so we use PAYPAL_MODE env var ('sandbox' default, or 'live').
+// PAYPAL_SECRET env vars, and PAYPAL_MODE ('live' default, or 'sandbox').
 //
-// The 'capture' action below also updates the caller's stored `plan`
-// server-side once PayPal itself confirms the capture is COMPLETED, instead
-// of leaving plan upgrades entirely to frontend logic. Requires an optional
-// `token` in the request body (today's frontend doesn't send one yet — see
-// the account-update section below for the backward-compatible behavior
-// when it's missing).
-const { verifyToken, getUser, putUser } = require('./auth.js');
-const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
-const { MEDIA_PLANS, grantMedia } = require('./_mediaPlans.js');
+// 'capture' يشحن الحساب من الخادم حين يعلن PayPal نفسه COMPLETED، بالمبلغ الملتقَط لا باسم خطّة يرسلها العميل،
+// وعبر grantPlanToUser نفسها (حجز ذرّيّ لرقم الطلب، وبذر الرصيد من السجلّ، وتتبّع الاسم بعد تغييره).
+// v-paypal-honest: فشل الشحن بعد السحب لا يُبلع صامتًا — يُسجَّل ويُردّ credited:false، و'claim' يعيده لطلب مكتمل.
+const { verifyToken } = require('./auth.js');
+const { MEDIA_PLANS } = require('./_mediaPlans.js');
+const { grantPlanToUser, wasNamed } = require('./create-checkout-session.js');
 
 const PLANS = {
   // v-plans-2026-09: يجب أن تطابق create-checkout-session.js (نقاط ومبالغ).
@@ -24,7 +20,7 @@ const PLANS = {
   pack100: { amount: '4.99', points: 100, pack: true, name: '100 نقطة / 100 pts' },
   pack300: { amount: '12.99', points: 300, pack: true, name: '300 نقطة / 300 pts' },
   pack700: { amount: '24.99', points: 700, pack: true, name: '700 نقطة / 700 pts' },
-  pack900: { amount: '34.99', points: 900, pack: true, name: '900 نقطة / 900 pts' },
+  pack900: { amount: '34.99', points: 1050, pack: true, name: '1,050 نقطة / 1,050 pts' }, // v-fair-video
 };
 // v-media-plans: اشتراكات الصور/الفيديو بمبالغ مميّزة (الالتقاط يطابق بالمبلغ) ورصيد منفصل بلا نقاط.
 // الصور والفيديو بنفس المبلغ، فالطلب يحمل الخطّة في custom_id ويُتحقّق أنّ مبلغها هو الملتقَط.
@@ -56,6 +52,43 @@ async function getAccessToken() {
   return data.access_token || null;
 }
 
+// الخطّة من المبلغ الملتقَط فعلًا (custom_id يميّز الصور عن الفيديو بالمبلغ نفسه)، وصاحب الطلب من reference_id.
+function matchOrder(order) {
+  const pu = (order && order.purchase_units && order.purchase_units[0]) || {};
+  const capture = pu.payments && pu.payments.captures && pu.payments.captures[0];
+  const amountValue = capture && capture.amount && capture.amount.value;
+  const customId = (capture && capture.custom_id) || pu.custom_id;
+  const plan = (customId && PLANS[customId] && PLANS[customId].amount === amountValue)
+    ? customId
+    : Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue && !PLANS[p].media);
+  return { plan: plan || null, ref: String(pu.reference_id || '') };
+}
+
+async function creditOrder(order, username) {
+  if (!username) return { credited: false, reason: 'auth' };
+  const m = matchOrder(order);
+  if (!m.plan) return { credited: false, reason: 'no_plan' };
+  if (m.ref && m.ref !== username && !(await wasNamed(username, m.ref))) return { credited: false, reason: 'not_owner' };
+  const g = await grantPlanToUser(username, m.plan, 'lastPaypalOrderId', order.id);
+  if (g.error) return { credited: false, reason: 'account' };
+  const planGranted = PLANS[m.plan].media ? m.plan : (PLANS[m.plan].pack ? (g.plan || null) : m.plan);
+  return { credited: true, planGranted, pointsAdded: g.pointsAdded, balance: g.balance, alreadyGranted: !!g.alreadyGranted };
+}
+
+async function safeCredit(order, username) {
+  try { return await creditOrder(order, username); } catch (e) {
+    // المال سُحب والشحن فشل (مثل امتلاء القاعدة) — لا صمت: سجلّ أخطاء المالك، والعميل يعيد المحاولة بـclaim.
+    console.error('[paypal] credit failed after capture', order && order.id, e && e.message);
+    try { require('./log-error.js').logError('paypal:credit', e, { orderId: order && order.id, user: username }); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+    return { credited: false, reason: 'error' };
+  }
+}
+
+function creditReply(data, out) {
+  return { status: data.status, id: data.id, planGranted: out.planGranted || null, pointsAdded: out.pointsAdded == null ? null : out.pointsAdded,
+    balance: out.balance == null ? null : out.balance, credited: !!out.credited, reason: out.credited ? undefined : out.reason };
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -78,7 +111,8 @@ module.exports = async (req, res) => {
       const planInfo = PLANS[body.plan];
       if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
       // v-checkout-login: طلب بلا حساب يُلتقط ولا يُنسب لأحد — لا طلب دفع بلا دخول.
-      if (!verifyToken(body.token)) { res.status(401).json({ error: 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe' }); return; }
+      const buyer = verifyToken(body.token);
+      if (!buyer) { res.status(401).json({ error: 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe' }); return; }
 
       const r = await fetch(`${baseUrl()}/v2/checkout/orders`, {
         method: 'POST',
@@ -89,6 +123,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           intent: 'CAPTURE',
           purchase_units: [{
+            reference_id: String(buyer).slice(0, 256), // v-paypal-honest: الطلب لصاحبه — لا يشحنه حساب آخر يعرف رقمه
             description: planInfo.name,
             custom_id: String(body.plan),
             amount: { currency_code: 'USD', value: planInfo.amount },
@@ -104,7 +139,10 @@ module.exports = async (req, res) => {
     if (action === 'capture') {
       const { orderId, token } = body;
       if (!orderId) { res.status(400).json({ error: 'Missing orderId' }); return; }
-      const r = await fetch(`${baseUrl()}/v2/checkout/orders/${orderId}/capture`, {
+      // لا التقاط بلا حساب صالح: المال كان يُسحب ثمّ لا يجد لمن يُشحن. بلا التقاط لا يتحرّك مال (الموافقة تنتهي وحدها).
+      const username = verifyToken(token);
+      if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجّل الدخول ثمّ أكمل الدفع / Session expired — sign in and finish the payment' }); return; }
+      const r = await fetch(`${baseUrl()}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -113,72 +151,26 @@ module.exports = async (req, res) => {
       });
       const data = await r.json();
       if (!r.ok) { res.status(500).json({ error: data.message || 'PayPal capture error' }); return; }
+      // الشحن من الخادم حين يعلن PayPal نفسه COMPLETED فقط (لا ثقة بنجاح الواجهة).
+      const out = data.status === 'COMPLETED' ? await safeCredit(data, username) : { credited: false, reason: 'not_completed' };
+      res.status(200).json(creditReply(data, out));
+      return;
+    }
 
-      // Server-side plan grant: only once PayPal itself reports the capture
-      // as COMPLETED (never trust the frontend's own success handling for
-      // this). The plan is derived from the actually-captured amount
-      // (matched against PLANS) rather than trusting a client-supplied plan
-      // name, so a tampered request can't claim a cheaper/free plan.
-      let planGranted = null;
-      let pointsAdded = null;
-      let balance = null;
-      if (data.status === 'COMPLETED') {
-        try {
-          const capture = data.purchase_units
-            && data.purchase_units[0]
-            && data.purchase_units[0].payments
-            && data.purchase_units[0].payments.captures
-            && data.purchase_units[0].payments.captures[0];
-          const amountValue = capture && capture.amount && capture.amount.value;
-          const customId = (capture && capture.custom_id) || (data.purchase_units && data.purchase_units[0] && data.purchase_units[0].custom_id);
-          const matchedPlan = (customId && PLANS[customId] && PLANS[customId].amount === amountValue)
-            ? customId
-            : Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue && !PLANS[p].media);
-          const username = verifyToken(token);
-          if (username && matchedPlan) {
-            const user = await getUser(username);
-            if (user && !user.deleted && user.lastPaypalOrderId === data.id) {
-              // v-paypal-idempotent: نفس الطلب لا يُشحن مرتين (تحديث صفحة النجاح أو
-              // تكرار نداء capture) — نفس حارس Stripe في grantPlanToUser.
-              planGranted = user.plan || matchedPlan;
-              pointsAdded = 0;
-              balance = Number(user.points || 0);
-            } else if (user && !user.deleted && PLANS[matchedPlan].media) {
-              user.lastPaypalOrderId = data.id;
-              await grantMedia(user, username, matchedPlan);
-              await putUser(username, user);
-              planGranted = matchedPlan;
-              pointsAdded = 0;
-              balance = Number(user.points || 0);
-            } else if (user && !user.deleted) {
-              // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها.
-              if (!PLANS[matchedPlan].pack) { user.plan = matchedPlan; user.planUpdatedAt = Date.now(); }
-              user.lastPaypalOrderId = data.id;
-
-              // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في
-              // points.js (اسم المستخدم بأحرف صغيرة ومقصوص).
-              const balanceKey = 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
-              const raw = await kvGetRaw(balanceKey);
-              if (raw === null || raw === undefined || String(raw) === '') {
-                await kvSetIfAbsent(balanceKey, 0);
-              }
-              const newBalance = await kvIncrBy(balanceKey, PLANS[matchedPlan].points);
-              user.points = Number(newBalance);
-
-              await putUser(username, user);
-              planGranted = PLANS[matchedPlan].pack ? (user.plan || null) : matchedPlan;
-              pointsAdded = PLANS[matchedPlan].points;
-              balance = Number(newBalance);
-            }
-          }
-          // If no token was sent (current frontend) or it didn't verify, the
-          // PayPal payment itself still succeeded/was captured — we simply
-          // can't attach it to an account yet. Frontend should start sending
-          // `token` with the capture call so planGranted comes back non-null.
-        } catch (e) { /* best-effort account update; capture itself already succeeded with PayPal */ }
-      }
-
-      res.status(200).json({ status: data.status, id: data.id, planGranted, pointsAdded, balance });
+    // v-paypal-honest: إعادة شحن طلب سُحب مبلغه ولم يُشحن (فشل عابر بعد الالتقاط). آمنة التكرار بالحجز الذرّيّ لرقم الطلب.
+    if (action === 'claim') {
+      const { orderId, token } = body;
+      const username = verifyToken(token);
+      if (!username) { res.status(401).json({ error: 'auth' }); return; }
+      if (!orderId) { res.status(400).json({ error: 'Missing orderId' }); return; }
+      const r = await fetch(`${baseUrl()}/v2/checkout/orders/${encodeURIComponent(orderId)}`, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { res.status(r.status === 404 ? 404 : 502).json({ error: data.message || 'PayPal order lookup error' }); return; }
+      if (data.status !== 'COMPLETED') { res.status(409).json({ status: data.status, credited: false, reason: 'not_completed' }); return; }
+      // لطلبات هذا المسار وحدها (تحمل صاحبها في reference_id): الطلب الأقدم بلا صاحب شُحن بالمسار القديم ولا حجز ذرّيًّا
+      // له، فإعادته من حساب آخر (أو من الحساب نفسه بعد طلب أحدث) كانت تشحنه مرّة ثانية.
+      if (!matchOrder(data).ref) { res.status(409).json({ status: data.status, credited: false, reason: 'legacy' }); return; }
+      res.status(200).json(creditReply(data, await safeCredit(data, username)));
       return;
     }
 

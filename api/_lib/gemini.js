@@ -47,7 +47,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const useModel = model || 'gemini-flash-latest';
+    const mg = require('./_model-guard.js'); // v-model-lock: لغير المالك وVIP فلاش وحده (لا Pro ولا نماذج الصور)
+    const useModel = mg.guardModel('gemini', model, mg.isPrivileged(usage)) || 'gemini-flash-latest';
     const wantStream = !!body.stream;
     const endpoint = wantStream
       ? `https://generativelanguage.googleapis.com/v1beta/models/${useModel}:streamGenerateContent?alt=sse&key=${apiKey}`

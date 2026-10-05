@@ -1,7 +1,6 @@
 // نظام النقاط الموحد — المحفظة الرقمية للتطبيق.
-// النقاط = عملة موحدة تُصرف على: مها الصوتية (10 نقاط/دقيقة)،
-// فيديو Runway (60 نقطة)، فيديو Veo 3 (400 نقطة)، توليد صورة (10 نقاط).
-// هدية الترحيب عند التسجيل = 70 نقطة (تكفي: فيديو واحد + صورة واحدة).
+// النقاط = عملة موحدة تُصرف على مها والصور والفيديو — الأسعار في COSTS أدناه وحدها (لا أرقام في التعليقات تتقادم).
+// هدية الترحيب عند التسجيل = 70 نقطة (فيديو اقتصاديّ + صورة، أو ٤ دقائق مع مها).
 // المالك (omran) = بلا حدود، لا يُخصم منه شيء أبدًا.
 const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
@@ -24,9 +23,11 @@ const OWNER_LIST = require('./_owner.js').ownerList();
 const COSTS = {
   maha_minute: 15,   // دقيقة مكالمة مع مها
   runway_video: 55,  // فيديو Runway ‏10 ثواني
-  veo_video: 275,    // فيديو Veo 3 ‏8 ثواني (بالصوت)
+  // v-fair-video (قرار المالك ٥ أكتوبر، الجدول الثاني): كلّ خدمة ≈ ٣ أضعاف تكلفتها على سعر نقطة Pro. الفيديو بالصوت كان
+  // ×٤٫٨ والسينمائيّ ×٩ (أرخص علينا من فيديو الصوت ويُباع أغلى منه). أسوأ ربح يبقى على مها، فهذا لا ينقصه.
+  veo_video: 175,    // فيديو Veo 3 ‏8 ثواني (بالصوت) — تكلفته ٤٤٠ فلسًا (_mediaPlans UNIT_COST)
   minimax_video: 40, // فيديو المحرّك الاقتصادي (MiniMax Hailuo) — أرخص من Runway وVeo
-  omni_video: 350,   // فيديو المحرّك السينمائيّ (Gemini Omni) — الأغلى ($0.10/ثانية)
+  omni_video: 120,   // فيديو المحرّك السينمائيّ (Gemini Omni) — تكلفته ٢٩٤ فلسًا ($0.10/ثانية)
   image: 20,         // توليد/تعديل صورة
   image_creative: 35, // صورة إبداعيّة (تعديل إبداعيّ على المحرّك الأقوى + أفضل-من-٢) — تُستكمل فوق image
   image_4k: 30,      // صورة بدقة 4K (طلب صريح: 4k / للطباعة / دقة عالية)
@@ -155,7 +156,7 @@ async function spendPoints(username, amount, reason, opts) {
   if (opts && opts.planVideoOnly) {
     try {
       const pv = await planVideos.trySpendPlanVideo(username, amt);
-      if (pv) return { ok: true, points: 0, spent: 0, reason, planVideo: true, planVideosLeft: pv.left };
+      if (pv) { await meterOp(username, reason); return { ok: true, points: 0, spent: 0, reason, planVideo: true, planVideosLeft: pv.left }; }
     } catch (e) { console.warn('[points] plan video skipped:', e && e.message); }
     return { ok: false, reason: 'plan_video', points: 0 };
   }
@@ -163,7 +164,7 @@ async function spendPoints(username, amount, reason, opts) {
   // v-media-plans: مشترك الصور/الفيديو يُخصم من رصيد اشتراكه أوّلًا، ونفاده يرجع للنقاط.
   try {
     const m = await media.trySpendMedia(username, amt, reason);
-    if (m) return { ok: true, points: 0, spent: 0, reason, media: m.media, mediaLeft: m.left };
+    if (m) { await meterOp(username, reason); return { ok: true, points: 0, spent: 0, reason, media: m.media, mediaLeft: m.left }; }
   } catch (e) { console.warn('[points] media spend skipped:', e && e.message); }
 
   let before;
@@ -192,7 +193,13 @@ async function spendPoints(username, amount, reason, opts) {
   }
 
   await mirrorToUser(username, after);
+  await meterOp(username, reason);
   return { ok: true, points: after, spent: amt, reason };
+}
+
+// v-cost-meter: تكلفة العمليّة علينا (جدول الوسائط) في عدّاد الشهر لهذا الحساب — أفضل جهد، لا يوقف الخصم.
+async function meterOp(username, reason) {
+  try { await require('./cost-meter.js').meterOp(username, reason); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
 }
 
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
@@ -307,6 +314,7 @@ module.exports.PREMIUM_MODELS = PREMIUM_MODELS;
 module.exports.PREMIUM_COST = PREMIUM_COST;
 module.exports.WELCOME_POINTS = WELCOME_POINTS;
 module.exports.spendPoints = spendPoints;
+module.exports.ensureBalance = ensureBalance; // v-pay-seed: الشحن يبذر العدّاد من السجلّ لا من صفر
 module.exports.spendByToken = spendByToken;
 module.exports.refundPoints = refundPoints;
 module.exports.readPoints = readPoints;

@@ -131,6 +131,33 @@ function verifyPassword(password, salt, hash) {
   return crypto.timingSafeEqual(a, b);
 }
 
+/* v-rename-move (فحص الاشتراكات ٥ أكتوبر): السجلّ كان ينتقل والعدّادات الحيّة تبقى على الاسم القديم — فالرجوع للاسم
+   القديم يعيد الرصيد كاملًا بعد صرفه (٩٨٠ ← صرف ٨٢٥ ← رجوع ← ٩٨٠، أُثبت بهذا الكود)، والاسم الجديد يبدأ بفيديوهات باقة
+   وحصص يوم جديدة، ورصيد اشتراك الوسائط يختفي عنه. الآن كلّ عدّاد يتبع الحساب ولا يبقى منه شيء تحت الاسم القديم،
+   وعدّاد يتيم تحت الاسم الجديد (من صاحب سابق) يُمحى بدل أن يُبعث. */
+async function moveLiveCounters(oldKey, newKey, user) {
+  const { kvGetRaw, kvSetRaw, kvDel } = require('./kv.js');
+  const n = (u) => encodeURIComponent(String(u).trim().toLowerCase());
+  if (n(oldKey) === n(newKey)) return; // النقل إلى المفتاح نفسه = نسخ ثمّ حذف — يمحو الرصيد
+  const move = async (from, to, ttlSec) => {
+    const v = await kvGetRaw(from);
+    if (v !== null && v !== undefined && String(v) !== '') await kvSetRaw(to, v, ttlSec);
+    else await kvDel(to);
+    await kvDel(from);
+  };
+  await move('points:' + n(oldKey), 'points:' + n(newKey));
+  for (const kind of ['image', 'video', 'maha']) { // رصيد اشتراك الوسائط بما بقي من نافذته (٣٥ يومًا)
+    const m = user.media && user.media[kind];
+    const left = m ? Math.floor((Number(m.at || 0) + 35 * 86400000 - Date.now()) / 1000) : 0;
+    if (left > 0) await move('media:' + kind + ':' + n(oldKey), 'media:' + kind + ':' + n(newKey), left);
+    else await kvDel('media:' + kind + ':' + n(newKey));
+  }
+  const at = Math.floor(Number(user.planUpdatedAt) || 0); // فيديوهات الباقة للفترة الحاليّة (_planVideos.js)
+  if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
+  await require('./_usage.js').moveTodayTallies(oldKey, newKey);
+  await require('./cost-meter.js').moveMonthCosts(oldKey, newKey);
+}
+
 function genRecoveryCode() {
   const bytes = crypto.randomBytes(10).toString('hex').toUpperCase(); // 20 hex chars
   return bytes.match(/.{1,4}/g).join('-'); // XXXX-XXXX-XXXX-XXXX-XXXX
@@ -468,9 +495,12 @@ module.exports = async (req, res) => {
         return;
       }
       const movedUser = Object.assign({}, user, { username: String(newUsername).trim() });
+      // v-rename-move: الأسماء السابقة — اشتراك أو جلسة دفع بدأت بالاسم القديم تُعرف لصاحبها بعد التغيير.
+      movedUser.prevUsernames = (Array.isArray(user.prevUsernames) ? user.prevUsernames : []).filter((x) => x !== newKey).concat([oldKey]).slice(-10);
       await putUser(newKey, movedUser);
       // Free up the old key so it can't be logged into or re-claimed while pointing here.
       await putUser(oldKey, { deleted: true, movedTo: newKey });
+      try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
       res.status(200).json({ ok: true, token: makeToken(newKey), username: movedUser.username, avatar: movedUser.avatar || null });
       return;
     }

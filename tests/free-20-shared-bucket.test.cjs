@@ -72,7 +72,7 @@ test('مسارات أخرى بلا chatBucket تبقى بسلّتها المست
   assert.equal(toolCall.allowed, true, 'أداة أخرى غير المحادثة النصّية لا تتأثّر بسلّة chat المشتركة');
 });
 
-test('المشترك: chatBucket لا يغيّر شيئًا — كلّ مزوّد في سلّته المستقلّة كما كان', async () => {
+test('المشترك: chatBucket = سلّة الباقة الواحدة plan — تبديل المزوّد لا يضاعف حدّه (v-model-lock، قرار المالك ٥ أكتوبر)', async () => {
   const subscriberTier = { tier: 'sub', plan: 'pro', cap: 100, subscriber: true };
   const token = makeToken('sub-tester-1');
   // نمرّر الطبقة جاهزة (كما تفعل chat.js) لتفادي الاعتماد على سجلّ مستخدم حقيقيّ.
@@ -80,8 +80,11 @@ test('المشترك: chatBucket لا يغيّر شيئًا — كلّ مزوّ�
     const g = await checkAndConsume(token, null, 'groq', '9.9.9.9', { chatBucket: true, tier: subscriberTier });
     assert.equal(g.allowed, true);
   }
-  // سلّة groq عندها ٥، وسلّة gemini ما زالت صفرًا — مستقلّتان رغم chatBucket.
-  const geminiFirst = await checkAndConsume(token, null, 'gemini', '9.9.9.9', { chatBucket: true, tier: subscriberTier });
-  assert.equal(geminiFirst.allowed, true);
-  assert.equal(geminiFirst.remaining, subscriberTier.cap - 1, 'سلّة gemini بدأت من صفر لا من رصيد groq');
+  // كانت لكلّ مزوّد سلّة («٥٠ رسالة» تتضاعف بعدد الروابط) — الآن سلّة واحدة: gemini يكمل من حيث توقّف groq.
+  const geminiNext = await checkAndConsume(token, null, 'gemini', '9.9.9.9', { chatBucket: true, tier: subscriberTier });
+  assert.equal(geminiNext.allowed, true);
+  assert.equal(geminiNext.remaining, subscriberTier.cap - 6, 'سلّة واحدة للمشترك على كلّ الروابط');
+  // وهي سلّة chat.js نفسها ('plan')
+  const planNext = await checkAndConsume(token, null, 'plan', '9.9.9.9', { tier: subscriberTier });
+  assert.equal(planNext.remaining, subscriberTier.cap - 7, 'chat.js والروابط المباشرة في السلّة نفسها');
 });

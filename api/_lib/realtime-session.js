@@ -175,6 +175,7 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let undoBill = null; // v-maha-server-bill: يردّ دقيقة الافتتاح إن لم تُفتح الجلسة عند المزوّد
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -220,9 +221,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 💰 نظام النقاط لمها: دقيقة المكالمة = 10 نقاط لغير المالك.
+    // 💰 نظام النقاط لمها: دقيقة المكالمة = COSTS.maha_minute لغير المالك.
     // المسجّل الجديد له دقيقة تجريبية مجانية مرة وحدة، والضيف كذلك
-    // (مربوطة بمعرّف المتصفح). المالك بلا حدود.
+    // (مربوطة بعنوان الشبكة). المالك بلا حدود.
     const pointsLib = require('./points.js');
     const rtUser = pointsLib.verifyPointsToken(token);
     let mahaBudget;
@@ -230,17 +231,40 @@ module.exports = async (req, res) => {
       mahaBudget = { unlimited: true };
     } else if (rtUser) {
       const rec = await pointsLib.readPoints(rtUser);
-      const pts = rec ? rec.points : 0;
-      const trial = !!(rec && !rec.user.mahaTrialUsed);
-      // v-maha-plans: دقائق اشتراك مها تُصرف قبل النقاط، وحدّ المكالمة للمشترك وحده.
+      if (!rec) { res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); return; }
       const mediaLib = require('./_mediaPlans.js');
+      const cost = pointsLib.COSTS.maha_minute;
+      /* v-maha-server-bill (فحص الاشتراكات ٥ أكتوبر): الخادم كان يتأكّد من الرصيد ولا يخصم شيئًا، والمتصفّح يخصم بعد
+         كلّ ٦٠ ثانية — فكلّ مكالمة أقلّ من دقيقة مجّانيّة للكلّ، والتجربة لا تُعلَّم «مستخدمة» إلّا بعد ٦٠ ثانية (من يغلق
+         عند ٠:٥٩ تبقى تجربته للأبد ولو رصيده صفر). الآن الدقيقة الأولى تُدفع هنا قبل فتح الجلسة: التجربة بحجز ذرّيّ
+         يُعلَّم فورًا، وإلّا خصم دقيقة (رصيد اشتراك مها أوّلًا ثمّ النقاط). والمتصفّح يخصم كلّ دقيقة تبدأ بعدها. */
+      let trial = false;
+      if (!rec.user.mahaTrialUsed) {
+        const trialKey = 'maha:trial:' + encodeURIComponent(String(rtUser).trim().toLowerCase());
+        trial = await require('./kv.js').kvSetIfAbsent(trialKey, '1');
+        if (trial) {
+          rec.user.mahaTrialUsed = true;
+          await require('./auth.js').putUser(rtUser, rec.user);
+          undoBill = async () => {
+            await require('./kv.js').kvDel(trialKey);
+            const u = await require('./auth.js').getUser(rtUser);
+            if (u && !u.deleted) { u.mahaTrialUsed = false; await require('./auth.js').putUser(rtUser, u); }
+          };
+        }
+      }
+      let pay = null;
+      if (!trial) {
+        pay = await pointsLib.spendPoints(rtUser, cost, 'maha_minute');
+        if (!pay.ok) { res.status(402).json({ error: 'points_insufficient', needed: cost, points: pay.points || 0 }); return; }
+        undoBill = pay.media === 'maha' ? () => mediaLib.refundMahaMinute(rtUser) : (pay.owner ? null : () => pointsLib.refundPoints(rtUser, cost));
+      }
+      // v-maha-plans: دقائق اشتراك مها تُصرف قبل النقاط، وحدّ المكالمة للمشترك وحده.
       let mahaMin = 0;
       try { const st = await mediaLib.mediaStatus(rtUser); mahaMin = (st.maha && st.maha.counts.maha_minute) || 0; } catch (e) { mahaMin = 0; }
-      if (pts < pointsLib.COSTS.maha_minute && !trial && mahaMin < 1) {
-        res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.maha_minute, points: pts });
-        return;
-      }
-      mahaBudget = { unlimited: false, points: pts, trial, cost: pointsLib.COSTS.maha_minute, mahaMin, capMin: mahaMin > 0 ? mediaLib.MAHA_CALL_CAP_MIN : 0 };
+      const paidWith = trial ? 'trial' : (pay.media === 'maha' ? 'media' : 'points');
+      mahaBudget = (pay && pay.owner) ? { unlimited: true } // VIP: بلا خصم ولا حدّ كالمالك
+        : { unlimited: false, points: (pay && !pay.media) ? pay.points : rec.points, trial, prepaid: paidWith, cost, mahaMin,
+          capMin: (mahaMin > 0 || paidWith === 'media') ? mediaLib.MAHA_CALL_CAP_MIN : 0 };
     } else {
       const { kvGetJSON, kvPutJSON } = require('./kv.js');
       // The free guest minute was keyed on an id the browser itself generates, so
@@ -550,8 +574,15 @@ module.exports = async (req, res) => {
       upstream = await postSession();
       rawText = await upstream.text();
     }
+    // v-maha-server-bill: فشل فتح الجلسة عند المزوّد يردّ دقيقة الافتتاح (أو يعيد التجربة) — لا خصم بلا مكالمة.
+    const refundOpening = async () => {
+      if (!undoBill) return;
+      const u = undoBill; undoBill = null;
+      try { await u(); } catch (e) { console.error('[realtime-session] opening refund failed:', e && e.message); }
+    };
     if (!upstream.ok) {
       console.error('[realtime-session] OpenAI error:', upstream.status, rawText);
+      await refundOpening();
       res.status(upstream.status).setHeader('Content-Type', 'application/json').send(rawText);
       return;
     }
@@ -559,12 +590,16 @@ module.exports = async (req, res) => {
     let parsed;
     try { parsed = JSON.parse(rawText); } catch (e) { parsed = null; }
     if (!parsed || !parsed.value) {
+      await refundOpening();
       res.status(500).json({ error: 'Unexpected response from OpenAI Realtime API' });
       return;
     }
 
+    // v-cost-meter: دقيقة التجربة مجّانيّة للمستخدم لكنّها تكلّفنا — تُحسب في عدّاد الشهر (المدفوعة حسبها الخصم نفسه).
+    if (rtUser && mahaBudget && mahaBudget.prepaid === 'trial') { try { await require('./cost-meter.js').meterOp(rtUser, 'maha_minute'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
     res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic' });
   } catch (e) {
+    if (undoBill) { try { await undoBill(); } catch (e2) { console.error('[realtime-session] opening refund failed:', e2 && e2.message); } }
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };
