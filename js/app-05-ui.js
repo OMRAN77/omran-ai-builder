@@ -374,6 +374,109 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
     try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
   }
 }
+/* v-pdf-docs (شكوى عمران: «مااقدر احمل الملفات لتحويل PDF — فقط صورة»): زرّ «PDF» كان يقبل الصور
+   وحدها. الآن Word (.docx) والنصوص أيضًا، كلّها داخل المتصفّح بلا خادم ولا رصيد. المصدّر أعلاه يرسم
+   المحتوى كلّه في لوحة واحدة ثمّ يقصّها — فوثيقة من ١٠ صفحات تتجاوز حدّ لوحة آيفون (≈١٦ ميغابكسل)
+   وتخرج بيضاء، ويقطع السطر عند حافّة الصفحة. هنا: الكتل تُقاس ثمّ تُوزَّع على صفحات (لا كتلة تُقطع إلا
+   إن كانت أطول من صفحة)، وكلّ صفحة تُرسم بلوحتها الخاصّة — فلا سقف لطول الوثيقة إلا عدد الصفحات. */
+let __omranMammothLoading = null;
+function omranLoadMammoth(){
+  if(window.mammoth) return Promise.resolve();
+  if(__omranMammothLoading) return __omranMammothLoading;
+  __omranMammothLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/mammoth.browser.min.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranMammothLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranMammothLoading;
+}
+/* heights: ارتفاع كلّ كتلة (px)، pageH: ارتفاع محتوى الصفحة، breaks[i]: الكتلة i تبدأ صفحة جديدة.
+   الناتج: [{items:[فهارس الكتل]}] أو لكتلة أطول من صفحة شرائح [{items:[i], clipTop, clipH}]. */
+function omranPaginateBlocks(heights, pageH, breaks){
+  const pages = [];
+  let cur = null, used = 0;
+  heights.forEach((h0, i) => {
+    const h = Math.max(0, Number(h0) || 0);
+    if(h > pageH){
+      for(let top = 0; top < h; top += pageH) pages.push({ items: [i], clipTop: top, clipH: pageH });
+      cur = null; used = 0;
+      return;
+    }
+    if(!cur || (breaks && breaks[i]) || used + h > pageH){ cur = { items: [] }; pages.push(cur); used = 0; }
+    cur.items.push(i); used += h;
+  });
+  return pages;
+}
+async function omranExportPagedPdfFile(blocks, opts){
+  opts = opts || {};
+  const PW = 794, PH = 1123, PADV = 40, PADH = 44;
+  const contentH = PH - PADV * 2 - 6;
+  const maxPages = opts.maxPages || 80;
+  const css = '<style>p{margin:0 0 .6em}h1,h2,h3,h4,h5,h6{margin:.4em 0 .3em;line-height:1.5}h1{font-size:24px}h2{font-size:20px}h3{font-size:17px}ul,ol{margin:0 0 .6em;padding-inline-start:1.6em}table{border-collapse:collapse;width:100%;margin:0 0 .6em}td,th{border:1px solid #999;padding:3px 8px;vertical-align:top}img{max-width:100%;max-height:' + (contentH - 20) + 'px;display:block;margin:0 auto}</style>';
+  const mk = () => {
+    const h = document.createElement('div');
+    h.dir = opts.rtl === false ? 'ltr' : 'rtl';
+    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + PW + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+    h.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
+    return h;
+  };
+  const wrap = (html) => '<div style="display:flow-root">' + html + '</div>';
+  let pill = null;
+  try{
+    pill = document.createElement('div');
+    pill.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:2147483000;background:rgba(20,20,26,.96);color:#f3efe4;border:1px solid rgba(212,175,55,.45);border-radius:999px;padding:9px 16px;font-size:13.5px;font-weight:700;';
+    pill.textContent = '⏳ …';
+    document.body.appendChild(pill);
+  }catch(e){ pill = null; }
+  const measure = mk();
+  try{
+    await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
+    try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
+    /* القياس: كلّ كتلة في غلاف flow-root فلا تُهرَّب هوامشها خارج ارتفاعها، وعرضه كعرض صفحة الرسم */
+    measure.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
+    document.body.appendChild(measure);
+    await Promise.all(Array.from(measure.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
+    const heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+    measure.remove();
+    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone)));
+    let pages = omranPaginateBlocks(heights, contentH, breaks);
+    const total = pages.length;
+    if(!total) throw new Error('empty-doc');
+    if(total > maxPages) pages = pages.slice(0, maxPages);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    for(let k = 0; k < pages.length; k++){
+      if(pill) pill.textContent = String(t('pdfDocPage')).replace('{i}', k + 1).replace('{n}', pages.length);
+      await new Promise((r) => setTimeout(r, 0));
+      const pg = pages[k];
+      const inner = pg.items.map((i) => wrap(blocks[i].html)).join('');
+      const holder = mk();
+      holder.innerHTML = css + (pg.clipH ? '<div style="height:' + pg.clipH + 'px;overflow:hidden"><div style="margin-top:-' + pg.clipTop + 'px">' + inner + '</div></div>' : inner);
+      document.body.appendChild(holder);
+      let canvas;
+      try{
+        await Promise.all(Array.from(holder.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
+        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 1.3, style: { position: 'static', left: '0', top: '0' } });
+      } finally { holder.remove(); }
+      if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
+      if(k > 0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير */
+    }
+    await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-docs.pdf');
+    return { pages: pages.length, total, truncated: total > pages.length };
+  } catch(err){
+    try{
+      const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
+      if(errPill){ errPill.textContent = '❌ ' + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
+    }catch(e){ /* guard-ok */ }
+    throw err;
+  } finally {
+    try{ measure.remove(); }catch(e){ /* guard-ok */ }
+    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
+  }
+}
 function msgPdfFontSpec(){
   const fallback = {family:"'Tajawal'", google:'', line:1.7};
   try{
