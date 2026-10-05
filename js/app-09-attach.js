@@ -269,7 +269,7 @@ function renderAttachStrip(){
       } else {
         const name = document.createElement('span');
         name.className = 'name';
-        name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
+        name.textContent = (a.isVideoWatch ? '🎬 ' + (a.label || a.name) : a.name) + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
         chip.appendChild(name);
       }
       /* v-paste-attach: عرض محتوى المرفق النصّي في تبويب «الكود» قبل الإرسال */
@@ -1264,6 +1264,12 @@ async function omranIngestFiles(files, opts){
   opts = opts || {};
   for(const file of files){
     try{
+      /* v-video-watch: الفيديو كان يسقط في الفرع الأخير فيُقرأ نصًّا ثنائيًّا ويُرسل مرفقًا نصّيًّا — صار شريحة 🎬 تُشاهَد
+         وتُسمَع عند الإرسال (app-32؛ حدّه ١٠٠MB لا حدّ المرفقات ٢٥MB). */
+      if(typeof window.omranIsVideoFile === 'function' && window.omranIsVideoFile(file)){
+        pendingAttachments.push(await window.omranVideoAttachment(file));
+        continue;
+      }
       if(file.size > MAX_ATTACH_FILE_BYTES){
         console.error('attach file too large', file.name, file.size);
         pendingAttachments.push({ name: file.name, isImage: false, error: true, text: '⚠️ ' + file.name + ': ' + t('attachTruncated') });
@@ -3418,6 +3424,9 @@ async function __sendPromptCore(){
     alert(lang === 'ar' ? 'الرجاء الانتظار حتى ينتهي تحليل الأرشيف' : 'Please wait until archive analysis finishes');
     return;
   }
+  /* v-video-watch: فيديو مرفق = يُشاهَد ويُسمَع (app-32) — قبل بوّابات الوسائط كي لا يُفهم «وش يقول في الفيديو؟» طلبَ إنشاء فيديو. */
+  const __vwAtt = pendingAttachments.find(a => a && a.isVideoWatch);
+  if(__vwAtt && typeof window.omranVideoWatchSend === 'function'){ await window.omranVideoWatchSend(text, __vwAtt); return; }
 
   /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
      على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */

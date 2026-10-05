@@ -90,6 +90,6 @@ test('٤. الشارة الذهبيّة: Pro وMax يريانها بجانب ا�
   assert.match(idx, /html\.plan-gold \.setProfileName::after\{ content: var\(--plan-badge, ""\);/);
   assert.ok(read('js/partials-settings.js').includes('<div id="setProfileName" class="setProfileName"></div>'));
   assert.ok(idx.includes('/js/partials-settings.js?v=691'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=721'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=722'"));
   assert.ok(read('js/app.bundle.js').includes("root.style.setProperty('--plan-badge', JSON.stringify(plan.toUpperCase()));"), 'الحزمة مبنيّة');
 });

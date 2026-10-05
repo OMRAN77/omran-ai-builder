@@ -1171,3 +1171,5 @@ Object.assign(I18N["zh"], {"livingMemTitle": "我的动态记忆", "livingMemInt
 Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…", "pdfDocSkipped": "已跳过 {n} 个文件（格式不受支持，或本身就是 PDF）：{names}。支持：图片、Word (docx) 和文本文件（txt、md、csv…）。", "pdfDocTruncated": "文档较长：仅转换了前 {n} 页。", "pdfDocFail": "无法转换该文件：{why}"});
 
 /* v-paypal-honest */ Object.assign(I18N['zh'], {"checkoutPaidPending":"✅ 已收到您的付款，但入账有所延迟——下次打开应用时会自动完成。如一小时内仍未到账，请联系我们。"});
+
+/* v-video-watch */ Object.assign(I18N['zh'], {"vwUploading": "🎬 正在上传视频…", "vwWatching": "🎬 正在观看视频并聆听声音…", "vwCharged": "🎬 已扣除 {n} 积分 · {d} 视频", "vwNoPoints": "你有 {p} 积分；分析此视频需要 {n} 积分。", "vwTooBig": "视频超过 100 MB——请剪短或降低分辨率后再发送。", "vwTooLong": "视频超过 10 分钟——请发送更短的片段。", "vwFormat": "不支持该视频格式——请以 MP4、MOV 或 WEBM 格式发送。", "vwFailed": "视频分析失败——未扣除任何积分。请重试。", "vwLogin": "请先登录以分析视频。", "vwDefaultQ": "分析这个视频"});

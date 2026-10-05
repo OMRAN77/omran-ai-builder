@@ -21,6 +21,7 @@ function load(action) {
     case 'omni-create': return require('./_lib/omni-create.js');
     case 'actor-create': return require('./_lib/actor-create.js'); // v-actor-lipsync: صوت إماراتيّ + تحريك الشفاه
     case 'actor-status': return require('./_lib/actor-status.js');
+    case 'video-watch': return require('./_lib/video-watch.js'); // v-video-watch: فيديو مرفق في المحادثة يُشاهَد ويُسمَع معًا
     default: return null;
   }
 }
