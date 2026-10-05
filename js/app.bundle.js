@@ -12967,7 +12967,20 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
 const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211 }; // v-media-plans + v-maha-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
-const MEDIA_PLAN_AED = { basic: '37.5', pro: '75', max: '375' };
+/* v-aed-checkout (طلب المالك ٥ أكتوبر، «الدرهم فقط»): من عملته المعروضة درهم (منتقي العملة، وإلّا كشف الدولة) يدفع
+   بالدرهم السعر المعروض نفسه؛ غيره بالدولار. بالفلس — يطابق AED_FILS في create-checkout-session.js (الخادم يحسب المبلغ). */
+const CHECKOUT_AED_FILS = { basic: 3750, pro: 7500, max: 37500, pack100: 1900, pack300: 4800, pack700: 9500, pack900: 13000, img_basic: 3750, img_pro: 7500, img_max: 37500, vid_basic: 3750, vid_pro: 7500, vid_max: 37500, maha_basic: 3750, maha_pro: 7500, maha_max: 37500 };
+function checkoutCurrency(){
+  try{
+    if(window.OmranCur && typeof window.OmranCur.cur === 'function') return window.OmranCur.cur().cc === 'AED' ? 'aed' : 'usd';
+    if(window.OmranGeo && typeof window.OmranGeo.country === 'function') return window.OmranGeo.country() === 'AE' ? 'aed' : 'usd';
+  }catch(e){ __swallow(e, 'checkout:currency'); }
+  return 'usd';
+}
+// المبلغ الذي سيُخصم بعملة الدفع — نافذة الدفع تقوله كما يقوله Stripe.
+function checkoutPriceText(plan, cur){
+  return cur === 'aed' ? (CHECKOUT_AED_FILS[plan] / 100).toLocaleString('en-US') + ' AED' : '$' + (CHECKOUT_PLAN_AMOUNTS[plan] / 100).toLocaleString('en-US');
+}
 // v-fair-video: نقاط كلّ رزمة كما يمنحها الخادم — مفتاح pack900 يمنح ١٬٠٥٠ (الاسم من المفتاح كان سيقول ٩٠٠).
 const PACK_POINTS = { pack100: 100, pack300: 300, pack700: 700, pack900: 1050 };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
@@ -13138,8 +13151,11 @@ function openCheckout(plan){
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
   const __mp = /^(img|vid|maha)_(basic|pro|max)$/.exec(String(plan));
-  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + MEDIA_PLAN_AED[__mp[2]] + ' AED ' + t('planPer');
-  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (Number(PACK_POINTS[plan] || String(plan).slice(4)).toLocaleString('en-US') + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  // v-aed-checkout: السعر في النافذة بعملة الدفع — «$10» في نصّ الباقة يصير «37.5 AED» لمن يدفع بالدرهم، والوسائط بالدولار لغيره.
+  const __cur = checkoutCurrency();
+  const __planTxt = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + checkoutPriceText(plan, __cur) + ' ' + t('planPer');
+  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (Number(PACK_POINTS[plan] || String(plan).slice(4)).toLocaleString('en-US') + ' ' + t('pricingPointsUnit')) : (__cur === 'aed' ? __planTxt.replace(/\$\s?\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?\s?\$/, checkoutPriceText(plan, __cur)) : __planTxt);
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually
@@ -13180,7 +13196,7 @@ async function startStripeCheckout(){
     const r = await fetch('/api/account?action=create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token'), autoRenew: !!(document.getElementById('checkoutAutoRenew') || {}).checked }),
+      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token'), autoRenew: !!(document.getElementById('checkoutAutoRenew') || {}).checked, currency: checkoutCurrency() }),
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
@@ -13234,33 +13250,34 @@ async function ensureStripeJs(){
 async function setupWalletPaymentRequest(plan){
   currentWalletAvailability = null;
   currentPaymentRequest = null;
-  const amount = CHECKOUT_PLAN_AMOUNTS[plan];
+  const cur = checkoutCurrency(); // v-aed-checkout — الورقة والعمليّة في الخادم بالعملة والمبلغ نفسيهما
+  const amount = cur === 'aed' ? CHECKOUT_AED_FILS[plan] : CHECKOUT_PLAN_AMOUNTS[plan];
   if (!amount) return;
   try {
     const stripe = await ensureStripeJs();
     if (!stripe) return;
     const pr = stripe.paymentRequest({
       country: 'AE',
-      currency: 'usd',
+      currency: cur,
       total: { label: 'Omran AI Builder', amount },
       requestPayerName: true,
       requestPayerEmail: true,
     });
     const availability = await pr.canMakePayment();
     currentWalletAvailability = availability || null;
-    pr.on('paymentmethod', (ev) => { handleWalletPaymentMethod(ev, plan); });
+    pr.on('paymentmethod', (ev) => { handleWalletPaymentMethod(ev, plan, cur); });
     currentPaymentRequest = pr;
   } catch (e) { currentWalletAvailability = null; currentPaymentRequest = null; }
 }
 
-async function handleWalletPaymentMethod(ev, plan){
+async function handleWalletPaymentMethod(ev, plan, currency){
   const statusMsg = document.getElementById('checkoutStatusMsg');
   try {
     const stripe = await ensureStripeJs();
     const cr = await fetch('/api/account?action=create-payment-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan, token: authGet('aiapp_auth_token') }),
+      body: JSON.stringify({ plan, token: authGet('aiapp_auth_token'), currency: currency || 'usd' }),
     });
     const cd = await cr.json();
     if (!cr.ok || !cd.clientSecret) {

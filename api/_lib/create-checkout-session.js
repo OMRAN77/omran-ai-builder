@@ -39,6 +39,18 @@ const PLANS = {
 // v-media-plans: اشتراكات الصور/الفيديو — شهريّة، بلا نقاط ولا تغيير للباقة (رصيدها منفصل في _mediaPlans.js).
 for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.amount, points: 0, media: p.media, name: p.name };
 
+/* v-aed-checkout (طلب المالك ٥ أكتوبر، «الدرهم فقط»): الأسعار تُعرض بعملة البلد (js/currency.js) والدفع كان بالدولار
+   وحده — فالمشترك في الإمارات يرى ٣٧٫٥ د.إ وتخصم بطاقته ١٠$ برسوم تحويل. الآن يدفع بالدرهم السعر المعروض نفسه بالفلس
+   (pretty(usd × 3.6725) — يثبّت التطابقَ tests/aed-checkout.test.cjs)؛ بقيّة الدول بالدولار كما كانت. العميل يختار العملة لا
+   المبلغ، وأيّ عملة أخرى = الدولار. PayPal بالدولار دائمًا (لا يدعم الدرهم). */
+const AED_FILS = { basic: 3750, pro: 7500, max: 37500, pack100: 1900, pack300: 4800, pack700: 9500, pack900: 13000 };
+const MEDIA_AED_FILS = { basic: 3750, pro: 7500, max: 37500 }; // img_/vid_/maha_ بنفس أسعار المحادثة بالدرهم
+function priceFor(plan, currency) { // plan معروف في PLANS (يتحقّق منه المستدعي)
+  const aed = PLANS[plan].media ? MEDIA_AED_FILS[String(plan).split('_')[1]] : AED_FILS[plan];
+  if (String(currency || '').toLowerCase() === 'aed' && aed > 0) return { currency: 'aed', amount: aed };
+  return { currency: 'usd', amount: PLANS[plan].amount };
+}
+
 const LOGIN_FIRST = 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe';
 
 /* v-pay-once (فحص الاشتراكات ٥ أكتوبر): «أمان التكرار» كان يتذكّر آخر دفعة وحدها وبلا قفل — دفعتان حقيقيّتان
@@ -122,7 +134,7 @@ async function createCheckoutSession(req, res) {
 
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { plan, origin, token, autoRenew } = body;
+    const { plan, origin, token, autoRenew, currency } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
 
@@ -138,8 +150,9 @@ async function createCheckoutSession(req, res) {
     params.append('mode', recurring ? 'subscription' : 'payment');
     params.append('payment_method_types[0]', 'card');
     params.append('line_items[0][quantity]', '1');
-    params.append('line_items[0][price_data][currency]', 'usd');
-    params.append('line_items[0][price_data][unit_amount]', String(planInfo.amount));
+    const price = priceFor(plan, currency); // v-aed-checkout — التجديد الشهريّ بالعملة نفسها
+    params.append('line_items[0][price_data][currency]', price.currency);
+    params.append('line_items[0][price_data][unit_amount]', String(price.amount));
     if (recurring) params.append('line_items[0][price_data][recurring][interval]', 'month');
     params.append('line_items[0][price_data][product_data][name]', planInfo.name);
     params.append('metadata[plan]', plan);
@@ -235,9 +248,9 @@ async function verifyCheckout(req, res) {
 
 // ===== Apple Pay / Google Pay via Stripe Payment Request Button API =====
 // These create a plain one-time PaymentIntent (NOT a subscription — see the
-// KNOWN LIMITATION note at the top of this file) for the same USD amount as
-// the plan, so the frontend's Payment Request Button can confirm it directly
-// on-page without a redirect.
+// KNOWN LIMITATION note at the top of this file) for the plan's amount (USD, or
+// AED for the UAE — v-aed-checkout), so the frontend's Payment Request Button
+// can confirm it directly on-page without a redirect.
 async function createPaymentIntent(req, res) {
   try {
     const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -248,16 +261,17 @@ async function createPaymentIntent(req, res) {
 
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { plan, token } = body;
+    const { plan, token, currency } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
 
     const username = verifyToken(token);
     if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
 
+    const price = priceFor(plan, currency); // v-aed-checkout — نفس مبلغ ورقة Apple/Google Pay في العميل
     const params = new URLSearchParams();
-    params.append('amount', String(planInfo.amount));
-    params.append('currency', 'usd');
+    params.append('amount', String(price.amount));
+    params.append('currency', price.currency);
     params.append('payment_method_types[0]', 'card');
     params.append('description', planInfo.name);
     params.append('metadata[plan]', plan);
@@ -416,4 +430,5 @@ module.exports = async (req, res) => {
 module.exports.grantPlanToUser = grantPlanToUser;
 module.exports.wasNamed = wasNamed; // v-rename-move — PayPal يربط الطلب بالحساب بالاسم نفسه
 module.exports.PLANS = PLANS;
+module.exports.priceFor = priceFor; // v-aed-checkout — للاختبار
 module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — للاختبار
