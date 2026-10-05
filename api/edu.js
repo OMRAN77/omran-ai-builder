@@ -33,6 +33,24 @@ const GUEST_TUTOR_PER_DAY = 10;
 const USER_SOLVE_PER_DAY = Number(process.env.EDU_SOLVE_DAILY || 30);
 const GUEST_SOLVE_PER_DAY = 3;
 
+// v-edu-tiers (قرار المالك: التعليم ضمن باقات المحادثة — Plus باقة الطالب):
+// السقف اليومي يتبع الطبقة (ضيف/مجاني/Plus/Pro/Max) بدل الثنائية مسجّل/ضيف.
+// المالك وVIP بلا سقف (eduCapsFor ترجع null)، وMax بلا عدّاد (Infinity).
+// متغيرات البيئة القديمة (EDU_USER_DAILY وإخوتها) صارت تضبط سقف Plus.
+const EDU_CAPS = {
+  guest: { proc: GUEST_PROCESS_PER_DAY, tutor: GUEST_TUTOR_PER_DAY, solve: GUEST_SOLVE_PER_DAY, grade: 10, docask: 15, cv: GUEST_PROCESS_PER_DAY, lscript: 20 },
+  free:  { proc: 5,  tutor: 20,  solve: 10, grade: 30,  docask: 15,  cv: 3,  lscript: 20 },
+  basic: { proc: USER_PROCESS_PER_DAY, tutor: USER_TUTOR_PER_DAY, solve: USER_SOLVE_PER_DAY, grade: USER_GRADE_PER_DAY, docask: USER_GRADE_PER_DAY, cv: 15, lscript: 40 },
+  pro:   { proc: 60, tutor: 200, solve: 80, grade: 300, docask: 300, cv: 40, lscript: 80 },
+  max:   { proc: Infinity, tutor: Infinity, solve: Infinity, grade: Infinity, docask: Infinity, cv: Infinity, lscript: Infinity },
+};
+function eduCapsFor(t) {
+  if (!t || t.tier === 'guest') return EDU_CAPS.guest;
+  if (t.tier === 'owner' || t.tier === 'vip') return null; // معفى — VIP كالمالك
+  if (t.tier === 'sub') return EDU_CAPS[t.plan] || EDU_CAPS.free;
+  return EDU_CAPS.free;
+}
+
 /**
  * One daily counter per subject (ip or username) per bucket. Owner is exempt.
  * Returns true when the caller is over the limit.
@@ -374,6 +392,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (isRetired(action)) { retiredResponse(res, action); return; }
     const username = body.token ? verifyToken(body.token) : null;
     const isOwner = isOwnerName(username);
+    // v-edu-tiers: طبقة المستخدم وسقفه التعليمي — تُحسب مرة لكل طلب.
+    // عطب القراءة = معاملة مسجّل مجاني (فشل آمن، لا يفتح ولا يقفل ظلمًا).
+    let __eduCaps = username ? EDU_CAPS.free : EDU_CAPS.guest;
+    try { __eduCaps = eduCapsFor(await require('./_lib/tier.js').resolveTier(username)); } catch (e) { /* best-effort */ }
+    const __eduMax = (k) => (__eduCaps ? __eduCaps[k] : Infinity);
 
     // ---------------- process ----------------
     if (action === 'process') {
@@ -384,7 +407,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // only the owner is exempt.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
           res.status(402).json({
             error: username
@@ -450,7 +473,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // الصفحة لا ترسل توكن — سقف يومي بالـIP يحمي المفتاح دون تغيير التجربة.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        if (await overDailyLimit(subject, 'lscript', 20)) {
+        if (await overDailyLimit(subject, 'lscript', __eduMax('lscript'))) {
           res.status(402).json({ error: 'وصلت للحد اليومي لدروس الفيديو. عد غدًا 🌙' });
           return;
         }
@@ -501,7 +524,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
           res.status(402).json({
             error: username
@@ -549,7 +572,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!qSummary) { res.status(400).json({ error: 'لا يوجد ملخص لتوليد الأسئلة منه.' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       }
       const qTail = eduLangTail(body.lang, body.nativeLang, body.examLang, body.stage || 'university');
@@ -586,7 +609,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
           res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' });
           return;
@@ -656,13 +679,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (action === 'cv') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
-      if (!username) {
-        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
-        const key = 'cv:proc:' + encodeURIComponent(ip) + ':' + todayStr();
-        let count = 0;
-        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
-        if (count > GUEST_PROCESS_PER_DAY) {
-          res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + GUEST_PROCESS_PER_DAY + ' سير ذاتية). سجّل الدخول أو عد غدًا 🌙' });
+      // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        if (await overDailyLimit(subject, 'cv', __eduMax('cv'))) {
+          res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' });
           return;
         }
       }
@@ -693,13 +714,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
 
-      if (!username) {
-        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
-        const key = 'exp:proc:' + encodeURIComponent(ip) + ':' + todayStr();
-        let count = 0;
-        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
-        if (count > GUEST_PROCESS_PER_DAY) {
-          res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + GUEST_PROCESS_PER_DAY + ' كشوفات). سجّل الدخول أو عد غدًا 🌙' });
+      // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        if (await overDailyLimit(subject, 'exp', __eduMax('cv'))) {
+          res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' });
           return;
         }
       }
@@ -757,7 +776,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // الأمني: لا نداء كلود بلا هوية/حدّ.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'doc', max)) {
           res.status(402).json({
             error: username
@@ -813,7 +832,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // رخيص لكنه قابل للتكرار — نحدّه كالتصحيح.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const cap = username ? USER_GRADE_PER_DAY : 15;
+        const cap = __eduMax('docask');
         if (await overDailyLimit(subject, 'docask', cap)) {
           res.status(402).json({ error: 'وصلت للحد اليومي للأسئلة (' + cap + '). عد غدًا 🌙' });
           return;
@@ -865,7 +884,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // Grading is cheap per call but trivially loopable — cap it like process.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const cap = username ? USER_GRADE_PER_DAY : 10;
+        const cap = __eduMax('grade');
         if (await overDailyLimit(subject, 'grade', cap)) {
           res.status(402).json({ error: 'وصلت للحد اليومي للتصحيح (' + cap + '). عد غدًا 🌙' });
           return;
@@ -911,7 +930,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!question) { res.status(400).json({ error: 'اكتب سؤالك أولًا.' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const cap = username ? USER_TUTOR_PER_DAY : GUEST_TUTOR_PER_DAY;
+        const cap = __eduMax('tutor');
         if (await overDailyLimit(subject, 'tutor', cap)) {
           res.status(402).json({ error: 'وصلت للحد اليومي لأسئلة المعلّم (' + cap + '). عد غدًا 🌙' });
           return;
@@ -951,7 +970,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (img && img.base64.length > MAX_BASE64_CHARS) { res.status(413).json({ error: 'الصورة كبيرة جدًا — جرّب صورة أصغر.' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const cap = username ? USER_SOLVE_PER_DAY : GUEST_SOLVE_PER_DAY;
+        const cap = __eduMax('solve');
         if (await overDailyLimit(subject, 'solve', cap)) {
           res.status(402).json({ error: 'وصلت للحد اليومي لحلّ المسائل (' + cap + '). عد غدًا 🌙' });
           return;
