@@ -6593,8 +6593,10 @@ DESIGN RULES (non-negotiable):
       // v-chat-vision: الصور مع كلود تمر بمسار الأدوات المباشر القوي نفسه —
       // كانت تُقصى منه كلها فتسقط لمسار قديم أضعف (سبب تحليل الصور السطحي).
       // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
+      // v-owner-vision (المالك ٦ أكتوبر «كلّ واحد يحلّل ويشوف… أنا المالك عند اختيار أيّ مزوّد»): صورة المالك تمرّ هنا
+      // لأيّ مزوّد — الخادم يعطيه موديل رؤيته (owner-vision.js) بدل المسار القديم الذي يُسقطها أو يصفها Gemini وحده.
       const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
-        && (!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai'))
+        && (__ownerFree || (!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai')))
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
