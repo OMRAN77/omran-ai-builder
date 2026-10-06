@@ -1097,6 +1097,8 @@ const I18N = {
     plansRenew: 'جدّد',
     plansLater: 'لاحقًا',
     vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
+    /* v-google-login-help */
+    authGoogleHint: 'إن كنت سجّلت بحساب Google فاضغط «{btn}» — كلمة مرور Gmail لا تعمل هنا.',
     pricingTestNote: '🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية',
     termsLink: '📜 الشروط والأحكام',
     privacyLink: '🔒 سياسة الخصوصية',
@@ -1384,6 +1386,8 @@ const I18N = {
     plansRenew: 'Renew',
     plansLater: 'Later',
     vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
+    /* v-google-login-help */
+    authGoogleHint: 'Signed up with Google? Tap “{btn}” — your Gmail password doesn’t work here.',
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
