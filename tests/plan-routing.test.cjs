@@ -355,9 +355,7 @@ test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا �
   const ps = read('js/partials-settings.js');
   for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'صورة إبداعية: 35', 'فيديو: 55', 'فيديو بالصوت: 175', 'فيديو سينمائي: 120']) assert.ok(ps.includes(s), 'partials-settings: ' + s); // v-fair-video
   for (const s of ['<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '10 رسائل يوميًا', 'احترافية يوميًا', 'Veo 3']) assert.ok(!ps.includes(s), 'partials-settings stale: ' + s);
-  const ph = read('pricing.html');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '<div class="val">35</div>', '<div class="val">55</div>', '<div class="val">175</div>', '<div class="val">120</div>', '<th>300 نقطة</th>', 'loc(12.99,x)']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
-  for (const s of ['<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '10 رسائل يوميًا', '<div class="val">60</div>', '<div class="val">400</div>']) assert.ok(!ph.includes(s), 'pricing.html stale: ' + s);
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'pricing.html')), 'v-cleanup: صفحة الأسعار اليتيمة حُذفت بموافقة المالك — بطاقات الإعدادات هي المرجع');
   assert.ok(read('js/app.bundle.js').includes('function applyPlanGate(d){'), 'الحزمة مبنيّة');
 });
 

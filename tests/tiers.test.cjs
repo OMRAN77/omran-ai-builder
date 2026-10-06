@@ -249,9 +249,7 @@ test('plans: 360 / 920 / 3,200 (v-plan-routing) — identical in Stripe and PayP
   const ps = read('js/partials-settings.js');
   for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'مها: 15 نقطة/دقيقة', 'صورة: 20']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
   for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '20 رسالة يوميًا', 'رسائل بلا حدود', 'صورة: 10']) assert.ok(!ps.includes(s), 'partials-settings stale: ' + s);
-  const ph = read('pricing.html');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '<div class="val">15</div>', '<div class="val">20</div>']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
-  for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '<b>500</b>', '<b>7,000</b>', 'رسائل بلا حدود', '<div class="val">10</div>']) assert.ok(!ph.includes(s), 'pricing.html stale: ' + s);
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'pricing.html')), 'v-cleanup: صفحة الأسعار اليتيمة حُذفت بموافقة المالك — بطاقات الإعدادات هي المرجع');
   const i18n = read('js/app-03-i18n-data.js');
   assert.ok(i18n.includes("plFreeMsgs: '20 رسالة يوميًّا'") && i18n.includes("plFreeMsgs: '20 messages a day'"));
   assert.ok(i18n.includes("plStMsgs: '50 رسالة يوميًا'") && i18n.includes("plProMsgs: '100 messages a day'"));

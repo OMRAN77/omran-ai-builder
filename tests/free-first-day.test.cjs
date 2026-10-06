@@ -69,7 +69,8 @@ test('النصوص بالـ١٤ لغة تذكر ٢٠ يوميًّا بلا «ث�
     }
     assert.ok(/planFreeFeats"?\s*:\s*["']<li>[^<3]*20[^<3]*<\/li>/.test(s), l + ': planFreeFeats');
   }
-  assert.ok(read('pricing.html').includes('</svg>20 رسالة يوميًّا</li>') && read('js/partials-settings.js').includes('<li data-i18n="plFreeMsgs">20 رسالة يوميًّا</li>'));
+  assert.ok(read('js/partials-settings.js').includes('<li data-i18n="plFreeMsgs">20 رسالة يوميًّا</li>'));
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'pricing.html')), 'v-cleanup: صفحة الأسعار اليتيمة حُذفت بموافقة المالك — بطاقات الإعدادات هي المرجع');
   assert.ok(read('api/_lib/env.js').includes('FREE_FIRST_DAY:'));
   // أوّل يوم أكبر من اليوميّ (لو رفعه المالك من البيئة) يعود للصيغة القديمة
   const old = { a: process.env.FREE_FIRST_DAY, b: process.env.FREE_DAILY };
