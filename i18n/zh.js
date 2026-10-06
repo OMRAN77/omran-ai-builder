@@ -1174,3 +1174,4 @@ Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…",
 
 /* v-video-watch */ Object.assign(I18N['zh'], {"vwUploading": "🎬 正在上传视频…", "vwWatching": "🎬 正在观看视频并聆听声音…", "vwCharged": "🎬 已扣除 {n} 积分 · {d} 视频", "vwNoPoints": "你有 {p} 积分；分析此视频需要 {n} 积分。", "vwTooBig": "视频超过 100 MB——请剪短或降低分辨率后再发送。", "vwTooLong": "视频超过 10 分钟——请发送更短的片段。", "vwFormat": "不支持该视频格式——请以 MP4、MOV 或 WEBM 格式发送。", "vwFailed": "视频分析失败——未扣除任何积分。请重试。", "vwLogin": "请先登录以分析视频。", "vwDefaultQ": "分析这个视频"});
 /* v-plans-gate */ Object.assign(I18N['zh'], {"plansWhyPoints": "你的积分已用完 — 在套餐中充值即可继续。", "plansWhyLimit": "你已达到套餐今日上限 — 升级套餐或等到明天。", "plansWhyExpired": "你的 {plan} 订阅已到期 — 续订即可恢复权益。", "plansWhyExpiring": "你的 {plan} 订阅将于 {date} 到期 — 续订以免权益中断。", "plansRenew": "续订", "plansLater": "稍后", "vwUnavailable": "视频分析暂时不可用 — 未扣除任何积分。请稍后再试。"});
+/* v-google-login-help */ Object.assign(I18N['zh'], {"authGoogleHint": "用 Google 注册的？请点击「{btn}」——Gmail 密码在这里无法使用。"});

@@ -269,6 +269,19 @@ async function resolveLoginUser(identifier) {
   return { key, user: direct };
 }
 
+/* v-google-login-help: حساب «المتابعة عبر Google» مفتاحه g_<البريد> (أو حساب دُمج فيه — db/alias كما في الكولباك)، بلا
+   فهرس بريد ولا كلمة مرور يعرفها صاحبه. محاولة واحدة لا أربع: الغياب هنا هو الحالة الغالبة لا تأخّر تخزين. */
+async function googleAccountFor(emailKey) {
+  try {
+    const gKey = 'g_' + emailKey;
+    const alias = await kvGetJSON('db/alias/' + gKey);
+    const key = (alias && alias.primary) ? String(alias.primary) : gKey;
+    const user = await getUser(key, 1);
+    if (user && !user.deleted) return { key, user };
+  } catch (e) { logError('auth:google-account', e); }
+  return null;
+}
+
 // يمنع حقن HTML عبر اسم المستخدم في جسم الرسالة.
 function escapeHtml(s) {
   return String(s == null ? '' : s)
@@ -332,6 +345,27 @@ async function sendResetEmail(toEmail, username, resetToken, isEn) {
         <h2>إعادة تعيين كلمة المرور</h2>
         <p>مرحبًا ${name}، اضغط الزر بالأسفل لتعيين كلمة مرور جديدة. الرابط صالح لمدة 30 دقيقة.</p>
         <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">إعادة تعيين كلمة المرور</a></p>
+        <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
+       </div>`;
+  return sendMail(toEmail, subject, html);
+}
+
+// v-google-login-help: بريد «نسيت كلمة المرور» لحساب أُنشئ بزرّ Google — لا رابط إعادة (لا كلمة مرور له أصلًا) بل الطريق الصحيح للدخول.
+async function sendGoogleHintEmail(toEmail, username, isEn) {
+  const name = escapeHtml(username);
+  const link = siteUrl() + '/';
+  const subject = isEn ? 'How to sign in — Omran AI Builder' : 'طريقة دخولك — Omran AI Builder';
+  const html = isEn
+    ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+        <h2>Your account signs in with Google</h2>
+        <p>Hi ${name}, your account was created with Google, so it has no password of its own. Open the app, tap <b>Continue with Google</b> and choose this email.</p>
+        <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">Open the app</a></p>
+        <p style="color:#888;font-size:13px">If you didn't request this, ignore this email.</p>
+       </div>`
+    : `<div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto">
+        <h2>حسابك يدخل بزرّ Google</h2>
+        <p>مرحبًا ${name}، حسابك أُنشئ بحساب Google فلا كلمة مرور خاصّة له. افتح التطبيق واضغط <b>المتابعة عبر Google</b> واختر هذا البريد.</p>
+        <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">افتح التطبيق</a></p>
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
        </div>`;
   return sendMail(toEmail, subject, html);
@@ -652,6 +686,14 @@ module.exports = async (req, res) => {
           await putUser(owner.key, owner.user);
           const sent = await sendResetEmail(owner.user.email, owner.user.username, rt, isEn);
           if (!sent) logError('auth:forgot-send', new Error('reset mail not sent'));
+        } else {
+          // v-google-login-help: حساب «المتابعة عبر Google» لا يجده البحث بالبريد ولا كلمة مرور له يعرفها صاحبه — كان يقرأ
+          // «سيصلك رابط» ولا يصله شيء. الآن يصل بريده نفسه إرشاد «ادخل بزرّ Google»؛ الردّ على الشاشة واحد (v-account-email).
+          const g = await googleAccountFor(emailKey);
+          if (g) {
+            const sent = await sendGoogleHintEmail(emailKey, g.user.username, isEn);
+            if (!sent) logError('auth:forgot-google-send', new Error('google hint mail not sent'));
+          }
         }
         res.status(200).json({ ok: true, message: m('إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.', 'If this email is linked to an account, a reset link will reach you within minutes.') });
         return;

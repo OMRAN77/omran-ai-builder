@@ -1059,6 +1059,35 @@ try{
     } catch(e){ /* ignore */ }
   })();
 
+  /* v-google-login-help (لقطة المالك ٦ أكتوبر: بريد Gmail + كلمة مرور ← «اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة»):
+     حساب «المتابعة عبر Google» لا كلمة مرور له عندنا، فدخوله بالإيميل يفشل دائمًا بالرسالة العامّة نفسها. سطر تحت الخطأ
+     يدلّ على الزرّ ونبضة عليه — لكلّ دخول بإيميل يفشل، بلا سؤال الخادم، فلا يكشف هل البريد مسجَّل (v-account-email). */
+  function googleLoginHint(){
+    try {
+      const t = curT();
+      if(!t.authGoogleHint) return;
+      const hint = document.createElement('div');
+      hint.className = 'authGoogleHint';
+      hint.style.cssText = 'color:var(--muted,#8a8a96); margin-top:6px; line-height:1.7;';
+      // اسم الزرّ معزول الاتّجاه وفي سطر واحد: «المتابعة عبر Google» كان ينقسم بين سطرين وتنقلب علامتا التنصيص حوله
+      const parts = t.authGoogleHint.split('{btn}');
+      hint.appendChild(document.createTextNode(parts[0]));
+      if(parts.length > 1){
+        const btnName = document.createElement('bdi');
+        btnName.style.whiteSpace = 'nowrap';
+        btnName.textContent = t.authGoogleBtn || 'Google';
+        hint.appendChild(btnName);
+        hint.appendChild(document.createTextNode(parts.slice(1).join('{btn}')));
+      }
+      errBox.appendChild(hint);
+      const gb = $('#authGoogleBtn');
+      if(gb){
+        gb.style.boxShadow = '0 0 0 2px var(--accent, #7c6cff)';
+        setTimeout(() => { gb.style.boxShadow = ''; }, 4000);
+      }
+    } catch(e){ __swallow(e, 'auth:google-login-hint'); }
+  }
+
   const googleBtnEl = $('#authGoogleBtn');
   if(googleBtnEl){
     googleBtnEl.onclick = () => {
@@ -1108,6 +1137,24 @@ try{
               : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
           }
         } catch(e){ __swallow(e, 'auth:google-hint'); }
+        return;
+      }
+      /* v-google-login-help: غلاف أندرويد الخام (WebView — MahaWebViewFallbackActivity، «; wv)» في هويّته) يفتح جوجل في
+         تبويب متصفّح منفصل (Custom Tab)، والعودة كانت تفتح الموقع كاملًا هناك فيحسب المستخدم أنّه دخل وهو خارج التطبيق.
+         &app=1 = صفحة «✅ ارجع للتطبيق» هناك، وجسر oauth-claim أعلاه يكمل الدخول هنا. Chrome (TWA) والمتصفّح كما كانا. */
+      let androidWrap = false;
+      try { const ua = navigator.userAgent || ''; androidWrap = /Android/i.test(ua) && /;\s*wv\)/.test(ua); } catch(e){ /* guard-ok — كشف تيسير، وغيابه = المسار العاديّ */ }
+      if (androidWrap) {
+        try {
+          const bx = $('#authError');
+          if (bx) {
+            bx.style.color = 'var(--accent, #7c6cff)';
+            bx.textContent = (localStorage.getItem('aiapp_lang') === 'en')
+              ? 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.'
+              : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
+          }
+        } catch(e){ __swallow(e, 'auth:google-hint-android'); }
+        window.location.href = gStartUrl + '&app=1';
         return;
       }
       window.location.href = gStartUrl;
@@ -1353,6 +1400,7 @@ try{
       const data = await res.json();
       if(!res.ok || data.error){
         errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+        if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
         return;
       }
       authSet('aiapp_auth_token', data.token);
@@ -4414,6 +4462,8 @@ const I18N = {
     plansRenew: 'جدّد',
     plansLater: 'لاحقًا',
     vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
+    /* v-google-login-help */
+    authGoogleHint: 'إن كنت سجّلت بحساب Google فاضغط «{btn}» — كلمة مرور Gmail لا تعمل هنا.',
     pricingTestNote: '🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية',
     termsLink: '📜 الشروط والأحكام',
     privacyLink: '🔒 سياسة الخصوصية',
@@ -4701,6 +4751,8 @@ const I18N = {
     plansRenew: 'Renew',
     plansLater: 'Later',
     vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
+    /* v-google-login-help */
+    authGoogleHint: 'Signed up with Google? Tap “{btn}” — your Gmail password doesn’t work here.',
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
@@ -5632,7 +5684,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=723'; /* v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=724'; /* v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];

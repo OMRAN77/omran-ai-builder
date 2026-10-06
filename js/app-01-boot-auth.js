@@ -921,6 +921,35 @@ try{
     } catch(e){ /* ignore */ }
   })();
 
+  /* v-google-login-help (لقطة المالك ٦ أكتوبر: بريد Gmail + كلمة مرور ← «اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة»):
+     حساب «المتابعة عبر Google» لا كلمة مرور له عندنا، فدخوله بالإيميل يفشل دائمًا بالرسالة العامّة نفسها. سطر تحت الخطأ
+     يدلّ على الزرّ ونبضة عليه — لكلّ دخول بإيميل يفشل، بلا سؤال الخادم، فلا يكشف هل البريد مسجَّل (v-account-email). */
+  function googleLoginHint(){
+    try {
+      const t = curT();
+      if(!t.authGoogleHint) return;
+      const hint = document.createElement('div');
+      hint.className = 'authGoogleHint';
+      hint.style.cssText = 'color:var(--muted,#8a8a96); margin-top:6px; line-height:1.7;';
+      // اسم الزرّ معزول الاتّجاه وفي سطر واحد: «المتابعة عبر Google» كان ينقسم بين سطرين وتنقلب علامتا التنصيص حوله
+      const parts = t.authGoogleHint.split('{btn}');
+      hint.appendChild(document.createTextNode(parts[0]));
+      if(parts.length > 1){
+        const btnName = document.createElement('bdi');
+        btnName.style.whiteSpace = 'nowrap';
+        btnName.textContent = t.authGoogleBtn || 'Google';
+        hint.appendChild(btnName);
+        hint.appendChild(document.createTextNode(parts.slice(1).join('{btn}')));
+      }
+      errBox.appendChild(hint);
+      const gb = $('#authGoogleBtn');
+      if(gb){
+        gb.style.boxShadow = '0 0 0 2px var(--accent, #7c6cff)';
+        setTimeout(() => { gb.style.boxShadow = ''; }, 4000);
+      }
+    } catch(e){ __swallow(e, 'auth:google-login-hint'); }
+  }
+
   const googleBtnEl = $('#authGoogleBtn');
   if(googleBtnEl){
     googleBtnEl.onclick = () => {
@@ -970,6 +999,24 @@ try{
               : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
           }
         } catch(e){ __swallow(e, 'auth:google-hint'); }
+        return;
+      }
+      /* v-google-login-help: غلاف أندرويد الخام (WebView — MahaWebViewFallbackActivity، «; wv)» في هويّته) يفتح جوجل في
+         تبويب متصفّح منفصل (Custom Tab)، والعودة كانت تفتح الموقع كاملًا هناك فيحسب المستخدم أنّه دخل وهو خارج التطبيق.
+         &app=1 = صفحة «✅ ارجع للتطبيق» هناك، وجسر oauth-claim أعلاه يكمل الدخول هنا. Chrome (TWA) والمتصفّح كما كانا. */
+      let androidWrap = false;
+      try { const ua = navigator.userAgent || ''; androidWrap = /Android/i.test(ua) && /;\s*wv\)/.test(ua); } catch(e){ /* guard-ok — كشف تيسير، وغيابه = المسار العاديّ */ }
+      if (androidWrap) {
+        try {
+          const bx = $('#authError');
+          if (bx) {
+            bx.style.color = 'var(--accent, #7c6cff)';
+            bx.textContent = (localStorage.getItem('aiapp_lang') === 'en')
+              ? 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.'
+              : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
+          }
+        } catch(e){ __swallow(e, 'auth:google-hint-android'); }
+        window.location.href = gStartUrl + '&app=1';
         return;
       }
       window.location.href = gStartUrl;
@@ -1215,6 +1262,7 @@ try{
       const data = await res.json();
       if(!res.ok || data.error){
         errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+        if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
         return;
       }
       authSet('aiapp_auth_token', data.token);
