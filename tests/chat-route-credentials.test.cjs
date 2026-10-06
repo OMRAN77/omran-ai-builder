@@ -115,13 +115,15 @@ test('paid image excludes DeepSeek/Groq fallbacks even when Gemini fails', async
   assert.match(r.text, new RegExp(tier.FREE_TEXT.imageBusy));
 });
 test('owner Groq image cannot be routed to text-only direct model', async () => {
-  const noVision = await ask({ provider: 'groq', image: true, keys: { GROQ_API_KEY: 'q' } });
-  assert.equal(noVision.calls.length, 0);
-  assert.match(noVision.text, new RegExp(tier.FREE_TEXT.imageBusy));
-  const hasVision = await ask({ provider: 'groq', image: true, keys: { GROQ_API_KEY: 'q', OPENROUTER_API_KEY: 'or' } });
-  assert.match(hasVision.calls[0].url, /openrouter\.ai/);
-  assert.match(hasVision.calls[0].body.model, /anthropic\//);
-  assert.equal(hasVision.calls[0].body.messages.at(-1).content[1].source.data, 'AAAA');
+  // v-owner-vision (أمر المالك ٦ أكتوبر): كان بلا وسيط لا نداء، ومع الوسيط كلود — الآن موديل الرؤية عند Groq نفسه، لا النصّيّ أبدًا.
+  for (const keys of [{ GROQ_API_KEY: 'q' }, { GROQ_API_KEY: 'q', OPENROUTER_API_KEY: 'or' }]) {
+    const r = await ask({ provider: 'groq', image: true, keys });
+    assert.equal(r.calls.length, 1);
+    assert.match(r.calls[0].url, /api\.groq\.com/);
+    assert.equal(r.calls[0].body.model, 'qwen/qwen3.6-27b');
+    const img = r.calls[0].body.messages.at(-1).content.find((c) => c && c.type === 'image_url');
+    assert.equal(img.image_url.url, 'data:image/png;base64,AAAA');
+  }
 });
 test('malformed direct tool arguments produce SSE error, no tool invocation or normal done', async () => {
   const bad = () => new Response([

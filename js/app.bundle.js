@@ -14744,7 +14744,9 @@ function stripPplxCitations(s){
 async function callPerplexity(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_perplexity_apikey');
   const model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
-  let plainMessages = await stripImagesWithDescription(messages);
+  // v-owner-vision: للمالك Sonar يقرأ الصورة نفسها (image_url بـdata URI في واجهته الرسميّة) بدل وصف Gemini؛ غيره كما كان.
+  let plainMessages = ((typeof omranOwnerUi === 'function' && omranOwnerUi()) && messages.some(m => m.images && m.images.length))
+    ? toOpenAIVisionMessages(messages) : await stripImagesWithDescription(messages);
   plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم تحية لفظية فقط (مثل: السلام عليكم، مرحبا، هلا، صباح الخير) فاكتفِ بتحية قصيرة وطبيعية من دون صيغة ثابتة أو بحث أو مصادر؛ لا تطرح أي سؤال ولا تعرض المساعدة. أمّا سؤال المجاملة مثل «كيف حالك؟» فأجب عن حالك مباشرة واسأل المستخدم عن حاله عند الملاءمة؛ لا تكرر التحية ولا تعرض المساعدة بدل الجواب. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
   if(onDelta){ const orig = onDelta; onDelta = (chunk) => orig(stripPplxCitations(chunk)); }
   // If the visitor hasn't entered their own Perplexity key, fall back to the server-side
@@ -25759,8 +25761,10 @@ DESIGN RULES (non-negotiable):
       // v-chat-vision: الصور مع كلود تمر بمسار الأدوات المباشر القوي نفسه —
       // كانت تُقصى منه كلها فتسقط لمسار قديم أضعف (سبب تحليل الصور السطحي).
       // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
+      // v-owner-vision (المالك ٦ أكتوبر «كلّ واحد يحلّل ويشوف… أنا المالك عند اختيار أيّ مزوّد»): صورة المالك تمرّ هنا
+      // لأيّ مزوّد — الخادم يعطيه موديل رؤيته (owner-vision.js) بدل المسار القديم الذي يُسقطها أو يصفها Gemini وحده.
       const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
-        && (!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai'))
+        && (__ownerFree || (!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai')))
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
