@@ -43,7 +43,8 @@ mock('api/_lib/auth.js', {
   verifyToken: () => null,
 });
 mock('api/_lib/_vip.js', { isVip: async (u) => u === 'vip1' });
-mock('api/_lib/log-error.js', { logError: () => {}, logErrorAndFlush: () => {} });
+const logged = []; // v-video-watch-diag: سجلّ أخطاء المالك
+mock('api/_lib/log-error.js', { logError: () => {}, logErrorAndFlush: async (scope, err, meta) => { logged.push({ scope, msg: String(err && err.message), meta }); } });
 
 const points = require(rp('api/_lib/points.js'));
 const watch = require(rp('api/_lib/video-watch.js'));
@@ -52,16 +53,19 @@ const bal = async (u) => (await points.readPoints(u)).points;
 const SESSION = 'https://upload.example/session/abc?upload_id=1&key=SECRET-IN-URL';
 
 // مزوّد مزيّف ثابت للملفّ كلّه: جلسة الرفع، القطع، حالة الملفّ، التحليل، الحذف.
-const G = { fileState: 'PROCESSING', duration: '125.5s', genFail: false, genDelay: 0, chunks: [], gens: [], deleted: [], starts: [] };
+const G = { fileState: 'PROCESSING', duration: '125.5s', genFail: false, genDelay: 0, chunks: [], gens: [], deleted: [], starts: [], startFail: 0, chunkFail: 0, gran: '', genPlan: [] };
+const upErr = (status, message) => new Response(JSON.stringify({ error: { code: status, message, status: 'X' } }), { status });
 global.fetch = async (url, init) => {
   const u = String(url);
   const h = (init && init.headers) || {};
   if (u === 'https://generativelanguage.googleapis.com/upload/v1beta/files') {
     G.starts.push({ headers: h, body: JSON.parse(init.body) });
-    return new Response('{}', { status: 200, headers: { 'x-goog-upload-url': SESSION } });
+    if (G.startFail) return upErr(G.startFail, 'API key not valid. Please pass a valid API key.');
+    return new Response('{}', { status: 200, headers: Object.assign({ 'x-goog-upload-url': SESSION }, G.gran ? { 'x-goog-upload-chunk-granularity': G.gran } : {}) });
   }
   if (u === SESSION) {
     G.chunks.push({ cmd: h['X-Goog-Upload-Command'], off: Number(h['X-Goog-Upload-Offset']), len: init.body.length });
+    if (G.chunkFail) return upErr(G.chunkFail, 'Invalid chunk size');
     if (/finalize/.test(h['X-Goog-Upload-Command'])) return new Response(JSON.stringify({ file: { name: 'files/vid1', uri: 'https://generativelanguage.googleapis.com/v1beta/files/vid1', mimeType: 'video/mp4', state: 'PROCESSING' } }), { status: 200 });
     return new Response('', { status: 200 });
   }
@@ -72,6 +76,7 @@ global.fetch = async (url, init) => {
   if (/:generateContent$/.test(u)) {
     G.gens.push({ url: u, headers: h, body: JSON.parse(init.body), signal: !!init.signal });
     if (G.genDelay) await new Promise((r) => setTimeout(r, G.genDelay));
+    if (G.genPlan.length) { const st = G.genPlan.shift(); if (st !== 200) return upErr(st, 'plan ' + st); }
     if (G.genFail) return new Response(JSON.stringify({ error: { message: 'boom' } }), { status: 500 });
     return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '00:05 رجل يقول «مرحبا» وصوت سيارة في الخلفية' }] } }], usageMetadata: { promptTokenCount: 40000, candidatesTokenCount: 800, thoughtsTokenCount: 500 } }), { status: 200 });
   }
@@ -247,7 +252,7 @@ function client(serverReplies, opts) {
     setTimeout: (fn) => { fn(); return 0; }, // انتظار pending فوريّ في الاختبار
     document: { createElement: () => ({ className: '', textContent: '', remove() {}, scrollIntoView() {} }), body: { classList: { remove() {} } } },
     t: (k) => ({ vwUploading: 'UP', vwWatching: 'WATCH', vwCharged: 'CHARGED {n} {d}', vwDefaultQ: 'DEFAULT', vwFailed: 'FAILED', vwNoPoints: 'NOPOINTS {p} {n}', vwLogin: 'LOGIN' })[k] || k,
-    authGet: () => 'tok', lang: 'ar', state, getCurrent: () => (opts && opts.noCur ? (state.projects[0] || null) : conv), renderAll() {}, saveState() {}, renderAttachStrip() {}, __swallow() {},
+    authGet: (k) => (k === 'aiapp_username' ? (opts && opts.user) || '' : 'tok'), lang: 'ar', state, getCurrent: () => (opts && opts.noCur ? (state.projects[0] || null) : conv), renderAll() {}, saveState() {}, renderAttachStrip() {}, __swallow() {},
     messagesEl: { appendChild() {} }, $: (s) => els[s] || null,
     fetch: async (url, init) => {
       const step = /step=(\w+)/.exec(url)[1];
@@ -337,4 +342,78 @@ test('١٢. أوّل رسالة فيديو في تطبيق بلا محادثة �
   assert.equal(p.title, 'وش فيه؟');
   assert.deepEqual(Array.from(p.messages, (m) => m.role), ['user', 'assistant']); // مصفوفة من هذا العالم لا من vm
   assert.equal(p.messages[1].content, 'R\n\nCHARGED 3 0:20');
+});
+
+// ── v-video-watch-diag (لقطة المالك ٩:٢٤: «تعذّر تحليل الفيديو» لفيديو ٨ ثوانٍ بلا أيّ سبب) ──
+test('١٣. التشخيص: السبب الحقيقيّ في سجلّ الأخطاء دائمًا، وفي __diag للمالك وحده، وبلا مفتاح', async () => {
+  logged.length = 0;
+  users.set('reem', { username: 'reem', points: 200 });
+  G.startFail = 403;
+  const a = await call('start', { size: 1000, mime: 'video/mp4', durationSec: 8 }, token('omran'));
+  assert.deepEqual([a.code, a.j.error], [502, 'failed']);
+  assert.equal(a.j.__diag, 'start 403: API key not valid. Please pass a valid API key.');
+  const b = await call('start', { size: 1000, mime: 'video/mp4', durationSec: 8 });
+  assert.deepEqual([b.code, b.j.error, '__diag' in b.j], [502, 'failed', false], 'غير المالك لا يرى التفاصيل');
+  G.startFail = 0;
+  assert.deepEqual(logged.map((x) => [x.scope, x.meta.user, x.msg.slice(0, 9)]), [['video-watch', 'omran', 'start 403'], ['video-watch', 'reem', 'start 403']]);
+  // قطعة مرفوضة: الإزاحة والحجم وحبيبيّة الجلسة (x-goog-upload-chunk-granularity) في التشخيص
+  G.chunkFail = 400; G.gran = '8388608';
+  const s = await call('start', { size: 3 * CH, mime: 'video/mp4', durationSec: 8 }, token('omran'));
+  const c = await call('chunk', { id: s.j.id, offset: 0, data: b64(CH) }, token('omran'));
+  assert.deepEqual([c.code, c.j.__diag], [502, 'chunk@0/' + 3 * CH + ' 400: Invalid chunk size gran=8388608']);
+  G.chunkFail = 0; G.gran = '';
+  // الملفّ لم يصر جاهزًا عند المزوّد: الحالة للمالك، والمهمّة والملفّ يُحذفان
+  G.fileState = 'FAILED'; G.deleted.length = 0;
+  const id = await uploadAll(1000, 'omran');
+  const f = await call('run', { id }, token('omran'));
+  assert.deepEqual([f.code, f.j.__diag, G.deleted.length, kv.has('vwatch:' + id)], [502, 'file state FAILED', 1, false]);
+  const all = JSON.stringify([logged, a.j, b.j, c.j, f.j]);
+  assert.ok(!all.includes('g-test-key') && !all.includes('SECRET-IN-URL'), 'لا مفتاح ولا رابط جلسة في التشخيص');
+});
+
+test('١٤. الدقّة العالية مرفوضة (400) أو ضغط عابر (503): محاولة واحدة بالإعداد الافتراضيّ بخصم واحد، والسبب الأوّل للمالك', async () => {
+  users.set('fb', { username: 'fb', points: 50 });
+  G.fileState = 'ACTIVE'; G.duration = '8s';
+  for (const [u, st] of [['fb', 400], ['omran', 400], ['fb', 503]]) {
+    G.gens.length = 0; G.genPlan = [st];
+    const id = await uploadAll(1000, u);
+    const before = await bal(u);
+    const r = await call('run', { id, prompt: 'حلّل' }, token(u));
+    assert.equal(r.code, 200, JSON.stringify(r.j));
+    assert.match(r.j.result, /00:05/);
+    assert.equal(G.gens.length, 2, u + ' ' + st);
+    assert.equal(G.gens[0].body.generationConfig.mediaResolution, 'MEDIA_RESOLUTION_HIGH');
+    assert.deepEqual(G.gens[1].body.generationConfig, { maxOutputTokens: 8192 }, 'الإعداد الافتراضيّ');
+    if (u === 'omran') assert.equal(r.j.__diag, 'fallback: gen-high 400: plan 400');
+    else { assert.equal('__diag' in r.j, false); assert.equal(await bal(u), before - 3, 'خصم واحد'); }
+  }
+  // فشل المحاولتين: النقاط تُردّ، والسببان معًا للمالك، ولا محاولة ثالثة
+  G.gens.length = 0; G.genPlan = [503, 500];
+  const id = await uploadAll(1000, 'fb');
+  const before = await bal('fb');
+  const f = await call('run', { id }, token('fb'));
+  assert.deepEqual([f.code, f.j.error, f.j.refunded, '__diag' in f.j], [502, 'failed', 3, false]);
+  assert.equal(await bal('fb'), before);
+  assert.equal(G.gens.length, 2);
+  assert.equal(logged[logged.length - 1].msg, 'gen-high 503: plan 503 | gen 500: plan 500');
+});
+
+test('١٥. المتصفّح: التشخيص بين قوسين للمالك وحده — من الخادم، أو محلّيًّا (ردّ غير JSON، استثناء)', async () => {
+  const att = () => ({ name: 'v.mp4', isVideoWatch: true, blob: new Blob([Buffer.alloc(10)]), mime: 'video/mp4', size: 10, durationSec: 8, label: 'v.mp4 · 0:08' });
+  let c = client((step) => (step === 'start' ? { status: 502, d: { ok: false, error: 'failed', __diag: 'start 403: API key not valid' } } : { d: {} }), { user: 'omran' });
+  await c.ctx.window.omranVideoWatchSend('حلّل', att());
+  assert.equal(c.conv.messages[1].content, '⚠️ FAILED [start 403: API key not valid]');
+  for (const [user, want] of [['Omran', '⚠️ FAILED [start 504]'], ['reem', '⚠️ FAILED']]) { // صفحة خطأ المنصّة بلا JSON
+    c = client(() => ({ status: 504, d: {} }), { user });
+    await c.ctx.window.omranVideoWatchSend('حلّل', att());
+    assert.equal(c.conv.messages[1].content, want, user);
+  }
+  c = client(() => ({ d: { ok: true, id: 'c'.repeat(24), chunk: CH } }), { user: 'omran' });
+  const broken = att(); broken.blob = null;
+  await c.ctx.window.omranVideoWatchSend('حلّل', broken);
+  assert.match(c.conv.messages[1].content, /^⚠️ FAILED \[client: .+\]$/);
+  c = client((step) => (step === 'start' ? { d: { ok: true, id: 'd'.repeat(24), chunk: CH } } : step === 'chunk' ? { d: { ok: true, offset: 10, done: true } }
+    : { d: { ok: true, result: 'R', cost: 0, sec: 8, __diag: 'fallback: gen-high 400: x' } }), { user: 'omran' });
+  await c.ctx.window.omranVideoWatchSend('حلّل', att());
+  assert.equal(c.conv.messages[1].content, 'R [fallback: gen-high 400: x]');
 });

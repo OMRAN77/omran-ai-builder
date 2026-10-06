@@ -71,6 +71,21 @@ async function isFree(user) {
   if (pointsLib.isOwnerUsername(user)) return true;
   try { return !!(await require('./_vip.js').isVip(user)); } catch (e) { return false; }
 }
+/* v-video-watch-diag (لقطة المالك ٩:٢٤: «تعذّر تحليل الفيديو» لفيديو ٨ ثوانٍ بلا أيّ سبب — والإنتاج والمزوّد محجوبان عن بيئة
+   الإصلاح): السبب الحقيقيّ — المرحلة وحالة المزوّد ونصّ خطئه — يُسجَّل في سجلّ أخطاء المالك (منتظَرًا: العامل يتجمّد بعد الردّ)،
+   ويُرسل في __diag للمالك وحده فتعرضه الواجهة له بين قوسين (نمط maha-image). */
+async function upstreamText(step, r) {
+  let msg = '';
+  try {
+    const raw = await r.text();
+    try { const e = JSON.parse(raw).error; msg = (e && (e.message || e.status)) || raw; } catch (e2) { msg = raw; }
+  } catch (e) { msg = ''; }
+  return step + ' ' + r.status + (msg ? ': ' + String(msg).replace(/\s+/g, ' ').slice(0, 200) : '');
+}
+async function failUp(res, user, detail, extra) {
+  try { await require('./log-error.js').logErrorAndFlush('video-watch', new Error(detail), { action: 'video-watch', user: String(user || '').slice(0, 40) }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+  return fail(res, 502, 'failed', Object.assign({}, extra || {}, pointsLib.isOwnerUsername(user) ? { __diag: detail } : {}));
+}
 
 async function start(req, res, body, user, key) {
   const size = Math.floor(Number(body.size) || 0);
@@ -96,9 +111,10 @@ async function start(req, res, body, user, key) {
     body: JSON.stringify({ file: { display_name: 'chat-video' } }),
   });
   const url = r.ok ? r.headers.get('x-goog-upload-url') : '';
-  if (!url) return fail(res, 502, 'failed');
+  if (!url) return failUp(res, user, r.ok ? 'start: no upload url' : await upstreamText('start', r));
+  const gran = Number(r.headers.get('x-goog-upload-chunk-granularity')) || 0; // للتشخيص إن رُفضت قطعة
   const id = crypto.randomBytes(12).toString('hex');
-  await saveJob(id, { u: user, url, size, mime, off: 0, dur, at: Date.now() });
+  await saveJob(id, { u: user, url, size, mime, off: 0, dur, gran, at: Date.now() });
   return res.status(200).json({ ok: true, id, chunk: CHUNK });
 }
 
@@ -117,12 +133,12 @@ async function chunk(req, res, body, user, key) {
     body: buf,
     signal: AbortSignal.timeout(90000),
   });
-  if (!r.ok) return fail(res, 502, 'failed');
+  if (!r.ok) return failUp(res, user, (await upstreamText('chunk@' + off + '/' + j.size, r)) + (j.gran ? ' gran=' + j.gran : ''));
   j.off = off + buf.length;
   if (last) {
     const d = await r.json().catch(() => ({}));
     const f = d && d.file;
-    if (!f || !/^files\/[a-z0-9-]+$/i.test(String(f.name || '')) || !f.uri) return fail(res, 502, 'failed');
+    if (!f || !/^files\/[a-z0-9-]+$/i.test(String(f.name || '')) || !f.uri) return failUp(res, user, 'finalize: no file (' + JSON.stringify(d).slice(0, 160) + ')');
     j.file = { name: f.name, uri: f.uri, mime: f.mimeType || j.mime };
   }
   await saveJob(body.id, j);
@@ -136,10 +152,13 @@ async function run(req, res, body, user, key) {
   if (j.result) return res.status(200).json(Object.assign({ ok: true, cached: true }, j.result));
   if (!j.file) return fail(res, 409, 'not_uploaded');
   const fr = await fetch(BASE + '/v1beta/' + j.file.name, { headers: { 'x-goog-api-key': key } });
+  if (!fr.ok) return failUp(res, user, await upstreamText('file', fr));
   const meta = await fr.json().catch(() => ({}));
-  if (!fr.ok) return fail(res, 502, 'failed');
   if (meta.state === 'PROCESSING') return res.status(200).json({ ok: true, pending: true });
-  if (meta.state !== 'ACTIVE') { await dropFile(key, j); await kvDel(jobKey(id)); return fail(res, 422, 'failed'); }
+  if (meta.state !== 'ACTIVE') {
+    await dropFile(key, j); await kvDel(jobKey(id));
+    return failUp(res, user, 'file state ' + meta.state + (meta.error && meta.error.message ? ': ' + String(meta.error.message).slice(0, 200) : ''));
+  }
   const real = parseFloat(String((meta.videoMetadata && meta.videoMetadata.videoDuration) || '').replace(/s$/, ''));
   const sec = Number.isFinite(real) && real > 0 ? real : j.dur;
   if (sec > MAX_SEC + 2) { await dropFile(key, j); await kvDel(jobKey(id)); return fail(res, 413, 'too_long'); }
@@ -157,20 +176,34 @@ async function run(req, res, body, user, key) {
     await saveJob(id, j);
   }
   try {
-    const g = await fetch(BASE + '/v1beta/models/' + encodeURIComponent(model()) + ':generateContent', {
+    const t0 = Date.now(); // المحاولتان معًا تحت GEN_TIMEOUT_MS — الدالّة تُقتل عند ٣٠٠ث قبل أن تردّ النقاط
+    const gen = (cfg) => fetch(BASE + '/v1beta/models/' + encodeURIComponent(model()) + ':generateContent', {
       method: 'POST',
       headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(GEN_TIMEOUT_MS),
+      signal: AbortSignal.timeout(Math.max(1000, GEN_TIMEOUT_MS - (Date.now() - t0))),
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ file_data: { file_uri: j.file.uri, mime_type: j.file.mime } }, { text: instruction(body.prompt, body.lang) }] }],
-        // الدقّة العالية بقرار المالك؛ ميزانيّة تفكير صغيرة وسقف واسع — التفكير الافتراضيّ يلتهم السقف فيرجع فارغًا (v-flash-nothink).
-        generationConfig: { mediaResolution: 'MEDIA_RESOLUTION_HIGH', temperature: 0.4, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 1024 } },
+        generationConfig: cfg,
       }),
     });
+    // الدقّة العالية بقرار المالك؛ ميزانيّة تفكير صغيرة وسقف واسع — التفكير الافتراضيّ يلتهم السقف فيرجع فارغًا (v-flash-nothink).
+    let g = await gen({ mediaResolution: 'MEDIA_RESOLUTION_HIGH', temperature: 0.4, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 1024 } });
+    let note = '';
+    // إعداد مرفوض (400: الدقّة أو التفكير) أو ضغط عابر (429/5xx، نمط maha-image): محاولة واحدة بالإعداد الافتراضيّ قبل الحكم
+    // بالفشل، والسبب الأوّل للمالك.
+    if ((g.status === 400 || g.status === 429 || g.status >= 500) && Date.now() - t0 < GEN_TIMEOUT_MS / 2) {
+      note = await upstreamText('gen-high', g);
+      if (g.status !== 400) await new Promise((r) => setTimeout(r, 2000));
+      g = await gen({ maxOutputTokens: 8192 });
+    }
     const d = await g.json().catch(() => ({}));
-    const parts = (g.ok && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
+    const c0 = d.candidates && d.candidates[0];
+    const parts = (g.ok && c0 && c0.content && c0.content.parts) || [];
     const text = parts.map((p) => (p && !p.thought && p.text) || '').join('').trim();
-    if (!text) throw new Error('empty analysis (' + g.status + ')');
+    if (!text) {
+      const why = (d.error && d.error.message) || (c0 && c0.finishReason) || (d.promptFeedback && d.promptFeedback.blockReason) || 'empty';
+      throw Object.assign(new Error('gen'), { diag: (note ? note + ' | ' : '') + 'gen ' + g.status + ': ' + String(why).replace(/\s+/g, ' ').slice(0, 200) });
+    }
     try { // v-cost-meter: تكلفتنا الحقيقيّة من توكنات الطلب (الدخل والخرج والتفكير)
       const u = d.usageMetadata || {};
       const cm = require('./cost-meter.js');
@@ -179,14 +212,15 @@ async function run(req, res, body, user, key) {
     j.result = { result: text, cost: charged, sec: Math.round(sec), points: Number.isFinite(pay.points) ? pay.points : null };
     await saveJob(id, j);
     await dropFile(key, j);
-    return res.status(200).json(Object.assign({ ok: true }, j.result));
+    const fb = note && pointsLib.isOwnerUsername(user) ? { __diag: 'fallback: ' + note } : {};
+    return res.status(200).json(Object.assign({ ok: true }, j.result, fb));
   } catch (e) {
-    console.error('[video-watch] analysis failed:', e && e.message);
+    console.error('[video-watch] analysis failed:', e && (e.diag || e.message));
     if (charged) { try { await pointsLib.refundPoints(user, charged); } catch (e2) { console.error('[video-watch] refund failed:', e2 && e2.message); } }
     j.paid = null; // رُدّ — المحاولة التالية تخصم من جديد
     try { await saveJob(id, j); } catch (e3) { /* guard-ok — المهمّة تنتهي وحدها بعد ساعة */ }
     await kvDel(lockKey(id));
-    return fail(res, 502, 'failed', { refunded: charged });
+    return failUp(res, user, e.diag || ('gen: ' + (e && e.message)), { refunded: charged });
   }
 }
 
@@ -208,7 +242,7 @@ module.exports = async (req, res) => {
     return fail(res, 400, 'bad_request');
   } catch (e) {
     console.error('[video-watch] ' + step + ' error:', e && e.message);
-    return fail(res, 502, 'failed');
+    return failUp(res, user, step + ': ' + String((e && e.message) || e).slice(0, 200));
   }
 };
 module.exports.costFor = costFor;

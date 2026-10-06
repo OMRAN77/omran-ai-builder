@@ -41,9 +41,7 @@ test('٢. Plus فيديو باقة واحد، ورزمة ٩٠٠ تمنح ١٬٠�
   const ps = read('js/partials-settings.js');
   assert.ok(ps.includes('onclick="buyPointsPack(900)"') && ps.includes('<b style="font-size: var(--fs-3);">1,050</b>'));
   for (const n of ['<b>122</b>', '<li><b>11</b> ', '<b>4</b> <span data-i18n="mediaVidCine">', '<li><b>23</b> ', '<b>8</b> <span data-i18n="mediaVidCine">', '<b>92</b> <span data-i18n="mahaMinPlain">']) assert.ok(ps.includes(n), n);
-  const ph = read('pricing.html');
-  assert.ok(ph.includes('<div class="n">1,050</div>') && ph.includes('أوفر 33%'));
-  assert.ok(ph.includes('فيديو بالصوت — 8 ثوانٍ</div><div class="val">175</div>') && ph.includes('فيديو سينمائي</div><div class="val">120</div>'));
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'pricing.html')), 'v-cleanup: صفحة الأسعار اليتيمة حُذفت بموافقة المالك — بطاقات الإعدادات هي المرجع');
 });
 
 test('٣. Pro بلا «أولوية في السرعة» في الطبقتين (li وul) وباللغات الـ١٤، و«بلا حدود» صارت الحدّ الحقيقيّ', () => {
@@ -60,7 +58,6 @@ test('٣. Pro بلا «أولوية في السرعة» في الطبقتين (l
     assert.match(d.pricingPointsDesc, /175/); assert.match(d.pricingPointsDesc, /120/); assert.doesNotMatch(d.pricingPointsDesc, /275/);
   }
   assert.ok(!read('js/partials-settings.js').includes('أولوية في السرعة'));
-  assert.ok(!read('pricing.html').includes('أولوية في السرعة'));
   const tier = require(rp('api/_lib/tier.js'));
   assert.doesNotMatch(tier.FREE_TEXT.freeLimit, /بلا حدود/);
   assert.match(tier.FREE_TEXT.freeLimit, /50–250/);

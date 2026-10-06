@@ -42515,6 +42515,12 @@ if(document.readyState === 'loading'){
     var d = await r.json().catch(function(){ return {}; });
     return { status: r.status, d: d || {} };
   }
+  /* v-video-watch-diag: سبب الفشل الحقيقيّ للمالك وحده — الخادم لا يرسل __diag لغيره، وانقطاع الشبكة أو المهلة تُكتب هنا. */
+  function isOwnerUi(){ try{ return String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
+  function diag(d, local){
+    var s = (d && d.__diag) || (local && isOwnerUi() ? local : '');
+    return s ? ' [' + String(s).slice(0, 300) + ']' : '';
+  }
   function errText(d){
     var c = d && d.error;
     if(c === 'auth') return t('vwLogin');
@@ -42526,7 +42532,7 @@ if(document.readyState === 'loading'){
   }
   async function watch(text, att, status){
     var s = await api('start', { size: att.size, mime: att.mime, name: att.name, durationSec: att.durationSec });
-    if(!s.d.ok) return '⚠️ ' + errText(s.d);
+    if(!s.d.ok) return '⚠️ ' + errText(s.d) + diag(s.d, 'start ' + s.status);
     var id = s.d.id, chunk = Number(s.d.chunk) || 2621440, off = 0;
     while(off < att.size){
       var data = b64(await att.blob.slice(off, Math.min(att.size, off + chunk)).arrayBuffer());
@@ -42536,9 +42542,9 @@ if(document.readyState === 'loading'){
         if(r && r.status < 500) break;
         await sleep(1500 * (k + 1));
       }
-      if(!r) return '⚠️ ' + t('vwFailed');
+      if(!r) return '⚠️ ' + t('vwFailed') + diag(null, 'chunk@' + off + ': network');
       if(r.status === 409 && isFinite(r.d.expected)){ off = Number(r.d.expected); continue; }
-      if(!r.d.ok) return '⚠️ ' + errText(r.d);
+      if(!r.d.ok) return '⚠️ ' + errText(r.d) + diag(r.d, 'chunk@' + off + ' ' + r.status);
       off = Number(r.d.offset) || att.size;
       status(t('vwUploading') + ' ' + Math.min(99, Math.floor(off * 100 / att.size)) + '%');
       if(r.d.done) break;
@@ -42548,12 +42554,12 @@ if(document.readyState === 'loading'){
       var q = null;
       try{ q = await api('run', { id: id, prompt: text, lang: lang }); }catch(e){ q = null; }
       if(q && q.d.ok && !q.d.pending){
-        return String(q.d.result || '') + (q.d.cost ? '\n\n' + t('vwCharged').replace('{n}', String(q.d.cost)).replace('{d}', fmtDur(q.d.sec)) : '');
+        return String(q.d.result || '') + (q.d.cost ? '\n\n' + t('vwCharged').replace('{n}', String(q.d.cost)).replace('{d}', fmtDur(q.d.sec)) : '') + diag(q.d);
       }
-      if(q && !q.d.ok && q.d.error !== 'busy') return '⚠️ ' + errText(q.d);
+      if(q && !q.d.ok && q.d.error !== 'busy') return '⚠️ ' + errText(q.d) + diag(q.d, 'run ' + q.status);
       await sleep(3000);
     }
-    return '⚠️ ' + t('vwFailed');
+    return '⚠️ ' + t('vwFailed') + diag(null, 'run: timeout');
   }
   async function send(text, att){
     if(!att) return;
@@ -42584,7 +42590,7 @@ if(document.readyState === 'loading'){
     try{ box.scrollIntoView({ block: 'end', behavior: 'smooth' }); }catch(e){ __swallow(e, 'vwatch:scroll'); }
     var reply = '';
     try{ reply = await watch(text, att, function(msg){ box.textContent = msg; }); }
-    catch(e){ __swallow(e, 'vwatch:run'); reply = '⚠️ ' + t('vwFailed'); }
+    catch(e){ __swallow(e, 'vwatch:run'); reply = '⚠️ ' + t('vwFailed') + diag(null, 'client: ' + ((e && e.message) || e)); }
     finally{
       try{ box.remove(); }catch(e){ __swallow(e, 'vwatch:box'); }
       if(sendBtn) sendBtn.disabled = false;
