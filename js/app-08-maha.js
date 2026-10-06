@@ -2378,6 +2378,8 @@ let mahaCallStarting = false;
 /* v-maha-subs: المسجَّل بلا دقائق ولا نقاط ← الإعدادات ← الباقات ← قسم مها؛ الضيف ← شاشة الدخول. */
 function mahaOpenPlans(guest){
   try{
+    // v-plans-gate: المسار الموحّد (سطر السبب + حارس الفتح المكرّر — ردّ 402 نفسه يفتحه أيضًا من التفاف fetch).
+    if(!guest && typeof window.omranOpenPlans === 'function'){ window.omranOpenPlans('points', 'maha'); return; }
     if(guest || !authGet('aiapp_auth_token')){ if(typeof window.requireLogin === 'function') window.requireLogin('guestLimit'); return; }
     const sb = document.getElementById('btnSettings');
     if(sb) sb.click();

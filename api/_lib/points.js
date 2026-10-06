@@ -228,6 +228,32 @@ async function refundPoints(username, amount) {
   }
 }
 
+/* v-plans-gate (طلب المالك ٦ أكتوبر: «انتهاء الخدمة ولا تجديد … تحوّله إلى الاشتراك»): نهاية كلّ اشتراك من سجلّ الحساب
+   وحده (بلا Stripe) — باقة المحادثة وباقات الصور والفيديو ومها، بالنافذة نفسها التي تحكم سريانها (tier.planActive
+   و_mediaPlans.mediaActive: ٣٥ يومًا من آخر دفعة). الواجهة تنبّه قبل الانتهاء بثلاثة أيّام وبعده مرّة؛ وما انتهى قبل
+   أكثر من شهر لا يُرسل (لا تنبيه عن اشتراك قديم). */
+const SUBS_STALE_MS = 30 * 86400000;
+function subsOf(user, now) {
+  const out = [];
+  if (!user || user.deleted) return out;
+  const t = typeof now === 'number' ? now : Date.now();
+  const tier = require('./tier.js');
+  const add = (kind, plan, at, windowDays) => {
+    const from = Number(at || 0);
+    if (!(from > 0)) return;
+    const endsAt = from + windowDays * 86400000;
+    if (t - endsAt > SUBS_STALE_MS) return;
+    out.push({ kind, plan, endsAt, active: t <= endsAt });
+  };
+  const plan = String(user.plan || '').toLowerCase();
+  if (tier.PLAN_KEYS.includes(plan)) add('chat', plan, user.planUpdatedAt, tier.SUB_WINDOW_DAYS);
+  for (const kind of ['image', 'video', 'maha']) {
+    const m = user.media && user.media[kind];
+    if (m && media.MEDIA_PLANS[m.plan] && media.MEDIA_PLANS[m.plan].media === kind) add(kind, m.plan, m.at, media.MEDIA_WINDOW_DAYS);
+  }
+  return out;
+}
+
 // نفس دوال الخصم لكن عبر التوكن مباشرة (للاستخدام من نقاط النهاية الأخرى).
 async function spendByToken(token, amount, reason) {
   const username = verifyToken(token);
@@ -269,6 +295,7 @@ module.exports = async (req, res) => {
         costs: COSTS,
         tier: (__t && __t.tier) || 'free',
         plan: (__t && __t.plan) || null,
+        subs: subsOf(rec.user), // v-plans-gate
       });
       return;
     }
@@ -314,6 +341,7 @@ module.exports = async (req, res) => {
 };
 
 module.exports.COSTS = COSTS;
+module.exports.subsOf = subsOf; // v-plans-gate
 module.exports.PREMIUM_MODELS = PREMIUM_MODELS;
 module.exports.PREMIUM_COST = PREMIUM_COST;
 module.exports.WELCOME_POINTS = WELCOME_POINTS;

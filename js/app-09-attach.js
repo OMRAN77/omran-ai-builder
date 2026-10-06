@@ -6634,7 +6634,7 @@ DESIGN RULES (non-negotiable):
         let __ct = null;
         if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __effProv); }
-          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
+          catch(e){ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; /* v-plans-gate: حدّ الباقة لا يتجاوزه مزوّد آخر */ __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
              بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
@@ -6651,7 +6651,7 @@ DESIGN RULES (non-negotiable):
                 }catch(e){ __swallow(e, 'ui:toolsteam'); }
                 __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __tp);
                 if(__ct) break;
-              }catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
+              }catch(e){ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
             }
           }
         }
@@ -6712,6 +6712,10 @@ DESIGN RULES (non-negotiable):
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
+      // v-plans-gate: انتهت الرسائل المجّانيّة/التجربة — الردّ نفسه يبقى بشارته وزرّه، والباقات (أو التسجيل للضيف) تنفتح.
+      if(__ctTier === 'free-limit' || __ctTier === 'guest-limit'){
+        try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-gate'); }
+      }
       // 👑 الرد الاحترافي اكتمل: حدّث رصيد النقاط وأظهر خصمًا متحركًا صغيرًا.
       try{
         if(window.__premiumOn === true && typeof isPremiumProvider === 'function' && isPremiumProvider()){
@@ -6745,7 +6749,11 @@ DESIGN RULES (non-negotiable):
       window.__premiumOn = false;
       try{ if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility(); }catch(_){ __swallow(_, "points:app-09-attach#28"); }
       try{ settingsToast(t('premiumNoPoints')); }catch(_){ __swallow(_, "points:app-09-attach#29"); }
-      try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
+      try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('points', 'pts'); /* v-plans-gate */ else if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
+    } else if(err && err.planLimit){
+      // v-plans-gate: حدّ الباقة اليوميّ — سطر واضح بدل «جرّب مزوّدًا آخر أو أدخل مفتاحك»، والباقات تنفتح للترقية.
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + t('plansWhyLimit')});
+      try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-limit'); }
     } else {
       /* v-img-err: حين يفشل مسار الأدوات (كلود المباشر) ثمّ يفشل الاحتياط أيضًا،
          كانت الفقاعة تعرض خطأ آخر مزوّد احتياطيّ وحده فيختفي السبب الحقيقيّ. نُظهر

@@ -60,7 +60,7 @@ global.fetch = async (url, init) => {
   const h = (init && init.headers) || {};
   if (u === 'https://generativelanguage.googleapis.com/upload/v1beta/files') {
     G.starts.push({ headers: h, body: JSON.parse(init.body) });
-    if (G.startFail) return upErr(G.startFail, 'API key not valid. Please pass a valid API key.');
+    if (G.startFail) return upErr(G.startFail, G.startMsg || 'API key not valid. Please pass a valid API key.');
     return new Response('{}', { status: 200, headers: Object.assign({ 'x-goog-upload-url': SESSION }, G.gran ? { 'x-goog-upload-chunk-granularity': G.gran } : {}) });
   }
   if (u === SESSION) {
@@ -305,7 +305,7 @@ test('١٠. المتصفّح: رصيد غير كافٍ برسالة واضحة �
   assert.equal(ctx.window.omranIsVideoFile({ type: 'image/png', name: 'a.png' }), false);
 });
 
-test('١١. النصوص العشرة بالـ١٤ لغة، بمواضعها {n} {d} {p}، بلا اسم مزوّد ولا أحرف خفيّة، ووسم اللغات ٧٢٢', () => {
+test('١١. النصوص العشرة بالـ١٤ لغة، بمواضعها {n} {d} {p}، بلا اسم مزوّد ولا أحرف خفيّة، ووسم اللغات ٧٢٣', () => {
   const KEYS = ['vwUploading', 'vwWatching', 'vwCharged', 'vwNoPoints', 'vwTooBig', 'vwTooLong', 'vwFormat', 'vwFailed', 'vwLogin', 'vwDefaultQ'];
   const BAD = /gemini|google|openai|gpt|claude|anthropic|جيمناي|جيميني|[​-‏‪-‮⁦-⁩﻿]/i;
   const a3 = read('js/app-03-i18n-data.js');
@@ -327,7 +327,7 @@ test('١١. النصوص العشرة بالـ١٤ لغة، بمواضعها {n}
     assert.ok(d.vwCharged.includes('{n}') && d.vwCharged.includes('{d}'), l);
     assert.ok(d.vwNoPoints.includes('{n}') && d.vwNoPoints.includes('{p}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=722'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=723'"));
 });
 
 test('١٢. أوّل رسالة فيديو في تطبيق بلا محادثة تُنشئ المحادثة (كانت تعود بلا شيء — كشفتها اللقطة)', async () => {
@@ -416,4 +416,27 @@ test('١٥. المتصفّح: التشخيص بين قوسين للمالك وح
     : { d: { ok: true, result: 'R', cost: 0, sec: 8, __diag: 'fallback: gen-high 400: x' } }), { user: 'omran' });
   await c.ctx.window.omranVideoWatchSend('حلّل', att());
   assert.equal(c.conv.messages[1].content, 'R [fallback: gen-high 400: x]');
+});
+
+test('١٦. رصيد المزوّد عندنا خلص (لقطة المالك ١٠:١٣ «start 402: prepayment credits are depleted»): «متوقّف مؤقّتًا» لا «أعد المحاولة» ولا جدار', async () => {
+  G.startFail = 402; G.startMsg = 'Your prepayment credits are depleted. Please go to AI Studio to manage your project and billing.';
+  const o = await call('start', { size: 1000, mime: 'video/mp4', durationSec: 8 }, token('omran'));
+  assert.deepEqual([o.code, o.j.error], [503, 'unavailable']);
+  assert.match(o.j.__diag, /^start 402: Your prepayment credits are depleted/);
+  const u = await call('start', { size: 1000, mime: 'video/mp4', durationSec: 8 });
+  assert.deepEqual([u.code, u.j.error, '__diag' in u.j], [503, 'unavailable', false]);
+  G.startFail = 0; G.startMsg = '';
+  // التحليل نفسه يرفض بالفوترة: النقاط تُردّ والرمز نفسه
+  users.set('bill', { username: 'bill', points: 50 });
+  G.fileState = 'ACTIVE'; G.duration = '8s'; G.genPlan = [402, 402];
+  const id = await uploadAll(1000, 'bill');
+  const before = await bal('bill');
+  const r = await call('run', { id }, token('bill'));
+  assert.deepEqual([r.code, r.j.error, r.j.refunded], [503, 'unavailable', 3]);
+  assert.equal(await bal('bill'), before);
+  G.genPlan = [];
+  // الواجهة: نصّ التوقّف المؤقّت — لا «أعد المحاولة»
+  const c = client((step) => (step === 'start' ? { status: 503, d: { ok: false, error: 'unavailable' } } : { d: {} }));
+  await c.ctx.window.omranVideoWatchSend('حلّل', { name: 'v.mp4', isVideoWatch: true, blob: new Blob([Buffer.alloc(10)]), mime: 'video/mp4', size: 10, durationSec: 8, label: 'v.mp4 · 0:08' });
+  assert.equal(c.conv.messages[1].content, '⚠️ vwUnavailable');
 });

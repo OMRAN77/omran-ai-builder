@@ -4406,6 +4406,14 @@ const I18N = {
     vwFailed: 'تعذّر تحليل الفيديو — لم تُخصم أيّ نقاط. أعد المحاولة.',
     vwLogin: 'سجّل دخولك أوّلًا لتحليل الفيديو.',
     vwDefaultQ: 'حلّل هذا الفيديو',
+    /* v-plans-gate */
+    plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.',
+    plansWhyLimit: 'وصلت حدّ باقتك لليوم — رقِّ باقتك أو انتظر إلى الغد.',
+    plansWhyExpired: 'انتهى اشتراكك في {plan} — جدّده لترجع مزاياك.',
+    plansWhyExpiring: 'اشتراكك في {plan} ينتهي في {date} — جدّده حتّى لا تتوقّف مزاياك.',
+    plansRenew: 'جدّد',
+    plansLater: 'لاحقًا',
+    vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
     pricingTestNote: '🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية',
     termsLink: '📜 الشروط والأحكام',
     privacyLink: '🔒 سياسة الخصوصية',
@@ -4685,6 +4693,14 @@ const I18N = {
     vwFailed: 'Couldn’t analyze the video — no points were used. Please try again.',
     vwLogin: 'Sign in first to analyze videos.',
     vwDefaultQ: 'Analyze this video',
+    /* v-plans-gate */
+    plansWhyPoints: 'You’re out of points — top up from Plans and continue right away.',
+    plansWhyLimit: 'You’ve reached your plan’s limit for today — upgrade your plan or wait until tomorrow.',
+    plansWhyExpired: 'Your {plan} subscription has ended — renew it to get your benefits back.',
+    plansWhyExpiring: 'Your {plan} subscription ends on {date} — renew it so your benefits don’t stop.',
+    plansRenew: 'Renew',
+    plansLater: 'Later',
+    vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
@@ -5616,7 +5632,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=722'; /* v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=723'; /* v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -14436,8 +14452,13 @@ function throwProviderError(status, errText){
       const __p = JSON.parse(errText);
       if(__p && (__p.reason === 'points' || __p.error === 'insufficient_points')) __pointsErr = true;
     }catch(_){ if(/insufficient_points|"reason"\s*:\s*"points"/.test(errText || '')) __pointsErr = true; }
-    err = new Error(t('dailyLimitError'));
+    /* v-plans-gate: حدّ باقتنا (ردّ خوادمنا يحمل subscribeOnly أو engine_limit) غير رصيد مزوّد خارجيّ — له سطره، وتنفتح الباقات. */
+    let __planLimit = false;
+    try{ const __p2 = JSON.parse(errText); __planLimit = !__pointsErr && !!__p2 && (__p2.reason === 'engine_limit' || Object.prototype.hasOwnProperty.call(__p2, 'subscribeOnly')); }
+    catch(_){ __planLimit = false; }
+    err = new Error(__planLimit ? t('plansWhyLimit') : t('dailyLimitError'));
     if(__pointsErr) err.premiumNoPoints = true;
+    if(__planLimit) err.planLimit = true;
   } else if(status === 429){
     err = new Error(t('quotaError'));
   } else if(status === 401 || status === 403){
@@ -18848,6 +18869,8 @@ let mahaCallStarting = false;
 /* v-maha-subs: المسجَّل بلا دقائق ولا نقاط ← الإعدادات ← الباقات ← قسم مها؛ الضيف ← شاشة الدخول. */
 function mahaOpenPlans(guest){
   try{
+    // v-plans-gate: المسار الموحّد (سطر السبب + حارس الفتح المكرّر — ردّ 402 نفسه يفتحه أيضًا من التفاف fetch).
+    if(!guest && typeof window.omranOpenPlans === 'function'){ window.omranOpenPlans('points', 'maha'); return; }
     if(guest || !authGet('aiapp_auth_token')){ if(typeof window.requireLogin === 'function') window.requireLogin('guestLimit'); return; }
     const sb = document.getElementById('btnSettings');
     if(sb) sb.click();
@@ -25777,7 +25800,7 @@ DESIGN RULES (non-negotiable):
         let __ct = null;
         if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __effProv); }
-          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
+          catch(e){ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; /* v-plans-gate: حدّ الباقة لا يتجاوزه مزوّد آخر */ __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
              بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
@@ -25794,7 +25817,7 @@ DESIGN RULES (non-negotiable):
                 }catch(e){ __swallow(e, 'ui:toolsteam'); }
                 __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __tp);
                 if(__ct) break;
-              }catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
+              }catch(e){ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
             }
           }
         }
@@ -25855,6 +25878,10 @@ DESIGN RULES (non-negotiable):
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
+      // v-plans-gate: انتهت الرسائل المجّانيّة/التجربة — الردّ نفسه يبقى بشارته وزرّه، والباقات (أو التسجيل للضيف) تنفتح.
+      if(__ctTier === 'free-limit' || __ctTier === 'guest-limit'){
+        try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-gate'); }
+      }
       // 👑 الرد الاحترافي اكتمل: حدّث رصيد النقاط وأظهر خصمًا متحركًا صغيرًا.
       try{
         if(window.__premiumOn === true && typeof isPremiumProvider === 'function' && isPremiumProvider()){
@@ -25888,7 +25915,11 @@ DESIGN RULES (non-negotiable):
       window.__premiumOn = false;
       try{ if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility(); }catch(_){ __swallow(_, "points:app-09-attach#28"); }
       try{ settingsToast(t('premiumNoPoints')); }catch(_){ __swallow(_, "points:app-09-attach#29"); }
-      try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
+      try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('points', 'pts'); /* v-plans-gate */ else if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
+    } else if(err && err.planLimit){
+      // v-plans-gate: حدّ الباقة اليوميّ — سطر واضح بدل «جرّب مزوّدًا آخر أو أدخل مفتاحك»، والباقات تنفتح للترقية.
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + t('plansWhyLimit')});
+      try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-limit'); }
     } else {
       /* v-img-err: حين يفشل مسار الأدوات (كلود المباشر) ثمّ يفشل الاحتياط أيضًا،
          كانت الفقاعة تعرض خطأ آخر مزوّد احتياطيّ وحده فيختفي السبب الحقيقيّ. نُظهر
@@ -37382,6 +37413,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var reader = res.body.getReader();
     var dec = new TextDecoder();
     var buf = '', full = '', serverErr = null;
+    var __planLimit = false; /* v-plans-gate: الخادم علّم الخطأ «حدّ الباقة» (limit) — المستدعي يفتح الباقات ولا يجرّب غيره */
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
@@ -37435,6 +37467,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           });
         }
         if (ev.error) serverErr = ev.error;
+        if (ev.error && ev.limit === true) __planLimit = true;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
         if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
         /* v-oa-models: موديل مختار رفضه المفتاح → يُمسح من الاختيار المحفوظ (يعود للافتراضيّ) فلا يتكرّر الرفض مع كلّ رسالة */
@@ -37443,8 +37476,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     }
     noteEnd();
 
-    // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
-    if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
+    // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم — إلّا حدّ الباقة: لا مسار آخر يتجاوزه.
+    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__planLimit) __er.planLimit = true; throw __er; }
     var __p = provider || 'claude';
     var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log };
@@ -42528,6 +42561,7 @@ if(document.readyState === 'loading'){
     if(c === 'too_long') return t('vwTooLong');
     if(c === 'format') return t('vwFormat');
     if(c === 'points_insufficient') return t('vwNoPoints').replace('{p}', String(d.points || 0)).replace('{n}', String(d.needed || ''));
+    if(c === 'unavailable') return t('vwUnavailable'); // v-plans-gate: رصيد المزوّد عندنا — لا ذنب للمستخدم ولا تحويل للباقات
     return t('vwFailed');
   }
   async function watch(text, att, status){
@@ -42602,4 +42636,193 @@ if(document.readyState === 'loading'){
   window.omranIsVideoFile = isVideoFile;
   window.omranVideoAttachment = makeAttachment;
   window.omranVideoWatchSend = send;
+})();
+/* v-plans-gate (طلب المالك ٦ أكتوبر: «انتهاء الخدمة ولا تجديد ولا انتهاء النقاط تحوّله إلى الاشتراك» — عُرضت الفكرة
+   فقال «أبدأ بالكلّ»): كانت كلّ ميزة تتصرّف وحدها عند الجدار — الصور تكتب «افتح الإعدادات ← الباقات»، الفيديو
+   والاستوديوهات «جرّب بكرة»، مها وحدها تفتح الباقات، وانتهاء الاشتراك يمرّ بصمت. هنا مسار واحد:
+   ١) omranOpenPlans(سبب، قسم): الضيف ← شاشة التسجيل؛ المسجَّل ← الإعدادات ← «الباقات والنقاط» على قسمه وفوقه سطر
+      السبب. فتح واحد لكلّ محاولة مهما تعدّدت مساراتها (حارس ٨ ثوانٍ).
+   ٢) التفاف fetch (نمط media-notify.js): ردّ 402/403 من خادمنا برمز جدار الوسائط والاستوديوهات — points_insufficient ·
+      daily_limit_reached — يفتح الباقات لأيّ ميزة بلا لمس ملفّاتها. المحادثة تفتحها من نهاية مسارها (app-09). عطل
+      المزوّد عندنا (رصيده، الشبكة) لا يحمل هذه الرموز، فلا يُحوَّل أحد للاشتراك بذنب ليس ذنبه.
+   ٣) ردّ الرصيد (/api/points) يحمل subs: تنبيه مرّة قبل انتهاء الاشتراك بثلاثة أيّام ومرّة بعد انتهائه، بزرّ «جدّد». */
+(function(){
+  var GUARD_MS = 8000, NOTICE_DAYS = 3, DAY_MS = 86400000, lastOpen = 0, noticeShown = false;
+  var WHY = { points: 'plansWhyPoints', limit: 'plansWhyLimit', expired: 'plansWhyExpired', expiring: 'plansWhyExpiring' };
+  /* رموز الوسائط والاستوديوهات وحدها: طلب واحد ونتيجته نهائيّة. حدّ المحادثة (subscribeOnly · engine_limit ·
+     insufficient_points) لا يُلتقط هنا — مسارها يجرّب مزوّدًا بعد مزوّد وقد يجيب التالي، فتفتح الباقات من نهايتها
+     (err.planLimit · free-limit · premiumNoPoints) لا من أوّل 402. */
+  var CODES = { points_insufficient: 'points', daily_limit_reached: 'limit' };
+  var TAB_OF_KIND = { chat: 'chat', image: 'img', video: 'vid', maha: 'maha' };
+  var PLAN_NAME = { basic: 'Plus', pro: 'Pro', max: 'Max' };
+  var KIND_ORDER = ['chat', 'image', 'video', 'maha'];
+
+  function loggedIn(){ try{ return !!authGet('aiapp_auth_token'); }catch(e){ return false; } }
+  function fill(s, vars){
+    var out = String(s || '');
+    Object.keys(vars || {}).forEach(function(k){ out = out.split('{' + k + '}').join(String(vars[k])); });
+    return out;
+  }
+  function whyText(reason, vars){ return fill(t(WHY[reason] || WHY.points), vars); }
+
+  // سطر السبب فوق أقسام الباقات — يُنشأ عند أوّل حاجة، فلا يلمس الجزء المحمّل partials-settings.js.
+  function showWhy(text){
+    var sec = document.getElementById('pricingSection');
+    if(!sec) return;
+    var el = document.getElementById('plansWhy');
+    if(!el){
+      if(!text) return;
+      el = document.createElement('div');
+      el.id = 'plansWhy';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'margin:0 0 12px; padding:10px 12px; border-radius:12px; border:1px solid rgba(201,162,39,.45);'
+        + ' background:rgba(201,162,39,.10); color:var(--text); font-size:13px; line-height:1.7;';
+      var tabs = document.getElementById('priceTabs');
+      if(tabs && tabs.parentNode) tabs.parentNode.insertBefore(el, tabs); else sec.appendChild(el);
+    }
+    el.textContent = text || '';
+    el.style.display = text ? '' : 'none';
+  }
+
+  function openPlans(reason, tab, vars){
+    var now = Date.now();
+    if(now - lastOpen < GUARD_MS) return false;
+    lastOpen = now;
+    if(!loggedIn()){
+      try{ if(typeof window.requireLogin === 'function') window.requireLogin('guestLimit'); }catch(e){ __swallow(e, 'plans-gate:login'); }
+      return true;
+    }
+    try{
+      var sb = document.getElementById('btnSettings');
+      if(sb) sb.click();
+      if(typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+      if(tab && typeof showPriceTab === 'function') showPriceTab(tab);
+      showWhy(whyText(reason, vars));
+    }catch(e){ __swallow(e, 'plans-gate:open'); }
+    return true;
+  }
+
+  // السطر يخصّ هذا الفتح وحده: فتح الإعدادات باليد (الزرّ يُنقر قبل أن نكتب السطر) أو إغلاقها يمسحه، فلا يظهر قديمًا.
+  try{
+    var sbtn = document.getElementById('btnSettings');
+    if(sbtn) sbtn.addEventListener('click', function(){ showWhy(''); }, true);
+    var dlg = document.getElementById('settingsDialog');
+    if(dlg) dlg.addEventListener('close', function(){ showWhy(''); });
+  }catch(e){ __swallow(e, 'plans-gate:wire'); }
+
+  function tabFor(url, reason){
+    if(/realtime-session/.test(url)) return 'maha';
+    if(/video-watch/.test(url)) return 'pts'; // تحليل الفيديو بالنقاط وحدها (ليس في جدول الوسائط)
+    if(/\/api\/video/.test(url)) return 'vid';
+    if(/maha-image|upscale/.test(url)) return 'img';
+    return reason === 'points' ? 'pts' : 'chat';
+  }
+  // ردّ جدار من خادمنا ← {reason, tab}؛ وإلّا null (عطل مزوّد، دفع لم يكتمل، ضيف استهلك صوره — لكلّ منها مساره).
+  function classify(url, status, d){
+    if(!(status === 402 || status === 403) || !d || typeof d !== 'object') return null;
+    var reason = CODES[String(d.error || '')] || '';
+    return reason ? { reason: reason, tab: tabFor(url, reason) } : null;
+  }
+  function ourApi(url){
+    try{ var u = new URL(url, location.href); return u.origin === location.origin && u.pathname.indexOf('/api/') === 0; }
+    catch(e){ return false; }
+  }
+
+  function subLabel(s){
+    if(s.kind === 'chat') return PLAN_NAME[s.plan] || String(s.plan || '');
+    var key = { image: 'priceTabImg', video: 'priceTabVid', maha: 'priceTabMaha' }[s.kind];
+    var lbl = key ? t(key) : String(s.plan || '');
+    try{ if(typeof stripUiEmoji === 'function') lbl = stripUiEmoji(lbl); }catch(e){ __swallow(e, 'plans-gate:label'); }
+    return lbl;
+  }
+  function fmtDate(ms){
+    try{ return new Date(ms).toLocaleDateString(lang || 'ar', { day: 'numeric', month: 'long' }); }
+    catch(e){ return new Date(ms).toISOString().slice(0, 10); }
+  }
+  function seenKey(s, state){ return 'omran_sub_notice_' + s.kind + '_' + state + '_' + s.endsAt; }
+  function seen(k){ try{ return localStorage.getItem(k) === '1'; }catch(e){ return false; } }
+  function markSeen(k){ try{ localStorage.setItem(k, '1'); }catch(e){ __swallow(e, 'plans-gate:seen'); } }
+
+  // انتهى (خسر مزاياه الآن) قبل «قارب»؛ وباقة المحادثة قبل الوسائط. كلّ حالة لكلّ فترة اشتراك مرّة واحدة.
+  function pickNotice(subs, now){
+    var list = (Array.isArray(subs) ? subs : []).filter(function(s){ return s && TAB_OF_KIND[s.kind] && Number(s.endsAt) > 0; })
+      .sort(function(a, b){ return KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind); });
+    var i;
+    for(i = 0; i < list.length; i++) if(!list[i].active && !seen(seenKey(list[i], 'expired'))) return { s: list[i], state: 'expired' };
+    for(i = 0; i < list.length; i++){
+      var s = list[i];
+      if(s.active && s.endsAt - now <= NOTICE_DAYS * DAY_MS && !seen(seenKey(s, 'expiring'))) return { s: s, state: 'expiring' };
+    }
+    return null;
+  }
+
+  function showNotice(n){
+    if(!document.body || document.getElementById('plansNoticeBar')) return;
+    var vars = { plan: subLabel(n.s), date: fmtDate(n.s.endsAt) };
+    var tab = TAB_OF_KIND[n.s.kind];
+    markSeen(seenKey(n.s, n.state));
+    var bar = document.createElement('div');
+    bar.id = 'plansNoticeBar';
+    bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:fixed; top:12px; left:50%; transform:translateX(-50%); width:min(640px, calc(100% - 24px)); z-index:9999;'
+      + ' display:flex; flex-wrap:wrap; align-items:center; gap:8px; background:var(--panel2, #1c2230); color:var(--text, #fff);'
+      + ' border:1px solid rgba(201,162,39,.45); border-radius:14px; padding:10px 14px; box-shadow:0 8px 28px rgba(0,0,0,.35);'
+      + ' font-size:13.5px; line-height:1.7; box-sizing:border-box;';
+    var txt = document.createElement('span');
+    txt.style.cssText = 'flex:1; min-width:180px;';
+    txt.textContent = whyText(n.state, vars);
+    var go = document.createElement('button');
+    go.type = 'button';
+    go.textContent = t('plansRenew');
+    go.style.cssText = 'flex:none; padding:7px 16px; border-radius:10px; border:1px solid #c9a227; background:#c9a227; color:#0a0a0a; font-weight:700; cursor:pointer; font-size:13px; font-family:inherit;';
+    var later = document.createElement('button');
+    later.type = 'button';
+    later.textContent = t('plansLater');
+    later.style.cssText = 'flex:none; padding:7px 14px; border-radius:10px; border:1px solid var(--border, rgba(127,127,127,.25)); background:transparent; color:inherit; cursor:pointer; font-size:13px; font-family:inherit;';
+    function close(){ try{ bar.remove(); }catch(e){ __swallow(e, 'plans-gate:bar'); } }
+    go.onclick = function(){ close(); lastOpen = 0; openPlans(n.state, tab, vars); };
+    later.onclick = close;
+    bar.appendChild(txt); bar.appendChild(go); bar.appendChild(later);
+    document.body.appendChild(bar);
+  }
+  function checkSubs(subs){
+    if(noticeShown || !loggedIn()) return;
+    var n = pickNotice(subs, Date.now());
+    if(!n) return;
+    noticeShown = true;
+    showNotice(n);
+  }
+
+  // الالتفاف شفّاف كـmedia-notify.js: الاستجابة الأصليّة تُعاد كما هي، والقراءة على نسخة clone قبل أن يقرأها صاحبها.
+  try{
+    var prevFetch = window.fetch;
+    if(typeof prevFetch === 'function'){
+      window.fetch = function(input, init){
+        var p = prevFetch.apply(window, arguments);
+        var url = '';
+        try{ url = typeof input === 'string' ? input : String((input && input.url) || ''); }catch(e){ url = ''; }
+        if(!ourApi(url)) return p;
+        try{
+          p.then(function(res){
+            try{
+              if(!res || typeof res.clone !== 'function') return;
+              if(res.status === 402 || res.status === 403){
+                res.clone().json().then(function(d){
+                  var g = classify(url, res.status, d);
+                  if(g) openPlans(g.reason, g.tab);
+                }).catch(function(){ /* guard-ok — جسم غير JSON ليس جدارًا من خادمنا */ });
+              } else if(res.ok && /\/api\/points(?:[?#]|$)/.test(url)){
+                res.clone().json().then(function(d){ if(d && Array.isArray(d.subs)) checkSubs(d.subs); })
+                  .catch(function(){ /* guard-ok — ردّ رصيد بلا JSON لا تنبيه فيه */ });
+              }
+            }catch(e){ __swallow(e, 'plans-gate:watch'); }
+          }).catch(function(){ /* guard-ok — فشل الشبكة يظهر في الميزة نفسها */ });
+        }catch(e){ __swallow(e, 'plans-gate:wrap'); }
+        return p;
+      };
+    }
+  }catch(e){ __swallow(e, 'plans-gate:fetch'); }
+
+  window.omranOpenPlans = openPlans;
+  window.__omranPlansGate = { classify: classify, tabFor: tabFor, pickNotice: pickNotice, checkSubs: checkSubs, showWhy: showWhy };
 })();
