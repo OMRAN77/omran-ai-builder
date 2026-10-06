@@ -82,9 +82,13 @@ async function upstreamText(step, r) {
   } catch (e) { msg = ''; }
   return step + ' ' + r.status + (msg ? ': ' + String(msg).replace(/\s+/g, ' ').slice(0, 200) : '');
 }
+/* v-plans-gate (لقطة المالك ١٠:١٣: «start 402: Your prepayment credits are depleted»): رصيد المزوّد عندنا خلص — ليس خطأ
+   المستخدم ولا يُصلحه اشتراكه، فلا «أعد المحاولة» ولا تحويل للباقات: unavailable (503) ونصّ «الخدمة متوقّفة مؤقّتًا». */
+const OUTAGE_RE = / 402\b|prepay|billing|credits? (?:are |is )?(?:depleted|exhausted)/i;
 async function failUp(res, user, detail, extra) {
   try { await require('./log-error.js').logErrorAndFlush('video-watch', new Error(detail), { action: 'video-watch', user: String(user || '').slice(0, 40) }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
-  return fail(res, 502, 'failed', Object.assign({}, extra || {}, pointsLib.isOwnerUsername(user) ? { __diag: detail } : {}));
+  const outage = OUTAGE_RE.test(String(detail || ''));
+  return fail(res, outage ? 503 : 502, outage ? 'unavailable' : 'failed', Object.assign({}, extra || {}, pointsLib.isOwnerUsername(user) ? { __diag: detail } : {}));
 }
 
 async function start(req, res, body, user, key) {

@@ -1472,8 +1472,13 @@ function throwProviderError(status, errText){
       const __p = JSON.parse(errText);
       if(__p && (__p.reason === 'points' || __p.error === 'insufficient_points')) __pointsErr = true;
     }catch(_){ if(/insufficient_points|"reason"\s*:\s*"points"/.test(errText || '')) __pointsErr = true; }
-    err = new Error(t('dailyLimitError'));
+    /* v-plans-gate: حدّ باقتنا (ردّ خوادمنا يحمل subscribeOnly أو engine_limit) غير رصيد مزوّد خارجيّ — له سطره، وتنفتح الباقات. */
+    let __planLimit = false;
+    try{ const __p2 = JSON.parse(errText); __planLimit = !__pointsErr && !!__p2 && (__p2.reason === 'engine_limit' || Object.prototype.hasOwnProperty.call(__p2, 'subscribeOnly')); }
+    catch(_){ __planLimit = false; }
+    err = new Error(__planLimit ? t('plansWhyLimit') : t('dailyLimitError'));
     if(__pointsErr) err.premiumNoPoints = true;
+    if(__planLimit) err.planLimit = true;
   } else if(status === 429){
     err = new Error(t('quotaError'));
   } else if(status === 401 || status === 403){
