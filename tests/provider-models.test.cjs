@@ -23,12 +23,12 @@ test('١. pickProviderModel: معرّف OpenRouter بالبادئة الصحيح
 
 test('٢. parseModels: بالبادئة، الأحدث أوّلًا، بلا متغيّرات ولا صور، ثمانية كحدّ، والاسم بلا «الشركة: »', () => {
   const data = [];
-  for (let i = 0; i < 12; i++) data.push({ id: 'openai/m' + i, name: 'OpenAI: M' + i, created: 1000 + i, architecture: { output_modalities: ['text'] } });
+  for (let i = 0; i < 12; i++) data.push({ id: 'openai/m' + i, name: 'OpenAI: M' + i, created: 1000 + i, architecture: { output_modalities: ['text'] }, supported_parameters: ['tools', 'temperature'] });
   data.push({ id: 'openai/free:free', name: 'x', created: 9999 });
   data.push({ id: 'openai/img', name: 'OpenAI: Img', created: 9998, architecture: { output_modalities: ['image'] } });
-  data.push({ id: 'google/gemini-3.5-flash', name: 'Google: Gemini 3.5 Flash', created: 5 });
-  data.push({ id: 'anthropic/claude-sonnet-5', name: 'Anthropic: Claude Sonnet 5', created: 5 });
-  data.push({ id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick', created: 5 });
+  data.push({ id: 'google/gemini-3.5-flash', name: 'Google: Gemini 3.5 Flash', created: 5, supported_parameters: ['tools'] });
+  data.push({ id: 'anthropic/claude-sonnet-5', name: 'Anthropic: Claude Sonnet 5', created: 5, supported_parameters: ['tools'] });
+  data.push({ id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick', created: 5, supported_parameters: ['tools'] });
   const out = pm.parseModels({ data });
   assert.equal(out.openai.length, 8);
   assert.deepEqual(out.openai[0], ['openai/m11', 'M11']);
@@ -39,9 +39,23 @@ test('٢. parseModels: بالبادئة، الأحدث أوّلًا، بلا م�
   assert.deepEqual(pm.parseModels(null), {});
 });
 
+test('٢ب. v-prov-tools-filter: القائمة الحيّة تعرض فقط ما يدعم tools — وPerplexity مستثنى', () => {
+  const data = [
+    { id: 'cohere/command-a-plus', name: 'Cohere: Command A+', created: 10, supported_parameters: ['tools', 'temperature'] },
+    { id: 'cohere/command-a', name: 'Cohere: Command A', created: 9, supported_parameters: ['temperature'] },
+    { id: 'cohere/legacy-nofield', name: 'Cohere: Legacy', created: 8 },
+    { id: 'perplexity/sonar', name: 'Perplexity: Sonar', created: 10, supported_parameters: ['temperature'] },
+    { id: 'perplexity/sonar-pro', name: 'Perplexity: Sonar Pro', created: 9 },
+  ];
+  const out = pm.parseModels({ data });
+  assert.deepEqual(out.cohere, [['cohere/command-a-plus', 'Command A+']], 'بلا tools = خارج القائمة (والمفقود الحقل كذلك)');
+  assert.deepEqual(out.perplexity, [['perplexity/sonar', 'Sonar'], ['perplexity/sonar-pro', 'Sonar Pro']], 'Perplexity بلا فلترة — مساره بلا أدوات أصلًا');
+  assert.match(read('api/_lib/provider-models.js'), /provmodels:v4/, 'مفتاح الكاش رُفع ليُسقط القوائم غير المفلترة');
+});
+
 test('٣. loadModels: الشبكة مرّة ثمّ الذاكرة؛ والمعالج يرفض غير المالك', async () => {
   let calls = 0;
-  const fetchStub = async () => { calls++; return { ok: true, json: async () => ({ data: [{ id: 'openai/gpt-5.6-terra', name: 'OpenAI: GPT-5.6 Terra', created: 1 }] }) }; };
+  const fetchStub = async () => { calls++; return { ok: true, json: async () => ({ data: [{ id: 'openai/gpt-5.6-terra', name: 'OpenAI: GPT-5.6 Terra', created: 1, supported_parameters: ['tools'] }] }) }; };
   const a = await pm.loadModels({ fetch: fetchStub, noKv: true });
   const b = await pm.loadModels({ fetch: fetchStub, noKv: true });
   assert.equal(calls, 1);
@@ -74,7 +88,7 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
   for (const m of orBlock.matchAll(/^\s+(\w+): '([^']+)'/gm)) orDefaults[m[1]] = m[2];
   for (const k of ['openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']) {
     assert.ok(orDefaults[k], 'OR_MODELS ' + k);
-    const re = new RegExp("key:'" + k + "',[^\\n]*or:true,[^\\n]*def:'" + orDefaults[k].replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + "'");
+    const re = new RegExp("key:'" + k + "',[^\\n]*or:true,[^\\n]*def:'" + orDefaults[k].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "'");
     assert.match(modes, re, 'افتراضيّ السهم لـ' + k + ' = ' + orDefaults[k]);
   }
   assert.ok(modes.includes("['openai/gpt-6-astra','GPT-6 Astra']") && modes.includes("['openai/gpt-6-sol','GPT-6 Sol']") && modes.includes("['openai/gpt-6-luna','GPT-6 Luna']"), 'احتياط منتقي OpenAI يطابق الموديلات الرسميّة');
@@ -85,4 +99,45 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
     assert.ok(read(f).includes("window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : '');"), f);
   }
   assert.ok(read('index.html').includes('js/modes.js?v=m041026b'), 'وسم كاش modes رُفع');
+});
+
+test('٦. v-cohere-prefix (الخادم): تجريد بادئة الوسيط + قائمة مسحوبات مصحّحة رسميًّا + شبكة أمان', () => {
+  const co = read('api/_lib/cohere.js');
+  // البادئة تُجرَد قبل الفحص والإرسال — «cohere/command-r-08-2024» لم تعد تصل api.cohere.com حرفيًّا
+  assert.match(co, /if \(model\.toLowerCase\(\)\.indexOf\('cohere\/'\) === 0\) model = model\.slice\(7\);/);
+  // قائمة المسحوبات على دورة حياة Cohere الرسميّة: 03-2024/04-2024 والمستعارات — لا لقطتا 08-2024 (Live)
+  assert.match(co, /'command-r-03-2024'/, 'النسخة المسحوبة فعلًا موجودة');
+  assert.match(co, /'command-r-plus-04-2024'/, 'نسخة R+ المسحوبة فعلًا');
+  assert.ok(!/'command-r-08-2024'/.test(co), 'command-r-08-2024 حيّ رسميًّا — لا يُرقَّى ولا يُحجب');
+  assert.ok(!/'command-r-plus-08-2024'/.test(co), 'command-r-plus-08-2024 حيّ رسميًّا كذلك');
+  // شبكة الأمان: أيّ 404/400 على موديل مختار غير افتراضيّ = رجوع للافتراضيّ قبل إظهار الخطأ
+  assert.match(co, /upstream\.status === 404 \|\| upstream\.status === 400\) && model !== COHERE_DEFAULT && model !== COHERE_PREV/);
+});
+
+test('٧. v-cohere-prefix (العميل): normalizeCohereModel يجرّد البادئة ويصحّح المسحوبات', () => {
+  const src = read('js/app-06-checkout.js');
+  const start = src.indexOf('const COHERE_RETIRED_SET');
+  const end = src.indexOf('async function callCohere');
+  assert.ok(start !== -1 && end > start, 'كتلة التطبيع موجودة');
+  const vm = require('vm');
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext(src.slice(start, end), sandbox);
+  const norm = sandbox.normalizeCohereModel;
+  assert.equal(typeof norm, 'function');
+  assert.equal(norm('cohere/command-r-08-2024'), 'command-r-08-2024', 'البادئة تُجرَد واللقطة الحيّة تمرّ كما هي');
+  assert.equal(norm('command-r-plus-08-2024'), 'command-r-plus-08-2024', 'لقطة R+ الحيّة لا تُرقَّى');
+  assert.equal(norm('cohere/command-r'), 'command-a-03-2025', 'المستعار المسحوب يُرقَّى');
+  assert.equal(norm('command-r-03-2024'), 'command-a-03-2025', 'النسخة المسحوبة ١٥ سبتمبر ٢٠٢٥');
+  assert.equal(norm('cohere/command-light'), 'command-a-03-2025');
+  assert.equal(norm(''), 'command-a-03-2025', 'بلا محفوظ = الافتراضيّ');
+  // شبكة الأمان: 404 على مختار محفوظ = مسح + إعادة بالافتراضيّ مرّة واحدة
+  assert.match(src, /if\(!res\.ok && res\.status === 404 && model !== COHERE_SAFE_MODEL\)/);
+  assert.match(src, /localStorage\.removeItem\('aiapp_cohere_model'\)/);
+});
+
+test('٨. الحزمة المبنيّة تحوي إصلاحات Cohere (npm run bundle شُغّل)', () => {
+  const bundle = read('js/app.bundle.js');
+  assert.match(bundle, /COHERE_RETIRED_SET/, 'تطبيع العميل في الحزمة');
+  assert.match(bundle, /command-r-03-2024/, 'القائمة المصحّحة في الحزمة');
 });
