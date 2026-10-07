@@ -9062,6 +9062,7 @@ function renderMessages(keepScroll){
   document.addEventListener('touchstart', ensureBound, { capture: true, passive: true });
   window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool };
 })();
+// test: claude code engine verification
 // ===== v199: reply action bar helpers (⋮ convert menu) =====
 /* v-app-share (شكوى ٢٨ أغسطس: «تحميل PDF ما يشتغل» في تطبيق المتجر):
    WKWebView لا يدعم روابط التنزيل <a download> ولا window.print() إطلاقًا —
