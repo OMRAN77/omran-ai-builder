@@ -12,7 +12,7 @@ const OR_VENDOR = { openai: 'openai', gemini: 'google', deepseek: 'deepseek', mi
 const OR_ID_RE = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i;
 const PER_PROVIDER = 8;
 const TTL_MS = 6 * 60 * 60 * 1000;
-const KV_KEY = 'provmodels:v3'; // v-owner-direct: v2 = قائمة Groq من Groq نفسه؛ v-oa-models: v3 = قائمة GPT من OpenAI نفسه (يُسقط المخزَّن وفيه gpt-6-luna-pro)
+const KV_KEY = 'provmodels:v4'; // v-owner-direct: v2 = قائمة Groq من Groq نفسه؛ v-oa-models: v3 = قائمة GPT من OpenAI نفسه (يُسقط المخزَّن وفيه gpt-6-luna-pro)؛ v-prov-tools-filter: v4 = فلترة الأدوات (يُسقط المخزَّن غير المفلتر)
 const OR_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 function pickProviderModel(prov, requested, fallback) {
@@ -40,6 +40,13 @@ function parseModels(payload) {
     const list = rows
       .filter((m) => m && typeof m.id === 'string' && m.id.indexOf(v) === 0 && m.id.indexOf(':') === -1 && OR_ID_RE.test(m.id))
       .filter((m) => { const om = m.architecture && m.architecture.output_modalities; return !Array.isArray(om) || om.indexOf('text') !== -1; })
+      /* v-prov-tools-filter (لقطة المالك ٦ أكتوبر — 404 على موديل مختار من القائمة الحيّة): مسار
+         المحادثة يرسل tools لكلّ مزوّد على TOOL_PROVIDERS، والوسيط قد يردّ 404 «No endpoints»
+         لموديل بلا endpoint يدعمها — فلا نعرض إلّا ما يعلن tools في supported_parameters.
+         الفلترة بالقدرة لا بقائمة «متقاعدة» ثابتة، فلا تُخفى موديلات شغّالة ولا يتكرّر الخلل
+         مع موديل جديد بلا أدوات. Perplexity مستثنى: مساره بلا أدوات أصلًا (بحث Sonar مدمج)
+         والفلترة تفرّغ قائمته. */
+      .filter((m) => prov === 'perplexity' || (Array.isArray(m.supported_parameters) && m.supported_parameters.indexOf('tools') !== -1))
       .sort((a, b) => (Number(b.created) || 0) - (Number(a.created) || 0))
       .slice(0, PER_PROVIDER)
       .map((m) => [m.id, String(m.name || m.id).replace(/^[^:]{1,40}:\s*/, '').trim() || m.id]);
