@@ -244,7 +244,7 @@ test('٨. قائمة GPT في السهم من OpenAI نفسه بمفتاح ال�
   const seen = [];
   const fetchStub = async (url, o) => {
     seen.push([String(url), (o && o.headers && o.headers.Authorization) || '']);
-    if (/openrouter\.ai/.test(url)) return { ok: true, json: async () => ({ data: [{ id: 'openai/gpt-6-luna-pro', name: 'OpenAI: GPT-6 Luna Pro', created: 99 }, { id: 'google/gemini-3.5-flash', name: 'Google: Gemini 3.5 Flash', created: 5 }] }) };
+    if (/openrouter\.ai/.test(url)) return { ok: true, json: async () => ({ data: [{ id: 'openai/gpt-6-luna-pro', name: 'OpenAI: GPT-6 Luna Pro', created: 99, supported_parameters: ['tools'] }, { id: 'google/gemini-3.5-flash', name: 'Google: Gemini 3.5 Flash', created: 5, supported_parameters: ['tools'] }] }) };
     if (url === 'https://api.openai.com/v1/models') return { ok: true, json: async () => ({ data: rows }) };
     return { ok: false, json: async () => ({}) };
   };
@@ -255,7 +255,7 @@ test('٨. قائمة GPT في السهم من OpenAI نفسه بمفتاح ال�
     assert.deepEqual(out.models.gemini, [['google/gemini-3.5-flash', 'Gemini 3.5 Flash']], 'البقيّة من الوسيط كما كانت');
     assert.ok(seen.some(([u, a]) => u === 'https://api.openai.com/v1/models' && a === 'Bearer sk-openai-test'));
   } finally { delete process.env.OPENAI_API_KEY; }
-  assert.ok(require('fs').readFileSync(rp('api/_lib/provider-models.js'), 'utf8').includes("const KV_KEY = 'provmodels:v3';"), 'المخزَّن القديم (وفيه luna) يسقط فورًا');
+  assert.ok(require('fs').readFileSync(rp('api/_lib/provider-models.js'), 'utf8').includes("const KV_KEY = 'provmodels:v4';"), 'المخزَّن القديم (وفيه luna وغير المفلتر) يسقط فورًا');
 });
 
 test('٩. العميل: الموديل المرفوض يُمسح من الاختيار المحفوظ لذلك المزوّد وحده، واختيار صالح آخر لا يُمسّ', () => {
