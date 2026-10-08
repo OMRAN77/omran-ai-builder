@@ -65,7 +65,7 @@
     return Promise.race([p, timer]).finally(function () { try { clearTimeout(to); } catch (e) { /* guard-ok — تنظيف المؤقّت */ } });
   }
 
-  window.callChatWithTools = async function (messages, onDelta, provider) {
+  window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     window.__chatVideoResult = null;
     window.__chatVideoReference = null;
     window.__chatLastUserText = '';
@@ -112,6 +112,7 @@
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
+        noTools: (opts && opts.noTools) ? true : undefined, /* v-owner-solo: المسار القديم للمالك (استئذان/إصلاح) بلا أدوات كما كان — الخادم يقبله للمالك وحده */
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
         model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),

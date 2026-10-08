@@ -2342,8 +2342,9 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
          Sonnet بدل Haiku…) ويصف صورته لـGemini أو يسقطها. الآن يمرّ بالخادم لمزوّده نفسه كالمسار العاديّ (بلا رسالة النظام الثابتة
          الأولى، كمسار الأدوات)، فالمزوّد والموديل والصورة ورسالة الفشل واحدة. Perplexity خارج مسار الأدوات فيبقى على مساره. */
       const __viaChat = __solo && TOOL_PROVIDERS.indexOf(providerKey) !== -1 && typeof window.callChatWithTools === 'function';
+      if(__viaChat && opts && opts.toolsErr) throw opts.toolsErr; // v-owner-solo: مسار الأدوات لهذا المزوّد فشل للتوّ — لا طلب ثانٍ يكرّر أدواته (تفويض/رفع/صورة)
       const reply = __viaChat
-        ? (await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), __od, providerKey)).reply
+        ? (await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), __od, providerKey, { noTools: true })).reply
         : await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
