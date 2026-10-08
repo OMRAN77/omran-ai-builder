@@ -172,7 +172,9 @@ test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمف
   } finally { delete process.env.GROQ_API_KEY; }
 });
 
-test('٥. المالك + مفتاح Groq مرفوض (401) → الوسيط للمزوّد نفسه بسطر حالة، لا صمت', async () => {
+/* v-owner-solo (أمر المالك ٨ أكتوبر «كلّ مزوّد يردّ عن نفسه»): Groq عبر الوسيط = Llama 4 Maverick عند مضيف غير Groq (Groq أوقفه) —
+   فمفتاح Groq المرفوض يتوقّف بسببه ولا يجيب الوسيط. */
+test('٥. المالك + مفتاح Groq مرفوض (401) → سبب الفشل، ولا يجيب الوسيط عن Groq', async () => {
   process.env.GROQ_API_KEY = 'gsk-bad';
   try {
     const r = await run({ user: 'omran', provider: 'groq', messages: ask('هلا بك'), script: [
@@ -180,10 +182,9 @@ test('٥. المالك + مفتاح Groq مرفوض (401) → الوسيط لل�
       () => anthropicText('من الوسيط'),
     ] });
     assert.equal(r.calls[0].url, 'https://api.groq.com/openai/v1/chat/completions');
-    assert.match(r.calls[1].url, /openrouter\.ai\/api\/v1\/messages/);
-    assert.equal(r.calls[1].body.model, 'meta-llama/llama-4-maverick');
-    assert.ok(r.events.some((e) => e.k === 'stModelFallback' && /Groq · 401/.test(e.status)));
-    assert.equal(r.text, 'من الوسيط');
+    assert.ok(!r.calls.some((c) => /openrouter\.ai/.test(c.url)), 'لا وسيط');
+    assert.ok(r.events.some((e) => e.ownerStop === true && e.error === 'ما قدرت أردّ الحين — خطأ 401'));
+    assert.equal(r.text, '');
   } finally { delete process.env.GROQ_API_KEY; }
 });
 

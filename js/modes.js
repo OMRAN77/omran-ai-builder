@@ -97,8 +97,9 @@
         { grp:2, key:'kimi',       name:'Kimi · Moonshot',          or:true, direct:true, store:'aiapp_kimi_model',       def:'kimi-k3',                     models:[['kimi-k3','Kimi K3'],['kimi-k2.6','Kimi K2.6']] },
         { grp:2, key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
         { grp:2, key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
-        { grp:2, key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'meta-llama/llama-4-maverick', models:[['meta-llama/llama-4-maverick','Llama 4 Maverick']] },
-        { grp:3, key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
+        /* v-owner-solo: Groq أوقف Llama 4 Maverick (٩ مارس) والذي يجيب فعلًا عند Groq هو GPT-OSS 120B (GROQ_ALIAS في oa-direct) — القائمة تسمّيه */
+        { grp:2, key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'openai/gpt-oss-120b',         models:[['openai/gpt-oss-120b','GPT-OSS 120B']] },
+        { grp:3, key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning Pro']] },
         { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
         /* v-openrouter-tools: or:true كي يصل اختيار المالك إلى الخادم (omranModelFor) كبقيّة مزوّدي الوسيط.
            v-prov-or-unique (المالك ٣ أكتوبر «متكررين فوق وتحت» ثمّ «في واحد ناقص»): الصفّ باقٍ، لكن بشركات ليس لها صفّ
@@ -107,7 +108,7 @@
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
-      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; if(pv.key === 'openrouter' && v && !pv.models.some(function(m){ return m[0] === v; })) v = ''; /* v-prov-or-unique: اختيار قديم مكرّر (Claude/GPT عبر الوسيط) لا يبقى خفيًّا */ /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
+      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; if(pv.key === 'openrouter' && v && !pv.models.some(function(m){ return m[0] === v; })) v = ''; if(pv.key === 'groq' && /^meta-llama\/llama-4-/.test(v)) v = ''; /* v-owner-solo: موديل Groq المتقاعد المحفوظ = الافتراضيّ الحيّ */ /* v-prov-or-unique: اختيار قديم مكرّر (Claude/GPT عبر الوسيط) لا يبقى خفيًّا */ /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
       /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
       window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
       /* v-oa-models (لقطة «فحص النظام» ٢٣ سبتمبر: gpt-6-luna-pro ×4): الخادم رفض الموديل المختار (غير موجود أو لا يملكه

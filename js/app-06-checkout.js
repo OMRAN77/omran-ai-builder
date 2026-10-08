@@ -883,6 +883,7 @@ const saveSettingsNow = () => {
   (() => {
     const sel = $('#openrouterModelSelect');
     const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-5.6-terra') : sel.value;
+    if (typeof omranOwnerUi === 'function' && omranOwnerUi()) return; // v-owner-solo: اختيار المالك من قائمة المزوّدين لا من حقل لم يُهيّأ
     localStorage.setItem('aiapp_openrouter_model', finalModel);
   })();
   localStorage.setItem('aiapp_perplexity_apikey', $('#perplexityApiKey').value.trim());
@@ -1760,7 +1761,9 @@ function stripPplxCitations(s){
 }
 async function callPerplexity(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_perplexity_apikey');
-  const model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
+  let model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
+  /* v-owner-solo: معرّف Perplexity قديم محفوظ (llama-3.1-sonar-…، pplx-…) يُرفض 400 في كلّ رسالة — يُرحَّل مرّة إلى sonar (المعرّفات الحيّة لا تُمسّ) */
+  if(typeof omranOwnerUi === 'function' && omranOwnerUi() && /^(?:llama-3(?:\.1)?-sonar|sonar-(?:small|medium|huge)-|pplx-)/i.test(model)){ model = 'sonar'; try{ localStorage.setItem('aiapp_perplexity_model', model); }catch(e){ __swallow(e, 'pplx:migrate'); } }
   // v-owner-vision: للمالك Sonar يقرأ الصورة نفسها (image_url بـdata URI في واجهته الرسميّة) بدل وصف Gemini؛ غيره كما كان.
   let plainMessages = ((typeof omranOwnerUi === 'function' && omranOwnerUi()) && messages.some(m => m.images && m.images.length))
     ? toOpenAIVisionMessages(messages) : await stripImagesWithDescription(messages);
@@ -2331,7 +2334,15 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
       }catch(e){ console.warn('[status] provider phase failed', e); }
       var __lastProg = Date.now();
       var __od = function(full){ __lastProg = Date.now(); if(onDelta) onDelta(full); };
-      const reply = await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
+      /* v-owner-solo (فحص المزوّدين ٨ أكتوبر): للمالك المسار القديم («صلّح/خطأ» مع كود، دور الاستئذان، فشل مسار الأدوات) كان يرسل
+         لكلّ مزوّد موديلًا غير الذي في القائمة (Gemini بمعرّف الوسيط إلى Google فيرفض، Mistral Small بدل Medium، GPT-4o-mini بدل GPT-6،
+         Sonnet بدل Haiku…) ويصف صورته لـGemini أو يسقطها. الآن يمرّ بالخادم لمزوّده نفسه كالمسار العاديّ (بلا رسالة النظام الثابتة
+         الأولى، كمسار الأدوات)، فالمزوّد والموديل والصورة ورسالة الفشل واحدة. Perplexity خارج مسار الأدوات فيبقى على مساره. */
+      const __viaChat = __solo && TOOL_PROVIDERS.indexOf(providerKey) !== -1 && typeof window.callChatWithTools === 'function';
+      if(__viaChat && opts && opts.toolsErr) throw opts.toolsErr; // v-owner-solo: مسار الأدوات لهذا المزوّد فشل للتوّ — لا طلب ثانٍ يكرّر أدواته (تفويض/رفع/صورة)
+      const reply = __viaChat
+        ? (await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), __od, providerKey, { noTools: true })).reply
+        : await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
       if(!__solo && isRefusalReply(reply) && refusalTries < 2){
@@ -2361,8 +2372,8 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
         // v-owner-solo: لا مزوّد بعده؛ الرسالة قصيرة كرسالة الخادم — «ما عندي رصيد» أو «ما قدرت أردّ الحين — خطأ N».
         if(err && !err.ownerStop){
           try{
-            const __txt = String(err.upstreamText || '') + ' ' + String(err.message || '');
-            err.message = (err.status === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(__txt)) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين — خطأ ' + (err.status || '؟'));
+            const __st = err.status || Number((String(err.message || '').match(/^chat (\d{3})\b/) || [])[1]) || 0;
+            err.message = (__st === 402 || /credit|balance|billing|insufficient_quota|payment/i.test(String(err.upstreamText || ''))) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين' + (__st ? ' — خطأ ' + __st : ''));
           }catch(e){ __swallow(e, 'fallback:solo-msg'); }
         }
         throw err;
