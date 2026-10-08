@@ -108,4 +108,20 @@ test('الحزمة المبنيّة تحوي المكوّن (npm run bundle شُ
   assert.match(bundle, /genwSweep/, 'الحركات في الحزمة');
   assert.match(bundle, /genwFilm/, 'شريط الفلم في الحزمة');
   assert.match(bundle, /#videoMakerStatus/, 'لوحات الأدوات في الحزمة');
+  assert.match(bundle, /chatvideo/, 'فيديو المحادثة في الحزمة');
+});
+
+test('فيديو المحادثة (v-gen-wait-chatvideo): سطر «🎬 جاري إنشاء الفيديو…» في شريط الحالة يركّب البطاقة العريضة', () => {
+  const src = read('js/app-34-gen-wait.js');
+  assert.match(src, /CHAT_VIDEO_RE = \/🎬 \(\?:جاري إنشاء الفيديو\|Creating video\)\//, 'كاشف سطر الفيديو');
+  assert.match(src, /querySelectorAll\('\.chat-status-text'\)/, 'يرصد السطر الجاري في شريط الحالة');
+  assert.match(src, /closest\('\.msg\.assistant'\)/, 'يركّب داخل فقاعة التفكير');
+  assert.match(src, /data-genw-panel', 'chatvideo'/, 'بطاقة بوسم مستقلّ');
+  assert.match(src, /'💳'/, 'فحص الرصيد 💳 ضمن بادئات انشغال الفيديو');
+  // النصّان اللذان يكتبهما مسار الفيديو في المحادثة فعلًا (app-09) — لو تغيّرا يصرخ الاختبار
+  const attach = read('js/app-09-attach.js');
+  assert.match(attach, /chatPhase\('🎬', lang === 'ar' \? 'جاري إنشاء الفيديو…/, 'سطر بدء الفيديو');
+  assert.match(attach, /chatPhase\('🎬', \(lang === 'ar' \? 'جاري إنشاء الفيديو… '/, 'سطر الاستطلاع');
+  assert.match(attach, /'Creating video… this can take 1–3 minutes'/, 'الإنجليزيّ');
+  assert.match(read('js/app-11-video.js'), /💳 جاري التأكد من رصيد الفيديو/, 'سطر فحص الرصيد في صانع الفيديو');
 });
