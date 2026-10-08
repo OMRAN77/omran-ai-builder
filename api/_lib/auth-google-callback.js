@@ -133,6 +133,14 @@ module.exports = async (req, res) => {
       } else { throw e; }
     }
 
+    // v-name-reuse: مفتاح g_<البريد> لم يكن محجوزًا قبل ٨ أكتوبر، فقد يحمل حسابًا سجّله غير صاحب البريد بكلمة مرور
+    // يعرفها — دخول صاحب البريد إليه يجعله يكتب ويشتري في حساب يقرؤه غيره. حساب الكولباك وحده يحمل googleAuth (منذ أوّل نسخة).
+    if (user && !user.deleted && key === 'g_' + email && user.googleAuth !== true) {
+      console.warn('[auth] g_ key held by a non-Google account — refused: ' + key);
+      await failRedirect('account_conflict');
+      return;
+    }
+
     if (!user || user.deleted) {
       const { salt, hash } = randomPasswordHash();
       const recCode = genRecoveryCode();

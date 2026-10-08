@@ -132,3 +132,65 @@ test('٥. الحساب التلقائيّ للدخول بالرمز لا يُن�
   assert.equal(r.body.username, 'zed_ddeeff', 'تخطّى الاسم المحذوف');
   assert.equal((await auth.getUser('zed_aabbcc')).deleted, true, 'المحذوف لم يُكتب فوقه');
 });
+
+test('٦. الرجوع لاسمك يُثبت بسلسلة الشواهد لا بـprevUsernames: شاهد قديم بلا prevUsernames، وأكثر من عشرة تغييرات', async () => {
+  // شاهد من قبل ٥ أكتوبر (لا prevUsernames في الحساب)
+  await auth.putUser('ali', { deleted: true, movedTo: 'ali2' });
+  await auth.putUser('ali2', { username: 'ali2', points: 70, createdAt: Date.now() });
+  const back = await call({ action: 'changeUsername', token: auth.makeToken('ali2'), newUsername: 'ali' });
+  assert.equal(back.status, 200, JSON.stringify(back.body));
+  // ١١ تغييرًا ثمّ الرجوع للأوّل (prevUsernames مقصوص إلى آخر عشرة)
+  await auth.putUser('nam0', { username: 'nam0', points: 70, createdAt: Date.now() });
+  let tok = auth.makeToken('nam0');
+  for (let i = 1; i <= 11; i++) {
+    const r = await call({ action: 'changeUsername', token: tok, newUsername: 'nam' + i });
+    assert.equal(r.status, 200); tok = r.body.token;
+  }
+  const first = await call({ action: 'changeUsername', token: tok, newUsername: 'nam0' });
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+});
+
+test('٧. اسم في prevUsernames آخرُ من حمله غيرك (بيانات ما قبل الإصلاح) أو حذفه المالك — ليس لك', async () => {
+  await auth.putUser('xaa', { username: 'xaa', points: 70, createdAt: Date.now() });
+  const x = await call({ action: 'changeUsername', token: auth.makeToken('xaa'), newUsername: 'xbb' });
+  assert.equal(x.status, 200);
+  // قبل الإصلاح: Y سجّل xaa فوق الشاهد ثمّ غيّره إلى ycc — ورمز جهازه الثاني باسم xaa
+  await auth.putUser('xaa', { username: 'xaa', points: 70, email: 'y@private.com', createdAt: Date.now() });
+  const y = await call({ action: 'changeUsername', token: auth.makeToken('xaa'), newUsername: 'ycc' });
+  assert.equal(y.status, 200);
+  const grab = await call({ action: 'changeUsername', token: x.body.token, newUsername: 'xaa' });
+  assert.equal(grab.status, 409, 'السلسلة تنتهي عند ycc لا عند xbb: ' + JSON.stringify(grab.body));
+  assert.equal((await auth.getUser('xaa')).movedTo, 'ycc', 'شحن Y باسمه القديم ما زال يتبعه');
+  // حذف المالك (بلا movedTo) لاسم في تاريخك
+  await auth.putUser('kim', { username: 'kim', points: 70, createdAt: Date.now() });
+  const k = await call({ action: 'changeUsername', token: auth.makeToken('kim'), newUsername: 'kim2' });
+  await auth.putUser('kim', { username: 'kim', deleted: true });
+  const kb = await call({ action: 'changeUsername', token: k.body.token, newUsername: 'kim' });
+  assert.equal(kb.status, 409, JSON.stringify(kb.body));
+});
+
+test('٨. حساب Google يغيّر اسمه ثمّ يرجع إلى مفتاحه g_<بريده> — ولا يرجع إليه غيره', async () => {
+  profileEmail = 'owner.g@gmail.com';
+  const r = { writeHead(c, h) { this.c = c; this.h = h; }, end() {} };
+  await googleCb({ query: { code: 'c', state: 'cd'.repeat(16) } }, r);
+  const gk = 'g_owner.g@gmail.com';
+  assert.equal((await auth.getUser(gk)).googleAuth, true);
+  const away = await call({ action: 'changeUsername', token: auth.makeToken(gk), newUsername: 'gowner' });
+  assert.equal(away.status, 200);
+  await auth.putUser('stranger', { username: 'stranger', points: 70, createdAt: Date.now() });
+  const steal = await call({ action: 'changeUsername', token: auth.makeToken('stranger'), newUsername: gk });
+  assert.equal(steal.status, 409, JSON.stringify(steal.body));
+  const back = await call({ action: 'changeUsername', token: away.body.token, newUsername: gk });
+  assert.equal(back.status, 200, 'صاحب البريد يرجع لمفتاحه: ' + JSON.stringify(back.body));
+});
+
+test('٩. سجلّ على g_<البريد> حجزه غير صاحب البريد قبل الإصلاح لا يستقبل دخول Google', async () => {
+  await auth.putUser('g_late@gmail.com', { username: 'g_late@gmail.com', salt: 's', hash: 'h', points: 70, createdAt: Date.now() });
+  profileEmail = 'late@gmail.com';
+  const r = { writeHead(c, h) { this.c = c; this.h = h; }, end() {} };
+  await googleCb({ query: { code: 'c', state: 'ef'.repeat(16) } }, r);
+  assert.equal(r.c, 302);
+  assert.match(r.h.Location, /gerror=account_conflict/);
+  assert.doesNotMatch(r.h.Location, /gtoken=/, 'لا رمز لحساب يعرف غيرُك كلمة مروره');
+  assert.equal(store.has('db/oauth-claim/' + 'ef'.repeat(16)), false, 'ولا جلسة مودعة لجسر التطبيق');
+});
