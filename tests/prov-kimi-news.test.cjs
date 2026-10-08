@@ -95,7 +95,8 @@ test('٤. القائمة: ثلاث مجموعات مرتّبة بخطّ بينه
 test('٥. العميل: Kimi على مسار الأدوات وحده، باسمه للمالك، وإغلاق الإعدادات لا يمسح الاختيار', () => {
   const c = read('js/app-06-checkout.js');
   assert.match(c, /const TOOL_PROVIDERS = \[[^\]]*'kimi'\]/);
-  assert.match(c, /if\(effective === 'kimi'\) throw new Error\('kimi: tools path only'\);\n\s+return await callOpenAILike/);
+  // v-owner-solo: في المسار القديم Kimi يمرّ بالخادم لـKimi نفسه (كان يُرمى فيجيب كلود) — ولا يسقط إلى GPT أبدًا.
+  assert.match(c, /if\(effective === 'kimi'\)\{\n[^\n]*throw new Error\('kimi: tools path only'\);\n\s+const __km = await window\.callChatWithTools\([^\n]*'kimi'\);\n\s+return __km\.reply;\n\s+\}\n\s+return await callOpenAILike/);
   assert.match(c, /if \(\$\('#provider'\)\.value\) localStorage\.setItem\('aiapp_provider', \$\('#provider'\)\.value\);/);
   const u = read('js/app-05-ui.js');
   assert.match(u, /openrouter: 'OpenRouter', kimi: 'Kimi', \/\/ v-kimi/);

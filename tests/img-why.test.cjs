@@ -28,6 +28,7 @@ const chat = require(rp('api/_lib/chat.js'));
 const tok = (u) => { const p = Buffer.from(JSON.stringify({ u, exp: Date.now() + 60000 })).toString('base64url'); return p + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(p).digest('base64url'); };
 const IMG = Buffer.alloc(4000, 7).toString('base64');
 
+let lastEvents = [];
 async function turn(user) {
   const saved = global.fetch;
   global.fetch = async (url) => {
@@ -40,17 +41,21 @@ async function turn(user) {
   const req = { method: 'POST', headers: {}, body: { provider: 'claude', token: tok(user), tz: 'Asia/Dubai', messages: [{ role: 'user', content: [{ type: 'text', text: 'شو فوائد الكولاجين' }, { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: IMG } }] }] } };
   const res = { setHeader() {}, status() { return this; }, json(v) { out += JSON.stringify(v); }, write(c) { out += String(c || ''); }, end() {}, flush() {} };
   try { await chat(req, res); } finally { global.fetch = saved; }
-  const deltas = out.split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return {}; } }).filter((e) => e.delta).map((e) => e.delta).join('');
+  lastEvents = out.split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return {}; } });
+  const deltas = lastEvents.filter((e) => e.delta).map((e) => e.delta).join('');
   return deltas;
 }
 
-test('١. المالك على الكينج: رسالة الصورة الصادقة + سطر السبب (الرصيد ونصّه، وحصّة الاحتياط) بلا مفاتيح، وإشعار الرصيد أُطلق', async () => {
+/* v-owner-solo (أمر المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه، وإذا ما فيه رصيد يكتبلي»): المالك لا يهبط إلى الاحتياط المجّانيّ
+   (Gemini) — يصله السبب نفسه (الحساب والرصيد ونصّه) في حدث التوقّف، بلا ردّ من غيره. سطر الاحتياط (ownerFailNote) باقٍ لغير هذا الدور (٢). */
+test('١. المالك على الكينج: سبب الفشل (الرصيد ونصّه) بلا مفاتيح ولا ردّ من الاحتياط، وإشعار الرصيد أُطلق', async () => {
   alerts.length = 0;
   const text = await turn('omran');
-  assert.match(text, /^ما قدرت أقرأ الصورة الحين/);
-  assert.match(text, /\n\n🔧 للمالك فقط — السبب: المحرّك الأساسيّ 400: .*credit balance is too low/);
-  assert.match(text, /الاحتياط: .*gemini/i);
-  assert.ok(!/sk-test-anthropic|gm-test/.test(text), 'لا مفتاح في السطر');
+  assert.equal(text, '', 'لا ردّ من مزوّد آخر');
+  const stop = lastEvents.find((e) => e.ownerStop === true);
+  assert.ok(stop, 'حدث التوقّف');
+  assert.match(stop.error, /^Anthropic · \S+ — لا رصيد كافٍ \(Your credit balance is too low/);
+  assert.ok(!/sk-test-anthropic|gm-test/.test(stop.error), 'لا مفتاح في السطر');
   assert.equal(alerts.length, 1, 'إشعار نفاد الرصيد يصل في دور الصورة أيضًا');
   assert.equal(alerts[0].status, 400);
   assert.match(alerts[0].text, /credit balance is too low/);
