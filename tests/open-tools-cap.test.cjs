@@ -40,6 +40,7 @@ const kvImpl = {
   kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, String(v)); return true; },
   kvIncr: async (k) => { const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
   kvIncrBy: async (k, n) => { const v = Number(store.get(k) || 0) + Number(n); store.set(k, String(v)); return v; },
+  kvDecrBy: async (k, n) => { const v = Number(store.get(k) || 0) - Number(n); store.set(k, String(v)); return v; }, // v-atomic-quota: takeTally يُرجع زيادة ما تجاوز السقف
   kvDel: async (k) => { store.delete(k); },
   kvExpire: async () => {},
   kvPipeline: async (cmds) => cmds.map(() => null),
