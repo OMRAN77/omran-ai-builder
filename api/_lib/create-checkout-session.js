@@ -77,11 +77,26 @@ async function wasNamed(username, oldName) {
   try { const u = await getUser(username); return !!(u && Array.isArray(u.prevUsernames) && u.prevUsernames.includes(String(oldName))); } catch (e) { return false; }
 }
 
+/* v-pay-refund: سجلّ ما منحته الدفعة برقمها وأرقامها الأخرى (meta.refs: payment_intent/invoice/charge) ومبلغها — يقرؤه
+   الاسترداد والاعتراض البنكيّ (pay-refund.js) ليسحب ما منحته هي بالضبط. بعد نجاح المنح وأفضل جهد: لا يرمي، فلا يُفشل منحًا تمّ. */
+async function noteGrant(username, plan, sourceField, sourceId, meta, user) {
+  if (!sourceId) return;
+  const p = PLANS[plan];
+  const m = meta || {};
+  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : (p.pack ? null : user.planUpdatedAt);
+  await require('./pay-refund.js').recordGrant({
+    id: String(sourceId), field: sourceField || null, username, plan, points: p.points, media: p.media || null, at: Number(at) || null,
+    amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
+    refs: Array.isArray(m.refs) ? m.refs : [],
+  });
+}
+
 // Shared "the payment definitely happened, now grant it" logic used by both
 // the Stripe Checkout Session flow (verifyCheckout) and the Apple Pay /
 // Google Pay PaymentIntent flow (verifyPaymentIntent), so both stay
 // consistent and a fix to one doesn't silently miss the other.
-async function grantPlanToUser(username, plan, sourceField, sourceId) {
+// meta (اختياريّ، v-pay-refund): { refs, amount, currency } لسجلّ المنح — لا يغيّر المنح نفسه.
+async function grantPlanToUser(username, plan, sourceField, sourceId, meta) {
   const acct = await liveAccount(username);
   username = acct.name;
   const user = acct.user;
@@ -98,12 +113,15 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
     if (PLANS[plan].media) {
       if (sourceField) user[sourceField] = sourceId;
       const g = await grantMedia(user, username, plan);
+      if (g && sourceId) user.media[g.media].payId = String(sourceId); // v-pay-refund: الدفعة التي فتحت فترة الباقة — استردادها وحده يسحبها
       await putUser(username, user);
+      await noteGrant(username, plan, sourceField, sourceId, meta, user); // v-pay-refund
       return { ok: true, plan: user.plan || null, media: g.media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0) };
     }
 
     // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
     if (!PLANS[plan].pack) { user.plan = plan; user.planUpdatedAt = Date.now(); }
+    if (!PLANS[plan].pack) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
     if (sourceField) user[sourceField] = sourceId;
 
     // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
@@ -117,6 +135,7 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
     user.points = Number(newBalance);
 
     await putUser(username, user);
+    await noteGrant(username, plan, sourceField, sourceId, meta, user); // v-pay-refund
     return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
   } catch (e) {
     if (claim) await kvDel(claim); // لم يكتمل الشحن — يُفكّ الحجز فتنجح المحاولة التالية
@@ -238,7 +257,8 @@ async function verifyCheckout(req, res) {
       return;
     }
 
-    const grant = await grantPlanToUser(username, plan, 'lastStripeSessionId', session_id);
+    const grant = await grantPlanToUser(username, plan, 'lastStripeSessionId', session_id,
+      { refs: [data.payment_intent, data.invoice], amount: data.amount_total, currency: data.currency }); // v-pay-refund
     if (grant.error) { res.status(grant.status || 500).json({ error: grant.error }); return; }
     res.status(200).json(grant);
   } catch (e) {
@@ -347,7 +367,8 @@ async function verifyPaymentIntent(req, res) {
       return;
     }
 
-    const grant = await grantPlanToUser(username, plan, 'lastStripePaymentIntentId', payment_intent_id);
+    const grant = await grantPlanToUser(username, plan, 'lastStripePaymentIntentId', payment_intent_id,
+      { refs: [data.latest_charge], amount: data.amount_received || data.amount, currency: data.currency }); // v-pay-refund
     if (grant.error) { res.status(grant.status || 500).json({ error: grant.error }); return; }
     res.status(200).json(grant);
   } catch (e) {
@@ -432,3 +453,6 @@ module.exports.wasNamed = wasNamed; // v-rename-move — PayPal يربط الط�
 module.exports.PLANS = PLANS;
 module.exports.priceFor = priceFor; // v-aed-checkout — للاختبار
 module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — للاختبار
+// v-pay-refund: الاسترداد يتبع الحساب بعد تغيير اسمه، ويعرف الدفعة القديمة الممنوحة بحجزها.
+module.exports.liveAccount = liveAccount;
+module.exports.claimKey = claimKey;

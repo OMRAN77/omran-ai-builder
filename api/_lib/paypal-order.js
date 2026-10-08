@@ -61,7 +61,8 @@ function matchOrder(order) {
   const plan = (customId && PLANS[customId] && PLANS[customId].amount === amountValue)
     ? customId
     : Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue && !PLANS[p].media);
-  return { plan: plan || null, ref: String(pu.reference_id || '') };
+  // v-pay-refund: رقم الالتقاط ومبلغه بالسنت — الاسترداد والاعتراض يصلان برقم الالتقاط لا الطلب.
+  return { plan: plan || null, ref: String(pu.reference_id || ''), capture: String((capture && capture.id) || ''), cents: Math.round(Number(amountValue) * 100) || 0 };
 }
 
 async function creditOrder(order, username) {
@@ -71,6 +72,8 @@ async function creditOrder(order, username) {
   if (m.ref && m.ref !== username && !(await wasNamed(username, m.ref))) return { credited: false, reason: 'not_owner' };
   const g = await grantPlanToUser(username, m.plan, 'lastPaypalOrderId', order.id);
   if (g.error) return { credited: false, reason: 'account' };
+  // v-pay-refund: رقم الالتقاط لسجلّ المنح — للمنح الجديد وحده (claim بعد استرداد لا يعيد كتابة السجلّ وعلامة سحبه). لا يرمي.
+  if (m.capture && !g.alreadyGranted) await require('./pay-refund.js').linkGrant(order.id, { refs: [m.capture], amount: m.cents, currency: 'usd' });
   const planGranted = PLANS[m.plan].media ? m.plan : (PLANS[m.plan].pack ? (g.plan || null) : m.plan);
   return { credited: true, planGranted, pointsAdded: g.pointsAdded, balance: g.balance, alreadyGranted: !!g.alreadyGranted };
 }
@@ -179,3 +182,8 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: e.message || 'Server error' });
   }
 };
+
+// v-pay-refund: ويب هوك PayPal (api/webhook.js?src=paypal) يتحقّق من التوقيع برمز الخادم نفسه، ويعرف التقاطًا قديمًا بلا سجلّ بالطلب.
+module.exports.getAccessToken = getAccessToken;
+module.exports.baseUrl = baseUrl;
+module.exports.matchOrder = matchOrder;
