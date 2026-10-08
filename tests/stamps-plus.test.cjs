@@ -100,5 +100,5 @@ test('٦. «صورة 4K» و«صورة بنصّ دقيق» خرجا من «+» �
   const re = /(?:نصّ?|كتابه?ة?|خط)\s*(?:دقيق[هة]?|صحيح[هة]?|مضبوط[هة]?)/;
   assert.ok(re.test('سو دعوة بنص دقيق') && re.test('بكتابة صحيحة') && !re.test('ارسم قطة'));
   assert.ok(/4k|للطباعة/.test(mi.match(/const __want4K = [^\n]+/)[0]), '4K من الكتابة كان قائمًا في الخادم');
-  assert.ok(read('index.html').includes('js/modes.js?v=m041026b'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m081026a'), 'وسم كاش modes رُفع');
 });

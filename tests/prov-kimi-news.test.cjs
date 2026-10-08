@@ -89,7 +89,7 @@ test('٤. القائمة: ثلاث مجموعات مرتّبة بخطّ بينه
   assert.match(block, /key:'kimi',\s+name:'Kimi · Moonshot',\s+or:true, direct:true, store:'aiapp_kimi_model',\s+def:'kimi-k3',\s+models:\[\['kimi-k3','Kimi K3'\],\['kimi-k2\.6','Kimi K2\.6'\]\]/);
   assert.match(m, /if\(i && p\.grp !== PROVS\[i-1\]\.grp\) out \+= divider;/);
   assert.match(m, /kimi:'provNickDeep'/);
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m041026b/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m081026a/);
 });
 
 test('٥. العميل: Kimi على مسار الأدوات وحده، باسمه للمالك، وإغلاق الإعدادات لا يمسح الاختيار', () => {

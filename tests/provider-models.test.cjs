@@ -86,7 +86,10 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
   const orBlock = chat.slice(chat.indexOf('const OR_MODELS = {'), chat.indexOf('};', chat.indexOf('const OR_MODELS = {')));
   const orDefaults = {};
   for (const m of orBlock.matchAll(/^\s+(\w+): '([^']+)'/gm)) orDefaults[m[1]] = m[2];
-  for (const k of ['openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']) {
+  // v-owner-solo: افتراضيّ Groq في السهم = افتراضيّ Groq المباشر (الذي يجيب فعلًا عند Groq)، لا Llama 4 Maverick الذي أوقفه Groq
+  assert.equal(require('../api/_lib/oa-direct.js').directModel('groq', '', {}).def, 'openai/gpt-oss-120b');
+  assert.match(modes, /key:'groq',[^\n]*or:true,[^\n]*def:'openai\/gpt-oss-120b'/);
+  for (const k of ['openai', 'gemini', 'deepseek', 'mistral', 'cohere']) {
     assert.ok(orDefaults[k], 'OR_MODELS ' + k);
     const re = new RegExp("key:'" + k + "',[^\\n]*or:true,[^\\n]*def:'" + orDefaults[k].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "'");
     assert.match(modes, re, 'افتراضيّ السهم لـ' + k + ' = ' + orDefaults[k]);
@@ -98,7 +101,7 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) {
     assert.ok(read(f).includes("window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : '');"), f);
   }
-  assert.ok(read('index.html').includes('js/modes.js?v=m041026b'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m081026a'), 'وسم كاش modes رُفع');
 });
 
 test('٦. v-cohere-prefix (الخادم): تجريد بادئة الوسيط + قائمة مسحوبات مصحّحة رسميًّا + شبكة أمان', () => {
