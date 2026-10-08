@@ -7,10 +7,17 @@
 // الآن: (١) العنوان وكلّ تحويلة تُفحص (fetchPublicUrl: لا مضيف خاصّ ولا اسم يُحلّ إلى عنوان خاصّ)؛ (٢) فيديو وصور
 // فقط — غير ذلك يُرفض (و«octet-stream» يُقبل بامتداد وسائط ويُرسَل بنوع الامتداد لا بنوعه)، وSVG مرفوض؛ (٣) سقف
 // حجم. المضيف لا يُقيَّد بقائمة: حفظ الصور على الجوّال يمرّ هنا لصور من أيّ موقع (صور البحث).
+//
+// v-video-open-lock: وبقي بلا أيّ ربط — أيّ زائر يمرّر عبره حتّى ٤٠٠م وخمس دقائق دالّة لكلّ طلب على حساب المالك. الآن رمز
+// جلسة حقيقيّ (?token= — رابط التحميل يُفتح بلمسة أو في متصفّح خارجيّ فلا ترويسة) وسقف ثابت ٢٠ وسيطًا يوميًّا للحساب
+// (checkAndConsumeCustom: المالك وVIP معفيّان، والمحظور مرفوض). يُعدّ الرابط الواحد مرّة في يومه: الواجهة تجلب الفيديو
+// ثمّ يضغط المستخدم «تحميل» للرابط نفسه، ومنزّل النظام قد يعيد الطلب — كلّ ذلك وسيط واحد لا ثلاثة.
 'use strict';
+const crypto = require('crypto');
 const { fetchPublicUrl } = require('./_lib/safe-url.js');
 
 const MAX_BYTES = 400 * 1024 * 1024; // أطول فيلم دقائق يبقى دونه بكثير
+const DOWNLOAD_DAILY = 20;
 const EXT_TYPE = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
 const TYPE_EXT = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' };
 
@@ -28,6 +35,29 @@ function mediaType(upstreamType, url) {
 
 const deps = { lookup: undefined, fetchFn: undefined }; // للاختبار وحده: حلّ الأسماء والجلب بلا شبكة
 
+/** الإذن قبل أيّ جلب: null = مسموح، وإلّا { status, error }. */
+async function admit(req, url) {
+  const session = require('./_lib/_session.js');
+  const token = session.tokenOf(req);
+  const username = session.sessionUser(token);
+  if (!username) return { status: 401, error: 'auth_required' };
+  const day = new Date().toISOString().slice(0, 10);
+  const seenKey = 'dl:seen:' + crypto.createHash('sha256').update(username.toLowerCase() + '|' + day + '|' + url).digest('hex').slice(0, 40);
+  const kv = require('./_lib/kv.js');
+  let seen = false;
+  try { seen = !!(await kv.kvGetRaw(seenKey)); } catch (e) { seen = false; } // تعذّر القراءة = يُعدّ كأنّه جديد
+  if (seen) return (await require('./_lib/auth.js').isBanned(username)) ? { status: 403, error: 'banned' } : null;
+  const usage = require('./_lib/_usage.js');
+  const gate = await usage.checkAndConsumeCustom(token, null, usage.clientIp(req), 'video-download', DOWNLOAD_DAILY);
+  if (!gate.allowed) {
+    if (gate.banned) return { status: 403, error: 'banned' };
+    if (gate.reason === 'auth') return { status: 401, error: 'auth_required' };
+    return { status: 429, error: 'daily_limit_reached' };
+  }
+  try { await kv.kvSetRaw(seenKey, '1', 2 * 86400); } catch (e) { console.warn('[video-download] seen mark failed:', e && e.message); }
+  return null;
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -40,6 +70,13 @@ module.exports = async (req, res) => {
     res.status(400).json({ error: 'invalid url' });
     return;
   }
+  let denied;
+  try { denied = await admit(req, url); } catch (e) {
+    console.error('[video-download] admit failed:', e && e.message);
+    res.status(500).json({ error: 'unavailable' });
+    return;
+  }
+  if (denied) { res.status(denied.status).json({ error: denied.error }); return; }
 
   let upstream;
   try {
@@ -95,4 +132,5 @@ module.exports = async (req, res) => {
 };
 module.exports.mediaType = mediaType;
 module.exports.MAX_BYTES = MAX_BYTES;
+module.exports.DOWNLOAD_DAILY = DOWNLOAD_DAILY;
 module.exports.__deps = deps;

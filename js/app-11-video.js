@@ -20,7 +20,9 @@
   function proxyVideoUrl(url){
     // روابط blob وروابط same-origin (تبدأ بـ /) لا تحتاج بروكسي
     if(!url || /^blob:/.test(url) || /^\//.test(url)) return url;
-    return '/api/video-download?url=' + encodeURIComponent(url);
+    /* v-video-open-lock: البروكسي يشترط الجلسة — الرمز في الرابط لأنّ «تحميل» رابط يُفتح بلمسة (لا ترويسة) */
+    const tk = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : '';
+    return '/api/video-download?url=' + encodeURIComponent(url) + (tk ? '&token=' + encodeURIComponent(tk) : '');
   }
   // v-trend-dl-fix: تتيح لملفّ الترندات (app-11-video-trends.js، إغلاق مستقلّ) استخدام نفس البروكسي
   // بدل رابط Runway/Veo الخام — بلا هذا كان زرّ تحميل الترند يفشل صامتًا على الجوّال وهواوي.
@@ -1000,8 +1002,10 @@
        Available to ALL logged-in accounts (small scene count); owner gets more scenes. ---- */
     /* Helper: check Runway credits BEFORE starting so nothing is charged on doomed runs. */
     async function ensureRunwayCredits(needed){
+      /* v-video-open-lock: الرصيد عند المزوّد وسطره (باسمه وموقع شحنه) للمالك وحده — الخادم يرفض غيره */
+      if(!isOwnerAccount()) return true;
       try{
-        const r = await fetch('/api/video?action=video-balance');
+        const r = await fetch('/api/video?action=video-balance&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''));
         const d = await r.json();
         if(typeof d.credits === 'number' && d.credits >= 0 && d.credits < needed){
           setStatus(isEn()

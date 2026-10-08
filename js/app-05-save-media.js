@@ -16,7 +16,15 @@
   function proxied(url){
     if(/^(data:|blob:|\/)/.test(url)) return url;
     if(sameOrigin(url)) return url;
-    return '/api/video-download?url=' + encodeURIComponent(url);
+    /* v-video-open-lock: البروكسي يشترط الجلسة — الرمز في الرابط لأنّ «تحميل/فتح» روابط بلمسة أو في متصفّح خارجيّ */
+    var tk = ''; try{ tk = (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ tk = ''; }
+    return '/api/video-download?url=' + encodeURIComponent(url) + (tk ? '&token=' + encodeURIComponent(tk) : '');
+  }
+  /* v-video-open-lock: ردّ البروكسي غير الناجح (بلا جلسة، أو السقف اليوميّ) لا يُحفظ ملفًّا — كان يُحفظ نصّ الخطأ باسم صورة */
+  async function proxiedBlob(url){
+    var r = await fetch(proxied(url));
+    if(!r.ok) throw new Error('proxy ' + r.status);
+    return r.blob();
   }
   function guessName(url, name){
     if(name) return name;
@@ -88,7 +96,7 @@
             if(showSheet(proxied(url), null, nm, 'video')) return true;
           }
         } else {
-          var ib = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(proxied(url))).blob();
+          var ib = /^data:/i.test(url) ? dataUrlToBlob(url) : await proxiedBlob(url);
           var ifile = null;
           try{ ifile = new File([ib], nm, { type: ib.type || 'image/png' }); }catch(e){ ifile = null; }
           var link = await uploadImage(ib, nm).catch(function(){ return null; });
@@ -103,7 +111,7 @@
     }
     /* ── الكمبيوتر والمسار العام ── */
     var blob;
-    try{ blob = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(proxied(url))).blob(); }
+    try{ blob = /^data:/i.test(url) ? dataUrlToBlob(url) : await proxiedBlob(url); }
     catch(e){ blob = null; }
     if(blob){
       try{

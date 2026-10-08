@@ -1,9 +1,16 @@
 // Returns the Runway credit balance (max across configured keys) so the
 // frontend can verify there is enough credit BEFORE starting any generation.
 // This prevents charging the owner for partial films that fail midway.
+//
+// v-video-open-lock: كان يكشف رصيد المالك عند المزوّد وعدد مفاتيحه لأيّ زائر، والواجهة تعرض لكلّ مستخدم سطرًا باسم
+// المزوّد وموقعه للشحن. الآن للمالك وحده (رمز جلسته أو مفتاح المراقبة — _owner.js)، وغيره 403 بلا أيّ نداء للمزوّد.
 const { getKeys, RUNWAY_API_BASE } = require('./runway-keys.js');
 
 module.exports = async (req, res) => {
+  if (!require('./_owner.js').isOwner(req)) {
+    res.status(403).json({ error: 'owner_only' });
+    return;
+  }
   try {
     const keys = getKeys();
     if (!keys.length) return res.status(200).json({ credits: 0, keys: 0 });

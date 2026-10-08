@@ -49,6 +49,8 @@ module.exports = async (req, res) => {
     const st = String((data && data.status) || '').toUpperCase();
     if (st === 'FAILED' || st === 'CANCELLED') await require('./video-job.js').settleVideoJob(id, false);
     else if (st === 'SUCCEEDED') await require('./video-job.js').settleVideoJob(id, true);
+    // v-video-open-lock: مخرجات سلّمها خادمنا — وحدها تقبلها ترقية الجودة (video-upscale-create.js)
+    if (st === 'SUCCEEDED') await require('./video-upscale-create.js').rememberOutputs(data.output);
     res.status(200).json(data);
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

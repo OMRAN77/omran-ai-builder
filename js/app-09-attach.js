@@ -3472,7 +3472,7 @@ async function __sendPromptCore(){
           const res = await fetch('/api/video-prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: b64, mime: __heroAtt.mime || 'image/jpeg' }),
+            body: JSON.stringify({ imageBase64: b64, mime: __heroAtt.mime || 'image/jpeg', token: authGet('aiapp_auth_token') || '' }), /* v-video-open-lock: الخادم يشترط الجلسة وسقفًا يوميًّا */
           });
           if(res.ok){
             const d = await res.json();
