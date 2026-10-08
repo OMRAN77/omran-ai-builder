@@ -174,8 +174,8 @@ I18N['fil'] = {
     "pricingComingSoon": "Malapit na 🚀 — hindi pa available ang mga subscription",
     "pricingSubscribeBtn": "Mag-subscribe na ngayon",
     "pricingTestNote": "🧪 Nasa test mode pa muna — buong aktibasyon kapag nakuha na ang business license",
-    "termsLink": "📜 Mga Tuntunin at Kundisyon",
-    "privacyLink": "🔒 Patakaran sa Privacy",
+    "termsLink": "Mga Tuntunin at Kundisyon",
+    "privacyLink": "Patakaran sa Privacy",
     "aboutSectionTitle": "ℹ️ Tungkol sa App at Intro Videos",
     "feedbackSectionTitle": "💬 Feedback at Mga Mungkahi",
     "fbTagBug": "🐛 Bug",
@@ -206,7 +206,7 @@ I18N['fil'] = {
     "checkoutCancelMsg": "⚠️ Kinansela ang pagbabayad",
     "logoutTitle": "Mag-log out",
     "loginAction": "Mag-login",
-    "acctSectionTitle": "👤 Aking account",
+    "acctSectionTitle": "Aking account",
     "statsSectionTitle": "Aking mga proyekto at backup",
     "statsProjectsLabel": "Bilang ng mga proyekto",
     "statsMessagesLabel": "Kabuuang mensaheng naipadala",
@@ -217,19 +217,19 @@ I18N['fil'] = {
     "importProjectsConfirm": "Ang mga na-import na proyekto ay isasama sa kasalukuyan mong mga proyekto. Magpatuloy?",
     "importProjectsSuccess": "✅ Matagumpay na na-import ang mga proyekto",
     "importProjectsError": "❌ Hindi valid ang file, siguraduhing ito ay tamang export file ng mga proyekto",
-    "acctAvatarBtn": "📷 Baguhin ang larawan",
+    "acctAvatarBtn": "Baguhin ang larawan",
     "acctUsernameLabel": "Username",
     "acctPasswordRow": "Password",
     "acctSaveBtn": "I-save",
     "acctEmailLabel": "Email (kung nakalimutan mo ang username o password)",
-    "acctReferralLabel": "🔗 Link para mag-imbita ng kaibigan",
-    "acctCopyBtn": "📋 Kopyahin",
-    "acctReferralHint": "Para sa bawat kaibigang mag-sign up gamit ang link mo, kayong dalawa ay makakakuha ng 10 karagdagang libreng mensahe 🎁",
-    "acctReferralCopied": "Nakopya na ang link ✅",
+    "acctReferralLabel": "Link para mag-imbita ng kaibigan",
+    "acctCopyBtn": "Kopyahin",
+    "acctReferralHint": "Para sa bawat kaibigang mag-sign up gamit ang link mo, kayong dalawa ay makakakuha ng 10 karagdagang libreng mensahe",
+    "acctReferralCopied": "Nakopya na ang link",
     "acctReferralBonusCount": "Balanse ng iyong bonus na mensahe: {n}",
     "acctCurrentPasswordLabel": "Kasalukuyang password",
     "acctNewPasswordLabel2": "Bagong password",
-    "acctSaved": "✅ Na-save",
+    "acctSaved": "Na-save",
     "acctSaving": "Sinasave...",
     "acctFillUsername": "Maglagay ng valid na username (hindi bababa sa 3 karakter)",
     "acctFillPasswords": "Ilagay ang kasalukuyan mong password at bagong password (hindi bababa sa 4 na karakter)",
@@ -955,7 +955,7 @@ I18N['fil'] = {
     "fontWeightBold": "Makapal",
     "fontPreviewQ": "Alam mo bang puwede mo nang baguhin ang laki at kapal ng font?",
     "fontPreviewA": "Oo! I-drag lang ang slider sa ibaba at subukan ngayon.",
-    "autoRenewLabel": "🔁 Buwanang awtomatikong singil",
+    "autoRenewLabel": "Buwanang awtomatikong singil",
     "autoRenewOnHint": "Naka-on — awtomatikong nire-renew at sinisingil ang plano mo bawat buwan",
     "autoRenewOffHint": "Naka-off — isang buwan lang ang babayaran mo at manu-manong mag-renew kahit kailan",
     "autoRenewStopped": "Itinigil ang buwanang singil — aktibo ang plano mo hanggang {date}",
@@ -1021,7 +1021,7 @@ I18N['fil'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["fil"], {
-    acctLoginBtnLabel: "🔐 Mag-sign in / Gumawa ng account",
+    acctLoginBtnLabel: "Mag-sign in / Gumawa ng account",
     designCompareTitle: "🆚 Ang kwarto ko sa lahat ng istilo",
     designCompareHint: "I-upload ang larawan ng kwarto, pumili ng 2-3 istilo — idedesign namin nang magkatabi",
     designCompareBtn: "🆚 Idesign sa napiling istilo",
@@ -1163,15 +1163,15 @@ Object.assign(I18N["fil"], {"imgUnchanged": "⚠️ Hindi nailapat ang edit: bum
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["fil"], {"mediaPlansTitle": "Mga plan para sa larawan at video", "mediaPlansDesc": "Para sa gusto lang ng larawan o video — walang chat. May sariling balanse ang bawat plan at hindi ito magagastos sa iba.", "mediaImgName": "Mga larawan", "mediaVidName": "Video", "mediaImgUnit": "larawang mataas ang kalidad", "mediaVidEco": "matipid na video", "mediaVidCine": "cinematic na video", "mediaVidSound": "video na may tunog", "mediaOr": "o", "mediaNoChatVideo": "Walang chat at video", "mediaNoChatImage": "Walang chat at larawan", "mediaLeftImg": "Natitira sa plan ng larawan", "mediaLeftVid": "Natitira sa plan ng video"});
-Object.assign(I18N["fil"], {"mediaImgPlain": "larawan", "mediaHighEq": "Isang high-quality na larawan = 2 larawan", "mediaQLabel": "Kalidad ng larawan", "mediaQNormal": "⚡ Standard", "mediaQHigh": "💎 Mataas", "mediaQNormalDesc": "Mabilis, bagay sa social media — 1 larawan mula sa balanse mo", "mediaQHighDesc": "Mas pinong detalye, mas malinaw na teksto, pang-print — 2 larawan mula sa balanse mo", "mediaQHint": "O isulat ang “high quality” sa request mo para sa isang larawan"});
+Object.assign(I18N["fil"], {"mediaImgPlain": "larawan", "mediaHighEq": "Isang high-quality na larawan = 2 larawan", "mediaQLabel": "Kalidad ng larawan", "mediaQNormal": "Standard", "mediaQHigh": "Mataas", "mediaQNormalDesc": "Mabilis, bagay sa social media — 1 larawan mula sa balanse mo", "mediaQHighDesc": "Mas pinong detalye, mas malinaw na teksto, pang-print — 2 larawan mula sa balanse mo", "mediaQHint": "O isulat ang “high quality” sa request mo para sa isang larawan"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["fil"], {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Larawan", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Puntos"});
-Object.assign(I18N["fil"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para sa mga voice call kay Maha. Ang buwanang minuto ay para kay Maha lang; kapag naubos, tuloy ang tawag gamit ang iyong puntos.", "mahaMinPlain": "minutong tawag", "mahaMinUnit": "min", "mahaCapNote": "Hanggang 10 minuto bawat tawag", "mahaNoChat": "Walang chat, larawan o video", "mahaLeft": "Natitirang minuto ni Maha", "mahaCapEnd": "Natapos ang tawag sa 10-minutong limitasyon — tumawag muli para magpatuloy", "mahaToPoints": "Ubos na ang minuto — tuloy gamit ang puntos"});
+Object.assign(I18N["fil"], {"priceTabChat": "Chat", "priceTabImg": "🖼️ Larawan", "priceTabVid": "🎬 Video", "priceTabPts": "Puntos"});
+Object.assign(I18N["fil"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para sa mga voice call kay Maha. Ang buwanang minuto ay para kay Maha lang; kapag naubos, tuloy ang tawag gamit ang iyong puntos.", "mahaMinPlain": "minutong tawag", "mahaMinUnit": "min", "mahaCapNote": "Hanggang 10 minuto bawat tawag", "mahaNoChat": "Walang chat, larawan o video", "mahaLeft": "Natitirang minuto ni Maha", "mahaCapEnd": "Natapos ang tawag sa 10-minutong limitasyon — tumawag muli para magpatuloy", "mahaToPoints": "Ubos na ang minuto — tuloy gamit ang puntos"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["fil"], {"install":"I-install ang App","installHowIOS":"Para mag-install sa iPhone o iPad:\n1) Buksan ang site na ito sa Safari\n2) I-tap ang Share button (kahon na may pataas na arrow)\n3) Piliin ang \"Add to Home Screen\", saka \"Add\"","installHowIOSOther":"Para mag-install sa iPhone mula sa browser na ito:\n1) I-tap ang Share button (kahon na may pataas na arrow) sa tabi ng address bar\n2) Piliin ang \"Add to Home Screen\"\nKung wala ang opsyon, buksan ang site na ito sa Safari.","installHowAndroid":"Para mag-install sa Android:\n1) Buksan ang menu ng browser (⋮)\n2) Piliin ang \"I-install ang app\" o \"Idagdag sa Home screen\"\n3) Kumpirmahin ang pag-install","installHowDesktop":"Para mag-install sa computer (Chrome o Edge):\nI-click ang install icon (⊕ o maliit na screen) sa address bar, o buksan ang menu ng browser (⋮ o …) at piliin ang \"Install\" o \"Apps → I-install ang site na ito bilang app\".","installHowMacSafari":"Para mag-install sa Mac mula sa Safari:\nBuksan ang menu na \"File\" sa itaas, piliin ang \"Add to Dock\", saka \"Add\".","installHowFirefox":"Hindi nakakapag-install ng web app ang Firefox sa computer.\nBuksan ang site na ito sa Chrome o Edge at i-click ang \"I-install ang App\", o i-install ito mula sa iyong telepono."});
 Object.assign(I18N["fil"], {"videoSceneWait":"⏳ Eksena {i}/{n}: paghihintay sa pagitan ng mga video — awtomatikong magsisimula sa {s} s.","videoFilmModeOnly":"🎬 Ang «Buong pelikula» ay gumagana lang sa «AI video» mode — palitan ang mode o pumili ng ibang haba. Walang nabawas."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["fil"], {"acctPhoneLabel": "📱 Numero ng telepono (para sa pag-recover)", "phoneNotLinked": "Hindi naka-link", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Ipadala ang handang mensahe o i-share ang numero mo, saka bumalik dito…", "phoneLinkedOk": "✓ Naka-link na ang numero", "phoneTaken": "Naka-link ang numerong ito sa ibang account", "phoneNoUser": "Walang account na naka-link sa numerong ito", "phoneExpired": "Nag-expire ang link — subukan ulit", "phoneRecoverTitle": "O i-recover ang account mo gamit ang telepono:", "phoneRecoverSent": "✓ Nagpadala kami ng link para sa bagong password sa chat mo roon"});
+Object.assign(I18N["fil"], {"acctPhoneLabel": "Numero ng telepono (para sa pag-recover)", "phoneNotLinked": "Hindi naka-link", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Ipadala ang handang mensahe o i-share ang numero mo, saka bumalik dito…", "phoneLinkedOk": "✓ Naka-link na ang numero", "phoneTaken": "Naka-link ang numerong ito sa ibang account", "phoneNoUser": "Walang account na naka-link sa numerong ito", "phoneExpired": "Nag-expire ang link — subukan ulit", "phoneRecoverTitle": "O i-recover ang account mo gamit ang telepono:", "phoneRecoverSent": "✓ Nagpadala kami ng link para sa bagong password sa chat mo roon"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["fil"], {"bgThemeWood": "Kahoy"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
@@ -1187,4 +1187,4 @@ Object.assign(I18N["fil"], {"pdfDocPage": "⏳ Inihahanda ang pahina {i} ng {n}�
 /* v-video-watch */ Object.assign(I18N['fil'], {"vwUploading": "🎬 Ina-upload ang video…", "vwWatching": "🎬 Pinapanood ang video at pinapakinggan ang audio nito…", "vwCharged": "🎬 {n} puntos ang nagamit · {d} na video", "vwNoPoints": "May {p} puntos ka; kailangan ng {n} para suriin ang video na ito.", "vwTooBig": "Lampas sa 100 MB ang video — paikliin o babaan ang resolution, saka ipadala.", "vwTooLong": "Lampas sa 10 minuto ang video — magpadala ng mas maikling clip.", "vwFormat": "Hindi suportado ang format ng video — ipadala bilang MP4, MOV o WEBM.", "vwFailed": "Hindi masuri ang video — walang puntos na nagamit. Subukan ulit.", "vwLogin": "Mag-sign in muna para masuri ang mga video.", "vwDefaultQ": "Suriin ang video na ito"});
 /* v-plans-gate */ Object.assign(I18N['fil'], {"plansWhyPoints": "Ubos na ang points mo — mag-top up sa Plans at magpatuloy agad.", "plansWhyLimit": "Naabot mo na ang limit ng plan mo ngayong araw — mag-upgrade o maghintay hanggang bukas.", "plansWhyExpired": "Natapos na ang {plan} subscription mo — i-renew para maibalik ang mga benepisyo mo.", "plansWhyExpiring": "Matatapos ang {plan} subscription mo sa {date} — i-renew para hindi mahinto ang mga benepisyo mo.", "plansRenew": "I-renew", "plansLater": "Mamaya", "vwUnavailable": "Pansamantalang hindi available ang pagsusuri ng video — walang nagamit na points. Subukang muli maya-maya."});
 /* v-google-login-help */ Object.assign(I18N['fil'], {"authGoogleHint": "Nag-sign up gamit ang Google? I-tap ang “{btn}” — hindi gumagana rito ang password mo sa Gmail."});
-/* v-media-merge */ Object.assign(I18N['fil'], {"priceTabMedia":"🖼️ Larawan at video","mixPlanName":"Larawan at video","mixPlansDesc":"Para sa gusto ng larawan at video — walang chat. Iisang balanse para sa dalawa; kapag naubos, tuloy gamit ang iyong puntos.","mixOneBalance":"Iisang balanse para sa larawan at video","mixApprox1":"Sapat para sa mga 50 larawan o 12 video, o halo ng dalawa","mixApprox2":"Sapat para sa mga 100 larawan o 24 video, o halo ng dalawa","mixApprox3":"Sapat para sa mga 500 larawan o 121 video, o halo ng dalawa","mixNoChat":"Walang chat","mixLeft":"Natitira sa balanse ng larawan at video"});
+/* v-media-merge */ Object.assign(I18N['fil'], {"priceTabMedia":"Larawan at video","mixPlanName":"Larawan at video","mixPlansDesc":"Para sa gusto ng larawan at video — walang chat. Iisang balanse para sa dalawa; kapag naubos, tuloy gamit ang iyong puntos.","mixOneBalance":"Iisang balanse para sa larawan at video","mixApprox1":"Sapat para sa mga 50 larawan o 12 video, o halo ng dalawa","mixApprox2":"Sapat para sa mga 100 larawan o 24 video, o halo ng dalawa","mixApprox3":"Sapat para sa mga 500 larawan o 121 video, o halo ng dalawa","mixNoChat":"Walang chat","mixLeft":"Natitira sa balanse ng larawan at video"});

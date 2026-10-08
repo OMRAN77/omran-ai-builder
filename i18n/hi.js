@@ -184,8 +184,8 @@ I18N['hi'] = {
     pricingComingSoon: "जल्द आ रहा है 🚀 — सदस्यताएँ अभी उपलब्ध नहीं हैं",
     pricingSubscribeBtn: "अभी सदस्यता लें",
     pricingTestNote: "🧪 फिलहाल परीक्षण मोड — व्यावसायिक लाइसेंस मिलने पर पूर्ण सक्रियण होगा",
-    termsLink: "📜 नियम व शर्तें",
-    privacyLink: "🔒 गोपनीयता नीति",
+    termsLink: "नियम व शर्तें",
+    privacyLink: "गोपनीयता नीति",
     aboutSectionTitle: "ℹ️ ऐप के बारे में और परिचय वीडियो",
     feedbackSectionTitle: '💬 आपकी राय मायने रखती है',
     fbTagBug: '🐛 समस्या',
@@ -216,7 +216,7 @@ I18N['hi'] = {
     checkoutCancelMsg: "⚠️ भुगतान रद्द कर दिया गया",
     logoutTitle: "लॉग आउट",
     loginAction: "लॉग इन",
-    acctSectionTitle: "👤 मेरा खाता",
+    acctSectionTitle: "मेरा खाता",
     statsSectionTitle: "मेरे प्रोजेक्ट और बैकअप",
     statsProjectsLabel: "प्रोजेक्ट संख्या",
     statsMessagesLabel: "कुल भेजे गए संदेश",
@@ -227,22 +227,22 @@ I18N['hi'] = {
     importProjectsConfirm: "आयातित प्रोजेक्ट आपके मौजूदा प्रोजेक्ट के साथ मिला दिए जाएंगे। जारी रखें?",
     importProjectsSuccess: "✅ प्रोजेक्ट सफलतापूर्वक आयात हो गए",
     importProjectsError: "❌ अमान्य फ़ाइल, सुनिश्चित करें कि यह एक वैध प्रोजेक्ट निर्यात फ़ाइल है",
-    acctAvatarBtn: "📷 फोटो बदलें",
+    acctAvatarBtn: "फोटो बदलें",
     acctUsernameLabel: "उपयोगकर्ता नाम",
     acctSaveBtn: "सहेजें",
     acctEmailLabel: "ईमेल (यूज़रनेम या पासवर्ड भूलने पर)",
-    acctReferralLabel: "🔗 दोस्तों को आमंत्रित करने का लिंक",
-    acctCopyBtn: "📋 कॉपी करें",
-    acctReferralHint: "आपके लिंक से साइन अप करने वाले हर दोस्त के लिए आप दोनों को 10 अतिरिक्त मुफ़्त संदेश मिलते हैं 🎁",
+    acctReferralLabel: "दोस्तों को आमंत्रित करने का लिंक",
+    acctCopyBtn: "कॉपी करें",
+    acctReferralHint: "आपके लिंक से साइन अप करने वाले हर दोस्त के लिए आप दोनों को 10 अतिरिक्त मुफ़्त संदेश मिलते हैं",
     acctCleanupLabel: 'ऐप साफ़ करें',
     acctCleanupHint: 'इस डिवाइस और क्लाउड से सभी चैट और प्रोजेक्ट स्थायी रूप से हटा दिए जाएंगे। आपका खाता और भाषा बनी रहेगी।',
     acctCleanupConfirm: 'सभी चैट और प्रोजेक्ट स्थायी रूप से हटा दिए जाएंगे। क्या आप सुनिश्चित हैं?',
     acctCleanupBtn: 'अभी सब हटाएं',
-    acctReferralCopied: "लिंक कॉपी हो गया ✅",
+    acctReferralCopied: "लिंक कॉपी हो गया",
     acctReferralBonusCount: "आपका बोनस संदेश शेष: {n}",
     acctCurrentPasswordLabel: "वर्तमान पासवर्ड",
     acctNewPasswordLabel2: "नया पासवर्ड",
-    acctSaved: "✅ सहेजा गया",
+    acctSaved: "सहेजा गया",
     acctSaving: "सहेजा जा रहा है...",
     acctFillUsername: "एक मान्य उपयोगकर्ता नाम दर्ज करें (कम से कम 3 अक्षर)",
     acctFillPasswords: "अपना वर्तमान पासवर्ड और नया पासवर्ड दर्ज करें (कम से कम 4 अक्षर)",
@@ -815,7 +815,7 @@ I18N['hi'] = {
     fontWeightBold: "मोटा",
     fontPreviewQ: "क्या आप जानते हैं कि अब फ़ॉन्ट का आकार और मोटाई बदल सकते हैं?",
     fontPreviewA: "हाँ! नीचे स्लाइडर खिसकाएँ और अभी आज़माएँ।",
-    autoRenewLabel: "🔁 मासिक ऑटो-भुगतान",
+    autoRenewLabel: "मासिक ऑटो-भुगतान",
     autoRenewOnHint: "चालू — आपका प्लान हर महीने अपने-आप नवीनीकृत और चार्ज होता है",
     autoRenewOffHint: "बंद — आप केवल एक महीने का भुगतान करते हैं और जब चाहें मैन्युअली नवीनीकृत करते हैं",
     autoRenewStopped: "मासिक भुगतान बंद — आपका प्लान {date} तक सक्रिय रहेगा",
@@ -968,7 +968,7 @@ I18N['hi'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["hi"], {
-    acctLoginBtnLabel: "🔐 साइन इन / नया खाता",
+    acctLoginBtnLabel: "साइन इन / नया खाता",
     designCompareTitle: "🆚 मेरा कमरा हर स्टाइल में",
     designCompareHint: "अपने कमरे की फोटो अपलोड करें, 2-3 स्टाइल चुनें — हम उन्हें साथ-साथ डिज़ाइन करेंगे",
     designCompareBtn: "🆚 चुने स्टाइल से डिज़ाइन करें",
@@ -1110,15 +1110,15 @@ Object.assign(I18N["hi"], {"imgUnchanged": "⚠️ बदलाव लागू 
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["hi"], {"mediaPlansTitle": "इमेज और वीडियो सब्सक्रिप्शन", "mediaPlansDesc": "सिर्फ़ इमेज या वीडियो चाहने वालों के लिए — बिना चैट। हर सब्सक्रिप्शन का अपना बैलेंस है, जो किसी और चीज़ पर खर्च नहीं होता।", "mediaImgName": "इमेज", "mediaVidName": "वीडियो", "mediaImgUnit": "उच्च गुणवत्ता वाली इमेज", "mediaVidEco": "किफ़ायती वीडियो", "mediaVidCine": "सिनेमैटिक वीडियो", "mediaVidSound": "आवाज़ वाले वीडियो", "mediaOr": "या", "mediaNoChatVideo": "बिना चैट और वीडियो", "mediaNoChatImage": "बिना चैट और इमेज", "mediaLeftImg": "इमेज सब्सक्रिप्शन में बाकी", "mediaLeftVid": "वीडियो सब्सक्रिप्शन में बाकी"});
-Object.assign(I18N["hi"], {"mediaImgPlain": "इमेज", "mediaHighEq": "एक उच्च गुणवत्ता इमेज = 2 इमेज", "mediaQLabel": "इमेज गुणवत्ता", "mediaQNormal": "⚡ सामान्य", "mediaQHigh": "💎 उच्च", "mediaQNormalDesc": "तेज़, सोशल मीडिया के लिए बढ़िया — बैलेंस से 1 इमेज", "mediaQHighDesc": "ज़्यादा बारीकी, साफ़ टेक्स्ट, प्रिंट के लायक — बैलेंस से 2 इमेज", "mediaQHint": "या एक इमेज के लिए अपने अनुरोध में “उच्च गुणवत्ता” लिखें"});
+Object.assign(I18N["hi"], {"mediaImgPlain": "इमेज", "mediaHighEq": "एक उच्च गुणवत्ता इमेज = 2 इमेज", "mediaQLabel": "इमेज गुणवत्ता", "mediaQNormal": "सामान्य", "mediaQHigh": "उच्च", "mediaQNormalDesc": "तेज़, सोशल मीडिया के लिए बढ़िया — बैलेंस से 1 इमेज", "mediaQHighDesc": "ज़्यादा बारीकी, साफ़ टेक्स्ट, प्रिंट के लायक — बैलेंस से 2 इमेज", "mediaQHint": "या एक इमेज के लिए अपने अनुरोध में “उच्च गुणवत्ता” लिखें"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["hi"], {"priceTabChat": "💬 चैट", "priceTabImg": "🖼️ इमेज", "priceTabVid": "🎬 वीडियो", "priceTabPts": "⚡ पॉइंट"});
-Object.assign(I18N["hi"], {"priceTabMaha": "🎙️ महा", "mahaPlanName": "महा", "mahaPlansDesc": "महा के वॉइस कॉल के लिए। महीने के मिनट सिर्फ़ महा के लिए हैं; खत्म होने पर कॉल आपके पॉइंट से चलती रहेगी।", "mahaMinPlain": "कॉल मिनट", "mahaMinUnit": "मिनट", "mahaCapNote": "हर कॉल में अधिकतम 10 मिनट", "mahaNoChat": "चैट, इमेज या वीडियो नहीं", "mahaLeft": "महा के बचे मिनट", "mahaCapEnd": "कॉल 10 मिनट की सीमा पर खत्म हुई — जारी रखने के लिए फिर कॉल करें", "mahaToPoints": "मिनट खत्म — अब पॉइंट से जारी"});
+Object.assign(I18N["hi"], {"priceTabChat": "चैट", "priceTabImg": "🖼️ इमेज", "priceTabVid": "🎬 वीडियो", "priceTabPts": "पॉइंट"});
+Object.assign(I18N["hi"], {"priceTabMaha": "महा", "mahaPlanName": "महा", "mahaPlansDesc": "महा के वॉइस कॉल के लिए। महीने के मिनट सिर्फ़ महा के लिए हैं; खत्म होने पर कॉल आपके पॉइंट से चलती रहेगी।", "mahaMinPlain": "कॉल मिनट", "mahaMinUnit": "मिनट", "mahaCapNote": "हर कॉल में अधिकतम 10 मिनट", "mahaNoChat": "चैट, इमेज या वीडियो नहीं", "mahaLeft": "महा के बचे मिनट", "mahaCapEnd": "कॉल 10 मिनट की सीमा पर खत्म हुई — जारी रखने के लिए फिर कॉल करें", "mahaToPoints": "मिनट खत्म — अब पॉइंट से जारी"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["hi"], {"installHowIOS":"iPhone या iPad पर इंस्टॉल करने के लिए:\n1) यह साइट Safari में खोलें\n2) शेयर बटन दबाएँ (ऊपर तीर वाला चौकोर)\n3) \"होम स्क्रीन में जोड़ें\" चुनें, फिर \"जोड़ें\"","installHowIOSOther":"इस ब्राउज़र से iPhone पर इंस्टॉल करने के लिए:\n1) एड्रेस बार के पास शेयर बटन (ऊपर तीर वाला चौकोर) दबाएँ\n2) \"होम स्क्रीन में जोड़ें\" चुनें\nविकल्प न दिखे तो यह साइट Safari में खोलें।","installHowAndroid":"Android पर इंस्टॉल करने के लिए:\n1) ब्राउज़र मेनू (⋮) खोलें\n2) \"ऐप इंस्टॉल करें\" या \"होम स्क्रीन में जोड़ें\" चुनें\n3) इंस्टॉल की पुष्टि करें","installHowDesktop":"कंप्यूटर पर इंस्टॉल करने के लिए (Chrome या Edge):\nएड्रेस बार में इंस्टॉल आइकन (⊕ या छोटी स्क्रीन) दबाएँ, या ब्राउज़र मेनू (⋮ या …) खोलकर \"इंस्टॉल करें\" या \"ऐप्स → इस साइट को ऐप के रूप में इंस्टॉल करें\" चुनें।","installHowMacSafari":"Mac पर Safari से इंस्टॉल करने के लिए:\nऊपर \"File\" मेनू खोलें, \"Add to Dock\" चुनें, फिर \"Add\"।","installHowFirefox":"कंप्यूटर पर Firefox वेब ऐप इंस्टॉल नहीं करता।\nयह साइट Chrome या Edge में खोलें और \"ऐप इंस्टॉल करें\" दबाएँ, या अपने फ़ोन से इंस्टॉल करें।"});
 Object.assign(I18N["hi"], {"videoSceneWait":"⏳ दृश्य {i}/{n}: वीडियो के बीच प्रतीक्षा — {s} सेकंड में अपने आप शुरू होगा।","videoFilmModeOnly":"🎬 «पूरी फ़िल्म» केवल «AI वीडियो» मोड में काम करती है — मोड बदलें या दूसरी अवधि चुनें। कुछ भी काटा नहीं गया।"}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["hi"], {"acctPhoneLabel": "📱 फ़ोन नंबर (रिकवरी के लिए)", "phoneNotLinked": "लिंक नहीं है", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "तैयार संदेश भेजें या अपना नंबर साझा करें, फिर यहाँ लौटें…", "phoneLinkedOk": "✓ नंबर लिंक हो गया", "phoneTaken": "यह नंबर किसी दूसरे खाते से जुड़ा है", "phoneNoUser": "इस नंबर से कोई खाता जुड़ा नहीं है", "phoneExpired": "लिंक की समय-सीमा खत्म — फिर से कोशिश करें", "phoneRecoverTitle": "या अपने फ़ोन से खाता वापस पाएँ:", "phoneRecoverSent": "✓ हमने वहाँ आपकी चैट में नए पासवर्ड का लिंक भेज दिया है"});
+Object.assign(I18N["hi"], {"acctPhoneLabel": "फ़ोन नंबर (रिकवरी के लिए)", "phoneNotLinked": "लिंक नहीं है", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "तैयार संदेश भेजें या अपना नंबर साझा करें, फिर यहाँ लौटें…", "phoneLinkedOk": "✓ नंबर लिंक हो गया", "phoneTaken": "यह नंबर किसी दूसरे खाते से जुड़ा है", "phoneNoUser": "इस नंबर से कोई खाता जुड़ा नहीं है", "phoneExpired": "लिंक की समय-सीमा खत्म — फिर से कोशिश करें", "phoneRecoverTitle": "या अपने फ़ोन से खाता वापस पाएँ:", "phoneRecoverSent": "✓ हमने वहाँ आपकी चैट में नए पासवर्ड का लिंक भेज दिया है"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["hi"], {"bgThemeWood": "लकड़ी"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
@@ -1134,4 +1134,4 @@ Object.assign(I18N["hi"], {"pdfDocPage": "⏳ पेज {i} / {n} तैया�
 /* v-video-watch */ Object.assign(I18N['hi'], {"vwUploading": "🎬 वीडियो अपलोड हो रहा है…", "vwWatching": "🎬 वीडियो देख रहा हूँ और उसकी आवाज़ सुन रहा हूँ…", "vwCharged": "🎬 {n} पॉइंट इस्तेमाल हुए · {d} का वीडियो", "vwNoPoints": "आपके पास {p} पॉइंट हैं; इस वीडियो के विश्लेषण के लिए {n} चाहिए।", "vwTooBig": "वीडियो 100 MB से बड़ा है — इसे छोटा करें या रिज़ॉल्यूशन घटाकर फिर भेजें।", "vwTooLong": "वीडियो 10 मिनट से लंबा है — छोटी क्लिप भेजें।", "vwFormat": "यह वीडियो फ़ॉर्मेट समर्थित नहीं है — MP4, MOV या WEBM में भेजें।", "vwFailed": "वीडियो का विश्लेषण नहीं हो सका — कोई पॉइंट नहीं कटे। फिर से कोशिश करें।", "vwLogin": "वीडियो का विश्लेषण करने के लिए पहले साइन इन करें।", "vwDefaultQ": "इस वीडियो का विश्लेषण करो"});
 /* v-plans-gate */ Object.assign(I18N['hi'], {"plansWhyPoints": "आपके पॉइंट्स खत्म हो गए — प्लान्स से टॉप-अप करें और तुरंत जारी रखें।", "plansWhyLimit": "आपने आज के लिए अपने प्लान की सीमा पूरी कर ली — प्लान अपग्रेड करें या कल तक इंतज़ार करें।", "plansWhyExpired": "आपकी {plan} सदस्यता समाप्त हो गई — अपने लाभ वापस पाने के लिए इसे नवीनीकृत करें।", "plansWhyExpiring": "आपकी {plan} सदस्यता {date} को समाप्त हो रही है — लाभ जारी रखने के लिए इसे नवीनीकृत करें।", "plansRenew": "नवीनीकृत करें", "plansLater": "बाद में", "vwUnavailable": "वीडियो विश्लेषण अभी अस्थायी रूप से उपलब्ध नहीं है — कोई पॉइंट नहीं कटे। थोड़ी देर बाद फिर कोशिश करें।"});
 /* v-google-login-help */ Object.assign(I18N['hi'], {"authGoogleHint": "Google से साइन अप किया था? “{btn}” पर टैप करें — आपका Gmail पासवर्ड यहाँ काम नहीं करता।"});
-/* v-media-merge */ Object.assign(I18N['hi'], {"priceTabMedia":"🖼️ इमेज और वीडियो","mixPlanName":"इमेज और वीडियो","mixPlansDesc":"इमेज और वीडियो चाहने वालों के लिए — बिना चैट। एक ही बैलेंस दोनों पर खर्च होता है; खत्म होने पर आपके पॉइंट से चलता रहेगा।","mixOneBalance":"इमेज और वीडियो के लिए एक ही बैलेंस","mixApprox1":"लगभग 50 इमेज या 12 वीडियो, या दोनों का मिश्रण","mixApprox2":"लगभग 100 इमेज या 24 वीडियो, या दोनों का मिश्रण","mixApprox3":"लगभग 500 इमेज या 121 वीडियो, या दोनों का मिश्रण","mixNoChat":"बिना चैट","mixLeft":"इमेज और वीडियो बैलेंस में बाकी"});
+/* v-media-merge */ Object.assign(I18N['hi'], {"priceTabMedia":"इमेज और वीडियो","mixPlanName":"इमेज और वीडियो","mixPlansDesc":"इमेज और वीडियो चाहने वालों के लिए — बिना चैट। एक ही बैलेंस दोनों पर खर्च होता है; खत्म होने पर आपके पॉइंट से चलता रहेगा।","mixOneBalance":"इमेज और वीडियो के लिए एक ही बैलेंस","mixApprox1":"लगभग 50 इमेज या 12 वीडियो, या दोनों का मिश्रण","mixApprox2":"लगभग 100 इमेज या 24 वीडियो, या दोनों का मिश्रण","mixApprox3":"लगभग 500 इमेज या 121 वीडियो, या दोनों का मिश्रण","mixNoChat":"बिना चैट","mixLeft":"इमेज और वीडियो बैलेंस में बाकी"});

@@ -167,8 +167,8 @@ I18N['zh'] = {
     "pricingComingSoon": "即将推出 🚀 — 订阅功能暂未开放",
     "pricingSubscribeBtn": "立即订阅",
     "pricingTestNote": "🧪 暂处于测试模式 — 获得营业执照后将全面启用",
-    "termsLink": "📜 条款与条件",
-    "privacyLink": "🔒 隐私政策",
+    "termsLink": "条款与条件",
+    "privacyLink": "隐私政策",
     "aboutSectionTitle": "ℹ️ 关于应用与介绍视频",
     "feedbackSectionTitle": "💬 反馈与建议",
     "fbTagBug": "🐛 错误报告",
@@ -199,7 +199,7 @@ I18N['zh'] = {
     "checkoutCancelMsg": "⚠️ 支付已取消",
     "logoutTitle": "退出登录",
     "loginAction": "登录",
-    "acctSectionTitle": "👤 我的账户",
+    "acctSectionTitle": "我的账户",
     "statsSectionTitle": "我的项目与备份",
     "statsProjectsLabel": "项目数量",
     "statsMessagesLabel": "发送消息总数",
@@ -210,19 +210,19 @@ I18N['zh'] = {
     "importProjectsConfirm": "导入的项目将与您现有的项目合并。继续吗?",
     "importProjectsSuccess": "✅ 项目导入成功",
     "importProjectsError": "❌ 文件无效，请确保它是有效的项目导出文件",
-    "acctAvatarBtn": "📷 更换头像",
+    "acctAvatarBtn": "更换头像",
     "acctUsernameLabel": "用户名",
     "acctPasswordRow": "密码",
     "acctSaveBtn": "保存",
     "acctEmailLabel": "邮箱(忘记用户名或密码时使用)",
-    "acctReferralLabel": "🔗 邀请好友链接",
-    "acctCopyBtn": "📋 复制",
-    "acctReferralHint": "每有一位好友通过您的链接注册，您和好友均可获得 10 条额外免费消息 🎁",
-    "acctReferralCopied": "链接已复制 ✅",
+    "acctReferralLabel": "邀请好友链接",
+    "acctCopyBtn": "复制",
+    "acctReferralHint": "每有一位好友通过您的链接注册，您和好友均可获得 10 条额外免费消息",
+    "acctReferralCopied": "链接已复制",
     "acctReferralBonusCount": "您的奖励消息余额:{n}",
     "acctCurrentPasswordLabel": "当前密码",
     "acctNewPasswordLabel2": "新密码",
-    "acctSaved": "✅ 已保存",
+    "acctSaved": "已保存",
     "acctSaving": "正在保存...",
     "acctFillUsername": "请输入有效的用户名(至少 3 个字符)",
     "acctFillPasswords": "请输入当前密码和新密码(至少 4 个字符)",
@@ -948,7 +948,7 @@ I18N['zh'] = {
     "fontWeightBold": "粗",
     "fontPreviewQ": "你知道现在可以调整字体大小和粗细了吗？",
     "fontPreviewA": "是的！拖动下面的滑块，现在就试试。",
-    "autoRenewLabel": "🔁 每月自动扣费",
+    "autoRenewLabel": "每月自动扣费",
     "autoRenewOnHint": "已开启 — 套餐每月自动续订并扣费",
     "autoRenewOffHint": "已关闭 — 只支付一个月，可随时手动续订",
     "autoRenewStopped": "已停止每月扣费 — 套餐有效至 {date}",
@@ -1009,7 +1009,7 @@ I18N['zh'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["zh"], {
-    acctLoginBtnLabel: "🔐 登录 / 创建账户",
+    acctLoginBtnLabel: "登录 / 创建账户",
     designCompareTitle: "🆚 我的房间·全部风格",
     designCompareHint: "上传房间照片，选择2-3种风格——我们并排为您设计",
     designCompareBtn: "🆚 按所选风格设计",
@@ -1151,15 +1151,15 @@ Object.assign(I18N["zh"], {"imgUnchanged": "⚠️ 编辑未生效：图片原�
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["zh"], {"mediaPlansTitle": "图片与视频订阅", "mediaPlansDesc": "只想要图片或视频的用户——不含聊天。每个订阅都有独立余额，不能用于其他用途。", "mediaImgName": "图片", "mediaVidName": "视频", "mediaImgUnit": "张高质量图片", "mediaVidEco": "个经济视频", "mediaVidCine": "个电影级视频", "mediaVidSound": "个有声视频", "mediaOr": "或", "mediaNoChatVideo": "不含聊天和视频", "mediaNoChatImage": "不含聊天和图片", "mediaLeftImg": "图片订阅剩余", "mediaLeftVid": "视频订阅剩余"});
-Object.assign(I18N["zh"], {"mediaImgPlain": "张图片", "mediaHighEq": "一张高质量图片 = 2张图片", "mediaQLabel": "图片质量", "mediaQNormal": "⚡ 标准", "mediaQHigh": "💎 高质量", "mediaQNormalDesc": "快速，适合社交媒体——扣除余额1张", "mediaQHighDesc": "细节更精细、文字更清晰、可打印——扣除余额2张", "mediaQHint": "或在请求中写“高质量”，仅对该张生效"});
+Object.assign(I18N["zh"], {"mediaImgPlain": "张图片", "mediaHighEq": "一张高质量图片 = 2张图片", "mediaQLabel": "图片质量", "mediaQNormal": "标准", "mediaQHigh": "高质量", "mediaQNormalDesc": "快速，适合社交媒体——扣除余额1张", "mediaQHighDesc": "细节更精细、文字更清晰、可打印——扣除余额2张", "mediaQHint": "或在请求中写“高质量”，仅对该张生效"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["zh"], {"priceTabChat": "💬 聊天", "priceTabImg": "🖼️ 图片", "priceTabVid": "🎬 视频", "priceTabPts": "⚡ 积分"});
-Object.assign(I18N["zh"], {"priceTabMaha": "🎙️ 玛哈", "mahaPlanName": "玛哈", "mahaPlansDesc": "用于与玛哈语音通话。每月分钟数仅限玛哈使用；用完后通话将使用你的积分继续。", "mahaMinPlain": "分钟通话", "mahaMinUnit": "分钟", "mahaCapNote": "每次通话最多 10 分钟", "mahaNoChat": "不含聊天、图片或视频", "mahaLeft": "玛哈剩余分钟", "mahaCapEnd": "通话已在 10 分钟上限结束 — 请重新拨打继续", "mahaToPoints": "分钟已用完 — 改用积分继续"});
+Object.assign(I18N["zh"], {"priceTabChat": "聊天", "priceTabImg": "🖼️ 图片", "priceTabVid": "🎬 视频", "priceTabPts": "积分"});
+Object.assign(I18N["zh"], {"priceTabMaha": "玛哈", "mahaPlanName": "玛哈", "mahaPlansDesc": "用于与玛哈语音通话。每月分钟数仅限玛哈使用；用完后通话将使用你的积分继续。", "mahaMinPlain": "分钟通话", "mahaMinUnit": "分钟", "mahaCapNote": "每次通话最多 10 分钟", "mahaNoChat": "不含聊天、图片或视频", "mahaLeft": "玛哈剩余分钟", "mahaCapEnd": "通话已在 10 分钟上限结束 — 请重新拨打继续", "mahaToPoints": "分钟已用完 — 改用积分继续"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["zh"], {"install":"安装应用","installHowIOS":"在 iPhone 或 iPad 上安装：\n1) 用 Safari 打开本网站\n2) 点按“分享”按钮（带向上箭头的方框）\n3) 选择“添加到主屏幕”，再点“添加”","installHowIOSOther":"在此浏览器中安装到 iPhone：\n1) 点按地址栏旁的“分享”按钮（带向上箭头的方框）\n2) 选择“添加到主屏幕”\n如果没有该选项，请用 Safari 打开本网站。","installHowAndroid":"在 Android 上安装：\n1) 打开浏览器菜单（⋮）\n2) 选择“安装应用”或“添加到主屏幕”\n3) 确认安装","installHowDesktop":"在电脑上安装（Chrome 或 Edge）：\n点击地址栏中的安装图标（⊕ 或小屏幕），或打开浏览器菜单（⋮ 或 …）选择“安装”或“应用 → 将此网站作为应用安装”。","installHowMacSafari":"在 Mac 的 Safari 中安装：\n打开顶部的“文件”菜单，选择“添加到程序坞”，再点“添加”。","installHowFirefox":"电脑版 Firefox 无法安装网页应用。\n请用 Chrome 或 Edge 打开本网站并点击“安装应用”，或在手机上安装。"});
 Object.assign(I18N["zh"], {"videoSceneWait":"⏳ 第{i}/{n}幕：视频之间需等待 — {s} 秒后自动继续。","videoFilmModeOnly":"🎬 «完整影片»仅支持«AI 视频»模式 — 请更换模式或选择其他时长。未扣除任何点数。"}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["zh"], {"acctPhoneLabel": "📱 手机号（用于找回账号）", "phoneNotLinked": "未绑定", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "发送预设消息或分享你的号码，然后回到这里…", "phoneLinkedOk": "✓ 号码已绑定", "phoneTaken": "该号码已绑定其他账号", "phoneNoUser": "没有账号绑定此号码", "phoneExpired": "链接已过期 — 请重试", "phoneRecoverTitle": "或用手机号找回账号：", "phoneRecoverSent": "✓ 我们已在那边的聊天中发送了设置新密码的链接"});
+Object.assign(I18N["zh"], {"acctPhoneLabel": "手机号（用于找回账号）", "phoneNotLinked": "未绑定", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "发送预设消息或分享你的号码，然后回到这里…", "phoneLinkedOk": "✓ 号码已绑定", "phoneTaken": "该号码已绑定其他账号", "phoneNoUser": "没有账号绑定此号码", "phoneExpired": "链接已过期 — 请重试", "phoneRecoverTitle": "或用手机号找回账号：", "phoneRecoverSent": "✓ 我们已在那边的聊天中发送了设置新密码的链接"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["zh"], {"bgThemeWood": "木纹"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
@@ -1175,4 +1175,4 @@ Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…",
 /* v-video-watch */ Object.assign(I18N['zh'], {"vwUploading": "🎬 正在上传视频…", "vwWatching": "🎬 正在观看视频并聆听声音…", "vwCharged": "🎬 已扣除 {n} 积分 · {d} 视频", "vwNoPoints": "你有 {p} 积分；分析此视频需要 {n} 积分。", "vwTooBig": "视频超过 100 MB——请剪短或降低分辨率后再发送。", "vwTooLong": "视频超过 10 分钟——请发送更短的片段。", "vwFormat": "不支持该视频格式——请以 MP4、MOV 或 WEBM 格式发送。", "vwFailed": "视频分析失败——未扣除任何积分。请重试。", "vwLogin": "请先登录以分析视频。", "vwDefaultQ": "分析这个视频"});
 /* v-plans-gate */ Object.assign(I18N['zh'], {"plansWhyPoints": "你的积分已用完 — 在套餐中充值即可继续。", "plansWhyLimit": "你已达到套餐今日上限 — 升级套餐或等到明天。", "plansWhyExpired": "你的 {plan} 订阅已到期 — 续订即可恢复权益。", "plansWhyExpiring": "你的 {plan} 订阅将于 {date} 到期 — 续订以免权益中断。", "plansRenew": "续订", "plansLater": "稍后", "vwUnavailable": "视频分析暂时不可用 — 未扣除任何积分。请稍后再试。"});
 /* v-google-login-help */ Object.assign(I18N['zh'], {"authGoogleHint": "用 Google 注册的？请点击「{btn}」——Gmail 密码在这里无法使用。"});
-/* v-media-merge */ Object.assign(I18N['zh'], {"priceTabMedia":"🖼️ 图片和视频","mixPlanName":"图片和视频","mixPlansDesc":"适合想要图片和视频的用户——不含聊天。一个余额同时用于两者；用完后将使用你的积分继续。","mixOneBalance":"图片和视频共用一个余额","mixApprox1":"大约可生成50张图片或12个视频，或两者混合","mixApprox2":"大约可生成100张图片或24个视频，或两者混合","mixApprox3":"大约可生成500张图片或121个视频，或两者混合","mixNoChat":"不含聊天","mixLeft":"图片和视频余额剩余"});
+/* v-media-merge */ Object.assign(I18N['zh'], {"priceTabMedia":"图片和视频","mixPlanName":"图片和视频","mixPlansDesc":"适合想要图片和视频的用户——不含聊天。一个余额同时用于两者；用完后将使用你的积分继续。","mixOneBalance":"图片和视频共用一个余额","mixApprox1":"大约可生成50张图片或12个视频，或两者混合","mixApprox2":"大约可生成100张图片或24个视频，或两者混合","mixApprox3":"大约可生成500张图片或121个视频，或两者混合","mixNoChat":"不含聊天","mixLeft":"图片和视频余额剩余"});

@@ -173,8 +173,8 @@ I18N['es'] = {
     "pricingComingSoon": "Próximamente 🚀 — las suscripciones aún no están disponibles",
     "pricingSubscribeBtn": "Suscribirse ahora",
     "pricingTestNote": "🧪 Modo de prueba por ahora — activación completa una vez que se obtenga la licencia comercial",
-    "termsLink": "📜 Términos y condiciones",
-    "privacyLink": "🔒 Política de privacidad",
+    "termsLink": "Términos y condiciones",
+    "privacyLink": "Política de privacidad",
     "aboutSectionTitle": "ℹ️ Acerca de la app y videos de introducción",
     "feedbackSectionTitle": "💬 Comentarios y sugerencias",
     "fbTagBug": "🐛 Error",
@@ -205,7 +205,7 @@ I18N['es'] = {
     "checkoutCancelMsg": "⚠️ El pago fue cancelado",
     "logoutTitle": "Cerrar sesión",
     "loginAction": "Iniciar sesión",
-    "acctSectionTitle": "👤 Mi cuenta",
+    "acctSectionTitle": "Mi cuenta",
     "statsSectionTitle": "Mis proyectos y copia de seguridad",
     "statsProjectsLabel": "Número de proyectos",
     "statsMessagesLabel": "Total de mensajes enviados",
@@ -216,19 +216,19 @@ I18N['es'] = {
     "importProjectsConfirm": "Los proyectos importados se combinarán con tus proyectos actuales. ¿Continuar?",
     "importProjectsSuccess": "✅ Proyectos importados correctamente",
     "importProjectsError": "❌ Archivo no válido, asegúrate de que sea un archivo de exportación de proyectos válido",
-    "acctAvatarBtn": "📷 Cambiar foto",
+    "acctAvatarBtn": "Cambiar foto",
     "acctUsernameLabel": "Nombre de usuario",
     "acctPasswordRow": "Contraseña",
     "acctSaveBtn": "Guardar",
     "acctEmailLabel": "Correo (si olvidas tu usuario o contraseña)",
-    "acctReferralLabel": "🔗 Enlace para invitar amigos",
-    "acctCopyBtn": "📋 Copiar",
-    "acctReferralHint": "Por cada amigo que se registre con tu enlace, ambos reciben 10 mensajes gratuitos adicionales 🎁",
-    "acctReferralCopied": "Enlace copiado ✅",
+    "acctReferralLabel": "Enlace para invitar amigos",
+    "acctCopyBtn": "Copiar",
+    "acctReferralHint": "Por cada amigo que se registre con tu enlace, ambos reciben 10 mensajes gratuitos adicionales",
+    "acctReferralCopied": "Enlace copiado",
     "acctReferralBonusCount": "Tu saldo de mensajes de bonificación: {n}",
     "acctCurrentPasswordLabel": "Contraseña actual",
     "acctNewPasswordLabel2": "Nueva contraseña",
-    "acctSaved": "✅ Guardado",
+    "acctSaved": "Guardado",
     "acctSaving": "Guardando...",
     "acctFillUsername": "Ingresa un nombre de usuario válido (al menos 3 caracteres)",
     "acctFillPasswords": "Ingresa tu contraseña actual y una nueva contraseña (al menos 4 caracteres)",
@@ -954,7 +954,7 @@ I18N['es'] = {
     "fontWeightBold": "Gruesa",
     "fontPreviewQ": "¿Sabías que ya puedes cambiar el tamaño y el grosor de la letra?",
     "fontPreviewA": "¡Sí! Arrastra el control de abajo y pruébalo ahora.",
-    "autoRenewLabel": "🔁 Cobro mensual automático",
+    "autoRenewLabel": "Cobro mensual automático",
     "autoRenewOnHint": "Activado — tu plan se renueva y se cobra cada mes automáticamente",
     "autoRenewOffHint": "Desactivado — pagas solo un mes y renuevas manualmente cuando quieras",
     "autoRenewStopped": "Cobro mensual detenido — tu plan sigue activo hasta el {date}",
@@ -1019,7 +1019,7 @@ I18N['es'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["es"], {
-    acctLoginBtnLabel: "🔐 Iniciar sesión / Crear cuenta",
+    acctLoginBtnLabel: "Iniciar sesión / Crear cuenta",
     designCompareTitle: "🆚 Mi habitación en todos los estilos",
     designCompareHint: "Sube la foto de tu habitación, elige 2-3 estilos — los diseñamos lado a lado",
     designCompareBtn: "🆚 Diseñar con los estilos elegidos",
@@ -1161,15 +1161,15 @@ Object.assign(I18N["es"], {"imgUnchanged": "⚠️ La edición no se aplicó: la
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["es"], {"mediaPlansTitle": "Planes de imágenes y video", "mediaPlansDesc": "Para quien solo quiere imágenes o videos, sin chat. Cada plan tiene su propio saldo y no se gasta en otra cosa.", "mediaImgName": "Imágenes", "mediaVidName": "Video", "mediaImgUnit": "imágenes de alta calidad", "mediaVidEco": "videos económicos", "mediaVidCine": "videos cinematográficos", "mediaVidSound": "videos con sonido", "mediaOr": "o", "mediaNoChatVideo": "Sin chat ni video", "mediaNoChatImage": "Sin chat ni imágenes", "mediaLeftImg": "Restante en tu plan de imágenes", "mediaLeftVid": "Restante en tu plan de video"});
-Object.assign(I18N["es"], {"mediaImgPlain": "imágenes", "mediaHighEq": "Una imagen de alta calidad = 2 imágenes", "mediaQLabel": "Calidad de imagen", "mediaQNormal": "⚡ Estándar", "mediaQHigh": "💎 Alta", "mediaQNormalDesc": "Rápida, ideal para redes sociales — 1 imagen de tu saldo", "mediaQHighDesc": "Más detalle, texto más claro, lista para imprimir — 2 imágenes de tu saldo", "mediaQHint": "O escribe «alta calidad» en tu solicitud para una sola imagen"});
+Object.assign(I18N["es"], {"mediaImgPlain": "imágenes", "mediaHighEq": "Una imagen de alta calidad = 2 imágenes", "mediaQLabel": "Calidad de imagen", "mediaQNormal": "Estándar", "mediaQHigh": "Alta", "mediaQNormalDesc": "Rápida, ideal para redes sociales — 1 imagen de tu saldo", "mediaQHighDesc": "Más detalle, texto más claro, lista para imprimir — 2 imágenes de tu saldo", "mediaQHint": "O escribe «alta calidad» en tu solicitud para una sola imagen"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["es"], {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Imágenes", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Puntos"});
-Object.assign(I18N["es"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para llamadas de voz con Maha. Tus minutos mensuales son solo para Maha; cuando se acaban, las llamadas siguen con tus puntos.", "mahaMinPlain": "minutos de llamada", "mahaMinUnit": "min", "mahaCapNote": "Hasta 10 minutos por llamada", "mahaNoChat": "Sin chat, imágenes ni video", "mahaLeft": "Minutos de Maha restantes", "mahaCapEnd": "La llamada terminó en el límite de 10 minutos — vuelve a llamar para continuar", "mahaToPoints": "Minutos agotados — continúa con tus puntos"});
+Object.assign(I18N["es"], {"priceTabChat": "Chat", "priceTabImg": "🖼️ Imágenes", "priceTabVid": "🎬 Video", "priceTabPts": "Puntos"});
+Object.assign(I18N["es"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para llamadas de voz con Maha. Tus minutos mensuales son solo para Maha; cuando se acaban, las llamadas siguen con tus puntos.", "mahaMinPlain": "minutos de llamada", "mahaMinUnit": "min", "mahaCapNote": "Hasta 10 minutos por llamada", "mahaNoChat": "Sin chat, imágenes ni video", "mahaLeft": "Minutos de Maha restantes", "mahaCapEnd": "La llamada terminó en el límite de 10 minutos — vuelve a llamar para continuar", "mahaToPoints": "Minutos agotados — continúa con tus puntos"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["es"], {"install":"Instalar la app","installHowIOS":"Para instalar en iPhone o iPad:\n1) Abre este sitio en Safari\n2) Toca el botón Compartir (cuadro con una flecha hacia arriba)\n3) Elige \"Añadir a pantalla de inicio\" y luego \"Añadir\"","installHowIOSOther":"Para instalar en iPhone desde este navegador:\n1) Toca el botón Compartir (cuadro con una flecha hacia arriba) junto a la barra de direcciones\n2) Elige \"Añadir a pantalla de inicio\"\nSi no aparece la opción, abre este sitio en Safari.","installHowAndroid":"Para instalar en Android:\n1) Abre el menú del navegador (⋮)\n2) Elige \"Instalar aplicación\" o \"Añadir a pantalla de inicio\"\n3) Confirma la instalación","installHowDesktop":"Para instalar en el ordenador (Chrome o Edge):\nHaz clic en el icono de instalar (⊕ o pantalla pequeña) de la barra de direcciones, o abre el menú del navegador (⋮ o …) y elige \"Instalar\" o \"Aplicaciones → Instalar este sitio como aplicación\".","installHowMacSafari":"Para instalar en Mac desde Safari:\nAbre el menú \"Archivo\" arriba, elige \"Añadir al Dock\" y luego \"Añadir\".","installHowFirefox":"Firefox en el ordenador no puede instalar aplicaciones web.\nAbre este sitio en Chrome o Edge y pulsa \"Instalar la app\", o instálala desde tu teléfono."});
 Object.assign(I18N["es"], {"videoSceneWait":"⏳ Escena {i}/{n}: pausa entre videos — continúa automáticamente en {s} s.","videoFilmModeOnly":"🎬 «Película completa» solo funciona con el modo «Video IA» — cambia el modo o elige otra duración. No se cobró nada."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["es"], {"acctPhoneLabel": "📱 Número de teléfono (para recuperar)", "phoneNotLinked": "No vinculado", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envía el mensaje preparado o comparte tu número, y luego vuelve aquí…", "phoneLinkedOk": "✓ Número vinculado", "phoneTaken": "Este número está vinculado a otra cuenta", "phoneNoUser": "No hay ninguna cuenta vinculada a este número", "phoneExpired": "El enlace caducó — inténtalo de nuevo", "phoneRecoverTitle": "O recupera tu cuenta con tu teléfono:", "phoneRecoverSent": "✓ Enviamos un enlace de nueva contraseña a tu chat allí"});
+Object.assign(I18N["es"], {"acctPhoneLabel": "Número de teléfono (para recuperar)", "phoneNotLinked": "No vinculado", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envía el mensaje preparado o comparte tu número, y luego vuelve aquí…", "phoneLinkedOk": "✓ Número vinculado", "phoneTaken": "Este número está vinculado a otra cuenta", "phoneNoUser": "No hay ninguna cuenta vinculada a este número", "phoneExpired": "El enlace caducó — inténtalo de nuevo", "phoneRecoverTitle": "O recupera tu cuenta con tu teléfono:", "phoneRecoverSent": "✓ Enviamos un enlace de nueva contraseña a tu chat allí"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["es"], {"bgThemeWood": "Madera"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
@@ -1185,4 +1185,4 @@ Object.assign(I18N["es"], {"pdfDocPage": "⏳ Preparando la página {i} de {n}�
 /* v-video-watch */ Object.assign(I18N['es'], {"vwUploading": "🎬 Subiendo el video…", "vwWatching": "🎬 Viendo el video y escuchando su audio…", "vwCharged": "🎬 {n} puntos usados · video de {d}", "vwNoPoints": "Tienes {p} puntos; analizar este video requiere {n}.", "vwTooBig": "El video supera los 100 MB: recórtalo o baja su resolución y vuelve a enviarlo.", "vwTooLong": "El video dura más de 10 minutos: envía un clip más corto.", "vwFormat": "Formato de video no compatible: envíalo como MP4, MOV o WEBM.", "vwFailed": "No se pudo analizar el video: no se usaron puntos. Inténtalo de nuevo.", "vwLogin": "Inicia sesión primero para analizar videos.", "vwDefaultQ": "Analiza este video"});
 /* v-plans-gate */ Object.assign(I18N['es'], {"plansWhyPoints": "Te quedaste sin puntos — recarga desde Planes y continúa al instante.", "plansWhyLimit": "Llegaste al límite de tu plan por hoy — mejora tu plan o espera hasta mañana.", "plansWhyExpired": "Tu suscripción {plan} terminó — renuévala para recuperar tus ventajas.", "plansWhyExpiring": "Tu suscripción {plan} termina el {date} — renuévala para no perder tus ventajas.", "plansRenew": "Renovar", "plansLater": "Más tarde", "vwUnavailable": "El análisis de video no está disponible por ahora — no se usaron puntos. Inténtalo de nuevo en un momento."});
 /* v-google-login-help */ Object.assign(I18N['es'], {"authGoogleHint": "¿Te registraste con Google? Toca «{btn}»: tu contraseña de Gmail no funciona aquí."});
-/* v-media-merge */ Object.assign(I18N['es'], {"priceTabMedia":"🖼️ Imágenes y video","mixPlanName":"Imágenes y video","mixPlansDesc":"Para quien quiere imágenes y videos — sin chat. Un solo saldo para ambos; cuando se acaba, sigues con tus puntos.","mixOneBalance":"Un solo saldo para imágenes y video","mixApprox1":"Alcanza para unas 50 imágenes o 12 videos, o una mezcla de ambos","mixApprox2":"Alcanza para unas 100 imágenes o 24 videos, o una mezcla de ambos","mixApprox3":"Alcanza para unas 500 imágenes o 121 videos, o una mezcla de ambos","mixNoChat":"Sin chat","mixLeft":"Restante en tu saldo de imágenes y video"});
+/* v-media-merge */ Object.assign(I18N['es'], {"priceTabMedia":"Imágenes y video","mixPlanName":"Imágenes y video","mixPlansDesc":"Para quien quiere imágenes y videos — sin chat. Un solo saldo para ambos; cuando se acaba, sigues con tus puntos.","mixOneBalance":"Un solo saldo para imágenes y video","mixApprox1":"Alcanza para unas 50 imágenes o 12 videos, o una mezcla de ambos","mixApprox2":"Alcanza para unas 100 imágenes o 24 videos, o una mezcla de ambos","mixApprox3":"Alcanza para unas 500 imágenes o 121 videos, o una mezcla de ambos","mixNoChat":"Sin chat","mixLeft":"Restante en tu saldo de imágenes y video"});
