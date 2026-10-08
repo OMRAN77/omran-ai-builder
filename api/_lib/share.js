@@ -174,7 +174,8 @@ module.exports = async (req, res) => {
       // v-share-validate: الرفض قبل البوّابة فلا يحرق الفارغ والكبير حصّة اليوم (v-share-chat: تكفي محادثة بلا كود)
       const bad = shareInputError(typeof code === 'string' ? code : '', cleanShareMessages(messages));
       if (bad) { res.status(bad === 'code_too_large' ? 413 : 400).json({ error: bad }); return; }
-      const username = await gateShare(req, res, body, 'share', DAILY_SHARES); // v-share-guard: الناشر من الرمز لا من الجسم
+      const size = (typeof code === 'string' ? code.length : 0) + JSON.stringify(cleanShareMessages(messages) || []).length; // v-share-bytes
+      const username = await gateShare(req, res, body, 'share', DAILY_SHARES, size); // v-share-guard: الناشر من الرمز لا من الجسم
       if (!username) return;
       const made = await createShare({ title, code, owner: username, username: await displayNameOf(username), isPublic, messages });
       if (made.error) { res.status(made.error === 'code_too_large' ? 413 : 400).json({ error: made.error }); return; }

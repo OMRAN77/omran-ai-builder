@@ -12,10 +12,35 @@ function sessionToken(req, body) {
   return String(h.authorization || h.Authorization || '').replace(/^Bearer\s+/i, '').trim();
 }
 
+// v-share-bytes (المراجعة الثالثة): عدد الطلبات وحده لا يحمي القاعدة — ١٠٠ صورة حفظ بـ٣ م.ب = ٣٠٠ م.ب دفعة واحدة على
+// Redis بـ٢٥٦ م.ب. فوق سقف كلّ سلّة ميزانيّة بايت يوميّة واحدة لكلّ حساب عبر كلّ الرفع (صورة/PDF/ملفّ/مشروع)، بطول
+// النصّ المرسَل (base64 كما يُخزَّن). المالك وVIP معفيّان (remaining: Infinity من checkAndConsumeCustom).
+const SHARE_BYTES_DAILY = () => Math.max(1, Number(process.env.SHARE_BYTES_DAILY) || 40 * 1024 * 1024);
+async function takeBytes(username, bytes) {
+  const { kvIncrBy, kvExpire, kvDecrBy } = require('./kv.js');
+  const n = Math.max(0, Math.floor(Number(bytes) || 0));
+  if (!n) return true;
+  const key = 'db/usage/share-bytes/' + encodeURIComponent(username) + '/' + new Date().toISOString().slice(0, 10);
+  let total;
+  try { total = Number(await kvIncrBy(key, n)); } catch (e) { return true; } // عطل KV = مفتوح كبقيّة العدّادات
+  if (total === n) { try { await kvExpire(key, 172800); } catch (e) { /* أفضل جهد: المفتاح مؤرَّخ أصلًا */ } }
+  if (total > SHARE_BYTES_DAILY()) {
+    try { await kvDecrBy(key, n); } catch (e) { /* زيادة باقية تجعل الميزانيّة تبدو ممتلئة حتّى الغد فقط */ }
+    return false;
+  }
+  return true;
+}
+
 // يُرجع اسم الحساب إن سُمح (وقد عُدّ الطلب)، وإلّا يكتب الردّ (401/429) ويُرجع null.
-async function gateShare(req, res, body, bucket, dailyLimit) {
+// bytes (اختياريّ): حجم ما سيُخزَّن، يُخصم من ميزانيّة اليوم بعد قبول السلّة — وتجاوزها يردّ عدّ السلّة ويرفض.
+async function gateShare(req, res, body, bucket, dailyLimit, bytes) {
   const gate = await checkAndConsumeCustom(sessionToken(req, body), null, null, bucket, dailyLimit);
-  if (gate && gate.allowed && gate.username) return gate.username;
+  if (gate && gate.allowed && gate.username) {
+    if (gate.remaining === Infinity || await takeBytes(gate.username, bytes)) return gate.username;
+    await refundShare(req, body, bucket);
+    res.status(429).json({ error: 'daily_bytes', limit: dailyLimit });
+    return null;
+  }
   if (gate && gate.reason === 'limit') res.status(429).json({ error: 'daily_limit', limit: dailyLimit });
   else res.status(401).json({ error: 'auth_required' });
   return null;

@@ -27,9 +27,11 @@ async function meterFresh(req, res, body) {
 // v-refund-custom (المراجعة المعاكسة): كلّ المصادر فشلت (error:'provider') ولا صورة واحدة — الجمعة المعدودة تُردّ
 // v-ideas-paid (المراجعة الثانية): لكن «لا صور» تقع أيضًا حين يجيب Tavily أو Google بـ200 فارغًا — طلب مدفوع خُدم، والفراغ
 // لا يُخبَّأ، فكان أيّ نصّ بلا معنى يطلق ١٦ Tavily و٤ Google بلا حدّ. الردّ الآن فقط حين لم يخدم أيّ مزوّد مدفوع الطلب.
+// v-ideas-paid-count (المراجعة الثالثة): علم واحد لكلّ مزوّد يأخذ رمز الفشل إن فشل استعلام واحد من الثمانية — سبعة ردود Tavily
+// مدفوعة و٤٢٩ واحد (يحدثه المهاجم بنفسه بتجاوز المعدّل) كانت تردّ العدّ. الآن يُعدّ كلّ ردّ مدفوع ناجح، والردّ حين لا شيء منها.
 async function refundIfEmpty(req, body, out) {
   const d = (out && out.detail) || {};
-  if (out && out.error === 'provider' && d.tavily !== 'ok' && d.google !== 'ok') await refundCustom(body.token, null, clientIp(req), 'design-ideas');
+  if (out && out.error === 'provider' && !(Number(d.paid) > 0)) await refundCustom(body.token, null, clientIp(req), 'design-ideas');
 }
 
 const PLACE_EN = {
@@ -66,7 +68,7 @@ async function tavilyImages(queries, apiKey, state) {
     body: JSON.stringify({ api_key: apiKey, query: q, search_depth: 'basic', include_images: true, include_answer: false, max_results: 10 }),
     signal: AbortSignal.timeout(15000),
   }).then(async (r) => {
-    if (r.ok) return r.json();
+    if (r.ok) { state.paid = (state.paid || 0) + 1; return r.json(); } // v-ideas-paid-count
     state.tavilyFail = r.status || 1;
     return { images: [] };
   }).catch(() => { state.tavilyErr = true; return { images: [] }; })));
@@ -86,7 +88,7 @@ async function googleImages(queries, state) {
     '&searchType=image&num=10&safe=active&q=' + encodeURIComponent(q),
     { signal: AbortSignal.timeout(15000) }
   ).then(async (r) => {
-    if (r.ok) return r.json();
+    if (r.ok) { state.paid = (state.paid || 0) + 1; return r.json(); } // v-ideas-paid-count
     state.googleFail = r.status || 1;
     return {};
   }).catch(() => { state.googleErr = true; return {}; })));
@@ -223,6 +225,7 @@ async function gather(apiKey, wave1, wave2, gq) {
     pexels: state.pexelsFail || (state.pexelsErr ? 'net' : (process.env.PEXELS_API_KEY ? 'ok' : 'off')),
     unsplash: state.unsplashFail || (state.unsplashErr ? 'net' : (process.env.UNSPLASH_ACCESS_KEY ? 'ok' : 'off')),
     openverse: state.ovFail || (state.ovErr ? 'net' : 'ok'),
+    paid: state.paid || 0, // v-ideas-paid-count: استعلامات Tavily/Google المدفوعة التي أجابت ok
   };
   if (!images.length) {
     out.error = 'provider';

@@ -132,7 +132,7 @@ module.exports = async (req, res) => {
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
     const plan = uploadPlan(body, 'share-img', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
-    if (!(await gateShare(req, res, body, plan.bucket, plan.limit))) return;
+    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     const mime = /^image\/(png|jpeg|webp)$/.test(String(body.mime || '')) ? String(body.mime) : 'image/jpeg';
     const id = crypto.randomBytes(6).toString('hex');
     const w = Math.max(0, parseInt(body.w, 10) || 0), h = Math.max(0, parseInt(body.h, 10) || 0);

@@ -93,6 +93,7 @@ let runwayUpscale = 200;
 let geminiOk = true;
 let orgStatus = 200; // v-balance-unknown: ردّ /v1/organization (429/5xx = لم يُجب أحد)
 let tavilyStatus = 200; // v-ideas-paid: 432 = نفاد حصّة Tavily
+let tavilyEvery = 0, tavilyCalls = 0; // v-ideas-paid-count: كلّ N-ـيّ نداء Tavily يردّ 429 (فشل جزئيّ يحدثه المهاجم بتجاوز المعدّل)
 let googleStatus = 200; // 403 = نفاد حصّة Google
 global.fetch = async (url, init) => {
   const u = String(url);
@@ -103,6 +104,7 @@ global.fetch = async (url, init) => {
   if (/\/v1\/files\/retrieve/.test(u)) return new Response(JSON.stringify({ file: { download_url: MINIMAX_OUT } }), { status: 200 });
   if (/queue\.fal\.run\/.*\/status$/.test(u)) return new Response(JSON.stringify({ status: 'COMPLETED' }), { status: 200 });
   if (/queue\.fal\.run\//.test(u)) return new Response(JSON.stringify({ video: { url: ACTOR_OUT } }), { status: 200 });
+  if (/api\.tavily\.com/.test(u) && tavilyEvery && (++tavilyCalls % tavilyEvery === 0)) return new Response('{"detail":"rate"}', { status: 429 });
   if (/api\.tavily\.com/.test(u)) return tavilyStatus === 200 ? new Response(JSON.stringify({ images: [] }), { status: 200 }) : new Response('{"detail":"quota"}', { status: tavilyStatus });
   if (/www\.googleapis\.com\/customsearch/.test(u)) return googleStatus === 200 ? new Response(JSON.stringify({ items: [] }), { status: 200 }) : new Response('{"error":{}}', { status: googleStatus });
   if (/api\.openverse\.org/.test(u)) return new Response(JSON.stringify({ results: [] }), { status: 200 });
@@ -281,9 +283,10 @@ test('د. الرصيد: جلسة غير المالك تسأل «هل يكفي؟�
   assert.deepEqual([r.code, r.body.credits], [200, 120]);
 });
 
-test('د-ج. v-balance-unknown: لم يُجب أيّ مفتاح (429/5xx) ← لا يُخزَّن صفرًا، وغير المالك يمرّ (أفضل جهد) والمالك credits:-1', async () => {
+test('د-ج. v-balance-unknown: لم يُجب أيّ مفتاح (429/5xx) ← لا يُخزَّن صفرًا، وغير المالك يمرّ (أفضل جهد) والمالك credits:-1؛ والمجهول يُخزَّن ٣٠ث (المراجعة الثالثة)', async () => {
   const realNow = Date.now;
-  Date.now = () => realNow() + 61 * 1000; // ذاكرة الستّين ثانية من (د) انتهت
+  let shift = 61 * 1000; // ذاكرة الستّين ثانية من (د) انتهت
+  Date.now = () => realNow() + shift;
   try {
     const tk = await user('normal-dc');
     for (const st of [429, 503]) {
@@ -292,15 +295,18 @@ test('د-ج. v-balance-unknown: لم يُجب أيّ مفتاح (429/5xx) ← ل
       try {
         let r = await run(balance, { method: 'GET', query: { needed: '50' }, headers: bearer(tk) });
         assert.deepEqual([r.code, r.body], [200, { enough: true }], st + ': كان {enough:false} فتفشل كلّ الأفلام');
-        r = await run(balance, { method: 'GET', query: { needed: '50' }, headers: bearer(tk) });
-        assert.deepEqual(r.body, { enough: true });
-        assert.equal(balanceCalls, 2, st + ': تعذّر القراءة لا يُخزَّن رصيدًا ستّين ثانية');
+        for (let i = 0; i < 5; i++) {
+          r = await run(balance, { method: 'GET', query: { needed: '50' }, headers: bearer(tk) });
+          assert.deepEqual(r.body, { enough: true });
+        }
+        assert.equal(balanceCalls, 1, st + ': المجهول يُخزَّن ٣٠ث — كان كلّ طلب ينادي مفاتيح المالك كلّها فيبقيها مقيَّدة بالمعدّل');
         r = await run(balance, { method: 'GET', query: { token: auth.makeToken('omran') } });
         assert.equal(r.body.credits, -1, st + ': المالك يرى «تعذّرت القراءة» لا صفرًا');
       } finally { orgStatus = 200; }
+      shift += 31 * 1000; // انتهت ذاكرة المجهول
     }
     const r = await run(balance, { method: 'GET', query: { needed: '150' }, headers: bearer(tk) });
-    assert.deepEqual(r.body, { enough: false }, 'عادت القراءة: الرصيد الحقيقيّ (١٢٠) يحكم فورًا');
+    assert.deepEqual(r.body, { enough: false }, 'عادت القراءة بعد ٣٠ث: الرصيد الحقيقيّ (١٢٠) يحكم');
   } finally { Date.now = realNow; }
 });
 
@@ -420,6 +426,19 @@ test('هـ-د. معرض الأفكار حين يفشل المزوّدان الم
   const ok = await run(designSuggest, { method: 'POST', headers: ip, body: { token: tk, imageBase64: 'QUJD' } });
   assert.equal(ok.code, 200);
   assert.equal(await tally('refund-ideas', 'design-suggest'), 1, 'النجاح يُعدّ كما كان');
+});
+
+test('هـ-د-ج. v-ideas-paid-count: سبعة ردود Tavily مدفوعة و٤٢٩ واحد وGoogle 403 تُعدّ — كان علم المزوّد يأخذ رمز الفشل فيُردّ العدّ', async () => {
+  const tk = await user('ideas-partial');
+  tavilyEvery = 8; tavilyCalls = 0;
+  try {
+    for (let i = 0; i < 3; i++) {
+      const r = await withPaid(200, 403, () => run(ideas, { method: 'POST', headers: ip, body: { token: tk, q: 'partial ' + i + ' ' + Date.now() } }));
+      assert.equal(r.body.error, 'provider');
+      assert.ok(r.body.detail.paid > 0, 'ردود مدفوعة ناجحة: ' + JSON.stringify(r.body.detail));
+    }
+  } finally { tavilyEvery = 0; }
+  assert.equal(await tally('ideas-partial', 'design-ideas'), 3, 'كلّها تُعدّ — مزوّد مدفوع خدم الطلب');
 });
 
 test('هـ-د-ب. v-ideas-paid: نتيجة فارغة من مزوّد مدفوع ناجح (200) تُعدّ — كان أيّ نصّ بلا معنى يطلق ١٦ Tavily و٤ Google بلا حدّ', async () => {

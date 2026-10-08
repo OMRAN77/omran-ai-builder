@@ -29,8 +29,9 @@ const store = new Map();
 const failRead = new Set(); // مفاتيح تفشل قراءتها (عطل قراءة سجلّ الحساب)
 const incrLog = []; // [المفتاح، القيمة بعد INCR]
 const tick = () => new Promise((r) => setImmediate(r));
+let readHook = null; // المراجعة الثالثة: auth.js يفكّ kvGetJSON عند التحميل، فلفّ kvImpl لاحقًا لا يرى شيئًا — العدّ من الداخل
 const kvImpl = {
-  kvGetJSON: async (k) => { await tick(); if (failRead.has(k)) throw new Error('Upstash error: down'); return store.has(k) ? JSON.parse(store.get(k)) : null; },
+  kvGetJSON: async (k) => { if (readHook) readHook(k); await tick(); if (failRead.has(k)) throw new Error('Upstash error: down'); return store.has(k) ? JSON.parse(store.get(k)) : null; },
   kvPutJSON: async (k, v) => { await tick(); store.set(k, JSON.stringify(v)); },
   kvGetRaw: async (k) => { await tick(); return store.has(k) ? String(store.get(k)) : null; },
   kvSetRaw: async (k, v) => { await tick(); store.set(k, String(v)); },
@@ -277,18 +278,17 @@ test('٨. v-plan-consume-limit: الاستهلاك بالحدّ المحسوب �
         if (flip === 'read-fails') failRead.add(userKey);
         else { const r = JSON.parse(saved); r.planUpdatedAt = now - 40 * DAY; store.set(userKey, JSON.stringify(r)); }
       };
-      const realGet = kvImpl.kvGetJSON;
-      kvImpl.kvGetJSON = async (key) => { if (key === userKey) reads++; return realGet(key); };
+      readHook = (key) => { if (key === userKey) reads++; };
       let a;
       try { a = await call(tool.file, tool.body(tok(user))); } finally {
-        onGenerate = null; failRead.delete(userKey); store.set(userKey, saved); kvImpl.kvGetJSON = realGet;
+        onGenerate = null; failRead.delete(userKey); store.set(userKey, saved); readHook = null;
       }
       const tag = tool.name + ' · ' + flip;
       assert.equal(a.code, 200, tag + ': ' + JSON.stringify(a.body).slice(0, 120));
       assert.equal(a.body.remaining, 0, tag + ': كان الأساس − المحجوز (سالبًا)');
       assert.equal(a.body.dailyLimit, expected, tag);
       assert.equal(store.get(k), String(expected), tag + ': العدّاد = ما ولّد');
-      if (flip === 'plan-ends') assert.ok(reads <= 2, tag + ': ' + reads + ' قراءات لسجلّ الحساب — الاستهلاك أعاد قراءة الطبقة');
+      if (flip === 'plan-ends') assert.equal(reads, 1, tag + ': ' + reads + ' قراءات لسجلّ الحساب — قراءة الفحص وحدها؛ ٢ = الاستهلاك أعاد قراءة الطبقة، ٠ = العدّ أعمى');
     }
   }
 });

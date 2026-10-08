@@ -80,7 +80,7 @@ module.exports = async (req, res) => {
     // فحص أن المحتوى PDF فعلًا (يبدأ بـ %PDF)
     if (data.slice(0, 6) !== 'JVBERi') { res.status(400).json({ error: 'not_pdf' }); return; }
     const plan = uploadPlan(body, 'share-pdf', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
-    if (!(await gateShare(req, res, body, plan.bucket, plan.limit))) return;
+    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     // الاسم: أحرف/أرقام/شرطات فقط + لاحقة pdf ثابتة — لا نقطتين (فاصل التخزين)
     const rawName = String(body.name || 'omran-ai.pdf');
     const name = (rawName.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_\-؀-ۿ]/g, '-').slice(0, 60) || 'omran-ai') + '.pdf';

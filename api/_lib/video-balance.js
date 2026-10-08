@@ -11,6 +11,9 @@
 const { getKeys, RUNWAY_API_BASE } = require('./runway-keys.js');
 
 const ENOUGH_CACHE_MS = 60 * 1000;
+// v-balance-unknown-cache (المراجعة الثالثة): «لم يُجب أحد» يُخزَّن ٣٠ ثانية أيضًا — بلا تخزين كان كلّ طلب ?needed= من أيّ
+// جلسة يعيد النداء لكلّ مفاتيح المالك، فمفتاح مقيَّد بالمعدّل (429) يبقيه أيّ مسجَّل مقيَّدًا وهي مفاتيح التوليد نفسها.
+const UNKNOWN_CACHE_MS = 30 * 1000;
 let cached = null; // { at, best, keys }
 
 module.exports = async (req, res) => {
@@ -22,7 +25,7 @@ module.exports = async (req, res) => {
       res.status(403).json({ error: 'owner_only' });
       return;
     }
-    if (cached && Date.now() - cached.at < ENOUGH_CACHE_MS) { res.status(200).json({ enough: cached.best >= needed }); return; }
+    if (cached && Date.now() - cached.at < (cached.unknown ? UNKNOWN_CACHE_MS : ENOUGH_CACHE_MS)) { res.status(200).json({ enough: cached.unknown ? true : cached.best >= needed }); return; }
   }
   try {
     const keys = getKeys();
@@ -44,9 +47,10 @@ module.exports = async (req, res) => {
         if (c > best) best = c;
       } catch (e) { /* try next key */ }
     }
-    // v-balance-unknown (المراجعة الثانية): لم يُجب أيّ مفتاح (429/5xx/شبكة) — الصفر هنا جهل لا رصيد: كان يُخزَّن ستّين ثانية
-    // فيأخذ كلّ غير مالك {enough:false} ويفشل كلّ فيلم. الآن لا يُخزَّن، وغير المالك يمرّ (أفضل جهد كما كان)، والمالك credits:-1.
+    // v-balance-unknown (المراجعة الثانية): لم يُجب أيّ مفتاح (429/5xx/شبكة) — الصفر هنا جهل لا رصيد: كان يُخزَّن رصيدًا ستّين ثانية
+    // فيأخذ كلّ غير مالك {enough:false} ويفشل كلّ فيلم. الآن يُخزَّن «مجهولًا» ٣٠ ثانية، وغير المالك يمرّ (أفضل جهد)، والمالك credits:-1.
     if (!answered) {
+      cached = { at: Date.now(), unknown: true, best: 0, keys: keys.length };
       if (!owner) { res.status(200).json({ enough: true }); return; }
       res.status(200).json({ credits: -1, keys: keys.length });
       return;

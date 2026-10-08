@@ -249,3 +249,30 @@ test('٩. الواجهة ترسل رمز الجلسة مع كلّ رفع مشا�
   assert.doesNotMatch(sh, /\busername,/, 'الاسم لا يُرسَل — الخادم يأخذه من الرمز');
   assert.match(sh, /resp\.status === 401\)\{ closeModal\(\);[^\n]*requireLogin\('guestLimit'\)/, 'نافذة المشاركة (z-index 10000) تُغلق قبل شاشة الدخول (9999)');
 });
+
+test('١٠. v-share-bytes: ميزانيّة بايت يوميّة واحدة لكلّ حساب عبر الصورة والـPDF والملفّ والمشروع — عدد الطلبات وحده لا يحمي القاعدة', async () => {
+  const prev = process.env.SHARE_BYTES_DAILY;
+  process.env.SHARE_BYTES_DAILY = String(B64.length * 2 + 4); // تتّسع لرفعين بحجم B64
+  try {
+    const token = makeToken('bytesUser');
+    const tally = () => keysOf('db/usage/tally/').filter((k) => k.includes('bytesUser')).map((k) => Number(store.get(k) || 0)).reduce((a, b) => a + b, 0);
+    assert.equal((await call(img, { method: 'POST', body: { token, data: B64, mime: 'image/jpeg' } })).status, 200);
+    assert.equal((await call(file, { method: 'POST', body: { token, data: B64, name: 'a.txt', mime: 'text/plain' } })).status, 200);
+    const stored = () => keysOf('db/').filter((k) => !k.startsWith('db/usage/')).length; // المحتوى لا العدّادات
+    const before = stored();
+    const counted = tally();
+    const over = await call(img, { method: 'POST', body: { token, data: B64, mime: 'image/jpeg' } });
+    assert.deepEqual([over.status, over.body.error], [429, 'daily_bytes'], 'الثالث يتجاوز الميزانيّة وسقف الصور (٣٠) بعيد');
+    assert.equal(tally(), counted, 'عدّ السلّة يُردّ — الرفض بالبايت لا يأكل من سقف الطلبات');
+    const pdfOver = await call(pdf, { method: 'POST', body: { token, data: PDF_B64, name: 'a.pdf' } });
+    assert.equal(pdfOver.status, 429, 'الميزانيّة واحدة عبر النقاط كلّها');
+    const shareOver = await call(share, { method: 'POST', body: { token, title: 't', code: 'x'.repeat(B64.length) } });
+    assert.equal(shareOver.status, 429, 'والمشروع المنشور منها');
+    assert.equal(stored() - before, 0, 'لا شيء خُزّن بعد الرفض');
+    // المالك معفى من الميزانيّة كما هو معفى من السقف
+    const owner = makeToken('omran');
+    for (let i = 0; i < 5; i++) assert.equal((await call(img, { method: 'POST', body: { token: owner, data: B64 } })).status, 200);
+  } finally {
+    if (prev === undefined) delete process.env.SHARE_BYTES_DAILY; else process.env.SHARE_BYTES_DAILY = prev;
+  }
+});

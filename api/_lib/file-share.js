@@ -87,7 +87,7 @@ module.exports = async (req, res) => {
     const rawMime = String(body.mime || '').trim();
     const mime = safeMime(/^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+(;\s*charset=[A-Za-z0-9_-]+)?$/.test(rawMime) ? rawMime : 'application/octet-stream');
     const plan = uploadPlan(body, 'share-file', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
-    if (!(await gateShare(req, res, body, plan.bucket, plan.limit))) return;
+    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     const rawName = String(body.name || 'file');
     const name = rawName.replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || 'file';
     const id = crypto.randomBytes(6).toString('hex');
