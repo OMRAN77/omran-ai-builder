@@ -28,10 +28,19 @@ async function refundShare(req, body, bucket) {
 
 // v-media-save (المراجعة المعاكسة): «الحفظ والتنزيل» على الجوّال (omranSaveMedia/omranSaveImage/omranSaveBlob) يرفع الملفّ
 // إلى نقطة المشاركة نفسها ليصير رابط HTTPS برأس attachment — فكان كلّ تنزيل يُعدّ من سقف المشاركة (٣٠/٢٠/١٠).
-// علامة purpose:'download' تُعدّ في سلّة مستقلّة بسقف ١٠٠ يوميًّا وتُخزَّن ساعة واحدة (التنزيل فوريّ، لا رابط يُتداوَل أسبوعًا).
-const SAVE_PLAN = { bucket: 'media-save', limit: 100, ttlSec: 3600 };
+// علامة purpose:'download' تُعدّ في سلّة مستقلّة وتُخزَّن ساعة واحدة (التنزيل فوريّ، لا رابط يُتداوَل أسبوعًا).
+// v-media-save-split (المراجعة الثانية): كانت سلّة واحدة بـ١٠٠ للصورة والـPDF والملفّ معًا — والملفّ يقبل ≈٥ م.ب، فحساب واحد
+// يخزّن ٥٠٠ م.ب دفعة واحدة في Redis بـ٢٥٦ م.ب (العطل الذي جاء v-share-guard لمنعه؛ وعمر الساعة لا يفيد في الدفعة).
+// الآن لكلّ نقطة سلّتها وسقفها بحجم ما تقبله: الصور ١٠٠ (الحافظ يضغطها JPEG دون ٦٤٠ ك.ب)، والـPDF ٢٠، والملفّ ١٠.
+const SAVE_TTL_SEC = 3600;
+const SAVE_PLANS = {
+  'share-img': { bucket: 'media-save-img', limit: 100, ttlSec: SAVE_TTL_SEC },
+  'share-pdf': { bucket: 'media-save-pdf', limit: 20, ttlSec: SAVE_TTL_SEC },
+  'share-file': { bucket: 'media-save-file', limit: 10, ttlSec: SAVE_TTL_SEC },
+};
 function uploadPlan(body, bucket, limit, ttlSec) {
-  return (body && body.purpose === 'download') ? SAVE_PLAN : { bucket, limit, ttlSec };
+  const save = (body && body.purpose === 'download') ? SAVE_PLANS[bucket] : null;
+  return save || { bucket, limit, ttlSec };
 }
 
-module.exports = { gateShare, sessionToken, refundShare, uploadPlan, SAVE_PLAN };
+module.exports = { gateShare, sessionToken, refundShare, uploadPlan, SAVE_PLANS };

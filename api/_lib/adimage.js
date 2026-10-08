@@ -227,14 +227,14 @@ module.exports = async (req, res) => {
       if (hasImg) gImgs.push([b.imageBase64, /^image\/(png|jpeg|webp)$/.test(String(b.mimeType || '')) ? b.mimeType : 'image/jpeg']);
       const g = await geminiAdImage(p, gImgs);
       if (g) {
-        res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: DAILY, engine: 'gemini' }));
+        res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: gate.limit || DAILY, engine: 'gemini' }));
         return;
       }
       const m = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).replace(/key=[^&\s"']+/g, 'key=***');
       res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان: ' + m }));
       return;
     }
-    res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: DAILY }));
+    res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: gate.limit || DAILY }));
   } catch (e) {
     const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));

@@ -141,7 +141,7 @@
     setTimeout(function(){ try{ sheet.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 120000);
     return true;
   }
-  function readySheet(links, file, name){
+  function readySheet(links, file, name, mode){
     const old = document.getElementById('omranImgSheet'); if(old) old.remove();
     const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
     sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
@@ -161,12 +161,16 @@
     dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
     dl.onclick = function(){ setTimeout(function(){ ttl.textContent = gtx('imgDlStarted', '📥 بدأ التحميل — افتح الإشعارات/التنزيلات', '📥 Downloading — check notifications/Downloads'); }, 600); };
     row.appendChild(dl);
-    const wa = document.createElement('a');
-    wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
-    wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
-    wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
-    wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
-    row.appendChild(wa);
+    /* v-save-no-wa (المراجعة الثانية): رابط «تحميل» (purpose:download) يعيش ساعة — من يستلمه على واتساب يجد 404 بعدها؛ فزرّ
+       واتساب لورقة المشاركة وحدها (رابط ٧ أيّام) */
+    if(mode === 'share'){
+      const wa = document.createElement('a');
+      wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
+      wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
+      wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
+      wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
+      row.appendChild(wa);
+    }
     let canShareFile = false;
     try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
     if(canShareFile){
@@ -227,7 +231,7 @@
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
     preparingSheet();
     let upErr = '';
-    try{ const links = await uploadImage(blob, name, mode === 'share' ? '' : 'download'); return readySheet(links, file, name); }
+    try{ const links = await uploadImage(blob, name, mode === 'share' ? '' : 'download'); return readySheet(links, file, name, mode); }
     catch(e){ upErr = (e && e.message) ? String(e.message) : 'upload'; }
     /* تعذّر الرفع: الورقة لا تختفي — تنزيل محلي مباشر + مشاركة إن توفّرت + سبب مختصر */
     try{ return localSheet(blob, file, name, upErr); }catch(e){ /* guard-ok */ }

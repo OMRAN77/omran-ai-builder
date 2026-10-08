@@ -335,13 +335,13 @@ module.exports = async (req, res) => {
       const promptText = parts[parts.length - 1].text;
       const out = await geminiImage(apiKey, parts, 'merge', mergeIdentity.mergeAspect(photos[0], task));
       if (out.b64) {
-        const rem = await consumeStudio(quota.username);
+        const rem = await consumeStudio(quota.username, quota.limit);
         res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining: rem, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
       const rescue = await rescueGuarded(promptText, photos.concat(crops).map((p) => [p.data, p.mime]), apiKey, 'merge');
       if (rescue) {
-        const remR = await consumeStudio(quota.username);
+        const remR = await consumeStudio(quota.username, quota.limit);
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
@@ -381,7 +381,7 @@ module.exports = async (req, res) => {
           return;
         }
       }
-      const remaining = await consumeStudio(quota.username);
+      const remaining = await consumeStudio(quota.username, quota.limit);
       res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, engine: r.engine, remaining, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
     } catch (err) {
       if (err && err.status && err.payload) { res.status(err.status).json(err.payload); return; }

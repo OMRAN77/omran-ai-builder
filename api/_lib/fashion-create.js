@@ -270,7 +270,7 @@ module.exports = async (req, res) => {
       if (engine === 'openai') {
         const oa = await openaiRedress(promptText, imageBase64, mimeType);
         if (oa) {
-          const remOa = await consumeFashion(quota.username);
+          const remOa = await consumeFashion(quota.username, quota.limit);
           res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: quota.limit || FASHION_DAILY_LIMIT });
           return;
         }
@@ -290,7 +290,7 @@ module.exports = async (req, res) => {
       if (engine === 'openai') {
         const oa = await openaiRedress(promptText, imageBase64, mimeType);
         if (oa) {
-          const remOa = await consumeFashion(quota.username);
+          const remOa = await consumeFashion(quota.username, quota.limit);
           res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
           return;
         }
@@ -310,7 +310,7 @@ module.exports = async (req, res) => {
       if (engine === 'openai') {
         const oa = await openaiGenerate(promptText);
         if (oa) {
-          const remOa = await consumeFashion(quota.username);
+          const remOa = await consumeFashion(quota.username, quota.limit);
           res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
           return;
         }
@@ -343,7 +343,7 @@ module.exports = async (req, res) => {
         ? await openaiRedress(promptText, imageBase64, mimeType)
         : await openaiGenerate(promptText));
       if (rescue) {
-        const remR = await consumeFashion(quota.username);
+        const remR = await consumeFashion(quota.username, quota.limit);
         res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
         return;
       }
@@ -393,7 +393,7 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.warn('[fashion-create] duo skipped: ' + (e && e.message)); }
     }
-    const remaining = await consumeFashion(quota.username);
+    const remaining = await consumeFashion(quota.username, quota.limit);
     res.status(200).json({
       imageBase64: outB64,
       mimeType: outMime,

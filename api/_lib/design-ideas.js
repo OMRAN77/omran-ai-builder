@@ -25,8 +25,11 @@ async function meterFresh(req, res, body) {
   return false;
 }
 // v-refund-custom (المراجعة المعاكسة): كلّ المصادر فشلت (error:'provider') ولا صورة واحدة — الجمعة المعدودة تُردّ
+// v-ideas-paid (المراجعة الثانية): لكن «لا صور» تقع أيضًا حين يجيب Tavily أو Google بـ200 فارغًا — طلب مدفوع خُدم، والفراغ
+// لا يُخبَّأ، فكان أيّ نصّ بلا معنى يطلق ١٦ Tavily و٤ Google بلا حدّ. الردّ الآن فقط حين لم يخدم أيّ مزوّد مدفوع الطلب.
 async function refundIfEmpty(req, body, out) {
-  if (out && out.error === 'provider') await refundCustom(body.token, null, clientIp(req), 'design-ideas');
+  const d = (out && out.detail) || {};
+  if (out && out.error === 'provider' && d.tavily !== 'ok' && d.google !== 'ok') await refundCustom(body.token, null, clientIp(req), 'design-ideas');
 }
 
 const PLACE_EN = {

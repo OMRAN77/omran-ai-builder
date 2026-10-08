@@ -245,7 +245,7 @@ module.exports = async (req, res) => {
         }
         frames.push(frameImgPart.inlineData.data);
       }
-      const remainingGif = await consumePortrait(quota.username);
+      const remainingGif = await consumePortrait(quota.username, quota.limit);
       res.status(200).json({
         frames,
         remaining: remainingGif,
@@ -501,7 +501,7 @@ module.exports = async (req, res) => {
       // Gemini فيُتجاوز في مسار الإنقاذ — سيرفض بدوره لو حاولناه.
       const rescue = await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
       if (rescue) {
-        const remR = await consumePortrait(quota.username);
+        const remR = await consumePortrait(quota.username, quota.limit);
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT });
         return;
       }
@@ -535,7 +535,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    const remaining = await consumePortrait(quota.username);
+    const remaining = await consumePortrait(quota.username, quota.limit);
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',

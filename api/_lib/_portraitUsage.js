@@ -57,11 +57,13 @@ async function checkPortraitQuota(token, res) {
 // Consumes one portrait-style generation from today's allowance. Only call
 // this AFTER Gemini has actually returned a successful image — a failed
 // request must never burn a user's daily quota.
-async function consumePortrait(username) {
+// v-plan-consume-limit: limit = الحدّ المحسوب في الفحص (quota.limit) — لا قراءة ثانية للطبقة، والمتبقّي لا ينزل تحت الصفر.
+async function consumePortrait(username, limit) {
   if (await __unlimitedUser(username)) {
     return Infinity;
   }
-  return quotaTally.consume('portrait', username, await planScaledLimit(username, PORTRAIT_DAILY_LIMIT));
+  const lim = Number(limit) > 0 ? Number(limit) : await planScaledLimit(username, PORTRAIT_DAILY_LIMIT);
+  return Math.max(0, await quotaTally.consume('portrait', username, lim));
 }
 
 module.exports = { checkPortraitQuota, consumePortrait, PORTRAIT_DAILY_LIMIT };

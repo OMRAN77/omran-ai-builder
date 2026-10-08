@@ -133,8 +133,10 @@ function lastCodeIn(text) {
 async function doPublish(input, code, user, host) {
   if (!code) return '✗ لا كود مكتمل في هذا التشغيل. اكتب الملف كاملًا في كتلة ```html مغلقة (أو اختبره بـtest_html) ثم انشر — لن أنشر كودًا قديمًا.';
   try {
-    const { createShare } = require('./share.js');
-    const made = await createShare({ title: input.title || 'مشروع', code: code, username: user || '', isPublic: !!input.to_explore });
+    const { createShare, displayNameOf } = require('./share.js');
+    // v-agent-publish-owner: صاحبها بمفتاح حسابه في owner (فحص الحذف)، والاسم المعروض من سجلّه — كان المفتاح يُمرَّر اسمًا
+    // فيصير لحساب Google «زائر» بلا owner، فلا يستطيع صاحبها الحقيقيّ حذفها.
+    const made = await createShare({ title: input.title || 'مشروع', code: code, owner: user || '', username: user ? await displayNameOf(user) : '', isPublic: !!input.to_explore });
     if (!made || made.error) return '✗ فشل النشر: ' + ((made && made.error) || 'سبب غير معروف');
     const base = host ? ('https://' + String(host).replace(/^https?:\/\//, '').replace(/\/$/, '')) : '';
     return '✅ نُشر (' + code.length + ' حرفًا). الرابط: ' + base + made.url
@@ -898,4 +900,4 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports.__test = { runInClient, toolsFor, isOwner }; // v-agent-send-scope · v-agent-github-push — للاختبار
+module.exports.__test = { runInClient, toolsFor, isOwner, doPublish }; // v-agent-send-scope · v-agent-github-push — للاختبار

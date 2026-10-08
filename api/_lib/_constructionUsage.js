@@ -50,9 +50,11 @@ async function checkConstructionQuota(token, res) {
   return Object.assign(await quotaTally.check('construction', username, limit, res), { limit });
 }
 
-async function consumeConstruction(username) {
+// v-plan-consume-limit: limit = الحدّ المحسوب في الفحص (quota.limit) — لا قراءة ثانية للطبقة، والمتبقّي لا ينزل تحت الصفر.
+async function consumeConstruction(username, limit) {
   if (await __unlimitedUser(username)) return Infinity;
-  return quotaTally.consume('construction', username, await planScaledLimit(username, CONSTRUCTION_DAILY_LIMIT));
+  const lim = Number(limit) > 0 ? Number(limit) : await planScaledLimit(username, CONSTRUCTION_DAILY_LIMIT);
+  return Math.max(0, await quotaTally.consume('construction', username, lim));
 }
 
 module.exports = { checkConstructionQuota, consumeConstruction, CONSTRUCTION_DAILY_LIMIT };

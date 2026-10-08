@@ -542,7 +542,7 @@ module.exports = async (req, res) => {
     let remaining = job ? job.r : quota.remaining;
     let jobTicket = null;
     if (!stagePart || firstStage) {
-      remaining = await consumeConstruction(quota.username);
+      remaining = await consumeConstruction(quota.username, quota.limit);
       if (stagePart && requestedParts.length > 1) {
         jobTicket = signJob(quota.username, requestedParts.slice(1), body, remaining);
       }

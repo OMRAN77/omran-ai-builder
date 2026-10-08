@@ -53,9 +53,11 @@ async function checkFashionQuota(token, res) {
   return Object.assign(await quotaTally.check('fashion', username, limit, res), { limit });
 }
 
-async function consumeFashion(username) {
+// v-plan-consume-limit: limit = الحدّ المحسوب في الفحص (quota.limit) — لا قراءة ثانية للطبقة، والمتبقّي لا ينزل تحت الصفر.
+async function consumeFashion(username, limit) {
   if (await __unlimitedUser(username)) return Infinity;
-  return quotaTally.consume('fashion', username, await planScaledLimit(username, FASHION_DAILY_LIMIT));
+  const lim = Number(limit) > 0 ? Number(limit) : await planScaledLimit(username, FASHION_DAILY_LIMIT);
+  return Math.max(0, await quotaTally.consume('fashion', username, lim));
 }
 
 module.exports = { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT };

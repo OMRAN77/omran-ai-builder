@@ -58,9 +58,11 @@ async function checkDesignQuota(token, res) {
 // Consumes one design generation from today's allowance. Only call this
 // AFTER Gemini has actually returned a successful image — a failed request
 // must never burn a user's daily quota.
-async function consumeDesign(username) {
+// v-plan-consume-limit: limit = الحدّ المحسوب في الفحص (quota.limit) — لا قراءة ثانية للطبقة، والمتبقّي لا ينزل تحت الصفر.
+async function consumeDesign(username, limit) {
   if (await __unlimitedUser(username)) return Infinity;
-  return quotaTally.consume('design', username, await planScaledLimit(username, DESIGN_DAILY_LIMIT));
+  const lim = Number(limit) > 0 ? Number(limit) : await planScaledLimit(username, DESIGN_DAILY_LIMIT);
+  return Math.max(0, await quotaTally.consume('design', username, lim));
 }
 
 module.exports = { checkDesignQuota, consumeDesign, DESIGN_DAILY_LIMIT };

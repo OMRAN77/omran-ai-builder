@@ -19,6 +19,9 @@
 //     Authorization: Bearer، والرابط الذي يُنقر أو يُفتح خارج التطبيق يحمل تذكرة تنزيل (?dt=) لرابط واحد وساعة واحدة يصدرها
 //     ?action=ticket بعد الإذن نفسه (فالعدّ عند الإصدار، مرّة).
 //   v-refund-custom: ما عُدّ ثمّ فشل جلبه قبل أوّل بايت (مضيف محجوب، 404، نوع غير وسائط) يُردّ إلى العدّاد.
+//   v-dl-refund-scope (المراجعة الثانية): لكنّ ردّ 404 والنوع غير الوسيط جعل أيّ صفحة بلا كلفة — فلم يعد السقف يحدّ الجلب
+//     الخارجيّ (وسيط GET بلا حدّ من عناوين Vercel). الردّ الآن فقط لما فشل قبل أيّ طلب خارجيّ (مضيف خاصّ أو اسم لا يُحلّ)؛
+//     ما وصل المضيف (404، صفحة، تحويل محجوب، حجم زائد، انقطاع) يُعدّ.
 'use strict';
 const crypto = require('crypto');
 const { fetchPublicUrl } = require('./_lib/safe-url.js');
@@ -129,11 +132,14 @@ module.exports = async (req, res) => {
     res.status(200).json({ ticket: mintTicket(admitted.username, url), ttl: TICKET_TTL_MS / 1000 });
     return;
   }
-  const refund = async () => { if (admitted.refund) await admitted.refund(); };
+  // v-dl-refund-scope: يُردّ العدّ ما دام لم يخرج طلب إلى المضيف (reached)
+  let reached = false;
+  const fetchFn = deps.fetchFn || fetch;
+  const refund = async () => { if (admitted.refund && !reached) await admitted.refund(); };
 
   let upstream;
   try {
-    upstream = await fetchPublicUrl(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranAI/1.0)' } }, { lookup: deps.lookup, fetchFn: deps.fetchFn });
+    upstream = await fetchPublicUrl(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranAI/1.0)' } }, { lookup: deps.lookup, fetchFn: (u, init) => { reached = true; return fetchFn(u, init); } });
   } catch (e) {
     await refund();
     const msg = String((e && e.message) || e);
@@ -143,15 +149,13 @@ module.exports = async (req, res) => {
   try {
     if (!upstream.ok) {
       try { await upstream.body?.cancel(); } catch (e) { /* guard-ok — تحرير المجرى فقط */ }
-      await refund();
-      res.status(upstream.status).end();
+      res.status(upstream.status).end(); // v-dl-refund-scope: وصل المضيف — يُعدّ
       return;
     }
     const ct = mediaType(upstream.headers.get('content-type'), url);
     const cl = Number(upstream.headers.get('content-length')) || 0;
     if (!ct || cl > MAX_BYTES) {
       try { await upstream.body?.cancel(); } catch (e) { /* guard-ok — تحرير المجرى فقط */ }
-      await refund();
       res.status(ct ? 413 : 415).json({ error: ct ? 'too large' : 'not a video or image' });
       return;
     }
@@ -180,7 +184,6 @@ module.exports = async (req, res) => {
     res.end();
   } catch (e) {
     if (!res.headersSent) {
-      await refund();
       res.status(502).json({ error: String(e && e.message || e).slice(0, 120) });
     } else {
       res.end();

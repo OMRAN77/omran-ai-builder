@@ -91,16 +91,20 @@ const MINIMAX_OUT = 'https://cdn.minimax.example/out/eco.mp4?Expires=1';
 const ACTOR_OUT = 'https://v3.fal.media/files/out/actor.mp4';
 let runwayUpscale = 200;
 let geminiOk = true;
+let orgStatus = 200; // v-balance-unknown: ردّ /v1/organization (429/5xx = لم يُجب أحد)
+let tavilyStatus = 200; // v-ideas-paid: 432 = نفاد حصّة Tavily
+let googleStatus = 200; // 403 = نفاد حصّة Google
 global.fetch = async (url, init) => {
   const u = String(url);
   if (/\/v1\/tasks\//.test(u)) return new Response(JSON.stringify({ id: 'T9', status: 'SUCCEEDED', output: [RUNWAY_OUT] }), { status: 200 });
   if (/\/v1\/video_upscale$/.test(u)) return new Response(JSON.stringify(runwayUpscale === 200 ? { id: 'UP9' } : { error: 'rejected' }), { status: runwayUpscale });
-  if (/\/v1\/organization$/.test(u)) { balanceCalls++; return new Response(JSON.stringify({ creditBalance: 120 }), { status: 200 }); }
+  if (/\/v1\/organization$/.test(u)) { balanceCalls++; return orgStatus === 200 ? new Response(JSON.stringify({ creditBalance: 120 }), { status: 200 }) : new Response('{"error":"busy"}', { status: orgStatus }); }
   if (/\/v1\/query\/video_generation/.test(u)) return new Response(JSON.stringify({ status: 'Success', file_id: 'F1', base_resp: { status_code: 0 } }), { status: 200 });
   if (/\/v1\/files\/retrieve/.test(u)) return new Response(JSON.stringify({ file: { download_url: MINIMAX_OUT } }), { status: 200 });
   if (/queue\.fal\.run\/.*\/status$/.test(u)) return new Response(JSON.stringify({ status: 'COMPLETED' }), { status: 200 });
   if (/queue\.fal\.run\//.test(u)) return new Response(JSON.stringify({ video: { url: ACTOR_OUT } }), { status: 200 });
-  if (/api\.tavily\.com/.test(u)) return new Response(JSON.stringify({ images: [] }), { status: 200 });
+  if (/api\.tavily\.com/.test(u)) return tavilyStatus === 200 ? new Response(JSON.stringify({ images: [] }), { status: 200 }) : new Response('{"detail":"quota"}', { status: tavilyStatus });
+  if (/www\.googleapis\.com\/customsearch/.test(u)) return googleStatus === 200 ? new Response(JSON.stringify({ items: [] }), { status: 200 }) : new Response('{"error":{}}', { status: googleStatus });
   if (/api\.openverse\.org/.test(u)) return new Response(JSON.stringify({ results: [] }), { status: 200 });
   if (/generativelanguage\.googleapis\.com/.test(u)) {
     if (!geminiOk) return new Response(JSON.stringify({ error: { message: 'overloaded' } }), { status: 503 });
@@ -118,6 +122,7 @@ async function dl(query, headers) {
     upstream.calls.push(String(u));
     if (upstream.mode === '404') return new Response('nope', { status: 404 });
     if (upstream.mode === 'html') return new Response('<html>', { status: 200, headers: { 'content-type': 'text/html' } });
+    if (upstream.mode === 'redirect-private') return new Response(null, { status: 302, headers: { location: 'http://10.0.0.7/admin' } });
     return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'video/mp4' } });
   };
   try { await videoDownload({ method: 'GET', headers: Object.assign({}, ip, headers || {}), query }, r); } finally { videoDownload.__deps.lookup = undefined; videoDownload.__deps.fetchFn = undefined; }
@@ -276,6 +281,29 @@ test('د. الرصيد: جلسة غير المالك تسأل «هل يكفي؟�
   assert.deepEqual([r.code, r.body.credits], [200, 120]);
 });
 
+test('د-ج. v-balance-unknown: لم يُجب أيّ مفتاح (429/5xx) ← لا يُخزَّن صفرًا، وغير المالك يمرّ (أفضل جهد) والمالك credits:-1', async () => {
+  const realNow = Date.now;
+  Date.now = () => realNow() + 61 * 1000; // ذاكرة الستّين ثانية من (د) انتهت
+  try {
+    const tk = await user('normal-dc');
+    for (const st of [429, 503]) {
+      orgStatus = st;
+      balanceCalls = 0;
+      try {
+        let r = await run(balance, { method: 'GET', query: { needed: '50' }, headers: bearer(tk) });
+        assert.deepEqual([r.code, r.body], [200, { enough: true }], st + ': كان {enough:false} فتفشل كلّ الأفلام');
+        r = await run(balance, { method: 'GET', query: { needed: '50' }, headers: bearer(tk) });
+        assert.deepEqual(r.body, { enough: true });
+        assert.equal(balanceCalls, 2, st + ': تعذّر القراءة لا يُخزَّن رصيدًا ستّين ثانية');
+        r = await run(balance, { method: 'GET', query: { token: auth.makeToken('omran') } });
+        assert.equal(r.body.credits, -1, st + ': المالك يرى «تعذّرت القراءة» لا صفرًا');
+      } finally { orgStatus = 200; }
+    }
+    const r = await run(balance, { method: 'GET', query: { needed: '150' }, headers: bearer(tk) });
+    assert.deepEqual(r.body, { enough: false }, 'عادت القراءة: الرصيد الحقيقيّ (١٢٠) يحكم فورًا');
+  } finally { Date.now = realNow; }
+});
+
 test('د-ب. الواجهة: غير المالك لا يمرّ «يكفي دائمًا» — يسأل بجلسته، ورسالته بلا اسم مزوّد، والتفصيل للمالك', () => {
   const v = read('js/app-11-video.js');
   const i = v.indexOf('async function ensureRunwayCredits(needed){');
@@ -289,16 +317,39 @@ test('د-ب. الواجهة: غير المالك لا يمرّ «يكفي دائ
 });
 
 // ─────────────────────────────── (هـ) ردّ الحصّة عند الفشل ───────────────────────────────
-test('هـ. التنزيل: مضيف محجوب و404 ونوع غير وسائط بعد العدّ تُردّ إلى العدّاد (وعلامة «عُدّ اليوم» تُمحى)', async () => {
+test('هـ. التنزيل: المضيف المحجوب قبل أيّ طلب خارجيّ يُردّ؛ 404 والصفحة غير الوسيطة والتحويل المحجوب بعد الجلب تُعدّ', async () => {
   const tk = await user('refund-dl');
+  upstream.calls.length = 0;
   assert.equal((await dl({ url: 'https://intranet.example/x.mp4' }, bearer(tk))).code, 403);
+  assert.equal(upstream.calls.length, 0, 'حُجب قبل أيّ طلب خارجيّ');
+  assert.equal(await tally('refund-dl', 'video-download'), 0, 'لا طلب خارجيّ = يُردّ (وعلامة «عُدّ اليوم» تُمحى)');
+  assert.equal((await dl({ url: 'https://intranet.example/x.mp4' }, bearer(tk))).code, 403);
+  assert.equal(await tally('refund-dl', 'video-download'), 0);
   upstream.mode = '404';
   try { assert.equal((await dl({ url: 'https://cdn.example/missing.mp4' }, bearer(tk))).code, 404); } finally { upstream.mode = 'ok'; }
   upstream.mode = 'html';
   try { assert.equal((await dl({ url: 'https://cdn.example/page' }, bearer(tk))).code, 415); } finally { upstream.mode = 'ok'; }
-  assert.equal(await tally('refund-dl', 'video-download'), 0, 'كانت ثلاثة من العشرين محروقة');
+  upstream.mode = 'redirect-private';
+  try { assert.equal((await dl({ url: 'https://cdn.example/bounce' }, bearer(tk))).code, 403); } finally { upstream.mode = 'ok'; }
+  assert.equal(await tally('refund-dl', 'video-download'), 3, 'كلّ واحد منها طلب خارجيّ وقع — يُعدّ');
   assert.equal((await dl({ url: 'https://cdn.example/missing.mp4' }, bearer(tk))).code, 200);
-  assert.equal(await tally('refund-dl', 'video-download'), 1, 'الرابط الذي فشل يُعدّ حين ينجح — لا يصير مجّانيًّا');
+  assert.equal(await tally('refund-dl', 'video-download'), 3, 'الرابط نفسه في يومه وسيط واحد');
+});
+
+test('هـ-هـ. v-dl-refund-scope: صفحات غير وسيطة بلا حدّ كانت مجّانيّة — بعد ٢٠ يُرفض الحادي والعشرون 429 بلا جلب خارجيّ', async () => {
+  const tk = await user('html-proxy');
+  upstream.calls.length = 0;
+  upstream.mode = 'html';
+  try {
+    for (let i = 0; i < videoDownload.DOWNLOAD_DAILY; i++) assert.equal((await dl({ url: 'https://cdn.example/page-' + i }, bearer(tk))).code, 415, 'صفحة ' + (i + 1));
+    assert.equal(upstream.calls.length, videoDownload.DOWNLOAD_DAILY);
+    const over = await dl({ url: 'https://cdn.example/page-over' }, bearer(tk));
+    assert.equal(over.code, 429, 'كانت كلّها تُردّ فلا يحدّ السقف الجلب الخارجيّ');
+    assert.equal(upstream.calls.length, videoDownload.DOWNLOAD_DAILY, 'المرفوض لا يجلب');
+  } finally { upstream.mode = 'ok'; }
+  upstream.mode = '404';
+  try { assert.equal((await dl({ url: 'https://cdn.example/gone-x' }, bearer(await user('html-proxy-2')))).code, 404); } finally { upstream.mode = 'ok'; }
+  assert.equal(await tally('html-proxy-2', 'video-download'), 1, '404 من مضيف خارجيّ يُعدّ');
 });
 
 test('هـ-ب. ترقية الجودة: رفض Runway أو مفتاح غائب يردّ الترقية المعدودة', async () => {
@@ -331,14 +382,33 @@ test('هـ-ج. المشاركة: store_failed (القاعدة ممتلئة) ير
   } finally { storeDown = false; }
 });
 
-test('هـ-د. معرض الأفكار بلا صورة واحدة (error:provider) والاقتراحات عند فشل النموذج (والبديل) تردّ الحصّة', async () => {
+// المزوّدان المدفوعان (Tavily وGoogle) فشلا معًا (حصّة نفدت) ← يُردّ؛ وردّ 200 فارغ من أيّهما خدم الطلب (ودُفع) ← يُعدّ.
+async function withPaid(tv, gg, fn) {
+  const keep = [process.env.GOOGLE_SEARCH_API_KEY, process.env.GOOGLE_SEARCH_CX];
+  process.env.GOOGLE_SEARCH_API_KEY = 'g-test'; process.env.GOOGLE_SEARCH_CX = 'cx-test';
+  tavilyStatus = tv; googleStatus = gg;
+  try { return await fn(); } finally {
+    tavilyStatus = 200; googleStatus = 200;
+    if (keep[0] === undefined) delete process.env.GOOGLE_SEARCH_API_KEY; else process.env.GOOGLE_SEARCH_API_KEY = keep[0];
+    if (keep[1] === undefined) delete process.env.GOOGLE_SEARCH_CX; else process.env.GOOGLE_SEARCH_CX = keep[1];
+  }
+}
+
+test('هـ-د. معرض الأفكار حين يفشل المزوّدان المدفوعان (432/403) والاقتراحات عند فشل النموذج (والبديل) تردّ الحصّة', async () => {
   const tk = await user('refund-ideas');
-  const r = await run(ideas, { method: 'POST', headers: ip, body: { token: tk, q: 'majlis lounge ' + Date.now() } });
+  const r = await withPaid(432, 403, () => run(ideas, { method: 'POST', headers: ip, body: { token: tk, q: 'majlis lounge ' + Date.now() } }));
   assert.equal(r.body.error, 'provider');
+  assert.deepEqual([r.body.detail.tavily, r.body.detail.google], [432, 403]);
   assert.equal(await tally('refund-ideas', 'design-ideas'), 0);
-  const cx = await run(ideas, { method: 'POST', headers: ip, body: { token: tk, mode: 'construction', type: 'villa', q: 'x' + Date.now() } });
+  const cx = await withPaid(432, 403, () => run(ideas, { method: 'POST', headers: ip, body: { token: tk, mode: 'construction', type: 'villa', q: 'x' + Date.now() } }));
   assert.equal(cx.body.error, 'provider');
   assert.equal(await tally('refund-ideas', 'design-ideas'), 0, 'وضع المقاولات أيضًا');
+  tavilyStatus = 432;
+  try {
+    const noGoogle = await run(ideas, { method: 'POST', headers: ip, body: { token: tk, q: 'tavily down ' + Date.now() } }); // Google بلا مفتاح
+    assert.equal(noGoogle.body.error, 'provider');
+  } finally { tavilyStatus = 200; }
+  assert.equal(await tally('refund-ideas', 'design-ideas'), 0, 'Tavily فشل وGoogle بلا مفتاح: لم يخدم مدفوع');
   geminiOk = false;
   try {
     for (const [h, b, bucket] of [[designSuggest, { imageBase64: 'QUJD' }, 'design-suggest'], [fashionSuggest, { description: 'casual' }, 'fashion-suggest'], [studioSuggest, { imageBase64: 'QUJD' }, 'studio-suggest']]) {
@@ -350,6 +420,22 @@ test('هـ-د. معرض الأفكار بلا صورة واحدة (error:provide
   const ok = await run(designSuggest, { method: 'POST', headers: ip, body: { token: tk, imageBase64: 'QUJD' } });
   assert.equal(ok.code, 200);
   assert.equal(await tally('refund-ideas', 'design-suggest'), 1, 'النجاح يُعدّ كما كان');
+});
+
+test('هـ-د-ب. v-ideas-paid: نتيجة فارغة من مزوّد مدفوع ناجح (200) تُعدّ — كان أيّ نصّ بلا معنى يطلق ١٦ Tavily و٤ Google بلا حدّ', async () => {
+  const tk = await user('ideas-empty');
+  for (const [tv, gg, why] of [[200, 200, 'الاثنان 200 فارغان'], [200, 403, 'Tavily 200 فارغ وGoogle 403'], [432, 200, 'Google 200 فارغ وTavily 432']]) {
+    const before = await tally('ideas-empty', 'design-ideas');
+    const r = await withPaid(tv, gg, () => run(ideas, { method: 'POST', headers: ip, body: { token: tk, q: 'qwzx ' + why + Date.now() } }));
+    assert.equal(r.body.error, 'provider', why);
+    assert.equal(await tally('ideas-empty', 'design-ideas'), before + 1, why + ': كان يُردّ');
+  }
+  const t200 = await run(ideas, { method: 'POST', headers: ip, body: { token: tk, q: 'tavily only ' + Date.now() } }); // Google بلا مفتاح، Tavily 200 فارغ
+  assert.equal(t200.body.error, 'provider');
+  assert.equal(await tally('ideas-empty', 'design-ideas'), 4);
+  for (let i = 4; i < 30; i++) await run(ideas, { method: 'POST', headers: ip, body: { token: tk, q: 'junk ' + i + ' ' + Date.now() } });
+  const over = await run(ideas, { method: 'POST', headers: ip, body: { token: tk, q: 'junk over ' + Date.now() } });
+  assert.deepEqual([over.code, over.body.error], [429, 'daily_limit_reached'], 'السقف يحدّ الاستعلامات الفارغة');
 });
 
 // ─────────────────────────────── (و) توقيع Veo بالبايتات ───────────────────────────────
@@ -397,6 +483,22 @@ test('ز-ب. لا يُعرض أبدًا اسم يبدأ بـg_ أو فيه @ —
   assert.equal((await run(share, { method: 'GET', query: { id: 'legacy1' } })).body.username, 'زائر');
 });
 
+test('ز-ج. v-agent-publish-owner: مشاركة نشرها الوكيل لحساب Google يحذفها صاحبها بمفتاحه (200) لا غيره (403)، وباسمه المعروض', async () => {
+  const { doPublish } = require(rp('api/_lib/agent.js')).__test;
+  const key = 'g_agent.owner@gmail.com';
+  const tk = await user(key, { username: 'Agent Owner', email: 'agent.owner@gmail.com', googleAuth: true });
+  const out = await doPublish({ title: 'app', to_explore: true }, '<!DOCTYPE html><p>' + 'x'.repeat(300) + '</p>', key, 'app.example');
+  const id = (String(out).match(/\/p\.html\?id=([a-f0-9]+)/) || [])[1];
+  assert.ok(id, out);
+  const rec = JSON.parse(store.get('db/shares/' + id + '.json'));
+  assert.equal(rec.owner, key, 'كان بلا owner');
+  assert.equal(rec.username, 'Agent Owner', 'كان «زائر»');
+  assert.ok(!JSON.stringify((await run(share, { method: 'GET', query: { id } })).body).includes('@'), 'لا بريد في الردّ العامّ');
+  assert.equal((await run(share, { method: 'DELETE', query: { id }, headers: bearer(await user('someone-else')) })).code, 403, 'غير صاحبها');
+  assert.equal((await run(share, { method: 'DELETE', query: { id }, headers: bearer(await user('زائر')) })).code, 403, 'ولا من اسمه «زائر»');
+  assert.equal((await run(share, { method: 'DELETE', query: { id }, headers: bearer(tk) })).code, 200, 'صاحبها الحقيقيّ كان يأخذ 403');
+});
+
 test('ط. المشروع الفارغ والأكبر من الحدّ يُرفضان قبل البوّابة فلا يحرقان حصّة اليوم', async () => {
   const tk = await user('validator');
   for (let i = 0; i < 31; i++) assert.equal((await run(share, { method: 'POST', body: { token: tk, code: '   ' } })).code, 400);
@@ -408,7 +510,7 @@ test('ط. المشروع الفارغ والأكبر من الحدّ يُرفض�
 });
 
 // ─────────────────────────────── (ح) الحفظ والتنزيل في سلّته ───────────────────────────────
-test('ح. purpose:download يُعدّ في سلّة التنزيل (١٠٠ يوميًّا) بعمر ساعة، ولا يمسّ سقف المشاركة', async () => {
+test('ح. purpose:download يُعدّ في سلّة التنزيل (الصور ١٠٠ يوميًّا) بعمر ساعة، ولا يمسّ سقف المشاركة', async () => {
   const tk = await user('saver');
   const B64 = Buffer.from('omran-save').toString('base64');
   for (let i = 0; i < 40; i++) {
@@ -420,14 +522,32 @@ test('ح. purpose:download يُعدّ في سلّة التنزيل (١٠٠ يو�
   assert.equal(ttl.get('db/pdf/' + p.body.id), 3600);
   const f = await run(file, { method: 'POST', body: { token: tk, data: B64, name: 's.txt', mime: 'text/plain', purpose: 'download' } });
   assert.equal(ttl.get('db/file/' + f.body.id), 3600);
-  assert.equal(await tally('saver', 'media-save'), 42);
+  assert.deepEqual([await tally('saver', 'media-save-img'), await tally('saver', 'media-save-pdf'), await tally('saver', 'media-save-file')], [40, 1, 1]);
   assert.equal(await tally('saver', 'share-img'), 0, 'سقف المشاركة سليم');
   const sh = await run(img, { method: 'POST', body: { token: tk, data: B64 } });
   assert.equal(sh.code, 200);
   assert.equal(ttl.get('db/img/' + sh.body.id), 7 * 86400, 'المشاركة بعمرها كما كانت');
-  for (let i = 42; i < 100; i++) await run(img, { method: 'POST', body: { token: tk, data: B64, purpose: 'download' } });
+  for (let i = 40; i < 100; i++) await run(img, { method: 'POST', body: { token: tk, data: B64, purpose: 'download' } });
   const over = await run(img, { method: 'POST', body: { token: tk, data: B64, purpose: 'download' } });
   assert.deepEqual([over.code, over.body.error], [429, 'daily_limit']);
+});
+
+test('ح-ج. v-media-save-split: لكلّ نقطة سقفها — الملفّ (≈٥ م.ب) ١٠ والـPDF ٢٠ يوميًّا، لا ١٠٠ مشتركة تملأ Redis دفعة واحدة', async () => {
+  const tk = await user('bulk-saver');
+  const B64 = Buffer.from('omran-bulk').toString('base64');
+  const PDF = Buffer.from('%PDF-1.4 bulk').toString('base64');
+  for (let i = 0; i < 10; i++) assert.equal((await run(file, { method: 'POST', body: { token: tk, data: B64, name: 'f.txt', mime: 'text/plain', purpose: 'download' } })).code, 200, 'ملفّ ' + (i + 1));
+  const f11 = await run(file, { method: 'POST', body: { token: tk, data: B64, name: 'f.txt', mime: 'text/plain', purpose: 'download' } });
+  assert.deepEqual([f11.code, f11.body.error, f11.body.limit], [429, 'daily_limit', 10], 'كان يمرّ حتّى ١٠٠ (٥٠٠ م.ب)');
+  for (let i = 0; i < 20; i++) assert.equal((await run(pdf, { method: 'POST', body: { token: tk, data: PDF, name: 'p.pdf', purpose: 'download' } })).code, 200, 'PDF ' + (i + 1));
+  const p21 = await run(pdf, { method: 'POST', body: { token: tk, data: PDF, name: 'p.pdf', purpose: 'download' } });
+  assert.deepEqual([p21.code, p21.body.limit], [429, 20]);
+  const im = await run(img, { method: 'POST', body: { token: tk, data: B64, purpose: 'download' } });
+  assert.equal(im.code, 200, 'نفاد الملفّات لا يمسّ حفظ الصور');
+  assert.equal(ttl.get('db/img/' + im.body.id), 3600);
+  assert.equal((await run(file, { method: 'POST', body: { token: tk, data: B64, name: 's.txt', mime: 'text/plain' } })).code, 200, 'المشاركة في سلّتها كما كانت');
+  const usageMod = require(rp('api/_lib/_usage.js'));
+  for (const b of ['media-save-img', 'media-save-pdf', 'media-save-file']) assert.ok(usageMod.MOVE_BUCKETS.includes(b), b + ' تنتقل مع تغيير الاسم');
 });
 
 test('ح-ب. الواجهة: مسارات الحفظ ترسل purpose:download، والمشاركة لا، و429 بنصّ الحدّ القائم', () => {
@@ -446,4 +566,44 @@ test('ح-ب. الواجهة: مسارات الحفظ ترسل purpose:download،
   for (const f of ['js/app-09-attach.js', 'js/app-10-features.js']) assert.doesNotMatch(read(f), /purpose: 'download'/, f + ': مشاركة لا تنزيل');
   // النصّ القائم موجود باللغات كلّها
   for (const f of fs.readdirSync(path.join(root, 'i18n')).filter((x) => x !== 'ad-studio.js')) assert.match(read('i18n/' + f), /portraitLimitReached/, f);
+});
+
+// ─────────────── (ح) ورقة الصورة الجاهزة: رابط «تحميل» يعيش ساعة فلا يُشارَك على واتساب ───────────────
+function imgSaver() {
+  const made = [];
+  const el = (tag) => {
+    const e = { tag, dataset: {}, style: {}, children: [], attrs: {}, href: '', textContent: '',
+      appendChild(c) { this.children.push(c); return c; }, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
+      remove() {}, click() {} };
+    made.push(e);
+    return e;
+  };
+  const posts = [];
+  const ctx = {
+    location: { origin: 'https://app.example' },
+    navigator: { userAgent: 'Mozilla/5.0 (Linux; Android 14; wv) AppleWebKit/537.36 Version/4.0 Chrome/124.0 Mobile' },
+    document: { createElement: el, getElementById: () => null, querySelector: () => null, addEventListener() {}, body: { appendChild() {} } },
+    FileReader: function () { this.readAsDataURL = (b) => { b.arrayBuffer().then((ab) => { this.result = 'data:' + b.type + ';base64,' + Buffer.from(ab).toString('base64'); this.onload(); }); }; },
+    fetch: async (u, init) => { posts.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ id: 'img1' }) }; },
+    authGet: () => 'tok-abc', localStorage: { getItem: () => 'ar' },
+    Blob, File, URL, atob, encodeURIComponent, setTimeout: () => 0, String, Number, Math, Date, Error, JSON, Uint8Array, Promise, console,
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(read('js/app-05-img-save.js'), ctx);
+  return { save: ctx.omranSaveImage, made, posts };
+}
+
+test('ح-د. v-save-no-wa: ورقة الحفظ (رابط ساعة) بلا زرّ واتساب — من يستلمه بعد ساعة يجد 404؛ وورقة المشاركة (٧ أيّام) تبقيه', async () => {
+  const png = () => new Blob([Buffer.from('omran-png')], { type: 'image/png' });
+  const s = imgSaver();
+  assert.equal(await s.save(png(), 'a.png', 'save'), true);
+  assert.equal(s.posts[0].purpose, 'download');
+  const hrefs = s.made.map((e) => String(e.href || ''));
+  assert.ok(hrefs.some((h) => h.includes('/i/img1.raw.png?dl=1')), 'زرّ «تحميل» كما كان');
+  assert.ok(!hrefs.some((h) => /wa\.me/.test(h)), 'كان يشارك رابطًا يموت بعد ساعة');
+  const sh = imgSaver();
+  assert.equal(await sh.save(png(), 'b.png', 'share'), true);
+  assert.equal(sh.posts[0].purpose, undefined, 'المشاركة في سلّتها وعمرها');
+  assert.ok(sh.made.some((e) => /^https:\/\/wa\.me\/\?text=/.test(String(e.href || ''))), 'زرّ واتساب في المشاركة كما كان');
 });

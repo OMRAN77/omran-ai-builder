@@ -118,22 +118,41 @@ function callArgs(src, name) { // نصّ معاملات كلّ نداء بأقو
   }
   return out;
 }
-/** كلّ سلّة يعدّها checkAndConsumeCustom في الكود: حرفيّة في النداء (ومعابر البوّابة gateShare/uploadPlan) أو ثابت مسمّى. */
+/** كلّ سلّة يعدّها checkAndConsumeCustom في الكود: حرفيّة في النداء (ومعابر البوّابة gateShare/uploadPlan، وغلاف الباقة
+    checkAndConsumePlanCustom — v-plan-caps) أو ثابت مسمّى، وسلال الحفظ في SAVE_PLANS (v-media-save-split). */
+const CUSTOM_WRAPPERS = ['checkAndConsumeCustom', 'checkAndConsumePlanCustom', 'gateShare', 'uploadPlan'];
 function customBuckets() {
   const found = new Set();
   for (const f of walkJs(path.join(root, 'api'), [])) {
     if (/_usage\.js$/.test(f)) continue;
     const s = fs.readFileSync(f, 'utf8');
-    for (const n of ['checkAndConsumeCustom', 'gateShare', 'uploadPlan']) for (const a of callArgs(s, n)) (a.match(/'([a-z0-9-]+)'/g) || []).forEach((x) => found.add(x.slice(1, -1)));
-    for (const re of [/QUOTA_BUCKET = '([a-z0-9-]+)'/, /SAVE_PLAN = \{ bucket: '([a-z0-9-]+)'/]) { const mm = s.match(re); if (mm) found.add(mm[1]); }
+    for (const n of CUSTOM_WRAPPERS) for (const a of callArgs(s, n)) (a.match(/'([a-z0-9-]+)'/g) || []).forEach((x) => found.add(x.slice(1, -1)));
+    const qb = s.match(/QUOTA_BUCKET = '([a-z0-9-]+)'/); if (qb) found.add(qb[1]);
+    const sp = s.match(/SAVE_PLANS = \{[\s\S]*?\n\};/); if (sp) (sp[0].match(/bucket: '([a-z0-9-]+)'/g) || []).forEach((x) => found.add(x.match(/'([a-z0-9-]+)'/)[1]));
   }
   return [...found];
+}
+/** أيّ دالّة في api/_lib تنادي checkAndConsumeCustom بسلّة ممرَّرة (لا حرفيّة) غلافٌ يجب أن يراه المستخرج. */
+function unseenWrappers() {
+  const out = [];
+  for (const f of walkJs(path.join(root, 'api'), [])) {
+    if (/_usage\.js$/.test(f)) continue;
+    const s = fs.readFileSync(f, 'utf8');
+    for (const a of callArgs(s, 'checkAndConsumeCustom')) {
+      if (/'[a-z0-9-]+'/.test(a)) continue;
+      const before = s.slice(0, s.indexOf(a));
+      const fn = (before.match(/(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*\{(?![\s\S]*\bfunction\s+[A-Za-z0-9_]+\s*\()/) || [])[1];
+      if (!fn || !CUSTOM_WRAPPERS.includes(fn)) out.push(path.relative(root, f) + ':' + (fn || '?'));
+    }
+  }
+  return out;
 }
 
 test('٦. كلّ سلال checkAndConsumeCustom في MOVE_BUCKETS، واستهلاك السقف ثمّ تغيير الاسم ← الطلب التالي مرفوض لا سقف جديد', async () => {
   const usage = require(rp('api/_lib/_usage.js'));
   const buckets = customBuckets();
-  for (const b of ['search', 'search-classify', 'chat-search', 'design-ideas', 'design-suggest', 'video-download', 'share-img', 'media-save', 'stocks-ai', 'adchat', 'translate', 'tts']) assert.ok(buckets.includes(b), 'المستخرج يرى ' + b);
+  for (const b of ['search', 'search-classify', 'chat-search', 'design-ideas', 'design-suggest', 'video-download', 'share-img', 'media-save-img', 'media-save-pdf', 'media-save-file', 'stocks-ai', 'stocks-pf', 'adchat', 'adimage', 'stamps', 'cx-brief', 'translate', 'tts']) assert.ok(buckets.includes(b), 'المستخرج يرى ' + b);
+  assert.deepEqual(unseenWrappers(), [], 'غلاف لـcheckAndConsumeCustom بسلّة ممرَّرة لا يراه المستخرج');
   const missing = buckets.filter((b) => !usage.MOVE_BUCKETS.includes(b));
   assert.deepEqual(missing, [], 'سلال تتصفّر بتغيير الاسم');
   await auth.putUser('erin', { username: 'erin', points: 10, createdAt: Date.now() });

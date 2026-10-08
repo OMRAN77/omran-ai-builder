@@ -56,9 +56,11 @@ async function checkStudioQuota(token, res) {
 // Consumes one generation from today's allowance. Only call this AFTER
 // Gemini has actually returned a successful image — a failed request must
 // never burn a user's daily quota.
-async function consumeStudio(username) {
+// v-plan-consume-limit: limit = الحدّ المحسوب في الفحص (quota.limit) — لا قراءة ثانية للطبقة، والمتبقّي لا ينزل تحت الصفر.
+async function consumeStudio(username, limit) {
   if (await __unlimitedUser(username)) return Infinity;
-  return quotaTally.consume('studio', username, await planScaledLimit(username, STUDIO_DAILY_LIMIT));
+  const lim = Number(limit) > 0 ? Number(limit) : await planScaledLimit(username, STUDIO_DAILY_LIMIT);
+  return Math.max(0, await quotaTally.consume('studio', username, lim));
 }
 
 module.exports = { checkStudioQuota, consumeStudio, STUDIO_DAILY_LIMIT };

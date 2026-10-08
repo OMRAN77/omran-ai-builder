@@ -49,14 +49,17 @@ mock('api/_lib/image-judge.js', { judgeBest: async () => 'a', duoEnabled: () => 
 
 /* الشبكة: كلّ نداء خارجيّ يُعدّ، والمولّد يأخذ وقتًا تجري خلاله الطلبات الأخرى. */
 let fetchCalls = 0;
+let onGenerate = null; // يُنادى مع كلّ نداء خارجيّ — «أثناء التوليد» (عطل قراءة أو باقة تنتهي بين الفحص والاستهلاك)
 const realFetch = global.fetch;
 const okJson = (obj) => ({ ok: true, status: 200, json: async () => obj, text: async () => JSON.stringify(obj) });
 global.fetch = async (url) => {
   fetchCalls++;
   const u = String(url);
+  if (onGenerate) onGenerate(u);
   for (let i = 0; i < 15; i++) await tick();
   if (u.includes('generativelanguage')) return okJson({ candidates: [{ content: { parts: [{ inlineData: { data: 'QUJD', mimeType: 'image/png' } }] } }] });
-  if (u.includes('api.openai.com')) return okJson({ data: [{ b64_json: 'QUJD' }] });
+  // صور OpenAI (data) ونصّه (choices) — خطّة المقاولات النصّيّة تُنقذ عبره فيمرّ construction-create بـ200
+  if (u.includes('api.openai.com')) return okJson({ data: [{ b64_json: 'QUJD' }], choices: [{ message: { content: 'تمام' } }] });
   if (u.includes('api.anthropic.com')) return okJson({ content: [{ type: 'text', text: 'تمام' }] });
   if (u.includes('api.tavily.com')) return okJson({ results: [], images: [], answer: '' });
   return { ok: false, status: 404, json: async () => ({}), text: async () => '' };
@@ -103,9 +106,9 @@ const CUSTOM_TOOLS = [
   { name: 'محادثة الإعلانات', bucket: 'adchat', base: 30, file: 'adchat.js', body: (t) => ({ token: t, messages: [{ role: 'user', content: 'إعلان سيّارة للبيع' }] }),
     refused: (o) => o.code === 429 && o.body.error === 'limit', msg: limitMsg },
   { name: 'صورة الإعلان', bucket: 'adimage', base: 8, file: 'adimage.js', body: (t) => ({ token: t, title: 'لاندكروزر ٢٠٠٤', price: '49000', ratio: 'tall' }),
-    refused: (o) => o.code === 429 && o.body.error === 'limit', msg: limitMsg },
+    refused: (o) => o.code === 429 && o.body.error === 'limit', msg: limitMsg, dailyLimit: true },
   { name: 'الطوابع', bucket: 'stamps', base: 8, file: 'stamps.js', body: (t) => ({ token: t, imageBase64: IMG, mimeType: 'image/jpeg', names: ['سارة'] }),
-    refused: (o) => o.code === 429 && o.body.error === 'limit', msg: limitMsg },
+    refused: (o) => o.code === 429 && o.body.error === 'limit', msg: limitMsg, dailyLimit: true },
   { name: 'البحث الحيّ', bucket: 'search', base: 40, file: 'search.js', body: (t) => ({ token: t, query: 'سعر الذهب اليوم' }),
     refused: (o) => o.code === 402, msg: limitMsg },
   { name: 'البحث العميق', bucket: 'search', base: 40, file: 'search.js', body: (t) => ({ token: t, query: 'سعر الذهب اليوم', deep: true }),
@@ -147,7 +150,10 @@ async function probeQuota(tool, user, expected) {
   const a = await call(tool.file, tool.body(tok(user)));
   assert.ok(!isLimitRefusal(a) && a.code !== 401, tag + ': رُفض تحت الحدّ — ' + a.code + ' ' + JSON.stringify(a.body).slice(0, 120));
   assert.ok(incrLog.some(([key, v]) => key === k && v === expected), tag + ': لم يُحجز المقعد ' + expected);
-  if (a.code === 200 && a.body.dailyLimit !== undefined) assert.equal(a.body.dailyLimit, expected, tag + ': الردّ يحمل الحدّ المحسوب');
+  // v-plan-caps-r2: إلزاميّ — كلّ أدوات العدّاد الذرّيّ تولّد هنا بـ200، والواجهة تعرض remaining / dailyLimit
+  assert.equal(a.code, 200, tag + ': لم يولّد — ' + JSON.stringify(a.body).slice(0, 120));
+  assert.equal(a.body.dailyLimit, expected, tag + ': الردّ يحمل الحدّ المحسوب');
+  assert.ok(Number.isInteger(a.body.remaining) && a.body.remaining >= 0, tag + ': المتبقّي ' + a.body.remaining);
   store.set(k, String(expected));
   const n = fetchCalls;
   const b = await call(tool.file, tool.body(tok(user)));
@@ -163,6 +169,10 @@ async function probeCustom(tool, user, expected) {
   const a = await call(tool.file, tool.body(tok(user)));
   assert.ok(!tool.refused(a), tag + ': رُفض تحت الحدّ — ' + a.code + ' ' + JSON.stringify(a.body).slice(0, 120));
   assert.equal(store.get(k), String(expected), tag + ': لم يُعدّ الطلب');
+  if (tool.dailyLimit) { // v-plan-caps-r2: ردّ النجاح يحمل الحدّ المطبَّق لا الأساس الثابت
+    assert.equal(a.code, 200, tag + ': لم يولّد — ' + JSON.stringify(a.body).slice(0, 120));
+    assert.equal(a.body.dailyLimit, expected, tag + ': dailyLimit في الردّ');
+  }
   const b = await call(tool.file, tool.body(tok(user)));
   assert.ok(tool.refused(b), tag + ': مرّ فوق الحدّ — ' + b.code + ' ' + JSON.stringify(b.body).slice(0, 120));
   assert.equal(store.get(k), String(expected), tag + ': الرفض يُرجع زيادته');
@@ -249,4 +259,36 @@ test('٧. عطل قراءة سجلّ الحساب = الحدّ الأساس (ل�
   const t0 = Date.now();
   await probeQuota(QUOTA_TOOLS[0], 'ghost-user', 3);
   assert.ok(Date.now() - t0 < 1000, 'قراءة الطبقة لسجلّ غائب أخذت ' + (Date.now() - t0) + 'ms');
+});
+
+test('٨. v-plan-consume-limit: الاستهلاك بالحدّ المحسوب في الفحص — عطل القراءة أو انتهاء الباقة أثناء التوليد لا يجعل المتبقّي سالبًا', async () => {
+  const now = Date.now();
+  for (const tool of QUOTA_TOOLS) {
+    const user = 'mid-' + tool.ns + '-' + tool.file.replace(/\W/g, '');
+    await auth.putUser(user, { username: user, plan: 'pro', planUpdatedAt: now - DAY, createdAt: now - 60 * DAY });
+    const expected = scaled(tool.base, 'pro');
+    for (const flip of ['read-fails', 'plan-ends']) {
+      const k = quotaKey(tool.ns, user);
+      store.set(k, String(expected - 1));
+      const userKey = auth.userPath(user);
+      const saved = store.get(userKey);
+      let reads = 0;
+      onGenerate = () => {
+        if (flip === 'read-fails') failRead.add(userKey);
+        else { const r = JSON.parse(saved); r.planUpdatedAt = now - 40 * DAY; store.set(userKey, JSON.stringify(r)); }
+      };
+      const realGet = kvImpl.kvGetJSON;
+      kvImpl.kvGetJSON = async (key) => { if (key === userKey) reads++; return realGet(key); };
+      let a;
+      try { a = await call(tool.file, tool.body(tok(user))); } finally {
+        onGenerate = null; failRead.delete(userKey); store.set(userKey, saved); kvImpl.kvGetJSON = realGet;
+      }
+      const tag = tool.name + ' · ' + flip;
+      assert.equal(a.code, 200, tag + ': ' + JSON.stringify(a.body).slice(0, 120));
+      assert.equal(a.body.remaining, 0, tag + ': كان الأساس − المحجوز (سالبًا)');
+      assert.equal(a.body.dailyLimit, expected, tag);
+      assert.equal(store.get(k), String(expected), tag + ': العدّاد = ما ولّد');
+      if (flip === 'plan-ends') assert.ok(reads <= 2, tag + ': ' + reads + ' قراءات لسجلّ الحساب — الاستهلاك أعاد قراءة الطبقة');
+    }
+  }
 });

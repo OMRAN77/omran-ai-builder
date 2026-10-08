@@ -28,6 +28,7 @@ module.exports = async (req, res) => {
     const keys = getKeys();
     if (!keys.length) { cached = { at: Date.now(), best: 0, keys: 0 }; return owner ? res.status(200).json({ credits: 0, keys: 0 }) : res.status(200).json({ enough: false }); }
     let best = 0;
+    let answered = false; // v-balance-unknown: هل أجاب أيّ مفتاح ok؟
     for (const key of keys) {
       try {
         const r = await fetch(RUNWAY_API_BASE + '/v1/organization', {
@@ -38,9 +39,17 @@ module.exports = async (req, res) => {
         });
         if (!r.ok) continue;
         const data = await r.json();
+        answered = true;
         const c = Number(data && data.creditBalance) || 0;
         if (c > best) best = c;
       } catch (e) { /* try next key */ }
+    }
+    // v-balance-unknown (المراجعة الثانية): لم يُجب أيّ مفتاح (429/5xx/شبكة) — الصفر هنا جهل لا رصيد: كان يُخزَّن ستّين ثانية
+    // فيأخذ كلّ غير مالك {enough:false} ويفشل كلّ فيلم. الآن لا يُخزَّن، وغير المالك يمرّ (أفضل جهد كما كان)، والمالك credits:-1.
+    if (!answered) {
+      if (!owner) { res.status(200).json({ enough: true }); return; }
+      res.status(200).json({ credits: -1, keys: keys.length });
+      return;
     }
     cached = { at: Date.now(), best, keys: keys.length };
     if (!owner) { res.status(200).json({ enough: best >= needed }); return; }

@@ -161,7 +161,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const remaining = await consumeConstruction(quota.username);
+    const remaining = await consumeConstruction(quota.username, quota.limit);
     res.status(200).json({
       imageBase64: outB64,
       mimeType: outMime,

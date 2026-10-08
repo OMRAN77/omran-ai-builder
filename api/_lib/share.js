@@ -220,3 +220,4 @@ module.exports = async (req, res) => {
   }
 };
 module.exports.createShare = createShare; // ليستدعيها وكيل عمران بلا نداء HTTP على نفسه
+module.exports.displayNameOf = displayNameOf; // v-agent-publish-owner: الوكيل يمرّر اسم العرض من السجلّ كالمسار العامّ
