@@ -149,7 +149,7 @@ test('٧. نافذة الدفع تقول الدرهم لمن يدفع به — �
 });
 
 test('٨. الأسلاك: Stripe وورقة المحفظة والعمليّة بالعملة نفسها، وPayPal بالدولار، والحزمة مبنيّة', () => {
-  assert.match(a6, /autoRenew: !!\(document\.getElementById\('checkoutAutoRenew'\) \|\| \{\}\)\.checked, currency: checkoutCurrency\(\) \}/);
+  assert.match(a6, /autoRenew: autoRenewPref\(\),[^}]*currency: checkoutCurrency\(\) \}/); // v-autorenew-one
   const wallet = a6.slice(a6.indexOf('async function setupWalletPaymentRequest('), a6.indexOf('async function handleWalletPaymentMethod('));
   assert.match(wallet, /const amount = cur === 'aed' \? CHECKOUT_AED_FILS\[plan\] : CHECKOUT_PLAN_AMOUNTS\[plan\];/);
   assert.match(wallet, /currency: cur,/);

@@ -13295,10 +13295,6 @@ function openCheckout(plan){
     return;
   }
   checkoutCurrentPlan = plan;
-  const arRow = document.getElementById('checkoutAutoRenewRow');
-  const arBox = document.getElementById('checkoutAutoRenew');
-  if (arBox) arBox.checked = autoRenewPref(); // v-autorenew-toggle: يتبع زرّ أوّل الصفحة (الافتراضيّ متوقّف كما كان)
-  if (arRow) arRow.style.display = /^pack\d+$/.test(String(plan)) ? 'none' : 'flex';
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
   const overlay = document.getElementById('checkoutModalOverlay');
@@ -13351,7 +13347,7 @@ async function startStripeCheckout(){
     const r = await fetch('/api/account?action=create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token'), autoRenew: !!(document.getElementById('checkoutAutoRenew') || {}).checked, currency: checkoutCurrency() }),
+      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token'), autoRenew: autoRenewPref(), /* v-autorenew-one: زرّ المحادثة الواحد يحكم كلّ شراء (الرزم دفعة واحدة دائمًا في الخادم) */ currency: checkoutCurrency() }),
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
