@@ -200,3 +200,4 @@ module.exports.getAccessToken = getAccessToken;
 module.exports.baseUrl = baseUrl;
 module.exports.matchOrder = matchOrder;
 module.exports.RETIRED_SINCE = RETIRED_SINCE; // v-media-merge — للاختبار
+module.exports.grantablePlan = grantablePlan; // v-media-merge: مسار الاسترداد البديل (pay-refund paypalLegacy) يحوّل الخطّة كما حوّلها المنح

@@ -82,6 +82,8 @@ global.fetch = async (url, init) => {
   if (/paypal\.com$/.test(u.hostname)) {
     if (u.pathname === '/v1/oauth2/token') return reply(200, { access_token: 'A' });
     if (method === 'POST' && u.pathname === '/v2/checkout/orders') return reply(201, { id: 'PP_' + (++net.seq) });
+    const cm = u.pathname.match(/^\/v2\/payments\/captures\/([^/]+)$/); // مسار الاسترداد البديل (paypalLegacy)
+    if (cm) { const c = (net.captures || {})[decodeURIComponent(cm[1])]; return c ? reply(200, c) : reply(404, { message: 'not found' }); }
     const m = u.pathname.match(/^\/v2\/checkout\/orders\/([^/]+)(\/capture)?$/);
     if (m) { const o = net.orders[decodeURIComponent(m[1])]; return o ? reply(200, o) : reply(404, { message: 'not found' }); }
     return reply(404, { message: 'unknown' });
@@ -591,4 +593,19 @@ test('١٧. وسم الصورة لمشترك «صور وفيديو» يسمّي 
   assert.equal(line('', { mediaTag: { q: 'high', left: 10, pool: 'image' } }), '\n\n🏷️ H · IMG: 10 صورة');
   assert.equal(line('', { mediaTag: { q: 'high', left: 10 } }), '\n\n🏷️ H · IMG: 10 صورة', 'ردّ بلا pool كما كان');
   assert.ok(read('js/app.bundle.js').includes("t(mt.pool === 'mix' ? 'mixLeft' : 'mediaLeftImg')"), 'الحزمة مبنيّة');
+});
+
+test('١٨. استرداد PayPal لطلب img_ بعد الإيقاف ضاع سجلّ منحه: المسار البديل يبني السجلّ بالمدموجة الممنوحة فيسحبها (كان custom_id الخامّ img_max فلا يُسحب شيء)', async () => {
+  const pr = require(rp('api/_lib/pay-refund.js'));
+  await fresh('eve9');
+  net.orders.PP_lost = { id: 'PP_lost', status: 'COMPLETED', create_time: new Date().toISOString(), purchase_units: [{ reference_id: 'eve9', custom_id: 'img_max', payments: { captures: [{ id: 'CAP_lost', amount: { value: '102.11' }, custom_id: 'img_max' }] } }] };
+  const r = await pp({ action: 'capture', orderId: 'PP_lost', token: tok('eve9') });
+  assert.equal(r.body.planGranted, 'media_max');
+  assert.equal(mixLeft('eve9'), 12500);
+  for (const k of [...store.keys()]) if (/^(payrec|payref):/.test(k) && /PP_lost|CAP_lost/.test(k)) store.delete(k); // تعذّر recordGrant («لا يرمي»)
+  net.captures = Object.assign(net.captures || {}, { CAP_lost: { id: 'CAP_lost', create_time: new Date().toISOString(), amount: { currency_code: 'USD', value: '102.11' }, supplementary_data: { related_ids: { order_id: 'PP_lost' } } } });
+  const out = await pr.paypalEvent({ id: 'WH-lost', event_type: 'PAYMENT.CAPTURE.REFUNDED', resource: { id: 'RF_lost', amount: { currency_code: 'USD', value: '102.11' }, seller_payable_breakdown: { total_refunded_amount: { currency_code: 'USD', value: '102.11' } }, links: [{ rel: 'up', href: 'https://api-m.paypal.com/v2/payments/captures/CAP_lost' }] } });
+  assert.equal(out.status, 'done', JSON.stringify(out));
+  assert.ok(!(mixLeft('eve9') > 0), 'رصيد المدموجة سُحب: ' + mixLeft('eve9'));
+  assert.equal(media.mediaActive(await user('eve9'), 'mix'), false, 'الباقة سقطت');
 });

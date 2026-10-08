@@ -521,7 +521,8 @@ async function paypalLegacy(captureId, ctx) {
   const order = await get('/v2/checkout/orders/' + encodeURIComponent(orderId));
   const m = order ? pp.matchOrder(order) : null;
   if (!m || !m.plan) return null;
-  const cand = { field: 'lastPaypalOrderId', id: orderId, md: { username: m.ref, plan: m.plan } };
+  // v-media-merge (المراجعة المعاكسة): طلب img_/vid_ بعد الإيقاف مُنح media_<الدرجة> (grantablePlan) — يُبنى سجلّه بالخطّة الممنوحة لا custom_id الخامّ.
+  const cand = { field: 'lastPaypalOrderId', id: orderId, md: { username: m.ref, plan: pp.grantablePlan(m.plan, order) } };
   const found = await legacyRecord(cand, { approxAt: Date.parse(cap.create_time) || 0, amount: cents(cap.amount), currency: 'usd', refs: [captureId] });
   if (!found && ctx.block(cents(cap.amount))) await blockGrant(cand, ctx); // الطلب يبقى COMPLETED بعد الاسترداد: claim كان سيشحنه
   return found;
