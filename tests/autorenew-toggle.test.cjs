@@ -71,13 +71,14 @@ test('٤. بلا اشتراك = subs 0 بلا تعديل؛ عطل سترايب =
 test('٥. العميل: الزرّ آخر «خطط الأسعار»، يتبعه الشراء الجديد، ومربوط بالموجّه، والنصوص بالـ١٤ لغة', () => {
   const part = read('js/partials-settings.js');
   const sec = part.indexOf('id="pricingSectionContent"');
-  // المالك بعدها: «خلّها آخر شي» — آخر القسم قبل روابط الشروط، ببطاقة الخطوط نفسها (ftCard)
+  // v-autorenew-one (المالك ٨ أكتوبر «خلّه واحد فقط في المحادثة ويكون لهم كلّهم»): كان آخر القسم تحت كلّ التبويبات — صار في تبويب المحادثة وحده
   const at = part.indexOf('id="chkAutoRenew"', sec);
-  assert.ok(sec > 0 && at > part.indexOf('id="pricingWalletRow"', sec) && at < part.indexOf('data-i18n="termsLink"', sec), 'آخر القسم');
+  const chatTab = part.indexOf('<div class="priceTab" data-tab="chat">', sec);
+  assert.ok(sec > 0 && chatTab > 0 && at > chatTab && at < part.indexOf('data-tab="media" id="mediaPlansBox"', sec), 'داخل تبويب المحادثة');
   assert.match(part, /<label id="autoRenewRow" class="ftCard"/);
   for (const f of ['js/app-06-checkout.js', 'js/app.bundle.js']) {
     const s = read(f);
-    assert.ok(s.includes('if (arBox) arBox.checked = autoRenewPref();'), f);
+    assert.ok(s.includes('autoRenew: autoRenewPref(),'), f + ': الشراء يتبع الزرّ الواحد');
     assert.ok(s.includes("fetch('/api/account?action=auto-renew'"), f);
     assert.ok(s.includes('try { syncAutoRenewUI(); }'), f);
   }
@@ -90,5 +91,16 @@ test('٥. العميل: الزرّ آخر «خطط الأسعار»، يتبعه
     for (const k of keys) assert.ok(new RegExp('"?' + k + '"?: "').test(s), lg + ':' + k);
     assert.match(s, /"?autoRenewStopped"?: "[^"]*\{date\}/, lg);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=693'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'));
+});
+
+test('٦. v-autorenew-one: خيار تجديد واحد فقط في التطبيق — زرّ تبويب المحادثة، ولا مربّع في نافذة الدفع، ويحكم كلّ الباقات', () => {
+  const part = read('js/partials-settings.js');
+  assert.equal((part.match(/id="chkAutoRenew"/g) || []).length, 1, 'زرّ واحد');
+  assert.equal(part.includes('checkoutAutoRenew'), false, 'لا مربّع تجديد في نافذة الدفع');
+  const a6 = read('js/app-06-checkout.js');
+  assert.equal(a6.includes("getElementById('checkoutAutoRenew"), false, 'لا قراءة لمربّع محذوف');
+  assert.match(a6, /body: JSON\.stringify\(\{ plan: checkoutCurrentPlan,[^}]*autoRenew: autoRenewPref\(\),/, 'كلّ شراء بالبطاقة (محادثة/وسائط/مها) يأخذ الزرّ الواحد');
+  // الخادم: الرزم دفعة واحدة دائمًا مهما كان الزرّ
+  assert.match(read('api/_lib/create-checkout-session.js'), /const recurring = !planInfo\.pack && autoRenew === true;/);
 });

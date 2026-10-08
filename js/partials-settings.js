@@ -498,7 +498,17 @@
       <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro · 250 رسالة يوميًا</li><li data-i18n="plMaxVoice">حتّى 213 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">صور وفيديو ضمن الباقة</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
-  </div></div>
+  </div>
+  <!-- v-autorenew-toggle (المالك ٢ أكتوبر «زرّ يفتح ويغلق: خصم شهريّ ولا عاديّ»)؛ v-autorenew-one (المالك ٨ أكتوبر «خلّه واحد فقط في المحادثة ويكون لهم كلّهم»):
+       زرّ واحد في تبويب المحادثة وحده، يحكم كلّ الاشتراكات (المحادثة والوسائط ومها) — لا مربّع ثانٍ في نافذة الدفع -->
+  <label id="autoRenewRow" class="ftCard" style="display:flex; align-items:center; gap:10px; margin-top:14px; cursor:pointer;">
+    <span style="display:flex; flex-direction:column; gap:3px; flex:1;">
+      <span data-i18n="autoRenewLabel" style="font-size:14px; font-weight:700;">الخصم الشهري التلقائي</span>
+      <span id="autoRenewHint" style="font-size:12px; color:var(--muted);"></span>
+    </span>
+    <input type="checkbox" id="chkAutoRenew" role="switch" style="width:20px; height:20px; margin:0; accent-color:#c9a227; cursor:pointer;">
+  </label>
+  </div>
   <!-- v-media-merge (قرار المالك ٨ أكتوبر): الصور والفيديو باقة واحدة برصيد واحد — أمثلة تقريبيّة لا حصص. img_/vid_ توقّف بيعها؛
        المشترك القائم فيها يرى متبقّيه هنا (mediaPlanStatus) حتّى تنتهي نافذته -->
   <div class="priceTab" data-tab="media" id="mediaPlansBox" style="display:none;">
@@ -575,14 +585,6 @@
     </div>
   </div>
   
-  <!-- v-autorenew-toggle (المالك ٢ أكتوبر «زرّ يفتح ويغلق في أوّل الصفحة: خصم شهريّ ولا عاديّ») -->
-  <label id="autoRenewRow" class="ftCard" style="display:flex; align-items:center; gap:10px; margin-top:14px; cursor:pointer;">
-    <span style="display:flex; flex-direction:column; gap:3px; flex:1;">
-      <span data-i18n="autoRenewLabel" style="font-size:14px; font-weight:700;">الخصم الشهري التلقائي</span>
-      <span id="autoRenewHint" style="font-size:12px; color:var(--muted);"></span>
-    </span>
-    <input type="checkbox" id="chkAutoRenew" role="switch" style="width:20px; height:20px; margin:0; accent-color:#c9a227; cursor:pointer;">
-  </label>
   <div style="margin-top:10px; display:flex; gap:14px; font-size:12px;">
     <a href="/terms.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="termsLink">الشروط والأحكام</a>
     <a href="/privacy.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="privacyLink">سياسة الخصوصية</a>
@@ -767,11 +769,6 @@
           <span style="font-size:20px;">💳</span>
           <span data-i18n="checkoutCardOption">بطاقة</span>
         </button>
-        <!-- v-checkout-autorenew: الدفع يدويّ لشهر واحد افتراضيًّا؛ التجديد الشهريّ التلقائيّ بالبطاقة لمن يفعّله. -->
-        <label id="checkoutAutoRenewRow" style="display:flex; align-items:center; gap:6px; margin-top:-4px; padding:0 4px; font-size:12px; color:var(--muted); cursor:pointer;">
-          <input type="checkbox" id="checkoutAutoRenew" style="width:14px; height:14px; margin:0; accent-color:#c9a227; cursor:pointer;">
-          <span data-i18n="checkoutAutoRenew">🔁 تجديد تلقائيّ كلّ شهر بالبطاقة</span>
-        </label>
 
         <div id="paypalButtonContainer" style="min-height:45px;"></div>
         <button type="button" id="paypalFallbackBtn" onclick="startPaypalCheckout()" style="display:none; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:10px; border:none; background:#0070ba; color:#fff; cursor:pointer; font-size: var(--fs-3); font-weight:600;">
