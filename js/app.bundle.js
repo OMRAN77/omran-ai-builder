@@ -7511,7 +7511,9 @@ function renderMessages(keepScroll){
       // v-badge-white (طلب المالك): شارة الموديل فوق الردّ بالأبيض (كالكتابة والأرقام)،
       // لا بلون المزوّد — يبقى لون المزوّد لتمييز «اسأل الكل» فقط.
       if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
-      if(isAskAllReply || (__ownerBadge && __plbl)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ») — والمالك يراه دائمًا
+      /* v-owner-solo (المالك ٨ أكتوبر على لقطة «claude-haiku… · كاش ٠ · جديد 34.5k · خرج 34 ⚡»: «أريد المحادثة فقط، أيّ شي زائد ما أريده»):
+         شارة الموديل والتوكنات لا تظهر فوق ردود المحادثة — تبقى لشارة الوكيل (شرارته ✦) و«اسأل الكل». */
+      if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
@@ -15231,8 +15233,14 @@ async function callProviderAI(providerKey, messages, onDelta){
   if(effective === 'deepseek') return await callDeepSeek(messages, onDelta);
   if(effective === 'cohere') return await callCohere(messages, onDelta);
   /* v-kimi: Kimi على مسار الأدوات وحده (chat.js → Moonshot مباشرةً أو عبر الوسيط). كان أيّ اسم غير معروف يسقط إلى GPT هنا
-     فيُكتب الردّ باسم Kimi وهو من GPT — يُرمى فيكمل الاحتياط بأسماء من ردّ فعلًا. */
-  if(effective === 'kimi') throw new Error('kimi: tools path only');
+     فيُكتب الردّ باسم Kimi وهو من GPT.
+     v-owner-solo (المالك ٨ أكتوبر): الرمي كان يُسلّم الدور لكلود في «صلّح/خطأ» ودور الاستئذان — الآن هذا المسار يمرّ بالخادم نفسه
+     لـKimi (بلا رسالة النظام الثابتة الأولى، كمسار الأدوات في app-09)، فيجيب Kimi أو يُكتب سبب فشله. */
+  if(effective === 'kimi'){
+    if(typeof window.callChatWithTools !== 'function') throw new Error('kimi: tools path only');
+    const __km = await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), onDelta, 'kimi');
+    return __km.reply;
+  }
   return await callOpenAILike(messages, onDelta);
 }
 
@@ -15320,7 +15328,10 @@ function __idleGuard(promise, idleMs, getLast){
                  function(e){ if(!done){ done = true; clearInterval(timer); reject(e); } });
   });
 }
-async function callAIWithFallback(messages, onDelta, preferredList){
+async function callAIWithFallback(messages, onDelta, preferredList, opts){
+  /* v-owner-solo (المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه، وإذا ما فيه رصيد يكتبلي»): solo = المزوّد الأوّل وحده — لا
+     احتياط ولا تحويل بعد ردّ رفض، وفشله يُرمى باسمه وسببه فيظهر في الفقاعة. */
+  const __solo = !!(opts && opts.solo);
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
   try{
@@ -15337,7 +15348,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   const __sel = localStorage.getItem('aiapp_provider') || 'openai';
   const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
-  const order = [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
+  const order = __solo ? head.slice(0, 1) : [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
   let lastErr = null;
   let firstErr = null;     // v-img-err: خطأ المزوّد الأوّل (المطلوب) — هو السبب الحقيقيّ حين يفشل الجميع
   let firstProv = '';
@@ -15360,7 +15371,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       const reply = await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
-      if(isRefusalReply(reply) && refusalTries < 2){
+      if(!__solo && isRefusalReply(reply) && refusalTries < 2){
         if(!firstRefusal) firstRefusal = { reply, providerKey };
         refusalTries++;
         continue; // 🛡️ تحويل صامت للمزود التالي — بدون أي رسالة للمستخدم
@@ -15383,6 +15394,16 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       // نسمّي من فشل ولماذا. الرسالة العامة كانت تترك المستخدم يرى مزوّدًا
       // غير الذي اختاره بلا تفسير — فيظنّ أن الاختيار معطّل، والحقيقة أن
       // المزوّد المختار فشل وأُخفي فشله.
+      if(__solo){
+        // v-owner-solo: لا مزوّد بعده؛ الرسالة قصيرة كرسالة الخادم — «ما عندي رصيد» أو «ما قدرت أردّ الحين — خطأ N».
+        if(err && !err.ownerStop){
+          try{
+            const __txt = String(err.upstreamText || '') + ' ' + String(err.message || '');
+            err.message = (err.status === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(__txt)) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين — خطأ ' + (err.status || '؟'));
+          }catch(e){ __swallow(e, 'fallback:solo-msg'); }
+        }
+        throw err;
+      }
       try{
         if(window.__chatStatus){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
@@ -25856,13 +25877,14 @@ DESIGN RULES (non-negotiable):
         let __ct = null;
         if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __effProv); }
-          catch(e){ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; /* v-plans-gate: حدّ الباقة لا يتجاوزه مزوّد آخر */ __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
+          catch(e){ if(e && e.ownerStop) throw e; /* v-owner-solo: فشل مزوّد المالك لا يتجاوزه مزوّد آخر */ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; /* v-plans-gate: حدّ الباقة لا يتجاوزه مزوّد آخر */ __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
              بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
              النصر واخترع نتائج). الآن الاحتياط يبقى داخل مسار الأدوات نفسه —
              نفس البحث الحي الحقيقي — قبل أي هبوط للمسار القديم. */
-          if(!__ct && !(imageAttachments.length && __effProv === 'claude')){
+          /* v-owner-solo (المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه»): للمالك لا فريق بديل — مزوّده وحده، وفشله يُكتب له. */
+          if(!__ct && !__ownerFree && !(imageAttachments.length && __effProv === 'claude')){
             const __toolsTeam = ['openai', 'deepseek', 'gemini'].filter(p => p !== __effProv && TOOL_PROVIDERS.indexOf(p) !== -1).slice(0, 2);
             for(const __tp of __toolsTeam){
               try{
@@ -25878,7 +25900,7 @@ DESIGN RULES (non-negotiable):
           }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
-        else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
+        else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
         window.__claudeThinking = false;
@@ -25982,6 +26004,8 @@ DESIGN RULES (non-negotiable):
          خطأ المسار الأوّل معه. */
       var __primaryErr = '';
       try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
+      /* v-owner-solo (المالك: «أيّ شي زائد ما أريده»): للمالك رسالة الفشل وحدها — بلا سطر المسار الأوّل التقنيّ. */
+      if(__primaryErr && typeof omranOwnerUi === 'function' && omranOwnerUi()) __primaryErr = '';
       cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{
@@ -37470,6 +37494,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var dec = new TextDecoder();
     var buf = '', full = '', serverErr = null;
     var __planLimit = false; /* v-plans-gate: الخادم علّم الخطأ «حدّ الباقة» (limit) — المستدعي يفتح الباقات ولا يجرّب غيره */
+    var __ownerStop = false; /* v-owner-solo: مزوّد المالك المختار فشل والخادم كتب السبب — المستدعي يعرضه ولا يجرّب غيره */
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
@@ -37524,6 +37549,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         }
         if (ev.error) serverErr = ev.error;
         if (ev.error && ev.limit === true) __planLimit = true;
+        if (ev.error && ev.ownerStop === true) __ownerStop = true;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
         if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
         /* v-oa-models: موديل مختار رفضه المفتاح → يُمسح من الاختيار المحفوظ (يعود للافتراضيّ) فلا يتكرّر الرفض مع كلّ رسالة */
@@ -37533,7 +37559,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     noteEnd();
 
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم — إلّا حدّ الباقة: لا مسار آخر يتجاوزه.
-    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__planLimit) __er.planLimit = true; throw __er; }
+    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er; }
     var __p = provider || 'claude';
     var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log };

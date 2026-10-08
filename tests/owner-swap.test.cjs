@@ -68,7 +68,7 @@ async function run(handler, user, body, route) {
 const viaClaudeDirect = (u) => /api\.anthropic\.com/.test(u);
 const viaOR = (u) => /openrouter\.ai\/api\/v1\/messages/.test(u);
 
-test('١. المحادثة: كلود المختار بلا رصيد → الدور نفسه بأدواته على كلود عبر الوسيط، وسطر السبب تحت الردّ للمالك', async () => {
+test('١. المحادثة: كلود المختار بلا رصيد → الدور نفسه بأدواته على كلود عبر الوسيط، والردّ وحده (v-owner-solo: بلا سطر سبب)', async () => {
   const { calls, text } = await run(chat, 'omran', { provider: 'claude', messages: [{ role: 'user', content: 'اقرأ ملفّ مها في الجيت هوب' }] },
     (u) => (viaClaudeDirect(u) ? credit() : viaOR(u) ? sse('قرأتُ الملفّ.') : new Response('{}', { status: 404 })));
   const direct = calls.find((c) => viaClaudeDirect(c.url));
@@ -78,8 +78,7 @@ test('١. المحادثة: كلود المختار بلا رصيد → الدو
   assert.match(or.body.model, /^anthropic\/claude/, 'كلود نفسه عبر الوسيط لا Gemini: ' + or.body.model);
   const names = (or.body.tools || []).map((t) => t.name);
   for (const n of ['read_github', 'web_search', 'write_github', 'delegate_code_task', 'check_code_task', 'read_app_errors']) assert.ok(names.includes(n), 'أداة ' + n + ' باقية');
-  assert.match(text, /قرأتُ الملفّ\./);
-  assert.match(text, /🔧 للمالك فقط — Anthropic · [^\n]* فشل: لا رصيد كافٍ \(Your credit balance is too low[^)]*\) · أجاب بدله: OpenRouter · anthropic\/claude/);
+  assert.equal(text, 'قرأتُ الملفّ.', 'المحادثة فقط — أمر المالك ٨ أكتوبر «أيّ شي زائد ما أريده»');
 });
 
 test('٢. غير المالك: لا سطر سبب ولا أدوات المالك (كما كان)', async () => {
