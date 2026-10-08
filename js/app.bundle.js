@@ -42882,15 +42882,16 @@ if(document.readyState === 'loading'){
   window.omranOpenPlans = openPlans;
   window.__omranPlansGate = { classify: classify, tabFor: tabFor, pickNotice: pickNotice, checkSubs: checkSubs, showWhy: showWhy };
 })();
-/* v-gen-wait (أمر المالك: «الموجود فقط كلام يقول جاري توليد الصوره من غير اي شي —
-   عطني فكره ذهبيه قويه ينتظر التوليد»، وبعد معاينة النموذج: «نفس الحركه على توليد
+/* v-gen-wait (أمر المالك: «الموجود فقط كلام يقول جاري توليد الصوره
+   من غير اي شي — عطني فكره ذهبيه قويه ينتظر التوليد»، وبعد معاينة النموذج: «نفس الحركه على توليد
    الصور اللي في المحادثه»، ثمّ: «الميزه سويتها في الأنماط والفيديو والازياء الاستايل»):
    بطاقة «استوديو التوليد» الذهبيّة — إطار نابض يدور لمعانه، شيمر يكنس الداخل كأنّ
    العمل يتبلور، نسبة % بمنحنى يتسارع ثمّ يهدأ ولا يتجاوز ٩٢٪ أبدًا (النتيجة تستبدل
    البطاقة فور وصولها فلا تعلق)، مراحل تتبدّل، وعدّاد ثوانٍ مع توقّع صريح للوقت.
 
-   مساران: فقاعات توليد الصور في المحادثة (نصوص «🎨 أرسم لك…»)، ولوحات الأدوات —
-   الفيديو #videoMakerStatus، أنماط الصور #portraitStyleStatus، الأزياء #fashionAiStatus.
+   مسارات ثلاثة: فقاعات توليد الصور في المحادثة (نصوص «🎨 أرسم لك…»)، وفيديو المحادثة
+   (سطر «🎬 جاري إنشاء الفيديو…» في شريط الحالة داخل فقاعة التفكير — v-gen-wait-chatvideo)،
+   ولوحات الأدوات — الفيديو #videoMakerStatus، أنماط الصور #portraitStyleStatus، الأزياء #fashionAiStatus.
    لكلّ أداة مراحلها ومدّتها: الفيديو ~دقيقتين ومقاس عريض ١٦/١٠ مع شريط فلم يجري،
    والأنماط ~٤٥ ثانية، والأزياء ~٤٠ ثانية. اللوحات تُرصد ببادئات حالات الانشغال
    (للفيديو 🚀⏳🎬🎥🎨🎙️🎚️🔗✍️، للأنماط ⏳🎞️، للأزياء 🎨 و«جاري تطبيق») فلا تتأثّر
@@ -42911,7 +42912,7 @@ if(document.readyState === 'loading'){
      مع كلّ اللغات، وبادئات التمّ/الخطأ (✅❌⚠️🔑⛔) منفصلة عنها فلا تصطدم. */
   var PANELS = [
     { id: 'video', sel: '#videoMakerStatus', kind: 'video',
-      busy: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️'] },
+      busy: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳'] },
     { id: 'styles', sel: '#portraitStyleStatus', kind: 'styles',
       busy: ['⏳', '🎞️'] },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
@@ -43083,6 +43084,12 @@ if(document.readyState === 'loading'){
     return root;
   }
 
+  /* v-gen-wait-chatvideo (المالك: «التوليد موجود في الصور لكن الفيديوات غير موجود»): فيديو
+     المحادثة لا يمرّ بفقاعة .msg-text ولا بلوحة أداة — مرحلته تُكتب في شريط الحالة داخل
+     فقاعة التفكير («🎬 جاري إنشاء الفيديو…») فبقي بلا بطاقة. نرصد السطر الجاري ونركّب
+     بطاقة الفيديو العريضة في الفقاعة نفسها؛ تُرفع معها عند وصول النتيجة. */
+  var CHAT_VIDEO_RE = /🎬 (?:جاري إنشاء الفيديو|Creating video)/;
+
   /* الرصد: فقاعة نصّها أحد أسطر «أرسم لك…» ولا بطاقة فيها ← نركّب بطاقة.
      زمن البداية لكلّ نصّ يُحفظ فلا يصفّره renderAll، ويُنسى حين تختفي الفقاعة. */
   var t0ByText = Object.create(null);
@@ -43105,6 +43112,33 @@ if(document.readyState === 'loading'){
       try{ host.appendChild(render({ t0: t0ByText[txt] })); }catch(e){ try{ __swallow(e, 'gen-wait:scan'); }catch(_){ /* لا سجلّ هنا — العرض تجميليّ */ } }
     }
     for(var k in t0ByText){ if(!active[k]) delete t0ByText[k]; }
+
+    /* فيديو المحادثة: سطر «🎬 جاري إنشاء الفيديو…» الجاري داخل فقاعة التفكير
+       (.chat-status-text) ← بطاقة عريضة في الفقاعة؛ اختفى السطر ← تُرفع البطاقة. */
+    var cvFound = false;
+    var cvEls = document.querySelectorAll('.chat-status-text');
+    for(var ci = 0; ci < cvEls.length; ci++){
+      var ctxt = '';
+      try{ ctxt = String(cvEls[ci].textContent || ''); }catch(e){ continue; }
+      if(!CHAT_VIDEO_RE.test(ctxt)) continue;
+      var chost = cvEls[ci].closest ? cvEls[ci].closest('.msg.assistant') : null;
+      if(!chost) continue;
+      cvFound = true;
+      if(chost.querySelector('.genw[data-genw-panel="chatvideo"]')) continue;
+      if(!t0ByPanel['chatvideo']) t0ByPanel['chatvideo'] = Date.now();
+      try{
+        var cnode = render({ t0: t0ByPanel['chatvideo'], kind: 'video' });
+        cnode.setAttribute('data-genw-panel', 'chatvideo');
+        chost.appendChild(cnode);
+      }catch(e){ try{ __swallow(e, 'gen-wait:chatvideo'); }catch(_){ /* العرض تجميليّ */ } }
+    }
+    if(!cvFound){
+      var cvStale = document.querySelectorAll('.genw[data-genw-panel="chatvideo"]');
+      for(var csi = 0; csi < cvStale.length; csi++){
+        try{ cvStale[csi].parentNode.removeChild(cvStale[csi]); }catch(e){ try{ __swallow(e, 'gen-wait:cvdone'); }catch(_){ /* تجميليّ */ } }
+      }
+      delete t0ByPanel['chatvideo'];
+    }
 
     /* لوحات الأدوات: حالة نصّها بادئة «مشغول» ولا بطاقة بعدها ← نركّب؛ انتهى ← نرفع */
     for(var pi = 0; pi < PANELS.length; pi++){
