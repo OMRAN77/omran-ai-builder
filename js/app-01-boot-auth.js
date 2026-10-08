@@ -1101,8 +1101,10 @@ try{
     const preview = $('#acctAvatarPreview');
     const placeholder = $('#acctAvatarPlaceholder');
     if(preview && placeholder){
-      // v-formal-account: بلا صورة يظهر الحرف الأوّل من الاسم داخل الدائرة بدل 👤 (بلا اسم: دائرة فارغة)
-      placeholder.textContent = avatar ? '' : (Array.from(String(authGet('aiapp_username') || '').trim())[0] || '').toUpperCase();
+      // v-formal-account: بلا صورة يظهر الحرف الأوّل من الاسم داخل الدائرة بدل 👤 (بلا اسم: دائرة فارغة).
+      // الاسم للمسجَّل وحده (كـrenderSettingsProfile): رفض الخادم 401 يحذف الرمز ويُبقي الاسم المخزَّن، فلا يظهر حرف حساب منتهٍ تحت زرّ الدخول.
+      const __nm = authGet('aiapp_auth_token') ? String(authGet('aiapp_username') || '') : '';
+      placeholder.textContent = avatar ? '' : (Array.from(__nm.trim())[0] || '').toUpperCase();
       if(avatar){ preview.src = avatar; preview.style.display = 'block'; placeholder.style.display = 'none'; }
       else { preview.style.display = 'none'; placeholder.style.display = 'flex'; }
     }

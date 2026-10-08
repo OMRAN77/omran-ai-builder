@@ -3,6 +3,9 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **`aiapp_username` يبقى بعد انتهاء الجلسة:** رفض `/api/auth` بـ401/403 يحذف `aiapp_auth_token` وحده ويُبقي الاسم،
+  فكلّ ما يعرض هويّة من الاسم المخزَّن (حرف الدائرة في «حسابي» كان يُظهر «S» تحت زرّ الدخول) يشترط الرمز أوّلًا كـ`settingsLoggedIn`
+  و`renderSettingsProfile` (`logged ? uname : ''`). أعد إنتاجها بخادم محلّيّ يردّ 401 على `/api/auth` واسم ورمز في localStorage (v-formal-account).
 - **رفض خطّة في `paypal-order` create لا يوقف بيعها:** حزمة PayPal في المتصفّح تُنشئ الطلب وتلتقطه بالمعرّف العامّ (`/api/account?action=paypal-client-id`)
   وcustom_id يكتبه المشتري، ثمّ يأتي معالجنا بـcapture أو claim فقط. كلّ قرار على الخطّة يُتّخذ في `creditOrder` من الطلب نفسه (المبلغ،
   و`create_time` لما بعد الإيقاف)، لا في create وحده (v-media-merge).

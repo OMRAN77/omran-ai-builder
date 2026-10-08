@@ -1239,8 +1239,10 @@ try{
     const preview = $('#acctAvatarPreview');
     const placeholder = $('#acctAvatarPlaceholder');
     if(preview && placeholder){
-      // v-formal-account: بلا صورة يظهر الحرف الأوّل من الاسم داخل الدائرة بدل 👤 (بلا اسم: دائرة فارغة)
-      placeholder.textContent = avatar ? '' : (Array.from(String(authGet('aiapp_username') || '').trim())[0] || '').toUpperCase();
+      // v-formal-account: بلا صورة يظهر الحرف الأوّل من الاسم داخل الدائرة بدل 👤 (بلا اسم: دائرة فارغة).
+      // الاسم للمسجَّل وحده (كـrenderSettingsProfile): رفض الخادم 401 يحذف الرمز ويُبقي الاسم المخزَّن، فلا يظهر حرف حساب منتهٍ تحت زرّ الدخول.
+      const __nm = authGet('aiapp_auth_token') ? String(authGet('aiapp_username') || '') : '';
+      placeholder.textContent = avatar ? '' : (Array.from(__nm.trim())[0] || '').toUpperCase();
       if(avatar){ preview.src = avatar; preview.style.display = 'block'; placeholder.style.display = 'none'; }
       else { preview.style.display = 'none'; placeholder.style.display = 'flex'; }
     }
@@ -22272,7 +22274,8 @@ async function omranSharpenImage(dataUrl, amount){
 function __imgEngineLine(engine, d){
   /* v-media-plans: مشترك الصور يرى جودة الصورة والمتبقّي من رصيده تحتها. v-media-merge: ومشترك «صور وفيديو» يرى اسم رصيده المدموج. */
   const mt = d && d.mediaTag;
-  const tag = (mt && (mt.q === 'normal' || mt.q === 'high')) ? ('\n\n🏷️ ' + t(mt.q === 'normal' ? 'mediaQNormal' : 'mediaQHigh') + ' · ' + t(mt.pool === 'mix' ? 'mixLeft' : 'mediaLeftImg') + ': ' + (Math.max(0, Number(mt.left) || 0)) + ' ' + t('mediaImgPlain')) : '';
+  /* v-formal-account: ⚡ و💎 خرجا من نصّي الجودة (زرّا «الباقات والنقاط» رسميّان) — وسم المحادثة خارج تلك الصفحة فيبقى برمزيه هنا. */
+  const tag = (mt && (mt.q === 'normal' || mt.q === 'high')) ? ('\n\n🏷️ ' + (mt.q === 'normal' ? '⚡ ' : '💎 ') + t(mt.q === 'normal' ? 'mediaQNormal' : 'mediaQHigh') + ' · ' + t(mt.pool === 'mix' ? 'mixLeft' : 'mediaLeftImg') + ': ' + (Math.max(0, Number(mt.left) || 0)) + ' ' + t('mediaImgPlain')) : '';
   const e = String(engine || '');
   if(!e || !/\[|^mix:/.test(e) || String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return tag;
   return tag + '\n\n⚙️ ' + e;

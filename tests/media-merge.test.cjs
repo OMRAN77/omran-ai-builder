@@ -589,9 +589,9 @@ test('١٧. وسم الصورة لمشترك «صور وفيديو» يسمّي 
   const src = a9.slice(a9.indexOf('function __imgEngineLine('), a9.indexOf('async function omModeGenerateImage('));
   const T = { mixLeft: 'MIX', mediaLeftImg: 'IMG', mediaQNormal: 'N', mediaQHigh: 'H', mediaImgPlain: 'صورة' };
   const line = new Function('t', 'authGet', src + '; return __imgEngineLine;')((k) => T[k] || k, () => 'rana');
-  assert.equal(line('', { mediaTag: { q: 'normal', left: 49, pool: 'mix' } }), '\n\n🏷️ N · MIX: 49 صورة');
-  assert.equal(line('', { mediaTag: { q: 'high', left: 10, pool: 'image' } }), '\n\n🏷️ H · IMG: 10 صورة');
-  assert.equal(line('', { mediaTag: { q: 'high', left: 10 } }), '\n\n🏷️ H · IMG: 10 صورة', 'ردّ بلا pool كما كان');
+  assert.equal(line('', { mediaTag: { q: 'normal', left: 49, pool: 'mix' } }), '\n\n🏷️ ⚡ N · MIX: 49 صورة');
+  assert.equal(line('', { mediaTag: { q: 'high', left: 10, pool: 'image' } }), '\n\n🏷️ 💎 H · IMG: 10 صورة');
+  assert.equal(line('', { mediaTag: { q: 'high', left: 10 } }), '\n\n🏷️ 💎 H · IMG: 10 صورة', 'ردّ بلا pool كما كان');
   assert.ok(read('js/app.bundle.js').includes("t(mt.pool === 'mix' ? 'mixLeft' : 'mediaLeftImg')"), 'الحزمة مبنيّة');
 });
 

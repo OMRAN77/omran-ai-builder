@@ -2994,7 +2994,8 @@ async function omranSharpenImage(dataUrl, amount){
 function __imgEngineLine(engine, d){
   /* v-media-plans: مشترك الصور يرى جودة الصورة والمتبقّي من رصيده تحتها. v-media-merge: ومشترك «صور وفيديو» يرى اسم رصيده المدموج. */
   const mt = d && d.mediaTag;
-  const tag = (mt && (mt.q === 'normal' || mt.q === 'high')) ? ('\n\n🏷️ ' + t(mt.q === 'normal' ? 'mediaQNormal' : 'mediaQHigh') + ' · ' + t(mt.pool === 'mix' ? 'mixLeft' : 'mediaLeftImg') + ': ' + (Math.max(0, Number(mt.left) || 0)) + ' ' + t('mediaImgPlain')) : '';
+  /* v-formal-account: ⚡ و💎 خرجا من نصّي الجودة (زرّا «الباقات والنقاط» رسميّان) — وسم المحادثة خارج تلك الصفحة فيبقى برمزيه هنا. */
+  const tag = (mt && (mt.q === 'normal' || mt.q === 'high')) ? ('\n\n🏷️ ' + (mt.q === 'normal' ? '⚡ ' : '💎 ') + t(mt.q === 'normal' ? 'mediaQNormal' : 'mediaQHigh') + ' · ' + t(mt.pool === 'mix' ? 'mixLeft' : 'mediaLeftImg') + ': ' + (Math.max(0, Number(mt.left) || 0)) + ' ' + t('mediaImgPlain')) : '';
   const e = String(engine || '');
   if(!e || !/\[|^mix:/.test(e) || String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return tag;
   return tag + '\n\n⚙️ ' + e;

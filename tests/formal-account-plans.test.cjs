@@ -122,13 +122,13 @@ test('٤. مكان الصورة بلا صورة: الحرف الأوّل من ا
   const src = a1.slice(a1.indexOf('  function updateAvatarUI(){'), a1.indexOf('  function showRecoveryModal('));
   assert.ok(src.length > 100, 'updateAvatarUI');
   const mk = () => ({ style: { display: '' }, textContent: '', src: '' });
-  function run(user, avatar) {
+  function run(user, avatar, token = 'tok') {
     const els = { '#acctAvatarPreview': mk(), '#acctAvatarPlaceholder': mk() };
     const store = { aiapp_avatar: avatar || '' };
     const fn = new Function('$', 'localStorage', 'authGet', 'window', src + '; return updateAvatarUI;')(
       (s) => els[s] || null,
       { getItem: (k) => (k in store ? store[k] : null) },
-      (k) => (k === 'aiapp_username' ? user : null),
+      (k) => (k === 'aiapp_username' ? user : k === 'aiapp_auth_token' ? token : null),
       {});
     fn();
     return { pv: els['#acctAvatarPreview'], ph: els['#acctAvatarPlaceholder'] };
@@ -142,6 +142,9 @@ test('٤. مكان الصورة بلا صورة: الحرف الأوّل من ا
   assert.equal(run('𝒜lpha', '').ph.textContent, '𝒜', 'حرف خارج BMP لا يُقسم نصفين');
   assert.equal(run('', '').ph.textContent, '', 'بلا اسم: دائرة فارغة');
   assert.equal(run(null, '').ph.textContent, '');
+  // جلسة منتهية: رفض الخادم 401 يحذف الرمز ويُبقي الاسم المخزَّن — لا حرف لحساب غير مسجَّل تحت زرّ الدخول (كـrenderSettingsProfile)
+  assert.equal(run('sara', '', null).ph.textContent, '', 'بلا رمز دخول: دائرة فارغة');
+  assert.equal(run('sara', '', '').ph.textContent, '');
   r = run('omran', 'data:image/png;base64,AAA');
   assert.equal(r.pv.src, 'data:image/png;base64,AAA');
   assert.equal(r.pv.style.display, 'block');
@@ -150,7 +153,9 @@ test('٤. مكان الصورة بلا صورة: الحرف الأوّل من ا
   // تغيير الاسم يحدّث الحرف فورًا
   const save = a1.slice(a1.indexOf("authSet('aiapp_username', data.username);"));
   assert.ok(save.slice(0, 200).includes('updateAvatarUI();'), 'الحرف يتبع الاسم الجديد');
-  assert.ok(read('js/app.bundle.js').includes(src.trim().split('\n').find((l) => /acctAvatarPlaceholder|textContent = /.test(l) && /Array\.from/.test(l)).trim()), 'الحزمة مبنيّة');
+  const nmLines = src.split('\n').filter((x) => /__nm/.test(x));
+  assert.equal(nmLines.length, 2, 'الاسم يُقرأ مع رمز الدخول');
+  for (const l of nmLines) assert.ok(read('js/app.bundle.js').includes(l.trim()), 'الحزمة مبنيّة');
 });
 
 test('٥. ما تكتبه الواجهة في «حسابي» بنصّ ثابت: زرّ تنظيف المالك وأزرار المشاركة والباركود بلا رمز', () => {
@@ -168,4 +173,20 @@ test('٥. ما تكتبه الواجهة في «حسابي» بنصّ ثابت: 
 test('٦. كسر الكاش: وسم الإعدادات ٦٩٣ ووسم ملفّات اللغات ٧٢٦', () => {
   assert.ok(read('index.html').includes('/js/partials-settings.js?v=693'));
   assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=726'"));
+});
+
+test('٧. وسم الصورة في المحادثة (خارج الصفحتين) لا يتغيّر: ⚡ و💎 فيه لا في نصّي الجودة المشتركين، بالـ١٤ لغة', () => {
+  const a9 = read('js/app-09-attach.js');
+  const src = a9.slice(a9.indexOf('function __imgEngineLine('), a9.indexOf('async function omModeGenerateImage('));
+  assert.ok(src.length > 100, '__imgEngineLine');
+  for (const [l, d] of Object.entries(dicts())) {
+    const line = new Function('t', 'authGet', src + '; return __imgEngineLine;')((k) => d[k], () => 'rana');
+    // كما كان قبل v-formal-account حين كان الرمز داخل النصّ: «🏷️ ⚡ عاديّة · …» و«🏷️ 💎 عالية · …»
+    assert.equal(line('', { mediaTag: { q: 'normal', left: 49, pool: 'mix' } }), '\n\n🏷️ ⚡ ' + d.mediaQNormal + ' · ' + d.mixLeft + ': 49 ' + d.mediaImgPlain, l + ' عاديّة');
+    assert.equal(line('', { mediaTag: { q: 'high', left: 10, pool: 'image' } }), '\n\n🏷️ 💎 ' + d.mediaQHigh + ' · ' + d.mediaLeftImg + ': 10 ' + d.mediaImgPlain, l + ' عالية');
+    assert.ok(!EMOJI.test(d.mediaQNormal) && !EMOJI.test(d.mediaQHigh), l + ': زرّا الجودة في الباقات بلا رمز');
+  }
+  assert.equal(dicts().ar.mediaQNormal, 'عاديّة');
+  const lineSrc = src.split('\n').find((x) => x.includes("'\\n\\n🏷️ ' + (mt.q === 'normal' ? '⚡ ' : '💎 ')"));
+  assert.ok(lineSrc && read('js/app.bundle.js').includes(lineSrc.trim()), 'الحزمة مبنيّة');
 });
