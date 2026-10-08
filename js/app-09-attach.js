@@ -584,7 +584,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
         const i = du.indexOf(',');
         const r = await fetch('/api/media?action=img', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg'), w: __shW || undefined, h: __shH || undefined })
+          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg'), w: __shW || undefined, h: __shH || undefined, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : '') }) /* v-share-guard: الرفع برمز الجلسة */
         });
         const j = await r.json();
         if(j && j.url) shUrl = location.origin + j.url;

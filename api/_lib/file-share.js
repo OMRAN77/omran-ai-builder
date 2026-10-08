@@ -4,10 +4,17 @@ const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
 const KV = require('./kv.js');
 const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
+const { gateShare } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — التنزيل العامّ (GET) بلا رمز كما كان
 
 const MAX_B64 = 5 * 1024 * 1024; // ≈4MB ملف فعلي
 const TTL_SEC = 60 * 60 * 24 * 7;
+const DAILY_UPLOADS = 10; // v-share-guard: روابط ملفّات يوميًّا لكلّ حساب
 const KEY = (id) => 'db/file/' + id;
+/* v-share-guard: /f/<id> يُقدَّم من نطاق التطبيق نفسه (حيث رمز الجلسة في التخزين) — نوع يُنفّذه المتصفّح
+   (HTML/XHTML/SVG/XML/JS) لا يُرسَل بنوعه أبدًا، بل application/octet-stream مع attachment القائم. يُطبَّق عند
+   الحفظ وعند التقديم معًا، فيغطّي ما خُزِّن قبل الإصلاح طوال أيّامه السبعة. */
+const ACTIVE_MIME = /^(?:text\/html|[a-z0-9.+-]+\/(?:[a-z0-9.+-]+\+)?xml|[a-z0-9.+-]+\/(?:x-)?(?:java|ecma|vb)script)\s*(?:;|$)/i;
+const safeMime = (m) => (ACTIVE_MIME.test(String(m || '').trim()) ? 'application/octet-stream' : m);
 
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
@@ -54,7 +61,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Type', safeMime(mime));
     res.setHeader('Content-Length', String(buf.length));
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
     res.setHeader('Accept-Ranges', 'bytes');
@@ -78,7 +85,8 @@ module.exports = async (req, res) => {
     /* v-reply-export: النوع يُخزَّن بصيغة mime:name:data ويُرسَل ترويسةً — نوع/نوع فرعيّ مع charset
        اختياريّ فقط؛ غيره (نقطتان، أسطر، معاملات أخرى) يصير application/octet-stream. */
     const rawMime = String(body.mime || '').trim();
-    const mime = /^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+(;\s*charset=[A-Za-z0-9_-]+)?$/.test(rawMime) ? rawMime : 'application/octet-stream';
+    const mime = safeMime(/^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+(;\s*charset=[A-Za-z0-9_-]+)?$/.test(rawMime) ? rawMime : 'application/octet-stream');
+    if (!(await gateShare(req, res, body, 'share-file', DAILY_UPLOADS))) return;
     const rawName = String(body.name || 'file');
     const name = rawName.replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || 'file';
     const id = crypto.randomBytes(6).toString('hex');

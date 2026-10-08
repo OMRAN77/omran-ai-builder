@@ -54,7 +54,7 @@ async function omranBlobToServerLink(blob, filename){
   const isPdf = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
   const r = await fetch(isPdf ? '/api/media?action=pdf' : '/api/media?action=file', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: b64, name: filename, mime: (blob && blob.type) || 'application/octet-stream' }),
+    body: JSON.stringify({ data: b64, name: filename, mime: (blob && blob.type) || 'application/octet-stream', token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : '') }), /* v-share-guard: الرفع برمز الجلسة */
   });
   const d = await r.json();
   if(!r.ok || !d || !d.url) throw new Error('upload-failed');

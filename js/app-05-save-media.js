@@ -66,7 +66,7 @@
   async function uploadImage(blob, name){
     var sh = await shrinkToJpeg(blob);
     if(!sh || !sh.b64) return null;
-    var r = await fetch('/api/media?action=img', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ data: sh.b64, mime: 'image/jpeg', w: sh.w, h: sh.h }) });
+    var r = await fetch('/api/media?action=img', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ data: sh.b64, mime: 'image/jpeg', w: sh.w, h: sh.h, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : '') }) }); /* v-share-guard: الرفع برمز الجلسة */
     var d = r.ok ? await r.json() : null;
     if(!d || !d.id) return null;
     var nm = String(name || '').replace(/\.(png|webp)$/i, '.jpg') || ('omran-' + d.id + '.jpg');

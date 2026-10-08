@@ -59,6 +59,7 @@ module.exports = async (req, res) => {
       try {
         const { kvDecrBy } = require('./kv.js');
         await kvDecrBy(charge.counterKey, 1);
+        if (charge.ipKey) await kvDecrBy(charge.ipKey, 1); /* v-share-guard: حصّة الشبكة تُردّ مع حصّة المعرّف */
       } catch (error) { console.error('[maha-image] guest refund failed'); }
     }
   }
@@ -169,7 +170,11 @@ module.exports = async (req, res) => {
         res.status(402).json({ error: 'guest_image_used' });
         return;
       }
-      guestImageCharge = { counterKey };
+      /* v-share-guard (٨ أكتوبر ٢٠٢٦): guestId من المتصفّح — تغييره كان يعطي ٣ صور جديدة بلا حدّ. الحدّ نفسه لكلّ شبكة يوميًّا أيضًا (كـguestip_ في _usage.js؛ يوميّ لأنّ IP الجوّال مشترك)، والعمر مع الإنشاء (NX EX) ثمّ INCR الذرّيّ. */
+      const __gip = String(clientIp(req) || '').trim().slice(0, 64), ipKey = __gip ? 'db/points/guest-image-ip/' + encodeURIComponent(__gip) + '/' + new Date().toISOString().slice(0, 10) : '';
+      if (ipKey) await kvSetIfAbsent(ipKey, 0, 172800);
+      if (ipKey && await kvIncr(ipKey) > 3) { await kvDecrBy(ipKey, 1); await kvDecrBy(counterKey, 1); res.status(402).json({ error: 'guest_image_used' }); return; }
+      guestImageCharge = { counterKey }; if (ipKey) guestImageCharge.ipKey = ipKey;
     } else {
       res.status(401).json({ error: 'auth_required' });
       return;

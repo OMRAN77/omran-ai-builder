@@ -9,9 +9,11 @@ const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
 const KV = require('./kv.js');
 const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
+const { gateShare } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — العرض العامّ (GET) بلا رمز كما كان
 
 const MAX_B64 = 4 * 1024 * 1024; // ≈3MB ملف فعلي — تحت حدّ جسم الطلب في Vercel
 const TTL_SEC = 60 * 60 * 24 * 7;
+const DAILY_UPLOADS = 20; // v-share-guard: روابط PDF يوميًّا لكلّ حساب
 const KEY = (id) => 'db/pdf/' + id;
 
 module.exports = async (req, res) => {
@@ -77,6 +79,7 @@ module.exports = async (req, res) => {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
     // فحص أن المحتوى PDF فعلًا (يبدأ بـ %PDF)
     if (data.slice(0, 6) !== 'JVBERi') { res.status(400).json({ error: 'not_pdf' }); return; }
+    if (!(await gateShare(req, res, body, 'share-pdf', DAILY_UPLOADS))) return;
     // الاسم: أحرف/أرقام/شرطات فقط + لاحقة pdf ثابتة — لا نقطتين (فاصل التخزين)
     const rawName = String(body.name || 'omran-ai.pdf');
     const name = (rawName.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_\-؀-ۿ]/g, '-').slice(0, 60) || 'omran-ai') + '.pdf';

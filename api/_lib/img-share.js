@@ -7,9 +7,11 @@ const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
 const KV = require('./kv.js');
 const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
+const { gateShare } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — العرض العامّ (GET) بلا رمز كما كان
 
 const MAX_B64 = 3 * 1024 * 1024; // حدّ أمان لكلّ صورة
 const TTL_SEC = 60 * 60 * 24 * 7; // v-media-purge: كان ٣٠ يومًا فامتلأت القاعدة المجانيّة — ٧ كالفيديو والـPDF
+const DAILY_UPLOADS = 30; // v-share-guard: روابط صور يوميًّا لكلّ حساب
 const KEY = (id) => 'db/img/' + id;
 
 module.exports = async (req, res) => {
@@ -129,6 +131,7 @@ module.exports = async (req, res) => {
     if (!data) { res.status(400).json({ error: 'Missing data' }); return; }
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
+    if (!(await gateShare(req, res, body, 'share-img', DAILY_UPLOADS))) return;
     const mime = /^image\/(png|jpeg|webp)$/.test(String(body.mime || '')) ? String(body.mime) : 'image/jpeg';
     const id = crypto.randomBytes(6).toString('hex');
     const w = Math.max(0, parseInt(body.w, 10) || 0), h = Math.max(0, parseInt(body.h, 10) || 0);
