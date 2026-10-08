@@ -181,7 +181,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const quota = await checkDesignQuota(token);
+    const quota = await checkDesignQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
     if (!quota.allowed) {
       if (quota.reason === 'auth') {
         res.status(401).json({ error: 'auth_required' });

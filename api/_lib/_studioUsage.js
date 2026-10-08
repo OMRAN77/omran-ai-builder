@@ -4,7 +4,8 @@
 // daily counter, completely separate from chat usage, design usage, and
 // fashion usage. Resets automatically each day (UTC).
 const crypto = require('crypto');
-const { kvGetJSON, kvPutJSON } = require('./kv.js');
+// v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
+const quotaTally = require('./_dailyQuota.js');
 const { isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 // v-owner-unlimited (شكوى المالك «استهلكت المجاني كلها»): المالك وVIP بلا حدّ يومي هنا
@@ -33,28 +34,9 @@ function verifyToken(token) {
   }
 }
 
-function usagePath(username) {
-  return 'db/studio-usage/' + encodeURIComponent(username) + '.json';
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-}
-
-async function getUsage(username) {
-  return kvGetJSON(usagePath(username));
-}
-
-async function putUsage(username, usage) {
-  try {
-    await kvPutJSON(usagePath(username), usage);
-  } catch (e) {
-    // Best-effort bookkeeping; never block on a write failure here.
-  }
-}
-
-// Verifies the session token and checks the daily quota WITHOUT consuming it.
-async function checkStudioQuota(token) {
+// Verifies the session token and checks the daily quota.
+// v-atomic-quota: مع res (ردّ طلب التوليد) يحجز مقعدًا ذرّيًّا يُردّ قبل خروج الردّ ما لم يُستهلك؛ بلا res قراءة مجرّدة.
+async function checkStudioQuota(token, res) {
   const username = verifyToken(token);
   if (!username) {
     return { allowed: false, reason: 'auth', username: null };
@@ -65,15 +47,7 @@ async function checkStudioQuota(token) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  if (usage.count >= STUDIO_DAILY_LIMIT) {
-    return { allowed: false, reason: 'limit', username };
-  }
-  return { allowed: true, username, remaining: STUDIO_DAILY_LIMIT - usage.count };
+  return quotaTally.check('studio', username, STUDIO_DAILY_LIMIT, res);
 }
 
 // Consumes one generation from today's allowance. Only call this AFTER
@@ -81,14 +55,7 @@ async function checkStudioQuota(token) {
 // never burn a user's daily quota.
 async function consumeStudio(username) {
   if (await __unlimitedUser(username)) return Infinity;
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  usage.count += 1;
-  await putUsage(username, usage);
-  return STUDIO_DAILY_LIMIT - usage.count;
+  return quotaTally.consume('studio', username, STUDIO_DAILY_LIMIT);
 }
 
 module.exports = { checkStudioQuota, consumeStudio, STUDIO_DAILY_LIMIT };

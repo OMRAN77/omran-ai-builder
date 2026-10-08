@@ -3,7 +3,8 @@
 // its own completely separate daily counter (db/fashion-usage/), so it does
 // not share quota with chat usage, video usage, or interior design usage.
 const crypto = require('crypto');
-const { kvGetJSON, kvPutJSON } = require('./kv.js');
+// v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
+const quotaTally = require('./_dailyQuota.js');
 const { isBanned } = require('./auth.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
@@ -34,27 +35,8 @@ function verifyToken(token) {
   }
 }
 
-function usagePath(username) {
-  return 'db/fashion-usage/' + encodeURIComponent(username) + '.json';
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-}
-
-async function getUsage(username) {
-  return kvGetJSON(usagePath(username));
-}
-
-async function putUsage(username, usage) {
-  try {
-    await kvPutJSON(usagePath(username), usage);
-  } catch (e) {
-    // Best-effort bookkeeping; never block on a write failure here.
-  }
-}
-
-async function checkFashionQuota(token) {
+// v-atomic-quota: مع res (ردّ طلب التوليد) يحجز مقعدًا ذرّيًّا يُردّ قبل خروج الردّ ما لم يُستهلك؛ بلا res قراءة مجرّدة.
+async function checkFashionQuota(token, res) {
   const username = verifyToken(token);
   if (!username) {
     return { allowed: false, reason: 'auth', username: null };
@@ -65,27 +47,12 @@ async function checkFashionQuota(token) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  if (usage.count >= FASHION_DAILY_LIMIT) {
-    return { allowed: false, reason: 'limit', username };
-  }
-  return { allowed: true, username, remaining: FASHION_DAILY_LIMIT - usage.count };
+  return quotaTally.check('fashion', username, FASHION_DAILY_LIMIT, res);
 }
 
 async function consumeFashion(username) {
   if (await __unlimitedUser(username)) return Infinity;
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  usage.count += 1;
-  await putUsage(username, usage);
-  return FASHION_DAILY_LIMIT - usage.count;
+  return quotaTally.consume('fashion', username, FASHION_DAILY_LIMIT);
 }
 
 module.exports = { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT };

@@ -285,7 +285,8 @@ module.exports = async (req, res) => {
     }
     const annexList = Array.isArray(annexes) ? annexes.filter((a) => ANNEX_LABELS_AR[a]) : [];
 
-    const quota = await checkConstructionQuota(token);
+    // v-atomic-quota: حجز ذرّيّ يُردّ إن فشل — إلّا مراحل التذكرة التالية (لا تستهلك، فلا تحجز).
+    const quota = await checkConstructionQuota(token, (stagePart && body.jobTicket) ? null : res);
     let firstStage = false;
     let job = null;
     if (stagePart && body.jobTicket) {

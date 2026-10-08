@@ -5,7 +5,8 @@
 // and other image tools (db/design-usage/, db/fashion-usage/, db/studio-usage/).
 // Resets automatically each day (UTC).
 const crypto = require('crypto');
-const { kvGetJSON, kvPutJSON } = require('./kv.js');
+// v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
+const quotaTally = require('./_dailyQuota.js');
 const { isBanned } = require('./auth.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
@@ -34,28 +35,9 @@ function verifyToken(token) {
   }
 }
 
-function usagePath(username) {
-  return 'db/portrait-usage/' + encodeURIComponent(username) + '.json';
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-}
-
-async function getUsage(username) {
-  return kvGetJSON(usagePath(username));
-}
-
-async function putUsage(username, usage) {
-  try {
-    await kvPutJSON(usagePath(username), usage);
-  } catch (e) {
-    // Best-effort bookkeeping; never block on a write failure here.
-  }
-}
-
-// Verifies the session token and checks the daily quota WITHOUT consuming it.
-async function checkPortraitQuota(token) {
+// Verifies the session token and checks the daily quota.
+// v-atomic-quota: مع res (ردّ طلب التوليد) يحجز مقعدًا ذرّيًّا يُردّ قبل خروج الردّ ما لم يُستهلك؛ بلا res قراءة مجرّدة.
+async function checkPortraitQuota(token, res) {
   const username = verifyToken(token);
   if (!username) {
     return { allowed: false, reason: 'auth', username: null };
@@ -66,15 +48,7 @@ async function checkPortraitQuota(token) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  if (usage.count >= PORTRAIT_DAILY_LIMIT) {
-    return { allowed: false, reason: 'limit', username };
-  }
-  return { allowed: true, username, remaining: PORTRAIT_DAILY_LIMIT - usage.count };
+  return quotaTally.check('portrait', username, PORTRAIT_DAILY_LIMIT, res);
 }
 
 // Consumes one portrait-style generation from today's allowance. Only call
@@ -84,14 +58,7 @@ async function consumePortrait(username) {
   if (await __unlimitedUser(username)) {
     return Infinity;
   }
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  usage.count += 1;
-  await putUsage(username, usage);
-  return PORTRAIT_DAILY_LIMIT - usage.count;
+  return quotaTally.consume('portrait', username, PORTRAIT_DAILY_LIMIT);
 }
 
 module.exports = { checkPortraitQuota, consumePortrait, PORTRAIT_DAILY_LIMIT };
