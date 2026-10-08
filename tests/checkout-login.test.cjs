@@ -121,22 +121,16 @@ test('العميل: الزائر يُحوَّل للتسجيل بدل نافذة
 
 test('العميل: البطاقة ترسل اختيار التجديد، وPayPal يرسل التوكن', () => {
   const src = read('js/app-06-checkout.js');
-  assert.match(src, /autoRenew: !!\(document\.getElementById\('checkoutAutoRenew'\) \|\| \{\}\)\.checked/);
+  assert.match(src, /autoRenew: autoRenewPref\(\),/, 'v-autorenew-one: زرّ المحادثة الواحد');
   assert.match(src, /action: 'create', plan: checkoutCurrentPlan, token: authGet\('aiapp_auth_token'\)/);
-  assert.match(src, /if \(arBox\) arBox\.checked = autoRenewPref\(\);/, 'v-autorenew-toggle: يتبع زرّ أوّل الصفحة');
   assert.match(src, /function autoRenewPref\(\)\{ try\{ return localStorage\.getItem\('aiapp_autorenew'\) === '1'; \}/, 'والافتراضيّ متوقّف (يدويّ) كما كان');
-  assert.match(src, /arRow\.style\.display = \/\^pack\\d\+\$\/\.test/, 'الخيار مخفيّ لرزم النقاط');
 });
 
-test('نافذة الدفع: زرّ صغير للتجديد التلقائيّ، غير مفعّل افتراضيًّا', () => {
+test('نافذة الدفع بلا مربّع تجديد — v-autorenew-one: الخيار الواحد زرّ تبويب المحادثة (الافتراضيّ متوقّف)', () => {
   const html = read('js/partials-settings.js');
-  const row = /<label id="checkoutAutoRenewRow"[\s\S]*?<\/label>/.exec(html);
-  assert.ok(row, 'الصفّ موجود');
-  assert.match(row[0], /<input type="checkbox" id="checkoutAutoRenew"/);
-  assert.doesNotMatch(row[0], /\bchecked\b/);
-  assert.match(row[0], /data-i18n="checkoutAutoRenew"/);
-  assert.ok(html.indexOf('checkoutAutoRenewRow') > html.indexOf('startStripeCheckout()'), 'تحت زرّ البطاقة');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=693'));
+  assert.equal(/<label id="checkoutAutoRenewRow"/.test(html), false, 'المربّع حُذف من نافذة الدفع');
+  assert.match(html, /<input type="checkbox" id="chkAutoRenew" role="switch"(?![^>]*\bchecked\b)[^>]*>/, 'الزرّ الواحد غير مفعّل افتراضيًّا');
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=726'"));
 });
 

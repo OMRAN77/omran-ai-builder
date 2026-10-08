@@ -171,7 +171,7 @@ test('٥. ما تكتبه الواجهة في «حسابي» بنصّ ثابت: 
 });
 
 test('٦. كسر الكاش: وسم الإعدادات ٦٩٣ ووسم ملفّات اللغات ٧٢٦', () => {
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=693'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'));
   assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=726'"));
 });
 
