@@ -8345,7 +8345,7 @@ function renderMessages(keepScroll){
     });
   }
   const UPLOAD_MAX_B64 = 640 * 1024; /* حدّ طلب Upstash ≈1MB مع هامش (PDF يستخدم 700KB) */
-  async function uploadImage(blob, name){
+  async function uploadImage(blob, name, purpose){
     let b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = rej; fr.readAsDataURL(blob); });
     let mime = blob.type || 'image/png', w, h;
     if(b64.length > UPLOAD_MAX_B64 || mime === 'image/gif'){
@@ -8358,8 +8358,9 @@ function renderMessages(keepScroll){
       }
     }
     const i = b64.indexOf(',');
-    const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h }) });
+    const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), purpose: purpose || undefined }) }); /* v-share-guard: الرفع برمز الجلسة · v-media-save: «تحميل» في سلّة التنزيل */
     let j = null; try{ j = await r.json(); }catch(e){ j = null; }
+    if(r.status === 429) throw new Error(gtx('portraitLimitReached', 'وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا', 'You reached the daily limit for this feature, try again tomorrow')); /* v-media-save: نصّ الحدّ القائم */
     if(!r.ok || !j || !j.id) throw new Error((j && j.error) ? String(j.error) : ('http ' + r.status));
     const ext = extOf(mime);
     const safe = String(name || 'omran-image').replace(/\.[A-Za-z0-9]+$/, '').replace(/[^A-Za-z0-9_\-]/g, '-').slice(0, 50) || 'omran-image';
@@ -8427,7 +8428,7 @@ function renderMessages(keepScroll){
     setTimeout(function(){ try{ sheet.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 120000);
     return true;
   }
-  function readySheet(links, file, name){
+  function readySheet(links, file, name, mode){
     const old = document.getElementById('omranImgSheet'); if(old) old.remove();
     const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
     sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
@@ -8447,12 +8448,16 @@ function renderMessages(keepScroll){
     dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
     dl.onclick = function(){ setTimeout(function(){ ttl.textContent = gtx('imgDlStarted', '📥 بدأ التحميل — افتح الإشعارات/التنزيلات', '📥 Downloading — check notifications/Downloads'); }, 600); };
     row.appendChild(dl);
-    const wa = document.createElement('a');
-    wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
-    wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
-    wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
-    wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
-    row.appendChild(wa);
+    /* v-save-no-wa (المراجعة الثانية): رابط «تحميل» (purpose:download) يعيش ساعة — من يستلمه على واتساب يجد 404 بعدها؛ فزرّ
+       واتساب لورقة المشاركة وحدها (رابط ٧ أيّام) */
+    if(mode === 'share'){
+      const wa = document.createElement('a');
+      wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
+      wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
+      wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
+      wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
+      row.appendChild(wa);
+    }
     let canShareFile = false;
     try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
     if(canShareFile){
@@ -8513,7 +8518,7 @@ function renderMessages(keepScroll){
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
     preparingSheet();
     let upErr = '';
-    try{ const links = await uploadImage(blob, name); return readySheet(links, file, name); }
+    try{ const links = await uploadImage(blob, name, mode === 'share' ? '' : 'download'); return readySheet(links, file, name, mode); }
     catch(e){ upErr = (e && e.message) ? String(e.message) : 'upload'; }
     /* تعذّر الرفع: الورقة لا تختفي — تنزيل محلي مباشر + مشاركة إن توفّرت + سبب مختصر */
     try{ return localSheet(blob, file, name, upErr); }catch(e){ /* guard-ok */ }
@@ -8552,10 +8557,53 @@ function renderMessages(keepScroll){
     return new Blob([u8], { type: m });
   }
   function sameOrigin(url){ try{ return new URL(url, location.href).origin === location.origin; }catch(e){ return false; } }
+  function authToken(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  /* v-dl-ticket (المراجعة المعاكسة): رمز الجلسة (٣٠ يومًا) لا يدخل أيّ رابط — كان يتسرّب من سجلّات الطلبات وزرّ «فتح»
+     والمشاركة. الجلب يرسله في ترويسة Authorization، والرابط الذي يُنقر أو يُفتح خارج التطبيق يحمل تذكرة تنزيل قصيرة
+     (ticketLink). ورابط بروكسي من زرّ «تحميل» (صانع الفيديو/الترند) يُفكّ إلى الوسيط نفسه فتُضاف المصادقة هنا. */
+  function unwrap(url){
+    try{
+      var u = new URL(url, location.href);
+      if(u.origin === location.origin && u.pathname === '/api/video-download'){ var raw = u.searchParams.get('url') || ''; if(/^https:\/\//.test(raw)) return raw; }
+    }catch(e){ /* guard-ok — رابط لا يُحلَّل يبقى كما هو */ }
+    return url;
+  }
   function proxied(url){
     if(/^(data:|blob:|\/)/.test(url)) return url;
     if(sameOrigin(url)) return url;
     return '/api/video-download?url=' + encodeURIComponent(url);
+  }
+  /* v-video-open-lock: ردّ البروكسي غير الناجح (بلا جلسة، أو السقف اليوميّ) لا يُحفظ ملفًّا — كان يُحفظ نصّ الخطأ باسم صورة */
+  async function proxiedBlob(url){
+    var p = proxied(url), tk = authToken();
+    var r = await fetch(p, (tk && p !== url) ? { headers: { Authorization: 'Bearer ' + tk } } : undefined);
+    if(!r.ok) throw new Error('proxy ' + r.status);
+    return r.blob();
+  }
+  /* v-dl-ticket: تذكرة لرابط واحد وساعة واحدة يصدرها الخادم بطلب يحمل الجلسة في الترويسة، وتُحفظ في الذاكرة حتّى قبيل
+     انتهائها. تعذّرها (بلا جلسة، السقف اليوميّ) = الرابط الأصليّ نفسه — لا رابط يفتح JSON خطأ. */
+  var dlTickets = {};
+  async function ticketLink(url){
+    var p = proxied(url);
+    if(p === url) return url;
+    var hit = dlTickets[url];
+    if(hit && hit.exp - Date.now() > 5 * 60 * 1000) return hit.link;
+    var tk = authToken();
+    if(!tk) return url;
+    try{
+      var r = await fetch(p + '&action=ticket', { headers: { Authorization: 'Bearer ' + tk } });
+      var d = r.ok ? await r.json() : null;
+      if(d && d.ticket){
+        var link = p + '&dt=' + encodeURIComponent(d.ticket);
+        dlTickets[url] = { link: link, exp: Date.now() + (Number(d.ttl) || 0) * 1000 };
+        return link;
+      }
+    }catch(e){ /* guard-ok — بلا تذكرة يُفتح الرابط الأصليّ */ }
+    return url;
+  }
+  /* v-media-save: حدّ التنزيل اليوميّ — نصّ الحدّ القائم بالـ١٤ لغة */
+  function limitNote(){
+    try{ var m = (typeof window.t === 'function') ? window.t('portraitLimitReached') : ''; if(m && m !== 'portraitLimitReached' && typeof settingsToast === 'function') settingsToast(m); }catch(e){ /* guard-ok — التنبيه ترف */ }
   }
   function guessName(url, name){
     if(name) return name;
@@ -8597,7 +8645,8 @@ function renderMessages(keepScroll){
   async function uploadImage(blob, name){
     var sh = await shrinkToJpeg(blob);
     if(!sh || !sh.b64) return null;
-    var r = await fetch('/api/media?action=img', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ data: sh.b64, mime: 'image/jpeg', w: sh.w, h: sh.h }) });
+    var r = await fetch('/api/media?action=img', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ data: sh.b64, mime: 'image/jpeg', w: sh.w, h: sh.h, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), purpose: 'download' }) }); /* v-share-guard: الرفع برمز الجلسة · v-media-save: تنزيل لا مشاركة */
+    if(r.status === 429) limitNote();
     var d = r.ok ? await r.json() : null;
     if(!d || !d.id) return null;
     var nm = String(name || '').replace(/\.(png|webp)$/i, '.jpg') || ('omran-' + d.id + '.jpg');
@@ -8608,7 +8657,7 @@ function renderMessages(keepScroll){
     return false;
   }
   window.omranSaveMedia = async function(url, name){
-    url = String(url || ''); if(!url) return false;
+    url = unwrap(String(url || '')); if(!url) return false;
     var nm = guessName(url, name);
     var video = isVideoUrl(url, nm);
     /* ── الجوال/الأغلفة: رابط خادم حقيقي + ورقة أزرار ── */
@@ -8624,10 +8673,10 @@ function renderMessages(keepScroll){
             }
             if(showSheet(URL.createObjectURL(vb), vf, nm, 'video')) return true;
           } else {
-            if(showSheet(proxied(url), null, nm, 'video')) return true;
+            if(showSheet(await ticketLink(url), null, nm, 'video')) return true; /* v-dl-ticket: تذكرة لا جلسة؛ وتعذّرها = الرابط الأصليّ */
           }
         } else {
-          var ib = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(proxied(url))).blob();
+          var ib = /^data:/i.test(url) ? dataUrlToBlob(url) : await proxiedBlob(url);
           var ifile = null;
           try{ ifile = new File([ib], nm, { type: ib.type || 'image/png' }); }catch(e){ ifile = null; }
           var link = await uploadImage(ib, nm).catch(function(){ return null; });
@@ -8642,7 +8691,7 @@ function renderMessages(keepScroll){
     }
     /* ── الكمبيوتر والمسار العام ── */
     var blob;
-    try{ blob = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(proxied(url))).blob(); }
+    try{ blob = /^data:/i.test(url) ? dataUrlToBlob(url) : await proxiedBlob(url); }
     catch(e){ blob = null; }
     if(blob){
       try{
@@ -8659,7 +8708,8 @@ function renderMessages(keepScroll){
         return true;
       }catch(e){ /* guard-ok */ }
     }
-    try{ window.open(proxied(url), '_blank', 'noopener'); return true; }catch(e){ return false; }
+    /* v-dl-ticket: فشل البروكسي (401/429) يفتح الرابط الأصليّ — كان يفتح ردّ JSON خامًّا، وصار الضيف لا يحفظ أيّ صورة خارجيّة */
+    try{ window.open(url, '_blank', 'noopener'); return true; }catch(e){ return false; }
   };
   /* كل روابط التحميل في التطبيق تمرّ من الحافظ الموحّد — نقرة المستخدم فقط
      (v-pdf-loop: النقرات البرمجية من مصدّر الـPDF ومن هذا الحافظ لا تُلتقط) */
@@ -9118,8 +9168,9 @@ async function omranBlobToServerLink(blob, filename){
   const isPdf = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
   const r = await fetch(isPdf ? '/api/media?action=pdf' : '/api/media?action=file', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: b64, name: filename, mime: (blob && blob.type) || 'application/octet-stream' }),
+    body: JSON.stringify({ data: b64, name: filename, mime: (blob && blob.type) || 'application/octet-stream', token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), purpose: 'download' }), /* v-share-guard: الرفع برمز الجلسة · v-media-save: الحفظ تنزيل لا مشاركة */
   });
+  if(r.status === 429 && typeof settingsToast === 'function' && typeof t === 'function') settingsToast(t('portraitLimitReached')); /* v-media-save: نصّ الحدّ القائم، ثمّ الورقة المحلّيّة */
   const d = await r.json();
   if(!r.ok || !d || !d.url) throw new Error('upload-failed');
   return d.url;
@@ -17313,7 +17364,7 @@ async function smartMaybeSearch(text, ctxMsgs){
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: text, classify: true }),
+      body: JSON.stringify({ query: text, classify: true, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }), // v-open-tools-cap: المصنّف يُعدّ على الحساب لا على IP البيت كلّه
       signal: controller.signal,
     });
     clearTimeout(timeout);
@@ -19804,7 +19855,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
         const i = du.indexOf(',');
         const r = await fetch('/api/media?action=img', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg'), w: __shW || undefined, h: __shH || undefined })
+          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg'), w: __shW || undefined, h: __shH || undefined, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : '') }) /* v-share-guard: الرفع برمز الجلسة */
         });
         const j = await r.json();
         if(j && j.url) shUrl = location.origin + j.url;
@@ -22692,7 +22743,7 @@ async function __sendPromptCore(){
           const res = await fetch('/api/video-prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: b64, mime: __heroAtt.mime || 'image/jpeg' }),
+            body: JSON.stringify({ imageBase64: b64, mime: __heroAtt.mime || 'image/jpeg', token: authGet('aiapp_auth_token') || '' }), /* v-video-open-lock: الخادم يشترط الجلسة وسقفًا يوميًّا */
           });
           if(res.ok){
             const d = await res.json();
@@ -27616,18 +27667,19 @@ function openShareModal(project){
     resultBox.style.display = 'none';
     createBtn.disabled = true;
     try{
-      const username = (typeof authGet === 'function' && authGet('aiapp_username')) ? authGet('aiapp_username') : 'زائر';
+      /* v-share-guard: النشر برمز الجلسة — الخادم يأخذ اسم الناشر من الرمز، فلا يُرسَل الاسم */
       const resp = await fetch('/api/share', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           title: shareModalProject.title || t('defaultProjectTitle'),
           code: shareModalProject.code || '',
-          username,
+          token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''),
           isPublic,
           messages: __shareMsgs, /* v-share-chat */
         }),
       });
+      if(resp.status === 401){ closeModal(); if(typeof window.requireLogin === 'function') window.requireLogin('guestLimit'); return; } /* v-share-guard: الضيف → التسجيل (النافذة فوق شاشة الدخول فتُغلق أوّلًا) */
       const data = await resp.json();
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
@@ -28083,7 +28135,19 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   function proxyVideoUrl(url){
     // روابط blob وروابط same-origin (تبدأ بـ /) لا تحتاج بروكسي
     if(!url || /^blob:/.test(url) || /^\//.test(url)) return url;
+    /* v-dl-ticket (المراجعة المعاكسة): لا رمز جلسة في الرابط — كان يتسرّب من السجلّات وزرّ «فتح» والمشاركة. نقرة «تحميل»
+       تمرّ بالحافظ الموحّد (app-05-save-media.js) فيجلب بالترويسة أو يصدر تذكرة تنزيل قصيرة لرابط ورقة الجوّال */
     return '/api/video-download?url=' + encodeURIComponent(url);
+  }
+  /* v-dl-ticket: الجلب نفسه يحمل الجلسة في ترويسة Authorization (البروكسي يقبلها) */
+  function proxyFetch(url){
+    const tk = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : '';
+    return fetch(proxyVideoUrl(url), tk ? { headers: { Authorization: 'Bearer ' + tk } } : undefined);
+  }
+  async function proxyBlob(url){
+    const r = await proxyFetch(url);
+    if(!r.ok) throw new Error('proxy ' + r.status);
+    return r.blob();
   }
   // v-trend-dl-fix: تتيح لملفّ الترندات (app-11-video-trends.js، إغلاق مستقلّ) استخدام نفس البروكسي
   // بدل رابط Runway/Veo الخام — بلا هذا كان زرّ تحميل الترند يفشل صامتًا على الجوّال وهواوي.
@@ -28560,7 +28624,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     let listTxt = '';
     for(let i = 0; i < urls.length; i++){
       const name = 'scene' + i + '.mp4';
-      await ffmpeg.writeFile(name, await fetchFile(proxyVideoUrl(urls[i])));
+      await ffmpeg.writeFile(name, await fetchFile(await proxyBlob(urls[i])));
       listTxt += "file '" + name + "'\n";
     }
     await ffmpeg.writeFile('list.txt', listTxt);
@@ -28594,7 +28658,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     let listTxt = '';
     for(let i = 0; i < scenes.length; i++){
       if(onProgress) onProgress(i, scenes.length);
-      await ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(proxyVideoUrl(scenes[i].videoUrl)));
+      await ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(await proxyBlob(scenes[i].videoUrl)));
       const hasAudio = scenes[i].audioBlob && scenes[i].audioBlob.size > 0;
       if(hasAudio){
         await ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
@@ -29063,9 +29127,19 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
        Available to ALL logged-in accounts (small scene count); owner gets more scenes. ---- */
     /* Helper: check Runway credits BEFORE starting so nothing is charged on doomed runs. */
     async function ensureRunwayCredits(needed){
+      /* v-video-open-lock: الرصيد عند المزوّد وسطره (باسمه وموقع شحنه) للمالك وحده.
+         v-balance-enough (المراجعة المعاكسة): وغير المالك يسأل «هل يكفي؟» بجلسته — الجواب {enough} وحده، ورسالته عامّة بلا مزوّد */
+      const owner = isOwnerAccount();
       try{
-        const r = await fetch('/api/video?action=video-balance');
+        const tk = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : '';
+        const r = owner
+          ? await fetch('/api/video?action=video-balance&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''))
+          : await fetch('/api/video?action=video-balance&needed=' + encodeURIComponent(needed), { headers: { Authorization: 'Bearer ' + tk } });
         const d = await r.json();
+        if(!owner){
+          if(d && d.enough === false){ setStatus(bT('فشل توليد الفيديو — أعد المحاولة.','Video generation failed — try again.')); return false; }
+          return true;
+        }
         if(typeof d.credits === 'number' && d.credits >= 0 && d.credits < needed){
           setStatus(isEn()
             ? '⛔ Not enough Runway credits (' + d.credits + ' left, ' + needed + ' needed). Nothing was charged. Top up at runwayml.com first.'
@@ -29319,10 +29393,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           }, 8000);
         });
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
-        const vres = await fetch(proxyVideoUrl(videoUrl));
-        if(!vres.ok) throw new Error('download failed ' + vres.status);
-        const vblob = await vres.blob();
-        const vurl = URL.createObjectURL(vblob);
+        /* v-dl-ours (المراجعة المعاكسة): فشل البروكسي (429/401) كان يرمي «download failed» فلا يظهر الفيديو المدفوع —
+           المشغّل يأخذ رابطه الخامّ كفرع Runway */
+        let vurl;
+        try{ vurl = URL.createObjectURL(await proxyBlob(videoUrl)); }catch(e){ vurl = videoUrl; }
         setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
         resultEl.style.display = 'block';
@@ -29378,9 +29452,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
               }, 8000);
             });
             setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
-            const avres = await fetch(proxyVideoUrl(actorUrl));
-            if(!avres.ok) throw new Error('download failed ' + avres.status);
-            const avurl = URL.createObjectURL(await avres.blob());
+            let avurl; /* v-dl-ours: فشل البروكسي لا يُخفي الناتج المدفوع — رابطه الخامّ للمشغّل */
+            try{ avurl = URL.createObjectURL(await proxyBlob(actorUrl)); }catch(e){ avurl = actorUrl; }
             setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
             resultEl.src = avurl;
             resultEl.style.display = 'block';
@@ -29629,7 +29702,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         dlUrl = proxyVideoUrl(finalSrc);
         try{
           setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading video...'));
-          const vres = await fetch(dlUrl);
+          const vres = await proxyFetch(finalSrc); /* v-dl-ticket: الجلسة في الترويسة لا الرابط */
           if(!vres.ok) throw new Error('proxy ' + vres.status);
           playerUrl = URL.createObjectURL(await vres.blob());
         } catch(e){
@@ -30119,9 +30192,12 @@ async function __safeJson(res){
     if(ideaAI) ideaAI.style.display = 'none';
     ideaStatus('⏳ ' + bT('أجمع لك صورًا وتصاميم…', 'Collecting photos and designs…'));
     try{
-      const r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ place: opts.place || '', q: opts.q || '', style: styleEl ? styleEl.value : '' }) });
+      const r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ place: opts.place || '', q: opts.q || '', style: styleEl ? styleEl.value : '', token: (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '' }) });
       const d = await __safeJson(r);
       if(my !== ideaReq) return;
+      /* v-open-tools-cap: المعرض صار بجلسة وسقف يوميّ ثابت — نصّ الدخول والحدّ الموجودان بالـ١٤ لغة */
+      if(d && d.error === 'auth_required'){ ideaStatus(t('designAiNeedLogin')); return; }
+      if(d && d.error === 'daily_limit_reached'){ ideaStatus(t('designAiLimitReached')); return; }
       const imgs = Array.isArray(d.images) ? d.images : [];
       if(!imgs.length){
         /* v-ideas-resilient: مصدر الصور متوقف (حصّة) ≠ لا نتائج — نقول الحقيقة */
@@ -30295,6 +30371,7 @@ async function __safeJson(res){
       const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const ideas = Array.isArray(data.suggestions) ? data.suggestions : [];
@@ -31856,6 +31933,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
@@ -35136,6 +35214,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const data = await res.json();
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
@@ -35839,6 +35918,8 @@ window.updateVersionLabel();
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   function T(o){ return o[lg()] || o.en || o.ar; }
   var $ = function(id){ return document.getElementById(id); };
+  function cxTokenOf(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  function gt(k){ try{ var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? v : T(D.tx.err); }catch(e){ return T(D.tx.err); } }
 
   /* معرض كبير داخل التطبيق — مشترك للديكور والمقاولات */
   if(!window.omranLightbox){
@@ -35882,9 +35963,12 @@ window.updateVersionLabel();
     var floorsInput = $('constructionFloors');
     var floors = sel.floors || (floorsInput && floorsInput.value ? (parseInt(floorsInput.value, 10) >= 3 ? 'g2' : (parseInt(floorsInput.value, 10) === 2 ? 'g1' : 'g')) : '');
     try{
-      var r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ mode:'construction', type: type, view: sel.view, floors: floors, style: sel.style, q: input.value.trim() }) });
+      var r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ mode:'construction', type: type, view: sel.view, floors: floors, style: sel.style, q: input.value.trim(), token: cxTokenOf() }) });
       var d = await r.json();
       if(my !== req) return;
+      /* v-open-tools-cap: المعرض صار بجلسة وسقف يوميّ ثابت — نصّ الدخول والحدّ الموجودان بالـ١٤ لغة */
+      if(d && d.error === 'auth_required'){ setStatus(gt('designAiNeedLogin')); return; }
+      if(d && d.error === 'daily_limit_reached'){ setStatus(gt('designAiLimitReached')); return; }
       var imgs = Array.isArray(d.images) ? d.images : [];
       if(!imgs.length){ setStatus(T((d && d.error === 'provider') ? D.tx.err : D.tx.none)); return; }
       imgs.forEach(function(u){
