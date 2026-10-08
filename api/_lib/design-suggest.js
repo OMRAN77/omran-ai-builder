@@ -5,7 +5,7 @@
 // Text-only response — does NOT generate an image and does NOT consume the
 // user's daily image-generation quota (only requires a logged-in account).
 const { checkDesignQuota } = require('./_designUsage');
-const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const { checkAndConsumeCustom, refundCustom, clientIp } = require('./_usage.js');
 // v-open-tools-cap: فحص الحصّة أدناه لا يرفض إلّا غير المسجَّل ولا يعدّ شيئًا — نداء رؤية بلا سقف لأيّ حساب.
 // سقف ثابت لهذه الأداة في سلّتها؛ تجاوزه 429 (لا 402: الباقة لا ترفعه فلا يفتح «الباقات»). المالك وVIP بلا سقف.
 const SUGGEST_DAILY_LIMIT = 30;
@@ -24,6 +24,7 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let refund = null; // v-refund-custom: يردّ الاقتراح المعدود إن فشل النموذج (والبديل)
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -54,6 +55,7 @@ module.exports = async (req, res) => {
       res.status(429).json({ error: 'daily_limit_reached', limit: SUGGEST_DAILY_LIMIT });
       return;
     }
+    refund = () => refundCustom(token, null, clientIp(req), 'design-suggest');
 
     const isArabic = lang !== 'en' && lang !== 'fr' && lang !== 'hi' && lang !== 'ur' && lang !== 'bn' && lang !== 'ne';
     const langNames = { en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
@@ -87,6 +89,7 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
+      await refund();
       res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
       return;
     }
@@ -108,6 +111,7 @@ module.exports = async (req, res) => {
 
     res.status(200).json({ suggestions });
   } catch (e) {
+    if (refund) await refund();
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };

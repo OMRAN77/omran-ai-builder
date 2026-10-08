@@ -36,9 +36,10 @@ function sigFor(ref) {
 }
 
 function sigOk(ref, sig) {
-  const want = sigFor(ref);
-  const got = String(sig || '');
-  return !!want && got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
+  // v-sig-bytes (المراجعة المعاكسة): طول النصّ ليس طول البايتات — حرف متعدّد البايتات بالطول نفسه كان يرمي في timingSafeEqual (502 بدل 401)
+  const want = Buffer.from(sigFor(ref));
+  const got = Buffer.from(String(sig || ''));
+  return want.length > 0 && got.length === want.length && crypto.timingSafeEqual(got, want);
 }
 
 /** الرابط الذي يُسلَّم للعميل: عبر هذا البروكسي، موقّعًا على الملفّ. */

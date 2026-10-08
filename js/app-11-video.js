@@ -20,9 +20,19 @@
   function proxyVideoUrl(url){
     // روابط blob وروابط same-origin (تبدأ بـ /) لا تحتاج بروكسي
     if(!url || /^blob:/.test(url) || /^\//.test(url)) return url;
-    /* v-video-open-lock: البروكسي يشترط الجلسة — الرمز في الرابط لأنّ «تحميل» رابط يُفتح بلمسة (لا ترويسة) */
+    /* v-dl-ticket (المراجعة المعاكسة): لا رمز جلسة في الرابط — كان يتسرّب من السجلّات وزرّ «فتح» والمشاركة. نقرة «تحميل»
+       تمرّ بالحافظ الموحّد (app-05-save-media.js) فيجلب بالترويسة أو يصدر تذكرة تنزيل قصيرة لرابط ورقة الجوّال */
+    return '/api/video-download?url=' + encodeURIComponent(url);
+  }
+  /* v-dl-ticket: الجلب نفسه يحمل الجلسة في ترويسة Authorization (البروكسي يقبلها) */
+  function proxyFetch(url){
     const tk = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : '';
-    return '/api/video-download?url=' + encodeURIComponent(url) + (tk ? '&token=' + encodeURIComponent(tk) : '');
+    return fetch(proxyVideoUrl(url), tk ? { headers: { Authorization: 'Bearer ' + tk } } : undefined);
+  }
+  async function proxyBlob(url){
+    const r = await proxyFetch(url);
+    if(!r.ok) throw new Error('proxy ' + r.status);
+    return r.blob();
   }
   // v-trend-dl-fix: تتيح لملفّ الترندات (app-11-video-trends.js، إغلاق مستقلّ) استخدام نفس البروكسي
   // بدل رابط Runway/Veo الخام — بلا هذا كان زرّ تحميل الترند يفشل صامتًا على الجوّال وهواوي.
@@ -499,7 +509,7 @@
     let listTxt = '';
     for(let i = 0; i < urls.length; i++){
       const name = 'scene' + i + '.mp4';
-      await ffmpeg.writeFile(name, await fetchFile(proxyVideoUrl(urls[i])));
+      await ffmpeg.writeFile(name, await fetchFile(await proxyBlob(urls[i])));
       listTxt += "file '" + name + "'\n";
     }
     await ffmpeg.writeFile('list.txt', listTxt);
@@ -533,7 +543,7 @@
     let listTxt = '';
     for(let i = 0; i < scenes.length; i++){
       if(onProgress) onProgress(i, scenes.length);
-      await ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(proxyVideoUrl(scenes[i].videoUrl)));
+      await ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(await proxyBlob(scenes[i].videoUrl)));
       const hasAudio = scenes[i].audioBlob && scenes[i].audioBlob.size > 0;
       if(hasAudio){
         await ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
@@ -1002,11 +1012,19 @@
        Available to ALL logged-in accounts (small scene count); owner gets more scenes. ---- */
     /* Helper: check Runway credits BEFORE starting so nothing is charged on doomed runs. */
     async function ensureRunwayCredits(needed){
-      /* v-video-open-lock: الرصيد عند المزوّد وسطره (باسمه وموقع شحنه) للمالك وحده — الخادم يرفض غيره */
-      if(!isOwnerAccount()) return true;
+      /* v-video-open-lock: الرصيد عند المزوّد وسطره (باسمه وموقع شحنه) للمالك وحده.
+         v-balance-enough (المراجعة المعاكسة): وغير المالك يسأل «هل يكفي؟» بجلسته — الجواب {enough} وحده، ورسالته عامّة بلا مزوّد */
+      const owner = isOwnerAccount();
       try{
-        const r = await fetch('/api/video?action=video-balance&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''));
+        const tk = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : '';
+        const r = owner
+          ? await fetch('/api/video?action=video-balance&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''))
+          : await fetch('/api/video?action=video-balance&needed=' + encodeURIComponent(needed), { headers: { Authorization: 'Bearer ' + tk } });
         const d = await r.json();
+        if(!owner){
+          if(d && d.enough === false){ setStatus(bT('فشل توليد الفيديو — أعد المحاولة.','Video generation failed — try again.')); return false; }
+          return true;
+        }
         if(typeof d.credits === 'number' && d.credits >= 0 && d.credits < needed){
           setStatus(isEn()
             ? '⛔ Not enough Runway credits (' + d.credits + ' left, ' + needed + ' needed). Nothing was charged. Top up at runwayml.com first.'
@@ -1260,10 +1278,10 @@
           }, 8000);
         });
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
-        const vres = await fetch(proxyVideoUrl(videoUrl));
-        if(!vres.ok) throw new Error('download failed ' + vres.status);
-        const vblob = await vres.blob();
-        const vurl = URL.createObjectURL(vblob);
+        /* v-dl-ours (المراجعة المعاكسة): فشل البروكسي (429/401) كان يرمي «download failed» فلا يظهر الفيديو المدفوع —
+           المشغّل يأخذ رابطه الخامّ كفرع Runway */
+        let vurl;
+        try{ vurl = URL.createObjectURL(await proxyBlob(videoUrl)); }catch(e){ vurl = videoUrl; }
         setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
         resultEl.style.display = 'block';
@@ -1319,9 +1337,8 @@
               }, 8000);
             });
             setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
-            const avres = await fetch(proxyVideoUrl(actorUrl));
-            if(!avres.ok) throw new Error('download failed ' + avres.status);
-            const avurl = URL.createObjectURL(await avres.blob());
+            let avurl; /* v-dl-ours: فشل البروكسي لا يُخفي الناتج المدفوع — رابطه الخامّ للمشغّل */
+            try{ avurl = URL.createObjectURL(await proxyBlob(actorUrl)); }catch(e){ avurl = actorUrl; }
             setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
             resultEl.src = avurl;
             resultEl.style.display = 'block';
@@ -1570,7 +1587,7 @@
         dlUrl = proxyVideoUrl(finalSrc);
         try{
           setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading video...'));
-          const vres = await fetch(dlUrl);
+          const vres = await proxyFetch(finalSrc); /* v-dl-ticket: الجلسة في الترويسة لا الرابط */
           if(!vres.ok) throw new Error('proxy ' + vres.status);
           playerUrl = URL.createObjectURL(await vres.blob());
         } catch(e){

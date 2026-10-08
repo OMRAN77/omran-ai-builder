@@ -34,10 +34,15 @@ require.cache[rp('api/_lib/_usage.js')] = { id: rp('api/_lib/_usage.js'), filena
   checkAndConsume: async (tok, gid, bucket) => { consumed.push(bucket); return { allowed: true, username: 'plan-user' }; },
   todayCount: async (u, bucket) => counts[bucket] || 0,
   bumpCount: async (u, bucket) => { bumped.push(bucket); },
+  // v-meter-atomic: الحجز الذرّيّ — fillOnTake يحاكي طلبًا متزامنًا ملأ المقياس بين القراءة والحجز
+  takeMeter: async (u, bucket, cap) => { if (fillOnTake.includes(bucket)) counts[bucket] = cap; if ((counts[bucket] || 0) >= cap) return false; counts[bucket] = (counts[bucket] || 0) + 1; bumped.push(bucket); return true; },
+  giveMeter: async (u, bucket) => { given.push(bucket); counts[bucket] = Math.max(0, (counts[bucket] || 0) - 1); },
 } };
 let counts = {};
+let fillOnTake = [];
 const consumed = [];
 const bumped = [];
+const given = [];
 require.cache[rp('api/_lib/_knowledge.js')] = { id: rp('api/_lib/_knowledge.js'), filename: rp('api/_lib/_knowledge.js'), loaded: true, exports: { ownerKnowledge: () => '' } };
 require.cache[rp('api/_lib/search.js')] = { id: rp('api/_lib/search.js'), filename: rp('api/_lib/search.js'), loaded: true, exports: { fetchPlaces: async () => [] } };
 const tierLib = require(rp('api/_lib/tier.js'));
@@ -145,7 +150,7 @@ const SUB = (plan) => ({ tier: 'sub', plan, cap: 100, subscriber: true });
 function withKeys(fn) {
   return async () => {
     process.env.GROQ_API_KEY = 'q-test'; process.env.GEMINI_API_KEY = 'g-test';
-    try { await fn(); } finally { delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API_KEY; counts = {}; }
+    try { await fn(); } finally { delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API_KEY; counts = {}; fillOnTake = []; }
   };
 }
 
@@ -188,13 +193,31 @@ test('٤. الخادم: كلّ وظيفة لمزوّدها بمفاتيحه، و
 
 test('٥. الخادم: تعطّل مزوّد الوظيفة قبل أوّل حرف → Gemini ثمّ DeepSeek ثمّ Groq بصمت، ثمّ السلسلة المجّانيّة', withKeys(async () => {
   chat.__orQuick.level = 2;
+  bumped.length = 0; given.length = 0;
   let r = await ask(SUB('pro'), 'claude', 'اكتب كود بايثون', ['{"error":"insufficient credits"}', 'ok']);
   assert.deepEqual(r.bodies.map((b) => b.body.model), ['anthropic/claude-haiku-4.5', 'gemini-flash-latest']);
+  assert.deepEqual([bumped, given], [['plan-haiku'], ['plan-haiku']], 'v-meter-atomic: Haiku لم يخدم — حجزه يُردّ');
   assert.match(r.written, /"delta":"تم"/);
   assert.doesNotMatch(r.written, /"error"|Gemini/, 'بصمت وبلا اسم مزوّد');
   r = await ask(SUB('basic'), '', 'هلا', ['boom', 'boom', 'ok']);
   assert.deepEqual(r.bodies.map((b) => b.body.model), ['openai/gpt-oss-120b', 'gemini-flash-latest', 'deepseek/deepseek-v4-pro']);
   assert.match(r.written, /"delta":"تم"/);
+}));
+
+test('٥-ج. v-meter-atomic: مقياس امتلأ بين القراءة والحجز (طلب متزامن) → المسار التالي بلا عبور الحدّ، والسلّة نفسها', withKeys(async () => {
+  chat.__orQuick.level = 2;
+  consumed.length = 0; bumped.length = 0; given.length = 0;
+  fillOnTake = ['plan-haiku'];
+  let r = await ask(SUB('pro'), 'claude', 'اكتب لي كود جافاسكربت يطبع هلا');
+  assert.deepEqual(r.bodies.map((b) => b.body.model), ['deepseek/deepseek-v4-pro'], 'لا نداء Haiku فوق حدّه');
+  assert.equal(counts['plan-haiku'], 10, 'المقياس عند حدّه لا فوقه');
+  assert.deepEqual([consumed, bumped, given], [['plan'], [], []], 'حصّة واحدة في سلّة الباقة، ولا حجز ولا ردّ');
+  // Max: Sonnet امتلأ للتوّ ← Haiku يُحجز ويخدم
+  counts = {}; fillOnTake = ['plan-sonnet'];
+  r = await ask(SUB('max'), 'claude', 'ابني لي صفحة هبوط لمطعم');
+  assert.deepEqual(r.bodies.map((b) => b.body.model), ['anthropic/claude-haiku-4.5']);
+  assert.deepEqual(bumped, ['plan-haiku']);
+  assert.equal(counts['plan-sonnet'], 30);
 }));
 
 test('٥-ب. بلا مفاتيح مباشرة: Groq وGemini يُتخطّيان (لا انقلاب صامت)، والكلّ معطّل → السلسلة المجّانيّة', async () => {
@@ -211,8 +234,9 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
   const consume = s.indexOf("const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : ((__planRoute && __planRoute.bucket) || prov)");
   const lastUser = s.indexOf('const lastUserAny = messages.slice().reverse().find(');
   assert.ok(route > 0 && lastUser > 0 && lastUser < route && route < consume, 'الرسالة الأخيرة → التوجيه → الحصّة');
-  const bump = s.indexOf("await bumpCount(__planUser, 'plan-' + __planRoute.meter)");
-  assert.ok(bump > consume, 'حدّ كلود يُعدّ بعد قبول الحصّة');
+  const bump = s.indexOf("if (await takeMeter(__planUser, __mb, __planRoute.meterCap))"); // v-meter-atomic: حجز ذرّيّ لا فحص ثمّ زيادة
+  assert.ok(bump > consume, 'حدّ كلود يُحجز بعد قبول الحصّة');
+  assert.ok(!/bumpCount\(/.test(s), 'لا زيادة بعد الفحص في chat.js');
   const loop = s.indexOf('while (!upstream.ok && !anyText && __planFallbacks.length) {');
   const finalFail = s.indexOf('if (!upstream.ok) {\n        const errText = (await upstream.text()).slice(0, 300);');
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");

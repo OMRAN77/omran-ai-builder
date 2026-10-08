@@ -62,6 +62,7 @@ module.exports = async (req, res) => {
     }
 
     await require('./video-job.js').settleVideoJob(taskId, true);
+    await require('./our-media.js').rememberOurMedia([url]); // v-dl-ours: ناتج مدفوع — حفظه لا يُعدّ على سقف التنزيل
     res.status(200).json({ status: 'SUCCEEDED', output: [url] });
   } catch (e) {
     console.error('[minimax-status] ' + (e && e.stack ? e.stack : e));

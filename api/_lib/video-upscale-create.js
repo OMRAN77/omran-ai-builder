@@ -46,6 +46,7 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let refund = null; // v-refund-custom: يردّ الترقية المعدودة إن لم يقبلها Runway
   try {
     let body = req.body;
     if (!body || typeof body === 'string') {
@@ -74,9 +75,11 @@ module.exports = async (req, res) => {
       res.status(429).json({ error: 'daily_limit_reached', limit: UPSCALE_DAILY });
       return;
     }
+    refund = () => usage.refundCustom(token, null, usage.clientIp(req), 'video-upscale');
 
     const picked = pickKey();
     if (!picked) {
+      await refund();
       res.status(500).json({ error: 'Server is missing RUNWAY_API_KEY' });
       return;
     }
@@ -102,12 +105,14 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
+      await refund();
       res.status(upstream.status).json({ error: 'Runway error: ' + (data.error || JSON.stringify(data)).toString().slice(0, 500) });
       return;
     }
 
     res.status(200).json({ id: encodeTaskId(picked.index, data.id) });
   } catch (e) {
+    if (refund) await refund();
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };

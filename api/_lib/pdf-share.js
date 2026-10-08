@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
 const KV = require('./kv.js');
 const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
-const { gateShare } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — العرض العامّ (GET) بلا رمز كما كان
+const { gateShare, refundShare, uploadPlan } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — العرض العامّ (GET) بلا رمز كما كان
 
 const MAX_B64 = 4 * 1024 * 1024; // ≈3MB ملف فعلي — تحت حدّ جسم الطلب في Vercel
 const TTL_SEC = 60 * 60 * 24 * 7;
@@ -79,32 +79,32 @@ module.exports = async (req, res) => {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
     // فحص أن المحتوى PDF فعلًا (يبدأ بـ %PDF)
     if (data.slice(0, 6) !== 'JVBERi') { res.status(400).json({ error: 'not_pdf' }); return; }
-    if (!(await gateShare(req, res, body, 'share-pdf', DAILY_UPLOADS))) return;
+    const plan = uploadPlan(body, 'share-pdf', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
+    if (!(await gateShare(req, res, body, plan.bucket, plan.limit))) return;
     // الاسم: أحرف/أرقام/شرطات فقط + لاحقة pdf ثابتة — لا نقطتين (فاصل التخزين)
     const rawName = String(body.name || 'omran-ai.pdf');
     const name = (rawName.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_\-؀-ۿ]/g, '-').slice(0, 60) || 'omran-ai') + '.pdf';
     const id = crypto.randomBytes(6).toString('hex');
     const CHUNK = 700 * 1024; /* أقل من حدّ حجم الطلب في Upstash */
     let ok;
-    if (data.length <= CHUNK) {
-      ok = await setIfAbsentWithRoom(KV, KEY(id), name + ':' + data, TTL_SEC);
-    } else {
-      const n = Math.ceil(data.length / CHUNK);
-      ok = true;
-      const failed = [];
-      for (let i = 0; i < n && ok; i++) {
-        const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
-        if (!ok_i) failed.push(i);
-        ok = ok && ok_i;
+    try {
+      if (data.length <= CHUNK) {
+        ok = await setIfAbsentWithRoom(KV, KEY(id), name + ':' + data, plan.ttlSec);
+      } else {
+        const n = Math.ceil(data.length / CHUNK);
+        ok = true;
+        for (let i = 0; i < n && ok; i++) {
+          const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), plan.ttlSec);
+          ok = ok && ok_i;
+        }
+        // إذا أي جزء فشل، لا تحفظ الفهرس (لا تترك أجزاء يتيمة)
+        if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + name, plan.ttlSec);
       }
-      // إذا أي جزء فشل، لا تحفظ الفهرس (لا تترك أجزاء يتيمة)
-      if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + name, TTL_SEC);
-      if (!ok) {
-        res.status(500).json({ error: 'store_failed', detail: 'فشل حفظ جزء من الملف' });
-        return;
-      }
+    } catch (e) {
+      console.error('[pdf-share] store failed:', e && e.message); // القاعدة ممتلئة رغم التنظيف أو عطل — يُردّ كـstore_failed
+      ok = false;
     }
-    if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
+    if (!ok) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
     res.status(200).json({ id, url: '/p/' + id, ttlDays: 7 });
     return;
   }

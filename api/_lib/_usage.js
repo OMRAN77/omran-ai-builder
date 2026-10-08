@@ -6,7 +6,7 @@
 // day (UTC) via a 2-day TTL on the counter key.
 const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
-const { kvIncr, kvExpire, kvGetJSON, kvDecrBy, kvSetIfAbsent, kvDel } = require('./kv.js');
+const { kvIncr, kvIncrBy, kvExpire, kvGetJSON, kvDecrBy, kvSetIfAbsent, kvDel } = require('./kv.js');
 const { isVip } = require('./_vip.js');
 // v-tiers: السقف اليومي صار بحسب الطبقة (ضيف/مجاني/مشترك بباقته) لا رقمًا واحدًا،
 // والمزوّدات المدفوعة للمشتركين فقط. انظر tier.js.
@@ -112,6 +112,15 @@ async function takeTally(key, limit) {
     return { ok: false, count: n - 1 };
   }
   return { ok: true, count: n };
+}
+
+// v-refund-custom (المراجعة المعاكسة): ردّ ما عدّه takeTally في مفتاحه — إنقاص واحد لا ينزل تحت الصفر. أفضل جهد ولا يرمي.
+async function giveTally(key) {
+  const k = tallyKey(key);
+  try {
+    const n = Number(await kvDecrBy(k, 1));
+    if (n < 0) { await kvIncrBy(k, -n); await kvExpire(k, 172800); } // لا عدّ يُردّ (يوم جديد أو حجز لم يقع) — لا رصيد سالب يفتح السقف
+  } catch (e) { /* أفضل جهد: عدّ باقٍ يحجب طلبًا واحدًا حتّى نهاية اليوم ولا يمرّر شيئًا */ }
 }
 
 // v-atomic-quota: سحب رصيد المكافأة تحت قفل قصير لكلّ حساب (SET NX EX) — كان قراءة سجلّ ثمّ كتابته،
@@ -324,6 +333,24 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
   return { allowed: false, reason: 'auth', username: null };
 }
 
+// v-refund-custom (المراجعة المعاكسة): الحصّة تُحجز قبل النداء، وما فشل قبل أن يخدم المستخدم (رفض المزوّد، مفتاح غائب،
+// مضيف محجوب، تخزين فاشل، بلا صور) كان يحرقها. يُنقص العدّاد الذي زاده checkAndConsumeCustom بالمدخلات نفسها — المفتاح
+// نفسه: حساب أو IP أو guest + اليوم + السلّة. المالك وVIP لا يُعدّون فلا يُردّ لهم شيء. أفضل جهد ولا يرمي.
+async function refundCustom(token, guestId, ip, provider) {
+  try {
+    const providerKey = provider ? String(provider).toLowerCase() : 'general';
+    const username = verifyToken(token);
+    if (username) {
+      if (isOwnerUsername(username) || await isVip(username)) return;
+      await giveTally(username + '_' + todayStr() + '_' + providerKey);
+      return;
+    }
+    const cleanIp = (typeof ip === 'string' && ip.trim()) ? ip.trim().slice(0, 64) : null;
+    if (cleanIp) { await giveTally('ip_' + cleanIp + '_' + todayStr() + '_' + providerKey); return; }
+    if (isValidGuestId(guestId)) await giveTally('guest_' + guestId + '_' + todayStr() + '_' + providerKey);
+  } catch (e) { /* أفضل جهد — الردّ لا يُسقط ردّ المستخدم */ }
+}
+
 // Best-effort extraction of the caller's IP from Vercel's forwarded headers.
 function clientIp(req) {
   try {
@@ -346,8 +373,28 @@ async function bumpCount(username, bucket) {
   await addTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
 }
 
+// v-meter-atomic (المراجعة المعاكسة): حدّ الموديل داخل الباقة كان todayCount ثمّ bumpCount بعد قبول الحصّة — فالطلبات
+// المتزامنة تقرأ العدّ نفسه وتعبر الحدّ كلّها. الآن حجز ذرّيّ على نمط takeTally (INCR ثمّ المقارنة ثمّ DECR إن تجاوز):
+// true = حُجز مكان في المقياس، false = المقياس ممتلئ (فيُعاد التوجيه للمسار التالي). عطل KV = مفتوح كما كان.
+async function takeMeter(username, bucket, cap) {
+  if (!username) return false;
+  return (await takeTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase(), Number(cap) || 0)).ok;
+}
+// يردّ حجز takeMeter حين يفشل النداء قبل أن يخدم — أفضل جهد ولا يرمي.
+async function giveMeter(username, bucket) {
+  if (!username) return;
+  await giveTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
+}
+
 // v-rename-move: تغيير الاسم لا يصفّر حدّ اليوم — حصص اليوم تنتقل مع الحساب (طلبان مجمّعان، أفضل جهد).
-const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'maha-realtime', 'agent', 'claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'gemini', 'groq', 'mistral', 'openrouter', 'stt', 'general'];
+// v-move-buckets (المراجعة المعاكسة): وكلّ سلال checkAndConsumeCustom المستعملة — كانت سقوف الأدوات (البحث، المشاركة،
+// التنزيل، الاقتراحات، الفيديو…) تتصفّر بتغيير الاسم بلا حدّ. tests/rename-move.test.cjs يستخرج السلال من الكود ويقارن.
+const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'maha-realtime', 'agent', 'claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'gemini', 'groq', 'mistral', 'openrouter', 'stt', 'general',
+  'prayer-plan', 'text-layout',
+  'search', 'search-classify', 'chat-search', 'translate', 'tts', 'media-intent', 'adchat', 'adimage', 'stamps', 'cx-brief', 'stocks-ai', 'stocks-pf',
+  'design-ideas', 'design-suggest', 'fashion-suggest', 'studio-suggest',
+  'video-prompt', 'video-upscale', 'video-download',
+  'share', 'share-img', 'share-pdf', 'share-file', 'media-save'];
 async function moveTodayTallies(oldUser, newUser) {
   if (!oldUser || !newUser) return;
   try {
@@ -361,4 +408,4 @@ async function moveTodayTallies(oldUser, newUser) {
   } catch (e) { console.warn('[usage] rename tallies not moved:', e && e.message); }
 }
 
-module.exports = { todayCount, bumpCount, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp, moveTodayTallies };
+module.exports = { todayCount, bumpCount, takeMeter, giveMeter, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, refundCustom, clientIp, moveTodayTallies, MOVE_BUCKETS };

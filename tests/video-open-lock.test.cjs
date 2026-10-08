@@ -291,13 +291,14 @@ test('٥. بروكسي التنزيل: بلا جلسة أو بتذكرة = 401 �
   assert.equal((await dl('https://cdn.example/a.mp4', await user('bad-dl', { banned: true }))).code, 403);
 });
 
-test('٥ب. الواجهة تضع الرمز في رابط البروكسي (صانع الفيديو والحافظ الموحّد)، ولا تحفظ ردّ خطأ ملفًّا', () => {
+test('٥ب. الواجهة ترسل الجلسة إلى البروكسي (صانع الفيديو والحافظ الموحّد)، ولا تحفظ ردّ خطأ ملفًّا', () => {
+  // v-dl-ticket (المراجعة المعاكسة): الرمز صار في ترويسة Authorization لا في الرابط — tests/review-r2.test.cjs (ج)
   const v = read('js/app-11-video.js');
   const i = v.indexOf('function proxyVideoUrl(url){');
-  assert.match(v.slice(i, i + 600), /'\/api\/video-download\?url=' \+ encodeURIComponent\(url\) \+ \(tk \? '&token=' \+ encodeURIComponent\(tk\) : ''\)/);
+  assert.match(v.slice(i, i + 900), /fetch\(proxyVideoUrl\(url\), tk \? \{ headers: \{ Authorization: 'Bearer ' \+ tk \} \} : undefined\)/);
   const s = read('js/app-05-save-media.js');
-  const j = s.indexOf('function proxied(url){');
-  assert.match(s.slice(j, j + 600), /'&token=' \+ encodeURIComponent\(tk\)/);
+  const j = s.indexOf('async function proxiedBlob(url){');
+  assert.match(s.slice(j, j + 400), /headers: \{ Authorization: 'Bearer ' \+ tk \}/);
   assert.ok(!/await \(await fetch\(proxied\(url\)\)\)\.blob\(\)/.test(s), 'ردّ 401/429 كان يُحفظ ملفًّا باسم صورة');
   assert.match(s, /if\(!r\.ok\) throw new Error\('proxy ' \+ r\.status\);/);
 });
@@ -314,8 +315,8 @@ test('٦. رصيد المزوّد: الزائر والمستخدم العادي�
   assert.equal(r.code, 200); assert.equal(r.body.credits, 1234);
   const v = read('js/app-11-video.js');
   const i = v.indexOf('async function ensureRunwayCredits(needed){');
-  const body = v.slice(i, i + 900);
-  assert.match(body, /if\(!isOwnerAccount\(\)\) return true;/);
-  assert.ok(body.indexOf('if(!isOwnerAccount()) return true;') < body.indexOf("fetch('/api/video?action=video-balance"), 'الفحص قبل النداء والسطر');
-  assert.match(body, /action=video-balance&token=' \+ \(typeof ownerToken === 'function' \? ownerToken\(\) : ''\)/);
+  const body = v.slice(i, i + 2400);
+  // v-balance-enough (المراجعة المعاكسة): غير المالك يسأل «هل يكفي؟» بجلسته فيأخذ {enough} وحده — tests/review-r2.test.cjs (د)
+  assert.match(body, /owner\s+\? await fetch\('\/api\/video\?action=video-balance&token=' \+ \(typeof ownerToken === 'function' \? ownerToken\(\) : ''\)\)/, 'الرقم للمالك وحده');
+  assert.ok(body.indexOf('if(!owner){') < body.indexOf('رصيد Runway'), 'سطر المزوّد بعد خروج غير المالك');
 });

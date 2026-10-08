@@ -241,6 +241,47 @@ test('١١. رصيد المكافأة: عشرة متزامنة بعد السقف
   assert.equal(await usage.todayCount('bonus', 'chat'), 3);
 });
 
+test('١١-ب. v-meter-atomic: takeMeter — عشرة متزامنة على حدّ Haiku ٥ تحجز خمسة بالضبط، وgiveMeter يردّ ولا ينزل تحت الصفر', async () => {
+  assert.equal(typeof usage.takeMeter, 'function', 'حجز ذرّيّ لحدّ الموديل داخل الباقة (كان todayCount ثمّ bumpCount)');
+  const out = await Promise.all(Array.from({ length: 10 }, () => usage.takeMeter('meterman', 'plan-haiku', 5)));
+  assert.equal(out.filter(Boolean).length, 5);
+  assert.equal(await usage.todayCount('meterman', 'plan-haiku'), 5, 'المرفوض لا يبقى في المقياس');
+  await usage.giveMeter('meterman', 'plan-haiku');
+  assert.equal(await usage.todayCount('meterman', 'plan-haiku'), 4);
+  assert.equal(await usage.takeMeter('meterman', 'plan-haiku', 5), true, 'المردود يُحجز من جديد');
+  assert.equal(await usage.takeMeter('meterman', 'plan-haiku', 5), false);
+  assert.equal(await usage.takeMeter('meterman', 'plan-sonnet', 0), false, 'حدّ صفر (باقة بلا Sonnet) يُرفض بلا عدّ');
+  for (let i = 0; i < 3; i++) await usage.giveMeter('fresh-meter', 'plan-haiku');
+  assert.equal(await usage.todayCount('fresh-meter', 'plan-haiku'), 0, 'لا رصيد سالب يفتح الحدّ');
+});
+
+test('١١-ج. v-refund-custom: refundCustom يردّ ما عدّه checkAndConsumeCustom في المفتاح نفسه (حساب · IP · guest)، ولا يرمي', async () => {
+  assert.equal(typeof usage.refundCustom, 'function');
+  const t = tok('refunder');
+  for (let i = 0; i < 3; i++) assert.equal((await usage.checkAndConsumeCustom(t, null, '9.9.9.9', 'tool-r', 3)).allowed, true);
+  assert.equal((await usage.checkAndConsumeCustom(t, null, '9.9.9.9', 'tool-r', 3)).allowed, false);
+  await usage.refundCustom(t, null, '9.9.9.9', 'tool-r');
+  assert.equal(await usage.todayCount('refunder', 'tool-r'), 2);
+  assert.equal((await usage.checkAndConsumeCustom(t, null, '9.9.9.9', 'tool-r', 3)).allowed, true, 'المردود متاح من جديد');
+  // IP (بلا جلسة)
+  for (let i = 0; i < 2; i++) await usage.checkAndConsumeCustom(null, null, '7.7.7.7', 'tool-r', 2);
+  assert.equal((await usage.checkAndConsumeCustom(null, null, '7.7.7.7', 'tool-r', 2)).allowed, false);
+  await usage.refundCustom(null, null, '7.7.7.7', 'tool-r');
+  assert.equal((await usage.checkAndConsumeCustom(null, null, '7.7.7.7', 'tool-r', 2)).allowed, true);
+  // guest بلا IP
+  await usage.checkAndConsumeCustom(null, 'guest-refund-1', null, 'tool-r', 1);
+  assert.equal((await usage.checkAndConsumeCustom(null, 'guest-refund-1', null, 'tool-r', 1)).allowed, false);
+  await usage.refundCustom(null, 'guest-refund-1', null, 'tool-r');
+  assert.equal((await usage.checkAndConsumeCustom(null, 'guest-refund-1', null, 'tool-r', 1)).allowed, true);
+  // ردّ بلا عدّ لا ينزل تحت الصفر، والمالك لا يُمسّ، وعطل KV لا يرمي
+  await usage.refundCustom(tok('never-counted'), null, null, 'tool-r');
+  assert.equal(await usage.todayCount('never-counted', 'tool-r'), 0);
+  await usage.refundCustom(tok('omran'), null, null, 'tool-r');
+  assert.equal(await usage.todayCount('omran', 'tool-r'), 0);
+  kvDown = true;
+  try { await usage.refundCustom(t, null, null, 'tool-r'); } finally { kvDown = false; }
+});
+
 // ── ٤. المهلة والأسلاك ────────────────────────────────────────────────────────────────────
 test('١٢. طلب لا يخرج ردّه (تقتله المهلة) يُردّ حجزه بمؤقّت قبل maxDuration، ونجاحه المتأخّر يُحسب مرّة', async (t) => {
   const { HOLD_MAX_MS } = require(rp('api/_lib/_dailyQuota.js'));

@@ -58,7 +58,7 @@
     });
   }
   const UPLOAD_MAX_B64 = 640 * 1024; /* حدّ طلب Upstash ≈1MB مع هامش (PDF يستخدم 700KB) */
-  async function uploadImage(blob, name){
+  async function uploadImage(blob, name, purpose){
     let b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = rej; fr.readAsDataURL(blob); });
     let mime = blob.type || 'image/png', w, h;
     if(b64.length > UPLOAD_MAX_B64 || mime === 'image/gif'){
@@ -71,8 +71,9 @@
       }
     }
     const i = b64.indexOf(',');
-    const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : '') }) }); /* v-share-guard: الرفع برمز الجلسة */
+    const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), purpose: purpose || undefined }) }); /* v-share-guard: الرفع برمز الجلسة · v-media-save: «تحميل» في سلّة التنزيل */
     let j = null; try{ j = await r.json(); }catch(e){ j = null; }
+    if(r.status === 429) throw new Error(gtx('portraitLimitReached', 'وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا', 'You reached the daily limit for this feature, try again tomorrow')); /* v-media-save: نصّ الحدّ القائم */
     if(!r.ok || !j || !j.id) throw new Error((j && j.error) ? String(j.error) : ('http ' + r.status));
     const ext = extOf(mime);
     const safe = String(name || 'omran-image').replace(/\.[A-Za-z0-9]+$/, '').replace(/[^A-Za-z0-9_\-]/g, '-').slice(0, 50) || 'omran-image';
@@ -226,7 +227,7 @@
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
     preparingSheet();
     let upErr = '';
-    try{ const links = await uploadImage(blob, name); return readySheet(links, file, name); }
+    try{ const links = await uploadImage(blob, name, mode === 'share' ? '' : 'download'); return readySheet(links, file, name); }
     catch(e){ upErr = (e && e.message) ? String(e.message) : 'upload'; }
     /* تعذّر الرفع: الورقة لا تختفي — تنزيل محلي مباشر + مشاركة إن توفّرت + سبب مختصر */
     try{ return localSheet(blob, file, name, upErr); }catch(e){ /* guard-ok */ }

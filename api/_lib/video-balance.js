@@ -4,16 +4,29 @@
 //
 // v-video-open-lock: كان يكشف رصيد المالك عند المزوّد وعدد مفاتيحه لأيّ زائر، والواجهة تعرض لكلّ مستخدم سطرًا باسم
 // المزوّد وموقعه للشحن. الآن للمالك وحده (رمز جلسته أو مفتاح المراقبة — _owner.js)، وغيره 403 بلا أيّ نداء للمزوّد.
+//
+// v-balance-enough (المراجعة المعاكسة): فصار الفحص المسبق لغير المالك «يكفي دائمًا» في الواجهة — فيبدأ فيلمًا ينكسر في منتصفه.
+// الآن جلسة حقيقيّة مع ?needed= تسأل «هل يكفي؟» فقط: الجواب { enough } وحده بلا رصيد ولا عدد مفاتيح ولا اسم مزوّد،
+// والرصيد لغير المالك من ذاكرة ٦٠ ثانية داخل العمليّة (لا نداءات للمزوّد بمفاتيح المالك مع كلّ طلب).
 const { getKeys, RUNWAY_API_BASE } = require('./runway-keys.js');
 
+const ENOUGH_CACHE_MS = 60 * 1000;
+let cached = null; // { at, best, keys }
+
 module.exports = async (req, res) => {
-  if (!require('./_owner.js').isOwner(req)) {
-    res.status(403).json({ error: 'owner_only' });
-    return;
+  const owner = require('./_owner.js').isOwner(req);
+  const needed = Number((req.query && req.query.needed) || 0);
+  if (!owner) {
+    const session = require('./_session.js');
+    if (!session.sessionUser(session.tokenOf(req)) || !Number.isFinite(needed) || needed <= 0) {
+      res.status(403).json({ error: 'owner_only' });
+      return;
+    }
+    if (cached && Date.now() - cached.at < ENOUGH_CACHE_MS) { res.status(200).json({ enough: cached.best >= needed }); return; }
   }
   try {
     const keys = getKeys();
-    if (!keys.length) return res.status(200).json({ credits: 0, keys: 0 });
+    if (!keys.length) { cached = { at: Date.now(), best: 0, keys: 0 }; return owner ? res.status(200).json({ credits: 0, keys: 0 }) : res.status(200).json({ enough: false }); }
     let best = 0;
     for (const key of keys) {
       try {
@@ -29,8 +42,11 @@ module.exports = async (req, res) => {
         if (c > best) best = c;
       } catch (e) { /* try next key */ }
     }
+    cached = { at: Date.now(), best, keys: keys.length };
+    if (!owner) { res.status(200).json({ enough: best >= needed }); return; }
     res.status(200).json({ credits: best, keys: keys.length });
   } catch (e) {
+    if (!owner) { res.status(200).json({ enough: true }); return; } // أفضل جهد كمسار المالك: تعذّر القراءة لا يمنع
     res.status(200).json({ credits: -1, error: String(e && e.message || e) });
   }
 };

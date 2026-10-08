@@ -32,7 +32,7 @@ stub('api/_lib/_vip.js', { isVip: async (u) => u === 'vipuser' });
 const realAuth = require(rp('api/_lib/auth.js'));
 stub('api/_lib/auth.js', Object.assign({}, realAuth, { getUser: async (u) => users.get(u) || null }));
 stub('api/_lib/_usage.js', {
-  DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', todayCount: async () => 0, bumpCount: async () => {},
+  DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', todayCount: async () => 0, bumpCount: async () => {}, takeMeter: async () => true, giveMeter: async () => {}, // v-meter-atomic
   checkAndConsume: async (tok, g, bucket, ip, o) => ({ allowed: true, username: 'x', tier: o && o.tier && o.tier.tier, subscriber: !!(o && o.tier && o.tier.subscriber) }),
 });
 stub('api/_lib/_knowledge.js', { ownerKnowledge: () => '' });

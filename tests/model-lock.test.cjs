@@ -29,7 +29,12 @@ mock('api/_lib/_usage.js', {
   checkAndConsume: async (token, gid, provider, ip, opts) => { buckets.push({ provider, chatBucket: !!(opts && opts.chatBucket) }); return WHO[token]; },
   todayCount: async (u, b) => counts[u + ':' + b] || 0,
   bumpCount: async (u, b) => { counts[u + ':' + b] = (counts[u + ':' + b] || 0) + 1; },
+  // v-meter-atomic: حجز ذرّيّ — fillOnTake يحاكي طلبًا متزامنًا ملأ المقياس بين القراءة والحجز
+  takeMeter: async (u, b, cap) => { const k = u + ':' + b; if (fillOnTake.includes(b)) counts[k] = cap; if ((counts[k] || 0) >= cap) return false; counts[k] = (counts[k] || 0) + 1; return true; },
+  giveMeter: async (u, b) => { const k = u + ':' + b; given.push(k); counts[k] = Math.max(0, (counts[k] || 0) - 1); },
 });
+let fillOnTake = [];
+const given = [];
 mock('api/_lib/kv.js', { kvGetRaw: async () => null, kvGetJSON: async () => null, kvPutJSON: async () => {}, kvPipeline: async (c) => c.map(() => null) });
 
 const { guardModel } = require(rp('api/_lib/_model-guard.js'));
@@ -94,6 +99,25 @@ test('٤. /api/claude: Plus ‏Haiku بحدّه، Max ‏Sonnet ثمّ Haiku، �
   r = await hit('claude.js', { token: 'owner', model: 'claude-opus-5' });
   assert.equal(r.sent[0].body.model, 'claude-opus-5');
   assert.equal(r.sent[0].body.max_tokens, 32000);
+});
+
+test('٤-ب. v-meter-atomic: /api/claude — مقياس امتلأ للتوّ يُعيد التوجيه (Sonnet ← Haiku) أو 402، وفشل المزوّد يردّ الحجز', async () => {
+  for (const k of Object.keys(counts)) delete counts[k];
+  fillOnTake = ['plan-sonnet'];
+  let r = await hit('claude.js', { token: 'max', model: 'claude-opus-5' });
+  assert.equal(r.sent[0].body.model, 'claude-haiku-4-5', 'Sonnet امتلأ بين القراءة والحجز');
+  assert.deepEqual([counts['max1:plan-sonnet'], counts['max1:plan-haiku']], [30, 1]);
+  fillOnTake = ['plan-haiku'];
+  r = await hit('claude.js', { token: 'plus', model: 'x' });
+  assert.equal(r.res.code, 402, 'Plus بلا Haiku متاح = حدّ المحرّك كما كان');
+  assert.equal(r.sent.length, 0);
+  fillOnTake = [];
+  for (const k of Object.keys(counts)) delete counts[k];
+  const realFetch = global.fetch;
+  global.fetch = async () => new Response('{"error":"overloaded"}', { status: 400 });
+  try { r = await hit('claude.js', { token: 'plus', model: 'x' }); } finally { global.fetch = realFetch; }
+  assert.equal(r.res.code, 400);
+  assert.deepEqual([given, counts['pam:plan-haiku']], [['pam:plan-haiku'], 0], 'لم يخدم المزوّد — الحجز رُدّ');
 });
 
 test('٥. /api/openai بلا 👑: اسم النموذج الاحترافيّ لا يتخطّى خصم النقاط — الخفيف الافتراضيّ', async () => {

@@ -9,7 +9,7 @@
 // (٣) سبب الفشل يصل للواجهة (error:'provider') فتقول الحقيقة بدل «ما حصلت صورًا».
 const TAVILY = 'https://api.tavily.com/search';
 const crypto = require('crypto');
-const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const { checkAndConsumeCustom, refundCustom, clientIp } = require('./_usage.js');
 const { verifyToken } = require('./auth.js');
 
 /* v-open-tools-cap (المالك: «مفتوحة على مفاتيحك بلا حدّ»): المعرض كان بلا رمز ولا عدّاد ولا IP — كلّ نصّ جديد يطلق
@@ -23,6 +23,10 @@ async function meterFresh(req, res, body) {
   if (u.reason === 'auth') res.status(401).json({ error: 'auth_required' });
   else res.status(429).json({ error: 'daily_limit_reached', limit: IDEAS_DAILY_LIMIT });
   return false;
+}
+// v-refund-custom (المراجعة المعاكسة): كلّ المصادر فشلت (error:'provider') ولا صورة واحدة — الجمعة المعدودة تُردّ
+async function refundIfEmpty(req, body, out) {
+  if (out && out.error === 'provider') await refundCustom(body.token, null, clientIp(req), 'design-ideas');
 }
 
 const PLACE_EN = {
@@ -277,6 +281,7 @@ module.exports = async (req, res) => {
   ];
   const out = await gather(apiKey, wave1, wave2, gq);
   if (out.images.length) await cacheSet(key, out);
+  await refundIfEmpty(req, body, out);
   res.setHeader('Cache-Control', 'private, max-age=600');
   res.status(200).json(out);
 };
@@ -312,6 +317,7 @@ async function constructionIdeas(req, res, body, apiKey) {
   const gq = [en('design'), en('photos'), ar(''), en('architecture')];
   const out = await gather(apiKey, wave1, wave2, gq);
   if (out.images.length) await cacheSet(key, out);
+  await refundIfEmpty(req, body, out);
   res.setHeader('Cache-Control', 'private, max-age=600');
   res.status(200).json(out);
 }

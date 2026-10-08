@@ -105,3 +105,62 @@ test('٥. اسم يساوي القديم بعد التطبيع لا يمحو ا�
   assert.equal(r.status, 200);
   assert.equal(store.get('points:dana'), '500');
 });
+
+// ── v-move-buckets (المراجعة المعاكسة): سقوف الأدوات (checkAndConsumeCustom) لم تكن في MOVE_BUCKETS — تغيير الاسم يصفّرها بلا حدّ ──
+const fs = require('node:fs');
+function walkJs(d, out) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) walkJs(p, out); else if (/\.js$/.test(f)) out.push(p); } return out; }
+function callArgs(src, name) { // نصّ معاملات كلّ نداء بأقواسه المتداخلة (clientIp(req)…)
+  const out = []; const re = new RegExp('\\b' + name + '\\(', 'g'); let m;
+  while ((m = re.exec(src))) {
+    let j = m.index + m[0].length, depth = 1, q = null;
+    for (; j < src.length && depth; j++) { const c = src[j]; if (q) { if (c === '\\') j++; else if (c === q) q = null; } else if (c === "'" || c === '"' || c === '`') q = c; else if (c === '(') depth++; else if (c === ')') depth--; }
+    out.push(src.slice(m.index + m[0].length, j - 1));
+  }
+  return out;
+}
+/** كلّ سلّة يعدّها checkAndConsumeCustom في الكود: حرفيّة في النداء (ومعابر البوّابة gateShare/uploadPlan) أو ثابت مسمّى. */
+function customBuckets() {
+  const found = new Set();
+  for (const f of walkJs(path.join(root, 'api'), [])) {
+    if (/_usage\.js$/.test(f)) continue;
+    const s = fs.readFileSync(f, 'utf8');
+    for (const n of ['checkAndConsumeCustom', 'gateShare', 'uploadPlan']) for (const a of callArgs(s, n)) (a.match(/'([a-z0-9-]+)'/g) || []).forEach((x) => found.add(x.slice(1, -1)));
+    for (const re of [/QUOTA_BUCKET = '([a-z0-9-]+)'/, /SAVE_PLAN = \{ bucket: '([a-z0-9-]+)'/]) { const mm = s.match(re); if (mm) found.add(mm[1]); }
+  }
+  return [...found];
+}
+
+test('٦. كلّ سلال checkAndConsumeCustom في MOVE_BUCKETS، واستهلاك السقف ثمّ تغيير الاسم ← الطلب التالي مرفوض لا سقف جديد', async () => {
+  const usage = require(rp('api/_lib/_usage.js'));
+  const buckets = customBuckets();
+  for (const b of ['search', 'search-classify', 'chat-search', 'design-ideas', 'design-suggest', 'video-download', 'share-img', 'media-save', 'stocks-ai', 'adchat', 'translate', 'tts']) assert.ok(buckets.includes(b), 'المستخرج يرى ' + b);
+  const missing = buckets.filter((b) => !usage.MOVE_BUCKETS.includes(b));
+  assert.deepEqual(missing, [], 'سلال تتصفّر بتغيير الاسم');
+  await auth.putUser('erin', { username: 'erin', points: 10, createdAt: Date.now() });
+  const old = auth.makeToken('erin');
+  for (const b of buckets) assert.equal((await usage.checkAndConsumeCustom(old, null, null, b, 1)).allowed, true, b);
+  const r = await call({ action: 'changeUsername', token: old, newUsername: 'erin2' });
+  assert.equal(r.status, 200);
+  for (const b of buckets) {
+    const g = await usage.checkAndConsumeCustom(r.body.token, null, null, b, 1);
+    assert.equal(g.allowed, false, b + ': السقف انتقل مع الحساب');
+    assert.equal(g.reason, 'limit', b);
+  }
+});
+
+test('٦ب. المعالج الحقيقيّ: نشر حتّى السقف (٣٠) ثمّ تغيير الاسم ← النشر التالي 429', async () => {
+  const share = require(rp('api/_lib/share.js'));
+  const post = (token, code) => new Promise((resolve, reject) => {
+    const res = { _s: 200, setHeader() {}, status(c) { this._s = c; return this; }, json(b) { resolve({ status: this._s, body: b }); return this; }, end() { resolve({ status: this._s }); return this; } };
+    Promise.resolve(share({ method: 'POST', headers: {}, query: {}, body: { token, title: 't', code } }, res)).catch(reject);
+  });
+  await auth.putUser('fred', { username: 'fred', points: 10, createdAt: Date.now() });
+  const old = auth.makeToken('fred');
+  for (let i = 0; i < 30; i++) assert.equal((await post(old, 'x' + i)).status, 200, '#' + (i + 1));
+  assert.equal((await post(old, 'over')).status, 429);
+  const r = await call({ action: 'changeUsername', token: old, newUsername: 'fred2' });
+  assert.equal(r.status, 200);
+  const next = await post(r.body.token, 'after-rename');
+  assert.equal(next.status, 429, 'كان يمرّ: الاسم الجديد يبدأ بسقف جديد');
+  assert.equal(next.body.error, 'daily_limit');
+});
