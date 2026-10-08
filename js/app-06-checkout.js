@@ -893,7 +893,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_deepseek_apikey', $('#deepseekApiKey').value.trim());
   localStorage.setItem('aiapp_deepseek_model', $('#deepseekModel').value.trim() || 'deepseek-chat');
   localStorage.setItem('aiapp_cohere_apikey', $('#cohereApiKey').value.trim());
-  localStorage.setItem('aiapp_cohere_model', normalizeCohereModel($('#cohereModel').value));
+  { const __cs = localStorage.getItem('aiapp_cohere_model') || '', __cv = normalizeCohereModel($('#cohereModel').value); if(__cv !== normalizeCohereModel(__cs)) localStorage.setItem('aiapp_cohere_model', __cv); } // v-cohere-prefix: حقل لم يُغيَّر لا يمحو بادئة اختيار القائمة
   localStorage.setItem('aiapp_include_openai', $('#chkIncludeOpenAI').checked ? 'true' : 'false');
   localStorage.setItem('aiapp_include_gemini', $('#chkIncludeGemini').checked ? 'true' : 'false');
   localStorage.setItem('aiapp_include_groq', $('#chkIncludeGroq').checked ? 'true' : 'false');
@@ -2015,16 +2015,24 @@ async function callDeepSeek(messages, onDelta){
   return data.choices[0].message.content;
 }
 
+/* v-cohere-prefix (العميل — نظير api/_lib/cohere.js؛ اختباراه ٧ و٨ في provider-models أُضيفا في 1434031 بلا هذا الكود فبقي CI أحمر):
+   الاختيار من القائمة الحيّة محفوظ ببادئة الوسيط «cohere/» وapi.cohere.com لا تعرف إلّا المعرّف المجرّد — تُجرَد. وقائمة المسحوبات
+   على دورة حياة Cohere الرسميّة: المسحوب ١٥ سبتمبر ٢٠٢٥ هو 03-2024/04-2024 والأسماء المستعارة وcommand-light؛ لقطتا 08-2024 «Live»
+   تمرّان كما هما (كان العميل يرقّيهما خطأً). */
+const COHERE_RETIRED_SET = new Set(['command-r-plus', 'command-r', 'command-r-03-2024', 'command-r-plus-04-2024', 'command', 'command-light']);
+const COHERE_SAFE_MODEL = 'command-a-03-2025';
 function normalizeCohereModel(raw){
-  const v = (raw || '').trim().toLowerCase();
-  if(!v || v === 'command-r-plus' || v === 'command-r' || v === 'command-r-plus-08-2024' || v === 'command-r-08-2024' || v === 'command') return 'command-a-03-2025';
-  return raw.trim();
+  let v = String(raw || '').trim();
+  if(v.toLowerCase().indexOf('cohere/') === 0) v = v.slice(7);
+  if(!v || COHERE_RETIRED_SET.has(v.toLowerCase())) return COHERE_SAFE_MODEL;
+  return v;
 }
-async function callCohere(messages, onDelta){
+async function callCohere(messages, onDelta, __forceModel){
   const apiKey = localStorage.getItem('aiapp_cohere_apikey');
   const savedModel = localStorage.getItem('aiapp_cohere_model');
-  const model = normalizeCohereModel(savedModel);
-  if(savedModel !== model) localStorage.setItem('aiapp_cohere_model', model);
+  const model = __forceModel || normalizeCohereModel(savedModel);
+  // المسحوب وحده يُستبدل في التخزين — المعرّف الحيّ يبقى كما حُفظ (ببادئته) فلا يضيع اختيار القائمة
+  if(!__forceModel && savedModel && COHERE_RETIRED_SET.has(String(savedModel).trim().toLowerCase().replace(/^cohere\//, ''))) localStorage.setItem('aiapp_cohere_model', model);
   // If the visitor hasn't entered their own Cohere key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -2034,6 +2042,7 @@ async function callCohere(messages, onDelta){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: stripToPlainMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
     });
+    if(!res.ok && res.status === 404 && model !== COHERE_SAFE_MODEL){ try{ localStorage.removeItem('aiapp_cohere_model'); }catch(e){ __swallow(e, 'cohere:forget'); } return await callCohere(messages, onDelta, COHERE_SAFE_MODEL); } // v-cohere-prefix: مختار محفوظ رُفض 404 = مسح + إعادة بالافتراضيّ مرّة واحدة
     if(!res.ok){
       const errText = await res.text();
       throwProviderError(res.status, errText);
@@ -2051,6 +2060,7 @@ async function callCohere(messages, onDelta){
     },
     body: JSON.stringify({ model, messages: stripToPlainMessages(messages), temperature: 0.7, stream: !!onDelta }),
   });
+  if(!res.ok && res.status === 404 && model !== COHERE_SAFE_MODEL){ try{ localStorage.removeItem('aiapp_cohere_model'); }catch(e){ __swallow(e, 'cohere:forget'); } return await callCohere(messages, onDelta, COHERE_SAFE_MODEL); } // v-cohere-prefix: مختار محفوظ رُفض 404 = مسح + إعادة بالافتراضيّ مرّة واحدة
   if(!res.ok){
     const errText = await res.text();
     throwProviderError(res.status, errText);
