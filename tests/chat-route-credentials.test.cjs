@@ -60,13 +60,12 @@ test('owner-only direct credentials work without Anthropic/OpenRouter', async ()
     assert.equal(r.jsonCalls, 0);
   }
 });
-test('owner OpenAI without its key or OpenRouter retains explicit Anthropic fallback', async () => {
+// v-owner-solo (أمر المالك ٨ أكتوبر «كلّ مزوّد يردّ عن نفسه»): كان كلود يجيب صامتًا عن GPT — الآن لا نداء، وسبب للمالك.
+test('owner OpenAI without its key or OpenRouter stops instead of Anthropic answering for GPT', async () => {
   const r = await ask({ provider: 'openai', keys: { ANTHROPIC_API_KEY: 'anth-key' } });
-  assert.equal(r.calls.length, 1);
-  assert.match(r.calls[0].url, /api\.anthropic\.com/);
-  assert.match(r.calls[0].body.model, /^claude-/);
-  assert.equal(r.calls[0].headers['x-api-key'], 'anth-key');
-  assert.match(r.text, /جواب/);
+  assert.equal(r.calls.length, 0, 'no Anthropic call for a GPT turn');
+  assert.match(r.text, /"ownerStop":true/);
+  assert.doesNotMatch(r.text, /جواب/);
 });
 test('paid direct and free chain use their actual keys without Anthropic', async () => {
   const paid = await ask({ who: 'sara', account: { tier: 'sub', plan: 'basic', subscriber: true }, keys: { GROQ_API_KEY: 'test-key' } });

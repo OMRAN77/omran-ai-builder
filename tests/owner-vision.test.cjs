@@ -121,20 +121,20 @@ test('المفتاح المباشر سقط قبل أوّل حرف: الوسيط 
   assert.ok(kor, 'هبط للوسيط');
   assert.equal(kor.body.model, 'moonshotai/kimi-k3');
   assert.equal(anthImage(kor).source.data, 'AAAA');
+  // v-owner-solo: Groq لا يهبط للوسيط (Maverick هناك ليس عند Groq) — يتوقّف بسببه
   const g = await ask({ provider: 'groq', keys: { GROQ_API_KEY: 'q', OPENROUTER_API_KEY: 'or' }, upstream: down });
-  const gor = g.calls.find((c) => /openrouter/.test(c.url));
-  assert.equal(gor.body.model, 'meta-llama/llama-4-maverick', 'Maverick يرى عند الوسيط');
-  assert.match(g.text, /أرى الصورة/);
+  assert.ok(!g.calls.some((c) => /openrouter/.test(c.url)), 'لا وسيط لـGroq');
+  assert.ok(g.events.some((e) => e.ownerStop === true), 'سبب الفشل للمالك');
 });
 
-test('اختيار المالك الذي لا يرى: الافتراضيّ يرى بالطلب نفسه، والاختيار لا يُمسح', async () => {
+/* v-owner-solo: صفّ الوسيط العامّ — Grok الذي لا يرى الصورة لا يجيب عنه كلود (الافتراضيّ) بل يتوقّف بسببه، والاختيار لا يُمسح */
+test('اختيار المالك الذي لا يرى في صفّ الوسيط: لا يجيب عنه موديل شركة أخرى، والاختيار لا يُمسح', async () => {
   const blind = (u, n) => (n === 1 ? new Response('{"error":{"message":"No endpoints found that support image input"}}', { status: 404 }) : null);
   const r = await ask({ provider: 'openrouter', model: 'x-ai/grok-4.20', keys: { OPENROUTER_API_KEY: 'or' }, upstream: blind });
   assert.equal(r.calls[0].body.model, 'x-ai/grok-4.20', 'اختياره أوّلًا');
-  assert.equal(r.calls[1].body.model, 'anthropic/claude-sonnet-5', 'ثمّ الافتراضيّ الذي يرى');
-  assert.equal(anthImage(r.calls[1]).source.data, 'AAAA');
+  assert.equal(r.calls.length, 1, 'لا نداء لكلود');
   assert.ok(!r.events.some((e) => e.deadModel), 'رفض الصورة لا يمسح اختيار المالك');
-  assert.match(r.text, /أرى الصورة/);
+  assert.ok(r.events.some((e) => e.ownerStop === true && e.error === 'ما قدرت أردّ الحين — خطأ 404'));
 });
 
 test('CHAT_IMAGE_MODEL لا يحوّل صورة المالك عن مزوّده — وكلود يبقى عليه كما كان', async () => {

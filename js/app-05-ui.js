@@ -1917,7 +1917,7 @@ const PROVIDER_QUICK_LIST = [
   { key: 'openai', name: 'العميق', color: '#10a37f' },
 ];
 // ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
-try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); }
+if(!omranOwnerUi()) try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); } // v-owner-solo: DeepSeek المالك يبقى DeepSeek
 let providerQuickBarBuilt = false;
 /* v-provider-arrow (أمر عمران «كل المزودين ٩ في السهم»): منتقٍ من شريط السهم (modes.js)
    يضبط موديل المزوّد ثمّ يبدّل المزوّد بمنطق selectProviderKey نفسه (مشروع/محادثة لكلّ
