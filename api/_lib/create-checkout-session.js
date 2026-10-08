@@ -68,9 +68,34 @@ const tooOld = (created) => Number(created) > 0 && (Date.now() / 1000 - Number(c
 async function liveAccount(username) {
   let name = String(username || '');
   let user = await getUser(name);
-  for (let i = 0; i < 5 && user && user.deleted && user.movedTo; i++) { name = String(user.movedTo); user = await getUser(name); }
+  // ٣٢ قفزة كسلسلة الشواهد في auth.js (tombstoneLeadsTo): بخمس كان حساب غيّر اسمه ست مرّات يُحلّ إلى شاهد، فيرمي withAccount BUSY للأبد.
+  for (let i = 0; i < 32 && user && user.deleted && user.movedTo; i++) { name = String(user.movedTo); user = await getUser(name); }
   return { name, user };
 }
+/* v-acct-lock (المراجعة المعاكسة الثالثة لـv-pay-refund): سجلّ الحساب يُكتب كاملًا من قراءة سابقة (KV بلا CAS)، فسحبان معًا على
+   خانتين (باقة المحادثة وباقة الفيديو، أو باقة ورزمة نقاط) أو منحٌ مع سحب على الحساب نفسه يكتب أحدهما نسخته القديمة فوق ما كتبه
+   الآخر — فتعود فترة مسحوبة أو يضيع شراء جديد. المنح (grantPlanToUser) والسحب (pay-refund.js) يأخذان قفلًا للحساب ويقرآن داخله
+   نسخة طازجة فيعدّلان ما يملكانه وحده. لم يُنل القفل في ~٨ ثوانٍ ⇒ رمي قبل أيّ أثر (non-2xx فيعيد المرسل). صرف النقاط لا يأخذه
+   (المسار الساخن)؛ نافذته تُضيَّق في pay-refund.js. */
+const ACCT_LOCK_TTL_SEC = 20;
+const ACCT_LOCK_WAIT_MS = 8000;
+const BUSY = 'الحساب مشغول بعمليّة دفع أخرى، أعد المحاولة بعد لحظات / Account busy with another payment, please retry in a moment';
+const acctLockKey = (name) => 'db/acct-lock/' + encodeURIComponent(String(name || '').trim().toLowerCase());
+async function withAccount(username, fn) {
+  const name = (await liveAccount(username)).name;
+  const key = acctLockKey(name);
+  const until = Date.now() + ACCT_LOCK_WAIT_MS;
+  for (let wait = 40; !(await kvSetIfAbsent(key, '1', ACCT_LOCK_TTL_SEC)); wait = Math.min(400, Math.round(wait * 1.5))) {
+    if (Date.now() + wait > until) throw new Error(BUSY);
+    await new Promise((r) => setTimeout(r, wait + Math.floor(Math.random() * wait)));
+  }
+  try {
+    const acct = await liveAccount(name); // طازجة داخل القفل
+    if (acct.name !== name) throw new Error(BUSY); // غيّر اسمه بين القراءة والقفل: الإعادة تقفل اسمه الجديد
+    return await fn(acct.name, acct.user);
+  } finally { await kvDel(key); } // kvDel لا يرمي: بعد أثرٍ تمّ لا يُفشل فكُّ القفل العمليّة
+}
+
 // هل كان هذا الحساب يحمل ذلك الاسم قبل تغييره؟ (جلسة دفع بدأت قبل تغيير الاسم بلحظات، أو اشتراك قديم)
 async function wasNamed(username, oldName) {
   if (!username || !oldName) return false;
@@ -79,7 +104,7 @@ async function wasNamed(username, oldName) {
 
 /* v-pay-refund: سجلّ ما منحته الدفعة برقمها وأرقامها الأخرى (meta.refs: payment_intent/invoice/charge) ومبلغها — يقرؤه
    الاسترداد والاعتراض البنكيّ (pay-refund.js) ليسحب ما منحته هي بالضبط. بعد نجاح المنح وأفضل جهد: لا يرمي، فلا يُفشل منحًا تمّ. */
-async function noteGrant(username, plan, sourceField, sourceId, meta, user) {
+async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev) {
   if (!sourceId) return;
   const p = PLANS[plan];
   const m = meta || {};
@@ -88,6 +113,7 @@ async function noteGrant(username, plan, sourceField, sourceId, meta, user) {
     id: String(sourceId), field: sourceField || null, username, plan, points: p.points, media: p.media || null, at: Number(at) || null,
     amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
     refs: Array.isArray(m.refs) ? m.refs : [],
+    prev: prev || null, // الفترة التي حلّت هذه الدفعة محلّها — تعود إن استُردّت هذه كاملة وتلك سارية غير مسحوبة
   });
 }
 
@@ -96,10 +122,11 @@ async function noteGrant(username, plan, sourceField, sourceId, meta, user) {
 // Google Pay PaymentIntent flow (verifyPaymentIntent), so both stay
 // consistent and a fix to one doesn't silently miss the other.
 // meta (اختياريّ، v-pay-refund): { refs, amount, currency } لسجلّ المنح — لا يغيّر المنح نفسه.
+// v-acct-lock: تحت قفل الحساب وعلى نسخته الطازجة — سحبٌ متزامن لا يكتب فوق هذا المنح ولا هذا فوقه.
 async function grantPlanToUser(username, plan, sourceField, sourceId, meta) {
-  const acct = await liveAccount(username);
-  username = acct.name;
-  const user = acct.user;
+  return withAccount(username, (name, user) => grantLocked(name, user, plan, sourceField, sourceId, meta));
+}
+async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
   if (!user || user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
 
   // أمان التكرار: نفس الجلسة/العملية لا تضيف النقاط مرتين — كان الحقل يُخزَّن
@@ -110,12 +137,13 @@ async function grantPlanToUser(username, plan, sourceField, sourceId, meta) {
   if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) return already; // v-pay-once
 
   try {
+    const prev = await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
     if (PLANS[plan].media) {
       if (sourceField) user[sourceField] = sourceId;
       const g = await grantMedia(user, username, plan);
       if (g && sourceId) user.media[g.media].payId = String(sourceId); // v-pay-refund: الدفعة التي فتحت فترة الباقة — استردادها وحده يسحبها
       await putUser(username, user);
-      await noteGrant(username, plan, sourceField, sourceId, meta, user); // v-pay-refund
+      await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
       return { ok: true, plan: user.plan || null, media: g.media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0) };
     }
 
@@ -135,7 +163,7 @@ async function grantPlanToUser(username, plan, sourceField, sourceId, meta) {
     user.points = Number(newBalance);
 
     await putUser(username, user);
-    await noteGrant(username, plan, sourceField, sourceId, meta, user); // v-pay-refund
+    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
     return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
   } catch (e) {
     if (claim) await kvDel(claim); // لم يكتمل الشحن — يُفكّ الحجز فتنجح المحاولة التالية
@@ -456,3 +484,4 @@ module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — لل
 // v-pay-refund: الاسترداد يتبع الحساب بعد تغيير اسمه، ويعرف الدفعة القديمة الممنوحة بحجزها.
 module.exports.liveAccount = liveAccount;
 module.exports.claimKey = claimKey;
+module.exports.withAccount = withAccount; // v-acct-lock — السحب يأخذ قفل الحساب نفسه
