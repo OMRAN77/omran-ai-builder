@@ -47,15 +47,14 @@ async function turn(user) {
 }
 
 /* v-owner-solo (أمر المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه، وإذا ما فيه رصيد يكتبلي»): المالك لا يهبط إلى الاحتياط المجّانيّ
-   (Gemini) — يصله السبب نفسه (الحساب والرصيد ونصّه) في حدث التوقّف، بلا ردّ من غيره. سطر الاحتياط (ownerFailNote) باقٍ لغير هذا الدور (٢). */
-test('١. المالك على الكينج: سبب الفشل (الرصيد ونصّه) بلا مفاتيح ولا ردّ من الاحتياط، وإشعار الرصيد أُطلق', async () => {
+   (Gemini) — يصله «ما عندي رصيد» وحده في حدث التوقّف (السبب الكامل في السجلّ والإشعار)، بلا ردّ من غيره. */
+test('١. المالك على الكينج: «ما عندي رصيد» وحده بلا ردّ من الاحتياط، وإشعار الرصيد أُطلق', async () => {
   alerts.length = 0;
   const text = await turn('omran');
   assert.equal(text, '', 'لا ردّ من مزوّد آخر');
   const stop = lastEvents.find((e) => e.ownerStop === true);
   assert.ok(stop, 'حدث التوقّف');
-  assert.match(stop.error, /^Anthropic · \S+ — لا رصيد كافٍ \(Your credit balance is too low/);
-  assert.ok(!/sk-test-anthropic|gm-test/.test(stop.error), 'لا مفتاح في السطر');
+  assert.equal(stop.error, 'ما عندي رصيد');
   assert.equal(alerts.length, 1, 'إشعار نفاد الرصيد يصل في دور الصورة أيضًا');
   assert.equal(alerts[0].status, 400);
   assert.match(alerts[0].text, /credit balance is too low/);

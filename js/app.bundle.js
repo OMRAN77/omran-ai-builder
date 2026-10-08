@@ -7511,7 +7511,9 @@ function renderMessages(keepScroll){
       // v-badge-white (طلب المالك): شارة الموديل فوق الردّ بالأبيض (كالكتابة والأرقام)،
       // لا بلون المزوّد — يبقى لون المزوّد لتمييز «اسأل الكل» فقط.
       if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
-      if(isAskAllReply || (__ownerBadge && __plbl)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ») — والمالك يراه دائمًا
+      /* v-owner-solo (المالك ٨ أكتوبر على لقطة «claude-haiku… · كاش ٠ · جديد 34.5k · خرج 34 ⚡»: «أريد المحادثة فقط، أيّ شي زائد ما أريده»):
+         شارة الموديل والتوكنات لا تظهر فوق ردود المحادثة — تبقى لشارة الوكيل (شرارته ✦) و«اسأل الكل». */
+      if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
@@ -15393,12 +15395,11 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
       // غير الذي اختاره بلا تفسير — فيظنّ أن الاختيار معطّل، والحقيقة أن
       // المزوّد المختار فشل وأُخفي فشله.
       if(__solo){
-        // v-owner-solo: اسم المزوّد والسبب كما جاء منه (رسالة الخادم المكتوبة تمرّ كما هي)، ولا مزوّد بعده.
+        // v-owner-solo: لا مزوّد بعده؛ الرسالة قصيرة كرسالة الخادم — «ما عندي رصيد» أو «ما قدرت أردّ الحين — خطأ N».
         if(err && !err.ownerStop){
           try{
-            const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
-            const why = (err.status ? ('HTTP ' + err.status + (err.upstreamText ? ' — ' + String(err.upstreamText).slice(0, 160) : '')) : '') || String(err.message || '').slice(0, 200) || t('provUnknownReason');
-            err.message = who + ' — ' + why + '\nلم يُجب مزوّد آخر مكانه.';
+            const __txt = String(err.upstreamText || '') + ' ' + String(err.message || '');
+            err.message = (err.status === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(__txt)) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين — خطأ ' + (err.status || '؟'));
           }catch(e){ __swallow(e, 'fallback:solo-msg'); }
         }
         throw err;
@@ -26003,11 +26004,8 @@ DESIGN RULES (non-negotiable):
          خطأ المسار الأوّل معه. */
       var __primaryErr = '';
       try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
-      /* v-owner-solo: للمالك المساران لمزوّده نفسه — لا يُوسم الأوّل «كلود» وهو اختار غيره. */
-      if(__primaryErr && typeof omranOwnerUi === 'function' && omranOwnerUi()){
-        try{ err.message = String((err && err.message) || '') + '\n' + (lang === 'ar' ? 'مسار الأدوات: ' : 'Tools path: ') + __primaryErr.slice(0, 220); }catch(e){ __swallow(e, 'ui:owner-solo-err'); }
-        __primaryErr = '';
-      }
+      /* v-owner-solo (المالك: «أيّ شي زائد ما أريده»): للمالك رسالة الفشل وحدها — بلا سطر المسار الأوّل التقنيّ. */
+      if(__primaryErr && typeof omranOwnerUi === 'function' && omranOwnerUi()) __primaryErr = '';
       cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{

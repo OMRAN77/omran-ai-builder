@@ -2361,12 +2361,11 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
       // غير الذي اختاره بلا تفسير — فيظنّ أن الاختيار معطّل، والحقيقة أن
       // المزوّد المختار فشل وأُخفي فشله.
       if(__solo){
-        // v-owner-solo: اسم المزوّد والسبب كما جاء منه (رسالة الخادم المكتوبة تمرّ كما هي)، ولا مزوّد بعده.
+        // v-owner-solo: لا مزوّد بعده؛ الرسالة قصيرة كرسالة الخادم — «ما عندي رصيد» أو «ما قدرت أردّ الحين — خطأ N».
         if(err && !err.ownerStop){
           try{
-            const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
-            const why = (err.status ? ('HTTP ' + err.status + (err.upstreamText ? ' — ' + String(err.upstreamText).slice(0, 160) : '')) : '') || String(err.message || '').slice(0, 200) || t('provUnknownReason');
-            err.message = who + ' — ' + why + '\nلم يُجب مزوّد آخر مكانه.';
+            const __txt = String(err.upstreamText || '') + ' ' + String(err.message || '');
+            err.message = (err.status === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(__txt)) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين — خطأ ' + (err.status || '؟'));
           }catch(e){ __swallow(e, 'fallback:solo-msg'); }
         }
         throw err;

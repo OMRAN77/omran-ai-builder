@@ -80,9 +80,7 @@ test('١. المالك على Gemini بلا رصيد عند الوسيط → ر�
   assert.equal(r.text, '', 'لا ردّ من مزوّد آخر');
   const stop = r.events.find((e) => e.ownerStop === true);
   assert.ok(stop, 'حدث التوقّف للمالك');
-  assert.match(stop.error, /^OpenRouter · google\/gemini-3\.8-flash — لا رصيد كافٍ \(Insufficient credits/);
-  assert.match(stop.error, /لم يُجب مزوّد آخر مكانه\.$/);
-  assert.ok(!/test-openrouter-key/.test(stop.error), 'لا مفتاح في الرسالة');
+  assert.equal(stop.error, 'ما عندي رصيد', 'الرسالة وحدها بلا نصّ تقنيّ');
 });
 
 test('٢. المالك على كلود: المباشر بلا رصيد ← كلود عبر الوسيط (المزوّد نفسه) بلا رصيد ← السببان، ولا مزوّد آخر', async () => {
@@ -93,15 +91,14 @@ test('٢. المالك على كلود: المباشر بلا رصيد ← كل�
   assert.match(models[0], /^anthropic\/claude/, 'كلود نفسه');
   const stop = r.events.find((e) => e.ownerStop === true);
   assert.ok(stop);
-  assert.match(stop.error, /^Anthropic · \S+ — لا رصيد كافٍ \(Your credit balance is too low[^)]*\)\nثمّ OpenRouter · anthropic\/claude\S* — لا رصيد كافٍ/);
+  assert.equal(stop.error, 'ما عندي رصيد');
   assert.equal(r.text, '');
 });
 
-test('٣. المالك على كلود: المباشر بلا رصيد والوسيط يجيب → كلود نفسه يجيب وسطر السبب تحته (كما كان)', async () => {
+test('٣. المالك على كلود: المباشر بلا رصيد والوسيط يجيب → كلود نفسه يجيب، والردّ وحده بلا سطر سبب تحته', async () => {
   const r = await run('omran', { provider: 'claude', messages: ask('سؤال') },
     (u) => (isAnth(u) ? anthCredit() : isOR(u) ? sse('ردّ كلود.') : new Response('{}', { status: 404 })));
-  assert.match(r.text, /ردّ كلود\./);
-  assert.match(r.text, /أجاب بدله: OpenRouter · anthropic\/claude/);
+  assert.equal(r.text, 'ردّ كلود.', 'المحادثة فقط — لا «🔧 للمالك فقط…»');
   assert.ok(!r.events.some((e) => e.ownerStop));
 });
 
@@ -116,7 +113,7 @@ test('٤. المالك على Kimi: مفتاح Moonshot المباشر 402 ← K
     assert.ok(!r.calls.some((c) => isAnth(c.url)));
     const stop = r.events.find((e) => e.ownerStop === true);
     assert.ok(stop);
-    assert.match(stop.error, /^OpenRouter · moonshotai\/kimi-k2 — لا رصيد كافٍ/);
+    assert.equal(stop.error, 'ما عندي رصيد');
   } finally { delete process.env.KIMI_API_KEY; }
 });
 
@@ -124,7 +121,7 @@ test('٥. غير المالك (VIP) كما كان: لا حدث توقّف ولا
   const r = await run('vipuser', { provider: 'openai', messages: ask('سؤال') },
     (u) => (isOR(u) ? orCredit() : new Response('{}', { status: 404 })));
   assert.ok(!r.events.some((e) => e.ownerStop), 'لا ownerStop');
-  assert.ok(!/لم يُجب مزوّد آخر/.test(JSON.stringify(r.events)));
+  assert.ok(!/ما عندي رصيد/.test(JSON.stringify(r.events)));
 });
 
 // ── العميل ──
@@ -151,14 +148,18 @@ test('٦. المسار القديم: المالك (solo) مزوّده وحده �
   const e402 = Object.assign(new Error('HTTP 402'), { status: 402, upstreamText: 'Insufficient Balance' });
   let ctx = clientCtx({ deepseek: e402, claude: 'من كلود' });
   await assert.rejects(loadFallback(ctx)([], null, ['deepseek'], { solo: true }), (e) => {
-    assert.match(e.message, /^DeepSeek — HTTP 402 — Insufficient Balance\nلم يُجب مزوّد آخر مكانه\.$/); return true; });
+    assert.equal(e.message, 'ما عندي رصيد'); return true; });
   assert.deepEqual(ctx.tried, ['deepseek']);
 
   ctx = clientCtx({ deepseek: 'آسف لا أستطيع', claude: 'من كلود' });
   const r = await loadFallback(ctx)([], null, ['deepseek'], { solo: true });
   assert.equal(r.providerKey, 'deepseek'); assert.deepEqual(ctx.tried, ['deepseek']);
 
-  const stop = Object.assign(new Error('OpenRouter · x — لا رصيد كافٍ\nلم يُجب مزوّد آخر مكانه.'), { ownerStop: true });
+  const e401 = Object.assign(new Error('HTTP 401'), { status: 401, upstreamText: 'invalid api key' });
+  ctx = clientCtx({ deepseek: e401 });
+  await assert.rejects(loadFallback(ctx)([], null, ['deepseek'], { solo: true }), (e) => e.message === 'ما قدرت أردّ الحين — خطأ 401');
+
+  const stop = Object.assign(new Error('ما عندي رصيد'), { ownerStop: true });
   ctx = clientCtx({ deepseek: stop });
   await assert.rejects(loadFallback(ctx)([], null, ['deepseek'], { solo: true }), (e) => e.message === stop.message);
 
@@ -191,5 +192,24 @@ test('٨. الأسلاك: العميل يرمي فشل المالك فورًا،
     const s = read(f);
     assert.ok(s.includes('if (ev.error && ev.ownerStop === true) __ownerStop = true;'), f);
     assert.ok(s.includes('if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er;'), f);
+  }
+});
+
+test('٩. Grok على «مرحبا»: «Reasoning is mandatory» ← إعادة بلا أيّ حقل إطفاء فيجيب Grok نفسه، ولا تُرسل له الحقول بعدها', async () => {
+  const MAND = () => new Response(JSON.stringify({ error: { message: 'Reasoning is mandatory for this endpoint and cannot be disabled.', code: 400 } }), { status: 400 });
+  const quiet = (b) => !!(b && (b.thinking || b.reasoning));
+  const route = (u, b) => (isOR(u) ? (quiet(b) ? MAND() : sse('هلا والله.')) : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 }));
+  const r = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.6', messages: ask('مرحبا') }, route);
+  assert.equal(r.text, 'هلا والله.', 'Grok نفسه أجاب: ' + JSON.stringify(r.events.slice(-3)));
+  assert.ok(!r.calls.some((c) => isAnth(c.url)), 'لا كلود');
+  assert.ok(r.calls.filter((c) => isOR(c.url)).every((c) => c.body.model === 'x-ai/grok-4.6'), 'Grok وحده');
+  const r2 = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.6', messages: ask('مرحبا') }, route);
+  assert.equal(r2.text, 'هلا والله.');
+  assert.equal(r2.calls.filter((c) => isOR(c.url)).length, 1, 'الرسالة التالية طلب واحد بلا حقول إطفاء');
+});
+
+test('١٠. الواجهة: لا شارة موديل/توكنات فوق ردّ المحادثة للمالك — تبقى للوكيل و«اسأل الكل»', () => {
+  for (const f of ['js/app-04-i18n-state.js', 'js/app.bundle.js']) {
+    assert.ok(read(f).includes('if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label);'), f);
   }
 });

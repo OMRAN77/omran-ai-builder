@@ -6763,11 +6763,8 @@ DESIGN RULES (non-negotiable):
          خطأ المسار الأوّل معه. */
       var __primaryErr = '';
       try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
-      /* v-owner-solo: للمالك المساران لمزوّده نفسه — لا يُوسم الأوّل «كلود» وهو اختار غيره. */
-      if(__primaryErr && typeof omranOwnerUi === 'function' && omranOwnerUi()){
-        try{ err.message = String((err && err.message) || '') + '\n' + (lang === 'ar' ? 'مسار الأدوات: ' : 'Tools path: ') + __primaryErr.slice(0, 220); }catch(e){ __swallow(e, 'ui:owner-solo-err'); }
-        __primaryErr = '';
-      }
+      /* v-owner-solo (المالك: «أيّ شي زائد ما أريده»): للمالك رسالة الفشل وحدها — بلا سطر المسار الأوّل التقنيّ. */
+      if(__primaryErr && typeof omranOwnerUi === 'function' && omranOwnerUi()) __primaryErr = '';
       cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{
