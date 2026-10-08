@@ -161,8 +161,10 @@ test('نقطة الملفّات: النوع يُنظَّف قبل تخزينه �
   const store = new Map();
   const kvPath = require.resolve(path.join(root, 'api/_lib/kv.js'));
   const fsPath = require.resolve(path.join(root, 'api/_lib/file-share.js'));
+  const gatePath = require.resolve(path.join(root, 'api/_lib/share-gate.js')); // v-share-guard: الرفع صار برمز جلسة — البوّابة نفسها في share-guard.test.cjs
   const saved = require.cache[kvPath];
   delete require.cache[fsPath];
+  require.cache[gatePath] = { id: gatePath, filename: gatePath, loaded: true, exports: { gateShare: async () => 'tester', refundShare: async () => {}, uploadPlan: (b, bucket, limit, ttlSec) => ({ bucket, limit, ttlSec }) } }; // v-media-save
   require.cache[kvPath] = { id: kvPath, filename: kvPath, loaded: true, exports: {
     kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, v); return true; },
     kvGetRaw: async (k) => store.get(k) || null,
@@ -195,6 +197,7 @@ test('نقطة الملفّات: النوع يُنظَّف قبل تخزينه �
   } finally {
     if (saved) require.cache[kvPath] = saved; else delete require.cache[kvPath];
     delete require.cache[fsPath];
+    delete require.cache[gatePath];
   }
 });
 
@@ -212,7 +215,7 @@ test('«الملف جاهز» مترجم بالـ١٤ لغة، ووسم ملفّ
   for (const l of ['fr', 'hi', 'ur', 'bn', 'ne', 'ml', 'fil', 'id', 'zh', 'ru', 'tr', 'es']) {
     assert.match(read('i18n/' + l + '.js'), /"?fileReadyTitle"?: "✅ [^"]+"/, l);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=724'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=726'/);
 });
 
 test('غلاف أندرويد الاحتياطيّ: منزّل النظام في مساري إنشاء WebView، وصلاحيّة التخزين لأندرويد ≤٩ فقط', () => {

@@ -37,14 +37,18 @@ const PLANS = {
   pack900: { amount: 3499, points: 1050, pack: true, name: '1,050 نقطة / 1,050 pts' },
 };
 // v-media-plans: اشتراكات الصور/الفيديو — شهريّة، بلا نقاط ولا تغيير للباقة (رصيدها منفصل في _mediaPlans.js).
-for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.amount, points: 0, media: p.media, name: p.name };
+// v-media-merge: img_/vid_ متوقّفة (retired): لا جلسة دفع جديدة لها، ويبقى منحها لتجديدٍ قائم أو جلسة بدأت قبل الإيقاف.
+for (const [k, p] of Object.entries(MEDIA_PLANS)) {
+  PLANS[k] = { amount: p.amount, points: 0, media: p.media, name: p.name };
+  if (p.retired) PLANS[k].retired = true;
+}
 
 /* v-aed-checkout (طلب المالك ٥ أكتوبر، «الدرهم فقط»): الأسعار تُعرض بعملة البلد (js/currency.js) والدفع كان بالدولار
    وحده — فالمشترك في الإمارات يرى ٣٧٫٥ د.إ وتخصم بطاقته ١٠$ برسوم تحويل. الآن يدفع بالدرهم السعر المعروض نفسه بالفلس
    (pretty(usd × 3.6725) — يثبّت التطابقَ tests/aed-checkout.test.cjs)؛ بقيّة الدول بالدولار كما كانت. العميل يختار العملة لا
    المبلغ، وأيّ عملة أخرى = الدولار. PayPal بالدولار دائمًا (لا يدعم الدرهم). */
 const AED_FILS = { basic: 3750, pro: 7500, max: 37500, pack100: 1900, pack300: 4800, pack700: 9500, pack900: 13000 };
-const MEDIA_AED_FILS = { basic: 3750, pro: 7500, max: 37500 }; // img_/vid_/maha_ بنفس أسعار المحادثة بالدرهم
+const MEDIA_AED_FILS = { basic: 3750, pro: 7500, max: 37500 }; // img_/vid_/maha_/media_ بنفس أسعار المحادثة بالدرهم
 function priceFor(plan, currency) { // plan معروف في PLANS (يتحقّق منه المستدعي)
   const aed = PLANS[plan].media ? MEDIA_AED_FILS[String(plan).split('_')[1]] : AED_FILS[plan];
   if (String(currency || '').toLowerCase() === 'aed' && aed > 0) return { currency: 'aed', amount: aed };
@@ -52,6 +56,7 @@ function priceFor(plan, currency) { // plan معروف في PLANS (يتحقّق 
 }
 
 const LOGIN_FIRST = 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe';
+const RETIRED = 'هذه الباقة توقّف بيعها — الصور والفيديو صارا باقة واحدة «صور وفيديو» / This plan is no longer sold — images and video are now one «Images & video» plan';
 
 /* v-pay-once (فحص الاشتراكات ٥ أكتوبر): «أمان التكرار» كان يتذكّر آخر دفعة وحدها وبلا قفل — دفعتان حقيقيّتان
    تُعادان بالتناوب (A، B، A…) تُشحنان بلا نهاية، وعشرة طلبات تحقّق متزامنة لدفعة واحدة تُشحن عشر مرّات (أُثبت محلّيًّا).
@@ -68,23 +73,65 @@ const tooOld = (created) => Number(created) > 0 && (Date.now() / 1000 - Number(c
 async function liveAccount(username) {
   let name = String(username || '');
   let user = await getUser(name);
-  for (let i = 0; i < 5 && user && user.deleted && user.movedTo; i++) { name = String(user.movedTo); user = await getUser(name); }
+  // ٣٢ قفزة كسلسلة الشواهد في auth.js (tombstoneLeadsTo): بخمس كان حساب غيّر اسمه ست مرّات يُحلّ إلى شاهد، فيرمي withAccount BUSY للأبد.
+  for (let i = 0; i < 32 && user && user.deleted && user.movedTo; i++) { name = String(user.movedTo); user = await getUser(name); }
   return { name, user };
 }
+/* v-acct-lock (المراجعة المعاكسة الثالثة لـv-pay-refund): سجلّ الحساب يُكتب كاملًا من قراءة سابقة (KV بلا CAS)، فسحبان معًا على
+   خانتين (باقة المحادثة وباقة الفيديو، أو باقة ورزمة نقاط) أو منحٌ مع سحب على الحساب نفسه يكتب أحدهما نسخته القديمة فوق ما كتبه
+   الآخر — فتعود فترة مسحوبة أو يضيع شراء جديد. المنح (grantPlanToUser) والسحب (pay-refund.js) يأخذان قفلًا للحساب ويقرآن داخله
+   نسخة طازجة فيعدّلان ما يملكانه وحده. لم يُنل القفل في ~٨ ثوانٍ ⇒ رمي قبل أيّ أثر (non-2xx فيعيد المرسل). صرف النقاط لا يأخذه
+   (المسار الساخن)؛ نافذته تُضيَّق في pay-refund.js. */
+const ACCT_LOCK_TTL_SEC = 20;
+const ACCT_LOCK_WAIT_MS = 8000;
+const BUSY = 'الحساب مشغول بعمليّة دفع أخرى، أعد المحاولة بعد لحظات / Account busy with another payment, please retry in a moment';
+const acctLockKey = (name) => 'db/acct-lock/' + encodeURIComponent(String(name || '').trim().toLowerCase());
+async function withAccount(username, fn) {
+  const name = (await liveAccount(username)).name;
+  const key = acctLockKey(name);
+  const until = Date.now() + ACCT_LOCK_WAIT_MS;
+  for (let wait = 40; !(await kvSetIfAbsent(key, '1', ACCT_LOCK_TTL_SEC)); wait = Math.min(400, Math.round(wait * 1.5))) {
+    if (Date.now() + wait > until) throw new Error(BUSY);
+    await new Promise((r) => setTimeout(r, wait + Math.floor(Math.random() * wait)));
+  }
+  try {
+    const acct = await liveAccount(name); // طازجة داخل القفل
+    if (acct.name !== name) throw new Error(BUSY); // غيّر اسمه بين القراءة والقفل: الإعادة تقفل اسمه الجديد
+    return await fn(acct.name, acct.user);
+  } finally { await kvDel(key); } // kvDel لا يرمي: بعد أثرٍ تمّ لا يُفشل فكُّ القفل العمليّة
+}
+
 // هل كان هذا الحساب يحمل ذلك الاسم قبل تغييره؟ (جلسة دفع بدأت قبل تغيير الاسم بلحظات، أو اشتراك قديم)
 async function wasNamed(username, oldName) {
   if (!username || !oldName) return false;
   try { const u = await getUser(username); return !!(u && Array.isArray(u.prevUsernames) && u.prevUsernames.includes(String(oldName))); } catch (e) { return false; }
 }
 
+/* v-pay-refund: سجلّ ما منحته الدفعة برقمها وأرقامها الأخرى (meta.refs: payment_intent/invoice/charge) ومبلغها — يقرؤه
+   الاسترداد والاعتراض البنكيّ (pay-refund.js) ليسحب ما منحته هي بالضبط. بعد نجاح المنح وأفضل جهد: لا يرمي، فلا يُفشل منحًا تمّ. */
+async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev) {
+  if (!sourceId) return;
+  const p = PLANS[plan];
+  const m = meta || {};
+  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : (p.pack ? null : user.planUpdatedAt);
+  await require('./pay-refund.js').recordGrant({
+    id: String(sourceId), field: sourceField || null, username, plan, points: p.points, media: p.media || null, at: Number(at) || null,
+    amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
+    refs: Array.isArray(m.refs) ? m.refs : [],
+    prev: prev || null, // الفترة التي حلّت هذه الدفعة محلّها — تعود إن استُردّت هذه كاملة وتلك سارية غير مسحوبة
+  });
+}
+
 // Shared "the payment definitely happened, now grant it" logic used by both
 // the Stripe Checkout Session flow (verifyCheckout) and the Apple Pay /
 // Google Pay PaymentIntent flow (verifyPaymentIntent), so both stay
 // consistent and a fix to one doesn't silently miss the other.
-async function grantPlanToUser(username, plan, sourceField, sourceId) {
-  const acct = await liveAccount(username);
-  username = acct.name;
-  const user = acct.user;
+// meta (اختياريّ، v-pay-refund): { refs, amount, currency } لسجلّ المنح — لا يغيّر المنح نفسه.
+// v-acct-lock: تحت قفل الحساب وعلى نسخته الطازجة — سحبٌ متزامن لا يكتب فوق هذا المنح ولا هذا فوقه.
+async function grantPlanToUser(username, plan, sourceField, sourceId, meta) {
+  return withAccount(username, (name, user) => grantLocked(name, user, plan, sourceField, sourceId, meta));
+}
+async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
   if (!user || user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
 
   // أمان التكرار: نفس الجلسة/العملية لا تضيف النقاط مرتين — كان الحقل يُخزَّن
@@ -95,15 +142,19 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
   if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) return already; // v-pay-once
 
   try {
+    const prev = await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
     if (PLANS[plan].media) {
       if (sourceField) user[sourceField] = sourceId;
       const g = await grantMedia(user, username, plan);
+      if (g && sourceId) user.media[g.media].payId = String(sourceId); // v-pay-refund: الدفعة التي فتحت فترة الباقة — استردادها وحده يسحبها
       await putUser(username, user);
+      await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
       return { ok: true, plan: user.plan || null, media: g.media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0) };
     }
 
     // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
     if (!PLANS[plan].pack) { user.plan = plan; user.planUpdatedAt = Date.now(); }
+    if (!PLANS[plan].pack) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
     if (sourceField) user[sourceField] = sourceId;
 
     // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
@@ -117,6 +168,7 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
     user.points = Number(newBalance);
 
     await putUser(username, user);
+    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
     return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
   } catch (e) {
     if (claim) await kvDel(claim); // لم يكتمل الشحن — يُفكّ الحجز فتنجح المحاولة التالية
@@ -137,6 +189,7 @@ async function createCheckoutSession(req, res) {
     const { plan, origin, token, autoRenew, currency } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+    if (planInfo.retired) { res.status(410).json({ error: RETIRED, retired: true }); return; } // v-media-merge
 
     // v-checkout-login: دفعة بلا حساب تُخصم ولا تُنسب لأحد (الويب هوك يتجاهلها) — لا جلسة دفع بلا دخول.
     const username = verifyToken(token);
@@ -238,7 +291,8 @@ async function verifyCheckout(req, res) {
       return;
     }
 
-    const grant = await grantPlanToUser(username, plan, 'lastStripeSessionId', session_id);
+    const grant = await grantPlanToUser(username, plan, 'lastStripeSessionId', session_id,
+      { refs: [data.payment_intent, data.invoice], amount: data.amount_total, currency: data.currency }); // v-pay-refund
     if (grant.error) { res.status(grant.status || 500).json({ error: grant.error }); return; }
     res.status(200).json(grant);
   } catch (e) {
@@ -264,6 +318,7 @@ async function createPaymentIntent(req, res) {
     const { plan, token, currency } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+    if (planInfo.retired) { res.status(410).json({ error: RETIRED, retired: true }); return; } // v-media-merge
 
     const username = verifyToken(token);
     if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
@@ -347,7 +402,8 @@ async function verifyPaymentIntent(req, res) {
       return;
     }
 
-    const grant = await grantPlanToUser(username, plan, 'lastStripePaymentIntentId', payment_intent_id);
+    const grant = await grantPlanToUser(username, plan, 'lastStripePaymentIntentId', payment_intent_id,
+      { refs: [data.latest_charge], amount: data.amount_received || data.amount, currency: data.currency }); // v-pay-refund
     if (grant.error) { res.status(grant.status || 500).json({ error: grant.error }); return; }
     res.status(200).json(grant);
   } catch (e) {
@@ -431,4 +487,9 @@ module.exports.grantPlanToUser = grantPlanToUser;
 module.exports.wasNamed = wasNamed; // v-rename-move — PayPal يربط الطلب بالحساب بالاسم نفسه
 module.exports.PLANS = PLANS;
 module.exports.priceFor = priceFor; // v-aed-checkout — للاختبار
+module.exports.RETIRED = RETIRED; // v-media-merge — PayPal يرفض الطلب الجديد بالنصّ نفسه
 module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — للاختبار
+// v-pay-refund: الاسترداد يتبع الحساب بعد تغيير اسمه، ويعرف الدفعة القديمة الممنوحة بحجزها.
+module.exports.liveAccount = liveAccount;
+module.exports.claimKey = claimKey;
+module.exports.withAccount = withAccount; // v-acct-lock — السحب يأخذ قفل الحساب نفسه

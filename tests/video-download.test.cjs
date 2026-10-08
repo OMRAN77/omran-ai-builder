@@ -5,6 +5,10 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+// v-video-open-lock: البروكسي صار يشترط جلسة وسقفًا يوميًّا (tests/video-open-lock.test.cjs) — هنا جلسة المالك (معفاة من
+// السقف) ليبقى هذا الملفّ على ما يثبته: الحجب والأنواع والحجم.
+process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'video-download-test-secret-' + 'x'.repeat(32);
+const TOKEN = require('../api/_lib/auth.js').makeToken('omran');
 const dl = require('../api/video-download.js');
 
 const PUBLIC = '93.184.216.34';
@@ -22,7 +26,7 @@ async function get(url, upstream, dns) {
   const calls = [];
   dl.__deps.lookup = async (host) => [{ address: (dns && dns[host]) || PUBLIC, family: 4 }];
   dl.__deps.fetchFn = async (u) => { calls.push(String(u)); return typeof upstream === 'function' ? upstream(String(u)) : upstream; };
-  try { await dl({ method: 'GET', query: { url } }, r); } finally { dl.__deps.lookup = undefined; dl.__deps.fetchFn = undefined; }
+  try { await dl({ method: 'GET', query: { url, token: TOKEN } }, r); } finally { dl.__deps.lookup = undefined; dl.__deps.fetchFn = undefined; }
   return { r, calls };
 }
 const media = (type, body, extra) => new Response(body || new Uint8Array([1, 2, 3]), { status: 200, headers: Object.assign({ 'content-type': type }, extra || {}) });

@@ -148,7 +148,7 @@ test('٧. بروكسي التسليم يبثّ المقطع ولا يحمّله 
     write(b) { written += b.length; return true; },
     once() {}, end() { ended = true; return this; },
   });
-  await handler({ query: { uri: 'https://generativelanguage.googleapis.com/v1beta/files/A:download?alt=media' } }, res);
+  await handler({ query: { uri: 'https://generativelanguage.googleapis.com/v1beta/files/A:download?alt=media', token: makeToken('omran') } }, res); // v-video-open-lock: التنزيل يشترط جلسة أو توقيعًا
   global.fetch = realFetch;
   assert.equal(res.code, 200);
   assert.equal(written, CHUNK * N, 'لم يصل المقطع كاملًا');

@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
         return;
       }
     } else {
-      usageResult = await checkVideoQuota(token);
+      usageResult = await checkVideoQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
       if (!usageResult.allowed) {
         if (usageResult.reason === 'auth') {
           res.status(401).json({ error: 'auth_required' });

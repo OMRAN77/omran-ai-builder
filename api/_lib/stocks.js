@@ -6,7 +6,8 @@ const { logError } = require('./log-error.js');
 // modes 'learn' and 'analyze' call Claude (and Tavily) on the owner's keys.
 // They shipped with no identity check at all, so a loop against this one
 // endpoint could spend the owner's balance. Metered per account, else per IP.
-const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const { clientIp } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: المشترك بنسبة سقف باقته
 const STOCKS_AI_DAILY_LIMIT = 30;
 // v-cheap-lanes: نصّ من السلسلة الرخيصة (بلا مفتاح المحرّك الاحترافيّ)، أو null فيتابع المستدعي احتياطه.
 async function cheapText(prompt, maxTokens) {
@@ -222,7 +223,7 @@ module.exports = async (req, res) => {
 
     if (mode === 'learn') {
       const lang = body.lang || 'ar';
-      const aiGate = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-ai', STOCKS_AI_DAILY_LIMIT);
+      const aiGate = await checkAndConsumePlanCustom(body.token, body.guestId, clientIp(req), 'stocks-ai', STOCKS_AI_DAILY_LIMIT);
       if (!aiGate.allowed) { res.status(aiGate.reason === 'auth' ? 401 : 402).json({ error: aiGate.reason === 'auth' ? 'auth_required' : 'daily_limit_reached' }); return; }
       const topic = String(body.topic || '').slice(0, 300);
       const userQ = String(body.question || '').slice(0, 500);
@@ -339,8 +340,8 @@ module.exports = async (req, res) => {
       if (!pf.positions || typeof pf.positions !== 'object') pf.positions = {};
 
       if (mode === 'pf-trade') {
-        const gate = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40);
-        if (!gate.allowed) { res.status(402).json({ error: 'وصلت لحد الصفقات اليومي (40) — عد غدًا 🌙' }); return; }
+        const gate = await checkAndConsumePlanCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40);
+        if (!gate.allowed) { res.status(402).json({ error: 'وصلت لحد الصفقات اليومي (' + gate.limit + ') — عد غدًا 🌙' }); return; }
         const sym = String(body.tradeSymbol || '').trim().toUpperCase().slice(0, 12).replace(/[^A-Z0-9.\-]/g, '');
         const qty = Math.floor(Number(body.qty));
         const side = body.side === 'sell' ? 'sell' : 'buy';
@@ -404,7 +405,7 @@ module.exports = async (req, res) => {
 
     if (mode === 'analyze') {
       const lang = body.lang || 'ar';
-      const aiGate = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-ai', STOCKS_AI_DAILY_LIMIT);
+      const aiGate = await checkAndConsumePlanCustom(body.token, body.guestId, clientIp(req), 'stocks-ai', STOCKS_AI_DAILY_LIMIT);
       if (!aiGate.allowed) { res.status(aiGate.reason === 'auth' ? 401 : 402).json({ error: aiGate.reason === 'auth' ? 'auth_required' : 'daily_limit_reached' }); return; }
       // 1) live data: quote + daily series only (2 credits); RSI/MACD computed locally
       let [quote, series] = await Promise.all([

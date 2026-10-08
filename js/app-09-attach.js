@@ -584,7 +584,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
         const i = du.indexOf(',');
         const r = await fetch('/api/media?action=img', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg'), w: __shW || undefined, h: __shH || undefined })
+          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg'), w: __shW || undefined, h: __shH || undefined, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : '') }) /* v-share-guard: الرفع برمز الجلسة */
         });
         const j = await r.json();
         if(j && j.url) shUrl = location.origin + j.url;
@@ -2992,9 +2992,10 @@ async function omranSharpenImage(dataUrl, amount){
 /* v-img-mix + v-img-honest: شريط الحالة يُطلق قبل وصول الصورة (بصمة v-img-engine-tag-owner ميتة في مسار التعديل)، فيُكتب
    سطر المحرّك للمالك وحده تحت التقرير — فقط حين يعمل المحرّكان (وضع الدمج، أو محرّك ثانٍ بعد «لم يُنفَّذ»). غيره لا يرى اسمًا. */
 function __imgEngineLine(engine, d){
-  /* v-media-plans: مشترك الصور يرى جودة الصورة والمتبقّي من رصيده تحتها. */
+  /* v-media-plans: مشترك الصور يرى جودة الصورة والمتبقّي من رصيده تحتها. v-media-merge: ومشترك «صور وفيديو» يرى اسم رصيده المدموج. */
   const mt = d && d.mediaTag;
-  const tag = (mt && (mt.q === 'normal' || mt.q === 'high')) ? ('\n\n🏷️ ' + t(mt.q === 'normal' ? 'mediaQNormal' : 'mediaQHigh') + ' · ' + t('mediaLeftImg') + ': ' + (Math.max(0, Number(mt.left) || 0)) + ' ' + t('mediaImgPlain')) : '';
+  /* v-formal-account: ⚡ و💎 خرجا من نصّي الجودة (زرّا «الباقات والنقاط» رسميّان) — وسم المحادثة خارج تلك الصفحة فيبقى برمزيه هنا. */
+  const tag = (mt && (mt.q === 'normal' || mt.q === 'high')) ? ('\n\n🏷️ ' + (mt.q === 'normal' ? '⚡ ' : '💎 ') + t(mt.q === 'normal' ? 'mediaQNormal' : 'mediaQHigh') + ' · ' + t(mt.pool === 'mix' ? 'mixLeft' : 'mediaLeftImg') + ': ' + (Math.max(0, Number(mt.left) || 0)) + ' ' + t('mediaImgPlain')) : '';
   const e = String(engine || '');
   if(!e || !/\[|^mix:/.test(e) || String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return tag;
   return tag + '\n\n⚙️ ' + e;
@@ -3472,7 +3473,7 @@ async function __sendPromptCore(){
           const res = await fetch('/api/video-prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: b64, mime: __heroAtt.mime || 'image/jpeg' }),
+            body: JSON.stringify({ imageBase64: b64, mime: __heroAtt.mime || 'image/jpeg', token: authGet('aiapp_auth_token') || '' }), /* v-video-open-lock: الخادم يشترط الجلسة وسقفًا يوميًّا */
           });
           if(res.ok){
             const d = await res.json();

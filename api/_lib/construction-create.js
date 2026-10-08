@@ -285,7 +285,8 @@ module.exports = async (req, res) => {
     }
     const annexList = Array.isArray(annexes) ? annexes.filter((a) => ANNEX_LABELS_AR[a]) : [];
 
-    const quota = await checkConstructionQuota(token);
+    // v-atomic-quota: حجز ذرّيّ يُردّ إن فشل — إلّا مراحل التذكرة التالية (لا تستهلك، فلا تحجز).
+    const quota = await checkConstructionQuota(token, (stagePart && body.jobTicket) ? null : res);
     let firstStage = false;
     let job = null;
     if (stagePart && body.jobTicket) {
@@ -541,7 +542,7 @@ module.exports = async (req, res) => {
     let remaining = job ? job.r : quota.remaining;
     let jobTicket = null;
     if (!stagePart || firstStage) {
-      remaining = await consumeConstruction(quota.username);
+      remaining = await consumeConstruction(quota.username, quota.limit);
       if (stagePart && requestedParts.length > 1) {
         jobTicket = signJob(quota.username, requestedParts.slice(1), body, remaining);
       }
@@ -573,7 +574,7 @@ module.exports = async (req, res) => {
       planText: generateText ? (planText || '') + disclaimer : null,
       boq: generateText ? boq : null,
       remaining,
-      dailyLimit: CONSTRUCTION_DAILY_LIMIT,
+      dailyLimit: quota.limit || CONSTRUCTION_DAILY_LIMIT,
       jobTicket,
     });
   } catch (e) {

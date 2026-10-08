@@ -24,10 +24,10 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211 }; // v-media-plans + v-maha-plans: اشتراكات الصور/الفيديو (٣٧٫٥ · ٧٥ · ٣٧٥ درهم)
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, maha_basic: 1021, maha_pro: 2042, maha_max: 10211, media_basic: 1021, media_pro: 2042, media_max: 10211 }; // v-maha-plans + v-media-merge: مها و«صور وفيديو» (٣٧٫٥ · ٧٥ · ٣٧٥ درهم) — img_/vid_ توقّف بيعها
 /* v-aed-checkout (طلب المالك ٥ أكتوبر، «الدرهم فقط»): من عملته المعروضة درهم (منتقي العملة، وإلّا كشف الدولة) يدفع
    بالدرهم السعر المعروض نفسه؛ غيره بالدولار. بالفلس — يطابق AED_FILS في create-checkout-session.js (الخادم يحسب المبلغ). */
-const CHECKOUT_AED_FILS = { basic: 3750, pro: 7500, max: 37500, pack100: 1900, pack300: 4800, pack700: 9500, pack900: 13000, img_basic: 3750, img_pro: 7500, img_max: 37500, vid_basic: 3750, vid_pro: 7500, vid_max: 37500, maha_basic: 3750, maha_pro: 7500, maha_max: 37500 };
+const CHECKOUT_AED_FILS = { basic: 3750, pro: 7500, max: 37500, pack100: 1900, pack300: 4800, pack700: 9500, pack900: 13000, maha_basic: 3750, maha_pro: 7500, maha_max: 37500, media_basic: 3750, media_pro: 7500, media_max: 37500 };
 function checkoutCurrency(){
   try{
     if(window.OmranCur && typeof window.OmranCur.cur === 'function') return window.OmranCur.cur().cc === 'AED' ? 'aed' : 'usd';
@@ -56,26 +56,25 @@ function buyPointsPack(amount){
 window.buyPointsPack = buyPointsPack;
 
 // v-price-tabs: كلّ نوع اشتراك في قسمه — زرّ القسم يعرضه ويخفي البقيّة.
+// v-media-merge: الصور والفيديو قسم واحد «صور وفيديو» — أسماء أقسامهما القديمة (img · vid) وأنواعهما (image · video · mix) تفتحه.
 function showPriceTab(tab){
-  const k = ['chat', 'img', 'vid', 'maha', 'pts'].includes(tab) ? tab : 'chat';
+  const k0 = ({ img: 'media', vid: 'media', image: 'media', video: 'media', mix: 'media' })[tab] || tab;
+  const k = ['chat', 'media', 'maha', 'pts'].includes(k0) ? k0 : 'chat';
   document.querySelectorAll('#pricingSection .priceTab').forEach(function(el){ el.style.display = el.getAttribute('data-tab') === k ? '' : 'none'; });
   document.querySelectorAll('#priceTabs .priceTabBtn').forEach(function(b){ const on = b.getAttribute('data-tab') === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
 }
 window.showPriceTab = showPriceTab;
 
 // v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
+// v-media-merge: قسم «صور وفيديو» يعرض رصيد المدموجة، ومتبقّي باقة الصور أو الفيديو القديمة ما دامت سارية.
 function renderMediaPlanStatus(media){
   const box = document.getElementById('mediaPlanStatus');
   if(!box) return;
   const m = media || {};
   const lines = [];
+  if(m.mix && m.mix.counts) lines.push(t('mixLeft') + ': <b>' + (Number(m.mix.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' ' + t('mediaOr') + ' <b>' + (Number(m.mix.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco'));
   if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' (' + t('mediaHighEq') + ')');
-  const vbox = document.getElementById('mediaVidStatus');
-  if(vbox){
-    vbox.innerHTML = (m.video && m.video.counts) ? (t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine')) : '';
-    vbox.style.display = (m.video && m.video.counts) ? 'block' : 'none';
-  }
-  if(!vbox && m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
   box.innerHTML = lines.join('<br>');
   box.style.display = lines.length ? 'block' : 'none';
   const mbox = document.getElementById('mahaPlanStatus');
@@ -85,8 +84,9 @@ function renderMediaPlanStatus(media){
   }
   const qb = document.getElementById('mediaQualityBox');
   if(qb){
-    qb.style.display = m.image ? 'block' : 'none';
-    const q = (m.image && m.image.quality) === 'high' ? 'high' : 'normal';
+    const qs = m.image || m.mix; // الخانة التي تُصرف منها الصورة أوّلًا (كـimageQuality في الخادم)
+    qb.style.display = qs ? 'block' : 'none';
+    const q = (qs && qs.quality) === 'high' ? 'high' : 'normal';
     qb.querySelectorAll('.mediaQBtn').forEach(function(b){ const on = b.getAttribute('data-q') === q; b.style.borderColor = on ? '#c9a227' : ''; b.style.background = on ? 'rgba(201,162,39,.16)' : 'transparent'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
   }
 }
@@ -132,6 +132,7 @@ function renderAcctMedia(media){
   const m = media || {};
   const row = (label, value) => '<div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-weight: var(--w-bold); white-space:nowrap;">' + label + '</span><span style="font-weight:800; color:#d4af37; text-align:end;">' + value + '</span></div>';
   const rows = [];
+  if(m.mix && m.mix.counts) rows.push(row(t('priceTabMedia'), (Number(m.mix.counts.image_normal) || 0) + ' ' + t('mediaImgPlain') + ' ' + t('mediaOr') + ' ' + (Number(m.mix.counts.minimax_video) || 0) + ' ' + t('mediaVidEco'))); // v-media-merge
   if(m.image && m.image.counts) rows.push(row(t('priceTabImg'), (Number(m.image.counts.image_normal) || 0) + ' ' + t('mediaImgPlain')));
   if(m.video && m.video.counts) rows.push(row(t('priceTabVid'), (Number(m.video.counts.minimax_video) || 0) + ' ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' ' + (Number(m.video.counts.omni_video) || 0) + ' ' + t('mediaVidCine')));
   if(m.maha && m.maha.counts) rows.push(row(t('priceTabMaha'), (Number(m.maha.counts.maha_minute) || 0) + ' ' + t('mahaMinUnit')));
@@ -208,11 +209,11 @@ function openCheckout(plan){
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
-  const __mp = /^(img|vid|maha)_(basic|pro|max)$/.exec(String(plan));
+  const __mp = /^(img|vid|maha|media)_(basic|pro|max)$/.exec(String(plan));
   // v-aed-checkout: السعر في النافذة بعملة الدفع — «$10» في نصّ الباقة يصير «37.5 AED» لمن يدفع بالدرهم، والوسائط بالدولار لغيره.
   const __cur = checkoutCurrency();
   const __planTxt = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
-  if (label && __mp) label.textContent = t(__mp[1] === 'img' ? 'mediaImgName' : __mp[1] === 'maha' ? 'mahaPlanName' : 'mediaVidName') + ' · ' + checkoutPriceText(plan, __cur) + ' ' + t('planPer');
+  if (label && __mp) label.textContent = t(({ img: 'mediaImgName', vid: 'mediaVidName', maha: 'mahaPlanName', media: 'mixPlanName' })[__mp[1]]) + ' · ' + checkoutPriceText(plan, __cur) + ' ' + t('planPer');
   else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (Number(PACK_POINTS[plan] || String(plan).slice(4)).toLocaleString('en-US') + ' ' + t('pricingPointsUnit')) : (__cur === 'aed' ? __planTxt.replace(/\$\s?\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?\s?\$/, checkoutPriceText(plan, __cur)) : __planTxt);
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {

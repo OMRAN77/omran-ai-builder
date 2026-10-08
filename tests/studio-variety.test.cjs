@@ -334,7 +334,7 @@ test('السلسلة: خطوات من العميل، ضغط بين الخطوا�
   assert.match(cli, /stoppedAt/, 'الفشل في منتصف السلسلة لا يُظهر ما تمّ');
   const srv = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
   const i = srv.indexOf('if (originalBase64 && originalBase64 !== imageBase64)');
-  const j = srv.indexOf('const remaining = await consumeStudio(quota.username);', i);
+  const j = srv.indexOf('const remaining = await consumeStudio(quota.username', i); // v-plan-consume-limit: ومعه quota.limit
   assert.ok(i > 0 && j > i, 'فحص الهويّة مقابل الأصل يجب أن يسبق الخصم');
   assert.match(srv.slice(i, j), /allowBroadChange: true/, 'فحص الأصل يجب أن يسمح بالتعديلات المطلوبة كلّها');
 });

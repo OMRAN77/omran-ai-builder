@@ -29,10 +29,10 @@ I18N['fr'] = {
     cnExElevator: 'Ascenseur intérieur', cnExStore: 'Entrepôt extérieur', cnExWaterTank: 'Réservoir d\'eau', cnExSolar: 'Panneaux solaires', cnExPlayground: 'Aire de jeux extérieure',
     cnExCarport: 'Auvent à voitures supplémentaire', cnBudgetOutputs: '💰 Budget et résultats', cnDownloadBoq: '📊 Télécharger le bordereau de quantités', cnPdfReport: '📄 Rapport PDF',
     keyHowToTitle: '📝 Comment obtenir une clé pour chaque fournisseur :', showAllPlansCur: 'Afficher tous les forfaits et prix dans votre devise', currencyLabel: 'Devise',
-    plFreeMsgs: '20 messages par jour', plFreeVoice: "Jusqu'à 4 minutes de chat vocal", plFreeImgs: "Jusqu'à 3 images par IA", plFreeNoVideo: 'Sans vidéo', plStMsgs: '50 messages par jour',
-    plStVoice: "Jusqu'à 24 minutes de chat vocal", plStImgs: "Jusqu'à 15 images", plStVideos: '1 vidéo', plProMsgs: '100 messages par jour', plProVoice: "Jusqu'à 61 minutes de chat vocal",
-    plProMedia: "Jusqu'à 40 images · 2 vidéos", plProAgent: 'L\'agent intelligent', plProPriority: 'Badge doré', plMaxAllPro: 'Tout ce qui est dans Pro · 250 messages par jour',
-    plMaxVoice: "Jusqu'à 213 minutes de chat vocal", plMaxMedia: "Jusqu'à 150 images · 3 vidéos", plMaxSupport: 'Support dédié',
+    plFreeMsgs: '20 messages par jour', plFreeVoice: "Jusqu'à 4 minutes de chat vocal", plFreeImgs: "Images par IA", plFreeNoVideo: 'Sans vidéo', plStMsgs: '50 messages par jour',
+    plStVoice: "Jusqu'à 24 minutes de chat vocal", plStImgs: "Images par IA", plStVideos: 'Vidéo incluse', plProMsgs: '100 messages par jour', plProVoice: "Jusqu'à 61 minutes de chat vocal",
+    plProMedia: "Images et vidéo incluses", plProAgent: 'L\'agent intelligent', plProPriority: 'Badge doré', plMaxAllPro: 'Tout ce qui est dans Pro · 250 messages par jour',
+    plMaxVoice: "Jusqu'à 213 minutes de chat vocal", plMaxMedia: "Images et vidéo incluses", plMaxSupport: 'Support dédié',
     adStudioTitle: 'Studio Publicitaire', adStudioHint: 'Studio Publicitaire — créez votre publicité en discutant', chatToPdfEmpty: 'Aucune réponse à convertir pour l\'instant.', mahaConnectionLost: 'Reconnexion impossible', voiceTabAssistantName: 'Assistant',
     buildNoCode: '⚠️ Aucun code reçu du fournisseur — l\'aperçu est vide. Renvoyez la demande ou essayez un autre fournisseur.',
     agThought: 'A réfléchi {n} s', agExplored: 'A exploré {n} fichiers', agNoOutput: 'Aucune sortie', // v-agent-log
@@ -201,8 +201,8 @@ I18N['fr'] = {
     pricingComingSoon: "Bientôt disponible 🚀 — les abonnements ne sont pas encore disponibles",
     pricingSubscribeBtn: "S'abonner maintenant",
     pricingTestNote: "🧪 Mode test pour le moment — activation complète dès l'obtention de la licence commerciale",
-    termsLink: "📜 Conditions Générales",
-    privacyLink: "🔒 Politique de Confidentialité",
+    termsLink: "Conditions Générales",
+    privacyLink: "Politique de Confidentialité",
     aboutSectionTitle: "ℹ️ À propos de l'application et vidéos de présentation",
     feedbackSectionTitle: '💬 Votre avis compte',
     fbTagBug: '🐛 Problème',
@@ -233,7 +233,7 @@ I18N['fr'] = {
     checkoutCancelMsg: "⚠️ Le paiement a été annulé",
     logoutTitle: "Déconnexion",
     loginAction: "Connexion",
-    acctSectionTitle: "👤 Mon compte",
+    acctSectionTitle: "Mon compte",
     statsSectionTitle: "Mes projets et sauvegarde",
     statsProjectsLabel: "Nombre de projets",
     statsMessagesLabel: "Total des messages envoyés",
@@ -244,22 +244,22 @@ I18N['fr'] = {
     importProjectsConfirm: "Les projets importés seront fusionnés avec vos projets actuels. Continuer ?",
     importProjectsSuccess: "✅ Projets importés avec succès",
     importProjectsError: "❌ Fichier invalide, assurez-vous qu'il s'agit d'un fichier d'export de projets valide",
-    acctAvatarBtn: "📷 Changer la photo",
+    acctAvatarBtn: "Changer la photo",
     acctUsernameLabel: "Nom d'utilisateur",
     acctSaveBtn: "Enregistrer",
     acctEmailLabel: "E-mail (si vous oubliez votre identifiant ou mot de passe)",
-    acctReferralLabel: "🔗 Lien d'invitation d'amis",
-    acctCopyBtn: "📋 Copier",
-    acctReferralHint: "Pour chaque ami qui s'inscrit avec votre lien, vous recevez tous les deux 10 messages gratuits supplémentaires 🎁",
+    acctReferralLabel: "Lien d'invitation d'amis",
+    acctCopyBtn: "Copier",
+    acctReferralHint: "Pour chaque ami qui s'inscrit avec votre lien, vous recevez tous les deux 10 messages gratuits supplémentaires",
     acctCleanupLabel: "Nettoyer l'application",
     acctCleanupHint: "Supprime définitivement toutes les conversations et projets de cet appareil et du cloud. Votre compte et votre langue sont conservés.",
     acctCleanupConfirm: "Toutes les conversations et projets seront supprimés définitivement. Êtes-vous sûr ?",
     acctCleanupBtn: 'Tout supprimer maintenant',
-    acctReferralCopied: "Lien copié ✅",
+    acctReferralCopied: "Lien copié",
     acctReferralBonusCount: "Votre solde de messages bonus : {n}",
     acctCurrentPasswordLabel: "Mot de passe actuel",
     acctNewPasswordLabel2: "Nouveau mot de passe",
-    acctSaved: "✅ Enregistré",
+    acctSaved: "Enregistré",
     acctSaving: "Enregistrement...",
     acctFillUsername: "Entrez un nom d'utilisateur valide (au moins 3 caractères)",
     acctFillPasswords: "Entrez votre mot de passe actuel et un nouveau mot de passe (au moins 4 caractères)",
@@ -845,7 +845,7 @@ I18N['fr'] = {
     fontWeightBold: "Gras",
     fontPreviewQ: "Saviez-vous qu’on peut maintenant changer la taille et l’épaisseur du texte ?",
     fontPreviewA: "Oui ! Faites glisser le curseur ci-dessous et essayez.",
-    autoRenewLabel: "🔁 Prélèvement mensuel automatique",
+    autoRenewLabel: "Prélèvement mensuel automatique",
     autoRenewOnHint: "Activé — votre forfait se renouvelle et est débité chaque mois",
     autoRenewOffHint: "Désactivé — vous payez un seul mois et renouvelez manuellement",
     autoRenewStopped: "Prélèvement arrêté — votre forfait reste actif jusqu’au {date}",
@@ -958,8 +958,8 @@ I18N['fr'] = {
     memorySaveBtn: "Enregistrer les modifications", memoryClearBtn: "Supprimer ma mémoire", memoryEmpty: "Rien n’est encore enregistré à votre sujet.", memoryGuest: "Connectez-vous pour voir votre mémoire.", memoryConfirm: "Supprimer tout ce que l’application retient de vous ? Action irréversible.", memorySaved: "Enregistré et synchronisé avec votre compte.",
     memorySaveError: "Échec de l’enregistrement. Veuillez réessayer.", memoryLoadError: "Impossible de charger la mémoire pour le moment.", fontFamilySectionLabel: "Style de police", fontFamilyHint: "Modifie les messages du chat sur ordinateur et mobile, sans changer les blocs de code ni la mise en page.",
     guestImageMsg: "🎁 Vous avez utilisé vos 3 images gratuites invité ! Créez un compte gratuit en quelques secondes et recevez 70 points cadeau pour continuer à générer et modifier des images.", planPer: "par mois", planFreePer: "pour essayer", planPtsFree: "points de bienvenue — une seule fois", planPtsMo: "points chaque mois", planTag: "Le plus populaire", planCurrentBtn: "Votre forfait actuel",
-    planSoonBtn: "Bientôt", planFreeFeats: "<li>20 messages par jour</li><li>Jusqu'à 4 minutes de chat vocal</li><li>Jusqu'à 3 images par IA</li><li class=\"off\">Sans vidéo</li>", planPlusFeats: "<li>50 messages par jour</li><li>Jusqu'à 24 minutes de chat vocal</li><li>Jusqu'à 15 images</li><li>1 vidéo</li>",
-    planProFeats: "<li>100 messages par jour</li><li>Jusqu'à 61 minutes de chat vocal</li><li>Jusqu'à 40 images · 2 vidéos</li><li>L'agent intelligent</li><li>Badge doré</li>", planMaxFeats: "<li>Tout ce qui est dans Pro · 250 messages par jour</li><li>Jusqu'à 213 minutes de chat vocal</li><li>Jusqu'à 150 images · 3 vidéos</li><li>Support dédié</li>", checkoutPlanLabelMax: 'Forfait Max 100 $/mois — 3 200 points',
+    planSoonBtn: "Bientôt", planFreeFeats: "<li>20 messages par jour</li><li>Jusqu'à 4 minutes de chat vocal</li><li>Images par IA</li><li class=\"off\">Sans vidéo</li>", planPlusFeats: "<li>50 messages par jour</li><li>Jusqu'à 24 minutes de chat vocal</li><li>Images par IA</li><li>Vidéo incluse</li>",
+    planProFeats: "<li>100 messages par jour</li><li>Jusqu'à 61 minutes de chat vocal</li><li>Images et vidéo incluses</li><li>L'agent intelligent</li><li>Badge doré</li>", planMaxFeats: "<li>Tout ce qui est dans Pro · 250 messages par jour</li><li>Jusqu'à 213 minutes de chat vocal</li><li>Images et vidéo incluses</li><li>Support dédié</li>", checkoutPlanLabelMax: 'Forfait Max 100 $/mois — 3 200 points',
     copyCode: "Copier", copiedMsg: "Copié ✅", emailAsst_connectText: "Connectez votre compte Gmail pour que l’IA puisse lire vos e-mails et proposer des réponses prêtes que vous validez avant l’envoi.", emailAsst_connectBtn: "🔗 Connecter Gmail", emailAsst_disclaimer: "⚠️ Aucune réponse n’est jamais envoyée sans votre approbation explicite pour chaque message.", emailAsst_title: "📧 Assistant e-mail IA",
     emailAsst_refresh: "Actualiser", emailAsst_loading: "Analyse de votre boîte de réception…", emailAsst_empty: "Aucun nouvel e-mail ne nécessite de réponse pour le moment.", emailAsst_notConnected: "Gmail n’est pas connecté, veuillez le reconnecter.", emailAsst_send: "✅ Envoyer", emailAsst_ignore: "🚫 Ignorer cet expéditeur", emailAsst_sending: "Envoi…", emailAsst_sent: "✅ Envoyé",
     emailAsst_ignored: "🚫 Ignoré — ne s’affichera plus", emailAsst_error: "❌ Erreur : ", emailAsst_voiceBtn: "Résumé vocal", emailAsst_addToCalendar: "📅 Ajouter au calendrier", emailAsst_addingEvent: "Ajout de l’événement…", emailAsst_eventAdded: "✅ Ajouté à votre calendrier", emailAsst_calReauth: "Reconnectez Gmail pour autoriser l’accès au calendrier", emailAsst_voiceLoading: "🔊 Préparation du résumé vocal…",
@@ -970,7 +970,7 @@ I18N['fr'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["fr"], {
-    acctLoginBtnLabel: "🔐 Connexion / Nouveau compte",
+    acctLoginBtnLabel: "Connexion / Nouveau compte",
     designCompareTitle: "🆚 Ma pièce dans tous les styles",
     designCompareHint: "Téléchargez la photo de votre pièce, choisissez 2-3 styles — nous les concevons côte à côte",
     designCompareBtn: "🆚 Concevoir avec les styles choisis",
@@ -1112,15 +1112,15 @@ Object.assign(I18N["fr"], {"imgUnchanged": "⚠️ La modification n'a pas été
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["fr"], {"mediaPlansTitle": "Abonnements images et vidéo", "mediaPlansDesc": "Pour ceux qui veulent seulement des images ou des vidéos — sans chat. Chaque abonnement a son propre solde, utilisable uniquement pour lui.", "mediaImgName": "Images", "mediaVidName": "Vidéo", "mediaImgUnit": "images haute qualité", "mediaVidEco": "vidéos économiques", "mediaVidCine": "vidéos cinématiques", "mediaVidSound": "vidéos avec son", "mediaOr": "ou", "mediaNoChatVideo": "Sans chat ni vidéo", "mediaNoChatImage": "Sans chat ni images", "mediaLeftImg": "Restant dans l’abonnement images", "mediaLeftVid": "Restant dans l’abonnement vidéo"});
-Object.assign(I18N["fr"], {"mediaImgPlain": "images", "mediaHighEq": "Une image haute qualité = 2 images", "mediaQLabel": "Qualité des images", "mediaQNormal": "⚡ Standard", "mediaQHigh": "💎 Haute", "mediaQNormalDesc": "Rapide, idéale pour les réseaux sociaux — 1 image de votre solde", "mediaQHighDesc": "Plus de détails, texte plus net, prête à imprimer — 2 images de votre solde", "mediaQHint": "Ou écrivez « haute qualité » dans votre demande pour une seule image"});
+Object.assign(I18N["fr"], {"mediaImgPlain": "images", "mediaHighEq": "Une image haute qualité = 2 images", "mediaQLabel": "Qualité des images", "mediaQNormal": "Standard", "mediaQHigh": "Haute", "mediaQNormalDesc": "Rapide, idéale pour les réseaux sociaux — 1 image de votre solde", "mediaQHighDesc": "Plus de détails, texte plus net, prête à imprimer — 2 images de votre solde", "mediaQHint": "Ou écrivez « haute qualité » dans votre demande pour une seule image"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["fr"], {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Images", "priceTabVid": "🎬 Vidéo", "priceTabPts": "⚡ Points"});
-Object.assign(I18N["fr"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Pour les appels vocaux avec Maha. Vos minutes mensuelles sont réservées à Maha ; une fois épuisées, les appels continuent avec vos points.", "mahaMinPlain": "minutes d'appel", "mahaMinUnit": "min", "mahaCapNote": "Jusqu'à 10 minutes par appel", "mahaNoChat": "Sans chat, images ni vidéo", "mahaLeft": "Minutes Maha restantes", "mahaCapEnd": "L'appel s'est terminé à la limite de 10 minutes — rappelez pour continuer", "mahaToPoints": "Minutes épuisées — l'appel continue avec vos points"});
+Object.assign(I18N["fr"], {"priceTabChat": "Chat", "priceTabImg": "🖼️ Images", "priceTabVid": "🎬 Vidéo", "priceTabPts": "Points"});
+Object.assign(I18N["fr"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Pour les appels vocaux avec Maha. Vos minutes mensuelles sont réservées à Maha ; une fois épuisées, les appels continuent avec vos points.", "mahaMinPlain": "minutes d'appel", "mahaMinUnit": "min", "mahaCapNote": "Jusqu'à 10 minutes par appel", "mahaNoChat": "Sans chat, images ni vidéo", "mahaLeft": "Minutes Maha restantes", "mahaCapEnd": "L'appel s'est terminé à la limite de 10 minutes — rappelez pour continuer", "mahaToPoints": "Minutes épuisées — l'appel continue avec vos points"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["fr"], {"installHowIOS":"Pour installer sur iPhone ou iPad :\n1) Ouvrez ce site dans Safari\n2) Touchez le bouton Partager (carré avec une flèche vers le haut)\n3) Choisissez « Sur l’écran d’accueil », puis « Ajouter »","installHowIOSOther":"Pour installer sur iPhone depuis ce navigateur :\n1) Touchez le bouton Partager (carré avec une flèche) près de la barre d’adresse\n2) Choisissez « Sur l’écran d’accueil »\nSi l’option manque, ouvrez ce site dans Safari.","installHowAndroid":"Pour installer sur Android :\n1) Ouvrez le menu du navigateur (⋮)\n2) Choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil »\n3) Confirmez l’installation","installHowDesktop":"Pour installer sur ordinateur (Chrome ou Edge) :\nCliquez sur l’icône d’installation (⊕ ou petit écran) dans la barre d’adresse, ou ouvrez le menu du navigateur (⋮ ou …) et choisissez « Installer » ou « Applications → Installer ce site en tant qu’application ».","installHowMacSafari":"Pour installer sur Mac depuis Safari :\nOuvrez le menu « Fichier » en haut, choisissez « Ajouter au Dock », puis « Ajouter ».","installHowFirefox":"Firefox sur ordinateur ne peut pas installer d’applications web.\nOuvrez ce site dans Chrome ou Edge et cliquez sur « Installer l’application », ou installez-la depuis votre téléphone."});
 Object.assign(I18N["fr"], {"videoSceneWait":"⏳ Scène {i}/{n} : pause entre les vidéos — reprise automatique dans {s} s.","videoFilmModeOnly":"🎬 « Film complet » ne fonctionne qu’avec le mode « Vidéo IA » — changez de mode ou choisissez une autre durée. Rien n’a été débité."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["fr"], {"acctPhoneLabel": "📱 Numéro de téléphone (pour la récupération)", "phoneNotLinked": "Non lié", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envoyez le message prêt ou partagez votre numéro, puis revenez ici…", "phoneLinkedOk": "✓ Numéro lié", "phoneTaken": "Ce numéro est lié à un autre compte", "phoneNoUser": "Aucun compte n’est lié à ce numéro", "phoneExpired": "Le lien a expiré — réessayez", "phoneRecoverTitle": "Ou récupérez votre compte avec votre téléphone :", "phoneRecoverSent": "✓ Nous avons envoyé un lien de nouveau mot de passe dans votre discussion là-bas"});
+Object.assign(I18N["fr"], {"acctPhoneLabel": "Numéro de téléphone (pour la récupération)", "phoneNotLinked": "Non lié", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envoyez le message prêt ou partagez votre numéro, puis revenez ici…", "phoneLinkedOk": "✓ Numéro lié", "phoneTaken": "Ce numéro est lié à un autre compte", "phoneNoUser": "Aucun compte n’est lié à ce numéro", "phoneExpired": "Le lien a expiré — réessayez", "phoneRecoverTitle": "Ou récupérez votre compte avec votre téléphone :", "phoneRecoverSent": "✓ Nous avons envoyé un lien de nouveau mot de passe dans votre discussion là-bas"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["fr"], {"bgThemeWood": "Bois"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
@@ -1136,3 +1136,4 @@ Object.assign(I18N["fr"], {"pdfDocPage": "⏳ Préparation de la page {i} sur {n
 /* v-video-watch */ Object.assign(I18N['fr'], {"vwUploading": "🎬 Envoi de la vidéo…", "vwWatching": "🎬 Je regarde la vidéo et j’écoute son audio…", "vwCharged": "🎬 {n} points utilisés · vidéo de {d}", "vwNoPoints": "Vous avez {p} points ; l’analyse de cette vidéo en nécessite {n}.", "vwTooBig": "La vidéo dépasse 100 Mo — coupez-la ou réduisez sa résolution, puis renvoyez-la.", "vwTooLong": "La vidéo dure plus de 10 minutes — envoyez un extrait plus court.", "vwFormat": "Format vidéo non pris en charge — envoyez-la en MP4, MOV ou WEBM.", "vwFailed": "Impossible d’analyser la vidéo — aucun point n’a été utilisé. Réessayez.", "vwLogin": "Connectez-vous d’abord pour analyser des vidéos.", "vwDefaultQ": "Analyse cette vidéo"});
 /* v-plans-gate */ Object.assign(I18N['fr'], {"plansWhyPoints": "Vous n’avez plus de points — rechargez depuis les forfaits et continuez tout de suite.", "plansWhyLimit": "Vous avez atteint la limite de votre forfait pour aujourd’hui — passez à un forfait supérieur ou attendez demain.", "plansWhyExpired": "Votre abonnement {plan} a expiré — renouvelez-le pour retrouver vos avantages.", "plansWhyExpiring": "Votre abonnement {plan} se termine le {date} — renouvelez-le pour garder vos avantages.", "plansRenew": "Renouveler", "plansLater": "Plus tard", "vwUnavailable": "L’analyse vidéo est temporairement indisponible — aucun point n’a été utilisé. Réessayez dans un instant."});
 /* v-google-login-help */ Object.assign(I18N['fr'], {"authGoogleHint": "Inscrit avec Google ? Appuyez sur « {btn} » — votre mot de passe Gmail ne fonctionne pas ici."});
+/* v-media-merge */ Object.assign(I18N['fr'], {"priceTabMedia":"Images et vidéo","mixPlanName":"Images et vidéo","mixPlansDesc":"Pour ceux qui veulent des images et des vidéos — sans chat. Un seul solde pour les deux ; une fois épuisé, vous continuez avec vos points.","mixOneBalance":"Un seul solde pour les images et la vidéo","mixApprox1":"Environ 50 images ou 12 vidéos, ou un mélange des deux","mixApprox2":"Environ 100 images ou 24 vidéos, ou un mélange des deux","mixApprox3":"Environ 500 images ou 121 vidéos, ou un mélange des deux","mixNoChat":"Sans chat","mixLeft":"Restant dans votre solde images et vidéo"});

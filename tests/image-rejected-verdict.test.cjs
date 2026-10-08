@@ -194,7 +194,9 @@ test('handler: changed pixels but rejected vision, no alternate → 422 and refu
 test('handler: guest rejection releases reservation once via existing refund helper', async () => {
   const r = await route({ ...editBody, token: undefined, guestId: 'guest123' }, { pro: EDIT, 'gpt-edit': null }, () => verdict(['not_done'], 0));
   assert.equal(r.status, 422);
-  assert.deepEqual(r.ledger, [['reserve'], ['release', 'db/points/guest-image/guest123/count', 1]]);
+  // v-share-guard: الضيف يُحجز له على المعرّف وعلى شبكته (clientIp المحاكى = 'offline') — وكلّ حجز يُردّ مرّة واحدة.
+  const day = new Date().toISOString().slice(0, 10);
+  assert.deepEqual(r.ledger, [['reserve'], ['reserve'], ['release', 'db/points/guest-image/guest123/count', 1], ['release', 'db/points/guest-image-ip/offline/' + day, 1]]);
 });
 
 test('handler: rejected primary uses eligible fallback; all rejected fail; partial succeeds', async () => {

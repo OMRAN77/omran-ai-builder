@@ -128,7 +128,9 @@ test('٦. التوصيل: نقاط الحالة الثلاث تسوّي عند �
 test('٧. حصّة اليوم تُعاد لليوم نفسه فقط ولا تنزل تحت الصفر', () => {
   const u = read('api/_lib/_videoUsage.js');
   assert.match(u, /async function releaseVideo\(username\)/);
-  assert.match(u, /if \(!usage \|\| usage\.date !== today \|\| !\(usage\.count > 0\)\) return;/);
+  // v-atomic-quota: إنقاص ذرّيّ لمفتاح اليوم المؤرَّخ لا قراءة JSON ثمّ كتابته (السلوك مثبت في atomic-quota.test.cjs ٧).
+  assert.match(u, /await quotaTally\.giveBack\('video', username\);/);
+  assert.match(read('api/_lib/_dailyQuota.js'), /const v = Number\(await kvDecrBy\(k, 1\)\);\n\s+if \(v < 0\) await kvIncrBy\(k, 1\);/);
   assert.match(u, /module\.exports = \{ checkVideoQuota, consumeVideo, releaseVideo,/);
 });
 

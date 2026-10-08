@@ -31,13 +31,17 @@ module.exports = async (req, res) => {
   /* v-video-trends: feature=trend → معاينة بطاقات ترندات الفيديو من نفس المولّد */
   const TRENDS = require('./video-trends.js').TRENDS;
   const isTrend = feature === 'trend';
-  const isBase = !isTrend && !MORE.STYLE_PROMPTS[feature] && !!BASE.STYLE_TEXT[feature];
+  /* v-open-tools-cap: البحث بـ[] يقرأ النموذج الأوّليّ — feature=hair&value=toString أو constructor/keys أو
+     __proto__/hasOwnProperty كانت تعبر القائمة البيضاء فيولّد كلّ واحد صورة مدفوعة. الآن مفاتيح الكائن نفسه وحدها. */
+  const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+  const known = !isTrend && (own(MORE.STYLE_PROMPTS, feature) || own(BASE.STYLE_TEXT, feature));
+  const isBase = known && !own(MORE.STYLE_PROMPTS, feature);
   const map = isTrend
     ? Object.fromEntries(Object.keys(TRENDS).map((k) => [k, TRENDS[k].preview.frame]))
-    : (MORE.STYLE_PROMPTS[feature] || BASE.STYLE_TEXT[feature]);
+    : (known ? (MORE.STYLE_PROMPTS[feature] || BASE.STYLE_TEXT[feature]) : null);
   if (!map) { res.status(404).json({ error: 'unknown feature' }); return; }
   if (value === '__tab') value = Object.keys(map)[0];
-  if (!map[value]) { res.status(404).json({ error: 'unknown value' }); return; }
+  if (!own(map, value) || typeof map[value] !== 'string' || !map[value]) { res.status(404).json({ error: 'unknown value' }); return; }
   const key = 'studio:preview:v2:' + feature + ':' + value; /* v2: توليد من الصفر بتأطير يُظهر الميزة (الإصدار الأول عدّل صورة كاملة فلم تظهر الحناء ولا شكل الجسم) */
 
   try {

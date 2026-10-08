@@ -2757,6 +2757,7 @@
       const data = await res.json();
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];

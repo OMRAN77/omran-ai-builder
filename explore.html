@@ -119,17 +119,25 @@ fetch('/api/share?explore=1')
         const d = new Date(p.createdAt || Date.now());
         const isMine = myUsername && p.username === myUsername;
         const displayTitle = (p.title && cache[p.id + '_' + lang]) || p.title || S.untitled;
-        card.innerHTML = '<a class="cardLink" href="/p.html?id=' + encodeURIComponent(p.id) + '">'
-          + '<div class="thumb">🧩</div><div class="body">'
-          + '<div class="title">' + displayTitle + '</div>'
-          + '<div class="meta">' + S.by + ' ' + (p.username || S.guest) + ' — ' + d.toLocaleDateString(S.dateLocale) + '</div>'
-          + '</div></a>'
-          + (isMine ? '<button type="button" class="delBtn" title="' + S.delTitle + '">🗑️</button>' : '');
+        // v-explore-xss: العنوان والاسم يكتبهما الناشر (والعنوان المترجَم ناتج نموذج) — نصّ لا HTML، وإلّا نفّذ سكربتًا على نطاق التطبيق.
+        const el = (tag, cls, text) => { const n = document.createElement(tag); if(cls) n.className = cls; if(text != null) n.textContent = text; return n; };
+        const link = el('a', 'cardLink');
+        link.href = '/p.html?id=' + encodeURIComponent(p.id);
+        const body = el('div', 'body');
+        body.appendChild(el('div', 'title', displayTitle));
+        body.appendChild(el('div', 'meta', S.by + ' ' + (p.username || S.guest) + ' — ' + d.toLocaleDateString(S.dateLocale)));
+        link.appendChild(el('div', 'thumb', '🧩'));
+        link.appendChild(body);
+        card.appendChild(link);
         if(isMine){
-          card.querySelector('.delBtn').addEventListener('click', (e) => {
+          const del = el('button', 'delBtn', '🗑️');
+          del.type = 'button';
+          del.title = S.delTitle;
+          del.addEventListener('click', (e) => {
             e.preventDefault();
             deleteProject(p.id, card);
           });
+          card.appendChild(del);
         }
         grid.appendChild(card);
       });
