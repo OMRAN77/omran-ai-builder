@@ -66,8 +66,11 @@ function matchOrder(order) {
   const pu = (order && order.purchase_units && order.purchase_units[0]) || {};
   const capture = pu.payments && pu.payments.captures && pu.payments.captures[0];
   const amountValue = capture && capture.amount && capture.amount.value;
+  // v-paypal-currency (أمر المالك ٨ أكتوبر): المطابقة كانت برقم المبلغ وحده — طلب يُنشأ في المتصفّح بالمعرّف العامّ بعملة أرخص
+  // وبالرقم نفسه (١٠٢٫١١ بيزو ≈ ١٫٨$) كان يُمنح الباقة الكبرى. الباقات مسعّرة بالدولار، فعملة غيره = لا خطّة.
+  const currency = String((capture && capture.amount && capture.amount.currency_code) || 'USD').toUpperCase();
   const customId = (capture && capture.custom_id) || pu.custom_id;
-  const plan = (customId && PLANS[customId] && PLANS[customId].amount === amountValue)
+  const plan = currency !== 'USD' ? null : (customId && PLANS[customId] && PLANS[customId].amount === amountValue)
     ? customId
     : Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue && !PLANS[p].media);
   // v-pay-refund: رقم الالتقاط ومبلغه بالسنت — الاسترداد والاعتراض يصلان برقم الالتقاط لا الطلب.

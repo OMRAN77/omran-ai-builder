@@ -609,3 +609,25 @@ test('١٨. استرداد PayPal لطلب img_ بعد الإيقاف ضاع س�
   assert.ok(!(mixLeft('eve9') > 0), 'رصيد المدموجة سُحب: ' + mixLeft('eve9'));
   assert.equal(media.mediaActive(await user('eve9'), 'mix'), false, 'الباقة سقطت');
 });
+
+test('١٩. v-paypal-currency: طلب بعملة غير الدولار وبالرقم نفسه لا يُمنح أيّ باقة (كان ١٠٢٫١١ بيزو يمنح الكبرى)، والدولار كما كان', async () => {
+  const order = (id, ref, plan, value, cur) => ({ id, status: 'COMPLETED', create_time: new Date().toISOString(), purchase_units: [{ reference_id: ref, custom_id: plan, payments: { captures: [{ id: 'CAP_' + id, amount: { currency_code: cur, value }, custom_id: plan }] } }] });
+  for (const [id, plan, value, cur] of [['PP_php', 'media_max', '102.11', 'PHP'], ['PP_php2', undefined, '100.00', 'php'], ['PP_inr', 'media_basic', '10.21', 'INR']]) {
+    const u = 'cur_' + id.toLowerCase();
+    await fresh(u);
+    net.orders[id] = order(id, u, plan, value, cur);
+    for (const action of ['capture', 'claim']) {
+      const r = await pp({ action, orderId: id, token: tok(u) });
+      assert.notEqual(r.body.credited, true, id + ' ' + action + ': ' + JSON.stringify(r.body));
+    }
+    const rec = await user(u);
+    assert.equal(rec.plan, undefined, id + ': لا باقة محادثة');
+    assert.equal(store.has('media:mix:' + u), false, id + ': لا رصيد وسائط');
+    assert.equal(Number(store.get('points:' + u)), 70, id + ': لا نقاط');
+  }
+  await fresh('cur_usd');
+  net.orders.PP_usd = order('PP_usd', 'cur_usd', 'media_max', '102.11', 'USD');
+  const ok = await pp({ action: 'capture', orderId: 'PP_usd', token: tok('cur_usd') });
+  assert.deepEqual([ok.body.credited, ok.body.planGranted], [true, 'media_max']);
+  assert.equal(mixLeft('cur_usd'), 12500);
+});
