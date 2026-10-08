@@ -7521,7 +7521,10 @@ function renderMessages(keepScroll){
       if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
       /* v-owner-solo (المالك ٨ أكتوبر على لقطة «claude-haiku… · كاش ٠ · جديد 34.5k · خرج 34 ⚡»: «أريد المحادثة فقط، أيّ شي زائد ما أريده»):
          شارة الموديل والتوكنات لا تظهر فوق ردود المحادثة — تبقى لشارة الوكيل (شرارته ✦) و«اسأل الكل». */
-      if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+      if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label);
+      /* v-owner-identity (المالك ٨ أكتوبر: «شو عرّفني أنّ المزوّدين بأصلهم»): فوق ردّ المحادثة سطر واحد — اسم المزوّد والموديل كما أعلنه
+         المزوّد نفسه في ردّه (لا التوكنات ولا الكاش، v-owner-solo). للمالك وحده. */
+      else if(__ownerBadge && m.served && !isAskAllReply){ label.textContent = (m.providerKey && typeof functionalLabel === 'function' ? functionalLabel(m.providerKey) : '') + ' · ' + m.served; div.appendChild(label); } // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
@@ -25934,6 +25937,7 @@ DESIGN RULES (non-negotiable):
       let __ctUsed = false;
       let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
       let __ctModel = ''; /* v-owner-model-badge: ما أعلنه الخادم عن الموديل الذي أجاب (للمالك) */
+      let __ctServed = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه — دليل المالك فوق الردّ */
       let __ctTier = null; /* v-tiers: طبقة الردّ (free / free-limit / guest / guest-limit) لشارة «ردّ مجاني» */
       let __ctLog = null; /* v-read-all: سجلّ ما قرأه وفعله قبل الردّ — يُحفظ كسجلّ الوكيل (m._agParts) */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
@@ -25981,7 +25985,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
@@ -26034,6 +26038,7 @@ DESIGN RULES (non-negotiable):
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, model: __ctModel || undefined /* v-owner-model-badge */, askAllReply: false, attachments: __chatVidAtt,
         tier: __ctTier || undefined, /* v-tiers */
+        served: __ctServed || undefined, /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه — دليل المالك فوق الردّ */
         _agParts: __ctLog || undefined,
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
@@ -37615,6 +37620,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
     var __model = ''; /* v-claude-models: اسم النموذج الذي أجاب فعلًا (من الخادم) */
+    var __served = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه في ردّه (للمالك) */
     /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
        سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
     var __t0 = Date.now(), __tFirst = 0, __steps = [];
@@ -37668,6 +37674,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         if (ev.error && ev.ownerStop === true) __ownerStop = true;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
         if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
+        if (typeof ev.served === 'string' && ev.served) __served = ev.served;
         /* v-oa-models: موديل مختار رفضه المفتاح → يُمسح من الاختيار المحفوظ (يعود للافتراضيّ) فلا يتكرّر الرفض مع كلّ رسالة */
         if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:forget-model'); } }
       }
@@ -37678,7 +37685,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er; }
     var __p = provider || 'claude';
     var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log };
   };
 })();
 

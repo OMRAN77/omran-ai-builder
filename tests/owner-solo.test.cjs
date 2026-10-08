@@ -364,3 +364,37 @@ test('٢٠. العميل: فشل مسار الأدوات للمالك لا يُ�
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) assert.ok(read(f).includes('noTools: (opts && opts.noTools) ? true : undefined'), f);
   assert.match(read('package.json'), /node tests\/owner-swap\.test\.cjs && node tests\/owner-solo\.test\.cjs/, 'يعمل في CI أمرًا مستقلًّا');
 });
+
+// ── v-owner-identity (المالك: «ولا واحد يردّ … باسمه… شو عرّفني أنّ المزوّدين بأصلهم») ──
+const sysText = (b) => (Array.isArray(b.system) ? b.system.map((x) => x.text).join('') : String(b.system || ''));
+test('٢١. كلّ مزوّد يعرف اسمه الحقيقيّ عند المالك ولا قاعدة إخفاء — وغير المالك كما كان؛ والكاش باقٍ', async () => {
+  const cases = [['deepseek', '', /أنت DeepSeek من شركة DeepSeek \(الموديل: deepseek\/deepseek-v4-pro\)/], ['mistral', '', /أنت Mistral من Mistral AI/], ['openrouter', 'x-ai/grok-4.6', /أنت Grok من xAI \(الموديل: x-ai\/grok-4\.6\)/], ['claude', '', /أنت Claude من Anthropic/]];
+  for (const [prov, model, re] of cases) {
+    const r = await run('omran', { provider: prov, model, messages: ask('من أنت؟') }, (u) => (isOR(u) || isAnth(u) ? sse('هلا.') : new Response('{}', { status: 404 })));
+    const b = r.calls.find((c) => isOR(c.url) || isAnth(c.url)).body;
+    const t = sysText(b);
+    assert.match(t, re, prov);
+    assert.match(t, /فأجب بصدق باسمك الحقيقيّ/, prov);
+    assert.ok(!/أنت «عمران»/.test(t) && !/لا تُذكر للمستخدم أبدًا/.test(t) && !/لا تذكر مزوّد النموذج/.test(t), prov + ': لا إخفاء');
+    if (Array.isArray(b.system)) assert.ok(b.system[0].cache_control && /أنت /.test(b.system[0].text), prov + ': الثابت المخزَّن يبقى بادئة');
+  }
+  const v = await run('vipuser', { provider: 'openai', messages: ask('من أنت؟') }, (u) => (isOR(u) ? sse('هلا.') : new Response('{}', { status: 404 })));
+  const vt = sysText(v.calls.find((c) => isOR(c.url)).body);
+  assert.match(vt, /أنت «عمران»/); assert.match(vt, /لا تُذكر للمستخدم أبدًا/); assert.ok(!/باسمك الحقيقيّ/.test(vt), 'غير المالك كما كان');
+});
+
+test('٢٢. دليل المالك: الموديل كما أعلنه المزوّد نفسه في ردّه يصل الواجهة ويظهر فوق الردّ (بلا توكنات)', async () => {
+  const served = (model) => new Response([
+    { type: 'message_start', message: { model, usage: { input_tokens: 1, output_tokens: 0 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'أنا DeepSeek.' } },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 3 } },
+  ].map((e) => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join(''), { status: 200 });
+  const r = await run('omran', { provider: 'deepseek', messages: ask('من أنت؟') }, (u) => (isOR(u) ? served('deepseek/deepseek-v4-pro-20260901') : new Response('{}', { status: 404 })));
+  assert.equal(r.events.find((e) => e.served).served, 'deepseek/deepseek-v4-pro-20260901', 'من ردّ المزوّد لا من اختيارنا');
+  const v = await run('vipuser', { provider: 'openai', messages: ask('من أنت؟') }, (u) => (isOR(u) ? served('openai/gpt-6-sol') : new Response('{}', { status: 404 })));
+  assert.ok(!v.events.some((e) => e.served), 'لغير المالك لا شيء');
+  for (const f of ['js/app-04-i18n-state.js', 'js/app.bundle.js']) assert.ok(read(f).includes("else if(__ownerBadge && m.served && !isAskAllReply){ label.textContent = (m.providerKey && typeof functionalLabel === 'function' ? functionalLabel(m.providerKey) : '') + ' · ' + m.served; div.appendChild(label); }"), f);
+  for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) assert.ok(read(f).includes("if (typeof ev.served === 'string' && ev.served) __served = ev.served;"), f);
+  for (const f of ['js/app-09-attach.js', 'js/app.bundle.js']) assert.ok(read(f).includes('served: __ctServed || undefined, /* v-owner-identity'), f);
+});

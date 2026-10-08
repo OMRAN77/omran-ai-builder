@@ -93,13 +93,15 @@ test('٣. غير المالك على Cohere: النظام العامّ كما ك
 test('٤. المالك افتراضيًّا: النظام الكامل — البصمة + البحث أوّلًا + التاريخ + قواعد الصور + تعليماته', async () => {
   for (const prov of ['cohere', 'mistral']) {
     const r = await ask(prov, 'coach-owner');
-    assert.ok(r.sysText.includes('أنت «عمران»'), prov + ': البصمة');
+    // v-owner-identity (المالك ٨ أكتوبر): النظام الكامل كما هو، إلّا الهويّة — اسم المزوّد الحقيقيّ بدل «أنت عمران» وقاعدة الإخفاء
+    assert.match(r.sysText, prov === 'cohere' ? /أنت Command من Cohere/ : /أنت Mistral من Mistral AI/, prov + ': البصمة بهويّته الحقيقيّة');
+    assert.ok(!r.sysText.includes('أنت «عمران»'), prov + ': لا «أنت عمران» للمالك');
     assert.ok(r.sysText.includes('[البحث]: لأيّ سؤال يطلب معلومة أو حقيقة استدعِ web_search أوّلًا'), prov + ': ابحث أوّلًا');
     assert.match(r.sysText, /التاريخ والوقت الآن/, prov);
     assert.ok(r.sysText.includes('generate_image للرسم'), prov + ': رسم الصور من الكلام');
     assert.ok(r.sysText.includes('علّمتك: قارن دائمًا بالسعر قبل المواصفات.'), prov + ': تعليماته');
     const d = await ask(prov, 'coach-owner', false, 'ارسم لي صورة قطة على شاطئ وقت الغروب');
     assert.ok(d.body.tools.some((t) => t.name === 'generate_image'), prov + ': بناء الصورة من الكلام — أداة الرسم موصولة');
-    assert.ok(d.sysText.includes('أنت «عمران»'), prov + ': والنظام الكامل في دور الرسم');
+    assert.ok(d.sysText.includes('فأجب بصدق باسمك الحقيقيّ'), prov + ': والنظام الكامل في دور الرسم');
   }
 });
