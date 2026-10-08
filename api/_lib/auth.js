@@ -59,6 +59,13 @@ const RESERVED_USERNAMES = new Set([
   'omran', 'admin', 'administrator', 'root', 'owner', 'support', 'system', 'api',
 ]);
 
+/* v-name-reuse (فحص ٨ أكتوبر): الرمز يحمل الاسم وحده، فالاسم هويّة الحساب ولا يُعطى لشخص ثانٍ أبدًا. السجلّ المحذوف
+   (شاهد تغيير الاسم {deleted, movedTo} أو حذف المالك) يبقى حاجزًا: كان signup وchangeUsername يكتبان فوقه، فيصير رمز صاحب
+   الاسم القديم رمزًا لحساب المسجِّل الجديد، ويرث المسجِّل عدّاد نقاط المحذوف، وينقطع movedTo الذي يتبعه الشحن.
+   الاستثناء الوحيد: صاحب الحساب يرجع إلى اسم كان له (prevUsernames). وحساب Google مفتاحه g_<البريد> (الكولباك)، فهذه
+   المساحة لا تُختار اسمًا — وإلّا سجّلها غيرك قبلك بكلمة مرور يعرفها، ودخولك بزرّ Google يفتح حسابه. */
+function isGoogleKey(key) { return /^g_.*@/.test(String(key || '')); }
+
 // الحدّ الأدنى لكلمة المرور. كان 4 — رقم منخفض بلا مبرّر حتّى مع قفل المحاولات.
 // ثابت واحد بدل ثلاثة أرقام متفرّقة في الرسائل والشروط.
 const MIN_PASSWORD = 8;
@@ -448,12 +455,12 @@ module.exports = async (req, res) => {
         return;
       }
       const key = String(username).trim().toLowerCase();
-      if (RESERVED_USERNAMES.has(key)) {
+      if (RESERVED_USERNAMES.has(key) || isGoogleKey(key)) {
         res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
         return;
       }
       const existing = await getUser(key);
-      if (existing && !existing.deleted) {
+      if (existing) { // v-name-reuse: والمحذوف أيضًا — الاسم لا يُعاد لغير صاحبه
         res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
         return;
       }
@@ -514,18 +521,20 @@ module.exports = async (req, res) => {
         return;
       }
       // نفس الحجز المطبَّق في signup: بدونه يُلتفّ عليه من هنا.
-      if (RESERVED_USERNAMES.has(newKey) && newKey !== oldKey) {
+      if ((RESERVED_USERNAMES.has(newKey) || isGoogleKey(newKey)) && newKey !== oldKey) {
         res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
         return;
       }
-      const clash = await getUser(newKey);
-      if (clash && !clash.deleted) {
-        res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
+      // v-name-reuse: رمز اسم ميّت (غيّره صاحبه أو حذفه المالك) لا ينقل شيئًا.
+      const user = await getUser(oldKey);
+      if (!user || user.deleted) {
+        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
-      const user = await getUser(oldKey);
-      if (!user) {
-        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
+      const clash = await getUser(newKey);
+      const ownPrev = Boolean(clash && clash.deleted && Array.isArray(user.prevUsernames) && user.prevUsernames.includes(newKey));
+      if (clash && !ownPrev) {
+        res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
         return;
       }
       const movedUser = Object.assign({}, user, { username: String(newUsername).trim() });
@@ -948,7 +957,7 @@ module.exports = async (req, res) => {
           candidateKey = (prefix + '_' + suffix).slice(0, 40);
           if (RESERVED_USERNAMES.has(candidateKey)) { candidateKey = ''; continue; }
           const clash = await getUser(candidateKey);
-          if (!clash || clash.deleted) break;
+          if (!clash) break; // v-name-reuse: المحذوف ليس حرًّا
           candidateKey = '';
         }
         if (!candidateKey) candidateKey = 'user_' + crypto.randomBytes(6).toString('hex');
