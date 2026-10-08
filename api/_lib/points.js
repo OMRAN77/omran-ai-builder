@@ -168,7 +168,7 @@ async function spendPoints(username, amount, reason, opts) {
   // v-media-plans: مشترك الصور/الفيديو يُخصم من رصيد اشتراكه أوّلًا، ونفاده يرجع للنقاط.
   try {
     const m = await media.trySpendMedia(username, amt, reason);
-    if (m) { await meterOp(username, reason); return { ok: true, points: 0, spent: 0, reason, media: m.media, mediaLeft: m.left }; }
+    if (m) { await meterOp(username, reason); return { ok: true, points: 0, spent: 0, reason, media: m.media, pool: m.pool, mediaLeft: m.left }; } // pool: الخانة (v-media-merge)
   } catch (e) { console.warn('[points] media spend skipped:', e && e.message); }
 
   let before;
@@ -247,7 +247,7 @@ function subsOf(user, now) {
   };
   const plan = String(user.plan || '').toLowerCase();
   if (tier.PLAN_KEYS.includes(plan)) add('chat', plan, user.planUpdatedAt, tier.SUB_WINDOW_DAYS);
-  for (const kind of ['image', 'video', 'maha']) {
+  for (const kind of media.MEDIA_KINDS) { // v-media-merge: والمدموجة ('mix')
     const m = user.media && user.media[kind];
     if (m && media.MEDIA_PLANS[m.plan] && media.MEDIA_PLANS[m.plan].media === kind) add(kind, m.plan, m.at, media.MEDIA_WINDOW_DAYS);
   }
@@ -312,7 +312,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // v-media-plans: إعداد جودة الصور لمشترك الصور (عاديّة/عالية).
+    // v-media-plans: إعداد جودة الصور لمشترك الصور (عاديّة/عالية). v-media-merge: ومشترك «صور وفيديو».
     if (action === 'media-quality') {
       if (!username) { res.status(401).json({ ok: false, reason: 'auth' }); return; }
       const ok = await media.setImageQuality(username, String(body.quality || ''));

@@ -37,14 +37,18 @@ const PLANS = {
   pack900: { amount: 3499, points: 1050, pack: true, name: '1,050 نقطة / 1,050 pts' },
 };
 // v-media-plans: اشتراكات الصور/الفيديو — شهريّة، بلا نقاط ولا تغيير للباقة (رصيدها منفصل في _mediaPlans.js).
-for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.amount, points: 0, media: p.media, name: p.name };
+// v-media-merge: img_/vid_ متوقّفة (retired): لا جلسة دفع جديدة لها، ويبقى منحها لتجديدٍ قائم أو جلسة بدأت قبل الإيقاف.
+for (const [k, p] of Object.entries(MEDIA_PLANS)) {
+  PLANS[k] = { amount: p.amount, points: 0, media: p.media, name: p.name };
+  if (p.retired) PLANS[k].retired = true;
+}
 
 /* v-aed-checkout (طلب المالك ٥ أكتوبر، «الدرهم فقط»): الأسعار تُعرض بعملة البلد (js/currency.js) والدفع كان بالدولار
    وحده — فالمشترك في الإمارات يرى ٣٧٫٥ د.إ وتخصم بطاقته ١٠$ برسوم تحويل. الآن يدفع بالدرهم السعر المعروض نفسه بالفلس
    (pretty(usd × 3.6725) — يثبّت التطابقَ tests/aed-checkout.test.cjs)؛ بقيّة الدول بالدولار كما كانت. العميل يختار العملة لا
    المبلغ، وأيّ عملة أخرى = الدولار. PayPal بالدولار دائمًا (لا يدعم الدرهم). */
 const AED_FILS = { basic: 3750, pro: 7500, max: 37500, pack100: 1900, pack300: 4800, pack700: 9500, pack900: 13000 };
-const MEDIA_AED_FILS = { basic: 3750, pro: 7500, max: 37500 }; // img_/vid_/maha_ بنفس أسعار المحادثة بالدرهم
+const MEDIA_AED_FILS = { basic: 3750, pro: 7500, max: 37500 }; // img_/vid_/maha_/media_ بنفس أسعار المحادثة بالدرهم
 function priceFor(plan, currency) { // plan معروف في PLANS (يتحقّق منه المستدعي)
   const aed = PLANS[plan].media ? MEDIA_AED_FILS[String(plan).split('_')[1]] : AED_FILS[plan];
   if (String(currency || '').toLowerCase() === 'aed' && aed > 0) return { currency: 'aed', amount: aed };
@@ -52,6 +56,7 @@ function priceFor(plan, currency) { // plan معروف في PLANS (يتحقّق 
 }
 
 const LOGIN_FIRST = 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe';
+const RETIRED = 'هذه الباقة توقّف بيعها — الصور والفيديو صارا باقة واحدة «صور وفيديو» / This plan is no longer sold — images and video are now one «Images & video» plan';
 
 /* v-pay-once (فحص الاشتراكات ٥ أكتوبر): «أمان التكرار» كان يتذكّر آخر دفعة وحدها وبلا قفل — دفعتان حقيقيّتان
    تُعادان بالتناوب (A، B، A…) تُشحنان بلا نهاية، وعشرة طلبات تحقّق متزامنة لدفعة واحدة تُشحن عشر مرّات (أُثبت محلّيًّا).
@@ -184,6 +189,7 @@ async function createCheckoutSession(req, res) {
     const { plan, origin, token, autoRenew, currency } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+    if (planInfo.retired) { res.status(410).json({ error: RETIRED, retired: true }); return; } // v-media-merge
 
     // v-checkout-login: دفعة بلا حساب تُخصم ولا تُنسب لأحد (الويب هوك يتجاهلها) — لا جلسة دفع بلا دخول.
     const username = verifyToken(token);
@@ -312,6 +318,7 @@ async function createPaymentIntent(req, res) {
     const { plan, token, currency } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+    if (planInfo.retired) { res.status(410).json({ error: RETIRED, retired: true }); return; } // v-media-merge
 
     const username = verifyToken(token);
     if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
@@ -480,6 +487,7 @@ module.exports.grantPlanToUser = grantPlanToUser;
 module.exports.wasNamed = wasNamed; // v-rename-move — PayPal يربط الطلب بالحساب بالاسم نفسه
 module.exports.PLANS = PLANS;
 module.exports.priceFor = priceFor; // v-aed-checkout — للاختبار
+module.exports.RETIRED = RETIRED; // v-media-merge — PayPal يرفض الطلب الجديد بالنصّ نفسه
 module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — للاختبار
 // v-pay-refund: الاسترداد يتبع الحساب بعد تغيير اسمه، ويعرف الدفعة القديمة الممنوحة بحجزها.
 module.exports.liveAccount = liveAccount;

@@ -7,7 +7,7 @@
 // v-paypal-honest: فشل الشحن بعد السحب لا يُبلع صامتًا — يُسجَّل ويُردّ credited:false، و'claim' يعيده لطلب مكتمل.
 const { verifyToken } = require('./auth.js');
 const { MEDIA_PLANS } = require('./_mediaPlans.js');
-const { grantPlanToUser, wasNamed } = require('./create-checkout-session.js');
+const { grantPlanToUser, wasNamed, RETIRED } = require('./create-checkout-session.js');
 
 const PLANS = {
   // v-plans-2026-09: يجب أن تطابق create-checkout-session.js (نقاط ومبالغ).
@@ -24,7 +24,8 @@ const PLANS = {
 };
 // v-media-plans: اشتراكات الصور/الفيديو بمبالغ مميّزة (الالتقاط يطابق بالمبلغ) ورصيد منفصل بلا نقاط.
 // الصور والفيديو بنفس المبلغ، فالطلب يحمل الخطّة في custom_id ويُتحقّق أنّ مبلغها هو الملتقَط.
-for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.paypal, points: 0, media: p.media, name: p.name };
+// v-media-merge: img_/vid_ متوقّفة — لا طلب جديد لها، والتقاط طلب أُنشئ قبل الإيقاف (أو claim له) يُمنح كما كان.
+for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.paypal, points: 0, media: p.media, name: p.name, retired: !!p.retired };
 
 function baseUrl() {
   return (process.env.PAYPAL_MODE !== 'sandbox')
@@ -113,6 +114,7 @@ module.exports = async (req, res) => {
     if (action === 'create') {
       const planInfo = PLANS[body.plan];
       if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+      if (planInfo.retired) { res.status(410).json({ error: RETIRED, retired: true }); return; } // v-media-merge
       // v-checkout-login: طلب بلا حساب يُلتقط ولا يُنسب لأحد — لا طلب دفع بلا دخول.
       const buyer = verifyToken(body.token);
       if (!buyer) { res.status(401).json({ error: 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe' }); return; }

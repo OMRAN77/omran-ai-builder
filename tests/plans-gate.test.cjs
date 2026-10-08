@@ -161,12 +161,13 @@ test('٥. التصنيف: رموز جدار الوسائط والاستوديو�
   const P = { error: 'points_insufficient', needed: 10, points: 2 };
   const L = { error: 'daily_limit_reached' };
   const cases = [
-    ['/api/maha-image', 402, P, 'points', 'img'],
-    ['/api/media?action=maha-image', 402, P, 'points', 'img'],
-    ['/api/video?action=veo-create', 402, P, 'points', 'vid'],
-    ['/api/video?action=actor-create', 402, P, 'points', 'vid'],
-    ['/api/video-create', 402, L, 'limit', 'vid'],
-    ['/api/video-script', 403, L, 'limit', 'vid'],
+    // v-media-merge: الصور والفيديو قسم واحد «صور وفيديو» (كان img · vid)
+    ['/api/maha-image', 402, P, 'points', 'media'],
+    ['/api/media?action=maha-image', 402, P, 'points', 'media'],
+    ['/api/video?action=veo-create', 402, P, 'points', 'media'],
+    ['/api/video?action=actor-create', 402, P, 'points', 'media'],
+    ['/api/video-create', 402, L, 'limit', 'media'],
+    ['/api/video-script', 403, L, 'limit', 'media'],
     ['/api/video?action=video-watch&step=start', 402, P, 'points', 'pts'],
     ['/api/realtime-session', 402, P, 'points', 'maha'],
     ['/api/design-create', 402, L, 'limit', 'chat'],
@@ -190,7 +191,7 @@ test('٦. ردّ 402 من خادمنا يفتح الإعدادات ← البا�
   await flush();
   assert.equal(res.status, 402, 'الميزة تقرأ ردّها كما كان');
   assert.deepEqual((await res.json()).error, 'points_insufficient');
-  assert.deepEqual(g.log, ['settings', 'page:pricingSection', 'tab:img']);
+  assert.deepEqual(g.log, ['settings', 'page:pricingSection', 'tab:media']); // v-media-merge (كان tab:img)
   assert.equal(g.why().textContent, 'POINTS');
   const sec = g.doc.getElementById('pricingSection');
   assert.ok(sec.children.indexOf(g.why()) < sec.children.indexOf(g.doc.getElementById('priceTabs')), 'السطر فوق الأقسام');
@@ -308,7 +309,7 @@ test('١١. النصوص السبعة بالـ١٤ لغة بمواضعها {plan
     assert.ok(d.plansWhyExpired.includes('{plan}'), l);
     assert.ok(d.plansWhyExpiring.includes('{plan}') && d.plansWhyExpiring.includes('{date}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=724'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=725'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.omranOpenPlans = openPlans;') && bundle.includes("if(c === 'unavailable') return t('vwUnavailable');"), 'الحزمة مبنيّة');
 });

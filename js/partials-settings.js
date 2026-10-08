@@ -459,11 +459,10 @@
   .pcard .pbtn.ghost{opacity:.45; cursor:default;}
   </style>
   <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;" data-i18n="currencyLabel">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div>
-  <!-- v-price-tabs: كلّ نوع اشتراك في قسمه — المحادثة · الصور · الفيديو · النقاط -->
-  <div id="priceTabs" role="tablist" style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin:0 0 12px;">
+  <!-- v-price-tabs: كلّ نوع اشتراك في قسمه — المحادثة · صور وفيديو (v-media-merge) · مها · النقاط -->
+  <div id="priceTabs" role="tablist" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:0 0 12px;">
     <button type="button" role="tab" class="priceTabBtn on" data-tab="chat" onclick="showPriceTab('chat')" data-i18n="priceTabChat">💬 المحادثة</button>
-    <button type="button" role="tab" class="priceTabBtn" data-tab="img" onclick="showPriceTab('img')" data-i18n="priceTabImg">🖼️ الصور</button>
-    <button type="button" role="tab" class="priceTabBtn" data-tab="vid" onclick="showPriceTab('vid')" data-i18n="priceTabVid">🎬 الفيديو</button>
+    <button type="button" role="tab" class="priceTabBtn" data-tab="media" onclick="showPriceTab('media')" data-i18n="priceTabMedia">🖼️ صور وفيديو</button>
     <button type="button" role="tab" class="priceTabBtn" data-tab="maha" onclick="showPriceTab('maha')" data-i18n="priceTabMaha">🎙️ مها</button>
     <button type="button" role="tab" class="priceTabBtn" data-tab="pts" onclick="showPriceTab('pts')" data-i18n="priceTabPts">⚡ النقاط</button>
   </div>
@@ -473,7 +472,7 @@
       <div class="pprice"><span class="pnum" data-usd="0">0</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planFreePer">للتجربة</div>
       <div class="ppts"><b>70</b><span data-i18n="planPtsFree">نقطة ترحيب — مرّة واحدة</span></div>
-      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">20 رسالة يوميًّا</li><li data-i18n="plFreeVoice">حتّى 4 دقائق محادثة صوتية</li><li data-i18n="plFreeImgs">حتّى 3 صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
+      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">20 رسالة يوميًّا</li><li data-i18n="plFreeVoice">حتّى 4 دقائق محادثة صوتية</li><li data-i18n="plFreeImgs">صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
       <button type="button" class="pbtn ghost" disabled data-i18n="planCurrentBtn">باقتك الحالية</button>
     </div>
     <div class="pcard">
@@ -481,7 +480,7 @@
       <div class="pprice"><span class="pnum" data-usd="10">10</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>360</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planPlusFeats"><li data-i18n="plStMsgs">50 رسالة يوميًا</li><li data-i18n="plStVoice">حتّى 24 دقيقة محادثة صوتية</li><li data-i18n="plStImgs">حتّى 15 صورة</li><li data-i18n="plStVideos">فيديو واحد</li></ul>
+      <ul data-i18n="planPlusFeats"><li data-i18n="plStMsgs">50 رسالة يوميًا</li><li data-i18n="plStVoice">حتّى 24 دقيقة محادثة صوتية</li><li data-i18n="plStImgs">صور بالذكاء الاصطناعي</li><li data-i18n="plStVideos">فيديو ضمن الباقة</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard feat"><span class="ptag" data-i18n="planTag">الأكثر اختيارًا</span>
@@ -489,7 +488,7 @@
       <div class="pprice"><span class="pnum" data-usd="20">20</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>920</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">100 رسالة يوميًا</li><li data-i18n="plProVoice">حتّى 61 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">حتّى 40 صورة · 2 فيديو</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">شارة ذهبية</li></ul>
+      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">100 رسالة يوميًا</li><li data-i18n="plProVoice">حتّى 61 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">صور وفيديو ضمن الباقة</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">شارة ذهبية</li></ul>
       <button type="button" class="pbtn primary" onclick="openCheckout('pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
@@ -497,13 +496,14 @@
       <div class="pprice"><span class="pnum" data-usd="100">100</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>3,200</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro · 250 رسالة يوميًا</li><li data-i18n="plMaxVoice">حتّى 213 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">حتّى 150 صورة · 3 فيديو</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
+      <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro · 250 رسالة يوميًا</li><li data-i18n="plMaxVoice">حتّى 213 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">صور وفيديو ضمن الباقة</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
   </div></div>
-  <!-- v-media-plans: اشتراكات الصور/الفيديو وحدها — رصيد خاصّ بلا نقاط ولا محادثة المشتركين -->
-  <div class="priceTab" data-tab="img" id="mediaPlansBox" style="display:none;">
-    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mediaPlansDesc">لمن يريد الصور أو الفيديو فقط — بلا محادثة. رصيد كلّ اشتراك خاصّ به ولا يُصرف على غيره.</div>
+  <!-- v-media-merge (قرار المالك ٨ أكتوبر): الصور والفيديو باقة واحدة برصيد واحد — أمثلة تقريبيّة لا حصص. img_/vid_ توقّف بيعها؛
+       المشترك القائم فيها يرى متبقّيه هنا (mediaPlanStatus) حتّى تنتهي نافذته -->
+  <div class="priceTab" data-tab="media" id="mediaPlansBox" style="display:none;">
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mixPlansDesc">لمن يريد الصور والفيديو — بلا محادثة. رصيد واحد يُصرف على الاثنين، وإذا خلص تكمل من نقاطك.</div>
     <div id="mediaPlanStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
     <div id="mediaQualityBox" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--line2,rgba(128,128,128,.30)); border-radius:10px;">
       <div style="font-size:12.5px; font-weight:600; margin-bottom:6px;" data-i18n="mediaQLabel">جودة الصور</div>
@@ -515,52 +515,25 @@
     </div>
     <div class="planGrid" style="margin-top:10px;">
     <div class="pcard">
-      <div class="pname" data-i18n="mediaImgName">صور</div>
+      <div class="pname" data-i18n="mixPlanName">صور وفيديو</div>
       <div class="pprice"><span class="pnum" data-usd="10.21">10.21</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>61</b> <span data-i18n="mediaImgPlain">صورة</span></li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mediaNoChatVideo">بلا محادثة ولا فيديو</li></ul>
-      <button type="button" class="pbtn" onclick="openCheckout('img_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+      <ul><li data-i18n="mixOneBalance">رصيد واحد للصور والفيديو</li><li data-i18n="mixApprox1">يكفي تقريبًا 50 صورة أو 12 فيديو أو خليطًا منهما</li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mixNoChat">بلا محادثة</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('media_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
-      <div class="pname" data-i18n="mediaImgName">صور</div>
+      <div class="pname" data-i18n="mixPlanName">صور وفيديو</div>
       <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>122</b> <span data-i18n="mediaImgPlain">صورة</span></li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mediaNoChatVideo">بلا محادثة ولا فيديو</li></ul>
-      <button type="button" class="pbtn" onclick="openCheckout('img_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+      <ul><li data-i18n="mixOneBalance">رصيد واحد للصور والفيديو</li><li data-i18n="mixApprox2">يكفي تقريبًا 100 صورة أو 24 فيديو أو خليطًا منهما</li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mixNoChat">بلا محادثة</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('media_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
-      <div class="pname" data-i18n="mediaImgName">صور</div>
+      <div class="pname" data-i18n="mixPlanName">صور وفيديو</div>
       <div class="pprice"><span class="pnum" data-usd="102.11">102.11</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>810</b> <span data-i18n="mediaImgPlain">صورة</span></li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mediaNoChatVideo">بلا محادثة ولا فيديو</li></ul>
-      <button type="button" class="pbtn" onclick="openCheckout('img_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
-    </div>
-    </div>
-  </div>
-  <div class="priceTab" data-tab="vid" style="display:none;">
-    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mediaPlansDesc">لمن يريد الصور أو الفيديو فقط — بلا محادثة. رصيد كلّ اشتراك خاصّ به ولا يُصرف على غيره.</div>
-    <div id="mediaVidStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
-    <div class="planGrid" style="margin-top:10px;">
-    <div class="pcard">
-      <div class="pname" data-i18n="mediaVidName">فيديو</div>
-      <div class="pprice"><span class="pnum" data-usd="10.21">10.21</span><span class="pcur cursym">$</span></div>
-      <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>11</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>4</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>2</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
-      <button type="button" class="pbtn" onclick="openCheckout('vid_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
-    </div>
-    <div class="pcard">
-      <div class="pname" data-i18n="mediaVidName">فيديو</div>
-      <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
-      <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>23</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>8</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>5</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
-      <button type="button" class="pbtn" onclick="openCheckout('vid_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
-    </div>
-    <div class="pcard">
-      <div class="pname" data-i18n="mediaVidName">فيديو</div>
-      <div class="pprice"><span class="pnum" data-usd="102.11">102.11</span><span class="pcur cursym">$</span></div>
-      <div class="pper" data-i18n="planPer">شهريًا</div>
-      <ul><li><b>158</b> <span data-i18n="mediaVidEco">فيديو اقتصادي</span></li><li><span data-i18n="mediaOr">أو</span> <b>55</b> <span data-i18n="mediaVidCine">فيديو سينمائيّ</span></li><li><span data-i18n="mediaOr">أو</span> <b>37</b> <span data-i18n="mediaVidSound">فيديو بالصوت</span></li><li class="off" data-i18n="mediaNoChatImage">بلا محادثة ولا صور</li></ul>
-      <button type="button" class="pbtn" onclick="openCheckout('vid_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+      <ul><li data-i18n="mixOneBalance">رصيد واحد للصور والفيديو</li><li data-i18n="mixApprox3">يكفي تقريبًا 500 صورة أو 121 فيديو أو خليطًا منهما</li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mixNoChat">بلا محادثة</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('media_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     </div>
   </div>

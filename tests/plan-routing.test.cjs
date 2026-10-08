@@ -287,7 +287,7 @@ test('٨. الباقات ٣٦٠/٩٢٠/٣٬٢٠٠ متطابقة في Stripe وP
   assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id\)/);
   // العميل: الأزرار الأربعة تفتح نافذة الدفع بنفس الأسعار المعروضة
   const a6 = read('js/app-06-checkout.js');
-  assert.match(a6, /const CHECKOUT_PLAN_AMOUNTS = \{ basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499(, img_basic: 1021[^}]*)? \};/); // v-media-plans: اشتراكات الصور/الفيديو بعد الرزم
+  assert.match(a6, /const CHECKOUT_PLAN_AMOUNTS = \{ basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499(, maha_basic: 1021[^}]*)? \};/); // v-media-plans: اشتراكات الوسائط بعد الرزم (v-media-merge: مها و«صور وفيديو»؛ img_/vid_ خرجت)
   assert.match(a6, /if\(n > 0 && CHECKOUT_PLAN_AMOUNTS\['pack' \+ n\]\)\{ openCheckout\('pack' \+ n\); return; \}/);
   const ps = read('js/partials-settings.js');
   for (const [n, usd] of [[100, '4.99'], [300, '12.99'], [700, '24.99'], [900, '34.99']]) assert.ok(ps.includes('onclick="buyPointsPack(' + n + ')"') && ps.includes('data-usd="' + usd + '"'), 'زرّ ' + n);
@@ -358,14 +358,14 @@ test('١٠. منتقي المزوّد: يظهر للمالك وحده (v-provide
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=691'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=692'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 
 test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا اسم موديل في وصف النقاط', () => {
   const val = (src, key) => [...src.matchAll(new RegExp('(?:^|[\\s,{])' + key + '\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')', 'g'))].map((m) => m[1]);
   const files = ['js/app-03-i18n-data.js'].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((l) => 'i18n/' + l + '.js'));
-  const expect = { planFreeFeats: [/20/, /4/, /3/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/, /15/, /1/], planProFeats: [/100/, /61/, /40/, /2/], planMaxFeats: [/250/, /213/, /150/, /3/], plFreeMsgs: [/20/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/1|واحد/], plProMedia: [/40/, /2/], plMaxMedia: [/150/, /3/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /175/, /120/] }; // v-fair-video
+  const expect = { planFreeFeats: [/20/, /4/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/], planProFeats: [/100/, /61/], planMaxFeats: [/250/, /213/], plFreeMsgs: [/20/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/^["'][^0-9]+["']$/], plProMedia: [/^["'][^0-9]+["']$/], plMaxMedia: [/^["'][^0-9]+["']$/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /175/, /120/] }; // v-fair-video؛ v-media-merge (قرار المالك ٨ أكتوبر): الصور والفيديو في البطاقات بلا أعداد — media-merge.test ١١
   for (const f of files) {
     const src = read(f);
     const n = f.startsWith('i18n/') ? 1 : 2;

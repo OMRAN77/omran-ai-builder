@@ -2,7 +2,7 @@
    فقال «أبدأ بالكلّ»): كانت كلّ ميزة تتصرّف وحدها عند الجدار — الصور تكتب «افتح الإعدادات ← الباقات»، الفيديو
    والاستوديوهات «جرّب بكرة»، مها وحدها تفتح الباقات، وانتهاء الاشتراك يمرّ بصمت. هنا مسار واحد:
    ١) omranOpenPlans(سبب، قسم): الضيف ← شاشة التسجيل؛ المسجَّل ← الإعدادات ← «الباقات والنقاط» على قسمه وفوقه سطر
-      السبب. فتح واحد لكلّ محاولة مهما تعدّدت مساراتها (حارس ٨ ثوانٍ).
+      السبب (الصور والفيديو قسم واحد «صور وفيديو» منذ v-media-merge). فتح واحد لكلّ محاولة مهما تعدّدت مساراتها (حارس ٨ ثوانٍ).
    ٢) التفاف fetch (نمط media-notify.js): ردّ 402/403 من خادمنا برمز جدار الوسائط والاستوديوهات — points_insufficient ·
       daily_limit_reached — يفتح الباقات لأيّ ميزة بلا لمس ملفّاتها. المحادثة تفتحها من نهاية مسارها (app-09). عطل
       المزوّد عندنا (رصيده، الشبكة) لا يحمل هذه الرموز، فلا يُحوَّل أحد للاشتراك بذنب ليس ذنبه.
@@ -14,9 +14,10 @@
      insufficient_points) لا يُلتقط هنا — مسارها يجرّب مزوّدًا بعد مزوّد وقد يجيب التالي، فتفتح الباقات من نهايتها
      (err.planLimit · free-limit · premiumNoPoints) لا من أوّل 402. */
   var CODES = { points_insufficient: 'points', daily_limit_reached: 'limit' };
-  var TAB_OF_KIND = { chat: 'chat', image: 'img', video: 'vid', maha: 'maha' };
+  // v-media-merge: الصور والفيديو قسم واحد «صور وفيديو» — باقتهما القديمة والمدموجة (mix) تفتحانه.
+  var TAB_OF_KIND = { chat: 'chat', mix: 'media', image: 'media', video: 'media', maha: 'maha' };
   var PLAN_NAME = { basic: 'Plus', pro: 'Pro', max: 'Max' };
-  var KIND_ORDER = ['chat', 'image', 'video', 'maha'];
+  var KIND_ORDER = ['chat', 'mix', 'image', 'video', 'maha'];
 
   function loggedIn(){ try{ return !!authGet('aiapp_auth_token'); }catch(e){ return false; } }
   function fill(s, vars){
@@ -74,8 +75,7 @@
   function tabFor(url, reason){
     if(/realtime-session/.test(url)) return 'maha';
     if(/video-watch/.test(url)) return 'pts'; // تحليل الفيديو بالنقاط وحدها (ليس في جدول الوسائط)
-    if(/\/api\/video/.test(url)) return 'vid';
-    if(/maha-image|upscale/.test(url)) return 'img';
+    if(/\/api\/video/.test(url) || /maha-image|upscale/.test(url)) return 'media'; // v-media-merge
     return reason === 'points' ? 'pts' : 'chat';
   }
   // ردّ جدار من خادمنا ← {reason, tab}؛ وإلّا null (عطل مزوّد، دفع لم يكتمل، ضيف استهلك صوره — لكلّ منها مساره).
@@ -91,7 +91,7 @@
 
   function subLabel(s){
     if(s.kind === 'chat') return PLAN_NAME[s.plan] || String(s.plan || '');
-    var key = { image: 'priceTabImg', video: 'priceTabVid', maha: 'priceTabMaha' }[s.kind];
+    var key = { mix: 'priceTabMedia', image: 'priceTabImg', video: 'priceTabVid', maha: 'priceTabMaha' }[s.kind];
     var lbl = key ? t(key) : String(s.plan || '');
     try{ if(typeof stripUiEmoji === 'function') lbl = stripUiEmoji(lbl); }catch(e){ __swallow(e, 'plans-gate:label'); }
     return lbl;

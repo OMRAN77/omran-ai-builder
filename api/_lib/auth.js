@@ -168,7 +168,7 @@ async function moveLiveCounters(oldKey, newKey, user) {
     await kvDel(from);
   };
   await move('points:' + n(oldKey), 'points:' + n(newKey));
-  for (const kind of ['image', 'video', 'maha']) { // رصيد اشتراك الوسائط بما بقي من نافذته (٣٥ يومًا)
+  for (const kind of ['image', 'video', 'maha', 'mix']) { // رصيد اشتراك الوسائط بما بقي من نافذته (٣٥ يومًا) — mix: «صور وفيديو» (v-media-merge، MEDIA_KINDS)
     const m = user.media && user.media[kind];
     const left = m ? Math.floor((Number(m.at || 0) + 35 * 86400000 - Date.now()) / 1000) : 0;
     if (left > 0) await move('media:' + kind + ':' + n(oldKey), 'media:' + kind + ':' + n(newKey), left);
