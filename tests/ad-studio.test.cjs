@@ -115,8 +115,8 @@ test('١٠. عقل المحادثة يجمع حقول اللوحة، وسقف ا
 
 test('١١. «طوابع المدرسة» بعدّاد مستقلّ — كانت تأكل رصيد الإعلانات اليوميّ', () => {
   const stamps = fs.readFileSync('api/_lib/stamps.js', 'utf8');
-  assert.match(stamps, /checkAndConsumeCustom\(b\.token, null, null, 'stamps', DAILY\)/);
-  assert.doesNotMatch(stamps, /checkAndConsumeCustom\([^)]*'adimage'/);
+  assert.match(stamps, /checkAndConsumePlanCustom\(b\.token, null, null, 'stamps', DAILY\)/); // v-plan-caps: العدّاد نفسه بحدّ الباقة
+  assert.doesNotMatch(stamps, /checkAndConsume(?:Plan)?Custom\([^)]*'adimage'/);
 });
 
 test('١٢. ١٤ لغة بلا مفتاح ناقص، والوسم مرفوع', () => {

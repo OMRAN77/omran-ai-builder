@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const quota = await checkConstructionQuota(token);
+    const quota = await checkConstructionQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
     if (!quota.allowed) {
       if (quota.reason === 'auth') {
         res.status(401).json({ error: 'auth_required' });
@@ -161,12 +161,12 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const remaining = await consumeConstruction(quota.username);
+    const remaining = await consumeConstruction(quota.username, quota.limit);
     res.status(200).json({
       imageBase64: outB64,
       mimeType: outMime,
       remaining,
-      dailyLimit: CONSTRUCTION_DAILY_LIMIT,
+      dailyLimit: quota.limit || CONSTRUCTION_DAILY_LIMIT,
     });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

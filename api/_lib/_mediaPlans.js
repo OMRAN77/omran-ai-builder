@@ -2,6 +2,10 @@
 // بنفس أسعار المحادثة بالدرهم (٣٧٫٥ · ٧٥ · ٣٧٥). كلّ اشتراك رصيد شهريّ بالفلس من
 // تكلفتنا الفعليّة، منفصل عن النقاط وعن باقة المحادثة: لا يمسّ user.plan ولا رصيد النقاط،
 // فمشترك الصور لا يأخذ فيديو ولا محادثة المشتركين، والعكس.
+// v-media-merge (قرار المالك ٨ أكتوبر ٢٠٢٦، باب المال بموافقته على البند وحده: «اعتمد البديل ونفّذ الدمج»): الصور والفيديو
+// صارا باقة واحدة (media_*، خانة 'mix') برصيد واحد يصرف منه أيّ صورة أو فيديو بتكلفته في UNIT_COST. الرصيد = ثلث السعر بالدرهم
+// (قاعدة «كلّ خدمة ٣ أضعاف تكلفتها»): ١٢٥٠ · ٢٥٠٠ · ١٢٥٠٠ فلس. img_*/vid_* توقّف بيعها (retired) — لا جلسة دفع جديدة لها — لكنّها
+// تبقى هنا: تجديد اشتراك قائم أو جلسة بدأت قبل النشر يُمنح كما كان (لا مال بلا منح)، والقائمة تكمل نافذتها ويُصرف منها أوّلًا.
 const { kvGetRaw, kvSetRaw, kvIncrBy, kvDecrBy } = require('./kv.js');
 
 const MEDIA_WINDOW_DAYS = 35;
@@ -12,19 +16,31 @@ const MEDIA_WINDOW_MS = MEDIA_WINDOW_DAYS * 86400000;
 // فيديو: ٣٧٫٥ ← ~٢٣ · ٧٥ ← ~٤٨ · ٣٧٥ ← ~٢٠٠ درهم (v-fair-video).
 // المبالغ بالدولار مطابقة للدرهم (÷٣٫٦٧٢٥) ومميّزة عن باقات المحادثة لأنّ PayPal يطابق بالمبلغ.
 const MEDIA_PLANS = {
-  img_basic: { media: 'image', amount: 1021, paypal: '10.21', budget: 1531, name: 'صور — 37.5 درهم / Images — 37.5 AED' },
+  img_basic: { media: 'image', retired: true, amount: 1021, paypal: '10.21', budget: 1531, name: 'صور — 37.5 درهم / Images — 37.5 AED' },
   // v-fair-video (قرار المالك ٥ أكتوبر): الوسطى ضعف الأساسيّة بضعف السعر (كانت ٧٤ صورة مقابل ٦١) — ربحها ~٤١ درهم لا ~٥٣.
-  img_pro: { media: 'image', amount: 2042, paypal: '20.42', budget: 3050, name: 'صور — 75 درهم / Images — 75 AED' },
-  img_max: { media: 'image', amount: 10211, paypal: '102.11', budget: 20302, name: 'صور — 375 درهم / Images — 375 AED' },
+  img_pro: { media: 'image', retired: true, amount: 2042, paypal: '20.42', budget: 3050, name: 'صور — 75 درهم / Images — 75 AED' },
+  img_max: { media: 'image', retired: true, amount: 10211, paypal: '102.11', budget: 20302, name: 'صور — 375 درهم / Images — 375 AED' },
   // v-fair-video: اشتراك الفيديو وحده كان يعطي اقتصاديًّا أقلّ من Plus (٧ مقابل ٩) — الأساسيّ ١١ والوسطى ٢٣ (ربح ~٢٣ · ~٤٨ درهم).
-  vid_basic: { media: 'video', amount: 1021, paypal: '10.21', budget: 1200, name: 'فيديو — 37.5 درهم / Video — 37.5 AED' },
-  vid_pro: { media: 'video', amount: 2042, paypal: '20.42', budget: 2400, name: 'فيديو — 75 درهم / Video — 75 AED' },
-  vid_max: { media: 'video', amount: 10211, paypal: '102.11', budget: 16280, name: 'فيديو — 375 درهم / Video — 375 AED' },
+  vid_basic: { media: 'video', retired: true, amount: 1021, paypal: '10.21', budget: 1200, name: 'فيديو — 37.5 درهم / Video — 37.5 AED' },
+  vid_pro: { media: 'video', retired: true, amount: 2042, paypal: '20.42', budget: 2400, name: 'فيديو — 75 درهم / Video — 75 AED' },
+  vid_max: { media: 'video', retired: true, amount: 10211, paypal: '102.11', budget: 16280, name: 'فيديو — 375 درهم / Video — 375 AED' },
   // v-maha-plans: دقائق مها الصوتيّة (المالك: «خلّ الناس تستفيد») — ربح ~١٠ · ~٢١ · ~١٠٠ درهم ⇒ ٤٦ · ٩٢ · ٤٧٨ دقيقة.
   maha_basic: { media: 'maha', amount: 1021, paypal: '10.21', budget: 2530, name: 'مها — 37.5 درهم / Maha — 37.5 AED' },
   maha_pro: { media: 'maha', amount: 2042, paypal: '20.42', budget: 5060, name: 'مها — 75 درهم / Maha — 75 AED' }, // v-fair-video: ٩٢ دقيقة (ربح ~٢١ درهم)
   maha_max: { media: 'maha', amount: 10211, paypal: '102.11', budget: 26290, name: 'مها — 375 درهم / Maha — 375 AED' },
+  // v-media-merge: الصور والفيديو برصيد واحد — يكفي تقريبًا ٥٠ صورة عاديّة (٢٥ فلسًا) أو ١٢ فيديو اقتصاديًّا (١٠٣) · ١٠٠ أو ٢٤ · ٥٠٠ أو ١٢١.
+  // الهامش في أسوأ حالة (كلّ الرصيد مصروف) ≈ ٦١–٦٣٪ بعد رسوم الدفع.
+  media_basic: { media: 'mix', amount: 1021, paypal: '10.21', budget: 1250, name: 'صور وفيديو — 37.5 درهم / Images & Video — 37.5 AED' },
+  media_pro: { media: 'mix', amount: 2042, paypal: '20.42', budget: 2500, name: 'صور وفيديو — 75 درهم / Images & Video — 75 AED' },
+  media_max: { media: 'mix', amount: 10211, paypal: '102.11', budget: 12500, name: 'صور وفيديو — 375 درهم / Images & Video — 375 AED' },
 };
+
+// خانات الرصيد على سجلّ الحساب (user.media[kind] ومفتاح media:<kind>:<الاسم>) — تغيير الاسم ونهايات الاشتراكات تمرّ عليها كلّها.
+const MEDIA_KINDS = ['image', 'video', 'maha', 'mix'];
+// من أين تُصرف كلّ عمليّة وبأيّ ترتيب: باقة نوعها القديمة (img_/vid_) حتّى تنفد أو تنتهي نافذتها، ثمّ المدموجة، ثمّ النقاط (points.js).
+const SPEND_POOLS = { image: ['image', 'mix'], video: ['video', 'mix'], maha: ['maha'] };
+// ما تغطّيه كلّ خانة من أنواع العمليّات (لعدّ «يكفي كم» في الحالة).
+const COVERS = { image: ['image'], video: ['video'], maha: ['maha'], mix: ['image', 'video'] };
 
 // حدّ المكالمة الواحدة لمشترك مها بالدقائق — مكالمة منسيّة مفتوحة لا تأكل رصيد الشهر.
 const MAHA_CALL_CAP_MIN = 10;
@@ -85,19 +101,9 @@ async function writeTickets(username, list) {
   try { await kvSetRaw(ticketsKey(username), JSON.stringify(list.slice(-20)), 3600); } catch (e) { console.warn('[media] tickets write failed:', e && e.message); }
 }
 
-/**
- * يخصم العمليّة من رصيد الاشتراك إن كان ساريًا ويكفي. null = لا اشتراك/لا يكفي
- * فيكمل المتّصل على النقاط كما كان.
- */
-async function trySpendMedia(username, pts, reason, opts) {
-  const kind = mediaOf(reason);
-  if (!kind || !username) return null;
-  const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
-  if (!mediaActive(user, kind, o.now)) return null;
+// يأخذ fils من رصيد خانة واحدة إن كفى: الباقي بعده، أو null (لا رصيد/لا يكفي/عطب) فيجرّب المتّصل الخانة التالية.
+async function takeBudget(username, kind, fils) {
   const key = budgetKey(username, kind);
-  const fils = UNIT_COST[reason];
   let raw = null;
   try { raw = await kvGetRaw(key); } catch (e) { return null; }
   if (raw === null || raw === undefined || String(raw) === '' || Number(raw) < fils) return null;
@@ -107,13 +113,34 @@ async function trySpendMedia(username, pts, reason, opts) {
     try { await kvIncrBy(key, fils); } catch (e) { console.error('[media] rollback failed:', e && e.message); }
     return null;
   }
-  // دقيقة مها مضت فعلًا فلا تُستردّ، ولا تذكرة لها كي لا يطابقها استرجاع ١٥ نقطة من خدمة أخرى.
-  if (kind !== 'maha') {
-    const list = await readTickets(username);
-    list.push({ p: Math.floor(Number(pts) || 0), f: fils, k: kind });
-    await writeTickets(username, list);
+  return after;
+}
+
+/**
+ * يخصم العمليّة من رصيد الاشتراك إن كان ساريًا ويكفي. null = لا اشتراك/لا يكفي
+ * فيكمل المتّصل على النقاط كما كان. v-media-merge: الخانات بترتيب SPEND_POOLS — باقة النوع القديمة ثمّ المدموجة؛
+ * media = نوع العمليّة (image/video/maha) كما كان (maha-image يقرأه)، وpool = الخانة التي صُرف منها.
+ */
+async function trySpendMedia(username, pts, reason, opts) {
+  const kind = mediaOf(reason);
+  if (!kind || !username) return null;
+  const o = opts || {};
+  let user = null;
+  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const fils = UNIT_COST[reason];
+  for (const pool of SPEND_POOLS[kind]) {
+    if (!mediaActive(user, pool, o.now)) continue;
+    const after = await takeBudget(username, pool, fils);
+    if (after === null) continue;
+    // دقيقة مها مضت فعلًا فلا تُستردّ، ولا تذكرة لها كي لا يطابقها استرجاع ١٥ نقطة من خدمة أخرى.
+    if (kind !== 'maha') {
+      const list = await readTickets(username);
+      list.push({ p: Math.floor(Number(pts) || 0), f: fils, k: pool }); // k = الخانة: الاسترجاع يعود إليها
+      await writeTickets(username, list);
+    }
+    return { media: kind, pool, fils, left: after };
   }
-  return { media: kind, fils, left: after };
+  return null;
 }
 
 /**
@@ -150,22 +177,27 @@ const HIGH_ASK_RE = /(?:جود[ةه]\s*عالي[ةه]|عالي[ةه]\s*الجو�
 // الكتابة داخل الصورة تذهب لمسار النصّ الأغلى، فتُحسب عالية دائمًا.
 const TEXT_ASK_RE = /(?:اكتب|أكتب|كتاب[ةه]|نصّ?|خطّ?\s|اسم|حرف|\bwrite\b|\btext\b|\bwords?\b)/i;
 
+// v-media-merge: الجودة لمشترك الصور القديمة أو المدموجة — الخانة التي يُصرف منها أوّلًا تحكم، والإعداد يُكتب على كلّ خانة سارية.
+const imageSlots = (user, now) => SPEND_POOLS.image.filter((k) => mediaActive(user, k, now));
+
 /** جودة صورة مشترك الصور: «عاديّة» افتراضيًّا، و«جودة عالية» في الطلب أو الإعداد تجعلها عالية. null = ليس مشتركًا. */
 async function imageQuality(username, text, opts) {
   const o = opts || {};
   let user = null;
   try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
-  if (!mediaActive(user, 'image', o.now)) return null;
+  const slot = imageSlots(user, o.now)[0];
+  if (!slot) return null;
   if (HIGH_ASK_RE.test(String(text || '')) || TEXT_ASK_RE.test(String(text || ''))) return 'high';
-  return user.media.image.quality === 'high' ? 'high' : 'normal';
+  return user.media[slot].quality === 'high' ? 'high' : 'normal';
 }
 
 async function setImageQuality(username, quality) {
   if (!QUALITIES.includes(quality)) return false;
   const { getUser, putUser } = require('./auth.js');
   const user = await getUser(username);
-  if (!mediaActive(user, 'image')) return false;
-  user.media.image.quality = quality;
+  const slots = imageSlots(user);
+  if (!slots.length) return false;
+  for (const k of slots) user.media[k].quality = quality;
   await putUser(username, user);
   return true;
 }
@@ -176,19 +208,19 @@ async function mediaStatus(username, opts) {
   let user = null;
   try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
   const out = {};
-  for (const kind of ['image', 'video', 'maha']) {
+  for (const kind of MEDIA_KINDS) {
     if (!mediaActive(user, kind, o.now)) continue;
     let left = 0;
     try { left = Math.max(0, Number(await kvGetRaw(budgetKey(username, kind))) || 0); } catch (e) { left = 0; }
     const counts = {};
-    for (const r of Object.keys(UNIT_COST)) if (mediaOf(r) === kind && r !== 'image_creative') counts[r] = Math.floor(left / UNIT_COST[r]);
+    for (const r of Object.keys(UNIT_COST)) if (COVERS[kind].includes(mediaOf(r)) && r !== 'image_creative') counts[r] = Math.floor(left / UNIT_COST[r]);
     out[kind] = { plan: user.media[kind].plan, left, counts };
-    if (kind === 'image') out.image.quality = user.media.image.quality === 'high' ? 'high' : 'normal';
+    if (COVERS[kind].includes('image')) out[kind].quality = user.media[kind].quality === 'high' ? 'high' : 'normal';
   }
   return out;
 }
 
 module.exports = {
-  MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS, MAHA_CALL_CAP_MIN,
+  MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS, MAHA_CALL_CAP_MIN, MEDIA_KINDS, SPEND_POOLS,
   mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, refundMahaMinute, mediaStatus, imageQuality, setImageQuality,
 };

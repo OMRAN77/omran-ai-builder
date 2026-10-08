@@ -63,12 +63,12 @@ test('الافتراضيّ يدويّ: دفعة واحدة بلا تجديد و�
 });
 
 test('autoRenew=true وحده يصنع اشتراكًا شهريًّا يحمل الحساب لفواتير التجديد', async () => {
-  const r = await call(checkout, 'create-checkout-session', { plan: 'img_pro', token: token('omar'), autoRenew: true });
+  const r = await call(checkout, 'create-checkout-session', { plan: 'media_pro', token: token('omar'), autoRenew: true }); // v-media-merge: img_ توقّف بيعها
   const p = stripeParams(r);
   assert.equal(p.get('mode'), 'subscription');
   assert.equal(p.get('line_items[0][price_data][recurring][interval]'), 'month');
   assert.equal(p.get('subscription_data[metadata][username]'), 'omar');
-  assert.equal(p.get('subscription_data[metadata][plan]'), 'img_pro');
+  assert.equal(p.get('subscription_data[metadata][plan]'), 'media_pro');
   const loose = await call(checkout, 'create-checkout-session', { plan: 'pro', token: token('omar'), autoRenew: 'true' });
   assert.equal(stripeParams(loose).get('mode'), 'payment', 'قيمة غير true الصريحة لا تفعّل التجديد');
 });
@@ -136,8 +136,8 @@ test('نافذة الدفع: زرّ صغير للتجديد التلقائيّ،
   assert.doesNotMatch(row[0], /\bchecked\b/);
   assert.match(row[0], /data-i18n="checkoutAutoRenew"/);
   assert.ok(html.indexOf('checkoutAutoRenewRow') > html.indexOf('startStripeCheckout()'), 'تحت زرّ البطاقة');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=691'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=724'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=693'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=726'"));
 });
 
 test('النصّان الجديدان في ١٤ لغة بلا اسم مزوّد', () => {

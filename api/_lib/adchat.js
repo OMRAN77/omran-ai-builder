@@ -2,7 +2,7 @@
 // والعنوان والمواصفات والسعر ورقم التواصل، ثم يُخرج سطر @@AD الذي تقرأه
 // الواجهة (ad-studio.html) لتبني منه ثمانية تصاميم.
 // حارسان قبل أي مفتاح: هويّة مُتحقَّقة (لا ضيوف) ثم سقف يوميّ لكل مستخدم.
-const { checkAndConsumeCustom } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: المشترك بنسبة سقف باقته
 const { verifyPointsToken } = require('./points.js');
 
 const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur:'Urdu', bn:'Bengali', ml:'Malayalam', ne:'Nepali', fil:'Filipino', id:'Indonesian', zh:'Chinese (Simplified)', ru:'Russian', tr:'Turkish', es:'Spanish' };
@@ -80,10 +80,10 @@ module.exports = async (req, res) => {
       return;
     }
     // ② سقف يوميّ لكل مستخدم (المالك وVIP معفيان داخل الدالّة).
-    const gate = await checkAndConsumeCustom(token, null, null, 'adchat', DAILY);
+    const gate = await checkAndConsumePlanCustom(token, null, null, 'adchat', DAILY);
     if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' رسالة) في استوديو الإعلانات. جرّب غدًا.',
-        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + DAILY + ' messages) in Ad Studio. Try again tomorrow.' }));
+      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' رسالة) في استوديو الإعلانات. جرّب غدًا.',
+        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + gate.limit + ' messages) in Ad Studio. Try again tomorrow.' }));
       return;
     }
 

@@ -8,6 +8,8 @@
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   function T(o){ return o[lg()] || o.en || o.ar; }
   var $ = function(id){ return document.getElementById(id); };
+  function cxTokenOf(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  function gt(k){ try{ var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? v : T(D.tx.err); }catch(e){ return T(D.tx.err); } }
 
   /* معرض كبير داخل التطبيق — مشترك للديكور والمقاولات */
   if(!window.omranLightbox){
@@ -51,9 +53,12 @@
     var floorsInput = $('constructionFloors');
     var floors = sel.floors || (floorsInput && floorsInput.value ? (parseInt(floorsInput.value, 10) >= 3 ? 'g2' : (parseInt(floorsInput.value, 10) === 2 ? 'g1' : 'g')) : '');
     try{
-      var r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ mode:'construction', type: type, view: sel.view, floors: floors, style: sel.style, q: input.value.trim() }) });
+      var r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ mode:'construction', type: type, view: sel.view, floors: floors, style: sel.style, q: input.value.trim(), token: cxTokenOf() }) });
       var d = await r.json();
       if(my !== req) return;
+      /* v-open-tools-cap: المعرض صار بجلسة وسقف يوميّ ثابت — نصّ الدخول والحدّ الموجودان بالـ١٤ لغة */
+      if(d && d.error === 'auth_required'){ setStatus(gt('designAiNeedLogin')); return; }
+      if(d && d.error === 'daily_limit_reached'){ setStatus(gt('designAiLimitReached')); return; }
       var imgs = Array.isArray(d.images) ? d.images : [];
       if(!imgs.length){ setStatus(T((d && d.error === 'provider') ? D.tx.err : D.tx.none)); return; }
       imgs.forEach(function(u){

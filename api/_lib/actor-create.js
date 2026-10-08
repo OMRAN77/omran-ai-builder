@@ -8,7 +8,8 @@
      ٢) الوجه: صورة المستخدم كما هي (هويّته بلا إعادة رسم)، وبلا صورة بورتريه يُولَّد من الوصف؛
      ٣) OmniHuman (fal) يحرّك الوجه والشفاه على الصوت نفسه.
    الكلفة والخصم كما في Veo حرفيًّا (المالك بلا حدّ؛ غيره نقاط veo_video، تُردّ عند الفشل، وقفل الثلاث دقائق).
-   أيّ عطب قبل الإرسال (لا مفتاح، تعذّر الصوت أو الوجه) = { fallback: true } بلا خصم، والعميل يكمل على Veo كما كان.
+   أيّ عطب قبل الإرسال (لا مفتاح، تعذّر الصوت أو الوجه) = { fallback: true } بلا خصم (أو بخصم مردود كاملًا)، والعميل يكمل
+   على Veo كما كان. v-video-open-lock: الهويّة والخصم صارا قبل الصوت المدفوع، لا بعده.
    المفاتيح تُقرأ داخل المعالج لا في نطاق الوحدة (بيئة عارية عند التحميل). */
 
 const LIPSYNC_MODEL_DEFAULT = 'fal-ai/bytedance/omnihuman/v1.5';
@@ -17,6 +18,11 @@ const VOICES = { male: 'ar-AE-HamdanNeural', female: 'ar-AE-FatimaNeural' };
 const MP3_BYTES_PER_SEC = 6000; // audio-24khz-48kbitrate-mono-mp3 = ٤٨ ألف بت في الثانية
 const ACTOR_MAX_SEC_DEFAULT = 15; // سقف الكلفة: المحرّك يُحاسَب بالثانية
 const SPEECH_MAX = 300; // حدّ خانة الكلام في الواجهة نفسه
+// v-video-open-lock: سقف متسامح لسرعة النطق بالحروف (بلا تشكيل ولا مسافات ولا علامات) — النطق العاديّ يُقدَّر بنحو
+// ١١ حرفًا في الثانية (تقدير لا قياس)، فما يزيد على ١٦×السقف لا يتّسع له السقف ويُرفض قبل أن يُدفع ثمن توليد صوته.
+// التقدير حدّ أدنى للمدّة فلا يرفض كلامًا يمكن أن يتّسع، والمدّة الفعليّة بعد التوليد تبقى الحكم الأخير.
+const FAST_LETTERS_PER_SEC = 16;
+const minSecondsOf = (text) => (String(text || '').match(/[\p{L}\p{N}]/gu) || []).length / FAST_LETTERS_PER_SEC;
 
 const xml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 function ssmlFor(text, gender) {
@@ -93,25 +99,21 @@ module.exports = async (req, res) => {
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const speech = String(body.speech || '').trim().slice(0, SPEECH_MAX);
+    const speech = String(body.speech || '').trim();
     const gender = body.voiceGender === 'female' ? 'female' : 'male';
     const desc = String(body.promptText || '').trim();
     const photo = String(body.imageBase64 || '').trim();
     if (!speech) { res.status(400).json({ error: 'اكتب أوّلًا شو يقول الممثل.' }); return; }
+    // v-video-open-lock: الطويل يُرفض قبل أيّ نداء مدفوع — كان يُقصّ بصمت إلى ٣٠٠ حرف ثمّ يُولَّد صوته ويُرفض بعد الدفع
+    const maxSec = Number(process.env.ACTOR_MAX_SEC) || ACTOR_MAX_SEC_DEFAULT;
+    if (speech.length > SPEECH_MAX) { res.status(400).json({ error: 'كلام الممثل طويل — خلّه أقصر من ' + SPEECH_MAX + ' حرف.' }); return; }
+    if (minSecondsOf(speech) > maxSec) { res.status(400).json({ error: 'كلام الممثل طويل — خلّه أقصر من ' + maxSec + ' ثانية.' }); return; }
 
     const falKey = String(process.env.FAL_KEY || '').trim();
     if (!falKey) { console.warn('[actor] FAL_KEY missing — fallback'); res.status(503).json({ fallback: true, error: 'lipsync_unavailable' }); return; }
 
-    // ١) الصوت قبل أيّ خصم: عطبه = المسار القديم بلا خصم، وطوله يُعرف قبل أن يُحاسَب المحرّك بالثانية
-    const voice = await emiratiVoice(speech, gender);
-    if (voice.error) { res.status(503).json({ fallback: true, error: voice.error }); return; }
-    const maxSec = Number(process.env.ACTOR_MAX_SEC) || ACTOR_MAX_SEC_DEFAULT;
-    if (voice.sec > maxSec) {
-      res.status(400).json({ error: 'كلام الممثل طويل (' + Math.round(voice.sec) + ' ثانية) — خلّه أقصر من ' + maxSec + ' ثانية.' });
-      return;
-    }
-
-    // ٢) الخصم والقفل كما في Veo حرفيًّا
+    // ١) الهويّة والحظر والتأكيد والرصيد والقفل قبل أيّ نداء مدفوع (v-video-open-lock: كان الصوت المدفوع يُولَّد لأيّ
+    //    طلب بلا رمز قبل هذا كلّه). الخصم كما في Veo حرفيًّا، وكلّ عطب بعده (الصوت، الطول الفعليّ، الوجه، المحرّك) يردّه كاملًا.
     pointsLib = require('./points.js');
     COST = pointsLib.COSTS.veo_video;
     const gate = await require('./_videoUsage').checkOwnerBypass(body.token);
@@ -122,6 +124,7 @@ module.exports = async (req, res) => {
       const g = pointsLib.requireConfirmation(body, COST, 'فيديو ممثل يتكلم');
       if (g) { res.status(g.status).json(g.payload); return; }
       const pay = await pointsLib.spendPoints(username, COST, 'veo_video');
+      if (!pay.ok && pay.banned) { res.status(403).json({ error: 'banned' }); return; }
       if (!pay.ok) { res.status(402).json({ error: 'points_insufficient', needed: COST, points: pay.points || 0 }); return; }
       chargedUser = username;
       if (!pay.owner) {
@@ -129,6 +132,15 @@ module.exports = async (req, res) => {
         if (!vl.ok) { await undo(); res.status(429).json({ error: 'video_cooldown', retryAfter: vl.retryAfter }); return; }
         videoLocked = username;
       }
+    }
+
+    // ٢) الصوت: عطبه = ردّ الخصم والقفل ثمّ المسار القديم (Veo)، وطوله الفعليّ يُعرف قبل أن يُحاسَب المحرّك بالثانية
+    const voice = await emiratiVoice(speech, gender);
+    if (voice.error) { await undo(); res.status(503).json({ fallback: true, error: voice.error }); return; }
+    if (voice.sec > maxSec) {
+      await undo();
+      res.status(400).json({ error: 'كلام الممثل طويل (' + Math.round(voice.sec) + ' ثانية) — خلّه أقصر من ' + maxSec + ' ثانية.' });
+      return;
     }
 
     // ٣) الوجه: صورة المستخدم كما هي، وإلّا بورتريه من الوصف بنسبة الفيديو
@@ -168,3 +180,5 @@ module.exports.submitLipsync = submitLipsync;
 module.exports.VOICES = VOICES;
 module.exports.LIPSYNC_MODEL_DEFAULT = LIPSYNC_MODEL_DEFAULT;
 module.exports.ACTOR_MAX_SEC_DEFAULT = ACTOR_MAX_SEC_DEFAULT;
+module.exports.minSecondsOf = minSecondsOf;
+module.exports.SPEECH_MAX = SPEECH_MAX;

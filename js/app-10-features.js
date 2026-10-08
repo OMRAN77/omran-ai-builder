@@ -1413,18 +1413,19 @@ function openShareModal(project){
     resultBox.style.display = 'none';
     createBtn.disabled = true;
     try{
-      const username = (typeof authGet === 'function' && authGet('aiapp_username')) ? authGet('aiapp_username') : 'زائر';
+      /* v-share-guard: النشر برمز الجلسة — الخادم يأخذ اسم الناشر من الرمز، فلا يُرسَل الاسم */
       const resp = await fetch('/api/share', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           title: shareModalProject.title || t('defaultProjectTitle'),
           code: shareModalProject.code || '',
-          username,
+          token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''),
           isPublic,
           messages: __shareMsgs, /* v-share-chat */
         }),
       });
+      if(resp.status === 401){ closeModal(); if(typeof window.requireLogin === 'function') window.requireLogin('guestLimit'); return; } /* v-share-guard: الضيف → التسجيل (النافذة فوق شاشة الدخول فتُغلق أوّلًا) */
       const data = await resp.json();
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;

@@ -34,10 +34,15 @@ require.cache[rp('api/_lib/_usage.js')] = { id: rp('api/_lib/_usage.js'), filena
   checkAndConsume: async (tok, gid, bucket) => { consumed.push(bucket); return { allowed: true, username: 'plan-user' }; },
   todayCount: async (u, bucket) => counts[bucket] || 0,
   bumpCount: async (u, bucket) => { bumped.push(bucket); },
+  // v-meter-atomic: الحجز الذرّيّ — fillOnTake يحاكي طلبًا متزامنًا ملأ المقياس بين القراءة والحجز
+  takeMeter: async (u, bucket, cap) => { if (fillOnTake.includes(bucket)) counts[bucket] = cap; if ((counts[bucket] || 0) >= cap) return false; counts[bucket] = (counts[bucket] || 0) + 1; bumped.push(bucket); return true; },
+  giveMeter: async (u, bucket) => { given.push(bucket); counts[bucket] = Math.max(0, (counts[bucket] || 0) - 1); },
 } };
 let counts = {};
+let fillOnTake = [];
 const consumed = [];
 const bumped = [];
+const given = [];
 require.cache[rp('api/_lib/_knowledge.js')] = { id: rp('api/_lib/_knowledge.js'), filename: rp('api/_lib/_knowledge.js'), loaded: true, exports: { ownerKnowledge: () => '' } };
 require.cache[rp('api/_lib/search.js')] = { id: rp('api/_lib/search.js'), filename: rp('api/_lib/search.js'), loaded: true, exports: { fetchPlaces: async () => [] } };
 const tierLib = require(rp('api/_lib/tier.js'));
@@ -145,7 +150,7 @@ const SUB = (plan) => ({ tier: 'sub', plan, cap: 100, subscriber: true });
 function withKeys(fn) {
   return async () => {
     process.env.GROQ_API_KEY = 'q-test'; process.env.GEMINI_API_KEY = 'g-test';
-    try { await fn(); } finally { delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API_KEY; counts = {}; }
+    try { await fn(); } finally { delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API_KEY; counts = {}; fillOnTake = []; }
   };
 }
 
@@ -188,13 +193,31 @@ test('٤. الخادم: كلّ وظيفة لمزوّدها بمفاتيحه، و
 
 test('٥. الخادم: تعطّل مزوّد الوظيفة قبل أوّل حرف → Gemini ثمّ DeepSeek ثمّ Groq بصمت، ثمّ السلسلة المجّانيّة', withKeys(async () => {
   chat.__orQuick.level = 2;
+  bumped.length = 0; given.length = 0;
   let r = await ask(SUB('pro'), 'claude', 'اكتب كود بايثون', ['{"error":"insufficient credits"}', 'ok']);
   assert.deepEqual(r.bodies.map((b) => b.body.model), ['anthropic/claude-haiku-4.5', 'gemini-flash-latest']);
+  assert.deepEqual([bumped, given], [['plan-haiku'], ['plan-haiku']], 'v-meter-atomic: Haiku لم يخدم — حجزه يُردّ');
   assert.match(r.written, /"delta":"تم"/);
   assert.doesNotMatch(r.written, /"error"|Gemini/, 'بصمت وبلا اسم مزوّد');
   r = await ask(SUB('basic'), '', 'هلا', ['boom', 'boom', 'ok']);
   assert.deepEqual(r.bodies.map((b) => b.body.model), ['openai/gpt-oss-120b', 'gemini-flash-latest', 'deepseek/deepseek-v4-pro']);
   assert.match(r.written, /"delta":"تم"/);
+}));
+
+test('٥-ج. v-meter-atomic: مقياس امتلأ بين القراءة والحجز (طلب متزامن) → المسار التالي بلا عبور الحدّ، والسلّة نفسها', withKeys(async () => {
+  chat.__orQuick.level = 2;
+  consumed.length = 0; bumped.length = 0; given.length = 0;
+  fillOnTake = ['plan-haiku'];
+  let r = await ask(SUB('pro'), 'claude', 'اكتب لي كود جافاسكربت يطبع هلا');
+  assert.deepEqual(r.bodies.map((b) => b.body.model), ['deepseek/deepseek-v4-pro'], 'لا نداء Haiku فوق حدّه');
+  assert.equal(counts['plan-haiku'], 10, 'المقياس عند حدّه لا فوقه');
+  assert.deepEqual([consumed, bumped, given], [['plan'], [], []], 'حصّة واحدة في سلّة الباقة، ولا حجز ولا ردّ');
+  // Max: Sonnet امتلأ للتوّ ← Haiku يُحجز ويخدم
+  counts = {}; fillOnTake = ['plan-sonnet'];
+  r = await ask(SUB('max'), 'claude', 'ابني لي صفحة هبوط لمطعم');
+  assert.deepEqual(r.bodies.map((b) => b.body.model), ['anthropic/claude-haiku-4.5']);
+  assert.deepEqual(bumped, ['plan-haiku']);
+  assert.equal(counts['plan-sonnet'], 30);
 }));
 
 test('٥-ب. بلا مفاتيح مباشرة: Groq وGemini يُتخطّيان (لا انقلاب صامت)، والكلّ معطّل → السلسلة المجّانيّة', async () => {
@@ -211,8 +234,9 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
   const consume = s.indexOf("const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : ((__planRoute && __planRoute.bucket) || prov)");
   const lastUser = s.indexOf('const lastUserAny = messages.slice().reverse().find(');
   assert.ok(route > 0 && lastUser > 0 && lastUser < route && route < consume, 'الرسالة الأخيرة → التوجيه → الحصّة');
-  const bump = s.indexOf("await bumpCount(__planUser, 'plan-' + __planRoute.meter)");
-  assert.ok(bump > consume, 'حدّ كلود يُعدّ بعد قبول الحصّة');
+  const bump = s.indexOf("if (await takeMeter(__planUser, __mb, __planRoute.meterCap))"); // v-meter-atomic: حجز ذرّيّ لا فحص ثمّ زيادة
+  assert.ok(bump > consume, 'حدّ كلود يُحجز بعد قبول الحصّة');
+  assert.ok(!/bumpCount\(/.test(s), 'لا زيادة بعد الفحص في chat.js');
   const loop = s.indexOf('while (!upstream.ok && !anyText && __planFallbacks.length) {');
   const finalFail = s.indexOf('if (!upstream.ok) {\n        const errText = (await upstream.text()).slice(0, 300);');
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");
@@ -263,7 +287,7 @@ test('٨. الباقات ٣٦٠/٩٢٠/٣٬٢٠٠ متطابقة في Stripe وP
   assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id\)/);
   // العميل: الأزرار الأربعة تفتح نافذة الدفع بنفس الأسعار المعروضة
   const a6 = read('js/app-06-checkout.js');
-  assert.match(a6, /const CHECKOUT_PLAN_AMOUNTS = \{ basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499(, img_basic: 1021[^}]*)? \};/); // v-media-plans: اشتراكات الصور/الفيديو بعد الرزم
+  assert.match(a6, /const CHECKOUT_PLAN_AMOUNTS = \{ basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499(, maha_basic: 1021[^}]*)? \};/); // v-media-plans: اشتراكات الوسائط بعد الرزم (v-media-merge: مها و«صور وفيديو»؛ img_/vid_ خرجت)
   assert.match(a6, /if\(n > 0 && CHECKOUT_PLAN_AMOUNTS\['pack' \+ n\]\)\{ openCheckout\('pack' \+ n\); return; \}/);
   const ps = read('js/partials-settings.js');
   for (const [n, usd] of [[100, '4.99'], [300, '12.99'], [700, '24.99'], [900, '34.99']]) assert.ok(ps.includes('onclick="buyPointsPack(' + n + ')"') && ps.includes('data-usd="' + usd + '"'), 'زرّ ' + n);
@@ -334,14 +358,14 @@ test('١٠. منتقي المزوّد: يظهر للمالك وحده (v-provide
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=691'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=693'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 
 test('١١. نصوص الباقات الجديدة في ١٤ لغة، وبلا اسم موديل في وصف النقاط', () => {
   const val = (src, key) => [...src.matchAll(new RegExp('(?:^|[\\s,{])' + key + '\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')', 'g'))].map((m) => m[1]);
   const files = ['js/app-03-i18n-data.js'].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((l) => 'i18n/' + l + '.js'));
-  const expect = { planFreeFeats: [/20/, /4/, /3/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/, /15/, /1/], planProFeats: [/100/, /61/, /40/, /2/], planMaxFeats: [/250/, /213/, /150/, /3/], plFreeMsgs: [/20/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/1|واحد/], plProMedia: [/40/, /2/], plMaxMedia: [/150/, /3/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /175/, /120/] }; // v-fair-video
+  const expect = { planFreeFeats: [/20/, /4/, /class=\\?"off\\?"/], planPlusFeats: [/50/, /24/], planProFeats: [/100/, /61/], planMaxFeats: [/250/, /213/], plFreeMsgs: [/20/], plStMsgs: [/50/], plProMsgs: [/100/], plMaxAllPro: [/250/], plStVideos: [/^["'][^0-9]+["']$/], plProMedia: [/^["'][^0-9]+["']$/], plMaxMedia: [/^["'][^0-9]+["']$/], pricingPointsDesc: [/15/, /20/, /35/, /55/, /175/, /120/] }; // v-fair-video؛ v-media-merge (قرار المالك ٨ أكتوبر): الصور والفيديو في البطاقات بلا أعداد — media-merge.test ١١
   for (const f of files) {
     const src = read(f);
     const n = f.startsWith('i18n/') ? 1 : 2;

@@ -175,7 +175,7 @@ module.exports = async (req, res) => {
 
     if (uri) {
       // نمرّره عبر بروكسي veo-download (يضيف مفتاح Google لتنزيل ملفّ generativelanguage).
-      res.status(200).json({ url: '/api/video?action=veo-download&uri=' + encodeURIComponent(uri) });
+      res.status(200).json({ url: require('./veo-download.js').downloadUrl(uri) }); // v-video-open-lock: موقّع على الملفّ
     } else {
       res.status(200).json({ dataUrl: 'data:' + mime + ';base64,' + b64 });
     }

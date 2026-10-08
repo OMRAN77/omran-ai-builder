@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
     await settle(true);
     res.status(200).json({
       status: 'SUCCEEDED',
-      output: ['/api/video?action=veo-download&uri=' + encodeURIComponent(uri)],
+      output: [require('./veo-download.js').downloadUrl(uri)], // v-video-open-lock: موقّع على الملفّ — التنزيل لا يقبل غيره بلا جلسة
     });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

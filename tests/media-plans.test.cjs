@@ -41,7 +41,7 @@ const reset = (u, rec) => { users.set(u, Object.assign({ username: u, points: 70
 
 test('١. الباقات الستّ: المبالغ بالدرهم، ومميّزة عن باقات المحادثة، والرصيد يعطي الأعداد المعلنة', () => {
   const P = media.MEDIA_PLANS;
-  assert.deepEqual(Object.keys(P), ['img_basic', 'img_pro', 'img_max', 'vid_basic', 'vid_pro', 'vid_max', 'maha_basic', 'maha_pro', 'maha_max']);
+  assert.deepEqual(Object.keys(P), ['img_basic', 'img_pro', 'img_max', 'vid_basic', 'vid_pro', 'vid_max', 'maha_basic', 'maha_pro', 'maha_max', 'media_basic', 'media_pro', 'media_max']); // v-media-merge: «صور وفيديو» — img_/vid_ باقية للتجديد القائم (retired)، media-merge.test
   for (const k of Object.keys(P)) {
     assert.equal(checkout.PLANS[k].points, 0, k + ': بلا نقاط');
     assert.equal(checkout.PLANS[k].media, P[k].media);
@@ -139,10 +139,11 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
   assert.match(read('api/webhook.js'), /PLANS\[md\.plan\]/);
   const html = read('js/partials-settings.js');
   const box = html.slice(html.indexOf('id="mediaPlansBox"'), html.indexOf('pricingPointsTitle'));
-  for (const k of Object.keys(media.MEDIA_PLANS)) assert.ok(box.includes("openCheckout('" + k + "')"), k);
+  for (const k of Object.keys(media.MEDIA_PLANS).filter((x) => !media.MEDIA_PLANS[x].retired)) assert.ok(box.includes("openCheckout('" + k + "')"), k); // v-media-merge: المعروض ما يُباع
+  assert.doesNotMatch(box, /openCheckout\('(?:img|vid)_/, 'img_/vid_ توقّف بيعها');
   assert.doesNotMatch(box, /Veo|Runway|Omni|MiniMax|Gemini|GPT|Nano|جوجل/i, 'بلا اسم مزوّد');
   const co = read('js/app-06-checkout.js');
-  assert.match(co, /img_basic: 1021, img_pro: 2042, img_max: 10211, vid_basic: 1021, vid_pro: 2042, vid_max: 10211, maha_basic: 1021, maha_pro: 2042, maha_max: 10211/);
+  assert.match(co, /maha_basic: 1021, maha_pro: 2042, maha_max: 10211, media_basic: 1021, media_pro: 2042, media_max: 10211 \}/); // v-media-merge
   const keys = ['mediaImgPlain', 'mediaHighEq', 'mediaQLabel', 'mediaQNormal', 'mediaQHigh', 'mediaQNormalDesc', 'mediaQHighDesc', 'mediaQHint', 'mediaPlansTitle', 'mediaPlansDesc', 'mediaImgName', 'mediaVidName', 'mediaImgUnit', 'mediaVidEco', 'mediaVidCine', 'mediaVidSound', 'mediaOr', 'mediaNoChatVideo', 'mediaNoChatImage', 'mediaLeftImg', 'mediaLeftVid'];
   const i18n = read('js/app-03-i18n-data.js');
   for (const l of ['ar', 'en']) assert.ok(keys.every((k) => new RegExp('I18N\\.' + l + ', \\{[^\\n]*"' + k + '"').test(i18n)), l);
@@ -150,8 +151,8 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     const s = read('i18n/' + l + '.js');
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=691'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=724'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=693'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=726'"));
 });
 
 test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرصيد على المحرّك السريع، و«جودة عالية» في الطلب أو الإعداد = عالية', async () => {
@@ -176,18 +177,18 @@ test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرص�
   assert.match(mi, /__ask4K \? 'image_4k' : \(__mq === 'normal' \? 'image_normal' : 'image'\)/);
   assert.match(mi, /: \(__mediaQuality === 'normal'\) \? 'gemini-3\.1-flash-image'/);
   assert.match(mi, /if \(__extra > 0 && __mediaQuality !== 'normal'\) \{/);
-  assert.match(mi, /mediaTag: __mediaQuality \? \{ q: __mediaQuality, left: Math\.floor\(__mediaLeft \/ 25\) \}/);
+  assert.match(mi, /mediaTag: __mediaQuality \? \{ q: __mediaQuality, left: Math\.floor\(__mediaLeft \/ 25\), pool: __mediaPool \}/); // v-media-merge: والخانة
   const at = read('js/app-09-attach.js');
   assert.equal((at.match(/__imgEngineLine\((__d|__lsData|__data)\.engine, \1\)/g) || []).length, 4, 'كلّ مسارات الصورة تمرّر الوسم');
   const html = read('js/partials-settings.js');
-  for (const n2 of [61, 122, 810]) assert.ok(html.includes('<li><b>' + n2 + '</b> <span data-i18n="mediaImgPlain">'), n2);
+  for (const n2 of [1, 2, 3]) assert.ok(html.includes('<li data-i18n="mixApprox' + n2 + '">'), 'v-media-merge: أمثلة «صور وفيديو» ' + n2); // كان: 61 · 122 · 810 صورة
   assert.ok(html.includes("onclick=\"setMediaQuality('normal')\"") && html.includes("onclick=\"setMediaQuality('high')\""));
   assert.match(read('api/_lib/points.js'), /action === 'media-quality'/);
 });
 
 test('٨. أقسام الأسعار (v-price-tabs): المحادثة · الصور · الفيديو · النقاط، كلّ قسم وحده والمحادثة افتراضيًّا', () => {
   const html = read('js/partials-settings.js');
-  const tabs = ['chat', 'img', 'vid', 'maha', 'pts'];
+  const tabs = ['chat', 'media', 'maha', 'pts']; // v-media-merge: الصور والفيديو قسم واحد (كان img · vid)
   for (const k of tabs) {
     assert.ok(html.includes('data-tab="' + k + '" onclick="showPriceTab(\'' + k + '\')"'), 'زرّ ' + k);
     assert.equal((html.match(new RegExp('class="priceTab" data-tab="' + k + '"', 'g')) || []).length, 1, 'قسم ' + k);
@@ -196,15 +197,14 @@ test('٨. أقسام الأسعار (v-price-tabs): المحادثة · الصو
   assert.ok(!html.includes('id="openFullPricing"'), 'رابط «عرض كل الباقات» فوق الأسعار حُذف');
   assert.ok(html.includes('<div class="priceTab" data-tab="chat"><div class="planGrid">'), 'المحادثة ظاهرة');
   const sec = (k) => { const i = html.indexOf('class="priceTab" data-tab="' + k + '"'); const n = tabs.indexOf(k) < tabs.length - 1 ? html.indexOf('class="priceTab" data-tab="' + tabs[tabs.indexOf(k) + 1] + '"') : html.indexOf('termsLink', i); return html.slice(i, n); };
-  for (const k of ['img', 'vid', 'maha', 'pts']) assert.match(sec(k), /^class="priceTab" data-tab="\w+"[^>]*style="display:none;"/, k + ' مخفيّ حتّى يُختار');
-  assert.ok(sec('chat').includes("openCheckout('max')") && !sec('chat').includes("openCheckout('img_basic')"));
-  assert.ok(['img_basic', 'img_pro', 'img_max'].every((p) => sec('img').includes("openCheckout('" + p + "')")) && !sec('img').includes("openCheckout('vid_basic')"));
-  assert.ok(['vid_basic', 'vid_pro', 'vid_max'].every((p) => sec('vid').includes("openCheckout('" + p + "')")) && sec('vid').includes('id="mediaVidStatus"'));
-  assert.ok(sec('img').includes('id="mediaQualityBox"'));
+  for (const k of ['media', 'maha', 'pts']) assert.match(sec(k), /^class="priceTab" data-tab="\w+"[^>]*style="display:none;"/, k + ' مخفيّ حتّى يُختار');
+  assert.ok(sec('chat').includes("openCheckout('max')") && !sec('chat').includes("openCheckout('media_basic')"));
+  assert.ok(['media_basic', 'media_pro', 'media_max'].every((p) => sec('media').includes("openCheckout('" + p + "')")) && sec('media').includes('id="mediaPlanStatus"'));
+  assert.ok(sec('media').includes('id="mediaQualityBox"'));
   assert.ok(sec('pts').includes('buyPointsPack(100)'));
   assert.ok(!html.includes('id="acctPointsBuyBtn"'), 'v-account-tidy: تحذير النقاط وزرّ شحنها خرجا من «حسابي»؛ الشحن من قسم النقاط نفسه');
   assert.match(read('js/app-06-checkout.js'), /function showPriceTab\(tab\)\{/);
-  const keys = ['priceTabChat', 'priceTabImg', 'priceTabVid', 'priceTabPts'];
+  const keys = ['priceTabChat', 'priceTabImg', 'priceTabVid', 'priceTabPts', 'priceTabMedia']; // priceTabImg/Vid: اسم باقة قديمة سارية في شريط التنبيه
   const i18n = read('js/app-03-i18n-data.js');
   for (const l of ['ar', 'en']) assert.ok(keys.every((k) => new RegExp('I18N\\.' + l + ', \\{[^\\n]*"' + k + '"').test(i18n)), l);
   for (const l of ['fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml']) assert.ok(keys.every((k) => read('i18n/' + l + '.js').includes('"' + k + '"')), l);
@@ -268,7 +268,7 @@ test('٩. اشتراك مها (v-maha-plans): ٤٦ · ٧٥ · ٤٧٨ دقيقة�
   }
   assert.ok(sec.includes('id="mahaPlanStatus"'));
   assert.doesNotMatch(sec, /GPT|OpenAI|realtime|Gemini|Claude/i, 'بلا اسم مزوّد');
-  assert.match(read('js/app-06-checkout.js'), /\['chat', 'img', 'vid', 'maha', 'pts'\]/);
+  assert.match(read('js/app-06-checkout.js'), /\['chat', 'media', 'maha', 'pts'\]/); // v-media-merge
   const keys = ['priceTabMaha', 'mahaPlanName', 'mahaPlansDesc', 'mahaMinPlain', 'mahaMinUnit', 'mahaCapNote', 'mahaNoChat', 'mahaLeft', 'mahaCapEnd', 'mahaToPoints'];
   const i18n = read('js/app-03-i18n-data.js');
   for (const l of ['ar', 'en']) assert.ok(keys.every((k) => new RegExp('I18N\\.' + l + ', \\{[^\\n]*"' + k + '"').test(i18n)), l);

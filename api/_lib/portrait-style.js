@@ -181,7 +181,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const quota = await checkPortraitQuota(token);
+    const quota = await checkPortraitQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
     if (!quota.allowed) {
       if (quota.reason === 'auth') {
         res.status(401).json({ error: 'auth_required' });
@@ -245,11 +245,11 @@ module.exports = async (req, res) => {
         }
         frames.push(frameImgPart.inlineData.data);
       }
-      const remainingGif = await consumePortrait(quota.username);
+      const remainingGif = await consumePortrait(quota.username, quota.limit);
       res.status(200).json({
         frames,
         remaining: remainingGif,
-        dailyLimit: PORTRAIT_DAILY_LIMIT,
+        dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT,
       });
       return;
     }
@@ -501,8 +501,8 @@ module.exports = async (req, res) => {
       // Gemini فيُتجاوز في مسار الإنقاذ — سيرفض بدوره لو حاولناه.
       const rescue = await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
       if (rescue) {
-        const remR = await consumePortrait(quota.username);
-        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: PORTRAIT_DAILY_LIMIT });
+        const remR = await consumePortrait(quota.username, quota.limit);
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT });
         return;
       }
       res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
@@ -535,12 +535,12 @@ module.exports = async (req, res) => {
       }
     }
 
-    const remaining = await consumePortrait(quota.username);
+    const remaining = await consumePortrait(quota.username, quota.limit);
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
       remaining,
-      dailyLimit: PORTRAIT_DAILY_LIMIT,
+      dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT,
     });
   } catch (e) {
     console.error('[portrait-style] exception: ' + (e && e.stack ? e.stack : e));

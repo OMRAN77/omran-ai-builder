@@ -7,7 +7,7 @@
 // v-paypal-honest: فشل الشحن بعد السحب لا يُبلع صامتًا — يُسجَّل ويُردّ credited:false، و'claim' يعيده لطلب مكتمل.
 const { verifyToken } = require('./auth.js');
 const { MEDIA_PLANS } = require('./_mediaPlans.js');
-const { grantPlanToUser, wasNamed } = require('./create-checkout-session.js');
+const { grantPlanToUser, wasNamed, RETIRED } = require('./create-checkout-session.js');
 
 const PLANS = {
   // v-plans-2026-09: يجب أن تطابق create-checkout-session.js (نقاط ومبالغ).
@@ -24,7 +24,16 @@ const PLANS = {
 };
 // v-media-plans: اشتراكات الصور/الفيديو بمبالغ مميّزة (الالتقاط يطابق بالمبلغ) ورصيد منفصل بلا نقاط.
 // الصور والفيديو بنفس المبلغ، فالطلب يحمل الخطّة في custom_id ويُتحقّق أنّ مبلغها هو الملتقَط.
-for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.paypal, points: 0, media: p.media, name: p.name };
+// v-media-merge: img_/vid_ متوقّفة — لا طلب جديد لها، والتقاط طلب أُنشئ قبل الإيقاف (أو claim له) يُمنح كما كان.
+for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.paypal, points: 0, media: p.media, name: p.name, retired: !!p.retired };
+// v-media-merge (المراجعة المعاكسة): create يردّ img_/vid_ بـ410، لكنّ طلب PayPal يُنشأ ويُلتقط أيضًا من حزمة PayPal في المتصفّح
+// بالمعرّف العامّ وcustom_id يكتبه المشتري — فطلب لخطّة متوقّفة أُنشئ بعد الإيقاف لم يمرّ بنا. المال سُحب، فيُمنح ما يُباع اليوم
+// بالمبلغ نفسه (media_<الدرجة>) لا القديمة (img_max = ٢٠٣٠٢ فلس صور مقابل ١٢٥٠٠). الحدّ = وقت التزام الإيقاف؛ طلب بلا وقت إنشاء لا يُفترض قديمًا.
+const RETIRED_SINCE = Date.parse('2026-10-08T16:31:39Z');
+function grantablePlan(plan, order) {
+  if (!PLANS[plan] || !PLANS[plan].retired || Date.parse(order && order.create_time) < RETIRED_SINCE) return plan;
+  return 'media_' + String(plan).split('_')[1];
+}
 
 function baseUrl() {
   return (process.env.PAYPAL_MODE !== 'sandbox')
@@ -57,11 +66,15 @@ function matchOrder(order) {
   const pu = (order && order.purchase_units && order.purchase_units[0]) || {};
   const capture = pu.payments && pu.payments.captures && pu.payments.captures[0];
   const amountValue = capture && capture.amount && capture.amount.value;
+  // v-paypal-currency (أمر المالك ٨ أكتوبر): المطابقة كانت برقم المبلغ وحده — طلب يُنشأ في المتصفّح بالمعرّف العامّ بعملة أرخص
+  // وبالرقم نفسه (١٠٢٫١١ بيزو ≈ ١٫٨$) كان يُمنح الباقة الكبرى. الباقات مسعّرة بالدولار، فعملة غيره = لا خطّة.
+  const currency = String((capture && capture.amount && capture.amount.currency_code) || 'USD').toUpperCase();
   const customId = (capture && capture.custom_id) || pu.custom_id;
-  const plan = (customId && PLANS[customId] && PLANS[customId].amount === amountValue)
+  const plan = currency !== 'USD' ? null : (customId && PLANS[customId] && PLANS[customId].amount === amountValue)
     ? customId
     : Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue && !PLANS[p].media);
-  return { plan: plan || null, ref: String(pu.reference_id || '') };
+  // v-pay-refund: رقم الالتقاط ومبلغه بالسنت — الاسترداد والاعتراض يصلان برقم الالتقاط لا الطلب.
+  return { plan: plan || null, ref: String(pu.reference_id || ''), capture: String((capture && capture.id) || ''), cents: Math.round(Number(amountValue) * 100) || 0 };
 }
 
 async function creditOrder(order, username) {
@@ -69,8 +82,11 @@ async function creditOrder(order, username) {
   const m = matchOrder(order);
   if (!m.plan) return { credited: false, reason: 'no_plan' };
   if (m.ref && m.ref !== username && !(await wasNamed(username, m.ref))) return { credited: false, reason: 'not_owner' };
+  m.plan = grantablePlan(m.plan, order);
   const g = await grantPlanToUser(username, m.plan, 'lastPaypalOrderId', order.id);
   if (g.error) return { credited: false, reason: 'account' };
+  // v-pay-refund: رقم الالتقاط لسجلّ المنح — للمنح الجديد وحده (claim بعد استرداد لا يعيد كتابة السجلّ وعلامة سحبه). لا يرمي.
+  if (m.capture && !g.alreadyGranted) await require('./pay-refund.js').linkGrant(order.id, { refs: [m.capture], amount: m.cents, currency: 'usd' });
   const planGranted = PLANS[m.plan].media ? m.plan : (PLANS[m.plan].pack ? (g.plan || null) : m.plan);
   return { credited: true, planGranted, pointsAdded: g.pointsAdded, balance: g.balance, alreadyGranted: !!g.alreadyGranted };
 }
@@ -110,6 +126,7 @@ module.exports = async (req, res) => {
     if (action === 'create') {
       const planInfo = PLANS[body.plan];
       if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+      if (planInfo.retired) { res.status(410).json({ error: RETIRED, retired: true }); return; } // v-media-merge
       // v-checkout-login: طلب بلا حساب يُلتقط ولا يُنسب لأحد — لا طلب دفع بلا دخول.
       const buyer = verifyToken(body.token);
       if (!buyer) { res.status(401).json({ error: 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe' }); return; }
@@ -147,6 +164,7 @@ module.exports = async (req, res) => {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'Prefer': 'return=representation', // v-media-merge: الطلب كاملًا بوقت إنشائه (create_time) — grantablePlan
         },
       });
       const data = await r.json();
@@ -179,3 +197,10 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: e.message || 'Server error' });
   }
 };
+
+// v-pay-refund: ويب هوك PayPal (api/webhook.js?src=paypal) يتحقّق من التوقيع برمز الخادم نفسه، ويعرف التقاطًا قديمًا بلا سجلّ بالطلب.
+module.exports.getAccessToken = getAccessToken;
+module.exports.baseUrl = baseUrl;
+module.exports.matchOrder = matchOrder;
+module.exports.RETIRED_SINCE = RETIRED_SINCE; // v-media-merge — للاختبار
+module.exports.grantablePlan = grantablePlan; // v-media-merge: مسار الاسترداد البديل (pay-refund paypalLegacy) يحوّل الخطّة كما حوّلها المنح

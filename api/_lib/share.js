@@ -4,6 +4,10 @@
 // the Explore page can list recent public apps without scanning every share.
 const crypto = require('crypto');
 const { kvPutJSON, kvGetJSON, kvDel, kvList } = require('./kv.js');
+// v-share-guard (فحص الحدود ٨ أكتوبر ٢٠٢٦): النشر كان بلا رمز (حتّى ٢ م.ب بلا عمر لكلّ طلب)، واسم الناشر حقل
+// يكتبه العميل كما يشاء (أيّ أحد ينشر في «استكشف» باسم المالك). الآن رمز جلسة إلزاميّ، والاسم من الرمز، و٣٠ يوميًّا.
+const { gateShare } = require('./share-gate.js');
+const DAILY_SHARES = 30;
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
@@ -21,6 +25,30 @@ function verifyToken(token) {
 }
 
 const MAX_CODE_SIZE = 2 * 1024 * 1024; // 2MB safety cap per shared project
+
+// v-share-owner (المراجعة المعاكسة): الناشر صار مفتاح الحساب من الرمز، ومفتاح حساب Google ‹g_<البريد كاملًا>› — فكان البريد
+// يُخزَّن في username ويُعرض علنًا في «استكشف» وصفحة المشروع. الآن: صاحب المشاركة بمفتاحه في owner (للحذف وحده، لا يُعرض
+// أبدًا)، والاسم المعروض اسم الحساب من سجلّه، ولا يُعرض اسم يبدأ بـg_ أو فيه @ (يحلّ محلّه الافتراضيّ القائم).
+const DEFAULT_NAME = 'زائر';
+function shownName(name) {
+  const s = String(name || '').trim().slice(0, 60);
+  return (!s || /^g_/i.test(s) || s.includes('@')) ? DEFAULT_NAME : s;
+}
+async function displayNameOf(key) {
+  try {
+    const u = await require('./auth.js').getUser(key);
+    if (u && !u.deleted && u.username) return shownName(u.username);
+  } catch (e) { /* سجلّ مقفل أو عطل قراءة — الاسم الآمن من المفتاح نفسه */ }
+  return shownName(key);
+}
+const publicShare = (rec) => { const out = Object.assign({}, rec, { username: shownName(rec.username) }); delete out.owner; return out; };
+
+// v-share-validate (المراجعة المعاكسة): المشروع الفارغ والأكبر من الحدّ يُرفضان قبل البوّابة — كانا يحرقان حصّة اليوم.
+function shareInputError(code, msgs) {
+  if (!code.trim() && !msgs) return 'empty_project';
+  if (code.length > MAX_CODE_SIZE) return 'code_too_large';
+  return '';
+}
 
 function sharePath(id) {
   return 'db/shares/' + encodeURIComponent(id) + '.json';
@@ -46,12 +74,26 @@ async function getBlob(path) {
   }
 }
 
+// v-share-guard: «استكشف» يمسح القاعدة كلّها (SCAN) ثمّ ٦٠ GET مع كلّ زيارة — ذاكرة ٦٠ ثانية داخل العمليّة
+// (والطلبات المتزامنة تنتظر المسح نفسه)، ونشرٌ أو حذفٌ عامّ في العمليّة نفسها يبطلها فيظهر فورًا لصاحبه.
+const EXPLORE_TTL_MS = 60 * 1000;
+let exploreCache = null; // { at, p }
+function listExploreCached() {
+  const now = Date.now();
+  if (!exploreCache || now - exploreCache.at > EXPLORE_TTL_MS) {
+    const p = listExplore(60);
+    exploreCache = { at: now, p };
+    p.catch(() => { if (exploreCache && exploreCache.p === p) exploreCache = null; }); // فشلٌ لا يُخبَّأ — الزيارة التالية تعيد
+  }
+  return exploreCache.p;
+}
+
 async function listExplore(limit) {
   const keys = await kvList('db/explore/');
   const sorted = keys.slice().sort((a, b) => (a < b ? 1 : -1)); // newest first (timestamp-prefixed names)
   const top = sorted.slice(0, limit || 60);
   const items = await Promise.all(top.map((k) => getBlob(k)));
-  return items.filter(Boolean);
+  return items.filter(Boolean).map(publicShare);
 }
 
 // v-share-chat (طلب المالك: «مش ضروري فقط التطبيق — كل شي»): المشاركة تقبل
@@ -75,16 +117,17 @@ async function createShare(opts) {
   const o = opts || {};
   const code = (typeof o.code === 'string') ? o.code : '';
   const msgs = cleanShareMessages(o.messages);
-  if (!code.trim() && !msgs) return { error: 'empty_project' };
-  if (code.length > MAX_CODE_SIZE) return { error: 'code_too_large' };
+  const bad = shareInputError(code, msgs);
+  if (bad) return { error: bad };
   const id = crypto.randomBytes(6).toString('hex');
   const createdAt = Date.now();
   const safeTitle = (o.title || 'مشروع بدون اسم').toString().slice(0, 120);
-  const safeUser = (o.username || 'زائر').toString().slice(0, 60);
+  const safeUser = shownName(o.username); // v-share-owner: لا بريد ولا مفتاح g_ في الاسم المعروض (ومنه نشر الوكيل)
   const rec = { id, title: safeTitle, code, username: safeUser, createdAt, public: !!o.isPublic };
+  if (o.owner) rec.owner = String(o.owner).slice(0, 200); // v-share-owner: مفتاح الحساب لفحص الحذف وحده
   if (msgs) rec.messages = msgs;
   await putBlob(sharePath(id), rec);
-  if (o.isPublic) await putBlob('db/explore/' + createdAt + '_' + id + '.json', { id, title: safeTitle, username: safeUser, createdAt });
+  if (o.isPublic) { await putBlob('db/explore/' + createdAt + '_' + id + '.json', { id, title: safeTitle, username: safeUser, createdAt }); exploreCache = null; }
   return { id, url: '/p.html?id=' + id };
 }
 
@@ -107,7 +150,7 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       const { id, explore } = req.query || {};
       if (explore) {
-        const items = await listExplore(60);
+        const items = await listExploreCached();
         res.status(200).json({ items });
         return;
       }
@@ -120,16 +163,21 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: 'not_found' });
         return;
       }
-      res.status(200).json(share);
+      res.status(200).json(publicShare(share)); // v-share-owner: مفتاح الحساب لا يخرج
       return;
     }
 
     if (req.method === 'POST') {
       let body = req.body;
       if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-      const { title, code, username, isPublic, messages } = body;
-      // v-share-chat: الكود لم يعد شرطًا — تكفي محادثة؛ createShare يتحقق.
-      const made = await createShare({ title, code, username, isPublic, messages });
+      const { title, code, isPublic, messages } = body;
+      // v-share-validate: الرفض قبل البوّابة فلا يحرق الفارغ والكبير حصّة اليوم (v-share-chat: تكفي محادثة بلا كود)
+      const bad = shareInputError(typeof code === 'string' ? code : '', cleanShareMessages(messages));
+      if (bad) { res.status(bad === 'code_too_large' ? 413 : 400).json({ error: bad }); return; }
+      const size = (typeof code === 'string' ? code.length : 0) + JSON.stringify(cleanShareMessages(messages) || []).length; // v-share-bytes
+      const username = await gateShare(req, res, body, 'share', DAILY_SHARES, size); // v-share-guard: الناشر من الرمز لا من الجسم
+      if (!username) return;
+      const made = await createShare({ title, code, owner: username, username: await displayNameOf(username), isPublic, messages });
       if (made.error) { res.status(made.error === 'code_too_large' ? 413 : 400).json({ error: made.error }); return; }
       res.status(200).json(made);
       return;
@@ -153,7 +201,7 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: 'not_found' });
         return;
       }
-      if (share.username !== username) {
+      if ((share.owner || share.username) !== username) { // v-share-owner: صاحبها بمفتاحه؛ ما قبل الحقل باسمه كما كان
         res.status(403).json({ error: 'forbidden' });
         return;
       }
@@ -162,6 +210,7 @@ module.exports = async (req, res) => {
         pathsToDelete.push('db/explore/' + share.createdAt + '_' + id + '.json');
       }
       await deleteBlobs(pathsToDelete);
+      if (share.public) exploreCache = null;
       res.status(200).json({ ok: true });
       return;
     }
@@ -172,3 +221,4 @@ module.exports = async (req, res) => {
   }
 };
 module.exports.createShare = createShare; // ليستدعيها وكيل عمران بلا نداء HTTP على نفسه
+module.exports.displayNameOf = displayNameOf; // v-agent-publish-owner: الوكيل يمرّر اسم العرض من السجلّ كالمسار العامّ

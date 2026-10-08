@@ -46,7 +46,9 @@ test('الضيف صفر والمشترك لا يتأثّر', async () => {
 
 test('الخادم يرفض الضيف قبل أيّ عدّ', () => {
   const u = read('api/_lib/_usage.js');
-  assert.match(u, /const guestLimit = tierLib\.caps\(\)\.guest;[\s\S]*?if \(count >= guestLimit\) \{[\s\S]*?await addTally\(key\);/);
+  // v-atomic-quota: العدّ صار ذرّيًّا (takeTally)، وسقف الصفر يُرفض داخله قبل أيّ INCR.
+  assert.match(u, /const guestLimit = tierLib\.caps\(\)\.guest;[\s\S]*?const taken = await takeTally\(key, guestLimit\);/);
+  assert.match(u, /async function takeTally\(key, limit\) \{\n\s+if \(limit <= 0\) return \{ ok: false, count: 0 \};\n\s+const k = tallyKey\(key\);/);
 });
 
 test('الواجهة: الضيف يُحوَّل للتسجيل من أوّل رسالة', () => {

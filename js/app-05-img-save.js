@@ -58,7 +58,7 @@
     });
   }
   const UPLOAD_MAX_B64 = 640 * 1024; /* حدّ طلب Upstash ≈1MB مع هامش (PDF يستخدم 700KB) */
-  async function uploadImage(blob, name){
+  async function uploadImage(blob, name, purpose){
     let b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = rej; fr.readAsDataURL(blob); });
     let mime = blob.type || 'image/png', w, h;
     if(b64.length > UPLOAD_MAX_B64 || mime === 'image/gif'){
@@ -71,8 +71,9 @@
       }
     }
     const i = b64.indexOf(',');
-    const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h }) });
+    const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h, token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), purpose: purpose || undefined }) }); /* v-share-guard: الرفع برمز الجلسة · v-media-save: «تحميل» في سلّة التنزيل */
     let j = null; try{ j = await r.json(); }catch(e){ j = null; }
+    if(r.status === 429) throw new Error(gtx('portraitLimitReached', 'وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا', 'You reached the daily limit for this feature, try again tomorrow')); /* v-media-save: نصّ الحدّ القائم */
     if(!r.ok || !j || !j.id) throw new Error((j && j.error) ? String(j.error) : ('http ' + r.status));
     const ext = extOf(mime);
     const safe = String(name || 'omran-image').replace(/\.[A-Za-z0-9]+$/, '').replace(/[^A-Za-z0-9_\-]/g, '-').slice(0, 50) || 'omran-image';
@@ -140,7 +141,7 @@
     setTimeout(function(){ try{ sheet.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 120000);
     return true;
   }
-  function readySheet(links, file, name){
+  function readySheet(links, file, name, mode){
     const old = document.getElementById('omranImgSheet'); if(old) old.remove();
     const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
     sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
@@ -160,12 +161,16 @@
     dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
     dl.onclick = function(){ setTimeout(function(){ ttl.textContent = gtx('imgDlStarted', '📥 بدأ التحميل — افتح الإشعارات/التنزيلات', '📥 Downloading — check notifications/Downloads'); }, 600); };
     row.appendChild(dl);
-    const wa = document.createElement('a');
-    wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
-    wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
-    wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
-    wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
-    row.appendChild(wa);
+    /* v-save-no-wa (المراجعة الثانية): رابط «تحميل» (purpose:download) يعيش ساعة — من يستلمه على واتساب يجد 404 بعدها؛ فزرّ
+       واتساب لورقة المشاركة وحدها (رابط ٧ أيّام) */
+    if(mode === 'share'){
+      const wa = document.createElement('a');
+      wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
+      wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
+      wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
+      wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
+      row.appendChild(wa);
+    }
     let canShareFile = false;
     try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
     if(canShareFile){
@@ -226,7 +231,7 @@
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
     preparingSheet();
     let upErr = '';
-    try{ const links = await uploadImage(blob, name); return readySheet(links, file, name); }
+    try{ const links = await uploadImage(blob, name, mode === 'share' ? '' : 'download'); return readySheet(links, file, name, mode); }
     catch(e){ upErr = (e && e.message) ? String(e.message) : 'upload'; }
     /* تعذّر الرفع: الورقة لا تختفي — تنزيل محلي مباشر + مشاركة إن توفّرت + سبب مختصر */
     try{ return localSheet(blob, file, name, upErr); }catch(e){ /* guard-ok */ }
