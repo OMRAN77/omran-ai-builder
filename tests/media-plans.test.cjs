@@ -177,7 +177,7 @@ test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرص�
   assert.match(mi, /__ask4K \? 'image_4k' : \(__mq === 'normal' \? 'image_normal' : 'image'\)/);
   assert.match(mi, /: \(__mediaQuality === 'normal'\) \? 'gemini-3\.1-flash-image'/);
   assert.match(mi, /if \(__extra > 0 && __mediaQuality !== 'normal'\) \{/);
-  assert.match(mi, /mediaTag: __mediaQuality \? \{ q: __mediaQuality, left: Math\.floor\(__mediaLeft \/ 25\) \}/);
+  assert.match(mi, /mediaTag: __mediaQuality \? \{ q: __mediaQuality, left: Math\.floor\(__mediaLeft \/ 25\), pool: __mediaPool \}/); // v-media-merge: والخانة
   const at = read('js/app-09-attach.js');
   assert.equal((at.match(/__imgEngineLine\((__d|__lsData|__data)\.engine, \1\)/g) || []).length, 4, 'كلّ مسارات الصورة تمرّر الوسم');
   const html = read('js/partials-settings.js');

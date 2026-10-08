@@ -68,7 +68,7 @@ global.fetch = async (url, init) => {
   const u = new URL(String(url));
   const method = (init && init.method) || 'GET';
   const body = init && init.body ? String(init.body) : '';
-  net.calls.push({ url: String(url), method, body });
+  net.calls.push({ url: String(url), method, body, headers: (init && init.headers) || {} });
   if (u.hostname === 'api.stripe.com') {
     const p = u.pathname.replace(/^\/v1\//, '');
     let m;
@@ -268,7 +268,7 @@ test('٥. img_/vid_ لا تُباع جديدةً (Stripe وApple/Google Pay وPa
   assert.equal(r.code, 200, JSON.stringify(r.body));
   assert.equal(Number(store.get('media:video:omar')), 1200);
   // طلب PayPal لـimg_basic أُنشئ قبل النشر
-  net.orders.PP_old = { id: 'PP_old', status: 'COMPLETED', purchase_units: [{ reference_id: 'omar', custom_id: 'img_basic', payments: { captures: [{ id: 'CAP_old', amount: { value: '10.21' }, custom_id: 'img_basic' }] } }] };
+  net.orders.PP_old = { id: 'PP_old', status: 'COMPLETED', create_time: '2026-10-01T09:00:00Z', purchase_units: [{ reference_id: 'omar', custom_id: 'img_basic', payments: { captures: [{ id: 'CAP_old', amount: { value: '10.21' }, custom_id: 'img_basic' }] } }] };
   await fresh('omar2');
   net.orders.PP_old.purchase_units[0].reference_id = 'omar2';
   r = await pp({ action: 'capture', orderId: 'PP_old', token: tok('omar2') });
@@ -512,4 +512,83 @@ test('١٤. فتح الباقات: جدار الصور والفيديو وتنب
   assert.deepEqual(log, ['page', 'tab:image'], 'القسم القديم يمرّ إلى showPriceTab الذي يفتح المدموج (١٣)');
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes("var TAB_OF_KIND = { chat: 'chat', mix: 'media', image: 'media', video: 'media', maha: 'maha' };") && bundle.includes("const k0 = ({ img: 'media', vid: 'media'"), 'الحزمة مبنيّة');
+});
+
+// ───────────────────────── إصلاح المراجعة المعاكسة ─────────────────────────
+
+test('١٥. PayPal: طلب img_/vid_ أُنشئ بعد الإيقاف خارج create (حزمة PayPal في المتصفّح بالمعرّف العامّ) يُمنح المدموجة بمبلغه — بالالتقاط وبـclaim', async () => {
+  const order = (id, ref, plan, value, extra) => Object.assign({ id, status: 'COMPLETED', purchase_units: [{ reference_id: ref, custom_id: plan, payments: { captures: [{ id: 'CAP_' + id, amount: { value }, custom_id: plan }] } }] }, extra || {});
+  // الالتقاط من معالجنا: كان يمنح img_max (٢٠٣٠٢ فلس صور) بدل ما يُباع اليوم بالمبلغ نفسه (media_max ١٢٥٠٠)
+  await fresh('eve');
+  net.orders.PP_hack = order('PP_hack', 'eve', 'img_max', '102.11', { create_time: new Date().toISOString() });
+  let r = await pp({ action: 'capture', orderId: 'PP_hack', token: tok('eve') });
+  assert.deepEqual([r.body.credited, r.body.planGranted], [true, 'media_max'], JSON.stringify(r.body));
+  assert.equal(mixLeft('eve'), 12500);
+  assert.equal(store.has('media:image:eve'), false, 'لا رصيد صور قديم');
+  const cap = net.calls.filter((c) => /\/v2\/checkout\/orders\/PP_hack\/capture$/.test(c.url)).pop();
+  assert.equal(cap.headers.Prefer, 'return=representation', 'الالتقاط يطلب الطلب كاملًا بوقت إنشائه');
+  // التُقط في المتصفّح ثمّ طُلب شحنه بـclaim
+  await fresh('eve2');
+  net.orders.PP_hack2 = order('PP_hack2', 'eve2', 'vid_max', '102.11', { create_time: new Date(Date.now() - 60000).toISOString() });
+  r = await pp({ action: 'claim', orderId: 'PP_hack2', token: tok('eve2') });
+  assert.deepEqual([r.body.credited, r.body.planGranted], [true, 'media_max'], JSON.stringify(r.body));
+  assert.equal(mixLeft('eve2'), 12500);
+  assert.equal(store.has('media:video:eve2'), false, 'كان ١٦٢٨٠ فلس فيديو');
+  // ردّ بلا وقت إنشاء لا يُفترض قديمًا
+  await fresh('eve3');
+  net.orders.PP_hack3 = order('PP_hack3', 'eve3', 'vid_basic', '10.21');
+  r = await pp({ action: 'capture', orderId: 'PP_hack3', token: tok('eve3') });
+  assert.deepEqual([r.body.planGranted, mixLeft('eve3')], ['media_basic', 1250]);
+  // المنح سُجّل بالمدموجة: الاسترداد الكامل يسحبها هي
+  assert.equal((await user('eve3')).media.mix.plan, 'media_basic');
+  // وطلب أُنشئ قبل الإيقاف يبقى كما كان (٥)، وطلب المدموجة نفسها لا يتغيّر (٢)
+  await fresh('eve4');
+  net.orders.PP_pre = order('PP_pre', 'eve4', 'vid_pro', '20.42', { create_time: '2026-10-08T10:00:00Z' });
+  r = await pp({ action: 'capture', orderId: 'PP_pre', token: tok('eve4') });
+  assert.deepEqual([r.body.planGranted, Number(store.get('media:video:eve4'))], ['vid_pro', 2400]);
+  assert.equal(paypal.RETIRED_SINCE, Date.parse('2026-10-08T16:31:39Z'), 'وقت الإيقاف = التزام v-media-merge');
+});
+
+function gate() {
+  const ctx = {
+    window: {}, document: { body: null, getElementById: () => null, createElement: () => ({}) }, location: { href: 'https://o.test/', origin: 'https://o.test' }, URL,
+    localStorage: { getItem: () => null, setItem: () => {} }, lang: 'ar', console, Date, Object, Array, String, Number, Promise, JSON, setTimeout,
+    t: (k) => k, authGet: () => 'tok', __swallow: () => {},
+  };
+  ctx.window.fetch = async () => ({ status: 200, ok: true, clone() { return this; }, json: async () => ({}) });
+  vm.createContext(ctx);
+  vm.runInContext(read('js/app-33-plans-gate.js'), ctx);
+  return ctx.window.__omranPlansGate;
+}
+
+test('١٦. شريط الانتهاء: صور/فيديو قديمة انتهت أو قاربت والمدموجة سارية ← لا تنبيه («جدّد» كان يبيعه ما يملكه ويصفّر رصيده)، وبلا مدموجة سارية كما كان', () => {
+  const now = Date.now();
+  const kinds = (list) => { const n = gate().pickNotice(list, now); return n && [n.s.kind, n.state]; };
+  const mixOn = { kind: 'mix', plan: 'media_max', endsAt: now + 20 * DAY, active: true };
+  const imgOff = { kind: 'image', plan: 'img_basic', endsAt: now - DAY, active: false };
+  const vidSoon = { kind: 'video', plan: 'vid_pro', endsAt: now + DAY, active: true };
+  assert.equal(kinds([imgOff, mixOn]), null, 'الصور القديمة انتهت والمدموجة تغطّيها');
+  assert.equal(kinds([vidSoon, mixOn]), null, 'الفيديو القديم قارب والمدموجة تغطّيه');
+  assert.equal(kinds([mixOn, imgOff, vidSoon]), null);
+  assert.deepEqual(kinds([imgOff, { kind: 'mix', plan: 'media_basic', endsAt: now + DAY, active: true }]), ['mix', 'expiring'], 'المدموجة نفسها قاربت ← تنبيهها');
+  assert.deepEqual(kinds([imgOff, { kind: 'mix', plan: 'media_basic', endsAt: now - 2 * DAY, active: false }]), ['mix', 'expired'], 'المدموجة منتهية ← كما كان');
+  assert.deepEqual(kinds([imgOff]), ['image', 'expired'], 'بلا مدموجة ← كما كان');
+  assert.deepEqual(kinds([vidSoon]), ['video', 'expiring']);
+  assert.deepEqual(kinds([{ kind: 'chat', plan: 'pro', endsAt: now - DAY, active: false }, mixOn]), ['chat', 'expired'], 'المحادثة لا تتأثّر');
+  assert.deepEqual(kinds([{ kind: 'maha', plan: 'maha_basic', endsAt: now + DAY, active: true }, mixOn]), ['maha', 'expiring'], 'مها لا تتأثّر');
+  assert.ok(read('js/app.bundle.js').includes(read('js/app-33-plans-gate.js').trim().split('\n').find((l) => /mixOn/.test(l)).trim()), 'الحزمة مبنيّة');
+});
+
+test('١٧. وسم الصورة لمشترك «صور وفيديو» يسمّي رصيده المدموج لا «اشتراك الصور»', () => {
+  const mi = read('api/_lib/maha-image.js');
+  assert.match(mi, /__mediaLeft = pay\.mediaLeft; __mediaPool = pay\.pool \|\| ''; \}/);
+  assert.match(mi, /mediaTag: __mediaQuality \? \{ q: __mediaQuality, left: Math\.floor\(__mediaLeft \/ 25\), pool: __mediaPool \}/);
+  const a9 = read('js/app-09-attach.js');
+  const src = a9.slice(a9.indexOf('function __imgEngineLine('), a9.indexOf('async function omModeGenerateImage('));
+  const T = { mixLeft: 'MIX', mediaLeftImg: 'IMG', mediaQNormal: 'N', mediaQHigh: 'H', mediaImgPlain: 'صورة' };
+  const line = new Function('t', 'authGet', src + '; return __imgEngineLine;')((k) => T[k] || k, () => 'rana');
+  assert.equal(line('', { mediaTag: { q: 'normal', left: 49, pool: 'mix' } }), '\n\n🏷️ N · MIX: 49 صورة');
+  assert.equal(line('', { mediaTag: { q: 'high', left: 10, pool: 'image' } }), '\n\n🏷️ H · IMG: 10 صورة');
+  assert.equal(line('', { mediaTag: { q: 'high', left: 10 } }), '\n\n🏷️ H · IMG: 10 صورة', 'ردّ بلا pool كما كان');
+  assert.ok(read('js/app.bundle.js').includes("t(mt.pool === 'mix' ? 'mixLeft' : 'mediaLeftImg')"), 'الحزمة مبنيّة');
 });

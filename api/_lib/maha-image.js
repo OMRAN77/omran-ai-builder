@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
   let guestImageCharge = null;
   /* v-img-engine-tag-owner (متابعة): مسار النصّ (__textRoute) يقرّر GPT هو الصحّ لكن قد يفشل نداؤه
      فيسقط بصمت إلى برو/نانو — بلا هذا السطر يرى المالك «nano» بلا أيّ فكرة عن سبب تجاوز GPT له. */
-  let __textRouteFailNote = '', __mediaQuality = '', __mediaLeft = 0; /* v-media-plans: جودة صورة مشترك الصور ومتبقّيه بعد الخصم من رصيده */
+  let __textRouteFailNote = '', __mediaQuality = '', __mediaLeft = 0, __mediaPool = ''; /* v-media-plans: جودة صورة مشترك الصور ومتبقّيه بعد الخصم من رصيده؛ v-media-merge: والخانة (mix = «صور وفيديو») */
   let __cardsNote = '';
   async function refundImageCharge() {
     if (mahaImgCharged && pointsLib) {
@@ -139,7 +139,7 @@ module.exports = async (req, res) => {
         const __ask4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i
           .test(String(userText || '') + ' ' + String(prompt || ''));
         const __imgCost = __ask4K ? pointsLib.COSTS.image_4k : pointsLib.COSTS.image; const __mq = __ask4K ? null : await require('./_mediaPlans.js').imageQuality(mahaImgUser, String(userText || '') + ' ' + String(prompt || '')).catch(() => null); /* v-media-plans: «عاديّة» بنصف الرصيد على المحرّك السريع */
-        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : (__mq === 'normal' ? 'image_normal' : 'image')); if (pay.ok && pay.media === 'image') { __mediaQuality = __mq || 'high'; __mediaLeft = pay.mediaLeft; }
+        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : (__mq === 'normal' ? 'image_normal' : 'image')); if (pay.ok && pay.media === 'image') { __mediaQuality = __mq || 'high'; __mediaLeft = pay.mediaLeft; __mediaPool = pay.pool || ''; }
         if (!pay.ok) {
           res.status(402).json({ error: 'points_insufficient', needed: __imgCost, points: pay.points || 0 });
           return;
@@ -256,7 +256,7 @@ module.exports = async (req, res) => {
         upscaled: (__up && __up.ok) ? { scale: __up.scale, width: __up.w, height: __up.h } : undefined,
         authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
         visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
-        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined, mediaTag: __mediaQuality ? { q: __mediaQuality, left: Math.floor(__mediaLeft / 25) } : undefined, /* v-media-plans: الجودة والمتبقّي بالصور العاديّة */
+        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined, mediaTag: __mediaQuality ? { q: __mediaQuality, left: Math.floor(__mediaLeft / 25), pool: __mediaPool } : undefined, /* v-media-plans: الجودة والمتبقّي بالصور العاديّة */
       });
     }
 

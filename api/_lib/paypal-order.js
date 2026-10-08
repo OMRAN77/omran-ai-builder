@@ -26,6 +26,14 @@ const PLANS = {
 // الصور والفيديو بنفس المبلغ، فالطلب يحمل الخطّة في custom_id ويُتحقّق أنّ مبلغها هو الملتقَط.
 // v-media-merge: img_/vid_ متوقّفة — لا طلب جديد لها، والتقاط طلب أُنشئ قبل الإيقاف (أو claim له) يُمنح كما كان.
 for (const [k, p] of Object.entries(MEDIA_PLANS)) PLANS[k] = { amount: p.paypal, points: 0, media: p.media, name: p.name, retired: !!p.retired };
+// v-media-merge (المراجعة المعاكسة): create يردّ img_/vid_ بـ410، لكنّ طلب PayPal يُنشأ ويُلتقط أيضًا من حزمة PayPal في المتصفّح
+// بالمعرّف العامّ وcustom_id يكتبه المشتري — فطلب لخطّة متوقّفة أُنشئ بعد الإيقاف لم يمرّ بنا. المال سُحب، فيُمنح ما يُباع اليوم
+// بالمبلغ نفسه (media_<الدرجة>) لا القديمة (img_max = ٢٠٣٠٢ فلس صور مقابل ١٢٥٠٠). الحدّ = وقت التزام الإيقاف؛ طلب بلا وقت إنشاء لا يُفترض قديمًا.
+const RETIRED_SINCE = Date.parse('2026-10-08T16:31:39Z');
+function grantablePlan(plan, order) {
+  if (!PLANS[plan] || !PLANS[plan].retired || Date.parse(order && order.create_time) < RETIRED_SINCE) return plan;
+  return 'media_' + String(plan).split('_')[1];
+}
 
 function baseUrl() {
   return (process.env.PAYPAL_MODE !== 'sandbox')
@@ -71,6 +79,7 @@ async function creditOrder(order, username) {
   const m = matchOrder(order);
   if (!m.plan) return { credited: false, reason: 'no_plan' };
   if (m.ref && m.ref !== username && !(await wasNamed(username, m.ref))) return { credited: false, reason: 'not_owner' };
+  m.plan = grantablePlan(m.plan, order);
   const g = await grantPlanToUser(username, m.plan, 'lastPaypalOrderId', order.id);
   if (g.error) return { credited: false, reason: 'account' };
   // v-pay-refund: رقم الالتقاط لسجلّ المنح — للمنح الجديد وحده (claim بعد استرداد لا يعيد كتابة السجلّ وعلامة سحبه). لا يرمي.
@@ -152,6 +161,7 @@ module.exports = async (req, res) => {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'Prefer': 'return=representation', // v-media-merge: الطلب كاملًا بوقت إنشائه (create_time) — grantablePlan
         },
       });
       const data = await r.json();
@@ -189,3 +199,4 @@ module.exports = async (req, res) => {
 module.exports.getAccessToken = getAccessToken;
 module.exports.baseUrl = baseUrl;
 module.exports.matchOrder = matchOrder;
+module.exports.RETIRED_SINCE = RETIRED_SINCE; // v-media-merge — للاختبار

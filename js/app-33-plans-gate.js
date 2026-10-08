@@ -106,7 +106,11 @@
 
   // انتهى (خسر مزاياه الآن) قبل «قارب»؛ وباقة المحادثة قبل الوسائط. كلّ حالة لكلّ فترة اشتراك مرّة واحدة.
   function pickNotice(subs, now){
-    var list = (Array.isArray(subs) ? subs : []).filter(function(s){ return s && TAB_OF_KIND[s.kind] && Number(s.endsAt) > 0; })
+    /* v-media-merge: المدموجة السارية تغطّي الصور والفيديو — انتهاء باقتهما القديمة ليس خسارة مزايا، و«جدّد» كان يبيعه
+       المدموجة التي يملكها فيصفّر رصيدها (الشراء يعيد الملء ولا يُرحَّل). */
+    var arr = Array.isArray(subs) ? subs : [];
+    var mixOn = arr.some(function(s){ return s && s.kind === 'mix' && s.active; });
+    var list = arr.filter(function(s){ return s && TAB_OF_KIND[s.kind] && Number(s.endsAt) > 0 && !(mixOn && (s.kind === 'image' || s.kind === 'video')); })
       .sort(function(a, b){ return KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind); });
     var i;
     for(i = 0; i < list.length; i++) if(!list[i].active && !seen(seenKey(list[i], 'expired'))) return { s: list[i], state: 'expired' };
