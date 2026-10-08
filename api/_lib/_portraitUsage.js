@@ -7,6 +7,8 @@
 const crypto = require('crypto');
 // v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
 const quotaTally = require('./_dailyQuota.js');
+// v-plan-caps: الحدّ أدناه للمجّانيّ، والمشترك بباقة سارية بنسبة سقف محادثته (_planCap.js).
+const { planScaledLimit } = require('./_planCap.js');
 const { isBanned } = require('./auth.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
@@ -48,7 +50,8 @@ async function checkPortraitQuota(token, res) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  return quotaTally.check('portrait', username, PORTRAIT_DAILY_LIMIT, res);
+  const limit = await planScaledLimit(username, PORTRAIT_DAILY_LIMIT);
+  return Object.assign(await quotaTally.check('portrait', username, limit, res), { limit });
 }
 
 // Consumes one portrait-style generation from today's allowance. Only call
@@ -58,7 +61,7 @@ async function consumePortrait(username) {
   if (await __unlimitedUser(username)) {
     return Infinity;
   }
-  return quotaTally.consume('portrait', username, PORTRAIT_DAILY_LIMIT);
+  return quotaTally.consume('portrait', username, await planScaledLimit(username, PORTRAIT_DAILY_LIMIT));
 }
 
 module.exports = { checkPortraitQuota, consumePortrait, PORTRAIT_DAILY_LIMIT };

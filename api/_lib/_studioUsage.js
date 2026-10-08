@@ -6,6 +6,8 @@
 const crypto = require('crypto');
 // v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
 const quotaTally = require('./_dailyQuota.js');
+// v-plan-caps: الحدّ أدناه للمجّانيّ، والمشترك بباقة سارية بنسبة سقف محادثته (_planCap.js).
+const { planScaledLimit } = require('./_planCap.js');
 const { isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 // v-owner-unlimited (شكوى المالك «استهلكت المجاني كلها»): المالك وVIP بلا حدّ يومي هنا
@@ -47,7 +49,8 @@ async function checkStudioQuota(token, res) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  return quotaTally.check('studio', username, STUDIO_DAILY_LIMIT, res);
+  const limit = await planScaledLimit(username, STUDIO_DAILY_LIMIT);
+  return Object.assign(await quotaTally.check('studio', username, limit, res), { limit });
 }
 
 // Consumes one generation from today's allowance. Only call this AFTER
@@ -55,7 +58,7 @@ async function checkStudioQuota(token, res) {
 // never burn a user's daily quota.
 async function consumeStudio(username) {
   if (await __unlimitedUser(username)) return Infinity;
-  return quotaTally.consume('studio', username, STUDIO_DAILY_LIMIT);
+  return quotaTally.consume('studio', username, await planScaledLimit(username, STUDIO_DAILY_LIMIT));
 }
 
 module.exports = { checkStudioQuota, consumeStudio, STUDIO_DAILY_LIMIT };

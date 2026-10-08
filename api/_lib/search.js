@@ -9,6 +9,7 @@
 // frontend) are metered by IP instead of blocked, so nothing breaks. Owner
 // account unlimited.
 const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: البحث (والعميق) بنسبة سقف الباقة؛ المصنّف ثابت
 const SEARCH_DAILY_LIMIT = 40;
 const CLASSIFY_DAILY_LIMIT = 200; // v-open-tools-cap: مصنّف «هل يحتاج بحثًا؟» — سقف ثابت لكلّ حساب أو IP
 
@@ -514,13 +515,13 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsumeCustom(body && body.token, body && body.guestId, clientIp(req), 'search', SEARCH_DAILY_LIMIT);
+    const usage = await checkAndConsumePlanCustom(body && body.token, body && body.guestId, clientIp(req), 'search', SEARCH_DAILY_LIMIT);
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
         return;
       }
-      res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + SEARCH_DAILY_LIMIT + ') للبحث. حاول لاحقًا.' });
+      res.status(402).json({ error: 'وصلت للحد اليومي (' + usage.limit + ') للبحث. حاول لاحقًا.' }); /* v-plan-caps: الحدّ المطبَّق لا رقم المجّانيّ */
       return;
     }
     // v360 — 🌍 كشف دولة المستخدم من الشبكة لتوجيه البحث الحي عالميًا.

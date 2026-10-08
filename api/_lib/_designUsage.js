@@ -6,6 +6,8 @@
 const crypto = require('crypto');
 // v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
 const quotaTally = require('./_dailyQuota.js');
+// v-plan-caps: الحدّ أدناه للمجّانيّ، والمشترك بباقة سارية بنسبة سقف محادثته (_planCap.js).
+const { planScaledLimit } = require('./_planCap.js');
 const { isBanned } = require('./auth.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
@@ -49,7 +51,8 @@ async function checkDesignQuota(token, res) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  return quotaTally.check('design', username, DESIGN_DAILY_LIMIT, res);
+  const limit = await planScaledLimit(username, DESIGN_DAILY_LIMIT);
+  return Object.assign(await quotaTally.check('design', username, limit, res), { limit });
 }
 
 // Consumes one design generation from today's allowance. Only call this
@@ -57,7 +60,7 @@ async function checkDesignQuota(token, res) {
 // must never burn a user's daily quota.
 async function consumeDesign(username) {
   if (await __unlimitedUser(username)) return Infinity;
-  return quotaTally.consume('design', username, DESIGN_DAILY_LIMIT);
+  return quotaTally.consume('design', username, await planScaledLimit(username, DESIGN_DAILY_LIMIT));
 }
 
 module.exports = { checkDesignQuota, consumeDesign, DESIGN_DAILY_LIMIT };

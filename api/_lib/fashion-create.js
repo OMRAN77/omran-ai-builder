@@ -271,7 +271,7 @@ module.exports = async (req, res) => {
         const oa = await openaiRedress(promptText, imageBase64, mimeType);
         if (oa) {
           const remOa = await consumeFashion(quota.username);
-          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT });
+          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: quota.limit || FASHION_DAILY_LIMIT });
           return;
         }
       }
@@ -291,7 +291,7 @@ module.exports = async (req, res) => {
         const oa = await openaiRedress(promptText, imageBase64, mimeType);
         if (oa) {
           const remOa = await consumeFashion(quota.username);
-          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT, design: designOut });
+          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
           return;
         }
       }
@@ -311,7 +311,7 @@ module.exports = async (req, res) => {
         const oa = await openaiGenerate(promptText);
         if (oa) {
           const remOa = await consumeFashion(quota.username);
-          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT, design: designOut });
+          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
           return;
         }
       }
@@ -344,7 +344,7 @@ module.exports = async (req, res) => {
         : await openaiGenerate(promptText));
       if (rescue) {
         const remR = await consumeFashion(quota.username);
-        res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: FASHION_DAILY_LIMIT, design: designOut });
+        res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
         return;
       }
       res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
@@ -399,7 +399,7 @@ module.exports = async (req, res) => {
       mimeType: outMime,
       engine: outEngine,
       remaining,
-      dailyLimit: FASHION_DAILY_LIMIT,
+      dailyLimit: quota.limit || FASHION_DAILY_LIMIT,
       design: designOut,
     });
   } catch (e) {

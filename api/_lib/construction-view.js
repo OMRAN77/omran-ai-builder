@@ -166,7 +166,7 @@ module.exports = async (req, res) => {
       imageBase64: outB64,
       mimeType: outMime,
       remaining,
-      dailyLimit: CONSTRUCTION_DAILY_LIMIT,
+      dailyLimit: quota.limit || CONSTRUCTION_DAILY_LIMIT,
     });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

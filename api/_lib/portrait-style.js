@@ -249,7 +249,7 @@ module.exports = async (req, res) => {
       res.status(200).json({
         frames,
         remaining: remainingGif,
-        dailyLimit: PORTRAIT_DAILY_LIMIT,
+        dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT,
       });
       return;
     }
@@ -502,7 +502,7 @@ module.exports = async (req, res) => {
       const rescue = await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
       if (rescue) {
         const remR = await consumePortrait(quota.username);
-        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: PORTRAIT_DAILY_LIMIT });
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT });
         return;
       }
       res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
@@ -540,7 +540,7 @@ module.exports = async (req, res) => {
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
       remaining,
-      dailyLimit: PORTRAIT_DAILY_LIMIT,
+      dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT,
     });
   } catch (e) {
     console.error('[portrait-style] exception: ' + (e && e.stack ? e.stack : e));

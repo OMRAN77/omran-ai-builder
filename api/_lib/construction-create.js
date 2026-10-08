@@ -574,7 +574,7 @@ module.exports = async (req, res) => {
       planText: generateText ? (planText || '') + disclaimer : null,
       boq: generateText ? boq : null,
       remaining,
-      dailyLimit: CONSTRUCTION_DAILY_LIMIT,
+      dailyLimit: quota.limit || CONSTRUCTION_DAILY_LIMIT,
       jobTicket,
     });
   } catch (e) {

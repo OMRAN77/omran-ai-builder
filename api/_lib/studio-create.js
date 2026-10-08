@@ -336,13 +336,13 @@ module.exports = async (req, res) => {
       const out = await geminiImage(apiKey, parts, 'merge', mergeIdentity.mergeAspect(photos[0], task));
       if (out.b64) {
         const rem = await consumeStudio(quota.username);
-        res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining: rem, dailyLimit: STUDIO_DAILY_LIMIT });
+        res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining: rem, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
       const rescue = await rescueGuarded(promptText, photos.concat(crops).map((p) => [p.data, p.mime]), apiKey, 'merge');
       if (rescue) {
         const remR = await consumeStudio(quota.username);
-        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: STUDIO_DAILY_LIMIT });
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
       res.status(out.status || 502).json({ error: out.error || 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
@@ -382,7 +382,7 @@ module.exports = async (req, res) => {
         }
       }
       const remaining = await consumeStudio(quota.username);
-      res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, engine: r.engine, remaining, dailyLimit: STUDIO_DAILY_LIMIT });
+      res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, engine: r.engine, remaining, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
     } catch (err) {
       if (err && err.status && err.payload) { res.status(err.status).json(err.payload); return; }
       throw err;

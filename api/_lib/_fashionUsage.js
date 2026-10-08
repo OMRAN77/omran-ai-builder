@@ -5,6 +5,8 @@
 const crypto = require('crypto');
 // v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
 const quotaTally = require('./_dailyQuota.js');
+// v-plan-caps: الحدّ أدناه للمجّانيّ، والمشترك بباقة سارية بنسبة سقف محادثته (_planCap.js).
+const { planScaledLimit } = require('./_planCap.js');
 const { isBanned } = require('./auth.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
@@ -47,12 +49,13 @@ async function checkFashionQuota(token, res) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  return quotaTally.check('fashion', username, FASHION_DAILY_LIMIT, res);
+  const limit = await planScaledLimit(username, FASHION_DAILY_LIMIT);
+  return Object.assign(await quotaTally.check('fashion', username, limit, res), { limit });
 }
 
 async function consumeFashion(username) {
   if (await __unlimitedUser(username)) return Infinity;
-  return quotaTally.consume('fashion', username, FASHION_DAILY_LIMIT);
+  return quotaTally.consume('fashion', username, await planScaledLimit(username, FASHION_DAILY_LIMIT));
 }
 
 module.exports = { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT };

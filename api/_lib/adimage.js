@@ -4,7 +4,7 @@
 // حارسان قبل أي مفتاح: هويّة مُتحقَّقة (لا ضيوف) ثمّ سقف يوميّ منفصل عن المحادثة.
 // ⚠️ فخّ مُثبت: حارس _fetch-timeout.js يقطع كلّ fetch عند ٣٠ ثانية، وتوليد الصورة
 //    يستغرق ٦٠–١٥٠ ثانية. لذلك نمرّر signal خاصًّا بنا — الحارس يترك من يمرّر signal.
-const { checkAndConsumeCustom } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: المشترك بنسبة سقف باقته
 const { verifyPointsToken } = require('./points.js');
 
 const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur:'Urdu', bn:'Bengali', ml:'Malayalam', ne:'Nepali', fil:'Filipino', id:'Indonesian', zh:'Chinese (Simplified)', ru:'Russian', tr:'Turkish', es:'Spanish' };
@@ -105,9 +105,9 @@ module.exports = async (req, res) => {
       return;
     }
     // ② سقف يوميّ مستقلّ — الصورة أغلى من الرسالة.
-    const gate = await checkAndConsumeCustom(b.token, null, null, 'adimage', DAILY);
+    const gate = await checkAndConsumePlanCustom(b.token, null, null, 'adimage', DAILY);
     if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
+      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
       return;
     }
 
