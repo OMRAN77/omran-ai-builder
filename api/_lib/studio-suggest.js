@@ -7,6 +7,10 @@
 // NOT consume the daily image-generation quota — only requires a logged-in
 // session.
 const { checkStudioQuota } = require('./_studioUsage');
+const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+// v-open-tools-cap: فحص الحصّة أدناه لا يرفض إلّا غير المسجَّل ولا يعدّ شيئًا — نداء رؤية بلا سقف لأيّ حساب.
+// سقف ثابت لهذه الأداة في سلّتها؛ تجاوزه 429 (لا 402: الباقة لا ترفعه فلا يفتح «الباقات»). المالك وVIP بلا سقف.
+const SUGGEST_DAILY_LIMIT = 30;
 
 const FEATURE_NAMES = {
   hair: 'hairstyle and hair color', nails: 'nail polish color/design',
@@ -55,6 +59,12 @@ module.exports = async (req, res) => {
     const quota = await checkStudioQuota(token);
     if (!quota.allowed && quota.reason === 'auth') {
       res.status(401).json({ error: 'auth_required' });
+      return;
+    }
+    const cap = await checkAndConsumeCustom(token, null, clientIp(req), 'studio-suggest', SUGGEST_DAILY_LIMIT);
+    if (!cap.allowed) {
+      if (cap.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
+      res.status(429).json({ error: 'daily_limit_reached', limit: SUGGEST_DAILY_LIMIT });
       return;
     }
 

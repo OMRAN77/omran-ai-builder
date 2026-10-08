@@ -9,6 +9,21 @@
 // (٣) سبب الفشل يصل للواجهة (error:'provider') فتقول الحقيقة بدل «ما حصلت صورًا».
 const TAVILY = 'https://api.tavily.com/search';
 const crypto = require('crypto');
+const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const { verifyToken } = require('./auth.js');
+
+/* v-open-tools-cap (المالك: «مفتوحة على مفاتيحك بلا حدّ»): المعرض كان بلا رمز ولا عدّاد ولا IP — كلّ نصّ جديد يطلق
+   حتّى ١٦ استعلام Tavily و٤ Google (مفاتيح البحث في المحادثة نفسها). الآن: جلسة شرط (التسجيل أوّلًا)، وسقف ثابت
+   لكلّ حساب يُعدّ حين يُجمع من الويب فقط — المخبوء مجّانيّ لا يُعدّ. تجاوزه 429 لا 402: حدّ ثابت لا ترفعه الباقة،
+   فلا يفتح «الباقات». المالك وVIP بلا سقف (checkAndConsumeCustom). */
+const IDEAS_DAILY_LIMIT = 30;
+async function meterFresh(req, res, body) {
+  const u = await checkAndConsumeCustom(body.token, null, clientIp(req), 'design-ideas', IDEAS_DAILY_LIMIT);
+  if (u.allowed) return true;
+  if (u.reason === 'auth') res.status(401).json({ error: 'auth_required' });
+  else res.status(429).json({ error: 'daily_limit_reached', limit: IDEAS_DAILY_LIMIT });
+  return false;
+}
 
 const PLACE_EN = {
   restaurant: 'restaurant', cafe: 'cafe coffee shop', bedroom: 'bedroom', majlis: 'arabic majlis',
@@ -217,6 +232,7 @@ module.exports = async (req, res) => {
   if (!apiKey && !hasGoogle) { res.status(500).json({ error: 'Server is missing TAVILY_API_KEY' }); return; }
   let body = req.body;
   if (!body || typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }
+  if (!verifyToken(body.token)) { res.status(401).json({ error: 'auth_required' }); return; }
   // v-cx-ideas: وضع المقاولات — نوع المبنى + ما يريد (واجهة/مخطط/داخلي…) + عدد الأدوار + الطراز
   if (String(body.mode || '') === 'construction') { return constructionIdeas(req, res, body, apiKey); }
   const place = String(body.place || '').trim();
@@ -229,6 +245,7 @@ module.exports = async (req, res) => {
   const key = cacheKey(['decor', subjectEn, subjectAr, style]);
   const cached = await cacheGet(key);
   if (cached && cached.images && cached.images.length) { res.setHeader('Cache-Control', 'private, max-age=600'); res.status(200).json(cached); return; }
+  if (!(await meterFresh(req, res, body))) return;
 
   // v-ideas-50 (طلب المالك: ٥٠ صورة على الأقل): موجتان من الاستعلامات —
   // الأولى ثمانية استعلامات متوازية، وإن لم تبلغ الصور الحدّ تُطلق الثانية.
@@ -289,6 +306,7 @@ async function constructionIdeas(req, res, body, apiKey) {
   const key = cacheKey(['cx', t[0], f[0], v[0], st[0], free]);
   const cached = await cacheGet(key);
   if (cached && cached.images && cached.images.length) { res.setHeader('Cache-Control', 'private, max-age=600'); res.status(200).json(cached); return; }
+  if (!(await meterFresh(req, res, body))) return;
   const wave1 = [en('design ideas'), en('photos'), ar(''), en('architecture'), ar('صور'), en('3d render'), ar('حديث'), en('inspiration')];
   const wave2 = [en('elevation'), en('pinterest'), ar('نماذج'), en('luxury'), ar('فخم'), en('gallery'), ar('أفكار'), en('real photo')];
   const gq = [en('design'), en('photos'), ar(''), en('architecture')];

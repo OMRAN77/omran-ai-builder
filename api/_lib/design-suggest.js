@@ -5,6 +5,10 @@
 // Text-only response — does NOT generate an image and does NOT consume the
 // user's daily image-generation quota (only requires a logged-in account).
 const { checkDesignQuota } = require('./_designUsage');
+const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+// v-open-tools-cap: فحص الحصّة أدناه لا يرفض إلّا غير المسجَّل ولا يعدّ شيئًا — نداء رؤية بلا سقف لأيّ حساب.
+// سقف ثابت لهذه الأداة في سلّتها؛ تجاوزه 429 (لا 402: الباقة لا ترفعه فلا يفتح «الباقات»). المالك وVIP بلا سقف.
+const SUGGEST_DAILY_LIMIT = 30;
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -42,6 +46,12 @@ module.exports = async (req, res) => {
     const quota = await checkDesignQuota(token);
     if (!quota.allowed && quota.reason === 'auth') {
       res.status(401).json({ error: 'auth_required' });
+      return;
+    }
+    const cap = await checkAndConsumeCustom(token, null, clientIp(req), 'design-suggest', SUGGEST_DAILY_LIMIT);
+    if (!cap.allowed) {
+      if (cap.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
+      res.status(429).json({ error: 'daily_limit_reached', limit: SUGGEST_DAILY_LIMIT });
       return;
     }
 
