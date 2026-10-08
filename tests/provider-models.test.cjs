@@ -144,3 +144,34 @@ test('٨. الحزمة المبنيّة تحوي إصلاحات Cohere (npm run 
   assert.match(bundle, /COHERE_RETIRED_SET/, 'تطبيع العميل في الحزمة');
   assert.match(bundle, /command-r-03-2024/, 'القائمة المصحّحة في الحزمة');
 });
+
+test('٩. v-cohere-prefix (العميل) يعمل فعلًا: المعرّف المجرّد يُرسل والاختيار الحيّ لا يُمحى، والمسحوب يُستبدل، و404 = إعادة واحدة بالافتراضيّ', async () => {
+  const src = read('js/app-06-checkout.js');
+  const block = src.slice(src.indexOf('const COHERE_RETIRED_SET'), src.indexOf('async function fetchClaudeModelList'));
+  const vm = require('vm');
+  async function call(stored, statuses) {
+    const store = new Map(stored == null ? [] : [['aiapp_cohere_model', stored]]);
+    const sent = [];
+    const ctx = {
+      localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) },
+      fetch: async (u, init) => { const b = JSON.parse(init.body); sent.push(b.model); const st = statuses.shift() || 200; return st === 200 ? new Response(JSON.stringify({ choices: [{ message: { content: 'من ' + b.model } }] }), { status: 200 }) : new Response('{"message":"model not found"}', { status: st }); },
+      authGet: () => '', window: { getGuestId: () => 'g' }, stripToPlainMessages: (m) => m, __swallow() {}, Response, JSON, String,
+      throwProviderError: (st, t) => { const e = new Error('HTTP ' + st); e.status = st; throw e; },
+    };
+    vm.createContext(ctx);
+    vm.runInContext(block + '\nthis.callCohere = callCohere;', ctx);
+    const reply = await ctx.callCohere([{ role: 'user', content: 'هلا' }], null);
+    return { reply, sent, stored: store.get('aiapp_cohere_model') };
+  }
+  const live = await call('cohere/command-r7b-12-2024', [200]);
+  assert.deepEqual(live.sent, ['command-r7b-12-2024'], 'البادئة تُجرَد قبل الإرسال');
+  assert.equal(live.stored, 'cohere/command-r7b-12-2024', 'اختيار القائمة يبقى ببادئته');
+  const snap = await call('command-r-08-2024', [200]);
+  assert.deepEqual(snap.sent, ['command-r-08-2024'], 'لقطة 08-2024 الحيّة لا تُرقَّى');
+  const old = await call('command-r', [200]);
+  assert.deepEqual(old.sent, ['command-a-03-2025']); assert.equal(old.stored, 'command-a-03-2025', 'المسحوب يُستبدل في التخزين');
+  const gone = await call('cohere/command-x-gone', [404, 200]);
+  assert.deepEqual(gone.sent, ['command-x-gone', 'command-a-03-2025'], 'إعادة واحدة بالافتراضيّ');
+  assert.equal(gone.stored, undefined, 'المختار المرفوض يُمسح'); assert.equal(gone.reply, 'من command-a-03-2025');
+  await assert.rejects(call(null, [404, 404]), (e) => e.status === 404, 'الافتراضيّ المرفوض لا يُعاد بلا نهاية');
+});
