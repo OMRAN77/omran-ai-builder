@@ -25,7 +25,8 @@ test('app-04: للمالك يظهر الاسم + الموديل فوق كلّ ر
     const s = read(f);
     assert.ok(s.includes("const __ownerBadge = (typeof omranOwnerUi === 'function' && omranOwnerUi());"), f);
     assert.ok(s.includes("if(__ownerBadge && m.model) __plbl = (__plbl ? __plbl + ' · ' : '') + m.model;"), f);
-    assert.ok(s.includes("if(isAskAllReply || (__ownerBadge && __plbl)) div.appendChild(label);"), f + ': غير المالك يبقى على v464');
+    // v-owner-solo (المالك ٨ أكتوبر «أريد المحادثة فقط، أيّ شي زائد ما أريده»): الشارة فوق ردّ المحادثة رُفعت — تبقى للوكيل؛ غير المالك على v464.
+    assert.ok(s.includes("if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label);"), f + ': غير المالك يبقى على v464');
   }
 });
 

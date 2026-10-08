@@ -2200,8 +2200,14 @@ async function callProviderAI(providerKey, messages, onDelta){
   if(effective === 'deepseek') return await callDeepSeek(messages, onDelta);
   if(effective === 'cohere') return await callCohere(messages, onDelta);
   /* v-kimi: Kimi على مسار الأدوات وحده (chat.js → Moonshot مباشرةً أو عبر الوسيط). كان أيّ اسم غير معروف يسقط إلى GPT هنا
-     فيُكتب الردّ باسم Kimi وهو من GPT — يُرمى فيكمل الاحتياط بأسماء من ردّ فعلًا. */
-  if(effective === 'kimi') throw new Error('kimi: tools path only');
+     فيُكتب الردّ باسم Kimi وهو من GPT.
+     v-owner-solo (المالك ٨ أكتوبر): الرمي كان يُسلّم الدور لكلود في «صلّح/خطأ» ودور الاستئذان — الآن هذا المسار يمرّ بالخادم نفسه
+     لـKimi (بلا رسالة النظام الثابتة الأولى، كمسار الأدوات في app-09)، فيجيب Kimi أو يُكتب سبب فشله. */
+  if(effective === 'kimi'){
+    if(typeof window.callChatWithTools !== 'function') throw new Error('kimi: tools path only');
+    const __km = await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), onDelta, 'kimi');
+    return __km.reply;
+  }
   return await callOpenAILike(messages, onDelta);
 }
 
@@ -2289,7 +2295,10 @@ function __idleGuard(promise, idleMs, getLast){
                  function(e){ if(!done){ done = true; clearInterval(timer); reject(e); } });
   });
 }
-async function callAIWithFallback(messages, onDelta, preferredList){
+async function callAIWithFallback(messages, onDelta, preferredList, opts){
+  /* v-owner-solo (المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه، وإذا ما فيه رصيد يكتبلي»): solo = المزوّد الأوّل وحده — لا
+     احتياط ولا تحويل بعد ردّ رفض، وفشله يُرمى باسمه وسببه فيظهر في الفقاعة. */
+  const __solo = !!(opts && opts.solo);
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
   try{
@@ -2306,7 +2315,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   const __sel = localStorage.getItem('aiapp_provider') || 'openai';
   const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
-  const order = [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
+  const order = __solo ? head.slice(0, 1) : [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
   let lastErr = null;
   let firstErr = null;     // v-img-err: خطأ المزوّد الأوّل (المطلوب) — هو السبب الحقيقيّ حين يفشل الجميع
   let firstProv = '';
@@ -2329,7 +2338,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       const reply = await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
-      if(isRefusalReply(reply) && refusalTries < 2){
+      if(!__solo && isRefusalReply(reply) && refusalTries < 2){
         if(!firstRefusal) firstRefusal = { reply, providerKey };
         refusalTries++;
         continue; // 🛡️ تحويل صامت للمزود التالي — بدون أي رسالة للمستخدم
@@ -2352,6 +2361,16 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       // نسمّي من فشل ولماذا. الرسالة العامة كانت تترك المستخدم يرى مزوّدًا
       // غير الذي اختاره بلا تفسير — فيظنّ أن الاختيار معطّل، والحقيقة أن
       // المزوّد المختار فشل وأُخفي فشله.
+      if(__solo){
+        // v-owner-solo: لا مزوّد بعده؛ الرسالة قصيرة كرسالة الخادم — «ما عندي رصيد» أو «ما قدرت أردّ الحين — خطأ N».
+        if(err && !err.ownerStop){
+          try{
+            const __txt = String(err.upstreamText || '') + ' ' + String(err.message || '');
+            err.message = (err.status === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(__txt)) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين — خطأ ' + (err.status || '؟'));
+          }catch(e){ __swallow(e, 'fallback:solo-msg'); }
+        }
+        throw err;
+      }
       try{
         if(window.__chatStatus){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);

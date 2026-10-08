@@ -6637,13 +6637,14 @@ DESIGN RULES (non-negotiable):
         let __ct = null;
         if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __effProv); }
-          catch(e){ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; /* v-plans-gate: حدّ الباقة لا يتجاوزه مزوّد آخر */ __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
+          catch(e){ if(e && e.ownerStop) throw e; /* v-owner-solo: فشل مزوّد المالك لا يتجاوزه مزوّد آخر */ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; /* v-plans-gate: حدّ الباقة لا يتجاوزه مزوّد آخر */ __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
              بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
              النصر واخترع نتائج). الآن الاحتياط يبقى داخل مسار الأدوات نفسه —
              نفس البحث الحي الحقيقي — قبل أي هبوط للمسار القديم. */
-          if(!__ct && !(imageAttachments.length && __effProv === 'claude')){
+          /* v-owner-solo (المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه»): للمالك لا فريق بديل — مزوّده وحده، وفشله يُكتب له. */
+          if(!__ct && !__ownerFree && !(imageAttachments.length && __effProv === 'claude')){
             const __toolsTeam = ['openai', 'deepseek', 'gemini'].filter(p => p !== __effProv && TOOL_PROVIDERS.indexOf(p) !== -1).slice(0, 2);
             for(const __tp of __toolsTeam){
               try{
@@ -6659,7 +6660,7 @@ DESIGN RULES (non-negotiable):
           }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
-        else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
+        else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
         window.__claudeThinking = false;
@@ -6763,6 +6764,8 @@ DESIGN RULES (non-negotiable):
          خطأ المسار الأوّل معه. */
       var __primaryErr = '';
       try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
+      /* v-owner-solo (المالك: «أيّ شي زائد ما أريده»): للمالك رسالة الفشل وحدها — بلا سطر المسار الأوّل التقنيّ. */
+      if(__primaryErr && typeof omranOwnerUi === 'function' && omranOwnerUi()) __primaryErr = '';
       cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{

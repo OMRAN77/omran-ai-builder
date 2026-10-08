@@ -133,6 +133,7 @@
     var dec = new TextDecoder();
     var buf = '', full = '', serverErr = null;
     var __planLimit = false; /* v-plans-gate: الخادم علّم الخطأ «حدّ الباقة» (limit) — المستدعي يفتح الباقات ولا يجرّب غيره */
+    var __ownerStop = false; /* v-owner-solo: مزوّد المالك المختار فشل والخادم كتب السبب — المستدعي يعرضه ولا يجرّب غيره */
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
@@ -187,6 +188,7 @@
         }
         if (ev.error) serverErr = ev.error;
         if (ev.error && ev.limit === true) __planLimit = true;
+        if (ev.error && ev.ownerStop === true) __ownerStop = true;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
         if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
         /* v-oa-models: موديل مختار رفضه المفتاح → يُمسح من الاختيار المحفوظ (يعود للافتراضيّ) فلا يتكرّر الرفض مع كلّ رسالة */
@@ -196,7 +198,7 @@
     noteEnd();
 
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم — إلّا حدّ الباقة: لا مسار آخر يتجاوزه.
-    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__planLimit) __er.planLimit = true; throw __er; }
+    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er; }
     var __p = provider || 'claude';
     var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log };
