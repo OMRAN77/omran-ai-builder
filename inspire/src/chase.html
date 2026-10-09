@@ -305,11 +305,11 @@
   .cz-count.go{animation:czpop .9s ease-out forwards}
   @keyframes czpop{0%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}18%{opacity:1;transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.85)}}
   .cz-flash{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:0;background:radial-gradient(ellipse at center,rgba(255,60,40,0) 45%,rgba(255,40,30,.55) 100%)}
-  .cz-fin{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);z-index:9;width:min(330px,calc(100vw - 32px));display:none;text-align:center;
+  .cz-fin{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:9;width:min(330px,calc(100vw - 32px));display:none;text-align:center;
     background:linear-gradient(165deg,rgba(14,30,38,.95),rgba(8,16,22,.95));border:1px solid rgba(255,201,60,.45);border-radius:20px;padding:18px 18px 16px;color:#e8f1f3;
     font:14px/1.5 "IBM Plex Sans Arabic",Tahoma,system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.55);direction:rtl}
   .cz-fin.on{display:block;animation:czin .45s ease-out}
-  @keyframes czin{from{opacity:0;transform:translate(-50%,-44%)}to{opacity:1;transform:translate(-50%,-50%)}}
+  @keyframes czin{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
   .cz-fin .k{color:#ffc93c;font-weight:700;font-size:15px}
   .cz-fin .t{font:800 50px/1.1 ui-monospace,Menlo,Consolas,monospace;color:#fff;direction:ltr;margin:4px 0}
   .cz-fin .badge{display:inline-block;background:#ffc93c;color:#1a1300;font-weight:800;border-radius:99px;padding:2px 12px;font-size:13px;margin-bottom:6px}
@@ -339,6 +339,7 @@
     .cz-t{font-size:27px}.cz-g{gap:0 12px}.cz-g b{font-size:16px}
     .cz-pills{order:3;flex-basis:100%}.cz-m{order:4;flex-basis:100%;text-align:center;max-width:none;min-height:0}
     .cz-count{font-size:96px;top:42%}
+    .cz-fin{bottom:calc(122px + env(safe-area-inset-bottom,0px));padding:14px 14px 13px}.cz-fin .t{font-size:42px}
   }`;
   const SVG = {
     l: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
@@ -508,15 +509,15 @@
   function camUpdate(dt) {
     const g = G, c = g.car, cam = X.camera, sp = Math.abs(c.v), top = camMode === 1;
     if (g.snap) g.camH = c.h; else g.camH = angWrap(g.camH + angWrap(c.h - g.camH) * Math.min(1, dt * 4.5));
-    let dist = top ? 30 : 9.6 + sp * 0.12, hgt = top ? 34 : 4.3 + sp * 0.04;
+    let dist = top ? 19 + sp * 0.15 : 9.6 + sp * 0.12, hgt = top ? 10.5 + sp * 0.06 : 4.3 + sp * 0.04;
     const fx = Math.sin(g.camH), fz = Math.cos(g.camH);
-    if (!top) for (let k = 0; k < 6; k++) { // لا تدخل الكاميرا في مبنى ولا يحجبها مبنى
+    for (let k = 0; k < 6; k++) { // لا تدخل الكاميرا في مبنى ولا يحجبها مبنى
       const b1 = g.idx.at(c.x - fx * dist, c.z - fz * dist), b2 = g.idx.at(c.x - fx * dist * 0.5, c.z - fz * dist * 0.5);
       if ((!b1 || b1.h < hgt) && (!b2 || b2.h < hgt * 0.6)) break;
       dist *= 0.75; hgt += 1.2;
     }
     tmpPos.set(c.x - fx * dist, hgt, c.z - fz * dist);
-    tmpLook.set(c.x + fx * (top ? 9 : 6), top ? 0 : 1.2, c.z + fz * (top ? 9 : 6));
+    tmpLook.set(c.x + fx * (top ? 12 : 6), top ? 0.5 : 1.2, c.z + fz * (top ? 12 : 6));
     if (g.st === 'done') { g.orbA += dt * 0.32; tmpPos.set(c.x + Math.sin(g.orbA) * 14, 5.5, c.z + Math.cos(g.orbA) * 14); tmpLook.set(c.x, 1.1, c.z); }
     if (g.st === 'intro' && !g.snap) {
       const u = Math.min(1, g.intro.t / 2.8), eh = ease(Math.min(1, u / 0.72)), ev = Math.pow(ease(u), 1.6); // أفقيًّا أوّلًا ثمّ نزول عموديّ فوق الشارع
@@ -528,7 +529,7 @@
     cam.position.copy(camPos);
     if (g.shake > 0) { cam.position.x += (Math.random() - 0.5) * g.shake * 0.7; cam.position.y += (Math.random() - 0.5) * g.shake * 0.5; g.shake = Math.max(0, g.shake - dt * 2.5); }
     cam.lookAt(camLook);
-    const fov = (top ? 50 : 55) + Math.min(1, sp / 33) * 14;
+    const fov = (top ? 52 : 55) + Math.min(1, sp / 33) * 14;
     if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
   }
   function sunFollow() { // ظلال حادّة حول السيّارة، وواسعة أثناء النزول من السماء
@@ -567,12 +568,12 @@
   }
   function arrowUpd(now) {
     const g = G, c = g.car, cp = g.cps[g.passed], a = g.arrow;
-    a.visible = !!cp && g.st !== 'done' && camMode === 0;
+    a.visible = !!cp && g.st !== 'done';
     if (!a.visible) return;
     a.position.set(c.x + Math.sin(c.h) * 0.6, 2.75 + Math.sin(now * 0.004) * 0.1, c.z + Math.cos(c.h) * 0.6);
     const yaw = Math.atan2(cp.x - c.x, cp.z - c.z), d = Math.hypot(cp.x - c.x, cp.z - c.z);
     a.rotation.y = yaw; a.rotation.x = 0.5;
-    a.scale.setScalar(d < 25 ? Math.max(0.35, d / 25) * 0.62 : 0.62);
+    const sc0 = camMode ? 1.1 : 0.62; a.scale.setScalar(d < 25 ? Math.max(0.35, d / 25) * sc0 : sc0);
     const ahead = Math.abs(angWrap(yaw - c.h)) < 0.3 && d < 140, op = ahead ? 0.3 : 0.95; // الهدف أمامك ظاهر: السهم يخفت
     a.userData.mats[0].opacity += (op - a.userData.mats[0].opacity) * 0.1; a.userData.mats[1].opacity = a.userData.mats[0].opacity * 0.35;
   }
@@ -708,7 +709,8 @@
       }
       return null;
     },
-    get cps() { return G ? G.cps.map((c) => ({ x: c.x, z: c.z, r: c.r, app: c.app.slice() })) : []; },
+    get cps() { return G ? G.cps.map((c) => ({ x: c.x, z: c.z, r: c.r, w: c.w, app: c.app.slice() })) : []; },
+    cam(m) { camMode = m ? 1 : 0; if (G) G.snap = true; return camMode; },
     get start() { return G && G.start; },
   };
 
