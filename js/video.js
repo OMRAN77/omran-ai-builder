@@ -313,7 +313,7 @@
     [].forEach.call(box.querySelectorAll('[data-lv]'),function(p){ p.setAttribute('aria-checked',String(p.dataset.lv===CL.level)); p.onclick=function(){ if(!CL.busy){ CL.level=p.dataset.lv; clRender(); } }; });
     [].forEach.call(box.querySelectorAll('[data-ab]'),function(p){ p.setAttribute('aria-checked',String(p.dataset.ab===CL.showing)); p.onclick=function(){ CL.showing=p.dataset.ab; clStage(CL.showing==='before'?CL.orig:CL.out); clRender(); }; });
     up.onchange=function(){ CL.upscale=up.checked; };
-    if(has){ var ov=id('vmkClOrig'); ov.src=CL.orig; id('vmkClInfo').textContent=CL.meta?(Math.round(CL.meta.sec)+'s · '+CL.meta.w+'×'+CL.meta.h):''; }
+    if(has){ var ov=id('vmkClOrig'); ov.src=CL.orig; id('vmkClInfo').textContent=(CL.meta?(Math.round(CL.meta.sec)+'s · '+CL.meta.w+'×'+CL.meta.h+' · '):'')+(CL.file.size/1048576).toFixed(1)+' MB'; }
     if(done){ id('vmkClDl').href=CL.out; }
     id('vmkClInput').onchange=function(e){ var f=e.target.files&&e.target.files[0]; if(f) clPick(f); };
     var dz=id('vmkClDrop');
@@ -328,15 +328,19 @@
     clMsg('');
     if(!/^video\//.test(f.type||'')&&!/\.(mp4|mov|m4v|webm|mkv|3gp)$/i.test(f.name||'')){ clMsg(L('vclFail'),true); return; }
     if(f.size>clMaxMB()*1048576){ clMsg(L('vclTooBig').replace('{n}',String(clMaxMB())),true); return; }
-    var url=URL.createObjectURL(f), v=document.createElement('video'); v.preload='metadata'; v.muted=true;
-    v.onloadedmetadata=function(){
-      var sec=v.duration||0, w=v.videoWidth||0, h=v.videoHeight||0;
+    var url=URL.createObjectURL(f), v=document.createElement('video'); v.preload='metadata'; v.muted=true; var settled=false;
+    var accept=function(sec,w,h){
+      if(settled) return; settled=true;
       if(sec>CL_MAX_SEC+0.5){ clRevoke(url); clMsg(L('vclTooLong').replace('{s}',String(CL_MAX_SEC)),true); return; }
       clRevoke(CL.orig); clRevoke(CL.out);
-      CL.file=f; CL.orig=url; CL.out=''; CL.meta={sec:sec,w:w,h:h}; CL.upscale=h>0&&h<=540; CL.showing='before';
-      clRender(); clStage(url);
+      CL.file=f; CL.orig=url; CL.out=''; CL.meta=w?{sec:sec,w:w,h:h}:null; CL.upscale=h>0&&h<=540; CL.showing='before';
+      clRender(); if(w) clStage(url);
     };
-    v.onerror=function(){ clRevoke(url); clMsg(L('vclFail'),true); };
+    v.onloadedmetadata=function(){ accept(v.duration||0,v.videoWidth||0,v.videoHeight||0); };
+    /* المتصفّح لا يقرأ كلّ ترميز (HEVC من الآيفون على كروم ويندوز مثلًا) بينما أداة التحسين تفكّه بنفسها:
+       يُقبل الملفّ بلا بيانات (حدّ الحجم يكفي)، فلا يُرفض فيديو صالح لأنّ المعاينة وحدها عجزت */
+    v.onerror=function(){ accept(0,0,0); };
+    setTimeout(function(){ accept(0,0,0); },5000);
     v.src=url;
   }
   async function clRun(){

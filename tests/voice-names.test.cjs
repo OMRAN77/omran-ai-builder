@@ -21,7 +21,7 @@ test('١. الاسمان وجملة التعريف في اللغات الـ١٤�
     assert.match(s, /"?voiceSampleIntro"?: "[^"]*\{name\}[^"]*"/, lg);
     assert.doesNotMatch(s, /"?voiceGenderMale"?: "(?:Male voice|Voz masculina|Мужской голос)"/, lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=731'"), 'وسم الكاش ارتفع');
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=732'"), 'وسم الكاش ارتفع');
 });
 
 test('٢. الضغط يختار ويُسمع تعريف الشخصيّة؛ والتجربة تُسمع المختار', () => {
