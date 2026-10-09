@@ -223,12 +223,15 @@ for (const f of files) {
     if (r.cropped) fs.writeFileSync(path.join(DIR, f), b64(r.cropped));
     fs.writeFileSync(path.join(THUMBS, f), b64(r.thumb));
   }
-  entries.push({ ملف: f, عرض: r.w, ارتفاع: r.h, لون: r.color, فاتحة: r.light });
+  // v-bg-desktop: نسخة حاسوب (حاسوب/<الاسم>، الشريط الأوسط ١٦:٩ موضَّح إلى ٢٥٦٠ عرضًا) للصور الضيّقة التي يمدّها الحاسوب — يعلّمها الفهرس
+  const desk = fs.existsSync(path.join(DIR, 'حاسوب', f));
+  entries.push(Object.assign({ ملف: f, عرض: r.w, ارتفاع: r.h, لون: r.color, فاتحة: r.light }, desk ? { حاسوب: true } : {}));
   console.log(`✓ ${f} ${r.w}×${r.h} ${r.color} ${r.light ? 'فاتحة' : 'داكنة'}`);
 }
 await browser.close();
 if (DRY) { console.log('تجربة فقط — لا مصغّرات ولا فهرس'); process.exit(0); }
 // مصغّرات يتيمة (صورة حُذفت) تُزال
 for (const f of fs.readdirSync(THUMBS)) if (!files.includes(f)) fs.unlinkSync(path.join(THUMBS, f));
+if (fs.existsSync(path.join(DIR, 'حاسوب'))) for (const f of fs.readdirSync(path.join(DIR, 'حاسوب'))) if (!files.includes(f)) fs.unlinkSync(path.join(DIR, 'حاسوب', f)); // v-bg-desktop: نسخة حاسوب يتيمة
 fs.writeFileSync(INDEX, JSON.stringify({ نسخة: 1, صور: entries }, null, 1) + '\n');
 console.log(`فهرس: ${entries.length} خلفيّة → ${path.relative(ROOT, INDEX)}`);
