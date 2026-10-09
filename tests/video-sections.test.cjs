@@ -113,3 +113,11 @@ test('رفع فيديوهات المالك (طلبه: «كيف أرفع الفي
   const sm = read('scripts/video-samples.mjs');
   assert.ok(sm.includes("'.vmk-lb .vmk-lb-x'") && !sm.includes("keyboard.press('Escape')"), 'يُغلق المشغّل بزرّه لا بـEscape (يُغلق الصانع)');
 });
+
+test('«جودة أعلى» ظاهر (طلب المالك): يخرج من «خيارات متقدّمة» إلى فوق المدّة، ويظهر فقط حيث يؤثّر', () => {
+  assert.ok(js.includes("var qr=id('videoMakerQualityRow'), r3=M.querySelector('.vmk-row3')") && js.includes("r3.parentNode.insertBefore(qr,r3)"));
+  assert.ok(js.includes("{runway:1,minimax:1,omni:1,veo:1}[qm]"));
+  assert.ok(read('css/modules.css').includes('#videoMakerQualityRow.vmk-q-off{display:none!important}'));
+  const v = read('js/app-11-video.js');
+  assert.ok(v.includes("quality: wantQuality ? 'high' : 'fast'") && v.includes("resolution: '2k'"), 'المنطق نفسه لم يتغيّر');
+});
