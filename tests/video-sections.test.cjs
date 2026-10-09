@@ -43,3 +43,15 @@ test('النصوص الجديدة بالـ١٤ لغة (ar+en في القاموس
   KEYS.forEach((k) => assert.equal((base.match(new RegExp('\\b' + k + ': "', 'g')) || []).length, 2, k));
   LANGS.forEach((lg) => { const s = read('i18n/' + lg + '.js'); KEYS.forEach((k) => assert.ok(new RegExp('^\\s*' + k + ': "[^"]+",', 'm').test(s), lg + ' ← ' + k)); });
 });
+
+test('نظافة الواجهة (طلب المالك «شيل الأيقونات… شغل نضيف»): بطاقة الترند بلا إيموجي ولا سطر وصف تحتها، والنافذة تُنظَّف عند العرض', () => {
+  const tr = read('js/app-11-video-trends.js');
+  assert.ok(!/t\.em\b/.test(tr), 'لا إيموجي الترند في البطاقة ولا في الرأس');
+  assert.ok(!/T\(t\.sub\)/.test(tr.slice(tr.indexOf('function card('), tr.indexOf('function renderGrid('))), 'لا سطر وصف تحت البطاقة');
+  assert.ok(tr.includes('function noEmoji(') && tr.includes('return noEmoji(T(D.ui[k]))'));
+  assert.ok(js.includes('function scrub()') && js.includes('sync(); scrub(); }'));
+  assert.ok(!/'⚡ '|'🎁|⚙️/.test(js), 'شارات النقاط والخيارات المتقدّمة بلا إيموجي');
+  // الدالّة نفسها: تزيل الإيموجي وتبقي النصّ والأرقام
+  const re = /[\u{1F000}-\u{1FFFF}\u{2190}-\u{21FF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu;
+  assert.equal('🎬 قصة بيكسار ٣ ⚡ 60 نقطة ✨'.replace(re, '').replace(/\s{2,}/g, ' ').trim(), 'قصة بيكسار ٣ 60 نقطة');
+});
