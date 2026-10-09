@@ -466,12 +466,17 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T;
-  const G = 9.81, TILT = 0.62, LIFT = 10, VDAMP = 1.6, C1 = 0.08, INTRO = 4.2, HSTEP = 1 / 60, APP = 16;
+  const G = 9.81, TILT = 0.62, LIFT = 10, VDAMP = 1.6, C1 = 0.08, INTRO = 4.2, HSTEP = 1 / 60, APP = 16, MAXDT = 1;
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   const fmt = (t) => { if (t == null || !isFinite(t)) return '—'; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
   const c2For = (kmh) => { const v = kmh / 3.6; return Math.max(0.0005, (G * Math.tan(TILT) - C1 * v) / (v * v)); };
   const TOUCH = !!((window.matchMedia && matchMedia('(pointer: coarse)').matches) || navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+  // الزمن الحقيقيّ بين الإطارات: النواة تقصّ dt عند ٠٫٠٥ ث فيبطؤ المؤقّت على الأجهزة البطيئة (١٥ إطارًا = ٠٫٧٥ ث لكلّ ثانية).
+  // نحسبه من now، ونقصّه عند ثانية فقط؛ يبدأ المرجع من لحظة إعادة البدء، ويُصفَّر عند تبدّل ظهور التبويب فلا يُضاف زمن الغياب.
+  let lastNow = -1;
+  const realDt = (dt, now) => { const r = lastNow < 0 ? dt : Math.min(MAXDT, Math.max(0, (now - lastNow) / 1000)); lastNow = now; return r; };
+  document.addEventListener('visibilitychange', () => { lastNow = -1; });
 
   let ctx = null, THREE = null, S = null, C2 = c2For(110), TEX = null, EUL = null, UPV = null, FPVQ = null;
   const opts = { rings: 8, vmax: 110, cam: 'chase' };
@@ -545,6 +550,9 @@
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
   }
   const add = (mat) => Object.assign(mat, { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  function freeCourse(grp) { // هندسة المسار وموادّه وأرقام حلقاته (TEX مشترك يبقى)
+    grp.traverse((o) => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) { if (m.map && m.map !== TEX) m.map.dispose(); m.dispose(); } });
+  }
 
   // ── مرّة واحدة: المظهر والواجهة والمدخلات ──
   function setupOnce(c) {
@@ -704,7 +712,7 @@
   }
   function buildCourse() {
     const city = S.city, idx = city.idx, H = idx.heightAt, D2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-    if (S.course) { city.group.remove(S.course); S.course.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+    if (S.course) { city.group.remove(S.course); freeCourse(S.course); }
     let sel = findGates(city, ctx.R * 0.55); S.fallback = false;
     if (sel.length < Math.min(opts.rings, 4)) { const wide = findGates(city, ctx.R * 0.8); if (wide.length > sel.length) sel = wide; } // حيّ أبراجه بعيدة عن المركز
     if (sel.length < 3) { sel = circleCourse(opts.rings); S.fallback = true; }
@@ -838,6 +846,7 @@
   // ── لكلّ مدينة ──
   function setupCity(c, city) {
     ctx = c;
+    if (S && S.course) freeCourse(S.course); // مسار المدينة السابقة: النواة تحرّر الهندسة فقط
     S = {
       city, rings: [], wps: [], course: null, pad: { x: 0, z: 0 }, demo: false, ap: 0, intro: 0, introA: Math.random() * 6,
       d: { pos: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), q: new THREE.Quaternion(), yaw: 0, pitch: 0, roll: 0, yawRate: 0, thr: 0 },
@@ -882,14 +891,14 @@
   function resetTrail() { const p = S.d.pos, a = S.trail.geometry.attributes.position; for (let i = 0; i < a.count; i++) a.setXYZ(i, p.x, p.y, p.z); a.needsUpdate = true; }
   const yawTo = (dx, dz) => Math.atan2(-dx, -dz);
   function restart(quiet) {
-    const r = S.race; r.state = 'ready'; r.t = 0; r.passed = 0; r.crashes = 0; r.crashT = 0; r.assisted = false;
+    const r = S.race; r.state = 'ready'; r.t = 0; r.passed = 0; r.crashes = 0; r.crashT = 0; r.assisted = false; lastNow = performance.now();
     const g0 = S.rings[0]; placeAt(S.pad.x, 0.35, S.pad.z, g0 ? yawTo(g0.x - S.pad.x, g0.z - S.pad.z) : 0);
     S.ap = 0; S.d.thr = 0;
     if (!quiet) S.intro = INTRO;
     msg(TOUCH ? T('حرّك العصا اليسرى لفوق للإقلاع', 'Push the left stick up to take off') : T('اضغط Q للإقلاع', 'Press Q to take off'), T('المؤقّت يبدأ مع أوّل حركة', 'The timer starts with your first move'), 3.2);
     snapCam();
   }
-  function startRace() { const r = S.race; r.state = 'racing'; r.t = 0; r.passed = 0; r.crashes = 0; S.intro = INTRO; ctx.ui.box.classList.add('dr-min'); msg(T('انطلق!', 'Go!'), '', 0.9, 'gold'); }
+  function startRace() { const r = S.race; r.state = 'racing'; r.t = 0; lastNow = performance.now(); r.passed = 0; r.crashes = 0; S.intro = INTRO; ctx.ui.box.classList.add('dr-min'); msg(T('انطلق!', 'Go!'), '', 0.9, 'gold'); }
   function setDemo(on) {
     if (!S) return;
     if (on && S.race.state !== 'racing') { restart(true); startRace(); }
@@ -1013,9 +1022,9 @@
   }
 
   // ── الإطار ──
-  function frame(dt, now) {
+  function frame(cdt, now) {
     if (!S) return;
-    const m = manual();
+    const dt = realDt(cdt, now), m = manual(); // الفيزياء والمؤقّت بالزمن الحقيقيّ، بخطوات ≤ ١/٦٠ ث
     if (m.any) { if (S.demo) setDemo(false); S.intro = INTRO; if (S.race.state === 'ready') startRace(); }
     const n = Math.max(1, Math.ceil(dt / HSTEP)), h = dt / n;
     for (let i = 0; i < n; i++) { if (S.demo) autopilot(); else { S.inp.fwd = m.fwd; S.inp.strafe = m.strafe; S.inp.turn = m.turn; S.inp.lift = m.lift; } step(h); }
@@ -1204,8 +1213,10 @@
     get S() { return S; },
   };
 
+  const TITLE = T('سباق الدرون بين الأبراج', 'Drone race between the towers');
+  document.title = TITLE; // وسم <title> عربيّ في المصدر؛ بالإنجليزيّة يتبع لغة الصفحة
   CK.start({
-    title: T('سباق الدرون بين الأبراج', 'Drone race between the towers'),
+    title: TITLE,
     sub: T('حلقات مضيئة بين أطول مباني حيّك الحقيقيّة — مرّ منها بالترتيب بأسرع وقت.', 'Glowing rings between the tallest real buildings of your area — fly through them in order, fast.'),
     shadows: true,
     panel(c) { setupOnce(c); },

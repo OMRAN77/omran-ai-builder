@@ -33,6 +33,7 @@
 (function () {
   'use strict';
   const THREE = window.THREE, T = CityKit.T;
+  document.title = T('وين أشوف الألعاب الناريّة', 'Where to watch the fireworks');
   const EYE = 1.6, STEP = 15, LOS_STEP = 3, COMFORT = 60, SEP = 60, MAX_SAMPLES = 15000;
   const PAL = [[[1, .28, .34], [1, .82, .38]], [[.35, .7, 1], [1, 1, 1]], [[.72, .42, 1], [1, .45, .85]], [[.35, 1, .55], [1, .95, .6]],
     [[1, .6, .18], [1, .32, .18]], [[.25, .95, 1], [.65, .38, 1]], [[1, .9, .5], [1, 1, 1]]];
@@ -133,9 +134,12 @@
   }
 
   // ── نقاط المشاهدة: كلّ ١٥م على كلّ طريق داخل المنطقة المحمّلة، خارج المباني ──
+  // لا وقوف على الطرق السريعة والشريانيّة ولا على الوصلات (منحدرات ومخارج): تخرج من العيّنات فلا تُقترح ولا تدخل نسبة الرؤية
+  const NO_STAND = /^(motorway|trunk)$/;
   function buildSamples(city, R) {
     const xs = [], zs = [], rs = [], lim2 = (R * 0.97) * (R * 0.97);
     for (const r of city.roads) {
+      if (r.link || NO_STAND.test(r.kind)) continue;
       let next = STEP / 2;
       for (let i = 0; i < r.pts.length - 1; i++) {
         const p = r.pts[i], q = r.pts[i + 1], L = Math.hypot(q[0] - p[0], q[1] - p[1]);

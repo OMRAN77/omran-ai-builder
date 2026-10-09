@@ -487,7 +487,9 @@ module.exports = async (req, res) => {
   try { system += await require('./collective.js').blockAsync(); } catch (e) { /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
 
   if (currentCode) {
-    system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا وأعد الملف كاملًا):\n```html\n' + String(currentCode).slice(0, 60000) + '\n```';
+    // v-chat-edit: الكود كاملًا (كان يُقصّ عند ٦٠ ألفًا فيعدّل الوكيل ما لم يره)، والتصميم الكبير يُعدَّل برقع لا بملفّ كامل ينقطع
+    const __cc = String(currentCode).slice(0, 300000), __big = __cc.length > 24000;
+    system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا' + (__big ? ' — الملفّ ' + __cc.length + ' حرفًا، أكبر من أن يُعاد كاملًا: أرسل التعديل رقعًا داخل كتلة ```patch بالشكل @@PATCH ثمّ @@WHY سطر ثمّ @@OLD نصّ موجود في الملفّ مرّة واحدة بالضبط منسوخ حرفيًّا ثمّ @@NEW البديل ثمّ @@END، والتطبيق يطبّقها' : ' وأعد الملف كاملًا') + '):\n```html\n' + __cc + '\n```';
   }
   if (isOwner(runUser)) system += OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله
 

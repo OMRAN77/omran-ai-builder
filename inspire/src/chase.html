@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T;
-  const R = 600, NCP = 6, STEP = 15, HZ = 1 / 60;
+  const R = 600, NCP = 6, STEP = 15, HZ = 1 / 60, MAXDT = 1;
   const DRIVE = { motorway: 1, trunk: 1, primary: 1, secondary: 1, tertiary: 1, residential: 1, unclassified: 1, living_street: 1, service: 1 };
   // نقاط هيكل السيّارة للاصطدام: [أماميّ، جانبيّ] بالأمتار (طولها ٤٫٤ وعرضها ١٫٨)
   const CORNERS = [[2.15, 0.85], [2.15, -0.85], [-2.1, 0.85], [-2.1, -0.85], [2.3, 0], [0, 0.92], [0, -0.92]];
@@ -20,6 +20,11 @@
   const fmt = (t) => { const tt = Math.round(Math.max(0, t) * 10), m = Math.floor(tt / 600), s = (tt % 600) / 10; return String(m).padStart(2, '0') + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
   const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   const isPhone = () => window.matchMedia('(max-width:640px)').matches;
+  // الزمن الحقيقيّ بين الإطارات: النواة تقصّ dt عند ٠٫٠٥ ث فيبطؤ المؤقّت على الأجهزة البطيئة (١٥ إطارًا = ٠٫٧٥ ث لكلّ ثانية).
+  // نحسبه من now، ونقصّه عند ثانية فقط؛ يبدأ المرجع من لحظة إعادة البدء، ويُصفَّر عند تبدّل ظهور التبويب فلا يُضاف زمن الغياب.
+  let lastNow = -1;
+  const realDt = (dt, now) => { const r = lastNow < 0 ? dt : Math.min(MAXDT, Math.max(0, (now - lastNow) / 1000)); lastNow = now; return r; };
+  document.addEventListener('visibilitychange', () => { lastNow = -1; });
 
   // ── التخزين: أفضل زمن لكلّ مكان ──
   function bestKey() { const c = X.city; return 'ck-chase-best:' + (+c.lat).toFixed(3) + ',' + (+c.lon).toFixed(3) + ':' + G.cps.length; }
@@ -442,7 +447,7 @@
   function reset() {
     const g = G, s = g.start;
     g.car = { x: s.x, z: s.z, h: s.h, v: 0, steer: 0, wheel: 0, lastContact: -9, on: true };
-    g.t = 0; g.passed = 0; g.collisions = 0; g.newRec = false; g.shake = 0; g.snap = true;
+    g.t = 0; g.passed = 0; g.collisions = 0; g.newRec = false; g.shake = 0; g.snap = true; lastNow = performance.now();
     for (const cp of g.cps) { cp.burst = 0; cp.obj.g.visible = true; cp.obj.g.scale.set(1, 1, 1); }
     hideOverlays();
   }
@@ -603,9 +608,9 @@
     x.restore();
   }
 
-  function frame(dt, now) {
+  function frame(cdt, now) {
     const g = G; if (!g || !g.car || g.city !== X.city) return;
-    const inp = input();
+    const dt = realDt(cdt, now), inp = input(); // الفيزياء والمؤقّت والعدّ التنازليّ بالزمن الحقيقيّ، بخطوات ١/٦٠ ث
     if (g.st === 'race') { let left = dt; while (left > 1e-6 && g.st === 'race') { const h = Math.min(HZ, left); step(h, inp, true); left -= h; } }
     else if (g.st === 'count') {
       g.count -= dt; const n = Math.ceil(g.count);
@@ -613,7 +618,7 @@
       if (g.count <= 0) { g.st = 'race'; showCount(T('انطلق!', 'Go!')); sync(); }
     } else {
       if (g.st === 'intro') { g.intro.t += dt; if (g.intro.t >= 2.8) { g.st = 'ready'; sync(); } }
-      if (Math.abs(g.car.v) > 0.01) step(dt, inp, false);
+      for (let left = dt; left > 1e-6 && Math.abs(g.car.v) > 0.01; left -= HZ) step(Math.min(HZ, left), inp, false);
     }
     carMesh(inp, dt); camUpdate(dt); gates(now, dt); arrowUpd(now); sunFollow(); drawMap();
     g.glowT = (g.glowT || 0) + dt; g.carObj.glow.material.opacity = 0.45 + 0.12 * Math.sin(g.glowT * 3);
@@ -648,6 +653,7 @@
     document.body.classList.add('cz-compact');
     const ae = document.activeElement; if (ae && ae.blur && /^(SELECT|INPUT)$/.test(ae.tagName)) ae.blur(); // الأسهم للقيادة لا لتغيير القائمة
     hideOverlays();
+    if (G) for (const cp of G.cps) if (cp.obj) cp.obj.g.traverse((o) => { const m = o.material; if (m) { if (m.map) m.map.dispose(); m.dispose(); } }); // أرقام البوّابات وموادّها لا تتراكم مع كلّ مدينة (النواة تحرّر الهندسة فقط)
     const g = G = { city, idx: city.idx, st: 'none', t: 0, passed: 0, collisions: 0, cps: [], samples: [], car: null, best: 0, newRec: false, lastRun: null,
       shake: 0, hudT: 0, stT: 0, layT: 0, lim2: (R * 0.95) * (R * 0.95), routeLen: 0, camH: 0, orbA: 0, snap: true };
     g.raster = buildRaster(city);
@@ -714,8 +720,10 @@
     get start() { return G && G.start; },
   };
 
+  const TITLE = T('مطاردة في شوارعك', 'Street Chase');
+  document.title = TITLE; // وسم <title> عربيّ في المصدر؛ بالإنجليزيّة يتبع لغة الصفحة
   CK.start({
-    title: T('مطاردة في شوارعك', 'Street Chase'),
+    title: TITLE,
     sub: T('سباق ستّ نقاط على شوارع حيّك الحقيقيّة — المباني جدران فعليّة، والزمن يُحسب.', 'A six-checkpoint race on your real streets — buildings are solid walls.'),
     radius: R, shadows: true,
     panel(ctx) { X = ctx; setupScene(ctx); buildUi(ctx); },

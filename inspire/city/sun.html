@@ -503,6 +503,8 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T, AR = CK.AR;
+  const TITLE = T('شمس بيتك ساعة بساعة', 'Your home\'s sun, hour by hour');
+  document.title = TITLE;
   const DEG = Math.PI / 180, H0 = -0.833 * DEG; // ارتفاع الشروق والغروب القياسيّ (انكسار + نصف القرص)
   const MON_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
   const MON_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -511,6 +513,14 @@
   const pad = (n) => String(n).padStart(2, '0');
   const fmt = (min) => { if (min == null || !isFinite(min)) return '—'; let m = Math.round(min); m = ((m % 1440) + 1440) % 1440; return pad(Math.floor(m / 60)) + ':' + pad(m % 60); };
   const r1 = (v) => Math.round(v * 10) / 10;
+  // فرق توقيت المكان التقريبيّ: ساعة الجهاز إن قاربت خطّ طول المكان (غالبًا يتصفّح منطقته: عمّان +3 لا +2، الدار البيضاء +1 لا −1،
+  // طهران +3:30)، وإلّا تقريب خطّ الطول. مدن القائمة الخليجيّة يصيبها التقريب، فلا تتبع فيها ساعة جهاز في بلد خليجيّ مجاور (الرياض ≠ دبي).
+  function approxTz(lat, lon) {
+    const sol = lon / 15, dev = -new Date().getTimezoneOffset() / 60;
+    const preset = CK.PRESETS.some((p) => Math.hypot(p.lat - lat, (p.lon - lon) * Math.cos(lat * DEG)) < 0.75);
+    return !preset && Math.abs(dev - sol) <= 2 ? dev : Math.round(sol);
+  }
+  const tzName = (tz) => { const a = Math.abs(tz), h = Math.floor(a), m = Math.round((a - h) * 60); return 'UTC' + (tz >= 0 ? '+' : '−') + h + (m ? ':' + pad(m) : ''); };
   const doyToMD = (doy) => { const d = new Date(Date.UTC(Y, 0, doy)); return [d.getUTCMonth(), d.getUTCDate()]; };
   const mdToDoy = (m, d) => Math.round((Date.UTC(Y, m, d) - Date.UTC(Y, 0, 0)) / 86400000);
   const dateLabel = (doy) => { const [m, d] = doyToMD(doy); return AR ? d + ' ' + MON_AR[m] : d + ' ' + MON_EN[m]; };
@@ -857,7 +867,7 @@
       : S.litNow ? '<div class="n"><i></i>' + T('مشمسة الآن · الشمس ', 'In sun now · sun ') + Math.round(altD) + '° ' + dirName(s.az) + '</div>'
         : bk.b === P.b ? '<div class="n sh"><i></i>' + T('في الظلّ الآن — الشمس خلف هذا المبنى نفسه', 'In shade now — the sun is behind this very building') + '</div>'
           : '<div class="n sh"><i></i>' + T('في الظلّ الآن — يحجبها مبنى ', 'In shade now — blocked by a ') + Math.round(bk.b.h) + T(' م على بعد ', ' m building ') + Math.round(bk.d) + T(' م', ' m away') + '</div>';
-    ctx.ui.hud('<div class="sn-hud"><div class="c">' + fmt(S.t) + '</div><div class="d">' + dateLabel(S.doy) + ' ' + Y + ' · <span dir="ltr">UTC' + (S.tz >= 0 ? '+' : '−') + Math.abs(S.tz) + '</span></div>' +
+    ctx.ui.hud('<div class="sn-hud"><div class="c">' + fmt(S.t) + '</div><div class="d">' + dateLabel(S.doy) + ' ' + Y + ' · <span dir="ltr">' + tzName(S.tz) + '</span> ' + T('تقريبًا', 'approx.') + '</div>' +
       '<div class="l">' + T('شمس مباشرة على نقطتك', 'Direct sun on your spot') + '</div><div class="h"><b>' + r1(r.hours).toFixed(1) + '</b><span>' + T('ساعة من ', 'h of ') + r1(S.info.len).toFixed(1) + T(' ساعة نهار', ' h daylight') + '</span></div>' + now + '</div>');
     pub(s);
   }
@@ -942,12 +952,11 @@
     ctx = c;
     if (S) { S.playing = false; clearGroup(S.gPick); clearGroup(S.gArc); } // تحرير مواد ونسيج المدينة السابقة
     const maxH = city.buildings.length ? city.buildings[0].h : 0; // مرتّبة تنازليًّا في النواة
-    const now0 = { tz: Math.round(city.lon / 15) };
-    S = { city, idx: city.idx, name: city.name, lat: city.lat, lon: city.lon, tz: now0.tz, maxH, Rd: c.R + 90, RA: Math.max(200, Math.min(380, maxH * 1.15)),
+    S = { city, idx: city.idx, name: city.name, lat: city.lat, lon: city.lon, tz: approxTz(city.lat, city.lon), maxH, Rd: c.R + 90, RA: Math.max(200, Math.min(380, maxH * 1.15)),
       doy: 1, t: 15 * 60 + 30, playing: false, dirtyDay: false, P: null, info: null, res: null, year: new Array(12).fill(null), yearGen: 0, bestM: 0, fly: null };
     const n = nowLocal(); S.doy = n.doy;
     setPlayBtn(false);
-    el.snTz.textContent = '(UTC' + (S.tz >= 0 ? '+' : '−') + Math.abs(S.tz) + T(' تقريبًا)', ' approx.)');
+    el.snTz.textContent = '(' + tzName(S.tz) + T(' تقريبًا)', ' approx.)');
     S.sky = new THREE.Mesh(new THREE.SphereGeometry(1500, 32, 16), skyMat); S.sky.renderOrder = -10; S.sky.frustumCulled = false; city.group.add(S.sky);
     S.gPick = new THREE.Group(); S.gArc = new THREE.Group(); city.group.add(S.gPick, S.gArc);
     syncInputs();
@@ -989,7 +998,7 @@
   };
 
   CK.start({
-    title: T('شمس بيتك ساعة بساعة', 'Your home\'s sun, hour by hour'),
+    title: TITLE,
     sub: T('المس سطحك أو أيّ نقطة، وحرّك التاريخ والساعة: الشمس والظلال حقيقيّة لمكانك.', 'Tap your roof or any spot, then move the date and hour: the sun and shadows are real for your place.'),
     shadows: true, panel, onCity,
   });

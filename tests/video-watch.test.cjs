@@ -327,7 +327,7 @@ test('١١. النصوص العشرة بالـ١٤ لغة، بمواضعها {n}
     assert.ok(d.vwCharged.includes('{n}') && d.vwCharged.includes('{d}'), l);
     assert.ok(d.vwNoPoints.includes('{n}') && d.vwNoPoints.includes('{p}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=727'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=728'"));
 });
 
 test('١٢. أوّل رسالة فيديو في تطبيق بلا محادثة تُنشئ المحادثة (كانت تعود بلا شيء — كشفتها اللقطة)', async () => {

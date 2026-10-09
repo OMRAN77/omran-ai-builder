@@ -139,7 +139,7 @@ test('زرّ «اقتراحات» يفتح الشاشة، والاقتراحات
   assert.ok(b.includes('const INSPIRE_CITY = ['), 'الوحدة في الحزمة');
 });
 
-test('النصوص الستّة بالـ١٤ لغة، ووسم تحميل اللغات مرفوع إلى 727', () => {
+test('النصوص الستّة بالـ١٤ لغة، ووسم تحميل اللغات مرفوع', () => {
   const data = rd('js/app-03-i18n-data.js');
   const ctx = { I18N: { ar: {}, en: {} } };
   const blk = data.slice(data.indexOf('/* v-inspire'), data.indexOf('/* v650 */'));
@@ -153,7 +153,7 @@ test('النصوص الستّة بالـ١٤ لغة، ووسم تحميل الل
       assert.doesNotMatch(c.I18N[l][k], EMOJI);
     }
   }
-  assert.ok(rd('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=727'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=728'"));
 });
 
 test('مصادر التجارب لا تُنشر، والمبنيّ يُنشر', () => {
