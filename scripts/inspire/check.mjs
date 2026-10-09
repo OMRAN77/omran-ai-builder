@@ -8,7 +8,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { makeFixture } from './fixture.mjs';
+import { makeFixture, makeTilePng } from './fixture.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(path.join(ROOT, 'package.json'));
 const args = process.argv.slice(2);
@@ -43,6 +43,7 @@ for (const [name, vp, mobile] of [['desktop', { width: 1200, height: 720 }, fals
       const m = body.match(/around:(\d+),(-?[\d.]+),(-?[\d.]+)/);
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makeFixture(m ? +m[2] : 25.08, m ? +m[3] : 55.14, m ? +m[1] : 600)) });
     }
+    { const m = u.match(/World_Imagery\/MapServer\/tile\/(\d+)\/(\d+)\/(\d+)/); if (m) return route.fulfill({ status: 200, contentType: 'image/png', headers: { 'access-control-allow-origin': '*' }, body: makeTilePng(PNG, +m[1], +m[3], +m[2]) }); }
     if (/nominatim/.test(u)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ lat: '24.699', lon: '46.685', display_name: 'اختبار' }]) });
     if (/photon\.komoot/.test(u)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ features: [{ geometry: { coordinates: [46.685, 24.699] }, properties: { name: 'اختبار' } }] }) });
     if (/^https?:\/\/(fonts\.|cdn\.|unpkg)/.test(u)) return route.fulfill({ status: 200, body: '' });
