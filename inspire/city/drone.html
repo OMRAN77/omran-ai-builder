@@ -712,7 +712,7 @@
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;\nfloat drHash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }')
         .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n{ float side = 1.0 - step(0.5, abs(vWN.y)); float u = (abs(vWN.x) > abs(vWN.z) ? vWP.z : vWP.x) / 2.6; float v = vWP.y / 3.3;' +
           ' vec2 cl = floor(vec2(u, v)); vec2 f = fract(vec2(u, v)); float win = step(0.2, f.x) * step(f.x, 0.8) * step(0.28, f.y) * step(f.y, 0.78);' +
-          ' float lit = step(0.6, drHash(cl + floor(vWP.x * 0.02) * 7.0)); totalEmissiveRadiance += side * win * step(2.5, vWP.y) * mix(vec3(0.03, 0.05, 0.08), vec3(1.0, 0.7, 0.36) * 0.85, lit); }');
+          ' float lit = step(0.64, drHash(cl + floor(vWP.x * 0.02) * 7.0)); totalEmissiveRadiance += side * win * step(2.5, vWP.y) * mix(vec3(0.03, 0.05, 0.08), vec3(1.0, 0.7, 0.36) * 0.72, lit); }');
     };
     mat.needsUpdate = true;
   }
@@ -734,7 +734,7 @@
     // الدرون والذيل والشرر وأضواء الأبراج — كلّها داخل مجموعة المدينة
     S.drone = makeDrone(); city.group.add(S.drone);
     const TN = 90, tp = new Float32Array(TN * 6), tc = new Float32Array(TN * 6), ti = []; // ذيل شريطيّ يتلاشى
-    for (let i = 0; i < TN; i++) { const f = Math.pow(1 - i / TN, 1.8) * 0.55 * Math.min(1, i / 4); for (const o of [0, 3]) { tc[i * 6 + o] = 1 * f; tc[i * 6 + o + 1] = 0.66 * f; tc[i * 6 + o + 2] = 0.28 * f; } if (i < TN - 1) ti.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2); }
+    for (let i = 0; i < TN; i++) { const f = Math.pow(1 - i / TN, 1.8) * 0.4 * Math.min(1, i / 4); for (const o of [0, 3]) { tc[i * 6 + o] = 1 * f; tc[i * 6 + o + 1] = 0.66 * f; tc[i * 6 + o + 2] = 0.28 * f; } if (i < TN - 1) ti.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2); }
     const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(tp, 3)); tg.setAttribute('color', new THREE.BufferAttribute(tc, 3)); tg.setIndex(ti);
     S.trail = new THREE.Mesh(tg, add(new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }))); S.trail.frustumCulled = false; city.group.add(S.trail);
     const PN = 160, pg = new THREE.BufferGeometry();
@@ -841,6 +841,10 @@
     if (rr > lim) { v.x -= (D.pos.x / rr) * 25 * h; v.z -= (D.pos.z / rr) * 25 * h; }
     if (D.pos.y > 650 && v.y > 0) v.y = 0;
     D.prev.copy(D.pos); D.pos.addScaledVector(v, h);
+    if ((S.tick = (S.tick || 0) + 1) % 2 === 0) { // الذيل يُسجَّل بمعدّل ثابت فلا يتأثّر بسرعة الإطارات
+      const ta = S.trail.geometry.attributes.position.array, rx = Math.cos(D.yaw) * 0.14, rz = -Math.sin(D.yaw) * 0.14; ta.copyWithin(6, 0, ta.length - 6);
+      ta[0] = D.pos.x - rx; ta[1] = D.pos.y; ta[2] = D.pos.z - rz; ta[3] = D.pos.x + rx; ta[4] = D.pos.y; ta[5] = D.pos.z + rz;
+    }
     if (D.pos.y < 0.35) { D.pos.y = 0.35; if (v.y < 0) v.y = 0; const f = Math.exp(-h * 3); v.x *= f; v.z *= f; }
     const b = hitAt(D.pos);
     if (b) {
@@ -939,8 +943,7 @@
     S.arrow.visible = !!nx && opts.cam !== 'fpv' && r.crashT <= 0 && r.state !== 'finished';
     if (S.arrow.visible) { S.arrow.position.set(D.pos.x, D.pos.y + 2.1, D.pos.z); S.arrow.lookAt(nx.x, nx.y, nx.z); }
     // الذيل
-    const ta = S.trail.geometry.attributes.position, rx = Math.cos(D.yaw) * 0.16, rz = -Math.sin(D.yaw) * 0.16; ta.array.copyWithin(6, 0, ta.array.length - 6);
-    ta.setXYZ(0, D.pos.x - rx, D.pos.y, D.pos.z - rz); ta.setXYZ(1, D.pos.x + rx, D.pos.y, D.pos.z + rz); ta.needsUpdate = true;
+    S.trail.geometry.attributes.position.needsUpdate = true;
     // الشرر
     if (S.fxLive > 0) {
       S.fxLive -= dt; const pa = S.parts.geometry.attributes, pos = pa.position.array, cl = pa.color.array, pv = S.pv;
@@ -1053,10 +1056,17 @@
       while (n-- > 0) { autopilot(); step(HSTEP); if (S.race.state === 'finished') break; if (until && until(S)) break; }
       if (S.race.state === 'finished') S.demo = false; else { S.msgT = 0; UI.msg.classList.remove('on'); }
       UI.demo.textContent = S.demo ? T('أوقف التلقائي', 'Stop auto') : T('لفّة تلقائيّة', 'Auto lap');
-      resetTrail(); snapCam(); render(0, performance.now()); hud(); publish();
+      snapCam(); render(0, performance.now()); hud(); publish();
       return window.__inspire_state;
     },
     restart() { if (S) { setDemo(false); restart(true); publish(); } return window.__inspire_state; },
+    fly(inp, sec) { // طيران يدويّ حتميّ: {fwd, strafe, lift, turn} لمدّة sec ثانية
+      if (!S) return null; if (S.demo) setDemo(false); if (S.race.state === 'ready') startRace();
+      const I = S.inp; I.fwd = I.strafe = I.lift = I.turn = 0; Object.assign(I, inp || {});
+      let n = Math.round((sec || 1) * 60); while (n-- > 0) step(HSTEP);
+      I.fwd = I.strafe = I.lift = I.turn = 0; snapCam(); render(0, performance.now()); hud(); publish();
+      return Object.assign({ x: +S.d.pos.x.toFixed(1), z: +S.d.pos.z.toFixed(1) }, window.__inspire_state);
+    },
     demo(on) { setDemo(on !== false); return window.__inspire_state; },
     cam(m) { setCam(m); return opts.cam; },
     rings(n) { UI.nI.value = n; UI.nI.dispatchEvent(new Event('input')); UI.nI.dispatchEvent(new Event('change')); return window.__inspire_state; },

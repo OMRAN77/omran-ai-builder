@@ -812,14 +812,14 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     if (!S || S.walking || S.fly) return;
     const cam = ctx.camera, h = H();
     let vx = cam.position.x - S.x, vz = cam.position.z - S.z; const vl = Math.hypot(vx, vz) || 1; vx /= vl; vz /= vl;
-    const r0 = Math.max(P.w, P.d) / 2 + 26; let spot = null;
+    const r0 = Math.max(P.w, P.d) / 2 + 42; let spot = null;
     for (let tries = 0; tries < 12 && !spot; tries++) {
       const a = (tries % 2 ? 1 : -1) * Math.ceil(tries / 2) * 0.45, c = Math.cos(a), s = Math.sin(a), dx = vx * c - vz * s, dz = vx * s + vz * c;
       for (let r = r0; r < r0 + 160; r += 4) if (freeAt(S.x + dx * r, S.z + dz * r)) { spot = [S.x + dx * r, S.z + dz * r]; break; }
     }
     if (!spot) spot = [S.x + vx * r0, S.z + vz * r0];
     const dx = S.x - spot[0], dz = S.z - spot[1], dist = Math.hypot(dx, dz);
-    S.wk = { x: spot[0], z: spot[1], yaw: Math.atan2(-dx, -dz), pitch: clamp(Math.atan2(h * 0.5, dist), 0.15, 1.0), t: 0 };
+    S.wk = { x: spot[0], z: spot[1], yaw: Math.atan2(-dx, -dz), pitch: clamp(Math.atan2(h * 0.3, dist), 0.1, 0.34), t: 0 };
     S.walking = true; S.camGoal = null; ctx.orbit.enabled = false; P.playing = false;
     document.body.classList.add('tw-walk'); updateViewOffset();
     cam.near = 0.25; cam.updateProjectionMatrix();
@@ -858,7 +858,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     const now = performance.now(); if (!force && now - (S.hudAt || 0) < 200) return; S.hudAt = now;
     const w = S.wk, h = H(), d = distToTower(w.x, w.z), sh = inShadow(w.x, w.z), tilt = Math.atan2(h - EYE, Math.max(d, 0.5)) / DEG;
     ctx.ui.hud('<div class="tw-cards">' + card(T('المسافة للبرج', 'To the tower'), fmt(d), T('م', 'm')) + card(T('أعلى منك', 'Taller than you'), '×' + fmt(h / EYE), '') +
-      card(T('لترى القمّة ارفع رأسك', 'Look up to see the top'), Math.round(tilt) + '°', '') + card(T('أنت الحين', 'You are'), sh ? T('في ظلّه', 'in its shadow') : T('في الشمس', 'in the sun'), '', sh ? 'acc' : 'good') + '</div>');
+      card(T('زاوية القمّة', 'Angle to top'), Math.round(tilt) + '°', '') + card(T('أنت الحين', 'You are'), sh ? T('في ظلّه', 'in its shadow') : T('في الشمس', 'in the sun'), '', sh ? 'acc' : 'good') + '</div>');
     if (S.lastPub) { S.lastPub.walkX = Math.round(w.x * 10) / 10; S.lastPub.walkZ = Math.round(w.z * 10) / 10; S.lastPub.distToTowerM = Math.round(d); S.lastPub.inShadow = sh; }
   }
 
@@ -965,7 +965,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     // عناصر عائمة: وسم البرج، عصا المشي، شريط الخروج
     el.tag = CK.el('<div class="tw-tag"></div>'); document.body.appendChild(el.tag);
     const jb = CK.el('<div class="tw-joy" aria-label="' + T('عصا المشي', 'Walk stick') + '"><div class="k"></div></div>'); document.body.appendChild(jb); el.knob = jb.firstElementChild;
-    const bar = CK.el('<div class="tw-walkbar"><span>' + T('العصا للمشي · اسحب الشاشة للالتفات', 'Stick to walk · drag to look') + '</span><button type="button">' + ICON.up + T('ارجع للأعلى', 'Back up') + '</button></div>');
+    const bar = CK.el('<div class="tw-walkbar"><span>' + (window.matchMedia && matchMedia('(pointer: fine)').matches ? T('العصا أو الأسهم للمشي · اسحب للالتفات', 'Stick or arrow keys to walk · drag to look') : T('العصا للمشي · اسحب الشاشة للالتفات', 'Stick to walk · drag to look')) + '</span><button type="button">' + ICON.up + T('ارجع للأعلى', 'Back up') + '</button></div>');
     document.body.appendChild(bar); bar.querySelector('button').addEventListener('click', () => exitWalk());
     let jp = null;
     const joyMove = (e) => { const r = jb.getBoundingClientRect(); let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); const L = Math.hypot(dx, dy), m = r.width * 0.36; if (L > m) { dx *= m / L; dy *= m / L; } joy.x = dx / m; joy.y = dy / m; el.knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; };
