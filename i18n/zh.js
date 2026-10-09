@@ -1177,3 +1177,4 @@ Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…",
 /* v-google-login-help */ Object.assign(I18N['zh'], {"authGoogleHint": "用 Google 注册的？请点击「{btn}」——Gmail 密码在这里无法使用。"});
 /* v-media-merge */ Object.assign(I18N['zh'], {"priceTabMedia":"图片和视频","mixPlanName":"图片和视频","mixPlansDesc":"适合想要图片和视频的用户——不含聊天。一个余额同时用于两者；用完后将使用你的积分继续。","mixOneBalance":"图片和视频共用一个余额","mixApprox1":"大约可生成50张图片或12个视频，或两者混合","mixApprox2":"大约可生成100张图片或24个视频，或两者混合","mixApprox3":"大约可生成500张图片或121个视频，或两者混合","mixNoChat":"不含聊天","mixLeft":"图片和视频余额剩余"});
 /* v-inspire */ Object.assign(I18N['zh'], {"inspTabInspire":"灵感","inspTabQuick":"快捷建议","inspCityTitle":"你的真实城市","inspCitySub":"基于开放地图、在你真实街区上构建的 3D 体验。选一个即可在预览中立即打开，然后在里面输入任意街区或城市。","inspLoading":"正在打开…","inspFail":"暂时无法打开，请重试"});
+/* v-chat-edit */ Object.assign(I18N['zh'], {"editApplied": "已将修改应用到设计（{n}）。", "editFailed": "未应用修改——部分旧文本与当前设计不匹配，设计保持不变。请重新提出。", "editTruncated": "回复在文件完整之前被截断，因此设计保持原样。"});

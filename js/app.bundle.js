@@ -5659,6 +5659,9 @@ Object.assign(I18N.en, {"priceTabMedia":"Images & video","mixPlanName":"Images &
 /* v-inspire: شاشة «اقتراحات» — تبويبا «الإلهام» و«اقتراحات سريعة» وقسم «مدينتك الحقيقيّة» (app-35-inspire.js) */
 Object.assign(I18N.ar, {"inspTabInspire":"الإلهام","inspTabQuick":"اقتراحات سريعة","inspCityTitle":"مدينتك الحقيقيّة","inspCitySub":"تجارب ثلاثيّة الأبعاد مبنيّة على حيّك الحقيقي من الخرائط المفتوحة. اختر تجربة وتنفتح فورًا في المعاينة، واكتب داخلها اسم أيّ حيّ أو مدينة.","inspLoading":"يجهّز…","inspFail":"ما قدرت أفتحها الحين — جرّب مرّة ثانية"});
 Object.assign(I18N.en, {"inspTabInspire":"Inspiration","inspTabQuick":"Quick ideas","inspCityTitle":"Your real city","inspCitySub":"3D experiences built on your real neighbourhood from open maps. Pick one and it opens instantly in the preview — then type any neighbourhood or city inside it.","inspLoading":"Opening…","inspFail":"Couldn't open it right now — try again"});
+/* v-chat-edit: سطر واحد تحت ردّ عدّل تصميمًا كبيرًا بالمقاطع — طُبّق / لم يُطبَّق / انقطع الملفّ (app-06-checkout.js) */
+Object.assign(I18N.ar, {"editApplied": "طُبّقت التعديلات على التصميم ({n}).", "editFailed": "ما طبّقت التعديل — جزء من النصّ القديم ما طابق التصميم الحاليّ، فبقي التصميم كما هو. اطلبه مرّة ثانية.", "editTruncated": "الردّ انقطع قبل اكتمال الملفّ، فما استبدلت التصميم — بقي كما هو."});
+Object.assign(I18N.en, {"editApplied": "Changes applied to the design ({n}).", "editFailed": "I didn't apply the change — part of the old text didn't match the current design, so the design is unchanged. Please ask again.", "editTruncated": "The reply was cut off before the file was complete, so I kept the design as it was."});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
@@ -5695,7 +5698,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=727'; /* v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=728'; /* v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -13119,7 +13122,10 @@ function sanitizeGeminiContents(list){
     if(last && last.role === c.role){ last.parts = last.parts.concat(c.parts); continue; }
     out.push({ role: c.role, parts: c.parts.slice() });
   }
-  while(out.length && out[0].role !== 'user') out.shift();   // must open on a user turn
+  // must open on a user turn — v-chat-edit: كود المشروع يصل دور model في المقدّمة وكان shift يرميه، فيكتب Gemini ملفًّا جديدًا
+  // بلا أن يرى التصميم. نسبقه بدور مستخدم كما يفعل الخادم؛ وأيّ مقدّمة model غير الكود تُرمى كما كانت.
+  if(out.length && out[0].role !== 'user' && /^```/.test(String((out[0].parts[0] && out[0].parts[0].text) || ''))) out.unshift({ role: 'user', parts: [{ text: 'هذا مشروعي الحالي — اعتمد عليه فيما يلي:' }] });
+  while(out.length && out[0].role !== 'user') out.shift();
   while(out.length && out[out.length - 1].role !== 'user') out.pop(); // and close on one
   return out;
 }
@@ -14415,6 +14421,7 @@ function testCodeInSandbox(code){
 async function selfHealCode(code, codeType, onStatus){
   // نفحص فقط أكواد HTML القابلة للعرض في المعاينة
   if(!code || (codeType && codeType !== 'html' && codeType !== '') || !/<\w+[^>]*>/.test(code)) return code;
+  if(code.length > OMRAN_EDIT_BIG) return code; // v-chat-edit: الإصلاح الذاتيّ يطلب الملفّ كاملًا — على تصميم كبير ينقطع فيمحوه
   let current = code;
   for(let attempt = 1; attempt <= 2; attempt++){
     let errors;
@@ -14496,9 +14503,16 @@ function stripLeakedThinking(text){
   }
   return out;
 }
-function extractReply(text){
+function extractReply(text, base){
+  /* v-chat-edit: «غيّر كذا / سوّ لي كذا» على تصميم كبير — الردّ رقع (@@PATCH/@@OLD/@@NEW/@@END) تُطبَّق على المشروع الحاليّ
+     (base) كلّها أو لا شيء، قبل extractReplyRaw كي لا تُحسب رقعة فيها <div أو <script «ملفًّا كاملًا». */
+  if(base){ const __e = omranEditReply(text, base); if(__e) return __e; }
   const __r = extractReplyRaw(text);
   if(__r && __r.code) __r.code = substUserImage(__r.code);
+  // حارس التصميم الكبير: «ملفّ كامل» انقطع قبل </html> لا يحلّ محلّ مشروع يعمل
+  if(base && __r && __r.code && __r.codeType === 'html' && omranEditTruncated(__r.code, base)){
+    return { code: '', explanation: String(__r.explanation || '') + '\n\n' + omranEditNote('editTruncated'), codeType: '', edits: { truncated: true } };
+  }
   return __r;
 }
 function extractReplyRaw(text){
@@ -14566,6 +14580,88 @@ function extractReplyRaw(text){
     }
   }
   return { code: '', explanation: text.trim(), codeType: '' };
+}
+
+/* ── v-chat-edit: تعديل التصميم الكبير بالمقاطع ──
+   المحادثة كانت تعيد الملفّ كلّه، وتجربة «الإلهام» ٦٥–٨٥ ك.ب أكبر من حدّ الردّ (١٦ ألف توكن): يصل مقطوعًا فيمحو المشروع، أو
+   يكتب الموديل دالّة منفصلة لا تُطبَّق. فوق OMRAN_EDIT_BIG حرف يُطلب من الموديل رقع بصيغة أداة «إصلاح الكود» (app-24)، وتُطبَّق
+   هنا على نسخة: كلّ «قديم» يوجد مرّة واحدة بالضبط (أو بسطور مطابقة بعد تجاهل المسافة البادئة)، وإلّا لا يتغيّر شيء. */
+const OMRAN_EDIT_BIG = 24000;
+function omranEditNote(key, n){
+  const v = (typeof t === 'function') ? t(key) : '';
+  const fb = { editApplied: 'طُبّقت التعديلات على التصميم ({n}).', editFailed: 'ما طبّقت التعديل — جزء من النصّ القديم ما طابق التصميم الحاليّ، فبقي التصميم كما هو. اطلبه مرّة ثانية.', editTruncated: 'الردّ انقطع قبل اكتمال الملفّ، فما استبدلت التصميم — بقي كما هو.' }; // = نصوص i18n العربيّة
+  return String((v && v !== key) ? v : fb[key] || '').split('{n}').join(String(n == null ? '' : n));
+}
+// تعليمة للموديل (لا يراها المستخدم) تُلحق بالدور الحاليّ حين يكون التصميم كبيرًا
+function omranEditAsk(len){
+  return '\n\n[تعديل تصميم كبير — إلزاميّ إن طلبتُ أيّ تغيير]: كود مشروعي الحاليّ في رسالة سابقة، طوله ' + len + ' حرفًا — أكبر من أن يُعاد كاملًا في ردّ واحد (سينقطع). '
+    + 'لا تُعِد الملفّ كاملًا ولا تكتب دالّة منفصلة لأنسخها بنفسي: أرسل التعديل رقعًا يطبّقها التطبيق على الملفّ مباشرةً، كلّها داخل كتلة ```patch واحدة بهذا الشكل حرفيًّا:\n'
+    + '```patch\n@@PATCH\n@@WHY سبب التعديل في سطر\n@@OLD\n(نصّ موجود في الملفّ الحاليّ منسوخ حرفًا بحرف)\n@@NEW\n(النصّ البديل)\n@@END\n```\n'
+    + 'القواعد: نصّ @@OLD يوجد في الملفّ مرّة واحدة بالضبط — وسّعه بسطر أو سطرين مجاورين حتّى يصير فريدًا، وانسخه كما هو بلا تغيير حرف. '
+    + 'للحذف اترك @@NEW فارغًا. للإضافة ضع في @@OLD سطرًا موجودًا وفي @@NEW السطر نفسه ومعه الإضافة. كلّ التغييرات اللازمة في رقع (حتّى ٢٠)، '
+    + 'وقبل الكتلة سطر أو سطران يقولان ما غيّرت. إن لم يطلب تغييرًا فأجب عاديًّا بلا رقع.';
+}
+function omranEditTruncated(code, base){
+  return String(base).length > OMRAN_EDIT_BIG && /<\/html>/i.test(base) && !/<\/html>/i.test(code);
+}
+function omranEditParse(text){
+  const txt = String(text || '').split('@@CS@@').join('://');
+  if(txt.indexOf('@@PATCH') === -1 || txt.indexOf('@@OLD') === -1) return null;
+  const blocks = [];
+  const parts = txt.split('@@PATCH');
+  for(let i = 1; i < parts.length; i++){
+    const b = parts[i];
+    const iOld = b.indexOf('@@OLD'), iNew = b.indexOf('@@NEW');
+    let iEnd = b.indexOf('@@END');
+    if(iOld < 0 || iNew < 0 || iNew < iOld) continue;
+    if(iEnd < 0) iEnd = b.length;
+    const why = (b.slice(0, iOld).match(/@@WHY[ \t]*([^\n]*)/) || [0, ''])[1].trim();
+    const old = b.slice(iOld + 5, iNew).replace(/^[ \t]*\r?\n/, '').replace(/\r?\n[ \t]*$/, '');
+    const neu = b.slice(iNew + 5, iEnd).replace(/^[ \t]*\r?\n/, '').replace(/\r?\n[ \t]*$/, '').replace(/\n?```\s*$/, '');
+    if(old) blocks.push({ why, old, neu });
+  }
+  // الشرح = ما خارج الرقع وسياجها
+  const prose = txt.replace(/```[a-z]*\s*\n?\s*@@PATCH[\s\S]*?(?:```|$)/gi, '').replace(/@@PATCH[\s\S]*?(?:@@END|$)/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  return { blocks, prose };
+}
+function omranEditApply(base, blocks){
+  let code = String(base || '');
+  const failed = [];
+  const count = (hay, needle) => { let n = 0, i = 0; while(true){ const k = hay.indexOf(needle, i); if(k === -1 || n > 2) break; n++; i = k + needle.length; } return n; };
+  for(let bi = 0; bi < blocks.length; bi++){
+    const b = blocks[bi];
+    if(count(code, b.old) === 1){
+      const k = code.indexOf(b.old);
+      // حذف سطور كاملة يحذف سطرها أيضًا (لا يترك سطرًا فارغًا)
+      const eol = b.neu === '' && (k === 0 || code[k - 1] === '\n') && code[k + b.old.length] === '\n' ? 1 : 0;
+      code = code.slice(0, k) + b.neu + code.slice(k + b.old.length + eol);
+      continue;
+    }
+    // تسامح المسافات: نفس السطور بعد إزالة المسافة البادئة والزائدة — نافذة واحدة فقط تُقبل، وتُعاد بمسافة الأصل
+    const lines = code.split('\n'), want = b.old.split('\n').map((l) => l.trim());
+    while(want.length && !want[0]) want.shift();
+    while(want.length && !want[want.length - 1]) want.pop();
+    let at = -1, hits = 0;
+    if(want.length) for(let i = 0; i + want.length <= lines.length && hits < 2; i++){
+      let ok = true;
+      for(let j = 0; j < want.length; j++){ if(lines[i + j].trim() !== want[j]){ ok = false; break; } }
+      if(ok){ hits++; at = i; }
+    }
+    if(hits !== 1){ failed.push(bi); continue; }
+    const pad = (lines[at].match(/^[ \t]*/) || [''])[0];
+    const nl = b.neu.split('\n'), np = (nl.find((l) => l.trim()) || '').match(/^[ \t]*/)[0];
+    const re = nl.map((l) => (l.trim() ? pad + (l.indexOf(np) === 0 ? l.slice(np.length) : l.replace(/^[ \t]+/, '')) : l));
+    lines.splice(at, want.length, ...(b.neu === '' ? [] : re));
+    code = lines.join('\n');
+  }
+  return { ok: !failed.length && blocks.length > 0, code, applied: blocks.length - failed.length, failed };
+}
+function omranEditReply(text, base){
+  const p = omranEditParse(text);
+  if(!p || !p.blocks.length) return null;
+  const r = omranEditApply(base, p.blocks);
+  if(!r.ok) return { code: '', explanation: (p.prose ? p.prose + '\n\n' : '') + omranEditNote('editFailed'), codeType: '', edits: { failed: r.failed.length, total: p.blocks.length } };
+  return { code: r.code, explanation: (p.prose ? p.prose + '\n\n' : '') + omranEditNote('editApplied', r.applied), codeType: 'html', edits: { applied: r.applied } };
 }
 
 function throwProviderError(status, errText){
@@ -22243,20 +22339,20 @@ async function __agentApplyResult(cur, full, agLog){
      بجوابه). الكود يُلتقط من البثّ كلّه كما كان. */
   const __log = (agLog && Array.isArray(agLog.log) && agLog.log.some(function(p){ return p.t !== 'text'; })) ? agLog : null;
   const chatSrc = __log ? String(__log.tail || '') : full;
-  const parsed = extractReply(full);
+  const parsed = extractReply(full, cur.code); // v-chat-edit
   let chatText;
   let codeProducedThisTurn = false;
   if(parsed && parsed.code){
     cur.code = parsed.code;
     cur.codeType = parsed.codeType || 'html';
     codeProducedThisTurn = true;
-    chatText = stripCodeFromChat(chatSrc).trim();
+    chatText = (parsed.edits ? String(parsed.explanation || '') : stripCodeFromChat(chatSrc)).trim();
   } else {
     // 🛟 كود ناقص/غير مغلق (```html بلا إغلاق أو <!DOCTYPE بلا نهاية) → نلتقطه للوحة الكود بدل ما يطيح في الشات
     const fenceIdx = full.search(/```(?:html|HTML)?\s*\n/);
     const docIdx = full.search(/<!DOCTYPE|<html/i);
     const idx = fenceIdx >= 0 ? fenceIdx : docIdx;
-    if(idx >= 0 && (full.length - idx) > 300){
+    if(!(parsed && parsed.edits) && idx >= 0 && (full.length - idx) > 300){ // v-chat-edit: رقعة رُفضت أو ملفّ كبير انقطع ≠ كود يُلتقط
       let codePart = full.slice(idx).replace(/^```(?:html|HTML)?\s*\n/, '').replace(/```\s*$/, '').trim();
       cur.code = codePart;
       cur.codeType = 'html';
@@ -22264,7 +22360,7 @@ async function __agentApplyResult(cur, full, agLog){
       chatText = __log ? stripCodeFromChat(chatSrc).trim() : full.slice(0, idx).replace(/```\s*$/, '').trim();
       if(chatText) chatText += '\n\n' + (lang === 'ar' ? '⚠️ يبدو أن الكود انقطع قبل اكتماله — اكتب "كمل الكود" وسأكمله.' : '⚠️ The code seems truncated — type "continue" and I will finish it.');
     } else {
-      chatText = stripCodeFromChat(chatSrc).trim();
+      chatText = (parsed && parsed.edits) ? String(parsed.explanation || '').trim() : stripCodeFromChat(chatSrc).trim();
       // ⚠️ v490: مسار الوكيل كان صامتًا — كود مُلغى/محذوف ⇒ رسالة صريحة بدل معاينة فارغة.
       /* v-agent-nocode (لقطة المالك ٣ أكتوبر: الوكيل يشرح إصلاحًا ويسلّمه لـClaude Code فيُلصَق «لم يصل كود من المزوّد»): أيّ
          ``` أو وسم إغلاق كان يكفي — ومقتطف ```js في شرح إصلاح ليس تطبيقًا ضاع. التحذير لصفحة تطبيق بدأت ولم تصل وحدها. */
@@ -25083,6 +25179,7 @@ DESIGN RULES (non-negotiable):
           delta = delta.trim();
           var out = !delta ? base : (!base ? delta : (__textAtPush ? (base + '\n\n' + delta) : (delta + '\n\n' + base)));
           if(out.length > 200000) out = out.slice(0, 200000) + '\n… (قُصّ النصّ لطوله)';
+          if(cur && cur.code && cur.codeType !== 'python' && cur.code.length > OMRAN_EDIT_BIG) out += omranEditAsk(cur.code.length); // v-chat-edit
           return out;
         }catch(e){ return String(apiText || ''); }
       })();
@@ -25414,11 +25511,11 @@ DESIGN RULES (non-negotiable):
             msg.attachments = (msg.attachments || []).concat([{ isVideo: true, url: __chatVideo.url, name: __chatVideo.name || 'chat-video.mp4', mime: 'video/mp4' }]);
             window.__chatVideoResult = null;
           }
-          let { code, explanation } = extractReply(reply);
+          let { code, explanation, edits: __edits } = extractReply(reply, cur.code); // v-chat-edit
           // 🔁 v326: مهمة بناء/تصميم رجعت نصًا بلا أي كود (مثل «تمام، هذا
           // لوجو دعائي كامل» والمعاينة فاضية) → إعادة الطلب مرة وحدة بأمر
           // صارم يلزم المزود يرجع الملف الكامل.
-          if(!code && isBuildTask && !__gateNoBuild){
+          if(!code && !__edits && isBuildTask && !__gateNoBuild){ // v-chat-edit: رقعة لم تُطبَّق ليست «ردًّا بلا كود» — لا يُطلب الملفّ كاملًا
             try{
               msg.content = '';
               const __strictMsgs = apiMessages.concat([{ role: 'system', content: 'FINAL STRICT ORDER: your previous reply contained NO code block — that counts as a FAILED answer. Reply NOW with the COMPLETE finished design/app as ONE single ```html code block (the full file from <!DOCTYPE html> to </html>, nothing omitted). Claiming it is done without code is FORBIDDEN. Text-only replies are FORBIDDEN.' }]);
@@ -25453,7 +25550,7 @@ DESIGN RULES (non-negotiable):
               try{
                 msg.content = '';
                 const retryReply = await callWithWatchdog(p.key, apiMessages, onDelta, 60000, 150000);
-                const { code, explanation } = extractReply(retryReply);
+                const { code, explanation } = extractReply(retryReply, cur.code);
                 msg.content = (__applyCode ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : '');
                 msg.code = code || null;
                 if(code && __applyCode && !autoApplied){
@@ -25480,7 +25577,7 @@ DESIGN RULES (non-negotiable):
               try{
                 msg.content = '';
                 const altReply = await callWithWatchdog(altKey, apiMessages, onDelta, 60000, 120000);
-                const { code, explanation } = extractReply(altReply);
+                const { code, explanation } = extractReply(altReply, cur.code);
                 msg.content = (__applyCode ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : '');
                 msg.code = code || null;
                 msg.providerLabel = '🔄 ' + functionalLabel(altKey);
@@ -26003,7 +26100,7 @@ DESIGN RULES (non-negotiable):
         window.__claudeThinking = false;
       }
       try{ window.__diagTurn.provider = String(providerKey||''); window.__diagTurn.replyLen = String(reply||'').length; if(!window.__diagTurn.path) window.__diagTurn.path = __ctUsed ? 'tools' : 'fallback'; }catch(e){ __swallow(e,'ui:diag-ok'); }
-      let { code, explanation, codeType } = extractReply(reply);
+      let { code, explanation, codeType } = extractReply(reply, cur.code); // v-chat-edit: الرقع تُطبَّق على المشروع الحاليّ
       // v-reveal-live: رد نصّي بلا كود → ننتظر حركة الكتابة تلحق آخر حرف
       // قبل الرسم النهائي. مع الكود لا ننتظر إطلاقًا حتى لا تتأخر المعاينة.
       if(code){
