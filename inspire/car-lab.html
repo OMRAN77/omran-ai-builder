@@ -47,7 +47,12 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const $ = (id) => document.getElementById(id);
 const say = (t) => { $('st').textContent = t || ''; };
-const token = (() => { try { return localStorage.getItem('aiapp_auth_token') || ''; } catch (e) { return ''; } })();
+// رمز الجلسة حيث يحفظه التطبيق: «تذكّرني» ← localStorage، وإلّا sessionStorage (للتبويب نفسه)، ونسخة في ملفّ تعريف
+const readToken = () => {
+  for (const st of ['localStorage', 'sessionStorage']) { try { const v = window[st].getItem('aiapp_auth_token'); if (v) return v; } catch (e) { /* guard-ok — تخزين محجوب */ } }
+  const m = document.cookie.match(/(?:^|;\s*)aiapp_auth_token=([^;]+)/); return m ? decodeURIComponent(m[1]) : '';
+};
+const token = readToken();
 const API = '/api/system?action=car3d';
 const PRESETS = [
   ['سيدان عائليّة', 'modern mid-size family sedan, pearl white, alloy wheels'],
