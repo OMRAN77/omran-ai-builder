@@ -295,7 +295,7 @@ test('١٠. النصوص الجديدة بالـ١٤ لغة، ووسوم الك�
   // لا اسم مزوّد أو نموذج في نصّ يراه المستخدم
   const lines = [i18n03, ...langs.map((lg) => R('i18n/' + lg + '.js'))].join('\n').split('\n').filter((l) => /fxDesignNo/.test(l));
   for (const l of lines) assert.doesNotMatch(l, /gemini|gpt|openai|claude|جيمناي|كلود/i);
-  assert.match(R('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=726'/);
+  assert.match(R('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=727'/);
   assert.match(R('index.html'), /\/js\/design-gen\.js\?v=610/); // v-fx-simple (مراسي data-ext/data-col)
   // الحزمة مبنيّة من الأجزاء (العدّاد ورقم التصميم فيها)
   assert.ok(R('js/app.bundle.js').includes("const FX_VARIANT_KEY = 'aiapp_fashion_variant';"));

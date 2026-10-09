@@ -1,0 +1,725 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>مطاردة في شوارعك</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<!--CITYKIT-->
+</head><body><script>
+/* «مطاردة في شوارعك» — سباق ستّ نقاط على شوارع الحيّ الحقيقيّة من OpenStreetMap.
+   السيّارة تصطدم بالمباني الحقيقيّة (city.idx.at)، والنقاط على طرق حقيقيّة بترتيب حلقيّ، وأفضل زمن لكلّ مكان في localStorage. */
+(function () {
+  'use strict';
+  const CK = window.CityKit, T = CK.T;
+  const R = 600, NCP = 6, STEP = 15, HZ = 1 / 60;
+  const DRIVE = { motorway: 1, trunk: 1, primary: 1, secondary: 1, tertiary: 1, residential: 1, unclassified: 1, living_street: 1, service: 1 };
+  // نقاط هيكل السيّارة للاصطدام: [أماميّ، جانبيّ] بالأمتار (طولها ٤٫٤ وعرضها ١٫٨)
+  const CORNERS = [[2.15, 0.85], [2.15, -0.85], [-2.1, 0.85], [-2.1, -0.85], [2.3, 0], [0, 0.92], [0, -0.92]];
+  const SUN = (() => { const v = [-0.62, 0.46, 0.42], l = Math.hypot(v[0], v[1], v[2]); return v.map((a) => a / l); })();
+  const KEYS = { up: 0, down: 0, left: 0, right: 0, hand: 0 }, TOUCH = { gas: 0, brake: 0, left: 0, right: 0 };
+  const D = {};
+  let X = null, G = null, camMode = 0, camPos = null, camLook = null, tmpPos = null, tmpLook = null, TEX = null;
+
+  const angWrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+  const fmt = (t) => { const tt = Math.round(Math.max(0, t) * 10), m = Math.floor(tt / 600), s = (tt % 600) / 10; return String(m).padStart(2, '0') + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const isPhone = () => window.matchMedia('(max-width:640px)').matches;
+
+  // ── التخزين: أفضل زمن لكلّ مكان ──
+  function bestKey() { const c = X.city; return 'ck-chase-best:' + (+c.lat).toFixed(3) + ',' + (+c.lon).toFixed(3) + ':' + G.cps.length; }
+  function readBest() { try { const v = parseFloat(localStorage.getItem(bestKey())); return v > 0 ? v : 0; } catch (e) { return 0; } }
+  function writeBest(v) { try { localStorage.setItem(bestKey(), String(v)); } catch (e) { /* بلا تخزين: نكمل بلا حفظ */ } }
+
+  // ── الأنسجة المرسومة محلّيًّا ──
+  function canvasTex(w, h, draw) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+    const t = new X.THREE.CanvasTexture(c); t.colorSpace = X.THREE.SRGBColorSpace; return t;
+  }
+  function radial(inner, outer) {
+    return canvasTex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, inner); gr.addColorStop(1, outer); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); });
+  }
+  function numTex(n, gold) {
+    return canvasTex(128, 128, (g) => {
+      g.beginPath(); g.arc(64, 64, 54, 0, Math.PI * 2); g.fillStyle = 'rgba(6,16,22,.88)'; g.fill();
+      g.lineWidth = 9; g.strokeStyle = gold ? '#ffc93c' : '#3ff0ff'; g.stroke();
+      g.fillStyle = '#fff'; g.font = '800 64px Tahoma,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 68);
+    });
+  }
+  function beamMat(THREE, col) {
+    return new THREE.ShaderMaterial({
+      uniforms: { c: { value: new THREE.Color(col) }, o: { value: 0.5 }, t: { value: 0 } },
+      vertexShader: 'varying float vy; void main(){ vy = uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 c; uniform float o; uniform float t; varying float vy; void main(){ float a = smoothstep(0.0, 0.05, vy) * pow(1.0 - vy, 1.7) * o * (0.8 + 0.2 * sin(t * 3.0 - vy * 30.0)); gl_FragColor = vec4(c, a); }',
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide,
+    });
+  }
+
+  // ── شبكة الطرق: أين الإسفلت (للسرعة خارج الطريق) ──
+  function buildRaster(city) {
+    const cell = 2, off = R + 4, N = Math.ceil((2 * off) / cell), grid = new Uint8Array(N * N);
+    for (const r of city.roads) {
+      const hw = r.w / 2 + 0.8, rc = Math.ceil(hw / cell), lim2 = (hw / cell + 0.5) * (hw / cell + 0.5);
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1], L = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(1, Math.ceil(L / 1.5));
+        for (let k = 0; k <= n; k++) {
+          const x = p[0] + (q[0] - p[0]) * k / n, z = p[1] + (q[1] - p[1]) * k / n;
+          const ci = Math.floor((x + off) / cell), cj = Math.floor((z + off) / cell);
+          if (ci < -rc || cj < -rc || ci > N + rc || cj > N + rc) continue;
+          for (let dj = -rc; dj <= rc; dj++) {
+            const jj = cj + dj; if (jj < 0 || jj >= N) continue;
+            for (let di = -rc; di <= rc; di++) { const ii = ci + di; if (ii < 0 || ii >= N || di * di + dj * dj > lim2) continue; grid[jj * N + ii] = 1; }
+          }
+        }
+      }
+    }
+    return { on: (x, z) => { const i = Math.floor((x + off) / cell), j = Math.floor((z + off) / cell); return i >= 0 && j >= 0 && i < N && j < N && grid[j * N + i] === 1; } };
+  }
+
+  // ── الاصطدام بالمباني الحقيقيّة ──
+  function blocked(x, z, h) {
+    if (x * x + z * z > G.lim2) return true;
+    const fx = Math.sin(h), fz = Math.cos(h), lx = fz, lz = -fx, at = G.idx.at;
+    for (let i = 0; i < CORNERS.length; i++) { const a = CORNERS[i][0], b = CORNERS[i][1]; if (at(x + fx * a + lx * b, z + fz * a + lz * b)) return true; }
+    return false;
+  }
+
+  // ── عيّنات على الطرق الصالحة للقيادة كلّ ١٥ م، مع خلوّ حولها ──
+  function sampleRoads(city) {
+    const at = city.idx.at, lim = R * 0.86, out2 = (R * 0.94) * (R * 0.94), all = [];
+    const free = (x, z) => !at(x, z) && !at(x + 3.2, z) && !at(x - 3.2, z) && !at(x, z + 3.2) && !at(x, z - 3.2);
+    for (const r of city.roads) {
+      if (!DRIVE[r.kind]) continue;
+      const list = []; let carry = 0;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1], dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz);
+        if (L < 0.01) continue;
+        const a = Math.atan2(dx, dz); let s = carry;
+        for (; s <= L; s += STEP) {
+          const x = p[0] + dx * s / L, z = p[1] + dz * s / L;
+          list.push({ x, z, a, w: r.w, name: r.name || '', ok: x * x + z * z < out2 && free(x, z), i: list.length, list });
+        }
+        carry = s - L;
+      }
+      for (const s of list) if (s.ok && Math.hypot(s.x, s.z) < lim) all.push(s);
+    }
+    for (const s of all) { // نقاط الاقتراب: عيّنات سابقة على الطريق نفسه حتّى ٦٠ م
+      const back = [], fwd = [];
+      for (let k = 1; k <= 4; k++) { const b = s.list[s.i - k]; if (!b || !b.ok) break; back.push(b); }
+      for (let k = 1; k <= 4; k++) { const b = s.list[s.i + k]; if (!b || !b.ok) break; fwd.push(b); }
+      const use = back.length >= fwd.length ? back : fwd;
+      s.app = use.map((b) => ({ x: b.x, z: b.z, h: Math.atan2(s.x - b.x, s.z - b.z) }));
+    }
+    return all;
+  }
+
+  // ── المسار: بداية قرب المركز على طريق عريض + ستّ نقاط حول حلقة نصف قطرها ٤٢٪ من المنطقة ──
+  function pickCourse(S) {
+    let st = null, bs = Infinity;
+    for (const s of S) {
+      const d = Math.hypot(s.x, s.z); if (d > R * 0.45) continue;
+      const sc = d - Math.min(s.w, 14) * 5;
+      if (sc < bs && (!blocked(s.x, s.z, s.a) || !blocked(s.x, s.z, s.a + Math.PI))) { bs = sc; st = s; }
+    }
+    if (!st) st = S.reduce((m, s) => (Math.hypot(s.x, s.z) < Math.hypot(m.x, m.z) ? s : m), S[0]);
+    const rr = R * 0.42, chosen = [];
+    for (let k = 0; k < NCP; k++) {
+      const ang = st.a + k * Math.PI * 2 / NCP, px = Math.sin(ang) * rr, pz = Math.cos(ang) * rr;
+      let pick = null;
+      for (const sep of [110, 70, 35]) {
+        let ps = Infinity;
+        for (const s of S) {
+          if (Math.hypot(s.x - st.x, s.z - st.z) < 50) continue;
+          let bad = false; for (const c of chosen) if (Math.hypot(c.x - s.x, c.z - s.z) < sep) { bad = true; break; }
+          if (bad) continue;
+          const sc = Math.hypot(s.x - px, s.z - pz) + (14 - Math.min(14, s.w)) * 5 + (s.app.length ? 0 : 60);
+          if (sc < ps) { ps = sc; pick = s; }
+        }
+        if (pick) break;
+      }
+      if (pick) chosen.push(pick);
+    }
+    const n = chosen.length; let cx = 0, cz = 0;
+    for (const c of chosen) { cx += c.x; cz += c.z; }
+    cx /= n || 1; cz /= n || 1;
+    chosen.sort((a, b) => Math.atan2(a.x - cx, a.z - cz) - Math.atan2(b.x - cx, b.z - cz));
+    let seq = chosen, len = Infinity;
+    for (let i0 = 0; i0 < n; i0++) for (const dir of [1, -1]) { // أقصر ترتيب حلقيّ يبدأ من أقرب نقطة
+      const q = []; for (let k = 0; k < n; k++) q.push(chosen[((i0 + dir * k) % n + n) % n]);
+      let L = Math.hypot(q[0].x - st.x, q[0].z - st.z); for (let k = 1; k < n; k++) L += Math.hypot(q[k].x - q[k - 1].x, q[k].z - q[k - 1].z);
+      if (L < len) { len = L; seq = q; }
+    }
+    let h = st.a; const c1 = seq[0];
+    if (c1 && Math.sin(h) * (c1.x - st.x) + Math.cos(h) * (c1.z - st.z) < 0) h += Math.PI;
+    if (blocked(st.x, st.z, h)) h += Math.PI;
+    const cps = seq.map((s) => { const gr = Math.max(5.5, Math.min(10, s.w / 2 + 2.5)); return { x: s.x, z: s.z, a: s.a, w: s.w, name: s.name, app: s.app, gr, r: gr + 3.5, burst: 0, obj: null }; });
+    return { start: { x: st.x, z: st.z, h: angWrap(h) }, cps, len: n ? len : 0 };
+  }
+
+  // ── المجسّمات ──
+  function makeCar(THREE) {
+    const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+    const paint = new THREE.MeshPhongMaterial({ color: 0xff4a1c, shininess: 90, specular: 0x777777 });
+    const glass = new THREE.MeshPhongMaterial({ color: 0x1a2a38, shininess: 150, specular: 0xd8e6f2 });
+    const black = new THREE.MeshLambertMaterial({ color: 0x15171a });
+    const rimM = new THREE.MeshPhongMaterial({ color: 0xd5dde2, shininess: 70 });
+    const prof = (pts, width, bevel, mat) => {
+      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map((p) => new THREE.Vector2(p[0], p[1]))), { depth: width, bevelEnabled: true, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: 4 });
+      geo.rotateY(-Math.PI / 2); geo.translate(width / 2, 0, 0);
+      const m = new THREE.Mesh(geo, mat); m.castShadow = true; return m;
+    };
+    body.add(prof([[-2.2, 0.3], [2.08, 0.3], [2.24, 0.44], [2.22, 0.62], [1.9, 0.74], [0.85, 0.86], [-1.5, 0.92], [-2.12, 0.9], [-2.24, 0.62], [-2.22, 0.4]], 1.74, 0.06, paint));
+    body.add(prof([[-1.42, 0.9], [0.78, 0.86], [0.12, 1.33], [-0.95, 1.37], [-1.58, 0.98]], 1.48, 0.05, glass));
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.02, 1.0), new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 60 }));
+    stripe.position.set(0, 1.42, -0.42); stripe.rotation.x = -0.035; body.add(stripe);
+    const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.76, 0.06, 0.36), black); spoiler.position.set(0, 1.12, -2.0); spoiler.castShadow = true; body.add(spoiler);
+    for (const sx of [-0.62, 0.62]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.2, 0.14), black); st.position.set(sx, 1.0, -1.98); body.add(st); }
+    const head = new THREE.MeshBasicMaterial({ color: 0xfff4d6 });
+    const diff = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 0.1), black); diff.position.set(0, 0.4, -2.29); body.add(diff);
+    const tailM = new THREE.MeshBasicMaterial({ color: 0x8a1010 });
+    for (const sx of [-0.58, 0.58]) {
+      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.11, 0.06), head); hl.position.set(sx, 0.62, 2.29); body.add(hl);
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.1, 0.06), tailM); tl.position.set(sx, 0.74, -2.31); body.add(tl);
+    }
+    const wheels = [], fronts = [];
+    const tyre = new THREE.CylinderGeometry(0.36, 0.36, 0.3, 20); tyre.rotateZ(Math.PI / 2);
+    const rim = new THREE.CylinderGeometry(0.21, 0.21, 0.32, 10); rim.rotateZ(Math.PI / 2);
+    for (const [sx, sz] of [[0.86, 1.36], [-0.86, 1.36], [0.86, -1.36], [-0.86, -1.36]]) {
+      const pivot = new THREE.Group(); pivot.position.set(sx, 0.36, sz); g.add(pivot);
+      const wh = new THREE.Group(); pivot.add(wh);
+      const t = new THREE.Mesh(tyre, black); t.castShadow = true; wh.add(t); wh.add(new THREE.Mesh(rim, rimM));
+      wheels.push(wh); if (sz > 0) fronts.push(pivot);
+    }
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 6), new THREE.MeshBasicMaterial({ map: TEX.glow, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 }));
+    glow.rotation.x = -Math.PI / 2; glow.position.y = 0.1; g.add(glow);
+    const blob = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 5.2), new THREE.MeshBasicMaterial({ map: TEX.blob, transparent: true, depthWrite: false, opacity: 0.6 }));
+    blob.rotation.x = -Math.PI / 2; blob.position.y = 0.09; g.add(blob);
+    const beam = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 11), new THREE.MeshBasicMaterial({ map: TEX.beam, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.35 }));
+    beam.rotation.x = -Math.PI / 2; beam.position.set(0, 0.11, 7.6); g.add(beam);
+    return { g, body, wheels, fronts, tailM, glow };
+  }
+  function makeArrow(THREE) {
+    const s = new THREE.Shape();
+    s.moveTo(0, 1.35); s.lineTo(1.05, 0.15); s.lineTo(0.42, 0.15); s.lineTo(0.42, -0.95); s.lineTo(-0.42, -0.95); s.lineTo(-0.42, 0.15); s.lineTo(-1.05, 0.15); s.closePath();
+    const geo = new THREE.ExtrudeGeometry(s, { depth: 0.22, bevelEnabled: false }); geo.rotateX(Math.PI / 2); geo.translate(0, 0.11, 0);
+    const grp = new THREE.Group(); grp.rotation.order = 'YXZ';
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x3ff0ff, transparent: true })); grp.add(m); grp.userData.mats = [m.material];
+    const halo = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x3ff0ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.scale.set(1.35, 1.6, 1.35); grp.add(halo); grp.userData.mats.push(halo.material);
+    return grp;
+  }
+  function makeGate(THREE, cp, i, last) {
+    const g = new THREE.Group(); g.position.set(cp.x, 0, cp.z);
+    const col = last ? 0xffc93c : 0x3ff0ff;
+    const ringM = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(cp.gr, 0.34, 10, 64), ringM); ring.position.y = cp.gr * 0.82; ring.rotation.y = cp.a; g.add(ring);
+    const haloM = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false });
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(cp.gr, 1.1, 8, 64), haloM); halo.position.copy(ring.position); halo.rotation.y = cp.a; g.add(halo);
+    const beamM = beamMat(THREE, col);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(cp.gr * 0.42, cp.gr * 0.55, 170, 32, 1, true), beamM); beam.position.y = 85; g.add(beam);
+    const discM = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const disc = new THREE.Mesh(new THREE.RingGeometry(cp.gr * 0.55, cp.gr * 1.05, 48), discM); disc.rotation.x = -Math.PI / 2; disc.position.y = 0.13; g.add(disc);
+    const spM = new THREE.SpriteMaterial({ map: numTex(i + 1, last), depthTest: false, fog: false, transparent: true });
+    const sp = new THREE.Sprite(spM); sp.scale.set(5.5, 5.5, 1); sp.position.y = cp.gr * 1.82 + 3.4; sp.renderOrder = 10; g.add(sp);
+    return { g, ring, ringM, halo, haloM, beamM, disc, discM, sp, spM };
+  }
+  function dashMesh(THREE, city) { // خطّ منتصف متقطّع على الطرق العريضة — هندسة واحدة
+    const pos = [], y = 0.085, hw = 0.13;
+    for (const r of city.roads) {
+      if (!DRIVE[r.kind] || r.w < 8) continue;
+      let carry = 2;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1], dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz);
+        if (L < 0.01) continue;
+        const ux = dx / L, uz = dz / L, nx = -uz * hw, nz = ux * hw; let s = carry;
+        for (; s + 3 <= L; s += 10) {
+          const ax = p[0] + ux * s, az = p[1] + uz * s, bx = ax + ux * 3, bz = az + uz * 3;
+          pos.push(ax + nx, y, az + nz, bx + nx, y, bz + nz, bx - nx, y, bz - nz, ax + nx, y, az + nz, bx - nx, y, bz - nz, ax - nx, y, az - nz);
+        }
+        carry = Math.max(0, s - L);
+      }
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0xf6f1e4, side: THREE.DoubleSide })); m.receiveShadow = true;
+    return m;
+  }
+  function lampMesh(THREE, city) { // أعمدة إنارة على جانبي الطرق الرئيسيّة — نسختان متكرّرتان (InstancedMesh)
+    const pts = [], lim2 = (R * 0.9) * (R * 0.9);
+    for (const r of city.roads) {
+      if (!DRIVE[r.kind] || r.w < 10) continue;
+      const off = r.w / 2 + 1.1; let carry = 8;
+      for (let i = 0; i < r.pts.length - 1 && pts.length < 1400; i++) {
+        const p = r.pts[i], q = r.pts[i + 1], dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz);
+        if (L < 0.01) continue;
+        const ux = dx / L, uz = dz / L; let s = carry;
+        for (; s <= L; s += 32) for (const sd of [1, -1]) {
+          const x = p[0] + ux * s - uz * off * sd, z = p[1] + uz * s + ux * off * sd;
+          if (x * x + z * z > lim2 || city.idx.at(x, z)) continue;
+          pts.push([x, z, Math.atan2(uz * sd, -ux * sd)]);
+        }
+        carry = s - L;
+      }
+    }
+    const pole = new THREE.CylinderGeometry(0.07, 0.11, 7.2, 6); pole.translate(0, 3.6, 0);
+    const arm = new THREE.BoxGeometry(0.07, 0.07, 1.7); arm.translate(0, 7.1, 0.8);
+    const head = new THREE.BoxGeometry(0.34, 0.12, 0.6); head.translate(0, 7.02, 1.55);
+    const pm = new THREE.InstancedMesh(pole, new THREE.MeshLambertMaterial({ color: 0x39434a }), pts.length);
+    const am = new THREE.InstancedMesh(arm, pm.material, pts.length);
+    const hm = new THREE.InstancedMesh(head, new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), pts.length);
+    const o = new THREE.Object3D();
+    pts.forEach((p, i) => { o.position.set(p[0], 0, p[1]); o.rotation.y = p[2]; o.updateMatrix(); pm.setMatrixAt(i, o.matrix); am.setMatrixAt(i, o.matrix); hm.setMatrixAt(i, o.matrix); });
+    const g = new THREE.Group(); g.add(pm, am, hm); g.userData.count = pts.length;
+    return g;
+  }
+  function buildMap(city) { // خريطة مصغّرة مرسومة مرّة واحدة لكلّ مدينة
+    const S = 1024, E = R, sc = S / (2 * E);
+    const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+    g.fillStyle = '#1b2a31'; g.fillRect(0, 0, S, S);
+    const path = (poly, close) => { g.beginPath(); poly.forEach((p, i) => { const x = (p[0] + E) * sc, y = (p[1] + E) * sc; if (i) g.lineTo(x, y); else g.moveTo(x, y); }); if (close) g.closePath(); };
+    g.fillStyle = '#1e5878'; for (const p of city.water) { path(p, true); g.fill(); }
+    g.fillStyle = '#2a5a3f'; for (const p of city.parks) { path(p, true); g.fill(); }
+    g.fillStyle = '#3a4d56'; for (const b of city.buildings) { path(b.poly, true); g.fill(); }
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    for (const r of city.roads) { g.strokeStyle = DRIVE[r.kind] ? '#8fa6ae' : '#566a72'; g.lineWidth = Math.max(1.4, r.w * sc); path(r.pts, false); g.stroke(); }
+    return { c, sc, E };
+  }
+
+  // ── الواجهة الثابتة (تُبنى مرّة واحدة) ──
+  const CSS = `
+  .cz-p .ck-row button{flex:1 1 auto}
+  #czStart{background:linear-gradient(135deg,#ff6a2b,#ff3d6e);font-weight:700}
+  #czStart:disabled{opacity:.45}
+  .cz-line{font-size:13px;color:#a9c1c7;margin-top:2px}.cz-line b{color:#fff;font-variant-numeric:tabular-nums}
+  .cz-keys{font-size:12px;color:#7fa0a8;margin-top:4px}
+  .cz-mob{display:none}
+  .ck-hud{pointer-events:none}
+  .cz-hud{display:flex;flex-direction:column;gap:7px;background:linear-gradient(160deg,rgba(10,24,32,.86),rgba(6,14,20,.72));border:1px solid rgba(110,230,240,.3);
+    border-radius:16px;padding:10px 14px 11px;min-width:236px;box-shadow:0 10px 30px rgba(0,0,0,.35);text-shadow:none;backdrop-filter:blur(8px)}
+  .cz-t{font:800 40px/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#fff;direction:ltr;text-align:right;letter-spacing:.5px}
+  .cz-pills{display:flex;gap:4px}.cz-pills i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.16)}
+  .cz-pills i.on{background:#3ff0ff;box-shadow:0 0 8px #3ff0ff}.cz-pills i.cur{background:rgba(63,240,255,.42)}
+  .cz-g{display:grid;grid-template-columns:repeat(3,auto);gap:0 16px;justify-content:space-between}
+  .cz-g small{display:block;font-size:11px;color:#9fc3ca;font-weight:500}
+  .cz-g b{font:700 21px/1.15 ui-monospace,Menlo,Consolas,monospace;color:#fff}
+  .cz-g em{font-style:normal;font-size:11px;color:#9fc3ca;margin-inline-start:3px;font-weight:500}
+  .cz-m{font-size:12.5px;color:#ffd98a;min-height:1.3em;font-weight:500;max-width:300px}
+  .cz-map{position:fixed;left:14px;bottom:14px;width:168px;height:168px;border-radius:50%;z-index:4;pointer-events:none;
+    box-shadow:0 8px 24px rgba(0,0,0,.45),0 0 0 2px rgba(110,230,240,.4)}
+  .cz-count{position:fixed;left:50%;top:36%;transform:translate(-50%,-50%);z-index:9;pointer-events:none;opacity:0;white-space:nowrap;
+    font:900 120px/1 Tahoma,system-ui,sans-serif;color:#fff;text-shadow:0 6px 30px rgba(63,240,255,.9),0 2px 0 rgba(0,0,0,.35)}
+  .cz-count.go{animation:czpop .9s ease-out forwards}
+  @keyframes czpop{0%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}18%{opacity:1;transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.85)}}
+  .cz-flash{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:0;background:radial-gradient(ellipse at center,rgba(255,60,40,0) 45%,rgba(255,40,30,.55) 100%)}
+  .cz-fin{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:9;width:min(330px,calc(100vw - 32px));display:none;text-align:center;
+    background:linear-gradient(165deg,rgba(14,30,38,.95),rgba(8,16,22,.95));border:1px solid rgba(255,201,60,.45);border-radius:20px;padding:18px 18px 16px;color:#e8f1f3;
+    font:14px/1.5 "IBM Plex Sans Arabic",Tahoma,system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.55);direction:rtl}
+  .cz-fin.on{display:block;animation:czin .45s ease-out}
+  @keyframes czin{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+  .cz-fin .k{color:#ffc93c;font-weight:700;font-size:15px}
+  .cz-fin .t{font:800 50px/1.1 ui-monospace,Menlo,Consolas,monospace;color:#fff;direction:ltr;margin:4px 0}
+  .cz-fin .badge{display:inline-block;background:#ffc93c;color:#1a1300;font-weight:800;border-radius:99px;padding:2px 12px;font-size:13px;margin-bottom:6px}
+  .cz-fin .g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 14px}
+  .cz-fin .g div{background:rgba(255,255,255,.05);border-radius:12px;padding:6px 4px}
+  .cz-fin small{display:block;color:#9fc3ca;font-size:11.5px}.cz-fin .g b{font:700 17px/1.3 ui-monospace,Menlo,Consolas,monospace;color:#fff}
+  .cz-fin button{font-weight:700;font-size:15px;line-height:1;font-family:inherit;border:0;border-radius:12px;padding:11px 26px;color:#fff;cursor:pointer;background:linear-gradient(135deg,#ff6a2b,#ff3d6e)}
+  .cz-touch{display:none}
+  .cz-b{position:fixed;z-index:7;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:64px;height:64px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(10,22,30,.7);border:1px solid rgba(120,220,230,.4);color:#e8f6f8;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+    backdrop-filter:blur(6px);font:600 10.5px/1.1 Tahoma,system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+  .cz-b svg{width:30px;height:30px}
+  .cz-b.on{background:rgba(63,240,255,.38);border-color:#3ff0ff}
+  #czTL{left:12px}#czTR{left:84px}#czTB{right:84px;width:58px;height:58px;bottom:calc(19px + env(safe-area-inset-bottom,0px))}
+  #czTG{right:12px;height:92px;border-radius:22px;background:rgba(255,90,40,.32);border-color:rgba(255,140,90,.6)}#czTG.on{background:rgba(255,110,50,.6)}
+  @media (max-width:640px),(pointer:coarse){
+    .cz-touch{display:block}.cz-keys{display:none}
+    .cz-map{left:50%;transform:translateX(-50%);width:92px;height:92px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  }
+  @media (max-width:640px){
+    .ck-ui{top:8px;bottom:auto;left:8px;right:8px;max-height:58vh;padding:8px 11px}
+    .ck-ui h1{font-size:15px}
+    body.cz-compact .ck-ui>.sub,body.cz-compact .ck-ui>.ck-row,body.cz-compact .ck-ui>.ck-status{display:none}
+    .cz-mob{display:inline-block}
+    .ck-hud{left:8px;right:8px;top:118px}
+    .cz-hud{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:7px 12px;min-width:0;gap:4px 10px;border-radius:14px}
+    .cz-t{font-size:27px}.cz-g{gap:0 12px}.cz-g b{font-size:16px}
+    .cz-pills{order:3;flex-basis:100%}.cz-m{order:4;flex-basis:100%;text-align:center;max-width:none;min-height:0}
+    .cz-count{font-size:96px;top:42%}
+    .cz-fin{bottom:calc(122px + env(safe-area-inset-bottom,0px));padding:14px 14px 13px}.cz-fin .t{font-size:42px}
+  }`;
+  const SVG = {
+    l: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    r: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    b: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="7" width="14" height="10" rx="2.5"/><path d="M8 12h8"/></svg>',
+    g: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 11l6-6 6 6"/></svg>',
+  };
+  function buildUi(ctx) {
+    const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st); // بعد نمط النواة فيغلبه
+    document.body.classList.add('cz-compact');
+    ctx.ui.panel.appendChild(CK.el(`<div class="cz-p">
+      <div class="ck-row"><button id="czStart"></button><button class="ghost" id="czRe"></button><button class="ghost" id="czCam"></button><button class="ghost cz-mob" id="czCity"></button></div>
+      <div class="cz-line"><span id="czBestL"></span> <b id="czBest">—</b> · <span id="czLenL"></span> <b id="czLen">—</b></div>
+      <div class="cz-keys" id="czKeys"></div></div>`));
+    const $ = (id) => document.getElementById(id);
+    $('czStart').textContent = T('ابدأ السباق', 'Start race');
+    $('czRe').textContent = T('من جديد', 'Restart');
+    $('czCam').textContent = T('الكاميرا', 'Camera');
+    $('czCity').textContent = T('غيّر المكان', 'Change place');
+    $('czBestL').textContent = T('أفضل زمن هنا', 'Best here');
+    $('czLenL').textContent = T('المسار', 'Route');
+    $('czKeys').textContent = T('القيادة: الأسهم أو WASD · المسافة فرامل · R من جديد · C الكاميرا', 'Drive: arrows or WASD · Space brakes · R restart · C camera');
+    $('czStart').addEventListener('click', () => beginCount());
+    $('czRe').addEventListener('click', () => beginCount(true));
+    $('czCam').addEventListener('click', () => { camMode = (camMode + 1) % 2; if (G) G.snap = true; });
+    $('czCity').addEventListener('click', () => { document.body.classList.toggle('cz-compact'); placeHud(); });
+    D.start = $('czStart'); D.best = $('czBest'); D.len = $('czLen');
+    D.map = document.createElement('canvas'); D.map.className = 'cz-map'; document.body.appendChild(D.map); D.mapCtx = D.map.getContext('2d');
+    D.count = CK.el('<div class="cz-count"></div>'); document.body.appendChild(D.count);
+    D.flash = CK.el('<div class="cz-flash"></div>'); document.body.appendChild(D.flash);
+    D.fin = CK.el(`<div class="cz-fin"><div class="k">${T('خلصت المطاردة', 'Chase complete')}</div><div class="t" id="czFT">00:00.0</div><div class="badge" id="czFN">${T('أفضل زمن جديد', 'New best time')}</div>
+      <div class="g"><div><small>${T('أفضل زمن', 'Best')}</small><b id="czFB">—</b></div><div><small>${T('اصطدامات', 'Collisions')}</small><b id="czFC">0</b></div><div><small>${T('المسار', 'Route')}</small><b id="czFL">—</b></div></div>
+      <button id="czFGo">${T('مرّة ثانية', 'Race again')}</button></div>`);
+    document.body.appendChild(D.fin);
+    $('czFGo').addEventListener('click', () => beginCount(true));
+    const tc = CK.el(`<div class="cz-touch">
+      <div class="cz-b" id="czTL" aria-label="${T('يسار', 'Left')}">${SVG.l}</div><div class="cz-b" id="czTR" aria-label="${T('يمين', 'Right')}">${SVG.r}</div>
+      <div class="cz-b" id="czTB" aria-label="${T('فرامل', 'Brake')}">${SVG.b}<span>${T('فرامل', 'Brake')}</span></div>
+      <div class="cz-b" id="czTG" aria-label="${T('بنزين', 'Gas')}">${SVG.g}<span>${T('بنزين', 'Gas')}</span></div></div>`);
+    document.body.appendChild(tc);
+    const hold = (id, key) => {
+      const el = $(id);
+      const on = (e) => { e.preventDefault(); TOUCH[key] = 1; el.classList.add('on'); try { el.setPointerCapture(e.pointerId); } catch (er) { /* بعض المتصفّحات لا تلتقط */ } if (key === 'gas') wake(); };
+      const off = () => { TOUCH[key] = 0; el.classList.remove('on'); };
+      el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('lostpointercapture', off);
+      el.addEventListener('contextmenu', (e) => e.preventDefault());
+    };
+    hold('czTL', 'left'); hold('czTR', 'right'); hold('czTB', 'brake'); hold('czTG', 'gas');
+    sizeMap();
+    window.addEventListener('resize', () => { sizeMap(); placeHud(); });
+  }
+  function sizeMap() { const r = D.map.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.max(40, Math.round(r.width * dpr)); if (D.map.width !== w) { D.map.width = w; D.map.height = w; } }
+  function placeHud() {
+    const hud = document.querySelector('.ck-hud'); if (!hud || !X) return;
+    hud.style.top = isPhone() ? Math.round(X.ui.box.getBoundingClientRect().bottom + 8) + 'px' : '';
+  }
+
+  // ── لوحة الأرقام الحيّة ──
+  function hudTemplate() {
+    let pills = ''; for (let i = 0; i < G.cps.length; i++) pills += '<i></i>';
+    X.ui.hud(`<div class="cz-hud"><div class="cz-t" id="czT">00:00.0</div>
+      <div class="cz-g"><div><small>${T('النقاط', 'Checkpoints')}</small><b id="czC">0/0</b></div><div><small>${T('السرعة', 'Speed')}</small><b id="czV">0</b><em>${T('كم/س', 'km/h')}</em></div><div><small>${T('التالية', 'Next')}</small><b id="czD">—</b><em>${T('م', 'm')}</em></div></div>
+      <div class="cz-pills" id="czP">${pills}</div><div class="cz-m" id="czM"></div></div>`);
+    D.hT = document.getElementById('czT'); D.hC = document.getElementById('czC'); D.hV = document.getElementById('czV'); D.hD = document.getElementById('czD'); D.hM = document.getElementById('czM');
+    D.pills = [...document.querySelectorAll('#czP i')];
+  }
+  function hud() {
+    const g = G, c = g.car, cp = g.cps[g.passed];
+    D.hT.textContent = fmt(g.t);
+    D.hC.textContent = g.passed + '/' + g.cps.length;
+    D.hV.textContent = String(Math.round(Math.abs(c.v) * 3.6));
+    D.hD.textContent = cp ? String(Math.round(Math.hypot(cp.x - c.x, cp.z - c.z))) : '—';
+    D.pills.forEach((p, i) => { p.className = i < g.passed ? 'on' : i === g.passed && g.st === 'race' ? 'cur' : ''; });
+    let m = '';
+    if (g.st === 'intro' || g.st === 'ready') m = T('اضغط «ابدأ السباق» أو دوّس البنزين', 'Press Start or hit the gas');
+    else if (g.st === 'race') m = !c.on ? T('خارج الطريق — السرعة محدودة', 'Off the road — speed limited') : cp && cp.name ? T('النقطة التالية على ', 'Next checkpoint on ') + cp.name : '';
+    else if (g.st === 'done') m = T('وصلت! زمنك ', 'Finished in ') + fmt(g.t);
+    if (D.hM.textContent !== m) D.hM.textContent = m;
+    D.start.disabled = g.st === 'race' || g.st === 'count';
+    if (D.best) D.best.textContent = g.best ? fmt(g.best) : '—';
+  }
+  function sync() {
+    const g = G; if (!g) return;
+    const c = g.car, cp = g.cps[g.passed];
+    window.__inspire_state = {
+      checkpointsTotal: g.cps.length, passed: g.passed, timeSec: +g.t.toFixed(2), collisions: g.collisions,
+      state: g.st, finished: g.st === 'done', bestSec: g.best ? +g.best.toFixed(2) : null, newRecord: !!g.newRec,
+      lastRun: g.lastRun || null, speedKmh: c ? Math.round(Math.abs(c.v) * 3.6) : 0,
+      nextDistM: c && cp ? Math.round(Math.hypot(cp.x - c.x, cp.z - c.z)) : null, onRoad: c ? !!c.on : null,
+      routeM: Math.round(g.routeLen || 0), roadSamples: g.samples.length, lamps: g.lamps ? g.lamps.userData.count : 0, buildings: g.city.buildings.length,
+      car: c ? { x: +c.x.toFixed(1), z: +c.z.toFixed(1), h: +c.h.toFixed(3) } : null,
+      checkpoints: g.cps.map((p) => ({ x: Math.round(p.x), z: Math.round(p.z), road: p.name || '' })), city: g.city.name || '',
+    };
+  }
+
+  // ── تدفّق اللعبة ──
+  function hideOverlays() { D.fin.classList.remove('on'); D.count.classList.remove('go'); D.count.style.opacity = '0'; }
+  function showCount(s) { D.count.textContent = s; D.count.style.opacity = ''; D.count.classList.remove('go'); void D.count.offsetWidth; D.count.classList.add('go'); }
+  function flash() { const f = D.flash; f.style.transition = 'none'; f.style.opacity = '1'; void f.offsetWidth; f.style.transition = 'opacity .55s ease-out'; f.style.opacity = '0'; }
+  function reset() {
+    const g = G, s = g.start;
+    g.car = { x: s.x, z: s.z, h: s.h, v: 0, steer: 0, wheel: 0, lastContact: -9, on: true };
+    g.t = 0; g.passed = 0; g.collisions = 0; g.newRec = false; g.shake = 0; g.snap = true;
+    for (const cp of g.cps) { cp.burst = 0; cp.obj.g.visible = true; cp.obj.g.scale.set(1, 1, 1); }
+    hideOverlays();
+  }
+  function beginCount(force) {
+    const g = G; if (!g || !g.car || !g.cps.length) return;
+    if (!force && (g.st === 'race' || g.st === 'count')) return;
+    reset(); g.st = 'count'; g.count = 3; g.countShown = 0; sync();
+  }
+  function wake() { if (G && (G.st === 'ready' || G.st === 'intro')) beginCount(); }
+  function pass() {
+    const g = G, cp = g.cps[g.passed]; cp.burst = 0.001; g.passed++;
+    if (g.passed >= g.cps.length) finish();
+    sync();
+  }
+  function finish() {
+    const g = G; g.st = 'done'; g.orbA = g.camH + Math.PI;
+    const prev = readBest(); g.newRec = !(prev > 0) || g.t < prev;
+    if (g.newRec) writeBest(g.t);
+    g.best = g.newRec ? g.t : prev;
+    g.lastRun = { timeSec: +g.t.toFixed(2), collisions: g.collisions, newRecord: g.newRec };
+    document.getElementById('czFT').textContent = fmt(g.t);
+    document.getElementById('czFN').style.display = g.newRec ? '' : 'none';
+    document.getElementById('czFB').textContent = fmt(g.best);
+    document.getElementById('czFC').textContent = String(g.collisions);
+    document.getElementById('czFL').textContent = (g.routeLen / 1000).toFixed(1) + T(' كم', ' km');
+    D.fin.classList.add('on');
+  }
+  function input() {
+    return { thr: Math.max(KEYS.up, TOUCH.gas), brk: Math.max(KEYS.down, TOUCH.brake, KEYS.hand), steer: ((KEYS.left || TOUCH.left) ? 1 : 0) - ((KEYS.right || TOUCH.right) ? 1 : 0) };
+  }
+
+  // ── الفيزياء (مبسّطة للعب): تسارع، فرامل، رجوع، توجيه بدرّاجة، انزلاق على الجدران ──
+  function step(dt, inp, live) {
+    const g = G, c = g.car;
+    if (!live) inp = { thr: 0, brk: 0, steer: 0 };
+    c.steer += (inp.steer - c.steer) * Math.min(1, dt * (inp.steer ? 5 : 8));
+    const on = g.raster.on(c.x, c.z); c.on = on;
+    let v = c.v; const vmax = on ? 33 : 12;
+    if (inp.thr > 0) { if (v < -0.3) v += 22 * dt; else v += 12 * inp.thr * Math.max(0, 1 - v / vmax) * dt; }
+    if (inp.brk > 0) { if (v > 0.3) v -= 26 * dt; else if (!inp.thr) v = Math.max(-8, v - 7 * dt); }
+    if (!inp.thr && !inp.brk) { v -= v * (live ? 0.3 : 2.5) * dt; const r = 1.6 * dt; v = Math.abs(v) <= r ? 0 : v - Math.sign(v) * r; }
+    if (!on && Math.abs(v) > 12) v -= Math.sign(v) * (Math.abs(v) - 12) * 2.5 * dt;
+    const sa = c.steer * 0.6 / (1 + Math.abs(v) * 0.07), nh = c.h + (v / 2.5) * Math.tan(sa) * dt;
+    if (!blocked(c.x, c.z, nh)) c.h = angWrap(nh);
+    const fx = Math.sin(c.h), fz = Math.cos(c.h), mx = fx * v * dt, mz = fz * v * dt;
+    if (!blocked(c.x + mx, c.z + mz, c.h)) { c.x += mx; c.z += mz; }
+    else {
+      const hv = Math.abs(v), tot = Math.abs(v * dt) + 1e-9, fresh = g.t - c.lastContact > 0.4;
+      if (fresh) v *= 0.7;
+      if (Math.abs(mx) / tot > 0.35 && !blocked(c.x + mx, c.z, c.h)) { c.x += mx; v *= 1 - 2.5 * dt; }
+      else if (Math.abs(mz) / tot > 0.35 && !blocked(c.x, c.z + mz, c.h)) { c.z += mz; v *= 1 - 2.5 * dt; }
+      else v = -v * 0.25;
+      if (live && hv > 2.5 && fresh) { g.collisions++; g.shake = Math.min(1, 0.25 + hv / 25); flash(); }
+      c.lastContact = g.t;
+    }
+    c.v = v; c.wheel += v * dt / 0.36;
+    if (!live) return;
+    g.t += dt;
+    const cp = g.cps[g.passed];
+    if (cp) { const dx = c.x - cp.x, dz = c.z - cp.z; if (dx * dx + dz * dz < cp.r * cp.r) pass(); }
+  }
+
+  // ── الكاميرا ──
+  function camUpdate(dt) {
+    const g = G, c = g.car, cam = X.camera, sp = Math.abs(c.v), top = camMode === 1;
+    if (g.snap) g.camH = c.h; else g.camH = angWrap(g.camH + angWrap(c.h - g.camH) * Math.min(1, dt * 4.5));
+    let dist = top ? 19 + sp * 0.15 : 9.6 + sp * 0.12, hgt = top ? 10.5 + sp * 0.06 : 4.3 + sp * 0.04;
+    const fx = Math.sin(g.camH), fz = Math.cos(g.camH);
+    for (let k = 0; k < 6; k++) { // لا تدخل الكاميرا في مبنى ولا يحجبها مبنى
+      const b1 = g.idx.at(c.x - fx * dist, c.z - fz * dist), b2 = g.idx.at(c.x - fx * dist * 0.5, c.z - fz * dist * 0.5);
+      if ((!b1 || b1.h < hgt) && (!b2 || b2.h < hgt * 0.6)) break;
+      dist *= 0.75; hgt += 1.2;
+    }
+    tmpPos.set(c.x - fx * dist, hgt, c.z - fz * dist);
+    tmpLook.set(c.x + fx * (top ? 12 : 6), top ? 0.5 : 1.2, c.z + fz * (top ? 12 : 6));
+    if (g.st === 'done') { g.orbA += dt * 0.32; tmpPos.set(c.x + Math.sin(g.orbA) * 14, 5.5, c.z + Math.cos(g.orbA) * 14); tmpLook.set(c.x, 1.1, c.z); }
+    if (g.st === 'intro' && !g.snap) {
+      const u = Math.min(1, g.intro.t / 2.8), eh = ease(Math.min(1, u / 0.72)), ev = Math.pow(ease(u), 1.6); // أفقيًّا أوّلًا ثمّ نزول عموديّ فوق الشارع
+      camPos.set(g.intro.from.x + (tmpPos.x - g.intro.from.x) * eh, g.intro.from.y + (tmpPos.y - g.intro.from.y) * ev, g.intro.from.z + (tmpPos.z - g.intro.from.z) * eh);
+      camLook.copy(g.intro.look).lerp(tmpLook, eh);
+    } else if (g.snap) { camPos.copy(tmpPos); camLook.copy(tmpLook); }
+    else { camPos.lerp(tmpPos, 1 - Math.exp(-dt * 7)); camLook.lerp(tmpLook, 1 - Math.exp(-dt * 10)); }
+    g.snap = false;
+    cam.position.copy(camPos);
+    if (g.shake > 0) { cam.position.x += (Math.random() - 0.5) * g.shake * 0.7; cam.position.y += (Math.random() - 0.5) * g.shake * 0.5; g.shake = Math.max(0, g.shake - dt * 2.5); }
+    cam.lookAt(camLook);
+    const fov = (top ? 52 : 55) + Math.min(1, sp / 33) * 14;
+    if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
+  }
+  function sunFollow() { // ظلال حادّة حول السيّارة، وواسعة أثناء النزول من السماء
+    const g = G, c = g.car, sun = X.sun, sc = sun.shadow.camera;
+    const e = g.st === 'intro' ? ease(Math.min(1, g.intro.t / 2.8)) : 1, cx = c.x * e, cz = c.z * e, half = R + (230 - R) * e;
+    sun.position.set(cx + SUN[0] * 700, SUN[1] * 700, cz + SUN[2] * 700); sun.target.position.set(cx, 0, cz); sun.target.updateMatrixWorld();
+    if (Math.abs(sc.right - half) > 0.5) { sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.updateProjectionMatrix(); }
+  }
+  function carMesh(inp, dt) {
+    const g = G, c = g.car, o = g.carObj;
+    o.g.position.set(c.x, 0, c.z); o.g.rotation.y = c.h;
+    for (const w of o.wheels) w.rotation.x = c.wheel;
+    for (const f of o.fronts) f.rotation.y = c.steer * 0.42;
+    o.body.rotation.z = -c.steer * Math.min(1, Math.abs(c.v) / 25) * 0.05;
+    const braking = g.st === 'race' && inp.brk > 0 && c.v > 0.3;
+    o.tailM.color.setHex(braking ? 0xff3030 : 0x8a1010);
+  }
+  function gates(now, dt) {
+    const g = G, t = now / 1000;
+    g.cps.forEach((cp, i) => {
+      const o = cp.obj;
+      if (i < g.passed) {
+        if (cp.burst > 0 && cp.burst < 0.7) { cp.burst += dt; const k = cp.burst / 0.7; o.g.scale.setScalar(1 + k * 1.4); o.ringM.opacity = 1 - k; o.haloM.opacity = 0.3 * (1 - k); o.beamM.uniforms.o.value = 0.9 * (1 - k); o.discM.opacity = 0; o.sp.visible = false; }
+        else o.g.visible = false;
+        return;
+      }
+      const act = i === g.passed && g.st !== 'done', nxt = i === g.passed + 1;
+      const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+      const dc = Math.hypot(cp.x - g.car.x, cp.z - g.car.z), near = Math.max(0.2, Math.min(1, (dc - 8) / 60));
+      o.ringM.opacity = act ? 1 : 0.45; o.haloM.opacity = act ? 0.1 + 0.14 * pulse : 0.06;
+      o.beamM.uniforms.o.value = (act ? 0.55 : nxt ? 0.28 : 0.16) * near; o.beamM.uniforms.t.value = t;
+      o.discM.opacity = act ? 0.35 + 0.35 * pulse : 0.12;
+      o.ring.scale.setScalar(act ? 1 + 0.04 * pulse : 0.9); o.halo.scale.copy(o.ring.scale);
+      o.sp.visible = act || nxt; o.spM.opacity = act ? 1 : 0.6; o.spM.depthTest = !act; o.sp.scale.setScalar(act ? 5.5 + pulse * 0.6 : 4);
+    });
+  }
+  function arrowUpd(now) {
+    const g = G, c = g.car, cp = g.cps[g.passed], a = g.arrow;
+    a.visible = !!cp && g.st !== 'done';
+    if (!a.visible) return;
+    a.position.set(c.x + Math.sin(c.h) * 0.6, 2.75 + Math.sin(now * 0.004) * 0.1, c.z + Math.cos(c.h) * 0.6);
+    const yaw = Math.atan2(cp.x - c.x, cp.z - c.z), d = Math.hypot(cp.x - c.x, cp.z - c.z);
+    a.rotation.y = yaw; a.rotation.x = 0.5;
+    const sc0 = camMode ? 1.1 : 0.62; a.scale.setScalar(d < 25 ? Math.max(0.35, d / 25) * sc0 : sc0);
+    const ahead = Math.abs(angWrap(yaw - c.h)) < 0.3 && d < 140, op = ahead ? 0.3 : 0.95; // الهدف أمامك ظاهر: السهم يخفت
+    a.userData.mats[0].opacity += (op - a.userData.mats[0].opacity) * 0.1; a.userData.mats[1].opacity = a.userData.mats[0].opacity * 0.35;
+  }
+  function drawMap() {
+    const g = G, m = g.map, cv = D.map, c = g.car, x = D.mapCtx; if (!m || !cv.width) return;
+    const W = cv.width, half = W / 2, pxm = half / 170, th = c.h - Math.PI, k = pxm / m.sc, dpr = W / (cv.clientWidth || W);
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, W);
+    x.save(); x.beginPath(); x.arc(half, half, half, 0, Math.PI * 2); x.clip();
+    x.fillStyle = '#1b2a31'; x.fillRect(0, 0, W, W);
+    x.translate(half, half); x.rotate(th); x.scale(k, k); x.translate(-(c.x + m.E) * m.sc, -(c.z + m.E) * m.sc);
+    x.drawImage(m.c, 0, 0);
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    const cs = Math.cos(th), sn = Math.sin(th);
+    const toS = (px, pz) => { const dx = (px - c.x) * pxm, dz = (pz - c.z) * pxm; return [half + dx * cs - dz * sn, half + dx * sn + dz * cs]; };
+    const u = Math.max(1, dpr);
+    for (let i = g.cps.length - 1; i >= g.passed; i--) {
+      const cp = g.cps[i], act = i === g.passed && g.st !== 'done'; let [sx, sy] = toS(cp.x, cp.z);
+      const dx = sx - half, dy = sy - half, L = Math.hypot(dx, dy), lim = half - 8 * u;
+      if (L > lim) { if (!act) continue; sx = half + dx / L * lim; sy = half + dy / L * lim; }
+      if (act) { x.strokeStyle = 'rgba(63,240,255,.55)'; x.lineWidth = 2 * u; x.setLineDash([4 * u, 4 * u]); x.beginPath(); x.moveTo(half, half); x.lineTo(sx, sy); x.stroke(); x.setLineDash([]); }
+      x.beginPath(); x.arc(sx, sy, (act ? 6 : 4) * u, 0, Math.PI * 2);
+      x.fillStyle = i === g.cps.length - 1 ? '#ffc93c' : act ? '#3ff0ff' : 'rgba(63,240,255,.45)'; x.fill();
+      if (act) { x.lineWidth = 2 * u; x.strokeStyle = '#fff'; x.stroke(); }
+    }
+    x.fillStyle = '#ff5a2a'; x.strokeStyle = '#fff'; x.lineWidth = 1.5 * u;
+    x.beginPath(); x.moveTo(half, half - 8 * u); x.lineTo(half - 5.5 * u, half + 6 * u); x.lineTo(half, half + 3 * u); x.lineTo(half + 5.5 * u, half + 6 * u); x.closePath(); x.fill(); x.stroke();
+    x.restore();
+  }
+
+  function frame(dt, now) {
+    const g = G; if (!g || !g.car || g.city !== X.city) return;
+    const inp = input();
+    if (g.st === 'race') { let left = dt; while (left > 1e-6 && g.st === 'race') { const h = Math.min(HZ, left); step(h, inp, true); left -= h; } }
+    else if (g.st === 'count') {
+      g.count -= dt; const n = Math.ceil(g.count);
+      if (n !== g.countShown && n > 0) { g.countShown = n; showCount(String(n)); }
+      if (g.count <= 0) { g.st = 'race'; showCount(T('انطلق!', 'Go!')); sync(); }
+    } else {
+      if (g.st === 'intro') { g.intro.t += dt; if (g.intro.t >= 2.8) { g.st = 'ready'; sync(); } }
+      if (Math.abs(g.car.v) > 0.01) step(dt, inp, false);
+    }
+    carMesh(inp, dt); camUpdate(dt); gates(now, dt); arrowUpd(now); sunFollow(); drawMap();
+    g.glowT = (g.glowT || 0) + dt; g.carObj.glow.material.opacity = 0.45 + 0.12 * Math.sin(g.glowT * 3);
+    g.hudT -= dt; if (g.hudT <= 0) { g.hudT = 1 / 12; hud(); }
+    g.stT -= dt; if (g.stT <= 0) { g.stT = 0.25; sync(); }
+    g.layT -= dt; if (g.layT <= 0) { g.layT = 0.5; placeHud(); }
+  }
+
+  function setupScene(ctx) { // غروب ذهبيّ: سماء متدرّجة وضباب دافئ وشمس منخفضة
+    const THREE = ctx.THREE;
+    ctx.scene.background = canvasTex(4, 256, (g) => {
+      const gr = g.createLinearGradient(0, 0, 0, 256);
+      gr.addColorStop(0, '#2f63a0'); gr.addColorStop(0.42, '#8fb9dc'); gr.addColorStop(0.7, '#f1d3ae'); gr.addColorStop(1, '#efbf90');
+      g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+    });
+    ctx.scene.fog = new THREE.Fog(0xe9d3b6, 180, 1250);
+    ctx.sun.color.setHex(0xffe1bd); ctx.sun.intensity = 1.55;
+    ctx.hemi.color.setHex(0xd2e4ff); ctx.hemi.groundColor.setHex(0x86705a); ctx.hemi.intensity = 0.8;
+    ctx.sun.shadow.bias = -0.0004; ctx.sun.shadow.normalBias = 0.4;
+    const sc = ctx.sun.shadow.camera; sc.near = 10; sc.far = 1600; sc.updateProjectionMatrix();
+    TEX = {
+      glow: radial('rgba(63,240,255,0.9)', 'rgba(63,240,255,0)'),
+      blob: radial('rgba(0,0,0,0.85)', 'rgba(0,0,0,0)'),
+      beam: canvasTex(64, 128, (g) => { const gr = g.createLinearGradient(0, 128, 0, 0); gr.addColorStop(0, 'rgba(255,240,200,0.9)'); gr.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(22, 128); g.lineTo(42, 128); g.lineTo(64, 0); g.lineTo(0, 0); g.closePath(); g.fill(); }),
+    };
+    camPos = new THREE.Vector3(); camLook = new THREE.Vector3(); tmpPos = new THREE.Vector3(); tmpLook = new THREE.Vector3();
+  }
+
+  function onCity(ctx, city) {
+    X = ctx; const THREE = ctx.THREE;
+    ctx.orbit.enabled = false;
+    document.body.classList.add('cz-compact');
+    const ae = document.activeElement; if (ae && ae.blur && /^(SELECT|INPUT)$/.test(ae.tagName)) ae.blur(); // الأسهم للقيادة لا لتغيير القائمة
+    hideOverlays();
+    const g = G = { city, idx: city.idx, st: 'none', t: 0, passed: 0, collisions: 0, cps: [], samples: [], car: null, best: 0, newRec: false, lastRun: null,
+      shake: 0, hudT: 0, stT: 0, layT: 0, lim2: (R * 0.95) * (R * 0.95), routeLen: 0, camH: 0, orbA: 0, snap: true };
+    g.raster = buildRaster(city);
+    g.samples = sampleRoads(city);
+    if (g.samples.length < 8) {
+      ctx.ui.status(T('الشوارع هنا قليلة على السباق — جرّب مكانًا فيه طرق أكثر.', 'Too few streets here for a race — try a busier spot.'));
+      ctx.ui.hud(''); g.car = null; sync(); return;
+    }
+    const course = pickCourse(g.samples);
+    g.start = course.start; g.cps = course.cps; g.routeLen = course.len;
+    city.group.add(dashMesh(THREE, city));
+    g.lamps = lampMesh(THREE, city); city.group.add(g.lamps);
+    g.carObj = makeCar(THREE); city.group.add(g.carObj.g);
+    g.arrow = makeArrow(THREE); city.group.add(g.arrow);
+    g.cps.forEach((cp, i) => { cp.obj = makeGate(THREE, cp, i, i === g.cps.length - 1); city.group.add(cp.obj.g); });
+    g.map = buildMap(city);
+    hudTemplate();
+    reset();
+    g.best = readBest();
+    D.len.textContent = (g.routeLen / 1000).toFixed(1) + T(' كم', ' km');
+    g.st = 'intro'; g.intro = { t: 0, from: ctx.camera.position.clone(), look: new THREE.Vector3(0, 0, 0) }; g.snap = false;
+    ctx.ui.status(T('جاهز: ', 'Ready: ') + g.cps.length + T(' نقاط على شوارع حقيقيّة · ', ' checkpoints on real streets · ') + city.buildings.length + T(' مبنى حقيقيّ', ' real buildings'));
+    ctx.onFrame(frame);
+    hud(); sync(); placeHud();
+  }
+
+  // ── لوحة المفاتيح (مرّة واحدة) ──
+  const KMAP = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'hand' };
+  function onKey(e, v) {
+    const tg = e.target; if (tg && /^(INPUT|SELECT|TEXTAREA)$/.test(tg.tagName)) return;
+    const k = KMAP[e.code] || KMAP[e.key];
+    if (k) { KEYS[k] = v; e.preventDefault(); if (v && k === 'up') wake(); return; }
+    if (v && !e.repeat && (e.code === 'KeyR' || e.key === 'r' || e.key === 'R')) beginCount(true);
+    if (v && !e.repeat && (e.code === 'KeyC' || e.key === 'c' || e.key === 'C')) { camMode = (camMode + 1) % 2; if (G) G.snap = true; }
+  }
+  window.addEventListener('keydown', (e) => onKey(e, 1));
+  window.addEventListener('keyup', (e) => onKey(e, 0));
+  window.addEventListener('blur', () => { for (const k in KEYS) KEYS[k] = 0; for (const k in TOUCH) TOUCH[k] = 0; });
+
+  // ── واجهة اختبار: محاكاة حتميّة بخطوة ١/٦٠ ث على الفيزياء نفسها ──
+  window.__chase = {
+    go() { if (!G || !G.car) return null; reset(); G.st = 'race'; sync(); return window.__inspire_state; },
+    restart() { beginCount(true); return window.__inspire_state; },
+    place(x, z, h, v) { const c = G.car; c.x = x; c.z = z; c.h = h; c.v = v || 0; c.steer = 0; G.snap = true; sync(); return !blocked(x, z, h); },
+    sim(sec, inp) {
+      const g = G, p0 = g.passed, n = Math.round(sec / HZ); inp = Object.assign({ thr: 0, brk: 0, steer: 0 }, inp || {});
+      for (let k = 0; k < n && g.st === 'race'; k++) { step(HZ, inp, true); if (g.passed !== p0) break; }
+      sync(); return window.__inspire_state;
+    },
+    wall() { // أقرب جدار مبنى حقيقيّ عموديّ على طريق، مع موضع قبله بـ٩ م
+      const g = G, ss = g.samples.slice().sort((a, b) => (a.x * a.x + a.z * a.z) - (b.x * b.x + b.z * b.z));
+      for (const s of ss) for (const side of [1, -1]) {
+        const h = s.a + side * Math.PI / 2, fx = Math.sin(h), fz = Math.cos(h);
+        for (let k = 4; k <= 45; k++) {
+          if (!g.idx.at(s.x + fx * k, s.z + fz * k)) continue;
+          if (k >= 13) { const d = k - 9, x = s.x + fx * d, z = s.z + fz * d; if (!blocked(x, z, h)) return { x, z, h, wallAt: k - d }; }
+          break;
+        }
+      }
+      return null;
+    },
+    get cps() { return G ? G.cps.map((c) => ({ x: c.x, z: c.z, r: c.r, w: c.w, app: c.app.slice() })) : []; },
+    cam(m) { camMode = m ? 1 : 0; if (G) G.snap = true; return camMode; },
+    get start() { return G && G.start; },
+  };
+
+  CK.start({
+    title: T('مطاردة في شوارعك', 'Street Chase'),
+    sub: T('سباق ستّ نقاط على شوارع حيّك الحقيقيّة — المباني جدران فعليّة، والزمن يُحسب.', 'A six-checkpoint race on your real streets — buildings are solid walls.'),
+    radius: R, shadows: true,
+    panel(ctx) { X = ctx; setupScene(ctx); buildUi(ctx); },
+    onCity,
+  });
+})();
+</script></body></html>
