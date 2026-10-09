@@ -1076,6 +1076,8 @@ Object.assign(I18N['bn'], {
   vcRemove: "মুছুন",
   vwToChars: "সংলাপ চরিত্রদের মধ্যে ভাগ করুন",
   vcMore: "আরও বিকল্প",
+  vcTutorial: "দেখুন: কীভাবে ভিডিও বানাবেন",
+  vcToExtra: "অতিরিক্তে দিন",
   fashionEngineLabel: "🎨 ইমেজ ইঞ্জিন",
   fashionEngineGemini: "Gemini — মুখ সবচেয়ে ভালো রাখে (ডিফল্ট)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT ইমেজ ইঞ্জিন",

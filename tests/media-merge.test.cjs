@@ -452,7 +452,7 @@ test('١٢. قسم «صور وفيديو»: ثلاث بطاقات بالسعر �
     assert.doesNotMatch(line, /img_|vid_/, t + ': img_/vid_ خرجت من مرآة البيع');
   }
   assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=730'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=731'"));
 });
 
 test('١٣. الواجهة في vm: showPriceTab يفتح المدموج من img/vid/image/video، والحالة تعرض رصيد المدموجة ومتبقّي القديمة، والجودة لمشترك المدموجة', () => {

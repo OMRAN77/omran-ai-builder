@@ -1125,6 +1125,8 @@ Object.assign(I18N['id'], {
   vcRemove: "Hapus",
   vwToChars: "Bagikan dialog ke karakter",
   vcMore: "Opsi lainnya",
+  vcTutorial: "Tonton: cara membuat video",
+  vcToExtra: "Pakai sebagai tambahan",
   fashionEngineLabel: "🎨 Mesin gambar",
   fashionEngineGemini: "Gemini — paling menjaga wajah (bawaan)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — mesin gambar ChatGPT",
