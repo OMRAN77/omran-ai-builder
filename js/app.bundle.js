@@ -5657,8 +5657,8 @@ Object.assign(I18N.en, {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPla
 Object.assign(I18N.ar, {"priceTabMedia":"صور وفيديو","mixPlanName":"صور وفيديو","mixPlansDesc":"لمن يريد الصور والفيديو — بلا محادثة. رصيد واحد يُصرف على الاثنين، وإذا خلص تكمل من نقاطك.","mixOneBalance":"رصيد واحد للصور والفيديو","mixApprox1":"يكفي تقريبًا 50 صورة أو 12 فيديو أو خليطًا منهما","mixApprox2":"يكفي تقريبًا 100 صورة أو 24 فيديو أو خليطًا منهما","mixApprox3":"يكفي تقريبًا 500 صورة أو 121 فيديو أو خليطًا منهما","mixNoChat":"بلا محادثة","mixLeft":"المتبقّي من رصيد الصور والفيديو"});
 Object.assign(I18N.en, {"priceTabMedia":"Images & video","mixPlanName":"Images & video","mixPlansDesc":"For people who want images and videos — no chat. One balance covers both; when it runs out, you continue on your points.","mixOneBalance":"One balance for images and video","mixApprox1":"Roughly 50 images or 12 videos, or a mix of both","mixApprox2":"Roughly 100 images or 24 videos, or a mix of both","mixApprox3":"Roughly 500 images or 121 videos, or a mix of both","mixNoChat":"No chat","mixLeft":"Left in your images & video balance"});
 /* v-inspire: شاشة «اقتراحات» — تبويبا «الإلهام» و«اقتراحات سريعة» وقسم «مدينتك الحقيقيّة» (app-35-inspire.js) */
-Object.assign(I18N.ar, {"inspTabInspire":"الإلهام","inspTabQuick":"اقتراحات سريعة","inspCityTitle":"مدينتك الحقيقيّة","inspCitySub":"تجارب ثلاثيّة الأبعاد مبنيّة على حيّك الحقيقي من الخرائط المفتوحة. تنفتح فورًا، وتقدر تعدّلها بالمحادثة.","inspLoading":"يجهّز…","inspFail":"ما قدرت أفتحها الحين — جرّب مرّة ثانية"});
-Object.assign(I18N.en, {"inspTabInspire":"Inspiration","inspTabQuick":"Quick ideas","inspCityTitle":"Your real city","inspCitySub":"3D experiences built on your real neighbourhood from open maps. They open instantly, and you can change them by chatting.","inspLoading":"Opening…","inspFail":"Couldn't open it right now — try again"});
+Object.assign(I18N.ar, {"inspTabInspire":"الإلهام","inspTabQuick":"اقتراحات سريعة","inspCityTitle":"مدينتك الحقيقيّة","inspCitySub":"تجارب ثلاثيّة الأبعاد مبنيّة على حيّك الحقيقي من الخرائط المفتوحة. اختر تجربة وتنفتح فورًا في المعاينة، واكتب داخلها اسم أيّ حيّ أو مدينة.","inspLoading":"يجهّز…","inspFail":"ما قدرت أفتحها الحين — جرّب مرّة ثانية"});
+Object.assign(I18N.en, {"inspTabInspire":"Inspiration","inspTabQuick":"Quick ideas","inspCityTitle":"Your real city","inspCitySub":"3D experiences built on your real neighbourhood from open maps. Pick one and it opens instantly in the preview — then type any neighbourhood or city inside it.","inspLoading":"Opening…","inspFail":"Couldn't open it right now — try again"});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
@@ -43339,7 +43339,8 @@ if(document.readyState === 'loading'){
 /* v-inspire (المالك ٩ أكتوبر «أبدأ بالخطوة الأولى»): «اقتراحات» صارت شاشة بتبويبين — «الإلهام» و«اقتراحات سريعة».
    «الإلهام» قسمه الأوّل «مدينتك الحقيقيّة»: عشر تجارب ثلاثيّة الأبعاد تبني حيّ المستخدم الحقيقيّ من الخرائط المفتوحة
    (inspire/city/<id>.html — تُبنى من inspire/src بـscripts/inspire/build.mjs). الضغط على بطاقة يجلب الملفّ ويفتحه مشروعًا
-   جديدًا في المعاينة فورًا — بلا موديل ولا رسالة تنحسب — ثمّ يعدّله المستخدم بالمحادثة كأيّ مشروع.
+   جديدًا في المعاينة فورًا — بلا موديل ولا رسالة تنحسب. (التجربة ٦٥–٨٠ ك.ب: تعديلها بالمحادثة يعيد كتابة الملفّ كلّه فيتجاوز
+   حدّ الردّ الواحد — لذلك لا تَعِد الشاشة بالتعديل بالمحادثة؛ ذاك يحتاج تعديلًا بالمقاطع، قرار للمالك.)
    الاقتراحات العشرة (QUICK_SUGGESTIONS) كما هي في تبويبها، وتعمل بـ__runQuickSuggestion نفسها. */
 const INSPIRE_CITY = [
   { id:'chase',

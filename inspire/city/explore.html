@@ -8,7 +8,8 @@
 (function () {
   'use strict';
   const CK = {};
-  const AR = !/^en/i.test(document.documentElement.lang || '') && !/^en/i.test(navigator.language || 'ar');
+  // اللغة من وسم الصفحة (التطبيق يكتبه بلغة المستخدم عند الفتح)، ثمّ لغة المتصفّح: العربيّة لمن لغته عربيّة، والإنجليزيّة لغيره.
+  const AR = /^ar/i.test(document.documentElement.lang || navigator.language || 'ar');
   const T = (ar, en) => (AR ? ar : en);
   CK.T = T; CK.AR = AR;
   CK.PRESETS = [
@@ -228,7 +229,7 @@
   const CSS = `
   .ck-ui{position:fixed;top:12px;right:12px;left:auto;z-index:5;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;
     background:rgba(12,22,28,.86);color:#e8f1f3;border:1px solid rgba(120,200,210,.25);border-radius:14px;padding:12px 14px;
-    font:14px/1.6 "IBM Plex Sans Arabic",Tahoma,system-ui,sans-serif;direction:rtl;backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+    font:14px/1.6 "IBM Plex Sans Arabic",Tahoma,system-ui,sans-serif;direction:${AR ? 'rtl' : 'ltr'};backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
   .ck-ui h1{font-size:17px;margin:0 0 2px;font-weight:700}.ck-ui .sub{margin:0 0 8px;color:#a9c1c7;font-size:13px}
   .ck-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
   .ck-ui input,.ck-ui select{font:inherit;flex:1 1 140px;min-width:0;background:#0d1a20;color:#e8f1f3;border:1px solid #2b4650;border-radius:9px;padding:6px 9px}
@@ -242,7 +243,7 @@
   .ck-stat b{color:#fff}
   .ck-toggle{position:fixed;top:12px;right:12px;z-index:6;display:none}
   @media (max-width:640px){.ck-ui{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:46vh}}
-  .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:rtl;pointer-events:none}
+  .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:${AR ? 'rtl' : 'ltr'};pointer-events:none}
   `;
   CK.ui = function (title, sub) {
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
@@ -265,7 +266,7 @@
   CK.start = function (opt) {
     const THREE = window.THREE; CK.THREE = THREE;
     const R = opt.radius || 600;
-    document.documentElement.dir = 'rtl';
+    document.documentElement.dir = AR ? 'rtl' : 'ltr';
     document.body.style.cssText = 'margin:0;overflow:hidden;background:#0b1419';
     const ui = CK.ui(opt.title, opt.sub);
     const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: !!opt.keepBuffer });
@@ -277,7 +278,7 @@
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, R * 8);
     const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x8a7a5c, 0.85); scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(-R * 0.6, R * 1.2, R * 0.4); scene.add(sun); scene.add(sun.target);
-    if (opt.shadows) { sun.castShadow = true; const sc = sun.shadow.camera; sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = R * 4; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; }
+    if (opt.shadows) { sun.castShadow = true; const sc = sun.shadow.camera; sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = R * 4; sc.updateProjectionMatrix(); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; }
     const orbit = CK.orbit(camera, renderer.domElement, { dist: R * 1.5, max: R * 5 });
     const frames = [];
     let city = null, cityGroup = null, busy = false;
