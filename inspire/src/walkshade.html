@@ -249,9 +249,9 @@
     X.sun.position.set(hx * Math.cos(up) * D, Math.sin(up) * D, hz * Math.cos(up) * D);
     X.sun.target.position.set(0, 0, 0);
     const k = clamp(Math.sin(alt) / 0.5, 0, 1), day = alt > 0;
-    X.sun.intensity = day ? 0.45 + 0.9 * k : 0.06;
+    X.sun.intensity = day ? 0.6 + 1.05 * k : 0.06;
     X.sun.color.setRGB(1, 0.76 + 0.24 * k, 0.55 + 0.45 * k);
-    X.hemi.intensity = day ? 0.5 + 0.4 * k : 0.35;
+    X.hemi.intensity = day ? 0.62 - 0.12 * k : 0.35;
     const m = day ? k : 0, n = day ? 0 : clamp(-alt / 0.1, 0, 1), c = [0, 0, 0];
     for (let i = 0; i < 3; i++) c[i] = (SKY_LO[i] + (SKY_HI[i] - SKY_LO[i]) * m) * (1 - n) + SKY_NIGHT[i] * n;
     X.scene.background.setRGB(c[0], c[1], c[2]); if (X.scene.fog) X.scene.fog.color.setRGB(c[0], c[1], c[2]);
