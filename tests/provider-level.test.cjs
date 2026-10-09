@@ -82,6 +82,7 @@ test('١. العائلة من معرّف الموديل لا من اسم الم�
   ];
   for (const [p, m, k] of cases) assert.equal((familyOf(p, m) || {}).key, k, p + ' ' + m);
   assert.equal(levelNote('openrouter', 'unknown/xyz'), '', 'عائلة مجهولة: المنهج العامّ وحده');
+  assert.match(levelNote('deepseek', 'deepseek/deepseek-v4-pro'), /الموديلات المتاحة في هذا التطبيق الآن[^\n]*Fable 5\.1[^\n]*GPT-6[^\n]*Kimi K3/, 'الواقع الحاليّ من التطبيق');
 });
 
 test('٢. الموديل الصغير يأخذ قواعد التعويض والكبير لا', () => {

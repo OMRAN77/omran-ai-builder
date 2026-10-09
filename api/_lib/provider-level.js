@@ -57,6 +57,10 @@ const FAMILIES = [
 const SMALL_RE = /(?:^|[\/\-_.])(?:mini|nano|small|lite|tiny|haiku|ministral|instant|[1-9]b|[12][0-9]b|3[0-2]b)(?=$|[\/\-_.:])/i;
 const SMALL_NOTE = 'أنت موديل خفيف وسريع: قوّتك السرعة وصدق الحدود. لا تجب من ذاكرتك عن أيّ اسم أو رقم أو تاريخ أو حدث — ابحث أوّلًا دائمًا. الحساب بـrun_js. في المسألة الطويلة قسّمها وحلّ جزءًا جزءًا. إن تجاوز السؤال قدرتك فقل ذلك بجملة واقترح على المالك موديلًا أقوى من القائمة بدل جواب ضعيف.';
 
+/* معلومة لا يعرفها أيّ موديل من تدريبه: من هم أحدث الموديلات «الآن». القائمة من التطبيق نفسه (CLAUDE_MODELS وOR_MODELS
+   وoa-direct في هذا المستودع) لا من ذاكرة — فلا يقول موديل للمالك إنّ أحدث موجود هو ما انتهى عنده تدريبه. */
+const LANDSCAPE_NOTE = 'معلومة محدّثة (من التطبيق نفسه، أحدث من تدريبك): الموديلات المتاحة في هذا التطبيق الآن — Anthropic: Claude Fable 5.1 (الأقوى) وOpus 5.5 وSonnet 5 وHaiku 4.5؛ OpenAI: GPT-6 (Sol وAstra وLuna)؛ Google: Gemini 3.8 Flash؛ DeepSeek: V4 Pro؛ Mistral: Medium 3.5؛ Cohere: Command A؛ Moonshot: Kimi K3؛ xAI: Grok 4.6؛ Groq يشغّل GPT-OSS 120B. إن سُئلت عن «أحدث موديل» أو قارنت بين موديلات فانطلق من هذه القائمة لا من ذاكرتك، وللتفاصيل والأرقام ابحث.';
+
 const PROV_DEFAULT = { claude: 'claude', openai: 'gpt', gemini: 'gemini', deepseek: 'deepseek', mistral: 'mistral', cohere: 'cohere', kimi: 'kimi', groq: 'gpt-oss' };
 
 function familyOf(prov, model) {
@@ -75,7 +79,8 @@ function levelNote(prov, model) {
     + 'قوّتك: ' + f.strong + '\n'
     + 'كيف تصل لأعلى مستواك: ' + f.peak + '\n'
     + 'ما تعوّضه: ' + f.gap
-    + (small ? '\n' + SMALL_NOTE : '');
+    + (small ? '\n' + SMALL_NOTE : '')
+    + '\n' + LANDSCAPE_NOTE;
 }
 
 module.exports = { levelNote, familyOf, FAMILIES, SMALL_RE };
