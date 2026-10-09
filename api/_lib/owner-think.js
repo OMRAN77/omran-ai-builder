@@ -24,14 +24,20 @@ function lastReplyHasCode(history) {
   return false;
 }
 
+/* v-owner-think-all (أمر المالك ٩ أكتوبر: «شغّل التفكير… وتكون الأفكار في المزوّدين نفسهم»): فلتر الكلمات كان يرسل أغلب
+   أسئلته («ليش…»، «وش رأيك…»، «اشرح…») بأمر «لا تفكّر» فيردّ المزوّد تحت مستواه في تطبيقه الأصليّ. الآن كلّ سؤال يفكّر
+   فيه المزوّد بتفكيره هو؛ وحدها المجاملة القصيرة (تحيّة، سؤال حال، شكر، «تمام») فوريّة كما اختار في v-owner-auto. */
+const SOCIAL_RE = /^(?:[\s،,.!~\-]*(?:شكرًا|شكرا|مشكور|يعطيك العافية|الله يعطيك العافية|تسلم|تسلم يدك|تمام|طيب|اوكي|أوكي|ok|okay|thanks|thank you|thx|👍|❤️|🌹|يا هلا|هلا|هلا والله|مرحبا|السلام|السلام عليكم|سلام|كيف حالك|كيف الحال|كيفك|شلونك|شحالك|شخبارك|وش أخبارك|وش اخبارك|شو أخبارك|حيّاك|حياك|الله يحييك|مساء النور|صباح النور|وعليكم السلام|ما قصّرت|ما قصرت|جزاك الله خير|بارك الله فيك))+[\s،,.!؟?~\-]*$/i;
+function isSocial(s) { const t = String(s || '').trim(); return !!t && t.length <= 40 && SOCIAL_RE.test(t); }
+
 /** هل يفكّر الموديل في دور المالك هذا؟ opts: { image, greeting, history } */
 function ownerThinks(text, opts) {
   const o = opts || {};
   if (o.image) return true;
   const s = String(text || '');
   if (isStrongTurn(s) || ANALYSIS_RE.test(s) || s.split('\n').length >= 8) return true;
-  if (o.greeting) return false; /* «السلام» وسط شغل كود تبقى تحيّة */
-  return lastReplyHasCode(o.history);
+  if (o.greeting || isSocial(s) || !s.trim()) return false; /* «السلام» وسط شغل كود تبقى تحيّة */
+  return true;
 }
 
 /* كلود المباشر: Sonnet 5 وOpus 5.x وFable يفكّرون تكيّفيًّا بلا حقل thinking، وOpus 5.5 وFable 5.1 يرفضان

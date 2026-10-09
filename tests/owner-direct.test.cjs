@@ -227,13 +227,15 @@ test('٧. المالك + مفتاح OpenAI: GPT مباشر بمعرّفه عند
   } finally { delete process.env.OPENAI_API_KEY; delete process.env.GROQ_API_KEY; }
 });
 
-test('٨. تفكير الموديل: دور المالك الصعب بلا حقول إطفاء، والعاديّ بها (v-owner-auto)، وغير المالك عليها كما كان (v-chat-fast)', async () => {
+test('٨. تفكير الموديل: سؤال المالك بلا حقول إطفاء، والمجاملة بها (v-owner-think-all)، وغير المالك عليها كما كان (v-chat-fast)', async () => {
   chat.__orQuick.level = 2;
   let r = await run({ user: 'omran', provider: 'deepseek', messages: ask('حلّل لي هذا التقرير'), script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.thinking, undefined);
   assert.equal(r.calls[0].body.reasoning, undefined);
   r = await run({ user: 'omran', provider: 'deepseek', messages: ask('اشرح'), script: [() => anthropicText('تم')] });
-  assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' }, 'v-owner-auto: الكلام العاديّ للمالك فوريّ');
+  assert.equal(r.calls[0].body.thinking, undefined, 'v-owner-think-all: كلّ سؤال للمالك يفكّر');
+  r = await run({ user: 'omran', provider: 'deepseek', messages: ask('شكرًا'), script: [() => anthropicText('تم')] });
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' }, 'v-owner-auto: المجاملة للمالك فوريّة');
   assert.deepEqual(r.calls[0].body.reasoning, { enabled: false });
   r = await run({ user: 'someone', provider: 'deepseek', messages: ask('اشرح'), script: [() => anthropicText('تم')] });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' });
