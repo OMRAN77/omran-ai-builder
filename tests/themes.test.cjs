@@ -81,7 +81,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
   }
   // السيارة المتوهّجة من صورة المالك (أمره: «وهذي بعد») في بداية «سيارات»: ضعفا حجمها، وتذوب خلفيّتها الداكنة في الكربون
   assert.equal(jpegSize(path.join(root, 'assets', 'ثيمات', 'مركبات', 'سيارة.jpg'))[0], 1200); // v-scene-sharp
-  for (const u of urls) if (/%D9%85%D8%B4%D9%87%D8%AF\.jpg|%D8%B3%D9%8A%D8%A7%D8%B1%D8%A9\.jpg/.test(u)) assert.match(u, /\?v=2$/, 'v-bg-fresh: وسم إصدار على ' + decodeURIComponent(u));
+  for (const u of urls) if (/%D9%85%D8%B4%D9%87%D8%AF\.jpg|%D8%B3%D9%8A%D8%A7%D8%B1%D8%A9\.jpg/.test(u)) assert.match(u, /\?v=\d+$/, 'v-bg-fresh: وسم إصدار على ' + decodeURIComponent(u)); // v-scene-wide: يُرفع عند تبديل المشهد
   // وخلفيّة دائمة لا في البداية وحدها (أمره بعدها: «صورة السيارة غير موجودة الخلفيّة» — كانت تختفي مع أوّل رسالة)
   assert.ok(CSS.includes('\nhtml.skin-cars #chatcol::before{'), 'بلا شرط omranWelcome');
   assert.ok(!/skin-cars body\.omranWelcome/.test(CSS));
@@ -100,7 +100,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
 
 test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد يترك الخانات والإرسال للثيم، والمختار والزرّ يغلبان قاعدتي التطبيق', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=7');
+  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=8');
   assert.ok(a > 0 && b > a, 'يُحمَّل آخرًا فيعلو');
   const frame = rd('css/إطارات.css');
   assert.doesNotMatch(frame, /:not\(\.skin-wood\) (\.hist-item|#composerBox)/, 'قواعد الإطار للخانات والإرسال تستثني html.skin');

@@ -309,7 +309,7 @@ html.skin-tactical{
 }
 /* ملاك الجليد: أبيض وأزرق ثلجيّ */
 html.skin-angel{
-  --th-scheme:light; --th-page:#c9d8ea; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%84%D8%A7%D9%83/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 18%; --th-pos-m:50% 30%;
+  --th-scheme:light; --th-page:#c9d8ea; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%84%D8%A7%D9%83/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:50% 50%;
   --th-ink:#14243a; --th-muted:#3e5572; --th-over:#0f1e33; --th-over-muted:#2b3f5c; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
   --th-gold:#2f6fcf; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(47,111,207,.3);
   --th-dlg:#f3f7fc; --th-dlg2:#e2ebf7;
@@ -361,7 +361,7 @@ html.skin-rally{
 }
 /* دخان أزرق: ليل كحليّ وأزرق متوهّج (البوغاتي) */
 html.skin-smoke{
-  --th-page:#071a33; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AF%D8%AE%D8%A7%D9%86/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 45%; --th-pos-m:50% 50%; --th-veil:rgba(0,10,30,.14);
+  --th-page:#071a33; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AF%D8%AE%D8%A7%D9%86/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:50% 50%; --th-veil:rgba(0,10,30,.14);
   --th-ink:#f4f1ee; --th-muted:#cfc8c0; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
   --th-gold:#4fb8ff; --th-line:rgba(79,184,255,.6); --th-line2:rgba(79,184,255,.3); --th-glow:rgba(79,184,255,.3);
   --th-dlg:#0b1a30; --th-dlg2:#12264a;
@@ -387,7 +387,7 @@ html.skin-library{
 }
 /* مقهى: بيج دافئ وذهبيّ (قهوة ودفتر) */
 html.skin-cafe{
-  --th-scheme:light; --th-page:#e8d8c2; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%82%D9%87%D9%89/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 40%; --th-pos-m:50% 45%;
+  --th-scheme:light; --th-page:#e8d8c2; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%82%D9%87%D9%89/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:45% 50%;
   --th-ink:#4a3620; --th-muted:#7a6448; --th-over:#3a2a16; --th-over-muted:#5a4630; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
   --th-gold:#b8863c; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(184,134,60,.3);
   --th-dlg:#fbf5ec; --th-dlg2:#f1e6d6;
@@ -413,7 +413,7 @@ html.skin-workshop{
 }
 /* بيت عصريّ: رماديّ دافئ وخشب وبرتقاليّ (الكرسيّ والزجاج) */
 html.skin-modern{
-  --th-scheme:light; --th-page:#d9d2c6; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B9%D8%B5%D8%B1%D9%8A/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 60%; --th-pos-m:50% 55%;
+  --th-scheme:light; --th-page:#d9d2c6; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B9%D8%B5%D8%B1%D9%8A/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:30% 50%;
   --th-ink:#2f2a24; --th-muted:#6a6056; --th-over:#26221d; --th-over-muted:#4a433b; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
   --th-gold:#d9542e; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(217,84,46,.3);
   --th-dlg:#faf7f2; --th-dlg2:#efe9e0;
