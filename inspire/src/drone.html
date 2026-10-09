@@ -14,7 +14,7 @@
   const c2For = (kmh) => { const v = kmh / 3.6; return Math.max(0.0005, (G * Math.tan(TILT) - C1 * v) / (v * v)); };
   const TOUCH = !!((window.matchMedia && matchMedia('(pointer: coarse)').matches) || navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
   // الزمن الحقيقيّ بين الإطارات: النواة تقصّ dt عند ٠٫٠٥ ث فيبطؤ المؤقّت على الأجهزة البطيئة (١٥ إطارًا = ٠٫٧٥ ث لكلّ ثانية).
-  // نحسبه من now، ونصفّر المرجع عند تحميل مدينة وإعادة البدء وتبدّل ظهور التبويب فلا يُضاف زمن الغياب.
+  // نحسبه من now، ونقصّه عند ثانية فقط؛ يبدأ المرجع من لحظة إعادة البدء، ويُصفَّر عند تبدّل ظهور التبويب فلا يُضاف زمن الغياب.
   let lastNow = -1;
   const realDt = (dt, now) => { const r = lastNow < 0 ? dt : Math.min(MAXDT, Math.max(0, (now - lastNow) / 1000)); lastNow = now; return r; };
   document.addEventListener('visibilitychange', () => { lastNow = -1; });
@@ -388,7 +388,6 @@
   function setupCity(c, city) {
     ctx = c;
     if (S && S.course) freeCourse(S.course); // مسار المدينة السابقة: النواة تحرّر الهندسة فقط
-    lastNow = -1;
     S = {
       city, rings: [], wps: [], course: null, pad: { x: 0, z: 0 }, demo: false, ap: 0, intro: 0, introA: Math.random() * 6,
       d: { pos: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), q: new THREE.Quaternion(), yaw: 0, pitch: 0, roll: 0, yawRate: 0, thr: 0 },
@@ -433,14 +432,14 @@
   function resetTrail() { const p = S.d.pos, a = S.trail.geometry.attributes.position; for (let i = 0; i < a.count; i++) a.setXYZ(i, p.x, p.y, p.z); a.needsUpdate = true; }
   const yawTo = (dx, dz) => Math.atan2(-dx, -dz);
   function restart(quiet) {
-    const r = S.race; r.state = 'ready'; r.t = 0; r.passed = 0; r.crashes = 0; r.crashT = 0; r.assisted = false; lastNow = -1;
+    const r = S.race; r.state = 'ready'; r.t = 0; r.passed = 0; r.crashes = 0; r.crashT = 0; r.assisted = false; lastNow = performance.now();
     const g0 = S.rings[0]; placeAt(S.pad.x, 0.35, S.pad.z, g0 ? yawTo(g0.x - S.pad.x, g0.z - S.pad.z) : 0);
     S.ap = 0; S.d.thr = 0;
     if (!quiet) S.intro = INTRO;
     msg(TOUCH ? T('حرّك العصا اليسرى لفوق للإقلاع', 'Push the left stick up to take off') : T('اضغط Q للإقلاع', 'Press Q to take off'), T('المؤقّت يبدأ مع أوّل حركة', 'The timer starts with your first move'), 3.2);
     snapCam();
   }
-  function startRace() { const r = S.race; r.state = 'racing'; r.t = 0; r.passed = 0; r.crashes = 0; S.intro = INTRO; ctx.ui.box.classList.add('dr-min'); msg(T('انطلق!', 'Go!'), '', 0.9, 'gold'); }
+  function startRace() { const r = S.race; r.state = 'racing'; r.t = 0; lastNow = performance.now(); r.passed = 0; r.crashes = 0; S.intro = INTRO; ctx.ui.box.classList.add('dr-min'); msg(T('انطلق!', 'Go!'), '', 0.9, 'gold'); }
   function setDemo(on) {
     if (!S) return;
     if (on && S.race.state !== 'racing') { restart(true); startRace(); }

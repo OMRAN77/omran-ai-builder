@@ -316,9 +316,14 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     }
     S.rise = rise == null ? 6 : rise; S.set = set == null ? 18 : set;
   }
-  // فرق التوقيت: ساعة الجهاز إن كانت ضمن ساعتين من خطّ طول المدينة (أغلب المدن العربيّة تبعد ١–٢ س عن lon/15)، وإلّا تقريب خطّ الطول
-  function tzFor(lon) { const dev = -new Date().getTimezoneOffset() / 60; return Math.abs(dev - lon / 15) <= 2 ? dev : Math.round(lon / 15); }
-  function tzLabel() { const a = Math.abs(S.tz), hh = Math.floor(a), mm = Math.round((a - hh) * 60); return 'UTC' + (S.tz < 0 ? '−' : '+') + hh + (mm ? ':' + String(mm).padStart(2, '0') : ''); }
+  // فرق توقيت المكان التقريبيّ (منسوخ من sun.html ليتطابق السلوك): ساعة الجهاز إن قاربت خطّ طول المكان (غالبًا يتصفّح منطقته: عمّان +3 لا +2،
+  // الدار البيضاء +1 لا −1، طهران +3:30)، وإلّا تقريب خطّ الطول. مدن القائمة الخليجيّة يصيبها التقريب، فلا تتبع فيها ساعة جهاز في بلد خليجيّ مجاور (الرياض ≠ دبي).
+  function approxTz(lat, lon) {
+    const sol = lon / 15, dev = -new Date().getTimezoneOffset() / 60;
+    const preset = CK.PRESETS.some((p) => Math.hypot(p.lat - lat, (p.lon - lon) * Math.cos(lat * DEG)) < 0.75);
+    return !preset && Math.abs(dev - sol) <= 2 ? dev : Math.round(sol);
+  }
+  const tzName = (tz) => { const a = Math.abs(tz), h = Math.floor(a), m = Math.round((a - h) * 60); return 'UTC' + (tz >= 0 ? '+' : '−') + h + (m ? ':' + String(m).padStart(2, '0') : ''); };
   const Col = (h) => new (window.THREE.Color)(h);
   const C_DAY = Col(0xd3e5ee), C_GOLD = Col(0xf3cda4), C_NIGHT = Col(0x17233a), C_DAY_T = Col(0x5d97cf), C_GOLD_T = Col(0x7392c0), C_NIGHT_T = Col(0x040912);
   let skyKey = '';
@@ -398,7 +403,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       shadedBuildings: S.shaded.length, roofsShaded: S.roofs, shadowAreaM2: Math.round(S.areaM2), shadowLengthM: Math.round(S.lenM),
       shadowClipped: S.clipped, shadowLengthFullM: Math.round(S.lenFull),
       dayShadedBuildings: S.day ? S.day.buildings : 0, dayFanSteps: S.day ? S.day.steps : 0,
-      hour: P.hour, clock: fmtTime(P.hour), date: S.date.join('-'), tzOffsetH: S.tz, tzLabel: tzLabel(), tzApprox: true, sunAltDeg: Math.round(alt * 10) / 10, sunAzDeg: Math.round(az), sunrise: fmtTime(S.rise), sunset: fmtTime(S.set),
+      hour: P.hour, clock: fmtTime(P.hour), date: S.date.join('-'), tzOffsetH: S.tz, tzLabel: tzName(S.tz), tzApprox: true, sunAltDeg: Math.round(alt * 10) / 10, sunAzDeg: Math.round(az), sunrise: fmtTime(S.rise), sunset: fmtTime(S.set),
       site: { x: Math.round(S.x), z: Math.round(S.z) }, overlapBuildings: S.overlap.length, overlapRoads: S.roadHits, overlapWater: !!S.water,
       neighbours300m: S.nb.n, rankAmongNeighbours: S.nb.rank, tallestNeighbourM: S.nb.top,
       walking: S.walking, city: city.name, buildings: city.buildings.length,
@@ -417,7 +422,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       el.vals.F.textContent = P.floors + T(' طابق', ' floors') + ' · ' + fmt(h) + T(' م', ' m');
       el.vals.W.textContent = P.w + T(' م', ' m'); el.vals.D.textContent = P.d + T(' م', ' m'); el.vals.R.textContent = P.rot + '°';
       el.vals.H.textContent = fmtTime(P.hour);
-      el.tzLab.innerHTML = T('الوقت', 'Time') + ' (<bdi>' + tzLabel() + '</bdi> ' + T('تقريبًا', 'approx.') + ')'; // التوقيت تقديريّ: ساعة الجهاز أو خطّ الطول
+      el.tzLab.innerHTML = T('الوقت', 'Time') + ' (<bdi>' + tzName(S.tz) + '</bdi> ' + T('تقريبًا', 'approx.') + ')'; // التوقيت تقديريّ: ساعة الجهاز أو خطّ الطول
       el.sunLine.textContent = dateLabel(S.date) + ' · ' + T('الشروق ', 'Sunrise ') + fmtTime(S.rise) + ' · ' + T('الغروب ', 'Sunset ') + fmtTime(S.set) + T(' (تقريبًا)', ' (approx.)') + ' · ' + T('الشمس ', 'Sun ') + (night ? T('تحت الأفق', 'below horizon') : Math.round(alt) + '°');
       const clip = !night && S.clipped;
       el.clip.hidden = !clip;
@@ -596,7 +601,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     if (S && S.walking) { document.body.classList.remove('tw-walk'); c.orbit.enabled = true; keys.clear(); joy.x = joy.y = 0; }
     c.camera.near = 4; c.camera.updateProjectionMatrix(); // دقّة عمق أفضل من بعيد: طبقات الأرض الرقيقة لا تتقاتل
     P.playing = false;
-    S = { walking: false, fly: null, camGoal: null, grow: 0, sig: '', overlap: [], overlapSet: new Set(), roadHits: 0, water: false, shaded: [], roofs: 0, areaM2: 0, lenM: 0, lenFull: 0, clipped: false, day: null, nb: { n: 0, rank: 1, top: 0 }, tz: tzFor(cy.lon), date: dateOf(P.dateKey) };
+    S = { walking: false, fly: null, camGoal: null, grow: 0, sig: '', overlap: [], overlapSet: new Set(), roadHits: 0, water: false, shaded: [], roofs: 0, areaM2: 0, lenM: 0, lenFull: 0, clipped: false, day: null, nb: { n: 0, rank: 1, top: 0 }, tz: approxTz(cy.lat, cy.lon), date: dateOf(P.dateKey) };
     S.waterBB = cy.water.map(bbox);
     S.disc = Array.from({ length: 96 }, (_, i) => [c.R * Math.cos(i / 96 * 2 * Math.PI), c.R * Math.sin(i / 96 * 2 * Math.PI)]); // حدّ البيانات المحمّلة
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;

@@ -55,8 +55,8 @@
   const nOf = (b) => [Math.sin(b * D2R), -Math.cos(b * D2R)];
   const CARD = [['شمال', 'N'], ['شمال شرق', 'NE'], ['شرق', 'E'], ['جنوب شرق', 'SE'], ['جنوب', 'S'], ['جنوب غرب', 'SW'], ['غرب', 'W'], ['شمال غرب', 'NW']];
   const card = (b) => { const c = CARD[Math.round(b / 45) % 8]; return T(c[0], c[1]); };
-  const TOWARD = [['الشمال', 'north'], ['الشمال الشرقيّ', 'north-east'], ['الشرق', 'east'], ['الجنوب الشرقيّ', 'south-east'], ['الجنوب', 'south'], ['الجنوب الغربيّ', 'south-west'], ['الغرب', 'west'], ['الشمال الغربيّ', 'north-west']];
-  const toward = (b) => { const c = TOWARD[Math.round(b / 45) % 8]; return T('نحو ' + c[0], 'heading ' + c[1]); };
+  const TOWARD = [['الشمال', 'northbound'], ['الشمال الشرقيّ', 'NE-bound'], ['الشرق', 'eastbound'], ['الجنوب الشرقيّ', 'SE-bound'], ['الجنوب', 'southbound'], ['الجنوب الغربيّ', 'SW-bound'], ['الغرب', 'westbound'], ['الشمال الغربيّ', 'NW-bound']];
+  const toward = (b) => { const c = TOWARD[Math.round(b / 45) % 8]; return T('نحو ' + c[0], c[1]); }; // اتّجاه سير السائق
   const ICON = {
     pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffcf4a" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
     car: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 16h14M6 16l1.6-5.2A2 2 0 0 1 9.5 9.4h5a2 2 0 0 1 1.9 1.4L18 16v3h-2.5v-2h-7v2H6z"/></svg>',
@@ -504,7 +504,7 @@
     const br = r.bestRoad;
     ui.hud('<div class="bbh"><div class="k g"><span>' + T('طرق تشوف اللوحة', 'Road that sees it') + '</span><b>' + fmtLen(r.visibleRoadM).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
       '<div class="k y"><span>' + T('يقرأها السائق', 'Driver reads it') + '</span><b>' + fmtSec(r.readingSec).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
-      '<div class="k"><span>' + T('أفضل مقطع', 'Best stretch') + '</span><b>' + (br ? fmtLen(br.lengthM).replace(/ (\S+)$/, '<small>$1</small>') : '—') + '</b><div class="s">' + (br ? esc(br.name) + ' · ' + toward(br.heading) : T('لا يوجد', 'none')) + '</div></div></div>');
+      '<div class="k"><span>' + T('أفضل مقطع', 'Best stretch') + '</span><b>' + (br ? fmtLen(br.lengthM).replace(/ (\S+)$/, '<small>$1</small>') : '—') + '</b><div class="s" dir="auto">' + (br ? esc(br.name) + ' · ' + toward(br.heading) : T('لا يوجد', 'none')) + '</div></div></div>');
   }
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function renderStats() {

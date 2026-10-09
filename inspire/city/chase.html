@@ -480,7 +480,7 @@
   const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   const isPhone = () => window.matchMedia('(max-width:640px)').matches;
   // الزمن الحقيقيّ بين الإطارات: النواة تقصّ dt عند ٠٫٠٥ ث فيبطؤ المؤقّت على الأجهزة البطيئة (١٥ إطارًا = ٠٫٧٥ ث لكلّ ثانية).
-  // نحسبه من now، ونصفّر المرجع عند تحميل مدينة وإعادة البدء وتبدّل ظهور التبويب فلا يُضاف زمن الغياب.
+  // نحسبه من now، ونقصّه عند ثانية فقط؛ يبدأ المرجع من لحظة إعادة البدء، ويُصفَّر عند تبدّل ظهور التبويب فلا يُضاف زمن الغياب.
   let lastNow = -1;
   const realDt = (dt, now) => { const r = lastNow < 0 ? dt : Math.min(MAXDT, Math.max(0, (now - lastNow) / 1000)); lastNow = now; return r; };
   document.addEventListener('visibilitychange', () => { lastNow = -1; });
@@ -906,7 +906,7 @@
   function reset() {
     const g = G, s = g.start;
     g.car = { x: s.x, z: s.z, h: s.h, v: 0, steer: 0, wheel: 0, lastContact: -9, on: true };
-    g.t = 0; g.passed = 0; g.collisions = 0; g.newRec = false; g.shake = 0; g.snap = true; lastNow = -1;
+    g.t = 0; g.passed = 0; g.collisions = 0; g.newRec = false; g.shake = 0; g.snap = true; lastNow = performance.now();
     for (const cp of g.cps) { cp.burst = 0; cp.obj.g.visible = true; cp.obj.g.scale.set(1, 1, 1); }
     hideOverlays();
   }
@@ -1113,7 +1113,6 @@
     const ae = document.activeElement; if (ae && ae.blur && /^(SELECT|INPUT)$/.test(ae.tagName)) ae.blur(); // الأسهم للقيادة لا لتغيير القائمة
     hideOverlays();
     if (G) for (const cp of G.cps) if (cp.obj) cp.obj.g.traverse((o) => { const m = o.material; if (m) { if (m.map) m.map.dispose(); m.dispose(); } }); // أرقام البوّابات وموادّها لا تتراكم مع كلّ مدينة (النواة تحرّر الهندسة فقط)
-    lastNow = -1;
     const g = G = { city, idx: city.idx, st: 'none', t: 0, passed: 0, collisions: 0, cps: [], samples: [], car: null, best: 0, newRec: false, lastRun: null,
       shake: 0, hudT: 0, stT: 0, layT: 0, lim2: (R * 0.95) * (R * 0.95), routeLen: 0, camH: 0, orbA: 0, snap: true };
     g.raster = buildRaster(city);
