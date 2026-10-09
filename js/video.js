@@ -173,10 +173,16 @@
     more.querySelector('summary').textContent=L('vcMore');
     var st=id('videoMakerStyle'), stBox=st&&st.parentElement;
     var nt=id('videoMakerNarrationToggle'), ntLab=nt&&nt.closest('label');
-    [id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerHeroRow'),id('videoMakerHeroVeoNote'),id('videoMakerLongMinutesRow'),
+    [id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
      ntLab,id('videoMakerVoiceGenderRow'),id('videoMakerNarrationRow'),M.querySelector('details.vmk-adv')].forEach(function(e){
       if(e&&e.parentNode!==body) body.appendChild(e);
     });
+    /* صورة البطل ظاهرة تحت الوصف مباشرة (أمر المالك): بطاقة كبيرة بزرّ رفع واضح، لا مدفونة في «خيارات إضافية» */
+    var hr=id('videoMakerHeroRow'), pw=id('videoMakerPrompt'), prw=pw&&pw.parentElement;
+    if(hr&&prw&&hr.previousElementSibling!==prw){
+      prw.parentNode.insertBefore(hr,prw.nextSibling);
+      var hn=id('videoMakerHeroVeoNote'); if(hn) hr.appendChild(hn);
+    }
     var du=id('videoMakerDuration'), g=du&&du.nextElementSibling, ex=id('vmkMoreDur');
     if(g&&g.classList.contains('vmk-g')){
       if(!ex){
