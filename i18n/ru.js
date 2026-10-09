@@ -1126,6 +1126,7 @@ Object.assign(I18N['ru'], {
   vcFemale: "Женщина",
   vcRemove: "Удалить",
   vwToChars: "Распределить диалог по персонажам",
+  vcMore: "Дополнительные параметры",
   fashionEngineLabel: "🎨 Движок изображений",
   fashionEngineGemini: "Gemini — лучше всех сохраняет лицо (по умолчанию)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — движок изображений ChatGPT",

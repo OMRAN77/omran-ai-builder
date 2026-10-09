@@ -159,6 +159,36 @@
     cd.querySelector('summary').textContent=L('vcTitle'); cd.querySelector('.vmk-ai-s').textContent=L('vcSub');
     renderChars();
   }
+  /* ═══ v-vmk-simple (المالك: «أبسّط للجمهور… ما أريد شي معقّد»): الظاهر الوصف والمدّة (٥/٨/١٠) والشكل وزرّ الإنشاء — والباقي مطويّ في «خيارات إضافية» ═══ */
+  var BASIC_DUR={'5':1,'8':1,'10':1};
+  function simplify(){
+    var main=M.querySelector('.vmk-main'); if(!main) return;
+    var more=id('vmkMore');
+    if(!more){
+      more=document.createElement('details'); more.id='vmkMore'; more.className='vmk-more';
+      more.innerHTML='<summary></summary><div class="vmk-more-b"></div>';
+      var go=id('videoMakerGenerateBtn'); main.insertBefore(more,go||null);
+    }
+    var body=more.querySelector('.vmk-more-b');
+    more.querySelector('summary').textContent=L('vcMore');
+    var st=id('videoMakerStyle'), stBox=st&&st.parentElement;
+    var nt=id('videoMakerNarrationToggle'), ntLab=nt&&nt.closest('label');
+    [id('vmkWrite'),id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerHeroRow'),id('videoMakerHeroVeoNote'),id('videoMakerLongMinutesRow'),
+     ntLab,id('videoMakerVoiceGenderRow'),id('videoMakerNarrationRow'),M.querySelector('details.vmk-adv')].forEach(function(e){
+      if(e&&e.parentNode!==body) body.appendChild(e);
+    });
+    var du=id('videoMakerDuration'), g=du&&du.nextElementSibling, ex=id('vmkMoreDur');
+    if(g&&g.classList.contains('vmk-g')){
+      if(!ex){
+        ex=document.createElement('div'); ex.id='vmkMoreDur'; ex.className='vmk-more-dur';
+        ex.innerHTML='<label></label><div class="vmk-g vmk-pills"></div>'; body.insertBefore(ex,body.firstChild);
+      }
+      ex.querySelector('label').textContent=L('videoMakerDurationLabel')||'';
+      var box=ex.querySelector('.vmk-g'); box.innerHTML='';
+      [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
+      ex.style.display=box.children.length?'':'none';
+    }
+  }
   function L(k){ var v=(typeof window.t==='function')?window.t(k):k; return v&&v!==k?v:''; }
   var SECS={'5':5,'8':8,'10':10,long20:20,film:45,adspot:5,reels:10};
   function wireWrite(wd){
@@ -242,6 +272,7 @@
       var s=id(d[0]); if(!s) return;
       var g=s.nextElementSibling;
       if(g&&g.classList.contains('vmk-g')) [].forEach.call(g.children,function(c){ c.setAttribute('aria-checked',String(c.dataset.v===s.value)); });
+      if(d[0]==='videoMakerDuration'&&id('vmkMoreDur')) [].forEach.call(id('vmkMoreDur').querySelectorAll('[data-v]'),function(c){ c.setAttribute('aria-checked',String(c.dataset.v===s.value)); });
       var o=s.options[s.selectedIndex];
       if(chips&&o){
         var c=document.createElement('span'); c.className='vmk-chip'+(d[0]==='videoMakerMode'?' gold':'');
@@ -250,7 +281,7 @@
     });
     var p=PTS[(id('videoMakerMode')||{}).value];
     if(chips&&p!=null){
-      var b=document.createElement('span'); b.className='vmk-chip gold';
+      var b=document.createElement('span'); b.className='vmk-chip gold pts';
       b.textContent=p?(p+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free'); chips.appendChild(b);
     }
     syncWrite(); syncChars(); syncSamples();
@@ -269,7 +300,7 @@
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; build(); buildTabs(); trendsTop(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); sync(); scrub(); }
+  function enhance(){ if(!on()) return; build(); buildTabs(); trendsTop(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');

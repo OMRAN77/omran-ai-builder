@@ -1127,6 +1127,7 @@ Object.assign(I18N['fil'], {
   vcFemale: "Babae",
   vcRemove: "Alisin",
   vwToChars: "Ipamahagi ang dialogue sa mga karakter",
+  vcMore: "Higit pang opsyon",
   fashionEngineLabel: "🎨 Image engine",
   fashionEngineGemini: "Gemini — pinaka-preserve ang mukha (default)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — image engine ng ChatGPT",

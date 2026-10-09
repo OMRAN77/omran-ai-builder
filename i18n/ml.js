@@ -1127,6 +1127,7 @@ Object.assign(I18N['ml'], {
   vcFemale: "സ്ത്രീ",
   vcRemove: "നീക്കം ചെയ്യുക",
   vwToChars: "സംഭാഷണം കഥാപാത്രങ്ങൾക്ക് വീതിക്കുക",
+  vcMore: "കൂടുതൽ ഓപ്ഷനുകൾ",
   fashionEngineLabel: "🎨 ഇമേജ് എൻജിൻ",
   fashionEngineGemini: "Gemini — മുഖം ഏറ്റവും നന്നായി നിലനിർത്തും (സ്ഥിര)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT ഇമേജ് എൻജിൻ",

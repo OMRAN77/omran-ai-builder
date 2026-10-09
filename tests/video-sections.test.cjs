@@ -10,7 +10,7 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const js = read('js/video.js');
 
 const MODES = ['Canvas', 'Runway', 'Minimax', 'Omni', 'Hybrid', 'Veo', 'Actor'];
-const KEYS = ['videoTabTrends', 'vcTitle', 'vcSub', 'vcAdd', 'vcName', 'vcLine', 'vcMale', 'vcFemale', 'vcRemove', 'vwToChars']
+const KEYS = ['vcMore', 'videoTabTrends', 'vcTitle', 'vcSub', 'vcAdd', 'vcName', 'vcLine', 'vcMale', 'vcFemale', 'vcRemove', 'vwToChars']
   .concat(MODES.reduce((a, m) => a.concat(['videoIdea' + m + '2', 'videoIdea' + m + '3']), []));
 const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'];
 
@@ -54,4 +54,12 @@ test('نظافة الواجهة (طلب المالك «شيل الأيقونات
   // الدالّة نفسها: تزيل الإيموجي وتبقي النصّ والأرقام
   const re = /[\u{1F000}-\u{1FFFF}\u{2190}-\u{21FF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu;
   assert.equal('🎬 قصة بيكسار ٣ ⚡ 60 نقطة ✨'.replace(re, '').replace(/\s{2,}/g, ' ').trim(), 'قصة بيكسار ٣ 60 نقطة');
+});
+
+test('البساطة (طلب المالك «أبسّط للجمهور»): الظاهر الوصف والمدّة الأساسيّة والشكل وزرّ الإنشاء، والباقي مطويّ في «خيارات إضافية»', () => {
+  assert.ok(js.includes("var BASIC_DUR={'5':1,'8':1,'10':1}"));
+  assert.ok(js.includes("if(!BASIC_DUR[c.dataset.v]) box.appendChild(c)"));
+  ['vmkWrite', 'vmkChars', 'videoMakerSignatureRow', 'videoMakerHeroRow', 'videoMakerNarrationRow'].forEach((x) => assert.ok(js.includes("id('" + x + "')"), x));
+  const css = read('css/modules.css');
+  assert.ok(css.includes('.vmk-side>p{display:none!important}') && css.includes('.vmk-chips .vmk-chip:not(.pts){display:none}'));
 });

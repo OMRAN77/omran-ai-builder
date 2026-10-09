@@ -1115,6 +1115,7 @@ Object.assign(I18N['zh'], {
   vcFemale: "女",
   vcRemove: "删除",
   vwToChars: "把对白分配给角色",
+  vcMore: "更多选项",
   fashionEngineLabel: "🎨 图像引擎",
   fashionEngineGemini: "Gemini — 最能保持面部（默认）",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT 图像引擎",

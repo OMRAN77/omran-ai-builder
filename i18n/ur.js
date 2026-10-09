@@ -1073,6 +1073,7 @@ Object.assign(I18N['ur'], {
   vcFemale: "عورت",
   vcRemove: "حذف کریں",
   vwToChars: "مکالمہ کرداروں میں بانٹیں",
+  vcMore: "مزید اختیارات",
   fashionEngineLabel: "🎨 امیج انجن",
   fashionEngineGemini: "Gemini — چہرہ بہترین برقرار (طے شدہ)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT امیج انجن",

@@ -515,3 +515,17 @@ html[data-mode="light"] #videoMakerModal .vmk-sm{background:#ffffff;border-color
 html[data-mode="light"] #videoMakerModal .vmk-sm b{color:var(--text)}
 html[data-mode="light"] #videoMakerModal .vmk-ch{border-color:rgba(0,0,0,.10);background:#ffffff}
 html[data-mode="light"] #videoMakerModal .vmk-ch-add{background:#ffffff;color:var(--text);border-color:rgba(0,0,0,.25)}
+
+/* v-vmk-simple: واجهة بسيطة — الجانب بلا وصف ولا شارات إلّا التكلفة، والباقي في «خيارات إضافية» */
+#videoMakerModal .vmk-side>p{display:none!important}
+#videoMakerModal .vmk-chips .vmk-chip:not(.pts){display:none}
+#videoMakerModal .vmk-studio{align-content:start}
+#videoMakerModal .vmk-more-b>details{margin-bottom:10px}
+#videoMakerModal .vmk-more-b>div:not(.vmk-more-dur){margin-top:10px}
+#videoMakerModal details.vmk-more{margin-top:12px;border-top:1px solid var(--border,rgba(255,255,255,.08));padding-top:10px}
+#videoMakerModal .vmk-more>summary{cursor:pointer;list-style:none;font-size:12.5px;color:var(--muted,#9698a2);padding:4px 0}
+#videoMakerModal .vmk-more>summary:before{content:"+ "}
+#videoMakerModal .vmk-more[open]>summary:before{content:"− "}
+#videoMakerModal .vmk-more-b{padding-top:6px}
+#videoMakerModal .vmk-more-dur{margin-bottom:14px}
+#videoMakerModal .vmk-more-dur label{font-size:12px;color:var(--muted,#9698a2);display:block;margin-bottom:6px}
