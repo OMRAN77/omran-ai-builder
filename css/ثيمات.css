@@ -296,7 +296,7 @@ html.skin-school{
    عشر ثيمات مشهد من صور المالك (assets/ثيمات/<المجلّد>/مشهد.jpg، موضَّحة ٢٥٦٠ بكسل بـReal-ESRGAN محلّيًّا)، على نسق «أنمي» (داكن) و«شاطئ» (فاتح). ══ */
 /* أنمي قتاليّ: قرمزيّ وأسود */
 html.skin-tactical{
-  --th-page:#7a0f2e; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A3%D9%86%D9%85%D9%8A-%D9%82%D8%AA%D8%A7%D9%84%D9%8A/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 50%; --th-pos-m:40% 50%; --th-veil:rgba(60,0,20,.14);
+  --th-page:#7a0f2e; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A3%D9%86%D9%85%D9%8A-%D9%82%D8%AA%D8%A7%D9%84%D9%8A/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:40% 50%; --th-veil:rgba(60,0,20,.14);
   --th-ink:#f4f1ee; --th-muted:#cfc8c0; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
   --th-gold:#ff3d7a; --th-line:rgba(255,61,122,.6); --th-line2:rgba(255,61,122,.3); --th-glow:rgba(255,61,122,.3);
   --th-dlg:#2a0a16; --th-dlg2:#3a1020;
@@ -335,7 +335,7 @@ html.skin-neonanime{
 }
 /* محطّة المستقبل: فولاذ رماديّ وأصفر صناعيّ */
 html.skin-station{
-  --th-page:#3a3f44; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%AD%D8%B7%D9%91%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 50%; --th-pos-m:60% 50%; --th-veil:rgba(20,24,28,.18);
+  --th-page:#3a3f44; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%AD%D8%B7%D9%91%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:60% 50%; --th-veil:rgba(20,24,28,.18);
   --th-ink:#eef0f2; --th-muted:#b8bec4; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
   --th-gold:#f2b43c; --th-line:rgba(242,180,60,.6); --th-line2:rgba(242,180,60,.3); --th-glow:rgba(242,180,60,.3);
   --th-dlg:#1f2428; --th-dlg2:#2a3036;
@@ -374,7 +374,7 @@ html.skin-smoke{
 }
 /* مكتبة: أبيض وفيروزيّ فاتح (مكتبة شتوتغارت) */
 html.skin-library{
-  --th-scheme:light; --th-page:#cfeef0; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%83%D8%AA%D8%A8%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 50%; --th-pos-m:50% 50%;
+  --th-scheme:light; --th-page:#cfeef0; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%83%D8%AA%D8%A8%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:50% 50%;
   --th-ink:#0f3a46; --th-muted:#3f6b77; --th-over:#0b3340; --th-over-muted:#1f4f5c; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
   --th-gold:#17a2b0; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(23,162,176,.3);
   --th-dlg:#f2fbfb; --th-dlg2:#dff3f4;
@@ -400,7 +400,7 @@ html.skin-cafe{
 }
 /* ورشة ليليّة: كحليّ وبنفسجيّ وشاشات (الغرفة التقنيّة) */
 html.skin-workshop{
-  --th-page:#1a1830; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%88%D8%B1%D8%B4%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 50%; --th-pos-m:35% 50%; --th-veil:rgba(10,8,30,.14);
+  --th-page:#1a1830; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%88%D8%B1%D8%B4%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:35% 50%; --th-veil:rgba(10,8,30,.14);
   --th-ink:#f4f1ee; --th-muted:#cfc8c0; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
   --th-gold:#9b8cff; --th-line:rgba(155,140,255,.6); --th-line2:rgba(155,140,255,.3); --th-glow:rgba(155,140,255,.3);
   --th-dlg:#1c1a34; --th-dlg2:#262246;
