@@ -218,6 +218,15 @@
       var hn=id('videoMakerHeroVeoNote'); if(hn) hr.appendChild(hn);
     }
     if(hr){ var hd=hr.querySelector('div'), np=hr.querySelector('p[data-i18n="videoMakerHeroNote"]'); if(hd&&np&&np.parentNode!==hd) hd.appendChild(np); }
+    /* v-vmk-quality (المالك: «أريد خاصّيّة الوضوح عندي في التطبيق»): «جودة أعلى» كان مدفونًا في «خيارات متقدّمة» — يظهر الآن مفتاحًا واضحًا فوق المدّة،
+       في الأوضاع التي يؤثّر فيها فقط (Runway ترقية 2K، Veo النموذج الكامل، الاقتصاديّ 1080، السينمائيّ 1080) */
+    var qr=id('videoMakerQualityRow'), r3=M.querySelector('.vmk-row3');
+    if(qr&&r3&&qr.nextElementSibling!==r3) r3.parentNode.insertBefore(qr,r3);
+    if(qr){
+      var qm=(id('videoMakerMode')||{}).value, paid=!!{owner:1,vip:1,basic:1,pro:1,max:1}[String(window.__omranPlan||'').toLowerCase()];
+      qr.classList.toggle('vmk-q-off',!paid||!{runway:1,minimax:1,omni:1,veo:1}[qm]);
+      var qt=id('videoMakerQualityToggle'); if(qt&&!paid&&qt.checked) qt.checked=false; /* v-quality-gate: للمشتركين والمالك فقط */
+    }
     var du=id('videoMakerDuration'), g=du&&du.nextElementSibling, ex=id('vmkMoreDur');
     if(g&&g.classList.contains('vmk-g')){
       if(!ex){
@@ -327,7 +336,7 @@
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
       b.textContent=p?(p+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free'); chips.appendChild(b);
     }
-    syncWrite(); syncChars(); syncSamples();
+    syncWrite(); syncChars(); syncSamples(); simplify();
     var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });
     var r=((id('videoMakerRatio')||{}).value||'1280:720').split(':'), stage=M.querySelector('.vmk-stage');
     if(stage){

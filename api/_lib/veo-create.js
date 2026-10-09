@@ -77,6 +77,7 @@ module.exports = async (req, res) => {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
       if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
+      quality = await require('./_qualityGate.js').gateQuality(username, quality); // v-quality-gate: الجودة العالية للمشتركين والمالك
       /* v-plan-videos: الترند وحده (لا الوصف الحرّ) يُصرف من صلاحيّة فيديوهات الباقة أوّلًا — بلا تأكيد خصم. نفادها = كما كان. */
       let pay = (body.trend && (await require('./_planVideos.js').planVideoLeft(username)) > 0)
         ? await pointsLib.spendPoints(username, pointsLib.COSTS.veo_video, 'veo_video', { planVideoOnly: true }) : null;

@@ -70,7 +70,7 @@ test('الفيديو التعليميّ (طلب المالك): أوّل بطاق
   assert.ok(js.includes("'/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'"));
   ['ar', 'en'].forEach((l) => {
     ['mp4', 'jpg'].forEach((x) => assert.ok(fs2.existsSync(path.join(root, 'media/samples/tutorial-' + l + '.' + x)), l + '.' + x));
-    assert.ok(fs2.statSync(path.join(root, 'media/samples/tutorial-' + l + '.mp4')).size < 2 * 1024 * 1024, 'حجم معقول');
+    assert.ok(fs2.statSync(path.join(root, 'media/samples/tutorial-' + l + '.mp4')).size < 10 * 1024 * 1024, 'حجم معقول (١٠٨٠ مُمنتَج، يُحمَّل عند الضغط فقط)');
   });
   assert.ok(fs2.existsSync(path.join(root, 'scripts/video-tutorial.mjs')), 'سكربت التسجيل يُعيد إنتاج الفيديو');
   const tr = read('js/app-11-video-trends.js');
@@ -109,7 +109,15 @@ test('رفع فيديوهات المالك (طلبه: «كيف أرفع الفي
   assert.ok(fs.existsSync(path.join(root, 'media/samples/raw/README.md')));
   assert.ok(js.includes('tx=(vm&&vm.title)||L(k)'), 'عنوان الفيديو المرفوع يغلب المثال');
   const tut = read('scripts/video-tutorial.mjs');
-  assert.ok(tut.includes("Page.startScreencast") && tut.includes("scale=1920:1080"), 'التعليميّ بدقّة ١٠٨٠');
+  assert.ok(tut.includes('deviceScaleFactor: 2') && tut.includes('window.R = function (t)') && tut.includes("viewport: { width: 1920, height: 1080 }"), 'التعليميّ مُمنتَج: لقطات بدقّة مضاعفة وتركيب يُرسم إطارًا إطارًا ١٠٨٠');
   const sm = read('scripts/video-samples.mjs');
   assert.ok(sm.includes("'.vmk-lb .vmk-lb-x'") && !sm.includes("keyboard.press('Escape')"), 'يُغلق المشغّل بزرّه لا بـEscape (يُغلق الصانع)');
+});
+
+test('«جودة أعلى» ظاهر (طلب المالك): يخرج من «خيارات متقدّمة» إلى فوق المدّة، ويظهر فقط حيث يؤثّر', () => {
+  assert.ok(js.includes("var qr=id('videoMakerQualityRow'), r3=M.querySelector('.vmk-row3')") && js.includes("r3.parentNode.insertBefore(qr,r3)"));
+  assert.ok(js.includes("{runway:1,minimax:1,omni:1,veo:1}[qm]"));
+  assert.ok(read('css/modules.css').includes('#videoMakerQualityRow.vmk-q-off{display:none!important}'));
+  const v = read('js/app-11-video.js');
+  assert.ok(v.includes("quality: wantQuality ? 'high' : 'fast'") && v.includes("resolution: '2k'"), 'المنطق نفسه لم يتغيّر');
 });

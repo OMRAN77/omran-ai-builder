@@ -637,3 +637,13 @@ html[data-mode="light"] #videoMakerModal .vmk-tutlink{background:#ffffff;color:v
 #videoMakerModal .vmk-sm.has-vid .vmk-sm-play,#videoMakerModal .vmk-sm-tut .vmk-sm-play{top:50%;left:50%;inset-inline-start:auto;margin:-17px 0 0 -17px;width:34px;height:34px;background:rgba(10,12,18,.55);border:1px solid rgba(255,255,255,.55);backdrop-filter:blur(4px)}
 #videoMakerModal .vmk-sm.has-vid .vmk-sm-play:after{border-inline-start-color:#fff}
 #videoMakerModal .vmk-sm-tut .vmk-sm-p b{display:none}
+
+/* v-vmk-quality: مفتاح «جودة أعلى» ظاهر كبطاقة فوق المدّة والشكل */
+#videoMakerModal #videoMakerQualityRow{margin:0!important;padding:14px 16px;border-radius:14px;border:1px solid rgba(232,194,122,.35);background:linear-gradient(135deg,rgba(232,194,122,.10),rgba(232,194,122,.03));font-size:13.5px!important;font-weight:700;color:#f0dcb0;gap:12px!important}
+#videoMakerModal #videoMakerQualityRow input{appearance:none;-webkit-appearance:none;flex:none;width:44px;height:24px;border-radius:99px;background:rgba(255,255,255,.14);position:relative;cursor:pointer;transition:.2s;margin:0}
+#videoMakerModal #videoMakerQualityRow input:before{content:"";position:absolute;top:3px;inset-inline-start:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+#videoMakerModal #videoMakerQualityRow input:checked{background:linear-gradient(135deg,#f0cf8f,#c9964a)}
+#videoMakerModal #videoMakerQualityRow input:checked:before{inset-inline-start:23px}
+#videoMakerModal #videoMakerQualityRow.vmk-q-off{display:none!important}
+html[data-mode="light"] #videoMakerModal #videoMakerQualityRow{background:#ffffff;color:var(--text);border-color:rgba(0,0,0,.14)}
+#videoMakerModal #videoMakerQualityRow input:after{content:none!important;display:none!important}
