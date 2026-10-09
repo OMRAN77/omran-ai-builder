@@ -25,11 +25,10 @@ test('كلّ وضع في القائمة له مفتاح مثال، وكلّه ب
   });
 });
 
-test('الواجهة: الشريحة تتبدّل مع الوضع وتعبّئ الوصف بضغطة، ووسوم الملفّات مرفوعة', () => {
+test('الواجهة: مثال الوضع الأوّل نموذجٌ في قسمه يملأ الوصف بضغطة، ووسوم الملفّات مرفوعة', () => {
   const js = read('js/video.js');
-  assert.ok(js.includes("'videoIdea'+md.charAt(0).toUpperCase()+md.slice(1)"));
-  assert.ok(js.includes("pe.value=tx; pe.dispatchEvent(new Event('input'"));
-  assert.ok(read('css/modules.css').includes('.vmk-idea{'));
+  assert.ok(js.includes("keys=['videoIdea'+c,'videoIdea'+c+'2','videoIdea'+c+'3']"));
+  assert.ok(js.includes('setVal(pe,tx)'));
   const h = read('index.html');
   assert.ok(h.includes('src="/js/video.js?v=426"') && h.includes('modules.css?v=665'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=730'"));

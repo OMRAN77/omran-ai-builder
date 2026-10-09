@@ -254,10 +254,6 @@
 #videoMakerModal .vmk-pill{font-size:12px;padding:6px 13px;border-radius:var(--r-pill);border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#d5d5dd;cursor:pointer;transition:.15s;white-space:nowrap}
 #videoMakerModal .vmk-pill:hover{border-color:rgba(232,161,60,.55);color:#f0be7a}
 #videoMakerModal .vmk-pill[aria-checked=true]{background:linear-gradient(135deg,#e8a13c,#c98226);border-color:transparent;color:#17140f;font-weight:700}
-#videoMakerModal .vmk-ideas{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px}
-#videoMakerModal .vmk-ideas-l{font-size:var(--fs-5);color:var(--muted,#82828c)}
-#videoMakerModal .vmk-idea{font:inherit;font-size:12px;padding:5px 11px;border-radius:var(--r-pill);border:1px dashed rgba(var(--accent-rgb,232,161,60),.45);background:rgba(var(--accent-rgb,232,161,60),.07);color:var(--accent-light,#f0be7a);cursor:pointer;text-align:start;transition:.15s}
-#videoMakerModal .vmk-idea:hover{background:rgba(var(--accent-rgb,232,161,60),.16)}
 #videoMakerModal details.vmk-ai{margin-top:10px;border:1px solid var(--border,rgba(255,255,255,.1));border-radius:var(--r-3);background:rgba(var(--accent-tint-rgb,255,255,255),.03)}
 #videoMakerModal .vmk-ai>summary{cursor:pointer;list-style:none;padding:10px 13px;font-size:12.5px;color:var(--accent-light,#f0be7a)}
 #videoMakerModal .vmk-ai-body{padding:0 13px 12px}
@@ -485,7 +481,37 @@ html[data-mode="light"] #videoMakerModal .vmk-ai-b.w{background:rgba(0,0,0,.04);
 html[data-mode="light"] #videoMakerModal .vmk-ai-b.u{background:rgba(var(--accent-rgb,232,161,60),.12);color:var(--text)}
 html[data-mode="light"] #videoMakerModal .vmk-ai-g span,
 html[data-mode="light"] #videoMakerModal .vmk-ai-a button,
-html[data-mode="light"] #videoMakerModal .vmk-idea{background:#ffffff;color:var(--text);border-color:rgba(0,0,0,.18)}
 html[data-mode="light"] #videoMakerModal .vmk-ai-s,
-html[data-mode="light"] #videoMakerModal .vmk-ai-f,
-html[data-mode="light"] #videoMakerModal .vmk-ideas-l{color:var(--muted)}
+html[data-mode="light"] #videoMakerModal .vmk-ai-f{color:var(--muted)}
+
+/* v-vmk-sections: شريط الأقسام + نماذج كلّ قسم + الشخصيّات (ألوان الثيم لا ثابتة) */
+#videoMakerModal .vmk-tabs{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin:0 0 4px}
+#videoMakerModal .vmk-tab{font:inherit;font-size:12.5px;padding:8px 15px;border-radius:var(--r-pill);border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(var(--accent-tint-rgb,255,255,255),.04);color:var(--text,#d5d5dd);cursor:pointer;transition:.15s}
+#videoMakerModal .vmk-tab:hover{border-color:rgba(var(--accent-rgb,232,161,60),.55)}
+#videoMakerModal .vmk-tab[aria-selected=true]{background:var(--accent,#e8a13c);border-color:transparent;color:var(--accent-ink,#17140f);font-weight:700}
+#videoMakerModal .vmk-studio.vmk-tab-trend>.vmk-side,#videoMakerModal .vmk-studio.vmk-tab-trend>.vmk-main{display:none!important}
+#videoMakerModal .vmk-studio:not(.vmk-tab-trend)>#vtRoot{display:none!important}
+#videoMakerModal .vmk-cards,#videoMakerModal .vmk-main label[data-i18n="videoModeLabel"]{display:none!important}
+#videoMakerModal .vmk-samples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+#videoMakerModal .vmk-samples:empty{display:none}
+#videoMakerModal .vmk-sm{border-radius:var(--r-3);overflow:hidden;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(var(--accent-tint-rgb,255,255,255),.04);cursor:pointer;transition:.15s}
+#videoMakerModal .vmk-sm:hover,#videoMakerModal .vmk-sm:focus-visible{border-color:rgba(var(--accent-rgb,232,161,60),.6);transform:translateY(-2px);outline:0}
+#videoMakerModal .vmk-sm-p{position:relative;aspect-ratio:16/10;background:linear-gradient(160deg,rgba(var(--accent-rgb,232,161,60),calc(.30 - var(--i,0)*.08)),rgba(var(--accent-tint-rgb,255,255,255),.03))}
+#videoMakerModal .vmk-sm-p video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#videoMakerModal .vmk-sm-play{position:absolute;inset:0;margin:auto;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.45)}
+#videoMakerModal .vmk-sm-play:after{content:"";position:absolute;top:50%;left:50%;transform:translate(-35%,-50%);border-inline-start:10px solid #fff;border-top:6px solid transparent;border-bottom:6px solid transparent}
+#videoMakerModal .vmk-sm b{display:block;padding:8px 10px;font-size:12px;font-weight:600;line-height:1.6;color:var(--text,#eceef4)}
+#videoMakerModal .vmk-cl{display:flex;flex-direction:column;gap:10px}
+#videoMakerModal .vmk-ch{border:1px solid var(--border,rgba(255,255,255,.1));border-radius:var(--r-3);padding:9px;display:flex;flex-direction:column;gap:7px}
+#videoMakerModal .vmk-ch-h{display:flex;gap:7px}
+#videoMakerModal .vmk-ch-h .n{flex:1;min-width:0}
+#videoMakerModal .vmk-ch-h .v{width:92px;flex:none;padding-inline:8px}
+#videoMakerModal .vmk-ch-h .x{font:inherit;font-size:16px;width:34px;border-radius:var(--r-2);border:1px solid var(--border,rgba(255,255,255,.12));background:none;color:var(--muted,#9a9a9e);cursor:pointer}
+#videoMakerModal .vmk-ch-add{margin-top:10px;font:inherit;font-size:12.5px;padding:7px 14px;border-radius:var(--r-pill);border:1px dashed rgba(var(--accent-rgb,232,161,60),.55);background:none;color:var(--accent-light,#f0be7a);cursor:pointer}
+@media (max-width:640px){#videoMakerModal .vmk-samples{grid-template-columns:1fr}#videoMakerModal .vmk-sm-p{aspect-ratio:16/6}}
+html[data-mode="light"] #videoMakerModal .vmk-tab{background:#ffffff;border-color:rgba(0,0,0,.14);color:var(--text)}
+html[data-mode="light"] #videoMakerModal .vmk-tab[aria-selected=true]{background:var(--accent,#e8a13c);color:var(--accent-ink,#17140f)}
+html[data-mode="light"] #videoMakerModal .vmk-sm{background:#ffffff;border-color:rgba(0,0,0,.10)}
+html[data-mode="light"] #videoMakerModal .vmk-sm b{color:var(--text)}
+html[data-mode="light"] #videoMakerModal .vmk-ch{border-color:rgba(0,0,0,.10);background:#ffffff}
+html[data-mode="light"] #videoMakerModal .vmk-ch-add{background:#ffffff;color:var(--text);border-color:rgba(0,0,0,.25)}

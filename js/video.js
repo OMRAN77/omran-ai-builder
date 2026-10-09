@@ -29,26 +29,123 @@
     [nt&&nt.closest('label'),id('videoMakerNarrationRow'),id('videoMakerQualityRow')].forEach(function(e){ if(e) det.appendChild(e); });
     main.appendChild(det);
     var go=id('videoMakerGenerateBtn'); if(go) main.appendChild(go);
-    /* v-vmk-ideas: شريحة مثال واحدة لكلّ وضع تحت الوصف (تتبدّل مع الوضع) تعبّئ الوصف بضغطة — بلا مساحة إضافيّة */
+    /* v-vmk-sections: كلّ وضع قسمٌ بنماذجه الثلاثة، ثمّ مساعد الكتابة، ثمّ الشخصيّات — تحت الوصف مباشرة */
     var pe=id('videoMakerPrompt'), prow=pe&&pe.parentElement;
-    if(prow&&!id('vmkIdeas')){
-      var ib=document.createElement('div'); ib.id='vmkIdeas'; ib.className='vmk-ideas';
-      ib.innerHTML='<span class="vmk-ideas-l"></span><button type="button" class="vmk-idea"></button>';
-      prow.parentNode.insertBefore(ib,prow.nextSibling);
-      ib.querySelector('button').addEventListener('click',function(){
-        var tx=this.dataset.txt; if(!tx||!pe) return;
-        pe.value=tx; pe.dispatchEvent(new Event('input',{bubbles:true})); pe.focus();
-      });
-    }
-    /* v-video-write: مساعد الكتابة داخل الصانع — يكتب القصّة/الحوار/الإعلان مضبوطًا على مدّة الفيديو بلا مغادرة النافذة */
-    var ib2=id('vmkIdeas');
-    if(ib2&&!id('vmkWrite')){
+    if(prow&&!id('vmkWrite')){
       var wd=document.createElement('details'); wd.id='vmkWrite'; wd.className='vmk-ai';
       wd.innerHTML='<summary></summary><div class="vmk-ai-body"><p class="vmk-ai-s"></p><div class="vmk-ai-m"></div><div class="vmk-ai-g"></div><div class="vmk-ai-i"><input type="text" maxlength="400"><button type="button" class="vmk-ai-go"></button></div></div>';
-      ib2.parentNode.insertBefore(wd,ib2.nextSibling);
+      prow.parentNode.insertBefore(wd,prow.nextSibling);
       wireWrite(wd);
+      var cd=document.createElement('details'); cd.id='vmkChars'; cd.className='vmk-ai vmk-chars';
+      cd.innerHTML='<summary></summary><div class="vmk-ai-body"><p class="vmk-ai-s"></p><div class="vmk-cl"></div><button type="button" class="vmk-ch-add"></button></div>';
+      wd.parentNode.insertBefore(cd,wd.nextSibling);
+      cd.querySelector('.vmk-ch-add').addEventListener('click',function(){ if(chars.length<MAXCH){ chars.push({name:'',voice:'male',line:''}); renderChars(); } });
+      var sm=document.createElement('div'); sm.id='vmkSamples'; sm.className='vmk-samples';
+      main.insertBefore(sm,main.firstChild);
+      var gb=id('videoMakerGenerateBtn'); if(gb) gb.addEventListener('click',compose,true);
     }
     card.dataset.vmk='1';
+  }
+  /* ═══ v-vmk-sections: شريط الأقسام (الترندات + الأوضاع) ═══ */
+  var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor'];
+  var tab='trend';
+  /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
+  var VIDEOS={};
+  var MAXCH=3, chars=[], lastBlock='';
+  function Cap(m){ return m.charAt(0).toUpperCase()+m.slice(1); }
+  function setVal(el,val){ if(!el) return; el.value=val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function tabLabel(v){
+    if(v==='trend') return L('videoTabTrends');
+    var sel=id('videoMakerMode'); if(!sel) return v;
+    for(var i=0;i<sel.options.length;i++) if(sel.options[i].value===v){
+      var t=(sel.options[i].textContent||'').trim(), m=t.match(ICO); t=short(t.slice(m?m[1].length:0));
+      return t.split(/\s+[—–-]\s+/)[0].trim()||t;
+    }
+    return v;
+  }
+  function buildTabs(){
+    var card=M.firstElementChild; if(!card) return;
+    var tb=id('vmkTabs');
+    if(!tb){
+      tb=document.createElement('div'); tb.id='vmkTabs'; tb.className='vmk-tabs'; tb.setAttribute('role','tablist');
+      tb.addEventListener('click',function(e){ var b=e.target.closest('[data-tab]'); if(b) setTab(b.dataset.tab); });
+    }
+    if(tb.previousElementSibling!==card.firstElementChild) card.insertBefore(tb,card.firstElementChild.nextSibling);
+    tb.innerHTML='';
+    TABS.forEach(function(v){
+      var b=document.createElement('button'); b.type='button'; b.className='vmk-tab'; b.dataset.tab=v;
+      b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab)); b.textContent=tabLabel(v); tb.appendChild(b);
+    });
+    card.classList.toggle('vmk-tab-trend',tab==='trend');
+  }
+  function setTab(v){
+    if(TABS.indexOf(v)<0) return; tab=v;
+    var sel=id('videoMakerMode');
+    if(v!=='trend'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); }
+    buildTabs(); sync();
+  }
+  function syncSamples(){
+    var box=id('vmkSamples'); if(!box) return;
+    var md=(id('videoMakerMode')||{}).value||''; box.innerHTML='';
+    if(tab==='trend'||!md) return;
+    var c=Cap(md), keys=['videoIdea'+c,'videoIdea'+c+'2','videoIdea'+c+'3'];
+    keys.forEach(function(k,i){
+      var tx=L(k); if(!tx) return;
+      var el=document.createElement('div'); el.className='vmk-sm'; el.setAttribute('role','button'); el.tabIndex=0;
+      var pv=document.createElement('div'); pv.className='vmk-sm-p'; pv.style.setProperty('--i',String(i));
+      if(VIDEOS[md+'-'+(i+1)]){
+        var vd=document.createElement('video'); vd.muted=true; vd.loop=true; vd.playsInline=true; vd.preload='metadata'; vd.src='/media/samples/'+md+'-'+(i+1)+'.mp4';
+        el.addEventListener('mouseenter',function(){ try{ vd.play(); }catch(e){ /* guard-ok — المتصفّح قد يمنع التشغيل التلقائي */ } });
+        el.addEventListener('mouseleave',function(){ try{ vd.pause(); }catch(e){ /* guard-ok — لا أثر */ } });
+        pv.appendChild(vd);
+      }
+      var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl);
+      var tt=document.createElement('b'); tt.textContent=tx;
+      el.appendChild(pv); el.appendChild(tt);
+      var pick=function(){ var pe=id('videoMakerPrompt'); setVal(pe,tx); if(pe) pe.focus(); };
+      el.addEventListener('click',pick);
+      el.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick(); } });
+      box.appendChild(el);
+    });
+  }
+  /* ═══ الشخصيّات: اسم وصوت وكلام لكلّ شخصيّة (حتّى ٣) تُدمَج في الوصف عند «إنشاء» ═══ */
+  function charBlock(){
+    var rows=chars.filter(function(c){ return c.name.trim()||c.line.trim(); }); if(!rows.length) return '';
+    var A=ar();
+    return '\n\n'+(A?'الشخصيات:':'Characters:')+'\n'+rows.map(function(c,i){
+      var f=c.voice==='female', who=c.name.trim()||((A?'شخصية ':'Character ')+(i+1));
+      var v=f?(A?'امرأة إماراتية':'Emirati woman'):(A?'رجل إماراتي':'Emirati man');
+      return '- '+who+' ('+v+')'+(c.line.trim()?(A?(f?' تقول: «':' يقول: «'):' says: “')+c.line.trim()+(A?'»':'”'):'');
+    }).join('\n');
+  }
+  function compose(){
+    if(tab==='trend') return;
+    var pe=id('videoMakerPrompt'); if(!pe) return;
+    var v=pe.value; if(lastBlock&&v.slice(-lastBlock.length)===lastBlock) v=v.slice(0,v.length-lastBlock.length);
+    var b=charBlock(); pe.value=v+b; lastBlock=b;
+  }
+  function renderChars(){
+    var cd=id('vmkChars'); if(!cd) return;
+    var list=cd.querySelector('.vmk-cl'); list.innerHTML='';
+    chars.forEach(function(c,i){
+      var row=document.createElement('div'); row.className='vmk-ch';
+      row.innerHTML='<div class="vmk-ch-h"><input class="n" type="text" maxlength="30"><select class="v"><option value="male"></option><option value="female"></option></select><button type="button" class="x"></button></div><textarea rows="2" maxlength="200"></textarea>';
+      var n=row.querySelector('.n'), v=row.querySelector('.v'), t=row.querySelector('textarea'), x=row.querySelector('.x');
+      n.placeholder=L('vcName'); n.value=c.name; t.placeholder=L('vcLine'); t.value=c.line;
+      v.options[0].textContent=L('vcMale'); v.options[1].textContent=L('vcFemale'); v.value=c.voice;
+      x.textContent='×'; x.title=L('vcRemove'); x.setAttribute('aria-label',L('vcRemove'));
+      n.addEventListener('input',function(){ c.name=n.value; });
+      t.addEventListener('input',function(){ c.line=t.value; });
+      v.addEventListener('change',function(){ c.voice=v.value; });
+      x.addEventListener('click',function(){ chars.splice(i,1); renderChars(); });
+      list.appendChild(row);
+    });
+    var add=cd.querySelector('.vmk-ch-add'); add.textContent='+ '+L('vcAdd'); add.style.display=chars.length>=MAXCH?'none':'';
+  }
+  function syncChars(){
+    var cd=id('vmkChars'); if(!cd) return;
+    cd.querySelector('summary').textContent=L('vcTitle'); cd.querySelector('.vmk-ai-s').textContent=L('vcSub');
+    renderChars();
   }
   function L(k){ var v=(typeof window.t==='function')?window.t(k):k; return v&&v!==k?v:''; }
   var SECS={'5':5,'8':8,'10':10,long20:20,film:45,adspot:5,reels:10};
@@ -70,6 +167,11 @@
       if(r.narration||r.lines.length) ac.appendChild(act(L('vwToNarr'),function(){
         var tg=id('videoMakerNarrationToggle'); if(tg&&!tg.checked){ tg.checked=true; tg.dispatchEvent(new Event('change',{bubbles:true})); }
         put(id('videoMakerNarrationText'),speech); }));
+      if(r.lines.length&&chars.length) ac.appendChild(act(L('vwToChars'),function(){
+        r.lines.forEach(function(l,i){
+          var c=chars.filter(function(x){ return x.name.trim()===l.who; })[0]||chars[i%chars.length]; c.line=l.text;
+        });
+        renderChars(); var cd=id('vmkChars'); if(cd) cd.open=true; }));
       if(speech&&(id('videoMakerMode')||{}).value==='actor') ac.appendChild(act(L('vwToActor'),function(){ put(id('videoMakerActorSpeech'),speech.slice(0,300)); }));
       box.appendChild(ac); return box;
     }
@@ -78,7 +180,7 @@
       var dv=(id('videoMakerDuration')||{}).value||'8', kind=/إعلان|اعلان|\bad\b|advert/i.test(q)?'ad':/حوار|dialog/i.test(q)?'dialogue':'story';
       busy=true; go.disabled=true; inp.value=''; bubble(' u',q); var wait=bubble(' w',L('vwBusy'));
       var tk=(typeof authGet==='function')?(authGet('aiapp_auth_token')||''):'';
-      fetch('/api/tools?action=video-write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:q,kind:kind,duration:dv,token:tk})})
+      fetch('/api/tools?action=video-write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:q,kind:kind,duration:dv,token:tk,characters:chars.map(function(c){return c.name.trim();}).filter(Boolean)})})
         .then(function(r){return r.json();}).then(function(d){
           wait.remove();
           if(d&&d.result){ var b=bubble(' a',show(d.result)); var f=document.createElement('div'); f.className='vmk-ai-f'; f.textContent=L('vwFit').replace('{n}',String(d.seconds||SECS[dv]||8)).replace('{w}',String(d.words||'')); b.appendChild(f); }
@@ -139,14 +241,8 @@
       var b=document.createElement('span'); b.className='vmk-chip gold';
       b.textContent=p?('⚡ '+p+(ar()?' نقطة':' pts')):(ar()?'🎁 مجاني':'🎁 Free'); chips.appendChild(b);
     }
-    syncWrite();
-    var ib=id('vmkIdeas'), md=(id('videoMakerMode')||{}).value, tf=(typeof window.t==='function')?window.t:null;
-    if(ib&&md){
-      var k='videoIdea'+md.charAt(0).toUpperCase()+md.slice(1), tx=tf?tf(k):k, lb=tf?tf('videoIdeaLbl'):'';
-      ib.style.display=(tx&&tx!==k)?'':'none';
-      ib.firstChild.textContent=(lb&&lb!=='videoIdeaLbl')?lb:'';
-      var bt=ib.querySelector('button'); bt.dataset.txt=tx; bt.textContent=tx;
-    }
+    syncWrite(); syncChars(); syncSamples();
+    var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });
     var r=((id('videoMakerRatio')||{}).value||'1280:720').split(':'), stage=M.querySelector('.vmk-stage');
     if(stage){
       stage.style.setProperty('--vmk-ar',r[0]+'/'+r[1]);
@@ -161,7 +257,13 @@
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; build(); trendsTop(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); sync(); }
-  new MutationObserver(function(){ if(M.style.display&&M.style.display!=='none') enhance(); }).observe(M,{attributes:true,attributeFilter:['style']});
+  function enhance(){ if(!on()) return; build(); buildTabs(); trendsTop(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); sync(); }
+  var wasOpen=false;
+  new MutationObserver(function(){
+    var open=!!(M.style.display&&M.style.display!=='none');
+    if(open&&!wasOpen){ tab='trend'; }
+    wasOpen=open;
+    if(open) enhance();
+  }).observe(M,{attributes:true,attributeFilter:['style']});
   G.forEach(function(d){ var s=id(d[0]); if(s) s.addEventListener('change',sync); });
 })();
