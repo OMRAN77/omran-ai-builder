@@ -43786,7 +43786,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
         + '<img src="/assets/inspire/city/' + c.id + '.jpg?v=1" alt="" loading="lazy" decoding="async" width="600" height="360">'
         + '<div class="insTxt"><div class="insCT">' + esc(L(c.t)) + '</div><div class="insCD">' + esc(L(c.d)) + '</div></div>'
         + '<div class="insBusy">' + esc(tx('inspLoading', 'يجهّز…')) + '</div></button>').join('') + '</div>';
-    body.querySelectorAll('.insCard[data-id]').forEach((b) => { b.onclick = () => openInspireExperience(b.dataset.id, b); });
+    // v-real-modes: المطاردة والدرون صارا على المدينة المصوَّرة — يُفتحان في «المدينة الحقيقيّة» بوضعهما
+    body.querySelectorAll('.insCard[data-id]').forEach((b) => { b.onclick = () => (REAL_MODES[b.dataset.id] ? openInspireLive('real3d', REAL_MODES[b.dataset.id]) : openInspireExperience(b.dataset.id, b)); });
     body.querySelectorAll('.insCard[data-live]').forEach((b) => { b.onclick = () => openInspireLive(b.dataset.live); });
   }
 
@@ -43884,7 +43885,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     document.removeEventListener('keydown', liveEsc, true);
   }
   function liveEsc(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeInspireLive(); } }
-  function openInspireLive(id){
+  const REAL_MODES = { chase: 'chase', drone: 'drone' };
+  function openInspireLive(id, mode){
     const item = INSPIRE_LIVE.find((c) => c.id === id);
     if(!item) return false;
     closeInspireScreen();
@@ -43898,7 +43900,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       + '<button type="button" id="inspireLiveClose" style="position:absolute;top:12px;' + (ar ? 'left' : 'right') + ':12px;z-index:2;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(10,14,22,.75);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">' + CLOSE_SVG + '</button>';
     const fr = ov.querySelector('iframe');
     fr.title = L(item.t);
-    fr.src = item.src + (item.src.indexOf('?') === -1 ? '?' : '&') + 'lang=' + encodeURIComponent((typeof lang !== 'undefined' && lang) || 'ar');
+    fr.src = item.src + (item.src.indexOf('?') === -1 ? '?' : '&') + 'lang=' + encodeURIComponent((typeof lang !== 'undefined' && lang) || 'ar') + (mode ? '&mode=' + encodeURIComponent(mode) : '');
     const cb = ov.querySelector('#inspireLiveClose');
     cb.setAttribute('aria-label', tx('closeTitle', 'إغلاق'));
     cb.onclick = closeInspireLive;

@@ -28,3 +28,15 @@ test('تُفتح بإطار من النطاق نفسه مع لغة التطبي�
   const r3 = fs.readFileSync(path.join(root, 'inspire/real3d.html'), 'utf8');
   assert.match(r3, /new URLSearchParams\(location\.search\)\.get\('lang'\)/);
 });
+
+test('v-real-modes: بطاقتا المطاردة والدرون تفتحان المدينة الحقيقيّة بوضعهما، والوضعان موصولان', () => {
+  assert.match(src, /const REAL_MODES = \{ chase: 'chase', drone: 'drone' \}/);
+  assert.match(src, /REAL_MODES\[b\.dataset\.id\] \? openInspireLive\('real3d', REAL_MODES\[b\.dataset\.id\]\)/);
+  assert.match(src, /'&mode=' \+ encodeURIComponent\(mode\)/);
+  const r3 = fs.readFileSync(path.join(root, 'inspire/real3d.html'), 'utf8');
+  const md = fs.readFileSync(path.join(root, 'inspire/real3d-modes.js'), 'utf8');
+  assert.match(r3, /import \{ initModes \} from '\.\/real3d-modes\.js\?v=\d+'/);
+  assert.match(r3, /START_MODE === 'drone'/); assert.match(r3, /START_MODE === 'chase'/);
+  assert.match(md, /const N_GATES = 6, N_RINGS = 8/);
+  assert.match(md, /0\.6 \* \(Math\.min\(a\.y, b\.y\) - ground\)/); // الحلقة على ٦٠٪ من أقصر البرجين
+});
