@@ -66,7 +66,7 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=3">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
   assert.match(html, /partials-settings\.js\?v=694/, 'وسم الإعدادات ارتفع');
-  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=728'/, 'وسم اللغات ارتفع');
+  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=730'/, 'وسم اللغات ارتفع');
   for (const old of ['js/app-25-خلفيات-مدير.js', 'js/partials-خلفيات-قسم.js']) assert.ok(!fs.existsSync(path.join(root, old)), old + ' يجب أن يُحذف');
 
   const settings = rd('js/partials-settings.js');
@@ -166,7 +166,7 @@ function makeEnv({ storage = {}, list, fetchFails = false, now = 1_000_000 } = {
   return { ctx, html, body, grid, rot, store, calls, clock, tick };
 }
 // v-themes: ١٤ ثيمًا في الشبكة (خشبي + ١٣) بين «صورة من جهازك» والصور — أوّل صورة في الخانة 2 + TH
-const TH = 14;
+const TH = 24; // v-themes-ten: ١٤ + ١٠
 const LIST = [
   { ملف: '01-مدينة.jpg', عرض: 1000, ارتفاع: 1000, لون: '#1c2123', فاتحة: false },
   { ملف: '02-ثلج.jpg', عرض: 1000, ارتفاع: 1000, لون: '#e8e8ea', فاتحة: true },

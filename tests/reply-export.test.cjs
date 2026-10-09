@@ -215,7 +215,7 @@ test('«الملف جاهز» مترجم بالـ١٤ لغة، ووسم ملفّ
   for (const l of ['fr', 'hi', 'ur', 'bn', 'ne', 'ml', 'fil', 'id', 'zh', 'ru', 'tr', 'es']) {
     assert.match(read('i18n/' + l + '.js'), /"?fileReadyTitle"?: "✅ [^"]+"/, l);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=728'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=730'/);
 });
 
 test('غلاف أندرويد الاحتياطيّ: منزّل النظام في مساري إنشاء WebView، وصلاحيّة التخزين لأندرويد ≤٩ فقط', () => {

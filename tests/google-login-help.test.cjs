@@ -121,7 +121,7 @@ test('٥. النصّ بالـ١٤ لغة باسم الزرّ نفسه، ووسم
     const o = JSON.parse(m[2]);
     assert.ok(o.authGoogleHint && o.authGoogleHint.includes('{btn}') && /Gmail/.test(o.authGoogleHint), lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=728'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=730'"));
 });
 
 test('٦. أندرويد الخام (; wv) وحده يأخذ مسار «ارجع للتطبيق» — Chrome والآيفون كما كانا', () => {

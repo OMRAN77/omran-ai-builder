@@ -291,3 +291,136 @@ html.skin-school{
   --th-ai:rgba(24,36,30,.9); --th-ai-line:rgba(255,255,255,.15);
   --th-work:rgba(29,48,39,.66);
 }
+
+/* ══ v-themes-ten (المالك ٩ أكتوبر: «عطني ١٠ أشكال جديدة: أنمي ٤ وسيارات ٣ ودراسيّة ٣… شي مرتّب وواضح ونفس الثيمات الموجودة»)
+   عشر ثيمات مشهد من صور المالك (assets/ثيمات/<المجلّد>/مشهد.jpg، موضَّحة ٢٥٦٠ بكسل بـReal-ESRGAN محلّيًّا)، على نسق «أنمي» (داكن) و«شاطئ» (فاتح). ══ */
+/* أنمي قتاليّ: قرمزيّ وأسود */
+html.skin-tactical{
+  --th-page:#7a0f2e; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A3%D9%86%D9%85%D9%8A-%D9%82%D8%AA%D8%A7%D9%84%D9%8A/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:40% 50%; --th-veil:rgba(60,0,20,.14);
+  --th-ink:#f4f1ee; --th-muted:#cfc8c0; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+  --th-gold:#ff3d7a; --th-line:rgba(255,61,122,.6); --th-line2:rgba(255,61,122,.3); --th-glow:rgba(255,61,122,.3);
+  --th-dlg:#2a0a16; --th-dlg2:#3a1020;
+  --th-side:linear-gradient(180deg, rgba(70,6,30,.84), rgba(40,2,16,.9));
+  --th-tile:linear-gradient(90deg,#4a0d24,#2e0816); --th-tile-line:rgba(255,61,122,.45); --th-tile-shadow:0 0 12px rgba(255,61,122,.12), 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#ff6b9a,#c4123f); --th-btn-ink:#fff;
+  --th-field:rgba(40,4,18,.9); --th-field-line:rgba(255,61,122,.45);
+  --th-user:rgba(80,10,36,.92); --th-user-line:rgba(255,61,122,.5); --th-ai:rgba(26,4,14,.88);
+  --th-work:rgba(40,6,22,.6);
+}
+/* ملاك الجليد: أبيض وأزرق ثلجيّ */
+html.skin-angel{
+  --th-scheme:light; --th-page:#c9d8ea; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%84%D8%A7%D9%83/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:50% 50%;
+  --th-ink:#14243a; --th-muted:#3e5572; --th-over:#0f1e33; --th-over-muted:#2b3f5c; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
+  --th-gold:#2f6fcf; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(47,111,207,.3);
+  --th-dlg:#f3f7fc; --th-dlg2:#e2ebf7;
+  --th-side:linear-gradient(180deg, rgba(226,236,248,.74), rgba(196,214,236,.82));
+  --th-tile:linear-gradient(90deg,#f4f8ff,#dfe9f7); --th-tile-line:rgba(47,111,207,.45); --th-tile-ink:#14243a; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(0,0,0,.15);
+  --th-btn:linear-gradient(160deg,#6aa6ff,#2f6fcf); --th-btn-ink:#fff;
+  --th-field:rgba(255,255,255,.93); --th-field-line:rgba(47,111,207,.5);
+  --th-user:rgba(255,255,255,.93); --th-user-line:rgba(47,111,207,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.12);
+  --th-work:rgba(226,236,248,.55);
+}
+/* أنمي نيون: أسود وفيروزيّ وأحمر */
+html.skin-neonanime{
+  --th-page:#050607; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%A3%D9%86%D9%85%D9%8A-%D9%86%D9%8A%D9%88%D9%86/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 50%; --th-pos-m:75% 50%; --th-veil:rgba(0,0,0,.1);
+  --th-ink:#e6f7f5; --th-muted:#9fc9c4; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+  --th-gold:#2fe6d6; --th-line:rgba(47,230,214,.6); --th-line2:rgba(255,45,85,.3); --th-glow:rgba(47,230,214,.3);
+  --th-dlg:#0e1416; --th-dlg2:#152022;
+  --th-side:linear-gradient(180deg, rgba(10,14,16,.86), rgba(4,6,8,.92));
+  --th-tile:linear-gradient(90deg,#0f2a2a,#0a1416); --th-tile-line:rgba(47,230,214,.45); --th-tile-shadow:0 0 12px rgba(47,230,214,.12), 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#45f0e0,#ff2d55); --th-btn-ink:#fff;
+  --th-field:rgba(8,14,16,.9); --th-field-line:rgba(47,230,214,.45);
+  --th-user:rgba(14,40,40,.9); --th-user-line:rgba(47,230,214,.5); --th-ai:rgba(6,8,10,.88);
+  --th-work:rgba(8,12,14,.6);
+}
+/* محطّة المستقبل: فولاذ رماديّ وأصفر صناعيّ */
+html.skin-station{
+  --th-page:#3a3f44; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%AD%D8%B7%D9%91%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:60% 50%; --th-veil:rgba(20,24,28,.18);
+  --th-ink:#eef0f2; --th-muted:#b8bec4; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+  --th-gold:#f2b43c; --th-line:rgba(242,180,60,.6); --th-line2:rgba(242,180,60,.3); --th-glow:rgba(242,180,60,.3);
+  --th-dlg:#1f2428; --th-dlg2:#2a3036;
+  --th-side:linear-gradient(180deg, rgba(44,50,56,.84), rgba(26,30,34,.9));
+  --th-tile:linear-gradient(90deg,#3b4249,#272c31); --th-tile-line:rgba(242,180,60,.45); --th-tile-shadow:0 0 12px rgba(242,180,60,.12), 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#ffcc5a,#d9901c); --th-btn-ink:#fff;
+  --th-field:rgba(28,32,36,.9); --th-field-line:rgba(242,180,60,.45);
+  --th-user:rgba(50,56,62,.9); --th-user-line:rgba(242,180,60,.5); --th-ai:rgba(22,26,30,.88);
+  --th-work:rgba(30,34,38,.6);
+}
+/* سباق مطر: زيتونيّ وبرتقاليّ (الفيراري) */
+html.skin-rally{
+  --th-page:#5a5440; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B3%D8%A8%D8%A7%D9%82/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:50% 50%; --th-pos-m:55% 50%; --th-veil:rgba(40,36,24,.16);
+  --th-ink:#f6f1e6; --th-muted:#cfc6b2; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+  --th-gold:#ff6a2e; --th-line:rgba(255,106,46,.6); --th-line2:rgba(255,106,46,.3); --th-glow:rgba(255,106,46,.3);
+  --th-dlg:#2c2920; --th-dlg2:#3a362a;
+  --th-side:linear-gradient(180deg, rgba(70,64,48,.84), rgba(44,40,30,.9));
+  --th-tile:linear-gradient(90deg,#4a4536,#302d22); --th-tile-line:rgba(255,106,46,.45); --th-tile-shadow:0 0 12px rgba(255,106,46,.12), 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#ff8a55,#d94a14); --th-btn-ink:#fff;
+  --th-field:rgba(40,36,26,.9); --th-field-line:rgba(255,106,46,.45);
+  --th-user:rgba(74,60,40,.9); --th-user-line:rgba(255,106,46,.5); --th-ai:rgba(30,28,20,.88);
+  --th-work:rgba(40,36,26,.6);
+}
+/* دخان أزرق: ليل كحليّ وأزرق متوهّج (البوغاتي) */
+html.skin-smoke{
+  --th-page:#071a33; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AF%D8%AE%D8%A7%D9%86/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:50% 50%; --th-veil:rgba(0,10,30,.14);
+  --th-ink:#f4f1ee; --th-muted:#cfc8c0; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+  --th-gold:#4fb8ff; --th-line:rgba(79,184,255,.6); --th-line2:rgba(79,184,255,.3); --th-glow:rgba(79,184,255,.3);
+  --th-dlg:#0b1a30; --th-dlg2:#12264a;
+  --th-side:linear-gradient(180deg, rgba(10,30,60,.84), rgba(4,16,36,.9));
+  --th-tile:linear-gradient(90deg,#143a66,#0c2140); --th-tile-line:rgba(79,184,255,.45); --th-tile-shadow:0 0 12px rgba(79,184,255,.12), 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#7ccfff,#1f7fd6); --th-btn-ink:#fff;
+  --th-field:rgba(8,20,40,.9); --th-field-line:rgba(79,184,255,.45);
+  --th-user:rgba(16,44,80,.9); --th-user-line:rgba(79,184,255,.5); --th-ai:rgba(6,14,28,.88);
+  --th-work:rgba(8,20,40,.6);
+}
+/* مكتبة: أبيض وفيروزيّ فاتح (مكتبة شتوتغارت) */
+html.skin-library{
+  --th-scheme:light; --th-page:#cfeef0; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%83%D8%AA%D8%A8%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:50% 50%;
+  --th-ink:#0f3a46; --th-muted:#3f6b77; --th-over:#0b3340; --th-over-muted:#1f4f5c; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
+  --th-gold:#17a2b0; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(23,162,176,.3);
+  --th-dlg:#f2fbfb; --th-dlg2:#dff3f4;
+  --th-side:linear-gradient(180deg, rgba(228,246,247,.74), rgba(196,232,235,.82));
+  --th-tile:linear-gradient(90deg,#f6fdfd,#dff3f4); --th-tile-line:rgba(23,162,176,.45); --th-tile-ink:#0f3a46; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(0,0,0,.15);
+  --th-btn:linear-gradient(160deg,#4fd0da,#17a2b0); --th-btn-ink:#fff;
+  --th-field:rgba(255,255,255,.93); --th-field-line:rgba(23,162,176,.5);
+  --th-user:rgba(255,255,255,.93); --th-user-line:rgba(23,162,176,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.12);
+  --th-work:rgba(228,246,247,.55);
+}
+/* مقهى: بيج دافئ وذهبيّ (قهوة ودفتر) */
+html.skin-cafe{
+  --th-scheme:light; --th-page:#e8d8c2; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%82%D9%87%D9%89/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:45% 50%;
+  --th-ink:#4a3620; --th-muted:#7a6448; --th-over:#3a2a16; --th-over-muted:#5a4630; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
+  --th-gold:#b8863c; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(184,134,60,.3);
+  --th-dlg:#fbf5ec; --th-dlg2:#f1e6d6;
+  --th-side:linear-gradient(180deg, rgba(248,238,224,.76), rgba(232,214,190,.84));
+  --th-tile:linear-gradient(90deg,#fff8ee,#efe2cf); --th-tile-line:rgba(184,134,60,.45); --th-tile-ink:#4a3620; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(0,0,0,.15);
+  --th-btn:linear-gradient(160deg,#e0b25c,#b8863c); --th-btn-ink:#fff;
+  --th-field:rgba(255,255,255,.93); --th-field-line:rgba(184,134,60,.5);
+  --th-user:rgba(255,255,255,.93); --th-user-line:rgba(184,134,60,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.12);
+  --th-work:rgba(248,238,224,.55);
+}
+/* ورشة ليليّة: كحليّ وبنفسجيّ وشاشات (الغرفة التقنيّة) */
+html.skin-workshop{
+  --th-page:#1a1830; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%88%D8%B1%D8%B4%D8%A9/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:35% 50%; --th-veil:rgba(10,8,30,.14);
+  --th-ink:#f4f1ee; --th-muted:#cfc8c0; --th-over:#fff; --th-over-shadow:0 1px 3px rgba(0,0,0,.75); --th-over-drop:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+  --th-gold:#9b8cff; --th-line:rgba(155,140,255,.6); --th-line2:rgba(155,140,255,.3); --th-glow:rgba(155,140,255,.3);
+  --th-dlg:#1c1a34; --th-dlg2:#262246;
+  --th-side:linear-gradient(180deg, rgba(34,30,66,.84), rgba(20,18,40,.9));
+  --th-tile:linear-gradient(90deg,#2e2a58,#1e1a3a); --th-tile-line:rgba(155,140,255,.45); --th-tile-shadow:0 0 12px rgba(155,140,255,.12), 0 2px 6px rgba(0,0,0,.4);
+  --th-btn:linear-gradient(160deg,#b3a6ff,#6a55e0); --th-btn-ink:#fff;
+  --th-field:rgba(24,20,44,.9); --th-field-line:rgba(155,140,255,.45);
+  --th-user:rgba(44,38,80,.9); --th-user-line:rgba(155,140,255,.5); --th-ai:rgba(16,14,30,.88);
+  --th-work:rgba(22,20,40,.6);
+}
+/* بيت عصريّ: رماديّ دافئ وخشب وبرتقاليّ (الكرسيّ والزجاج) */
+html.skin-modern{
+  --th-scheme:light; --th-page:#d9d2c6; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B9%D8%B5%D8%B1%D9%8A/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:30% 50%;
+  --th-ink:#2f2a24; --th-muted:#6a6056; --th-over:#26221d; --th-over-muted:#4a433b; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
+  --th-gold:#d9542e; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(217,84,46,.3);
+  --th-dlg:#faf7f2; --th-dlg2:#efe9e0;
+  --th-side:linear-gradient(180deg, rgba(244,240,234,.74), rgba(224,216,204,.82));
+  --th-tile:linear-gradient(90deg,#fbf8f3,#ece5da); --th-tile-line:rgba(217,84,46,.4); --th-tile-ink:#2f2a24; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(0,0,0,.15);
+  --th-btn:linear-gradient(160deg,#f0784f,#d9542e); --th-btn-ink:#fff;
+  --th-field:rgba(255,255,255,.93); --th-field-line:rgba(217,84,46,.5);
+  --th-user:rgba(255,255,255,.93); --th-user-line:rgba(217,84,46,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.12);
+  --th-work:rgba(244,240,234,.55);
+}

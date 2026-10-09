@@ -68,5 +68,5 @@ test('٣. العنوان بالـ١٤ لغة، والقائمة تُعاد بن�
   const html = read('index.html');
   assert.match(html, /js\/partials-settings\.js\?v=694/);
   assert.match(html, /css\/tokens\.css\?v=729/);
-  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=728'/); // وسم تحميل اللغات الحاليّ
+  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=730'/); // وسم تحميل اللغات الحاليّ
 });

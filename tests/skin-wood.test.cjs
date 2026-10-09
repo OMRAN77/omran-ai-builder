@@ -60,7 +60,7 @@ test('٣. الربط والترجمة: CSS بعد خلفيات.css، واسم ا
     for (const lg of LANGS) assert.ok(rd('i18n/' + lg + '.js').includes('"' + k + '":'), lg + ': ' + k);
   }
   assert.match(data, /bgThemeWood: 'خشبي'/);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=728'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=730'"));
 });
 
 test('٤. «بيت» لوحة المعاينة الفارغة شيل (أمر المالك بعد الثيمات: «شيل هذا من البنّيّ»): لا دالّة ولا مراقب ولا CSS ولا نصّ', () => {
