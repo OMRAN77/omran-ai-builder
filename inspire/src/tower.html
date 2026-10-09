@@ -727,7 +727,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
 
   const TITLE = T('برجك بين جيرانه', 'Your tower among its neighbours');
   document.title = TITLE; // وسم <title> عربيّ ثابت؛ في الإنجليزيّة يُكتب من هنا
-  CK.start({
+  CK.start({ imagery: true,
     title: TITLE,
     sub: T('حطّ برجًا مقترحًا في حيّك الحقيقيّ، وشوف ظلّه على الجيران مع شمس اليوم الفعليّة — ثمّ انزل وامشِ حوله.', 'Drop a proposed tower into your real neighbourhood, see whom its shadow reaches under the real sun, then walk around it.'),
     shadows: true, radius: 600, onCity, panel,

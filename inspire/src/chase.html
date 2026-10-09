@@ -723,7 +723,7 @@
 
   const TITLE = T('مطاردة في شوارعك', 'Street Chase');
   document.title = TITLE; // وسم <title> عربيّ في المصدر؛ بالإنجليزيّة يتبع لغة الصفحة
-  CK.start({
+  CK.start({ imagery: true,
     title: TITLE,
     sub: T('سباق ستّ نقاط على شوارع حيّك الحقيقيّة — المباني جدران فعليّة، والزمن يُحسب.', 'A six-checkpoint race on your real streets — buildings are solid walls.'),
     radius: R, shadows: true, autoHide: true,

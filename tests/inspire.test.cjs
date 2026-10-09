@@ -165,7 +165,8 @@ test('مصادر التجارب لا تُنشر، والمبنيّ يُنشر', 
 
 test('النواة لا تكتب بيانات الخرائط في localStorage (مشترك مع مشاريع المستخدم)، وتمسح «ck1:» القديم، وتعيد المنطقة من الذاكرة', async () => {
   const src = rd('inspire/src/core.js');
-  assert.doesNotMatch(src, /localStorage\.setItem/, 'لا كتابة في localStorage من النواة');
+  // الاستثناء الوحيد: تفضيل واحد من بايت واحد (صور جوّيّة مفعّلة/لا) — لا بيانات خرائط
+  assert.doesNotMatch(src.replace("localStorage.setItem('ck-imagery', v ? '1' : '0')", ''), /localStorage\.setItem/, 'لا كتابة في localStorage من النواة');
   const store = { 'ck1:25.0805,55.1403,600': 'x'.repeat(10), aiapp_projects: '[]' };
   const ls = { get length() { return Object.keys(store).length; }, key: (i) => Object.keys(store)[i], getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
   let calls = 0;
@@ -381,3 +382,40 @@ test('لوحة التجربة نافذة منبثقة على الحاسوب فق
   assert.match(built('chase'), /if \(X && X\.ui && X\.ui\.hide\) X\.ui\.hide\(\);/, 'بدء السباق يطوي اللوحة');
   assert.match(built('tower'), /body\.tw-walk \.ck-ui,body\.tw-walk \.ck-toggle\{display:none\}/, 'وضع المشي: لا زرّ لوحة مخفيّة');
 });
+
+// ── v-inspire-imagery: صور جوّيّة بلا مفتاح على أرض المدينة وأسطح مبانيها (٧ تجارب نهاريّة) ──
+test('الصور الجوّيّة: بلاطات XYZ تغطّي دائرة المدينة، مستطيلها بالأمتار المحلّيّة يحوي المركز، والشمال أعلى (z أصغر)', () => {
+  const CK = coreCtx();
+  const L = CK.tileList(25.0805, 55.1403, 750, 17);
+  assert.equal(L.z, 17); assert.equal(L.x0 <= 85611 && 85611 <= L.x1, true, 'بلاطة المركز x=85611 ضمن النطاق');
+  assert.equal(L.y0 <= 56098 && 56098 <= L.y1, true, 'بلاطة المركز y=56098 ضمن النطاق');
+  assert.equal(L.tiles.length, L.cols * L.rows); assert.ok(L.tiles.length >= 16 && L.tiles.length <= 100, 'عدد معقول من البلاطات: ' + L.tiles.length);
+  const r = L.rect;
+  assert.ok(r.minX < -750 && r.maxX > 750 && r.minZ < -750 && r.maxZ > 750, 'المستطيل يغطّي ±٧٥٠ م');
+  assert.ok(r.minZ < r.maxZ && r.minX < r.maxX, 'الشمال z أصغر (كإسقاط CK.parse)');
+  const w = (r.maxX - r.minX) / L.cols;
+  assert.ok(Math.abs(w - 276.8) < 1.2, 'عرض البلاطة عند ز١٧ وعرض ٢٥° ≈ ٢٧٦٫٨ م: ' + w);
+  const h = (r.maxZ - r.minZ) / L.rows; assert.ok(Math.abs(h - 275) < 1.5 && Math.abs(h / w - 1) < 0.015, 'البلاطة مربّعة تقريبًا (مركاتور يحفظ النسبة): ' + h);
+  assert.deepEqual(JSON.parse(JSON.stringify(L.tiles[0])), { x: L.x0, y: L.y0, col: 0, row: 0 }); assert.equal(L.tiles[L.tiles.length - 1].row, L.rows - 1);
+  assert.ok(CK.tileList(25, 55, 3000, 17).tiles.length > 100, 'منطقة كبيرة جدًّا ترفضها drape (سقف ١٠٠ بلاطة)');
+  assert.doesNotThrow(() => CK.tileList(0, 179.9999, 700, 17)); assert.doesNotThrow(() => CK.tileList(84, -179.99, 700, 17));
+});
+
+test('الصور الجوّيّة: بلا مفتاح، بنسب مصدر ظاهرة، تفضيل بايت واحد، وسبع تجارب نهاريّة فقط (لا المظلمة التي تُعيد تلوين المدينة)', () => {
+  const core = rd('inspire/src/core.js');
+  const im = core.slice(core.indexOf('CK.IMAGERY = {'), core.indexOf('CK.IMAGERY = {') + 400);
+  assert.match(im, /https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\/MapServer\/tile\/\{z\}\/\{y\}\/\{x\}/);
+  assert.doesNotMatch(im.split('\n')[0], /key=|token=|apikey|access_token|\bsk-/i, 'لا مفتاح في العنوان');
+  assert.match(im, /attr: 'Esri, Maxar, Earthstar Geographics'/); assert.match(core, /الصور: ', 'Imagery: '\) \+ CK\.IMAGERY\.attr/, 'السطر يظهر مع الصور وحدها');
+  assert.match(core, /\.ck-img\[hidden\]\{display:none\}/, 'الصفّ مخفيّ في التجارب التي لا تدعمها');
+  assert.match(core, /if \(ok < L\.tiles\.length \* 0\.5 \|\| ctx\.city !== city\) return false;/, 'أقلّ من نصف البلاطات أو تبدّلت المدينة: المشهد كما كان');
+  assert.match(core, /h > IM\.roofMax/, 'أسطح المباني العالية (إزاحة المنظور) لا تُغطّى بالصورة');
+  assert.match(core, /crossOrigin = 'anonymous'/);
+  assert.match(core, /if \(city && city\.imgOff\) city\.imgOff\(\);\n\s+if \(cityGroup\)/, 'تُحرَّر الطبقة قبل استبدال المدينة');
+  const withImg = ['billboard', 'chase', 'explore', 'sun', 'tower', 'view', 'walkshade'], without = ['drone', 'fireworks', 'lights', 'noise'];
+  for (const id of withImg) assert.match(rd('inspire/city/' + id + '.html'), /\bimagery: true,/, id + ' فيها الصور');
+  for (const id of without) assert.doesNotMatch(rd('inspire/city/' + id + '.html'), /\bimagery: true,/, id + ' مظلمة: بلا صور');
+  assert.ok(!INSPIRE_HERO_REMOVED(), 'لا بطاقة جديدة في «الإلهام»: ' + 'مدينتك الحيّة' + ' غير مضافة');
+  assert.ok(!fs.existsSync(path.join(root, 'inspire/src/live.html')), 'لا تجربة جديدة');
+});
+function INSPIRE_HERO_REMOVED() { return rd('js/app-35-inspire.js').indexOf("id:'live'") !== -1; }
