@@ -52,3 +52,18 @@ export function makeFixture(lat0, lon0, radius = 600) {
   way({ natural: 'coastline' }, [[0, R * 0.97], [R * 1.5, R * 0.97]]);
   return { version: 0.6, generator: 'omran-fixture', elements: els };
 }
+
+// بلاطة «جوّيّة» اصطناعيّة (٢٥٦×٢٥٦ PNG) لاختبار الصور الجوّيّة بلا شبكة: أرض رمليّة بكتل داكنة وأشرطة فاتحة، وحدّ أحمر رفيع حول البلاطة
+// ليُرى مكان كلّ بلاطة وتوافقها (اتّجاه الشمال/الشرق) في اللقطة. الألوان تعتمد على (x,y) فتتميّز الجارات.
+export function makeTilePng(PNG, z, x, y) {
+  const png = new PNG({ width: 256, height: 256 });
+  let a = ((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) >>> 0;
+  const rnd = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const base = [196 + ((x * 7) % 24), 174 + ((y * 5) % 20), 138 + (((x + y) * 3) % 16)];
+  const set = (px, py, c) => { if (px < 0 || py < 0 || px > 255 || py > 255) return; const i = (py * 256 + px) * 4; png.data[i] = c[0]; png.data[i + 1] = c[1]; png.data[i + 2] = c[2]; png.data[i + 3] = 255; };
+  for (let py = 0; py < 256; py++) for (let px = 0; px < 256; px++) { const n = (rnd() - 0.5) * 18; set(px, py, [base[0] + n, base[1] + n, base[2] + n]); }
+  for (let k = 0; k < 40; k++) { const bw = 10 + Math.floor(rnd() * 26), bh = 10 + Math.floor(rnd() * 26), bx = Math.floor(rnd() * (256 - bw)), by = Math.floor(rnd() * (256 - bh)), g = 210 + Math.floor(rnd() * 40), dk = rnd() < 0.5;
+    for (let py = by; py < by + bh; py++) for (let px = bx; px < bx + bw; px++) set(px, py, dk ? [96, 92, 88] : [g, g - 8, g - 20]); }
+  for (let t = 0; t < 256; t++) { set(t, 0, [255, 40, 40]); set(t, 255, [255, 40, 40]); set(0, t, [255, 40, 40]); set(255, t, [255, 40, 40]); }
+  return PNG.sync.write(png);
+}

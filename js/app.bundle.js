@@ -43663,6 +43663,41 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       .replace(/<head>/i, '<head><meta name="omran-inspire" content="' + id + '">');
   }
 
+  /* v-inspire-wide (المالك ٩ أكتوبر «تفتح كامل مكان الكود والمعاينة، والمحادثة تبقى، وأقدر أحرّك السحب»): التجربة تُفتح في لوحة المعاينة
+     بأوسع عرض يتّسع (المحادثة تبقى ٣٢٠ فأكثر، سقف ui-wiring)، دون كتابته في التخزين — والسحب بعدها حرّ. لا يمسّ الجوّال. وحين يُعرض
+     مشروع آخر يعود العرض الذي كان إن لم يحرّكه المستخدم. */
+  let widened = null;
+  const isExp = (c) => !!(c && (c.inspire || String(c.code || '').slice(0, 600).indexOf('name="omran-inspire"') !== -1));
+  function widenWork(){
+    try{
+      if(document.documentElement.classList.contains('mobile-ui') || window.innerWidth <= 860) return;
+      const wa = document.getElementById('workarea');
+      if(!wa || typeof window.omranWorkMax !== 'function') return;
+      const cap = window.omranWorkMax(), cur = Math.round(wa.getBoundingClientRect().width);
+      if(cap <= cur + 24) return;
+      if(!(widened && wa.style.width === widened.set)) widened = { prev: wa.style.width };
+      wa.style.width = cap + 'px';
+      widened.set = wa.style.width;
+    }catch(e){ __swallow(e, 'inspire:widen'); }
+  }
+  function restoreWork(){
+    try{
+      const wa = document.getElementById('workarea');
+      if(wa && widened && wa.style.width === widened.set) wa.style.width = widened.prev;
+      widened = null;
+    }catch(e){ __swallow(e, 'inspire:restore-work'); }
+  }
+  try{
+    if(typeof renderCodeAndPreview === 'function'){
+      const __rcp = renderCodeAndPreview;
+      renderCodeAndPreview = function(){
+        const r = __rcp.apply(this, arguments);
+        try{ if(widened && !isExp(typeof getCurrent === 'function' ? getCurrent() : null)) restoreWork(); }catch(e){ __swallow(e, 'inspire:render-hook'); }
+        return r;
+      };
+    }
+  }catch(e){ __swallow(e, 'inspire:wrap-render'); }
+
   async function openInspireExperience(id, card){
     const item = INSPIRE_CITY.find((c) => c.id === id);
     if(!item) return false;
@@ -43688,6 +43723,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       renderAll();
       switchWorkTab('preview');
       try{ if(window.waAutoExpand) window.waAutoExpand(); }catch(_){ __swallow(_, 'inspire:waExpand'); }
+      widenWork();
       try{ if(window.matchMedia('(max-width:860px)').matches && !workareaEl.classList.contains('open')) openDrawer(workareaEl); }catch(_){ __swallow(_, 'inspire:drawer'); }
       return true;
     }catch(e){

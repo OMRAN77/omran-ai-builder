@@ -165,7 +165,8 @@ test('مصادر التجارب لا تُنشر، والمبنيّ يُنشر', 
 
 test('النواة لا تكتب بيانات الخرائط في localStorage (مشترك مع مشاريع المستخدم)، وتمسح «ck1:» القديم، وتعيد المنطقة من الذاكرة', async () => {
   const src = rd('inspire/src/core.js');
-  assert.doesNotMatch(src, /localStorage\.setItem/, 'لا كتابة في localStorage من النواة');
+  // الاستثناء الوحيد: تفضيل واحد من بايت واحد (صور جوّيّة مفعّلة/لا) — لا بيانات خرائط
+  assert.doesNotMatch(src.replace("localStorage.setItem('ck-imagery', v ? '1' : '0')", ''), /localStorage\.setItem/, 'لا كتابة في localStorage من النواة');
   const store = { 'ck1:25.0805,55.1403,600': 'x'.repeat(10), aiapp_projects: '[]' };
   const ls = { get length() { return Object.keys(store).length; }, key: (i) => Object.keys(store)[i], getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
   let calls = 0;
@@ -317,3 +318,104 @@ test('النواة: المسطّحات (ماء/حدائق) هندسة واحدة
   assert.match(src, /مساهمو OpenStreetMap/);
   assert.ok(src.indexOf('setTimeout(r, 16)') < src.indexOf('await opt.onCity(ctx, city)'));
 });
+
+// ── v-inspire-ux (المالك ٩ أكتوبر: «تفتح كامل… والمحادثة تبقى وأقدر أحرّك السحب أكثر»، و«اللوحة تختفي بنقرة الشاشة كالنوافذ المنبثقة») ──
+test('سقف سحب لوحة المعاينة يتّسع للنافذة (كان ٧٠٠ ثابتًا في ui-wiring)، والمحادثة تبقى ٣٢٠ فأكثر', () => {
+  const src = rd('js/ui-wiring.js');
+  assert.ok(!/rebindResizer\('resizer2', '#workarea', 240, 700,/.test(src), 'لا سقف ٧٠٠ ثابت');
+  assert.match(src, /rebindResizer\('resizer2', '#workarea', 240, workMax, 'panelWidthWork'\)/);
+  assert.match(src, /w = Math\.max\(min, Math\.min\(capOf\(\), w\)\)/, 'السحب يقرأ السقف حيًّا');
+  assert.match(src, /sv <= capOf\(\)/, 'والمحفوظ يُفحص بالسقف نفسه');
+  const m = src.match(/function workMax\(\)\{[\s\S]*?\n  \}/); assert.ok(m, 'workMax موجودة');
+  const run = (w, sb) => { const c = { window: { innerWidth: w }, document: { getElementById: () => (sb == null ? null : { getBoundingClientRect: () => ({ width: sb }) }) } }; vm.runInNewContext(m[0] + '\nthis.f = workMax();', c); return c.f; };
+  assert.equal(run(1535, 250), 905, 'نافذة ١٥٣٥ وقائمة ٢٥٠: يبقى للمحادثة ٣٢٠+');
+  assert.equal(run(1535, 0), 1155, 'القائمة مطويّة: أوسع');
+  assert.equal(run(900, 250), 700, 'النافذة الضيّقة: لا ينزل عن ٧٠٠ القديم');
+  assert.equal(run(1535, null), 1155, 'بلا قائمة في الصفحة');
+  assert.match(rd('index.html'), /\/js\/ui-wiring\.js\?v=660/, 'وسم الملفّ مرفوع كي لا يبقى سقف ٧٠٠ في كاش المتصفّح');
+});
+
+test('فتح تجربة «الإلهام» يوسّع اللوحة لسقفها دون تخزين، ولا يمسّ الجوّال، ويعيد العرض حين يُعرض مشروع آخر ما لم يحرّكه المستخدم', () => {
+  const { src } = loadCity();
+  const a = src.indexOf('let widened = null;'), b = src.indexOf('  try{\n    if(typeof renderCodeAndPreview');
+  assert.ok(a > 0 && b > a, 'كتلة التوسيع موجودة');
+  const mk = (o) => {
+    const wa = { style: { width: o.style || '' }, getBoundingClientRect: () => ({ width: parseInt(wa.style.width, 10) || o.def || 380 }) };
+    const ctx = { window: { innerWidth: o.inner || 1535, omranWorkMax: () => o.cap == null ? 905 : o.cap }, document: { documentElement: { classList: { contains: () => !!o.mobile } }, getElementById: (id) => (id === 'workarea' ? wa : null) }, __swallow() {} };
+    vm.runInNewContext(src.slice(a, b) + '\nthis.F = { widenWork, restoreWork, isExp };', ctx);
+    return { wa, F: ctx.F };
+  };
+  let t = mk({ style: '690px' });
+  t.F.widenWork(); assert.equal(t.wa.style.width, '905px', 'يتّسع لسقفه');
+  t.F.restoreWork(); assert.equal(t.wa.style.width, '690px', 'ويعود لما كان');
+  t = mk({ style: '690px' });
+  t.F.widenWork(); t.wa.style.width = '1000px'; t.F.restoreWork();
+  assert.equal(t.wa.style.width, '1000px', 'سحبه المستخدم بعدها: لا يُمسّ');
+  t = mk({ style: '690px' });
+  t.F.widenWork(); t.F.widenWork(); t.F.restoreWork();
+  assert.equal(t.wa.style.width, '690px', 'فتح تجربتين متتاليتين يحفظ العرض الأصليّ لا الموسَّع');
+  t = mk({ style: '', def: 380 }); t.F.widenWork(); t.F.restoreWork();
+  assert.equal(t.wa.style.width, '', 'العرض الافتراضيّ (بلا قيمة) يعود افتراضيًّا');
+  t = mk({ style: '690px', mobile: true }); t.F.widenWork(); assert.equal(t.wa.style.width, '690px', 'الجوّال: لا تغيير');
+  t = mk({ style: '690px', inner: 800 }); t.F.widenWork(); assert.equal(t.wa.style.width, '690px', 'النافذة الضيّقة: لا تغيير');
+  t = mk({ style: '900px', cap: 905 }); t.F.widenWork(); assert.equal(t.wa.style.width, '900px', 'العرض قريب من السقف أصلًا: لا تغيير');
+  assert.ok(t.F.isExp({ inspire: 'chase' }) && t.F.isExp({ code: '<head><meta name="omran-inspire" content="sun">' }) && !t.F.isExp({ code: '<html></html>' }) && !t.F.isExp(null));
+  assert.ok(!/localStorage\.setItem\([^)]*panelWidthWork/.test(src), 'التوسيع لا يكتب في التخزين');
+  assert.match(src, /widenWork\(\);\n/, 'يُستدعى بعد فتح المشروع');
+});
+
+test('لوحة التجربة نافذة منبثقة على الحاسوب فقط: زرّ يفتحها ويطويها، ونقرة الشاشة (لا السحب) تطويها في ألعاب القيادة، والجوّال كما كان', () => {
+  const core = rd('inspire/src/core.js');
+  const css = core.slice(core.indexOf('const CSS = `'), core.indexOf('CK.ui = function'));
+  assert.match(css, /\.ck-toggle\{display:none;/, 'الزرّ مخفيّ افتراضيًّا (الجوّال)');
+  const desk = css.slice(css.indexOf('@media (min-width:641px){'), css.indexOf('@media (max-width:640px)'));
+  assert.ok(desk.includes('.ck-toggle{display:flex}') && desk.includes('.ck-ui.ck-off{opacity:0;') && desk.includes('visibility:hidden;pointer-events:none'), 'الطيّ والزرّ في قاعدة الحاسوب وحدها');
+  assert.ok(!/@media \(max-width:640px\)\{[^}]*ck-off/.test(css), 'لا قاعدة طيّ للجوّال');
+  assert.match(core, /box-sizing:border-box;width:min\(360px/, 'عرض اللوحة ٣٦٠ كلّه (كان ٣٩٠ بالحشو فيغطّي العدّاد)');
+  assert.match(core, /aria-expanded/); assert.match(core, /setAttribute\('aria-controls', 'ckbox'\)/);
+  assert.match(core, /show: \(\) => set\(true\), hide: \(\) => set\(false\), isOpen: \(\) => open/);
+  assert.match(core, /if \(opt\.autoHide\)[\s\S]*Math\.hypot\(e\.clientX - dn\.x, e\.clientY - dn\.y\) < 6[\s\S]*ui\.hide\(\)/, 'نقرة قصيرة بلا سحب');
+  const built = (id) => rd('inspire/city/' + id + '.html');
+  for (const id of ['chase', 'drone']) assert.match(built(id), /autoHide: true/, id + ': ألعاب القيادة تطوي بنقرة الشاشة');
+  for (const id of ['billboard', 'explore', 'fireworks', 'lights', 'noise', 'sun', 'tower', 'view', 'walkshade']) assert.ok(!/autoHide: true/.test(built(id).replace(/if \(opt\.autoHide\)/g, '')), id + ': أرقامها في اللوحة فلا تُطوى بنقرة');
+  for (const id of ['billboard', 'chase', 'drone', 'explore', 'fireworks', 'lights', 'noise', 'sun', 'tower', 'view', 'walkshade']) assert.match(built(id), /ck-toggle\{display:none;/, id + ': النواة المضمّنة جديدة');
+  assert.match(built('chase'), /if \(X && X\.ui && X\.ui\.hide\) X\.ui\.hide\(\);/, 'بدء السباق يطوي اللوحة');
+  assert.match(built('tower'), /body\.tw-walk \.ck-ui,body\.tw-walk \.ck-toggle\{display:none\}/, 'وضع المشي: لا زرّ لوحة مخفيّة');
+});
+
+// ── v-inspire-imagery: صور جوّيّة بلا مفتاح على أرض المدينة وأسطح مبانيها (٧ تجارب نهاريّة) ──
+test('الصور الجوّيّة: بلاطات XYZ تغطّي دائرة المدينة، مستطيلها بالأمتار المحلّيّة يحوي المركز، والشمال أعلى (z أصغر)', () => {
+  const CK = coreCtx();
+  const L = CK.tileList(25.0805, 55.1403, 750, 17);
+  assert.equal(L.z, 17); assert.equal(L.x0 <= 85611 && 85611 <= L.x1, true, 'بلاطة المركز x=85611 ضمن النطاق');
+  assert.equal(L.y0 <= 56098 && 56098 <= L.y1, true, 'بلاطة المركز y=56098 ضمن النطاق');
+  assert.equal(L.tiles.length, L.cols * L.rows); assert.ok(L.tiles.length >= 16 && L.tiles.length <= 100, 'عدد معقول من البلاطات: ' + L.tiles.length);
+  const r = L.rect;
+  assert.ok(r.minX < -750 && r.maxX > 750 && r.minZ < -750 && r.maxZ > 750, 'المستطيل يغطّي ±٧٥٠ م');
+  assert.ok(r.minZ < r.maxZ && r.minX < r.maxX, 'الشمال z أصغر (كإسقاط CK.parse)');
+  const w = (r.maxX - r.minX) / L.cols;
+  assert.ok(Math.abs(w - 276.8) < 1.2, 'عرض البلاطة عند ز١٧ وعرض ٢٥° ≈ ٢٧٦٫٨ م: ' + w);
+  const h = (r.maxZ - r.minZ) / L.rows; assert.ok(Math.abs(h - 275) < 1.5 && Math.abs(h / w - 1) < 0.015, 'البلاطة مربّعة تقريبًا (مركاتور يحفظ النسبة): ' + h);
+  assert.deepEqual(JSON.parse(JSON.stringify(L.tiles[0])), { x: L.x0, y: L.y0, col: 0, row: 0 }); assert.equal(L.tiles[L.tiles.length - 1].row, L.rows - 1);
+  assert.ok(CK.tileList(25, 55, 3000, 17).tiles.length > 100, 'منطقة كبيرة جدًّا ترفضها drape (سقف ١٠٠ بلاطة)');
+  assert.doesNotThrow(() => CK.tileList(0, 179.9999, 700, 17)); assert.doesNotThrow(() => CK.tileList(84, -179.99, 700, 17));
+});
+
+test('الصور الجوّيّة: بلا مفتاح، بنسب مصدر ظاهرة، تفضيل بايت واحد، وسبع تجارب نهاريّة فقط (لا المظلمة التي تُعيد تلوين المدينة)', () => {
+  const core = rd('inspire/src/core.js');
+  const im = core.slice(core.indexOf('CK.IMAGERY = {'), core.indexOf('CK.IMAGERY = {') + 400);
+  assert.match(im, /https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\/MapServer\/tile\/\{z\}\/\{y\}\/\{x\}/);
+  assert.doesNotMatch(im.split('\n')[0], /key=|token=|apikey|access_token|\bsk-/i, 'لا مفتاح في العنوان');
+  assert.match(im, /attr: 'Esri, Maxar, Earthstar Geographics'/); assert.match(core, /الصور: ', 'Imagery: '\) \+ CK\.IMAGERY\.attr/, 'السطر يظهر مع الصور وحدها');
+  assert.match(core, /\.ck-img\[hidden\]\{display:none\}/, 'الصفّ مخفيّ في التجارب التي لا تدعمها');
+  assert.match(core, /if \(ok < L\.tiles\.length \* 0\.5 \|\| ctx\.city !== city\) return false;/, 'أقلّ من نصف البلاطات أو تبدّلت المدينة: المشهد كما كان');
+  assert.match(core, /h > IM\.roofMax/, 'أسطح المباني العالية (إزاحة المنظور) لا تُغطّى بالصورة');
+  assert.match(core, /crossOrigin = 'anonymous'/);
+  assert.match(core, /if \(city && city\.imgOff\) city\.imgOff\(\);\n\s+if \(cityGroup\)/, 'تُحرَّر الطبقة قبل استبدال المدينة');
+  const withImg = ['billboard', 'chase', 'explore', 'sun', 'tower', 'view', 'walkshade'], without = ['drone', 'fireworks', 'lights', 'noise'];
+  for (const id of withImg) assert.match(rd('inspire/city/' + id + '.html'), /\bimagery: true,/, id + ' فيها الصور');
+  for (const id of without) assert.doesNotMatch(rd('inspire/city/' + id + '.html'), /\bimagery: true,/, id + ' مظلمة: بلا صور');
+  assert.ok(!INSPIRE_HERO_REMOVED(), 'لا بطاقة جديدة في «الإلهام»: ' + 'مدينتك الحيّة' + ' غير مضافة');
+  assert.ok(!fs.existsSync(path.join(root, 'inspire/src/live.html')), 'لا تجربة جديدة');
+});
+function INSPIRE_HERO_REMOVED() { return rd('js/app-35-inspire.js').indexOf("id:'live'") !== -1; }
