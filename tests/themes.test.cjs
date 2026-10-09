@@ -97,7 +97,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
 
 test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد يترك الخانات والإرسال للثيم، والمختار والزرّ يغلبان قاعدتي التطبيق', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=4');
+  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=5');
   assert.ok(a > 0 && b > a, 'يُحمَّل آخرًا فيعلو');
   const frame = rd('css/إطارات.css');
   assert.doesNotMatch(frame, /:not\(\.skin-wood\) (\.hist-item|#composerBox)/, 'قواعد الإطار للخانات والإرسال تستثني html.skin');
@@ -108,7 +108,8 @@ test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد 
   // مكان الكود بلون لوحة المعاينة (أمر المالك)، والمشهد: الصورة خلف الشاشة والقائمة والمعاينة زجاج فوقها
   assert.match(CSS, /html\.skin #code\{background:transparent !important;/);
   assert.match(CSS, /html\.skin-scene #bgImgLayer\{background:var\(--th-scene\) var\(--th-pos, center\) \/ cover no-repeat, var\(--th-page\) !important;\}/);
-  assert.match(CSS, /html\.skin-scene #sidebar, html\.skin-scene #workarea\{-webkit-backdrop-filter:blur\(18px\)/);
+  assert.match(CSS, /html\.skin-scene #sidebar, html\.skin-scene #workarea\{-webkit-backdrop-filter:saturate\(1\.15\); backdrop-filter:saturate\(1\.15\);\}/, 'v-scene-clear: بلا تغبيش فوق المشهد');
+  assert.ok(!/skin-scene #sidebar[^\n]*blur\(/.test(CSS), 'v-scene-clear: لا blur على لوحتي المشهد');
 });
 
 test('٥. الترجمة: أسماء الثلاثة عشر بالـ١٤ لغة، ووسم اللغات مرفوع', () => {
