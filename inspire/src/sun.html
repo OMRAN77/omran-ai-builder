@@ -254,6 +254,7 @@
     if (!S) return;
     S.playing = !!on; setPlayBtn(S.playing);
     if (S.playing && S.info.up && !S.info.polar && (S.t < S.info.rise - 40 || S.t > S.info.set + 30)) S.t = Math.max(0, Math.floor((S.info.rise - 40) / 5) * 5);
+    pub();
   }
 
   // ── الاختيار ──
