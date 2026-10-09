@@ -724,7 +724,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       ctx.ui.hud('<div class="tw-cards">' +
         card(T('الارتفاع', 'Height'), fmt(h), T('م', 'm')) + card(T('الطوابق', 'Floors'), fmt(P.floors), '') +
         card(T('مبانٍ في ظلّه', 'Buildings shaded'), night ? '—' : fmt(S.shaded.length), '', 'acc') +
-        card(T('مساحة الظلّ', 'Shadow area'), night ? '—' : (S.areaM2 >= 1e6 ? (S.areaM2 / 1e6).toFixed(2) : fmt(S.areaM2)), S.areaM2 >= 1e6 ? T('كم²', 'km²') : T('م²', 'm²'), 'acc') + '</div>');
+        card(T('مساحة الظلّ', 'Shadow area'), night ? '—' : (S.areaM2 >= 1e6 ? (S.areaM2 / 1e6).toFixed(2) : fmt(S.areaM2)), night ? '' : S.areaM2 >= 1e6 ? T('كم²', 'km²') : T('م²', 'm²'), 'acc') + '</div>');
     }
     if (el.tag) el.tag.textContent = T('برجك', 'Your tower') + ' · ' + fmt(h) + T(' م', ' m');
     if (el.vals) {
@@ -786,7 +786,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     if (r.width && r.top > Hh * 0.3) visH = r.top; else if (r.width && r.left > W * 0.45) visW = r.left;
     visH = Math.max(120, visH - 60); // بطاقات الأرقام في الأعلى
     const tall = visW / visH < 0.9, Lraw = sv ? Math.hypot(sv[0], sv[1]) : 0, Lc = Math.min(Lraw, h * (tall ? 0.9 : 2));
-    const u = Lraw ? [sv[0] / Lraw, sv[1] / Lraw] : [0, 0], cA = Lc * 0.4, cY = (h + 35) / 2;
+    const u = Lraw ? [sv[0] / Lraw, sv[1] / Lraw] : [0, 0], cA = Lc * 0.4, cY = (h + 75) / 2; // + الهوائيّ والوسم فوق القمّة
     const radius = Math.hypot(Lc - cA, cY) + Math.max(P.w, P.d) * 0.6, t = Math.tan(ctx.camera.fov / 2 * DEG);
     const half = Math.min(Math.atan(t * visH / Hh), Math.atan(t * visW / Hh));
     return { target: new THREE.Vector3(S.x + u[0] * cA, cY, S.z + u[1] * cA), dist: clamp(radius / Math.sin(half) * 0.95, 200, 2600), theta: th, phi: 0.88 };
