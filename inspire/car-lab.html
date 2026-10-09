@@ -1,0 +1,166 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>مختبر السيّارات</title>
+<!-- v-car3d (المالك ٩ أكتوبر): وصف سيّارة ← صورة استوديو ← مجسّم ثلاثيّ الأبعاد ملوّن، يُعرض ويُدار ويُسمع محرّكه.
+     التوليد من /api/system?action=car3d للمالك وحده وبسقف ماليّ في الخادم. صوت المحرّك مولَّد بالكود (WebAudio) — بلا ملفّات ولا رخص. -->
+<style>
+:root{--bg:#0b0f17;--panel:rgba(14,19,30,.86);--line:rgba(255,255,255,.14);--text:#eef2f8;--dim:#9aa6b8;--acc:#f2a33a}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+#ui{position:fixed;top:12px;inset-inline-start:12px;width:min(360px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;backdrop-filter:blur(6px);z-index:2;max-height:calc(100vh - 24px);overflow:auto;box-sizing:border-box}
+#ui h1{font-size:16px;margin:0 0 8px}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+button{border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);border-radius:999px;padding:7px 12px;font:600 13px inherit;font-family:inherit;cursor:pointer}
+button.pri{background:var(--acc);color:#1a1206;border-color:var(--acc)}
+button:disabled{opacity:.5;cursor:default}
+input{width:100%;box-sizing:border-box;background:rgba(0,0,0,.35);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px;font:14px inherit;font-family:inherit}
+#st{font-size:12px;color:var(--dim);min-height:18px;margin-top:6px;line-height:1.6}
+#src{width:100%;border-radius:10px;margin-top:6px;display:none}
+#cars{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+#cars img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid transparent}
+#cars img.on{border-color:var(--acc)}
+#eng{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 10px;z-index:2;font-size:12px}
+#eng input[type=range]{width:160px}
+</style>
+<script type="importmap">{"imports":{
+"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+}}</script>
+</head><body>
+<div id="ui">
+  <h1>مختبر السيّارات</h1>
+  <div class="row" id="presets"></div>
+  <input id="desc" placeholder="أو اكتب وصف سيّارتك… مثال: جيب دفع رباعي أبيض فخم">
+  <div class="row"><button class="pri" id="go">ولّد السيّارة</button></div>
+  <div id="st"></div>
+  <img id="src" alt="">
+  <div id="cars"></div>
+</div>
+<div id="eng">
+  <button id="engOn">شغّل المحرّك</button>
+  <span>دوّاسة</span><input id="thr" type="range" min="0" max="100" value="0">
+  <button id="horn">هرن</button>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = (id) => document.getElementById(id);
+const say = (t) => { $('st').textContent = t || ''; };
+const token = (() => { try { return localStorage.getItem('aiapp_auth_token') || ''; } catch (e) { return ''; } })();
+const API = '/api/system?action=car3d';
+const PRESETS = [
+  ['سيدان عائليّة', 'modern mid-size family sedan, pearl white, alloy wheels'],
+  ['جيب دفع رباعي', 'large luxury full-size 4x4 SUV, glossy black, chrome trim'],
+  ['تاكسي', 'modern taxi sedan, cream and red livery, roof taxi sign without text'],
+];
+
+// المشهد: استوديو بإضاءة بيئيّة فتظهر لمعة الطلاء والزجاج
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1a2230);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const floor = new THREE.Mesh(new THREE.CircleGeometry(6, 64), new THREE.MeshStandardMaterial({ color: 0x2a3446, roughness: 0.6 }));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.05, 200);
+camera.position.set(4.2, 1.8, 4.6);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.6, 0); controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2 - 0.05;
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+let car = null, spin = 0;
+renderer.setAnimationLoop(() => { controls.update(); if (car) car.rotation.y += spin; renderer.render(scene, camera); });
+
+const loader = new GLTFLoader();
+function show(c) {
+  [...$('cars').children].forEach((im) => im.classList.toggle('on', im.dataset.id === c.id));
+  say('يحمّل المجسّم…');
+  loader.load(c.glb, (g) => {
+    if (car) scene.remove(car);
+    car = g.scene;
+    // المقاس الحقيقيّ: أطول ضلع ≈ ٤٫٦ م، والعجلات على الأرض
+    const box = new THREE.Box3().setFromObject(car), size = box.getSize(new THREE.Vector3());
+    const s = 4.6 / Math.max(size.x, size.z, 0.001); car.scale.setScalar(s);
+    const b2 = new THREE.Box3().setFromObject(car), ctr = b2.getCenter(new THREE.Vector3());
+    car.position.set(-ctr.x, -b2.min.y, -ctr.z);
+    scene.add(car); say(c.desc ? '«' + c.desc + '» — اسحب للدوران' : 'اسحب للدوران');
+  }, undefined, (e) => say('تعذّر تحميل المجسّم: ' + ((e && e.message) || e)));
+}
+async function list() {
+  const r = await fetch(API + '&list=1', { cache: 'no-store' }).then((x) => x.json()).catch(() => ({}));
+  $('cars').innerHTML = '';
+  (r.cars || []).forEach((c) => { const im = document.createElement('img'); im.src = c.image; im.dataset.id = c.id; im.title = c.desc || ''; im.onclick = () => show(c); $('cars').appendChild(im); });
+  if (r.capCents) $('go').title = 'المصروف ' + (r.spentCents || 0) + ' من ' + r.capCents + ' سنتًا';
+  return r;
+}
+async function poll(id) {
+  for (let i = 0; i < 120; i++) {
+    await new Promise((ok) => setTimeout(ok, 4000));
+    const r = await fetch(API + '&id=' + encodeURIComponent(id), { cache: 'no-store' }).then((x) => x.json()).catch(() => ({}));
+    if (r.status === 'SUCCEEDED') { await list(); show(r.car); return; }
+    if (r.status === 'FAILED') { say('فشل التوليد: ' + (r.failure || '')); return; }
+    say('يبني المجسّم… ' + (i * 4) + ' ث' + (r.queue != null ? ' (الدور ' + r.queue + ')' : ''));
+  }
+  say('طال التوليد — ارجع بعد قليل وسيظهر في القائمة.');
+}
+async function generate(desc) {
+  if (!token) { say('سجّل دخولك في التطبيق أوّلًا (الصفحة للمالك).'); return; }
+  $('go').disabled = true; say('يرسم صورة السيّارة…');
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, desc }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 402) { say('وصلنا سقف الصرف المتّفق عليه (' + j.capCents + ' سنتًا) — لا توليد أكثر بلا موافقة.'); return; }
+    if (!r.ok) { say(j.error === 'owner_only' ? 'هذه الصفحة للمالك وحده.' : 'تعذّر: ' + (j.error || r.status)); return; }
+    $('src').src = j.image; $('src').style.display = 'block';
+    say('الصورة جاهزة — يبني المجسّم (دقيقة إلى دقيقتين)…');
+    await poll(j.id);
+  } finally { $('go').disabled = false; }
+}
+PRESETS.forEach(([ar, en]) => { const b = document.createElement('button'); b.textContent = ar; b.onclick = () => { $('desc').value = ar; $('desc').dataset.en = en; }; $('presets').appendChild(b); });
+$('desc').addEventListener('input', () => { delete $('desc').dataset.en; });
+$('go').onclick = () => generate($('desc').dataset.en || $('desc').value.trim() || PRESETS[0][1]);
+list();
+
+// صوت المحرّك: نغمتان منشاريّتان بتردّد الدوران + ضجيج مرشَّح للهواء والعادم؛ الدوّاسة ترفع الدوران، ومع ٦٥٠٠ دورة يُبدَّل القير
+let ac = null, eng = null, rpm = 900, gear = 1;
+function engineStart() {
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  const out = ac.createGain(); out.gain.value = 0.22; out.connect(ac.destination);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(out);
+  const o1 = ac.createOscillator(), o2 = ac.createOscillator(); o1.type = 'sawtooth'; o2.type = 'square';
+  const g1 = ac.createGain(), g2 = ac.createGain(); g1.gain.value = 0.5; g2.gain.value = 0.18;
+  o1.connect(g1).connect(lp); o2.connect(g2).connect(lp);
+  const nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const n = ac.createBufferSource(); n.buffer = nb; n.loop = true;
+  const nf = ac.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 400; nf.Q.value = 0.8;
+  const ng = ac.createGain(); ng.gain.value = 0.08; n.connect(nf).connect(ng).connect(out);
+  o1.start(); o2.start(); n.start();
+  eng = { o1, o2, lp, nf, ng, out };
+  (function tick() {
+    if (!eng) return;
+    const thr = $('thr').value / 100;
+    rpm += ((900 + thr * 6200) - rpm) * (thr > 0.05 ? 0.035 / gear : 0.05);
+    if (rpm > 6500 && gear < 6) { gear++; rpm = 3800; }
+    if (thr < 0.05 && rpm < 1500) gear = 1;
+    const hz = rpm / 60 * 2; // أربع أسطوانات: انفجاران في كلّ دورة
+    eng.o1.frequency.setTargetAtTime(hz, ac.currentTime, 0.03);
+    eng.o2.frequency.setTargetAtTime(hz * 0.5, ac.currentTime, 0.03);
+    eng.lp.frequency.setTargetAtTime(600 + thr * 2600, ac.currentTime, 0.05);
+    eng.nf.frequency.setTargetAtTime(300 + rpm / 8, ac.currentTime, 0.05);
+    eng.ng.gain.setTargetAtTime(0.05 + thr * 0.12, ac.currentTime, 0.05);
+    spin = car ? 0.0006 * thr * 10 : 0;
+    requestAnimationFrame(tick);
+  })();
+}
+function engineStop() { if (ac) ac.close(); ac = null; eng = null; spin = 0; }
+$('engOn').onclick = () => { if (eng) { engineStop(); $('engOn').textContent = 'شغّل المحرّك'; } else { engineStart(); $('engOn').textContent = 'طفّ المحرّك'; } };
+$('horn').onclick = () => {
+  const c = ac || new (window.AudioContext || window.webkitAudioContext)();
+  const g = c.createGain(); g.gain.value = 0.18; g.connect(c.destination);
+  [415, 523].forEach((f) => { const o = c.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(g); o.start(); o.stop(c.currentTime + 0.45); });
+};
+</script>
+</body></html>
