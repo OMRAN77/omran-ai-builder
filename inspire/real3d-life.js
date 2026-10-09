@@ -41,11 +41,13 @@ export function initLife(ctx) {
   }
 
   // —— الشوارع
-  async function loadRoads(p) {
-    L.lanes = []; L.walks = [];
-    const r = await fetch('/api/system?action=osm&lat=' + p.lat + '&lon=' + p.lon + '&r=700').then((x) => x.json()).catch(() => null);
-    if (!r || !r.ways) { say(T('تعذّر جلب الشوارع الحين — الزحمة والمشاة يرجعون لاحقًا', 'Streets unavailable right now')); return; }
+  async function loadRoads(p, keep, radius) {
+    if (!keep) { L.lanes = []; L.walks = []; L.seen = new Set(); }
+    L.status = T('يجلب الشوارع…', 'Loading streets…');
+    const r = await fetch('/api/system?action=osm&lat=' + p.lat.toFixed(5) + '&lon=' + p.lon.toFixed(5) + '&r=' + (radius || 700)).then((x) => x.json()).catch(() => null);
+    if (!r || !r.ways) { L.status = T('تعذّر جلب الشوارع — الزحمة والمشاة بعد قليل', 'Streets unavailable — try again shortly'); return; }
     for (const w of r.ways) {
+      const id = w.t + ':' + w.p[0] + ':' + w.p[w.p.length - 1]; if (L.seen.has(id)) continue; L.seen.add(id); // الجلب الثاني حول سيّارتك يتداخل مع الأوّل
       const line = poly(w.p); if (line.len < 25) continue;
       const base = w.t.replace(/_link$/, '');
       if (DRIVE.test(w.t)) L.lanes.push({ line, sp: SPEED[base] || 8, one: !!w.o, wide: /motorway|trunk|primary/.test(base) ? 5 : 2.2 });
@@ -248,8 +250,22 @@ export function initLife(ctx) {
     L.cars.forEach((c) => L.root.remove(c.o)); L.peds.forEach((q) => L.root.remove(q.b.g)); L.cars = []; L.peds = [];
     await Promise.all([loadRoads(p), loadModels()]);
     if (L.place !== p) return;
-    spawnCars(); spawnPeds();
+    spawnCars(); spawnPeds(); stat();
+  }
+  function stat() { L.status = T('شوارع ', 'streets ') + L.lanes.length + T(' · سيّارات ', ' · cars ') + L.cars.length + T(' · مشاة ', ' · people ') + L.peds.length; }
+  // قرب سيّارتك: شوارع حولها إن لم تُجلب بعد، ثمّ الزحمة والمشاة ينتقلون إلى ما حولها (٣٥٠ م)
+  function toLatLon(x, z) { const p = L.place, k = Math.cos(p.lat * Math.PI / 180); return { lat: p.lat + z / 110574, lon: p.lon - x / (k * 111320) }; }
+  const near = (line, pos, R) => line.v.some((v) => Math.hypot(v.x - pos.x, v.z - pos.z) < R);
+  async function nearPlayer(pos) {
+    if (!L.place) return;
+    let lanes = L.lanes.filter((ln) => near(ln.line, pos, 350));
+    if (lanes.length < 3) { await loadRoads(toLatLon(pos.x, pos.z), true, 500); lanes = L.lanes.filter((ln) => near(ln.line, pos, 350)); if (!L.models.length) await loadModels(); }
+    const walks = L.walks.filter((w) => near(w.line, pos, 300));
+    if (!L.cars.length) spawnCars(); if (!L.peds.length) spawnPeds();
+    if (lanes.length) L.cars.forEach((c) => { const ln = lanes[(Math.random() * lanes.length) | 0]; c.ln = ln; c.dir = ln.one ? 1 : (Math.random() < 0.5 ? 1 : -1); c.s = Math.random() * ln.line.len; c.y = null; });
+    if (walks.length) L.peds.forEach((q) => { const w = walks[(Math.random() * walks.length) | 0]; q.w = w; q.s = Math.random() * w.line.len; q.y = null; });
+    stat();
   }
 
-  return { tick, onPlace, weather, startRace, state: L, at, toLocal };
+  return { tick, onPlace, weather, startRace, nearPlayer, state: L, at, toLocal };
 }
