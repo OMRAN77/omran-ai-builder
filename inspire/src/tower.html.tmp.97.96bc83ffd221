@@ -295,7 +295,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
         const a = k / n * Math.PI * 2 + r * 0.37, x = sx + r * Math.cos(a), z = sz + r * Math.sin(a);
         if (city.idx.at(x, z) || roadAt(x, z) || inWater(x, z)) continue;
         const fp = corners(x, z, mw, md, P.rot * DEG);
-        if (hits(fp).length || roadsOverlap(fp) || fp.some((p) => inWater(p[0], p[1]))) continue;
+        if (hits(fp).length || roadsOverlap(fp) || footInWater(fp)) continue;
         return [x, z];
       }
     }

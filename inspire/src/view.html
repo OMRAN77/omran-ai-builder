@@ -42,6 +42,9 @@
 .vw-strip .s{position:absolute;bottom:14px;width:1.15%;border-radius:2px 2px 0 0}
 .vw-strip .s.o{background:linear-gradient(#5ff0dc,#22a89a)}
 .vw-strip .s.b{background:linear-gradient(#ff9a72,#c4513a)}
+.vw-strip .s.u{background:linear-gradient(#9aa6aa,#5f6a6e);opacity:.75}
+.vw-unk{font-size:11px;line-height:1.4;color:#b9c6ca;margin-top:3px}
+.vw-unk i{display:inline-block;width:9px;height:9px;border-radius:2px;background:#8a979b;margin-inline-end:5px;vertical-align:-1px}
 .vw-strip .w{position:absolute;top:3px;width:1.15%;height:4px;background:#46b4ff;border-radius:2px;box-shadow:0 0 6px #46b4ff}
 .vw-strip .br{position:absolute;top:1px;bottom:13px;border:1.5px solid rgba(255,255,255,.9);border-radius:6px;box-sizing:border-box}
 .vw-strip .lb{position:absolute;bottom:0;transform:translateX(-50%);font-size:10.5px;line-height:13px;color:#e3eef0;font-weight:600;white-space:nowrap}
@@ -62,6 +65,8 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T, AR = CK.AR;
+  const TITLE = T('إطلالة الطابق قبل البناء', 'Floor view before it is built');
+  document.title = TITLE;
   const DIRS = 72, RANGE = 500, STEP = 3, FLOOR_H = 3.2, EYE_UP = 1.6, MAXF = 90, SECTOR = 45;
   const DEG = Math.PI / 180;
   const AZ = Array.from({ length: DIRS }, (_, k) => k * 360 / DIRS);
@@ -97,13 +102,17 @@
       memo.set(key, v); return v;
     };
     fn.count = polys.length;
+    fn.at = (x, z) => polys.some((w) => x >= w.box[0] && x <= w.box[2] && z >= w.box[1] && z <= w.box[3] && CK.inPoly(x, z, w.p)); // دقيق (بلا شبكة ٤م) لاختيار الموقع
     return fn;
   }
-  // العيّنات نفسها التي يمشي عليها city.idx.los (من حافّة قطعة الأرض إلى ٥٠٠م، خطوة ٣م) حتّى يتطابق الحكمان حرفيًّا
+  // العيّنات نفسها التي يمشي عليها city.idx.los (من حافّة قطعة الأرض إلى ٥٠٠م، خطوة ٣م) حتّى يتطابق الحكمان حرفيًّا.
+  // xd: أين يخرج الشعاع من قرص البيانات المحمّلة (نصف القطر R حول المركز). ما بعده لا مباني محمّلة فيه —
+  // فالاتّجاه الذي يخرج قبل ٥٠٠م دون أن يُحجب «غير معروف»، لا «مفتوح».
   function profile(spot) {
-    const idx = S.city.idx, self = spot.self, P = [];
+    const idx = S.city.idx, self = spot.self, P = [], R = ctx.R;
     for (let k = 0; k < DIRS; k++) {
       const ux = Math.sin(AZ[k] * DEG), uz = -Math.cos(AZ[k] * DEG);
+      const pb = spot.x * ux + spot.z * uz, xd = -pb + Math.sqrt(Math.max(0, pb * pb - (spot.x * spot.x + spot.z * spot.z - R * R)));
       let ex = 0;
       if (self) while (ex < 300 && idx.at(spot.x + ux * ex, spot.z + uz * ex) === self) ex += 0.5; // المبنى القائم في الموقع يُستبدل فلا يحجب
       const ax = spot.x + ux * ex, az = spot.z + uz * ex, bx = spot.x + ux * RANGE, bz = spot.z + uz * RANGE;
@@ -113,7 +122,7 @@
         const t = s / n, x = ax + dx * t, z = az + dz * t, hb = idx.at(x, z);
         h[s - 1] = hb ? hb.h : 0; bb[s - 1] = hb; d[s - 1] = ex + L * t; w[s - 1] = hb ? 0 : (S.inWater(x, z) ? 1 : 0);
       }
-      P.push({ ex, ax, az, bx, bz, ux, uz, h, d, w, bb, n: m });
+      P.push({ ex, ax, az, bx, bz, ux, uz, h, d, w, bb, n: m, xd, out: xd < RANGE });
     }
     return P;
   }
@@ -128,37 +137,42 @@
     }
     return [bi, wi];
   }
+  // النسبة من الاتّجاهات المعروفة فقط: غير المعروف خارج البسط والمقام معًا
+  const pctOf = (open, unk) => DIRS - unk > 0 ? Math.round(open / (DIRS - unk) * 100) : 0;
   function sweep(P) {
-    const open = new Uint8Array((MAXF + 1) * DIRS), water = new Uint8Array((MAXF + 1) * DIRS), total = new Array(MAXF + 1).fill(0), wAny = new Array(MAXF + 1).fill(false);
+    const open = new Uint8Array((MAXF + 1) * DIRS), unk = new Uint8Array((MAXF + 1) * DIRS), water = new Uint8Array((MAXF + 1) * DIRS);
+    const total = new Array(MAXF + 1).fill(0), utot = new Array(MAXF + 1).fill(0), wAny = new Array(MAXF + 1).fill(false);
     for (let f = 1; f <= MAXF; f++) {
       const eye = eyeOf(f);
       for (let k = 0; k < DIRS; k++) {
         const [bi, wi] = scanDir(P[k], eye);
-        if (bi < 0) { open[f * DIRS + k] = 1; total[f]++; }
+        if (bi < 0) { if (P[k].out) { unk[f * DIRS + k] = 1; utot[f]++; } else { open[f * DIRS + k] = 1; total[f]++; } }
         if (wi >= 0) { water[f * DIRS + k] = 1; wAny[f] = true; }
       }
     }
-    return { open, water, total, wAny };
+    return { open, unk, water, total, utot, wAny };
   }
+  // n: الاتّجاهات المعروفة في قطاع الواجهة؛ pct فارغ إن كان القطاع كلّه خارج حدود الخريطة
   function facingStats(f, facing) {
-    let n = 0, o = 0, w = 0;
-    for (let k = 0; k < DIRS; k++) if (inSector(AZ[k], facing)) { n++; o += S.sw.open[f * DIRS + k]; w += S.sw.water[f * DIRS + k]; }
-    return { n, open: o, pct: Math.round(o / n * 100), water: w };
+    let n = 0, o = 0, w = 0, u = 0;
+    for (let k = 0; k < DIRS; k++) if (inSector(AZ[k], facing)) { if (S.sw.unk[f * DIRS + k]) u++; else { n++; o += S.sw.open[f * DIRS + k]; } w += S.sw.water[f * DIRS + k]; }
+    return { n, unk: u, open: o, pct: n ? Math.round(o / n * 100) : null, water: w };
   }
   function computeFloor() {
     const f = S.floor, eye = eyeOf(f), idx = S.city.idx, dirs = [];
-    let open = 0, agree = 0, wdirs = 0, nearW = Infinity;
+    let open = 0, unk = 0, agree = 0, wdirs = 0, nearW = Infinity;
     for (let k = 0; k < DIRS; k++) {
       const p = S.P[k], [bi, wi] = scanDir(p, eye);
       const losOpen = idx.los({ x: p.ax, y: eye, z: p.az }, { x: p.bx, y: eye, z: p.bz }, STEP); // حكم المفتوح من خطّ رؤية النواة
+      const u = losOpen && p.out; // لم يُحجب لكنّه خرج من البيانات قبل ٥٠٠م
       if (losOpen === (bi < 0)) agree++;
-      if (losOpen) open++;
+      if (u) unk++; else if (losOpen) open++;
       const d = bi >= 0 ? p.d[bi] : RANGE, wd = wi >= 0 ? p.d[wi] : 0;
       if (wi >= 0) { wdirs++; if (wd < nearW) nearW = wd; }
-      dirs.push({ k, az: AZ[k], open: losOpen, d, b: bi >= 0 ? p.bb[bi] : null, water: wi >= 0, wd, ux: p.ux, uz: p.uz });
+      dirs.push({ k, az: AZ[k], open: losOpen, unk: u, xd: p.xd, d, b: bi >= 0 ? p.bb[bi] : null, water: wi >= 0, wd, ux: p.ux, uz: p.uz });
     }
     const blockers = new Set(); for (const d of dirs) if (d.b) blockers.add(d.b);
-    S.cur = { f, eye, dirs, open, agree, wdirs, nearW: wdirs ? nearW : 0, blockers, openPct: Math.round(open / DIRS * 100) };
+    S.cur = { f, eye, dirs, open, unk, agree, wdirs, nearW: wdirs ? nearW : 0, blockers, openPct: pctOf(open, unk) };
   }
   function bestFacing() {
     const f = S.floor; let best = S.facing, score = -1;
@@ -210,7 +224,10 @@
   }
   const C = {};
   function makeObjects(city) {
-    C.open = new THREE.Color(0x2fd3c1); C.block = new THREE.Color(0xff7a59); C.water = new THREE.Color(0x46b4ff);
+    // النواة تحرّر هندسة المدينة السابقة فقط: قوام اللافتات (CanvasTexture) ومادّتها نحرّرهما هنا وإلّا تتراكم مع كلّ مدينة
+    if (C.labels) for (const s of C.labels) { if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+    C.labels = null;
+    C.open = new THREE.Color(0x2fd3c1); C.block = new THREE.Color(0xff7a59); C.water = new THREE.Color(0x46b4ff); C.unk = new THREE.Color(0x8a979b);
     const root = new THREE.Group(); city.group.add(root); S.root = root;
     // سماء متدرّجة تمتزج بالضباب
     const sky = new THREE.Mesh(new THREE.SphereGeometry(ctx.R * 6, 32, 16), new THREE.ShaderMaterial({
@@ -264,8 +281,8 @@
     const cur = S.cur, y = cur.eye, sx = S.spot.x, sz = S.spot.z;
     const fp = [], fc = [], rp = [], rc = [];
     for (const d of cur.dirs) {
-      const inF = inSector(d.az, S.facing), c = d.open ? C.open : C.block;
-      const a0 = (d.az - 2.5) * DEG, a1 = (d.az + 2.5) * DEG, R = d.d, al = (d.open ? 0.34 : 0.42) + (inF ? 0.24 : 0);
+      const inF = inSector(d.az, S.facing), c = d.unk ? C.unk : d.open ? C.open : C.block; // الرماديّ: خارج حدود الخريطة
+      const a0 = (d.az - 2.5) * DEG, a1 = (d.az + 2.5) * DEG, R = d.d, al = (d.unk ? 0.22 : d.open ? 0.34 : 0.42) + (inF ? 0.24 : 0);
       fp.push(sx, y, sz, sx + Math.sin(a0) * R, y, sz - Math.cos(a0) * R, sx + Math.sin(a1) * R, y, sz - Math.cos(a1) * R);
       fc.push(c.r, c.g, c.b, 0.03, c.r, c.g, c.b, al, c.r, c.g, c.b, al);
       const la = inF ? 0.95 : 0.5;
@@ -384,7 +401,7 @@
       const r = rel(d.az - center), left = 50 + r / 360 * 100 - 0.575;
       if (left < -2 || left > 101) continue;
       const ht = d.open ? 22 : Math.max(3, Math.round(22 * d.d / RANGE));
-      h += '<i class="s ' + (d.open ? 'o' : 'b') + '" style="left:' + left.toFixed(2) + '%;height:' + ht + 'px"></i>';
+      h += '<i class="s ' + (d.unk ? 'u' : d.open ? 'o' : 'b') + '" style="left:' + left.toFixed(2) + '%;height:' + ht + 'px"></i>';
       if (d.water) h += '<i class="w" style="left:' + left.toFixed(2) + '%"></i>';
     }
     const r0 = rel(S.facing - center);
@@ -398,10 +415,11 @@
   }
   function chartSvg() {
     const sw = S.sw, X = (f) => (f - 1) / (MAXF - 1) * 300, Y = (p) => 100 - p * 0.96;
-    let area = 'M0,100', line = '', water = '';
+    let area = 'M0,100', line = '', water = '', pen = 'M';
     for (let f = 1; f <= MAXF; f++) {
-      const p = sw.total[f] / DIRS * 100; area += ' L' + X(f).toFixed(1) + ',' + Y(p).toFixed(1);
-      const fs = facingStats(f, S.facing); line += (f === 1 ? 'M' : ' L') + X(f).toFixed(1) + ',' + Y(fs.pct).toFixed(1);
+      const p = pctOf(sw.total[f], sw.utot[f]); area += ' L' + X(f).toFixed(1) + ',' + Y(p).toFixed(1);
+      const fs = facingStats(f, S.facing); // واجهة كلّها خارج الخريطة: فجوة في الخطّ لا صفر
+      if (fs.pct === null) pen = ' M'; else { line += (line ? pen : 'M') + X(f).toFixed(1) + ',' + Y(fs.pct).toFixed(1); pen = ' L'; }
       if (sw.wAny[f]) water += '<rect x="' + (X(f) - 1.7).toFixed(1) + '" y="103" width="3.4" height="6" fill="#46b4ff"/>';
     }
     area += ' L300,100 Z';
@@ -413,22 +431,27 @@
       '<line x1="' + cx + '" y1="0" x2="' + cx + '" y2="110" stroke="#ffd166" stroke-width="2" vector-effect="non-scaling-stroke"/>';
   }
   function firstFloor(pred) { for (let f = 1; f <= MAXF; f++) if (pred(f)) return f; return 0; }
+  const dirsTxt = (n) => AR ? (n === 1 ? 'اتّجاه واحد' : n === 2 ? 'اتّجاهان' : n <= 10 ? n + ' اتّجاهات' : n + ' اتّجاهًا') : n + (n === 1 ? ' direction' : ' directions');
   function render() {
     if (!S.cur) return;
     const cur = S.cur, f = S.floor, fs = facingStats(f, S.facing);
     let ahead = null; for (const d of cur.dirs) if (d.az === wrap(S.facing)) ahead = d;
-    const clearF = firstFloor((x) => facingStats(x, S.facing).open === fs.n), waterF = firstFloor((x) => S.sw.wAny[x]);
+    const clearF = firstFloor((x) => { const st = facingStats(x, S.facing); return st.n > 0 && st.open === st.n; }), waterF = firstFloor((x) => S.sw.wAny[x]);
     const wFacing = cur.dirs.some((d) => d.water && inSector(d.az, S.facing));
     rebuildViz();
     // الحاشية الكبيرة
     const viewNote = S.mode === 'view' ? T('أنت الحين عند عين الطابق ' + f + ' — اسحب للالتفات، والسهمان للطوابق.', 'You are at floor ' + f + ' eye level — drag to look around.')
       : (ahead && !ahead.open ? T('أقرب حاجب قدّامك: ', 'Nearest blocker ahead: ') + Math.round(ahead.d) + M + T(' — مبنى ', ' — a ') + Math.round(ahead.b.h) + M + (AR ? '' : ' building') + (ahead.b.name ? ' «' + esc(ahead.b.name) + '»' : '')
+        : ahead && ahead.unk ? T('قدّامك مفتوح حتّى حدود الخريطة (', 'Open ahead to the map edge (') + Math.round(ahead.xd) + M + T(') — بعدها غير معروف', ') — unknown beyond')
         : T('قدّامك مفتوح حتّى ', 'Open ahead up to ') + RANGE + M);
+    // اتّجاهات خرجت من البيانات قبل أن تُحجب: رماديّة وخارج النسبة؛ وإن زادت على النصف فالأصدق أن يُحمَّل المكان في المنتصف
+    const unkNote = cur.unk ? '<div class="vw-unk"><i></i>' + dirsTxt(cur.unk) + T(' خارج حدود الخريطة — ', ' beyond the map edge — ') +
+      (cur.unk > DIRS / 2 ? T('ابحث عن المكان باسمه ليُحمَّل في المنتصف', 'search the place by name to load it centred') : T('الرماديّ غير محسوب في النسبة', 'grey ones are not counted')) + '</div>' : '';
     ctx.ui.hud('<div class="vw-hud"><div class="vw-top"><div class="vw-big"><b>' + cur.openPct + '<small>' + PCT + '</small></b><span>' + T('أفق مفتوح', 'open horizon') + '</span></div>' +
       '<div class="vw-kv"><div><span>' + T('الطابق', 'Floor') + '</span><b>' + f + '</b></div><div><span>' + T('ارتفاع النظر', 'Eye height') + '</span><b>' + r1(cur.eye) + M + '</b></div>' +
-      '<div><span>' + T('واجهة ', 'Facing ') + dirName(S.facing) + '</span><b>' + fs.pct + PCT + '</b></div>' +
+      '<div><span>' + T('واجهة ', 'Facing ') + dirName(S.facing) + '</span><b>' + (fs.pct === null ? '—' : fs.pct + PCT) + '</b></div>' +
       '<div class="wt' + (cur.wdirs ? '' : ' no') + '"><span>' + T('الماء', 'Water') + '</span><b>' + (cur.wdirs ? (wFacing ? T('يبان قدّامك', 'In view') : T('يبان جانبيًّا', 'To the side')) : T('ما يبان', 'Not visible')) + '</b></div></div></div>' +
-      '<div class="vw-note">' + viewNote + '</div><div class="vw-strip" id="vwStrip">' + stripHtml(S.mode === 'view' ? S.yaw : S.facing) + '</div></div>');
+      '<div class="vw-note">' + viewNote + '</div>' + unkNote + '<div class="vw-strip" id="vwStrip">' + stripHtml(S.mode === 'view' ? S.yaw : S.facing) + '</div></div>');
     S.stripYaw = S.mode === 'view' ? S.yaw : S.facing;
     // اللوحة
     $('vwFv').textContent = f; $('vwF').value = f;
@@ -441,9 +464,10 @@
     $('vwChart').innerHTML = chartSvg();
     const row = (k, v) => '<span>' + k + '</span><b>' + v + '</b>';
     $('vwStat').innerHTML =
-      row(T('اتّجاهات مفتوحة', 'Open directions'), cur.open + ' / ' + DIRS) +
-      row(T('مباني تحجبك', 'Blocking buildings'), cur.blockers.size) +
-      row(T('أقرب حاجب قدّامك', 'Nearest blocker ahead'), ahead && !ahead.open ? Math.round(ahead.d) + M : T('لا شيء', 'none')) +
+      row(T('اتّجاهات مفتوحة', 'Open directions'), cur.open + ' / ' + (DIRS - cur.unk)) +
+      (cur.unk ? row(T('خارج حدود الخريطة', 'Beyond the map edge'), dirsTxt(cur.unk)) : '') +
+      row(T('مبانٍ تحجبك', 'Blocking buildings'), cur.blockers.size) +
+      row(T('أقرب حاجب قدّامك', 'Nearest blocker ahead'), ahead && !ahead.open ? Math.round(ahead.d) + M : (ahead && ahead.unk ? T('غير معروف', 'unknown') : T('لا شيء', 'none'))) +
       row(T('أقرب ماء يبان', 'Nearest visible water'), cur.wdirs ? Math.round(cur.nearW) + M : '—') +
       row(T('واجهتك تنفتح كاملة من', 'Facing fully open from'), clearF ? T('الطابق ', 'floor ') + clearF : T('فوق ٩٠', 'above 90')) +
       row(T('الماء يبان من', 'Water visible from'), waterF ? T('الطابق ', 'floor ') + waterF : (S.inWater.count ? T('ما يبان', 'never') : T('لا ماء قريب', 'no water nearby')));
@@ -452,21 +476,24 @@
       city: S.city.name, buildings: S.city.buildings.length, mode: S.mode,
       spot: { x: r1(S.spot.x), z: r1(S.spot.z) }, onExistingBuilding: !!S.spot.self,
       floor: f, floorElevM: r1(elevOf(f)), eyeHeightM: r1(cur.eye), dirs: DIRS, rangeM: RANGE,
-      openDirs: cur.open, openPct: cur.openPct, losAgree: cur.agree,
+      openDirs: cur.open, unknownDirs: cur.unk, openPct: cur.openPct, losAgree: cur.agree,
       facingDeg: wrap(S.facing), facingName: dirName(S.facing), facingOpenPct: fs.pct,
       waterVisible: cur.wdirs > 0, waterDirs: cur.wdirs, waterInFacing: wFacing, nearestWaterM: Math.round(cur.nearW),
       blockers: cur.blockers.size, nearestBlockAheadM: ahead && !ahead.open ? Math.round(ahead.d) : null, nearestBlockAheadH: ahead && ahead.b ? Math.round(ahead.b.h) : null,
       facingClearFloor: clearF, waterFromFloor: waterF,
       nearestBlockByDir: cur.dirs.map((d) => d.open ? 0 : Math.round(d.d)),
-      openPctByFloor: S.sw.total.slice(1).map((n) => Math.round(n / DIRS * 100))
+      openPctByFloor: S.sw.total.slice(1).map((n, i) => pctOf(n, S.sw.utot[i + 1])),
+      unknownDirsByFloor: S.sw.utot.slice(1)
     };
   }
 
   // ── الأفعال ──
-  function pickAt(x, z, quiet) {
+  function pickAt(x, z, quiet, force) {
     if (!S.city) return false;
     if (Math.hypot(x, z) > ctx.R * 0.97) { ctx.ui.status(T('اختر نقطة داخل الحيّ المحمّل.', 'Pick a spot inside the loaded area.')); return false; }
     const self = S.city.idx.at(x, z);
+    // ماء (قناة، بحيرة، بحر من خطّ الساحل) بلا مبنى عليه: ليس قطعة أرض
+    if (!self && !force && S.inWater.at(x, z)) { ctx.ui.status(T('هذا ماء — اختر أرضًا.', "That's water — pick land.")); return false; }
     S.spot = { x, z, self };
     S.fp = footprint(S.spot);
     S.P = profile(S.spot); S.sw = sweep(S.P);
@@ -541,7 +568,7 @@
   }
 
   ctx = CK.start({
-    title: T('إطلالة الطابق قبل البناء', 'Floor view before it is built'),
+    title: TITLE,
     sub: T('اختر قطعة وطابقًا: نحسب كم من الأفق مفتوح، وهل يبان الماء، ووش يحجبك — من مباني حيّك الحقيقيّة.', 'Pick a plot and a floor: how much horizon is open, whether water is visible, and what blocks you — from your real buildings.'),
     shadows: true,
     panel(c) { ctx = c; THREE = c.THREE; buildPanel(c); },
@@ -551,10 +578,10 @@
       c.orbit.enabled = true; c.camera.fov = 50; c.camera.updateProjectionMatrix();
       S.inWater = makeWater(city);
       makeObjects(city);
-      // نقطة البداية: أقرب أرض فاضية إلى المركز
-      let sx = 0, sz = 0;
-      outer: for (let r = 0; r <= 120; r += 6) for (let a = 0; a < 360; a += 30) { const x = Math.sin(a * DEG) * r, z = -Math.cos(a * DEG) * r; if (!city.idx.at(x, z)) { sx = x; sz = z; break outer; } }
-      pickAt(sx, sz, true);
+      // نقطة البداية: أقرب أرض فاضية (لا ماء) إلى المركز، وإلّا أقرب نقطة غير مائيّة (مبنى قائم)
+      const near = (maxR, ok) => { for (let r = 0; r <= maxR; r += 6) for (let a = 0; a < 360; a += 30) { const x = Math.sin(a * DEG) * r, z = -Math.cos(a * DEG) * r; if (ok(x, z)) return [x, z]; } return null; };
+      const [sx, sz] = near(120, (x, z) => !city.idx.at(x, z) && !S.inWater.at(x, z)) || near(c.R * 0.9, (x, z) => !!city.idx.at(x, z) || !S.inWater.at(x, z)) || [0, 0];
+      pickAt(sx, sz, true, true);
       S.ready = true;
       setFacing(bestFacing());
       const o = c.orbit; o.theta = -S.facing * DEG + 0.45; o.target.copy(frameTarget(sx, sz, o.theta)); o.phi = 0.66; o.dist = 960; o.apply();

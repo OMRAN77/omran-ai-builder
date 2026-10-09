@@ -500,6 +500,8 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T;
+  const TITLE = T('أبرد طريق ظهرًا', 'Coolest walk at noon');
+  document.title = TITLE;
   const SNAP = 2, STEP = 8, EYE = 1.6, WALK_MPM = 5000 / 60; // ٥ كم/س
   const NO_WALK = { motorway: 1 };
   const C_SHADY = 0x14d4c4, C_SHORT = 0xff7a2f;
@@ -510,6 +512,13 @@
   const UI = {}, MAT = {};
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  // فرق توقيت المكان التقريبيّ: ساعة الجهاز إن قاربت خطّ طول المكان (غالبًا يتصفّح منطقته: عمّان +3 لا +2، الدار البيضاء +1 لا −1،
+  // طهران +3:30)، وإلّا تقريب خطّ الطول. مدن القائمة الخليجيّة يصيبها التقريب، فلا تتبع فيها ساعة جهاز في بلد خليجيّ مجاور (الرياض ≠ دبي).
+  function approxTz(lat, lon) {
+    const sol = lon / 15, dev = -new Date().getTimezoneOffset() / 60;
+    const preset = CK.PRESETS.some((p) => Math.hypot(p.lat - lat, (p.lon - lon) * Math.cos(lat * Math.PI / 180)) < 0.75);
+    return !preset && Math.abs(dev - sol) <= 2 ? dev : Math.round(sol);
+  }
   function segDist(px, pz, ax, az, bx, bz) {
     const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
     const t = L2 ? clamp(((px - ax) * dx + (pz - az) * dz) / L2, 0, 1) : 0;
@@ -747,7 +756,7 @@
           const e = Math.min(M, i + 48);
           for (; i < e; i++) { A.x = smp.x[i]; A.z = smp.z[i]; B.x = A.x + hx * Lh; B.z = A.z + hz * Lh; sunlit[i] = idx.los(A, B, step) ? 1 : 0; }
         }
-        if (i < M) { UI.net.textContent = T('أحسب ظلّ الشوارع… ', 'Shading streets… ') + Math.round(100 * i / M) + '٪'; setTimeout(run, 0); } else res(true);
+        if (i < M) { UI.net.textContent = T('أحسب ظلّ الشوارع… ', 'Shading streets… ') + Math.round(100 * i / M) + T('٪', '%'); setTimeout(run, 0); } else res(true);
       };
       run();
     }).then((ok) => {
@@ -774,7 +783,7 @@
     }
     S.overlay.geometry.attributes.color.needsUpdate = true;
     S.netShade = smp.M ? 100 * (1 - lit / smp.M) : 0;
-    UI.net.textContent = G.n + T(' عقدة · ', ' nodes · ') + G.E + T(' وصلة · ', ' links · ') + smp.M.toLocaleString('en') + T(' نقطة فحص كلّ 8 م · ظلّ الحيّ ', ' shade probes every 8 m · area shade ') + Math.round(S.netShade) + '٪';
+    UI.net.textContent = G.n + T(' عقدة · ', ' nodes · ') + G.E + T(' وصلة · ', ' links · ') + smp.M.toLocaleString('en') + T(' نقطة فحص كلّ 8 م · ظلّ الحيّ ', ' shade probes every 8 m · area shade ') + Math.round(S.netShade) + T('٪', '%');
   }
 
   // ── المساران ──
@@ -982,7 +991,7 @@
     const G = S.G, r = S.res, r1 = (v) => Math.round(v * 10) / 10;
     window.__inspire_state = {
       city: S.city && S.city.name, loads: S.loads, nodes: G ? G.n : 0, edges: G ? G.E : 0, segments: G ? G.segs : 0, crossings: G ? G.inters : 0,
-      components: G ? G.comps : 0, samples: S.smp ? S.smp.M : 0, day: S.day, hour: S.hour,
+      components: G ? G.comps : 0, samples: S.smp ? S.smp.M : 0, day: S.day, hour: S.hour, tz: S.tz,
       sunAltDeg: S.sun ? r1(S.sun.alt * 180 / Math.PI) : null, sunAzDeg: S.sun ? r1((((S.sun.az * 180 / Math.PI) % 360) + 360) % 360) : null,
       networkShadePct: r1(S.netShade || 0), shadeMs: S.shadeMs || 0,
       start: S.a >= 0 ? [Math.round(G.nx[S.a]), Math.round(G.nz[S.a])] : null, end: S.b >= 0 ? [Math.round(G.nx[S.b]), Math.round(G.nz[S.b])] : null,
@@ -1017,7 +1026,7 @@
     const p = ctx.ui.panel;
     p.innerHTML =
       '<div class="ws-step"><i id="wsN">1</i><span id="wsT"></span></div>' +
-      '<div class="ws-time"><span>' + SUN_SVG + T('الوقت المحلّيّ', 'Local time') + '</span><b id="wsClock">12:00</b></div>' +
+      '<div class="ws-time"><span>' + SUN_SVG + T('الوقت المحلّيّ تقريبًا', 'Local time (approx.)') + '</span><b id="wsClock">12:00</b></div>' +
       '<input type="range" id="wsHour" min="6" max="18" step="0.25" value="12" aria-label="' + T('الوقت', 'Time') + '">' +
       '<div class="ws-ticks"><span>' + T('6 صباحًا', '6 AM') + '</span><span>' + T('الظهر', 'Noon') + '</span><span>' + T('6 مساءً', '6 PM') + '</span></div>' +
       '<div class="ws-sun" id="wsSun"></div>' +
@@ -1065,7 +1074,7 @@
     S.gen++; S.jg++; S.loads++;
     S.city = city; S.a = S.b = -1; S.res = null; S.fly = null; S.walk = null; S.ready = false; S.firstFly = true; S.wantFly = false;
     S.maxH = city.buildings.length ? city.buildings[0].h : 0;
-    S.tz = Math.round(city.lon / 15);
+    S.tz = approxTz(city.lat, city.lon);
     S.G = buildGraph(city.roads, ctx.R);
     S.smp = buildSamples(S.G);
     S.sunlit = new Uint8Array(S.smp.M); S.frac = new Float32Array(S.G.E); S.netShade = 0;
@@ -1082,7 +1091,7 @@
   }
 
   CK.start({
-    title: T('أبرد طريق ظهرًا', 'Coolest walk at noon'),
+    title: TITLE,
     sub: T('اضغط بدايتك ونهايتك وحرّك الساعة: نظلّل كلّ شارع بالشمس الحقيقيّة ونعطيك أبرد طريق مشي.', 'Tap a start and an end, slide the clock: every street is shaded by the real sun and you get the coolest walk.'),
     shadows: true, panel, onCity,
   });
