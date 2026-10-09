@@ -255,9 +255,27 @@
 #videoMakerModal .vmk-pill:hover{border-color:rgba(232,161,60,.55);color:#f0be7a}
 #videoMakerModal .vmk-pill[aria-checked=true]{background:linear-gradient(135deg,#e8a13c,#c98226);border-color:transparent;color:#17140f;font-weight:700}
 #videoMakerModal .vmk-ideas{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px}
-#videoMakerModal .vmk-ideas-l{font-size:var(--fs-5);color:#82828c}
-#videoMakerModal .vmk-idea{font:inherit;font-size:12px;padding:5px 11px;border-radius:var(--r-pill);border:1px dashed rgba(232,161,60,.45);background:rgba(232,161,60,.07);color:#f0be7a;cursor:pointer;text-align:start;transition:.15s}
-#videoMakerModal .vmk-idea:hover{background:rgba(232,161,60,.16)}
+#videoMakerModal .vmk-ideas-l{font-size:var(--fs-5);color:var(--muted,#82828c)}
+#videoMakerModal .vmk-idea{font:inherit;font-size:12px;padding:5px 11px;border-radius:var(--r-pill);border:1px dashed rgba(var(--accent-rgb,232,161,60),.45);background:rgba(var(--accent-rgb,232,161,60),.07);color:var(--accent-light,#f0be7a);cursor:pointer;text-align:start;transition:.15s}
+#videoMakerModal .vmk-idea:hover{background:rgba(var(--accent-rgb,232,161,60),.16)}
+#videoMakerModal details.vmk-ai{margin-top:10px;border:1px solid var(--border,rgba(255,255,255,.1));border-radius:var(--r-3);background:rgba(var(--accent-tint-rgb,255,255,255),.03)}
+#videoMakerModal .vmk-ai>summary{cursor:pointer;list-style:none;padding:10px 13px;font-size:12.5px;color:var(--accent-light,#f0be7a)}
+#videoMakerModal .vmk-ai-body{padding:0 13px 12px}
+#videoMakerModal .vmk-ai-s{font-size:11.5px;color:var(--muted,#82828c);margin:0 0 8px}
+#videoMakerModal .vmk-ai-m{max-height:230px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+#videoMakerModal .vmk-ai-b.u,#videoMakerModal .vmk-ai-b.a,#videoMakerModal .vmk-ai-b.w,#videoMakerModal .vmk-ai-b.e{padding:8px 11px;border-radius:12px;font-size:12.5px;line-height:1.8}
+#videoMakerModal .vmk-ai-b.u{align-self:flex-start;background:rgba(var(--accent-rgb,232,161,60),.12);border:1px solid rgba(var(--accent-rgb,232,161,60),.3)}
+#videoMakerModal .vmk-ai-b.a,#videoMakerModal .vmk-ai-b.w{align-self:flex-end;background:rgba(var(--accent-tint-rgb,255,255,255),.05);border:1px solid var(--border,rgba(255,255,255,.1))}
+#videoMakerModal .vmk-ai-b.e{color:var(--danger,#ffb4b4);border:1px solid rgba(255,120,120,.3)}
+#videoMakerModal .vmk-ai-t{white-space:pre-wrap}
+#videoMakerModal .vmk-ai-a{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#videoMakerModal .vmk-ai-a button{font:inherit;font-size:11.5px;padding:4px 11px;border-radius:var(--r-pill);border:1px solid rgba(var(--accent-rgb,232,161,60),.55);background:none;color:var(--accent-light,#f0be7a);cursor:pointer}
+#videoMakerModal .vmk-ai-f{margin-top:6px;font-size:11px;color:var(--muted,#82828c)}
+#videoMakerModal .vmk-ai-g{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+#videoMakerModal .vmk-ai-g span{font-size:11.5px;padding:4px 11px;border-radius:var(--r-pill);border:1px solid var(--border,rgba(255,255,255,.12));color:var(--text,#d5d5dd);cursor:pointer}
+#videoMakerModal .vmk-ai-i{display:flex;gap:8px}
+#videoMakerModal .vmk-ai-i input{flex:1;min-width:0}
+#videoMakerModal .vmk-ai-go{font:inherit;font-size:12.5px;padding:0 16px;border-radius:var(--r-2);border:0;background:var(--accent,#e8a13c);color:var(--accent-ink,#17140f);font-weight:700;cursor:pointer}
 #videoMakerModal .vmk-hidden{display:none!important}
 #videoMakerModal .vmk-row3{display:block!important}
 #videoMakerModal .vmk-row3>div{min-width:0!important;margin-top:14px}
@@ -458,3 +476,16 @@ body.maha-band-on #mahaSkyLayer{display:block;}
 #mahaSkyLayer .omSkyStar{position:absolute; width:var(--sz); height:var(--sz); background:#ffd76a; clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); filter:drop-shadow(0 0 5px rgba(255,215,106,.85)); opacity:0; animation:omSkyTwinkle var(--dur) ease-in-out infinite var(--dly);}
 body.maha-band-on #omSkyLayer{z-index:100001;}
 @media (prefers-reduced-motion:reduce){ #mahaSkyLayer{display:none !important;} }
+
+/* v-video-write: الوضع الفاتح لمساعد الكتابة وشريحة المثال (نفس وصفة vmk-pill/vmk-card أعلاه) */
+html[data-mode="light"] #videoMakerModal details.vmk-ai{background:#ffffff;border-color:rgba(0,0,0,.10)}
+html[data-mode="light"] #videoMakerModal .vmk-ai>summary{color:var(--text)}
+html[data-mode="light"] #videoMakerModal .vmk-ai-b.a,
+html[data-mode="light"] #videoMakerModal .vmk-ai-b.w{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.10);color:var(--text)}
+html[data-mode="light"] #videoMakerModal .vmk-ai-b.u{background:rgba(var(--accent-rgb,232,161,60),.12);color:var(--text)}
+html[data-mode="light"] #videoMakerModal .vmk-ai-g span,
+html[data-mode="light"] #videoMakerModal .vmk-ai-a button,
+html[data-mode="light"] #videoMakerModal .vmk-idea{background:#ffffff;color:var(--text);border-color:rgba(0,0,0,.18)}
+html[data-mode="light"] #videoMakerModal .vmk-ai-s,
+html[data-mode="light"] #videoMakerModal .vmk-ai-f,
+html[data-mode="light"] #videoMakerModal .vmk-ideas-l{color:var(--muted)}

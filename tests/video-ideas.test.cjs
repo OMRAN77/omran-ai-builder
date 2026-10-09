@@ -31,6 +31,6 @@ test('الواجهة: الشريحة تتبدّل مع الوضع وتعبّئ �
   assert.ok(js.includes("pe.value=tx; pe.dispatchEvent(new Event('input'"));
   assert.ok(read('css/modules.css').includes('.vmk-idea{'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=425"') && h.includes('modules.css?v=664'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=729'"));
+  assert.ok(h.includes('src="/js/video.js?v=426"') && h.includes('modules.css?v=665'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=730'"));
 });
