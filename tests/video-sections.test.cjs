@@ -109,7 +109,7 @@ test('رفع فيديوهات المالك (طلبه: «كيف أرفع الفي
   assert.ok(fs.existsSync(path.join(root, 'media/samples/raw/README.md')));
   assert.ok(js.includes('tx=(vm&&vm.title)||L(k)'), 'عنوان الفيديو المرفوع يغلب المثال');
   const tut = read('scripts/video-tutorial.mjs');
-  assert.ok(tut.includes("Page.startScreencast") && tut.includes("scale=1920:1080"), 'التعليميّ بدقّة ١٠٨٠');
+  assert.ok(tut.includes('deviceScaleFactor: 2') && tut.includes('window.R = function (t)') && tut.includes("viewport: { width: 1920, height: 1080 }"), 'التعليميّ مُمنتَج: لقطات بدقّة مضاعفة وتركيب يُرسم إطارًا إطارًا ١٠٨٠');
   const sm = read('scripts/video-samples.mjs');
   assert.ok(sm.includes("'.vmk-lb .vmk-lb-x'") && !sm.includes("keyboard.press('Escape')"), 'يُغلق المشغّل بزرّه لا بـEscape (يُغلق الصانع)');
 });
