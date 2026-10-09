@@ -29,6 +29,17 @@
     [nt&&nt.closest('label'),id('videoMakerNarrationRow'),id('videoMakerQualityRow')].forEach(function(e){ if(e) det.appendChild(e); });
     main.appendChild(det);
     var go=id('videoMakerGenerateBtn'); if(go) main.appendChild(go);
+    /* v-vmk-ideas: شريحة مثال واحدة لكلّ وضع تحت الوصف (تتبدّل مع الوضع) تعبّئ الوصف بضغطة — بلا مساحة إضافيّة */
+    var pe=id('videoMakerPrompt'), prow=pe&&pe.parentElement;
+    if(prow&&!id('vmkIdeas')){
+      var ib=document.createElement('div'); ib.id='vmkIdeas'; ib.className='vmk-ideas';
+      ib.innerHTML='<span class="vmk-ideas-l"></span><button type="button" class="vmk-idea"></button>';
+      prow.parentNode.insertBefore(ib,prow.nextSibling);
+      ib.querySelector('button').addEventListener('click',function(){
+        var tx=this.dataset.txt; if(!tx||!pe) return;
+        pe.value=tx; pe.dispatchEvent(new Event('input',{bubbles:true})); pe.focus();
+      });
+    }
     card.dataset.vmk='1';
   }
   function group(sel,kind){
@@ -72,6 +83,13 @@
     if(chips&&p!=null){
       var b=document.createElement('span'); b.className='vmk-chip gold';
       b.textContent=p?('⚡ '+p+(ar()?' نقطة':' pts')):(ar()?'🎁 مجاني':'🎁 Free'); chips.appendChild(b);
+    }
+    var ib=id('vmkIdeas'), md=(id('videoMakerMode')||{}).value, tf=(typeof window.t==='function')?window.t:null;
+    if(ib&&md){
+      var k='videoIdea'+md.charAt(0).toUpperCase()+md.slice(1), tx=tf?tf(k):k, lb=tf?tf('videoIdeaLbl'):'';
+      ib.style.display=(tx&&tx!==k)?'':'none';
+      ib.firstChild.textContent=(lb&&lb!=='videoIdeaLbl')?lb:'';
+      var bt=ib.querySelector('button'); bt.dataset.txt=tx; bt.textContent=tx;
     }
     var r=((id('videoMakerRatio')||{}).value||'1280:720').split(':'), stage=M.querySelector('.vmk-stage');
     if(stage){

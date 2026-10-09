@@ -254,6 +254,10 @@
 #videoMakerModal .vmk-pill{font-size:12px;padding:6px 13px;border-radius:var(--r-pill);border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#d5d5dd;cursor:pointer;transition:.15s;white-space:nowrap}
 #videoMakerModal .vmk-pill:hover{border-color:rgba(232,161,60,.55);color:#f0be7a}
 #videoMakerModal .vmk-pill[aria-checked=true]{background:linear-gradient(135deg,#e8a13c,#c98226);border-color:transparent;color:#17140f;font-weight:700}
+#videoMakerModal .vmk-ideas{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px}
+#videoMakerModal .vmk-ideas-l{font-size:var(--fs-5);color:#82828c}
+#videoMakerModal .vmk-idea{font:inherit;font-size:12px;padding:5px 11px;border-radius:var(--r-pill);border:1px dashed rgba(232,161,60,.45);background:rgba(232,161,60,.07);color:#f0be7a;cursor:pointer;text-align:start;transition:.15s}
+#videoMakerModal .vmk-idea:hover{background:rgba(232,161,60,.16)}
 #videoMakerModal .vmk-hidden{display:none!important}
 #videoMakerModal .vmk-row3{display:block!important}
 #videoMakerModal .vmk-row3>div{min-width:0!important;margin-top:14px}
