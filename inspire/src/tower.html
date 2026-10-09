@@ -295,7 +295,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
         const a = k / n * Math.PI * 2 + r * 0.37, x = sx + r * Math.cos(a), z = sz + r * Math.sin(a);
         if (city.idx.at(x, z) || roadAt(x, z) || inWater(x, z)) continue;
         const fp = corners(x, z, mw, md, P.rot * DEG);
-        if (hits(fp).length || roadsOverlap(fp) || fp.some((p) => inWater(p[0], p[1]))) continue;
+        if (hits(fp).length || roadsOverlap(fp) || footInWater(fp)) continue;
         return [x, z];
       }
     }
@@ -304,11 +304,20 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
 
   // ── الشمس والظلّ ──
   function sunAt(h) { const d = S.date; return CK.sunDir(city.lat, city.lon, Date.UTC(d[0], d[1] - 1, d[2]) + (h - S.tz) * 3600e3); }
-  function riseSet() {
-    let rise = null, set = null, prev = sunAt(0).alt;
-    for (let h = 0.05; h <= 24; h += 0.05) { const a = sunAt(h).alt; if (prev <= 0 && a > 0 && rise == null) rise = h; if (prev > 0 && a <= 0) set = h; prev = a; }
+  const H0 = -0.833 * DEG; // ارتفاع الشروق والغروب القياسيّ (انكسار + نصف القرص) كما في sun.html
+  function riseSet() { // مسح كلّ ٣ دقائق ثمّ استيفاء خطّيّ عند عبور −0.833°
+    const st = 0.05; let rise = null, set = null, prev = sunAt(0).alt;
+    for (let k = 1; k <= 480; k++) {
+      const h = k * st, a = sunAt(h).alt;
+      if (prev < H0 && a >= H0 && rise == null) rise = h - st + st * (H0 - prev) / (a - prev);
+      if (prev >= H0 && a < H0) set = h - st + st * (prev - H0) / (prev - a);
+      prev = a;
+    }
     S.rise = rise == null ? 6 : rise; S.set = set == null ? 18 : set;
   }
+  // فرق التوقيت: ساعة الجهاز إن كانت ضمن ساعتين من خطّ طول المدينة (أغلب المدن العربيّة تبعد ١–٢ س عن lon/15)، وإلّا تقريب خطّ الطول
+  function tzFor(lon) { const dev = -new Date().getTimezoneOffset() / 60; return Math.abs(dev - lon / 15) <= 2 ? dev : Math.round(lon / 15); }
+  function tzLabel() { const a = Math.abs(S.tz), hh = Math.floor(a), mm = Math.round((a - hh) * 60); return 'UTC' + (S.tz < 0 ? '−' : '+') + hh + (mm ? ':' + String(mm).padStart(2, '0') : ''); }
   const Col = (h) => new (window.THREE.Color)(h);
   const C_DAY = Col(0xd3e5ee), C_GOLD = Col(0xf3cda4), C_NIGHT = Col(0x17233a), C_DAY_T = Col(0x5d97cf), C_GOLD_T = Col(0x7392c0), C_NIGHT_T = Col(0x040912);
   let skyKey = '';
@@ -336,12 +345,20 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
   }
   function computeShadow() {
     const s = S.sun, h = H();
-    S.shadowVec = null; S.hull = null; S.shaded = []; S.roofs = 0; S.areaM2 = 0; S.lenM = 0;
+    S.shadowVec = null; S.hull = null; S.shaded = []; S.roofs = 0; S.areaM2 = 0; S.lenM = 0; S.lenFull = 0; S.clipped = false;
     if (s.alt > 0.5 * DEG) {
       const k = h / s.y, ox = -s.x * k, oz = -s.z * k;
-      S.shadowVec = [ox, oz]; S.lenM = Math.hypot(ox, oz);
+      S.shadowVec = [ox, oz]; S.lenM = S.lenFull = Math.hypot(ox, oz);
       const hl = hull(S.foot.concat(S.foot.map((p) => [p[0] + ox, p[1] + oz])));
       S.hull = hl; S.areaM2 = Math.max(0, areaOf(hl) - P.w * P.d); // مساحة الظلّ على الأرض خارج قاعدة البرج
+      // الشمس المنخفضة تمدّ الظلّ كيلومترات خارج الخريطة المحمّلة (قرص نصف قطره R): الطول والمساحة لما داخلها فقط
+      const R = ctx.R;
+      if (hl.some((p) => p[0] * p[0] + p[1] * p[1] > R * R)) {
+        const ux = ox / S.lenFull, uz = oz / S.lenFull, b = S.x * ux + S.z * uz, dd = b * b - (S.x * S.x + S.z * S.z - R * R);
+        S.lenM = Math.min(S.lenFull, dd > 0 ? Math.max(0, -b + Math.sqrt(dd)) : 0);
+        S.areaM2 = Math.max(0, areaOf(clipTo(hl, S.disc)) - areaOf(clipTo(S.foot, S.disc)));
+        S.clipped = true;
+      }
       S.shaded = hits(hl, S.overlapSet);
       for (const b of S.shaded) { // السطح نفسه في الظلّ؟ مقطع حجم الظلّ عند ارتفاع السطح
         if (b.h >= h) continue;

@@ -36,6 +36,8 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T;
+  const TITLE = T('اختبار اللوحة الإعلانيّة', 'Billboard visibility test');
+  document.title = TITLE; // <title> عربيّ ثابت؛ بالإنجليزيّة يتبع لغة الصفحة
   const D2R = Math.PI / 180;
   const SPEED = { motorway: 100, trunk: 80, primary: 60, secondary: 50 }; // كم/س؛ الباقي ٤٠
   const kmh = (k) => SPEED[k] || 40;
@@ -45,6 +47,7 @@
     tertiary: ['شارع فرعيّ', 'Tertiary road'], residential: ['شارع سكنيّ', 'Residential street'], unclassified: ['شارع محلّيّ', 'Local street'], living_street: ['شارع حيّ', 'Living street'], service: ['طريق خدمة', 'Service road'] };
   const kindName = (k) => (KIND[k] ? T(KIND[k][0], KIND[k][1]) : k);
   const STEP = 10, EYE = 1.2, FACE_COS = Math.cos(70 * D2R), TILT_TAN = Math.tan(35 * D2R), LOS_STEP = 3;
+  const AHEAD_DEG = 60, AHEAD_COS = Math.cos(AHEAD_DEG * D2R); // السائق يعدّ اللوحة مقروءة ما دامت أمامه ضمن ±٦٠° من اتّجاه سيره
   const fmt = (n) => Math.round(n).toLocaleString('en-US');
   const fmtLen = (m) => (m >= 1000 ? (m / 1000).toFixed(2) + ' ' + T('كم', 'km') : fmt(m) + ' ' + T('م', 'm'));
   const fmtSec = (s) => (s < 100 ? s.toFixed(1) : fmt(s)) + ' ' + T('ث', 's');
@@ -52,6 +55,8 @@
   const nOf = (b) => [Math.sin(b * D2R), -Math.cos(b * D2R)];
   const CARD = [['شمال', 'N'], ['شمال شرق', 'NE'], ['شرق', 'E'], ['جنوب شرق', 'SE'], ['جنوب', 'S'], ['جنوب غرب', 'SW'], ['غرب', 'W'], ['شمال غرب', 'NW']];
   const card = (b) => { const c = CARD[Math.round(b / 45) % 8]; return T(c[0], c[1]); };
+  const TOWARD = [['الشمال', 'north'], ['الشمال الشرقيّ', 'north-east'], ['الشرق', 'east'], ['الجنوب الشرقيّ', 'south-east'], ['الجنوب', 'south'], ['الجنوب الغربيّ', 'south-west'], ['الغرب', 'west'], ['الشمال الغربيّ', 'north-west']];
+  const toward = (b) => { const c = TOWARD[Math.round(b / 45) % 8]; return T('نحو ' + c[0], 'heading ' + c[1]); };
   const ICON = {
     pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffcf4a" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
     car: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 16h14M6 16l1.6-5.2A2 2 0 0 1 9.5 9.4h5a2 2 0 0 1 1.9 1.4L18 16v3h-2.5v-2h-7v2H6z"/></svg>',
@@ -69,7 +74,7 @@
   // ── عيّنات الطرق كلّ ١٠م (تُحسب مرّة لكلّ مدينة) ──
   function sampleRoads(city, R) {
     const ax = [], az = [], bx = [], bz = [], ri = [], cont = [];
-    const lim = R * 1.25;
+    const lim = R; // خارج نصف قطر الخريطة المحمّلة لا مبنى يحجب، فلا نعدّ ما وراءه مرئيًّا
     city.roads.forEach((r, k) => {
       if (!DRIVE.test(r.kind)) return;
       let prevOk = false;
@@ -86,12 +91,14 @@
       }
     });
     const N = ax.length, o = { N, ax: Float32Array.from(ax), az: Float32Array.from(az), bx: Float32Array.from(bx), bz: Float32Array.from(bz),
-      road: Int32Array.from(ri), cont: Uint8Array.from(cont), mx: new Float32Array(N), mz: new Float32Array(N), len: new Float32Array(N), v: new Float32Array(N), w: new Float32Array(N) };
+      road: Int32Array.from(ri), cont: Uint8Array.from(cont), mx: new Float32Array(N), mz: new Float32Array(N), len: new Float32Array(N), v: new Float32Array(N), w: new Float32Array(N),
+      hx: new Float32Array(N), hz: new Float32Array(N) }; // hx,hz: وحدة اتّجاه السير مع ترتيب نقاط الطريق
     for (let i = 0; i < N; i++) {
       o.mx[i] = (o.ax[i] + o.bx[i]) / 2; o.mz[i] = (o.az[i] + o.bz[i]) / 2; o.len[i] = Math.hypot(o.bx[i] - o.ax[i], o.bz[i] - o.az[i]);
+      o.hx[i] = (o.bx[i] - o.ax[i]) / (o.len[i] || 1); o.hz[i] = (o.bz[i] - o.az[i]) / (o.len[i] || 1);
       const r = city.roads[o.road[i]]; o.v[i] = kmh(r.kind) / 3.6; o.w[i] = Math.max(3.5, r.w * 0.92);
     }
-    o.status = new Uint8Array(N); o.dist = new Float32Array(N);
+    o.status = new Uint8Array(N); o.dist = new Float32Array(N); o.dir = new Uint8Array(N);
     return o;
   }
 
@@ -115,15 +122,23 @@
       S.los[i] = idx.los(a, C, LOS_STEP) ? 1 : 2;
     }
   }
-  function scoreDir(C, range, nx, nz) { // ثواني التعرّض لاتّجاه معيّن (بعد ensureLOS لكلّ الاتّجاهات)
-    const s = S.smp; let sec = 0;
+  // اتّجاه السير الذي يرى اللوحة أمامه ضمن ±٦٠°: 1 مع ترتيب نقاط الطريق، 2 عكسه، 0 اللوحة على الجنب (لا يُعدّ)
+  function aheadDir(s, i, C, d) {
+    const c = (s.hx[i] * (C.x - s.mx[i]) + s.hz[i] * (C.z - s.mz[i])) / d;
+    return c > AHEAD_COS ? 1 : (c < -AHEAD_COS ? 2 : 0);
+  }
+  function scoreDir(C, range, nx, nz) { // لاتّجاه واجهة معيّن (بعد ensureLOS لكلّ الاتّجاهات): أفضل ثواني سائق واحد باتّجاه سير واحد، والمجموع للتفاضل
+    const s = S.smp; let best = 0, tot = 0, f = 0, g = 0;
     for (let i = 0; i < s.N; i++) {
+      if (!s.cont[i]) { f = 0; g = 0; } // سلسلة طريق جديدة
       if (S.los[i] !== 1) continue;
       const dx = s.mx[i] - C.x, dz = s.mz[i] - C.z, d = Math.hypot(dx, dz);
       if (d > range || (dx * nx + dz * nz) / d < FACE_COS) continue;
-      sec += s.len[i] / s.v[i];
+      const dr = aheadDir(s, i, C, d); if (!dr) continue;
+      const t = s.len[i] / s.v[i]; tot += t;
+      if (dr === 1) { f += t; if (f > best) best = f; } else { g += t; if (g > best) best = g; }
     }
-    return sec;
+    return best + tot * 1e-3;
   }
   function autoOrient(apply) {
     const b = S.board, C = target(b), range = rangeOf(b);
