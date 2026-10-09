@@ -3,6 +3,12 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **Overpass يردّ أخطاءه أحيانًا بـHTTP 200:** `{"elements":[],"remark":"runtime error: Query timed out…"}` — `res.ok` لا يكفي؛
+  افحص `remark` و`Array.isArray(elements)` قبل أن تعتمد الردّ أو تخزّنه (v-inspire ٢).
+- **البحر ليس مضلّعًا في OSM:** يُعرَّف بخطوط `natural=coastline` والماء يمينها. استعلام `natural=water` وحده يجعل المدن
+  الساحليّة رملًا. وفي إحداثيّاتنا (z جنوبًا) يمين الاتّجاه `(dx,dz)` هو `(-dz, dx)` (v-inspire ٢).
+- **مقارنة مصفوفات من vm في الاختبار:** `assert.deepEqual` يفشل «same structure but not reference-equal» لأنّ النموذج الأوّليّ
+  من سياق آخر — قارن `JSON.stringify` أو الأطوال.
 - **ظلّ three.js r160 لا يظهر رغم `castShadow`:** تغيير `left/right/top/bottom/far` على `light.shadow.camera` بلا
   `updateProjectionMatrix()` يُبقي إطار الظلّ على الافتراضيّ ±٥ م — فلا ظلال تقريبًا في مشهد بمئات الأمتار. وقع في نواة
   «مدينتك الحقيقيّة» (`inspire/src/core.js`) وكشفه وكيل «برجك بين جيرانه» (v-inspire).

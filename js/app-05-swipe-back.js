@@ -18,6 +18,7 @@
     /* أمر المالك ٤ سبتمبر: «في الديكور كلها داخل احذف X وخلها سحاب، وفي الاستايل بعد كلها، وفي التعليم»:
        ورقة الخيارات الداخلية الموحّدة (الشعر، المناسبة، نمط الديكور، …) */
     pickerSheet: 'pickerSheetClose',
+    inspireScreen: 'inspireCloseBtn', /* v-inspire: شاشة «اقتراحات» — سحب/Esc يغلقها وحدها لا شاشة الأدوات تحتها */
   };
 
   var css = document.createElement('style');

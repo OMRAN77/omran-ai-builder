@@ -69,7 +69,8 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
   const MEN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function dateOf(key) {
     const n = new Date(), Y = n.getFullYear();
-    if (key === 'mar') return [Y, 3, 20]; if (key === 'jun') return [Y, 6, 21]; if (key === 'dec') return [Y, 12, 21];
+    const south = !!(city && city.lat < 0); // «الصيف»/«الشتاء» ينقلبان جنوب خطّ الاستواء
+    if (key === 'mar') return [Y, 3, 20]; if (key === 'jun') return south ? [Y, 12, 21] : [Y, 6, 21]; if (key === 'dec') return south ? [Y, 6, 21] : [Y, 12, 21];
     return [Y, n.getMonth() + 1, n.getDate()];
   }
   const dateLabel = (d) => (AR ? d[2] + ' ' + MAR[d[1] - 1] : MEN[d[1] - 1] + ' ' + d[2]);

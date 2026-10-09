@@ -1325,9 +1325,10 @@ function __histThumbLazy(thumb, p){
   const make = () => {
     if(thumb.querySelector('iframe') || thumb.querySelector('img')) return;
     /* v-inspire: تجارب «مدينتك الحقيقيّة» تبني واجهتها كلّها بالسكربت — بلا سكربتات تبقى صفحة بيضاء، فتُعرض صورة بطاقتها */
-    if(p && /^[a-z]+$/.test(String(p.inspire || ''))){
+    const __insp = p ? String(p.inspire || ((/<meta name="omran-inspire" content="([a-z]+)">/.exec(String(p.code || '').slice(0, 600)) || [])[1]) || '') : '';
+    if(/^[a-z]+$/.test(__insp)){
       const im = document.createElement('img');
-      im.setAttribute('src', '/assets/inspire/city/' + p.inspire + '.jpg?v=1');
+      im.setAttribute('src', '/assets/inspire/city/' + __insp + '.jpg?v=1');
       im.setAttribute('alt', '');
       im.setAttribute('loading', 'lazy');
       im.setAttribute('style', 'width:100%;height:100%;object-fit:cover;display:block;');
