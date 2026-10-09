@@ -52,3 +52,12 @@ test('سياسة الأمان تسمح بجلب blob: — صور المباني 
   const connect = (csp.match(/connect-src([^;]*)/) || [])[1] || '';
   assert.match(connect, /\bblob:/);
 });
+
+test('v-car-drop: زرّ «نزّل سيّارتك» يقرأ سيّارات المختبر، والقيادة بشعاع أرض واصطدام، والمسبار خلف ?debug=1 فقط', () => {
+  const h = fs.readFileSync(path.join(root, 'inspire/real3d.html'), 'utf8');
+  assert.match(h, /id="dropBtn"/);
+  assert.match(h, /action=car3d&list=1/);
+  assert.match(h, /function groundAt\(/);
+  assert.match(h, /DRV\.speed = 0/); // الاصطدام يوقف السيّارة
+  assert.match(h, /if \(window\.__diag && window\.__diag\.on\) window\.__real3d =/);
+});
