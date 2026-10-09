@@ -43647,6 +43647,47 @@ const INSPIRE_CITY = [
     d:{ar:'اختر بدايتك ونهايتك ويطلع لك أكثر طريق في الظلّ مقابل أقصر طريق.', en:'Pick a start and an end to get the shadiest route compared with the shortest one.', fr:'Choisissez un départ et une arrivée pour obtenir l\'itinéraire le plus ombragé face au plus court.', hi:'शुरुआत और मंज़िल चुनें और सबसे छायादार रास्ते की तुलना सबसे छोटे रास्ते से देखें।', ur:'آغاز اور منزل چنیں اور سب سے سایہ دار راستے کا موازنہ سب سے چھوٹے راستے سے دیکھیں۔', bn:'শুরু আর শেষ বেছে নিন, সবচেয়ে ছায়াময় পথের সঙ্গে সবচেয়ে ছোট পথের তুলনা দেখুন।', ne:'सुरु र अन्त्य छान्नुहोस्, सबैभन्दा छायादार बाटोलाई सबैभन्दा छोटो बाटोसँग तुलना गर्नुहोस्।', ml:'തുടക്കവും അവസാനവും തിരഞ്ഞെടുത്ത് ഏറ്റവും തണലുള്ള വഴി ഏറ്റവും ചെറിയ വഴിയുമായി താരതമ്യം ചെയ്യൂ.', fil:'Pumili ng simula at dulo para makuha ang pinakamalilim na ruta kumpara sa pinakamaikli.', id:'Pilih titik awal dan akhir untuk mendapat rute paling teduh dibandingkan rute terpendek.', zh:'选择起点和终点，对比阴凉最多的路线和最短路线。', ru:'Выберите начало и конец и сравните самый тенистый маршрут с самым коротким.', tr:'Başlangıç ve bitiş seç; en gölgeli rotayı en kısa rotayla karşılaştır.', es:'Elige inicio y destino para obtener la ruta con más sombra frente a la más corta.'} },
 ];
 
+/* v-live-cards (المالك ٩ أكتوبر: «بطاقة المدينة الحقيقيّة وبطاقة مختبر السيّارات في الإلهام… تفتحها من التطبيق نفسه»):
+   قسم «تجارب حيّة» فوق «مدينتك الحقيقيّة». الصفحتان تحتاجان النطاق نفسه (رمز الدخول والخادم) فتُفتحان في نافذة كاملة
+   داخل التطبيق (إطار من النطاق نفسه) لا مشروعًا في المعاينة. */
+const INSPIRE_LIVE = [
+  { id:'real3d', src:'/inspire/real3d.html',
+    t:{ar:'المدينة الحقيقيّة',en:'The real city',fr:'La vraie ville',hi:'असली शहर',ur:'اصلی شہر',bn:'আসল শহর',ne:'वास्तविक सहर',ml:'യഥാർത്ഥ നഗരം',fil:'Ang totoong lungsod',id:'Kota sungguhan',zh:'真实城市',ru:'Настоящий город',tr:'Gerçek şehir',es:'La ciudad real'},
+    d:{ar:'دبي وأبوظبي والرياض والدوحة مصوَّرة كما هي: سُق سيّارتك بين الزحمة والمشاة، سابق دراج، غيّر الطقس بكلمة، وصوّر المشهد بالذكاء الاصطناعي.',
+       en:'Dubai, Abu Dhabi, Riyadh and Doha as they really look: drive your car through traffic, drag race, change the weather with a word and turn the scene into an AI photo.',
+       fr:'Dubaï, Abou Dabi, Riyad et Doha telles qu\'elles sont : conduisez dans la circulation, faites un drag race, changez la météo d\'un mot et transformez la scène en photo IA.',
+       hi:'दुबई, अबू धाबी, रियाद और दोहा असली रूप में: ट्रैफ़िक में गाड़ी चलाएँ, ड्रैग रेस करें, एक शब्द से मौसम बदलें और दृश्य को AI फ़ोटो बनाएँ।',
+       ur:'دبئی، ابوظہبی، ریاض اور دوحہ اصل شکل میں: ٹریفک میں گاڑی چلائیں، ڈریگ ریس کریں، ایک لفظ سے موسم بدلیں اور منظر کو AI تصویر بنائیں۔',
+       bn:'দুবাই, আবুধাবি, রিয়াদ ও দোহা আসল রূপে: ট্রাফিকে গাড়ি চালান, ড্র্যাগ রেস করুন, এক শব্দে আবহাওয়া বদলান আর দৃশ্যকে AI ছবি বানান।',
+       ne:'दुबई, अबु धाबी, रियाद र दोहा वास्तविक रूपमा: ट्राफिकमा गाडी चलाउनुहोस्, ड्र्याग रेस गर्नुहोस्, एक शब्दले मौसम बदल्नुहोस् र दृश्यलाई AI फोटो बनाउनुहोस्।',
+       ml:'ദുബായ്, അബുദാബി, റിയാദ്, ദോഹ യഥാർത്ഥ രൂപത്തിൽ: ട്രാഫിക്കിൽ കാർ ഓടിക്കാം, ഡ്രാഗ് റേസ് ചെയ്യാം, ഒരു വാക്കിൽ കാലാവസ്ഥ മാറ്റാം, ദൃശ്യം AI ഫോട്ടോയാക്കാം.',
+       fil:'Ang Dubai, Abu Dhabi, Riyadh at Doha gaya ng totoo: magmaneho sa trapiko, mag-drag race, palitan ang panahon sa isang salita at gawing AI na larawan ang eksena.',
+       id:'Dubai, Abu Dhabi, Riyadh, dan Doha seperti aslinya: kemudikan mobil di tengah lalu lintas, balap drag, ubah cuaca dengan satu kata, dan jadikan adegan foto AI.',
+       zh:'迪拜、阿布扎比、利雅得和多哈的真实样貌：在车流中驾驶、直线加速赛、一句话改变天气，并把画面变成 AI 照片。',
+       ru:'Дубай, Абу-Даби, Эр-Рияд и Доха как в жизни: езжайте в потоке машин, устройте дрэг-рейс, меняйте погоду одним словом и превращайте сцену в ИИ-фото.',
+       tr:'Dubai, Abu Dabi, Riyad ve Doha gerçek hâliyle: trafikte arabanı sür, drag yarışı yap, havayı tek kelimeyle değiştir ve sahneyi yapay zekâ fotoğrafına çevir.',
+       es:'Dubái, Abu Dabi, Riad y Doha tal como son: conduce entre el tráfico, haz una carrera de aceleración, cambia el clima con una palabra y convierte la escena en una foto con IA.'} },
+  { id:'car-lab', src:'/inspire/car-lab.html', owner:true, // التوليد للمالك وحده الآن (السعر بالنقاط قراره)
+    t:{ar:'مختبر السيّارات',en:'Car lab',fr:'Atelier voitures',hi:'कार लैब',ur:'کار لیب',bn:'কার ল্যাব',ne:'कार ल्याब',ml:'കാർ ലാബ്',fil:'Car lab',id:'Lab mobil',zh:'汽车实验室',ru:'Автолаборатория',tr:'Araba laboratuvarı',es:'Laboratorio de coches'},
+    d:{ar:'صف سيّارة بكلمات فيصنعها الذكاء الاصطناعي ثلاثيّة الأبعاد، دوّرها واسمع محرّكها، ثمّ أنزلها في المدينة الحقيقيّة.',
+       en:'Describe a car and AI builds it in 3D — spin it, hear its engine, then drop it into the real city.',
+       fr:'Décrivez une voiture et l\'IA la crée en 3D — faites-la tourner, écoutez son moteur, puis déposez-la dans la vraie ville.',
+       hi:'शब्दों में कार बताइए, AI उसे 3D में बनाएगा — घुमाइए, इंजन सुनिए, फिर असली शहर में उतारिए।',
+       ur:'الفاظ میں گاڑی بتائیں، AI اسے 3D میں بنائے گا — گھمائیں، انجن سنیں، پھر اصلی شہر میں اتاریں۔',
+       bn:'কথায় গাড়ির বর্ণনা দিন, AI সেটি 3D-তে বানাবে — ঘোরান, ইঞ্জিন শুনুন, তারপর আসল শহরে নামান।',
+       ne:'शब्दमा कार बताउनुहोस्, AI ले 3D मा बनाउँछ — घुमाउनुहोस्, इन्जिन सुन्नुहोस्, अनि वास्तविक सहरमा झार्नुहोस्।',
+       ml:'വാക്കുകളിൽ ഒരു കാർ വിവരിക്കൂ, AI അത് 3D-യിൽ നിർമ്മിക്കും — കറക്കാം, എഞ്ചിൻ കേൾക്കാം, പിന്നെ യഥാർത്ഥ നഗരത്തിൽ ഇറക്കാം.',
+       fil:'Ilarawan ang kotse at gagawin ito ng AI sa 3D — paikutin, pakinggan ang makina, saka ilagay sa totoong lungsod.',
+       id:'Jelaskan mobil dengan kata-kata dan AI membuatnya dalam 3D — putar, dengarkan mesinnya, lalu turunkan ke kota sungguhan.',
+       zh:'用文字描述一辆车，AI 就把它做成 3D——旋转查看、聆听引擎，然后放进真实城市。',
+       ru:'Опишите машину — ИИ создаст её в 3D: вращайте, слушайте двигатель и выпускайте в настоящий город.',
+       tr:'Bir arabayı kelimelerle anlat, yapay zekâ onu 3D yapsın — döndür, motorunu dinle, sonra gerçek şehre indir.',
+       es:'Describe un coche y la IA lo crea en 3D: gíralo, escucha su motor y luego llévalo a la ciudad real.'} },
+];
+const INSPIRE_LIVE_TXT = {
+  t:{ar:'تجارب حيّة بالذكاء الاصطناعي',en:'Live AI experiences',fr:'Expériences IA en direct',hi:'लाइव AI अनुभव',ur:'لائیو AI تجربات',bn:'লাইভ AI অভিজ্ঞতা',ne:'प्रत्यक्ष AI अनुभव',ml:'ലൈവ് AI അനുഭവങ്ങൾ',fil:'Live na karanasan sa AI',id:'Pengalaman AI langsung',zh:'实时 AI 体验',ru:'Живые ИИ-опыты',tr:'Canlı yapay zekâ deneyimleri',es:'Experiencias de IA en vivo'},
+};
+
 (function(){
   const ID = 'inspireScreen';
   const MARK = 'CityKit'; // كلّ تجربة تحمل النواة — بدونها فالمجلوب ليس تجربة (احتياط العامل يرجّع index.html أوفلاين)
@@ -43734,14 +43775,19 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       body.querySelectorAll('.insQ').forEach((b) => { b.onclick = () => { closeInspireScreen(); __runQuickSuggestion(list[+b.dataset.i]); }; });
       return;
     }
-    body.innerHTML = '<h3 class="insSecT">' + esc(tx('inspCityTitle', 'مدينتك الحقيقيّة')) + '</h3>'
+    body.innerHTML = '<h3 class="insSecT">' + esc(L(INSPIRE_LIVE_TXT.t)) + '</h3>'
+      + '<div class="insGrid insLive">' + INSPIRE_LIVE.filter((c) => !c.owner || liveOwner()).map((c) => '<button type="button" class="insCard" data-live="' + c.id + '">'
+        + '<img src="/assets/inspire/live/' + c.id + '.jpg?v=1" alt="" loading="lazy" decoding="async" width="600" height="360">'
+        + '<div class="insTxt"><div class="insCT">' + esc(L(c.t)) + '</div><div class="insCD">' + esc(L(c.d)) + '</div></div></button>').join('') + '</div>'
+      + '<h3 class="insSecT">' + esc(tx('inspCityTitle', 'مدينتك الحقيقيّة')) + '</h3>'
       + '<p class="insSecS">' + esc(tx('inspCitySub', '')) + '</p>'
       + '<p class="insErr" role="alert" hidden></p>'
       + '<div class="insGrid">' + INSPIRE_CITY.map((c) => '<button type="button" class="insCard" data-id="' + c.id + '">'
         + '<img src="/assets/inspire/city/' + c.id + '.jpg?v=1" alt="" loading="lazy" decoding="async" width="600" height="360">'
         + '<div class="insTxt"><div class="insCT">' + esc(L(c.t)) + '</div><div class="insCD">' + esc(L(c.d)) + '</div></div>'
         + '<div class="insBusy">' + esc(tx('inspLoading', 'يجهّز…')) + '</div></button>').join('') + '</div>';
-    body.querySelectorAll('.insCard').forEach((b) => { b.onclick = () => openInspireExperience(b.dataset.id, b); });
+    body.querySelectorAll('.insCard[data-id]').forEach((b) => { b.onclick = () => openInspireExperience(b.dataset.id, b); });
+    body.querySelectorAll('.insCard[data-live]').forEach((b) => { b.onclick = () => openInspireLive(b.dataset.live); });
   }
 
   // التجربة تتكلّم عربيّ أو إنجليزيّ (CityKit.T): نخبرها بلغة التطبيق عبر lang الوثيقة قبل أن تُعرض.
@@ -43830,6 +43876,38 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     }
   }
 
+  function liveOwner(){ try{ return typeof authGet === 'function' && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran'; }catch(e){ __swallow(e, 'inspire:owner'); return false; } }
+  // v-live-cards: نافذة كاملة بإطار من النطاق نفسه — الصفحة ترى رمز الدخول وتنادي الخادم كما لو فُتحت وحدها
+  function closeInspireLive(){
+    const ov = document.getElementById('inspireLive');
+    if(ov) ov.remove();
+    document.removeEventListener('keydown', liveEsc, true);
+  }
+  function liveEsc(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeInspireLive(); } }
+  function openInspireLive(id){
+    const item = INSPIRE_LIVE.find((c) => c.id === id);
+    if(!item) return false;
+    closeInspireScreen();
+    closeInspireLive();
+    const ov = document.createElement('div');
+    ov.id = 'inspireLive';
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', L(item.t));
+    ov.style.cssText = 'position:fixed;inset:0;z-index:2600;background:#0b0f17;';
+    const ar = ((typeof lang !== 'undefined' && lang) || 'ar') === 'ar';
+    ov.innerHTML = '<iframe title="" allow="autoplay; fullscreen" style="border:0;width:100%;height:100%;display:block"></iframe>'
+      + '<button type="button" id="inspireLiveClose" style="position:absolute;top:12px;' + (ar ? 'left' : 'right') + ':12px;z-index:2;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(10,14,22,.75);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">' + CLOSE_SVG + '</button>';
+    const fr = ov.querySelector('iframe');
+    fr.title = L(item.t);
+    fr.src = item.src + (item.src.indexOf('?') === -1 ? '?' : '&') + 'lang=' + encodeURIComponent((typeof lang !== 'undefined' && lang) || 'ar');
+    const cb = ov.querySelector('#inspireLiveClose');
+    cb.setAttribute('aria-label', tx('closeTitle', 'إغلاق'));
+    cb.onclick = closeInspireLive;
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', liveEsc, true);
+    try{ fr.focus(); }catch(_){ __swallow(_, 'inspire:live-focus'); }
+    return true;
+  }
+
   function openInspireScreen(which){
     if(which === 'quick' || which === 'inspire') tab = which;
     try{ if(typeof closeQuickTemplates === 'function') closeQuickTemplates(); }catch(_){ __swallow(_, 'inspire:close-quick'); }
@@ -43852,6 +43930,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   window.openInspireScreen = openInspireScreen;
   window.closeInspireScreen = closeInspireScreen;
   window.openInspireExperience = openInspireExperience;
+  window.openInspireLive = openInspireLive;
+  window.closeInspireLive = closeInspireLive;
 })();
 /* ───────── v-clean-ui: واجهة رسميّة بلا إيموجي (أمر المالك: «كلّ شيء نظيف… شغل رسميّ») ─────────
  * تنظيف وقت العرض بدل تحرير آلاف النصوص في ١٤ قاموسًا: تُزال الإيموجي من كلّ نصوص الصفحة
