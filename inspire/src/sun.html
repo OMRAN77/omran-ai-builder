@@ -209,7 +209,7 @@
       '<button class="ghost" data-chip="short">' + T('أقصر نهار', 'Shortest day') + '</button>' +
       '<button class="ghost" data-chip="eq">' + T('الاعتدال', 'Equinox') + '</button></div>' +
       '<div class="sn-cards" id="snCards"></div>' +
-      '<div class="sn-year"><div class="t"><span>' + T('شمس نقطتك على مدار السنة (يوم ٢١ من كلّ شهر)', 'Your spot\'s sun through the year (21st of each month)') + '</span></div><div id="snYear"></div><div class="t"><span id="snYearCap"></span></div></div>' +
+      '<div class="sn-year"><div class="t"><span>' + T('شمس نقطتك على مدار السنة (يوم 21 من كلّ شهر)', 'Your spot\'s sun through the year (21st of each month)') + '</span></div><div id="snYear"></div><div class="t"><span id="snYearCap"></span></div></div>' +
       '<div class="sn-leg"><span><i style="background:#ffc94a"></i>' + T('مسار اليوم المختار', 'Chosen day path') + '</span><span><i style="background:#ff8a4c"></i>' + T('أطول نهار', 'Longest day') + '</span><span><i style="background:#8fc2ff"></i>' + T('أقصر نهار', 'Shortest day') + '</span></div>';
     el = {}; for (const id of ['snPt', 'snPlay', 'snNow', 'snTz', 'snTimeL', 'snTime', 'snStrip', 'snDateL', 'snDate', 'snChips', 'snCards', 'snYear', 'snYearCap']) el[id] = P.querySelector('#' + id);
     setPlayBtn(false);
@@ -448,7 +448,7 @@
     el.snYearCap.innerHTML = done < 12 ? T('أحسب السنة… ', 'Computing the year… ') + done + '/12'
       : (AR ? MON_AR[m0] : MON_EN[m0]) + ': <b>' + v.sun.toFixed(1) + '</b> ' + T('من ', 'of ') + v.len.toFixed(1) + T(' ساعة · أشمس شهر: ', ' h · sunniest: ') + (AR ? MON_AR : MON_EN)[S.bestM] + ' (' + yr[S.bestM].sun.toFixed(1) + ')';
   }
-  function startYear() { // ١٢ شهرًا على دفعات حتّى لا تتجمّد الصفحة
+  function startYear() { // 12 شهرًا على دفعات حتّى لا تتجمّد الصفحة
     const gen = ++S.yearGen, St = S, P = S.P; St.year = new Array(12).fill(null); St.bestM = 0;
     let m = 0;
     const step = () => {
