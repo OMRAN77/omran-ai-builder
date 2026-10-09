@@ -28,7 +28,7 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 }}</script>
 </head><body>
 <div id="bar"></div><div id="msg"></div><div id="credit"></div><div id="hint"></div><div id="diag"></div>
-<div id="drive"><div id="garage"></div><div style="display:flex;gap:6px"><button class="pri" id="dropBtn"></button><button id="exitBtn" style="display:none"></button></div></div><div id="speedo"></div>
+<div id="drive"><div id="garage"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><input id="cmd" style="flex:1;min-width:170px;border:1px solid rgba(255,255,255,.18);background:rgba(10,14,22,.72);color:#fff;border-radius:999px;padding:8px 14px;font:13px inherit;font-family:inherit"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="pri" id="dropBtn"></button><button id="raceBtn" style="display:none"></button><button id="exitBtn" style="display:none"></button></div></div><div id="speedo"></div>
 <script>
 /* ?debug=1: شريط تشخيص على الشاشة — أوّل الأخطاء والتحذيرات وعدّادات البلاطات والصور، فلقطة واحدة تكفي بلا أدوات المطوّر. */
 window.__diag = { on: /[?&]debug=1/.test(location.search), log: [] };
@@ -49,6 +49,7 @@ import { GoogleCloudAuthPlugin } from '3d-tiles-renderer/index.core-plugins.js';
 import { GLTFExtensionsPlugin, ReorientationPlugin, TilesFadePlugin } from '3d-tiles-renderer/index.three-plugins.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { initLife } from './real3d-life.js?v=1';
 
 const AR = /^ar/i.test(document.documentElement.lang || navigator.language || 'ar');
 const T = (a, e) => (AR ? a : e);
@@ -88,6 +89,7 @@ function place(i) {
   [...$('bar').children].forEach((b, j) => b.classList.toggle('on', j === i));
   if (tiles) { scene.remove(tiles.group); tiles.dispose(); }
   if (typeof DRV !== 'undefined' && DRV.car) { scene.remove(DRV.car); DRV.car = null; $('exitBtn').click(); }
+  if (typeof life !== 'undefined') life.onPlace(p);
   tiles = new TilesRenderer();
   tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: key, autoRefreshToken: true }));
   tiles.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: draco }));
@@ -167,13 +169,20 @@ renderer.domElement.addEventListener('click', (e) => {
   const f = new THREE.Vector3(); camera.getWorldDirection(f);
   DRV.heading = Math.atan2(f.x, f.z); DRV.speed = 0;
   scene.add(DRV.car);
-  controls.enabled = false; $('exitBtn').style.display = ''; $('speedo').style.display = 'block';
+  controls.enabled = false; $('exitBtn').style.display = ''; $('raceBtn').style.display = ''; $('speedo').style.display = 'block';
   engineOn();
   say(''); $('hint').textContent = T('W/↑ تقدّم · S/↓ رجوع وفرامل · A D/← → دوران · F اقلب اتّجاه السيّارة', 'W/↑ go · S/↓ brake/reverse · A D/← → steer · F flip car');
 });
 $('dropBtn').onclick = openGarage;
+// v-city-life: الزحمة والمشاة وسباق الدراج والطقس بالأمر (inspire/real3d-life.js)
+const life = initLife({ THREE, scene, camera, renderer, getTiles: () => tiles, gl, say, T, $ });
+$('cmd').placeholder = T('اكتب للمدينة: ليل · غروب · مطر · ثلج · غبار · ضباب · نهار', 'Tell the city: night · sunset · rain · snow · dust · fog · day');
+$('cmd').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { if (life.weather($('cmd').value)) $('cmd').value = ''; } });
+$('cmd').addEventListener('keyup', (e) => e.stopPropagation());
+$('raceBtn').textContent = T('سباق دراج ٤٠٢ م', 'Drag race 402 m');
+$('raceBtn').onclick = () => life.startRace(DRV);
 $('exitBtn').onclick = () => {
-  controls.enabled = true; $('exitBtn').style.display = 'none'; $('speedo').style.display = 'none'; engineOff();
+  controls.enabled = true; $('exitBtn').style.display = 'none'; $('raceBtn').style.display = 'none'; $('speedo').style.display = 'none'; engineOff();
   $('hint').textContent = T('اسحب للدوران · العجلة أو إصبعين للتقريب', 'Drag to orbit · wheel or pinch to zoom');
 };
 addEventListener('keydown', (e) => { DRV.keys.add(e.code); if (e.code === 'KeyF' && DRV.car) { DRV.flip = DRV.flip ? 0 : Math.PI; } if (DRV.car && controls.enabled === false && /Arrow/.test(e.code)) e.preventDefault(); });
@@ -187,7 +196,7 @@ function driveTick() {
   const gas = k('KeyW', 'ArrowUp'), brake = k('KeyS', 'ArrowDown');
   const steer = (k('KeyA', 'ArrowLeft') ? 1 : 0) - (k('KeyD', 'ArrowRight') ? 1 : 0);
   // سرعة بالمتر/ث: تسارع ٦، فرملة ١٢، رجوع حتّى ٦، أقصى ٤٤ (≈١٦٠ كم/س)، ومقاومة
-  if (gas) DRV.speed += 6 * dt; else if (brake) DRV.speed -= (DRV.speed > 0 ? 12 : 4) * dt; else DRV.speed *= (1 - 0.6 * dt);
+  if (DRV.lock) { DRV.speed = 0; } else if (gas) DRV.speed += 6 * dt; else if (brake) DRV.speed -= (DRV.speed > 0 ? 12 : 4) * dt; else DRV.speed *= (1 - 0.6 * dt);
   DRV.speed = Math.max(-6, Math.min(44, DRV.speed));
   DRV.heading += steer * dt * 1.6 * Math.min(1, Math.abs(DRV.speed) / 6) * Math.sign(DRV.speed || 1);
   const fx = Math.sin(DRV.heading), fz = Math.cos(DRV.heading);
@@ -235,7 +244,7 @@ function engineSet(v, gas) {
 }
 function engineOff() { if (eng) { try { eng.o1.stop(); eng.o2.stop(); eng.out.disconnect(); } catch (e) { /* guard-ok — المحرّك متوقّف أصلًا */ } eng = null; } }
 
-if (window.__diag && window.__diag.on) window.__real3d = { THREE, scene, camera, DRV, get tiles() { return tiles; } }; // ?debug=1 فقط: مسبار القيادة
+if (window.__diag && window.__diag.on) window.__real3d = { THREE, scene, camera, DRV, get tiles() { return tiles; }, get life() { return life; } }; // ?debug=1 فقط: مسبار القيادة
 let lastCredit = '', lastDiag = 0;
 function diag() {
   const d = window.__diag; if (!d || !d.on || !tiles) return;
@@ -251,6 +260,7 @@ function diag() {
 renderer.setAnimationLoop(() => {
   if (controls.enabled) controls.update();
   driveTick();
+  { const n = performance.now(); life.tick(Math.min(0.05, (n - (life.__t || n)) / 1000), DRV); life.__t = n; }
   camera.updateMatrixWorld();
   if (tiles) {
     tiles.update();
