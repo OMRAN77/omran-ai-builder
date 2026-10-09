@@ -44,7 +44,8 @@ html.skin:not(.mobile-ui){
 
 /* ── القائمة الجانبيّة ── */
 html.skin #sidebar{background:var(--th-side) !important; color:var(--th-side-ink); --text:var(--th-side-ink) !important; --muted:var(--th-side-muted) !important;}
-html.skin-scene #sidebar, html.skin-scene #workarea{-webkit-backdrop-filter:blur(18px) saturate(1.15); backdrop-filter:blur(18px) saturate(1.15);}
+/* v-scene-clear (المالك ٩ أكتوبر: «فيه نفس الغباش… وليست صافية»): كان على اللوحتين الجانبيّتين تغبيش زجاجيّ ١٨ بكسل فوق المشهد فبدا غبارًا — الآن الصورة صافية خلفهما، والصبغة الملوّنة (--th-side) وحدها تبقى للقراءة. */
+html.skin-scene #sidebar, html.skin-scene #workarea{-webkit-backdrop-filter:saturate(1.15); backdrop-filter:saturate(1.15);}
 html.skin.mobile-ui #sidebar:not(.open), html.skin.mobile-ui #workarea:not(.open){box-shadow:none !important;}
 html.skin #sidebar .omStars{display:none;}
 /* المحدِّد الثاني يعادل قاعدة الوضع الفاتح (html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn) ويأتي بعدها */

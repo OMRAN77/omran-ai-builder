@@ -84,7 +84,7 @@ test('٣. Cohere (موديل تفكير) لا يُرسَل له إطفاء ال�
   assert.ok(c.upstream, 'وصل الطلب إلى الوسيط');
   assert.ok(/cohere/.test(c.upstream.model), c.upstream.model);
   assert.ok(!('thinking' in c.upstream) && !('reasoning' in c.upstream), 'لا حقول إطفاء: ' + JSON.stringify(Object.keys(c.upstream)));
-  const d = await turn('omran', 'deepseek', 'الوكيل شوف شو ملكته', ['تمام']);
+  const d = await turn('omran', 'deepseek', 'شكرًا', ['تمام']); // v-owner-think-all: سؤال المالك يفكّر؛ المجاملة وحدها بحقول الإطفاء
   assert.ok(d.upstream && d.upstream.thinking && d.upstream.thinking.type === 'disabled', 'DeepSeek كما كان: ' + JSON.stringify(Object.keys(d.upstream || {})));
   assert.equal(d.upstream.reasoning && d.upstream.reasoning.enabled, false);
 });
