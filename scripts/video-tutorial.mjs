@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // scripts/video-tutorial.mjs — يسجّل فيديو تعليميًّا حقيقيًّا من شاشة صانع الفيديو نفسه (بلا توليد مدفوع):
-//   كيف تصنع فيديو في ٦ خطوات، بشرح مكتوب وإطار ذهبيّ على كلّ عنصر. المخرج: media/samples/tutorial-<ar|en>.mp4 + .jpg (غلاف).
+//   كيف تصنع فيديو في ٦ خطوات، بشرح مكتوب وإطار ذهبيّ على كلّ عنصر، بدقّة ١٩٢٠×١٠٨٠. المخرج: media/samples/tutorial-<ar|en>.mp4 + .jpg (غلاف).
 // الاستعمال: node scripts/video-tutorial.mjs [--lang ar|en|both] [--out media/samples]
 // يخدم المستودع ثابتًا ويردّ على /api/* بـ{} (لا شبكة) ويزيّف ردّ مساعد الكتابة وحده ليظهر عمله في التسجيل.
 import http from 'node:http';
@@ -16,7 +16,7 @@ const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
 const LANGS = opt('lang', 'both') === 'both' ? ['ar', 'en'] : [opt('lang', 'ar')];
 const OUT = path.resolve(ROOT, opt('out', 'media/samples'));
-const W = 1100, H = 720;
+const W = 1280, H = 720, DPR = 1.5; // يُلتقط بدقّة الجهاز ١٩٢٠×١٠٨٠ عبر CDP (تسجيل Playwright المدمج ضبابيّ)
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.mp4': 'video/mp4' };
 const srv = http.createServer((req, res) => {
@@ -57,7 +57,7 @@ try {
   for (const lang of LANGS) {
     const t = TXT[lang];
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tut-'));
-    const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir: tmp, size: { width: W, height: H } } });
+    const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR });
     await ctx.addInitScript(([lg, mock]) => {
       try { sessionStorage.setItem('omran_sess_v1', '1'); localStorage.setItem('aiapp_intro', '0'); localStorage.setItem('aiapp_privacy_ack', '1'); localStorage.setItem('aiapp_lang', lg); localStorage.setItem('aiapp_username', 'ahmed'); localStorage.setItem('aiapp_auth_token', 'local'); } catch (e) { /* لا شيء */ }
       const of = window.fetch;
@@ -83,6 +83,9 @@ try {
         Object.assign(ring.style, { left: r.left - 8 + 'px', top: r.top - 8 + 'px', width: r.width + 16 + 'px', height: r.height + 16 + 'px', opacity: '1' });
       };
     }, lang === 'ar');
+    const cdp = await ctx.newCDPSession(page); const frames = [];
+    cdp.on('Page.screencastFrame', async (f) => { frames.push({ ts: f.metadata.timestamp, data: f.data }); try { await cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }); } catch (e) { /* انتهت الجلسة */ } });
+    await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: Math.round(W * DPR), maxHeight: Math.round(H * DPR), everyNthFrame: 1 });
     const say = async (text, sel, ms) => { await page.evaluate(([a, b]) => window.__tut(a, b), [text, sel || '']); await page.waitForTimeout(ms); };
     await say(t.s0, '', 2200);
     await page.evaluate(() => document.getElementById('btnVideoMaker').click()); await page.waitForTimeout(900);
@@ -101,11 +104,20 @@ try {
     await say(t.s6, '.vmk-row3', 3200);
     await say(t.s7, '#videoMakerGenerateBtn', 3600);
     await say('', '', 400);
-    const vpath = await page.video().path();
+    await cdp.send('Page.stopScreencast'); const tEnd = Date.now() / 1000;
     await ctx.close();
+    // الإطارات تصل عند التغيّر فقط: كلّ إطار يدوم حتّى التالي (قائمة concat بمدد)
+    let list = '';
+    frames.forEach((fr, k) => {
+      const fn = path.join(tmp, 'f' + String(k).padStart(5, '0') + '.jpg'); fs.writeFileSync(fn, Buffer.from(fr.data, 'base64'));
+      const next = k + 1 < frames.length ? frames[k + 1].ts : Math.max(fr.ts + 0.5, tEnd);
+      list += "file '" + fn + "'\nduration " + Math.max(0.01, next - fr.ts).toFixed(3) + '\n';
+      if (k + 1 === frames.length) list += "file '" + fn + "'\n";
+    });
+    fs.writeFileSync(path.join(tmp, 'list.txt'), list);
     const mp4 = path.join(OUT, 'tutorial-' + lang + '.mp4');
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', vpath, '-vf', 'scale=960:-2,fps=24', '-c:v', 'libx264', '-crf', '31', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', mp4]);
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '9.5', '-i', mp4, '-frames:v', '1', '-vf', 'scale=640:-2', '-q:v', '5', path.join(OUT, 'tutorial-' + lang + '.jpg')]);
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt'), '-vf', 'fps=30,scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', '-an', mp4]);
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '9.5', '-i', mp4, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', path.join(OUT, 'tutorial-' + lang + '.jpg')]);
     console.log(lang, mp4, (fs.statSync(mp4).size / 1024).toFixed(0) + 'KB');
   }
 } finally { await browser.close(); srv.close(); }
