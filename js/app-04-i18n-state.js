@@ -1323,7 +1323,17 @@ function codeForApi(code){
 let __histThumbIO = null;
 function __histThumbLazy(thumb, p){
   const make = () => {
-    if(thumb.querySelector('iframe')) return;
+    if(thumb.querySelector('iframe') || thumb.querySelector('img')) return;
+    /* v-inspire: تجارب «مدينتك الحقيقيّة» تبني واجهتها كلّها بالسكربت — بلا سكربتات تبقى صفحة بيضاء، فتُعرض صورة بطاقتها */
+    if(p && /^[a-z]+$/.test(String(p.inspire || ''))){
+      const im = document.createElement('img');
+      im.setAttribute('src', '/assets/inspire/city/' + p.inspire + '.jpg?v=1');
+      im.setAttribute('alt', '');
+      im.setAttribute('loading', 'lazy');
+      im.setAttribute('style', 'width:100%;height:100%;object-fit:cover;display:block;');
+      thumb.appendChild(im);
+      return;
+    }
     const iframe = document.createElement('iframe');
     iframe.setAttribute('sandbox', '');
     iframe.setAttribute('loading', 'lazy');

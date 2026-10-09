@@ -49,16 +49,34 @@
     const a = '(around:' + Math.round(r) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
     return '[out:json][timeout:25];(way["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a + ';way["leisure"~"park|garden"]' + a + ';way["landuse"="grass"]' + a + ';);out geom;';
   };
+  // كاش المناطق: التجربة تعمل داخل معاينة التطبيق بنفس الأصل، فـlocalStorage مشترك مع مشاريع المستخدم (aiapp_projects) —
+  // منطقة واحدة قد تبلغ ١٫٥ مليون حرف فتملأ حصّته بعد ٢–٣ مناطق ويفشل حفظ التطبيق. لذلك: ذاكرة الصفحة + Cache API في مخزن
+  // خاصّ (حصّة القرص لا حصّة localStorage) بآخر KEEP مناطق فقط، ومسح أيّ «ck1:» قديم من localStorage.
+  const AREA_CACHE = 'ck-osm-1', KEEP = 6, MEM = new Map();
+  try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('ck1:') === 0) localStorage.removeItem(k); } } catch (e) { /* بلا تخزين */ }
+  async function areaGet(key) {
+    if (MEM.has(key)) return MEM.get(key);
+    try { if (!window.caches) return null; const r = await (await caches.open(AREA_CACHE)).match(key); return r ? await r.json() : null; } catch (e) { return null; }
+  }
+  async function areaPut(key, j) {
+    MEM.set(key, j); while (MEM.size > 3) MEM.delete(MEM.keys().next().value);
+    try {
+      if (!window.caches) return;
+      const c = await caches.open(AREA_CACHE);
+      await c.put(key, new Response(JSON.stringify(j), { headers: { 'Content-Type': 'application/json' } }));
+      const ks = await c.keys(); for (let i = 0; i < ks.length - KEEP; i++) await c.delete(ks[i]);
+    } catch (e) { /* بلا كاش: نكمل من الشبكة */ }
+  }
   CK.fetchArea = async function (lat, lon, r) {
-    const key = 'ck1:' + lat.toFixed(4) + ',' + lon.toFixed(4) + ',' + Math.round(r);
-    try { const c = localStorage.getItem(key); if (c) return JSON.parse(c); } catch (e) { /* بلا تخزين */ }
+    const key = 'https://citykit.cache/' + lat.toFixed(4) + ',' + lon.toFixed(4) + ',' + Math.round(r);
+    const hit = await areaGet(key); if (hit) return hit;
     let last = null;
     for (const url of CK.OVERPASS) {
       try {
         const res = await timed(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(CK.query(lat, lon, r)) }, 30000);
         if (!res.ok) { last = new Error('HTTP ' + res.status); continue; }
         const j = await res.json();
-        try { const s = JSON.stringify(j); if (s.length < 1500000) localStorage.setItem(key, s); } catch (e) { /* التخزين ممتلئ */ }
+        await areaPut(key, j);
         return j;
       } catch (e) { last = e; }
     }

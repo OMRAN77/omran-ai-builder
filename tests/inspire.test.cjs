@@ -162,3 +162,40 @@ test('مصادر التجارب لا تُنشر، والمبنيّ يُنشر', 
   assert.doesNotMatch(ig, /^inspire\/city/m);
   assert.match(ig, /^scripts\/$/m);
 });
+
+test('النواة لا تكتب بيانات الخرائط في localStorage (مشترك مع مشاريع المستخدم)، وتمسح «ck1:» القديم، وتعيد المنطقة من الذاكرة', async () => {
+  const src = rd('inspire/src/core.js');
+  assert.doesNotMatch(src, /localStorage\.setItem/, 'لا كتابة في localStorage من النواة');
+  const store = { 'ck1:25.0805,55.1403,600': 'x'.repeat(10), aiapp_projects: '[]' };
+  const ls = { get length() { return Object.keys(store).length; }, key: (i) => Object.keys(store)[i], getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
+  let calls = 0;
+  const fetch = async () => { calls++; return { ok: true, status: 200, json: async () => ({ elements: [] }) }; };
+  const ctx = { window: {}, document: { documentElement: { lang: 'ar' } }, navigator: { language: 'ar' }, localStorage: ls, fetch, AbortController, setTimeout, clearTimeout, console };
+  vm.runInNewContext(src, ctx);
+  const CK = ctx.window.CityKit;
+  assert.deepEqual(Object.keys(store), ['aiapp_projects'], 'المفتاح القديم مُسح وبقيت مشاريع المستخدم');
+  const a = await CK.fetchArea(25.0805, 55.1403, 600);
+  const b = await CK.fetchArea(25.0805, 55.1403, 600);
+  assert.equal(calls, 1, 'الطلب الثاني من الذاكرة');
+  assert.equal(a, b);
+  assert.deepEqual(Object.keys(store), ['aiapp_projects'], 'لا شيء جديد في localStorage');
+});
+
+test('مشروع التجربة بمعرّف p_ (يُرتَّب في أعلى السجلّ كالمشاريع الجديدة)، وصورته في السجلّ صورة البطاقة لا صفحة بيضاء', () => {
+  const { src } = loadCity();
+  assert.match(src, /id: 'p_' \+ Date\.now\(\)/);
+  const app = rd('js/app-04-i18n-state.js');
+  const fn = app.slice(app.indexOf('let __histThumbIO = null;'), app.indexOf('function renderHistory(){'));
+  const mkEl = (tag) => ({ tagName: tag, attrs: {}, children: [], setAttribute(k, v) { this.attrs[k] = v; }, appendChild(c) { this.children.push(c); }, querySelector(q) { return this.children.find((c) => c.tagName === q) || null; } });
+  const sb = { String, document: { createElement: mkEl } };
+  vm.createContext(sb);
+  vm.runInContext(fn + '\nthis.lazy = __histThumbLazy;', sb);
+  const th = mkEl('div');
+  sb.lazy(th, { inspire: 'sun', code: '<html><body><script>x</script></body></html>' });
+  assert.equal(th.children.length, 1);
+  assert.equal(th.children[0].tagName, 'img');
+  assert.equal(th.children[0].attrs.src, '/assets/inspire/city/sun.jpg?v=1');
+  const th2 = mkEl('div');
+  sb.lazy(th2, { inspire: '../x', code: '<h1>a</h1>' });
+  assert.equal(th2.children[0].tagName, 'iframe', 'معرّف غير صالح ← المعاينة العاديّة');
+});

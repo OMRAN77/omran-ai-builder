@@ -6997,7 +6997,17 @@ function codeForApi(code){
 let __histThumbIO = null;
 function __histThumbLazy(thumb, p){
   const make = () => {
-    if(thumb.querySelector('iframe')) return;
+    if(thumb.querySelector('iframe') || thumb.querySelector('img')) return;
+    /* v-inspire: تجارب «مدينتك الحقيقيّة» تبني واجهتها كلّها بالسكربت — بلا سكربتات تبقى صفحة بيضاء، فتُعرض صورة بطاقتها */
+    if(p && /^[a-z]+$/.test(String(p.inspire || ''))){
+      const im = document.createElement('img');
+      im.setAttribute('src', '/assets/inspire/city/' + p.inspire + '.jpg?v=1');
+      im.setAttribute('alt', '');
+      im.setAttribute('loading', 'lazy');
+      im.setAttribute('style', 'width:100%;height:100%;object-fit:cover;display:block;');
+      thumb.appendChild(im);
+      return;
+    }
     const iframe = document.createElement('iframe');
     iframe.setAttribute('sandbox', '');
     iframe.setAttribute('loading', 'lazy');
@@ -43487,7 +43497,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       const r = await fetch('/inspire/city/' + id + '.html', { cache:'no-cache' });
       const code = r.ok ? await r.text() : '';
       if(!code || code.indexOf(MARK) === -1) throw new Error('inspire_fetch_' + r.status);
-      const cur = { id: Date.now().toString(), title: L(item.t), code: withLang(code), codeType: 'html', messages: [], inspire: id };
+      const cur = { id: 'p_' + Date.now(), title: L(item.t), code: withLang(code), codeType: 'html', messages: [], inspire: id };
       state.projects.push(cur);
       state.currentId = cur.id;
       saveState();

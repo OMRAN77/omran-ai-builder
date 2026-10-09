@@ -149,7 +149,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       const r = await fetch('/inspire/city/' + id + '.html', { cache:'no-cache' });
       const code = r.ok ? await r.text() : '';
       if(!code || code.indexOf(MARK) === -1) throw new Error('inspire_fetch_' + r.status);
-      const cur = { id: Date.now().toString(), title: L(item.t), code: withLang(code), codeType: 'html', messages: [], inspire: id };
+      const cur = { id: 'p_' + Date.now(), title: L(item.t), code: withLang(code), codeType: 'html', messages: [], inspire: id };
       state.projects.push(cur);
       state.currentId = cur.id;
       saveState();
