@@ -158,38 +158,54 @@
     const s = S.smp, b = S.board; if (!s) return;
     const C = target(b), range = rangeOf(b), [nx, nz] = nOf(b.bearing);
     ensureLOS(C, range, nx, nz);
-    let visM = 0, sec = 0, nVis = 0, nBlk = 0, nFace = 0;
+    let visM = 0, allSec = 0, nVis = 0, nBlk = 0, nFace = 0, nAhead = 0;
     const byKind = {};
-    let run = null, best = null;
+    // السائق يقود الطريق باتّجاه واحد: كلّ سلسلة متّصلة من عيّنات طريق تُقاس مرّتين (مع ترتيب نقاطه وعكسه)،
+    // والعيّنة تُعدّ لاتّجاه فقط إن كانت مرئيّة واللوحة أمامه ضمن ±٦٠°. «المقطع» = سلسلة × اتّجاه، والثواني ما يراه سائق واحد.
+    const lane = (dir, i) => ({ dir, road: s.road[i], a: -1, e: -1, m: 0, s: 0, o: null });
+    let ch = null, best = null;
+    const fin = () => { if (ch) allSec += Math.max(ch[1].s, ch[2].s); };
     for (let i = 0; i < s.N; i++) {
+      if (!s.cont[i]) { fin(); ch = [null, lane(1, i), lane(2, i)]; ch[1].o = ch[2]; ch[2].o = ch[1]; }
       const dx = s.mx[i] - C.x, dz = s.mz[i] - C.z, d = Math.hypot(dx, dz);
       s.dist[i] = d;
       let st = 1;
       if (d <= range && d >= 2 && (C.y - EYE) / d <= TILT_TAN && (dx * nx + dz * nz) / d >= FACE_COS) { nFace++; st = S.los[i] === 1 ? 3 : 2; }
-      s.status[i] = st;
+      s.status[i] = st; s.dir[i] = 0;
       if (st === 3) {
-        nVis++; visM += s.len[i]; const t = s.len[i] / s.v[i]; sec += t;
-        const k = S.city.roads[s.road[i]].kind; const bk = byKind[k] || (byKind[k] = { m: 0, s: 0 }); bk.m += s.len[i]; bk.s += t;
-        if (run && s.cont[i] && s.status[i - 1] === 3) { run.e = i; run.m += s.len[i]; run.s += t; }
-        else { run = { a: i, e: i, m: s.len[i], s: t, road: s.road[i] }; }
-        if (!best || run.s > best.s) best = run;
-      } else { if (st === 2) nBlk++; run = null; }
+        nVis++; visM += s.len[i];
+        const k = S.city.roads[s.road[i]].kind, bk = byKind[k] || (byKind[k] = { m: 0, s: 0 }); bk.m += s.len[i];
+        const dr = aheadDir(s, i, C, d); s.dir[i] = dr;
+        if (dr) {
+          nAhead++; const q = ch[dr], t = s.len[i] / s.v[i];
+          if (q.a < 0) q.a = i; q.e = i; q.m += s.len[i]; q.s += t;
+          if (q.s > bk.s) bk.s = q.s; // أطول قراءة لسائق على شارع من هذا النوع
+          if (!best || q.s > best.s) best = q;
+        }
+      } else if (st === 2) nBlk++;
     }
-    if (best) best = Object.assign({}, best);
+    fin();
+    if (best) best = { a: best.a, e: best.e, m: best.m, s: best.s, road: best.road, dir: best.dir, rev: best.o.s };
     let bestRoad = null;
     if (best) {
-      const r = S.city.roads[best.road];
-      bestRoad = { name: r.name || kindName(r.kind), kind: r.kind, lengthM: Math.round(best.m), seconds: +best.s.toFixed(1), speedKmh: kmh(r.kind), from: best.a, to: best.e };
+      const r = S.city.roads[best.road], f = best.dir === 1;
+      const hx = f ? s.bx[best.e] - s.ax[best.a] : s.ax[best.a] - s.bx[best.e], hz = f ? s.bz[best.e] - s.az[best.a] : s.az[best.a] - s.bz[best.e];
+      const heading = Math.round(Math.hypot(hx, hz) > 0.5 ? bearingOf(hx, hz) : bearingOf(f ? s.hx[best.a] : -s.hx[best.a], f ? s.hz[best.a] : -s.hz[best.a])) % 360;
+      bestRoad = { name: r.name || kindName(r.kind), kind: r.kind, lengthM: Math.round(best.m), seconds: +best.s.toFixed(1), speedKmh: kmh(r.kind), heading, reverseSeconds: +best.rev.toFixed(1), from: best.a, to: best.e };
     }
-    S.res = { visibleRoadM: Math.round(visM), exposureSec: +sec.toFixed(1), bestRoad, rangeM: Math.round(range), samples: s.N, facing: nFace, visibleSamples: nVis, blockedSamples: nBlk, byKind, best };
+    const reading = best ? +best.s.toFixed(1) : 0;
+    S.res = { visibleRoadM: Math.round(visM), exposureSec: reading, readingSec: reading, allRoadsSec: +allSec.toFixed(1), bestRoad, rangeM: Math.round(range), samples: s.N, facing: nFace,
+      visibleSamples: nVis, aheadSamples: nAhead, blockedSamples: nBlk, byKind, best };
     paint(); renderStats(); syncState();
   }
   function syncState() {
     const r = S.res || {}, b = S.board;
     const byKind = {}; for (const k in r.byKind || {}) byKind[k] = { m: Math.round(r.byKind[k].m), s: +r.byKind[k].s.toFixed(1), kmh: kmh(k) };
-    window.__inspire_state = { visibleRoadM: r.visibleRoadM || 0, exposureSec: r.exposureSec || 0,
-      bestRoad: r.bestRoad ? { name: r.bestRoad.name, kind: r.bestRoad.kind, lengthM: r.bestRoad.lengthM, seconds: r.bestRoad.seconds, speedKmh: r.bestRoad.speedKmh } : null,
-      rangeM: r.rangeM || 0, samples: r.samples || 0, facingSamples: r.facing || 0, visibleSamples: r.visibleSamples || 0, blockedSamples: r.blockedSamples || 0, byKind,
+    const br = r.bestRoad;
+    // exposureSec = readingSec: ثواني سائق واحد على أفضل مقطع باتّجاه سيره؛ allRoadsSec مجموع ثواني كلّ الشوارع (كلّ سلسلة بأفضل اتّجاه)
+    window.__inspire_state = { visibleRoadM: r.visibleRoadM || 0, exposureSec: r.exposureSec || 0, readingSec: r.readingSec || 0, allRoadsSec: r.allRoadsSec || 0,
+      bestRoad: br ? { name: br.name, kind: br.kind, lengthM: br.lengthM, seconds: br.seconds, speedKmh: br.speedKmh, heading: br.heading, headingCard: CARD[Math.round(br.heading / 45) % 8][1], reverseSeconds: br.reverseSeconds } : null,
+      rangeM: r.rangeM || 0, samples: r.samples || 0, facingSamples: r.facing || 0, visibleSamples: r.visibleSamples || 0, aheadSamples: r.aheadSamples || 0, blockedSamples: r.blockedSamples || 0, byKind,
       board: { mount: b.mount, x: +b.x.toFixed(1), z: +b.z.toFixed(1), w: b.w, h: b.h, elev: b.elev, bearing: b.bearing, hasImage: !!S.img },
       driving: !!S.drive, driveVisibleSec: S.drive ? +S.drive.seen.toFixed(1) : (S.lastDrive || 0), city: S.city ? S.city.name : '', loads: S.loads };
   }
@@ -256,10 +272,12 @@
     S.objs.wedge.geometry.setDrawRange(0, SEG * 3); S.objs.edge.geometry.setDrawRange(0, SEG + 3); wp.needsUpdate = true; ep.needsUpdate = true;
     // أفضل مقطع بالذهبيّ
     const bp = S.objs.best.geometry.attributes.position; let m = 0;
-    if (r.best) for (let i = r.best.a; i <= r.best.e && m < 400; i++, m++) {
+    if (r.best) for (let i = r.best.a; i <= r.best.e && m < 400; i++) {
+      if (s.status[i] !== 3 || s.dir[i] !== r.best.dir) continue; // ما يراه سائق المقطع باتّجاهه فقط
       const dx = s.bx[i] - s.ax[i], dz = s.bz[i] - s.az[i], L = s.len[i] || 1, hw = 1.6, nx = -dz / L * hw, nz = dx / L * hw, y = 0.2;
       const v = [s.ax[i] + nx, s.az[i] + nz, s.bx[i] - nx, s.bz[i] - nz, s.bx[i] + nx, s.bz[i] + nz, s.ax[i] + nx, s.az[i] + nz, s.ax[i] - nx, s.az[i] - nz, s.bx[i] - nx, s.bz[i] - nz];
       for (let k = 0; k < 6; k++) bp.setXYZ(m * 6 + k, v[k * 2], y, v[k * 2 + 1]);
+      m++;
     }
     S.objs.best.geometry.setDrawRange(0, m * 6); bp.needsUpdate = true;
   }
@@ -423,10 +441,9 @@
   // ── منظور السائق ──
   function startDrive() {
     const r = S.res; if (!r || !r.best) { S.ctx.ui.status(T('اللوحة ما تنشاف من أيّ شارع — غيّر الاتّجاه أو ارفعها.', 'No road sees the board — rotate or raise it.')); return; }
-    const s = S.smp, C = target(S.board); let a = r.best.a, e = r.best.e;
+    const s = S.smp, a = r.best.a, e = r.best.e;
     const ids = []; for (let i = a; i <= e; i++) ids.push(i);
-    const dA = Math.hypot(s.mx[a] - C.x, s.mz[a] - C.z), dE = Math.hypot(s.mx[e] - C.x, s.mz[e] - C.z);
-    const fwd = dA >= dE; // نبدأ من الطرف الأبعد ونقود نحو اللوحة
+    const fwd = r.best.dir === 1; // نقود باتّجاه سير المقطع الأفضل (اللوحة أمام السائق)، لا عكسه
     if (fwd) { for (let k = 0, i = a - 1; k < 3 && i >= 0 && s.cont[i + 1] && s.road[i] === s.road[a]; k++, i--) ids.unshift(i); }
     else { ids.reverse(); for (let k = 0, i = e + 1; k < 3 && i < s.N && s.cont[i] && s.road[i] === s.road[e]; k++, i++) ids.unshift(i); }
     const pts = []; for (const i of ids) pts.push(fwd ? [s.ax[i], s.az[i]] : [s.bx[i], s.bz[i]]);
@@ -456,11 +473,12 @@
     const p = D.pts[k - 1], q = D.pts[k], seg = (D.cum[k] - D.cum[k - 1]) || 1, t = Math.min(1, (D.d - D.cum[k - 1]) / seg);
     const x = p[0] + (q[0] - p[0]) * t, z = p[1] + (q[1] - p[1]) * t, fx = (q[0] - p[0]) / seg, fz = (q[1] - p[1]) / seg;
     const id = D.ids[Math.min(D.ids.length - 1, k - 1)], vis = s.status[id] === 3;
-    if (vis && D.d < D.total) D.seen += dt;
     const C = target(S.board), bx = C.x - x, by = C.y - EYE, bz = C.z - z, bl = Math.hypot(bx, by, bz) || 1;
     // ننظر للأمام، ونلتفت بالقدر الذي يبقي اللوحة داخل الإطار (كما يفعل السائق بعينه)
     const vHalf = cam.fov * D2R / 2, hHalf = Math.atan(Math.tan(vHalf) * cam.aspect), yF = Math.atan2(fx, fz), yB = Math.atan2(bx, bz);
     let dl = yB - yF; while (dl > Math.PI) dl -= Math.PI * 2; while (dl < -Math.PI) dl += Math.PI * 2;
+    const ahead = Math.abs(dl) < AHEAD_DEG * D2R; // الشرط نفسه في الحساب: اللوحة أمام السائق ضمن ±٦٠° من اتّجاه سيره
+    if (vis && ahead && D.d < D.total) D.seen += dt;
     const allow = hHalf * 0.5; let yL = yF, pL = 0;
     if (Math.abs(dl) < 110 * D2R) {
       if (Math.abs(dl) > allow) yL = yB - Math.sign(dl) * allow;
@@ -469,7 +487,7 @@
     let lx = Math.sin(yL) * Math.cos(pL), ly = Math.sin(pL), lz = Math.cos(yL) * Math.cos(pL);
     if (!D.look) D.look = [lx, ly, lz]; else { const kk = Math.min(1, dt * 4); D.look[0] += (lx - D.look[0]) * kk; D.look[1] += (ly - D.look[1]) * kk; D.look[2] += (lz - D.look[2]) * kk; }
     cam.position.set(x, EYE, z); cam.lookAt(x + D.look[0] * 50, EYE + D.look[1] * 50, z + D.look[2] * 50);
-    D.vis = vis; D.distB = Math.hypot(bx, bz);
+    D.vis = vis && ahead; D.side = vis && !ahead; D.distB = Math.hypot(bx, bz);
     if (now - D.lastHud > 120) { D.lastHud = now; renderHud(); syncState(); }
   }
 
@@ -478,26 +496,27 @@
     const ui = S.ctx.ui, r = S.res; if (!r) return;
     if (S.drive) {
       const D = S.drive;
-      ui.hud('<div class="bbh"><div class="k ' + (D.vis ? 'g' : 'r') + '"><span>' + (D.vis ? T('اللوحة في عينك', 'Board in view') : T('اللوحة محجوبة', 'Board hidden')) + '</span><b>' + D.seen.toFixed(1) + '<small>' + T('ث', 's') + '</small></b></div>' +
+      ui.hud('<div class="bbh"><div class="k ' + (D.vis ? 'g' : (D.side ? 'y' : 'r')) + '"><span>' + (D.vis ? T('اللوحة في عينك', 'Board in view') : (D.side ? T('اللوحة خارج نظرك', 'Board out of view') : T('اللوحة محجوبة', 'Board hidden'))) + '</span><b>' + D.seen.toFixed(1) + '<small>' + T('ث', 's') + '</small></b></div>' +
         '<div class="k"><span>' + T('السرعة', 'Speed') + '</span><b>' + fmt(D.v * 3.6) + '<small>' + T('كم/س', 'km/h') + '</small></b></div>' +
         '<div class="k y"><span>' + T('المسافة للوحة', 'To board') + '</span><b>' + fmt(D.distB || 0) + '<small>' + T('م', 'm') + '</small></b></div></div>');
       return;
     }
     const br = r.bestRoad;
     ui.hud('<div class="bbh"><div class="k g"><span>' + T('طرق تشوف اللوحة', 'Road that sees it') + '</span><b>' + fmtLen(r.visibleRoadM).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
-      '<div class="k y"><span>' + T('ثواني التعرّض', 'Exposure') + '</span><b>' + fmtSec(r.exposureSec).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
-      '<div class="k"><span>' + T('أفضل مقطع', 'Best stretch') + '</span><b>' + (br ? br.seconds.toFixed(1) + '<small>' + T('ث', 's') + '</small>' : '—') + '</b><div class="s">' + (br ? esc(br.name) : T('لا يوجد', 'none')) + '</div></div></div>');
+      '<div class="k y"><span>' + T('يقرأها السائق', 'Driver reads it') + '</span><b>' + fmtSec(r.readingSec).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
+      '<div class="k"><span>' + T('أفضل مقطع', 'Best stretch') + '</span><b>' + (br ? fmtLen(br.lengthM).replace(/ (\S+)$/, '<small>$1</small>') : '—') + '</b><div class="s">' + (br ? esc(br.name) + ' · ' + toward(br.heading) : T('لا يوجد', 'none')) + '</div></div></div>');
   }
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function renderStats() {
     const r = S.res, U = S.ui; if (!r || !U.tab) return;
-    const kinds = Object.keys(r.byKind).sort((a, b) => r.byKind[b].s - r.byKind[a].s);
-    const mx = kinds.length ? r.byKind[kinds[0]].s : 1;
-    U.tab.innerHTML = kinds.length ? kinds.map((k) => '<tr><td>' + kindName(k) + ' <span style="color:#86a3aa">' + kmh(k) + T(' كم/س', ' km/h') + '</span><div class="bar" style="width:' + Math.max(4, 100 * r.byKind[k].s / mx).toFixed(0) + '%"></div></td><td>' + fmtLen(r.byKind[k].m) + '</td><td>' + fmtSec(r.byKind[k].s) + '</td></tr>').join('')
+    const kinds = Object.keys(r.byKind).sort((a, b) => (r.byKind[b].s - r.byKind[a].s) || (r.byKind[b].m - r.byKind[a].m));
+    const mx = (kinds.length && r.byKind[kinds[0]].s) || 1, hd = (t) => '<td style="color:#86a3aa">' + t + '</td>';
+    U.tab.innerHTML = kinds.length ? '<tr>' + hd(T('نوع الشارع', 'Road type')) + hd(T('مرئيّ', 'Visible')) + hd(T('أطول قراءة', 'Longest read')) + '</tr>' + kinds.map((k) => '<tr><td>' + kindName(k) + ' <span style="color:#86a3aa">' + kmh(k) + T(' كم/س', ' km/h') + '</span><div class="bar" style="width:' + Math.max(4, 100 * r.byKind[k].s / mx).toFixed(0) + '%"></div></td><td>' + fmtLen(r.byKind[k].m) + '</td><td>' + fmtSec(r.byKind[k].s) + '</td></tr>').join('')
       : '<tr><td>' + T('ولا شارع يشوفها — جرّب ترفعها أو تلفّها.', 'No road sees it — raise or rotate it.') + '</td></tr>';
     const br = r.bestRoad;
-    U.best.innerHTML = br ? T('أفضل مقطع: ', 'Best stretch: ') + '<b>' + esc(br.name) + '</b> — ' + fmtLen(br.lengthM) + ' · ' + fmtSec(br.seconds) + T(' بسرعة ', ' at ') + br.speedKmh + T(' كم/س', ' km/h')
-      : T('ما فيه مقطع مرئيّ بعد.', 'No visible stretch yet.');
+    U.best.innerHTML = br ? T('أفضل مقطع: ', 'Best stretch: ') + '<b>' + esc(br.name) + '</b> ' + toward(br.heading) + ' — ' + fmtLen(br.lengthM) + ' · ' + fmtSec(br.seconds) + T(' بسرعة ', ' at ') + br.speedKmh + T(' كم/س', ' km/h') +
+      T(' · بالاتّجاه المعاكس ', ' · opposite way ') + fmtSec(br.reverseSeconds)
+      : T('ما فيه مقطع مرئيّ أمام سائق بعد.', 'No stretch sees it ahead yet.');
     const mountTxt = { ground: T('على عمود', 'on a pole'), roof: T('فوق سطح', 'on a roof'), facade: T('على واجهة', 'on a facade') }[S.board.mount];
     U.note.textContent = T('اللوحة ', 'Board ') + mountTxt + T(' · مدى القراءة ', ' · reading range ') + fmt(r.rangeM) + T(' م · ', ' m · ') + fmt(r.samples) + T(' نقطة فحص على الطرق كلّ ١٠ م', ' road checkpoints every 10 m');
     renderHud();
@@ -525,7 +544,8 @@
       '<input type="file" id="bbfile" accept="image/*" style="display:none">' +
       '<div class="bb-legend"><span><i style="background:linear-gradient(90deg,#a4ff3c,#12b866)"></i>' + T('مرئيّة', 'Visible') + '</span><span><i style="background:#ff4630"></i>' + T('محجوبة بمبنى', 'Blocked') + '</span><span><i style="background:#ffcf4a"></i>' + T('أفضل مقطع', 'Best stretch') + '</span><span><i style="background:rgba(94,245,156,.35)"></i>' + T('زاوية ±٧٠°', '±70° cone') + '</span></div>' +
       '<table class="bb-tab" id="bbtab"></table><div class="bb-best" id="bbbest"></div><div class="bb-note" id="bbnote"></div>' +
-      '<div class="bb-note">' + T('السرعات: سريع ١٠٠ · شريانيّ ٨٠ · رئيسيّ ٦٠ · ثانويّ ٥٠ · غيرها ٤٠ كم/س. عين السائق ١٫٢ م، والزاوية من الزجاج حتّى ٣٥° للأعلى.', 'Speeds: motorway 100, trunk 80, primary 60, secondary 50, other 40 km/h. Driver eye 1.2 m; windscreen up to 35° above.') + '</div>';
+      '<div class="bb-note">' + T('السرعات: سريع ١٠٠ · شريانيّ ٨٠ · رئيسيّ ٦٠ · ثانويّ ٥٠ · غيرها ٤٠ كم/س. عين السائق ١٫٢ م، والزاوية من الزجاج حتّى ٣٥° للأعلى.', 'Speeds: motorway 100, trunk 80, primary 60, secondary 50, other 40 km/h. Driver eye 1.2 m; windscreen up to 35° above.') +
+        T(' والثواني لسائق واحد باتّجاه سيره، وتُعدّ فقط واللوحة أمامه ضمن ±٦٠°.', ' Seconds are for one driver in one direction, counted only while the board is within ±60° ahead.') + '</div>';
     const $ = (id) => p.querySelector('#' + id);
     const U = S.ui; Object.assign(U, { w: $('bbw'), h: $('bbh'), e: $('bbe'), r: $('bbr'), wv: $('bbwv'), hv: $('bbhv'), ev: $('bbev'), rv: $('bbrv'), tab: $('bbtab'), best: $('bbbest'), note: $('bbnote'), drive: $('bbdrive') });
     syncSliders();
@@ -583,7 +603,7 @@
   }
 
   CK.start({
-    title: T('اختبار اللوحة الإعلانيّة', 'Billboard visibility test'),
+    title: TITLE,
     sub: T('ثبّت لوحتك في حيّك الحقيقيّ، وشوف أيّ شوارع تشوفها وكم ثانية يقرأها السائق.', 'Place a billboard in your real neighbourhood and see which streets see it, and for how long.'),
     shadows: true,
     panel,

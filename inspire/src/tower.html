@@ -13,6 +13,7 @@
 .ck-ui .tw-chip{background:transparent;border:1px solid #2b4650;color:#cfe3e7;padding:3px 11px;font-size:12.5px;border-radius:20px}
 .ck-ui .tw-chip.on{background:#1f8a93;border-color:#1f8a93;color:#fff}
 .tw-sun{font-size:12px;color:#9fc3c9;margin-top:6px;font-variant-numeric:tabular-nums}
+.tw-sun.tw-clip{color:#ffb35c;margin-top:3px}.tw-clip[hidden]{display:none}
 .tw-check{display:flex!important;align-items:center;gap:7px;cursor:pointer;color:#cfe3e7!important}
 .tw-check input{flex:0 0 auto;accent-color:#35c6cf;width:16px;height:16px}
 .tw-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
@@ -395,9 +396,10 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       floors: P.floors, heightM: Math.round(h * 10) / 10, widthM: P.w, depthM: P.d, rotationDeg: P.rot,
       footprintM2: P.w * P.d, gfaM2: P.w * P.d * P.floors,
       shadedBuildings: S.shaded.length, roofsShaded: S.roofs, shadowAreaM2: Math.round(S.areaM2), shadowLengthM: Math.round(S.lenM),
+      shadowClipped: S.clipped, shadowLengthFullM: Math.round(S.lenFull),
       dayShadedBuildings: S.day ? S.day.buildings : 0, dayFanSteps: S.day ? S.day.steps : 0,
-      hour: P.hour, clock: fmtTime(P.hour), date: S.date.join('-'), tzOffsetH: S.tz, sunAltDeg: Math.round(alt * 10) / 10, sunAzDeg: Math.round(az), sunrise: fmtTime(S.rise), sunset: fmtTime(S.set),
-      site: { x: Math.round(S.x), z: Math.round(S.z) }, overlapBuildings: S.overlap.length, overlapRoads: S.roadHits,
+      hour: P.hour, clock: fmtTime(P.hour), date: S.date.join('-'), tzOffsetH: S.tz, tzLabel: tzLabel(), tzApprox: true, sunAltDeg: Math.round(alt * 10) / 10, sunAzDeg: Math.round(az), sunrise: fmtTime(S.rise), sunset: fmtTime(S.set),
+      site: { x: Math.round(S.x), z: Math.round(S.z) }, overlapBuildings: S.overlap.length, overlapRoads: S.roadHits, overlapWater: !!S.water,
       neighbours300m: S.nb.n, rankAmongNeighbours: S.nb.rank, tallestNeighbourM: S.nb.top,
       walking: S.walking, city: city.name, buildings: city.buildings.length,
     };
@@ -415,22 +417,26 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       el.vals.F.textContent = P.floors + T(' طابق', ' floors') + ' · ' + fmt(h) + T(' م', ' m');
       el.vals.W.textContent = P.w + T(' م', ' m'); el.vals.D.textContent = P.d + T(' م', ' m'); el.vals.R.textContent = P.rot + '°';
       el.vals.H.textContent = fmtTime(P.hour);
-      el.sunLine.textContent = dateLabel(S.date) + ' · ' + T('الشروق ', 'Sunrise ') + fmtTime(S.rise) + ' · ' + T('الغروب ', 'Sunset ') + fmtTime(S.set) + ' · ' + T('الشمس ', 'Sun ') + (night ? T('تحت الأفق', 'below horizon') : Math.round(alt) + '°');
+      el.tzLab.innerHTML = T('الوقت', 'Time') + ' (<bdi>' + tzLabel() + '</bdi> ' + T('تقريبًا', 'approx.') + ')'; // التوقيت تقديريّ: ساعة الجهاز أو خطّ الطول
+      el.sunLine.textContent = dateLabel(S.date) + ' · ' + T('الشروق ', 'Sunrise ') + fmtTime(S.rise) + ' · ' + T('الغروب ', 'Sunset ') + fmtTime(S.set) + T(' (تقريبًا)', ' (approx.)') + ' · ' + T('الشمس ', 'Sun ') + (night ? T('تحت الأفق', 'below horizon') : Math.round(alt) + '°');
+      const clip = !night && S.clipped;
+      el.clip.hidden = !clip;
       const nb = S.nb;
       const rows = [
         [T('المساحة الطابقيّة', 'Floor area'), fmtArea(P.w * P.d * P.floors)],
         [T('ترتيبه بين جيرانه (٣٠٠ م)', 'Rank among neighbours (300 m)'), nb.n ? nb.rank + T(' من ', ' of ') + (nb.n + 1) : '—'],
         [T('أعلى جار', 'Tallest neighbour'), nb.top ? fmt(nb.top) + T(' م', ' m') + (nb.topName ? ' · ' + nb.topName : '') : '—'],
-        [T('طول الظلّ الحين', 'Shadow length now'), night ? T('الشمس غابت', 'Sun is down') : fmt(S.lenM) + T(' م', ' m')],
+        [T('طول الظلّ الحين', 'Shadow length now'), night ? T('الشمس غابت', 'Sun is down') : fmt(S.lenM) + T(' م', ' m') + (clip ? T(' حتّى حافّة الخريطة', ' to the map edge') : '')],
         [T('مبانٍ يطولها ظلّه الحين', 'Buildings in its shadow'), night ? '—' : fmt(S.shaded.length)],
         [T('منها أسطح في الظلّ', 'of which roofs shaded'), night ? '—' : fmt(S.roofs)],
-        [T('مساحة الظلّ على الأرض', 'Ground shadow area'), night ? '—' : fmtArea(S.areaM2)],
+        [T('مساحة الظلّ على الأرض', 'Ground shadow area'), night ? '—' : fmtArea(S.areaM2) + (clip ? T(' داخل الخريطة', ' within the map') : '')],
         [T('خلال النهار يمرّ ظلّه على', 'Over the day it shades'), S.day ? fmt(S.day.buildings) + T(' مبنى', ' buildings') : '—'],
       ];
       el.stats.innerHTML = rows.map((r) => '<span>' + r[0] + '</span><b>' + r[1] + '</b>').join('');
-      const bad = S.overlap.length || S.roadHits;
+      const bad = S.overlap.length || S.roadHits || S.water;
+      const parts = [S.overlap.length ? S.overlap.length + T(' مبنى', ' building(s)') : '', S.roadHits ? T('شارع', 'a street') : '', S.water ? T('الماء', 'water') : ''].filter(Boolean);
       el.hint.className = 'tw-hint' + (bad ? ' bad' : '');
-      el.hint.textContent = bad ? T('القاعدة تتداخل مع ', 'The base overlaps ') + (S.overlap.length ? S.overlap.length + T(' مبنى', ' building(s)') : '') + (S.overlap.length && S.roadHits ? T(' و', ' and ') : '') + (S.roadHits ? T('شارع', 'a street') : '') + T(' — صغّرها أو اضغط أرضًا فاضية ثانية.', ' — shrink it or tap another empty plot.')
+      el.hint.textContent = bad ? T('القاعدة تتداخل مع ', 'The base overlaps ') + parts.join(T(' و', ' and ')) + T(' — صغّرها أو اضغط أرضًا فاضية ثانية.', ' — shrink it or tap another empty plot.')
         : T('اضغط على أي أرض فاضية في الخريطة لتنقل برجك لها. اسحب لتدوير المشهد.', 'Tap any empty plot on the map to move your tower there. Drag to orbit.');
     }
   }
@@ -456,6 +462,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     if (city.idx.at(x, z)) { flash(T('هذي الأرض فيها مبنى — اختر أرضًا فاضية.', 'This plot is taken — pick an empty one.')); return 'building'; }
     if (inWater(x, z)) { flash(T('هذا ماء — اختر أرضًا يابسة.', 'That is water — pick dry land.')); return 'water'; }
     const r = roadAt(x, z); if (r) { flash(T('هذا شارع', 'That is a street') + (r.name ? ' (' + r.name + ')' : '') + T(' — اختر أرضًا بجانبه.', ' — pick a plot next to it.')); return 'road'; }
+    if (footInWater(corners(x, z, P.w, P.d, P.rot * DEG))) { flash(T('جزء من القاعدة يقع في الماء — اختر أرضًا أبعد عنه أو صغّر القاعدة.', 'Part of the base would sit in water — pick a plot further from it or shrink the base.')); return 'water'; }
     S.x = x; S.z = z; S.grow = 0; rebuildTower(); applySun(); computeShadow(); computeDay(); hero();
     ctx.ui.status(T('حطّيت برجك هنا. حرّك الوقت وشوف وين يروح ظلّه.', 'Tower placed. Move the time and watch its shadow.'));
     return 'placed';
@@ -589,7 +596,9 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     if (S && S.walking) { document.body.classList.remove('tw-walk'); c.orbit.enabled = true; keys.clear(); joy.x = joy.y = 0; }
     c.camera.near = 4; c.camera.updateProjectionMatrix(); // دقّة عمق أفضل من بعيد: طبقات الأرض الرقيقة لا تتقاتل
     P.playing = false;
-    S = { walking: false, fly: null, camGoal: null, grow: 0, sig: '', overlap: [], overlapSet: new Set(), roadHits: 0, shaded: [], roofs: 0, areaM2: 0, lenM: 0, day: null, nb: { n: 0, rank: 1, top: 0 }, tz: Math.round(cy.lon / 15), date: dateOf(P.dateKey) };
+    S = { walking: false, fly: null, camGoal: null, grow: 0, sig: '', overlap: [], overlapSet: new Set(), roadHits: 0, water: false, shaded: [], roofs: 0, areaM2: 0, lenM: 0, lenFull: 0, clipped: false, day: null, nb: { n: 0, rank: 1, top: 0 }, tz: tzFor(cy.lon), date: dateOf(P.dateKey) };
+    S.waterBB = cy.water.map(bbox);
+    S.disc = Array.from({ length: 96 }, (_, i) => [c.R * Math.cos(i / 96 * 2 * Math.PI), c.R * Math.sin(i / 96 * 2 * Math.PI)]); // حدّ البيانات المحمّلة
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
     for (const b of cy.buildings) { if (b.box[0] < x0) x0 = b.box[0]; if (b.box[2] > x1) x1 = b.box[2]; if (b.box[1] < z0) z0 = b.box[1]; if (b.box[3] > z1) z1 = b.box[3]; }
     const R = c.R; S.bounds = isFinite(x0) ? [Math.min(x0, -R), Math.min(z0, -R), Math.max(x1, R), Math.max(z1, R)] : [-R, -R, R, R];
@@ -603,7 +612,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     c.orbit.theta = heroGoal().theta + 0.9; c.orbit.apply();
     hero(); syncButtons(); updateViewOffset();
     c.onFrame(tick);
-    if (S.overlap.length || S.roadHits) c.ui.status(T('ما لقيت أرضًا فاضية كافية قرب المركز — اضغط أرضًا فاضية لتنقل البرج.', 'No empty plot near the centre — tap one to move the tower.'));
+    if (S.overlap.length || S.roadHits || S.water) c.ui.status(T('ما لقيت أرضًا فاضية كافية قرب المركز — اضغط أرضًا فاضية لتنقل البرج.', 'No empty plot near the centre — tap one to move the tower.'));
   }
 
   // ── اللوحة (مرّة واحدة) ──
@@ -633,12 +642,13 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       '<div class="tw-sec"><h3>' + T('الشمس الحقيقيّة', 'The real sun') + '</h3>' + sl('H', T('الوقت', 'Time'), 5, 20, 0.25, P.hour) +
       '<div class="tw-chips">' + [['today', T('اليوم', 'Today')], ['jun', T('الصيف', 'Summer')], ['mar', T('الاعتدال', 'Equinox')], ['dec', T('الشتاء', 'Winter')]].map((x) => '<button class="tw-chip" data-k="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
       '<div class="tw-sun" id="twSun"></div>' +
+      '<div class="tw-sun tw-clip" id="twClip" hidden>' + T('ظلّه يمتدّ خارج الخريطة المحمّلة — الطول والمساحة لما داخلها فقط.', 'The shadow runs past the loaded map — length and area count only the part inside it.') + '</div>' +
       '<label class="tw-check"><input type="checkbox" id="twFan"' + (P.fan ? ' checked' : '') + '>' + T('مروحة ظلّ اليوم كامل', 'Full-day shadow fan') + '</label></div>' +
       '<div class="tw-btns"><button id="twPlay"></button><button class="ghost" id="twView"></button><button class="wide" id="twWalk"></button></div>' +
       '<div class="tw-leg"><span><i style="background:#ff9a3c"></i>' + T('يطوله ظلّ برجك الحين', 'In your shadow now') + '</span><span><i style="background:#2b3a72"></i>' + T('ظلّ اليوم', 'Day shadow') + '</span><span><i style="background:#ff3d3d"></i>' + T('تعارض مع القاعدة', 'Clashes with the base') + '</span></div>' +
       '<div class="ck-stat" id="twStats"></div></div>';
     const q = (id) => c.ui.panel.querySelector('#' + id);
-    el = { hint: q('twHint'), stats: q('twStats'), sunLine: q('twSun'), sH: q('tsH'), bWalk: q('twWalk'), bPlay: q('twPlay'), bView: q('twView'), chips: [...c.ui.panel.querySelectorAll('.tw-chip')], vals: { F: q('tvF'), W: q('tvW'), D: q('tvD'), R: q('tvR'), H: q('tvH') } };
+    el = { hint: q('twHint'), stats: q('twStats'), sunLine: q('twSun'), clip: q('twClip'), tzLab: q('tvH').previousElementSibling, sH: q('tsH'), bWalk: q('twWalk'), bPlay: q('twPlay'), bView: q('twView'), chips: [...c.ui.panel.querySelectorAll('.tw-chip')], vals: { F: q('tvF'), W: q('tvW'), D: q('tvD'), R: q('tvR'), H: q('tvH') } };
     const geoInput = (id, key) => q(id).addEventListener('input', (e) => {
       P[key] = +e.target.value; if (!S) return;
       if (S.grow < 1) { S.grow = 1; S.O.tower.scale.y = 1; }
@@ -710,8 +720,10 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
   }
   function scheduleDay() { if (S.dayTimer) clearTimeout(S.dayTimer); const s0 = S; S.dayTimer = setTimeout(() => { if (S === s0 && S.dayDue) { S.dayDue = 0; computeDay(); } }, 150); }
 
+  const TITLE = T('برجك بين جيرانه', 'Your tower among its neighbours');
+  document.title = TITLE; // وسم <title> عربيّ ثابت؛ في الإنجليزيّة يُكتب من هنا
   CK.start({
-    title: T('برجك بين جيرانه', 'Your tower among its neighbours'),
+    title: TITLE,
     sub: T('حطّ برجًا مقترحًا في حيّك الحقيقيّ، وشوف ظلّه على الجيران مع شمس اليوم الفعليّة — ثمّ انزل وامشِ حوله.', 'Drop a proposed tower into your real neighbourhood, see whom its shadow reaches under the real sun, then walk around it.'),
     shadows: true, radius: 600, onCity, panel,
   });

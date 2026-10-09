@@ -928,7 +928,7 @@
       row(T('مبانٍ تحجبك', 'Blocking buildings'), cur.blockers.size) +
       row(T('أقرب حاجب قدّامك', 'Nearest blocker ahead'), ahead && !ahead.open ? Math.round(ahead.d) + M : (ahead && ahead.unk ? T('غير معروف', 'unknown') : T('لا شيء', 'none'))) +
       row(T('أقرب ماء يبان', 'Nearest visible water'), cur.wdirs ? Math.round(cur.nearW) + M : '—') +
-      row(T('واجهتك تنفتح كاملة من', 'Facing fully open from'), clearF ? T('الطابق ', 'floor ') + clearF : T('فوق ٩٠', 'above 90')) +
+      row(T('واجهتك تنفتح كاملة من', 'Facing fully open from'), clearF ? T('الطابق ', 'floor ') + clearF : (facingStats(MAXF, S.facing).n ? T('فوق ٩٠', 'above 90') : T('غير معروف', 'unknown'))) +
       row(T('الماء يبان من', 'Water visible from'), waterF ? T('الطابق ', 'floor ') + waterF : (S.inWater.count ? T('ما يبان', 'never') : T('لا ماء قريب', 'no water nearby')));
     setModeVis();
     window.__inspire_state = {
