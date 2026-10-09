@@ -1,0 +1,56 @@
+name: video-samples
+
+# يولّد نماذج الجودة (٢ لكلّ وضع) من محرّكات صانع الفيديو الحقيقيّة على الموقع المنشور بحساب المالك،
+# ويدفعها على فرع جديد ليراجعها المالك ويدمجها. ⚠ يصرف على Runway/Veo/… ونقاط الحساب — لا يعمل إلّا بتأكيد صريح.
+# السرّ المطلوب: SAMPLE_TOKEN = قيمة aiapp_auth_token من متصفّح المالك (DevTools ← Application ← Local Storage).
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'اكتب yes لتأكيد الصرف على المحرّكات'
+        required: true
+        default: 'no'
+      modes:
+        description: 'الأوضاع (مفصولة بفواصل)'
+        required: true
+        default: 'runway,minimax,omni,hybrid,veo,actor'
+      per:
+        description: 'عدد النماذج لكلّ وضع (١ أو ٢)'
+        required: true
+        default: '2'
+
+permissions:
+  contents: write
+
+jobs:
+  samples:
+    if: ${{ inputs.confirm == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: أدوات المتصفّح والترميز
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get update -y && sudo apt-get install -y ffmpeg
+      - name: توليد النماذج من الصانع الحقيقيّ
+        env:
+          SAMPLE_TOKEN: ${{ secrets.SAMPLE_TOKEN }}
+          SAMPLE_USER: ${{ vars.SAMPLE_USER || 'omran' }}
+          BASE: ${{ vars.SAMPLE_BASE || 'https://omran-ai-builder.vercel.app' }}
+        run: node scripts/video-samples.mjs --modes "${{ inputs.modes }}" --per "${{ inputs.per }}"
+      - name: دفع الملفّات على فرع للمراجعة
+        run: |
+          git config user.name "video-samples"
+          git config user.email "video-samples@users.noreply.github.com"
+          BR="samples/videos-${{ github.run_id }}"
+          git checkout -b "$BR"
+          git add media/samples
+          git diff --cached --quiet && { echo "لا ملفّات جديدة"; exit 1; }
+          git commit -m "نماذج جودة الأوضاع مولَّدة من محرّكات الصانع (${{ inputs.modes }})"
+          git push origin "$BR"
+          echo "الفرع: $BR" >> "$GITHUB_STEP_SUMMARY"

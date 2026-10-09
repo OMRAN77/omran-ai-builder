@@ -76,3 +76,16 @@ test('الفيديو التعليميّ (طلب المالك): أوّل بطاق
   const tr = read('js/app-11-video-trends.js');
   assert.ok(tr.includes('function assistant(t)') && tr.includes("action=video-write") && tr.includes('panel.appendChild(assistant(t))'));
 });
+
+test('نماذج الجودة (طلب المالك «سوّ الفيديوهات من نفس المحرّكات»): الصانع يقرأ قائمة الملفّات، والبطاقة تفتح الفيديو، والتوليد بأمر صريح فقط', () => {
+  assert.ok(js.includes("/media/samples/index.json") && js.includes('function loadManifest()'));
+  assert.ok(js.includes("if(vsrc) openPlayer(vsrc)") && js.includes("vd.poster='/media/samples/'"));
+  assert.deepEqual(JSON.parse(read('media/samples/index.json')) && typeof JSON.parse(read('media/samples/index.json')), 'object');
+  const wf = read('.github/workflows/video-samples.yml');
+  assert.ok(wf.includes("on:\n  workflow_dispatch:") && !/\n\s+(push|schedule|pull_request):/.test(wf), 'يدويّ فقط');
+  assert.ok(wf.includes("if: ${{ inputs.confirm == 'yes' }}"), 'تأكيد الصرف صريح');
+  assert.ok(wf.includes('secrets.SAMPLE_TOKEN'));
+  const sc = read('scripts/video-samples.mjs');
+  assert.ok(sc.includes('--dry') && sc.includes("SAMPLE_TOKEN مفقود") && sc.includes("index[key] = true"));
+  assert.ok(!/(sk-|AIza|ghp_|github_pat_)[A-Za-z0-9_-]{16,}/.test(sc + wf), 'لا أسرار');
+});
