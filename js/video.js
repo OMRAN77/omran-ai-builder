@@ -44,7 +44,7 @@
     /* v-vmk-sections: كلّ وضع قسمٌ بنماذجه الثلاثة، ثمّ مساعد الكتابة، ثمّ الشخصيّات — تحت الوصف مباشرة */
     var pe=id('videoMakerPrompt'), prow=pe&&pe.parentElement;
     if(prow&&!id('vmkWrite')){
-      var wd=document.createElement('details'); wd.id='vmkWrite'; wd.className='vmk-ai';
+      var wd=document.createElement('details'); wd.id='vmkWrite'; wd.className='vmk-ai'; wd.open=true;
       wd.innerHTML='<summary></summary><div class="vmk-ai-body"><p class="vmk-ai-s"></p><div class="vmk-ai-m"></div><div class="vmk-ai-g"></div><div class="vmk-ai-i"><input type="text" maxlength="400"><button type="button" class="vmk-ai-go"></button></div></div>';
       prow.parentNode.insertBefore(wd,prow.nextSibling);
       wireWrite(wd);
@@ -173,7 +173,7 @@
     more.querySelector('summary').textContent=L('vcMore');
     var st=id('videoMakerStyle'), stBox=st&&st.parentElement;
     var nt=id('videoMakerNarrationToggle'), ntLab=nt&&nt.closest('label');
-    [id('vmkWrite'),id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerHeroRow'),id('videoMakerHeroVeoNote'),id('videoMakerLongMinutesRow'),
+    [id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerHeroRow'),id('videoMakerHeroVeoNote'),id('videoMakerLongMinutesRow'),
      ntLab,id('videoMakerVoiceGenderRow'),id('videoMakerNarrationRow'),M.querySelector('details.vmk-adv')].forEach(function(e){
       if(e&&e.parentNode!==body) body.appendChild(e);
     });
