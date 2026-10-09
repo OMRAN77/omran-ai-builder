@@ -388,3 +388,38 @@ test('١٢. الثيمات الثلاثة عشر: مصغّراتها بعد ال
   for (const c of ['skin', 'skin-beach', 'skin-scene', 'bgimg-light']) assert.ok(b.html.classList.contains(c), 'مسترجَع: ' + c);
   assert.equal(b.calls.fetch, 0);
 });
+
+/* v-bg-desktop (المالك ٩ أكتوبر: «فيه خلفيّات غير واضحة فقط في الكمبيوتر»): الصورة الضيّقة لها نسخة حاسوب يعلّمها الفهرس بـ«حاسوب: true» —
+   تُختار على غير الجوّال وحده؛ الجوّال والمصغّر على الأصل؛ المحفوظ القديم بلا العلم يأخذها بعد الفهرس. */
+test('١٣. v-bg-desktop: نسخة الحاسوب للصور المعلَّمة على الحاسوب وحده، والجوّال والمصغّرات على الأصل، والفهرس يعلّم ما في مجلّد حاسوب/', async () => {
+  const L = [{ ملف: '01-ضيّقة.jpg', عرض: 1100, ارتفاع: 2048, لون: '#111111', فاتحة: false, حاسوب: true }, { ملف: '02-عريضة.jpg', عرض: 2048, ارتفاع: 1500, لون: '#222222', فاتحة: false }];
+  const D = encodeURIComponent('حاسوب') + '/' + encodeURIComponent('01-ضيّقة.jpg');
+  const a = makeEnv({ list: L });
+  await a.ctx.window.خلفيات.افتح();
+  const b1 = a.grid.children[2 + TH], b2 = a.grid.children[3 + TH];
+  assert.ok(b1.style.backgroundImage.includes(encodeURIComponent('مصغّرات') + '/' + encodeURIComponent('01-ضيّقة.jpg')), 'المصغّر من الأصل');
+  b1.onclick();
+  assert.ok(a.body.children[0].style.backgroundImage.includes(D), 'الحاسوب: النسخة العريضة');
+  assert.ok(JSON.parse(a.store.get('aiapp_bgimg')).حاسوب === true, 'المحفوظ يحمل العلم');
+  b2.onclick();
+  assert.ok(!a.body.children[0].style.backgroundImage.includes(encodeURIComponent('حاسوب')), 'صورة بلا نسخة حاسوب: الأصل');
+  // الجوّال: الأصل حتّى للمعلَّمة
+  const m = makeEnv({ list: L });
+  m.html.classList.add('mobile-ui');
+  await m.ctx.window.خلفيات.افتح();
+  m.grid.children[2 + TH].onclick();
+  assert.ok(!m.body.children[0].style.backgroundImage.includes(encodeURIComponent('حاسوب')) && m.body.children[0].style.backgroundImage.includes(encodeURIComponent('01-ضيّقة.jpg')), 'الجوّال على الأصل');
+  // محفوظ قديم بلا العلم على الحاسوب → بعد الفهرس النسخة العريضة
+  const o = makeEnv({ list: L, storage: { aiapp_bgimg: JSON.stringify({ ملف: '01-ضيّقة.jpg', لون: '#111111', فاتحة: false }) } });
+  assert.equal(o.calls.fetch, 0, 'الإقلاع بلا جلب الفهرس كما كان (٧)');
+  assert.ok(!o.body.children[0].style.backgroundImage.includes(encodeURIComponent('حاسوب')), 'قبل الفهرس: الأصل');
+  await o.ctx.window.خلفيات.افتح();
+  assert.ok(o.body.children[0].style.backgroundImage.includes(D), 'المحفوظ القديم أخذ نسخة الحاسوب حين وصل الفهرس');
+  // الفهرس الحقيقيّ: كلّ ما في حاسوب/ معلَّم، ولا علم بلا ملفّ
+  const idx = JSON.parse(fs.readFileSync(path.join(DIR, 'فهرس.json'), 'utf8')).صور;
+  const deskDir = path.join(DIR, 'حاسوب');
+  const deskFiles = fs.existsSync(deskDir) ? fs.readdirSync(deskDir).filter((f) => /\.jpe?g$/i.test(f)) : [];
+  for (const s of idx) assert.equal(!!s.حاسوب, deskFiles.includes(s.ملف), s.ملف + ': علم الحاسوب يطابق المجلّد');
+  for (const f of deskFiles) { assert.equal(jpegSize(path.join(deskDir, f)).w, 2560, f + ': نسخة الحاسوب ٢٥٦٠ عرضًا'); }
+  assert.match(rd('scripts/خلفيات.mjs'), /const desk = fs\.existsSync\(path\.join\(DIR, 'حاسوب', f\)\);/, 'المولّد يعلّم');
+});

@@ -40740,6 +40740,13 @@ if(document.readyState === 'loading'){
     }
     return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف) + '?v=' + BG_VER;
   }
+  /* v-bg-desktop (المالك ٩ أكتوبر، لقطة لاندكروزر ضبابيّة بجانب فورمولا واضحة: «فيه خلفيّات غير واضحة فقط في الكمبيوتر»):
+     الصورة الطوليّة الضيّقة (أقلّ من ١٥٠٠ عرضًا) يمدّها المتصفّح على عرض شاشة الحاسوب فتطرى. لهذه وحدها نسخة حاسوب
+     assets/خلفيات/حاسوب/<الملفّ> (الشريط الأوسط ١٦:٩ موضَّح إلى ٢٥٦٠ عرضًا)، يعلّمها الفهرس بـ«حاسوب: true» وتُختار على
+     غير الجوّال. الجوّال والمصغّرات على الأصل. */
+  function للحاسوب(ملف){ return BASE + encodeURIComponent('حاسوب') + '/' + encodeURIComponent(ملف) + '?v=' + BG_VER; }
+  function على_حاسوب(){ return !document.documentElement.classList.contains('mobile-ui'); }
+  function مدخل(ملف){ return (فهرس || []).filter(function(s){ return s.ملف === ملف; })[0] || null; }
   function طبقة(){
     var el = document.getElementById('bgImgLayer');
     if(!el){ el = document.createElement('div'); el.id = 'bgImgLayer'; document.body.insertBefore(el, document.body.firstChild); }
@@ -40767,13 +40774,17 @@ if(document.readyState === 'loading'){
     }
     var src = صورة.ثيم ? '' : رابط(صورة.ملف);
     if(!src && !صورة.ثيم){ طبّق(null); return; } // صورة جهاز حُذفت
+    if(!صورة.ثيم && صورة.ملف.indexOf(CUSTOM) !== 0){ // v-bg-desktop: النسخة العريضة على الحاسوب (العلم من الفهرس إن لم يحمله المحفوظ)
+      var ح = صورة.حاسوب; if(ح === undefined){ var م = مدخل(صورة.ملف); if(م) ح = صورة.حاسوب = !!م.حاسوب; }
+      if(ح && على_حاسوب()) src = للحاسوب(صورة.ملف);
+    }
     طبقة().style.backgroundImage = src ? 'url("' + src + '")' : ''; // الثيم: خامة الطبقة من CSS الثيم
     html.style.setProperty('--bgimg-tint', صورة.لون || '#000');
     html.classList.add('bgimg');
     html.classList.toggle('bgimg-light', !!صورة.فاتحة);
     html.classList.toggle('bgimg-dark', !صورة.فاتحة);
     if(حفظ !== false){
-      try{ localStorage.setItem(KEY, JSON.stringify(صورة.ثيم ? { ملف: صورة.ملف, ثيم: صورة.ثيم, لون: صورة.لون, فاتحة: !!صورة.فاتحة } : { ملف: صورة.ملف, لون: صورة.لون, فاتحة: !!صورة.فاتحة })); }
+      try{ localStorage.setItem(KEY, JSON.stringify(صورة.ثيم ? { ملف: صورة.ملف, ثيم: صورة.ثيم, لون: صورة.لون, فاتحة: !!صورة.فاتحة } : Object.assign({ ملف: صورة.ملف, لون: صورة.لون, فاتحة: !!صورة.فاتحة }, صورة.حاسوب ? { حاسوب: true } : {}))); }
       catch(e){ __swallow(e, 'bgimg:save'); }
     }
     try{
@@ -40800,7 +40811,7 @@ if(document.readyState === 'loading'){
     if(!تحميل){
       تحميل = fetch(BASE + encodeURIComponent('فهرس.json'), { cache: 'no-cache' })
         .then(function(r){ if(!r.ok) throw new Error('فهرس الخلفيّات ' + r.status); return r.json(); })
-        .then(function(j){ فهرس = (j && j.صور) || []; return فهرس; })
+        .then(function(j){ فهرس = (j && j.صور) || []; حدّث_حاسوب(); return فهرس; })
         .catch(function(e){ تحميل = null; __swallow(e, 'bgimg:index'); return []; });
     }
     return تحميل;
@@ -40955,6 +40966,11 @@ if(document.readyState === 'loading'){
     });
   }
 
+  // v-bg-desktop: محفوظ من قبل العلم (بلا «حاسوب») على الحاسوب — حين يصل الفهرس (لا يُجلب عند الإقلاع) يُعاد التطبيق بالنسخة العريضة
+  function حدّث_حاسوب(){
+    var cur = الحاليّ();
+    if(cur && cur.ملف && !cur.ثيم && cur.ملف.indexOf(CUSTOM) !== 0 && cur.حاسوب === undefined && على_حاسوب()){ var م = مدخل(cur.ملف); if(م && م.حاسوب) طبّق(cur, false); }
+  }
   function استرجع(){
     var cur = الحاليّ(); if(cur && cur.ملف) طبّق(cur, false);
     جدول();
