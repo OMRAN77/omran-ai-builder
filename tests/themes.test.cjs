@@ -68,17 +68,18 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
   const urls = [...new Set([...CSS.matchAll(/url\("([^"]+)"\)/g)].map((m) => m[1]))];
   assert.ok(urls.length >= 20, 'روابط: ' + urls.length);
   for (const u of urls) {
-    const f = path.join(root, 'css', decodeURIComponent(u));
+    const f = path.join(root, 'css', decodeURIComponent(u.replace(/\?v=\d+$/, ''))); // v-bg-fresh: وسم الإصدار على المشاهد والسيارة
     assert.ok(fs.existsSync(f), 'مفقود: ' + decodeURIComponent(u));
-    assert.ok(fs.statSync(f).size < 240 * 1024, 'ثقيل: ' + decodeURIComponent(u));
+    assert.ok(fs.statSync(f).size < (/%D9%85%D8%B4%D9%87%D8%AF\.jpg/.test(u) ? 900 : 240) * 1024, 'ثقيل: ' + decodeURIComponent(u)); // v-scene-sharp: المشهد ٢٥٦٠ بكسل يُحمَّل عند اختيار ثيمه وحده
   }
   for (const [dir, , , , scene] of THEMES) {
     const d = path.join(root, 'assets', 'ثيمات', dir);
     assert.equal(jpegSize(path.join(d, 'مصغّر.jpg'))[0], 360, dir + ': مصغّر الشبكة');
-    if (scene) assert.equal(jpegSize(path.join(d, 'مشهد.jpg'))[0], 1600, dir + ': المشهد');
+    if (scene) assert.equal(jpegSize(path.join(d, 'مشهد.jpg'))[0], 2560, dir + ': المشهد (v-scene-sharp: موضَّح ٢٥٦٠ عرضًا)');
   }
   // السيارة المتوهّجة من صورة المالك (أمره: «وهذي بعد») في بداية «سيارات»: ضعفا حجمها، وتذوب خلفيّتها الداكنة في الكربون
-  assert.equal(jpegSize(path.join(root, 'assets', 'ثيمات', 'مركبات', 'سيارة.jpg'))[0], 600);
+  assert.equal(jpegSize(path.join(root, 'assets', 'ثيمات', 'مركبات', 'سيارة.jpg'))[0], 1200); // v-scene-sharp
+  for (const u of urls) if (/%D9%85%D8%B4%D9%87%D8%AF\.jpg|%D8%B3%D9%8A%D8%A7%D8%B1%D8%A9\.jpg/.test(u)) assert.match(u, /\?v=2$/, 'v-bg-fresh: وسم إصدار على ' + decodeURIComponent(u));
   // وخلفيّة دائمة لا في البداية وحدها (أمره بعدها: «صورة السيارة غير موجودة الخلفيّة» — كانت تختفي مع أوّل رسالة)
   assert.ok(CSS.includes('\nhtml.skin-cars #chatcol::before{'), 'بلا شرط omranWelcome');
   assert.ok(!/skin-cars body\.omranWelcome/.test(CSS));
@@ -97,7 +98,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
 
 test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد يترك الخانات والإرسال للثيم، والمختار والزرّ يغلبان قاعدتي التطبيق', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=5');
+  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=6');
   assert.ok(a > 0 && b > a, 'يُحمَّل آخرًا فيعلو');
   const frame = rd('css/إطارات.css');
   assert.doesNotMatch(frame, /:not\(\.skin-wood\) (\.hist-item|#composerBox)/, 'قواعد الإطار للخانات والإرسال تستثني html.skin');
