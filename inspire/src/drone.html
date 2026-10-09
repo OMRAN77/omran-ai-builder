@@ -48,7 +48,7 @@
   .dh-g u{text-decoration:none;font-size:11px;color:#9fb6c8;font-weight:500;margin-inline-start:2px}
   .dh-best{margin-top:6px;font-size:12px;color:#c9d7e2;font-weight:500}
   .dh-best b{color:#7dffbe;font-variant-numeric:tabular-nums}
-  .dr-msg{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%) scale(.96);z-index:6;pointer-events:none;text-align:center;font:800 40px/1.2 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.65);opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap}
+  .dr-msg{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%) scale(.96);z-index:4;max-width:92vw;pointer-events:none;text-align:center;font:800 40px/1.2 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.65);opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap}
   .dr-msg small{display:block;font-size:16px;font-weight:600;color:#ffe2a8;margin-top:4px}
   .dr-msg.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
   .dr-msg.bad{color:#ff6b5b}.dr-msg.gold{color:#ffd36b}
@@ -67,7 +67,7 @@
     .dh-g{grid-template-columns:repeat(5,1fr);gap:0 6px;margin-top:5px}
     .dh-g b{font-size:16px}.dh-g i,.dh-g u{font-size:10px}
     .dr-map{display:none}
-    .dr-msg{font-size:28px;top:36%}.dr-msg small{font-size:14px}
+    .dr-msg{font-size:24px;top:62%;white-space:normal;width:max-content}.dr-msg small{font-size:13px}
   }`;
 
   // ── أدوات رسم صغيرة ──
@@ -564,7 +564,8 @@
   }
   function chaseTarget(out, look) {
     const D = S.d, fx = -Math.sin(D.yaw), fz = -Math.cos(D.yaw), idx = S.city.idx, ka = clamp(1.05 / ctx.camera.aspect, 1, 1.7); // الجوّال الطوليّ: الكاميرا أبعد
-    out.set(D.pos.x - fx * 9.5 * ka, D.pos.y + 3.4 * ka, D.pos.z - fz * 9.5 * ka);
+    const rd = S.race.state === 'ready' ? 1.5 : 1; // على المنصّة: لقطة أعلى تُظهر الحيّ
+    out.set(D.pos.x - fx * 9.5 * ka * rd, D.pos.y + 3.4 * ka * rd * rd, D.pos.z - fz * 9.5 * ka * rd);
     for (let k = 1; k > 0.15; k -= 0.15) { // لا تدخل الكاميرا جدار مبنى
       const x = D.pos.x + (out.x - D.pos.x) * k, z = D.pos.z + (out.z - D.pos.z) * k, y = D.pos.y + (out.y - D.pos.y) * k;
       if (idx.heightAt(x, z) < y - 1) { out.set(x, y, z); break; }
