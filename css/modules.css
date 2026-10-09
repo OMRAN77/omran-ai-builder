@@ -622,3 +622,18 @@ html[data-mode="light"] #videoMakerModal .vmk-main #videoMakerPrompt{background:
 .vmk-lb video{max-width:94vw;max-height:86vh;border-radius:14px;box-shadow:0 30px 80px -20px #000;background:#000}
 .vmk-lb-x{position:absolute;top:14px;inset-inline-end:18px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.5);color:#fff;font-size:24px;line-height:1;cursor:pointer}
 html[data-mode="light"] #videoMakerModal .vmk-tutlink{background:#ffffff;color:var(--text)}
+
+/* نماذج الفيديو عرضيّة (١٦:٩): البطاقة بنسبة تناسبها فلا يُقصّ النصّ المرسوم داخل الكانفا */
+#videoMakerModal .vmk-sm-p{aspect-ratio:16/11!important}
+@media (max-width:640px){#videoMakerModal .vmk-sm-p{aspect-ratio:16/12!important}}
+
+/* بطاقة فيها فيديو فعليّ: الفيديو بنسبته (١٦:٩) والعنوان في شريط تحته — لا يتراكب مع النصّ المرسوم داخل الفيديو */
+#videoMakerModal .vmk-sm.has-vid .vmk-sm-p{aspect-ratio:16/9!important;display:block}
+#videoMakerModal .vmk-sm.has-vid .vmk-sm-p:before{display:none}
+#videoMakerModal .vmk-sm.has-vid .vmk-sm-p video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#videoMakerModal .vmk-sm.has-vid>b{display:block;padding:9px 11px;font-size:11.5px;font-weight:700;line-height:1.6;color:#fff;background:#0d0f14}
+
+/* حلقة التشغيل: واحدة صغيرة في منتصف كلّ فيديو في كلّ البطاقات (لا زرّ فوق النصّ ولا في الزاوية) */
+#videoMakerModal .vmk-sm.has-vid .vmk-sm-play,#videoMakerModal .vmk-sm-tut .vmk-sm-play{top:50%;left:50%;inset-inline-start:auto;margin:-17px 0 0 -17px;width:34px;height:34px;background:rgba(10,12,18,.55);border:1px solid rgba(255,255,255,.55);backdrop-filter:blur(4px)}
+#videoMakerModal .vmk-sm.has-vid .vmk-sm-play:after{border-inline-start-color:#fff}
+#videoMakerModal .vmk-sm-tut .vmk-sm-p b{display:none}

@@ -127,7 +127,7 @@
       var te=document.createElement('div'); te.className='vmk-sm vmk-sm-tut'; te.setAttribute('role','button'); te.tabIndex=0;
       var tp=document.createElement('div'); tp.className='vmk-sm-p'; tp.style.backgroundImage='url('+tutUrl().replace('.mp4','.jpg')+')';
       var tpl=document.createElement('span'); tpl.className='vmk-sm-play'; tp.appendChild(tpl);
-      var tb=document.createElement('b'); tb.textContent=tt0; tp.appendChild(tb); te.appendChild(tp);
+      var tb=document.createElement('b'); tb.textContent=tt0; te.classList.add('has-vid'); te.appendChild(tp); te.appendChild(tb);
       var tgo=function(){ openPlayer(tutUrl()); };
       te.addEventListener('click',tgo); te.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tgo(); } });
       box.appendChild(te);
@@ -147,7 +147,7 @@
       }
       if(VIDEOS[md+'-'+(i+1)]){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
       var tt=document.createElement('b'); tt.textContent=tx;
-      pv.appendChild(tt); el.appendChild(pv);
+      if(vsrc){ el.classList.add('has-vid'); el.appendChild(pv); el.appendChild(tt); } else { pv.appendChild(tt); el.appendChild(pv); }
       var pick=function(){ var pe=id('videoMakerPrompt'); setVal(pe,tx); if(pe) pe.focus(); if(vsrc) openPlayer(vsrc); };
       el.addEventListener('click',pick);
       el.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick(); } });

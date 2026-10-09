@@ -5,6 +5,7 @@
 //
 // البيئة:  SAMPLE_TOKEN (رمز جلسة المالك: aiapp_auth_token)، SAMPLE_USER (الافتراضيّ omran)، BASE (الافتراضيّ الموقع المنشور)
 // الاستعمال: node scripts/video-samples.mjs [--modes runway,minimax,omni,hybrid,veo,actor] [--per 2] [--out media/samples] [--timeout 14]
+//            node scripts/video-samples.mjs --local --modes canvas   ← كانفا مجّانيّ: يولّده الصانع محلّيًّا داخل المتصفّح بلا مفاتيح ولا صرف
 //            node scripts/video-samples.mjs --dry   ← يخدم المستودع محلّيًّا ويتحقّق من الاختيارات حتّى زرّ «إنشاء» دون ضغطه (لا صرف)
 // المخرج: <الوضع>-<١|٢>.mp4 (٩٦٠ عرضًا) + .jpg غلاف + index.json (القائمة التي يقرؤها الصانع فيظهر الفيديو في بطاقته).
 import http from 'node:http';
@@ -19,17 +20,18 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : d; };
 const DRY = !!opt('dry', false);
+const LOCAL = DRY || !!opt('local', false); // --local: الصانع محلّيًّا (بلا خادم) — يكفي لوضع كانفا لأنّه يُرسم ويُسجَّل داخل المتصفّح بلا محرّك ولا صرف
 const MODES = String(opt('modes', 'runway,minimax,omni,hybrid,veo,actor')).split(',').map((s) => s.trim()).filter(Boolean);
 const PER = Math.min(2, Math.max(1, Number(opt('per', 2)) || 2));
 const OUT = path.resolve(ROOT, String(opt('out', 'media/samples')));
 const TIMEOUT = (Number(opt('timeout', 14)) || 14) * 60 * 1000;
 const USER = process.env.SAMPLE_USER || 'omran';
-const TOKEN = process.env.SAMPLE_TOKEN || (DRY ? 'local' : '');
-if (!DRY && !TOKEN) { console.error('SAMPLE_TOKEN مفقود — رمز جلسة المالك (aiapp_auth_token) كسرّ في المستودع.'); process.exit(2); }
+const TOKEN = process.env.SAMPLE_TOKEN || (LOCAL ? 'local' : '');
+if (!LOCAL && !TOKEN) { console.error('SAMPLE_TOKEN مفقود — رمز جلسة المالك (aiapp_auth_token) كسرّ في المستودع.'); process.exit(2); }
 const ACTOR_LINE = 'هلا والله! حياكم في تطبيق عمران، أسهل طريقة تسوّي فيديو بالذكاء الاصطناعي.';
 
 let base = process.env.BASE || 'https://omran-ai-builder.vercel.app', srv = null;
-if (DRY) {
+if (LOCAL) {
   const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.mp4': 'video/mp4' };
   srv = http.createServer((req, res) => {
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname); if (p === '/') p = '/index.html';
@@ -75,12 +77,13 @@ async function runOne(mode, n) {
     console.log('·', key, '←', idea);
     if (DRY) { const btn = await page.locator('#videoMakerGenerateBtn').isVisible(); if (!btn) throw new Error('زرّ الإنشاء غير ظاهر'); return 'dry'; }
     await page.click('#videoMakerGenerateBtn');
-    const t0 = Date.now(); let src = '';
+    const t0 = Date.now(); let src = '', lastSt = '';
     while (Date.now() - t0 < TIMEOUT) {
       await page.waitForTimeout(6000);
-      src = await page.evaluate(() => { const v = document.querySelector('#videoMakerResult video'); return v ? (v.currentSrc || v.src || '') : ''; });
+      src = await page.evaluate(() => { const v = document.getElementById('videoMakerResult'); return v && getComputedStyle(v).display !== 'none' ? (v.currentSrc || v.getAttribute('src') || '') : ''; }); // العنصر نفسه هو <video>
       if (src) break;
       const st = await page.evaluate(() => (document.getElementById('videoMakerStatus') || {}).innerText || '');
+      if (st && st !== lastSt) { lastSt = st; console.log('   حالة:', st.replace(/\s+/g, ' ').slice(0, 120)); }
       if (/❌|تعذّر|خطأ|فشل|error|failed/i.test(st)) throw new Error('الصانع أعلن فشلًا: ' + st.slice(0, 160));
     }
     if (!src) throw new Error('انتهت المهلة بلا فيديو');

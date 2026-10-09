@@ -89,3 +89,13 @@ test('نماذج الجودة (طلب المالك «سوّ الفيديوهات
   assert.ok(sc.includes('--dry') && sc.includes("SAMPLE_TOKEN مفقود") && sc.includes("index[key] = true"));
   assert.ok(!/(sk-|AIza|ghp_|github_pat_)[A-Za-z0-9_-]{16,}/.test(sc + wf), 'لا أسرار');
 });
+
+test('نماذج الكانفا (مجّانيّة، مولَّدة من الصانع نفسه): ملفّان مسجَّلان في القائمة وبحجم معقول', () => {
+  const idx = JSON.parse(read('media/samples/index.json'));
+  ['canvas-1', 'canvas-2'].forEach((k) => {
+    assert.equal(idx[k], true, k + ' في القائمة');
+    ['mp4', 'jpg'].forEach((x) => assert.ok(fs.existsSync(path.join(root, 'media/samples/' + k + '.' + x)), k + '.' + x));
+    assert.ok(fs.statSync(path.join(root, 'media/samples/' + k + '.mp4')).size < 1024 * 1024, 'حجم معقول');
+  });
+  assert.ok(read('scripts/video-samples.mjs').includes("document.getElementById('videoMakerResult')"), 'العنصر نفسه هو <video>');
+});
