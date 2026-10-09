@@ -45,3 +45,10 @@ test('صفحة الإثبات: المفتاح من الخادم، لا مفتا�
   assert.match(h, /three@0\.180\.0/);
   assert.match(h, /3d-tiles-renderer@0\.5\.2/);
 });
+
+test('سياسة الأمان تسمح بجلب blob: — صور المباني مضمّنة في ملفّاتها وتُقرأ بـfetch(blob:)', () => {
+  const v = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+  const csp = v.headers.flatMap((h) => h.headers).find((x) => x.key === 'Content-Security-Policy').value;
+  const connect = (csp.match(/connect-src([^;]*)/) || [])[1] || '';
+  assert.match(connect, /\bblob:/);
+});
