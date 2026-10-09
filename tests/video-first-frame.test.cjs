@@ -269,16 +269,17 @@ test('١١. الترندات فوق والصانع تحتها: الوصف بوس
   assert.doesNotMatch(J, /desc=kids\[1\]/, 'الابن الثاني كان صندوق الترندات حين يُبنى أوّلًا');
   assert.match(J, /kids\.slice\(1\)\.forEach\(function\(k\)\{ if\(k!==vt\) main\.appendChild\(k\); \}\);/);
   assert.match(J, /function trendsTop\(\)\{[^]*card\.classList\.add\('vmk-trends-top'\);[^]*card\.insertBefore\(vt,side\);/);
-  assert.match(J, /function enhance\(\)\{ if\(!on\(\)\) return; build\(\); trendsTop\(\);/);
+  // v-vmk-sections أضاف قراءة قائمة النماذج وشريط الأقسام في enhance؛ الثابت المقصود: البناء ثمّ رفع الترندات فوق الاستوديو في كلّ فتح
+  assert.match(J, /function enhance\(\)\{ if\(!on\(\)\) return;[^}]*build\(\);[^}]*trendsTop\(\);/);
   const C = read('css/modules.css');
   assert.match(C, /#videoMakerModal \.vmk-studio>#vtRoot\{grid-column:1\/-1;/);
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top\{overflow-y:auto;/);
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top \.vmk-main\{max-height:none;overflow:visible\}/);
   const H = read('index.html');
-  assert.ok(H.includes('src="/js/video.js?v=435"'), 'وسم video.js رُفع');
+  assert.ok(H.includes('src="/js/video.js?v=437"'), 'وسم video.js رُفع');
   assert.ok(Number((H.match(/css\/modules\.css\?v=(\d+)/) || [])[1]) >= 663, 'وسم modules رُفع');
   // تشغيل build الحقيقيّ على بطاقة مصغّرة: الترندات بُنيت قبل الاستوديو (الترتيب الذي أنزلها للأسفل)
-  const el = (id, cls) => ({ id: id || '', className: cls || '', classList: { _s: new Set((cls || '').split(' ').filter(Boolean)), add(c) { this._s.add(c); }, contains(c) { return this._s.has(c); } }, children: [], parentElement: null, dataset: {}, style: { setProperty() {} }, attrs: {}, getAttribute(k) { return this.attrs[k]; }, setAttribute(k, v) { this.attrs[k] = v; } });
+  const el = (id, cls) => ({ id: id || '', className: cls || '', classList: { _s: new Set((cls || '').split(' ').filter(Boolean)), add(c) { this._s.add(c); }, contains(c) { return this._s.has(c); }, toggle(c, on) { if (on === false || (on === undefined && this._s.has(c))) this._s.delete(c); else this._s.add(c); } }, children: [], parentElement: null, dataset: {}, style: { setProperty() {} }, attrs: {}, getAttribute(k) { return this.attrs[k]; }, setAttribute(k, v) { this.attrs[k] = v; }, addEventListener() {} });
   const card = el('', ''); const header = el('hdr'); const vt = el('vtRoot'); const desc = el('desc'); desc.attrs['data-i18n'] = 'videoMakerDesc'; const prompt = el('videoMakerPrompt');
   const all = { vtRoot: vt, videoMakerPrompt: prompt };
   const kidsOf = (p) => p.children;
@@ -287,7 +288,8 @@ test('١١. الترندات فوق والصانع تحتها: الوصف بوس
   [header, vt, desc, prompt].forEach((k) => append(card, k));
   const wire = (n) => {
     n.appendChild = (c) => append(n, c); n.insertBefore = (c, ref) => insertBefore(n, c, ref);
-    n.querySelector = (sel) => { const walk = (x) => { for (const c of x.children) { if ((sel === '[data-i18n="videoMakerDesc"]' && c.attrs['data-i18n'] === 'videoMakerDesc') || (sel === '.vmk-side' && c.className === 'vmk-side') || (sel === '.vmk-stage' && c.className === 'vmk-stage') || (sel === '.vmk-chips' && c.className === 'vmk-chips')) return c; const r = walk(c); if (r) return r; } return null; }; return walk(n); };
+    n.querySelector = (sel) => { const walk = (x) => { for (const c of x.children) { if ((sel === '[data-i18n="videoMakerDesc"]' && c.attrs['data-i18n'] === 'videoMakerDesc') || (sel === '.vmk-side' && c.className === 'vmk-side') || (sel === '.vmk-stage' && c.className === 'vmk-stage') || (sel === '.vmk-chips' && c.className === 'vmk-chips')) return c; const r = walk(c); if (r) return r; } return null; }; const known = ['[data-i18n="videoMakerDesc"]', '.vmk-side', '.vmk-stage', '.vmk-chips']; const hit = walk(n); if (hit || known.includes(sel)) return hit; const d = el(); wire(d); return d; }; /* v-vmk-sections: عناصر المساعد والشخصيّات تُنشأ وتُربط داخل build — دمية تكفي لربط مستمعيها */
+    Object.defineProperty(n, 'parentNode', { get() { return n.parentElement; } });
     Object.defineProperty(n, 'firstElementChild', { get() { return n.children[0] || null; } });
     Object.defineProperty(n, 'nextElementSibling', { get() { const p = n.parentElement; if (!p) return null; return p.children[p.children.indexOf(n) + 1] || null; } });
     Object.defineProperty(n, 'innerHTML', { set(v) { if (/vmk-stage/.test(v)) { const st = el('', 'vmk-stage'); wire(st); st.querySelector = () => null; append(n, st); const ch = el('', 'vmk-chips'); wire(ch); append(n, ch); } }, get() { return ''; } });
@@ -303,7 +305,8 @@ test('١١. الترندات فوق والصانع تحتها: الوصف بوس
   const ctx = { document: doc, window: {}, MutationObserver: function () { this.observe = () => {}; }, Event: function () {} };
   ctx.window = ctx;
   modal.style.display = 'flex';
-  vm.runInNewContext(J.replace(/new MutationObserver\(function\(\)\{ if\(M\.style\.display&&M\.style\.display!=='none'\) enhance\(\); \}\)/, 'window.__enhance=enhance; new MutationObserver(function(){})'), ctx);
+  /* البناء ثمّ رفع الترندات هما ما يحكم الترتيب؛ بقيّة enhance (الأقسام، القائمة، التنظيف) مغطّاة في video-sections */
+  vm.runInNewContext(J.replace('var wasOpen=false;', 'var wasOpen=false; window.__enhance=function(){ build(); trendsTop(); };'), ctx);
   ctx.__enhance();
   const order = card.children.map((c) => c.id || c.className);
   assert.deepEqual(order.slice(0, 4), ['hdr', 'vtRoot', 'vmk-side', 'vmk-main'], 'الترتيب: الرأس ثمّ الترندات ثمّ الاستوديو — كان: ' + order.join(' > '));

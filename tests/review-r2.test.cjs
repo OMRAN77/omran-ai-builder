@@ -50,6 +50,9 @@ const kvImpl = {
 mock('api/_lib/kv.js', new Proxy(kvImpl, { get: (t, p) => t[p] || (async () => null) }));
 mock('api/_lib/log-error.js', { logError: () => {}, logErrorAndFlush: async () => {} });
 mock('api/_lib/_vip.js', { isVip: async () => false });
+/* v-quality-gate: الترقية للمشتركين والمالك فقط — مستخدمو هذه الاختبارات يُعامَلون مشتركين (الحارس نفسه في quality-gate.test.cjs) */
+let QUALITY_OK = true;
+mock('api/_lib/_qualityGate.js', { allowHigh: async () => QUALITY_OK, gateQuality: async (u, q) => q });
 
 const auth = require(rp('api/_lib/auth.js'));
 const usage = require(rp('api/_lib/_usage.js'));
