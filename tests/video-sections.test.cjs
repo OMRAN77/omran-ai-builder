@@ -95,7 +95,21 @@ test('نماذج الكانفا (مجّانيّة، مولَّدة من الصا
   ['canvas-1', 'canvas-2'].forEach((k) => {
     assert.equal(idx[k], true, k + ' في القائمة');
     ['mp4', 'jpg'].forEach((x) => assert.ok(fs.existsSync(path.join(root, 'media/samples/' + k + '.' + x)), k + '.' + x));
-    assert.ok(fs.statSync(path.join(root, 'media/samples/' + k + '.mp4')).size < 1024 * 1024, 'حجم معقول');
+    assert.ok(fs.statSync(path.join(root, 'media/samples/' + k + '.mp4')).size < 4 * 1024 * 1024, 'حجم معقول');
   });
   assert.ok(read('scripts/video-samples.mjs').includes("document.getElementById('videoMakerResult')"), 'العنصر نفسه هو <video>');
+});
+
+test('رفع فيديوهات المالك (طلبه: «كيف أرفع الفيديوهات… بجودة عالية»): مجلّد raw ومسار يضغط ويسجّل وينشر، والعنوان يغلب المثال', () => {
+  const ing = read('scripts/samples-ingest.mjs');
+  assert.ok(ing.includes("'canvas', 'runway', 'minimax', 'omni', 'hybrid', 'veo', 'actor'") && ing.includes("(mp4|mov|webm|m4v)$"));
+  assert.ok(ing.includes("'-crf', '20'") && ing.includes("min(1920,iw)") && ing.includes("index[key] = title ? { title } : true") && ing.includes('fs.rmSync(src)'));
+  const wf = read('.github/workflows/samples-ingest.yml');
+  assert.ok(wf.includes("paths: ['media/samples/raw/**']") && wf.includes('git push origin HEAD:main'));
+  assert.ok(fs.existsSync(path.join(root, 'media/samples/raw/README.md')));
+  assert.ok(js.includes('tx=(vm&&vm.title)||L(k)'), 'عنوان الفيديو المرفوع يغلب المثال');
+  const tut = read('scripts/video-tutorial.mjs');
+  assert.ok(tut.includes("Page.startScreencast") && tut.includes("scale=1920:1080"), 'التعليميّ بدقّة ١٠٨٠');
+  const sm = read('scripts/video-samples.mjs');
+  assert.ok(sm.includes("'.vmk-lb .vmk-lb-x'") && !sm.includes("keyboard.press('Escape')"), 'يُغلق المشغّل بزرّه لا بـEscape (يُغلق الصانع)');
 });
