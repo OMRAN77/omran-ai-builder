@@ -452,6 +452,8 @@
       o.theta = F.f.th + (F.to.th - F.f.th) * e; o.phi = F.f.ph + (F.to.ph - F.f.ph) * e; o.apply();
       if (F.t >= 1) S.fly = null;
     }
+    const nn = clamp(o.dist * 0.02, 1, 40); // مستوى قصّ قريب يتبع المسافة: يمنع ارتعاش الماء والحدائق الرقيقة من بعيد
+    if (Math.abs(X.camera.near - nn) > 0.5) { X.camera.near = nn; X.camera.updateProjectionMatrix(); }
     if (X.scene.fog) { X.scene.fog.near = o.dist * 0.8 + X.R * 0.6; X.scene.fog.far = o.dist * 1.6 + X.R * 3; }
     const W = S.walk;
     if (W) {

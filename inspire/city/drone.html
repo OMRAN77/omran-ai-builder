@@ -536,8 +536,8 @@
 
   // ── المسار: بوّابات بين أطول المباني ──
   function centroid(b) { let x = 0, z = 0; for (const p of b.poly) { x += p[0]; z += p[1]; } return [x / b.poly.length, z / b.poly.length]; }
-  function findGates(city) {
-    const idx = city.idx, B = city.buildings, R = ctx.R, maxR = R * 0.72, Hh = (x, z) => idx.heightAt(x, z);
+  function findGates(city, maxR) {
+    const idx = city.idx, B = city.buildings, Hh = (x, z) => idx.heightAt(x, z);
     const cand = [];
     for (let i = 0; i < B.length && cand.length < 36; i++) {
       const b = B[i]; if (b.h < 16) break;
@@ -563,8 +563,19 @@
       gates.push({ x: mx, y, z: mz, tx, tz, nx, nz, r, mh, hA: A.h, hB: Bb.h, name: A.name || Bb.name || '', score: y * (1.25 - d / 240) - Math.hypot(mx, mz) * 0.06 });
     }
     gates.sort((a, b) => b.score - a.score);
+    // اختيار متكتّل: أفضل بوّابة أوّلًا، ثمّ الأفضل مع خصم للبعد عن أقرب بوّابة مختارة — مسار متماسك لا قفزات عبر الحيّ
     const sel = [];
-    for (const g of gates) { if (sel.length >= opts.rings) break; if (sel.some((s) => Math.hypot(s.x - g.x, s.z - g.z) < 65)) continue; sel.push(g); }
+    while (sel.length < opts.rings) {
+      let best = null, bv = -Infinity;
+      for (const g of gates) {
+        if (sel.includes(g)) continue;
+        let dn = Infinity; for (const s of sel) dn = Math.min(dn, Math.hypot(s.x - g.x, s.z - g.z));
+        if (dn < 55) continue;
+        const v = g.score - (sel.length ? 0.22 * dn : 0);
+        if (v > bv) { bv = v; best = g; }
+      }
+      if (!best) break; sel.push(best);
+    }
     return sel;
   }
   function circleCourse(N) { // احتياط لحيّ بلا أبراج: دائرة فوق أعلى ما حولها
@@ -587,7 +598,8 @@
   function buildCourse() {
     const city = S.city, idx = city.idx, H = idx.heightAt, D2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
     if (S.course) { city.group.remove(S.course); S.course.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
-    let sel = findGates(city); S.fallback = false;
+    let sel = findGates(city, ctx.R * 0.55); S.fallback = false;
+    if (sel.length < Math.min(opts.rings, 4)) { const wide = findGates(city, ctx.R * 0.8); if (wide.length > sel.length) sel = wide; } // حيّ أبراجه بعيدة عن المركز
     if (sel.length < 3) { sel = circleCourse(opts.rings); S.fallback = true; }
     const pad = S.pad = findPad();
     // ترتيب: الأقرب فالأقرب من منصّة الإقلاع ثمّ تحسين 2-opt لمسار مفتوح
@@ -621,7 +633,7 @@
       return m;
     };
     const wps = S.wps = []; let P = { x: pad.x, y: 0.4, z: pad.z };
-    const leg = (p, q) => { if (clearSeg(p, q)) return; const hc = Math.max(p.y, q.y, cMax(p, q) + 12); wps.push({ x: p.x, y: hc, z: p.z, tol: 7 }); wps.push({ x: q.x, y: hc, z: q.z, tol: 7 }); };
+    const leg = (p, q) => { if (clearSeg(p, q)) return; const hc = Math.max(p.y, q.y, cMax(p, q) + 12); if (hc > p.y + 0.5) wps.push({ x: p.x, y: hc, z: p.z, tol: 7 }); if (hc > q.y + 0.5) wps.push({ x: q.x, y: hc, z: q.z, tol: 7 }); };
     for (const g of rings) {
       const A = { x: g.x - g.nx * APP, y: g.y, z: g.z - g.nz * APP, tol: 4 }, E = { x: g.x + g.nx * APP, y: g.y, z: g.z + g.nz * APP, tol: 5 };
       leg(P, A); wps.push(A); wps.push({ x: g.x, y: g.y, z: g.z, tol: 3, ring: g.i }); wps.push(E); g.exitWp = wps.length - 1; P = E;

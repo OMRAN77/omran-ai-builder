@@ -430,9 +430,9 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
   function heroGoal() {
     const h = H(), s = S.sun, sv = S.shadowVec;
     const th = s && s.alt > 0.5 * DEG ? Math.atan2(s.x, s.z) + 0.8 : 0.75;
-    const L = sv ? Math.min(Math.hypot(sv[0], sv[1]), h * 3) : 0, u = sv && L ? [sv[0] / Math.hypot(sv[0], sv[1]), sv[1] / Math.hypot(sv[0], sv[1])] : [0, 0];
-    const tall = window.innerWidth / window.innerHeight < 0.8, off = tall ? 0.12 : 0.3;
-    return { target: new THREE.Vector3(S.x + u[0] * L * off, h * 0.3, S.z + u[1] * L * off), dist: clamp((h * 1.4 + L * 0.42 + 110) * (tall ? 1.35 : 1), 230, 1800), theta: th, phi: 1.0 };
+    const L = sv ? Math.min(Math.hypot(sv[0], sv[1]), h * 2.5) : 0, u = sv && L ? [sv[0] / Math.hypot(sv[0], sv[1]), sv[1] / Math.hypot(sv[0], sv[1])] : [0, 0];
+    const tall = window.innerWidth / window.innerHeight < 0.8, off = tall ? 0.12 : 0.26;
+    return { target: new THREE.Vector3(S.x + u[0] * L * off, h * 0.3, S.z + u[1] * L * off), dist: clamp((h * 1.4 + L * 0.3 + 110) * (tall ? 1.35 : 1), 230, 1800), theta: th, phi: 0.86 };
   }
   function hero(instant) {
     if (!S || S.walking) return;

@@ -185,7 +185,7 @@
     k = Math.max(0, Math.min(S.pick.maxFloor, Math.round(k)));
     if (k === S.pick.floor) return;
     S.pick.floor = k; G.floor = k; UI.range.value = String(k);
-    recompute(); flyTo(true);
+    recompute(); flyTo(true); renderProfile();
   }
   function recompute() {
     const p = S.pick, ry = EAR + p.floor * FLOOR_H, t0 = performance.now();
@@ -302,7 +302,7 @@
   function startProfile() {
     const p = S.pick, n = p.maxFloor, list = [];
     if (n <= 13) for (let k = 0; k <= n; k++) list.push(k);
-    else for (let i = 0; i <= 12; i++) list.push(Math.round(i * n / 12));
+    else { for (let i = 0; i <= 12; i++) list.push(Math.round(i * n / 12)); if (!list.includes(p.floor)) { list.push(p.floor); list.sort((a, b) => a - b); } }
     S.prof = { pick: p, list, i: 0, out: [], done: false };
     renderProfile();
   }
