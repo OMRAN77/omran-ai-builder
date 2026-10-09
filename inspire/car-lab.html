@@ -30,6 +30,11 @@ input{width:100%;box-sizing:border-box;background:rgba(0,0,0,.35);border:1px sol
   <div class="row" id="presets"></div>
   <input id="desc" placeholder="أو اكتب وصف سيّارتك… مثال: جيب دفع رباعي أبيض فخم">
   <div class="row"><button class="pri" id="go">ولّد السيّارة</button></div>
+  <div id="login" style="display:none">
+    <div class="row"><input id="lu" placeholder="اسم المستخدم أو الإيميل" autocomplete="username"></div>
+    <div class="row"><input id="lp" type="password" placeholder="كلمة المرور" autocomplete="current-password"></div>
+    <div class="row"><button id="lb">دخول</button></div>
+  </div>
   <div id="st"></div>
   <img id="src" alt="">
   <div id="cars"></div>
@@ -52,7 +57,19 @@ const readToken = () => {
   for (const st of ['localStorage', 'sessionStorage']) { try { const v = window[st].getItem('aiapp_auth_token'); if (v) return v; } catch (e) { /* guard-ok — تخزين محجوب */ } }
   const m = document.cookie.match(/(?:^|;\s*)aiapp_auth_token=([^;]+)/); return m ? decodeURIComponent(m[1]) : '';
 };
-const token = readToken();
+let token = readToken();
+// الدخول هنا مباشرة: رابط المعاينة نطاق مستقلّ لا يرى دخول الموقع الأساسيّ
+if (!token) document.getElementById('login').style.display = 'block';
+document.getElementById('lb').onclick = async () => {
+  const r = await fetch('/api/account?action=auth', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'login', username: document.getElementById('lu').value.trim(), password: document.getElementById('lp').value }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.token) { document.getElementById('st').textContent = j.error || 'تعذّر الدخول'; return; }
+  token = j.token;
+  try { sessionStorage.setItem('aiapp_auth_token', token); } catch (e) { /* guard-ok — تخزين محجوب: الرمز يبقى في الذاكرة لهذه الصفحة */ }
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('st').textContent = 'تمّ الدخول (' + (j.username || '') + ') — اختر سيّارة واضغط «ولّد السيّارة».';
+};
 const API = '/api/system?action=car3d';
 const PRESETS = [
   ['سيدان عائليّة', 'modern mid-size family sedan, pearl white, alloy wheels'],
@@ -111,7 +128,7 @@ async function poll(id) {
   say('طال التوليد — ارجع بعد قليل وسيظهر في القائمة.');
 }
 async function generate(desc) {
-  if (!token) { say('سجّل دخولك في التطبيق أوّلًا (الصفحة للمالك).'); return; }
+  if (!token) { say('سجّل دخولك من الخانتين فوق أوّلًا (الصفحة للمالك).'); $('login').style.display = 'block'; return; }
   $('go').disabled = true; say('يرسم صورة السيّارة…');
   try {
     const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, desc }) });
