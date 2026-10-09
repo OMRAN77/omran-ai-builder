@@ -63,6 +63,27 @@
   var tab='trend';
   /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
   var VIDEOS={};
+  /* فيديو تعليميّ حقيقيّ مسجَّل من شاشة الصانع نفسه (scripts/video-tutorial.mjs) — عربيّ، والباقي بالإنجليزيّة */
+  /* قائمة النماذج المولَّدة (scripts/video-samples.mjs يكتبها): {"omni-1":true,…} — بلا قائمة لا فيديو وتبقى البطاقة نصًّا */
+  var manifestAsked=false;
+  function loadManifest(){
+    if(manifestAsked) return; manifestAsked=true;
+    fetch('/media/samples/index.json',{cache:'no-cache'}).then(function(r){ return r.ok?r.json():{}; }).then(function(j){
+      if(j&&typeof j==='object'&&Object.keys(j).length){ VIDEOS=j; sync(); }
+    }).catch(function(){ /* guard-ok — لا قائمة = لا فيديوهات نماذج */ });
+  }
+  function tutUrl(){ return '/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'; }
+  function openPlayer(src){
+    var lb=document.createElement('div'); lb.className='vmk-lb';
+    var vd=document.createElement('video'); vd.src=src; vd.controls=true; vd.autoplay=true; vd.playsInline=true;
+    var x=document.createElement('button'); x.type='button'; x.className='vmk-lb-x'; x.textContent='×'; x.setAttribute('aria-label',L('vcRemove'));
+    function close(){ try{ vd.pause(); }catch(e){ /* guard-ok — العنصر يُزال */ } document.removeEventListener('keydown',esc); lb.remove(); }
+    function esc(e){ if(e.key==='Escape') close(); }
+    lb.addEventListener('click',function(e){ if(e.target!==vd) close(); }); x.addEventListener('click',close);
+    document.addEventListener('keydown',esc);
+    lb.appendChild(vd); lb.appendChild(x); document.body.appendChild(lb);
+  }
+  var HUE={canvas:205,runway:28,minimax:165,omni:42,hybrid:262,veo:8,actor:335};
   var MAXCH=3, chars=[], lastBlock='';
   function Cap(m){ return m.charAt(0).toUpperCase()+m.slice(1); }
   function setVal(el,val){ if(!el) return; el.value=val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
@@ -100,21 +121,34 @@
     var box=id('vmkSamples'); if(!box) return;
     var md=(id('videoMakerMode')||{}).value||''; box.innerHTML='';
     if(tab==='trend'||!md) return;
-    var c=Cap(md), keys=['videoIdea'+c,'videoIdea'+c+'2','videoIdea'+c+'3'];
+    var c=Cap(md), keys=['videoIdea'+c,'videoIdea'+c+'2'];
+    var tt0=L('vcTutorial');
+    if(tt0){
+      var te=document.createElement('div'); te.className='vmk-sm vmk-sm-tut'; te.setAttribute('role','button'); te.tabIndex=0;
+      var tp=document.createElement('div'); tp.className='vmk-sm-p'; tp.style.backgroundImage='url('+tutUrl().replace('.mp4','.jpg')+')';
+      var tpl=document.createElement('span'); tpl.className='vmk-sm-play'; tp.appendChild(tpl);
+      var tb=document.createElement('b'); tb.textContent=tt0; te.classList.add('has-vid'); te.appendChild(tp); te.appendChild(tb);
+      var tgo=function(){ openPlayer(tutUrl()); };
+      te.addEventListener('click',tgo); te.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tgo(); } });
+      box.appendChild(te);
+    }
+    box.style.setProperty('--h',String(HUE[md]==null?35:HUE[md]));
     keys.forEach(function(k,i){
       var tx=L(k); if(!tx) return;
       var el=document.createElement('div'); el.className='vmk-sm'; el.setAttribute('role','button'); el.tabIndex=0;
       var pv=document.createElement('div'); pv.className='vmk-sm-p'; pv.style.setProperty('--i',String(i));
+      var vsrc='';
       if(VIDEOS[md+'-'+(i+1)]){
-        var vd=document.createElement('video'); vd.muted=true; vd.loop=true; vd.playsInline=true; vd.preload='metadata'; vd.src='/media/samples/'+md+'-'+(i+1)+'.mp4';
+        vsrc='/media/samples/'+md+'-'+(i+1)+'.mp4';
+        var vd=document.createElement('video'); vd.muted=true; vd.loop=true; vd.playsInline=true; vd.preload='none'; vd.poster='/media/samples/'+md+'-'+(i+1)+'.jpg'; vd.src=vsrc;
         el.addEventListener('mouseenter',function(){ try{ vd.play(); }catch(e){ /* guard-ok — المتصفّح قد يمنع التشغيل التلقائي */ } });
         el.addEventListener('mouseleave',function(){ try{ vd.pause(); }catch(e){ /* guard-ok — لا أثر */ } });
         pv.appendChild(vd);
       }
-      var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl);
+      if(VIDEOS[md+'-'+(i+1)]){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
       var tt=document.createElement('b'); tt.textContent=tx;
-      el.appendChild(pv); el.appendChild(tt);
-      var pick=function(){ var pe=id('videoMakerPrompt'); setVal(pe,tx); if(pe) pe.focus(); };
+      if(vsrc){ el.classList.add('has-vid'); el.appendChild(pv); el.appendChild(tt); } else { pv.appendChild(tt); el.appendChild(pv); }
+      var pick=function(){ var pe=id('videoMakerPrompt'); setVal(pe,tx); if(pe) pe.focus(); if(vsrc) openPlayer(vsrc); };
       el.addEventListener('click',pick);
       el.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick(); } });
       box.appendChild(el);
@@ -183,6 +217,7 @@
       prw.parentNode.insertBefore(hr,prw.nextSibling);
       var hn=id('videoMakerHeroVeoNote'); if(hn) hr.appendChild(hn);
     }
+    if(hr){ var hd=hr.querySelector('div'), np=hr.querySelector('p[data-i18n="videoMakerHeroNote"]'); if(hd&&np&&np.parentNode!==hd) hd.appendChild(np); }
     var du=id('videoMakerDuration'), g=du&&du.nextElementSibling, ex=id('vmkMoreDur');
     if(g&&g.classList.contains('vmk-g')){
       if(!ex){
@@ -285,6 +320,8 @@
         var t=noEmoji(short(o.textContent||'')); c.textContent=t.length>24?t.slice(0,24)+'…':t; chips.appendChild(c);
       }
     });
+    var gbn=id('videoMakerGenerateBtn'), pc=PTS[(id('videoMakerMode')||{}).value];
+    if(gbn){ if(pc!=null) gbn.setAttribute('data-cost',pc?(pc+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free')); else gbn.removeAttribute('data-cost'); }
     var p=PTS[(id('videoMakerMode')||{}).value];
     if(chips&&p!=null){
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
@@ -300,13 +337,20 @@
     }
   }
   /* v-trends-top: أيًّا كان ترتيب البناء (الترندات قبل الاستوديو أو بعده)، الصندوق تحت الرأس وفوق الاستوديو في كلّ فتح */
+  function syncTutLink(){
+    var vt=id('vtRoot'); if(!vt) return;
+    var b=id('vmkTutLink');
+    if(!b){ b=document.createElement('button'); b.type='button'; b.id='vmkTutLink'; b.className='vmk-tutlink'; b.addEventListener('click',function(){ openPlayer(tutUrl()); });
+      var sub=id('vtSub'); if(sub&&sub.parentNode) sub.parentNode.insertBefore(b,sub.nextSibling); else vt.insertBefore(b,vt.firstChild); }
+    b.textContent=L('vcTutorial'); b.style.display=b.textContent?'':'none';
+  }
   function trendsTop(){
     var card=M.firstElementChild, vt=id('vtRoot'), side=card&&card.querySelector('.vmk-side');
     if(!vt||!side||!card.classList.contains('vmk-studio')) return;
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; build(); buildTabs(); trendsTop(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
+  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');

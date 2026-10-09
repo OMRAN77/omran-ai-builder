@@ -27,9 +27,9 @@ test('كلّ وضع في القائمة له مفتاح مثال، وكلّه ب
 
 test('الواجهة: مثال الوضع الأوّل نموذجٌ في قسمه يملأ الوصف بضغطة، ووسوم الملفّات مرفوعة', () => {
   const js = read('js/video.js');
-  assert.ok(js.includes("keys=['videoIdea'+c,'videoIdea'+c+'2','videoIdea'+c+'3']"));
+  assert.ok(js.includes("keys=['videoIdea'+c,'videoIdea'+c+'2']"));
   assert.ok(js.includes('setVal(pe,tx)'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=428"') && h.includes('modules.css?v=666'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=730'"));
+  assert.ok(h.includes('src="/js/video.js?v=434"') && h.includes('modules.css?v=672'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=731'"));
 });

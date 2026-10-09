@@ -1128,6 +1128,8 @@ Object.assign(I18N['ml'], {
   vcRemove: "നീക്കം ചെയ്യുക",
   vwToChars: "സംഭാഷണം കഥാപാത്രങ്ങൾക്ക് വീതിക്കുക",
   vcMore: "കൂടുതൽ ഓപ്ഷനുകൾ",
+  vcTutorial: "കാണുക: വീഡിയോ എങ്ങനെ ഉണ്ടാക്കാം",
+  vcToExtra: "അധികമായി ചേർക്കുക",
   fashionEngineLabel: "🎨 ഇമേജ് എൻജിൻ",
   fashionEngineGemini: "Gemini — മുഖം ഏറ്റവും നന്നായി നിലനിർത്തും (സ്ഥിര)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT ഇമേജ് എൻജിൻ",

@@ -1124,6 +1124,8 @@ Object.assign(I18N['tr'], {
   vcRemove: "Kaldır",
   vwToChars: "Diyaloğu karakterlere dağıt",
   vcMore: "Daha fazla seçenek",
+  vcTutorial: "İzle: nasıl video yapılır",
+  vcToExtra: "Eklere koy",
   fashionEngineLabel: "🎨 Görsel motoru",
   fashionEngineGemini: "Gemini — yüzü en iyi koruyan (varsayılan)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT görsel motoru",
