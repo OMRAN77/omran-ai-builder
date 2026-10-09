@@ -47,7 +47,7 @@ I18N['fr'] = {
     msgToolbarLabel: 'Actions sur la réponse',
     copyMsgTitle: 'Copier la réponse',
     imgPreparing: "⏳ Préparation de l'image…",
-    imgReadyTitle: "✅ Image prête", fileReadyTitle: "✅ Fichier prêt", imgDlBtn: "⬇️ Télécharger", imgDlStarted: "📥 Téléchargement — voir notifications/Téléchargements", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Lien de l'image copié — collez-le dans WhatsApp", imgShareBtn: "📤 Partager", imgOpenBtn: "🔗 Ouvrir",
+    imgReadyTitle: "✅ Image prête", fileReadyTitle: "✅ Fichier prêt", fileNoteDownloaded: "Fichier téléchargé", fileNoteReady: "Fichier prêt", fileNoteDownload: "Télécharger", fileNoteShare: "Partager", fileNoteOpen: "Ouvrir", fileNoteShareUnavailable: "Partage indisponible — utilisez Télécharger ou Ouvrir", fileNoteClose: "Fermer", imgDlBtn: "⬇️ Télécharger", imgDlStarted: "📥 Téléchargement — voir notifications/Téléchargements", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Lien de l'image copié — collez-le dans WhatsApp", imgShareBtn: "📤 Partager", imgOpenBtn: "🔗 Ouvrir",
     attachDropHere: "Déposez l'image ici",
     'homeLastImage': '🖼️ Dernière image', 'homeLastVideo': '🎬 Dernière vidéo', 'homeCollection': '✨ Collection — 3 derniers travaux', 'homeNoImage': 'Rien ici pour l’instant', 'homeTryNow': 'Essayer ›', 'homeNoVideo': 'Aucune vidéo pour l’instant', 'homeMakeVideo': 'Créer votre première vidéo ›', 'homeEmptyLib': 'Votre bibliothèque est vide', 'homeStartCreating': 'Commencer à créer ›',
     'grpBusiness': '💼 Affaires', 'grpLife': '🕌 Vie quotidienne',

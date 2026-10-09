@@ -277,7 +277,7 @@ I18N['fil'] = {
     "copyMsgTitle": "Kopyahin ang sagot",
     "imgPreparing": "⏳ Inihahanda ang larawan…",
     "imgReadyTitle": "✅ Handa na ang larawan",
-    "fileReadyTitle": "✅ Handa na ang file", "imgDlBtn": "⬇️ I-download", "imgDlStarted": "📥 Nagda-download — tingnan ang notifications/Downloads", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Nakopya ang link ng larawan — i-paste sa WhatsApp", "imgShareBtn": "📤 Ibahagi", "imgOpenBtn": "🔗 Buksan",
+    "fileReadyTitle": "✅ Handa na ang file", "fileNoteDownloaded": "Na-download ang file", "fileNoteReady": "Handa na ang file", "fileNoteDownload": "I-download", "fileNoteShare": "Ibahagi", "fileNoteOpen": "Buksan", "fileNoteShareUnavailable": "Hindi available ang pagbabahagi — gamitin ang I-download o Buksan", "fileNoteClose": "Isara", "imgDlBtn": "⬇️ I-download", "imgDlStarted": "📥 Nagda-download — tingnan ang notifications/Downloads", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Nakopya ang link ng larawan — i-paste sa WhatsApp", "imgShareBtn": "📤 Ibahagi", "imgOpenBtn": "🔗 Buksan",
     "attachDropHere": "I-drop ang larawan dito",
     "homeLastImage": "🖼️ Huling larawan", "homeLastVideo": "🎬 Huling video", "homeCollection": "✨ Koleksyon — huling 3 gawa", "homeNoImage": "Wala pang laman dito", "homeTryNow": "Subukan ngayon ›", "homeNoVideo": "Wala pang video", "homeMakeVideo": "Gumawa ng unang video ›", "homeEmptyLib": "Walang laman ang library mo", "homeStartCreating": "Magsimulang lumikha ›",
     "grpBusiness": "💼 Negosyo", "grpLife": "🕌 Pang-araw-araw na buhay",

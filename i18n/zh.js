@@ -270,7 +270,7 @@ I18N['zh'] = {
     "copyMsgTitle": "复制回复",
     "imgPreparing": "⏳ 正在准备图片…",
     "imgReadyTitle": "✅ 图片已就绪",
-    "fileReadyTitle": "✅ 文件已就绪", "imgDlBtn": "⬇️ 下载", "imgDlStarted": "📥 已开始下载 — 请查看通知/下载", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "图片链接已复制 — 粘贴到 WhatsApp", "imgShareBtn": "📤 分享", "imgOpenBtn": "🔗 打开",
+    "fileReadyTitle": "✅ 文件已就绪", "fileNoteDownloaded": "文件已下载", "fileNoteReady": "文件已就绪", "fileNoteDownload": "下载", "fileNoteShare": "分享", "fileNoteOpen": "打开", "fileNoteShareUnavailable": "无法分享 — 请使用下载或打开", "fileNoteClose": "关闭", "imgDlBtn": "⬇️ 下载", "imgDlStarted": "📥 已开始下载 — 请查看通知/下载", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "图片链接已复制 — 粘贴到 WhatsApp", "imgShareBtn": "📤 分享", "imgOpenBtn": "🔗 打开",
     "attachDropHere": "将图片拖放到此处",
     "homeLastImage": "🖼️ 最新图片", "homeLastVideo": "🎬 最新视频", "homeCollection": "✨ 作品集 — 最近 3 件", "homeNoImage": "这里还没有内容", "homeTryNow": "立即尝试 ›", "homeNoVideo": "还没有视频", "homeMakeVideo": "创建你的第一个视频 ›", "homeEmptyLib": "你的作品库是空的", "homeStartCreating": "开始创作 ›",
     "grpBusiness": "💼 商务", "grpLife": "🕌 日常生活",

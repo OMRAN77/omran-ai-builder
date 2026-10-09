@@ -28,14 +28,17 @@ function fnSource(src, name) {
 }
 
 /* بيئة تشغيل وهميّة لمسار الحفظ: جوال/تطبيق/كمبيوتر، مشاركة مرفوضة أو غائبة، رفع يُسجَّل */
-function makeEnv({ mobile = false, app = false, bridge = false, share = null } = {}) {
-  const log = { fetch: [], sheets: [], downloads: [], bridge: [], shares: [] };
+function makeEnv({ mobile = false, app = false, bridge = false, share = null, desk = false } = {}) {
+  const log = { fetch: [], sheets: [], downloads: [], bridge: [], shares: [], notes: [] };
   const ctx = {
     console, Blob, File, URL: { createObjectURL: () => 'blob:local' }, setTimeout: () => 0,
     __swallow: () => {},
     omranNativeBridge: (n) => (bridge && n === 'omranShare') ? { postMessage: (m) => log.bridge.push(m) } : null,
     omranLikelyApp: () => app,
     omranMobileUA: () => mobile,
+    omranDesktopStandalone: () => desk, // v-file-note: الحاسوب المثبّت — اختباره الكامل في file-note.test.cjs
+    omranFileNoteDownloaded: () => { log.notes.push('done'); },
+    omranFileNote: (state) => { log.notes.push(state); },
     omranPdfReadySheet: (url, file, name, kind) => { log.sheets.push({ url, name, kind, fileType: file && file.type }); return true; },
     msgDownloadBlob: (blob, name) => { log.downloads.push({ name, type: blob.type }); },
     FileReader: class { readAsDataURL(b) { b.arrayBuffer().then((ab) => { this.result = 'data:' + (b.type || '') + ';base64,' + Buffer.from(ab).toString('base64'); this.onload(); }); } },
@@ -70,6 +73,7 @@ test('الكمبيوتر: تنزيل مباشر كما كان — لا رفع و
   assert.equal(log.downloads.length, 1);
   assert.equal(log.fetch.length, 0);
   assert.equal(log.sheets.length, 0);
+  assert.deepEqual(log.notes, ['done'], 'v-file-note: «تمّ تنزيل الملف» الصغيرة بعد التنزيل');
 });
 
 test('تطبيق بلا مشاركة ولا جسر (WebView هواوي): Word/TXT تُرفع لنقطة الملفّات وورقة «الملف جاهز» بنوعها', async () => {
@@ -211,11 +215,12 @@ test('/f/<id> موجَّه لنقطة الملفّات، وعامل الخدمة
 
 test('«الملف جاهز» مترجم بالـ١٤ لغة، ووسم ملفّات اللغة مرفوع', () => {
   const data = read('js/app-03-i18n-data.js');
-  assert.equal((data.match(/fileReadyTitle: "/g) || []).length, 2, 'عربي + إنجليزي');
+  // v-file-note: الورقة صارت ملاحظة صغيرة — عنوانها fileNoteReady بلا رموز (بقي fileReadyTitle في القواميس بلا استعمال)
+  assert.equal((data.match(/fileNoteReady: "/g) || []).length, 2, 'عربي + إنجليزي');
   for (const l of ['fr', 'hi', 'ur', 'bn', 'ne', 'ml', 'fil', 'id', 'zh', 'ru', 'tr', 'es']) {
-    assert.match(read('i18n/' + l + '.js'), /"?fileReadyTitle"?: "✅ [^"]+"/, l);
+    assert.match(read('i18n/' + l + '.js'), /"?fileNoteReady"?: "[^"✅]+"/, l);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=726'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=727'/);
 });
 
 test('غلاف أندرويد الاحتياطيّ: منزّل النظام في مساري إنشاء WebView، وصلاحيّة التخزين لأندرويد ≤٩ فقط', () => {

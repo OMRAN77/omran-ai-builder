@@ -2,8 +2,8 @@
  * روابط <a download> على هواوي/أندرويد داخل التطبيق لا تنزّل شيئًا (data: وblob: محظوران
  * برمجيًا، والنقر البرمجي مرفوض). v-media-dl (٤ سبتمبر — «كلهم يشتكون»): على أي جوال
  * نسلك طريق الـPDF الذي يعمل في كل غلاف: الصورة تُرفع للخادم وتصير رابط HTTPS برأس
- * attachment، والفيديو يمرّ من بروكسي التنزيل، ثم ورقة ثابتة بأزرار حقيقية بلمسة المستخدم
- * (تحميل / مشاركة / فتح). الكمبيوتر يبقى على التنزيل المباشر. */
+ * attachment، والفيديو يمرّ من بروكسي التنزيل، ثم روابط حقيقية بلمسة المستخدم (تنزيل / مشاركة / فتح)
+ * — v-file-note: في ملاحظة صغيرة لا ورقة. الكمبيوتر (والمثبّت عليه) يبقى على التنزيل المباشر. */
 (function(){
   'use strict';
   function dataUrlToBlob(du){
@@ -68,6 +68,8 @@
   }
   function isMobile(){
     try{
+      /* v-file-note: الحاسوب المثبّت (PWA) حاسوب — تنزيل مباشر بلا رفع ولا ورقة */
+      if(typeof omranDesktopStandalone === 'function' && omranDesktopStandalone()) return false;
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       if(/Android|HarmonyOS|HUAWEI|HONOR|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)) return true;
       if(navigator.maxTouchPoints > 1 && /Mac|Linux/i.test(navigator.platform || '')) return true;
@@ -160,7 +162,12 @@
       try{
         var u = URL.createObjectURL(blob), a = document.createElement('a');
         a.href = u; a.download = nm; a.rel = 'noopener'; a.dataset.nativeDownload = '1'; document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(function(){ URL.revokeObjectURL(u); }, 15000);
+        /* v-file-note: «تمّ تنزيل الملف» على الحاسوب وحده — داخل الأغلفة لا تنزّل النقرة البرمجية على blob
+           شيئًا (رأس الملف)، فالجوّال الساقط إلى هنا يأخذ ملاحظة «الملف جاهز» برابط تنزيل بلمسته */
+        var mob = isMobile();
+        setTimeout(function(){ URL.revokeObjectURL(u); }, mob ? 120000 : 15000);
+        if(!mob){ if(typeof omranFileNoteDownloaded === 'function') omranFileNoteDownloaded(); }
+        else showSheet(u, file || null, nm, video ? 'video' : 'image');
         return true;
       }catch(e){ /* guard-ok */ }
     }

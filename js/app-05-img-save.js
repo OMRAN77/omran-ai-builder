@@ -13,6 +13,7 @@
   function appish(){
     try{
       if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare')) return true;
+      if(typeof omranDesktopStandalone === 'function' && omranDesktopStandalone()) return false; /* v-file-note: الحاسوب المثبّت حاسوب */
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       const ua = navigator.userAgent || '';
       if(/\bwv\b/.test(ua) || /Version\/\d+\.\d+.*Chrome\//.test(ua) || !!window.OmranAndroidShare) return true;
@@ -227,12 +228,30 @@
         navigator.share({ files: [file], title: 'Omran AI' }).then(() => { const o = document.getElementById('omranImgSheet'); if(o) o.remove(); }, (e) => { if(e && e.name === 'AbortError' && (Date.now() - t1) > 1500){ const o = document.getElementById('omranImgSheet'); if(o) o.remove(); } });
       }catch(e){ /* guard-ok */ }
     }
-    if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
+    if(mode !== 'share' && !appish()){ plainDownload(blob, name); if(typeof omranFileNoteDownloaded === 'function') omranFileNoteDownloaded(); return true; } /* v-file-note */
+    /* v-file-note («نفّذ في الهواتف بعد»): الحفظ على الجوّال/الغلاف — ملاحظة صغيرة فوق زرّ الحفظ بدل الورقة:
+       «جارٍ تجهيز الصورة» أثناء الرفع، ثمّ «الملف جاهز · تنزيل · مشاركة · فتح». ورقة «مشاركة» (واتساب) كما هي. */
+    const viaNote = mode !== 'share' && typeof omranFileNote === 'function';
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
-    preparingSheet();
+    if(viaNote){
+      try{ omranFileNote('busy', { text: gtx('imgPreparing', 'جارٍ تجهيز الصورة…', 'Preparing the image…').replace(/[\p{Extended_Pictographic}\uFE0F]/gu, '').trim() }); }catch(e){ /* guard-ok — الملاحظة تجميل */ }
+    } else preparingSheet();
     let upErr = '';
-    try{ const links = await uploadImage(blob, name, mode === 'share' ? '' : 'download'); return readySheet(links, file, name, mode); }
+    try{
+      const links = await uploadImage(blob, name, mode === 'share' ? '' : 'download');
+      if(viaNote){ omranFileNote('ready', { url: links.dl, file: file, filename: name, kind: 'image', openUrl: links.open }); return true; }
+      return readySheet(links, file, name, mode);
+    }
     catch(e){ upErr = (e && e.message) ? String(e.message) : 'upload'; }
+    /* تعذّر الرفع مع الملاحظة: رابطا التنزيل والفتح محلّيّان (كورقة localSheet) */
+    if(viaNote){
+      try{
+        const lu = URL.createObjectURL(blob);
+        omranFileNote('ready', { url: lu, file: file, filename: name, kind: 'image', openUrl: lu });
+        setTimeout(function(){ try{ URL.revokeObjectURL(lu); }catch(e){ /* guard-ok */ } }, 120000);
+        return true;
+      }catch(e){ /* guard-ok — نسقط إلى الورقة المحلّيّة */ }
+    }
     /* تعذّر الرفع: الورقة لا تختفي — تنزيل محلي مباشر + مشاركة إن توفّرت + سبب مختصر */
     try{ return localSheet(blob, file, name, upErr); }catch(e){ /* guard-ok */ }
     plainDownload(blob, name);

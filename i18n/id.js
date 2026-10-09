@@ -275,7 +275,7 @@ I18N['id'] = {
     "copyMsgTitle": "Salin balasan",
     "imgPreparing": "⏳ Menyiapkan gambar…",
     "imgReadyTitle": "✅ Gambar siap",
-    "fileReadyTitle": "✅ File siap", "imgDlBtn": "⬇️ Unduh", "imgDlStarted": "📥 Mengunduh — cek notifikasi/Unduhan", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Tautan gambar disalin — tempel di WhatsApp", "imgShareBtn": "📤 Bagikan", "imgOpenBtn": "🔗 Buka",
+    "fileReadyTitle": "✅ File siap", "fileNoteDownloaded": "File terunduh", "fileNoteReady": "File siap", "fileNoteDownload": "Unduh", "fileNoteShare": "Bagikan", "fileNoteOpen": "Buka", "fileNoteShareUnavailable": "Berbagi tidak tersedia — gunakan Unduh atau Buka", "fileNoteClose": "Tutup", "imgDlBtn": "⬇️ Unduh", "imgDlStarted": "📥 Mengunduh — cek notifikasi/Unduhan", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Tautan gambar disalin — tempel di WhatsApp", "imgShareBtn": "📤 Bagikan", "imgOpenBtn": "🔗 Buka",
     "attachDropHere": "Lepaskan gambar di sini",
     "homeLastImage": "🖼️ Gambar terakhir", "homeLastVideo": "🎬 Video terakhir", "homeCollection": "✨ Koleksi — 3 karya terakhir", "homeNoImage": "Belum ada apa-apa di sini", "homeTryNow": "Coba sekarang ›", "homeNoVideo": "Belum ada video", "homeMakeVideo": "Buat video pertamamu ›", "homeEmptyLib": "Perpustakaanmu kosong", "homeStartCreating": "Mulai berkarya ›",
     "grpBusiness": "💼 Bisnis", "grpLife": "🕌 Kehidupan sehari-hari",

@@ -45,7 +45,7 @@ I18N['ur'] = {
     msgToolbarLabel: 'جواب کے اختیارات',
     copyMsgTitle: 'جواب کاپی کریں',
     imgPreparing: "⏳ تصویر تیار ہو رہی ہے…",
-    imgReadyTitle: "✅ تصویر تیار ہے", fileReadyTitle: "✅ فائل تیار ہے", imgDlBtn: "⬇️ ڈاؤن لوڈ", imgDlStarted: "📥 ڈاؤن لوڈ شروع — نوٹیفکیشن/ڈاؤن لوڈز دیکھیں", imgWaBtn: "💬 واٹس ایپ", imgLinkCopied: "تصویر کا لنک کاپی ہو گیا — واٹس ایپ میں پیسٹ کریں", imgShareBtn: "📤 شیئر", imgOpenBtn: "🔗 کھولیں",
+    imgReadyTitle: "✅ تصویر تیار ہے", fileReadyTitle: "✅ فائل تیار ہے", fileNoteDownloaded: "فائل ڈاؤن لوڈ ہو گئی", fileNoteReady: "فائل تیار ہے", fileNoteDownload: "ڈاؤن لوڈ", fileNoteShare: "شیئر کریں", fileNoteOpen: "کھولیں", fileNoteShareUnavailable: "شیئرنگ دستیاب نہیں — ڈاؤن لوڈ یا کھولیں استعمال کریں", fileNoteClose: "بند کریں", imgDlBtn: "⬇️ ڈاؤن لوڈ", imgDlStarted: "📥 ڈاؤن لوڈ شروع — نوٹیفکیشن/ڈاؤن لوڈز دیکھیں", imgWaBtn: "💬 واٹس ایپ", imgLinkCopied: "تصویر کا لنک کاپی ہو گیا — واٹس ایپ میں پیسٹ کریں", imgShareBtn: "📤 شیئر", imgOpenBtn: "🔗 کھولیں",
     attachDropHere: "تصویر یہاں چھوڑیں",
     'homeLastImage': '🖼️ آخری تصویر', 'homeLastVideo': '🎬 آخری ویڈیو', 'homeCollection': '✨ مجموعہ — آخری 3 کام', 'homeNoImage': 'یہاں ابھی کچھ نہیں', 'homeTryNow': 'ابھی آزمائیں ›', 'homeNoVideo': 'ابھی کوئی ویڈیو نہیں', 'homeMakeVideo': 'اپنی پہلی ویڈیو بنائیں ›', 'homeEmptyLib': 'آپ کی لائبریری خالی ہے', 'homeStartCreating': 'تخلیق شروع کریں ›',
     'grpBusiness': '💼 کاروبار', 'grpLife': '🕌 روزمرہ زندگی',

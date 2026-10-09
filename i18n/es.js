@@ -276,7 +276,7 @@ I18N['es'] = {
     "copyMsgTitle": "Copiar respuesta",
     "imgPreparing": "⏳ Preparando la imagen…",
     "imgReadyTitle": "✅ Imagen lista",
-    "fileReadyTitle": "✅ Archivo listo", "imgDlBtn": "⬇️ Descargar", "imgDlStarted": "📥 Descargando — revisa notificaciones/Descargas", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Enlace de la imagen copiado — pégalo en WhatsApp", "imgShareBtn": "📤 Compartir", "imgOpenBtn": "🔗 Abrir",
+    "fileReadyTitle": "✅ Archivo listo", "fileNoteDownloaded": "Archivo descargado", "fileNoteReady": "Archivo listo", "fileNoteDownload": "Descargar", "fileNoteShare": "Compartir", "fileNoteOpen": "Abrir", "fileNoteShareUnavailable": "No se puede compartir — usa Descargar o Abrir", "fileNoteClose": "Cerrar", "imgDlBtn": "⬇️ Descargar", "imgDlStarted": "📥 Descargando — revisa notificaciones/Descargas", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Enlace de la imagen copiado — pégalo en WhatsApp", "imgShareBtn": "📤 Compartir", "imgOpenBtn": "🔗 Abrir",
     "attachDropHere": "Suelta la imagen aquí",
     "homeLastImage": "🖼️ Última imagen", "homeLastVideo": "🎬 Último vídeo", "homeCollection": "✨ Colección — últimos 3 trabajos", "homeNoImage": "Aún no hay nada aquí", "homeTryNow": "Probar ahora ›", "homeNoVideo": "Aún no hay vídeos", "homeMakeVideo": "Crea tu primer vídeo ›", "homeEmptyLib": "Tu biblioteca está vacía", "homeStartCreating": "Empieza a crear ›",
     "grpBusiness": "💼 Negocios", "grpLife": "🕌 Vida diaria",

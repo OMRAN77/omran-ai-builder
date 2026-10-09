@@ -275,7 +275,7 @@ I18N['tr'] = {
     "copyMsgTitle": "Yanıtı kopyala",
     "imgPreparing": "⏳ Görsel hazırlanıyor…",
     "imgReadyTitle": "✅ Görsel hazır",
-    "fileReadyTitle": "✅ Dosya hazır", "imgDlBtn": "⬇️ İndir", "imgDlStarted": "📥 İndirme başladı — bildirimlere/İndirilenlere bakın", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Görsel bağlantısı kopyalandı — WhatsApp’a yapıştırın", "imgShareBtn": "📤 Paylaş", "imgOpenBtn": "🔗 Aç",
+    "fileReadyTitle": "✅ Dosya hazır", "fileNoteDownloaded": "Dosya indirildi", "fileNoteReady": "Dosya hazır", "fileNoteDownload": "İndir", "fileNoteShare": "Paylaş", "fileNoteOpen": "Aç", "fileNoteShareUnavailable": "Paylaşım kullanılamıyor — İndir veya Aç seçeneğini kullanın", "fileNoteClose": "Kapat", "imgDlBtn": "⬇️ İndir", "imgDlStarted": "📥 İndirme başladı — bildirimlere/İndirilenlere bakın", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Görsel bağlantısı kopyalandı — WhatsApp’a yapıştırın", "imgShareBtn": "📤 Paylaş", "imgOpenBtn": "🔗 Aç",
     "attachDropHere": "Görseli buraya bırakın",
     "homeLastImage": "🖼️ Son görsel", "homeLastVideo": "🎬 Son video", "homeCollection": "✨ Koleksiyon — son 3 çalışma", "homeNoImage": "Burada henüz bir şey yok", "homeTryNow": "Şimdi dene ›", "homeNoVideo": "Henüz video yok", "homeMakeVideo": "İlk videonu oluştur ›", "homeEmptyLib": "Kütüphanen boş", "homeStartCreating": "Üretmeye başla ›",
     "grpBusiness": "💼 İş", "grpLife": "🕌 Günlük yaşam",
