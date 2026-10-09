@@ -15,6 +15,10 @@
   var KEY = 'aiapp_bgimg', KEY_CUSTOM = 'aiapp_bgimg_custom', KEY_ROT = 'aiapp_bgimg_rotate', KEY_ROT_AT = 'aiapp_bgimg_rotate_at';
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
   var CUSTOM = 'custom:', MAX_PX = 1600, MAX_CUSTOM = 12;
+  /* v-bg-fresh (المالك ٩ أكتوبر بعد دمج الخلفيّات الموضَّحة: «بعده الصور نفس الشي»): الصور بالأسماء نفسها، وعامل الخدمة يعرضها
+     من الكاش أوّلًا (stale-while-revalidate) والـCDN يحفظها يومًا — فالقديمة تبقى. وسم إصدار على رابط الصورة والمصغّر يجلب الجديدة فورًا؛
+     ارفعه عند كلّ تبديل لصور المجلّد. */
+  var BG_VER = 2;
   var فهرس = null, تحميل = null, مؤقّت = null;
   var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', عنوان: 'bgThemeWood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
   /* v-themes (أمر المالك ٤ أكتوبر: «كمّل الثيمات الباقية» — نفس فكرة الخشبيّ على التصميم الجديد): ثلاثة عشر ثيمًا تكسوها
@@ -29,7 +33,7 @@
    ['أنمي', 'anime', 'bgThemeAnime', '#1d1430', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', '#06121f', false, true],
    ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true]].forEach(function(a){
     ثيمات[a[0]] = { ملف: 'ثيم:' + a[0], ثيم: a[1], عنوان: a[2], لون: a[3], فاتحة: a[4], مشهد: !!a[5],
-      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' };
+      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=2' }; // v-bg-fresh: مصغّرات الثلاثة عشر أُعيد توليدها (v-scene-clear/sharp)
   });
   function ثيم(اسم){ return ثيمات[اسم] || null; }
 
@@ -47,7 +51,7 @@
       var id = ملف.slice(CUSTOM.length), hit = خاصّة().filter(function(s){ return s.id === id; })[0];
       return hit ? hit.data : '';
     }
-    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف);
+    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف) + '?v=' + BG_VER;
   }
   function طبقة(){
     var el = document.getElementById('bgImgLayer');

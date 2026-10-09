@@ -185,12 +185,14 @@ test('٥. الشبكة: «بلا خلفيّة» ثمّ مصغّر لكلّ صو�
   assert.ok(add.classList.contains('bgImgAdd') && !add.classList.contains('active') && add.dataset.file === undefined, 'زرّ الإضافة لا يُعلَّم');
   assert.equal(b1.textContent, '', 'المصغّر بلا اسم');
   assert.ok(b1.style.backgroundImage.includes(encodeURIComponent('مصغّرات') + '/' + encodeURIComponent('01-مدينة.jpg')), 'المصغّر من مجلّد المصغّرات');
+  assert.ok(b1.style.backgroundImage.includes(encodeURIComponent('01-مدينة.jpg') + '?v=2'), 'v-bg-fresh: وسم إصدار على المصغّر');
 
   b1.onclick();
   assert.ok(html.classList.contains('bgimg') && html.classList.contains('bgimg-dark') && !html.classList.contains('bgimg-light'));
   const layer = body.children[0];
   assert.equal(layer.id, 'bgImgLayer');
   assert.ok(layer.style.backgroundImage.includes('/assets/' + encodeURIComponent('خلفيات') + '/' + encodeURIComponent('01-مدينة.jpg')) && !layer.style.backgroundImage.includes(encodeURIComponent('مصغّرات')), 'الطبقة تأخذ الصورة الكاملة');
+  assert.ok(layer.style.backgroundImage.includes(encodeURIComponent('01-مدينة.jpg') + '?v=2'), 'v-bg-fresh: وسم إصدار على الصورة');
   assert.equal(html.style['--bgimg-tint'], '#1c2123');
   assert.deepEqual(JSON.parse(store.get('aiapp_bgimg')), { ملف: '01-مدينة.jpg', لون: '#1c2123', فاتحة: false });
   assert.ok(b1.classList.contains('active') && !none.classList.contains('active'), 'العلامة انتقلت');
