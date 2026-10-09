@@ -51,7 +51,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { initLife } from './real3d-life.js?v=2';
 
-const AR = /^ar/i.test(document.documentElement.lang || navigator.language || 'ar');
+// لغة التطبيق من ?lang= (بطاقة «تجارب حيّة»)، وإلّا لغة الوثيقة ثمّ المتصفّح
+const AR = /^ar/i.test(new URLSearchParams(location.search).get('lang') || document.documentElement.lang || navigator.language || 'ar');
 const T = (a, e) => (AR ? a : e);
 document.documentElement.lang = AR ? 'ar' : 'en'; document.documentElement.dir = AR ? 'rtl' : 'ltr';
 // كلّ مكان: نقطة الهدف، وارتفاع الكاميرا وبعدها عن الهدف بالأمتار، واتّجاهها (درجات من الشمال).
