@@ -518,6 +518,7 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T;
+  document.title = T('اسمع الشقّة قبل التوقيع', 'Hear the flat before you sign');
   // ── نموذج الضجيج ──
   const KIND_DB = { motorway: 80, trunk: 76, primary: 72, secondary: 68, tertiary: 64, residential: 56 };
   const OTHER_DB = 50, NIGHT_DROP = 8, FLOOR_H = 3.2, EAR = 1.5, SRC_Y = 0.5, LOS_STEP = 4, BLOCK_DB = 10;
@@ -1039,6 +1040,10 @@
     },
     onCity(ctx, city) {
       C = ctx; audioStop(); fly = null;
+      if (S) { // المدينة السابقة: النواة تحرّر الأشكال فقط، فنحرّر قوام خريطة الضجيج ومادّتها ومواد المؤثّرات
+        if (S.heat) { S.heat.tex.dispose(); S.heat.mesh.material.dispose(); }
+        if (S.fx) disposeTree(S.fx.group);
+      }
       S = { city, seg: buildSegments(city), pick: null, res: null, fx: null, prof: null, heat: null };
       G.floor = null; UI.labels.innerHTML = '';
       applyLight(); startHeat();
