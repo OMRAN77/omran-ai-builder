@@ -1080,6 +1080,16 @@
       return Object.assign({ x: +S.d.pos.x.toFixed(1), z: +S.d.pos.z.toFixed(1) }, window.__inspire_state);
     },
     demo(on) { setDemo(on !== false); return window.__inspire_state; },
+    stage(k, back) { // لقطة: يطير تلقائيًّا حتّى الحلقة k ثمّ يصطفّ على خطّ الاقتراب منها ويواصل الطيران
+      if (!S) return null; k = clamp(k | 0, 0, S.rings.length - 1); back = back || 24;
+      window.__drone.simulate(300, (s) => s.race.passed >= k);
+      if (S.race.state !== 'racing') return window.__inspire_state;
+      const g = S.rings[k], D = S.d, ci = S.wps.findIndex((w) => w.ring === k);
+      D.pos.set(g.x - g.nx * back, g.y + 1, g.z - g.nz * back); D.prev.copy(D.pos); D.vel.set(g.nx * 15, 0, g.nz * 15);
+      D.yaw = yawTo(g.nx, g.nz); D.pitch = 0.3; D.roll = 0; D.yawRate = 0; resetTrail();
+      setDemo(true); S.ap = Math.max(0, ci - 1); snapCam(); render(0, performance.now()); hud(); publish();
+      return window.__inspire_state;
+    },
     cam(m) { setCam(m); return opts.cam; },
     rings(n) { UI.nI.value = n; UI.nI.dispatchEvent(new Event('input')); UI.nI.dispatchEvent(new Event('change')); return window.__inspire_state; },
     speed(v) { UI.vI.value = v; UI.vI.dispatchEvent(new Event('input')); return C2; },

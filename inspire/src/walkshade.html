@@ -609,7 +609,8 @@
     S.G = buildGraph(city.roads, ctx.R);
     S.smp = buildSamples(S.G);
     S.sunlit = new Uint8Array(S.smp.M); S.frac = new Float32Array(S.G.E); S.netShade = 0;
-    S.overlay = buildOverlay(S.G, S.smp); S.overlay.visible = S.map; city.group.add(S.overlay);
+    S.overlay = null;
+    if (S.smp.M) { S.overlay = buildOverlay(S.G, S.smp); S.overlay.visible = S.map; city.group.add(S.overlay); }
     S.routeGroup = new THREE.Group(); city.group.add(S.routeGroup);
     S.pinA = makePin(0x39e58c); S.pinB = makePin(0xff4d6d); city.group.add(S.pinA.g, S.pinB.g);
     S.disc = new THREE.Sprite(MAT.disc); S.disc.scale.set(ctx.R * 0.45, ctx.R * 0.45, 1); city.group.add(S.disc);
