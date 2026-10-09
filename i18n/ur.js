@@ -1074,6 +1074,8 @@ Object.assign(I18N['ur'], {
   vcRemove: "حذف کریں",
   vwToChars: "مکالمہ کرداروں میں بانٹیں",
   vcMore: "مزید اختیارات",
+  vcTutorial: "دیکھیں: ویڈیو کیسے بنائیں",
+  vcToExtra: "اضافی میں رکھیں",
   fashionEngineLabel: "🎨 امیج انجن",
   fashionEngineGemini: "Gemini — چہرہ بہترین برقرار (طے شدہ)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT امیج انجن",

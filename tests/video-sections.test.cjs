@@ -10,7 +10,7 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const js = read('js/video.js');
 
 const MODES = ['Canvas', 'Runway', 'Minimax', 'Omni', 'Hybrid', 'Veo', 'Actor'];
-const KEYS = ['vcMore', 'videoTabTrends', 'vcTitle', 'vcSub', 'vcAdd', 'vcName', 'vcLine', 'vcMale', 'vcFemale', 'vcRemove', 'vwToChars']
+const KEYS = ['vcTutorial', 'vcToExtra', 'vcMore', 'videoTabTrends', 'vcTitle', 'vcSub', 'vcAdd', 'vcName', 'vcLine', 'vcMale', 'vcFemale', 'vcRemove', 'vwToChars']
   .concat(MODES.reduce((a, m) => a.concat(['videoIdea' + m + '2', 'videoIdea' + m + '3']), []));
 const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'];
 
@@ -24,8 +24,8 @@ test('الأقسام: الترندات أوّلًا ثمّ كلّ وضع، وا�
   assert.ok(css.includes('.vmk-cards,#videoMakerModal .vmk-main label[data-i18n="videoModeLabel"]{display:none'));
 });
 
-test('النماذج: ثلاثة لكلّ وضع من مفاتيح اللغة، والفيديو يُقرأ من الجدول بلا طلب شبكة، وبلا عنوان «نماذج جاهزة»', () => {
-  assert.ok(js.includes("keys=['videoIdea'+c,'videoIdea'+c+'2','videoIdea'+c+'3']"));
+test('النماذج: ثلاث بطاقات لكلّ وضع (فيديو تعليميّ + مثالان) من مفاتيح اللغة، والفيديو يُقرأ من الجدول بلا طلب شبكة، وبلا عنوان «نماذج جاهزة»', () => {
+  assert.ok(js.includes("keys=['videoIdea'+c,'videoIdea'+c+'2']"));
   assert.ok(js.includes("var VIDEOS={}") && js.includes("/media/samples/"));
   assert.ok(!/نماذج جاهزة/.test(js) && !/نماذج جاهزة/.test(read('js/app-03-i18n-data.js')));
 });
@@ -62,4 +62,17 @@ test('البساطة (طلب المالك «أبسّط للجمهور»): الظ
   ['vmkWrite', 'vmkChars', 'videoMakerSignatureRow', 'videoMakerHeroRow', 'videoMakerNarrationRow'].forEach((x) => assert.ok(js.includes("id('" + x + "')"), x));
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-side>p{display:none!important}') && css.includes('.vmk-chips .vmk-chip:not(.pts){display:none}'));
+});
+
+test('الفيديو التعليميّ (طلب المالك): أوّل بطاقة في كلّ وضع وزرّ في الترندات، والملفّات مسجَّلة من الصانع نفسه، والمساعد داخل نموذج الترند', () => {
+  const fs2 = require('node:fs');
+  assert.ok(js.includes("te.className='vmk-sm vmk-sm-tut'") && js.includes("function openPlayer(src)") && js.includes("id='vmkTutLink'") || js.includes("b.id='vmkTutLink'"));
+  assert.ok(js.includes("'/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'"));
+  ['ar', 'en'].forEach((l) => {
+    ['mp4', 'jpg'].forEach((x) => assert.ok(fs2.existsSync(path.join(root, 'media/samples/tutorial-' + l + '.' + x)), l + '.' + x));
+    assert.ok(fs2.statSync(path.join(root, 'media/samples/tutorial-' + l + '.mp4')).size < 2 * 1024 * 1024, 'حجم معقول');
+  });
+  assert.ok(fs2.existsSync(path.join(root, 'scripts/video-tutorial.mjs')), 'سكربت التسجيل يُعيد إنتاج الفيديو');
+  const tr = read('js/app-11-video-trends.js');
+  assert.ok(tr.includes('function assistant(t)') && tr.includes("action=video-write") && tr.includes('panel.appendChild(assistant(t))'));
 });

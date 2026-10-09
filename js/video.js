@@ -63,6 +63,18 @@
   var tab='trend';
   /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
   var VIDEOS={};
+  /* فيديو تعليميّ حقيقيّ مسجَّل من شاشة الصانع نفسه (scripts/video-tutorial.mjs) — عربيّ، والباقي بالإنجليزيّة */
+  function tutUrl(){ return '/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'; }
+  function openPlayer(src){
+    var lb=document.createElement('div'); lb.className='vmk-lb';
+    var vd=document.createElement('video'); vd.src=src; vd.controls=true; vd.autoplay=true; vd.playsInline=true;
+    var x=document.createElement('button'); x.type='button'; x.className='vmk-lb-x'; x.textContent='×'; x.setAttribute('aria-label',L('vcRemove'));
+    function close(){ try{ vd.pause(); }catch(e){ /* guard-ok — العنصر يُزال */ } document.removeEventListener('keydown',esc); lb.remove(); }
+    function esc(e){ if(e.key==='Escape') close(); }
+    lb.addEventListener('click',function(e){ if(e.target!==vd) close(); }); x.addEventListener('click',close);
+    document.addEventListener('keydown',esc);
+    lb.appendChild(vd); lb.appendChild(x); document.body.appendChild(lb);
+  }
   var HUE={canvas:205,runway:28,minimax:165,omni:42,hybrid:262,veo:8,actor:335};
   var MAXCH=3, chars=[], lastBlock='';
   function Cap(m){ return m.charAt(0).toUpperCase()+m.slice(1); }
@@ -101,7 +113,17 @@
     var box=id('vmkSamples'); if(!box) return;
     var md=(id('videoMakerMode')||{}).value||''; box.innerHTML='';
     if(tab==='trend'||!md) return;
-    var c=Cap(md), keys=['videoIdea'+c,'videoIdea'+c+'2','videoIdea'+c+'3'];
+    var c=Cap(md), keys=['videoIdea'+c,'videoIdea'+c+'2'];
+    var tt0=L('vcTutorial');
+    if(tt0){
+      var te=document.createElement('div'); te.className='vmk-sm vmk-sm-tut'; te.setAttribute('role','button'); te.tabIndex=0;
+      var tp=document.createElement('div'); tp.className='vmk-sm-p'; tp.style.backgroundImage='url('+tutUrl().replace('.mp4','.jpg')+')';
+      var tpl=document.createElement('span'); tpl.className='vmk-sm-play'; tp.appendChild(tpl);
+      var tb=document.createElement('b'); tb.textContent=tt0; tp.appendChild(tb); te.appendChild(tp);
+      var tgo=function(){ openPlayer(tutUrl()); };
+      te.addEventListener('click',tgo); te.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tgo(); } });
+      box.appendChild(te);
+    }
     box.style.setProperty('--h',String(HUE[md]==null?35:HUE[md]));
     keys.forEach(function(k,i){
       var tx=L(k); if(!tx) return;
@@ -305,13 +327,20 @@
     }
   }
   /* v-trends-top: أيًّا كان ترتيب البناء (الترندات قبل الاستوديو أو بعده)، الصندوق تحت الرأس وفوق الاستوديو في كلّ فتح */
+  function syncTutLink(){
+    var vt=id('vtRoot'); if(!vt) return;
+    var b=id('vmkTutLink');
+    if(!b){ b=document.createElement('button'); b.type='button'; b.id='vmkTutLink'; b.className='vmk-tutlink'; b.addEventListener('click',function(){ openPlayer(tutUrl()); });
+      var sub=id('vtSub'); if(sub&&sub.parentNode) sub.parentNode.insertBefore(b,sub.nextSibling); else vt.insertBefore(b,vt.firstChild); }
+    b.textContent=L('vcTutorial'); b.style.display=b.textContent?'':'none';
+  }
   function trendsTop(){
     var card=M.firstElementChild, vt=id('vtRoot'), side=card&&card.querySelector('.vmk-side');
     if(!vt||!side||!card.classList.contains('vmk-studio')) return;
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; build(); buildTabs(); trendsTop(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
+  function enhance(){ if(!on()) return; build(); buildTabs(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');

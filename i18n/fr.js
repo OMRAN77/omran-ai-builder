@@ -1077,6 +1077,8 @@ Object.assign(I18N['fr'], {
   vcRemove: "Supprimer",
   vwToChars: "Répartir le dialogue entre les personnages",
   vcMore: "Plus d’options",
+  vcTutorial: "Regarder : comment faire une vidéo",
+  vcToExtra: "Mettre dans les ajouts",
   fashionEngineLabel: "🎨 Moteur d'images",
   fashionEngineGemini: "Gemini — préserve le mieux le visage (défaut)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — le moteur d'images de ChatGPT",

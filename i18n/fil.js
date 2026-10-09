@@ -1128,6 +1128,8 @@ Object.assign(I18N['fil'], {
   vcRemove: "Alisin",
   vwToChars: "Ipamahagi ang dialogue sa mga karakter",
   vcMore: "Higit pang opsyon",
+  vcTutorial: "Panoorin: paano gumawa ng video",
+  vcToExtra: "Gamitin bilang dagdag",
   fashionEngineLabel: "🎨 Image engine",
   fashionEngineGemini: "Gemini — pinaka-preserve ang mukha (default)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — image engine ng ChatGPT",
