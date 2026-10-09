@@ -2,6 +2,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <!--CITYKIT-->
 </head><body><script>
-CityKit.start({ title: CityKit.T('استكشف مدينتك', 'Explore your city'), sub: CityKit.T('مباني حيّك الحقيقيّة بارتفاعاتها — اسحب للدوران، وكبّر بالعجلة أو بإصبعين.', 'Your real neighbourhood in 3D.'), shadows: true,
+CityKit.start({ imagery: true, title: CityKit.T('استكشف مدينتك', 'Explore your city'), sub: CityKit.T('مباني حيّك الحقيقيّة بارتفاعاتها — اسحب للدوران، وكبّر بالعجلة أو بإصبعين.', 'Your real neighbourhood in 3D.'), shadows: true,
   onCity(ctx, city) { window.__inspire_state = { buildings: city.buildings.length, tallest: Math.round(city.buildings[0] && city.buildings[0].h) }; } });
 </script></body></html>

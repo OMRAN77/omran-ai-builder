@@ -329,7 +329,7 @@
 
   // ── الواجهة ──
   const CSS = `
-  .ck-ui{position:fixed;top:12px;right:12px;left:auto;z-index:5;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;
+  .ck-ui{position:fixed;top:12px;right:12px;left:auto;z-index:5;box-sizing:border-box;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;
     background:rgba(12,22,28,.86);color:#e8f1f3;border:1px solid rgba(120,200,210,.25);border-radius:14px;padding:12px 14px;
     font:14px/1.6 "IBM Plex Sans Arabic",Tahoma,system-ui,sans-serif;direction:${AR ? 'rtl' : 'ltr'};backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
   .ck-ui h1{font-size:17px;margin:0 0 2px;font-weight:700}.ck-ui .sub{margin:0 0 8px;color:#a9c1c7;font-size:13px}
@@ -343,27 +343,106 @@
   .ck-status{font-size:12.5px;color:#9fd8de;min-height:1.4em}
   .ck-stat{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-variant-numeric:tabular-nums;margin-top:6px}
   .ck-stat b{color:#fff}
+  .ck-img[hidden]{display:none}
+  .ck-img{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:13px;margin-top:6px;cursor:pointer}
+  .ck-ui .ck-img input{flex:none;width:auto;min-width:0;margin:0;padding:0;accent-color:#1f8a93}
+  .ck-img small{color:#9fd8de;font-size:12px}
   .ck-attr{margin-top:8px;font-size:11px;color:#8fb0b8}.ck-attr a{color:inherit;text-decoration:none}.ck-attr a:hover{text-decoration:underline}
-  .ck-toggle{position:fixed;top:12px;right:12px;z-index:6;display:none}
+  /* لوحة التجربة نافذة منبثقة على الحاسوب: زرّ ثابت أعلى الزاوية، واللوحة تنزل تحته وتُطوى بالزرّ (وبنقرة الشاشة في ألعاب القيادة).
+     الجوّال كما كان: اللوحة في مكانها بلا زرّ ولا طيّ. */
+  .ck-toggle{display:none;position:fixed;top:12px;right:12px;z-index:6;width:38px;height:38px;padding:0;align-items:center;justify-content:center;border-radius:50%;
+    border:1px solid rgba(120,200,210,.35);background:rgba(12,22,28,.86);color:#e8f1f3;cursor:pointer;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+  .ck-toggle[aria-expanded=true]{background:#1f8a93;border-color:#1f8a93}
+  .ck-toggle svg{width:20px;height:20px;display:block}
+  @media (min-width:641px){
+    .ck-toggle{display:flex}
+    .ck-ui{top:58px;max-height:calc(100vh - 70px);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
+    .ck-ui.ck-off{opacity:0;transform:translateY(-10px);visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+  }
   @media (max-width:640px){.ck-ui{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:46vh}}
   .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:${AR ? 'rtl' : 'ltr'};pointer-events:none}
   `;
+  // ── صور جوّيّة (اختياريّة لكلّ تجربة بـopt.imagery): تُلصق على أرض المدينة وأسطح مبانيها المنخفضة ──
+  // المزوّد بلا مفتاح (طبقة Esri World Imagery) — شروطه على المالك (انظر DECISIONS: v-inspire-imagery)؛ بدّل CK.IMAGERY لمزوّد آخر.
+  CK.IMAGERY = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr: 'Esri, Maxar, Earthstar Geographics', z: 17, roofMax: 30 };
+  // بلاطات XYZ التي تغطّي دائرة نصف قطرها R حول المركز + مستطيلها بالأمتار المحلّيّة (نفس إسقاط CK.parse: x شرقًا، z جنوبًا)
+  CK.tileList = function (lat0, lon0, R, z) {
+    const n = Math.pow(2, z), rad = Math.PI / 180, mx = Math.cos(lat0 * rad) * 111320, mz = 110540;
+    const lonX = (lon) => (lon + 180) / 360 * n, latY = (lat) => (1 - Math.log(Math.tan(lat * rad) + 1 / Math.cos(lat * rad)) / Math.PI) / 2 * n;
+    const xLon = (x) => x / n * 360 - 180, yLat = (y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) / rad;
+    const cl = (v) => Math.max(0, Math.min(n - 1, v));
+    const x0 = cl(Math.floor(lonX(lon0 - R / mx))), x1 = cl(Math.floor(lonX(lon0 + R / mx))), y0 = cl(Math.floor(latY(lat0 + R / mz))), y1 = cl(Math.floor(latY(lat0 - R / mz)));
+    const tiles = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) tiles.push({ x, y, col: x - x0, row: y - y0 });
+    return { z, x0, x1, y0, y1, cols: x1 - x0 + 1, rows: y1 - y0 + 1, tiles,
+      rect: { minX: (xLon(x0) - lon0) * mx, maxX: (xLon(x1 + 1) - lon0) * mx, minZ: -(yLat(y0) - lat0) * mz, maxZ: -(yLat(y1 + 1) - lat0) * mz } };
+  };
+  CK.imageryOn = function () { try { return localStorage.getItem('ck-imagery') !== '0'; } catch (e) { return true; } };
+  CK.imagerySave = function (v) { try { localStorage.setItem('ck-imagery', v ? '1' : '0'); } catch (e) { /* بلا تخزين: الاختيار للجلسة */ } };
+  // يرجع true إن رُكّبت، وfalse (والمشهد كما كان) إن لم تصل أغلب البلاطات أو تبدّلت المدينة أثناء الجلب
+  CK.drape = async function (ctx, city) {
+    const THREE = ctx.THREE, IM = CK.IMAGERY, L = CK.tileList(city.lat, city.lon, ctx.R * 1.25, IM.z);
+    if (!L.tiles.length || L.tiles.length > 100) return false;
+    const cv = document.createElement('canvas'); cv.width = L.cols * 256; cv.height = L.rows * 256; const g = cv.getContext('2d'); let ok = 0;
+    const one = (t) => new Promise((res) => {
+      const im = new Image(), to = setTimeout(() => { im.onload = im.onerror = null; res(); }, 15000); im.crossOrigin = 'anonymous';
+      im.onload = () => { clearTimeout(to); try { g.drawImage(im, t.col * 256, t.row * 256, 256, 256); ok++; } catch (e) { /* بلاطة مرفوضة */ } res(); };
+      im.onerror = () => { clearTimeout(to); res(); };
+      im.src = IM.url.replace('{z}', L.z).replace('{x}', t.x).replace('{y}', t.y);
+    });
+    const q = L.tiles.slice(); await Promise.all(Array.from({ length: 8 }, async () => { while (q.length) await one(q.shift()); }));
+    if (ok < L.tiles.length * 0.5 || ctx.city !== city) return false;
+    if (city.imgOff) city.imgOff();
+    const { minX, maxX, minZ, maxZ } = L.rect, W = maxX - minX, H = maxZ - minZ;
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, ctx.renderer.capabilities.getMaxAnisotropy());
+    const gg = new THREE.BufferGeometry();
+    gg.setAttribute('position', new THREE.Float32BufferAttribute([minX, 0.02, minZ, maxX, 0.02, minZ, maxX, 0.02, maxZ, minX, 0.02, maxZ], 3));
+    gg.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
+    gg.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2)); gg.setIndex([0, 2, 1, 0, 3, 2]);
+    const ground = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: tex, color: 0xa8a8a8, side: THREE.DoubleSide })); ground.receiveShadow = true;
+    const pos = [], nor = [], uv = [];
+    for (const b of city.buildings) {
+      if (b.h > IM.roofMax || b.poly.length < 3) continue;
+      const tri = THREE.ShapeUtils.triangulateShape(b.poly.map((p) => new THREE.Vector2(p[0], p[1])), []);
+      for (const f of tri) for (const k of f) { const p = b.poly[k]; pos.push(p[0], b.h + 0.08, p[1]); nor.push(0, 1, 0); uv.push((p[0] - minX) / W, 1 - (p[1] - minZ) / H); }
+    }
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); rg.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); rg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    const roofs = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ map: tex, color: 0xb4b4b4, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); roofs.receiveShadow = true;
+    const root = city.root || ctx.scene; root.add(ground); root.add(roofs);
+    const hid = [city.waterMesh, city.parksMesh].filter(Boolean); hid.forEach((m) => { m.visible = false; }); // الصورة فيها الماء والحدائق أصلًا
+    city.imgOff = () => { root.remove(ground); root.remove(roofs); gg.dispose(); rg.dispose(); ground.material.dispose(); roofs.material.dispose(); tex.dispose(); hid.forEach((m) => { m.visible = true; }); city.imgOff = null; };
+    return true;
+  };
   CK.ui = function (title, sub) {
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     const box = document.createElement('div'); box.className = 'ck-ui';
     box.innerHTML = '<h1></h1><p class="sub"></p><div class="ck-row"><input id="ckq" type="search"><button id="ckgo"></button></div>' +
       '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>' +
-      '<div class="ck-attr"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"></a></div>';
+      '<label class="ck-img" hidden><input type="checkbox" id="ckimg"><span></span><small id="ckimgst"></small></label>' +
+      '<div class="ck-attr"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"></a><span id="ckat"></span></div>';
     box.querySelector('h1').textContent = title; box.querySelector('.sub').textContent = sub || '';
     box.querySelector('#ckq').placeholder = T('اكتب اسم حيّك أو مدينتك', 'Type your neighbourhood or city');
     box.querySelector('#ckgo').textContent = T('ابنِ', 'Build');
     box.querySelector('#ckme').textContent = T('موقعي', 'My location');
     box.querySelector('.ck-attr a').textContent = T('بيانات الخريطة © مساهمو OpenStreetMap', 'Map data © OpenStreetMap contributors');
+    box.querySelector('.ck-img span').textContent = T('صور جوّيّة حقيقيّة', 'Real aerial imagery');
     const sel = box.querySelector('#ckpre');
     sel.innerHTML = '<option value="">' + T('أو اختر مدينة…', 'or pick a city…') + '</option>' + CK.PRESETS.map((p, i) => '<option value="' + i + '">' + (AR ? p.ar : p.en) + '</option>').join('');
     document.body.appendChild(box);
     const hud = document.createElement('div'); hud.className = 'ck-hud'; document.body.appendChild(hud);
-    return { box, panel: box.querySelector('#ckpanel'), status: (s) => { box.querySelector('#ckst').textContent = s || ''; }, hud: (s) => { hud.innerHTML = s || ''; } };
+    // زرّ اللوحة: يفتحها ويطويها (الحاسوب فقط؛ CSS يخفيه على الجوّال). تبدأ مفتوحة ليختار المستخدم المكان.
+    box.id = 'ckbox';
+    const tg = document.createElement('button'); tg.type = 'button'; tg.className = 'ck-toggle'; tg.setAttribute('aria-controls', 'ckbox');
+    const lbl = T('لوحة التجربة', 'Experience panel'); tg.title = lbl; tg.setAttribute('aria-label', lbl);
+    tg.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>';
+    document.body.appendChild(tg);
+    let open = true;
+    const set = (v) => { open = !!v; box.classList.toggle('ck-off', !open); tg.setAttribute('aria-expanded', String(open)); };
+    tg.addEventListener('click', () => set(!open));
+    set(true);
+    const imgBox = box.querySelector('.ck-img'), imgCb = box.querySelector('#ckimg'), imgSt = box.querySelector('#ckimgst'), at = box.querySelector('#ckat');
+    const imagery = { enable: () => { imgBox.hidden = false; }, checked: () => imgCb.checked, set: (v) => { imgCb.checked = !!v; }, note: (m) => { imgSt.textContent = m || ''; }, credit: (v) => { at.textContent = v ? ' · ' + T('الصور: ', 'Imagery: ') + CK.IMAGERY.attr : ''; }, onChange: (fn) => imgCb.addEventListener('change', () => fn(imgCb.checked)) };
+    return { box, imagery, toggle: tg, show: () => set(true), hide: () => set(false), isOpen: () => open, panel: box.querySelector('#ckpanel'), status: (s) => { box.querySelector('#ckst').textContent = s || ''; }, hud: (s) => { hud.innerHTML = s || ''; } };
   };
   CK.el = function (html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
 
@@ -379,6 +458,11 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = !!opt.shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
+    if (opt.autoHide) { // ألعاب القيادة: نقرة على الشاشة (لا سحب) تطوي اللوحة فيبقى المشهد وحده
+      let dn = null; const cv = renderer.domElement;
+      cv.addEventListener('pointerdown', (e) => { dn = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+      cv.addEventListener('pointerup', (e) => { if (dn && Math.hypot(e.clientX - dn.x, e.clientY - dn.y) < 6 && performance.now() - dn.t < 500) ui.hide(); dn = null; });
+    }
     const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfd9e6); scene.fog = new THREE.Fog(0xbfd9e6, R * 1.4, R * 4);
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, R * 8);
     const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x8a7a5c, 0.85); scene.add(hemi);
@@ -402,26 +486,28 @@
         const osm = await CK.fetchArea(lat, lon, R);
         const data = CK.parse(osm, lat, lon);
         if (!data.buildings.length && !data.roads.length) { ui.status(T('ما لقيت مباني هنا — جرّب مكانًا داخل المدينة.', 'No buildings here — try a spot inside the city.')); busy = false; return; }
+        if (city && city.imgOff) city.imgOff();
         if (cityGroup) { scene.remove(cityGroup); cityGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
         frames.length = 0;
         cityGroup = new THREE.Group(); scene.add(cityGroup);
         const ground = new THREE.Mesh(new THREE.CircleGeometry(R * 3, 64), new THREE.MeshLambertMaterial({ color: 0xd8ccb4 }));
         ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; cityGroup.add(ground);
-        cityGroup.add(polysMesh(THREE, data.water, 0.03, 0x3d8fb6));
-        cityGroup.add(polysMesh(THREE, data.parks, 0.04, 0x8fb87a));
+        const waterMesh = polysMesh(THREE, data.water, 0.03, 0x3d8fb6), parksMesh = polysMesh(THREE, data.parks, 0.04, 0x8fb87a);
+        cityGroup.add(waterMesh); cityGroup.add(parksMesh);
         const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
         roads.receiveShadow = true; cityGroup.add(roads);
         const bm = new THREE.Mesh(buildingGeometry(THREE, data), new THREE.MeshLambertMaterial({ vertexColors: true }));
         bm.castShadow = true; bm.receiveShadow = true; cityGroup.add(bm);
         const idx = CK.index(data);
         const group = new THREE.Group(); cityGroup.add(group);
-        city = Object.assign({}, data, { idx, buildingsMesh: bm, roadsMesh: roads, ground, group, name: name || '' });
+        city = Object.assign({}, data, { idx, buildingsMesh: bm, roadsMesh: roads, ground, group, waterMesh, parksMesh, root: cityGroup, name: name || '' });
         ctx.city = city;
         orbit.target.set(0, 0, 0); orbit.dist = R * 1.5; orbit.apply();
         ui.status(T('جاهز: ', 'Ready: ') + data.buildings.length + T(' مبنى · ', ' buildings · ') + data.roads.length + T(' طريق', ' roads'));
         await new Promise((r) => setTimeout(r, 16)); // إطار يُرسم فيه المشهد قبل حسابات التجربة (لا تجمّد الصفحة دفعة واحدة)
         if (opt.onCity) await opt.onCity(ctx, city);
         window.__ck_ready = (window.__ck_ready || 0) + 1;
+        if (opt.imagery) applyImagery(city);
       } catch (e) {
         console.warn('[citykit]', e);
         ui.status(T('تعذّر جلب الخريطة الحين — حاول بعد قليل أو اختر مدينة أخرى.', 'Could not load the map now — try again or pick another city.'));
@@ -429,6 +515,20 @@
       }
       busy = false;
     }
+    // الصور الجوّيّة: بعد أن يظهر المشهد وتجربته (لا تؤخّرهما)؛ فشلها لا يغيّر شيئًا والمستخدم يطفئها بمربّعها
+    let imgSeq = 0;
+    async function applyImagery(c) {
+      const im = ui.imagery, my = ++imgSeq; im.enable(); im.set(CK.imageryOn()); im.credit(false); im.note('');
+      if (!im.checked()) return;
+      im.note(T('أجلب الصور…', 'Loading imagery…'));
+      let done = false; try { done = await CK.drape(ctx, c); } catch (e) { console.warn('[citykit] imagery', e); }
+      if (my !== imgSeq) return;
+      im.note(done ? '' : T('غير متاحة الآن', 'unavailable now')); im.credit(done); window.__ck_imagery = done ? 1 : 0;
+    }
+    if (opt.imagery) ui.imagery.onChange((v) => {
+      CK.imagerySave(v); imgSeq++;
+      if (!v) { if (city && city.imgOff) city.imgOff(); ui.imagery.credit(false); ui.imagery.note(''); window.__ck_imagery = 0; } else if (city) applyImagery(city);
+    });
     ctx.load = load; window.__ck_ctx = ctx; // للاختبار: تبديل المدينة من داخل الصفحة
     const q = ui.box.querySelector('#ckq');
     const go = async () => { try { ui.status(T('أبحث…', 'Searching…')); const g = await CK.geocode(q.value); await load(g.lat, g.lon, q.value); } catch (e) { ui.status(T('ما لقيت المكان — اكتبه بطريقة ثانية.', 'Place not found — try another spelling.')); } };
@@ -1218,7 +1318,7 @@
   CK.start({
     title: TITLE,
     sub: T('حلقات مضيئة بين أطول مباني حيّك الحقيقيّة — مرّ منها بالترتيب بأسرع وقت.', 'Glowing rings between the tallest real buildings of your area — fly through them in order, fast.'),
-    shadows: true,
+    shadows: true, autoHide: true,
     panel(c) { setupOnce(c); },
     onCity(c, city) { setupCity(c, city); },
   });

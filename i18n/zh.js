@@ -1211,7 +1211,7 @@ Object.assign(I18N["zh"], {"acctPhoneLabel": "手机号（用于找回账号）"
 Object.assign(I18N["zh"], {"bgThemeWood": "木纹"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["zh"], {"brandSubtitle": "智能平台"});
-Object.assign(I18N["zh"], {"bgThemeDarkwood": "深色木纹", "bgThemeMarble": "大理石", "bgThemeCode": "代码", "bgThemeCars": "汽车", "bgThemeKids": "儿童", "bgThemeCuisine": "烹饪", "bgThemeSunset": "日落", "bgThemeBeach": "海滩", "bgThemeWinter": "冬日", "bgThemeGarage": "车库", "bgThemeAnime": "动漫", "bgThemeCyber": "网络安全", "bgThemeSchool": "教室"});
+Object.assign(I18N["zh"], {"bgThemeDarkwood": "深色木纹", "bgThemeMarble": "大理石", "bgThemeCode": "代码", "bgThemeCars": "汽车", "bgThemeKids": "儿童", "bgThemeCuisine": "烹饪", "bgThemeSunset": "日落", "bgThemeBeach": "海滩", "bgThemeWinter": "冬日", "bgThemeGarage": "车库", "bgThemeAnime": "动漫", "bgThemeCyber": "网络安全", "bgThemeSchool": "教室", "bgThemeTactical": "战术动漫", "bgThemeAngel": "冰雪天使", "bgThemeNeonAnime": "霓虹动漫", "bgThemeStation": "未来车站", "bgThemeRally": "雨中赛车", "bgThemeSmoke": "蓝色烟雾", "bgThemeLibrary": "图书馆", "bgThemeCafe": "咖啡馆", "bgThemeWorkshop": "夜间工坊", "bgThemeModern": "现代住宅"});
 /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (v-living-memory: صفحة المالك) */
 Object.assign(I18N["zh"], {"livingMemTitle": "我的动态记忆", "livingMemIntro": "助手从你的对话中最近了解到的关于你的内容。每次回答它只会使用与你的问题相关的部分，并应用你偏好的风格。删除任何一条，它就会忘记。", "livingMemEmpty": "助手还没有了解到关于你的任何信息。", "livingMemDelete": "删除", "livingMemLoadError": "暂时无法加载你的动态记忆。", "livingMemDeleteError": "删除失败，请重试。", "livingMemClearAll": "全部删除", "livingMemClearConfirm": "删除助手了解到的关于你的所有内容？此操作无法撤销。"});
 /* v-pdf-docs: «PDF» يقبل Word والنصوص لا الصور وحدها */

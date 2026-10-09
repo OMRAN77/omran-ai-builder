@@ -231,13 +231,16 @@
     var old = document.getElementById(id);
     var panel = $(panelSel);
     if(!old || !panel) return;
-    try{ var sv = parseInt(localStorage.getItem(key), 10); if(sv >= min && sv <= max) panel.style.width = sv + 'px'; }catch(e){ __swallow(e, "wiring:ui-wiring#4"); }
+    /* v-work-drag (المالك ٩ أكتوبر «أقدر أحرّك السحب أكثر»): سقف لوحة المعاينة كان ٧٠٠ ثابتًا — الآن ما يتّسع للنافذة (المحادثة تبقى
+       ٣٢٠ على الأقلّ، وحدّ شبكة التخطيط ٣٠٠). max دالّة أو رقم. */
+    var capOf = typeof max === 'function' ? max : function(){ return max; };
+    try{ var sv = parseInt(localStorage.getItem(key), 10); if(sv >= min && sv <= capOf()) panel.style.width = sv + 'px'; }catch(e){ __swallow(e, "wiring:ui-wiring#4"); }
     var el = old.cloneNode(true);
     old.parentNode.replaceChild(el, old);
     var startX = 0, startW = 0, dragging = false, sgn = 1;
     function move(x){
       var w = startW + sgn * (x - startX);
-      w = Math.max(min, Math.min(max, w));
+      w = Math.max(min, Math.min(capOf(), w));
       panel.style.width = w + 'px';
     }
     function up(){
@@ -265,7 +268,12 @@
     });
   }
   rebindResizer('resizer1', '#sidebar', 180, 420, 'panelWidthSidebar');
-  rebindResizer('resizer2', '#workarea', 240, 700, 'panelWidthWork');
+  function workMax(){
+    var sb = document.getElementById('sidebar'), sw = sb ? sb.getBoundingClientRect().width : 0;
+    return Math.max(700, Math.floor(window.innerWidth - sw - 60 - 320)); /* ٦٠ = مقبضان (٢٨) + هامش الإطار (٢٦) + احتياط */
+  }
+  window.omranWorkMax = workMax; // app-35 (فتح تجربة «الإلهام») يوسّع اللوحة إلى هذا السقف
+  rebindResizer('resizer2', '#workarea', 240, workMax, 'panelWidthWork');
 })();
 
 // v-boot-watchdog: إشارة اكتمال الإقلاع — وصول التنفيذ هنا يعني الحزمة

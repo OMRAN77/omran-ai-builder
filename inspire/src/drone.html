@@ -759,7 +759,7 @@
   CK.start({
     title: TITLE,
     sub: T('حلقات مضيئة بين أطول مباني حيّك الحقيقيّة — مرّ منها بالترتيب بأسرع وقت.', 'Glowing rings between the tallest real buildings of your area — fly through them in order, fast.'),
-    shadows: true,
+    shadows: true, autoHide: true,
     panel(c) { setupOnce(c); },
     onCity(c, city) { setupCity(c, city); },
   });

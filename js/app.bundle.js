@@ -3608,6 +3608,16 @@ const I18N = {
     bgThemeAnime: 'أنمي',
     bgThemeCyber: 'أمن سيبراني',
     bgThemeSchool: 'فصل دراسي',
+    bgThemeTactical: 'أنمي قتالي', // v-themes-ten
+    bgThemeAngel: 'ملاك الجليد',
+    bgThemeNeonAnime: 'أنمي نيون',
+    bgThemeStation: 'محطة المستقبل',
+    bgThemeRally: 'سباق مطر',
+    bgThemeSmoke: 'دخان أزرق',
+    bgThemeLibrary: 'مكتبة',
+    bgThemeCafe: 'مقهى',
+    bgThemeWorkshop: 'ورشة ليلية',
+    bgThemeModern: 'بيت عصري',
     // v-phone-link
     acctPhoneLabel: 'رقم الهاتف (للاسترجاع)',
     phoneNotLinked: 'غير مربوط',
@@ -4825,6 +4835,16 @@ const I18N = {
     bgThemeAnime: 'Anime',
     bgThemeCyber: 'Cybersecurity',
     bgThemeSchool: 'Classroom',
+    bgThemeTactical: 'Tactical anime', // v-themes-ten
+    bgThemeAngel: 'Ice angel',
+    bgThemeNeonAnime: 'Neon anime',
+    bgThemeStation: 'Future station',
+    bgThemeRally: 'Rain race',
+    bgThemeSmoke: 'Blue smoke',
+    bgThemeLibrary: 'Library',
+    bgThemeCafe: 'Café',
+    bgThemeWorkshop: 'Night workshop',
+    bgThemeModern: 'Modern home',
     // v-phone-link
     acctPhoneLabel: 'Phone number (for recovery)',
     phoneNotLinked: 'Not linked',
@@ -5698,7 +5718,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=730'; /* v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=730'; /* v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -40636,6 +40656,10 @@ if(document.readyState === 'loading'){
   var KEY = 'aiapp_bgimg', KEY_CUSTOM = 'aiapp_bgimg_custom', KEY_ROT = 'aiapp_bgimg_rotate', KEY_ROT_AT = 'aiapp_bgimg_rotate_at';
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
   var CUSTOM = 'custom:', MAX_PX = 1600, MAX_CUSTOM = 12;
+  /* v-bg-fresh (المالك ٩ أكتوبر بعد دمج الخلفيّات الموضَّحة: «بعده الصور نفس الشي»): الصور بالأسماء نفسها، وعامل الخدمة يعرضها
+     من الكاش أوّلًا (stale-while-revalidate) والـCDN يحفظها يومًا — فالقديمة تبقى. وسم إصدار على رابط الصورة والمصغّر يجلب الجديدة فورًا؛
+     ارفعه عند كلّ تبديل لصور المجلّد. */
+  var BG_VER = 2;
   var فهرس = null, تحميل = null, مؤقّت = null;
   var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', عنوان: 'bgThemeWood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
   /* v-themes (أمر المالك ٤ أكتوبر: «كمّل الثيمات الباقية» — نفس فكرة الخشبيّ على التصميم الجديد): ثلاثة عشر ثيمًا تكسوها
@@ -40648,9 +40672,20 @@ if(document.readyState === 'loading'){
    ['غروب', 'sunset', 'bgThemeSunset', '#7a4a5a', false, true], ['شاطئ', 'beach', 'bgThemeBeach', '#8fd0e0', true, true],
    ['شتاء', 'winter', 'bgThemeWinter', '#d5dce4', true, true], ['كراج', 'garage', 'bgThemeGarage', '#141416', false, true],
    ['أنمي', 'anime', 'bgThemeAnime', '#1d1430', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', '#06121f', false, true],
-   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true]].forEach(function(a){
+   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true],
+   /* v-themes-ten (المالك ٩ أكتوبر «عطني ١٠ أشكال جديدة… أنمي ٤ وسيارات ٣ ودراسيّة ٣»): عشر ثيمات مشهد من صوره */
+   ['أنمي-قتالي', 'tactical', 'bgThemeTactical', '#7a0f2e', false, true],
+   ['ملاك', 'angel', 'bgThemeAngel', '#c9d8ea', true, true],
+   ['أنمي-نيون', 'neonanime', 'bgThemeNeonAnime', '#050607', false, true],
+   ['محطّة', 'station', 'bgThemeStation', '#3a3f44', false, true],
+   ['سباق', 'rally', 'bgThemeRally', '#5a5440', false, true],
+   ['دخان', 'smoke', 'bgThemeSmoke', '#071a33', false, true],
+   ['مكتبة', 'library', 'bgThemeLibrary', '#cfeef0', true, true],
+   ['مقهى', 'cafe', 'bgThemeCafe', '#e8d8c2', true, true],
+   ['ورشة', 'workshop', 'bgThemeWorkshop', '#1a1830', false, true],
+   ['عصري', 'modern', 'bgThemeModern', '#d9d2c6', true, true]].forEach(function(a){
     ثيمات[a[0]] = { ملف: 'ثيم:' + a[0], ثيم: a[1], عنوان: a[2], لون: a[3], فاتحة: a[4], مشهد: !!a[5],
-      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' };
+      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=2' }; // v-bg-fresh: مصغّرات الثلاثة عشر أُعيد توليدها (v-scene-clear/sharp)
   });
   function ثيم(اسم){ return ثيمات[اسم] || null; }
 
@@ -40668,7 +40703,7 @@ if(document.readyState === 'loading'){
       var id = ملف.slice(CUSTOM.length), hit = خاصّة().filter(function(s){ return s.id === id; })[0];
       return hit ? hit.data : '';
     }
-    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف);
+    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف) + '?v=' + BG_VER;
   }
   function طبقة(){
     var el = document.getElementById('bgImgLayer');
@@ -43666,6 +43701,41 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       .replace(/<head>/i, '<head><meta name="omran-inspire" content="' + id + '">');
   }
 
+  /* v-inspire-wide (المالك ٩ أكتوبر «تفتح كامل مكان الكود والمعاينة، والمحادثة تبقى، وأقدر أحرّك السحب»): التجربة تُفتح في لوحة المعاينة
+     بأوسع عرض يتّسع (المحادثة تبقى ٣٢٠ فأكثر، سقف ui-wiring)، دون كتابته في التخزين — والسحب بعدها حرّ. لا يمسّ الجوّال. وحين يُعرض
+     مشروع آخر يعود العرض الذي كان إن لم يحرّكه المستخدم. */
+  let widened = null;
+  const isExp = (c) => !!(c && (c.inspire || String(c.code || '').slice(0, 600).indexOf('name="omran-inspire"') !== -1));
+  function widenWork(){
+    try{
+      if(document.documentElement.classList.contains('mobile-ui') || window.innerWidth <= 860) return;
+      const wa = document.getElementById('workarea');
+      if(!wa || typeof window.omranWorkMax !== 'function') return;
+      const cap = window.omranWorkMax(), cur = Math.round(wa.getBoundingClientRect().width);
+      if(cap <= cur + 24) return;
+      if(!(widened && wa.style.width === widened.set)) widened = { prev: wa.style.width };
+      wa.style.width = cap + 'px';
+      widened.set = wa.style.width;
+    }catch(e){ __swallow(e, 'inspire:widen'); }
+  }
+  function restoreWork(){
+    try{
+      const wa = document.getElementById('workarea');
+      if(wa && widened && wa.style.width === widened.set) wa.style.width = widened.prev;
+      widened = null;
+    }catch(e){ __swallow(e, 'inspire:restore-work'); }
+  }
+  try{
+    if(typeof renderCodeAndPreview === 'function'){
+      const __rcp = renderCodeAndPreview;
+      renderCodeAndPreview = function(){
+        const r = __rcp.apply(this, arguments);
+        try{ if(widened && !isExp(typeof getCurrent === 'function' ? getCurrent() : null)) restoreWork(); }catch(e){ __swallow(e, 'inspire:render-hook'); }
+        return r;
+      };
+    }
+  }catch(e){ __swallow(e, 'inspire:wrap-render'); }
+
   async function openInspireExperience(id, card){
     const item = INSPIRE_CITY.find((c) => c.id === id);
     if(!item) return false;
@@ -43691,6 +43761,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       renderAll();
       switchWorkTab('preview');
       try{ if(window.waAutoExpand) window.waAutoExpand(); }catch(_){ __swallow(_, 'inspire:waExpand'); }
+      widenWork();
       try{ if(window.matchMedia('(max-width:860px)').matches && !workareaEl.classList.contains('open')) openDrawer(workareaEl); }catch(_){ __swallow(_, 'inspire:drawer'); }
       return true;
     }catch(e){

@@ -15,6 +15,10 @@
   var KEY = 'aiapp_bgimg', KEY_CUSTOM = 'aiapp_bgimg_custom', KEY_ROT = 'aiapp_bgimg_rotate', KEY_ROT_AT = 'aiapp_bgimg_rotate_at';
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
   var CUSTOM = 'custom:', MAX_PX = 1600, MAX_CUSTOM = 12;
+  /* v-bg-fresh (المالك ٩ أكتوبر بعد دمج الخلفيّات الموضَّحة: «بعده الصور نفس الشي»): الصور بالأسماء نفسها، وعامل الخدمة يعرضها
+     من الكاش أوّلًا (stale-while-revalidate) والـCDN يحفظها يومًا — فالقديمة تبقى. وسم إصدار على رابط الصورة والمصغّر يجلب الجديدة فورًا؛
+     ارفعه عند كلّ تبديل لصور المجلّد. */
+  var BG_VER = 2;
   var فهرس = null, تحميل = null, مؤقّت = null;
   var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', عنوان: 'bgThemeWood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
   /* v-themes (أمر المالك ٤ أكتوبر: «كمّل الثيمات الباقية» — نفس فكرة الخشبيّ على التصميم الجديد): ثلاثة عشر ثيمًا تكسوها
@@ -27,9 +31,20 @@
    ['غروب', 'sunset', 'bgThemeSunset', '#7a4a5a', false, true], ['شاطئ', 'beach', 'bgThemeBeach', '#8fd0e0', true, true],
    ['شتاء', 'winter', 'bgThemeWinter', '#d5dce4', true, true], ['كراج', 'garage', 'bgThemeGarage', '#141416', false, true],
    ['أنمي', 'anime', 'bgThemeAnime', '#1d1430', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', '#06121f', false, true],
-   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true]].forEach(function(a){
+   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true],
+   /* v-themes-ten (المالك ٩ أكتوبر «عطني ١٠ أشكال جديدة… أنمي ٤ وسيارات ٣ ودراسيّة ٣»): عشر ثيمات مشهد من صوره */
+   ['أنمي-قتالي', 'tactical', 'bgThemeTactical', '#7a0f2e', false, true],
+   ['ملاك', 'angel', 'bgThemeAngel', '#c9d8ea', true, true],
+   ['أنمي-نيون', 'neonanime', 'bgThemeNeonAnime', '#050607', false, true],
+   ['محطّة', 'station', 'bgThemeStation', '#3a3f44', false, true],
+   ['سباق', 'rally', 'bgThemeRally', '#5a5440', false, true],
+   ['دخان', 'smoke', 'bgThemeSmoke', '#071a33', false, true],
+   ['مكتبة', 'library', 'bgThemeLibrary', '#cfeef0', true, true],
+   ['مقهى', 'cafe', 'bgThemeCafe', '#e8d8c2', true, true],
+   ['ورشة', 'workshop', 'bgThemeWorkshop', '#1a1830', false, true],
+   ['عصري', 'modern', 'bgThemeModern', '#d9d2c6', true, true]].forEach(function(a){
     ثيمات[a[0]] = { ملف: 'ثيم:' + a[0], ثيم: a[1], عنوان: a[2], لون: a[3], فاتحة: a[4], مشهد: !!a[5],
-      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' };
+      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=2' }; // v-bg-fresh: مصغّرات الثلاثة عشر أُعيد توليدها (v-scene-clear/sharp)
   });
   function ثيم(اسم){ return ثيمات[اسم] || null; }
 
@@ -47,7 +62,7 @@
       var id = ملف.slice(CUSTOM.length), hit = خاصّة().filter(function(s){ return s.id === id; })[0];
       return hit ? hit.data : '';
     }
-    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف);
+    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف) + '?v=' + BG_VER;
   }
   function طبقة(){
     var el = document.getElementById('bgImgLayer');
