@@ -267,5 +267,7 @@ export function initLife(ctx) {
     stat();
   }
 
-  return { tick, onPlace, weather, startRace, nearPlayer, state: L, at, toLocal };
+  // وضع آخر يبدأ (مطاردة/درون): يُلغى السباق ولوحته فلا تتراكب لوحتان
+  function cancelRace(DRV) { if (L.race && L.race.opp) L.root.remove(L.race.opp); L.race = null; hud.style.display = 'none'; if (DRV) DRV.lock = false; }
+  return { tick, onPlace, weather, startRace, cancelRace, nearPlayer, state: L, at, toLocal };
 }
