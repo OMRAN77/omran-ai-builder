@@ -455,6 +455,7 @@
     const g = G; if (!g || !g.car || !g.cps.length) return;
     if (!force && (g.st === 'race' || g.st === 'count')) return;
     reset(); g.st = 'count'; g.count = 3; g.countShown = 0; sync();
+    if (X && X.ui && X.ui.hide) X.ui.hide(); // السباق يبدأ والمشهد وحده: اللوحة تُطوى (زرّها أعلى الزاوية)
   }
   function wake() { if (G && (G.st === 'ready' || G.st === 'intro')) beginCount(); }
   function pass() {
@@ -725,7 +726,7 @@
   CK.start({
     title: TITLE,
     sub: T('سباق ستّ نقاط على شوارع حيّك الحقيقيّة — المباني جدران فعليّة، والزمن يُحسب.', 'A six-checkpoint race on your real streets — buildings are solid walls.'),
-    radius: R, shadows: true,
+    radius: R, shadows: true, autoHide: true,
     panel(ctx) { X = ctx; setupScene(ctx); buildUi(ctx); },
     onCity,
   });

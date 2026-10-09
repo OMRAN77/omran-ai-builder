@@ -317,3 +317,67 @@ test('النواة: المسطّحات (ماء/حدائق) هندسة واحدة
   assert.match(src, /مساهمو OpenStreetMap/);
   assert.ok(src.indexOf('setTimeout(r, 16)') < src.indexOf('await opt.onCity(ctx, city)'));
 });
+
+// ── v-inspire-ux (المالك ٩ أكتوبر: «تفتح كامل… والمحادثة تبقى وأقدر أحرّك السحب أكثر»، و«اللوحة تختفي بنقرة الشاشة كالنوافذ المنبثقة») ──
+test('سقف سحب لوحة المعاينة يتّسع للنافذة (كان ٧٠٠ ثابتًا في ui-wiring)، والمحادثة تبقى ٣٢٠ فأكثر', () => {
+  const src = rd('js/ui-wiring.js');
+  assert.ok(!/rebindResizer\('resizer2', '#workarea', 240, 700,/.test(src), 'لا سقف ٧٠٠ ثابت');
+  assert.match(src, /rebindResizer\('resizer2', '#workarea', 240, workMax, 'panelWidthWork'\)/);
+  assert.match(src, /w = Math\.max\(min, Math\.min\(capOf\(\), w\)\)/, 'السحب يقرأ السقف حيًّا');
+  assert.match(src, /sv <= capOf\(\)/, 'والمحفوظ يُفحص بالسقف نفسه');
+  const m = src.match(/function workMax\(\)\{[\s\S]*?\n  \}/); assert.ok(m, 'workMax موجودة');
+  const run = (w, sb) => { const c = { window: { innerWidth: w }, document: { getElementById: () => (sb == null ? null : { getBoundingClientRect: () => ({ width: sb }) }) } }; vm.runInNewContext(m[0] + '\nthis.f = workMax();', c); return c.f; };
+  assert.equal(run(1535, 250), 905, 'نافذة ١٥٣٥ وقائمة ٢٥٠: يبقى للمحادثة ٣٢٠+');
+  assert.equal(run(1535, 0), 1155, 'القائمة مطويّة: أوسع');
+  assert.equal(run(900, 250), 700, 'النافذة الضيّقة: لا ينزل عن ٧٠٠ القديم');
+  assert.equal(run(1535, null), 1155, 'بلا قائمة في الصفحة');
+  assert.match(rd('index.html'), /\/js\/ui-wiring\.js\?v=660/, 'وسم الملفّ مرفوع كي لا يبقى سقف ٧٠٠ في كاش المتصفّح');
+});
+
+test('فتح تجربة «الإلهام» يوسّع اللوحة لسقفها دون تخزين، ولا يمسّ الجوّال، ويعيد العرض حين يُعرض مشروع آخر ما لم يحرّكه المستخدم', () => {
+  const { src } = loadCity();
+  const a = src.indexOf('let widened = null;'), b = src.indexOf('  try{\n    if(typeof renderCodeAndPreview');
+  assert.ok(a > 0 && b > a, 'كتلة التوسيع موجودة');
+  const mk = (o) => {
+    const wa = { style: { width: o.style || '' }, getBoundingClientRect: () => ({ width: parseInt(wa.style.width, 10) || o.def || 380 }) };
+    const ctx = { window: { innerWidth: o.inner || 1535, omranWorkMax: () => o.cap == null ? 905 : o.cap }, document: { documentElement: { classList: { contains: () => !!o.mobile } }, getElementById: (id) => (id === 'workarea' ? wa : null) }, __swallow() {} };
+    vm.runInNewContext(src.slice(a, b) + '\nthis.F = { widenWork, restoreWork, isExp };', ctx);
+    return { wa, F: ctx.F };
+  };
+  let t = mk({ style: '690px' });
+  t.F.widenWork(); assert.equal(t.wa.style.width, '905px', 'يتّسع لسقفه');
+  t.F.restoreWork(); assert.equal(t.wa.style.width, '690px', 'ويعود لما كان');
+  t = mk({ style: '690px' });
+  t.F.widenWork(); t.wa.style.width = '1000px'; t.F.restoreWork();
+  assert.equal(t.wa.style.width, '1000px', 'سحبه المستخدم بعدها: لا يُمسّ');
+  t = mk({ style: '690px' });
+  t.F.widenWork(); t.F.widenWork(); t.F.restoreWork();
+  assert.equal(t.wa.style.width, '690px', 'فتح تجربتين متتاليتين يحفظ العرض الأصليّ لا الموسَّع');
+  t = mk({ style: '', def: 380 }); t.F.widenWork(); t.F.restoreWork();
+  assert.equal(t.wa.style.width, '', 'العرض الافتراضيّ (بلا قيمة) يعود افتراضيًّا');
+  t = mk({ style: '690px', mobile: true }); t.F.widenWork(); assert.equal(t.wa.style.width, '690px', 'الجوّال: لا تغيير');
+  t = mk({ style: '690px', inner: 800 }); t.F.widenWork(); assert.equal(t.wa.style.width, '690px', 'النافذة الضيّقة: لا تغيير');
+  t = mk({ style: '900px', cap: 905 }); t.F.widenWork(); assert.equal(t.wa.style.width, '900px', 'العرض قريب من السقف أصلًا: لا تغيير');
+  assert.ok(t.F.isExp({ inspire: 'chase' }) && t.F.isExp({ code: '<head><meta name="omran-inspire" content="sun">' }) && !t.F.isExp({ code: '<html></html>' }) && !t.F.isExp(null));
+  assert.ok(!/localStorage\.setItem\([^)]*panelWidthWork/.test(src), 'التوسيع لا يكتب في التخزين');
+  assert.match(src, /widenWork\(\);\n/, 'يُستدعى بعد فتح المشروع');
+});
+
+test('لوحة التجربة نافذة منبثقة على الحاسوب فقط: زرّ يفتحها ويطويها، ونقرة الشاشة (لا السحب) تطويها في ألعاب القيادة، والجوّال كما كان', () => {
+  const core = rd('inspire/src/core.js');
+  const css = core.slice(core.indexOf('const CSS = `'), core.indexOf('CK.ui = function'));
+  assert.match(css, /\.ck-toggle\{display:none;/, 'الزرّ مخفيّ افتراضيًّا (الجوّال)');
+  const desk = css.slice(css.indexOf('@media (min-width:641px){'), css.indexOf('@media (max-width:640px)'));
+  assert.ok(desk.includes('.ck-toggle{display:flex}') && desk.includes('.ck-ui.ck-off{opacity:0;') && desk.includes('visibility:hidden;pointer-events:none'), 'الطيّ والزرّ في قاعدة الحاسوب وحدها');
+  assert.ok(!/@media \(max-width:640px\)\{[^}]*ck-off/.test(css), 'لا قاعدة طيّ للجوّال');
+  assert.match(core, /box-sizing:border-box;width:min\(360px/, 'عرض اللوحة ٣٦٠ كلّه (كان ٣٩٠ بالحشو فيغطّي العدّاد)');
+  assert.match(core, /aria-expanded/); assert.match(core, /setAttribute\('aria-controls', 'ckbox'\)/);
+  assert.match(core, /show: \(\) => set\(true\), hide: \(\) => set\(false\), isOpen: \(\) => open/);
+  assert.match(core, /if \(opt\.autoHide\)[\s\S]*Math\.hypot\(e\.clientX - dn\.x, e\.clientY - dn\.y\) < 6[\s\S]*ui\.hide\(\)/, 'نقرة قصيرة بلا سحب');
+  const built = (id) => rd('inspire/city/' + id + '.html');
+  for (const id of ['chase', 'drone']) assert.match(built(id), /autoHide: true/, id + ': ألعاب القيادة تطوي بنقرة الشاشة');
+  for (const id of ['billboard', 'explore', 'fireworks', 'lights', 'noise', 'sun', 'tower', 'view', 'walkshade']) assert.ok(!/autoHide: true/.test(built(id).replace(/if \(opt\.autoHide\)/g, '')), id + ': أرقامها في اللوحة فلا تُطوى بنقرة');
+  for (const id of ['billboard', 'chase', 'drone', 'explore', 'fireworks', 'lights', 'noise', 'sun', 'tower', 'view', 'walkshade']) assert.match(built(id), /ck-toggle\{display:none;/, id + ': النواة المضمّنة جديدة');
+  assert.match(built('chase'), /if \(X && X\.ui && X\.ui\.hide\) X\.ui\.hide\(\);/, 'بدء السباق يطوي اللوحة');
+  assert.match(built('tower'), /body\.tw-walk \.ck-ui,body\.tw-walk \.ck-toggle\{display:none\}/, 'وضع المشي: لا زرّ لوحة مخفيّة');
+});
