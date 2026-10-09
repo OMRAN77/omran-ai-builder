@@ -1,0 +1,946 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>اسمع الشقّة قبل التوقيع</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+/* CityKit — نواة «مدينتك الحقيقيّة» (v-inspire). تُلصق داخل كلّ تجربة فتبقى كلّ تجربة ملفّ HTML واحدًا مستقلًّا.
+   البحث عن المكان (Nominatim ثمّ Photon) ← مباني وطرق وماء وحدائق من OpenStreetMap (Overpass بمرايا احتياطيّة) ←
+   أمتار محلّيّة ← مشهد three.js (المباني دفعة واحدة) + خطّ رؤية سريع على شبكة + تحكّم بالكاميرا للفأرة واللمس.
+   تحتاج THREE العامّ (three@0.160.0/build/three.min.js) قبلها. */
+(function () {
+  'use strict';
+  const CK = {};
+  const AR = !/^en/i.test(document.documentElement.lang || '') && !/^en/i.test(navigator.language || 'ar');
+  const T = (ar, en) => (AR ? ar : en);
+  CK.T = T; CK.AR = AR;
+  CK.PRESETS = [
+    { ar: 'دبي — المارينا', en: 'Dubai Marina', lat: 25.0805, lon: 55.1403 },
+    { ar: 'الرياض — العليا', en: 'Riyadh Olaya', lat: 24.6990, lon: 46.6850 },
+    { ar: 'الكويت — شرق', en: 'Kuwait Sharq', lat: 29.3780, lon: 47.9900 },
+    { ar: 'الدوحة — الخليج الغربيّ', en: 'Doha West Bay', lat: 25.3215, lon: 51.5280 },
+    { ar: 'أبوظبي — الكورنيش', en: 'Abu Dhabi Corniche', lat: 24.4760, lon: 54.3550 },
+    { ar: 'المنامة', en: 'Manama', lat: 26.2350, lon: 50.5770 },
+    { ar: 'جدّة — الكورنيش', en: 'Jeddah Corniche', lat: 21.5430, lon: 39.1730 },
+    { ar: 'مسقط — القرم', en: 'Muscat Qurum', lat: 23.5880, lon: 58.4080 },
+  ];
+  CK.OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+
+  // ── البيانات ──
+  function timed(url, init, ms) {
+    const ac = typeof AbortController === 'function' ? new AbortController() : null;
+    const t = ac ? setTimeout(() => ac.abort(), ms) : null;
+    return fetch(url, Object.assign({}, init, ac ? { signal: ac.signal } : {})).finally(() => t && clearTimeout(t));
+  }
+  CK.geocode = async function (q) {
+    q = String(q || '').trim(); if (!q) throw new Error('empty');
+    const m = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*[,،]\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (m) return { lat: +m[1], lon: +m[2], name: q };
+    try {
+      const r = await timed('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=' + (AR ? 'ar' : 'en') + '&q=' + encodeURIComponent(q), {}, 12000);
+      const j = await r.json();
+      if (j && j[0]) return { lat: +j[0].lat, lon: +j[0].lon, name: j[0].display_name || q };
+    } catch (e) { /* المرآة التالية */ }
+    const r2 = await timed('https://photon.komoot.io/api/?limit=1&q=' + encodeURIComponent(q), {}, 12000);
+    const j2 = await r2.json();
+    const f = j2 && j2.features && j2.features[0];
+    if (!f) throw new Error('notfound');
+    return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], name: (f.properties && f.properties.name) || q };
+  };
+  CK.query = function (lat, lon, r) {
+    const a = '(around:' + Math.round(r) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
+    return '[out:json][timeout:25];(way["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a + ';way["leisure"~"park|garden"]' + a + ';way["landuse"="grass"]' + a + ';);out geom;';
+  };
+  CK.fetchArea = async function (lat, lon, r) {
+    const key = 'ck1:' + lat.toFixed(4) + ',' + lon.toFixed(4) + ',' + Math.round(r);
+    try { const c = localStorage.getItem(key); if (c) return JSON.parse(c); } catch (e) { /* بلا تخزين */ }
+    let last = null;
+    for (const url of CK.OVERPASS) {
+      try {
+        const res = await timed(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(CK.query(lat, lon, r)) }, 30000);
+        if (!res.ok) { last = new Error('HTTP ' + res.status); continue; }
+        const j = await res.json();
+        try { const s = JSON.stringify(j); if (s.length < 1500000) localStorage.setItem(key, s); } catch (e) { /* التخزين ممتلئ */ }
+        return j;
+      } catch (e) { last = e; }
+    }
+    throw last || new Error('overpass');
+  };
+  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, living_street: 5, service: 4, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, steps: 2 };
+  function heightOf(tags, id) {
+    const h = parseFloat(String(tags.height || '').replace(',', '.'));
+    if (h > 0 && h < 1000) return h;
+    const lv = parseFloat(tags['building:levels']);
+    if (lv > 0 && lv < 250) return lv * 3.2 + 1;
+    const b = tags.building;
+    const j = ((id * 2654435761) % 1000) / 1000; // ثابت لكلّ مبنى
+    if (/house|detached|villa|bungalow|semidetached/.test(b)) return 6 + j * 3;
+    if (/apartments|residential|dormitory/.test(b)) return 12 + j * 12;
+    if (/commercial|office|hotel|retail/.test(b)) return 14 + j * 16;
+    if (/industrial|warehouse|garage|shed/.test(b)) return 7 + j * 5;
+    if (/mosque|church/.test(b)) return 12;
+    return 8 + j * 6;
+  }
+  CK.parse = function (osm, lat0, lon0) {
+    const mx = Math.cos(lat0 * Math.PI / 180) * 111320, mz = 110540;
+    const P = (g) => [(g.lon - lon0) * mx, -(g.lat - lat0) * mz];
+    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0 };
+    for (const e of (osm && osm.elements) || []) {
+      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
+      const t = e.tags || {};
+      const pts = e.geometry.map(P);
+      const closed = pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
+      if (t.building && closed) {
+        const poly = pts.slice(0, -1);
+        let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+        for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+        out.buildings.push({ id: e.id, poly, h: heightOf(t, e.id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
+      } else if (t.highway && ROAD_W[t.highway]) {
+        out.roads.push({ id: e.id, pts, kind: t.highway, w: ROAD_W[t.highway], name: t.name || '' });
+      } else if ((t.natural === 'water' || t.water) && closed) out.water.push(pts.slice(0, -1));
+      else if ((t.leisure || t.landuse) && closed) out.parks.push(pts.slice(0, -1));
+    }
+    out.buildings.sort((a, b) => b.h - a.h);
+    return out;
+  };
+
+  // ── الهندسة والفهرس ──
+  CK.inPoly = function (x, z, poly) {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], zi = poly[i][1], xj = poly[j][0], zj = poly[j][1];
+      if (((zi > z) !== (zj > z)) && (x < (xj - xi) * (z - zi) / (zj - zi) + xi)) c = !c;
+    }
+    return c;
+  };
+  CK.index = function (data, cell) {
+    cell = cell || 24; const grid = new Map();
+    const k = (i, j) => i + ',' + j;
+    for (const b of data.buildings) {
+      for (let i = Math.floor(b.box[0] / cell); i <= Math.floor(b.box[2] / cell); i++)
+        for (let j = Math.floor(b.box[1] / cell); j <= Math.floor(b.box[3] / cell); j++) {
+          const kk = k(i, j); if (!grid.has(kk)) grid.set(kk, []); grid.get(kk).push(b);
+        }
+    }
+    const near = (x, z) => grid.get(k(Math.floor(x / cell), Math.floor(z / cell))) || [];
+    const at = (x, z) => { for (const b of near(x, z)) if (x >= b.box[0] && x <= b.box[2] && z >= b.box[1] && z <= b.box[3] && CK.inPoly(x, z, b.poly)) return b; return null; };
+    const heightAt = (x, z) => { const b = at(x, z); return b ? b.h : 0; };
+    // خطّ رؤية: يمشي على القطعة بخطوة ثابتة ويسأل هل نقطة منها داخل مبنى أعلى منها
+    const los = (a, b, step) => {
+      step = step || 3;
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, L = Math.hypot(dx, dz);
+      const n = Math.max(1, Math.ceil(L / step));
+      for (let s = 1; s < n; s++) {
+        const t = s / n, x = a.x + dx * t, z = a.z + dz * t, y = a.y + dy * t;
+        const hb = at(x, z); if (hb && hb.h > y) return false;
+      }
+      return true;
+    };
+    return { at, heightAt, los, near, cell };
+  };
+
+  function buildingGeometry(THREE, data) {
+    const pos = [], nor = [], col = [];
+    const cA = new THREE.Color(), cLow = new THREE.Color(0xd9cdb8), cMid = new THREE.Color(0xb9c4cc), cHigh = new THREE.Color(0x7fa6bd);
+    for (const b of data.buildings) {
+      const ring = b.poly; const n = ring.length; if (n < 3) continue;
+      const t = Math.min(1, b.h / 180); cA.copy(t < 0.25 ? cLow : cMid).lerp(t < 0.25 ? cMid : cHigh, t < 0.25 ? t / 0.25 : (t - 0.25) / 0.75);
+      let area = 0; for (let i = 0; i < n; i++) { const p = ring[i], q = ring[(i + 1) % n]; area += p[0] * q[1] - q[0] * p[1]; }
+      const ccw = area > 0;
+      for (let i = 0; i < n; i++) {
+        const p = ring[i], q = ring[(i + 1) % n];
+        const ex = q[0] - p[0], ez = q[1] - p[1], L = Math.hypot(ex, ez) || 1;
+        let nx = ez / L, nz = -ex / L; if (!ccw) { nx = -nx; nz = -nz; }
+        const v = [[p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], b.h, q[1]], [p[0], 0, p[1]], [q[0], b.h, q[1]], [p[0], b.h, p[1]]];
+        const order = ccw ? [0, 2, 1, 3, 5, 4] : [0, 1, 2, 3, 4, 5];
+        for (const o of order) { pos.push(v[o][0], v[o][1], v[o][2]); nor.push(nx, 0, nz); col.push(cA.r * 0.92, cA.g * 0.92, cA.b * 0.92); }
+      }
+      const tri = THREE.ShapeUtils.triangulateShape(ring.map((p) => new THREE.Vector2(p[0], p[1])), []);
+      for (const f of tri) {
+        const idx = ccw ? [f[0], f[2], f[1]] : [f[0], f[1], f[2]];
+        for (const k of idx) { pos.push(ring[k][0], b.h, ring[k][1]); nor.push(0, 1, 0); col.push(cA.r, cA.g, cA.b); }
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.computeBoundingSphere();
+    return g;
+  }
+  function ribbonGeometry(THREE, roads, y) {
+    const pos = [];
+    for (const r of roads) {
+      const hw = r.w / 2;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1];
+        const dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz) || 1, nx = -dz / L * hw, nz = dx / L * hw;
+        pos.push(p[0] + nx, y, p[1] + nz, q[0] - nx, y, q[1] - nz, q[0] + nx, y, q[1] + nz,
+          p[0] + nx, y, p[1] + nz, p[0] - nx, y, p[1] - nz, q[0] - nx, y, q[1] - nz);
+      }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+    return g;
+  }
+  function polysMesh(THREE, polys, y, color) {
+    const grp = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+    for (const poly of polys) {
+      const shape = new THREE.Shape(poly.map((p) => new THREE.Vector2(p[0], -p[1])));
+      const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), mat);
+      m.rotation.x = -Math.PI / 2; m.position.y = y; m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
+    }
+    return grp;
+  }
+
+  // ── تحكّم الكاميرا (بلا OrbitControls: البناء العامّ لـthree لا يحويه) ──
+  CK.orbit = function (camera, dom, o) {
+    const s = { target: new CK.THREE.Vector3(0, 0, 0), dist: 900, theta: 0.6, phi: 0.9, min: 30, max: 3000, enabled: true };
+    Object.assign(s, o || {});
+    const apply = () => {
+      s.phi = Math.max(0.12, Math.min(1.5, s.phi)); s.dist = Math.max(s.min, Math.min(s.max, s.dist));
+      camera.position.set(s.target.x + s.dist * Math.sin(s.phi) * Math.sin(s.theta), s.target.y + s.dist * Math.cos(s.phi), s.target.z + s.dist * Math.sin(s.phi) * Math.cos(s.theta));
+      camera.lookAt(s.target);
+    };
+    const ptrs = new Map(); let last = null, pinch = 0;
+    dom.style.touchAction = 'none';
+    dom.addEventListener('pointerdown', (e) => { if (!s.enabled) return; dom.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); last = [e.clientX, e.clientY, e.button === 2 || e.shiftKey]; });
+    dom.addEventListener('pointermove', (e) => {
+      if (!s.enabled || !ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch) s.dist *= pinch / d; pinch = d; apply(); return;
+      }
+      const dx = e.clientX - last[0], dy = e.clientY - last[1]; last[0] = e.clientX; last[1] = e.clientY;
+      if (last[2]) {
+        const k = s.dist / 800, c = Math.cos(s.theta), sn = Math.sin(s.theta);
+        s.target.x -= (dx * c + dy * sn) * k; s.target.z -= (-dx * sn + dy * c) * k;
+      } else { s.theta -= dx * 0.006; s.phi -= dy * 0.005; }
+      apply();
+    });
+    const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0; };
+    dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+    dom.addEventListener('wheel', (e) => { if (!s.enabled) return; e.preventDefault(); s.dist *= Math.exp(e.deltaY * 0.0012); apply(); }, { passive: false });
+    dom.addEventListener('contextmenu', (e) => e.preventDefault());
+    s.apply = apply; apply();
+    return s;
+  };
+
+  // ── الواجهة ──
+  const CSS = `
+  .ck-ui{position:fixed;top:12px;right:12px;left:auto;z-index:5;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;
+    background:rgba(12,22,28,.86);color:#e8f1f3;border:1px solid rgba(120,200,210,.25);border-radius:14px;padding:12px 14px;
+    font:14px/1.6 "IBM Plex Sans Arabic",Tahoma,system-ui,sans-serif;direction:rtl;backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+  .ck-ui h1{font-size:17px;margin:0 0 2px;font-weight:700}.ck-ui .sub{margin:0 0 8px;color:#a9c1c7;font-size:13px}
+  .ck-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+  .ck-ui input,.ck-ui select{font:inherit;flex:1 1 140px;min-width:0;background:#0d1a20;color:#e8f1f3;border:1px solid #2b4650;border-radius:9px;padding:6px 9px}
+  .ck-ui button{font:inherit;background:#1f8a93;color:#fff;border:0;border-radius:9px;padding:6px 12px;cursor:pointer}
+  .ck-ui button.ghost{background:transparent;border:1px solid #2b4650;color:#cfe3e7}
+  .ck-ui button:disabled{opacity:.5;cursor:default}
+  .ck-ui label{display:block;font-size:13px;color:#a9c1c7;margin-top:6px}
+  .ck-ui input[type=range]{width:100%;flex-basis:100%}
+  .ck-status{font-size:12.5px;color:#9fd8de;min-height:1.4em}
+  .ck-stat{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-variant-numeric:tabular-nums;margin-top:6px}
+  .ck-stat b{color:#fff}
+  .ck-toggle{position:fixed;top:12px;right:12px;z-index:6;display:none}
+  @media (max-width:640px){.ck-ui{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:46vh}}
+  .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:rtl;pointer-events:none}
+  `;
+  CK.ui = function (title, sub) {
+    const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+    const box = document.createElement('div'); box.className = 'ck-ui';
+    box.innerHTML = '<h1></h1><p class="sub"></p><div class="ck-row"><input id="ckq" type="search"><button id="ckgo"></button></div>' +
+      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>';
+    box.querySelector('h1').textContent = title; box.querySelector('.sub').textContent = sub || '';
+    box.querySelector('#ckq').placeholder = T('اكتب اسم حيّك أو مدينتك', 'Type your neighbourhood or city');
+    box.querySelector('#ckgo').textContent = T('ابنِ', 'Build');
+    box.querySelector('#ckme').textContent = T('موقعي', 'My location');
+    const sel = box.querySelector('#ckpre');
+    sel.innerHTML = '<option value="">' + T('أو اختر مدينة…', 'or pick a city…') + '</option>' + CK.PRESETS.map((p, i) => '<option value="' + i + '">' + (AR ? p.ar : p.en) + '</option>').join('');
+    document.body.appendChild(box);
+    const hud = document.createElement('div'); hud.className = 'ck-hud'; document.body.appendChild(hud);
+    return { box, panel: box.querySelector('#ckpanel'), status: (s) => { box.querySelector('#ckst').textContent = s || ''; }, hud: (s) => { hud.innerHTML = s || ''; } };
+  };
+  CK.el = function (html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
+
+  // ── التشغيل ──
+  CK.start = function (opt) {
+    const THREE = window.THREE; CK.THREE = THREE;
+    const R = opt.radius || 600;
+    document.documentElement.dir = 'rtl';
+    document.body.style.cssText = 'margin:0;overflow:hidden;background:#0b1419';
+    const ui = CK.ui(opt.title, opt.sub);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: !!opt.keepBuffer });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = !!opt.shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfd9e6); scene.fog = new THREE.Fog(0xbfd9e6, R * 1.4, R * 4);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, R * 8);
+    const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x8a7a5c, 0.85); scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(-R * 0.6, R * 1.2, R * 0.4); scene.add(sun); scene.add(sun.target);
+    if (opt.shadows) { sun.castShadow = true; const sc = sun.shadow.camera; sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = R * 4; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; }
+    const orbit = CK.orbit(camera, renderer.domElement, { dist: R * 1.5, max: R * 5 });
+    const frames = [];
+    let city = null, cityGroup = null, busy = false;
+    const ctx = { THREE, scene, camera, renderer, orbit, sun, hemi, ui, R, T, AR, frames, onFrame: (f) => frames.push(f) };
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    let prev = performance.now();
+    renderer.setAnimationLoop(() => {
+      const now = performance.now(), dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+      for (const f of frames) { try { f(dt, now); } catch (e) { console.error(e); } }
+      renderer.render(scene, camera);
+    });
+    async function load(lat, lon, name) {
+      if (busy) return; busy = true;
+      ui.status(T('أجلب مباني وشوارع ', 'Fetching buildings and streets of ') + (name || '') + '…');
+      try {
+        const osm = await CK.fetchArea(lat, lon, R);
+        const data = CK.parse(osm, lat, lon);
+        if (!data.buildings.length && !data.roads.length) { ui.status(T('ما لقيت مباني هنا — جرّب مكانًا داخل المدينة.', 'No buildings here — try a spot inside the city.')); busy = false; return; }
+        if (cityGroup) { scene.remove(cityGroup); cityGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+        frames.length = 0;
+        cityGroup = new THREE.Group(); scene.add(cityGroup);
+        const ground = new THREE.Mesh(new THREE.CircleGeometry(R * 3, 64), new THREE.MeshLambertMaterial({ color: 0xd8ccb4 }));
+        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; cityGroup.add(ground);
+        cityGroup.add(polysMesh(THREE, data.water, 0.03, 0x3d8fb6));
+        cityGroup.add(polysMesh(THREE, data.parks, 0.04, 0x8fb87a));
+        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide }));
+        roads.receiveShadow = true; cityGroup.add(roads);
+        const bm = new THREE.Mesh(buildingGeometry(THREE, data), new THREE.MeshLambertMaterial({ vertexColors: true }));
+        bm.castShadow = true; bm.receiveShadow = true; cityGroup.add(bm);
+        const idx = CK.index(data);
+        const group = new THREE.Group(); cityGroup.add(group);
+        city = Object.assign({}, data, { idx, buildingsMesh: bm, roadsMesh: roads, ground, group, name: name || '' });
+        ctx.city = city;
+        orbit.target.set(0, 0, 0); orbit.dist = R * 1.5; orbit.apply();
+        ui.status(T('جاهز: ', 'Ready: ') + data.buildings.length + T(' مبنى · ', ' buildings · ') + data.roads.length + T(' طريق', ' roads'));
+        if (opt.onCity) await opt.onCity(ctx, city);
+        window.__ck_ready = (window.__ck_ready || 0) + 1;
+      } catch (e) {
+        console.warn('[citykit]', e);
+        ui.status(T('تعذّر جلب الخريطة الحين — حاول بعد قليل أو اختر مدينة أخرى.', 'Could not load the map now — try again or pick another city.'));
+        window.__ck_error = String(e && e.message || e);
+      }
+      busy = false;
+    }
+    ctx.load = load; window.__ck_ctx = ctx; // للاختبار: تبديل المدينة من داخل الصفحة
+    const q = ui.box.querySelector('#ckq');
+    const go = async () => { try { ui.status(T('أبحث…', 'Searching…')); const g = await CK.geocode(q.value); await load(g.lat, g.lon, q.value); } catch (e) { ui.status(T('ما لقيت المكان — اكتبه بطريقة ثانية.', 'Place not found — try another spelling.')); } };
+    ui.box.querySelector('#ckgo').addEventListener('click', go);
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    ui.box.querySelector('#ckpre').addEventListener('change', (e) => { const p = CK.PRESETS[+e.target.value]; if (p) load(p.lat, p.lon, AR ? p.ar : p.en); });
+    ui.box.querySelector('#ckme').addEventListener('click', () => {
+      if (!navigator.geolocation) return ui.status(T('الموقع غير متاح هنا.', 'Location is not available here.'));
+      navigator.geolocation.getCurrentPosition((p) => load(p.coords.latitude, p.coords.longitude, T('موقعك', 'your location')), () => ui.status(T('ما سمح المتصفّح بالموقع — اكتب اسم الحيّ.', 'Location blocked — type the neighbourhood.')), { timeout: 10000 });
+    });
+    if (opt.panel) opt.panel(ctx);
+    const p0 = CK.PRESETS[0];
+    load(p0.lat, p0.lon, AR ? p0.ar : p0.en);
+    return ctx;
+  };
+  // أدوات مشتركة صغيرة
+  CK.sunDir = function (lat, lon, date) { // اتّجاه الشمس (ارتفاع + سمت) من التاريخ والوقت — تقريب NOAA
+    const rad = Math.PI / 180, d = (date - Date.UTC(2000, 0, 1, 12)) / 86400000;
+    const g = (357.529 + 0.98560028 * d) * rad, q = 280.459 + 0.98564736 * d;
+    const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad, e = (23.439 - 0.00000036 * d) * rad;
+    const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)), dec = Math.asin(Math.sin(e) * Math.sin(L));
+    const gmst = (18.697374558 + 24.06570982441908 * d) % 24, lst = (gmst * 15 + lon) * rad;
+    const H = lst - ra, la = lat * rad;
+    const alt = Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(H));
+    const az = Math.atan2(-Math.sin(H), Math.tan(dec) * Math.cos(la) - Math.sin(la) * Math.cos(H)); // من الشمال باتّجاه الشرق
+    return { alt, az, x: Math.cos(alt) * Math.sin(az), y: Math.sin(alt), z: -Math.cos(alt) * Math.cos(az) };
+  };
+  window.CityKit = CK;
+})();
+
+</script>
+<style>
+.nz{margin-top:6px;border-top:1px solid rgba(120,200,210,.18);padding-top:8px}
+.nz-hint{font-size:12.5px;color:#cfe3e7;background:rgba(31,138,147,.16);border:1px solid rgba(31,138,147,.35);border-radius:10px;padding:6px 9px;margin:0 0 8px;display:flex;gap:7px;align-items:flex-start}
+.nz-hint svg{flex:0 0 16px;margin-top:3px}
+.nz-gauge{position:relative;text-align:center;margin:0 auto;max-width:260px}
+.nz-gauge svg{width:100%;height:auto;display:block}
+.nz-verdict{font-weight:700;font-size:15px;margin-top:-4px}
+.nz-est{display:inline-block;font-size:11px;color:#0b1419;background:#f2c94c;border-radius:6px;padding:0 6px;margin-inline-start:6px;vertical-align:2px;font-weight:700}
+.nz-sub{font-size:12px;color:#a9c1c7;text-align:center;margin-top:2px}
+.nz-seg{display:flex;background:#0d1a20;border:1px solid #2b4650;border-radius:10px;padding:3px;gap:3px;margin:8px 0 6px}
+.nz-seg button{flex:1;background:transparent!important;color:#cfe3e7!important;padding:5px 8px!important;display:flex;gap:6px;align-items:center;justify-content:center}
+.nz-seg button.on{background:#1f8a93!important;color:#fff!important}
+.nz-row{display:flex;gap:6px;align-items:center;margin:6px 0}
+.nz-row .grow{flex:1}
+.nz-play{display:flex;gap:7px;align-items:center;justify-content:center;font-weight:700!important}
+.nz-play.stop{background:#c0473a!important}
+.nz-floor{display:flex;gap:6px;align-items:center}
+.nz-floor button{width:34px;height:34px;padding:0!important;font-size:20px!important;line-height:1;flex:0 0 34px}
+.nz-floor input{flex:1}
+.nz-fl{font-variant-numeric:tabular-nums;font-size:13px;color:#cfe3e7;display:flex;justify-content:space-between;margin-top:4px}
+.nz-h{font-size:12.5px;color:#a9c1c7;margin:10px 0 4px;font-weight:700;display:flex;justify-content:space-between}
+.nz-src{display:grid;gap:3px}
+.nz-s{display:grid;grid-template-columns:10px 1fr auto auto;gap:7px;align-items:center;font-size:12.5px;background:rgba(255,255,255,.035);border-radius:8px;padding:4px 8px}
+.nz-s i{width:10px;height:10px;border-radius:50%;display:block}
+.nz-s .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nz-s .d{color:#9fb6bc;font-size:11.5px;font-variant-numeric:tabular-nums}
+.nz-s b{font-variant-numeric:tabular-nums;min-width:44px;text-align:left}
+.nz-s em{font-style:normal;font-size:10.5px;color:#0b1419;background:#9fb6bc;border-radius:5px;padding:0 4px;margin-inline-start:4px}
+.nz-in{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.nz-in div{background:rgba(255,255,255,.04);border-radius:9px;padding:5px 8px;font-size:11.5px;color:#a9c1c7}
+.nz-in b{display:block;font-size:17px;color:#fff;font-variant-numeric:tabular-nums}
+.nz-pr{display:grid;grid-template-columns:44px 1fr 74px;gap:6px;align-items:center;height:13px;font-size:10.5px;color:#9fb6bc;cursor:pointer;font-variant-numeric:tabular-nums}
+.nz-pr .t{height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;display:block}
+.nz-pr .t span{display:block;height:100%;border-radius:4px;opacity:.7}
+.nz-pr .v em{font-style:normal;color:#9fe0b8;margin-inline-start:5px}
+.nz-pr.on{color:#fff;font-weight:700}.nz-pr.on .t span{opacity:1;box-shadow:0 0 0 1.5px #fff inset}
+.nz-pr:hover{color:#fff}
+.nz-q{font-size:12px;color:#9fe0b8;margin-top:2px}
+.nz-chk{display:flex!important;gap:8px;align-items:center;cursor:pointer;color:#cfe3e7!important;margin-top:10px!important}
+.ck-ui .nz-chk input{flex:0 0 auto;width:16px;height:16px;margin:0;accent-color:#1f8a93}
+.nz-note{font-size:11.5px;color:#93aab0;margin:10px 0 2px;line-height:1.55}
+.nz-hud{direction:rtl;background:rgba(10,18,24,.72);border:1px solid rgba(120,200,210,.22);border-radius:14px;padding:8px 14px 9px;backdrop-filter:blur(6px);min-width:150px}
+.nz-hud .v{font:800 40px/1 Tahoma,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.nz-hud .v small{font-size:13px;font-weight:600;margin-inline-start:5px;color:#cfe3e7;letter-spacing:0}
+.nz-hud .l{font-size:13px;color:#e8f1f3;margin-top:3px}
+.nz-hud .f{font-size:12px;color:#a9c1c7}
+.nz-hud .bar{height:5px;border-radius:3px;margin-top:6px;background:linear-gradient(90deg,#3fbf7f,#96cd5a,#f2c83c,#f08232,#e0453a,#aa285a);position:relative}
+.nz-hud .bar span{position:absolute;top:-3px;width:3px;height:11px;background:#fff;border-radius:2px;box-shadow:0 0 4px #000}
+.nz-labels{position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.nz-chip{position:absolute;transform:translate(-50%,-130%);font:700 11.5px/1.3 Tahoma,system-ui,sans-serif;color:#fff;background:rgba(10,18,24,.8);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:2px 7px;white-space:nowrap;direction:rtl;font-variant-numeric:tabular-nums}
+.nz-chip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:5px;vertical-align:0}
+.nz-chip.me{font-size:13px;padding:3px 9px;background:rgba(255,255,255,.92);color:#0b1419;border-color:#fff}
+@media (max-width:640px){.nz-gauge{display:none}.nz-hud{min-width:120px;padding:6px 10px}.nz-hud .v{font-size:30px}}
+</style>
+</head><body><script>
+(function () {
+  'use strict';
+  const CK = window.CityKit, T = CK.T;
+  // ── نموذج الضجيج ──
+  const KIND_DB = { motorway: 80, trunk: 76, primary: 72, secondary: 68, tertiary: 64, residential: 56 };
+  const OTHER_DB = 50, NIGHT_DROP = 8, FLOOR_H = 3.2, EAR = 1.5, SRC_Y = 0.5, LOS_STEP = 4, BLOCK_DB = 10;
+  const NO_TRAFFIC = /^(footway|path|cycleway|steps|pedestrian)$/; // ممرّات مشاة بلا سيّارات
+  const RANGE = { motorway: 2400, trunk: 1600, primary: 1100, secondary: 800, tertiary: 560, residential: 360 }; // أبعد من هذا لا يغيّر المجموع
+  const KIND_NAME = { motorway: T('طريق سريع', 'Motorway'), trunk: T('طريق شريانيّ', 'Trunk road'), primary: T('شارع رئيسيّ', 'Main street'), secondary: T('شارع ثانويّ', 'Secondary street'), tertiary: T('شارع فرعيّ', 'Local street'), residential: T('شارع سكنيّ', 'Residential street'), living_street: T('شارع هادئ', 'Living street'), service: T('شارع خدمة', 'Service road'), unclassified: T('شارع', 'Street') };
+  const PASS_RATE = { motorway: 0.9, trunk: 0.6, primary: 0.4, secondary: 0.28, tertiary: 0.16, residential: 0.06 };
+  const STOPS = [[40, [63, 191, 127]], [50, [150, 205, 90]], [58, [242, 200, 60]], [66, [240, 130, 50]], [74, [224, 69, 58]], [82, [170, 40, 90]]];
+  function rgbOf(db) {
+    if (db <= STOPS[0][0]) return STOPS[0][1];
+    for (let i = 1; i < STOPS.length; i++) if (db <= STOPS[i][0]) { const a = STOPS[i - 1], b = STOPS[i], t = (db - a[0]) / (b[0] - a[0]); return [0, 1, 2].map((k) => Math.round(a[1][k] + (b[1][k] - a[1][k]) * t)); }
+    return STOPS[STOPS.length - 1][1];
+  }
+  const cssOf = (db) => 'rgb(' + rgbOf(db).join(',') + ')';
+  const hexOf = (db) => { const c = rgbOf(db); return (c[0] << 16) | (c[1] << 8) | c[2]; };
+  function verdict(db, night) {
+    if (night) return db < 40 ? T('نوم مريح', 'Restful sleep') : db < 45 ? T('مقبول للنوم', 'OK for sleep') : db < 52 ? T('قد يزعج النوم', 'May disturb sleep') : T('يقطع النوم', 'Breaks sleep');
+    return db < 50 ? T('هادئ', 'Quiet') : db < 58 ? T('مقبول', 'Acceptable') : db < 65 ? T('مسموع بوضوح', 'Clearly audible') : db < 72 ? T('مزعج', 'Noisy') : T('صاخب جدًّا', 'Very loud');
+  }
+  function compass(nx, nz) {
+    const a = (Math.atan2(nx, -nz) * 180 / Math.PI + 360) % 360, i = Math.round(a / 45) % 8;
+    return [T('شماليّة', 'north'), T('شماليّة شرقيّة', 'north-east'), T('شرقيّة', 'east'), T('جنوبيّة شرقيّة', 'south-east'), T('جنوبيّة', 'south'), T('جنوبيّة غربيّة', 'south-west'), T('غربيّة', 'west'), T('شماليّة غربيّة', 'north-west')][i];
+  }
+  const floorName = (k) => (k === 0 ? T('الأرضيّ', 'Ground') : String(k));
+  const r1 = (v) => Math.round(v * 10) / 10;
+
+  let C = null, S = null; // C: سياق النواة، S: حالة المدينة الحاليّة (تُبنى من جديد مع كلّ مدينة)
+  const G = { night: false, closed: false, heat: true, floor: null };
+  const UI = {};
+
+  // ── تجهيز المقاطع مرّة لكلّ مدينة (مصفوفات مسطّحة؛ لا حلقات على المباني في كلّ إطار) ──
+  function buildSegments(city) {
+    const roads = [], A = { ax: [], az: [], bx: [], bz: [], e: [], r2: [], road: [] }, byName = new Map();
+    for (const r of city.roads) {
+      if (NO_TRAFFIC.test(r.kind)) continue;
+      const l10 = KIND_DB[r.kind] || OTHER_DB, rg = RANGE[r.kind] || 260, key = r.name ? r.kind + '|' + r.name : null; // الشارع المسمّى المقسوم لعدّة طرق = مصدر واحد
+      let ri = key != null ? byName.get(key) : undefined;
+      if (ri === undefined) { ri = roads.length; roads.push({ name: r.name, kind: r.kind, l10 }); if (key != null) byName.set(key, ri); }
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1];
+        if (Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.2) continue;
+        A.ax.push(p[0]); A.az.push(p[1]); A.bx.push(q[0]); A.bz.push(q[1]); A.e.push(Math.pow(10, l10 / 10)); A.r2.push(rg * rg); A.road.push(ri);
+      }
+    }
+    const F = (a) => Float64Array.from(a);
+    return { roads, n: A.ax.length, ax: F(A.ax), az: F(A.az), bx: F(A.bx), bz: F(A.bz), e: F(A.e), r2: F(A.r2), road: Int32Array.from(A.road) };
+  }
+
+  // مستوى الضجيج عند نقطة: لكلّ مقطع أقرب نقطة، ٣ dB لكلّ مضاعفة مسافة (مصدر خطّيّ) × حصّة زاوية الرؤية
+  // (حتّى لا يتضاعف الشارع المقسوم لمقاطع كثيرة)، و−١٠ dB إن حجب مبنى خطّ الرؤية (city.idx.los)، ثمّ جمع طاقيّ.
+  function evaluate(rx, ry, rz, top) {
+    const g = S.seg, idx = S.city.idx, nR = g.roads.length;
+    const rE = top ? new Float64Array(nR) : null, bE = top ? new Float64Array(nR) : null, bI = top ? new Int32Array(nR).fill(-1) : null;
+    const bX = top ? new Float64Array(nR) : null, bZ = top ? new Float64Array(nR) : null, bD = top ? new Float64Array(nR) : null, bB = top ? new Uint8Array(nR) : null;
+    const ay = SRC_Y - ry, ay2 = ay * ay, A = { x: rx, y: ry, z: rz }, B = { x: 0, y: SRC_Y, z: 0 };
+    let tot = 0, los = 0;
+    for (let i = 0; i < g.n; i++) {
+      const ax = g.ax[i] - rx, az = g.az[i] - rz, bx = g.bx[i] - rx, bz = g.bz[i] - rz, ex = bx - ax, ez = bz - az, L2 = ex * ex + ez * ez;
+      let t = -(ax * ex + az * ez) / L2; t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const nx = ax + ex * t, nz = az + ez * t, d2 = nx * nx + nz * nz;
+      if (d2 > g.r2[i]) continue;
+      const d = Math.sqrt(d2 + ay2);
+      const cx = ay * bz - az * ay, cy = az * bx - ax * bz, cz = ax * ay - ay * bx;
+      const th = Math.atan2(Math.sqrt(cx * cx + cy * cy + cz * cz), ax * bx + ay2 + az * bz);
+      let e = g.e[i] * (10 / Math.max(d, 5)) * (th / Math.PI);
+      if (!(e > 0)) continue;
+      let blk = 1;
+      if (e > 1000) { B.x = rx + nx; B.z = rz + nz; los++; blk = idx.los(A, B, LOS_STEP) ? 0 : 1; } // أضعف من ٣٠ dB: يُعدّ محجوبًا بلا فحص (أثره على المجموع لا يُذكر)
+      if (blk) e *= Math.pow(10, -BLOCK_DB / 10);
+      tot += e;
+      if (top) { const r = g.road[i]; rE[r] += e; if (e > bE[r]) { bE[r] = e; bI[r] = i; bX[r] = rx + nx; bZ[r] = rz + nz; bD[r] = d; bB[r] = blk; } }
+    }
+    const db = tot > 0 ? 10 * Math.log10(tot) : 0;
+    if (!top) return { db, los };
+    const order = []; for (let r = 0; r < nR; r++) if (bI[r] >= 0) order.push(r);
+    order.sort((a, b) => rE[b] - rE[a]);
+    const sources = order.slice(0, 5).map((r) => ({ name: g.roads[r].name || KIND_NAME[g.roads[r].kind] || T('شارع', 'Street'), kind: g.roads[r].kind, db: r1(10 * Math.log10(rE[r])), dist: Math.round(bD[r]), blocked: !!bB[r], share: Math.round(100 * rE[r] / tot), x: bX[r], z: bZ[r] }));
+    return { db, los, sources };
+  }
+
+  // ── اختيار الشقّة ──
+  function nearestFacade(b, px, pz) {
+    let best = null;
+    const P = b.poly, n = P.length;
+    for (let i = 0; i < n; i++) {
+      const p = P[i], q = P[(i + 1) % n], ex = q[0] - p[0], ez = q[1] - p[1], L2 = ex * ex + ez * ez || 1;
+      let t = ((px - p[0]) * ex + (pz - p[1]) * ez) / L2; t = Math.max(0.08, Math.min(0.92, t));
+      const x = p[0] + ex * t, z = p[1] + ez * t, d = (x - px) ** 2 + (z - pz) ** 2;
+      if (!best || d < best.d) { const L = Math.sqrt(L2); best = { d, x, z, nx: ez / L, nz: -ex / L }; }
+    }
+    if (CK.inPoly(best.x + best.nx * 0.5, best.z + best.nz * 0.5, b.poly)) { best.nx = -best.nx; best.nz = -best.nz; }
+    return { x: best.x + best.nx * 0.6, z: best.z + best.nz * 0.6, nx: best.nx, nz: best.nz };
+  }
+  const maxFloorOf = (b) => Math.max(0, Math.floor((b.h - 2.2) / FLOOR_H));
+  function pickBuilding(b, px, pz, floor, wall) {
+    let f;
+    if (wall) {
+      let nx = wall.x, nz = wall.z; const L = Math.hypot(nx, nz) || 1; nx /= L; nz /= L;
+      if (CK.inPoly(px + nx * 0.5, pz + nz * 0.5, b.poly)) { nx = -nx; nz = -nz; }
+      f = { x: px + nx * 0.6, z: pz + nz * 0.6, nx, nz };
+    } else f = nearestFacade(b, px, pz);
+    const maxFloor = maxFloorOf(b);
+    const fl = Math.max(0, Math.min(maxFloor, floor != null ? floor : (G.floor != null ? G.floor : Math.round(maxFloor * 0.45))));
+    S.pick = { b, x: f.x, z: f.z, nx: f.nx, nz: f.nz, maxFloor, floor: fl };
+    afterPick();
+  }
+  function pickGround(x, z, floor) {
+    const fl = Math.max(0, Math.min(30, floor != null ? floor : 0));
+    S.pick = { b: null, x, z, nx: 0, nz: 0, maxFloor: 30, floor: fl };
+    afterPick();
+  }
+  function pickAt(x, z, floor) { // للاختبار ولزرّ الوسط: يختار المبنى عند النقطة أو الأرض
+    const b = S.city.idx.at(x, z);
+    if (b) pickBuilding(b, x, z, floor); else pickGround(x, z, floor);
+    return window.__inspire_state;
+  }
+  function afterPick() {
+    G.floor = S.pick.floor;
+    UI.range.max = String(S.pick.maxFloor); UI.range.value = String(S.pick.floor);
+    recompute(); flyTo(); startProfile();
+  }
+  function setFloor(k) {
+    if (!S || !S.pick) return;
+    k = Math.max(0, Math.min(S.pick.maxFloor, Math.round(k)));
+    if (k === S.pick.floor) return;
+    S.pick.floor = k; G.floor = k; UI.range.value = String(k);
+    recompute(); flyTo(true);
+  }
+  function recompute() {
+    const p = S.pick, ry = EAR + p.floor * FLOOR_H, t0 = performance.now();
+    const res = evaluate(p.x, ry, p.z, true);
+    res.ms = performance.now() - t0; res.y = ry;
+    S.res = res;
+    buildFx(); renderUI(); publish(); audioUpdate();
+  }
+
+  // ── المؤثّرات ثلاثيّة الأبعاد ──
+  function disposeTree(o) { o.traverse((m) => { if (m.geometry) m.geometry.dispose(); if (m.material) m.material.dispose(); }); }
+  function haloTexture() {
+    if (UI.halo) return UI.halo;
+    const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+    const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 64, 64); UI.halo = new C.THREE.CanvasTexture(c); return UI.halo;
+  }
+  function beam(THREE, a, b, radius, color, opacity) {
+    const dir = new THREE.Vector3().subVectors(b, a), L = dir.length();
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, L, 10, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false }));
+    m.renderOrder = 5; // يُرى عبر المباني: الأشعّة هي الحكاية
+    m.position.copy(a).addScaledVector(dir, 0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+    return m;
+  }
+  function buildFx() {
+    const THREE = C.THREE, p = S.pick, res = S.res;
+    if (S.fx) { S.city.group.remove(S.fx.group); disposeTree(S.fx.group); }
+    const grp = new THREE.Group(), fx = { group: grp, pulses: [], rings: [], chips: [] };
+    S.fx = fx; S.city.group.add(grp);
+    const R = new THREE.Vector3(p.x, res.y, p.z), lvl = G.night ? res.db - NIGHT_DROP : res.db;
+    // الشقّة: كرة مضيئة + هالة + عمود إلى الأرض
+    const core = new THREE.Mesh(new THREE.SphereGeometry(2.6, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true }));
+    core.position.copy(R); core.renderOrder = 7; grp.add(core);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTexture(), color: hexOf(lvl), transparent: true, depthWrite: false, depthTest: false }));
+    halo.scale.set(26, 26, 1); halo.position.copy(R); halo.renderOrder = 6; grp.add(halo); fx.halo = halo;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, R.y, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
+    stem.position.set(R.x, R.y / 2, R.z); grp.add(stem);
+    // شريط الدور المختار حول المبنى
+    if (p.b) {
+      const poly = p.b.poly; let cx = 0, cz = 0; for (const q of poly) { cx += q[0]; cz += q[1]; } cx /= poly.length; cz /= poly.length;
+      const span = Math.max(4, Math.max(p.b.box[2] - p.b.box[0], p.b.box[3] - p.b.box[1]) / 2), s = 1 + 0.7 / span;
+      const y0 = p.floor * FLOOR_H + 0.15, y1 = y0 + FLOOR_H - 0.3, pos = [], edge = [];
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length];
+        const ax = cx + (a[0] - cx) * s, az = cz + (a[1] - cz) * s, bx = cx + (b[0] - cx) * s, bz = cz + (b[1] - cz) * s;
+        pos.push(ax, y0, az, bx, y0, bz, bx, y1, bz, ax, y0, az, bx, y1, bz, ax, y1, az);
+        edge.push(ax, y0, az, bx, y0, bz, ax, y1, az, bx, y1, bz);
+      }
+      const eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.Float32BufferAttribute(edge, 3));
+      grp.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })));
+      const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      const band = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: hexOf(lvl), transparent: true, opacity: 0.78, side: THREE.DoubleSide, depthWrite: false }));
+      grp.add(band); fx.band = band;
+    } else {
+      const ghost = new THREE.Mesh(new THREE.BoxGeometry(14, R.y + 1.5, 14), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, depthWrite: false }));
+      ghost.position.set(R.x, (R.y + 1.5) / 2, R.z); grp.add(ghost);
+    }
+    // أشعّة إلى أقوى خمسة مصادر + نبضات صوت تمشي نحو الشقّة + موجات على الشارع
+    const ringGeo = new THREE.RingGeometry(0.82, 1, 48), dotGeo = new THREE.SphereGeometry(1.25, 12, 8);
+    res.sources.forEach((s, k) => {
+      const sl = G.night ? s.db - NIGHT_DROP : s.db, col = hexOf(sl), P = new THREE.Vector3(s.x, SRC_Y + 0.3, s.z);
+      grp.add(beam(THREE, R, P, s.blocked ? 0.6 : 1.5 - k * 0.15, col, s.blocked ? 0.3 : 0.92));
+      if (!s.blocked) for (let j = 0; j < 3; j++) {
+        const d = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true })); d.renderOrder = 6; grp.add(d);
+        fx.pulses.push({ m: d, a: P, b: R, ph: j / 3, sp: 0.55 + 0.1 * (4 - k) });
+      }
+      for (let j = 0; j < 2; j++) {
+        const rg = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+        rg.rotation.x = -Math.PI / 2; rg.position.set(s.x, 0.7, s.z); grp.add(rg);
+        fx.rings.push({ m: rg, ph: j / 2, max: 10 + (sl - 40) * 0.6 });
+      }
+      fx.chips.push({ v: P.clone().setY(4), html: '<i style="background:' + cssOf(sl) + '"></i>' + Math.round(sl) + ' dB' + (s.blocked ? ' · ' + T('محجوب', 'shielded') : '') });
+    });
+    fx.chips.unshift({ v: R.clone().setY(R.y + 6), html: T('شقّتك', 'Your flat') + ' · ' + Math.round(lvl) + ' dB', me: true });
+    UI.labels.innerHTML = fx.chips.map((c) => '<div class="nz-chip' + (c.me ? ' me' : '') + '">' + c.html + '</div>').join('');
+    fx.chipEls = Array.from(UI.labels.children);
+  }
+  const _v = { v: null };
+  function tickFx(dt, now) {
+    const fx = S && S.fx; if (!fx) return;
+    const t = now / 1000;
+    for (const p of fx.pulses) { const u = (t * p.sp + p.ph) % 1; p.m.position.lerpVectors(p.a, p.b, u); p.m.scale.setScalar(0.6 + Math.sin(u * Math.PI) * 0.8); }
+    for (const r of fx.rings) { const u = (t * 0.45 + r.ph) % 1; r.m.scale.setScalar(2 + u * r.max); r.m.material.opacity = 0.85 * (1 - u); }
+    if (fx.halo) { const s = 24 + Math.sin(t * 3.2) * 4; fx.halo.scale.set(s, s, 1); }
+    // بطاقات الأرقام فوق المصادر
+    if (!_v.v) _v.v = new C.THREE.Vector3();
+    const W = window.innerWidth, H = window.innerHeight;
+    fx.chips.forEach((c, i) => {
+      const el = fx.chipEls[i]; if (!el) return;
+      _v.v.copy(c.v).project(C.camera);
+      if (_v.v.z > 1 || Math.abs(_v.v.x) > 1.05 || Math.abs(_v.v.y) > 1.05) { el.style.display = 'none'; return; }
+      el.style.display = ''; el.style.left = ((_v.v.x * 0.5 + 0.5) * W).toFixed(1) + 'px'; el.style.top = ((-_v.v.y * 0.5 + 0.5) * H).toFixed(1) + 'px';
+    });
+  }
+
+  // ── حركة الكاميرا نحو الشقّة ──
+  let fly = null;
+  function flyTo(soft) {
+    const o = C.orbit, p = S.pick, y = S.res.y;
+    let th = p.b ? Math.atan2(p.nx, p.nz) + 0.75 : o.theta;
+    while (th - o.theta > Math.PI) th -= 2 * Math.PI; while (th - o.theta < -Math.PI) th += 2 * Math.PI;
+    fly = { t0: performance.now(), dur: soft ? 600 : 1400, f: { x: o.target.x, y: o.target.y, z: o.target.z, d: o.dist, th: o.theta, ph: o.phi },
+      to: { x: p.x, y: y * 0.5, z: p.z, d: soft ? o.dist : Math.min(700, 290 + y * 1.1), th: soft ? o.theta : th, ph: soft ? o.phi : 0.6 } };
+  }
+  function tickFly(now) { // بالزمن الحقيقيّ لا بعدد الإطارات (الأجهزة البطيئة تصل في الوقت نفسه)
+    if (!fly) return;
+    const u = Math.min(1, Math.max(0, (now - fly.t0) / fly.dur)), e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2, f = fly.f, to = fly.to, o = C.orbit;
+    o.target.set(f.x + (to.x - f.x) * e, f.y + (to.y - f.y) * e, f.z + (to.z - f.z) * e);
+    o.dist = f.d + (to.d - f.d) * e; o.theta = f.th + (to.th - f.th) * e; o.phi = f.ph + (to.ph - f.ph) * e; o.apply();
+    if (u >= 1) fly = null;
+  }
+
+  // ── منحنى الأدوار: الضجيج في كلّ دور (يُحسب على دفعات بين الإطارات) ──
+  function startProfile() {
+    const p = S.pick, n = p.maxFloor, list = [];
+    if (n <= 13) for (let k = 0; k <= n; k++) list.push(k);
+    else for (let i = 0; i <= 12; i++) list.push(Math.round(i * n / 12));
+    S.prof = { pick: p, list, i: 0, out: [], done: false };
+    renderProfile();
+  }
+  function tickProfile() {
+    const pr = S && S.prof; if (!pr || pr.done || pr.pick !== S.pick) return;
+    const t0 = performance.now(), p = pr.pick;
+    do { const k = pr.list[pr.i++]; pr.out.push({ floor: k, db: r1(evaluate(p.x, EAR + k * FLOOR_H, p.z, false).db) }); } while (pr.i < pr.list.length && performance.now() - t0 < 9);
+    if (pr.i >= pr.list.length) { pr.done = true; publish(); }
+    renderProfile();
+  }
+  function renderProfile() {
+    const pr = S.prof; if (!pr) { UI.prof.innerHTML = ''; return; }
+    const off = G.night ? NIGHT_DROP : 0, rows = pr.out.slice().sort((a, b) => b.floor - a.floor);
+    let q = null, lo = Infinity, hi = -Infinity; for (const r of pr.out) { if (!q || r.db < q.db) q = r; lo = Math.min(lo, r.db); hi = Math.max(hi, r.db); }
+    const cur = S.pick.floor; let near = null; for (const r of pr.out) if (!near || Math.abs(r.floor - cur) < Math.abs(near.floor - cur)) near = r;
+    lo -= 3; hi += 0.5;
+    UI.prof.innerHTML = rows.map((r) => { const v = r.db - off, w = 8 + 92 * (r.db - lo) / Math.max(0.5, hi - lo);
+      return '<div class="nz-pr' + (r === near ? ' on' : '') + '" data-f="' + r.floor + '"><span class="k">' + floorName(r.floor) + '</span><span class="t"><span style="width:' + w.toFixed(1) + '%;background:' + cssOf(v) + '"></span></span><span class="v">' + Math.round(v) + (r === q && pr.done ? '<em>' + T('الأهدأ', 'quietest') + '</em>' : '') + '</span></div>'; }).join('');
+    UI.profQ.textContent = pr.done && q ? T('أهدأ دور هنا: ', 'Quietest floor here: ') + floorName(q.floor) + ' (' + Math.round(q.db - off) + ' dB) — ' + T('اضغط أيّ دور لتجربته', 'tap a floor to try it') : T('أحسب الأدوار…', 'Computing floors…');
+  }
+
+  // ── خريطة الضجيج على مستوى الشارع (بلا حجب، تُرسم تدريجيًّا) ──
+  function startHeat() {
+    const THREE = C.THREE, N = 112, R = C.R, cv = document.createElement('canvas'); cv.width = cv.height = N;
+    const x2 = cv.getContext('2d'), img = x2.createImageData(N, N), tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2 * R, 2 * R), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.72, depthWrite: false }));
+    mesh.rotation.x = -Math.PI / 2; mesh.position.y = 0.45; mesh.renderOrder = 1; mesh.visible = G.heat; mesh.material.opacity = G.night ? 0.95 : 0.66;
+    S.city.group.add(mesh);
+    S.heat = { N, R, cv, x2, img, tex, mesh, row: 0, done: false, db: new Float32Array(N * N) };
+  }
+  function heatPixel(h, k) { // نطاقات ٥ dB كخرائط الضجيج الرسميّة؛ ليلًا تنزل ٨ dB
+    const d = h.img.data, o = k * 4, v = h.db[k]; if (v < 0) { d[o + 3] = 0; return; }
+    const db = v - (G.night ? NIGHT_DROP : 0), band = Math.floor(db / 5) * 5 + 2.5, c = rgbOf(band), a = Math.max(0, Math.min(1, (band - 37) / 38));
+    d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = a > 0 ? Math.round(40 + a * 175) : 0;
+  }
+  function repaintHeat() { const h = S && S.heat; if (!h) return; h.mesh.material.opacity = G.night ? 0.95 : 0.66; const n = h.row * h.N; for (let k = 0; k < n; k++) heatPixel(h, k); h.x2.putImageData(h.img, 0, 0); h.tex.needsUpdate = true; }
+  function tickHeat() {
+    const h = S && S.heat; if (!h || h.done) return;
+    const g = S.seg, N = h.N, cell = 2 * h.R / N, idx = S.city.idx, d = h.img.data, t0 = performance.now(), ay = SRC_Y - EAR, ay2 = ay * ay;
+    while (h.row < N && performance.now() - t0 < 7) {
+      const j = h.row++, z = -h.R + (j + 0.5) * cell;
+      for (let i = 0; i < N; i++) {
+        const x = -h.R + (i + 0.5) * cell, o = (j * N + i) * 4;
+        if (Math.hypot(x, z) > h.R * 1.02 || idx.at(x, z)) { d[o + 3] = 0; h.db[j * N + i] = -1; continue; }
+        let tot = 0;
+        for (let s = 0; s < g.n; s++) {
+          const ax = g.ax[s] - x, az = g.az[s] - z, bx = g.bx[s] - x, bz = g.bz[s] - z, ex = bx - ax, ez = bz - az, L2 = ex * ex + ez * ez;
+          let t = -(ax * ex + az * ez) / L2; t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const nx = ax + ex * t, nz = az + ez * t, d2 = nx * nx + nz * nz;
+          if (d2 > g.r2[s]) continue;
+          const cx = ay * bz - az * ay, cy = az * bx - ax * bz, cz = ax * ay - ay * bx;
+          tot += g.e[s] * (10 / Math.max(Math.sqrt(d2 + ay2), 5)) * (Math.atan2(Math.sqrt(cx * cx + cy * cy + cz * cz), ax * bx + ay2 + az * bz) / Math.PI);
+        }
+        h.db[j * N + i] = tot > 0 ? 10 * Math.log10(tot) : 0; heatPixel(h, j * N + i);
+      }
+    }
+    h.x2.putImageData(h.img, 0, 0); h.tex.needsUpdate = true;
+    if (h.row >= N) { h.done = true; publish(); }
+  }
+
+  // ── الصوت: ضجيج مرور مركّب (همهمة منخفضة + سيّارات عابرة) بشدّة من المستوى المحسوب ──
+  const AU = { ac: null, on: false, n: null, timer: 0, next: 0, gain: 0 };
+  function noiseBuf(ac, brown) {
+    const len = ac.sampleRate * 3, b = ac.createBuffer(1, len, ac.sampleRate), d = b.getChannelData(0);
+    let last = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; if (brown) { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; } else d[i] = w * 0.5; }
+    return b;
+  }
+  function playLevel() { if (!S || !S.res) return 0; return S.res.db - (G.night ? NIGHT_DROP : 0) - (G.closed ? 25 : 0); }
+  function audioStart() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { C.ui.status(T('المتصفّح ما يدعم الصوت هنا.', 'Audio is not supported here.')); return; }
+    if (!S || !S.res) return;
+    try {
+      if (!AU.ac) AU.ac = new AC();
+      const ac = AU.ac; if (ac.state === 'suspended') ac.resume();
+      const master = ac.createGain(); master.gain.value = 0;
+      const win = ac.createBiquadFilter(); win.type = 'lowpass'; win.frequency.value = 9000;
+      master.connect(win); win.connect(ac.destination);
+      const s1 = ac.createBufferSource(); s1.buffer = noiseBuf(ac, true); s1.loop = true;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
+      const g1 = ac.createGain(); g1.gain.value = 0.9; s1.connect(lp); lp.connect(g1); g1.connect(master);
+      const s2 = ac.createBufferSource(); s2.buffer = noiseBuf(ac, false); s2.loop = true;
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.9;
+      const g2 = ac.createGain(); g2.gain.value = 0.06; s2.connect(bp); bp.connect(g2); g2.connect(master);
+      s1.start(); s2.start();
+      AU.n = { master, win, lp, bp, g2, s1, s2 }; AU.on = true; AU.next = performance.now() + 400;
+      AU.timer = setInterval(passBy, 150);
+      audioUpdate(); renderUI(); publish();
+    } catch (e) { console.warn('[noise] audio', e); audioStop(); }
+  }
+  function passBy() {
+    if (!AU.on || !S || !S.res) return;
+    const now = performance.now(); if (now < AU.next) return;
+    let rate = 0; for (const s of S.res.sources) rate += (PASS_RATE[s.kind] || 0.03) * (s.blocked ? 0.5 : 1);
+    if (G.night) rate *= 0.35; rate = Math.max(0.04, rate);
+    const ac = AU.ac, t = ac.currentTime, dur = 1.4 + Math.random() * 2.2, pk = 0.25 + Math.random() * 0.5;
+    const g = AU.n.g2.gain, f = AU.n.bp.frequency;
+    g.cancelScheduledValues(t); g.setTargetAtTime(pk, t, dur * 0.22); g.setTargetAtTime(0.06, t + dur * 0.5, dur * 0.22);
+    f.cancelScheduledValues(t); f.setTargetAtTime(1500, t, 0.15); f.setTargetAtTime(620, t + dur * 0.45, dur * 0.18);
+    AU.next = now + (-Math.log(1 - Math.random()) / rate) * 1000 + dur * 300;
+  }
+  function audioUpdate() {
+    if (!AU.on || !AU.n) return;
+    const L = playLevel(), t = AU.ac.currentTime;
+    AU.gain = Math.max(0.003, Math.min(0.85, 0.5 * Math.pow(10, (L - 75) / 20)));
+    AU.n.master.gain.setTargetAtTime(AU.gain, t, 0.3);
+    AU.n.win.frequency.setTargetAtTime(G.closed ? 380 : 9000, t, 0.25);
+    const top = S.res.sources[0]; AU.n.lp.frequency.setTargetAtTime(top && top.blocked ? 280 : 560, t, 0.3);
+  }
+  function audioStop() {
+    clearInterval(AU.timer); AU.timer = 0;
+    if (AU.n) { for (const k of ['s1', 's2']) { try { AU.n[k].stop(); } catch (e) { /* موقوف أصلًا */ } } try { AU.n.master.disconnect(); } catch (e) { /* مفصول أصلًا */ } }
+    AU.n = null; AU.on = false; AU.gain = 0;
+    if (UI.play) renderUI();
+    if (S) publish();
+  }
+
+  // ── الإضاءة: نهار/ليل ──
+  function applyLight() {
+    const D = UI.def; if (!D) return;
+    C.scene.background.set(G.night ? 0x0a1220 : D.bg); if (C.scene.fog) C.scene.fog.color.set(G.night ? 0x0a1220 : D.bg);
+    C.hemi.intensity = G.night ? 0.34 : D.hemi; C.hemi.color.set(G.night ? 0x8fa6ff : D.hemiC); C.sun.intensity = G.night ? 0.16 : D.sun;
+  }
+
+  // ── الواجهة ──
+  const ICON = {
+    play: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>',
+    stop: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>',
+    sun: '<svg width="15" height="15" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3.2" fill="currentColor"/><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3"/></g></svg>',
+    moon: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M10.5 1.8A6.5 6.5 0 1 0 14.2 11 5.3 5.3 0 0 1 10.5 1.8z" fill="currentColor"/></svg>',
+    tap: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#7fd6dd" stroke-width="1.4"><circle cx="8" cy="8" r="2.4" fill="#7fd6dd"/><circle cx="8" cy="8" r="5.6"/></svg>',
+  };
+  function gaugeSvg() {
+    const cx = 110, cy = 112, r = 80; let ticks = '';
+    for (const v of [40, 50, 60, 70, 80]) {
+      const a = Math.PI * (1 - (v - 30) / 55), x1 = cx + 92 * Math.cos(a), y1 = cy - 92 * Math.sin(a), x2 = cx + 99 * Math.cos(a), y2 = cy - 99 * Math.sin(a), tx = cx + 108 * Math.cos(a), ty = cy - 108 * Math.sin(a);
+      ticks += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="#5d7a82" stroke-width="1.5"/><text x="' + tx.toFixed(1) + '" y="' + (ty + 3).toFixed(1) + '" fill="#7f9aa1" font-size="9" text-anchor="middle">' + v + '</text>';
+    }
+    const arc = 'M' + (cx - r) + ',' + cy + ' A' + r + ',' + r + ' 0 0 1 ' + (cx + r) + ',' + cy;
+    return '<svg viewBox="0 0 220 128"><defs><linearGradient id="nzgr" x1="0" x2="1"><stop offset="0" stop-color="#3fbf7f"/><stop offset=".36" stop-color="#96cd5a"/><stop offset=".5" stop-color="#f2c83c"/><stop offset=".65" stop-color="#f08232"/><stop offset=".8" stop-color="#e0453a"/><stop offset="1" stop-color="#aa285a"/></linearGradient></defs>' +
+      '<path d="' + arc + '" stroke="url(#nzgr)" stroke-opacity=".28" stroke-width="13" fill="none" stroke-linecap="round"/>' +
+      '<path id="nzArc" d="' + arc + '" stroke="#3fbf7f" stroke-width="13" fill="none" stroke-linecap="round" stroke-dasharray="0 999" style="transition:stroke-dasharray .5s,stroke .5s"/>' + ticks +
+      '<circle id="nzNeedle" cx="30" cy="112" r="5.5" fill="#fff" stroke="#0b1419" stroke-width="2"/>' +
+      '<text id="nzVal" x="110" y="100" fill="#fff" font-size="40" font-weight="800" text-anchor="middle" font-family="Tahoma,system-ui">--</text></svg>';
+  }
+  function buildPanel(ctx) {
+    const el = CK.el('<div class="nz">' +
+      '<div class="nz-hint">' + ICON.tap + '<span>' + T('انقر أيّ مبنى — أو جداره مباشرة — لتختار شقّتك، ثمّ حدّد الدور واسمع الشارع.', 'Tap any building — or its wall — to pick your flat, choose the floor and listen.') + '</span></div>' +
+      '<div class="nz-gauge">' + gaugeSvg() + '<div class="nz-verdict"><span id="nzVer">—</span><span class="nz-est">' + T('تقدير', 'estimate') + '</span></div><div class="nz-sub" id="nzSub"></div></div>' +
+      '<div class="nz-seg"><button id="nzDay" class="on">' + ICON.sun + T('نهارًا', 'Day') + '</button><button id="nzNight">' + ICON.moon + T('ليلًا', 'Night') + '</button></div>' +
+      '<div class="nz-row"><button id="nzPlay" class="nz-play grow">' + ICON.play + '<span>' + T('اسمع الشقّة', 'Hear the flat') + '</span></button><button id="nzWin" class="ghost">' + T('النافذة مفتوحة', 'Window open') + '</button></div>' +
+      '<div class="nz-h"><span>' + T('الدور', 'Floor') + '</span><span id="nzFl"></span></div>' +
+      '<div class="nz-floor"><button id="nzDn" class="ghost" aria-label="-">−</button><input id="nzRange" type="range" min="0" max="10" step="1" value="0"><button id="nzUp" class="ghost" aria-label="+">+</button></div>' +
+      '<div class="nz-in"><div>' + T('داخل الغرفة، النافذة مفتوحة', 'Indoors, window open') + '<b id="nzInO">—</b></div><div>' + T('داخل الغرفة، النافذة مغلقة', 'Indoors, window closed') + '<b id="nzInC">—</b></div></div>' +
+      '<div class="nz-h"><span>' + T('أقوى مصادر الضجيج', 'Loudest sources') + '</span><span id="nzN"></span></div><div class="nz-src" id="nzSrc"></div>' +
+      '<div class="nz-h"><span>' + T('الضجيج في كلّ دور', 'Noise by floor') + '</span></div><div class="nz-prof" id="nzProf"></div><div class="nz-q" id="nzQ"></div>' +
+      '<label class="nz-chk"><input type="checkbox" id="nzHeat" checked> ' + T('خريطة ضجيج الشوارع (عند مستوى الرصيف)', 'Street noise map (pavement level)') + '</label>' +
+      '<p class="nz-note">' + T('الرقم تقدير تقريبيّ من نوع الشارع والمسافة وحجب المباني فقط — ليس قياسًا. الزحمة والسرعة والمطبّات وعزل النوافذ تغيّره؛ قِس بنفسك قبل التوقيع.', 'An approximate estimate from street type, distance and building shielding only — not a measurement. Traffic, speed and glazing change it; measure on site before signing.') + '</p></div>');
+    ctx.ui.panel.appendChild(el);
+    const $ = (id) => el.querySelector('#' + id);
+    Object.assign(UI, { range: $('nzRange'), play: $('nzPlay'), win: $('nzWin'), day: $('nzDay'), nightB: $('nzNight'), fl: $('nzFl'), src: $('nzSrc'), prof: $('nzProf'), profQ: $('nzQ'), heat: $('nzHeat'), arc: $('nzArc'), needle: $('nzNeedle'), val: $('nzVal'), ver: $('nzVer'), sub: $('nzSub'), inO: $('nzInO'), inC: $('nzInC'), nSrc: $('nzN') });
+    UI.range.addEventListener('input', () => { G.wantFloor = +UI.range.value; });
+    $('nzDn').addEventListener('click', () => S && S.pick && setFloor(S.pick.floor - 1));
+    $('nzUp').addEventListener('click', () => S && S.pick && setFloor(S.pick.floor + 1));
+    UI.play.addEventListener('click', () => { if (AU.on) audioStop(); else audioStart(); });
+    UI.win.addEventListener('click', () => { G.closed = !G.closed; renderUI(); audioUpdate(); publish(); });
+    UI.day.addEventListener('click', () => setNight(false));
+    UI.nightB.addEventListener('click', () => setNight(true));
+    UI.heat.addEventListener('change', () => { G.heat = UI.heat.checked; if (S && S.heat) S.heat.mesh.visible = G.heat; });
+    UI.prof.addEventListener('click', (e) => { const g = e.target.closest('[data-f]'); if (g) setFloor(+g.getAttribute('data-f')); });
+    UI.labels = document.body.appendChild(CK.el('<div class="nz-labels"></div>'));
+  }
+  function setNight(on) {
+    G.night = !!on; applyLight();
+    repaintHeat();
+    if (S && S.res) { buildFx(); renderUI(); renderProfile(); publish(); audioUpdate(); }
+  }
+  function renderUI() {
+    if (!UI.play) return;
+    UI.play.classList.toggle('stop', AU.on);
+    UI.play.innerHTML = (AU.on ? ICON.stop : ICON.play) + '<span>' + (AU.on ? T('أوقف الصوت', 'Stop sound') : T('اسمع الشقّة', 'Hear the flat')) + '</span>';
+    UI.win.textContent = G.closed ? T('النافذة مغلقة', 'Window closed') : T('النافذة مفتوحة', 'Window open');
+    UI.day.classList.toggle('on', !G.night); UI.nightB.classList.toggle('on', G.night);
+    if (!S || !S.res || !S.pick) { C.ui.hud(''); return; }
+    const p = S.pick, res = S.res, L = G.night ? res.db - NIGHT_DROP : res.db, Lr = Math.round(L), col = cssOf(L);
+    const f = Math.max(0, Math.min(1, (L - 30) / 55));
+    UI.arc.setAttribute('stroke-dasharray', (f * Math.PI * 80).toFixed(1) + ' 999'); UI.arc.setAttribute('stroke', col);
+    const na = Math.PI * (1 - f); UI.needle.setAttribute('cx', (110 + 80 * Math.cos(na)).toFixed(1)); UI.needle.setAttribute('cy', (112 - 80 * Math.sin(na)).toFixed(1));
+    UI.val.textContent = res.sources.length ? Lr : '—'; UI.ver.textContent = verdict(L, G.night); UI.ver.style.color = col;
+    const side = p.b ? T('واجهة ', 'facade ') + compass(p.nx, p.nz) : (p.floor ? T('برج افتراضيّ هنا', 'imagined tower here') : T('على الرصيف', 'at street level'));
+    UI.sub.textContent = 'dB(A) · ' + (G.night ? T('ليلًا', 'night') : T('نهارًا', 'day')) + ' · ' + side;
+    UI.fl.textContent = T('الدور ', 'Floor ') + floorName(p.floor) + T(' من ', ' of ') + p.maxFloor + ' · ' + T('ارتفاع ', 'height ') + Math.round(res.y) + T(' م', ' m');
+    UI.inO.textContent = Math.round(L - 10) + ' dB'; UI.inC.textContent = Math.round(L - 25) + ' dB';
+    UI.nSrc.textContent = T('من ', 'of ') + S.seg.n + T(' مقطع شارع', ' street segments');
+    UI.src.innerHTML = res.sources.length ? res.sources.map((s) => { const sl = G.night ? s.db - NIGHT_DROP : s.db; return '<div class="nz-s"><i style="background:' + cssOf(sl) + '"></i><span class="n">' + esc(s.name) + (s.blocked ? '<em>' + T('محجوب', 'shielded') + '</em>' : '') + '</span><span class="d">' + s.dist + T(' م', ' m') + ' · ' + s.share + '%</span><b>' + Math.round(sl) + ' dB</b></div>'; }).join('')
+      : '<div class="nz-s"><i></i><span class="n">' + T('ما فيه شوارع سيّارات قريبة', 'No car streets nearby') + '</span></div>';
+    const pct = (f * 100).toFixed(1);
+    C.ui.hud('<div class="nz-hud"><div class="v" style="color:' + col + '">' + (res.sources.length ? Lr : '—') + '<small>dB(A)</small></div><div class="l">' + verdict(L, G.night) + ' · ' + (G.night ? T('ليلًا', 'night') : T('نهارًا', 'day')) + ' · ' + T('تقدير', 'estimate') + '</div><div class="f">' + T('الدور ', 'Floor ') + floorName(p.floor) + ' · ' + side + '</div><div class="bar"><span style="left:calc(' + pct + '% - 1px)"></span></div></div>');
+  }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function publish() {
+    const res = S && S.res, p = S && S.pick, pr = S && S.prof;
+    let q = null; if (pr && pr.done) for (const r of pr.out) if (!q || r.db < q.db) q = r;
+    window.__inspire_state = {
+      dbDay: res ? r1(res.db) : null, dbNight: res ? r1(res.db - NIGHT_DROP) : null,
+      topSources: res ? res.sources.map((s) => ({ name: s.name, kind: s.kind, db: s.db, dist: s.dist, blocked: s.blocked, share: s.share })) : [],
+      floor: p ? p.floor : null, maxFloor: p ? p.maxFloor : null, buildingId: p && p.b ? p.b.id : null, buildingH: p && p.b ? r1(p.b.h) : null,
+      receiver: p && res ? { x: r1(p.x), y: r1(res.y), z: r1(p.z) } : null, facade: p && p.b ? compass(p.nx, p.nz) : null,
+      segments: S ? S.seg.n : 0, losChecks: res ? res.los : 0, calcMs: res ? Math.round(res.ms) : 0,
+      profile: pr ? pr.out.slice() : [], profileDone: !!(pr && pr.done), quietestFloor: q ? q.floor : null,
+      night: G.night, windowClosed: G.closed, playing: AU.on, audioGain: r1(AU.gain * 1000) / 1000, heatDone: !!(S && S.heat && S.heat.done), city: S ? S.city.name : '',
+    };
+  }
+
+  // ── النقر لاختيار الشقّة (مع عتبة حركة حتّى لا يُحسب السحب نقرًا) ──
+  function bindPick(ctx) {
+    const dom = ctx.renderer.domElement, ray = new ctx.THREE.Raycaster(), ndc = new ctx.THREE.Vector2();
+    let down = null;
+    dom.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId }; fly = null; });
+    dom.addEventListener('pointerup', (e) => {
+      if (!down || e.pointerId !== down.id) return;
+      const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y), dt = performance.now() - down.t; down = null;
+      if (moved < 7 && dt < 700) tapAt(e.clientX, e.clientY);
+    });
+    function tapAt(cx, cy) {
+      if (!S) return;
+      const r = dom.getBoundingClientRect(); ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, ctx.camera);
+      const hit = ray.intersectObjects([S.city.buildingsMesh, S.city.ground], false)[0]; if (!hit) return;
+      const p = hit.point, idx = S.city.idx;
+      if (hit.object === S.city.buildingsMesh && hit.face) {
+        const n = hit.face.normal;
+        if (Math.abs(n.y) > 0.5) { const b = idx.at(p.x, p.z); if (b) return pickBuilding(b, p.x, p.z); }
+        else { const b = idx.at(p.x - n.x * 0.4, p.z - n.z * 0.4); if (b) return pickBuilding(b, p.x, p.z, Math.floor(Math.max(0, p.y - 0.3) / FLOOR_H), { x: n.x, z: n.z }); }
+      }
+      if (Math.hypot(p.x, p.z) > ctx.R * 1.02) { ctx.ui.status(T('هذا خارج المنطقة المحمّلة — اختر نقطة أقرب.', 'Outside the loaded area — pick a closer spot.')); return; }
+      const b = idx.at(p.x, p.z); if (b) pickBuilding(b, p.x, p.z); else pickGround(p.x, p.z);
+    }
+    window.__noise_tap = tapAt;
+  }
+  // الجوّال: اللوحة تشغل أسفل الشاشة، فنرفع مركز المشهد إلى النصف العلويّ
+  function viewOffset() {
+    const W = window.innerWidth, H = window.innerHeight, cam = C.camera;
+    if (W <= 640) cam.setViewOffset(W, H, 0, Math.round(H * 0.2), W, H); // الجوّال: اللوحة أسفل
+    else if (W >= 900) cam.setViewOffset(W, H, Math.round(Math.min(380, W * 0.33) / 2), 0, W, H); // الحاسوب: اللوحة يمينًا
+    else cam.clearViewOffset();
+    cam.updateProjectionMatrix();
+  }
+
+  function autoPick(city) {
+    let best = null, bd = Infinity;
+    for (const b of city.buildings) { if (b.h < 9) continue; const cx = (b.box[0] + b.box[2]) / 2, cz = (b.box[1] + b.box[3]) / 2, d = cx * cx + cz * cz; if (d < bd) { bd = d; best = b; } }
+    if (!best) for (const b of city.buildings) { const cx = (b.box[0] + b.box[2]) / 2, cz = (b.box[1] + b.box[3]) / 2, d = cx * cx + cz * cz; if (d < bd) { bd = d; best = b; } }
+    if (!best) { pickGround(0, 0, 0); return; }
+    const cx = (best.box[0] + best.box[2]) / 2, cz = (best.box[1] + best.box[3]) / 2, g = S.seg;
+    let q = [cx, cz], qd = Infinity;
+    for (let i = 0; i < g.n; i++) {
+      const ex = g.bx[i] - g.ax[i], ez = g.bz[i] - g.az[i]; let t = ((cx - g.ax[i]) * ex + (cz - g.az[i]) * ez) / (ex * ex + ez * ez); t = Math.max(0, Math.min(1, t));
+      const x = g.ax[i] + ex * t, z = g.az[i] + ez * t, d = (x - cx) ** 2 + (z - cz) ** 2; if (d < qd) { qd = d; q = [x, z]; }
+    }
+    pickBuilding(best, q[0], q[1], Math.round(maxFloorOf(best) * 0.45));
+  }
+
+  CK.start({
+    title: T('اسمع الشقّة قبل التوقيع', 'Hear the flat before you sign'),
+    sub: T('ضجيج الشوارع الحقيقيّة عند أيّ شقّة وأيّ دور في حيّك — بالأرقام وبالصوت.', 'Real street noise at any flat and floor in your area — in numbers and sound.'),
+    shadows: true,
+    panel(ctx) {
+      C = ctx;
+      UI.def = { bg: ctx.scene.background.getHex(), hemi: ctx.hemi.intensity, hemiC: ctx.hemi.color.getHex(), sun: ctx.sun.intensity };
+      buildPanel(ctx); bindPick(ctx); viewOffset(); renderUI();
+      window.addEventListener('resize', viewOffset);
+      window.__noise = { pickAt, setFloor, setNight, play: audioStart, stop: audioStop, evaluate: (x, y, z) => evaluate(x, y, z, true), tap: (x, y) => window.__noise_tap(x, y), toggleWindow: () => UI.win.click() };
+    },
+    onCity(ctx, city) {
+      C = ctx; audioStop(); fly = null;
+      S = { city, seg: buildSegments(city), pick: null, res: null, fx: null, prof: null, heat: null };
+      G.floor = null; UI.labels.innerHTML = '';
+      applyLight(); startHeat();
+      ctx.onFrame((dt, now) => {
+        if (G.wantFloor != null) { const k = G.wantFloor; G.wantFloor = null; setFloor(k); }
+        tickFly(now); tickFx(dt, now); tickProfile(); tickHeat();
+      });
+      autoPick(city);
+    },
+  });
+})();
+</script></body></html>
