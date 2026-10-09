@@ -237,8 +237,9 @@
   // ── الشمس ──
   function dayBase() {
     const n = new Date(), Y = n.getFullYear();
-    if (S.day === 'summer') return Date.UTC(Y, 5, 21);
-    if (S.day === 'winter') return Date.UTC(Y, 11, 21);
+    const south = !!(S.city && S.city.lat < 0); // «عزّ الصيف»/«الشتاء» ينقلبان جنوب خطّ الاستواء
+    if (S.day === 'summer') return Date.UTC(Y, south ? 11 : 5, 21);
+    if (S.day === 'winter') return Date.UTC(Y, south ? 5 : 11, 21);
     return Date.UTC(Y, n.getMonth(), n.getDate());
   }
   function sunNow() { const c = S.city; return CK.sunDir(c.lat, c.lon, dayBase() + (S.hour - S.tz) * 3600000); }
