@@ -153,7 +153,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = (x) => { x = clamp(x, 0, 1); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
 const $ = (id) => document.getElementById(id);
 // إطار الجهاز: ١١٢٠×٧٣٠ على جهة، والنصّ على الجهة الأخرى
-const FW = 1120, FH = 730, FY = 175, FX = RTL ? 80 : 1920 - 80 - FW, PX = RTL ? 1260 : 90, PW = 570;
+const FW = 1200, FH = 780, FY = 150, FX = RTL ? 70 : 1920 - 70 - FW, PX = RTL ? 1320 : 80, PW = 520;
 SH.forEach((s, i) => { const f = $('f' + i); Object.assign(f.style, { left: FX + 'px', top: FY + 'px', width: FW + 'px', height: FH + 'px' }); Object.assign($('p' + i).style, { left: PX + 'px', width: PW + 'px', textAlign: RTL ? 'right' : 'left' }); });
 function vis(id, a, b, t) { // ظهور متلاشٍ بين a وb
   const o = clamp((t - a) / FADE, 0, 1) * clamp((b - t) / FADE, 0, 1); $(id).style.opacity = o; return o;
@@ -171,8 +171,9 @@ window.R = function (t) {
     const o = vis('s' + i, a, b, t); if (o <= 0) return;
     // تقريب ناعم على العنصر: من لقطة كاملة إلى العنصر بحجم مريح
     const fit = Math.min(FW / s.w, FH / s.h);
-    const zTarget = clamp(Math.min(FW / (s.r.w + 160), FH / (s.r.h + 260)), fit, fit * 2.1);
-    const k = ease((lt - .35) / 1.6);
+    // حدّ أدنى للتكبير يجعل نصّ الواجهة مقروءًا (اللقطة بدقّة مضاعفة: ٠٫٩٥ ≈ نصّ ١٣px يظهر ~٢٥px في الفيديو) حتّى لو قُصّ طرف العنصر العريض
+    const zTarget = clamp(Math.max(0.95, Math.min(FW / (s.r.w + 160), FH / (s.r.h + 260))), fit, 1.35);
+    const k = ease((lt - .25) / 1.2);
     const z = fit + (zTarget - fit) * k;
     const cx = s.r.x + s.r.w / 2, cy = s.r.y + s.r.h / 2;
     const fullX = (FW - s.w * fit) / 2, fullY = (FH - s.h * fit) / 2;
