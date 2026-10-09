@@ -429,13 +429,13 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
   // ── الكاميرا ──
   function heroGoal() { // إطار يحوي البرج من قاعدته لقمّته وظلّه، حسب المساحة المكشوفة خارج اللوحة
     const h = H(), s = S.sun, sv = S.shadowVec, W = window.innerWidth, Hh = window.innerHeight, r = ctx.ui.box.getBoundingClientRect();
-    const th = s && s.alt > 0.5 * DEG ? Math.atan2(s.x, s.z) + 0.8 : 0.75;
+    const th = s && s.alt > 0.5 * DEG ? Math.atan2(s.x, s.z) + 1.15 : 0.75; // من جهة الشمس بزاوية: الواجهة مضاءة والظلّ يمتدّ عرضيًّا
     let visW = W, visH = Hh;
     if (r.width && r.top > Hh * 0.3) visH = r.top; else if (r.width && r.left > W * 0.45) visW = r.left;
     visH = Math.max(120, visH - 60); // بطاقات الأرقام في الأعلى
     const tall = visW / visH < 0.9, Lraw = sv ? Math.hypot(sv[0], sv[1]) : 0, Lc = Math.min(Lraw, h * (tall ? 0.9 : 2));
-    const u = Lraw ? [sv[0] / Lraw, sv[1] / Lraw] : [0, 0], cA = Lc / 2, cY = (h + 35) / 2;
-    const radius = Math.hypot(cA, cY) + Math.max(P.w, P.d) * 0.6, t = Math.tan(ctx.camera.fov / 2 * DEG);
+    const u = Lraw ? [sv[0] / Lraw, sv[1] / Lraw] : [0, 0], cA = Lc * 0.4, cY = (h + 35) / 2;
+    const radius = Math.hypot(Lc - cA, cY) + Math.max(P.w, P.d) * 0.6, t = Math.tan(ctx.camera.fov / 2 * DEG);
     const half = Math.min(Math.atan(t * visH / Hh), Math.atan(t * visW / Hh));
     return { target: new THREE.Vector3(S.x + u[0] * cA, cY, S.z + u[1] * cA), dist: clamp(radius / Math.sin(half) * 0.95, 200, 2600), theta: th, phi: 0.88 };
   }
