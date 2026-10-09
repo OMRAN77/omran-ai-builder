@@ -28,7 +28,7 @@ function studioPrompt(desc) {
   const what = String(desc || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 300) || 'modern family sedan, white';
   return 'Studio product photo of a single ' + what + ', three-quarter front view, the entire car visible and centered, '
     + 'plain light grey seamless background, soft even lighting, photorealistic, sharp details, '
-    + 'no logos, no brand badges, no text, no license plate, no people.';
+    + 'generic unbranded design, debadged: smooth grille and trunk with no emblem, no manufacturer badge, no logos, no text, no license plate, no people.';
 }
 
 /** ناتج المحرّك: رابط glb أيًّا كان اسم حقله. */
