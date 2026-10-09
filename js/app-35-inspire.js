@@ -41,6 +41,7 @@ const INSPIRE_CITY = [
   const ID = 'inspireScreen';
   const MARK = 'CityKit'; // كلّ تجربة تحمل النواة — بدونها فالمجلوب ليس تجربة (احتياط العامل يرجّع index.html أوفلاين)
   let tab = 'inspire';
+  let inFlight = 0, seq = 0, opener = null; // بطاقة واحدة تُفتح في كلّ مرّة؛ الإغلاق يلغي ما يُحمَّل
   const L = (o) => (o && (o[(typeof lang !== 'undefined' && lang) || 'ar'] || o.en || o.ar)) || '';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const tx = (k, fb) => { try{ const v = (typeof t === 'function') ? t(k) : ''; return (v && v !== k) ? v : fb; }catch(_){ __swallow(_, 'inspire:t'); return fb; } };
@@ -71,8 +72,10 @@ const INSPIRE_CITY = [
 #inspireScreen .insCard .insCT{font-size:14.5px; font-weight:800; margin-bottom:4px; line-height:1.4;}
 #inspireScreen .insCard .insCD{font-size:12.5px; opacity:.74; line-height:1.55;}
 #inspireScreen .insCard .insBusy{position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); font-size:13px; font-weight:700;}
-#inspireScreen .insCard.busy .insBusy{display:flex;}
-#inspireScreen .insErr{margin:12px 0 0; font-size:13px; color:#e88;}
+#inspireScreen .insCard.busy .insBusy, #inspireScreen .insCard.fail .insBusy{display:flex;}
+#inspireScreen .insCard.fail .insBusy{background:rgba(120,20,20,.72); padding:10px; text-align:center;}
+#inspireScreen .insGrid.loading .insCard:not(.busy){opacity:.55; pointer-events:none;}
+#inspireScreen .insErr{margin:0 0 12px; font-size:13px; color:var(--danger, #e88);}
 #inspireScreen .insQuick{display:flex; flex-direction:column; gap:2px; max-width:560px;}
 #inspireScreen .insQ{display:flex; align-items:center; gap:10px; background:none; border:0; border-radius:10px; color:inherit; font:inherit; font-size:14px; text-align:start; padding:11px 12px; cursor:pointer;}
 #inspireScreen .insQ:hover{background:rgba(255,255,255,.05);}
@@ -99,11 +102,10 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     el.id = ID;
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-modal', 'true');
-    el.innerHTML = '<div class="insBox"><div class="insHead"><div class="insTitle"></div><button type="button" class="insClose">' + CLOSE_SVG + '</button></div><div class="insTabs"></div><div class="insBody"></div></div>';
+    el.innerHTML = '<div class="insBox"><div class="insHead"><div class="insTitle"></div><button type="button" class="insClose" id="inspireCloseBtn">' + CLOSE_SVG + '</button></div><div class="insTabs" role="tablist"></div><div class="insBody"></div></div>';
     el.addEventListener('click', (e) => { if(e.target === el) closeInspireScreen(); });
     el.querySelector('.insClose').onclick = () => closeInspireScreen();
-    document.body.appendChild(el);
-    document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && el.classList.contains('show')) closeInspireScreen(); });
+    document.body.appendChild(el); // Esc والسحب للرجوع: app-05-swipe-back.js (inspireScreen ← inspireCloseBtn) — يغلقها وحدها
     return el;
   }
 
@@ -113,8 +115,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     el.querySelector('.insClose').setAttribute('aria-label', tx('closeTitle', 'إغلاق'));
     const tabs = el.querySelector('.insTabs');
     tabs.innerHTML = [['inspire', tx('inspTabInspire', 'الإلهام')], ['quick', tx('inspTabQuick', 'اقتراحات سريعة')]]
-      .map(([k, label]) => '<button type="button" class="insTab' + (tab === k ? ' on' : '') + '" data-tab="' + k + '">' + esc(label) + '</button>').join('');
-    tabs.querySelectorAll('.insTab').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); }; });
+      .map(([k, label]) => '<button type="button" role="tab" aria-selected="' + (tab === k) + '" class="insTab' + (tab === k ? ' on' : '') + '" data-tab="' + k + '">' + esc(label) + '</button>').join('');
+    tabs.querySelectorAll('.insTab').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); try{ const t = el.querySelector('.insTab.on'); if(t) t.focus(); }catch(_){ __swallow(_, 'inspire:tabfocus'); } }; });
     const body = el.querySelector('.insBody');
     if(tab === 'quick'){
       const list = (typeof QUICK_SUGGESTIONS !== 'undefined' ? QUICK_SUGGESTIONS : []).slice().sort((a, b) => (a.order||99) - (b.order||99));
@@ -124,32 +126,38 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     }
     body.innerHTML = '<h3 class="insSecT">' + esc(tx('inspCityTitle', 'مدينتك الحقيقيّة')) + '</h3>'
       + '<p class="insSecS">' + esc(tx('inspCitySub', '')) + '</p>'
+      + '<p class="insErr" role="alert" hidden></p>'
       + '<div class="insGrid">' + INSPIRE_CITY.map((c) => '<button type="button" class="insCard" data-id="' + c.id + '">'
         + '<img src="/assets/inspire/city/' + c.id + '.jpg?v=1" alt="" loading="lazy" decoding="async" width="600" height="360">'
         + '<div class="insTxt"><div class="insCT">' + esc(L(c.t)) + '</div><div class="insCD">' + esc(L(c.d)) + '</div></div>'
-        + '<div class="insBusy">' + esc(tx('inspLoading', 'يجهّز…')) + '</div></button>').join('') + '</div>'
-      + '<p class="insErr" hidden></p>';
+        + '<div class="insBusy">' + esc(tx('inspLoading', 'يجهّز…')) + '</div></button>').join('') + '</div>';
     body.querySelectorAll('.insCard').forEach((b) => { b.onclick = () => openInspireExperience(b.dataset.id, b); });
   }
 
   // التجربة تتكلّم عربيّ أو إنجليزيّ (CityKit.T): نخبرها بلغة التطبيق عبر lang الوثيقة قبل أن تُعرض.
-  function withLang(code){
+  // ووسم omran-inspire يبقى في الكود نفسه: صورة السجلّ تعرف التجربة حتّى لو ضاع حقل inspire في مزامنة الخادم.
+  function withLang(code, id){
     const ar = ((typeof lang !== 'undefined' && lang) || 'ar') === 'ar';
-    return String(code).replace(/<html\b[^>]*>/i, ar ? '<html lang="ar" dir="rtl">' : '<html lang="en" dir="ltr">');
+    return String(code).replace(/<html\b[^>]*>/i, ar ? '<html lang="ar" dir="rtl">' : '<html lang="en" dir="ltr">')
+      .replace(/<head>/i, '<head><meta name="omran-inspire" content="' + id + '">');
   }
 
   async function openInspireExperience(id, card){
     const item = INSPIRE_CITY.find((c) => c.id === id);
     if(!item) return false;
+    if(inFlight) return false; // نقرة ثانية أثناء التحميل لا تصنع مشروعًا ثانيًا
+    const token = ++seq; inFlight = token;
     const el = document.getElementById(ID);
-    const err = el && el.querySelector('.insErr');
+    const err = el && el.querySelector('.insErr'), grid = el && el.querySelector('.insGrid');
     if(err) err.hidden = true;
-    if(card){ if(card.classList.contains('busy')) return false; card.classList.add('busy'); }
+    if(grid) grid.classList.add('loading');
+    if(card){ card.classList.remove('fail'); card.classList.add('busy'); }
     try{
       const r = await fetch('/inspire/city/' + id + '.html', { cache:'no-cache' });
       const code = r.ok ? await r.text() : '';
+      if(inFlight !== token) return false; // أُغلقت الشاشة أثناء التحميل: لا مشروع ولا قفز
       if(!code || code.indexOf(MARK) === -1) throw new Error('inspire_fetch_' + r.status);
-      const cur = { id: 'p_' + Date.now(), title: L(item.t), code: withLang(code), codeType: 'html', messages: [], inspire: id };
+      const cur = { id: 'p_' + Date.now(), title: L(item.t), code: withLang(code, id), codeType: 'html', messages: [], inspire: id };
       state.projects.push(cur);
       state.currentId = cur.id;
       saveState();
@@ -163,10 +171,16 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       return true;
     }catch(e){
       __swallow(e, 'inspire:open');
-      if(err){ err.textContent = tx('inspFail', 'ما قدرت أفتحها الحين — جرّب مرّة ثانية'); err.hidden = false; }
+      if(inFlight === token){
+        const msg = tx('inspFail', 'ما قدرت أفتحها الحين — جرّب مرّة ثانية');
+        if(err){ err.textContent = msg; err.hidden = false; }
+        if(card){ const b = card.querySelector('.insBusy'); if(b) b.textContent = msg; card.classList.add('fail'); setTimeout(() => { card.classList.remove('fail'); if(b) b.textContent = tx('inspLoading', 'يجهّز…'); }, 3000); }
+      }
       return false;
     }finally{
+      if(inFlight === token) inFlight = 0;
       if(card) card.classList.remove('busy');
+      if(grid) grid.classList.remove('loading');
     }
   }
 
@@ -174,12 +188,19 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(which === 'quick' || which === 'inspire') tab = which;
     try{ if(typeof closeQuickTemplates === 'function') closeQuickTemplates(); }catch(_){ __swallow(_, 'inspire:close-quick'); }
     try{ const p = document.getElementById('plusToolsPopup'); if(p){ p.classList.remove('show'); p.classList.remove('open'); } }catch(_){ __swallow(_, 'inspire:close-plus'); }
+    opener = document.activeElement;
     render();
-    root().classList.add('show');
+    const el = root();
+    el.classList.add('show');
+    try{ const t = el.querySelector('.insTab.on'); if(t) t.focus(); }catch(_){ __swallow(_, 'inspire:focus'); }
   }
   function closeInspireScreen(){
+    inFlight = 0; // تحميل جارٍ لا يفتح مشروعًا بعد الإغلاق
     const el = document.getElementById(ID);
-    if(el) el.classList.remove('show');
+    if(!el || !el.classList.contains('show')) return;
+    el.classList.remove('show');
+    try{ if(opener && opener.isConnected && typeof opener.focus === 'function') opener.focus(); }catch(_){ __swallow(_, 'inspire:refocus'); }
+    opener = null;
   }
 
   window.openInspireScreen = openInspireScreen;

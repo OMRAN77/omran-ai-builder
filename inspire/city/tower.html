@@ -47,7 +47,12 @@
   };
   CK.query = function (lat, lon, r) {
     const a = '(around:' + Math.round(r) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
-    return '[out:json][timeout:25];(way["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a + ';way["leisure"~"park|garden"]' + a + ';way["landuse"="grass"]' + a + ';);out geom;';
+    const c = '(around:' + Math.round(r * 2) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
+    // العلاقات: مبانٍ بفناء داخليّ (أسواق، جوامع، جامعات) وبحيرات وحدائق كبيرة لا تُرسم في OSM إلّا علاقات.
+    // خطّ الساحل: البحر في OSM ليس مضلّعًا — يُستنتج من جهة الماء (يمين اتّجاه الخطّ).
+    return '[out:json][timeout:25];(way["building"]' + a + ';relation["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a +
+      ';relation["type"="multipolygon"]["natural"="water"]' + a + ';way["leisure"~"park|garden"]' + a + ';relation["type"="multipolygon"]["leisure"~"park|garden"]' + a +
+      ';way["landuse"="grass"]' + a + ';way["natural"="coastline"]' + c + ';);out geom;';
   };
   // كاش المناطق: التجربة تعمل داخل معاينة التطبيق بنفس الأصل، فـlocalStorage مشترك مع مشاريع المستخدم (aiapp_projects) —
   // منطقة واحدة قد تبلغ ١٫٥ مليون حرف فتملأ حصّته بعد ٢–٣ مناطق ويفشل حفظ التطبيق. لذلك: ذاكرة الصفحة + Cache API في مخزن
@@ -76,19 +81,21 @@
         const res = await timed(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(CK.query(lat, lon, r)) }, 30000);
         if (!res.ok) { last = new Error('HTTP ' + res.status); continue; }
         const j = await res.json();
-        await areaPut(key, j);
+        if (!j || !Array.isArray(j.elements) || (j.remark && /error|timed out|out of memory|runtime/i.test(String(j.remark)))) { last = new Error('overpass: ' + String((j && j.remark) || 'bad reply').slice(0, 80)); continue; }
+        if (j.elements.length) await areaPut(key, j); // منطقة فارغة (بحر/صحراء) لا تُحفظ — قد تكون ردًّا ناقصًا
         return j;
       } catch (e) { last = e; }
     }
     throw last || new Error('overpass');
   };
-  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, living_street: 5, service: 4, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, steps: 2 };
+  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, road: 6, busway: 6, living_street: 5, service: 4, track: 3.5, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, corridor: 2, steps: 2 };
   function heightOf(tags, id) {
     const h = parseFloat(String(tags.height || '').replace(',', '.'));
     if (h > 0 && h < 1000) return h;
     const lv = parseFloat(tags['building:levels']);
     if (lv > 0 && lv < 250) return lv * 3.2 + 1;
     const b = tags.building;
+    if (/^(roof|carport)$/.test(b)) return 4; // مظلّة مواقف/محطّة وقود
     const j = ((id * 2654435761) % 1000) / 1000; // ثابت لكلّ مبنى
     if (/house|detached|villa|bungalow|semidetached/.test(b)) return 6 + j * 3;
     if (/apartments|residential|dormitory/.test(b)) return 12 + j * 12;
@@ -99,24 +106,94 @@
   }
   CK.parse = function (osm, lat0, lon0) {
     const mx = Math.cos(lat0 * Math.PI / 180) * 111320, mz = 110540;
-    const P = (g) => [(g.lon - lon0) * mx, -(g.lat - lat0) * mz];
-    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0 };
+    const P = (g) => { let d = g.lon - lon0; if (d > 180) d -= 360; else if (d < -180) d += 360; return [d * mx, -(g.lat - lat0) * mz]; }; // الالتفاف عند خطّ ١٨٠
+    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0, sea: false };
+    const isClosed = (pts) => pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
+    const addBuilding = (id, poly, t) => {
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+      out.buildings.push({ id, poly, h: heightOf(t, id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
+    };
+    const coast = [];
     for (const e of (osm && osm.elements) || []) {
-      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
       const t = e.tags || {};
+      if (e.type === 'relation') { // العلاقة: الحلقات الخارجيّة تُخاط من أعضائها (الفناء الداخليّ يُملأ — أقرب من غيابه)
+        const outer = CK.stitch((e.members || []).filter((m) => m.type === 'way' && m.role !== 'inner' && m.geometry && m.geometry.length > 1).map((m) => m.geometry.map(P)));
+        if (t.building) outer.forEach((ring, i) => addBuilding(e.id * 16 + i, ring, t));
+        else if (t.natural === 'water' || t.water) out.water.push(...outer);
+        else if (t.leisure || t.landuse) out.parks.push(...outer);
+        continue;
+      }
+      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
       const pts = e.geometry.map(P);
-      const closed = pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
-      if (t.building && closed) {
-        const poly = pts.slice(0, -1);
-        let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-        for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
-        out.buildings.push({ id: e.id, poly, h: heightOf(t, e.id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
-      } else if (t.highway && ROAD_W[t.highway]) {
-        out.roads.push({ id: e.id, pts, kind: t.highway, w: ROAD_W[t.highway], name: t.name || '' });
+      const closed = isClosed(pts);
+      const hk = t.highway ? String(t.highway).replace(/_link$/, '') : ''; // الوصلات (منحدرات، مخارج، دوّارات) بنوع أصلها وعرض أضيق
+      if (t.natural === 'coastline') coast.push(pts);
+      else if (t.building && closed) addBuilding(e.id, pts.slice(0, -1), t);
+      else if (hk && ROAD_W[hk]) {
+        const link = hk !== t.highway;
+        out.roads.push({ id: e.id, pts, kind: hk, w: ROAD_W[hk] * (link ? 0.7 : 1), name: t.name || '', link });
       } else if ((t.natural === 'water' || t.water) && closed) out.water.push(pts.slice(0, -1));
       else if ((t.leisure || t.landuse) && closed) out.parks.push(pts.slice(0, -1));
     }
+    const sea = CK.seaPolys(coast, 1200, 25); // حتّى ٢R حول المركز (خطّ الساحل يُجلب حتّى ٢R)
+    if (sea.length) { out.water.push(...sea); out.sea = true; }
     out.buildings.sort((a, b) => b.h - a.h);
+    return out;
+  };
+  // خياطة خطوط إلى حلقات مغلقة (أعضاء العلاقة تأتي قطعًا متتالية بأيّ اتّجاه)
+  CK.stitch = function (lines) {
+    const near = (a, b) => Math.abs(a[0] - b[0]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5;
+    const pool = lines.map((l) => l.slice()), out = [];
+    while (pool.length) {
+      let cur = pool.shift(), guard = 0;
+      while (!near(cur[0], cur[cur.length - 1]) && guard++ < 2000) {
+        const end = cur[cur.length - 1]; let k = -1, rev = false;
+        for (let i = 0; i < pool.length; i++) { const l = pool[i]; if (near(l[0], end)) { k = i; break; } if (near(l[l.length - 1], end)) { k = i; rev = true; break; } }
+        if (k < 0) break;
+        const l = pool.splice(k, 1)[0]; if (rev) l.reverse(); cur = cur.concat(l.slice(1));
+      }
+      if (cur.length > 3 && near(cur[0], cur[cur.length - 1])) out.push(cur.slice(0, -1));
+    }
+    return out;
+  };
+  // البحر من خطّ الساحل: الماء يمين اتّجاه الخطّ (OSM). شبكة خلايا H×2 بعرض C — كلّ خليّة تأخذ جهة أقرب قطعة ساحل إليها
+  // (عند رأس مشترك: متوسّط عموديّي القطعتين)، ثمّ تُدمج الخلايا البحريّة مستطيلات (صفوف ثمّ أعمدة) تُضاف إلى الماء.
+  CK.seaPolys = function (coast, H, C) {
+    C = C || 20; if (!coast || !coast.length) return [];
+    const segs = [];
+    for (const l of coast) for (let i = 0; i < l.length - 1; i++) {
+      const a = l[i], b = l[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
+      if (L < 0.01) continue;
+      // في إحداثيّاتنا z جنوبًا: يمين الاتّجاه (شمالًا للأعلى) = (-dz, dx)/L بعد قلب z مرّتين ← (−dz, dx) في (x,z)
+      segs.push({ a, b, dx, dz, L, nx: -dz / L, nz: dx / L });
+    }
+    if (!segs.length) return [];
+    const N = Math.ceil(H / C), grid = [];
+    for (let j = -N; j < N; j++) {
+      const row = [];
+      for (let i = -N; i < N; i++) {
+        const x = (i + 0.5) * C, z = (j + 0.5) * C;
+        let best = Infinity, qx = 0, qz = 0, sx = 0, sz = 0;
+        for (const s of segs) {
+          let t = ((x - s.a[0]) * s.dx + (z - s.a[1]) * s.dz) / (s.L * s.L); t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const px = s.a[0] + s.dx * t, pz = s.a[1] + s.dz * t, d = (x - px) * (x - px) + (z - pz) * (z - pz);
+          if (d < best - 1e-3) { best = d; qx = px; qz = pz; sx = s.nx; sz = s.nz; }
+          else if (d < best + 1e-3) { sx += s.nx; sz += s.nz; } // رأس مشترك بين قطعتين: متوسّط عموديّيهما
+        }
+        row.push(best > 1e-3 && (x - qx) * sx + (z - qz) * sz > 0);
+      }
+      grid.push(row);
+    }
+    // دمج: لكلّ صفّ مقاطع متّصلة، ثمّ يمتدّ المقطع نفسه رأسيًّا ما دام مطابقًا
+    const out = [], open = new Map();
+    const flush = (key, j1) => { const o = open.get(key); open.delete(key); const x0 = (o.i0 - N) * C, x1 = (o.i1 + 1 - N) * C, z0 = (o.j0 - N) * C, z1 = (j1 - N) * C; out.push([[x0, z0], [x1, z0], [x1, z1], [x0, z1]]); };
+    for (let j = 0; j <= grid.length; j++) {
+      const runs = new Set();
+      if (j < grid.length) { const r = grid[j]; for (let i = 0; i < r.length; i++) if (r[i]) { let k = i; while (k + 1 < r.length && r[k + 1]) k++; runs.add(i + ',' + k); i = k; } }
+      for (const key of [...open.keys()]) if (!runs.has(key)) flush(key, j);
+      for (const key of runs) if (!open.has(key)) { const [i0, i1] = key.split(',').map(Number); open.set(key, { i0, i1, j0: j }); }
+    }
     return out;
   };
 
@@ -198,13 +275,20 @@
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
     return g;
   }
+  // كلّ المضلّعات المسطّحة (ماء أو حدائق) في هندسة واحدة: مدينة مرسومة جيّدًا فيها مئات المسطّحات الخضراء، وشبكة لكلّ واحد
+  // تعني مئات نداءات الرسم في كلّ إطار. تبقى داخل Group كما كانت (تجارب تقرأ cityGroup.children وتبحث عن Group).
   function polysMesh(THREE, polys, y, color) {
-    const grp = new THREE.Group();
-    const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+    const grp = new THREE.Group(), pos = [];
     for (const poly of polys) {
-      const shape = new THREE.Shape(poly.map((p) => new THREE.Vector2(p[0], -p[1])));
-      const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), mat);
-      m.rotation.x = -Math.PI / 2; m.position.y = y; m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
+      if (!poly || poly.length < 3) continue;
+      let tri; try { tri = THREE.ShapeUtils.triangulateShape(poly.map((p) => new THREE.Vector2(p[0], p[1])), []); } catch (e) { continue; } // مضلّع متقاطع ذاتيًّا: يُتخطّى
+      for (const f of tri) for (const k of f) pos.push(poly[k][0], y, poly[k][1]);
+    }
+    if (pos.length) {
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+      // إزاحة العمق: سنتيمترات فوق الأرض لا تكفي من بعيد فيتقاطع السطحان خطوطًا (z-fighting)
+      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+      m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
     }
     return grp;
   }
@@ -259,6 +343,7 @@
   .ck-status{font-size:12.5px;color:#9fd8de;min-height:1.4em}
   .ck-stat{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-variant-numeric:tabular-nums;margin-top:6px}
   .ck-stat b{color:#fff}
+  .ck-attr{margin-top:8px;font-size:11px;color:#8fb0b8}.ck-attr a{color:inherit;text-decoration:none}.ck-attr a:hover{text-decoration:underline}
   .ck-toggle{position:fixed;top:12px;right:12px;z-index:6;display:none}
   @media (max-width:640px){.ck-ui{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:46vh}}
   .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:${AR ? 'rtl' : 'ltr'};pointer-events:none}
@@ -267,11 +352,13 @@
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     const box = document.createElement('div'); box.className = 'ck-ui';
     box.innerHTML = '<h1></h1><p class="sub"></p><div class="ck-row"><input id="ckq" type="search"><button id="ckgo"></button></div>' +
-      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>';
+      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>' +
+      '<div class="ck-attr"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"></a></div>';
     box.querySelector('h1').textContent = title; box.querySelector('.sub').textContent = sub || '';
     box.querySelector('#ckq').placeholder = T('اكتب اسم حيّك أو مدينتك', 'Type your neighbourhood or city');
     box.querySelector('#ckgo').textContent = T('ابنِ', 'Build');
     box.querySelector('#ckme').textContent = T('موقعي', 'My location');
+    box.querySelector('.ck-attr a').textContent = T('بيانات الخريطة © مساهمو OpenStreetMap', 'Map data © OpenStreetMap contributors');
     const sel = box.querySelector('#ckpre');
     sel.innerHTML = '<option value="">' + T('أو اختر مدينة…', 'or pick a city…') + '</option>' + CK.PRESETS.map((p, i) => '<option value="' + i + '">' + (AR ? p.ar : p.en) + '</option>').join('');
     document.body.appendChild(box);
@@ -322,7 +409,7 @@
         ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; cityGroup.add(ground);
         cityGroup.add(polysMesh(THREE, data.water, 0.03, 0x3d8fb6));
         cityGroup.add(polysMesh(THREE, data.parks, 0.04, 0x8fb87a));
-        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide }));
+        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
         roads.receiveShadow = true; cityGroup.add(roads);
         const bm = new THREE.Mesh(buildingGeometry(THREE, data), new THREE.MeshLambertMaterial({ vertexColors: true }));
         bm.castShadow = true; bm.receiveShadow = true; cityGroup.add(bm);
@@ -332,6 +419,7 @@
         ctx.city = city;
         orbit.target.set(0, 0, 0); orbit.dist = R * 1.5; orbit.apply();
         ui.status(T('جاهز: ', 'Ready: ') + data.buildings.length + T(' مبنى · ', ' buildings · ') + data.roads.length + T(' طريق', ' roads'));
+        await new Promise((r) => setTimeout(r, 16)); // إطار يُرسم فيه المشهد قبل حسابات التجربة (لا تجمّد الصفحة دفعة واحدة)
         if (opt.onCity) await opt.onCity(ctx, city);
         window.__ck_ready = (window.__ck_ready || 0) + 1;
       } catch (e) {
@@ -384,6 +472,7 @@
 .ck-ui .tw-chip{background:transparent;border:1px solid #2b4650;color:#cfe3e7;padding:3px 11px;font-size:12.5px;border-radius:20px}
 .ck-ui .tw-chip.on{background:#1f8a93;border-color:#1f8a93;color:#fff}
 .tw-sun{font-size:12px;color:#9fc3c9;margin-top:6px;font-variant-numeric:tabular-nums}
+.tw-sun.tw-clip{color:#ffb35c;margin-top:3px}.tw-clip[hidden]{display:none}
 .tw-check{display:flex!important;align-items:center;gap:7px;cursor:pointer;color:#cfe3e7!important}
 .tw-check input{flex:0 0 auto;accent-color:#35c6cf;width:16px;height:16px}
 .tw-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
@@ -440,7 +529,8 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
   const MEN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function dateOf(key) {
     const n = new Date(), Y = n.getFullYear();
-    if (key === 'mar') return [Y, 3, 20]; if (key === 'jun') return [Y, 6, 21]; if (key === 'dec') return [Y, 12, 21];
+    const south = !!(city && city.lat < 0); // «الصيف»/«الشتاء» ينقلبان جنوب خطّ الاستواء
+    if (key === 'mar') return [Y, 3, 20]; if (key === 'jun') return south ? [Y, 12, 21] : [Y, 6, 21]; if (key === 'dec') return south ? [Y, 6, 21] : [Y, 12, 21];
     return [Y, n.getMonth() + 1, n.getDate()];
   }
   const dateLabel = (d) => (AR ? d[2] + ' ' + MAR[d[1] - 1] : MEN[d[1] - 1] + ' ' + d[2]);
@@ -518,6 +608,23 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     return n;
   }
   const inWater = (x, z) => city.water.some((w) => CK.inPoly(x, z, w));
+  function footInWater(poly) { // القاعدة كلّها لا مركزها: ركن في الماء، أو حافّة تعبر قناةً أضيق من البرج
+    const bb = bbox(poly);
+    return city.water.some((w, i) => { const b = S.waterBB[i]; return !(b[0] > bb[2] || b[2] < bb[0] || b[1] > bb[3] || b[3] < bb[1]) && polyHit(poly, w); });
+  }
+  function clipTo(poly, clip) { // Sutherland–Hodgman: جزء المضلّع داخل مضلّع محدّب
+    const sg = areaSigned(clip) > 0 ? 1 : -1; let out = poly;
+    for (let i = 0; i < clip.length && out.length; i++) {
+      const a = clip[i], b = clip[(i + 1) % clip.length], inp = out; out = [];
+      for (let j = 0; j < inp.length; j++) {
+        const p = inp[j], q = inp[(j + 1) % inp.length], sp = sg * cross(a, b, p), sq = sg * cross(a, b, q);
+        if (sp >= 0) out.push(p);
+        if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+      }
+    }
+    return out;
+  }
+  function areaSigned(poly) { let a = 0; for (let i = 0, n = poly.length; i < n; i++) { const p = poly[i], q = poly[(i + 1) % n]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; }
 
   // ── المواد: زجاج بانعكاس سماء مولّدة + نوافذ تضيء ليلًا ──
   function makeMaterials(renderer) {
@@ -625,7 +732,8 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     const foot = corners(S.x, S.z, P.w, P.d, P.rot * DEG);
     S.foot = foot;
     S.overlap = hits(foot); S.overlapSet = new Set(S.overlap); S.roadHits = roadsOverlap(foot);
-    O.ring.material.color.set(S.overlap.length ? 0xff4d4d : 0x35c6cf);
+    S.water = footInWater(foot); // تكبير القاعدة أو تدويرها قد يدفع ركنًا إلى الماء
+    O.ring.material.color.set(S.overlap.length || S.water ? 0xff4d4d : 0x35c6cf);
     swapGeo(O.clash, prismGeo(S.overlap, 0.3));
     neighbours();
   }
@@ -647,7 +755,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
         const a = k / n * Math.PI * 2 + r * 0.37, x = sx + r * Math.cos(a), z = sz + r * Math.sin(a);
         if (city.idx.at(x, z) || roadAt(x, z) || inWater(x, z)) continue;
         const fp = corners(x, z, mw, md, P.rot * DEG);
-        if (hits(fp).length || roadsOverlap(fp) || fp.some((p) => inWater(p[0], p[1]))) continue;
+        if (hits(fp).length || roadsOverlap(fp) || footInWater(fp)) continue;
         return [x, z];
       }
     }
@@ -656,11 +764,25 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
 
   // ── الشمس والظلّ ──
   function sunAt(h) { const d = S.date; return CK.sunDir(city.lat, city.lon, Date.UTC(d[0], d[1] - 1, d[2]) + (h - S.tz) * 3600e3); }
-  function riseSet() {
-    let rise = null, set = null, prev = sunAt(0).alt;
-    for (let h = 0.05; h <= 24; h += 0.05) { const a = sunAt(h).alt; if (prev <= 0 && a > 0 && rise == null) rise = h; if (prev > 0 && a <= 0) set = h; prev = a; }
+  const H0 = -0.833 * DEG; // ارتفاع الشروق والغروب القياسيّ (انكسار + نصف القرص) كما في sun.html
+  function riseSet() { // مسح كلّ ٣ دقائق ثمّ استيفاء خطّيّ عند عبور −0.833°
+    const st = 0.05; let rise = null, set = null, prev = sunAt(0).alt;
+    for (let k = 1; k <= 480; k++) {
+      const h = k * st, a = sunAt(h).alt;
+      if (prev < H0 && a >= H0 && rise == null) rise = h - st + st * (H0 - prev) / (a - prev);
+      if (prev >= H0 && a < H0) set = h - st + st * (prev - H0) / (prev - a);
+      prev = a;
+    }
     S.rise = rise == null ? 6 : rise; S.set = set == null ? 18 : set;
   }
+  // فرق توقيت المكان التقريبيّ (منسوخ من sun.html ليتطابق السلوك): ساعة الجهاز إن قاربت خطّ طول المكان (غالبًا يتصفّح منطقته: عمّان +3 لا +2،
+  // الدار البيضاء +1 لا −1، طهران +3:30)، وإلّا تقريب خطّ الطول. مدن القائمة الخليجيّة يصيبها التقريب، فلا تتبع فيها ساعة جهاز في بلد خليجيّ مجاور (الرياض ≠ دبي).
+  function approxTz(lat, lon) {
+    const sol = lon / 15, dev = -new Date().getTimezoneOffset() / 60;
+    const preset = CK.PRESETS.some((p) => Math.hypot(p.lat - lat, (p.lon - lon) * Math.cos(lat * DEG)) < 0.75);
+    return !preset && Math.abs(dev - sol) <= 2 ? dev : Math.round(sol);
+  }
+  const tzName = (tz) => { const a = Math.abs(tz), h = Math.floor(a), m = Math.round((a - h) * 60); return 'UTC' + (tz >= 0 ? '+' : '−') + h + (m ? ':' + String(m).padStart(2, '0') : ''); };
   const Col = (h) => new (window.THREE.Color)(h);
   const C_DAY = Col(0xd3e5ee), C_GOLD = Col(0xf3cda4), C_NIGHT = Col(0x17233a), C_DAY_T = Col(0x5d97cf), C_GOLD_T = Col(0x7392c0), C_NIGHT_T = Col(0x040912);
   let skyKey = '';
@@ -688,12 +810,20 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
   }
   function computeShadow() {
     const s = S.sun, h = H();
-    S.shadowVec = null; S.hull = null; S.shaded = []; S.roofs = 0; S.areaM2 = 0; S.lenM = 0;
+    S.shadowVec = null; S.hull = null; S.shaded = []; S.roofs = 0; S.areaM2 = 0; S.lenM = 0; S.lenFull = 0; S.clipped = false;
     if (s.alt > 0.5 * DEG) {
       const k = h / s.y, ox = -s.x * k, oz = -s.z * k;
-      S.shadowVec = [ox, oz]; S.lenM = Math.hypot(ox, oz);
+      S.shadowVec = [ox, oz]; S.lenM = S.lenFull = Math.hypot(ox, oz);
       const hl = hull(S.foot.concat(S.foot.map((p) => [p[0] + ox, p[1] + oz])));
       S.hull = hl; S.areaM2 = Math.max(0, areaOf(hl) - P.w * P.d); // مساحة الظلّ على الأرض خارج قاعدة البرج
+      // الشمس المنخفضة تمدّ الظلّ كيلومترات خارج الخريطة المحمّلة (قرص نصف قطره R): الطول والمساحة لما داخلها فقط
+      const R = ctx.R;
+      if (hl.some((p) => p[0] * p[0] + p[1] * p[1] > R * R)) {
+        const ux = ox / S.lenFull, uz = oz / S.lenFull, b = S.x * ux + S.z * uz, dd = b * b - (S.x * S.x + S.z * S.z - R * R);
+        S.lenM = Math.min(S.lenFull, dd > 0 ? Math.max(0, -b + Math.sqrt(dd)) : 0);
+        S.areaM2 = Math.max(0, areaOf(clipTo(hl, S.disc)) - areaOf(clipTo(S.foot, S.disc)));
+        S.clipped = true;
+      }
       S.shaded = hits(hl, S.overlapSet);
       for (const b of S.shaded) { // السطح نفسه في الظلّ؟ مقطع حجم الظلّ عند ارتفاع السطح
         if (b.h >= h) continue;
@@ -730,9 +860,10 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       floors: P.floors, heightM: Math.round(h * 10) / 10, widthM: P.w, depthM: P.d, rotationDeg: P.rot,
       footprintM2: P.w * P.d, gfaM2: P.w * P.d * P.floors,
       shadedBuildings: S.shaded.length, roofsShaded: S.roofs, shadowAreaM2: Math.round(S.areaM2), shadowLengthM: Math.round(S.lenM),
+      shadowClipped: S.clipped, shadowLengthFullM: Math.round(S.lenFull),
       dayShadedBuildings: S.day ? S.day.buildings : 0, dayFanSteps: S.day ? S.day.steps : 0,
-      hour: P.hour, clock: fmtTime(P.hour), date: S.date.join('-'), tzOffsetH: S.tz, sunAltDeg: Math.round(alt * 10) / 10, sunAzDeg: Math.round(az), sunrise: fmtTime(S.rise), sunset: fmtTime(S.set),
-      site: { x: Math.round(S.x), z: Math.round(S.z) }, overlapBuildings: S.overlap.length, overlapRoads: S.roadHits,
+      hour: P.hour, clock: fmtTime(P.hour), date: S.date.join('-'), tzOffsetH: S.tz, tzLabel: tzName(S.tz), tzApprox: true, sunAltDeg: Math.round(alt * 10) / 10, sunAzDeg: Math.round(az), sunrise: fmtTime(S.rise), sunset: fmtTime(S.set),
+      site: { x: Math.round(S.x), z: Math.round(S.z) }, overlapBuildings: S.overlap.length, overlapRoads: S.roadHits, overlapWater: !!S.water,
       neighbours300m: S.nb.n, rankAmongNeighbours: S.nb.rank, tallestNeighbourM: S.nb.top,
       walking: S.walking, city: city.name, buildings: city.buildings.length,
     };
@@ -750,22 +881,26 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       el.vals.F.textContent = P.floors + T(' طابق', ' floors') + ' · ' + fmt(h) + T(' م', ' m');
       el.vals.W.textContent = P.w + T(' م', ' m'); el.vals.D.textContent = P.d + T(' م', ' m'); el.vals.R.textContent = P.rot + '°';
       el.vals.H.textContent = fmtTime(P.hour);
-      el.sunLine.textContent = dateLabel(S.date) + ' · ' + T('الشروق ', 'Sunrise ') + fmtTime(S.rise) + ' · ' + T('الغروب ', 'Sunset ') + fmtTime(S.set) + ' · ' + T('الشمس ', 'Sun ') + (night ? T('تحت الأفق', 'below horizon') : Math.round(alt) + '°');
+      el.tzLab.innerHTML = T('الوقت', 'Time') + ' (<bdi>' + tzName(S.tz) + '</bdi> ' + T('تقريبًا', 'approx.') + ')'; // التوقيت تقديريّ: ساعة الجهاز أو خطّ الطول
+      el.sunLine.textContent = dateLabel(S.date) + ' · ' + T('الشروق ', 'Sunrise ') + fmtTime(S.rise) + ' · ' + T('الغروب ', 'Sunset ') + fmtTime(S.set) + T(' (تقريبًا)', ' (approx.)') + ' · ' + T('الشمس ', 'Sun ') + (night ? T('تحت الأفق', 'below horizon') : Math.round(alt) + '°');
+      const clip = !night && S.clipped;
+      el.clip.hidden = !clip;
       const nb = S.nb;
       const rows = [
         [T('المساحة الطابقيّة', 'Floor area'), fmtArea(P.w * P.d * P.floors)],
         [T('ترتيبه بين جيرانه (٣٠٠ م)', 'Rank among neighbours (300 m)'), nb.n ? nb.rank + T(' من ', ' of ') + (nb.n + 1) : '—'],
         [T('أعلى جار', 'Tallest neighbour'), nb.top ? fmt(nb.top) + T(' م', ' m') + (nb.topName ? ' · ' + nb.topName : '') : '—'],
-        [T('طول الظلّ الحين', 'Shadow length now'), night ? T('الشمس غابت', 'Sun is down') : fmt(S.lenM) + T(' م', ' m')],
+        [T('طول الظلّ الحين', 'Shadow length now'), night ? T('الشمس غابت', 'Sun is down') : fmt(S.lenM) + T(' م', ' m') + (clip ? T(' حتّى حافّة الخريطة', ' to the map edge') : '')],
         [T('مبانٍ يطولها ظلّه الحين', 'Buildings in its shadow'), night ? '—' : fmt(S.shaded.length)],
         [T('منها أسطح في الظلّ', 'of which roofs shaded'), night ? '—' : fmt(S.roofs)],
-        [T('مساحة الظلّ على الأرض', 'Ground shadow area'), night ? '—' : fmtArea(S.areaM2)],
+        [T('مساحة الظلّ على الأرض', 'Ground shadow area'), night ? '—' : fmtArea(S.areaM2) + (clip ? T(' داخل الخريطة', ' within the map') : '')],
         [T('خلال النهار يمرّ ظلّه على', 'Over the day it shades'), S.day ? fmt(S.day.buildings) + T(' مبنى', ' buildings') : '—'],
       ];
       el.stats.innerHTML = rows.map((r) => '<span>' + r[0] + '</span><b>' + r[1] + '</b>').join('');
-      const bad = S.overlap.length || S.roadHits;
+      const bad = S.overlap.length || S.roadHits || S.water;
+      const parts = [S.overlap.length ? S.overlap.length + T(' مبنى', ' building(s)') : '', S.roadHits ? T('شارع', 'a street') : '', S.water ? T('الماء', 'water') : ''].filter(Boolean);
       el.hint.className = 'tw-hint' + (bad ? ' bad' : '');
-      el.hint.textContent = bad ? T('القاعدة تتداخل مع ', 'The base overlaps ') + (S.overlap.length ? S.overlap.length + T(' مبنى', ' building(s)') : '') + (S.overlap.length && S.roadHits ? T(' و', ' and ') : '') + (S.roadHits ? T('شارع', 'a street') : '') + T(' — صغّرها أو اضغط أرضًا فاضية ثانية.', ' — shrink it or tap another empty plot.')
+      el.hint.textContent = bad ? T('القاعدة تتداخل مع ', 'The base overlaps ') + parts.join(T(' و', ' and ')) + T(' — صغّرها أو اضغط أرضًا فاضية ثانية.', ' — shrink it or tap another empty plot.')
         : T('اضغط على أي أرض فاضية في الخريطة لتنقل برجك لها. اسحب لتدوير المشهد.', 'Tap any empty plot on the map to move your tower there. Drag to orbit.');
     }
   }
@@ -791,6 +926,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     if (city.idx.at(x, z)) { flash(T('هذي الأرض فيها مبنى — اختر أرضًا فاضية.', 'This plot is taken — pick an empty one.')); return 'building'; }
     if (inWater(x, z)) { flash(T('هذا ماء — اختر أرضًا يابسة.', 'That is water — pick dry land.')); return 'water'; }
     const r = roadAt(x, z); if (r) { flash(T('هذا شارع', 'That is a street') + (r.name ? ' (' + r.name + ')' : '') + T(' — اختر أرضًا بجانبه.', ' — pick a plot next to it.')); return 'road'; }
+    if (footInWater(corners(x, z, P.w, P.d, P.rot * DEG))) { flash(T('جزء من القاعدة يقع في الماء — اختر أرضًا أبعد عنه أو صغّر القاعدة.', 'Part of the base would sit in water — pick a plot further from it or shrink the base.')); return 'water'; }
     S.x = x; S.z = z; S.grow = 0; rebuildTower(); applySun(); computeShadow(); computeDay(); hero();
     ctx.ui.status(T('حطّيت برجك هنا. حرّك الوقت وشوف وين يروح ظلّه.', 'Tower placed. Move the time and watch its shadow.'));
     return 'placed';
@@ -924,7 +1060,9 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     if (S && S.walking) { document.body.classList.remove('tw-walk'); c.orbit.enabled = true; keys.clear(); joy.x = joy.y = 0; }
     c.camera.near = 4; c.camera.updateProjectionMatrix(); // دقّة عمق أفضل من بعيد: طبقات الأرض الرقيقة لا تتقاتل
     P.playing = false;
-    S = { walking: false, fly: null, camGoal: null, grow: 0, sig: '', overlap: [], overlapSet: new Set(), roadHits: 0, shaded: [], roofs: 0, areaM2: 0, lenM: 0, day: null, nb: { n: 0, rank: 1, top: 0 }, tz: Math.round(cy.lon / 15), date: dateOf(P.dateKey) };
+    S = { walking: false, fly: null, camGoal: null, grow: 0, sig: '', overlap: [], overlapSet: new Set(), roadHits: 0, water: false, shaded: [], roofs: 0, areaM2: 0, lenM: 0, lenFull: 0, clipped: false, day: null, nb: { n: 0, rank: 1, top: 0 }, tz: approxTz(cy.lat, cy.lon), date: dateOf(P.dateKey) };
+    S.waterBB = cy.water.map(bbox);
+    S.disc = Array.from({ length: 96 }, (_, i) => [c.R * Math.cos(i / 96 * 2 * Math.PI), c.R * Math.sin(i / 96 * 2 * Math.PI)]); // حدّ البيانات المحمّلة
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
     for (const b of cy.buildings) { if (b.box[0] < x0) x0 = b.box[0]; if (b.box[2] > x1) x1 = b.box[2]; if (b.box[1] < z0) z0 = b.box[1]; if (b.box[3] > z1) z1 = b.box[3]; }
     const R = c.R; S.bounds = isFinite(x0) ? [Math.min(x0, -R), Math.min(z0, -R), Math.max(x1, R), Math.max(z1, R)] : [-R, -R, R, R];
@@ -938,7 +1076,7 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
     c.orbit.theta = heroGoal().theta + 0.9; c.orbit.apply();
     hero(); syncButtons(); updateViewOffset();
     c.onFrame(tick);
-    if (S.overlap.length || S.roadHits) c.ui.status(T('ما لقيت أرضًا فاضية كافية قرب المركز — اضغط أرضًا فاضية لتنقل البرج.', 'No empty plot near the centre — tap one to move the tower.'));
+    if (S.overlap.length || S.roadHits || S.water) c.ui.status(T('ما لقيت أرضًا فاضية كافية قرب المركز — اضغط أرضًا فاضية لتنقل البرج.', 'No empty plot near the centre — tap one to move the tower.'));
   }
 
   // ── اللوحة (مرّة واحدة) ──
@@ -968,12 +1106,13 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
       '<div class="tw-sec"><h3>' + T('الشمس الحقيقيّة', 'The real sun') + '</h3>' + sl('H', T('الوقت', 'Time'), 5, 20, 0.25, P.hour) +
       '<div class="tw-chips">' + [['today', T('اليوم', 'Today')], ['jun', T('الصيف', 'Summer')], ['mar', T('الاعتدال', 'Equinox')], ['dec', T('الشتاء', 'Winter')]].map((x) => '<button class="tw-chip" data-k="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
       '<div class="tw-sun" id="twSun"></div>' +
+      '<div class="tw-sun tw-clip" id="twClip" hidden>' + T('ظلّه يمتدّ خارج الخريطة المحمّلة — الطول والمساحة لما داخلها فقط.', 'The shadow runs past the loaded map — length and area count only the part inside it.') + '</div>' +
       '<label class="tw-check"><input type="checkbox" id="twFan"' + (P.fan ? ' checked' : '') + '>' + T('مروحة ظلّ اليوم كامل', 'Full-day shadow fan') + '</label></div>' +
       '<div class="tw-btns"><button id="twPlay"></button><button class="ghost" id="twView"></button><button class="wide" id="twWalk"></button></div>' +
       '<div class="tw-leg"><span><i style="background:#ff9a3c"></i>' + T('يطوله ظلّ برجك الحين', 'In your shadow now') + '</span><span><i style="background:#2b3a72"></i>' + T('ظلّ اليوم', 'Day shadow') + '</span><span><i style="background:#ff3d3d"></i>' + T('تعارض مع القاعدة', 'Clashes with the base') + '</span></div>' +
       '<div class="ck-stat" id="twStats"></div></div>';
     const q = (id) => c.ui.panel.querySelector('#' + id);
-    el = { hint: q('twHint'), stats: q('twStats'), sunLine: q('twSun'), sH: q('tsH'), bWalk: q('twWalk'), bPlay: q('twPlay'), bView: q('twView'), chips: [...c.ui.panel.querySelectorAll('.tw-chip')], vals: { F: q('tvF'), W: q('tvW'), D: q('tvD'), R: q('tvR'), H: q('tvH') } };
+    el = { hint: q('twHint'), stats: q('twStats'), sunLine: q('twSun'), clip: q('twClip'), tzLab: q('tvH').previousElementSibling, sH: q('tsH'), bWalk: q('twWalk'), bPlay: q('twPlay'), bView: q('twView'), chips: [...c.ui.panel.querySelectorAll('.tw-chip')], vals: { F: q('tvF'), W: q('tvW'), D: q('tvD'), R: q('tvR'), H: q('tvH') } };
     const geoInput = (id, key) => q(id).addEventListener('input', (e) => {
       P[key] = +e.target.value; if (!S) return;
       if (S.grow < 1) { S.grow = 1; S.O.tower.scale.y = 1; }
@@ -1045,8 +1184,10 @@ body.tw-walk .tw-joy{display:block}body.tw-walk .tw-walkbar{display:flex}body.tw
   }
   function scheduleDay() { if (S.dayTimer) clearTimeout(S.dayTimer); const s0 = S; S.dayTimer = setTimeout(() => { if (S === s0 && S.dayDue) { S.dayDue = 0; computeDay(); } }, 150); }
 
+  const TITLE = T('برجك بين جيرانه', 'Your tower among its neighbours');
+  document.title = TITLE; // وسم <title> عربيّ ثابت؛ في الإنجليزيّة يُكتب من هنا
   CK.start({
-    title: T('برجك بين جيرانه', 'Your tower among its neighbours'),
+    title: TITLE,
     sub: T('حطّ برجًا مقترحًا في حيّك الحقيقيّ، وشوف ظلّه على الجيران مع شمس اليوم الفعليّة — ثمّ انزل وامشِ حوله.', 'Drop a proposed tower into your real neighbourhood, see whom its shadow reaches under the real sun, then walk around it.'),
     shadows: true, radius: 600, onCity, panel,
   });

@@ -139,7 +139,7 @@ test('زرّ «اقتراحات» يفتح الشاشة، والاقتراحات
   assert.ok(b.includes('const INSPIRE_CITY = ['), 'الوحدة في الحزمة');
 });
 
-test('النصوص الستّة بالـ١٤ لغة، ووسم تحميل اللغات مرفوع إلى 727', () => {
+test('النصوص الستّة بالـ١٤ لغة، ووسم تحميل اللغات مرفوع', () => {
   const data = rd('js/app-03-i18n-data.js');
   const ctx = { I18N: { ar: {}, en: {} } };
   const blk = data.slice(data.indexOf('/* v-inspire'), data.indexOf('/* v650 */'));
@@ -153,7 +153,7 @@ test('النصوص الستّة بالـ١٤ لغة، ووسم تحميل الل
       assert.doesNotMatch(c.I18N[l][k], EMOJI);
     }
   }
-  assert.ok(rd('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=727'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=728'"));
 });
 
 test('مصادر التجارب لا تُنشر، والمبنيّ يُنشر', () => {
@@ -169,7 +169,7 @@ test('النواة لا تكتب بيانات الخرائط في localStorage (
   const store = { 'ck1:25.0805,55.1403,600': 'x'.repeat(10), aiapp_projects: '[]' };
   const ls = { get length() { return Object.keys(store).length; }, key: (i) => Object.keys(store)[i], getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
   let calls = 0;
-  const fetch = async () => { calls++; return { ok: true, status: 200, json: async () => ({ elements: [] }) }; };
+  const fetch = async () => { calls++; return { ok: true, status: 200, json: async () => ({ elements: [{ type: 'way', id: 1, tags: {}, geometry: [] }] }) }; };
   const ctx = { window: {}, document: { documentElement: { lang: 'ar' } }, navigator: { language: 'ar' }, localStorage: ls, fetch, AbortController, setTimeout, clearTimeout, console };
   vm.runInNewContext(src, ctx);
   const CK = ctx.window.CityKit;
@@ -198,4 +198,122 @@ test('مشروع التجربة بمعرّف p_ (يُرتَّب في أعلى ا
   const th2 = mkEl('div');
   sb.lazy(th2, { inspire: '../x', code: '<h1>a</h1>' });
   assert.equal(th2.children[0].tagName, 'iframe', 'معرّف غير صالح ← المعاينة العاديّة');
+});
+
+/* ── v-inspire (٢): مراجعة ما بعد الدمج — سلوك يُشغَّل لا نصّ يُطابَق ── */
+function loadModule(fetchImpl) {
+  const src = rd('js/app-35-inspire.js');
+  const state = { projects: [], currentId: null };
+  const calls = { save: 0, render: 0 };
+  const ctx = {
+    lang: 'en', state, fetch: fetchImpl, console, setTimeout, clearTimeout,
+    saveState: () => { calls.save++; }, renderAll: () => { calls.render++; }, switchWorkTab: () => {}, openDrawer: () => {}, workareaEl: { classList: { contains: () => true } },
+    __swallow: () => {}, t: (k) => k, closeQuickTemplates: () => {}, QUICK_SUGGESTIONS: [], __quickSugLabel: () => '', __runQuickSuggestion: () => {},
+    document: { getElementById: () => null, activeElement: null, head: { appendChild() {} }, createElement: () => ({ setAttribute() {}, addEventListener() {}, querySelector: () => null, classList: { add() {}, remove() {}, contains: () => false } }), body: { appendChild() {} } },
+  };
+  ctx.window = ctx; ctx.window.matchMedia = () => ({ matches: false });
+  vm.runInNewContext(src, ctx);
+  return { ctx, state, calls };
+}
+const okBody = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"></head><body><script>window.CityKit = CK</script></body></html>';
+
+test('فتح بطاقة: صفحة التطبيق بدل التجربة (احتياط العامل أوفلاين) تُرفض بلا مشروع، والصالحة مشروع واحد p_ بلغة التطبيق ووسمها', async () => {
+  const bad = loadModule(async () => ({ ok: true, status: 200, text: async () => '<!doctype html><html><head></head><body>app</body></html>' }));
+  assert.equal(await bad.ctx.openInspireExperience('sun'), false);
+  assert.equal(bad.state.projects.length, 0);
+  const good = loadModule(async () => ({ ok: true, status: 200, text: async () => okBody }));
+  assert.equal(await good.ctx.openInspireExperience('sun'), true);
+  assert.equal(good.state.projects.length, 1);
+  const p = good.state.projects[0];
+  assert.match(p.id, /^p_\d+$/);
+  assert.equal(good.state.currentId, p.id);
+  assert.equal(p.inspire, 'sun');
+  assert.match(p.code, /^<!doctype html><html lang="en" dir="ltr"><head><meta name="omran-inspire" content="sun">/);
+  assert.equal(good.calls.save, 1);
+});
+
+test('نقرة ثانية أثناء التحميل لا تصنع مشروعًا ثانيًا، والإغلاق أثناء التحميل يلغي الفتح', async () => {
+  let release; const gate = new Promise((r) => { release = r; });
+  const m = loadModule(async () => { await gate; return { ok: true, status: 200, text: async () => okBody }; });
+  const first = m.ctx.openInspireExperience('sun');
+  assert.equal(await m.ctx.openInspireExperience('view'), false, 'الثانية مرفوضة');
+  release(); assert.equal(await first, true);
+  assert.equal(m.state.projects.length, 1);
+  let rel2; const gate2 = new Promise((r) => { rel2 = r; });
+  const m2 = loadModule(async () => { await gate2; return { ok: true, status: 200, text: async () => okBody }; });
+  const p = m2.ctx.openInspireExperience('sun');
+  m2.ctx.closeInspireScreen();
+  rel2(); assert.equal(await p, false);
+  assert.equal(m2.state.projects.length, 0, 'أُغلقت الشاشة: لا مشروع ولا قفز');
+});
+
+test('الشاشة في نظام السحب/Esc للتطبيق (تُغلق وحدها لا الأدوات تحتها)، ولا مستمع Esc خاصّ بها', () => {
+  assert.match(rd('js/app-05-swipe-back.js'), /inspireScreen: 'inspireCloseBtn'/);
+  const src = rd('js/app-35-inspire.js');
+  assert.match(src, /id="inspireCloseBtn"/);
+  assert.doesNotMatch(src, /'Escape'/);
+  for (const { id } of loadCity().C) assert.ok(rd(`inspire/city/${id}.html`).startsWith('<!doctype html><html lang="ar" dir="rtl"><head>'), id + ': رأس ثابت لوسم اللغة والتجربة');
+});
+
+function coreCtx(fetchImpl) {
+  const ctx = { window: {}, document: { documentElement: { lang: 'ar' } }, navigator: { language: 'ar' }, localStorage: null, fetch: fetchImpl, AbortController, setTimeout, clearTimeout, console };
+  vm.runInNewContext(rd('inspire/src/core.js'), ctx);
+  return ctx.window.CityKit;
+}
+
+test('النواة: خطأ Overpass بردّ 200 و«remark» يُجرَّب بعده المرآة التالية ولا يُخزَّن، والمنطقة الفارغة لا تُخزَّن', async () => {
+  const replies = [{ elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 26 seconds.' }, { elements: [{ type: 'way', id: 1, tags: { highway: 'primary' }, geometry: [{ lat: 0, lon: 0 }, { lat: 0, lon: 0.001 }] }] }];
+  let n = 0; const urls = [];
+  const CK = coreCtx(async (u) => { urls.push(u); const j = replies[Math.min(n++, 1)]; return { ok: true, status: 200, json: async () => j }; });
+  const a = await CK.fetchArea(10, 10, 600);
+  assert.equal(a.elements.length, 1, 'الردّ الصالح من المرآة الثانية');
+  assert.equal(urls[0], CK.OVERPASS[0]); assert.equal(urls[1], CK.OVERPASS[1]);
+  let m = 0;
+  const E = coreCtx(async () => { m++; return { ok: true, status: 200, json: async () => ({ elements: [] }) }; });
+  await E.fetchArea(10, 10, 600); await E.fetchArea(10, 10, 600);
+  assert.equal(m, 2, 'الفارغ يُطلب من جديد');
+});
+
+test('النواة: علاقات المباني تُخاط، الوصلات بنوع أصلها، track محفوظ، المظلّة ٤ م، وخطّ ١٨٠ يلتفّ', async () => {
+  const CK = coreCtx();
+  const { makeFixture } = await import(path.join(root, 'scripts/inspire/fixture.mjs'));
+  const d = CK.parse(makeFixture(25.0805, 55.1403, 600), 25.0805, 55.1403);
+  const mall = d.buildings.find((b) => b.name === 'المجمّع');
+  assert.ok(mall && mall.poly.length === 4, 'المبنى من قطعتين خارجيّتين');
+  assert.equal(Math.round(mall.h), 14);
+  const link = d.roads.find((r) => r.link);
+  assert.equal(link.kind, 'motorway'); assert.ok(Math.abs(link.w - 16 * 0.7) < 1e-9);
+  const one = (tags, geom) => CK.parse({ elements: [{ type: 'way', id: 9, tags, geometry: geom }] }, 0, 0);
+  assert.equal(one({ highway: 'track' }, [{ lat: 0, lon: 0 }, { lat: 0, lon: 0.001 }]).roads.length, 1);
+  const sq = [{ lat: 0, lon: 0 }, { lat: 0, lon: 0.0001 }, { lat: 0.0001, lon: 0.0001 }, { lat: 0.0001, lon: 0 }, { lat: 0, lon: 0 }];
+  assert.equal(one({ building: 'roof' }, sq).buildings[0].h, 4);
+  const w = CK.parse({ elements: [{ type: 'way', id: 3, tags: { highway: 'primary' }, geometry: [{ lat: -16.8, lon: 179.999 }, { lat: -16.8, lon: -179.999 }] }] }, -16.8, 179.999);
+  const x = w.roads[0].pts[1][0];
+  assert.ok(x > 0 && x < 300, 'عبر خطّ ١٨٠ أمتار قليلة لا ٣٨ ألف كم: ' + x);
+  assert.equal(JSON.stringify(CK.stitch([[[0, 0], [10, 0], [10, 10]], [[0, 0], [0, 10], [10, 10]]]).map((r) => r.length)), '[4]');
+});
+
+test('النواة: البحر من خطّ الساحل — يمين اتّجاه الخطّ ماء ويساره يابسة، في الاتّجاهات الأربعة', () => {
+  const CK = coreCtx();
+  const isSea = (coast, x, z) => CK.seaPolys(coast, 300, 20).some((p) => CK.inPoly(x, z, p));
+  // شرقًا: الماء جنوبًا (z موجب)
+  assert.equal(isSea([[[-400, 0], [400, 0]]], 0, 100), true); assert.equal(isSea([[[-400, 0], [400, 0]]], 0, -100), false);
+  // غربًا: الماء شمالًا
+  assert.equal(isSea([[[400, 0], [-400, 0]]], 0, -100), true); assert.equal(isSea([[[400, 0], [-400, 0]]], 0, 100), false);
+  // شمالًا (z يتناقص): الماء شرقًا
+  assert.equal(isSea([[[0, 400], [0, -400]]], 100, 0), true); assert.equal(isSea([[[0, 400], [0, -400]]], -100, 0), false);
+  // زاوية (رأس مشترك): خليج مربّع — شرقًا ثمّ جنوبًا، الماء يمين الاثنين
+  const corner = [[[-400, 0], [0, 0], [0, 400]]];
+  assert.equal(isSea(corner, 100, -100), false, 'شمال شرق الزاوية يابسة'); assert.equal(isSea(corner, -100, 100), true, 'جنوب غرب الزاوية ماء');
+  assert.equal(CK.seaPolys([], 300).length, 0);
+});
+
+test('النواة: المسطّحات (ماء/حدائق) هندسة واحدة لا شبكة لكلّ مضلّع، وسطر مصدر البيانات ظاهر، وإطار قبل onCity', () => {
+  const src = rd('inspire/src/core.js');
+  const pm = src.slice(src.indexOf('function polysMesh'), src.indexOf('// ── تحكّم الكاميرا'));
+  assert.equal((pm.match(/new THREE\.Mesh\(/g) || []).length, 1, 'شبكة واحدة');
+  assert.ok(pm.indexOf('new THREE.Mesh(') > pm.indexOf('if (pos.length)'), 'تُبنى بعد جمع كلّ المضلّعات');
+  assert.match(src, /https:\/\/www\.openstreetmap\.org\/copyright/);
+  assert.match(src, /مساهمو OpenStreetMap/);
+  assert.ok(src.indexOf('setTimeout(r, 16)') < src.indexOf('await opt.onCity(ctx, city)'));
 });

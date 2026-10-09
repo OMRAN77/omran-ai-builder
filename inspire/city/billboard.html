@@ -47,7 +47,12 @@
   };
   CK.query = function (lat, lon, r) {
     const a = '(around:' + Math.round(r) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
-    return '[out:json][timeout:25];(way["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a + ';way["leisure"~"park|garden"]' + a + ';way["landuse"="grass"]' + a + ';);out geom;';
+    const c = '(around:' + Math.round(r * 2) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
+    // العلاقات: مبانٍ بفناء داخليّ (أسواق، جوامع، جامعات) وبحيرات وحدائق كبيرة لا تُرسم في OSM إلّا علاقات.
+    // خطّ الساحل: البحر في OSM ليس مضلّعًا — يُستنتج من جهة الماء (يمين اتّجاه الخطّ).
+    return '[out:json][timeout:25];(way["building"]' + a + ';relation["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a +
+      ';relation["type"="multipolygon"]["natural"="water"]' + a + ';way["leisure"~"park|garden"]' + a + ';relation["type"="multipolygon"]["leisure"~"park|garden"]' + a +
+      ';way["landuse"="grass"]' + a + ';way["natural"="coastline"]' + c + ';);out geom;';
   };
   // كاش المناطق: التجربة تعمل داخل معاينة التطبيق بنفس الأصل، فـlocalStorage مشترك مع مشاريع المستخدم (aiapp_projects) —
   // منطقة واحدة قد تبلغ ١٫٥ مليون حرف فتملأ حصّته بعد ٢–٣ مناطق ويفشل حفظ التطبيق. لذلك: ذاكرة الصفحة + Cache API في مخزن
@@ -76,19 +81,21 @@
         const res = await timed(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(CK.query(lat, lon, r)) }, 30000);
         if (!res.ok) { last = new Error('HTTP ' + res.status); continue; }
         const j = await res.json();
-        await areaPut(key, j);
+        if (!j || !Array.isArray(j.elements) || (j.remark && /error|timed out|out of memory|runtime/i.test(String(j.remark)))) { last = new Error('overpass: ' + String((j && j.remark) || 'bad reply').slice(0, 80)); continue; }
+        if (j.elements.length) await areaPut(key, j); // منطقة فارغة (بحر/صحراء) لا تُحفظ — قد تكون ردًّا ناقصًا
         return j;
       } catch (e) { last = e; }
     }
     throw last || new Error('overpass');
   };
-  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, living_street: 5, service: 4, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, steps: 2 };
+  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, road: 6, busway: 6, living_street: 5, service: 4, track: 3.5, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, corridor: 2, steps: 2 };
   function heightOf(tags, id) {
     const h = parseFloat(String(tags.height || '').replace(',', '.'));
     if (h > 0 && h < 1000) return h;
     const lv = parseFloat(tags['building:levels']);
     if (lv > 0 && lv < 250) return lv * 3.2 + 1;
     const b = tags.building;
+    if (/^(roof|carport)$/.test(b)) return 4; // مظلّة مواقف/محطّة وقود
     const j = ((id * 2654435761) % 1000) / 1000; // ثابت لكلّ مبنى
     if (/house|detached|villa|bungalow|semidetached/.test(b)) return 6 + j * 3;
     if (/apartments|residential|dormitory/.test(b)) return 12 + j * 12;
@@ -99,24 +106,94 @@
   }
   CK.parse = function (osm, lat0, lon0) {
     const mx = Math.cos(lat0 * Math.PI / 180) * 111320, mz = 110540;
-    const P = (g) => [(g.lon - lon0) * mx, -(g.lat - lat0) * mz];
-    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0 };
+    const P = (g) => { let d = g.lon - lon0; if (d > 180) d -= 360; else if (d < -180) d += 360; return [d * mx, -(g.lat - lat0) * mz]; }; // الالتفاف عند خطّ ١٨٠
+    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0, sea: false };
+    const isClosed = (pts) => pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
+    const addBuilding = (id, poly, t) => {
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+      out.buildings.push({ id, poly, h: heightOf(t, id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
+    };
+    const coast = [];
     for (const e of (osm && osm.elements) || []) {
-      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
       const t = e.tags || {};
+      if (e.type === 'relation') { // العلاقة: الحلقات الخارجيّة تُخاط من أعضائها (الفناء الداخليّ يُملأ — أقرب من غيابه)
+        const outer = CK.stitch((e.members || []).filter((m) => m.type === 'way' && m.role !== 'inner' && m.geometry && m.geometry.length > 1).map((m) => m.geometry.map(P)));
+        if (t.building) outer.forEach((ring, i) => addBuilding(e.id * 16 + i, ring, t));
+        else if (t.natural === 'water' || t.water) out.water.push(...outer);
+        else if (t.leisure || t.landuse) out.parks.push(...outer);
+        continue;
+      }
+      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
       const pts = e.geometry.map(P);
-      const closed = pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
-      if (t.building && closed) {
-        const poly = pts.slice(0, -1);
-        let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-        for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
-        out.buildings.push({ id: e.id, poly, h: heightOf(t, e.id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
-      } else if (t.highway && ROAD_W[t.highway]) {
-        out.roads.push({ id: e.id, pts, kind: t.highway, w: ROAD_W[t.highway], name: t.name || '' });
+      const closed = isClosed(pts);
+      const hk = t.highway ? String(t.highway).replace(/_link$/, '') : ''; // الوصلات (منحدرات، مخارج، دوّارات) بنوع أصلها وعرض أضيق
+      if (t.natural === 'coastline') coast.push(pts);
+      else if (t.building && closed) addBuilding(e.id, pts.slice(0, -1), t);
+      else if (hk && ROAD_W[hk]) {
+        const link = hk !== t.highway;
+        out.roads.push({ id: e.id, pts, kind: hk, w: ROAD_W[hk] * (link ? 0.7 : 1), name: t.name || '', link });
       } else if ((t.natural === 'water' || t.water) && closed) out.water.push(pts.slice(0, -1));
       else if ((t.leisure || t.landuse) && closed) out.parks.push(pts.slice(0, -1));
     }
+    const sea = CK.seaPolys(coast, 1200, 25); // حتّى ٢R حول المركز (خطّ الساحل يُجلب حتّى ٢R)
+    if (sea.length) { out.water.push(...sea); out.sea = true; }
     out.buildings.sort((a, b) => b.h - a.h);
+    return out;
+  };
+  // خياطة خطوط إلى حلقات مغلقة (أعضاء العلاقة تأتي قطعًا متتالية بأيّ اتّجاه)
+  CK.stitch = function (lines) {
+    const near = (a, b) => Math.abs(a[0] - b[0]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5;
+    const pool = lines.map((l) => l.slice()), out = [];
+    while (pool.length) {
+      let cur = pool.shift(), guard = 0;
+      while (!near(cur[0], cur[cur.length - 1]) && guard++ < 2000) {
+        const end = cur[cur.length - 1]; let k = -1, rev = false;
+        for (let i = 0; i < pool.length; i++) { const l = pool[i]; if (near(l[0], end)) { k = i; break; } if (near(l[l.length - 1], end)) { k = i; rev = true; break; } }
+        if (k < 0) break;
+        const l = pool.splice(k, 1)[0]; if (rev) l.reverse(); cur = cur.concat(l.slice(1));
+      }
+      if (cur.length > 3 && near(cur[0], cur[cur.length - 1])) out.push(cur.slice(0, -1));
+    }
+    return out;
+  };
+  // البحر من خطّ الساحل: الماء يمين اتّجاه الخطّ (OSM). شبكة خلايا H×2 بعرض C — كلّ خليّة تأخذ جهة أقرب قطعة ساحل إليها
+  // (عند رأس مشترك: متوسّط عموديّي القطعتين)، ثمّ تُدمج الخلايا البحريّة مستطيلات (صفوف ثمّ أعمدة) تُضاف إلى الماء.
+  CK.seaPolys = function (coast, H, C) {
+    C = C || 20; if (!coast || !coast.length) return [];
+    const segs = [];
+    for (const l of coast) for (let i = 0; i < l.length - 1; i++) {
+      const a = l[i], b = l[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
+      if (L < 0.01) continue;
+      // في إحداثيّاتنا z جنوبًا: يمين الاتّجاه (شمالًا للأعلى) = (-dz, dx)/L بعد قلب z مرّتين ← (−dz, dx) في (x,z)
+      segs.push({ a, b, dx, dz, L, nx: -dz / L, nz: dx / L });
+    }
+    if (!segs.length) return [];
+    const N = Math.ceil(H / C), grid = [];
+    for (let j = -N; j < N; j++) {
+      const row = [];
+      for (let i = -N; i < N; i++) {
+        const x = (i + 0.5) * C, z = (j + 0.5) * C;
+        let best = Infinity, qx = 0, qz = 0, sx = 0, sz = 0;
+        for (const s of segs) {
+          let t = ((x - s.a[0]) * s.dx + (z - s.a[1]) * s.dz) / (s.L * s.L); t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const px = s.a[0] + s.dx * t, pz = s.a[1] + s.dz * t, d = (x - px) * (x - px) + (z - pz) * (z - pz);
+          if (d < best - 1e-3) { best = d; qx = px; qz = pz; sx = s.nx; sz = s.nz; }
+          else if (d < best + 1e-3) { sx += s.nx; sz += s.nz; } // رأس مشترك بين قطعتين: متوسّط عموديّيهما
+        }
+        row.push(best > 1e-3 && (x - qx) * sx + (z - qz) * sz > 0);
+      }
+      grid.push(row);
+    }
+    // دمج: لكلّ صفّ مقاطع متّصلة، ثمّ يمتدّ المقطع نفسه رأسيًّا ما دام مطابقًا
+    const out = [], open = new Map();
+    const flush = (key, j1) => { const o = open.get(key); open.delete(key); const x0 = (o.i0 - N) * C, x1 = (o.i1 + 1 - N) * C, z0 = (o.j0 - N) * C, z1 = (j1 - N) * C; out.push([[x0, z0], [x1, z0], [x1, z1], [x0, z1]]); };
+    for (let j = 0; j <= grid.length; j++) {
+      const runs = new Set();
+      if (j < grid.length) { const r = grid[j]; for (let i = 0; i < r.length; i++) if (r[i]) { let k = i; while (k + 1 < r.length && r[k + 1]) k++; runs.add(i + ',' + k); i = k; } }
+      for (const key of [...open.keys()]) if (!runs.has(key)) flush(key, j);
+      for (const key of runs) if (!open.has(key)) { const [i0, i1] = key.split(',').map(Number); open.set(key, { i0, i1, j0: j }); }
+    }
     return out;
   };
 
@@ -198,13 +275,20 @@
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
     return g;
   }
+  // كلّ المضلّعات المسطّحة (ماء أو حدائق) في هندسة واحدة: مدينة مرسومة جيّدًا فيها مئات المسطّحات الخضراء، وشبكة لكلّ واحد
+  // تعني مئات نداءات الرسم في كلّ إطار. تبقى داخل Group كما كانت (تجارب تقرأ cityGroup.children وتبحث عن Group).
   function polysMesh(THREE, polys, y, color) {
-    const grp = new THREE.Group();
-    const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+    const grp = new THREE.Group(), pos = [];
     for (const poly of polys) {
-      const shape = new THREE.Shape(poly.map((p) => new THREE.Vector2(p[0], -p[1])));
-      const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), mat);
-      m.rotation.x = -Math.PI / 2; m.position.y = y; m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
+      if (!poly || poly.length < 3) continue;
+      let tri; try { tri = THREE.ShapeUtils.triangulateShape(poly.map((p) => new THREE.Vector2(p[0], p[1])), []); } catch (e) { continue; } // مضلّع متقاطع ذاتيًّا: يُتخطّى
+      for (const f of tri) for (const k of f) pos.push(poly[k][0], y, poly[k][1]);
+    }
+    if (pos.length) {
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+      // إزاحة العمق: سنتيمترات فوق الأرض لا تكفي من بعيد فيتقاطع السطحان خطوطًا (z-fighting)
+      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+      m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
     }
     return grp;
   }
@@ -259,6 +343,7 @@
   .ck-status{font-size:12.5px;color:#9fd8de;min-height:1.4em}
   .ck-stat{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-variant-numeric:tabular-nums;margin-top:6px}
   .ck-stat b{color:#fff}
+  .ck-attr{margin-top:8px;font-size:11px;color:#8fb0b8}.ck-attr a{color:inherit;text-decoration:none}.ck-attr a:hover{text-decoration:underline}
   .ck-toggle{position:fixed;top:12px;right:12px;z-index:6;display:none}
   @media (max-width:640px){.ck-ui{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:46vh}}
   .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:${AR ? 'rtl' : 'ltr'};pointer-events:none}
@@ -267,11 +352,13 @@
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     const box = document.createElement('div'); box.className = 'ck-ui';
     box.innerHTML = '<h1></h1><p class="sub"></p><div class="ck-row"><input id="ckq" type="search"><button id="ckgo"></button></div>' +
-      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>';
+      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>' +
+      '<div class="ck-attr"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"></a></div>';
     box.querySelector('h1').textContent = title; box.querySelector('.sub').textContent = sub || '';
     box.querySelector('#ckq').placeholder = T('اكتب اسم حيّك أو مدينتك', 'Type your neighbourhood or city');
     box.querySelector('#ckgo').textContent = T('ابنِ', 'Build');
     box.querySelector('#ckme').textContent = T('موقعي', 'My location');
+    box.querySelector('.ck-attr a').textContent = T('بيانات الخريطة © مساهمو OpenStreetMap', 'Map data © OpenStreetMap contributors');
     const sel = box.querySelector('#ckpre');
     sel.innerHTML = '<option value="">' + T('أو اختر مدينة…', 'or pick a city…') + '</option>' + CK.PRESETS.map((p, i) => '<option value="' + i + '">' + (AR ? p.ar : p.en) + '</option>').join('');
     document.body.appendChild(box);
@@ -322,7 +409,7 @@
         ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; cityGroup.add(ground);
         cityGroup.add(polysMesh(THREE, data.water, 0.03, 0x3d8fb6));
         cityGroup.add(polysMesh(THREE, data.parks, 0.04, 0x8fb87a));
-        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide }));
+        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
         roads.receiveShadow = true; cityGroup.add(roads);
         const bm = new THREE.Mesh(buildingGeometry(THREE, data), new THREE.MeshLambertMaterial({ vertexColors: true }));
         bm.castShadow = true; bm.receiveShadow = true; cityGroup.add(bm);
@@ -332,6 +419,7 @@
         ctx.city = city;
         orbit.target.set(0, 0, 0); orbit.dist = R * 1.5; orbit.apply();
         ui.status(T('جاهز: ', 'Ready: ') + data.buildings.length + T(' مبنى · ', ' buildings · ') + data.roads.length + T(' طريق', ' roads'));
+        await new Promise((r) => setTimeout(r, 16)); // إطار يُرسم فيه المشهد قبل حسابات التجربة (لا تجمّد الصفحة دفعة واحدة)
         if (opt.onCity) await opt.onCity(ctx, city);
         window.__ck_ready = (window.__ck_ready || 0) + 1;
       } catch (e) {
@@ -407,6 +495,8 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T;
+  const TITLE = T('اختبار اللوحة الإعلانيّة', 'Billboard visibility test');
+  document.title = TITLE; // <title> عربيّ ثابت؛ بالإنجليزيّة يتبع لغة الصفحة
   const D2R = Math.PI / 180;
   const SPEED = { motorway: 100, trunk: 80, primary: 60, secondary: 50 }; // كم/س؛ الباقي ٤٠
   const kmh = (k) => SPEED[k] || 40;
@@ -416,6 +506,7 @@
     tertiary: ['شارع فرعيّ', 'Tertiary road'], residential: ['شارع سكنيّ', 'Residential street'], unclassified: ['شارع محلّيّ', 'Local street'], living_street: ['شارع حيّ', 'Living street'], service: ['طريق خدمة', 'Service road'] };
   const kindName = (k) => (KIND[k] ? T(KIND[k][0], KIND[k][1]) : k);
   const STEP = 10, EYE = 1.2, FACE_COS = Math.cos(70 * D2R), TILT_TAN = Math.tan(35 * D2R), LOS_STEP = 3;
+  const AHEAD_DEG = 60, AHEAD_COS = Math.cos(AHEAD_DEG * D2R); // السائق يعدّ اللوحة مقروءة ما دامت أمامه ضمن ±٦٠° من اتّجاه سيره
   const fmt = (n) => Math.round(n).toLocaleString('en-US');
   const fmtLen = (m) => (m >= 1000 ? (m / 1000).toFixed(2) + ' ' + T('كم', 'km') : fmt(m) + ' ' + T('م', 'm'));
   const fmtSec = (s) => (s < 100 ? s.toFixed(1) : fmt(s)) + ' ' + T('ث', 's');
@@ -423,6 +514,8 @@
   const nOf = (b) => [Math.sin(b * D2R), -Math.cos(b * D2R)];
   const CARD = [['شمال', 'N'], ['شمال شرق', 'NE'], ['شرق', 'E'], ['جنوب شرق', 'SE'], ['جنوب', 'S'], ['جنوب غرب', 'SW'], ['غرب', 'W'], ['شمال غرب', 'NW']];
   const card = (b) => { const c = CARD[Math.round(b / 45) % 8]; return T(c[0], c[1]); };
+  const TOWARD = [['الشمال', 'northbound'], ['الشمال الشرقيّ', 'NE-bound'], ['الشرق', 'eastbound'], ['الجنوب الشرقيّ', 'SE-bound'], ['الجنوب', 'southbound'], ['الجنوب الغربيّ', 'SW-bound'], ['الغرب', 'westbound'], ['الشمال الغربيّ', 'NW-bound']];
+  const toward = (b) => { const c = TOWARD[Math.round(b / 45) % 8]; return T('نحو ' + c[0], c[1]); }; // اتّجاه سير السائق
   const ICON = {
     pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffcf4a" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
     car: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 16h14M6 16l1.6-5.2A2 2 0 0 1 9.5 9.4h5a2 2 0 0 1 1.9 1.4L18 16v3h-2.5v-2h-7v2H6z"/></svg>',
@@ -440,7 +533,7 @@
   // ── عيّنات الطرق كلّ ١٠م (تُحسب مرّة لكلّ مدينة) ──
   function sampleRoads(city, R) {
     const ax = [], az = [], bx = [], bz = [], ri = [], cont = [];
-    const lim = R * 1.25;
+    const lim = R; // خارج نصف قطر الخريطة المحمّلة لا مبنى يحجب، فلا نعدّ ما وراءه مرئيًّا
     city.roads.forEach((r, k) => {
       if (!DRIVE.test(r.kind)) return;
       let prevOk = false;
@@ -457,12 +550,14 @@
       }
     });
     const N = ax.length, o = { N, ax: Float32Array.from(ax), az: Float32Array.from(az), bx: Float32Array.from(bx), bz: Float32Array.from(bz),
-      road: Int32Array.from(ri), cont: Uint8Array.from(cont), mx: new Float32Array(N), mz: new Float32Array(N), len: new Float32Array(N), v: new Float32Array(N), w: new Float32Array(N) };
+      road: Int32Array.from(ri), cont: Uint8Array.from(cont), mx: new Float32Array(N), mz: new Float32Array(N), len: new Float32Array(N), v: new Float32Array(N), w: new Float32Array(N),
+      hx: new Float32Array(N), hz: new Float32Array(N) }; // hx,hz: وحدة اتّجاه السير مع ترتيب نقاط الطريق
     for (let i = 0; i < N; i++) {
       o.mx[i] = (o.ax[i] + o.bx[i]) / 2; o.mz[i] = (o.az[i] + o.bz[i]) / 2; o.len[i] = Math.hypot(o.bx[i] - o.ax[i], o.bz[i] - o.az[i]);
+      o.hx[i] = (o.bx[i] - o.ax[i]) / (o.len[i] || 1); o.hz[i] = (o.bz[i] - o.az[i]) / (o.len[i] || 1);
       const r = city.roads[o.road[i]]; o.v[i] = kmh(r.kind) / 3.6; o.w[i] = Math.max(3.5, r.w * 0.92);
     }
-    o.status = new Uint8Array(N); o.dist = new Float32Array(N);
+    o.status = new Uint8Array(N); o.dist = new Float32Array(N); o.dir = new Uint8Array(N);
     return o;
   }
 
@@ -486,15 +581,23 @@
       S.los[i] = idx.los(a, C, LOS_STEP) ? 1 : 2;
     }
   }
-  function scoreDir(C, range, nx, nz) { // ثواني التعرّض لاتّجاه معيّن (بعد ensureLOS لكلّ الاتّجاهات)
-    const s = S.smp; let sec = 0;
+  // اتّجاه السير الذي يرى اللوحة أمامه ضمن ±٦٠°: 1 مع ترتيب نقاط الطريق، 2 عكسه، 0 اللوحة على الجنب (لا يُعدّ)
+  function aheadDir(s, i, C, d) {
+    const c = (s.hx[i] * (C.x - s.mx[i]) + s.hz[i] * (C.z - s.mz[i])) / d;
+    return c > AHEAD_COS ? 1 : (c < -AHEAD_COS ? 2 : 0);
+  }
+  function scoreDir(C, range, nx, nz) { // لاتّجاه واجهة معيّن (بعد ensureLOS لكلّ الاتّجاهات): أفضل ثواني سائق واحد باتّجاه سير واحد، والمجموع للتفاضل
+    const s = S.smp; let best = 0, tot = 0, f = 0, g = 0;
     for (let i = 0; i < s.N; i++) {
+      if (!s.cont[i]) { f = 0; g = 0; } // سلسلة طريق جديدة
       if (S.los[i] !== 1) continue;
       const dx = s.mx[i] - C.x, dz = s.mz[i] - C.z, d = Math.hypot(dx, dz);
       if (d > range || (dx * nx + dz * nz) / d < FACE_COS) continue;
-      sec += s.len[i] / s.v[i];
+      const dr = aheadDir(s, i, C, d); if (!dr) continue;
+      const t = s.len[i] / s.v[i]; tot += t;
+      if (dr === 1) { f += t; if (f > best) best = f; } else { g += t; if (g > best) best = g; }
     }
-    return sec;
+    return best + tot * 1e-3;
   }
   function autoOrient(apply) {
     const b = S.board, C = target(b), range = rangeOf(b);
@@ -514,38 +617,54 @@
     const s = S.smp, b = S.board; if (!s) return;
     const C = target(b), range = rangeOf(b), [nx, nz] = nOf(b.bearing);
     ensureLOS(C, range, nx, nz);
-    let visM = 0, sec = 0, nVis = 0, nBlk = 0, nFace = 0;
+    let visM = 0, allSec = 0, nVis = 0, nBlk = 0, nFace = 0, nAhead = 0;
     const byKind = {};
-    let run = null, best = null;
+    // السائق يقود الطريق باتّجاه واحد: كلّ سلسلة متّصلة من عيّنات طريق تُقاس مرّتين (مع ترتيب نقاطه وعكسه)،
+    // والعيّنة تُعدّ لاتّجاه فقط إن كانت مرئيّة واللوحة أمامه ضمن ±٦٠°. «المقطع» = سلسلة × اتّجاه، والثواني ما يراه سائق واحد.
+    const lane = (dir, i) => ({ dir, road: s.road[i], a: -1, e: -1, m: 0, s: 0, o: null });
+    let ch = null, best = null;
+    const fin = () => { if (ch) allSec += Math.max(ch[1].s, ch[2].s); };
     for (let i = 0; i < s.N; i++) {
+      if (!s.cont[i]) { fin(); ch = [null, lane(1, i), lane(2, i)]; ch[1].o = ch[2]; ch[2].o = ch[1]; }
       const dx = s.mx[i] - C.x, dz = s.mz[i] - C.z, d = Math.hypot(dx, dz);
       s.dist[i] = d;
       let st = 1;
       if (d <= range && d >= 2 && (C.y - EYE) / d <= TILT_TAN && (dx * nx + dz * nz) / d >= FACE_COS) { nFace++; st = S.los[i] === 1 ? 3 : 2; }
-      s.status[i] = st;
+      s.status[i] = st; s.dir[i] = 0;
       if (st === 3) {
-        nVis++; visM += s.len[i]; const t = s.len[i] / s.v[i]; sec += t;
-        const k = S.city.roads[s.road[i]].kind; const bk = byKind[k] || (byKind[k] = { m: 0, s: 0 }); bk.m += s.len[i]; bk.s += t;
-        if (run && s.cont[i] && s.status[i - 1] === 3) { run.e = i; run.m += s.len[i]; run.s += t; }
-        else { run = { a: i, e: i, m: s.len[i], s: t, road: s.road[i] }; }
-        if (!best || run.s > best.s) best = run;
-      } else { if (st === 2) nBlk++; run = null; }
+        nVis++; visM += s.len[i];
+        const k = S.city.roads[s.road[i]].kind, bk = byKind[k] || (byKind[k] = { m: 0, s: 0 }); bk.m += s.len[i];
+        const dr = aheadDir(s, i, C, d); s.dir[i] = dr;
+        if (dr) {
+          nAhead++; const q = ch[dr], t = s.len[i] / s.v[i];
+          if (q.a < 0) q.a = i; q.e = i; q.m += s.len[i]; q.s += t;
+          if (q.s > bk.s) bk.s = q.s; // أطول قراءة لسائق على شارع من هذا النوع
+          if (!best || q.s > best.s) best = q;
+        }
+      } else if (st === 2) nBlk++;
     }
-    if (best) best = Object.assign({}, best);
+    fin();
+    if (best) best = { a: best.a, e: best.e, m: best.m, s: best.s, road: best.road, dir: best.dir, rev: best.o.s };
     let bestRoad = null;
     if (best) {
-      const r = S.city.roads[best.road];
-      bestRoad = { name: r.name || kindName(r.kind), kind: r.kind, lengthM: Math.round(best.m), seconds: +best.s.toFixed(1), speedKmh: kmh(r.kind), from: best.a, to: best.e };
+      const r = S.city.roads[best.road], f = best.dir === 1;
+      const hx = f ? s.bx[best.e] - s.ax[best.a] : s.ax[best.a] - s.bx[best.e], hz = f ? s.bz[best.e] - s.az[best.a] : s.az[best.a] - s.bz[best.e];
+      const heading = Math.round(Math.hypot(hx, hz) > 0.5 ? bearingOf(hx, hz) : bearingOf(f ? s.hx[best.a] : -s.hx[best.a], f ? s.hz[best.a] : -s.hz[best.a])) % 360;
+      bestRoad = { name: r.name || kindName(r.kind), kind: r.kind, lengthM: Math.round(best.m), seconds: +best.s.toFixed(1), speedKmh: kmh(r.kind), heading, reverseSeconds: +best.rev.toFixed(1), from: best.a, to: best.e };
     }
-    S.res = { visibleRoadM: Math.round(visM), exposureSec: +sec.toFixed(1), bestRoad, rangeM: Math.round(range), samples: s.N, facing: nFace, visibleSamples: nVis, blockedSamples: nBlk, byKind, best };
+    const reading = best ? +best.s.toFixed(1) : 0;
+    S.res = { visibleRoadM: Math.round(visM), exposureSec: reading, readingSec: reading, allRoadsSec: +allSec.toFixed(1), bestRoad, rangeM: Math.round(range), samples: s.N, facing: nFace,
+      visibleSamples: nVis, aheadSamples: nAhead, blockedSamples: nBlk, byKind, best };
     paint(); renderStats(); syncState();
   }
   function syncState() {
     const r = S.res || {}, b = S.board;
     const byKind = {}; for (const k in r.byKind || {}) byKind[k] = { m: Math.round(r.byKind[k].m), s: +r.byKind[k].s.toFixed(1), kmh: kmh(k) };
-    window.__inspire_state = { visibleRoadM: r.visibleRoadM || 0, exposureSec: r.exposureSec || 0,
-      bestRoad: r.bestRoad ? { name: r.bestRoad.name, kind: r.bestRoad.kind, lengthM: r.bestRoad.lengthM, seconds: r.bestRoad.seconds, speedKmh: r.bestRoad.speedKmh } : null,
-      rangeM: r.rangeM || 0, samples: r.samples || 0, facingSamples: r.facing || 0, visibleSamples: r.visibleSamples || 0, blockedSamples: r.blockedSamples || 0, byKind,
+    const br = r.bestRoad;
+    // exposureSec = readingSec: ثواني سائق واحد على أفضل مقطع باتّجاه سيره؛ allRoadsSec مجموع ثواني كلّ الشوارع (كلّ سلسلة بأفضل اتّجاه)
+    window.__inspire_state = { visibleRoadM: r.visibleRoadM || 0, exposureSec: r.exposureSec || 0, readingSec: r.readingSec || 0, allRoadsSec: r.allRoadsSec || 0,
+      bestRoad: br ? { name: br.name, kind: br.kind, lengthM: br.lengthM, seconds: br.seconds, speedKmh: br.speedKmh, heading: br.heading, headingCard: CARD[Math.round(br.heading / 45) % 8][1], reverseSeconds: br.reverseSeconds } : null,
+      rangeM: r.rangeM || 0, samples: r.samples || 0, facingSamples: r.facing || 0, visibleSamples: r.visibleSamples || 0, aheadSamples: r.aheadSamples || 0, blockedSamples: r.blockedSamples || 0, byKind,
       board: { mount: b.mount, x: +b.x.toFixed(1), z: +b.z.toFixed(1), w: b.w, h: b.h, elev: b.elev, bearing: b.bearing, hasImage: !!S.img },
       driving: !!S.drive, driveVisibleSec: S.drive ? +S.drive.seen.toFixed(1) : (S.lastDrive || 0), city: S.city ? S.city.name : '', loads: S.loads };
   }
@@ -612,10 +731,12 @@
     S.objs.wedge.geometry.setDrawRange(0, SEG * 3); S.objs.edge.geometry.setDrawRange(0, SEG + 3); wp.needsUpdate = true; ep.needsUpdate = true;
     // أفضل مقطع بالذهبيّ
     const bp = S.objs.best.geometry.attributes.position; let m = 0;
-    if (r.best) for (let i = r.best.a; i <= r.best.e && m < 400; i++, m++) {
+    if (r.best) for (let i = r.best.a; i <= r.best.e && m < 400; i++) {
+      if (s.status[i] !== 3 || s.dir[i] !== r.best.dir) continue; // ما يراه سائق المقطع باتّجاهه فقط
       const dx = s.bx[i] - s.ax[i], dz = s.bz[i] - s.az[i], L = s.len[i] || 1, hw = 1.6, nx = -dz / L * hw, nz = dx / L * hw, y = 0.2;
       const v = [s.ax[i] + nx, s.az[i] + nz, s.bx[i] - nx, s.bz[i] - nz, s.bx[i] + nx, s.bz[i] + nz, s.ax[i] + nx, s.az[i] + nz, s.ax[i] - nx, s.az[i] - nz, s.bx[i] - nx, s.bz[i] - nz];
       for (let k = 0; k < 6; k++) bp.setXYZ(m * 6 + k, v[k * 2], y, v[k * 2 + 1]);
+      m++;
     }
     S.objs.best.geometry.setDrawRange(0, m * 6); bp.needsUpdate = true;
   }
@@ -779,10 +900,9 @@
   // ── منظور السائق ──
   function startDrive() {
     const r = S.res; if (!r || !r.best) { S.ctx.ui.status(T('اللوحة ما تنشاف من أيّ شارع — غيّر الاتّجاه أو ارفعها.', 'No road sees the board — rotate or raise it.')); return; }
-    const s = S.smp, C = target(S.board); let a = r.best.a, e = r.best.e;
+    const s = S.smp, a = r.best.a, e = r.best.e;
     const ids = []; for (let i = a; i <= e; i++) ids.push(i);
-    const dA = Math.hypot(s.mx[a] - C.x, s.mz[a] - C.z), dE = Math.hypot(s.mx[e] - C.x, s.mz[e] - C.z);
-    const fwd = dA >= dE; // نبدأ من الطرف الأبعد ونقود نحو اللوحة
+    const fwd = r.best.dir === 1; // نقود باتّجاه سير المقطع الأفضل (اللوحة أمام السائق)، لا عكسه
     if (fwd) { for (let k = 0, i = a - 1; k < 3 && i >= 0 && s.cont[i + 1] && s.road[i] === s.road[a]; k++, i--) ids.unshift(i); }
     else { ids.reverse(); for (let k = 0, i = e + 1; k < 3 && i < s.N && s.cont[i] && s.road[i] === s.road[e]; k++, i++) ids.unshift(i); }
     const pts = []; for (const i of ids) pts.push(fwd ? [s.ax[i], s.az[i]] : [s.bx[i], s.bz[i]]);
@@ -812,11 +932,12 @@
     const p = D.pts[k - 1], q = D.pts[k], seg = (D.cum[k] - D.cum[k - 1]) || 1, t = Math.min(1, (D.d - D.cum[k - 1]) / seg);
     const x = p[0] + (q[0] - p[0]) * t, z = p[1] + (q[1] - p[1]) * t, fx = (q[0] - p[0]) / seg, fz = (q[1] - p[1]) / seg;
     const id = D.ids[Math.min(D.ids.length - 1, k - 1)], vis = s.status[id] === 3;
-    if (vis && D.d < D.total) D.seen += dt;
     const C = target(S.board), bx = C.x - x, by = C.y - EYE, bz = C.z - z, bl = Math.hypot(bx, by, bz) || 1;
     // ننظر للأمام، ونلتفت بالقدر الذي يبقي اللوحة داخل الإطار (كما يفعل السائق بعينه)
     const vHalf = cam.fov * D2R / 2, hHalf = Math.atan(Math.tan(vHalf) * cam.aspect), yF = Math.atan2(fx, fz), yB = Math.atan2(bx, bz);
     let dl = yB - yF; while (dl > Math.PI) dl -= Math.PI * 2; while (dl < -Math.PI) dl += Math.PI * 2;
+    const ahead = Math.abs(dl) < AHEAD_DEG * D2R; // الشرط نفسه في الحساب: اللوحة أمام السائق ضمن ±٦٠° من اتّجاه سيره
+    if (vis && ahead && D.d < D.total) D.seen += dt;
     const allow = hHalf * 0.5; let yL = yF, pL = 0;
     if (Math.abs(dl) < 110 * D2R) {
       if (Math.abs(dl) > allow) yL = yB - Math.sign(dl) * allow;
@@ -825,7 +946,7 @@
     let lx = Math.sin(yL) * Math.cos(pL), ly = Math.sin(pL), lz = Math.cos(yL) * Math.cos(pL);
     if (!D.look) D.look = [lx, ly, lz]; else { const kk = Math.min(1, dt * 4); D.look[0] += (lx - D.look[0]) * kk; D.look[1] += (ly - D.look[1]) * kk; D.look[2] += (lz - D.look[2]) * kk; }
     cam.position.set(x, EYE, z); cam.lookAt(x + D.look[0] * 50, EYE + D.look[1] * 50, z + D.look[2] * 50);
-    D.vis = vis; D.distB = Math.hypot(bx, bz);
+    D.vis = vis && ahead; D.side = vis && !ahead; D.distB = Math.hypot(bx, bz);
     if (now - D.lastHud > 120) { D.lastHud = now; renderHud(); syncState(); }
   }
 
@@ -834,26 +955,27 @@
     const ui = S.ctx.ui, r = S.res; if (!r) return;
     if (S.drive) {
       const D = S.drive;
-      ui.hud('<div class="bbh"><div class="k ' + (D.vis ? 'g' : 'r') + '"><span>' + (D.vis ? T('اللوحة في عينك', 'Board in view') : T('اللوحة محجوبة', 'Board hidden')) + '</span><b>' + D.seen.toFixed(1) + '<small>' + T('ث', 's') + '</small></b></div>' +
+      ui.hud('<div class="bbh"><div class="k ' + (D.vis ? 'g' : (D.side ? 'y' : 'r')) + '"><span>' + (D.vis ? T('اللوحة في عينك', 'Board in view') : (D.side ? T('اللوحة خارج نظرك', 'Board out of view') : T('اللوحة محجوبة', 'Board hidden'))) + '</span><b>' + D.seen.toFixed(1) + '<small>' + T('ث', 's') + '</small></b></div>' +
         '<div class="k"><span>' + T('السرعة', 'Speed') + '</span><b>' + fmt(D.v * 3.6) + '<small>' + T('كم/س', 'km/h') + '</small></b></div>' +
         '<div class="k y"><span>' + T('المسافة للوحة', 'To board') + '</span><b>' + fmt(D.distB || 0) + '<small>' + T('م', 'm') + '</small></b></div></div>');
       return;
     }
     const br = r.bestRoad;
     ui.hud('<div class="bbh"><div class="k g"><span>' + T('طرق تشوف اللوحة', 'Road that sees it') + '</span><b>' + fmtLen(r.visibleRoadM).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
-      '<div class="k y"><span>' + T('ثواني التعرّض', 'Exposure') + '</span><b>' + fmtSec(r.exposureSec).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
-      '<div class="k"><span>' + T('أفضل مقطع', 'Best stretch') + '</span><b>' + (br ? br.seconds.toFixed(1) + '<small>' + T('ث', 's') + '</small>' : '—') + '</b><div class="s">' + (br ? esc(br.name) : T('لا يوجد', 'none')) + '</div></div></div>');
+      '<div class="k y"><span>' + T('يقرأها السائق', 'Driver reads it') + '</span><b>' + fmtSec(r.readingSec).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
+      '<div class="k"><span>' + T('أفضل مقطع', 'Best stretch') + '</span><b>' + (br ? fmtLen(br.lengthM).replace(/ (\S+)$/, '<small>$1</small>') : '—') + '</b><div class="s" dir="auto">' + (br ? esc(br.name) + ' · ' + toward(br.heading) : T('لا يوجد', 'none')) + '</div></div></div>');
   }
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function renderStats() {
     const r = S.res, U = S.ui; if (!r || !U.tab) return;
-    const kinds = Object.keys(r.byKind).sort((a, b) => r.byKind[b].s - r.byKind[a].s);
-    const mx = kinds.length ? r.byKind[kinds[0]].s : 1;
-    U.tab.innerHTML = kinds.length ? kinds.map((k) => '<tr><td>' + kindName(k) + ' <span style="color:#86a3aa">' + kmh(k) + T(' كم/س', ' km/h') + '</span><div class="bar" style="width:' + Math.max(4, 100 * r.byKind[k].s / mx).toFixed(0) + '%"></div></td><td>' + fmtLen(r.byKind[k].m) + '</td><td>' + fmtSec(r.byKind[k].s) + '</td></tr>').join('')
+    const kinds = Object.keys(r.byKind).sort((a, b) => (r.byKind[b].s - r.byKind[a].s) || (r.byKind[b].m - r.byKind[a].m));
+    const mx = (kinds.length && r.byKind[kinds[0]].s) || 1, hd = (t) => '<td style="color:#86a3aa">' + t + '</td>';
+    U.tab.innerHTML = kinds.length ? '<tr>' + hd(T('نوع الشارع', 'Road type')) + hd(T('مرئيّ', 'Visible')) + hd(T('أطول قراءة', 'Longest read')) + '</tr>' + kinds.map((k) => '<tr><td>' + kindName(k) + ' <span style="color:#86a3aa">' + kmh(k) + T(' كم/س', ' km/h') + '</span><div class="bar" style="width:' + Math.max(4, 100 * r.byKind[k].s / mx).toFixed(0) + '%"></div></td><td>' + fmtLen(r.byKind[k].m) + '</td><td>' + fmtSec(r.byKind[k].s) + '</td></tr>').join('')
       : '<tr><td>' + T('ولا شارع يشوفها — جرّب ترفعها أو تلفّها.', 'No road sees it — raise or rotate it.') + '</td></tr>';
     const br = r.bestRoad;
-    U.best.innerHTML = br ? T('أفضل مقطع: ', 'Best stretch: ') + '<b>' + esc(br.name) + '</b> — ' + fmtLen(br.lengthM) + ' · ' + fmtSec(br.seconds) + T(' بسرعة ', ' at ') + br.speedKmh + T(' كم/س', ' km/h')
-      : T('ما فيه مقطع مرئيّ بعد.', 'No visible stretch yet.');
+    U.best.innerHTML = br ? T('أفضل مقطع: ', 'Best stretch: ') + '<b>' + esc(br.name) + '</b> ' + toward(br.heading) + ' — ' + fmtLen(br.lengthM) + ' · ' + fmtSec(br.seconds) + T(' بسرعة ', ' at ') + br.speedKmh + T(' كم/س', ' km/h') +
+      T(' · بالاتّجاه المعاكس ', ' · opposite way ') + fmtSec(br.reverseSeconds)
+      : T('ما فيه مقطع مرئيّ أمام سائق بعد.', 'No stretch sees it ahead yet.');
     const mountTxt = { ground: T('على عمود', 'on a pole'), roof: T('فوق سطح', 'on a roof'), facade: T('على واجهة', 'on a facade') }[S.board.mount];
     U.note.textContent = T('اللوحة ', 'Board ') + mountTxt + T(' · مدى القراءة ', ' · reading range ') + fmt(r.rangeM) + T(' م · ', ' m · ') + fmt(r.samples) + T(' نقطة فحص على الطرق كلّ ١٠ م', ' road checkpoints every 10 m');
     renderHud();
@@ -881,7 +1003,8 @@
       '<input type="file" id="bbfile" accept="image/*" style="display:none">' +
       '<div class="bb-legend"><span><i style="background:linear-gradient(90deg,#a4ff3c,#12b866)"></i>' + T('مرئيّة', 'Visible') + '</span><span><i style="background:#ff4630"></i>' + T('محجوبة بمبنى', 'Blocked') + '</span><span><i style="background:#ffcf4a"></i>' + T('أفضل مقطع', 'Best stretch') + '</span><span><i style="background:rgba(94,245,156,.35)"></i>' + T('زاوية ±٧٠°', '±70° cone') + '</span></div>' +
       '<table class="bb-tab" id="bbtab"></table><div class="bb-best" id="bbbest"></div><div class="bb-note" id="bbnote"></div>' +
-      '<div class="bb-note">' + T('السرعات: سريع ١٠٠ · شريانيّ ٨٠ · رئيسيّ ٦٠ · ثانويّ ٥٠ · غيرها ٤٠ كم/س. عين السائق ١٫٢ م، والزاوية من الزجاج حتّى ٣٥° للأعلى.', 'Speeds: motorway 100, trunk 80, primary 60, secondary 50, other 40 km/h. Driver eye 1.2 m; windscreen up to 35° above.') + '</div>';
+      '<div class="bb-note">' + T('السرعات: سريع ١٠٠ · شريانيّ ٨٠ · رئيسيّ ٦٠ · ثانويّ ٥٠ · غيرها ٤٠ كم/س. عين السائق ١٫٢ م، والزاوية من الزجاج حتّى ٣٥° للأعلى.', 'Speeds: motorway 100, trunk 80, primary 60, secondary 50, other 40 km/h. Driver eye 1.2 m; windscreen up to 35° above.') +
+        T(' والثواني لسائق واحد باتّجاه سيره، وتُعدّ فقط واللوحة أمامه ضمن ±٦٠°.', ' Seconds are for one driver in one direction, counted only while the board is within ±60° ahead.') + '</div>';
     const $ = (id) => p.querySelector('#' + id);
     const U = S.ui; Object.assign(U, { w: $('bbw'), h: $('bbh'), e: $('bbe'), r: $('bbr'), wv: $('bbwv'), hv: $('bbhv'), ev: $('bbev'), rv: $('bbrv'), tab: $('bbtab'), best: $('bbbest'), note: $('bbnote'), drive: $('bbdrive') });
     syncSliders();
@@ -939,7 +1062,7 @@
   }
 
   CK.start({
-    title: T('اختبار اللوحة الإعلانيّة', 'Billboard visibility test'),
+    title: TITLE,
     sub: T('ثبّت لوحتك في حيّك الحقيقيّ، وشوف أيّ شوارع تشوفها وكم ثانية يقرأها السائق.', 'Place a billboard in your real neighbourhood and see which streets see it, and for how long.'),
     shadows: true,
     panel,

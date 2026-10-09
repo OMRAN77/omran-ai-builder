@@ -47,7 +47,12 @@
   };
   CK.query = function (lat, lon, r) {
     const a = '(around:' + Math.round(r) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
-    return '[out:json][timeout:25];(way["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a + ';way["leisure"~"park|garden"]' + a + ';way["landuse"="grass"]' + a + ';);out geom;';
+    const c = '(around:' + Math.round(r * 2) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
+    // العلاقات: مبانٍ بفناء داخليّ (أسواق، جوامع، جامعات) وبحيرات وحدائق كبيرة لا تُرسم في OSM إلّا علاقات.
+    // خطّ الساحل: البحر في OSM ليس مضلّعًا — يُستنتج من جهة الماء (يمين اتّجاه الخطّ).
+    return '[out:json][timeout:25];(way["building"]' + a + ';relation["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a +
+      ';relation["type"="multipolygon"]["natural"="water"]' + a + ';way["leisure"~"park|garden"]' + a + ';relation["type"="multipolygon"]["leisure"~"park|garden"]' + a +
+      ';way["landuse"="grass"]' + a + ';way["natural"="coastline"]' + c + ';);out geom;';
   };
   // كاش المناطق: التجربة تعمل داخل معاينة التطبيق بنفس الأصل، فـlocalStorage مشترك مع مشاريع المستخدم (aiapp_projects) —
   // منطقة واحدة قد تبلغ ١٫٥ مليون حرف فتملأ حصّته بعد ٢–٣ مناطق ويفشل حفظ التطبيق. لذلك: ذاكرة الصفحة + Cache API في مخزن
@@ -76,19 +81,21 @@
         const res = await timed(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(CK.query(lat, lon, r)) }, 30000);
         if (!res.ok) { last = new Error('HTTP ' + res.status); continue; }
         const j = await res.json();
-        await areaPut(key, j);
+        if (!j || !Array.isArray(j.elements) || (j.remark && /error|timed out|out of memory|runtime/i.test(String(j.remark)))) { last = new Error('overpass: ' + String((j && j.remark) || 'bad reply').slice(0, 80)); continue; }
+        if (j.elements.length) await areaPut(key, j); // منطقة فارغة (بحر/صحراء) لا تُحفظ — قد تكون ردًّا ناقصًا
         return j;
       } catch (e) { last = e; }
     }
     throw last || new Error('overpass');
   };
-  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, living_street: 5, service: 4, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, steps: 2 };
+  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, road: 6, busway: 6, living_street: 5, service: 4, track: 3.5, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, corridor: 2, steps: 2 };
   function heightOf(tags, id) {
     const h = parseFloat(String(tags.height || '').replace(',', '.'));
     if (h > 0 && h < 1000) return h;
     const lv = parseFloat(tags['building:levels']);
     if (lv > 0 && lv < 250) return lv * 3.2 + 1;
     const b = tags.building;
+    if (/^(roof|carport)$/.test(b)) return 4; // مظلّة مواقف/محطّة وقود
     const j = ((id * 2654435761) % 1000) / 1000; // ثابت لكلّ مبنى
     if (/house|detached|villa|bungalow|semidetached/.test(b)) return 6 + j * 3;
     if (/apartments|residential|dormitory/.test(b)) return 12 + j * 12;
@@ -99,24 +106,94 @@
   }
   CK.parse = function (osm, lat0, lon0) {
     const mx = Math.cos(lat0 * Math.PI / 180) * 111320, mz = 110540;
-    const P = (g) => [(g.lon - lon0) * mx, -(g.lat - lat0) * mz];
-    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0 };
+    const P = (g) => { let d = g.lon - lon0; if (d > 180) d -= 360; else if (d < -180) d += 360; return [d * mx, -(g.lat - lat0) * mz]; }; // الالتفاف عند خطّ ١٨٠
+    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0, sea: false };
+    const isClosed = (pts) => pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
+    const addBuilding = (id, poly, t) => {
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+      out.buildings.push({ id, poly, h: heightOf(t, id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
+    };
+    const coast = [];
     for (const e of (osm && osm.elements) || []) {
-      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
       const t = e.tags || {};
+      if (e.type === 'relation') { // العلاقة: الحلقات الخارجيّة تُخاط من أعضائها (الفناء الداخليّ يُملأ — أقرب من غيابه)
+        const outer = CK.stitch((e.members || []).filter((m) => m.type === 'way' && m.role !== 'inner' && m.geometry && m.geometry.length > 1).map((m) => m.geometry.map(P)));
+        if (t.building) outer.forEach((ring, i) => addBuilding(e.id * 16 + i, ring, t));
+        else if (t.natural === 'water' || t.water) out.water.push(...outer);
+        else if (t.leisure || t.landuse) out.parks.push(...outer);
+        continue;
+      }
+      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
       const pts = e.geometry.map(P);
-      const closed = pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
-      if (t.building && closed) {
-        const poly = pts.slice(0, -1);
-        let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-        for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
-        out.buildings.push({ id: e.id, poly, h: heightOf(t, e.id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
-      } else if (t.highway && ROAD_W[t.highway]) {
-        out.roads.push({ id: e.id, pts, kind: t.highway, w: ROAD_W[t.highway], name: t.name || '' });
+      const closed = isClosed(pts);
+      const hk = t.highway ? String(t.highway).replace(/_link$/, '') : ''; // الوصلات (منحدرات، مخارج، دوّارات) بنوع أصلها وعرض أضيق
+      if (t.natural === 'coastline') coast.push(pts);
+      else if (t.building && closed) addBuilding(e.id, pts.slice(0, -1), t);
+      else if (hk && ROAD_W[hk]) {
+        const link = hk !== t.highway;
+        out.roads.push({ id: e.id, pts, kind: hk, w: ROAD_W[hk] * (link ? 0.7 : 1), name: t.name || '', link });
       } else if ((t.natural === 'water' || t.water) && closed) out.water.push(pts.slice(0, -1));
       else if ((t.leisure || t.landuse) && closed) out.parks.push(pts.slice(0, -1));
     }
+    const sea = CK.seaPolys(coast, 1200, 25); // حتّى ٢R حول المركز (خطّ الساحل يُجلب حتّى ٢R)
+    if (sea.length) { out.water.push(...sea); out.sea = true; }
     out.buildings.sort((a, b) => b.h - a.h);
+    return out;
+  };
+  // خياطة خطوط إلى حلقات مغلقة (أعضاء العلاقة تأتي قطعًا متتالية بأيّ اتّجاه)
+  CK.stitch = function (lines) {
+    const near = (a, b) => Math.abs(a[0] - b[0]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5;
+    const pool = lines.map((l) => l.slice()), out = [];
+    while (pool.length) {
+      let cur = pool.shift(), guard = 0;
+      while (!near(cur[0], cur[cur.length - 1]) && guard++ < 2000) {
+        const end = cur[cur.length - 1]; let k = -1, rev = false;
+        for (let i = 0; i < pool.length; i++) { const l = pool[i]; if (near(l[0], end)) { k = i; break; } if (near(l[l.length - 1], end)) { k = i; rev = true; break; } }
+        if (k < 0) break;
+        const l = pool.splice(k, 1)[0]; if (rev) l.reverse(); cur = cur.concat(l.slice(1));
+      }
+      if (cur.length > 3 && near(cur[0], cur[cur.length - 1])) out.push(cur.slice(0, -1));
+    }
+    return out;
+  };
+  // البحر من خطّ الساحل: الماء يمين اتّجاه الخطّ (OSM). شبكة خلايا H×2 بعرض C — كلّ خليّة تأخذ جهة أقرب قطعة ساحل إليها
+  // (عند رأس مشترك: متوسّط عموديّي القطعتين)، ثمّ تُدمج الخلايا البحريّة مستطيلات (صفوف ثمّ أعمدة) تُضاف إلى الماء.
+  CK.seaPolys = function (coast, H, C) {
+    C = C || 20; if (!coast || !coast.length) return [];
+    const segs = [];
+    for (const l of coast) for (let i = 0; i < l.length - 1; i++) {
+      const a = l[i], b = l[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
+      if (L < 0.01) continue;
+      // في إحداثيّاتنا z جنوبًا: يمين الاتّجاه (شمالًا للأعلى) = (-dz, dx)/L بعد قلب z مرّتين ← (−dz, dx) في (x,z)
+      segs.push({ a, b, dx, dz, L, nx: -dz / L, nz: dx / L });
+    }
+    if (!segs.length) return [];
+    const N = Math.ceil(H / C), grid = [];
+    for (let j = -N; j < N; j++) {
+      const row = [];
+      for (let i = -N; i < N; i++) {
+        const x = (i + 0.5) * C, z = (j + 0.5) * C;
+        let best = Infinity, qx = 0, qz = 0, sx = 0, sz = 0;
+        for (const s of segs) {
+          let t = ((x - s.a[0]) * s.dx + (z - s.a[1]) * s.dz) / (s.L * s.L); t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const px = s.a[0] + s.dx * t, pz = s.a[1] + s.dz * t, d = (x - px) * (x - px) + (z - pz) * (z - pz);
+          if (d < best - 1e-3) { best = d; qx = px; qz = pz; sx = s.nx; sz = s.nz; }
+          else if (d < best + 1e-3) { sx += s.nx; sz += s.nz; } // رأس مشترك بين قطعتين: متوسّط عموديّيهما
+        }
+        row.push(best > 1e-3 && (x - qx) * sx + (z - qz) * sz > 0);
+      }
+      grid.push(row);
+    }
+    // دمج: لكلّ صفّ مقاطع متّصلة، ثمّ يمتدّ المقطع نفسه رأسيًّا ما دام مطابقًا
+    const out = [], open = new Map();
+    const flush = (key, j1) => { const o = open.get(key); open.delete(key); const x0 = (o.i0 - N) * C, x1 = (o.i1 + 1 - N) * C, z0 = (o.j0 - N) * C, z1 = (j1 - N) * C; out.push([[x0, z0], [x1, z0], [x1, z1], [x0, z1]]); };
+    for (let j = 0; j <= grid.length; j++) {
+      const runs = new Set();
+      if (j < grid.length) { const r = grid[j]; for (let i = 0; i < r.length; i++) if (r[i]) { let k = i; while (k + 1 < r.length && r[k + 1]) k++; runs.add(i + ',' + k); i = k; } }
+      for (const key of [...open.keys()]) if (!runs.has(key)) flush(key, j);
+      for (const key of runs) if (!open.has(key)) { const [i0, i1] = key.split(',').map(Number); open.set(key, { i0, i1, j0: j }); }
+    }
     return out;
   };
 
@@ -198,13 +275,20 @@
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
     return g;
   }
+  // كلّ المضلّعات المسطّحة (ماء أو حدائق) في هندسة واحدة: مدينة مرسومة جيّدًا فيها مئات المسطّحات الخضراء، وشبكة لكلّ واحد
+  // تعني مئات نداءات الرسم في كلّ إطار. تبقى داخل Group كما كانت (تجارب تقرأ cityGroup.children وتبحث عن Group).
   function polysMesh(THREE, polys, y, color) {
-    const grp = new THREE.Group();
-    const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+    const grp = new THREE.Group(), pos = [];
     for (const poly of polys) {
-      const shape = new THREE.Shape(poly.map((p) => new THREE.Vector2(p[0], -p[1])));
-      const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), mat);
-      m.rotation.x = -Math.PI / 2; m.position.y = y; m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
+      if (!poly || poly.length < 3) continue;
+      let tri; try { tri = THREE.ShapeUtils.triangulateShape(poly.map((p) => new THREE.Vector2(p[0], p[1])), []); } catch (e) { continue; } // مضلّع متقاطع ذاتيًّا: يُتخطّى
+      for (const f of tri) for (const k of f) pos.push(poly[k][0], y, poly[k][1]);
+    }
+    if (pos.length) {
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+      // إزاحة العمق: سنتيمترات فوق الأرض لا تكفي من بعيد فيتقاطع السطحان خطوطًا (z-fighting)
+      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+      m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
     }
     return grp;
   }
@@ -259,6 +343,7 @@
   .ck-status{font-size:12.5px;color:#9fd8de;min-height:1.4em}
   .ck-stat{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-variant-numeric:tabular-nums;margin-top:6px}
   .ck-stat b{color:#fff}
+  .ck-attr{margin-top:8px;font-size:11px;color:#8fb0b8}.ck-attr a{color:inherit;text-decoration:none}.ck-attr a:hover{text-decoration:underline}
   .ck-toggle{position:fixed;top:12px;right:12px;z-index:6;display:none}
   @media (max-width:640px){.ck-ui{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:46vh}}
   .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:${AR ? 'rtl' : 'ltr'};pointer-events:none}
@@ -267,11 +352,13 @@
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     const box = document.createElement('div'); box.className = 'ck-ui';
     box.innerHTML = '<h1></h1><p class="sub"></p><div class="ck-row"><input id="ckq" type="search"><button id="ckgo"></button></div>' +
-      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>';
+      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>' +
+      '<div class="ck-attr"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"></a></div>';
     box.querySelector('h1').textContent = title; box.querySelector('.sub').textContent = sub || '';
     box.querySelector('#ckq').placeholder = T('اكتب اسم حيّك أو مدينتك', 'Type your neighbourhood or city');
     box.querySelector('#ckgo').textContent = T('ابنِ', 'Build');
     box.querySelector('#ckme').textContent = T('موقعي', 'My location');
+    box.querySelector('.ck-attr a').textContent = T('بيانات الخريطة © مساهمو OpenStreetMap', 'Map data © OpenStreetMap contributors');
     const sel = box.querySelector('#ckpre');
     sel.innerHTML = '<option value="">' + T('أو اختر مدينة…', 'or pick a city…') + '</option>' + CK.PRESETS.map((p, i) => '<option value="' + i + '">' + (AR ? p.ar : p.en) + '</option>').join('');
     document.body.appendChild(box);
@@ -322,7 +409,7 @@
         ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; cityGroup.add(ground);
         cityGroup.add(polysMesh(THREE, data.water, 0.03, 0x3d8fb6));
         cityGroup.add(polysMesh(THREE, data.parks, 0.04, 0x8fb87a));
-        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide }));
+        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
         roads.receiveShadow = true; cityGroup.add(roads);
         const bm = new THREE.Mesh(buildingGeometry(THREE, data), new THREE.MeshLambertMaterial({ vertexColors: true }));
         bm.castShadow = true; bm.receiveShadow = true; cityGroup.add(bm);
@@ -332,6 +419,7 @@
         ctx.city = city;
         orbit.target.set(0, 0, 0); orbit.dist = R * 1.5; orbit.apply();
         ui.status(T('جاهز: ', 'Ready: ') + data.buildings.length + T(' مبنى · ', ' buildings · ') + data.roads.length + T(' طريق', ' roads'));
+        await new Promise((r) => setTimeout(r, 16)); // إطار يُرسم فيه المشهد قبل حسابات التجربة (لا تجمّد الصفحة دفعة واحدة)
         if (opt.onCity) await opt.onCity(ctx, city);
         window.__ck_ready = (window.__ck_ready || 0) + 1;
       } catch (e) {
@@ -430,6 +518,7 @@
 (function () {
   'use strict';
   const CK = window.CityKit, T = CK.T;
+  document.title = T('اسمع الشقّة قبل التوقيع', 'Hear the flat before you sign');
   // ── نموذج الضجيج ──
   const KIND_DB = { motorway: 80, trunk: 76, primary: 72, secondary: 68, tertiary: 64, residential: 56 };
   const OTHER_DB = 50, NIGHT_DROP = 8, FLOOR_H = 3.2, EAR = 1.5, SRC_Y = 0.5, LOS_STEP = 4, BLOCK_DB = 10;
@@ -951,6 +1040,10 @@
     },
     onCity(ctx, city) {
       C = ctx; audioStop(); fly = null;
+      if (S) { // المدينة السابقة: النواة تحرّر الأشكال فقط، فنحرّر قوام خريطة الضجيج ومادّتها ومواد المؤثّرات
+        if (S.heat) { S.heat.tex.dispose(); S.heat.mesh.material.dispose(); }
+        if (S.fx) disposeTree(S.fx.group);
+      }
       S = { city, seg: buildSegments(city), pick: null, res: null, fx: null, prof: null, heat: null };
       G.floor = null; UI.labels.innerHTML = '';
       applyLight(); startHeat();

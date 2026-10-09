@@ -38,5 +38,17 @@ export function makeFixture(lat0, lon0, radius = 600) {
       way(tags, [[x, z], [x + w, z], [x + w, z + dpt], [x, z + dpt], [x, z]]);
     }
   }
+  // ما يأتي من الخرائط الحقيقيّة ولا تمثّله الشبكة (يُلحق بعد المباني فلا يغيّر المدينة السابقة):
+  // وصلة طريق سريع (*_link)، ومبنى بفناء علاقةً multipolygon (قطعتان خارجيّتان + حلقة داخليّة) خارج الشبكة،
+  // وخطّ ساحل باتّجاه الشرق قرب الحافّة الجنوبيّة (الماء يمينه = جنوبًا) من قطعتين.
+  way({ highway: 'motorway_link' }, [[R * 0.5, R * 0.86], [R * 0.5, R * 0.72]]);
+  const rel = (tags, members) => els.push({ type: 'relation', id: id++, tags, members: members.map(([role, pts]) => ({ type: 'way', ref: id++, role, geometry: pts.map(([x, z]) => ll(x, z)) })) });
+  const X0 = R + 40, X1 = R + 160, Z0 = -60, Z1 = 60;
+  rel({ type: 'multipolygon', building: 'retail', name: 'المجمّع', 'building:levels': '4' }, [
+    ['outer', [[X0, Z0], [X1, Z0], [X1, Z1]]], ['outer', [[X0, Z0], [X0, Z1], [X1, Z1]]],
+    ['inner', [[X0 + 30, Z0 + 30], [X1 - 30, Z0 + 30], [X1 - 30, Z1 - 30], [X0 + 30, Z1 - 30], [X0 + 30, Z0 + 30]]],
+  ]);
+  way({ natural: 'coastline' }, [[-R * 1.5, R * 0.97], [0, R * 0.97]]);
+  way({ natural: 'coastline' }, [[0, R * 0.97], [R * 1.5, R * 0.97]]);
   return { version: 0.6, generator: 'omran-fixture', elements: els };
 }
