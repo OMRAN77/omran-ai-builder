@@ -32,6 +32,7 @@ const img64 = (f) => 'data:' + (f.endsWith('.png') ? 'image/png' : f.endsWith('.
 
 // ── المعرّفات: [معرّف الثيم، مجلّده] ──
 const THEMES = [['darkwood', 'خشب-داكن'], ['marble', 'رخام'], ['code', 'برمجة'], ['cars', 'مركبات'], ['kids', 'أطفال'], ['cuisine', 'طهي'],
+  /* v-themes-ten */ ['tactical', 'أنمي-قتالي'], ['angel', 'ملاك'], ['neonanime', 'أنمي-نيون'], ['station', 'محطّة'], ['rally', 'سباق'], ['smoke', 'دخان'], ['library', 'مكتبة'], ['cafe', 'مقهى'], ['workshop', 'ورشة'], ['modern', 'عصري'],
   ['sunset', 'غروب'], ['beach', 'شاطئ'], ['winter', 'شتاء'], ['garage', 'كراج'], ['anime', 'أنمي'], ['cyber', 'أمن-سيبراني'], ['school', 'فصل']];
 
 if (process.argv.includes('--مصغّرات')) {

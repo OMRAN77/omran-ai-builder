@@ -19,7 +19,9 @@ const THEMES = [['خشب-داكن', 'darkwood', 'bgThemeDarkwood', false, false]
   ['غروب', 'sunset', 'bgThemeSunset', false, true], ['شاطئ', 'beach', 'bgThemeBeach', true, true],
   ['شتاء', 'winter', 'bgThemeWinter', true, true], ['كراج', 'garage', 'bgThemeGarage', false, true],
   ['أنمي', 'anime', 'bgThemeAnime', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', false, true],
-  ['فصل', 'school', 'bgThemeSchool', false, true]];
+  ['فصل', 'school', 'bgThemeSchool', false, true],
+  // v-themes-ten: أنمي ٤ · سيارات ٢ · دراسيّة ٣ · بيت عصريّ — مشاهد من صور المالك
+  ['أنمي-قتالي', 'tactical', 'bgThemeTactical', false, true], ['ملاك', 'angel', 'bgThemeAngel', true, true], ['أنمي-نيون', 'neonanime', 'bgThemeNeonAnime', false, true], ['محطّة', 'station', 'bgThemeStation', false, true], ['سباق', 'rally', 'bgThemeRally', false, true], ['دخان', 'smoke', 'bgThemeSmoke', false, true], ['مكتبة', 'library', 'bgThemeLibrary', true, true], ['مقهى', 'cafe', 'bgThemeCafe', true, true], ['ورشة', 'workshop', 'bgThemeWorkshop', false, true], ['عصري', 'modern', 'bgThemeModern', true, true]];
 
 function jpegSize(file) {
   const b = fs.readFileSync(file);
@@ -56,7 +58,7 @@ test('٢. السجلّ: الثلاثة عشر في js/app-25-خلفيات.js ب�
     }
     assert.equal(/--th-scheme:light/.test(b), light, id + ': الفاتح يطابق السجلّ (bgimg-light)');
     assert.equal(/--th-scene:url\(/.test(b), scene, id + ': المشهد يطابق السجلّ (skin-scene)');
-    if (scene) assert.match(b, /--th-pos:\d+% 50%; --th-pos-m:\d+% 50%;/, id + ': موضع الصورة للكمبيوتر والجوّال');
+    if (scene) assert.match(b, /--th-pos:\d+% \d+%; --th-pos-m:\d+% \d+%;/, id + ': موضع الصورة للكمبيوتر والجوّال (v-themes-ten: الطوليّة تحتاج موضعًا رأسيًّا)');
   }
   // الكسوة: html.skin للثلاثة عشر لا للخشبيّ، وskin-scene من السجلّ لا من المحفوظ
   assert.match(src, /html\.classList\.toggle\('skin', !!مدخل && اسم !== 'wood'\);/);
@@ -75,7 +77,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
   for (const [dir, , , , scene] of THEMES) {
     const d = path.join(root, 'assets', 'ثيمات', dir);
     assert.equal(jpegSize(path.join(d, 'مصغّر.jpg'))[0], 360, dir + ': مصغّر الشبكة');
-    if (scene) assert.equal(jpegSize(path.join(d, 'مشهد.jpg'))[0], 2560, dir + ': المشهد (v-scene-sharp: موضَّح ٢٥٦٠ عرضًا)');
+    if (scene) { const [w, h] = jpegSize(path.join(d, 'مشهد.jpg')); assert.ok(Math.max(w, h) >= 2000 && Math.max(w, h) <= 2560, dir + ': المشهد ٢٠٠٠–٢٥٦٠ على ضلعه الأطول (v-scene-sharp؛ v-themes-ten: صور المالك العريضة ٢٠٠٠ والطوليّة ٢٥٦٠ ارتفاعًا)'); }
   }
   // السيارة المتوهّجة من صورة المالك (أمره: «وهذي بعد») في بداية «سيارات»: ضعفا حجمها، وتذوب خلفيّتها الداكنة في الكربون
   assert.equal(jpegSize(path.join(root, 'assets', 'ثيمات', 'مركبات', 'سيارة.jpg'))[0], 1200); // v-scene-sharp
@@ -98,7 +100,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
 
 test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد يترك الخانات والإرسال للثيم، والمختار والزرّ يغلبان قاعدتي التطبيق', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=6');
+  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=7');
   assert.ok(a > 0 && b > a, 'يُحمَّل آخرًا فيعلو');
   const frame = rd('css/إطارات.css');
   assert.doesNotMatch(frame, /:not\(\.skin-wood\) (\.hist-item|#composerBox)/, 'قواعد الإطار للخانات والإرسال تستثني html.skin');
@@ -121,5 +123,5 @@ test('٥. الترجمة: أسماء الثلاثة عشر بالـ١٤ لغة،
   }
   assert.match(data, /bgThemeCyber: 'أمن سيبراني'/);
   assert.match(data, /bgThemeSchool: 'فصل دراسي'/);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=728'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=729'"));
 });

@@ -238,6 +238,16 @@ const I18N = {
     bgThemeAnime: 'أنمي',
     bgThemeCyber: 'أمن سيبراني',
     bgThemeSchool: 'فصل دراسي',
+    bgThemeTactical: 'أنمي قتالي', // v-themes-ten
+    bgThemeAngel: 'ملاك الجليد',
+    bgThemeNeonAnime: 'أنمي نيون',
+    bgThemeStation: 'محطة المستقبل',
+    bgThemeRally: 'سباق مطر',
+    bgThemeSmoke: 'دخان أزرق',
+    bgThemeLibrary: 'مكتبة',
+    bgThemeCafe: 'مقهى',
+    bgThemeWorkshop: 'ورشة ليلية',
+    bgThemeModern: 'بيت عصري',
     // v-phone-link
     acctPhoneLabel: 'رقم الهاتف (للاسترجاع)',
     phoneNotLinked: 'غير مربوط',
@@ -1455,6 +1465,16 @@ const I18N = {
     bgThemeAnime: 'Anime',
     bgThemeCyber: 'Cybersecurity',
     bgThemeSchool: 'Classroom',
+    bgThemeTactical: 'Tactical anime', // v-themes-ten
+    bgThemeAngel: 'Ice angel',
+    bgThemeNeonAnime: 'Neon anime',
+    bgThemeStation: 'Future station',
+    bgThemeRally: 'Rain race',
+    bgThemeSmoke: 'Blue smoke',
+    bgThemeLibrary: 'Library',
+    bgThemeCafe: 'Café',
+    bgThemeWorkshop: 'Night workshop',
+    bgThemeModern: 'Modern home',
     // v-phone-link
     acctPhoneLabel: 'Phone number (for recovery)',
     phoneNotLinked: 'Not linked',
