@@ -60,7 +60,7 @@ test('٤. النصوص الجديدة بالـ١٤ لغة، والحزمة وا�
   }
   assert.ok(read('js/app.bundle.js').includes("function studioSetPhoto(which, file){"), 'الحزمة أُعيد بناؤها');
   assert.ok(read('index.html').includes('/js/partials-core.js?v=654'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=728'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=729'"));
 });
 
 test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف الشكل»): بطاقات مصوّرة مطويّة، وثلاثة كحدّ أقصى', () => {

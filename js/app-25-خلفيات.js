@@ -31,7 +31,18 @@
    ['غروب', 'sunset', 'bgThemeSunset', '#7a4a5a', false, true], ['شاطئ', 'beach', 'bgThemeBeach', '#8fd0e0', true, true],
    ['شتاء', 'winter', 'bgThemeWinter', '#d5dce4', true, true], ['كراج', 'garage', 'bgThemeGarage', '#141416', false, true],
    ['أنمي', 'anime', 'bgThemeAnime', '#1d1430', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', '#06121f', false, true],
-   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true]].forEach(function(a){
+   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true],
+   /* v-themes-ten (المالك ٩ أكتوبر «عطني ١٠ أشكال جديدة… أنمي ٤ وسيارات ٣ ودراسيّة ٣»): عشر ثيمات مشهد من صوره */
+   ['أنمي-قتالي', 'tactical', 'bgThemeTactical', '#7a0f2e', false, true],
+   ['ملاك', 'angel', 'bgThemeAngel', '#c9d8ea', true, true],
+   ['أنمي-نيون', 'neonanime', 'bgThemeNeonAnime', '#050607', false, true],
+   ['محطّة', 'station', 'bgThemeStation', '#3a3f44', false, true],
+   ['سباق', 'rally', 'bgThemeRally', '#5a5440', false, true],
+   ['دخان', 'smoke', 'bgThemeSmoke', '#071a33', false, true],
+   ['مكتبة', 'library', 'bgThemeLibrary', '#cfeef0', true, true],
+   ['مقهى', 'cafe', 'bgThemeCafe', '#e8d8c2', true, true],
+   ['ورشة', 'workshop', 'bgThemeWorkshop', '#1a1830', false, true],
+   ['عصري', 'modern', 'bgThemeModern', '#d9d2c6', true, true]].forEach(function(a){
     ثيمات[a[0]] = { ملف: 'ثيم:' + a[0], ثيم: a[1], عنوان: a[2], لون: a[3], فاتحة: a[4], مشهد: !!a[5],
       مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=2' }; // v-bg-fresh: مصغّرات الثلاثة عشر أُعيد توليدها (v-scene-clear/sharp)
   });

@@ -181,5 +181,5 @@ test('النصوص الأربعة في ١٤ لغة، وبلا اسم مزوّد/
 });
 
 test('وسم تحميل اللغات مرفوع (نصوص جديدة في الملفّات المنفصلة)', () => {
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=728'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=729'"));
 });
