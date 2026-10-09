@@ -605,7 +605,9 @@ html[data-mode="light"] #videoMakerModal .vmk-tab{color:#4a4f5a}
 html[data-mode="light"] #videoMakerModal .vmk-main #videoMakerPrompt{background:#ffffff;border-color:rgba(0,0,0,.14)}
 #videoMakerModal #videoMakerHeroBtn{padding:0 !important;padding-inline-start:46px !important;padding-inline-end:18px !important;text-align:start}
 #videoMakerModal .vmk-main .mini-mic-field-row{align-items:flex-start}
-#videoMakerModal .vmk-stage:before{content:"";position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;border:1px solid rgba(232,194,122,.45);background:rgba(232,194,122,.06)}
-#videoMakerModal .vmk-stage:after{content:"";position:absolute;inset:0;margin:auto;width:0;height:0;transform:translateX(-3px) scaleX(-1);border-inline-start:15px solid rgba(232,194,122,.8);border-top:9px solid transparent;border-bottom:9px solid transparent}
-#videoMakerModal .vmk-stage>video~*,#videoMakerModal .vmk-stage:has(video):before,#videoMakerModal .vmk-stage:has(video):after{display:none}
 #videoMakerModal #videoMakerGenerateBtn{display:flex!important;align-items:center;justify-content:center;text-align:center}
+
+/* زرّ البطل: حبّة نظيفة بعلامة + داخل النصّ نفسه (لا زخرفة مطلقة فوقه) */
+#videoMakerModal #videoMakerHeroBtn:before{position:static;display:inline-block;width:auto;height:auto;margin:0 0 0 8px;background:none;opacity:1;content:"+";font-size:18px;line-height:1;vertical-align:-1px;color:var(--lux-gold)}
+#videoMakerModal #videoMakerHeroBtn:after{content:none;display:none}
+#videoMakerModal #videoMakerHeroBtn{padding:0 20px!important;line-height:42px;text-align:center}

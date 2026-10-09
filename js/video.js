@@ -113,7 +113,7 @@
         el.addEventListener('mouseleave',function(){ try{ vd.pause(); }catch(e){ /* guard-ok — لا أثر */ } });
         pv.appendChild(vd);
       }
-      var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl);
+      if(VIDEOS[md+'-'+(i+1)]){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
       var tt=document.createElement('b'); tt.textContent=tx;
       pv.appendChild(tt); el.appendChild(pv);
       var pick=function(){ var pe=id('videoMakerPrompt'); setVal(pe,tx); if(pe) pe.focus(); };

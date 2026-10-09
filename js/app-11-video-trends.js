@@ -49,11 +49,6 @@
     var c = document.createElement('div');
     c.setAttribute('role', 'button'); c.tabIndex = 0;
     c.style.cssText = 'position:relative;aspect-ratio:3/4;border-radius:14px;overflow:hidden;cursor:pointer;background:linear-gradient(160deg,#262a34,#12141a);border:1px solid var(--border,#2a2a30);';
-    var play = document.createElement('div');
-    play.style.cssText = 'position:absolute;inset:0;margin:auto;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.4);';
-    var tri = document.createElement('div');
-    tri.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-35%,-50%);border-inline-start:11px solid #fff;border-top:7px solid transparent;border-bottom:7px solid transparent;';
-    play.appendChild(tri); c.appendChild(play);
     var im = document.createElement('img'); im.src = PREVIEW(t.key); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async';
     im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
     im.onerror = function(){ im.remove(); };
