@@ -71,6 +71,8 @@ async function runOne(mode, n) {
     await card.waitFor({ timeout: 8000 });
     const idea = (await card.locator('b').innerText()).trim();
     await card.click(); await page.waitForTimeout(300);
+    // بطاقة لها فيديو تفتح المشغّل فوق الصفحة — يُغلق بزرّه قبل «إنشاء» (Escape يُغلق نافذة الصانع كلّها)
+    await page.evaluate(() => { const x = document.querySelector('.vmk-lb .vmk-lb-x'); if (x) x.click(); }); await page.waitForTimeout(200);
     if (mode === 'actor') await page.fill('#videoMakerActorSpeech', ACTOR_LINE);
     const prompt = await page.inputValue('#videoMakerPrompt');
     if (!prompt.trim()) throw new Error('الوصف فارغ بعد اختيار البطاقة');
@@ -99,7 +101,7 @@ async function runOne(mode, n) {
     const raw = path.join(os.tmpdir(), 'sample-' + key + '.mp4'); fs.writeFileSync(raw, Buffer.from(b64, 'base64'));
     const mp4 = path.join(OUT, key + '.mp4');
     const hasAudio = /audio/i.test(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'csv=p=0', raw], { encoding: 'utf8' }));
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-vf', 'scale=960:-2,fps=24', '-c:v', 'libx264', '-crf', '30', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'].concat(hasAudio ? ['-c:a', 'aac', '-b:a', '64k'] : ['-an'], [mp4]));
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-vf', "scale='min(1920,iw)':-2", '-c:v', 'libx264', '-crf', '20', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'].concat(hasAudio ? ['-c:a', 'aac', '-b:a', '128k'] : ['-an'], [mp4]));
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '1', '-i', mp4, '-frames:v', '1', '-vf', 'scale=640:-2', '-q:v', '5', path.join(OUT, key + '.jpg')]);
     index[key] = true; fs.writeFileSync(indexFile, JSON.stringify(index, null, 1) + '\n');
     console.log('✓', key, (fs.statSync(mp4).size / 1024).toFixed(0) + 'KB', hasAudio ? 'مع صوت' : 'بلا صوت');

@@ -134,7 +134,7 @@
     }
     box.style.setProperty('--h',String(HUE[md]==null?35:HUE[md]));
     keys.forEach(function(k,i){
-      var tx=L(k); if(!tx) return;
+      var vm=VIDEOS[md+'-'+(i+1)], tx=(vm&&vm.title)||L(k); if(!tx) return; /* عنوان الفيديو المرفوع (من <الاسم>.txt) يغلب المثال */
       var el=document.createElement('div'); el.className='vmk-sm'; el.setAttribute('role','button'); el.tabIndex=0;
       var pv=document.createElement('div'); pv.className='vmk-sm-p'; pv.style.setProperty('--i',String(i));
       var vsrc='';
