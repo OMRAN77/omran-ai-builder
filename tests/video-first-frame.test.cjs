@@ -275,7 +275,7 @@ test('١١. الترندات فوق والصانع تحتها: الوصف بوس
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top\{overflow-y:auto;/);
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top \.vmk-main\{max-height:none;overflow:visible\}/);
   const H = read('index.html');
-  assert.ok(H.includes('src="/js/video.js?v=426"'), 'وسم video.js رُفع');
+  assert.ok(H.includes('src="/js/video.js?v=428"'), 'وسم video.js رُفع');
   assert.ok(Number((H.match(/css\/modules\.css\?v=(\d+)/) || [])[1]) >= 663, 'وسم modules رُفع');
   // تشغيل build الحقيقيّ على بطاقة مصغّرة: الترندات بُنيت قبل الاستوديو (الترتيب الذي أنزلها للأسفل)
   const el = (id, cls) => ({ id: id || '', className: cls || '', classList: { _s: new Set((cls || '').split(' ').filter(Boolean)), add(c) { this._s.add(c); }, contains(c) { return this._s.has(c); } }, children: [], parentElement: null, dataset: {}, style: { setProperty() {} }, attrs: {}, getAttribute(k) { return this.attrs[k]; }, setAttribute(k, v) { this.attrs[k] = v; } });
