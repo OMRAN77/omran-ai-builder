@@ -11,6 +11,7 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 #msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:15px;line-height:1.7;pointer-events:none;z-index:1}
 #msg:empty{display:none}
 #credit{position:fixed;bottom:6px;inset-inline-end:8px;font-size:11px;color:#fff;text-shadow:0 1px 2px #000;opacity:.9;z-index:2;direction:ltr;max-width:70vw;text-align:right}
+#diag{position:fixed;top:56px;left:8px;max-width:min(560px,calc(100vw - 16px));max-height:60vh;overflow:auto;background:rgba(0,0,0,.78);color:#cfe;font:11px/1.5 ui-monospace,monospace;padding:8px 10px;border-radius:8px;z-index:3;direction:ltr;white-space:pre-wrap;display:none}
 #hint{position:fixed;bottom:6px;inset-inline-start:8px;font-size:11px;color:#fff;text-shadow:0 1px 2px #000;opacity:.75;z-index:2}
 </style>
 <script type="importmap">{"imports":{
@@ -19,7 +20,19 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 "3d-tiles-renderer/":"https://cdn.jsdelivr.net/npm/3d-tiles-renderer@0.5.2/build/"
 }}</script>
 </head><body>
-<div id="bar"></div><div id="msg"></div><div id="credit"></div><div id="hint"></div>
+<div id="bar"></div><div id="msg"></div><div id="credit"></div><div id="hint"></div><div id="diag"></div>
+<script>
+/* ?debug=1: شريط تشخيص على الشاشة — أوّل الأخطاء والتحذيرات وعدّادات البلاطات والصور، فلقطة واحدة تكفي بلا أدوات المطوّر. */
+window.__diag = { on: /[?&]debug=1/.test(location.search), log: [] };
+(function () {
+  if (!window.__diag.on) return;
+  const push = (k, a) => { const t = k + ': ' + Array.prototype.map.call(a, (x) => (x && x.message) || String(x)).join(' ').slice(0, 240); if (window.__diag.log.length < 12 && window.__diag.log.indexOf(t) < 0) window.__diag.log.push(t); };
+  ['error', 'warn'].forEach((k) => { const o = console[k]; console[k] = function () { push(k, arguments); return o.apply(console, arguments); }; });
+  addEventListener('error', (e) => push('onerror', [e.message || (e.target && e.target.src) || 'resource']), true);
+  addEventListener('unhandledrejection', (e) => push('reject', [e.reason]));
+  addEventListener('securitypolicyviolation', (e) => push('csp', [e.violatedDirective + ' ' + e.blockedURI]));
+})();
+</script>
 <script type="module">
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
@@ -87,7 +100,18 @@ addEventListener('resize', () => {
   if (tiles) tiles.setResolutionFromRenderer(camera, renderer);
 });
 
-let lastCredit = '';
+let lastCredit = '', lastDiag = 0;
+function diag() {
+  const d = window.__diag; if (!d || !d.on || !tiles) return;
+  const now = performance.now(); if (now - lastDiag < 1000) return; lastDiag = now;
+  let meshes = 0, maps = 0; tiles.group.traverse((o) => { if (o.isMesh) { meshes++; if (o.material && o.material.map) maps++; } });
+  const st = tiles.stats || {};
+  const el = $('diag'); el.style.display = 'block';
+  el.textContent = 'meshes ' + meshes + ' · with texture ' + maps + ' · gpu textures ' + renderer.info.memory.textures
+    + '\ndownloading ' + (st.downloading || 0) + ' · parsing ' + (st.parsing || 0) + ' · visible ' + (st.visible || 0) + ' · failed ' + (st.failed || 0)
+    + '\ncam y ' + camera.position.y.toFixed(0) + ' · ' + navigator.userAgent.replace(/^.*?\) /, '').slice(0, 80)
+    + (d.log.length ? '\n— ' + d.log.join('\n— ') : '\n(no errors)');
+}
 renderer.setAnimationLoop(() => {
   controls.update();
   camera.updateMatrixWorld();
@@ -99,6 +123,7 @@ renderer.setAnimationLoop(() => {
     if (txt !== lastCredit) { lastCredit = txt; $('credit').textContent = txt; }
   }
   renderer.render(scene, camera);
+  diag();
 });
 
 (async () => {
