@@ -70,7 +70,7 @@ test('الفيديو التعليميّ (طلب المالك): أوّل بطاق
   assert.ok(js.includes("'/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'"));
   ['ar', 'en'].forEach((l) => {
     ['mp4', 'jpg'].forEach((x) => assert.ok(fs2.existsSync(path.join(root, 'media/samples/tutorial-' + l + '.' + x)), l + '.' + x));
-    assert.ok(fs2.statSync(path.join(root, 'media/samples/tutorial-' + l + '.mp4')).size < 2 * 1024 * 1024, 'حجم معقول');
+    assert.ok(fs2.statSync(path.join(root, 'media/samples/tutorial-' + l + '.mp4')).size < 10 * 1024 * 1024, 'حجم معقول (١٠٨٠ مُمنتَج، يُحمَّل عند الضغط فقط)');
   });
   assert.ok(fs2.existsSync(path.join(root, 'scripts/video-tutorial.mjs')), 'سكربت التسجيل يُعيد إنتاج الفيديو');
   const tr = read('js/app-11-video-trends.js');
