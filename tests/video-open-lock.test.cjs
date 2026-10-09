@@ -44,6 +44,9 @@ const kvImpl = {
 mock('api/_lib/kv.js', new Proxy(kvImpl, { get: (t, p) => t[p] || (async () => null) }));
 mock('api/_lib/log-error.js', { logError: () => {}, logErrorAndFlush: () => {} });
 mock('api/_lib/_vip.js', { isVip: async () => false });
+/* v-quality-gate: الترقية للمشتركين والمالك فقط — مستخدمو هذه الاختبارات يُعامَلون مشتركين (الحارس نفسه في quality-gate.test.cjs) */
+let QUALITY_OK = true;
+mock('api/_lib/_qualityGate.js', { allowHigh: async () => QUALITY_OK, gateQuality: async (u, q) => q });
 
 const auth = require(rp('api/_lib/auth.js'));
 const points = require(rp('api/_lib/points.js'));
@@ -319,4 +322,15 @@ test('٦. رصيد المزوّد: الزائر والمستخدم العادي�
   // v-balance-enough (المراجعة المعاكسة): غير المالك يسأل «هل يكفي؟» بجلسته فيأخذ {enough} وحده — tests/review-r2.test.cjs (د)
   assert.match(body, /owner\s+\? await fetch\('\/api\/video\?action=video-balance&token=' \+ \(typeof ownerToken === 'function' \? ownerToken\(\) : ''\)\)/, 'الرقم للمالك وحده');
   assert.ok(body.indexOf('if(!owner){') < body.indexOf('رصيد Runway'), 'سطر المزوّد بعد خروج غير المالك');
+});
+
+test('٣ب. ترقية الجودة لغير المشترك (قرار المالك): ٤٠٣ quality_plan قبل أيّ نداء لـRunway', async () => {
+  runwayNet();
+  const before = hits(/video_upscale/);
+  QUALITY_OK = false;
+  try {
+    const r = await up({ token: await user('free-up') });
+    assert.equal(r.code, 403); assert.equal(r.body.error, 'quality_plan');
+    assert.equal(hits(/video_upscale/), before, 'لا نداء مدفوع');
+  } finally { QUALITY_OK = true; }
 });

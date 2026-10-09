@@ -59,6 +59,8 @@ module.exports = async (req, res) => {
       res.status(401).json({ error: 'auth_required' });
       return;
     }
+    // v-quality-gate: الترقية (2K) للمشتركين والمالك فقط — العميل يعدّها تحسينًا اختياريًّا فيتجاهل الرفض
+    if (!(await require('./_qualityGate.js').allowHigh(username))) { res.status(403).json({ error: 'quality_plan' }); return; }
     if (!videoUrl || !/^https:\/\//.test(String(videoUrl))) {
       res.status(400).json({ error: 'Missing or invalid videoUrl' });
       return;
