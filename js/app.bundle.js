@@ -5660,8 +5660,8 @@ Object.assign(I18N.en, {"priceTabMedia":"Images & video","mixPlanName":"Images &
 Object.assign(I18N.ar, {"inspTabInspire":"الإلهام","inspTabQuick":"اقتراحات سريعة","inspCityTitle":"مدينتك الحقيقيّة","inspCitySub":"تجارب ثلاثيّة الأبعاد مبنيّة على حيّك الحقيقي من الخرائط المفتوحة. اختر تجربة وتنفتح فورًا في المعاينة، واكتب داخلها اسم أيّ حيّ أو مدينة.","inspLoading":"يجهّز…","inspFail":"ما قدرت أفتحها الحين — جرّب مرّة ثانية"});
 Object.assign(I18N.en, {"inspTabInspire":"Inspiration","inspTabQuick":"Quick ideas","inspCityTitle":"Your real city","inspCitySub":"3D experiences built on your real neighbourhood from open maps. Pick one and it opens instantly in the preview — then type any neighbourhood or city inside it.","inspLoading":"Opening…","inspFail":"Couldn't open it right now — try again"});
 /* v-chat-edit: سطر واحد تحت ردّ عدّل تصميمًا كبيرًا بالمقاطع — طُبّق / لم يُطبَّق / انقطع الملفّ (app-06-checkout.js) */
-Object.assign(I18N.ar, {"editApplied": "طُبّقت التعديلات على التصميم ({n}).", "editFailed": "ما طبّقت التعديل — جزء من النصّ القديم ما طابق التصميم الحاليّ، فبقي التصميم كما هو. اطلبه مرّة ثانية.", "editTruncated": "الردّ انقطع قبل اكتمال الملفّ، فما استبدلت التصميم — بقي كما هو."});
-Object.assign(I18N.en, {"editApplied": "Changes applied to the design ({n}).", "editFailed": "I didn't apply the change — part of the old text didn't match the current design, so the design is unchanged. Please ask again.", "editTruncated": "The reply was cut off before the file was complete, so I kept the design as it was."});
+Object.assign(I18N.ar, {"editApplied": "طُبّقت التعديلات على التصميم ({n}).", "editFailed": "ما طبّقت التعديل — جزء من النصّ القديم ما طابق التصميم الحاليّ، فبقي التصميم كما هو. اطلبه مرّة ثانية.", "editTruncated": "الردّ انقطع قبل اكتمال الملفّ، فما استبدلت التصميم — بقي كما هو.", "editPartial": "ما طبّقت التعديل — الردّ وصل ناقصًا أو بصيغة غير سليمة، فبقي التصميم كما هو. اطلبه مرّة ثانية.", "editBroke": "ما طبّقت التعديل — كان سيكسر كود التصميم، فبقي التصميم كما هو. اطلبه مرّة ثانية."});
+Object.assign(I18N.en, {"editApplied": "Changes applied to the design ({n}).", "editFailed": "I didn't apply the change — part of the old text didn't match the current design, so the design is unchanged. Please ask again.", "editTruncated": "The reply was cut off before the file was complete, so I kept the design as it was.", "editPartial": "I didn't apply the change — the reply arrived incomplete or malformed, so the design is unchanged. Please ask again.", "editBroke": "I didn't apply the change — it would have broken the design's code, so the design is unchanged. Please ask again."});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
@@ -14318,7 +14318,7 @@ const APP_CAPABILITY_RULE = '\nAPP CAPABILITY RULE (mandatory): This app AUTOMAT
 // نقص العرض عند بداية الكود ونظهر مؤشر "يكتب الكود" بدل عرض الكود في المحادثة.
 function liveStripCode(text){
   if(!text) return '';
-  const i = text.search(/```|<!doctype html|<html[\s>]/i);
+  const i = text.search(/```|@@PATCH|<!doctype html|<html[\s>]/i); // v-chat-edit: رقعة بلا سياج لا تُبثّ خامًا
   if(i === -1) return text;
   const before = text.slice(0, i).trim();
   const lang = localStorage.getItem('aiapp_lang') || 'ar';
@@ -14421,7 +14421,9 @@ function testCodeInSandbox(code){
 async function selfHealCode(code, codeType, onStatus){
   // نفحص فقط أكواد HTML القابلة للعرض في المعاينة
   if(!code || (codeType && codeType !== 'html' && codeType !== '') || !/<\w+[^>]*>/.test(code)) return code;
-  if(code.length > OMRAN_EDIT_BIG) return code; // v-chat-edit: الإصلاح الذاتيّ يطلب الملفّ كاملًا — على تصميم كبير ينقطع فيمحوه
+  /* v-chat-edit: الإصلاح الذاتيّ يطلب الملفّ كاملًا — فوق ما يسعه ردّ واحد (≈٤٥ ألف حرف) لا يُطلب أصلًا، ودونه يُقرأ ردّه
+     بحارس التصميم (base) فلا يحلّ محلّه ملفّ انقطع. */
+  if(code.length > OMRAN_HEAL_MAX) return code;
   let current = code;
   for(let attempt = 1; attempt <= 2; attempt++){
     let errors;
@@ -14435,7 +14437,7 @@ async function selfHealCode(code, codeType, onStatus){
         { role: 'user', content: 'Runtime errors:\n' + errors.join('\n') + '\n\nCode:\n```html\n' + current + '\n```' }
       ];
       const res = await callAIWithFallback(fixMessages, () => {});
-      const fixed = extractReply((res && res.reply) || '');
+      const fixed = extractReply((res && res.reply) || '', current);
       if(fixed.code && fixed.code.length > current.length * 0.5){
         current = fixed.code;
       } else {
@@ -14506,12 +14508,21 @@ function stripLeakedThinking(text){
 function extractReply(text, base){
   /* v-chat-edit: «غيّر كذا / سوّ لي كذا» على تصميم كبير — الردّ رقع (@@PATCH/@@OLD/@@NEW/@@END) تُطبَّق على المشروع الحاليّ
      (base) كلّها أو لا شيء، قبل extractReplyRaw كي لا تُحسب رقعة فيها <div أو <script «ملفًّا كاملًا». */
-  if(base){ const __e = omranEditReply(text, base); if(__e) return __e; }
+  if(base){ const __e = omranEditReply(text, base); if(__e){ if(__e.code) __e.code = substUserImage(__e.code); return __e; } }
+  const __big = !!(base && String(base).length > OMRAN_EDIT_BIG);
+  // رقعة لم يقرأها المحلّل (بلا رأس @@PATCH، أو بحروف صغيرة، أو ```diff) ليست ملفًّا كاملًا أبدًا
+  if(__big && (/@@(?:PATCH|OLD|NEW)\b/i.test(String(text || '')) || /```(?:patch|diff)\b/i.test(String(text || '')))){
+    return omranEditFail(String(stripLeakedThinking(String(text || ''))).replace(/```[\s\S]*?(?:```|$)/g, '').replace(/@@(?:PATCH|WHY|OLD|NEW)[\s\S]*$/i, '').trim(), 'editPartial', { partial: 1 });
+  }
   const __r = extractReplyRaw(text);
   if(__r && __r.code) __r.code = substUserImage(__r.code);
-  // حارس التصميم الكبير: «ملفّ كامل» انقطع قبل </html> لا يحلّ محلّ مشروع يعمل
-  if(base && __r && __r.code && __r.codeType === 'html' && omranEditTruncated(__r.code, base)){
-    return { code: '', explanation: String(__r.explanation || '') + '\n\n' + omranEditNote('editTruncated'), codeType: '', edits: { truncated: true } };
+  if(__big && __r && __r.code && __r.codeType === 'html'){
+    // حارس التصميم الكبير: «ملفّ كامل» انقطع قبل </html> لا يحلّ محلّ مشروع يعمل
+    if(omranEditTruncated(__r.code, base)) return omranEditFail(String(__r.explanation || ''), 'editTruncated', { truncated: true });
+    // ولا مقتطف بلا رأس مستند (غلّفه مسار v490 بمستند كامل)، ولا ملفّ «كامل» اختُصر بتعليق «… باقي الكود كما هو»
+    if(!/<!doctype html|<html[\s>]/i.test(String(text || '')) || (__r.code.length < String(base).length && OMRAN_ELIDED_RE.test(__r.code) && !OMRAN_ELIDED_RE.test(base))){
+      return omranEditFail(String(__r.explanation || ''), 'editPartial', { partial: 1 });
+    }
   }
   return __r;
 }
@@ -14587,12 +14598,21 @@ function extractReplyRaw(text){
    يكتب الموديل دالّة منفصلة لا تُطبَّق. فوق OMRAN_EDIT_BIG حرف يُطلب من الموديل رقع بصيغة أداة «إصلاح الكود» (app-24)، وتُطبَّق
    هنا على نسخة: كلّ «قديم» يوجد مرّة واحدة بالضبط (أو بسطور مطابقة بعد تجاهل المسافة البادئة)، وإلّا لا يتغيّر شيء. */
 const OMRAN_EDIT_BIG = 24000;
+const OMRAN_HEAL_MAX = 45000; // أكبر ملفّ يسعه ردّ إصلاح كامل (حدّ الردّ ١٦ ألف توكن)
+// تعليق يختصر الكود بدل كتابته: «// ... باقي الكود كما هو» / «/* rest of the code */»
+const OMRAN_ELIDED_RE = /(?:^|[\s;{}>])(?:\/\/|\/\*|<!--)[ \t]*(?:\.\.\.|…|(?:باقي|بقي[ةّ])[ \t]|(?:the )?rest of|(?:existing|unchanged|remaining|other) code|same as before|نفس الكود)/im;
 function omranEditNote(key, n){
   const v = (typeof t === 'function') ? t(key) : '';
-  const fb = { editApplied: 'طُبّقت التعديلات على التصميم ({n}).', editFailed: 'ما طبّقت التعديل — جزء من النصّ القديم ما طابق التصميم الحاليّ، فبقي التصميم كما هو. اطلبه مرّة ثانية.', editTruncated: 'الردّ انقطع قبل اكتمال الملفّ، فما استبدلت التصميم — بقي كما هو.' }; // = نصوص i18n العربيّة
+  const fb = { editApplied: 'طُبّقت التعديلات على التصميم ({n}).', editFailed: 'ما طبّقت التعديل — جزء من النصّ القديم ما طابق التصميم الحاليّ، فبقي التصميم كما هو. اطلبه مرّة ثانية.', editTruncated: 'الردّ انقطع قبل اكتمال الملفّ، فما استبدلت التصميم — بقي كما هو.',
+    editPartial: 'ما طبّقت التعديل — الردّ وصل ناقصًا أو بصيغة غير سليمة، فبقي التصميم كما هو. اطلبه مرّة ثانية.', editBroke: 'ما طبّقت التعديل — كان سيكسر كود التصميم، فبقي التصميم كما هو. اطلبه مرّة ثانية.' }; // = نصوص i18n العربيّة
   return String((v && v !== key) ? v : fb[key] || '').split('{n}').join(String(n == null ? '' : n));
 }
-// تعليمة للموديل (لا يراها المستخدم) تُلحق بالدور الحاليّ حين يكون التصميم كبيرًا
+// ردّ لم يُطبَّق: لا كود (فلا يُستبدل المشروع) + سبب صريح؛ note منفصلة لمسار الوكيل
+function omranEditFail(prose, key, edits){
+  const note = omranEditNote(key);
+  return { code: '', explanation: (prose ? prose + '\n\n' : '') + note, codeType: '', edits: edits, note: note };
+}
+// تعليمة للموديل (لا يراها المستخدم) تُلحق بالدور الحاليّ حين يكون التصميم كبيرًا — الخادم يقصّها قبل تصنيف الدور (chat.js)
 function omranEditAsk(len){
   return '\n\n[تعديل تصميم كبير — إلزاميّ إن طلبتُ أيّ تغيير]: كود مشروعي الحاليّ في رسالة سابقة، طوله ' + len + ' حرفًا — أكبر من أن يُعاد كاملًا في ردّ واحد (سينقطع). '
     + 'لا تُعِد الملفّ كاملًا ولا تكتب دالّة منفصلة لأنسخها بنفسي: أرسل التعديل رقعًا يطبّقها التطبيق على الملفّ مباشرةً، كلّها داخل كتلة ```patch واحدة بهذا الشكل حرفيًّا:\n'
@@ -14601,28 +14621,42 @@ function omranEditAsk(len){
     + 'للحذف اترك @@NEW فارغًا. للإضافة ضع في @@OLD سطرًا موجودًا وفي @@NEW السطر نفسه ومعه الإضافة. كلّ التغييرات اللازمة في رقع (حتّى ٢٠)، '
     + 'وقبل الكتلة سطر أو سطران يقولان ما غيّرت. إن لم يطلب تغييرًا فأجب عاديًّا بلا رقع.';
 }
+// المشروع المفتوح تصميم كبير يُعدَّل بالرقع (لا بوّابة بناء ولا «ابنِه كاملًا»)
+function omranEditBigOpen(cur){
+  return !!(cur && cur.code && cur.codeType !== 'python' && String(cur.code).length > OMRAN_EDIT_BIG);
+}
+const OMRAN_EDIT_APPROVE_NOTE = ' — المشروع المفتوح تصميم كبير: إن كان ما عرضته تعديلًا عليه فأرسله رقعًا ```patch كما في تعليمة دور المستخدم، لا الملفّ كاملًا.';
 function omranEditTruncated(code, base){
   return String(base).length > OMRAN_EDIT_BIG && /<\/html>/i.test(base) && !/<\/html>/i.test(code);
 }
+/* المحلّل: كتلة بلا @@OLD/@@NEW مرتّبين، أو بلا @@END (انقطع الردّ عند حدّه وسط النصّ الجديد)، أو بقديم فارغ = bad — والردّ
+   كلّه لا يُطبَّق. يُقبل غياب @@END فقط إذا أُغلق سياج ``` على سطر وحده بعد @@NEW. الشرح = النصّ خارج الكتل المقروءة. */
 function omranEditParse(text){
   const txt = String(text || '').split('@@CS@@').join('://');
   if(txt.indexOf('@@PATCH') === -1 || txt.indexOf('@@OLD') === -1) return null;
-  const blocks = [];
+  const blocks = [], segs = [];
+  let bad = 0;
   const parts = txt.split('@@PATCH');
+  segs.push(parts[0]);
+  const trim = (x) => x.replace(/^[ \t]*\r?\n/, '').replace(/\r?\n[ \t]*$/, '');
   for(let i = 1; i < parts.length; i++){
     const b = parts[i];
     const iOld = b.indexOf('@@OLD'), iNew = b.indexOf('@@NEW');
-    let iEnd = b.indexOf('@@END');
-    if(iOld < 0 || iNew < 0 || iNew < iOld) continue;
-    if(iEnd < 0) iEnd = b.length;
+    let iEnd = b.indexOf('@@END'), after = iEnd + 5;
+    if(iEnd < 0 && iNew > iOld && iOld >= 0){
+      const f = /\n[ \t]*```[ \t]*(?:\r?\n|$)/.exec(b.slice(iNew + 5));
+      if(f){ iEnd = iNew + 5 + f.index; after = iEnd; }
+    }
+    if(iOld < 0 || iNew < 0 || iNew < iOld || iEnd < 0 || iEnd < iNew){ bad++; segs.push(iEnd >= 0 ? b.slice(after) : ''); continue; }
     const why = (b.slice(0, iOld).match(/@@WHY[ \t]*([^\n]*)/) || [0, ''])[1].trim();
-    const old = b.slice(iOld + 5, iNew).replace(/^[ \t]*\r?\n/, '').replace(/\r?\n[ \t]*$/, '');
-    const neu = b.slice(iNew + 5, iEnd).replace(/^[ \t]*\r?\n/, '').replace(/\r?\n[ \t]*$/, '').replace(/\n?```\s*$/, '');
-    if(old) blocks.push({ why, old, neu });
+    const old = trim(b.slice(iOld + 5, iNew));
+    const neu = trim(b.slice(iNew + 5, iEnd)).replace(/\n?```\s*$/, '');
+    if(!old.trim()){ bad++; segs.push(b.slice(after)); continue; }
+    blocks.push({ why, old, neu });
+    segs.push(b.slice(after));
   }
-  // الشرح = ما خارج الرقع وسياجها
-  const prose = txt.replace(/```[a-z]*\s*\n?\s*@@PATCH[\s\S]*?(?:```|$)/gi, '').replace(/@@PATCH[\s\S]*?(?:@@END|$)/g, '').replace(/\n{3,}/g, '\n\n').trim();
-  return { blocks, prose };
+  const prose = segs.join('\n').replace(/```[a-z]*\s*```/gi, '').replace(/```[a-z]*\s*$/i, '').replace(/^\s*```[ \t]*\n/, '').replace(/\n{3,}/g, '\n\n').trim();
+  return { blocks, prose, bad };
 }
 function omranEditApply(base, blocks){
   let code = String(base || '');
@@ -14637,7 +14671,7 @@ function omranEditApply(base, blocks){
       code = code.slice(0, k) + b.neu + code.slice(k + b.old.length + eol);
       continue;
     }
-    // تسامح المسافات: نفس السطور بعد إزالة المسافة البادئة والزائدة — نافذة واحدة فقط تُقبل، وتُعاد بمسافة الأصل
+    // تسامح المسافات: نفس السطور بعد إزالة المسافة البادئة والزائدة — نافذة واحدة فقط تُقبل
     const lines = code.split('\n'), want = b.old.split('\n').map((l) => l.trim());
     while(want.length && !want[0]) want.shift();
     while(want.length && !want[want.length - 1]) want.pop();
@@ -14648,20 +14682,53 @@ function omranEditApply(base, blocks){
       if(ok){ hits++; at = i; }
     }
     if(hits !== 1){ failed.push(bi); continue; }
+    // الإزاحة: فرق بادئة الأصل عن بادئة أوّل سطر في «القديم» يُطبَّق على كلّ سطر جديد — تبقى البنية النسبيّة (بايثون)
     const pad = (lines[at].match(/^[ \t]*/) || [''])[0];
-    const nl = b.neu.split('\n'), np = (nl.find((l) => l.trim()) || '').match(/^[ \t]*/)[0];
-    const re = nl.map((l) => (l.trim() ? pad + (l.indexOf(np) === 0 ? l.slice(np.length) : l.replace(/^[ \t]+/, '')) : l));
+    const op = ((b.old.split('\n').find((l) => l.trim()) || '').match(/^[ \t]*/) || [''])[0];
+    const delta = pad.length - op.length, ch = pad.charAt(0) || ' ';
+    const re = b.neu.split('\n').map((l) => {
+      if(!l.trim()) return l;
+      const lead = l.match(/^[ \t]*/)[0];
+      return (delta >= 0 ? ch.repeat(delta) + lead : lead.slice(Math.min(lead.length, -delta))) + l.slice(lead.length);
+    });
     lines.splice(at, want.length, ...(b.neu === '' ? [] : re));
     code = lines.join('\n');
   }
   return { ok: !failed.length && blocks.length > 0, code, applied: blocks.length - failed.length, failed };
 }
+// أخطاء صياغة السكربتات المضمّنة الكلاسيكيّة (كما يفحص app-24 قبل حفظ رقعة) — تُقارن قبل الرقعة وبعدها
+function omranEditScriptErrors(html){
+  let n = 0, m;
+  const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  while((m = re.exec(String(html || '')))){
+    const attrs = m[1] || '';
+    if(/\bsrc\s*=/i.test(attrs)) continue;
+    const ty = (attrs.match(/\btype\s*=\s*["']?([^"'\s>]+)/i) || [0, ''])[1].toLowerCase();
+    if(ty && !/^(?:text\/javascript|application\/javascript|javascript)$/.test(ty)) continue; // module/json/babel…
+    try{ new Function(m[2]); }catch(e){ if(e && e.name === 'SyntaxError') n++; }
+  }
+  return n;
+}
 function omranEditReply(text, base){
-  const p = omranEditParse(text);
-  if(!p || !p.blocks.length) return null;
-  const r = omranEditApply(base, p.blocks);
-  if(!r.ok) return { code: '', explanation: (p.prose ? p.prose + '\n\n' : '') + omranEditNote('editFailed'), codeType: '', edits: { failed: r.failed.length, total: p.blocks.length } };
-  return { code: r.code, explanation: (p.prose ? p.prose + '\n\n' : '') + omranEditNote('editApplied', r.applied), codeType: 'html', edits: { applied: r.applied } };
+  const p = omranEditParse(stripLeakedThinking(String(text || '')));
+  if(!p || (!p.blocks.length && !p.bad)) return null;
+  // كتلة مكرّرة حرفيًّا (ملخّص يعيدها) تُطبَّق مرّة؛ قديم واحد بجديدين مختلفين = تعارض لا يُخمَّن
+  const norm = (x) => x.split('\n').map((l) => l.trim()).join('\n');
+  const seen = new Map(), blocks = [];
+  let clash = 0;
+  for(const b of p.blocks){
+    const k = norm(b.old);
+    if(seen.has(k)){ if(seen.get(k) !== norm(b.neu)) clash++; continue; }
+    seen.set(k, norm(b.neu));
+    blocks.push(b);
+  }
+  const total = p.blocks.length + p.bad;
+  if(p.bad || clash) return omranEditFail(p.prose, 'editPartial', { partial: p.bad + clash, total });
+  const r = omranEditApply(base, blocks);
+  if(!r.ok) return omranEditFail(p.prose, 'editFailed', { failed: r.failed.length, total });
+  if(omranEditScriptErrors(r.code) > omranEditScriptErrors(base)) return omranEditFail(p.prose, 'editBroke', { broke: true, total });
+  const note = omranEditNote('editApplied', r.applied);
+  return { code: r.code, explanation: (p.prose ? p.prose + '\n\n' : '') + note, codeType: 'html', edits: { applied: r.applied }, note };
 }
 
 function throwProviderError(status, errText){
@@ -15928,9 +15995,10 @@ async function buildCodeFromPrompt(promptText){
     if(cur.code){
       apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
     }
-    apiMessages.push({role: 'user', content: promptText});
+    // v-chat-edit: على تصميم كبير يُطلب التعديل رقعًا ويُقرأ الردّ بحارس التصميم — ملفّ انقطع لا يمحوه
+    apiMessages.push({role: 'user', content: promptText + (omranEditBigOpen(cur) ? omranEditAsk(cur.code.length) : '')});
     const { reply } = await callAIWithFallback(apiMessages, null);
-    const { code } = extractReply(reply);
+    const { code } = extractReply(reply, cur.code);
     if(code){ cur.code = code; }
     renderAll();
     saveState();
@@ -22340,13 +22408,15 @@ async function __agentApplyResult(cur, full, agLog){
   const __log = (agLog && Array.isArray(agLog.log) && agLog.log.some(function(p){ return p.t !== 'text'; })) ? agLog : null;
   const chatSrc = __log ? String(__log.tail || '') : full;
   const parsed = extractReply(full, cur.code); // v-chat-edit
+  // رقعة: نصّ الرسالة شرحُ ما بعد آخر خطوة (لا سرد الخطوات المعروض في السجلّ) + سطر نتيجة التطبيق
+  const __agEditText = () => { if(!__log) return String(parsed.explanation || ''); const __pp = omranEditParse(chatSrc); return stripCodeFromChat(__pp ? __pp.prose : chatSrc).trim() + '\n\n' + (parsed.note || ''); };
   let chatText;
   let codeProducedThisTurn = false;
   if(parsed && parsed.code){
     cur.code = parsed.code;
-    cur.codeType = parsed.codeType || 'html';
+    cur.codeType = parsed.edits ? (cur.codeType || 'html') : (parsed.codeType || 'html'); // رقعة لا تغيّر نوع المشروع (بايثون)
     codeProducedThisTurn = true;
-    chatText = (parsed.edits ? String(parsed.explanation || '') : stripCodeFromChat(chatSrc)).trim();
+    chatText = (parsed.edits ? __agEditText() : stripCodeFromChat(chatSrc)).trim();
   } else {
     // 🛟 كود ناقص/غير مغلق (```html بلا إغلاق أو <!DOCTYPE بلا نهاية) → نلتقطه للوحة الكود بدل ما يطيح في الشات
     const fenceIdx = full.search(/```(?:html|HTML)?\s*\n/);
@@ -22360,7 +22430,7 @@ async function __agentApplyResult(cur, full, agLog){
       chatText = __log ? stripCodeFromChat(chatSrc).trim() : full.slice(0, idx).replace(/```\s*$/, '').trim();
       if(chatText) chatText += '\n\n' + (lang === 'ar' ? '⚠️ يبدو أن الكود انقطع قبل اكتماله — اكتب "كمل الكود" وسأكمله.' : '⚠️ The code seems truncated — type "continue" and I will finish it.');
     } else {
-      chatText = (parsed && parsed.edits) ? String(parsed.explanation || '').trim() : stripCodeFromChat(chatSrc).trim();
+      chatText = (parsed && parsed.edits) ? __agEditText().trim() : stripCodeFromChat(chatSrc).trim();
       // ⚠️ v490: مسار الوكيل كان صامتًا — كود مُلغى/محذوف ⇒ رسالة صريحة بدل معاينة فارغة.
       /* v-agent-nocode (لقطة المالك ٣ أكتوبر: الوكيل يشرح إصلاحًا ويسلّمه لـClaude Code فيُلصَق «لم يصل كود من المزوّد»): أيّ
          ``` أو وسم إغلاق كان يكفي — ومقتطف ```js في شرح إصلاح ليس تطبيقًا ضاع. التحذير لصفحة تطبيق بدأت ولم تصل وحدها. */
@@ -23035,7 +23105,8 @@ async function __sendPromptCore(){
       __gateApprovedText = text;
       text = __pend;
       __setPend(null);
-    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)){
+    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)
+      && !omranEditBigOpen(getCurrent())){ // v-chat-edit: «ممكن تغيّر … في اللعبة» على تصميم كبير تعديلٌ برقع، لا بناء يُستأذن
       __setPend(text);
       __gateNoBuild = true;
     } else if(text){
@@ -23066,7 +23137,7 @@ async function __sendPromptCore(){
   const __editIndex = (__editReq && __editReq.projectId === cur.id && Number.isInteger(__editReq.index) &&
     __editReq.index >= 0 && __editReq.index < cur.messages.length && cur.messages[__editReq.index].role === 'user') ? __editReq.index : -1;
   const __editedOriginal = __editIndex >= 0 ? cur.messages[__editIndex] : null;
-  if(cur.messages.length === 0){
+  if(cur.messages.length === 0 && !cur.inspire){ // تجربة «الإلهام» تبقى باسمها عند أوّل تعديل
     cur.title = (text || (pendingAttachments[0] && pendingAttachments[0].name) || 'مشروع').slice(0, 30);
   }
 
@@ -24965,7 +25036,7 @@ function __showImgLoading(el, ar, en){
     if(__siteGuideTurn) apiMessages.push({role: 'system', content: OMRAN_SITE_GUIDE_NOTE});
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
-      apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
+      apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.' + (omranEditBigOpen(cur) ? OMRAN_EDIT_APPROVE_NOTE : '')});
       window.__buildOfferApproved = false;
     }
     // 🏗️ v260: الصور المعمارية انعرضت فوق — المزود يكتب المواصفات فقط.
@@ -25155,7 +25226,8 @@ DESIGN RULES (non-negotiable):
         __historyMsgs.slice(-MAX_TURNS).forEach(m => {
           if(!m || m._loading || m._failed) return;
           const role = (m.role === 'user') ? 'user' : 'assistant';
-          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content), __ownerCtx ? (cur.code ? 'text' : 'all') : '') || '').trim();
+          const __src = (m.apiText !== undefined ? m.apiText : m.content);
+          let txt = String(__stripCodeForHistory(role, (role === 'assistant' && !m.code && cur.code) ? String(__src || '').replace(/```[\s\S]*?```/g, '[مقتطف كود في الردّ — لم يُطبَّق على المشروع]') : __src, __ownerCtx ? (cur.code ? 'text' : 'all') : '') || '').trim(); // v-chat-edit
           if(!txt) return;
           txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
           if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط
@@ -25518,10 +25590,12 @@ DESIGN RULES (non-negotiable):
           if(!code && !__edits && isBuildTask && !__gateNoBuild){ // v-chat-edit: رقعة لم تُطبَّق ليست «ردًّا بلا كود» — لا يُطلب الملفّ كاملًا
             try{
               msg.content = '';
-              const __strictMsgs = apiMessages.concat([{ role: 'system', content: 'FINAL STRICT ORDER: your previous reply contained NO code block — that counts as a FAILED answer. Reply NOW with the COMPLETE finished design/app as ONE single ```html code block (the full file from <!DOCTYPE html> to </html>, nothing omitted). Claiming it is done without code is FORBIDDEN. Text-only replies are FORBIDDEN.' }]);
+              const __strictMsgs = apiMessages.concat([{ role: 'system', content: omranEditBigOpen(cur)
+                ? 'FINAL STRICT ORDER: your previous reply changed NOTHING. Apply the requested change NOW to the CURRENT project as ```patch blocks (@@PATCH/@@OLD/@@NEW/@@END) exactly as instructed in the user turn — never the full file. Text-only replies are FORBIDDEN.' // v-chat-edit
+                : 'FINAL STRICT ORDER: your previous reply contained NO code block — that counts as a FAILED answer. Reply NOW with the COMPLETE finished design/app as ONE single ```html code block (the full file from <!DOCTYPE html> to </html>, nothing omitted). Claiming it is done without code is FORBIDDEN. Text-only replies are FORBIDDEN.' }]);
               const __strictReply = await callWithWatchdog(p.key, __strictMsgs, onDelta, 75000, 180000);
-              const __r2 = extractReply(__strictReply);
-              if(__r2.code){ code = __r2.code; explanation = __r2.explanation; }
+              const __r2 = extractReply(__strictReply, cur.code); // v-chat-edit
+              if(__r2.code){ code = __r2.code; explanation = __r2.explanation; } else if(__r2.edits){ explanation = __r2.explanation; }
             }catch(e){ __swallow(e, "misc:app-09-attach#23"); }
           }
           msg.content = (__applyCode ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : '');
@@ -26035,7 +26109,7 @@ DESIGN RULES (non-negotiable):
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
         // ✅ وافق المستخدم → يبني الآن كاملًا باليد الكاملة (صور مرسومة + كود + تجربة).
-        apiMessages.push({ role: 'system', content: 'وافق المستخدم على البناء. ابنِه الآن كاملًا في هذا الردّ داخل كتلة ```html واحدة، مستندًا كاملًا. استدعِ generate_image لكل صورة تحتاجها (حتّى أربع) وضع الرمز العائد حرفيًّا في src — ممنوع picsum أو placeholder أو أي رابط صورة خارجي. ممنوع أن تسأل مرّة أخرى.' });
+        apiMessages.push({ role: 'system', content: 'وافق المستخدم على البناء. ابنِه الآن كاملًا في هذا الردّ داخل كتلة ```html واحدة، مستندًا كاملًا. استدعِ generate_image لكل صورة تحتاجها (حتّى أربع) وضع الرمز العائد حرفيًّا في src — ممنوع picsum أو placeholder أو أي رابط صورة خارجي. ممنوع أن تسأل مرّة أخرى.' + (omranEditBigOpen(cur) ? OMRAN_EDIT_APPROVE_NOTE : '') });
       } else if(__gateNoBuild){
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
         apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });

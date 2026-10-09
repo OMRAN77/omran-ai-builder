@@ -98,12 +98,12 @@ test('٣. روابط الكود داخل ``` لا تُمسح (CDN وخوادم �
 });
 
 // ── العميل ──
-function loadClient() {
+function loadClient(win) {
   const src = read('js/app-06-checkout.js');
   const a = src.indexOf('function substUserImage(code){'), b = src.indexOf('function throwProviderError(');
   assert.ok(a > 0 && b > a);
-  const ctx = { window: {}, __swallow() {}, getCurrent: () => null, t: (k) => k, console };
-  vm.runInNewContext(src.slice(a, b) + '\nthis.X = { extractReply, omranEditParse, omranEditApply, omranEditAsk, OMRAN_EDIT_BIG };', ctx);
+  const ctx = { window: win || {}, __swallow() {}, getCurrent: () => null, t: (k) => k, console };
+  vm.runInNewContext(src.slice(a, b) + '\nthis.X = { extractReply, omranEditParse, omranEditApply, omranEditAsk, omranEditScriptErrors, OMRAN_EDIT_BIG };', ctx);
   return ctx.X;
 }
 const P = (oldS, newS) => '@@PATCH\n@@WHY سبب\n@@OLD\n' + oldS + '\n@@NEW\n' + newS + '\n@@END\n';
@@ -178,7 +178,8 @@ test('٨. التعليمة تُلحق بالدور الحاليّ فوق الح�
   assert.ok(a9.includes('if(!(parsed && parsed.edits) && idx >= 0 && (full.length - idx) > 300){'), 'رقعة مرفوضة لا تُلتقط كودًا ناقصًا');
   assert.ok(a9.includes('if(!code && !__edits && isBuildTask && !__gateNoBuild){'), 'لا طلب «الملفّ كاملًا» بعد رقعة');
   const a6 = read('js/app-06-checkout.js');
-  assert.ok(a6.includes('if(code.length > OMRAN_EDIT_BIG) return code;'), 'الإصلاح الذاتيّ لا يطلب ملفًّا كبيرًا كاملًا');
+  assert.ok(a6.includes('if(code.length > OMRAN_HEAL_MAX) return code;'), 'الإصلاح الذاتيّ لا يطلب ملفًّا أكبر من ردّ واحد');
+  assert.ok(a6.includes("const fixed = extractReply((res && res.reply) || '', current);"), 'وردّه يُقرأ بحارس التصميم');
   // Gemini: دور الكود في المقدّمة يبقى بعد دور مستخدم
   const g = a6.slice(a6.indexOf('function sanitizeGeminiContents'), a6.indexOf('// ===== Checkout'));
   const ctx = {}; vm.runInNewContext(g + '\nthis.f = sanitizeGeminiContents;', ctx);
@@ -192,9 +193,9 @@ test('٨. التعليمة تُلحق بالدور الحاليّ فوق الح�
   assert.ok(read('js/app.bundle.js').includes('function omranEditApply(base, blocks)'), 'الحزمة مطابقة');
 });
 
-test('٩. النصوص الثلاثة بالـ١٤ لغة ووسم اللغات 728', () => {
+test('٩. نصوص النتيجة الخمسة بالـ١٤ لغة ووسم اللغات 728', () => {
   const LANGS = ['fr', 'hi', 'ur', 'bn', 'ne', 'ml', 'fil', 'id', 'zh', 'ru', 'tr', 'es'];
-  const K = ['editApplied', 'editFailed', 'editTruncated'];
+  const K = ['editApplied', 'editFailed', 'editTruncated', 'editPartial', 'editBroke'];
   const d = read('js/app-03-i18n-data.js');
   const blk = d.slice(d.indexOf('/* v-chat-edit'), d.indexOf('/* v650 */'));
   const c = { I18N: { ar: {}, en: {} } }; vm.runInNewContext(blk, c);
@@ -207,4 +208,143 @@ test('٩. النصوص الثلاثة بالـ١٤ لغة ووسم اللغات 
     assert.match(x.I18N[l].editApplied, /\{n\}/, l);
   }
   assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=728'"));
+});
+
+// ── المراجعة المعاكسة (٢٠ ملاحظة مؤكَّدة) ──
+const ASK = '\n\n[تعديل تصميم كبير — إلزاميّ إن طلبتُ أيّ تغيير]: كود مشروعي الحاليّ في رسالة سابقة، طوله 87873 حرفًا\n```patch\n@@PATCH\n@@OLD\n(…)\n@@NEW\n(…)\n@@END\n```\n' + 'ق'.repeat(700);
+test('١٠. تعليمة الرقع الملحقة لا تغيّر تصنيف الدور على الخادم: الأدوات والتحيّة كما بلا تعليمة، والتعليمة تصل الموديل', async () => {
+  const route = (u) => (/openrouter\.ai|api\.anthropic\.com/.test(u) ? sse('تمّ.') : new Response('{}', { status: 404 }));
+  const body = (txt) => ({ provider: 'claude', messages: [codeMsg(CHASE), { role: 'user', content: txt }] });
+  for (const q of ['وش أحدث إصدار من three؟', 'ارسم لي صورة قطة', 'كيف حالك']) {
+    const plain = up(await run('vipuser', body(q), route)).body;
+    const withAsk = up(await run('vipuser', body(q + ASK), route)).body;
+    const names = (b) => JSON.stringify((b.tools || []).map((t) => t.name).sort());
+    assert.equal(names(withAsk), names(plain), q + ': الأدوات نفسها (كانت تنطفئ كلّها)');
+    assert.equal(withAsk.max_tokens, plain.max_tokens, q + ': سقف الردّ نفسه (التحيّة ٣٥٠ لا ١٦ ألفًا)');
+    if (q !== 'كيف حالك') assert.ok(JSON.stringify(withAsk.messages).includes('تعديل تصميم كبير'), q + ': التعليمة نفسها تصل الموديل');
+  }
+  const src = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'latin1');
+  assert.ok(src.includes("    : '').replace(/\\n\\n\\[") , 'القصّ على lastUserText وحده');
+});
+
+test('١١. رقعة انقطعت (حدّ الردّ) أو كتلة معطوبة = لا شيء يُطبَّق ورسالة «وصل ناقصًا»؛ نسيان @@END مع سياج مغلق مقبول', () => {
+  const X = loadClient();
+  const base = '<!doctype html><html><body>\n<p id="a">أ</p>\n<p id="b">ب</p>\n<script>\nfunction init(){ go(1); }\n</script>\n</body></html>' + '\n<!--' + 'x'.repeat(30000) + '-->';
+  const good = P('<p id="a">أ</p>', '<p id="a">أأ</p>');
+  const cut = '```patch\n' + good + '@@PATCH\n@@WHY ب\n@@OLD\nfunction init(){ go(1); }\n@@NEW\nfunction init(){ go(2';
+  const cases = {
+    'انقطع وسط @@NEW': cut,
+    'انقطع وسط @@OLD': '```patch\n' + good + '@@PATCH\n@@OLD\n<p id="b">',
+    'قديم فارغ': '```patch\n' + good + '@@PATCH\n@@OLD\n@@NEW\n<p>جديد</p>\n@@END\n```',
+    '@@REPLACE بدل @@NEW': '```patch\n' + good + '@@PATCH\n@@OLD\n<p id="b">ب</p>\n@@REPLACE\n<p id="b">بب</p>\n@@END\n```',
+    'الجديد قبل القديم': '```patch\n' + good + '@@PATCH\n@@NEW\n<p id="b">بب</p>\n@@OLD\n<p id="b">ب</p>\n@@END\n```',
+    'بلا @@END ونثر بعد السياج وهو مفتوح': '```patch\n' + good + '@@PATCH\n@@OLD\n<p id="b">ب</p>\n@@NEW\n<p id="b">بب</p>\n``` جرّبها الحين',
+  };
+  for (const [k, txt] of Object.entries(cases)) {
+    const r = X.extractReply('عدّلت.\n' + txt, base);
+    assert.equal(r.code, '', k + ': لا يُستبدل المشروع');
+    assert.ok(r.edits && r.edits.partial >= 1, k);
+    assert.match(r.explanation, /وصل ناقصًا/, k);
+    assert.doesNotMatch(r.explanation, /@@OLD|go\(2/, k + ': بلا كود في الفقاعة');
+  }
+  const noEnd = X.extractReply('عدّلت.\n```patch\n@@PATCH\n@@OLD\n<p id="b">ب</p>\n@@NEW\n<p id="b">بب</p>\n```\nجرّبها الحين', base);
+  assert.equal(noEnd.code, base.replace('<p id="b">ب</p>', '<p id="b">بب</p>'), 'سياج مغلق على سطره يغني عن @@END، والنثر بعده لا يدخل الكود');
+  assert.match(noEnd.explanation, /^عدّلت\.\n\nجرّبها الحين\n\nطُبّقت/);
+});
+
+test('١٢. التكرار: الكتلة نفسها مرّتين تُطبَّق مرّة، وقديم واحد بجديدين = تعارض لا يُطبَّق؛ ومسوّدة <think> لا تُحسب', () => {
+  const X = loadClient();
+  const base = '<!doctype html><html><body>\n<script>\nconst hud = document.createElement("div");\n</script>\n</body></html>' + 'x'.repeat(30000);
+  const OLD = 'const hud = document.createElement("div");';
+  const ins = P(OLD, OLD + '\nconst speedo = 1;');
+  const twice = X.extractReply('أضفت العدّاد.\n```patch\n' + ins + '```\nالخلاصة:\n```patch\n' + ins + '```', base);
+  assert.equal(twice.code.split('const speedo').length, 2, 'إعلان واحد لا اثنان');
+  assert.equal(X.omranEditScriptErrors(twice.code), 0);
+  const clash = X.extractReply('```patch\n' + ins + P(OLD, OLD + '\nconst speedo = 2;') + '```', base);
+  assert.equal(clash.code, '');
+  assert.ok(clash.edits.partial === 1);
+  const think = X.extractReply('<think>مسوّدة:\n```patch\n' + P(OLD, OLD + '\nconst speedo = 0;') + '```</think>\n```patch\n' + ins + '```', base);
+  assert.equal(think.code.split('const speedo').length, 2);
+  assert.ok(think.code.includes('const speedo = 1;') && !think.code.includes('speedo = 0'));
+  assert.doesNotMatch(think.explanation, /think|مسوّدة/);
+});
+
+test('١٣. رقعة تكسر صياغة السكربت لا تُطبَّق («كان سيكسر الكود»)، وخطأ قديم في الأصل لا يمنع رقعة سليمة', () => {
+  const X = loadClient();
+  const OLD = '    const paint = new THREE.MeshPhongMaterial({ color: 0xff4a1c, shininess: 90, specular: 0x777777 });';
+  const broke = X.extractReply('خلّيتها خضراء.\n```patch\n' + P(OLD, '    const paint = new THREE.MeshPhongMaterial({ color: 0x22aa44;') + '```', CHASE);
+  assert.equal(broke.code, '');
+  assert.ok(broke.edits.broke);
+  assert.match(broke.explanation, /كان سيكسر كود التصميم/);
+  assert.equal(X.omranEditScriptErrors(CHASE), 0, 'سكربتات التجربة سليمة أصلًا');
+  const pre = CHASE.replace('</body>', '<script>var x = ;</script>\n</body>');
+  const ok = X.extractReply('```patch\n' + P(OLD, OLD.replace('0xff4a1c', '0x1c6dff')) + '```', pre);
+  assert.ok(ok.code.includes('0x1c6dff'), 'الخطأ السابق لا يُحسب على الرقعة');
+  assert.equal(X.omranEditScriptErrors('<script type="module">import x from "y";</script><script type="application/json">{"a":</script><script src="a.js"></script>'), 0, 'الوحدات وJSON والخارجيّ لا تُفحص');
+});
+
+// مقتطف فوق ٢٠٠ حرف — يلتقطه مسار v490 ويغلّفه بمستند كامل فيه </html>
+const SNIP = '<div id=speedo>0</div>\n<script>let v = 0; setInterval(() => { v++; document.getElementById("speedo").textContent = v; }, 100);</script>\n<style>#speedo{position:fixed;top:12px;left:12px;padding:6px 10px;background:#000;color:#fff;font:600 14px system-ui}</style>';
+test('١٤. لا يحلّ محلّ التصميم الكبير: رقعة لم تُقرأ، ومقتطف بلا رأس مستند، وملفّ «كامل» مختصر بتعليق؛ والملفّ الجديد الكامل يُقبل', () => {
+  const X = loadClient();
+  const replies = {
+    'بلا رأس @@PATCH': 'غيّرت.\n```patch\n@@WHY ب\n@@OLD\n</body>\n</html>\n@@NEW\n<div id="s"></div>\n</body>\n</html>\n@@END\n```',
+    'حروف صغيرة': 'غيّرت.\n```patch\n@@patch\n@@old\n<div>a</div></html>\n@@new\n<div>b</div></html>\n@@end\n```',
+    'diff موحّد': 'غيّرت.\n```diff\n- <div>a</div>\n+ <div>b</div>\n</html>\n```',
+    'مقتطف بلا سياج': 'أضفت عدّاد السرعة:\n' + SNIP,
+    'مقتطف نهاية الملفّ': 'ضعه قبل نهاية الملفّ:\n```html\n<div id="s"></div>\n<script>let s = 1;</script>\n</body></html>\n```',
+    'ملفّ مختصر': '```html\n' + CHASE.slice(0, 1500) + '\n// ... باقي الكود كما هو ...\n</script></body></html>\n```',
+  };
+  for (const [k, txt] of Object.entries(replies)) {
+    const r = X.extractReply(txt, CHASE);
+    assert.equal(r.code, '', k + ': التصميم يبقى');
+    assert.ok(r.edits && r.edits.partial, k);
+    assert.doesNotMatch(r.explanation, /@@|<div|<script/i, k + ': بلا كود في الفقاعة');
+  }
+  const fresh = X.extractReply('```html\n<!doctype html><html><body><h1>لعبة جديدة</h1><script>let a = 1;</script></body></html>\n```', CHASE);
+  assert.match(fresh.code, /لعبة جديدة/, 'ملفّ جديد كامل يُقبل كما كان');
+  const small = X.extractReply('أضفت:\n' + SNIP, '<!doctype html><html><body>صغير</body></html>');
+  assert.ok(small.code, 'المشروع الصغير: مسار المقتطف القديم كما هو');
+});
+
+test('١٥. الإزاحة النسبيّة تبقى (بايثون)، وصور الأداة في الرقعة تُستبدل، والشرح لا يسرّب الكود ولو كان في الجديد ```', () => {
+  const X = loadClient({ __genImages: { __IMG_1__: 'data:image/png;base64,AAAA' } });
+  const py = 'def f(x):\n    for i in x:\n        if i:\n            g(i)\n    return 1\n';
+  const r = X.omranEditApply(py, [{ old: '  for i in x:\n      if i:\n          g(i)\n  return 1', neu: '  for i in x:\n      if i:\n          g(i)\n  return 2' }]);
+  assert.ok(r.ok);
+  assert.equal(r.code, 'def f(x):\n    for i in x:\n        if i:\n            g(i)\n    return 2\n', 'return خارج الحلقة كما كان');
+  const base = '<!doctype html><html><body>\n<div id="hero"></div>\n</body></html>' + 'x'.repeat(30000);
+  const img = X.extractReply('```patch\n' + P('<div id="hero"></div>', '<div id="hero"><img src="__IMG_1__"></div>') + '```', base);
+  assert.ok(img.code.includes('src="data:image/png;base64,AAAA"') && !img.code.includes('__IMG_1__'));
+  const md = X.extractReply('دعمت كتل الكود.\n```patch\n' + P('<div id="hero"></div>', '<div id="hero"></div>\n<script>function md(s){ return s.replace(/```(\\w+)?/g, "<pre>"); }</script>') + '```\nجرّبها.', base);
+  assert.ok(md.code.includes('function md(s)'));
+  assert.equal(md.explanation, 'دعمت كتل الكود.\n\nجرّبها.\n\nطُبّقت التعديلات على التصميم (1).');
+  const a6 = read('js/app-06-checkout.js');
+  const ls = a6.slice(a6.indexOf('function liveStripCode(text){'), a6.indexOf('function stripCodeFromChat('));
+  const c = { localStorage: { getItem: () => 'ar' } }; vm.runInNewContext(ls + '\nthis.f = liveStripCode;', c);
+  assert.equal(c.f('غيّرتها:\n@@PATCH\n@@OLD\nconst paint = 1;'), 'غيّرتها:\n\n⏳ يكتب الكود الآن…', 'رقعة بلا سياج لا تُبثّ خامًا');
+});
+
+test('١٦. المسارات: البوّابة والعنوان والتاريخ وإعادة «اسأل الكلّ» والوكيل والصوت', () => {
+  const a9 = read('js/app-09-attach.js');
+  assert.ok(a9.includes('&& !omranEditBigOpen(getCurrent())){'), 'تعديل على تصميم كبير لا يدخل بوّابة البناء');
+  assert.ok(a9.includes('if(cur.messages.length === 0 && !cur.inspire){'), 'التجربة تبقى باسمها');
+  assert.ok(a9.includes("(role === 'assistant' && !m.code && cur.code) ? String(__src || '').replace(/```[\\s\\S]*?```/g, '[مقتطف كود في الردّ — لم يُطبَّق على المشروع]')"), 'مقتطف لم يُطبَّق لا يُروى «نجاحًا»');
+  assert.ok(a9.includes('const __r2 = extractReply(__strictReply, cur.code);'), 'إعادة «اسأل الكلّ» تُقرأ بالحارس');
+  assert.ok(a9.includes("cur.codeType = parsed.edits ? (cur.codeType || 'html') : (parsed.codeType || 'html');"), 'رقعة الوكيل لا تغيّر نوع المشروع');
+  assert.equal(a9.split('(omranEditBigOpen(cur) ? OMRAN_EDIT_APPROVE_NOTE : \'\')').length, 3, 'رسالتا الموافقة تقولان «رقعًا» على تصميم كبير');
+  const v = read('js/app-07-voice.js');
+  assert.ok(v.includes("content: promptText + (omranEditBigOpen(cur) ? omranEditAsk(cur.code.length) : '')") && v.includes('extractReply(reply, cur.code)'), 'الصوت كالمحادثة');
+  // الوكيل: نصّ الرسالة ذيل ما بعد آخر خطوة + سطر النتيجة
+  const fn = a9.slice(a9.indexOf('async function __agentApplyResult('), a9.indexOf('const agentMsg = {', a9.indexOf('async function __agentApplyResult(')));
+  const X = loadClient();
+  const base = '<!doctype html><html><body>\n<p id="a">أ</p>\n</body></html>' + 'x'.repeat(30000);
+  const ctx = { extractReply: X.extractReply, omranEditParse: X.omranEditParse, stripCodeFromChat: (s) => String(s).replace(/```[\s\S]*?```/g, '').trim(), t: (k) => k, lang: 'ar' };
+  vm.runInNewContext(fn + 'this.out = { chatText, codeProducedThisTurn }; }\nthis.run = __agentApplyResult;', ctx);
+  const cur = { code: base, codeType: 'html' };
+  const full = 'خطّتي: أقرأ الملفّ ثمّ أعدّل.\nعدّلت الفقرة.\n```patch\n' + P('<p id="a">أ</p>', '<p id="a">أأ</p>') + '```';
+  return ctx.run(cur, full, { log: [{ t: 'text' }, { t: 'tool' }], tail: 'عدّلت الفقرة.\n```patch\n' + P('<p id="a">أ</p>', '<p id="a">أأ</p>') + '```' }).then(() => {
+    assert.ok(cur.code.includes('أأ'));
+    assert.equal(ctx.out.chatText, 'عدّلت الفقرة.\n\nطُبّقت التعديلات على التصميم (1).', 'بلا تكرار سرد الخطوات');
+  });
 });

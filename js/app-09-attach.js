@@ -2908,13 +2908,15 @@ async function __agentApplyResult(cur, full, agLog){
   const __log = (agLog && Array.isArray(agLog.log) && agLog.log.some(function(p){ return p.t !== 'text'; })) ? agLog : null;
   const chatSrc = __log ? String(__log.tail || '') : full;
   const parsed = extractReply(full, cur.code); // v-chat-edit
+  // رقعة: نصّ الرسالة شرحُ ما بعد آخر خطوة (لا سرد الخطوات المعروض في السجلّ) + سطر نتيجة التطبيق
+  const __agEditText = () => { if(!__log) return String(parsed.explanation || ''); const __pp = omranEditParse(chatSrc); return stripCodeFromChat(__pp ? __pp.prose : chatSrc).trim() + '\n\n' + (parsed.note || ''); };
   let chatText;
   let codeProducedThisTurn = false;
   if(parsed && parsed.code){
     cur.code = parsed.code;
-    cur.codeType = parsed.codeType || 'html';
+    cur.codeType = parsed.edits ? (cur.codeType || 'html') : (parsed.codeType || 'html'); // رقعة لا تغيّر نوع المشروع (بايثون)
     codeProducedThisTurn = true;
-    chatText = (parsed.edits ? String(parsed.explanation || '') : stripCodeFromChat(chatSrc)).trim();
+    chatText = (parsed.edits ? __agEditText() : stripCodeFromChat(chatSrc)).trim();
   } else {
     // 🛟 كود ناقص/غير مغلق (```html بلا إغلاق أو <!DOCTYPE بلا نهاية) → نلتقطه للوحة الكود بدل ما يطيح في الشات
     const fenceIdx = full.search(/```(?:html|HTML)?\s*\n/);
@@ -2928,7 +2930,7 @@ async function __agentApplyResult(cur, full, agLog){
       chatText = __log ? stripCodeFromChat(chatSrc).trim() : full.slice(0, idx).replace(/```\s*$/, '').trim();
       if(chatText) chatText += '\n\n' + (lang === 'ar' ? '⚠️ يبدو أن الكود انقطع قبل اكتماله — اكتب "كمل الكود" وسأكمله.' : '⚠️ The code seems truncated — type "continue" and I will finish it.');
     } else {
-      chatText = (parsed && parsed.edits) ? String(parsed.explanation || '').trim() : stripCodeFromChat(chatSrc).trim();
+      chatText = (parsed && parsed.edits) ? __agEditText().trim() : stripCodeFromChat(chatSrc).trim();
       // ⚠️ v490: مسار الوكيل كان صامتًا — كود مُلغى/محذوف ⇒ رسالة صريحة بدل معاينة فارغة.
       /* v-agent-nocode (لقطة المالك ٣ أكتوبر: الوكيل يشرح إصلاحًا ويسلّمه لـClaude Code فيُلصَق «لم يصل كود من المزوّد»): أيّ
          ``` أو وسم إغلاق كان يكفي — ومقتطف ```js في شرح إصلاح ليس تطبيقًا ضاع. التحذير لصفحة تطبيق بدأت ولم تصل وحدها. */
@@ -3603,7 +3605,8 @@ async function __sendPromptCore(){
       __gateApprovedText = text;
       text = __pend;
       __setPend(null);
-    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)){
+    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)
+      && !omranEditBigOpen(getCurrent())){ // v-chat-edit: «ممكن تغيّر … في اللعبة» على تصميم كبير تعديلٌ برقع، لا بناء يُستأذن
       __setPend(text);
       __gateNoBuild = true;
     } else if(text){
@@ -3634,7 +3637,7 @@ async function __sendPromptCore(){
   const __editIndex = (__editReq && __editReq.projectId === cur.id && Number.isInteger(__editReq.index) &&
     __editReq.index >= 0 && __editReq.index < cur.messages.length && cur.messages[__editReq.index].role === 'user') ? __editReq.index : -1;
   const __editedOriginal = __editIndex >= 0 ? cur.messages[__editIndex] : null;
-  if(cur.messages.length === 0){
+  if(cur.messages.length === 0 && !cur.inspire){ // تجربة «الإلهام» تبقى باسمها عند أوّل تعديل
     cur.title = (text || (pendingAttachments[0] && pendingAttachments[0].name) || 'مشروع').slice(0, 30);
   }
 
@@ -5533,7 +5536,7 @@ function __showImgLoading(el, ar, en){
     if(__siteGuideTurn) apiMessages.push({role: 'system', content: OMRAN_SITE_GUIDE_NOTE});
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
-      apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
+      apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.' + (omranEditBigOpen(cur) ? OMRAN_EDIT_APPROVE_NOTE : '')});
       window.__buildOfferApproved = false;
     }
     // 🏗️ v260: الصور المعمارية انعرضت فوق — المزود يكتب المواصفات فقط.
@@ -5723,7 +5726,8 @@ DESIGN RULES (non-negotiable):
         __historyMsgs.slice(-MAX_TURNS).forEach(m => {
           if(!m || m._loading || m._failed) return;
           const role = (m.role === 'user') ? 'user' : 'assistant';
-          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content), __ownerCtx ? (cur.code ? 'text' : 'all') : '') || '').trim();
+          const __src = (m.apiText !== undefined ? m.apiText : m.content);
+          let txt = String(__stripCodeForHistory(role, (role === 'assistant' && !m.code && cur.code) ? String(__src || '').replace(/```[\s\S]*?```/g, '[مقتطف كود في الردّ — لم يُطبَّق على المشروع]') : __src, __ownerCtx ? (cur.code ? 'text' : 'all') : '') || '').trim(); // v-chat-edit
           if(!txt) return;
           txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
           if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط
@@ -6086,10 +6090,12 @@ DESIGN RULES (non-negotiable):
           if(!code && !__edits && isBuildTask && !__gateNoBuild){ // v-chat-edit: رقعة لم تُطبَّق ليست «ردًّا بلا كود» — لا يُطلب الملفّ كاملًا
             try{
               msg.content = '';
-              const __strictMsgs = apiMessages.concat([{ role: 'system', content: 'FINAL STRICT ORDER: your previous reply contained NO code block — that counts as a FAILED answer. Reply NOW with the COMPLETE finished design/app as ONE single ```html code block (the full file from <!DOCTYPE html> to </html>, nothing omitted). Claiming it is done without code is FORBIDDEN. Text-only replies are FORBIDDEN.' }]);
+              const __strictMsgs = apiMessages.concat([{ role: 'system', content: omranEditBigOpen(cur)
+                ? 'FINAL STRICT ORDER: your previous reply changed NOTHING. Apply the requested change NOW to the CURRENT project as ```patch blocks (@@PATCH/@@OLD/@@NEW/@@END) exactly as instructed in the user turn — never the full file. Text-only replies are FORBIDDEN.' // v-chat-edit
+                : 'FINAL STRICT ORDER: your previous reply contained NO code block — that counts as a FAILED answer. Reply NOW with the COMPLETE finished design/app as ONE single ```html code block (the full file from <!DOCTYPE html> to </html>, nothing omitted). Claiming it is done without code is FORBIDDEN. Text-only replies are FORBIDDEN.' }]);
               const __strictReply = await callWithWatchdog(p.key, __strictMsgs, onDelta, 75000, 180000);
-              const __r2 = extractReply(__strictReply);
-              if(__r2.code){ code = __r2.code; explanation = __r2.explanation; }
+              const __r2 = extractReply(__strictReply, cur.code); // v-chat-edit
+              if(__r2.code){ code = __r2.code; explanation = __r2.explanation; } else if(__r2.edits){ explanation = __r2.explanation; }
             }catch(e){ __swallow(e, "misc:app-09-attach#23"); }
           }
           msg.content = (__applyCode ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : '');
@@ -6603,7 +6609,7 @@ DESIGN RULES (non-negotiable):
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
         // ✅ وافق المستخدم → يبني الآن كاملًا باليد الكاملة (صور مرسومة + كود + تجربة).
-        apiMessages.push({ role: 'system', content: 'وافق المستخدم على البناء. ابنِه الآن كاملًا في هذا الردّ داخل كتلة ```html واحدة، مستندًا كاملًا. استدعِ generate_image لكل صورة تحتاجها (حتّى أربع) وضع الرمز العائد حرفيًّا في src — ممنوع picsum أو placeholder أو أي رابط صورة خارجي. ممنوع أن تسأل مرّة أخرى.' });
+        apiMessages.push({ role: 'system', content: 'وافق المستخدم على البناء. ابنِه الآن كاملًا في هذا الردّ داخل كتلة ```html واحدة، مستندًا كاملًا. استدعِ generate_image لكل صورة تحتاجها (حتّى أربع) وضع الرمز العائد حرفيًّا في src — ممنوع picsum أو placeholder أو أي رابط صورة خارجي. ممنوع أن تسأل مرّة أخرى.' + (omranEditBigOpen(cur) ? OMRAN_EDIT_APPROVE_NOTE : '') });
       } else if(__gateNoBuild){
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
         apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });

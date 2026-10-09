@@ -180,9 +180,10 @@ async function buildCodeFromPrompt(promptText){
     if(cur.code){
       apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
     }
-    apiMessages.push({role: 'user', content: promptText});
+    // v-chat-edit: على تصميم كبير يُطلب التعديل رقعًا ويُقرأ الردّ بحارس التصميم — ملفّ انقطع لا يمحوه
+    apiMessages.push({role: 'user', content: promptText + (omranEditBigOpen(cur) ? omranEditAsk(cur.code.length) : '')});
     const { reply } = await callAIWithFallback(apiMessages, null);
-    const { code } = extractReply(reply);
+    const { code } = extractReply(reply, cur.code);
     if(code){ cur.code = code; }
     renderAll();
     saveState();
