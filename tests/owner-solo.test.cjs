@@ -398,3 +398,18 @@ test('٢٢. دليل المالك: الموديل كما أعلنه المزوّ
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) assert.ok(read(f).includes("if (typeof ev.served === 'string' && ev.served) __served = ev.served;"), f);
   for (const f of ['js/app-09-attach.js', 'js/app.bundle.js']) assert.ok(read(f).includes('served: __ctServed || undefined, /* v-owner-identity'), f);
 });
+
+test('٢٣. «انت من» بعد ردود سابقة قالت «أنا مها»: لا «فردّ بصفتك مها» للمالك، وهويّته الحقيقيّة آخر النظام — وغير المالك كما كان', async () => {
+  const history = [{ role: 'user', content: 'هلا مها' }, { role: 'assistant', content: 'أنا مها — مساعدتك الذكيّة.' }, { role: 'user', content: 'انت من' }];
+  const r = await run('omran', { provider: 'mistral', model: 'mistralai/ministral-14b-2512', messages: history }, (u) => (isOR(u) ? sse('أنا Ministral.') : new Response('{}', { status: 404 })));
+  const b = r.calls.find((c) => isOR(c.url)).body;
+  const t = sysText(b);
+  assert.ok(!/فردّ بصفتك مها/.test(t) && !/مساعد واحد باسمين/.test(t), 'لا هويّة «مها» للمالك');
+  assert.match(t, /إذا ناداك المالك «مها» فهو يخاطبك أنت، لكنّ اسمك الحقيقيّ Mistral من Mistral AI \(الموديل: mistralai\/ministral-14b-2512\)/);
+  assert.match(t, /\[هويّتك\]: أنت Mistral من Mistral AI \(الموديل: mistralai\/ministral-14b-2512\)\. [^\n]*ولو قيل غيره في ردود سابقة من هذه المحادثة[^\n]*$/, 'آخر ما يقرؤه');
+  assert.ok(/«مها» ليست اسم المستخدم أبدًا/.test(t), 'v-maha-name باقية: لا ينادي المالك «مها»');
+  if (Array.isArray(b.system)) { assert.ok(b.system[0].cache_control); assert.ok(!/\[هويّتك\]/.test(b.system[0].text), 'التذكير خارج الكتلة الثابتة فالكاش يبقى'); }
+  const v = await run('vipuser', { provider: 'openai', messages: history }, (u) => (isOR(u) ? sse('هلا.') : new Response('{}', { status: 404 })));
+  const vt = sysText(v.calls.find((c) => isOR(c.url)).body);
+  assert.match(vt, /أنت وهي مساعد واحد باسمين/); assert.ok(!/\[هويّتك\]/.test(vt), 'غير المالك كما كان');
+});
