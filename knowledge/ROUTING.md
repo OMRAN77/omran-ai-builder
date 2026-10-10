@@ -47,7 +47,7 @@ POST /api/ai?action=<name>
 | ١ | تنظيف محادثة Claude (آخر رسالة يجب أن تكون للمستخدم) | `ai.js` داخل المعالج | يمنع خطأ 400 (v262) |
 | ٢ | تنظيف `contents` لـGemini | `sanitizeGeminiContents` | يمنع 400 صامتًا |
 | ٣ | هل الطالب المالك؟ | `isOwner` → `body.__ownerFactory` | يفتح الوضع الخام |
-| ٤ | المالك + `raw !== false` → نزع طبقة التطبيق | `stripAppSystem` — `ai.js:352` | يحذف كلّ رسائل `system` |
+| ٤ | المالك + `raw === true` → نزع طبقة التطبيق (اختياريّ منذ v-religion-owner، كـ`chat.js`) | `stripAppSystem` — `ai.js:352` | يحذف كلّ رسائل `system` |
 | ٥ | حقن الملاحظات | `injectNote` — `ai.js:358` | §٢-أ |
 | ٦ | حذف علم المالك قبل الإرسال | داخل المعالج | لا يتسرّب للمزوّد |
 
