@@ -27,9 +27,9 @@ const studios = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'),
 const partials = fs.readFileSync(path.join(__dirname, '../js/partials-core.js'), 'utf8');
 assert.ok(create.includes("require('./fashion-locks')") && create.includes('locksFor({'), 'fashion-create يستعمل الأقفال');
 assert.ok(!create.includes('Keep the same person, pose, face and background, but change only'), 'السطر الضعيف القديم أزيل');
-assert.ok(create.includes("engine === 'openai'") && create.includes('gpt-image-1'), 'محرك gpt-image-1 اختياري');
+assert.ok(create.includes("engine === 'openai'") && create.includes('gpt-image-2.5-sunburst'), 'محرك GPT Image الأحدث اختياري');
 assert.ok(create.includes('images/edits') && create.includes('OPENAI_API_KEY'), 'مفتاح OpenAI من الخادم لا من العميل');
-assert.ok(create.includes('images/generations') && create.includes('openaiGenerate(promptText)'), 'الوضع النصّي له مسار gpt-image-1 أيضًا');
+assert.ok(create.includes('images/generations') && create.includes('openaiGenerate(promptText)'), 'الوضع النصّي له مسار GPT Image أيضًا');
 assert.ok(create.includes('v-fashion-rescue'), 'رفض Gemini يهبط تلقائيًا إلى OpenAI قبل إبلاغ الفشل');
 const suggest = fs.readFileSync(path.join(__dirname, '../api/_lib/fashion-suggest.js'), 'utf8');
 assert.ok(suggest.includes('v-fashion-rescue') && suggest.includes('openaiSuggest(promptText'), 'الاقتراحات لها خطّ إنقاذ أيضًا');
@@ -69,13 +69,13 @@ assert.ok(app05.includes('it.bg') && app05.includes('s.bg'), 'المعرض وا�
 // ⑩ أفكار الديكور ١+٢+٣: مقارنة «غرفتي بكل الأنماط» (حتى ٣ أنماط جنبًا إلى جنب)،
 //    سحّاب قبل/بعد على النتيجة، ومولّد بطاقات الأنماط والأماكن.
 assert.ok(partials.includes('designCompareChecks') && partials.includes('v-decor-compare'), 'قسم المقارنة في واجهة الديكور');
-assert.ok(partials.includes('designBAWrap') && partials.includes('designBARange'), 'سحّاب قبل/بعد في واجهة الديكور');
+assert.ok(partials.includes('designBAWrap') && partials.includes('designBAHandle'), 'سحّاب قبل/بعد في واجهة الديكور (v-compare-drag-all: مقبض سحب مباشر بدل input مخفيّ)');
 assert.ok(studios.includes('v-decor-compare') && studios.includes('cmpPicks.length >= 3') && studios.includes("style: v, token"), 'مقارنة حتى ٣ أنماط عبر design-create');
-assert.ok(studios.includes('v-decor-ba') && studios.includes('showBeforeAfter(') && studios.includes('v-no-slider') && studios.includes('baSet(0)'), 'النتيجة المفردة بلا سحّاب مقارنة (أمر المالك ٤ سبتمبر)');
+assert.ok(studios.includes('v-decor-ba') && studios.includes('showBeforeAfter(') && studios.includes('v-compare-drag-all') && studios.includes('baSet(0)'), 'النتيجة المفردة بسحّاب مقارنة قابل للسحب المباشر (v-compare-drag-all ٢١ سبتمبر يلغي v-no-slider ٤ سبتمبر)');
 const dThumbs = fs.readFileSync(path.join(__dirname, '../scripts/design-thumbs.mjs'), 'utf8');
 assert.ok(dThumbs.includes("'minimalwhite'") && dThumbs.includes("'garden'") && dThumbs.includes('/api/design-create'), 'مولّد بطاقات الديكور: ٤٨ نمطًا و١٢ مكانًا');
 const designCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/design-create.js'), 'utf8');
-assert.ok(designCreate.includes('v-design-rescue') && designCreate.includes('openaiDesignEdit(promptText'), 'الديكور له خطّ إنقاذ gpt-image-1 أيضًا');
+assert.ok(designCreate.includes('v-design-rescue') && designCreate.includes('openaiDesignEdit(promptText'), 'الديكور له خطّ إنقاذ GPT Image أيضًا');
 assert.ok(designCreate.includes('v-decor-detail') && designCreate.includes("key=[^&\\s\"']+"), '502 النصّية تكشف خطأ المزوّد بعد شطب المفاتيح');
 assert.ok(studios.includes('v-fashion-full-page'), 'نمط الأزياء معرض ملء الشاشة أيضًا');
 assert.ok(designGen.includes("category/women") && !designGen.includes("women/evening'"), 'وجوه الفئات مخصّصة لا معادة');
@@ -96,7 +96,7 @@ assert.ok(studios.includes('PSTYLE_SUBS') && studios.includes('رسم يدوي �
 assert.ok(studios.includes("styleEl.dispatchEvent(new Event('change'"), 'نقر البطاقة يبثّ change للأسلاك التابعة');
 assert.ok(studios.includes('renderPortraitStyleCards()') && studios.includes('favs.includes(v)'), 'المفضلة أولًا بشارة ⭐');
 const portrait = fs.readFileSync(path.join(__dirname, '../api/_lib/portrait-style.js'), 'utf8');
-assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPortraitEdit(promptText'), 'البورتريه له خطّ إنقاذ gpt-image-1 أيضًا');
+assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPortraitEdit(promptText'), 'البورتريه له خطّ إنقاذ GPT Image أيضًا');
 const pThumbs = fs.readFileSync(path.join(__dirname, '../scripts/portrait-thumbs.mjs'), 'utf8');
 assert.ok(pThumbs.includes('STYLE_SOURCE') && pThumbs.includes("wedding: 'w1'") && pThumbs.includes('/api/portrait-style'), 'المعاينات بوجوه متنوعة موزّعة لا وجه واحد');
 assert.ok(studios.includes(".fashionCompareCheck:checked"), 'قارئ المقارنة القديم كما هو');
@@ -145,10 +145,10 @@ console.log('  ✓ v-edu-lab: الدرس الحي مبني ومقفول');
 
 // ⑬ المقاولات: خط الإنقاذ السابع + الجولة ثلاثية الأبعاد من هندسة المخطط.
 const conCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/construction-create.js'), 'utf8');
-assert.ok(conCreate.includes('v-construction-rescue') && conCreate.includes('openaiRescueImage') && conCreate.includes('openaiRescueText'), 'رفض Gemini يهبط لصور gpt-image-1 ونص gpt-4o-mini');
+assert.ok(conCreate.includes('v-construction-rescue') && conCreate.includes('openaiRescueImage') && conCreate.includes('openaiRescueText'), 'رفض Gemini يهبط لصور GPT Image ونص OpenAI الخفيف');
 assert.ok(conCreate.includes(".catch(() => null) /* v-construction-rescue"), 'سقوط النص لا يُسقط الصور');
 const conView = fs.readFileSync(path.join(__dirname, '../api/_lib/construction-view.js'), 'utf8');
-assert.ok(conView.includes('v-construction-rescue') && conView.includes('gpt-image-1'), 'الزوايا والغرف لها إنقاذ أيضًا');
+assert.ok(conView.includes('v-construction-rescue') && conView.includes('gpt-image-2.5-flare'), 'الزوايا والغرف لها إنقاذ أيضًا');
 const fp15 = fs.readFileSync(path.join(__dirname, '../js/app-15-floorplan.js'), 'utf8');
 assert.ok(fp15.includes('function omranTour3d') && fp15.includes('omranTour3d.toString()'), 'مشغّل الجولة يُحقن كدالة في صفحة المخطط');
 assert.ok(fp15.includes('t3dBtn') && fp15.includes('rotateX(90deg)') && fp15.includes('فصل الطوابق'), 'زر الجولة والجدران المرفوعة وفصل الطوابق');
@@ -159,7 +159,7 @@ const stocksSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/stocks.js'),
 assert.ok(stocksSrv.includes('v-stocks-paper') && stocksSrv.includes("mode === 'pf-trade'"), 'أوضاع المحفظة في الخادم');
 assert.ok(stocksSrv.includes('db/stocks/pf/') && stocksSrv.includes('db/stocks/pf-board.json'), 'محفظة لكل مستخدم + لوحة ترتيب');
 assert.ok(stocksSrv.includes('pos.avgCost = (pos.avgCost * pos.qty + cost) / (pos.qty + qty)'), 'متوسط التكلفة يحسب بالكود لا بالنموذج');
-assert.ok(stocksSrv.includes("checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40)"), 'حد يومي للصفقات');
+assert.ok(stocksSrv.includes("checkAndConsumePlanCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40)"), 'حد يومي للصفقات (v-plan-caps: أساس المجّانيّ، والمشترك بنسبة باقته)');
 const stocksCli = fs.readFileSync(path.join(__dirname, '../js/app-13-stocks-init.js'), 'utf8');
 assert.ok(stocksCli.includes('v-stocks-paper') && stocksCli.includes('stocksPfBtn') && stocksCli.includes('function pfTrade'), 'تبويب المحفظة وتنفيذ الصفقات في الواجهة');
 assert.ok(stocksCli.includes('وضع تعليمي — أموال افتراضية') && stocksCli.includes("mode:'learn', symbol: sym"), 'الطابع التعليمي: شارة + زر علّمني يستدعي المعلم بالأرقام الحية');
@@ -171,30 +171,32 @@ assert.ok(!fs.existsSync(path.join(__dirname, '../api/_lib/visual-guide.js')), '
 assert.ok(!fs.existsSync(path.join(__dirname, '../js/app-24-visual-guide.js')), 'v-vg-removed: عميل المرشد البصري محذوف');
 console.log('  ✓ v-vg-removed: المرشد البصري محذوف نهائيًا');
 
-// ⑯ v-maha-captions: ترجمة نصية حية للمكالمة — لحظية وأساسية، وتفريغ الإدخال بالخادم.
+// ⑯ v-maha-cc-removed: لوحة الترجمة النصّيّة وزرّها 💬 حُذفا بطلب المالك — مكالمة مها صوت فقط.
 const mahaCli = fs.readFileSync(path.join(__dirname, '../js/app-08-maha.js'), 'utf8');
-assert.ok(mahaCli.includes('v-maha-captions') && mahaCli.includes('function mahaCapDelta'), 'وحدة الترجمة النصية موجودة');
-assert.ok(mahaCli.includes("'response.output_audio_transcript.delta'") && mahaCli.includes("'conversation.item.input_audio_transcription.completed'"), 'أحداث المكالمة اللحظية موصولة');
-assert.ok(mahaCli.includes('mahaCapUser(transcript)') && mahaCli.includes("mahaCapLine('maha', reply)"), 'الوضع الأساسي يعرض الطرفين');
-const rtSess = fs.readFileSync(path.join(__dirname, '../api/_lib/realtime-session.js'), 'utf8');
-assert.ok(rtSess.includes("transcription: { model: 'gpt-4o-mini-transcribe' }"), 'تفريغ كلام المستخدم مفعّل بالخادم');
-assert.ok(rtSess.includes('sessionConfig.session.audio.input.transcription) {'), 'رفض حقل التفريغ لا يُسقط المكالمة');
+assert.ok(mahaCli.includes('v-maha-cc-removed'), 'تعليل الحذف موثّق في عميل مها');
+assert.ok(!/mahaCap(Sync|Clear|Line|User|Delta|Done)|mahaCcOn|aiapp_maha_cc/.test(mahaCli), 'لا بقايا لوحدة الترجمة في عميل مها');
 const idx16 = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
-assert.ok(idx16.includes('id="mahaCaptions"') && idx16.includes('id="btnMahaCc"'), 'لوحة الترجمة وزرها في الواجهة');
-console.log('  ✓ v-maha-captions: الترجمة الحية للمكالمة مقفولة');
+assert.ok(!idx16.includes('id="mahaCaptions"') && !idx16.includes('id="btnMahaCc"'), 'لا لوحة ترجمة ولا زرّها في الواجهة');
+const i18nAr16 = fs.readFileSync(path.join(__dirname, '../js/app-03-i18n-data.js'), 'utf8');
+assert.ok(!i18nAr16.includes('mahaCcTitle'), 'مفتاح عنوان الزرّ المحذوف لا يبقى في النصوص');
+// باقي أزرار المكالمة تبقى كما هي: الكاميرا والإنهاء.
+assert.ok(idx16.includes('id="btnMahaCamera"') && idx16.includes('id="btnMahaEndCall"'), 'زرّا الكاميرا والإنهاء باقيان');
+const rtSess = fs.readFileSync(path.join(__dirname, '../api/_lib/realtime-session.js'), 'utf8');
+assert.ok(rtSess.includes('sessionConfig.session.audio.input.transcription) {'), 'رفض حقل التفريغ لا يُسقط المكالمة');
+console.log('  ✓ v-maha-cc-removed: مكالمة مها بلا نصّ على الشاشة');
 
 // ⑰ v-chat-direct: كلود يتصل مباشرة بمفتاح Anthropic — لا وسيط يبطّئ أو يُسقط للضعيف.
 const chatSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
 assert.ok(chatSrv.includes('v-chat-direct'), 'تعليل الوصلة المباشرة موثق');
 assert.ok(chatSrv.includes("prov === 'claude'\n    ? (!process.env.ANTHROPIC_API_KEY && !!process.env.OPENROUTER_API_KEY)"), 'كلود مباشر ما دام مفتاحه موجودًا');
-assert.ok(chatSrv.includes("process.env.CHAT_CLAUDE_MODEL || 'claude-sonnet-5'"), 'v-chat-fast: سونيت 5 السريع للمحادثة + قابل للتبديل من البيئة');
+assert.ok(chatSrv.includes("process.env.CHAT_CLAUDE_MODEL || 'claude-haiku-4-5'"), 'v-chat-economy: هايكو 4.5 الاقتصاديّ للمحادثة + قابل للتبديل من البيئة');
 console.log('  ✓ v-chat-direct: المحادثة على الخط المباشر');
 
 // ⑱ v-chat-vision: الصور المرفقة تمر بمسار الأدوات القوي نفسه لا لمسار قديم أضعف.
 const chatToolsCli = fs.readFileSync(path.join(__dirname, '../js/app-18-chat-tools.js'), 'utf8');
 assert.ok(chatToolsCli.includes('v-chat-vision') && chatToolsCli.includes("type: 'image', source: { type: 'base64'"), 'الصور تُحوَّل لكتل رؤية في مسار الأدوات');
 const attachCli = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
-assert.ok(attachCli.includes("(!imageAttachments.length || __effProv === 'claude')"), 'بوابة الأدوات تسمح بالصور مع كلود');
+assert.ok(attachCli.includes("(!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai'))"), 'بوابة الأدوات تسمح بالصور مع كلود وOpenAI');
 assert.ok(!fs.readFileSync(path.join(__dirname, '../js/app-06-checkout.js'), 'utf8').includes('claude-sonnet-4-20250514'), 'لا نموذج قديم في مسار الاحتياط');
 console.log('  ✓ v-chat-vision: تحليل الصور على نفس العقل القوي');
 
@@ -208,7 +210,8 @@ console.log('  ✓ v-physical-design: التصميم يُرى قبل أن يُق
 // ⑳ v-maha-image-rescue: مولد صور المحادثة بخط إنقاذ تاسع + لا خطف لطلبات صورة التصميم.
 const mahaImgSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
 assert.ok(mahaImgSrv.includes('v-maha-image-rescue') && mahaImgSrv.includes('openaiRescueImage'), 'إنقاذ gpt-image-1 موجود');
-assert.ok(mahaImgSrv.includes("await sendImg(rescuedB64, 'image/png', 'openai')") && mahaImgSrv.includes('v-prayer-carry'), 'الإنقاذ يرد صورة بنفس العقد (sendImg) ومعها الدعاء المؤلف');
+// v-img-honest: كلّ ناتج (والإنقاذ منه) يمرّ بـdeliver ← sendImg نفسه الذي يحمل الدعاء المؤلَّف (authoredText)
+assert.ok(mahaImgSrv.includes("await deliver({ b64: rescuedB64, mime: 'image/png', engine: 'openai' }, null)") && mahaImgSrv.includes('v-prayer-carry') && mahaImgSrv.includes('authoredText: prayerPlan ? prayerPlan.prayerText : undefined'), 'الإنقاذ يرد صورة بنفس العقد (deliver ← sendImg) ومعها الدعاء المؤلف');
 const attachCli20 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
 assert.ok(attachCli20.includes('__designCtxRe') && attachCli20.includes('!__designCtxRe.test(text)'), 'طلب صورة التصميم لا يُخطف للبحث');
 const agentTools20 = fs.readFileSync(path.join(__dirname, '../js/app-17-agent-tools.js'), 'utf8');
@@ -299,9 +302,9 @@ console.log('  ✓ v-sweep: الفحص الشامل — أسلاك حية وتر
   for (const dead of ['anthropic/claude-3.5-sonnet', 'google/gemini-pro-1.5', 'google/gemini-flash-1.5:free', 'mistralai/mistral-7b-instruct:free']) {
     assert.ok(!ps.includes('"' + dead + '"'), 'اسم ميت في المنسدلة: ' + dead);
   }
-  assert.ok(ps.includes('anthropic/claude-sonnet-5') && ps.includes('google/gemini-3.5-flash'), 'البدائل الحية في المنسدلة');
+  assert.ok(ps.includes('anthropic/claude-sonnet-5') && ps.includes('google/gemini-3.8-flash'), 'البدائل الحية في المنسدلة');
   const ft = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
-  assert.ok(ft.includes('__orRemap') && ft.includes("'google/gemini-pro-1.5': 'google/gemini-3.5-flash'"), 'مهاجر القيم المحفوظة الميتة');
+  assert.ok(ft.includes('__orRemap') && ft.includes("'google/gemini-pro-1.5': 'google/gemini-3.8-flash'"), 'مهاجر القيم المحفوظة الميتة');
 }
 console.log('  ✓ v-or-models: قوائم OpenRouter حية ومهاجرة');
 
@@ -333,7 +336,7 @@ console.log('  \u2713 v-dream-tafsir: تفسير حقيقي + أداة ديني�
 // ㉙ v-prayer-rescue: بطاقات الدعاء لا تموت بزحام Gemini — إنقاذ OpenAI.
 {
   const pp = fs.readFileSync(path.join(__dirname, '../api/_lib/prayer-plan.js'), 'utf8');
-  assert.ok(pp.includes('v-prayer-rescue') && pp.includes("'gpt-4o-mini'") && pp.includes('validatePrayerPlan(JSON.parse'), 'مخطط الدعاء له خط إنقاذ بنفس التدقيق');
+  assert.ok(pp.includes('v-prayer-rescue') && pp.includes('oaLightFetch(openaiKey') && pp.includes('validatePrayerPlan(JSON.parse'), 'مخطط الدعاء له خط إنقاذ بنفس التدقيق');
 }
 assert.ok(fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8').split('v-prayer-carry').length >= 2, 'الإنقاذ يمرر الدعاء المؤلف مع الصورة');
 console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود واحد ولا يضيع في الإنقاذ');
@@ -465,19 +468,22 @@ console.log('  ✓ v-edu-questions: لا بتر ولا درس بلا أسئلة 
 }
 console.log('  ✓ v-err-human: لا Load failed خام — عربي واضح وإرشاد');
 
-// ㊵ v-store-safe: رفض AppGallery 11.4 (عملات/كريبتو = خدمة مالية منظمة) —
-// حزمة هواوي تدخل بـ?store=huawei فتختفي كل المالية ولا يُطلق نداء أسعار
-// واحد؛ العلامة تُحفظ، والويب/أبل كاملان بلا تغيير.
+// ㊵ v-store-safe-revert: كانت حزمة هواوي (?store=huawei) تخفي كل المالية
+// (قاعدة AppGallery 11.4) — عمران أمر صراحة ٢٢ سبتمبر بإرجاعها رغم تحذيره
+// من مخاطرة رفض المتجر بها. العلامة (store-safe) نفسها باقية (يستعملها
+// app-09-attach.js لكشف منتقي ملفّات هواوي) لكنها لم تعد تخفي الأسهم.
 {
   const sd2 = fs.readFileSync(path.join(__dirname, '../js/selfdiag.js'), 'utf8');
-  assert.ok(sd2.includes('v-store-safe') && sd2.includes("classList.add('store-safe')"), 'بوابة العلامة في selfdiag المبكر');
-  assert.ok(sd2.includes("localStorage.setItem('aiapp_store'"), 'العلامة تبقى بعد أول فتحة');
+  assert.ok(sd2.includes('v-store-safe') && sd2.includes("classList.add('store-safe')"), 'بوابة العلامة في selfdiag المبكر (لا تزال قائمة لأغراض أخرى)');
+  /* v-store-flag-session (١٨ سبتمبر): العلامة تبقى طوال جلسة التبويب/الحزمة (sessionStorage) لا في المتصفّح إلى الأبد. */
+  assert.ok(sd2.includes("sessionStorage.setItem('aiapp_store'"), 'العلامة تبقى طوال الجلسة');
+  assert.ok(!sd2.includes("localStorage.setItem('aiapp_store'"), 'ولا تلتصق بالمتصفّح العاديّ');
   const tk3 = fs.readFileSync(path.join(__dirname, '../css/tokens.css'), 'utf8');
-  assert.ok(tk3.includes('html.store-safe #stockTicker') && tk3.includes('html.store-safe #stocksModal'), 'كل الواجهات المالية مخفية');
+  assert.ok(!tk3.includes('html.store-safe #stockTicker') && !tk3.includes('html.store-safe #stocksModal'), 'الأسهم لم تعد مخفيّة تحت store-safe');
   const st13 = fs.readFileSync(path.join(__dirname, '../js/app-13-stocks-init.js'), 'utf8');
-  assert.ok(st13.includes("contains('store-safe')) return;"), 'محرك الأسهم لا يعمل إطلاقًا — صفر نداءات أسعار');
+  assert.ok(!st13.includes("contains('store-safe')) return;"), 'محرك الأسهم يعمل حتى تحت store-safe — لا إرجاع مبكر');
 }
-console.log('  ✓ v-store-safe: حزمة هواوي بلا أي محتوى مالي — قاعدة 11.4');
+console.log('  ✓ v-store-safe-revert: الأسهم ظاهرة وتعمل حتى في حزمة هواوي (أمر عمران ٢٢ سبتمبر)');
 
 // ㊶ v-lab-haiku: «تجربة غير مكتملة» استمرت — سونيت أبطأ من إكمال صفحة غنية
 // ضمن المهلة. هايكو 4.5 (أسرع ~3×) يبنيها + جولة إتمام تلقائية عند الانقطاع.
@@ -582,7 +588,7 @@ console.log('  ✓ v-login-done: سفاري يقول «ارجع للتطبيق»
   assert.ok(it8.includes('v-font-pretty'), '«مزخرف» وأخواتها تختار الديواني');
   const at9 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9.includes('__nameSwap') && at9.includes('REPLACE that existing name'), 'تغيير الاسم = استبدال يمحو القديم');
-  assert.ok(at9.includes('if(!__nameSwap) throw { __localFont: true }'), 'الاستبدال وحده للذكاء — والكانفس لا يمحو');
+  assert.ok(at9.includes('if(!__nameSwap || __prevLayer) throw { __localFont: true }'), 'الاستبدال وحده للذكاء — والكانفس لا يمحو (إلّا طبقتنا: أساسها نظيف، v-text-replace)');
 }
 console.log('  ✓ v-name-swap: «غيّر الاسم» يبدل الاسم داخل التصميم — لا كتابة فوقه');
 
@@ -618,11 +624,11 @@ console.log('  ✓ v-no-kickout: العودة للتطبيق لا تطرد ال�
 console.log('  ✓ v-edit-rescue: تعديل الصور له إنقاذ — والاستبدال الفاشل يصارح لا يغش');
 
 // 52 v-hifi-edit: مقارنة عمران مع ChatGPT — تطبيقنا بدّل الاسم صح لكن خربش
-// باقي نصوص البطاقة. السببان: تصغير المدخل إلى 800px (يمسح تفاصيل النص)
-// وغياب input_fidelity=high الذي يحفظ نصوص وشعارات الأصل.
+// باقي نصوص البطاقة. المدخل يبقى 1600px، وSunburst يفرض أمانة المدخل تلقائيًّا
+// ويرفض input_fidelity القديم.
 {
   const mi2 = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
-  assert.ok(mi2.includes("form.append('input_fidelity', __optForceEngine === 'gpt' ? 'low' : 'high')"), 'الإنقاذ بدقة مدخل عالية (وGPT خام حرّ)');
+  assert.ok(mi2.includes("'gpt-image-2.5-sunburst'") && !mi2.includes("form.append('input_fidelity'"), 'الإنقاذ على Sunburst بأمانته العالية المدمجة');
   const at9d = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9d.includes('__mxd2 = 1600'), 'المدخل 1600px لا 800 — نصوص البطاقة تبقى مقروءة');
 }
@@ -680,26 +686,28 @@ console.log('  ✓ v-font-pretty: الكلمات الجمالية كلها تو�
 // أن يخطئ إملائيًا)؛ الذكاء فقط لتبديل اسم داخل تصميم.
 {
   const at9g = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
-  assert.ok(at9g.includes('v-exact-canvas') && at9g.includes('if(!__nameSwap) throw { __localFont: true }'), 'النص الحرفي دائمًا للراسم المحلي');
+  assert.ok(at9g.includes('v-exact-canvas') && at9g.includes('if(!__nameSwap || __prevLayer) throw { __localFont: true }'), 'النص الحرفي دائمًا للراسم المحلي');
 }
 console.log('  ✓ v-exact-canvas: الأسماء تُطبع حرفيًا — صفر أخطاء إملائية ممكنة');
 
-// 58 v-spell-quran (طلب عمران): تدقيق إملائي ذكي على كل نص يُطبع — الأسماء
-// الناقصة تُصحح والمرجع رسم المصحف، مع حارس يمنع تبديل اسم صحيح بغيره
-// (حتى حرفين بالكلمة، بلا إضافة/حذف كلمات) وقاموس حتمي للعبارات الدينية.
+// 58 v-spell-quran (طلب عمران) ← v-spell-literal (لقطة المالك ٢٧ سبتمبر «اخوي» طُبعت «آخوي»): كلّ نصّ
+// حرفيّ يُطبع يمرّ على قاموس ثابت مرجعه رسم المصحف (الأسماء الناقصة «عبداله» والعبارات الدينيّة)، وعلى مساري
+// الكتابة والتوليد — لكن بلا أيّ ذكاء: لا مزوّد ولا مهلة ولا حارس مسافة تحرير كان يقبل «اخوي→آخوي» و«عمران→عمرن».
 {
   const at9h = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9h.includes('omranSpellFix') && at9h.includes('رسم المصحف'), 'المدقق موجود ومرجعه المصحف');
-  assert.ok(at9h.includes('__QURAN_FIXES') && at9h.includes('إن شاء الله'), 'قاموس حتمي للعبارات الدينية');
-  assert.ok(at9h.includes('__spellGuardOk') && at9h.includes('__omLev'), 'حارس يمنع تبديل الأسماء');
+  assert.ok(at9h.includes('const __SPELL_PHRASES') && at9h.includes('إن شاء الله'), 'قاموس حتمي للعبارات الدينية');
   assert.ok((at9h.match(/v-spell-quran/g) || []).length >= 3, 'مطبق على مساري الكتابة والتوليد');
-  const eStart = at9h.indexOf('function __omLev');
-  const eEnd = at9h.indexOf('async function omranSpellFix');
-  eval(at9h.slice(eStart, at9h.indexOf('const __QURAN_FIXES', eStart)));
-  assert.ok(__spellGuardOk('عبداله عمران', 'عبدالله عمران') === true, 'تصحيح الحرف الناقص مقبول');
-  assert.ok(__spellGuardOk('محمد', 'خالد') === false, 'تبديل اسم كامل مرفوض');
+  const fStart = at9h.indexOf('async function omranSpellFix');
+  const fBody = at9h.slice(fStart, at9h.indexOf('\n}\n', fStart));
+  assert.ok(fStart > 0 && !/callProviderAI|groq|mistral|setTimeout|fetch\(/.test(fBody), 'بلا ذكاء ولا شبكة ولا مهلة');
+  assert.ok(!at9h.includes('function __spellGuardOk') && !at9h.includes('function __omLev'), 'حارس مسافة التحرير أُزيل مع الذكاء');
+  const eStart = at9h.indexOf('const __SPELL_PHRASES');
+  eval(at9h.slice(eStart, fStart));
+  assert.ok(literalSpellFix('عبداله عمران') === 'عبدالله عمران', 'تصحيح الحرف الناقص مقبول');
+  assert.ok(literalSpellFix('محمد') === 'محمد' && literalSpellFix('عمران') === 'عمران', 'الاسم الصحيح لا يُمسّ');
 }
-console.log('  ✓ v-spell-quran: تدقيق ذكي بمرجع المصحف — وبحارس يحمي الأسماء');
+console.log('  ✓ v-spell-literal: قاموس ثابت بمرجع المصحف — بلا ذكاء، والأسماء واللهجة كما كُتبت');
 
 // 59 v-trend-five (طلب عمران ٥ سبتمبر): خمسة ترندات جديدة — انعكاس العصر،
 // تجميد الزمن، البوستر السينمائي، تحول المواد، انفجار الأبعاد — بالـ14 لغة

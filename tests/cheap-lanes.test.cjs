@@ -15,7 +15,8 @@ function completion(text) {
 }
 
 test('completeFreeChain: بترتيب السلسلة، والفاشل يُتخطّى، وأوّل نصّ يُرجَع مع مزوّده', async () => {
-  const env = { GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q', MISTRAL_API_KEY: 'm' };
+  // الترتيب صريح: الاختبار عن التخطّي لا عن الافتراضيّ (v-plan-routing جعل Groq أوّلًا).
+  const env = { GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q', MISTRAL_API_KEY: 'm', FREE_CHAIN: 'gemini,groq,mistral' };
   const calls = [];
   const fetchImpl = async (url, init) => {
     calls.push(url);

@@ -19,7 +19,7 @@ const VERSION = String(opt('version', '1.3.10'));
 const CODE = Number(opt('code', 20260918));
 const OUT = path.resolve(ROOT, String(opt('out', 'store/huawei/twa')));
 const HOST = 'omran-ai-builder.vercel.app';
-const PACKAGE_ID = 'com.omran.aibuilder';
+const PACKAGE_ID = 'com.omran.aibuilder.twa'; // اسم الحزمة المسجّل في AppGallery Connect (لا com.omran.aibuilder — ذاك اسم حزمة APKPure)
 
 const req = createRequire(pathToFileURL(path.join(ROOT, 'package.json')).href);
 let corePath = opt('core', '');

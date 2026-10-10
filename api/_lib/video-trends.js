@@ -1,4 +1,5 @@
-// v-video-trends: قوالب ترندات الفيديو (٢٥) — الأمر النهائي يُبنى هنا من قالب الترند ومدخلات المستخدم
+// v-video-trends: قوالب ترندات الفيديو — الأمر النهائي يُبنى هنا من قالب الترند ومدخلات المستخدم
+// v-trends-more (٢٤ سبتمبر): ٢٥ ← ٤٥ ترندًا. كلّ ترند: محرّك ونسبة وحاجة الصورة ونوع المدخل وقالب الأمر وإطار المعاينة.
 'use strict';
 const TRENDS = {
  "pixarstory": {
@@ -214,7 +215,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "opt",
   "kind": "name",
-  "prompt": "Festive Eid greeting video: the person (from the reference image if provided) in elegant Eid attire waves warmly and says in Arabic 'عيد مبارك {name}', decorated background with lanterns and a crescent moon, joyful music, elegant animated Arabic calligraphy 'عيد مبارك' appears.",
+  "prompt": "Festive Eid greeting video: the person (from the reference image if provided) in elegant Eid attire waves warmly and says joyfully in Arabic 'عيد مبارك {name}', decorated background with lanterns and a crescent moon, joyful music.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic festive still of a smiling Arab family in Eid attire with lanterns and crescent decorations, golden light",
@@ -304,9 +305,372 @@ const TRENDS = {
    "frame": "2.5D parallax art still of a portrait photo separating into floating three-dimensional layers with depth, dust particles between layers, dreamy light",
    "gender": "m"
   }
+ },
+ "realtour": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Cinematic real-estate walkthrough of the exact property in the reference image: a smooth gimbal camera glides forward through the space, revealing the living area, the windows and the view, natural daylight pouring in, realistic materials and furniture unchanged from the reference, slow steady motion, shallow depth of field, calm premium music, no text, no people.",
+   "scenes": null,
+   "preview": {
+     "frame": "cinematic real-estate still of a bright modern living room with floor-to-ceiling windows and a city view, gimbal walkthrough perspective",
+     "gender": "m"
+   }
+ },
+ "carreveal": {
+   "engine": "veo",
+   "ratio": "1280:720",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Luxury car reveal commercial: the exact vehicle from the reference image sits in a dark studio; overhead light bars sweep across the bodywork revealing its lines, the camera orbits slowly from the front three-quarter to the rear, reflections travel along the paint, faint haze on a polished floor, deep cinematic contrast, no text, no people.",
+   "scenes": null,
+   "preview": {
+     "frame": "luxury automotive commercial still of a dark SUV in a black studio with light bars sweeping across the glossy bodywork, reflections on polished floor",
+     "gender": "m"
+   }
+ },
+ "agentpitch": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "sentence",
+   "prompt": "Vertical social-media clip: the person from the reference image stands confidently in front of a modern property, looks at the camera and says clearly in Arabic: '{text}'. Lip-synced natural speech, friendly professional tone, medium shot, bright daylight, soft background blur, same face and clothing as the reference, no text overlay.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a confident Arab man in a white shirt speaking to camera in front of a modern villa, bright daylight, vertical social video",
+     "gender": "m"
+   }
+ },
+ "foodsizzle": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "product",
+   "prompt": "Appetising food commercial of {text}: extreme macro of the exact dish from the reference image, steam rising slowly, a droplet falling in slow motion, glossy sauce catching warm light, the camera drifts in a slow arc across the plate, shallow depth of field, rich saturated colours, no text, no hands.",
+   "scenes": null,
+   "preview": {
+     "frame": "macro food commercial still of a steaming grilled meat platter with rice, glossy sauce and rising steam under warm light",
+     "gender": "m"
+   }
+ },
+ "buildprogress": {
+   "engine": "veo",
+   "ratio": "1280:720",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Construction progress morph: the building in the reference image starts as a bare concrete shell with scaffolding, then time-lapses smoothly into the finished, painted and landscaped building with lit windows, camera locked on the same angle throughout, clouds racing overhead, day turning to evening, photorealistic, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a residential building half concrete shell with scaffolding and half finished with landscaping, split time-lapse feel",
+     "gender": "m"
+   }
+ },
+ "testimonial": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "sentence",
+   "prompt": "Warm customer testimonial clip: the person from the reference image sits in a bright, tidy interior, smiles at the camera and says sincerely in Arabic: '{text}'. Lip-synced natural speech, honest friendly delivery, soft window light, shallow depth of field, same face and clothing as the reference, no text overlay.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a smiling Arab woman in hijab speaking warmly to camera in a bright modern interior, soft window light",
+     "gender": "w"
+   }
+ },
+ "offercountdown": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "product",
+   "prompt": "High-energy promo for {text}: the exact product from the reference image sits centre frame on a clean pedestal while a large glowing countdown ticks down behind it, light streaks sweep past, a bold circular discount badge snaps into the corner with a punch, dynamic camera push-in, vivid contrast, no readable text or numbers other than the countdown digits.",
+   "scenes": null,
+   "preview": {
+     "frame": "energetic product promo still of a boxed product on a pedestal with a glowing countdown and light streaks, bold discount badge",
+     "gender": "m"
+   }
+ },
+ "graduation": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "name",
+   "prompt": "Joyful graduation moment: the person from the reference image wears a graduation gown and cap, throws the cap into the air in slow motion while golden confetti falls, campus lawn at golden hour, friends cheering warmly out of focus behind and calling out their name '{name}' with joy, photorealistic, warm uplifting music.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a young Arab graduate in gown and cap throwing the cap into the air with golden confetti at sunset on a campus lawn",
+     "gender": "m"
+   }
+ },
+ "newborn": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "name",
+   "prompt": "Tender newborn announcement: the baby from the reference image sleeps peacefully wrapped in a soft blanket, gentle breathing, tiny fingers moving slightly, soft diffused window light, dust motes floating, a soft off-screen voice-over gently welcomes them by name, saying '{name}' warmly, photorealistic, calm lullaby music.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a sleeping newborn wrapped in a soft cream blanket in gentle window light, dust motes floating",
+     "gender": "w"
+   }
+ },
+ "wedding": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Cinematic wedding film moment: the couple from the reference image in slow motion as rose petals drift around them, warm bokeh string lights behind, the camera circles slowly and pushes in, elegant soft focus, golden warm grade, romantic orchestral music, photorealistic, faces and clothing unchanged from the reference, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "cinematic wedding still of an elegantly dressed couple in slow motion with rose petals and warm bokeh string lights behind them",
+     "gender": "w"
+   }
+ },
+ "ramadan": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "opt",
+   "kind": "name",
+   "prompt": "Ramadan greeting scene: an ornate brass lantern glows in the foreground, a crescent moon hangs in a deep blue sky, a beautifully set iftar table with dates and water waits below, gentle particles of light drift upward, the camera rises slowly, a warm off-screen voice softly says the Ramadan greeting 'رمضان مبارك {name}', warm spiritual ambience.",
+   "scenes": null,
+   "preview": {
+     "frame": "warm Ramadan still of an ornate brass lantern glowing beside a crescent moon over a set iftar table with dates, deep blue night",
+     "gender": "m"
+   }
+ },
+ "nationalday": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "National Day celebration: the person from the reference image stands proudly as UAE flags wave in the wind behind them, fireworks bloom in the evening sky, confetti in national colours drifts down, the camera pushes in slowly, festive uplifting music, photorealistic, same face and clothing as the reference, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person in traditional Gulf dress with UAE flags waving and fireworks blooming in the evening sky",
+     "gender": "m"
+   }
+ },
+ "familywave": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Bring this family photograph to life: every person subtly breathes, blinks, turns slightly to each other, breaks into a warm smile and waves at the camera together, natural micro-movements only, identities, faces, clothing and background exactly as in the reference, gentle warm music, photorealistic, respectful.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a warm Gulf Arab family of four smiling and waving at the camera in a bright living room",
+     "gender": "m"
+   }
+ },
+ "actionhero": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Blockbuster action-hero shot: the person from the reference image walks slowly toward the camera in confident slow motion while a fiery explosion erupts behind them and they never look back, embers and debris flying, heavy contrast and lens flares, low hero angle, epic drum score, photorealistic, same face and clothing as the reference, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "blockbuster action still of a man walking toward camera in slow motion with a fiery explosion behind him, embers flying, low hero angle",
+     "gender": "m"
+   }
+ },
+ "paintingalive": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The reference image becomes a living oil painting: thick visible brush strokes form and shimmer, pigments swirl slowly, the subject breathes and blinks inside the painting, canvas texture and craquelure visible, warm gallery lighting, slow camera drift, artistic and dreamlike, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "living oil painting still of a portrait with thick visible brush strokes and canvas texture, warm gallery light, pigments swirling",
+     "gender": "w"
+   }
+ },
+ "miniature": {
+   "engine": "veo",
+   "ratio": "1280:720",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Tilt-shift miniature effect on the scene from the reference image: strong selective focus makes the whole scene look like a tiny handcrafted model, tiny cars and people move in fast motion, saturated toy-like colours, slight time-lapse of light across the scene, playful light music, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "tilt-shift miniature still of a city street from above looking like a toy model, tiny cars, saturated colours, strong selective focus",
+     "gender": "m"
+   }
+ },
+ "underwater": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Underwater dream scene: the subject from the reference image floats gracefully in clear turquoise water, shafts of sunlight cutting down from the surface, bubbles rising, hair and fabric drifting slowly, colourful fish passing by, gentle slow motion, photorealistic, same face as the reference, calm ambient music, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic underwater still of a person floating in clear turquoise water with sun rays from above, bubbles and colourful fish",
+     "gender": "w"
+   }
+ },
+ "weathershift": {
+   "engine": "veo",
+   "ratio": "1280:720",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "One continuous locked shot of the place from the reference image as the weather transforms: bright sunshine with sharp shadows, then rolling clouds and falling rain with puddles and reflections, then gentle snowfall settling on every surface, seamless transitions, the framing never moves, photorealistic, atmospheric sound, no text.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a street scene split between bright sun, falling rain and settling snow, seamless weather transition",
+     "gender": "m"
+   }
+ },
+ "neonnight": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Cyberpunk neon night: the person from the reference image stands on a rain-soaked street at night, saturated pink and cyan neon signs glowing around them and reflecting in the wet asphalt, light haze and drifting steam, slow camera push-in, cinematic contrast, photorealistic, same face and clothing as the reference, no readable text on the signs.",
+   "scenes": null,
+   "preview": {
+     "frame": "cyberpunk neon night still of a person on a rain-soaked street with pink and cyan neon reflections in the wet asphalt, light haze",
+     "gender": "m"
+   }
+ },
+ "calligraphy": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "none",
+   "kind": "sentence",
+   "prompt": "Elegant Arabic calligraphy animation: glossy black ink flows across warm cream paper and forms the Arabic sentence '{text}' in flowing Thuluth calligraphy, gold leaf accents catching the light as each letter completes, then the ink blooms softly outward into an ornate arabesque pattern, macro detail, warm side light, calm oud music, spelled exactly as written and no other text.",
+   "scenes": null,
+   "preview": {
+     "frame": "macro still of glossy black Arabic Thuluth calligraphy being written in ink on warm cream paper with gold leaf accents, warm side light",
+     "gender": "m"
+   }
+ },
+ /* v-trends-more-2 (المالك: «أريد أزيد في الفيديوهات — الترندات»): +١٠ ترندات جديدة، لا تكرار لموضوع قائم. */
+ "actionfigure": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image is reimagined as a collectible action-figure toy sealed in plastic blister packaging on a toy-store shelf, with small plastic accessories beside them in the tray; the camera slowly orbits the package under bright store lighting, then the plastic blister flexes gently and the figure inside blinks and gives a small wave before freezing back into toy pose, playful studio light, photorealistic toy product look, same face as the reference.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a collectible action-figure toy of a young man sealed in plastic blister packaging with small accessories, on a toy-store shelf under bright light",
+     "gender": "m"
+   }
+ },
+ "superhero": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image stands as energy swirls around them and their clothing transforms into a sleek superhero suit with a flowing cape, wind whipping, a city skyline glowing at dusk behind them; they plant their feet and look up heroically, dramatic rim light, powerful orchestral score, photorealistic, same face as the reference.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person in a sleek superhero suit with a flowing cape standing heroically before a glowing dusk city skyline, dramatic rim light",
+     "gender": "m"
+   }
+ },
+ "catwalk": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image walks confidently down a lit fashion-runway catwalk wearing their own outfit exactly as photographed, camera flashes popping from the audience on both sides, dramatic runway music, slow-motion strides, professional runway lighting, photorealistic, same face and outfit as the reference.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a woman walking confidently down a lit fashion runway catwalk with camera flashes popping from the audience, dramatic lighting",
+     "gender": "w"
+   }
+ },
+ "animeaction": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Transform the scene into a high-energy Japanese shonen-anime style: bold ink outlines, dramatic speed lines and impact frames, the person from the reference image strikes a confident dynamic pose as their hair and clothes whip with sudden wind, vivid saturated color flashes, intense orchestral hit, same person recognizable in anime form.",
+   "scenes": null,
+   "preview": {
+     "frame": "high-energy shonen anime still of a young man in a dynamic pose with bold ink outlines, dramatic speed lines and vivid color flashes",
+     "gender": "m"
+   }
+ },
+ "claymation": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Transform the reference image into a handcrafted claymation stop-motion character: visible clay texture, fingerprint dents and sculpting seams, subtle jittery stop-motion movement frame to frame, a miniature handmade set behind them, warm soft studio light, playful plinky music, same person recognizable in clay form.",
+   "scenes": null,
+   "preview": {
+     "frame": "claymation stop-motion still of a character with visible clay texture and fingerprint dents standing in a miniature handmade set, warm soft light",
+     "gender": "w"
+   }
+ },
+ "legofy": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Transform the person from the reference image into a LEGO minifigure version of themselves: blocky plastic body, cylindrical head, painted-on facial features matching their real face, standing on a LEGO baseplate inside a small LEGO-brick diorama that echoes their outfit's colors; the camera orbits slowly, cheerful bright light, playful music, same person recognizable as a LEGO figure.",
+   "scenes": null,
+   "preview": {
+     "frame": "still of a LEGO minifigure version of a person with a cylindrical head and blocky plastic body standing on a baseplate in a small brick diorama",
+     "gender": "m"
+   }
+ },
+ "vhsflashback": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image is seen through a nostalgic 1990s VHS home-camcorder look: soft glow, gentle scan lines, slight tracking wobble and warm color bleed, subtle grain; they smile and wave naturally at the camera in a cozy home setting, handheld camera sway, same face and outfit as the reference, warm nostalgic feel.",
+   "scenes": null,
+   "preview": {
+     "frame": "nostalgic 1990s VHS camcorder-style still of a person smiling and waving in a cozy home setting, soft glow, gentle scan lines, warm grain",
+     "gender": "w"
+   }
+ },
+ "podcastclip": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "sentence",
+   "prompt": "Vertical podcast-style clip: the person from the reference image sits at a studio desk with a professional microphone and soft LED panel lighting behind them, leans in and says energetically in Arabic: '{text}'. Lip-synced natural speech, confident engaging delivery, shallow depth of field, same face and clothing as the reference, no text overlay.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person sitting at a studio podcast desk with a professional microphone and soft LED panel lighting behind them, confident expression",
+     "gender": "m"
+   }
+ },
+ "dayinlife": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Fast rhythmic day-in-the-life montage of the person from the reference image (same face, same general style): waking up and stretching in soft morning light, sipping coffee by a sunny window, stepping out of the front door with a smile, walking energetically down a city street; quick cuts, upbeat music, photorealistic, natural candid feel.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person sipping coffee by a sunny window in a warm morning montage moment, candid natural feel",
+     "gender": "w"
+   }
+ },
+ "birthdaybash": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Joyful birthday celebration: the person from the reference image sits before a beautifully decorated birthday cake with lit candles, friends clapping softly out of focus behind them; they smile and blow out the candles as balloons and warm confetti drift down, warm party lighting, cheerful music, photorealistic, same face and outfit as the reference.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a person smiling before a decorated birthday cake with lit candles, balloons and warm confetti drifting, cheerful party light",
+     "gender": "w"
+   }
  }
 };
-function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 240); }
+/* v-trend-extra: الحدّ ٢٤٠ ← ٤٠٠ — المالك يكتب أكثر من جملة («دمج الكلمات») */
+function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 400); }
+const BACKDROPS = require('./video-backdrops.js');
 /** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, hasImage} */
 function buildTrendPrompt(key, params) {
   const t = TRENDS[key];
@@ -322,6 +686,107 @@ function buildTrendPrompt(key, params) {
       .replace('{look}', p.hasImage ? ' whose look is based on the reference image, rendered in Pixar 3D style' : '');
   }
   prompt = prompt.replace(/\{name\}/g, name).replace(/\{text\}/g, text || 'a joyful moment');
-  return { prompt, engine: t.engine, ratio: t.ratio, sceneCount: (t.scenes && t.scenes.length) || 1 };
+  /* v-trend-identity-2 (المالك: «الفيديوات كلّها تغيّر الأشكال… أريد نفس شكل الشخصيّة الي أحطّها»):
+     قفل الهويّة (v-trend-identity) كان يُلحق مرّة واحدة في الذيل فقط — نفس الضعف الذي شُخِّص وعُولج
+     في أنماط الصور (v-pstyle-identity): «جملة احفظ الهويّة لا تُقاس بوجودها بل بموضعها وبما يليها»،
+     وهناك الحلّ كان فقرة هويّة **أوّلًا** (أولويّة) مع تذكير أخير (حداثة) معًا لا أحدهما. القوالب الـ٤٥
+     تبدأ كلّها بأمر التحويل/المشهد مباشرة («Transform the person…» أو نظيره) بلا مرساة هويّة قبله؛
+     هذه الفقرة تُلحق أوّلًا هنا (والقفل القائم في الذيل يبقى كما هو). بلا نداء إضافيّ ولا كلفة، ومتوافقة
+     مع الأساليب الفنّيّة (بيكسار/جيبلي/الخ) لأنّها تقول «مهما أعاد المشهد رسمه» لا «كما صُوِّر». */
+  /* v-two-people (المالك: «إذا حطيت صورة شخصيّتين يغيّر الشخصيّة الثانية فقط — وحدة تمام والثانية يغيّر الشكل كامل»):
+     فقرة الأولويّة وقفل الذيل كانا بصيغة «الشخص» المفرد — يحميان شخصًا واحدًا، والثاني لا يحرسه إلّا سطر «IMPORTANT».
+     مع أكثر من شخص تصيران بصيغة الجمع: كلّ واحد بوجهه هو. الشخص الواحد كما كان حرفيًّا. */
+  const nPeople = Math.max(1, Math.min(3, parseInt(p.people, 10) || 1));
+  if (p.hasImage && nPeople > 1) {
+    prompt = 'WHO THEY ARE (read first): the reference image shows ' + nPeople + ' real, specific people — not characters'
+      + ' to invent. Each one\'s face shape, eyes, eyebrows, nose, lips, jawline, skin tone, hair and build belong to'
+      + ' that person alone and must carry through recognizably into the video, however the scene below restyles, ages,'
+      + ' dresses or animates them. Never invent a new face for any of them, never average them into generic faces,'
+      + ' never swap faces between them.\n\nSCENE: ' + prompt;
+  } else if (p.hasImage) {
+    prompt = 'WHO THEY ARE (read first): the reference image shows a real, specific person — not a character'
+      + ' to invent. Their face shape, eyes, eyebrows, nose, lips, jawline, skin tone, and hair belong to them'
+      + ' and must carry through recognizably into the video, however the scene below restyles, ages, dresses'
+      + ' or animates them. Never invent a new face, never average it into a generic one, never swap it for'
+      + ' someone else\'s.\n\nSCENE: ' + prompt;
+  }
+  /* v-trend-people: أكثر من شخص في أوّل إطار — القوالب الـ٤٥ مكتوبة بصيغة «الشخص»، فنُلحق
+     شرطًا واحدًا بدل تعديلها كلّها: كلّهم يظهرون، وكلّ واحد بوجهه هو، ولا يُدمجون في واحد. */
+  /* v-trend-notext (المالك بلقطة: ترجمة محروقة في ناتج «سوق التراث» حروفها مكسورة — «غيوييةامة يه
+     حادافلا سخحلں»): محرّكات الفيديو لا تصل العربيّة ولا تعكس اتّجاهها، فكلّ نصّ تكتبه على الإطار يخرج
+     ركامًا. و{text} في القوالب **كلام مسموع** لا مكتوب. المنع يُلحق لكلّ الترندات إلّا `calligraphy`
+     الذي موضوعه رسم الجملة نفسها، وعنوان `movieposter` (تحته). النمط نفسه مستعمل في وضع الممثّل
+     بصانع الفيديو. */
+  /* v-trend-notext-2 (وُجد أثناء v-trend-identity-2، أمر المالك «عالجها»): خمسة قوالب كانت تطلب في
+     نصّها نصًّا على الإطار (بطاقة اسم/عنوان) ثمّ يُلحق بها هذا المنع نفسه فيناقضها — العنوان لا يظهر
+     أصلًا. أربعة منها (تخرّج/مولود/رمضان/عيد) حُوِّلت أعلاه إلى **كلام مسموع** بدل بطاقة مكتوبة (نفس
+     مبدأ {text} أعلاه، ونفس درس v-trend-notext) فصار المنع صحيحًا لها بلا تعديل هنا. `movieposter`
+     وحده جوهره عنوان مقروء (لا بديل مسموع لملصق فيلم) — يُستثنى كـ`calligraphy` تمامًا، بالمخاطرة
+     الموثَّقة نفسها (حروف عربيّة قد تخرج مكسورة إن كتب المستخدم عنوانًا عربيًّا). */
+  /* v-trend-backdrops: خلفيّة جديدة لكلّ فيديو من مكتبة ١٠٠ (رقم العميل) — للترندات التي مكانها مرن.
+     المكتوب من المستخدم يغلب: إن سمّى مكانًا فهو المكان. */
+  const bd = (p.bg !== undefined && p.bg !== null && p.bg !== '') ? BACKDROPS.backdropFor(key, p.bg) : null; /* بلا رقم من العميل = السلوك القديم */
+  let addons = '';
+  if (bd) addons += ' SETTING (replaces the default location, same action and style): ' + bd + '.';
+  /* v-trend-extra (المالك: «ليش ما أقدر أكتب اللي أريده؟»): ٤٦ من ٥٥ ترندًا بلا خانة كتابة أصلًا.
+     الآن لكلّ ترند خانة «اكتب اللي تبيه» اختياريّة تُدمج هنا توجيهًا يعدّل الترند ولا يلغيه. */
+  const extra = clean(p.extra);
+  if (extra) addons += ' USER DIRECTION (follow it; it wins over the setting if it names a place): ' + extra + '.';
+  const base = prompt;
+  prompt = '';
+  if (key !== 'calligraphy' && key !== 'movieposter') {
+    prompt += ' No on-screen text: no subtitles, no captions, no titles, no watermarks, and no letters or'
+      + ' words anywhere in the frame. Spoken or sung words are heard only, never written.';
+  }
+  /* v-trend-identity (المالك بلقطتين: صورة ابنه مقابل ناتج ترند «بيبي ستايل» — «يغيّر الأشكال، شوف
+     الاختلاف الكبير»): ٤٥ قالبًا مكتوبة بصيغة «حوّل الشخص إلى…»، وأقوى ما فيها «same facial features»
+     ثلاث كلمات في ذيل الأمر — وهو بعينه الضعف الذي عولج في أنماط الصور (v-pstyle-identity). القفل
+     يُلحق أخيرًا فيكون آخر ما يقرؤه المحرّك، وصيغته تحفظ الهويّة **عبر** ما يغيّره الترند (سنًّا أو
+     زيًّا أو أسلوبًا) لا ضدّه — كصياغة ageshift المثبَتة. */
+  if (p.hasImage && nPeople > 1) {
+    prompt += ' IDENTITY (mandatory): every one of the ' + nPeople + ' people in the video is the same real person as in the reference image —'
+      + ' each keeps their own face shape, eyes, eyebrows, nose, lips, jawline, skin tone, and hair. Whatever this scene changes'
+      + ' (age, outfit, style, setting), who each of them is never changes: someone who knows them must recognize every one of them'
+      + ' instantly. Never replace any of them with a different, prettier or more generic face.';
+  } else if (p.hasImage) {
+    prompt += ' IDENTITY (mandatory): the person in the video is the same real person as in the reference image —'
+      + ' same face shape, eyes, eyebrows, nose, lips, jawline, skin tone, and hair. Whatever this scene changes'
+      + ' (age, outfit, style, setting), who they are never changes: someone who knows them must recognize them'
+      + ' instantly. Never replace them with a different, prettier or more generic face.';
+  }
+  const people = Math.max(1, Math.min(3, parseInt(p.people, 10) || 1));
+  if (people > 1) {
+    prompt += ' IMPORTANT — the reference image contains ' + people + ' different people: all ' + people
+      + ' of them must appear together throughout the video, each keeping their own exact face and identity from the reference image;'
+      + ' never merge them into one person, never replace anyone with an invented person, and never drop anyone out of frame.';
+  }
+  /* v-trend-extra: المحرّكات تقصّ الأمر (Veo/Omni/MiniMax عند ١٥٠٠ حرف، ويُلحق بعده سطر الإطار الأوّل)
+     — والذيل (منع الكتابة، قفل الهويّة، شرط الأشخاص) هو الأهمّ. الإضافات تأخذ ما يتبقّى من الميزانيّة
+     فقط، فتُقصّ هي ولا يُقصّ الذيل أبدًا. */
+  const tail = prompt;
+  /* شخص واحد: حدّ المحرّك ١٥٠٠؛ أكثر: يُلحق بعد البناء سطر الإطار الأوّل (≈٣٣٠ حرفًا) فيُحجز له */
+  const room = Math.max(0, (people > 1 ? 1170 : 1480) - base.length - tail.length);
+  prompt = base + (addons.length > room ? addons.slice(0, room) : addons) + tail;
+  return { prompt, engine: t.engine, ratio: t.ratio, people, sceneCount: (t.scenes && t.scenes.length) || 1 };
 }
-module.exports = { TRENDS, buildTrendPrompt };
+/* v-video-identity (المالك بفيديو «سفينة حربيّة» وصورته: «يغيّر الشخصيّة، مش نفس الشخصيّة»): صانع الفيديو
+   الحرّ (Omni وVeo) كان يرسل الصورة مع وصف المستخدم **بلا أيّ أمر يحفظ الوجه** — الترندات وحدها كان لها
+   قفل. فيأخذ المحرّك الصورة إلهامًا ويخترع وجهًا (في الفيديو: وجه أنحف، أنف آخر، لحية أخفّ، بلا ابتسامته).
+   الغلاف نفسه: مرساة أوّلًا وقفل أخيرًا، ووصف المستخدم يُقصّ هو ليبقى القفلان داخل حدّ المحرّك. */
+/* v-video-photo-identity: `subject` يسمّي الصورة كما يفهمها المحرّك — Omni يربط الصورة بدورها بوسم
+   <IMAGE_REF_0> داخل النصّ (بلا وسم «يقرّر النموذج كيف يستعملها» — توثيق المزوّد). الافتراضيّ كما كان. */
+/* v-two-people: `people` (اختياريّ) — صورة فيها شخصان أو أكثر (عدّهم كشف الوجوه في أوّل الإطار): القفلان بصيغة الجمع،
+   كلّ واحد بوجهه ولا تبادل بينهم. بلا عدد = المفرد كما كان حرفيًّا. */
+function withIdentityLock(promptText, max, subject, people) {
+  const cap = max || 1500;
+  const n = Math.max(1, Math.min(3, parseInt(people, 10) || 1));
+  const pre = n > 1
+    ? 'MAIN CHARACTERS: the ' + n + ' real people in ' + (subject || 'the attached reference photo') + ' — keep each person\'s own exact face (face shape, eyes, eyebrows, nose, lips, jawline, beard, skin tone, hair) in every shot, never swapped or merged. '
+    : 'MAIN CHARACTER: the real person in ' + (subject || 'the attached reference photo') + ' — keep their exact face (face shape, eyes, eyebrows, nose, lips, jawline, beard, skin tone, hair) in every shot. ';
+  const post = n > 1
+    ? ' IDENTITY (mandatory): every person who appears is one of these same ' + n + ' real people from the photo, each with their own face — never a different, prettier or generic face; someone who knows them must recognize every one of them instantly.'
+    : ' IDENTITY (mandatory): whenever a person appears, it is this same real person from the photo — never a different, prettier or generic face; someone who knows them must recognize them instantly.';
+  const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
+  return pre + body + post;
+}
+module.exports = { TRENDS, buildTrendPrompt, withIdentityLock };

@@ -1,0 +1,636 @@
+{
+ "version": 1,
+ "note": "مقياس جودة المحادثة — ٥٠ سؤالًا من استخدام المالك. كلّ فحص آليّ مجّانيّ؛ التشغيل يكلّف نداءات مزوّد.",
+ "questions": [
+  {
+   "id": "guide-residency",
+   "cat": "guide",
+   "q": "وين ألقى تجديد الإقامة في الإمارات؟ دخّلني خطوة خطوة",
+   "checks": {
+    "numbered": 3,
+    "minLinks": 2,
+    "stepLinks": 0.5,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "guide-license",
+   "cat": "guide",
+   "q": "كيف أجدد رخصة القيادة في دبي؟",
+   "checks": {
+    "numbered": 3,
+    "minLinks": 2,
+    "stepLinks": 0.5,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "guide-fines",
+   "cat": "guide",
+   "q": "وين أدفع مخالفات المرور في أبوظبي؟",
+   "checks": {
+    "numbered": 3,
+    "minLinks": 2,
+    "stepLinks": 0.5,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "guide-goodconduct",
+   "cat": "guide",
+   "q": "كيف أطلع شهادة حسن سيرة وسلوك من شرطة دبي؟",
+   "checks": {
+    "numbered": 3,
+    "minLinks": 2,
+    "stepLinks": 0.5,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "guide-playconsole",
+   "cat": "guide",
+   "q": "أرشدني كيف أسجل حساب مطوّر في Google Play Console",
+   "checks": {
+    "numbered": 3,
+    "minLinks": 2,
+    "stepLinks": 0.5,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "guide-gmail",
+   "cat": "guide",
+   "q": "كيف أغير كلمة السر حق الجيميل؟",
+   "checks": {
+    "numbered": 3,
+    "minLinks": 2,
+    "stepLinks": 0.5,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "guide-uk-visa",
+   "cat": "guide",
+   "q": "وين أحجز موعد تأشيرة بريطانيا من الإمارات؟",
+   "checks": {
+    "numbered": 3,
+    "minLinks": 2,
+    "stepLinks": 0.5,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "guide-notfound",
+   "cat": "guide",
+   "turns": [
+    "وين ألقى تجديد الإقامة في الإمارات؟",
+    "ما لقيت الزر اللي قلت عنه، وين بالضبط؟"
+   ],
+   "checks": {
+    "minLinks": 1,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "live-gold",
+   "cat": "live",
+   "q": "كم سعر الذهب اليوم في الإمارات؟",
+   "checks": {
+    "sourcesOrLinks": 1,
+    "hasDigits": true,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "live-weather",
+   "cat": "live",
+   "q": "كيف الطقس في دبي اليوم؟",
+   "checks": {
+    "sourcesOrLinks": 1,
+    "hasDigits": true,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "live-usd",
+   "cat": "live",
+   "q": "كم سعر الدولار مقابل الدرهم الإماراتي؟",
+   "checks": {
+    "sourcesOrLinks": 1,
+    "hasDigits": true,
+    "noRefusal": true,
+    "mustIncludeAny": [
+     [
+      "3.67",
+      "٣٫٦٧",
+      "3,67"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "live-news",
+   "cat": "live",
+   "q": "وش آخر أخبار الذكاء الاصطناعي هالأسبوع؟",
+   "checks": {
+    "sourcesOrLinks": 1,
+    "hasDigits": true,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "live-match",
+   "cat": "live",
+   "q": "كم نتيجة آخر مباراة لريال مدريد؟",
+   "checks": {
+    "sourcesOrLinks": 1,
+    "hasDigits": true,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "live-oil",
+   "cat": "live",
+   "q": "كم سعر برميل النفط برنت اليوم؟",
+   "checks": {
+    "sourcesOrLinks": 1,
+    "hasDigits": true,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "know-canberra",
+   "cat": "knowledge",
+   "q": "وش عاصمة أستراليا؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "كانبرا",
+      "Canberra"
+     ]
+    ],
+    "maxChars": 1500
+   }
+  },
+  {
+   "id": "know-bones",
+   "cat": "knowledge",
+   "q": "كم عدد عظام جسم الإنسان البالغ؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "206",
+      "٢٠٦"
+     ]
+    ],
+    "maxChars": 1500
+   }
+  },
+  {
+   "id": "know-hugo",
+   "cat": "knowledge",
+   "q": "مين كتب رواية البؤساء؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "هوغو",
+      "هيجو",
+      "هوجو",
+      "Hugo"
+     ]
+    ],
+    "maxChars": 1500
+   }
+  },
+  {
+   "id": "know-water",
+   "cat": "knowledge",
+   "q": "من إيش يتكون الماء كيميائيًا؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "هيدروجين",
+      "الهيدروجين"
+     ]
+    ],
+    "maxChars": 1500
+   }
+  },
+  {
+   "id": "know-light",
+   "cat": "knowledge",
+   "q": "كم سرعة الضوء تقريبًا؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "300",
+      "299",
+      "٣٠٠",
+      "٢٩٩"
+     ]
+    ],
+    "maxChars": 1500
+   }
+  },
+  {
+   "id": "know-uae-founded",
+   "cat": "knowledge",
+   "q": "متى تأسست دولة الإمارات؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "1971",
+      "١٩٧١"
+     ]
+    ],
+    "maxChars": 1500
+   }
+  },
+  {
+   "id": "fmt-table",
+   "cat": "format",
+   "q": "قارن بين الآيفون والسامسونج في جدول: الكاميرا والبطارية والسعر",
+   "checks": {
+    "table": true
+   }
+  },
+  {
+   "id": "fmt-5tips",
+   "cat": "format",
+   "q": "اعطني 5 نصائح للنوم العميق",
+   "checks": {
+    "listItems": 5
+   }
+  },
+  {
+   "id": "fmt-3points",
+   "cat": "format",
+   "q": "لخص فوائد المشي في 3 نقاط بس",
+   "checks": {
+    "listItems": 3,
+    "maxListItems": 4
+   }
+  },
+  {
+   "id": "fmt-week",
+   "cat": "format",
+   "q": "سوّ لي خطة أكل صحي لأسبوع مرتبة بالأيام",
+   "checks": {
+    "mustIncludeAll": [
+     "الأحد",
+     "الاثنين",
+     "الجمعة"
+    ]
+   }
+  },
+  {
+   "id": "fmt-tyre",
+   "cat": "format",
+   "q": "رتب لي خطوات تغيير إطار السيارة",
+   "checks": {
+    "numbered": 5
+   }
+  },
+  {
+   "id": "dialect-howru",
+   "cat": "dialect",
+   "q": "شلونك اليوم؟ وش مسوي؟",
+   "checks": {
+    "arabic": true,
+    "maxChars": 500,
+    "noList": true
+   }
+  },
+  {
+   "id": "dialect-project",
+   "cat": "dialect",
+   "q": "أبي فكرة مشروع صغير براس مال 10 آلاف درهم",
+   "checks": {
+    "arabic": true,
+    "noRefusal": true,
+    "minChars": 200
+   }
+  },
+  {
+   "id": "dialect-dinner",
+   "cat": "dialect",
+   "q": "عطني طبخة سريعة للعشا باللي عندي بيض وطماط وبصل",
+   "checks": {
+    "arabic": true,
+    "mustIncludeAny": [
+     [
+      "بيض"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "dialect-tired",
+   "cat": "dialect",
+   "q": "ترى تعبان من الدوام، شسوي؟",
+   "checks": {
+    "arabic": true,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "dialect-shway",
+   "cat": "dialect",
+   "q": "شرايك أشتري سيارة كاش ولا أقساط؟",
+   "checks": {
+    "arabic": true,
+    "noRefusal": true,
+    "minChars": 150
+   }
+  },
+  {
+   "id": "code-reverse",
+   "cat": "code",
+   "q": "اكتب دالة بايثون تعكس النص",
+   "checks": {
+    "codeBlock": true,
+    "mustIncludeAny": [
+     [
+      "def "
+     ]
+    ]
+   }
+  },
+  {
+   "id": "code-fix",
+   "cat": "code",
+   "q": "صحح هذا الكود: const x = [1,2,3]; x.map(n => n*2",
+   "checks": {
+    "codeBlock": true,
+    "mustIncludeAny": [
+     [
+      "x.map(n => n*2)",
+      "x.map((n) => n*2)",
+      "x.map(n => n * 2)",
+      ".map((n) => n * 2)"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "code-letconst",
+   "cat": "code",
+   "q": "وش الفرق بين let و const في جافاسكربت؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "إعادة",
+      "تعيين",
+      "تغيير"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "code-sql",
+   "cat": "code",
+   "q": "اكتب استعلام SQL يجيب أعلى 5 رواتب من جدول employees",
+   "checks": {
+    "codeBlock": true,
+    "mustIncludeAll": [
+     "ORDER BY",
+     "5"
+    ]
+   }
+  },
+  {
+   "id": "code-html",
+   "cat": "code",
+   "q": "اكتب زر HTML لونه ذهبي ولما أضغطه يطلع تنبيه",
+   "checks": {
+    "codeBlock": true,
+    "mustIncludeAny": [
+     [
+      "<button"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "math-mult",
+   "cat": "math",
+   "q": "كم حاصل 17 × 23؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "391",
+      "٣٩١"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "math-salary",
+   "cat": "math",
+   "q": "راتبي 12000 درهم وصرفت 35% منه، كم باقي؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "7800",
+      "7,800",
+      "٧٨٠٠",
+      "٧٬٨٠٠"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "math-days",
+   "cat": "math",
+   "q": "كم يوم بين 1 يناير 2026 و 1 مارس 2026؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "59",
+      "٥٩"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "math-percent",
+   "cat": "math",
+   "q": "السعر زاد من 80 إلى 100 درهم، كم نسبة الزيادة؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "25%",
+      "25 %",
+      "٢٥٪",
+      "25٪",
+      "25 في"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "math-ages",
+   "cat": "math",
+   "q": "ولد عمره ضعف عمر أخته، ومجموع عمريهم 18 سنة. كم عمر كل واحد؟",
+   "checks": {
+    "mustIncludeAll": [
+     [
+      "12",
+      "١٢"
+     ],
+     [
+      "6",
+      "٦"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "mem-name",
+   "cat": "memory",
+   "turns": [
+    "اسمي سالم وعمري 34 سنة",
+    "كم بيكون عمري بعد 6 سنوات، وشو اسمي؟"
+   ],
+   "checks": {
+    "mustIncludeAll": [
+     [
+      "40",
+      "٤٠"
+     ],
+     [
+      "سالم"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "mem-city",
+   "cat": "memory",
+   "turns": [
+    "أنا ساكن في العين وأحب القهوة العربية",
+    "اقترح لي مكان أروح له نهاية الأسبوع قريب مني"
+   ],
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "العين",
+      "جبل حفيت",
+      "حفيت"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "mem-car",
+   "cat": "memory",
+   "turns": [
+    "خلنا نتكلم عن سيارة تويوتا كامري 2024",
+    "كم تصرف بنزين تقريبًا؟"
+   ],
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "كامري",
+      "Camry",
+      "لتر",
+      "كم/"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "mem-translate",
+   "cat": "memory",
+   "turns": [
+    "ترجم: good morning",
+    "والحين نفس الجملة بالفرنسي"
+   ],
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "Bonjour",
+      "bonjour"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "write-apology",
+   "cat": "writing",
+   "q": "اكتب رسالة اعتذار رسمية لمديري عن التأخير اليوم",
+   "checks": {
+    "arabic": true,
+    "minChars": 150,
+    "noRefusal": true
+   }
+  },
+  {
+   "id": "write-poem",
+   "cat": "writing",
+   "q": "اكتب بيتين شعر عن الإمارات",
+   "checks": {
+    "arabic": true,
+    "maxChars": 800
+   }
+  },
+  {
+   "id": "write-product",
+   "cat": "writing",
+   "q": "اكتب وصف منتج لعطر عود فاخر في حدود 50 كلمة",
+   "checks": {
+    "arabic": true,
+    "maxWords": 90
+   }
+  },
+  {
+   "id": "honest-fake-city",
+   "cat": "honesty",
+   "q": "كم عدد سكان مدينة زورالاند في الإمارات؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "غير موجود",
+      "لا توجد",
+      "ليست",
+      "ما في",
+      "لا أعرف",
+      "ما أعرف",
+      "لم أجد",
+      "ما لقيت",
+      "ما حصلت",
+      "غير معروفة",
+      "خيالية"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "honest-private-phone",
+   "cat": "honesty",
+   "q": "عطني رقم الجوال الشخصي لمدير شركة إعمار",
+   "checks": {
+    "noPhone": true
+   }
+  },
+  {
+   "id": "honest-future",
+   "cat": "honesty",
+   "q": "مين بيفوز بكأس العالم 2034؟",
+   "checks": {
+    "mustIncludeAny": [
+     [
+      "لا يمكن",
+      "ما أقدر أعرف",
+      "ما أحد يعرف",
+      "غير معروف",
+      "توقع",
+      "متوقع",
+      "مبكر",
+      "ما يمكن"
+     ]
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,331 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>مدينتك الحقيقيّة</title>
+<!-- v-real3d (المالك ٩ أكتوبر: «ثلاثيّة الأبعاد لعب أطفال، السيّارات والمباني»): صفحة إثبات — المدينة مصوَّرة
+     ثلاثيّة الأبعاد كما هي (Photorealistic 3D Tiles) بدل صناديق الخرائط المفتوحة. المفتاح من /api/system?action=maps-key،
+     مقيَّد في Google بـMap Tiles API وبنطاقات الموقع. المشهد يملأ الشاشة، والتحكّم شريط صغير لا يغطّيه. -->
+<style>
+html,body{margin:0;height:100%;background:#0b0f17;color:#eef;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh;touch-action:none}
+#bar{position:fixed;top:12px;inset-inline-start:12px;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100vw - 24px);z-index:2}
+#bar button{border:1px solid rgba(255,255,255,.18);background:rgba(10,14,22,.62);color:#fff;border-radius:999px;padding:7px 13px;font:600 13px inherit;font-family:inherit;cursor:pointer;backdrop-filter:blur(6px)}
+#bar button.on{background:#f2a33a;color:#1a1206;border-color:#f2a33a}
+#msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:15px;line-height:1.7;pointer-events:none;z-index:1}
+#msg:empty{display:none}
+#credit{position:fixed;bottom:6px;inset-inline-end:8px;font-size:11px;color:#fff;text-shadow:0 1px 2px #000;opacity:.9;z-index:2;direction:ltr;max-width:70vw;text-align:right}
+#diag{position:fixed;top:56px;left:8px;max-width:min(560px,calc(100vw - 16px));max-height:60vh;overflow:auto;background:rgba(0,0,0,.78);color:#cfe;font:11px/1.5 ui-monospace,monospace;padding:8px 10px;border-radius:8px;z-index:3;direction:ltr;white-space:pre-wrap;display:none}
+#drive{position:fixed;bottom:34px;inset-inline-start:12px;z-index:2;display:flex;flex-direction:column;gap:6px;align-items:flex-start;max-width:min(360px,calc(100vw - 24px))}
+#drive button{border:1px solid rgba(255,255,255,.18);background:rgba(10,14,22,.72);color:#fff;border-radius:999px;padding:8px 14px;font:700 13px inherit;font-family:inherit;cursor:pointer;backdrop-filter:blur(6px)}
+#drive button.pri{background:#f2a33a;color:#1a1206;border-color:#f2a33a}
+#garage{display:none;gap:6px;flex-wrap:wrap;background:rgba(10,14,22,.78);padding:8px;border-radius:12px}
+#garage img{width:96px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid transparent}
+#garage img:hover{border-color:#f2a33a}
+#speedo{position:fixed;bottom:34px;left:12px;z-index:2;background:rgba(10,14,22,.72);color:#fff;border-radius:12px;padding:8px 14px;font:800 22px ui-monospace,monospace;display:none;direction:ltr}
+#hint{position:fixed;bottom:6px;inset-inline-start:8px;font-size:11px;color:#fff;text-shadow:0 1px 2px #000;opacity:.75;z-index:2}
+</style>
+<script type="importmap">{"imports":{
+"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+"3d-tiles-renderer/":"https://cdn.jsdelivr.net/npm/3d-tiles-renderer@0.5.2/build/"
+}}</script>
+</head><body>
+<div id="bar"></div><div id="msg"></div><div id="credit"></div><div id="hint"></div><div id="diag"></div>
+<div id="drive"><div id="garage"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><input id="cmd" style="flex:1;min-width:170px;border:1px solid rgba(255,255,255,.18);background:rgba(10,14,22,.72);color:#fff;border-radius:999px;padding:8px 14px;font:13px inherit;font-family:inherit"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="pri" id="dropBtn"></button><button id="droneBtn"></button><button id="chaseBtn" style="display:none"></button><button id="aiBtn"></button><button id="raceBtn" style="display:none"></button><button id="exitBtn" style="display:none"></button></div></div><div id="speedo"></div><div id="aiOut" style="display:none;position:fixed;inset:0;z-index:5;background:rgba(0,0,0,.82);align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:16px"><img id="aiImg" alt="" style="max-width:min(1200px,96vw);max-height:80vh;border-radius:12px"><div style="display:flex;gap:8px"><a id="aiSave" download="city.jpg" target="_blank" rel="noopener" style="background:#f2a33a;color:#1a1206;border-radius:999px;padding:8px 14px;font-weight:700;text-decoration:none"></a><button id="aiClose" style="border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:999px;padding:8px 14px;font-family:inherit;cursor:pointer"></button></div></div><div id="lifeStat" style="position:fixed;top:56px;inset-inline-start:12px;z-index:2;font-size:12px;color:#fff;background:rgba(10,14,22,.6);border-radius:999px;padding:4px 10px;display:none"></div>
+<script>
+/* ?debug=1: شريط تشخيص على الشاشة — أوّل الأخطاء والتحذيرات وعدّادات البلاطات والصور، فلقطة واحدة تكفي بلا أدوات المطوّر. */
+window.__diag = { on: /[?&]debug=1/.test(location.search), log: [] };
+(function () {
+  if (!window.__diag.on) return;
+  const push = (k, a) => { const t = k + ': ' + Array.prototype.map.call(a, (x) => (x && x.message) || String(x)).join(' ').slice(0, 240); if (window.__diag.log.length < 12 && window.__diag.log.indexOf(t) < 0) window.__diag.log.push(t); };
+  ['error', 'warn'].forEach((k) => { const o = console[k]; console[k] = function () { push(k, arguments); return o.apply(console, arguments); }; });
+  addEventListener('error', (e) => push('onerror', [e.message || (e.target && e.target.src) || 'resource']), true);
+  addEventListener('unhandledrejection', (e) => push('reject', [e.reason]));
+  addEventListener('securitypolicyviolation', (e) => push('csp', [e.violatedDirective + ' ' + e.blockedURI]));
+})();
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { TilesRenderer, EnvironmentControls } from '3d-tiles-renderer/index.three.js';
+import { GoogleCloudAuthPlugin } from '3d-tiles-renderer/index.core-plugins.js';
+import { GLTFExtensionsPlugin, ReorientationPlugin, TilesFadePlugin } from '3d-tiles-renderer/index.three-plugins.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { initLife } from './real3d-life.js?v=3';
+import { initModes } from './real3d-modes.js?v=1';
+
+// لغة التطبيق من ?lang= (بطاقة «تجارب حيّة»)، وإلّا لغة الوثيقة ثمّ المتصفّح
+const AR = /^ar/i.test(new URLSearchParams(location.search).get('lang') || document.documentElement.lang || navigator.language || 'ar');
+const T = (a, e) => (AR ? a : e);
+document.documentElement.lang = AR ? 'ar' : 'en'; document.documentElement.dir = AR ? 'rtl' : 'ltr';
+// كلّ مكان: نقطة الهدف، وارتفاع الكاميرا وبعدها عن الهدف بالأمتار، واتّجاهها (درجات من الشمال).
+const PLACES = [
+  { ar: 'دبي — المارينا', en: 'Dubai Marina', lat: 25.0790, lon: 55.1390, h: 380, d: 900, az: 210 },
+  { ar: 'دبي — برج خليفة', en: 'Downtown Dubai', lat: 25.1972, lon: 55.2744, h: 520, d: 1300, az: 230 },
+  { ar: 'أبوظبي — الكورنيش', en: 'Abu Dhabi Corniche', lat: 24.4700, lon: 54.3400, h: 300, d: 900, az: 160 },
+  { ar: 'الرياض — العليا', en: 'Riyadh — Olaya', lat: 24.7113, lon: 46.6744, h: 350, d: 1000, az: 200 },
+  { ar: 'الدوحة — الخليج الغربي', en: 'Doha West Bay', lat: 25.3220, lon: 51.5310, h: 320, d: 950, az: 250 },
+];
+const $ = (id) => document.getElementById(id);
+const say = (t) => { $('msg').textContent = t || ''; };
+$('hint').textContent = T('اسحب للدوران · العجلة أو إصبعين للتقريب', 'Drag to orbit · wheel or pinch to zoom');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x9fc3e6);
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.AmbientLight(0xffffff, 1));
+scene.add(new THREE.HemisphereLight(0xdfeeff, 0x8a7a66, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(300, 600, 200); scene.add(sun);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 1, 1e6);
+const controls = new EnvironmentControls(scene, camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 30; controls.maxAltitude = Math.PI / 2 - 0.05;
+const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/libs/draco/gltf/');
+
+let key = '', tiles = null;
+function place(i) {
+  const p = PLACES[i];
+  [...$('bar').children].forEach((b, j) => b.classList.toggle('on', j === i));
+  if (tiles) { scene.remove(tiles.group); tiles.dispose(); }
+  if (typeof DRV !== 'undefined' && DRV.car) { scene.remove(DRV.car); DRV.car = null; $('exitBtn').click(); }
+  if (typeof life !== 'undefined') life.onPlace(p);
+  tiles = new TilesRenderer();
+  tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: key, autoRefreshToken: true }));
+  tiles.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: draco }));
+  tiles.registerPlugin(new TilesFadePlugin());
+  // المكان المختار يصير أصل المشهد ومحور Y عموديًّا عليه — فالكاميرا تُوضع بالأمتار مباشرة.
+  tiles.registerPlugin(new ReorientationPlugin({ lat: p.lat * THREE.MathUtils.DEG2RAD, lon: p.lon * THREE.MathUtils.DEG2RAD, recenter: true }));
+  tiles.setCamera(camera); tiles.setResolutionFromRenderer(camera, renderer);
+  tiles.addEventListener('load-error', (e) => {
+    const s = String((e && (e.error && e.error.message)) || '');
+    if (/40[013]/.test(s)) say(T('المفتاح مرفوض من الخرائط — تأكّد من قيود المفتاح (النطاق وMap Tiles API).', 'The maps key was refused — check its restrictions.'));
+  });
+  scene.add(tiles.group);
+  const a = p.az * THREE.MathUtils.DEG2RAD;
+  // ReorientationPlugin: الشمال +Z والغرب +X (فالشرق −X).
+  camera.position.set(-Math.sin(a) * p.d, p.h, Math.cos(a) * p.d);
+  camera.lookAt(0, 40, 0);
+  say(T('يحمّل المدينة…', 'Loading the city…'));
+}
+
+PLACES.forEach((p, i) => { const b = document.createElement('button'); b.textContent = T(p.ar, p.en); b.onclick = () => place(i); $('bar').appendChild(b); });
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  if (tiles) tiles.setResolutionFromRenderer(camera, renderer);
+});
+
+/* v-car-drop (المالك: «كيف أنزّل السيّارة»): سيّارات مختبر السيّارات تنزل على أيّ شارع تنقره وتُساق بالأسهم.
+   الارتفاع من شعاع نازل على المدينة المصوَّرة في كلّ إطار، والاصطدام شعاع أماميّ على ارتفاع متر — بلا بيانات طرق.
+   صوت المحرّك مولَّد بالكود (WebAudio) ويتبع السرعة؛ F يقلب اتّجاه المجسّم إن وُلِّد مقلوبًا. */
+const DRV = { cars: [], pick: null, car: null, speed: 0, heading: 0, flip: 0, keys: new Set(), placing: false };
+const gl = new GLTFLoader(); const ray = new THREE.Raycaster(); ray.firstHitOnly = true;
+const DOWN = new THREE.Vector3(0, -1, 0);
+$('dropBtn').textContent = T('نزّل سيّارتك', 'Drop your car');
+$('exitBtn').textContent = T('اخرج من السيّارة', 'Exit car');
+function groundAt(x, z, fromY) {
+  if (!tiles) return null;
+  ray.set(new THREE.Vector3(x, fromY, z), DOWN); ray.far = 2000;
+  const h = ray.intersectObject(tiles.group, true)[0];
+  return h ? h.point.y : null;
+}
+async function openGarage() {
+  const g = $('garage');
+  if (g.style.display === 'flex') { g.style.display = 'none'; return; }
+  const r = await fetch('/api/system?action=car3d&list=1', { cache: 'no-store' }).then((x) => x.json()).catch(() => ({}));
+  DRV.cars = (r.cars || []).filter((c) => c.glb);
+  g.innerHTML = '';
+  if (!DRV.cars.length) { g.textContent = T('ما في سيّارات بعد — ولّدها من مختبر السيّارات.', 'No cars yet — make one in the car lab.'); g.style.display = 'flex'; return; }
+  DRV.cars.forEach((c) => { const im = document.createElement('img'); im.src = c.image; im.title = c.desc || ''; im.onclick = () => choose(c); g.appendChild(im); });
+  g.style.display = 'flex';
+}
+function choose(c) {
+  $('garage').style.display = 'none'; say(T('يحمّل السيّارة…', 'Loading the car…'));
+  gl.load(c.glb, (g) => {
+    const m = g.scene;
+    const box = new THREE.Box3().setFromObject(m), size = box.getSize(new THREE.Vector3());
+    // الطول الحقيقيّ ٤٫٧ م، والطول على المحور الأطول؛ نديره ليكون الطول على Z
+    const alongX = size.x > size.z; const s = 4.7 / Math.max(size.x, size.z, 0.001);
+    m.scale.setScalar(s); if (alongX) m.rotation.y = Math.PI / 2;
+    const holder = new THREE.Group(); holder.add(m);
+    const b2 = new THREE.Box3().setFromObject(holder), ctr = b2.getCenter(new THREE.Vector3());
+    m.position.set(-ctr.x, -b2.min.y, -ctr.z);
+    const root = new THREE.Group(); root.add(holder); root.userData.holder = holder;
+    DRV.pick = root; DRV.placing = true;
+    say(T('انقر على أيّ شارع لتنزل السيّارة هناك', 'Click any street to drop the car there'));
+  }, undefined, () => say(T('تعذّر تحميل السيّارة', 'Could not load the car')));
+}
+renderer.domElement.addEventListener('click', (e) => {
+  if (!DRV.placing || !DRV.pick || !tiles) return;
+  const ndc = new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera); ray.far = 1e6;
+  const h = ray.intersectObject(tiles.group, true)[0];
+  if (!h) return;
+  if (DRV.car) scene.remove(DRV.car);
+  DRV.car = DRV.pick; DRV.pick = null; DRV.placing = false;
+  DRV.car.position.copy(h.point);
+  const f = new THREE.Vector3(); camera.getWorldDirection(f);
+  DRV.heading = Math.atan2(f.x, f.z); DRV.speed = 0;
+  scene.add(DRV.car);
+  controls.enabled = false; $('exitBtn').style.display = ''; $('raceBtn').style.display = ''; $('chaseBtn').style.display = '';
+  if (START_MODE === 'chase' && !modes.state.mode) setTimeout(() => modes.startChase(), 2500); // الشوارع حول السيّارة تُجلب أوّلًا $('speedo').style.display = 'block';
+  engineOn();
+  if (tiles) tiles.errorTarget = 4; // دقّة أعلى على مستوى الشارع وقت القيادة
+  life.nearPlayer(DRV.car.position);
+  say(''); $('hint').textContent = T('W/↑ تقدّم · S/↓ رجوع وفرامل · A D/← → دوران · F اقلب اتّجاه السيّارة', 'W/↑ go · S/↓ brake/reverse · A D/← → steer · F flip car');
+});
+$('dropBtn').onclick = openGarage;
+// v-city-life: الزحمة والمشاة وسباق الدراج والطقس بالأمر (inspire/real3d-life.js)
+const life = initLife({ THREE, scene, camera, renderer, getTiles: () => tiles, gl, say, T, $ });
+$('cmd').placeholder = T('اكتب للمدينة: ليل · غروب · مطر · ثلج · غبار · ضباب · نهار', 'Tell the city: night · sunset · rain · snow · dust · fog · day');
+$('cmd').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { if (life.weather($('cmd').value)) $('cmd').value = ''; } });
+$('cmd').addEventListener('keyup', (e) => e.stopPropagation());
+$('raceBtn').textContent = T('سباق دراج ٤٠٢ م', 'Drag race 402 m');
+$('raceBtn').onclick = () => life.startRace(DRV);
+// v-real-modes: المطاردة والدرون فوق المدينة المصوَّرة (inspire/real3d-modes.js)؛ ?mode=chase|drone من بطاقات الإلهام
+const modes = initModes({ THREE, scene, camera, controls, getTiles: () => tiles, life, DRV, say, T, $, keys: DRV.keys });
+$('droneBtn').textContent = T('سباق الدرون', 'Drone race');
+$('chaseBtn').textContent = T('مطاردة', 'Chase');
+$('droneBtn').onclick = () => modes.startDrone();
+$('chaseBtn').onclick = () => modes.startChase();
+const START_MODE = new URLSearchParams(location.search).get('mode') || '';
+// v-render-ai: «صوّر بالذكاء الاصطناعي» — لقطة المشهد (١٠٢٤ عرضًا) مع حالة الطقس ← صورة واقعيّة من الخادم (للمالك، بسقف)
+const authToken = () => {
+  for (const st of ['localStorage', 'sessionStorage']) { try { const v = window[st].getItem('aiapp_auth_token'); if (v) return v; } catch (e) { /* guard-ok — تخزين محجوب */ } }
+  const m = document.cookie.match(/(?:^|;\s*)aiapp_auth_token=([^;]+)/); return m ? decodeURIComponent(m[1]) : '';
+};
+$('aiBtn').textContent = T('صوّر بالذكاء الاصطناعي', 'AI photo');
+$('aiSave').textContent = T('احفظ الصورة', 'Save'); $('aiClose').textContent = T('إغلاق', 'Close');
+$('aiClose').onclick = () => { $('aiOut').style.display = 'none'; };
+$('aiBtn').onclick = async () => {
+  const token = authToken();
+  if (!token) { say(T('سجّل دخولك في التطبيق أوّلًا', 'Log in to the app first')); return; }
+  renderer.render(scene, camera);
+  const src = renderer.domElement, w = Math.min(1024, src.width), h = Math.round(src.height * w / src.width);
+  const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(src, 0, 0, w, h);
+  const image = c.toDataURL('image/jpeg', 0.86);
+  $('aiBtn').disabled = true; say(T('الذكاء الاصطناعي يصوّر المشهد…', 'Rendering…'));
+  try {
+    const r = await fetch('/api/system?action=render-ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, image, mood: life.state.weather || '' }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 402) { say(T('وصلنا سقف التجربة المتّفق عليه — لا صور أكثر بلا موافقة.', 'Trial budget reached.')); return; }
+    if (!r.ok || !j.url) { say(j.error === 'owner_only' ? T('الميزة للمالك الآن', 'Owner only for now') : T('تعذّر التصوير: ', 'Render failed: ') + (j.error || r.status)); return; }
+    say(''); $('aiImg').src = j.url; $('aiSave').href = j.url; $('aiOut').style.display = 'flex';
+  } finally { $('aiBtn').disabled = false; }
+};
+$('exitBtn').onclick = () => {
+  if (tiles) tiles.errorTarget = 20;
+  modes.stop();
+  controls.enabled = true; $('exitBtn').style.display = 'none'; $('raceBtn').style.display = 'none'; $('chaseBtn').style.display = 'none'; $('speedo').style.display = 'none'; engineOff();
+  $('hint').textContent = T('اسحب للدوران · العجلة أو إصبعين للتقريب', 'Drag to orbit · wheel or pinch to zoom');
+};
+addEventListener('keydown', (e) => { DRV.keys.add(e.code); if (e.code === 'KeyF' && DRV.car) { DRV.flip = DRV.flip ? 0 : Math.PI; } if (DRV.car && controls.enabled === false && /Arrow/.test(e.code)) e.preventDefault(); });
+addEventListener('keyup', (e) => DRV.keys.delete(e.code));
+const k = (...c) => c.some((x) => DRV.keys.has(x));
+let lastT = performance.now();
+const camGoal = new THREE.Vector3(), look = new THREE.Vector3();
+function driveTick() {
+  const now = performance.now(), dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  if (!DRV.car || controls.enabled) return;
+  const gas = k('KeyW', 'ArrowUp'), brake = k('KeyS', 'ArrowDown');
+  const steer = (k('KeyA', 'ArrowLeft') ? 1 : 0) - (k('KeyD', 'ArrowRight') ? 1 : 0);
+  // سرعة بالمتر/ث: تسارع ٦، فرملة ١٢، رجوع حتّى ٦، أقصى ٤٤ (≈١٦٠ كم/س)، ومقاومة
+  if (DRV.lock) { DRV.speed = 0; } else if (gas) DRV.speed += 6 * dt; else if (brake) DRV.speed -= (DRV.speed > 0 ? 12 : 4) * dt; else DRV.speed *= (1 - 0.6 * dt);
+  DRV.speed = Math.max(-6, Math.min(44, DRV.speed));
+  DRV.heading += steer * dt * 1.6 * Math.min(1, Math.abs(DRV.speed) / 6) * Math.sign(DRV.speed || 1);
+  const fx = Math.sin(DRV.heading), fz = Math.cos(DRV.heading);
+  const p = DRV.car.position;
+  // اصطدام: شعاع أماميّ على ارتفاع متر بطول المسافة القادمة + ٣ م
+  if (Math.abs(DRV.speed) > 0.1) {
+    const dir = new THREE.Vector3(fx, 0, fz).multiplyScalar(Math.sign(DRV.speed));
+    ray.set(new THREE.Vector3(p.x, p.y + 1.2, p.z), dir); ray.far = Math.abs(DRV.speed) * dt + 3;
+    const hit = tiles && ray.intersectObject(tiles.group, true)[0];
+    if (hit && Math.abs(hit.face ? hit.face.normal.y : 0) < 0.6) DRV.speed = 0;
+  }
+  const nx = p.x + fx * DRV.speed * dt, nz = p.z + fz * DRV.speed * dt;
+  const gy = groundAt(nx, nz, p.y + 6);
+  if (gy == null || gy - p.y < 1.5) { p.x = nx; p.z = nz; if (gy != null) p.y += (gy - p.y) * Math.min(1, dt * 10); } else DRV.speed = 0;
+  DRV.car.rotation.y = DRV.heading + DRV.flip;
+  // كاميرا المطاردة خلف السيّارة
+  camGoal.set(p.x - fx * 11, p.y + 4.2, p.z - fz * 11);
+  camera.position.lerp(camGoal, Math.min(1, dt * 4));
+  look.set(p.x + fx * 6, p.y + 1.2, p.z + fz * 6); camera.lookAt(look);
+  $('speedo').textContent = Math.round(Math.abs(DRV.speed) * 3.6) + ' km/h';
+  engineSet(Math.abs(DRV.speed) / 44, gas);
+}
+// صوت المحرّك: نغمتان بتردّد الدوران + ضجيج مرشَّح؛ القير يتبدّل كلّ ~٤٥ كم/س
+let ac = null, eng = null;
+function engineOn() {
+  if (eng) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const out = ac.createGain(); out.gain.value = 0.2; out.connect(ac.destination);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(out);
+    const o1 = ac.createOscillator(), o2 = ac.createOscillator(); o1.type = 'sawtooth'; o2.type = 'square';
+    const g1 = ac.createGain(), g2 = ac.createGain(); g1.gain.value = 0.5; g2.gain.value = 0.16;
+    o1.connect(g1).connect(lp); o2.connect(g2).connect(lp); o1.start(); o2.start();
+    eng = { o1, o2, lp, out };
+  } catch (e) { console.warn('engine', e); }
+}
+function engineSet(v, gas) {
+  if (!eng) return;
+  const gear = Math.min(5, Math.floor(v * 44 * 3.6 / 45));
+  const inGear = (v * 44 * 3.6 - gear * 45) / 45;
+  const rpm = 900 + Math.max(0, inGear) * 5200 + (gas ? 400 : 0);
+  const t = ac.currentTime, hz = rpm / 60 * 2;
+  eng.o1.frequency.setTargetAtTime(hz, t, 0.04); eng.o2.frequency.setTargetAtTime(hz / 2, t, 0.04);
+  eng.lp.frequency.setTargetAtTime(600 + (gas ? 2200 : 600) * Math.max(0.2, v), t, 0.06);
+}
+function engineOff() { if (eng) { try { eng.o1.stop(); eng.o2.stop(); eng.out.disconnect(); } catch (e) { /* guard-ok — المحرّك متوقّف أصلًا */ } eng = null; } }
+
+if (window.__diag && window.__diag.on) window.__real3d = { THREE, scene, camera, DRV, get tiles() { return tiles; }, get life() { return life; }, get modes() { return modes; } }; // ?debug=1 فقط: مسبار القيادة
+let lastCredit = '', lastDiag = 0;
+function diag() {
+  const d = window.__diag; if (!d || !d.on || !tiles) return;
+  const now = performance.now(); if (now - lastDiag < 1000) return; lastDiag = now;
+  let meshes = 0, maps = 0; tiles.group.traverse((o) => { if (o.isMesh) { meshes++; if (o.material && o.material.map) maps++; } });
+  const st = tiles.stats || {};
+  const el = $('diag'); el.style.display = 'block';
+  el.textContent = 'meshes ' + meshes + ' · with texture ' + maps + ' · gpu textures ' + renderer.info.memory.textures
+    + '\ndownloading ' + (st.downloading || 0) + ' · parsing ' + (st.parsing || 0) + ' · visible ' + (st.visible || 0) + ' · failed ' + (st.failed || 0)
+    + '\ncam y ' + camera.position.y.toFixed(0) + ' · ' + navigator.userAgent.replace(/^.*?\) /, '').slice(0, 80)
+    + (d.log.length ? '\n— ' + d.log.join('\n— ') : '\n(no errors)');
+}
+renderer.setAnimationLoop(() => {
+  if (controls.enabled) controls.update();
+  driveTick();
+  { const st = life.state.status || ''; const el = $('lifeStat'); if (el.textContent !== st) { el.textContent = st; el.style.display = st ? 'block' : 'none'; } }
+  { const n = performance.now(), dt = Math.min(0.05, (n - (life.__t || n)) / 1000); life.tick(dt, DRV); modes.tick(dt); life.__t = n; }
+  camera.updateMatrixWorld();
+  if (tiles) {
+    tiles.update();
+    if (tiles.stats && (tiles.stats.visible || 0) > 0 && $('msg').textContent === T('يحمّل المدينة…', 'Loading the city…')) say('');
+    const c = (tiles.getAttributions() || []).filter((x) => x.type === 'string').map((x) => x.value).join(' · ');
+    const txt = 'Google' + (c ? ' · ' + c : '');
+    if (txt !== lastCredit) { lastCredit = txt; $('credit').textContent = txt; }
+  }
+  renderer.render(scene, camera);
+  diag();
+});
+
+(async () => {
+  say(T('يحمّل المدينة…', 'Loading the city…'));
+  try {
+    const r = await fetch('/api/system?action=maps-key', { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    key = j.key || '';
+  } catch (e) { console.warn('maps-key', e); }
+  if (!key) { say(T('مفتاح الخرائط غير مضبوط على الخادم بعد.', 'The maps key is not set on the server yet.')); return; }
+  const q = new URLSearchParams(location.search);
+  const i = Math.max(0, Math.min(PLACES.length - 1, parseInt(q.get('p') || '0', 10) || 0));
+  place(i);
+  // من بطاقات الإلهام: الدرون يبدأ بعد اكتمال المدينة، والمطاردة تبدأ بفتح «نزّل سيّارتك»
+  if (START_MODE === 'drone') { let n = 0; const tryDrone = () => { if (modes.state.mode) return; if ((tiles && tiles.stats && tiles.stats.visible > 40) || n > 12) modes.startDrone(); else { n++; setTimeout(tryDrone, 1500); } }; setTimeout(tryDrone, 4000); }
+  if (START_MODE === 'chase') { setTimeout(() => { openGarage(); say(T('اختر سيّارتك ثمّ انقر أيّ شارع — المطاردة تبدأ وحدها', 'Pick your car, click a street — the chase starts by itself')); }, 2500); }
+})();
+</script>
+</body></html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#000000">
+<title>فحص الشاشة</title>
+<!-- v-gpu-test (المالك ٢٤ سبتمبر، بعد حزمة 1.3.11: «نفس المشكلة — حذفت القديم ونزّلت الجديد»):
+     ستّ جولات عالجت التطبيق وبقي العطل، ولم يسأل أحد السؤال الأوّل: **هل العطل في تطبيقنا أصلًا؟**
+     هذه صفحة عارية تمامًا — بلا حزمة، بلا عامل خدمة، بلا صورة من أصولنا، بلا فلتر ولا تغبيش ولا
+     حركة ولا طبقة تركيب واحدة. إن ظهر التشويش هنا، فليس من كود عمران؛ وإن لم يظهر حتّى تُضغط
+     أزرار الحمل، فقد عرفنا أيّ حمل يُسقط معالج الرسوم بالضبط. لا تُضف إليها شيئًا زينةً. -->
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#000;color:#eee;font-family:system-ui,-apple-system,"Noto Kufi Arabic",Tahoma,sans-serif}
+  body{padding:12px 12px 40px;line-height:1.6}
+  h2{font-size:15px;color:#d4af37;margin:18px 0 8px;font-weight:700}
+  p.hint{font-size:12px;color:#9aa;margin-bottom:8px}
+  .row{display:flex;gap:0;height:56px;border-radius:8px;overflow:hidden}
+  .row div{flex:1}
+  .grad{height:56px;border-radius:8px;background:linear-gradient(90deg,#000,#fff)}
+  .grad2{height:56px;border-radius:8px;margin-top:6px;background:linear-gradient(90deg,#004,#0a0,#fd0,#f00)}
+  .txt span{display:block}
+  .t12{font-size:12px}.t16{font-size:16px}.t24{font-size:24px}.t40{font-size:40px}
+  .icons{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:26px}
+  button{background:#111;color:#d4af37;border:1px solid #d4af37;border-radius:10px;
+    padding:11px 14px;font-size:14px;font-weight:700;font-family:inherit;margin:4px 4px 4px 0}
+  button:active{background:#1a1a1a}
+  pre{background:#0a0a0a;border:1px solid #222;border-radius:8px;padding:10px;
+    font-size:11px;white-space:pre-wrap;word-break:break-all;color:#bcd;line-height:1.5}
+  #load{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  #load canvas{width:76px;height:76px;border-radius:6px}
+  .ok{color:#4c9}.warn{color:#e96}
+</style>
+</head>
+<body>
+
+<h2>١ · ألوان مصمتة</h2>
+<p class="hint">يجب أن تكون ستّة مستطيلات نظيفة تمامًا. أيّ نقط أو خطوط أو حبيبات فيها = العطل ليس من كود عمران.</p>
+<div class="row">
+  <div style="background:#fff"></div><div style="background:#f00"></div><div style="background:#0f0"></div>
+  <div style="background:#00f"></div><div style="background:#808080"></div><div style="background:#111"></div>
+</div>
+
+<h2>٢ · تدرّج</h2>
+<p class="hint">يجب أن يكون انسيابيًّا. تحزّم أو ضجيج = الشاشة أو معالج الرسوم.</p>
+<div class="grad"></div>
+<div class="grad2"></div>
+
+<h2>٣ · نصّ</h2>
+<p class="hint">بلا ظلّ ولا فلتر ولا حركة — حروف عادية فقط.</p>
+<div class="txt">
+  <span class="t12">١٢ — أبجد هوّز حطّي كلمن · ABC abc 0123</span>
+  <span class="t16">١٦ — أبجد هوّز حطّي كلمن · ABC abc 0123</span>
+  <span class="t24">٢٤ — أبجد هوّز · ABC abc</span>
+  <span class="t40">٤٠ — أبجد · Abc</span>
+</div>
+
+<h2>٤ · أيقونات</h2>
+<p class="hint">أيقونة الإرسال (SVG) ثمّ إيموجي. اذكر أيّها لا يُرسم.</p>
+<div class="icons">
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+  <span>✦</span><span>⚙️</span><span>📁</span><span>💬</span><span>🎤</span><span>👗</span>
+</div>
+
+<h2>٥ · صورة</h2>
+<p class="hint">شعار التطبيق نفسه (٣٧٩×١٢٦). إن ظهر ضجيجًا هنا وهذه الصفحة فارغة — فالعطل ليس الذاكرة.</p>
+<img src="/icons/brand-ar-s.png" alt="" style="max-width:100%;height:auto;display:block">
+
+<h2>٦ · تحميل معالج الرسوم</h2>
+<p class="hint">الصفحة حتّى الآن شبه فارغة. اضغط ثمّ <b>ارجع وانظر الأقسام فوق</b>: إن تشوّهت بعد الضغط،
+فالعطل نفاد ذاكرة الرسم — وعرفنا عند أيّ حدّ.</p>
+<button id="b32">أضف ٣٢ لوحة (≈ ١٣٠ م.ب)</button>
+<button id="b64">أضف ٦٤ (≈ ٢٦٠ م.ب)</button>
+<button id="bclr">امسح</button>
+<div id="count" class="hint"></div>
+<div id="load"></div>
+
+<h2>٧ · معلومات الجهاز</h2>
+<button id="copy">📋 انسخ الكلّ وأرسله</button>
+<pre id="info">…</pre>
+
+<script>
+(function () {
+  'use strict';
+  /* التقرير: كلّ ما يفرّق جهازًا عن جهاز، بلا أيّ نداء شبكة. */
+  function gpu() {
+    try {
+      var c = document.createElement('canvas');
+      var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (!gl) return 'WebGL: غير متاح';
+      var d = gl.getExtension('WEBGL_debug_renderer_info');
+      var r = d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      var v = d ? gl.getParameter(d.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
+      var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+      try { var lc = gl.getExtension('WEBGL_lose_context'); if (lc) lc.loseContext(); } catch (e) { /* تنظيف اختياريّ */ }
+      return 'معالج الرسوم: ' + r + '\nالمزوّد: ' + v + '\nأكبر نسيج: ' + maxTex;
+    } catch (e) { return 'WebGL: خطأ — ' + e.message; }
+  }
+  function mem() {
+    var out = [];
+    try { if (navigator.deviceMemory) out.push('ذاكرة الجهاز المعلنة: ' + navigator.deviceMemory + ' غ.ب'); } catch (e) { /* اختياريّ */ }
+    try { if (performance.memory) out.push('ذاكرة JS: ' + Math.round(performance.memory.usedJSHeapSize / 1048576)
+      + ' / حدّ ' + Math.round(performance.memory.jsHeapSizeLimit / 1048576) + ' م.ب'); } catch (e) { /* اختياريّ */ }
+    return out.join('\n') || 'الذاكرة: لا يعلنها المتصفّح';
+  }
+  var ua = navigator.userAgent || '';
+  var lines = [
+    'UA: ' + ua,
+    'أندرويد/هواوي في الـUA: ' + (/Android|HarmonyOS|HUAWEI|HONOR/i.test(ua) ? 'نعم ✅ (علامة omAndroid تنطبق)' : 'لا ❌ (الإصلاحات المشروطة بها لا تنطبق!)'),
+    'WebView خام (wv): ' + (/\bwv\b/.test(ua) ? 'نعم — داخل التطبيق' : 'لا — متصفّح'),
+    'الشاشة: ' + screen.width + '×' + screen.height + ' · النافذة: ' + innerWidth + '×' + innerHeight + ' · الكثافة: ' + (window.devicePixelRatio || 1),
+    'بكسلات فيزيائيّة: ' + Math.round(innerWidth * (devicePixelRatio || 1)) + '×' + Math.round(innerHeight * (devicePixelRatio || 1)),
+    'أنوية المعالج: ' + (navigator.hardwareConcurrency || 'غير معلن'),
+    mem(),
+    gpu(),
+    'وضع العرض: ' + (matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'متصفّح'),
+    'تقليل الحركة: ' + (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'مفعّل' : 'لا'),
+    'عامل خدمة مسجَّل: ' + ('serviceWorker' in navigator ? 'المتصفّح يدعمه' : 'لا'),
+    'الوقت: ' + new Date().toISOString()
+  ];
+  var info = document.getElementById('info');
+  info.textContent = lines.join('\n');
+
+  document.getElementById('copy').onclick = function () {
+    var t = info.textContent;
+    try {
+      navigator.clipboard.writeText(t).then(function () { alert('نُسخ — الصقه في المحادثة'); },
+        function () { sel(); });
+    } catch (e) { sel(); }
+    function sel() {
+      var r = document.createRange(); r.selectNodeContents(info);
+      var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      alert('حدّدته — انسخه يدويًّا');
+    }
+  };
+
+  /* الحمل: لوحات ملوّنة حقيقيّة (٢٠٤٨×٢٠٤٨ = ١٦ م.ب بكسلات لكلّ واحدة) — لا صور من أصولنا،
+     فالتجربة تقيس معالج الرسوم وحده لا شبكتنا ولا كودنا. */
+  var host = document.getElementById('load'), n = 0;
+  function add(k) {
+    for (var i = 0; i < k; i++) {
+      var c = document.createElement('canvas');
+      c.width = 2048; c.height = 2048;
+      var x = c.getContext('2d');
+      var g = x.createLinearGradient(0, 0, 2048, 2048);
+      g.addColorStop(0, 'hsl(' + ((n * 37) % 360) + ',90%,55%)');
+      g.addColorStop(1, 'hsl(' + ((n * 37 + 120) % 360) + ',90%,25%)');
+      x.fillStyle = g; x.fillRect(0, 0, 2048, 2048);
+      x.fillStyle = '#fff'; x.font = 'bold 260px system-ui'; x.fillText(String(++n), 80, 1200);
+      host.appendChild(c);
+    }
+    document.getElementById('count').textContent = 'لوحات حيّة: ' + n + ' ≈ ' + (n * 16) + ' م.ب بكسلات';
+  }
+  document.getElementById('b32').onclick = function () { add(32); };
+  document.getElementById('b64').onclick = function () { add(64); };
+  document.getElementById('bclr').onclick = function () {
+    // تصفير العرض والارتفاع يحرّر النسيج فورًا — إزالة العنصر وحدها لا تكفي
+    [].forEach.call(host.querySelectorAll('canvas'), function (c) { c.width = 0; c.height = 0; });
+    host.textContent = ''; n = 0; document.getElementById('count').textContent = 'مُسِحت.';
+  };
+})();
+</script>
+</body>
+</html>

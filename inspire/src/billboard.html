@@ -1,0 +1,629 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>اختبار اللوحة الإعلانيّة</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<!--CITYKIT-->
+<style>
+.bb-hint{display:flex;gap:8px;align-items:center;background:rgba(255,207,74,.1);border:1px solid rgba(255,207,74,.3);color:#ffe2a0;border-radius:10px;padding:6px 9px;font-size:12.5px;margin:6px 0 4px}
+.bb-hint svg{flex:0 0 18px}
+.bb-sl{display:block;margin-top:7px}
+.bb-sl .l{display:flex;justify-content:space-between;font-size:12.5px;color:#a9c1c7}
+.bb-sl .l b{color:#fff;font-variant-numeric:tabular-nums;font-weight:600}
+.bb-sl input{margin:2px 0 0;accent-color:#ffcf4a}
+.ck-ui .bb-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:9px 0 4px}
+.ck-ui .bb-btns button{display:flex;gap:6px;align-items:center;justify-content:center;padding:7px 8px;font-size:13px}
+.ck-ui .bb-btns button svg{flex:0 0 16px}
+.ck-ui button.bb-gold{background:linear-gradient(135deg,#f0b429,#e07b24);color:#1b1206;font-weight:700}
+.bb-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#cfe3e7;margin:6px 0}
+.bb-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-inline-end:4px}
+.bb-tab{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;margin-top:4px}
+.bb-tab td{padding:3px 2px;border-top:1px solid rgba(120,200,210,.12)}
+.bb-tab td:not(:first-child){text-align:left;color:#fff;white-space:nowrap}
+.bb-tab .bar{height:4px;border-radius:2px;background:#3df58a;margin-top:2px}
+.bb-best{margin-top:8px;font-size:12.5px;color:#cfe3e7;background:rgba(255,207,74,.08);border-radius:10px;padding:6px 9px;border:1px solid rgba(255,207,74,.22)}
+.bb-best b{color:#ffcf4a}
+.bb-note{font-size:11.5px;color:#86a3aa;margin-top:6px}
+.bbh{display:flex;gap:8px;direction:rtl}
+.bbh .k{background:rgba(9,18,24,.74);border:1px solid rgba(120,200,210,.22);border-radius:12px;padding:7px 12px 6px;backdrop-filter:blur(6px);min-width:96px;text-shadow:none}
+.bbh .k span{display:block;font-size:11.5px;font-weight:500;color:#9fc3ca;white-space:nowrap}
+.bbh .k b{display:block;font-size:24px;line-height:1.15;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bbh .k b small{font-size:13px;color:#cfe3e7;font-weight:500;margin-inline-start:3px}
+.bbh .k.g b{color:#5ef59c}.bbh .k.y b{color:#ffcf4a}.bbh .k.r b{color:#ff7a66}
+.bbh .k .s{font-size:11.5px;color:#cfe3e7;font-weight:500;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bbstop{position:fixed;z-index:7;bottom:22px;left:22px;display:none;font:600 14px "IBM Plex Sans Arabic",Tahoma,sans-serif;background:#e2504a;color:#fff;border:0;border-radius:12px;padding:10px 18px;box-shadow:0 6px 20px rgba(0,0,0,.35);cursor:pointer;align-items:center;gap:8px}
+@media (max-width:640px){.bbh{gap:6px;width:calc(100vw - 24px)}.bbh .k{flex:1 1 0;min-width:0;padding:6px 8px}.bbh .k b{font-size:19px}.bbh .k span{font-size:10.5px}.bbh .k .s{max-width:none}
+ #bbstop{left:50%;transform:translateX(-50%);bottom:26px}}
+</style>
+</head><body><script>
+(function () {
+  'use strict';
+  const CK = window.CityKit, T = CK.T;
+  const TITLE = T('اختبار اللوحة الإعلانيّة', 'Billboard visibility test');
+  document.title = TITLE; // <title> عربيّ ثابت؛ بالإنجليزيّة يتبع لغة الصفحة
+  const D2R = Math.PI / 180;
+  const SPEED = { motorway: 100, trunk: 80, primary: 60, secondary: 50 }; // كم/س؛ الباقي ٤٠
+  const kmh = (k) => SPEED[k] || 40;
+  const DRIVE = /^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|service)$/;
+  const RANK = { motorway: 6, trunk: 5, primary: 4, secondary: 3, tertiary: 2 };
+  const KIND = { motorway: ['طريق سريع', 'Motorway'], trunk: ['طريق شريانيّ', 'Trunk road'], primary: ['شارع رئيسيّ', 'Primary road'], secondary: ['شارع ثانويّ', 'Secondary road'],
+    tertiary: ['شارع فرعيّ', 'Tertiary road'], residential: ['شارع سكنيّ', 'Residential street'], unclassified: ['شارع محلّيّ', 'Local street'], living_street: ['شارع حيّ', 'Living street'], service: ['طريق خدمة', 'Service road'] };
+  const kindName = (k) => (KIND[k] ? T(KIND[k][0], KIND[k][1]) : k);
+  const STEP = 10, EYE = 1.2, FACE_COS = Math.cos(70 * D2R), TILT_TAN = Math.tan(35 * D2R), LOS_STEP = 3;
+  const AHEAD_DEG = 60, AHEAD_COS = Math.cos(AHEAD_DEG * D2R); // السائق يعدّ اللوحة مقروءة ما دامت أمامه ضمن ±٦٠° من اتّجاه سيره
+  const fmt = (n) => Math.round(n).toLocaleString('en-US');
+  const fmtLen = (m) => (m >= 1000 ? (m / 1000).toFixed(2) + ' ' + T('كم', 'km') : fmt(m) + ' ' + T('م', 'm'));
+  const fmtSec = (s) => (s < 100 ? s.toFixed(1) : fmt(s)) + ' ' + T('ث', 's');
+  const bearingOf = (nx, nz) => ((Math.atan2(nx, -nz) / D2R) % 360 + 360) % 360;
+  const nOf = (b) => [Math.sin(b * D2R), -Math.cos(b * D2R)];
+  const CARD = [['شمال', 'N'], ['شمال شرق', 'NE'], ['شرق', 'E'], ['جنوب شرق', 'SE'], ['جنوب', 'S'], ['جنوب غرب', 'SW'], ['غرب', 'W'], ['شمال غرب', 'NW']];
+  const card = (b) => { const c = CARD[Math.round(b / 45) % 8]; return T(c[0], c[1]); };
+  const TOWARD = [['الشمال', 'northbound'], ['الشمال الشرقيّ', 'NE-bound'], ['الشرق', 'eastbound'], ['الجنوب الشرقيّ', 'SE-bound'], ['الجنوب', 'southbound'], ['الجنوب الغربيّ', 'SW-bound'], ['الغرب', 'westbound'], ['الشمال الغربيّ', 'NW-bound']];
+  const toward = (b) => { const c = TOWARD[Math.round(b / 45) % 8]; return T('نحو ' + c[0], c[1]); }; // اتّجاه سير السائق
+  const ICON = {
+    pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffcf4a" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+    car: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 16h14M6 16l1.6-5.2A2 2 0 0 1 9.5 9.4h5a2 2 0 0 1 1.9 1.4L18 16v3h-2.5v-2h-7v2H6z"/></svg>',
+    compass: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>',
+    spark: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>',
+    img: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/></svg>',
+    stop: '<svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  };
+
+  // ── الحالة العامّة (تبقى عبر المدن: الصورة والمقاسات) ──
+  const S = { ctx: null, city: null, smp: null, los: null, losKey: '', res: null, drive: null, img: null, tex: null, faceMat: null,
+    anim: null, objs: {}, loads: 0, dirty: false, ui: {},
+    board: { x: 0, z: 0, mount: 'ground', mnx: 0, mnz: 1, baseY: 0, w: 14, h: 5, elev: 10, bearing: 0 } };
+
+  // ── عيّنات الطرق كلّ ١٠م (تُحسب مرّة لكلّ مدينة) ──
+  function sampleRoads(city, R) {
+    const ax = [], az = [], bx = [], bz = [], ri = [], cont = [];
+    const lim = R; // خارج نصف قطر الخريطة المحمّلة لا مبنى يحجب، فلا نعدّ ما وراءه مرئيًّا
+    city.roads.forEach((r, k) => {
+      if (!DRIVE.test(r.kind)) return;
+      let prevOk = false;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1], L = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        if (L < 0.05) continue;
+        const n = Math.max(1, Math.ceil(L / STEP));
+        for (let j = 0; j < n; j++) {
+          const t0 = j / n, t1 = (j + 1) / n;
+          const x0 = p[0] + (q[0] - p[0]) * t0, z0 = p[1] + (q[1] - p[1]) * t0, x1 = p[0] + (q[0] - p[0]) * t1, z1 = p[1] + (q[1] - p[1]) * t1;
+          if (Math.hypot((x0 + x1) / 2, (z0 + z1) / 2) > lim) { prevOk = false; continue; }
+          ax.push(x0); az.push(z0); bx.push(x1); bz.push(z1); ri.push(k); cont.push(prevOk ? 1 : 0); prevOk = true;
+        }
+      }
+    });
+    const N = ax.length, o = { N, ax: Float32Array.from(ax), az: Float32Array.from(az), bx: Float32Array.from(bx), bz: Float32Array.from(bz),
+      road: Int32Array.from(ri), cont: Uint8Array.from(cont), mx: new Float32Array(N), mz: new Float32Array(N), len: new Float32Array(N), v: new Float32Array(N), w: new Float32Array(N),
+      hx: new Float32Array(N), hz: new Float32Array(N) }; // hx,hz: وحدة اتّجاه السير مع ترتيب نقاط الطريق
+    for (let i = 0; i < N; i++) {
+      o.mx[i] = (o.ax[i] + o.bx[i]) / 2; o.mz[i] = (o.az[i] + o.bz[i]) / 2; o.len[i] = Math.hypot(o.bx[i] - o.ax[i], o.bz[i] - o.az[i]);
+      o.hx[i] = (o.bx[i] - o.ax[i]) / (o.len[i] || 1); o.hz[i] = (o.bz[i] - o.az[i]) / (o.len[i] || 1);
+      const r = city.roads[o.road[i]]; o.v[i] = kmh(r.kind) / 3.6; o.w[i] = Math.max(3.5, r.w * 0.92);
+    }
+    o.status = new Uint8Array(N); o.dist = new Float32Array(N); o.dir = new Uint8Array(N);
+    return o;
+  }
+
+  // ── منطق الرؤية ──
+  const rangeOf = (b) => Math.max(80, Math.min(900, 50 * Math.sqrt(b.w * b.h))); // مدى القراءة التقريبيّ من مساحة اللوحة
+  function target(b) {
+    let x = b.x, z = b.z;
+    if (b.mount === 'facade') { x += b.mnx * 1.5; z += b.mnz * 1.5; } // نبتعد عن الجدار حتّى لا يحجب المبنى لوحته
+    return { x, y: b.elev + b.h / 2, z };
+  }
+  function ensureLOS(C, range, nx, nz) { // nx=null: كلّ الاتّجاهات (للبحث عن أفضل اتّجاه)
+    const s = S.smp, idx = S.city.idx, key = C.x.toFixed(2) + ',' + C.y.toFixed(2) + ',' + C.z.toFixed(2);
+    if (key !== S.losKey) { S.los.fill(0); S.losKey = key; }
+    const a = { x: 0, y: EYE, z: 0 };
+    for (let i = 0; i < s.N; i++) {
+      if (S.los[i]) continue;
+      const dx = s.mx[i] - C.x, dz = s.mz[i] - C.z, d = Math.hypot(dx, dz);
+      if (d > range || d < 2 || (C.y - EYE) / d > TILT_TAN) continue;
+      if (nx !== null && (dx * nx + dz * nz) / d < FACE_COS) continue;
+      a.x = s.mx[i]; a.z = s.mz[i];
+      S.los[i] = idx.los(a, C, LOS_STEP) ? 1 : 2;
+    }
+  }
+  // اتّجاه السير الذي يرى اللوحة أمامه ضمن ±٦٠°: 1 مع ترتيب نقاط الطريق، 2 عكسه، 0 اللوحة على الجنب (لا يُعدّ)
+  function aheadDir(s, i, C, d) {
+    const c = (s.hx[i] * (C.x - s.mx[i]) + s.hz[i] * (C.z - s.mz[i])) / d;
+    return c > AHEAD_COS ? 1 : (c < -AHEAD_COS ? 2 : 0);
+  }
+  function scoreDir(C, range, nx, nz) { // لاتّجاه واجهة معيّن (بعد ensureLOS لكلّ الاتّجاهات): أفضل ثواني سائق واحد باتّجاه سير واحد، والمجموع للتفاضل
+    const s = S.smp; let best = 0, tot = 0, f = 0, g = 0;
+    for (let i = 0; i < s.N; i++) {
+      if (!s.cont[i]) { f = 0; g = 0; } // سلسلة طريق جديدة
+      if (S.los[i] !== 1) continue;
+      const dx = s.mx[i] - C.x, dz = s.mz[i] - C.z, d = Math.hypot(dx, dz);
+      if (d > range || (dx * nx + dz * nz) / d < FACE_COS) continue;
+      const dr = aheadDir(s, i, C, d); if (!dr) continue;
+      const t = s.len[i] / s.v[i]; tot += t;
+      if (dr === 1) { f += t; if (f > best) best = f; } else { g += t; if (g > best) best = g; }
+    }
+    return best + tot * 1e-3;
+  }
+  function autoOrient(apply) {
+    const b = S.board, C = target(b), range = rangeOf(b);
+    ensureLOS(C, range, null);
+    const base = b.mount === 'facade' ? bearingOf(b.mnx, b.mnz) : null;
+    let best = b.bearing, bestS = -1;
+    for (let k = 0; k < 72; k++) {
+      const br = k * 5;
+      if (base !== null) { const dd = Math.abs(((br - base + 540) % 360) - 180); if (dd > 60) continue; }
+      const [nx, nz] = nOf(br), sc = scoreDir(C, range, nx, nz);
+      if (sc > bestS + 1e-6) { bestS = sc; best = br; }
+    }
+    if (apply !== false) b.bearing = best;
+    return { bearing: best, sec: bestS };
+  }
+  function compute() {
+    const s = S.smp, b = S.board; if (!s) return;
+    const C = target(b), range = rangeOf(b), [nx, nz] = nOf(b.bearing);
+    ensureLOS(C, range, nx, nz);
+    let visM = 0, allSec = 0, nVis = 0, nBlk = 0, nFace = 0, nAhead = 0;
+    const byKind = {};
+    // السائق يقود الطريق باتّجاه واحد: كلّ سلسلة متّصلة من عيّنات طريق تُقاس مرّتين (مع ترتيب نقاطه وعكسه)،
+    // والعيّنة تُعدّ لاتّجاه فقط إن كانت مرئيّة واللوحة أمامه ضمن ±٦٠°. «المقطع» = سلسلة × اتّجاه، والثواني ما يراه سائق واحد.
+    const lane = (dir, i) => ({ dir, road: s.road[i], a: -1, e: -1, m: 0, s: 0, o: null });
+    let ch = null, best = null;
+    const fin = () => { if (ch) allSec += Math.max(ch[1].s, ch[2].s); };
+    for (let i = 0; i < s.N; i++) {
+      if (!s.cont[i]) { fin(); ch = [null, lane(1, i), lane(2, i)]; ch[1].o = ch[2]; ch[2].o = ch[1]; }
+      const dx = s.mx[i] - C.x, dz = s.mz[i] - C.z, d = Math.hypot(dx, dz);
+      s.dist[i] = d;
+      let st = 1;
+      if (d <= range && d >= 2 && (C.y - EYE) / d <= TILT_TAN && (dx * nx + dz * nz) / d >= FACE_COS) { nFace++; st = S.los[i] === 1 ? 3 : 2; }
+      s.status[i] = st; s.dir[i] = 0;
+      if (st === 3) {
+        nVis++; visM += s.len[i];
+        const k = S.city.roads[s.road[i]].kind, bk = byKind[k] || (byKind[k] = { m: 0, s: 0 }); bk.m += s.len[i];
+        const dr = aheadDir(s, i, C, d); s.dir[i] = dr;
+        if (dr) {
+          nAhead++; const q = ch[dr], t = s.len[i] / s.v[i];
+          if (q.a < 0) q.a = i; q.e = i; q.m += s.len[i]; q.s += t;
+          if (q.s > bk.s) bk.s = q.s; // أطول قراءة لسائق على شارع من هذا النوع
+          if (!best || q.s > best.s) best = q;
+        }
+      } else if (st === 2) nBlk++;
+    }
+    fin();
+    if (best) best = { a: best.a, e: best.e, m: best.m, s: best.s, road: best.road, dir: best.dir, rev: best.o.s };
+    let bestRoad = null;
+    if (best) {
+      const r = S.city.roads[best.road], f = best.dir === 1;
+      const hx = f ? s.bx[best.e] - s.ax[best.a] : s.ax[best.a] - s.bx[best.e], hz = f ? s.bz[best.e] - s.az[best.a] : s.az[best.a] - s.bz[best.e];
+      const heading = Math.round(Math.hypot(hx, hz) > 0.5 ? bearingOf(hx, hz) : bearingOf(f ? s.hx[best.a] : -s.hx[best.a], f ? s.hz[best.a] : -s.hz[best.a])) % 360;
+      bestRoad = { name: r.name || kindName(r.kind), kind: r.kind, lengthM: Math.round(best.m), seconds: +best.s.toFixed(1), speedKmh: kmh(r.kind), heading, reverseSeconds: +best.rev.toFixed(1), from: best.a, to: best.e };
+    }
+    const reading = best ? +best.s.toFixed(1) : 0;
+    S.res = { visibleRoadM: Math.round(visM), exposureSec: reading, readingSec: reading, allRoadsSec: +allSec.toFixed(1), bestRoad, rangeM: Math.round(range), samples: s.N, facing: nFace,
+      visibleSamples: nVis, aheadSamples: nAhead, blockedSamples: nBlk, byKind, best };
+    paint(); renderStats(); syncState();
+  }
+  function syncState() {
+    const r = S.res || {}, b = S.board;
+    const byKind = {}; for (const k in r.byKind || {}) byKind[k] = { m: Math.round(r.byKind[k].m), s: +r.byKind[k].s.toFixed(1), kmh: kmh(k) };
+    const br = r.bestRoad;
+    // exposureSec = readingSec: ثواني سائق واحد على أفضل مقطع باتّجاه سيره؛ allRoadsSec مجموع ثواني كلّ الشوارع (كلّ سلسلة بأفضل اتّجاه)
+    window.__inspire_state = { visibleRoadM: r.visibleRoadM || 0, exposureSec: r.exposureSec || 0, readingSec: r.readingSec || 0, allRoadsSec: r.allRoadsSec || 0,
+      bestRoad: br ? { name: br.name, kind: br.kind, lengthM: br.lengthM, seconds: br.seconds, speedKmh: br.speedKmh, heading: br.heading, headingCard: CARD[Math.round(br.heading / 45) % 8][1], reverseSeconds: br.reverseSeconds } : null,
+      rangeM: r.rangeM || 0, samples: r.samples || 0, facingSamples: r.facing || 0, visibleSamples: r.visibleSamples || 0, aheadSamples: r.aheadSamples || 0, blockedSamples: r.blockedSamples || 0, byKind,
+      board: { mount: b.mount, x: +b.x.toFixed(1), z: +b.z.toFixed(1), w: b.w, h: b.h, elev: b.elev, bearing: b.bearing, hasImage: !!S.img },
+      driving: !!S.drive, driveVisibleSec: S.drive ? +S.drive.seen.toFixed(1) : (S.lastDrive || 0), city: S.city ? S.city.name : '', loads: S.loads };
+  }
+
+  // ── رسم: طرق ملوّنة + مروحة نظر + مخروط + أفضل مقطع ──
+  function buildOverlay() {
+    const THREE = S.ctx.THREE, s = S.smp, g = S.city.group;
+    const pos = new Float32Array(s.N * 18), col = new Float32Array(s.N * 18);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    S.base = new Float32Array(s.N * 12);
+    for (let i = 0; i < s.N; i++) {
+      const dx = s.bx[i] - s.ax[i], dz = s.bz[i] - s.az[i], L = s.len[i] || 1, hw = s.w[i] / 2, nx = -dz / L * hw, nz = dx / L * hw;
+      S.base.set([s.ax[i] + nx, s.az[i] + nz, s.bx[i] - nx, s.bz[i] - nz, s.bx[i] + nx, s.bz[i] + nz, s.ax[i] - nx, s.az[i] - nz, 0, 0, 0, 0], i * 12);
+    }
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    m.frustumCulled = false; g.add(m); S.objs.overlay = m;
+    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(200 * 6), 3)); rg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(200 * 6), 3));
+    const rays = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.35, depthWrite: false }));
+    rays.frustumCulled = false; g.add(rays); S.objs.rays = rays;
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(42 * 9), 3));
+    const wedge = new THREE.Mesh(wg, new THREE.MeshBasicMaterial({ color: 0x5ef59c, transparent: true, opacity: 0.09, depthWrite: false, side: THREE.DoubleSide }));
+    wedge.frustumCulled = false; g.add(wedge); S.objs.wedge = wedge;
+    const eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(44 * 3), 3));
+    const edge = new THREE.Line(eg, new THREE.LineBasicMaterial({ color: 0x8dffc0, transparent: true, opacity: 0.6, depthWrite: false }));
+    edge.frustumCulled = false; g.add(edge); S.objs.edge = edge;
+    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(400 * 18), 3));
+    const bestM = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: 0xffcf4a, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+    bestM.frustumCulled = false; g.add(bestM); S.objs.best = bestM;
+  }
+  const lin = (hex) => { const c = new window.THREE.Color(hex); return [c.r, c.g, c.b]; }; // ألوان الرؤوس خطّيّة
+  const cVisNear = lin('#a4ff3c'), cVisFar = lin('#12b866'), cBlk = lin('#ff4630'), cRay0 = lin('#c8ffd9'), cRay1 = lin('#2fd27a');
+  function paint() {
+    const s = S.smp, b = S.board, r = S.res, C = target(b), range = r.rangeM;
+    const pos = S.objs.overlay.geometry.attributes.position, col = S.objs.overlay.geometry.attributes.color, P = pos.array, Cc = col.array, B = S.base;
+    for (let i = 0; i < s.N; i++) {
+      const st = s.status[i], y = st >= 2 ? 0.14 : -6, o = i * 18, q = i * 12;
+      // مثلّثان: a+ b- b+ / a+ a- b-
+      const v = [B[q], B[q + 1], B[q + 2], B[q + 3], B[q + 4], B[q + 5], B[q], B[q + 1], B[q + 6], B[q + 7], B[q + 2], B[q + 3]];
+      let c = cBlk;
+      if (st === 3) { const t = Math.min(1, s.dist[i] / range); c = [cVisNear[0] + (cVisFar[0] - cVisNear[0]) * t, cVisNear[1] + (cVisFar[1] - cVisNear[1]) * t, cVisNear[2] + (cVisFar[2] - cVisNear[2]) * t]; }
+      for (let k = 0; k < 6; k++) { P[o + k * 3] = v[k * 2]; P[o + k * 3 + 1] = y; P[o + k * 3 + 2] = v[k * 2 + 1]; Cc[o + k * 3] = c[0]; Cc[o + k * 3 + 1] = c[1]; Cc[o + k * 3 + 2] = c[2]; }
+    }
+    pos.needsUpdate = true; col.needsUpdate = true;
+    // مروحة أشعّة النظر إلى عيّنات مرئيّة
+    const rp = S.objs.rays.geometry.attributes.position, rc = S.objs.rays.geometry.attributes.color;
+    const step = Math.max(1, Math.ceil(r.visibleSamples / 200)); let n = 0;
+    for (let i = 0, seen = 0; i < s.N && n < 200; i++) {
+      if (s.status[i] !== 3) continue; if ((seen++) % step) continue;
+      rp.setXYZ(n * 2, C.x, C.y, C.z); rp.setXYZ(n * 2 + 1, s.mx[i], EYE, s.mz[i]);
+      rc.setXYZ(n * 2, cRay0[0], cRay0[1], cRay0[2]); rc.setXYZ(n * 2 + 1, cRay1[0], cRay1[1], cRay1[2]); n++;
+    }
+    S.objs.rays.geometry.setDrawRange(0, n * 2); rp.needsUpdate = true; rc.needsUpdate = true;
+    // مخروط الواجهة ±٧٠° حتّى مدى القراءة
+    const wp = S.objs.wedge.geometry.attributes.position, ep = S.objs.edge.geometry.attributes.position;
+    const b0 = b.bearing - 70, SEG = 40, yw = 0.22;
+    ep.setXYZ(0, C.x, yw, C.z);
+    for (let k = 0; k < SEG; k++) {
+      const a1 = (b0 + 140 * k / SEG) * D2R, a2 = (b0 + 140 * (k + 1) / SEG) * D2R;
+      wp.setXYZ(k * 3, C.x, yw, C.z); wp.setXYZ(k * 3 + 1, C.x + Math.sin(a1) * range, yw, C.z - Math.cos(a1) * range); wp.setXYZ(k * 3 + 2, C.x + Math.sin(a2) * range, yw, C.z - Math.cos(a2) * range);
+      ep.setXYZ(k + 1, C.x + Math.sin(a1) * range, yw, C.z - Math.cos(a1) * range);
+    }
+    const aE = (b0 + 140) * D2R; ep.setXYZ(SEG + 1, C.x + Math.sin(aE) * range, yw, C.z - Math.cos(aE) * range); ep.setXYZ(SEG + 2, C.x, yw, C.z);
+    S.objs.wedge.geometry.setDrawRange(0, SEG * 3); S.objs.edge.geometry.setDrawRange(0, SEG + 3); wp.needsUpdate = true; ep.needsUpdate = true;
+    // أفضل مقطع بالذهبيّ
+    const bp = S.objs.best.geometry.attributes.position; let m = 0;
+    if (r.best) for (let i = r.best.a; i <= r.best.e && m < 400; i++) {
+      if (s.status[i] !== 3 || s.dir[i] !== r.best.dir) continue; // ما يراه سائق المقطع باتّجاهه فقط
+      const dx = s.bx[i] - s.ax[i], dz = s.bz[i] - s.az[i], L = s.len[i] || 1, hw = 1.6, nx = -dz / L * hw, nz = dx / L * hw, y = 0.2;
+      const v = [s.ax[i] + nx, s.az[i] + nz, s.bx[i] - nx, s.bz[i] - nz, s.bx[i] + nx, s.bz[i] + nz, s.ax[i] + nx, s.az[i] + nz, s.ax[i] - nx, s.az[i] - nz, s.bx[i] - nx, s.bz[i] - nz];
+      for (let k = 0; k < 6; k++) bp.setXYZ(m * 6 + k, v[k * 2], y, v[k * 2 + 1]);
+      m++;
+    }
+    S.objs.best.geometry.setDrawRange(0, m * 6); bp.needsUpdate = true;
+  }
+
+  // ── اللوحة نفسها ──
+  function drawAd() {
+    const THREE = S.ctx.THREE, b = S.board, asp = b.w / b.h;
+    let W = 1024, H = Math.round(1024 / asp); if (H > 1024) { H = 1024; W = Math.round(1024 * asp); }
+    W = Math.max(64, W); H = Math.max(64, H);
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+    if (S.img) {
+      const iw = S.img.naturalWidth || S.img.width, ih = S.img.naturalHeight || S.img.height, sc = Math.max(W / iw, H / ih);
+      g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.drawImage(S.img, (W - iw * sc) / 2, (H - ih * sc) / 2, iw * sc, ih * sc);
+    } else {
+      const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#0c3440'); gr.addColorStop(0.55, '#14707a'); gr.addColorStop(1, '#1fa0a6');
+      g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      g.fillStyle = 'rgba(255,207,74,.95)'; g.beginPath(); g.moveTo(0, H); g.lineTo(W * 0.28, H); g.lineTo(W * 0.42, 0); g.lineTo(W * 0.14, 0); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.08)'; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(W * 0.9, H * 0.2, (k + 1) * H * 0.16, 0, Math.PI * 2); g.lineWidth = H * 0.02; g.strokeStyle = 'rgba(255,255,255,.07)'; g.stroke(); }
+      g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      const cx = W * 0.66, maxW = W * 0.6;
+      const fit = (txt, size, weight) => { let f = size; g.font = weight + ' ' + f + 'px "IBM Plex Sans Arabic","DejaVu Sans",Tahoma,sans-serif'; const mw = g.measureText(txt).width; if (mw > maxW) { f = Math.floor(f * maxW / mw); g.font = weight + ' ' + f + 'px "IBM Plex Sans Arabic","DejaVu Sans",Tahoma,sans-serif'; } return f; };
+      fit(T('إعلانك هنا', 'YOUR AD HERE'), Math.round(H * 0.36), 'bold'); g.fillStyle = '#fff'; g.fillText(T('إعلانك هنا', 'YOUR AD HERE'), cx, H * 0.42);
+      fit(T('كم سائق بيشوفك؟', 'How many drivers see you?'), Math.round(H * 0.14), '600'); g.fillStyle = '#ffd877'; g.fillText(T('كم سائق بيشوفك؟', 'How many drivers see you?'), cx, H * 0.74);
+    }
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    if (S.tex) S.tex.dispose(); S.tex = tex;
+    if (S.faceMat) { S.faceMat.map = tex; S.faceMat.needsUpdate = true; }
+  }
+  const MAT = {};
+  function mats(THREE) {
+    if (MAT.metal) return MAT;
+    MAT.metal = new THREE.MeshPhongMaterial({ color: 0x59636b, shininess: 50, specular: 0x333333 });
+    MAT.frame = new THREE.MeshPhongMaterial({ color: 0x1b2329, shininess: 30 });
+    MAT.lamp = new THREE.MeshBasicMaterial({ color: 0xfff1c4 });
+    MAT.ring = new THREE.MeshBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+    MAT.glow = new THREE.MeshBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    MAT.beam = new THREE.MeshBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    return MAT;
+  }
+  function buildBoard() {
+    const THREE = S.ctx.THREE, b = S.board, M = mats(THREE);
+    if (S.objs.rig) { S.city.group.remove(S.objs.rig); S.objs.rig.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+    if (!S.faceMat) S.faceMat = new THREE.MeshBasicMaterial({ map: S.tex, toneMapped: false });
+    const rig = new THREE.Group(); rig.position.set(b.x, 0, b.z);
+    const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; rig.add(m); return m; };
+    const cy = b.elev + b.h / 2;
+    add(new THREE.BoxGeometry(b.w + 0.6, b.h + 0.6, 0.5), M.frame, 0, cy, 0);
+    add(new THREE.PlaneGeometry(b.w, b.h), S.faceMat, 0, cy, 0.26).castShadow = false;
+    add(new THREE.BoxGeometry(b.w + 0.4, 0.14, 1.1), M.metal, 0, b.elev - 0.35, 0.6);
+    const nl = Math.max(2, Math.min(6, Math.round(b.w / 5)));
+    for (let k = 0; k < nl; k++) { const x = -b.w / 2 + b.w * (k + 0.5) / nl; add(new THREE.BoxGeometry(0.08, 0.08, 1.4), M.metal, x, b.elev + b.h + 0.45, 0.7); add(new THREE.BoxGeometry(0.7, 0.18, 0.35), M.lamp, x, b.elev + b.h + 0.4, 1.35).castShadow = false; }
+    if (b.mount !== 'facade') {
+      const len = b.elev - b.baseY;
+      if (len > 0.3) {
+        const r = 0.3 + Math.min(0.6, b.w * 0.02), xs = b.w > 18 ? [-b.w / 4, b.w / 4] : [0];
+        for (const x of xs) add(new THREE.CylinderGeometry(r, r * 1.25, len, 14), M.metal, x, b.baseY + len / 2, -0.3);
+      }
+    } else {
+      for (const x of [-b.w / 3, b.w / 3]) add(new THREE.BoxGeometry(0.3, b.h * 0.8, 0.6), M.metal, x, cy, -0.5);
+    }
+    const ring = new THREE.Mesh(new THREE.RingGeometry(6, 7.4, 56), M.ring); ring.rotation.x = -Math.PI / 2; ring.position.y = (b.mount === 'roof' ? b.baseY : 0) + 0.3; rig.add(ring);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(16, 48), M.glow); glow.rotation.x = -Math.PI / 2; glow.position.y = ring.position.y - 0.02; rig.add(glow);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 70, 16, 1, true), M.beam); beam.position.set(0, b.elev + b.h + 36, 0); rig.add(beam);
+    S.objs.ring = ring; S.objs.glow = glow; S.objs.beam = beam;
+    S.city.group.add(rig); S.objs.rig = rig;
+    orient();
+  }
+  function rebuildAll() { drawAd(); buildBoard(); compute(); }
+  function orient() { const [nx, nz] = nOf(S.board.bearing); if (S.objs.rig) S.objs.rig.rotation.y = Math.atan2(nx, nz); }
+
+  // ── وضع اللوحة ──
+  function place(o, quiet) {
+    const b = S.board;
+    Object.assign(b, o);
+    if (b.mount === 'roof') b.elev = Math.max(b.elev, Math.ceil(b.baseY + 2));
+    else if (b.mount === 'ground') b.baseY = 0;
+    if (b.mount === 'facade') { b.bearing = Math.round(bearingOf(b.mnx, b.mnz)); }
+    else autoOrient();
+    stopDrive();
+    buildBoard(); compute(); syncSliders();
+    if (!quiet) frameBoard(1.3);
+  }
+  function suggest() { // يجرّب مواقع بجانب الطرق الكبيرة القريبة ويختار أعلاها تعرّضًا
+    const city = S.city, R = S.ctx.R, b = S.board, roads = city.roads.filter((r) => DRIVE.test(r.kind));
+    if (!roads.length) return null;
+    const maxRank = Math.max.apply(null, roads.map((r) => RANK[r.kind] || 1));
+    const cands = [];
+    for (const r of roads) {
+      if ((RANK[r.kind] || 1) < Math.min(3, maxRank)) continue;
+      let acc = 0;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1], L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 1) continue;
+        for (let d = (60 - acc % 60) % 60; d < L; d += 60) {
+          const x = p[0] + (q[0] - p[0]) * d / L, z = p[1] + (q[1] - p[1]) * d / L;
+          if (Math.hypot(x, z) > R * 0.45) continue;
+          const px = -(q[1] - p[1]) / L, pz = (q[0] - p[0]) / L, off = r.w / 2 + 5;
+          for (const sg of [1, -1]) {
+            const cx = x + px * off * sg, cz = z + pz * off * sg;
+            if (!city.idx.at(cx, cz) && !city.idx.at(cx + px * sg * 3, cz + pz * sg * 3)) { cands.push({ x: cx, z: cz, d: Math.hypot(cx, cz), rank: RANK[r.kind] || 1 }); break; }
+          }
+        }
+        acc += L;
+      }
+    }
+    if (!cands.length) return null;
+    cands.sort((u, v) => (v.rank - u.rank) || (u.d - v.d));
+    const pick = []; const strideN = 10, sm = S.smp;
+    const clear = (c) => { // لا نضع العمود وسط شارع آخر (تقاطعات)
+      for (let i = 0; i < sm.N; i++) {
+        const ex = sm.bx[i] - sm.ax[i], ez = sm.bz[i] - sm.az[i], L2 = ex * ex + ez * ez || 1;
+        const t = Math.max(0, Math.min(1, ((c.x - sm.ax[i]) * ex + (c.z - sm.az[i]) * ez) / L2));
+        if (Math.hypot(sm.ax[i] + ex * t - c.x, sm.az[i] + ez * t - c.z) < sm.w[i] / 2 + 2.5) return false;
+      }
+      return true;
+    };
+    const pool = []; for (const c of cands) { if (pool.length >= 40) break; if (clear(c)) pool.push(c); }
+    if (!pool.length) return null; for (let k = 0; k < Math.min(strideN, pool.length); k++) pick.push(pool[Math.floor(k * pool.length / Math.min(strideN, pool.length))]);
+    const keep = Object.assign({}, b); let best = null;
+    for (const c of pick) {
+      Object.assign(b, { x: c.x, z: c.z, mount: 'ground', baseY: 0 });
+      const r = autoOrient(false);
+      if (!best || r.sec > best.sec) best = { x: c.x, z: c.z, bearing: r.bearing, sec: r.sec };
+    }
+    Object.assign(b, keep);
+    return best;
+  }
+  function doSuggest(quiet) { const s = suggest(); if (s) place({ x: s.x, z: s.z, mount: 'ground', baseY: 0 }, quiet); return s; }
+
+  // ── الكاميرا ──
+  function frameBoard(dur, opt) {
+    const o = S.ctx.orbit, b = S.board, r = S.res ? S.res.rangeM : 400, [nx, nz] = nOf(b.bearing);
+    const tx = b.x + nx * r * 0.06, ty = Math.min(b.elev * 0.6, 40), tz = b.z + nz * r * 0.06, dist = Math.max(110, Math.min(560, r * 0.42 + b.elev)) * ((opt && opt.zoom) || 1);
+    // نختار زاوية لا يحجب فيها برجٌ اللوحةَ عن الكاميرا (الأحياء الكثيفة)
+    const C = target(b), idx = S.city.idx, psi0 = Math.atan2(nx, nz);
+    let pick = [(opt && opt.phi) || 1.05, (opt && opt.side) || 0.8];
+    if (!(opt && opt.side)) {
+      search: for (const ph of [1.05, 0.9, 0.75, 0.6, 0.45]) for (const so of [0.8, -0.8, 0.5, -0.5, 1.1, -1.1, 0.2]) {
+        const th = psi0 + so, cp = { x: tx + dist * Math.sin(ph) * Math.sin(th), y: ty + dist * Math.cos(ph), z: tz + dist * Math.sin(ph) * Math.cos(th) };
+        if (idx.heightAt(cp.x, cp.z) < cp.y && idx.los(cp, C, 4)) { pick = [ph, so]; break search; }
+      }
+    }
+    let th = psi0 + pick[1]; while (th - o.theta > Math.PI) th -= Math.PI * 2; while (th - o.theta < -Math.PI) th += Math.PI * 2;
+    const to = { x: tx, y: ty, z: tz, dist, theta: th, phi: pick[0] };
+    S.anim = { t: 0, dur: dur > 0 ? dur : 0.001, from: { x: o.target.x, y: o.target.y, z: o.target.z, dist: o.dist, theta: o.theta, phi: o.phi }, to };
+    if (!dur) stepAnim(1);
+  }
+  function stepAnim(dt) {
+    const a = S.anim, o = S.ctx.orbit; if (!a) return;
+    a.t = Math.min(1, a.t + dt / a.dur); const e = a.t < 0.5 ? 4 * a.t * a.t * a.t : 1 - Math.pow(-2 * a.t + 2, 3) / 2;
+    const L = (k) => a.from[k] + (a.to[k] - a.from[k]) * e;
+    o.target.set(L('x'), L('y'), L('z')); o.dist = L('dist'); o.theta = L('theta'); o.phi = L('phi'); o.apply();
+    if (a.t >= 1) S.anim = null;
+  }
+  function viewOffset() {
+    const cam = S.ctx && S.ctx.camera; if (!cam) return;
+    const W = window.innerWidth, H = window.innerHeight;
+    if (W <= 640) { if (S.drive) cam.clearViewOffset(); else cam.setViewOffset(W, H, 0, Math.round(H * 0.2), W, H); }
+    else cam.setViewOffset(W, H, Math.round(Math.min(190, W * 0.16)), 0, W, H);
+  }
+
+  // ── منظور السائق ──
+  function startDrive() {
+    const r = S.res; if (!r || !r.best) { S.ctx.ui.status(T('اللوحة ما تنشاف من أيّ شارع — غيّر الاتّجاه أو ارفعها.', 'No road sees the board — rotate or raise it.')); return; }
+    const s = S.smp, a = r.best.a, e = r.best.e;
+    const ids = []; for (let i = a; i <= e; i++) ids.push(i);
+    const fwd = r.best.dir === 1; // نقود باتّجاه سير المقطع الأفضل (اللوحة أمام السائق)، لا عكسه
+    if (fwd) { for (let k = 0, i = a - 1; k < 3 && i >= 0 && s.cont[i + 1] && s.road[i] === s.road[a]; k++, i--) ids.unshift(i); }
+    else { ids.reverse(); for (let k = 0, i = e + 1; k < 3 && i < s.N && s.cont[i] && s.road[i] === s.road[e]; k++, i++) ids.unshift(i); }
+    const pts = []; for (const i of ids) pts.push(fwd ? [s.ax[i], s.az[i]] : [s.bx[i], s.bz[i]]);
+    const last = ids[ids.length - 1]; pts.push(fwd ? [s.bx[last], s.bz[last]] : [s.ax[last], s.az[last]]);
+    const cum = [0]; for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+    S.anim = null;
+    S.drive = { ids, pts, cum, total: cum[cum.length - 1], d: 0, v: s.v[ids[ids.length - 1]], seen: 0, hold: 0, look: null, lastHud: 0 };
+    const o = S.ctx.orbit; o.enabled = false; S.ctx.camera.fov = 62; S.ctx.camera.updateProjectionMatrix();
+    if (window.innerWidth <= 640) S.ctx.ui.box.style.display = 'none';
+    overlays(false);
+    S.ui.stop.style.display = 'flex'; S.ui.drive.innerHTML = ICON.stop + T('أوقف القيادة', 'Stop drive');
+    viewOffset(); syncState();
+  }
+  function overlays(on) { for (const k of ['overlay', 'rays', 'wedge', 'edge', 'best', 'beam', 'ring', 'glow']) if (S.objs[k]) S.objs[k].visible = on; }
+  function stopDrive() {
+    if (!S.drive) return;
+    S.lastDrive = +S.drive.seen.toFixed(1);
+    S.drive = null; const o = S.ctx.orbit; o.enabled = true; S.ctx.camera.fov = 50; S.ctx.camera.updateProjectionMatrix();
+    S.ctx.ui.box.style.display = ''; S.ui.stop.style.display = 'none'; overlays(true); S.ui.drive.innerHTML = ICON.car + T('منظور السائق', 'Driver view');
+    viewOffset(); o.apply(); frameBoard(1.0); renderHud(); syncState();
+  }
+  function stepDrive(dt, now) {
+    const D = S.drive, cam = S.ctx.camera, s = S.smp; if (!D) return;
+    if (D.d >= D.total) { D.hold += dt; if (D.hold > 1.6) { D.d = 0; D.hold = 0; D.seen = 0; } }
+    else D.d = Math.min(D.total, D.d + D.v * dt);
+    let k = 1; while (k < D.cum.length - 1 && D.cum[k] < D.d) k++;
+    const p = D.pts[k - 1], q = D.pts[k], seg = (D.cum[k] - D.cum[k - 1]) || 1, t = Math.min(1, (D.d - D.cum[k - 1]) / seg);
+    const x = p[0] + (q[0] - p[0]) * t, z = p[1] + (q[1] - p[1]) * t, fx = (q[0] - p[0]) / seg, fz = (q[1] - p[1]) / seg;
+    const id = D.ids[Math.min(D.ids.length - 1, k - 1)], vis = s.status[id] === 3;
+    const C = target(S.board), bx = C.x - x, by = C.y - EYE, bz = C.z - z, bl = Math.hypot(bx, by, bz) || 1;
+    // ننظر للأمام، ونلتفت بالقدر الذي يبقي اللوحة داخل الإطار (كما يفعل السائق بعينه)
+    const vHalf = cam.fov * D2R / 2, hHalf = Math.atan(Math.tan(vHalf) * cam.aspect), yF = Math.atan2(fx, fz), yB = Math.atan2(bx, bz);
+    let dl = yB - yF; while (dl > Math.PI) dl -= Math.PI * 2; while (dl < -Math.PI) dl += Math.PI * 2;
+    const ahead = Math.abs(dl) < AHEAD_DEG * D2R; // الشرط نفسه في الحساب: اللوحة أمام السائق ضمن ±٦٠° من اتّجاه سيره
+    if (vis && ahead && D.d < D.total) D.seen += dt;
+    const allow = hHalf * 0.5; let yL = yF, pL = 0;
+    if (Math.abs(dl) < 110 * D2R) {
+      if (Math.abs(dl) > allow) yL = yB - Math.sign(dl) * allow;
+      const pB = Math.atan2(by, Math.hypot(bx, bz)), pa = vHalf * 0.55; pL = Math.max(0, pB - pa);
+    }
+    let lx = Math.sin(yL) * Math.cos(pL), ly = Math.sin(pL), lz = Math.cos(yL) * Math.cos(pL);
+    if (!D.look) D.look = [lx, ly, lz]; else { const kk = Math.min(1, dt * 4); D.look[0] += (lx - D.look[0]) * kk; D.look[1] += (ly - D.look[1]) * kk; D.look[2] += (lz - D.look[2]) * kk; }
+    cam.position.set(x, EYE, z); cam.lookAt(x + D.look[0] * 50, EYE + D.look[1] * 50, z + D.look[2] * 50);
+    D.vis = vis && ahead; D.side = vis && !ahead; D.distB = Math.hypot(bx, bz);
+    if (now - D.lastHud > 120) { D.lastHud = now; renderHud(); syncState(); }
+  }
+
+  // ── الواجهة ──
+  function renderHud() {
+    const ui = S.ctx.ui, r = S.res; if (!r) return;
+    if (S.drive) {
+      const D = S.drive;
+      ui.hud('<div class="bbh"><div class="k ' + (D.vis ? 'g' : (D.side ? 'y' : 'r')) + '"><span>' + (D.vis ? T('اللوحة في عينك', 'Board in view') : (D.side ? T('اللوحة خارج نظرك', 'Board out of view') : T('اللوحة محجوبة', 'Board hidden'))) + '</span><b>' + D.seen.toFixed(1) + '<small>' + T('ث', 's') + '</small></b></div>' +
+        '<div class="k"><span>' + T('السرعة', 'Speed') + '</span><b>' + fmt(D.v * 3.6) + '<small>' + T('كم/س', 'km/h') + '</small></b></div>' +
+        '<div class="k y"><span>' + T('المسافة للوحة', 'To board') + '</span><b>' + fmt(D.distB || 0) + '<small>' + T('م', 'm') + '</small></b></div></div>');
+      return;
+    }
+    const br = r.bestRoad;
+    ui.hud('<div class="bbh"><div class="k g"><span>' + T('طرق تشوف اللوحة', 'Road that sees it') + '</span><b>' + fmtLen(r.visibleRoadM).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
+      '<div class="k y"><span>' + T('يقرأها السائق', 'Driver reads it') + '</span><b>' + fmtSec(r.readingSec).replace(/ (\S+)$/, '<small>$1</small>') + '</b></div>' +
+      '<div class="k"><span>' + T('أفضل مقطع', 'Best stretch') + '</span><b>' + (br ? fmtLen(br.lengthM).replace(/ (\S+)$/, '<small>$1</small>') : '—') + '</b><div class="s" dir="auto">' + (br ? esc(br.name) + ' · ' + toward(br.heading) : T('لا يوجد', 'none')) + '</div></div></div>');
+  }
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function renderStats() {
+    const r = S.res, U = S.ui; if (!r || !U.tab) return;
+    const kinds = Object.keys(r.byKind).sort((a, b) => (r.byKind[b].s - r.byKind[a].s) || (r.byKind[b].m - r.byKind[a].m));
+    const mx = (kinds.length && r.byKind[kinds[0]].s) || 1, hd = (t) => '<td style="color:#86a3aa">' + t + '</td>';
+    U.tab.innerHTML = kinds.length ? '<tr>' + hd(T('نوع الشارع', 'Road type')) + hd(T('مرئيّ', 'Visible')) + hd(T('أطول قراءة', 'Longest read')) + '</tr>' + kinds.map((k) => '<tr><td>' + kindName(k) + ' <span style="color:#86a3aa">' + kmh(k) + T(' كم/س', ' km/h') + '</span><div class="bar" style="width:' + Math.max(4, 100 * r.byKind[k].s / mx).toFixed(0) + '%"></div></td><td>' + fmtLen(r.byKind[k].m) + '</td><td>' + fmtSec(r.byKind[k].s) + '</td></tr>').join('')
+      : '<tr><td>' + T('ولا شارع يشوفها — جرّب ترفعها أو تلفّها.', 'No road sees it — raise or rotate it.') + '</td></tr>';
+    const br = r.bestRoad;
+    U.best.innerHTML = br ? T('أفضل مقطع: ', 'Best stretch: ') + '<b>' + esc(br.name) + '</b> ' + toward(br.heading) + ' — ' + fmtLen(br.lengthM) + ' · ' + fmtSec(br.seconds) + T(' بسرعة ', ' at ') + br.speedKmh + T(' كم/س', ' km/h') +
+      T(' · بالاتّجاه المعاكس ', ' · opposite way ') + fmtSec(br.reverseSeconds)
+      : T('ما فيه مقطع مرئيّ أمام سائق بعد.', 'No stretch sees it ahead yet.');
+    const mountTxt = { ground: T('على عمود', 'on a pole'), roof: T('فوق سطح', 'on a roof'), facade: T('على واجهة', 'on a facade') }[S.board.mount];
+    U.note.textContent = T('اللوحة ', 'Board ') + mountTxt + T(' · مدى القراءة ', ' · reading range ') + fmt(r.rangeM) + T(' م · ', ' m · ') + fmt(r.samples) + T(' نقطة فحص على الطرق كلّ ١٠ م', ' road checkpoints every 10 m');
+    renderHud();
+  }
+  function syncSliders() {
+    const U = S.ui, b = S.board; if (!U.w) return;
+    U.w.value = b.w; U.h.value = b.h; U.e.value = b.elev; U.r.value = b.bearing;
+    U.wv.textContent = b.w + ' ' + T('م', 'm'); U.hv.textContent = b.h + ' ' + T('م', 'm'); U.ev.textContent = b.elev + ' ' + T('م', 'm');
+    U.rv.textContent = Math.round(b.bearing) + '° ' + card(b.bearing);
+  }
+  const pending = new Set();
+  function later(fn) { // يجمع تحديثات المنزلقات في إطار واحد (بلا إسقاط أيّ منها)
+    if (!pending.size) requestAnimationFrame(() => { const fs = [...pending]; pending.clear(); for (const f of fs) f(); });
+    pending.add(fn);
+  }
+
+  function panel(ctx) {
+    S.ctx = ctx;
+    const p = ctx.ui.panel;
+    const sl = (id, label, min, max, step) => '<label class="bb-sl"><span class="l"><span>' + label + '</span><b id="' + id + 'v"></b></span><input type="range" id="' + id + '" min="' + min + '" max="' + max + '" step="' + step + '"></label>';
+    p.innerHTML = '<div class="bb-hint">' + ICON.pin + '<span>' + T('اضغط على واجهة مبنى أو سطح أو أرض لتثبيت اللوحة هناك.', 'Tap a facade, roof or open ground to place the board.') + '</span></div>' +
+      sl('bbw', T('العرض', 'Width'), 3, 40, 0.5) + sl('bbh', T('الارتفاع', 'Height'), 1.5, 20, 0.5) + sl('bbe', T('الارتفاع عن الأرض', 'Elevation'), 0, 200, 1) + sl('bbr', T('اتّجاه الواجهة', 'Facing'), 0, 359, 1) +
+      '<div class="bb-btns"><button id="bbdrive" class="bb-gold">' + ICON.car + T('منظور السائق', 'Driver view') + '</button><button id="bbauto">' + ICON.compass + T('أفضل اتّجاه', 'Best facing') + '</button>' +
+      '<button id="bbspot" class="ghost">' + ICON.spark + T('اقترح موقعًا', 'Suggest a spot') + '</button><button id="bbimg" class="ghost">' + ICON.img + T('صورة إعلانك', 'Your ad image') + '</button></div>' +
+      '<input type="file" id="bbfile" accept="image/*" style="display:none">' +
+      '<div class="bb-legend"><span><i style="background:linear-gradient(90deg,#a4ff3c,#12b866)"></i>' + T('مرئيّة', 'Visible') + '</span><span><i style="background:#ff4630"></i>' + T('محجوبة بمبنى', 'Blocked') + '</span><span><i style="background:#ffcf4a"></i>' + T('أفضل مقطع', 'Best stretch') + '</span><span><i style="background:rgba(94,245,156,.35)"></i>' + T('زاوية ±٧٠°', '±70° cone') + '</span></div>' +
+      '<table class="bb-tab" id="bbtab"></table><div class="bb-best" id="bbbest"></div><div class="bb-note" id="bbnote"></div>' +
+      '<div class="bb-note">' + T('السرعات: سريع ١٠٠ · شريانيّ ٨٠ · رئيسيّ ٦٠ · ثانويّ ٥٠ · غيرها ٤٠ كم/س. عين السائق ١٫٢ م، والزاوية من الزجاج حتّى ٣٥° للأعلى.', 'Speeds: motorway 100, trunk 80, primary 60, secondary 50, other 40 km/h. Driver eye 1.2 m; windscreen up to 35° above.') +
+        T(' والثواني لسائق واحد باتّجاه سيره، وتُعدّ فقط واللوحة أمامه ضمن ±٦٠°.', ' Seconds are for one driver in one direction, counted only while the board is within ±60° ahead.') + '</div>';
+    const $ = (id) => p.querySelector('#' + id);
+    const U = S.ui; Object.assign(U, { w: $('bbw'), h: $('bbh'), e: $('bbe'), r: $('bbr'), wv: $('bbwv'), hv: $('bbhv'), ev: $('bbev'), rv: $('bbrv'), tab: $('bbtab'), best: $('bbbest'), note: $('bbnote'), drive: $('bbdrive') });
+    syncSliders();
+    const onSize = () => { const b = S.board; b.w = +U.w.value; b.h = +U.h.value; b.elev = Math.max(+U.e.value, b.mount === 'roof' ? Math.ceil(b.baseY) : 0); syncSliders(); if (!S.city) return; stopDrive(); later(rebuildAll); };
+    U.w.addEventListener('input', onSize); U.h.addEventListener('input', onSize); U.e.addEventListener('input', onSize);
+    U.r.addEventListener('input', () => { S.board.bearing = +U.r.value; syncSliders(); if (!S.city) return; stopDrive(); orient(); later(compute); });
+    $('bbauto').addEventListener('click', () => { if (!S.city) return; stopDrive(); autoOrient(); orient(); compute(); syncSliders(); frameBoard(1.0); });
+    $('bbspot').addEventListener('click', () => { if (!S.city) return; doSuggest(); });
+    U.drive.addEventListener('click', () => { if (!S.city) return; S.drive ? stopDrive() : startDrive(); });
+    const file = $('bbfile');
+    $('bbimg').addEventListener('click', () => file.click());
+    file.addEventListener('change', () => {
+      const f = file.files && file.files[0]; if (!f) return;
+      const fr = new FileReader();
+      fr.onload = () => { const im = new Image(); im.onload = () => { S.img = im; if (S.ctx.city) { drawAd(); } ctx.ui.status(T('تمّ وضع صورتك على اللوحة.', 'Your image is on the board.')); }; im.onerror = () => ctx.ui.status(T('الصورة ما انقرت — جرّب ملفًّا آخر.', 'Could not read that image.')); im.src = fr.result; };
+      fr.readAsDataURL(f); file.value = '';
+    });
+    // زرّ إيقاف عائم أثناء القيادة
+    const stop = document.createElement('button'); stop.id = 'bbstop'; stop.innerHTML = ICON.stop + T('إنهاء منظور السائق', 'Exit driver view'); document.body.appendChild(stop);
+    stop.addEventListener('click', stopDrive); U.stop = stop;
+    // الالتقاط بالنقر: الضغط والرفع في مكان واحد تقريبًا (السحب للكاميرا لا يضع اللوحة)
+    const dom = ctx.renderer.domElement, ptrs = new Set(); let down = null;
+    dom.addEventListener('pointerdown', (e) => { ptrs.add(e.pointerId); down = ptrs.size === 1 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; S.anim = null; });
+    const up = (e) => {
+      ptrs.delete(e.pointerId); const d = down; down = null;
+      if (!d || e.type !== 'pointerup' || S.drive || !S.city) return;
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 7 && performance.now() - d.t < 650) pickAt(e.clientX, e.clientY);
+    };
+    dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+    window.addEventListener('resize', viewOffset); viewOffset();
+    window.__billboard = { place: (o) => place(o), pickAt: (x, y) => pickAt(x, y), autoOrient: () => { autoOrient(); orient(); compute(); syncSliders(); return S.board.bearing; },
+      suggest: () => doSuggest(), drive: startDrive, stop: stopDrive, frame: frameBoard, setImage: (src) => new Promise((res) => { const im = new Image(); im.onload = () => { S.img = im; drawAd(); res(true); }; im.onerror = () => res(false); im.src = src; }),
+      set: (o) => { if (o.w != null) U.w.value = o.w; if (o.h != null) U.h.value = o.h; if (o.elev != null) U.e.value = o.elev; if (o.w != null || o.h != null || o.elev != null) U.w.dispatchEvent(new Event('input')); if (o.bearing != null) { U.r.value = o.bearing; U.r.dispatchEvent(new Event('input')); } },
+      advance: (sec) => { const D = S.drive; if (!D) return 0; const n = Math.round(sec / 0.02); for (let k = 0; k < n && S.drive && !(D.d >= D.total); k++) stepDrive(0.02, performance.now()); renderHud(); syncState(); return +D.seen.toFixed(2); },
+      flush: () => { drawAd(); buildBoard(); compute(); return window.__inspire_state; }, S };
+  }
+  const ray = { r: null, v: null };
+  function pickAt(px, py) {
+    const THREE = S.ctx.THREE, city = S.city;
+    if (!ray.r) { ray.r = new THREE.Raycaster(); ray.v = new THREE.Vector2(); }
+    ray.v.set(px / window.innerWidth * 2 - 1, -(py / window.innerHeight) * 2 + 1);
+    ray.r.setFromCamera(ray.v, S.ctx.camera);
+    const hit = ray.r.intersectObjects([city.buildingsMesh, city.ground], false)[0];
+    if (!hit) return null;
+    const P = hit.point;
+    if (hit.object === city.buildingsMesh && hit.face) {
+      const n = hit.face.normal;
+      if (n.y > 0.7) { place({ x: P.x, z: P.z, mount: 'roof', baseY: P.y }); return 'roof'; }
+      const L = Math.hypot(n.x, n.z) || 1, nx = n.x / L, nz = n.z / L, b = S.board;
+      const elev = Math.max(0, Math.min(200, Math.round(P.y - b.h / 2)));
+      place({ x: P.x + nx * 0.45, z: P.z + nz * 0.45, mount: 'facade', mnx: nx, mnz: nz, baseY: 0, elev });
+      return 'facade';
+    }
+    place({ x: P.x, z: P.z, mount: 'ground', baseY: 0 }); return 'ground';
+  }
+
+  CK.start({ imagery: true,
+    title: TITLE,
+    sub: T('ثبّت لوحتك في حيّك الحقيقيّ، وشوف أيّ شوارع تشوفها وكم ثانية يقرأها السائق.', 'Place a billboard in your real neighbourhood and see which streets see it, and for how long.'),
+    shadows: true,
+    panel,
+    onCity(ctx, city) {
+      S.ctx = ctx; S.city = city; S.loads++;
+      if (S.drive) { S.drive = null; ctx.orbit.enabled = true; ctx.camera.fov = 50; ctx.camera.updateProjectionMatrix(); ctx.ui.box.style.display = ''; if (S.ui.stop) S.ui.stop.style.display = 'none'; if (S.ui.drive) S.ui.drive.innerHTML = ICON.car + T('منظور السائق', 'Driver view'); }
+      S.objs = {}; S.anim = null; S.res = null; S.losKey = ''; S.lastDrive = 0;
+      S.smp = sampleRoads(city, ctx.R); S.los = new Uint8Array(S.smp.N);
+      buildOverlay(); drawAd();
+      const b = S.board; b.mount = 'ground'; b.baseY = 0; b.x = 0; b.z = 0;
+      if (!doSuggest(true)) { place({ x: 0, z: 0, mount: 'ground', baseY: 0 }, true); }
+      viewOffset(); frameBoard(0); ctx.orbit.dist = Math.min(ctx.orbit.max, ctx.orbit.dist * 1.6); ctx.orbit.apply(); frameBoard(2.2);
+      let tt = 0;
+      ctx.onFrame((dt, now) => {
+        tt += dt;
+        if (S.drive) stepDrive(dt, now); else stepAnim(dt);
+        if (S.objs.ring) { const k = 1 + 0.25 * Math.sin(tt * 3); S.objs.ring.scale.set(k, k, k); S.objs.glow.material.opacity = 0.14 + 0.1 * Math.sin(tt * 3); }
+        if (S.objs.rays) S.objs.rays.material.opacity = 0.26 + 0.1 * Math.sin(tt * 2.2);
+      });
+    },
+  });
+})();
+</script></body></html>

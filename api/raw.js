@@ -6,7 +6,7 @@ require('./_lib/_fetch-timeout.js');
 require('./_lib/_env-keys.js'); // v-key-shape: مفتاح OpenRouter الموضوع خطأً في ANTHROPIC_API_KEY يُنقل إلى مكانه
 
 const MODELS = {
-  opus: { direct: 'claude-opus-5', or: 'anthropic/claude-opus-5' },
+  opus: { direct: 'claude-opus-5-5', or: 'anthropic/claude-opus-5.5' }, // v-models-latest
   sonnet: { direct: 'claude-sonnet-5', or: 'anthropic/claude-sonnet-5' },
 };
 

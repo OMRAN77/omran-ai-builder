@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-webview-opaque (فيديوهات المالك ولقطاته من HUAWEI Mate X7 منذ ٢٢ سبتمبر: «التطبيق كامل
+     يشوّش» — ضجيج ملوّن مكان الشعار، مستطيلات سوداء فوق بطاقات الأدوات، صور خضراء مشوّشة،
+     أيقونات لا تُرسم، شاشات نصف مرسومة):
+
+     السمة الوحيدة في البيان كانت @android:style/Theme.Translucent.NoTitleBar معلنة على
+     <application> كلّه، فورثها MahaWebViewFallbackActivity — وهو النشاط الذي يرسم التطبيق فعلًا
+     على جهاز المالك. نافذة شفّافة (windowIsTranslucent=true, windowBackground=@null) تعني أنّ
+     النظام لا يملأ خلفيّة النافذة ولا يضمن سطحًا معتمًا: كلّ بكسل لم يرسمه WebView في الإطار
+     الحاليّ يخرج بما كان في مخزن السطح — وهذا بالضبط شكل «الضجيج الملوّن» و«المستطيل الأسود»
+     و«الشاشة نصف المرسومة». وتعليق bubblewrap نفسه في LauncherActivity يقرّ بالخلفيّة الشفّافة
+     («crashes the app due to the transparent background»).
+
+     السمة الشفّافة صحيحة لـLauncherActivity وحده (نشاط عبور يعرض شاشة البداية فوق ما تحته)،
+     وخاطئة لنشاط يرسم صفحة كاملة. هنا سمة معتمة لنشاطي WebView وحدهما؛ LauncherActivity وبقيّة
+     أنشطة المكتبة تبقى على السمة الشفّافة كما كانت. -->
+<resources>
+    <style name="OmranWebViewTheme" parent="@android:style/Theme.NoTitleBar">
+        <item name="android:windowBackground">@color/omranWindowBackground</item>
+        <item name="android:colorBackground">@color/omranWindowBackground</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+</resources>

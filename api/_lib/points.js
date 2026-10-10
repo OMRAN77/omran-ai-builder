@@ -1,11 +1,12 @@
 // نظام النقاط الموحد — المحفظة الرقمية للتطبيق.
-// النقاط = عملة موحدة تُصرف على: مها الصوتية (10 نقاط/دقيقة)،
-// فيديو Runway (60 نقطة)، فيديو Veo 3 (400 نقطة)، توليد صورة (10 نقاط).
-// هدية الترحيب عند التسجيل = 70 نقطة (تكفي: فيديو واحد + صورة واحدة).
+// النقاط = عملة موحدة تُصرف على مها والصور والفيديو — الأسعار في COSTS أدناه وحدها (لا أرقام في التعليقات تتقادم).
+// هدية الترحيب عند التسجيل = 70 نقطة (فيديو اقتصاديّ + صورة، أو ٤ دقائق مع مها).
 // المالك (omran) = بلا حدود، لا يُخصم منه شيء أبدًا.
 const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
+const media = require('./_mediaPlans.js');
+const planVideos = require('./_planVideos.js'); // v-plan-videos
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 // v-owner-core: قائمة المالك الموحّدة من _owner.js — ‹omran› مدمج دائمًا
@@ -16,22 +17,35 @@ const OWNER_LIST = require('./_owner.js').ownerList();
 // v-costs-2026-09 (قرار المالك ١٢ سبتمبر): الصورة كانت ١٠ نقاط (٠.٢٠$) بينما
 // المسار الإبداعي (برو + أفضل-من-٢ + إعادة محاولة) يكلّف ٠.٣٠–٠.٧٠$ — خسارة؛
 // وصفحة الأسعار تعلن ٢٠ أصلًا. دقيقة مها على gpt-realtime كانت على الحافة.
+// v-plan-routing (قرار المالك ٢٠ سبتمبر — جدول الباقات النهائيّ): الفيديو رُخّص (Runway ٥٥، Veo ٢٧٥)
+// كي يكون في متناول الباقات (Plus فيديو، Pro فيديوان، Max ثلاثة)، والصورة الإبداعيّة (برو + أفضل-من-٢)
+// تُسعَّر ٣٥ لأنّها تكلّف ضعف الصورة العاديّة تقريبًا.
 const COSTS = {
   maha_minute: 15,   // دقيقة مكالمة مع مها
-  runway_video: 60,  // فيديو Runway ‏10 ثواني
-  veo_video: 400,    // فيديو Veo 3 ‏8 ثواني (بالصوت)
+  runway_video: 55,  // فيديو Runway ‏10 ثواني
+  // v-fair-video (قرار المالك ٥ أكتوبر، الجدول الثاني): كلّ خدمة ≈ ٣ أضعاف تكلفتها على سعر نقطة Pro. الفيديو بالصوت كان
+  // ×٤٫٨ والسينمائيّ ×٩ (أرخص علينا من فيديو الصوت ويُباع أغلى منه). أسوأ ربح يبقى على مها، فهذا لا ينقصه.
+  veo_video: 175,    // فيديو Veo 3 ‏8 ثواني (بالصوت) — تكلفته ٤٤٠ فلسًا (_mediaPlans UNIT_COST)
+  minimax_video: 40, // فيديو المحرّك الاقتصادي (MiniMax Hailuo) — أرخص من Runway وVeo
+  omni_video: 120,   // فيديو المحرّك السينمائيّ (Gemini Omni) — تكلفته ٢٩٤ فلسًا ($0.10/ثانية)
   image: 20,         // توليد/تعديل صورة
+  image_creative: 35, // صورة إبداعيّة (تعديل إبداعيّ على المحرّك الأقوى + أفضل-من-٢) — تُستكمل فوق image
   image_4k: 30,      // صورة بدقة 4K (طلب صريح: 4k / للطباعة / دقة عالية)
+  image_upscale: 5,  // زرّ «دقّة أعلى»: ترقية صورة قائمة بمكبّر دقّة (v-img-upscale)
   screen_guide: 5,   // جلسة إرشاد بصريّ — تُخصم مرة واحدة للجلسة كاملة
+  // v-video-watch (قرار المالك ٥ أكتوبر، «الدقّة العالية»): فيديو مرفق في المحادثة يُشاهَد ويُسمَع معًا — نقطة للفيديو +
+  // نقطتان لكلّ دقيقة بدأت (تكلفته ≈ ٠٫٠٩ درهم للدقيقة بالدقّة العالية ⇒ ≈ ٢٫٥–٣ أضعاف على سعر نقطة Pro). video-watch.js.
+  video_watch_base: 1,
+  video_watch_min: 2,
   premium_claude: 20,  // رد احترافي 👑 Claude Opus 5
-  premium_openai: 15,  // رد احترافي 👑 GPT-5.6
+  premium_openai: 15,  // رد احترافي 👑 أقوى موديل OpenAI
   premium_gemini: 12,  // رد احترافي 👑 Gemini 3.1 Pro
 };
 
 // خرائط الموديلات البريميوم — المرجع الوحيد في الخادم.
 const PREMIUM_MODELS = {
   claude: 'claude-opus-5',
-  openai: 'gpt-5.6-terra',
+  openai: 'gpt-6-astra',
   gemini: 'gemini-3.1-pro-preview',
 };
 const PREMIUM_COST = {
@@ -129,7 +143,7 @@ async function mirrorToUser(username, points) {
 
 // يخصم نقاطًا من رصيد المستخدم. المالك لا يُخصم منه.
 // يرجع { ok:true, points } أو { ok:false, reason:'insufficient'|'auth', points }.
-async function spendPoints(username, amount, reason) {
+async function spendPoints(username, amount, reason, opts) {
   if (!username) return { ok: false, reason: 'auth', points: 0 };
   // owner:true للـVIP أيضًا وعن قصد: نداءٌ واحد على الأقل يقرأ هذا الحقل
   // ليقرّر «هل أجدول استرجاعًا؟» (api/_lib/openai.js). VIP لم يُخصم منه
@@ -140,6 +154,22 @@ async function spendPoints(username, amount, reason) {
   if (await isBanned(username)) return { ok: false, reason: 'auth', banned: true, points: 0 };
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
+
+  // v-plan-videos: صلاحيّة فيديوهات الباقة (Pro ٢ · Max ٣) وحدها — للاقتصاديّ والترند. لا نقاط ولا رصيد اشتراك هنا:
+  // نفادها يرجع ok:false فيكمل المتّصل بالتأكيد والخصم العاديّ كما كان.
+  if (opts && opts.planVideoOnly) {
+    try {
+      const pv = await planVideos.trySpendPlanVideo(username, amt);
+      if (pv) { await meterOp(username, reason); return { ok: true, points: 0, spent: 0, reason, planVideo: true, planVideosLeft: pv.left }; }
+    } catch (e) { console.warn('[points] plan video skipped:', e && e.message); }
+    return { ok: false, reason: 'plan_video', points: 0 };
+  }
+
+  // v-media-plans: مشترك الصور/الفيديو يُخصم من رصيد اشتراكه أوّلًا، ونفاده يرجع للنقاط.
+  try {
+    const m = await media.trySpendMedia(username, amt, reason);
+    if (m) { await meterOp(username, reason); return { ok: true, points: 0, spent: 0, reason, media: m.media, pool: m.pool, mediaLeft: m.left }; } // pool: الخانة (v-media-merge)
+  } catch (e) { console.warn('[points] media spend skipped:', e && e.message); }
 
   let before;
   try {
@@ -167,14 +197,24 @@ async function spendPoints(username, amount, reason) {
   }
 
   await mirrorToUser(username, after);
+  await meterOp(username, reason);
   return { ok: true, points: after, spent: amt, reason };
+}
+
+// v-cost-meter: تكلفة العمليّة علينا (جدول الوسائط) في عدّاد الشهر لهذا الحساب — أفضل جهد، لا يوقف الخصم.
+async function meterOp(username, reason) {
+  try { await require('./cost-meter.js').meterOp(username, reason); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
 }
 
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
 async function refundPoints(username, amount) {
   if (!username || isOwner(username)) return;
   if (await isVip(username)) return; // لم يُخصم منه شيء، فلا شيء يُعاد.
-  const amt = Math.max(0, Math.floor(Number(amount) || 0));
+  let amt = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!amt) return;
+  try { amt = await planVideos.refundPlanVideo(username, amt); } catch (e) { console.warn('[points] plan video refund skipped:', e && e.message); } // v-plan-videos
+  if (!amt) return;
+  try { amt = await media.refundMedia(username, amt); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); }
   if (!amt) return;
   // Must go through the same atomic counter as the deduction. A read-modify-
   // write refund running next to a concurrent spend would overwrite it and
@@ -186,6 +226,32 @@ async function refundPoints(username, amount) {
   } catch (e) {
     console.error('[points] refund failed for ' + username + ':', e && e.message);
   }
+}
+
+/* v-plans-gate (طلب المالك ٦ أكتوبر: «انتهاء الخدمة ولا تجديد … تحوّله إلى الاشتراك»): نهاية كلّ اشتراك من سجلّ الحساب
+   وحده (بلا Stripe) — باقة المحادثة وباقات الصور والفيديو ومها، بالنافذة نفسها التي تحكم سريانها (tier.planActive
+   و_mediaPlans.mediaActive: ٣٥ يومًا من آخر دفعة). الواجهة تنبّه قبل الانتهاء بثلاثة أيّام وبعده مرّة؛ وما انتهى قبل
+   أكثر من شهر لا يُرسل (لا تنبيه عن اشتراك قديم). */
+const SUBS_STALE_MS = 30 * 86400000;
+function subsOf(user, now) {
+  const out = [];
+  if (!user || user.deleted) return out;
+  const t = typeof now === 'number' ? now : Date.now();
+  const tier = require('./tier.js');
+  const add = (kind, plan, at, windowDays) => {
+    const from = Number(at || 0);
+    if (!(from > 0)) return;
+    const endsAt = from + windowDays * 86400000;
+    if (t - endsAt > SUBS_STALE_MS) return;
+    out.push({ kind, plan, endsAt, active: t <= endsAt });
+  };
+  const plan = String(user.plan || '').toLowerCase();
+  if (tier.PLAN_KEYS.includes(plan)) add('chat', plan, user.planUpdatedAt, tier.SUB_WINDOW_DAYS);
+  for (const kind of media.MEDIA_KINDS) { // v-media-merge: والمدموجة ('mix')
+    const m = user.media && user.media[kind];
+    if (m && media.MEDIA_PLANS[m.plan] && media.MEDIA_PLANS[m.plan].media === kind) add(kind, m.plan, m.at, media.MEDIA_WINDOW_DAYS);
+  }
+  return out;
 }
 
 // نفس دوال الخصم لكن عبر التوكن مباشرة (للاستخدام من نقاط النهاية الأخرى).
@@ -210,17 +276,26 @@ module.exports = async (req, res) => {
 
     if (action === 'balance') {
       if (!username) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
-      if (isOwner(username)) { res.status(200).json({ ok: true, authed: true, owner: true, points: null, unlimited: true, costs: COSTS }); return; }
+      if (isOwner(username)) { res.status(200).json({ ok: true, authed: true, owner: true, points: null, unlimited: true, costs: COSTS, tier: 'owner', plan: null }); return; }
       // VIP: الواجهة تقرأ unlimited وحده (∞ بدل الرقم)، وowner يبقى false
       // لأنّه ليس مالكًا — لوحة التحكّم لا تُفتح له، الحدّ وحده يسقط.
-      if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS }); return; }
+      if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS, tier: 'vip', plan: null }); return; }
       const rec = await readPoints(username);
       if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
+      // v-plan-routing: الباقة السارية مع الرصيد (الواجهة تقفل منتقي المزوّد لغير Max). عطب القراءة = مجّاني.
+      let __t = null;
+      try { __t = await require('./tier.js').resolveTier(username); } catch (e) { __t = null; }
+      let __media = {};
+      try { __media = await media.mediaStatus(username); } catch (e) { __media = {}; }
       res.status(200).json({
+        media: __media,
         ok: true, authed: true, owner: false,
         points: rec.points,
         mahaTrialUsed: !!rec.user.mahaTrialUsed,
         costs: COSTS,
+        tier: (__t && __t.tier) || 'free',
+        plan: (__t && __t.plan) || null,
+        subs: subsOf(rec.user), // v-plans-gate
       });
       return;
     }
@@ -234,6 +309,14 @@ module.exports = async (req, res) => {
       if (!allowed.includes(amt)) { res.status(400).json({ ok: false, reason: 'bad_amount' }); return; }
       const result = await spendPoints(username, amt, String(reason || 'client'));
       res.status(200).json(result);
+      return;
+    }
+
+    // v-media-plans: إعداد جودة الصور لمشترك الصور (عاديّة/عالية). v-media-merge: ومشترك «صور وفيديو».
+    if (action === 'media-quality') {
+      if (!username) { res.status(401).json({ ok: false, reason: 'auth' }); return; }
+      const ok = await media.setImageQuality(username, String(body.quality || ''));
+      res.status(ok ? 200 : 400).json({ ok });
       return;
     }
 
@@ -258,10 +341,12 @@ module.exports = async (req, res) => {
 };
 
 module.exports.COSTS = COSTS;
+module.exports.subsOf = subsOf; // v-plans-gate
 module.exports.PREMIUM_MODELS = PREMIUM_MODELS;
 module.exports.PREMIUM_COST = PREMIUM_COST;
 module.exports.WELCOME_POINTS = WELCOME_POINTS;
 module.exports.spendPoints = spendPoints;
+module.exports.ensureBalance = ensureBalance; // v-pay-seed: الشحن يبذر العدّاد من السجلّ لا من صفر
 module.exports.spendByToken = spendByToken;
 module.exports.refundPoints = refundPoints;
 module.exports.readPoints = readPoints;

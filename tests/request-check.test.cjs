@@ -19,17 +19,17 @@ test('request-check parses strictly and is on by default', () => {
   assert.match(p, /Ignore taste and quality/);
 });
 
-test('maha-image retries once with the missing part and accepts the retry only if it passes', () => {
-  assert.match(maha, /if \(editImageBase64 && !extras\.length && !__pureRaw && !prayerPlan && !pipelineActive && requestCheckEnabled\(process\.env\)\) \{/);
-  assert.match(maha, /const __rc = await verifyRequestApplied\(\{ apiKey, request: intentText, source: __src, result: \{ b64: imgPart\.inlineData\.data/);
-  assert.match(maha, /CORRECTION: your previous attempt did NOT satisfy the request\. What was missing: "/);
-  assert.match(maha, /if \(__guardLane\) \{\n\s+const g3 = await verifyLocalizedImageEdit\(/, 'المسار الموضعي: المحاولة الثانية تمرّ بحارس الهوية أيضًا');
-  assert.match(maha, /if \(!__rc2 \|\| __rc2\.applied !== false\) \{ imgPart = __fixImg; duoEngine = \(duoEngine \|\| 'gemini'\) \+ '\+fix'; \}/);
-  /* الفحص بعد الحكم/المرشّح الثاني وقبل التعليق */
-  assert.ok(maha.indexOf('const __rc = await verifyRequestApplied') > maha.indexOf("duoEngine = 'gemini x2+judge'"));
-  assert.ok(maha.indexOf('const __rc = await verifyRequestApplied') < maha.indexOf('await sendImg(imgPart.inlineData.data'));
-  /* v-caption-report: تقرير مختصر + «هل أعجبتك؟ ولا أسوي لك … أو …؟» بلغة المستخدم، من كلماته الحرفية */
-  assert.match(maha, /one short sentence reporting exactly what changed in the result; \(2\) one question asking whether they like it and offering TWO concrete next options specific to this image/);
-  assert.match(maha, /Gulf Arabic if they wrote Gulf Arabic/);
-  assert.match(maha, /const cap = prayerPlan \? '' : await imageCaption\(apiKey, intentText \|\| cleanPrompt,/);
+test('v-lanes: maha-image no longer wires the request check (one call, no retry) — the caption report covers new generations and edits (v-img-report)', () => {
+  assert.ok(!/verifyRequestApplied|requestCheckEnabled/.test(maha), 'فحص التطبيق وإعادته أُزيلا من maha-image');
+  assert.ok(!/CORRECTION: your previous attempt did NOT satisfy the request/.test(maha));
+  /* v-caption-report: تقرير مختصر + «هل أعجبتك؟ ولا أسوي لك … أو …؟» بلغة المستخدم، من كلماته الحرفية.
+     v-img-honest (٢٣ سبتمبر): التقرير انتقل إلى image-verify وصار حكمًا وتقريرًا في نداء الرؤية الواحد — بلا إعادة بأمر «CORRECTION»؛
+     المحرّك الآخر مرّة فقط حين لم يُنفَّذ (بكسل أو حكم)، لا حلقة تصحيح. */
+  const verify = fs.readFileSync('api/_lib/image-verify.js', 'utf8');
+  assert.ok(!/CORRECTION: your previous attempt did NOT satisfy the request/.test(verify));
+  assert.match(verify, /one short sentence stating exactly what changed, describing only what is truly visible in the result; \(2\) if any part of the request is NOT visible or came out different, say so plainly/); // v-img-report: والاعتراف بما لم يتحقّق
+  assert.match(verify, /offering TWO concrete next options specific to this image/);
+  assert.match(verify, /Gulf Arabic if they wrote Gulf Arabic/);
+  /* v-img-cards: ولوحة البطاقات بلا مكبّر (مقاس المصدر وكتابته) */
+  assert.match(maha, /await sendImg\(r\.best\.b64, r\.best\.mime, r\.engine, r\.report, r\.best\.verdict, r\.best\.noUpscale\);/, 'v-img-report: التقرير للتوليد والتعديل');
 });

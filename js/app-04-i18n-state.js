@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=673'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=732'; /* v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -55,11 +55,25 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
   } catch(e){ __swallow(e, "save:app-04-i18n-state#3"); }
 })();
 
+/* v-loc-not-build (لقطة المالك ١ أكتوبر: «دي تو دي عجمان — عطني الموقع» فظهرت فقاعة فارغة): طلب موقع مكان — رابط الخريطة
+   جوابه فلا يُخفى. نفس نمط WHERE_ASK_RE في الخادم (chat.js) — يثبّت تطابقهما tests/loc-ask. */
+function omranIsLocationAsk(t){
+  return /الموقع|موقع(?:ه|ها|هم|ك|كم)(?![ء-ي])|لوكيشن|لوكيشين|العنوان|عنوان(?:ه|ها|هم)(?![ء-ي])|خريط|وين\s+(?:مكان|محل|فرع|يقع|موقع)|[أا]ين\s+(?:يقع|تقع|مكان|موقع)|\blocation\b|\baddress\b|\bdirections?\b|\bwhere\s+is\b|\bmaps?\b/i.test(String(t || ''));
+}
+/* روابط خرائط Google تُحذف من ردود القوائم (الأماكن بأسمائها فقط — قرار المالك)، إلّا لمن طلب الموقع؛ ولا يُمحى الردّ
+   كلّه أبدًا: سطر الرابط كان يُحذف بنصّه فصار ردّ «موقع X: رابط» فقاعة فارغة بلا تشخيص (المحتوى غير فارغ). */
+function omranMapFilter(text, prevUserText){
+  const s = String(text || '');
+  if(!s || omranIsLocationAsk(prevUserText)) return s;
+  const mapUrlRe = /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i;
+  const kept = s.split('\n').filter(line => !mapUrlRe.test(line)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return kept || s;
+}
 function mahaPersonaName(){
   var isAr = false;
   try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { /* guard-ok: unavailable language state falls back to English. */ }
   /* v-maha-pause: مها موقوفة مؤقتًا لغير المالك — كل نصوص {voice} تصير محايدة */
-  if (window.__mahaPaused) return isAr ? 'المساعد الصوتي' : 'the voice assistant';
+  /* v-maha-subs: قفل v-maha-pause أُزيل — الاسم الحقيقيّ للجميع */
   var male = false;
   try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage falls back to the default persona. */ }
   if (male) return isAr ? 'عبدالله' : 'Abdullah';
@@ -198,63 +212,82 @@ function applyLanguage(){
   try{ if(lang === 'ar' || lang === 'en' || I18N[lang]) document.documentElement.classList.remove('l10nPending'); }catch(_){ __swallow(_, "misc:app-04-l10nveil"); }
 }
 
+/* v-quicksug-10: قائمة «اقتراحات» ١٠ بنود بترتيب صريح (order) لا بطول النصّ، كلّ بند بـ١٤ لغة (تسمية + برومبت).
+   ثلاثة أنواع: بوتات (priority — تظهر أيضًا كشرائح تحت الصندوق)، قوالب بناء (prompt يُرسَل)، واختصارات أدوات (open → زرّ الأداة). */
+const __BOT_LANG_NAME = { ar:'العربية', en:'English', fr:'français', hi:'हिन्दी', ur:'اردو', bn:'বাংলা', ne:'नेपाली', ml:'മലയാളം', fil:'Filipino', id:'Bahasa Indonesia', zh:'中文', ru:'русский', tr:'Türkçe', es:'español' };
+const __BOT_SPECS = {
+  legal: {
+    ar: 'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات قانونية — قوانين دولة الإمارات". لكل سؤال يكتبه المستخدم: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query: السؤال + " قانون الإمارات المادة", lang:"ar", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON)، انتظر النتيجة. إذا رجعت نتائج قليلة أو فارغة أعد المحاولة مرة واحدة بدون حقل domains. ثم اعرض الإجابة بهذه الصيغة الإلزامية: 1) 📜 اسم القانون ورقمه وسنته، 2) 🔢 رقم المادة، 3) النص من نتائج البحث الفعلية (title/url/content)، 4) 💡 شرح مبسط بالعربي، 5) 🔗 رابط المصدر الرسمي. لا تختلق نص مواد أو أرقام قوانين من عندك أبدًا؛ إن لم تجد المادة في النتائج قل صراحة "لم أجد نص المادة في المصادر الرسمية" واعرض الروابط. أضف أسفل كل إجابة تنويه: "هذه معلومات إرشادية وليست استشارة قانونية رسمية". إن فشل البحث اعرض "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).',
+    en: (L, N) => `Build a single web page (HTML/CSS/JS) named "Legal Advice Bot — UAE Laws". For every question the user types: first send a fetch POST to the relative path /api/search with body {query: question + " UAE law article", lang:"${L}", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON) and wait for the result. If results are few or empty, retry once without the domains field. Then present the answer in this mandatory format: 1) 📜 law name, number and year, 2) 🔢 article number, 3) the text from the actual search results (title/url/content), 4) 💡 a plain explanation in ${N}, 5) 🔗 link to the official source. Never invent article text or law numbers; if the article is not in the results say clearly "I could not find the article text in official sources" and show the links. Under every answer add the note: "This is guidance, not official legal advice". If the search fails show "Could not fetch accurate information right now". All UI text and answers in ${N}. Design the UI simple and clean without boxes/borders, same style as the app (transparent background, text only, an SVG copy icon under every reply).`,
+  },
+  medical: {
+    ar: 'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات طبية أولية". لكل سؤال يكتبه المستخدم عن أعراض أو معلومات صحية: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اعرض ملخصاً دقيقاً مبنياً فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط. لا تختلق معلومات طبية من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).',
+    en: (L, N) => `Build a single web page (HTML/CSS/JS) named "Primary Medical Advice Bot". For every question the user types about symptoms or health information: first send a fetch POST to the relative path /api/search with body {query, lang:"${L}"} (JSON), wait for the result, then show an accurate summary actually based on the returned search results (title/url/content) citing the sources as links. Never invent medical information; if the search fails show "Could not fetch accurate information right now". All UI text and answers in ${N}. Design the UI simple and clean without boxes/borders, same style as the app (transparent background, text only, an SVG copy icon under every reply).`,
+  },
+  student: {
+    ar: 'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت مساعدة طلابية". لكل سؤال دراسي/منهجي يكتبه الطالب: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اشرح الإجابة بأسلوب مبسط تعليمي مبني فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط للمزيد من القراءة. لا تختلق معلومات من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).',
+    en: (L, N) => `Build a single web page (HTML/CSS/JS) named "Student Help Bot". For every study/curriculum question the student types: first send a fetch POST to the relative path /api/search with body {query, lang:"${L}"} (JSON), wait for the result, then explain the answer in a simple educational style actually based on the returned search results (title/url/content), citing the sources as links for further reading. Never invent information; if the search fails show "Could not fetch accurate information right now". All UI text and answers in ${N}. Design the UI simple and clean without boxes/borders, same style as the app (transparent background, text only, an SVG copy icon under every reply).`,
+  },
+};
+function __botPrompt(key){
+  const spec = __BOT_SPECS[key], out = {};
+  Object.keys(__BOT_LANG_NAME).forEach(l => { out[l] = l === 'ar' ? spec.ar : spec.en(l, __BOT_LANG_NAME[l]); });
+  return out;
+}
 const QUICK_SUGGESTIONS = [
-  {icon:'🎮', ar:'صمم لي لعبة', en:'Design a game', fr:'Créer un jeu', hi:'गेम डिज़ाइन करें', ur:'گیم بنائیں', bn:'গেম ডিজাইন', ne:'गेम डिजाइन', ml:"ഗെയിം ഡിസൈൻ", fil:"Gumawa ng Laro", id:"Desain Game", zh:"设计游戏", ru:"Создать игру", tr:"Oyun Tasarla", es:"Diseñar un juego", prompt:{ar:'صمم لي لعبة بسيطة وممتعة', en:'Design a simple, fun game', fr:'Crée-moi un jeu simple et amusant', hi:'मेरे लिए एक सरल और मज़ेदार गेम बनाएं', ur:'میرے لیے ایک آسان اور دلچسپ گیم بنائیں', bn:'আমার জন্য একটি সহজ এবং মজার গেম তৈরি করুন', ne:'मेरो लागि एक सरल र रमाइलो गेम बनाउनुहोस्'}},
-  {icon:'🍽️', ar:'موقع مطعم', en:'Restaurant site', fr:'Site de restaurant', hi:'रेस्टोरेंट साइट', ur:'ریسٹورنٹ سائٹ', bn:'রেস্তোরাঁ সাইট', ne:'रेस्टुरेन्ट साइट', ml:"റെസ്റ്റോറന്റ് സൈറ്റ്", fil:"Website ng Restaurant", id:"Situs Restoran", zh:"餐厅网站", ru:"Сайт ресторана", tr:"Restoran Sitesi", es:"Sitio de restaurante", prompt:{ar:'أنشئ لي موقع لمطعم يعرض القائمة والحجوزات', en:'Build a restaurant website with a menu and reservations', fr:'Crée-moi un site de restaurant avec menu et réservations', hi:'मेरे लिए मेन्यू और आरक्षण वाली रेस्टोरेंट वेबसाइट बनाएं', ur:'میرے لیے مینو اور ریزرویشن والی ریسٹورنٹ ویب سائٹ بنائیں', bn:'আমার জন্য মেনু এবং রিজার্ভেশন সহ একটি রেস্তোরাঁ ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि मेनु र आरक्षण भएको रेस्टुरेन्ट वेबसाइट बनाउनुहोस्'}},
-  {icon:'💼', ar:'بورتفوليو', en:'Portfolio', fr:'Portfolio', hi:'पोर्टफोलियो', ur:'پورٹ فولیو', bn:'পোর্টফোলিও', ne:'पोर्टफोलियो', ml:"പോർട്ട്ഫോളിയോ", fil:"Portfolio", id:"Portofolio", zh:"作品集", ru:"Портфолио", tr:"Portfolyo", es:"Portafolio", prompt:{ar:'أنشئ لي صفحة بورتفوليو شخصي احترافية', en:'Build a professional personal portfolio page', fr:'Crée-moi une page de portfolio personnel professionnel', hi:'मेरे लिए एक पेशेवर पर्सनल पोर्टफोलियो पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ذاتی پورٹ فولیو صفحہ بنائیں', bn:'আমার জন্য একটি পেশাদার ব্যক্তিগত পোর্টফোলিও পেজ তৈরি করুন', ne:'मेरो लागि एक व्यावसायिक व्यक्तिगत पोर्टफोलियो पेज बनाउनुहोस्'}},
-  {icon:'✅', ar:'تطبيق مهام', en:'Task app', fr:'App de tâches', hi:'टास्क ऐप', ur:'ٹاسک ایپ', bn:'টাস্ক অ্যাপ', ne:'टास्क एप', ml:"ടാസ്ക് ആപ്പ്", fil:"App ng Gawain", id:"Aplikasi Tugas", zh:"任务应用", ru:"Приложение задач", tr:"Görev Uygulaması", es:"App de tareas", prompt:{ar:'أنشئ لي تطبيق قائمة مهام يومية', en:'Build a daily to-do list app', fr:'Crée-moi une application de liste de tâches quotidiennes', hi:'मेरे लिए एक दैनिक टू-डू लिस्ट ऐप बनाएं', ur:'میرے لیے روزانہ ٹو ڈو لسٹ ایپ بنائیں', bn:'আমার জন্য একটি দৈনিক টু-ডু লিস্ট অ্যাপ তৈরি করুন', ne:'मेरो लागि दैनिक टु-डु लिस्ट एप बनाउनुहोस्'}},
-  {icon:'🧮', ar:'آلة حاسبة', en:'Calculator', fr:'Calculatrice', hi:'कैलकुलेटर', ur:'کیلکولیٹر', bn:'ক্যালকুলেটর', ne:'क्यालकुलेटर', ml:"കാൽക്കുലേറ്റർ", fil:"Calculator", id:"Kalkulator", zh:"计算器", ru:"Калькулятор", tr:"Hesap Makinesi", es:"Calculadora", prompt:{ar:'أنشئ لي آلة حاسبة أنيقة', en:'Build a sleek calculator', fr:'Crée-moi une calculatrice élégante', hi:'मेरे लिए एक स्टाइलिश कैलकुलेटर बनाएं', ur:'میرے لیے ایک خوبصورت کیلکولیٹر بنائیں', bn:'আমার জন্য একটি সুন্দর ক্যালকুলেটর তৈরি করুন', ne:'मेरो लागि एक स्टाइलिश क्यालकुलेटर बनाउनुहोस्'}},
-  {icon:'📊', ar:'لوحة تحكم', en:'Dashboard', fr:'Tableau de bord', hi:'डैशबोर्ड', ur:'ڈیش بورڈ', bn:'ড্যাশবোর্ড', ne:'ड्यासबोर्ड', ml:"ഡാഷ്ബോർഡ്", fil:"Dashboard", id:"Dasbor", zh:"仪表盘", ru:"Панель управления", tr:"Kontrol Paneli", es:"Panel de control", prompt:{ar:'أنشئ لي لوحة تحكم بإحصائيات وهمية', en:'Build a dashboard with mock stats', fr:'Crée-moi un tableau de bord avec des statistiques fictives', hi:'मेरे लिए मॉक आँकड़ों के साथ एक डैशबोर्ड बनाएं', ur:'میرے لیے فرضی اعداد و شمار کے ساتھ ڈیش بورڈ بنائیں', bn:'আমার জন্য নকল পরিসংখ্যান সহ একটি ড্যাশবোর্ড তৈরি করুন', ne:'मेरो लागि नक्कली तथ्याङ्कसहितको ड्यासबोर्ड बनाउनुहोस्'}},
-  {icon:'📝', ar:'مدونة', en:'Blog', fr:'Blog', hi:'ब्लॉग', ur:'بلاگ', bn:'ব্লগ', ne:'ब्लग', ml:"ബ്ലോഗ്", fil:"Blog", id:"Blog", zh:"博客", ru:"Блог", tr:"Blog", es:"Blog", prompt:{ar:'أنشئ لي موقع مدونة بسيط بتصميم أنيق', en:'Build a simple, stylish blog website', fr:'Crée-moi un site de blog simple et élégant', hi:'मेरे लिए एक सरल, स्टाइलिश ब्लॉग वेबसाइट बनाएं', ur:'میرے لیے ایک سادہ اور خوبصورت بلاگ ویب سائٹ بنائیں', bn:'আমার জন্য একটি সাধারণ, স্টাইলিশ ব্লগ ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि एक साधारण, स्टाइलिश ब्लग वेबसाइट बनाउनुहोस्'}},
-  {icon:'⏳', ar:'عداد تنازلي', en:'Countdown', fr:'Compte à rebours', hi:'काउंटडाउन', ur:'کاؤنٹ ڈاؤن', bn:'কাউন্টডাউন', ne:'काउन्टडाउन', ml:"കൗണ്ട്ഡൗൺ", fil:"Countdown", id:"Hitung Mundur", zh:"倒计时", ru:"Обратный отсчёт", tr:"Geri Sayım", es:"Cuenta atrás", prompt:{ar:'أنشئ لي عداد تنازلي لمناسبة قادمة', en:'Build a countdown timer for an upcoming event', fr:'Crée-moi un compte à rebours pour un événement à venir', hi:'मेरे लिए आने वाले इवेंट के लिए काउंटडाउन टाइमर बनाएं', ur:'میرے لیے آنے والے ایونٹ کے لیے کاؤنٹ ڈاؤن ٹائمر بنائیں', bn:'আমার জন্য একটি আসন্ন ইভেন্টের জন্য কাউন্টডাউন টাইমার তৈরি করুন', ne:'मेरो लागि आगामी कार्यक्रमको लागि काउन्टडाउन टाइमर बनाउनुहोस्'}},
-  {icon:'📬', ar:'نموذج تواصل', en:'Contact form', fr:'Formulaire de contact', hi:'संपर्क फ़ॉर्म', ur:'رابطہ فارم', bn:'যোগাযোগ ফর্ম', ne:'सम्पर्क फारम', ml:"കോൺടാക്റ്റ് ഫോം", fil:"Contact Form", id:"Formulir Kontak", zh:"联系表单", ru:"Форма обратной связи", tr:"İletişim Formu", es:"Formulario de contacto", prompt:{ar:'أنشئ لي صفحة تواصل معنا بتصميم جميل', en:'Build a nicely designed contact-us page', fr:'Crée-moi une belle page de contact', hi:'मेरे लिए एक खूबसूरत संपर्क पेज बनाएं', ur:'میرے لیے ایک خوبصورت رابطہ صفحہ بنائیں', bn:'আমার জন্য একটি সুন্দর ডিজাইন করা যোগাযোগ পেজ তৈরি করুন', ne:'मेरो लागि राम्रोसँग डिजाइन गरिएको सम्पर्क पेज बनाउनुहोस्'}},
-  {icon:'🛒', ar:'متجر إلكتروني', en:'Online store', fr:'Boutique en ligne', hi:'ऑनलाइन स्टोर', ur:'آن لائن اسٹور', bn:'অনলাইন স্টোর', ne:'अनलाइन स्टोर', ml:"ഓൺലൈൻ സ്റ്റോർ", fil:"Online Store", id:"Toko Online", zh:"在线商店", ru:"Интернет-магазин", tr:"Çevrimiçi Mağaza", es:"Tienda en línea", prompt:{ar:'أنشئ لي صفحة متجر إلكتروني بمنتجات وسلة شراء', en:'Build an online store page with products and a shopping cart', fr:'Crée-moi une boutique en ligne avec des produits et un panier', hi:'मेरे लिए उत्पादों और शॉपिंग कार्ट के साथ एक ऑनलाइन स्टोर बनाएं', ur:'میرے لیے مصنوعات اور شاپنگ کارٹ کے ساتھ آن لائن اسٹور بنائیں', bn:'আমার জন্য পণ্য এবং শপিং কার্ট সহ একটি অনলাইন স্টোর পেজ তৈরি করুন', ne:'मेरो लागि उत्पादन र शपिङ कार्ट भएको अनलाइन स्टोर पेज बनाउनुहोस्'}},
-  {icon:'🎯', ar:'لعبة تخمين', en:'Guessing game', fr:'Jeu de devinettes', hi:'अनुमान खेल', ur:'اندازہ گیم', bn:'অনুমান খেলা', ne:'अनुमान खेल', ml:"ഊഹക്കളി", fil:"Larong Hulaan", id:"Permainan Tebak-tebakan", zh:"猜谜游戏", ru:"Игра в угадайку", tr:"Tahmin Oyunu", es:"Juego de adivinanzas", prompt:{ar:'أنشئ لي لعبة تخمين رقم ممتعة', en:'Build a fun number-guessing game', fr:'Crée-moi un jeu amusant de devinette de nombre', hi:'मेरे लिए एक मज़ेदार नंबर-गेसिंग गेम बनाएं', ur:'میرے لیے ایک دلچسپ نمبر گیسنگ گیم بنائیں', bn:'আমার জন্য একটি মজার সংখ্যা অনুমান খেলা তৈরি করুন', ne:'मेरो लागि रमाइलो नम्बर अनुमान खेल बनाउनुहोस्'}},
-  {icon:'🌦️', ar:'تطبيق طقس', en:'Weather app', fr:'App météo', hi:'मौसम ऐप', ur:'موسم ایپ', bn:'আবহাওয়া অ্যাপ', ne:'मौसम एप', ml:"വെതർ ആപ്പ്", fil:"Weather App", id:"Aplikasi Cuaca", zh:"天气应用", ru:"Приложение погоды", tr:"Hava Durumu Uygulaması", es:"App del clima", prompt:{ar:'أنشئ لي تطبيق طقس بتصميم جميل وبيانات وهمية', en:'Build a nicely designed weather app with mock data', fr:'Crée-moi une application météo bien conçue avec des données fictives', hi:'मेरे लिए मॉक डेटा के साथ एक अच्छी तरह से डिज़ाइन की गई मौसम ऐप बनाएं', ur:'میرے لیے فرضی ڈیٹا کے ساتھ ایک خوبصورت موسم ایپ بنائیں', bn:'আমার জন্য নকল ডেটা সহ একটি সুন্দর ডিজাইন করা আবহাওয়া অ্যাপ তৈরি করুন', ne:'मेरो लागि नक्कली डाटा सहितको राम्रो डिजाइन गरिएको मौसम एप बनाउनुहोस्'}},
-  {icon:'📷', ar:'معرض صور', en:'Photo gallery', fr:'Galerie photo', hi:'फ़ोटो गैलरी', ur:'فوٹو گیلری', bn:'ফটো গ্যালারি', ne:'फोटो ग्यालेरी', ml:"ഫോട്ടോ ഗാലറി", fil:"Photo Gallery", id:"Galeri Foto", zh:"照片库", ru:"Фотогалерея", tr:"Fotoğraf Galerisi", es:"Galería de fotos", prompt:{ar:'أنشئ لي معرض صور تفاعلي بتأثيرات جميلة', en:'Build an interactive photo gallery with nice effects', fr:'Crée-moi une galerie photo interactive avec de beaux effets', hi:'मेरे लिए अच्छे इफेक्ट्स के साथ एक इंटरैक्टिव फ़ोटो गैलरी बनाएं', ur:'میرے لیے اچھے اثرات کے ساتھ ایک انٹرایکٹو فوٹو گیلری بنائیں', bn:'আমার জন্য সুন্দর প্রভাব সহ একটি ইন্টারেক্টিভ ফটো গ্যালারি তৈরি করুন', ne:'मेरो लागि राम्रो प्रभावसहितको इन्टरएक्टिभ फोटो ग्यालेरी बनाउनुहोस्'}},
-  {icon:'🧠', ar:'اختبار ذكاء', en:'Quiz app', fr:'App de quiz', hi:'क्विज़ ऐप', ur:'کوئز ایپ', bn:'কুইজ অ্যাপ', ne:'क्विज एप', ml:"ക്വിസ് ആപ്പ്", fil:"Quiz App", id:"Aplikasi Kuis", zh:"问答应用", ru:"Приложение викторин", tr:"Bilgi Yarışması Uygulaması", es:"App de preguntas", prompt:{ar:'أنشئ لي تطبيق اختبار أسئلة وأجوبة تفاعلي', en:'Build an interactive quiz app', fr:'Crée-moi une application de quiz interactive', hi:'मेरे लिए एक इंटरैक्टिव क्विज़ ऐप बनाएं', ur:'میرے لیے ایک انٹرایکٹو کوئز ایپ بنائیں', bn:'আমার জন্য একটি ইন্টারেক্টিভ কুইজ অ্যাপ তৈরি করুন', ne:'मेरो लागि इन्टरएक्टिभ क्विज एप बनाउनुहोस्'}},
-  {icon:'🍳', ar:'كتاب وصفات', en:'Recipe book', fr:'Livre de recettes', hi:'रेसिपी बुक', ur:'ریسپی بک', bn:'রেসিপি বই', ne:'रेसिपी बुक', ml:"റെസിപ്പി ബുക്ക്", fil:"Aklat ng Recipe", id:"Buku Resep", zh:"食谱书", ru:"Книга рецептов", tr:"Yemek Tarifi Kitabı", es:"Libro de recetas", prompt:{ar:'أنشئ لي موقع كتاب وصفات طبخ', en:'Build a recipe book website', fr:'Crée-moi un site de livre de recettes', hi:'मेरे लिए एक रेसिपी बुक वेबसाइट बनाएं', ur:'میرے لیے ایک ریسپی بک ویب سائٹ بنائیں', bn:'আমার জন্য একটি রেসিপি বই ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि रेसिपी बुक वेबसाइट बनाउनुहोस्'}},
-  {icon:'📄', ar:'سيرة ذاتية', en:'Resume', fr:'CV', hi:'रिज़्यूमे', ur:'ریزیومے', bn:'জীবনবৃত্তান্ত', ne:'बायोडाटा', ml:"റെസ്യൂമെ", fil:"Resume", id:"Resume", zh:"简历", ru:"Резюме", tr:"Özgeçmiş", es:"Currículum", prompt:{ar:'أنشئ لي صفحة سيرة ذاتية احترافية', en:'Build a professional resume page', fr:'Crée-moi une page de CV professionnelle', hi:'मेरे लिए एक पेशेवर रिज़्यूमे पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ریزیومے صفحہ بنائیں', bn:'আমার জন্য একটি পেশাদার জীবনবৃত্তান্ত পেজ তৈরি করুন', ne:'मेरो लागि व्यावसायिक बायोडाटा पेज बनाउनुहोस्'}},
-  {icon:'🎵', ar:'مشغل موسيقى', en:'Music player', fr:'Lecteur de musique', hi:'म्यूज़िक प्लेयर', ur:'میوزک پلیئر', bn:'মিউজিক প্লেয়ার', ne:'म्युजिक प्लेयर', ml:"മ്യൂസിക് പ്ലെയർ", fil:"Music Player", id:"Pemutar Musik", zh:"音乐播放器", ru:"Музыкальный плеер", tr:"Müzik Çalar", es:"Reproductor de música", prompt:{ar:'أنشئ لي واجهة مشغل موسيقى أنيقة', en:'Build a sleek music player UI', fr:'Crée-moi une interface de lecteur de musique élégante', hi:'मेरे लिए एक स्टाइलिश म्यूज़िक प्लेयर UI बनाएं', ur:'میرے لیے ایک خوبصورت میوزک پلیئر UI بنائیں', bn:'আমার জন্য একটি সুন্দর মিউজিক প্লেয়ার ইউআই তৈরি করুন', ne:'मेरो लागि स्टाइलिश म्युजिक प्लेयर UI बनाउनुहोस्'}},
-  {icon:'⚖️', ar:'بوت استشارات قانونية', en:'Legal advice bot', priority:true, fr:"Bot de conseils juridiques", hi:"कानूनी सलाह बॉट", ur:"قانونی مشاورت بوٹ", bn:"আইনি পরামর্শ বট", ml:"നിയമോപദേശ ബോട്ട്", ne:"कानुनी सल्लाह बोट", fil:"Bot ng Legal na Payo", id:"Bot Konsultasi Hukum", zh:"法律咨询机器人", ru:"Бот юридических консультаций", tr:"Hukuki Danışma Botu", es:"Bot de asesoría legal", prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات قانونية — قوانين دولة الإمارات". لكل سؤال يكتبه المستخدم: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query: السؤال + " قانون الإمارات المادة", lang:"ar", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON)، انتظر النتيجة. إذا رجعت نتائج قليلة أو فارغة أعد المحاولة مرة واحدة بدون حقل domains. ثم اعرض الإجابة بهذه الصيغة الإلزامية: 1) 📜 اسم القانون ورقمه وسنته، 2) 🔢 رقم المادة، 3) النص من نتائج البحث الفعلية (title/url/content)، 4) 💡 شرح مبسط بالعربي، 5) 🔗 رابط المصدر الرسمي. لا تختلق نص مواد أو أرقام قوانين من عندك أبدًا؛ إن لم تجد المادة في النتائج قل صراحة "لم أجد نص المادة في المصادر الرسمية" واعرض الروابط. أضف أسفل كل إجابة تنويه: "هذه معلومات إرشادية وليست استشارة قانونية رسمية". إن فشل البحث اعرض "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "UAE Legal Advice Bot". For every user question: first send a POST fetch to the relative path /api/search with body {query: question + " UAE law article", lang:"en", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON), wait for the result. If results are empty or too few, retry once without the domains field. Then answer in this mandatory format: 1) 📜 law name, number and year, 2) 🔢 article number, 3) the text taken from the actual search results (title/url/content), 4) 💡 simple explanation, 5) 🔗 official source link. Never invent article texts or law numbers; if the article text is not in the results, say clearly "Article text not found in official sources" and show the links. Add under every answer: "This is guidance information, not official legal advice". If the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
-  {icon:'🩺', ar:'بوت استشارات طبية', en:'Medical advice bot', priority:true, fr:"Bot de conseils médicaux", hi:"चिकित्सा सलाह बॉट", ur:"طبی مشاورت بوٹ", bn:"চিকিৎসা পরামর্শ বট", ml:"മെഡിക്കൽ ഉപദേശ ബോട്ട്", ne:"चिकित्सा सल्लाह बोट", fil:"Bot ng Medikal na Payo", id:"Bot Konsultasi Medis", zh:"医疗咨询机器人", ru:"Бот медицинских консультаций", tr:"Tıbbi Danışma Botu", es:"Bot de asesoría médica", prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات طبية أولية". لكل سؤال يكتبه المستخدم عن أعراض أو معلومات صحية: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اعرض ملخصاً دقيقاً مبنياً فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط. لا تختلق معلومات طبية من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "Preliminary Medical Advice Bot". For every symptom/health question: first send a POST fetch to the relative path /api/search with body {query, lang:"en"} (JSON), wait for the result, then show an accurate summary based on the actual returned search results (title/url/content), citing sources as links. Do not invent medical information; if the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
-  {icon:'🎓', ar:'بوت مساعدة طلابية', en:'Student helper bot', priority:true, fr:"Bot d’aide aux étudiants", hi:"छात्र सहायक बॉट", ur:"طلبہ معاون بوٹ", bn:"শিক্ষার্থী সহায়ক বট", ml:"വിദ്യാർത്ഥി സഹായി ബോട്ട്", ne:"विद्यार्थी सहायक बोट", fil:"Bot Tulong sa Mag-aaral", id:"Bot Bantuan Siswa", zh:"学生助手机器人", ru:"Бот-помощник для студентов", tr:"Öğrenci Yardımcı Botu", es:"Bot de ayuda estudiantil", prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت مساعدة طلابية". لكل سؤال دراسي/منهجي يكتبه الطالب: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اشرح الإجابة بأسلوب مبسط تعليمي مبني فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط للمزيد من القراءة. لا تختلق معلومات من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "Student Helper Bot". For every curriculum/study question: first send a POST fetch to the relative path /api/search with body {query, lang:"en"} (JSON), wait for the result, then explain the answer in a simple educational style based on the actual returned search results (title/url/content), citing sources as links for further reading. Do not invent information; if the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
+  {order:1, priority:true, icon:'⚖️', ar:'بوت استشارات قانونية', en:'Legal advice bot', fr:'Bot de conseil juridique', hi:'कानूनी सलाह बॉट', ur:'قانونی مشاورت بوٹ', bn:'আইনি পরামর্শ বট', ne:'कानुनी सल्लाह बोट', ml:'നിയമോപദേശ ബോട്ട്', fil:'Bot ng Legal na Payo', id:'Bot Konsultasi Hukum', zh:'法律咨询机器人', ru:'Бот юридических консультаций', tr:'Hukuki Danışma Botu', es:'Bot de asesoría legal', prompt:__botPrompt('legal')},
+  {order:2, priority:true, icon:'🩺', ar:'بوت استشارات طبية', en:'Medical advice bot', fr:'Bot de conseil médical', hi:'चिकित्सा सलाह बॉट', ur:'طبی مشاورت بوٹ', bn:'চিকিৎসা পরামর্শ বট', ne:'चिकित्सा सल्लाह बोट', ml:'വൈദ്യോപദേശ ബോട്ട്', fil:'Bot ng Medikal na Payo', id:'Bot Konsultasi Medis', zh:'医疗咨询机器人', ru:'Бот медицинских консультаций', tr:'Tıbbi Danışma Botu', es:'Bot de asesoría médica', prompt:__botPrompt('medical')},
+  {order:3, priority:true, icon:'🎓', ar:'بوت مساعدة طلابية', en:'Student help bot', fr:'Bot d\'aide aux étudiants', hi:'छात्र सहायता बॉट', ur:'طلبہ معاون بوٹ', bn:'শিক্ষার্থী সহায়তা বট', ne:'विद्यार्थी सहायता बोट', ml:'വിദ്യാർത്ഥി സഹായ ബോട്ട്', fil:'Bot ng Tulong sa Estudyante', id:'Bot Bantuan Pelajar', zh:'学生助手机器人', ru:'Бот помощи студентам', tr:'Öğrenci Yardım Botu', es:'Bot de ayuda estudiantil', prompt:__botPrompt('student')},
+  {order:4, icon:'🛒', ar:'متجر إلكتروني', en:'Online store', fr:'Boutique en ligne', hi:'ऑनलाइन स्टोर', ur:'آن لائن اسٹور', bn:'অনলাইন স্টোর', ne:'अनलाइन स्टोर', ml:'ഓൺലൈൻ സ്റ്റോർ', fil:'Online na Tindahan', id:'Toko Online', zh:'网上商店', ru:'Интернет-магазин', tr:'Online Mağaza', es:'Tienda en línea',
+    prompt:{ar:'أنشئ لي صفحة متجر إلكتروني بمنتجات وسلة شراء', en:'Build an online store page with products and a shopping cart', fr:'Crée-moi une page de boutique en ligne avec des produits et un panier', hi:'मेरे लिए उत्पादों और शॉपिंग कार्ट वाला ऑनलाइन स्टोर पेज बनाएं', ur:'میرے لیے مصنوعات اور شاپنگ کارٹ والا آن لائن اسٹور پیج بنائیں', bn:'আমার জন্য পণ্য এবং শপিং কার্ট সহ একটি অনলাইন স্টোর পেজ তৈরি করুন', ne:'मेरो लागि उत्पादन र किनमेल कार्ट भएको अनलाइन स्टोर पेज बनाउनुहोस्', ml:'ഉൽപ്പന്നങ്ങളും ഷോപ്പിംഗ് കാർട്ടും ഉള്ള ഒരു ഓൺലൈൻ സ്റ്റോർ പേജ് ഉണ്ടാക്കൂ', fil:'Gumawa ng online store page na may mga produkto at shopping cart', id:'Buatkan halaman toko online dengan produk dan keranjang belanja', zh:'为我创建一个带有商品和购物车的网上商店页面', ru:'Создай страницу интернет-магазина с товарами и корзиной', tr:'Ürünler ve alışveriş sepeti olan bir online mağaza sayfası oluştur', es:'Crea una página de tienda en línea con productos y carrito de compras'}},
+  {order:5, icon:'🍽️', ar:'موقع مطعم', en:'Restaurant site', fr:'Site de restaurant', hi:'रेस्टोरेंट साइट', ur:'ریسٹورنٹ سائٹ', bn:'রেস্তোরাঁ সাইট', ne:'रेस्टुरेन्ट साइट', ml:'റെസ്റ്റോറന്റ് സൈറ്റ്', fil:'Website ng Restaurant', id:'Situs Restoran', zh:'餐厅网站', ru:'Сайт ресторана', tr:'Restoran Sitesi', es:'Sitio de restaurante',
+    prompt:{ar:'أنشئ لي موقع لمطعم يعرض القائمة والحجوزات', en:'Build a restaurant website with a menu and reservations', fr:'Crée-moi un site de restaurant avec menu et réservations', hi:'मेरे लिए मेन्यू और आरक्षण वाली रेस्टोरेंट वेबसाइट बनाएं', ur:'میرے لیے مینو اور ریزرویشن والی ریسٹورنٹ ویب سائٹ بنائیں', bn:'আমার জন্য মেনু এবং রিজার্ভেশন সহ একটি রেস্তোরাঁ ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि मेनु र आरक्षण भएको रेस्टुरेन्ट वेबसाइट बनाउनुहोस्', ml:'മെനുവും റിസർവേഷനും ഉള്ള ഒരു റെസ്റ്റോറന്റ് വെബ്സൈറ്റ് ഉണ്ടാക്കൂ', fil:'Gumawa ng website ng restaurant na may menu at reservation', id:'Buatkan situs restoran dengan menu dan reservasi', zh:'为我创建一个带有菜单和预订功能的餐厅网站', ru:'Создай сайт ресторана с меню и бронированием', tr:'Menü ve rezervasyon içeren bir restoran web sitesi oluştur', es:'Crea un sitio web de restaurante con menú y reservas'}},
+  {order:6, icon:'💼', ar:'بورتفوليو', en:'Portfolio', fr:'Portfolio', hi:'पोर्टफोलियो', ur:'پورٹ فولیو', bn:'পোর্টফোলিও', ne:'पोर्टफोलियो', ml:'പോർട്ട്‌ഫോളിയോ', fil:'Portfolio', id:'Portofolio', zh:'作品集', ru:'Портфолио', tr:'Portfolyo', es:'Portafolio',
+    prompt:{ar:'أنشئ لي صفحة بورتفوليو شخصي احترافية', en:'Build a professional personal portfolio page', fr:'Crée-moi une page de portfolio personnel professionnelle', hi:'मेरे लिए एक पेशेवर व्यक्तिगत पोर्टफोलियो पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ذاتی پورٹ فولیو پیج بنائیں', bn:'আমার জন্য একটি পেশাদার ব্যক্তিগত পোর্টফোলিও পেজ তৈরি করুন', ne:'मेरो लागि एक व्यावसायिक व्यक्तिगत पोर्टफोलियो पेज बनाउनुहोस्', ml:'ഒരു പ്രൊഫഷണൽ വ്യക്തിഗത പോർട്ട്‌ഫോളിയോ പേജ് ഉണ്ടാക്കൂ', fil:'Gumawa ng propesyonal na personal portfolio page', id:'Buatkan halaman portofolio pribadi yang profesional', zh:'为我创建一个专业的个人作品集页面', ru:'Создай профессиональную страницу личного портфолио', tr:'Profesyonel bir kişisel portfolyo sayfası oluştur', es:'Crea una página de portafolio personal profesional'}},
+  {order:7, icon:'📄', ar:'سيرة ذاتية', en:'Resume', fr:'CV', hi:'रिज़्यूमे', ur:'سی وی', bn:'জীবনবৃত্তান্ত', ne:'बायोडाटा', ml:'റെസ്യൂമെ', fil:'Resume', id:'CV', zh:'简历', ru:'Резюме', tr:'Özgeçmiş', es:'Currículum',
+    prompt:{ar:'أنشئ لي صفحة سيرة ذاتية احترافية', en:'Build a professional resume page', fr:'Crée-moi une page de CV professionnelle', hi:'मेरे लिए एक पेशेवर रिज़्यूमे पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ سی وی پیج بنائیں', bn:'আমার জন্য একটি পেশাদার জীবনবৃত্তান্ত পেজ তৈরি করুন', ne:'मेरो लागि एक व्यावसायिक बायोडाटा पेज बनाउनुहोस्', ml:'ഒരു പ്രൊഫഷണൽ റെസ്യൂമെ പേജ് ഉണ്ടാക്കൂ', fil:'Gumawa ng propesyonal na resume page', id:'Buatkan halaman CV yang profesional', zh:'为我创建一个专业的简历页面', ru:'Создай профессиональную страницу резюме', tr:'Profesyonel bir özgeçmiş sayfası oluştur', es:'Crea una página de currículum profesional'}},
+  {order:8, open:'btnPortraitStyle', icon:'🖼️', ar:'جرّب نمطًا على صورتك', en:'Try a style on your photo', fr:'Essayez un style sur votre photo', hi:'अपनी फोटो पर स्टाइल आज़माएं', ur:'اپنی تصویر پر اسٹائل آزمائیں', bn:'আপনার ছবিতে একটি স্টাইল চেষ্টা করুন', ne:'आफ्नो फोटोमा स्टाइल प्रयास गर्नुहोस्', ml:'നിങ്ങളുടെ ഫോട്ടോയിൽ ഒരു സ്റ്റൈൽ പരീക്ഷിക്കൂ', fil:'Subukan ang istilo sa iyong larawan', id:'Coba gaya pada foto Anda', zh:'在你的照片上试一种风格', ru:'Примерь стиль на своё фото', tr:'Fotoğrafında bir stil dene', es:'Prueba un estilo en tu foto'},
+  {order:9, open:'btnVideoMaker', icon:'🎬', ar:'حوّل صورة إلى فيديو', en:'Turn a photo into a video', fr:'Transformer une photo en vidéo', hi:'फोटो को वीडियो में बदलें', ur:'تصویر کو ویڈیو میں بدلیں', bn:'ছবিকে ভিডিওতে রূপান্তর করুন', ne:'फोटोलाई भिडियोमा बदल्नुहोस्', ml:'ഫോട്ടോ വീഡിയോ ആക്കൂ', fil:'Gawing video ang larawan', id:'Ubah foto menjadi video', zh:'把照片变成视频', ru:'Преврати фото в видео', tr:'Fotoğrafı videoya dönüştür', es:'Convierte una foto en video'},
+  {order:10, open:'btnDesignAI', icon:'🏠', ar:'صمّم ديكور غرفتك', en:'Redesign your room', fr:'Redécorez votre pièce', hi:'अपने कमरे का डिज़ाइन बदलें', ur:'اپنے کمرے کا ڈیکور بنائیں', bn:'আপনার ঘর নতুন করে সাজান', ne:'आफ्नो कोठाको डिजाइन गर्नुहोस्', ml:'നിങ്ങളുടെ മുറി പുതുക്കി രൂപകൽപ്പന ചെയ്യൂ', fil:'Idisenyo muli ang iyong kwarto', id:'Desain ulang kamar Anda', zh:'重新设计你的房间', ru:'Оформи интерьер своей комнаты', tr:'Odanı yeniden tasarla', es:'Rediseña tu habitación'},
 ];
 
+function __quickSugLabel(s){ return s[lang] || s.en; }
+function __runQuickSuggestion(s){
+  closeQuickTemplates();
+  if(s.open){
+    try{ const _ov = document.getElementById('sectionsToolsOverlay'); if(_ov) _ov.classList.remove('show'); }catch(_){ __swallow(_, "ui:quicksug#close-ov"); }
+    const b = document.getElementById(s.open);
+    if(b) b.click();
+    return;
+  }
+  $('#prompt').value = s.prompt[lang] || s.prompt.en;
+  sendPrompt();
+}
 function renderQuickChips(){
   const wrap = $('#quickChips');
   if(!wrap) return;
-  const order = QUICK_SUGGESTIONS.map((s,i) => i)
-    .sort((a,b) => {
-      const pa = QUICK_SUGGESTIONS[a].priority ? 0 : 1;
-      const pb = QUICK_SUGGESTIONS[b].priority ? 0 : 1;
-      if(pa !== pb) return pa - pb;
-      return (QUICK_SUGGESTIONS[a][lang]||QUICK_SUGGESTIONS[a].en).length - (QUICK_SUGGESTIONS[b][lang]||QUICK_SUGGESTIONS[b].en).length;
-    });
+  const order = QUICK_SUGGESTIONS.map((s,i) => i).sort((a,b) => (QUICK_SUGGESTIONS[a].order||99) - (QUICK_SUGGESTIONS[b].order||99));
   wrap.innerHTML = order.map(i => {
     const s = QUICK_SUGGESTIONS[i];
-    return `<button type="button" class="btn quickChip" data-idx="${i}" style="display:block; width:100%; text-align:right; background:none; border:none; box-shadow:none; color:var(--text); font-size:13px; padding:5px 8px; min-height:0; line-height:1.4;">${s[lang] || s.en}</button>`;
+    return `<button type="button" class="btn quickChip" data-idx="${i}" style="display:block; width:100%; text-align:right; background:none; border:none; box-shadow:none; color:var(--text); font-size:13px; padding:5px 8px; min-height:0; line-height:1.4;">${s.icon ? s.icon + ' ' : ''}${__quickSugLabel(s)}</button>`;
   }).join('');
   wrap.querySelectorAll('.quickChip').forEach(btn => {
-    btn.onclick = () => {
-      const s = QUICK_SUGGESTIONS[+btn.dataset.idx];
-      $('#prompt').value = s.prompt[lang] || s.prompt.en;
-      closeQuickTemplates();
-      sendPrompt();
-    };
+    btn.onclick = () => __runQuickSuggestion(QUICK_SUGGESTIONS[+btn.dataset.idx]);
   });
 }
 
-/* v532: بوتات جاهزة كشرائح تحت صندوق المحادثة — نفس مصدر «الاقتراحات» عند ＋ */
+/* v532: بوتات جاهزة كشرائح تحت صندوق المحادثة — نفس مصدر «الاقتراحات» عند ＋
+   v-quicksug-10: تُلحَق بعد الشرائح الثابتة الأربع في index.html (chipExam…) بدل مسحها؛ إعادة النداء تستبدل شرائح البوتات فقط. */
 function renderOmranBotChips(){
   const wrap = $('#omranChips');
   if(!wrap) return;
-  wrap.innerHTML = '';
-  QUICK_SUGGESTIONS.filter(s => s.priority).forEach(s => {
+  wrap.querySelectorAll('.omChip[data-bot]').forEach(el => el.remove());
+  QUICK_SUGGESTIONS.filter(s => s.priority).sort((a,b) => (a.order||99) - (b.order||99)).forEach(s => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'omChip';
-    b.textContent = (s.icon ? s.icon + ' ' : '') + (s[lang] || s.en);
+    b.setAttribute('data-bot', '1');
+    b.textContent = (s.icon ? s.icon + ' ' : '') + __quickSugLabel(s);
     b.setAttribute('data-omchip', s.prompt[lang] || s.prompt.en);
     b.onclick = () => {
       const p = $('#prompt');
@@ -336,7 +369,7 @@ function toggleQuickTemplates(){
   if(msgs) msgs.style.visibility = '';
   if(willShow){ try{ const p = document.getElementById('plusToolsPopup'); if(p){ p.classList.remove('show'); p.classList.remove('open'); } }catch(_){ __swallow(_, "ui:quicksug#close-plus"); } }
 }
-if($('#btnQuickTemplates')) $('#btnQuickTemplates').onclick = (e) => { e.stopPropagation(); toggleQuickTemplates(); };
+if($('#btnQuickTemplates')) $('#btnQuickTemplates').onclick = (e) => { e.stopPropagation(); if(typeof openInspireScreen === 'function') openInspireScreen(); else toggleQuickTemplates(); }; // v-inspire: «اقتراحات» شاشة بتبويبين (app-35-inspire.js)
 document.addEventListener('click', (e) => {
   const wrap = $('#chatQuickChipsWrap');
   if(!wrap || wrap.style.display === 'none' || !wrap.style.display) return;
@@ -465,6 +498,19 @@ function __vaultEach(projects, fn){
     (m && m.apiImages || []).forEach(a => { if(a) fn(a); });
   }));
 }
+/* v-proj-vault (فحص الإقلاع في محادثة فارغة ببيانات كبيانات المالك: ١٨٣ م.ب من ذاكرة JS نصوصُ base64 على مستوى المشروع —
+   آخر صورة معدّلة، مصدر التعديل، أساس طبقة النصّ، لقطة الدليل، وسجلّ الديكور — تُحمَّل لكلّ المشاريع عند كلّ إقلاع ولا يعرضها
+   شيء، ثمّ ينسخها كلّ حفظ ٣–٤ مرّات: قمّة ١٫٣ غ.ب ومهامّ طويلة ٢–٧ث): تُخزَّن في مخزن الصور كالمرفقات، ويبقى في السجلّ معرّفها.
+   كلّ كاتب لهذه الحقول يُسند كائنًا جديدًا (لا تعديل في المكان)، فالكائن الجديد بلا معرّف يُكتب في الحفظ التالي والقديم يكنسه الكنس. */
+const __PROJ_BLOBS = [['lastEditedImage', 'b64'], ['imageEditSource', 'b64'], ['imageTextLayer', 'baseB64'], ['guideShot', 'b64']];
+function __projBlobEach(projects, fn){
+  (projects || []).forEach(p => {
+    if(!p) return;
+    __PROJ_BLOBS.forEach(fk => { const o = p[fk[0]]; if(o && typeof o === 'object') fn(o, fk[1], p); });
+    if(p.decorHistory && typeof p.decorHistory === 'object') Object.keys(p.decorHistory).forEach(s => { const o = p.decorHistory[s]; if(o && typeof o === 'object') fn(o, 'b64', p); });
+  });
+}
+function __blobDegraded(o, k){ return !!(o && o.vaultId && !o.vaultPending && (typeof o[k] !== 'string' || o[k].length <= VAULT_MIN)); }
 /* يعيّن معرّفًا لكل صورة كبيرة بلا معرّف ويعيد ما يجب كتابته في المخزن */
 function __vaultAssign(projects, now){
   const puts = [];
@@ -473,18 +519,77 @@ function __vaultAssign(projects, now){
     if(!a.vaultId){ a.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); a.vaultPending = true; }
     if(a.vaultPending) puts.push({ id: a.vaultId, dataUrl: a.dataUrl, ref: a });
   });
+  __projBlobEach(projects, (o, k) => { /* v-proj-vault */
+    if(typeof o[k] !== 'string' || o[k].length <= VAULT_MIN) return;
+    if(!o.vaultId){ o.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); o.vaultPending = true; }
+    if(o.vaultPending) puts.push({ id: o.vaultId, dataUrl: o[k], ref: o });
+  });
   return puts;
 }
 /* نسخة الحفظ: الصورة المخزونة تُستبدل بمعرّفها فقط */
 function __vaultReplacer(k, v){
-  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return '';
+  if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض تُحفظ في المخزن بمفتاحها لا في السجلّ */
+  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && (v.length > VAULT_MIN || v === '[media]')) return '';
+  if((k === 'b64' || k === 'baseB64') && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return ''; /* v-proj-vault */
   if(k === 'vaultPending') return undefined;
   return v;
+}
+/* v-vault-restore (المالك ٢٣ سبتمبر «الصور تمسح من المحادثه»): الصورة المخزونة قد تحمل في الذاكرة بديلًا متدهورًا —
+   «[media]» أو المصغّرة من المرآة المنحّفة/السيرفر، أو فراغًا بعد purgeOldImages — والأصل سليم في المخزن. المعرّف لا
+   يُعيَّن إلّا لصورة فوق VAULT_MIN، فأيّ dataUrl أقصر مع معرّف = بديل يجب استبداله بالأصل. */
+function __vaultDegraded(a){
+  return !!(a && a.vaultId && !a.vaultPending && (typeof a.dataUrl !== 'string' || a.dataUrl.length <= VAULT_MIN));
+}
+/* v-mem-guard (لقطات المالك ٢٣ سبتمبر: «خربت الدنيا — ولا شي يفتح»: الكتابة تتقطّع خطوطًا، صفوف سوداء، والشعار تشويش):
+   v-vault-restore كان يستعيد أصول كلّ صور المحادثة المفتوحة بحجمها الكامل مع كلّ رسم، ثمّ يبني الحفظ (كلّ ١٫٥ث) نصًّا من
+   المشروع كلّه بصوره، وتنسخ المرآة (كلّ ١٠ث) كلّ رسالة بصورها — مسبار ٤٠ صورة: الذاكرة ٣٤ ← ٣٧١ م.ب ونصّ ٦٢ مليون حرف
+   في كلّ حفظ؛ بصور المالك الحقيقيّة (٥–٢٠ م.ب) غيغابايتات فتنهار ذاكرة الرسم في الجوّال. الاستعادة الآن لنافذة العرض
+   وحدها (آخر ٣٠ رسالة كما يرسم renderMessages)؛ الأقدم تُقرأ صورةً صورةً حين تُعرض («عرض الأقدم»). */
+const __IMG_WINDOW = 30;
+function __imgWindowStart(p){
+  const n = (p && Array.isArray(p.messages)) ? p.messages.length : 0;
+  return (p && p.__showAllMsgs) ? 0 : Math.max(0, n - __IMG_WINDOW);
+}
+/* v-mem-guard2 (فيديو المالك بعد #739: النصّ صار سليمًا، لكنّ الشعار تشويش وصفوف لا تُرسم — في محادثة جديدة فارغة):
+   (١) صور المحادثة التي غادرها تبقى بحجمها الكامل في الذاكرة ولا شيء يعيدها للمخزن، فحِمل محادثة الصور يبقى وأنت في غيرها.
+   (٢) فتح المحادثة كان يقرأ كلّ صورة نحو ٤٫٥ مرّات بالتوازي (كلّ renderMessages يطلق استعادة بلا قفل، ومسار الرسم يقرأ كلّ صورة
+   مرّة ثانية). الآن: ما خارج نافذة المحادثة المفتوحة يعود لمعرّفه (الأصل في المخزن ويُستعاد حين يُعرض)، وكلّ صورة قيد القراءة
+   تُقرأ مرّة واحدة وينتظرها الجميع. المعلّقة (لم تُكتب في المخزن بعد) والصغيرة بلا معرّف لا تُمسّ. */
+const __vaultReads = new WeakMap();
+function __vaultRelease(keepP, keepFrom){
+  let freed = 0;
+  ((typeof state !== 'undefined' && state && state.projects) || []).forEach(p => ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || (p === keepP && i >= keepFrom)) return;
+    (m.attachments || []).concat(m.apiImages || []).forEach(a => {
+      if(a && a.vaultId && !a.vaultPending && typeof a.dataUrl === 'string' && a.dataUrl.length > VAULT_MIN && !__vaultReads.has(a)){ a.dataUrl = ''; freed++; }
+      if(a && a.vaultId && !a.vaultPending && a.viewUrl && !__viewReads.has(a)) delete a.viewUrl; /* v-img-view: نسختها في المخزن */
+    });
+  }));
+  /* v-proj-vault: base64 المشاريع الأخرى يعود لمعرّفه (المفتوح يبقى، والمعلّق لم يُكتب بعد) */
+  __projBlobEach(((typeof state !== 'undefined' && state && state.projects) || []).filter(p => p !== keepP), (o, k) => {
+    if(o.vaultId && !o.vaultPending && typeof o[k] === 'string' && o[k].length > VAULT_MIN && !__vaultReads.has(o)){ o[k] = ''; freed++; }
+  });
+  return freed;
 }
 function __collectVaultIds(projects){
   const ids = new Set();
   __vaultEach(projects, a => { if(a.vaultId) ids.add(a.vaultId); });
+  __projBlobEach(projects, o => { if(o.vaultId) ids.add(o.vaultId); }); /* v-proj-vault: الكنس لا يمسحها */
   return ids;
+}
+/* v-proj-vault: base64 المشروع المفتوح يُستعاد من المخزن (قراءة مشتركة لكلّ كائن)، ويُنتظر قبل أيّ إرسال */
+function __vaultProjBlobs(p){
+  const prs = [];
+  __projBlobEach(p ? [p] : [], (o, k) => {
+    if(!__blobDegraded(o, k)) return;
+    let pr = __vaultReads.get(o);
+    if(!pr){
+      pr = idbImgGet(o.vaultId).then(d => { if(typeof d === 'string' && d) o[k] = d; return o[k]; }).catch(e => { __swallow(e, 'vault:blob'); return o[k]; }).finally(() => __vaultReads.delete(o));
+      __vaultReads.set(o, pr);
+    }
+    prs.push(pr);
+  });
+  return prs.length ? Promise.all(prs) : null; /* لا شيء في المخزن = لا انتظار (الإرسال يبدأ في المهمّة نفسها كما كان) */
 }
 function idbImgPutAll(puts){
   if(!puts.length) return Promise.resolve();
@@ -504,25 +609,186 @@ function idbImgGet(id){
     rq.onerror = () => { db.close(); rej(rq.error); };
   }));
 }
+/* v-mem-guard2: قراءة صورة واحدة من المخزن — إن كانت قيد القراءة (الاستعادة أو رسم سابق) يُنتظر الوعد نفسه */
+function __vaultRead(a){
+  let pr = __vaultReads.get(a);
+  if(!pr){
+    pr = idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; delete a.purged; } return a.dataUrl; }).finally(() => __vaultReads.delete(a));
+    __vaultReads.set(a, pr);
+  }
+  return pr;
+}
+/* v-img-view (فيديو المالك بعد #740: الشعار وصور بطاقات الأدوات تشويش ومربّعات سوداء — ذاكرة رسم الصور في الجوّال):
+   صور المحادثة كانت تُرسم بأصلها (2K–4K، ٥–٢٠ م.ب data URL) في فقاعة عرضها ٤٦٠px؛ كلّ صورة تُفكّ بحجمها الكامل (4K = ٦٤ م.ب
+   بكسلات) وتُرفع للرسم، وكلّ إعادة رسم تحلّل عشرات الميغا. الآن تُرسم نسخة عرض (أطول ضلع 1280px، JPEG، أو PNG إن كانت شفّافة)
+   تُصنع مرّة من الأصل وتُحفظ في المخزن بمفتاح «معرّف~v»؛ الأصل يبقى كما هو لكلّ ما يحتاجه (المشاركة، الحفظ، العرض الكامل،
+   التعديل، التراجع). التوليد صورةً صورةً (طابور) كي لا تُفكّ أصول كثيرة معًا. */
+const __VIEW_MAX = 1280;
+const __viewReads = new WeakMap();
+let __viewQ = Promise.resolve();
+function __isBigDataImg(u){ return typeof u === 'string' && u.length > VAULT_MIN && u.slice(0, 11) === 'data:image/'; }
+function __makeView(src){
+  return new Promise(res => {
+    try{
+      const im = new Image();
+      im.onload = () => {
+        try{
+          const w0 = im.naturalWidth || im.width, h0 = im.naturalHeight || im.height;
+          if(!w0 || !h0){ res(''); return; }
+          const k = Math.min(1, __VIEW_MAX / Math.max(w0, h0));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+          const cx = c.getContext('2d', { willReadFrequently: true }); /* لوحة برمجيّة: الأصل 4K لا يُرفع لذاكرة الرسم لصنع نسخته */
+          cx.drawImage(im, 0, 0, c.width, c.height);
+          let alpha = false;
+          if(!/^data:image\/jpe?g/i.test(src)){
+            const d = cx.getImageData(0, 0, c.width, c.height).data;
+            for(let i = 3; i < d.length; i += 16){ if(d[i] < 250){ alpha = true; break; } }
+          }
+          const out = alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.86);
+          c.width = c.height = 0;
+          res(typeof out === 'string' && out.slice(0, 11) === 'data:image/' ? out : '');
+        }catch(e){ __swallow(e, 'view:make'); res(''); }
+      };
+      im.onerror = () => res('');
+      im.src = src;
+    }catch(e){ __swallow(e, 'view:make#img'); res(''); }
+  });
+}
+/* نسخة العرض لمرفق: من الذاكرة، أو من المخزن، أو تُصنع من الأصل (المخزون يُقرأ عبر القارئ المشترك) وتُحفظ */
+function __imgView(a){
+  if(!a) return Promise.resolve('');
+  if(a.viewUrl) return Promise.resolve(a.viewUrl);
+  let pr = __viewReads.get(a);
+  if(pr) return pr;
+  pr = (async () => {
+    if(a.vaultId && !a.vaultPending){
+      try{ const v = await idbImgGet(a.vaultId + '~v'); if(typeof v === 'string' && v.slice(0, 11) === 'data:image/'){ a.viewUrl = v; return v; } }catch(e){ __swallow(e, 'view:get'); }
+      if(typeof window !== 'undefined' && window.__usingSlimProjects) return ''; /* المرآة المنحّفة تُستبدل بالكاملة قريبًا — لا تُفكّ أصولها */
+    }
+    const job = __viewQ.then(async () => {
+      let src = __isBigDataImg(a.dataUrl) ? a.dataUrl : '';
+      if(!src && a.vaultId && !a.vaultPending){ try{ const d = await __vaultRead(a); if(__isBigDataImg(d)) src = d; }catch(e){ __swallow(e, 'view:orig'); } }
+      if(!src) return '';
+      const v = await __makeView(src);
+      if(!v) return '';
+      a.viewUrl = v;
+      if(a.vaultId && !a.vaultPending) idbImgPutAll([{ id: a.vaultId + '~v', dataUrl: v }]).catch(e => __swallow(e, 'view:put'));
+      return v;
+    });
+    __viewQ = job.catch(() => '');
+    return job;
+  })().finally(() => __viewReads.delete(a));
+  __viewReads.set(a, pr);
+  return pr;
+}
+window.__imgView = __imgView;
 function idbImgSweep(liveIds){
   return idbOpen().then(db => new Promise((res, rej) => {
     const tx = db.transaction(IDB_IMAGES, 'readwrite');
     const st = tx.objectStore(IDB_IMAGES);
     const rq = st.getAllKeys();
-    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(k)) st.delete(k); }); };
+    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(String(k).replace(/~v$/, ''))) st.delete(k); }); }; /* v-img-view: نسخة العرض تبقى ما بقي أصلها */
     tx.oncomplete = () => { db.close(); res(); };
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
 }
 /* الحفظ: الصور الجديدة إلى المخزن أولًا، ثم سجلّ المشاريع بلا base64؛ أي تعثّر في المخزن = الحفظ الكامل كما كان */
-async function __vaultSave(){
+/* v-perf-save-slices (المالك ٣٠ سبتمبر: «إذا أدخل أيّ مكان يكون معلّق ويفتح»): الحفظ بعد أيّ تغيير (فتح محادثة، رسالة)
+   كان يسلسل السجلّ كلّه دفعة واحدة مرّتين — مرّة لحارس الحجم ومرّة للنسخة — والمُستبدِل يُنادى لكلّ مفتاح. مسبار حساب ثقيل
+   (٣٦ م.ب، المعالج ×٤): ٢٫٩ث للحارس و٢٫٩ث للنسخة في مهمّة واحدة تجمّد الشاشة. الآن مشروعًا مشروعًا بمهلة للرسم كلّ ٤٠مل
+   (والحفظ عند الخروج دفعة واحدة كما كان)، والحارس يأخذ حجم الحفظ السابق بلا تسلسل جديد. حفظٌ أحدث يبدأ = الأقدم يتوقّف
+   قبل الكتابة، فلا تكتب نسخة قديمة فوق أحدث. */
+let __vaultGen = 0;
+let __vaultLastLen = 0;
+/* v-code-dedupe (المالك ٣٠ سبتمبر: «كمل على نسخ آلة الزمن»): كلّ إصدار كود كان يُكتب في السجلّ مرّتين أو ثلاثًا — في رسالة البناء
+   (m.code لزرّ «استخدم هذا الإصدار») وفي لقطة آلة الزمن، والحاليّ في p.code أيضًا — فيتضخّم السجلّ وتطول قراءته عند الإقلاع وكلّ
+   حفظ. عند الكتابة في IndexedDB وحدها: ما يساوي p.code يصير «\0omcode:cur»، وما يتكرّر غيره يُكتب مرّة في p.__omCodes ويصير
+   «\0omcode:N»؛ p.code والمفرد يبقيان نصًّا كما هما. القراءة (__codeExpand) تعيد كلّ شيء كما كان — والصيغة القديمة تمرّ بلا مساس.
+   الذاكرة والمزامنة والمرآة لا ترى إلّا النصوص الكاملة. */
+const OMCODE_PFX = '\u0000omcode:', OMCODE_MIN = 1000;
+/* بصمة رخيصة (الطول والطرفان و٦٤ عيّنة موزّعة) لا تجزئة للنصّ كلّه: V8 لا يجزّئ النصّ الأطول من ١٦ ألفًا إلّا بطوله، فمفتاح Map بنصّ كود
+   كامل يتصادم مع كلّ إصدار بالطول نفسه ويُقارَن كاملًا (قيس: ٤٣٤مل للحفظ الواحد). المطابقة الفعليّة بـ=== داخل البصمة الواحدة. */
+function __codeFp(str){
+  const n = str.length, step = Math.max(1, Math.floor(n / 64));
+  let h = n + ':' + str.slice(0, 32) + '|' + str.slice(-32) + '|'; /* تعديل في الآخر (أكثر التعديلات) يغيّر البصمة */
+  for(let i = 0; i < n; i += step) h += str.charCodeAt(i).toString(36) + ',';
+  return h;
+}
+function __codeDedupePlan(p){
+  if(!p || typeof p !== 'object') return null;
+  const groups = new Map(), entries = [];
+  const see = (o) => {
+    if(!o || typeof o !== 'object' || typeof o.code !== 'string' || o.code.length < OMCODE_MIN) return;
+    const fp = __codeFp(o.code);
+    let g = groups.get(fp);
+    if(!g){ g = []; groups.set(fp, g); }
+    let e = null;
+    for(let i = 0; i < g.length; i++) if(g[i].str === o.code){ e = g[i]; break; }
+    if(!e){ e = { str: o.code, holders: [] }; g.push(e); entries.push(e); }
+    e.holders.push(o);
+  };
+  (Array.isArray(p.codeHistory) ? p.codeHistory : []).forEach(see);
+  (Array.isArray(p.messages) ? p.messages : []).forEach(see);
+  if(!entries.length) return null;
+  const cur = typeof p.code === 'string' ? p.code : null, tokenOf = new Map(), table = [];
+  entries.forEach(e => {
+    let tok = null;
+    if(cur !== null && e.str === cur) tok = OMCODE_PFX + 'cur';
+    else if(e.holders.length >= 2){ tok = OMCODE_PFX + table.length; table.push(e.str); }
+    if(tok) e.holders.forEach(o => tokenOf.set(o, tok));
+  });
+  return tokenOf.size ? { tokenOf: tokenOf, table: table } : null;
+}
+function __codeExpand(list){
+  (Array.isArray(list) ? list : []).forEach(p => {
+    if(!p || typeof p !== 'object') return;
+    const tbl = Array.isArray(p.__omCodes) ? p.__omCodes : [];
+    const fix = (o) => {
+      if(!o || typeof o.code !== 'string' || o.code.charCodeAt(0) !== 0 || o.code.indexOf(OMCODE_PFX) !== 0) return;
+      const r = o.code.slice(OMCODE_PFX.length);
+      o.code = r === 'cur' ? (typeof p.code === 'string' ? p.code : '') : (typeof tbl[+r] === 'string' ? tbl[+r] : '');
+    };
+    (Array.isArray(p.codeHistory) ? p.codeHistory : []).forEach(fix);
+    (Array.isArray(p.messages) ? p.messages : []).forEach(fix);
+    delete p.__omCodes;
+  });
+  return list;
+}
+async function __vaultSave(sync){
+  const gen = ++__vaultGen;
   const puts = __vaultAssign(state.projects, Date.now());
   let vaulted = true;
-  try{ await idbImgPutAll(puts); puts.forEach(x => { delete x.ref.vaultPending; }); }
+  /* v-img-view: نسخة عرض صُنعت قبل أن يُكتب الأصل تُكتب معه */
+  try{ await idbImgPutAll(puts.concat(puts.filter(x => x.ref && x.ref.viewUrl).map(x => ({ id: x.id + '~v', dataUrl: x.ref.viewUrl })))); puts.forEach(x => { delete x.ref.vaultPending; }); }
   catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
-  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects));
+  const rep = vaulted ? __vaultReplacer : __noViewReplacer;
+  const projs = state.projects.slice(), copy = [];
+  let len = 1, t0 = Date.now();
+  for(let i = 0; i < projs.length; i++){
+    const plan = __codeDedupePlan(projs[i]);
+    const js = JSON.stringify(projs[i], plan ? function(k, v){
+      if(k === 'code' && typeof v === 'string' && plan.tokenOf.has(this)) return plan.tokenOf.get(this);
+      return rep.call(this, k, v);
+    } : rep);
+    const obj = js === undefined ? null : JSON.parse(js); /* كالسابق: عنصر لا يُسلسَل = null في المصفوفة */
+    if(obj && plan && plan.table.length) obj.__omCodes = plan.table;
+    len += (js === undefined ? 4 : js.length) + 1 + (plan ? plan.table.reduce((a, t) => a + t.length + 3, 0) : 0);
+    copy.push(obj);
+    if(!sync && i < projs.length - 1 && Date.now() - t0 > 40){
+      await new Promise(r => setTimeout(r, 0));
+      if(gen !== __vaultGen) return;
+      t0 = Date.now();
+    }
+  }
+  if(gen !== __vaultGen) return;
+  __vaultLastLen = len;
   await idbSet('aiapp_projects', copy);
+  /* v-proj-vault: ما كُتب للتوّ في المخزن من غير المحادثة المفتوحة يخرج من الذاكرة الآن لا عند الرسم التالي (أوّل حفظ بعد النشر
+     ينقل base64 كلّ المشاريع إلى المخزن دفعة واحدة) */
+  if(vaulted && puts.length){ try{ const __cp = (typeof getCurrent === 'function') ? getCurrent() : null; __vaultRelease(__cp, __cp ? __imgWindowStart(__cp) : 0); }catch(e){ __swallow(e, 'vault:release-after-save'); } }
 }
+function __noViewReplacer(k, v){ return k === 'viewUrl' ? undefined : v; }
 /* الاستعادة: صور مشروع بلا dataUrl تُقرأ من المخزن (عند الإقلاع للمشروع المفتوح، وعند العرض لغيره) */
 function idbImgGetMany(ids){
   if(!ids.length) return Promise.resolve({});
@@ -535,15 +801,27 @@ function idbImgGetMany(ids){
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
 }
-async function hydrateProjectImages(p){
+async function hydrateProjectImages(p, fromIdx){
   const need = [];
-  __vaultEach(p ? [p] : [], a => { if(a.vaultId && !a.dataUrl && !a.purged) need.push(a); });
+  const start = (typeof fromIdx === 'number') ? fromIdx : __imgWindowStart(p);
+  if(p) __vaultRelease(p, start); /* v-mem-guard2: ما خارج النافذة يعود لمعرّفه */
+  /* v-img-view: المرآة المنحّفة تُستبدل بالكاملة بعد لحظات فقراءة أصولها ضائعة (كانت تُقرأ كلّ صورة مرّتين عند الإقلاع)؛
+     وapiImages لا يقرؤها شيء إلّا للرسالة الجديدة (قبل أن تُخزَّن) فلا تُستعاد — كانت تضاعف الذاكرة. */
+  if(typeof window !== 'undefined' && window.__usingSlimProjects) return 0;
+  if(p) __vaultProjBlobs(p); /* v-proj-vault: لا يُنتظر هنا (لا يُعرض) — الإرسال ينتظره */
+  ((p && p.messages) || []).forEach((m, i) => {
+    if(!m || i < start) return;
+    (m.attachments || []).forEach(a => { if(a && a.isImage && __vaultDegraded(a) && !__vaultReads.has(a)) need.push(a); });
+  });
   if(!need.length) return 0;
-  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة */
-  try{ const got = await idbImgGetMany(need.map(a => a.vaultId)); need.forEach(a => { if(got[a.vaultId]) a.dataUrl = got[a.vaultId]; }); }catch(e){ __swallow(e, 'vault:get'); }
+  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة؛ وكلّ صورة تُسجَّل «قيد القراءة» فلا تُقرأ ثانية حتّى تنتهي */
+  const batch = idbImgGetMany(need.map(a => a.vaultId));
+  need.forEach(a => { __vaultReads.set(a, batch.then(got => { if(got[a.vaultId]){ a.dataUrl = got[a.vaultId]; delete a.purged; } return a.dataUrl; }, () => a.dataUrl).finally(() => __vaultReads.delete(a))); });
+  try{ await Promise.all(need.map(a => __vaultReads.get(a))); }catch(e){ __swallow(e, 'vault:get'); }
   return need.length;
 }
 window.__hydrateProjectImages = hydrateProjectImages;
+window.__vaultProjBlobs = __vaultProjBlobs;
 window.__vaultSweep = function(){ try{ return idbImgSweep(__collectVaultIds(state.projects)); }catch(e){ return Promise.resolve(); } };
 
 // Strips old image data (keeps a small placeholder) to free up localStorage
@@ -598,6 +876,9 @@ function pushCodeSnapshot(){
    ونكتب مرة كل 1.5 ثانية كحد أقصى، مع حفظة فورية مضمونة عند إخفاء/إغلاق الصفحة. */
 let __saveTimer = null;
 let __saveDirty = false;
+/* v-perf-slim-once: نسخة المزامنة المنحّفة تُحسب مرّة لكلّ تغيير — المرآة (عند الحفظ) والرفع (بعده بثوانٍ) كانا يبنيانها
+   مرّتين لنفس الحالة (~١ث لكلّ مرّة في حساب ثقيل على جوّال). saveState — باب كلّ تغيير محفوظ — يُبطلها. */
+let __slimCache = null;
 // v-idb-mirror: كتابة المرآة المنحّفة — chatsSlimForServer تُعرَّف لاحقًا في هذا
 // الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
 let __mirrorAt = 0;
@@ -620,14 +901,14 @@ function __saveFlush(force){
          الصفحة يُحفظ فورًا. المنظّف بقي لمسار localStorage الاحتياطي وحده لأن سقفه 5MB فعليًا. */
       if(!force){
         try{
-          const __sz = __projectsToJson().length;
+          const __sz = __vaultLastLen; /* v-mem-guard + v-perf-save-slices: حجم ما كتبه الحفظ السابق فعلًا (صور المخزن معرّفات) — بلا تسلسل للسجلّ كلّه في كلّ حفظ */
           const __gap = __sz > 60000000 ? 30000 : (__sz > 12000000 ? 10000 : 0);
           const __wait = __gap - (Date.now() - __idbSavedAt);
           if(__gap && __wait > 0){ __saveDirty = true; __saveTimer = setTimeout(__saveFlush, __wait); return; }
         }catch(e){ __swallow(e, 'save:sizeGuard#v714'); }
       }
       __idbSavedAt = Date.now();
-      __vaultSave().catch(err => {
+      __vaultSave(!!force || document.visibilityState === 'hidden').catch(err => { /* الخروج من التطبيق: دفعة واحدة قبل التجميد */
         console.error('IDB save failed → fallback to localStorage', err);
         __idbBroken = true;
         saveStateLocal();
@@ -650,6 +931,7 @@ window.addEventListener('pagehide', __saveFlush);
 window.addEventListener('pagehide', __writeChatsMirror); /* v-idb-mirror: مرآة طازجة عند كل مغادرة */
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
 function saveState(){
+  __slimCache = null;
   pushCodeSnapshot();
   try{ localStorage.setItem('aiapp_current_id', state.currentId || ''); }catch(e){ __swallow(e, "save:app-04-i18n-state#12"); }
   // ☁️ v306: مزامنة صامتة مؤجَّلة مع السيرفر للمستخدمين المسجّلين.
@@ -667,7 +949,7 @@ function __projectsToJson(){
       const c = __projJsonCache.get(p);
       if(c !== undefined) return c;
     }
-    const s = JSON.stringify(p);
+    const s = JSON.stringify(p, __noViewReplacer);
     __projJsonCache.set(p, s);
     return s;
   });
@@ -718,20 +1000,18 @@ function chatsAuthToken(){
    الصور الصغيرة (< 150KB base64) تبقى كما هي. بدون thumb + كبيرة = [media]. */
 function __msgForServer(m){
   try{
-    var o = JSON.parse(JSON.stringify(m));
-    // المرفقات: استخدم serverThumb إذا موجود، أو احتفظ بالصغيرة
-    function fixImg(a){
-      if(!a || !a.isImage) return;
-      if(a.serverThumb){
-        a.dataUrl = a.serverThumb;
-        delete a.serverThumb;
-      } else if(a.dataUrl && a.dataUrl.length > 150000){
-        a.dataUrl = '[media]';
+    /* v-mem-guard: كانت JSON.parse(JSON.stringify(m)) تنسخ كلّ base64 الرسالة ثمّ تستبدلها بـ«[media]» — كلّ ١٠ث ولكلّ رسالة في
+       كلّ المحادثات، مئات الميغا بعد v-vault-restore. الآن تُستبدل أثناء النسخ: المصغّرة (serverThumb) للصورة إن وُجدت،
+       والأكبر من 150KB «[media]» (ومنها apiImages بلا isImage التي كانت تُنسخ كاملة)، والصغيرة تبقى كما هي. */
+    var o = JSON.parse(JSON.stringify(m, function(k, v){
+      if(k === 'serverThumb' && this && this.isImage) return undefined;
+      if(k === 'viewUrl') return undefined; /* v-img-view: نسخة العرض محلّيّة */
+      if(k === 'dataUrl' && this && typeof v === 'string'){
+        if(this.isImage && this.serverThumb) return this.serverThumb;
+        if(v.length > 150000) return '[media]';
       }
-      // الصغيرة تبقى كما هي
-    }
-    if(o.attachments) o.attachments.forEach(fixImg);
-    if(o.apiImages) o.apiImages.forEach(fixImg);
+      return v;
+    }));
     // النص الطويل
     if(o && typeof o.content === 'string' && o.content.length > 12001){
       o.content = o.content.slice(0, 12000) + '…';
@@ -744,6 +1024,7 @@ function __msgForServer(m){
   }catch(e){ return m; }
 }
 function chatsSlimForServer(){
+  if(__slimCache) return __slimCache;
   let list = (state.projects || []).map(p => ({
     id: p.id,
     title: p.title || '',
@@ -751,15 +1032,28 @@ function chatsSlimForServer(){
     messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
     code: (typeof p.code === 'string') ? p.code : '',
   })).filter(p => p.id);
-  const size = l => { try{ return JSON.stringify(l).length; }catch(e){ return Infinity; } };
   // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
+  /* v-perf-slim-linear (المالك ٢٩ سبتمبر: «إذا أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية، وإذا أدخل أيّ مكان مجمّد ويفتح»):
+     كان كلّ دور في الحلقتين يعيد JSON.stringify للقائمة كلّها — مئات النسخ لعدّة ميغا (تربيعيّ). مسبار حساب ثقيل
+     (٤٠ محادثة، المعالج ×٤): ٤٫٣ ثانية للنداء الواحد، وهو يُنادى عند الإقلاع (المرآة) وكلّ حفظ ومزامنة وعند الخروج.
+     الآن يُقاس كلّ مشروع مرّة: طول نصّ المصفوفة = '[' + العناصر مفصولة بفواصل + ']'، والناتج هو نفسه حرفيًّا. */
+  const LIMIT = 2000000;
+  let lens;
+  try{ lens = list.map(p => JSON.stringify(p).length); }catch(e){ return []; } /* guard-ok — كالسابق: قائمة لا تُسلسَل = Infinity فتُفرَّغ كلّها */
+  let total = list.length ? 2 + (list.length - 1) + lens.reduce((a, b) => a + b, 0) : 2;
   let i = 0;
-  while(size(list) > 2000000 && i < list.length){
-    if(list[i].code) list[i] = Object.assign({}, list[i], { code: '' });
+  while(total > LIMIT && i < list.length){
+    if(list[i].code){
+      const np = Object.assign({}, list[i], { code: '' });
+      const nl = JSON.stringify(np).length;
+      total += nl - lens[i]; lens[i] = nl; list[i] = np;
+    }
     i++;
   }
-  while(size(list) > 2000000 && list.length > 0) list.shift();
-  return list;
+  let k = 0;
+  while(total > LIMIT && k < list.length){ total -= lens[k] + (list.length - k > 1 ? 1 : 0); k++; }
+  __slimCache = k ? list.slice(k) : list;
+  return __slimCache;
 }
 // v311: أي صورة داخل المحادثة يفشل تحميلها (انحذفت من المزامنة) تختفي
 // بهدوء بدل ما يظهر «⚠️ Load failed» ويشوه المحادثة.
@@ -798,6 +1092,9 @@ function __chatsMergeServer(server, deletedIds){
   // v383: بناء قائمة المحذوفات من السيرفر
   var delSet = Object.create(null);
   if(hasDeleted) for(var di=0; di<deletedIds.length; di++) delSet[deletedIds[di]] = 1;
+  // v-del-stick (المالك ٤ أكتوبر «احذف الكل وأضغط مشروع جديد ولا كأني حذفت»): سجلّ الحذف المحلّيّ (v375) كان يُكتب ولا يُقرأ —
+  // فإن فشل حذف السيرفر (القاعدة ممتلئة أو انقطاع) رجعت نسخته في المزامنة التالية. المحذوف محلّيًّا لا يعود أبدًا.
+  try{ var __locDel = chatsDeletedIds(); for(var li=0; li<__locDel.length; li++) delSet[__locDel[li]] = 1; }catch(e){ __swallow(e, 'sync:del-stick'); }
   // v382: بصمة سريعة قبل الدمج — لو ما تغيّر شي نتجاوز إعادة الرسم
   var __fingerprint = function(list){
     var fp = '';
@@ -816,7 +1113,7 @@ function __chatsMergeServer(server, deletedIds){
   const result = [];
   const seen = Object.create(null);
   server.forEach(sp => {
-    if(!sp || !sp.id) return;
+    if(!sp || !sp.id || delSet[sp.id]) return; // v-del-stick
     seen[sp.id] = 1;
     const local = localById[sp.id];
     if(local){
@@ -831,6 +1128,12 @@ function __chatsMergeServer(server, deletedIds){
           if(lm.content && (!sm.content || sm.content === '[media]')) return lm;
           // لو المحلي أطول بكثير → خذ المحلي (السيرفر مقصوص)
           if(lm.content && sm.content && lm.content.length > sm.content.length + 50) return lm;
+          // v-keep-local-attachments: رسالة موجودة محليًّا أصلًا (نفس الفهرس) —
+          // مرفقاتها (صور) لا يمكن أن تكون نسخة السيرفر المرفوعة (مضغوطة أو
+          // '[media]' إن فشل الضغط) أوضح منها أبدًا. بلا هذا الفحص، رسالة صورة
+          // بلا نصّ (content فارغ) كانت تسقط للشرطين أعلاه فتُستبدل بصمت بنسخة
+          // متدهورة لمجرّد أنّ جهازًا آخر أضاف رسالة جديدة لنفس المحادثة.
+          if((Array.isArray(lm.attachments) && lm.attachments.length) || (Array.isArray(lm.apiImages) && lm.apiImages.length)) return lm;
           return sm;
         });
         local.messages = merged;
@@ -928,6 +1231,8 @@ function chatsServerSave(){
   });
 }
 window.appFullCleanup = function(){
+  // v-media-purge: عند المالك الزرّ نفسه ينظّف روابط المشاركة القديمة (لا يحذف محادثاته). غيره كما كان.
+  try{ if(String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && window.purgeOldMedia){ window.purgeOldMedia(); return; } }catch(e){ __swallow(e, 'misc:app-04-media-purge'); }
   var msg = 'سيتم حذف كل المحادثات والمشاريع نهائيًا. هل أنت متأكد؟';
   try{ var m = (typeof t === 'function') ? t('acctCleanupConfirm') : ''; if(m && m !== 'acctCleanupConfirm') msg = m; }catch(e){ __swallow(e, "misc:app-04-i18n-state#25"); }
   if(!confirm(msg)) return;
@@ -1011,10 +1316,47 @@ function codeForApi(code){
   return c;
 }
 
+/* v-perf-hist-lazy (المالك ٣٠ سبتمبر: «أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية» — ومقترح وكيله: «معاينات iframe في سجلّ
+   المحادثات… تحميلها فقط عند ظهورها»): كلّ مشروع بكود كان يبني عند الإقلاع iframe بصفحة التطبيق كاملة (تحليل وتخطيط ورسم)
+   حتّى والقائمة مخفيّة في الجوّال — loading=lazy لا يؤجّل srcdoc. مسبار حساب ثقيل: ١٤ صفحة تُبنى قبل أن يرى المستخدم شيئًا.
+   الآن تُبنى المعاينة حين تقترب من الظهور فقط (IntersectionObserver)، وبلا مراقب كما كانت. */
+let __histThumbIO = null;
+function __histThumbLazy(thumb, p){
+  const make = () => {
+    if(thumb.querySelector('iframe') || thumb.querySelector('img')) return;
+    /* v-inspire: تجارب «مدينتك الحقيقيّة» تبني واجهتها كلّها بالسكربت — بلا سكربتات تبقى صفحة بيضاء، فتُعرض صورة بطاقتها */
+    const __insp = p ? String(p.inspire || ((/<meta name="omran-inspire" content="([a-z]+)">/.exec(String(p.code || '').slice(0, 600)) || [])[1]) || '') : '';
+    if(/^[a-z]+$/.test(__insp)){
+      const im = document.createElement('img');
+      im.setAttribute('src', '/assets/inspire/city/' + __insp + '.jpg?v=1');
+      im.setAttribute('alt', '');
+      im.setAttribute('loading', 'lazy');
+      im.setAttribute('style', 'width:100%;height:100%;object-fit:cover;display:block;');
+      thumb.appendChild(im);
+      return;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('sandbox', '');
+    iframe.setAttribute('loading', 'lazy');
+    iframe.srcdoc = String(p.code || '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    thumb.appendChild(iframe);
+  };
+  if(typeof IntersectionObserver !== 'function'){ make(); return; }
+  if(!__histThumbIO) __histThumbIO = new IntersectionObserver(function(ents){
+    ents.forEach(function(en){
+      if(!en.isIntersecting || !en.target.__histMake) return;
+      const f = en.target.__histMake;
+      en.target.__histMake = null;
+      __histThumbIO.unobserve(en.target);
+      f();
+    });
+  }, { rootMargin: '200px' });
+  thumb.__histMake = make;
+  __histThumbIO.observe(thumb);
+}
 function renderHistory(){
-  historyEl.innerHTML = '';
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
-  const provKey = localStorage.getItem('aiapp_provider') || 'claude';
+  const provKey = localStorage.getItem('aiapp_provider') || 'openai';
   let provDirty = false;
   state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
   if(provDirty) saveState();
@@ -1022,7 +1364,28 @@ function renderHistory(){
   // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
   // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
   const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
-  [...state.projects].sort((a, b) => __histTs(b) - __histTs(a)).forEach(p => {
+  const __histSorted = [...state.projects].sort((a, b) => __histTs(b) - __histTs(a));
+  // v-perf-history-guard (المالك ٢٩ سبتمبر: «الشاشة تتأخر وتعلّق»): renderHistory تبني <iframe>
+  // كاملة لكلّ محادثة فيها كود، وتُستدعى بعد كلّ رسالة وعند كلّ نبضة مزامنة حيّة (٢٠ث) حتّى لو لم
+  // يتغيّر شيء فعليًّا. بصمة خفيفة بنفس فكرة v-render-guard في renderMessages أعلاه: إن طابقت آخر
+  // رسم والقائمة معروضة فعلًا نتخطّى كليًّا — لا مسح، لا إعادة بناء iframes حيّة بلا داعٍ.
+  try{
+    const __sig = state.currentId + '|' + (window.__histShowAll ? 1 : 0) + '|' +
+      __histSorted.map(p => p.id + ':' + p.title + ':' + (p.code && p.codeType !== 'python' ? 1 : 0)).join(',');
+    if(window.__renderHistSig === __sig && historyEl.childElementCount > 0) return;
+    window.__renderHistSig = __sig;
+  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أيّ خطأ نرسم كالمعتاد */ }
+  if(__histThumbIO) __histThumbIO.disconnect(); // v-perf-hist-lazy: صفوف الرسم السابق لا تُراقَب بعد مسحها
+  historyEl.innerHTML = '';
+  // v-perf-history-guard: نافذة عرض بنفس فكرة __MSGWIN في renderMessages — أقدم ٣٠ محادثة
+  // تُبنى iframes حيّة لها فقط لو طلب المستخدم صراحةً؛ الأقدم تظهر بزرّ عند الطلب.
+  const __HIST_WINDOW = 30;
+  // المحادثة المفتوحة حاليًّا يجب أن تبقى ظاهرة في قائمتها حتى لو كانت أقدم من النافذة
+  // (تُفتح أحيانًا من البحث أو رابط مباشر لا من هذه القائمة نفسها).
+  const __curIdx = state.currentId ? __histSorted.findIndex(p => p.id === state.currentId) : -1;
+  const __histWinEnd = window.__histShowAll ? __histSorted.length
+    : Math.min(Math.max(__HIST_WINDOW, __curIdx + 1), __histSorted.length);
+  __histSorted.slice(0, __histWinEnd).forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
     div.dataset.pid = String(p.id); // v-chat-search: يربط العنصر بمشروعه للبحث داخل المحتوى
@@ -1030,11 +1393,7 @@ function renderHistory(){
     const thumb = document.createElement('div');
     thumb.className = 'hist-thumb';
     if(p.code && p.codeType !== 'python'){
-      const iframe = document.createElement('iframe');
-      iframe.setAttribute('sandbox', '');
-      iframe.setAttribute('loading', 'lazy');
-      iframe.srcdoc = p.code;
-      thumb.appendChild(iframe);
+      __histThumbLazy(thumb, p);
     } else {
       const ph = document.createElement('span');
       ph.className = 'hist-thumb-emoji';
@@ -1051,7 +1410,7 @@ function renderHistory(){
     titleSpan.onclick = () => {
       // v380: الضغط على محادثة من مزود آخر → ينتقل لمزودها تلقائيًا (بدون إنشاء محادثة جديدة)
       try{
-        const cur = localStorage.getItem('aiapp_provider') || 'claude';
+        const cur = localStorage.getItem('aiapp_provider') || 'openai';
         if(p.provider && p.provider !== cur){
           localStorage.setItem('aiapp_provider', p.provider);
           const sel = document.getElementById('provider');
@@ -1063,7 +1422,21 @@ function renderHistory(){
           if(typeof updateProviderQuickBarActive === 'function') updateProviderQuickBarActive();
         }
       }catch(e){ __swallow(e, "save:app-04-i18n-state#38"); }
-      state.currentId = p.id; mahaClearImageRef(); renderAll();
+      state.currentId = p.id;
+      const hasMsgs = !!(p.messages && p.messages.length > 0);
+      document.body.classList.toggle('omranWelcome', !hasMsgs);
+      const hwHero = document.getElementById('huaweiHeroWrap');
+      const oHero = document.getElementById('omranHero');
+      if(hasMsgs){
+        if(hwHero) hwHero.style.setProperty('display', 'none', 'important');
+        if(oHero) oHero.style.setProperty('display', 'none', 'important');
+        const oTools = document.getElementById('sectionsToolsOverlay');
+        if(oTools) oTools.classList.remove('show');
+      } else {
+        if(hwHero) hwHero.style.removeProperty('display');
+        if(oHero) oHero.style.removeProperty('display');
+      }
+      mahaClearImageRef(); renderAll();
     };
     div.appendChild(titleSpan);
 
@@ -1081,6 +1454,19 @@ function renderHistory(){
 
     historyEl.appendChild(div);
   });
+  /* v-hist-autoload (المالك ٢ أكتوبر «احذف عرض محادثات أقدم»): الزرّ حُذف — الأقدم تُحمَّل وحدها حين يصل التمرير
+     آخر القائمة (علامة غير مرئيّة)، فتبقى نافذة الـ٣٠ وسرعتها (v-perf-history-guard) بلا زرّ. */
+  if(__histWinEnd < __histSorted.length){
+    const sentinel = document.createElement('div');
+    sentinel.className = 'hist-more-sentinel';
+    sentinel.style.cssText = 'height:1px;';
+    sentinel.__reveal = () => { if(window.__histShowAll) return; window.__histShowAll = true; window.__renderHistSig = null; renderHistory(); };
+    historyEl.appendChild(sentinel);
+    if(typeof IntersectionObserver === 'function'){
+      const io = new IntersectionObserver((ents) => { if(ents.some(e => e.isIntersecting)){ io.disconnect(); sentinel.__reveal(); } }, { rootMargin: '300px' });
+      io.observe(sentinel);
+    } else { setTimeout(sentinel.__reveal, 0); }
+  }
 }
 
 // v202: قائمة ⋮ الصغيرة لكل مشروع — إعادة تسمية / حذف (بتأكيد) / مشاركة
@@ -1351,6 +1737,22 @@ function omranRenderOptions(host, blocks){
 /* v-long-reply-off (طلب المالك ١٨ سبتمبر): الردّ الطويل يُعرض كاملًا في المحادثة بلا قصّ ولا
    أزرار — أُزيل القناع وزرّا القراءة والطيّ ولوحة القراءة التي كانت هنا (v-long-reply). */
 function renderMessages(keepScroll){
+  /* v-vault-restore: كلّ فتح لمحادثة يستعيد أصول صورها المتدهورة (المرفقات وapiImages التي يعدّل عليها المحرّر) من المخزن */
+  try{ const __hp = getCurrent(); if(__hp) hydrateProjectImages(__hp).catch(e => __swallow(e, 'vault:open')); }catch(e){ __swallow(e, 'vault:open#sync'); }
+  const __cInit = getCurrent();
+  const hasMsgs = !!(__cInit && Array.isArray(__cInit.messages) && __cInit.messages.length > 0);
+  document.body.classList.toggle('omranWelcome', !hasMsgs);
+  const hwHero = document.getElementById('huaweiHeroWrap');
+  const oHero = document.getElementById('omranHero');
+  if(hasMsgs){
+    if(hwHero) hwHero.style.setProperty('display', 'none', 'important');
+    if(oHero) oHero.style.setProperty('display', 'none', 'important');
+    const oTools = document.getElementById('sectionsToolsOverlay');
+    if(oTools) oTools.classList.remove('show');
+  } else {
+    if(hwHero) hwHero.style.removeProperty('display');
+    if(oHero) oHero.style.removeProperty('display');
+  }
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
   // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
@@ -1384,7 +1786,9 @@ function renderMessages(keepScroll){
   const prevScrollTop = messagesEl.scrollTop;
   let __wasNearBottom = true;
   try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
-  messagesEl.innerHTML = '';
+  window.__isRenderingMsgs = true;
+  try{
+    messagesEl.innerHTML = '';
   const cur = getCurrent();
   const chipsWrap = $('#chatQuickChipsWrap');
   if(chipsWrap && cur && cur.messages && cur.messages.length) chipsWrap.style.display = 'none';
@@ -1392,7 +1796,7 @@ function renderMessages(keepScroll){
   let compareGroup = null;
   cur.expandedAskAllBatches = cur.expandedAskAllBatches || [];
   // ⚡ v320: نافذة عرض — نرسم آخر 30 رسالة فقط؛ الأقدم تظهر بزر عند الطلب.
-  const __MSGWIN = 30;
+  const __MSGWIN = __IMG_WINDOW; /* v-mem-guard: النافذة نفسها التي تُستعاد صورها */
   const __winStart = cur.__showAllMsgs ? 0 : Math.max(0, cur.messages.length - __MSGWIN);
   if(__winStart > 0){
     const __OLDT = { ar:'عرض الرسائل الأقدم', en:'Show older messages', fr:'Afficher les messages plus anciens', hi:'पुराने संदेश दिखाएँ', ur:'پرانے پیغامات دکھائیں', bn:'পুরনো বার্তা দেখান', ne:'पुराना सन्देशहरू देखाउनुहोस्', id:'Tampilkan pesan lama', fil:'Ipakita ang mga lumang mensahe', tr:'Eski mesajları göster', zh:'显示较早的消息', ru:'Показать старые сообщения', es:'Mostrar mensajes anteriores', ml:'പഴയ സന്ദേശങ്ങൾ കാണിക്കുക' };
@@ -1435,8 +1839,32 @@ function renderMessages(keepScroll){
           __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
         }
       }catch(e){ /* الاسم المحفوظ احتياط */ }
-      label.textContent = __plbl;
-      if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+      /* v-owner-model-badge (سؤال المالك ١٩ سبتمبر «كيف أعرف الموديل اللي عندي؟»): للمالك وحده يظهر
+         فوق كلّ ردّ اسم المزوّد الحقيقيّ + ما أعلنه الخادم (الموديل الذي خدم الطلب · كاش · جديد · خرج).
+         كان الحدث يُلتقط ولا يُعرض في أيّ مكان. بقيّة المستخدمين: كما كان (v464 — «اسأل الكل» فقط). */
+      const __ownerBadge = (typeof omranOwnerUi === 'function' && omranOwnerUi());
+      if(__ownerBadge && m.model) __plbl = (__plbl ? __plbl + ' · ' : '') + m.model;
+      /* v-agent-badge-star (طلب المالك: احذف إيموجي 🤖 وحطّ مكانه وميض نجمة ذهبية — شرارة
+         تفكير الوكيل نفسها): شارة الوكيل وحدها ترسم شرارة ✦ متحرّكة قبل النصّ بدل إيموجي ثابت. */
+      if(m.agentBadge){
+        const spark = document.createElement('span');
+        spark.className = 'agent-badge-spark';
+        spark.setAttribute('aria-hidden', 'true');
+        spark.textContent = '✦';
+        label.appendChild(spark);
+        label.appendChild(document.createTextNode(__plbl));
+      } else {
+        label.textContent = __plbl;
+      }
+      // v-badge-white (طلب المالك): شارة الموديل فوق الردّ بالأبيض (كالكتابة والأرقام)،
+      // لا بلون المزوّد — يبقى لون المزوّد لتمييز «اسأل الكل» فقط.
+      if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
+      /* v-owner-solo (المالك ٨ أكتوبر على لقطة «claude-haiku… · كاش ٠ · جديد 34.5k · خرج 34 ⚡»: «أريد المحادثة فقط، أيّ شي زائد ما أريده»):
+         شارة الموديل والتوكنات لا تظهر فوق ردود المحادثة — تبقى لشارة الوكيل (شرارته ✦) و«اسأل الكل». */
+      if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label);
+      /* v-owner-identity (المالك ٨ أكتوبر: «شو عرّفني أنّ المزوّدين بأصلهم»): فوق ردّ المحادثة سطر واحد — اسم المزوّد والموديل كما أعلنه
+         المزوّد نفسه في ردّه (لا التوكنات ولا الكاش، v-owner-solo). للمالك وحده. */
+      else if(__ownerBadge && m.served && !isAskAllReply){ label.textContent = (m.providerKey && typeof functionalLabel === 'function' ? functionalLabel(m.providerKey) : '') + ' · ' + m.served; div.appendChild(label); } // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
@@ -1515,15 +1943,21 @@ function renderMessages(keepScroll){
     }
     // روابط خرائط Google لا تُعرض في المحادثة: الأماكن تظهر بأسمائها فقط.
     // يزيل ذلك أيضًا روابط محفوظة في ردود قديمة.
+    // v-loc-not-build: إلّا لمن طلب الموقع نفسه (الرابط جوابه)، ولا يُمحى الردّ كلّه أبدًا — كان يصير فقاعة فارغة.
     if(m.role !== 'user' && typeof __mc === 'string'){
-      const __mapUrlRe = /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i;
-      __mc = __mc.split('\n').filter(line => !__mapUrlRe.test(line)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      let __prevU = '';
+      for(let __k = mIdx - 1; __k >= 0; __k--){ const __u = cur.messages[__k]; if(__u && __u.role === 'user'){ __prevU = String(__u.apiText !== undefined ? __u.apiText : (__u.content || '')); break; } }
+      __mc = omranMapFilter(__mc, __prevU);
     }
     let msgWordEls = null;
     if(m.role !== 'user' && __mc){
       const __oOpt = omranExtractOptions(__mc);
       msgWordEls = buildSpokenWordSpans(textDiv, __oOpt ? __oOpt.text : __mc);
       if(__oOpt && mIdx === cur.messages.length - 1) omranRenderOptions(textDiv, __oOpt.blocks);
+      // v-cc-fold: ردّ Claude Code — أدواته وأكواده الطويلة مطويّة بترتيبها داخل الردّ
+      if(m._cc && window.omranCC && typeof window.omranCC.decorate === 'function'){
+        try{ const __ccw = window.omranCC.decorate(textDiv, m); if(__ccw) msgWordEls = __ccw; }catch(e){ __swallow(e, 'cc:fold'); }
+      }
     } else {
       textDiv.textContent = __mc;
     }
@@ -1558,6 +1992,10 @@ function renderMessages(keepScroll){
       });
       div.appendChild(imgStrip);
     }
+    // v-agent-log: ردّ الوكيل بسجلّ خطواته (كلامه، «$ خطوة»، «فكّر N ثانية»، «استكشف N ملفّات») — السجلّ قبل نصّ الردّ
+    if(m.role !== 'user' && Array.isArray(m._agParts) && m._agParts.length && window.omranAgentLog){
+      try{ div.appendChild(window.omranAgentLog.render(m._agParts)); }catch(e){ __swallow(e, 'agent:log'); }
+    }
     div.appendChild(textDiv);
     // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
     if(m.role !== 'user' && __mc){
@@ -1577,37 +2015,27 @@ function renderMessages(keepScroll){
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
     {
-      // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
+      // الروابط الخارجية الظاهرة في النصّ — تبقى روابط، وتُستثنى من بطاقة المصادر
       const __inlineLinks = [];
-      const __anchorEls = [];
       if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
           const title = a.textContent.trim() || url;
-          if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
+          if(url && !__inlineLinks.some(l => l.url === url)){
             __inlineLinks.push({ url, title });
           }
-          __anchorEls.push(a);
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
        const __isMapUrl = (url) => /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i.test(String(url || ''));
        const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
-       const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
-      const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
-      // v-src-dedupe (أمر عمران ب): رابط واحد ظاهر في الرد أصلًا = لا بطاقة مصادر
-      // مكرّرة؛ يبقى الرابط قابلًا للضغط داخل الرد. غير ذلك تُحوّل الروابط إلى نصّ
-      // (بلا href حتى لا تتفرّق) وتُجمع كلّها في البطاقة.
-      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
-      const __skipCard = validSrcs.length === 1 && __inlineLinks.length === 1 && __normU(__inlineLinks[0].url) === __normU(validSrcs[0].url);
-      if(!__skipCard){
-        __anchorEls.forEach(a => {
-          const span = document.createElement('span');
-          span.className = 'msgInlineRef';
-          span.textContent = a.textContent;
-          a.parentNode.replaceChild(span, a);
-        });
-      }
+      /* v-inline-links-stay (المالك ٢٣ سبتمبر: «يقول ادخل الرابط… يعطيني مرّة أو مرّتين صح والباقي يخربط»):
+         كان الرابط يبقى قابلًا للضغط في ردّ فيه رابط واحد فقط؛ رابطان فأكثر = كلّها تتحوّل نصًّا عاديًّا
+         (msgInlineRef) وتختفي في زرّ «المصادر» المطويّ. الآن الرابط في النصّ يبقى رابطًا ذهبيًّا يُفتح دائمًا،
+         وبطاقة «المصادر» لا تحمل إلّا مصادر البحث التي ليست ظاهرة في النصّ أصلًا. */
+      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '').toLowerCase();
+      const validSrcs = __srcBase.filter(s => !__inlineLinks.some(l => __normU(l.url) === __normU(s.url))).slice(0, 15);
+      const __skipCard = false;
 
       if(validSrcs.length && !__skipCard){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
@@ -1707,16 +2135,29 @@ function renderMessages(keepScroll){
           dl.style.textDecoration = 'none';
           dl.style.alignSelf = 'center';
           wrap.appendChild(dl);
-        } else if(a.isImage && a.purged){
+        } else if(a.isImage && a.purged && !a.vaultId){
           const chip = document.createElement('div');
           chip.className = 'file-chip';
           chip.textContent = '🗑️ ' + t('imagePurgedNote');
           wrap.appendChild(chip);
         } else if(a.isImage){
           const img = document.createElement('img');
-          /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
-          if(!a.dataUrl && a.vaultId){ idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; img.src = d; } }).catch(e => __swallow(e, 'vault:render')); }
-          img.src = a.dataUrl;
+          img.decoding = 'async';
+          let __ibox = null;
+          /* v-img-view: تُرسم نسخة العرض (1280px) لا الأصل. صورة جديدة لم تُخزَّن بعد تظهر بأصلها فورًا ثمّ تُستبدل بنسختها؛
+             المخزونة بلا نسخة في الذاكرة تنتظر نسختها (من المخزن، أو تُصنع مرّة من الأصل). كلّ تعيين في مهمّته (v-mem-guard3:
+             الدفعة الواحدة جمّدت الإقلاع ١٫٥ث)، والمنفصلة عن الصفحة تُتخطّى، والمخفيّة بعد خطأ src فارغ تعود ظاهرة. */
+          const __showSrc = (u) => { if(typeof u === 'string' && u) setTimeout(() => { if(!img.isConnected || img.getAttribute('src') === u) return; img.style.display = ''; img.src = u; }, 0); };
+          /* v-chip-thumb: رقاقة مرفق المستخدم ٦٠px (object-fit:cover يفكّ الأصل كاملًا) تُرسم بمصغّرتها المحفوظة (400px) إن وُجدت */
+          const __chipThumb = (m.role === 'user' || a._fromMemory) && typeof a.serverThumb === 'string' && a.serverThumb.slice(0, 11) === 'data:image/' ? a.serverThumb : '';
+          if(__chipThumb) img.src = __chipThumb;
+          else if(a.viewUrl) img.src = a.viewUrl;
+          else if(__isBigDataImg(a.dataUrl) || __vaultDegraded(a)){
+            if(__isBigDataImg(a.dataUrl) && (!a.vaultId || a.vaultPending)) img.src = a.dataUrl;
+            __imgView(a).then(__showSrc).catch(e => __swallow(e, 'img:view'));
+          } else img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
+          /* v-image-vault/v-mem-guard2: أدوات المشاركة والحفظ تحتاج الأصل — يُقرأ من المخزن (قراءة مشتركة) وتُلحق حين يصل */
+          if(__vaultDegraded(a) && !window.__usingSlimProjects){ __vaultRead(a).then(d => { if(__isBigDataImg(d)) setTimeout(() => { if(img.isConnected && __ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
           img.title = a.name;
           img.style.cursor = 'pointer';
           // v531: صور المساعد مولَّدة ⇒ تُعرض كبيرة. مرفقات المستخدم تبقى رقاقات صغيرة.
@@ -1727,7 +2168,7 @@ function renderMessages(keepScroll){
             emptyState.style.display = 'none';
             previewFrame._imageView = true;
             previewFrame._lastSrc = null;
-            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + a.dataUrl + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
+            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + ((a.dataUrl && a.dataUrl !== '[media]') ? a.dataUrl : (a.viewUrl || '')) + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
             switchWorkTab('preview');
             closeDrawers();
             if(localStorage.getItem('previewEnabled') !== 'off'){
@@ -1738,7 +2179,7 @@ function renderMessages(keepScroll){
           if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
             const ibox = document.createElement('div');
             ibox.style.cssText = 'position:relative;display:block;min-width:0;width:fit-content;max-width:min(460px,100%)';
-            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl); wrap.appendChild(ibox);
+            __ibox = ibox; ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl, a); wrap.appendChild(ibox); // v-img-upscale: المرفق كي تُحفظ النسخة المرقّاة
           } else wrap.appendChild(img);
         } else {
           const chip = document.createElement('div');
@@ -1751,7 +2192,7 @@ function renderMessages(keepScroll){
           if(__big && typeof window.omranGoldBadgeFill === 'function'){
             window.omranGoldBadgeFill(chip, a);
           } else {
-            chip.textContent = '📄 ' + a.name;
+            chip.textContent = a.isVideoWatch ? '🎬 ' + (a.label || a.name) : '📄 ' + a.name; // v-video-watch
           }
           if(a.text){
             chip.style.cursor = 'pointer';
@@ -1790,66 +2231,84 @@ function renderMessages(keepScroll){
           wrap.appendChild(chip);
         }
       });
-      div.appendChild(wrap);
+      /* v-img-first (المالك ٢٣ سبتمبر «الردود آخر الصورة لا أوّل الصور»): صور المساعد المرفقة (تعديل، بحث صور، البانيات)
+         كانت تُلحق تحت النصّ، والمرسومة داخل الردّ فوقه — فيتقلّب الترتيب. الآن الصورة أوّلًا ثمّ الردّ دائمًا. */
+      if(m.role !== 'user' && textDiv.parentNode === div && m.attachments.some(a => a && (a.isImage || a.isVideo))) div.insertBefore(wrap, textDiv);
+      else div.appendChild(wrap);
     }
     if((m.content && m.content.trim()) || (m.role !== 'user' && m.attachments && m.attachments.some(a => a && (a.isImage || a.isVideo)))){ // v669: الأيقونات تظهر تحت الصور حتى بلا نص
       const actionBar = document.createElement('div');
       actionBar.className = 'msgActionBar';
+      if(m.role !== 'user'){
+        actionBar.classList.add('msgReplyActions');
+        actionBar.setAttribute('dir', 'rtl');
+        actionBar.setAttribute('role', 'toolbar');
+        actionBar.setAttribute('aria-label', t('msgToolbarLabel'));
+      }
       const copyIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
       const checkIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      let moreBtnEl = null;
+      const moreActions = [];
       if(m.role !== 'user'){
-        // ↻ إعادة توليد آخر الدور من سؤال المستخدم نفسه — بلا فقاعة مكررة.
+        // إعادة توليد آخر الدور من سؤال المستخدم نفسه — بلا فقاعة مكررة.
         if(!document.documentElement.classList.contains('mobile-ui') && !m._loading && !m.askAllReply && !m.isAskAllPrep){
           const retryBtn = document.createElement('button');
           retryBtn.type = 'button';
-          retryBtn.title = lang === 'ar' ? 'إعادة توليد الرد' : 'Regenerate response';
+          retryBtn.title = t('msgRegenerate');
           retryBtn.setAttribute('aria-label', retryBtn.title);
           retryBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"></path><path d="M4 17v-5h5"></path><path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 9"></path><path d="M17.9 15a7 7 0 0 1-11.5 2.6L4 15"></path></svg>';
           retryBtn.onclick = () => { if(window.chatRegenerateMessage) window.chatRegenerateMessage(mIdx); };
           actionBar.appendChild(retryBtn);
         }
-        // ⋮ more (convert) menu
+        // قائمة الإجراءات الإضافية تأتي بعد فاصل مستقل.
         const moreBtn = document.createElement('button');
+        moreBtnEl = moreBtn;
         moreBtn.type = 'button';
         moreBtn.title = t('moreOptionsTitle') || 'خيارات إضافية';
+        moreBtn.setAttribute('aria-label', moreBtn.title);
+        moreBtn.setAttribute('aria-haspopup', 'menu');
+        moreBtn.setAttribute('aria-expanded', 'false');
+        moreBtn.className = 'msgMoreTrigger';
         moreBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
-        moreBtn.onclick = (e) => { e.stopPropagation(); openMsgMoreMenu(moreBtn, m.content); };
         actionBar.appendChild(moreBtn);
 
-        // 🔗 v631 — أمر عمران: زرّ مشاركة الرسالة محذوف (الإرسال كان رابطًا لا محتوى).
-
-        // 🔊 listen — exact existing speakSmart logic, icon-based
+        // يحتفظ زر الاستماع بمسار الإيقاف واستدعاء انتهاء التشغيل الأصليين.
         const speakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>';
         const stopSpeakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg>';
         const speakBtn = document.createElement('button');
         speakBtn.type = 'button';
-        speakBtn.title = t('speakBtn') || 'استماع';
+        const listenLabel = (t('speakBtn') || 'استماع').replace(/\s*🔊\s*/g, '');
+        speakBtn.title = listenLabel;
+        speakBtn.setAttribute('aria-label', speakBtn.title);
         speakBtn.innerHTML = speakIconSVG;
+        const resetSpeakBtn = () => { speakBtn.innerHTML = speakIconSVG; speakBtn.style.color = ''; speakBtn._speaking = false; speakBtn.title = listenLabel; speakBtn.setAttribute('aria-label', listenLabel); };
         speakBtn.onclick = () => {
           if(speakBtn._speaking){
             stopAllSpeaking();
-            speakBtn.innerHTML = speakIconSVG;
-            speakBtn.style.color = '';
-            speakBtn._speaking = false;
+            resetSpeakBtn();
             return;
           }
           speakBtn._speaking = true;
           speakBtn.innerHTML = stopSpeakIconSVG;
           speakBtn.style.color = 'var(--accent2,#00e0b8)';
-          speakSmart(m.content, null, () => { speakBtn.innerHTML = speakIconSVG; speakBtn.style.color = ''; speakBtn._speaking = false; }, true, msgWordEls);
+          speakBtn.title = t('msgStopListening');
+          speakBtn.setAttribute('aria-label', speakBtn.title);
+          speakSmart(m.content, null, resetSpeakBtn, true, msgWordEls);
         };
-        actionBar.appendChild(speakBtn);
+        actionBar.insertBefore(speakBtn, actionBar.firstChild);
 
-        // 👎 / 👍 feedback (mutually exclusive, in-memory only)
+        // التقييم متبادل الحصر ويُقرأ من الرسالة عند كل فتح للقائمة.
         const thumbDownIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>';
         const thumbUpIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
         const thumbDownBtn = document.createElement('button');
         thumbDownBtn.type = 'button';
         thumbDownBtn.title = t('thumbDownTitle') || 'غير مفيد';
+        thumbDownBtn.setAttribute('aria-label', thumbDownBtn.title);
         thumbDownBtn.innerHTML = thumbDownIconSVG;
         const thumbUpBtn = document.createElement('button');
         thumbUpBtn.type = 'button';
         thumbUpBtn.title = t('thumbUpTitle') || 'مفيد';
+        thumbUpBtn.setAttribute('aria-label', thumbUpBtn.title);
         thumbUpBtn.innerHTML = thumbUpIconSVG;
         thumbDownBtn.onclick = () => {
           m._feedback = m._feedback === 'down' ? null : 'down';
@@ -1863,29 +2322,33 @@ function renderMessages(keepScroll){
         };
         if(m._feedback === 'down') thumbDownBtn.classList.add('msgThumbDownActive');
         if(m._feedback === 'up') thumbUpBtn.classList.add('msgThumbActive');
-        actionBar.appendChild(thumbDownBtn);
-        actionBar.appendChild(thumbUpBtn);
+        moreActions.push({ label: thumbUpBtn.title, icon: thumbUpIconSVG, checkable: true, active: () => m._feedback === 'up', fn: () => thumbUpBtn.click() });
+        moreActions.push({ label: thumbDownBtn.title, icon: thumbDownIconSVG, checkable: true, active: () => m._feedback === 'down', fn: () => thumbDownBtn.click() });
 
-        // 🚩 report inappropriate AI content (Store policy 11.16)
+        // لا يُؤكَّد البلاغ قبل نجاح الطلب، ويُمنع تكراره أثناء الإرسال.
         const flagIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>';
         const reportBtn = document.createElement('button');
         reportBtn.type = 'button';
         reportBtn.title = t('reportMsgTitle') || 'الإبلاغ عن محتوى غير لائق';
+        reportBtn.setAttribute('aria-label', reportBtn.title);
         reportBtn.innerHTML = flagIconSVG;
         reportBtn.onclick = async () => {
-          if(reportBtn._done) return;
+          if(m._reportPending || m._reported) return;
           if(!confirm(t('reportConfirm') || 'هل تريد الإبلاغ عن هذا الرد كمحتوى غير لائق؟')) return;
-          reportBtn._done = true;
-          reportBtn.style.color = '#ff5c6c';
+          m._reportPending = true;
           try{
             let u='guest'; try{ u = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ __swallow(_, "ui:app-04-i18n-state#39"); }
-            fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
-          }catch(e){ /* ignore */ }
-          if(typeof settingsToast === 'function') settingsToast(t('reportSentToast') || 'تم استلام البلاغ — شكرًا لك');
+            const response = await fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
+            if(!response.ok) throw new Error('Report request failed: ' + response.status);
+            const result = await response.json();
+            if(!result || result.ok !== true) throw new Error('Report not accepted');
+            m._reported = true;
+            if(typeof settingsToast === 'function') settingsToast(t('reportSentToast') || 'تم استلام البلاغ — شكرًا لك');
+          }catch(e){
+            if(typeof settingsToast === 'function') settingsToast(t('msgReportFailed'));
+          }finally{ m._reportPending = false; }
         };
-        actionBar.appendChild(reportBtn);
-
-        // ✨ v631 — أمر عمران: أيقونة «شنو أقدر أسوي» محذوفة من شريط الرسالة.
+        moreActions.push({ label: reportBtn.title, icon: flagIconSVG, active: () => !!m._reported, disabled: () => !!(m._reported || m._reportPending), fn: () => reportBtn.click() });
       } else if(!document.documentElement.classList.contains('mobile-ui')){
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
@@ -1896,25 +2359,14 @@ function renderMessages(keepScroll){
         actionBar.appendChild(editBtn);
       }
 
-      // v204 fix: this used to be built directly into the `copyMsgBtn`
-      // variable, which was then REASSIGNED a few lines below to the whole
-      // `actionBar` (so it could be appended alongside the message bubble).
-      // Because the onclick/onmouseenter/onmouseleave closures below
-      // captured that same variable by reference (not by value), by the
-      // time the user actually clicked, `copyMsgBtn` inside the closures
-      // pointed at `actionBar`, not the button — so
-      // `copyMsgBtn.innerHTML = checkIconSVG` wiped out the ENTIRE action
-      // bar's HTML (all buttons for that message, i.e. the whole message's
-      // action row) instead of just swapping the copy icon. Using a
-      // dedicated `copyBtnEl` for the button itself (never reassigned)
-      // fixes this: only the copy icon markup ever changes, nothing else
-      // in the DOM is touched.
+      // يُحدَّث زر النسخ وحده؛ لا تُستبدل أيقونات الشريط الأخرى عند النسخ.
       const copyBtnEl = document.createElement('button');
       copyBtnEl.type = 'button';
       copyBtnEl.onmouseenter = () => { copyBtnEl.style.color = 'var(--accent2,#00e0b8)'; };
       copyBtnEl.onmouseleave = () => { copyBtnEl.style.color = 'var(--muted,#98a0b3)'; };
       copyBtnEl.innerHTML = copyIconSVG;
       copyBtnEl.title = t('copyMsgTitle') || 'نسخ';
+      copyBtnEl.setAttribute('aria-label', copyBtnEl.title);
       copyBtnEl.onclick = async (e) => {
         e.stopPropagation();
         try{
@@ -1926,32 +2378,42 @@ function renderMessages(keepScroll){
             ta.style.position = 'fixed';
             ta.style.opacity = '0';
             document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
+            try{
+              ta.select();
+              if(!document.execCommand('copy')) throw new Error('Copy failed');
+            }finally{ ta.remove(); }
           }
           copyBtnEl.innerHTML = checkIconSVG;
-          setTimeout(() => { copyBtnEl.innerHTML = copyIconSVG; }, 1500);
-        }catch(e2){ /* never let a copy failure affect the rest of the UI */ }
+          const copiedLabel = t('copiedToast');
+          copyBtnEl.title = copiedLabel;
+          copyBtnEl.setAttribute('aria-label', copiedLabel);
+          if(typeof settingsToast === 'function') settingsToast(copiedLabel);
+          clearTimeout(copyBtnEl._copyTimer);
+          copyBtnEl._copyTimer = setTimeout(() => {
+            copyBtnEl.innerHTML = copyIconSVG;
+            copyBtnEl.title = t('copyMsgTitle');
+            copyBtnEl.setAttribute('aria-label', copyBtnEl.title);
+          }, 1500);
+        }catch(e2){
+          if(typeof settingsToast === 'function') settingsToast(t('msgCopyFailed'));
+        }
       };
-      actionBar.appendChild(copyBtnEl);
-      /* v-share-reply (المالك ٤ سبتمبر: «شعار المشاركة غير موجود في آخر شي»): كل ردّ نصّي يحمل زرّ
-         المشاركة في الموضع الأخير نفسه الذي يحمله ردّ الصورة؛ يشارك نصّ الردّ نفسه لا رابطًا.
-         ردود الصور لها زرّها الخاص من __omranImgTools فلا تكرار. */
-      /* الدالة تُعرَّف في جزء لاحق من الحزمة (app-05-share-text) — لا نشترطها وقت الرسم الأول للسجل */
+      if(m.role === 'user') actionBar.appendChild(copyBtnEl);
+      else actionBar.insertBefore(copyBtnEl, actionBar.firstChild);
+      /* مشاركة الردّ النصّي ضمن القائمة؛ الصور لها زرّ المشاركة الخاص فلا نكرّره. */
       if(m.role !== 'user' && !m._loading
          && !((m.attachments || []).some(a => a && (a.isImage || a.isVideo)))
          && !(typeof m.content === 'string' && m.content.indexOf('__IMG_') !== -1)){
-        const shareBtnEl = document.createElement('button');
-        shareBtnEl.type = 'button'; shareBtnEl.className = 'oSendOut oShareText';
-        shareBtnEl.title = (t('msgShareReply') !== 'msgShareReply' ? t('msgShareReply') : (lang === 'ar' ? 'مشاركة الردّ' : 'Share reply'));
-        shareBtnEl.setAttribute('aria-label', shareBtnEl.title);
-        shareBtnEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:17px;height:17px;display:block"><circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/></svg>';
-        shareBtnEl.onclick = (e) => { e.stopPropagation(); try{ if(typeof window.omranShareText === 'function') window.omranShareText((textDiv && textDiv.innerText) || String(m.content || ''), shareBtnEl); }catch(err){ /* guard-ok */ } };
-        actionBar.appendChild(shareBtnEl);
+        const shareIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/></svg>';
+        moreActions.unshift({ label: t('msgShareReply'), icon: shareIconSVG, fn: (menuBtn) => {
+          if(typeof window.omranShareText === 'function') window.omranShareText((textDiv && textDiv.innerText) || String(m.content || ''), menuBtn);
+        } });
       }
-      // زر النسخ يبقى تحت رسالة المستخدم على الجوال؛ بقية الإجراءات لا تظهر
-      // للمستخدم هناك، لذلك لا يعود الشريط طافيًا أو مزدحمًا.
+      if(moreBtnEl) moreBtnEl.onclick = (e) => {
+        e.stopPropagation();
+        openMsgMoreMenu(moreBtnEl, m.content, moreActions);
+      };
+      // يحتفظ المستخدم بزرّ النسخ؛ وتبقى إعادة التوليد مخفية على الجوّال.
       copyMsgBtn = actionBar;
     }
     if(m.code && m.providerLabel){
@@ -2104,4 +2566,8 @@ function renderMessages(keepScroll){
   }
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
+  }finally{
+    window.__isRenderingMsgs = false;
+    try{ if(typeof window.syncWelcome === 'function') window.syncWelcome(); }catch(e){ /* guard-ok */ }
+  }
 }

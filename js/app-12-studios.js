@@ -105,36 +105,6 @@ async function __safeJson(res){
     });
   };
 
-  let extraImagesB64 = [];
-  const multiWrap = $('#portraitMultiWrap');
-  const multiFileInput = $('#portraitMultiFileInput');
-  const multiFileBtn = $('#portraitMultiFileBtn');
-  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
-  const multiLabel = $('#portraitMultiLabel');
-  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
-  if(multiFileInput){
-    multiFileInput.onchange = () => {
-      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
-      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
-      extraImagesB64 = [];
-      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = String(reader.result || '');
-          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
-          if(multiPreviewWrap){
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
-            multiPreviewWrap.appendChild(img);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    };
-  }
-
   let variantSrc = null;
   /* v-decor-ideas: أفكار بلا صورة — رقائق لأنواع الأماكن + سطر حرّ «اكتب ما تريد» */
   const ideaChips = document.getElementById('designAiIdeaChips');
@@ -245,9 +215,12 @@ async function __safeJson(res){
     if(ideaAI) ideaAI.style.display = 'none';
     ideaStatus('⏳ ' + bT('أجمع لك صورًا وتصاميم…', 'Collecting photos and designs…'));
     try{
-      const r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ place: opts.place || '', q: opts.q || '', style: styleEl ? styleEl.value : '' }) });
+      const r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ place: opts.place || '', q: opts.q || '', style: styleEl ? styleEl.value : '', token: (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '' }) });
       const d = await __safeJson(r);
       if(my !== ideaReq) return;
+      /* v-open-tools-cap: المعرض صار بجلسة وسقف يوميّ ثابت — نصّ الدخول والحدّ الموجودان بالـ١٤ لغة */
+      if(d && d.error === 'auth_required'){ ideaStatus(t('designAiNeedLogin')); return; }
+      if(d && d.error === 'daily_limit_reached'){ ideaStatus(t('designAiLimitReached')); return; }
       const imgs = Array.isArray(d.images) ? d.images : [];
       if(!imgs.length){
         /* v-ideas-resilient: مصدر الصور متوقف (حصّة) ≠ لا نتائج — نقول الحقيقة */
@@ -421,6 +394,7 @@ async function __safeJson(res){
       const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const ideas = Array.isArray(data.suggestions) ? data.suggestions : [];
@@ -440,25 +414,41 @@ async function __safeJson(res){
   const baBeforeClip = $('#designBABeforeClip');
   const baBefore = $('#designBABefore');
   const baLine = $('#designBALine');
-  const baRange = $('#designBARange');
-  function baHide(){ if(baWrap) baWrap.style.display = 'none'; if(baRange) baRange.style.display = 'none'; }
+  /* v-compare-drag-all (طلب المالك ٢١ سبتمبر: «غيّرها» — نفس تحسين سحب أنماط الصور على بقيّة الأدوات):
+     baSet(p) كانت تُقاد من <input type=range id=designBARange> مخفيّ (v-no-slider ٤ سبتمبر) فبلا وسيلة
+     تفاعل. السحب صار مباشرة على baWrap نفسه بمقبض دائريّ فوق الخطّ الفاصل — baSet نفسها لم تتغيّر. */
+  function baHide(){ if(baWrap) baWrap.style.display = 'none'; }
   function baSize(){ if(baWrap && baBefore) baBefore.style.width = baWrap.getBoundingClientRect().width + 'px'; }
   function baSet(p){
     if(baBeforeClip) baBeforeClip.style.width = p + '%';
     if(baLine) baLine.style.left = p + '%';
     baSize();
   }
-  if(baRange) baRange.oninput = function(){ baSet(baRange.value); };
+  let __baDragging = false;
+  function baPctFromEvent(ev){
+    const rect = baWrap.getBoundingClientRect();
+    if(!rect.width) return 0;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
+  }
+  if(baWrap){
+    baWrap.style.touchAction = 'none';
+    baWrap.style.cursor = 'ew-resize';
+    baWrap.addEventListener('pointerdown', (ev) => {
+      __baDragging = true;
+      try{ baWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      baSet(baPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    baWrap.addEventListener('pointermove', (ev) => { if(__baDragging) baSet(baPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => baWrap.addEventListener(evt, () => { __baDragging = false; }));
+  }
   window.addEventListener('resize', function(){ if(baWrap && baWrap.style.display !== 'none') baSize(); });
   function showBeforeAfter(beforeUrl, afterUrl){
-    /* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): لا شريط مقارنة — الناتج وحده */
     if(!baWrap || !baAfter || !baBefore) return false;
     baAfter.src = afterUrl;
     baBefore.src = beforeUrl;
     baAfter.onload = baSize;
     baWrap.style.display = 'block';
-    baRange.style.display = 'none';
-    baRange.value = 0;
     baSet(0);
     return true;
   }
@@ -612,7 +602,7 @@ const STU_XL = {
   'منمنمات إسلامية مذهّبة': {en:'Gilded Islamic Miniatures',fr:'Miniatures Islamiques Dorées',hi:'सोने का इस्लामिक लघुचित्र',bn:'সোনালি ইসলামিক মিনিয়েচার',ne:'सुनको इस्लामिक मिनिएचर',id:'Miniatur Islam Berlapis Emas',fil:'Gilded Islamic Miniatures',tr:'Altın Kaplı İslami Minyatürler',zh:'镀金伊斯兰微型画',ru:'Позолоченные исламские миниатюры',es:'Miniaturas Islámicas Doradas',ml:'സ്വർണ്ണപ്പതിത ഇസ്ലാമിക് ചെറുകലാ'},
   'بوستر شخصية لعبة': {en:'Game Character Poster',fr:'Affiche Personnage de Jeu',hi:'गेम चरित्र पोस्टर',bn:'গেম চরিত্র পোস্টার',ne:'गेम क्यारेक्टर पोस्टर',id:'Poster Karakter Game',fil:'Game Character Poster',tr:'Oyun Karakteri Posteri',zh:'游戏角色海报',ru:'Постер персонажа игры',es:'Póster del Personaje del Juego',ml:'ഗെയിം കഥാപാത്ര പോസ്റ്റർ'},
   'كاريكاتير صحفي قديم': {en:'Vintage Newspaper Caricature',fr:'Caricature de Journal Vintage',hi:'विंटेज अखबार कारिकेचर',bn:'ভিন্টেজ সংবাদপত্র ক্যারিকেচার',ne:'भिन्टेज पत्र क्यारिकेचर',id:'Karikatur Koran Vintage',fil:'Vintage Newspaper Caricature',tr:'Vintage Gazete Karikatürü',zh:'复古报纸漫画',ru:'Винтажная газетная карикатура',es:'Caricatura de Periódico Vintage',ml:'വിന്റേജ് സമാചാരപ്പത്ര കാരിക്കേച്ചർ'},
-  'أجواء رعب هالوين': {en:'Halloween Horror Vibes',fr:'Ambiance Horreur Halloween',hi:'हैलोवीन恐ब्भ वातावरण',bn:'হ্যালোইন ভয় পরিবেশ',ne:'हेलोइन भय वातावरण',id:'Vibes Horor Halloween',fil:'Halloween Horror Vibes',tr:'Cadılar Bayramı Korku Atmosferi',zh:'万圣节恐怖氛围',ru:'Хэллоуинские ужасные вибрации',es:'Vibraciones de Terror de Halloween',ml:'ഹാലോവീൻ ഭയാനകമായ വൈബ്സ്'},
+  'أجواء رعب هالوين': {en:'Halloween Horror Vibes',fr:'Ambiance Horreur Halloween',hi:'डरावना हैलोवीन वातावरण',bn:'হ্যালোইন ভয় পরিবেশ',ne:'हेलोइन भय वातावरण',id:'Vibes Horor Halloween',fil:'Halloween Horror Vibes',tr:'Cadılar Bayramı Korku Atmosferi',zh:'万圣节恐怖氛围',ru:'Хэллоуинские ужасные вибрации',es:'Vibraciones de Terror de Halloween',ml:'ഹാലോവീൻ ഭയാനകമായ വൈബ്സ്'},
   'أنمي حركة ياباني': {en:'Japanese Action Anime',fr:'Anime d\'Action Japonais',hi:'जापानी एक्शन एनिमे',bn:'জাপানি অ্যাকশন এনিমে',ne:'जापानी कार्य एनिमे',id:'Anime Aksi Jepang',fil:'Japanese Action Anime',tr:'Japon Aksiyon Animesi',zh:'日本动作动画',ru:'Японское боевое аниме',es:'Anime de Acción Japonés',ml:'ജാപ്പനീസ് നടപടി എനിമെ'},
   'لوحة ملكية كلاسيكية': {en:'Classical Royal Painting',fr:'Peinture Royale Classique',hi:'शास्त्रीय शाही चित्र',bn:'ক্লাসিক্যাল রাজকীয় চিত্র',ne:'शास्त्रीय शाही पेंटिंग',id:'Lukisan Kerajaan Klasik',fil:'Classical Royal Painting',tr:'Klasik Kraliyet Resmi',zh:'古典皇家绘画',ru:'Классическая королевская живопись',es:'Pintura Real Clásica',ml:'ക്ലാസ്സിക്കൽ രാജകീയ പെയിന്റിംഗ്'},
   'زخرفة بالخط العربي': {en:'Arabic Calligraphy Art',fr:'Art de la Calligraphie Arabe',hi:'अरबी सुलेख कला',bn:'আরবি ক্যালিগ্রাফি শিল্প',ne:'अरबी क्यालिग्राफी कला',id:'Seni Kaligrafi Arab',fil:'Arabic Calligraphy Art',tr:'Arap Hat Sanatı',zh:'阿拉伯书法艺术',ru:'Арабское каллиграфическое искусство',es:'Arte de Caligrafía Árabe',ml:'അറബിക് കാലിഗ്രാഫി ആർട്ട്'},
@@ -644,7 +634,7 @@ const STU_XL = {
   'تذكار مولود جديد': {en:'Newborn Keepsake',fr:'Souvenir de Nouveau-Né',hi:'नवजात स्मृति',bn:'নবজাত স্মৃতিচিহ্ন',ne:'नवजात स्मरक',id:'Kenang-kenangan Bayi Baru',fil:'Newborn Keepsake',tr:'Yeni Doğan Hatırası',zh:'新生儿纪念品',ru:'Памятка новорожденного',es:'Recuerdo de Recién Nacido',ml:'നവജാത കിതാബ്'},
   'شخصية صلصال لطيفة': {en:'Cute Clay Character',fr:'Personnage d\'Argile Mignon',hi:'प्यारा मिट्टी चरित्र',bn:'সুন্দর মাটির চরিত্র',ne:'प्यारा माटो क्यारेक्टर',id:'Karakter Tanah Liat Lucu',fil:'Cute Clay Character',tr:'Sevimli Kil Karakteri',zh:'可爱粘土角色',ru:'Милый персонаж из глины',es:'Personaje de Arcilla Bonito',ml:'സുന്ദരമായ കളിമണ്ണ് പാത്രം'},
   'تصميم هندسي حديث': {en:'Modern Geometric Design',fr:'Conception Géométrique Moderne',hi:'आधुनिक ज्यामितीय डिजाइन',bn:'আধুনিক জ্যামিতিক ডিজাইন',ne:'आधुनिक ज्यामितीय डिजाइन',id:'Desain Geometris Modern',fil:'Modern Geometric Design',tr:'Modern Geometrik Tasarım',zh:'现代几何设计',ru:'Современный геометрический дизайн',es:'Diseño Geométrico Moderno',ml:'ആധുനിക ജ്യാമിതീയ ഡിസൈൻ'},
-  'জরাফিতি শারে جريء': {en:'Bold Street Graffiti',fr:'Graffiti de Rue Audacieux',hi:'साहसी सड़क ग्राफिटी',bn:'সাহসী রাস্তা গ্রাফিটি',ne:'साहसी सड़क ग्राफिटी',id:'Graffiti Jalan Berani',fil:'Bold Street Graffiti',tr:'Cesur Sokak Grafitisi',zh:'大胆街头涂鸦',ru:'Смелое уличное граффити',es:'Graffiti Callejero Audaz',ml:'ധാരസാധ്യ തെരുവ് ഗ്രാഫിറ്റി'},
+  'جرافيتي شارع جريء': {en:'Bold Street Graffiti',fr:'Graffiti de Rue Audacieux',hi:'साहसी सड़क ग्राफिटी',bn:'সাহসী রাস্তা গ্রাফিটি',ne:'साहसी सड़क ग्राफिटी',id:'Graffiti Jalan Berani',fil:'Bold Street Graffiti',tr:'Cesur Sokak Grafitisi',zh:'大胆街头涂鸦',ru:'Смелое уличное граффити',es:'Graffiti Callejero Audaz',ml:'ധാരസാധ്യ തെരുവ് ഗ്രാഫിറ്റി'},
   'فسيفساء فنية': {en:'Artistic Mosaic',fr:'Mosaïque Artistique',hi:'कलात्मक मोज़ेक',bn:'শিল্পকলা মোজাইক',ne:'कलात्मक मोजैक',id:'Mosaik Artistik',fil:'Artistic Mosaic',tr:'Sanatsal Mozaik',zh:'艺术马赛克',ru:'Художественная мозаика',es:'Mosaico Artístico',ml:'കലാത്മക മോസൈക്ക്'},
   'زجاج معشّق ملوّن': {en:'Colored Stained Glass',fr:'Vitrail Coloré',hi:'रंगीन सना हुआ ग्लास',bn:'রঙিন দাগযুক্ত গ্লাস',ne:'रङ्गीन दाग गरिएको गिलास',id:'Kaca Patri Berwarna',fil:'Colored Stained Glass',tr:'Renkli Vitray Cam',zh:'彩色彩玻璃',ru:'Разноцветное витражное стекло',es:'Vidrio Teñido de Color',ml:'വർണ്ണിത ദാഗ് ഗ്ലാസ്'},
   'فن الورق المقصوص': {en:'Paper Cut Art',fr:'Art du Découpage de Papier',hi:'कागज कला कला',bn:'কাগজ কাটা শিল্প',ne:'कागज काट कला',id:'Seni Potong Kertas',fil:'Paper Cut Art',tr:'Kağıt Kesme Sanatı',zh:'纸艺术',ru:'Искусство вырезания из бумаги',es:'Arte de Corte de Papel',ml:'പേപ്പർ കട് ആർട്ട്'},
@@ -665,6 +655,28 @@ const STU_XL = {
   'مهنة: طبيب، طيار، شرطي…': {en:'Profession: Doctor, Pilot, Police...',fr:'Profession: Médecin, Pilote, Police...',hi:'पेशा: डॉक्टर, पायलट, पुलिस...',bn:'পেশা: ডাক্তার, পাইলট, পুলিশ...',ne:'पेशा: डाक्टर, पायलट, पुलिस...',id:'Profesi: Dokter, Pilot, Polisi...',fil:'Profession: Doctor, Pilot, Police...',tr:'Meslek: Doktor, Pilot, Polis...',zh:'职业：医生、飞行员、警察...',ru:'Профессия: Врач, Пилот, Полицейский...',es:'Profesión: Doctor, Piloto, Policía...',ml:'പ്രൊഫഷൻ: ഡോക്ടർ, പൈലറ്റ്, പോലീസ്...'},
   'بطل خارق بزي كامل': {en:'Superhero in Full Costume',fr:'Superhéros en Costume Complet',hi:'पूर्ण पोशाक में सुपरहीरो',bn:'সম্পূর্ণ পোশাকে সুপারহিরো',ne:'पूर्ण पोशाक मा सुपरहीरो',id:'Superhero dalam Kostum Lengkap',fil:'Superhero in Full Costume',tr:'Tam Kostümlü Süper Kahraman',zh:'全装扮超级英雄',ru:'Супергерой в полном костюме',es:'Superhéroe en Traje Completo',ml:'പൂർണ്ണ കോസ്റ്റ്യൂമിൽ സുപ്പർഹീറോ'},
   'رائد فضاء': {en:'Astronaut',fr:'Astronaute',hi:'अंतरिक्ष यात्री',bn:'মহাকাশচারী',ne:'अंतरिक्ष यात्री',id:'Astronot',fil:'Astronaut',tr:'Uzay Astronotu',zh:'宇航员',ru:'Космонавт',es:'Astronauta',ml:'ബഹിരാകാശ യാത്രികൻ'},
+  /* v-pstyle-batch-2: ٢١ ستايلًا جديدًا (٢١ سبتمبر ٢٠٢٦) */
+  'بطاقة تاروت': {en:'Tarot Card Portrait',fr:'Portrait Carte de Tarot',hi:'टैरो कार्ड पोर्ट्रेट',bn:'ট্যারো কার্ড প্রতিকৃতি',ne:'ट्यारो कार्ड पोट्रेट',id:'Potret Kartu Tarot',fil:'Larawan na Tarot Card',tr:'Tarot Kartı Portresi',zh:'塔罗牌肖像',ru:'Портрет в стиле карты Таро',es:'Retrato de Carta del Tarot',ml:'ടാരറ്റ് കാർഡ് ഛായാചിത്രം'},
+  'طابع بريد قديم': {en:'Vintage Postage Stamp',fr:'Timbre-Poste Vintage',hi:'विंटेज डाक टिकट',bn:'ভিন্টেজ ডাকটিকিট',ne:'भिन्टेज हुलाक टिकट',id:'Perangko Vintage',fil:'Lumang Selyo ng Koreo',tr:'Vintage Posta Pulu',zh:'复古邮票',ru:'Винтажная почтовая марка',es:'Sello Postal Vintage',ml:'വിന്റേജ് തപാൽ സ്റ്റാമ്പ്'},
+  'بوستر فيلم أكشن': {en:'Action Movie Poster',fr:'Affiche de Film d\'Action',hi:'एक्शन मूवी पोस्टर',bn:'অ্যাকশন মুভি পোস্টার',ne:'एक्शन मुभी पोस्टर',id:'Poster Film Aksi',fil:'Poster ng Action Movie',tr:'Aksiyon Filmi Posteri',zh:'动作电影海报',ru:'Постер боевика',es:'Póster de Película de Acción',ml:'ആക്ഷൻ മൂവി പോസ്റ്റർ'},
+  'ديوراما مصغّرة': {en:'Miniature Diorama',fr:'Diorama Miniature',hi:'लघु डायोरामा',bn:'ক্ষুদ্র ডায়োরামা',ne:'साना डायोरामा',id:'Diorama Mini',fil:'Maliit na Diorama',tr:'Minyatür Diyorama',zh:'微缩场景',ru:'Миниатюрная диорама',es:'Diorama en Miniatura',ml:'ചെറിയ ഡയോറാമ'},
+  'إيموجي ثلاثي الأبعاد': {en:'3D Emoji Style',fr:'Style Emoji 3D',hi:'3D इमोजी शैली',bn:'৩ডি ইমোজি স্টাইল',ne:'3D इमोजी शैली',id:'Gaya Emoji 3D',fil:'3D Emoji na Estilo',tr:'3D Emoji Tarzı',zh:'3D表情符号风格',ru:'Стиль 3D-эмодзи',es:'Estilo Emoji 3D',ml:'3D ഇമോജി ശൈലി'},
+  'ستايل Y2K': {en:'Y2K Aesthetic',fr:'Esthétique Y2K',hi:'Y2K सौंदर्यशास्त्र',bn:'Y2K নান্দনিকতা',ne:'Y2K सौन्दर्यशास्त्र',id:'Estetika Y2K',fil:'Y2K na Estilo',tr:'Y2K Estetiği',zh:'Y2K美学风格',ru:'Эстетика Y2K',es:'Estética Y2K',ml:'Y2K സൗന്ദര്യശാസ്ത്രം'},
+  'بوستر ألبوم غنائي': {en:'Music Album Cover',fr:'Pochette d\'Album Musical',hi:'संगीत एल्बम कवर',bn:'মিউজিক অ্যালবাম কভার',ne:'सङ्गीत एल्बम कभर',id:'Sampul Album Musik',fil:'Cover ng Music Album',tr:'Müzik Albümü Kapağı',zh:'音乐专辑封面',ru:'Обложка музыкального альбома',es:'Portada de Álbum Musical',ml:'സംഗീത ആൽബം കവർ'},
+  'إطلالة شيخ أو شيخة': {en:'Sheikh/Sheikha Look',fr:'Look Cheikh/Cheikha',hi:'शेख/शेखा लुक',bn:'শেখ/শেখা লুক',ne:'शेख/शेखा लुक',id:'Gaya Sheikh/Sheikha',fil:'Itsura ng Sheikh/Sheikha',tr:'Şeyh/Şeyha Görünümü',zh:'酋长/酋长夫人造型',ru:'Образ шейха/шейхи',es:'Look de Jeque/Jequesa',ml:'ഷെയ്ഖ്/ഷെയ്ഖ ലുക്ക്'},
+  'صيد بالصقر': {en:'Falconry Portrait',fr:'Portrait de Fauconnerie',hi:'बाज़ शिकार पोर्ट्रेट',bn:'বাজ শিকার প্রতিকৃতি',ne:'बाज सिकार पोट्रेट',id:'Potret Berburu Elang',fil:'Larawan ng Pangangaso gamit ang Falcon',tr:'Doğancılık Portresi',zh:'猎鹰狩猎肖像',ru:'Портрет соколиной охоты',es:'Retrato de Cetrería',ml:'പരുന്ത് വേട്ട ഛായാചിത്രം'},
+  'فروسية عربية': {en:'Arabian Horse Equestrian',fr:'Équitation Cheval Arabe',hi:'अरबी घोड़ा सवारी',bn:'আরবি ঘোড়ার আরোহণ',ne:'अरबी घोडा सवारी',id:'Berkuda Kuda Arab',fil:'Pagsakay sa Kabayong Arabo',tr:'Arap Atı Biniciliği',zh:'阿拉伯马术',ru:'Верховая езда на арабской лошади',es:'Equitación en Caballo Árabe',ml:'അറേബ്യൻ കുതിര സവാരി'},
+  'تراث سعودي': {en:'Saudi Heritage Style',fr:'Style Patrimoine Saoudien',hi:'सऊदी विरासत शैली',bn:'সৌদি ঐতিহ্য শৈলী',ne:'साउदी सम्पदा शैली',id:'Gaya Warisan Saudi',fil:'Estilong Pamana ng Saudi',tr:'Suudi Miras Tarzı',zh:'沙特文化遗产风格',ru:'Стиль саудовского наследия',es:'Estilo Patrimonio Saudí',ml:'സൗദി പൈതൃക ശൈലി'},
+  'تراث كويتي': {en:'Kuwaiti Heritage Style',fr:'Style Patrimoine Koweïtien',hi:'कुवैती विरासत शैली',bn:'কুয়েতি ঐতিহ্য শৈলী',ne:'कुवेती सम्पदा शैली',id:'Gaya Warisan Kuwait',fil:'Estilong Pamana ng Kuwait',tr:'Kuveyt Miras Tarzı',zh:'科威特文化遗产风格',ru:'Стиль кувейтского наследия',es:'Estilo Patrimonio Kuwaití',ml:'കുവൈറ്റ് പൈതൃക ശൈലി'},
+  'تراث عماني': {en:'Omani Heritage Style',fr:'Style Patrimoine Omanais',hi:'ओमानी विरासत शैली',bn:'ওমানি ঐতিহ্য শৈলী',ne:'ओमानी सम्पदा शैली',id:'Gaya Warisan Oman',fil:'Estilong Pamana ng Oman',tr:'Umman Miras Tarzı',zh:'阿曼文化遗产风格',ru:'Стиль оманского наследия',es:'Estilo Patrimonio Omaní',ml:'ഒമാൻ പൈതൃക ശൈലി'},
+  'تراث قطري': {en:'Qatari Heritage Style',fr:'Style Patrimoine Qatari',hi:'क़तरी विरासत शैली',bn:'কাতারি ঐতিহ্য শৈলী',ne:'कतरी सम्पदा शैली',id:'Gaya Warisan Qatar',fil:'Estilong Pamana ng Qatar',tr:'Katar Miras Tarzı',zh:'卡塔尔文化遗产风格',ru:'Стиль катарского наследия',es:'Estilo Patrimonio Catarí',ml:'ഖത്തർ പൈതൃക ശൈലി'},
+  'تراث بحريني': {en:'Bahraini Heritage Style',fr:'Style Patrimoine Bahreïni',hi:'बहरीनी विरासत शैली',bn:'বাহরাইনি ঐতিহ্য শৈলী',ne:'बहराइनी सम्पदा शैली',id:'Gaya Warisan Bahrain',fil:'Estilong Pamana ng Bahrain',tr:'Bahreyn Miras Tarzı',zh:'巴林文化遗产风格',ru:'Стиль бахрейнского наследия',es:'Estilo Patrimonio Bahreiní',ml:'ബഹ്റൈൻ പൈതൃക ശൈലി'},
+  'تصحيح عين مغمضة': {en:'Fix Closed Eyes',fr:'Corriger les Yeux Fermés',hi:'बंद आँखें ठीक करें',bn:'বন্ধ চোখ ঠিক করুন',ne:'बन्द आँखा ठीक गर्नुहोस्',id:'Perbaiki Mata Tertutup',fil:'Ayusin ang Nakapikit na Mata',tr:'Kapalı Gözleri Düzelt',zh:'修复闭眼',ru:'Исправление закрытых глаз',es:'Corregir Ojos Cerrados',ml:'അടഞ്ഞ കണ്ണുകൾ ശരിയാക്കുക'},
+  'إضافة أو إزالة نظارة': {en:'Add/Remove Glasses',fr:'Ajouter/Retirer des Lunettes',hi:'चश्मा जोड़ें/हटाएं',bn:'চশমা যোগ/অপসারণ',ne:'चश्मा थप्नुहोस्/हटाउनुहोस्',id:'Tambah/Hapus Kacamata',fil:'Magdagdag/Alisin ang Salamin',tr:'Gözlük Ekle/Çıkar',zh:'添加/移除眼镜',ru:'Добавить/убрать очки',es:'Añadir/Quitar Gafas',ml:'കണ്ണട ചേർക്കുക/നീക്കുക'},
+  'ضبابية الخلفية فقط': {en:'Background Blur Only',fr:'Flou d\'Arrière-Plan Seulement',hi:'केवल पृष्ठभूमि धुंधली',bn:'শুধু পটভূমি ঝাপসা',ne:'पृष्ठभूमि मात्र धमिलो',id:'Hanya Blur Latar Belakang',fil:'Malabo lang ang Background',tr:'Sadece Arka Plan Bulanıklığı',zh:'仅背景虚化',ru:'Только размытие фона',es:'Solo Desenfoque de Fondo',ml:'പശ്ചാത്തലം മാത്രം മങ്ങിക്കുക'},
+  'ليلة حنّاء أو خطوبة': {en:'Henna Night / Engagement',fr:'Soirée Henné / Fiançailles',hi:'मेहंदी रात / सगाई',bn:'মেহেদি রাত / বাগদান',ne:'मेहेन्दी रात / सगाई',id:'Malam Henna / Pertunangan',fil:'Gabi ng Henna / Kasunduan',tr:'Kına Gecesi / Nişan',zh:'海娜之夜/订婚',ru:'Ночь хны / помолвка',es:'Noche de Henna / Compromiso',ml:'മൈലാഞ്ചി രാത്രി / വിവാഹനിശ്ചയം'},
+  'أول يوم دراسة': {en:'First Day of School',fr:'Premier Jour d\'École',hi:'स्कूल का पहला दिन',bn:'স্কুলের প্রথম দিন',ne:'विद्यालयको पहिलो दिन',id:'Hari Pertama Sekolah',fil:'Unang Araw ng Paaralan',tr:'Okulun İlk Günü',zh:'开学第一天',ru:'Первый день в школе',es:'Primer Día de Escuela',ml:'സ്കൂളിലെ ആദ്യ ദിവസം'},
+  'يوم العلم الإماراتي': {en:'UAE Flag Day',fr:'Journée du Drapeau des É.A.U.',hi:'यूएई ध्वज दिवस',bn:'ইউএই পতাকা দিবস',ne:'यूएई झण्डा दिवस',id:'Hari Bendera UEA',fil:'Araw ng Watawat ng UAE',tr:'BAE Bayrak Günü',zh:'阿联酋国旗日',ru:'День флага ОАЭ',es:'Día de la Bandera de EAU',ml:'യുഎഇ പതാക ദിനം'},
 };
 
 function stuL(ar, en){
@@ -674,6 +686,11 @@ function stuL(ar, en){
   var m = STU_XL[ar];
   return (m && m[l]) || en;
 }
+
+/* v-pstyle-img: وسم إصدار صور الأنماط — /assets/ مخبّأة يومًا كاملًا (وأسبوعًا stale)،
+   فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
+const PSTYLE_IMG_V = '15';
+function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
 (function(){
@@ -746,6 +763,14 @@ function stuL(ar, en){
     chibi: 'تشيبي ياباني لطيف', statue: 'تمثال رخامي كلاسيكي', polaroid: 'بولارويد قديمة',
     celebtoon: 'كرتون مع شخصيتك المفضلة', profession: 'مهنة: طبيب، طيار، شرطي…', superhero: 'بطل خارق بزي كامل',
     astronaut: 'رائد فضاء',
+    /* v-pstyle-batch-2: ٢١ ستايلًا جديدًا (طلب المالك «رتّبهم كلهم» بعد فكرة أفكار جديدة ٢١ سبتمبر) */
+    tarot: 'بطاقة تاروت', stamp: 'طابع بريد قديم', moviePoster: 'بوستر فيلم أكشن', diorama: 'ديوراما مصغّرة',
+    emoji3d: 'إيموجي ثلاثي الأبعاد', y2k: 'ستايل Y2K', albumCover: 'بوستر ألبوم غنائي',
+    sheikh: 'إطلالة شيخ أو شيخة', falconry: 'صيد بالصقر', arabianHorse: 'فروسية عربية',
+    saudiHeritage: 'تراث سعودي', kuwaitiHeritage: 'تراث كويتي', omaniHeritage: 'تراث عماني',
+    qatariHeritage: 'تراث قطري', bahrainiHeritage: 'تراث بحريني',
+    eyefix: 'تصحيح عين مغمضة', glasses: 'إضافة أو إزالة نظارة', bokeh: 'ضبابية الخلفية فقط',
+    henna: 'ليلة حنّاء أو خطوبة', firstday: 'أول يوم دراسة', flagday: 'يوم العلم الإماراتي',
   };
   function pstyleLang(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   /* دمج: الأوصاف مترجمة فعليًا لكل اللغات عبر STU_XL (بدل إخفائها) */
@@ -779,7 +804,7 @@ function stuL(ar, en){
     if(!styleTrigger || !styleEl) return;
     const opt = styleEl.querySelector('option[value="' + styleEl.value + '"]');
     const img = $('#portraitStyleTriggerImg');
-    if(img){ img.src = 'assets/portrait/styles/' + styleEl.value + '.webp'; img.onerror = function(){ img.style.visibility = 'hidden'; }; img.style.visibility = 'visible'; }
+    if(img){ img.src = pstyleImg(styleEl.value); img.onerror = function(){ img.style.visibility = 'hidden'; }; img.style.visibility = 'visible'; }
     const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? opt.textContent : '';
     const subEl = $('#portraitStyleTriggerSub'); if(subEl) subEl.textContent = pstyleSub(styleEl.value);
   }
@@ -848,12 +873,29 @@ function stuL(ar, en){
       + '.pstyleHero .pstyleHeroT{position:absolute; width:19%; aspect-ratio:1; border-radius:50%; overflow:hidden; border:2px solid rgba(212,175,55,.75); background:#17171b; box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; transform:translate(-50%,-50%); transition:transform .18s, box-shadow .18s;}'
       + '.pstyleHero .pstyleHeroT:hover{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 22px rgba(212,175,55,.6);}'
       + '.pstyleHero .pstyleHeroT img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
-      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}';
+      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}'
+      /* v-psheet-header-collapse (طلب المالك: الرأس يرفع كتابته ويصغر عند تمرير المعرض لأسفل، بدل مساحة ثابتة كبيرة) */
+      + '#portraitStyleSheetHeader{transition:padding .22s ease;}'
+      + '#portraitStyleSheetTitle{transition:font-size .22s ease;}'
+      + '#portraitStyleSheetCount{transition:opacity .18s ease, max-height .22s ease, margin-top .22s ease; overflow:hidden; max-height:16px;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall{padding-top:calc(6px + max(env(safe-area-inset-top,0px), 30px)) !important; padding-bottom:8px !important;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetTitle{font-size:14.5px !important;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}';
     document.head.appendChild(st);
+  }
+  /* الرأس (العنوان + العدّاد) يصغر ويرتفع فور بدء تمرير المعرض، ويعود لحجمه عند القمّة */
+  function bindPsheetHeaderCollapse(scroller){
+    if(!scroller || scroller.__pstyleHeaderBound) return;
+    scroller.__pstyleHeaderBound = true;
+    scroller.addEventListener('scroll', function(){
+      const header = document.getElementById('portraitStyleSheetHeader');
+      if(header) header.classList.toggle('pstyleHeaderSmall', scroller.scrollTop > 20);
+    }, { passive: true });
   }
   function ensurePsheetChrome(){
     ensurePsheetCss();
     const scroller = styleCardsGrid.parentElement; if(!scroller) return;
+    bindPsheetHeaderCollapse(scroller);
     let hero = document.getElementById('portraitStyleHero');
     if(!hero){
       hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';
@@ -867,7 +909,7 @@ function stuL(ar, en){
         const a = (-90 + i * (360 / RING.length)) * Math.PI / 180, r = 40.5;
         const tdiv = document.createElement('div'); tdiv.className = 'pstyleHeroT'; tdiv.setAttribute('data-pstyle-ring', v);
         tdiv.style.left = (50 + r * Math.cos(a)) + '%'; tdiv.style.top = (50 + r * Math.sin(a)) + '%';
-        const im = document.createElement('img'); im.src = 'assets/portrait/styles/' + v + '.webp'; im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
+        const im = document.createElement('img'); im.src = pstyleImg(v); im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
         const lb = document.createElement('i'); lb.textContent = RING_EN[v] || pstyleEn(v);
         tdiv.appendChild(im); tdiv.appendChild(lb);
         tdiv.onclick = function(){ selectPortraitStyle(v); };
@@ -892,7 +934,7 @@ function stuL(ar, en){
       const opts = document.createElement('div'); opts.id = 'portraitWorkOpts';
       work.appendChild(opts);
       ['portraitBackdropWrap','portraitBeautifyWrap','portraitAgeWrap','portraitHairWrap','portraitAdWrap','portraitCelebWrap','portraitRemoveWrap','portraitOutfitWrap','portraitProfWrap','portraitEraWrap','portraitMultiWrap'].forEach((id) => { const el = document.getElementById(id); if(el) opts.appendChild(el); });
-      ['portraitStyleStatus','portraitCompareWrap','portraitCompareSlider','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
+      ['portraitStyleStatus','portraitCompareWrap','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
       scroller.insertBefore(work, scroller.firstChild);
     }
     let foot = document.getElementById('portraitStyleFoot');
@@ -917,7 +959,7 @@ function stuL(ar, en){
   }
   function refreshPortraitFoot(){
     const o = styleEl && styleEl.querySelector('option[value="' + styleEl.value + '"]');
-    const pi = document.getElementById('portraitFootImg'); if(pi){ pi.src = 'assets/portrait/styles/' + styleEl.value + '.webp'; pi.style.visibility = 'visible'; }
+    const pi = document.getElementById('portraitFootImg'); if(pi){ pi.src = pstyleImg(styleEl.value); pi.style.visibility = 'visible'; }
     const pt = document.getElementById('portraitFootName'); if(pt) pt.textContent = o ? optLabel(o).trim() : '';
     const cta = document.getElementById('portraitStyleCta');
     if(cta) cta.textContent = window.__portraitHasPhoto ? gt('portraitGenerateBtn', '✨ حوّلها', '✨ Convert') : gt('psheetTry', '✨ جرّب على صورتك', '✨ Try it on your photo');
@@ -1000,7 +1042,7 @@ function stuL(ar, en){
       emoji.textContent = (title.match(/^\S+/) || [''])[0];
       emoji.style.cssText = 'width:54px; height:54px; border-radius:50%; border:1px solid rgba(212,175,55,.4); background:rgba(212,175,55,.06); display:flex; align-items:center; justify-content:center; font-size:22px;';
       const img = document.createElement('img');
-      img.src = 'assets/portrait/styles/' + v + '.webp';
+      img.src = pstyleImg(v);
       img.alt = title; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
@@ -1095,7 +1137,6 @@ function stuL(ar, en){
   const compareWrap = $('#portraitCompareWrap');
   const compareBefore = $('#portraitCompareBefore');
   const compareAfterWrap = $('#portraitCompareAfterWrap');
-  const compareSlider = $('#portraitCompareSlider');
   const shareBtn2 = $('#portraitShareBtn');
   if(shareBtn2){
     /* v-img-save-universal: مشاركة عبر المسار الموحّد (جسر التطبيق → ورقة النظام → رابط سيرفر + واتساب) */
@@ -1117,18 +1158,43 @@ function stuL(ar, en){
       }catch(_){ /* guard-ok — يسقط للتنزيل العادي */ }
     });
   }
-  function updateCompareSlider(){
-    if(!compareSlider || !compareAfterWrap) return;
-    compareAfterWrap.style.width = compareSlider.value + '%';
+  /* v-compare-drag (طلب المالك ٢١ سبتمبر: «تحسّن طريقة السحب» بعد استعادة شريط قبل/بعد): السحب صار
+     مباشرة على الصورة نفسها بمقبض دائريّ واضح فوق الخطّ الفاصل — بدل عنصر <input type=range> منفصل
+     تحت الصورة (v-no-slider القديم أخفاه بلا بديل، فبدا الشريط معطوبًا رغم بقاء صندوق المقارنة ظاهرًا).
+     Pointer Events توحّد الفأرة واللمس بمستمع واحد؛ setPointerCapture يبقي السحب متصلًا حتى خارج حدود
+     الصورة، وtouch-action:none على الحاوية (تحت) يمنع تحويل السحب الأفقي إلى تمرير الصفحة على الجوال
+     (نفس عطب v-slider-touch القديم لكن بجذر مختلف — الحاوية لا عنصر input). النقر في أيّ نقطة من
+     الصورة يقفز الفاصل إليها فورًا (نمط مقارنة الصور المعتاد)، لا يقتصر على سحب المقبض فقط. */
+  let comparePct = 100;
+  function setComparePct(pct){
+    comparePct = Math.max(0, Math.min(100, pct));
+    if(compareAfterWrap) compareAfterWrap.style.width = comparePct + '%';
     const divider = $('#portraitCompareDivider');
-    if(divider) divider.style.left = compareSlider.value + '%';
+    if(divider) divider.style.left = comparePct + '%';
   }
   function layoutCompareAfter(){
     if(!compareWrap || !resultEl) return;
     const w = compareWrap.offsetWidth;
     if(w) resultEl.style.width = w + 'px';
   }
-  if(compareSlider) compareSlider.addEventListener('input', updateCompareSlider);
+  let __compareDragging = false;
+  function comparePctFromEvent(ev){
+    const rect = compareWrap.getBoundingClientRect();
+    if(!rect.width) return comparePct;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
+  }
+  if(compareWrap){
+    compareWrap.style.touchAction = 'none';
+    compareWrap.style.cursor = 'ew-resize';
+    compareWrap.addEventListener('pointerdown', (ev) => {
+      __compareDragging = true;
+      try{ compareWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      setComparePct(comparePctFromEvent(ev));
+      ev.preventDefault();
+    });
+    compareWrap.addEventListener('pointermove', (ev) => { if(__compareDragging) setComparePct(comparePctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => compareWrap.addEventListener(evt, () => { __compareDragging = false; }));
+  }
   window.addEventListener('resize', layoutCompareAfter);
   if(!modal || !btnOpen) return;
 
@@ -1181,6 +1247,40 @@ function stuL(ar, en){
     });
   };
 
+  /* v-merge-scope-fix (لقطة المالك ٢١ سبتمبر: «extraImagesB64 is not defined» عند رفع صورة الشخص
+     الثاني لِـ«دمج صورتين»): هذه الكتلة (صور familystyle/merge2 الإضافية) كانت بالخطأ داخل نطاق
+     («AI Interior Design») لا هنا — extraImagesB64 هناك محلّي لتلك الدالّة المغلقة، فلا يراه سطر
+     الإرسال هنا (btnGenerate.onclick أدناه)، ما يرمي ReferenceError عند التوليد. المعرّفات
+     #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
+     مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
+  let extraImagesB64 = [];
+  const multiFileInput = $('#portraitMultiFileInput');
+  const multiFileBtn = $('#portraitMultiFileBtn');
+  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
+  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
+  if(multiFileInput){
+    multiFileInput.onchange = () => {
+      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
+      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      extraImagesB64 = [];
+      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || '');
+          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
+          if(multiPreviewWrap){
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+            multiPreviewWrap.appendChild(img);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+  }
+
   btnGenerate.onclick = async () => {
     if(!selectedBase64){
       setStatus(t('portraitNeedImage'));
@@ -1195,7 +1295,6 @@ function stuL(ar, en){
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     if(compareWrap) compareWrap.style.display = 'none';
-    if(compareSlider) compareSlider.style.display = 'none';
     downloadEl.style.display = 'none';
     if(shareBtn2) shareBtn2.style.display = 'none';
     setStatus(t('portraitGenerating'));
@@ -1234,7 +1333,6 @@ function stuL(ar, en){
         resultEl.src = gifUrl;
         resultEl.style.display = 'block';
         if(compareWrap) compareWrap.style.display = 'none';
-        if(compareSlider) compareSlider.style.display = 'none';
         downloadEl.href = gifUrl;
         downloadEl.setAttribute('download', 'omran-avatar.gif');
         downloadEl.style.display = 'block';
@@ -1244,12 +1342,10 @@ function stuL(ar, en){
         const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
         resultEl.src = dataUrl;
         resultEl.style.display = 'block';
-        if(compareWrap && compareBefore && compareSlider){
+        if(compareWrap && compareBefore){
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
-          compareSlider.style.display = 'none'; /* v-no-slider */
-          compareSlider.value = 100;
-          updateCompareSlider();
+          setComparePct(100);
           layoutCompareAfter();
         }
         downloadEl.href = dataUrl;
@@ -1288,7 +1384,6 @@ function stuL(ar, en){
   const resultWrap = $('#fashionAiResultWrap');
   const beforeWrap = $('#fashionAiBeforeWrap');
   const beforeImg = $('#fashionAiBeforeImg');
-  const sliderRange = $('#fashionAiSliderRange');
   const favSaveBtn = $('#fashionAiFavoriteSaveBtn');
   const favoritesBtn = $('#fashionAiFavoritesBtn');
   const favoritesPanel = $('#fashionAiFavoritesPanel');
@@ -1349,12 +1444,38 @@ function stuL(ar, en){
     try{ return (window.omranFashionExtras && window.omranFashionExtras().gender) || 'women'; }
     catch(e){ return 'women'; }
   }
+  /* v-fashion-variety (المالك: «الديزينات واحده… الشكل واحد»): عدّاد لكلّ فئة×نمط يُرسَل مع كلّ توليد، والخادم
+     يحوّله إلى تصميم من ≥١٠٠ للنمط لا يتكرّر حتّى تنفد (api/_lib/fashion-variety.js). يبدأ من رقم عشوائيّ لكلّ
+     جهاز فلا يرى الجميع التصميم نفسه أوّلًا، ويتقدّم عند الإرسال فتعطي المحاولة التالية تصميمًا آخر. */
+  let fxStyleManual = ''; /* v-fx-simple: نمط اختاره المستخدم بيده من المعرض */
+  const FX_VARIANT_KEY = 'aiapp_fashion_variant';
+  function fxNextVariant(styleVal){
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(FX_VARIANT_KEY) || '{}') || {}; }catch(e){ map = {}; }
+    const k = currentGender() + '|' + styleVal;
+    let n = Number(map[k]);
+    if(!Number.isSafeInteger(n) || n < 0) n = Math.floor(Math.random() * 100000);
+    map[k] = n + 1;
+    try{ localStorage.setItem(FX_VARIANT_KEY, JSON.stringify(map)); }catch(e){ __swallow(e, 'fashion:variant'); }
+    return n;
+  }
+  // «التصميم رقم ٣٧ من ٢١٦ لهذا النمط» — من ردّ الخادم؛ فارغ لخادم قديم بلا الحقل.
+  function fxDesignLine(d){
+    if(!d || !(d.n > 0) || !(d.total > 0)) return '';
+    const tpl = t('fxDesignNo');
+    return (tpl && tpl !== 'fxDesignNo' ? tpl : 'Design {n} of {total}').replace('{n}', d.n).replace('{total}', d.total);
+  }
   function lookImg(gender, value, alt){
     const img = document.createElement('img');
-    img.src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
     img.alt = alt;
-    img.loading = 'eager'; // البطاقات ≈40KB كلها — الكسل يؤخّر ظهورها بلا مكسب
+    img.loading = 'lazy';
     img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+    /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
+       فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
+       التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
+    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
+    else img.src = __src;
     img.onerror = function(){
       if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
       else img.remove();
@@ -1379,7 +1500,7 @@ function stuL(ar, en){
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
       }).filter(Boolean),
-      onPick: function(v){ styleEl.value = v; renderStyleCards(); },
+      onPick: function(v){ styleEl.value = v; fxStyleManual = v; renderStyleCards(); },
     });
   }
   function renderStyleCards(){
@@ -1404,6 +1525,8 @@ function stuL(ar, en){
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
     sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (bT('نمطًا لهذه الفئة','styles for this category')));
+    const __plus = t('fxStylesPlus'); /* v-fashion-variety: «أكثر من 100 تصميم لكل نمط» */
+    if(__plus && __plus !== 'fxStylesPlus') sub.textContent += ' · ' + __plus;
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
@@ -1416,6 +1539,39 @@ function stuL(ar, en){
   renderStyleCards();
   // تبديل الفئة (نسائي/رجالي/أطفال) يعيد رسم البطاقات وصفّ المقارنة بصور الفئة.
   window.addEventListener('fashion-gender-change', function(){ renderStyleCards(); buildCompareChecks(); });
+
+  /* v-fx-simple (تبسيط الأزياء): الخادم يبني التصميم من النمط («SPECIFIC DESIGN» من ≥١٠٠ للنمط) ثمّ يقول
+     «مخصّص لـ{المناسبة}». فلمّا طُوي منتقي النمط تحت «خصّصها» صار افتراضه («سهرة» أوّل القائمة) يُطبَّق بصمت:
+     مناسبة «كاجوال» + نمط «سهرة» = فستان سهرة لطلعة كاجوال. الآن المناسبة الظاهرة تختار النمط المطابق لها
+     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب). */
+  const FX_OCC_STYLE = {
+    wedding:    { women:'wedding', men:'wedding',     kids:'wedding' },
+    work:       { women:'office',  men:'office',      kids:'school' },
+    casual:     { women:'casual',  men:'casual',      kids:'casual' },
+    sport:      { women:'sporty',  men:'sporty',      kids:'sporty' },
+    travel:     { women:'casual',  men:'smartcasual', kids:'casual' },
+    formal:     { women:'formal',  men:'formal',      kids:'formal' },
+    graduation: { women:'formal',  men:'formal',      kids:'formal' },
+    religious:  { women:'abaya',   men:'traditional', kids:'eidkids' },
+  };
+  function fxStyleForOccasion(){
+    const g = currentGender();
+    const m = occasionEl && FX_OCC_STYLE[occasionEl.value];
+    const v = m && m[g];
+    return (v && (GENDER_STYLES[g] || []).indexOf(v) >= 0) ? v : '';
+  }
+  function fxApplyOccasionStyle(){
+    const v = fxStyleForOccasion();
+    if(v && styleEl.value !== v){ styleEl.value = v; renderStyleCards(); }
+  }
+  if(occasionEl) occasionEl.addEventListener('change', function(){ fxStyleManual = ''; fxApplyOccasionStyle(); });
+  window.addEventListener('fashion-gender-change', function(){
+    const list = GENDER_STYLES[currentGender()] || [];
+    if(fxStyleManual && list.indexOf(fxStyleManual) >= 0){ styleEl.value = fxStyleManual; renderStyleCards(); }
+    else { fxStyleManual = ''; fxApplyOccasionStyle(); }
+  });
+  fxApplyOccasionStyle(); /* الافتراضيّ نفسه كان متناقضًا: كاجوال + سهرة */
+  window.__fxStyleForOccasion = fxStyleForOccasion; /* للاختبار */
 
   /* ---- 👤 saved measurements profile ---- */
   const PROFILE_KEY = 'aiapp_fashion_profile';
@@ -1486,28 +1642,41 @@ function stuL(ar, en){
     setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, 1800);
   };
 
-  /* ---- 🔄 before/after slider ---- */
+  /* ---- 🔄 before/after slider ----
+     v-compare-drag-all (طلب المالك ٢١ سبتمبر «غيّرها»): كانت مُقفلة كليًّا (`if(true) return;`) منذ
+     v-no-slider — السحب صار مباشرة على resultWrap نفسه بدل <input type=range> مخفيّ. */
+  function updateSliderClip(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
   function setupBeforeAfter(afterUrl){
-    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
-    beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
-    if(true) return;
     if(mode !== 'image' || !selectedBase64){
       beforeWrap.style.display = 'none';
-      sliderRange.style.display = 'none';
       return;
     }
     beforeImg.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
     beforeWrap.style.display = 'block';
-    sliderRange.style.display = 'block';
-    updateSliderClip(sliderRange.value);
+    updateSliderClip(50);
   }
-  function updateSliderClip(val){
-    const pct = Math.max(0, Math.min(100, Number(val)));
-    beforeWrap.style.width = pct + '%';
-    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  let __fashionBaDragging = false;
+  function fashionBaPctFromEvent(ev){
+    const rect = resultWrap.getBoundingClientRect();
+    if(!rect.width) return 50;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
   }
-  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+  if(resultWrap){
+    resultWrap.style.touchAction = 'none';
+    resultWrap.addEventListener('pointerdown', (ev) => {
+      if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      __fashionBaDragging = true;
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      updateSliderClip(fashionBaPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    resultWrap.addEventListener('pointermove', (ev) => { if(__fashionBaDragging) updateSliderClip(fashionBaPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => resultWrap.addEventListener(evt, () => { __fashionBaDragging = false; }));
+  }
 
   /* ---- 📊 v-fashion-compare-cards: صفّ مقارنة يُسحب باليد — بطاقات صور بلا
      كتابة، اختيار حتى ٣ بعلامة ✓ ذهبية. مربّعات الاختيار باقية مخفيّة فقارئ
@@ -1629,13 +1798,12 @@ function stuL(ar, en){
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus(t('fashionAiGenerating'));
 
     try{
       const __engineEl = $('#fashionAiEngine');
       window.__fashionEngine = (__engineEl && __engineEl.value) || '';
-      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine };
+      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine, variant: fxNextVariant(styleEl.value) };
       try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
       if(mode === 'image'){
         payload.imageBase64 = selectedBase64;
@@ -1666,7 +1834,8 @@ function stuL(ar, en){
       setupBeforeAfter(dataUrl);
       /* v-fashion-refine: احفظ النتيجة كمصدر للتعديل الموضعي وأظهر صفّه */
       __refineRemember(data.imageBase64, data.mimeType || 'image/png');
-      setStatus(t('fashionAiDone'));
+      const __dl = fxDesignLine(data.design);
+      setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
       setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
@@ -1787,6 +1956,7 @@ function stuL(ar, en){
       const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
@@ -1850,7 +2020,7 @@ function stuL(ar, en){
       const results = await Promise.all(stylesToRun.map(async (styleVal) => {
         // v-fashion-locks: fairness يفعّل قفل عدالة المقارنة في الخادم —
         // نفس الاستوديو والإضاءة والوقفة في كل الخيارات، فتُقارن الملابس لا الإضاءة.
-        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '' };
+        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '', variant: fxNextVariant(styleVal) };
         try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
         if(mode === 'image'){ payload.imageBase64 = selectedBase64; payload.mimeType = selectedMime; }
         else { payload.description = descriptionEl.value.trim(); }
@@ -1919,7 +2089,16 @@ function stuL(ar, en){
   const SYSTEM_PROMPTS = {
     verse: 'أنت عالم متخصص في تفسير القرآن الكريم. عند إعطائك آية أو اسم سورة ورقم آية، اشرحها بعمق ودقة معتمدًا على أشهر كتب التفسير المعتبرة (تفسير ابن كثير، تفسير الطبري، تفسير السعدي، تفسير القرطبي). اذكر: 1) نص الآية كاملة، 2) سبب النزول إن وجد، 3) المعنى الإجمالي، 4) أهم الفوائد والدروس المستفادة. اكتب بأسلوب واضح ومنظم بعناوين. اختم دائمًا بجملة: "هذا اجتهاد بشري في نقل التفسير المعتمد وليس فتوى شخصية، راجع أهل العلم للتأكد." أجب بنفس لغة سؤال المستخدم.',
     hadith: 'أنت باحث متخصص في الحديث النبوي الشريف. عند إعطائك نص حديث أو موضوعًا، ابحث في معرفتك عن الحديث الأقرب لذلك من الكتب الصحيحة المعتبرة (صحيح البخاري، صحيح مسلم، سنن أبي داود، الترمذي، النسائي، ابن ماجه). اذكر: 1) نص الحديث كاملًا إن استطعت، 2) الراوي ومصدر التخريج، 3) درجة الحديث (صحيح/حسن/ضعيف) بحسب ما هو معروف ومشهور، 4) الشرح والمعنى، 5) الفوائد والأحكام المستفادة. إذا لم تكن متأكدًا من درجة الحديث بدقة تامة، وضّح ذلك صراحة وانصح بالرجوع لموقع الدرر السنية أو مختص. أجب بنفس لغة سؤال المستخدم.',
-    dream: 'أنت مفسر أحلام موسوعي متعمق يجمع بين كل الثقافات والأديان. عند إعطائك وصف حلم، قدّم تفسيرًا قويًا وعميقًا ومفصلاً (وليس سطحيًا) من زوايا متعددة، كل زاوية بعنوان واضح: 1) ☪️ التفسير الإسلامي (استنادًا لمنهج ابن سيرين والنابلسي، مع ربط الرموز بمعانيها التقليدية)، 2) ✝️ التفسير المسيحي (استنادًا لتفسيرات الكتاب المقدس والتقليد الكنسي لرموز الأحلام كيوسف ودانيال)، 3) ✡️ التفسير اليهودي (التلمود وتفسيرات الحاخامات التقليدية)، 4) 🕉️ التفسير الهندوسي/البوذي (المعاني الروحية والكارما والرموز الشرقية)، 5) 🧠 علم النفس الحديث (تحليل فرويد ويونغ للرموز واللاوعي والأرشيتايبس)، 6) 🌍 الرمزية الثقافية العامة المتعارف عليها عالميًا. حلل كل رمز رئيسي ذكره المستخدم في حلمه (الألوان، الحيوانات، الأماكن، الأفعال) بعمق داخل كل قسم. اختم بخلاصة عامة تجمع أهم المعاني المشتركة. أجب بنفس لغة سؤال المستخدم، وكن مفصلاً وغنيًا وليس مختصرًا.',
+    bible: 'أنت باحث متخصص في الكتاب المقدس والتقليد المسيحي. عند إعطائك آية من الإنجيل أو الفلسفة المسيحية، اشرحها مستندًا إلى التقاليس المسيحية المختلفة والتفسيرات الكنسية المعتمدة. اذكر: 1) نص الآية كاملة، 2) السياق التاريخي والروحي، 3) المعنى اللاهوتي والروحي، 4) الدروس المستفادة. اكتب بوضوح واحترام للتقليس المسيحية. أجب بنفس لغة سؤال المستخدم.',
+    torah: 'أنت محلل متخصص في التوراة والتقاليس اليهودية. عند إعطائك آية توراتية أو موضوعًا يهوديًا، اشرحها معتمدًا على التلمود وتفسيرات الحاخامات المعتبرين. اذكر: 1) نص الآية، 2) التفسيرات التلمودية، 3) الدروس والحكمة اليهودية، 4) الصلة بالحياة المعاصرة. أجب بنفس لغة سؤال المستخدم.',
+    buddhism: 'أنت معلم متخصص في البوذية والتعاليم البوذية. عند إعطائك سؤالًا حول الطريق الوسط والتنوير والكارما، اشرحه بعمق مستندًا إلى الروايات البوذية الأساسية والحكمة الشرقية. اذكر: 1) المبدأ الأساسي، 2) التطبيق العملي، 3) المعنى الروحي، 4) الدروس والحكمة البوذية. أجب بنفس لغة سؤال المستخدم.',
+    hinduism: 'أنت عالم في الهندوسية والفلسفة الهندية القديمة. عند إعطائك سؤالًا عن الفيدا أو الأوبنيشاد أو الكارما والدارما، اشرحها مستندًا إلى الحكمة الهندية التقليدية. اذكر: 1) المفهوم الأساسي، 2) التفسير من النصوص المقدسة، 3) التطبيق الروحي، 4) الدروس المستفادة. أجب بنفس لغة سؤال المستخدم.',
+    /* v-hotfix-conflict-markers (٢١ سبتمبر ٢٠٢٦): دمج claude/eager-dirac-1qdfr3 في main تُرك بعلامات
+       تعارض <<<<<<</=======/>>>>>>> غير محلولة داخل السطر (لا حذف طرف كامل) — كسر app.bundle.js في
+       الإنتاج بالكامل (SyntaxError على كل مستخدم). أُبقيت bible/torah/buddhism/hinduism (طرف HEAD،
+       لا وجود لها في الطرف الآخر أصلًا)، واعتُمد نصّ dream من claude/eager-dirac-1qdfr3 (تعديل متعمَّد
+       لاحق «تقوية نص تفسير الأحلام لإعطاء جميع التفسيرات الستة» — يفرض صراحة عدم حذف أي تفسير). */
+    dream: 'أنت مفسر أحلام موسوعي متخصص في تحليل الأحلام من ستة منظورات دينية وثقافية مختلفة. عند إعطائك وصف حلم، يجب عليك دائماً تقديم جميع التفسيرات الستة التالية بالكامل — لا تحذف أي منها مهما كان الحلم. كل تفسير بعنوان واضح ومفصل: 1) ☪️ التفسير الإسلامي الكامل (استنادًا لمنهج ابن سيرين والنابلسي، كتاب تعطير الأنام، مع شرح معاني الرموز بعمق)، 2) ✝️ التفسير المسيحي الكامل (استنادًا لتفسيرات الكتاب المقدس والتقليد الكنسي، قصص يوسف الصديق ودانيال، مع المعاني الروحية)، 3) ✡️ التفسير اليهودي الكامل (التلمود والقبالاه، تفسيرات الحاخامات، الرموز والمعاني العميقة)، 4) 🕉️ التفسير الهندوسي والبوذي الكامل (نظرية الكارما، الرموز الروحية، تفسير الأوبنشاد والسوترا)، 5) 🧠 التفسير النفسي الكامل (تحليل فرويد ويونغ والأرشيتايبس، اللاوعي والرموز النفسية)، 6) 🌍 الرمزية الثقافية العامة (المعاني المشتركة عالميًا للرموز والألوان والحيوانات). أجب بنفس لغة سؤال المستخدم وكن مفصلاً جداً.',
   };
 
   function setStatus(text){

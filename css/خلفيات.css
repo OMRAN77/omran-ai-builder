@@ -1,0 +1,32 @@
+/* v-bg-images — خلفيّات الشاشة (js/app-25-خلفيات.js). يُحمَّل بعد tokens.css فتعلو قواعد الألوان هنا على الوضعين. */
+
+/* الطبقة خلف الشاشة كلّها — نفس موضع #vantaBg؛ لا يظهر منهما إلّا واحد */
+#bgImgLayer{position:fixed; inset:0; z-index:-1; pointer-events:none; display:none; background:var(--bgimg-tint,#000) center/cover no-repeat;}
+html.bgimg #bgImgLayer{display:block;}
+html.bgimg body{background:transparent !important; animation:none !important;}
+
+/* طبقة قراءة خفيفة فوق الصورة: تعتيم للصور الداكنة (نصّ فاتح)، تفتيح للفاتحة (نصّ داكن) */
+html.bgimg #bgImgLayer::after{content:""; position:absolute; inset:0; background:rgba(0,0,0,.38);}
+html.bgimg-light #bgImgLayer::after{background:rgba(255,255,255,.42);}
+
+/* ألوان الكتابة تتبع الصورة لا الوضع */
+html.bgimg-dark{--text:#f4f5f8 !important; --muted:#c8ccd4 !important; --accent-ink:#ffffff !important;}
+html.bgimg-light{--text:#101114 !important; --muted:#3d4048 !important; --accent-ink:#101114 !important;}
+
+/* الشبكة في الإعدادات: مصغّرات فقط، بلا أسماء ولا وسوم */
+.bgImgGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px;}
+.bgImgOpt{aspect-ratio:3/4; border-radius:var(--r-2,10px); border:2px solid var(--border,rgba(255,255,255,.12)); background:var(--panel2,#111) center/cover no-repeat; cursor:pointer; padding:0; position:relative; font:inherit; color:var(--text); transition:border-color .15s, transform .15s;}
+.bgImgOpt:hover{border-color:var(--accent); transform:translateY(-1px);}
+.bgImgOpt.active{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent) inset;}
+.bgImgOpt.active::after{content:"✓"; position:absolute; top:6px; inset-inline-end:6px; width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:13px; line-height:22px; text-align:center;}
+.bgImgNone{font-size:12px; background:var(--panel2,#111);}
+
+/* v-bg-custom-rotate: زرّ «صورة من جهازك»، × على صور الجهاز، وصفّ «تبديل تلقائيّ» */
+.bgImgAdd{font-size:12px; background:var(--panel2,#111); border-style:dashed;}
+.bgImgDel{position:absolute; top:6px; inset-inline-start:6px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,.65); color:#fff; font-size:16px; line-height:22px; text-align:center; cursor:pointer;}
+.bgImgDel:hover{background:#c0392b;}
+.bgImgRotate{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+.bgImgRotateLabel{font-size:13px; color:var(--muted);}
+.bgImgRotateOpts{display:flex; gap:6px; flex-wrap:wrap;}
+.bgImgRotOpt{font:inherit; font-size:12px; padding:5px 12px; border-radius:999px; border:1px solid var(--border,rgba(255,255,255,.12)); background:var(--panel2,#111); color:var(--text); cursor:pointer;}
+.bgImgRotOpt.active{background:var(--accent); border-color:var(--accent); color:#fff;}

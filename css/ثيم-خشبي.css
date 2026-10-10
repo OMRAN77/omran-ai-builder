@@ -1,0 +1,95 @@
+/* v-skin-wood — ثيم «خشبي» (أمر المالك ٤ أكتوبر بصورة: «أعطني بالضبط مرتّبة نفس هذي، تخلّيها في الخلفيّات، إذا اختارها
+   يستوي نفسها»). يُفعَّل من «خلفيّات الشاشة» (js/app-25-خلفيات.js يضع html.skin-wood مع bgimg bgimg-light). الخامات مرسومة
+   مرّة واحدة بـscripts/ثيم-خشبي.mjs: رقّ للقائمة، ألواح خشب فاتح للمشاريع والفقاعات، كتّان فاتح للمحادثة وبنّيّ للوحة
+   المعاينة، ونحاس للأزرار والشريط السفليّ. كلّ القواعد تحت html.skin-wood فلا يتأثّر غيره. */
+
+html.skin-wood{
+  --wood-ink:#3b2a1c; --wood-ink2:#6b5038; --wood-cream:#f3e9d8;
+  --wood-copper:linear-gradient(180deg,#ecc7a4 0%,#d39a70 34%,#b57750 66%,#93593a 100%);
+  --wood-copper-flat:#b97b52;
+  --wood-plank:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D8%AE%D8%B4%D8%A8.jpg") center/cover;
+  --wood-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 4px rgba(120,80,40,.22), 0 3px 7px rgba(80,52,26,.32);
+  --text:#3b2a1c !important; --muted:#6b5038 !important; --accent-ink:#3b2a1c !important;
+  --accent:#a8693f !important; --border:rgba(120,84,50,.28) !important; --omLine:rgba(120,84,50,.25) !important;
+  --omGold:#b57750 !important; --omGoldSoft:rgba(181,119,80,.5) !important;
+  /* الأسطح نفسها فاتحة (رقّ) كي لا يقع الحبر البنّيّ على نوافذ سوداء — الإعدادات والقوائم والنوافذ */
+  --bg:#f1e7d6 !important; --bg2:#ece0cb !important; --panel:#f3e9d8 !important; --panel2:#eadcc4 !important;
+  --accent-surface:#e2cdb0 !important; --accent-on-surface:#3b2a1c !important; --accent-tint-rgb:120,80,40 !important; --accent-glow-rgb:150,100,60 !important;
+  color-scheme:light;
+}
+html.skin-wood #bgImgLayer{background:#ece3d3 url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D9%83%D8%AA%D8%A7%D9%86.jpg") repeat !important; background-size:256px 256px !important;}
+html.skin-wood #bgImgLayer::after{display:none;}
+
+/* النوافذ والقوائم المنبثقة: رقّ فاتح (نفس قائمة الوضع الفاتح في tokens.css) */
+html.skin-wood dialog, html.skin-wood #plusToolsPopup, html.skin-wood #headerMenuDropdown, html.skin-wood #headerUserDropdown,
+html.skin-wood #tabsMenuDropdown, html.skin-wood #histItemMenu, html.skin-wood .msgMoreMenu, html.skin-wood .dlg-actions,
+html.skin-wood #provDropdownPanel, html.skin-wood #omModelPopup{background:#f1e7d6 url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D8%B1%D9%82.jpg") center/cover !important; color:var(--wood-ink) !important;}
+html.skin-wood dialog::backdrop{background:rgba(40,24,10,.45);}
+html.skin-wood select option{background:#f3e9d8; color:#3b2a1c;}
+
+/* ── القائمة الجانبيّة: رقّ ── */
+html.skin-wood #sidebar{background:#efe2c8 url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D8%B1%D9%82.jpg") center/cover !important; color:var(--wood-ink);}
+html.skin-wood:not(.mobile-ui) #sidebar{box-shadow:inset 1px 0 0 rgba(120,84,50,.25), -4px 0 14px rgba(70,45,22,.18);}
+/* الجوّال: الدرج المغلق خارج الشاشة وظلّه الأسود (٥٠px) كان يظهر شريطًا داكنًا على الكتّان الفاتح — الظلّ للمفتوح وحده */
+html.skin-wood.mobile-ui #sidebar:not(.open), html.skin-wood.mobile-ui #workarea:not(.open){box-shadow:none !important;}
+html.skin-wood.mobile-ui #sidebar.open{box-shadow:0 10px 40px rgba(60,38,18,.45) !important;}
+html.skin-wood #sidebar .omStars{display:none;}
+html.skin-wood #sidebarBrand .brandImg{filter:sepia(1) saturate(1.5) hue-rotate(-18deg) brightness(.72) contrast(1.15);}
+/* المحدِّد الثاني يعادل قاعدة الوضع الفاتح (html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn) ويأتي بعدها فيبقى نحاسيًّا */
+html.skin-wood #omranNewChatBtn, html.skin-wood:not(.mobile-ui) #omranNewChatBtn, html.skin-wood:not(.mobile-ui) #omranNewChatBtn:hover{margin:10px 12px 6px !important; padding:9px 16px !important; border-radius:999px !important; background:var(--wood-copper) !important; color:var(--wood-ink) !important; box-shadow:inset 0 1px 0 rgba(255,240,225,.75), inset 0 -2px 3px rgba(90,50,25,.35), 0 4px 10px rgba(80,48,24,.35) !important; justify-content:center !important; text-shadow:0 1px 0 rgba(255,235,215,.5);}
+html.skin-wood #omranNewChatBtn svg{background:rgba(255,240,220,.5); border-radius:50%; padding:2px; box-sizing:content-box;}
+html.skin-wood #omranHistTitle, html.skin-wood #btnProjMenuToggle, html.skin-wood #projMenuWrap{color:var(--wood-ink) !important;}
+html.skin-wood #history{padding:2px 10px 8px !important;}
+html.skin-wood .hist-item{background:var(--wood-plank) !important; border:1px solid rgba(140,98,60,.5) !important; border-radius:12px !important; margin:7px 0 !important; padding:7px 10px !important; box-shadow:var(--wood-shadow) !important; min-height:42px;}
+html.skin-wood .hist-item:hover{filter:brightness(1.04);}
+/* المختارة بلوحها (v-themes): redesign.css يفرّغ خلفيّتها على الكمبيوتر (0,3,1) والوضع الفاتح يبيّضها — المحدِّد الثاني أعلى منهما */
+html.skin-wood .hist-item.active, html.skin-wood:not(.mobile-ui) #history .hist-item.active{background:var(--wood-plank) !important; border:1.5px solid #9a5f3a !important; box-shadow:var(--wood-shadow), 0 0 0 2px rgba(181,119,80,.35) !important;}
+html.skin-wood .hist-title{color:var(--wood-ink) !important; font-weight:600 !important; opacity:1 !important;}
+html.skin-wood .hist-thumb{background:rgba(255,248,236,.55) !important; border:1px solid rgba(120,84,50,.45) !important; border-radius:6px !important; color:#7a5434 !important;}
+html.skin-wood .hist-menu-btn{color:var(--wood-ink2) !important;}
+/* الشريط السفليّ: نحاس */
+html.skin-wood #omranSidebarFoot{background:var(--wood-copper) !important; border-top:1px solid rgba(90,52,28,.45) !important; box-shadow:inset 0 1px 0 rgba(255,236,214,.7);}
+html.skin-wood #omranSidebarFoot .omNavBtn, html.skin-wood #omranSidebarFoot .omIconBtn, html.skin-wood #omranSidebarFoot .omModeNav{color:#3a2414 !important; font-weight:600; opacity:1 !important;}
+
+/* شريط الجوّال السفليّ: نحاس كشريط القائمة */
+html.skin-wood #omranBottomNav{background:var(--wood-copper) !important; border-top:1px solid rgba(90,52,28,.45) !important; box-shadow:inset 0 1px 0 rgba(255,236,214,.7) !important;}
+html.skin-wood #omranBottomNav .omNavBtn, html.skin-wood #omranBottomNav button{color:#3a2414 !important; opacity:1 !important;}
+
+/* ── المحادثة: كتّان فاتح + رقّ ممزّق وسنابل للزينة ── */
+html.skin-wood #chatcol, html.skin-wood #chatcol > header, html.skin-wood header, html.skin-wood #inputbar, html.skin-wood #omranBelowComposer{background:transparent !important; border-color:transparent !important;}
+html.skin-wood #chatcol{position:relative;}
+html.skin-wood #chatcol::before{content:""; position:absolute; z-index:0; pointer-events:none; top:14px; inset-inline-end:18px; width:min(44%,360px); aspect-ratio:560/360; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D8%B1%D9%82-%D9%85%D9%85%D8%B2%D9%82.webp") center/contain no-repeat;}
+html.skin-wood #chatcol::after{content:""; position:absolute; z-index:0; pointer-events:none; inset-inline-end:min(40%,330px); top:150px; width:74px; height:160px; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D8%B3%D9%86%D8%A7%D8%A8%D9%84.svg") center/contain no-repeat; opacity:.95;}
+/* الرقّ والسنبلة الوسطى في شاشة البداية وحدها؛ مع الرسائل تبقى السنبلة الصغيرة في الزاوية */
+html.skin-wood body:not(.omranWelcome) #chatcol::before, html.skin-wood body:not(.omranWelcome) #chatcol::after{display:none;}
+/* ذوبان أعلى/أسفل المحادثة كان من لون الخلفيّة الداكن، وهالة الجسم الذهبيّة وحبيباته */
+html.skin-wood #messages::before{background:linear-gradient(to bottom,#ece3d3,transparent) !important;}
+html.skin-wood #messages::after{background:linear-gradient(to top,#ece3d3,transparent) !important;}
+html.skin-wood body::before, html.skin-wood body::after{display:none !important;}
+html.skin-wood #messages{position:relative; z-index:1; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D8%B3%D9%86%D8%A7%D8%A8%D9%84.svg") no-repeat; background-size:66px 143px; background-position:left 10px bottom 40px; background-attachment:local;}
+html.skin-wood #messages .msg.user{background:var(--wood-plank) !important; border:1px solid rgba(140,98,60,.45) !important; border-radius:16px !important; box-shadow:var(--wood-shadow) !important; color:var(--wood-ink) !important; padding:9px 14px !important;}
+html.skin-wood #messages .msg.assistant{background:rgba(250,244,232,.92) !important; border:1px solid rgba(150,112,72,.35) !important; border-radius:16px !important; box-shadow:0 4px 12px rgba(90,62,32,.18) !important; padding:12px 16px !important; color:var(--wood-ink) !important;}
+html.skin-wood #askAllHintTip{background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D8%B1%D9%82.jpg") center/cover !important; color:var(--wood-ink) !important; border:1px solid rgba(140,98,60,.4); box-shadow:0 2px 6px rgba(80,52,26,.2);}
+/* الملحّن: إطار نحاسيّ حول كتّان */
+html.skin-wood #composerBox{border:4px solid transparent !important; border-radius:30px !important; background:linear-gradient(#f3eadb,#ecdfca) padding-box, var(--wood-copper) border-box !important; box-shadow:0 6px 16px rgba(80,50,24,.32), inset 0 2px 4px rgba(120,84,50,.18) !important;}
+html.skin-wood #prompt{color:var(--wood-ink) !important;}
+html.skin-wood #prompt::placeholder{color:#8a6c50 !important;}
+html.skin-wood #composerBox > #btnSend svg{color:#3a2414 !important; stroke:#3a2414 !important;}
+html.skin-wood #composerBox:not(.typing) > #btnSend{opacity:1 !important;}
+html.skin-wood #composerBox > #btnSend, html.skin-wood #btnSend{background:var(--wood-copper) !important; border:1px solid #8a5233 !important; color:#3a2414 !important; box-shadow:inset 0 1px 0 rgba(255,236,214,.7), 0 3px 8px rgba(80,48,24,.35) !important; opacity:1 !important;}
+html.skin-wood #omranBelowComposer, html.skin-wood #omranBelowComposer button, html.skin-wood #omModelChip, html.skin-wood #omModeBtn,
+html.skin-wood #inputbar .inputbar-tools-left > .btn, html.skin-wood #inputbar .inputbar-tools-left > button, html.skin-wood #inputbar .inputbar-tools button, html.skin-wood #btnMic, html.skin-wood #inputbar #btnPlusTools{color:var(--wood-ink) !important;}
+
+/* ── لوحة المعاينة: كتّان بنّيّ ── */
+html.skin-wood #workarea{background:#7a6250 url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%AE%D8%B4%D8%A8%D9%8A/%D9%83%D8%AA%D8%A7%D9%86-%D8%A8%D9%86%D9%8A.jpg") repeat !important; background-size:256px 256px !important; color:var(--wood-cream);}
+/* مكان الكود بلون اللوحة نفسها (أمر المالك ٤ أكتوبر: «مكان الكود يكون نفس لون الصفحة») — كان أسود فوق الكتّان */
+html.skin-wood #code{background:transparent !important; color:#f6ead6 !important; caret-color:#f6ead6;}
+html.skin-wood #tabs{background:transparent !important; border-color:rgba(40,24,12,.35) !important;}
+html.skin-wood #tabs .tab, html.skin-wood #workarea .omIconBtn, html.skin-wood #workarea button{color:#f1e4cf !important;}
+html.skin-wood #tabs .tab.active{border-color:#e7c29d !important;}
+html.skin-wood .resizer{background:linear-gradient(90deg,rgba(90,58,30,.35),rgba(255,240,220,.25)) !important;}
+
+/* «بيت» اللوحة الفارغة (الشعار والزرّ والمحادثات والأزرار الدائريّة) شيل بأمر المالك بعد الثيمات: «شيل هذا من البنّيّ» */
+
+/* مصغّرات الثيمات في شبكة الخلفيّات (كلّها): الخانة ٣:٤ تُظهر اللوحة الوسطى وطرف القائمة — لوحة المعاينة صارت فارغة */
+.bgImgOpt.bgImgTheme{background-position:70% center;}

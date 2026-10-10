@@ -53,17 +53,23 @@ test('markLastForCache: آخر كتلة في آخر رسالة تُعلَّم، 
 test('usageLabel: كاش · جديد · خرج بأرقام مختصرة', () => {
   assert.equal(usageLabel({ input: 1200, cacheRead: 48000, cacheWrite: 300, output: 950 }), 'كاش 48k · جديد 1.5k · خرج 950');
   assert.equal(usageLabel({ input: 0, cacheRead: 0, cacheWrite: 0, output: 0 }), 'كاش 0 · جديد 0 · خرج 0');
+  // v-owner-served-model: الموديل الذي خدم الطلب يتقدّم الحساب
+  assert.equal(usageLabel({ input: 10, cacheRead: 0, cacheWrite: 0, output: 5, served: 'deepseek/deepseek-v3.2' }), 'deepseek/deepseek-v3.2 · كاش 0 · جديد 10 · خرج 5');
+  assert.match(read('api/_lib/chat.js'), /__usage\.served = String\(\(ev\.message && ev\.message\.model\) \|\| ''\)\.trim\(\) \|\| __usage\.served;/);
 });
 
 test('chat.js: الطلب يحمل النظام كتلًا معلَّمة والرسائل معلَّمة، مع مفتاح إيقاف وإعادة على 400', () => {
   const s = read('api/_lib/chat.js');
   assert.match(s, /let __cacheOn = String\(process\.env\.CHAT_PROMPT_CACHE \|\| ''\)\.trim\(\)\.toLowerCase\(\) !== 'off';/);
-  assert.match(s, /const __sysBlocks = splitSystemForCache\(__sysSend, PERSONA_NOTE \+ '\\n' \+ baseSystem\);/);
-  assert.match(s, /system: __cacheOn \? __sysBlocks : \(__sysSend \|\| undefined\), messages: __cacheOn \? markLastForCache\(convo\) : convo, tools: toolTurn \? TOOLS : undefined, stream: true/);
+  // v-cohere-coach: Cohere للمالك ثابته ملاحظة التوجيه بلا التاريخ؛ الباقون كما كانوا
+    // v-living-all: الثابت المخزَّن مؤقّتًا = ما قبل كتلة الحقائق (stableSystem) — الحقائق تتبدّل بسؤال كلّ دور فلا تبطل الكاش؛ بلا حقائق stableSystem = baseSystem حرفيًّا
+  // v-owner-identity: للمالك الثابت يمرّ بالتحويل نفسه الذي مرّ به المرسَل (ownerIdentity) فيبقى بادئته وتبقى علامة الكاش
+  assert.match(s, /const __sysBlocks = splitSystemForCache\(__sysSend, __coach\n\s+\? cohereCoachSystem\(\{ customInstr, ownerKnowledge, siteGuide: siteGuideTurn \? SITE_GUIDE_NOTE : '' \}\)\n\s+: \(__ownerReq \? ownerIdentity\(PERSONA_NOTE \+ '\\n' \+ stableSystem, prov, CHAT_MODEL\) : PERSONA_NOTE \+ '\\n' \+ stableSystem\)\);/);
+  assert.match(s, /system: __cacheOn \? __sysBlocks : \(__sysSend \|\| undefined\), messages: __cacheOn \? markLastForCache\(convo\) : convo, tools: toolTurn \? toolsFor\(__ownerReq, isClarifyTurn\(lastUserText\) \|\| __analyzeDoc\) : undefined, stream: true/); // v-img-ask · v-provider-errors · v-providers-like-agent
   assert.match(s, /if \(\/cache_control\/i\.test\(__cc\)\) \{\n\s+__cacheOn = false;\n\s+await logErrorAndFlush\('chat\/prompt-cache-400'/);
   // العدّاد من message_start وmessage_delta، والعرض للمالك وحده
   assert.match(s, /ev\.type === 'message_start'[\s\S]*?cache_read_input_tokens/);
-  assert.match(s, /if \(__ownerReq\) send\(\{ modelId: __pick\.picked \? __pick\.id : 'default', modelLabel: \(__pick\.label \|\| 'الافتراضيّ'\) \+ ' · ' \+ usageLabel\(__usage\) \}\);/);
+  assert.match(s, /if \(__ownerReq\) send\(\{ modelId: __pick\.picked \? __pick\.id : 'default', modelLabel: \(__pick\.label \|\| 'الافتراضيّ'\) \+ ' · ' \+ usageLabel\(__usage\) \+ \(__ownerThink \? ' · 🧠' : ' · ⚡'\) \}\);/);
   // الثابت لا يحوي الوقت: nowNote يُلحق بعد baseSystem في نصّ النظام لا داخل sysParts
   assert.ok(!/sysParts\.push\([^)]*nowNote/.test(s), 'الوقت يجب أن يبقى خارج الكتلة الثابتة');
   // المتغيّر موثّق

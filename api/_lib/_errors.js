@@ -12,6 +12,7 @@ const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const LOG_PATH = 'db/server-errors/log.json';
 const MAX_ITEMS = 100;
+const ERROR_PUSH_TIMEOUT_MS = 2000; // v-error-push: لا يؤخّر ردّ خطأ أكثر من هذا
 const RELEASE = process.env.APP_RELEASE || 'omran-ai-builder';
 const ENV = process.env.VERCEL_ENV || 'development';
 
@@ -77,6 +78,15 @@ async function sendToSentry(err, context) {
   }
 }
 
+// Returns true when this exact route+message pair is new (not a repeat) —
+// v-error-push uses this to alert the owner once per distinct error, not
+// once per occurrence (a crash loop must never turn into a notification storm).
+/* v-err-deploy (لقطة «فحص النظام» ٢٣ سبتمبر: أخطاء خادم من ٢١ سبتمبر وأخطاء أُصلحت تبقى معروضة كأنّها الآن): كلّ خطأ
+   يُختم بالنشر الذي وقع فيه، ولوحة المالك تفصل أخطاء النشر الحاليّ عمّا قبله. خطأ يتكرّر بعد نشر جديد ينتقل إليه. */
+function deployId() {
+  return String(process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 40);
+}
+
 async function appendToRedisLog(entry) {
   try {
     const items = (await kvGetJSON(LOG_PATH)) || [];
@@ -86,12 +96,15 @@ async function appendToRedisLog(entry) {
     if (dup) {
       dup.count = (dup.count || 1) + 1;
       dup.lastAt = entry.at;
+      if (entry.deploy) dup.deploy = entry.deploy;
     } else {
       list.unshift(entry);
     }
     await kvPutJSON(LOG_PATH, list.slice(0, MAX_ITEMS));
+    return !dup;
   } catch (e) {
     /* the log is best-effort — never let it mask the original error */
+    return false;
   }
 }
 
@@ -110,9 +123,26 @@ async function reportError(err, context) {
     name: (err && err.name) || 'Error',
     stack: err && err.stack ? String(err.stack).slice(0, 1500) : null,
     count: 1,
+    deploy: deployId(),
   };
   console.error(`[error] ${entry.route}${entry.action ? '?' + entry.action : ''}: ${entry.message}`);
-  await Promise.all([sendToSentry(err, entry), appendToRedisLog(entry)]);
+  const [, isNew] = await Promise.all([sendToSentry(err, entry), appendToRedisLog(entry)]);
+  // v-error-push (طلب المالك: «أي خطأ يبلغني على طول»): كلّ خطأ خادم جديد (لا تكرار
+  // لخطأ مسجَّل) يدفع إشعارًا فوريًّا — نفس آلية v-credit-alert الحالية، معمَّمة. يُنتظَر
+  // بمهلة قصيرة (لا بلا انتظار إطلاقًا) لأنّ serverless يُجمِّد العامل بعد الردّ فيُسقط أيّ
+  // وعد معلَّق — نفس سبب FLUSH_TIMEOUT_MS في log-error.js؛ المهلة تمنع نداء شبكة بطيء من
+  // تأخير ردّ خطأ ينتظره مستخدم بالفعل.
+  if (isNew) {
+    try {
+      await new Promise((resolve) => {
+        // clearTimeout عند فوز الوعد الحقيقيّ — عكس Promise.race الخام الذي يترك
+        // المؤقّت معلَّقًا حتّى ينتهي وحده (يُبقي العامل حيًّا بلا داعٍ على serverless).
+        const t = setTimeout(resolve, ERROR_PUSH_TIMEOUT_MS);
+        require('./_owner-alert.js').alertOwnerError(entry)
+          .then(() => { clearTimeout(t); resolve(); }, () => { clearTimeout(t); resolve(); });
+      });
+    } catch (e) { /* الإشعار تحسين لا شرط */ }
+  }
 }
 
 /**
@@ -139,4 +169,4 @@ function withErrorCapture(routeName, handler) {
   };
 }
 
-module.exports = { reportError, withErrorCapture };
+module.exports = { reportError, withErrorCapture, deployId };

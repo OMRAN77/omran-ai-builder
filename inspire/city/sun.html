@@ -1,0 +1,1106 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>شمس بيتك ساعة بساعة</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+/* CityKit — نواة «مدينتك الحقيقيّة» (v-inspire). تُلصق داخل كلّ تجربة فتبقى كلّ تجربة ملفّ HTML واحدًا مستقلًّا.
+   البحث عن المكان (Nominatim ثمّ Photon) ← مباني وطرق وماء وحدائق من OpenStreetMap (Overpass بمرايا احتياطيّة) ←
+   أمتار محلّيّة ← مشهد three.js (المباني دفعة واحدة) + خطّ رؤية سريع على شبكة + تحكّم بالكاميرا للفأرة واللمس.
+   تحتاج THREE العامّ (three@0.160.0/build/three.min.js) قبلها. */
+(function () {
+  'use strict';
+  const CK = {};
+  // اللغة من وسم الصفحة (التطبيق يكتبه بلغة المستخدم عند الفتح)، ثمّ لغة المتصفّح: العربيّة لمن لغته عربيّة، والإنجليزيّة لغيره.
+  const AR = /^ar/i.test(document.documentElement.lang || navigator.language || 'ar');
+  const T = (ar, en) => (AR ? ar : en);
+  CK.T = T; CK.AR = AR;
+  CK.PRESETS = [
+    { ar: 'دبي — المارينا', en: 'Dubai Marina', lat: 25.0805, lon: 55.1403 },
+    { ar: 'الرياض — العليا', en: 'Riyadh Olaya', lat: 24.6990, lon: 46.6850 },
+    { ar: 'الكويت — شرق', en: 'Kuwait Sharq', lat: 29.3780, lon: 47.9900 },
+    { ar: 'الدوحة — الخليج الغربيّ', en: 'Doha West Bay', lat: 25.3215, lon: 51.5280 },
+    { ar: 'أبوظبي — الكورنيش', en: 'Abu Dhabi Corniche', lat: 24.4760, lon: 54.3550 },
+    { ar: 'المنامة', en: 'Manama', lat: 26.2350, lon: 50.5770 },
+    { ar: 'جدّة — الكورنيش', en: 'Jeddah Corniche', lat: 21.5430, lon: 39.1730 },
+    { ar: 'مسقط — القرم', en: 'Muscat Qurum', lat: 23.5880, lon: 58.4080 },
+  ];
+  CK.OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+
+  // ── البيانات ──
+  function timed(url, init, ms) {
+    const ac = typeof AbortController === 'function' ? new AbortController() : null;
+    const t = ac ? setTimeout(() => ac.abort(), ms) : null;
+    return fetch(url, Object.assign({}, init, ac ? { signal: ac.signal } : {})).finally(() => t && clearTimeout(t));
+  }
+  CK.geocode = async function (q) {
+    q = String(q || '').trim(); if (!q) throw new Error('empty');
+    const m = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*[,،]\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (m) return { lat: +m[1], lon: +m[2], name: q };
+    try {
+      const r = await timed('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=' + (AR ? 'ar' : 'en') + '&q=' + encodeURIComponent(q), {}, 12000);
+      const j = await r.json();
+      if (j && j[0]) return { lat: +j[0].lat, lon: +j[0].lon, name: j[0].display_name || q };
+    } catch (e) { /* المرآة التالية */ }
+    const r2 = await timed('https://photon.komoot.io/api/?limit=1&q=' + encodeURIComponent(q), {}, 12000);
+    const j2 = await r2.json();
+    const f = j2 && j2.features && j2.features[0];
+    if (!f) throw new Error('notfound');
+    return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], name: (f.properties && f.properties.name) || q };
+  };
+  CK.query = function (lat, lon, r) {
+    const a = '(around:' + Math.round(r) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
+    const c = '(around:' + Math.round(r * 2) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
+    // العلاقات: مبانٍ بفناء داخليّ (أسواق، جوامع، جامعات) وبحيرات وحدائق كبيرة لا تُرسم في OSM إلّا علاقات.
+    // خطّ الساحل: البحر في OSM ليس مضلّعًا — يُستنتج من جهة الماء (يمين اتّجاه الخطّ).
+    return '[out:json][timeout:25];(way["building"]' + a + ';relation["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a +
+      ';relation["type"="multipolygon"]["natural"="water"]' + a + ';way["leisure"~"park|garden"]' + a + ';relation["type"="multipolygon"]["leisure"~"park|garden"]' + a +
+      ';way["landuse"="grass"]' + a + ';way["natural"="coastline"]' + c + ';);out geom;';
+  };
+  // كاش المناطق: التجربة تعمل داخل معاينة التطبيق بنفس الأصل، فـlocalStorage مشترك مع مشاريع المستخدم (aiapp_projects) —
+  // منطقة واحدة قد تبلغ ١٫٥ مليون حرف فتملأ حصّته بعد ٢–٣ مناطق ويفشل حفظ التطبيق. لذلك: ذاكرة الصفحة + Cache API في مخزن
+  // خاصّ (حصّة القرص لا حصّة localStorage) بآخر KEEP مناطق فقط، ومسح أيّ «ck1:» قديم من localStorage.
+  const AREA_CACHE = 'ck-osm-1', KEEP = 6, MEM = new Map();
+  try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('ck1:') === 0) localStorage.removeItem(k); } } catch (e) { /* بلا تخزين */ }
+  async function areaGet(key) {
+    if (MEM.has(key)) return MEM.get(key);
+    try { if (!window.caches) return null; const r = await (await caches.open(AREA_CACHE)).match(key); return r ? await r.json() : null; } catch (e) { return null; }
+  }
+  async function areaPut(key, j) {
+    MEM.set(key, j); while (MEM.size > 3) MEM.delete(MEM.keys().next().value);
+    try {
+      if (!window.caches) return;
+      const c = await caches.open(AREA_CACHE);
+      await c.put(key, new Response(JSON.stringify(j), { headers: { 'Content-Type': 'application/json' } }));
+      const ks = await c.keys(); for (let i = 0; i < ks.length - KEEP; i++) await c.delete(ks[i]);
+    } catch (e) { /* بلا كاش: نكمل من الشبكة */ }
+  }
+  CK.fetchArea = async function (lat, lon, r) {
+    const key = 'https://citykit.cache/' + lat.toFixed(4) + ',' + lon.toFixed(4) + ',' + Math.round(r);
+    const hit = await areaGet(key); if (hit) return hit;
+    let last = null;
+    for (const url of CK.OVERPASS) {
+      try {
+        const res = await timed(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(CK.query(lat, lon, r)) }, 30000);
+        if (!res.ok) { last = new Error('HTTP ' + res.status); continue; }
+        const j = await res.json();
+        if (!j || !Array.isArray(j.elements) || (j.remark && /error|timed out|out of memory|runtime/i.test(String(j.remark)))) { last = new Error('overpass: ' + String((j && j.remark) || 'bad reply').slice(0, 80)); continue; }
+        if (j.elements.length) await areaPut(key, j); // منطقة فارغة (بحر/صحراء) لا تُحفظ — قد تكون ردًّا ناقصًا
+        return j;
+      } catch (e) { last = e; }
+    }
+    throw last || new Error('overpass');
+  };
+  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, road: 6, busway: 6, living_street: 5, service: 4, track: 3.5, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, corridor: 2, steps: 2 };
+  function heightOf(tags, id) {
+    const h = parseFloat(String(tags.height || '').replace(',', '.'));
+    if (h > 0 && h < 1000) return h;
+    const lv = parseFloat(tags['building:levels']);
+    if (lv > 0 && lv < 250) return lv * 3.2 + 1;
+    const b = tags.building;
+    if (/^(roof|carport)$/.test(b)) return 4; // مظلّة مواقف/محطّة وقود
+    const j = ((id * 2654435761) % 1000) / 1000; // ثابت لكلّ مبنى
+    if (/house|detached|villa|bungalow|semidetached/.test(b)) return 6 + j * 3;
+    if (/apartments|residential|dormitory/.test(b)) return 12 + j * 12;
+    if (/commercial|office|hotel|retail/.test(b)) return 14 + j * 16;
+    if (/industrial|warehouse|garage|shed/.test(b)) return 7 + j * 5;
+    if (/mosque|church/.test(b)) return 12;
+    return 8 + j * 6;
+  }
+  CK.parse = function (osm, lat0, lon0) {
+    const mx = Math.cos(lat0 * Math.PI / 180) * 111320, mz = 110540;
+    const P = (g) => { let d = g.lon - lon0; if (d > 180) d -= 360; else if (d < -180) d += 360; return [d * mx, -(g.lat - lat0) * mz]; }; // الالتفاف عند خطّ ١٨٠
+    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0, sea: false };
+    const isClosed = (pts) => pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
+    const addBuilding = (id, poly, t) => {
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+      out.buildings.push({ id, poly, h: heightOf(t, id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
+    };
+    const coast = [];
+    for (const e of (osm && osm.elements) || []) {
+      const t = e.tags || {};
+      if (e.type === 'relation') { // العلاقة: الحلقات الخارجيّة تُخاط من أعضائها (الفناء الداخليّ يُملأ — أقرب من غيابه)
+        const outer = CK.stitch((e.members || []).filter((m) => m.type === 'way' && m.role !== 'inner' && m.geometry && m.geometry.length > 1).map((m) => m.geometry.map(P)));
+        if (t.building) outer.forEach((ring, i) => addBuilding(e.id * 16 + i, ring, t));
+        else if (t.natural === 'water' || t.water) out.water.push(...outer);
+        else if (t.leisure || t.landuse) out.parks.push(...outer);
+        continue;
+      }
+      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
+      const pts = e.geometry.map(P);
+      const closed = isClosed(pts);
+      const hk = t.highway ? String(t.highway).replace(/_link$/, '') : ''; // الوصلات (منحدرات، مخارج، دوّارات) بنوع أصلها وعرض أضيق
+      if (t.natural === 'coastline') coast.push(pts);
+      else if (t.building && closed) addBuilding(e.id, pts.slice(0, -1), t);
+      else if (hk && ROAD_W[hk]) {
+        const link = hk !== t.highway;
+        out.roads.push({ id: e.id, pts, kind: hk, w: ROAD_W[hk] * (link ? 0.7 : 1), name: t.name || '', link });
+      } else if ((t.natural === 'water' || t.water) && closed) out.water.push(pts.slice(0, -1));
+      else if ((t.leisure || t.landuse) && closed) out.parks.push(pts.slice(0, -1));
+    }
+    const sea = CK.seaPolys(coast, 1200, 25); // حتّى ٢R حول المركز (خطّ الساحل يُجلب حتّى ٢R)
+    if (sea.length) { out.water.push(...sea); out.sea = true; }
+    out.buildings.sort((a, b) => b.h - a.h);
+    return out;
+  };
+  // خياطة خطوط إلى حلقات مغلقة (أعضاء العلاقة تأتي قطعًا متتالية بأيّ اتّجاه)
+  CK.stitch = function (lines) {
+    const near = (a, b) => Math.abs(a[0] - b[0]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5;
+    const pool = lines.map((l) => l.slice()), out = [];
+    while (pool.length) {
+      let cur = pool.shift(), guard = 0;
+      while (!near(cur[0], cur[cur.length - 1]) && guard++ < 2000) {
+        const end = cur[cur.length - 1]; let k = -1, rev = false;
+        for (let i = 0; i < pool.length; i++) { const l = pool[i]; if (near(l[0], end)) { k = i; break; } if (near(l[l.length - 1], end)) { k = i; rev = true; break; } }
+        if (k < 0) break;
+        const l = pool.splice(k, 1)[0]; if (rev) l.reverse(); cur = cur.concat(l.slice(1));
+      }
+      if (cur.length > 3 && near(cur[0], cur[cur.length - 1])) out.push(cur.slice(0, -1));
+    }
+    return out;
+  };
+  // البحر من خطّ الساحل: الماء يمين اتّجاه الخطّ (OSM). شبكة خلايا H×2 بعرض C — كلّ خليّة تأخذ جهة أقرب قطعة ساحل إليها
+  // (عند رأس مشترك: متوسّط عموديّي القطعتين)، ثمّ تُدمج الخلايا البحريّة مستطيلات (صفوف ثمّ أعمدة) تُضاف إلى الماء.
+  CK.seaPolys = function (coast, H, C) {
+    C = C || 20; if (!coast || !coast.length) return [];
+    const segs = [];
+    for (const l of coast) for (let i = 0; i < l.length - 1; i++) {
+      const a = l[i], b = l[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
+      if (L < 0.01) continue;
+      // في إحداثيّاتنا z جنوبًا: يمين الاتّجاه (شمالًا للأعلى) = (-dz, dx)/L بعد قلب z مرّتين ← (−dz, dx) في (x,z)
+      segs.push({ a, b, dx, dz, L, nx: -dz / L, nz: dx / L });
+    }
+    if (!segs.length) return [];
+    const N = Math.ceil(H / C), grid = [];
+    for (let j = -N; j < N; j++) {
+      const row = [];
+      for (let i = -N; i < N; i++) {
+        const x = (i + 0.5) * C, z = (j + 0.5) * C;
+        let best = Infinity, qx = 0, qz = 0, sx = 0, sz = 0;
+        for (const s of segs) {
+          let t = ((x - s.a[0]) * s.dx + (z - s.a[1]) * s.dz) / (s.L * s.L); t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const px = s.a[0] + s.dx * t, pz = s.a[1] + s.dz * t, d = (x - px) * (x - px) + (z - pz) * (z - pz);
+          if (d < best - 1e-3) { best = d; qx = px; qz = pz; sx = s.nx; sz = s.nz; }
+          else if (d < best + 1e-3) { sx += s.nx; sz += s.nz; } // رأس مشترك بين قطعتين: متوسّط عموديّيهما
+        }
+        row.push(best > 1e-3 && (x - qx) * sx + (z - qz) * sz > 0);
+      }
+      grid.push(row);
+    }
+    // دمج: لكلّ صفّ مقاطع متّصلة، ثمّ يمتدّ المقطع نفسه رأسيًّا ما دام مطابقًا
+    const out = [], open = new Map();
+    const flush = (key, j1) => { const o = open.get(key); open.delete(key); const x0 = (o.i0 - N) * C, x1 = (o.i1 + 1 - N) * C, z0 = (o.j0 - N) * C, z1 = (j1 - N) * C; out.push([[x0, z0], [x1, z0], [x1, z1], [x0, z1]]); };
+    for (let j = 0; j <= grid.length; j++) {
+      const runs = new Set();
+      if (j < grid.length) { const r = grid[j]; for (let i = 0; i < r.length; i++) if (r[i]) { let k = i; while (k + 1 < r.length && r[k + 1]) k++; runs.add(i + ',' + k); i = k; } }
+      for (const key of [...open.keys()]) if (!runs.has(key)) flush(key, j);
+      for (const key of runs) if (!open.has(key)) { const [i0, i1] = key.split(',').map(Number); open.set(key, { i0, i1, j0: j }); }
+    }
+    return out;
+  };
+
+  // ── الهندسة والفهرس ──
+  CK.inPoly = function (x, z, poly) {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], zi = poly[i][1], xj = poly[j][0], zj = poly[j][1];
+      if (((zi > z) !== (zj > z)) && (x < (xj - xi) * (z - zi) / (zj - zi) + xi)) c = !c;
+    }
+    return c;
+  };
+  CK.index = function (data, cell) {
+    cell = cell || 24; const grid = new Map();
+    const k = (i, j) => i + ',' + j;
+    for (const b of data.buildings) {
+      for (let i = Math.floor(b.box[0] / cell); i <= Math.floor(b.box[2] / cell); i++)
+        for (let j = Math.floor(b.box[1] / cell); j <= Math.floor(b.box[3] / cell); j++) {
+          const kk = k(i, j); if (!grid.has(kk)) grid.set(kk, []); grid.get(kk).push(b);
+        }
+    }
+    const near = (x, z) => grid.get(k(Math.floor(x / cell), Math.floor(z / cell))) || [];
+    const at = (x, z) => { for (const b of near(x, z)) if (x >= b.box[0] && x <= b.box[2] && z >= b.box[1] && z <= b.box[3] && CK.inPoly(x, z, b.poly)) return b; return null; };
+    const heightAt = (x, z) => { const b = at(x, z); return b ? b.h : 0; };
+    // خطّ رؤية: يمشي على القطعة بخطوة ثابتة ويسأل هل نقطة منها داخل مبنى أعلى منها
+    const los = (a, b, step) => {
+      step = step || 3;
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, L = Math.hypot(dx, dz);
+      const n = Math.max(1, Math.ceil(L / step));
+      for (let s = 1; s < n; s++) {
+        const t = s / n, x = a.x + dx * t, z = a.z + dz * t, y = a.y + dy * t;
+        const hb = at(x, z); if (hb && hb.h > y) return false;
+      }
+      return true;
+    };
+    return { at, heightAt, los, near, cell };
+  };
+
+  function buildingGeometry(THREE, data) {
+    const pos = [], nor = [], col = [];
+    const cA = new THREE.Color(), cLow = new THREE.Color(0xd9cdb8), cMid = new THREE.Color(0xb9c4cc), cHigh = new THREE.Color(0x7fa6bd);
+    for (const b of data.buildings) {
+      const ring = b.poly; const n = ring.length; if (n < 3) continue;
+      const t = Math.min(1, b.h / 180); cA.copy(t < 0.25 ? cLow : cMid).lerp(t < 0.25 ? cMid : cHigh, t < 0.25 ? t / 0.25 : (t - 0.25) / 0.75);
+      let area = 0; for (let i = 0; i < n; i++) { const p = ring[i], q = ring[(i + 1) % n]; area += p[0] * q[1] - q[0] * p[1]; }
+      const ccw = area > 0;
+      for (let i = 0; i < n; i++) {
+        const p = ring[i], q = ring[(i + 1) % n];
+        const ex = q[0] - p[0], ez = q[1] - p[1], L = Math.hypot(ex, ez) || 1;
+        let nx = ez / L, nz = -ex / L; if (!ccw) { nx = -nx; nz = -nz; }
+        const v = [[p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], b.h, q[1]], [p[0], 0, p[1]], [q[0], b.h, q[1]], [p[0], b.h, p[1]]];
+        const order = ccw ? [0, 2, 1, 3, 5, 4] : [0, 1, 2, 3, 4, 5];
+        for (const o of order) { pos.push(v[o][0], v[o][1], v[o][2]); nor.push(nx, 0, nz); col.push(cA.r * 0.92, cA.g * 0.92, cA.b * 0.92); }
+      }
+      const tri = THREE.ShapeUtils.triangulateShape(ring.map((p) => new THREE.Vector2(p[0], p[1])), []);
+      for (const f of tri) {
+        const idx = ccw ? [f[0], f[2], f[1]] : [f[0], f[1], f[2]];
+        for (const k of idx) { pos.push(ring[k][0], b.h, ring[k][1]); nor.push(0, 1, 0); col.push(cA.r, cA.g, cA.b); }
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.computeBoundingSphere();
+    return g;
+  }
+  function ribbonGeometry(THREE, roads, y) {
+    const pos = [];
+    for (const r of roads) {
+      const hw = r.w / 2;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1];
+        const dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz) || 1, nx = -dz / L * hw, nz = dx / L * hw;
+        pos.push(p[0] + nx, y, p[1] + nz, q[0] - nx, y, q[1] - nz, q[0] + nx, y, q[1] + nz,
+          p[0] + nx, y, p[1] + nz, p[0] - nx, y, p[1] - nz, q[0] - nx, y, q[1] - nz);
+      }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+    return g;
+  }
+  // كلّ المضلّعات المسطّحة (ماء أو حدائق) في هندسة واحدة: مدينة مرسومة جيّدًا فيها مئات المسطّحات الخضراء، وشبكة لكلّ واحد
+  // تعني مئات نداءات الرسم في كلّ إطار. تبقى داخل Group كما كانت (تجارب تقرأ cityGroup.children وتبحث عن Group).
+  function polysMesh(THREE, polys, y, color) {
+    const grp = new THREE.Group(), pos = [];
+    for (const poly of polys) {
+      if (!poly || poly.length < 3) continue;
+      let tri; try { tri = THREE.ShapeUtils.triangulateShape(poly.map((p) => new THREE.Vector2(p[0], p[1])), []); } catch (e) { continue; } // مضلّع متقاطع ذاتيًّا: يُتخطّى
+      for (const f of tri) for (const k of f) pos.push(poly[k][0], y, poly[k][1]);
+    }
+    if (pos.length) {
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+      // إزاحة العمق: سنتيمترات فوق الأرض لا تكفي من بعيد فيتقاطع السطحان خطوطًا (z-fighting)
+      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+      m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
+    }
+    return grp;
+  }
+
+  // ── تحكّم الكاميرا (بلا OrbitControls: البناء العامّ لـthree لا يحويه) ──
+  CK.orbit = function (camera, dom, o) {
+    const s = { target: new CK.THREE.Vector3(0, 0, 0), dist: 900, theta: 0.6, phi: 0.9, min: 30, max: 3000, enabled: true };
+    Object.assign(s, o || {});
+    const apply = () => {
+      s.phi = Math.max(0.12, Math.min(1.5, s.phi)); s.dist = Math.max(s.min, Math.min(s.max, s.dist));
+      camera.position.set(s.target.x + s.dist * Math.sin(s.phi) * Math.sin(s.theta), s.target.y + s.dist * Math.cos(s.phi), s.target.z + s.dist * Math.sin(s.phi) * Math.cos(s.theta));
+      camera.lookAt(s.target);
+    };
+    const ptrs = new Map(); let last = null, pinch = 0;
+    dom.style.touchAction = 'none';
+    dom.addEventListener('pointerdown', (e) => { if (!s.enabled) return; dom.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); last = [e.clientX, e.clientY, e.button === 2 || e.shiftKey]; });
+    dom.addEventListener('pointermove', (e) => {
+      if (!s.enabled || !ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch) s.dist *= pinch / d; pinch = d; apply(); return;
+      }
+      const dx = e.clientX - last[0], dy = e.clientY - last[1]; last[0] = e.clientX; last[1] = e.clientY;
+      if (last[2]) {
+        const k = s.dist / 800, c = Math.cos(s.theta), sn = Math.sin(s.theta);
+        s.target.x -= (dx * c + dy * sn) * k; s.target.z -= (-dx * sn + dy * c) * k;
+      } else { s.theta -= dx * 0.006; s.phi -= dy * 0.005; }
+      apply();
+    });
+    const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0; };
+    dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+    dom.addEventListener('wheel', (e) => { if (!s.enabled) return; e.preventDefault(); s.dist *= Math.exp(e.deltaY * 0.0012); apply(); }, { passive: false });
+    dom.addEventListener('contextmenu', (e) => e.preventDefault());
+    s.apply = apply; apply();
+    return s;
+  };
+
+  // ── الواجهة ──
+  const CSS = `
+  .ck-ui{position:fixed;top:12px;right:12px;left:auto;z-index:5;box-sizing:border-box;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;
+    background:rgba(12,22,28,.86);color:#e8f1f3;border:1px solid rgba(120,200,210,.25);border-radius:14px;padding:12px 14px;
+    font:14px/1.6 "IBM Plex Sans Arabic",Tahoma,system-ui,sans-serif;direction:${AR ? 'rtl' : 'ltr'};backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+  .ck-ui h1{font-size:17px;margin:0 0 2px;font-weight:700}.ck-ui .sub{margin:0 0 8px;color:#a9c1c7;font-size:13px}
+  .ck-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+  .ck-ui input,.ck-ui select{font:inherit;flex:1 1 140px;min-width:0;background:#0d1a20;color:#e8f1f3;border:1px solid #2b4650;border-radius:9px;padding:6px 9px}
+  .ck-ui button{font:inherit;background:#1f8a93;color:#fff;border:0;border-radius:9px;padding:6px 12px;cursor:pointer}
+  .ck-ui button.ghost{background:transparent;border:1px solid #2b4650;color:#cfe3e7}
+  .ck-ui button:disabled{opacity:.5;cursor:default}
+  .ck-ui label{display:block;font-size:13px;color:#a9c1c7;margin-top:6px}
+  .ck-ui input[type=range]{width:100%;flex-basis:100%}
+  .ck-status{font-size:12.5px;color:#9fd8de;min-height:1.4em}
+  .ck-stat{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-variant-numeric:tabular-nums;margin-top:6px}
+  .ck-stat b{color:#fff}
+  .ck-img[hidden]{display:none}
+  .ck-img{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:13px;margin-top:6px;cursor:pointer}
+  .ck-ui .ck-img input{flex:none;width:auto;min-width:0;margin:0;padding:0;accent-color:#1f8a93}
+  .ck-img small{color:#9fd8de;font-size:12px}
+  .ck-attr{margin-top:8px;font-size:11px;color:#8fb0b8}.ck-attr a{color:inherit;text-decoration:none}.ck-attr a:hover{text-decoration:underline}
+  /* لوحة التجربة نافذة منبثقة على الحاسوب: زرّ ثابت أعلى الزاوية، واللوحة تنزل تحته وتُطوى بالزرّ (وبنقرة الشاشة في ألعاب القيادة).
+     الجوّال كما كان: اللوحة في مكانها بلا زرّ ولا طيّ. */
+  .ck-toggle{display:none;position:fixed;top:12px;right:12px;z-index:6;width:38px;height:38px;padding:0;align-items:center;justify-content:center;border-radius:50%;
+    border:1px solid rgba(120,200,210,.35);background:rgba(12,22,28,.86);color:#e8f1f3;cursor:pointer;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+  .ck-toggle[aria-expanded=true]{background:#1f8a93;border-color:#1f8a93}
+  .ck-toggle svg{width:20px;height:20px;display:block}
+  @media (min-width:641px){
+    .ck-toggle{display:flex}
+    .ck-ui{top:58px;max-height:calc(100vh - 70px);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
+    .ck-ui.ck-off{opacity:0;transform:translateY(-10px);visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+  }
+  @media (max-width:640px){.ck-ui{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:46vh}}
+  .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:${AR ? 'rtl' : 'ltr'};pointer-events:none}
+  `;
+  // ── صور جوّيّة (اختياريّة لكلّ تجربة بـopt.imagery): تُلصق على أرض المدينة وأسطح مبانيها المنخفضة ──
+  // المزوّد بلا مفتاح (طبقة Esri World Imagery) — شروطه على المالك (انظر DECISIONS: v-inspire-imagery)؛ بدّل CK.IMAGERY لمزوّد آخر.
+  CK.IMAGERY = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr: 'Esri, Maxar, Earthstar Geographics', z: 17, roofMax: 30 };
+  // بلاطات XYZ التي تغطّي دائرة نصف قطرها R حول المركز + مستطيلها بالأمتار المحلّيّة (نفس إسقاط CK.parse: x شرقًا، z جنوبًا)
+  CK.tileList = function (lat0, lon0, R, z) {
+    const n = Math.pow(2, z), rad = Math.PI / 180, mx = Math.cos(lat0 * rad) * 111320, mz = 110540;
+    const lonX = (lon) => (lon + 180) / 360 * n, latY = (lat) => (1 - Math.log(Math.tan(lat * rad) + 1 / Math.cos(lat * rad)) / Math.PI) / 2 * n;
+    const xLon = (x) => x / n * 360 - 180, yLat = (y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) / rad;
+    const cl = (v) => Math.max(0, Math.min(n - 1, v));
+    const x0 = cl(Math.floor(lonX(lon0 - R / mx))), x1 = cl(Math.floor(lonX(lon0 + R / mx))), y0 = cl(Math.floor(latY(lat0 + R / mz))), y1 = cl(Math.floor(latY(lat0 - R / mz)));
+    const tiles = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) tiles.push({ x, y, col: x - x0, row: y - y0 });
+    return { z, x0, x1, y0, y1, cols: x1 - x0 + 1, rows: y1 - y0 + 1, tiles,
+      rect: { minX: (xLon(x0) - lon0) * mx, maxX: (xLon(x1 + 1) - lon0) * mx, minZ: -(yLat(y0) - lat0) * mz, maxZ: -(yLat(y1 + 1) - lat0) * mz } };
+  };
+  CK.imageryOn = function () { try { return localStorage.getItem('ck-imagery') !== '0'; } catch (e) { return true; } };
+  CK.imagerySave = function (v) { try { localStorage.setItem('ck-imagery', v ? '1' : '0'); } catch (e) { /* بلا تخزين: الاختيار للجلسة */ } };
+  // يرجع true إن رُكّبت، وfalse (والمشهد كما كان) إن لم تصل أغلب البلاطات أو تبدّلت المدينة أثناء الجلب
+  CK.drape = async function (ctx, city) {
+    const THREE = ctx.THREE, IM = CK.IMAGERY, L = CK.tileList(city.lat, city.lon, ctx.R * 1.25, IM.z);
+    if (!L.tiles.length || L.tiles.length > 100) return false;
+    const cv = document.createElement('canvas'); cv.width = L.cols * 256; cv.height = L.rows * 256; const g = cv.getContext('2d'); let ok = 0;
+    const one = (t) => new Promise((res) => {
+      const im = new Image(), to = setTimeout(() => { im.onload = im.onerror = null; res(); }, 15000); im.crossOrigin = 'anonymous';
+      im.onload = () => { clearTimeout(to); try { g.drawImage(im, t.col * 256, t.row * 256, 256, 256); ok++; } catch (e) { /* بلاطة مرفوضة */ } res(); };
+      im.onerror = () => { clearTimeout(to); res(); };
+      im.src = IM.url.replace('{z}', L.z).replace('{x}', t.x).replace('{y}', t.y);
+    });
+    const q = L.tiles.slice(); await Promise.all(Array.from({ length: 8 }, async () => { while (q.length) await one(q.shift()); }));
+    if (ok < L.tiles.length * 0.5 || ctx.city !== city) return false;
+    if (city.imgOff) city.imgOff();
+    const { minX, maxX, minZ, maxZ } = L.rect, W = maxX - minX, H = maxZ - minZ;
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, ctx.renderer.capabilities.getMaxAnisotropy());
+    const gg = new THREE.BufferGeometry();
+    gg.setAttribute('position', new THREE.Float32BufferAttribute([minX, 0.02, minZ, maxX, 0.02, minZ, maxX, 0.02, maxZ, minX, 0.02, maxZ], 3));
+    gg.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
+    gg.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2)); gg.setIndex([0, 2, 1, 0, 3, 2]);
+    const ground = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: tex, color: 0xa8a8a8, side: THREE.DoubleSide })); ground.receiveShadow = true;
+    const pos = [], nor = [], uv = [];
+    for (const b of city.buildings) {
+      if (b.h > IM.roofMax || b.poly.length < 3) continue;
+      const tri = THREE.ShapeUtils.triangulateShape(b.poly.map((p) => new THREE.Vector2(p[0], p[1])), []);
+      for (const f of tri) for (const k of f) { const p = b.poly[k]; pos.push(p[0], b.h + 0.08, p[1]); nor.push(0, 1, 0); uv.push((p[0] - minX) / W, 1 - (p[1] - minZ) / H); }
+    }
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); rg.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); rg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    const roofs = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ map: tex, color: 0xb4b4b4, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); roofs.receiveShadow = true;
+    const root = city.root || ctx.scene; root.add(ground); root.add(roofs);
+    const hid = [city.waterMesh, city.parksMesh].filter(Boolean); hid.forEach((m) => { m.visible = false; }); // الصورة فيها الماء والحدائق أصلًا
+    city.imgOff = () => { root.remove(ground); root.remove(roofs); gg.dispose(); rg.dispose(); ground.material.dispose(); roofs.material.dispose(); tex.dispose(); hid.forEach((m) => { m.visible = true; }); city.imgOff = null; };
+    return true;
+  };
+  CK.ui = function (title, sub) {
+    const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+    const box = document.createElement('div'); box.className = 'ck-ui';
+    box.innerHTML = '<h1></h1><p class="sub"></p><div class="ck-row"><input id="ckq" type="search"><button id="ckgo"></button></div>' +
+      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>' +
+      '<label class="ck-img" hidden><input type="checkbox" id="ckimg"><span></span><small id="ckimgst"></small></label>' +
+      '<div class="ck-attr"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"></a><span id="ckat"></span></div>';
+    box.querySelector('h1').textContent = title; box.querySelector('.sub').textContent = sub || '';
+    box.querySelector('#ckq').placeholder = T('اكتب اسم حيّك أو مدينتك', 'Type your neighbourhood or city');
+    box.querySelector('#ckgo').textContent = T('ابنِ', 'Build');
+    box.querySelector('#ckme').textContent = T('موقعي', 'My location');
+    box.querySelector('.ck-attr a').textContent = T('بيانات الخريطة © مساهمو OpenStreetMap', 'Map data © OpenStreetMap contributors');
+    box.querySelector('.ck-img span').textContent = T('صور جوّيّة حقيقيّة', 'Real aerial imagery');
+    const sel = box.querySelector('#ckpre');
+    sel.innerHTML = '<option value="">' + T('أو اختر مدينة…', 'or pick a city…') + '</option>' + CK.PRESETS.map((p, i) => '<option value="' + i + '">' + (AR ? p.ar : p.en) + '</option>').join('');
+    document.body.appendChild(box);
+    const hud = document.createElement('div'); hud.className = 'ck-hud'; document.body.appendChild(hud);
+    // زرّ اللوحة: يفتحها ويطويها (الحاسوب فقط؛ CSS يخفيه على الجوّال). تبدأ مفتوحة ليختار المستخدم المكان.
+    box.id = 'ckbox';
+    const tg = document.createElement('button'); tg.type = 'button'; tg.className = 'ck-toggle'; tg.setAttribute('aria-controls', 'ckbox');
+    const lbl = T('لوحة التجربة', 'Experience panel'); tg.title = lbl; tg.setAttribute('aria-label', lbl);
+    tg.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>';
+    document.body.appendChild(tg);
+    let open = true;
+    const set = (v) => { open = !!v; box.classList.toggle('ck-off', !open); tg.setAttribute('aria-expanded', String(open)); };
+    tg.addEventListener('click', () => set(!open));
+    set(true);
+    const imgBox = box.querySelector('.ck-img'), imgCb = box.querySelector('#ckimg'), imgSt = box.querySelector('#ckimgst'), at = box.querySelector('#ckat');
+    const imagery = { enable: () => { imgBox.hidden = false; }, checked: () => imgCb.checked, set: (v) => { imgCb.checked = !!v; }, note: (m) => { imgSt.textContent = m || ''; }, credit: (v) => { at.textContent = v ? ' · ' + T('الصور: ', 'Imagery: ') + CK.IMAGERY.attr : ''; }, onChange: (fn) => imgCb.addEventListener('change', () => fn(imgCb.checked)) };
+    return { box, imagery, toggle: tg, show: () => set(true), hide: () => set(false), isOpen: () => open, panel: box.querySelector('#ckpanel'), status: (s) => { box.querySelector('#ckst').textContent = s || ''; }, hud: (s) => { hud.innerHTML = s || ''; } };
+  };
+  CK.el = function (html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
+
+  // ── التشغيل ──
+  CK.start = function (opt) {
+    const THREE = window.THREE; CK.THREE = THREE;
+    const R = opt.radius || 600;
+    document.documentElement.dir = AR ? 'rtl' : 'ltr';
+    document.body.style.cssText = 'margin:0;overflow:hidden;background:#0b1419';
+    const ui = CK.ui(opt.title, opt.sub);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: !!opt.keepBuffer });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = !!opt.shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+    if (opt.autoHide) { // ألعاب القيادة: نقرة على الشاشة (لا سحب) تطوي اللوحة فيبقى المشهد وحده
+      let dn = null; const cv = renderer.domElement;
+      cv.addEventListener('pointerdown', (e) => { dn = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+      cv.addEventListener('pointerup', (e) => { if (dn && Math.hypot(e.clientX - dn.x, e.clientY - dn.y) < 6 && performance.now() - dn.t < 500) ui.hide(); dn = null; });
+    }
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfd9e6); scene.fog = new THREE.Fog(0xbfd9e6, R * 1.4, R * 4);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, R * 8);
+    const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x8a7a5c, 0.85); scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(-R * 0.6, R * 1.2, R * 0.4); scene.add(sun); scene.add(sun.target);
+    if (opt.shadows) { sun.castShadow = true; const sc = sun.shadow.camera; sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = R * 4; sc.updateProjectionMatrix(); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; }
+    const orbit = CK.orbit(camera, renderer.domElement, { dist: R * 1.5, max: R * 5 });
+    const frames = [];
+    let city = null, cityGroup = null, busy = false;
+    const ctx = { THREE, scene, camera, renderer, orbit, sun, hemi, ui, R, T, AR, frames, onFrame: (f) => frames.push(f) };
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    let prev = performance.now();
+    renderer.setAnimationLoop(() => {
+      const now = performance.now(), dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+      for (const f of frames) { try { f(dt, now); } catch (e) { console.error(e); } }
+      renderer.render(scene, camera);
+    });
+    async function load(lat, lon, name) {
+      if (busy) return; busy = true;
+      ui.status(T('أجلب مباني وشوارع ', 'Fetching buildings and streets of ') + (name || '') + '…');
+      try {
+        const osm = await CK.fetchArea(lat, lon, R);
+        const data = CK.parse(osm, lat, lon);
+        if (!data.buildings.length && !data.roads.length) { ui.status(T('ما لقيت مباني هنا — جرّب مكانًا داخل المدينة.', 'No buildings here — try a spot inside the city.')); busy = false; return; }
+        if (city && city.imgOff) city.imgOff();
+        if (cityGroup) { scene.remove(cityGroup); cityGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+        frames.length = 0;
+        cityGroup = new THREE.Group(); scene.add(cityGroup);
+        const ground = new THREE.Mesh(new THREE.CircleGeometry(R * 3, 64), new THREE.MeshLambertMaterial({ color: 0xd8ccb4 }));
+        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; cityGroup.add(ground);
+        const waterMesh = polysMesh(THREE, data.water, 0.03, 0x3d8fb6), parksMesh = polysMesh(THREE, data.parks, 0.04, 0x8fb87a);
+        cityGroup.add(waterMesh); cityGroup.add(parksMesh);
+        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+        roads.receiveShadow = true; cityGroup.add(roads);
+        const bm = new THREE.Mesh(buildingGeometry(THREE, data), new THREE.MeshLambertMaterial({ vertexColors: true }));
+        bm.castShadow = true; bm.receiveShadow = true; cityGroup.add(bm);
+        const idx = CK.index(data);
+        const group = new THREE.Group(); cityGroup.add(group);
+        city = Object.assign({}, data, { idx, buildingsMesh: bm, roadsMesh: roads, ground, group, waterMesh, parksMesh, root: cityGroup, name: name || '' });
+        ctx.city = city;
+        orbit.target.set(0, 0, 0); orbit.dist = R * 1.5; orbit.apply();
+        ui.status(T('جاهز: ', 'Ready: ') + data.buildings.length + T(' مبنى · ', ' buildings · ') + data.roads.length + T(' طريق', ' roads'));
+        await new Promise((r) => setTimeout(r, 16)); // إطار يُرسم فيه المشهد قبل حسابات التجربة (لا تجمّد الصفحة دفعة واحدة)
+        if (opt.onCity) await opt.onCity(ctx, city);
+        window.__ck_ready = (window.__ck_ready || 0) + 1;
+        if (opt.imagery) applyImagery(city);
+      } catch (e) {
+        console.warn('[citykit]', e);
+        ui.status(T('تعذّر جلب الخريطة الحين — حاول بعد قليل أو اختر مدينة أخرى.', 'Could not load the map now — try again or pick another city.'));
+        window.__ck_error = String(e && e.message || e);
+      }
+      busy = false;
+    }
+    // الصور الجوّيّة: بعد أن يظهر المشهد وتجربته (لا تؤخّرهما)؛ فشلها لا يغيّر شيئًا والمستخدم يطفئها بمربّعها
+    let imgSeq = 0;
+    async function applyImagery(c) {
+      const im = ui.imagery, my = ++imgSeq; im.enable(); im.set(CK.imageryOn()); im.credit(false); im.note('');
+      if (!im.checked()) return;
+      im.note(T('أجلب الصور…', 'Loading imagery…'));
+      let done = false; try { done = await CK.drape(ctx, c); } catch (e) { console.warn('[citykit] imagery', e); }
+      if (my !== imgSeq) return;
+      im.note(done ? '' : T('غير متاحة الآن', 'unavailable now')); im.credit(done); window.__ck_imagery = done ? 1 : 0;
+    }
+    if (opt.imagery) ui.imagery.onChange((v) => {
+      CK.imagerySave(v); imgSeq++;
+      if (!v) { if (city && city.imgOff) city.imgOff(); ui.imagery.credit(false); ui.imagery.note(''); window.__ck_imagery = 0; } else if (city) applyImagery(city);
+    });
+    ctx.load = load; window.__ck_ctx = ctx; // للاختبار: تبديل المدينة من داخل الصفحة
+    const q = ui.box.querySelector('#ckq');
+    const go = async () => { try { ui.status(T('أبحث…', 'Searching…')); const g = await CK.geocode(q.value); await load(g.lat, g.lon, q.value); } catch (e) { ui.status(T('ما لقيت المكان — اكتبه بطريقة ثانية.', 'Place not found — try another spelling.')); } };
+    ui.box.querySelector('#ckgo').addEventListener('click', go);
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    ui.box.querySelector('#ckpre').addEventListener('change', (e) => { const p = CK.PRESETS[+e.target.value]; if (p) load(p.lat, p.lon, AR ? p.ar : p.en); });
+    ui.box.querySelector('#ckme').addEventListener('click', () => {
+      if (!navigator.geolocation) return ui.status(T('الموقع غير متاح هنا.', 'Location is not available here.'));
+      navigator.geolocation.getCurrentPosition((p) => load(p.coords.latitude, p.coords.longitude, T('موقعك', 'your location')), () => ui.status(T('ما سمح المتصفّح بالموقع — اكتب اسم الحيّ.', 'Location blocked — type the neighbourhood.')), { timeout: 10000 });
+    });
+    if (opt.panel) opt.panel(ctx);
+    const p0 = CK.PRESETS[0];
+    load(p0.lat, p0.lon, AR ? p0.ar : p0.en);
+    return ctx;
+  };
+  // أدوات مشتركة صغيرة
+  CK.sunDir = function (lat, lon, date) { // اتّجاه الشمس (ارتفاع + سمت) من التاريخ والوقت — تقريب NOAA
+    const rad = Math.PI / 180, d = (date - Date.UTC(2000, 0, 1, 12)) / 86400000;
+    const g = (357.529 + 0.98560028 * d) * rad, q = 280.459 + 0.98564736 * d;
+    const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad, e = (23.439 - 0.00000036 * d) * rad;
+    const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)), dec = Math.asin(Math.sin(e) * Math.sin(L));
+    const gmst = (18.697374558 + 24.06570982441908 * d) % 24, lst = (gmst * 15 + lon) * rad;
+    const H = lst - ra, la = lat * rad;
+    const alt = Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(H));
+    const az = Math.atan2(-Math.sin(H), Math.tan(dec) * Math.cos(la) - Math.sin(la) * Math.cos(H)); // من الشمال باتّجاه الشرق
+    return { alt, az, x: Math.cos(alt) * Math.sin(az), y: Math.sin(alt), z: -Math.cos(alt) * Math.cos(az) };
+  };
+  window.CityKit = CK;
+})();
+
+</script>
+<style>
+.sn-hint{display:flex;gap:8px;align-items:center;background:rgba(255,201,74,.09);border:1px solid rgba(255,201,74,.28);color:#ffe3a3;border-radius:10px;padding:6px 10px;font-size:13px;margin:4px 0 6px}
+.sn-hint svg{flex:none}
+.sn-pt{font-size:12.5px;color:#cfe3e7;margin:0 0 4px;min-height:1.3em}
+.sn-ctl{display:flex;gap:6px;align-items:center;margin-top:4px}
+.ck-ui .sn-play{display:inline-flex;gap:6px;align-items:center;background:linear-gradient(135deg,#f2a83c,#dc6a28);font-weight:700;padding:6px 14px}
+.ck-ui .sn-play.on{background:linear-gradient(135deg,#3b6f8f,#28506a)}
+.sn-lab{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:#a9c1c7;margin-top:8px}
+.sn-lab b{color:#fff;font-size:15px;font-variant-numeric:tabular-nums}
+.ck-ui input[type=range].sn-r{margin:2px 0 0;accent-color:#f2a83c;padding:0}
+.sn-strip svg{display:block;width:100%;height:20px;border-radius:6px;cursor:pointer;margin-top:4px}
+.sn-ticks{display:flex;justify-content:space-between;font-size:10.5px;color:#7f9aa1;margin-top:1px;font-variant-numeric:tabular-nums}
+.sn-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.ck-ui .sn-chips button{padding:3px 9px;font-size:12px}
+.ck-ui .sn-chips button.on{background:#f2a83c;border-color:#f2a83c;color:#1b1206}
+.sn-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.sn-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:5px 6px;text-align:center}
+.sn-card span{display:block;font-size:11px;color:#9fb6bc;white-space:nowrap}
+.sn-card b{font-size:15.5px;font-variant-numeric:tabular-nums;color:#fff}
+.sn-card.gold b{color:#ffc94a}
+.sn-year{margin-top:10px}
+.sn-year .t{display:flex;justify-content:space-between;font-size:12.5px;color:#a9c1c7}
+.sn-year .t b{color:#ffc94a;font-weight:600}
+.sn-year svg{width:100%;height:86px;display:block;margin-top:2px}
+.sn-leg{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:#a9c1c7;margin-top:6px}
+.sn-leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:4px;vertical-align:-1px}
+.sn-hud{background:rgba(8,16,24,.55);border:1px solid rgba(255,214,130,.25);border-radius:14px;padding:9px 13px;backdrop-filter:blur(6px);min-width:170px}
+.sn-hud .c{font-size:30px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.sn-hud .d{font-size:12px;color:#cfe3e7;font-weight:500}
+.sn-hud .l{font-size:11.5px;color:#cfe3e7;margin-top:6px;font-weight:500}
+.sn-hud .h{display:flex;align-items:baseline;gap:6px}
+.sn-hud .h b{font-size:30px;color:#ffc94a;font-variant-numeric:tabular-nums}
+.sn-hud .h span{font-size:12.5px;color:#e7eef0;font-weight:500}
+.sn-hud .n{font-size:12.5px;font-weight:600;margin-top:4px;display:flex;align-items:center;gap:6px;max-width:250px}
+.sn-hud .n i{flex:none;width:9px;height:9px;border-radius:50%;background:#ffc94a;box-shadow:0 0 8px #ffc94a}
+.sn-hud .n.sh i{background:#7aa3c9;box-shadow:none}
+.sn-hud .n.nt i{background:#3c4c6c;box-shadow:none}
+@media (max-width:640px){.sn-hud{padding:6px 10px;min-width:0;max-width:200px;border-radius:12px}.sn-hud .c{font-size:21px}.sn-hud .d{font-size:11px}.sn-hud .l{margin-top:3px;font-size:11px}.sn-hud .h b{font-size:21px}.sn-hud .h span{font-size:11px}.sn-hud .n{font-size:11px;margin-top:2px}}
+</style>
+</head><body><script>
+(function () {
+  'use strict';
+  const CK = window.CityKit, T = CK.T, AR = CK.AR;
+  const TITLE = T('شمس بيتك ساعة بساعة', 'Your home\'s sun, hour by hour');
+  document.title = TITLE;
+  const DEG = Math.PI / 180, H0 = -0.833 * DEG; // ارتفاع الشروق والغروب القياسيّ (انكسار + نصف القرص)
+  const MON_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const MON_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const Y = new Date().getFullYear();
+  const DAYS = Math.round((Date.UTC(Y + 1, 0, 1) - Date.UTC(Y, 0, 1)) / 86400000);
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (min) => { if (min == null || !isFinite(min)) return '—'; let m = Math.round(min); m = ((m % 1440) + 1440) % 1440; return pad(Math.floor(m / 60)) + ':' + pad(m % 60); };
+  const r1 = (v) => Math.round(v * 10) / 10;
+  // فرق توقيت المكان التقريبيّ: ساعة الجهاز إن قاربت خطّ طول المكان (غالبًا يتصفّح منطقته: عمّان +3 لا +2، الدار البيضاء +1 لا −1،
+  // طهران +3:30)، وإلّا تقريب خطّ الطول. مدن القائمة الخليجيّة يصيبها التقريب، فلا تتبع فيها ساعة جهاز في بلد خليجيّ مجاور (الرياض ≠ دبي).
+  function approxTz(lat, lon) {
+    const sol = lon / 15, dev = -new Date().getTimezoneOffset() / 60;
+    const preset = CK.PRESETS.some((p) => Math.hypot(p.lat - lat, (p.lon - lon) * Math.cos(lat * DEG)) < 0.75);
+    return !preset && Math.abs(dev - sol) <= 2 ? dev : Math.round(sol);
+  }
+  const tzName = (tz) => { const a = Math.abs(tz), h = Math.floor(a), m = Math.round((a - h) * 60); return 'UTC' + (tz >= 0 ? '+' : '−') + h + (m ? ':' + pad(m) : ''); };
+  const doyToMD = (doy) => { const d = new Date(Date.UTC(Y, 0, doy)); return [d.getUTCMonth(), d.getUTCDate()]; };
+  const mdToDoy = (m, d) => Math.round((Date.UTC(Y, m, d) - Date.UTC(Y, 0, 0)) / 86400000);
+  const dateLabel = (doy) => { const [m, d] = doyToMD(doy); return AR ? d + ' ' + MON_AR[m] : d + ' ' + MON_EN[m]; };
+  const DIRS_AR = ['شمال', 'شمال شرق', 'شرق', 'جنوب شرق', 'جنوب', 'جنوب غرب', 'غرب', 'شمال غرب'];
+  const DIRS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const dirName = (az) => { const i = Math.round((((az / DEG) % 360) + 360) % 360 / 45) % 8; return AR ? DIRS_AR[i] : DIRS_EN[i]; };
+  const ICON_SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffc94a" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2" fill="#ffc94a"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>';
+  const ICON_PLAY = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>';
+  const ICON_PAUSE = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M6.5 5h4v14h-4zM13.5 5h4v14h-4z" fill="currentColor"/></svg>';
+  // مراحل السماء والإضاءة بحسب ارتفاع الشمس (درجات): قمّة السماء، الأفق، لون الشمس، شدّتها، لون السماء المحيطة، شدّتها
+  const KF = [
+    [-18, 0x050a16, 0x0e1a33, 0xff8a50, 0, 0x2b3b66, 0.16],
+    [-6, 0x13234a, 0x3f3f69, 0xff8a50, 0, 0x4d5c8c, 0.26],
+    [0, 0x2a4880, 0xee965e, 0xff9348, 0.5, 0xa8a8c4, 0.42],
+    [7, 0x3768a6, 0xf4bf88, 0xffb46e, 1.2, 0xdcd6cf, 0.54],
+    [22, 0x3c7cc4, 0xcde3ee, 0xffefd6, 1.55, 0xe6f2ff, 0.66],
+    [70, 0x2e72c2, 0xc1e0f1, 0xfffaf0, 1.7, 0xeaf6ff, 0.72],
+  ];
+
+  let ctx = null, S = null, THREE = null, glowTex = null, skyMat = null, KFC = null;
+  const ray = { rc: null, down: null };
+
+  // ── أدوات الرسم ──
+  function clearGroup(g) {
+    for (const o of g.children.slice()) {
+      g.remove(o);
+      o.traverse((n) => {
+        if (n.geometry) n.geometry.dispose();
+        if (n.material) { const ms = Array.isArray(n.material) ? n.material : [n.material]; for (const m of ms) { if (m.map && m.map.__own) m.map.dispose(); m.dispose(); } }
+      });
+    }
+  }
+  function label(text, color, size) {
+    const c = document.createElement('canvas'), g = c.getContext('2d'), F = '700 50px Tahoma, Arial, sans-serif';
+    g.font = F; const w = Math.ceil(g.measureText(text).width) + 30; c.width = w; c.height = 74;
+    const q = c.getContext('2d'); q.font = F;
+    q.fillStyle = 'rgba(8,16,24,0.66)';
+    if (q.roundRect) { q.beginPath(); q.roundRect(1, 1, w - 2, 72, 20); q.fill(); } else q.fillRect(0, 0, w, 74);
+    q.fillStyle = color; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillText(text, w / 2, 39);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.__own = true;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true }));
+    s.scale.set(size * w / 74, size, 1); s.renderOrder = 20; return s;
+  }
+  function glow(color, size, opacity) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: opacity == null ? 1 : opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
+    s.scale.set(size, size, 1); s.renderOrder = 15; return s;
+  }
+  function tube(pts, radius, color, opacity) {
+    if (pts.length < 2) return null;
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const m = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(400, pts.length * 3), radius, 8, false),
+      new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 }));
+    return m;
+  }
+  function cap(b, color, opacity, lift) {
+    const shape = new THREE.Shape(b.poly.map((p) => new THREE.Vector2(p[0], -p[1])));
+    const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.position.y = b.h + (lift || 0.5); m.renderOrder = 5; return m;
+  }
+
+  // ── الشمس ──
+  const dayBase = (doy) => Date.UTC(Y, 0, doy) - S.tz * 3600000; // منتصف الليل بتوقيت المكان التقريبيّ
+  const sunAt = (doy, tmin) => CK.sunDir(S.lat, S.lon, dayBase(doy) + tmin * 60000);
+  function dayInfo(doy) { // الشروق والغروب (−0.833°) بمسح كلّ ٤ دقائق ثمّ استيفاء خطّيّ، وذروة الشمس
+    let rise = null, set = null, peak = -Math.PI, noon = 720, prev = sunAt(doy, 0).alt;
+    if (prev > peak) { peak = prev; noon = 0; }
+    for (let t = 4; t <= 1440; t += 4) {
+      const a = sunAt(doy, t).alt;
+      if (prev < H0 && a >= H0 && rise == null) rise = t - 4 + 4 * (H0 - prev) / (a - prev);
+      if (prev >= H0 && a < H0) set = t - 4 + 4 * (prev - H0) / (prev - a);
+      if (a > peak) { peak = a; noon = t; }
+      prev = a;
+    }
+    if (rise == null && set == null) { // نهار قطبيّ أو ليل قطبيّ
+      return peak > H0 ? { rise: 0, set: 1440, up: true, polar: 'day', peak, noon, len: 24 } : { rise: null, set: null, up: false, polar: 'night', peak, noon, len: 0 };
+    }
+    if (rise == null) rise = 0;
+    if (set == null || set < rise) set = set == null ? 1440 : set + 1440;
+    return { rise, set, up: true, peak, noon, len: (set - rise) / 60 };
+  }
+  function rayLen(P, s) { // طول المسار الأفقيّ الذي يكفي: حتّى يعلو الشعاع أطول مبنى أو يخرج من نطاق البيانات
+    const alt = Math.max(s.alt, 0.5 * DEG), ux = Math.sin(s.az), uz = -Math.cos(s.az), tanA = Math.tan(alt);
+    const lim = (S.maxH - P.y) / tanA; if (lim <= 0) return null;
+    const au = P.x * ux + P.z * uz, c = P.x * P.x + P.z * P.z - S.Rd * S.Rd, disc = au * au - c;
+    if (disc <= 0) return null;
+    const L = Math.min(lim, -au + Math.sqrt(disc)); if (L <= 0.5) return null;
+    return { ux, uz, tanA, L };
+  }
+  function clearTo(P, s) { // خطّ رؤية النواة نحو الشمس
+    const r = rayLen(P, s); if (!r) return true;
+    return S.idx.los(P, { x: P.x + r.ux * r.L, y: P.y + r.tanA * r.L, z: P.z + r.uz * r.L }, 2);
+  }
+  function blocker(P, s) { // نفس العيّنات التي يمشيها los، لكن يعيد المبنى الحاجب ومسافته
+    const r = rayLen(P, s); if (!r) return null;
+    const n = Math.max(1, Math.ceil(r.L / 2));
+    for (let k = 1; k < n; k++) {
+      const d = r.L * k / n, x = P.x + r.ux * d, z = P.z + r.uz * d, y = P.y + r.tanA * d;
+      const b = S.idx.at(x, z); if (b && b.h > y) return { b, d };
+    }
+    return null;
+  }
+  function sunHours(P, doy, info, step) { // عيّنة كلّ ١٠ دقائق من الشروق إلى الغروب
+    step = step || 10;
+    if (!info.up) return { N: 0, lit: 0, hours: 0, samples: [], t0: 0, step };
+    const N = Math.floor((info.set - info.rise) / step) + 1, samples = new Array(N);
+    let lit = 0;
+    for (let k = 0; k < N; k++) {
+      const s = sunAt(doy, info.rise + k * step);
+      const ok = s.alt > H0 && clearTo(P, s);
+      samples[k] = ok ? 1 : 0; if (ok) lit++;
+    }
+    return { N, lit, hours: info.len * lit / N, samples, t0: info.rise, step };
+  }
+
+  // ── الواجهة ──
+  let el = {};
+  function panel(c) {
+    ctx = c; THREE = c.THREE;
+    // ظلال أنعم على الحاسوب، وإعداد الضوء الشمسيّ مرّة واحدة
+    if (window.innerWidth > 640 && c.renderer.capabilities.maxTextureSize >= 8192) c.sun.shadow.mapSize.set(4096, 4096);
+    c.sun.shadow.bias = -0.0004; c.sun.shadow.normalBias = 0.4;
+    const g = document.createElement('canvas'); g.width = g.height = 128; const q = g.getContext('2d');
+    const gr = q.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.18, 'rgba(255,255,255,0.75)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.18)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    q.fillStyle = gr; q.fillRect(0, 0, 128, 128);
+    glowTex = new THREE.CanvasTexture(g); glowTex.colorSpace = THREE.SRGBColorSpace;
+    KFC = KF.map((k) => ({ a: k[0], top: new THREE.Color(k[1]), hor: new THREE.Color(k[2]), sc: new THREE.Color(k[3]), si: k[4], hs: new THREE.Color(k[5]), hi: k[6] }));
+    skyMat = new THREE.ShaderMaterial({
+      uniforms: { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, sunC: { value: new THREE.Color() }, sunD: { value: new THREE.Vector3(0, 1, 0) }, sunV: { value: 1 } },
+      vertexShader: 'varying vec3 vD;\nvoid main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 top; uniform vec3 hor; uniform vec3 sunC; uniform vec3 sunD; uniform float sunV; varying vec3 vD;\n' +
+        'void main(){ vec3 d = normalize(vD); float h = d.y;\n' +
+        ' vec3 c = mix(hor, top, pow(clamp(h, 0.0, 1.0), 0.45));\n' +
+        ' c = mix(c, hor * 0.82, smoothstep(0.0, -0.2, h));\n' +
+        ' float s = max(dot(d, normalize(sunD)), 0.0);\n' +
+        ' c += sunC * (pow(s, 5.0) * 0.30 + pow(s, 60.0) * 0.55 + smoothstep(0.9990, 0.9996, s) * 1.6) * sunV;\n' +
+        ' gl_FragColor = vec4(c, 1.0);\n#include <colorspace_fragment>\n}',
+      side: THREE.BackSide, depthTest: false, depthWrite: false, fog: false,
+    });
+
+    const P = c.ui.panel;
+    P.innerHTML =
+      '<div class="sn-hint">' + ICON_SUN + '<span>' + T('المس أيّ سطح أو نقطة على الأرض لتحسب شمسها', 'Tap any roof or ground point to measure its sun') + '</span></div>' +
+      '<div class="sn-pt" id="snPt"></div>' +
+      '<div class="sn-ctl"><button class="sn-play" id="snPlay"></button><button class="ghost" id="snNow">' + T('الآن', 'Now') + '</button></div>' +
+      '<div class="sn-lab"><span>' + T('الساعة', 'Time') + ' <small id="snTz"></small></span><b id="snTimeL"></b></div>' +
+      '<input type="range" class="sn-r" id="snTime" min="0" max="1435" step="5" aria-label="' + T('الساعة', 'Time') + '">' +
+      '<div class="sn-strip" id="snStrip"></div>' +
+      '<div class="sn-ticks"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>' +
+      '<div class="sn-lab"><span>' + T('التاريخ', 'Date') + '</span><b id="snDateL"></b></div>' +
+      '<input type="range" class="sn-r" id="snDate" min="1" max="' + DAYS + '" step="1" aria-label="' + T('التاريخ', 'Date') + '">' +
+      '<div class="sn-chips" id="snChips">' +
+      '<button class="ghost" data-chip="today">' + T('اليوم', 'Today') + '</button>' +
+      '<button class="ghost" data-chip="long">' + T('أطول نهار', 'Longest day') + '</button>' +
+      '<button class="ghost" data-chip="short">' + T('أقصر نهار', 'Shortest day') + '</button>' +
+      '<button class="ghost" data-chip="eq">' + T('الاعتدال', 'Equinox') + '</button></div>' +
+      '<div class="sn-cards" id="snCards"></div>' +
+      '<div class="sn-year"><div class="t"><span>' + T('شمس نقطتك على مدار السنة (يوم 21 من كلّ شهر)', 'Your spot\'s sun through the year (21st of each month)') + '</span></div><div id="snYear"></div><div class="t"><span id="snYearCap"></span></div></div>' +
+      '<div class="sn-leg"><span><i style="background:#ffc94a"></i>' + T('مسار اليوم المختار', 'Chosen day path') + '</span><span><i style="background:#ff8a4c"></i>' + T('أطول نهار', 'Longest day') + '</span><span><i style="background:#8fc2ff"></i>' + T('أقصر نهار', 'Shortest day') + '</span></div>';
+    el = {}; for (const id of ['snPt', 'snPlay', 'snNow', 'snTz', 'snTimeL', 'snTime', 'snStrip', 'snDateL', 'snDate', 'snChips', 'snCards', 'snYear', 'snYearCap']) el[id] = P.querySelector('#' + id);
+    setPlayBtn(false);
+    el.snTime.addEventListener('input', () => { if (!S) return; S.playing = false; setPlayBtn(false); S.t = +el.snTime.value; applyTime(); });
+    el.snDate.addEventListener('input', () => { if (!S) return; S.doy = +el.snDate.value; S.dirtyDay = true; el.snDateL.textContent = dateLabel(S.doy); markChips(); });
+    el.snPlay.addEventListener('click', () => play(!(S && S.playing)));
+    el.snNow.addEventListener('click', () => { if (!S) return; const n = nowLocal(); S.doy = n.doy; S.t = n.t; S.playing = false; setPlayBtn(false); syncInputs(); recomputeDay(); });
+    el.snChips.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !S) return; setDoy(chipDoy(b.dataset.chip)); });
+    el.snStrip.addEventListener('pointerdown', (e) => { if (!S) return; const r = el.snStrip.getBoundingClientRect(); const f = 1 - (e.clientX - r.left) / r.width; S.t = Math.max(0, Math.min(1435, Math.round(f * 1440 / 5) * 5)); S.playing = false; setPlayBtn(false); el.snTime.value = S.t; applyTime(); });
+    el.snYear.addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (b && S) setDoy(mdToDoy(+b.dataset.m, 21)); });
+
+    // اللمس للاختيار: ضغطة قصيرة بلا سحب (السحب يدير الكاميرا)
+    const dom = c.renderer.domElement; const downs = new Map();
+    ray.rc = new THREE.Raycaster();
+    dom.addEventListener('pointerdown', (e) => { downs.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now(), multi: downs.size > 0 }); if (downs.size > 1) for (const d of downs.values()) d.multi = true; });
+    const up = (e) => {
+      const d = downs.get(e.pointerId); downs.delete(e.pointerId);
+      if (!d || d.multi || e.type === 'pointercancel') return;
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 7 || performance.now() - d.t > 650) return;
+      tap(e.clientX, e.clientY);
+    };
+    dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+  }
+  function setPlayBtn(on) { if (!el.snPlay) return; el.snPlay.classList.toggle('on', on); el.snPlay.innerHTML = (on ? ICON_PAUSE : ICON_PLAY) + '<span>' + (on ? T('إيقاف', 'Pause') : T('شغّل اليوم', 'Play the day')) + '</span>'; }
+  function chipDoy(k) {
+    const north = S.lat >= 0;
+    if (k === 'today') return nowLocal().doy;
+    if (k === 'long') return mdToDoy(north ? 5 : 11, 21);
+    if (k === 'short') return mdToDoy(north ? 11 : 5, 21);
+    return mdToDoy(2, 20);
+  }
+  function markChips() { for (const b of el.snChips.querySelectorAll('button')) b.classList.toggle('on', chipDoy(b.dataset.chip) === S.doy); }
+  function nowLocal() {
+    const d = new Date(Date.now() + S.tz * 3600000);
+    let doy = Math.round((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - Date.UTC(d.getUTCFullYear(), 0, 0)) / 86400000);
+    doy = Math.max(1, Math.min(DAYS, doy));
+    return { doy, t: Math.min(1435, Math.round((d.getUTCHours() * 60 + d.getUTCMinutes()) / 5) * 5) };
+  }
+  function setDoy(doy) { S.doy = Math.max(1, Math.min(DAYS, doy)); syncInputs(); recomputeDay(); }
+  function syncInputs() { el.snTime.value = S.t; el.snDate.value = S.doy; el.snDateL.textContent = dateLabel(S.doy); el.snTimeL.textContent = fmt(S.t); markChips(); }
+  function play(on) {
+    if (!S) return;
+    S.playing = !!on; setPlayBtn(S.playing);
+    if (S.playing && S.info.up && !S.info.polar && (S.t < S.info.rise - 40 || S.t > S.info.set + 30)) S.t = Math.max(0, Math.floor((S.info.rise - 40) / 5) * 5);
+    pub();
+  }
+
+  // ── الاختيار ──
+  function pickFrom(rc) {
+    const city = S.city, hits = rc.intersectObjects([city.buildingsMesh, city.ground], false);
+    if (!hits.length) return null;
+    const h = hits[0], p = h.point, n = h.face ? h.face.normal : new THREE.Vector3(0, 1, 0);
+    if (h.object === city.buildingsMesh) {
+      if (n.y > 0.5) { const b = S.idx.at(p.x, p.z); return { x: p.x, y: (b ? b.h : p.y) + 0.3, z: p.z, kind: 'roof', b, bh: b ? b.h : p.y }; }
+      const b = S.idx.at(p.x - n.x * 0.5, p.z - n.z * 0.5);
+      return { x: p.x + n.x * 0.6, y: Math.max(0.5, p.y), z: p.z + n.z * 0.6, kind: 'wall', b, bh: b ? b.h : 0 };
+    }
+    return { x: p.x, y: 0.3, z: p.z, kind: 'ground', b: null, bh: 0 };
+  }
+  function tap(px, py) {
+    if (!S) return null;
+    const ndc = new THREE.Vector2((px / window.innerWidth) * 2 - 1, -(py / window.innerHeight) * 2 + 1);
+    ray.rc.setFromCamera(ndc, ctx.camera);
+    const P = pickFrom(ray.rc); if (P) setPick(P, false);
+    return P;
+  }
+  function pickWorld(x, z, fly) {
+    ray.rc.set(new THREE.Vector3(x, 5000, z), new THREE.Vector3(0, -1, 0));
+    const P = pickFrom(ray.rc) || { x, y: 0.3, z, kind: 'ground', b: null, bh: 0 };
+    setPick(P, fly); return P;
+  }
+  function setPick(P, fullFly) {
+    S.P = P;
+    const G = S.gPick; clearGroup(G);
+    const RA = S.RA, c = new THREE.Vector3(P.x, P.y, P.z);
+    // دائرة الأفق مع الجهات الأربع
+    const ring = new THREE.Mesh(new THREE.RingGeometry(RA - 1.4, RA + 1.4, 180), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(P.x, P.y + 0.25, P.z); G.add(ring);
+    const ticks = []; for (let a = 0; a < 360; a += 15) { const r0 = a % 90 === 0 ? RA - 16 : RA - 7, ca = Math.sin(a * DEG), sa = -Math.cos(a * DEG); ticks.push(P.x + ca * r0, P.y + 0.3, P.z + sa * r0, P.x + ca * RA, P.y + 0.3, P.z + sa * RA); }
+    const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(ticks, 3));
+    G.add(new THREE.LineSegments(tg, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })));
+    const card = [[0, T('ش', 'N')], [90, T('ق', 'E')], [180, T('ج', 'S')], [270, T('غ', 'W')]];
+    for (const [a, t] of card) { const s = label(t, a === 0 ? '#ff9a7a' : '#ffffff', RA * 0.085); s.position.set(P.x + Math.sin(a * DEG) * (RA + 26), P.y + 10, P.z - Math.cos(a * DEG) * (RA + 26)); G.add(s); }
+    // منارة النقطة المختارة
+    S.mark = new THREE.Group(); S.mark.position.copy(c); G.add(S.mark);
+    const pr = new THREE.Mesh(new THREE.RingGeometry(6, 9.5, 48), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.9, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+    pr.rotation.x = -Math.PI / 2; pr.position.y = 0.2; pr.renderOrder = 18; S.mark.add(pr); S.markRing = pr;
+    const bh = Math.max(40, RA * 0.16);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, bh, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false }));
+    beam.position.y = bh / 2; beam.renderOrder = 18; S.mark.add(beam); S.markBeam = beam;
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(4.5, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffe08a, depthTest: false })); dot.position.y = bh; dot.renderOrder = 19; S.mark.add(dot); S.markDot = dot;
+    const hl = glow(0xffd36b, 34, 0.9); hl.material.depthTest = false; hl.position.y = bh; S.mark.add(hl);
+    if (P.b && P.kind === 'roof') G.add(cap(P.b, 0xffc94a, 0.35, 0.35));
+    // مسارا أطول وأقصر نهار للمقارنة
+    const north = S.lat >= 0;
+    for (const [m, col] of [[north ? 5 : 11, 0xff8a4c], [north ? 11 : 5, 0x8fc2ff]]) { const t = tube(arcPts(mdToDoy(m, 21), c), 1.5, col, 0.7); if (t) G.add(t); }
+    // شعاع الشمس والقرص (تُحدَّث كلّ إطار زمنيّ)
+    S.sunDisc = new THREE.Group(); G.add(S.sunDisc);
+    S.sunDisc.add(new THREE.Mesh(new THREE.SphereGeometry(RA * 0.035, 24, 16), new THREE.MeshBasicMaterial({ color: 0xfff1b8 })));
+    S.sunGlow = glow(0xffc04a, RA * 0.42, 0.95); S.sunDisc.add(S.sunGlow);
+    S.ray = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.85, depthWrite: false }));
+    G.add(S.ray);
+    S.blkCap = null;
+    // الكاميرا
+    S.fly = frame(P, fullFly);
+    el.snPt.textContent = P.kind === 'roof' ? T('سطح مبنى ارتفاعه ', 'Roof of a building, ') + Math.round(P.bh) + T(' م', ' m') + (P.b && P.b.name ? ' — ' + P.b.name : '')
+      : P.kind === 'wall' ? T('واجهة مبنى على ارتفاع ', 'Building facade at ') + Math.round(P.y) + T(' م', ' m')
+        : T('نقطة على الأرض', 'Ground point');
+    recomputeDay();
+    startYear();
+  }
+  function frame(P, full) { // يضع مركز القوس وسط المساحة التي لا تغطّيها اللوحة (يسارها على الحاسوب، فوقها على الجوّال)
+    const o = ctx.orbit, phone = window.innerWidth <= 640, RA = S.RA;
+    const th = full ? -0.72 : o.theta, ph = full ? (phone ? 0.86 : 1.02) : o.phi;
+    const d = full ? RA * (phone ? 5 : 2.75) : Math.max(RA * 1.2, Math.min(o.dist, RA * (phone ? 5 : 3.6)));
+    const t1 = new THREE.Vector3(P.x, P.y + RA * 0.3, P.z);
+    const mpp = 2 * d * Math.tan(ctx.camera.fov * DEG / 2) / window.innerHeight;
+    const f = new THREE.Vector3(Math.sin(ph) * Math.sin(th), Math.cos(ph), Math.sin(ph) * Math.cos(th));
+    const right = new THREE.Vector3(Math.cos(th), 0, -Math.sin(th)), up = f.clone().cross(right).normalize();
+    const box = ctx.ui.box.getBoundingClientRect();
+    if (phone) t1.addScaledVector(up, -Math.max(0, window.innerHeight / 2 - (box.top + 70) / 2) * mpp); // ٧٠ بكسل للعدّاد العلويّ
+    else if (box.left > window.innerWidth / 2) t1.addScaledVector(right, (window.innerWidth - box.left) / 2 * mpp);
+    return { k: 0, t0: o.target.clone(), t1, d0: o.dist, d1: d, th0: o.theta, th1: th, ph0: o.phi, ph1: ph };
+  }
+  function arcPts(doy, c) {
+    const pts = [];
+    for (let t = 0; t <= 1440; t += 6) { const s = sunAt(doy, t); if (s.alt > -1.2 * DEG) pts.push(new THREE.Vector3(c.x + s.x * S.RA, c.y + s.y * S.RA, c.z + s.z * S.RA)); }
+    return pts;
+  }
+
+  // ── الحساب والعرض ──
+  function recomputeDay() {
+    S.dirtyDay = false;
+    if (!S.P) return;
+    S.info = dayInfo(S.doy);
+    S.res = sunHours(S.P, S.doy, S.info, 10);
+    const G = S.gArc; clearGroup(G);
+    const c = new THREE.Vector3(S.P.x, S.P.y, S.P.z);
+    const t = tube(arcPts(S.doy, c), 3, 0xffc94a, 1); if (t) G.add(t);
+    for (let h = 0; h <= 24; h++) {
+      const s = sunAt(S.doy, h * 60); if (s.alt < 1 * DEG) continue;
+      const p = new THREE.Vector3(c.x + s.x * S.RA, c.y + s.y * S.RA, c.z + s.z * S.RA);
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(4.2, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); dot.position.copy(p); G.add(dot);
+      const lb = label(String(h), '#ffe3a3', S.RA * 0.06); lb.position.set(p.x, p.y + S.RA * 0.06, p.z); G.add(lb);
+    }
+    renderStats(); renderStrip(); renderYear();
+    applyTime();
+  }
+  function lerpKF(altD) {
+    let i = 0; while (i < KFC.length - 2 && altD > KFC[i + 1].a) i++;
+    const a = KFC[i], b = KFC[i + 1], f = Math.max(0, Math.min(1, (altD - a.a) / (b.a - a.a)));
+    return { top: a.top.clone().lerp(b.top, f), hor: a.hor.clone().lerp(b.hor, f), sc: a.sc.clone().lerp(b.sc, f), si: a.si + (b.si - a.si) * f, hs: a.hs.clone().lerp(b.hs, f), hi: a.hi + (b.hi - a.hi) * f };
+  }
+  function applyTime() {
+    if (!S || !S.P) return;
+    const s = sunAt(S.doy, S.t), altD = s.alt / DEG, k = lerpKF(altD), sc = ctx.scene;
+    skyMat.uniforms.top.value.copy(k.top); skyMat.uniforms.hor.value.copy(k.hor); skyMat.uniforms.sunC.value.copy(k.sc);
+    skyMat.uniforms.sunD.value.set(s.x, s.y, s.z); skyMat.uniforms.sunV.value = Math.max(0, Math.min(1, (altD + 7) / 7));
+    sc.fog.color.copy(k.hor); sc.background.copy(k.hor);
+    ctx.sun.color.copy(k.sc); ctx.sun.intensity = k.si; ctx.hemi.color.copy(k.hs); ctx.hemi.intensity = k.hi;
+    const la = Math.max(s.alt, 2 * DEG), D = ctx.R * 2;
+    ctx.sun.position.set(Math.sin(s.az) * Math.cos(la) * D, Math.sin(la) * D, -Math.cos(s.az) * Math.cos(la) * D);
+    ctx.sun.target.position.set(0, 0, 0);
+    // القرص والشعاع
+    const P = S.P, sp = new THREE.Vector3(P.x + s.x * S.RA, P.y + s.y * S.RA, P.z + s.z * S.RA);
+    S.sunDisc.position.copy(sp); S.sunDisc.visible = s.alt > -1.2 * DEG;
+    const up = s.alt > H0;
+    const bk = up ? blocker(P, s) : null;
+    S.litNow = up && !bk; S.blk = bk;
+    if (S.blkCap && (!bk || S.blkCap.userData.b !== bk.b)) { S.gPick.remove(S.blkCap); S.blkCap.geometry.dispose(); S.blkCap.material.dispose(); S.blkCap = null; }
+    if (bk && !S.blkCap) { S.blkCap = cap(bk.b, 0xff6a55, 0.5, 0.6); S.blkCap.userData.b = bk.b; S.gPick.add(S.blkCap); }
+    S.ray.visible = up;
+    if (up) {
+      const a = new THREE.Vector3(P.x, P.y, P.z), d = sp.clone().sub(a), L = d.length();
+      S.ray.scale.set(1, L, 1); S.ray.position.copy(a).addScaledVector(d, 0.5);
+      S.ray.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+      S.ray.material.color.setHex(S.litNow ? 0xffd25a : 0xff6a55); S.ray.material.opacity = S.litNow ? 0.9 : 0.6;
+    }
+    const mc = S.litNow ? 0xffc94a : (up ? 0x7aa3c9 : 0x5d6f94);
+    S.markRing.material.color.setHex(mc); S.markBeam.material.color.setHex(mc); S.markDot.material.color.setHex(S.litNow ? 0xffe08a : 0xb9d3ea);
+    el.snTimeL.textContent = fmt(S.t);
+    if (+el.snTime.value !== S.t) el.snTime.value = S.t;
+    if (S.stripMark) { const x = 1440 - S.t; S.stripMark.setAttribute('x1', x); S.stripMark.setAttribute('x2', x); }
+    const r = S.res;
+    const now = !up ? '<div class="n nt"><i></i>' + T('الشمس تحت الأفق', 'Sun is below the horizon') + '</div>'
+      : S.litNow ? '<div class="n"><i></i>' + T('مشمسة الآن · الشمس ', 'In sun now · sun ') + Math.round(altD) + '° ' + dirName(s.az) + '</div>'
+        : bk.b === P.b ? '<div class="n sh"><i></i>' + T('في الظلّ الآن — الشمس خلف هذا المبنى نفسه', 'In shade now — the sun is behind this very building') + '</div>'
+          : '<div class="n sh"><i></i>' + T('في الظلّ الآن — يحجبها مبنى ', 'In shade now — blocked by a ') + Math.round(bk.b.h) + T(' م على بعد ', ' m building ') + Math.round(bk.d) + T(' م', ' m away') + '</div>';
+    ctx.ui.hud('<div class="sn-hud"><div class="c">' + fmt(S.t) + '</div><div class="d">' + dateLabel(S.doy) + ' ' + Y + ' · <span dir="ltr">' + tzName(S.tz) + '</span> ' + T('تقريبًا', 'approx.') + '</div>' +
+      '<div class="l">' + T('شمس مباشرة على نقطتك', 'Direct sun on your spot') + '</div><div class="h"><b>' + r1(r.hours).toFixed(1) + '</b><span>' + T('ساعة من ', 'h of ') + r1(S.info.len).toFixed(1) + T(' ساعة نهار', ' h daylight') + '</span></div>' + now + '</div>');
+    pub(s);
+  }
+  function renderStats() {
+    const i = S.info, r = S.res, pct = i.len ? Math.round(100 * r.hours / i.len) : 0;
+    const cards = [
+      [T('الشروق', 'Sunrise'), i.polar ? '—' : fmt(i.rise)], [T('الغروب', 'Sunset'), i.polar ? '—' : fmt(i.set)], [T('طول النهار', 'Daylight'), r1(i.len).toFixed(1) + T(' س', ' h')],
+      [T('شمس مباشرة', 'Direct sun'), r1(r.hours).toFixed(1) + T(' س', ' h'), 1], [T('في الظلّ', 'In shade'), r1(Math.max(0, i.len - r.hours)).toFixed(1) + T(' س', ' h')], [T('ذروة الشمس', 'Sun peak'), Math.round(i.peak / DEG) + '° ' + fmt(i.noon)],
+    ];
+    el.snCards.innerHTML = cards.map((c) => '<div class="sn-card' + (c[2] ? ' gold' : '') + '"><span>' + c[0] + '</span><b>' + c[1] + '</b></div>').join('') +
+      '<div class="sn-card" style="grid-column:1/-1"><span>' + T('نسبة النهار المشمس على نقطتك', 'Share of daylight in direct sun') + '</span><b>' + pct + '%</b></div>';
+  }
+  function renderStrip() { // شريط ٢٤ ساعة من اليمين لليسار مثل منزلقة الوقت
+    const i = S.info, r = S.res; let h = '<svg viewBox="0 0 1440 20" preserveAspectRatio="none"><rect width="1440" height="20" fill="#16212e"/>';
+    if (i.up) {
+      const a = Math.max(0, i.rise), b = Math.min(1440, i.set);
+      h += '<rect x="' + (1440 - b) + '" y="0" width="' + Math.max(0, b - a) + '" height="20" fill="#41576b"/>';
+      let k = 0;
+      while (k < r.N) {
+        if (!r.samples[k]) { k++; continue; }
+        let j = k; while (j + 1 < r.N && r.samples[j + 1]) j++;
+        const t0 = Math.max(0, r.t0 + (k - 0.5) * r.step, i.rise), t1 = Math.min(1440, r.t0 + (j + 0.5) * r.step, i.set);
+        if (t1 > t0) h += '<rect x="' + (1440 - t1) + '" y="0" width="' + (t1 - t0) + '" height="20" fill="#ffc94a"/>';
+        k = j + 1;
+      }
+    }
+    h += '<line id="snMark" x1="0" x2="0" y1="0" y2="20" stroke="#fff" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>';
+    el.snStrip.innerHTML = h; S.stripMark = el.snStrip.querySelector('#snMark');
+  }
+  function renderYear() {
+    const W = 240, Hh = 66, yr = S.year, m0 = doyToMD(S.doy)[0];
+    const mx = Math.max(13, ...yr.filter(Boolean).map((v) => v.len));
+    let h = '<svg viewBox="0 0 ' + W + ' 86">';
+    for (let m = 0; m < 12; m++) {
+      const x = W - (m + 1) * 20 + 3, v = yr[m];
+      h += '<g data-m="' + m + '" style="cursor:pointer"><rect x="' + (x - 3) + '" y="0" width="20" height="86" fill="transparent"/>';
+      if (v) {
+        const hl = v.len / mx * Hh, hs = v.sun / mx * Hh;
+        h += '<rect x="' + x + '" y="' + (Hh - hl + 2) + '" width="14" height="' + hl + '" rx="3" fill="#2b4252"/>';
+        h += '<rect x="' + x + '" y="' + (Hh - hs + 2) + '" width="14" height="' + hs + '" rx="3" fill="' + (m === m0 ? '#ffc94a' : '#d79a3a') + '"/>';
+      } else h += '<rect x="' + x + '" y="' + (Hh - 6) + '" width="14" height="8" rx="3" fill="#22333f"/>';
+      if (m === m0) h += '<rect x="' + (x - 2) + '" y="0.5" width="18" height="' + (Hh + 3) + '" rx="4" fill="none" stroke="#ffe3a3" stroke-width="1"/>';
+      h += '<text x="' + (x + 7) + '" y="82" text-anchor="middle" font-size="9" fill="' + (m === m0 ? '#ffe3a3' : '#7f9aa1') + '">' + (m + 1) + '</text></g>';
+    }
+    el.snYear.innerHTML = h + '</svg>';
+    const v = yr[m0], done = yr.filter(Boolean).length;
+    el.snYearCap.innerHTML = done < 12 ? T('أحسب السنة… ', 'Computing the year… ') + done + '/12'
+      : (AR ? MON_AR[m0] : MON_EN[m0]) + ': <b>' + v.sun.toFixed(1) + '</b> ' + T('من ', 'of ') + v.len.toFixed(1) + T(' ساعة · أشمس شهر: ', ' h · sunniest: ') + (AR ? MON_AR : MON_EN)[S.bestM] + ' (' + yr[S.bestM].sun.toFixed(1) + ')';
+  }
+  function startYear() { // 12 شهرًا على دفعات حتّى لا تتجمّد الصفحة
+    const gen = ++S.yearGen, St = S, P = S.P; St.year = new Array(12).fill(null); St.bestM = 0;
+    let m = 0;
+    const step = () => {
+      if (S !== St || St.yearGen !== gen) return;
+      const doy = mdToDoy(m, 21), info = dayInfo(doy), r = sunHours(P, doy, info, 10);
+      St.year[m] = { len: r1(info.len), sun: r1(r.hours) };
+      if (St.year[m].sun > St.year[St.bestM].sun) St.bestM = m;
+      m++; renderYear(); pub();
+      if (m < 12) setTimeout(step, 0);
+    };
+    renderYear(); setTimeout(step, 0);
+  }
+  function pub(s) {
+    if (!S || !S.P) return;
+    s = s || sunAt(S.doy, S.t);
+    const [m, d] = doyToMD(S.doy), i = S.info, r = S.res, P = S.P;
+    window.__inspire_state = {
+      id: 'sun', city: S.name, lat: +S.lat.toFixed(4), lon: +S.lon.toFixed(4), tz: S.tz,
+      date: Y + '-' + pad(m + 1) + '-' + pad(d), doy: S.doy, time: fmt(S.t), minutes: S.t,
+      picked: { x: r1(P.x), y: r1(P.y), z: r1(P.z), kind: P.kind, buildingH: r1(P.bh || 0) },
+      sunrise: i.polar ? null : fmt(i.rise), sunset: i.polar ? null : fmt(i.set), sunriseMin: i.rise == null ? null : r1(i.rise), sunsetMin: i.set == null ? null : r1(i.set),
+      dayLengthH: r1(i.len), directSunHours: r1(r.hours), shadeHours: r1(Math.max(0, i.len - r.hours)), samples: r.N, litSamples: r.lit, sunPct: i.len ? Math.round(100 * r.hours / i.len) : 0,
+      solarNoon: fmt(i.noon), peakAltDeg: r1(i.peak / DEG), sunAltDeg: r1(s.alt / DEG), sunAzDeg: r1(((s.az / DEG) % 360 + 360) % 360),
+      litNow: !!S.litNow, blockerH: S.blk ? r1(S.blk.b.h) : null, blockerDist: S.blk ? Math.round(S.blk.d) : null,
+      year: S.year.map((v) => (v ? v.sun : null)), yearDaylight: S.year.map((v) => (v ? v.len : null)), yearDone: S.year.filter(Boolean).length,
+      arcRadius: Math.round(S.RA), maxH: r1(S.maxH), playing: !!S.playing, flying: !!S.fly,
+    };
+  }
+
+  // ── لكلّ مدينة ──
+  function onCity(c, city) {
+    ctx = c;
+    if (S) { S.playing = false; clearGroup(S.gPick); clearGroup(S.gArc); } // تحرير مواد ونسيج المدينة السابقة
+    const maxH = city.buildings.length ? city.buildings[0].h : 0; // مرتّبة تنازليًّا في النواة
+    S = { city, idx: city.idx, name: city.name, lat: city.lat, lon: city.lon, tz: approxTz(city.lat, city.lon), maxH, Rd: c.R + 90, RA: Math.max(200, Math.min(380, maxH * 1.15)),
+      doy: 1, t: 15 * 60 + 30, playing: false, dirtyDay: false, P: null, info: null, res: null, year: new Array(12).fill(null), yearGen: 0, bestM: 0, fly: null };
+    const n = nowLocal(); S.doy = n.doy;
+    setPlayBtn(false);
+    el.snTz.textContent = '(' + tzName(S.tz) + T(' تقريبًا)', ' approx.)');
+    S.sky = new THREE.Mesh(new THREE.SphereGeometry(1500, 32, 16), skyMat); S.sky.renderOrder = -10; S.sky.frustumCulled = false; city.group.add(S.sky);
+    S.gPick = new THREE.Group(); S.gArc = new THREE.Group(); city.group.add(S.gPick, S.gArc);
+    syncInputs();
+    // نقطة البداية: مركز الحيّ (سطح إن كان فيه مبنى)
+    pickWorld(0, 0, true);
+    const St = S;
+    c.onFrame((dt, now) => {
+      if (S !== St) return;
+      S.sky.position.copy(c.camera.position);
+      c.scene.fog.near = Math.max(c.R * 1.2, c.orbit.dist * 0.95); c.scene.fog.far = c.scene.fog.near + c.R * 2.6;
+      if (S.dirtyDay) recomputeDay();
+      const rdt = Math.min(0.5, (now - (S.lastNow || now)) / 1000); S.lastNow = now; // سرعة التشغيل لا تتبع عدد الإطارات
+      if (S.playing) {
+        const i = S.info; let t = S.t + rdt * 80;
+        if (!i.up) t = t % 1440; else if (i.polar) t = t % 1440; else if (t > i.set + 30) t = Math.max(0, i.rise - 40);
+        if (t > 1435) t = 0;
+        S.t = t; applyTime();
+      }
+      if (S.fly) {
+        const f = S.fly; if (!f.s) f.s = now; f.k = Math.min(1, (now - f.s) / 1300); /* بالزمن الحقيقيّ لا بعدد الإطارات */ const e = f.k < 0.5 ? 4 * f.k * f.k * f.k : 1 - Math.pow(-2 * f.k + 2, 3) / 2, o = c.orbit;
+        o.target.lerpVectors(f.t0, f.t1, e); o.dist = f.d0 + (f.d1 - f.d0) * e; o.theta = f.th0 + (f.th1 - f.th0) * e; o.phi = f.ph0 + (f.ph1 - f.ph0) * e; o.apply();
+        if (f.k >= 1) S.fly = null;
+      }
+      if (S.markRing) { const p = 1 + ((now / 1400) % 1) * 1.6; S.markRing.scale.set(p, p, 1); S.markRing.material.opacity = 0.95 * (1 - ((now / 1400) % 1)) + 0.1; }
+      if (S.sunGlow) { const q = S.RA * (0.4 + 0.03 * Math.sin(now / 300)); S.sunGlow.scale.set(q, q, 1); }
+    });
+  }
+
+  window.__sun = {
+    tap, pick: (x, z, full) => pickWorld(x, z, !!full),
+    setDate: (m, d) => setDoy(mdToDoy(m - 1, d)),
+    setTime: (hm) => { const t = typeof hm === 'string' ? (+hm.split(':')[0]) * 60 + (+hm.split(':')[1]) : +hm; S.t = Math.max(0, Math.min(1435, t)); S.playing = false; setPlayBtn(false); applyTime(); },
+    play: (on) => play(on !== false),
+    check: (x, z, m, d, hm) => { // للاختبار: نفس الحساب لنقطة وتاريخ بلا تغيير المشهد
+      const doy = mdToDoy(m - 1, d), info = dayInfo(doy), t = (+hm.split(':')[0]) * 60 + (+hm.split(':')[1]);
+      const P = { x, y: (S.idx.heightAt(x, z) || 0) + 0.3, z }, s = sunAt(doy, t), bk = blocker(P, s);
+      return { rise: fmt(info.rise), set: fmt(info.set), lenH: r1(info.len), hours: r1(sunHours(P, doy, info, 10).hours), alt: r1(s.alt / DEG), los: s.alt > H0 && clearTo(P, s), blocker: bk ? r1(bk.b.h) : null };
+    },
+  };
+
+  CK.start({ imagery: true,
+    title: TITLE,
+    sub: T('المس سطحك أو أيّ نقطة، وحرّك التاريخ والساعة: الشمس والظلال حقيقيّة لمكانك.', 'Tap your roof or any spot, then move the date and hour: the sun and shadows are real for your place.'),
+    shadows: true, panel, onCity,
+  });
+})();
+</script></body></html>

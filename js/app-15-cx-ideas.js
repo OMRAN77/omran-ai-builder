@@ -8,6 +8,8 @@
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   function T(o){ return o[lg()] || o.en || o.ar; }
   var $ = function(id){ return document.getElementById(id); };
+  function cxTokenOf(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  function gt(k){ try{ var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? v : T(D.tx.err); }catch(e){ return T(D.tx.err); } }
 
   /* معرض كبير داخل التطبيق — مشترك للديكور والمقاولات */
   if(!window.omranLightbox){
@@ -51,9 +53,12 @@
     var floorsInput = $('constructionFloors');
     var floors = sel.floors || (floorsInput && floorsInput.value ? (parseInt(floorsInput.value, 10) >= 3 ? 'g2' : (parseInt(floorsInput.value, 10) === 2 ? 'g1' : 'g')) : '');
     try{
-      var r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ mode:'construction', type: type, view: sel.view, floors: floors, style: sel.style, q: input.value.trim() }) });
+      var r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ mode:'construction', type: type, view: sel.view, floors: floors, style: sel.style, q: input.value.trim(), token: cxTokenOf() }) });
       var d = await r.json();
       if(my !== req) return;
+      /* v-open-tools-cap: المعرض صار بجلسة وسقف يوميّ ثابت — نصّ الدخول والحدّ الموجودان بالـ١٤ لغة */
+      if(d && d.error === 'auth_required'){ setStatus(gt('designAiNeedLogin')); return; }
+      if(d && d.error === 'daily_limit_reached'){ setStatus(gt('designAiLimitReached')); return; }
       var imgs = Array.isArray(d.images) ? d.images : [];
       if(!imgs.length){ setStatus(T((d && d.error === 'provider') ? D.tx.err : D.tx.none)); return; }
       imgs.forEach(function(u){
@@ -81,7 +86,11 @@
       '<div style="display:flex;gap:6px;align-items:stretch;"><input id="cxIdeaText" type="text" maxlength="200" style="flex:1;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.04);color:inherit;font-family:inherit;"><button type="button" class="btn primary" id="cxIdeaGo" style="width:auto;white-space:nowrap;"></button></div>' +
       '<div id="cxIdeaStatus" style="display:none;font-size:12.5px;margin-top:8px;line-height:1.7;"></div>' +
       '<div id="cxIdeaGallery" style="display:none;columns:2;column-gap:6px;margin-top:8px;"></div>';
-    desc.insertAdjacentElement('afterend', box);
+    /* v-cx-brief: المعرض معرضُ صورٍ لا يولّد شيئًا، وكان أعلى النافذة فيلعب فيه الداخل ولا
+       يخرج بنتيجة (شكوى المالك «الي يدخل يضيع فيه»). مكانه الآن آخر النافذة بعد النتيجة
+       وزواياها، وأعلى النافذة صار سطر الوصف الذي يولّد فعلًا (app-15-cx-brief.js). */
+    var tail = $('constructionViewsSection') || $('constructionPlanText') || desc;
+    tail.insertAdjacentElement('afterend', box);
     status = $('cxIdeaStatus'); gallery = $('cxIdeaGallery'); input = $('cxIdeaText');
     $('cxIdeaGo').onclick = load;
     input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); load(); } });

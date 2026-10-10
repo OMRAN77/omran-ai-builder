@@ -4,13 +4,62 @@
   /* v-tools-clean (المالك ٥ سبتمبر: «جبتلك الصور نظيفة — غيّر الصور كاملة بالترتيب ونفس المقاس مع 14 لغة»):
      ثماني عشرة صورة نظيفة بلا نصّ مطبوع، كلها بمقاس واحد 1200×720، لكل اللغات بما فيها العربية.
      العنوان والوصف يُكتبان نصًّا مترجمًا فوق البطاقة (tcMeta) بالـ14 لغة. */
-  var CLEAN_V = '1';
+  /* v-gpu-lite (فيديو المالك ٢٣ سبتمبر «التطبيق كامل يشوش»): البطاقة تُعرض 173×96 على الجوّال (~300 على الكمبيوتر)،
+     والأصل 1200×720 يكلّف 3.3MB من ذاكرة الرسم لكلّ واحدة — ثماني عشرة = ~60MB، فتمتلئ ذاكرة معالج الرسوم في
+     أندرويد وتظهر مستطيلات سوداء فوق البطاقات. نسخة عرض 600×360 في assets/tool-cards/s (الأصول باقية في clean/). */
+  var CLEAN_V = '2';
   var IDS = ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnStocks','btnOmranTV','btnQibla','btnExpense','btnOmranEdu','btnConstruction','btnReligion','btnCV','btnDocs','btnFeedback','btnEmailAssist'];
   var TOOL_PHOTOS = {};
-  IDS.forEach(function(id){ TOOL_PHOTOS[id] = '/assets/tool-cards/clean/' + id + '.jpg?v=' + CLEAN_V; });
+  IDS.forEach(function(id){ TOOL_PHOTOS[id] = '/assets/tool-cards/s/' + id + '.jpg?v=' + CLEAN_V; });
   function isAr(){ return String(document.documentElement.lang || 'ar').toLowerCase().indexOf('ar') === 0; }
   function srcFor(id){ return TOOL_PHOTOS[id]; }
 
+  /* v-shelf-paint-throttle (فيديو المالك ٢٨ سبتمبر — بعد ١٫٣٫١٢: صفوف كاملة تفرغ عند تمرير لوحة
+     الأدوات على هواوي، بينما السهمان (طبقة تركيب مستقلّة) يبقيان مرسومين — علامة «تأخّر رسم» الموثّقة
+     في PITFALLS (فخّ ٢٤ سبتمبر v-modal-img-release)، لا تلف ذاكرة (تلك عالجها 1.3.12 بالفعل). السحب
+     السريع يكشف عدّة أزرار دفعة واحدة فيطلق __omranWhenSeen لكلّ واحد فورًا: عدّة new Image() تتزاحم
+     على فكّ الترميز في نفس الإطار فتتأخّر الطبقة الرئيسيّة. طابور بحدّ تزامن يبعثر العمل زمنيًّا
+     بدل تصغير الصور (نزلت أصلًا لـ600×360 في v-gpu-lite) — لم يُختبر على الجهاز نفسه بعد؛ يحتاج تأكيد المالك. */
+  var TC_MAX_CONCURRENT = 3;
+  var tcActive = 0;
+  var tcQueue = [];
+  function tcNext(){
+    if(tcActive >= TC_MAX_CONCURRENT) return;
+    var job = tcQueue.shift();
+    if(!job) return;
+    tcStartLoad(job.id, job.src);
+  }
+  function tcStartLoad(id, src){
+    var button = document.getElementById(id);
+    if(!button){ tcNext(); return; }
+    tcActive++;
+    var preload = new Image();
+    preload.onload = function(){
+      tcActive--;
+      var oldImage = button.querySelector('img.stp3d');
+      var media = button.querySelector('.tcMedia');
+      if(button.classList.contains('hasToolPhoto')){ tcNext(); return; }
+      if(oldImage){
+        oldImage.src = src;
+        oldImage.classList.add('toolPhotoImage');
+      } else {
+        oldImage = document.createElement('img');
+        oldImage.className = 'stp3d toolPhotoImage';
+        oldImage.loading = 'lazy';
+        oldImage.alt = '';
+        oldImage.src = src;
+      }
+      oldImage.width = 600;
+      oldImage.height = 360;
+      if(!media){ media = document.createElement('span'); media.className = 'tcMedia'; button.insertBefore(media, button.firstChild); }
+      media.appendChild(oldImage);
+      var live = button.querySelector('.tcLive'); if(live) media.appendChild(live);
+      button.classList.add('has3d', 'hasToolPhoto');
+      tcNext();
+    };
+    preload.onerror = function(){ tcActive--; button.__tcLoading = null; /* Keep the existing icon when a photo cannot load. */ tcNext(); };
+    preload.src = src;
+  }
   function upgradeButton(id, src){
     var button = document.getElementById(id);
     if(!button) return;
@@ -23,25 +72,8 @@
     /* سباق تحميل: نداءان متتاليان قبل اكتمال أول تحميل كانا يضيفان صورتين للزر (لقطة المالك: اقتراحات) */
     if(button.__tcLoading === src) return;
     button.__tcLoading = src;
-    var preload = new Image();
-    preload.onload = function(){
-      var oldImage = button.querySelector('img.stp3d');
-      if(button.classList.contains('hasToolPhoto')) return;
-      if(oldImage){
-        oldImage.src = src;
-        oldImage.classList.add('toolPhotoImage');
-      } else {
-        oldImage = document.createElement('img');
-        oldImage.className = 'stp3d toolPhotoImage';
-        oldImage.loading = 'lazy';
-        oldImage.alt = '';
-        oldImage.src = src;
-        button.insertBefore(oldImage, button.firstChild);
-      }
-      button.classList.add('has3d', 'hasToolPhoto');
-    };
-    preload.onerror = function(){ button.__tcLoading = null; /* Keep the existing icon when a photo cannot load. */ };
-    preload.src = src;
+    if(tcActive < TC_MAX_CONCURRENT) tcStartLoad(id, src);
+    else tcQueue.push({ id: id, src: src });
   }
 
   /* v-tools-14 (المالك: «ترتب مكان واحد وكأنه ما عندي 14 لغة»): خارج العربية تُبنى البطاقة
@@ -69,9 +101,8 @@
       meta = document.createElement('span'); meta.className = 'tcMeta';
       var txt = document.createElement('span'); txt.className = 'tcTxt';
       var sub = document.createElement('span'); sub.className = 'tcSub'; sub.setAttribute('data-i18n', 'tcSub_' + id);
-      var arr = document.createElement('span'); arr.className = 'tcArrow'; arr.setAttribute('aria-hidden', 'true'); arr.textContent = '›';
       lab.parentNode.insertBefore(meta, lab);
-      txt.appendChild(lab); txt.appendChild(sub); meta.appendChild(txt); meta.appendChild(arr);
+      txt.appendChild(lab); txt.appendChild(sub); meta.appendChild(txt);
     }
     var s = meta.querySelector('.tcSub'); if(s){ var v = subFor(id); if(v) s.textContent = v; }
     /* العنوان نظيف بلا إيموجي في أوله (بعض المفاتيح تبدأ برمز) */
@@ -83,7 +114,7 @@
     var b = document.getElementById(id); if(!b) return;
     var c = b.querySelector('.tcLive');
     if(!txt){ if(c) c.remove(); return; }
-    if(!c){ c = document.createElement('span'); c.className = 'tcLive'; var host = b.querySelector('.tcTxt') || b; host.appendChild(c); }
+    if(!c){ c = document.createElement('span'); c.className = 'tcLive'; var host = b.querySelector('.tcMedia') || b.querySelector('.tcTxt') || b; host.appendChild(c); }
     c.textContent = txt;
   }
   function fmtNum(n){ try{ return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }); }catch(e){ return String(n); } }
@@ -110,9 +141,20 @@
     try{ new MutationObserver(tick).observe(o, { attributes: true, attributeFilter: ['class'] }); }catch(e){ /* guard-ok */ }
     tick();
   }
+  /* v-art-defer (المالك ٢٤ سبتمبر «… والأدوات»): الثماني عشرة بطاقة داخل #sectionsToolsOverlay
+     المغلق، وupgradeButton كان يحمّلها كلّها عند الإقلاع بـ`new Image()` — ١٤٫٨ م.ب بكسلات لا
+     يراها أحد حتّى تُفتح لوحة الأدوات. التأجيل على **الزرّ** لا على الصورة: الصورة بلا
+     `hasToolPhoto` بلا ارتفاع فلا تتقاطع أبدًا، والزرّ له تخطيطه في الشبكة دائمًا. النصّ
+     (decorate) يبقى عند الإقلاع كما كان — العناوين والأوصاف ليست بكسلات. */
   function applyToolPhotos(){
     watchOverlay();
-    Object.keys(TOOL_PHOTOS).forEach(function(id){ upgradeButton(id, srcFor(id)); decorate(id); });
+    Object.keys(TOOL_PHOTOS).forEach(function(id){
+      decorate(id);
+      var btn = document.getElementById(id);
+      if(!btn) return;
+      if(window.__omranWhenSeen) window.__omranWhenSeen(btn, function(){ upgradeButton(id, srcFor(id)); });
+      else upgradeButton(id, srcFor(id));
+    });
   }
   try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
 

@@ -1,10 +1,10 @@
-// «استوديو الإعلانات» — توليد الإعلان صورةً كاملة عبر OpenAI (gpt-image-2).
+// «استوديو الإعلانات» — توليد الإعلان صورةً كاملة عبر OpenAI.
 // يأخذ صورة المستخدم + بيانات إعلانه ويعيد ملصقًا عموديًّا ٩:١٦ مُولَّدًا بالكامل
 // (مشهد + إضاءة + قصّ الشخص + كتابة عربيّة داخل الصورة) — لا HTML فوق صورة.
 // حارسان قبل أي مفتاح: هويّة مُتحقَّقة (لا ضيوف) ثمّ سقف يوميّ منفصل عن المحادثة.
 // ⚠️ فخّ مُثبت: حارس _fetch-timeout.js يقطع كلّ fetch عند ٣٠ ثانية، وتوليد الصورة
 //    يستغرق ٦٠–١٥٠ ثانية. لذلك نمرّر signal خاصًّا بنا — الحارس يترك من يمرّر signal.
-const { checkAndConsumeCustom } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: المشترك بنسبة سقف باقته
 const { verifyPointsToken } = require('./points.js');
 
 const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur:'Urdu', bn:'Bengali', ml:'Malayalam', ne:'Nepali', fil:'Filipino', id:'Indonesian', zh:'Chinese (Simplified)', ru:'Russian', tr:'Turkish', es:'Spanish' };
@@ -105,9 +105,9 @@ module.exports = async (req, res) => {
       return;
     }
     // ② سقف يوميّ مستقلّ — الصورة أغلى من الرسالة.
-    const gate = await checkAndConsumeCustom(b.token, null, null, 'adimage', DAILY);
+    const gate = await checkAndConsumePlanCustom(b.token, null, null, 'adimage', DAILY);
     if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
+      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
       return;
     }
 
@@ -155,9 +155,9 @@ module.exports = async (req, res) => {
       p += 'CUSTOMER BACKGROUND REQUEST (overrides the template\'s background and colour mood, but NOT its layout): restyle the background scene and colour palette to match exactly: "' + bg + '". Keep every card, plaque and text position identical to the layout.' + (hasImg ? ' The customer\'s photographed subject itself still stays exactly as photographed.' : '') + '\n';
     }
     const pool = SCENES[cat] || SCENES.other;
-    const scene = pool[Math.floor(Math.random() * pool.length)];
+    const scene = pool[Math.floor(Math.random() * pool.length)] + '. Art direction: ' + look;
     p += p0hint
-       + (bg ? '' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
+       + (bg ? 'Art direction: ' + look + '.\n' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Art direction: ' + look + '. Accent/glow colour: ' + accent + '.\n'
                  : 'Scene and mood for THIS poster (unique per request): ' + scene + '. Accent/glow colour: ' + accent + '.\n')
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
@@ -179,7 +179,7 @@ module.exports = async (req, res) => {
     p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic'
       + (hasImg ? ', keeping the customer photo\'s own lighting and time of day. '
                 : (bg ? ', lit to match the requested background scene. '
-                      : ', lit by warm golden street light, on wet reflective ground at night. '));
+                      : ', lit by warm golden street light, on wet reflective ground at night. '))
        + 'Do not add any other text, no watermark, no logo, no invented or misspelled letters. '
        + 'Composition must be clean, balanced, symmetric and ready to publish — premium classifieds-ad style, black and gold.';
 
@@ -187,10 +187,10 @@ module.exports = async (req, res) => {
     // ⚠️ فخّان مقيسان حيًّا (٩ أغسطس ٢٠٢٦):
     //   ١) /v1/images/generations يرفض multipart/form-data ويردّ 400 فورًا —
     //      كلّ إعلان بلا صورة مستخدم كان يفشل قبل أن يبدأ. JSON للتوليد، multipart للتعديل.
-    //   ٢) gpt-image-2 لا يدعم input_fidelity (400 صريح) — حُذف.
+    //   ٢) موديلات الصور الحديثة لا تدعم input_fidelity (400 صريح) — حُذف.
     // وwebp/82 بدل png: 3.13MB → 0.23MB base64 (١٤×) — يبقى تحت سقف Vercel ٤٫٥MB.
     const body = {
-      model: 'gpt-image-2',
+      model: (tplB64 || hasImg) ? 'gpt-image-2.5-sunburst' : 'gpt-image-2.5-flare',
       prompt: p,
       size: SIZES[RK],
       quality: 'medium', // v707: high كان يأخذ 3-4 دقائق — medium أسرع بكثير؛ رجّعها high إذا نزلت الجودة
@@ -227,14 +227,14 @@ module.exports = async (req, res) => {
       if (hasImg) gImgs.push([b.imageBase64, /^image\/(png|jpeg|webp)$/.test(String(b.mimeType || '')) ? b.mimeType : 'image/jpeg']);
       const g = await geminiAdImage(p, gImgs);
       if (g) {
-        res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: DAILY, engine: 'gemini' }));
+        res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: gate.limit || DAILY, engine: 'gemini' }));
         return;
       }
       const m = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).replace(/key=[^&\s"']+/g, 'key=***');
       res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان: ' + m }));
       return;
     }
-    res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: DAILY }));
+    res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: gate.limit || DAILY }));
   } catch (e) {
     const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));

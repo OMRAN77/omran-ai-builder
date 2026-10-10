@@ -1,6 +1,6 @@
 // ملاحظة: BUILD_ID هو ما يجب أن يتغيّر عند كل إصدار (اربطه بسكربت البناء).
 // الأصول الثابتة في كاش منفصل لا يُمسح مع كل إصدار.
-const BUILD_ID     = 'fe44d880-034b86ff';
+const BUILD_ID     = 'a105ec35-034b86ff';
 const SHELL_CACHE  = 'shell-' + BUILD_ID;   // القشرة + الحزمة — تُمسح كل إصدار
 const ASSET_CACHE  = 'assets-v1';           // صور وأيقونات — تُمسح عند تغيّرها فقط
 
@@ -177,10 +177,10 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // v-pdf-noleave: روابط التنزيل /p/<id> (PDF) و /i/<id> (صور) لا يلمسها
-  // العامل أبدًا — كان مسار «القشرة» يرجّع index.html كاحتياط عند أي تعثّر،
-  // فيهبط المستخدم على صفحة المحادثة بدل ملفه.
-  if (/^\/(p|i)\/[A-Za-z0-9]/.test(url.pathname)) return;
+  // v-pdf-noleave: روابط التنزيل /p/<id> (PDF) و /i/<id> (صور) و /f/<id> (ملفّات: Word/TXT،
+  // v-reply-export) لا يلمسها العامل أبدًا — كان مسار «القشرة» يرجّع index.html كاحتياط عند
+  // أي تعثّر، فيهبط المستخدم على صفحة المحادثة بدل ملفه.
+  if (/^\/(p|i|f)\/[A-Za-z0-9]/.test(url.pathname)) return;
 
   // API calls: always go to network. If offline, return a friendly JSON
   // error instead of letting the request fail with a generic network error.

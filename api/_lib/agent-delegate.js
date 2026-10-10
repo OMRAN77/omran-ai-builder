@@ -18,7 +18,9 @@
 const { ghFetch, parseTarget } = require('./github-read.js');
 
 const WORKFLOW = 'omran-agent.yml';
-const STATUS_RE = /<!--\s*omran-agent\s+(\{[\s\S]*?\})\s*-->/g;
+const WORKFLOW_KIMI = 'kimi-agent.yml';
+// v-kimi-agent: سطر الحالة قد يكون من أيّ الأخوين — omran-agent (Claude) أو kimi-agent (Kimi)
+const STATUS_RE = /<!--\s*(?:omran|kimi)-agent\s+(\{[\s\S]*?\})\s*-->/g;
 const BRANCH_RE = /\*\*الفرع:\*\*\s*`([^`]+)`/;
 const BASE_RE = /\*\*الأساس:\*\*\s*`([^`]+)`/;
 
@@ -51,8 +53,11 @@ async function startTask(input, opts) {
   if (task.length < 12) return { error: 'صف المهمّة بجملة واضحة (ماذا يتغيّر ولماذا وأين).' };
   if (task.length > 6000) return { error: 'المهمّة أطول من ٦٠٠٠ حرف — اختصرها أو قسّمها.' };
   const base = /^[A-Za-z0-9_.\/-]{1,100}$/.test(String(i.base || '')) ? String(i.base) : 'main';
+  // v-kimi-agent: engine=kimi يسلّم المهمّة إلى Kimi Code (kimi-agent.yml) بدل Claude Code
+  const engine = String(i.engine || '').toLowerCase() === 'kimi' ? 'kimi' : 'claude';
+  const workflow = engine === 'kimi' ? WORKFLOW_KIMI : WORKFLOW;
   const now = Number(o.now) || Date.now();
-  const branch = 'omran-agent/' + slug(task) + '-' + now.toString(36);
+  const branch = (engine === 'kimi' ? 'kimi-agent/' : 'omran-agent/') + slug(task) + '-' + now.toString(36);
   const R = '/repos/' + t.owner + '/' + t.repo;
 
   const body = '**المهمّة:**\n' + task + '\n\n**الفرع:** `' + branch + '`\n**الأساس:** `' + base + '`\n\n— بدأها وكيل عمران من التطبيق بطلب المالك. التقدّم والنتيجة تُكتب هنا تعليقات، ثمّ يُفتح طلب سحب. الدمج والنشر بيد المالك.';
@@ -60,19 +65,21 @@ async function startTask(input, opts) {
   if (!ir.ok || !ij || !ij.number) return { error: apiMsg(ir, ij, 'فتح مسألة المهمّة (يحتاج Issues: write)') };
 
   // v-agent-parity: نموذج مختار من القائمة نفسها التي في الإعدادات؛ خارجها = افتراضيّ الورك فلو (Fable 5.1)
-  const model = CLAUDE_MODEL_IDS.includes(String(i.model || '').trim()) ? String(i.model).trim() : '';
-  const { r: dr, j: dj } = await ghJson(R + '/actions/workflows/' + WORKFLOW + '/dispatches', Object.assign({}, o, { method: 'POST', body: { ref: base, inputs: Object.assign({ task, branch, issue: String(ij.number), base }, model ? { model } : {}) } }));
+  const modelIds = engine === 'kimi' ? KIMI_MODEL_IDS : CLAUDE_MODEL_IDS;
+  const model = modelIds.includes(String(i.model || '').trim()) ? String(i.model).trim() : '';
+  const { r: dr, j: dj } = await ghJson(R + '/actions/workflows/' + workflow + '/dispatches', Object.assign({}, o, { method: 'POST', body: { ref: base, inputs: Object.assign({ task, branch, issue: String(ij.number), base }, model ? { model } : {}) } }));
   if (dr.status !== 204 && !dr.ok) {
-    return { error: apiMsg(dr, dj, 'تشغيل الورك فلو ' + WORKFLOW + ' (يحتاج Actions: write، والملفّ موجود على ' + base + ')'), issue: ij.number, issueUrl: ij.html_url };
+    return { error: apiMsg(dr, dj, 'تشغيل الورك فلو ' + workflow + ' (يحتاج Actions: write، والملفّ موجود على ' + base + ')'), issue: ij.number, issueUrl: ij.html_url };
   }
-  return { ok: true, repo: t.owner + '/' + t.repo, issue: ij.number, issueUrl: ij.html_url, branch, base, actionsUrl: 'https://github.com/' + t.owner + '/' + t.repo + '/actions/workflows/' + WORKFLOW };
+  return { ok: true, repo: t.owner + '/' + t.repo, issue: ij.number, issueUrl: ij.html_url, branch, base, engine, actionsUrl: 'https://github.com/' + t.owner + '/' + t.repo + '/actions/workflows/' + workflow };
 }
 
 function formatStart(res) {
   if (!res || res.error) {
     return '✗ لم تبدأ المهمّة: ' + ((res && res.error) || 'سبب غير معروف') + (res && res.issueUrl ? '\n(فُتحت المسألة ' + res.issueUrl + ' لكن الورك فلو لم يُشغَّل.)' : '');
   }
-  return ['🚀 سُلّمت المهمّة إلى Claude Code في GitHub Actions على ' + res.repo + '.',
+  const who = (res && res.engine === 'kimi') ? 'Kimi Code' : 'Claude Code';
+  return ['🚀 سُلّمت المهمّة إلى ' + who + ' في GitHub Actions على ' + res.repo + '.',
     'مسألة المهمّة #' + res.issue + ': ' + res.issueUrl,
     'الفرع الذي سيُدفع: ' + res.branch + ' (الأساس: ' + res.base + ')',
     'التشغيلات: ' + res.actionsUrl,
@@ -158,7 +165,8 @@ function formatCheck(res) {
 }
 
 /* ---------- تعريف الأداتين (للمالك وحده) ---------- */
-const CLAUDE_MODEL_IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+const KIMI_MODEL_IDS = ['kimi-k2.5', 'kimi-k2-thinking', 'kimi-k2-thinking-turbo', 'kimi-for-coding'];
+const CLAUDE_MODEL_IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
 const START_TOOL = {
   name: 'delegate_code_task',
   description: 'سلّم مهمّة كود على مستودع المالك إلى Claude Code داخل GitHub Actions (يقرأ المستودع كاملًا، يعدّل، يعيد بناء الحزمة، يشغّل npm run ci حتّى يمرّ، ويدفع فرعًا). للمالك وحده. تُستخدم للتغييرات الحقيقيّة (إصلاح، ميزة، إعادة هيكلة) التي تحتاج اختبارًا؛ لا للقراءة ولا للأسئلة. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا يتغيّر ولماذا وأين (مسارات الملفّات) وما معيار النجاح. تعود فورًا برقم مسألة وروابط، والتنفيذ يأخذ دقائق — تحقّق لاحقًا بـcheck_code_task.',
@@ -166,7 +174,8 @@ const START_TOOL = {
     type: 'object',
     properties: {
       task: { type: 'string', description: 'وصف المهمّة الكامل (بلا أسرار)' },
-      model: { type: 'string', enum: CLAUDE_MODEL_IDS, description: 'نموذج Claude Code للمهمّة (الافتراضيّ Sonnet 5 — رخيص وقويّ للكود؛ Fable أغلى للمهامّ الأصعب)' },
+      engine: { type: 'string', enum: ['claude', 'kimi'], description: 'الأخ المنفّذ: claude (Claude Code — الافتراضيّ) أو kimi (Kimi Code — الأخ الثالث، يحتاج KIMI_API_KEY في أسرار المستودع)' },
+      model: { type: 'string', description: 'نموذج المهمّة: من موديلات Claude لـengine=claude (الافتراضيّ Sonnet 5) أو موديلات Kimi لـengine=kimi (الافتراضيّ kimi-k2.5)' },
       base: { type: 'string', description: 'الفرع الأساس (الافتراضيّ main)' },
       repo: { type: 'string', description: 'owner/repo (الافتراضيّ مستودع التطبيق)' },
     },
@@ -186,4 +195,4 @@ const CHECK_TOOL = {
   },
 };
 
-module.exports = { startTask, checkTask, formatStart, formatCheck, parseStatuses, START_TOOL, CHECK_TOOL, WORKFLOW, defaultRepo, slug };
+module.exports = { startTask, checkTask, formatStart, formatCheck, parseStatuses, START_TOOL, CHECK_TOOL, WORKFLOW, WORKFLOW_KIMI, KIMI_MODEL_IDS, defaultRepo, slug };

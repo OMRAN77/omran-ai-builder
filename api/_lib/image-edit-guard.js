@@ -25,6 +25,12 @@ function assessEditVerdict(verdict, options) {
   if (opts.allowBroadChange !== true && verdict.onlyRequestedChange === false) {
     return { ok: false, reason: 'identity_or_scope_mismatch' };
   }
+  /* v-edit-no-change (شكوى المالك: «أرفق صورة فما غيّر أي شيء»): النتيجة المطابقة للأصل
+     كانت تمرّ — الهويّة محفوظة و«لم يتغيّر إلّا المطلوب» صحيحان في صورة لم تتغيّر أصلًا.
+     يُفرض فقط عند requireChange (تعديلات الستوديو المرئيّة)، كي لا تُرفض لمسة خفيفة مقصودة. */
+  if (opts.requireChange === true && verdict.requestedChangeApplied === false) {
+    return { ok: false, reason: 'no_change' };
+  }
   return { ok: true, reason: opts.allowStyleChange === true ? 'accepted_explicit_style_change' : 'accepted' };
 }
 
@@ -49,6 +55,7 @@ async function verifyLocalizedImageEdit(options) {
       opts.allowBroadChange === true
         ? 'onlyRequestedChange: this is an approved full scene upgrade, so restyling the whole space is expected; report true when the place is still the same place from the same viewpoint.'
         : 'onlyRequestedChange: changes are limited to what USER REQUEST asks; requested clothing, hair, age, background or framing changes are allowed.',
+      'requestedChangeApplied: the RESULT visibly applies the change asked for in USER REQUEST — false only when RESULT is essentially the SOURCE image with the requested change missing.',
       'Reject only clear violations. When uncertain about any boolean, use true — a borderline edit should pass rather than be discarded.'
     ].join('\n');
     const response = await fetch(endpoint, {
@@ -70,7 +77,7 @@ async function verifyLocalizedImageEdit(options) {
     const data = await response.json();
     const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const verdict = extractJsonObject(parts.map((part) => part.text || '').join('\n'));
-    return assessEditVerdict(verdict, { allowStyleChange: opts.allowStyleChange === true, allowBroadChange: opts.allowBroadChange === true });
+    return assessEditVerdict(verdict, { allowStyleChange: opts.allowStyleChange === true, allowBroadChange: opts.allowBroadChange === true, requireChange: opts.requireChange === true });
   } catch (_) {
     return { ok: false, reason: 'validation_unavailable' };
   } finally {
@@ -81,6 +88,7 @@ async function verifyLocalizedImageEdit(options) {
 function publicGuardError(result) {
   if (result && result.reason === 'style_mismatch') return 'image_edit_style_mismatch';
   if (result && result.reason === 'identity_or_scope_mismatch') return 'image_edit_identity_mismatch';
+  if (result && result.reason === 'no_change') return 'image_edit_no_change'; /* v-edit-no-change */
   return 'image_edit_validation_failed';
 }
 

@@ -6,59 +6,50 @@
   var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); position:relative;">
     <button type="button" id="authCloseBtn" aria-label="إغلاق" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
-    <h2 style="margin-top:0; text-align:center;" data-i18n="authTitle">🔐 مرحبًا بك</h2>
-    <p style="text-align:center; font-size: var(--fs-3); color:var(--muted); margin-top:-8px;" data-i18n="authSubtitle">سجّل الدخول أو أنشئ حسابًا جديدًا للمتابعة</p>
-    <div style="display:flex; gap:8px; margin:14px 0;">
-      <button type="button" class="btn" id="authTabLogin" style="flex:1;" data-i18n="authTabLogin">تسجيل الدخول</button>
-      <button type="button" class="btn" id="authTabSignup" style="flex:1;" data-i18n="authTabSignup">حساب جديد</button>
+    <!-- v-simple-login: خانتان وزرّ ورابط، ثمّ جوجل و«إنشاء حساب جديد» — بلا عنوان ولا تبويبات ولا إيميل اختياريّ -->
+    <h2 id="authHeading" style="display:none; margin:4px 0 18px; text-align:center; font-size:18px;"></h2>
+    <div style="display:none;">
+      <button type="button" class="btn" id="authTabLogin" data-i18n="authTabLogin">تسجيل الدخول</button>
+      <button type="button" class="btn" id="authTabSignup" data-i18n="authTabSignup">حساب جديد</button>
     </div>
-    <form id="authForm" autocomplete="on" onsubmit="return false;">
-    <label style="display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
-      <span data-i18n="authUsernameLabel">اسم المستخدم</span>
-      <input type="text" id="authUsername" name="username" autocomplete="username" style="height:40px; padding:0 10px; border-radius:var(--r-2);">
-    </label>
-    <label id="authEmailRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
-      <span data-i18n="authEmailLabel">📧 الإيميل (اختياري - لاسترجاع الحساب)</span>
-      <input type="email" id="authEmail" name="email" autocomplete="email" style="height:40px; padding:0 10px; border-radius:var(--r-2); direction:ltr;">
-    </label>
-    <label id="authRecoveryRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
+    <form id="authForm" autocomplete="on" onsubmit="return false;" style="margin-top:34px;">
+    <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
+    <label id="authRecoveryRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:12px;">
       <span data-i18n="authRecoveryLabel">رمز الاسترجاع</span>
-      <input type="text" id="authRecoveryCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="height:40px; padding:0 10px; border-radius:var(--r-2); direction:ltr; text-align:center;">
+      <input type="text" id="authRecoveryCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; direction:ltr; text-align:center;">
     </label>
-    <label id="authPasswordRow" style="display:flex; flex-direction:column; gap:4px; margin-bottom:6px;">
-      <span id="authPasswordLabelText" data-i18n="authPasswordLabel">كلمة المرور</span>
-      <div style="position:relative;">
-        <input type="password" id="authPassword" name="password" autocomplete="current-password" style="height:40px; padding:0 40px 0 10px; border-radius:var(--r-2); width:100%; box-sizing:border-box;">
-        <button type="button" id="authTogglePassBtn" title="👁" style="position:absolute; inset-inline-end:2px; top:2px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;">🙈</button>
-      </div>
-    </label>
-    <label id="authRememberRow" style="display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size: var(--fs-3); cursor:pointer; user-select:none;">
-      <input type="checkbox" id="authRememberMe" checked style="width:16px; height:16px; cursor:pointer;">
-      <span data-i18n="authRememberMe">تذكرني</span>
-    </label>
+    <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
+      <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
+      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
+      <button type="button" id="authTogglePassBtn" title="👁" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;">🙈</button>
+    </div>
+    <label id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked></label>
     <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
-    <div style="text-align:end; margin-bottom:6px;">
-      <a href="#" id="authForgotLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
-      <a href="#" id="authUseCodeLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
-      <a href="#" id="authBackToLoginLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
+    <div id="authError" style="color:#ef4444; font-size: var(--fs-3); min-height:18px; margin-bottom:6px; text-align:center;"></div>
+    <button type="submit" class="btn primary" id="authSubmitBtn" style="width:100%; height:48px; border-radius:999px; font-weight:bold; font-size:15px; justify-content:center; text-align:center;" data-i18n="authSubmitLogin">دخول</button>
+    <div style="text-align:center; margin-top:16px;">
+      <a href="#" id="authForgotLink" style="font-size:14px; font-weight:700; color:var(--text); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
+      <a href="#" id="authUseCodeLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
+      <a href="#" id="authBackToLoginLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none; margin-inline-start:12px;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
     </div>
-    <div id="authError" style="color:#ef4444; font-size: var(--fs-3); min-height:18px; margin-bottom:6px;"></div>
-    <button type="submit" class="btn primary" id="authSubmitBtn" style="width:100%; height:44px; font-weight:bold;" data-i18n="authSubmitLogin">دخول</button>
+    <!-- v-phone-link: في «نسيت كلمة المرور» — الاسترجاع برقم مربوط، مجّانًا عبر واتساب أو تيليجرام -->
+    <div id="authPhoneRecover" style="display:none; text-align:center; margin-top:14px;">
+      <div style="font-size:13px; color:var(--accent,#6b7280); margin-bottom:8px;" data-i18n="phoneRecoverTitle">أو استرجع حسابك برقم هاتفك:</div>
+      <div style="display:flex; gap:8px; justify-content:center;">
+        <button type="button" class="btn" data-phone-link="whatsapp" data-recover="1" style="flex:1; justify-content:center; text-align:center;" data-i18n="phoneViaWa">واتساب</button>
+        <button type="button" class="btn" data-phone-link="telegram" data-recover="1" style="flex:1; justify-content:center; text-align:center;" data-i18n="phoneViaTg">تيليجرام</button>
+      </div>
+      <div id="authPhoneMsg" style="font-size:12px; min-height:16px; margin-top:6px;"></div>
+    </div>
     </form>
-    <div style="display:flex; align-items:center; gap:8px; margin:14px 0;">
-      <div style="flex:1; height:1px; background:var(--border,#333);"></div>
-      <span style="font-size:12px; color:var(--muted);" data-i18n="authOrDivider">أو</span>
-      <div style="flex:1; height:1px; background:var(--border,#333);"></div>
-    </div>
-    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:44px; border-radius:var(--r-2); border:1px solid var(--border,#333); background:#fff; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size: var(--fs-3); font-weight: var(--w-bold); color:#3c4043;">
+    <div id="authAltBlock" style="margin-top:34px; display:flex; flex-direction:column; gap:12px;">
+    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
       <span data-i18n="authGoogleBtn">المتابعة بجوجل</span>
     </button>
-    <button type="button" id="authEmailOtpBtn" style="width:100%; height:44px; border-radius:var(--r-2); border:1px solid var(--border,#333); background:transparent; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size: var(--fs-3); font-weight: var(--w-bold); color:var(--text); margin-top:8px;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-      <span data-i18n="authEmailOtpBtn">الدخول بالإيميل</span>
-    </button>
-    
+    <button type="button" id="authSwitchBtn" style="width:100%; height:48px; border-radius:999px; border:1px solid rgba(128,128,128,.5); background:transparent; color:var(--text); cursor:pointer; font-size:15px; font-weight: var(--w-bold);" data-i18n="authCreateAccount">إنشاء حساب جديد</button>
+    </div>
+
     <div id="authEmailOtpSection" style="display:none; margin-top:14px;">
       <label id="authOtpEmailRow" style="display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
         <span data-i18n="authOtpEmailLabel">البريد الإلكتروني</span>
@@ -123,9 +114,11 @@
       <select id="videoMakerMode" style="width:100%;">
         <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 كانفا فقط (بدون AI)</option>
         <option value="runway" selected data-i18n="videoModeRunwayOnly">🤖 فيديو AI فقط (Runway)</option>
+        <option value="minimax" data-i18n="videoModeMinimax">💸 فيديو اقتصادي — أرخص وأسرع</option>
+        <option value="omni" data-i18n="videoModeOmni">🎬 فيديو سينمائيّ — أعلى جودة (أغلى)</option>
         <option value="hybrid" data-i18n="videoModeHybrid">🔗 دمج الاثنين (الأفضل)</option>
         <option value="veo" data-i18n="videoModeVeo">🚀 Veo 3 — جوجل (أعلى جودة + صوت)</option>
-        <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)</option>
+        <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية</option>
       </select>
     </div>
 
@@ -135,6 +128,14 @@
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoActorSpeechLabel">🗣️ شو يقول الممثل؟ (بالحرف)</label>
       <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق عمران AI، أقوى منصة ذكاء اصطناعي"></textarea>
       <button type="button" class="mini-mic-btn" data-target="videoMakerActorSpeech" title="🎤" data-i18n-title="micTitle">🎤</button>
+    </div>
+    <!-- v-actor-lipsync: الكلام يُنطق بصوت إماراتيّ أصيل — رجل أو امرأة حسب الممثّل -->
+    <div id="videoMakerActorVoiceRow" style="margin-top:8px; display:none;">
+      <label for="videoMakerActorVoice" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoActorVoiceLabel">🎙️ صوت الممثل</label>
+      <select id="videoMakerActorVoice" style="width:100%;">
+        <option value="male" selected data-i18n="videoActorVoiceMale">🧔 رجل — صوت إماراتي</option>
+        <option value="female" data-i18n="videoActorVoiceFemale">🧕 امرأة — صوت إماراتي</option>
+      </select>
     </div>
 
     <div class="mini-mic-field-row" id="videoMakerSignatureRow" style="margin-top:12px; display:none;">
@@ -430,11 +431,13 @@
       <div id="designBABeforeClip" style="position:absolute; inset:0; overflow:hidden; width:50%;">
         <img id="designBABefore" style="position:absolute; top:0; left:0; height:100%; object-fit:cover;">
       </div>
-      <div id="designBALine" style="position:absolute; top:0; bottom:0; left:50%; width:2px; background:#d4af37; box-shadow:0 0 8px rgba(212,175,55,.8);"></div>
+      <div id="designBALine" style="position:absolute; top:0; bottom:0; left:50%; width:2px; background:#d4af37; box-shadow:0 0 8px rgba(212,175,55,.8);">
+        <!-- v-compare-drag-all: مقبض دائريّ فوق الصورة — السحب على designBAWrap نفسه (app-12-studios.js) -->
+        <div id="designBAHandle" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414;">↔</div>
+      </div>
       <span style="position:absolute; top:8px; left:8px; font-size:10.5px; font-weight:700; background:rgba(0,0,0,.55); color:#fff; padding:2px 8px; border-radius:99px;" data-i18n="designBABefore">قبل</span>
       <span style="position:absolute; top:8px; right:8px; font-size:10.5px; font-weight:700; background:rgba(212,175,55,.85); color:#141414; padding:2px 8px; border-radius:99px;" data-i18n="designBAAfter">بعد</span>
     </div>
-    <input type="range" id="designBARange" min="0" max="100" value="50" style="display:none; width:100%; margin-top:8px; accent-color:#d4af37;">
     <img id="designAiResult" style="display:none; width:100%; margin-top:14px; border-radius:var(--r-2); background:#000;">
     <div id="designAiGrid" style="display:none; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;"></div>
     <a id="designAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-design-ai.png" data-i18n="designAiDownloadBtn">⬇️ تحميل الصورة</a>
@@ -465,9 +468,9 @@
            html[data-mode="light"] في modules.css. النصّ يتبع الثيم (--text) فلا يختفي. -->
       <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; color:var(--text); flex-direction:column;">
         <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة والزر أكبر -->
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
+        <div id="portraitStyleSheetHeader" style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
           <div>
-            <div style="font-size:18px; font-weight:800;" data-i18n="portraitStyleSheetTitle">🎨 أنماط الصور</div>
+            <div id="portraitStyleSheetTitle" style="font-size:18px; font-weight:800;" data-i18n="portraitStyleSheetTitle">🎨 أنماط الصور</div>
             <div id="portraitStyleSheetCount" style="font-size:11.5px; color:var(--muted);"></div>
           </div>
           <button type="button" class="btn iconBtn" id="portraitStyleSheetClose" style="padding:10px 16px; min-width:46px; min-height:42px; font-size:17px;">✕</button>
@@ -518,6 +521,14 @@
         <option value="familystyle" data-i18n="portraitStyleFamily">👨‍👩‍👧‍👦 ستايل عائلي موحّد</option>
         <option value="merge2" data-i18n="portraitStyleMerge2">🧑‍🤝‍🧑 دمج شخصين بصورة واحدة</option>
         <option value="avatargif" data-i18n="portraitStyleAvatarGif">🎞️ أفاتار متحرك بسيط (GIF)</option>
+        <option value="sheikh" data-i18n="portraitStyleSheikh">👑 إطلالة شيخ أو شيخة</option>
+        <option value="falconry" data-i18n="portraitStyleFalconry">🦅 صيد بالصقر</option>
+        <option value="arabianHorse" data-i18n="portraitStyleArabianHorse">🐎 فروسية عربية</option>
+        <option value="saudiHeritage" data-i18n="portraitStyleSaudiHeritage">🇸🇦 تراث سعودي</option>
+        <option value="kuwaitiHeritage" data-i18n="portraitStyleKuwaitiHeritage">🇰🇼 تراث كويتي</option>
+        <option value="omaniHeritage" data-i18n="portraitStyleOmaniHeritage">🇴🇲 تراث عماني</option>
+        <option value="qatariHeritage" data-i18n="portraitStyleQatariHeritage">🇶🇦 تراث قطري</option>
+        <option value="bahrainiHeritage" data-i18n="portraitStyleBahrainiHeritage">🇧🇭 تراث بحريني</option>
         <optgroup label="🛠️ أدوات عملية" data-i18n="[label]portraitGrpTools">
         <option value="passport" data-i18n="portraitStylePassport">🫎 صورة جواز/هوية رسمية</option>
         <option value="restore" data-i18n="portraitStyleRestore">🔧 ترميم صورة قديمة</option>
@@ -526,11 +537,17 @@
         <option value="objectremove" data-i18n="portraitStyleObjectremove">🧹 إزالة شخص أو عنصر</option>
         <option value="outfit" data-i18n="portraitStyleOutfit">👕 تبديل الملابس</option>
         <option value="productshot" data-i18n="portraitStyleProductshot">📦 تصوير منتج احترافي</option>
+        <option value="eyefix" data-i18n="portraitStyleEyefix">👀 تصحيح عين مغمضة</option>
+        <option value="glasses" data-i18n="portraitStyleGlasses">🕶️ إضافة أو إزالة نظارة</option>
+        <option value="bokeh" data-i18n="portraitStyleBokeh">🌫️ ضبابية الخلفية فقط</option>
         </optgroup>
         <optgroup label="🎉 مناسبات" data-i18n="[label]portraitGrpOccasions">
         <option value="hajj" data-i18n="portraitStyleHajj">🕋 تهنئة حج وعمرة</option>
         <option value="birthday" data-i18n="portraitStyleBirthday">🎂 إطار عيد ميلاد</option>
         <option value="newborn" data-i18n="portraitStyleNewborn">👶 تهنئة مولود جديد</option>
+        <option value="henna" data-i18n="portraitStyleHenna">💍 ليلة حنّاء أو خطوبة</option>
+        <option value="firstday" data-i18n="portraitStyleFirstday">🎒 أول يوم دراسة</option>
+        <option value="flagday" data-i18n="portraitStyleFlagday">🇦🇪 يوم العلم الإماراتي</option>
         </optgroup>
         <optgroup label="🆕 ستايلات جديدة" data-i18n="[label]portraitGrpNew">
         <option value="claymation" data-i18n="portraitStyleClaymation">🏺 صلصال متحرك (كلاي)</option>
@@ -555,6 +572,13 @@
         <option value="statue" data-i18n="portraitStyleStatue">🗿 تمثال رخامي</option>
         <option value="polaroid" data-i18n="portraitStylePolaroid">📸 بولارويد قديمة</option>
         <option value="celebtoon" data-i18n="portraitStyleCelebtoon">🦸 شخصية كرتونية مفضلة</option>
+        <option value="tarot" data-i18n="portraitStyleTarot">🃏 بطاقة تاروت</option>
+        <option value="stamp" data-i18n="portraitStyleStamp">📮 طابع بريد قديم</option>
+        <option value="moviePoster" data-i18n="portraitStyleMoviePoster">🎬 بوستر فيلم أكشن</option>
+        <option value="diorama" data-i18n="portraitStyleDiorama">🏠 ديوراما مصغّرة</option>
+        <option value="emoji3d" data-i18n="portraitStyleEmoji3d">😊 إيموجي ثلاثي الأبعاد</option>
+        <option value="y2k" data-i18n="portraitStyleY2k">📼 ستايل Y2K</option>
+        <option value="albumCover" data-i18n="portraitStyleAlbumCover">🎵 بوستر ألبوم غنائي</option>
         </optgroup>
         <optgroup label="🎭 تلبيس" data-i18n="[label]portraitGrpDressup">
         <option value="profession" data-i18n="portraitStyleProfession">👩‍⚕️ مهنة (طبيب · طيار · شرطي...)</option>
@@ -687,13 +711,14 @@
       <div id="portraitCompareAfterWrap" style="position:absolute; top:0; left:0; height:100%; overflow:hidden; width:50%;">
         <img id="portraitStyleResult" style="position:absolute; top:0; left:0; height:100%; object-fit:contain; background:#000;">
       </div>
-      <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;"></div>
+      <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;">
+        <!-- v-compare-drag: مقبض دائريّ فوق الصورة نفسها — السحب على الحاوية (compareWrap في
+             app-12-studios.js) لا هذا العنصر تحديدًا؛ هو مؤشّر بصريّ فقط بلا مستمع خاصّ به. -->
+        <div id="portraitCompareHandle" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414;">↔</div>
+      </div>
       <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
       <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
     </div>
-    <!-- v-slider-touch: «الشريط أوقات يسحب وأوقات لا» — سحب المقبض على الجوال كان
-         يتحوّل لتمرير الصفحة؛ touch-action:none يحسم الإيماءة للشريط، والارتفاع أكبر لليد. -->
-    <input type="range" id="portraitCompareSlider" min="0" max="100" value="50" style="width:100%; margin-top:8px; display:none; touch-action:none; height:32px; accent-color:#d4af37;">
     <a id="portraitStyleDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-portrait-style.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" id="portraitShareBtn" style="display:none; margin-top:8px; width:100%;" class="btn" data-i18n="portraitShareBtn">↗️ مشاركة (واتساب/ستوري)</button>
   </div>
@@ -861,8 +886,9 @@
            object-fit:contain يعرضها كاملة. v-slider-touch: سحب الشريط على الجوال. -->
       <div id="fashionAiBeforeWrap" style="display:none; position:absolute; top:0; left:0; height:100%; overflow:hidden; border-right:2px solid #fff;">
         <img id="fashionAiBeforeImg" style="display:block; height:100%; max-width:none; object-fit:contain; background:#000;">
+        <!-- v-compare-drag-all: مقبض عند حافّة القصّ نفسها — يتبعها تلقائيًّا مع تغيّر عرض الحاوية -->
+        <div id="fashionAiCompareHandle" style="position:absolute; top:50%; right:-20px; transform:translateY(-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
       </div>
-      <input type="range" id="fashionAiSliderRange" min="0" max="100" value="50" style="display:none; position:absolute; bottom:8px; left:8px; right:8px; width:calc(100% - 16px); z-index:5; touch-action:none; height:32px; accent-color:#d4af37;">
     </div>
     <a id="fashionAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-fashion-ai.png" data-i18n="fashionAiDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" class="btn" id="fashionAiFavoriteSaveBtn" style="display:none; width:100%; margin-top:8px;" data-i18n="fashionFavoriteSaveBtn">🤍 حفظ في المفضلة</button>
@@ -907,7 +933,73 @@
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="studioAiDesc">اختر ميزة، ارفع صورتك (أو صورتين للدمج)، واختر الخيار المناسب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
 
-    <div id="studioAiTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
+    <!-- v-studio-slots (أمر المالك ٣٠ سبتمبر «ترتيب تسهيل للمستخدم في إضافة الصور في ستايل»): الصورة أوّلًا في خانة كبيرة
+         (كاميرا / معرض، سحب وإفلات ولصق)، والدمج خانتان جنبًا إلى جنب، ثمّ الميزة والخيار، والاختياريّ مطويّ قبل الزرّ.
+         المعرّفات القديمة كلّها باقية فالأسلاك في app-13 كما هي. -->
+    <style id="stSlotCss">
+      .stStep{font-size:13px; font-weight:800; color:#d4af37; margin:16px 2px 8px;}
+      .stSlots{display:flex; gap:10px;}
+      .stSlotWrap{flex:1; min-width:0;}
+      .stSlotLbl{font-size:12px; color:var(--muted); display:none; margin-bottom:4px;}
+      .stSlots.two .stSlotLbl{display:block;}
+      .stSlot{position:relative; height:190px; border:2px dashed rgba(212,175,55,.55); border-radius:16px; background:rgba(212,175,55,.05); cursor:pointer; overflow:hidden; display:flex; align-items:center; justify-content:center; text-align:center; transition:border-color .15s, background .15s;}
+      .stSlot:hover,.stSlot:focus-visible,.stSlot.drag{border-color:#d4af37; background:rgba(212,175,55,.12); outline:none;}
+      .stSlot img{width:100%; height:100%; object-fit:contain; background:#000;}
+      .stSlotEmpty{display:flex; flex-direction:column; gap:6px; padding:10px; color:var(--text);}
+      .stSlotEmpty b{font-size:14.5px;}
+      .stSlotEmpty small{font-size:11.5px; color:var(--muted);}
+      .stSlot.has{border-style:solid;}
+      .stSlot.has .stSlotEmpty{display:none;}
+      .stSlotX{position:absolute; display:none; border:none; cursor:pointer; background:rgba(0,0,0,.72); color:#fff; font-weight:700;}
+      .stSlotX{top:8px; left:8px; width:30px; height:30px; border-radius:50%; font-size:14px;}
+      .stSlot.has .stSlotX{display:block;} /* v-no-swap-btn: زرّ «🔄 تبديل» حُذف بأمر المالك — النقر على الصورة نفسها يفتح قائمة التغيير */
+      .stSrcMenu{position:fixed; z-index:10060; min-width:190px; background:var(--panel,#1a1a1a); border:1px solid rgba(212,175,55,.4); border-radius:14px; padding:6px; box-shadow:0 14px 40px rgba(0,0,0,.6);}
+      .stSrcMenu.sheet{left:0; right:0; bottom:0; top:auto; min-width:0; border-radius:20px 20px 0 0; padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px)); border-width:1px 0 0; animation:stSheetUp .18s ease-out;}
+      .stSrcMenu.sheet button{font-size:16px; padding:14px 14px;}
+      .stSrcBackdrop{position:fixed; inset:0; z-index:10059; background:rgba(0,0,0,.55);}
+      @keyframes stSheetUp{from{transform:translateY(100%)}to{transform:none}}
+      .stSrcMenu button{display:block; width:100%; text-align:start; padding:10px 12px; border:none; background:none; color:var(--text); font-size:14px; border-radius:10px; cursor:pointer;}
+      .stSrcMenu button:hover{background:rgba(212,175,55,.14);}
+      /* v-studio-compare-cards: نفس شكل بطاقات «عرض الكل» (omranPicker) — صورة ٣:٤ واسم عريض وعلامة ✓ ذهبيّة */
+      .stCmpGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; margin-top:10px;}
+      .stCmp{position:relative; display:flex; flex-direction:column; border:1px solid var(--border,#2a2a30); border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;}
+      .stCmp input{position:absolute; opacity:0; pointer-events:none;}
+      .stCmp img{width:100%; aspect-ratio:3/4; object-fit:cover; background:linear-gradient(160deg,#23232a,#101014); display:block;}
+      .stCmp span{font-size:12px; font-weight:700; color:#eef0f6; padding:8px 6px 9px; text-align:center; line-height:1.3;}
+      .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);}
+      .stCmp.on span{color:#d4af37;}
+      .stCmp.on::after{content:"✓"; position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;}
+      #studioAiMore{margin-top:14px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:8px 10px;}
+      #studioAiMore > summary{cursor:pointer; font-size:13px; color:var(--muted);}
+    </style>
+    <div class="stStep" data-i18n="studioStepPhoto">① صورتك</div>
+    <div id="studioAiSlots" class="stSlots">
+      <div id="studioAiImageAWrap" class="stSlotWrap">
+        <label class="stSlotLbl" id="studioAiImageALabelEl" data-i18n="studioAiImageALabel">الصورة الأولى</label>
+        <input type="file" id="studioAiFileInputA" accept="image/*" style="display:none;">
+        <div class="stSlot" id="studioAiSlotA" data-slot="A" role="button" tabindex="0">
+          <img id="studioAiSourcePreviewA" alt="" style="display:none;">
+          <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
+          <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
+        </div>
+        <button type="button" class="btn" id="studioAiFileBtnA" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
+        <span id="studioAiFileNameA" style="display:none;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
+      </div>
+      <div id="studioAiImageBWrap" class="stSlotWrap" style="display:none;">
+        <label class="stSlotLbl" data-i18n="studioAiImageBLabel">الصورة الثانية</label>
+        <input type="file" id="studioAiFileInputB" accept="image/*" style="display:none;">
+        <div class="stSlot" id="studioAiSlotB" data-slot="B" role="button" tabindex="0">
+          <img id="studioAiSourcePreviewB" alt="" style="display:none;">
+          <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
+          <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
+        </div>
+        <button type="button" class="btn" id="studioAiFileBtnB" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
+        <span id="studioAiFileNameB" style="display:none;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
+      </div>
+    </div>
+
+    <div class="stStep" data-i18n="studioStepWhat">② اختر التعديل</div>
+    <div id="studioAiTabs" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;">
       <button type="button" class="btn studioAiTabBtn active" data-feature="hair" style="white-space:nowrap;" data-i18n="studioAiTabHair">💇 الشعر</button>
       <button type="button" class="btn studioAiTabBtn" data-feature="nails" style="white-space:nowrap;" data-i18n="studioAiTabNails">💅 الأظافر</button>
       <button type="button" class="btn studioAiTabBtn" data-feature="makeup" style="white-space:nowrap;" data-i18n="studioAiTabMakeup">💄 مكياج</button>
@@ -920,6 +1012,16 @@
       <button type="button" class="btn studioAiTabBtn" data-feature="merge" style="white-space:nowrap;" data-i18n="studioAiTabMerge">🖼️ دمج صور</button>
     </div>
 
+    <div id="studioAiStyleWrap" style="margin-top:12px;">
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiStyleLabel">اختر الخيار</label>
+      <!-- v-studio-cards: خيارات كل ميزة بطاقات مصوّرة (نفس نمط بقية الاستوديوهات)؛
+           السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
+      <div id="studioStyleCards" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
+      <select id="studioAiStyle" style="display:none;"></select>
+    </div>
+
+    <details id="studioAiMore">
+      <summary data-i18n="studioMoreOptions">⚙️ خيارات إضافية</summary>
     <details style="margin-top:12px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:6px 10px;">
       <summary style="cursor:pointer; font-size:12.5px; color:var(--muted);" data-i18n="studioProfileTitle">👤 بروفايل الوجه (اختياري)</summary>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
@@ -953,34 +1055,6 @@
     <button type="button" class="btn" id="studioAiSuggestBtn" style="width:100%; margin-top:10px;" data-i18n="studioSuggestBtn">💡 اقترح لي ستايل</button>
     <div id="studioAiSuggestions" style="display:none; margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
 
-    <div id="studioAiImageAWrap" style="margin-top:14px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" id="studioAiImageALabelEl" data-i18n="studioAiImageALabel">الصورة الأولى</label>
-      <input type="file" id="studioAiFileInputA" accept="image/*" style="display:none;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button type="button" class="btn" id="studioAiFileBtnA" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-        <span id="studioAiFileNameA" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
-      </div>
-      <img id="studioAiSourcePreviewA" style="display:none; width:100%; margin-top:8px; border-radius:var(--r-2); max-height:180px; object-fit:contain; background:#000;">
-    </div>
-
-    <div id="studioAiImageBWrap" style="display:none; margin-top:14px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiImageBLabel">الصورة الثانية</label>
-      <input type="file" id="studioAiFileInputB" accept="image/*" style="display:none;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button type="button" class="btn" id="studioAiFileBtnB" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-        <span id="studioAiFileNameB" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
-      </div>
-      <img id="studioAiSourcePreviewB" style="display:none; width:100%; margin-top:8px; border-radius:var(--r-2); max-height:180px; object-fit:contain; background:#000;">
-    </div>
-
-    <div id="studioAiStyleWrap" style="margin-top:14px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiStyleLabel">اختر الخيار</label>
-      <!-- v-studio-cards: خيارات كل ميزة بطاقات مصوّرة (نفس نمط بقية الاستوديوهات)؛
-           السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
-      <div id="studioStyleCards" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
-      <select id="studioAiStyle" style="display:none;"></select>
-    </div>
-
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiDescLabel">وصف إضافي (اختياري)</label>
       <div class="mini-mic-field-row">
@@ -993,6 +1067,7 @@
       <input type="checkbox" id="studioAiMultiAngle">
       <span data-i18n="studioMultiAngleLabel">🕶️ عرض من زوايا متعددة (أمام / جانب / خلف)</span>
     </label>
+    </details>
 
     <button type="button" class="btn primary" id="studioAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="studioAiGenerateBtn">✨ ولّد الصورة</button>
 
@@ -1008,8 +1083,9 @@
       <img id="studioAiResult" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
       <div id="studioAiBeforeWrap" style="display:none; position:absolute; top:0; left:0; height:100%; overflow:hidden; border-right:2px solid #fff;">
         <img id="studioAiBeforeImg" style="display:block; height:100%; max-width:none;">
+        <!-- v-compare-drag-all: مقبض عند حافّة القصّ نفسها — يتبعها تلقائيًّا مع تغيّر عرض الحاوية -->
+        <div id="studioAiCompareHandle" style="position:absolute; top:50%; right:-20px; transform:translateY(-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
       </div>
-      <input type="range" id="studioAiSliderRange" min="0" max="100" value="50" style="display:none; position:absolute; bottom:8px; left:8px; right:8px; width:calc(100% - 16px); z-index:5;">
     </div>
 
     <a id="studioAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-studio-ai.png" data-i18n="studioAiDownloadBtn">⬇️ تحميل الصورة</a>
@@ -1020,9 +1096,13 @@
       <strong style="font-size:13px;" data-i18n="studioCompareTitle">📊 قارن بين ستايلات</strong>
       <button type="button" class="btn" id="studioAiFavoritesBtn" style="padding:4px 10px; font-size:12px;" data-i18n="studioFavoritesBtn">❤️ المفضلة</button>
     </div>
-    <p style="font-size: var(--fs-5); color:var(--muted); margin:4px 0 8px;" data-i18n="studioCompareHint">اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب</p>
-    <div id="studioAiCompareChecks" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
-    <button type="button" class="btn" id="studioAiCompareBtn" style="width:100%; margin-top:8px;" data-i18n="studioCompareBtn">📊 قارن الستايلات</button>
+    <!-- v-studio-compare-cards (لقطة المالك: «تحت كيف الشخص يعرف الشكل»): الخيارات بطاقات مصوّرة بدل ١٠٤ مربّع نصّيّ،
+         والقائمة مطويّة حتّى تُفتح -->
+    <details id="studioAiCompareMore" style="margin-top:6px;">
+      <summary style="cursor:pointer; font-size: var(--fs-5); color:var(--muted); padding:4px 0;" data-i18n="studioCompareHint">اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب</summary>
+      <div id="studioAiCompareChecks" class="stCmpGrid"></div>
+      <button type="button" class="btn" id="studioAiCompareBtn" style="width:100%; margin-top:8px;" data-i18n="studioCompareBtn">📊 قارن الستايلات</button>
+    </details>
     <div id="studioAiCompareStatus" style="display:none; margin-top:10px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="studioAiCompareResults" style="display:none; margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
 
@@ -1038,8 +1118,12 @@
     </div>
 
     <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
-      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;" data-i18n="religionTabVerse">🕌 تفسير آية</button>
-      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;" data-i18n="religionTabHadith">📖 بحث حديث</button>
+      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;" data-i18n="religionTabVerse">🕌 آية قرآنية</button>
+      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;" data-i18n="religionTabHadith">📖 حديث نبوي</button>
+      <button type="button" class="btn religionTabBtn" data-tool="bible" style="white-space:nowrap;" data-i18n="religionTabBible">✝️ آية كتاب مقدس</button>
+      <button type="button" class="btn religionTabBtn" data-tool="torah" style="white-space:nowrap;" data-i18n="religionTabTorah">✡️ آية توراتية</button>
+      <button type="button" class="btn religionTabBtn" data-tool="buddhism" style="white-space:nowrap;" data-i18n="religionTabBuddhism">🕉️ تعليم بوذي</button>
+      <button type="button" class="btn religionTabBtn" data-tool="hinduism" style="white-space:nowrap;" data-i18n="religionTabHinduism">🙏 حكمة هندوسية</button>
       <button type="button" class="btn religionTabBtn" data-tool="dream" style="white-space:nowrap;" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
     </div>
 
@@ -1411,16 +1495,7 @@
   </div>
 </div>
 
-<!-- v525: نافذة التحذيرات الطارئة — تظهر تلقائياً عند اكتشاف خبر طارئ أو تحذير أمني -->
-<div id="omranEmergencyModal" style="position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.75); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:#fff; color:#111; border-radius:16px; padding:28px 24px; max-width:480px; width:100%; text-align:center; direction:rtl; box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-    <h2 id="omranEmAlertTitle" style="margin:0 0 16px; font-size:22px; color:#c0392b;">🚨 تحذير طارئ</h2>
-    <p id="omranEmAlertBody" style="font-size:15px; line-height:1.7; white-space:pre-wrap; margin:0 0 12px; color:#222;"></p>
-    <p id="omranEmAlertSource" style="font-size:11px; color:#888; word-break:break-all; margin:0 0 20px;"></p>
-    <button id="omranEmAlertOk" type="button" style="background:none; border:none; color:#2980b9; font-size:17px; font-weight:700; cursor:pointer; padding:6px 24px;">حسنًا</button>
-  </div>
-</div>
-
+<!-- v-news-off (أمر المالك ٣ أكتوبر «شيل موضوع الأخبار، الزرّ لا يعمل»): نافذة «تحذير طارئ» أُزيلت مع الميزة. -->
 <div id="shareModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:440px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">

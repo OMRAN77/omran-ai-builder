@@ -54,6 +54,152 @@ body.omranWelcome #messages{display:none;}
 .omToolCard .omToolDesc{font-size: var(--fs-5); color:var(--muted); line-height:1.45;}
 #omranQuickMobileWrap{display:none;}
 
+/* ---------------- 📱 بطاقات أدوات هواوي في شاشة الترحيب (طلب عمران لمتجر AppGallery) ---------------- */
+#huaweiHeroWrap{display:none !important;}
+body:not(.omranWelcome) #omranHero,
+body:not(.omranWelcome) #huaweiHeroWrap{
+  display:none !important;
+}
+html.store-safe body.omranWelcome #huaweiHeroWrap{
+  display:flex !important;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  max-width:540px;
+  margin:0 auto;
+  padding:8px 6px;
+  box-sizing:border-box;
+}
+html.store-safe body.omranWelcome.hwChatting #huaweiHeroWrap{display:none !important;}
+/* v-hw-cards-once: بعد أوّل مغادرة لشاشة الدخول في هذا الفتح لا تعود البطاقات (ui-wiring يضع hwCardsDone) */
+html.store-safe.hwCardsDone body.omranWelcome #huaweiHeroWrap{display:none !important;}
+.huawei-hero-head{display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; margin-bottom:2px;}
+.huawei-hero-badge{font-size:11px; font-weight:var(--w-bold, 700); color:var(--omGold, #d4af37); background:rgba(var(--accent-tint-rgb, 212,175,55),.12); border:1px solid var(--omGoldSoft, rgba(212,175,55,.3)); border-radius:999px; padding:2px 10px; letter-spacing:.5px;}
+.huawei-hero-title{font-size:16px; font-weight:800; color:var(--text); margin:2px 0 0; line-height:1.4;}
+.huawei-tools-grid{direction:rtl; display:grid; grid-template-columns:repeat(2,1fr); gap:12px; width:100%; box-sizing:border-box;}
+@media (max-width:480px){
+  .huawei-tools-grid{grid-template-columns:repeat(2,1fr); gap:8px;}
+}
+@media (max-width:340px){
+  .huawei-tools-grid{grid-template-columns:1fr; gap:8px;}
+}
+.hwToolCard{
+  direction:rtl;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  padding:0;
+  gap:0;
+  background:#070709;
+  border:1px solid rgba(212,175,55,.28);
+  border-radius:14px;
+  cursor:pointer;
+  font-family:inherit;
+  text-align:start;
+  transition:transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+  box-sizing:border-box;
+  width:100%;
+  overflow:hidden;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.hwToolCard:hover{
+  border-color:rgba(212,175,55,.7);
+  box-shadow:0 10px 24px rgba(0,0,0,.28), 0 0 0 1px rgba(212,175,55,.12);
+  transform:translateY(-2px);
+}
+.hwToolCard:active{transform:translateY(0);}
+.hwToolCard img.toolPhotoImage{
+  display:block !important;
+  width:100% !important;
+  height:96px !important;
+  object-fit:cover !important;
+  object-position:50% 40% !important;
+  border-radius:0 !important;
+  pointer-events:none;
+}
+@media (max-width:480px){
+  .hwToolCard img.toolPhotoImage{height:80px !important;}
+}
+.hwToolCard .tcMeta{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  width:100%;
+  flex:1 0 auto;
+  padding:8px 10px 9px;
+  background:#070709;
+  box-sizing:border-box;
+  direction:inherit;
+}
+.hwToolCard .tcTxt{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  text-align:start;
+}
+.hwToolCard .btnLabel{
+  display:-webkit-box !important;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:1;
+  overflow:hidden;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.25;
+  color:#f3efe4 !important;
+  text-align:start;
+}
+.hwToolCard .tcSub{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:1;
+  overflow:hidden;
+  font-size:10.5px;
+  font-weight:500;
+  line-height:1.3;
+  color:#b9b3a3;
+  white-space:normal;
+}
+.hwToolCard .tcArrow{
+  flex:0 0 26px;
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
+  line-height:1;
+  color:#f3efe4;
+  padding-bottom:2px;
+}
+html[dir="rtl"] .hwToolCard .tcArrow{transform:scaleX(-1);}
+.hwAllToolsBtn{
+  margin-top:4px;
+  background:rgba(var(--accent-tint-rgb, 212,175,55),.08);
+  border:1px solid var(--omGoldSoft, rgba(212,175,55,.3));
+  border-radius:999px;
+  padding:7px 18px;
+  color:var(--omGold, #d4af37);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  font-family:inherit;
+  transition:background .15s ease, border-color .15s ease;
+}
+.hwAllToolsBtn:hover{background:rgba(var(--accent-tint-rgb, 212,175,55),.18); border-color:var(--omGold, #d4af37);}
+
+html[data-mode="light"] .hwToolCard,
+html[data-mode="light"] .hwToolCard .tcMeta{background:#ffffff !important;}
+html[data-mode="light"] .hwToolCard .btnLabel{color:#14161a !important;}
+html[data-mode="light"] .hwToolCard .tcSub{color:#6b6657;}
+html[data-mode="light"] .hwToolCard .tcArrow{background:rgba(0,0,0,.05); border-color:rgba(0,0,0,.12); color:#14161a;}
+
 /* ---------------- Below composer (chips + disclaimer) ---------------- */
 #omranBelowComposer{display:none; flex-direction:column; align-items:center; gap:7px; padding:6px 4px 0;}
 body.omranWelcome #omranBelowComposer{display:flex;}
@@ -240,6 +386,7 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 #plusToolsPopup .omModeItem[data-mode="image_nano"]{order:50;}   /* ٥ محرّك نانو (خام) */
 #plusToolsPopup .omModeItem[data-mode="image_text"]{order:60;}   /* ٦ صورة بنصّ دقيق */
 #plusToolsPopup .omModeItem[data-mode="image_gpt"]{order:70;}    /* ٧ محرّك GPT (خام) */
+#plusToolsPopup .omModeItem[data-mode="image_mix"]{order:72;}    /* ٨ دمج نانو + GPT (v-img-mix) — تحت GPT وفوق الفاصل */
 #plusToolsPopup .omModeSep{order:75;}                              /* فاصل فوق الحذف */
 #plusToolsPopup #btnDeleteChat{order:80;}                          /* حذف المحادثة (أسفل) */
 /* القائمة لا تُقصّ على الشاشات القصيرة: سقف ارتفاع مع تمرير عند اللزوم. */
@@ -264,7 +411,7 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
   /* v-sat-measure: ‎--omran-sat تُقاس في selfdiag.js — env() فقط إذا كانت
      النافذة ممتدة فعلًا تحت شريط الساعة، وإلا صفر (غلاف نازل أساسًا). */
   header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
-  #inputbar{padding:2px 10px 5px;}
+  #inputbar{padding:2px 10px 2px;}
   #composerBox{padding:4px 8px 3px !important; border-radius:16px !important; gap:1px;}
   #prompt{min-height:20px; max-height:84px; font-size:13px; padding:4px 8px 2px;}
   #inputbar .inputbar-tools .btn, #inputbar .inputbar-tools-left .btn{padding:5px;}
@@ -347,6 +494,27 @@ html.mobile-ui #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:
 }
 html.mobile-ui #composerRow{gap:6px;}
 html.mobile-ui #composerRow > #btnMahaDock{width:48px; border-radius:16px !important;}
+/* v-maha-in-tools (طلب المالك): «مها» صارت زرًّا دائريًّا صغيرًا ضمن صفّ الأدوات (مع +/المايك)
+   بدل الصندوق الطويل الممتدّ جنب المحرّر — بلا امتداد ولا صندوق زجاجيّ. الحرف بذهب الشعار. */
+html #inputbar > .inputbar-tools-below #btnMahaDock{
+  width:24px !important; height:24px !important; flex:0 0 24px !important;
+  padding:0 !important; margin:0 !important;
+  background:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  border:none !important; border-radius:999px !important; box-shadow:none !important;
+  display:inline-flex !important; align-items:center; justify-content:center;
+}
+html #inputbar > .inputbar-tools-below #btnMahaDock:hover{background:rgba(249,227,130,.12) !important;}
+html #inputbar > .inputbar-tools-below #btnMahaDock .mahaGlyph{
+  display:block; line-height:1 !important; font-weight:700; font-size:19px !important;
+  font-family:'Tajawal', Tahoma, Arial, sans-serif; color:#f2d164; text-shadow:none;
+  transform:translateY(-1px) !important;
+}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  html #inputbar > .inputbar-tools-below #btnMahaDock .mahaGlyph{
+    background:linear-gradient(180deg, #faf0a1 0%, #f9e382 38%, #f2d164 62%, #ba842a 100%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+}
 #composerBox:not(.typing) > #btnSend{ opacity:.55; }
 #composerBox.typing > #btnSend{ opacity:1; animation:morphIn .16s ease; }
 @keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
@@ -422,7 +590,7 @@ header{background:var(--bg); backdrop-filter:none;}
    بإطار ذهبي متوهج. نفس التصميم على الجوال والكمبيوتر وفي الوضعين. ═══ */
 html #composerBox{
   background:#101013 !important; border:1px solid rgba(212,175,55,.28) !important; border-radius:999px !important;
-  padding:6px 8px !important; gap:8px !important; align-items:center !important; min-height:54px;
+  padding:2px 8px !important; gap:8px !important; align-items:center !important; min-height:40px; /* v-composer-short3 (طلب المالك): أقصر ارتفاعًا مع تصغير الأيقونات */
   box-shadow:0 6px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
 }
 html #composerBox:focus-within{border-color:rgba(212,175,55,.6) !important; box-shadow:0 0 0 3px rgba(212,175,55,.10), 0 6px 24px rgba(0,0,0,.35) !important;}
@@ -439,10 +607,11 @@ html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left 
   background:none !important; box-shadow:none !important; color:#e9e4d6 !important; display:inline-flex; align-items:center; justify-content:center;
 }
 html #inputbar #plusToolsWrap{display:inline-flex; align-items:center;}
-/* فاصل رفيع بين + والمايك كما في الصورة */
+/* v-mic-noline (طلب المالك): إزالة الخطّ الفاصل الصغير جنب المايك */
 html #inputbar .inputbar-tools-left > #btnMic{position:relative;}
-html #inputbar .inputbar-tools-left > #btnMic::before{content:''; position:absolute; top:8px; bottom:8px; inset-inline-end:-1px; width:1px; background:rgba(255,255,255,.14);}
-html #inputbar .inputbar-tools-left > #btnMic.recording{background:#ff4d4d !important; color:#fff !important;}
+html #inputbar .inputbar-tools-left > #btnMic::before{display:none !important;}
+/* v-mic-gold (طلب المالك): مايك التسجيل ذهبيّ بوميض بدل الأحمر */
+html #inputbar .inputbar-tools-left > #btnMic.recording{background:#0c0c0f !important; color:#d4af37 !important; border:1.5px solid #d4af37 !important;}
 html #inputbar .inputbar-tools-left svg, html #inputbar #btnPlusTools svg{width:21px; height:21px;}
 /* النص */
 html #composerBox > #prompt{
@@ -453,13 +622,21 @@ html #composerBox > #prompt::placeholder{color:#8f8a7c;}
 /* زر الإرسال: دائرة بإطار ذهبي وتوهّج، في أقصى اليسار */
 html #composerBox > #btnStop, html #composerBox > #btnSend{order:3 !important; margin-inline-start:0 !important;}
 html #composerBox > #btnSend{
-  width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;
+  width:33px !important; height:33px !important; flex:0 0 33px !important; border-radius:999px !important;
   background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
   box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important; opacity:1 !important;
 }
-html #composerBox > #btnSend svg{width:19px; height:19px; stroke:#d4af37;}
+html #composerBox > #btnSend svg{width:16px; height:16px; stroke:#d4af37;}
 html #composerBox.typing > #btnSend{box-shadow:0 0 0 3px rgba(212,175,55,.18), 0 0 22px rgba(212,175,55,.55) !important;}
-html #composerBox > #btnStop{width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;}
+/* v-stop-gold (طلب المالك): زرّ الإيقاف بنفس مظهر الإرسال الذهبيّ بدل الأحمر */
+html #composerBox > #btnStop{
+  width:33px !important; height:33px !important; flex:0 0 33px !important; border-radius:999px !important;
+  background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
+  box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important;
+}
+html #composerBox > #btnStop svg{fill:#d4af37 !important; color:#d4af37 !important;}
+html[data-mode="light"] #composerBox > #btnStop{background:#fffdf5 !important; color:#b8902a !important; box-shadow:0 0 0 3px rgba(212,175,55,.14), 0 0 14px rgba(212,175,55,.30) !important;}
+html[data-mode="light"] #composerBox > #btnStop svg{fill:#b8902a !important; color:#b8902a !important;}
 /* v-composer-light (طلب المالك ٤ سبتمبر): في الوضع الفاتح صندوق الكتابة أبيض بإطار ذهبي، لا أسود */
 html[data-mode="light"] #composerBox{
   background:#ffffff !important; border:1px solid rgba(212,175,55,.55) !important;
@@ -485,12 +662,132 @@ html #composerBox.omTall > #attachStrip{padding:2px 6px 6px !important;}
   html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left > button, html #inputbar #btnPlusTools{width:34px; height:34px; flex:0 0 34px;}
 }
 
+/* v-tools-below (طلب المالك): مجموعة الأدوات (+ والمايك…) صفّ تحت صندوق الكتابة، جهة البداية
+   (يمين في RTL — حيث كانت الكبسولة). يبقى زرّ الإرسال وحده داخل الصندوق. */
+html #inputbar > .inputbar-tools-below{
+  align-self:flex-start !important; order:unset !important; flex:0 0 auto !important; width:max-content;
+  display:flex !important; align-items:center; gap:2px; margin:2px 6px 0 !important; padding:0 !important;
+  background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important;
+}
+html #inputbar > .inputbar-tools-below .inputbar-tools-left{display:flex !important; align-items:center; gap:1px;}
+/* v-tools-small (طلب المالك): «+/المايك» أصغر ومتناسقة بلا فراغ كبير.
+   v-tools-scope: القياس محصور في أزرار الصفّ الظاهرة فقط (أبناء inputbar-tools-left
+   المباشرين + زرّ «+»)، لا يطال أزرار نافذة «+» المنبثقة (#plusToolsPopup) كي لا تنكسر. */
+html #inputbar > .inputbar-tools-below{margin-top:1px !important;}
+html #inputbar > .inputbar-tools-below #btnPlusTools,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button{width:24px !important; height:24px !important; flex:0 0 24px !important; padding:0 !important;}
+html #inputbar > .inputbar-tools-below #btnPlusTools > svg,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn > svg,
+html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button > svg{width:14px !important; height:14px !important;}
+/* v-below-onerow (طلب المالك): على سطح المكتب «+/المايك» وشريط المزوّد على سطر واحد
+   تحت الصندوق — الأدوات جهة البداية (يمين RTL) تحت حافّة الصندوق، والمزوّد جهة النهاية
+   (يسار RTL) تحت الحافّة الأخرى، والصندوق ينزل يقرب منهم. #inputbar يلتفّ صفوفًا:
+   الصندوق وbelowComposer سطر كامل، والأدوات والمزوّد يتشاركان السطر بينهما.
+   النطاق = --om-chat-inset (نفس عرض الصندوق ٨٠٠px الموسّط). */
+@media (min-width:861px){
+  html:not(.mobile-ui) #inputbar{flex-flow:row wrap; align-items:center;}
+  /* الترتيب صريح: الصندوق سطر كامل (0)، ثمّ سطر الأدوات+المزوّد (1 ثمّ 2 على نفس السطر)،
+     وترحيب belowComposer آخر سطر (3) كما كان — كي لا يقفز بين الصندوق والأدوات. */
+  html:not(.mobile-ui) #inputbar > #composerRow{flex:1 1 100% !important; order:0;}
+  html:not(.mobile-ui) #inputbar > #omranBelowComposer{flex:1 1 100% !important; order:3;}
+  html:not(.mobile-ui) #inputbar > .inputbar-tools-below{
+    order:1 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+    justify-content:flex-start !important; margin:1px 0 0 !important; margin-inline-start:var(--om-chat-inset) !important;
+  }
+  /* v-owner-bar-hide: لا display هنا — !important كان يغلب style.display='none' فيظهر الشريط لكلّ مستخدم؛ الإظهار لـmodes.js وحده. */
+  html:not(.mobile-ui) #inputbar > #omBottomBar{
+    order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+    justify-content:flex-end !important;
+    margin:0 0 0 !important; margin-inline-start:auto !important; margin-inline-end:var(--om-chat-inset) !important;
+  }
+}
+
+/* v-below-onerow-mobile (طلب المالك «في الهاتف ما نزل + نفس الكمبيوتر على نفس المستوى»):
+   نفس السطر الواحد على الجوّال — «+/المايك» جهة البداية وشريط المزوّد جهة النهاية، بعرض
+   الصندوق (حشوة #inputbar) لا بنطاق --om-chat-inset (خاصّ بالمكتب). */
+html.mobile-ui #inputbar{flex-flow:row wrap; align-items:center;}
+html.mobile-ui #inputbar > #composerRow{flex:1 1 100% !important; order:0;}
+html.mobile-ui #inputbar > #omranBelowComposer{flex:1 1 100% !important; order:3;}
+html.mobile-ui #inputbar > .inputbar-tools-below{
+  order:1 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+  justify-content:flex-start !important; margin:2px 0 0 !important;
+}
+/* v-owner-bar-hide: بلا display — للمالك وحده بـmodes.js */
+html.mobile-ui #inputbar > #omBottomBar{
+  order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
+  justify-content:flex-end !important;
+  margin:0 0 0 !important; margin-inline-start:auto !important;
+}
+/* v-foldable-composer (طلب المالك، مقيس على أعراض الهواوي/سامسونج): على التابلت/القابل للطيّ
+   (mobile-ui وشاشة عريضة ≥ 700px) كان صندوق الكتابة يتوسّط (v-chat-center-narrow من 700px)
+   بينما «+/المايك» والمزوّد يبقيان بعرض كامل فيطيران لزوايا الشاشة — والعتبة القديمة (861px)
+   كانت تفوّت عرض الجهاز المطويّ (700–860px CSS). الحلّ: من 700px تُحاذى الأدوات والمزوّد
+   لحافّتَي الصندوق بنفس هامشه (١٢٪ = --om-chat-narrow-inset، يطابق الرسائل)، والكتلة توسّط
+   الصندوق بنفسها أيضًا فلا تعتمد على شرط المؤشّر في v-chat-center-narrow. الطوليّ (< 700) لا يُمسّ. */
+@media (min-width:700px){
+  html.mobile-ui #inputbar{ --fold-inset: max(var(--om-chat-pad,32px), 12%); }
+  html.mobile-ui #inputbar > #composerRow{ margin-inline: var(--fold-inset) !important; width:auto !important; max-width:none !important; }
+  html.mobile-ui #inputbar > .inputbar-tools-below{ margin-inline-start: var(--fold-inset) !important; }
+  html.mobile-ui #inputbar > #omBottomBar{ margin-inline-end: var(--fold-inset) !important; }
+}
+
 /* v-sidebar-brand (طلب عمران ١٨ سبتمبر): الشعار في رأس القائمة الجانبيّة وزرّ «محادثة جديدة» تحته مباشرة — سطح المكتب فقط.
    الجوّال: العنصر مخفيّ وشعار الرأس كما هو. الترتيب بـorder لأنّ القائمة عمود مرن مرتّب (الزرّ order:-2). */
 #sidebarBrand{display:none;}
 html:not(.mobile-ui) #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:10px 14px 0; cursor:pointer; user-select:none;}
 html:not(.mobile-ui) #sidebarBrand .brandImg{height:42px; width:auto; object-fit:contain; display:block;}
+/* v-sb-brand-mobile (طلب المالك): إظهار شعار «عمران ai» أعلى درج المحادثات على الجوّال
+   أيضًا، فوق زرّ «محادثة جديدة» مباشرة (الزرّ order:-2 فالشعار order:-3 يسبقه). */
+html.mobile-ui #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:12px 14px 2px; cursor:pointer; user-select:none;}
+html.mobile-ui #sidebarBrand .brandImg{height:40px; width:auto; object-fit:contain; display:block;}
+/* v-om-brand (طلب عمران ٢٥ سبتمبر): «OM Ai» ونجومه الثلاث بجانبه تومض بالتناوب؛ dir=ltr يُبقي النجوم يمين الكلمة في العربيّة. */
+.omBrand{display:inline-flex; align-items:center; direction:ltr;}
+.omStars{display:block; margin-left:-2px; width:22px; height:42px; flex:0 0 auto; overflow:visible;}
+html.mobile-ui .omStars{width:21px; height:40px;}
+.omBrandStar{transform-origin:0 0; animation:omTwinkle 2.2s ease-in-out infinite; filter:drop-shadow(0 0 3px currentColor);}
+.omBrandStar.s1{color:#04BAEC; animation-delay:0s;}
+.omBrandStar.s2{color:#FEED01; animation-duration:2.8s; animation-delay:.7s;}
+.omBrandStar.s3{color:#F049D7; animation-duration:2.5s; animation-delay:1.4s;}
+@keyframes omTwinkle{0%,100%{opacity:.35; transform:scale(.65) rotate(0deg);} 50%{opacity:1; transform:scale(1.15) rotate(20deg);}}
+@media (prefers-reduced-motion: reduce){ .omBrandStar{animation:none; opacity:1; transform:none;} }
+html.omAndroid .omBrandStar{filter:none;}
 html:not(.mobile-ui) header h1 #brandTitle{display:none;}
+/* v-mobile-brand-once (طلب المالك): على الجوّال يبقى شعار الدرج فقط — يُخفى شعار الهيدر
+   كي لا يظهر الاسم مرّتين («من الجهتين») عند فتح الدرج. */
+html.mobile-ui header h1 #brandTitle{display:none !important;}
 /* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:2px;}
+
+/* v-iphone-fit (لقطات المالك ٢٣ سبتمبر — آيفون):
+   ١) الكيبورد مفتوح (html.kb-open من pinVisualViewport): شريط التبويبات وحاشية الهوم خلف الكيبورد، فلا حجز
+      لهما تحت main — مربّع الكتابة يلتصق فوق الكيبورد مباشرة بدل الطفو في وسط الشاشة.
+   ٢) درجا المحادثات والملفّات مثبّتان من top:0 بلا حاشية القمّة، فالشعار وأزرار الملفّات تحت الساعة والبطارية.
+      نفس حاشية الهيدر (بسقف 62px). السهم المطلق في درج المحادثات يحسب حاشيته بنفسه فلا يتأثّر. */
+html.kb-open main{padding-bottom:0 !important;}
+html.kb-open #omranBottomNav{display:none !important;}
+@media (max-width:860px){
+  #sidebar, #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
+}
+html.mobile-ui #sidebar, html.mobile-ui #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
+
+/* v-android-gpu (فيديو المالك ٢٣ سبتمبر «التطبيق كامل يشوش» — أندرويد/هواوي: ضجيج مكان الشعار، مستطيلات سوداء فوق
+   بطاقات الأدوات، شاشات نصف مرسومة). عطب تركيب في معالج الرسوم: ٢٥ نجمة متحرّكة كلّ واحدة طبقة مستقلّة بفلتر
+   drop-shadow على شكل مقصوص (clip-path) يُعاد حسابه كلّ إطار، وأيقونة الشريط تحرّك فلترًا بلا توقّف، ونافذة الأدوات
+   فوق تغبيش ملء الشاشة لا يُرى أصلًا (القائمة تغطّي الشاشة كلّها). على أندرويد فقط (html.omAndroid): النجوم تبقى
+   وتومض بلا توهّج الفلتر، والأيقونة تنبض بالشفافيّة وحدها، والتغبيش المخفيّ يُلغى. الآيفون والكمبيوتر كما هما. */
+html.omAndroid #omranNewChatBtn > .omStar,
+html.omAndroid #omSkyLayer .omSkyStar,
+html.omAndroid #mahaSkyLayer .omSkyStar{filter:none;}
+html.omAndroid #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{animation:tickerAiPulseLite 2.2s ease-in-out infinite; filter:none;}
+@keyframes tickerAiPulseLite{0%,100%{opacity:.72;} 50%{opacity:1;}}
+html.omAndroid #sectionsToolsOverlay{backdrop-filter:none; -webkit-backdrop-filter:none;}
+/* v-bdf-off (المالك ٢٤ سبتمبر «وميض ومشوّشة»): v-android-gpu أطفأ التغبيش تحت لوحة الأدوات
+   وحدها، وبقي حيًّا على تسع نوافذ أخرى (قائمة الرأس، الرقائق السريعة، التعليم، التجارب،
+   المستندات، الحكومة، السيرة، الملاحظات) وعلى كلّ غلاف يُحقَن من JS بنمط سطريّ. كلّ واحد منها
+   لقطة خلفيّة ملء الشاشة في كلّ إطار — أغلى ما يُطلب من معالج رسوم WebView، وكلّها زينة فوق
+   خلفيّة معتمة أصلًا (rgba سوداء) فالنصّ يبقى مقروءًا بلا تغبيش.
+   القاعدة عامّة بـ!important لأنّ النمط السطريّ من JS لا تغلبه قاعدة عاديّة. أندرويد وحده. */
+html.omAndroid *{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;}
+

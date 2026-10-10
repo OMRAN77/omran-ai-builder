@@ -29,6 +29,43 @@ function deletedKey(username) {
   return 'chats_deleted:' + encodeURIComponent(String(username).trim().toLowerCase());
 }
 
+// v-keep-conversations: نزع صور المرفقات من رسائل مشروع واحد، إبقاء العنوان
+// والنصوص كما هي. يُستدعى على الأقدم أولًا قبل حذف أيّ مشروع كاملًا — فقدان
+// الصورة أهون من فقدان المحادثة نفسها على جهاز آخر لم يفتحها بعد.
+function stripAttachmentImages(messages) {
+  if (!Array.isArray(messages)) return messages;
+  let changed = false;
+  const out = messages.map((m) => {
+    if (!m || typeof m !== 'object') return m;
+    let mChanged = false;
+    const copy = Object.assign({}, m);
+    if (Array.isArray(copy.attachments)) {
+      const arr = copy.attachments.map((a) => {
+        if (a && a.isImage === true && typeof a.dataUrl === 'string' && a.dataUrl && a.dataUrl !== '[media]') {
+          mChanged = true;
+          return Object.assign({}, a, { dataUrl: '[media]' });
+        }
+        return a;
+      });
+      if (mChanged) copy.attachments = arr;
+    }
+    if (Array.isArray(copy.apiImages)) {
+      let apiChanged = false;
+      const arr = copy.apiImages.map((a) => {
+        if (a && typeof a.dataUrl === 'string' && a.dataUrl && a.dataUrl !== '[media]') {
+          apiChanged = true;
+          return Object.assign({}, a, { dataUrl: '[media]' });
+        }
+        return a;
+      });
+      if (apiChanged) { copy.apiImages = arr; mChanged = true; }
+    }
+    if (mChanged) changed = true;
+    return mChanged ? copy : m;
+  });
+  return changed ? out : messages;
+}
+
 function slimProjects(projects) {
   if (!Array.isArray(projects)) return [];
   let list = projects
@@ -48,6 +85,17 @@ function slimProjects(projects) {
   while (size(list) > MAX_BYTES && i < list.length) {
     if (list[i].code) list[i] = Object.assign({}, list[i], { code: '' });
     i++;
+  }
+  // الأقدم أولًا: معرّف المشروع p_<طابع زمني> (نمط عمليّ موحّد في كل مسارات
+  // الإنشاء بالعميل) لا ترتيب الصفّ — قبل حذف أيّ مشروع كاملًا.
+  if (size(list) > MAX_BYTES) {
+    const ts = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : Infinity; };
+    const order = list.map((p, idx) => idx).sort((a, b) => ts(list[a]) - ts(list[b]));
+    for (const idx of order) {
+      if (size(list) <= MAX_BYTES) break;
+      const stripped = stripAttachmentImages(list[idx].messages);
+      if (stripped !== list[idx].messages) list[idx] = Object.assign({}, list[idx], { messages: stripped });
+    }
   }
   while (size(list) > MAX_BYTES && list.length > 0) list.shift();
   return list;
@@ -154,3 +202,5 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: (e && e.message) || 'chats error' });
   }
 };
+
+module.exports.__vkeep = { slimProjects, mergeProjects, stripAttachmentImages, MAX_BYTES }; // v-keep-conversations — للاختبار

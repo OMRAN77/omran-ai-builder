@@ -6,7 +6,8 @@
 // user (db/video-usage/<username>.json), separate from chat usage in
 // db/usage/, and resets automatically each day (UTC).
 const crypto = require('crypto');
-const { kvGetJSON, kvPutJSON } = require('./kv.js');
+// v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
+const quotaTally = require('./_dailyQuota.js');
 const { isBanned } = require('./auth.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
@@ -28,32 +29,13 @@ function verifyToken(token) {
   }
 }
 
-function usagePath(username) {
-  return 'db/video-usage/' + encodeURIComponent(username) + '.json';
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-}
-
-async function getUsage(username) {
-  return kvGetJSON(usagePath(username));
-}
-
-async function putUsage(username, usage) {
-  try {
-    await kvPutJSON(usagePath(username), usage);
-  } catch (e) {
-    // Best-effort bookkeeping; never block on a write failure here.
-  }
-}
-
 // Verifies the session token and checks whether the user is still under the
 // daily video quota, WITHOUT consuming any allowance yet. Video generation
 // has no guest/anonymous mode — an account is required. Returns:
 //   { allowed: true,  username, remaining }
 //   { allowed: false, reason: 'auth' | 'limit', username }
-async function checkVideoQuota(token) {
+// v-atomic-quota: مع res (ردّ طلب التوليد) يحجز مقعدًا ذرّيًّا يُردّ قبل خروج الردّ ما لم يُستهلك؛ بلا res قراءة مجرّدة.
+async function checkVideoQuota(token, res) {
   const username = verifyToken(token);
   if (!username) {
     return { allowed: false, reason: 'auth', username: null };
@@ -64,15 +46,7 @@ async function checkVideoQuota(token) {
   if (isOwner(username)) {
     return { allowed: true, username, remaining: Infinity };
   }
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  if (usage.count >= VIDEO_DAILY_LIMIT) {
-    return { allowed: false, reason: 'limit', username };
-  }
-  return { allowed: true, username, remaining: VIDEO_DAILY_LIMIT - usage.count };
+  return quotaTally.check('video', username, VIDEO_DAILY_LIMIT, res);
 }
 
 // Actually consumes one video generation from today's allowance. Only call
@@ -80,14 +54,15 @@ async function checkVideoQuota(token) {
 // actually started — a failed/rejected request (e.g. insufficient provider
 // credits, bad prompt) must never burn a user's daily quota.
 async function consumeVideo(username) {
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  usage.count += 1;
-  await putUsage(username, usage);
-  return VIDEO_DAILY_LIMIT - usage.count;
+  return quotaTally.consume('video', username, VIDEO_DAILY_LIMIT);
+}
+
+// v-video-refund: فشل المزوّد **بعد** قبوله المهمّة يعيد حصّة اليوم — الخصم أعلاه معناه
+// «بدأ التوليد»، والفشل (فلتر أمان أو عطب عند المزوّد) ليس من المستخدم فلا يُحاسَب عليه.
+// لا ينزل تحت صفر ولا يمسّ عدّاد يوم آخر. v-atomic-quota: إنقاص ذرّيّ لعدّاد اليوم (كان قراءة ثمّ كتابة).
+async function releaseVideo(username) {
+  if (!username) return;
+  await quotaTally.giveBack('video', username);
 }
 
 // The one account allowed to bypass the daily quota for the "long video"
@@ -111,4 +86,4 @@ function checkOwnerBypass(token) {
   return { allowed: true, username };
 }
 
-module.exports = { checkVideoQuota, consumeVideo, VIDEO_DAILY_LIMIT, isOwner, checkOwnerBypass };
+module.exports = { checkVideoQuota, consumeVideo, releaseVideo, VIDEO_DAILY_LIMIT, isOwner, checkOwnerBypass };

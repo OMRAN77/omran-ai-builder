@@ -97,6 +97,20 @@ function portraitDirection(prompt){
     bgWords(prompt) <= 6 ? bgPick(PT_SETTING) + ' ' + bgPick(PT_MOOD) : '',
     bgPick(PT_COMP), bgPick(PT_LIGHT), bgPick(PT_PAL), bgPick(PT_LENS));
 }
+/* v-text-layers (فيديو المالك: «الصوره تعبر عن وفات شخص عزيز» — كلمة «شخص» اختارت بورتريه شخص، و«اللمسة الفاخرة»
+   تطلب لمعان منتج؛ ChatGPT رسم مقبرة وفانوسًا ووردة): طلب العزاء مشهد رمزيّ ساكن بلا وجوه ولا بريق تجاريّ. */
+/* كلمات عزاء كاملة لا مقاطع («الأعزاء»، «صوفات»، «المراجعون»)، ولا تحيّة «ورحمة الله» ولا لقب «رحمه الله» في رسم شخص،
+   و«الموت» فقط في «عن الموت / موت شخص عزيز» — «بموت عليك» و«أحبك للموت» غزل لا عزاء. */
+const CONDOLENCE_RE = /(?:^|[^\u0621-\u064A])(?:[وف]?(?:بال|لل|ال|ب|ل)?(?:عزاء|تعزي[ةه]|تعازي(?:نا)?|وفا[ةه]|وفات|حداد\s+على)(?:ه|ها|هم|كم|نا)?|(?:عن|على)\s+(?:ال)?موت|[وف]?[لب]?(?:موت|مات|ماتت)\s+(?:ال)?(?:شخص|عزيز|قريب|صديق|والد[ةه]?|[أا]بو?|[أا]م|جد[ةه]?|[أا]خو?|[أا]خت|زوج[ةه]?|ابن|بنت|عم[ةه]?|خال[ةه]?)(?:ي|ه|ها|ك|كم|نا|هم|تي|تك|ته|تها|تنا)?|[وف]?توف(?:ي|ى|اه|اها|يت)|[اإ]لي?ه\s+ل?(?:[رو]اجعون|رجعون)|البقاء\s*لله|الله\s*ير[حخ]م(?:ه|ها|هم|ك)|في\s*ذم[ةه]\s*الله)(?=$|[^\u0621-\u064A])|\bcondolence|\bfuneral|\bmourning(?!\s+dove)|passed\s+away|in\s+memoriam|\bbereave/i;
+const CD_SCENE = ['a single white flower resting on dark stone','a quiet cemetery path with distant simple headstones under an overcast sky','a small unlit lantern beside a wilted rose','an empty dirt road fading into dawn mist','rain drops on a window with a gray horizon beyond','a bare branch against a pale dusk sky'];
+const CD_COMP = ['a calm centered arrangement','a minimal spacious composition','a low respectful angle','a wide contemplative view'];
+const CD_LIGHT = ['soft fading dusk light','overcast diffused light','a single warm low glow in the dark','cold early-morning haze'];
+const CD_PAL = ['muted grays and deep blues','desaturated earth tones','charcoal with a faint warm accent','pale cream and slate'];
+const CD_LENS = ['shallow focus with a soft background','natural standard perspective','loose negative-space framing'];
+function condolenceDirection(){
+  return variedDirection('Use a quiet, dignified condolence composition: symbolic and still, with a subdued grieving mood. Show no faces, portraits or identifiable people, and nothing festive, glossy or commercial.',
+    bgPick(CD_SCENE), bgPick(CD_COMP), bgPick(CD_LIGHT), bgPick(CD_PAL), bgPick(CD_LENS));
+}
 function genericDirection(lead){
   return variedDirection(lead, '', bgPick(GN_COMP), bgPick(GN_LIGHT), bgPick(GN_PAL), bgPick(GN_LENS));
 }
@@ -114,6 +128,7 @@ function environmentDirection(prompt){
 }
 
 function subjectDirection(prompt, reserveTextArea){
+  if(CONDOLENCE_RE.test(prompt)) return condolenceDirection();
   if(!BG_NOT_ENV.test(prompt) && (BG_FAMILY.some(function(p){ return p[1].test(prompt); }) || /شمس|شروق|غروب|سماء|سحاب|أفق|افق|طقس|sun|sunrise|sunset|sky|cloud|horizon|weather/i.test(prompt)))
     return environmentDirection(prompt);
   if(/طعام|قهوة|حلوى|طبق|وجبة|food|coffee|dessert|dish/i.test(prompt))
@@ -141,7 +156,7 @@ function buildGenerationPrompt(userPrompt, options){
     // v-signature-polish (طلب عمران: نفس قوة أيقونات التطبيق): عندما لا يطلب
     // المستخدم أسلوبًا/وسيطًا محددًا، الافتراضي مستوى استوديو فاخر — لا يُطبَّق
     // إن طلب المستخدم صورة واقعية أو أسلوبًا بعينه (تلك تُتَّبع حرفيًا).
-    'SIGNATURE POLISH (default when the user did NOT name a specific style, medium or "realistic photo"): give the image a premium studio-grade finish — a rich deep gradient backdrop with subtle bokeh/particles, a single clean hero subject with glossy tactile materials, elegant rim light and soft glow, refined depth and dimensionality, high-end color grading. Aim for the polish of a top app-store icon / product hero render. If the user DID name a style, medium, or asked for a real/realistic photo, IGNORE this and follow their request exactly.',
+    CONDOLENCE_RE.test(prompt) ? 'MOOD (mandatory): this is a condolence image — keep it sober, calm and respectful: no glossy product-render finish, no bokeh sparkle, no celebratory glow, no bright saturated colors.' : 'SIGNATURE POLISH (default when the user did NOT name a specific style, medium or "realistic photo"): give the image a premium studio-grade finish — a rich deep gradient backdrop with subtle bokeh/particles, a single clean hero subject with glossy tactile materials, elegant rim light and soft glow, refined depth and dimensionality, high-end color grading. Aim for the polish of a top app-store icon / product hero render. If the user DID name a style, medium, or asked for a real/realistic photo, IGNORE this and follow their request exactly.',
     // v668: شكوى عمران — الدعاء/النص كان ينكتب فوق الرسمة نفسها ويخربها.
     'TEXT PLACEMENT (mandatory): if the image contains ANY text, captions or labels, place them ONLY in clean empty areas (top or bottom margins, plain background zones) and NEVER overlapping or covering the main subject, faces or key details. Compose the scene FIRST to reserve that empty space for the text. Text must be fully legible with strong contrast, correct spelling, and consistent typography. Choose a text color that HARMONIZES with the palette of the image itself (e.g. a hue drawn from the scene, lightened or darkened for contrast) — do not default to plain white unless it truly fits. If the requested text is long, shrink the subject or move it aside so the text gets its own dedicated clear area.'
   ];
@@ -152,7 +167,8 @@ function buildGenerationPrompt(userPrompt, options){
     rules.push('This is an architectural visualization. Keep geometry buildable and coherent, use realistic materials and an architectural viewpoint suited to the request. Preserve every named constraint exactly, including floor count, room count, openings, garage capacity, materials and dimensions. Do not add people unless requested.');
   }
   if(opts.reserveTextArea){
-    const area = opts.textPosition === 'top' ? 'upper' : opts.textPosition === 'center' ? 'central' : 'lower';
+    const pos = String(opts.textPosition || '');
+    const area = /^right-/.test(pos) ? 'right-hand' : (/^left-/.test(pos) ? 'left-hand' : (pos === 'top' ? 'upper' : (pos === 'center' ? 'central' : 'lower')));
     rules.push('Do not render any words, letters, numbers, calligraphy, captions, logos, signatures or watermarks. Keep the ' + area + ' portion calm and uncluttered so exact text can be overlaid separately.');
   }else{
     rules.push('Do not render legible words, letters, numbers, calligraphy, captions, logos, signatures or watermarks. Any requested wording is handled separately after generation.');
@@ -201,14 +217,17 @@ function buildSceneUpgradePrompt(userPrompt){
    كلمة، الْمس المنطقة المطلوبة فقط واترك كل حرف آخر مطابقًا حرفًا بحرف. */
 function isTextEditRequest(text){
   return /\b(?:write|add|remove|delete|erase|replace|change|swap)\b[^\n]{0,40}\b(?:letter|word|text|character|caption|title|logo)\b/i.test(text)
-    || /(?:اكتب|أكتب|اضف|أضف|ضيف|شيل|احذف|امسح|بدّل|بدل|غيّر|غير|استبدل)[^\n]{0,30}(?:حرف|كلمة|كلمه|نص|النص|اسم|أسماء|اسماء|عنوان|شعار|رقم)/.test(text);
+    || /(?:اكتب|أكتب|اضف|أضف|ضيف|شيل|احذف|امسح|بدّل|بدل|غيّر|غير|استبدل)[^\n]{0,30}(?:حرف|كلمة|كلمه|كلمات|نص|النص|اسم|أسماء|اسماء|اسامي|أسامي|عنوان|شعار|رقم)/.test(text);
 }
 /* v-remove-text (المالك: «بدون أسماء — يحذف الأسماء من الصورة»): طلب إزالة
    الأسماء/الكتابة/العلامة المائية من الصورة. */
 function isRemoveTextRequest(text){
   const t = String(text || '');
-  return /(?:بدون|بلا|من\s*دون)\s*(?:أسماء|اسماء|اسم|كتابة|كتابه|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة|لوجو|شعار|واتر\s*مارك)/.test(t)
-    || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
+  /* v-remove-words-narrow (لقطة المالك «احذف الكلمات المتكررة»): «كلمات» بلا مؤهّل خارج isRemoveTextRequest
+     عمدًا — قيد مثل «المتكررة» يعني حذفًا انتقائيًّا لا مسحًا شاملًا؛ isTextEditRequest يتكفّل بهذي الحالة
+     بقاعدة «المس المسمّى فقط» الأضيق، لا قاعدة «امسح كلّ شيء». */
+  return /(?:بدون|بلا|من\s*دون)\s*(?:أسماء|اسماء|اسامي|أسامي|اسم|كتابة|كتابه|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة|لوجو|شعار|واتر\s*مارك)/.test(t)
+    || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسامي|أسامي|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
     || /\b(?:remove|erase|delete|clear|without|no)\b[^\n]{0,20}\b(?:names?|text|writing|words?|letters?|numbers?|caption|watermark|logo|signature|labels?)\b/i.test(t);
 }
 /* v-raw-words (خطة المالك ٦ سبتمبر، البند ٢: «إرسال كلماتي خامًا في المسارات الإبداعية»): في مسار الأدوات كان نموذج الصور
@@ -232,18 +251,42 @@ function rawCreativePrompt(prompt, userWords){
    الأشخاص عمدًا. كلمة «الاسم» في الجملة كانت تحوّله إلى تبديل حرف («غيّر فقط الحرف المسمّى»)، ثم يرفض حارسُ الهوية النتيجة
    لأنها غيّرت الشخص — وهو المطلوب حرفيًا. مسار خاص: برو، بلا حارس هوية، وبلا gpt-image (إخلاصه العالي يُبقي الوجوه). */
 const PERSON_WORDS = '(?:أشخاص|اشخاص|شخص|رجال|رجل|بنات|بنت|نساء|امرأة|مرأة|أولاد|اولاد|أطفال|اطفال|ناس|موديل|موديلات|شخصيات|شخصي[ةه]|people|persons?|faces?|men|women|models?|characters?)';
+/* v-img-honest (لقطة المالك ٢٣ سبتمبر: «غيّر جميع وجوه وأشكال الأشخاص» ← الصورة نفسها وتقرير «تمّ»): «جميع/كل» بين الفعل
+   والمفعول، و«وجوه وأشكال» معطوفتين، و«غيّر الوجوه» وحدها، و«ابي تغيّر…» — كلّها لم تطابق فذهبت للمسار الأمين (حرارة ٠٫١٥،
+   «احفظ كلّ بكسل») فرجعت الصورة كما هي. وبالعكس «خلّ الرجل يبتسم» كانت تطابق تبديل هويّة: أفعال «خلّ/اجعل/سوّي» صارت تحتاج
+   «مختلف/جديد/ثاني» بعد الأشخاص. */
+const SWAP_VERB = '(?:[تي]?غيّ?ر(?:ت|تي|وا)?|غيري|[تي]?بدّ?ل(?:ت|تي|وا)?|بدلي|[تي]?استبدل)'; /* «ما غيّرت الوجوه» (شكوى) = تبديل */
+const SWAP_ALL = '(?:(?:جميع|كل|كلّ|كامل|كافة|كافّة|باقي)\\s*)?';
+const FACE_WORD = '(?:ال)?(?:أشكال|اشكال|شكل|وجوه|وجه|ملامح|هوي[ةه]|صور[ةه]?|صور)';
 const PERSON_SWAP_RE = new RegExp([
-  '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|استبدل|خل|خلي|خلّي|اجعل|سوّ?ي?)\\s*(?:لي\\s*)?(?:(?:أشكال|اشكال|شكل|وجوه|وجه|ملامح|هوي[ةه]|صور[ةه]?|صور)\\s*)?(?:ال)?' + PERSON_WORDS + '(?=$|[\\s،,.!؟?])',
+  '(?:^|[\\s،,])' + SWAP_VERB + '\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:' + FACE_WORD + '\\s*(?:و\\s*' + FACE_WORD + '\\s*)?)?(?:ال)?' + PERSON_WORDS + '(?=$|[\\s،,.!؟?])',
+  '(?:^|[\\s،,])' + SWAP_VERB + '\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:ال)?(?:وجوه|وجه(?:ه|ها|هم)?)(?=\\s*(?:$|[،,.!؟?]|و|كل(?:ها|هم)?|جميع|ب?وجوه|بوجه(?!ي)|بأشخاص|بناس|بدون|من\\s*غير|بلا))',
+  '(?:^|[\\s،,])(?:خل|خلي|خلّي|اجعل|سوّ?ي?)\\s*(?:لي\\s*)?' + SWAP_ALL + '(?:ال)?' + PERSON_WORDS + '\\s*(?:[^\\s،,.!؟?]+\\s*)?(?:مختلف|مختلفين|مختلفة|مختلفه|ثانيين|ثاني[ةه]?|جدد|جديد[ةه]?|غير)(?=$|[\\s،,.!؟?])',
   '(?:^|[\\s،,])(?:ال)?(?:أشخاص|اشخاص|وجوه|شخصيات|رجال|بنات|نساء)\\s*(?:مختلف|مختلفين|مختلفة|مختلفه|ثانيين|ثانية|ثانيه|جدد|جديدة|جديده|غير)(?=$|[\\s،,.!؟?])',
-  '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:ال)?' + PERSON_WORDS,
-  '\\b(?:change|replace|swap|use)\\s+(?:the\\s+|all\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b',
+  '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:(?:ال)?(?:صور[ةه]?|صور|وجوه|أشكال|اشكال)\\s*)?(?:ال)?' + PERSON_WORDS,
+  '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:ال)?(?:وجوه|أشكال\\s*(?:ال)?' + PERSON_WORDS + ')',
+  /* v-swap-photos (لقطة المالك ٢٣ سبتمبر: «عطني نفس الأسامي وغيّر الصور بدون تكرار الصور الشخصيات» على لقطة بطاقات أنماط ← رجعت
+     الصورة نفسها): لم يطابق أيّ نمط فذهب للمسار الأمين (حرارة ٠٫١٥، «احفظ كلّ شيء») فخرجت كما هي. «غيّر الصور … بدون
+     تكرار» و«كلّ بطاقة/صورة شخص مختلف» = تبديل أشخاص. */
+  '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|استبدل)\\s*(?:لي\\s*)?(?:ال)?(?:صور|صور[ةه])(?=$|[\\s،,.!؟?])[^\\n]{0,40}?(?:بدون|من\\s*غير|بلا)\\s*تكرار',
+  '(?:كل|لكل)\\s*(?:بطاق[ةه]|صور[ةه]|كرت|خان[ةه]|مربع)\\s*(?:ب|فيها\\s*)?(?:شخص|شخصي[ةه]|وجه|موديل)\\s*(?:مختلف[ةه]?|غير|ثاني[ةه]?|جديد[ةه]?)',
+  '\\b(?:change|replace|swap|use)\\s+(?:all\\s+)?(?:(?:of\\s+)?the\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b(?![’\\u0027]s\\b)',
   '\\b(?:different|new|unique)\\s+(?:faces?|people|persons?|models?)\\b',
   /* «غيّر على اسم الشخصية» / «غيّرها على حسب الاسم» / «طابق الشخص مع الاسم» / «غيّر الصور حسب الأسماء» = الشخص يطابق الاسم تحته */
   '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|عدّ?ل|سوّ?ي?|خلّ?ي?|اجعل|طابق|طابقي)(?:ها|هم|ه|ي)?\\s*(?:(?:ال)?(?:صور[ةه]?|شخصي[ةه]|شخصيات|شخص|أشخاص|اشخاص|وجوه|أشكال|اشكال)\\s*)?(?:على\\s*حسب|على|حسب|بحسب|وفق|طبق|مثل|زي|بناء\\s*على|مع)\\s*(?:ال)?(?:اسم|أسماء|اسماء|اسمه|اسمها)',
   '(?:يناسب|تناسب|يطابق|تطابق|يوافق|توافق)\\s*(?:ال)?(?:اسم|أسماء|اسماء)',
   '\\b(?:match(?:es|ing)?|according\\s+to|based\\s+on)\\s+(?:the\\s+)?names?\\b',
 ].join('|'), 'i');
-function isPersonSwapRequest(text){ return PERSON_SWAP_RE.test(String(text || '')); }
+/* v-img-honest (مراجعة): «[تي]» في الفعل جعلت النفي يطابق — «ولا تغيّر الأشخاص»، «بدون ما تبدّل»، «don't change the people» كانت
+   تُبدّل الجميع. المقطع المنفيّ يُحذف قبل الفحص حتّى أوّل فاصلة («لا تغيّر الخلفية، غيّر الأشخاص» يبقى تبديلًا). «ما غيّرت الوجوه»
+   (شكوى بالماضي) ليست نفيًا لأمر فلا تُحذف. */
+const SWAP_NEG_RE = /(?:^|[\s،,])(?:و?لا|و?ما|بدون(?:\s*ما)?|من\s*غير(?:\s*ما)?|دون(?:\s*(?:أن|ما))?|بلا(?:\s*ما)?)\s*(?:[تي](?:غيّ?ر|بدّ?ل|ستبدل)|تغيير|تبديل|استبدال)[^،,.!؟?\n]*|\b(?:don'?t|do\s+not|never|without)\s+(?:change|changing|replace|replacing|swap|swapping)\b[^,.!?\n]*|\bkeep\s+(?:all\s+)?(?:the\s+)?(?:same\s+)?(?:people|persons?|faces?|characters?)\b/gi;
+function isPersonSwapRequest(text){ return PERSON_SWAP_RE.test(String(text || '').replace(SWAP_NEG_RE, ' ')); }
+/* مراجعة: شخص بعينه («الرجل اللي على اليمين بس»، «the man on the left») = التبديل له وحده، والباقون كما هم — لا «كلّ شخص» ولا
+   بوّابة «٣٪ من الصورة» (شخص صغير في صورة جماعيّة يمسّ ١٪). جمعٌ أو «كل/جميع» معه = الجميع كما كان. */
+const SWAP_ONE_RE = /(?:اللي|الي|التي|الذي)\s*(?:على|ع|في|فى)?\s*(?:اليمين|اليسار|اليمنى|اليسرى|النص|الوسط|الخلف|الورا|قدام|الأمام|فوق|تحت)|(?:^|[\s،,])(?:بس|فقط|وحده|وحدها)(?=$|[\s،,.!؟?])|\b(?:on|at|in)\s+the\s+(?:left|right|middle|center|centre|back|front)\b|\bonly\b/i;
+const SWAP_MANY_RE = /(?:^|[\s،,])(?:جميع|كل|كلّ|كامل|كلهم|كلها|الكل|(?:ال)?(?:أشخاص|اشخاص|وجوه|شخصيات|ناس|بطاقات)|(?:بدون|من\s*غير|بلا)\s*تكرار)(?=$|[\s،,.!؟?])|\b(?:all|every(?:one|body)?|people|faces|characters)\b/i;
+function isTargetedPersonSwap(text){ const t = String(text || '').replace(SWAP_NEG_RE, ' '); return SWAP_ONE_RE.test(t) && !SWAP_MANY_RE.test(t); }
 /* v-person-clothes (لقطة المالك ٦ سبتمبر «غير الشخصيات مع الملابس وخل كل شخصية غير عن الثانيه» → «مافي تغير حقيقي»):
    القاعدة ٢ كانت تأمر بإبقاء «الملابس وقواعد اللبس» كما هي، فتناقض الطلب نفسه ويخرج الناس بوجوه معدَّلة قليلًا وبنفس
    الثياب. عند ذكر الملابس في الطلب تُقلب القاعدة: ملابس جديدة كاملة ومختلفة لكل شخص. («زي» وحدها ليست لباسًا هنا —
@@ -252,16 +295,29 @@ const PERSON_CLOTHES_RE = /(?:^|[\s،,])(?:و|ف|ب)?(?:ال)?(?:ملابس|مل
 function buildPersonSwapPrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   const wantsClothes = PERSON_CLOTHES_RE.test(String(userWords || '') + ' ' + String(userPrompt || ''));
+  const targeted = isTargetedPersonSwap(userWords || userPrompt);
   return [
     ...taskHeader(prompt, userWords),
     '',
     'PEOPLE REPLACEMENT on the attached source image. The user explicitly wants the people changed, so their identity must NOT be preserved:',
-    '1. Replace each person with a NEW, distinct, realistic person as the request describes. Each new person must be unmistakably different from the one in the source at a glance — different face, hairstyle, age bracket and skin tone where the name allows; a viewer comparing both images must never think it is the same person lightly retouched. If a name, caption or label sits under or next to a person, that person must plausibly match that name (gender, age and cultural cues). No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
+    /* v-img-honest (تبديل «أنماط الصور» رجع الصورة نفسها): العدّ الصريح لكلّ شخص في كلّ بطاقة، والناتج الثابت فشل مسمّى،
+       والأشخاص الجدد متخيَّلون لا يشبهون أحدًا حقيقيًّا (يخفّف رفض «تزييف الوجوه»)، والطفل يبقى طفلًا بعمره (يخفّف حساسيّة
+       القاصرين ويمنع تحويله بالغًا)، وبأسلوب البطاقة نفسه لا «واقعيّ» دائمًا (البطاقات قد تكون رسمًا أو ثلاثيّ الأبعاد). */
+    (targeted ? '1. Replace ONLY the person or people the request singles out (by position, description or name) — everyone else stays exactly as in the source, same face, hair and identity — with a NEW, distinct, fictional person as the request describes' : '1. Replace EVERY person in the image — every card, tile, frame and panel, none skipped — with a NEW, distinct, fictional person as the request describes') + ' (not resembling any real or famous person), drawn in the same medium and style as that part of the source. Each new person must be unmistakably different from the one in the source at a glance — different face, hairstyle and skin tone; keep the same gender and age group (a child stays a child of about the same age, a baby stays a baby) unless the request or a name under them says otherwise; a viewer comparing both images must never think it is the same person lightly retouched. If a person\'s name sits under or next to them, that person must plausibly match that name (gender, age and cultural cues); a style or category title is not a person\'s name. No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
     wantsClothes
       ? '2. Change the outfits too: give every new person a complete, different outfit (style, colours, garments) that suits them and the name or label under them — no two outfits alike, and none copied from the source. Keep layout, frames, positions, poses, background, lighting, and every piece of text and every label character-for-character.'
       : '2. Keep everything else exactly as in the source: layout, frames, positions, poses, outfits and dress code, background, lighting, colours, and every piece of text and every label character-for-character.',
-    '3. Never write the instruction itself into the image. Return only one finished image.'
+    '3. Returning the source unchanged, or with the same faces lightly retouched, is a FAILURE — the faces must visibly be new people.',
+    '4. Never write the instruction itself into the image. Return only one finished image.'
   ].join('\n');
+}
+/* v-img-mix — خيار «أ»: GPT يصلّح الكتابة وحدها على ناتج برو. مع مصدر: صورتان (الناتج أوّلًا، والمصدر مرجع الحروف حرفًا بحرف)،
+   و«الأشخاص مختلفون عمدًا» كي لا ينسخ وجوه المصدر. بلا مصدر (توليد): الكتابة كما طلبها المستخدم. لا شيء غير الكتابة يُمسّ. */
+function buildTextPolishPrompt(userWords, withSource){
+  const req = String(userWords || '').trim().slice(0, 600);
+  return withSource
+    ? 'You are given 2 images in this order: (1) the RESULT to fix, (2) the ORIGINAL source, for reference only. Fix ONLY the written text in image 1: every title, caption and label must read exactly, letter-for-letter, like the matching text in image 2 — unless the user\'s request changes that text: "' + req + '". Render Arabic with correct, cleanly joined right-to-left glyphs in the same font style, size, colour and position. Change NOTHING else in image 1 — people, faces, hair, clothes, colours, layout and background stay exactly as they are in image 1 (they are intentionally different from image 2). Return one finished image.'
+    : 'Fix ONLY the written text in the attached image so every word reads exactly as the user asked: "' + req + '". Render Arabic with correct, cleanly joined right-to-left glyphs; keep font style, size, colour and position. Change NOTHING else in the image. Return one finished image.';
 }
 /* v-broad-edit (لقطة المالك ٦ سبتمبر «غير الملابس ورتب الصور خلها فقط صور» على لقطة شاشة مليئة بالنصوص): طلب مركّب يعيد
    الترتيب ويحذف الكتابة كلها ويغيّر اللبس. القالب الموضعي («لا تغيّر إلا ما طُلب واحفظ كل بكسل») يناقض إعادة الترتيب،
@@ -333,7 +389,21 @@ function buildReimaginePrompt(userPrompt, userWords){
     'Return only one finished image.'
   ].join('\n');
 }
-function buildEditPrompt(userPrompt){
+/* v-remove-target (لقطة المالك: «احذف اسم عمران AI» على شبكة الخطوط → GPT مسح كلّ النصوص والتسميات = «يحذف الصورة
+   كاملة»): القاعدة ٨ كانت «امسح كلّ الأسماء والكلمات» حتّى حين يسمّي الطلب نصًّا بعينه. الآن: اسم/نصّ مسمّى بعد فعل الحذف
+   يُحذف هو وحده أينما ظهر (كلّ نسخه)، وكلّ حرف آخر يبقى؛ بلا اسم محدّد («شيل الأسماء/بدون كتابة») تبقى الإزالة الشاملة. */
+const REMOVE_TARGET_AR_RE = /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:لي\s+)?(?:ال)?(?:اسم|كلمة|كلمه|نص|النص|عنوان|شعار|لوجو|رقم|توقيع|كتابة|كتابه)\s*[:：]?\s*["«“']?([^"»”'\n]{1,60}?)["»”']?\s*(?:من\s+(?:الصورة|الصوره|هذي|هذه|الخلفية|الخلفيه)(?:\s.*)?)?$/; /* بلا \b بعد العربيّة — \b لا يعرف الحروف العربيّة */
+const REMOVE_TARGET_EN_RE = /\b(?:remove|erase|delete|clear)\b\s+(?:the\s+)?(?:name|text|word|words|caption|title|logo|label|number|date|signature)\s*[:：]?\s*["“']?([^"”'\n]{1,60}?)["”']?\s*(?:from\s+(?:the\s+)?(?:image|picture|photo).*)?$/i;
+function removeTextTarget(text){
+  const t = String(text || '').trim();
+  const m = t.match(REMOVE_TARGET_AR_RE) || t.match(REMOVE_TARGET_EN_RE);
+  if(!m) return '';
+  const target = String(m[1] || '').trim().replace(/[.!؟?،,]+$/, '').trim();
+  if(!target || /^(?:من|from)\s/i.test(target)) return '';
+  if(/^(?:كامل|كله|كلها|كلّه|كلّها|الكل|الكلّ|all|everything|entire|whole)$/i.test(target)) return '';
+  return target;
+}
+function buildEditPrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   const rules = [
     'TASK: "' + prompt + '"',
@@ -347,7 +417,10 @@ function buildEditPrompt(userPrompt){
     '6. Never write, draw, translate or render the instruction itself inside the image. Preserve existing text character-for-character unless the USER REQUEST explicitly replaces it.',
     '7. Never return the image unchanged. Always apply the USER REQUEST as written: if it is short or vague, apply its most reasonable literal interpretation to the closest matching element — changing nothing else. Do not add, invent or improve anything the USER REQUEST did not ask for.'
   ];
-  if(isRemoveTextRequest(prompt)){
+  const removeTarget = isRemoveTextRequest(String(userWords || '')) || isRemoveTextRequest(prompt) ? (removeTextTarget(userWords) || removeTextTarget(prompt)) : '';
+  if(removeTarget){
+    rules.push('8. REMOVE ONLY THE TEXT "' + removeTarget + '": erase that exact text everywhere it appears in the image (every instance, in any font, size or colour) and nothing else. Every OTHER word, label, letter, number, line, box, icon and layout element must stay identical, character-for-character, in place. Rebuild the background behind the removed text so the surface looks clean and natural (matching colour, texture and lighting). Do not blank, crop or empty the rest of the image.');
+  } else if(isRemoveTextRequest(prompt) || isRemoveTextRequest(String(userWords || ''))){
     rules.push('8. REMOVE TEXT: completely erase ALL names, words, letters, numbers, captions, signatures, logos and watermarks that appear in the image, unless the request names specific text to keep. Rebuild whatever was behind the removed text so the surface looks clean and natural (matching colour, texture, lighting and perspective) as if the text was never there. Do NOT leave blur, smudges, ghosting or empty boxes. Change nothing else in the image.');
   } else if(isTextEditRequest(prompt)){
     rules.push('8. TEXT/LETTER EDIT: touch ONLY the exact letter or word named in the request. Every OTHER letter, word, number and label anywhere in the image must stay identical, character-for-character, in the same font, size, colour and position — do NOT repaint, reflow or re-typeset surrounding text. Render any new Arabic text with correct, cleanly joined right-to-left glyphs. Do NOT insert stray digits, random symbols, or the words of the instruction (like "تعديل"/"edit").');
@@ -393,4 +466,4 @@ function buildRestylePrompt(userPrompt, userWords){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, removeTextTarget, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection, buildTextPolishPrompt, isTargetedPersonSwap };

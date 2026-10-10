@@ -19,7 +19,10 @@ module.exports = async (req, res) => {
       return;
     }
     if (!data.done) { res.status(200).json({ status: 'RUNNING' }); return; }
+    // v-video-refund: انتهت المهمّة — نسوّي تذكرتها قبل الردّ (الفشل يردّ الخصم ويفكّ القفل).
+    const settle = (ok) => require('./video-job.js').settleVideoJob(op, ok);
     if (data.error) {
+      await settle(false);
       res.status(200).json({ status: 'FAILED', failure: String(data.error.message || '').slice(0, 300) });
       return;
     }
@@ -32,6 +35,8 @@ module.exports = async (req, res) => {
       uri = v.uri || v.videoUri || null;
     }
     if (!uri) {
+      // أشيع فشل صامت عند Veo: اكتملت العمليّة وحجب فلتر الأمان الناتج. لا ناتج = لا محاسبة.
+      await settle(false);
       let why = 'no video in response';
       const rai = gvr.raiMediaFilteredReasons || r.raiMediaFilteredReasons;
       if (rai && rai.length) why = 'filtered: ' + String(rai.join(' | ')).slice(0, 400);
@@ -39,9 +44,10 @@ module.exports = async (req, res) => {
       res.status(200).json({ status: 'FAILED', failure: why });
       return;
     }
+    await settle(true);
     res.status(200).json({
       status: 'SUCCEEDED',
-      output: ['/api/video?action=veo-download&uri=' + encodeURIComponent(uri)],
+      output: [require('./veo-download.js').downloadUrl(uri)], // v-video-open-lock: موقّع على الملفّ — التنزيل لا يقبل غيره بلا جلسة
     });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

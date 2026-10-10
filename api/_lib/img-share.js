@@ -5,9 +5,13 @@
 // الجسم مضغوط من المتصفّح (JPEG ≤1600px) فيبقى دون حدّ جسم الطلب في Vercel.
 const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+const KV = require('./kv.js');
+const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
+const { gateShare, refundShare, uploadPlan } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — العرض العامّ (GET) بلا رمز كما كان
 
 const MAX_B64 = 3 * 1024 * 1024; // حدّ أمان لكلّ صورة
-const TTL_SEC = 60 * 60 * 24 * 30;
+const TTL_SEC = 60 * 60 * 24 * 7; // v-media-purge: كان ٣٠ يومًا فامتلأت القاعدة المجانيّة — ٧ كالفيديو والـPDF
+const DAILY_UPLOADS = 30; // v-share-guard: روابط صور يوميًّا لكلّ حساب
 const KEY = (id) => 'db/img/' + id;
 
 module.exports = async (req, res) => {
@@ -28,9 +32,33 @@ module.exports = async (req, res) => {
     // (`<id>.raw.jpg` → المعرّف + `a` من «raw» ⇒ 404). نأخذ أوّل مقطع ستّ عشريّ فقط.
     const id = String((rawId.match(/^[a-f0-9]{6,24}/i) || [''])[0]).toLowerCase();
     if (!id) { res.status(400).json({ error: 'Missing id' }); return; }
-    const raw = await kvGetRaw(KEY(id));
+    let raw = await kvGetRaw(KEY(id));
     if (!raw) { res.status(404).json({ error: 'not_found' }); return; }
-    const s = String(raw);
+    let s = String(raw);
+
+    /* دعم أجزاء للصور الكبيرة (مثل PDF) */
+    if (s.indexOf('chunks:') === 0) {
+      const parts = s.split(':');
+      const n = parseInt(parts[1], 10) || 0;
+      const prefix = parts.slice(2).join(':');
+      const pieces = [];
+      let failed = false;
+      for (let i = 0; i < n; i++) {
+        let c = await kvGetRaw(KEY(id) + ':' + i);
+        if (!c) {
+          await new Promise(r => setTimeout(r, 100));
+          c = await kvGetRaw(KEY(id) + ':' + i).catch(() => null);
+        }
+        if (!c) {
+          failed = true;
+          break;
+        }
+        pieces.push(String(c));
+      }
+      if (failed) { res.status(503).json({ error: 'chunk_missing', detail: 'جزء من الصورة اختفى — حاول لاحقًا' }); return; }
+      s = prefix + pieces.join('');
+    }
+
     // v649 — الصيغة الجديدة mime:w:h:base64 (الأبعاد تصنع بطاقة صورة كبيرة في
     // واتساب)؛ القديمة mime:base64 تبقى مقروءة.
     const seg = s.split(':');
@@ -43,14 +71,21 @@ module.exports = async (req, res) => {
     // v639 — عيب مقيس حيًّا: بلا Vary خزّن CDN صفحة الزاحف وقدّمها للبشر.
     res.setHeader('Vary', 'User-Agent');
     if (wantRaw) {
-      const buf = Buffer.from(s.slice(i + 1), 'base64');
+      let buf;
+      try {
+        buf = Buffer.from(s.slice(i + 1), 'base64');
+      } catch (e) {
+        res.status(400).json({ error: 'corrupt', detail: 'بيانات الصورة معيوبة' });
+        return;
+      }
       res.setHeader('Content-Type', mime);
-      res.setHeader('Content-Length', String(buf.length));
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('Accept-Ranges', 'bytes');
       /* v-media-dl (شكوى المالك «ما تتحمل الصور»): ?dl=1 يجعل الرابط تنزيلًا حقيقيًا عبر منزّل النظام */
       const wantDl = String((req.query && req.query.dl) || '') === '1';
       const dlName = String((req.query && req.query.name) || '').replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || ('omran-' + id + '.' + (mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg')));
       res.setHeader('Content-Disposition', (wantDl ? 'attachment' : 'inline') + '; filename="' + (wantDl ? dlName : 'image-' + id + '.jpg') + '"');
+      res.setHeader('Content-Length', String(buf.length));
       res.status(200).send(buf);
       return;
     }
@@ -96,16 +131,38 @@ module.exports = async (req, res) => {
     if (!data) { res.status(400).json({ error: 'Missing data' }); return; }
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
+    const plan = uploadPlan(body, 'share-img', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
+    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     const mime = /^image\/(png|jpeg|webp)$/.test(String(body.mime || '')) ? String(body.mime) : 'image/jpeg';
     const id = crypto.randomBytes(6).toString('hex');
     const w = Math.max(0, parseInt(body.w, 10) || 0), h = Math.max(0, parseInt(body.h, 10) || 0);
-    const stored = (w && h) ? (mime + ':' + w + ':' + h + ':' + data) : (mime + ':' + data);
-    const ok = await kvSetIfAbsent(KEY(id), stored, TTL_SEC);
-    if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
+    const prefix = (w && h) ? (mime + ':' + w + ':' + h + ':') : (mime + ':');
+
+    /* دعم أجزاء للصور الكبيرة */
+    const CHUNK = 700 * 1024;
+    let ok;
+    try {
+      if (data.length <= CHUNK) {
+        ok = await setIfAbsentWithRoom(KV, KEY(id), prefix + data, plan.ttlSec);
+      } else {
+        const n = Math.ceil(data.length / CHUNK);
+        ok = true;
+        for (let i = 0; i < n && ok; i++) {
+          const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), plan.ttlSec);
+          ok = ok && ok_i;
+        }
+        if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + prefix, plan.ttlSec);
+      }
+    } catch (e) {
+      console.error('[img-share] store failed:', e && e.message); // القاعدة ممتلئة رغم التنظيف أو عطل — يُردّ كـstore_failed
+      ok = false;
+    }
+
+    if (!ok) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
     // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
     // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
     const outExt = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
-    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 30 });
+    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 7 });
     return;
   }
 

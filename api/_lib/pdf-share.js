@@ -7,9 +7,13 @@
 // بعمر ٧ أيام (الملف يُنزَّل فورًا — لا حاجة لعمر أطول).
 const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+const KV = require('./kv.js');
+const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
+const { gateShare, refundShare, uploadPlan } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — العرض العامّ (GET) بلا رمز كما كان
 
 const MAX_B64 = 4 * 1024 * 1024; // ≈3MB ملف فعلي — تحت حدّ جسم الطلب في Vercel
 const TTL_SEC = 60 * 60 * 24 * 7;
+const DAILY_UPLOADS = 20; // v-share-guard: روابط PDF يوميًّا لكلّ حساب
 const KEY = (id) => 'db/pdf/' + id;
 
 module.exports = async (req, res) => {
@@ -26,19 +30,40 @@ module.exports = async (req, res) => {
       const n = parseInt(parts[1], 10) || 0;
       const name = parts.slice(2).join(':') || 'omran-ai.pdf';
       const pieces = [];
-      for (let i = 0; i < n; i++) { const c = await kvGetRaw(KEY(id) + ':' + i); if (!c) { res.status(404).json({ error: 'not_found' }); return; } pieces.push(String(c)); }
+      let failed = false;
+      for (let i = 0; i < n; i++) {
+        let c = await kvGetRaw(KEY(id) + ':' + i);
+        if (!c) {
+          // إعادة محاولة واحدة إذا فشلت المرة الأولى (خطأ شبكة مؤقت)
+          await new Promise(r => setTimeout(r, 100));
+          c = await kvGetRaw(KEY(id) + ':' + i).catch(() => null);
+        }
+        if (!c) {
+          failed = true;
+          break;
+        }
+        pieces.push(String(c));
+      }
+      if (failed) { res.status(503).json({ error: 'chunk_missing', detail: 'جزء من الملف اختفى — حاول لاحقًا' }); return; }
       s = name + ':' + pieces.join('');
     }
     // الصيغة: name:base64 — الاسم بلا نقطتين (يُعقَّم عند الحفظ)
     const i = s.indexOf(':');
     const name = i > 0 ? s.slice(0, i) : 'omran-ai.pdf';
-    const buf = Buffer.from(s.slice(i + 1), 'base64');
+    let buf;
+    try {
+      buf = Buffer.from(s.slice(i + 1), 'base64');
+    } catch (e) {
+      res.status(400).json({ error: 'corrupt', detail: 'بيانات الملف معيوبة' });
+      return;
+    }
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Length', String(buf.length));
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.setHeader('Accept-Ranges', 'bytes');
     // اسم عربي في الترويسة يحتاج ترميز RFC 5987 — وإلا كسر بعض الوسطاء
     const ascii = name.replace(/[^\x20-\x7E]/g, '-').replace(/["\\]/g, '-') || 'omran-ai.pdf';
     res.setHeader('Content-Disposition', 'attachment; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(name));
+    res.setHeader('Content-Length', String(buf.length));
     res.status(200).send(buf);
     return;
   }
@@ -54,21 +79,32 @@ module.exports = async (req, res) => {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
     // فحص أن المحتوى PDF فعلًا (يبدأ بـ %PDF)
     if (data.slice(0, 6) !== 'JVBERi') { res.status(400).json({ error: 'not_pdf' }); return; }
+    const plan = uploadPlan(body, 'share-pdf', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
+    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     // الاسم: أحرف/أرقام/شرطات فقط + لاحقة pdf ثابتة — لا نقطتين (فاصل التخزين)
     const rawName = String(body.name || 'omran-ai.pdf');
     const name = (rawName.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_\-؀-ۿ]/g, '-').slice(0, 60) || 'omran-ai') + '.pdf';
     const id = crypto.randomBytes(6).toString('hex');
     const CHUNK = 700 * 1024; /* أقل من حدّ حجم الطلب في Upstash */
     let ok;
-    if (data.length <= CHUNK) {
-      ok = await kvSetIfAbsent(KEY(id), name + ':' + data, TTL_SEC);
-    } else {
-      const n = Math.ceil(data.length / CHUNK);
-      ok = true;
-      for (let i = 0; i < n && ok; i++) ok = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
-      if (ok) ok = await kvSetIfAbsent(KEY(id), 'chunks:' + n + ':' + name, TTL_SEC);
+    try {
+      if (data.length <= CHUNK) {
+        ok = await setIfAbsentWithRoom(KV, KEY(id), name + ':' + data, plan.ttlSec);
+      } else {
+        const n = Math.ceil(data.length / CHUNK);
+        ok = true;
+        for (let i = 0; i < n && ok; i++) {
+          const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), plan.ttlSec);
+          ok = ok && ok_i;
+        }
+        // إذا أي جزء فشل، لا تحفظ الفهرس (لا تترك أجزاء يتيمة)
+        if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + name, plan.ttlSec);
+      }
+    } catch (e) {
+      console.error('[pdf-share] store failed:', e && e.message); // القاعدة ممتلئة رغم التنظيف أو عطل — يُردّ كـstore_failed
+      ok = false;
     }
-    if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
+    if (!ok) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
     res.status(200).json({ id, url: '/p/' + id, ttlDays: 7 });
     return;
   }

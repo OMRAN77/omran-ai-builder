@@ -25,6 +25,7 @@ function load(action) {
     // req.query.action internally to pick the right function.
     case 'create-payment-intent': return require('./_lib/create-checkout-session.js');
     case 'verify-payment-intent': return require('./_lib/create-checkout-session.js');
+    case 'auto-renew': return require('./_lib/create-checkout-session.js'); // v-autorenew-toggle
     case 'paypal-client-id': return require('./_lib/paypal-client-id.js');
     case 'paypal-order': return require('./_lib/paypal-order.js');
     case 'share': return require('./_lib/share.js');

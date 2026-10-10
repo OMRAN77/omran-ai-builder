@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "om ai"
+  },
+  "extDesc": {
+    "message": "किसी भी पेज से om ai से पूछें: टेक्स्ट चुनकर राइट-क्लिक करें, एड्रेस बार में \"om\" लिखें, या टूलबार बटन इस्तेमाल करें।"
+  },
+  "ctxAsk": {
+    "message": "om ai से पूछें: \"%s\""
+  },
+  "popupPlaceholder": {
+    "message": "om ai से कुछ भी पूछें…"
+  },
+  "popupAsk": {
+    "message": "पूछें"
+  },
+  "popupOpen": {
+    "message": "om ai खोलें"
+  },
+  "popupHint": {
+    "message": "सुझाव: किसी भी पेज पर टेक्स्ट चुनें, राइट-क्लिक करके \"om ai से पूछें\" चुनें — या एड्रेस बार में om और स्पेस लिखें।"
+  },
+  "omniboxHint": {
+    "message": "om ai से पूछें: सवाल लिखें और Enter दबाएँ"
+  }
+}

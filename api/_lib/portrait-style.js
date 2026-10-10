@@ -6,23 +6,24 @@
 const { checkPortraitQuota, consumePortrait, PORTRAIT_DAILY_LIMIT } = require('./_portraitUsage');
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
+const mergeIdentity = require('./merge-identity');
 
 // v-portrait-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
 // خطّ إنقاذ الأزياء). يرجع base64 أو null — لا يرمي أبدًا.
-async function openaiPortraitEdit(promptText, imageBase64, mimeType) {
+async function openaiPortraitEdit(promptText, imageBase64, mimeType, refs) {
   const key = (process.env.OPENAI_API_KEY || '').trim();
   if (!key) return null;
   try {
     const bytes = Buffer.from(imageBase64, 'base64');
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', 'gpt-image-2.5-sunburst');
     form.append('prompt', String(promptText).slice(0, 3900));
     form.append('size', 'auto');
-    /* v-strong-rescue: input_fidelity=high يحفظ ملامح الوجه والنصوص —
-       بدونه كان الإنقاذ يعيد رسم الشخص «ضعيف» (شكوى المالك ١ سبتمبر). */
-    form.append('input_fidelity', 'high');
     form.append('quality', 'high');
-    form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
+    /* v-merge-faces: الدمج يرسل كلّ الصور (ولقطات الوجوه) بحقل image[] — كان الإنقاذ يرسل الأولى وحدها فيُخترع الشخص الثاني */
+    const more = Array.isArray(refs) ? refs : [];
+    form.append(more.length ? 'image[]' : 'image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
+    for (const x of more) form.append('image[]', new Blob([Buffer.from(x.data, 'base64')], { type: x.mime || 'image/jpeg' }), 'ref.jpg');
     const r = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key },
@@ -67,6 +68,9 @@ const STYLE_PROMPTS = {
   eid: 'a joyful Eid al-Fitr/Eid al-Adha festive portrait, keep the person and their real clothing exactly as-is but add a beautiful decorative Eid-themed frame/border around the photo with crescent moons, stars, lanterns (fanoos) and elegant gold Islamic geometric patterns, festive warm golden lighting glow, an "Eid Mubarak" feel',
   national: 'a UAE National Day celebratory portrait, keep the person exactly the same but add a patriotic decorative frame/border themed around the UAE flag colors (red, green, white, black), subtle falcon and Sheikh Zayed-era heritage motifs, small UAE flags, festive fireworks glow in the background corners',
   ramadan: 'a peaceful Ramadan-themed portrait, keep the person exactly the same but add an elegant decorative Ramadan frame/border with crescent moon and star motifs, ornate mosque lantern (fanoos) illustrations, warm soft nighttime glow, gentle Islamic geometric patterns along the edges',
+  henna: 'a joyful henna night / engagement celebration portrait, keep the person and their real clothing exactly as-is but add an elegant decorative frame/border with intricate henna-pattern motifs, gold jewelry accents, warm amber lighting glow, and a romantic celebratory atmosphere',
+  firstday: 'a proud first-day-of-school portrait, keep the person exactly the same but add a cheerful decorative frame/border with a school backpack icon, pencils, books, and bright colorful confetti, warm nostalgic morning-light glow',
+  flagday: 'a patriotic UAE Flag Day celebratory portrait, keep the person exactly the same but add a decorative frame/border with a large waving UAE flag motif, flag-colored ribbons (red, green, white, black), and a proud festive glow',
   figurine: 'a collectible action-figure toy style, the person as a highly detailed vinyl figurine standing inside a clear plastic blister pack with printed cardboard backing, glossy toy finish, studio product photography',
   ghibli: 'a hand-painted Japanese animated-film style inspired by classic Studio Ghibli films, soft watercolor backgrounds, gentle warm light, simple expressive features',
   lego: 'a LEGO minifigure style, the person rebuilt entirely from plastic building bricks with a blocky minifigure head, cylindrical hands and glossy toy plastic finish',
@@ -90,6 +94,22 @@ const STYLE_PROMPTS = {
   sandart: 'a Gulf desert sand-art style, the portrait drawn in flowing layers of natural colored sand with warm golden desert tones, delicate grainy texture, heritage bottle-sand-art feel',
   neonsign: 'a glowing neon sign style, the person outlined in bright neon light tubes against a dark brick wall at night, vivid electric colors with a soft neon glow and reflections',
   doubleexposure: 'an artistic double-exposure style, the person\'s silhouette elegantly blended with a second scene inside it (city skyline, forest or desert dunes), dreamy cinematic tones',
+  /* v-pstyle-batch-2 (٢١ سبتمبر ٢٠٢٦): ١٥ ستايل فنّي جديد (٧ رائجة + ٨ تراث خليجي) */
+  tarot: 'an ornate mystical tarot card illustration style, the person depicted as a tarot card figure with an elaborate gold-leaf border, star and moon motifs, rich jewel-toned colors, arcane symbolic decorative elements',
+  stamp: 'a vintage postage stamp illustration style, the portrait framed inside a classic postage stamp with perforated zigzag edges, a small decorative denomination detail in a corner, muted engraved-print colors like an old collectible stamp',
+  moviePoster: 'an epic action movie poster style, the person as the dramatic hero with intense heroic lighting, explosive dynamic background elements, bold cinematic color grading, a movie-poster composition and dramatic atmosphere',
+  diorama: 'a miniature diorama style, the person as a small tilt-shift figure standing inside a tiny detailed 3D scene or room model, shallow depth of field miniature-photography look, charming toy-like scale',
+  emoji3d: 'a glossy 3D emoji style, the person rendered as a rounded, shiny, bubbly 3D emoji character with simplified friendly features and a soft plastic-like sheen, similar to modern 3D emoji app icons',
+  y2k: 'a Y2K late-1990s/early-2000s aesthetic style, chrome and holographic accents, funky gradient colors, flip-phone/digital-camera era vibe, a playful retro-futuristic look',
+  albumCover: 'a professional music album cover style, the person as a music artist with bold stylish studio lighting, artistic color grading, and a striking album-cover composition with graphic-design flair',
+  sheikh: 'a majestic traditional Gulf Sheikh/Sheikha formal portrait style, wearing an elegant pristine white or richly embroidered bisht (cloak) with gold trim over traditional dress, dignified regal posture, warm palace-like backdrop with soft golden light',
+  falconry: 'a traditional Gulf falconry portrait style, wearing classic desert hunting attire with a leather falconry glove, a majestic falcon perched gracefully, warm desert dusk lighting and sand dunes in the background',
+  arabianHorse: 'an elegant Arabian equestrian portrait style, the person mounted on or standing beside a majestic Arabian horse with traditional ornate tack, a golden desert or heritage stable backdrop, a noble dignified atmosphere',
+  saudiHeritage: 'a traditional Saudi heritage portrait style, wearing an authentic Saudi thobe and ghutra with a black agal, Najdi-pattern traditional accents, warm sepia desert-heritage tones',
+  kuwaitiHeritage: 'a traditional Kuwaiti heritage portrait style, wearing an authentic Kuwaiti dishdasha and ghutra, dhow (traditional boat) and pearl-diving heritage motifs softly in the background, warm coastal Gulf tones',
+  omaniHeritage: 'a traditional Omani heritage portrait style, wearing an authentic Omani dishdasha with a kummah cap and khanjar dagger belt, a mountain-fort heritage backdrop like Nizwa',
+  qatariHeritage: 'a traditional Qatari heritage portrait style, wearing an authentic Qatari thobe and ghutra, pearl-diving dhow and desert-coast heritage motifs softly in the background, warm golden Gulf tones',
+  bahrainiHeritage: 'a traditional Bahraini heritage portrait style, wearing an authentic Bahraini thobe and ghutra, pearl-diving heritage and traditional wind-tower (barjeel) architecture softly in the background, warm coastal tones',
 };
 
 const EDIT_PROMPTS = {
@@ -99,6 +119,10 @@ const EDIT_PROMPTS = {
   upscale: 'enhance its technical quality only: increase sharpness and fine detail, remove noise, grain and compression artifacts, recover crisp texture in the face, hair and fabric, and correct the exposure and white balance. Do NOT restyle it and do NOT change the content.',
   productshot: 'turn it into a professional commercial product photograph: place the main subject on a clean seamless studio background with soft even lighting, a subtle natural reflection and a soft shadow beneath it, crisp focus and rich accurate colors, like a premium e-commerce catalogue shot.',
   stickerpack: 'turn it into a sticker sheet: a 2x3 grid of six cute cartoon-style stickers of the same person showing six different expressions (happy, laughing, sad, surprised, angry, winking), each sticker with a thick white die-cut outline, arranged on a plain light background.',
+  /* v-pstyle-batch-2: ٣ أدوات عملية جديدة — تعديل موضعيّ، لا إعادة رسم كاملة */
+  eyefix: 'carefully check if anyone in the photo has closed eyes or is mid-blink, and naturally open their eyes while keeping their exact gaze direction, head angle and expression otherwise unchanged. Do not alter anything else in the photo.',
+  glasses: 'if the main person is not wearing glasses, add a stylish pair of clear-lens glasses that naturally suit their face shape and the photo lighting; if they are already wearing glasses, naturally remove them and reconstruct the eye area realistically. Do not change anything else about the person or the photo.',
+  bokeh: 'blur only the background using a soft photographic bokeh effect (shallow depth of field), keeping the main subject in the foreground perfectly sharp and completely unchanged. Do not alter the subject, their clothing, or their expression in any way.',
 };
 
 const BACKDROP_PROMPTS = {
@@ -113,6 +137,17 @@ const BACKDROP_PROMPTS = {
   office: 'a bright modern office interior softly blurred in the background',
   marble: 'a luxurious polished marble wall backdrop',
 };
+
+/* v-pstyle-closeup: عنوان لقطة الوجه وقواعدها. العنوان مكيَّف من merge-identity.js («نفس الشخص، مقرَّبًا؛
+   مرجع هويّة لا شخص إضافيّ»)، والقواعد تمنع الخطر المعاكس المثبَت في PITFALLS: مرجع فوتوغرافيّ يسحب
+   الناتج نحو الواقعيّة فيضعف الأسلوب الفنّيّ. */
+const CLOSEUP_LABEL =
+  'Close-up reference — the face of the same single person in Photo 1, cropped and zoomed in from that same photo (identity reference only: this is NOT a second person, NOT an extra character, and it must never be drawn as an additional face, an inset, a portrait-within-the-portrait, or a frame):';
+const CLOSEUP_RULES =
+  'Use the close-up for ONE purpose only: to see exactly who this person is and to copy their real features — the shape of their eyes, eyebrows, nose, lips, jawline, facial hair, skin marks, apparent age and expression lines — and then draw those same features in the requested art style.\n' +
+  'The close-up is an ordinary photograph, not a style reference: do NOT copy its photographic realism, its lighting, its background, or its tight square crop, and do NOT let it pull the result back toward a photo. The whole result, the face included, must be fully in the requested art style.\n' +
+  'The result must show exactly one person, and must keep the full framing, pose, body, scene and aspect ratio of Photo 1 — never the close-up\'s crop.\n' +
+  'IDENTITY (mandatory): the face in the result must be this same person\'s own face, restyled — not a new, generic or better-looking face. If the art style and their real features ever conflict, their real features win.';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -146,7 +181,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const quota = await checkPortraitQuota(token);
+    const quota = await checkPortraitQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
     if (!quota.allowed) {
       if (quota.reason === 'auth') {
         res.status(401).json({ error: 'auth_required' });
@@ -210,16 +245,17 @@ module.exports = async (req, res) => {
         }
         frames.push(frameImgPart.inlineData.data);
       }
-      const remainingGif = await consumePortrait(quota.username);
+      const remainingGif = await consumePortrait(quota.username, quota.limit);
       res.status(200).json({
         frames,
         remaining: remainingGif,
-        dailyLimit: PORTRAIT_DAILY_LIMIT,
+        dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT,
       });
       return;
     }
 
     let promptText;
+    let isArtRestyle = false; /* v-pstyle-identity: إعادة رسم بأسلوب فنّيّ — تحتاج تذكير هويّة أخيرًا */
     if (style === 'removebg') {
       const backdropDesc = BACKDROP_PROMPTS[backdrop] || BACKDROP_PROMPTS.studio_white;
       promptText =
@@ -351,7 +387,7 @@ module.exports = async (req, res) => {
         'Take this exact photo and redraw the person as an original, generic cartoon-hero illustration INSPIRED BY the general vibe/theme the user described as: "' + charDesc + '". ' +
         'IMPORTANT: Do NOT copy any specific copyrighted character design, costume, logo, or exact likeness — create an ORIGINAL character design that only captures the general mood/energy/color-palette described, blended with the person\'s own recognizable facial identity. ' +
         'Keep the person\'s face and identity clearly recognizable. Make it a fun, high-quality cartoon-style illustration. Output a single image only.';
-    } else if (['eid', 'national', 'ramadan', 'hajj', 'birthday', 'newborn'].indexOf(style) !== -1) {
+    } else if (['eid', 'national', 'ramadan', 'hajj', 'birthday', 'newborn', 'henna', 'firstday', 'flagday'].indexOf(style) !== -1) {
       const occasionDesc = STYLE_PROMPTS[style];
       promptText =
         'Take this exact photo and keep the person completely unchanged (same face, identity, clothes, pose, background). ' +
@@ -359,14 +395,30 @@ module.exports = async (req, res) => {
         'The person and original background must remain fully visible and untouched in the center; the decoration should ' +
         'only affect the border/frame area and a subtle festive lighting glow. Output a single image only.';
     } else {
+      /* v-pstyle-identity (شكوى المالك: «في أنماط الصور تغيّر الشخصيّة»): الأمر القديم كان
+         «Keep the same facial identity … but fully re-render the entire image (face, clothes, and background)»
+         — جملة واحدة ضعيفة في وسط الأمر تأذن صراحةً بوجه جديد. القالب هنا ينقل صياغة الهويّة المثبَتة في
+         merge-identity.js (v-merge-identity-lock-v2/v3): الفقرة أوّلًا، و«MUST … never invented»، ورخصة
+         إعادة الرسم للملابس والخلفيّة والوسيط لا للوجه. */
       const styleDesc = STYLE_PROMPTS[style] || STYLE_PROMPTS.cartoon;
+      isArtRestyle = true;
       promptText =
-        'Redraw the person in this photo into ' + styleDesc + '. ' +
-        'Keep the same facial identity, pose and general framing recognizable, but fully re-render the ' +
-        'entire image (face, clothes, and background) in the requested art style. Output a single image only.';
+        'This photo shows one real person. That exact person\'s appearance — face shape, facial features, eyes, ' +
+        'eyebrows, nose, lips, jawline, skin tone, facial hair, skin marks, apparent age and expression lines, and ' +
+        'hair (loose or covered by a hijab/headscarf exactly as photographed; never add, remove, or restyle a head ' +
+        'covering) — MUST be reproduced with full fidelity in the output: never invented, never averaged or blended ' +
+        'with another person\'s face, never swapped for a different, prettier, younger or more generic face. ' +
+        'Only the drawing medium changes; who this person is never changes, and someone who knows them must ' +
+        'recognize them instantly in the result.\n' +
+        'TASK: redraw this same person in ' + styleDesc + '. ' +
+        'Re-render the clothes, the background and the whole rendering technique in that art style, and keep the pose ' +
+        'and general framing — but draw their own real face in that style instead of inventing a new face. ' +
+        'Output a single image only.';
     }
 
-    const isLocalizedEdit = ['hairstyle', 'beautify', 'ageshift', 'objectremove', 'outfit', 'passport', 'restore', 'colorize', 'upscale'].includes(style);
+    /* v-pstyle-identity: «إزالة الخلفيّة» وإطارات المناسبات التسع أمرها نفسه يقول «keep the person completely
+       unchanged»، ومع ذلك كانت تعمل بحرارة الأسلوب الفنّيّ (٠٫٦٥) فيتبدّل الشخص في صورة يُفترض ألّا تُمسّ. */
+    const isLocalizedEdit = ['hairstyle', 'beautify', 'ageshift', 'objectremove', 'outfit', 'passport', 'restore', 'colorize', 'upscale', 'eyefix', 'glasses', 'bokeh', 'removebg', 'eid', 'national', 'ramadan', 'hajj', 'birthday', 'newborn', 'henna', 'firstday', 'flagday'].includes(style);
     if (isLocalizedEdit) promptText += '\n' + sourceStylePreservationRule();
     // v-keep-framing (شكوى المالك ٢٩ أغسطس: «الصورة اللي أحطها ما تطلع كاملة») —
     // النموذج كان يرجّع مقصوصة/مربعة فتضيع أطراف صورة المستخدم. الجواز يعيد
@@ -374,17 +426,54 @@ module.exports = async (req, res) => {
     if (style !== 'passport' && style !== 'familystyle' && style !== 'merge2') {
       promptText += '\nFRAMING (mandatory): keep the exact same aspect ratio and full framing as the source photo — everything visible in the source must remain visible from edge to edge in the result. Do NOT crop, zoom in, or cut off any part of the person or scene.';
     }
+    /* v-pstyle-closeup (المالك: صورته «شخص واقف كامل» — الوجه ~١٢٪ من الإطار): الفخّ المثبَت في PITFALLS
+       «المرجع يُرى بميزانيّة رموز ثابتة مهما كبر» ينطبق على الأسلوب الفنّيّ المفرد كما على الدمج، فالوجه الصغير
+       يُعاد رسمه تقريبًا. اللقطة من faceCrops نفسها ببوّاباتها: جماعيّة (٣ وجوه فأكثر) أو وجه ≥٤٥٪ من الارتفاع
+       أو أصغر من ٣٢ بكسل = بلا لقطة، أي السلوك السابق حرفيًّا. وجه واحد بارز فقط — لقطة أحد وجهين تسحب
+       ملامحه إلى الآخر. تعطّل الكشف يرجع [] ولا يُسقط الطلب. الإطفاء بلا نشر: PSTYLE_FACE_CROP=off. */
+    let styleCrop = null;
+    if (isArtRestyle && String(process.env.PSTYLE_FACE_CROP || 'on').toLowerCase() !== 'off') {
+      try {
+        const cs = await mergeIdentity.faceCrops(apiKey, [{ data: imageBase64, mime: mimeType || 'image/jpeg' }]);
+        if (cs.length === 1) styleCrop = cs[0];
+      } catch (e) { console.warn('[portrait-style] closeup ' + (e && e.message)); styleCrop = null; }
+    }
+    /* v-pstyle-identity: جملة الإطار كانت آخر ما يقرؤه النموذج، فتغلب تذكير الهويّة. الهويّة تُختم بها الأوامر
+       الفنّيّة — ومع لقطة تنتقل إلى الجزء النصّيّ الأخير بعدها (CLOSEUP_RULES) فلا تُقال مرّتين. */
+    if (isArtRestyle && !styleCrop) {
+      promptText += '\nIDENTITY (mandatory): the face in the result must be this same person\'s own face, restyled — not a new, generic or better-looking face. If the art style and their real features ever conflict, their real features win.';
+    }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const genParts = [
+    /* v-merge-faces: «دمج شخصين» و«ستايل عائلي» على قالب هويّة الدمج نفسه (maha-image): كلّ صورة بعنوانها ولقطة مقرّبة لكلّ وجه،
+       وحرارة منخفضة — كانت ٠٫٦٥ بجملة «recognizable» واحدة، ونوع الصورة الثانية مفروضًا image/jpeg. */
+    const isMultiSourceComposition = style === 'familystyle' || style === 'merge2';
+    let genParts = [
       { text: promptText },
       { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
     ];
-    if ((style === 'familystyle' || style === 'merge2') && Array.isArray(extraImages)) {
-      const maxExtra = style === 'merge2' ? 1 : 3;
-      extraImages.slice(0, maxExtra).forEach((imgB64) => {
-        if (imgB64) genParts.push({ inlineData: { mimeType: 'image/jpeg', data: imgB64 } });
-      });
+    let gptPrompt = promptText, gptRefs = [], mergeAspect = null;
+    if (isMultiSourceComposition) {
+      const photos = [{ data: imageBase64, mime: mimeType || 'image/jpeg' }].concat((Array.isArray(extraImages) ? extraImages : []).filter(Boolean).slice(0, style === 'merge2' ? 1 : 3).map((b) => ({ data: b, mime: mergeIdentity.sniffMime(b) })));
+      const crops = await mergeIdentity.faceCrops(apiKey, photos);
+      genParts = mergeIdentity.mergeParts(photos, crops, promptText);
+      gptPrompt = genParts[genParts.length - 1].text;
+      gptRefs = photos.slice(1).concat(crops);
+      mergeAspect = mergeIdentity.mergeAspect(photos[0], '');
+    } else if (styleCrop) {
+      /* v-pstyle-closeup: الصورة الكاملة بعنوانها، ثمّ اللقطة بعنوان يمنع «الشخص الثاني»، ثمّ قواعدها أخيرًا.
+         لا إعادة استعمال لـmergeInstruction: نصّها «combine every reference photo … photorealistic» ينقض «ارسمه أنمي». */
+      genParts = [
+        { text: promptText + '\nPhoto 1 — the full photo to restyle:' },
+        { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
+        { text: CLOSEUP_LABEL },
+        { inlineData: { mimeType: styleCrop.mime, data: styleCrop.data } },
+        { text: CLOSEUP_RULES },
+      ];
+      gptPrompt = promptText + '\n' + CLOSEUP_RULES;
+      gptRefs = [styleCrop];
+      /* v-keep-framing: بلا نسبة صريحة يتبع الناتج آخر صورة مرفقة — أي مربّع اللقطة (سبب mergeAspect نفسه) */
+      mergeAspect = mergeIdentity.mergeAspect({ data: imageBase64, mime: mimeType || 'image/jpeg' }, '');
     }
     const reqBody = {
       contents: [
@@ -392,7 +481,7 @@ module.exports = async (req, res) => {
           parts: genParts,
         },
       ],
-      generationConfig: { temperature: isLocalizedEdit ? 0.15 : 0.65, imageConfig: { imageSize: '2K' } },
+      generationConfig: { temperature: (isLocalizedEdit || isMultiSourceComposition) ? 0.15 : 0.65, imageConfig: mergeAspect ? { imageSize: '2K', aspectRatio: mergeAspect } : { imageSize: '2K' } },
     };
 
     const upstream = await fetch(endpoint, {
@@ -410,10 +499,10 @@ module.exports = async (req, res) => {
       // v-portrait-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعطّل الميزة — جرّب
       // gpt-image-1 (تعديل صورة) بمفتاح OPENAI_API_KEY. حارس التحقق نفسه على
       // Gemini فيُتجاوز في مسار الإنقاذ — سيرفض بدوره لو حاولناه.
-      const rescue = await openaiPortraitEdit(promptText, imageBase64, mimeType);
+      const rescue = await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
       if (rescue) {
-        const remR = await consumePortrait(quota.username);
-        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: PORTRAIT_DAILY_LIMIT });
+        const remR = await consumePortrait(quota.username, quota.limit);
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT });
         return;
       }
       res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
@@ -427,7 +516,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const isMultiSourceComposition = style === 'familystyle' || style === 'merge2';
     if (!isMultiSourceComposition) {
       const guard = await verifyLocalizedImageEdit({
         apiKey,
@@ -447,12 +535,12 @@ module.exports = async (req, res) => {
       }
     }
 
-    const remaining = await consumePortrait(quota.username);
+    const remaining = await consumePortrait(quota.username, quota.limit);
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
       remaining,
-      dailyLimit: PORTRAIT_DAILY_LIMIT,
+      dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT,
     });
   } catch (e) {
     console.error('[portrait-style] exception: ' + (e && e.stack ? e.stack : e));

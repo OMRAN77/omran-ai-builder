@@ -133,7 +133,7 @@ check(attach.includes('v-social-alive') && !attach.includes('_localSocial: true'
 check(chatServer.includes('v-social-alive') && !chatServer.includes('JSON.stringify({ delta: socialReply })'), 'الخادم لا يعيد ردًا مخزنًا — النموذج يجيب التحية');
 check(prompts.includes('«كيف الحال؟» أجب عنه بدفء كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
 check(attach.includes('const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text)') && attach.includes('const __memMsg = __quietSocialTurn ? null : memorySystemMsg()'), 'سؤال الحال لا يحقن ذاكرة الحساب في العميل');
-check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocialTurn){'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
+check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocialTurn || __ownerCtx){'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
 check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة') && attach.includes('ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'سؤال الحال له توجيه مباشر يمنع عرض الخدمة والمواضيع القديمة');
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
@@ -143,10 +143,12 @@ check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخا�
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
 
-check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا');
+check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, isClarifyTurn(lastUserText) || __analyzeDoc) : undefined'), // v-providers-like-agent: الاستيضاح والطويل بلا أدوات الصورة، وأدوات المالك له دائمًا
+      'الأدوات تُمرَّر خلف toolTurn لا دائمًا'); // v-img-ask: دور الاستيضاح بلا أدوات الصورة؛ v-provider-errors: أداة المالك تُضاف له وحده
+check(chatServer.includes('const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).concat(owner ? OWNER_TOOLS : []);'), 'أدوات المالك تُضاف له وحده ولا تُعرض لغيره');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
 // — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
-check(chatServer.includes('const toolTurn = !quietSocialTurn && !__analyzeDoc;'), 'كل دور غير اجتماعي (عدا تحليل مستند) يحمل الأدوات والتاريخ والموقع');
+check(chatServer.includes('const toolTurn = !quietSocialTurn && (!__analyzeDoc || __ownerReq);'), 'كل دور غير اجتماعي (عدا تحليل مستند لغير المالك) يحمل الأدوات والتاريخ والموقع'); // v-providers-like-agent
 check(!chatServer.includes('TOOL_INTENT_RE.test('), 'قائمة الكلمات البيضاء التي حجبت البحث أزيلت');
 check(chatServer.includes('countryNote(country, city)'), 'مدينة المستخدم تدخل توجيه الموقع');
 // v-no-region-assume (قرار المالك «يذكر المنطقة وأنا لست فيها»): مدينة الشبكة تلميح
@@ -160,7 +162,7 @@ check(!/LIVE_EAGER_RE = [^\n]*اليوم/.test(chatServer), 'كلمة «اليو
 check(!chatServer.includes('LIVE_EAGER_RE'), 'v-one-brain: محفزات البحث الاستباقي أزيلت كليًا');
 // v-fresh-news: سؤال الأخبار يقيّد المحركات بالحديث ويذكر تاريخ النشر.
 check(chatServer.includes("topic: 'news', days: 7"), 'تافيلي: أخبار آخر أسبوع فقط');
-check(chatServer.includes("search_recency_filter: 'week'"), 'بيربلكسيتي: حداثة أسبوع للأخبار');
+check(chatServer.includes("w ? { search_recency_filter: w }") && chatServer.includes("(FRESH_RE.test(String(query || '')) ? 'week'"), 'بيربلكسيتي: حداثة أسبوع للأخبار'); // v-live-fresh: النافذة مُمرَّرة، والأخبار أسبوع
 check(chatServer.includes('dateRestrict=m1&sort=date'), 'جوجل: آخر شهر مرتب بالأحدث');
 check(chatServer.includes('حداثة الأخبار — إلزامي'), 'النموذج ملزم بذكر تاريخ الخبر ورفض القديم');
 check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة العادية تستخدم تعليمات خفيفة');
@@ -168,7 +170,7 @@ check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wi
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
 check(chatServer.indexOf('v-fast-headers') > 0, 'البثّ يُفتح قبل الذاكرة فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
-check(chatServer.includes('__i === __lastMsgIdx ? 200000 : 12000'), 'الدور الحالي يتّسع للملفّ المرفق (٢٠٠ألف) والتاريخ الأقدم مضبوط (١٢ألف) لحماية السياق');
+check(chatServer.includes('__i === __lastMsgIdx ? 200000 : (__ownerReq ? 60000 : 12000)'), 'الدور الحالي يتّسع للملفّ المرفق (٢٠٠ألف) والتاريخ الأقدم مضبوط (١٢ألف) لحماية السياق');
 
 // ═══ البصمة والشخصية ═══
 group('البصمة والشخصية');
@@ -241,7 +243,7 @@ group('إزالة التكرار بين استدعاءات البحث');
 
 check(chatServer.includes('const seenHostnames = new Set()'), 'يُنشئ مجموعة المواقع المرئية قبل حلقة الأدوات');
 check(chatServer.includes('function filterDuplicateUrls('), 'دالة فرز التكرار موجودة في مسار الخادم');
-check(chatServer.includes('filterDuplicateUrls(await tavilySearch('), 'نتيجة البحث تمرّ عبر فرز التكرار قبل إرسالها للنموذج');
+check(chatServer.includes('filterDuplicateUrls(__ls.mergeWebSocial(__web, __social, { curated: __curated }))'), 'نتيجة البحث (الويب + التواصل) تمرّ عبر فرز التكرار قبل إرسالها للنموذج'); // v-live-social
 check(chatServer.includes('seenHostnames.has(host)'), 'يتحقق من الـ hostname قبل تمرير الموقع');
 check(chatServer.includes('seenHostnames.add(host)'), 'يسجّل الـ hostname بعد أول ظهور');
 

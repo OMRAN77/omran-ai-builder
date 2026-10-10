@@ -19,6 +19,9 @@ const OPS = {
   pr: { method: 'GET', path: (b) => '/pr/' + (parseInt(b.prNumber, 10) || 0) },
   merge: { method: 'POST', path: () => '/merge' },
   reset: { method: 'POST', path: () => '/reset' },
+  notes: { method: 'GET', path: () => '/notes' },
+  notesRead: { method: 'POST', path: () => '/notes/read' },
+  watch: { method: 'POST', path: () => '/watch' },
 };
 
 function config(env) {
@@ -53,6 +56,8 @@ function forwardBody(op, b) {
   if (op === 'publish') return { title: String(b.title || '').slice(0, 200), message: String(b.message || '').slice(0, 300), body: String(b.body || '').slice(0, 6000) };
   if (op === 'merge') return { prNumber: parseInt(b.prNumber, 10) || 0, force: !!b.force };
   if (op === 'reset') return { newSession: !!b.newSession };
+  if (op === 'notesRead') return Array.isArray(b.ids) ? { ids: b.ids.slice(0, 100).map((x) => parseInt(x, 10) || 0) } : {};
+  if (op === 'watch') return { prNumber: parseInt(b.prNumber, 10) || 0 };
   return {};
 }
 

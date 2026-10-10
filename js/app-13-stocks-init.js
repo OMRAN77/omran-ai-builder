@@ -1,11 +1,14 @@
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
-  /* v-store-safe: حزمة AppGallery لا تلمس أي بيانات مالية إطلاقًا —
-     لا شريط ولا صفحة ولا نداء أسعار واحد (قاعدة هواوي 11.4). */
-  if(document.documentElement.classList.contains('store-safe')) return;
+  /* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر — بعد تحذيره من مخاطرة رفض
+     هواوي بقاعدة 11.4): الأسهم تبقى ظاهرة وتعمل حتى داخل حزمة AppGallery.
+     كانت v-store-safe تُرجع مبكرًا هنا فتمنع كل نداء أسعار تحت store-safe؛
+     أُزيل الحارس بأمر صريح — راجع knowledge/DECISIONS.md لهذا التاريخ. */
   const modal = $('#stocksModal');
   const btnOpen = $('#btnStocks');
   if(!modal || !btnOpen) return;
+  /* v-hw-nomarkets: داخل حزمة هواوي لغير المالك لا نداء أسعار واحد (الواجهة مخفيّة من selfdiag.js) */
+  if(document.documentElement.classList.contains('store-nomarkets')) return;
   const btnClose = $('#stocksCloseBtn');
   const input = $('#stockSymbolInput');
   const loadBtn = $('#stockLoadBtn');
@@ -183,7 +186,12 @@
     tickerWrap.style.borderBottom = collapsed ? 'none' : '1px solid rgba(255,255,255,0.08)';
     tickerWrap.style.overflow = collapsed ? 'visible' : 'hidden';
     const tbtn = document.getElementById('stockTickerToggle');
-    if(tbtn){ tbtn.style.top = collapsed ? '2px' : '50%'; tbtn.style.transform = collapsed ? 'none' : 'translateY(-50%)'; }
+    if(tbtn){
+      tbtn.style.top = collapsed ? '2px' : '50%';
+      tbtn.style.transform = collapsed ? 'none' : 'translateY(-50%)';
+      // v-ticker-ai: المطويّ = أيقونة ذكاء ذهبيّة تومض؛ المفتوح = سهم الطيّ العاديّ.
+      tbtn.classList.toggle('tickerAiCollapsed', collapsed);
+    }
     const icon = document.getElementById('stockTickerToggleIcon');
     if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
     if(collapsed){
@@ -217,6 +225,8 @@
   });
   // v214: زر طي/فتح بنفس المكان — يسكر الشريط ويفتحه بدون حذف
   try{ if(localStorage.getItem('tickerHidden') === '1'){ localStorage.setItem('tickerCollapsed','1'); localStorage.removeItem('tickerHidden'); } }catch(err){ __swallow(err, "save:app-13-stocks-init#3"); }
+  // v-ticker-ai (طلب المالك): الشريط يبدأ مطويًّا كأيقونة ذكاء تومض ما لم يختر المستخدم غير ذلك سابقًا.
+  try{ if(localStorage.getItem('tickerCollapsed') === null) localStorage.setItem('tickerCollapsed','1'); }catch(err){ __swallow(err, "save:app-13-stocks-init#3b"); }
   const tickerToggleBtn = $('#stockTickerToggle');
   if(tickerToggleBtn) tickerToggleBtn.addEventListener('click', function(e){
     e.stopPropagation();
@@ -932,7 +942,6 @@
   const resultWrap = $('#studioAiResultWrap');
   const beforeWrap = $('#studioAiBeforeWrap');
   const beforeImg = $('#studioAiBeforeImg');
-  const sliderRange = $('#studioAiSliderRange');
   const multiAngleEl = $('#studioAiMultiAngle');
   const favSaveBtn = $('#studioAiFavoriteSaveBtn');
   const favoritesBtn = $('#studioAiFavoritesBtn');
@@ -985,6 +994,94 @@
       { value:'bob', ar:'💇 بوب قصير', en:'💇 Bob cut' },
       { value:'pixie', ar:'🧚 بيكسي', en:'🧚 Pixie cut' },
       { value:'longlayers', ar:'👩‍🦱 طبقات طويلة', en:'👩‍🦱 Long layers' },
+      /* v-studio-more-looks: دفعة الأشكال الجديدة (طلب المالك «زيد الأشكال») */
+      { value:'balayage', ar:'🎨 بالياج مدمج', en:'🎨 Balayage' },
+      { value:'copper', ar:'🔶 نحاسي لامع', en:'🔶 Copper' },
+      { value:'ashbrown', ar:'🌫️ بني رمادي', en:'🌫️ Ash brown' },
+      { value:'honey', ar:'🍯 عسلي', en:'🍯 Honey beige' },
+      { value:'braids', ar:'🪢 ضفائر', en:'🪢 Braids' },
+      { value:'updo', ar:'👑 شينيون مرفوع', en:'👑 Elegant updo' },
+      { value:'bangs', ar:'✂️ غرة أمامية', en:'✂️ Full bangs' },
+      { value:'shag', ar:'🎸 شاغ طبقات', en:'🎸 Shag cut' },
+      { value:'jetwaves', ar:'🌀 موجات كلاسيكية', en:'🌀 Finger waves' },
+      { value:'darkroots', ar:'🌓 جذور غامقة', en:'🌓 Shadow roots' },
+      /* v-studio-100: دفعة الـ١٠٠ شكل */
+      { value:'blueblack', ar:'🌑 أسود مزرقّ', en:'Blue-black' },
+      { value:'espresso', ar:'☕ إسبريسو', en:'Espresso' },
+      { value:'mocha', ar:'🍫 موكا', en:'Mocha' },
+      { value:'caramelhair', ar:'🍯 كراميل', en:'Caramel' },
+      { value:'toffee', ar:'🍬 توفي', en:'Toffee' },
+      { value:'beigeblonde', ar:'🥂 أشقر بيج', en:'Beige blonde' },
+      { value:'butterblonde', ar:'🧈 أشقر زبدة', en:'Butter blonde' },
+      { value:'strawberryblonde', ar:'🍓 أشقر فراولي', en:'Strawberry blonde' },
+      { value:'gingerhair', ar:'🦊 زنجبيلي', en:'Ginger' },
+      { value:'mahogany', ar:'🍷 ماهوجني', en:'Mahogany' },
+      { value:'cherryred', ar:'🍒 أحمر كرزي', en:'Cherry red' },
+      { value:'plumhair', ar:'🍆 برقوقي', en:'Plum' },
+      { value:'lavenderhair', ar:'💜 لافندر', en:'Lavender' },
+      { value:'pastelpink', ar:'🌸 وردي باستيل', en:'Pastel pink' },
+      { value:'peachhair', ar:'🍑 خوخي', en:'Peach' },
+      { value:'minthair', ar:'🌿 نعناعي', en:'Mint' },
+      { value:'tealhair', ar:'🦚 تركوازي', en:'Teal' },
+      { value:'navyhair', ar:'🔵 أزرق كحلي', en:'Navy' },
+      { value:'emeraldhair', ar:'💚 زمردي', en:'Emerald' },
+      { value:'charcoalhair', ar:'🩶 رمادي فحمي', en:'Charcoal' },
+      { value:'sunsetombre', ar:'🌅 أومبري غروب', en:'Sunset ombré' },
+      { value:'moneypiece', ar:'💫 خصلات أمامية', en:'Money piece' },
+      { value:'babylights', ar:'✨ بيبي لايتس', en:'Babylights' },
+      { value:'lowlights', ar:'🌑 لو لايتس', en:'Lowlights' },
+      { value:'chunky90s', ar:'🎞️ خصلات التسعينات', en:'Chunky 90s' },
+      { value:'peekaboo', ar:'🙈 لون مخفيّ', en:'Peekaboo colour' },
+      { value:'underlayer', ar:'🎨 الطبقة السفلية ملوّنة', en:'Coloured underlayer' },
+      { value:'splitdye', ar:'🪓 لونان منفصلان', en:'Split dye' },
+      { value:'ecaille', ar:'🐢 إيكاي', en:'Tortoiseshell' },
+      { value:'bronde', ar:'🌗 برونزي أشقر', en:'Bronde' },
+      { value:'butterflycut', ar:'🦋 قصّة فراشة', en:'Butterfly cut' },
+      { value:'wolfcut', ar:'🐺 وولف كت', en:'Wolf cut' },
+      { value:'bluntcut', ar:'📏 قصّة مستقيمة', en:'Blunt cut' },
+      { value:'lob', ar:'💇‍♀️ لوب', en:'Lob' },
+      { value:'frenchbob', ar:'🇫🇷 بوب فرنسي', en:'French bob' },
+      { value:'curtainbangs', ar:'🪟 غرة ستارة', en:'Curtain bangs' },
+      { value:'babybangs', ar:'✂️ غرة قصيرة', en:'Baby bangs' },
+      { value:'sidebangs', ar:'↘️ غرة جانبية', en:'Side bangs' },
+      { value:'curlybob', ar:'🌀 بوب كيرلي', en:'Curly bob' },
+      { value:'mullet', ar:'🎸 مولت', en:'Modern mullet' },
+      { value:'feathered', ar:'🪶 ريشي', en:'Feathered' },
+      { value:'beachwaves', ar:'🏖️ موج الشاطئ', en:'Beach waves' },
+      { value:'deepwaves', ar:'🌊 موج عميق', en:'Deep waves' },
+      { value:'tightcurls', ar:'➰ كيرلي ناعم', en:'Tight curls' },
+      { value:'afrohair', ar:'🦱 أفرو', en:'Afro' },
+      { value:'coils', ar:'🌀 كويلز', en:'Coils' },
+      { value:'crimped', ar:'〰️ مكرمش', en:'Crimped' },
+      { value:'sleekbun', ar:'🎀 كعكة ناعمة', en:'Sleek bun' },
+      { value:'highpony', ar:'🐴 ذيل مرفوع', en:'High ponytail' },
+      { value:'lowpony', ar:'🎗️ ذيل منخفض', en:'Low ponytail' },
+      { value:'bubblebraid', ar:'🫧 ضفيرة فقاعية', en:'Bubble braid' },
+      { value:'fishtail', ar:'🐟 ضفيرة سمكة', en:'Fishtail braid' },
+      { value:'dutchbraids', ar:'🧵 ضفائر هولندية', en:'Dutch braids' },
+      { value:'halobraid', ar:'👼 ضفيرة تاج', en:'Halo braid' },
+      { value:'spacebuns', ar:'🪐 كعكتان', en:'Space buns' },
+      { value:'topknot', ar:'🍥 توب نوت', en:'Top knot' },
+      { value:'messybun', ar:'🪺 كعكة عفوية', en:'Messy bun' },
+      { value:'clawclip', ar:'🦀 ملقط', en:'Claw clip' },
+      { value:'halfup', ar:'🎀 نصف مرفوع', en:'Half up' },
+      { value:'wetlook', ar:'💧 مبلّل', en:'Wet look' },
+      { value:'blowout', ar:'💨 سشوار منفوش', en:'Voluminous blowout' },
+      { value:'bouffant', ar:'👑 بوفان', en:'Bouffant' },
+      { value:'victoryrolls', ar:'🎺 فكتوري رولز', en:'Victory rolls' },
+      { value:'slickedback', ar:'🕶️ مسحوب للخلف', en:'Slicked back' },
+      { value:'sidepart2', ar:'↔️ فرق جانبي عميق', en:'Deep side part' },
+      { value:'middlepart', ar:'🪞 فرق وسط', en:'Middle part' },
+      { value:'hairbraidsgulf', ar:'🧶 ضفائر خليجية', en:'Gulf braids' },
+      { value:'cornrows', ar:'🌽 كورن رو', en:'Cornrows' },
+      { value:'locs', ar:'🪢 لوكس', en:'Locs' },
+      { value:'twistout', ar:'🔁 تويست آوت', en:'Twist out' },
+      { value:'perm', ar:'💈 برم', en:'Perm' },
+      { value:'keratin', ar:'🪶 كيراتين', en:'Keratin smooth' },
+      { value:'volumeshort', ar:'⬆️ حجم للشعر القصير', en:'Volumised short' },
+      { value:'thinning', ar:'🌾 كثافة أعلى', en:'Fuller hair' },
+      { value:'greyblend', ar:'🩶 دمج الشيب', en:'Grey blending' },
+      { value:'naturalgrey', ar:'⚪ شيب طبيعي أنيق', en:'Natural silver' },
     ],
     nails: [
       { value:'red', ar:'🔴 أحمر', en:'🔴 Red', fr:'🔴 Rouge', hi:'🔴 लाल', ur:'🔴 سرخ', bn:'🔴 লাল', ne:'🔴 रातो' },
@@ -999,6 +1096,97 @@
       { value:'chrome', ar:'🪞 كروم مرايا', en:'🪞 Chrome' },
       { value:'marble', ar:'🏛️ رخامي', en:'🏛️ Marble art' },
       { value:'artnails', ar:'🌸 رسم زهري', en:'🌸 Floral art' },
+      /* v-studio-more-looks */
+      { value:'coffin', ar:'⚰️ كوفن طويل', en:'⚰️ Coffin' },
+      { value:'stiletto', ar:'📌 ستيليتو مدبب', en:'📌 Stiletto' },
+      { value:'squareshort', ar:'◼️ مربع قصير', en:'◼️ Short square' },
+      { value:'almond', ar:'🌰 لوزي', en:'🌰 Almond' },
+      { value:'babyboomer', ar:'🤍 بيبي بومر', en:'🤍 Baby boomer' },
+      { value:'velvetnails', ar:'🟣 مخملي', en:'🟣 Velvet' },
+      { value:'auranails', ar:'🌈 أورا متوهج', en:'🌈 Aura' },
+      { value:'catseyenails', ar:'🐈 عين القطة', en:'🐈 Cat-eye' },
+      { value:'pearlnails', ar:'🦪 لؤلؤي', en:'🦪 Pearl' },
+      { value:'animalprint', ar:'🐆 نمري', en:'🐆 Leopard print' },
+      { value:'khaleejinails', ar:'✨ خليجي بالفويل', en:'✨ Gulf gold foil' },
+      { value:'frenchcolor', ar:'🎀 فرنشي ملوّن', en:'🎀 Colour French' },
+      /* v-studio-100: دفعة الـ١٠٠ شكل */
+      { value:'oval', ar:'🥚 بيضاوي', en:'Oval' },
+      { value:'squoval', ar:'🔲 مربع بأطراف ناعمة', en:'Squoval' },
+      { value:'ballerina', ar:'🩰 باليرينا', en:'Ballerina' },
+      { value:'flarenails', ar:'📐 مفتوح الأطراف', en:'Flare' },
+      { value:'lipsticknails', ar:'💄 قصّة مائلة', en:'Lipstick cut' },
+      { value:'extrashort', ar:'✂️ قصير جدًّا', en:'Extra short' },
+      { value:'xlnails', ar:'📏 طويل جدًّا', en:'Extra long' },
+      { value:'whitenails', ar:'⚪ أبيض', en:'Milky white' },
+      { value:'navynails', ar:'🔵 كحلي', en:'Navy' },
+      { value:'emeraldnails', ar:'💚 زمردي', en:'Emerald' },
+      { value:'lilacnails', ar:'💜 ليلكي', en:'Lilac' },
+      { value:'mintnails', ar:'🌿 نعناعي', en:'Mint' },
+      { value:'peachnails', ar:'🍑 خوخي', en:'Peach' },
+      { value:'burgundynails', ar:'🍷 عنّابي', en:'Burgundy' },
+      { value:'taupenails', ar:'🤎 تاوبي', en:'Taupe' },
+      { value:'cherrynails', ar:'🍒 كرزي', en:'Cherry' },
+      { value:'coralnails', ar:'🪸 مرجاني', en:'Coral' },
+      { value:'skybluenails', ar:'🩵 سماوي', en:'Sky blue' },
+      { value:'mustardnails', ar:'🟡 خردلي', en:'Mustard' },
+      { value:'chocolatenails', ar:'🍫 شوكولاتي', en:'Chocolate' },
+      { value:'rosegoldnails', ar:'🌹 وردي ذهبي', en:'Rose gold' },
+      { value:'bronzenails', ar:'🥉 برونزي', en:'Bronze' },
+      { value:'tealnails', ar:'🦚 تركوازي غامق', en:'Teal' },
+      { value:'holographic', ar:'🌈 هولوغرافيك', en:'Holographic' },
+      { value:'jellynails', ar:'🍬 جيلي شفاف', en:'Jelly' },
+      { value:'glazeddonut', ar:'🍩 جليزد دونت', en:'Glazed donut' },
+      { value:'sugarnails', ar:'🧂 سكّري', en:'Sugar' },
+      { value:'foilnails', ar:'🪙 فويل معدني', en:'Foil' },
+      { value:'shimmernails', ar:'✨ شيمر ناعم', en:'Shimmer' },
+      { value:'microfrench', ar:'🤏 فرنشي رفيع', en:'Micro French' },
+      { value:'doublefrench', ar:'⚡ فرنشي مزدوج', en:'Double French' },
+      { value:'vfrench', ar:'📌 فرنشي مثلّث', en:'V French' },
+      { value:'diagonalfrench', ar:'↗️ فرنشي مائل', en:'Diagonal French' },
+      { value:'reversefrench', ar:'🌗 فرنشي معكوس', en:'Reverse French' },
+      { value:'halfmoon', ar:'🌙 نصف قمر', en:'Half moon' },
+      { value:'swirlnails', ar:'🌀 دوّامات', en:'Swirls' },
+      { value:'checkernails', ar:'🏁 شطرنج', en:'Checkerboard' },
+      { value:'polkadots', ar:'⚪ نقاط', en:'Polka dots' },
+      { value:'stripesnails', ar:'📏 خطوط', en:'Stripes' },
+      { value:'plaidnails', ar:'🧣 كاروهات', en:'Plaid' },
+      { value:'zebranails', ar:'🦓 زيبرا', en:'Zebra' },
+      { value:'cownails', ar:'🐄 بقري', en:'Cow print' },
+      { value:'flamesnails', ar:'🔥 لهب', en:'Flames' },
+      { value:'smileynails', ar:'🙂 سمايلات', en:'Smileys' },
+      { value:'starsnails', ar:'⭐ نجوم', en:'Stars' },
+      { value:'heartsnails', ar:'💗 قلوب', en:'Hearts' },
+      { value:'evileyenails', ar:'🧿 عين زرقاء', en:'Evil eye' },
+      { value:'butterflynails', ar:'🦋 فراشات', en:'Butterflies' },
+      { value:'fruitnails', ar:'🍓 فواكه', en:'Fruit' },
+      { value:'floralnails2', ar:'🌷 زهور رسم يدوي', en:'Hand-painted florals' },
+      { value:'tortoiseshell', ar:'🐢 تورتواز', en:'Tortoiseshell' },
+      { value:'watercolornails', ar:'🎨 ألوان مائية', en:'Watercolour' },
+      { value:'negativenails', ar:'⬜ فراغ سالب', en:'Negative space' },
+      { value:'lacenails', ar:'🕸️ دانتيل', en:'Lace' },
+      { value:'abstractnails', ar:'➰ خطوط حرّة', en:'Abstract' },
+      { value:'auroranails', ar:'🌌 أورورا', en:'Aurora' },
+      { value:'crystalnails', ar:'💎 كريستالات', en:'Crystals' },
+      { value:'pearlnails2', ar:'🦪 لؤلؤ ثلاثي الأبعاد', en:'3D pearls' },
+      { value:'flowers3d', ar:'🌸 زهور بارزة', en:'3D flowers' },
+      { value:'charmnails', ar:'🔗 تعليقات', en:'Charms' },
+      { value:'chromebutterfly', ar:'🦋 كروم لامع', en:'Chrome art' },
+      { value:'bridalnails', ar:'👰 نيلز عروس', en:'Bridal' },
+      { value:'eidnails', ar:'🌙 نيلز العيد', en:'Eid' },
+      { value:'ramadannails', ar:'🕌 نيلز رمضان', en:'Ramadan' },
+      { value:'nationalnails', ar:'🇦🇪 اليوم الوطني', en:'National day' },
+      { value:'graduationnails', ar:'🎓 نيلز التخرّج', en:'Graduation' },
+      { value:'partynails', ar:'🎉 سهرة جليتر', en:'Party glitter' },
+      { value:'officenails', ar:'💼 دوام هادئ', en:'Office nude' },
+      { value:'gelnatural', ar:'💅 جل طبيعي', en:'Natural gel' },
+      { value:'builderclear', ar:'🧴 تقوية شفّافة', en:'Clear builder' },
+      { value:'khaleejibride', ar:'👑 خليجي فاخر', en:'Gulf luxe' },
+      { value:'minimalline', ar:'➖ خطّ واحد', en:'Single line' },
+      { value:'duotone', ar:'🎭 لونان', en:'Two tone' },
+      { value:'accentonly', ar:'☝️ إصبع مميّز', en:'One accent' },
+      { value:'gradientglitter', ar:'🌠 جليتر متدرّج', en:'Glitter fade' },
+      { value:'velvetred', ar:'❤️‍🔥 مخملي أحمر', en:'Red velvet' },
+      { value:'snownails', ar:'❄️ ثلجي', en:'Snowflake' },
     ],
     makeup: [
       { value:'natural', ar:'🌿 طبيعي خفيف', en:'🌿 Natural', fr:'🌿 Naturel', hi:'🌿 प्राकृतिक', ur:'🌿 قدرتی', bn:'🌿 প্রাকৃতিক', ne:'🌿 प्राकृतिक' },
@@ -1011,6 +1199,100 @@
       { value:'dewy', ar:'💧 ديوي مشرق', en:'💧 Dewy glow' },
       { value:'matte', ar:'🤎 مطفي كامل', en:'🤎 Full matte' },
       { value:'editorial', ar:'🎨 جريء ملوّن', en:'🎨 Editorial' },
+      /* v-studio-variety: أربعة خيارات مكياج جديدة (طلب المالك «زيد من التنويع») */
+      { value:'coral', ar:'🍑 كورال صيفي', en:'🍑 Summer coral' },
+      { value:'goldeye', ar:'🥇 عيون ذهبية', en:'🥇 Gold shimmer eyes' },
+      { value:'glassskin', ar:'🫧 بشرة زجاجية', en:'🫧 Glass skin' },
+      { value:'berry', ar:'🍇 توتي غامق', en:'🍇 Deep berry' },
+      /* v-studio-more-looks */
+      { value:'bronzed', ar:'🥉 برونزي شمسي', en:'🥉 Bronzed' },
+      { value:'cutcrease', ar:'✂️ كت كريز', en:'✂️ Cut crease' },
+      { value:'siren', ar:'🐍 عيون سايرن', en:'🐍 Siren eyes' },
+      { value:'dolleyes', ar:'🎀 عيون دمية', en:'🎀 Doll eyes' },
+      { value:'latte', ar:'☕ لاتيه ترابي', en:'☕ Latte' },
+      { value:'cherry', ar:'🍒 كرزي لامع', en:'🍒 Cherry' },
+      { value:'festival', ar:'🎉 قليتر مهرجانات', en:'🎉 Festival glitter' },
+      { value:'softmatteGulf', ar:'🖤 سهرة خليجية', en:'🖤 Gulf soirée' },
+      { value:'lashliner', ar:'🪶 خطّ الرموش فقط', en:'Lash line only' },
+      { value:'bridgecontour', ar:'👃 نحت الأنف', en:'Nose sculpt' },
+      { value:'romanticglow', ar:'💞 رومانسي', en:'Romantic glow' },
+      /* v-studio-100: دفعة الـ١٠٠ شكل */
+      { value:'wingedliner', ar:'➰ آيلاينر مجنّح', en:'Winged liner' },
+      { value:'doubleliner', ar:'⚡ آيلاينر مزدوج', en:'Double liner' },
+      { value:'whiteliner', ar:'🤍 آيلاينر أبيض', en:'White liner' },
+      { value:'smudgedliner', ar:'🖤 كحل مدخّن', en:'Smudged liner' },
+      { value:'haloeye', ar:'🌗 عين الهالة', en:'Halo eye' },
+      { value:'sunseteyes', ar:'🌅 عيون الغروب', en:'Sunset eyes' },
+      { value:'purplesmokey', ar:'💜 سموكي بنفسجي', en:'Purple smokey' },
+      { value:'bluesmokey', ar:'💙 سموكي أزرق', en:'Blue smokey' },
+      { value:'greensmokey', ar:'💚 سموكي أخضر', en:'Green smokey' },
+      { value:'coppereye', ar:'🥉 عيون نحاسية', en:'Copper eye' },
+      { value:'silvereye', ar:'🥈 عيون فضّية', en:'Silver eye' },
+      { value:'glittercut', ar:'✨ كت كريز بالجليتر', en:'Glitter cut crease' },
+      { value:'floatingliner', ar:'🛸 آيلاينر عائم', en:'Floating liner' },
+      { value:'foxeye', ar:'🦊 عيون الثعلب', en:'Fox eye' },
+      { value:'puppyeye', ar:'🐶 عيون مستديرة', en:'Puppy eye' },
+      { value:'lowerlash', ar:'👁️ تركيز سفلي', en:'Lower lash focus' },
+      { value:'coloredmascara', ar:'🎨 ماسكارا ملوّنة', en:'Coloured mascara' },
+      { value:'spikylashes', ar:'🌵 رموش شوكية', en:'Spiky lashes' },
+      { value:'boldbrows', ar:'🪶 حواجب كثّة', en:'Bold brows' },
+      { value:'bleachbrow', ar:'🎭 حواجب باهتة', en:'Editorial brows' },
+      { value:'nudeover', ar:'💋 شفاه مرسومة', en:'Overlined nude' },
+      { value:'ninetieslip', ar:'🤎 بنّي التسعينات', en:'90s brown lip' },
+      { value:'winelip', ar:'🍷 شفاه نبيذية', en:'Wine lip' },
+      { value:'fuchsialip', ar:'💗 فوشيا', en:'Fuchsia lip' },
+      { value:'glasslips', ar:'💧 شفاه زجاجية', en:'Glass lips' },
+      { value:'blurredlip', ar:'🌫️ شفاه ضبابية', en:'Blurred lip' },
+      { value:'lipstain', ar:'🍓 تنت طبيعي', en:'Lip stain' },
+      { value:'blushdraping', ar:'🩰 بلاشر ممتد', en:'Blush draping' },
+      { value:'freckledlook', ar:'🟤 نمش مرسوم', en:'Faux freckles' },
+      { value:'strobing', ar:'💡 هايلايتر قوي', en:'Strobing' },
+      { value:'heavycontour', ar:'🪄 كونتور قوي', en:'Sculpted contour' },
+      { value:'monochromepink', ar:'🌸 مونوكروم وردي', en:'Pink monochrome' },
+      { value:'monochromepeach', ar:'🍑 مونوكروم خوخي', en:'Peach monochrome' },
+      { value:'cleangirl', ar:'🧼 كلين جيرل', en:'Clean girl' },
+      { value:'oldmoneymakeup', ar:'🏛️ أولد ماني', en:'Old money' },
+      { value:'igari', ar:'🌡️ خدود محمّرة', en:'Igari flush' },
+      { value:'arabicglam', ar:'🖤 قلام عربي', en:'Arabic glam' },
+      { value:'turkishglam', ar:'🇹🇷 قلام تركي', en:'Turkish glam' },
+      { value:'bollywoodmakeup', ar:'🪷 بوليوود', en:'Bollywood' },
+      { value:'sixtiesmod', ar:'👓 ستّينات مود', en:'60s mod' },
+      { value:'seventiesdisco', ar:'🪩 سبعينات ديسكو', en:'70s disco' },
+      { value:'eightiesneon', ar:'🎸 ثمانينات نيون', en:'80s neon' },
+      { value:'ninetiesgrunge', ar:'🎧 تسعينات غرنج', en:'90s grunge' },
+      { value:'ytwokfrost', ar:'💿 واي تو كي', en:'Y2K frost' },
+      { value:'gothicmakeup', ar:'🦇 قوطي', en:'Gothic' },
+      { value:'avantgarde', ar:'🖼️ فنّي جريء', en:'Avant-garde' },
+      { value:'rhinestone', ar:'💎 كريستالات', en:'Rhinestones' },
+      { value:'mermaidpearl', ar:'🧜 لؤلؤي', en:'Pearl glow' },
+      { value:'butterflyliner', ar:'🦋 آيلاينر فراشة', en:'Butterfly liner' },
+      { value:'hennanightmakeup', ar:'🌿 ليلة الحنّاء', en:'Henna night' },
+      { value:'bridalgulf', ar:'👰 عروس خليجية', en:'Gulf bride' },
+      { value:'bridalindian', ar:'🪔 عروس هندية', en:'Indian bride' },
+      { value:'engagementsoft', ar:'💍 خطوبة ناعم', en:'Engagement soft' },
+      { value:'eidmakeup', ar:'🌙 مكياج العيد', en:'Eid' },
+      { value:'ramadanmakeup', ar:'🕌 مكياج رمضان', en:'Ramadan soft' },
+      { value:'photoshoothd', ar:'📸 تصوير احترافي', en:'HD photoshoot' },
+      { value:'tvstudio', ar:'🎬 استوديو تلفزيوني', en:'TV studio' },
+      { value:'officemakeup', ar:'💼 دوام يومي', en:'Everyday office' },
+      { value:'gymproof', ar:'🏃 مقاوم للعرق', en:'Sweat-proof' },
+      { value:'sensitiveminimal', ar:'🌱 بشرة حسّاسة', en:'Minimal sensitive' },
+      { value:'dramaticlashes', ar:'👁️‍🗨️ رموش دراماتيكية', en:'Dramatic lashes' },
+      { value:'underliner', ar:'🔻 خطّ سفلي ملوّن', en:'Coloured underliner' },
+      { value:'siren2', ar:'🌊 سايرن ناعم', en:'Soft siren' },
+      { value:'cherryblush', ar:'🍒 بلاشر كرزي', en:'Cherry blush' },
+      { value:'sunkissedfreckle', ar:'☀️ برونزي بنمش', en:'Sun-kissed' },
+      { value:'porcelain', ar:'🏺 بورسلين', en:'Porcelain' },
+      { value:'blackgold', ar:'🖤🥇 أسود وذهبي', en:'Black & gold' },
+      { value:'nudegloss', ar:'🤍 نود لامع', en:'Nude gloss' },
+      { value:'sharpcontourlip', ar:'💄 شفاه محدّدة', en:'Defined lip' },
+      { value:'duochrome', ar:'🪞 ظلال متبدّلة', en:'Duochrome' },
+      { value:'smokeybrown', ar:'🤎 سموكي بنّي', en:'Brown smokey' },
+      { value:'whitepearleye', ar:'🐚 لؤلؤ أبيض', en:'Pearl eye' },
+      { value:'graphicdots', ar:'⚪ نقاط فنّية', en:'Graphic dots' },
+      { value:'bronzeglow', ar:'🌞 توهّج برونزي', en:'Bronze glow' },
+      { value:'coolgirl', ar:'🧊 كول قيرل', en:'Cool girl' },
+      { value:'softpinkeye', ar:'🌷 عيون وردية', en:'Soft pink eye' },
     ],
     beard: [
       { value:'full', ar:'🧔 لحية كاملة', en:'🧔 Full Beard', fr:'🧔 Barbe complète', hi:'🧔 पूरी दाढ़ी', ur:'🧔 مکمل داڑھی', bn:'🧔 পূর্ণ দাড়ি', ne:'🧔 पूरा दाह्री' },
@@ -1023,6 +1305,119 @@
       { value:'faded', ar:'💈 متدرجة فيد', en:'💈 Faded' },
       { value:'longbeard', ar:'🧔‍♂️ طويلة كثة', en:'🧔‍♂️ Long thick' },
       { value:'anchor', ar:'⚓ أنكور', en:'⚓ Anchor' },
+      /* v-studio-more-looks */
+      { value:'ducktail', ar:'🦆 ذيل البطة', en:'🦆 Ducktail' },
+      { value:'chinstrap', ar:'➰ خط الفك', en:'➰ Chinstrap' },
+      { value:'circlebeard', ar:'⭕ دائرية', en:'⭕ Circle beard' },
+      { value:'mutton', ar:'🧔‍♂️ سوالف عريضة', en:'🧔‍♂️ Mutton chops' },
+      { value:'greybeard', ar:'🩶 ملح وفلفل', en:'🩶 Salt & pepper' },
+      { value:'shapedbeard', ar:'💈 حواف مرسومة', en:'💈 Barber-shaped' },
+      /* v-studio-catalog-100 */
+      { value:'bdfullnat', ar:'🧔 كاملة — لونها', en:'full beard — natural colour' },
+      { value:'bdfullblk', ar:'🧔 كاملة — أسود', en:'full beard — black' },
+      { value:'bdfullbrn', ar:'🧔 كاملة — بنّي', en:'full beard — dark brown' },
+      { value:'bdfullgrey', ar:'🧔 كاملة — شايب', en:'full beard — salt & pepper' },
+      { value:'bdfullhenna', ar:'🧔 كاملة — محنّاة', en:'full beard — henna red' },
+      { value:'bdshortnat', ar:'🧔 قصيرة — لونها', en:'short beard — natural colour' },
+      { value:'bdshortblk', ar:'🧔 قصيرة — أسود', en:'short beard — black' },
+      { value:'bdshortbrn', ar:'🧔 قصيرة — بنّي', en:'short beard — dark brown' },
+      { value:'bdshortgrey', ar:'🧔 قصيرة — شايب', en:'short beard — salt & pepper' },
+      { value:'bdshorthenna', ar:'🧔 قصيرة — محنّاة', en:'short beard — henna red' },
+      { value:'bdstubblenat', ar:'🧔 خفيفة — لونها', en:'stubble — natural colour' },
+      { value:'bdstubbleblk', ar:'🧔 خفيفة — أسود', en:'stubble — black' },
+      { value:'bdstubblebrn', ar:'🧔 خفيفة — بنّي', en:'stubble — dark brown' },
+      { value:'bdstubblegrey', ar:'🧔 خفيفة — شايب', en:'stubble — salt & pepper' },
+      { value:'bdstubblehenna', ar:'🧔 خفيفة — محنّاة', en:'stubble — henna red' },
+      { value:'bdgoateenat', ar:'🧔 سكسوكة — لونها', en:'goatee — natural colour' },
+      { value:'bdgoateeblk', ar:'🧔 سكسوكة — أسود', en:'goatee — black' },
+      { value:'bdgoateebrn', ar:'🧔 سكسوكة — بنّي', en:'goatee — dark brown' },
+      { value:'bdgoateegrey', ar:'🧔 سكسوكة — شايب', en:'goatee — salt & pepper' },
+      { value:'bdgoateehenna', ar:'🧔 سكسوكة — محنّاة', en:'goatee — henna red' },
+      { value:'bdvandykenat', ar:'🧔 فان دايك — لونها', en:'Van Dyke — natural colour' },
+      { value:'bdvandykeblk', ar:'🧔 فان دايك — أسود', en:'Van Dyke — black' },
+      { value:'bdvandykebrn', ar:'🧔 فان دايك — بنّي', en:'Van Dyke — dark brown' },
+      { value:'bdvandykegrey', ar:'🧔 فان دايك — شايب', en:'Van Dyke — salt & pepper' },
+      { value:'bdvandykehenna', ar:'🧔 فان دايك — محنّاة', en:'Van Dyke — henna red' },
+      { value:'bdboxednat', ar:'🧔 مربّعة — لونها', en:'boxed — natural colour' },
+      { value:'bdboxedblk', ar:'🧔 مربّعة — أسود', en:'boxed — black' },
+      { value:'bdboxedbrn', ar:'🧔 مربّعة — بنّي', en:'boxed — dark brown' },
+      { value:'bdboxedgrey', ar:'🧔 مربّعة — شايب', en:'boxed — salt & pepper' },
+      { value:'bdboxedhenna', ar:'🧔 مربّعة — محنّاة', en:'boxed — henna red' },
+      { value:'bdducktailnat', ar:'🧔 ذيل البطة — لونها', en:'ducktail — natural colour' },
+      { value:'bdducktailblk', ar:'🧔 ذيل البطة — أسود', en:'ducktail — black' },
+      { value:'bdducktailbrn', ar:'🧔 ذيل البطة — بنّي', en:'ducktail — dark brown' },
+      { value:'bdducktailgrey', ar:'🧔 ذيل البطة — شايب', en:'ducktail — salt & pepper' },
+      { value:'bdducktailhenna', ar:'🧔 ذيل البطة — محنّاة', en:'ducktail — henna red' },
+      { value:'bdgaribaldinat', ar:'🧔 غاريبالدي — لونها', en:'Garibaldi — natural colour' },
+      { value:'bdgaribaldiblk', ar:'🧔 غاريبالدي — أسود', en:'Garibaldi — black' },
+      { value:'bdgaribaldibrn', ar:'🧔 غاريبالدي — بنّي', en:'Garibaldi — dark brown' },
+      { value:'bdgaribaldigrey', ar:'🧔 غاريبالدي — شايب', en:'Garibaldi — salt & pepper' },
+      { value:'bdgaribaldihenna', ar:'🧔 غاريبالدي — محنّاة', en:'Garibaldi — henna red' },
+      { value:'bdanchornat', ar:'🧔 أنكور — لونها', en:'anchor — natural colour' },
+      { value:'bdanchorblk', ar:'🧔 أنكور — أسود', en:'anchor — black' },
+      { value:'bdanchorbrn', ar:'🧔 أنكور — بنّي', en:'anchor — dark brown' },
+      { value:'bdanchorgrey', ar:'🧔 أنكور — شايب', en:'anchor — salt & pepper' },
+      { value:'bdanchorhenna', ar:'🧔 أنكور — محنّاة', en:'anchor — henna red' },
+      { value:'bdchinstrapnat', ar:'🧔 خطّ الفك — لونها', en:'chinstrap — natural colour' },
+      { value:'bdchinstrapblk', ar:'🧔 خطّ الفك — أسود', en:'chinstrap — black' },
+      { value:'bdchinstrapbrn', ar:'🧔 خطّ الفك — بنّي', en:'chinstrap — dark brown' },
+      { value:'bdchinstrapgrey', ar:'🧔 خطّ الفك — شايب', en:'chinstrap — salt & pepper' },
+      { value:'bdchinstraphenna', ar:'🧔 خطّ الفك — محنّاة', en:'chinstrap — henna red' },
+      { value:'bdcirclenat', ar:'🧔 دائرية — لونها', en:'circle — natural colour' },
+      { value:'bdcircleblk', ar:'🧔 دائرية — أسود', en:'circle — black' },
+      { value:'bdcirclebrn', ar:'🧔 دائرية — بنّي', en:'circle — dark brown' },
+      { value:'bdcirclegrey', ar:'🧔 دائرية — شايب', en:'circle — salt & pepper' },
+      { value:'bdcirclehenna', ar:'🧔 دائرية — محنّاة', en:'circle — henna red' },
+      { value:'bdmuttonnat', ar:'🧔 سوالف — لونها', en:'mutton chops — natural colour' },
+      { value:'bdmuttonblk', ar:'🧔 سوالف — أسود', en:'mutton chops — black' },
+      { value:'bdmuttonbrn', ar:'🧔 سوالف — بنّي', en:'mutton chops — dark brown' },
+      { value:'bdmuttongrey', ar:'🧔 سوالف — شايب', en:'mutton chops — salt & pepper' },
+      { value:'bdmuttonhenna', ar:'🧔 سوالف — محنّاة', en:'mutton chops — henna red' },
+      { value:'bdlongnat', ar:'🧔 طويلة — لونها', en:'long beard — natural colour' },
+      { value:'bdlongblk', ar:'🧔 طويلة — أسود', en:'long beard — black' },
+      { value:'bdlongbrn', ar:'🧔 طويلة — بنّي', en:'long beard — dark brown' },
+      { value:'bdlonggrey', ar:'🧔 طويلة — شايب', en:'long beard — salt & pepper' },
+      { value:'bdlonghenna', ar:'🧔 طويلة — محنّاة', en:'long beard — henna red' },
+      { value:'bdfadednat', ar:'🧔 فيد — لونها', en:'faded — natural colour' },
+      { value:'bdfadedblk', ar:'🧔 فيد — أسود', en:'faded — black' },
+      { value:'bdfadedbrn', ar:'🧔 فيد — بنّي', en:'faded — dark brown' },
+      { value:'bdfadedgrey', ar:'🧔 فيد — شايب', en:'faded — salt & pepper' },
+      { value:'bdfadedhenna', ar:'🧔 فيد — محنّاة', en:'faded — henna red' },
+      { value:'bdsharpnat', ar:'🧔 حواف حادّة — لونها', en:'sharp lines — natural colour' },
+      { value:'bdsharpblk', ar:'🧔 حواف حادّة — أسود', en:'sharp lines — black' },
+      { value:'bdsharpbrn', ar:'🧔 حواف حادّة — بنّي', en:'sharp lines — dark brown' },
+      { value:'bdsharpgrey', ar:'🧔 حواف حادّة — شايب', en:'sharp lines — salt & pepper' },
+      { value:'bdsharphenna', ar:'🧔 حواف حادّة — محنّاة', en:'sharp lines — henna red' },
+      { value:'bdmustachenat', ar:'🧔 شنب — لونها', en:'mustache — natural colour' },
+      { value:'bdmustacheblk', ar:'🧔 شنب — أسود', en:'mustache — black' },
+      { value:'bdmustachebrn', ar:'🧔 شنب — بنّي', en:'mustache — dark brown' },
+      { value:'bdmustachegrey', ar:'🧔 شنب — شايب', en:'mustache — salt & pepper' },
+      { value:'bdmustachehenna', ar:'🧔 شنب — محنّاة', en:'mustache — henna red' },
+      { value:'bdhandlebarnat', ar:'🧔 شنب مفتول — لونها', en:'handlebar — natural colour' },
+      { value:'bdhandlebarblk', ar:'🧔 شنب مفتول — أسود', en:'handlebar — black' },
+      { value:'bdhandlebarbrn', ar:'🧔 شنب مفتول — بنّي', en:'handlebar — dark brown' },
+      { value:'bdhandlebargrey', ar:'🧔 شنب مفتول — شايب', en:'handlebar — salt & pepper' },
+      { value:'bdhandlebarhenna', ar:'🧔 شنب مفتول — محنّاة', en:'handlebar — henna red' },
+      { value:'bdchevronnat', ar:'🧔 شنب شيفرون — لونها', en:'chevron — natural colour' },
+      { value:'bdchevronblk', ar:'🧔 شنب شيفرون — أسود', en:'chevron — black' },
+      { value:'bdchevronbrn', ar:'🧔 شنب شيفرون — بنّي', en:'chevron — dark brown' },
+      { value:'bdchevrongrey', ar:'🧔 شنب شيفرون — شايب', en:'chevron — salt & pepper' },
+      { value:'bdchevronhenna', ar:'🧔 شنب شيفرون — محنّاة', en:'chevron — henna red' },
+      { value:'bdbalbonat', ar:'🧔 بالبو — لونها', en:'Balbo — natural colour' },
+      { value:'bdbalboblk', ar:'🧔 بالبو — أسود', en:'Balbo — black' },
+      { value:'bdbalbobrn', ar:'🧔 بالبو — بنّي', en:'Balbo — dark brown' },
+      { value:'bdbalbogrey', ar:'🧔 بالبو — شايب', en:'Balbo — salt & pepper' },
+      { value:'bdbalbohenna', ar:'🧔 بالبو — محنّاة', en:'Balbo — henna red' },
+      { value:'bdkhaleejinat', ar:'🧔 خليجية مرتّبة — لونها', en:'Gulf trim — natural colour' },
+      { value:'bdkhaleejiblk', ar:'🧔 خليجية مرتّبة — أسود', en:'Gulf trim — black' },
+      { value:'bdkhaleejibrn', ar:'🧔 خليجية مرتّبة — بنّي', en:'Gulf trim — dark brown' },
+      { value:'bdkhaleejigrey', ar:'🧔 خليجية مرتّبة — شايب', en:'Gulf trim — salt & pepper' },
+      { value:'bdkhaleejihenna', ar:'🧔 خليجية مرتّبة — محنّاة', en:'Gulf trim — henna red' },
+      { value:'bdcleannat', ar:'🧔 حلاقة كاملة — لونها', en:'clean shave — natural colour' },
+      { value:'bdcleanblk', ar:'🧔 حلاقة كاملة — أسود', en:'clean shave — black' },
+      { value:'bdcleanbrn', ar:'🧔 حلاقة كاملة — بنّي', en:'clean shave — dark brown' },
+      { value:'bdcleangrey', ar:'🧔 حلاقة كاملة — شايب', en:'clean shave — salt & pepper' },
+      { value:'bdcleanhenna', ar:'🧔 حلاقة كاملة — محنّاة', en:'clean shave — henna red' },
     ],
     skin: [
       { value:'subtle', ar:'✨ تنعيم خفيف', en:'✨ Subtle Smoothing', fr:'✨ Lissage subtil', hi:'✨ हल्का स्मूदिंग', ur:'✨ ہلکی ہمواری', bn:'✨ হালকা মসৃণতা', ne:'✨ हल्का चिल्लो' },
@@ -1031,6 +1426,116 @@
       { value:'tan', ar:'🌞 تان ذهبي', en:'🌞 Golden tan' },
       { value:'matteskin', ar:'🧴 مطفي بلا لمعة', en:'🧴 Matte finish' },
       { value:'freckles', ar:'✨ نمش طبيعي', en:'✨ Freckles' },
+      /* v-studio-more-looks */
+      { value:'poreless', ar:'🫧 بلا مسام', en:'🫧 Poreless' },
+      { value:'acneclear', ar:'🧼 إزالة الحبوب', en:'🧼 Clear blemishes' },
+      { value:'scarfree', ar:'🩹 تخفيف الآثار', en:'🩹 Fade scars' },
+      { value:'hydrated', ar:'💦 ترطيب ممتلئ', en:'💦 Hydrated' },
+      { value:'evenTone', ar:'🎚️ توحيد اللون', en:'🎚️ Even tone' },
+      { value:'softfilter', ar:'🌫️ نعومة الاستوديو', en:'🌫️ Soft focus' },
+      /* v-studio-catalog-100 */
+      { value:'skglowm', ar:'✨ توهّج — مطفي', en:'glow — matte' },
+      { value:'skglows', ar:'✨ توهّج — ساتان', en:'glow — satin' },
+      { value:'skglowd', ar:'✨ توهّج — ندي', en:'glow — dewy' },
+      { value:'skevenm', ar:'✨ توحيد اللون — مطفي', en:'even tone — matte' },
+      { value:'skevens', ar:'✨ توحيد اللون — ساتان', en:'even tone — satin' },
+      { value:'skevend', ar:'✨ توحيد اللون — ندي', en:'even tone — dewy' },
+      { value:'skclearm', ar:'✨ إزالة الحبوب — مطفي', en:'clear skin — matte' },
+      { value:'skclears', ar:'✨ إزالة الحبوب — ساتان', en:'clear skin — satin' },
+      { value:'skcleard', ar:'✨ إزالة الحبوب — ندي', en:'clear skin — dewy' },
+      { value:'skscarsm', ar:'✨ آثار الحبوب — مطفي', en:'fade scars — matte' },
+      { value:'skscarss', ar:'✨ آثار الحبوب — ساتان', en:'fade scars — satin' },
+      { value:'skscarsd', ar:'✨ آثار الحبوب — ندي', en:'fade scars — dewy' },
+      { value:'skcirclesm', ar:'✨ الهالات — مطفي', en:'dark circles — matte' },
+      { value:'skcircless', ar:'✨ الهالات — ساتان', en:'dark circles — satin' },
+      { value:'skcirclesd', ar:'✨ الهالات — ندي', en:'dark circles — dewy' },
+      { value:'skporesm', ar:'✨ المسام — مطفي', en:'refine pores — matte' },
+      { value:'skporess', ar:'✨ المسام — ساتان', en:'refine pores — satin' },
+      { value:'skporesd', ar:'✨ المسام — ندي', en:'refine pores — dewy' },
+      { value:'skshinem', ar:'✨ اللمعة الدهنية — مطفي', en:'oil control — matte' },
+      { value:'skshines', ar:'✨ اللمعة الدهنية — ساتان', en:'oil control — satin' },
+      { value:'skshined', ar:'✨ اللمعة الدهنية — ندي', en:'oil control — dewy' },
+      { value:'skrednessm', ar:'✨ الاحمرار — مطفي', en:'calm redness — matte' },
+      { value:'skrednesss', ar:'✨ الاحمرار — ساتان', en:'calm redness — satin' },
+      { value:'skrednessd', ar:'✨ الاحمرار — ندي', en:'calm redness — dewy' },
+      { value:'sktan1m', ar:'✨ سمرة خفيفة — مطفي', en:'light tan — matte' },
+      { value:'sktan1s', ar:'✨ سمرة خفيفة — ساتان', en:'light tan — satin' },
+      { value:'sktan1d', ar:'✨ سمرة خفيفة — ندي', en:'light tan — dewy' },
+      { value:'sktan2m', ar:'✨ سمرة متوسّطة — مطفي', en:'medium tan — matte' },
+      { value:'sktan2s', ar:'✨ سمرة متوسّطة — ساتان', en:'medium tan — satin' },
+      { value:'sktan2d', ar:'✨ سمرة متوسّطة — ندي', en:'medium tan — dewy' },
+      { value:'sktan3m', ar:'✨ سمرة برونزية — مطفي', en:'bronze tan — matte' },
+      { value:'sktan3s', ar:'✨ سمرة برونزية — ساتان', en:'bronze tan — satin' },
+      { value:'sktan3d', ar:'✨ سمرة برونزية — ندي', en:'bronze tan — dewy' },
+      { value:'skfreshm', ar:'✨ انتعاش — مطفي', en:'fresh — matte' },
+      { value:'skfreshs', ar:'✨ انتعاش — ساتان', en:'fresh — satin' },
+      { value:'skfreshd', ar:'✨ انتعاش — ندي', en:'fresh — dewy' },
+      { value:'skfrecklem', ar:'✨ نمش — مطفي', en:'freckles — matte' },
+      { value:'skfreckles', ar:'✨ نمش — ساتان', en:'freckles — satin' },
+      { value:'skfreckled', ar:'✨ نمش — ندي', en:'freckles — dewy' },
+      { value:'skwrinklesm', ar:'✨ التجاعيد — مطفي', en:'soften lines — matte' },
+      { value:'skwrinkless', ar:'✨ التجاعيد — ساتان', en:'soften lines — satin' },
+      { value:'skwrinklesd', ar:'✨ التجاعيد — ندي', en:'soften lines — dewy' },
+      { value:'skglassm', ar:'✨ بشرة زجاجية — مطفي', en:'glass skin — matte' },
+      { value:'skglasss', ar:'✨ بشرة زجاجية — ساتان', en:'glass skin — satin' },
+      { value:'skglassd', ar:'✨ بشرة زجاجية — ندي', en:'glass skin — dewy' },
+      { value:'skbabym', ar:'✨ نعومة — مطفي', en:'smooth — matte' },
+      { value:'skbabys', ar:'✨ نعومة — ساتان', en:'smooth — satin' },
+      { value:'skbabyd', ar:'✨ نعومة — ندي', en:'smooth — dewy' },
+      { value:'skhydram', ar:'✨ ترطيب — مطفي', en:'hydrated — matte' },
+      { value:'skhydras', ar:'✨ ترطيب — ساتان', en:'hydrated — satin' },
+      { value:'skhydrad', ar:'✨ ترطيب — ندي', en:'hydrated — dewy' },
+      { value:'skspotsm', ar:'✨ البقع — مطفي', en:'fade spots — matte' },
+      { value:'skspotss', ar:'✨ البقع — ساتان', en:'fade spots — satin' },
+      { value:'skspotsd', ar:'✨ البقع — ندي', en:'fade spots — dewy' },
+      { value:'sksunburnm', ar:'✨ حروق الشمس — مطفي', en:'sunburn fix — matte' },
+      { value:'sksunburns', ar:'✨ حروق الشمس — ساتان', en:'sunburn fix — satin' },
+      { value:'sksunburnd', ar:'✨ حروق الشمس — ندي', en:'sunburn fix — dewy' },
+      { value:'skbeardshadowm', ar:'✨ ظلّ اللحية — مطفي', en:'soften shadow — matte' },
+      { value:'skbeardshadows', ar:'✨ ظلّ اللحية — ساتان', en:'soften shadow — satin' },
+      { value:'skbeardshadowd', ar:'✨ ظلّ اللحية — ندي', en:'soften shadow — dewy' },
+      { value:'skradiantm', ar:'✨ إشراق — مطفي', en:'radiant — matte' },
+      { value:'skradiants', ar:'✨ إشراق — ساتان', en:'radiant — satin' },
+      { value:'skradiantd', ar:'✨ إشراق — ندي', en:'radiant — dewy' },
+      { value:'skwarmm', ar:'✨ دفء اللون — مطفي', en:'warmer — matte' },
+      { value:'skwarms', ar:'✨ دفء اللون — ساتان', en:'warmer — satin' },
+      { value:'skwarmd', ar:'✨ دفء اللون — ندي', en:'warmer — dewy' },
+      { value:'skcoolm', ar:'✨ برودة اللون — مطفي', en:'cooler — matte' },
+      { value:'skcools', ar:'✨ برودة اللون — ساتان', en:'cooler — satin' },
+      { value:'skcoold', ar:'✨ برودة اللون — ندي', en:'cooler — dewy' },
+      { value:'skmattem', ar:'✨ مطفي — مطفي', en:'matte — matte' },
+      { value:'skmattes', ar:'✨ مطفي — ساتان', en:'matte — satin' },
+      { value:'skmatted', ar:'✨ مطفي — ندي', en:'matte — dewy' },
+      { value:'skcontourm', ar:'✨ نحت خفيف — مطفي', en:'sculpt — matte' },
+      { value:'skcontours', ar:'✨ نحت خفيف — ساتان', en:'sculpt — satin' },
+      { value:'skcontourd', ar:'✨ نحت خفيف — ندي', en:'sculpt — dewy' },
+      { value:'sklipsm', ar:'✨ شفاه صحّية — مطفي', en:'healthy lips — matte' },
+      { value:'sklipss', ar:'✨ شفاه صحّية — ساتان', en:'healthy lips — satin' },
+      { value:'sklipsd', ar:'✨ شفاه صحّية — ندي', en:'healthy lips — dewy' },
+      { value:'skneckm', ar:'✨ الرقبة — مطفي', en:'neck — matte' },
+      { value:'sknecks', ar:'✨ الرقبة — ساتان', en:'neck — satin' },
+      { value:'skneckd', ar:'✨ الرقبة — ندي', en:'neck — dewy' },
+      { value:'skforeheadm', ar:'✨ الجبهة — مطفي', en:'forehead — matte' },
+      { value:'skforeheads', ar:'✨ الجبهة — ساتان', en:'forehead — satin' },
+      { value:'skforeheadd', ar:'✨ الجبهة — ندي', en:'forehead — dewy' },
+      { value:'sknosem', ar:'✨ الأنف — مطفي', en:'nose — matte' },
+      { value:'sknoses', ar:'✨ الأنف — ساتان', en:'nose — satin' },
+      { value:'sknosed', ar:'✨ الأنف — ندي', en:'nose — dewy' },
+      { value:'skchinm', ar:'✨ الذقن — مطفي', en:'chin — matte' },
+      { value:'skchins', ar:'✨ الذقن — ساتان', en:'chin — satin' },
+      { value:'skchind', ar:'✨ الذقن — ندي', en:'chin — dewy' },
+      { value:'skundereyem', ar:'✨ تحت العين — مطفي', en:'under-eye — matte' },
+      { value:'skundereyes', ar:'✨ تحت العين — ساتان', en:'under-eye — satin' },
+      { value:'skundereyed', ar:'✨ تحت العين — ندي', en:'under-eye — dewy' },
+      { value:'skvitaminm', ar:'✨ فيتامين سي — مطفي', en:'vitamin glow — matte' },
+      { value:'skvitamins', ar:'✨ فيتامين سي — ساتان', en:'vitamin glow — satin' },
+      { value:'skvitamind', ar:'✨ فيتامين سي — ندي', en:'vitamin glow — dewy' },
+      { value:'skspam', ar:'✨ بعد السبا — مطفي', en:'spa fresh — matte' },
+      { value:'skspas', ar:'✨ بعد السبا — ساتان', en:'spa fresh — satin' },
+      { value:'skspad', ar:'✨ بعد السبا — ندي', en:'spa fresh — dewy' },
+      { value:'sksummerm', ar:'✨ بشرة صيفية — مطفي', en:'summer skin — matte' },
+      { value:'sksummers', ar:'✨ بشرة صيفية — ساتان', en:'summer skin — satin' },
+      { value:'sksummerd', ar:'✨ بشرة صيفية — ندي', en:'summer skin — dewy' },
     ],
     glasses: [
       { value:'sunglasses', ar:'🕶️ شمسية كلاسيكية', en:'🕶️ Classic Sunglasses', fr:'🕶️ Lunettes de soleil classiques', hi:'🕶️ क्लासिक सनग्लासेज़', ur:'🕶️ کلاسک دھوپ کے چشمے', bn:'🕶️ ক্লাসিক সানগ্লাস', ne:'🕶️ क्लासिक घाम चश्मा' },
@@ -1045,6 +1550,122 @@
       { value:'retroglasses', ar:'🕰️ ريترو ملوّنة', en:'🕰️ Retro tinted' },
       { value:'hexagon', ar:'⬡ سداسية', en:'⬡ Hexagon' },
       { value:'clearframe', ar:'🧊 إطار شفاف', en:'🧊 Clear frame' },
+      /* v-studio-more-looks */
+      { value:'browline', ar:'🕶️ براولاين', en:'🕶️ Browline' },
+      { value:'octagon', ar:'🛑 ثمانية أضلاع', en:'🛑 Octagon' },
+      { value:'halfrim', ar:'➗ نصف إطار', en:'➗ Half-rim' },
+      { value:'bluelight', ar:'💻 حماية الشاشات', en:'💻 Blue-light' },
+      { value:'mirrored', ar:'🪩 عاكسة', en:'🪩 Mirrored' },
+      { value:'tinyframe', ar:'🔹 صغيرة ترند', en:'🔹 Tiny frame' },
+      /* v-studio-catalog-100 */
+      { value:'grectblk', ar:'👓 مستطيلة — أسود', en:'Rectangle — black' },
+      { value:'grectgld', ar:'👓 مستطيلة — ذهبي', en:'Rectangle — gold' },
+      { value:'grecttort', ar:'👓 مستطيلة — تورتواز', en:'Rectangle — tortoiseshell' },
+      { value:'grectclr', ar:'👓 مستطيلة — شفّاف', en:'Rectangle — clear' },
+      { value:'grectslv', ar:'👓 مستطيلة — فضّي', en:'Rectangle — silver' },
+      { value:'grectred', ar:'👓 مستطيلة — أحمر', en:'Rectangle — red' },
+      { value:'grectwht', ar:'👓 مستطيلة — أبيض', en:'Rectangle — white' },
+      { value:'grectnvy', ar:'👓 مستطيلة — كحلي', en:'Rectangle — navy' },
+      { value:'groundblk', ar:'👓 دائرية — أسود', en:'Round — black' },
+      { value:'groundgld', ar:'👓 دائرية — ذهبي', en:'Round — gold' },
+      { value:'groundtort', ar:'👓 دائرية — تورتواز', en:'Round — tortoiseshell' },
+      { value:'groundclr', ar:'👓 دائرية — شفّاف', en:'Round — clear' },
+      { value:'groundslv', ar:'👓 دائرية — فضّي', en:'Round — silver' },
+      { value:'groundred', ar:'👓 دائرية — أحمر', en:'Round — red' },
+      { value:'groundwht', ar:'👓 دائرية — أبيض', en:'Round — white' },
+      { value:'groundnvy', ar:'👓 دائرية — كحلي', en:'Round — navy' },
+      { value:'gcatblk', ar:'👓 عين القطة — أسود', en:'Cat-eye — black' },
+      { value:'gcatgld', ar:'👓 عين القطة — ذهبي', en:'Cat-eye — gold' },
+      { value:'gcattort', ar:'👓 عين القطة — تورتواز', en:'Cat-eye — tortoiseshell' },
+      { value:'gcatclr', ar:'👓 عين القطة — شفّاف', en:'Cat-eye — clear' },
+      { value:'gcatslv', ar:'👓 عين القطة — فضّي', en:'Cat-eye — silver' },
+      { value:'gcatred', ar:'👓 عين القطة — أحمر', en:'Cat-eye — red' },
+      { value:'gcatwht', ar:'👓 عين القطة — أبيض', en:'Cat-eye — white' },
+      { value:'gcatnvy', ar:'👓 عين القطة — كحلي', en:'Cat-eye — navy' },
+      { value:'gaviblk', ar:'👓 طيّار — أسود', en:'Aviator — black' },
+      { value:'gavigld', ar:'👓 طيّار — ذهبي', en:'Aviator — gold' },
+      { value:'gavitort', ar:'👓 طيّار — تورتواز', en:'Aviator — tortoiseshell' },
+      { value:'gaviclr', ar:'👓 طيّار — شفّاف', en:'Aviator — clear' },
+      { value:'gavislv', ar:'👓 طيّار — فضّي', en:'Aviator — silver' },
+      { value:'gavired', ar:'👓 طيّار — أحمر', en:'Aviator — red' },
+      { value:'gaviwht', ar:'👓 طيّار — أبيض', en:'Aviator — white' },
+      { value:'gavinvy', ar:'👓 طيّار — كحلي', en:'Aviator — navy' },
+      { value:'gwayblk', ar:'👓 وايفيرر — أسود', en:'Wayfarer — black' },
+      { value:'gwaygld', ar:'👓 وايفيرر — ذهبي', en:'Wayfarer — gold' },
+      { value:'gwaytort', ar:'👓 وايفيرر — تورتواز', en:'Wayfarer — tortoiseshell' },
+      { value:'gwayclr', ar:'👓 وايفيرر — شفّاف', en:'Wayfarer — clear' },
+      { value:'gwayslv', ar:'👓 وايفيرر — فضّي', en:'Wayfarer — silver' },
+      { value:'gwayred', ar:'👓 وايفيرر — أحمر', en:'Wayfarer — red' },
+      { value:'gwaywht', ar:'👓 وايفيرر — أبيض', en:'Wayfarer — white' },
+      { value:'gwaynvy', ar:'👓 وايفيرر — كحلي', en:'Wayfarer — navy' },
+      { value:'govalblk', ar:'👓 بيضاوية — أسود', en:'Oval — black' },
+      { value:'govalgld', ar:'👓 بيضاوية — ذهبي', en:'Oval — gold' },
+      { value:'govaltort', ar:'👓 بيضاوية — تورتواز', en:'Oval — tortoiseshell' },
+      { value:'govalclr', ar:'👓 بيضاوية — شفّاف', en:'Oval — clear' },
+      { value:'govalslv', ar:'👓 بيضاوية — فضّي', en:'Oval — silver' },
+      { value:'govalred', ar:'👓 بيضاوية — أحمر', en:'Oval — red' },
+      { value:'govalwht', ar:'👓 بيضاوية — أبيض', en:'Oval — white' },
+      { value:'govalnvy', ar:'👓 بيضاوية — كحلي', en:'Oval — navy' },
+      { value:'gsqblk', ar:'👓 مربّعة — أسود', en:'Square — black' },
+      { value:'gsqgld', ar:'👓 مربّعة — ذهبي', en:'Square — gold' },
+      { value:'gsqtort', ar:'👓 مربّعة — تورتواز', en:'Square — tortoiseshell' },
+      { value:'gsqclr', ar:'👓 مربّعة — شفّاف', en:'Square — clear' },
+      { value:'gsqslv', ar:'👓 مربّعة — فضّي', en:'Square — silver' },
+      { value:'gsqred', ar:'👓 مربّعة — أحمر', en:'Square — red' },
+      { value:'gsqwht', ar:'👓 مربّعة — أبيض', en:'Square — white' },
+      { value:'gsqnvy', ar:'👓 مربّعة — كحلي', en:'Square — navy' },
+      { value:'ghexblk', ar:'👓 سداسية — أسود', en:'Hexagon — black' },
+      { value:'ghexgld', ar:'👓 سداسية — ذهبي', en:'Hexagon — gold' },
+      { value:'ghextort', ar:'👓 سداسية — تورتواز', en:'Hexagon — tortoiseshell' },
+      { value:'ghexclr', ar:'👓 سداسية — شفّاف', en:'Hexagon — clear' },
+      { value:'ghexslv', ar:'👓 سداسية — فضّي', en:'Hexagon — silver' },
+      { value:'ghexred', ar:'👓 سداسية — أحمر', en:'Hexagon — red' },
+      { value:'ghexwht', ar:'👓 سداسية — أبيض', en:'Hexagon — white' },
+      { value:'ghexnvy', ar:'👓 سداسية — كحلي', en:'Hexagon — navy' },
+      { value:'goctblk', ar:'👓 ثمانية — أسود', en:'Octagon — black' },
+      { value:'goctgld', ar:'👓 ثمانية — ذهبي', en:'Octagon — gold' },
+      { value:'gocttort', ar:'👓 ثمانية — تورتواز', en:'Octagon — tortoiseshell' },
+      { value:'goctclr', ar:'👓 ثمانية — شفّاف', en:'Octagon — clear' },
+      { value:'goctslv', ar:'👓 ثمانية — فضّي', en:'Octagon — silver' },
+      { value:'goctred', ar:'👓 ثمانية — أحمر', en:'Octagon — red' },
+      { value:'goctwht', ar:'👓 ثمانية — أبيض', en:'Octagon — white' },
+      { value:'goctnvy', ar:'👓 ثمانية — كحلي', en:'Octagon — navy' },
+      { value:'gbrowblk', ar:'👓 براولاين — أسود', en:'Browline — black' },
+      { value:'gbrowgld', ar:'👓 براولاين — ذهبي', en:'Browline — gold' },
+      { value:'gbrowtort', ar:'👓 براولاين — تورتواز', en:'Browline — tortoiseshell' },
+      { value:'gbrowclr', ar:'👓 براولاين — شفّاف', en:'Browline — clear' },
+      { value:'gbrowslv', ar:'👓 براولاين — فضّي', en:'Browline — silver' },
+      { value:'gbrowred', ar:'👓 براولاين — أحمر', en:'Browline — red' },
+      { value:'gbrowwht', ar:'👓 براولاين — أبيض', en:'Browline — white' },
+      { value:'gbrownvy', ar:'👓 براولاين — كحلي', en:'Browline — navy' },
+      { value:'gshieldblk', ar:'👓 درع — أسود', en:'Shield — black' },
+      { value:'gshieldgld', ar:'👓 درع — ذهبي', en:'Shield — gold' },
+      { value:'gshieldtort', ar:'👓 درع — تورتواز', en:'Shield — tortoiseshell' },
+      { value:'gshieldclr', ar:'👓 درع — شفّاف', en:'Shield — clear' },
+      { value:'gshieldslv', ar:'👓 درع — فضّي', en:'Shield — silver' },
+      { value:'gshieldred', ar:'👓 درع — أحمر', en:'Shield — red' },
+      { value:'gshieldwht', ar:'👓 درع — أبيض', en:'Shield — white' },
+      { value:'gshieldnvy', ar:'👓 درع — كحلي', en:'Shield — navy' },
+      { value:'goverblk', ar:'👓 كبيرة — أسود', en:'Oversized — black' },
+      { value:'govergld', ar:'👓 كبيرة — ذهبي', en:'Oversized — gold' },
+      { value:'govertort', ar:'👓 كبيرة — تورتواز', en:'Oversized — tortoiseshell' },
+      { value:'goverclr', ar:'👓 كبيرة — شفّاف', en:'Oversized — clear' },
+      { value:'goverslv', ar:'👓 كبيرة — فضّي', en:'Oversized — silver' },
+      { value:'goverred', ar:'👓 كبيرة — أحمر', en:'Oversized — red' },
+      { value:'goverwht', ar:'👓 كبيرة — أبيض', en:'Oversized — white' },
+      { value:'governvy', ar:'👓 كبيرة — كحلي', en:'Oversized — navy' },
+      { value:'gsrectdk', ar:'🕶️ مستطيلة شمسية — عدسة داكنة', en:'Rectangle sunglasses — dark lenses' },
+      { value:'gsrectgrd', ar:'🕶️ مستطيلة شمسية — عدسة متدرّجة', en:'Rectangle sunglasses — gradient lenses' },
+      { value:'gsrounddk', ar:'🕶️ دائرية شمسية — عدسة داكنة', en:'Round sunglasses — dark lenses' },
+      { value:'gsroundgrd', ar:'🕶️ دائرية شمسية — عدسة متدرّجة', en:'Round sunglasses — gradient lenses' },
+      { value:'gscatdk', ar:'🕶️ عين القطة شمسية — عدسة داكنة', en:'Cat-eye sunglasses — dark lenses' },
+      { value:'gscatgrd', ar:'🕶️ عين القطة شمسية — عدسة متدرّجة', en:'Cat-eye sunglasses — gradient lenses' },
+      { value:'gsavidk', ar:'🕶️ طيّار شمسية — عدسة داكنة', en:'Aviator sunglasses — dark lenses' },
+      { value:'gsavigrd', ar:'🕶️ طيّار شمسية — عدسة متدرّجة', en:'Aviator sunglasses — gradient lenses' },
+      { value:'gswaydk', ar:'🕶️ وايفيرر شمسية — عدسة داكنة', en:'Wayfarer sunglasses — dark lenses' },
+      { value:'gswaygrd', ar:'🕶️ وايفيرر شمسية — عدسة متدرّجة', en:'Wayfarer sunglasses — gradient lenses' },
+      { value:'gsovaldk', ar:'🕶️ بيضاوية شمسية — عدسة داكنة', en:'Oval sunglasses — dark lenses' },
+      { value:'gsovalgrd', ar:'🕶️ بيضاوية شمسية — عدسة متدرّجة', en:'Oval sunglasses — gradient lenses' },
     ],
     tattoo: [
       { value:'sleeve', ar:'💪 كم كامل', en:'💪 Full Sleeve', fr:'💪 Manche complète', hi:'💪 फुल स्लीव', ur:'💪 فل سلیو', bn:'💪 ফুল স্লিভ', ne:'💪 पूरा स्लिभ' },
@@ -1056,6 +1677,115 @@
       { value:'minimalline', ar:'➖ خط بسيط', en:'➖ Minimal line' },
       { value:'arabictattoo', ar:'🖋️ خط عربي', en:'🖋️ Arabic calligraphy' },
       { value:'floraltattoo', ar:'🌿 نباتي مفصّل', en:'🌿 Floral' },
+      /* v-studio-more-looks */
+      { value:'japanese', ar:'🌊 ياباني إيرزومي', en:'🌊 Japanese irezumi' },
+      { value:'blackwork', ar:'⬛ بلاك ورك', en:'⬛ Blackwork' },
+      { value:'watercolortattoo', ar:'🎨 ألوان مائية', en:'🎨 Watercolour' },
+      { value:'necktattoo', ar:'👤 على الرقبة', en:'👤 Neck' },
+      { value:'chesttattoo', ar:'🫀 على الصدر', en:'🫀 Chest piece' },
+      { value:'ankletattoo', ar:'🦶 حول الكاحل', en:'🦶 Ankle band' },
+      { value:'dotwork', ar:'⚪ نقطي ماندالا', en:'⚪ Dotwork mandala' },
+      /* v-studio-catalog-100 */
+      { value:'ttrosefa', ar:'🎨 وردة — الساعد', en:'rose — forearm' },
+      { value:'ttrosewr', ar:'🎨 وردة — المعصم', en:'rose — wrist' },
+      { value:'ttrosesh', ar:'🎨 وردة — الكتف', en:'rose — shoulder' },
+      { value:'ttrosehd', ar:'🎨 وردة — ظهر اليد', en:'rose — back of the hand' },
+      { value:'ttlionfa', ar:'🎨 أسد — الساعد', en:'lion — forearm' },
+      { value:'ttlionwr', ar:'🎨 أسد — المعصم', en:'lion — wrist' },
+      { value:'ttlionsh', ar:'🎨 أسد — الكتف', en:'lion — shoulder' },
+      { value:'ttlionhd', ar:'🎨 أسد — ظهر اليد', en:'lion — back of the hand' },
+      { value:'ttfalconfa', ar:'🎨 صقر — الساعد', en:'falcon — forearm' },
+      { value:'ttfalconwr', ar:'🎨 صقر — المعصم', en:'falcon — wrist' },
+      { value:'ttfalconsh', ar:'🎨 صقر — الكتف', en:'falcon — shoulder' },
+      { value:'ttfalconhd', ar:'🎨 صقر — ظهر اليد', en:'falcon — back of the hand' },
+      { value:'ttwolffa', ar:'🎨 ذئب — الساعد', en:'wolf — forearm' },
+      { value:'ttwolfwr', ar:'🎨 ذئب — المعصم', en:'wolf — wrist' },
+      { value:'ttwolfsh', ar:'🎨 ذئب — الكتف', en:'wolf — shoulder' },
+      { value:'ttwolfhd', ar:'🎨 ذئب — ظهر اليد', en:'wolf — back of the hand' },
+      { value:'tteaglefa', ar:'🎨 نسر — الساعد', en:'eagle — forearm' },
+      { value:'tteaglewr', ar:'🎨 نسر — المعصم', en:'eagle — wrist' },
+      { value:'tteaglesh', ar:'🎨 نسر — الكتف', en:'eagle — shoulder' },
+      { value:'tteaglehd', ar:'🎨 نسر — ظهر اليد', en:'eagle — back of the hand' },
+      { value:'ttcompassfa', ar:'🎨 بوصلة — الساعد', en:'compass — forearm' },
+      { value:'ttcompasswr', ar:'🎨 بوصلة — المعصم', en:'compass — wrist' },
+      { value:'ttcompasssh', ar:'🎨 بوصلة — الكتف', en:'compass — shoulder' },
+      { value:'ttcompasshd', ar:'🎨 بوصلة — ظهر اليد', en:'compass — back of the hand' },
+      { value:'ttclockfa', ar:'🎨 ساعة — الساعد', en:'clock — forearm' },
+      { value:'ttclockwr', ar:'🎨 ساعة — المعصم', en:'clock — wrist' },
+      { value:'ttclocksh', ar:'🎨 ساعة — الكتف', en:'clock — shoulder' },
+      { value:'ttclockhd', ar:'🎨 ساعة — ظهر اليد', en:'clock — back of the hand' },
+      { value:'ttmoonfa', ar:'🎨 هلال — الساعد', en:'crescent moon — forearm' },
+      { value:'ttmoonwr', ar:'🎨 هلال — المعصم', en:'crescent moon — wrist' },
+      { value:'ttmoonsh', ar:'🎨 هلال — الكتف', en:'crescent moon — shoulder' },
+      { value:'ttmoonhd', ar:'🎨 هلال — ظهر اليد', en:'crescent moon — back of the hand' },
+      { value:'ttsunfa', ar:'🎨 شمس — الساعد', en:'sun — forearm' },
+      { value:'ttsunwr', ar:'🎨 شمس — المعصم', en:'sun — wrist' },
+      { value:'ttsunsh', ar:'🎨 شمس — الكتف', en:'sun — shoulder' },
+      { value:'ttsunhd', ar:'🎨 شمس — ظهر اليد', en:'sun — back of the hand' },
+      { value:'ttwavefa', ar:'🎨 موجة — الساعد', en:'wave — forearm' },
+      { value:'ttwavewr', ar:'🎨 موجة — المعصم', en:'wave — wrist' },
+      { value:'ttwavesh', ar:'🎨 موجة — الكتف', en:'wave — shoulder' },
+      { value:'ttwavehd', ar:'🎨 موجة — ظهر اليد', en:'wave — back of the hand' },
+      { value:'ttmountainfa', ar:'🎨 جبال — الساعد', en:'mountains — forearm' },
+      { value:'ttmountainwr', ar:'🎨 جبال — المعصم', en:'mountains — wrist' },
+      { value:'ttmountainsh', ar:'🎨 جبال — الكتف', en:'mountains — shoulder' },
+      { value:'ttmountainhd', ar:'🎨 جبال — ظهر اليد', en:'mountains — back of the hand' },
+      { value:'tttreefa', ar:'🎨 شجرة — الساعد', en:'tree — forearm' },
+      { value:'tttreewr', ar:'🎨 شجرة — المعصم', en:'tree — wrist' },
+      { value:'tttreesh', ar:'🎨 شجرة — الكتف', en:'tree — shoulder' },
+      { value:'tttreehd', ar:'🎨 شجرة — ظهر اليد', en:'tree — back of the hand' },
+      { value:'ttfeatherfa', ar:'🎨 ريشة — الساعد', en:'feather — forearm' },
+      { value:'ttfeatherwr', ar:'🎨 ريشة — المعصم', en:'feather — wrist' },
+      { value:'ttfeathersh', ar:'🎨 ريشة — الكتف', en:'feather — shoulder' },
+      { value:'ttfeatherhd', ar:'🎨 ريشة — ظهر اليد', en:'feather — back of the hand' },
+      { value:'ttbutterflyfa', ar:'🎨 فراشة — الساعد', en:'butterfly — forearm' },
+      { value:'ttbutterflywr', ar:'🎨 فراشة — المعصم', en:'butterfly — wrist' },
+      { value:'ttbutterflysh', ar:'🎨 فراشة — الكتف', en:'butterfly — shoulder' },
+      { value:'ttbutterflyhd', ar:'🎨 فراشة — ظهر اليد', en:'butterfly — back of the hand' },
+      { value:'ttdragonfa', ar:'🎨 تنين — الساعد', en:'dragon — forearm' },
+      { value:'ttdragonwr', ar:'🎨 تنين — المعصم', en:'dragon — wrist' },
+      { value:'ttdragonsh', ar:'🎨 تنين — الكتف', en:'dragon — shoulder' },
+      { value:'ttdragonhd', ar:'🎨 تنين — ظهر اليد', en:'dragon — back of the hand' },
+      { value:'ttsnakefa', ar:'🎨 أفعى — الساعد', en:'snake — forearm' },
+      { value:'ttsnakewr', ar:'🎨 أفعى — المعصم', en:'snake — wrist' },
+      { value:'ttsnakesh', ar:'🎨 أفعى — الكتف', en:'snake — shoulder' },
+      { value:'ttsnakehd', ar:'🎨 أفعى — ظهر اليد', en:'snake — back of the hand' },
+      { value:'ttkoifa', ar:'🎨 سمكة كوي — الساعد', en:'koi fish — forearm' },
+      { value:'ttkoiwr', ar:'🎨 سمكة كوي — المعصم', en:'koi fish — wrist' },
+      { value:'ttkoish', ar:'🎨 سمكة كوي — الكتف', en:'koi fish — shoulder' },
+      { value:'ttkoihd', ar:'🎨 سمكة كوي — ظهر اليد', en:'koi fish — back of the hand' },
+      { value:'ttmandalafa', ar:'🎨 ماندالا — الساعد', en:'mandala — forearm' },
+      { value:'ttmandalawr', ar:'🎨 ماندالا — المعصم', en:'mandala — wrist' },
+      { value:'ttmandalash', ar:'🎨 ماندالا — الكتف', en:'mandala — shoulder' },
+      { value:'ttmandalahd', ar:'🎨 ماندالا — ظهر اليد', en:'mandala — back of the hand' },
+      { value:'ttgeometricfa', ar:'🎨 هندسي — الساعد', en:'geometric — forearm' },
+      { value:'ttgeometricwr', ar:'🎨 هندسي — المعصم', en:'geometric — wrist' },
+      { value:'ttgeometricsh', ar:'🎨 هندسي — الكتف', en:'geometric — shoulder' },
+      { value:'ttgeometrichd', ar:'🎨 هندسي — ظهر اليد', en:'geometric — back of the hand' },
+      { value:'ttarabicfa', ar:'🎨 خط عربي — الساعد', en:'Arabic calligraphy — forearm' },
+      { value:'ttarabicwr', ar:'🎨 خط عربي — المعصم', en:'Arabic calligraphy — wrist' },
+      { value:'ttarabicsh', ar:'🎨 خط عربي — الكتف', en:'Arabic calligraphy — shoulder' },
+      { value:'ttarabichd', ar:'🎨 خط عربي — ظهر اليد', en:'Arabic calligraphy — back of the hand' },
+      { value:'ttnamefa', ar:'🎨 اسم — الساعد', en:'name script — forearm' },
+      { value:'ttnamewr', ar:'🎨 اسم — المعصم', en:'name script — wrist' },
+      { value:'ttnamesh', ar:'🎨 اسم — الكتف', en:'name script — shoulder' },
+      { value:'ttnamehd', ar:'🎨 اسم — ظهر اليد', en:'name script — back of the hand' },
+      { value:'ttdatefa', ar:'🎨 تاريخ — الساعد', en:'date numerals — forearm' },
+      { value:'ttdatewr', ar:'🎨 تاريخ — المعصم', en:'date numerals — wrist' },
+      { value:'ttdatesh', ar:'🎨 تاريخ — الكتف', en:'date numerals — shoulder' },
+      { value:'ttdatehd', ar:'🎨 تاريخ — ظهر اليد', en:'date numerals — back of the hand' },
+      { value:'ttheartfa', ar:'🎨 قلب — الساعد', en:'heart — forearm' },
+      { value:'ttheartwr', ar:'🎨 قلب — المعصم', en:'heart — wrist' },
+      { value:'ttheartsh', ar:'🎨 قلب — الكتف', en:'heart — shoulder' },
+      { value:'tthearthd', ar:'🎨 قلب — ظهر اليد', en:'heart — back of the hand' },
+      { value:'ttstarfa', ar:'🎨 نجوم — الساعد', en:'stars — forearm' },
+      { value:'ttstarwr', ar:'🎨 نجوم — المعصم', en:'stars — wrist' },
+      { value:'ttstarsh', ar:'🎨 نجوم — الكتف', en:'stars — shoulder' },
+      { value:'ttstarhd', ar:'🎨 نجوم — ظهر اليد', en:'stars — back of the hand' },
+      { value:'tttribalfa', ar:'🎨 قبلي — الساعد', en:'tribal — forearm' },
+      { value:'tttribalwr', ar:'🎨 قبلي — المعصم', en:'tribal — wrist' },
+      { value:'tttribalsh', ar:'🎨 قبلي — الكتف', en:'tribal — shoulder' },
+      { value:'tttribalhd', ar:'🎨 قبلي — ظهر اليد', en:'tribal — back of the hand' },
     ],
     anime: [
       { value:'classic', ar:'🎌 أنمي ياباني كلاسيكي', en:'🎌 Classic Anime', fr:'🎌 Anime classique', hi:'🎌 क्लासिक एनीमे', ur:'🎌 کلاسک اینیمے', bn:'🎌 ক্লাসিক অ্যানিমে', ne:'🎌 क्लासिक एनिमे' },
@@ -1067,6 +1797,115 @@
       { value:'kawaii', ar:'🌸 كاواي باستيل', en:'🌸 Kawaii' },
       { value:'webtoon', ar:'📱 ويبتون', en:'📱 Webtoon' },
       { value:'retro90s', ar:'📼 أنمي التسعينات', en:'📼 Retro 90s' },
+      /* v-studio-more-looks */
+      { value:'seinen', ar:'🎬 سينين واقعي', en:'🎬 Seinen' },
+      { value:'mecha', ar:'🤖 ميكا وروبوت', en:'🤖 Mecha' },
+      { value:'isekai', ar:'🗡️ إيسيكاي فانتازي', en:'🗡️ Isekai fantasy' },
+      { value:'magicalgirl', ar:'🪄 فتاة سحرية', en:'🪄 Magical girl' },
+      { value:'cinematicanime', ar:'🎞️ أنمي سينمائي', en:'🎞️ Cinematic anime' },
+      { value:'sportanime', ar:'⚽ أنمي رياضي', en:'⚽ Sports anime' },
+      { value:'shojo', ar:'🌷 شوجو بريق', en:'🌷 Shojo sparkle' },
+      /* v-studio-catalog-100 */
+      { value:'anclassicwarm', ar:'🎭 كلاسيكي — دافئ', en:'classic anime — warm' },
+      { value:'anclassiccool', ar:'🎭 كلاسيكي — بارد', en:'classic anime — cool' },
+      { value:'anclassicvivid', ar:'🎭 كلاسيكي — ألوان قوية', en:'classic anime — vivid' },
+      { value:'anclassicpastel', ar:'🎭 كلاسيكي — باستيل', en:'classic anime — pastel' },
+      { value:'anghibliwarm', ar:'🎭 غيبلي — دافئ', en:'Ghibli-inspired — warm' },
+      { value:'anghiblicool', ar:'🎭 غيبلي — بارد', en:'Ghibli-inspired — cool' },
+      { value:'anghiblivivid', ar:'🎭 غيبلي — ألوان قوية', en:'Ghibli-inspired — vivid' },
+      { value:'anghiblipastel', ar:'🎭 غيبلي — باستيل', en:'Ghibli-inspired — pastel' },
+      { value:'anshonenwarm', ar:'🎭 شونين — دافئ', en:'shonen action — warm' },
+      { value:'anshonencool', ar:'🎭 شونين — بارد', en:'shonen action — cool' },
+      { value:'anshonenvivid', ar:'🎭 شونين — ألوان قوية', en:'shonen action — vivid' },
+      { value:'anshonenpastel', ar:'🎭 شونين — باستيل', en:'shonen action — pastel' },
+      { value:'anshojowarm', ar:'🎭 شوجو — دافئ', en:'shojo — warm' },
+      { value:'anshojocool', ar:'🎭 شوجو — بارد', en:'shojo — cool' },
+      { value:'anshojovivid', ar:'🎭 شوجو — ألوان قوية', en:'shojo — vivid' },
+      { value:'anshojopastel', ar:'🎭 شوجو — باستيل', en:'shojo — pastel' },
+      { value:'anseinenwarm', ar:'🎭 سينين — دافئ', en:'seinen — warm' },
+      { value:'anseinencool', ar:'🎭 سينين — بارد', en:'seinen — cool' },
+      { value:'anseinenvivid', ar:'🎭 سينين — ألوان قوية', en:'seinen — vivid' },
+      { value:'anseinenpastel', ar:'🎭 سينين — باستيل', en:'seinen — pastel' },
+      { value:'anchibiwarm', ar:'🎭 تشيبي — دافئ', en:'chibi — warm' },
+      { value:'anchibicool', ar:'🎭 تشيبي — بارد', en:'chibi — cool' },
+      { value:'anchibivivid', ar:'🎭 تشيبي — ألوان قوية', en:'chibi — vivid' },
+      { value:'anchibipastel', ar:'🎭 تشيبي — باستيل', en:'chibi — pastel' },
+      { value:'anmechawarm', ar:'🎭 ميكا — دافئ', en:'mecha pilot — warm' },
+      { value:'anmechacool', ar:'🎭 ميكا — بارد', en:'mecha pilot — cool' },
+      { value:'anmechavivid', ar:'🎭 ميكا — ألوان قوية', en:'mecha pilot — vivid' },
+      { value:'anmechapastel', ar:'🎭 ميكا — باستيل', en:'mecha pilot — pastel' },
+      { value:'anisekaiwarm', ar:'🎭 إيسيكاي — دافئ', en:'isekai fantasy — warm' },
+      { value:'anisekaicool', ar:'🎭 إيسيكاي — بارد', en:'isekai fantasy — cool' },
+      { value:'anisekaivivid', ar:'🎭 إيسيكاي — ألوان قوية', en:'isekai fantasy — vivid' },
+      { value:'anisekaipastel', ar:'🎭 إيسيكاي — باستيل', en:'isekai fantasy — pastel' },
+      { value:'anmagicalwarm', ar:'🎭 فتاة سحرية — دافئ', en:'magical-girl — warm' },
+      { value:'anmagicalcool', ar:'🎭 فتاة سحرية — بارد', en:'magical-girl — cool' },
+      { value:'anmagicalvivid', ar:'🎭 فتاة سحرية — ألوان قوية', en:'magical-girl — vivid' },
+      { value:'anmagicalpastel', ar:'🎭 فتاة سحرية — باستيل', en:'magical-girl — pastel' },
+      { value:'ancyberwarm', ar:'🎭 سايبربنك — دافئ', en:'cyberpunk anime — warm' },
+      { value:'ancybercool', ar:'🎭 سايبربنك — بارد', en:'cyberpunk anime — cool' },
+      { value:'ancybervivid', ar:'🎭 سايبربنك — ألوان قوية', en:'cyberpunk anime — vivid' },
+      { value:'ancyberpastel', ar:'🎭 سايبربنك — باستيل', en:'cyberpunk anime — pastel' },
+      { value:'anmangawarm', ar:'🎭 مانجا — دافئ', en:'black-and-white manga — warm' },
+      { value:'anmangacool', ar:'🎭 مانجا — بارد', en:'black-and-white manga — cool' },
+      { value:'anmangavivid', ar:'🎭 مانجا — ألوان قوية', en:'black-and-white manga — vivid' },
+      { value:'anmangapastel', ar:'🎭 مانجا — باستيل', en:'black-and-white manga — pastel' },
+      { value:'anwebtoonwarm', ar:'🎭 ويبتون — دافئ', en:'webtoon — warm' },
+      { value:'anwebtooncool', ar:'🎭 ويبتون — بارد', en:'webtoon — cool' },
+      { value:'anwebtoonvivid', ar:'🎭 ويبتون — ألوان قوية', en:'webtoon — vivid' },
+      { value:'anwebtoonpastel', ar:'🎭 ويبتون — باستيل', en:'webtoon — pastel' },
+      { value:'anretro90warm', ar:'🎭 تسعينات — دافئ', en:'1990s cel anime — warm' },
+      { value:'anretro90cool', ar:'🎭 تسعينات — بارد', en:'1990s cel anime — cool' },
+      { value:'anretro90vivid', ar:'🎭 تسعينات — ألوان قوية', en:'1990s cel anime — vivid' },
+      { value:'anretro90pastel', ar:'🎭 تسعينات — باستيل', en:'1990s cel anime — pastel' },
+      { value:'anretro80warm', ar:'🎭 ثمانينات — دافئ', en:'1980s anime — warm' },
+      { value:'anretro80cool', ar:'🎭 ثمانينات — بارد', en:'1980s anime — cool' },
+      { value:'anretro80vivid', ar:'🎭 ثمانينات — ألوان قوية', en:'1980s anime — vivid' },
+      { value:'anretro80pastel', ar:'🎭 ثمانينات — باستيل', en:'1980s anime — pastel' },
+      { value:'ankawaiiwarm', ar:'🎭 كاواي — دافئ', en:'kawaii — warm' },
+      { value:'ankawaiicool', ar:'🎭 كاواي — بارد', en:'kawaii — cool' },
+      { value:'ankawaiivivid', ar:'🎭 كاواي — ألوان قوية', en:'kawaii — vivid' },
+      { value:'ankawaiipastel', ar:'🎭 كاواي — باستيل', en:'kawaii — pastel' },
+      { value:'ansportswarm', ar:'🎭 رياضي — دافئ', en:'sports anime — warm' },
+      { value:'ansportscool', ar:'🎭 رياضي — بارد', en:'sports anime — cool' },
+      { value:'ansportsvivid', ar:'🎭 رياضي — ألوان قوية', en:'sports anime — vivid' },
+      { value:'ansportspastel', ar:'🎭 رياضي — باستيل', en:'sports anime — pastel' },
+      { value:'ansamuraiwarm', ar:'🎭 ساموراي — دافئ', en:'samurai anime — warm' },
+      { value:'ansamuraicool', ar:'🎭 ساموراي — بارد', en:'samurai anime — cool' },
+      { value:'ansamuraivivid', ar:'🎭 ساموراي — ألوان قوية', en:'samurai anime — vivid' },
+      { value:'ansamuraipastel', ar:'🎭 ساموراي — باستيل', en:'samurai anime — pastel' },
+      { value:'anidolwarm', ar:'🎭 آيدول — دافئ', en:'idol anime — warm' },
+      { value:'anidolcool', ar:'🎭 آيدول — بارد', en:'idol anime — cool' },
+      { value:'anidolvivid', ar:'🎭 آيدول — ألوان قوية', en:'idol anime — vivid' },
+      { value:'anidolpastel', ar:'🎭 آيدول — باستيل', en:'idol anime — pastel' },
+      { value:'anhorrorwarm', ar:'🎭 رعب — دافئ', en:'horror anime — warm' },
+      { value:'anhorrorcool', ar:'🎭 رعب — بارد', en:'horror anime — cool' },
+      { value:'anhorrorvivid', ar:'🎭 رعب — ألوان قوية', en:'horror anime — vivid' },
+      { value:'anhorrorpastel', ar:'🎭 رعب — باستيل', en:'horror anime — pastel' },
+      { value:'ancinematicwarm', ar:'🎭 سينمائي — دافئ', en:'cinematic anime film — warm' },
+      { value:'ancinematiccool', ar:'🎭 سينمائي — بارد', en:'cinematic anime film — cool' },
+      { value:'ancinematicvivid', ar:'🎭 سينمائي — ألوان قوية', en:'cinematic anime film — vivid' },
+      { value:'ancinematicpastel', ar:'🎭 سينمائي — باستيل', en:'cinematic anime film — pastel' },
+      { value:'anwatercolorwarm', ar:'🎭 مائي — دافئ', en:'watercolour anime — warm' },
+      { value:'anwatercolorcool', ar:'🎭 مائي — بارد', en:'watercolour anime — cool' },
+      { value:'anwatercolorvivid', ar:'🎭 مائي — ألوان قوية', en:'watercolour anime — vivid' },
+      { value:'anwatercolorpastel', ar:'🎭 مائي — باستيل', en:'watercolour anime — pastel' },
+      { value:'ancel3dwarm', ar:'🎭 ثلاثي الأبعاد — دافئ', en:'3D cel-shaded anime — warm' },
+      { value:'ancel3dcool', ar:'🎭 ثلاثي الأبعاد — بارد', en:'3D cel-shaded anime — cool' },
+      { value:'ancel3dvivid', ar:'🎭 ثلاثي الأبعاد — ألوان قوية', en:'3D cel-shaded anime — vivid' },
+      { value:'ancel3dpastel', ar:'🎭 ثلاثي الأبعاد — باستيل', en:'3D cel-shaded anime — pastel' },
+      { value:'anpixelwarm', ar:'🎭 بكسل — دافئ', en:'pixel-art anime — warm' },
+      { value:'anpixelcool', ar:'🎭 بكسل — بارد', en:'pixel-art anime — cool' },
+      { value:'anpixelvivid', ar:'🎭 بكسل — ألوان قوية', en:'pixel-art anime — vivid' },
+      { value:'anpixelpastel', ar:'🎭 بكسل — باستيل', en:'pixel-art anime — pastel' },
+      { value:'anarabicwarm', ar:'🎭 عربي — دافئ', en:'Arabian-nights anime — warm' },
+      { value:'anarabiccool', ar:'🎭 عربي — بارد', en:'Arabian-nights anime — cool' },
+      { value:'anarabicvivid', ar:'🎭 عربي — ألوان قوية', en:'Arabian-nights anime — vivid' },
+      { value:'anarabicpastel', ar:'🎭 عربي — باستيل', en:'Arabian-nights anime — pastel' },
+      { value:'anschoolwarm', ar:'🎭 مدرسي — دافئ', en:'school-life anime — warm' },
+      { value:'anschoolcool', ar:'🎭 مدرسي — بارد', en:'school-life anime — cool' },
+      { value:'anschoolvivid', ar:'🎭 مدرسي — ألوان قوية', en:'school-life anime — vivid' },
+      { value:'anschoolpastel', ar:'🎭 مدرسي — باستيل', en:'school-life anime — pastel' },
     ],
     heritage: [
       { value:'kandora', ar:'👳 كندورة وغترة خليجية', en:'👳 Gulf Kandora & Ghutra', fr:'👳 Kandora du Golfe', hi:'👳 खाड़ी कंदुरा', ur:'👳 خلیجی کندورہ', bn:'👳 উপসাগরীয় কান্দুরা', ne:'👳 खाडी कान्दुरा' },
@@ -1079,6 +1918,116 @@
       { value:'saudimen2', ar:'🧥 بشت وشماغ', en:'🧥 Bisht & shemagh' },
       { value:'moroccanher', ar:'🇲🇦 جلباب مغربي', en:'🇲🇦 Moroccan djellaba' },
       { value:'palestinian', ar:'🇵🇸 ثوب مطرّز', en:'🇵🇸 Embroidered thobe' },
+      /* v-studio-more-looks */
+      { value:'kuwaitiher', ar:'🇰🇼 دراعة كويتية', en:'🇰🇼 Kuwaiti daraa' },
+      { value:'qatarither', ar:'🇶🇦 ثوب نشل قطري', en:'🇶🇦 Qatari nashal' },
+      { value:'bahrainiher', ar:'🇧🇭 ثوب بحريني', en:'🇧🇭 Bahraini dress' },
+      { value:'omaniwomen', ar:'🇴🇲 زيّ عماني نسائي', en:'🇴🇲 Omani women\'s dress' },
+      { value:'yemeni', ar:'🇾🇪 زيّ يمني', en:'🇾🇪 Yemeni' },
+      { value:'egyptian', ar:'🇪🇬 جلابية مصرية', en:'🇪🇬 Egyptian galabeya' },
+      { value:'sudanesedress', ar:'🇸🇩 زيّ سوداني', en:'🇸🇩 Sudanese' },
+      { value:'levantine', ar:'🌿 زيّ شامي', en:'🌿 Levantine' },
+      /* v-studio-catalog-100 */
+      { value:'hruaeMc', ar:'🏛️ إماراتي رجالي — كلاسيكي', en:'Emirati men — classic' },
+      { value:'hruaeMf', ar:'🏛️ إماراتي رجالي — احتفالي', en:'Emirati men — festive' },
+      { value:'hruaeWc', ar:'🏛️ إماراتي نسائي — كلاسيكي', en:'Emirati women — classic' },
+      { value:'hruaeWf', ar:'🏛️ إماراتي نسائي — احتفالي', en:'Emirati women — festive' },
+      { value:'hrksaMc', ar:'🏛️ سعودي رجالي — كلاسيكي', en:'Saudi men — classic' },
+      { value:'hrksaMf', ar:'🏛️ سعودي رجالي — احتفالي', en:'Saudi men — festive' },
+      { value:'hrksaWc', ar:'🏛️ سعودي نسائي — كلاسيكي', en:'Saudi women — classic' },
+      { value:'hrksaWf', ar:'🏛️ سعودي نسائي — احتفالي', en:'Saudi women — festive' },
+      { value:'hrkwMc', ar:'🏛️ كويتي رجالي — كلاسيكي', en:'Kuwaiti men — classic' },
+      { value:'hrkwMf', ar:'🏛️ كويتي رجالي — احتفالي', en:'Kuwaiti men — festive' },
+      { value:'hrkwWc', ar:'🏛️ كويتي نسائي — كلاسيكي', en:'Kuwaiti women — classic' },
+      { value:'hrkwWf', ar:'🏛️ كويتي نسائي — احتفالي', en:'Kuwaiti women — festive' },
+      { value:'hrqaMc', ar:'🏛️ قطري رجالي — كلاسيكي', en:'Qatari men — classic' },
+      { value:'hrqaMf', ar:'🏛️ قطري رجالي — احتفالي', en:'Qatari men — festive' },
+      { value:'hrqaWc', ar:'🏛️ قطري نسائي — كلاسيكي', en:'Qatari women — classic' },
+      { value:'hrqaWf', ar:'🏛️ قطري نسائي — احتفالي', en:'Qatari women — festive' },
+      { value:'hrbhMc', ar:'🏛️ بحريني رجالي — كلاسيكي', en:'Bahraini men — classic' },
+      { value:'hrbhMf', ar:'🏛️ بحريني رجالي — احتفالي', en:'Bahraini men — festive' },
+      { value:'hrbhWc', ar:'🏛️ بحريني نسائي — كلاسيكي', en:'Bahraini women — classic' },
+      { value:'hrbhWf', ar:'🏛️ بحريني نسائي — احتفالي', en:'Bahraini women — festive' },
+      { value:'hromMc', ar:'🏛️ عماني رجالي — كلاسيكي', en:'Omani men — classic' },
+      { value:'hromMf', ar:'🏛️ عماني رجالي — احتفالي', en:'Omani men — festive' },
+      { value:'hromWc', ar:'🏛️ عماني نسائي — كلاسيكي', en:'Omani women — classic' },
+      { value:'hromWf', ar:'🏛️ عماني نسائي — احتفالي', en:'Omani women — festive' },
+      { value:'hryeMc', ar:'🏛️ يمني رجالي — كلاسيكي', en:'Yemeni men — classic' },
+      { value:'hryeMf', ar:'🏛️ يمني رجالي — احتفالي', en:'Yemeni men — festive' },
+      { value:'hryeWc', ar:'🏛️ يمني نسائي — كلاسيكي', en:'Yemeni women — classic' },
+      { value:'hryeWf', ar:'🏛️ يمني نسائي — احتفالي', en:'Yemeni women — festive' },
+      { value:'hregMc', ar:'🏛️ مصري رجالي — كلاسيكي', en:'Egyptian men — classic' },
+      { value:'hregMf', ar:'🏛️ مصري رجالي — احتفالي', en:'Egyptian men — festive' },
+      { value:'hregWc', ar:'🏛️ مصري نسائي — كلاسيكي', en:'Egyptian women — classic' },
+      { value:'hregWf', ar:'🏛️ مصري نسائي — احتفالي', en:'Egyptian women — festive' },
+      { value:'hrmaMc', ar:'🏛️ مغربي رجالي — كلاسيكي', en:'Moroccan men — classic' },
+      { value:'hrmaMf', ar:'🏛️ مغربي رجالي — احتفالي', en:'Moroccan men — festive' },
+      { value:'hrmaWc', ar:'🏛️ مغربي نسائي — كلاسيكي', en:'Moroccan women — classic' },
+      { value:'hrmaWf', ar:'🏛️ مغربي نسائي — احتفالي', en:'Moroccan women — festive' },
+      { value:'hrpsMc', ar:'🏛️ فلسطيني رجالي — كلاسيكي', en:'Palestinian men — classic' },
+      { value:'hrpsMf', ar:'🏛️ فلسطيني رجالي — احتفالي', en:'Palestinian men — festive' },
+      { value:'hrpsWc', ar:'🏛️ فلسطيني نسائي — كلاسيكي', en:'Palestinian women — classic' },
+      { value:'hrpsWf', ar:'🏛️ فلسطيني نسائي — احتفالي', en:'Palestinian women — festive' },
+      { value:'hrsdMc', ar:'🏛️ سوداني رجالي — كلاسيكي', en:'Sudanese men — classic' },
+      { value:'hrsdMf', ar:'🏛️ سوداني رجالي — احتفالي', en:'Sudanese men — festive' },
+      { value:'hrsdWc', ar:'🏛️ سوداني نسائي — كلاسيكي', en:'Sudanese women — classic' },
+      { value:'hrsdWf', ar:'🏛️ سوداني نسائي — احتفالي', en:'Sudanese women — festive' },
+      { value:'hriqMc', ar:'🏛️ عراقي رجالي — كلاسيكي', en:'Iraqi men — classic' },
+      { value:'hriqMf', ar:'🏛️ عراقي رجالي — احتفالي', en:'Iraqi men — festive' },
+      { value:'hrjoc', ar:'🏛️ أردني — كلاسيكي', en:'Jordanian — classic' },
+      { value:'hrjof', ar:'🏛️ أردني — احتفالي', en:'Jordanian — festive' },
+      { value:'hrlbc', ar:'🏛️ شامي — كلاسيكي', en:'Levantine — classic' },
+      { value:'hrlbf', ar:'🏛️ شامي — احتفالي', en:'Levantine — festive' },
+      { value:'hrtnc', ar:'🏛️ تونسي — كلاسيكي', en:'Tunisian — classic' },
+      { value:'hrtnf', ar:'🏛️ تونسي — احتفالي', en:'Tunisian — festive' },
+      { value:'hrdzc', ar:'🏛️ جزائري — كلاسيكي', en:'Algerian — classic' },
+      { value:'hrdzf', ar:'🏛️ جزائري — احتفالي', en:'Algerian — festive' },
+      { value:'hrtrc', ar:'🏛️ تركي عثماني — كلاسيكي', en:'Ottoman — classic' },
+      { value:'hrtrf', ar:'🏛️ تركي عثماني — احتفالي', en:'Ottoman — festive' },
+      { value:'hrinc', ar:'🏛️ هندي — كلاسيكي', en:'Indian — classic' },
+      { value:'hrinf', ar:'🏛️ هندي — احتفالي', en:'Indian — festive' },
+      { value:'hrpkc', ar:'🏛️ باكستاني — كلاسيكي', en:'Pakistani — classic' },
+      { value:'hrpkf', ar:'🏛️ باكستاني — احتفالي', en:'Pakistani — festive' },
+      { value:'hrjpc', ar:'🏛️ ياباني — كلاسيكي', en:'Japanese — classic' },
+      { value:'hrjpf', ar:'🏛️ ياباني — احتفالي', en:'Japanese — festive' },
+      { value:'hrkrc', ar:'🏛️ كوري — كلاسيكي', en:'Korean — classic' },
+      { value:'hrkrf', ar:'🏛️ كوري — احتفالي', en:'Korean — festive' },
+      { value:'hrcnc', ar:'🏛️ صيني — كلاسيكي', en:'Chinese — classic' },
+      { value:'hrcnf', ar:'🏛️ صيني — احتفالي', en:'Chinese — festive' },
+      { value:'hrscc', ar:'🏛️ اسكتلندي — كلاسيكي', en:'Scottish — classic' },
+      { value:'hrscf', ar:'🏛️ اسكتلندي — احتفالي', en:'Scottish — festive' },
+      { value:'hrmxc', ar:'🏛️ مكسيكي — كلاسيكي', en:'Mexican — classic' },
+      { value:'hrmxf', ar:'🏛️ مكسيكي — احتفالي', en:'Mexican — festive' },
+      { value:'hrngc', ar:'🏛️ نيجيري — كلاسيكي', en:'Nigerian — classic' },
+      { value:'hrngf', ar:'🏛️ نيجيري — احتفالي', en:'Nigerian — festive' },
+      { value:'hrma2c', ar:'🏛️ أمازيغي — كلاسيكي', en:'Amazigh — classic' },
+      { value:'hrma2f', ar:'🏛️ أمازيغي — احتفالي', en:'Amazigh — festive' },
+      { value:'hrkzc', ar:'🏛️ كازاخي — كلاسيكي', en:'Kazakh — classic' },
+      { value:'hrkzf', ar:'🏛️ كازاخي — احتفالي', en:'Kazakh — festive' },
+      { value:'hrmyc', ar:'🏛️ ماليزي — كلاسيكي', en:'Malay — classic' },
+      { value:'hrmyf', ar:'🏛️ ماليزي — احتفالي', en:'Malay — festive' },
+      { value:'hridc', ar:'🏛️ إندونيسي — كلاسيكي', en:'Indonesian — classic' },
+      { value:'hridf', ar:'🏛️ إندونيسي — احتفالي', en:'Indonesian — festive' },
+      { value:'hrirc', ar:'🏛️ فارسي — كلاسيكي', en:'Persian — classic' },
+      { value:'hrirf', ar:'🏛️ فارسي — احتفالي', en:'Persian — festive' },
+      { value:'hrafc', ar:'🏛️ أفغاني — كلاسيكي', en:'Afghan — classic' },
+      { value:'hraff', ar:'🏛️ أفغاني — احتفالي', en:'Afghan — festive' },
+      { value:'hrsoc', ar:'🏛️ صومالي — كلاسيكي', en:'Somali — classic' },
+      { value:'hrsof', ar:'🏛️ صومالي — احتفالي', en:'Somali — festive' },
+      { value:'hretc', ar:'🏛️ إثيوبي — كلاسيكي', en:'Ethiopian — classic' },
+      { value:'hretf', ar:'🏛️ إثيوبي — احتفالي', en:'Ethiopian — festive' },
+      { value:'hrruc', ar:'🏛️ روسي — كلاسيكي', en:'Russian — classic' },
+      { value:'hrruf', ar:'🏛️ روسي — احتفالي', en:'Russian — festive' },
+      { value:'hrgrc', ar:'🏛️ يوناني — كلاسيكي', en:'Greek — classic' },
+      { value:'hrgrf', ar:'🏛️ يوناني — احتفالي', en:'Greek — festive' },
+      { value:'hresc', ar:'🏛️ أندلسي — كلاسيكي', en:'Andalusian — classic' },
+      { value:'hresf', ar:'🏛️ أندلسي — احتفالي', en:'Andalusian — festive' },
+      { value:'hrvnc', ar:'🏛️ فيتنامي — كلاسيكي', en:'Vietnamese — classic' },
+      { value:'hrvnf', ar:'🏛️ فيتنامي — احتفالي', en:'Vietnamese — festive' },
+      { value:'hrbedMc', ar:'🏛️ بدوي — كلاسيكي', en:'Bedouin — classic' },
+      { value:'hrbedMf', ar:'🏛️ بدوي — احتفالي', en:'Bedouin — festive' },
+      { value:'hrdiverc', ar:'🏛️ غوّاص لؤلؤ — كلاسيكي', en:'pearl diver — classic' },
+      { value:'hrdiverf', ar:'🏛️ غوّاص لؤلؤ — احتفالي', en:'pearl diver — festive' },
     ],
     merge: [],
   };
@@ -1086,6 +2035,18 @@
   const MORE = window.__STUDIO_MORE || { features: [], options: {} };
   Object.keys(MORE.options).forEach((k) => { STUDIO_OPTIONS[k] = MORE.options[k]; });
   const PREVIEW_API = (f, v) => '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v);
+  /* v-studio-more-looks: صور خيارات المكياج الجاهزة لقطات جسم كامل لا يظهر فيها المكياج،
+     فبدت العشرة صورة واحدة في المنتقي. لهذه الميزات المعاينة المولّدة (وجه قريب من
+     /api/studio-preview، تُولَّد مرّة وتُخزَّن) أوّلًا، والصورة الجاهزة احتياطًا. */
+  /* v-nails-previews (المالك ٢ أكتوبر، لقطة المقارنة: «غيّر الأشكال، السطر كامل اللي فوق مع ٣ اللي تحتهم، على نفس الأسامي»):
+     صور الأظافر الجاهزة الاثنتا عشرة (assets/studio/options/nails-*.webp) فساتين وأيادٍ عامّة لا تُظهر اللون ولا الشكل.
+     الأظافر صارت معاينة-أوّلًا كالمكياج: يد قريبة بالأظافر المطلوبة من وصفها نفسه، تُولَّد مرّة وتُخزَّن للجميع. */
+  const PREVIEW_FIRST = ['makeup', 'nails'];
+  function optionImgs(f, v){
+    const asset = 'assets/studio/options/' + f + '-' + v + '.webp';
+    const gen = PREVIEW_API(f, v);
+    return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
+  }
   const IS_MORE = (f) => !!MORE.options[f];
   function moreLabel(obj){
     const lg = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar');
@@ -1192,36 +2153,84 @@
     setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, 1800);
   };
 
-  /* ---- 🔄 before/after slider ---- */
+  /* ---- 🔄 before/after slider ----
+     v-compare-drag-all (طلب المالك ٢١ سبتمبر «غيّرها»): كانت مُقفلة كليًّا (`if(true) return;`) منذ
+     v-no-slider — السحب صار مباشرة على resultWrap نفسه بدل <input type=range> مخفيّ. */
+  function updateSliderClip(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
   function setupBeforeAfter(){
-    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
-    beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
-    if(true) return;
     if(feature === 'merge' || !selectedBase64A){
       beforeWrap.style.display = 'none';
-      sliderRange.style.display = 'none';
       return;
     }
     beforeImg.src = 'data:' + selectedMimeA + ';base64,' + selectedBase64A;
     beforeWrap.style.display = 'block';
-    sliderRange.style.display = 'block';
-    updateSliderClip(sliderRange.value);
+    updateSliderClip(50);
   }
-  function updateSliderClip(val){
-    const pct = Math.max(0, Math.min(100, Number(val)));
-    beforeWrap.style.width = pct + '%';
-    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  let __studioBaDragging = false;
+  function studioBaPctFromEvent(ev){
+    const rect = resultWrap.getBoundingClientRect();
+    if(!rect.width) return 50;
+    return ((ev.clientX - rect.left) / rect.width) * 100;
   }
-  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+  if(resultWrap){
+    resultWrap.style.touchAction = 'none';
+    resultWrap.addEventListener('pointerdown', (ev) => {
+      if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      __studioBaDragging = true;
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      updateSliderClip(studioBaPctFromEvent(ev));
+      ev.preventDefault();
+    });
+    resultWrap.addEventListener('pointermove', (ev) => { if(__studioBaDragging) updateSliderClip(studioBaPctFromEvent(ev)); });
+    ['pointerup', 'pointercancel'].forEach((evt) => resultWrap.addEventListener(evt, () => { __studioBaDragging = false; }));
+  }
+
+  /* v-studio-variants (طلب المالك «أكثر من ١٠٠ في كلّ شكل»): عدّاد على الجهاز لكلّ
+     ميزة+خيار يرتفع مع كلّ توليد، فيصل الخادم رقم شكلٍ جديد في كلّ ضغطة — المشترك
+     لا يرى التصميم نفسه مرّتين. تعذّر التخزين لا يوقف التوليد: رقم عشوائيّ. */
+  function nextVariant(f, v){
+    const key = 'aiapp_studio_var_' + f + '_' + v;
+    try{
+      const n = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1;
+      localStorage.setItem(key, String(n));
+      return n;
+    }catch(e){ return Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
+  }
+
+  /* v-edit-no-change: كود الخطأ يُترجَم برسائل imgErrFriendly القائمة، وما لا ترجمة له يبقى كما هو */
+  function studioErrText(e){
+    const code = (e && e.message) ? String(e.message) : String(e);
+    try{
+      const isAr = !((typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar')).startsWith('en');
+      const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, isAr) : null;
+      if(friendly) return '⚠️ ' + friendly;
+    }catch(err){ /* guard-ok — بلا ترجمة نعرض الكود */ }
+    return (bT('❌ خطأ: ','❌ Error: ')) + code;
+  }
 
   /* ---- 📊 compare checkboxes (built from style options) ---- */
   function buildCompareChecks(){
+    /* v-studio-compare-cards (لقطة المالك «كيف الشخص يعرف الشكل»): كلّ خيار بطاقة بصورته (optionImgs نفسها)
+       بدل مربّع نصّيّ، وثلاثة كحدّ أقصى. الصور تُحمَّل عند ظهورها فقط. */
     compareChecksEl.innerHTML = '';
     Array.from(styleEl.options).forEach(opt => {
       const label = document.createElement('label');
-      label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted,#999); border:1px solid var(--border,#333); border-radius:6px; padding:4px 8px; cursor:pointer;';
-      label.innerHTML = '<input type="checkbox" class="studioCompareCheck" value="' + opt.value + '"> ' + opt.textContent;
+      label.className = 'stCmp';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'studioCompareCheck'; cb.value = opt.value;
+      const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
+      const srcs = optionImgs(feature, opt.value);
+      if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = srcs.img; }); else img.src = srcs.img;
+      img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = srcs.img2; } else img.style.visibility = 'hidden'; };
+      const nm = document.createElement('span'); nm.textContent = opt.textContent.trim();
+      cb.onchange = () => {
+        if(cb.checked && compareChecksEl.querySelectorAll('.studioCompareCheck:checked').length > 3){ cb.checked = false; return; }
+        label.classList.toggle('on', cb.checked);
+      };
+      label.appendChild(cb); label.appendChild(img); label.appendChild(nm);
       compareChecksEl.appendChild(label);
     });
   }
@@ -1240,11 +2249,9 @@
     window.omranPicker.open({
       title: featureTitle() || (bT('✨ ستايل الذكاء الاصطناعي','✨ AI style')),
       count: opts.length + (bT(' خيارًا — اختر ما يناسبك',' options — pick yours')),
-      items: opts.map((opt) => ({
+      items: opts.map((opt) => Object.assign({
         v: opt.value, title: opt.textContent.trim(), active: opt.value === styleEl.value,
-        img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
-        img2: PREVIEW_API(feature, opt.value), /* v-studio-14: معاينة مولّدة على الخادم إن لم توجد صورة جاهزة */
-      })),
+      }, optionImgs(feature, opt.value))), /* v-studio-14 + v-studio-more-looks: معاينة مولّدة على الخادم */
       onPick: function(v){ styleEl.value = v; renderStudioStyleCards(); },
     });
   }
@@ -1260,10 +2267,13 @@
     trig.id = 'studioStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
     const img = document.createElement('img');
-    img.src = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
-    img.alt = cur.textContent.trim(); img.loading = 'eager';
+    img.alt = cur.textContent.trim(); img.loading = 'lazy';
     img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
-    img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = PREVIEW_API(feature, cur.value); } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
+    /* v-art-defer: داخل #studioAiModal المغلق — المقاس ثابت 44×58 فالتأجيل آمن. */
+    const __srcs = optionImgs(feature, cur.value); /* v-studio-more-looks */
+    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __srcs.img; });
+    else img.src = __srcs.img;
+    img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = __srcs.img2; } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -1279,8 +2289,159 @@
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openStudioPicker;
     studioCardsEl.appendChild(trig);
+    renderStudioBasket(); /* v-studio-chain */
   }
   /* v-studio-combo-removed (أمر المالك ٤ سبتمبر «احذف هذي الميزة»): سلّة المجموعة أُزيلت */
+  /* v-studio-chain (طلب المالك ٣٠ سبتمبر «خلّ المستخدم يختار كذا شيء مش شيء واحد» — «الاثنين»):
+     سلّة حتّى ٥ اختيارات. ميزات مختلفة ⇒ صورة واحدة فيها الكلّ (شعر + مكياج + نظّارة…)؛ أكثر من خيار
+     من الميزة نفسها ⇒ صورة لكلّ خيار (حتّى ٣ صور). السلسلة تجري **من العميل خطوةً خطوة** — كلّ خطوة
+     نداء مستقلّ بمهلته وحارسه، والناتج يُضغط JPEG قبل الخطوة التالية. المجموعة القديمة (٤ سبتمبر) كانت
+     سلسلة داخل نداء خادم واحد: مهلة الدالّة تقطعها بعد خطوة فيطبّق «شيئًا واحدًا فقط»، وناتج PNG بدقّة
+     2K يتجاوز حدّ جسم الطلب. وكلّ خطوة بعد الأولى تُرسل الأصل ليُفحص الشخص مقابله لا مقابل ناتج سابق. */
+  const STUDIO_BASKET_MAX = 5, STUDIO_IMAGES_MAX = 3;
+  const CHAIN_ORDER = ['body', 'age', 'hair', 'menhair', 'beard', 'skin', 'makeup', 'eyes', 'glasses', 'henna', 'nails', 'tattoo', 'heritage', 'hijab', 'gulfmen', 'wedding', 'seasons', 'iconic', 'palette', 'idphoto', 'accessories', 'background', 'anime'];
+  let studioBasket = [];
+  function studioBasketLabel(f, v){
+    const tb = tabsWrap.querySelector('.studioAiTabBtn[data-feature="' + f + '"]');
+    const ft = tb ? tb.textContent.trim() : f;
+    const o = f === feature ? Array.from(styleEl.options).find((x) => x.value === v) : null;
+    return { ft, vt: o ? o.textContent.trim() : v };
+  }
+  function studioCombos(){
+    const groups = {};
+    studioBasket.forEach((it) => { (groups[it.f] = groups[it.f] || []).push(it); });
+    const feats = Object.keys(groups).sort((a, b) => CHAIN_ORDER.indexOf(a) - CHAIN_ORDER.indexOf(b));
+    let combos = [[]];
+    feats.forEach((f) => { const next = []; combos.forEach((c) => groups[f].forEach((it) => next.push(c.concat([it])))); combos = next; });
+    return combos.slice(0, STUDIO_IMAGES_MAX);
+  }
+  function renderStudioBasket(){
+    if(!studioCardsEl) return;
+    let box = document.getElementById('studioBasket');
+    if(!box){ box = document.createElement('div'); box.id = 'studioBasket'; }
+    studioCardsEl.appendChild(box);
+    box.style.cssText = 'margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;';
+    box.innerHTML = '';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button'; addBtn.className = 'btn';
+    addBtn.style.cssText = 'font-size:12.5px; padding:6px 12px; border-radius:999px;';
+    const inB = studioBasket.some((it) => it.f === feature && it.v === styleEl.value);
+    addBtn.textContent = inB ? bT('✓ مضاف للاختيارات', '✓ Added') : bT('➕ أضف هذا للاختيارات', '➕ Add to selection');
+    addBtn.disabled = inB || feature === 'merge';
+    addBtn.onclick = () => {
+      if(studioBasket.length >= STUDIO_BASKET_MAX){ setStatus(bT('الحدّ ' + STUDIO_BASKET_MAX + ' اختيارات — احذف واحدًا لتضيف غيره.', 'Up to ' + STUDIO_BASKET_MAX + ' picks — remove one first.')); return; }
+      const lb = studioBasketLabel(feature, styleEl.value);
+      studioBasket.push({ f: feature, v: styleEl.value, ft: lb.ft, vt: lb.vt });
+      renderStudioBasket(); refreshGenerateLabel();
+    };
+    box.appendChild(addBtn);
+    studioBasket.forEach((it, i) => {
+      const chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex; align-items:center; gap:6px; border:1px solid #d4af37; color:#d4af37; border-radius:999px; padding:4px 10px; font-size:12px;';
+      chip.textContent = it.vt;
+      const x = document.createElement('button');
+      x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', '✕');
+      x.style.cssText = 'background:none; border:none; color:inherit; cursor:pointer; padding:0; font-size:12px;';
+      x.onclick = () => { studioBasket.splice(i, 1); renderStudioBasket(); refreshGenerateLabel(); };
+      chip.appendChild(x);
+      box.appendChild(chip);
+    });
+    if(studioBasket.length){
+      const n = studioCombos().length;
+      const note = document.createElement('div');
+      note.style.cssText = 'width:100%; font-size:11px; color:var(--muted,#999);';
+      note.textContent = n > 1
+        ? bT('سيُولَّد ' + n + ' صور — صورة لكلّ خيار. كلّ تعديل يُحسب من رصيدك اليومي.', n + ' images will be generated — one per option. Each edit counts toward your daily limit.')
+        : bT('صورة واحدة فيها كلّ اختياراتك. كلّ تعديل يُحسب من رصيدك اليومي.', 'One image with all your picks. Each edit counts toward your daily limit.');
+      box.appendChild(note);
+    }
+  }
+  function refreshGenerateLabel(){
+    if(!btnGenerate || studioMissing()) return;
+    const n = studioBasket.length;
+    btnGenerate.textContent = n ? bT('✨ ولّد بالاختيارات (' + n + ')', '✨ Generate with picks (' + n + ')') : t('studioAiGenerateBtn');
+  }
+  async function studioChainOne(combo, token, onStep){
+    let b64 = selectedBase64A, mime = selectedMimeA, last = null;
+    for(let i = 0; i < combo.length; i++){
+      const it = combo[i];
+      onStep(i, it);
+      const payload = { feature: it.f, style: it.v, token, imageBase64: b64, mimeType: mime, multiAngle: false, variant: nextVariant(it.f, it.v) };
+      if(i === 0 && descriptionEl.value.trim()) payload.description = descriptionEl.value.trim();
+      if(i > 0){ payload.originalBase64 = selectedBase64A; payload.originalMime = selectedMimeA; }
+      const res = await fetch('/api/studio-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      let data = {};
+      try{ data = await res.json(); }catch(e){ data = { error: 'HTTP ' + res.status }; } /* guard-ok — جسم غير JSON (413/504) */
+      if(!res.ok || data.error) return { combo, error: data.error || 'unknown', last, stoppedAt: it };
+      last = { b64: data.imageBase64, mime: data.mimeType || 'image/png' };
+      if(i < combo.length - 1){
+        const blob = await (await fetch('data:' + last.mime + ';base64,' + last.b64)).blob();
+        const n = await normalizeStudioPhoto(new File([blob], 'step.png', { type: last.mime }));
+        if(!n || !n.b64) return { combo, error: 'image_generation_failed', last, stoppedAt: it };
+        b64 = n.b64; mime = n.mime;
+      }
+    }
+    return { combo, last };
+  }
+  async function runStudioBasket(token){
+    const combos = studioCombos();
+    const multi = combos.length > 1;
+    let multiEl = document.getElementById('studioMultiResults');
+    if(!multiEl){
+      multiEl = document.createElement('div'); multiEl.id = 'studioMultiResults';
+      resultWrap.parentNode.insertBefore(multiEl, resultWrap.nextSibling);
+    }
+    multiEl.innerHTML = ''; multiEl.style.display = 'none';
+    const steps = combos.reduce((n, c) => n + c.length, 0);
+    let doneSteps = 0;
+    const onStep = (i, it) => { setStatus(t('studioAiGenerating') + ' — ' + it.vt + ' (' + (++doneSteps) + '/' + steps + ')'); };
+    const results = [];
+    for(const c of combos) results.push(await studioChainOne(c, token, onStep));
+    const ok = results.filter((r) => r.last);
+    if(!multi){
+      const r = results[0];
+      if(r.last){
+        const dataUrl = 'data:' + r.last.mime + ';base64,' + r.last.b64;
+        resultWrap.style.display = 'block'; resultEl.src = dataUrl; resultEl.style.display = 'block';
+        downloadEl.href = dataUrl; downloadEl.style.display = 'block';
+        favSaveBtn.style.display = 'block'; favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
+        setupBeforeAfter();
+      }
+      if(r.error){
+        if(r.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; }
+        const partial = r.last ? bT(' — توقّفت عند «' + r.stoppedAt.vt + '» وهذه النتيجة حتّى ما قبلها.', ' — stopped at “' + r.stoppedAt.vt + '”; showing the result up to the step before.') : '';
+        setStatus(studioErrText(new Error(r.error)) + partial);
+        return;
+      }
+      setStatus(t('studioAiDone'));
+      return;
+    }
+    multiEl.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:14px;';
+    results.forEach((r) => {
+      const cell = document.createElement('div');
+      cell.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:6px; text-align:center;';
+      const cap = document.createElement('div');
+      cap.style.cssText = 'font-size:12px; margin-bottom:5px;';
+      cap.textContent = r.combo.map((it) => it.vt).join(' + ');
+      cell.appendChild(cap);
+      if(r.last){
+        const url = 'data:' + r.last.mime + ';base64,' + r.last.b64;
+        const im = document.createElement('img'); im.src = url; im.alt = cap.textContent;
+        im.style.cssText = 'width:100%; border-radius:8px; display:block;';
+        const a = document.createElement('a'); a.href = url; a.download = 'omran-style.png'; a.textContent = bT('⬇️ تحميل', '⬇️ Download');
+        a.style.cssText = 'display:inline-block; margin-top:5px; font-size:12px; color:#d4af37;';
+        cell.appendChild(im); cell.appendChild(a);
+      }
+      if(r.error){
+        const er = document.createElement('div');
+        er.style.cssText = 'font-size:11px; color:#e0a0a0; margin-top:4px;';
+        er.textContent = studioErrText(new Error(r.error));
+        cell.appendChild(er);
+      }
+      multiEl.appendChild(cell);
+    });
+    setStatus(ok.length ? t('studioAiDone') : studioErrText(new Error(results[0].error || 'unknown')));
+  }
   /* v-studio-tabs: تبويبات الميزات بطاقات مصوّرة من assets/studio/features/. */
   function photoizeStudioTabs(){
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
@@ -1308,6 +2469,7 @@
       b.classList.toggle('active', b.dataset.feature === next);
       b.classList.toggle('primary', b.dataset.feature === next);
     });
+    const slotsRow = $('#studioAiSlots'); if(slotsRow) slotsRow.classList.toggle('two', feature === 'merge'); /* v-studio-slots */
     if(feature === 'merge'){
       imageBWrap.style.display = 'block';
       styleWrap.style.display = 'none';
@@ -1326,8 +2488,8 @@
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus('');
+    if(typeof studioUpdateCta === 'function') studioUpdateCta();
   }
 
   Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
@@ -1385,41 +2547,121 @@
       reader.readAsDataURL(file);
     });
   }
-  fileInputA.onchange = () => {
-    const file = fileInputA.files && fileInputA.files[0];
-    if(!file) return;
-    if(fileNameA) fileNameA.textContent = file.name;
+  /* v-studio-slots (أمر المالك ٣٠ سبتمبر «ترتيب تسهيل للمستخدم في إضافة الصور»): خانتا الصورة مصدر واحد —
+     كاميرا / معرض، وسحب وإفلات ولصق، وحذف وتبديل. الصورتان تمرّان بـnormalizeStudioPhoto
+     (الثانية كانت تُرفع بحجمها الأصليّ فتتخطّى حدّ الرفع). */
+  const slotEls = { A: $('#studioAiSlotA'), B: $('#studioAiSlotB') };
+  /* v-studio-no-recent (أمر المالك «احذف آخر صوري عندما أرفع الصور»): «آخر صوري» أُزيلت — لا تُحفظ صورة على الجهاز،
+     وما حُفظ سابقًا يُمسح مرّة عند الإقلاع. */
+  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
+  function studioRenderSlot(which){
+    const el = slotEls[which]; if(!el) return;
+    const has = which === 'A' ? !!selectedBase64A : !!selectedBase64B;
+    el.classList.toggle('has', has);
+    const pv = which === 'A' ? previewA : previewB;
+    if(!has && pv){ pv.removeAttribute('src'); pv.style.display = 'none'; }
+    studioUpdateCta();
+  }
+  function studioMissing(){ return !selectedBase64A ? 'A' : ((feature === 'merge' && !selectedBase64B) ? 'B' : ''); }
+  function studioUpdateCta(){
+    if(!btnGenerate) return;
+    btnGenerate.textContent = studioMissing() ? t('studioAddPhotoCta') : t('studioAiGenerateBtn');
+    refreshGenerateLabel(); /* v-studio-chain: العدد على الزرّ */
+  }
+  function studioSetPhoto(which, file){
+    if(!file || !/^image\//.test(file.type || 'image/')) return;
     normalizeStudioPhoto(file).then((r) => {
       if(!r) return;
-      selectedMimeA = r.mime; selectedBase64A = r.b64;
-      previewA.src = r.dataUrl;
-      previewA.style.display = 'block';
+      const pv = which === 'A' ? previewA : previewB;
+      if(which === 'A'){ selectedMimeA = r.mime; selectedBase64A = r.b64; if(fileNameA) fileNameA.textContent = file.name || ''; }
+      else { selectedMimeB = r.mime; selectedBase64B = r.b64; if(fileNameB) fileNameB.textContent = file.name || ''; }
+      if(pv){ pv.src = r.dataUrl; pv.style.display = 'block'; }
+      studioRenderSlot(which);
+      setStatus('');
     });
-  };
-
-  fileInputB.onchange = () => {
-    const file = fileInputB.files && fileInputB.files[0];
-    if(!file) return;
-    selectedMimeB = file.type || 'image/jpeg';
-    if(fileNameB) fileNameB.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
-      selectedBase64B = dataUrl.split(',')[1] || '';
-      previewB.src = dataUrl;
-      previewB.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-  };
+  }
+  function studioClearPhoto(which){
+    if(which === 'A'){ selectedBase64A = ''; if(fileInputA) fileInputA.value = ''; if(fileNameA) fileNameA.textContent = ''; beforeWrap.style.display = 'none'; }
+    else { selectedBase64B = ''; if(fileInputB) fileInputB.value = ''; if(fileNameB) fileNameB.textContent = ''; }
+    studioRenderSlot(which);
+  }
+  let studioCam = null;
+  function studioCamera(which){
+    if(!studioCam){
+      studioCam = document.createElement('input');
+      studioCam.type = 'file'; studioCam.accept = 'image/*'; studioCam.setAttribute('capture', 'user'); studioCam.style.display = 'none';
+      document.body.appendChild(studioCam);
+    }
+    studioCam.onchange = () => { const f = studioCam.files && studioCam.files[0]; studioCam.value = ''; if(f) studioSetPhoto(which, f); };
+    studioCam.click();
+  }
+  function studioCloseMenu(){ const m = document.getElementById('studioSrcMenu'); if(m) m.remove(); const bd = document.getElementById('studioSrcBackdrop'); if(bd) bd.remove(); }
+  function studioOpenMenu(which){
+    studioCloseMenu();
+    const anchor = slotEls[which]; if(!anchor) return;
+    const menu = document.createElement('div'); menu.id = 'studioSrcMenu'; menu.className = 'stSrcMenu';
+    const add = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); fn(); }; menu.appendChild(b); };
+    let coarse = false; try{ coarse = window.matchMedia('(pointer:coarse)').matches; }catch(e){ coarse = false; }
+    if(coarse) add(t('studioSrcCamera'), () => studioCamera(which));
+    add(t('studioSrcGallery'), () => (which === 'A' ? fileInputA : fileInputB).click());
+    /* v-studio-sheet (لقطة المالك «شوف وين تتحرك عند الإضافة»): القائمة كانت تطفو وسط الشاشة فوق الميزات بعيدًا
+       عن الخانة. اللمس: ورقة من أسفل الشاشة بخلفيّة معتمة (نمط الجوّال المعتاد)؛ الحاسوب: تحت الخانة مباشرةً،
+       وفوقها إن لم يتّسع ما تحتها. */
+    if(coarse){
+      menu.classList.add('sheet');
+      const bd = document.createElement('div'); bd.id = 'studioSrcBackdrop'; bd.className = 'stSrcBackdrop';
+      bd.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); };
+      document.body.appendChild(bd);
+      document.body.appendChild(menu);
+    } else {
+      document.body.appendChild(menu);
+      const r = anchor.getBoundingClientRect(), mh = menu.offsetHeight, mw = menu.offsetWidth;
+      const below = r.bottom + 8, above = r.top - mh - 8;
+      menu.style.top = ((below + mh <= window.innerHeight - 10 || above < 10) ? Math.min(below, window.innerHeight - mh - 10) : above) + 'px';
+      menu.style.left = Math.max(10, Math.min(r.left + r.width / 2 - mw / 2, window.innerWidth - mw - 10)) + 'px';
+    }
+    setTimeout(() => document.addEventListener('click', studioCloseMenu, { once: true }), 0);
+  }
+  ['A', 'B'].forEach((which) => {
+    const el = slotEls[which]; if(!el) return;
+    el.addEventListener('click', (e) => {
+      const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+      e.stopPropagation();
+      if(act === 'remove'){ studioClearPhoto(which); return; }
+      studioOpenMenu(which);
+    });
+    el.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); studioOpenMenu(which); } });
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drag'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault(); el.classList.remove('drag');
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f) studioSetPhoto(which, f);
+    });
+  });
+  /* اللصق (Ctrl+V) والنافذة مفتوحة: الخانة الفارغة أوّلًا، وإلّا الأولى */
+  document.addEventListener('paste', (e) => {
+    if(modal.style.display !== 'flex') return;
+    const tg = e.target; if(tg && (tg.tagName === 'TEXTAREA' || tg.tagName === 'INPUT')) return;
+    const items = (e.clipboardData && e.clipboardData.items) ? Array.from(e.clipboardData.items) : [];
+    const it = items.find((x) => x.kind === 'file' && /^image\//.test(x.type)); if(!it) return;
+    const f = it.getAsFile(); if(!f) return;
+    e.preventDefault();
+    studioSetPhoto(studioMissing() || 'A', f);
+  });
+  fileInputA.onchange = () => { const f = fileInputA.files && fileInputA.files[0]; if(f) studioSetPhoto('A', f); };
+  fileInputB.onchange = () => { const f = fileInputB.files && fileInputB.files[0]; if(f) studioSetPhoto('B', f); };
 
   btnGenerate.onclick = async () => {
     if(feature === 'merge'){
       if(!selectedBase64A || !selectedBase64B){
         setStatus(t('studioAiNeedTwoImages'));
+        studioOpenMenu(studioMissing()); /* v-studio-slots: الزرّ يرشد إلى الخانة الناقصة */
         return;
       }
     } else if(!selectedBase64A){
       setStatus(t('studioAiNeedImage'));
+      studioOpenMenu('A');
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
@@ -1434,8 +2676,16 @@
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
     beforeWrap.style.display = 'none';
-    sliderRange.style.display = 'none';
     setStatus(t('studioAiGenerating'));
+    { const mr = document.getElementById('studioMultiResults'); if(mr){ mr.innerHTML = ''; mr.style.display = 'none'; } }
+
+    /* v-studio-chain: اختيارات متعدّدة ⇒ سلسلة/صور متعدّدة */
+    if(studioBasket.length && feature !== 'merge'){
+      try{ await runStudioBasket(token); }
+      catch(e){ setStatus(studioErrText(e)); }
+      finally{ btnGenerate.disabled = false; }
+      return;
+    }
 
     try{
       const payload = {
@@ -1446,6 +2696,7 @@
         imageBase64: selectedBase64A,
         mimeType: selectedMimeA,
         multiAngle: !!(multiAngleEl && multiAngleEl.checked),
+        variant: nextVariant(feature, styleEl.value), /* v-studio-variants */
       };
       if(feature === 'merge'){
         payload.imageBase64B = selectedBase64B;
@@ -1473,7 +2724,7 @@
       setupBeforeAfter();
       setStatus(t('studioAiDone'));
     } catch(e){
-      setStatus((lang === 'ar' ? '❌ خطأ: ' : '❌ Error: ') + (e && e.message ? e.message : String(e)));
+      setStatus(studioErrText(e)); /* v-edit-no-change: كان هذا الموضع يعرض الكود الخامّ (image_edit_identity_mismatch) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -1506,6 +2757,7 @@
       const data = await res.json();
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
@@ -1524,7 +2776,8 @@
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('studioAiNeedImage'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      /* v-edit-no-change: رسالة عربيّة مفهومة بدل كود الخطأ الخام (المالك رأى image_edit_identity_mismatch) */
+      setStatus(studioErrText(e));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -1554,7 +2807,7 @@
 
     try{
       const results = await Promise.all(stylesToRun.map(async (styleVal) => {
-        const payload = { feature, style: styleVal, token, imageBase64: selectedBase64A, mimeType: selectedMimeA, multiAngle: false };
+        const payload = { feature, style: styleVal, token, imageBase64: selectedBase64A, mimeType: selectedMimeA, multiAngle: false, variant: nextVariant(feature, styleVal) }; /* v-studio-variants */
         try{
           const res = await fetch('/api/studio-create', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -1580,7 +2833,7 @@
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = studioErrText(e);
     } finally {
       compareBtn.disabled = false;
     }
@@ -1612,6 +2865,7 @@
         const payload = {
           feature: 'heritage', style: styleEl.value, token,
           imageBase64: selectedBase64A, mimeType: selectedMimeA, multiAngle: false,
+          variant: nextVariant('heritage', styleEl.value), /* v-studio-variants */
           description: (baseDesc ? (baseDesc + '. ') : '') + v.extra,
         };
         try{
@@ -1639,7 +2893,7 @@
       heritageCompareResultsEl.style.display = 'grid';
       heritageCompareStatusEl.style.display = 'none';
     } catch(e){
-      heritageCompareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      heritageCompareStatusEl.textContent = studioErrText(e);
     } finally {
       heritageCompareBtn.disabled = false;
     }

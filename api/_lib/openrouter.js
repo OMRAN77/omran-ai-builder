@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'openrouter', clientIp(req));
+    // v-free-20-daily: سلّة 'chat' المشتركة لغير المشترك — لا يضاعف سقفه بتبديل المزوّد.
+    const usage = await checkAndConsume(token, guestId, 'openrouter', clientIp(req), { chatBucket: true });
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -47,6 +48,8 @@ module.exports = async (req, res) => {
     }
 
     const wantStream = !!body.stream;
+    const mg = require('./_model-guard.js'); // v-model-lock: لغير المالك وVIP نموذج مجّانيّ (:free) لا ما يرسله العميل
+    const useModel = mg.guardModel('openrouter', model, mg.isPrivileged(usage));
     const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -55,7 +58,7 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         provider: { data_collection: 'deny' }, // v544: امنع المزوّدين الذين يجمعون البيانات
-        model: model || 'openai/gpt-4o-mini',
+        model: useModel || 'openai/gpt-6-luna' /* v-models-latest */,
         messages,
         temperature: 0.7,
         max_tokens: 30000,

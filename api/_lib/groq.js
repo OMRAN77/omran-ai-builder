@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'groq', clientIp(req));
+    // v-free-20-daily: سلّة 'chat' المشتركة لغير المشترك — لا يضاعف سقفه بتبديل المزوّد.
+    const usage = await checkAndConsume(token, guestId, 'groq', clientIp(req), { chatBucket: true });
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -59,7 +60,14 @@ module.exports = async (req, res) => {
     });
     let upstream = null;
     let lastFail = null;
-    const tried = fc.modelsToTry(spec, typeof model === 'string' ? model : '');
+    // v-groq-image-turn (لقطة المالك ٤ أكتوبر: «messages[3].content must be a string»): دور فيه صورة (content مصفوفة) يُرسَل إلى
+    // نموذج الرؤية الذي طلبه العميل وحده. المرشّحون نصّيّون فيرفضون المصفوفة بـ400 يدفن خطأ الرؤية الحقيقيّ (404 النموذج
+    // أُوقف) — فلا يهبط العميل إلى «وصف الصورة ثمّ النصّيّ» ويسقط الاحتياط كلّه.
+    const imageTurn = Array.isArray(messages) && messages.some((x) => x && Array.isArray(x.content));
+    const mg = require('./_model-guard.js'); // v-model-lock: لغير المالك وVIP نموذج من قائمة Groq المعروفة وحدها
+    const reqModel = mg.guardModel('groq', typeof model === 'string' ? model : '', mg.isPrivileged(usage));
+    const tried = fc.modelsToTry(spec, reqModel);
+    if (imageTurn && reqModel && tried[0] === reqModel) tried.length = 1;
     for (const m of tried) {
       const r = await callGroq(m);
       if (r.ok) { upstream = r; fc.rememberWorking('groq', m); break; }
@@ -67,7 +75,7 @@ module.exports = async (req, res) => {
       lastFail = { status: r.status, txt };
       if (!fc.isModelErrorStatus(r.status, txt)) break; // خطأ غير النموذج (401/429/5xx) يُعاد للعميل كما هو
     }
-    if (!upstream && lastFail && fc.isModelErrorStatus(lastFail.status, lastFail.txt)) {
+    if (!upstream && !imageTurn && lastFail && fc.isModelErrorStatus(lastFail.status, lastFail.txt)) {
       const found = await fc.discoverModel(spec, {});
       if (found && !tried.includes(found)) {
         const r = await callGroq(found);

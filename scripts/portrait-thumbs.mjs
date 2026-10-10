@@ -18,6 +18,10 @@ const ART_STYLES = [
   'stainedglass', 'papercraft', 'crochet', 'inflatable', 'ukiyoe', 'sandart',
   'neonsign', 'doubleexposure', 'figurine', 'ghibli', 'lego', 'chibi', 'statue',
   'polaroid', 'superhero', 'astronaut',
+  // v-pstyle-batch-2 (٢١ سبتمبر ٢٠٢٦): ١٨ ستايل فنّي جديد من دفعة الأفكار
+  'tarot', 'stamp', 'moviePoster', 'diorama', 'emoji3d', 'y2k', 'albumCover',
+  'sheikh', 'falconry', 'arabianHorse', 'saudiHeritage', 'kuwaitiHeritage',
+  'omaniHeritage', 'qatariHeritage', 'bahrainiHeritage', 'henna', 'firstday', 'flagday',
 ];
 // الأدوات أيضًا لها معاينات حقيقية (بمعاملات خاصة): إزالة الخلفية على أبيض،
 // الجواز صورة رسمية، المهنة طبيب، الدمج والعائلي بصورة إضافية… إلخ.
@@ -37,6 +41,8 @@ const UTILITY_PAYLOADS = {
   celebtoon: { charName: 'a friendly cartoon robot' },
   restore: {}, colorize: {}, upscale: {}, objectremove: { removeText: 'background clutter' },
   productshot: {}, newborn: {}, avatargif: {},
+  // v-pstyle-batch-2: تعديل موضعيّ بلا معاملات خاصّة — نفس نمط restore/colorize/upscale
+  eyefix: {}, glasses: {}, bokeh: {},
 };
 const UTILITY_STYLES = Object.keys(UTILITY_PAYLOADS);
 const STYLES = (process.argv[3] && process.argv[3] !== 'all' && process.argv[3] !== 'utility')
@@ -67,6 +73,11 @@ const STYLE_SOURCE = {
   adposter: 'm4', timeshift: 'w3', profession: 'w1', outfit: 'm2', merge2: 'm1',
   familystyle: 'm1', stickerpack: 'k2', celebtoon: 'k1', restore: 'm1', colorize: 'w3',
   upscale: 'm1', objectremove: 'm2', productshot: 'm1', newborn: 'k2', avatargif: 'm2',
+  // v-pstyle-batch-2
+  tarot: 'w2', stamp: 'm1', moviePoster: 'm2', diorama: 'k1', emoji3d: 'k2', y2k: 'w3', albumCover: 'm4',
+  sheikh: 'm3', falconry: 'm3', arabianHorse: 'm3', saudiHeritage: 'm3', kuwaitiHeritage: 'm3',
+  omaniHeritage: 'm3', qatariHeritage: 'm3', bahrainiHeritage: 'm3',
+  eyefix: 'm1', glasses: 'w2', bokeh: 'm1', henna: 'w1', firstday: 'k2', flagday: 'm3',
 };
 // v-psheet-oneface (فكرة المالك ٥ سبتمبر): وجه مرجعي واحد (m1 — نفس assets/portrait/before.webp)
 // يمرّ على كل الأنماط، فتقرأ البطاقات «قبل → كل الأنماط». ONE_FACE=0 يعيد التنويع القديم.

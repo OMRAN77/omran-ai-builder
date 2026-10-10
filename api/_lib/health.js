@@ -5,20 +5,40 @@ const { kvPutJSON, kvGetJSON } = require('./kv.js');
 const { isOwner } = require('./_owner.js');
 const { envReport } = require('./env.js');
 
+/* v-redis-why (تنبيه المالك ٤ أكتوبر «قاعدة البيانات (Redis) لا تستجيب» بلا سبب): الفحص كان يبتلع الخطأ ويعيد false، فلا
+   يُعرف أهو حدّ طلبات Upstash أم رمز مرفوض أم متغيّر ناقص أم انقطاع. الآن يعيد السبب بعربيّة قصيرة ونصّ Upstash نفسه
+   (بلا الرمز ولا العنوان). */
+function redisWhy(e) {
+  const m = String((e && e.message) || e || '').replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (/missing UPSTASH_REDIS_REST/i.test(m)) return 'متغيّرا UPSTASH_REDIS_REST_URL/TOKEN ناقصان في Vercel';
+  /* v-redis-capacity: «DB capacity quota exceeded» = السعة (٢٥٦ م.ب في المجّانيّة) لا الطلبات — كانت تُلتقط بكلمة quota فيُقال «حدّ الطلبات»
+     والمالك يبحث في المكان الخطأ. الكتابة وحدها مرفوضة، والعلاج حذف شيء أو رفع الباقة. */
+  if (/capacity quota|DB capacity|OOM|maxmemory|max(?:imum)? (?:database|data|db) size/i.test(m)) return 'سعة قاعدة Upstash امتلأت — كلّ كتابة مرفوضة. «تنظيف التطبيق» في الحساب يحذف مشاركات أقدم من ٧ أيّام — ' + m;
+  if (/limit exceeded|max (?:daily )?requests?|quota/i.test(m)) return 'تجاوز حدّ الطلبات في باقة Upstash — ' + m;
+  if (/\b(?:401|403)\b|unauthori[sz]ed|invalid token|WRONGPASS|NOPERM/i.test(m)) return 'رمز Upstash مرفوض (تغيّر أو حُذف؟) — ' + m;
+  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|aborted|timeout|network/i.test(m)) return 'لا اتّصال بخادم Upstash — ' + m;
+  return m || 'سبب غير معروف';
+}
 async function checkRedis() {
   try {
     const key = 'db/health/check.json';
     const marker = { at: Date.now() };
     await kvPutJSON(key, marker);
     const readBack = await kvGetJSON(key);
-    return !!readBack && readBack.at === marker.at;
-  } catch (e) { return false; }
+    if (readBack && readBack.at === marker.at) return { ok: true, why: '' };
+    return { ok: false, why: 'الكتابة نجحت والقراءة لم ترجع ما كُتب (قراءة متعثّرة أو قاعدة أخرى)' };
+  } catch (e) { return { ok: false, why: redisWhy(e) }; }
 }
 
-async function readClientErrors() {
+/* v-health-split (لقطة «فحص النظام» ٢٣ سبتمبر ٢٣:٤٢: «أخطاء مسجلة من المستخدمين: 3» كلّها أسطر v-mem-probe): المسبار
+   يكتب أرقام ذاكرة جهاز المالك في سجلّ الأخطاء عمدًا (قناة القراءة الوحيدة من الجهاز)، فكانت تُعدّ أخطاءً وتُنذر بها.
+   تُفصل هنا: clientErrors للأخطاء وحدها، وclientDiag لقياسات المسبار — تُعرض بعنوانها ولا تُحسب.
+   v-provider-errors: القاعدة نفسها يحتاجها نصّ الأخطاء الذي يقرؤه النموذج، فمصدرها الوحيد صار app-errors.js. */
+const { isDiag } = require('./app-errors.js');
+async function readClientLog() {
   try {
     const items = await kvGetJSON('db/client-errors/log.json');
-    return Array.isArray(items) ? items.slice(0, 10) : [];
+    return Array.isArray(items) ? items : [];
   } catch (e) { return []; }
 }
 
@@ -29,10 +49,13 @@ async function readServerErrors() {
   try {
     const items = await kvGetJSON('db/server-errors/log.json');
     if (!Array.isArray(items)) return [];
-    return items.slice(0, 10).map((e) => ({
-      at: e.at, lastAt: e.lastAt || null, route: e.route, action: e.action || null,
-      message: String(e.message || '').slice(0, 200), count: e.count || 1,
-    }));
+    // v-err-deploy: الأحدث أوّلًا (آخر ظهور لا أوّله)، وبصمة النشر لكلّ خطأ ليفصل العميل الحاليّ عمّا قبله.
+    return items.slice()
+      .sort((a, b) => String(b.lastAt || b.at || '').localeCompare(String(a.lastAt || a.at || '')))
+      .slice(0, 12).map((e) => ({
+        at: e.at, lastAt: e.lastAt || null, route: e.route, action: e.action || null,
+        message: String(e.message || '').slice(0, 200), count: e.count || 1, deploy: e.deploy || '',
+      }));
   } catch (e) { return []; }
 }
 
@@ -55,6 +78,37 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // v-media-purge: حذف روابط المشاركة الأقدم من ٧ أيّام لتحرير القاعدة — للمالك وحده (isOwner أعلاه). ...&purge=media
+  if (req.query && req.query.purge === 'media') {
+    try {
+      const out = await require('./media-purge.js').purgeOldShares(require('./kv.js'), { maxAgeDays: 7 });
+      res.status(200).json({ ok: true, purged: out });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'purge_failed', message: String((e && e.message) || e).slice(0, 200) });
+    }
+    return;
+  }
+
+  // v-redis-capacity: «ما الذي يملأ القاعدة؟» — قياس بالقراءة فقط (للمالك وحده، isOwner أعلاه). ...&usage=1
+  if (req.query && req.query.usage === '1') {
+    try {
+      res.status(200).json({ ok: true, usage: await require('./redis-usage.js').redisUsage(require('./kv.js')) });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'usage_failed', message: String((e && e.message) || e).slice(0, 200) });
+    }
+    return;
+  }
+
+  // v-cost-meter: «كم يكلّفني كلّ مشترك؟» — تقرير الشهر لكلّ باقة وأعلى الحسابات (للمالك وحده، isOwner أعلاه). ...&costs=1[&month=YYYY-MM]
+  if (req.query && req.query.costs === '1') {
+    try {
+      res.status(200).json({ ok: true, costs: await require('./cost-meter.js').monthReport(req.query.month) });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'costs_failed', message: String((e && e.message) || e).slice(0, 200) });
+    }
+    return;
+  }
+
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,
     Gemini: !!process.env.GEMINI_API_KEY,
@@ -62,6 +116,10 @@ module.exports = async (req, res) => {
     Claude: !!process.env.ANTHROPIC_API_KEY,
     OpenRouter: !!process.env.OPENROUTER_API_KEY,
     Mistral: !!process.env.MISTRAL_API_KEY,
+    // v-health-kimi: Kimi (Moonshot) مزوّد محادثة كامل منذ v-kimi، ومساره المباشر يقبل
+    // KIMI_API_KEY أو البديل MOONSHOT_API_KEY — وبغيابه من اللوحة كان المالك لا يرى
+    // أبدًا لماذا سهم Kimi يسقط لغيره بصمت.
+    Kimi: !!(process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY),
     DeepSeek: !!process.env.DEEPSEEK_API_KEY,
     Cohere: !!process.env.COHERE_API_KEY,
     Perplexity: !!process.env.PERPLEXITY_API_KEY,
@@ -71,18 +129,26 @@ module.exports = async (req, res) => {
     Resend: !!process.env.RESEND_API_KEY
   };
 
-  const [redisOk, clientErrors, serverErrors] = await Promise.all([checkRedis(), readClientErrors(), readServerErrors()]);
+  const [redis, clientLog, serverErrors] = await Promise.all([checkRedis(), readClientLog(), readServerErrors()]);
+  const redisOk = redis.ok;
+  const clientErrors = clientLog.filter((e) => !isDiag(e)).slice(0, 10);
+  const clientDiag = clientLog.filter(isDiag).slice(0, 6);
 
   res.status(200).json({
     ok: redisOk && Object.values(envKeys).every(Boolean) ? true : false,
     time: new Date().toISOString(),
     redisOk,
+    redisWhy: redis.why, // v-redis-why
     envKeys,
     env: envReport(), // فهرس الـ٥٠ متغيّرًا — حضور فقط، لا قيم
 
     clientErrorsCount: clientErrors.length,
     clientErrors,
+    clientDiag,
     serverErrorsCount: serverErrors.length,
-    serverErrors
+    serverErrors,
+    deploy: require('./_errors.js').deployId(),
   });
 };
+module.exports.isDiag = isDiag;
+module.exports.__redis = { checkRedis, redisWhy }; // v-redis-why — للاختبار
