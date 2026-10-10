@@ -100,7 +100,8 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
 
 test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد يترك الخانات والإرسال للثيم، والمختار والزرّ يغلبان قاعدتي التطبيق', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=8');
+  const at = (re) => { const m = re.exec(html); return m ? m.index : -1; }; // أيّ رقم بعد ?v= — الترتيب لا الوسم (انظر frame-design.test ٣)
+  const a = at(/href="css\/ثيم-خشبي\.css\?v=\d+"/), b = at(/href="css\/ثيمات\.css\?v=\d+"/);
   assert.ok(a > 0 && b > a, 'يُحمَّل آخرًا فيعلو');
   const frame = rd('css/إطارات.css');
   assert.doesNotMatch(frame, /:not\(\.skin-wood\) (\.hist-item|#composerBox)/, 'قواعد الإطار للخانات والإرسال تستثني html.skin');

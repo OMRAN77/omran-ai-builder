@@ -47,7 +47,10 @@ test('٢. المقاسات والألوان المقيسة من صورتيه: ١
 
 test('٣. الربط: CSS قبل الثيم الخشبيّ، إطار اللوحة الوسطى أوّل <main>، اللوحة الفارغة بلا «بيت»، وخانة البحث', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/إطارات.css?v=3'), c = html.indexOf('css/ثيم-خشبي.css?v=3');
+  // الوسم ?v= بأيّ رقم: رفعه واجب مع كلّ تعديل للملفّ وإلّا بقي المتصفّح على النسخة القديمة؛ الاختبار يحرس الترتيب لا الرقم
+  // (08c36e8 رفع إطارات.css إلى v=4 والاختبار كان يبحث عن v=3 حرفيًّا فانكسر main)
+  const at = (re) => { const m = re.exec(html); return m ? m.index : -1; };
+  const a = at(/href="css\/خلفيات\.css\?v=\d+"/), b = at(/href="css\/إطارات\.css\?v=\d+"/), c = at(/href="css\/ثيم-خشبي\.css\?v=\d+"/);
   assert.ok(a > 0 && b > a && c > b, 'الترتيب: خلفيات ← إطارات ← الخشبيّ');
   assert.match(html, /<main>\n  <div id="omFrameCenter" aria-hidden="true"><\/div>/);
   const empty = html.slice(html.indexOf('<div class="empty" id="emptyState">'), html.indexOf('<iframe id="previewFrame"'));
