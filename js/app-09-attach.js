@@ -2822,7 +2822,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   const res = await fetch('/api/ai?action=agent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    signal: genAbortController ? genAbortController.signal : undefined,
+    signal: (thinkingDiv && thinkingDiv.__signal) || (genAbortController ? genAbortController.signal : undefined),
     body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })() }),
   });
   if(!res.ok){
@@ -3017,7 +3017,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
   try{
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      signal: genAbortController ? genAbortController.signal : undefined,
+      signal: (thinkingDiv && thinkingDiv.__signal) || (genAbortController ? genAbortController.signal : undefined),
       body: JSON.stringify(Object.assign({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }, (function(){
         /* v-image-modes: خيارات «+» للصورة (للمالك) تُمرَّر أعلامًا؛ الخادم يقبلها للمالك وحده. */
         var __o = String(window.__omMode || ''), __x = {};
@@ -3102,7 +3102,7 @@ async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtts){
     if(__extraImgs){ __body.extraImages = __extraImgs; }
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      signal: genAbortController ? genAbortController.signal : undefined,
+      signal: (thinkingDiv && thinkingDiv.__signal) || (genAbortController ? genAbortController.signal : undefined),
       body: JSON.stringify(__body)
     });
     const __d = await __r.json().catch(() => ({}));
@@ -3179,8 +3179,8 @@ window.omranAnotherVersion = async function(){
   const cur = getCurrent();
   if(!req || !cur || !Array.isArray(cur.messages)) return;
   const __sb = document.getElementById('btnSend'); if(__sb) __sb.disabled = true;
-  genAbortController = new AbortController();
-  try{ __omranArmWatchdog(); }catch(e){ /* guard-ok */ }
+  const __avCtl = new AbortController();
+  const __avRun = __omranRunStart(cur.id, __avCtl); /* v-parallel-chats: طلب هذه المحادثة وحدها */
   try{
     if(req.kind === 'gen' && req.promptText){
       await omModeGenerateImage(cur, req.promptText, null);
@@ -3190,7 +3190,7 @@ window.omranAnotherVersion = async function(){
     cur.messages.push(__m); renderAll();
     const __res = await fetch(req.url || '/api/maha-image', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      signal: genAbortController.signal,
+      signal: __avCtl.signal,
       body: JSON.stringify(Object.assign({}, req.body, { token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }))
     });
     const __data = await __res.json().catch(() => ({}));
@@ -3214,9 +3214,7 @@ window.omranAnotherVersion = async function(){
     if(!(e && e.name === 'AbortError')) __swallow(e, 'img:another-run');
     try{ renderAll(); saveState(); }catch(_){ /* guard-ok */ }
   }finally{
-    genAbortController = null;
-    try{ __omranDisarmWatchdog(); }catch(e){ /* guard-ok */ }
-    try{ __omranRestoreSendBtn(); }catch(e){ /* guard-ok */ }
+    __omranRunEnd(__avRun);
   }
 };
 
@@ -3248,7 +3246,6 @@ function cumulativeImageEditPrompt(cur, currentText, reset){
 // الخادم ٣٠٠ ثانية؛ فلو تعثّر المزوّد أو جُمّدت الصفحة (قفل شاشة / تبديل
 // تطبيق على الجوّال) بقي الوعد معلّقًا للأبد ⇒ كتلة finally لا تُنفّذ ⇒ زرّ
 // الإرسال دوّار والنتيجة لا تصل. الحارس يقطع ويُعيد الزرّ ويقول لماذا.
-var __omranWdTimer = null, __omranWdWake = null, __omranReqStartedAt = 0;
 var __OMRAN_WD_HARD_MS  = 300000;  // سقف صلب = سقف الخادم نفسه
 var __OMRAN_WD_STALE_MS = 120000;   // طلب أقدم من ذلك حين تعود الصفحة = مشبوه
 var __OMRAN_WD_GRACE_MS = 60000;   // مهلة سماح بعد العودة قبل القطع — مرشّحان على برو قد يستغرقان ٩٠ ثانية
@@ -3263,44 +3260,92 @@ function __omranRestoreSendBtn(){
     try{ document.getElementById('btnStop').classList.remove('live'); }catch(_){ /* guard-ok — cleanup, intentional */ }
   }catch(e){ try{ __swallow(e, 'misc:wd-restore'); }catch(_){ /* guard-ok — cleanup, intentional */ } }
 }
-function __omranAbortStuck(){
+/* v-parallel-chats (طلب المالك ١٠ أكتوبر: «إذا أفتح محادثة جديدة حتى لو أفتح ١٠ يكون الشغل يمشي، مش أنتظر
+   المحادثة الأولى»): كان الإرسال كلّه يمرّ بمتحكّم واحد genAbortController، فأيّ طلب جارٍ في محادثة يقفل
+   الإرسال في كلّ المحادثات. الآن لكلّ محادثة طلبها في __omranRuns[معرّفها]: متحكّمه، وحارسه (v586 لكلّ طلب)،
+   وفقاعة انتظاره. genAbortController صار مرآةً لطلب المحادثة المعروضة وحدها: زرّ الإرسال الدوّار والإيقاف
+   و«طلب جارٍ» تخصّ المحادثة التي أمامك، والبقيّة تكمل في الخلفيّة وتكتب ردّها في محادثتها. */
+var __omranRuns = {};
+var __omranRunViewPid = null, __omranRunViewLive = false;
+function __omranRunStart(pid, ctl){
+  var r = { pid: String(pid), ctl: ctl, t0: Date.now(), wd: null, wake: null, timedOut: false, thinking: null };
+  __omranRuns[r.pid] = r;
+  window.__omranTimedOut = false;
+  r.wd = setTimeout(function(){ __omranAbortRun(r); }, __OMRAN_WD_HARD_MS);
+  __omranSyncRunView();
+  return r;
+}
+function __omranRunEnd(r){
+  if(!r) return;
+  try{ clearTimeout(r.wd); }catch(_){ /* guard-ok — cleanup, intentional */ }
+  try{ clearTimeout(r.wake); }catch(_){ /* guard-ok — cleanup, intentional */ }
+  if(__omranRuns[r.pid] === r) delete __omranRuns[r.pid];
+  __omranSyncRunView();
+}
+function __omranAbortRun(r){
   try{
-    if(typeof genAbortController === 'undefined' || !genAbortController) return;
+    if(!r || __omranRuns[r.pid] !== r) return;
+    r.timedOut = true;
     window.__omranTimedOut = true;
-    genAbortController.abort();
-    // ضمان أخير: لو لم تُنفّذ كتلة finally لأي سبب، يُفكّ قفل الزرّ قسرًا.
-    setTimeout(function(){
-      try{ var __b = document.getElementById('btnSend'); if(__b && __b.disabled) __omranRestoreSendBtn(); }catch(_){ /* guard-ok — cleanup, intentional */ }
-    }, 6000);
+    r.ctl.abort();
+    // ضمان أخير: لو لم تُنفّذ كتلة finally لأي سبب، يُفكّ قفل هذه المحادثة قسرًا.
+    setTimeout(function(){ if(__omranRuns[r.pid] === r) __omranRunEnd(r); }, 6000);
   }catch(e){ try{ __swallow(e, 'misc:wd-abort'); }catch(_){ /* guard-ok — cleanup, intentional */ } }
 }
-function __omranDisarmWatchdog(){
-  try{ clearTimeout(__omranWdTimer); }catch(_){ /* guard-ok — cleanup, intentional */ }
-  try{ clearTimeout(__omranWdWake); }catch(_){ /* guard-ok — cleanup, intentional */ }
-  __omranWdTimer = null; __omranWdWake = null; __omranReqStartedAt = 0;
+/* يربط الواجهة بطلب المحادثة المعروضة: المرآة، وزرّا الإرسال والإيقاف، وعلامة «يعمل» في القائمة، وإعادة
+   فقاعة الانتظار حين يرجع المستخدم إلى محادثة ما زالت تعمل (تُعاد عند الانتقال فقط، لا بعد كلّ رسم، كي لا
+   تتكرّر فوق الردّ النهائيّ). يُنادى بعد كلّ رسم للرسائل وعند بدء كلّ طلب وانتهائه. */
+function __omranSyncRunView(){
+  try{
+    var pid = (typeof state !== 'undefined' && state && state.currentId) ? String(state.currentId) : '';
+    var r = pid ? __omranRuns[pid] : null;
+    genAbortController = r ? r.ctl : null;
+    var b = document.getElementById('btnSend');
+    var stop = document.getElementById('btnStop');
+    if(r){
+      if(b && !b.disabled){ b.disabled = true; b.innerHTML = '<span class="spinner"></span>'; }
+      if(stop) stop.classList.add('live');
+      __omranRunViewLive = true;
+      if(pid !== __omranRunViewPid && r.thinking && !r.thinking.isConnected && !r.thinking.__gone
+        && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(r.thinking);
+    } else if(__omranRunViewLive){
+      __omranRunViewLive = false;
+      __omranRestoreSendBtn();
+    }
+    __omranRunViewPid = pid;
+    document.querySelectorAll('.hist-item[data-pid]').forEach(function(el){
+      el.classList.toggle('omRunning', !!__omranRuns[el.dataset.pid]);
+    });
+  }catch(e){ try{ __swallow(e, 'chat:run-view'); }catch(_){ /* guard-ok — cleanup, intentional */ } }
 }
-function __omranArmWatchdog(){
-  __omranDisarmWatchdog();
-  window.__omranTimedOut = false;
-  __omranReqStartedAt = Date.now();
-  __omranWdTimer = setTimeout(__omranAbortStuck, __OMRAN_WD_HARD_MS);
-}
-// عودة الصفحة من الخلفيّة: طلب قديم لم يعد يُمنح مهلة سماح ثمّ يُقطع؛
-// ولو بقي الزرّ معطّلًا بلا طلب جارٍ أصلًا يُفكّ قفله فورًا بلا انتظار ضغطة.
+/* الرسم العامّ كما هو في لحظة النداء — دالّة الإرسال تظلّلهما باسميهما فلا يرسم طلبٌ في الخلفيّة محادثةً غير محادثته */
+function __omranRenderAllNow(){ return renderAll.apply(null, arguments); }
+function __omranRenderMessagesNow(){ return renderMessages.apply(null, arguments); }
+try{
+  if(typeof renderMessages === 'function' && !renderMessages.__runView){
+    const __rmRunOrig = renderMessages;
+    renderMessages = function(){ const out = __rmRunOrig.apply(this, arguments); __omranSyncRunView(); return out; };
+    renderMessages.__runView = true;
+  }
+}catch(e){ __swallow(e, 'chat:run-view-wrap'); }
+// عودة الصفحة من الخلفيّة: كلّ طلب قديم لم يعد يُمنح إلّا مهلة سماح ثمّ يُقطع؛
+// ولو بقي الزرّ معطّلًا بلا طلب جارٍ للمحادثة المعروضة يُفكّ قفله فورًا بلا انتظار ضغطة.
 try{
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState !== 'visible') return;
+    Object.keys(__omranRuns).forEach(function(k){
+      var r = __omranRuns[k];
+      if(!r || (Date.now() - r.t0) < __OMRAN_WD_STALE_MS) return;
+      try{ clearTimeout(r.wake); }catch(_){ /* guard-ok — cleanup, intentional */ }
+      r.wake = setTimeout(function(){ __omranAbortRun(r); }, __OMRAN_WD_GRACE_MS);
+    });
     var __live = (typeof genAbortController !== 'undefined' && genAbortController);
     if(!__live){
       try{
         var __b = document.getElementById('btnSend');
         if(__b && __b.disabled && typeof __omranRestoreSendBtn === 'function') __omranRestoreSendBtn();
       }catch(_){ /* guard-ok — cleanup, intentional */ }
-      return;
     }
-    if(!__omranReqStartedAt || (Date.now() - __omranReqStartedAt) < __OMRAN_WD_STALE_MS) return;
-    try{ clearTimeout(__omranWdWake); }catch(_){ /* guard-ok — cleanup, intentional */ }
-    __omranWdWake = setTimeout(__omranAbortStuck, __OMRAN_WD_GRACE_MS);
   });
 }catch(e){ try{ __swallow(e, 'misc:wd-vis'); }catch(_){ /* guard-ok — cleanup, intentional */ } }
 
@@ -3382,6 +3427,17 @@ async function omranMediaIntent(text){
   }catch(e){ return null; }
 }
 async function __sendPromptCore(){
+  /* v-parallel-chats: هذا الطلب يخصّ المحادثة التي بدأ فيها. الرسم باسمَي renderAll/renderMessages مظلَّل هنا:
+     يرسم فقط إن كانت محادثته هي المعروضة، وإلّا يحدّث القائمة الجانبيّة وحدها — فلا يكتب طلب في الخلفيّة
+     فوق المحادثة التي يقرؤها المستخدم، ولا يحرّك تمريرها. */
+  const __startPid = (typeof state !== 'undefined' && state) ? state.currentId : null;
+  let __runPid = null;
+  const __mine = () => !__runPid || String(state.currentId) === String(__runPid);
+  const renderAll = function(){
+    if(__mine()) return __omranRenderAllNow.apply(null, arguments);
+    try{ renderHistory(); __omranSyncRunView(); }catch(e){ __swallow(e, 'chat:bg-render'); }
+  };
+  const renderMessages = function(){ if(__mine()) return __omranRenderMessagesNow.apply(null, arguments); };
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
   // 🔓 v583 — قفل يتيم: الزرّ يبقى معطّلًا لو جُمّدت الصفحة أو انقطعت الشبكة
@@ -3626,13 +3682,16 @@ async function __sendPromptCore(){
 
   try{ window.__fbCountMsg && window.__fbCountMsg(); }catch(_){ __swallow(_, "auth:app-09-attach#11"); }
 
-  let cur = getCurrent();
+  /* v-parallel-chats: لو انتقل المستخدم أثناء التصنيف تبقى الرسالة في محادثتها التي كُتبت فيها */
+  let cur = (__startPid && String(state.currentId) !== String(__startPid))
+    ? (state.projects.find(p => p && p.id === __startPid) || getCurrent()) : getCurrent();
   if(!cur){
     const id = 'p_' + Date.now();
     cur = {id, title: (text || (pendingAttachments[0] && pendingAttachments[0].name) || 'مشروع').slice(0, 30), messages: [], code: '', codeType: 'html'};
     state.projects.push(cur);
     state.currentId = id;
   }
+  __runPid = cur.id;
   const __editReq = window.__chatEditRequest;
   const __editIndex = (__editReq && __editReq.projectId === cur.id && Number.isInteger(__editReq.index) &&
     __editReq.index >= 0 && __editReq.index < cur.messages.length && cur.messages[__editReq.index].role === 'user') ? __editReq.index : -1;
@@ -3773,9 +3832,11 @@ async function __sendPromptCore(){
   // Let the ⏹️ button cancel this in-flight request; it lights up while
   // generating so the user knows they can stop it and edit their message.
 
-  genAbortController = new AbortController();
-  btnStop.classList.add('live');
-  __omranArmWatchdog();  // v586
+  /* v-parallel-chats: متحكّم هذا الطلب وحده باسم محادثته؛ المرآة genAbortController وزرّ الإيقاف يتبعان المعروضة */
+  const __runCtl = new AbortController();
+  const __run = __omranRunStart(cur.id, __runCtl);
+  // دوالّ المزوّدين تأخذ إشارة الإيقاف من ردّ النداء (onDelta.__signal) لا من المرآة العامّة
+  const __sigFn = (fn) => { try{ if(fn){ fn.__signal = __runCtl.signal; fn.__status = chatStatus; } }catch(e){ __swallow(e, 'chat:run-sig'); } return fn; };
   /* v-diag-turn (تشخيص «النص الطويل ما يرد»): نلتقط نتيجة الدور لنعرف السبب
      الحقيقي — لو انتهى الدور بلا رد ظاهر نعرض سطرًا فيه المزوّد وطول الرد والوقت
      والخطأ. طول رد>0 بلا ظهور = عطل عرض؛ طول 0 = المزوّد رجّع فارغًا؛ خطأ = مهلة/شبكة. */
@@ -3795,11 +3856,15 @@ function __friendlyErr(e){
   const thinkingDiv = document.createElement('div');
   thinkingDiv.className = 'msg assistant';
   thinkingDiv.textContent = t('building');
-  messagesEl.appendChild(thinkingDiv);
+  if(__mine()) messagesEl.appendChild(thinkingDiv);
+  // v-parallel-chats: الإزالة المقصودة تُعلَّم فلا تُعاد الفقاعة حين يرجع المستخدم إلى المحادثة
+  thinkingDiv.remove = function(){ thinkingDiv.__gone = true; return Element.prototype.remove.call(thinkingDiv); };
+  __run.thinking = thinkingDiv;
+  thinkingDiv.__signal = __runCtl.signal;
   // شريط الحالة: يُظهر خطوات العمل بدل انتظار صامت.
   const chatStatus = makeChatStatus(thinkingDiv);
-  window.__chatStatus = chatStatus;
-  anchorLastUserMsgTop(thinkingDiv);
+  window.__chatStatus = chatStatus; // v-parallel-chats: للمسارات القديمة؛ هذا الطلب يكتب في شريطه هو (chatStatus)
+  if(__mine()) anchorLastUserMsgTop(thinkingDiv);
 
   // A "continue with this only" selection (one or more providers picked from a
   // previous ask-all round) always takes priority: it lets the user keep
@@ -4131,7 +4196,7 @@ function __friendlyErr(e){
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
         const __stBody = { name:__sp.name, school:__sp.school, subject:__sp.subject, hint:__stHint, imageBase64:__sp.b64, mimeType:__sp.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
-        const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
+        const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:__runCtl.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
           thinkingDiv.remove();
@@ -4276,7 +4341,7 @@ function __friendlyErr(e){
         __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
         try{
           var __stBodyOv = { name:__stName, names:__stNames, school:__stSchool, subject:__stSubject, hint:__stFinalHint, imageBase64:__stSrcB64, mimeType:__stSrcMime, images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
-          var __stResOv = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBodyOv)});
+          var __stResOv = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:__runCtl.signal,body:JSON.stringify(__stBodyOv)});
           var __stDataOv = await __stResOv.json().catch(()=>({}));
           if(!__stResOv.ok || !__stDataOv.imageBase64){
             thinkingDiv.remove();
@@ -4299,7 +4364,7 @@ function __friendlyErr(e){
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
         const __stBody = { name:__stName, names:__stNames, school:__stSchool, subject:__stSubject, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
-        const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
+        const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:__runCtl.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
           thinkingDiv.remove();
@@ -4353,7 +4418,7 @@ function __friendlyErr(e){
         const __adBg = __bgM ? __bgM[1].trim() : '';
         const __adBody = { title:__adTitle, spec:__adSpecs, kick:__adKick, price:__adPrice, unit:'درهم', tel:__adPhone, look:__adLook, ac:'#FFD700', ratio:'square', lang:'ar', chips:__adChips, note:__adNote, foot:__adFoot, cat:__adCat, bg:__adBg, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         if(__adUserB64){ __adBody.imageBase64=__adUserB64; __adBody.mimeType=__adUserMime; }
-        const __adRes = await fetch('/api/tools?action=adimage',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__adBody)});
+        const __adRes = await fetch('/api/tools?action=adimage',{method:'POST',headers:{'Content-Type':'application/json'},signal:__runCtl.signal,body:JSON.stringify(__adBody)});
         const __adData = await __adRes.json().catch(()=>({}));
         clearInterval(window.__adProgressTimer);
         if(!__adRes.ok || !__adData.imageBase64){
@@ -4524,7 +4589,7 @@ function __friendlyErr(e){
           for(let __ct = 0; __ct < 2 && !__cartoonB64; __ct++){
             if(__ct) await new Promise(r=>setTimeout(r,1500));
             const __cr = await fetch('/api/maha-image', {
-              method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal,
+              method:'POST', headers:{'Content-Type':'application/json'}, signal: __runCtl.signal,
               body: JSON.stringify({ prompt: __cartoonPrompt, editImageBase64: __charImg.b64, editMimeType: __charImg.mime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
             });
             const __cd = await __cr.json().catch(()=>({}));
@@ -4546,7 +4611,7 @@ function __friendlyErr(e){
         const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true };
         let __op = null, __verr = '';
         for(let __a = 0; __a < 2 && !__op; __a++){
-          const __r = await fetch('/api/video?action=veo-create', { method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal, body: JSON.stringify(__vp) });
+          const __r = await fetch('/api/video?action=veo-create', { method:'POST', headers:{'Content-Type':'application/json'}, signal: __runCtl.signal, body: JSON.stringify(__vp) });
           const __d = await __r.json().catch(()=>({}));
           if(__r.ok && __d.op){ __op = __d.op; }
           else { __verr = (__d && __d.error) || ('HTTP ' + __r.status); if(/auth_required/.test(__verr) || /points_insufficient/.test(__verr)) break; if(__a === 0) await new Promise(r=>setTimeout(r,6000)); }
@@ -4560,8 +4625,8 @@ function __friendlyErr(e){
         while(!__vurl){
           if(Date.now() - __vt0 > 6*60*1000) throw new Error(lang==='ar'?'تأخر إنشاء الفيديو، جرّب مرة ثانية.':'Video generation timed out, please try again.');
           await new Promise(r=>setTimeout(r,6000));
-          if(genAbortController.signal.aborted) throw Object.assign(new Error('aborted'), { name:'AbortError' });
-          const __sr = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(__op), { signal: genAbortController.signal });
+          if(__runCtl.signal.aborted) throw Object.assign(new Error('aborted'), { name:'AbortError' });
+          const __sr = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(__op), { signal: __runCtl.signal });
           const __sd = await __sr.json().catch(()=>({}));
           if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; }
           else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|filtered|content did not pass/i.test(__fr)){ __fr = (lang==='ar')?'الرقابة رفضت المحتوى — جرّب صورة ثانية':'Content rejected by safety filters — try another photo'; } throw new Error((lang==='ar'?'فشل إنشاء الفيديو':'Video generation failed') + (__fr?(' — '+__fr):'')); }
@@ -4670,8 +4735,8 @@ function __friendlyErr(e){
         while(!__vurl){
           if(Date.now() - __vt0 > 6 * 60 * 1000) throw new Error(lang === 'ar' ? 'تأخر إنشاء الفيديو، جرّب مرة ثانية.' : 'Video generation timed out, please try again.');
           await new Promise(r => setTimeout(r, 5000));
-          if(genAbortController.signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
-          const __sr = await fetch('/api/video-status?id=' + encodeURIComponent(__vid), { signal: genAbortController.signal });
+          if(__runCtl.signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+          const __sr = await fetch('/api/video-status?id=' + encodeURIComponent(__vid), { signal: __runCtl.signal });
           const __sd = await __sr.json().catch(() => ({}));
           if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; }
           else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|content did not pass/i.test(__fr)){ __fr = (lang === 'ar') ? 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ أو شِل صورة الشخص' : 'Content rejected by safety filters — try a calmer description or remove the person photo'; } throw new Error((lang === 'ar' ? 'فشل إنشاء الفيديو' : 'Video generation failed') + (__fr ? (' — ' + __fr) : '')); }
@@ -4691,12 +4756,12 @@ function __friendlyErr(e){
     
 // v660: مؤشر تحميل الصور — خلفية نجوم + شريط تقدم + مراحل نصية
 function __showImgLoading(el, ar, en){
-  const _st = window.__chatStatus;
+  const _st = chatStatus;
   if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){ /* guard-ok — cleanup, intentional */ } }
   if(!el) return;
   /* v-img-box (فحص المالك ٢٣ سبتمبر «كلّ ما أريد بناء صورة في مربّع يطلع»): مسار «عطني صور…» يعيد رسم القائمة حين لا
      يجد صورًا في البحث فيهبط للتوليد — فكانت البطاقة تُرسم في عنصر خرج من الصفحة ولا تظهر. تُعاد إلى آخر المحادثة. */
-  try{ if(!el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el); }catch(e){ /* guard-ok — العرض اختياريّ */ }
+  try{ if(!el.isConnected && __mine() && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el); }catch(e){ /* guard-ok — العرض اختياريّ */ }
   /* v-img-gold-dots (المالك ٢٣ سبتمبر، بعد ثلاث معاينات: «الخلفية سوداء، والنقاط بدرجة هذا الذهبي، هي اللي تتحرّك في المربّع
      كامل منظّمة مش عشوائيّة»؛ رفض الموجة بخطوط ثمّ «الانفجار» من الوسط): شبكة نقاط ذهبيّة وإضاءة تمشي
      عليها بخطوط قُطريّة من فوق يمين إلى تحت يسار — كلّ قُطر يلمع معًا ثمّ الذي بعده. CSS + تأخير لكلّ نقطة، وتتوقّف مع
@@ -4887,7 +4952,7 @@ function __showImgLoading(el, ar, en){
           try{
             const __dRes = await fetch('/api/maha-image', {
               method:'POST', headers:{'Content-Type':'application/json'},
-              signal: genAbortController.signal,
+              signal: __runCtl.signal,
               body: JSON.stringify({ prompt: __ds.prompt, editImageBase64: __decCmp.b64, editMimeType: __decCmp.mime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
             });
             const __dData = await __dRes.json().catch(()=>({}));
@@ -4930,7 +4995,7 @@ function __showImgLoading(el, ar, en){
           });
           try{
             const __refEdit = text.replace(__refineRe,'').trim() || text;
-            const __refRes = await fetch('/api/maha-image',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,
+            const __refRes = await fetch('/api/maha-image',{method:'POST',headers:{'Content-Type':'application/json'},signal:__runCtl.signal,
               body:JSON.stringify({prompt:'Apply this change to the room decor: '+__refEdit+'. Keep the same overall style and room layout, only apply the specific requested change.',editImageBase64:__refCmp.b64,editMimeType:__refCmp.mime,token:authGet('aiapp_auth_token'),guestId:window.getGuestId()})});
             const __refData=await __refRes.json().catch(()=>({}));
             if(__refRes.ok&&__refData.imageBase64){
@@ -4950,7 +5015,7 @@ function __showImgLoading(el, ar, en){
           __showImgLoading(thinkingDiv, 'جاري قراءة النموذج…', 'Reading the card…');
           const __ceShr = await omranShrinkForEdit(__b64, __mime); /* v-edit-shrink */
           const __ceRes = await fetch('/api/tools?action=card-extract', {
-            method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
+            method:'POST', headers:{ 'Content-Type':'application/json' }, signal: __runCtl.signal,
             body: JSON.stringify({ imageBase64:__ceShr.b64, mimeType:__ceShr.mime, hint:String(text || '').slice(0, 300), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
           });
           const __ceSpec = await __ceRes.json().catch(() => ({}));
@@ -5006,7 +5071,7 @@ function __showImgLoading(el, ar, en){
         let __thumb = null;
         try{ __thumb = await omranShrinkForEdit(__layer0 ? __layer0.baseB64 : __b64, __layer0 ? (__layer0.baseMime || 'image/png') : __mime, 640, true); }catch(e){ __swallow(e, 'img:design-thumb'); }
         let __avoid = __layer0 && Array.isArray(__layer0.avoid) ? __layer0.avoid : null;
-        const __layoutFetch = () => fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ layoutOnly:true, imageBase64:__thumb.b64, imageMime:__thumb.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) })
+        const __layoutFetch = () => fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:__runCtl.signal, body:JSON.stringify({ layoutOnly:true, imageBase64:__thumb.b64, imageMime:__thumb.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) })
           .then((r) => r.json()).then((d) => Array.isArray(d && d.avoid) ? d.avoid : []).catch((e) => { __swallow(e, 'img:design-layout'); return []; });
         /* مراجعة #805: الدعاء لا يمرّ بالتصميم فلا صناديق معه — يُكشف بالتوازي كالنصّ الحرفيّ */
         let __avoidP = (!__avoid && __thumb && (!__textSpec.autoAuthored || __textSpec.kind === 'prayer')) ? __layoutFetch() : Promise.resolve(__avoid);
@@ -5015,7 +5080,7 @@ function __showImgLoading(el, ar, en){
         let __planVisual = ''; /* فكرة المشهد من مخطّط الدعاء — هدفٌ لـ«غير الخلفية» حين لا يسمّي المستخدم هدفًا */
         if(!__resolvedText && __textSpec.autoAuthored){
           try{
-            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, wantDesign:true, designImageBase64:__thumb ? __thumb.b64 : undefined, designImageMime:__thumb ? __thumb.mime : undefined, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
+            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:__runCtl.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, wantDesign:true, designImageBase64:__thumb ? __thumb.b64 : undefined, designImageMime:__thumb ? __thumb.mime : undefined, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
             const __planData = await __planRes.json().catch(() => ({}));
             if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
             if(__planRes.ok && typeof __planData.visualPrompt === 'string') __planVisual = __planData.visualPrompt.trim().slice(0, 300);
@@ -5061,7 +5126,7 @@ function __showImgLoading(el, ar, en){
               __wb64 = __wShr.b64; __wmime = __wShr.mime;
               const __vRes = await fetch('/api/maha-image', {
                 method:'POST', headers:{ 'Content-Type':'application/json' },
-                signal: genAbortController.signal,
+                signal: __runCtl.signal,
                 body: JSON.stringify({ prompt:__visEdit, editImageBase64:__wb64, editMimeType:__wmime, reserveTextArea:true, textPosition:__textSpec.position })
               });
               const __vData = await __vRes.json().catch(() => ({}));
@@ -5111,7 +5176,7 @@ function __showImgLoading(el, ar, en){
               : 'Write this EXACT Arabic text verbatim onto the image — do NOT change, add, or remove any word or letter: \u00AB' + __resolvedText + '\u00BB. Use beautiful classical ARABIC calligraphy (Thuluth or Diwani \u2014 NEVER Urdu Nastaliq or slanted Persian lettering) with full diacritics (tashkeel) harmonizing with the scene palette and lighting. Place it ONLY in a clean empty area (sky, wall, margins) — NEVER over faces or the main subject. Do not alter anything else.';
             const __aiTRes = await fetch('/api/maha-image', {
               method:'POST', headers:{ 'Content-Type':'application/json' },
-              signal: genAbortController.signal,
+              signal: __runCtl.signal,
               body: JSON.stringify({ prompt: __aiTxtPrompt, editImageBase64: __cmp.b64, editMimeType: __cmp.mime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
             });
             const __aiTData = await __aiTRes.json().catch(() => ({}));
@@ -5164,7 +5229,7 @@ function __showImgLoading(el, ar, en){
           __showImgLoading(thinkingDiv, 'جاري تبديل الحرف في مكانه…', 'Swapping the letter in place…');
           const __lsShr = await omranShrinkForEdit(__b64, __mime);
           const __lsBody = { prompt: String(text || '').slice(0, 600), userText: String(text || '').slice(0, 600), textSwap: true, editImageBase64: __lsShr.b64, editMimeType: __lsShr.mime, engineMix: (window.__omMode === 'image_mix') || undefined };
-          const __lsRes = await fetch('/api/maha-image', { method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal, body: JSON.stringify(Object.assign({}, __lsBody, { token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })) });
+          const __lsRes = await fetch('/api/maha-image', { method:'POST', headers:{ 'Content-Type':'application/json' }, signal: __runCtl.signal, body: JSON.stringify(Object.assign({}, __lsBody, { token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })) });
           const __lsData = await __lsRes.json().catch(() => ({}));
           if(__lsRes.ok && __lsData.imageBase64){
             const __lsMime = __lsData.mimeType || 'image/png';
@@ -5172,7 +5237,7 @@ function __showImgLoading(el, ar, en){
             try{ __lsUrl = await omranSharpenImage(__lsUrl); }catch(e){ __swallow(e, 'img:sharpen-swap'); }
             cur.messages.push({ role:'assistant', content:(typeof __lsData.caption === 'string' ? __lsData.caption : '') + __imgEngineLine(__lsData.engine, __lsData), attachments:[{ name:'edited.png', isImage:true, mime:(__lsUrl.slice(5).split(';')[0] || __lsMime), dataUrl:__lsUrl }] });
             /* v-img-engine-tag-owner: المحرّك الحقيقيّ للمالك وحده. */
-            try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__lsData.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
+            try{ if(chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') chatStatus.note('🎨', String(__lsData.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
             cur.lastEditedImage = { b64: __lsData.imageBase64, mime: __lsMime };
             cur.imageEditSource = { b64:__b64, mime:__mime };
             cur.imageEditInstructions = [String(text || '').trim()];
@@ -5213,7 +5278,7 @@ function __showImgLoading(el, ar, en){
       }
       const __res = await fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        signal: genAbortController.signal,
+        signal: __runCtl.signal,
         body: JSON.stringify({ prompt: __editPrompt, userText: String(text || '').slice(0, 600) /* v-nano-pro-edit: كلمات المستخدم نفسها للنيّة */, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, history: (__continuesEditChain && Array.isArray(cur.imageTurns) && cur.imageTurns.length) ? cur.imageTurns.slice(-3) : undefined /* v-image-memory */, engineMix: (window.__omMode === 'image_mix') || undefined /* v-img-mix (الخادم يقبله للمالك وحده) */, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const __data = await __res.json().catch(() => ({}));
@@ -5234,7 +5299,7 @@ function __showImgLoading(el, ar, en){
         }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */ + __imgEngineLine(__data.engine, __data), attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
         // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
-        try{ if(window.__chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') window.__chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
+        try{ if(chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = __keptLayer ? { b64: __editUrl.split(',')[1], mime: 'image/png' } : { b64: __data.imageBase64, mime: __outMime };
         /* v-image-memory: نحفظ الدور (كلمات المستخدم + مصغّر النتيجة 768px، ومصغّر المصدر الأصلي في أول دور) ليراه النموذج في الدور القادم */
         try{
@@ -5332,7 +5397,7 @@ function __showImgLoading(el, ar, en){
             if(__t3) await new Promise(r => setTimeout(r, 1500 * __t3));
             const __r = await fetch('/api/maha-image', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              signal: genAbortController.signal,
+              signal: __runCtl.signal,
               body: JSON.stringify({ prompt: prompt.slice(0, 1800), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
             });
             __d = await __r.json().catch(() => ({}));
@@ -5425,7 +5490,7 @@ function __showImgLoading(el, ar, en){
           if(__t2 && Date.now() - __gT0 > 45000) break;
           const __gRes = await fetch('/api/maha-image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            signal: genAbortController.signal,
+            signal: __runCtl.signal,
             body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.wantsText, textPosition:__genTextSpec.position, prayerRequest:__genTextSpec.autoAuthored ? String(__genTextSpec.prayerRequest || text).slice(0,800) : undefined, textKind:__genTextSpec.kind, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
           });
           __gData = await __gRes.json().catch(() => ({}));
@@ -6056,7 +6121,7 @@ DESIGN RULES (non-negotiable):
             reject(e);
           }
         }, 5000);
-        callProviderAI(key, msgs, (t) => { lastTick = Date.now(); if(!done && onDelta) onDelta(t); })
+        callProviderAI(key, msgs, __sigFn((t) => { lastTick = Date.now(); if(!done && onDelta) onDelta(t); }))
           .then(v => { if(!done){ done = true; clearInterval(iv); resolve(v); } },
                 e => { if(!done){ done = true; clearInterval(iv); reject(e); } });
       });
@@ -6074,7 +6139,7 @@ DESIGN RULES (non-negotiable):
              مزوّدو الأدوات بمسار الأدوات نفسه (بحث + قراءة صفحة) كالمحادثة العاديّة؛ أيّ عثرة تهبط للمباشر. */
           let reply = null;
           if(__siteGuideTurn && TOOL_PROVIDERS.indexOf(p.key) !== -1 && typeof window.callChatWithTools === 'function'){
-            try{ const __gr = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, p.key); if(__gr && __gr.reply) reply = __gr.reply; }
+            try{ const __gr = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), __sigFn(onDelta), p.key); if(__gr && __gr.reply) reply = __gr.reply; }
             catch(e){ if(e && e.name === 'AbortError') throw e; __swallow(e, 'askall:site-guide-tools'); }
           }
           if(reply === null) reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
@@ -6188,7 +6253,7 @@ DESIGN RULES (non-negotiable):
         }
       };
       const settled = await Promise.allSettled(Array.from({ length: Math.min(5, providers.length) }, () => __poolWorker()));
-      if(genAbortController && genAbortController.signal.aborted){
+      if(__runCtl.signal.aborted){
         // User cancelled while "ask all" was mid-flight: skip showing any of
         // these results and let the outer catch restore the message for editing.
         const abortErr = new Error('aborted');
@@ -6336,7 +6401,7 @@ DESIGN RULES (non-negotiable):
           for(const mKey of mergeOrder){
             if(mergeDone) break;
             try{
-              const mergedReply = await callProviderAI(mKey, mergeMessages, () => {});
+              const mergedReply = await callProviderAI(mKey, mergeMessages, __sigFn(() => {}));
               // This branch is for plain Q&A merging (not a build task), so
               // even if a provider slipped a ```code``` fence into its
               // answer, we must never show raw code in the chat bubble here
@@ -6426,7 +6491,7 @@ DESIGN RULES (non-negotiable):
                       { role: 'system', content: 'You are a senior developer. You receive a complete single-file HTML app and ONE missing feature/screen to add. Return the FULL updated HTML file inside a single ```html fence. Keep all existing code exactly the same - only ADD the missing feature as a beautiful, fully working screen with realistic demo data and working navigation to/from it. No explanations outside the fence.' },
                       { role: 'user', content: 'Missing feature/screen to add now:\n' + __taskPlan[i] + '\n\nCode:\n```html\n' + mergeMsg.code + '\n```' }
                     ];
-                    const r = await callAIWithFallback(refMsgs, () => {});
+                    const r = await callAIWithFallback(refMsgs, __sigFn(() => {}));
                     const ref = extractReply((r && r.reply) || '');
                     if(ref.code && ref.code.length > mergeMsg.code.length * 0.7){
                       mergeMsg.code = ref.code;
@@ -6542,7 +6607,7 @@ DESIGN RULES (non-negotiable):
         onDelta._p = partial;
         const stripped = liveStripCode(partial);
         __lastStreamPartial = stripped;
-        (function(){ try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
+        (function(){ try{ if(chatStatus) chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
         // ✂️ liveStripCode قد يُرجِع نصًّا أقصر عند دخول كتلة كود — لا نتجاوزه
         if(stripped.length < __live.target.length) __live.shown = Math.min(__live.shown, Math.max(0, stripped.length - 1));
         __live.target = stripped;
@@ -6582,13 +6647,13 @@ DESIGN RULES (non-negotiable):
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
-        if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased() && !cur.adMode){
+        if(__effProv !== __selProv && chatStatus && !chatStatus.isReleased() && !cur.adMode){
           /* v-prov-status-i18n (شكوى المالك: جملة التحويل عربية وسط واجهة أجنبية):
              قالب مترجم بلغة الواجهة مع خانات {sel}/{why}/{eff}. */
           var __why = (__gateNoBuild || __routeFix) ? t('provWhyBuild')
                     : (__visionOverride ? t('provWhyVision') : t('provWhyGeneral'));
           var __effLabel = (typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv;
-          window.__chatStatus.note('↪️', t(__provUiHidden() ? 'provSwitchNoteHidden' : 'provSwitchNote')
+          chatStatus.note('↪️', t(__provUiHidden() ? 'provSwitchNoteHidden' : 'provSwitchNote')
             .replace(/\{sel\}/g, __selLabel).replace('{why}', __why).replace('{eff}', __effLabel));
         }
       }catch(e){ __swallow(e, 'ui:switchnote'); }
@@ -6634,7 +6699,7 @@ DESIGN RULES (non-negotiable):
           let b = thinkingDiv.__imgBox;
           if(!b || !b.isConnected){
             b = document.createElement('div'); b.className = 'msg assistant omImgBoxLive';
-            if(thinkingDiv.isConnected) thinkingDiv.parentNode.insertBefore(b, thinkingDiv); else messagesEl.appendChild(b);
+            if(thinkingDiv.isConnected) thinkingDiv.parentNode.insertBefore(b, thinkingDiv); else if(__mine()) messagesEl.appendChild(b);
             thinkingDiv.__imgBox = b;
           }
           __showImgLoading(b, 'جارٍ إنشاء الصورة', 'Generating image');
@@ -6644,7 +6709,7 @@ DESIGN RULES (non-negotiable):
       try{
         let __ct = null, __ctErr = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __effProv); }
+          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), __sigFn(onDelta), __effProv); }
           catch(e){ if(e && e.ownerStop) throw e; __ctErr = e; /* v-owner-solo */ /* v-owner-solo: فشل مزوّد المالك لا يتجاوزه مزوّد آخر */ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; /* v-plans-gate: حدّ الباقة لا يتجاوزه مزوّد آخر */ __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
@@ -6657,18 +6722,18 @@ DESIGN RULES (non-negotiable):
             for(const __tp of __toolsTeam){
               try{
                 try{
-                  if(window.__chatStatus && !window.__chatStatus.isReleased()){
-                    window.__chatStatus.phase('💭', functionalLabel(__tp) + ' ' + t('provTypingSuffix'));
+                  if(chatStatus && !chatStatus.isReleased()){
+                    chatStatus.phase('💭', functionalLabel(__tp) + ' ' + t('provTypingSuffix'));
                   }
                 }catch(e){ __swallow(e, 'ui:toolsteam'); }
-                __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __tp);
+                __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), __sigFn(onDelta), __tp);
                 if(__ct) break;
               }catch(e){ if(e && (e.name === 'AbortError' || e.planLimit)) throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
             }
           }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
-        else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
+        else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, __sigFn(onDelta), __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
         window.__claudeThinking = false;
@@ -6748,14 +6813,12 @@ DESIGN RULES (non-negotiable):
         const partial = String(__lastStreamPartial || '').trim();
         cur.messages.push({
           role: 'assistant',
-          content: partial || (window.__omranTimedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول النتيجة — أعد المحاولة.' : '⚠️ The connection dropped before the result arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.')),
+          content: partial || (__run.timedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول النتيجة — أعد المحاولة.' : '⚠️ The connection dropped before the result arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.')),
           _stopped: true,
           askAllReply: false
         });
       }
-      promptEl.value = '';
-      window.__chatEditRequest = null;
-      setChatEditNotice(false);
+      if(__mine()){ promptEl.value = ''; window.__chatEditRequest = null; setChatEditNotice(false); } // v-parallel-chats: لا تمسح ما يكتبه في محادثة أخرى
     } else if(err && err.premiumNoPoints){
       // 👑 نفاد النقاط أثناء الرد الاحترافي: رسالة ودّية + طريقة لشراء نقاط،
       // وإطفاء الوضع الاحترافي حتى تكون الرسالة التالية مجانية.
@@ -6778,12 +6841,8 @@ DESIGN RULES (non-negotiable):
       cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{
-    __omranDisarmWatchdog();  // v586
     const __keepReaderPosition = !document.documentElement.classList.contains('mobile-ui') && typeof chatIsNearBottom === 'function' ? !chatIsNearBottom() : false;
-    genAbortController = null;
-    btnStop.classList.remove('live');
-    sendBtn.disabled = false;
-    sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>' /* v-send-plane: سهم الإرسال طائرة ورقية كما في صورة المالك */;
+    __omranRunEnd(__run); /* v-parallel-chats: يُفكّ قفل هذه المحادثة وحدها؛ زرّ الإرسال يرجع إن كانت هي المعروضة */
     saveState();
     renderAll(__keepReaderPosition);
     /* v-diag-turn: لو انتهى الدور بلا رد ظاهر (لا نصّ ولا كود ولا مرفق) وليس
@@ -6791,7 +6850,7 @@ DESIGN RULES (non-negotiable):
     try{
       var __la = cur.messages[cur.messages.length - 1];
       var __visible = !!(__la && __la.role === 'assistant' && (String(__la.content || '').trim() || __la.code || (__la.attachments && __la.attachments.length)));
-      if(!__visible && !window.__omranTimedOut && !isPureGreeting(text) && !isCasualCheckIn(text)){
+      if(!__visible && !__run.timedOut && !isPureGreeting(text) && !isCasualCheckIn(text)){
         var __d = window.__diagTurn || {};
         cur.messages.push({ role: 'assistant', _diag: true, content:
           '🔧 تشخيص الرد الغائب:\n'
@@ -6815,7 +6874,7 @@ DESIGN RULES (non-negotiable):
         try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){ __swallow(e, "misc:app-09-attach#31"); }
       }
     }catch(e){ __swallow(e, "misc:app-09-attach#32"); }
-    if($('#btnVoiceChat').classList.contains('active')){
+    if(__mine() && $('#btnVoiceChat').classList.contains('active')){
       const lastMsg = cur.messages[cur.messages.length - 1];
       if(lastMsg && lastMsg.role === 'assistant' && lastMsg.content){
         const assistantDivs = messagesEl.querySelectorAll('.msg.assistant');
