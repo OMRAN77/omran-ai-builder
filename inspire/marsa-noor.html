@@ -347,21 +347,21 @@ function roadInter(g, w, h) {
 }
 function paverTex(g, w, h) { g.fillStyle = P.paver; g.fillRect(0, 0, w, h); g.fillStyle = P.grout; for (let i = 0; i <= 4; i++) { g.fillRect(i * 64 - 1, 0, 2, h); g.fillRect(0, i * 64 - 1, w, 2); } }
 function plankTex(g, w, h) { g.fillStyle = P.plank; g.fillRect(0, 0, w, h); g.fillStyle = P.plankG; for (let i = 0; i < 16; i++) g.fillRect(0, i * 16 - 1, w, 2); g.globalAlpha = 0.12; for (let i = 0; i < 400; i++) { g.fillStyle = '#000'; g.fillRect(R() * w, R() * h, 6, 1); } g.globalAlpha = 1; }
-function facadePlaster(g, w, h) {
-  g.fillStyle = '#EDEDED'; g.fillRect(0, 0, w, h);
-  for (let fy = 0; fy < 4; fy++) for (let bx = 0; bx < 4; bx++) {
-    const x = bx * 64 + 10, y = fy * 64 + 6;
-    g.fillStyle = '#D8D2C8'; g.fillRect(x - 2, y - 2, 48, 56); g.fillStyle = '#35424B'; g.fillRect(x, y, 44, 52);
-    g.fillStyle = '#5A6B75'; g.beginPath(); g.moveTo(x + 44, y); g.lineTo(x + 44, y + 14); g.lineTo(x + 8, y + 52); g.lineTo(x, y + 52); g.lineTo(x, y + 40); g.closePath(); g.fill();
-    g.fillStyle = '#CFC8BC'; g.fillRect(x - 4, y + 52, 52, 6);
+function facadePlaster(g, w, h) { // بلاطة ١٢ م × ١٢٫٨ م: ٦ نوافذ ضيّقة لكلّ طابق (١ × ١٫٨ م) بعتبة وإطار، لا ٤ نوافذ عريضة
+  g.scale(w / 256, h / 256); g.fillStyle = '#EDEDED'; g.fillRect(0, 0, 256, 256); g.fillStyle = 'rgba(0,0,0,.05)'; for (let fy = 0; fy < 4; fy++) g.fillRect(0, fy * 64 + 60, 256, 4);
+  for (let fy = 0; fy < 4; fy++) for (let bx = 0; bx < 6; bx++) {
+    const x = (bx * 42.67 + 10) | 0, y = fy * 64 + 14;
+    g.fillStyle = '#D8D2C8'; g.fillRect(x - 2, y - 2, 26, 40); g.fillStyle = '#33404A'; g.fillRect(x, y, 22, 36);
+    g.fillStyle = '#5A6B75'; g.beginPath(); g.moveTo(x + 22, y); g.lineTo(x + 22, y + 10); g.lineTo(x + 6, y + 36); g.lineTo(x, y + 36); g.lineTo(x, y + 26); g.closePath(); g.fill();
+    g.fillStyle = '#C9C2B6'; g.fillRect(x - 4, y + 36, 30, 4); g.fillStyle = '#E4E0D8'; g.fillRect(x + 10, y, 2, 36);
   }
 }
-function facadeGlass(g, w, h) {
-  for (let fy = 0; fy < 4; fy++) { const k = 1 - fy * 0.035; g.fillStyle = `rgb(${244 * k | 0},${244 * k | 0},${244 * k | 0})`; g.fillRect(0, fy * 64, w, 64); g.fillStyle = '#1F3640'; g.fillRect(0, fy * 64 + 52, w, 12); }
-  g.fillStyle = '#2A4A55'; for (let i = 0; i <= 4; i++) g.fillRect(i * 64 - 2, 0, 4, h);
+function facadeGlass(g, w, h) { // زجاج كامل: قضبان كلّ ١٫٥ م وشريط أرضيّة لكلّ طابق ولمعة علويّة
+  g.scale(w / 256, h / 256); for (let fy = 0; fy < 4; fy++) { const k = 1 - fy * 0.035; g.fillStyle = `rgb(${236 * k | 0},${242 * k | 0},${246 * k | 0})`; g.fillRect(0, fy * 64, 256, 64); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(0, fy * 64 + 4, 256, 10); g.fillStyle = '#1F3640'; g.fillRect(0, fy * 64 + 50, 256, 14); }
+  g.fillStyle = '#2A4A55'; for (let i = 0; i <= 8; i++) g.fillRect(i * 32 - 1, 0, 2, 256);
 }
-function emissivePlaster(g, w, h) { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = P.window; for (let fy = 0; fy < 4; fy++) for (let bx = 0; bx < 4; bx++) if (R() < 0.18) g.fillRect(bx * 64 + 10, fy * 64 + 6, 44, 52); }
-function emissiveGlass(g, w, h) { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = P.window; for (let fy = 0; fy < 4; fy++) for (let bx = 0; bx < 4; bx++) if (R() < 0.12) g.fillRect(bx * 64 + 2, fy * 64, 60, 52); }
+function emissivePlaster(g, w, h) { g.scale(w / 256, h / 256); g.fillStyle = '#000'; g.fillRect(0, 0, 256, 256); g.fillStyle = P.window; for (let fy = 0; fy < 4; fy++) for (let bx = 0; bx < 6; bx++) if (R() < 0.22) g.fillRect((bx * 42.67 + 10) | 0, fy * 64 + 14, 22, 36); }
+function emissiveGlass(g, w, h) { g.scale(w / 256, h / 256); g.fillStyle = '#000'; g.fillRect(0, 0, 256, 256); g.fillStyle = P.window; for (let fy = 0; fy < 4; fy++) for (let bx = 0; bx < 8; bx++) if (R() < 0.12) g.fillRect(bx * 32 + 1, fy * 64, 30, 50); }
 function blobTex(g, w, h) { const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(31,42,68,.55)'); r.addColorStop(1, 'rgba(31,42,68,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); }
 function smokeTex(g, w, h) { const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(244,238,227,.9)'); r.addColorStop(0.6, 'rgba(244,238,227,.35)'); r.addColorStop(1, 'rgba(244,238,227,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); }
 function rimTex(g, w, h) { g.fillStyle = P.rimD; g.fillRect(0, 0, w, h); g.fillStyle = P.rim; g.beginPath(); g.arc(w / 2, h / 2, 12, 0, 7); g.fill(); g.lineWidth = 9; g.strokeStyle = P.rim; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; g.beginPath(); g.moveTo(w / 2, h / 2); g.lineTo(w / 2 + Math.cos(a) * 52, h / 2 + Math.sin(a) * 52); g.stroke(); } g.lineWidth = 6; g.beginPath(); g.arc(w / 2, h / 2, 56, 0, 7); g.stroke(); }
@@ -465,8 +465,8 @@ function prep(geo, mat4) { // توحيد السمات قبل الدمج
 function box(w, h, d, x, y, z, hex, ao) { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y + h / 2, z); tintGeo(g, hex, ao); return g; }
 const M = {}; // الموادّ
 function makeMaterials() {
-  M.plaster = new THREE.MeshLambertMaterial({ vertexColors: true, map: canvasTex('plaster', 256, facadePlaster), emissiveMap: canvasTex('emPlaster', 256, emissivePlaster), emissive: 0xffffff, emissiveIntensity: 0 });
-  M.glass = new THREE.MeshLambertMaterial({ vertexColors: true, map: canvasTex('glass', 256, facadeGlass), emissiveMap: canvasTex('emGlass', 256, emissiveGlass), emissive: 0xffffff, emissiveIntensity: 0 });
+  M.plaster = new THREE.MeshLambertMaterial({ vertexColors: true, map: canvasTex('plaster', 512, facadePlaster), emissiveMap: canvasTex('emPlaster', 512, emissivePlaster), emissive: 0xffffff, emissiveIntensity: 0 });
+  M.glass = new THREE.MeshLambertMaterial({ vertexColors: true, map: canvasTex('glass', 512, facadeGlass), emissiveMap: canvasTex('emGlass', 512, emissiveGlass), emissive: 0xffffff, emissiveIntensity: 0 });
   M.flat = new THREE.MeshLambertMaterial({ vertexColors: true });
   M.roadS = new THREE.MeshLambertMaterial({ map: canvasTex('roadS', 512, (g, w, h) => roadStraight(g, w, h, false)) });
   M.roadT = new THREE.MeshLambertMaterial({ map: canvasTex('roadT', 512, (g, w, h) => roadStraight(g, w, h, true)) });
