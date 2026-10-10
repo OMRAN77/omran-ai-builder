@@ -206,6 +206,7 @@ html.coarse .touch{display:block}
 .touch .cm{right:calc(166px + env(safe-area-inset-right))}
 .touch .chip{right:calc(12px + env(safe-area-inset-right));width:40px;height:40px;font-size:12px;border-radius:12px}
 .touch .mm{top:calc(64px + env(safe-area-inset-top))}.touch .qq{top:calc(110px + env(safe-area-inset-top))}.touch .gg{top:calc(156px + env(safe-area-inset-top))}
+@media (max-height:520px){.touch .hb{right:calc(76px + env(safe-area-inset-right))}.touch .ni{right:calc(126px + env(safe-area-inset-right))}.touch .ex{right:calc(176px + env(safe-area-inset-right))}.touch .cm{right:calc(226px + env(safe-area-inset-right))}}
 @media (max-width:640px){#hud{--gut:12px;grid-template-columns:1fr 1fr;grid-template-rows:auto auto 1fr auto}#topCenter{grid-column:1/3;grid-row:2;order:2}#topEnd{grid-column:2;grid-row:1}#topStart{grid-column:1;grid-row:1}#bottomStart{grid-column:1;grid-row:4}#bottomEnd{grid-column:2;grid-row:4}#hints{display:none}.drawer{width:100vw}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
@@ -259,16 +260,16 @@ const AR = document.documentElement.lang !== 'en';
 const T = {
   ar: { title: 'مرسى نور', sub: 'مدينة المرفأ — تجوّل حرّ', start: 'ابدأ القيادة', building: 'تُبنى المدينة…', errT: 'تعذّر تحميل المحرّك', errS: 'تحقّق من الاتصال ثمّ أعد التحميل.',
     free: 'تجوّل حرّ', job: 'مهمّة', race: 'سباق', foot: 'سيرًا على الأقدام', explore: 'استكشاف', jobs: 'المهام', garage: 'المرآب', kmh: 'كم/س', auto: 'تلقائي', health: 'الصحّة', nitro: 'نيترو',
-    np: 'يُذاع الآن', off: 'مطفأة', fm: 'إذاعة المرسى', quay: 'الرصيف', m: 'م', cp: 'نقطة', best: 'الأفضل', cargo: 'الحمولة', esc: 'Esc إلغاء', cancelTouch: 'للإلغاء: زرّ «استكشاف»', start2: 'ابدأ', active: 'نشطة', payout: 'المكافأة',
-    drive: 'قُد بـ WASD', jobsHint: 'المهام: J', garageHint: 'المرآب: G — إصلاح، طلاء، تعديل', slow: 'أبطئ لتترجّل', recover: 'R لاسترداد المركبة', failed: 'فشلت المهمّة', done: 'أُنجزت المهمّة', newBest: 'رقم قياسيّ جديد',
+    np: 'يُذاع الآن', off: 'مطفأة', fm: 'إذاعة المرسى', quay: 'الرصيف', m: 'م', cp: 'نقطة', best: 'الأفضل', cargo: 'الحمولة', esc: 'Esc إلغاء', cancelTouch: 'للإلغاء: زرّ «استكشاف»', a11yRadio: 'الراديو', a11yLeft: 'يسار', a11yRight: 'يمين', a11yGas: 'وقود', a11yBrake: 'فرامل', a11yClose: 'إغلاق', start2: 'ابدأ', active: 'نشطة', payout: 'المكافأة',
+    drive: 'قُد بـ WASD', driveTouch: 'قُد بأزرار الشاشة', jobsHint: 'المهام: J', jobsHintTouch: 'المهام من الزرّ أعلى الشاشة', garageHint: 'المرآب: G — إصلاح، طلاء، تعديل', slow: 'أبطئ لتترجّل', recover: 'R لاسترداد المركبة', failed: 'فشلت المهمّة', done: 'أُنجزت المهمّة', newBest: 'رقم قياسيّ جديد',
     repair: 'إصلاح', full: 'إصلاح كامل', cars: 'السيّارات', paint: 'الطلاء', tune: 'التعديل', owned: 'مملوكة', inuse: 'مستخدمة', buy: 'اشترِ', select: 'اختر', nocash: 'الرصيد لا يكفي', reset: 'مسح التقدّم', sure: 'متأكّد؟ اضغط مرّة أخرى', level: 'المستوى', max: 'الأقصى',
     engine: 'المحرّك', tires: 'الإطارات', tank: 'خزّان النيترو', engineD: '+8٪ تسارع وسرعة', tiresD: '+10٪ تماسك', tankD: '+25 سعة', accel: 'تسارع', top: 'سرعة', grip: 'تماسك', nitroS: 'نيترو', free2: 'مجانًا',
     star0: 'تحت الرادار', star2: 'معروف في الميناء', star4: 'أسطورة المرسى', wp: 'نقطة الطريق', drift: 'انزلاق', go: 'انطلق', lap: 'لفّة', parks: 'حدائق', water: 'ماء', pickup: 'الاستلام', deliver: 'التسليم', gate: 'بوّابة',
     hints: [['WASD', 'قيادة'], ['Space', 'فرامل يد'], ['Shift', 'نيترو'], ['E', 'ترجّل'], ['C', 'كاميرا'], ['M', 'خريطة'], ['Q', 'راديو'], ['H', 'بوق'], ['R', 'استرداد'], ['G', 'مرآب'], ['J', 'مهام'], ['T', 'وقت']] },
   en: { title: 'Marsa Noor', sub: 'Harbor city — free roam', start: 'Start driving', building: 'Building the city…', errT: 'Engine failed to load', errS: 'Check your connection and reload.',
     free: 'Free roam', job: 'Job', race: 'Race', foot: 'On foot', explore: 'Explore', jobs: 'Jobs', garage: 'Garage', kmh: 'KM/H', auto: 'AUTO', health: 'Health', nitro: 'Nitro',
-    np: 'Now playing', off: 'Radio off', fm: 'Marsa FM', quay: 'The Quay', m: 'm', cp: 'CP', best: 'Best', cargo: 'Cargo', esc: 'Esc cancel', cancelTouch: 'To cancel: tap Explore', start2: 'Start', active: 'Active', payout: 'Payout',
-    drive: 'Drive with WASD', jobsHint: 'Jobs: J', garageHint: 'Garage: G — repair, paint, tune', slow: 'Slow down to leave', recover: 'Press R to recover', failed: 'Job failed', done: 'Job done', newBest: 'New best',
+    np: 'Now playing', off: 'Radio off', fm: 'Marsa FM', quay: 'The Quay', m: 'm', cp: 'CP', best: 'Best', cargo: 'Cargo', esc: 'Esc cancel', cancelTouch: 'To cancel: tap Explore', a11yRadio: 'Radio', a11yLeft: 'Left', a11yRight: 'Right', a11yGas: 'Gas', a11yBrake: 'Brake', a11yClose: 'Close', start2: 'Start', active: 'Active', payout: 'Payout',
+    drive: 'Drive with WASD', driveTouch: 'Drive with the on-screen buttons', jobsHint: 'Jobs: J', jobsHintTouch: 'Jobs: the button at the top', garageHint: 'Garage: G — repair, paint, tune', slow: 'Slow down to leave', recover: 'Press R to recover', failed: 'Job failed', done: 'Job done', newBest: 'New best',
     repair: 'Repair', full: 'Full repair', cars: 'Cars', paint: 'Paint', tune: 'Tuning', owned: 'Owned', inuse: 'In use', buy: 'Buy', select: 'Select', nocash: 'Not enough cash', reset: 'Reset progress', sure: 'Sure? Press again', level: 'Level', max: 'Max',
     engine: 'Engine', tires: 'Tires', tank: 'Nitro tank', engineD: '+8% accel & top', tiresD: '+10% grip', tankD: '+25 capacity', accel: 'Accel', top: 'Top', grip: 'Grip', nitroS: 'Nitro', free2: 'Free',
     star0: 'Under the radar', star2: 'Known at the port', star4: 'Harbor legend', wp: 'Waypoint', drift: 'Drift', go: 'GO', lap: 'Lap', parks: 'Parks', water: 'Water', pickup: 'Pickup', deliver: 'Deliver', gate: 'Gate',
@@ -289,7 +290,8 @@ const R = mulberry32(20261009); const rnd = (a, b) => a + R() * (b - a); const p
 
 /* ===== ٢. النصوص الثابتة ===== */
 $('introT').textContent = t('title'); $('introS').textContent = t('sub'); $('start').textContent = t('start'); $('introLoad').textContent = t('building');
-$('errT').textContent = t('errT'); $('errS').textContent = t('errS');
+$('errT').textContent = t('errT'); $('errS').textContent = t('errS'); document.title = t('title');
+for (const [sel, k] of [['#bMute', 'a11yRadio'], ['.touch .l', 'a11yLeft'], ['.touch .r', 'a11yRight'], ['.touch .gas', 'a11yGas'], ['.touch .brk', 'a11yBrake']]) { const el = document.querySelector(sel); if (el) el.setAttribute('aria-label', t(k)); } document.querySelectorAll('.drawer .close').forEach((b) => b.setAttribute('aria-label', t('a11yClose')));
 $('bExplore').querySelector('span').textContent = t('explore'); $('bJobs').querySelector('span').textContent = t('jobs'); $('bGarage').querySelector('span').textContent = t('garage');
 $('kmh').textContent = t('kmh'); $('auto').textContent = t('auto'); $('hpL').textContent = t('health'); $('niL').textContent = t('nitro'); $('npL').textContent = t('np');
 $('jobsH').textContent = t('jobs'); $('garageH').textContent = t('garage'); $('gReset').textContent = t('reset');
@@ -400,9 +402,9 @@ const PITCH = 62, BLK = 48, ROADW = 14, NI = 9, NJ = 7;
 const bx = (i) => (i - 4) * PITCH, bz = (j) => (j - 3) * PITCH; // مركز الكتلة
 const rx = (k) => -279 + 62 * k, rz = (m) => -217 + 62 * m; // محاور الطرق
 const CORNICHE = rz(7), SEAWALL = 248, BOULEVARD_K = 5;
-const NS_NAMES = [['طريق الفنار', 'Lighthouse Road'], ['شارع الموج', 'Wave St'], ['شارع الرافعة', 'Crane St'], ['شارع القناطر', 'Arches St'], ['شارع النخيل', 'Palm St'], ['شارع اللؤلؤ', 'Pearl Boulevard'], ['شارع الزعفران', 'Saffron St'], ['شارع الصيادين', 'Fishermen St'], ['شارع المرجان', 'Coral St'], ['طريق الحدّ', 'Boundary Road']];
+const NS_NAMES = [['طريق الفنار', 'Lighthouse Road'], ['شارع الموج', 'Wave St'], ['شارع الرافعة', 'Crane St'], ['شارع القناطر', 'Arches St'], ['شارع النخيل', 'Palm St'], ['شارع اللؤلؤ', 'Pearl Boulevard'], ['شارع الزعفران', 'Saffron St'], ['شارع الصيّادين', 'Fishermen St'], ['شارع المرجان', 'Coral St'], ['طريق الحدّ', 'Boundary Road']];
 const EW_NAMES = [['شارع الشمس', 'Sun St'], ['شارع السوق', 'Market St'], ['شارع الساعة', 'Clock St'], ['شارع البحّارة', 'Mariners St'], ['شارع الريح', 'Wind St'], ['شارع الطابوق', 'Brick St'], ['شارع الدار', 'Dar St'], ['الكورنيش', 'Corniche']];
-const SHOPS = [['مقهى الميناء', 'Harbor Cafe'], ['بقالة الرصيف', 'Quay Grocer'], ['مخبز اللؤلؤ', 'Pearl Bakery'], ['صيدليّة النور', 'Noor Pharmacy'], ['مطعم الصيادين', 'Fishermen Grill'], ['خيّاط المرسى', 'Marsa Tailor'], ['مكتبة الساعة', 'Clock Books'], ['حلويّات الزعفران', 'Saffron Sweets'], ['ورشة الفوانيس', 'Lantern Workshop'], ['بيت الصحافة', 'Press House'], ['مطبخ الميناء', 'Harbor Kitchen'], ['كشك الساحة', 'Square Kiosk']];
+const SHOPS = [['مقهى الميناء', 'Harbor Cafe'], ['بقالة الرصيف', 'Quay Grocer'], ['مخبز اللؤلؤ', 'Pearl Bakery'], ['صيدليّة النور', 'Noor Pharmacy'], ['مطعم الصيّادين', "Fishermen's Grill"], ['خيّاط المرسى', 'Marsa Tailor'], ['مكتبة الساعة', 'Clock Books'], ['حلويّات الزعفران', 'Saffron Sweets'], ['ورشة الفوانيس', 'Lantern Workshop'], ['بيت الصحافة', 'Press House'], ['مطبخ الميناء', 'Harbor Kitchen'], ['كشك الساحة', 'Square Kiosk']];
 function district(i, j) {
   if ((i === 1 && j === 2) || (i === 7 && j === 2)) return 'park';
   if (i === 4 && j === 4) return 'plaza';
@@ -969,8 +971,8 @@ function stepTram(dt) {
 
 /* ===== ١٦. المهام والسباق ===== */
 const JOBS = [
-  { id: 'paper', name: { ar: 'جولة الصحف', en: 'The Paper Run' }, brief: { ar: 'من بيت الصحافة إلى كشك الساحة.', en: 'From the Press House to the Square kiosk.' }, pay: 220, bonus: [90, 80], from: [bx(2) - 24.5, bz(5)], to: [bx(4) + 20, bz(4) + 20], fromN: { ar: 'بيت الصحافة', en: 'Press House' }, toN: { ar: 'كشك الساحة', en: 'Square Kiosk' } },
-  { id: 'soup', name: { ar: 'حساء للحدّاد', en: 'Soup for the Smith' }, brief: { ar: 'حمولة هشّة: كلّ اصطدام قويّ يُنقص الأجر ٢٠٪.', en: 'Fragile cargo: every hard hit cuts the pay by 20%.' }, pay: 300, fragile: true, from: [-62, CORNICHE - 10], to: [bx(7), bz(6) - 24.5], fromN: { ar: 'مطبخ الميناء', en: 'Harbor Kitchen' }, toN: { ar: 'الورشة', en: 'The Forge' } },
+  { id: 'paper', name: { ar: 'جولة الصحف', en: 'The Paper Run' }, brief: { ar: 'من بيت الصحافة إلى كشك الساحة.', en: 'From the Press House to the Square Kiosk.' }, pay: 220, bonus: [90, 80], from: [bx(2) - 24.5, bz(5)], to: [bx(4) + 20, bz(4) + 20], fromN: { ar: 'بيت الصحافة', en: 'Press House' }, toN: { ar: 'كشك الساحة', en: 'Square Kiosk' } },
+  { id: 'soup', name: { ar: 'حساء للحدّاد', en: 'Soup for the Smith' }, brief: { ar: 'حمولة هشّة: كلّ اصطدام قويّ يُنقص الأجر ٢٠٪.', en: 'Fragile cargo: every hard hit cuts the pay by 20%.' }, pay: 300, fragile: true, from: [-62, CORNICHE - 10], to: [bx(7), bz(6) - 24.5], fromN: { ar: 'مطبخ الميناء', en: 'Harbor Kitchen' }, toN: { ar: 'ورشة الحدّاد', en: 'The Forge' } },
   { id: 'lanterns', name: { ar: 'فوانيس للرصيف', en: 'Lanterns for the Quay' }, brief: { ar: '١٥٠ ثانية وثلاثة فوانيس — لا تفقدها.', en: '150 seconds and three lanterns — keep them.' }, pay: 380, timer: 150, lanterns: true, from: [bx(1) - 24.5, bz(2)], to: [0, 300], fromN: { ar: 'ورشة الفوانيس', en: 'Lantern Workshop' }, toN: { ar: 'نهاية الرصيف الأوسط', en: 'Center pier end' } },
   { id: 'race', name: { ar: 'سباق الطريق الدائريّ', en: 'Ring Road Relay' }, brief: { ar: 'لفّة كاملة عبر ٨ بوّابات. أقلّ من دقيقتين: مكافأة.', en: 'One lap through 8 gates. Under 2:00: bonus.' }, pay: 600, race: true },
 ];
@@ -1089,7 +1091,7 @@ function updateHUD(dt) {
 /* ===== ١٨. الصوت ===== */
 const sfx = (() => {
   let ac = null, master, sfxBus, radioBus, analyser, eng = null, skid = null, wind = null, rumbleN = null, wreckN = null, ducked = false, radioOn = S.settings.radio !== false, track = S.settings.track || 0, seq = null, radioGainV = 0.35;
-  const STATIONS = [{ ar: 'أضواء الرصيف', en: 'Quay Lights' }, { ar: 'خطّ الترام ٣', en: 'Tram Line 3' }, { ar: 'صوت الصيادين', en: "Fishermen's Voice" }];
+  const STATIONS = [{ ar: 'أضواء الرصيف', en: 'Quay Lights' }, { ar: 'خطّ الترام ٣', en: 'Tram Line 3' }, { ar: 'صوت الصيّادين', en: "Fishermen's Voice" }];
   function init() { if (ac) return; try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } master = ac.createDynamicsCompressor(); master.connect(ac.destination); sfxBus = ac.createGain(); sfxBus.gain.value = 0.8; sfxBus.connect(master);
     radioBus = ac.createGain(); radioBus.gain.value = 0; const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 90; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000; analyser = ac.createAnalyser(); analyser.fftSize = 64; radioBus.connect(hp).connect(lp).connect(analyser).connect(master);
     const noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; ac.noise = noiseBuf;
@@ -1183,7 +1185,7 @@ function boot() {
   selectCar(S.carsOwned.includes(S.selected) ? S.selected : 'kestrel'); V.hp = S.health[carDef.id] != null ? S.health[carDef.id] : carStats().HP; if (V.hp <= 0) { V.hp = 20; }
   applyTime(); setMode(); updateStars(); renderJobs(); updateHUD(0);
   $('introLoad').textContent = ''; if (S.raceBest) $('introSt').innerHTML = fmtCash(S.cash) + ' · ' + t('best') + ' <span class="num">' + fmtTime(S.raceBest) + '</span>'; else if (S.cash !== 800) $('introSt').textContent = fmtCash(S.cash);
-  const go = () => { if (started) return; started = true; sfx.init(); sfx.resume(); $('intro').classList.add('gone'); document.documentElement.classList.remove('pre'); setTimeout(() => { $('intro').style.display = 'none'; }, 600); $('c').focus(); setTimeout(() => toast(t('drive')), 300); setTimeout(() => toast(t('jobsHint')), 6000); };
+  const go = () => { if (started) return; started = true; sfx.init(); sfx.resume(); $('intro').classList.add('gone'); document.documentElement.classList.remove('pre'); setTimeout(() => { $('intro').style.display = 'none'; }, 600); $('c').focus(); setTimeout(() => toast(t(COARSE ? 'driveTouch' : 'drive')), 300); setTimeout(() => toast(t(COARSE ? 'jobsHintTouch' : 'jobsHint')), 6000); };
   $('start').onclick = go; addEventListener('keydown', go, { once: true }); $('c').addEventListener('pointerdown', go, { once: true });
   if (DEBUG) { $('dbg').style.display = 'block'; window.__marsa = { V, S, keys, scene, renderer, camera, car, startJob, JOBS, traffic, peds, leaveCar, enterCar, go, get job() { return job; }, nBuildings, toggleTime, sfx, TOGGLES, openJobs, openGarage, closeDrawers, openBigMap, closeBigMap, cancelJob, charState, get camMode() { return camMode; }, set camMode(v) { camMode = v; },
     snapCam() { camInit = false; },
