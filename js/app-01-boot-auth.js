@@ -538,11 +538,19 @@ try{
         + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">🧹 حذفها كلها</button>'
         + '</div>'
       : '';
+    /* v-sec-admin-xss: تدقيق ١٠ أكتوبر — التسجيل يقبل أيّ حروف في الاسم، وهذا الجدول كان يلصق الاسم والإيميل في
+       HTML وفي onclick بتهريب «'» وحده: اسم مثل ‹<img src=x onerror=…>› جرى سكربتًا حين فتح المالك لوحة الإدارة،
+       و«"» في الاسم كسر السمة وحقن onmouseover، و«\'» أغلق نصّ JS (المسبار: pwned=1, attrInjected=true).
+       الآن النصّ المرئيّ يُهرَّب HTML كاملًا، والاسم داخل onclick يُهرَّب نصَّ JS أوّلًا (\ ' وفواصل الأسطر) ثمّ
+       سمةَ HTML (المتصفّح يفكّ الكيانات قبل أن يقرأ JS). سمات onclick باقية عمدًا: delete-confirm.js يقرأ
+       ‹adminDeleteUser('…')› منها ليحدّد الصفوف بالضغط المطوّل ويحذفها دفعة واحدة. الشكل والأفعال كما كانت. */
+    const escAdm = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    const jsAdm = (s) => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
     wrap.innerHTML = purgeBar + users.map(u => {
-      const safeName = String(u.username).replace(/'/g,"\\'");
+      const safeName = escAdm(jsAdm(u.username));
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + u.username + '</span>'
-        + '<span style="font-size:11px;opacity:.6">' + (u.email || 'بدون إيميل') + '</span>'
+        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + escAdm(u.username) + '</span>'
+        + '<span style="font-size:11px;opacity:.6">' + escAdm(u.email || 'بدون إيميل') + '</span>'
         + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
         + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + (u.banned ? 'فك الحظر' : 'حظر') + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
         + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'

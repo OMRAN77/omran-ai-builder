@@ -1,5 +1,5 @@
 // رأيك يهمنا — user feedback storage (Upstash Redis)
-// POST { rating, chips, note, user, lang } -> saved (capped list)
+// POST { rating, chips, note, lang, token? } -> saved (capped list) — الاسم من الجلسة الموقّعة لا من الجسم
 // GET ?key=MONITOR_KEY أو ?token=<جلسة المالك> -> { feedback: [...] } (owner only)
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
@@ -8,6 +8,27 @@ const REPORTS_PATH = 'db/reports/list.json';
 const MAX_ITEMS = 200;
 const { isOwner } = require('./_owner.js');
 const { logError } = require('./log-error.js');
+const { sessionUser, tokenOf } = require('./_session.js');
+
+/* v-sec-feedback: تدقيق ١٠ أكتوبر — POST بلا دخول كان يخزّن `user` و`chips` كما أرسلها أيّ زائر، ولوحة المالك
+   («آراء المستخدمين») ترسمها HTML، فجرى سكربت في متصفّح المالك من ثلاث طلبات بلا حساب (المسبار: fb=1 ch=1).
+   الاسم الآن من رمز جلسة موقَّع وحده (الجسم/‎?token=‎/Bearer، ثمّ كوكي aiapp_auth_token الذي يرسله المتصفّح
+   تلقائيًّا لمن اختار «تذكّرني») وإلّا ‹guest› — `body.user` لا يُصدَّق أبدًا. والشرائح من القائمة المعروفة وحدها.
+   والعرض في العميل يهرّب كلّ حقل أيضًا (السجلّات القديمة المخزّنة قبل الإصلاح). */
+const FB_CHIPS = ['fbChipEasy', 'fbChipDesign', 'fbChipAI', 'fbChipSlow', 'fbChipBug']; // = fbChipKeys في app-05-ui.js
+
+function cookieToken(req) {
+  const m = String((req && req.headers && req.headers.cookie) || '').match(/(?:^|;\s*)aiapp_auth_token=([^;]*)/);
+  if (!m) return '';
+  try { return decodeURIComponent(m[1]); } catch (e) { return ''; } // كوكي مشوّه = لا جلسة
+}
+
+/** صاحب الطلب من رمز جلسة صالح فقط، وإلّا ‹guest›. */
+function verifiedUser(req, body) {
+  const tok = body && body.token ? String(body.token) : tokenOf(req);
+  const u = sessionUser(tok) || sessionUser(cookieToken(req));
+  return u ? u.slice(0, 40) : 'guest';
+}
 
 async function readList() {
   try {
@@ -45,9 +66,9 @@ module.exports = async (req, res) => {
       try { const r = await kvGetJSON(REPORTS_PATH); if (Array.isArray(r)) reports = r; } catch (e) { logError('feedback/kv-read', e); }
       reports.unshift({
         content,
-        provider: String(body.provider || '').slice(0, 30),
-        user: String(body.user || 'guest').slice(0, 40),
-        lang: String(body.lang || '').slice(0, 8),
+        provider: String(body.provider || '').replace(/[<>"'&`]/g, '').slice(0, 30),
+        user: verifiedUser(req, body),
+        lang: String(body.lang || '').replace(/[^\w-]/g, '').slice(0, 8),
         ts: new Date().toISOString()
       });
       await kvPutJSON(REPORTS_PATH, reports.slice(0, MAX_ITEMS));
@@ -57,15 +78,15 @@ module.exports = async (req, res) => {
 
     const rating = Math.max(1, Math.min(5, parseInt(body.rating, 10) || 0));
     if (!rating) { res.status(400).json({ error: 'no rating' }); return; }
-    const chips = Array.isArray(body.chips) ? body.chips.slice(0, 6).map(c => String(c).slice(0, 40)) : [];
+    const chips = Array.isArray(body.chips) ? [...new Set(body.chips.slice(0, 10).map(String))].filter(c => FB_CHIPS.includes(c)) : [];
     const note = String(body.note || '').slice(0, 1000);
     const items = await readList();
     items.unshift({
       rating,
       chips,
       note,
-      user: String(body.user || 'guest').slice(0, 40),
-      lang: String(body.lang || '').slice(0, 8),
+      user: verifiedUser(req, body),
+      lang: String(body.lang || '').replace(/[^\w-]/g, '').slice(0, 8),
       ts: new Date().toISOString()
     });
     await kvPutJSON(LOG_PATH, items.slice(0, MAX_ITEMS));
