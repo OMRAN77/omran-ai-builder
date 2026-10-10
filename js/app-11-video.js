@@ -1,4 +1,4 @@
-/* ---------- 🎬 AI Video Maker (Runway / Veo 3, server-side owner key) ---------- */
+/* ---------- 🎬 AI Video Maker (Runway / Veo 3 / MiniMax, server-side owner key) ---------- */
 (function(){
   const modal = $('#videoMakerModal');
   const btnOpen = $('#btnVideoMaker');
@@ -420,9 +420,16 @@
     });
   }
 
+  /* v-video-modes-by-result (١٠ أكتوبر ٢٠٢٦): وضع «الدمج» خرج من القائمة وصار مربّع «مقدّمة وخاتمة بتوقيعك» يظهر لأوضاع
+     الذكاء (سريع/جودة عالية/سينمائيّ) ويلتفّ بمقدّمة وخاتمة الكانفا حول لقطة المحرّك المختار (wrapWithCanvas). */
+  const wrapRow = document.getElementById('videoMakerWrapRow');
+  const wrapToggle = document.getElementById('videoMakerWrapToggle');
+  function isAiMode(m){ return m === 'minimax' || m === 'runway' || m === 'veo'; }
+  function wantCanvasWrap(){ return isAiMode(modeEl.value) && !!(wrapToggle && wrapToggle.checked); }
   function updateModeUI(){
     const m = modeEl.value;
-    signatureRow.style.display = (m === 'canvas' || m === 'hybrid') ? 'flex' : 'none';
+    if(wrapRow) wrapRow.style.display = isAiMode(m) ? 'flex' : 'none';
+    signatureRow.style.display = (m === 'canvas' || m === 'hybrid' || wantCanvasWrap()) ? 'flex' : 'none';
     const actorRowEl = document.getElementById('videoMakerActorRow');
     if(actorRowEl) actorRowEl.style.display = (m === 'actor') ? 'flex' : 'none';
     const actorVoiceRowEl = document.getElementById('videoMakerActorVoiceRow'); /* v-actor-lipsync */
@@ -430,6 +437,7 @@
     syncFilmHeroRow();
   }
   modeEl.onchange = updateModeUI;
+  if(wrapToggle) wrapToggle.onchange = updateModeUI;
   updateModeUI();
 
   narrationToggle.onchange = () => {
@@ -740,6 +748,20 @@
 
   async function runHybrid(text, style, ratio, durationVal, signature, token, wantNarration, narrationVal){
     const seconds = (durationVal === 'long20') ? 10 : (parseInt(durationVal, 10) || 5);
+    setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
+    /* v-video-photo-identity: وضع الدمج يُظهر خانة صورة البطل لكنّه كان لا يرسلها — فيخترع المحرّك شخصًا. */
+    const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
+      setStatus(isEn()
+        ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
+        : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+    }, filmHeroBase64, filmHeroMime);
+    await wrapWithCanvas(mainUrl, text, ratio, signature, wantNarration, narrationVal);
+  }
+
+  /* v-video-modes-by-result: «مقدّمة وخاتمة بتوقيعك» — ما كان وضع «الدمج» يفعله بعد لقطة المحرّك الأساسيّ صار يعمل على لقطة
+     أيّ محرّك ذكاء (رابط أو Blob): مقدّمة كانفا بالعنوان + اللقطة (+ علامة التوقيع) + خاتمة كانفا + تعليق صوتيّ اختياريّ.
+     صوت اللقطة نفسها (سريع بصوت / سينمائيّ) يبقى: يُؤخّر ثانيتَي المقدّمة ويُدمج؛ لقطة بلا مسار صوت تخرج صامتة كما كانت. */
+  async function wrapWithCanvas(mainSrc, text, ratio, signature, wantNarration, narrationVal){
     setStatus(bT('🎨 جاري إنشاء المقدمة...','🎨 Building intro...'));
     const introBlob = await recordCanvasClip({ title: text, signature: '', seconds: 2, ratio });
     setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
@@ -748,22 +770,13 @@
       signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
       seconds: 2, ratio,
     });
-
-    setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
-    /* v-video-photo-identity: وضع الدمج يُظهر خانة صورة البطل لكنّه كان لا يرسلها — فيخترع المحرّك شخصًا. */
-    const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
-      setStatus(isEn()
-        ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
-        : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-    }, filmHeroBase64, filmHeroMime);
     setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
-
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
 
     await ffmpeg.writeFile('intro.webm', await fetchFile(introBlob));
     await ffmpeg.writeFile('outro.webm', await fetchFile(outroBlob));
-    await ffmpeg.writeFile('main.mp4', await fetchFile(mainUrl));
+    await ffmpeg.writeFile('main.mp4', await fetchFile(mainSrc));
 
     let mainForConcat = 'main.mp4';
     if(signature){
@@ -788,7 +801,12 @@
       '[v0][v1][v2]concat=n=3:v=1:a=0[outv]',
       '-map', '[outv]', 'final.mp4',
     ]);
-    const data = await ffmpeg.readFile('final.mp4');
+    let finalName = 'final.mp4';
+    try{
+      const rc = await ffmpeg.exec(['-i', 'final.mp4', '-i', 'main.mp4', '-filter_complex', '[1:a]adelay=2000|2000[a]', '-map', '0:v:0', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', 'final_a.mp4']);
+      if(rc === 0) finalName = 'final_a.mp4';
+    } catch(e){ /* guard-ok — لقطة بلا مسار صوت: الناتج صامت كما كان في وضع الدمج */ }
+    const data = await ffmpeg.readFile(finalName);
     let finalBlob = new Blob([data.buffer], { type: 'video/mp4' });
 
     if(wantNarration){
@@ -1057,7 +1075,7 @@
             guard.ok();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل المحرّك السينمائيّ.','The cinematic engine failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
           } catch(e){ guard.fail(iv); }
         }, 8000);
       });
@@ -1069,15 +1087,17 @@
         /* v-film-mode-gate (بلاغ مُثبَت: فحص «فيلم متكامل» يسبق فحص الوضع كلّه، فكانفا المجّانيّ والاقتصاديّ
            والسينمائيّ والدمج والممثّل كانت تُرسَل بصمت إلى محرّك الفيديو الأساسيّ المدفوع): الفيلم مبنيّ على
            محرّكين فقط — غيرهما يُوقَف هنا قبل أيّ نداء أو خصم، برسالة واضحة لا تحويل صامت. */
-        if(creationMode !== 'runway' && !filmUseVeo){
+        /* v-video-modes-by-result: «سريع» صار الافتراضيّ — في الفيلم يسلك مسلك المحرّك الأساسيّ كما كان الافتراضيّ السابق (الفيلم
+           مبنيّ على محرّكين: الأساسيّ والسينمائيّ)؛ «بدون ذكاء» و«ممثّل» يبقيان موقوفين برسالة. */
+        if(creationMode !== 'runway' && creationMode !== 'minimax' && !filmUseVeo){
           setStatus((typeof window.t === 'function' && window.t('videoFilmModeOnly') !== 'videoFilmModeOnly') ? window.t('videoFilmModeOnly')
-            : bT('🎬 «فيلم متكامل» يعمل مع وضع «فيديو AI» فقط — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
-                 '🎬 "Full mini-film" works with the "AI video" mode only — change the mode or pick another length. Nothing was charged.'));
+            : bT('🎬 «فيلم متكامل» يعمل مع أوضاع الذكاء فقط (سريع / جودة عالية / سينمائيّ) — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
+                 '🎬 "Full mini-film" works with the AI modes only (Fast / High quality / Cinematic) — change the mode or pick another length. Nothing was charged.'));
           btnGenerate.disabled = false;
           return;
         }
         if(filmUseVeo && !isOwnerAccount()){
-          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
+          setStatus(bT('🔒 الوضع السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic mode is limited to the owner account for now.'));
           btnGenerate.disabled = false;
           return;
         }
@@ -1111,7 +1131,7 @@
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? bT(' (سينمائيّ)',' (cinematic)') : '') + '...');
           /* v-video-photo-identity: كان يُلحق «ضعه في وسط الإطار بلقطة متوسّطة» — أمر إعادة تأطير يعاكس
              الإطار الأوّل (الصورة نفسها) فيُعاد رسم الوجه بمقاس آخر. قفل الهويّة يبنيه الخادم لكلّ محرّك. */
           const scenePromptWithHero = sc.visual || text;
@@ -1282,6 +1302,7 @@
            المشغّل يأخذ رابطه الخامّ كفرع Runway */
         let vurl;
         try{ vurl = URL.createObjectURL(await proxyBlob(videoUrl)); }catch(e){ vurl = videoUrl; }
+        if(wantCanvasWrap()){ await wrapWithCanvas(vurl, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; } /* v-video-modes-by-result */
         setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
         resultEl.style.display = 'block';
@@ -1299,7 +1320,7 @@
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
+          setStatus(bT('🔒 الوضع السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic mode is limited to the owner account for now.'));
           return;
         }
         let veoPrompt = text;
@@ -1352,7 +1373,7 @@
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
-        setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
+        setStatus(bT('🚀 جاري الإرسال إلى المحرّك السينمائيّ...','🚀 Sending to the cinematic engine...'));
         const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         const cr = await fetch('/api/video?action=veo-create', {
@@ -1372,8 +1393,8 @@
               guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
-              else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل المحرّك السينمائيّ.','The cinematic engine failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+              else setStatus(bT('⏳ يولّد الفيديو السينمائيّ (قد يستغرق ١-٣ دقائق)...','⏳ Generating the cinematic video (may take 1-3 min)...'));
             } catch(e){ guard.fail(iv); }
           }, 8000);
         });
@@ -1381,6 +1402,7 @@
         const vres = await fetch(proxyVideoUrl(videoUrl));
         if(!vres.ok) throw new Error('download failed ' + vres.status);
         const vblob = await vres.blob();
+        if(creationMode === 'veo' && wantCanvasWrap()){ await wrapWithCanvas(vblob, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; } /* v-video-modes-by-result */
         const vurl = URL.createObjectURL(vblob);
         setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
@@ -1594,6 +1616,8 @@
           playerUrl = finalSrc; // آخر ملاذ للمشغّل فقط
         }
       }
+      /* v-video-modes-by-result: التعليق الصوتيّ دُمج أعلاه إن طُلب — فلا يُعاد هنا */
+      if(wantCanvasWrap()){ await wrapWithCanvas(finalIsBlob ? finalSrc : playerUrl, text, ratio, signature, false, ''); return; }
       setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
       resultEl.src = playerUrl;
       resultEl.style.display = 'block';

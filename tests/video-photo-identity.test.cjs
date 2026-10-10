@@ -99,18 +99,21 @@ test('٣. الاقتصاديّ مع صورة: قفل الهويّة يصل في 
   const res = await runHandler('api/_lib/minimax-create.js', {
     'api/_lib/_videoUsage.js': ownerUsage, 'api/_lib/video-job.js': noJob,
   }, { promptText: 'يركض على الشاطئ', token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg' },
-  async (u, o) => { sent = JSON.parse(o.body); return { ok: true, json: async () => ({ task_id: 'm1', base_resp: { status_code: 0 } }) }; });
+  async (u, o) => { sent = JSON.parse(o.body); return { ok: true, json: async () => ({ task_id: 'm1' }) }; });
   assert.equal(res.code, 200, JSON.stringify(res.body));
-  assert.equal(sent.first_frame_image, 'data:image/jpeg;base64,' + PHOTO);
-  assert.match(sent.prompt, /^MAIN CHARACTER: the real person in the attached reference photo/);
-  assert.match(sent.prompt, /يركض على الشاطئ/);
-  assert.match(sent.prompt, /IDENTITY \(mandatory\)[^]*recognize them instantly\.$/);
+  /* v-minimax-h3: جسم v2 — content[0] النصّ وcontent[1] صورة أوّل الإطار */
+  assert.equal(sent.content[1].image_url.url, 'data:image/jpeg;base64,' + PHOTO);
+  assert.equal(sent.content[1].role, 'first_frame');
+  assert.match(sent.content[0].text, /^MAIN CHARACTER: the real person in the attached reference photo/);
+  assert.match(sent.content[0].text, /يركض على الشاطئ/);
+  assert.match(sent.content[0].text, /IDENTITY \(mandatory\)[^]*recognize them instantly\.$/);
   // بلا صورة: الوصف كما هو
   let plain = null;
   await runHandler('api/_lib/minimax-create.js', { 'api/_lib/_videoUsage.js': ownerUsage, 'api/_lib/video-job.js': noJob },
     { promptText: 'غروب فوق البحر', token: 't' },
-    async (u, o) => { plain = JSON.parse(o.body); return { ok: true, json: async () => ({ task_id: 'm2', base_resp: { status_code: 0 } }) }; });
-  assert.equal(plain.prompt, 'غروب فوق البحر');
+    async (u, o) => { plain = JSON.parse(o.body); return { ok: true, json: async () => ({ task_id: 'm2' }) }; });
+  assert.equal(plain.content[0].text, 'غروب فوق البحر');
+  assert.equal(plain.content.length, 1, 'بلا صورة لا عنصر صورة');
 });
 
 /* v-omni-first-frame: هذا صار المسار الاحتياطيّ (إطفاء أوّل الإطار أو عطبه) — المسار الأساسيّ بأوّل إطار بوجهه

@@ -1,10 +1,19 @@
-// Vercel Serverless Function: starts an AI video generation task on MiniMax
-// (Hailuo) — the "economy" engine added alongside Runway and Veo. Uses the
-// site owner's own server-side key (MINIMAX_API_KEY env var). Async: returns a
-// task_id that /api/video?action=minimax-status polls until the clip is ready.
+// Vercel Serverless Function: starts an AI video generation task on MiniMax —
+// the "economy" engine added alongside Runway and Veo. Uses the site owner's
+// own server-side key (MINIMAX_API_KEY env var). Async: returns a task_id that
+// /api/video?action=minimax-status polls until the clip is ready.
 // Points/quota mirror the Veo path (owner bypass, per-account cooldown, refund
 // on upstream failure), at the cheaper minimax_video cost.
+// v-minimax-h3 (قرار المالك ١٠ أكتوبر ٢٠٢٦: «رفع الاقتصاديّ لإصداره الجديد بصوت بضعف التكلفة»): واجهة v2
+// (POST /v2/video_generation) بنموذج MiniMax-H3 — الجسم بصيغة content، والدقّة 768P/2K، والنسبة بصيغة 16:9.
 const { checkOwnerBypass } = require('./_videoUsage');
+
+/* v-minimax-h3: نسبة العميل (عرض:ارتفاع بالبكسل) → نسبة v2؛ مع صورة أوّل إطار 'adaptive' (تتبع الصورة). */
+const RATIO_V2 = { '1280:720': '16:9', '720:1280': '9:16' };
+function toV2Ratio(ratio, hasImage) {
+  if (hasImage) return 'adaptive';
+  return RATIO_V2[String(ratio || '').trim()] || '16:9';
+}
 
 // api.minimax.io هو مضيف المنصّة الدوليّة. اسم المضيف قابل للضبط من البيئة إن غيّروه.
 const MM_BASE = (process.env.MINIMAX_API_BASE || 'https://api.minimax.io').replace(/\/+$/, '');
@@ -36,7 +45,7 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Missing promptText' });
       return;
     }
-    // Hailuo تقبل 6 أو 10 ثوانٍ — نُثبّت أي قيمة أخرى على الأقرب.
+    // المدّة تبقى مثبّتة على 6 أو 10 ثوانٍ (ضمن ٤–١٥ التي تقبلها v2) — نُثبّت أي قيمة أخرى على الأقرب.
     let durSec = parseInt(durationSeconds, 10);
     durSec = (durSec >= 8) ? 10 : 6;
 
@@ -80,7 +89,8 @@ module.exports = async (req, res) => {
     if (!apiKey) {
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      res.status(500).json({ error: 'Server is missing MINIMAX_API_KEY' });
+      console.error('[minimax-create] missing provider key'); /* v-minimax-h3: لا اسم مفتاح ولا مزوّد في نصّ المستخدم (قاعدة المالك) */
+      res.status(500).json({ error: 'تعذّر بدء الفيديو الآن — الخدمة غير مهيّأة. أعد المحاولة لاحقًا.' });
       return;
     }
 
@@ -95,28 +105,30 @@ module.exports = async (req, res) => {
       } else console.warn('[minimax-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
 
-    const model = process.env.MINIMAX_VIDEO_MODEL || 'MiniMax-Hailuo-02';
-    const resolution = quality === 'high' ? '1080P' : '768P';
+    const model = process.env.MINIMAX_VIDEO_MODEL || 'MiniMax-H3';
+    const resolution = quality === 'high' ? '2K' : '768P'; // v-minimax-h3: H3 بلا دقّة وسطى — العالية 2K (مشتركو الجودة العالية وحدهم)
     const prompt = String(promptText).trim().slice(0, 1500);
+    const hasImage = !!(imageBase64 && String(imageBase64).trim());
 
-    const payload = { model, prompt, duration: durSec, resolution };
-    // صورة مرفقة → تحريك الصورة نفسها (image-to-video) عبر first_frame_image.
-    if (imageBase64 && String(imageBase64).trim()) {
-      payload.first_frame_image = 'data:' + (imageMime || 'image/png') + ';base64,' + String(imageBase64).trim();
+    /* v-minimax-h3: جسم v2 — content[] نصّ (+ صورة أوّل إطار كرابط data مع role first_frame)، والنسبة بصيغة 16:9. */
+    const content = [{ type: 'text', text: prompt }];
+    // صورة مرفقة → تحريك الصورة نفسها (image-to-video) عبر first_frame.
+    if (hasImage) {
+      content.push({ type: 'image_url', image_url: { url: 'data:' + (imageMime || 'image/png') + ';base64,' + String(imageBase64).trim() }, role: 'first_frame' });
     }
+    const payload = { model, content, duration: durSec, resolution, ratio: toV2Ratio(ratio, hasImage) };
 
-    const upstream = await fetch(MM_BASE + '/v1/video_generation', {
+    const upstream = await fetch(MM_BASE + '/v2/video_generation', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const data = await upstream.json().catch(() => ({}));
-    // MiniMax يعيد 200 مع base_resp.status_code≠0 عند الرفض المنطقيّ — نعامله كفشل.
-    const okCode = data && data.base_resp && Number(data.base_resp.status_code) === 0;
-    if (!upstream.ok || !data.task_id || !okCode) {
+    // v2: النجاح ٢٠٠ مع task_id وحده؛ الخطأ بحالة HTTP غير ٢٠٠ وجسم { type:'error', error:{ message } } (لا حقل حالة داخليّ كما في v1).
+    if (!upstream.ok || !data || !data.task_id) {
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      const tech = String((data && data.base_resp && data.base_resp.status_msg) || ('HTTP ' + upstream.status)).slice(0, 160);
+      const tech = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).slice(0, 160);
       res.status(upstream.ok ? 502 : upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات. (' + tech + ')', retryable: true });
       return;
     }
@@ -124,6 +136,7 @@ module.exports = async (req, res) => {
     await require('./video-job.js').rememberVideoJob(data.task_id, { username: chargedUser, cost: pointsLib.COSTS.minimax_video, locked: !!videoLocked });
     res.status(200).json({ task_id: data.task_id });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[minimax-create] ' + (e && e.stack ? e.stack : e)); /* v-minimax-h3: التفصيل التقنيّ للسجلّ، والمستخدم رسالة عربيّة بلا اسم مزوّد */
+    res.status(500).json({ error: 'تعذّر بدء الفيديو الآن. أعد المحاولة.' });
   }
 };

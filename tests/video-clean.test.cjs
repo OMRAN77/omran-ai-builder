@@ -82,7 +82,7 @@ test('عارض مستقلّ: نتيجة المولّد لا تُمسّ، ولا 
 });
 
 test('القسم: تبويب «تحسين فيديو» لا يغيّر الوضع ولا يُظهر زرّ الإنشاء المدفوع، ولا خادم ولا مزوّد', () => {
-  assert.ok(js.includes("var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor','clean'];"));
+  assert.ok(js.includes("var TABS=['trend','minimax','runway','veo','actor','canvas','clean'];"));
   assert.ok(js.includes("if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v)"), 'لا يضبط الـselect');
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-studio.vmk-tab-clean .vmk-main>:not(#vmkClean){display:none!important}'), 'كلّ ما عدا القسم مخفيّ، ومنه زرّ الإنشاء');
@@ -104,6 +104,6 @@ test('النصوص بالـ١٤ لغة والوسوم مرفوعة', () => {
     assert.ok(/\{n\}/.test(s.match(/vclTooBig: "([^"]+)"/)[1]), lg + ' vclTooBig {n}');
   });
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=439"') && h.includes('modules.css?v=675'));
+  assert.ok(h.includes('src="/js/video.js?v=440"') && h.includes('modules.css?v=675'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=733'"));
 });

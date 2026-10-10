@@ -79,7 +79,7 @@
     card.dataset.vmk='1';
   }
   /* ═══ v-vmk-sections: شريط الأقسام (الترندات + الأوضاع) ═══ */
-  var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor','clean'];
+  var TABS=['trend','minimax','runway','veo','actor','canvas','clean']; /* v-video-modes-by-result: بترتيب القائمة؛ omni وhybrid خرجا منها */
   var tab='trend';
   /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
   var VIDEOS={};
@@ -229,7 +229,7 @@
     more.querySelector('summary').textContent=L('vcMore');
     var st=id('videoMakerStyle'), stBox=st&&st.parentElement;
     var nt=id('videoMakerNarrationToggle'), ntLab=nt&&nt.closest('label');
-    [id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
+    [id('vmkChars'),stBox,id('videoMakerWrapRow'),id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
      ntLab,id('videoMakerVoiceGenderRow'),id('videoMakerNarrationRow'),M.querySelector('details.vmk-adv')].forEach(function(e){
       if(e&&e.parentNode!==body) body.appendChild(e);
     });

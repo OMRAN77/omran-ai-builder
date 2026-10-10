@@ -3482,7 +3482,7 @@ const I18N = {
     videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
     /* v-video-seq-cooldown + v-film-mode-gate */
     videoSceneWait: '⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.',
-    videoFilmModeOnly: '🎬 «فيلم متكامل» يعمل مع وضع «فيديو AI» فقط — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
+    videoFilmModeOnly: '🎬 «فيلم متكامل» يعمل مع أوضاع الذكاء فقط (سريع / جودة عالية / سينمائيّ) — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
     pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', videoIdeaLbl: "💡 جرّب مثالًا", videoIdeaCanvas: "إنفوجرافيك: ٣ نصائح لتوفير المال في ٥ ثواني", videoIdeaRunway: "سيارة رياضية تمرّ في شوارع دبي ليلًا", videoIdeaMinimax: "أمواج هادئة على شاطئ وقت الغروب", videoIdeaOmni: "إعلان عطر فاخر على شاطئ وقت الغروب", videoIdeaHybrid: "إعلان عرض: لقطة منتج وفوقها الخصم والسعر", videoIdeaVeo: "سوق شعبي مزدحم بأصوات الباعة والزبائن", videoIdeaActor: "ممثل إماراتي يعرّف بمحل قهوة", vwTitle: "مساعد الكتابة", vwSub: "يكتب لك قصة أو حوارًا أو إعلانًا مضبوطًا على مدة الفيديو", vwPh: "مثال: اكتب لي قصة عن صاحب محل قهوة يفتتح فرعًا جديدًا", vwSend: "إرسال", vwSug1: "اكتب لي قصة قصيرة عن…", vwSug2: "اكتب لي نص إعلان عن…", vwToScene: "ضعه في وصف المشهد", vwToNarr: "ضعه في الراوي", vwToActor: "ضعه في كلام الممثل", vwBusy: "جارٍ الكتابة…", vwErr: "تعذّرت الكتابة الآن، حاول بعد قليل", vwLimit: "وصلت حدّ الكتابة اليوم", vwLogin: "سجّل الدخول لاستعمال مساعد الكتابة", vwFit: "مضبوط على {n} ثانية — حتى {w} كلمة", videoTabTrends: "الترندات", videoIdeaCanvas2: "سعر الذهب اليوم بالدرهم مع سهم أخضر أو أحمر", videoIdeaCanvas3: "عدّ تنازلي لافتتاح المحل", videoIdeaRunway2: "موظف مبيعات يشرح مفتاح سيارة لزبون في معرض فخم", videoIdeaRunway3: "برجر يُقلب على الشواية مع بخار ودخان", videoIdeaMinimax2: "كاميرا تمرّ فوق أبراج دبي وقت الفجر", videoIdeaMinimax3: "قطرات مطر على نافذة مقهى", videoIdeaOmni2: "لقطة بطيئة لدلّة قهوة تُسكب في فنجان بجانبه تمر", videoIdeaOmni3: "افتتاحية فيلم: كثبان صحراء وقت الفجر", videoIdeaHybrid2: "تقرير سوق: لقطة مدينة وأرقام الأسهم تظهر فوقها", videoIdeaHybrid3: "عقار جديد: لقطة المبنى مع السعر والموقع", videoIdeaVeo2: "طبخ بأصوات القلي والغلي (ASMR)", videoIdeaVeo3: "سيارة تنطلق بصوت المحرّك في الصحراء", videoIdeaActor2: "ممثل إماراتي يعرّف بمحل عطور: عود وبخور", videoIdeaActor3: "موظف استقبال يرحّب بالعملاء ويشرح الخدمات", vcTitle: "الشخصيات", vcSub: "حتى 3 شخصيات — لكل واحدة اسم وصوت وكلام", vcAdd: "إضافة شخصية", vcName: "الاسم", vcLine: "ماذا تقول؟", vcMale: "رجل", vcFemale: "امرأة", vcRemove: "حذف", vwToChars: "وزّع الحوار على الشخصيات", vcMore: "خيارات إضافية", vcTutorial: "شاهد: كيف تصنع فيديو", vcToExtra: "ضعه في الإضافات", videoTabClean: "تحسين فيديو", vclTitle: "حسّن فيديو من جهازك", vclSub: "ارفع فيديو مغبّشًا أو مشوّشًا: ننقّي التشويش ونوضّح الصورة ونحسّن الألوان — داخل جهازك ومجانًا", vclPick: "اختر فيديو أو اسحبه هنا", vclDrop: "حتى {s} ثانية و{n} ميغابايت", vclLight: "خفيف", vclStrong: "قوي", vclUpscale: "ضاعف الدقة (للفيديو الصغير)", vclStart: "حسّن الفيديو", vclWorking: "جارٍ التحسين… لا تغلق النافذة", vclCancel: "إلغاء", vclDownload: "تحميل الفيديو المحسَّن", vclBefore: "قبل", vclAfter: "بعد", vclTooLong: "الفيديو أطول من {s} ثانية — قصّه أولًا", vclTooBig: "الملف أكبر من {n} ميغابايت", vclFail: "تعذّر تحسين هذا الفيديو على هذا الجهاز", vclNote: "ينقّي التشويش ويوضّح الحواف ويحسّن الألوان، ولا يصلح الغبش الشديد أو اهتزاز الكاميرا", vclLoading: "جارٍ تجهيز أداة التحسين (أول مرة فقط)…", fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
     fashionRefinePh: 'مثال: غيّري لون الفستان إلى أزرق فقط', fashionRefineBtn: '✏️ عدّلي شيئًا محددًا', fashionRefineNeed: 'اكتبي التعديل المطلوب أولًا', fashionRefining: 'جاري تطبيق التعديل…',
     modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
@@ -3596,12 +3596,12 @@ const I18N = {
     videoMakerRatioLandscape: '🖥️ عرضي 16:9',
     videoMakerRatioPortrait: '📱 طولي 9:16',
     videoModeLabel: 'وضع الإنشاء',
-    videoModeCanvasOnly: '🎨 كانفا فقط (بدون AI)',
-    videoModeRunwayOnly: '🤖 فيديو AI فقط (Runway)',
-    videoModeMinimax: '💸 فيديو اقتصادي — أرخص وأسرع',
-    videoModeOmni: '🎬 فيديو سينمائيّ — أعلى جودة (أغلى)',
-    videoModeHybrid: '🔗 دمج الاثنين (الأفضل)',
-    videoModeVeo: '🚀 Veo 3 — جوجل (أعلى جودة + صوت)',
+    videoModeCanvasOnly: '🎨 بدون ذكاء (مجّانيّ)',
+    videoModeRunwayOnly: '🎬 جودة عالية',
+    videoModeMinimax: '⚡ سريع بصوت',
+    videoModeOmni: '🎬 سينمائيّ (أغلى)',
+    videoWrapSignature: '🔗 مقدّمة وخاتمة بتوقيعك',
+    videoModeVeo: '🔊 سينمائيّ بصوت وكلام',
     videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية",
     videoActorSpeechLabel: "🗣️ شو يقول الممثل؟ (بالحرف)",
     videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق عمران AI",
@@ -3619,7 +3619,7 @@ const I18N = {
     videoMakerHeroNote: 'ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.',
     videoMakerDurationLongMinutes: '🎥 طويل (دقائق) - المالك فقط',
     videoMakerLongMinutesLabel: 'مدة الفيديو الكاملة (دقائق، ١-١٠)',
-    videoMakerLongMinutesNote: '⚠️ ميزة مخصصة لحساب المالك فقط. كل دقيقة تعني حوالي ٧-٨ مشاهد منفصلة تُولَّد وتُدمج تلقائيًا؛ التكلفة الفعلية تُخصم من رصيد Runway الخاص بك وتزيد بشكل كبير مع طول الفيديو. راح يظهر لك تقدير التكلفة قبل البدء الفعلي.',
+    videoMakerLongMinutesNote: '⚠️ ميزة مخصصة لحساب المالك فقط. كل دقيقة تعني حوالي ٧-٨ مشاهد منفصلة تُولَّد وتُدمج تلقائيًا؛ التكلفة الفعلية تُخصم من رصيد محرّك الفيديو الخاص بك وتزيد بشكل كبير مع طول الفيديو. راح يظهر لك تقدير التكلفة قبل البدء الفعلي.',
     videoMakerNarrationToggleLabel: '🎙️ إضافة تعليق صوتي (صوت مُولّد)',
     videoMakerNarrationPlaceholder: 'اكتب نص التعليق الصوتي الذي سيُقرأ فوق الفيديو (اختياري - إن تُرك فارغًا يُستخدم وصف الفيديو)',
     videoMakerQualityToggleLabel: '🔎 جودة أعلى (ترقية دقة الفيديو، متاحة فقط للفيديو القصير)',
@@ -4690,7 +4690,7 @@ const I18N = {
     videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
     /* v-video-seq-cooldown + v-film-mode-gate */
     videoSceneWait: '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.',
-    videoFilmModeOnly: '🎬 "Full mini-film" works with the "AI video" mode only — change the mode or pick another length. Nothing was charged.',
+    videoFilmModeOnly: '🎬 "Full mini-film" works with the AI modes only (Fast / High quality / Cinematic) — change the mode or pick another length. Nothing was charged.',
     pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', videoIdeaLbl: "💡 Try an example", videoIdeaCanvas: "Infographic: 3 money-saving tips in 5 seconds", videoIdeaRunway: "A sports car driving through Dubai streets at night", videoIdeaMinimax: "Calm waves on a beach at sunset", videoIdeaOmni: "Luxury perfume ad on a beach at sunset", videoIdeaHybrid: "Offer ad: a product shot with the discount and price on top", videoIdeaVeo: "A busy traditional market with vendors and shoppers chatting", videoIdeaActor: "An Emirati actor introducing a coffee shop", vwTitle: "Writing assistant", vwSub: "Writes a story, dialogue or ad fitted to your video length", vwPh: "Example: write a story about a coffee shop owner opening a new branch", vwSend: "Send", vwSug1: "Write me a short story about…", vwSug2: "Write me an ad script about…", vwToScene: "Use as scene description", vwToNarr: "Use as narrator", vwToActor: "Use as actor speech", vwBusy: "Writing…", vwErr: "Could not write right now, try again shortly", vwLimit: "You reached today's writing limit", vwLogin: "Sign in to use the writing assistant", vwFit: "Fitted to {n} seconds — up to {w} words", videoTabTrends: "Trends", videoIdeaCanvas2: "Gold price today in dirhams with a green or red arrow", videoIdeaCanvas3: "Countdown to the shop opening", videoIdeaRunway2: "A salesman explaining a car key to a customer in a luxury showroom", videoIdeaRunway3: "A burger flipped on the grill with steam and smoke", videoIdeaMinimax2: "Camera gliding over Dubai towers at dawn", videoIdeaMinimax3: "Raindrops on a café window", videoIdeaOmni2: "Slow shot of a coffee pot pouring into a cup beside dates", videoIdeaOmni3: "Film opening: desert dunes at dawn", videoIdeaHybrid2: "Market report: a city shot with stock numbers appearing over it", videoIdeaHybrid3: "New property: building shot with price and location", videoIdeaVeo2: "Cooking with sizzling and boiling sounds (ASMR)", videoIdeaVeo3: "A car speeding through the desert with engine sound", videoIdeaActor2: "An Emirati actor introducing a perfume shop: oud and incense", videoIdeaActor3: "A receptionist welcoming customers and explaining services", vcTitle: "Characters", vcSub: "Up to 3 characters — each with a name, voice and lines", vcAdd: "Add character", vcName: "Name", vcLine: "What do they say?", vcMale: "Man", vcFemale: "Woman", vcRemove: "Remove", vwToChars: "Spread the dialogue across the characters", vcMore: "More options", vcTutorial: "Watch: how to make a video", vcToExtra: "Use as extras", videoTabClean: "Enhance video", vclTitle: "Enhance a video from your device", vclSub: "Upload a blurry or noisy video: we reduce noise, sharpen and improve colors — on your device, for free", vclPick: "Choose a video or drop it here", vclDrop: "Up to {s} seconds and {n} MB", vclLight: "Light", vclStrong: "Strong", vclUpscale: "Double the resolution (small videos)", vclStart: "Enhance video", vclWorking: "Enhancing… keep this window open", vclCancel: "Cancel", vclDownload: "Download enhanced video", vclBefore: "Before", vclAfter: "After", vclTooLong: "The video is longer than {s} seconds — trim it first", vclTooBig: "The file is larger than {n} MB", vclFail: "Could not enhance this video on this device", vclNote: "Reduces noise, sharpens edges and improves colors; it cannot fix heavy blur or camera shake", vclLoading: "Preparing the enhancer (first time only)…", fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
     fashionRefinePh: 'e.g. change only the dress colour to blue', fashionRefineBtn: '✏️ Edit one specific thing', fashionRefineNeed: 'Type the change you want first', fashionRefining: 'Applying your edit…',
     modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
@@ -4977,12 +4977,12 @@ const I18N = {
     videoMakerRatioLandscape: '🖥️ Landscape 16:9',
     videoMakerRatioPortrait: '📱 Portrait 9:16',
     videoModeLabel: 'Creation mode',
-    videoModeCanvasOnly: '🎨 Canvas only (no AI)',
-    videoModeRunwayOnly: '🤖 AI video only (Runway)',
-    videoModeMinimax: '💸 Economy video — cheaper & faster',
-    videoModeOmni: '🎬 Cinematic video — top quality (pricier)',
-    videoModeHybrid: '🔗 Merge both (best)',
-    videoModeVeo: '🚀 Veo 3 — Google (top quality + sound)',
+    videoModeCanvasOnly: '🎨 No AI (free)',
+    videoModeRunwayOnly: '🎬 High quality',
+    videoModeMinimax: '⚡ Fast with sound',
+    videoModeOmni: '🎬 Cinematic (pricier)',
+    videoWrapSignature: '🔗 Intro & outro with your signature',
+    videoModeVeo: '🔊 Cinematic with sound & speech',
     videoModeActor: "🗣️ Talking actor — Emirati dialect",
     videoActorSpeechLabel: "🗣️ What does the actor say? (exactly)",
     videoActorSpeechPlaceholder: "Example: Welcome to Omran AI, the best AI platform!",
@@ -5001,7 +5001,7 @@ const I18N = {
     videoMakerHeroNote: 'Upload your photo (or anyone\'s) — they will star in every scene of the film.',
     videoMakerDurationLongMinutes: '🎥 Long (minutes) - owner only',
     videoMakerLongMinutesLabel: 'Full video length (minutes, 1-10)',
-    videoMakerLongMinutesNote: "⚠️ Owner account only. Each minute means roughly 7-8 separate scenes generated and stitched together automatically; the real cost is charged to your Runway balance and grows quickly with length. You'll see a cost estimate before it actually starts.",
+    videoMakerLongMinutesNote: "⚠️ Owner account only. Each minute means roughly 7-8 separate scenes generated and stitched together automatically; the real cost is charged to your video engine balance and grows quickly with length. You'll see a cost estimate before it actually starts.",
     videoMakerNarrationToggleLabel: '🎙️ Add voice narration (AI generated)',
     videoMakerNarrationPlaceholder: 'Type the narration text to read over the video (optional — the video description is used if left empty)',
     videoMakerQualityToggleLabel: '🔎 Higher quality (upscale resolution, short videos only)',
@@ -28471,7 +28471,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   // يستدعي هذا المعرّف — نفس الحزمة، لا تحميل شبكة منفصل فلا سباق تزامن).
   window.__videoTrendsBoot = boot;
 })();
-/* ---------- 🎬 AI Video Maker (Runway / Veo 3, server-side owner key) ---------- */
+/* ---------- 🎬 AI Video Maker (Runway / Veo 3 / MiniMax, server-side owner key) ---------- */
 (function(){
   const modal = $('#videoMakerModal');
   const btnOpen = $('#btnVideoMaker');
@@ -28893,9 +28893,16 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     });
   }
 
+  /* v-video-modes-by-result (١٠ أكتوبر ٢٠٢٦): وضع «الدمج» خرج من القائمة وصار مربّع «مقدّمة وخاتمة بتوقيعك» يظهر لأوضاع
+     الذكاء (سريع/جودة عالية/سينمائيّ) ويلتفّ بمقدّمة وخاتمة الكانفا حول لقطة المحرّك المختار (wrapWithCanvas). */
+  const wrapRow = document.getElementById('videoMakerWrapRow');
+  const wrapToggle = document.getElementById('videoMakerWrapToggle');
+  function isAiMode(m){ return m === 'minimax' || m === 'runway' || m === 'veo'; }
+  function wantCanvasWrap(){ return isAiMode(modeEl.value) && !!(wrapToggle && wrapToggle.checked); }
   function updateModeUI(){
     const m = modeEl.value;
-    signatureRow.style.display = (m === 'canvas' || m === 'hybrid') ? 'flex' : 'none';
+    if(wrapRow) wrapRow.style.display = isAiMode(m) ? 'flex' : 'none';
+    signatureRow.style.display = (m === 'canvas' || m === 'hybrid' || wantCanvasWrap()) ? 'flex' : 'none';
     const actorRowEl = document.getElementById('videoMakerActorRow');
     if(actorRowEl) actorRowEl.style.display = (m === 'actor') ? 'flex' : 'none';
     const actorVoiceRowEl = document.getElementById('videoMakerActorVoiceRow'); /* v-actor-lipsync */
@@ -28903,6 +28910,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     syncFilmHeroRow();
   }
   modeEl.onchange = updateModeUI;
+  if(wrapToggle) wrapToggle.onchange = updateModeUI;
   updateModeUI();
 
   narrationToggle.onchange = () => {
@@ -29213,6 +29221,20 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
   async function runHybrid(text, style, ratio, durationVal, signature, token, wantNarration, narrationVal){
     const seconds = (durationVal === 'long20') ? 10 : (parseInt(durationVal, 10) || 5);
+    setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
+    /* v-video-photo-identity: وضع الدمج يُظهر خانة صورة البطل لكنّه كان لا يرسلها — فيخترع المحرّك شخصًا. */
+    const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
+      setStatus(isEn()
+        ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
+        : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+    }, filmHeroBase64, filmHeroMime);
+    await wrapWithCanvas(mainUrl, text, ratio, signature, wantNarration, narrationVal);
+  }
+
+  /* v-video-modes-by-result: «مقدّمة وخاتمة بتوقيعك» — ما كان وضع «الدمج» يفعله بعد لقطة المحرّك الأساسيّ صار يعمل على لقطة
+     أيّ محرّك ذكاء (رابط أو Blob): مقدّمة كانفا بالعنوان + اللقطة (+ علامة التوقيع) + خاتمة كانفا + تعليق صوتيّ اختياريّ.
+     صوت اللقطة نفسها (سريع بصوت / سينمائيّ) يبقى: يُؤخّر ثانيتَي المقدّمة ويُدمج؛ لقطة بلا مسار صوت تخرج صامتة كما كانت. */
+  async function wrapWithCanvas(mainSrc, text, ratio, signature, wantNarration, narrationVal){
     setStatus(bT('🎨 جاري إنشاء المقدمة...','🎨 Building intro...'));
     const introBlob = await recordCanvasClip({ title: text, signature: '', seconds: 2, ratio });
     setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
@@ -29221,22 +29243,13 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
       seconds: 2, ratio,
     });
-
-    setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
-    /* v-video-photo-identity: وضع الدمج يُظهر خانة صورة البطل لكنّه كان لا يرسلها — فيخترع المحرّك شخصًا. */
-    const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
-      setStatus(isEn()
-        ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
-        : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-    }, filmHeroBase64, filmHeroMime);
     setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
-
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
 
     await ffmpeg.writeFile('intro.webm', await fetchFile(introBlob));
     await ffmpeg.writeFile('outro.webm', await fetchFile(outroBlob));
-    await ffmpeg.writeFile('main.mp4', await fetchFile(mainUrl));
+    await ffmpeg.writeFile('main.mp4', await fetchFile(mainSrc));
 
     let mainForConcat = 'main.mp4';
     if(signature){
@@ -29261,7 +29274,12 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       '[v0][v1][v2]concat=n=3:v=1:a=0[outv]',
       '-map', '[outv]', 'final.mp4',
     ]);
-    const data = await ffmpeg.readFile('final.mp4');
+    let finalName = 'final.mp4';
+    try{
+      const rc = await ffmpeg.exec(['-i', 'final.mp4', '-i', 'main.mp4', '-filter_complex', '[1:a]adelay=2000|2000[a]', '-map', '0:v:0', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', 'final_a.mp4']);
+      if(rc === 0) finalName = 'final_a.mp4';
+    } catch(e){ /* guard-ok — لقطة بلا مسار صوت: الناتج صامت كما كان في وضع الدمج */ }
+    const data = await ffmpeg.readFile(finalName);
     let finalBlob = new Blob([data.buffer], { type: 'video/mp4' });
 
     if(wantNarration){
@@ -29530,7 +29548,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             guard.ok();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل المحرّك السينمائيّ.','The cinematic engine failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
           } catch(e){ guard.fail(iv); }
         }, 8000);
       });
@@ -29542,15 +29560,17 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         /* v-film-mode-gate (بلاغ مُثبَت: فحص «فيلم متكامل» يسبق فحص الوضع كلّه، فكانفا المجّانيّ والاقتصاديّ
            والسينمائيّ والدمج والممثّل كانت تُرسَل بصمت إلى محرّك الفيديو الأساسيّ المدفوع): الفيلم مبنيّ على
            محرّكين فقط — غيرهما يُوقَف هنا قبل أيّ نداء أو خصم، برسالة واضحة لا تحويل صامت. */
-        if(creationMode !== 'runway' && !filmUseVeo){
+        /* v-video-modes-by-result: «سريع» صار الافتراضيّ — في الفيلم يسلك مسلك المحرّك الأساسيّ كما كان الافتراضيّ السابق (الفيلم
+           مبنيّ على محرّكين: الأساسيّ والسينمائيّ)؛ «بدون ذكاء» و«ممثّل» يبقيان موقوفين برسالة. */
+        if(creationMode !== 'runway' && creationMode !== 'minimax' && !filmUseVeo){
           setStatus((typeof window.t === 'function' && window.t('videoFilmModeOnly') !== 'videoFilmModeOnly') ? window.t('videoFilmModeOnly')
-            : bT('🎬 «فيلم متكامل» يعمل مع وضع «فيديو AI» فقط — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
-                 '🎬 "Full mini-film" works with the "AI video" mode only — change the mode or pick another length. Nothing was charged.'));
+            : bT('🎬 «فيلم متكامل» يعمل مع أوضاع الذكاء فقط (سريع / جودة عالية / سينمائيّ) — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
+                 '🎬 "Full mini-film" works with the AI modes only (Fast / High quality / Cinematic) — change the mode or pick another length. Nothing was charged.'));
           btnGenerate.disabled = false;
           return;
         }
         if(filmUseVeo && !isOwnerAccount()){
-          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
+          setStatus(bT('🔒 الوضع السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic mode is limited to the owner account for now.'));
           btnGenerate.disabled = false;
           return;
         }
@@ -29584,7 +29604,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? bT(' (سينمائيّ)',' (cinematic)') : '') + '...');
           /* v-video-photo-identity: كان يُلحق «ضعه في وسط الإطار بلقطة متوسّطة» — أمر إعادة تأطير يعاكس
              الإطار الأوّل (الصورة نفسها) فيُعاد رسم الوجه بمقاس آخر. قفل الهويّة يبنيه الخادم لكلّ محرّك. */
           const scenePromptWithHero = sc.visual || text;
@@ -29755,6 +29775,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
            المشغّل يأخذ رابطه الخامّ كفرع Runway */
         let vurl;
         try{ vurl = URL.createObjectURL(await proxyBlob(videoUrl)); }catch(e){ vurl = videoUrl; }
+        if(wantCanvasWrap()){ await wrapWithCanvas(vurl, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; } /* v-video-modes-by-result */
         setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
         resultEl.style.display = 'block';
@@ -29772,7 +29793,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
+          setStatus(bT('🔒 الوضع السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic mode is limited to the owner account for now.'));
           return;
         }
         let veoPrompt = text;
@@ -29825,7 +29846,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
-        setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
+        setStatus(bT('🚀 جاري الإرسال إلى المحرّك السينمائيّ...','🚀 Sending to the cinematic engine...'));
         const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         const cr = await fetch('/api/video?action=veo-create', {
@@ -29845,8 +29866,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
               guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
-              else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل المحرّك السينمائيّ.','The cinematic engine failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+              else setStatus(bT('⏳ يولّد الفيديو السينمائيّ (قد يستغرق ١-٣ دقائق)...','⏳ Generating the cinematic video (may take 1-3 min)...'));
             } catch(e){ guard.fail(iv); }
           }, 8000);
         });
@@ -29854,6 +29875,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const vres = await fetch(proxyVideoUrl(videoUrl));
         if(!vres.ok) throw new Error('download failed ' + vres.status);
         const vblob = await vres.blob();
+        if(creationMode === 'veo' && wantCanvasWrap()){ await wrapWithCanvas(vblob, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; } /* v-video-modes-by-result */
         const vurl = URL.createObjectURL(vblob);
         setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
@@ -30067,6 +30089,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           playerUrl = finalSrc; // آخر ملاذ للمشغّل فقط
         }
       }
+      /* v-video-modes-by-result: التعليق الصوتيّ دُمج أعلاه إن طُلب — فلا يُعاد هنا */
+      if(wantCanvasWrap()){ await wrapWithCanvas(finalIsBlob ? finalSrc : playerUrl, text, ratio, signature, false, ''); return; }
       setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
       resultEl.src = playerUrl;
       resultEl.style.display = 'block';

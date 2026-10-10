@@ -103,8 +103,7 @@ global.fetch = async (url, init) => {
   if (/\/v1\/tasks\//.test(u)) return new Response(JSON.stringify({ id: 'T9', status: 'SUCCEEDED', output: [RUNWAY_OUT] }), { status: 200 });
   if (/\/v1\/video_upscale$/.test(u)) return new Response(JSON.stringify(runwayUpscale === 200 ? { id: 'UP9' } : { error: 'rejected' }), { status: runwayUpscale });
   if (/\/v1\/organization$/.test(u)) { balanceCalls++; return orgStatus === 200 ? new Response(JSON.stringify({ creditBalance: 120 }), { status: 200 }) : new Response('{"error":"busy"}', { status: orgStatus }); }
-  if (/\/v1\/query\/video_generation/.test(u)) return new Response(JSON.stringify({ status: 'Success', file_id: 'F1', base_resp: { status_code: 0 } }), { status: 200 });
-  if (/\/v1\/files\/retrieve/.test(u)) return new Response(JSON.stringify({ file: { download_url: MINIMAX_OUT } }), { status: 200 });
+  if (/\/v2\/query\/video_generation\//.test(u)) return new Response(JSON.stringify({ task: { id: 'T1', status: 'succeeded', content: { url: MINIMAX_OUT } } }), { status: 200 }); /* v-minimax-h3 */
   if (/queue\.fal\.run\/.*\/status$/.test(u)) return new Response(JSON.stringify({ status: 'COMPLETED' }), { status: 200 });
   if (/queue\.fal\.run\//.test(u)) return new Response(JSON.stringify({ video: { url: ACTOR_OUT } }), { status: 200 });
   if (/api\.tavily\.com/.test(u) && tavilyEvery && (++tavilyCalls % tavilyEvery === 0)) return new Response('{"detail":"rate"}', { status: 429 });

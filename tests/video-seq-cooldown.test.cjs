@@ -118,7 +118,7 @@ test('٤. التوصيل: حلقتا الفيلم والـ٢٠ ثانية تمر
 
 /* ينفّذ بوّابة «فيلم متكامل» الحقيقيّة: يخرج قبل السيناريو لكلّ وضع غير مدعوم، ويمرّ للمدعومين. */
 function gateSandbox(creationMode) {
-  const needle = "        if(creationMode !== 'runway' && !filmUseVeo){";
+  const needle = "        if(creationMode !== 'runway' && creationMode !== 'minimax' && !filmUseVeo){";
   const block = extractBlock(VIDEO, needle);
   const statuses = [];
   const ctx = { creationMode, filmUseVeo: creationMode === 'veo', setStatus: (s) => statuses.push(s), btnGenerate: { disabled: true }, window: {}, bT: (a) => a };
@@ -126,22 +126,24 @@ function gateSandbox(creationMode) {
   return { returned, statuses, btn: ctx.btnGenerate };
 }
 
-test('٥. بوّابة «فيلم متكامل»: كانفا/الاقتصاديّ/السينمائيّ/الدمج/الممثّل تُوقَف برسالة «لم يُخصم شيء» قبل أيّ نداء، والأساسيّ والاحترافيّ يمرّان', () => {
-  for (const mode of ['canvas', 'minimax', 'omni', 'hybrid', 'actor']) {
+test('٥. بوّابة «فيلم متكامل»: كانفا/السينمائيّ القديم/الدمج/الممثّل تُوقَف برسالة «لم يُخصم شيء» قبل أيّ نداء، والأساسيّ والاحترافيّ و«سريع» (مسلك الأساسيّ) يمرّون', () => {
+  /* v-video-modes-by-result: «سريع» (minimax) صار الافتراضيّ ويسلك في الفيلم مسلك الأساسيّ كما كان الافتراضيّ السابق */
+  for (const mode of ['canvas', 'omni', 'hybrid', 'actor']) {
     const r = gateSandbox(mode);
     assert.equal(r.returned, undefined, mode + ': يخرج قبل السيناريو');
     assert.equal(r.statuses.length, 1, mode);
     assert.match(r.statuses[0], /لم يُخصم شيء/, mode);
     assert.equal(r.btn.disabled, false, mode + ': الزرّ يعود');
   }
-  for (const mode of ['runway', 'veo']) assert.equal(gateSandbox(mode).returned, 'passed', mode + ': يمرّ');
-  const gateAt = VIDEO.indexOf("if(creationMode !== 'runway' && !filmUseVeo){");
+  for (const mode of ['runway', 'veo', 'minimax']) assert.equal(gateSandbox(mode).returned, 'passed', mode + ': يمرّ');
+  const gateAt = VIDEO.indexOf("if(creationMode !== 'runway' && creationMode !== 'minimax' && !filmUseVeo){");
   const filmAt = VIDEO.indexOf("if(durationEl.value === 'film'){");
   const scriptAt = VIDEO.indexOf("fetch('/api/video-script'");
   assert.ok(filmAt < gateAt && gateAt < scriptAt, 'البوّابة داخل فرع الفيلم وقبل أوّل نداء شبكة فيه');
-  // قيم القائمة الحقيقيّة: runway هو الأساسيّ (المختار افتراضيًّا) وveo الاحترافيّ
+  // قيم القائمة الحقيقيّة: minimax «سريع» المختار افتراضيًّا (v-video-modes-by-result)، وrunway الأساسيّ، وveo الاحترافيّ
   const sel = read('js/partials-core.js');
-  assert.match(sel, /<option value="runway" selected/);
+  assert.match(sel, /<option value="minimax" selected/);
+  assert.match(sel, /<option value="runway"/);
   assert.match(sel, /<option value="canvas"/);
   assert.match(sel, /<option value="veo"/);
 });
