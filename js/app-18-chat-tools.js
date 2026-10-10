@@ -12,18 +12,22 @@
 
   if (typeof window.__chatToolsOn === 'undefined') window.__chatToolsOn = true;
 
-  var _step = null;
-  function note(txt) {
+  /* v-parallel-chats: كلّ طلب يكتب في شريط حالته هو (onDelta.__status) — والخطوة المفتوحة محفوظة على الشريط
+     نفسه لا في متغيّر مشترك — فلا تظهر خطوات محادثة في فقاعة محادثة أخرى تعمل معها. */
+  function note(txt, st) {
     try {
-      var s = window.__chatStatus;
+      var s = st || window.__chatStatus;
       if (!s || (typeof s.isReleased === 'function' && s.isReleased()) || typeof s.step !== 'function') return;
-      if (_step && typeof _step.done === 'function') _step.done();
-      _step = s.step('•', String(txt).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim() || String(txt));
+      if (s.__toolStep && typeof s.__toolStep.done === 'function') s.__toolStep.done();
+      s.__toolStep = s.step('•', String(txt).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim() || String(txt));
     } catch (e) { /* شريط الحالة ترفٌ لا يُسقط ردًّا */ }
   }
-  function noteEnd() {
-    try { if (_step && typeof _step.done === 'function') _step.done(); } catch (e) { /* كسابقه */ }
-    _step = null;
+  function noteEnd(st) {
+    try {
+      var s = st || window.__chatStatus;
+      if (s && s.__toolStep && typeof s.__toolStep.done === 'function') s.__toolStep.done();
+      if (s) s.__toolStep = null;
+    } catch (e) { /* كسابقه */ }
   }
 
   /** ينفّذ أداة طلبها الخادم داخل متصفّح المستخدم ويعيد ناتجها عبر نقطة منفصلة. */
@@ -108,7 +112,7 @@
     var res = await __raceIdle(fetch('/api/ai?action=chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: (onDelta && onDelta.__signal) || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined), /* v-parallel-chats */
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
@@ -166,7 +170,7 @@
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
         /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
-        else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
+        else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status, onDelta && onDelta.__status);  /* v656 */
         if (ev.status && /^↳/.test(String(ev.status)) && __steps.length < 24) {
           var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
           __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
@@ -174,7 +178,7 @@
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
         if (ev.delta) {
           if (!__tFirst) __tFirst = Date.now();
-          noteEnd();
+          noteEnd(onDelta && onDelta.__status);
           full += ev.delta;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:delta'); } }
         }
@@ -199,7 +203,7 @@
         if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:forget-model'); } }
       }
     }
-    noteEnd();
+    noteEnd(onDelta && onDelta.__status);
 
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم — إلّا حدّ الباقة: لا مسار آخر يتجاوزه.
     if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er; }
