@@ -109,8 +109,9 @@ test('٤. الكتابة ليست تصميمًا: «اكتب لي دعوة/شه�
 const AD_HEAD = '} else if(text && __adIntentRe.test(text) && !__blockAutoImage';
 const A = {};
 vm.runInNewContext([
-  'this.ad = function(text, __mediaLane){',
-  line('const __adIntentRe = '), line('const __rtAdNoRe = '), line('const __rtAdListing = '), line('const __rtAdMake = '), line('const __rtAdOk = '),
+  'this.ad = function(text, __mediaLane, __srcImg){',
+  line('const __adIntentRe = '), line('const __rtAdNoRe = '), line('const __rtAdListing = '), line('const __rtAdMake = '),
+  line('const __rtAdHardNo = '), line('const __rtAdImg = '), line('const __rtAdOk = '),
   line('const __codeWordRe = '),
   '  const __blockAutoImage = false, cur = {};',
   '  return !!(text && __adIntentRe.test(text) && !__blockAutoImage' + cond(AD_HEAD) + ');',
@@ -149,7 +150,7 @@ vm.runInNewContext([
   '  const cur = { lastMsgWasImageEdit: true, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
   '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ] };',
   '  const getCurrent = () => cur, pendingAttachments = [], imageAttachments = [];',
-  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtWriteAsk = '),
+  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtWriteAsk = '),
   line('const __IMGF_NEW_RE = '), line('const __IMGF_NOT_RE = '), line('const __IMG_EDIT_VERB_RE = '),
   imgFollowSrc,
   line('const __nanoQ = '), line('const __ATT_VISION_RE = '), line('const __codeWordRe = '), line('const __ackOnly = '),
@@ -212,4 +213,25 @@ test('١١. الحزمة مبنيّة من الجزء (الشروط الجديد
   }
   assert.ok(bundle.includes("&& __rtAdOk /* v-route-ad */ && !cur.adMode"), 'شرط الإعلان');
   assert.ok(bundle.includes('(__rtDesignImg /* v-route-design */ || __explicitImageTextRequest'), 'شرط البانِي');
+});
+
+test('١٢. المراجعة قبل الدمج: صورة مرفقة + «للبيع» إعلان كما كان، والتفاصيل تغلب كلمات السعر، والكتابة بخطّ على الصورة', () => {
+  const photo = { isImage: true }, mem = { isImage: true, _fromMemory: true };
+  for (const t of ['سيارة للبيع', 'للبيع', 'اعلان لسيارتي', 'إعلان لمحل العطور', 'للإيجار فيلا في العين', 'سيارتي للبيع بحالة ممتازة']) {
+    assert.equal(A.ad(t, null, photo), true, 'مع صورة: ' + t);
+    assert.equal(A.ad(t, null, mem), A.ad(t, null, null), 'صورة الذاكرة ليست مرفقًا جديدًا: ' + t);
+  }
+  assert.equal(A.ad('وش رأيك في هذا الإعلان؟', null, photo), false, 'السؤال عن صورة إعلان محادثة');
+  assert.equal(A.ad('ترجم الإعلان هذا', null, photo), false, 'الترجمة محادثة حتّى مع صورة');
+  for (const t of ['للإيجار شقق مفروشة في الشارقة أسعار مناسبة للتواصل 0501234567', 'للبيع أراضي سكنية في العين اسعار تبدأ من 200 ألف',
+    'سعر حرق للبيع ايفون 15 برو 2500 درهم']) {
+    assert.equal(A.ad(t, null, null), true, 'إعلان بتفاصيله: ' + t);
+  }
+  assert.equal(A.ad('ترجم الإعلان هذا للإنجليزي: للبيع شقة في الريم غرفتين', null, null), false, 'الترجمة تغلب التفاصيل');
+  for (const t of ['اكتب رسالة رمضان كريم بخط ذهبي', 'اكتب رسالة: رمضان كريم', 'اكتب الرسالة: كل عام وأنتم بخير', 'اكتب رسالة عيد مبارك بخط ديواني']) {
+    const r = W.after(t);
+    assert.equal(r.write, false, 'كتابة على الصورة: ' + t);
+    assert.equal(r.follow || r.any, true, t);
+  }
+  assert.equal(W.after('اكتب لي قصيدة قصيرة عن الصقر').write, true, 'الوثيقة كما هي');
 });
