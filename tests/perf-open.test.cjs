@@ -37,7 +37,7 @@ function mkProjects(n, msgLen, codeLen, codeEvery) {
   }));
 }
 function reference(box, projects) {
-  const list = projects.map((p) => ({ id: p.id, title: p.title || '', provider: p.provider || '', messages: p.messages.map(box.sb.msg), code: typeof p.code === 'string' ? p.code : '' })).filter((p) => p.id);
+  const list = projects.map((p) => ({ id: p.id, title: p.title || '', provider: p.provider || '', messages: p.messages.map(box.sb.msg), code: typeof p.code === 'string' ? p.code : '', updatedAt: Number(p.updatedAt) || 0 /* v-chat-order */ })).filter((p) => p.id);
   return JSON.stringify(oldTrim(list));
 }
 

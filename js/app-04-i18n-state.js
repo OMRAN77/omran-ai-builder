@@ -1031,6 +1031,7 @@ function chatsSlimForServer(){
     provider: p.provider || '',
     messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
     code: (typeof p.code === 'string') ? p.code : '',
+    updatedAt: Number(p.updatedAt) || 0, // v-chat-order: الخادم يحفظه أصلًا (slimProjects)
   })).filter(p => p.id);
   // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
   /* v-perf-slim-linear (المالك ٢٩ سبتمبر: «إذا أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية، وإذا أدخل أيّ مكان مجمّد ويفتح»):
@@ -1102,7 +1103,7 @@ function __chatsMergeServer(server, deletedIds){
       var p = list[i];
       if(!p || !p.id) continue;
       var ml = Array.isArray(p.messages) ? p.messages.length : 0;
-      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ';';
+      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ':' + (Number(p.updatedAt) || 0) + ';';
     }
     return fp;
   };
@@ -1139,6 +1140,7 @@ function __chatsMergeServer(server, deletedIds){
         local.messages = merged;
       }
       if(sp.title && !local.title) local.title = sp.title;
+      if((Number(sp.updatedAt) || 0) > (Number(local.updatedAt) || 0)) local.updatedAt = Number(sp.updatedAt); // v-chat-order: كتابة من جهاز آخر
       if(sp.code && !local.code) local.code = sp.code;
       if(sp.provider && !local.provider) local.provider = sp.provider;
       result.push(local);
@@ -1363,7 +1365,10 @@ function renderHistory(){
   // v380: القائمة تعرض كل المحادثات من كل المزودات — حساب واحد، قائمة وحدة.
   // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
   // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
-  const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  /* v-chat-order (المالك ١٠ أكتوبر: «أريد المحادثات بالترتيب — آخر وحدة كتبتها تكون أوّل وحدة»): المفتاح وقت آخر رسالة
+     كتبها المستخدم (p.updatedAt، يُحفظ ويتزامن)، وإلّا وقت الإنشاء من المعرّف. ثابت بين الفتحات والمزامنات (v-stable-order)
+     لأنّه محفوظ في المشروع لا مستمدّ من ترتيب المصفوفة؛ يتغيّر فقط حين يكتب المستخدم. */
+  const __histTs = (p) => { const u = Number(p && p.updatedAt) || 0; if(u) return u; const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
   const __histSorted = [...state.projects].sort((a, b) => __histTs(b) - __histTs(a));
   // v-perf-history-guard (المالك ٢٩ سبتمبر: «الشاشة تتأخر وتعلّق»): renderHistory تبني <iframe>
   // كاملة لكلّ محادثة فيها كود، وتُستدعى بعد كلّ رسالة وعند كلّ نبضة مزامنة حيّة (٢٠ث) حتّى لو لم
@@ -2167,6 +2172,7 @@ function renderMessages(keepScroll){
             $('#pyConsole').style.display = 'none';
             emptyState.style.display = 'none';
             previewFrame._imageView = true;
+            previewFrame._imagePid = state.currentId; // v-panel-x: الصورة تخصّ هذه المحادثة وتُطوى عند الانتقال لغيرها
             previewFrame._lastSrc = null;
             previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + ((a.dataUrl && a.dataUrl !== '[media]') ? a.dataUrl : (a.viewUrl || '')) + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
             switchWorkTab('preview');
@@ -2425,6 +2431,7 @@ function renderMessages(keepScroll){
       btn.onclick = () => {
         cur.code = m.code;
         cur.codeType = m.codeType;
+        if(window.__omranPanelHidden) delete window.__omranPanelHidden[cur.id]; // v-panel-x: الرجوع من المحادثة
         saveState();
         renderAll(true);
         if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){

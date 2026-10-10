@@ -1840,7 +1840,7 @@ async function callOpenAILike(messages, onDelta){
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
     const res = await fetch('/api/openai', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta, premium: (window.__premiumOn === true), mode: AI_MODE_NAME() }),
@@ -1856,7 +1856,7 @@ async function callOpenAILike(messages, onDelta){
   const directBody = { model, messages: toOpenAIVisionMessages(messages), stream: !!onDelta };
   if(!/^gpt-[56]/i.test(model)) directBody.temperature = 0.7;
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1881,7 +1881,7 @@ async function callOpenRouter(messages, onDelta){
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
     const res = await fetch('/api/openrouter', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
@@ -1895,7 +1895,7 @@ async function callOpenRouter(messages, onDelta){
     return data.choices[0].message.content;
   }
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1933,7 +1933,7 @@ async function callPerplexity(messages, onDelta){
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
     const res = await fetch('/api/perplexity', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: plainMessages, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
@@ -1947,7 +1947,7 @@ async function callPerplexity(messages, onDelta){
     return stripPplxCitations(data.choices[0].message.content);
   }
   const res = await fetch('https://api.perplexity.ai/chat/completions', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -2003,7 +2003,7 @@ async function callGemini(messages, onDelta){
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
     const res = await fetch('/api/gemini', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, contents, systemInstruction, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta, premium: (window.__premiumOn === true), mode: AI_MODE_NAME() }),
@@ -2022,7 +2022,7 @@ async function callGemini(messages, onDelta){
   const body = { contents };
   if(systemInstruction) body.systemInstruction = systemInstruction;
   const res = await fetch(endpoint, {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -2061,7 +2061,7 @@ async function __groqSend(model, msgsOut, onDelta){
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
     const res = await fetch('/api/groq', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: msgsOut, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
@@ -2075,7 +2075,7 @@ async function __groqSend(model, msgsOut, onDelta){
     return data.choices[0].message.content;
   }
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -2105,7 +2105,7 @@ async function callMistral(messages, onDelta){
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
     const res = await fetch('/api/mistral', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: stripToPlainMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
@@ -2119,7 +2119,7 @@ async function callMistral(messages, onDelta){
     return data.choices[0].message.content;
   }
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -2144,7 +2144,7 @@ async function callDeepSeek(messages, onDelta){
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
     const res = await fetch('/api/deepseek', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: plainMessages, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
@@ -2158,7 +2158,7 @@ async function callDeepSeek(messages, onDelta){
     return data.choices[0].message.content;
   }
   const res = await fetch('https://api.deepseek.com/chat/completions', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -2197,7 +2197,7 @@ async function callCohere(messages, onDelta, __forceModel){
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
     const res = await fetch('/api/cohere', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: stripToPlainMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
@@ -2212,7 +2212,7 @@ async function callCohere(messages, onDelta, __forceModel){
     return data.choices[0].message.content;
   }
   const res = await fetch('https://api.cohere.com/compatibility/v1/chat/completions', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -2243,9 +2243,9 @@ async function fetchClaudeModelList(apiKey){
   return (data.data || []).map(m => m.id);
 }
 
-async function claudeMessagesRequest(apiKey, model, systemMsg, rest, stream){
+async function claudeMessagesRequest(apiKey, model, systemMsg, rest, stream, __reqSig){
   return await fetch('https://api.anthropic.com/v1/messages', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -2264,9 +2264,9 @@ async function claudeMessagesRequest(apiKey, model, systemMsg, rest, stream){
   });
 }
 
-async function claudeProxyRequest(model, systemMsg, rest, stream){
+async function claudeProxyRequest(model, systemMsg, rest, stream, __reqSig){
   return await fetch('/api/claude', {
-      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -2282,6 +2282,13 @@ async function claudeProxyRequest(model, systemMsg, rest, stream){
   });
 }
 
+/* v-parallel-chats: إشارة الإيقاف لطلب بعينه — صريحة، أو على ردّ النداء (تضعها دالّة الإرسال لطلبها)،
+   وإلّا مرآة المحادثة المعروضة كما كان. المحادثات المتوازية لا يوقف إيقافُ إحداها طلبَ الأخرى. */
+function __omranReqSig(fn, sig){
+  if(sig) return sig;
+  if(fn && fn.__signal) return fn.__signal;
+  return (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined;
+}
 async function callClaude(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_claude_apikey');
   let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
@@ -2312,7 +2319,7 @@ async function callClaude(messages, onDelta){
   // If the visitor hasn't entered their own Claude key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
-    const res = await claudeProxyRequest(model, systemMsg, rest, !!onDelta);
+    const res = await claudeProxyRequest(model, systemMsg, rest, !!onDelta, (typeof __omranReqSig === 'function') ? __omranReqSig(onDelta) : undefined);
     if(!res.ok){
       const errText = await res.text();
       throwProviderError(res.status, errText);
@@ -2321,7 +2328,7 @@ async function callClaude(messages, onDelta){
     const data = await res.json();
     return data.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
   }
-  let res = await claudeMessagesRequest(apiKey, model, systemMsg, rest, !!onDelta);
+  let res = await claudeMessagesRequest(apiKey, model, systemMsg, rest, !!onDelta, (typeof __omranReqSig === 'function') ? __omranReqSig(onDelta) : undefined);
   if(!res.ok && res.status === 404){
     // Model not found — auto-discover a working model from this account and retry once.
     const errTextFirst = await res.text();
@@ -2333,7 +2340,7 @@ async function callClaude(messages, onDelta){
         localStorage.setItem('aiapp_claude_model', model);
         const modelInput = document.getElementById('claudeModel');
         if(modelInput) modelInput.value = model;
-        res = await claudeMessagesRequest(apiKey, model, systemMsg, rest, !!onDelta);
+        res = await claudeMessagesRequest(apiKey, model, systemMsg, rest, !!onDelta, (typeof __omranReqSig === 'function') ? __omranReqSig(onDelta) : undefined);
       } else {
         throwProviderError(404, errTextFirst);
       }
@@ -2496,14 +2503,15 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
       // Shown for every provider — the silent spinner was the reason Gemini
       // and GPT felt "dead" next to Claude, which had its own thinking output.
       try{
-        if(window.__chatStatus && !window.__chatStatus.isReleased()){
+        if(((onDelta && onDelta.__status) || window.__chatStatus) && !((onDelta && onDelta.__status) || window.__chatStatus).isReleased()){
           /* v-prov-status-i18n (شكوى المالك: «يكتب…» عربية بجانب اسم مترجم): سطر
              الحالة يتبع لغة الواجهة كبقية النصوص. */
-          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' ' + t('provTypingSuffix'));
+          ((onDelta && onDelta.__status) || window.__chatStatus).phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' ' + t('provTypingSuffix'));
         }
       }catch(e){ console.warn('[status] provider phase failed', e); }
       var __lastProg = Date.now();
       var __od = function(full){ __lastProg = Date.now(); if(onDelta) onDelta(full); };
+      __od.__signal = onDelta && onDelta.__signal; /* v-parallel-chats: إشارة الطلب تعبر الغلاف */
       /* v-owner-solo (فحص المزوّدين ٨ أكتوبر): للمالك المسار القديم («صلّح/خطأ» مع كود، دور الاستئذان، فشل مسار الأدوات) كان يرسل
          لكلّ مزوّد موديلًا غير الذي في القائمة (Gemini بمعرّف الوسيط إلى Google فيرفض، Mistral Small بدل Medium، GPT-4o-mini بدل GPT-6،
          Sonnet بدل Haiku…) ويصف صورته لـGemini أو يسقطها. الآن يمرّ بالخادم لمزوّده نفسه كالمسار العاديّ (بلا رسالة النظام الثابتة
@@ -2525,7 +2533,7 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
       // الإلغاء قرار المستخدم، لا عطل مزوّد. لا نحوّله إلى مزوّد آخر وإلا بدا
       // زر الإيقاف معطّلًا واستمر الرد سرًّا بعد الضغط عليه.
       if((err && err.name === 'AbortError') ||
-        (typeof genAbortController !== 'undefined' && genAbortController && genAbortController.signal.aborted)){
+        (((onDelta && onDelta.__signal) || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : null)) || {}).aborted){ /* v-parallel-chats: إشارة هذا الطلب */
         if(err && err.name === 'AbortError') throw err;
         const abortErr = new Error('Generation stopped');
         abortErr.name = 'AbortError';
@@ -2549,11 +2557,11 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
         throw err;
       }
       try{
-        if(window.__chatStatus){
+        if(((onDelta && onDelta.__status) || window.__chatStatus)){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
           const why = (err && (err.status ? ('HTTP ' + err.status + (err.upstreamText ? ' — ' + err.upstreamText.slice(0, 80) : '')) : String(err.message || '').slice(0, 70))) || t('provUnknownReason');
           /* v-prov-status-i18n: رسالة التعثر بلغة الواجهة لا بالعربي دائمًا. */
-          window.__chatStatus.note('⚠️', who + ' ' + t('provFailSwitch').replace('{why}', why));
+          ((onDelta && onDelta.__status) || window.__chatStatus).note('⚠️', who + ' ' + t('provFailSwitch').replace('{why}', why));
           console.warn('[fallback] ' + providerKey + ' failed:', err);
         }
       }catch(e){ console.warn('[status] fallback note failed', e); }
@@ -2633,7 +2641,7 @@ $('#prompt').addEventListener('keydown', e => {
 async function postWithConfirm(url, payload){
   const send = (body) => fetch(url, {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body),
-    signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    signal: ((typeof __omranReqSig === 'function') ? __omranReqSig(typeof onDelta !== 'undefined' ? onDelta : null, typeof __reqSig !== 'undefined' ? __reqSig : null) : ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined)),
   });
   let res = await send(payload);
   if(res.status !== 428) return res;

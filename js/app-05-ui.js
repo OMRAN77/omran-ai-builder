@@ -973,9 +973,17 @@ function omranBuildCodeViewerBar(){
   };
   bar._resetEdit = function(){ setOn(edt, false); };
 
+  /* v-panel-x (المالك ١٠ أكتوبر: «الإكس مسؤول في الصندوق فقط، إلّا إذا أريد أرجعه من عند المحادثة — الطرفين مشبوكين»):
+     على الكمبيوتر يقفل ما يعرضه الصندوق لهذه المحادثة بالترتيب — عارض الكود، ثمّ الصورة، ثمّ معاينة تطبيقها —
+     ولا يطوي اللوحة (لذلك زرّ الطيّ). يرجع المعروض من المحادثة (نقر الصورة، «استخدم هذا الإصدار»، كود جديد)
+     أو من تبويب المعاينة. الجوّال كما كان. */
   cls.onclick = function(){
     if(document.getElementById('omranCodeViewer')){ omranCloseCodeViewer(); return; }
-    try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+    if(document.documentElement.classList.contains('mobile-ui')){
+      try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+      return;
+    }
+    omranPanelCloseShown();
   };
 
   edt.onclick = function(){
@@ -1074,9 +1082,36 @@ window.omranOpenTextInCodePanel = function(text, title){
     }
   }catch(e){ __swallow(e, 'ui:code-viewer'); }
 };
+/* v-panel-x: معاينة تطبيق محادثةٍ أقفلها الإكس — {معرّف المحادثة: الكود المقفول}. كود جديد في المحادثة يرجعها تلقائيًّا. */
+window.__omranPanelHidden = window.__omranPanelHidden || {};
+function omranPanelCloseShown(){
+  try{
+    const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    if(previewFrame._imageView){
+      previewFrame._imageView = false; previewFrame._imagePid = null; previewFrame._lastSrc = null;
+      previewFrame.srcdoc = '';
+    } else if(cur && cur.code){
+      window.__omranPanelHidden[cur.id] = cur.code;
+    }
+    renderCodeAndPreview();
+  }catch(e){ __swallow(e, 'ui:panel-x'); }
+}
+function omranPanelReopen(){
+  try{
+    const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    if(cur && window.__omranPanelHidden[cur.id] !== undefined){ delete window.__omranPanelHidden[cur.id]; renderCodeAndPreview(); }
+  }catch(e){ __swallow(e, 'ui:panel-reopen'); }
+}
+window.omranPanelReopen = omranPanelReopen;
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
+  /* v-panel-x (المالك: «إذا فاتح محادثة فيها صورة تكون في المعاينة، وإذا دخلت محادثة أخرى فيها كتابة تكون الصورة
+     موجودة»): الصورة المفتوحة في المعاينة تخصّ محادثتها — علم _imageView كان عامًّا فتبقى في كلّ محادثة بلا كود. */
+  if(previewFrame._imageView && previewFrame._imagePid !== ((cur && cur.id) || null)){
+    previewFrame._imageView = false; previewFrame._imagePid = null; previewFrame._lastSrc = null;
+    previewFrame.srcdoc = '';
+  }
   /* v-code-viewer: عارض القراءة يخصّ مشروعًا بعينه — يُزال عند تبديل المشروع */
   try{
     const __ov = document.getElementById('omranCodeViewer');
@@ -1115,6 +1150,17 @@ function renderCodeAndPreview(){
   /* v-tap-fast: إسناد نص ضخم (مئات الكيلوبايت) لخانة الكود مع كل إعادة رسم
      كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
   if(codeEl.value !== cur.code) codeEl.value = cur.code;
+  const __hidden = window.__omranPanelHidden[cur.id];
+  if(__hidden !== undefined && __hidden !== cur.code) delete window.__omranPanelHidden[cur.id];
+  else if(__hidden !== undefined && !previewFrame._imageView){
+    previewFrame.style.display = 'none'; pyConsole.style.display = 'none';
+    previewFrame._lastSrc = null; previewFrame.srcdoc = ''; /* لا يبقى التطبيق يعمل مخفيًّا */
+    emptyState.style.display = 'flex';
+    $('#emptyStateSpinner').style.display = 'none';
+    $('#emptyTitleEl').textContent = t('emptyTitle');
+    $('#emptyDescEl').innerHTML = t('emptyDesc');
+    return;
+  }
   emptyState.style.display = 'none';
   /* v-panel-head: العنوان يتبع المعروض — اسم المشروع ونوع الكود */
   try{
@@ -1593,6 +1639,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     $('#panel-' + tab.dataset.tab).classList.add('active');
+    if(tab.dataset.tab === 'preview') omranPanelReopen(); // v-panel-x: تبويب المعاينة يرجّع ما أقفله الإكس
     if(tab.dataset.tab === 'voice' && typeof mahaStartCall === 'function' && !mahaCallActive){
       mahaStartCall('builder');
     }

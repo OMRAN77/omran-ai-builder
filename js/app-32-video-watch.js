@@ -113,6 +113,7 @@
     var promptEl = $('#prompt'), sendBtn = $('#btnSend');
     // رسالة المستخدم بشريحة 🎬 خفيفة — بايتات الفيديو لا تدخل الحالة المحفوظة.
     cur.messages.push({ role: 'user', content: text || t('vwDefaultQ'), attachments: [{ name: att.name, isImage: false, isVideoWatch: true, label: att.label, durationSec: Math.round(att.durationSec || 0) }] });
+    cur.updatedAt = Date.now(); // v-chat-order
     window.__chatEditRequest = null;
     try{ if(typeof setChatEditNotice === 'function') setChatEditNotice(false); }catch(e){ __swallow(e, 'vwatch:edit'); }
     if(promptEl) promptEl.value = '';
