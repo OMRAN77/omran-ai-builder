@@ -119,7 +119,7 @@ test('٤. مكان الصورة بلا صورة: الحرف الأوّل من ا
   assert.match(ph[0], /color:var\(--muted/, 'لون محايد');
 
   const a1 = read('js/app-01-boot-auth.js');
-  const src = a1.slice(a1.indexOf('  function updateAvatarUI(){'), a1.indexOf('  function showRecoveryModal('));
+  const src = a1.slice(a1.indexOf('  function updateAvatarUI(){'), a1.indexOf("  const authFormEl = $('#authForm');"));
   assert.ok(src.length > 100, 'updateAvatarUI');
   const mk = () => ({ style: { display: '' }, textContent: '', src: '' });
   function run(user, avatar, token = 'tok') {

@@ -351,14 +351,11 @@ try{
   const submitBtn = $('#authSubmitBtn');
   const authToggleBtn = $('#btnAuthToggle');
   const userLabel = $('#authUserLabel');
-  const recoveryRow = $('#authRecoveryRow');
-  const recoveryInput = $('#authRecoveryCode');
   const passLabelText = $('#authPasswordLabelText');
   const forgotLink = $('#authForgotLink');
   const backToLoginLink = $('#authBackToLoginLink');
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
-  const useCodeLink = $('#authUseCodeLink');
   /* v-perf-boot-defer: partials-core.js يحقن مودال الدخول ديناميكيًّا؛ فشل تحميله (شبكة جوّال متقطّعة) كان
      يترك tabLogin=null فيرمي .parentElement استثناءً غير ملتقَط يوقف باقي أجزاء الحزمة الملصَقة بعد هذا
      الملف بالكامل — نفس فخّ curT أعلاه (متغيّر مشابه غير مُعرَّف بعد، حادثة ٦ أغسطس). لا نكمل بعناصر ناقصة. */
@@ -367,12 +364,7 @@ try{
     return;
   }
   const tabsRow = tabLogin.parentElement;
-  const recoveryModal = $('#authRecoveryModal');
-  const recoveryCodeDisplay = $('#authRecoveryCodeDisplay');
-  const copyRecoveryBtn = $('#authCopyRecoveryBtn');
-  const ackRecoveryBtn = $('#authAckRecoveryBtn');
   let mode = 'login';
-  let pendingAuthed = null; // { username } to apply after recovery modal ack
 
   function curT(){
     // v425: اللغة الحيّة أوّلًا. المفتاح المحفوظ يُكتب فقط عند اختيار يدويّ، فزائرٌ
@@ -409,44 +401,28 @@ try{
     if(altBlock) altBlock.style.display = (m === 'login' || m === 'signup') ? 'flex' : 'none';
     if(switchBtn) switchBtn.textContent = m === 'signup' ? t.authHaveAccount : t.authCreateAccount;
     userInput.placeholder = (m === 'login' || m === 'forgotEmail') ? (t.authIdPlaceholder || '') : (t.authUsernameLabel || '');
-    passInput.placeholder = (m === 'reset' || m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
+    passInput.placeholder = (m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
     passInput.autocomplete = m === 'login' ? 'current-password' : 'new-password';
-    if(m === 'reset'){
+    if(m === 'forgotEmail'){
       tabsRow.style.display = 'none';
-      recoveryRow.style.display = 'flex';
-      passwordRow.style.display = 'block';
-      passLabelText.textContent = t.authNewPasswordLabel;
-      forgotLink.style.display = 'none';
-      useCodeLink.style.display = 'none';
-      backToLoginLink.style.display = '';
-      submitBtn.textContent = t.authSubmitReset;
-      if(rememberRow) rememberRow.style.display = 'none';
-    } else if(m === 'forgotEmail'){
-      tabsRow.style.display = 'none';
-      recoveryRow.style.display = 'none';
       passwordRow.style.display = 'none';
       forgotLink.style.display = 'none';
-      useCodeLink.style.display = '';
       backToLoginLink.style.display = '';
       submitBtn.textContent = t.authSubmitForgotEmail;
       if(rememberRow) rememberRow.style.display = 'none';
     } else if(m === 'resetToken'){
       tabsRow.style.display = 'none';
-      recoveryRow.style.display = 'none';
       passwordRow.style.display = 'block';
       passLabelText.textContent = t.authNewPasswordLabel;
       forgotLink.style.display = 'none';
-      useCodeLink.style.display = 'none';
       backToLoginLink.style.display = '';
       submitBtn.textContent = t.authSubmitReset;
       if(rememberRow) rememberRow.style.display = 'none';
     } else {
       tabsRow.style.display = 'none';
-      recoveryRow.style.display = 'none';
       passwordRow.style.display = 'block';
       passLabelText.textContent = t.authPasswordLabel;
       forgotLink.style.display = (m === 'login') ? '' : 'none';
-      useCodeLink.style.display = 'none';
       backToLoginLink.style.display = 'none';
       submitBtn.textContent = m === 'login' ? t.authSubmitLogin : t.authSubmitSignup;
       if(rememberRow) rememberRow.style.display = 'none';
@@ -455,7 +431,6 @@ try{
   tabLogin.onclick = () => setMode('login');
   tabSignup.onclick = () => setMode('signup');
   forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
-  useCodeLink.onclick = (e) => { e.preventDefault(); setMode('reset'); };
   backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
   const authSwitchBtn = $('#authSwitchBtn');
   if(authSwitchBtn) authSwitchBtn.onclick = () => setMode(mode === 'signup' ? 'login' : 'signup');
@@ -1262,24 +1237,6 @@ try{
     }
   }
 
-  function showRecoveryModal(code, username, avatar){
-    pendingAuthed = { username, avatar };
-    recoveryCodeDisplay.textContent = code;
-    recoveryModal.style.display = 'flex';
-  }
-  copyRecoveryBtn.onclick = async () => {
-    try {
-      await navigator.clipboard.writeText(recoveryCodeDisplay.textContent);
-      const t = curT();
-      copyRecoveryBtn.textContent = t.authCopied;
-      setTimeout(() => { copyRecoveryBtn.textContent = t.authCopyBtn; }, 1500);
-    } catch(e){ /* clipboard may be unavailable, user can select text manually */ }
-  };
-  ackRecoveryBtn.onclick = () => {
-    recoveryModal.style.display = 'none';
-    if(pendingAuthed){ onAuthed(pendingAuthed.username, pendingAuthed.avatar); pendingAuthed = null; }
-  };
-
   const authFormEl = $('#authForm');
   if(authFormEl){ authFormEl.addEventListener('submit', (e) => { e.preventDefault(); submitBtn.onclick(); }); }
   submitBtn.onclick = async () => {
@@ -1291,41 +1248,6 @@ try{
     // الملف الذي يغيّر النصّ فعلًا) — على شبكة بطيئة يبدو التطبيق معلّقًا. نلتقط النصّ الأصليّ هنا
     // ونعيده في finally كلّ فرع، بلا حاجة لمعرفة مفتاح الترجمة لكلّ وضع (reset/forgot/login/signup).
     const submitBtnLabel = submitBtn.textContent;
-
-    if(mode === 'reset'){
-      const code = recoveryInput.value.trim();
-      if(!username || !code || !password){
-        errBox.textContent = isEn ? 'Please fill in all fields' : 'الرجاء تعبئة جميع الحقول';
-        return;
-      }
-      submitBtn.disabled = true;
-      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
-      try {
-        const res = await fetch('/api/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'reset', username, recoveryCode: code, newPassword: password }),
-          signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
-        });
-        const data = await res.json();
-        if(!res.ok || data.error){
-          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
-          return;
-        }
-        authSet('aiapp_auth_token', data.token);
-        setMode('login');
-        userInput.value = '';
-        passInput.value = '';
-        recoveryInput.value = '';
-        showRecoveryModal(data.recoveryCode, data.username);
-      } catch(e){
-        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = submitBtnLabel;
-      }
-      return;
-    }
 
     if(mode === 'forgotEmail'){
       if(!username){
@@ -1411,11 +1333,7 @@ try{
       if(mode === 'signup'){
         localStorage.removeItem('aiapp_pending_ref');
       }
-      if(mode === 'signup' && data.recoveryCode){
-        showRecoveryModal(data.recoveryCode, data.username, data.avatar);
-      } else {
-        onAuthed(data.username, data.avatar);
-      }
+      onAuthed(data.username, data.avatar);
     } catch(e){
       errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
     } finally {
@@ -3440,7 +3358,6 @@ const I18N = {
     "settingsDlgMaxTitle": "دبل كلك للتكبير/التصغير",
     "agentModeTitle": "وكيل عمران",
     "authEmailLabel": "📧 الإيميل (اختياري - لاسترجاع الحساب)",
-    "authUseCodeLink": "لدي رمز استرجاع بدلًا من ذلك",
     "authOrDivider": "أو",
     "authGoogleBtn": "المتابعة عبر Google",
     "videoMakerHeroVeoNote": "ℹ️ صورة البطل تعمل مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.",
@@ -3521,7 +3438,6 @@ const I18N = {
     setChangePhoto: "تغيير الصورة",
     authPasswordLabel: 'كلمة المرور',
     authNewPasswordLabel: 'كلمة مرور جديدة',
-    authRecoveryLabel: 'رمز الاسترجاع',
     authForgotLink: 'نسيت كلمة المرور؟',
     authRememberMe: 'تذكرني',
     langSectionTitle: '🌐 اللغة',
@@ -3534,11 +3450,6 @@ const I18N = {
     authBackToLogin: 'رجوع لتسجيل الدخول',
     authSubmitReset: 'إعادة تعيين كلمة المرور',
     authSubmitForgotEmail: "أرسل رابط الاسترجاع على الإيميل",
-    authRecoveryModalTitle: '🔑 احتفظ برمز الاسترجاع هذا',
-    authRecoveryModalDesc: 'هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.',
-    authCopyBtn: '📋 نسخ',
-    authAckBtn: '✅ حفظته، متابعة',
-    authCopied: '✅ تم النسخ',
     authSubmitLogin: 'دخول',
     authSubmitSignup: 'إنشاء الحساب',
     logoutTitle: 'تسجيل الخروج',
@@ -4574,7 +4485,6 @@ const I18N = {
     "settingsDlgMaxTitle": "Double-click to maximize/restore",
     "agentModeTitle": "Omran Agent",
     "authEmailLabel": "📧 Email (optional — for account recovery)",
-    "authUseCodeLink": "I have a recovery code instead",
     "runCodeBtn": "Run",
     "orFreeGroup": "🆓 Free",
     "orPaidGroup": "💰 Paid",
@@ -4647,7 +4557,6 @@ const I18N = {
     setChangePhoto: "Change photo",
     authPasswordLabel: 'Password',
     authNewPasswordLabel: 'New password',
-    authRecoveryLabel: 'Recovery code',
     authForgotLink: 'Forgot password?',
     langSectionTitle: '🌐 Language',
     apiKeysSectionTitle: '🔑 AI Provider API Keys',
@@ -4662,11 +4571,6 @@ const I18N = {
     authBackToLogin: 'Back to login',
     authSubmitReset: 'Reset password',
     authSubmitForgotEmail: "Email me a reset link",
-    authRecoveryModalTitle: '🔑 Save this recovery code',
-    authRecoveryModalDesc: 'This is the only code you can use to recover your account if you forget your password. Save it somewhere safe — it will not be shown again.',
-    authCopyBtn: '📋 Copy',
-    authAckBtn: '✅ Saved it, continue',
-    authCopied: '✅ Copied',
     authSubmitLogin: 'Log In',
     authOrDivider: 'or',
     authGoogleBtn: 'Continue with Google',

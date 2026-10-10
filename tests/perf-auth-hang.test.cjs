@@ -22,8 +22,8 @@ test('١. عناصر مودال الدخول مفحوصة قبل .parentElement�
   assert.match(SRC, /\}catch\(e\)\{ window\.__swallow\(e, 'authSystem:uncaught'\); \}/, 'ومحاط بـcatch لا يوقف بقيّة الحزمة');
 });
 
-test('٢. الستّة نداءات في تدفّق الدخول كلّها بمهلة زمنيّة (AbortSignal.timeout)', () => {
-  const actions = ["action: 'reset'", "action: 'forgotPassword'", "action: 'resetWithToken'", 'action: mode,', "action: 'verify'", "action=oauth-claim"];
+test('٢. الخمسة نداءات في تدفّق الدخول كلّها بمهلة زمنيّة (AbortSignal.timeout) — reset حُذف مع رمز الاسترجاع (v-no-recovery-code)', () => {
+  const actions = ["action: 'forgotPassword'", "action: 'resetWithToken'", 'action: mode,', "action: 'verify'", "action=oauth-claim"];
   for (const marker of actions) {
     const i = SRC.indexOf(marker);
     assert.ok(i > 0, marker + ' موجود');
@@ -36,8 +36,8 @@ test('٣. زرّ الدخول يعرض نصّ انتظار ويعيد النصّ
   assert.match(SRC, /const submitBtnLabel = submitBtn\.textContent;/, 'النصّ الأصليّ يُحفَظ مرّة واحدة');
   const setCount = (SRC.match(/submitBtn\.textContent = isEn \? '[^']*' : '[^']*…';/g) || []).length;
   const restoreCount = (SRC.match(/submitBtn\.textContent = submitBtnLabel;/g) || []).length;
-  assert.equal(setCount, 4, 'نصّ الانتظار في الفروع الأربعة (reset/forgotEmail/resetToken/login-signup)');
-  assert.equal(restoreCount, 4, 'واستعادة النصّ في finally الأربعة كلّها');
+  assert.equal(setCount, 3, 'نصّ الانتظار في الفروع الثلاثة (forgotEmail/resetToken/login-signup)');
+  assert.equal(restoreCount, 3, 'واستعادة النصّ في finally الثلاثة كلّها');
 });
 
 test('٤. جسر جوجل على آيفون: busy=false مضمونة حتّى مع تعليق الشبكة (مهلة على oauth-claim)', () => {
