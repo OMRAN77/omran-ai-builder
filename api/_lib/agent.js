@@ -397,6 +397,20 @@ async function runInClient(send, name, input) {
   return 'لم يستجب متصفح المستخدم خلال 25 ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
 }
 
+/* v-tokens-agent-cache: علامة الكاش على آخر كتلة في آخر رسالة — نسخة لا تعديل في المكان، وكتلة فارغة تُترك (نمط markLastForCache
+   في chat.js؛ آخر رسالة في حلقة الوكيل دائمًا للمستخدم: الطلب أو نتائج الأدوات أو «أكمل»، فلا تقع العلامة على كتلة تفكير). */
+function cacheLastBlock(convo) {
+  const i = convo.length - 1, m = convo[i];
+  if (!m) return convo;
+  const blocks = typeof m.content === 'string' ? (m.content ? [{ type: 'text', text: m.content }] : []) : (Array.isArray(m.content) ? m.content.slice() : []);
+  const j = blocks.length - 1;
+  if (j < 0 || !blocks[j] || (blocks[j].type === 'text' && !blocks[j].text)) return convo;
+  blocks[j] = Object.assign({}, blocks[j], { cache_control: { type: 'ephemeral' } });
+  const out = convo.slice();
+  out[i] = Object.assign({}, m, { content: blocks });
+  return out;
+}
+
 // ── الدوام: دفتر الرحلة ───────────────────────────────────────────────────
 // حالة الحلقة كانت تعيش في ذاكرة الدالّة وحدها، والدالّة تستمرّ بعد رحيل
 // المستمع — فانقطاع شبكة كان يمحو عملًا اكتمل على الخادم فعلًا. الدفتر مفتاح
@@ -525,6 +539,7 @@ module.exports = async (req, res) => {
     }
   }
 
+  let meterRun = async () => {}; // v-tokens-agent-cache: يُضبط داخل التشغيل — معرَّف هنا ليصله مسار الخطأ أيضًا
   try {
     // 🎛️ اختيار موديل الوكيل — للمالك وحده (يشتغل بمفتاح المالك، فالرصيد من
     // حسابه). غير المالك يبقى على الافتراضي كي لا يُستنزف رصيد المالك بموديلٍ
@@ -577,6 +592,18 @@ module.exports = async (req, res) => {
        فشل كلود المباشر كان يهبط بصمت إلى DeepSeek ثمّ Mistral ثمّ Groq (openai/gpt-oss) **بلا أيّ أداة**. للمالك الآن: الطلب
        نفسه بأدواته على كلود عبر الوسيط (البروتوكول نفسه)، وبقيّة التشغيل عليه، وسطر السبب تحت الردّ. */
     let agentViaOR = false, agentFail = null;
+    /* v-tokens-agent-cache (تدقيق ١٠ أكتوبر: تشغيل الوكيل لغير المالك حتّى ٣٠ نداء، كلّ واحد يعيد النظام والسجلّ المتراكم بالسعر
+       الكامل — «cache_control = 0، والقياس = 0»): لغير المالك وحده، علامة الكاش على النظام وعلى آخر كتلة في آخر رسالة فتُقرأ
+       بادئة كلّ خطوة من الكاش (عُشر السعر)، وتوكنات المزوّد الفعليّة تُسجَّل في عدّاد التكلفة كما في المحادثة. الموديل والجهد
+       وسقف الخطوات والحصّة كما هي (v-agent-opus — باب المال لا يُمسّ)، والمالك طلبه نفسه حرفيًّا. CHAT_PROMPT_CACHE=off يطفئه. */
+    let cacheRun = !isOwner(runUser) && String(process.env.CHAT_PROMPT_CACHE || '').trim().toLowerCase() !== 'off';
+    const runUse = { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+    let runServed = '', runMetered = false;
+    meterRun = async () => {
+      if (runMetered || !runUser || isOwner(runUser)) return;
+      runMetered = true;
+      try { const cm = require('./cost-meter.js'); await cm.addCost(runUser, cm.tokenCostUsd(runServed || model, runUse), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+    };
     const orModel = (m) => 'anthropic/' + String(m || '').replace(/-(\d+)-(\d+)$/, '-$1.$2');
     const doCallOR = (m) => fetch('https://openrouter.ai/api/v1/messages', {
       method: 'POST',
@@ -611,14 +638,19 @@ module.exports = async (req, res) => {
         body: JSON.stringify(Object.assign({
           model: m,
           max_tokens: deepRun ? 64000 : 32000,
-          system,
-          messages: convo,
+          system: cacheRun ? [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }] : system, // v-tokens-agent-cache
+          messages: cacheRun ? cacheLastBlock(convo) : convo,
           tools: toolsFor(runUser),
           stream: true,
         }, agentThink(m), agentEffort(m))),
       });
       let markAt = Date.now(); // v-agent-log: بداية الخطوة — مدّة «فكّر N ثانية» من آخر حدث إلى نهاية كتلة التفكير
       let upstream = await (agentViaOR ? doCallOR : doCall)(model);
+      if (!upstream.ok && upstream.status === 400 && cacheRun && !agentViaOR) { // v-tokens-agent-cache: علامة مرفوضة = إعادة فوريّة بلا كاش لبقيّة التشغيل
+        const whyC = await upstream.text().catch(() => '');
+        if (/cache_control/i.test(whyC)) { cacheRun = false; logError('agent/prompt-cache-400', new Error(whyC.slice(0, 300))); upstream = await doCall(model); }
+        else upstream = { ok: false, status: 400, text: async () => whyC };
+      }
       let modelFellBack = false;
       if (!upstream.ok && upstream.status === 404 && !agentViaOR) {
         model = await resolveModel();
@@ -698,13 +730,14 @@ module.exports = async (req, res) => {
                 } catch (e) { logError('agent/stream-frame', e); }
               }
             }
-            run.status = 'fallback'; run.updatedAt = Date.now(); await journal(runUser, run);
+            run.status = 'fallback'; run.updatedAt = Date.now(); await journal(runUser, run); await meterRun();
             if (isOwner(runUser)) { if (!agentFail) agentFail = { who: (agentViaOR ? 'كلود عبر الوسيط' : 'Anthropic مباشر') + ' · ' + modelLabel(model), status: upstream.status, text: errText.slice(0, 300) }; send({ phase: 'reporting', delta: swapNote(fb.name + ' بلا أدوات') }); } // v-owner-swap
             send({ phase: 'reporting', done: true });
             res.end();
             return;
           } catch (e) { /* جرّب التالي */ }
         }
+        await meterRun();
         send({ error: 'خطأ المحرّك ' + upstream.status + ': ' + errText.slice(0, 300) });
         res.end();
         return;
@@ -714,7 +747,7 @@ module.exports = async (req, res) => {
       const reader = upstream.body.getReader();
       const decoder = new TextDecoder();
       let buf = '';
-      let stopReason = null;
+      let stopReason = null, stepOut = 0;
       const contentBlocks = []; // {type, text, name, id, inputJson}
       let curIdx = -1;
       /* v-agent-log: كتلة التفكير تُمسك حتّى تبدأ الكتلة بعدها — إن تلتها أداة وكانت قصيرة فهي ملاحظة الوكيل قبل خطوته
@@ -767,11 +800,17 @@ module.exports = async (req, res) => {
             const cb = contentBlocks[ev.index];
             if (cb && (cb.type === 'thinking' || cb.type === 'redacted_thinking')) heldThink = { ms: Date.now() - markAt, s: cb.thinking || '' };
             markAt = Date.now();
+          } else if (ev.type === 'message_start') { // v-tokens-agent-cache: الدخل والكاش كما أعلنهما المزوّد
+            const u = (ev.message && ev.message.usage) || {};
+            runServed = String((ev.message && ev.message.model) || '').trim() || runServed;
+            runUse.input += Number(u.input_tokens) || 0; runUse.cacheRead += Number(u.cache_read_input_tokens) || 0; runUse.cacheWrite += Number(u.cache_creation_input_tokens) || 0;
           } else if (ev.type === 'message_delta') {
             if (ev.delta && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
+            if (ev.usage && Number.isFinite(Number(ev.usage.output_tokens))) stepOut = Number(ev.usage.output_tokens); // تراكميّ داخل الرسالة — الأخير هو الخرج
           }
         }
       }
+      runUse.output += stepOut;
       flushThink(false);
 
       // نهاية كل خطوة تُقيَّد في الدفتر: ما وصل هنا لم يبقَ رهنًا ببقاء المستمع.
@@ -895,7 +934,7 @@ module.exports = async (req, res) => {
       if (stopReason === 'refusal') {
         const said = contentBlocks.filter(Boolean).map((cb) => cb.text || '').join('').trim();
         if (!said) send({ phase: 'reporting', delta: '⚠️ رفض المحرّك هذا الطلب بضوابط الأمان. أعد صياغته بوضوح، أو اختر نموذجًا آخر من الإعدادات ← الوكيل.' });
-        run.status = 'refused'; await journal(runUser, run);
+        run.status = 'refused'; await journal(runUser, run); await meterRun();
         send({ phase: 'reporting', done: true });
         res.end();
         return;
@@ -923,19 +962,19 @@ module.exports = async (req, res) => {
         }
       }
       // Finished normally.
-      run.status = 'done'; await journal(runUser, run);
+      run.status = 'done'; await journal(runUser, run); await meterRun(); // v-tokens-agent-cache: التكلفة الفعليّة قبل إغلاق المجرى (بعده قد تتجمّد الدالّة)
       if (agentFail && isOwner(runUser)) send({ phase: 'reporting', delta: swapNote('كلود عبر الوسيط · ' + orModel(model)) }); // v-owner-swap: للمالك وحده، تحت الردّ
       send({ phase: 'reporting', done: true });
       res.end();
       return;
     }
     if (run.status === 'running') run.status = 'stopped'; // بلغ سقف الخطوات
-    await journal(runUser, run);
+    await journal(runUser, run); await meterRun();
     send({ phase: 'reporting', done: true });
     res.end();
   } catch (e) {
     run.status = 'error'; run.error = String((e && e.message) || e).slice(0, 200);
-    await journal(runUser, run);
+    await journal(runUser, run); await meterRun();
     send({ error: 'Agent error: ' + e.message });
     try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا — لا شيء يُنهى */ }
   }
