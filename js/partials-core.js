@@ -14,10 +14,6 @@
     </div>
     <form id="authForm" autocomplete="on" onsubmit="return false;" style="margin-top:34px;">
     <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
-    <label id="authRecoveryRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:12px;">
-      <span data-i18n="authRecoveryLabel">رمز الاسترجاع</span>
-      <input type="text" id="authRecoveryCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; direction:ltr; text-align:center;">
-    </label>
     <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
       <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
       <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
@@ -29,7 +25,6 @@
     <button type="submit" class="btn primary" id="authSubmitBtn" style="width:100%; height:48px; border-radius:999px; font-weight:bold; font-size:15px; justify-content:center; text-align:center;" data-i18n="authSubmitLogin">دخول</button>
     <div style="text-align:center; margin-top:16px;">
       <a href="#" id="authForgotLink" style="font-size:14px; font-weight:700; color:var(--text); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
-      <a href="#" id="authUseCodeLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
       <a href="#" id="authBackToLoginLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none; margin-inline-start:12px;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
     </div>
     <!-- v-phone-link: في «نسيت كلمة المرور» — الاسترجاع برقم مربوط، مجّانًا عبر واتساب أو تيليجرام -->
@@ -71,18 +66,6 @@
       <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;" data-bi="Privacy Policy">سياسة الخصوصية</a>
       <span data-bi="and" data-bi-space="1">و</span><a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;" data-bi="Terms of Use">شروط الاستخدام</a>
     </p>
-  </div>
-</div>
-
-<div id="authRecoveryModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:420px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); text-align:center;">
-    <h3 style="margin-top:0;" data-i18n="authRecoveryModalTitle">🔑 احتفظ برمز الاسترجاع هذا</h3>
-    <p style="font-size: var(--fs-3); color:var(--muted);" data-i18n="authRecoveryModalDesc">هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.</p>
-    <div id="authRecoveryCodeDisplay" style="font-family:monospace; font-size:18px; direction:ltr; background:var(--bg,#111); border-radius:var(--r-2); padding:14px; margin:14px 0; letter-spacing:1px; word-break:break-all;"></div>
-    <div style="display:flex; gap:8px;">
-      <button type="button" class="btn" id="authCopyRecoveryBtn" style="flex:1;" data-i18n="authCopyBtn">📋 نسخ</button>
-      <button type="button" class="btn primary" id="authAckRecoveryBtn" style="flex:1;" data-i18n="authAckBtn">✅ حفظته، متابعة</button>
-    </div>
   </div>
 </div>
 

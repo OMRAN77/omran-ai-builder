@@ -119,7 +119,7 @@ test('٤. مكان الصورة بلا صورة: الحرف الأوّل من ا
   assert.match(ph[0], /color:var\(--muted/, 'لون محايد');
 
   const a1 = read('js/app-01-boot-auth.js');
-  const src = a1.slice(a1.indexOf('  function updateAvatarUI(){'), a1.indexOf('  function showRecoveryModal('));
+  const src = a1.slice(a1.indexOf('  function updateAvatarUI(){'), a1.indexOf("  const authFormEl = $('#authForm');"));
   assert.ok(src.length > 100, 'updateAvatarUI');
   const mk = () => ({ style: { display: '' }, textContent: '', src: '' });
   function run(user, avatar, token = 'tok') {
@@ -172,7 +172,7 @@ test('٥. ما تكتبه الواجهة في «حسابي» بنصّ ثابت: 
 
 test('٦. كسر الكاش: وسم الإعدادات ٦٩٣ ووسم ملفّات اللغات ٧٢٦', () => {
   assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=733'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=734'"));
 });
 
 test('٧. وسم الصورة في المحادثة (خارج الصفحتين) لا يتغيّر: ⚡ و💎 فيه لا في نصّي الجودة المشتركين، بالـ١٤ لغة', () => {

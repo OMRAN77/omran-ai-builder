@@ -65,7 +65,7 @@ test('الخادم: نسيت كلمة المرور يقبل الإيميل أي�
 
 test('الواجهة: خانة واحدة وكلمة مرور وزرّ ورابط، ثمّ جوجل و«إنشاء حساب جديد» — بلا إيميل اختياريّ ولا زرّ الإيميل', () => {
   const h = read('js/partials-core.js');
-  const ov = h.slice(h.indexOf('<div id="authOverlay"'), h.indexOf('<div id="authRecoveryModal"'));
+  const ov = h.slice(h.indexOf('<div id="authOverlay"'), h.indexOf('<div id="omranEduModal"'));
   assert.ok(!/id="authEmailRow"|id="authEmail"|authEmailLabel/.test(ov), 'الإيميل الاختياريّ محذوف');
   assert.ok(!/id="authEmailOtpBtn"/.test(ov), 'زرّ «الدخول بالإيميل» محذوف');
   assert.ok(!/data-i18n="authTitle"|data-i18n="authSubtitle"|authOrDivider/.test(ov), 'بلا عنوان ولا «أو»');
@@ -98,5 +98,5 @@ test('النصوص الجديدة بالـ١٤ لغة', () => {
     const s = read('i18n/' + l + '.js');
     for (const k of ['authIdPlaceholder', 'authCreateAccount', 'authHaveAccount', 'authSubmitForgotEmail']) assert.match(s, new RegExp('"?' + k + '"?:\\s*"[^"]+"'), l + ': ' + k);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=733'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=734'/);
 });
