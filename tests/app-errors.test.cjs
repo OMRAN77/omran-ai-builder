@@ -114,7 +114,8 @@ test('٦. الأداة تُعرض للمالك وحده في الوكيل وال
   assert.match(a, /cb\.name === 'read_app_errors'\)? \{\n\s+result = isOwner\(runUser\) \? await appErrors\.appErrorsText\(\) : '✗ قراءة أخطاء التطبيق للمالك وحده\.'/);
   const c = read('api/_lib/chat.js');
   assert.match(c, /const OWNER_TOOLS = \[require\('\.\/app-errors\.js'\)\.TOOL, /); // v-providers-like-agent: ومعها أدوات الوكيل
-  assert.match(c, /const toolsFor = \(owner, noMedia\) => \(noMedia \? TOOLS_NO_MEDIA : TOOLS\)\.concat\(owner \? OWNER_TOOLS : \[\]\);/);
+  /* v-claude-code-level E5: read_github للمالك بوصفه الموسَّع (from= متوازية)؛ أدواته تُضاف له وحده كما كانت */
+  assert.match(c, /const toolsFor = \(owner, noMedia\) => \(noMedia \? TOOLS_NO_MEDIA : TOOLS\)\.map\(\(t\) => \(owner && t\.name === 'read_github' \? require\('\.\/provider-level\.js'\)\.ownerReadTool\(t\) : t\)\)\.concat\(owner \? OWNER_TOOLS : \[\]\);/);
   assert.match(c, /tools: toolTurn \? toolsFor\(__ownerReq, isClarifyTurn\(lastUserText\) \|\| __analyzeDoc \|\| __ownerUiShot\) : undefined/); // v-img-ask · v-providers-like-agent
   assert.match(c, /result = __ownerReq \? await require\('\.\/app-errors\.js'\)\.appErrorsText\(\)/);
   assert.ok(!/TOOLS\.push|TOOLS\.concat\(OWNER_TOOLS\)[\s\S]*TOOLS\.concat\(OWNER_TOOLS\)/.test(c), 'الأدوات لا تُحوَّر مرّتين');

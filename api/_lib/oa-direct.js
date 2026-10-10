@@ -113,6 +113,7 @@ function toOpenAIBody(ab, prov) {
   if (prov === 'openai') body.stream_options = { include_usage: true };
   if (Array.isArray(ab.tools) && ab.tools.length) {
     body.tools = ab.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: t.input_schema || { type: 'object', properties: {} } } }));
+    if (ab.tool_choice && ab.tool_choice.type === 'none') body.tool_choice = 'none'; // v-claude-code-level C1: الجواب الختاميّ بلا أدوات، والقائمة كما هي
   }
   return body;
 }
@@ -162,6 +163,7 @@ function toResponsesBody(ab) {
   if (ab.max_tokens) body.max_output_tokens = ab.max_tokens;
   if (Array.isArray(ab.tools) && ab.tools.length) {
     body.tools = ab.tools.map((t) => ({ type: 'function', name: t.name, description: t.description || '', parameters: t.input_schema || { type: 'object', properties: {} }, strict: false }));
+    if (ab.tool_choice && ab.tool_choice.type === 'none') body.tool_choice = 'none'; // v-claude-code-level C1
   }
   return body;
 }
@@ -189,7 +191,10 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
   const dec = new TextDecoder();
   return new ReadableStream({
     async start(controller) {
-      const emit = (ev) => controller.enqueue(enc.encode('data: ' + JSON.stringify(ev) + '\n\n'));
+      let lastOut = Date.now();
+      const emit = (ev) => { lastOut = Date.now(); controller.enqueue(enc.encode('data: ' + JSON.stringify(ev) + '\n\n')); };
+      /* v-claude-code-level C5: تفكير المزوّد الصامت (أحداث لا تُترجم) يبقى بايتات عند حارس الصمت في chat.js — تعليق SSE كلّ ٥ ث على الأكثر، لا يصل العميل */
+      const alive = () => { if (Date.now() - lastOut > 5000) { lastOut = Date.now(); controller.enqueue(enc.encode(': up\n\n')); } };
       const reader = upstreamBody.getReader();
       let buf = '';
       let started = false;
@@ -213,6 +218,7 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          alive();
           buf += dec.decode(value, { stream: true });
           const lines = buf.split('\n');
           buf = lines.pop();
@@ -288,7 +294,10 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
   const dec = new TextDecoder();
   return new ReadableStream({
     async start(controller) {
-      const emit = (ev) => controller.enqueue(enc.encode('data: ' + JSON.stringify(ev) + '\n\n'));
+      let lastOut = Date.now();
+      const emit = (ev) => { lastOut = Date.now(); controller.enqueue(enc.encode('data: ' + JSON.stringify(ev) + '\n\n')); };
+      /* v-claude-code-level C5: تفكير المزوّد الصامت (أحداث لا تُترجم) يبقى بايتات عند حارس الصمت في chat.js — تعليق SSE كلّ ٥ ث على الأكثر، لا يصل العميل */
+      const alive = () => { if (Date.now() - lastOut > 5000) { lastOut = Date.now(); controller.enqueue(enc.encode(': up\n\n')); } };
       const reader = upstreamBody.getReader();
       let buf = '';
       let started = false;
@@ -305,6 +314,7 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          alive();
           buf += dec.decode(value, { stream: true });
           const lines = buf.split('\n');
           buf = lines.pop();
@@ -377,12 +387,13 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
 async function directFetch(route, anthropicBody, opts) {
   const o = opts || {};
   const f = o.fetchImpl || fetch;
+  const sig = o.signal ? { signal: o.signal } : {}; // v-claude-code-level C5: حارس صمت المالك يقطع النداء المباشر أيضًا
   if (route.responsesUrl) {
     let rb = toResponsesBody(anthropicBody);
     let rl = null;
     let capDropped = false;
     for (let attempt = 0; attempt < 2 + QUICK_EFFORTS.length; attempt++) {
-      const r = await f(route.responsesUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) });
+      const r = await f(route.responsesUrl, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) }, sig));
       if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model) };
       const t = await r.text().catch(() => '');
       rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t };
@@ -415,7 +426,7 @@ async function directFetch(route, anthropicBody, opts) {
   for (const model of models) {
     let body = Object.assign({}, base, { model });
     for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await f(route.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(body) });
+      const r = await f(route.url, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(body) }, sig));
       if (r.ok && r.body) {
         if (route.prov === 'groq') rememberWorking('groq', model);
         return { ok: true, status: r.status, model, text: async () => '', body: toAnthropicStream(r.body, model) };
