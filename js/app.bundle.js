@@ -43651,6 +43651,22 @@ const INSPIRE_CITY = [
    قسم «تجارب حيّة» فوق «مدينتك الحقيقيّة». الصفحتان تحتاجان النطاق نفسه (رمز الدخول والخادم) فتُفتحان في نافذة كاملة
    داخل التطبيق (إطار من النطاق نفسه) لا مشروعًا في المعاينة. */
 const INSPIRE_LIVE = [
+  { id:'marsa-noor', src:'/inspire/marsa-noor.html',
+    t:{ar:'مرسى نور',en:'Marsa Noor',fr:'Marsa Noor',hi:'मरसा नूर',ur:'مرسیٰ نور',bn:'মারসা নূর',ne:'मर्सा नूर',ml:'മർസ നൂർ',fil:'Marsa Noor',id:'Marsa Noor',zh:'光之港',ru:'Марса Нур',tr:'Marsa Noor',es:'Marsa Noor'},
+    d:{ar:'مدينة مرفأ ثلاثيّة الأبعاد حرّة التجوّل: سُق بين الزحمة والمشاة والترام، أنجز مهامًا، سابق في الطريق الدائريّ، وطوّر سيّارتك في المرآب — نهارًا وغسقًا، بالعربيّة والإنجليزيّة.',
+       en:'A free-roam 3D harbor city: drive through traffic, pedestrians and the tram, run jobs, race the Ring Road, and tune your car in the garage — by day or at dusk, in Arabic and English.',
+       fr:'Une ville portuaire 3D en libre parcours : conduisez parmi la circulation, les piétons et le tram, faites des missions, courez sur le périphérique et préparez votre voiture au garage — de jour ou au crépuscule, en arabe et en anglais.',
+       hi:'खुली 3D बंदरगाह नगरी: ट्रैफ़िक, पैदल यात्रियों और ट्राम के बीच गाड़ी चलाएँ, काम पूरे करें, रिंग रोड पर रेस लगाएँ और गैराज में अपनी कार सुधारें — दिन या साँझ में, अरबी और अंग्रेज़ी में।',
+       ur:'کھلی 3D بندرگاہی شہر: ٹریفک، پیدل چلنے والوں اور ٹرام کے بیچ گاڑی چلائیں، کام مکمل کریں، رنگ روڈ پر ریس لگائیں اور گیراج میں اپنی گاڑی بہتر بنائیں — دن یا شام میں، عربی اور انگریزی میں۔',
+       bn:'মুক্ত ঘোরার 3D বন্দর শহর: ট্রাফিক, পথচারী আর ট্রামের মাঝে গাড়ি চালান, কাজ সারুন, রিং রোডে রেস করুন আর গ্যারেজে গাড়ি সাজান — দিনে বা গোধূলিতে, আরবি ও ইংরেজিতে।',
+       ne:'खुला घुम्न मिल्ने 3D बन्दरगाह सहर: ट्राफिक, पैदलयात्री र ट्रामबीच गाडी चलाउनुहोस्, काम पूरा गर्नुहोस्, रिङ रोडमा दौड गर्नुहोस् र ग्यारेजमा गाडी सुधार्नुहोस् — दिन वा साँझमा, अरबी र अङ्ग्रेजीमा।',
+       ml:'സ്വതന്ത്രമായി ചുറ്റിക്കറങ്ങാവുന്ന 3D തുറമുഖ നഗരം: ട്രാഫിക്കിനും കാൽനടക്കാർക്കും ട്രാമിനും ഇടയിലൂടെ ഓടിക്കാം, ജോലികൾ ചെയ്യാം, റിങ് റോഡിൽ മത്സരിക്കാം, ഗാരേജിൽ കാർ മെച്ചപ്പെടുത്താം — പകലും സന്ധ്യയിലും, അറബിയിലും ഇംഗ്ലീഷിലും.',
+       fil:'Isang malayang 3D na lungsod-daungan: magmaneho sa gitna ng trapiko, mga tao at tram, tumanggap ng mga trabaho, makipagkarera sa Ring Road, at ayusin ang sasakyan sa garahe — sa araw o takipsilim, sa Arabic at English.',
+       id:'Kota pelabuhan 3D bebas jelajah: berkendara di antara lalu lintas, pejalan kaki, dan trem, selesaikan pekerjaan, balapan di Jalan Lingkar, dan tingkatkan mobil di garasi — siang atau senja, dalam bahasa Arab dan Inggris.',
+       zh:'自由漫游的 3D 海港城市：在车流、行人和电车之间驾驶，完成任务，在环城路竞速，在车库改装爱车——白天或黄昏，支持阿拉伯语和英语。',
+       ru:'Портовый 3D-город со свободным передвижением: езжайте среди машин, пешеходов и трамвая, выполняйте задания, гоняйте по кольцевой и прокачивайте машину в гараже — днём или в сумерках, на арабском и английском.',
+       tr:'Serbest dolaşımlı 3D liman şehri: trafiğin, yayaların ve tramvayın arasında sürün, görevler yapın, Çevre Yolu\'nda yarışın ve garajda aracınızı geliştirin — gündüz ya da alacakaranlıkta, Arapça ve İngilizce.',
+       es:'Una ciudad portuaria 3D de mundo abierto: conduce entre el tráfico, los peatones y el tranvía, cumple encargos, corre en la Ronda y mejora tu coche en el taller — de día o al atardecer, en árabe e inglés.'} },
   { id:'real3d', src:'/inspire/real3d.html',
     t:{ar:'المدينة الحقيقيّة',en:'The real city',fr:'La vraie ville',hi:'असली शहर',ur:'اصلی شہر',bn:'আসল শহর',ne:'वास्तविक सहर',ml:'യഥാർത്ഥ നഗരം',fil:'Ang totoong lungsod',id:'Kota sungguhan',zh:'真实城市',ru:'Настоящий город',tr:'Gerçek şehir',es:'La ciudad real'},
     d:{ar:'دبي وأبوظبي والرياض والدوحة مصوَّرة كما هي: سُق سيّارتك بين الزحمة والمشاة، سابق دراج، غيّر الطقس بكلمة، وصوّر المشهد بالذكاء الاصطناعي.',

@@ -52,3 +52,14 @@ test('الحفظ محميّ، وشاشة خطأ عند فشل المحرّك، �
   assert.match(mod, /ghostCar\.rotation\.y = Math\.PI \/ 2 - ghostPlay\[i \+ 2\]/);
   assert.match(mod, /TRS\(c\.x, 0, c\.z, Math\.PI \/ 2 - c\.h\)/);
 });
+
+test('بطاقة «مرسى نور» في تجارب الإلهام الحيّة بالأربع عشرة لغة وصورتها موجودة', () => {
+  const app = fs.readFileSync(path.join(root, 'js/app-35-inspire.js'), 'utf8');
+  const block = app.slice(app.indexOf('const INSPIRE_LIVE = ['), app.indexOf('(function(){\n  const ID'));
+  const LIVE = new Function(block + '; return INSPIRE_LIVE;')();
+  const c = LIVE.find((x) => x.id === 'marsa-noor');
+  assert.ok(c, 'card'); assert.strictEqual(c.src, '/inspire/marsa-noor.html'); assert.ok(!c.owner, 'للجميع');
+  for (const l of ['ar', 'en', 'fr', 'hi', 'ur', 'bn', 'ne', 'ml', 'fil', 'id', 'zh', 'ru', 'tr', 'es']) { assert.ok(String(c.t[l] || '').trim(), 't.' + l); assert.ok(String(c.d[l] || '').trim(), 'd.' + l); }
+  assert.doesNotMatch(Object.values(c.d).join(' '), /claude|anthropic|gemini|google|openai|gpt|groq|kimi/i);
+  assert.ok(fs.existsSync(path.join(root, 'assets/inspire/live/marsa-noor.jpg')));
+});
