@@ -273,6 +273,7 @@ I18N['tr'] = {
     "copyCodeTitle": "Kodu kopyala",
     "copiedMsg": "Kopyalandı ✅",
     "copyMsgTitle": "Yanıtı kopyala",
+    "panelFullTitle": "Paneli genişlet",
     "imgPreparing": "⏳ Görsel hazırlanıyor…",
     "imgReadyTitle": "✅ Görsel hazır",
     "fileReadyTitle": "✅ Dosya hazır", "imgDlBtn": "⬇️ İndir", "imgDlStarted": "📥 İndirme başladı — bildirimlere/İndirilenlere bakın", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Görsel bağlantısı kopyalandı — WhatsApp’a yapıştırın", "imgShareBtn": "📤 Paylaş", "imgOpenBtn": "🔗 Aç",

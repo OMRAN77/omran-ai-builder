@@ -44,6 +44,7 @@ I18N['ur'] = {
     msgReportFailed: 'رپورٹ نہیں بھیجی جا سکی۔ دوبارہ کوشش کریں۔',
     msgToolbarLabel: 'جواب کے اختیارات',
     copyMsgTitle: 'جواب کاپی کریں',
+    panelFullTitle: 'پینل بڑا کریں',
     imgPreparing: "⏳ تصویر تیار ہو رہی ہے…",
     imgReadyTitle: "✅ تصویر تیار ہے", fileReadyTitle: "✅ فائل تیار ہے", imgDlBtn: "⬇️ ڈاؤن لوڈ", imgDlStarted: "📥 ڈاؤن لوڈ شروع — نوٹیفکیشن/ڈاؤن لوڈز دیکھیں", imgWaBtn: "💬 واٹس ایپ", imgLinkCopied: "تصویر کا لنک کاپی ہو گیا — واٹس ایپ میں پیسٹ کریں", imgShareBtn: "📤 شیئر", imgOpenBtn: "🔗 کھولیں",
     attachDropHere: "تصویر یہاں چھوڑیں",

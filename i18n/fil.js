@@ -275,6 +275,7 @@ I18N['fil'] = {
     "copyCodeTitle": "Kopyahin ang code",
     "copiedMsg": "Nakopya na ✅",
     "copyMsgTitle": "Kopyahin ang sagot",
+    "panelFullTitle": "Palakihin ang panel",
     "imgPreparing": "⏳ Inihahanda ang larawan…",
     "imgReadyTitle": "✅ Handa na ang larawan",
     "fileReadyTitle": "✅ Handa na ang file", "imgDlBtn": "⬇️ I-download", "imgDlStarted": "📥 Nagda-download — tingnan ang notifications/Downloads", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Nakopya ang link ng larawan — i-paste sa WhatsApp", "imgShareBtn": "📤 Ibahagi", "imgOpenBtn": "🔗 Buksan",

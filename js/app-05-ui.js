@@ -1691,6 +1691,19 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
   btn.id = 'waCollapseBtn'; btn.type = 'button'; btn.setAttribute('aria-label','طي اللوحة');
   btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="15" y1="4" x2="15" y2="20"></line></svg>';
   tabs.insertBefore(btn, tabs.firstElementChild);
+  /* v-panel-full (طلب المالك): تكبير اللوحة ليملأ الصفحة بدل العمود الضيّق بجانب المحادثة (كمبيوتر فقط) */
+  const fullBtn = document.createElement('button');
+  fullBtn.id = 'waFullBtn'; fullBtn.type = 'button';
+  const fullTitle = (typeof t === 'function' && t('panelFullTitle') !== 'panelFullTitle') ? t('panelFullTitle') : 'تكبير اللوحة';
+  fullBtn.title = fullTitle; fullBtn.setAttribute('aria-label', fullTitle);
+  fullBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+  tabs.insertBefore(fullBtn, btn.nextSibling);
+  function setFull(on){
+    document.body.classList.toggle('waFullMode', on);
+    fullBtn.classList.toggle('on', on);
+    fullBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  fullBtn.onclick = () => setFull(!document.body.classList.contains('waFullMode'));
   /* v-panel-head: عنوان يبيّن المعروض حاليًا + زرّ نسخ لمحتوى اللوحة.
      يُضافان داخل شريط #tabs نفسه بلا لمس أيّ زرّ قائم؛ العنوان يُحدَّث من
      omranPanelTitle، والنسخ يأخذ الكود أو النصّ المعروض حسب الحالة. */
@@ -1746,6 +1759,7 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
   ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
   document.body.appendChild(ro);
   function setWA(collapsed){
+    if(collapsed) setFull(false);
     wa.classList.toggle('waCollapsed', collapsed);
     if(rz) rz.classList.toggle('waCollapsed', collapsed);
     document.body.classList.toggle('waCollapsedMode', collapsed);

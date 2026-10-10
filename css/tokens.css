@@ -202,6 +202,7 @@
   #provSearchInput{display:none;}
   #provDropdownPanel{display:block; position:static; background:none; border:none; padding:0; box-shadow:none;}
   #waCollapseBtn{display:none;}
+  #waFullBtn{display:none;}
   #waReopen{display:none;}
   /* v336: (كمبيوتر فقط) قائمة المزودين المنسدلة + طي لوحة الكود/المعاينة */
   @media (min-width:861px){
@@ -245,6 +246,15 @@
     html:not(.mobile-ui) #workarea.waCollapsed, html:not(.mobile-ui) #resizer2.waCollapsed{display:none !important;}
     html:not(.mobile-ui) #waCollapseBtn{display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:var(--muted); cursor:pointer; padding:10px 12px;}
     html:not(.mobile-ui) #waCollapseBtn:hover{color:var(--text);}
+    /* v-panel-full (طلب المالك: المعاينة والكود تملآن الصفحة لا عمود 560 بجانب المحادثة):
+       زرّ تكبير بجانب الطيّ؛ وفي الوضع المكبّر تُخفى المحادثة ويأخذ اللوحة العرض كلّه. */
+    html:not(.mobile-ui) #waFullBtn{display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:var(--muted); cursor:pointer; padding:10px 12px;}
+    html:not(.mobile-ui) #waFullBtn:hover, html:not(.mobile-ui) #waFullBtn.on{color:var(--text);}
+    html:not(.mobile-ui) body.waFullMode #chatcol, html:not(.mobile-ui) body.waFullMode #omFrameCenter,
+    html:not(.mobile-ui) body.waFullMode #resizer2, html:not(.mobile-ui) body.waFullMode > header,
+    html:not(.mobile-ui) body.waFullMode > #stockTicker{display:none !important;}
+    /* اللوحة تمتدّ على أعمدة المحادثة وترويستها (3..5) فتملأ ما بين الشريط الجانبي وحافّة الصفحة */
+    html:not(.mobile-ui) body.waFullMode #workarea{grid-column:3 / 6 !important; width:auto !important; max-width:none !important;}
     /* v-collapse-top (طلب المالك): مقبض الطيّ الصغير فوق (لا في النص)، بأيقونة اللوحة المقسومة */
     /* v-wa-handle-bare (طلب المالك مكرّرًا): أيقونة اللوحة نفس شكلها بلا أيّ إطار/صندوق — بلا خلفيّة ولا استدارة ولا خطّ */
     html:not(.mobile-ui) body.waCollapsedMode #waReopen{display:flex; align-items:center; justify-content:center; position:fixed; top:54px; inset-inline-end:2px; z-index:70; width:24px; height:26px; background:none !important; border:none !important; border-radius:0 !important; box-shadow:none !important; color:var(--muted); cursor:pointer; padding:0;}

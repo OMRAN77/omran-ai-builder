@@ -45,6 +45,7 @@ I18N['ne'] = {
     msgReportFailed: 'रिपोर्ट पठाउन सकिएन। फेरि प्रयास गर्नुहोस्।',
     msgToolbarLabel: 'जवाफका कार्यहरू',
     copyMsgTitle: 'जवाफ प्रतिलिपि गर्नुहोस्',
+    panelFullTitle: 'प्यानल ठूलो बनाउनुहोस्',
     imgPreparing: "⏳ तस्बिर तयार हुँदैछ…",
     imgReadyTitle: "✅ तस्बिर तयार छ", fileReadyTitle: "✅ फाइल तयार छ", imgDlBtn: "⬇️ डाउनलोड", imgDlStarted: "📥 डाउनलोड सुरु — सूचना/डाउनलोड हेर्नुहोस्", imgWaBtn: "💬 व्हाट्सएप", imgLinkCopied: "तस्बिरको लिङ्क प्रतिलिपि भयो — व्हाट्सएपमा टाँस्नुहोस्", imgShareBtn: "📤 साझा गर्नुहोस्", imgOpenBtn: "🔗 खोल्नुहोस्",
     attachDropHere: "तस्बिर यहाँ छोड्नुहोस्",

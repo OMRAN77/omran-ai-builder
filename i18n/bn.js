@@ -45,6 +45,7 @@ I18N['bn'] = {
     msgReportFailed: 'রিপোর্ট পাঠানো যায়নি। আবার চেষ্টা করুন।',
     msgToolbarLabel: 'উত্তরের কার্যক্রম',
     copyMsgTitle: 'উত্তর কপি করুন',
+    panelFullTitle: 'প্যানেল বড় করুন',
     imgPreparing: "⏳ ছবি প্রস্তুত হচ্ছে…",
     imgReadyTitle: "✅ ছবি প্রস্তুত", fileReadyTitle: "✅ ফাইল প্রস্তুত", imgDlBtn: "⬇️ ডাউনলোড", imgDlStarted: "📥 ডাউনলোড শুরু হয়েছে — নোটিফিকেশন/ডাউনলোড দেখুন", imgWaBtn: "💬 হোয়াটসঅ্যাপ", imgLinkCopied: "ছবির লিঙ্ক কপি হয়েছে — হোয়াটসঅ্যাপে পেস্ট করুন", imgShareBtn: "📤 শেয়ার", imgOpenBtn: "🔗 খুলুন",
     attachDropHere: "ছবিটি এখানে ছেড়ে দিন",

@@ -274,6 +274,7 @@ I18N['ru'] = {
     "copyCodeTitle": "Копировать код",
     "copiedMsg": "Скопировано ✅",
     "copyMsgTitle": "Копировать ответ",
+    "panelFullTitle": "Развернуть панель",
     "imgPreparing": "⏳ Подготовка изображения…",
     "imgReadyTitle": "✅ Изображение готово",
     "fileReadyTitle": "✅ Файл готов", "imgDlBtn": "⬇️ Скачать", "imgDlStarted": "📥 Загрузка началась — смотрите уведомления/Загрузки", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Ссылка на изображение скопирована — вставьте её в WhatsApp", "imgShareBtn": "📤 Поделиться", "imgOpenBtn": "🔗 Открыть",
