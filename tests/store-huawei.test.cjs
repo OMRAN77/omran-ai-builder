@@ -34,8 +34,20 @@ else assert.ok(true);
 const sd = fs.readFileSync(R('js/selfdiag.js'), 'utf8');
 assert.ok(sd.includes('v-store-twa') && sd.includes("__ml.setAttribute('href', '/manifest-huawei.json')"), 'تبديل وسم البيان تحت store-safe');
 assert.ok(sd.indexOf("classList.add('store-safe')") < sd.indexOf('/manifest-huawei.json'), 'التبديل داخل فرع هواوي فقط');
+// v-store-referrer (رفض 1.3.12 بـ4.1 و11.4): هويّة الحزمة من referrer تفعّل وضع المتجر ولو انطلقت من /
+assert.ok(sd.includes('v-store-referrer') && sd.includes('android-app:\\/\\/com\\.omran\\.aibuilder'), 'كشف الحزمة من document.referrer');
+assert.ok(sd.indexOf('document.referrer') < sd.indexOf("localStorage.setItem('aiapp_store'"), 'الكشف قبل حفظ العلامة فتبقى بعد أوّل فتحة');
+{
+  const m = sd.match(/\/\^android-app:\\\/\\\/com\\\.omran\\\.aibuilder\(\\\.\|\\\/\|\$\)\//);
+  assert.ok(m, 'تعبير الحزمة موجود');
+  const re = new RegExp('^android-app:\\/\\/com\\.omran\\.aibuilder(\\.|\\/|$)');
+  for (const ok of ['android-app://com.omran.aibuilder/', 'android-app://com.omran.aibuilder.twa/', 'android-app://com.omran.aibuilder']) assert.ok(re.test(ok), 'يطابق ' + ok);
+  for (const bad of ['android-app://com.omran.aibuilderx/', 'https://omran-ai-builder.vercel.app/', '']) assert.ok(!re.test(bad), 'لا يطابق ' + JSON.stringify(bad));
+}
+const twaStmt = al.find((s) => s.target && s.target.package_name === 'com.omran.aibuilder.twa');
+assert.ok(twaStmt && twaStmt.target.sha256_cert_fingerprints.length >= 1, 'عبارة DAL للحزمة com.omran.aibuilder.twa (اسم حزمة 1.3.12 في AGC)');
 const html = fs.readFileSync(R('index.html'), 'utf8');
-assert.ok(/\/js\/selfdiag\.js\?v=hw-twa-\d+/.test(html), 'وسم ?v= لـselfdiag رُفع');
+assert.ok(/\/js\/selfdiag\.js\?v=hw-twa-2/.test(html), 'وسم ?v= لـselfdiag رُفع إلى hw-twa-2');
 assert.ok(html.includes('rel="manifest" href="/manifest.json'), 'الوسم الافتراضيّ ما زال البيان العامّ');
 
 // ملفّات المتجر للمالك لا للـCDN، واللقطات ٩:١٦ من الحزمة نفسها

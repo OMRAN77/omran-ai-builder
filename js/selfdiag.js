@@ -19,6 +19,11 @@
 (function(){
   try{
     var sp = new URLSearchParams(location.search).get('store');
+    /* v-store-referrer (رفض 1.3.12 بـ4.1 و11.4 معًا): الحزمة بُنيت خارج المستودع
+       فانطلقت من / بلا العلم ورأى المراجع الأسهم والفوركس. غلاف TWA يرسل دائمًا
+       referrer = android-app://<اسم الحزمة>/ مهما كان رابط التشغيل، فهويّة
+       الحزمة نفسها تفعّل وضع المتجر — ويبقى الرابط طريقًا ثانيًا. */
+    if(!sp && /^android-app:\/\/com\.omran\.aibuilder(\.|\/|$)/.test(document.referrer || '')) sp = 'huawei';
     if(sp) localStorage.setItem('aiapp_store', String(sp).slice(0, 20));
     if((localStorage.getItem('aiapp_store') || '') === 'huawei'){
       document.documentElement.classList.add('store-safe');
