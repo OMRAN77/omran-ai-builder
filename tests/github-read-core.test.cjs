@@ -46,7 +46,7 @@ function fakeGithub(overrides) {
 test('read_github: github-write.js يُقرأ نصًّا بأسطر مرقّمة (CTRL_RE بهروب لا NUL خام)', async () => {
   const g = fakeGithub();
   const out = await GH.readGithub({ url: R, path: 'api/_lib/github-write.js' }, g.opts);
-  assert.doesNotMatch(out, /ملفّ ثنائيّ/, out.slice(0, 200));
+  assert.doesNotMatch(out, /^📄 [^\n]* — ملفّ ثنائيّ \(/, out.slice(0, 200)); // علامة formatFile لا كلمة في تعليق
   assert.match(out, /^📄 api\/_lib\/github-write\.js · \d+ سطر/);
   assert.match(out, /\d+\| const CTRL_RE = \/\[\\u0000-\\u001f\\u007f\]\/;/);
   // الهروب لم يغيّر المعنى: نفس المدى المرفوض (0x00–0x1f و0x7f)، والمسافة والعربيّة مقبولتان
@@ -58,7 +58,7 @@ test('read_github: github-write.js يُقرأ نصًّا بأسطر مرقّمة
 test('read_github: chat.js (محرّك المحادثة) الحقيقيّ يُقرأ نصًّا، والماسح يعدّ أيّ ملفّ فيه NUL ثنائيًّا', async () => {
   const g = fakeGithub(); // الملفّ كما هو على القرص — بلا تنظيف
   const out = await GH.readGithub({ url: R, path: 'api/_lib/chat.js' }, g.opts);
-  assert.doesNotMatch(out, /ملفّ ثنائيّ/, out.slice(0, 200));
+  assert.doesNotMatch(out, /^📄 [^\n]* — ملفّ ثنائيّ \(/, out.slice(0, 200)); // علامة formatFile لا كلمة في تعليق
   assert.match(out, /^📄 api\/_lib\/chat\.js · \d+ سطر · الأسطر 1–\d+/);
   assert.match(out, /يتبع من السطر \d+ — استدعِ الأداة نفسها مع from=/, 'ملفّ طويل يُقرأ على دفعات');
   // السبب الذي يمنع NUL خامًا في الكود: formatFile والبحث يعاملان الملفّ ثنائيًّا.

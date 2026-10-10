@@ -198,7 +198,7 @@ test('٨. الواجهة: صفّ «رقم الهاتف» في حسابي، وز�
   assert.ok(!/resetToken/.test(a1.slice(a1.indexOf('async function phoneFlow'), a1.indexOf("closest('[data-phone-link]')"))), 'المتصفّح لا يتعامل مع رابط الاسترجاع');
   const html = read('index.html');
   assert.ok(html.includes('/js/partials-core.js?v=656') && html.includes('/js/partials-settings.js?v=694'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=733'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=734'"));
   const keys = ['acctPhoneLabel', 'phoneNotLinked', 'phoneViaWa', 'phoneViaTg', 'phoneWaiting', 'phoneLinkedOk', 'phoneTaken', 'phoneNoUser', 'phoneExpired', 'phoneRecoverTitle', 'phoneRecoverSent'];
   const a3 = read('js/app-03-i18n-data.js');
   for (const k of keys) assert.equal((a3.match(new RegExp('^    ' + k + ': ', 'gm')) || []).length, 2, 'ar+en: ' + k);

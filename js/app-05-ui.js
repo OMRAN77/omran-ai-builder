@@ -1395,8 +1395,11 @@ $('#btnDeleteAll').onclick = () => {
     const chips = [...document.querySelectorAll('#fbChips .fbChip.on')].map(c=>c.dataset.k);
     const note = document.getElementById('fbNote').value.trim();
     let user='guest'; try{ user = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ __swallow(_, "misc:app-05-ui#7"); }
+    // v-sec-feedback: الخادم لا يصدّق `user` من الجسم بعد اليوم — يأخذ الاسم من رمز الجلسة الموقَّع، فنرسله معه
+    // (وإلّا صار تقييم من لم يختر «تذكّرني» باسم guest).
+    let token=''; try{ token = (typeof authGet==='function'&&authGet('aiapp_auth_token'))||''; }catch(_){ __swallow(_, "misc:app-05-ui#7t"); }
     try{
-      fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rating:fbRating,chips,note,user,lang:(typeof lang!=='undefined'?lang:'')})});
+      fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rating:fbRating,chips,note,user,token,lang:(typeof lang!=='undefined'?lang:'')})});
     }catch(_){ __swallow(_, "misc:app-05-ui#8"); }
     localStorage.setItem('fbDone','1');
     document.getElementById('fbFormView').style.display='none';
@@ -1417,6 +1420,25 @@ $('#btnDeleteAll').onclick = () => {
     setTimeout(()=>wrap.classList.remove('open'),2600);
   };
 
+  /* v-sec-feedback: تدقيق ١٠ أكتوبر — «آراء المستخدمين» كانت تلصق اسم المرسل والشرائح ومزوّد البلاغ في HTML
+     بلا تهريب (الملاحظة والمحتوى وحدهما يُهرَّب منهما «<»)، والخادم يقبلها من أيّ زائر بلا دخول — فجرى سكربت
+     في متصفّح المالك (fb=1 ch=1 في المسبار). كلّ حقل يُهرَّب الآن (& < > " ')، والتقييم يُحصر في ٠–٥ (قيمة
+     مخزّنة غريبة كانت ترمي في repeat فتطفئ اللوحة كلّها). الشكل والترتيب كما كانا. */
+  function fbEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function fbOwnerListHtml(items, reports){
+    let html = items.map(it=>{
+      const n = Math.max(0, Math.min(5, parseInt(it.rating,10)||0));
+      const stars='★'.repeat(n)+'☆'.repeat(5-n);
+      const chips=(Array.isArray(it.chips)?it.chips:[]).map(k=>fbEsc(t(k))).join(' · ');
+      return '<div class="fbItem"><span class="fbStarsSm">'+stars+'</span>'+(chips?' — '+chips:'')+(it.note?'<div style="margin-top:4px;">'+fbEsc(it.note)+'</div>':'')+'<div class="fbMeta">'+fbEsc(it.user||'guest')+' · '+fbEsc(String(it.ts||'').slice(0,16).replace('T',' '))+'</div></div>';
+    }).join('');
+    if(reports.length){
+      html += '<div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">🚩 بلاغات المحتوى ('+reports.length+')</div>';
+      html += reports.map(rp=>'<div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">'+fbEsc(String(rp.content||'').slice(0,300))+'</div><div class="fbMeta">'+fbEsc(rp.user||'guest')+(rp.provider?' · '+fbEsc(rp.provider):'')+' · '+fbEsc(String(rp.ts||'').slice(0,16).replace('T',' '))+'</div></div>').join('');
+    }
+    return html;
+  }
+
   document.getElementById('fbOwnerBtn').onclick = async ()=>{
     const list = document.getElementById('fbList');
     document.getElementById('fbFormView').style.display='none';
@@ -1428,16 +1450,7 @@ $('#btnDeleteAll').onclick = () => {
       const items = (d&&d.feedback)||[];
       const reports = (d&&d.reports)||[];
       if(!items.length && !reports.length){ list.innerHTML = '<div style="text-align:center;color:#889;padding:20px;">'+t('fbEmpty')+'</div>'; return; }
-      let html = items.map(it=>{
-        const stars='★'.repeat(it.rating)+'☆'.repeat(5-it.rating);
-        const chips=(it.chips||[]).map(k=>t(k)).join(' · ');
-        return '<div class="fbItem"><span class="fbStarsSm">'+stars+'</span>'+(chips?' — '+chips:'')+(it.note?'<div style="margin-top:4px;">'+it.note.replace(/</g,'&lt;')+'</div>':'')+'<div class="fbMeta">'+(it.user||'guest')+' · '+String(it.ts||'').slice(0,16).replace('T',' ')+'</div></div>';
-      }).join('');
-      if(reports.length){
-        html += '<div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">🚩 بلاغات المحتوى ('+reports.length+')</div>';
-        html += reports.map(rp=>'<div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">'+String(rp.content||'').slice(0,300).replace(/</g,'&lt;')+'</div><div class="fbMeta">'+(rp.user||'guest')+(rp.provider?' · '+rp.provider:'')+' · '+String(rp.ts||'').slice(0,16).replace('T',' ')+'</div></div>').join('');
-      }
-      list.innerHTML = html;
+      list.innerHTML = fbOwnerListHtml(items, reports);
     }catch(e){ list.innerHTML = '<div style="text-align:center;color:#e66;padding:20px;">⚠️</div>'; }
   };
 
