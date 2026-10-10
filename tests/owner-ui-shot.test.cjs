@@ -38,6 +38,7 @@ test('الخادم: ملاحظة المرفقات التي يُلحقها الع
   assert.equal(C.uiEditTurn('احذف هذا المكان\n\n[attachments: image.png, Screenshot 2026.png]'), true);
   assert.equal(C.uiEditTurn('احذف الخلفية من الصورة\n\n[مرفقات: pasted-1.png]'), false);
   assert.equal(C.uiEditTurn('[مرفقات: image.png]'), false);
+  assert.equal(C.uiEditTurn('ممكن تشيل هذا الشي؟\n\n[ملاحظة للنموذج: الصورة memory.png أُرفقت تلقائيًّا من ذاكرة المحادثة]'), false, 'ملاحظة صورة الذاكرة لا تُحذف — متابعة تعديل صورة');
 });
 
 test('omranOwnerUiShotTurn: لقطة المالك + أمر على عنصر = تعديل التطبيق، وصورة الكاميرا تبقى تعديل صورة', () => {
@@ -50,6 +51,9 @@ test('omranOwnerUiShotTurn: لقطة المالك + أمر على عنصر = ت�
   assert.equal(f('شيل الزر هذا', photo), true, 'عنصر واجهة مسمًّى يكفي بلا علامة لقطة');
   assert.equal(f('احذف هذا المكان', photo), false, 'صورة بلا علامة لقطة وبلا عنصر مسمًّى = تعديل صورة كما كان');
   assert.equal(f('شيل الشجرة هذي', photo), false);
+  assert.equal(f('غيّر سعر البرجر في القائمة إلى ٢٠', photo), false, 'قائمة مطعم في صورة حقيقيّة ليست قائمة التطبيق');
+  assert.equal(f('امسح الكلام اللي على الشاشة', photo), false, 'شاشة في صورة حقيقيّة');
+  assert.equal(f('امسح الكلام اللي على الشاشة', shot), true, 'في لقطة شاشة: عنصر من الواجهة');
   assert.equal(f('احذف الخلفية من الصورة', shot), false);
   assert.equal(f('وش هذا؟', shot), false);
   assert.equal(f('', shot), false);
@@ -60,7 +64,16 @@ test('omranOwnerUiShotTurn: لقطة المالك + أمر على عنصر = ت�
 });
 
 test('الربط: بوّابة الوسائط تُقفل لدور اللقطة قبل أوّل مسار وسائط، ولا يُحقن دور «المساعد البصري»', () => {
-  const gate = src.indexOf("const __ownerUiShot = omranOwnerUiShotTurn(text, pendingAttachments.filter(a => a && a.isImage).slice(-1)[0]);\n  if(__ownerUiShot) __mediaLane = 'none';");
+  const gate = src.indexOf("const __ownerUiShot = omranOwnerUiShotTurn(text, __gateAtts.filter(a => a && a.isImage).slice(-1)[0]);\n  if(__ownerUiShot) __mediaLane = 'none';");
+  // إعادة التوليد/التحرير بلا مرفق جديد: مرفقات الرسالة الأصليّة نفسها (كما في attachmentsForMsg)
+  assert.ok(src.includes("const __gateAtts = pendingAttachments.length ? pendingAttachments : (function(){"));
+  assert.match(src, /const r = window\.__chatEditRequest, c = getCurrent\(\);[\s\S]{0,200}c\.messages\[r\.index\][\s\S]{0,120}m\.role === 'user' && Array\.isArray\(m\.attachments\)/);
+  // لا جلسة إرشاد للقطة يُطلب تعديلها
+  assert.ok(src.includes('if(__srcImg._screenshot && !__ownerUiShot'));
+  assert.ok(src.includes("} else if(text && !__blockAutoImage && !__ownerUiShot /* v-owner-ui-shot-client"), 'لا ملاحظة __USER_IMAGE__ للقطة يُطلب تعديلها');
+  // القرار يُرسل للخادم مع طلب المحادثة
+  assert.ok(src.includes("window.__ownerUiShotTurn = __ownerUiShot;"));
+  assert.ok(read('js/app-18-chat-tools.js').includes("ownerUiShot: (typeof window.__ownerUiShotTurn === 'boolean') ? window.__ownerUiShotTurn : undefined,"));
   assert.ok(gate > 0, 'البوّابة موجودة');
   assert.ok(gate < src.indexOf('if(text && __VID_MAKE_RE.test(text)'), 'قبل مسار الفيديو');
   assert.ok(gate < src.indexOf('const __ATT_EDIT = '), 'قبل مسار تعديل الصورة');
@@ -77,7 +90,16 @@ test('v-video-ad-route: «سوّ لي فيديو إعلان» تفتح صانع 
   assert.ok(VID.test('سو فيديو عن دبي'));
   assert.ok(VID.test('سوي لي فيديو عن دبي'), 'كما كان');
   assert.ok(!VID.test('سوّ لي شعار لشركة'), 'لا فيديو = لا صانع فيديو');
-  assert.ok(src.includes("else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !/(?:فيديو|ڤيديو|video|clip|reel)/i.test(text) /* v-video-ad-route"), 'مسار صورة الإعلان يتخطّى طلب الفيديو');
+  assert.ok(!VID.test('سو لي مقطع صوتي يقول صباح الخير'), '«سو» مع «مقطع» ليست فيديو بالضرورة');
+  assert.ok(!VID.test('سو لي shortcut لسيري يفتح الكاميرا'));
+  const adM = src.match(/else if\(text && __adIntentRe\.test\(text\) && !__blockAutoImage && __mediaLane !== 'none' \/\* v-media-gate \*\/ && !\(__mediaLane === 'video' \|\| (\/.+?\/i)\.test\(text\)\) \/\* v-video-ad-route/);
+  assert.ok(adM, 'مسار صورة الإعلان يتخطّى طلب الفيديو الصريح');
+  const VAD = vm.runInNewContext(adM[1]);
+  assert.ok(VAD.test('أبي إعلان فيديو لمطعمي'));
+  assert.ok(VAD.test('سوي فيديو اعلاني للمحل'));
+  assert.ok(!VAD.test('للبيع ايفون 15 برو ماكس يصور فيديو 4K السعر 3500'), 'إعلان جوّال يذكر الفيديو يبقى صورة إعلان');
+  assert.ok(!VAD.test('للبيع ميتسوبيشي Eclipse Cross 2021'), 'لا مطابقة داخل الكلمات اللاتينيّة');
+  assert.ok(!VAD.test('شقة للإيجار مع جولة فيديو'));
 });
 
 test('v-owner-logo-place: «حط شعار … في الصفحة الرئيسية» للمالك لا تجلب صور شعارات', () => {
@@ -107,13 +129,13 @@ test('الخادم حين يصله دور اللقطة من العميل: الم
     + 'data: ' + JSON.stringify({ type: 'content_block_start', index: 0, content_block: { type: 'text' } }) + '\n'
     + 'data: ' + JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'تمام' } }) + '\n'
     + 'data: ' + JSON.stringify({ type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } }) + '\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
-  async function send(user) {
+  async function send(user, extra) {
     const bodies = [];
     const save = global.fetch;
     global.fetch = async (url, o) => { try { bodies.push(JSON.parse(o.body)); } catch (e) { bodies.push({}); } return done.clone(); };
     // شكل الدور كما يبنيه العميل (app-06-checkout.js): صورة base64 + النصّ وملاحظة المرفقات.
     const content = [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'iVBORw0KGgo=' } }, { type: 'text', text: 'احذف هذا المكان\n\n[مرفقات: image.png]' }];
-    const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content }], token: token(user), provider: 'claude' } };
+    const req = { method: 'POST', headers: {}, body: Object.assign({ messages: [{ role: 'user', content }], token: token(user), provider: 'claude' }, extra || {}) };
     const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() {}, end() {} };
     try { await chat(req, res); } finally { global.fetch = save; }
     const up = bodies.find((b) => b && Array.isArray(b.tools));
@@ -125,6 +147,13 @@ test('الخادم حين يصله دور اللقطة من العميل: الم
   assert.ok(!owner.tools.includes('edit_image') && !owner.tools.includes('generate_image'), 'المالك: أدوات الصور مرفوعة');
   assert.ok(owner.tools.includes('edit_github') && owner.tools.includes('read_github'), 'المالك: أدوات الكود حاضرة');
   assert.ok(owner.sys.includes('[لقطة من التطبيق — هذا الدور]'), 'المالك: ملاحظة اللقطة في النظام');
+  // قرار الواجهة يتقدّم: «صورة حقيقيّة» (false) تُبقي أدوات الصور للمالك؛ وtrue بلا مالك لا أثر له
+  const ownerPhoto = await send('ui-owner', { ownerUiShot: false });
+  assert.ok(ownerPhoto.tools.includes('edit_image') && !ownerPhoto.sys.includes('[لقطة من التطبيق — هذا الدور]'), 'المالك: الواجهة قالت صورة حقيقيّة');
+  const ownerFlag = await send('ui-owner', { ownerUiShot: true });
+  assert.ok(!ownerFlag.tools.includes('edit_image') && ownerFlag.sys.includes('[لقطة من التطبيق — هذا الدور]'));
+  const userFlag = await send('someone', { ownerUiShot: true });
+  assert.ok(userFlag.tools.includes('edit_image'), 'العلامة لا تعني شيئًا لغير المالك');
   const user = await send('someone');
   assert.ok(user.tools.includes('edit_image'), 'غير المالك كما كان');
   assert.ok(!user.sys.includes('[لقطة من التطبيق — هذا الدور]'));

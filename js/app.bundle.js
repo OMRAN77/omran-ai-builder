@@ -20775,7 +20775,7 @@ function omranLooksLikeScreenshot(file, dims, opts){
 const OMRAN_UI_VERB_RE = /(?:احذف|حذف|شيل|امسح|عدّ?ل|غيّ?ر|كبّ?ر|صغّ?ر|انقل|حرّ?ك|لوّ?ن|صلّ?ح|أصلح|اصلح|خبّ?ي|أخف|اخف|ضيف|أضف|اضف|وسّ?ط|ابعد|قرّ?ب|delete|remove|hide|move|fix|change)/i;
 const OMRAN_UI_REF_RE = /(?:هذا|هذي|هذه|هاذا|هاذي|هنا|ذا\s|المكان|الزر|زر\s|زرّ|القائمة|قائمة|القسم|الشريط|الأيقونة|ايقونة|السهم|العنصر|البلوك|الخانة|الإطار|الاطار|الكلمة|النص|الشاشة|الواجهة|التطبيق|button|menu|section|element|icon|bar)/i;
 const OMRAN_UI_IMG_RE = /(?:الصور[ةه]|صورتي|صوره|صورة|الخلفي[ةه]\s+من|من\s+الصور|في\s+الصور|الشخص|الوجه|فوتوشوب|photo|picture|image|background\s+from)/i;
-const OMRAN_UI_NAMED_RE = /(?:الزر|زرّ|زر\s|القائمة|القسم|الشريط|الأيقونة|ايقونة|العنصر|الخانة|الشاشة|الواجهة|التطبيق|button|menu|section|element|icon)/i;
+const OMRAN_UI_NAMED_RE = /(?:الزر|زرّ|زر\s|الأيقونة|ايقونة|العنصر|الخانة|الواجهة|التطبيق|button|element|icon)/i; /* لا «القائمة/الشريط/الشاشة»: تظهر في صور حقيقيّة (قائمة مطعم، شريط لاصق، شاشة تلفزيون) */
 function omranOwnerUiShotTurn(text, att){
   try{
     if(String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return false;
@@ -22968,14 +22968,24 @@ async function __sendPromptCore(){
     }
   }catch(e){ __mediaLane = null; }
   /* v-owner-ui-shot-client: لقطة المالك + أمر على عنصر فيها = تعديل التطبيق — لا صور ولا فيديو ولا إعلان في هذا الدور،
-     فيصل الطلب للمحادثة حيث يقرأ المزوّد الكود ويعدّله (ملاحظة UI_SHOT_NOTE في الخادم). */
-  const __ownerUiShot = omranOwnerUiShotTurn(text, pendingAttachments.filter(a => a && a.isImage).slice(-1)[0]);
+     فيصل الطلب للمحادثة حيث يقرأ المزوّد الكود ويعدّله (ملاحظة UI_SHOT_NOTE في الخادم).
+     إعادة التوليد والتحرير بلا مرفق جديد تعيد مرفقات الرسالة الأصليّة (attachmentsForMsg أدناه) — تُفحص هي نفسها هنا. */
+  const __gateAtts = pendingAttachments.length ? pendingAttachments : (function(){
+    try{
+      const r = window.__chatEditRequest, c = getCurrent();
+      const m = (r && c && r.projectId === c.id && Number.isInteger(r.index)) ? c.messages[r.index] : null;
+      return (m && m.role === 'user' && Array.isArray(m.attachments)) ? m.attachments : [];
+    }catch(e){ return []; }
+  })();
+  const __ownerUiShot = omranOwnerUiShotTurn(text, __gateAtts.filter(a => a && a.isImage).slice(-1)[0]);
   if(__ownerUiShot) __mediaLane = 'none';
+  window.__ownerUiShotTurn = __ownerUiShot; /* يُرسل مع طلب المحادثة (app-18) */
   window.__mediaGate = __mediaLane; /* للتشخيص */
   // 🎬 v525: اكتشاف طلب إنشاء فيديو → فتح صانع الفيديو مباشرة
   // إذا فيه صورة: نحلّلها بـ AI ليطلع prompt إنجليزي دقيق بدل نص المستخدم الخام
   // v-video-ad-route: «سوّ لي فيديو إعلان لمطعم» — «سوّ/سو» لم تكن في القائمة فيسقط الطلب لمسار الإعلان فيخرج صورة إعلان بدل فيديو.
-  const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:اعمل|اصنع|سوّي|سوي|سولي|سوّ|سو|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
+  // البديل الأخير لـ«سوّ/سو» مع كلمات الفيديو الصريحة وحدها: «سو لي مقطع صوتي» و«سو لي shortcut» ليست فيديو.
+  const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}|(?:^|[\s،,.!؟?()\"'«»:؛-])(?:سوّ|سو)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|كليب|أنيميشن|انيميشن)/i;
   const __VID_Q_RE    = /^(?:كيف|ما|وش|ايش|أيش|هل|لماذا|why|how|what|can\s+i|where)\s|[؟?]\s*$/;
   if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
     const __heroAtt = pendingAttachments.find(function(a){ return a.isImage && a.dataUrl; });
@@ -23591,7 +23601,7 @@ function __friendlyErr(e){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       /* v-guide: لقطة شاشة = جلسة إرشاد — الشاشة تبقى حاضرة أمام النموذج في الأدوار
          التالية. بدونها كان «عندي بالهاتف» يصل بلا صورة فيجيب من معلوماته العامة. */
-      if(__srcImg._screenshot){ cur.guideShot = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }; cur.guideOn = true; cur.guideTurns = 0; }
+      if(__srcImg._screenshot && !__ownerUiShot /* v-owner-ui-shot-client: لقطة يُطلب تعديلها ليست جلسة إرشاد — المتابعة («نعم نفّذ») تكمل الكود لا تعيد اللقطة مع «المساعد البصري» */){ cur.guideShot = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }; cur.guideOn = true; cur.guideTurns = 0; }
       else { cur.guideShot = null; cur.guideOn = false; }
       cur.imageEditInstructions = [];
       cur.imageEditSource = null;
@@ -23854,7 +23864,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !/(?:فيديو|ڤيديو|video|clip|reel)/i.test(text) /* v-video-ad-route: إعلان فيديو ليس صورة إعلان */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
+    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !(__mediaLane === 'video' || /(?:إعلان|اعلان)\s*(?:فيديو|ڤيديو)|(?:فيديو|ڤيديو)\s*(?:إعلان|اعلان|إعلاني|اعلاني|دعائي|ترويجي)|\bvideo\s+ad\b|\bad\s+video\b/i.test(text)) /* v-video-ad-route: «إعلان فيديو» ليس صورة إعلان؛ «للبيع ايفون يصور فيديو 4K» تبقى إعلانًا */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
       // v695: إعلان → /api/tools?action=adimage (gpt-image-2) بجودة احترافية حقيقية
       const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
@@ -23911,7 +23921,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && !__blockAutoImage && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1 && !(text.length <= 300 && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !__nanoQ.test(text))){
+    } else if(text && !__blockAutoImage && !__ownerUiShot /* v-owner-ui-shot-client: لقطة يُطلب تعديلها في الكود لا تُضمَّن صورةً في تصميم */ && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1 && !(text.length <= 300 && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !__nanoQ.test(text))){
       // نمط نانو: رسالة قصيرة مع صورة (مرفقة أو من الذاكرة) بلا كلمة كود = تعديل صورة، لا تُطوَّل بملاحظة النظام حتى لا تُحرَم من مسار الصور.
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
@@ -37847,6 +37857,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
+        ownerUiShot: (typeof window.__ownerUiShotTurn === 'boolean') ? window.__ownerUiShotTurn : undefined, /* v-owner-ui-shot-client: قرار الواجهة لهذا الدور (لقطة المالك يطلب تعديلها) — الخادم يتبعه بدل إعادة التخمين من النصّ */
         noTools: (opts && opts.noTools) ? true : undefined, /* v-owner-solo: المسار القديم للمالك (استئذان/إصلاح) بلا أدوات كما كان — الخادم يقبله للمالك وحده */
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
