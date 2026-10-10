@@ -707,7 +707,9 @@ module.exports = async (req, res) => {
         return;
       }
       if (!user.email) {
-        res.status(400).json({ error: m('لا يوجد إيميل مسجل لهذا الحساب — استرجع حسابك برقم هاتفك المربوط', 'No email is registered for this account — recover it with your linked phone number') });
+        res.status(400).json({ error: user.phone
+          ? m('لا يوجد إيميل مسجل لهذا الحساب — استرجع حسابك برقم هاتفك المربوط', 'No email is registered for this account — recover it with your linked phone number')
+          : m('لا يوجد إيميل ولا رقم هاتف مرتبط بهذا الحساب، فلا يمكن استرجاعه من هنا', 'This account has no email or phone number linked, so it cannot be recovered from here') });
         return;
       }
       const rt = crypto.randomBytes(24).toString('hex');
