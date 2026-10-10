@@ -15841,10 +15841,18 @@ let genAbortController = null;
 let askAllUidCounter = Date.now() % 2147483647;
 
 const btnStop = $('#btnStop');
+/* v-stop-grace (لقطة المالك ١٠ أكتوبر: «تم إيقاف الرد قبل اكتماله» بلا ضغط إيقاف): زرّ الإيقاف يحلّ محلّ زرّ الإرسال
+   في الموضع نفسه لحظة الإرسال، فالنقرة الثانية من نقرة مزدوجة (أو نقرة «تأكيد» قلقة) تصل الإيقاف وتقطع الردّ قبل
+   أن يبدأ. خلال أوّل ثانية من الطلب تُهمَل نقرة الإيقاف؛ بعدها يوقف كما كان. */
+const __OMRAN_STOP_GRACE_MS = 1000;
 btnStop.onclick = () => {
   stopAllSpeaking();
   if(isListening && recognizer){ recognizer.stop(); }
-  if(genAbortController){ genAbortController.abort(); }
+  if(genAbortController){
+    const __startedAt = (typeof __omranReqStartedAt === 'number') ? __omranReqStartedAt : 0;
+    if(__startedAt && Date.now() - __startedAt < __OMRAN_STOP_GRACE_MS) return;
+    genAbortController.abort();
+  }
 };
 // v246 — قسم الصوت المبسط: زران (رجل/امرأة) يحفظان الاختيار فورًا + زر تجربة.
 function setVoiceGenderUI(val){
