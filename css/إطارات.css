@@ -72,6 +72,10 @@
      كما كان بـz-index:9999. إعادة الفتح (#sbReopen) كما هي. */
   html:not(.mobile-ui) #sidebarCloseBtn{ top:var(--sb-arrow-top, 120px) !important; inset-inline-end:12px; width:30px; height:30px; z-index:3; color:var(--frame-gold2); filter:none; }
   html:not(.mobile-ui) #sidebarBrand{ justify-content:center !important; }
+  /* v-arrow-clear (طلب عمران ١٠ أكتوبر بلقطة: «في سهم في هذا المكان أريد توضيح السهم»): السهم الذهبيّ كان يذوب فوق زرّ
+     «محادثة جديدة» الذهبيّ في الخلفيّات والثيمات — يصير داكنًا بحبر الزرّ وأسمك قليلًا مع هالة فاتحة فيبين على أيّ لون. */
+  html:not(.mobile-ui) #sidebarCloseBtn svg{ width:22px; height:22px; stroke-width:3; }
+  html.bgimg:not(.mobile-ui) #sidebarCloseBtn{ color:#2b1d02 !important; filter:drop-shadow(0 0 2px rgba(255,240,190,.95)) drop-shadow(0 0 1px rgba(255,240,190,.9)) !important; }
   /* «محادثة جديدة» سطر بلا خلفيّة كسطر «لوحة التحكّم» في الصورة */
   html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn, html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn:hover{ background:transparent !important; background-image:none !important; border-color:transparent !important; justify-content:center !important; color:var(--frame-ink) !important; }
   html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn svg{ color:var(--frame-gold2); }
