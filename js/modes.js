@@ -94,7 +94,7 @@
            والمالك وحده يأخذ القائمة الحيّة التي يملكها مفتاحه من /api/ai?action=models. */
         { grp:1, key:'openai',     name:'GPT · OpenAI',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6-sol','GPT-6 Sol'],['openai/gpt-6-luna','GPT-6 Luna']] },
         { grp:1, key:'gemini',     name:'Gemini · Google', or:true, store:'aiapp_gemini_model', def:'google/gemini-3.8-flash', models:[['google/gemini-3.8-flash','Gemini 3.8 Flash']] },
-        { grp:2, key:'kimi',       name:'Kimi · Moonshot',          or:true, direct:true, store:'aiapp_kimi_model',       def:'kimi-k3',                     models:[['kimi-k3','Kimi K3'],['kimi-k2.6','Kimi K2.6']] },
+        { grp:2, key:'kimi',       name:'Kimi · Moonshot',          or:true, direct:true, store:'aiapp_kimi_model',       def:'moonshotai/kimi-k3',        models:[['moonshotai/kimi-k3','Kimi K3'],['moonshotai/kimi-k2.6','Kimi K2.6']] }, // v-kimi-feed: معرّفات ببادئة الوسيط كي يصل اختيار المالك في مسار OpenRouter (OR_VENDOR: moonshotai)؛ المسار المباشر يقصّها (oa-direct)
         { grp:2, key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
         { grp:2, key:'mistral',    name:'Mistral',                  or:true, store:'aiapp_mistral_model',    def:'mistralai/mistral-medium-3-5', models:[['mistralai/mistral-medium-3-5','Mistral Medium 3.5']] },
         /* v-owner-solo: Groq أوقف Llama 4 Maverick (٩ مارس) والذي يجيب فعلًا عند Groq هو GPT-OSS 120B (GROQ_ALIAS في oa-direct) — القائمة تسمّيه */

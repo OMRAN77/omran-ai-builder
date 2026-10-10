@@ -17,7 +17,7 @@ test('١. الشريحة باسم المزوّد المختار لا اسم ال
   const a = nickOf(modes, /var NICK = (\{[^}]+\});/);
   const b = nickOf(app05, /const PROVIDER_NICK_KEYS = (\{[\s\S]*?\});/);
   assert.deepEqual(a, b);
-  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m081026a/);
+  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m101026a/);
 });
 
 test('٢. اللقب يُقرأ من الترجمة (١٤ لغة) مع احتياط، وبلا اسم مزوّد', () => {
