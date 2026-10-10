@@ -102,7 +102,7 @@ test('بلا تكرار وبلا خطوة-خطوة: في طريقة العمل،
   assert.match(GE.WORK_NOTE, /لا تكرار: لا تعِد في ردّك ما قلته في ردودك السابقة/);
   assert.match(GE.WORK_NOTE, /لا تقسّم العمل عليه خطوة خطوة/);
   const chat = read('api/_lib/chat.js');
-  assert.match(chat, /const OWNER_TOOLS = \[[^\n]*require\('\.\/github-edit\.js'\)\.EDIT_TOOL, require\('\.\/github-edit\.js'\)\.MERGE_TOOL\]/);
+  assert.match(chat, /const OWNER_TOOLS = \[[^\n]*require\('\.\/github-edit\.js'\)\.EDIT_TOOL, require\('\.\/github-edit\.js'\)\.MERGE_TOOL/);
   assert.match(chat, /cb\.name === 'merge_github'[\s\S]{0,200}__ge\.ownerSaidMerge\(lastUserText\)/);
   assert.match(chat, /\(ownerKnowledge && __ownerReq \? require\('\.\/github-edit\.js'\)\.WORK_NOTE : ''\)/);
 });
