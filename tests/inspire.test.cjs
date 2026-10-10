@@ -248,11 +248,17 @@ test('نقرة ثانية أثناء التحميل لا تصنع مشروعًا
   assert.equal(m2.state.projects.length, 0, 'أُغلقت الشاشة: لا مشروع ولا قفز');
 });
 
-test('الشاشة في نظام السحب/Esc للتطبيق (تُغلق وحدها لا الأدوات تحتها)، ولا مستمع Esc خاصّ بها', () => {
+test('الشاشة في نظام السحب/Esc للتطبيق (تُغلق وحدها لا الأدوات تحتها)، ولا مستمع Esc خاصّ بها سوى liveEsc للنافذة الحيّة', () => {
   assert.match(rd('js/app-05-swipe-back.js'), /inspireScreen: 'inspireCloseBtn'/);
   const src = rd('js/app-35-inspire.js');
   assert.match(src, /id="inspireCloseBtn"/);
-  assert.doesNotMatch(src, /'Escape'/);
+  // v-live-cards: liveEsc مستمع Escape شرعيّ للنافذة الحيّة #inspireLive (لا شاشة inspireScreen) — يُستثنى هنا ويُتحقّق من سلوكه أدناه
+  const liveEscM = src.match(/function liveEsc\(e\)\{[^\n]*\}\n/);
+  assert.ok(liveEscM, 'liveEsc موجودة (مستمع Escape الخاصّ بالنافذة الحيّة #inspireLive)');
+  assert.match(liveEscM[0], /e\.stopPropagation\(\)/, 'liveEsc يوقف انتشار الحدث كي لا يصل لنظام الإغلاق العامّ');
+  assert.match(liveEscM[0], /closeInspireLive\(\)/, 'liveEsc يغلق النافذة الحيّة');
+  const srcWithoutLiveEsc = src.slice(0, liveEscM.index) + src.slice(liveEscM.index + liveEscM[0].length);
+  assert.doesNotMatch(srcWithoutLiveEsc, /'Escape'/, 'لا مستمع Escape آخر خاصّ بشاشة inspireScreen نفسها');
   for (const { id } of loadCity().C) assert.ok(rd(`inspire/city/${id}.html`).startsWith('<!doctype html><html lang="ar" dir="rtl"><head>'), id + ': رأس ثابت لوسم اللغة والتجربة');
 });
 
