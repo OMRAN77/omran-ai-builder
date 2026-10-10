@@ -9789,10 +9789,15 @@ document.addEventListener('click', closeMsgMoreMenu);
 // ✨ v363: قدرات التطبيق داخل المحادثة نفسها — أيقونة سريعة تحت كل رد
 // + ملاحظة تلقائية تقترح الميزة المناسبة. الأزرار القديمة في ⋮ تبقى كما هي؛
 // هذا باب إضافي (المكانين) عشان المستخدم يختار اللي يريحه.
-/* v-tools-pause (المالك ١٠ أكتوبر: «اريد اخفاء… مؤقت محلل المصاريف والسيره الذاتيه»): أدوات مخفيّة مؤقّتًا —
+/* v-tools-pause (المالك ١٠ أكتوبر: «اخفاء محلل المصاريف والسيرة الذاتية»، ثمّ «التلفزيون والاقتراحات»): أدوات مخفيّة مؤقّتًا —
    لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
    الإرجاع = حذف المعرّف من هذه القائمة. */
-var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV'];
+var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* بطاقة «اقتراحات» في الصفحة الرئيسيّة (هواوي) تتبع زرّها المخفيّ */
+if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
+  try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }
+  catch(e){ __swallow(e, 'ui:paused-hw-card'); }
+}
 var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
     kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },

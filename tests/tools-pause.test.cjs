@@ -9,10 +9,11 @@ const ui = fs.readFileSync(path.join(root, 'js/app-05-ui.js'), 'utf8');
 const features = fs.readFileSync(path.join(root, 'js/app-10-features.js'), 'utf8');
 const block = ui.slice(ui.indexOf('var OMRAN_PAUSED_TOOLS'), ui.indexOf('// ميزة الشخصية الكرتونية الناطقة'))
   + ui.slice(ui.indexOf('function capabilityHintFor'), ui.indexOf('// أيقونة القدرات'));
-const CAP = new Function(block + '; return { OMRAN_PAUSED_TOOLS, APP_CAPABILITIES, capabilityHintFor };')();
+const CAP = new Function('document', '__swallow', block + '; return { OMRAN_PAUSED_TOOLS, APP_CAPABILITIES, capabilityHintFor };')({ getElementById: () => null }, () => {});
 
 test('القائمة الواحدة فيها الأداتان', () => {
-  assert.deepStrictEqual(CAP.OMRAN_PAUSED_TOOLS, ['btnExpense', 'btnCV']);
+  assert.deepStrictEqual(CAP.OMRAN_PAUSED_TOOLS, ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates']);
+  assert.match(ui, /getElementById\('hwCardSuggestions'\)[^\n]*__hwSug\.hidden = true/);
 });
 
 test('المحادثة لا تقترح السيرة الذاتيّة، والاقتراحات الأخرى باقية', () => {
