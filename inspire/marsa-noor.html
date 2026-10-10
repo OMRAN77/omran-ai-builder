@@ -22,6 +22,8 @@
     e.classList.add('on');
   };
   addEventListener('error', function () { if (!window.__marsaReady) window.__marsaErr(); });
+  /* نصوص المقدّمة قبل وصول الوحدة (أو إن لم تصل): لا تبقى الأزرار فارغة */
+  document.addEventListener('DOMContentLoaded', function () { var set = function (id, v) { var e = document.getElementById(id); if (e && !e.textContent) e.textContent = v; }; set('introT', ar ? 'مرسى نور' : 'Marsa Noor'); set('introS', ar ? 'مدينة المرفأ — تجوّل حرّ' : 'Harbor city — free roam'); set('start', ar ? 'ابدأ القيادة' : 'Start driving'); set('introLoad', ar ? 'يُحمَّل المحرّك…' : 'Loading the engine…'); });
   setTimeout(function () { if (!window.__marsaReady) window.__marsaErr(); }, 25000);
 })();
 </script>

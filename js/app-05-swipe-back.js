@@ -19,6 +19,7 @@
        ورقة الخيارات الداخلية الموحّدة (الشعر، المناسبة، نمط الديكور، …) */
     pickerSheet: 'pickerSheetClose',
     inspireScreen: 'inspireCloseBtn', /* v-inspire: شاشة «اقتراحات» — سحب/Esc يغلقها وحدها لا شاشة الأدوات تحتها */
+    inspireLive: 'inspireLiveEsc', /* v-marsa-noor: نافذة التجربة الحيّة (إطار) — Esc عبر هذا النظام لا بمستمع خاصّ؛ زرّ X المرئيّ يبقى لأنّ الإطار يبتلع السحب */
   };
 
   var css = document.createElement('style');

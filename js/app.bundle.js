@@ -8951,6 +8951,7 @@ function renderMessages(keepScroll){
        ورقة الخيارات الداخلية الموحّدة (الشعر، المناسبة، نمط الديكور، …) */
     pickerSheet: 'pickerSheetClose',
     inspireScreen: 'inspireCloseBtn', /* v-inspire: شاشة «اقتراحات» — سحب/Esc يغلقها وحدها لا شاشة الأدوات تحتها */
+    inspireLive: 'inspireLiveEsc', /* v-marsa-noor: نافذة التجربة الحيّة (إطار) — Esc عبر هذا النظام لا بمستمع خاصّ؛ زرّ X المرئيّ يبقى لأنّ الإطار يبتلع السحب */
   };
 
   var css = document.createElement('style');
@@ -43898,9 +43899,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   function closeInspireLive(){
     const ov = document.getElementById('inspireLive');
     if(ov) ov.remove();
-    document.removeEventListener('keydown', liveEsc, true);
   }
-  function liveEsc(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeInspireLive(); } }
   const REAL_MODES = { chase: 'chase', drone: 'drone' };
   function openInspireLive(id, mode){
     const item = INSPIRE_LIVE.find((c) => c.id === id);
@@ -43920,8 +43919,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     const cb = ov.querySelector('#inspireLiveClose');
     cb.setAttribute('aria-label', tx('closeTitle', 'إغلاق'));
     cb.onclick = closeInspireLive;
+    const esc = document.createElement('button'); esc.type = 'button'; esc.id = 'inspireLiveEsc'; esc.hidden = true; esc.onclick = closeInspireLive; ov.appendChild(esc); // زرّ خفيّ ينقره نظام Esc/السحب في app-05
     document.body.appendChild(ov);
-    document.addEventListener('keydown', liveEsc, true);
     try{ fr.focus(); }catch(_){ __swallow(_, 'inspire:live-focus'); }
     return true;
   }
