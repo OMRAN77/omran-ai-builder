@@ -351,14 +351,11 @@ try{
   const submitBtn = $('#authSubmitBtn');
   const authToggleBtn = $('#btnAuthToggle');
   const userLabel = $('#authUserLabel');
-  const recoveryRow = $('#authRecoveryRow');
-  const recoveryInput = $('#authRecoveryCode');
   const passLabelText = $('#authPasswordLabelText');
   const forgotLink = $('#authForgotLink');
   const backToLoginLink = $('#authBackToLoginLink');
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
-  const useCodeLink = $('#authUseCodeLink');
   /* v-perf-boot-defer: partials-core.js يحقن مودال الدخول ديناميكيًّا؛ فشل تحميله (شبكة جوّال متقطّعة) كان
      يترك tabLogin=null فيرمي .parentElement استثناءً غير ملتقَط يوقف باقي أجزاء الحزمة الملصَقة بعد هذا
      الملف بالكامل — نفس فخّ curT أعلاه (متغيّر مشابه غير مُعرَّف بعد، حادثة ٦ أغسطس). لا نكمل بعناصر ناقصة. */
@@ -367,12 +364,7 @@ try{
     return;
   }
   const tabsRow = tabLogin.parentElement;
-  const recoveryModal = $('#authRecoveryModal');
-  const recoveryCodeDisplay = $('#authRecoveryCodeDisplay');
-  const copyRecoveryBtn = $('#authCopyRecoveryBtn');
-  const ackRecoveryBtn = $('#authAckRecoveryBtn');
   let mode = 'login';
-  let pendingAuthed = null; // { username } to apply after recovery modal ack
 
   function curT(){
     // v425: اللغة الحيّة أوّلًا. المفتاح المحفوظ يُكتب فقط عند اختيار يدويّ، فزائرٌ
@@ -409,44 +401,28 @@ try{
     if(altBlock) altBlock.style.display = (m === 'login' || m === 'signup') ? 'flex' : 'none';
     if(switchBtn) switchBtn.textContent = m === 'signup' ? t.authHaveAccount : t.authCreateAccount;
     userInput.placeholder = (m === 'login' || m === 'forgotEmail') ? (t.authIdPlaceholder || '') : (t.authUsernameLabel || '');
-    passInput.placeholder = (m === 'reset' || m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
+    passInput.placeholder = (m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
     passInput.autocomplete = m === 'login' ? 'current-password' : 'new-password';
-    if(m === 'reset'){
+    if(m === 'forgotEmail'){
       tabsRow.style.display = 'none';
-      recoveryRow.style.display = 'flex';
-      passwordRow.style.display = 'block';
-      passLabelText.textContent = t.authNewPasswordLabel;
-      forgotLink.style.display = 'none';
-      useCodeLink.style.display = 'none';
-      backToLoginLink.style.display = '';
-      submitBtn.textContent = t.authSubmitReset;
-      if(rememberRow) rememberRow.style.display = 'none';
-    } else if(m === 'forgotEmail'){
-      tabsRow.style.display = 'none';
-      recoveryRow.style.display = 'none';
       passwordRow.style.display = 'none';
       forgotLink.style.display = 'none';
-      useCodeLink.style.display = '';
       backToLoginLink.style.display = '';
       submitBtn.textContent = t.authSubmitForgotEmail;
       if(rememberRow) rememberRow.style.display = 'none';
     } else if(m === 'resetToken'){
       tabsRow.style.display = 'none';
-      recoveryRow.style.display = 'none';
       passwordRow.style.display = 'block';
       passLabelText.textContent = t.authNewPasswordLabel;
       forgotLink.style.display = 'none';
-      useCodeLink.style.display = 'none';
       backToLoginLink.style.display = '';
       submitBtn.textContent = t.authSubmitReset;
       if(rememberRow) rememberRow.style.display = 'none';
     } else {
       tabsRow.style.display = 'none';
-      recoveryRow.style.display = 'none';
       passwordRow.style.display = 'block';
       passLabelText.textContent = t.authPasswordLabel;
       forgotLink.style.display = (m === 'login') ? '' : 'none';
-      useCodeLink.style.display = 'none';
       backToLoginLink.style.display = 'none';
       submitBtn.textContent = m === 'login' ? t.authSubmitLogin : t.authSubmitSignup;
       if(rememberRow) rememberRow.style.display = 'none';
@@ -455,7 +431,6 @@ try{
   tabLogin.onclick = () => setMode('login');
   tabSignup.onclick = () => setMode('signup');
   forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
-  useCodeLink.onclick = (e) => { e.preventDefault(); setMode('reset'); };
   backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
   const authSwitchBtn = $('#authSwitchBtn');
   if(authSwitchBtn) authSwitchBtn.onclick = () => setMode(mode === 'signup' ? 'login' : 'signup');
@@ -1262,24 +1237,6 @@ try{
     }
   }
 
-  function showRecoveryModal(code, username, avatar){
-    pendingAuthed = { username, avatar };
-    recoveryCodeDisplay.textContent = code;
-    recoveryModal.style.display = 'flex';
-  }
-  copyRecoveryBtn.onclick = async () => {
-    try {
-      await navigator.clipboard.writeText(recoveryCodeDisplay.textContent);
-      const t = curT();
-      copyRecoveryBtn.textContent = t.authCopied;
-      setTimeout(() => { copyRecoveryBtn.textContent = t.authCopyBtn; }, 1500);
-    } catch(e){ /* clipboard may be unavailable, user can select text manually */ }
-  };
-  ackRecoveryBtn.onclick = () => {
-    recoveryModal.style.display = 'none';
-    if(pendingAuthed){ onAuthed(pendingAuthed.username, pendingAuthed.avatar); pendingAuthed = null; }
-  };
-
   const authFormEl = $('#authForm');
   if(authFormEl){ authFormEl.addEventListener('submit', (e) => { e.preventDefault(); submitBtn.onclick(); }); }
   submitBtn.onclick = async () => {
@@ -1289,43 +1246,8 @@ try{
     const isEn = (localStorage.getItem('aiapp_lang') === 'en');
     // v-perf-boot-defer: الزرّ كان يُعطَّل بصمت بلا أيّ إشارة أنّ شيئًا يحدث (بخلاف مسار OTP في هذا
     // الملف الذي يغيّر النصّ فعلًا) — على شبكة بطيئة يبدو التطبيق معلّقًا. نلتقط النصّ الأصليّ هنا
-    // ونعيده في finally كلّ فرع، بلا حاجة لمعرفة مفتاح الترجمة لكلّ وضع (reset/forgot/login/signup).
+    // ونعيده في finally كلّ فرع، بلا حاجة لمعرفة مفتاح الترجمة لكلّ وضع (forgotEmail/resetToken/login/signup).
     const submitBtnLabel = submitBtn.textContent;
-
-    if(mode === 'reset'){
-      const code = recoveryInput.value.trim();
-      if(!username || !code || !password){
-        errBox.textContent = isEn ? 'Please fill in all fields' : 'الرجاء تعبئة جميع الحقول';
-        return;
-      }
-      submitBtn.disabled = true;
-      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
-      try {
-        const res = await fetch('/api/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'reset', username, recoveryCode: code, newPassword: password }),
-          signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
-        });
-        const data = await res.json();
-        if(!res.ok || data.error){
-          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
-          return;
-        }
-        authSet('aiapp_auth_token', data.token);
-        setMode('login');
-        userInput.value = '';
-        passInput.value = '';
-        recoveryInput.value = '';
-        showRecoveryModal(data.recoveryCode, data.username);
-      } catch(e){
-        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = submitBtnLabel;
-      }
-      return;
-    }
 
     if(mode === 'forgotEmail'){
       if(!username){
@@ -1411,11 +1333,7 @@ try{
       if(mode === 'signup'){
         localStorage.removeItem('aiapp_pending_ref');
       }
-      if(mode === 'signup' && data.recoveryCode){
-        showRecoveryModal(data.recoveryCode, data.username, data.avatar);
-      } else {
-        onAuthed(data.username, data.avatar);
-      }
+      onAuthed(data.username, data.avatar);
     } catch(e){
       errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
     } finally {
@@ -3440,7 +3358,6 @@ const I18N = {
     "settingsDlgMaxTitle": "دبل كلك للتكبير/التصغير",
     "agentModeTitle": "وكيل عمران",
     "authEmailLabel": "📧 الإيميل (اختياري - لاسترجاع الحساب)",
-    "authUseCodeLink": "لدي رمز استرجاع بدلًا من ذلك",
     "authOrDivider": "أو",
     "authGoogleBtn": "المتابعة عبر Google",
     "videoMakerHeroVeoNote": "ℹ️ صورة البطل تعمل مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.",
@@ -3521,7 +3438,6 @@ const I18N = {
     setChangePhoto: "تغيير الصورة",
     authPasswordLabel: 'كلمة المرور',
     authNewPasswordLabel: 'كلمة مرور جديدة',
-    authRecoveryLabel: 'رمز الاسترجاع',
     authForgotLink: 'نسيت كلمة المرور؟',
     authRememberMe: 'تذكرني',
     langSectionTitle: '🌐 اللغة',
@@ -3534,11 +3450,6 @@ const I18N = {
     authBackToLogin: 'رجوع لتسجيل الدخول',
     authSubmitReset: 'إعادة تعيين كلمة المرور',
     authSubmitForgotEmail: "أرسل رابط الاسترجاع على الإيميل",
-    authRecoveryModalTitle: '🔑 احتفظ برمز الاسترجاع هذا',
-    authRecoveryModalDesc: 'هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.',
-    authCopyBtn: '📋 نسخ',
-    authAckBtn: '✅ حفظته، متابعة',
-    authCopied: '✅ تم النسخ',
     authSubmitLogin: 'دخول',
     authSubmitSignup: 'إنشاء الحساب',
     logoutTitle: 'تسجيل الخروج',
@@ -4574,7 +4485,6 @@ const I18N = {
     "settingsDlgMaxTitle": "Double-click to maximize/restore",
     "agentModeTitle": "Omran Agent",
     "authEmailLabel": "📧 Email (optional — for account recovery)",
-    "authUseCodeLink": "I have a recovery code instead",
     "runCodeBtn": "Run",
     "orFreeGroup": "🆓 Free",
     "orPaidGroup": "💰 Paid",
@@ -4647,7 +4557,6 @@ const I18N = {
     setChangePhoto: "Change photo",
     authPasswordLabel: 'Password',
     authNewPasswordLabel: 'New password',
-    authRecoveryLabel: 'Recovery code',
     authForgotLink: 'Forgot password?',
     langSectionTitle: '🌐 Language',
     apiKeysSectionTitle: '🔑 AI Provider API Keys',
@@ -4662,11 +4571,6 @@ const I18N = {
     authBackToLogin: 'Back to login',
     authSubmitReset: 'Reset password',
     authSubmitForgotEmail: "Email me a reset link",
-    authRecoveryModalTitle: '🔑 Save this recovery code',
-    authRecoveryModalDesc: 'This is the only code you can use to recover your account if you forget your password. Save it somewhere safe — it will not be shown again.',
-    authCopyBtn: '📋 Copy',
-    authAckBtn: '✅ Saved it, continue',
-    authCopied: '✅ Copied',
     authSubmitLogin: 'Log In',
     authOrDivider: 'or',
     authGoogleBtn: 'Continue with Google',
@@ -5694,7 +5598,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=732'; /* v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=733'; /* v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
