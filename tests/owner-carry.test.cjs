@@ -41,7 +41,8 @@ test('v-owner-ui-shot: «احذف هذا المكان» مع لقطة = تعدي
   assert.equal(C.uiEditTurn('امسح الشخص من الصورة'), false);
   assert.equal(C.uiEditTurn('وش هذا؟'), false);
   const chat = read('api/_lib/chat.js');
-  assert.match(chat, /const __ownerUiShot = __ownerReq && lastUserHasImage && require\('\.\/owner-carry\.js'\)\.uiEditTurn\(lastUserText\);/);
+  // v-owner-ui-shot-client: قرار العميل (body.ownerUiShot) أوّلًا، والتعابير حين يغيب الحقل
+  assert.ok(chat.includes("const __ownerUiShot = __ownerReq && lastUserHasImage && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText));"));
   assert.ok(chat.includes("tools: toolTurn ? toolsFor(__ownerReq, isClarifyTurn(lastUserText) || __analyzeDoc || __ownerUiShot) : undefined"));
   assert.ok(chat.includes("+ (__ownerUiShot ? require('./owner-carry.js').UI_SHOT_NOTE : '')"));
   assert.match(C.UI_SHOT_NOTE, /ليس تعديل الصورة/);
