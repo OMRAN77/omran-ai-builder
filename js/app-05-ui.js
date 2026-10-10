@@ -964,9 +964,17 @@ function omranBuildCodeViewerBar(){
   };
   bar._resetEdit = function(){ setOn(edt, false); };
 
+  /* v-panel-x (المالك ١٠ أكتوبر: «الإكس مسؤول في الصندوق فقط، إلّا إذا أريد أرجعه من عند المحادثة — الطرفين مشبوكين»):
+     على الكمبيوتر يقفل ما يعرضه الصندوق لهذه المحادثة بالترتيب — عارض الكود، ثمّ الصورة، ثمّ معاينة تطبيقها —
+     ولا يطوي اللوحة (لذلك زرّ الطيّ). يرجع المعروض من المحادثة (نقر الصورة، «استخدم هذا الإصدار»، كود جديد)
+     أو من تبويب المعاينة. الجوّال كما كان. */
   cls.onclick = function(){
     if(document.getElementById('omranCodeViewer')){ omranCloseCodeViewer(); return; }
-    try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+    if(document.documentElement.classList.contains('mobile-ui')){
+      try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+      return;
+    }
+    omranPanelCloseShown();
   };
 
   edt.onclick = function(){
@@ -1065,9 +1073,36 @@ window.omranOpenTextInCodePanel = function(text, title){
     }
   }catch(e){ __swallow(e, 'ui:code-viewer'); }
 };
+/* v-panel-x: معاينة تطبيق محادثةٍ أقفلها الإكس — {معرّف المحادثة: الكود المقفول}. كود جديد في المحادثة يرجعها تلقائيًّا. */
+window.__omranPanelHidden = window.__omranPanelHidden || {};
+function omranPanelCloseShown(){
+  try{
+    const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    if(previewFrame._imageView){
+      previewFrame._imageView = false; previewFrame._imagePid = null; previewFrame._lastSrc = null;
+      previewFrame.srcdoc = '';
+    } else if(cur && cur.code){
+      window.__omranPanelHidden[cur.id] = cur.code;
+    }
+    renderCodeAndPreview();
+  }catch(e){ __swallow(e, 'ui:panel-x'); }
+}
+function omranPanelReopen(){
+  try{
+    const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    if(cur && window.__omranPanelHidden[cur.id] !== undefined){ delete window.__omranPanelHidden[cur.id]; renderCodeAndPreview(); }
+  }catch(e){ __swallow(e, 'ui:panel-reopen'); }
+}
+window.omranPanelReopen = omranPanelReopen;
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
+  /* v-panel-x (المالك: «إذا فاتح محادثة فيها صورة تكون في المعاينة، وإذا دخلت محادثة أخرى فيها كتابة تكون الصورة
+     موجودة»): الصورة المفتوحة في المعاينة تخصّ محادثتها — علم _imageView كان عامًّا فتبقى في كلّ محادثة بلا كود. */
+  if(previewFrame._imageView && previewFrame._imagePid !== ((cur && cur.id) || null)){
+    previewFrame._imageView = false; previewFrame._imagePid = null; previewFrame._lastSrc = null;
+    previewFrame.srcdoc = '';
+  }
   /* v-code-viewer: عارض القراءة يخصّ مشروعًا بعينه — يُزال عند تبديل المشروع */
   try{
     const __ov = document.getElementById('omranCodeViewer');
@@ -1106,6 +1141,17 @@ function renderCodeAndPreview(){
   /* v-tap-fast: إسناد نص ضخم (مئات الكيلوبايت) لخانة الكود مع كل إعادة رسم
      كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
   if(codeEl.value !== cur.code) codeEl.value = cur.code;
+  const __hidden = window.__omranPanelHidden[cur.id];
+  if(__hidden !== undefined && __hidden !== cur.code) delete window.__omranPanelHidden[cur.id];
+  else if(__hidden !== undefined && !previewFrame._imageView){
+    previewFrame.style.display = 'none'; pyConsole.style.display = 'none';
+    previewFrame._lastSrc = null; previewFrame.srcdoc = ''; /* لا يبقى التطبيق يعمل مخفيًّا */
+    emptyState.style.display = 'flex';
+    $('#emptyStateSpinner').style.display = 'none';
+    $('#emptyTitleEl').textContent = t('emptyTitle');
+    $('#emptyDescEl').innerHTML = t('emptyDesc');
+    return;
+  }
   emptyState.style.display = 'none';
   /* v-panel-head: العنوان يتبع المعروض — اسم المشروع ونوع الكود */
   try{
@@ -1584,6 +1630,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     $('#panel-' + tab.dataset.tab).classList.add('active');
+    if(tab.dataset.tab === 'preview') omranPanelReopen(); // v-panel-x: تبويب المعاينة يرجّع ما أقفله الإكس
     if(tab.dataset.tab === 'voice' && typeof mahaStartCall === 'function' && !mahaCallActive){
       mahaStartCall('builder');
     }
@@ -1691,19 +1738,6 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
   btn.id = 'waCollapseBtn'; btn.type = 'button'; btn.setAttribute('aria-label','طي اللوحة');
   btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="15" y1="4" x2="15" y2="20"></line></svg>';
   tabs.insertBefore(btn, tabs.firstElementChild);
-  /* v-panel-full (طلب المالك): تكبير اللوحة ليملأ الصفحة بدل العمود الضيّق بجانب المحادثة (كمبيوتر فقط) */
-  const fullBtn = document.createElement('button');
-  fullBtn.id = 'waFullBtn'; fullBtn.type = 'button';
-  const fullTitle = (typeof t === 'function' && t('panelFullTitle') !== 'panelFullTitle') ? t('panelFullTitle') : 'تكبير اللوحة';
-  fullBtn.title = fullTitle; fullBtn.setAttribute('aria-label', fullTitle);
-  fullBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
-  tabs.insertBefore(fullBtn, btn.nextSibling);
-  function setFull(on){
-    document.body.classList.toggle('waFullMode', on);
-    fullBtn.classList.toggle('on', on);
-    fullBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  }
-  fullBtn.onclick = () => setFull(!document.body.classList.contains('waFullMode'));
   /* v-panel-head: عنوان يبيّن المعروض حاليًا + زرّ نسخ لمحتوى اللوحة.
      يُضافان داخل شريط #tabs نفسه بلا لمس أيّ زرّ قائم؛ العنوان يُحدَّث من
      omranPanelTitle، والنسخ يأخذ الكود أو النصّ المعروض حسب الحالة. */
@@ -1759,7 +1793,6 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
   ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
   document.body.appendChild(ro);
   function setWA(collapsed){
-    if(collapsed) setFull(false);
     wa.classList.toggle('waCollapsed', collapsed);
     if(rz) rz.classList.toggle('waCollapsed', collapsed);
     document.body.classList.toggle('waCollapsedMode', collapsed);

@@ -273,7 +273,6 @@ I18N['id'] = {
     "copyCodeTitle": "Salin kode",
     "copiedMsg": "Disalin ✅",
     "copyMsgTitle": "Salin balasan",
-    "panelFullTitle": "Perbesar panel",
     "imgPreparing": "⏳ Menyiapkan gambar…",
     "imgReadyTitle": "✅ Gambar siap",
     "fileReadyTitle": "✅ File siap", "imgDlBtn": "⬇️ Unduh", "imgDlStarted": "📥 Mengunduh — cek notifikasi/Unduhan", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Tautan gambar disalin — tempel di WhatsApp", "imgShareBtn": "📤 Bagikan", "imgOpenBtn": "🔗 Buka",

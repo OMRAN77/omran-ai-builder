@@ -3494,7 +3494,7 @@ const I18N = {
     voiceTabAssistantName: 'المساعد',
     copyCode: 'نسخ',
     copiedMsg: 'تم النسخ ✅',
-    copyMsgTitle: 'نسخ الردّ', panelFullTitle: 'تكبير اللوحة', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", imgReadyTitle: "✅ الصورة جاهزة", fileReadyTitle: "✅ الملف جاهز", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
+    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", imgReadyTitle: "✅ الصورة جاهزة", fileReadyTitle: "✅ الملف جاهز", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
     adStudioTitle: 'استوديو الإعلانات',
     adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
@@ -4934,7 +4934,7 @@ const I18N = {
     copyCode: 'Copy',
     copyCodeTitle: 'Copy code',
     copiedMsg: 'Copied ✅',
-    copyMsgTitle: 'Copy reply', panelFullTitle: 'Expand panel', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", imgReadyTitle: "✅ Image ready", fileReadyTitle: "✅ File ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
+    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", imgReadyTitle: "✅ Image ready", fileReadyTitle: "✅ File ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
     promptPlaceholder: 'Type your message here ...',
@@ -6704,6 +6704,7 @@ function chatsSlimForServer(){
     provider: p.provider || '',
     messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
     code: (typeof p.code === 'string') ? p.code : '',
+    updatedAt: Number(p.updatedAt) || 0, // v-chat-order: الخادم يحفظه أصلًا (slimProjects)
   })).filter(p => p.id);
   // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
   /* v-perf-slim-linear (المالك ٢٩ سبتمبر: «إذا أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية، وإذا أدخل أيّ مكان مجمّد ويفتح»):
@@ -6775,7 +6776,7 @@ function __chatsMergeServer(server, deletedIds){
       var p = list[i];
       if(!p || !p.id) continue;
       var ml = Array.isArray(p.messages) ? p.messages.length : 0;
-      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ';';
+      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ':' + (Number(p.updatedAt) || 0) + ';';
     }
     return fp;
   };
@@ -6812,6 +6813,7 @@ function __chatsMergeServer(server, deletedIds){
         local.messages = merged;
       }
       if(sp.title && !local.title) local.title = sp.title;
+      if((Number(sp.updatedAt) || 0) > (Number(local.updatedAt) || 0)) local.updatedAt = Number(sp.updatedAt); // v-chat-order: كتابة من جهاز آخر
       if(sp.code && !local.code) local.code = sp.code;
       if(sp.provider && !local.provider) local.provider = sp.provider;
       result.push(local);
@@ -7036,7 +7038,10 @@ function renderHistory(){
   // v380: القائمة تعرض كل المحادثات من كل المزودات — حساب واحد، قائمة وحدة.
   // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
   // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
-  const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  /* v-chat-order (المالك ١٠ أكتوبر: «أريد المحادثات بالترتيب — آخر وحدة كتبتها تكون أوّل وحدة»): المفتاح وقت آخر رسالة
+     كتبها المستخدم (p.updatedAt، يُحفظ ويتزامن)، وإلّا وقت الإنشاء من المعرّف. ثابت بين الفتحات والمزامنات (v-stable-order)
+     لأنّه محفوظ في المشروع لا مستمدّ من ترتيب المصفوفة؛ يتغيّر فقط حين يكتب المستخدم. */
+  const __histTs = (p) => { const u = Number(p && p.updatedAt) || 0; if(u) return u; const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
   const __histSorted = [...state.projects].sort((a, b) => __histTs(b) - __histTs(a));
   // v-perf-history-guard (المالك ٢٩ سبتمبر: «الشاشة تتأخر وتعلّق»): renderHistory تبني <iframe>
   // كاملة لكلّ محادثة فيها كود، وتُستدعى بعد كلّ رسالة وعند كلّ نبضة مزامنة حيّة (٢٠ث) حتّى لو لم
@@ -7840,6 +7845,7 @@ function renderMessages(keepScroll){
             $('#pyConsole').style.display = 'none';
             emptyState.style.display = 'none';
             previewFrame._imageView = true;
+            previewFrame._imagePid = state.currentId; // v-panel-x: الصورة تخصّ هذه المحادثة وتُطوى عند الانتقال لغيرها
             previewFrame._lastSrc = null;
             previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + ((a.dataUrl && a.dataUrl !== '[media]') ? a.dataUrl : (a.viewUrl || '')) + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
             switchWorkTab('preview');
@@ -8098,6 +8104,7 @@ function renderMessages(keepScroll){
       btn.onclick = () => {
         cur.code = m.code;
         cur.codeType = m.codeType;
+        if(window.__omranPanelHidden) delete window.__omranPanelHidden[cur.id]; // v-panel-x: الرجوع من المحادثة
         saveState();
         renderAll(true);
         if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
@@ -10105,9 +10112,17 @@ function omranBuildCodeViewerBar(){
   };
   bar._resetEdit = function(){ setOn(edt, false); };
 
+  /* v-panel-x (المالك ١٠ أكتوبر: «الإكس مسؤول في الصندوق فقط، إلّا إذا أريد أرجعه من عند المحادثة — الطرفين مشبوكين»):
+     على الكمبيوتر يقفل ما يعرضه الصندوق لهذه المحادثة بالترتيب — عارض الكود، ثمّ الصورة، ثمّ معاينة تطبيقها —
+     ولا يطوي اللوحة (لذلك زرّ الطيّ). يرجع المعروض من المحادثة (نقر الصورة، «استخدم هذا الإصدار»، كود جديد)
+     أو من تبويب المعاينة. الجوّال كما كان. */
   cls.onclick = function(){
     if(document.getElementById('omranCodeViewer')){ omranCloseCodeViewer(); return; }
-    try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+    if(document.documentElement.classList.contains('mobile-ui')){
+      try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+      return;
+    }
+    omranPanelCloseShown();
   };
 
   edt.onclick = function(){
@@ -10206,9 +10221,36 @@ window.omranOpenTextInCodePanel = function(text, title){
     }
   }catch(e){ __swallow(e, 'ui:code-viewer'); }
 };
+/* v-panel-x: معاينة تطبيق محادثةٍ أقفلها الإكس — {معرّف المحادثة: الكود المقفول}. كود جديد في المحادثة يرجعها تلقائيًّا. */
+window.__omranPanelHidden = window.__omranPanelHidden || {};
+function omranPanelCloseShown(){
+  try{
+    const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    if(previewFrame._imageView){
+      previewFrame._imageView = false; previewFrame._imagePid = null; previewFrame._lastSrc = null;
+      previewFrame.srcdoc = '';
+    } else if(cur && cur.code){
+      window.__omranPanelHidden[cur.id] = cur.code;
+    }
+    renderCodeAndPreview();
+  }catch(e){ __swallow(e, 'ui:panel-x'); }
+}
+function omranPanelReopen(){
+  try{
+    const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    if(cur && window.__omranPanelHidden[cur.id] !== undefined){ delete window.__omranPanelHidden[cur.id]; renderCodeAndPreview(); }
+  }catch(e){ __swallow(e, 'ui:panel-reopen'); }
+}
+window.omranPanelReopen = omranPanelReopen;
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
+  /* v-panel-x (المالك: «إذا فاتح محادثة فيها صورة تكون في المعاينة، وإذا دخلت محادثة أخرى فيها كتابة تكون الصورة
+     موجودة»): الصورة المفتوحة في المعاينة تخصّ محادثتها — علم _imageView كان عامًّا فتبقى في كلّ محادثة بلا كود. */
+  if(previewFrame._imageView && previewFrame._imagePid !== ((cur && cur.id) || null)){
+    previewFrame._imageView = false; previewFrame._imagePid = null; previewFrame._lastSrc = null;
+    previewFrame.srcdoc = '';
+  }
   /* v-code-viewer: عارض القراءة يخصّ مشروعًا بعينه — يُزال عند تبديل المشروع */
   try{
     const __ov = document.getElementById('omranCodeViewer');
@@ -10247,6 +10289,17 @@ function renderCodeAndPreview(){
   /* v-tap-fast: إسناد نص ضخم (مئات الكيلوبايت) لخانة الكود مع كل إعادة رسم
      كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
   if(codeEl.value !== cur.code) codeEl.value = cur.code;
+  const __hidden = window.__omranPanelHidden[cur.id];
+  if(__hidden !== undefined && __hidden !== cur.code) delete window.__omranPanelHidden[cur.id];
+  else if(__hidden !== undefined && !previewFrame._imageView){
+    previewFrame.style.display = 'none'; pyConsole.style.display = 'none';
+    previewFrame._lastSrc = null; previewFrame.srcdoc = ''; /* لا يبقى التطبيق يعمل مخفيًّا */
+    emptyState.style.display = 'flex';
+    $('#emptyStateSpinner').style.display = 'none';
+    $('#emptyTitleEl').textContent = t('emptyTitle');
+    $('#emptyDescEl').innerHTML = t('emptyDesc');
+    return;
+  }
   emptyState.style.display = 'none';
   /* v-panel-head: العنوان يتبع المعروض — اسم المشروع ونوع الكود */
   try{
@@ -10725,6 +10778,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     $('#panel-' + tab.dataset.tab).classList.add('active');
+    if(tab.dataset.tab === 'preview') omranPanelReopen(); // v-panel-x: تبويب المعاينة يرجّع ما أقفله الإكس
     if(tab.dataset.tab === 'voice' && typeof mahaStartCall === 'function' && !mahaCallActive){
       mahaStartCall('builder');
     }
@@ -10832,19 +10886,6 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
   btn.id = 'waCollapseBtn'; btn.type = 'button'; btn.setAttribute('aria-label','طي اللوحة');
   btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="15" y1="4" x2="15" y2="20"></line></svg>';
   tabs.insertBefore(btn, tabs.firstElementChild);
-  /* v-panel-full (طلب المالك): تكبير اللوحة ليملأ الصفحة بدل العمود الضيّق بجانب المحادثة (كمبيوتر فقط) */
-  const fullBtn = document.createElement('button');
-  fullBtn.id = 'waFullBtn'; fullBtn.type = 'button';
-  const fullTitle = (typeof t === 'function' && t('panelFullTitle') !== 'panelFullTitle') ? t('panelFullTitle') : 'تكبير اللوحة';
-  fullBtn.title = fullTitle; fullBtn.setAttribute('aria-label', fullTitle);
-  fullBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
-  tabs.insertBefore(fullBtn, btn.nextSibling);
-  function setFull(on){
-    document.body.classList.toggle('waFullMode', on);
-    fullBtn.classList.toggle('on', on);
-    fullBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  }
-  fullBtn.onclick = () => setFull(!document.body.classList.contains('waFullMode'));
   /* v-panel-head: عنوان يبيّن المعروض حاليًا + زرّ نسخ لمحتوى اللوحة.
      يُضافان داخل شريط #tabs نفسه بلا لمس أيّ زرّ قائم؛ العنوان يُحدَّث من
      omranPanelTitle، والنسخ يأخذ الكود أو النصّ المعروض حسب الحالة. */
@@ -10900,7 +10941,6 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
   ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
   document.body.appendChild(ro);
   function setWA(collapsed){
-    if(collapsed) setFull(false);
     wa.classList.toggle('waCollapsed', collapsed);
     if(rz) rz.classList.toggle('waCollapsed', collapsed);
     document.body.classList.toggle('waCollapsedMode', collapsed);
@@ -23298,6 +23338,7 @@ async function __sendPromptCore(){
   } else {
     cur.messages.push(__nextUserMessage);
   }
+  cur.updatedAt = Date.now(); // v-chat-order: آخر محادثة كتب فيها المستخدم تصعد أوّل القائمة
   document.body.classList.remove('omranWelcome');
   try{
     const __hw = document.getElementById('huaweiHeroWrap'); if(__hw) __hw.style.setProperty('display', 'none', 'important');
@@ -43137,6 +43178,7 @@ if(document.readyState === 'loading'){
     var promptEl = $('#prompt'), sendBtn = $('#btnSend');
     // رسالة المستخدم بشريحة 🎬 خفيفة — بايتات الفيديو لا تدخل الحالة المحفوظة.
     cur.messages.push({ role: 'user', content: text || t('vwDefaultQ'), attachments: [{ name: att.name, isImage: false, isVideoWatch: true, label: att.label, durationSec: Math.round(att.durationSec || 0) }] });
+    cur.updatedAt = Date.now(); // v-chat-order
     window.__chatEditRequest = null;
     try{ if(typeof setChatEditNotice === 'function') setChatEditNotice(false); }catch(e){ __swallow(e, 'vwatch:edit'); }
     if(promptEl) promptEl.value = '';

@@ -268,7 +268,6 @@ I18N['zh'] = {
     "copyCodeTitle": "复制代码",
     "copiedMsg": "已复制 ✅",
     "copyMsgTitle": "复制回复",
-    "panelFullTitle": "放大面板",
     "imgPreparing": "⏳ 正在准备图片…",
     "imgReadyTitle": "✅ 图片已就绪",
     "fileReadyTitle": "✅ 文件已就绪", "imgDlBtn": "⬇️ 下载", "imgDlStarted": "📥 已开始下载 — 请查看通知/下载", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "图片链接已复制 — 粘贴到 WhatsApp", "imgShareBtn": "📤 分享", "imgOpenBtn": "🔗 打开",

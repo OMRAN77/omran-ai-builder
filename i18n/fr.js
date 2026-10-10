@@ -46,7 +46,6 @@ I18N['fr'] = {
     msgReportFailed: 'Impossible d’envoyer le signalement. Réessayez.',
     msgToolbarLabel: 'Actions sur la réponse',
     copyMsgTitle: 'Copier la réponse',
-    panelFullTitle: 'Agrandir le panneau',
     imgPreparing: "⏳ Préparation de l'image…",
     imgReadyTitle: "✅ Image prête", fileReadyTitle: "✅ Fichier prêt", imgDlBtn: "⬇️ Télécharger", imgDlStarted: "📥 Téléchargement — voir notifications/Téléchargements", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Lien de l'image copié — collez-le dans WhatsApp", imgShareBtn: "📤 Partager", imgOpenBtn: "🔗 Ouvrir",
     attachDropHere: "Déposez l'image ici",

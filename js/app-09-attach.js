@@ -3780,6 +3780,7 @@ async function __sendPromptCore(){
   } else {
     cur.messages.push(__nextUserMessage);
   }
+  cur.updatedAt = Date.now(); // v-chat-order: آخر محادثة كتب فيها المستخدم تصعد أوّل القائمة
   document.body.classList.remove('omranWelcome');
   try{
     const __hw = document.getElementById('huaweiHeroWrap'); if(__hw) __hw.style.setProperty('display', 'none', 'important');
