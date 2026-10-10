@@ -110,7 +110,9 @@ function toOpenAIBody(ab, prov) {
   }
   const body = { model: ab.model, messages, stream: true };
   if (ab.max_tokens) body.max_completion_tokens = ab.max_tokens;
-  if (prov === 'openai') body.stream_options = { include_usage: true };
+  // v-kimi-feed: Moonshot يحترم include_usage مثل OpenAI (قطعة الاستهلاك قبل [DONE])؛ والسقف يبقى
+  // max_completion_tokens لأنّ وثائق Moonshot تعدّ max_tokens مهجورًا — وشبكة أمان الـ400 أدناه معلّقة به.
+  if (prov === 'openai' || prov === 'kimi') body.stream_options = { include_usage: true };
   if (Array.isArray(ab.tools) && ab.tools.length) {
     body.tools = ab.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: t.input_schema || { type: 'object', properties: {} } } }));
   }

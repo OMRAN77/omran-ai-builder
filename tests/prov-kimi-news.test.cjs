@@ -36,7 +36,19 @@ test('٢. Kimi على الخادم: المسار المباشر بأيّ من ا
   assert.equal(oa.directModel('kimi', 'gpt-6-sol', {}).picked, false, 'معرّف غريب = الافتراضيّ');
   assert.equal(oa.directModel('kimi', '', { CHAT_KIMI_MODEL: 'kimi-k2.6' }).model, 'kimi-k2.6');
   const chat = read('api/_lib/chat.js');
-  assert.match(chat, /kimi: 'moonshotai\/kimi-k2', \/\/ v-kimi/);
+  assert.match(chat, /kimi: 'moonshotai\/kimi-k3', \/\/ v-kimi-feed/);
+  // v-kimi-feed: Moonshot يأخذ include_usage، والسقف يبقى max_completion_tokens (max_tokens مهجور في وثائقه وشبكة أمان الـ400 معلّقة بالاسم الأوّل)؛ بقيّة المزوّدين كما كانوا
+  const ab = { model: 'kimi-k3', max_tokens: 16000, messages: [{ role: 'user', content: 'x' }] };
+  const kb = oa.toOpenAIBody(ab, 'kimi');
+  assert.equal(kb.max_completion_tokens, 16000); assert.ok(!('max_tokens' in kb)); assert.deepEqual(kb.stream_options, { include_usage: true });
+  const gb = oa.toOpenAIBody(ab, 'groq');
+  assert.equal(gb.max_completion_tokens, 16000); assert.ok(!('max_tokens' in gb) && !('stream_options' in gb));
+  // v-kimi-feed: اختيار المالك يصل الوسيط ببادئة moonshotai/، والمعرّف القديم بلا بادئة = الافتراضيّ
+  const pm = require('../api/_lib/provider-models.js');
+  assert.equal(pm.OR_VENDOR.kimi, 'moonshotai');
+  assert.deepEqual(pm.pickProviderModel('kimi', 'moonshotai/kimi-k2.6', 'x'), { model: 'moonshotai/kimi-k2.6', picked: true, id: 'moonshotai/kimi-k2.6', label: 'kimi-k2.6' });
+  assert.equal(pm.pickProviderModel('kimi', 'kimi-k2.6', 'fb').model, 'fb');
+  assert.equal(pm.pickProviderModel('kimi', 'openai/gpt-6-sol', 'fb').model, 'fb');
   assert.match(chat, /prov === 'groq' \|\| prov === 'openai' \|\| prov === 'kimi'/);
 });
 
@@ -66,12 +78,14 @@ test('٣. Kimi من الطرف إلى الطرف: طلب المالك يصل Moo
   };
   let out = '';
   const res = { setHeader() {}, status() { return this; }, json(v) { out += JSON.stringify(v); }, write(c) { out += String(c || ''); }, end() {}, flush() {} };
-  try { await chat({ method: 'POST', headers: {}, body: { provider: 'kimi', model: 'kimi-k3', token, messages: [{ role: 'user', content: 'هلا' }] } }, res); }
+  try { await chat({ method: 'POST', headers: {}, body: { provider: 'kimi', model: 'moonshotai/kimi-k3', token, messages: [{ role: 'user', content: 'هلا' }] } }, res); }
   finally { global.fetch = saved; delete process.env.MOONSHOT_API_KEY; }
   const k = calls.find((c) => /api\.moonshot\.ai\/v1\/chat\/completions/.test(c.url));
   assert.ok(k, 'نداء Moonshot: ' + calls.map((c) => c.url).join(','));
   assert.equal(k.init.headers.Authorization, 'Bearer moon-test');
-  assert.equal(k.body.model, 'kimi-k3');
+  assert.equal(k.body.model, 'kimi-k3', 'بادئة الوسيط تُقصّ قبل Moonshot');
+  assert.ok(k.body.max_completion_tokens > 0 && !('max_tokens' in k.body), 'v-kimi-feed: السقف باسمه الموثّق max_completion_tokens');
+  assert.deepEqual(k.body.stream_options, { include_usage: true });
   assert.ok(Array.isArray(k.body.tools) && k.body.tools.some((t) => t.function && t.function.name === 'web_search'), 'بالأدوات');
   assert.ok(!calls.some((c) => /anthropic|openrouter/.test(c.url)), 'لا كلود ولا وسيط');
   assert.match(out, /"delta":"هلا من كيمي"/);
@@ -86,10 +100,10 @@ test('٤. القائمة: ثلاث مجموعات مرتّبة بخطّ بينه
   assert.deepEqual(rows.map((r) => r[0]), [1, 1, 1, 2, 2, 2, 2, 3, 3, 3]);
   assert.deepEqual(rows.slice(0, 4).map((r) => r[2]), ['Claude · Anthropic', 'GPT · OpenAI', 'Gemini · Google', 'Kimi · Moonshot']);
   assert.ok(!/كلود|جوجل جيميني/.test(block), 'لا أسماء معرّبة بين اللاتينيّة');
-  assert.match(block, /key:'kimi',\s+name:'Kimi · Moonshot',\s+or:true, direct:true, store:'aiapp_kimi_model',\s+def:'kimi-k3',\s+models:\[\['kimi-k3','Kimi K3'\],\['kimi-k2\.6','Kimi K2\.6'\]\]/);
+  assert.match(block, /key:'kimi',\s+name:'Kimi · Moonshot',\s+or:true, direct:true, store:'aiapp_kimi_model',\s+def:'moonshotai\/kimi-k3',\s+models:\[\['moonshotai\/kimi-k3','Kimi K3'\],\['moonshotai\/kimi-k2\.6','Kimi K2\.6'\]\]/);
   assert.match(m, /if\(i && p\.grp !== PROVS\[i-1\]\.grp\) out \+= divider;/);
   assert.match(m, /kimi:'provNickDeep'/);
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m081026a/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m101026a/);
 });
 
 test('٥. العميل: Kimi على مسار الأدوات وحده، باسمه للمالك، وإغلاق الإعدادات لا يمسح الاختيار', () => {
