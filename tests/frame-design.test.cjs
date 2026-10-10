@@ -47,7 +47,7 @@ test('٢. المقاسات والألوان المقيسة من صورتيه: ١
 
 test('٣. الربط: CSS قبل الثيم الخشبيّ، إطار اللوحة الوسطى أوّل <main>، اللوحة الفارغة بلا «بيت»، وخانة البحث', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/إطارات.css?v=3'), c = html.indexOf('css/ثيم-خشبي.css?v=3');
+  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/إطارات.css?v='), c = html.indexOf('css/ثيم-خشبي.css?v=3');
   assert.ok(a > 0 && b > a && c > b, 'الترتيب: خلفيات ← إطارات ← الخشبيّ');
   assert.match(html, /<main>\n  <div id="omFrameCenter" aria-hidden="true"><\/div>/);
   const empty = html.slice(html.indexOf('<div class="empty" id="emptyState">'), html.indexOf('<iframe id="previewFrame"'));
