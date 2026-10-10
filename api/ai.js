@@ -347,7 +347,7 @@ function balancedNote(action, country, withImages) {
 // ويطلب الصراحة. لا يمسّ أمان النموذج الأساسيّ (الضرر الحقيقيّ يبقى مرفوضًا).
 const OWNER_DIRECT_NOTE = '\n[تعليمات المالك — دائمة]: خاطبه بصراحة ومباشرة تامّة. لا مجاملة ولا إطراء ولا تحذيرات زائدة ولا تهرّب ولا اعتذار مطوّل. نفّذ طلبه المشروع فورًا بلا لفّ. إن تعذّر شيء فعلًا فقل السبب الحقيقيّ في سطر واحد صريح، بلا وعظ ولا «لا أستطيع» غامضة.';
 
-/* v-owner-raw2: للمالك وحده — نظام العميل نفسه يُنزع قبل المزوّد، لا ملاحظات
+/* v-owner-raw2: للمالك وحده بـraw:true — نظام العميل نفسه يُنزع قبل المزوّد، لا ملاحظات
    الخادم وحدها. بدون هذا يبقى «خام» ناقصًا: العميل يرسل حتّى ١٧ ألف حرف نظامًا. */
 function stripAppSystem(action, body) {
   if (action === 'gemini') { delete body.systemInstruction; return; }
@@ -363,7 +363,7 @@ function injectNote(action, body, country) {
   if (mode === 'factory') {
     if (ownerReq) {
       applyNote(action, body, OWNER_DIRECT_NOTE);
-      // v-site-guide3: نظام العميل نُزع للمالك (v-owner-raw2) — قاعدة الإرشاد وحدها تعود في دور الإرشاد
+      // v-site-guide3: قاعدة الإرشاد تعود في دور الإرشاد حتّى لو نُزع نظام العميل (raw:true)
       try { if (SITE_GUIDE_RE.test(String(lastUserText(action, body) || ''))) applyNote(action, body, SITE_GUIDE_NOTE); } catch (e) { /* guard-ok — الإرشاد إضافة لا شرط */ }
     }
     return;
@@ -504,7 +504,8 @@ module.exports = withErrorCapture('ai', async (req, res) => {
         // v-owner-raw: يُحسب من التوكن الموقَّع في الجسم؛ العلم يُستهلك داخل
         // injectNote ثمّ يُحذف فلا يُمرَّر إلى المزوّد.
         try { b.__ownerFactory = isOwner({ query: req.query, body: b }); } catch (e) { b.__ownerFactory = false; }
-        if (b.__ownerFactory && b.raw !== false) stripAppSystem(action, b);
+        // v-religion-owner: النزع اختياريّ (raw:true) كـchat.js منذ v-owner-full — كان افتراضيًّا فيحذف تعليمات كلّ أداة للمالك
+        if (b.__ownerFactory && b.raw === true) stripAppSystem(action, b);
         injectNote(action, b, geoCountry);
         delete b.__ownerFactory;
         req.body = b;
