@@ -143,7 +143,7 @@ check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخا�
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
 
-check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, isClarifyTurn(lastUserText) || __analyzeDoc) : undefined'), // v-providers-like-agent: الاستيضاح والطويل بلا أدوات الصورة، وأدوات المالك له دائمًا
+check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, isClarifyTurn(lastUserText) || __analyzeDoc || __ownerUiShot) : undefined'), // v-providers-like-agent: الاستيضاح والطويل بلا أدوات الصورة، وأدوات المالك له دائمًا
       'الأدوات تُمرَّر خلف toolTurn لا دائمًا'); // v-img-ask: دور الاستيضاح بلا أدوات الصورة؛ v-provider-errors: أداة المالك تُضاف له وحده
 check(chatServer.includes('const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).concat(owner ? OWNER_TOOLS : []);'), 'أدوات المالك تُضاف له وحده ولا تُعرض لغيره');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
