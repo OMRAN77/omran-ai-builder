@@ -3647,6 +3647,7 @@ async function __sendPromptCore(){
     && !__rtWriteDocAsk /* v-route-write: «اكتب لي دعوة لاجتماع» وثيقة تُكتب لا تصميم */);
   let __gateNoBuild = false;
   let __gateApprovedText = null; // ما كتبه المستخدم فعلًا (نعم/ابدأ) ليُعرض كما هو
+  let __ownerBuildAsk = false; // v-claude-code-level: طلب بناء المالك (بلا دور استئذان) — إشارة اعتماد الكود مشروعًا
   {
     /* v-route-gate: أسماء التصميم (بوستر/شعار/لوجو/بطاقة/دعوة/شهادة/تهنئة) خرجت من كلمات البناء — «صمّم لي بوستر لليوم الوطني»
        كانت تُسأل «تبيني أبدأ البناء الحين؟» ثمّ «نعم» تبني صفحة HTML. طلب التصميم يذهب للبانِي المباشر (v-route-design أدناه). */
@@ -3719,12 +3720,17 @@ async function __sendPromptCore(){
       text = __pend;
       __setPend(null);
     } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)
+      && !(typeof omranOwnerUi === 'function' && omranOwnerUi()) /* v-claude-code-level (المالك: «ولا يبني ولا يقرى»): لا دور استئذان للمالك — طلبه أمر، يُبنى في الدور نفسه بالأدوات */
       && !omranEditBigOpen(getCurrent())){ // v-chat-edit: «ممكن تغيّر … في اللعبة» على تصميم كبير تعديلٌ برقع، لا بناء يُستأذن
       __setPend(text);
       __gateNoBuild = true;
     } else if(text){
       __setPend(null);
     }
+    /* v-claude-code-level: «أبي لعبة ثعبان» كانت تمرّ بالبوّابة فتُعلَّم بـ«نعم»؛ المالك بلا بوّابة الآن، فتُحفظ نيّة البناء هنا
+       بشرط البوّابة نفسه — والسؤال («how does the app build…»، «كيف…») ليس طلب بناء. */
+    __ownerBuildAsk = !!(typeof omranOwnerUi === 'function' && omranOwnerUi() && __isFullBuildReq && !__IMG_FOLLOW && !__explicitImageTextRequest && !GATE_FIX_RE.test(text)
+      && (__strongBuildRe.test(text) || !/^\s*(?:وش|شو|ايش|إيش|أيش|ليش|ليه|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|how|what|why|where|when|who|which|does|do|is|are)(?=$|[\s،,.!?؟])/i.test(text)));
   }
 
   // Guest gate: users without an account get GUEST_MSG_LIMIT free messages,
@@ -6758,7 +6764,8 @@ DESIGN RULES (non-negotiable):
       // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
       // v-owner-vision (المالك ٦ أكتوبر «كلّ واحد يحلّل ويشوف… أنا المالك عند اختيار أيّ مزوّد»): صورة المالك تمرّ هنا
       // لأيّ مزوّد — الخادم يعطيه موديل رؤيته (owner-vision.js) بدل المسار القديم الذي يُسقطها أو يصفها Gemini وحده.
-      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
+      // v-claude-code-level (المالك: «ولا يبني ولا يقرى»): إصلاحه وتعديله على مشروع مفتوح يمرّان بالأدوات أيضًا — لا المسار القديم بلا أدوات.
+      const __toolsWillRun = (window.__chatToolsOn !== false && (__ownerFree || !__routeFix) && (!__gateNoBuild || !!__gateApprovedText)
         && (__ownerFree || (!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai')))
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
@@ -6768,10 +6775,14 @@ DESIGN RULES (non-negotiable):
       } else if(__gateNoBuild){
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
         apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
+      } else if(__ownerFree && __routeFix && __toolsWillRun){
+        // v-claude-code-level: إصلاح المالك على مشروع مفتوح صار بالأدوات — المعاينة تُعدَّل في الردّ، لا طلب سحب على مستودع التطبيق.
+        apiMessages.push({ role: 'system', content: 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق الحيّ)' });
       }
       // v469: Q&A system prompt مدمج في __sys — لا حاجة لـ unshift إضافي.
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
+      let __ctFenceCut = false; /* v-claude-code-level: app-18 أغلق سياجًا قطعه خطأ المزوّد قبل سطر السبب — الكود ناقص */
       let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
       let __ctModel = ''; /* v-owner-model-badge: ما أعلنه الخادم عن الموديل الذي أجاب (للمالك) */
       let __ctServed = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه — دليل المالك فوق الردّ */
@@ -6822,7 +6833,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
+        if(__ct){ __ctUsed = true; __ctFenceCut = !!__ct.fenceCut; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, __sigFn(onDelta), __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
@@ -6830,6 +6841,26 @@ DESIGN RULES (non-negotiable):
       }
       try{ window.__diagTurn.provider = String(providerKey||''); window.__diagTurn.replyLen = String(reply||'').length; if(!window.__diagTurn.path) window.__diagTurn.path = __ctUsed ? 'tools' : 'fallback'; }catch(e){ __swallow(e,'ui:diag-ok'); }
       let { code, explanation, codeType } = extractReply(reply, cur.code); // v-chat-edit: الرقع تُطبَّق على المشروع الحاليّ
+      /* v-claude-code-level (المالك: «ولا يبني ولا يقرى»): مقتطف في شرحٍ (كود من المستودع فيه <div>، رأس index.html، مثال بايثون)
+         كان يصير cur.code فيقلب المحادثة «مشروعًا مفتوحًا» وقد يمحو مشروعًا صغيرًا. للمالك وحده يُعتمد الكود مشروعًا فقط إن كان:
+         رقعة طُبّقت، أو مستندًا كاملًا (<html…</html> في الكود المستخرَج نفسه)، أو بايثون طلبه، أو أيّ كود في محادثة بلا مشروع
+         على طلب بناء صريح؛ وإلّا يبقى في الفقاعة. مقطع على مشروع مفتوح لا يحلّ محلّه أبدًا (قاعدة التصميم الكبير في extractReply)،
+         و__routeFix و__bldRe+__appWd ليسا إشارة (يلتقطان «خلنا نراجع…» و«اقرأ كود التطبيق…»). وسياج لم يُغلق = ردّ انقطع لطوله: لا يحلّ
+         محلّ المشروع المفتوح. غير المالك كما كان (v491). */
+      if(code && __ownerFree){
+        const __ownRaw = String((typeof stripLeakedThinking === 'function') ? stripLeakedThinking(String(reply || '')) : (reply || ''));
+        const __ownPatch = !!(cur.code && typeof omranEditParse === 'function' && (function(){ const __p = omranEditParse(__ownRaw); return !!(__p && __p.blocks.length && !__p.bad); })());
+        const __ownDoc = codeType === 'html' && /<!doctype html|<html[\s>]/i.test(code) && /<\/html>\s*$/i.test(code) && /<!doctype html|<html[\s>]/i.test(__ownRaw); // الأخير: لا مقطعًا لفّه v490
+        const __ownPy = codeType === 'python' && (/(?:python|بايثون|بايثن|\bpy\b|سكربت|سكريبت|\bscript\b)/i.test(text) || (cur.codeType === 'python' && isBuildTask));
+        const __ownAsk = !cur.code && !!(__gateApprovedText || __ownerBuildAsk || (__dsnRe.test(text) && __designAskRe.test(text)));
+        if(!__ownPatch && __ctFenceCut){
+          code = ''; explanation = __ownRaw.trim() + '\n\n' + omranEditNote('editTruncated'); // السياج أُغلق في app-18 قبل السبب: كود ناقص لا يصير مشروعًا ولا يحلّ محلّ المفتوح
+        } else if(!__ownPatch && !__ownDoc && cur.code && (__ownRaw.match(/```/g) || []).length % 2 === 1){
+          code = ''; explanation = __ownRaw.trim() + '\n```\n\n' + omranEditNote('editTruncated'); // يُغلق السياج: الفقاعة ترسمه كتلة، والتاريخ يطويه «مقتطفًا لم يُطبَّق» بدل إعادة إرساله كلّ دور
+        } else if(!__ownPatch && !__ownDoc && !__ownPy && !__ownAsk){
+          code = ''; explanation = __ownRaw.trim() + ((isBuildTask && cur.code) ? '\n\n' + omranEditNote('editPartial') : ''); // دور تعديل بمقطع = لم يُطبَّق، والسبب مكتوب
+        }
+      }
       // v-reveal-live: رد نصّي بلا كود → ننتظر حركة الكتابة تلحق آخر حرف
       // قبل الرسم النهائي. مع الكود لا ننتظر إطلاقًا حتى لا تتأخر المعاينة.
       if(code){
