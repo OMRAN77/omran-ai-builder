@@ -685,3 +685,18 @@ html[data-mode="light"] #videoMakerModal #videoMakerQualityRow{background:#fffff
 html[data-mode="light"] #videoMakerModal .vmk-cl-head b{color:var(--text)}
 html[data-mode="light"] #videoMakerModal .vmk-cl-drop{background:#ffffff;border-color:rgba(0,0,0,.25)}
 html[data-mode="light"] #videoMakerModal .vmk-cl-pick,html[data-mode="light"] #videoMakerModal .vmk-cl-up,html[data-mode="light"] #videoMakerModal .vmk-cl-prow{color:var(--text)}
+/* v-vmk-clean-video (مراجعة): عارض القسم مستقلّ — نتيجة المولّد وحالته وروابطه لا تظهر فيه، وعارضه لا يظهر خارجه */
+#videoMakerModal .vmk-studio:not(.vmk-tab-clean) #vmkClView{display:none!important}
+#videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerResult,#videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerStatus,#videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerDownloadLink,#videoMakerModal .vmk-studio.vmk-tab-clean #filmSceneLinks{display:none!important}
+#videoMakerModal .vmk-cl-drop:focus-within{outline:2px solid #e8c27a;outline-offset:3px}
+@media (max-width:860px){
+  #videoMakerModal .vmk-studio.vmk-tab-clean>.vmk-side{align-self:stretch;width:100%}
+  #videoMakerModal .vmk-studio.vmk-tab-clean:not(.vmk-cl-view)>.vmk-side{display:none!important}
+}
+html[data-mode="light"] #videoMakerModal .vmk-cl-head p,html[data-mode="light"] #videoMakerModal .vmk-cl-info,html[data-mode="light"] #videoMakerModal .vmk-cl-wk,html[data-mode="light"] #videoMakerModal .vmk-cl-msg,html[data-mode="light"] #videoMakerModal .vmk-cl-lim,html[data-mode="light"] #videoMakerModal .vmk-cl-note{color:#4a5160}
+html[data-mode="light"] #videoMakerModal .vmk-cl-msg.err{color:#b42318}
+html[data-mode="light"] #videoMakerModal .vmk-cl-prow span:first-child{color:#8a5a12}
+html[data-mode="light"] #videoMakerModal .vmk-cl-track{background:rgba(0,0,0,.12)}
+html[data-mode="light"] #videoMakerModal #vmkClCancel{color:var(--text);border-color:rgba(0,0,0,.3);background:#fff}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pick{color:#8a5a12}
+html[data-mode="light"] #videoMakerModal .vmk-cl-drop:focus-within{outline-color:#8a5a12}
