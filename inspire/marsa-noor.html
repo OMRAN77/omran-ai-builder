@@ -704,7 +704,7 @@ function buildWater() {
   const g = new THREE.PlaneGeometry(1400, 800, 64, 36); g.rotateX(-Math.PI / 2); g.translate(0, -0.6, SEAWALL + 400); waterPos0 = g.attributes.position.array.slice();
   water = new THREE.Mesh(g, M.water); water.receiveShadow = true; scene.add(water);
   const fg = new THREE.PlaneGeometry(620, 0.6); fg.rotateX(-Math.PI / 2); fg.translate(0, -0.3, SEAWALL + 0.9); foam = new THREE.Mesh(fg, M.foam); scene.add(foam);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshLambertMaterial({ color: P.ground })); ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.12, -120); ground.receiveShadow = true; ground.material.polygonOffset = true; ground.material.polygonOffsetFactor = 2; ground.material.polygonOffsetUnits = 2; // تحت الطرق بوضوح: ٢ سم كانت تتعارض عمقًا مع بلاط الطريق عند y=0 فتبتلعه scene.add(ground);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshLambertMaterial({ color: P.ground })); ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.12, -120); ground.receiveShadow = true; ground.material.polygonOffset = true; ground.material.polygonOffsetFactor = 2; ground.material.polygonOffsetUnits = 2; /* تحت الطرق بوضوح: ٢ سم كانت تتعارض عمقًا مع بلاط الطريق عند y=0 فتبتلعه */ scene.add(ground);
   const lam = (hex) => new THREE.MeshLambertMaterial({ color: hex });
   // قوارب صيد
   const hullShape = new THREE.Shape(); hullShape.moveTo(-4, 0); hullShape.quadraticCurveTo(-4.2, 1.2, -2.5, 1.3); hullShape.lineTo(2.5, 1.3); hullShape.quadraticCurveTo(4.4, 1.1, 4, 0); hullShape.lineTo(-4, 0);
@@ -984,7 +984,8 @@ function markerAt(x, z, label, color) {
   if (label) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTex('lbl:' + label, label, P.ink, '#F4EEE3', 512, 128, 56), transparent: true, depthWrite: false })); sp.scale.set(6, 1.5, 1); sp.position.y = 6; g.add(sp); }
   g.position.set(x, 0, z); g.userData.ring = ring; scene.add(g); markers.push(g); return g;
 }
-function clearMarkers() { for (const m of markers) scene.remove(m); markers = []; }
+const disposeTree = (root) => root.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && !o.material.map) o.material.dispose(); }); // الخرائط مشتركة من texCache
+function clearMarkers() { for (const m of markers) { scene.remove(m); disposeTree(m); } markers = []; }
 function startJob(def) {
   if (job) cancelJob(); job = { def, stage: 0, t: 0, cargo: 100, lant: 3, started: tnow };
   if (def.race) { raceActive = true; job.gate = 0; job.count = 3; job.stage = -1; V.lock = true; sfx.beep(440); RACE_GATES.forEach((g, i) => gateAt(g, i)); // ضع السيّارة عند البداية
@@ -995,7 +996,7 @@ function startJob(def) {
 function gateAt([x, z, ry], i) { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: P.teal, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false }); for (const sx of [-7, 7]) { const po = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 6, 8), m); po.position.set(sx, 3, 0); g.add(po); } const ban = new THREE.Mesh(new THREE.BoxGeometry(14, 1.2, 0.3), m); ban.position.y = 6; g.add(ban); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTex('gate' + i, String(i + 1), P.teal, '#F4EEE3', 128, 128, 80), transparent: true })); sp.position.y = 7.5; sp.scale.set(1.6, 1.6, 1); g.add(sp); g.position.set(x, 0, z); g.rotation.y = ry; g.userData.m = m; scene.add(g); markers.push(g); }
 function cancelJob() { job = null; raceActive = false; V.lock = false; $('countdown').textContent = ''; clearMarkers(); refreshCargo(); if (ghostCar) ghostCar.visible = false; $('banner').classList.remove('show'); setMode(); renderJobs(); }
 function failJob() { toast(t('failed')); sfx.fail(); cancelJob(); }
-function refreshCargo() { const cg = car.userData.cargo; while (cg.children.length) cg.remove(cg.children[0]); if (!job || job.stage !== 1) return; if (job.def.lanterns) { for (let i = 0; i < job.lant; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), new THREE.MeshStandardMaterial({ color: P.window, emissive: P.window, emissiveIntensity: 1.2 })); l.position.set((i - 1) * 0.5, 0.22, 0); cg.add(l); } } else { const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: P.crane, roughness: 0.8 })); b.position.y = 0.25; cg.add(b); } }
+function refreshCargo() { const cg = car.userData.cargo; while (cg.children.length) { const ch = cg.children[0]; cg.remove(ch); disposeTree(ch); } if (!job || job.stage !== 1) return; if (job.def.lanterns) { for (let i = 0; i < job.lant; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), new THREE.MeshStandardMaterial({ color: P.window, emissive: P.window, emissiveIntensity: 1.2 })); l.position.set((i - 1) * 0.5, 0.22, 0); cg.add(l); } } else { const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: P.crane, roughness: 0.8 })); b.position.y = 0.25; cg.add(b); } }
 function stepJob(dt) {
   if (!job) return; const px = V.onFoot ? charState.x : V.x, pz = V.onFoot ? charState.z : V.z, pv = V.onFoot ? 0 : Math.abs(V.vLong); const def = job.def;
   if (def.race) {
@@ -1050,7 +1051,7 @@ function drawCityBase(ctx, W, H, sc, ox, oz) { // ١ بكسل = sc م
   const X = (x) => ox + x / sc, Z = (z) => oz + z / sc; ctx.fillStyle = '#EDE4D5'; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = '#9FC3D1'; ctx.fillRect(X(-700), Z(SEAWALL), 1400 / sc, 900 / sc); ctx.fillStyle = '#D6CDBB'; for (const px of [-124, 0, 124]) ctx.fillRect(X(px - 5), Z(248), 10 / sc, 62 / sc); ctx.fillRect(X(-310), Z(CORNICHE + 7), 620 / sc, 24 / sc);
   const tint = { downtown: '#C9BFAE', midtown: '#D8B497', oldharbor: '#E0A98A', warehouse: '#CFC6B4', park: '#B9CDA0', plaza: '#E6D8C2', garage: '#D9A441' };
-  for (let i = 0; i < NI; i++) for (let j = 0; j < NJ; j++) { const d = district(i, j); ctx.fillStyle = tint[d]; const x = X(bx(i) - 24), z = Z(bz(j) - 24), w = 48 / sc; ctx.beginPath(); ctx.roundRect(x, z, w, w, 3); ctx.fill(); if (d === 'garage') { ctx.fillStyle = P.ink; ctx.font = `700 ${9 * 2.2 / sc | 0}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('G', x + w / 2, z + w / 2 + 4); } }
+  for (let i = 0; i < NI; i++) for (let j = 0; j < NJ; j++) { const d = district(i, j); ctx.fillStyle = tint[d]; const x = X(bx(i) - 24), z = Z(bz(j) - 24), w = 48 / sc; if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, z, w, w, 3); ctx.fill(); } else ctx.fillRect(x, z, w, w); /* سفاري < ١٦ بلا roundRect */ if (d === 'garage') { ctx.fillStyle = P.ink; ctx.font = `700 ${9 * 2.2 / sc | 0}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('G', x + w / 2, z + w / 2 + 4); } }
   ctx.strokeStyle = P.teal; ctx.lineWidth = Math.max(1, 1.2 / sc * 2.2); ctx.beginPath(); ctx.moveTo(X(rx(5)), Z(-217)); ctx.lineTo(X(rx(5)), Z(217)); ctx.lineTo(X(279), Z(217)); ctx.stroke();
   ctx.strokeStyle = P.ink; ctx.lineWidth = 1; ctx.strokeRect(X(-279), Z(-217), 558 / sc, 434 / sc); ctx.fillStyle = P.coral; ctx.beginPath(); ctx.arc(X(300), Z(240), 3, 0, 7); ctx.fill();
 }
@@ -1194,7 +1195,7 @@ function boot() {
     sim(sec) { for (let i = 0, n = Math.round(sec / DT); i < n; i++) { tnow += DT; if (V.onFoot) stepChar(DT); else { offRoad = !isRoad(V.x, V.z) && !onSidewalk(V.x, V.z); stepCar(DT); } stepTraffic(DT, tnow); stepPeds(DT); stepJob(DT); } }, resolvePoint, get tnow() { return tnow; } }; }
   renderer.setAnimationLoop(loop);
 }
-try { setupRenderer(); boot(); window.__marsaReady = true; }
+try { setupRenderer(); boot(); window.__marsaReady = true; $('err').classList.remove('on'); }
 catch (e) { console.error(e); window.__marsaErr(); }
 </script>
 </body>
