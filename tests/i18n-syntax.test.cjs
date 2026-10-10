@@ -26,12 +26,12 @@ test('كل ملفّات i18n/*.js تمرّ node --check (بلا استثناء)'
   }
 });
 
-test('i18n/zh.js: مفاتيح الأديان الأربعة الجديدة سليمة بعلامات اقتباس مستقيمة، بلا بقايا علامات منحنية كإحاطة', () => {
+// v-religion-owner: الأديان الأربعة حُذفت بأمر المالك (ثلاثة تبويبات) — الفحص صار على التبويبات الباقية.
+test('i18n/zh.js: مفاتيح تبويبات التفسير سليمة بعلامات اقتباس مستقيمة، بلا بقايا علامات منحنية كإحاطة', () => {
   const src = fs.readFileSync(path.join(root, 'i18n/zh.js'), 'utf8');
-  assert.match(src, /"religionTabBible": "/, 'المفتاح موجود بعلامات مستقيمة');
-  assert.match(src, /"religionTabTorah": "/);
-  assert.match(src, /"religionTabBuddhism": "/);
-  assert.match(src, /"religionTabHinduism": "/);
+  assert.match(src, /"religionTabVerse": "/, 'المفتاح موجود بعلامات مستقيمة');
+  assert.match(src, /"religionTabHadith": "/);
+  assert.match(src, /"religionTabDream": "/);
   // لا سطر يبدأ بعلامة اقتباس منحنية كإحاطة مفتاح (السبب الجذريّ الأصليّ)
   assert.doesNotMatch(src, /^\s*[“‘]\w/m, 'لا مفتاح مُحاط بعلامة اقتباس منحنية بعد الآن');
 });
