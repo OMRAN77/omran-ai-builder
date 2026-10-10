@@ -90,8 +90,6 @@
   html:not(.mobile-ui) #sbSearchWrap svg{ flex:none; opacity:.8; }
   html:not(.mobile-ui) #sbSearch{ flex:1; min-width:0; background:none; border:none; outline:none; color:var(--frame-ink); font:inherit; font-size:13px; }
   html:not(.mobile-ui) #sbSearch::placeholder{ color:var(--frame-muted); }
-  html:not(.mobile-ui) #projMenuWrap{ border-bottom:1px solid var(--frame-line2); padding-bottom:4px; }
-  html:not(.mobile-ui) #btnProjMenuToggle{ color:var(--frame-ink) !important; font-weight:700; }
   html:not(.mobile-ui):not(.skin-wood):not(.skin) .hist-item{ color:var(--frame-muted); padding:9px 12px; }
   html:not(.mobile-ui):not(.skin-wood):not(.skin) .hist-item .hist-thumb{ width:22px; height:22px; color:var(--frame-muted); }
   html:not(.mobile-ui):not(.skin-wood):not(.skin) .hist-item.active{ background:var(--frame-active) !important; border:1px solid var(--frame-active-line) !important; border-radius:10px !important; color:var(--frame-gold2) !important; }

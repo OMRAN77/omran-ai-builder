@@ -38,7 +38,7 @@ html.skin-wood #sidebarBrand .brandImg{filter:sepia(1) saturate(1.5) hue-rotate(
 /* المحدِّد الثاني يعادل قاعدة الوضع الفاتح (html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn) ويأتي بعدها فيبقى نحاسيًّا */
 html.skin-wood #omranNewChatBtn, html.skin-wood:not(.mobile-ui) #omranNewChatBtn, html.skin-wood:not(.mobile-ui) #omranNewChatBtn:hover{margin:10px 12px 6px !important; padding:9px 16px !important; border-radius:999px !important; background:var(--wood-copper) !important; color:var(--wood-ink) !important; box-shadow:inset 0 1px 0 rgba(255,240,225,.75), inset 0 -2px 3px rgba(90,50,25,.35), 0 4px 10px rgba(80,48,24,.35) !important; justify-content:center !important; text-shadow:0 1px 0 rgba(255,235,215,.5);}
 html.skin-wood #omranNewChatBtn svg{background:rgba(255,240,220,.5); border-radius:50%; padding:2px; box-sizing:content-box;}
-html.skin-wood #omranHistTitle, html.skin-wood #btnProjMenuToggle, html.skin-wood #projMenuWrap{color:var(--wood-ink) !important;}
+html.skin-wood #omranHistTitle{color:var(--wood-ink) !important;}
 html.skin-wood #history{padding:2px 10px 8px !important;}
 html.skin-wood .hist-item{background:var(--wood-plank) !important; border:1px solid rgba(140,98,60,.5) !important; border-radius:12px !important; margin:7px 0 !important; padding:7px 10px !important; box-shadow:var(--wood-shadow) !important; min-height:42px;}
 html.skin-wood .hist-item:hover{filter:brightness(1.04);}

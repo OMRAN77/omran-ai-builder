@@ -51,7 +51,7 @@ html.skin #sidebar .omStars{display:none;}
 /* المحدِّد الثاني يعادل قاعدة الوضع الفاتح (html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn) ويأتي بعدها */
 html.skin #omranNewChatBtn, html.skin:not(.mobile-ui) #omranNewChatBtn, html.skin:not(.mobile-ui) #omranNewChatBtn:hover{margin:10px 12px 6px !important; padding:9px 16px !important; border-radius:999px !important; background:var(--th-btn) !important; border:none !important; color:var(--th-btn-ink) !important; box-shadow:var(--th-btn-shadow) !important; justify-content:center !important;}
 html.skin #omranNewChatBtn svg{color:var(--th-btn-ink) !important;}
-html.skin #omranHistTitle, html.skin #btnProjMenuToggle, html.skin #projMenuWrap{color:var(--th-side-ink) !important;}
+html.skin #omranHistTitle{color:var(--th-side-ink) !important;}
 html.skin #sbSearchWrap{background:var(--th-field) !important; border:1px solid var(--th-field-line) !important; color:var(--th-field-muted) !important;}
 html.skin #sbSearch{color:var(--th-field-ink) !important;}
 html.skin #sbSearch::placeholder{color:var(--th-field-muted) !important;}

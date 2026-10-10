@@ -221,14 +221,11 @@ window.__swallow = window.__swallow || function (err, ctx) {
         <span id="premiumPointsChip"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="premiumPointsChipValue">—</span></span>
       </div>
     </div>
-    <div id="projMenuWrap" style="margin:6px 10px;">
-      <button class="btn" id="btnProjMenuToggle" type="button" style="background:none; border:none; box-shadow:none; padding:6px 8px; display:inline-flex; align-items:center; gap:6px;"><svg id="projMenuChevron" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="6 9 12 15 18 9"></polyline></svg><span style="font-size: var(--fs-3);" data-i18n="sbProjectsTitle">المشاريع</span></button>
-      <div id="projMenuPanel" style="display:none; flex-direction:column; gap:2px; padding:2px 4px;">
-        <button class="btn" id="btnNew" data-i18n="sbNewProject" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0;">مشروع جديد</button>
-        <button class="btn" id="btnProjSearch" data-i18n="sbProjSearch" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0;">بحث عن مشروع</button>
-        <input type="text" id="projSearchInput" style="display:none; width:100%; padding:6px 8px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; margin:2px 0;">
-        <button class="btn" id="btnDeleteAll" data-i18n="sbDeleteAll" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0; color:#e66;">حذف الكل</button>
-      </div>
+    <!-- v-sidebar-projmenu-hide (طلب المالك ١٠ أكتوبر ٢٠٢٦): حذف ظهور قائمة المشاريع المطوية؛ الأزرار تبقى في الـDOM مخفية (display:none مباشر لا hidden، فـ.btn بلا !important تكسر سمة hidden) لأنّ ui-wiring.js وapp-31-إطارات.js وdelete-confirm.js تعتمد عليها -->
+    <div id="projMenuWrap" style="display:none;">
+      <button class="btn" id="btnNew" data-i18n="sbNewProject" type="button" style="display:none;">مشروع جديد</button>
+      <input type="text" id="projSearchInput" style="display:none;">
+      <button class="btn" id="btnDeleteAll" data-i18n="sbDeleteAll" type="button" style="display:none;">حذف الكل</button>
     </div>
     <div id="history"></div>
     <div id="omranSidebarFoot">

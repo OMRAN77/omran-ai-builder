@@ -10592,21 +10592,9 @@ $('#btnDeleteAll').onclick = () => {
   };
 })();
 
-/* ---------- v214: قائمة المشاريع المطوية (مشروع جديد / بحث عن مشروع / حذف الكل) ---------- */
+/* ---------- v-sidebar-projmenu-hide (طلب المالك ١٠ أكتوبر ٢٠٢٦): حُذف منطق الطيّ؛ البحث ولوحة الأسماء يبقيان لأنّ الأزرار مخفية لا محذوفة ---------- */
 (function(){
-  const toggle = document.getElementById('btnProjMenuToggle');
-  const panel = document.getElementById('projMenuPanel');
-  const chev = document.getElementById('projMenuChevron');
-  const searchBtn = document.getElementById('btnProjSearch');
   const searchInput = document.getElementById('projSearchInput');
-  if(!toggle || !panel) return;
-  toggle.onclick = (e) => {
-    e.stopPropagation();
-    const open = panel.style.display !== 'flex';
-    panel.style.display = open ? 'flex' : 'none';
-    if(chev) chev.style.transform = open ? 'rotate(180deg)' : '';
-    if(!open && searchInput){ searchInput.style.display = 'none'; searchInput.value = ''; filterProjects(''); }
-  };
   /* v-chat-search: البحث داخل محتوى المحادثات كلها لا العناوين فقط —
      «الكود اللي طلبته قبل أسبوعين» يطلع بكلمة واحدة. يفتش العنوان ونصوص
      الرسائل (المستخدم والمساعد) والكود المولّد، محليًا وبلا أي نداء شبكة. */
@@ -10639,13 +10627,7 @@ $('#btnDeleteAll').onclick = () => {
       item.style.display = title.toLowerCase().includes(norm) ? '' : 'none';
     });
   }
-  if(searchBtn && searchInput){
-    searchBtn.onclick = (e) => {
-      e.stopPropagation();
-      const show = searchInput.style.display === 'none' || !searchInput.style.display;
-      searchInput.style.display = show ? 'block' : 'none';
-      if(show){ searchInput.focus(); } else { searchInput.value = ''; filterProjects(''); }
-    };
+  if(searchInput){
     searchInput.addEventListener('input', () => filterProjects(searchInput.value));
   }
   // الأسماء تتغير مع اللغة (بدون رموز)
@@ -10656,7 +10638,6 @@ $('#btnDeleteAll').onclick = () => {
       const bDel = document.getElementById('btnDeleteAll');
       if(bNew) bNew.textContent = clean(t('newProject')) || 'مشروع جديد';
       if(bDel) bDel.textContent = clean(t('deleteAllProjects')) || 'حذف الكل';
-      if(searchBtn) searchBtn.textContent = t('projSearchLabel') || 'بحث عن مشروع';
       if(searchInput) searchInput.placeholder = t('projSearchLabel') || 'بحث عن مشروع';
     }catch(_){ __swallow(_, "misc:app-05-ui#14"); }
   };

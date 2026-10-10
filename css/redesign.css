@@ -38,7 +38,6 @@ body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omr
 html:not(.mobile-ui) #sidebar{justify-content:flex-start;}
 html:not(.mobile-ui) #history{order:4;}
 html:not(.mobile-ui) #providerGridSidebar{order:1;}
-html:not(.mobile-ui) #projMenuWrap{order:2;}
 .hist-item{border:1px solid transparent !important;}
 .hist-item.active{background:rgba(var(--accent-tint-rgb),.07) !important; border:1px solid var(--omGoldSoft) !important; border-radius:var(--r-3) !important;}
 
