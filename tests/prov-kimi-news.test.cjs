@@ -158,5 +158,5 @@ test('٨. شريط المزوّد للمالك وحده: لا قاعدة CSS ت�
   const m = read('js/modes.js');
   assert.match(m, /bar\.style\.cssText = 'align-self:flex-end; margin-top:-2px; display:' \+ \(isOwner\(\) \? 'inline-flex' : 'none'\)/);
   assert.match(m, /if\(bar\) bar\.style\.display = on \? 'flex' : 'none';/);
-  assert.match(read('index.html'), /css\/redesign\.css\?v=689/);
+  assert.match(read('index.html'), /css\/redesign\.css\?v=690/);
 });
