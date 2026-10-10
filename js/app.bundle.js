@@ -9765,6 +9765,15 @@ document.addEventListener('click', closeMsgMoreMenu);
 // ✨ v363: قدرات التطبيق داخل المحادثة نفسها — أيقونة سريعة تحت كل رد
 // + ملاحظة تلقائية تقترح الميزة المناسبة. الأزرار القديمة في ⋮ تبقى كما هي؛
 // هذا باب إضافي (المكانين) عشان المستخدم يختار اللي يريحه.
+/* v-tools-pause (المالك ١٠ أكتوبر: «اخفاء محلل المصاريف والسيرة الذاتية»، ثمّ «التلفزيون والاقتراحات»): أدوات مخفيّة مؤقّتًا —
+   لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
+   الإرجاع = حذف المعرّف من هذه القائمة. */
+var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* بطاقة «اقتراحات» في الصفحة الرئيسيّة (هواوي) تتبع زرّها المخفيّ */
+if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
+  try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }
+  catch(e){ __swallow(e, 'ui:paused-hw-card'); }
+}
 var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
     kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
@@ -9774,7 +9783,7 @@ var APP_CAPABILITIES = [
     kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
   { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
     kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
-];
+].filter(function(c){ return OMRAN_PAUSED_TOOLS.indexOf(c.id) < 0; });
 // ميزة الشخصية الكرتونية الناطقة = من الدردشة (صورة + «سوِّ منها شخصية تتكلم»)
 function startTalkingCharFlow(){
   try{
@@ -27077,7 +27086,13 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       end.className = 'ptSentinel ptSentinelEnd';
       end.setAttribute('aria-hidden', 'true');
       track.appendChild(start);
-      g.ids.forEach(id => { const b = document.getElementById(id); if(b){ track.appendChild(b); stpApply3d(b, id); } });
+      g.ids.forEach(id => {
+        const b = document.getElementById(id);
+        if(!b) return;
+        /* v-tools-pause: الأداة المخفيّة مؤقّتًا لا تدخل الصفّ (فلا تُحسب في الأسهم و«عرض الكل»)، وتبقى في ⋮ مخفيّة */
+        if(OMRAN_PAUSED_TOOLS.indexOf(id) >= 0){ b.hidden = true; b.style.setProperty('display', 'none', 'important'); return; }
+        track.appendChild(b); stpApply3d(b, id);
+      });
       track.appendChild(end);
       viewport.appendChild(track);
       carouselShell.appendChild(viewport);

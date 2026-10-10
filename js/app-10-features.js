@@ -585,7 +585,13 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       end.className = 'ptSentinel ptSentinelEnd';
       end.setAttribute('aria-hidden', 'true');
       track.appendChild(start);
-      g.ids.forEach(id => { const b = document.getElementById(id); if(b){ track.appendChild(b); stpApply3d(b, id); } });
+      g.ids.forEach(id => {
+        const b = document.getElementById(id);
+        if(!b) return;
+        /* v-tools-pause: الأداة المخفيّة مؤقّتًا لا تدخل الصفّ (فلا تُحسب في الأسهم و«عرض الكل»)، وتبقى في ⋮ مخفيّة */
+        if(OMRAN_PAUSED_TOOLS.indexOf(id) >= 0){ b.hidden = true; b.style.setProperty('display', 'none', 'important'); return; }
+        track.appendChild(b); stpApply3d(b, id);
+      });
       track.appendChild(end);
       viewport.appendChild(track);
       carouselShell.appendChild(viewport);
