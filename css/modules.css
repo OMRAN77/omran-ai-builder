@@ -647,3 +647,56 @@ html[data-mode="light"] #videoMakerModal .vmk-tutlink{background:#ffffff;color:v
 #videoMakerModal #videoMakerQualityRow.vmk-q-off{display:none!important}
 html[data-mode="light"] #videoMakerModal #videoMakerQualityRow{background:#ffffff;color:var(--text);border-color:rgba(0,0,0,.14)}
 #videoMakerModal #videoMakerQualityRow input:after{content:none!important;display:none!important}
+
+/* v-vmk-clean-video: قسم «تحسين فيديو» — رفع ← مستوى ← تقدّم وإلغاء ← قبل/بعد وتحميل */
+#videoMakerModal .vmk-studio:not(.vmk-tab-clean) #vmkClean{display:none!important}
+#videoMakerModal .vmk-studio.vmk-tab-clean .vmk-main>:not(#vmkClean){display:none!important}
+#videoMakerModal .vmk-studio.vmk-tab-clean .vmk-chips{display:none!important}
+#videoMakerModal .vmk-clean{display:flex;flex-direction:column;gap:14px}
+#videoMakerModal .vmk-cl-head b{display:block;font-size:17px;font-weight:800;color:#fff}
+#videoMakerModal .vmk-cl-head p{margin:6px 0 0;font-size:13px;line-height:1.7;color:#aab0bd}
+#videoMakerModal .vmk-cl-drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:150px;padding:20px;border-radius:16px;border:1.5px dashed rgba(232,194,122,.55);background:rgba(232,194,122,.05);cursor:pointer;text-align:center;transition:.15s}
+#videoMakerModal .vmk-cl-drop:hover,#videoMakerModal .vmk-cl-drop.over{background:rgba(232,194,122,.12);border-color:#e8c27a}
+#videoMakerModal .vmk-cl-drop.has{min-height:0;flex-direction:row;padding:12px 16px;gap:12px}
+#videoMakerModal .vmk-cl-drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+#videoMakerModal .vmk-cl-plus{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#1a1408;background:linear-gradient(135deg,#f0cf8f,#c9964a)}
+#videoMakerModal .vmk-cl-drop.has .vmk-cl-plus{width:32px;height:32px;font-size:20px}
+#videoMakerModal .vmk-cl-pick{font-size:14px;font-weight:700;color:#f0dcb0;word-break:break-all}
+#videoMakerModal .vmk-cl-lim{font-size:11.5px;color:#8d95a3}
+#videoMakerModal .vmk-cl-drop.has .vmk-cl-lim{display:none}
+#videoMakerModal .vmk-cl-file{display:flex;gap:12px;align-items:center}
+#videoMakerModal .vmk-cl-file video{width:160px;max-height:120px;border-radius:10px;background:#000}
+#videoMakerModal .vmk-cl-info{font-size:12.5px;color:#aab0bd;direction:ltr}
+#videoMakerModal .vmk-cl-opts{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+#videoMakerModal .vmk-cl-up{display:flex;align-items:center;gap:8px;font-size:13px;color:#d9dde6;cursor:pointer}
+#videoMakerModal .vmk-cl-go{width:100%;height:52px;border:0;border-radius:14px;background:linear-gradient(135deg,#f0cf8f,#c9964a);color:#1a1408;font:inherit;font-size:15.5px;font-weight:800;cursor:pointer;box-shadow:0 14px 30px -12px rgba(232,194,122,.65)}
+#videoMakerModal .vmk-cl-track{height:8px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden}
+#videoMakerModal .vmk-cl-track i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c9964a,#f0cf8f);transition:width .3s}
+#videoMakerModal .vmk-cl-prow{display:flex;align-items:center;gap:12px;margin-top:10px;font-size:13px;color:#d9dde6}
+#videoMakerModal .vmk-cl-prow span:first-child{font-weight:800;color:#f0dcb0;min-width:44px}
+#videoMakerModal .vmk-cl-wk{flex:1;color:#aab0bd}
+#videoMakerModal #vmkClCancel{font:inherit;font-size:12.5px;padding:6px 14px;border-radius:99px;border:1px solid rgba(255,255,255,.2);background:none;color:#d9dde6;cursor:pointer}
+#videoMakerModal .vmk-cl-done{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+#videoMakerModal .vmk-cl-dl{display:inline-flex;align-items:center;padding:11px 20px;border-radius:12px;background:linear-gradient(135deg,#f0cf8f,#c9964a);color:#1a1408;font-weight:800;font-size:13.5px;text-decoration:none}
+#videoMakerModal .vmk-cl-msg{margin:0;font-size:13px;color:#d9dde6;min-height:0}
+#videoMakerModal .vmk-cl-msg.err{color:#ffb4b4}
+#videoMakerModal .vmk-cl-msg:empty{display:none}
+#videoMakerModal .vmk-cl-note{margin:0;font-size:11.5px;line-height:1.7;color:#7f8796}
+html[data-mode="light"] #videoMakerModal .vmk-cl-head b{color:var(--text)}
+html[data-mode="light"] #videoMakerModal .vmk-cl-drop{background:#ffffff;border-color:rgba(0,0,0,.25)}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pick,html[data-mode="light"] #videoMakerModal .vmk-cl-up,html[data-mode="light"] #videoMakerModal .vmk-cl-prow{color:var(--text)}
+/* v-vmk-clean-video (مراجعة): عارض القسم مستقلّ — نتيجة المولّد وحالته وروابطه لا تظهر فيه، وعارضه لا يظهر خارجه */
+#videoMakerModal .vmk-studio:not(.vmk-tab-clean) #vmkClView{display:none!important}
+#videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerResult,#videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerStatus,#videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerDownloadLink,#videoMakerModal .vmk-studio.vmk-tab-clean #filmSceneLinks{display:none!important}
+#videoMakerModal .vmk-cl-drop:focus-within{outline:2px solid #e8c27a;outline-offset:3px}
+@media (max-width:860px){
+  #videoMakerModal .vmk-studio.vmk-tab-clean>.vmk-side{align-self:stretch;width:100%}
+  #videoMakerModal .vmk-studio.vmk-tab-clean:not(.vmk-cl-view)>.vmk-side{display:none!important}
+}
+html[data-mode="light"] #videoMakerModal .vmk-cl-head p,html[data-mode="light"] #videoMakerModal .vmk-cl-info,html[data-mode="light"] #videoMakerModal .vmk-cl-wk,html[data-mode="light"] #videoMakerModal .vmk-cl-msg,html[data-mode="light"] #videoMakerModal .vmk-cl-lim,html[data-mode="light"] #videoMakerModal .vmk-cl-note{color:#4a5160}
+html[data-mode="light"] #videoMakerModal .vmk-cl-msg.err{color:#b42318}
+html[data-mode="light"] #videoMakerModal .vmk-cl-prow span:first-child{color:#8a5a12}
+html[data-mode="light"] #videoMakerModal .vmk-cl-track{background:rgba(0,0,0,.12)}
+html[data-mode="light"] #videoMakerModal #vmkClCancel{color:var(--text);border-color:rgba(0,0,0,.3);background:#fff}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pick{color:#8a5a12}
+html[data-mode="light"] #videoMakerModal .vmk-cl-drop:focus-within{outline-color:#8a5a12}

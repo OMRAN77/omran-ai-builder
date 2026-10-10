@@ -207,7 +207,7 @@ test('٩. نصوص النتيجة الخمسة بالـ١٤ لغة ووسم ال
     for (const k of K) assert.ok(x.I18N[l][k] && x.I18N[l][k].trim(), l + ':' + k);
     assert.match(x.I18N[l].editApplied, /\{n\}/, l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=731'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=732'"));
 });
 
 // ── المراجعة المعاكسة (٢٠ ملاحظة مؤكَّدة) ──

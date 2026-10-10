@@ -1,5 +1,22 @@
 /* v412 — يحوّل نافذة الفيديو إلى استوديو غني. الكمبيوتر عمودان والهاتف عمود واحد (v-vmk-mobile). */
 (function(){
+  /* v-vmk-clean-video (المالك: «كيف أضيف الفيديو إذا كان مغبّش؟ أريد تنظيفه»): تحسين فيديو المستخدم في جهازه بـffmpeg.wasm الموجود —
+     مجّانيّ بلا خادم ولا مزوّد. تنقية التشويش (hqdn3d) + توضيح معتدل (cas) + لون وتباين (eq) [+ إزالة التدرّج deband في «قويّ»]
+     [+ مضاعفة الدقّة lanczos للمصدر ≤ ٥٤٠]. لا يصلح الغبش الشديد ولا الاهتزاز — هذا للذكاء الاصطناعيّ المدفوع (قرار المالك). */
+  function cleanArgs(o){
+    o=o||{}; var vf=[], sh=(o.w&&o.h)?Math.min(o.w,o.h):0;
+    /* سقف ١٠٨٠ على الضلع الأقصر (الطوليّ 1080×1920 يبقى كما هو) — تعبير داخل المرشّح فيعمل حتّى لو عجز المتصفّح عن قراءة الأبعاد */
+    vf.push("scale='if(gt(iw,ih),-2,min(iw,1080))':'if(gt(iw,ih),min(ih,1080),-2)':flags=lanczos");
+    vf.push(o.level==='strong'?'hqdn3d=4:3:6:4.5':'hqdn3d=1.5:1.5:4:4');
+    if(o.level==='strong') vf.push('deband');
+    if(o.upscale&&sh&&sh<=540) vf.push('scale=iw*2:ih*2:flags=lanczos');
+    vf.push(o.level==='strong'?'cas=0.5':'cas=0.3');
+    vf.push(o.level==='strong'?'eq=contrast=1.05:saturation=1.08':'eq=contrast=1.03:saturation=1.05');
+    vf.push('scale=trunc(iw/2)*2:trunc(ih/2)*2');
+    /* -t: حدّ المدّة يُفرض في الأداة نفسها (ملفّ بلا مدّة مقروءة لا يفلت منه)، و0:a:0? أوّل مسار صوت فقط إن وُجد */
+    return ['-i',o.input,'-t',String(o.maxSec||60),'-map','0:v:0','-map','0:a:0?','-vf',vf.join(','),'-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p','-c:a','aac','-b:a','160k','-movflags','+faststart',o.output||'out.mp4'];
+  }
+  try{ window.__vmkCleanArgs=cleanArgs; }catch(e){ /* guard-ok — بيئة بلا window */ }
   var M=document.getElementById('videoMakerModal'); if(!M) return;
   var G=[['videoMakerMode','card'],['videoMakerStyle','pill'],['videoMakerDuration','pill'],['videoMakerRatio','pill']];
   var PTS={canvas:0,runway:60,hybrid:60,veo:400,actor:400};
@@ -33,6 +50,8 @@
     kids.slice(1).forEach(function(k){ if(k!==vt) main.appendChild(k); });
     var stage=side.querySelector('.vmk-stage');
     if(id('videoMakerResult')) stage.appendChild(id('videoMakerResult'));
+    /* عارض قسم «تحسين فيديو» عنصر مستقلّ: لا يكتب فوق نتيجة المولّد ولا يظهر خارج قسمه */
+    var clv=document.createElement('video'); clv.id='vmkClView'; clv.controls=true; clv.playsInline=true; clv.style.display='none'; stage.appendChild(clv);
     [id('videoMakerStatus'),id('videoMakerDownloadLink'),desc].forEach(function(e){ if(e) side.appendChild(e); });
     var st=id('videoMakerStyle'); if(st&&st.parentElement&&st.parentElement.parentElement) st.parentElement.parentElement.classList.add('vmk-row3');
     var det=document.createElement('details'); det.className='vmk-adv';
@@ -54,12 +73,13 @@
       cd.querySelector('.vmk-ch-add').addEventListener('click',function(){ if(chars.length<MAXCH){ chars.push({name:'',voice:'male',line:''}); renderChars(); } });
       var sm=document.createElement('div'); sm.id='vmkSamples'; sm.className='vmk-samples';
       main.insertBefore(sm,main.firstChild);
+      var cl=document.createElement('div'); cl.id='vmkClean'; cl.className='vmk-clean'; main.insertBefore(cl,main.firstChild);
       var gb=id('videoMakerGenerateBtn'); if(gb) gb.addEventListener('click',compose,true);
     }
     card.dataset.vmk='1';
   }
   /* ═══ v-vmk-sections: شريط الأقسام (الترندات + الأوضاع) ═══ */
-  var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor'];
+  var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor','clean'];
   var tab='trend';
   /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
   var VIDEOS={};
@@ -89,6 +109,7 @@
   function setVal(el,val){ if(!el) return; el.value=val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
   function tabLabel(v){
     if(v==='trend') return L('videoTabTrends');
+    if(v==='clean') return L('videoTabClean');
     var sel=id('videoMakerMode'); if(!sel) return v;
     for(var i=0;i<sel.options.length;i++) if(sel.options[i].value===v){
       var t=(sel.options[i].textContent||'').trim(), m=t.match(ICO); t=short(t.slice(m?m[1].length:0));
@@ -110,11 +131,12 @@
       b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab)); b.textContent=tabLabel(v); tb.appendChild(b);
     });
     card.classList.toggle('vmk-tab-trend',tab==='trend');
+    card.classList.toggle('vmk-tab-clean',tab==='clean');
   }
   function setTab(v){
     if(TABS.indexOf(v)<0) return; tab=v;
     var sel=id('videoMakerMode');
-    if(v!=='trend'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); }
+    if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();
   }
   function syncSamples(){
@@ -239,6 +261,161 @@
       ex.style.display=box.children.length?'':'none';
     }
   }
+  /* ═══ v-vmk-clean-video: قسم «تحسين فيديو» ═══ */
+  var CL={file:null,orig:'',out:'',meta:null,level:'light',busy:false,ff:null,ffLoading:null,run:0,msg:null,view:null,showing:'after'};
+  var CL_MAX_SEC=60;
+  function clMaxMB(){ return (window.matchMedia&&matchMedia('(max-width:860px)').matches)?80:200; }
+  function clRevoke(u){ try{ if(u) URL.revokeObjectURL(u); }catch(e){ /* guard-ok — رابط زال */ } }
+  var clLoad=null;
+  function clFF(){
+    if(CL.ff) return Promise.resolve(CL.ff);
+    if(clLoad) return clLoad; /* ضغطتان أثناء التحميل = تحميل واحد لا عاملان */
+    var p=(async function(){
+      var mod=await import('/ffmpeg/lib/index.js'); var ff=new mod.FFmpeg();
+      CL.ffLoading=ff; /* الإلغاء أثناء التحميل يُنهي هذه النسخة نفسها */
+      try{
+        await Promise.race([
+          ff.load({coreURL:'/ffmpeg/core/ffmpeg-core.js',wasmURL:'/ffmpeg/core/ffmpeg-core.wasm',classWorkerURL:'/ffmpeg/lib/worker.js'}),
+          new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('ffmpeg load timeout')); },120000); })
+        ]);
+      }catch(e){ try{ ff.terminate(); }catch(x){ /* guard-ok — أُنهي بالإلغاء */ } throw e; }
+      finally{ if(CL.ffLoading===ff) CL.ffLoading=null; }
+      if(CL.ff&&CL.ff!==ff){ try{ ff.terminate(); }catch(x){ /* guard-ok — نسخة زائدة */ } return CL.ff; }
+      CL.ff=ff; return ff;
+    })();
+    clLoad=p;
+    var done=function(){ if(clLoad===p) clLoad=null; }; p.then(done,done);
+    return p;
+  }
+  function stageDims(){
+    var stage=M.querySelector('.vmk-stage'); if(!stage) return;
+    var r=((id('videoMakerRatio')||{}).value||'1280:720').split(':'), w=+r[0], h=+r[1];
+    if(tab==='clean'){ var d=(CL.view&&CL.view.w)?CL.view:CL.meta; if(d&&d.w){ w=d.w; h=d.h; } }
+    stage.style.setProperty('--vmk-ar',w+'/'+h); stage.style.maxWidth=(w<h)?'238px':'';
+    var dm=stage.querySelector('.vmk-dim'); if(dm) dm.textContent=w+'×'+h;
+  }
+  function clStage(url){
+    var v=id('vmkClView'); if(!v) return;
+    if(!url){ CL.view=null; v.removeAttribute('src'); try{ v.load(); }catch(e){ /* guard-ok — بلا مصدر */ } v.style.display='none'; M.firstElementChild.classList.remove('vmk-cl-view'); stageDims(); return; }
+    var t=v.currentTime||0;
+    if(v.getAttribute('src')!==url){ CL.view=null; v.src=url; try{ v.currentTime=t; }catch(e){ /* guard-ok — قبل تحميل البيانات */ } }
+    v.style.display='block'; M.firstElementChild.classList.add('vmk-cl-view');
+    v.onloadedmetadata=function(){ if(v.videoWidth){ CL.view={w:v.videoWidth,h:v.videoHeight}; stageDims(); } }; /* أبعاد المعروض فعلًا (بعد المضاعفة أو لملفّ لم تُقرأ بياناته قبل التحسين) */
+    stageDims();
+  }
+  function clMsg(text,err){ CL.msg=text?{text:text,err:!!err}:null; var m=id('vmkClMsg'); if(m){ m.textContent=text||''; m.className='vmk-cl-msg'+(err?' err':''); } }
+  function clProgress(p){ var b=id('vmkClBar'), n=id('vmkClPct'); var v=Math.max(0,Math.min(100,Math.round(p*100))); if(b) b.style.width=v+'%'; if(n) n.textContent=v+'%'; }
+  function clRender(){
+    var box=id('vmkClean'); if(!box) return;
+    var has=!!CL.file, done=!!CL.out;
+    box.innerHTML='<div class="vmk-cl-head"><b></b><p></p></div>'
+      +'<label class="vmk-cl-drop" id="vmkClDrop"><input type="file" accept="video/*" id="vmkClInput"><span class="vmk-cl-plus">+</span><span class="vmk-cl-pick"></span><small class="vmk-cl-lim"></small></label>'
+      +'<div class="vmk-cl-file" id="vmkClFile"><video id="vmkClOrig" muted playsinline controls></video><div class="vmk-cl-info" id="vmkClInfo"></div></div>'
+      +'<div class="vmk-cl-opts" id="vmkClOpts"><div class="vmk-pills vmk-cl-level"><span class="vmk-pill" data-lv="light"></span><span class="vmk-pill" data-lv="strong"></span></div>'
+      +'<label class="vmk-cl-up"><input type="checkbox" id="vmkClUp"><span></span></label></div>'
+      +'<button type="button" class="vmk-cl-go" id="vmkClGo"></button>'
+      +'<div class="vmk-cl-prog" id="vmkClProg"><div class="vmk-cl-track"><i id="vmkClBar"></i></div><div class="vmk-cl-prow"><span id="vmkClPct">0%</span><span class="vmk-cl-wk"></span><button type="button" id="vmkClCancel"></button></div></div>'
+      +'<div class="vmk-cl-done" id="vmkClDone"><div class="vmk-pills vmk-cl-ab"><span class="vmk-pill" data-ab="before"></span><span class="vmk-pill" data-ab="after"></span></div><a class="vmk-cl-dl" id="vmkClDl" download="video-clean.mp4"></a></div>'
+      +'<p class="vmk-cl-msg" id="vmkClMsg"></p><p class="vmk-cl-note"></p>';
+    box.querySelector('.vmk-cl-head b').textContent=L('vclTitle');
+    box.querySelector('.vmk-cl-head p').textContent=L('vclSub');
+    box.querySelector('.vmk-cl-pick').textContent=has?(CL.file.name):L('vclPick');
+    box.querySelector('.vmk-cl-lim').textContent=L('vclDrop').replace('{s}',String(CL_MAX_SEC)).replace('{n}',String(clMaxMB()));
+    box.querySelector('[data-lv="light"]').textContent=L('vclLight');
+    box.querySelector('[data-lv="strong"]').textContent=L('vclStrong');
+    box.querySelector('.vmk-cl-up span').textContent=L('vclUpscale');
+    box.querySelector('#vmkClGo').textContent=L('vclStart');
+    box.querySelector('.vmk-cl-wk').textContent=L('vclWorking');
+    box.querySelector('#vmkClCancel').textContent=L('vclCancel');
+    box.querySelector('[data-ab="before"]').textContent=L('vclBefore');
+    box.querySelector('[data-ab="after"]').textContent=L('vclAfter');
+    box.querySelector('#vmkClDl').textContent=L('vclDownload');
+    box.querySelector('.vmk-cl-note').textContent=L('vclNote');
+    var small=!!(CL.meta&&Math.min(CL.meta.w,CL.meta.h)<=540);
+    id('vmkClFile').style.display=has?'':'none'; id('vmkClOpts').style.display=has?'':'none';
+    id('vmkClGo').style.display=has&&!CL.busy?'':'none'; id('vmkClProg').style.display=CL.busy?'':'none';
+    id('vmkClDone').style.display=done&&!CL.busy?'':'none'; id('vmkClDrop').classList.toggle('has',has);
+    var up=id('vmkClUp'); up.disabled=!small; up.checked=small&&!!CL.upscale; up.parentElement.style.opacity=small?'1':'.45';
+    [].forEach.call(box.querySelectorAll('[data-lv]'),function(p){ p.setAttribute('aria-checked',String(p.dataset.lv===CL.level)); p.onclick=function(){ if(!CL.busy){ CL.level=p.dataset.lv; clRender(); } }; });
+    [].forEach.call(box.querySelectorAll('[data-ab]'),function(p){ p.setAttribute('aria-checked',String(p.dataset.ab===CL.showing)); p.onclick=function(){ CL.showing=p.dataset.ab; clStage(CL.showing==='before'?CL.orig:CL.out); clRender(); }; });
+    up.onchange=function(){ CL.upscale=up.checked; };
+    if(has){ var ov=id('vmkClOrig'); ov.src=CL.orig; id('vmkClInfo').textContent=(CL.meta?((CL.meta.sec>0?Math.round(CL.meta.sec)+'s · ':'')+CL.meta.w+'×'+CL.meta.h+' · '):'')+(CL.file.size/1048576).toFixed(1)+' MB'; }
+    if(done){ id('vmkClDl').href=CL.out; }
+    if(CL.msg) clMsg(CL.msg.text,CL.msg.err); /* الرسالة تبقى بعد إعادة الرسم (تغيير اللغة أو بدء التحميل) */
+    id('vmkClInput').onchange=function(e){ var f=e.target.files&&e.target.files[0]; if(f) clPick(f); };
+    var dz=id('vmkClDrop');
+    dz.ondragover=function(e){ e.preventDefault(); dz.classList.add('over'); };
+    dz.ondragleave=function(){ dz.classList.remove('over'); };
+    dz.ondrop=function(e){ e.preventDefault(); dz.classList.remove('over'); var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) clPick(f); };
+    id('vmkClGo').onclick=clRun;
+    id('vmkClCancel').onclick=clCancel;
+  }
+  function clPick(f){
+    if(CL.busy) return;
+    clMsg('');
+    if(!/^video\//.test(f.type||'')&&!/\.(mp4|mov|m4v|webm|mkv|3gp)$/i.test(f.name||'')){ clMsg(L('vclFail'),true); return; }
+    if(f.size>clMaxMB()*1048576){ clMsg(L('vclTooBig').replace('{n}',String(clMaxMB())),true); return; }
+    var url=URL.createObjectURL(f), v=document.createElement('video'); v.preload='metadata'; v.muted=true; var settled=false;
+    var accept=function(sec,w,h){
+      if(settled) return; settled=true;
+      if(sec>CL_MAX_SEC+0.5){ clRevoke(url); clMsg(L('vclTooLong').replace('{s}',String(CL_MAX_SEC)),true); return; }
+      clRevoke(CL.orig); clRevoke(CL.out);
+      CL.file=f; CL.orig=url; CL.out=''; CL.meta=w?{sec:sec,w:w,h:h}:null; CL.upscale=!!w&&Math.min(w,h)<=540; CL.showing='before';
+      clRender(); clStage(w?url:''); /* بلا معاينة يُفرَّغ العارض: لا يبقى على رابط ملفّ سابق أُلغي */
+    };
+    /* WebM من MediaRecorder يعطي مدّة Infinity حتّى يُقرأ كلّه: مدّة غير محدودة = غير معروفة، و-t في الأداة يحدّها */
+    v.onloadedmetadata=function(){ var d=v.duration; accept(isFinite(d)&&d>0?d:0,v.videoWidth||0,v.videoHeight||0); };
+    /* المتصفّح لا يقرأ كلّ ترميز (HEVC من الآيفون على كروم ويندوز مثلًا) بينما أداة التحسين تفكّه بنفسها:
+       يُقبل الملفّ بلا بيانات (حدّ الحجم يكفي)، فلا يُرفض فيديو صالح لأنّ المعاينة وحدها عجزت */
+    v.onerror=function(){ accept(0,0,0); };
+    setTimeout(function(){ accept(0,0,0); },5000);
+    v.src=url;
+  }
+  async function clRun(){
+    if(!CL.file||CL.busy) return;
+    /* رمز التشغيل: الإلغاء يرفعه، فكلّ ما يعود بعده من تشغيل قديم يُهمل ولا يمسّ الحالة */
+    var my=++CL.run;
+    CL.busy=true; clRender(); clMsg(L('vclLoading')); clProgress(0);
+    var ff=null, mounted=false, inPath='', onProg=null;
+    try{
+      ff=await clFF(); if(my!==CL.run) return;
+      clMsg('');
+      onProg=function(e){ if(my===CL.run&&e&&typeof e.progress==='number') clProgress(e.progress); };
+      ff.on('progress',onProg);
+      try{ await ff.createDir('/clin'); }catch(e){ /* guard-ok — المجلّد موجود من مرّة سابقة */ }
+      /* اسم ثابت داخل نظام ملفّات العامل: أسماء الملفّات العربيّة أو بمسافات قد تكسر المسار — ffmpeg يقرأ الصيغة من المحتوى */
+      try{ await ff.mount('WORKERFS',{blobs:[{name:'input',data:CL.file}]},'/clin'); mounted=true; inPath='/clin/input'; }
+      catch(e){ var buf=new Uint8Array(await CL.file.arrayBuffer()); await ff.writeFile('clin.bin',buf); inPath='clin.bin'; }
+      if(my!==CL.run) return;
+      var m=CL.meta||{};
+      var code=await ff.exec(cleanArgs({input:inPath,output:'clout.mp4',level:CL.level,upscale:!!CL.upscale,w:m.w,h:m.h,maxSec:CL_MAX_SEC}));
+      if(my!==CL.run) return;
+      if(code!==0) throw new Error('ffmpeg exit '+code);
+      var data=await ff.readFile('clout.mp4');
+      try{ await ff.deleteFile('clout.mp4'); }catch(e){ /* guard-ok — تنظيف */ }
+      if(my!==CL.run) return;
+      clRevoke(CL.out); CL.out=URL.createObjectURL(new Blob([data.buffer],{type:'video/mp4'})); CL.showing='after';
+      CL.busy=false; clRender(); clStage(CL.out); clProgress(1);
+    }catch(err){
+      if(my!==CL.run) return; /* أُلغي: الإلغاء أعاد الرسم بنفسه */
+      CL.busy=false; clRender(); clMsg(L('vclFail'),true);
+      try{ __swallow(err,'video:clean'); }catch(e){ /* guard-ok — لا مسجّل */ }
+    }finally{
+      if(ff&&onProg){ try{ ff.off('progress',onProg); }catch(e){ /* guard-ok — أُنهي */ } }
+      if(ff&&mounted){ try{ await ff.unmount('/clin'); }catch(e){ /* guard-ok — فُكّ أو أُنهي */ } }
+      if(ff&&inPath==='clin.bin'){ try{ await ff.deleteFile('clin.bin'); }catch(e){ /* guard-ok — تنظيف */ } }
+    }
+  }
+  function clCancel(){
+    if(!CL.busy) return;
+    CL.run++;
+    [CL.ff,CL.ffLoading].forEach(function(f){ try{ if(f) f.terminate(); }catch(e){ /* guard-ok — العامل انتهى */ } });
+    CL.ff=null; CL.ffLoading=null; clLoad=null; CL.busy=false; clMsg(''); clRender();
+  }
+  function syncClean(){
+    if(tab!=='clean'){ return; }
+    if(!CL.busy) clRender();
+  }
   function L(k){ var v=(typeof window.t==='function')?window.t(k):k; return v&&v!==k?v:''; }
   var SECS={'5':5,'8':8,'10':10,long20:20,film:45,adspot:5,reels:10};
   function wireWrite(wd){
@@ -336,14 +513,9 @@
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
       b.textContent=p?(p+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free'); chips.appendChild(b);
     }
-    syncWrite(); syncChars(); syncSamples(); simplify();
+    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean();
     var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });
-    var r=((id('videoMakerRatio')||{}).value||'1280:720').split(':'), stage=M.querySelector('.vmk-stage');
-    if(stage){
-      stage.style.setProperty('--vmk-ar',r[0]+'/'+r[1]);
-      stage.style.maxWidth=(+r[0]<+r[1])?'238px':'';
-      var dm=stage.querySelector('.vmk-dim'); if(dm) dm.textContent=r[0]+'×'+r[1];
-    }
+    stageDims();
   }
   /* v-trends-top: أيًّا كان ترتيب البناء (الترندات قبل الاستوديو أو بعده)، الصندوق تحت الرأس وفوق الاستوديو في كلّ فتح */
   function syncTutLink(){
