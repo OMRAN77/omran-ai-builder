@@ -72,13 +72,14 @@
      كما كان بـz-index:9999. إعادة الفتح (#sbReopen) كما هي. */
   html:not(.mobile-ui) #sidebarCloseBtn{ top:var(--sb-arrow-top, 120px) !important; inset-inline-end:12px; width:30px; height:30px; z-index:3; color:var(--frame-gold2); filter:none; }
   html:not(.mobile-ui) #sidebarBrand{ justify-content:center !important; }
-  /* v-arrow-clear (طلب عمران ١٠ أكتوبر بلقطة: «أريده واضح وليس فقط لون أسود — شوف الخلفيّات والثيمات»): السهم كان نصفه على زرّ
-     «محادثة جديدة» ونصفه خارجه فيذوب في أيّ لون. صار داخل طرف الزرّ في شارة دائريّة لها أرضيّتها وإطارها، فيبين على كلّ ثيم:
-     الأسود/العاجيّ بألوان الإطار الذهبيّة، والخلفيّات والثيمات (أيًّا كان لون زرّها) شارة داكنة شفّافة بسهم أبيض وإطار فاتح. */
-  html:not(.mobile-ui) #sidebarCloseBtn{ inset-inline-end:20px !important; width:28px !important; height:28px !important; border-radius:50% !important; background:#1a1814 !important; border:1.5px solid #5a5236 !important; color:#e2c66c !important; filter:none !important; box-shadow:none !important; }
-  html:not(.mobile-ui) #sidebarCloseBtn svg{ width:18px; height:18px; stroke-width:3; }
-  html[data-mode="light"]:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #sidebarCloseBtn{ background:#efe5cf !important; border-color:#cdb98a !important; color:#7a5f22 !important; }
-  html:is(.bgimg, .skin, .skin-wood):not(.mobile-ui) #sidebarCloseBtn{ background:rgba(0,0,0,.42) !important; border-color:rgba(255,255,255,.7) !important; color:#fff !important; box-shadow:0 1px 4px rgba(0,0,0,.35) !important; }
+  /* v-arrow-clear (طلب عمران ١٠ أكتوبر بلقطة: «أريده واضح… شوف الخلفيّات والثيمات» ثمّ «بدون دائرة»): السهم كان نصفه على زرّ
+     «محادثة جديدة» ونصفه خارجه فيذوب. صار كاملًا داخل طرف الزرّ، بلا دائرة ولا خلفيّة، بلون حبر الزرّ نفسه (لون «+» والكتابة)
+     في كلّ ثيم — وهو اللون المختار ليبين على زرّه — وخطّ أسمك وظلّ خفيف يحدّده. الأسود/العاجيّ العاديّان: ذهبيّ «+» نفسه. */
+  html:not(.mobile-ui) #sidebarCloseBtn{ inset-inline-end:20px !important; width:30px !important; height:30px !important; color:var(--frame-gold2) !important; filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35)) !important; }
+  html:not(.mobile-ui) #sidebarCloseBtn svg{ width:22px; height:22px; stroke-width:3.2; }
+  html.bgimg:not(.skin):not(.skin-wood):not(.mobile-ui) #sidebarCloseBtn{ color:#2b1d02 !important; }
+  html.skin:not(.mobile-ui) #sidebarCloseBtn{ color:var(--th-btn-ink) !important; }
+  html.skin-wood:not(.mobile-ui) #sidebarCloseBtn{ color:var(--wood-ink) !important; }
   /* «محادثة جديدة» سطر بلا خلفيّة كسطر «لوحة التحكّم» في الصورة */
   html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn, html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn:hover{ background:transparent !important; background-image:none !important; border-color:transparent !important; justify-content:center !important; color:var(--frame-ink) !important; }
   html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn svg{ color:var(--frame-gold2); }
