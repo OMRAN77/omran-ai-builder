@@ -42,7 +42,7 @@ function ownerThinks(text, opts) {
 
 /* كلود المباشر: Sonnet 5 وOpus 5.x وFable يفكّرون تكيّفيًّا بلا حقل thinking، وOpus 5.5 وFable 5.1 يرفضان
    {type:'disabled'} (400) — فالتحكّم الوحيد الصالح للكلّ هو الجهد. Haiku 4.5 لا يفكّر أصلًا ويرفض effort. */
-const EFFORT_MODEL_RE = /^claude-(?:sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable)/;
+const EFFORT_MODEL_RE = /^claude-(?:sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable|haiku-5-5)/; // v-owner-claude-all: Haiku 5.5 يقبل الجهد (low→max)
 const deadEffort = new Set(); /* موديل رفض الجهد في هذه الدالّة الدافئة لا يُرسَل له ثانيةً */
 function claudeQuickFields(model) {
   const m = String(model || '');
@@ -50,4 +50,25 @@ function claudeQuickFields(model) {
 }
 function forgetEffort(model) { if (model) deadEffort.add(String(model)); }
 
-module.exports = { ownerThinks, lastReplyHasCode, claudeQuickFields, forgetEffort, ANALYSIS_RE, __deadEffort: deadEffort };
+/* v-owner-claude-all (أمر عمران ١٠ أكتوبر، لقطة «Effort» في تطبيق Claude: Low · Medium · High · Extra · Max): جهد يختاره المالك من
+   المنتقي فيغلب التلقائيّ (claudeQuickFields) في كلّ دور. القيم كما في الواجهة الرسميّة (مهارة claude-api): Extra = xhigh.
+   Haiku 4.5 بلا جهد ولا تفكير تكيّفيّ (400) → null فيبقى السلوك القائم. Opus 4.6 وSonnet 4.6 بلا xhigh → high.
+   عند xhigh/max يوصي التوثيق بـmax_tokens ≥ 64000 كي لا ينقطع الردّ وسط التفكير (سقف لا إنفاق — يُفوتَر المولَّد فقط).
+   Opus 4.8/4.7/4.6 وSonnet 4.6 لا يفكّرون بلا thinking:{type:'adaptive'} فيُرسل معه كي يحكم الجهد التفكير؛ والجيل ٥ يفكّر تكيّفيًّا
+   بلا الحقل (ولا يُرسل له disabled أبدًا — Opus 5.5/Sonnet 5.5 يرفضانه). المعرّف يُطبَّع من صيغة الوسيط (anthropic/claude-opus-4.8). */
+const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+const NO_XHIGH_RE = /^claude-(?:opus-4-6|sonnet-4-6)$/;
+const ADAPTIVE_REQ_RE = /^claude-(?:opus-4-[678]|sonnet-4-6)$/;
+function claudeEffortFields(model, effort) {
+  const raw = String(model || '');
+  const id = raw.replace(/^anthropic\//, '').replace(/\./g, '-');
+  let lvl = String(effort == null ? '' : effort).trim().toLowerCase();
+  if (EFFORT_LEVELS.indexOf(lvl) === -1 || !EFFORT_MODEL_RE.test(id) || deadEffort.has(raw)) return null;
+  if (lvl === 'xhigh' && NO_XHIGH_RE.test(id)) lvl = 'high';
+  const out = { output_config: { effort: lvl } };
+  if (lvl === 'xhigh' || lvl === 'max') out.max_tokens = 64000;
+  if (ADAPTIVE_REQ_RE.test(id)) out.thinking = { type: 'adaptive' };
+  return out;
+}
+
+module.exports = { ownerThinks, lastReplyHasCode, claudeQuickFields, claudeEffortFields, forgetEffort, ANALYSIS_RE, EFFORT_LEVELS, __deadEffort: deadEffort };

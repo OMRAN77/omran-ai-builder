@@ -4083,6 +4083,7 @@ const I18N = {
     codePlaceholder: 'سيظهر الكود المولّد هنا...',
     settingsTitle: 'إعدادات الاتصال بالذكاء الاصطناعي',
     provider: 'مزوّد الخدمة',
+    effortLabel: 'الجهد', effortAuto: 'تلقائي', effortLow: 'منخفض', effortMedium: 'متوسّط', effortHigh: 'عالٍ', effortExtra: 'إضافيّ', effortMax: 'أقصى', otherModelsLabel: 'نماذج أخرى', /* v-owner-claude-all: منتقي المالك — الجهد ونماذج أخرى */
     claudeModelPick: 'نموذج كلود', stModelFallback: '⚠️ نموذج {model} غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.',
     apiKeyLabel: 'مفتاح API الخاص بك',
     modelLabel: 'اسم النموذج',
@@ -4889,6 +4890,7 @@ const I18N = {
     codePlaceholder: 'Generated code will appear here...',
     settingsTitle: 'AI Connection Settings',
     provider: 'Provider',
+    effortLabel: 'Effort', effortAuto: 'Auto', effortLow: 'Low', effortMedium: 'Medium', effortHigh: 'High', effortExtra: 'Extra', effortMax: 'Max', otherModelsLabel: 'Other models', /* v-owner-claude-all */
     claudeModelPick: 'Claude model', stModelFallback: '⚠️ {model} is not available on the current key — continuing with the default model.',
     apiKeyLabel: 'Your API Key',
     modelLabel: 'Model Name',
@@ -5606,7 +5608,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=734'; /* v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=735'; /* v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -13983,7 +13985,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
   localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'openai/gpt-oss-120b');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
-  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
+  if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5'); // v-owner-claude-all: اختيار المالك من المنتقي — إغلاق الإعدادات كان يكتب Sonnet 5 فوق افتراضيّه (Opus 5.5)
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
@@ -37996,6 +37998,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
         model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),
+        effort: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined) : undefined; } catch (e) { return undefined; } })(), /* v-owner-claude-all: جهد المالك من المنتقي؛ undefined لغيره فيسقط الحقل من JSON وطلبه كما كان بايتًا بايتًا */
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -42789,6 +42792,15 @@ if(document.readyState === 'loading'){
   /* v-models-latest (٢٥ سبتمبر): Opus 5 ← Opus 5.5، والاختيار المحفوظ القديم يُرقّى تلقائيًّا. */
   var IDS = ['claude-opus-5-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
   var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };
+  /* v-owner-claude-all (أمر عمران ١٠ أكتوبر «كل الانثروبك خلها لي المالك اختار»): للمالك كلّ نماذج كلود النشطة بترتيب منتقي
+     التطبيق الرسميّ، وOpus 5 اختيار مستقلّ (لا يُرقّى). غير المالك على قائمته القديمة وترقيتها حرفيًّا — طلبه لا يتغيّر بايتًا. */
+  var OWNER_IDS = ['claude-opus-5-5', 'claude-fable-5-1', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-haiku-4-5', 'claude-sonnet-5', 'claude-opus-5', 'claude-fable-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6'];
+  /* الجهد (لقطة «Effort»: Low · Medium · High · Extra · Max) — للمالك وحده؛ '' = تلقائيّ (التحيّة فوريّة والباقي بافتراضيّ الموديل، v-owner-auto).
+     Haiku 4.5 بلا جهد، وOpus 4.6 وSonnet 4.6 بلا Extra (xhigh) — الخادم يتحقّق ويصحّح أيضًا (owner-think.claudeEffortFields). */
+  var EFFORT_KEY = 'aiapp_claude_effort';
+  var EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+  function owner() { try { return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); } catch (e) { return false; } }
+  function ids() { return owner() ? OWNER_IDS : IDS; }
   function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
   var HINTS = {
     '': ['الافتراضيّ: Haiku 4.5 — الاقتصاديّ والأسرع للمحادثة اليوميّة.', 'Default: Haiku 4.5 — economical and fastest for everyday chat.'],
@@ -42799,10 +42811,10 @@ if(document.readyState === 'loading'){
   };
 
   function get() {
-    try { var v = localStorage.getItem(KEY) || ''; if (UPGRADES[v]) { v = UPGRADES[v]; localStorage.setItem(KEY, v); } return IDS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; }
+    try { var own = owner(), v = localStorage.getItem(KEY) || ''; if (!own && UPGRADES[v]) { v = UPGRADES[v]; localStorage.setItem(KEY, v); } return ids().indexOf(v) === -1 ? '' : v; } catch (e) { return ''; }
   }
   function set(v) {
-    v = IDS.indexOf(v) === -1 ? '' : v;
+    v = ids().indexOf(v) === -1 ? '' : v;
     try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) { /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
     return v;
   }
@@ -42826,9 +42838,30 @@ if(document.readyState === 'loading'){
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 
+  /** الجهد المحفوظ إن كان صالحًا للنموذج الحاليّ؛ '' = تلقائيّ (لا يُرسَل حقل). غير المالك دائمًا ''. */
+  function effortFor(model, v) {
+    if (!v || EFFORTS.indexOf(v) === -1 || model === 'claude-haiku-4-5') return '';
+    return (v === 'xhigh' && /^claude-(?:opus-4-6|sonnet-4-6)$/.test(model)) ? 'high' : v;
+  }
+  function effortGet() {
+    if (!owner()) return '';
+    try { return effortFor(get() || 'claude-opus-5-5', localStorage.getItem(EFFORT_KEY) || ''); } catch (e) { return ''; }
+  }
+  function effortSet(v) {
+    v = EFFORTS.indexOf(v) === -1 ? '' : v;
+    try { if (v) localStorage.setItem(EFFORT_KEY, v); else localStorage.removeItem(EFFORT_KEY); } catch (e) { /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
+    return v;
+  }
+  function effortSaved() { try { var v = localStorage.getItem(EFFORT_KEY) || ''; return EFFORTS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; } }
+
   window.claudeModelGet = get;
   window.claudeModelSync = sync;
   window.CLAUDE_MODEL_IDS = IDS.slice();
+  window.CLAUDE_OWNER_MODEL_IDS = OWNER_IDS.slice();
+  window.claudeEffortGet = effortGet;
+  window.claudeEffortSet = effortSet;
+  window.claudeEffortSaved = effortSaved;
+  window.claudeEffortFor = effortFor;
 })();
 /* v-maha-goldwave (طلب المالك ٢٢ سبتمبر، بعد خمسة نماذج راجعها بنفسه): «حطها في التطبيق» — صورة الموجة الذهبية
    نفسها مكان دائرة مها في نافذة المكالمة. تمشي باستمرار مثل شريط الأسهم (٣٦ بكسل/ث من اليمين لليسار — سرعة

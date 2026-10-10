@@ -247,7 +247,7 @@ function shrinkOld(convo) {
    نظام/أدوات تغيّرت) = تُنزع كلّها قبل الإرسال؛ وكلّ تعديل للتاريخ (قصّ C7، ضغط السياق) ينزعها؛ و400 يذكر التفكير/التوقيع =
    نزع وإعادة واحدة (الاسترداد الموثَّق). العرض الملخّص (display) للمالك وحده في دوره الذي يفكّر فيه، على موديلات المنتقي الأحدث — يغيّر الظهور لا
    الفوترة، ولا ميزانيّة تفكير ولا جهد جديدان (لا إنفاق). وملخّصه يصل سطر «↳ 💭» في سجلّ الردّ. */
-const DISPLAY_RE = /^claude-(?:opus-5-5|sonnet-5|fable-5-1)$/; // EFFORT_MODEL_RE (agent.js) مقصورًا على منتقي المالك — لا 4.x ولا Haiku
+const DISPLAY_RE = /^claude-(?:opus-5-5|opus-5|opus-4-[678]|sonnet-5-5|sonnet-5|sonnet-4-6|fable-5-1|fable-5|haiku-5-5)$/; // v-owner-claude-all: منتقي المالك كلّه عدا Haiku 4.5 (لا تفكير تكيّفيّ — 400)
 const THINK_SHOWN_MAX = 8;
 function isThink(b) { return !!b && (b.type === 'thinking' || b.type === 'redacted_thinking'); }
 function hasThink(convo) { return Array.isArray(convo) && convo.some((m) => m && Array.isArray(m.content) && m.content.some(isThink)); }
@@ -280,7 +280,7 @@ function think(b, t, convo, route) {
     if (Array.isArray(b.messages) && b.messages !== convo) stripThink(b.messages); // نسخة markLastForCache: آخر رسالة منسوخة
   }
   t.disp = false;
-  if (t.show && t.direct && !t.noDisplay && b.thinking === undefined && DISPLAY_RE.test(model)) { b.thinking = { type: 'adaptive', display: 'summarized' }; t.disp = true; }
+  if (t.show && t.direct && !t.noDisplay && (b.thinking === undefined || (b.thinking && b.thinking.type === 'adaptive' && !b.thinking.display)) && DISPLAY_RE.test(model)) { b.thinking = { type: 'adaptive', display: 'summarized' }; t.disp = true; } // v-owner-claude-all: تكيّفيّ بلا عرض (جهد المالك على 4.x) يأخذ العرض؛ وبعد رفض العرض (noDisplay) يبقى التفكير بلا عرض
   return b;
 }
 /* 400 يذكر التفكير أو التوقيع (أو العرض) = تُنزع كلّ الكتل وإعادة واحدة؛ والعرض يُطفأ للدور إن لم يكن الرفض عن كتلة في الرسائل

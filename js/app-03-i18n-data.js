@@ -787,6 +787,7 @@ const I18N = {
     codePlaceholder: 'سيظهر الكود المولّد هنا...',
     settingsTitle: 'إعدادات الاتصال بالذكاء الاصطناعي',
     provider: 'مزوّد الخدمة',
+    effortLabel: 'الجهد', effortAuto: 'تلقائي', effortLow: 'منخفض', effortMedium: 'متوسّط', effortHigh: 'عالٍ', effortExtra: 'إضافيّ', effortMax: 'أقصى', otherModelsLabel: 'نماذج أخرى', /* v-owner-claude-all: منتقي المالك — الجهد ونماذج أخرى */
     claudeModelPick: 'نموذج كلود', stModelFallback: '⚠️ نموذج {model} غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.',
     apiKeyLabel: 'مفتاح API الخاص بك',
     modelLabel: 'اسم النموذج',
@@ -1593,6 +1594,7 @@ const I18N = {
     codePlaceholder: 'Generated code will appear here...',
     settingsTitle: 'AI Connection Settings',
     provider: 'Provider',
+    effortLabel: 'Effort', effortAuto: 'Auto', effortLow: 'Low', effortMedium: 'Medium', effortHigh: 'High', effortExtra: 'Extra', effortMax: 'Max', otherModelsLabel: 'Other models', /* v-owner-claude-all */
     claudeModelPick: 'Claude model', stModelFallback: '⚠️ {model} is not available on the current key — continuing with the default model.',
     apiKeyLabel: 'Your API Key',
     modelLabel: 'Model Name',

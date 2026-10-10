@@ -16,7 +16,7 @@ const KINDS = ['chat', 'media', 'voice'];
    بسعر Sonnet 4.x ٣/١٥ (حقيقته ٢/١٠). وقراءة الكاش ليست ١٠٪ للكلّ: Opus 5.5 ‏٠٫٢٠$ (٥٪)، Fable 5.1 ‏٠٫٢٥$ (٢٫٥٪). المعرّفان
    المباشر (claude-opus-5-5) والوسيط (anthropic/claude-opus-5.5) يطابقان النمط نفسه. Haiku 5.5 بسعر ما دون ١٠٠ ألف توكن للطلب. */
 const PRICES = [
-  [/fable-5[-.]1|fable/i, 10, 50, 0.025], [/opus-5[-.]5/i, 4, 20, 0.05], [/opus/i, 5, 25],
+  [/fable-5[-.]1/i, 10, 50, 0.025], [/fable/i, 10, 50] /* v-owner-claude-all: Fable 5 قراءة كاشه ١$ (١٠٪) لا ربع Fable 5.1 */, [/opus-5[-.]5/i, 4, 20, 0.05], [/opus/i, 5, 25],
   [/sonnet-5(?:[-.]5)?(?!\d)/i, 2, 10], [/sonnet/i, 3, 15],
   [/haiku-5[-.]5/i, 0.1, 0.5], [/haiku/i, 1, 5],
   [/deepseek/i, 0.58, 1.16], [/gpt-oss/i, 0.15, 0.6], [/gemini|flash/i, 0.75, 3.75],

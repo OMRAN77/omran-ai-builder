@@ -575,7 +575,7 @@ function imageTurnConfig(env, viaOR, fallbackModel) {
   const model = want ? (viaOR && want.indexOf('/') === -1 ? 'anthropic/' + want : want) : fallbackModel;
   const eff = String(e.CHAT_IMAGE_EFFORT || 'high').trim().toLowerCase();
   // output_config.effort مدعوم على الجيل الحاليّ فقط؛ نموذج أقدم من البيئة يبقى بلا جهد بدل 400.
-  const effortOk = !viaOR && /^claude-(?:sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable)/.test(model);
+  const effortOk = !viaOR && /^claude-(?:sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable|haiku-5-5)/.test(model); // v-owner-claude-all: Haiku 5.5 يقبل الجهد
   return { model, output_config: effortOk ? { effort: IMG_EFFORTS.indexOf(eff) === -1 ? 'high' : eff } : null };
 }
 
@@ -584,19 +584,19 @@ function imageTurnConfig(env, viaOR, fallbackModel) {
 // هذه القائمة حصرًا. المسار المباشر يرسل المعرّف كما هو، ووسيط OpenRouter يأخذ صيغته (نقطة في
 // رقم الإصدار الفرعيّ كما في anthropic/claude-sonnet-4.5). نموذج يرفضه المفتاح أو الوسيط
 // (404/400 نموذج) = رجوع فوريّ للافتراضيّ مع إخبار المستخدم في سطر الحالة، لا سقوط للاحتياط.
-// لا temperature في الطلب أصلًا، وthinking للعرض الملخّص وحده (المالك على Opus 5.5/Sonnet 5/Fable 5.1 — owner-loop D1)، فالقائمة
-// كلّها (Fable 5/5.1 حتّى Haiku 4.5) تمرّ بالطلب نفسه؛ output_config.effort يبقى لدور الصورة على الجيل الحاليّ فقط (imageTurnConfig).
-/* v-models-family (أمر عمران ١٥ سبتمبر «كلاود كم واحد… كلهم ضيفهم»): عائلة كلود ٥ كاملة
-   في منتقي السهم للمالك وحده — Opus 5 + Sonnet 5 + Haiku 4.5 + Fable 5.1. البوّابة نفسها
-   (v-models-owner) تبقي غير المالك على الافتراضيّ فلا يُستنزف مفتاح المالك. */
+// لا temperature في الطلب أصلًا؛ thinking للعرض الملخّص (owner-loop D1) وللمالك جهده المختار (owner-think.claudeEffortFields) — غير المالك بلا أيّهما،
+// وoutput_config.effort لغير المالك يبقى لدور الصورة على الجيل الحاليّ فقط (imageTurnConfig).
+/* v-owner-claude-all (أمر عمران ١٠ أكتوبر، لقطة منتقي تطبيق Claude: «كل الانثروبك خلها لي المالك اختار»): النماذج النشطة كلّها
+   بمعرّفاتها الرسميّة (مهارة claude-api: shared/models.md) وصيغ OpenRouter من كتالوجه الحيّ — للمالك وحده؛ البوّابة نفسها (v-models-owner)
+   تبقي غير المالك على الافتراضيّ. الترتيب كمنتقي التطبيق الرسميّ: الأربعة الرئيسيّة ثمّ «نماذج أخرى» (modes.js). Opus 5 صار اختيارًا مستقلًّا. */
 const CLAUDE_MODELS = {
-  'claude-opus-5-5': { label: 'Opus 5.5', or: 'anthropic/claude-opus-5.5' }, // v-models-latest: خليفة Opus 5 وأرخص
-  'claude-sonnet-5': { label: 'Sonnet 5', or: 'anthropic/claude-sonnet-5' },
-  'claude-haiku-4-5': { label: 'Haiku 4.5', or: 'anthropic/claude-haiku-4.5' },
-  'claude-fable-5-1': { label: 'Fable 5.1', or: 'anthropic/claude-fable-5.1' },
+  'claude-opus-5-5': { label: 'Opus 5.5', or: 'anthropic/claude-opus-5.5' }, 'claude-fable-5-1': { label: 'Fable 5.1', or: 'anthropic/claude-fable-5.1' }, 'claude-sonnet-5-5': { label: 'Sonnet 5.5', or: 'anthropic/claude-sonnet-5.5' },
+  'claude-haiku-5-5': { label: 'Haiku 5.5', or: 'anthropic/claude-haiku-5.5' }, 'claude-haiku-4-5': { label: 'Haiku 4.5', or: 'anthropic/claude-haiku-4.5' }, 'claude-sonnet-5': { label: 'Sonnet 5', or: 'anthropic/claude-sonnet-5' },
+  'claude-opus-5': { label: 'Opus 5', or: 'anthropic/claude-opus-5' }, 'claude-fable-5': { label: 'Fable 5', or: 'anthropic/claude-fable-5' }, 'claude-opus-4-8': { label: 'Opus 4.8', or: 'anthropic/claude-opus-4.8' },
+  'claude-opus-4-7': { label: 'Opus 4.7', or: 'anthropic/claude-opus-4.7' }, 'claude-opus-4-6': { label: 'Opus 4.6', or: 'anthropic/claude-opus-4.6' }, 'claude-sonnet-4-6': { label: 'Sonnet 4.6', or: 'anthropic/claude-sonnet-4.6' },
 };
 function pickClaudeModel(requested, viaOR, fallback) {
-  let id = String(requested || '').trim().toLowerCase(); if (id === 'claude-opus-5') id = 'claude-opus-5-5'; // v-models-latest: اختيار محفوظ قديم يُرقّى لا يرجع صامتًا للافتراضيّ
+  let id = String(requested || '').trim().toLowerCase(); if (!id) id = 'claude-opus-5-5'; // v-owner-claude-all: المالك بلا اختيار = Opus 5.5 (أمره ١٠ أكتوبر) — الدالّة للمالك وحده (سطر __pick)، والرفض يرجع لافتراضيّ الإنقاذ Haiku 4.5
   const m = Object.prototype.hasOwnProperty.call(CLAUDE_MODELS, id) ? CLAUDE_MODELS[id] : null;
   if (!m) return { model: fallback, picked: false, id: '', label: '' };
   return { model: viaOR ? m.or : id, picked: true, id, label: m.label };
@@ -1607,7 +1607,7 @@ module.exports = async (req, res) => {
          oa-direct إلى جهد تفكير أدنى، وكلود المباشر بجهد low (Opus 5.5/Fable 5.1 يرفضان إطفاءه). الصعب كما في v-owner-reason. */
       let __qfLast = {};
       const __quickFields = () => (__qfLast = __quickFor());
-      const __quickFor = () => {
+      const __quickFor = () => { if (__ownerReq && prov === 'claude' && !__direct && body && body.effort) { const __ef = require('./owner-think.js').claudeEffortFields(CHAT_MODEL, body.effort); if (__ef) return __ef; } /* v-owner-claude-all: جهد المالك المختار من المنتقي يغلب التلقائيّ في كلّ دور، على المسارين */
         if (__ownerReq && !__ownerThink && __direct) return __direct.prov === 'openai' ? { thinking: { type: 'disabled' } } : {};
         if (__ownerReq && !__ownerThink && !viaOR && prov === 'claude') return require('./owner-think.js').claudeQuickFields(CHAT_MODEL);
         /* v-cohere-reasoning (لقطة المالك ٤ أكتوبر ٩:٤٣: «<EOS_TOKEN>» ثمّ «يبدو أن المستخدم يطلب…» في الردّ): Cohere Command A موديل تفكير؛ إطفاؤه بـthinking:disabled
