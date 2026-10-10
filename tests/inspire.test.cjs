@@ -252,7 +252,10 @@ test('الشاشة في نظام السحب/Esc للتطبيق (تُغلق وح�
   assert.match(rd('js/app-05-swipe-back.js'), /inspireScreen: 'inspireCloseBtn'/);
   const src = rd('js/app-35-inspire.js');
   assert.match(src, /id="inspireCloseBtn"/);
-  assert.doesNotMatch(src, /'Escape'/);
+  /* v-live-cards أضاف عارض التجربة الحيّة (#inspireLive) فوق الشاشة: هو وحده يلتقط Esc في طور الالتقاط ويوقف انتشاره
+     كي يُغلق العارض لا الشاشة تحته (السحب لا يناسبه: الإصبع يدير المشهد ثلاثيّ الأبعاد). الشاشة نفسها بلا مستمع خاصّ. */
+  assert.match(src, /function liveEsc\(e\)\{ if\(e\.key === 'Escape'\)\{ e\.stopPropagation\(\); closeInspireLive\(\); \} \}/);
+  assert.doesNotMatch(src.replace(/function liveEsc\(e\)\{[^\n]*\}/, ''), /'Escape'/);
   for (const { id } of loadCity().C) assert.ok(rd(`inspire/city/${id}.html`).startsWith('<!doctype html><html lang="ar" dir="rtl"><head>'), id + ': رأس ثابت لوسم اللغة والتجربة');
 });
 

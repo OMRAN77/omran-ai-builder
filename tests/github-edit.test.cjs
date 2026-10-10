@@ -94,5 +94,15 @@ test('agent.js: الأداتان للمالك وحده، والدمج يفحص �
   assert.match(src, /cb\.name === 'merge_github'[\s\S]{0,200}githubEdit\.ownerSaidMerge\(living\.lastUserText\(messages\)\)/);
   assert.match(src, /cb\.name === 'edit_github'[\s\S]{0,200}isOwner\(runUser\)/);
   assert.match(src, /system \+= OWNER_ENGINEERING_NOTE \+ OWNER_COMMAND_NOTE/);
-  assert.match(src, /عدّل الملفّات القائمة بـedit_github/);
+  assert.match(src, /const OWNER_ENGINEERING_NOTE = githubEdit\.WORK_NOTE;/);
+  assert.match(GE.WORK_NOTE, /عدّل الملفّات القائمة بـedit_github/);
+});
+
+test('بلا تكرار وبلا خطوة-خطوة: في طريقة العمل، وتصل المحادثة للمالك بأدواتها وحارس «ادمج»', () => {
+  assert.match(GE.WORK_NOTE, /لا تكرار: لا تعِد في ردّك ما قلته في ردودك السابقة/);
+  assert.match(GE.WORK_NOTE, /لا تقسّم العمل عليه خطوة خطوة/);
+  const chat = read('api/_lib/chat.js');
+  assert.match(chat, /const OWNER_TOOLS = \[[^\n]*require\('\.\/github-edit\.js'\)\.EDIT_TOOL, require\('\.\/github-edit\.js'\)\.MERGE_TOOL\]/);
+  assert.match(chat, /cb\.name === 'merge_github'[\s\S]{0,200}__ge\.ownerSaidMerge\(lastUserText\)/);
+  assert.match(chat, /\(ownerKnowledge && __ownerReq \? require\('\.\/github-edit\.js'\)\.WORK_NOTE : ''\)/);
 });
