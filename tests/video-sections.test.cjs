@@ -15,7 +15,7 @@ const KEYS = ['vcTutorial', 'vcToExtra', 'vcMore', 'videoTabTrends', 'vcTitle', 
 const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'];
 
 test('الأقسام: الترندات أوّلًا ثمّ كلّ وضع، والتبويب يبدّل الوضع ويخفي الاستوديو في الترندات', () => {
-  assert.ok(js.includes("var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor']"));
+  assert.ok(js.includes("var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor','clean']"));
   assert.ok(js.includes("var tab='trend'") && js.includes("if(open&&!wasOpen){ tab='trend'; }"));
   assert.ok(js.includes("sel.value=v; sel.dispatchEvent(new Event('change'))"));
   const css = read('css/modules.css');

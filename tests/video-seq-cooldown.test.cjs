@@ -188,7 +188,7 @@ test('٧. المفتاحان الجديدان في الـ١٤ لغة (app-03 + i
     assert.doesNotMatch(w + g, /veo|runway|minimax|gemini|claude/i, l + ': اسم مزوّد في نصّ المستخدم');
     assert.ok(![...(w + g)].some((ch) => /\p{Cf}|\p{Co}|\p{Cc}/u.test(ch)), l + ': حرف خفيّ');
   }
-  assert.match(read('js/app-04-i18n-state.js'), /sc\.src = 'i18n\/' \+ lg \+ '\.js\?v=731'/, 'الوسم مرفوع لملفّات اللغات المحمّلة منفصلة');
+  assert.match(read('js/app-04-i18n-state.js'), /sc\.src = 'i18n\/' \+ lg \+ '\.js\?v=732'/, 'الوسم مرفوع لملفّات اللغات المحمّلة منفصلة');
   // الواجهة تقرأ المفتاحين عبر t() مع احتياط ثنائيّ اللغة (نمط videoNeedDesc نفسه)
   assert.match(VIDEO, /window\.t\('videoSceneWait'\) !== 'videoSceneWait'/);
   assert.match(VIDEO, /window\.t\('videoFilmModeOnly'\) !== 'videoFilmModeOnly'/);

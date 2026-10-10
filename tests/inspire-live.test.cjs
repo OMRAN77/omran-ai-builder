@@ -24,9 +24,7 @@ test('المدينة للجميع ومختبر السيّارات للمالك،
 });
 test('تُفتح بإطار من النطاق نفسه مع لغة التطبيق، وEsc يغلقها', () => {
   assert.match(src, /fr\.src = item\.src \+ .*'lang=' \+ encodeURIComponent/);
-  assert.doesNotMatch(src, /'Escape'/, 'لا مستمع Esc خاصّ');
-  assert.match(src, /esc\.id = 'inspireLiveEsc'; esc\.hidden = true; esc\.onclick = closeInspireLive;/);
-  assert.match(fs.readFileSync(path.join(root, 'js/app-05-swipe-back.js'), 'utf8'), /inspireLive: 'inspireLiveEsc'/);
+  assert.match(src, /if\(e\.key === 'Escape'\)\{ e\.stopPropagation\(\); closeInspireLive\(\); \}/);
   const r3 = fs.readFileSync(path.join(root, 'inspire/real3d.html'), 'utf8');
   assert.match(r3, /new URLSearchParams\(location\.search\)\.get\('lang'\)/);
 });
