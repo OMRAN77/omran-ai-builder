@@ -68,7 +68,7 @@ html[dir=ltr] .pill{text-transform:uppercase;letter-spacing:.08em;font-size:11px
 #banner .tgt{font-size:12px;color:var(--muted)}
 #banner .row{display:flex;gap:14px;margin-top:6px;font-size:13px}
 #banner .timer{font-family:var(--font-mono)}
-#banner .hint{font-size:10px;color:var(--muted);margin-top:4px}
+#banner .hint{font-size:11px;color:var(--muted);margin-top:4px}
 #toasts{display:flex;flex-direction:column;gap:6px;align-items:center}
 .toast{background:rgba(244,238,227,.94);border-radius:999px;padding:7px 14px;font-size:13px;box-shadow:var(--shadow);animation:slidein .18s}
 .toast.cash{color:var(--coral);font-weight:700}
@@ -81,7 +81,7 @@ html[dir=ltr] .pill{text-transform:uppercase;letter-spacing:.08em;font-size:11px
 #street .d{font-size:11px;color:var(--muted)}
 #mapwrap{position:relative;width:236px;height:180px;border-radius:var(--radius);overflow:hidden;border:2px solid var(--paper);box-shadow:var(--shadow);background:#EDE4D5}
 #minimap{display:block;width:100%;height:100%;cursor:pointer}
-#mapwrap .badge{position:absolute;font:700 10px var(--font-mono);background:rgba(244,238,227,.9);border-radius:6px;padding:2px 5px;color:var(--ink)}
+#mapwrap .badge{position:absolute;font:700 11px var(--font-mono);background:rgba(244,238,227,.9);border-radius:6px;padding:2px 5px;color:var(--ink)}
 #mapwrap .n{top:6px;inset-inline-start:6px}
 #mapwrap .m{bottom:6px;inset-inline-end:6px}
 #readouts{display:flex;gap:14px;padding:8px 12px;align-items:center}
@@ -189,11 +189,11 @@ html.coarse #speedo{width:auto;padding:6px 10px;border-radius:10px}
 html.coarse #speedo .top,html.coarse #speedo .ticks,html.coarse #speedo .nitro,html.coarse #speedo .units small{display:none}
 html.coarse #speedo .spd{font-size:34px}
 html.coarse #speedo .gear{font-size:14px}
-html.coarse #speedo .units{font-size:10px}
+html.coarse #speedo .units{font-size:11px}
 html.coarse .drawer{width:100vw}
 .touch{display:none;position:fixed;inset:0;pointer-events:none;z-index:3}
 html.coarse .touch{display:block}
-.touch button{position:absolute;border:0;border-radius:50%;background:rgba(244,238,227,.85);color:var(--ink);font:700 14px var(--font-ui);box-shadow:var(--shadow);touch-action:none;-webkit-user-select:none;user-select:none}
+.touch button{position:absolute;pointer-events:auto;border:0;border-radius:50%;background:rgba(244,238,227,.85);color:var(--ink);font:700 14px var(--font-ui);box-shadow:var(--shadow);touch-action:none;-webkit-user-select:none;user-select:none}
 .touch button.press{background:var(--coral);color:#fff}
 .touch .l{left:calc(16px + env(safe-area-inset-left));bottom:calc(130px + env(safe-area-inset-bottom));width:64px;height:64px}
 .touch .r{left:calc(92px + env(safe-area-inset-left));bottom:calc(130px + env(safe-area-inset-bottom));width:64px;height:64px}
@@ -204,9 +204,11 @@ html.coarse .touch{display:block}
 .touch .ni{right:calc(66px + env(safe-area-inset-right))}
 .touch .ex{right:calc(116px + env(safe-area-inset-right))}
 .touch .cm{right:calc(166px + env(safe-area-inset-right))}
+.touch .rr{right:calc(216px + env(safe-area-inset-right))}
+.touch .tt{top:calc(202px + env(safe-area-inset-top))}
 .touch .chip{right:calc(12px + env(safe-area-inset-right));width:40px;height:40px;font-size:12px;border-radius:12px}
 .touch .mm{top:calc(64px + env(safe-area-inset-top))}.touch .qq{top:calc(110px + env(safe-area-inset-top))}.touch .gg{top:calc(156px + env(safe-area-inset-top))}
-@media (max-height:520px){.touch .hb{right:calc(76px + env(safe-area-inset-right))}.touch .ni{right:calc(126px + env(safe-area-inset-right))}.touch .ex{right:calc(176px + env(safe-area-inset-right))}.touch .cm{right:calc(226px + env(safe-area-inset-right))}}
+@media (max-height:520px){.touch .hb{right:calc(76px + env(safe-area-inset-right))}.touch .ni{right:calc(126px + env(safe-area-inset-right))}.touch .ex{right:calc(176px + env(safe-area-inset-right))}.touch .cm{right:calc(226px + env(safe-area-inset-right))}.touch .rr{right:calc(276px + env(safe-area-inset-right))}.touch .tt{display:none}}
 @media (max-width:640px){#hud{--gut:12px;grid-template-columns:1fr 1fr;grid-template-rows:auto auto 1fr auto}#topCenter{grid-column:1/3;grid-row:2;order:2}#topEnd{grid-column:2;grid-row:1}#topStart{grid-column:1;grid-row:1}#bottomStart{grid-column:1;grid-row:4}#bottomEnd{grid-column:2;grid-row:4}#hints{display:none}.drawer{width:100vw}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
@@ -245,8 +247,8 @@ html.coarse .touch{display:block}
 <div class="touch">
   <button class="l" data-k="ArrowLeft" aria-label="left">&#8249;</button><button class="r" data-k="ArrowRight" aria-label="right">&#8250;</button>
   <button class="gas" data-k="ArrowUp" aria-label="gas">&#9650;</button><button class="brk" data-k="ArrowDown" aria-label="brake">&#9660;</button>
-  <button class="sm hb" data-k="Space">HB</button><button class="sm ni" data-k="ShiftLeft">N</button><button class="sm ex" data-k="KeyE">E</button><button class="sm cm" data-k="KeyC">C</button>
-  <button class="chip mm" data-k="KeyM">M</button><button class="chip qq" data-k="KeyQ">Q</button><button class="chip gg" data-k="KeyG">G</button>
+  <button class="sm hb" data-k="Space">HB</button><button class="sm ni" data-k="ShiftLeft">N</button><button class="sm ex" data-k="KeyE">E</button><button class="sm cm" data-k="KeyC">C</button><button class="sm rr" data-k="KeyR">R</button>
+  <button class="chip mm" data-k="KeyM">M</button><button class="chip qq" data-k="KeyQ">Q</button><button class="chip gg" data-k="KeyG">G</button><button class="chip tt" data-k="KeyT">T</button>
 </div>
 <div id="scrim"></div>
 <div class="drawer" id="jobsD"><header><span id="jobsH"></span><button type="button" class="close" aria-label="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header><div class="body" id="jobsBody"></div></div>
@@ -260,16 +262,16 @@ const AR = document.documentElement.lang !== 'en';
 const T = {
   ar: { title: 'مرسى نور', sub: 'مدينة المرفأ — تجوّل حرّ', start: 'ابدأ القيادة', building: 'تُبنى المدينة…', errT: 'تعذّر تحميل المحرّك', errS: 'تحقّق من الاتصال ثمّ أعد التحميل.',
     free: 'تجوّل حرّ', job: 'مهمّة', race: 'سباق', foot: 'سيرًا على الأقدام', explore: 'استكشاف', jobs: 'المهام', garage: 'المرآب', kmh: 'كم/س', auto: 'تلقائي', health: 'الصحّة', nitro: 'نيترو',
-    np: 'يُذاع الآن', off: 'مطفأة', fm: 'إذاعة المرسى', quay: 'الرصيف', m: 'م', cp: 'نقطة', best: 'الأفضل', cargo: 'الحمولة', esc: 'Esc إلغاء', cancelTouch: 'للإلغاء: زرّ «استكشاف»', a11yRadio: 'الراديو', a11yLeft: 'يسار', a11yRight: 'يمين', a11yGas: 'وقود', a11yBrake: 'فرامل', a11yClose: 'إغلاق', start2: 'ابدأ', active: 'نشطة', payout: 'المكافأة',
-    drive: 'قُد بـ WASD', driveTouch: 'قُد بأزرار الشاشة', jobsHint: 'المهام: J', jobsHintTouch: 'المهام من الزرّ أعلى الشاشة', garageHint: 'المرآب: G — إصلاح، طلاء، تعديل', slow: 'أبطئ لتترجّل', recover: 'R لاسترداد المركبة', failed: 'فشلت المهمّة', done: 'أُنجزت المهمّة', newBest: 'رقم قياسيّ جديد',
+    np: 'يُذاع الآن', off: 'مطفأة', fm: 'إذاعة المرسى', quay: 'الرصيف', m: 'م', cp: 'نقطة', best: 'الأفضل', cargo: 'الحمولة', esc: 'Esc إلغاء', cancelTouch: 'للإلغاء: زرّ البوصلة أعلى الشاشة', a11yRadio: 'الراديو', a11yLeft: 'يسار', a11yRight: 'يمين', a11yGas: 'وقود', a11yBrake: 'فرامل', a11yClose: 'إغلاق', start2: 'ابدأ', active: 'نشطة', payout: 'المكافأة',
+    drive: 'قُد بـ WASD', driveTouch: 'قُد بأزرار الشاشة', jobsHint: 'المهام: J', jobsHintTouch: 'المهام من الزرّ أعلى الشاشة', garageHint: 'المرآب: G — إصلاح، طلاء، تعديل', slow: 'أبطئ لتترجّل', recover: 'R لاسترداد المركبة', recoverTouch: 'زرّ R لاسترداد المركبة', failed: 'فشلت المهمّة', done: 'أُنجزت المهمّة', newBest: 'رقم قياسيّ جديد',
     repair: 'إصلاح', full: 'إصلاح كامل', cars: 'السيّارات', paint: 'الطلاء', tune: 'التعديل', owned: 'مملوكة', inuse: 'مستخدمة', buy: 'اشترِ', select: 'اختر', nocash: 'الرصيد لا يكفي', reset: 'مسح التقدّم', sure: 'متأكّد؟ اضغط مرّة أخرى', level: 'المستوى', max: 'الأقصى',
     engine: 'المحرّك', tires: 'الإطارات', tank: 'خزّان النيترو', engineD: '+8٪ تسارع وسرعة', tiresD: '+10٪ تماسك', tankD: '+25 سعة', accel: 'تسارع', top: 'سرعة', grip: 'تماسك', nitroS: 'نيترو', free2: 'مجانًا',
     star0: 'تحت الرادار', star2: 'معروف في الميناء', star4: 'أسطورة المرسى', wp: 'نقطة الطريق', drift: 'انزلاق', go: 'انطلق', lap: 'لفّة', parks: 'حدائق', water: 'ماء', pickup: 'الاستلام', deliver: 'التسليم', gate: 'بوّابة',
     hints: [['WASD', 'قيادة'], ['Space', 'فرامل يد'], ['Shift', 'نيترو'], ['E', 'ترجّل'], ['C', 'كاميرا'], ['M', 'خريطة'], ['Q', 'راديو'], ['H', 'بوق'], ['R', 'استرداد'], ['G', 'مرآب'], ['J', 'مهام'], ['T', 'وقت']] },
   en: { title: 'Marsa Noor', sub: 'Harbor city — free roam', start: 'Start driving', building: 'Building the city…', errT: 'Engine failed to load', errS: 'Check your connection and reload.',
     free: 'Free roam', job: 'Job', race: 'Race', foot: 'On foot', explore: 'Explore', jobs: 'Jobs', garage: 'Garage', kmh: 'KM/H', auto: 'AUTO', health: 'Health', nitro: 'Nitro',
-    np: 'Now playing', off: 'Radio off', fm: 'Marsa FM', quay: 'The Quay', m: 'm', cp: 'CP', best: 'Best', cargo: 'Cargo', esc: 'Esc cancel', cancelTouch: 'To cancel: tap Explore', a11yRadio: 'Radio', a11yLeft: 'Left', a11yRight: 'Right', a11yGas: 'Gas', a11yBrake: 'Brake', a11yClose: 'Close', start2: 'Start', active: 'Active', payout: 'Payout',
-    drive: 'Drive with WASD', driveTouch: 'Drive with the on-screen buttons', jobsHint: 'Jobs: J', jobsHintTouch: 'Jobs: the button at the top', garageHint: 'Garage: G — repair, paint, tune', slow: 'Slow down to leave', recover: 'Press R to recover', failed: 'Job failed', done: 'Job done', newBest: 'New best',
+    np: 'Now playing', off: 'Radio off', fm: 'Marsa FM', quay: 'The Quay', m: 'm', cp: 'CP', best: 'Best', cargo: 'Cargo', esc: 'Esc cancel', cancelTouch: 'To cancel: tap the compass button at the top', a11yRadio: 'Radio', a11yLeft: 'Left', a11yRight: 'Right', a11yGas: 'Gas', a11yBrake: 'Brake', a11yClose: 'Close', start2: 'Start', active: 'Active', payout: 'Payout',
+    drive: 'Drive with WASD', driveTouch: 'Drive with the on-screen buttons', jobsHint: 'Jobs: J', jobsHintTouch: 'Jobs: the button at the top', garageHint: 'Garage: G — repair, paint, tune', slow: 'Slow down to leave', recover: 'Press R to recover', recoverTouch: 'Tap R to recover', failed: 'Job failed', done: 'Job done', newBest: 'New best',
     repair: 'Repair', full: 'Full repair', cars: 'Cars', paint: 'Paint', tune: 'Tuning', owned: 'Owned', inuse: 'In use', buy: 'Buy', select: 'Select', nocash: 'Not enough cash', reset: 'Reset progress', sure: 'Sure? Press again', level: 'Level', max: 'Max',
     engine: 'Engine', tires: 'Tires', tank: 'Nitro tank', engineD: '+8% accel & top', tiresD: '+10% grip', tankD: '+25 capacity', accel: 'Accel', top: 'Top', grip: 'Grip', nitroS: 'Nitro', free2: 'Free',
     star0: 'Under the radar', star2: 'Known at the port', star4: 'Harbor legend', wp: 'Waypoint', drift: 'Drift', go: 'GO', lap: 'Lap', parks: 'Parks', water: 'Water', pickup: 'Pickup', deliver: 'Deliver', gate: 'Gate',
@@ -830,7 +832,7 @@ function groundY(x, z) { if (onPier(x, z)) return 0.9; if (z > CORNICHE + 7 && z
 function onSidewalk(x, z) { const i = Math.floor((x + 279) / 62), j = Math.floor((z + 217) / 62); if (i < 0 || i > 8 || j < 0 || j > 6) return false; const lx = Math.abs(x - bx(i)), lz = Math.abs(z - bz(j)); return lx <= 24 && lz <= 24 && (lx >= 21 || lz >= 21); }
 function isRoad(x, z) { if (z > CORNICHE + 7 && z < SEAWALL + 70) return true; if (x < -286 || x > 286 || z < -224 || z > 224) return false; const dk = Math.abs(((x + 279) % 62 + 62) % 62 - 0), dm = ((z + 217) % 62 + 62) % 62; return Math.min(dk, 62 - dk) <= 7 || Math.min(dm, 62 - dm) <= 7 || district(clamp(Math.floor((x + 279) / 62), 0, 8), clamp(Math.floor((z + 217) / 62), 0, 6)) === 'plaza'; }
 function damage(hp, impact) { V.hp = Math.max(0, V.hp - hp); if (S.health) { S.health[carDef.id] = V.hp; saveSoon(); } sfx.thud(Math.min(impact / 15, 1)); if (hp > 5) { $('flash').classList.add('on'); setTimeout(() => $('flash').classList.remove('on'), 120); }
-  if (V.hp <= 0 && !V.wrecked) { V.wrecked = true; toast(t('recover')); sfx.wreck(true); } if (job && job.stage === 1 && job.def.fragile && impact > 6) { job.cargo = Math.max(60, job.cargo - 20); } if (job && job.stage === 1 && job.def.lanterns && impact > 8) { job.lant--; if (job.lant <= 0) failJob(); else refreshCargo(); } }
+  if (V.hp <= 0 && !V.wrecked) { V.wrecked = true; toast(t(COARSE ? 'recoverTouch' : 'recover')); sfx.wreck(true); } if (job && job.stage === 1 && job.def.fragile && impact > 6) { job.cargo = Math.max(60, job.cargo - 20); } if (job && job.stage === 1 && job.def.lanterns && impact > 8) { job.lant--; if (job.lant <= 0) failJob(); else refreshCargo(); } }
 function recover() { if (V.recoverT > 0) return; V.recoverT = 0.5; const p = nearestLane(V.x, V.z, 60) || { x: rx(clamp(Math.round((V.x + 279) / 62), 0, 9)) + 1.75, z: clamp(V.z, -217, 217), h: 0 }; /* بعيدًا عن الشبكة: أقرب طريق شمال-جنوب */ V.x = p.x; V.z = p.z; V.h = p.h; V.vLong = V.vLat = V.w = 0; camInit = false; if (V.wrecked) { V.wrecked = false; V.hp = 20; if (S.cash >= 150) { S.cash -= 150; cashPopup(-150); } sfx.wreck(false); saveSoon(); } }
 function nearestLane(x, z, maxD) { let best = null; for (let k = 0; k <= 9; k++) { const d = Math.abs(x - rx(k)); if (d < maxD && (!best || d < best.d)) { const dir = z > 0 ? -1 : 1; best = { d, x: rx(k) + 1.75 * (dir > 0 ? 1 : -1), z: clamp(z, -217, 217), h: dir > 0 ? 0 : Math.PI }; } } for (let m = 0; m <= 7; m++) { const d = Math.abs(z - rz(m)); if (d < maxD && (!best || d < best.d)) { const dir = x > 0 ? -1 : 1; best = { d, x: clamp(x, -279, 279), z: rz(m) + 1.75 * (dir > 0 ? 1 : -1), h: dir > 0 ? Math.PI / 2 : -Math.PI / 2 }; /* يمين الشرق +z */ } } return best; }
 // دخان
@@ -1071,7 +1073,7 @@ function openBigMap() { mapOpen = true; $('hints').style.visibility = 'hidden'; 
   ctx.fillStyle = P.ink; ctx.font = '700 13px sans-serif'; ctx.direction = AR ? 'rtl' : 'ltr'; ctx.textAlign = 'center'; for (let k = 0; k <= 9; k += 3) { ctx.save(); ctx.translate(X(rx(k)) + 10, Z(0)); ctx.rotate(-Math.PI / 2); ctx.fillText(AR ? NS_NAMES[k][0] : NS_NAMES[k][1], 0, 0); ctx.restore(); } for (let m = 0; m <= 7; m += 2) ctx.fillText(AR ? EW_NAMES[m][0] : EW_NAMES[m][1], X(0), Z(rz(m)) - 6);
   const px = V.onFoot ? charState.x : V.x, pz = V.onFoot ? charState.z : V.z; ctx.fillStyle = P.coral; ctx.beginPath(); ctx.arc(X(px), Z(pz), 7, 0, 7); ctx.fill(); if (job && !job.def.race) { const tg = job.stage === 0 ? job.def.from : job.def.to; ctx.strokeStyle = P.coral; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(tg[0]), Z(tg[1]), 10, 0, 7); ctx.stroke(); }
   $('legend').innerHTML = [[t('parks'), '#B9CDA0'], [t('water'), '#9FC3D1'], [t('garage'), '#D9A441'], [t('jobs'), P.coral]].map(([n, c]) => `<span><b style="background:${c}"></b>${n}</span>`).join(''); $('bigmap').classList.add('on');
-  cv.onclick = (e) => { const r = cv.getBoundingClientRect(); const mx = (e.clientX - r.left) / r.width * 1024, mz = (e.clientY - r.top) / r.height * 1024; waypoint = [(mx - 512) * sc, (mz - 452) * sc]; toast(t('wp')); closeBigMap(); }; }
+  $('bigmap').onclick = (e) => { if (e.target === $('bigmap')) closeBigMap(); }; cv.onclick = (e) => { const r = cv.getBoundingClientRect(); const mx = (e.clientX - r.left) / r.width * 1024, mz = (e.clientY - r.top) / r.height * 1024; waypoint = [(mx - 512) * sc, (mz - 452) * sc]; toast(t('wp')); closeBigMap(); }; }
 function closeBigMap() { mapOpen = false; $('hints').style.visibility = ''; $('bigmap').classList.remove('on'); }
 $('minimap').onclick = () => mapOpen ? closeBigMap() : openBigMap();
 // اللوحة الدوريّة
@@ -1153,9 +1155,9 @@ function toggleTime() { timeMode = timeMode === 'dusk' ? 'afternoon' : 'dusk'; S
 
 /* ===== ٢٠. الإدخال ===== */
 const TOGGLES = { KeyC: () => { camMode = camMode === 'chase' ? 'hood' : camMode === 'hood' ? 'top' : 'chase'; S.settings.cam = camMode; saveSoon(); }, KeyM: () => mapOpen ? closeBigMap() : openBigMap(), KeyQ: cycleRadio, KeyH: () => { hornT = 0.5; sfx.horn(); }, KeyE: () => V.onFoot ? enterCar() : leaveCar(), KeyG: () => garageOpen ? closeDrawers() : openGarage(), KeyR: recover, KeyJ: () => jobsOpen ? closeDrawers() : openJobs(), KeyT: toggleTime, Slash: () => { S.settings.hintsSeen = !S.settings.hintsSeen; hintsT = 0; } };
-addEventListener('keydown', (e) => { if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; sfx.init(); sfx.resume(); if (e.code === 'Escape') { if (mapOpen) closeBigMap(); else if (garageOpen || jobsOpen) closeDrawers(); else if (job) cancelJob(); return; } if (garageOpen || jobsOpen || mapOpen) return; if (/Space|Arrow/.test(e.code)) e.preventDefault(); if (TOGGLES[e.code]) { if (!e.repeat) TOGGLES[e.code](); return; } keys.add(e.code); });
+addEventListener('keydown', (e) => { if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; sfx.init(); sfx.resume(); if (e.code === 'Escape') { if (mapOpen) closeBigMap(); else if (garageOpen || jobsOpen) closeDrawers(); else if (job) cancelJob(); return; } if (garageOpen || jobsOpen || mapOpen) { if (/^Key[MGJ]$/.test(e.code) && !e.repeat) TOGGLES[e.code](); return; } if (/Space|Arrow/.test(e.code)) e.preventDefault(); if (TOGGLES[e.code]) { if (!e.repeat) TOGGLES[e.code](); return; } keys.add(e.code); });
 addEventListener('keyup', (e) => keys.delete(e.code)); addEventListener('blur', () => keys.clear());
-document.querySelectorAll('.touch button').forEach((b) => { const k = b.dataset.k; const down = (e) => { e.preventDefault(); sfx.init(); sfx.resume(); b.classList.add('press'); if (TOGGLES[k]) TOGGLES[k](); else keys.add(k); }; const up = (e) => { e.preventDefault(); b.classList.remove('press'); keys.delete(k); }; b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up); });
+document.querySelectorAll('.touch button').forEach((b) => { const k = b.dataset.k; const down = (e) => { e.preventDefault(); try { b.releasePointerCapture(e.pointerId); } catch (err) { /* guard-ok — المؤشر غير ملتقَط */ } sfx.init(); sfx.resume(); b.classList.add('press'); if (TOGGLES[k]) TOGGLES[k](); else keys.add(k); }; const up = (e) => { e.preventDefault(); b.classList.remove('press'); keys.delete(k); }; b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up); b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'touch' && e.buttons) down(e); }); });
 document.addEventListener('visibilitychange', () => { sfx.suspend(document.hidden); keys.clear(); });
 
 /* ===== ٢١. الحلقة الرئيسيّة ===== */
