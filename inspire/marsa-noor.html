@@ -259,7 +259,7 @@ const AR = document.documentElement.lang !== 'en';
 const T = {
   ar: { title: 'مرسى نور', sub: 'مدينة المرفأ — تجوّل حرّ', start: 'ابدأ القيادة', building: 'تُبنى المدينة…', errT: 'تعذّر تحميل المحرّك', errS: 'تحقّق من الاتصال ثمّ أعد التحميل.',
     free: 'تجوّل حرّ', job: 'مهمّة', race: 'سباق', foot: 'سيرًا على الأقدام', explore: 'استكشاف', jobs: 'المهام', garage: 'المرآب', kmh: 'كم/س', auto: 'تلقائي', health: 'الصحّة', nitro: 'نيترو',
-    np: 'يُذاع الآن', off: 'مطفأة', fm: 'إذاعة المرسى', quay: 'الرصيف', m: 'م', cp: 'نقطة', best: 'الأفضل', cargo: 'الحمولة', esc: 'Esc إلغاء', start2: 'ابدأ', active: 'نشطة', payout: 'المكافأة',
+    np: 'يُذاع الآن', off: 'مطفأة', fm: 'إذاعة المرسى', quay: 'الرصيف', m: 'م', cp: 'نقطة', best: 'الأفضل', cargo: 'الحمولة', esc: 'Esc إلغاء', cancelTouch: 'للإلغاء: زرّ «استكشاف»', start2: 'ابدأ', active: 'نشطة', payout: 'المكافأة',
     drive: 'قُد بـ WASD', jobsHint: 'المهام: J', garageHint: 'المرآب: G — إصلاح، طلاء، تعديل', slow: 'أبطئ لتترجّل', recover: 'R لاسترداد المركبة', failed: 'فشلت المهمّة', done: 'أُنجزت المهمّة', newBest: 'رقم قياسيّ جديد',
     repair: 'إصلاح', full: 'إصلاح كامل', cars: 'السيّارات', paint: 'الطلاء', tune: 'التعديل', owned: 'مملوكة', inuse: 'مستخدمة', buy: 'اشترِ', select: 'اختر', nocash: 'الرصيد لا يكفي', reset: 'مسح التقدّم', sure: 'متأكّد؟ اضغط مرّة أخرى', level: 'المستوى', max: 'الأقصى',
     engine: 'المحرّك', tires: 'الإطارات', tank: 'خزّان النيترو', engineD: '+8٪ تسارع وسرعة', tiresD: '+10٪ تماسك', tankD: '+25 سعة', accel: 'تسارع', top: 'سرعة', grip: 'تماسك', nitroS: 'نيترو', free2: 'مجانًا',
@@ -267,7 +267,7 @@ const T = {
     hints: [['WASD', 'قيادة'], ['Space', 'فرامل يد'], ['Shift', 'نيترو'], ['E', 'ترجّل'], ['C', 'كاميرا'], ['M', 'خريطة'], ['Q', 'راديو'], ['H', 'بوق'], ['R', 'استرداد'], ['G', 'مرآب'], ['J', 'مهام'], ['T', 'وقت']] },
   en: { title: 'Marsa Noor', sub: 'Harbor city — free roam', start: 'Start driving', building: 'Building the city…', errT: 'Engine failed to load', errS: 'Check your connection and reload.',
     free: 'Free roam', job: 'Job', race: 'Race', foot: 'On foot', explore: 'Explore', jobs: 'Jobs', garage: 'Garage', kmh: 'KM/H', auto: 'AUTO', health: 'Health', nitro: 'Nitro',
-    np: 'Now playing', off: 'Radio off', fm: 'Marsa FM', quay: 'The Quay', m: 'm', cp: 'CP', best: 'Best', cargo: 'Cargo', esc: 'Esc cancel', start2: 'Start', active: 'Active', payout: 'Payout',
+    np: 'Now playing', off: 'Radio off', fm: 'Marsa FM', quay: 'The Quay', m: 'm', cp: 'CP', best: 'Best', cargo: 'Cargo', esc: 'Esc cancel', cancelTouch: 'To cancel: tap Explore', start2: 'Start', active: 'Active', payout: 'Payout',
     drive: 'Drive with WASD', jobsHint: 'Jobs: J', garageHint: 'Garage: G — repair, paint, tune', slow: 'Slow down to leave', recover: 'Press R to recover', failed: 'Job failed', done: 'Job done', newBest: 'New best',
     repair: 'Repair', full: 'Full repair', cars: 'Cars', paint: 'Paint', tune: 'Tuning', owned: 'Owned', inuse: 'In use', buy: 'Buy', select: 'Select', nocash: 'Not enough cash', reset: 'Reset progress', sure: 'Sure? Press again', level: 'Level', max: 'Max',
     engine: 'Engine', tires: 'Tires', tank: 'Nitro tank', engineD: '+8% accel & top', tiresD: '+10% grip', tankD: '+25 capacity', accel: 'Accel', top: 'Top', grip: 'Grip', nitroS: 'Nitro', free2: 'Free',
@@ -299,11 +299,12 @@ document.querySelectorAll('#intro .langs button').forEach((b) => { b.classList.t
 
 /* ===== ٣. الحفظ ===== */
 const SAVE_KEY = 'marsa:save:v1', GHOST_KEY = 'marsa:ghost:v1';
-const DEF = () => ({ v: 1, cash: 800, carsOwned: ['kestrel'], selected: 'kestrel', paint: { kestrel: '#9BB7CF' }, repainted: {}, tuning: { kestrel: { engine: 0, tires: 0, nitro: 0 } }, health: { kestrel: 100 }, jobsDone: { paper: 0, soup: 0, lanterns: 0, race: 0 }, raceBest: null, stars: 0, settings: { radio: true, track: 0, cam: 'chase', time: 'afternoon', hintsSeen: false } });
+const DEF = () => ({ v: 1, cash: 800, carsOwned: ['kestrel'], selected: 'kestrel', paint: { kestrel: '#9BB7CF' }, repainted: {}, tuning: { kestrel: { engine: 0, tires: 0, nitro: 0 } }, health: { kestrel: 100 }, jobsDone: { paper: 0, soup: 0, lanterns: 0, race: 0 }, raceBest: 0, stars: 0, settings: { radio: true, track: 0, cam: 'chase', time: 'afternoon', hintsSeen: false } });
 let S = DEF();
 try { const raw = localStorage.getItem(SAVE_KEY); if (raw) { const j = JSON.parse(raw); if (j && j.v === 1) { const d = DEF(); for (const k in d) if (typeof j[k] === typeof d[k] && j[k] !== null) S[k] = (typeof d[k] === 'object' && !Array.isArray(d[k])) ? Object.assign(d[k], j[k]) : j[k]; } } } catch (e) { S = DEF(); } // guard-ok — تخزين محجوب أو تالف: الافتراضيّات
 let saveT = 0;
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* guard-ok — تخزين محجوب: اللعبة تعمل بلا حفظ */ } }
+let resetting = false; // أثناء «مسح التقدّم» لا يُحفظ شيء (pagehide كان يعيد الحفظ قبل إعادة التحميل)
+function save() { if (resetting) return; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* guard-ok — تخزين محجوب: اللعبة تعمل بلا حفظ */ } }
 function saveSoon() { clearTimeout(saveT); saveT = setTimeout(save, 500); }
 addEventListener('pagehide', save); document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
 
@@ -442,7 +443,7 @@ function resolvePoint(x, z, r) {
 }
 function segmentHits(ax, az, bxx, bzz) { // أوّل تقاطع خطّ مع صندوق (للكاميرا): نسبة ٠..١ أو ١
   let tMin = 1; const steps = 8;
-  for (let i = 1; i <= steps; i++) { const tt = i / steps, x = lerp(ax, bxx, tt), z = lerp(az, bzz, tt); const h = resolvePoint(x, z, 0.3); if (h && !h.o.circle) { tMin = (i - 1) / steps; break; } }
+  for (let i = 1; i <= steps; i++) { const tt = i / steps, x = lerp(ax, bxx, tt), z = lerp(az, bzz, tt); const h = resolvePoint(x, z, 0.3); if (h && (!h.o.circle || h.o.r > 2)) { tMin = (i - 1) / steps; break; } }
   return tMin;
 }
 
@@ -590,12 +591,13 @@ function buildHarbor() {
   pushChunk('h', 0, 236, box(620, 0.15, SEAWALL - z0, 0, 0, (z0 + SEAWALL) / 2, P.plaza), 2); // الساحة
   pushChunk('h', 0, 248, box(620, 0.8, 1.2, 0, 0.15, SEAWALL, P.seawall), 2);
   // الحاجز كجدار إلّا عند الأرصفة
+  addBox(310, SEAWALL - 0.6, 361, SEAWALL + 0.6); addBox(-361, SEAWALL - 0.6, -310, SEAWALL + 0.6); addBox(-360, -251, 360, -250); addBox(-361, -250, -360, SEAWALL); addBox(360, -250, 361, SEAWALL); // امتداد الجدار البحريّ حتّى حافّة العالم وحدود العالم (غير مرئيّة)
   const piers = [-124, 0, 124]; let last = -310; for (const px of piers) { addBox(last, SEAWALL - 0.6, px - 5, SEAWALL + 0.6); last = px + 5; } addBox(last, SEAWALL - 0.6, 310, SEAWALL + 0.6);
   for (const px of piers) {
     const g = new THREE.BoxGeometry(10, 0.5, 62); g.translate(px, 0.65, 279); const uv = g.attributes.uv; for (let q = 0; q < uv.count; q++) uv.setXY(q, uv.getX(q) * 2.5, uv.getY(q) * 15); tintGeo(g, '#ffffff'); pushChunk('h', px, 279, g, 4);
     for (const ox of [-4.9, 4.9]) { pushChunk('h', px, 279, box(0.2, 0.4, 62, px + ox, 0.9, 279, P.plankG), 2); addBox(px + ox - 0.2, 248, px + ox + 0.2, 310); }
     pushChunk('h', px, 279, box(10, 0.4, 0.2, px, 0.9, 310, P.plankG), 2); addBox(px - 5, 309.8, px + 5, 310.2);
-    for (let k = 0; k < 6; k++) addInst('bollard', null, null, TRS(px + (k % 2 ? 4.2 : -4.2), 0.9, 252 + k * 10));
+    for (let k = 0; k < 6; k++) { const bxp = px + (k % 2 ? 4.2 : -4.2), bz_ = 252 + k * 10; addInst('bollard', null, null, TRS(bxp, 0.9, bz_)); addCircle(bxp, bz_, 0.3); }
     for (let k = 0; k < 4; k++) lampAt(px + (k % 2 ? 3.8 : -3.8), 0.9, 256 + k * 14, 0);
   }
   for (let k = 0; k < 40; k++) addInst('bollard', null, null, TRS(-300 + k * 15.4, 0.95, SEAWALL - 1.2));
@@ -613,7 +615,7 @@ function buildHarbor() {
   pushChunk('h', lx, lz, box(3, 2, 3, lx, 14, lz, P.ink), 2); const cap = new THREE.ConeGeometry(2.2, 1.6, 12); cap.translate(lx, 16.8, lz); tintGeo(cap, P.ink); pushChunk('h', lx, lz, cap, 2);
 }
 const cranes = [];
-function lampAt(x, y, z, ry) { addInst('lampPole', null, null, TRS(x, y, z, ry)); lampSpots.push(TRS(x, y, z, ry).clone()); }
+function lampAt(x, y, z, ry) { addInst('lampPole', null, null, TRS(x, y, z, ry)); lampSpots.push(TRS(x, y, z, ry).clone()); addCircle(x, z, 0.25); }
 function buildFurniture() {
   // أعمدة الإنارة كلّ ٣١ م على جانبي كلّ طريق، وأشجار على الأرصفة، ونخيل على الكورنيش والشارع الرئيسيّ
   for (let k = 0; k <= 9; k++) for (let z = -217 + 15.5; z < 217; z += 31) for (const sgn of [-1, 1]) lampAt(rx(k) + sgn * 7.5, 0.15, z, sgn > 0 ? Math.PI / 2 : -Math.PI / 2);
@@ -624,16 +626,17 @@ function buildFurniture() {
     if (d === 'midtown' || d === 'oldharbor') for (let s = -18; s <= 18; s += 12) { if (j !== 6) treeAt(cx + s, 0.15, cz + 22.3); if (i !== 0) treeAt(cx - 22.3, 0.15, cz + s); }
     if (R() < 0.7) addInst('bench', null, null, TRS(cx + rnd(-10, 10), 0.15, cz - 22.6, 0)); if (R() < 0.6) addInst('bin', null, null, TRS(cx + 22.6, 0.15, cz + rnd(-10, 10)));
   }
-  for (let x = -270; x <= 270; x += 10) palmAt(x, 0.15, CORNICHE + 8.6); for (let z = -200; z <= 200; z += 10) palmAt(rx(BOULEVARD_K) + 8.6, 0.15, z);
+  const nearAxis = (v, o) => { const m = ((v - o) % 62 + 62) % 62; return Math.min(m, 62 - m) < 8; }; // داخل عرض طريق متقاطع
+  for (let x = -270; x <= 270; x += 10) if (!nearAxis(x, -279)) palmAt(x, 0.15, CORNICHE + 8.6); for (let z = -200; z <= 200; z += 10) if (!nearAxis(z, -217)) palmAt(rx(BOULEVARD_K) + 8.6, 0.15, z);
   for (let n = 0; n < 200; n++) { const side = Math.floor(R() * 4); const x = side < 2 ? rnd(-340, 340) : (side === 2 ? rnd(-340, -295) : rnd(295, 340)); const z = side === 0 ? rnd(-320, -232) : side === 1 ? -240 + rnd(-20, 0) : rnd(-320, 215); if (side === 1) continue; treeAt(x, 0, z, true); }
   for (let n = 0; n < 60; n++) treeAt(rnd(-340, 340), 0, rnd(-330, -235), true);
   // إشارات المرور في كلّ تقاطع
   for (let k = 0; k <= 9; k++) for (let m = 0; m <= 7; m++) { const x = rx(k), z = rz(m); for (const [ox, oz, ry] of [[7.6, -7.6, 0], [-7.6, 7.6, Math.PI], [7.6, 7.6, Math.PI / 2], [-7.6, -7.6, -Math.PI / 2]]) { addInst('tlPole', null, null, TRS(x + ox, 0.15, z + oz)); addCircle(x + ox, z + oz, 0.3); } tlNodes.push({ k, m, x, z, heads: [] }); }
   // أعمدة الترام والأسلاك
   const wires = []; const addWire = (a, b) => wires.push(a.x, a.y, a.z, b.x, b.y, b.z);
-  const bxx = rx(BOULEVARD_K); for (let z = -217; z <= 217; z += 31) { for (const sgn of [-1, 1]) addInst('tramPole', null, null, TRS(bxx + sgn * 7.2, 0.15, z)); addWire(vec(bxx - 7.2, 6.3, z), vec(bxx + 7.2, 6.3, z)); }
+  const bxx = rx(BOULEVARD_K); for (let z = -217 + 15.5; z < 217; z += 31) { for (const sgn of [-1, 1]) addInst('tramPole', null, null, TRS(bxx + sgn * 7.2, 0.15, z)); addWire(vec(bxx - 7.2, 6.3, z), vec(bxx + 7.2, 6.3, z)); }
   for (const o of [-1.75, 1.75]) addWire(vec(bxx + o, 5.5, -217), vec(bxx + o, 5.5, 217));
-  for (let x = bxx; x <= 279; x += 31) { for (const sgn of [-1, 1]) addInst('tramPole', null, null, TRS(x, 0.15, CORNICHE + sgn * 7.2)); addWire(vec(x, 6.3, CORNICHE - 7.2), vec(x, 6.3, CORNICHE + 7.2)); }
+  for (let x = bxx + 15.5; x < 279; x += 31) { for (const sgn of [-1, 1]) addInst('tramPole', null, null, TRS(x, 0.15, CORNICHE + sgn * 7.2)); addWire(vec(x, 6.3, CORNICHE - 7.2), vec(x, 6.3, CORNICHE + 7.2)); }
   for (const o of [-1.75, 1.75]) addWire(vec(bxx, 5.5, CORNICHE + o), vec(279, 5.5, CORNICHE + o));
   const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wires, 3)); scene.add(new THREE.LineSegments(wg, M.wire));
 }
@@ -786,7 +789,7 @@ function stepCar(dt) {
   if (HB) { V.vLong -= 6 * Math.sign(V.vLong) * dt; if (Math.abs(V.vLong) < 0.3) V.vLong = 0; }
   else if (gas) V.vLong += K.ACCEL * (N ? 1.9 : 1) * (1 - V.vLong / maxv) * dt;
   else if (brake) { if (V.vLong > 0.5) V.vLong -= K.BRAKE * dt; else V.vLong = Math.max(-8, V.vLong - K.ACCEL * 0.6 * dt); }
-  V.vLong -= (0.35 * V.vLong + 0.0025 * V.vLong * Math.abs(V.vLong)) * dt; if (!gas && !brake && Math.abs(V.vLong) < 0.15) V.vLong = 0;
+  V.vLong -= (0.02 * V.vLong + 0.0003 * V.vLong * Math.abs(V.vLong)) * dt; /* جرّ خفيف: الثبات عند ~٠٫٩ من MAXV (كان ٠٫٣٥ فيقف عند ٥١ كم/س) */ if (!gas && !brake && Math.abs(V.vLong) < 0.15) V.vLong = 0;
   if (N) { V.nitro = Math.max(0, V.nitro - 25 * dt); V.unusedN = 0; } else { V.unusedN += dt; if (V.unusedN > 1.5) V.nitro = Math.min(K.NCAP, V.nitro + 8 * dt); }
   const steerMax = lerp(K.SL, K.SH, speedFrac) * (HB ? 1.4 : 1); V.w = V.vLong * Math.tan(V.S * steerMax) / 2.6; V.h += V.w * dt;
   const grip = (HB ? 1.6 : K.GRIP) * (offRoad ? 0.45 : 1); V.vLat *= Math.exp(-grip * dt); if (HB) V.vLat += Math.abs(V.w) * 0.35 * V.vLong * dt * (V.S > 0 ? -1 : V.S < 0 ? 1 : 0);
@@ -796,7 +799,7 @@ function stepCar(dt) {
   let nx = V.x + vx * dt, nz = V.z + vz * dt;
   // التصادم: أربعة أركان ومنتصفا الجانبين
   const hl = carDef.L / 2, hw = carDef.W / 2; let hit = null;
-  for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [0, hw], [0, -hw]]) {
+  for (const [a, b] of [[hl, hw], [hl, -hw], [hl, 0], [hl, hw / 2], [hl, -hw / 2], [-hl, hw], [-hl, -hw], [-hl, 0], [0, hw], [0, -hw]]) {
     const px = nx + fx * a + rx_ * b, pz = nz + fz * a + rz_ * b; const r = resolvePoint(px, pz, 0.05);
     if (r && (!hit || r.depth > hit.depth)) hit = r;
   }
@@ -810,7 +813,7 @@ function stepCar(dt) {
   }
   V.x = nx; V.z = nz;
   // رصيف؟ مركز السيّارة فوق رصيف ← ارتفاع ٠٫١٥ وإبطاء
-  const yT = onSidewalk(V.x, V.z) ? 0.15 : 0; if (yT > 0) { V.vLong *= (1 - 0.6 * dt); if (Math.abs(V.vLong) > 2) sfx.rumble(true); } else sfx.rumble(false); V.y += (yT - V.y) * Math.min(1, 12 * dt);
+  const yT = groundY(V.x, V.z); if (yT > 0) { V.vLong *= (1 - 0.6 * dt); if (Math.abs(V.vLong) > 2) sfx.rumble(true); } else sfx.rumble(false); V.y += (yT - V.y) * Math.min(1, 12 * dt);
   // القير والدوران
   const gf = Math.min(Math.abs(V.vLong) / K.MAXV, 0.999); const g = V.vLong < -0.5 ? -1 : Math.abs(V.vLong) < 0.5 ? 0 : 1 + Math.floor(gf * 5); if (g !== V.gear && g > 0 && V.gear > 0) V.shiftT = 0.08; V.gear = g; V.shiftT = Math.max(0, V.shiftT - dt);
   V.rpm = (g <= 0 ? 0.3 + (gas ? 0.3 : 0) : ((gf * 5) % 1) * 0.7 + 0.3 + (gas ? 0.1 : 0)) - (V.shiftT > 0 ? 0.35 : 0);
@@ -820,12 +823,14 @@ function stepCar(dt) {
   if (drifting || (HB && Math.abs(V.vLong) > 5)) { if (Math.random() < 0.5) smokeAt(V.x - fx * 1.2 + rx_ * (Math.random() < 0.5 ? 0.8 : -0.8), 0.3, V.z - fz * 1.2, 0.6); }
 }
 let offRoad = false;
+const onPier = (x, z) => z > SEAWALL - 0.5 && z < 310 && [-124, 0, 124].some((p) => Math.abs(x - p) < 4.8); // سطح الأرصفة البحريّة على ٠٫٩
+function groundY(x, z) { if (onPier(x, z)) return 0.9; if (z > CORNICHE + 7 && z <= SEAWALL && Math.abs(x) <= 310) return 0.15; const i = Math.floor((x + 279) / 62), j = Math.floor((z + 217) / 62); if (i >= 0 && i <= 8 && j >= 0 && j <= 6 && Math.abs(x - bx(i)) < 21 && Math.abs(z - bz(j)) < 21) { const d = district(i, j); if (d === 'plaza') return 0.15; if (d === 'park') return 0.12; } return onSidewalk(x, z) ? 0.15 : 0; }
 function onSidewalk(x, z) { const i = Math.floor((x + 279) / 62), j = Math.floor((z + 217) / 62); if (i < 0 || i > 8 || j < 0 || j > 6) return false; const lx = Math.abs(x - bx(i)), lz = Math.abs(z - bz(j)); return lx <= 24 && lz <= 24 && (lx >= 21 || lz >= 21); }
 function isRoad(x, z) { if (z > CORNICHE + 7 && z < SEAWALL + 70) return true; if (x < -286 || x > 286 || z < -224 || z > 224) return false; const dk = Math.abs(((x + 279) % 62 + 62) % 62 - 0), dm = ((z + 217) % 62 + 62) % 62; return Math.min(dk, 62 - dk) <= 7 || Math.min(dm, 62 - dm) <= 7 || district(clamp(Math.floor((x + 279) / 62), 0, 8), clamp(Math.floor((z + 217) / 62), 0, 6)) === 'plaza'; }
 function damage(hp, impact) { V.hp = Math.max(0, V.hp - hp); if (S.health) { S.health[carDef.id] = V.hp; saveSoon(); } sfx.thud(Math.min(impact / 15, 1)); if (hp > 5) { $('flash').classList.add('on'); setTimeout(() => $('flash').classList.remove('on'), 120); }
-  if (V.hp <= 0 && !V.wrecked) { V.wrecked = true; toast(t('recover')); sfx.wreck(true); } if (job && job.def.fragile && impact > 6) { job.cargo = Math.max(60, job.cargo - 20); } if (job && job.def.lanterns && impact > 8) { job.lant--; if (job.lant <= 0) failJob(); else refreshCargo(); } }
-function recover() { if (V.recoverT > 0) return; V.recoverT = 0.5; const p = nearestLane(V.x, V.z, 60); if (!p) return; V.x = p.x; V.z = p.z; V.h = p.h; V.vLong = V.vLat = V.w = 0; camInit = false; if (V.wrecked) { V.wrecked = false; V.hp = 20; if (S.cash >= 150) { S.cash -= 150; cashPopup(-150); } sfx.wreck(false); saveSoon(); } }
-function nearestLane(x, z, maxD) { let best = null; for (let k = 0; k <= 9; k++) { const d = Math.abs(x - rx(k)); if (d < maxD && (!best || d < best.d)) { const dir = z > 0 ? -1 : 1; best = { d, x: rx(k) + 1.75 * (dir > 0 ? 1 : -1), z: clamp(z, -217, 217), h: dir > 0 ? 0 : Math.PI }; } } for (let m = 0; m <= 7; m++) { const d = Math.abs(z - rz(m)); if (d < maxD && (!best || d < best.d)) { const dir = x > 0 ? -1 : 1; best = { d, x: clamp(x, -279, 279), z: rz(m) + 1.75 * (dir > 0 ? -1 : 1), h: dir > 0 ? Math.PI / 2 : -Math.PI / 2 }; } } return best; }
+  if (V.hp <= 0 && !V.wrecked) { V.wrecked = true; toast(t('recover')); sfx.wreck(true); } if (job && job.stage === 1 && job.def.fragile && impact > 6) { job.cargo = Math.max(60, job.cargo - 20); } if (job && job.stage === 1 && job.def.lanterns && impact > 8) { job.lant--; if (job.lant <= 0) failJob(); else refreshCargo(); } }
+function recover() { if (V.recoverT > 0) return; V.recoverT = 0.5; const p = nearestLane(V.x, V.z, 60) || { x: rx(clamp(Math.round((V.x + 279) / 62), 0, 9)) + 1.75, z: clamp(V.z, -217, 217), h: 0 }; /* بعيدًا عن الشبكة: أقرب طريق شمال-جنوب */ V.x = p.x; V.z = p.z; V.h = p.h; V.vLong = V.vLat = V.w = 0; camInit = false; if (V.wrecked) { V.wrecked = false; V.hp = 20; if (S.cash >= 150) { S.cash -= 150; cashPopup(-150); } sfx.wreck(false); saveSoon(); } }
+function nearestLane(x, z, maxD) { let best = null; for (let k = 0; k <= 9; k++) { const d = Math.abs(x - rx(k)); if (d < maxD && (!best || d < best.d)) { const dir = z > 0 ? -1 : 1; best = { d, x: rx(k) + 1.75 * (dir > 0 ? 1 : -1), z: clamp(z, -217, 217), h: dir > 0 ? 0 : Math.PI }; } } for (let m = 0; m <= 7; m++) { const d = Math.abs(z - rz(m)); if (d < maxD && (!best || d < best.d)) { const dir = x > 0 ? -1 : 1; best = { d, x: clamp(x, -279, 279), z: rz(m) + 1.75 * (dir > 0 ? 1 : -1), h: dir > 0 ? Math.PI / 2 : -Math.PI / 2 }; /* يمين الشرق +z */ } } return best; }
 // دخان
 const smokePool = []; function smokeAt(x, y, z, sc) { let sp = smokePool.find((s) => !s.visible); if (!sp) { if (smokePool.length >= 24) return; sp = new THREE.Sprite(M.smoke.clone()); scene.add(sp); smokePool.push(sp); } sp.visible = true; sp.position.set(x, y, z); sp.scale.setScalar(sc); sp.userData.t = 0; sp.userData.sc = sc; }
 function updateSmoke(dt) { for (const sp of smokePool) { if (!sp.visible) continue; sp.userData.t += dt; const k = sp.userData.t / 0.8; if (k >= 1) { sp.visible = false; continue; } sp.material.opacity = 0.35 * (1 - k); sp.scale.setScalar(sp.userData.sc * (0.6 + k * 1.6)); sp.position.y += dt * 0.8; } }
@@ -843,7 +848,7 @@ function updateCamera(dt) {
   const fx = Math.sin(V.h), fz = -Math.cos(V.h); const K = carStats();
   let target, look, fov = COARSE ? 68 : 60;
   if (garageOpen) { garageOrbit += 0.15 * dt; target = vec(V.x + Math.cos(garageOrbit) * 7, V.y + 2.4, V.z + Math.sin(garageOrbit) * 7); look = vec(V.x, V.y + 0.8, V.z); fov = 50; }
-  else if (V.onFoot) { const ch = charState; const cfx = Math.sin(ch.camYaw), cfz = -Math.cos(ch.camYaw); target = vec(ch.x - cfx * 5.5, 2.4, ch.z - cfz * 5.5); look = vec(ch.x + cfx * 2, 1.2, ch.z + cfz * 2); }
+  else if (V.onFoot) { const ch = charState; const cfx = Math.sin(ch.camYaw), cfz = -Math.cos(ch.camYaw); const cy = groundY(ch.x, ch.z); target = vec(ch.x - cfx * 5.5, cy + 2.4, ch.z - cfz * 5.5); look = vec(ch.x + cfx * 2, cy + 1.2, ch.z + cfz * 2); }
   else if (camMode === 'hood') { const v = new THREE.Vector3(1.1, 1.15 + Math.sin(tnow * 12.6) * 0.01 * V.rpm, 0); car.localToWorld(v); camPos.copy(v); camera.position.copy(v); camLook.set(V.x + fx * 30, 1.2, V.z + fz * 30); camera.lookAt(camLook); camFov += (72 - camFov) * Math.min(1, 3 * dt); camera.fov = camFov; camera.updateProjectionMatrix(); return; }
   else if (camMode === 'top') { target = vec(V.x, V.y + 34, V.z - 6); look = vec(V.x, V.y, V.z); fov = 50; }
   else { const d = 6.8 + 0.04 * Math.abs(V.vLong); let tx = V.x - fx * d, tz = V.z - fz * d; const lx = V.x + fx * 2, lz = V.z + fz * 2; const hitT = segmentHits(lx, lz, tx, tz); if (hitT < 1) { const dd = Math.max(2.5, d * hitT - 0.5); tx = V.x - fx * dd; tz = V.z - fz * dd; } target = vec(tx, V.y + 2.7, tz); look = vec(lx, V.y + 1, lz); fov += 6 * clamp(Math.abs(V.vLong) / K.MAXV, 0, 1) + (V.nitroOn ? 8 : 0); }
@@ -864,8 +869,8 @@ function stepChar(dt) {
   const c = charState; const run = keys.has('ShiftLeft') || keys.has('ShiftRight'); const sp = run ? 6 : 3;
   let ix = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), iz = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
   const moving = ix || iz; if (moving) { const cy = c.camYaw; const fx = Math.sin(cy), fz = -Math.cos(cy), rx_ = Math.cos(cy), rz_ = Math.sin(cy); let dx = fx * iz + rx_ * ix, dz = fz * iz + rz_ * ix; const l = Math.hypot(dx, dz); dx /= l; dz /= l; const th = Math.atan2(dx, -dz); let dh = th - c.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.h += dh * Math.min(1, 10 * dt);
-    let nx = c.x + dx * sp * dt, nz = c.z + dz * sp * dt; const r = resolvePoint(nx, nz, 0.3); if (r) { nx += r.nx * r.depth; nz += r.nz * r.depth; } if (nz > SEAWALL - 0.5 && !(Math.abs(nx) % 124 < 4.8 && Math.abs(nx) <= 128.8 && nz < 309.5)) nz = SEAWALL - 0.5; c.x = nx; c.z = nz; c.ph += dt * (run ? 10 : 7); c.camYaw += Math.atan2(Math.sin(c.h - c.camYaw), Math.cos(c.h - c.camYaw)) * Math.min(1, 2 * dt); }
-  charMesh.position.set(c.x, 0, c.z); charMesh.rotation.y = c.h; const sw = moving ? Math.sin(c.ph) * 0.6 : 0; charMesh.userData.legs[0].rotation.x = sw; charMesh.userData.legs[1].rotation.x = -sw; charMesh.userData.arms[0].rotation.x = -sw * 0.8; charMesh.userData.arms[1].rotation.x = sw * 0.8; charMesh.position.y = moving ? Math.abs(Math.sin(c.ph / 2)) * 0.04 : 0;
+    let nx = c.x + dx * sp * dt, nz = c.z + dz * sp * dt; const r = resolvePoint(nx, nz, 0.3); if (r) { nx += r.nx * r.depth; nz += r.nz * r.depth; } if (nz > SEAWALL - 0.5 && !(onPier(nx, nz) && nz < 309.5)) nz = SEAWALL - 0.5; c.x = nx; c.z = nz; c.ph += dt * (run ? 10 : 7); c.camYaw += Math.atan2(Math.sin(c.h - c.camYaw), Math.cos(c.h - c.camYaw)) * Math.min(1, 2 * dt); }
+  charMesh.position.set(c.x, 0, c.z); charMesh.rotation.y = c.h; const sw = moving ? Math.sin(c.ph) * 0.6 : 0; charMesh.userData.legs[0].rotation.x = sw; charMesh.userData.legs[1].rotation.x = -sw; charMesh.userData.arms[0].rotation.x = -sw * 0.8; charMesh.userData.arms[1].rotation.x = sw * 0.8; charMesh.position.y = groundY(c.x, c.z) + (moving ? Math.abs(Math.sin(c.ph / 2)) * 0.04 : 0);
 }
 
 /* ===== ١٥. شبكة الطرق والزحمة والمشاة والإشارات والترام ===== */
@@ -910,7 +915,7 @@ function stepTraffic(dt, tm) {
     const mm = TRS(c.x, 0, c.z, Math.PI / 2 - c.h); trafficMeshes.body.setMatrixAt(i, mm); trafficMeshes.cabin.setMatrixAt(i, mm); trafficMeshes.tails.setMatrixAt(i, mm);
     for (let w = 0; w < 4; w++) { const lx = w < 2 ? 1.3 : -1.3, lz = w % 2 ? 0.8 : -0.8; const wx = c.x + Math.sin(c.h) * lx + Math.cos(c.h) * lz, wz = c.z - Math.cos(c.h) * lx + Math.sin(c.h) * lz; trafficMeshes.wheels.setMatrixAt(i * 4 + w, TRS(wx, 0.32, wz, Math.PI / 2 - c.h)); }
     // تصادم اللاعب بها (إطار السيّارة المدنيّة)
-    if (!V.onFoot) { const lx = (V.x - c.x) * Math.sin(c.h) + (V.z - c.z) * -Math.cos(c.h), lz = (V.x - c.x) * Math.cos(c.h) + (V.z - c.z) * Math.sin(c.h); const ox = 2.05 + carDef.L / 2 - Math.abs(lx), oz = 0.85 + carDef.W / 2 - Math.abs(lz); if (ox > 0 && oz > 0) { let nx, nz, depth; if (ox < oz) { depth = ox; nx = Math.sign(lx) * Math.sin(c.h); nz = Math.sign(lx) * -Math.cos(c.h); } else { depth = oz; nx = Math.sign(lz) * Math.cos(c.h); nz = Math.sign(lz) * Math.sin(c.h); } V.x += nx * depth; V.z += nz * depth; const fx = Math.sin(V.h), fz = -Math.cos(V.h), rxx = Math.cos(V.h), rzz = Math.sin(V.h); let vx = fx * V.vLong + rxx * V.vLat, vz = fz * V.vLong + rzz * V.vLat; const vn = vx * nx + vz * nz; if (vn < 0) { vx -= 1.3 * vn * nx; vz -= 1.3 * vn * nz; const imp = -vn; if (imp > 3 && tnow - V.lastDmg > 0.25) { V.lastDmg = tnow; damage(Math.max(0, imp - 3) * 0.6, imp); } c.shove = 1.5 * (lz > 0 ? 1 : -1) * (c.rzz * nz + c.rxx * nx > 0 ? 1 : -1); if (c.honkT <= 0) { c.honkT = 3; sfx.honk(2); } V.vLong = vx * fx + vz * fz; V.vLat = vx * rxx + vz * rzz; } } }
+    if (!V.onFoot) { const lx = (V.x - c.x) * Math.sin(c.h) + (V.z - c.z) * -Math.cos(c.h), lz = (V.x - c.x) * Math.cos(c.h) + (V.z - c.z) * Math.sin(c.h); const ox = 2.05 + carDef.L / 2 - Math.abs(lx), oz = 0.85 + carDef.W / 2 - Math.abs(lz); if (ox > 0 && oz > 0) { let nx, nz, depth; if (ox < oz) { depth = ox; nx = Math.sign(lx) * Math.sin(c.h); nz = Math.sign(lx) * -Math.cos(c.h); } else { depth = oz; nx = Math.sign(lz) * Math.cos(c.h); nz = Math.sign(lz) * Math.sin(c.h); } V.x += nx * depth; V.z += nz * depth; const fx = Math.sin(V.h), fz = -Math.cos(V.h), rxx = Math.cos(V.h), rzz = Math.sin(V.h); let vx = fx * V.vLong + rxx * V.vLat, vz = fz * V.vLong + rzz * V.vLat; const vn = vx * nx + vz * nz; if (vn < 0) { vx -= 1.3 * vn * nx; vz -= 1.3 * vn * nz; const imp = -vn; if (imp > 3 && tnow - V.lastDmg > 0.25) { V.lastDmg = tnow; damage(Math.max(0, imp - 3) * 0.6, imp); } c.shove = -1.5 * Math.sign(lz || 1); /* تنحرف بعيدًا عن اللاعب أيًّا كان جانبه */ if (c.honkT <= 0) { c.honkT = 3; sfx.honk(2); } V.vLong = vx * fx + vz * fz; V.vLat = vx * rxx + vz * rzz; } } }
   }
   for (const k in trafficMeshes) trafficMeshes[k].instanceMatrix.needsUpdate = true;
 }
@@ -965,7 +970,7 @@ function stepTram(dt) {
 /* ===== ١٦. المهام والسباق ===== */
 const JOBS = [
   { id: 'paper', name: { ar: 'جولة الصحف', en: 'The Paper Run' }, brief: { ar: 'من بيت الصحافة إلى كشك الساحة.', en: 'From the Press House to the Square kiosk.' }, pay: 220, bonus: [90, 80], from: [bx(2) - 24.5, bz(5)], to: [bx(4) + 20, bz(4) + 20], fromN: { ar: 'بيت الصحافة', en: 'Press House' }, toN: { ar: 'كشك الساحة', en: 'Square Kiosk' } },
-  { id: 'soup', name: { ar: 'حساء للحدّاد', en: 'Soup for the Smith' }, brief: { ar: 'حمولة هشّة: كلّ اصطدام قويّ يكلّف ٢٠$.', en: 'Fragile cargo: every hard hit costs $20.' }, pay: 300, fragile: true, from: [-62, CORNICHE - 10], to: [bx(7), bz(6) - 24.5], fromN: { ar: 'مطبخ الميناء', en: 'Harbor Kitchen' }, toN: { ar: 'الورشة', en: 'The Forge' } },
+  { id: 'soup', name: { ar: 'حساء للحدّاد', en: 'Soup for the Smith' }, brief: { ar: 'حمولة هشّة: كلّ اصطدام قويّ يُنقص الأجر ٢٠٪.', en: 'Fragile cargo: every hard hit cuts the pay by 20%.' }, pay: 300, fragile: true, from: [-62, CORNICHE - 10], to: [bx(7), bz(6) - 24.5], fromN: { ar: 'مطبخ الميناء', en: 'Harbor Kitchen' }, toN: { ar: 'الورشة', en: 'The Forge' } },
   { id: 'lanterns', name: { ar: 'فوانيس للرصيف', en: 'Lanterns for the Quay' }, brief: { ar: '١٥٠ ثانية وثلاثة فوانيس — لا تفقدها.', en: '150 seconds and three lanterns — keep them.' }, pay: 380, timer: 150, lanterns: true, from: [bx(1) - 24.5, bz(2)], to: [0, 300], fromN: { ar: 'ورشة الفوانيس', en: 'Lantern Workshop' }, toN: { ar: 'نهاية الرصيف الأوسط', en: 'Center pier end' } },
   { id: 'race', name: { ar: 'سباق الطريق الدائريّ', en: 'Ring Road Relay' }, brief: { ar: 'لفّة كاملة عبر ٨ بوّابات. أقلّ من دقيقتين: مكافأة.', en: 'One lap through 8 gates. Under 2:00: bonus.' }, pay: 600, race: true },
 ];
@@ -981,12 +986,12 @@ function clearMarkers() { for (const m of markers) scene.remove(m); markers = []
 function startJob(def) {
   if (job) cancelJob(); job = { def, stage: 0, t: 0, cargo: 100, lant: 3, started: tnow };
   if (def.race) { raceActive = true; job.gate = 0; job.count = 3; job.stage = -1; V.lock = true; sfx.beep(440); RACE_GATES.forEach((g, i) => gateAt(g, i)); // ضع السيّارة عند البداية
-    V.x = -279 + 1.75; V.z = 2; V.h = 0; V.vLong = V.vLat = 0; camInit = false; try { const raw = localStorage.getItem(GHOST_KEY); ghostPlay = raw ? JSON.parse(raw) : null; } catch (e) { ghostPlay = null; } ghostRec = []; if (ghostPlay && ghostPlay.length > 6) { if (!ghostCar) { ghostCar = buildCar('kestrel', P.nitro); ghostCar.traverse((o) => { if (o.isMesh) { o.material = new THREE.MeshBasicMaterial({ color: P.nitro, transparent: true, opacity: 0.4, depthWrite: false }); o.castShadow = false; } }); scene.add(ghostCar); } ghostCar.visible = true; } }
+    if (V.onFoot) { V.onFoot = false; charMesh.visible = false; sfx.engineOn(true); } V.x = -279 + 1.75; V.z = 2; V.h = 0; V.vLong = V.vLat = 0; camInit = false; try { const raw = localStorage.getItem(GHOST_KEY); ghostPlay = raw ? JSON.parse(raw) : null; } catch (e) { ghostPlay = null; } ghostRec = []; if (ghostPlay && ghostPlay.length > 6) { if (!ghostCar) { ghostCar = buildCar('kestrel', P.nitro); ghostCar.traverse((o) => { if (o.isMesh) { o.material = new THREE.MeshBasicMaterial({ color: P.nitro, transparent: true, opacity: 0.4, depthWrite: false }); o.castShadow = false; } }); scene.add(ghostCar); } ghostCar.visible = true; } }
   else { markerAt(def.from[0], def.from[1], L(def.fromN), P.coral); }
   setMode(); $('banner').classList.add('show'); renderJobs(); closeDrawers(); sfx.tick();
 }
 function gateAt([x, z, ry], i) { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: P.teal, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false }); for (const sx of [-7, 7]) { const po = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 6, 8), m); po.position.set(sx, 3, 0); g.add(po); } const ban = new THREE.Mesh(new THREE.BoxGeometry(14, 1.2, 0.3), m); ban.position.y = 6; g.add(ban); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTex('gate' + i, String(i + 1), P.teal, '#F4EEE3', 128, 128, 80), transparent: true })); sp.position.y = 7.5; sp.scale.set(1.6, 1.6, 1); g.add(sp); g.position.set(x, 0, z); g.rotation.y = ry; g.userData.m = m; scene.add(g); markers.push(g); }
-function cancelJob() { job = null; raceActive = false; V.lock = false; clearMarkers(); refreshCargo(); if (ghostCar) ghostCar.visible = false; $('banner').classList.remove('show'); setMode(); renderJobs(); }
+function cancelJob() { job = null; raceActive = false; V.lock = false; $('countdown').textContent = ''; clearMarkers(); refreshCargo(); if (ghostCar) ghostCar.visible = false; $('banner').classList.remove('show'); setMode(); renderJobs(); }
 function failJob() { toast(t('failed')); sfx.fail(); cancelJob(); }
 function refreshCargo() { const cg = car.userData.cargo; while (cg.children.length) cg.remove(cg.children[0]); if (!job || job.stage !== 1) return; if (job.def.lanterns) { for (let i = 0; i < job.lant; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), new THREE.MeshStandardMaterial({ color: P.window, emissive: P.window, emissiveIntensity: 1.2 })); l.position.set((i - 1) * 0.5, 0.22, 0); cg.add(l); } } else { const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: P.crane, roughness: 0.8 })); b.position.y = 0.25; cg.add(b); } }
 function stepJob(dt) {
@@ -996,7 +1001,7 @@ function stepJob(dt) {
     job.t = tnow - job.started; const g = RACE_GATES[job.gate]; const dx = px - g[0], dz = pz - g[1];
     markers.forEach((m, i) => { if (m.userData.m) m.userData.m.opacity = i === job.gate ? 0.9 : 0.3; });
     if (Math.hypot(dx, dz) < 8) { job.gate++; sfx.beep(880, 0.08); if (job.gate >= RACE_GATES.length) { const lap = job.t; let pay = def.pay; if (lap < 120) pay += 400; const best = S.raceBest; if (!best || lap < best) { pay += 200; S.raceBest = lap; toast(t('newBest') + ' ' + fmtTime(lap)); try { localStorage.setItem(GHOST_KEY, JSON.stringify(ghostRec.map((v) => Math.round(v * 100) / 100))); } catch (e) { /* guard-ok — تخزين محجوب */ } } completeJob(pay); return; } }
-    if ((frame % 6) === 0) ghostRec.push(V.x, V.z, V.h);
+    job.ghostT = (job.ghostT || 0) + dt; while (job.ghostT >= 0.1) { ghostRec.push(V.x, V.z, V.h); job.ghostT -= 0.1; } // عيّنة كلّ ٠٫١ ث محاكاة مهما كان معدّل الإطارات
     if (ghostPlay && ghostCar && ghostCar.visible) { const i = Math.floor(job.t / 0.1) * 3; if (i + 5 < ghostPlay.length) { const k = (job.t / 0.1) % 1; ghostCar.position.set(lerp(ghostPlay[i], ghostPlay[i + 3], k), 0, lerp(ghostPlay[i + 1], ghostPlay[i + 4], k)); ghostCar.rotation.y = Math.PI / 2 - ghostPlay[i + 2]; } }
     return;
   }
@@ -1028,13 +1033,13 @@ function renderGarage() {
   else { const names = { engine: [t('engine'), t('engineD'), [400, 700, 1100]], tires: [t('tires'), t('tiresD'), [300, 500, 800]], nitro: [t('tank'), t('tankD'), [350, 600, 900]] }; h = Object.keys(names).map((k) => { const lv = tune[k], [n, d, pr] = names[k]; return `<div class="card"><div class="h"><span>${n}</span><span class="pips">${[0, 1, 2].map((i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</span></div><div class="b">${d} · ${t('level')} <span class="num">${lv}/3</span></div><div class="f"><span class="num">${lv < 3 ? '$' + pr[lv] : t('max')}</span>${lv < 3 ? `<button class="btn coral" data-tune="${k}">${t('buy')}</button>` : ''}</div></div>`; }).join(''); }
   $('gBody').innerHTML = h;
   const nocash = (b) => { b.classList.add('shake'); setTimeout(() => b.classList.remove('shake'), 300); toast(t('nocash')); sfx.fail(); };
-  const r = $('gRepair'); if (r) r.onclick = () => { const cost = Math.round(carStats().HP - V.hp) * 5; if (S.cash < cost) return nocash(r); S.cash -= cost; V.hp = carStats().HP; S.health[carDef.id] = V.hp; cashPopup(-cost); save(); renderGarage(); sfx.chime(); };
+  const r = $('gRepair'); if (r) r.onclick = () => { const cost = Math.round(carStats().HP - V.hp) * 5; if (S.cash < cost) return nocash(r); S.cash -= cost; V.hp = carStats().HP; S.health[carDef.id] = V.hp; if (V.wrecked) { V.wrecked = false; V.smokeT = 0; sfx.wreck(false); } cashPopup(-cost); save(); renderGarage(); sfx.chime(); };
   $('gBody').querySelectorAll('[data-car]').forEach((b) => { b.onclick = () => { const id = b.dataset.car; if (!S.carsOwned.includes(id)) { if (S.cash < CARS[id].price) return nocash(b); S.cash -= CARS[id].price; S.carsOwned.push(id); S.paint[id] = CARS[id].paint; S.tuning[id] = { engine: 0, tires: 0, nitro: 0 }; S.health[id] = CARS[id].HP; cashPopup(-CARS[id].price); sfx.payout(); } selectCar(id); save(); renderGarage(); }; });
   $('gBody').querySelectorAll('.sw').forEach((sw) => { sw.onmouseenter = () => { previewPaint = sw.dataset.c; car.userData.paint.color.set(previewPaint); }; sw.onmouseleave = () => { if (previewPaint) car.userData.paint.color.set(S.paint[carDef.id]); previewPaint = null; }; sw.onclick = () => { const c = sw.dataset.c; if (c === S.paint[carDef.id]) return; const freeP = !S.repainted[carDef.id]; if (!freeP && S.cash < 150) return nocash(sw); if (!freeP) { S.cash -= 150; cashPopup(-150); } S.repainted[carDef.id] = true; S.paint[carDef.id] = c; previewPaint = null; car.userData.paint.color.set(c); save(); renderGarage(); sfx.chime(); }; });
   $('gBody').querySelectorAll('[data-tune]').forEach((b) => { b.onclick = () => { const k = b.dataset.tune; const pr = { engine: [400, 700, 1100], tires: [300, 500, 800], nitro: [350, 600, 900] }[k][tune[k]]; if (S.cash < pr) return nocash(b); S.cash -= pr; tune[k]++; S.tuning[carDef.id] = tune; cashPopup(-pr); save(); renderGarage(); sfx.chime(); }; });
 }
-function selectCar(id) { S.selected = id; carDef = CARS[id]; tune = S.tuning[id] || { engine: 0, tires: 0, nitro: 0 }; S.tuning[id] = tune; const old = car; const n = buildCar(id, S.paint[id] || CARS[id].paint); scene.add(n); car = n; if (old) scene.remove(old); V.hp = S.health[id] != null ? S.health[id] : CARS[id].HP; V.nitro = Math.min(V.nitro, carStats().NCAP); $('carName').textContent = L(carDef.name); refreshCargo(); }
-$('gReset').onclick = () => { if (resetArm === 0) { resetArm = 1; $('gReset').textContent = t('sure'); setTimeout(() => { resetArm = 0; $('gReset').textContent = t('reset'); }, 3000); return; } try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(GHOST_KEY); } catch (e) { /* guard-ok — تخزين محجوب */ } location.reload(); };
+function selectCar(id) { S.selected = id; carDef = CARS[id]; tune = S.tuning[id] || { engine: 0, tires: 0, nitro: 0 }; S.tuning[id] = tune; const old = car; const n = buildCar(id, S.paint[id] || CARS[id].paint); scene.add(n); car = n; if (old) scene.remove(old); V.hp = S.health[id] != null ? S.health[id] : CARS[id].HP; if (old) { V.wrecked = V.hp <= 0; if (!V.wrecked) sfx.wreck(false); } V.nitro = Math.min(V.nitro, carStats().NCAP); $('carName').textContent = L(carDef.name); refreshCargo(); }
+$('gReset').onclick = () => { if (resetArm === 0) { resetArm = 1; $('gReset').textContent = t('sure'); setTimeout(() => { resetArm = 0; $('gReset').textContent = t('reset'); }, 3000); return; } resetting = true; clearTimeout(saveT); try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(GHOST_KEY); } catch (e) { /* guard-ok — تخزين محجوب */ } location.reload(); };
 $('jobsD').querySelector('.close').onclick = closeDrawers; $('garageD').querySelector('.close').onclick = closeDrawers; $('scrim').onclick = closeDrawers;
 $('bExplore').onclick = () => { if (job) cancelJob(); closeDrawers(); }; $('bJobs').onclick = () => jobsOpen ? closeDrawers() : openJobs(); $('bGarage').onclick = () => garageOpen ? closeDrawers() : openGarage(); $('bMute').onclick = () => cycleRadio();
 // الخريطة المصغّرة والكبيرة
@@ -1076,7 +1081,7 @@ function updateHUD(dt) {
   const K = carStats(); $('nitroB').style.width = (V.nitro / K.NCAP * 100) + '%'; $('niB').style.width = (V.nitro / K.NCAP * 100) + '%'; $('niV').textContent = Math.round(V.nitro); $('hpV').textContent = Math.round(V.hp); const hb = $('hpB'); hb.style.width = (V.hp / K.HP * 100) + '%'; hb.style.background = V.hp > K.HP * 0.6 ? 'var(--ok)' : V.hp > K.HP * 0.3 ? 'var(--warn)' : 'var(--danger)';
   $('speedo').style.visibility = V.onFoot ? 'hidden' : 'visible';
   streetT += dt; if (streetT > 0.25) { streetT = 0; const st = nearestStreet(V.onFoot ? charState.x : V.x, V.onFoot ? charState.z : V.z); $('streetN').textContent = st.n; $('streetD').textContent = st.d + ' · ' + st.code; }
-  if (job) { const d = job.def; $('jobName').textContent = L(d.name); if (d.race) { $('jobTgt').textContent = t('gate') + ' ' + Math.min(job.gate + 1, 8); $('jobDist').textContent = t('cp') + ' ' + job.gate + '/8'; $('jobTime').textContent = job.stage === -1 ? '00:00.0' : fmtTime(job.t); $('jobExtra').textContent = S.raceBest ? t('best') + ' ' + fmtTime(S.raceBest) : ''; } else { const tgt = job.stage === 0 ? d.fromN : d.toN; $('jobTgt').textContent = (job.stage === 0 ? t('pickup') : t('deliver')) + ': ' + L(tgt); $('jobDist').textContent = Math.round(job.dist || 0) + ' ' + t('m'); $('jobTime').textContent = d.timer ? fmtTime(Math.max(0, d.timer - job.t)) : fmtTime(job.t); $('jobExtra').textContent = d.fragile ? t('cargo') + ' ' + job.cargo + '%' : d.lanterns ? '×' + job.lant : ''; } $('jobHint').textContent = t('esc'); }
+  if (job) { const d = job.def; $('jobName').textContent = L(d.name); if (d.race) { $('jobTgt').textContent = t('gate') + ' ' + Math.min(job.gate + 1, 8); $('jobDist').textContent = t('cp') + ' ' + job.gate + '/8'; $('jobTime').textContent = job.stage === -1 ? '00:00.0' : fmtTime(job.t); $('jobExtra').textContent = S.raceBest ? t('best') + ' ' + fmtTime(S.raceBest) : ''; } else { const tgt = job.stage === 0 ? d.fromN : d.toN; $('jobTgt').textContent = (job.stage === 0 ? t('pickup') : t('deliver')) + ': ' + L(tgt); $('jobDist').textContent = Math.round(job.dist || 0) + ' ' + t('m'); $('jobTime').textContent = d.timer ? fmtTime(Math.max(0, d.timer - job.t)) : fmtTime(job.t); $('jobExtra').textContent = d.fragile ? t('cargo') + ' ' + job.cargo + '%' : d.lanterns ? '×' + job.lant : ''; } $('jobHint').textContent = COARSE ? t('cancelTouch') : t('esc'); }
   hintsT += dt; if (Math.abs(V.vLong) < 0.5) stoppedT += dt; else stoppedT = 0; const showH = !S.settings.hintsSeen && (hintsT < 20 || stoppedT > 6); $('hints').classList.toggle('hide', !showH); if (hintsT > 20 && !S.settings.hintsSeen) { S.settings.hintsSeen = true; saveSoon(); }
   hudTick += dt; if (hudTick > 0.1) { hudTick = 0; drawMinimap(); const bars = $('radio').querySelectorAll('.bars i'); const lv = sfx.levels(); bars.forEach((b, i) => { b.style.height = (3 + lv[i] * 15) + 'px'; }); }
 }
@@ -1155,13 +1160,13 @@ let tnow = 0, frame = 0, acc = 0, lastT = 0, fpsAcc = 0, fpsN = 0, fpsT = 0, tie
 const DT = 1 / 120;
 function loop(ms) {
   const t0 = ms / 1000; let dt = Math.min(0.05, t0 - (lastT || t0)); lastT = t0; if (document.hidden || !started) dt = 0; tnow += dt; frame++;
-  const paused = garageOpen || mapOpen; V.recoverT = Math.max(0, V.recoverT - dt); hornT = Math.max(0, hornT - dt);
+  const paused = garageOpen || mapOpen; if (paused && job && dt > 0) job.started += dt; V.recoverT = Math.max(0, V.recoverT - dt); hornT = Math.max(0, hornT - dt);
   if (!paused && dt > 0) {
     acc += dt; let n = 0; while (acc >= DT && n < 4) { if (V.onFoot) stepChar(DT); else { offRoad = !isRoad(V.x, V.z) && !onSidewalk(V.x, V.z); stepCar(DT); } acc -= DT; n++; } if (n === 4) acc = 0;
     stepTraffic(dt, tnow); stepPeds(dt); stepTram(dt); stepLights(tnow); stepJob(dt); stepArrow(); updateSmoke(dt); updateHarbor(tnow, dt);
     sfx.engine(V.rpm, V.gas, V.nitroOn, clamp(Math.abs(V.vLong) / carStats().MAXV, 0, 1)); sfx.skid(V.isDrifting || (V.hb && Math.abs(V.vLong) > 5) ? clamp((Math.abs(V.vLat) - 3) / 8, 0.05, 1) * 0.25 : 0);
     if (V.nitroOn && !V.nitroWas) sfx.nitroWhoosh(); V.nitroWas = V.nitroOn;
-    if (garageRing && !V.onFoot && !garageOpen && Math.hypot(V.x - garageRing.x, V.z - garageRing.z) < 6 && Math.abs(V.vLong) < 3 && tnow - (V.garageT || 0) > 3) { V.garageT = tnow; openGarage(); }
+    if (garageRing && !V.onFoot) { const dg = Math.hypot(V.x - garageRing.x, V.z - garageRing.z); if (dg > 8) V.garageArmed = true; if (V.garageArmed !== false && !garageOpen && !jobsOpen && !mapOpen && dg < 6 && Math.abs(V.vLong) < 3 && tnow - (V.garageT || 0) > 3) { V.garageT = tnow; V.garageArmed = false; openGarage(); } }
   }
   if (timeK !== (timeMode === 'dusk' ? 1 : 0)) { timeK += (timeMode === 'dusk' ? 1 : -1) * dt / 2; timeK = clamp(timeK, 0, 1); applyTime(); }
   syncCarMesh(dt); updateCamera(dt);
@@ -1184,7 +1189,7 @@ function boot() {
     snapCam() { camInit = false; },
     setTimeNow(mode) { timeMode = mode; timeK = mode === 'dusk' ? 1 : 0; applyTime(); },
     // محاكاة بلا رسم (الفحص بلا GPU بطيء جدًّا): ثوانٍ من الفيزياء والزحمة والمهام
-    sim(sec) { for (let i = 0, n = Math.round(sec / DT); i < n; i++) { if (V.onFoot) stepChar(DT); else { offRoad = !isRoad(V.x, V.z) && !onSidewalk(V.x, V.z); stepCar(DT); } stepTraffic(DT, tnow + i * DT); stepPeds(DT); stepJob(DT); } } }; }
+    sim(sec) { for (let i = 0, n = Math.round(sec / DT); i < n; i++) { tnow += DT; if (V.onFoot) stepChar(DT); else { offRoad = !isRoad(V.x, V.z) && !onSidewalk(V.x, V.z); stepCar(DT); } stepTraffic(DT, tnow); stepPeds(DT); stepJob(DT); } }, resolvePoint, get tnow() { return tnow; } }; }
   renderer.setAnimationLoop(loop);
 }
 try { setupRenderer(); boot(); window.__marsaReady = true; }
