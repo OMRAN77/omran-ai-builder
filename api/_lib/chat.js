@@ -1618,7 +1618,7 @@ module.exports = async (req, res) => {
         return {};
       };
       const callUpstream = (withImg) => __upFetch(CHAT_URL, {
-        method: 'POST', signal: __cut.signal, // v-tokens-close: رحيل العميل يقطع النداء الجاري (المسار المباشر oa-direct لا يأخذ الإشارة — يقف عند الدفعة التالية أدناه)
+        method: 'POST', // v-tokens-close: لا إشارة هنا — _fetch-timeout.js يترك كلّ نداء يحمل signal بلا مهلة الثلاثين ثانية (المراجعة العدائيّة)، فالرحيل يُوقف القراءة والحلقة أدناه بدل قطع النداء
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, isClarifyTurn(lastUserText) || __analyzeDoc || __ownerUiShot) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {})), // v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم)
       });

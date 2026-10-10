@@ -56,6 +56,7 @@ async function turn(messages, opts) {
   const res = fakeRes();
   global.fetch = async (url, init) => {
     let b = {}; try { b = JSON.parse(init.body); } catch (e) { /* ليس JSON — نداء جانبيّ */ }
+    if (b && b.max_tokens) Object.defineProperty(b, '__hasSignal', { value: !!(init && init.signal) });
     bodies.push(b);
     if (o.onModel && b.max_tokens) return o.onModel(res, modelCalls(bodies).length);
     return textReply('تمام');
@@ -103,6 +104,8 @@ test('٤. بلا رحيل: الجولة نفسها تكمل كما كانت (أ�
     onModel: (res, n) => (n === 1 ? toolReply() : textReply('الرسوم كذا')),
   });
   assert.ok(calls.length >= 2, 'الجولة الثانية بعد الأداة وصلت المزوّد');
+  // المراجعة: نداء المزوّد بلا signal خاصّ — وإلّا تخطّاه _fetch-timeout.js فلا مهلة ٣٠ ثانية لوصول الترويسات
+  assert.ok(calls.every((c) => c.__hasSignal === false), 'مهلة الثلاثين ثانية العامّة تبقى على نداء المزوّد');
 });
 
 test('٥. المساعدات: withTurnTail نسخة لا تعديل، وإغلاق بعد الإنهاء ليس رحيلًا', () => {
