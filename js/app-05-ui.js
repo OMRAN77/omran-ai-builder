@@ -3304,6 +3304,9 @@ const SETTINGS_NAV_GROUPS = [
   ['setGrpAppearance', ['themeSection', 'bgImgSection', 'fontFamilySection', 'fontSizeSection', 'langSection']],
   ['setGrpGeneral', ['apiKeysSection', 'aboutSection']], // v-news-off: «التنبيهات» أُزيل مع الأخبار
 ];
+// v-apikeys-owner (أمر المالك): صفّ «مفاتيح API لمزوّدي الخدمة» للمالك وحده — يُخفى من قائمة الإعدادات
+// لغير المالك ولا تُفتح صفحته مباشرةً (مثل «صفحة المالك»). المفاتيح يديرها المالك لا المستخدمون.
+const SETTINGS_OWNER_ONLY = ['apiKeysSection'];
 const SETTINGS_PLAN_LABEL = { basic: 'Plus', pro: 'Pro', max: 'Max', owner: 'VIP', vip: 'VIP' };
 function settingsTr(k){ try{ return (typeof t === 'function' && t(k)) || ''; }catch(e){ return ''; } }
 function settingsLoggedIn(){ try{ return !!(typeof authGet === 'function' && authGet('aiapp_auth_token')); }catch(e){ return false; } }
@@ -3356,7 +3359,7 @@ function renderSettingsNavList(){
   const plan = String(window.__omranPlan || '').toLowerCase();
   const planText = owner ? 'VIP' : (SETTINGS_PLAN_LABEL[plan] || settingsTr('setPlanFree'));
   SETTINGS_NAV_GROUPS.forEach(([titleKey, ids]) => {
-    const rows = ids.filter(has);
+    const rows = ids.filter(sid => has(sid) && (owner || SETTINGS_OWNER_ONLY.indexOf(sid) === -1)); // v-apikeys-owner: مفاتيح المزوّدين للمالك وحده
     if(!rows.length) return;
     const title = document.createElement('div');
     title.className = 'settingsNavGroupTitle';
@@ -3410,6 +3413,7 @@ function showSettingsHome(){
 window.showSettingsHome = showSettingsHome;
 function showSettingsPage(sid){
   if(sid === 'ownerSection' && !settingsOwnerUi()){ showSettingsHome(); return; }
+  if(SETTINGS_OWNER_ONLY.indexOf(sid) !== -1 && !settingsOwnerUi()){ showSettingsHome(); return; } // v-apikeys-owner
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');
   const pageTitleEl = document.getElementById('settingsPageTitle');
