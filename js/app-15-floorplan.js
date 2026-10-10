@@ -581,9 +581,18 @@
   if (!FP) return;
 
   /* ① جسر توليد الواجهات: {__omranView, id, view, spec} ← المحرّر */
+  /* v-sec-postmsg (إعادة التقييم ١٠ أكتوبر): أيّ نافذة (موقع آخر فتح التطبيق في نافذة منبثقة) كانت ترسل {__omranView:1} فيولّد التطبيق
+     صورة مدفوعة برمز المستخدم ونقاطه. الطلب يُقبل الآن من إطار داخل صفحة التطبيق نفسها وحده — المحرّر يعيش في iframe المعاينة. */
+  function fromOwnFrame(e) {
+    try {
+      var fr = document.getElementsByTagName('iframe');
+      for (var i = 0; i < fr.length; i++) { if (fr[i].contentWindow && fr[i].contentWindow === e.source) return true; }
+    } catch (err) { __swallow(err, 'floorplan:bridge#src'); }
+    return false;
+  }
   window.addEventListener('message', function (e) {
     var d = e.data;
-    if (!d || d.__omranView !== 1 || !e.source) return;
+    if (!d || d.__omranView !== 1 || !e.source || !fromOwnFrame(e)) return;
     var src = e.source;
     function reply(msg) {
       msg.__omranViewOut = 1; msg.id = d.id;

@@ -1420,7 +1420,9 @@ module.exports = async (req, res) => {
   const toolTurn = !quietSocialTurn && (!__analyzeDoc || __ownerReq); const __ownerUiShot = __ownerReq && lastUserHasImage && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText)); /* v-owner-ui-shot · v-owner-ui-shot-client: قرار العميل (يعرف علامة اللقطة) أوّلًا، والتعابير حين يغيب */ // v-providers-like-agent: المالك يقرأ ويبحث في الرسالة الطويلة كالوكيل (بلا أدوات الصور)
   const siteGuideTurn = toolTurn && isGuideTurn(messages); // v-site-guide3 · v-guide-next: والمتابعة القصيرة بعده
     const baseSystem = sysParts.join('\n\n');
-    const __sysBase = sysParts.filter((p) => !isClientTurnNote(p)).join('\n\n'), stableSystem = livingBlock ? sysParts.slice(0, sysParts.indexOf(livingBlock)).filter((p) => !isClientTurnNote(p)).join('\n\n') : __sysBase; // v-living-all: بلا حقائق = كما كان حرفيًّا · v-tokens-cache: نظام المزوّد بلا ملاحظات الدور (baseSystem الكامل يبقى للسلسلة المجّانيّة وفحص الإرشاد)
+    /* v-tokens-living (إعادة التقييم ١٠ أكتوبر): الحقائق تُختار بسؤال كلّ دور، وكانت في النظام قبل علامة كاش الرسائل — فيُكتب التاريخ كلّه بسعر ١٫٢٥ كلّ دور ولا يُقرأ.
+       صارت في ذيل الدور (بعد العلامة) كملاحظات الدور، ونصّها نفسه يقول إنّ التعليمات المخصّصة تعلو عليها؛ baseSystem الكامل (السلسلة المجّانيّة) كما كان. */
+    const __sysBase = sysParts.filter((p) => !isClientTurnNote(p) && !(livingBlock && p === livingBlock)).join('\n\n'), stableSystem = __sysBase; // v-living-all: بلا حقائق = كما كان حرفيًّا · v-tokens-cache: نظام المزوّد بلا ملاحظات الدور (baseSystem الكامل يبقى للسلسلة المجّانيّة وفحص الإرشاد)
     const ownerKnowledge = toolTurn ? require('./_knowledge.js').ownerKnowledge(req, token) : '';
     // v-persona-front: البصمة أول ما يقرأه النموذج في المسارات الثلاثة —
     // حتى الدور الاجتماعي («كيف الحال») الذي كان محرومًا منها كليًّا.
@@ -1511,7 +1513,10 @@ module.exports = async (req, res) => {
   if (!convo.length) { send({ error: 'Missing user message' }); res.end(); return; }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
-  const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(toolTurn ? [nowNote(body && body.tz), countryNote(country, city)] : [])); // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
+  // v-tokens-tools: دور السؤال/الاستيضاح (v-img-ask · v-img-question) كان يُرسَل بقائمة أدوات أقصر فتنكسر بادئة الكاش (الأدوات أوّلها)؛
+  // الآن القائمة ثابتة، و«لا رسم في دور السؤال» تنبيه في الذيل + حارس عند التنفيذ (ASK_NO_MEDIA_REFUSAL)
+  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText));
+  const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowNote(body && body.tz), countryNote(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : [])); /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
   // (الترويسات وsend فُتحا مبكرًا أعلاه — v-fast-headers)
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
 
@@ -1620,7 +1625,7 @@ module.exports = async (req, res) => {
       const callUpstream = (withImg) => __upFetch(CHAT_URL, {
         method: 'POST', // v-tokens-close: لا إشارة هنا — _fetch-timeout.js يترك كلّ نداء يحمل signal بلا مهلة الثلاثين ثانية (المراجعة العدائيّة)، فالرحيل يُوقف القراءة والحلقة أدناه بدل قطع النداء
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, isClarifyTurn(lastUserText) || __analyzeDoc || __ownerUiShot) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {})), // v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم)
+        body: JSON.stringify(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __analyzeDoc || __ownerUiShot) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {})), // v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم)
       });
       let upstream = await callUpstream(true);
       // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
@@ -1853,9 +1858,9 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' }); // v-chat-github-read: مفتاح ترجمة قائم، لا نصّ واجهة جديد
             else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ status: '🩺 يقرأ أخطاء التطبيق الحيّة…' }); // v-provider-errors: بلا مفتاح — العميل يعود لنصّ الخادم (أداة المالك وحده)
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
-            else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
-            else if (cb.type === 'tool_use' && cb.name === 'edit_image') send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
-            else if (cb.type === 'tool_use' && cb.name === 'generate_video') send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_image' && !__askNoMedia) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__askNoMedia) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_video' && !__askNoMedia) send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
             else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…', k: 'stGeoLoc' });
           } else if (ev.type === 'content_block_delta') {
@@ -1940,7 +1945,8 @@ module.exports = async (req, res) => {
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
         try {
-          if (cb.name === 'web_search') {
+          if (__askNoMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1) result = ASK_NO_MEDIA_REFUSAL; // v-tokens-tools: دور سؤال — لا رسم ولا تعديل ولا فيديو
+          else if (cb.name === 'web_search') {
             const _q = input.query || '';
             const mySearchNo = ++searchesUsed; // يزداد قبل أول await فالعدّ آمن مع التوازي
             if (/عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(_q)) {
@@ -2114,6 +2120,10 @@ module.exports.__v610 = { cleanLink }; // v610 — للاختبار
    أدوات الصورة والفيديو لا تُعرض في هذا الدور، فيجيب بالكلام. أيّ فعل طلب («قصدك سوها ملوّنة») يبقيها. */
 const MEDIA_TOOL_NAMES = ['generate_image', 'edit_image', 'generate_video'];
 const TOOLS_NO_MEDIA = TOOLS.filter((t) => MEDIA_TOOL_NAMES.indexOf(t.name) === -1);
+/* v-tokens-tools (إعادة التقييم ١٠ أكتوبر: قائمة الأدوات كانت تتبدّل بين دور سؤال وطلب فتكسر بادئة الكاش في ٨ من ١٠ انتقالات): الأدوات
+   كاملة دائمًا في المحادثة، ودور السؤال يحمل هذا التنبيه في ذيله (بعد علامة الكاش) ويُرفض فيه أيّ نداء صورة/فيديو بلا تنفيذ. */
+const ASK_NO_MEDIA_NOTE = '[هذا الدور سؤال أو استيضاح: أجب بالكلام. لا تستدعِ generate_image ولا edit_image ولا generate_video.]';
+const ASK_NO_MEDIA_REFUSAL = 'هذه الأداة غير متاحة في هذا الدور — المستخدم يسأل سؤالًا: أجب بالكلام ولا ترسم ولا تعدّل صورة ولا تنشئ فيديو.';
 const CLARIFY_ASK_RE = /(?:^|[\s،,.!؟?«"'])(?:قصدك|قصدج|قصدچ|تقصد|تقصدين|تقصدي|you\s+mean|do\s+you\s+mean)(?=$|[\s،,.!؟?»"'])/i;
 const MEDIA_ASK_RE = /(?:^|[\s،,.!؟?«"'])(?:عدّ?ل|غيّ?ر|بدّ?ل|لوّ?ن|حوّ?ل|سوّ?ي|سوها|سويها|سولي|ارسم|صمّ?م|ضيف|أضف|اضف|حط|امسح|احذف|شيل|خل|اجعل|edit|change|make|draw|turn|convert|recolor)/i;
 /* v-img-question (المالك ٢ أكتوبر، لقطة: «بخصوص الشخير ماهي الاسباب» بعد لقطة شاشة مرفقة ← كتب النموذج السؤال على الصورة):
@@ -2126,7 +2136,7 @@ function isClarifyTurn(text) {
   return QUESTION_RE.test(t) && !MEDIA_WORD_RE.test(t);
 }
 
-module.exports.__imgAsk = { isClarifyTurn, TOOLS, TOOLS_NO_MEDIA }; // v-img-ask — للاختبار
+module.exports.__imgAsk = { isClarifyTurn, TOOLS, TOOLS_NO_MEDIA, ASK_NO_MEDIA_NOTE, ASK_NO_MEDIA_REFUSAL }; // v-img-ask — للاختبار
 module.exports.__vsearch = { tavilySearch, arWikiLookup }; // v-chat-ref — للاختبار
 module.exports.__vimg = { imageTurnConfig, IMAGE_READ_NOTE }; // v-img-read — للاختبار
 

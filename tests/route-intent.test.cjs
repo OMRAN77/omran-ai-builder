@@ -33,14 +33,25 @@ const isExplicitEdit = IMG_TEXT.window.__isExplicitImageEdit;
 assert.equal(typeof parseSpec, 'function');
 
 /* ── ١. بوّابة البناء كما في __sendPromptCore (نفس تركيب tests/loc-ask) ── */
+/* v-route-want: شرط فتح البوّابة الحقيقيّ (فرع __setPend) بنصّه من الكود، مع __rtWantLookup الحقيقيّ — code = مشروع مفتوح */
+const GATE_HEAD = '} else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ';
+const GATE_TAIL = '&& !omranEditBigOpen(getCurrent())){';
+const GATE_COND = (() => { const i = SRC.indexOf(GATE_HEAD); assert.ok(i >= 0, 'مفقود: فرع فتح البوّابة'); const j = SRC.indexOf(GATE_TAIL, i); assert.ok(j > i); return SRC.slice(i + GATE_HEAD.length, j) + GATE_TAIL.slice(0, -2); })();
 const G = {};
 vm.runInNewContext([
   line('const __strongBuildRe = '),
   line('const GATE_BUILD_RE = '), line('const GATE_CMD_RE = '), line('const GATE_FIX_RE = '), line('const GATE_HARD_RE = '),
   line('const __routeBuildRe = '), line('const __routeCmdRe = '),
-  'function gateText(text){ ' + line('const __gateText = ').replace('const __gateText = ', 'return ') + ' }',
-  'this.gate = (text) => !!(text && ((GATE_BUILD_RE.test(gateText(text)) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text));',
-  'this.askAllShape = (text) => !!((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text));',
+  line('const __rtBuildVerbRe = '), line('const __rtLookupRe = '), line('const __rtGiveRe = '), line('const __rtEntityRe = '), line('const __rtMineRe = '),
+  'function wantLookup(text, code){ const getCurrent = () => ({ code: code || "" }); ' + stmt('const __rtWantLookup = ').replace('const __rtWantLookup = ', 'return ') + ' }',
+  'this.wantLookup = wantLookup;',
+  'this.gate = function(text, code){',
+  '  const getCurrent = () => ({ code: code || "" }), omranEditBigOpen = () => false;',
+  '  const __IMG_FOLLOW = false, __explicitImageTextRequest = false, __looksPasted = false, __rtWantLookup = wantLookup(text, code);',
+  '  ' + line('const __gateText = '),
+  '  return !!(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ' + GATE_COND + ');',
+  '};',
+  'this.askAllShape = (text) => !!((__routeBuildRe.test(text) && __routeCmdRe.test(text) && !wantLookup(text)) || __strongBuildRe.test(text));',
 ].join('\n'), G);
 
 test('١. البوّابة: المخرجات النصّيّة وطلبات التصميم ليست «بناء» (كانت تُجاب «تبيني أبدأ البناء الحين؟»)', () => {
@@ -58,7 +69,7 @@ test('١. البوّابة: المخرجات النصّيّة وطلبات ال�
 test('٢. البوّابة: البناء الحقيقيّ يبقى بناءً (موقع/تطبيق/لعبة/صفحة/حاسبة… وقرار v-loc-not-build)', () => {
   for (const t of ['ابني لي موقع لشركة عقارات', 'سوي لي آلة حاسبة', 'سوي لي لعبة ثعبان', 'اعمل لي صفحة هبوط لمنتجي', 'ممكن تسوي لي تطبيق ملاحظات',
     'make me a todo list app', 'build a website for my shop', 'سوي لي ساعة رقمية', 'سوي لي متجر الكتروني للعطور',
-    'اريد موقع لشركتي', 'سوي الموقع', 'صمم لي الموقع', 'عطني تطبيق للملاحظات']) {
+    'اريد موقع لشركتي', 'سوي الموقع', 'صمم لي الموقع']) {
     assert.equal(G.gate(t), true, t);
   }
   assert.equal(G.askAllShape('ابني لي تطبيق ملاحظات'), true);
@@ -145,10 +156,10 @@ const imgFollowSrc = SRC.slice(imgFollowStart, SRC.indexOf('\n  })();', imgFollo
 const W = { window: { __isExplicitImageEdit: isExplicitEdit } };
 vm.runInNewContext([
   'const __omranPrev = ' + SRC.slice(SRC.indexOf('function omranPrevTurnHadImage(messages){'), SRC.indexOf('\n}\n', SRC.indexOf('function omranPrevTurnHadImage(messages){')) + 2) + ';',
-  'this.after = function(text){',
+  'this.after = function(text, extra){',
   '  const omranPrevTurnHadImage = __omranPrev;',
   '  const cur = { lastMsgWasImageEdit: true, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
-  '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ] };',
+  '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ].concat(extra || []) };',
   '  const getCurrent = () => cur, pendingAttachments = [], imageAttachments = [];',
   line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtWriteAsk = '),
   line('const __IMGF_NEW_RE = '), line('const __IMGF_NOT_RE = '), line('const __IMG_EDIT_VERB_RE = '),
@@ -234,4 +245,55 @@ test('١٢. المراجعة قبل الدمج: صورة مرفقة + «للبي
     assert.equal(r.follow || r.any, true, t);
   }
   assert.equal(W.after('اكتب لي قصيدة قصيرة عن الصقر').write, true, 'الوثيقة كما هي');
+});
+
+test('١٣. v-route-want: «عطني/أبي + موقع/تطبيق/برنامج» بلا فعل بناء ولا وصف صنع = سؤال/بحث (كانت «تبيني أبدأ البناء؟» بلا أدوات)', () => {
+  for (const t of ['عطني موقع مركز خدمة العملاء في دبي مول', 'ابي موقع السفارة الهندية في دبي', 'أبي رابط موقع الهيئة الاتحادية للهوية والجنسية',
+    'عطني موقع رسمي أقدر أدفع منه المخالفات المرورية', 'ممكن تعطيني موقع مستشفى راشد', 'أبي أفضل تطبيق لتعلم الإنجليزي',
+    'ممكن تقترح لي برنامج لإدارة المشاريع', 'عطني أداة أحول فيها PDF إلى وورد', 'ابي صفحة الدائرة الرسمية في انستقرام',
+    'أبي لعبة حلوة أنزلها لولدي عمره ٨ سنوات', 'عطني تطبيق للملاحظات' /* «عطني» جلب/توصية؛ البناء بفعله (سوّ لي تطبيق ملاحظات) */]) {
+    assert.equal(G.gate(t), false, t);
+    assert.equal(G.askAllShape(t), false, 'اسأل الكل: ' + t);
+  }
+});
+
+test('١٤. v-route-want: الرغبة + اسم البناء + وصف صنع تبقى بناءً، وفعل البناء الصريح والمشروع المفتوح كما كانا', () => {
+  for (const t of ['اريد موقع لشركتي', 'ابغى موقع لشركتي فيه حجز مواعيد', 'أبي تطبيق يحسب الزكاة', 'ابي لعبة فيها سيارات', 'أبي برنامج يحسب الرواتب',
+    'i want a website for my bakery', 'سوي لي موقع لمطعمي فيه منيو وحجز', 'ممكن تسوي لي صفحة هبوط لمعرض الكتاب', 'ابني لي موقع لشركة عقارات',
+    /* كما كانت قبل v-route-want — لا تراجع */ 'أبي تطبيق ملاحظات', 'ابي لعبة سيارات', 'ابي موقع', 'ابي صفحة الهبوط لمنتجي', 'اريد موقع الشركة حقي']) {
+    assert.equal(G.gate(t), true, t);
+  }
+  // مشروع مفتوح: «عطني صفحة تواصل» تعديل على الكود الحاضر لا جلب
+  assert.equal(G.wantLookup('عطني صفحة تواصل', '<html></html>'), false);
+  assert.equal(G.wantLookup('عطني صفحة تواصل', ''), true);
+  // «الرابط/أفضل» تغلب وصف الصنع: سؤال توصية لا بناء
+  assert.equal(G.gate('أبي أفضل برنامج لإدارة المشاريع'), false);
+});
+
+test('١٥. v-route-sticky: «اختصر/بالإنجليزي/خله أقصر» بعد ردّ نصّيّ لا تعود لآخر صورة؛ بعد الصورة مباشرةً كما كانت', () => {
+  const poem = [{ role: 'user', content: 'اكتب لي قصيدة عن الصقر' }, { role: 'assistant', content: 'يا صقرُ يا رمزَ العلا…' }];
+  for (const t of ['اختصرها', 'خله أقصر', 'بالإنجليزي', 'اكتبه بأسلوب رسمي', 'سوه أرسمي شوي']) {
+    const r = W.after(t, poem);
+    assert.equal(r.any, false, 'بعد القصيدة: ' + t);
+  }
+  for (const t of ['خلها بالليل', 'خل الخلفية زرقاء']) assert.equal(W.after(t).any, true, 'بعد الصورة مباشرةً: ' + t);
+});
+
+test('١٦. «أرسمي» (أكثر رسميّة) ليست «ارسم»: لا تفتح أنماط الصورة؛ «ارسم/ارسمي لي» كما كانتا', () => {
+  const M = {};
+  vm.runInNewContext([
+    'this.m = function(text){',
+    line('const __MEDIA_WORD_RE = '), line('const __MEDIA_MAKE_RE = '), line('const __explicitImgReq = '),
+    line('const __archVerbRe = '), line('const __txtOnlyImgRe = '),
+    '  return __MEDIA_WORD_RE.test(text) || __MEDIA_MAKE_RE.test(text) || __explicitImgReq || __archVerbRe.test(text) || __txtOnlyImgRe.test(text);',
+    '};',
+  ].join('\n'), M);
+  for (const t of ['سوه أرسمي شوي', 'خله أرسمي', 'اكتبه بأسلوب أرسمي ومختصر']) assert.equal(M.m(t), false, t);
+  for (const t of ['ارسم لي قطة', 'ارسمي لي وردة حمراء', 'أرسم لك صورة صقر']) assert.equal(M.m(t), true, t);
+  for (const t of ['سوه أرسمي شوي', 'خله أرسمي']) assert.equal(B.builder(t, null), false, 'البانِي: ' + t);
+});
+
+test('١٧. الشعار: «ارسم لي شعار لنادي الشطرنج» تصميم لا جلب شعار رسميّ (كانت تبحث)', () => {
+  for (const t of ['ارسم لي شعار لنادي الشطرنج', 'ارسم شعار لفريق كرة القدم في المدرسة', 'سو لي شعار لجمعية الصيادين']) assert.equal(L.fetch(t), false, t);
+  assert.equal(L.fetch('عطني شعار نادي الشارقة'), true, 'شعار الجهة القائمة يُجلب كما كان');
 });

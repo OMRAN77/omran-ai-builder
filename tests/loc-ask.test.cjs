@@ -24,7 +24,10 @@ vm.runInNewContext([
   line(ATTACH, 'const GATE_BUILD_RE = '), line(ATTACH, 'const GATE_CMD_RE = '), line(ATTACH, 'const GATE_FIX_RE = '),
   line(ATTACH, 'const GATE_HARD_RE = '),
   'function gateText(text){ ' + line(ATTACH, 'const __gateText = ').replace('const __gateText = ', 'return ') + ' }',
-  'this.gate = (text) => !!(text && ((GATE_BUILD_RE.test(gateText(text)) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text));',
+  // v-route-want: «عطني/أبي + اسم بناء» بلا فعل بناء ولا وصف صنع = جلب/بحث (__rtWantLookup الحقيقيّ)
+  line(ATTACH, 'const __rtBuildVerbRe = '), line(ATTACH, 'const __rtLookupRe = '), line(ATTACH, 'const __rtGiveRe = '), line(ATTACH, 'const __rtEntityRe = '), line(ATTACH, 'const __rtMineRe = '),
+  'function wantLookup(text){ const getCurrent = () => null; ' + (() => { const i = ATTACH.indexOf('const __rtWantLookup = '); return ATTACH.slice(i, ATTACH.indexOf(';\n', i) + 1).replace('const __rtWantLookup = ', 'return '); })() + ' }',
+  'this.gate = (text) => !!(text && ((GATE_BUILD_RE.test(gateText(text)) && GATE_CMD_RE.test(text) && !wantLookup(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text));',
 ].join('\n'), ctx);
 
 test('١. البوّابة: «عطني الموقع» وأخواتها ليست طلب بناء موقع', () => {
@@ -34,12 +37,12 @@ test('١. البوّابة: «عطني الموقع» وأخواتها ليست 
 });
 
 test('٢. البوّابة: طلب البناء الحقيقيّ يبقى بناءً كما كان', () => {
-  for (const t of ['ابني لي موقع لمطعمي', 'اريد موقع لشركتي', 'سوي الموقع', 'عطني تطبيق للملاحظات', 'صمم لي الموقع']) {
+  for (const t of ['ابني لي موقع لمطعمي', 'اريد موقع لشركتي', 'سوي الموقع', 'سوي لي تطبيق للملاحظات', 'صمم لي الموقع']) {
     assert.equal(ctx.gate(t), true, t);
   }
   assert.equal(ctx.gate('صلح الموقع'), false, 'الإصلاح ليس بناءً كما كان');
   // الفحص الجديد في الموضعين: طلب البناء الكامل وفتح البوّابة
-  assert.equal(ATTACH.split('GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)').length - 1, 2);
+  assert.equal(ATTACH.split('GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text) && !__rtWantLookup /* v-route-want */').length - 1, 2);
 });
 
 const r = {};
