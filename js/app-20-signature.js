@@ -4,10 +4,12 @@
 (function(){
   'use strict';
 
+  /* v-calligraphy-names: كلّ خطّ باسمه الحقيقيّ (كان «الثلث» Aref Ruqaa و«الديواني» Katibeh و«الرقعة» Rakkas).
+     الثلث والديواني مستضافان في assets/fonts بوزن واحد 400 — طلب 700 يرسم تغليظًا اصطناعيًّا على اللوحة. */
   var FONTS = [
-    { id:'ruqaa',   ar:'الرقعة',   en:'Ruqaa',    family:"'Rakkas'",      g:'Rakkas',                    w:'400' },
-    { id:'thuluth', ar:'الثلث',    en:'Thuluth',  family:"'Aref Ruqaa'",  g:'Aref+Ruqaa:wght@400;700',   w:'700' },
-    { id:'diwani',  ar:'الديواني', en:'Diwani',   family:"'Katibeh'",     g:'Katibeh',                   w:'400' },
+    { id:'ruqaa',   ar:'الرقعة',   en:'Ruqaa',    family:"'Aref Ruqaa'",  g:'Aref+Ruqaa:wght@400;700',   w:'700' },
+    { id:'thuluth', ar:'الثلث',    en:'Thuluth',  family:"'Tholoth'",     url:'/assets/fonts/tholoth.woff2', css:'Tholoth', w:'400' },
+    { id:'diwani',  ar:'الديواني', en:'Diwani',   family:"'UKIJ Diwani Tom'", url:'/assets/fonts/ukij-diwani-tom.woff2', css:'UKIJ Diwani Tom', w:'400' },
     { id:'naskh',   ar:'النسخ',    en:'Naskh',    family:"'Amiri'",       g:'Amiri:wght@400;700',        w:'700' },
     { id:'kufi',    ar:'الكوفي',   en:'Kufi',     family:"'Reem Kufi'",   g:'Reem+Kufi:wght@400..700',   w:'600' },
     { id:'farsi',   ar:'الفارسي',  en:'Nastaliq', family:"'Gulzar'",      g:'Gulzar',                    w:'400' }
@@ -58,11 +60,21 @@
     }catch(e){ tell(e, 'sig:restore'); }
   }
 
-  /* الخطوط تُحمّل عند الطلب من Google Fonts — CSP يسمح بـfont-src/style-src https:. */
+  /* الخطوط تُحمّل عند الطلب من Google Fonts — CSP يسمح بـfont-src/style-src https:.
+     والمستضاف (url) بقاعدة @font-face بمعرّف mahaLoadFont نفسه، فلا تُعرَّف مرّتين. */
   function link(f){
     if(linked[f.id]) return;
     linked[f.id] = true;
     try{
+      if(f.url){
+        var fid = 'ff-' + f.url.replace(/^.*\//, '').replace(/\W/g, '-');
+        if(document.getElementById(fid)) return;
+        var face = document.createElement('style');
+        face.id = fid;
+        face.textContent = '@font-face{font-family:"' + f.css + '";src:url("' + f.url + '") format("woff2");font-display:swap;}';
+        document.head.appendChild(face);
+        return;
+      }
       var el = document.createElement('link');
       el.rel = 'stylesheet';
       el.href = 'https://fonts.googleapis.com/css2?family=' + f.g + '&display=swap';
@@ -90,8 +102,14 @@
     if(!probe || !canvas.getContext) return null;
     probe.font = f.w + ' ' + size + 'px ' + f.family + ', Tahoma, Arial, sans-serif';
     var shear = Math.tan(state.slant * Math.PI / 180);
-    var w = Math.ceil(probe.measureText(name).width + pad * 2 + Math.abs(shear) * size * 1.8);
-    var h = Math.ceil(size * (state.flourish ? 2.12 : 1.85));
+    probe.textBaseline = 'middle';
+    var m = probe.measureText(name);
+    var w = Math.ceil(m.width + pad * 2 + Math.abs(shear) * size * 1.8);
+    /* v-calligraphy-names: الذيل تحت أدنى حبر فعليّ — أذيال الثلث (ر ن ع ي) أعمق من 1.5 فكان الذيل يقطعها */
+    var low = size * 1.02 + (m.actualBoundingBoxDescent || 0);
+    var fy = Math.max(size * 1.5, low + size * 0.1);
+    /* وبلا ذيل: اللوحة تتّسع لأدنى حبر كذلك (تنوين الكسر تحت ع في الثلث كان يُقصّ) */
+    var h = Math.ceil(state.flourish ? Math.max(size * 2.12, fy + size * 0.62) : Math.max(size * 1.85, low + size * 0.08));
     canvas.width = Math.max(2, w * dpr);
     canvas.height = Math.max(2, h * dpr);
     canvas.style.width = w + 'px';
@@ -113,7 +131,7 @@
       x.lineWidth = Math.max(2, size * 0.042);
       x.lineCap = 'round';
       x.beginPath();
-      var y = size * 1.5;
+      var y = fy;
       x.moveTo(pad * 0.95, y);
       x.quadraticCurveTo(w / 2, y + size * 0.36, w - pad * 0.95, y - size * 0.05);
       x.stroke();

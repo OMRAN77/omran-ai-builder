@@ -16,6 +16,12 @@ function load(action) {
     case 'veo-create': return require('./_lib/veo-create.js');
     case 'veo-status': return require('./_lib/veo-status.js');
     case 'veo-download': return require('./_lib/veo-download.js');
+    case 'minimax-create': return require('./_lib/minimax-create.js');
+    case 'minimax-status': return require('./_lib/minimax-status.js');
+    case 'omni-create': return require('./_lib/omni-create.js');
+    case 'actor-create': return require('./_lib/actor-create.js'); // v-actor-lipsync: صوت إماراتيّ + تحريك الشفاه
+    case 'actor-status': return require('./_lib/actor-status.js');
+    case 'video-watch': return require('./_lib/video-watch.js'); // v-video-watch: فيديو مرفق في المحادثة يُشاهَد ويُسمَع معًا
     default: return null;
   }
 }

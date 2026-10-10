@@ -81,7 +81,8 @@ const state = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-04-i18n-stat
 assert.ok(!state.includes('function omranOpenReplyInPanel('), 'لوحة القراءة أُزيلت (v-long-reply-off)');
 // ٦) v-bidi-punct: «Omran AI Builder،» تبقى سلسلة لاتينيّة واحدة معزولة الاتّجاه رغم الفاصلة العربيّة الملتصقة
 const bidi = new El('div'); buildSpokenWordSpans(bidi, 'أنت مالك تطبيق Omran AI Builder، ومشروعك قيد التطوير.');
-const ltrWraps = bidi.childNodes.filter((n) => n.nodeType === 1 && n._attrs && n._attrs.dir === 'ltr');
+// v-md-blocks: كلّ سطر كتلة، فالغلاف داخل كتلة السطر
+const ltrWraps = bidi.childNodes.flatMap((b) => b.childNodes || []).filter((n) => n.nodeType === 1 && n._attrs && n._attrs.dir === 'ltr');
 assert.strictEqual(ltrWraps.length, 1, 'غلاف اتّجاه واحد للسلسلة اللاتينيّة');
 assert.strictEqual(ltrWraps[0].textContent.trim(), 'Omran AI Builder،', 'الغلاف يضمّ الكلمات الثلاث والفاصلة');
 console.log('✓ stream-render: الرسم الحيّ تزايديّ، والنصّ مطابق، واللوحة منسَّقة، والاتّجاه سليم مع الترقيم');

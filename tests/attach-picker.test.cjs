@@ -36,7 +36,7 @@ assert.ok(/multiple/.test(inputTag), 'attachInput يبقى multiple');
 assert.ok(/function omranWatchFilePicker\(/.test(attach), 'مراقب المنتقي الموحّد معرَّف');
 assert.ok(/setInterval\(\s*\(\)\s*=>\s*\{\s*take\(\);/.test(attach), 'فحص دوريّ حقيقيّ لـinput.files لا فحصًا واحدًا');
 assert.ok(/document\.addEventListener\('visibilitychange', onVis\)/.test(attach), 'visibilitychange مسرّع إضافيّ (الغلاف الأصلي لا يُطلق focus)');
-assert.ok(/window\.addEventListener\('focus', take\)/.test(attach), 'focus مسرّع إضافيّ أيضًا للمتصفح العادي');
+assert.ok(/window\.addEventListener\('focus', onReturn\)/.test(attach), 'focus مسرّع إضافيّ أيضًا للمتصفح العادي (v-attach-nofalse: ويعلّم عودة المستخدم)');
 assert.ok(/clearInterval\(iv\)/.test(attach), 'الفحص الدوريّ يتوقّف فور الالتقاط — لا يبقى يعمل للأبد');
 
 // (٣) مسار الإرفاق الرئيسي يستعمل المراقب الموحّد، وحدث change يحترم العلم
@@ -106,7 +106,8 @@ assert.ok(/btn\.disabled = false;\s*\n\s*try\{ input\.value = ''/.test(features.
   const a = attach.indexOf("  omranPickerPrep(input);\n  input.click();\n  omranWatchFilePicker(input");
   assert.ok(a > 0, 'الإرفاق الرئيسيّ: التحضير قبل النقر ثمّ المراقب');
   assert.ok(features.includes("if(typeof omranPickerPrep === 'function') omranPickerPrep(input); /* v-attach-huawei */ input.click();"), '«صور → PDF»: التحضير قبل النقر');
-  assert.ok(attach.includes("if(++ticks > 57){ clearInterval(iv); omranPickerDiag('timeout', input); }"), 'بلاغ عند انقضاء ٢٠ ثانية بلا ملفّ');
+  // v-attach-nofalse: لا «timeout» بعد ٢٠ ثانية من النقر — البلاغ «no-file» بعد العودة للصفحة بلا ملفّ ولا إلغاء (سلوكه في attach-nofalse.test.cjs)
+  assert.ok(attach.includes("omranPickerDiag('no-file', input)") && !attach.includes("omranPickerDiag('timeout'"), 'بلاغ المنتقي بعد العودة بلا ملفّ فقط');
   assert.ok(attach.includes("omranPickerDiag('ingest-failed', input, e)") && attach.includes("omranPickerDiag('read-failed', null, err)"), 'بلاغ عند فشل الاستيعاب أو القراءة');
   assert.ok(attach.includes("text: '⚠️ ' + t('attachReadFail')"), 'شريحة خطأ مرئيّة عند فشل قراءة ملفّ');
   assert.ok(attach.includes("fetch('/api/system?action=client-errors'") && attach.includes("source: 'attach-picker'"), 'البلاغ إلى مسار أخطاء العميل نفسه');

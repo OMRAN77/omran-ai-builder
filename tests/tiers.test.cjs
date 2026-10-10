@@ -15,11 +15,11 @@ const fc = require('../api/_lib/free-chain.js');
 const DAY = 86400000;
 
 test('caps: safe defaults and env overrides', () => {
-  assert.deepEqual(tier.caps({}), { guest: 3, free: 5, basic: 50, pro: 100, max: 250 }); // v-plan-routing
+  assert.deepEqual(tier.caps({}), { guest: 0, free: 20, basic: 50, pro: 100, max: 250 }); // v-free-20
   assert.equal(tier.caps({ FREE_DAILY: '25' }).free, 25);
   assert.equal(tier.caps({ FREE_DAILY: '5' }).free, 5, 'المالك يقدر ينزل إلى ٥ من البيئة');
-  assert.equal(tier.caps({ FREE_DAILY: 'abc' }).free, 5, 'قيمة تالفة = البديل');
-  assert.equal(tier.caps({ GUEST_DAILY: '-1' }).guest, 3);
+  assert.equal(tier.caps({ FREE_DAILY: 'abc' }).free, 20, 'قيمة تالفة = البديل');
+  assert.equal(tier.caps({ GUEST_DAILY: '-1' }).guest, 0);
   assert.equal(tier.caps({ SUB_DAILY_PRO: '999' }).pro, 999);
 });
 
@@ -44,13 +44,13 @@ test('resolveTier: guest / owner / vip / subscriber by plan / free', async () =>
   const getUser = async (u) => users[u] || null;
   const isVip = async (u) => u === 'vipguy';
   const o = { getUser, isVip, now, noCache: true, env: {} };
-  assert.deepEqual(await tier.resolveTier(null, o), { tier: 'guest', plan: null, cap: 3, subscriber: false });
+  assert.deepEqual(await tier.resolveTier(null, o), { tier: 'guest', plan: null, cap: 0, subscriber: false });
   assert.deepEqual(await tier.resolveTier('Omran', o), { tier: 'owner', plan: null, cap: Infinity, subscriber: true });
   assert.deepEqual(await tier.resolveTier('vipguy', o), { tier: 'vip', plan: null, cap: Infinity, subscriber: true });
   assert.deepEqual(await tier.resolveTier('subpro', o), { tier: 'sub', plan: 'pro', cap: 100, subscriber: true });
-  assert.deepEqual(await tier.resolveTier('lapsed', o), { tier: 'free', plan: null, cap: 5, subscriber: false }, 'اشتراك منتهٍ = مجاني');
-  assert.deepEqual(await tier.resolveTier('rich', o), { tier: 'free', plan: null, cap: 5, subscriber: false }, 'النقاط وحدها لا تصنع مشتركًا');
-  assert.deepEqual(await tier.resolveTier('nobody', o), { tier: 'free', plan: null, cap: 5, subscriber: false });
+  assert.deepEqual(await tier.resolveTier('lapsed', o), { tier: 'free', plan: null, cap: 20, subscriber: false }, 'اشتراك منتهٍ = مجاني');
+  assert.deepEqual(await tier.resolveTier('rich', o), { tier: 'free', plan: null, cap: 20, subscriber: false }, 'النقاط وحدها لا تصنع مشتركًا');
+  assert.deepEqual(await tier.resolveTier('nobody', o), { tier: 'free', plan: null, cap: 20, subscriber: false });
   const boom = await tier.resolveTier('subpro', Object.assign({}, o, { getUser: async () => { throw new Error('redis down'); } }));
   assert.equal(boom.tier, 'free', 'عطب القراءة لا يرفع أحدًا إلى مشترك');
 });
@@ -85,7 +85,7 @@ test('freeChain: order from env, providers without keys skipped, model overrides
 test('no provider name reaches the user in free-tier texts', () => {
   const texts = [tier.FREE_TEXT.freeLimit, tier.FREE_TEXT.guestLimit, tier.FREE_TEXT.subLimit(50), tier.FREE_TEXT.busy, tier.FREE_TEXT.subscribeOnly, fc.FREE_NOTE];
   for (const t of texts) assert.doesNotMatch(t, /كلاود|claude|gemini|جيميني|groq|mistral|llama|openrouter|anthropic|google/i, t);
-  assert.match(tier.FREE_TEXT.guestLimit, /5 رسائل/);
+  assert.match(tier.FREE_TEXT.guestLimit, /20 رسالة يوميًّا/);
   const app04 = read('js/app-04-i18n-state.js');
   const badge = app04.slice(app04.indexOf('v-tiers'), app04.indexOf('v-tiers') + 3000);
   assert.doesNotMatch(badge, /كلاود|claude/i);
@@ -185,10 +185,18 @@ test('streamFreeChain: all providers down → ok:false and nothing sent', async 
 test('chat.js wiring: tier first, free lane before the tool loop, limit as a reply with a tier event', () => {
   const chat = read('api/_lib/chat.js');
   assert.match(chat, /__tier = await tierLib\.resolveTier\(token \? __vt\(token\) : null\);/);
-  assert.match(chat, /checkAndConsume\(token, guestId, \(__tier && !__tier\.subscriber\) \? 'chat' : prov, clientIp\(req\), \{ tier: __tier \|\| undefined \}\)/);
+  assert.match(chat, /checkAndConsume\(token, guestId, \(__tier && !__tier\.subscriber\) \? 'chat' : \(\(__planRoute && __planRoute\.bucket\) \|\| prov\), clientIp\(req\), \{ tier: __tier \|\| undefined \}\)/);
   assert.match(chat, /send\(\{ tier: usage\.tier === 'guest' \? 'guest-limit' : 'free-limit' \}\);\n\s+send\(\{ delta: usage\.message \|\| tierLib\.FREE_TEXT\.freeLimit \}\);\n\s+send\(\{ done: true \}\);/);
   assert.match(chat, /const __freeLane = !!\(usage\.tier && !usage\.subscriber\);/);
-  assert.match(chat, /if \(__freeLane\) \{\n\s+send\(\{ tier: usage\.tier \}\);\n\s+const __fr = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(!__fr\.ok\) \{[\s\S]*?send\(\{ tierDiag: \(__fr\.errors \|\| \[\]\)\.slice\(0, 6\) \}\);\n\s+send\(\{ delta: tierLib\.FREE_TEXT\.busy \}\);\n\s+\}\n\s+send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;\n\s+\}\n\s+while \(steps < MAX_STEPS\) \{/);
+  const freeStart = chat.indexOf('if (__freeLane || !__visionRoute) {');
+  const toolStart = chat.indexOf('while (steps < MAX_STEPS) {');
+  assert.ok(freeStart >= 0 && freeStart < toolStart, 'المجاني وفشل الرؤية ينتهيان قبل حلقة الأدوات');
+  const freeBranch = chat.slice(freeStart, toolStart);
+  assert.match(freeBranch, /if \(__freeLane\) send\(\{ tier: usage\.tier \}\);/);
+  assert.match(freeBranch, /const __fr = await streamFreeChain\(\{[^\n]*convo, send, requireVision: lastUserHasImage \}\);/);
+  assert.match(freeBranch, /send\(\{ tierDiag: \(__fr\.errors \|\| \[\]\)\.slice\(0, 6\) \}\);/);
+  assert.match(freeBranch, /lastUserHasImage \? tierLib\.FREE_TEXT\.imageBusy : tierLib\.FREE_TEXT\.busy/);
+  assert.match(freeBranch, /send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;/);
 });
 
 test('_usage.js wiring: tier caps, paid providers closed to non-subscribers, guest cap from env', () => {
@@ -205,7 +213,7 @@ test('_usage.js wiring: tier caps, paid providers closed to non-subscribers, gue
 
 test('client wiring: tier flows from the stream to the stored message to the badge', () => {
   assert.match(read('js/app-18-chat-tools.js'), /if \(typeof ev\.tier === 'string' && ev\.tier\) __tier = ev\.tier;/);
-  assert.match(read('js/app-18-chat-tools.js'), /tier: __tier \|\| undefined \};/);
+  assert.match(read('js/app-18-chat-tools.js'), /tier: __tier \|\| undefined[,}]/);
   const a9 = read('js/app-09-attach.js');
   assert.match(a9, /if\(__ct\.tier\) __ctTier = __ct\.tier;/);
   assert.match(a9, /tier: __ctTier \|\| undefined, \/\* v-tiers \*\//);
@@ -218,7 +226,7 @@ test('client wiring: tier flows from the stream to the stored message to the bad
 test('points: image 20 (4K 30), maha minute 15; refunds return the charged amount', () => {
   const { COSTS } = require('../api/_lib/points.js');
   assert.equal(COSTS.image, 20); assert.equal(COSTS.image_4k, 30); assert.equal(COSTS.maha_minute, 15);
-  assert.equal(COSTS.runway_video, 55); assert.equal(COSTS.veo_video, 275); assert.equal(COSTS.premium_claude, 20); // v-plan-routing
+  assert.equal(COSTS.runway_video, 55); assert.equal(COSTS.veo_video, 175); assert.equal(COSTS.omni_video, 120); assert.equal(COSTS.premium_claude, 20); // v-plan-routing · v-fair-video (175/120)
   const mi = read('api/_lib/maha-image.js');
   assert.match(mi, /const __imgCost = __ask4K \? pointsLib\.COSTS\.image_4k : pointsLib\.COSTS\.image;/);
   assert.match(mi, /mahaImgChargedAmount = __imgCost;/);
@@ -239,19 +247,19 @@ test('plans: 360 / 920 / 3,200 (v-plan-routing) — identical in Stripe and PayP
   assert.deepEqual(stripe, { basic: { amount: 1000, points: 360 }, pro: { amount: 2000, points: 920 }, max: { amount: 10000, points: 3200 } });
   assert.deepEqual(paypal, { basic: { amount: 10, points: 360 }, pro: { amount: 20, points: 920 }, max: { amount: 100, points: 3200 } });
   const ps = read('js/partials-settings.js');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '5 رسائل يوميًا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'مها: 15 نقطة/دقيقة', 'صورة: 20']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
+  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '20 رسالة يوميًّا', '50 رسالة يوميًا', '100 رسالة يوميًا', '250 رسالة يوميًا', 'مها: 15 نقطة/دقيقة', 'صورة: 20']) assert.ok(ps.includes(s), 'partials-settings: ' + s);
   for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '<b>500</b>', '<b>1,200</b>', '<b>7,000</b>', '20 رسالة يوميًا', 'رسائل بلا حدود', 'صورة: 10']) assert.ok(!ps.includes(s), 'partials-settings stale: ' + s);
-  const ph = read('pricing.html');
-  for (const s of ['<b>360</b>', '<b>920</b>', '<b>3,200</b>', '5 رسائل يوميًا', '<div class="val">15</div>', '<div class="val">20</div>']) assert.ok(ph.includes(s), 'pricing.html: ' + s);
-  for (const s of ['<b>300</b>', '<b>800</b>', '<b>5,000</b>', '<b>500</b>', '<b>7,000</b>', 'رسائل بلا حدود', '<div class="val">10</div>']) assert.ok(!ph.includes(s), 'pricing.html stale: ' + s);
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'pricing.html')), 'v-cleanup: صفحة الأسعار اليتيمة حُذفت بموافقة المالك — بطاقات الإعدادات هي المرجع');
   const i18n = read('js/app-03-i18n-data.js');
-  assert.ok(i18n.includes("plFreeMsgs: '5 رسائل يوميًا'") && i18n.includes("plFreeMsgs: '5 messages a day'"));
+  assert.ok(i18n.includes("plFreeMsgs: '20 رسالة يوميًّا'") && i18n.includes("plFreeMsgs: '20 messages a day'"));
   assert.ok(i18n.includes("plStMsgs: '50 رسالة يوميًا'") && i18n.includes("plProMsgs: '100 messages a day'"));
 });
 
 test('paypal capture is idempotent per order id', () => {
+  // v-paypal-honest: الالتقاط يشحن عبر grantPlanToUser نفسها (حجز ذرّيّ لرقم الطلب) — السلوك مُختبَر في pay-once.
   const pp = read('api/_lib/paypal-order.js');
-  assert.match(pp, /if \(user && !user\.deleted && user\.lastPaypalOrderId === data\.id\) \{[\s\S]*?pointsAdded = 0;[\s\S]*?\} else if \(user && !user\.deleted\) \{\n[^\n]*\n\s+if \(!PLANS\[matchedPlan\]\.pack\) \{ user\.plan = matchedPlan;/);
+  assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id\)/);
+  assert.match(read('api/_lib/create-checkout-session.js'), /kvSetIfAbsent\(claim, username, CLAIM_TTL_SEC\)/);
 });
 
 test('completeJson: retired preferred name ignored, 404 tries the next candidate, other errors pass through', async () => {
@@ -261,18 +269,18 @@ test('completeJson: retired preferred name ignored, 404 tries the next candidate
     const body = JSON.parse(init.body);
     calls.push(body.model);
     if (body.model === 'openai/gpt-oss-120b') return new Response(JSON.stringify({ error: { message: 'The model `openai/gpt-oss-120b` does not exist or you do not have access to it.' } }), { status: 404 });
-    if (body.model === 'meta-llama/llama-4-maverick-17b-128e-instruct') return new Response(JSON.stringify({ choices: [{ message: { content: 'تمام' } }] }), { status: 200 });
+    if (body.model === 'openai/gpt-oss-20b') return new Response(JSON.stringify({ choices: [{ message: { content: 'تمام' } }] }), { status: 200 });
     return new Response('x', { status: 500 });
   };
   fc.__workingModel.clear();
   const r = await fc.completeJson('groq', { key: 'k', model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'هلا' }], fetchImpl, env: {}, now: 5000 });
-  assert.equal(r.ok, true); assert.equal(r.model, 'meta-llama/llama-4-maverick-17b-128e-instruct');
+  assert.equal(r.ok, true); assert.equal(r.model, 'openai/gpt-oss-20b');
   assert.equal(r.json.choices[0].message.content, 'تمام');
-  assert.deepEqual(calls, ['openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct'], 'الاسم المتقاعد لا يُجرَّب أصلًا');
+  assert.deepEqual(calls, ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], 'الاسم المتقاعد لا يُجرَّب أصلًا');
   /* النداء التالي يبدأ بالناجح */
   calls.length = 0;
   await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl, env: {}, now: 6000 });
-  assert.deepEqual(calls, ['meta-llama/llama-4-maverick-17b-128e-instruct']);
+  assert.deepEqual(calls, ['openai/gpt-oss-20b']);
   /* خطأ غير النموذج يُعاد فورًا بلا تجربة الباقين */
   fc.__workingModel.clear();
   const bad = await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl: async () => new Response('rate', { status: 429 }), env: {}, now: 7000 });
@@ -299,11 +307,11 @@ test('no retired model name is hard-wired anywhere on the server or in client de
 test('chat.js: king unavailable before the first character → SILENT server-side free-chain fallback (no visible notice)', () => {
   const chat = read('api/_lib/chat.js');
   // يهبط إلى السلسلة المجانية ويبثّها بـsend مباشرة (لا غلاف يُضيف بادئة).
-  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send, requireVision: lastUserHasImage \}\);\n\s+if \(__fb\.ok\) \{[\s\S]*?send\(\{ done: true \}\); res\.end\(\); return;[\s\S]*?\}/);
+  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), raw: __rawOwner, convo: __ownerReq \? compactConversation\(convo\) : convo \/\* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة \*\/, send, requireVision: lastUserHasImage \}\);\n\s+if \(__fb\.ok\) \{[\s\S]*?send\(\{ done: true \}\); res\.end\(\); return;[\s\S]*?\}/);
   // v-silent-fallback (طلب المالك «يبدّل بدون ما أحد يعرف»): لا بادئة مرئيّة في الردّ.
   assert.ok(!/فهذا ردّ من المحرّك الاحتياطي بلا أدوات/.test(chat), 'يجب ألّا تظهر بادئة التبديل للمستخدم');
   const groq = read('api/_lib/groq.js');
-  assert.match(groq, /const tried = fc\.modelsToTry\(spec, typeof model === 'string' \? model : ''\);/);
+  assert.match(groq, /const tried = fc\.modelsToTry\(spec, reqModel\);/); // v-model-lock: الاسم بعد الحارس
   assert.match(groq, /if \(!fc\.isModelErrorStatus\(r\.status, txt\)\) break;/);
 });
 

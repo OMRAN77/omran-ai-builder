@@ -20,23 +20,46 @@ function genRecoveryCode() {
 }
 
 module.exports = async (req, res) => {
-  const failRedirect = (reason) => {
+  // v-google-app-fail: فشل دخول بدأ من غلاف الآيفون («-app») كان يهبط في سفاري على
+  // نسخة الموقع كضيف — شاشة دخول فارغة بلا سبب — والتطبيق ينتظر عشر دقائق بصمت.
+  // الآن: يُودَع السبب تحت state فيعرضه التطبيق عند العودة، وسفاري يهبط على صفحة
+  // «ارجع للتطبيق وحاول مجدّدًا». لا يُكتب فوق جلسة ناجحة مودعة (نداء مكرّر للعودة).
+  const st0 = (req.query || {}).state;
+  const appSt = typeof st0 === 'string' ? /^([0-9a-f]{16,64})-app$/i.exec(st0) : null;
+  const failRedirect = async (reason) => {
+    reason = String(reason).slice(0, 64);
+    if (appSt) {
+      let done = false;
+      try {
+        const { kvGetJSON, kvPutJSON, kvExpire } = require('./kv.js');
+        const key = 'db/oauth-claim/' + appSt[1].toLowerCase();
+        const prev = await kvGetJSON(key);
+        done = !!(prev && prev.token);
+        if (!done) {
+          await kvPutJSON(key, { error: reason, ts: Date.now() });
+          await kvExpire(key, 600);
+        }
+      } catch (e) { console.warn('[oauth] fail store failed:', e && e.message); }
+      res.writeHead(302, { Location: siteUrl() + '/login-done.html' + (done ? '' : '?gerror=' + encodeURIComponent(reason)) });
+      res.end();
+      return;
+    }
     res.writeHead(302, { Location: siteUrl() + '/?gerror=' + encodeURIComponent(reason) });
     res.end();
   };
 
   try {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      failRedirect('google_not_configured');
+      await failRedirect('google_not_configured');
       return;
     }
     const { code, error, state } = req.query || {};
     if (error) {
-      failRedirect(String(error));
+      await failRedirect(String(error));
       return;
     }
     if (!code) {
-      failRedirect('missing_code');
+      await failRedirect('missing_code');
       return;
     }
 
@@ -55,7 +78,7 @@ module.exports = async (req, res) => {
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok || !tokenData.access_token) {
       console.error('[Google OAuth]', tokenData && tokenData.error, tokenData && tokenData.error_description);
-      failRedirect('token_exchange_failed');
+      await failRedirect('token_exchange_failed');
       return;
     }
 
@@ -65,12 +88,12 @@ module.exports = async (req, res) => {
     });
     const profile = await profileRes.json();
     if (!profileRes.ok || !profile.email) {
-      failRedirect('profile_fetch_failed');
+      await failRedirect('profile_fetch_failed');
       return;
     }
 
     if (profile.email_verified !== true) {
-      failRedirect('email_not_verified');
+      await failRedirect('email_not_verified');
       return;
     }
 
@@ -108,6 +131,14 @@ module.exports = async (req, res) => {
         console.warn('[auth] sealed record reclaimed via verified Google email: ' + key);
         user = null;
       } else { throw e; }
+    }
+
+    // v-name-reuse: مفتاح g_<البريد> لم يكن محجوزًا قبل ٨ أكتوبر، فقد يحمل حسابًا سجّله غير صاحب البريد بكلمة مرور
+    // يعرفها — دخول صاحب البريد إليه يجعله يكتب ويشتري في حساب يقرؤه غيره. حساب الكولباك وحده يحمل googleAuth (منذ أوّل نسخة).
+    if (user && !user.deleted && key === 'g_' + email && user.googleAuth !== true) {
+      console.warn('[auth] g_ key held by a non-Google account — refused: ' + key);
+      await failRedirect('account_conflict');
+      return;
     }
 
     if (!user || user.deleted) {
@@ -159,6 +190,6 @@ module.exports = async (req, res) => {
     res.writeHead(302, { Location: siteUrl() + '/?' + params.toString() });
     res.end();
   } catch (e) {
-    failRedirect('server_error');
+    await failRedirect('server_error');
   }
 };

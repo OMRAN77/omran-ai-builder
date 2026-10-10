@@ -1,0 +1,767 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>سباق الدرون بين الأبراج</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<!--CITYKIT-->
+</head><body><script>
+/* سباق الدرون بين الأبراج — حلقات مضيئة بين أطول المباني الحقيقيّة على ٦٠٪ من ارتفاعها، فيزياء طيران مبسّطة
+   (دفع + سحب + تسوية تلقائيّة + تثبيت ارتفاع)، لوحة مفاتيح وعصوان للّمس، مؤقّت وأفضل وقت، وطيّار تلقائيّ يرسم المسار الآمن. */
+(function () {
+  'use strict';
+  const CK = window.CityKit, T = CK.T;
+  const G = 9.81, TILT = 0.62, LIFT = 10, VDAMP = 1.6, C1 = 0.08, INTRO = 4.2, HSTEP = 1 / 60, APP = 16, MAXDT = 1;
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+  const fmt = (t) => { if (t == null || !isFinite(t)) return '—'; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
+  const c2For = (kmh) => { const v = kmh / 3.6; return Math.max(0.0005, (G * Math.tan(TILT) - C1 * v) / (v * v)); };
+  const TOUCH = !!((window.matchMedia && matchMedia('(pointer: coarse)').matches) || navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+  // الزمن الحقيقيّ بين الإطارات: النواة تقصّ dt عند ٠٫٠٥ ث فيبطؤ المؤقّت على الأجهزة البطيئة (١٥ إطارًا = ٠٫٧٥ ث لكلّ ثانية).
+  // نحسبه من now، ونقصّه عند ثانية فقط؛ يبدأ المرجع من لحظة إعادة البدء، ويُصفَّر عند تبدّل ظهور التبويب فلا يُضاف زمن الغياب.
+  let lastNow = -1;
+  const realDt = (dt, now) => { const r = lastNow < 0 ? dt : Math.min(MAXDT, Math.max(0, (now - lastNow) / 1000)); lastNow = now; return r; };
+  document.addEventListener('visibilitychange', () => { lastNow = -1; });
+
+  let ctx = null, THREE = null, S = null, C2 = c2For(110), TEX = null, EUL = null, UPV = null, FPVQ = null;
+  const opts = { rings: 8, vmax: 110, cam: 'chase' };
+  const keys = new Set();
+  const stk = { l: { x: 0, y: 0 }, r: { x: 0, y: 0 } };
+  const UI = {};
+
+  const CSS = `
+  .ck-ui h1{padding-left:36px}
+  .dr-tog{position:absolute;top:10px;left:10px;width:28px;height:28px;padding:0!important;display:grid;place-items:center;background:rgba(255,255,255,.07)!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:8px!important}
+  .dr-tog svg{transition:transform .2s}
+  .ck-ui.dr-min{padding:9px 14px}
+  .ck-ui.dr-min>*:not(h1):not(.dr-tog){display:none}
+  .ck-ui.dr-min h1{margin:0}
+  .ck-ui.dr-min .dr-tog svg{transform:rotate(180deg)}
+  .dr-course{margin:4px 0 8px;padding:8px 10px;border-radius:10px;background:linear-gradient(135deg,rgba(255,200,90,.13),rgba(31,138,147,.12));border:1px solid rgba(255,214,120,.22);font-size:13px;color:#e9dcc0}
+  .dr-course b{color:#ffd36b;font-variant-numeric:tabular-nums}
+  .dr-seg{display:flex;gap:4px;background:#0d1a20;border:1px solid #2b4650;border-radius:10px;padding:3px;margin-top:4px}
+  .dr-seg button{flex:1;background:transparent!important;color:#a9c1c7!important;padding:5px 4px!important;font-size:13px!important;border-radius:7px!important}
+  .dr-seg button.on{background:#1f8a93!important;color:#fff!important}
+  .ck-ui button.dr-go{background:linear-gradient(135deg,#ffb238,#ff7a1a);color:#1a1006;font-weight:700}
+  .dr-keys{margin-top:8px;font-size:12px;color:#a9c1c7;line-height:2}
+  .dr-keys kbd{display:inline-block;min-width:18px;padding:0 5px;border:1px solid #3a5763;border-bottom-width:2px;border-radius:5px;background:#0d1a20;color:#e8f1f3;font:600 11px/17px system-ui,sans-serif;text-align:center;margin:0 1px}
+  .dh{background:linear-gradient(160deg,rgba(9,16,28,.78),rgba(9,16,28,.52));border:1px solid rgba(255,214,120,.25);border-radius:16px;padding:10px 14px;min-width:270px;backdrop-filter:blur(6px);text-shadow:none;box-shadow:0 8px 28px rgba(0,0,0,.3)}
+  .dh-l{font-size:11.5px;color:#9fb6c8;font-weight:500}
+  .dh-t{font:700 44px/1.05 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#ffd36b;direction:ltr;text-align:right;letter-spacing:.5px}
+  .dh-bar{height:4px;border-radius:2px;background:rgba(255,255,255,.12);margin-top:7px;overflow:hidden}
+  .dh-bar s{display:block;height:100%;width:0;background:linear-gradient(270deg,#ffd36b,#ff7a1a);transition:width .3s}
+  .dh-g{display:grid;grid-template-columns:repeat(5,auto);gap:2px 14px;margin-top:8px}
+  .dh-g div{display:flex;flex-direction:column;min-width:0}
+  .dh-g i{font-style:normal;font-size:11px;color:#9fb6c8;font-weight:500;white-space:nowrap}
+  .dh-g b{font-size:21px;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .dh-g u{text-decoration:none;font-size:11px;color:#9fb6c8;font-weight:500;margin-inline-start:2px}
+  .dh-best{margin-top:6px;font-size:12px;color:#c9d7e2;font-weight:500}
+  .dh-best b{color:#7dffbe;font-variant-numeric:tabular-nums}
+  .dr-msg{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%) scale(.96);z-index:4;max-width:92vw;pointer-events:none;text-align:center;font:800 40px/1.2 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.65);opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap}
+  .dr-msg small{display:block;font-size:16px;font-weight:600;color:#ffe2a8;margin-top:4px}
+  .dr-msg.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  .dr-msg.bad{color:#ff6b5b}.dr-msg.gold{color:#ffd36b}
+  .dr-map{position:fixed;left:14px;bottom:14px;z-index:4;width:168px;height:168px;border-radius:50%;border:1px solid rgba(255,214,120,.4);box-shadow:0 6px 24px rgba(0,0,0,.35);pointer-events:none}
+  .dr-stick{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:6;width:128px;height:128px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.12),rgba(10,20,30,.42) 70%);border:1.5px solid rgba(255,255,255,.3);touch-action:none;user-select:none;-webkit-user-select:none}
+  .dr-stick.l{left:16px}.dr-stick.r{right:16px}
+  .dr-stick:before,.dr-stick:after{content:"";position:absolute;background:rgba(255,255,255,.18)}
+  .dr-stick:before{left:50%;top:14px;bottom:14px;width:1px}.dr-stick:after{top:50%;left:14px;right:14px;height:1px}
+  .dr-knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff7e0,#ffc94a 45%,#c97a12);box-shadow:0 4px 14px rgba(0,0,0,.45);pointer-events:none;z-index:1}
+  .dr-stick span{position:absolute;top:-22px;left:-10px;right:-10px;text-align:center;font:600 11.5px "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;pointer-events:none;white-space:nowrap}
+  @media (max-width:640px){
+    body .ck-ui{top:8px;bottom:auto;left:8px;right:8px;width:auto;max-height:46vh}
+    body .ck-hud{top:60px;left:8px;right:8px}
+    .dh{min-width:0;padding:7px 10px;border-radius:13px}
+    .dh-t{font-size:27px}
+    .dh-g{grid-template-columns:repeat(5,1fr);gap:0 6px;margin-top:5px}
+    .dh-g b{font-size:16px}.dh-g i,.dh-g u{font-size:10px}
+    .dr-map{display:none}
+    .dr-msg{font-size:24px;top:62%;white-space:normal;width:max-content}.dr-msg small{font-size:13px}
+  }`;
+
+  // ── أدوات رسم صغيرة ──
+  function glowTex() {
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,.65)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  }
+  function labelTex(txt, col) {
+    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+    g.beginPath(); g.arc(64, 64, 54, 0, Math.PI * 2); g.fillStyle = 'rgba(10,18,30,.82)'; g.fill();
+    g.lineWidth = 7; g.strokeStyle = col; g.stroke();
+    g.fillStyle = '#fff'; g.font = 'bold 62px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 64, 68);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  }
+  const add = (mat) => Object.assign(mat, { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  function freeCourse(grp) { // هندسة المسار وموادّه وأرقام حلقاته (TEX مشترك يبقى)
+    grp.traverse((o) => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) { if (m.map && m.map !== TEX) m.map.dispose(); m.dispose(); } });
+  }
+
+  // ── مرّة واحدة: المظهر والواجهة والمدخلات ──
+  function setupOnce(c) {
+    ctx = c; THREE = c.THREE; TEX = glowTex();
+    EUL = new THREE.Euler(); UPV = new THREE.Vector3(); FPVQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.32);
+    const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+    const R = c.R;
+    // سماء الغروب: قبّة متدرّجة + وهج الشمس، وضباب بلون الأفق
+    c.scene.background = new THREE.Color(0x8fa4c8);
+    c.scene.fog.color.setHex(0xcab4a6); c.scene.fog.near = R * 1.1; c.scene.fog.far = R * 3.8;
+    c.sun.position.set(-R * 0.85, R * 0.6, R * 0.32); c.sun.color.setHex(0xffcf9e); c.sun.intensity = 1.7;
+    c.hemi.color.setHex(0xa9bcff); c.hemi.groundColor.setHex(0x5a4638); c.hemi.intensity = 1.0;
+    c.camera.far = R * 9; c.camera.fov = 62; c.camera.updateProjectionMatrix();
+    const sd = c.sun.position.clone().normalize();
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(R * 6, 32, 16), new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { sd: { value: sd } },
+      vertexShader: 'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: 'uniform vec3 sd; varying vec3 vD; void main(){ vec3 d = normalize(vD); float h = d.y;' +
+        'vec3 zen = vec3(0.10,0.17,0.34), up = vec3(0.33,0.45,0.70), hor = vec3(0.98,0.74,0.55), fc = vec3(0.79,0.71,0.65);' +
+        'vec3 c = mix(fc, hor, smoothstep(-0.03, 0.03, h)); c = mix(c, up, smoothstep(0.03, 0.30, h)); c = mix(c, zen, smoothstep(0.30, 0.95, h));' +
+        'float s = max(0.0, dot(d, sd)); c += vec3(1.0,0.62,0.32) * pow(s, 18.0) * 0.55 + vec3(1.0,0.9,0.7) * pow(s, 500.0);' +
+        'gl_FragColor = vec4(c, 1.0); }',
+    }));
+    sky.renderOrder = -10; c.scene.add(sky);
+
+    // اللوحة
+    const P = c.ui.panel;
+    P.innerHTML = '<div class="dr-course" id="drCourse">' + T('أجهّز المسار…', 'Preparing the course…') + '</div>' +
+      '<div class="ck-row"><button class="dr-go" id="drRestart">' + T('سباق جديد', 'New race') + '</button><button class="ghost" id="drDemo">' + T('لفّة تلقائيّة', 'Auto lap') + '</button></div>' +
+      '<label>' + T('الكاميرا', 'Camera') + '</label><div class="dr-seg" id="drCam">' +
+      '<button data-m="chase" class="on">' + T('خلف الدرون', 'Chase') + '</button><button data-m="fpv">' + T('عين الطيّار', 'Pilot view') + '</button><button data-m="over">' + T('من فوق', 'Overview') + '</button></div>' +
+      '<label>' + T('عدد الحلقات', 'Rings') + ': <b id="drNv">8</b></label><input type="range" id="drN" min="4" max="12" step="1" value="8">' +
+      '<label>' + T('أقصى سرعة', 'Top speed') + ': <b id="drVv">110</b> ' + T('كم/س', 'km/h') + '</label><input type="range" id="drV" min="60" max="160" step="10" value="110">' +
+      '<div class="ck-stat" id="drStat"></div>' +
+      (TOUCH ? '<div class="dr-keys">' + T('العصا اليسرى: صعود ونزول ودوران · اليمنى: تقدّم وانزلاق', 'Left stick: climb and turn · Right stick: forward and strafe') + '</div>'
+        : '<div class="dr-keys"><kbd>W</kbd><kbd>S</kbd> ' + T('تقدّم ورجوع', 'forward/back') + ' · <kbd>A</kbd><kbd>D</kbd> ' + T('دوران', 'turn') + ' · <kbd>Q</kbd><kbd>E</kbd> ' + T('صعود ونزول', 'up/down') +
+          '<br><kbd>←</kbd><kbd>→</kbd> ' + T('انزلاق', 'strafe') + ' · <kbd>C</kbd> ' + T('الكاميرا', 'camera') + ' · <kbd>R</kbd> ' + T('من جديد', 'restart') + '</div>');
+    UI.course = P.querySelector('#drCourse'); UI.stat = P.querySelector('#drStat'); UI.demo = P.querySelector('#drDemo');
+    P.querySelector('#drRestart').addEventListener('click', () => { if (!S) return; setDemo(false); restart(); });
+    UI.demo.addEventListener('click', () => { if (S) setDemo(!S.demo); });
+    UI.cam = P.querySelector('#drCam');
+    UI.cam.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setCam(b.dataset.m); });
+    const nI = P.querySelector('#drN'), vI = P.querySelector('#drV');
+    nI.addEventListener('input', () => { opts.rings = +nI.value; P.querySelector('#drNv').textContent = nI.value; });
+    nI.addEventListener('change', () => { if (S) { setDemo(false); buildCourse(); restart(); } });
+    vI.addEventListener('input', () => { opts.vmax = +vI.value; C2 = c2For(opts.vmax); P.querySelector('#drVv').textContent = vI.value; });
+    UI.nI = nI; UI.vI = vI;
+
+    // زرّ طيّ اللوحة (يُطوى تلقائيًّا مع الإقلاع ليظهر المشهد كاملًا)
+    const tog = document.createElement('button'); tog.className = 'dr-tog'; tog.setAttribute('aria-label', T('إظهار أو إخفاء اللوحة', 'Toggle panel'));
+    tog.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>';
+    tog.addEventListener('click', () => c.ui.box.classList.toggle('dr-min'));
+    c.ui.box.appendChild(tog);
+
+    // لوحة الأرقام الحيّة
+    const cell = (id, l, u) => '<div><i>' + l + '</i><b><span id="' + id + '">0</span>' + (u ? '<u>' + u + '</u>' : '') + '</b></div>';
+    c.ui.hud('<div class="dh"><div class="dh-l">' + T('زمن السباق', 'Race time') + '</div><div class="dh-t" id="dhT">0:00.0</div><div class="dh-bar"><s id="dhB"></s></div><div class="dh-g">' +
+      cell('dhR', T('الحلقات', 'Rings'), '') + cell('dhS', T('السرعة', 'Speed'), T('كم/س', 'km/h')) + cell('dhA', T('الارتفاع', 'Alt'), T('م', 'm')) +
+      cell('dhN', T('للحلقة', 'To ring'), T('م', 'm')) + cell('dhC', T('اصطدام', 'Crashes'), '') + '</div><div class="dh-best" id="dhBest"></div></div>');
+    ['dhT', 'dhB', 'dhR', 'dhS', 'dhA', 'dhN', 'dhC', 'dhBest'].forEach((k) => { UI[k] = document.getElementById(k); });
+
+    UI.msg = document.createElement('div'); UI.msg.className = 'dr-msg'; document.body.appendChild(UI.msg);
+    UI.map = document.createElement('canvas'); UI.map.className = 'dr-map'; UI.map.width = UI.map.height = 336; document.body.appendChild(UI.map);
+
+    // عصوان للّمس (نمط ٢: اليسرى ارتفاع ودوران، اليمنى تقدّم وانزلاق)
+    if (TOUCH) {
+      for (const side of ['l', 'r']) {
+        const el = CK.el('<div class="dr-stick ' + side + '"><span>' + (side === 'l' ? T('صعود · دوران', 'Climb · turn') : T('تقدّم · انزلاق', 'Forward · strafe')) + '</span><div class="dr-knob"></div></div>');
+        document.body.appendChild(el);
+        const knob = el.querySelector('.dr-knob'); let pid = null;
+        const move = (e) => {
+          const r = el.getBoundingClientRect(), rad = r.width / 2 - 14;
+          let x = (e.clientX - r.left - r.width / 2) / rad, y = (e.clientY - r.top - r.height / 2) / rad;
+          const L = Math.hypot(x, y); if (L > 1) { x /= L; y /= L; }
+          stk[side].x = Math.abs(x) < 0.08 ? 0 : x; stk[side].y = Math.abs(y) < 0.08 ? 0 : y;
+          knob.style.transform = 'translate(' + (x * rad) + 'px,' + (y * rad) + 'px)';
+        };
+        const end = (e) => { if (e.pointerId !== pid) return; pid = null; stk[side].x = stk[side].y = 0; knob.style.transform = ''; };
+        el.addEventListener('pointerdown', (e) => { e.preventDefault(); pid = e.pointerId; try { el.setPointerCapture(pid); } catch (er) { /* بلا التقاط */ } move(e); });
+        el.addEventListener('pointermove', (e) => { if (e.pointerId === pid) move(e); });
+        el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+      }
+    }
+
+    // لوحة المفاتيح (مرّة واحدة لكلّ الصفحة)
+    window.addEventListener('keydown', (e) => {
+      if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+      if (/^(Arrow|Space)/.test(e.code)) e.preventDefault();
+      if (e.code === 'KeyR' && S) { setDemo(false); restart(); return; }
+      if (e.code === 'KeyC') { const m = ['chase', 'fpv', 'over']; setCam(m[(m.indexOf(opts.cam) + 1) % 3]); return; }
+      keys.add(e.code);
+    });
+    window.addEventListener('keyup', (e) => keys.delete(e.code));
+    window.addEventListener('blur', () => keys.clear());
+  }
+
+  // ── المسار: بوّابات بين أطول المباني ──
+  function centroid(b) { let x = 0, z = 0; for (const p of b.poly) { x += p[0]; z += p[1]; } return [x / b.poly.length, z / b.poly.length]; }
+  function findGates(city, maxR) {
+    const idx = city.idx, B = city.buildings, Hh = (x, z) => idx.heightAt(x, z);
+    const cand = [];
+    for (let i = 0; i < B.length && cand.length < 36; i++) {
+      const b = B[i]; if (b.h < 16) break;
+      const [x, z] = centroid(b); if (Math.hypot(x, z) > maxR) continue;
+      if (cand.some((o) => Math.hypot(o.x - x, o.z - z) < 20)) continue;
+      cand.push({ x, z, h: b.h, name: b.name });
+    }
+    const clear = (mx, mz, tx, tz, nx, nz, r, y) => {
+      const lim = y - r - 1.2;
+      for (let s = -(r + 1.5); s <= r + 1.5; s += 1.5) if (Hh(mx + tx * s, mz + tz * s) > lim) return false;
+      for (const o of [-0.7 * r, 0, 0.7 * r]) for (let s = -26; s <= 26; s += 2.5) if (Hh(mx + tx * o + nx * s, mz + tz * o + nz * s) > lim) return false;
+      return true;
+    };
+    const gates = [];
+    for (let i = 0; i < cand.length; i++) for (let j = i + 1; j < cand.length; j++) {
+      const A = cand[i], Bb = cand[j], dx = Bb.x - A.x, dz = Bb.z - A.z, d = Math.hypot(dx, dz);
+      if (d < 24 || d > 230) continue;
+      const mh = Math.min(A.h, Bb.h), y = 0.6 * mh, tx = dx / d, tz = dz / d, nx = -tz, nz = tx, mx = (A.x + Bb.x) / 2, mz = (A.z + Bb.z) / 2;
+      if (Math.hypot(mx, mz) > maxR) continue;
+      let r = 0;
+      for (const rr of [9, 7.5, 6]) { if (mh < rr * 2.6 || y - rr - 1.2 < 3) continue; if (clear(mx, mz, tx, tz, nx, nz, rr, y)) { r = rr; break; } }
+      if (!r) continue;
+      gates.push({ x: mx, y, z: mz, tx, tz, nx, nz, r, mh, hA: A.h, hB: Bb.h, name: A.name || Bb.name || '', score: y * (1.25 - d / 240) - Math.hypot(mx, mz) * 0.06 });
+    }
+    gates.sort((a, b) => b.score - a.score);
+    // اختيار متكتّل: أفضل بوّابة أوّلًا، ثمّ الأفضل مع خصم للبعد عن أقرب بوّابة مختارة — مسار متماسك لا قفزات عبر الحيّ
+    const sel = [];
+    while (sel.length < opts.rings) {
+      let best = null, bv = -Infinity;
+      for (const g of gates) {
+        if (sel.includes(g)) continue;
+        let dn = Infinity; for (const s of sel) dn = Math.min(dn, Math.hypot(s.x - g.x, s.z - g.z));
+        if (dn < 55) continue;
+        const v = g.score - (sel.length ? 0.22 * dn : 0);
+        if (v > bv) { bv = v; best = g; }
+      }
+      if (!best) break; sel.push(best);
+    }
+    return sel;
+  }
+  function circleCourse(N) { // احتياط لحيّ بلا أبراج: دائرة فوق أعلى ما حولها
+    const idx = S.city.idx, rad = Math.min(ctx.R * 0.38, 180), out = [];
+    for (let k = 0; k < N; k++) {
+      const a = (k / N) * Math.PI * 2, x = rad * Math.sin(a), z = -rad * Math.cos(a), nx = Math.cos(a), nz = Math.sin(a), r = 8;
+      let mh = 0; for (let s = -30; s <= 30; s += 3) for (const o of [-r, 0, r]) mh = Math.max(mh, idx.heightAt(x + nx * s - nz * o, z + nz * s + nx * o));
+      out.push({ x, y: Math.max(16, mh + r + 6), z, tx: -nz, tz: nx, nx, nz, r, mh: 0, hA: 0, hB: 0, name: '' });
+    }
+    return out;
+  }
+  function findPad() {
+    const H = S.city.idx.heightAt, free = (x, z) => !H(x, z) && !H(x + 6, z) && !H(x - 6, z) && !H(x, z + 6) && !H(x, z - 6);
+    for (let rad = 0; rad <= 320; rad += 8) {
+      const n = Math.max(1, Math.round(rad / 5));
+      for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2, x = rad * Math.cos(a), z = rad * Math.sin(a); if (free(x, z)) return { x, z }; }
+    }
+    return { x: 0, z: 0 };
+  }
+  function buildCourse() {
+    const city = S.city, idx = city.idx, H = idx.heightAt, D2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+    if (S.course) { city.group.remove(S.course); freeCourse(S.course); }
+    let sel = findGates(city, ctx.R * 0.55); S.fallback = false;
+    if (sel.length < Math.min(opts.rings, 4)) { const wide = findGates(city, ctx.R * 0.8); if (wide.length > sel.length) sel = wide; } // حيّ أبراجه بعيدة عن المركز
+    if (sel.length < 3) { sel = circleCourse(opts.rings); S.fallback = true; }
+    const pad = S.pad = findPad();
+    // ترتيب: الأقرب فالأقرب من منصّة الإقلاع ثمّ تحسين 2-opt لمسار مفتوح
+    const rem = sel.slice(), ord = []; let cur = pad;
+    while (rem.length) { let bi = 0; for (let i = 1; i < rem.length; i++) if (D2(cur, rem[i]) < D2(cur, rem[bi])) bi = i; cur = rem.splice(bi, 1)[0]; ord.push(cur); }
+    const pts = [pad].concat(ord);
+    for (let it = 0, imp = true; imp && it < 60; it++) {
+      imp = false;
+      for (let i = 1; i < pts.length - 1; i++) for (let j = i + 1; j < pts.length; j++) {
+        const a = pts[i - 1], b = pts[i], c = pts[j], d = pts[j + 1];
+        const dl = D2(a, c) + (d ? D2(b, d) : 0) - D2(a, b) - (d ? D2(c, d) : 0);
+        if (dl < -0.01) { const seg = pts.slice(i, j + 1).reverse(); pts.splice(i, seg.length, ...seg); imp = true; }
+      }
+    }
+    const rings = S.rings = pts.slice(1);
+    rings.forEach((g, i) => { // وجه الحلقة عموديّ على خطّ البرجين، باتّجاه السباق
+      const pv = i ? rings[i - 1] : pad, nx = rings[i + 1];
+      const dx = nx ? nx.x - pv.x : g.x - pv.x, dz = nx ? nx.z - pv.z : g.z - pv.z;
+      if (g.nx * dx + g.nz * dz < 0) { g.nx = -g.nx; g.nz = -g.nz; }
+      g.i = i; g.st = '';
+    });
+    // نقاط الطيّار التلقائيّ: اقتراب ← مركز الحلقة ← خروج، وصعود فوق المباني إن انسدّ الخطّ المستقيم
+    const clearSeg = (p, q) => {
+      const L = Math.hypot(q.x - p.x, q.z - p.z), n = Math.max(1, Math.ceil(L / 2.5)), ux = (q.x - p.x) / (L || 1), uz = (q.z - p.z) / (L || 1);
+      for (let s = 0; s <= n; s++) { const t = s / n, x = p.x + (q.x - p.x) * t, z = p.z + (q.z - p.z) * t, y = p.y + (q.y - p.y) * t; for (const o of [-4, 0, 4]) if (H(x - uz * o, z + ux * o) > y - 3) return false; }
+      return true;
+    };
+    const cMax = (p, q) => {
+      const L = Math.hypot(q.x - p.x, q.z - p.z), n = Math.max(1, Math.ceil(L / 2.5)), ux = (q.x - p.x) / (L || 1), uz = (q.z - p.z) / (L || 1); let m = 0;
+      for (let s = 0; s <= n; s++) { const t = s / n, x = p.x + (q.x - p.x) * t, z = p.z + (q.z - p.z) * t; for (const o of [-7, -3.5, 0, 3.5, 7]) m = Math.max(m, H(x - uz * o, z + ux * o)); }
+      return m;
+    };
+    const wps = S.wps = []; let P = { x: pad.x, y: 0.4, z: pad.z };
+    const leg = (p, q) => { if (clearSeg(p, q)) return; const hc = Math.max(p.y, q.y, cMax(p, q) + 12); if (hc > p.y + 0.5) wps.push({ x: p.x, y: hc, z: p.z, tol: 7 }); if (hc > q.y + 0.5) wps.push({ x: q.x, y: hc, z: q.z, tol: 7 }); };
+    for (const g of rings) {
+      const A = { x: g.x - g.nx * APP, y: g.y, z: g.z - g.nz * APP, tol: 4 }, E = { x: g.x + g.nx * APP, y: g.y, z: g.z + g.nz * APP, tol: 5 };
+      leg(P, A); wps.push(A); wps.push({ x: g.x, y: g.y, z: g.z, tol: 3, ring: g.i }); wps.push(E); g.exitWp = wps.length - 1; P = E;
+    }
+    let len = 0, prev = { x: pad.x, y: 0.4, z: pad.z }; for (const w of wps) { len += Math.hypot(w.x - prev.x, w.y - prev.y, w.z - prev.z); prev = w; }
+    S.courseM = len;
+    let cx = 0, cz = 0, my = 0; for (const g of rings) { cx += g.x; cz += g.z; my = Math.max(my, g.y); } cx /= rings.length; cz /= rings.length;
+    S.centre = { x: cx, z: cz }; S.maxY = my; S.rad = Math.max(60, ...rings.map((g) => Math.hypot(g.x - cx, g.z - cz)));
+    buildCourseVisuals();
+    S.mapBg = null;
+    const towers = rings.filter((g) => g.mh).length;
+    UI.course.innerHTML = '<b>' + rings.length + '</b> ' + T('حلقات', 'rings') + ' · <b>' + (len / 1000).toFixed(2) + '</b> ' + T('كم', 'km') + ' · ' + T('أعلى حلقة', 'highest ring') + ' <b>' + Math.round(my) + '</b> ' + T('م', 'm') +
+      '<br>' + (S.fallback ? T('ما في أبراج كافية هنا — المسار دائرة فوق الحيّ.', 'Not enough towers here — a loop above the area.')
+        : T('كلّ حلقة بين برجين حقيقيّين على ٦٠٪ من ارتفاع الأقصر.', 'Each ring sits between two real towers at 60% of the shorter one.') + (rings.length < opts.rings ? ' ' + T('المتاح هنا ', 'Available: ') + towers + '.' : ''));
+  }
+
+  // ── المرئيّات ──
+  function buildCourseVisuals() {
+    const grp = S.course = new THREE.Group(); S.city.group.add(grp);
+    const N = S.rings.length;
+    for (const g of S.rings) {
+      const rg = new THREE.Group(); rg.position.set(g.x, g.y, g.z); rg.lookAt(g.x + g.nx, g.y, g.z + g.nz);
+      const core = new THREE.Mesh(new THREE.TorusGeometry(g.r, 0.42, 12, 72), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, transparent: true }));
+      const glow = new THREE.Mesh(new THREE.TorusGeometry(g.r, 1.5, 10, 72), add(new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.2, fog: false })));
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(g.r, 2.4, 8, 72), add(new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.07, fog: false })));
+      const mem = new THREE.Mesh(new THREE.CircleGeometry(g.r - 0.4, 48), add(new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.05, side: THREE.DoubleSide, fog: false })));
+      const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex(String(g.i + 1), g.i === N - 1 ? '#ff5bd0' : '#ffd36b'), fog: false, transparent: true }));
+      lab.position.y = g.r + 3.6; lab.scale.set(4.6, 4.6, 1);
+      rg.add(core, glow, halo, mem, lab); grp.add(rg);
+      g.obj = { rg, core, glow, halo, mem, lab }; g.st = ''; g.flash = 0;
+    }
+    // منارة الحلقة التالية
+    S.beacon = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1, 16, 1, true), add(new THREE.MeshBasicMaterial({ color: 0xffc23d, opacity: 0.16, fog: false, side: THREE.DoubleSide })));
+    grp.add(S.beacon);
+    // خطّ السباق الآمن (مسار الطيّار التلقائيّ)
+    const cp = [new THREE.Vector3(S.pad.x, 0.6, S.pad.z)];
+    for (const w of S.wps) { const v = new THREE.Vector3(w.x, w.y, w.z); if (v.distanceTo(cp[cp.length - 1]) > 0.8) cp.push(v); }
+    if (cp.length > 1) {
+      const curve = new THREE.CatmullRomCurve3(cp, false, 'centripetal'), n = Math.min(900, Math.ceil(curve.getLength() / 5));
+      const dots = new THREE.BufferGeometry().setFromPoints(curve.getSpacedPoints(n)); // أضواء إرشاد كلّ ٥ م تقريبًا
+      grp.add(new THREE.Points(dots, add(new THREE.PointsMaterial({ color: 0x8fe6ff, size: 0.9, map: TEX, opacity: 0.85 }))));
+    }
+    // منصّة الإقلاع
+    const pad = new THREE.Group(); pad.position.set(S.pad.x, 0.09, S.pad.z); pad.rotation.x = -Math.PI / 2;
+    pad.add(new THREE.Mesh(new THREE.CircleGeometry(4.2, 40), new THREE.MeshLambertMaterial({ color: 0x1d2630 })));
+    const pr = new THREE.Mesh(new THREE.RingGeometry(3.6, 4.2, 48), add(new THREE.MeshBasicMaterial({ color: 0x44e0ff, opacity: 0.9 }))); pr.position.z = 0.01; pad.add(pr);
+    const pr2 = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.75, 32), add(new THREE.MeshBasicMaterial({ color: 0xffc23d, opacity: 0.9 }))); pr2.position.z = 0.01; pad.add(pr2);
+    grp.add(pad);
+  }
+  function makeDrone() {
+    const g = new THREE.Group();
+    const dark = new THREE.MeshStandardMaterial({ color: 0x1b2026, metalness: 0.55, roughness: 0.38 });
+    const carbon = new THREE.MeshStandardMaterial({ color: 0x2e353e, metalness: 0.3, roughness: 0.6 });
+    const accent = new THREE.MeshStandardMaterial({ color: 0xff7a1a, emissive: 0x5a2200, metalness: 0.3, roughness: 0.35 });
+    const blade = new THREE.MeshStandardMaterial({ color: 0xe6edf3, metalness: 0.1, roughness: 0.5 });
+    const parts = [];
+    const m = (geo, mat, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x || 0, y || 0, z || 0); o.castShadow = true; g.add(o); parts.push(o); return o; };
+    m(new THREE.BoxGeometry(0.62, 0.2, 1.05), dark);
+    const can = m(new THREE.SphereGeometry(0.34, 20, 14), accent, 0, 0.12, 0.02); can.scale.set(0.85, 0.45, 1.25);
+    m(new THREE.BoxGeometry(0.34, 0.12, 0.5), carbon, 0, 0.27, 0.12);
+    for (const a of [Math.PI / 4, -Math.PI / 4]) m(new THREE.BoxGeometry(0.13, 0.07, 2.0), carbon).rotation.y = a;
+    m(new THREE.BoxGeometry(0.22, 0.17, 0.14), dark, 0, 0.02, -0.56);
+    const lens = m(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 16), new THREE.MeshBasicMaterial({ color: 0x3fd2ff }), 0, 0.02, -0.64); lens.rotation.x = Math.PI / 2;
+    const props = [], guard = new THREE.TorusGeometry(0.44, 0.025, 6, 36), disc = new THREE.CircleGeometry(0.4, 28);
+    const discM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+    [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]].forEach(([x, z], k) => {
+      m(new THREE.CylinderGeometry(0.12, 0.14, 0.18, 16), dark, x, 0.08, z);
+      const gd = m(guard, accent, x, 0.2, z); gd.rotation.x = Math.PI / 2;
+      const p = new THREE.Group(); p.position.set(x, 0.2, z);
+      const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.014, 0.08), blade), b2 = b1.clone(); b2.rotation.y = Math.PI / 2;
+      const d = new THREE.Mesh(disc, discM); d.rotation.x = -Math.PI / 2;
+      p.add(b1, b2, d); p.userData.dir = (k === 0 || k === 3) ? 1 : -1; g.add(p); props.push(p);
+    });
+    // أضواء الملاحة: أمام سماويّ وخلف أحمر
+    [[-0.7, -0.7, 0x5ff1ff], [0.7, -0.7, 0x5ff1ff], [-0.7, 0.7, 0xff3b3b], [0.7, 0.7, 0xff3b3b]].forEach(([x, z, c]) => {
+      const s = new THREE.Sprite(add(new THREE.SpriteMaterial({ map: TEX, color: c, opacity: 0.95 }))); s.position.set(x * 1.12, 0.05, z * 1.12); s.scale.set(0.55, 0.55, 1); g.add(s);
+    });
+    g.scale.setScalar(1.35);
+    g.userData.props = props;
+    return g;
+  }
+
+  // نوافذ الغروب: نمط مضيء على الواجهات يُحسب في المظلّل من الموقع العالميّ (بلا إحداثيّات نسيج في هندسة النواة)
+  function windows(mat) {
+    mat.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;\nfloat drHash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n{ float side = 1.0 - step(0.5, abs(vWN.y)); float u = (abs(vWN.x) > abs(vWN.z) ? vWP.z : vWP.x) / 2.6; float v = vWP.y / 3.3;' +
+          ' vec2 cl = floor(vec2(u, v)); vec2 f = fract(vec2(u, v)); float win = step(0.2, f.x) * step(f.x, 0.8) * step(0.28, f.y) * step(f.y, 0.78);' +
+          ' float lit = step(0.64, drHash(cl + floor(vWP.x * 0.02) * 7.0)); totalEmissiveRadiance += side * win * step(2.5, vWP.y) * mix(vec3(0.03, 0.05, 0.08), vec3(1.0, 0.7, 0.36) * 0.72, lit); }');
+    };
+    mat.needsUpdate = true;
+  }
+  // ── لكلّ مدينة ──
+  function setupCity(c, city) {
+    ctx = c;
+    if (S && S.course) freeCourse(S.course); // مسار المدينة السابقة: النواة تحرّر الهندسة فقط
+    S = {
+      city, rings: [], wps: [], course: null, pad: { x: 0, z: 0 }, demo: false, ap: 0, intro: 0, introA: Math.random() * 6,
+      d: { pos: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), q: new THREE.Quaternion(), yaw: 0, pitch: 0, roll: 0, yawRate: 0, thr: 0 },
+      inp: { fwd: 0, strafe: 0, lift: 0, turn: 0 },
+      race: { state: 'ready', t: 0, passed: 0, crashes: 0, crashT: 0, best: null, lastLap: null, autoLap: null, laps: 0, assisted: false },
+      camPos: new THREE.Vector3(), camLook: new THREE.Vector3(), shake: 0, hudT: 0, mapT: 0, msgT: 0, fx: [],
+      key: 'drone-best:' + (city.lat || 0).toFixed(3) + ',' + (city.lon || 0).toFixed(3),
+    };
+    try { const b = parseFloat(localStorage.getItem(S.key)); if (b > 0) S.race.best = b; } catch (e) { /* بلا تخزين */ }
+    city.ground.material.color.setHex(0xa59a88); city.roadsMesh.material.color.setHex(0x3b444c); city.buildingsMesh.material.color.setHex(0xd2d0d8); city.buildingsMesh.material.emissive.setHex(0x14171f);
+    windows(city.buildingsMesh.material);
+    buildCourse();
+    // الدرون والذيل والشرر وأضواء الأبراج — كلّها داخل مجموعة المدينة
+    S.drone = makeDrone(); city.group.add(S.drone);
+    const TN = 90, tp = new Float32Array(TN * 6), tc = new Float32Array(TN * 6), ti = []; // ذيل شريطيّ يتلاشى
+    for (let i = 0; i < TN; i++) { const f = Math.pow(1 - i / TN, 1.8) * 0.4 * Math.min(1, i / 4); for (const o of [0, 3]) { tc[i * 6 + o] = 1 * f; tc[i * 6 + o + 1] = 0.66 * f; tc[i * 6 + o + 2] = 0.28 * f; } if (i < TN - 1) ti.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2); }
+    const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(tp, 3)); tg.setAttribute('color', new THREE.BufferAttribute(tc, 3)); tg.setIndex(ti);
+    S.trail = new THREE.Mesh(tg, add(new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }))); S.trail.frustumCulled = false; city.group.add(S.trail);
+    const PN = 160, pg = new THREE.BufferGeometry();
+    pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PN * 3).fill(-9999), 3)); pg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(PN * 3), 3));
+    S.parts = new THREE.Points(pg, add(new THREE.PointsMaterial({ size: 0.55, map: TEX, vertexColors: true, fog: false }))); S.parts.frustumCulled = false; city.group.add(S.parts);
+    S.pv = new Float32Array(PN * 4); // سرعة + عمر
+    S.arrow = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.95, 14).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd36b, fog: false })); city.group.add(S.arrow);
+    const tops = city.buildings.filter((b) => b.h >= 40).slice(0, 48);
+    if (tops.length) {
+      S.avl = new THREE.InstancedMesh(new THREE.SphereGeometry(0.9, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3030, fog: false }), tops.length);
+      const mm = new THREE.Matrix4(); tops.forEach((b, i) => { const [x, z] = centroid(b); mm.makeTranslation(x, b.h + 1.2, z); S.avl.setMatrixAt(i, mm); });
+      city.group.add(S.avl);
+    } else S.avl = null;
+    ctx.orbit.enabled = opts.cam === 'over';
+    restart(true);
+    c.onFrame(frame);
+    publish();
+  }
+
+  // ── السباق ──
+  function placeAt(x, y, z, yaw) {
+    const D = S.d; D.pos.set(x, y, z); D.prev.copy(D.pos); D.vel.set(0, 0, 0); D.yaw = yaw; D.pitch = D.roll = D.yawRate = 0;
+    EUL.set(0, yaw, 0, 'YXZ'); D.q.setFromEuler(EUL);
+    resetTrail();
+  }
+  function resetTrail() { const p = S.d.pos, a = S.trail.geometry.attributes.position; for (let i = 0; i < a.count; i++) a.setXYZ(i, p.x, p.y, p.z); a.needsUpdate = true; }
+  const yawTo = (dx, dz) => Math.atan2(-dx, -dz);
+  function restart(quiet) {
+    const r = S.race; r.state = 'ready'; r.t = 0; r.passed = 0; r.crashes = 0; r.crashT = 0; r.assisted = false; lastNow = performance.now();
+    const g0 = S.rings[0]; placeAt(S.pad.x, 0.35, S.pad.z, g0 ? yawTo(g0.x - S.pad.x, g0.z - S.pad.z) : 0);
+    S.ap = 0; S.d.thr = 0;
+    if (!quiet) S.intro = INTRO;
+    msg(TOUCH ? T('حرّك العصا اليسرى لفوق للإقلاع', 'Push the left stick up to take off') : T('اضغط Q للإقلاع', 'Press Q to take off'), T('المؤقّت يبدأ مع أوّل حركة', 'The timer starts with your first move'), 3.2);
+    snapCam();
+  }
+  function startRace() { const r = S.race; r.state = 'racing'; r.t = 0; lastNow = performance.now(); r.passed = 0; r.crashes = 0; S.intro = INTRO; ctx.ui.box.classList.add('dr-min'); msg(T('انطلق!', 'Go!'), '', 0.9, 'gold'); }
+  function setDemo(on) {
+    if (!S) return;
+    if (on && S.race.state !== 'racing') { restart(true); startRace(); }
+    if (on) { S.race.assisted = true; S.ap = S.race.passed ? S.rings[S.race.passed - 1].exitWp : 0; }
+    S.demo = !!on; UI.demo.textContent = S.demo ? T('أوقف التلقائي', 'Stop auto') : T('لفّة تلقائيّة', 'Auto lap');
+  }
+  function setCam(m) {
+    opts.cam = m; [...UI.cam.children].forEach((b) => b.classList.toggle('on', b.dataset.m === m));
+    const o = ctx.orbit; o.enabled = m === 'over';
+    if (m === 'over' && S) { o.target.copy(S.d.pos); o.dist = 150; o.phi = 0.95; o.theta = S.d.yaw; o.apply(); }
+    if (S) S.intro = INTRO;
+    snapCam();
+  }
+  function crash() {
+    const r = S.race; r.crashes++; r.crashT = 0.9; S.shake = 1;
+    burst(S.d.pos, [1, 0.45, 0.15], 70, 14);
+    S.d.vel.multiplyScalar(0.15);
+    msg(T('اصطدام!', 'Crash!'), T('نرجعك لآخر حلقة', 'Back to the last ring'), 1.1, 'bad');
+  }
+  function resetToLast() {
+    const r = S.race;
+    if (r.passed > 0) { const g = S.rings[r.passed - 1]; placeAt(g.x + g.nx * 3, g.y, g.z + g.nz * 3, yawTo(g.nx, g.nz)); S.ap = g.exitWp; }
+    else { const g0 = S.rings[0]; placeAt(S.pad.x, 0.35, S.pad.z, g0 ? yawTo(g0.x - S.pad.x, g0.z - S.pad.z) : 0); S.ap = 0; }
+  }
+  function passRing() {
+    const r = S.race, g = S.rings[r.passed]; r.passed++; g.flash = 1;
+    burst({ x: g.x, y: g.y, z: g.z }, [1, 0.85, 0.35], 46, 9);
+    if (r.passed >= S.rings.length) {
+      r.state = 'finished'; r.laps++; r.lastLap = r.t;
+      let rec = false;
+      if (r.assisted) r.autoLap = r.t;
+      else if (!r.best || r.t < r.best) { r.best = r.t; rec = true; try { localStorage.setItem(S.key, String(r.t)); } catch (e) { /* بلا تخزين */ } }
+      S.demo = false; UI.demo.textContent = T('لفّة تلقائيّة', 'Auto lap');
+      msg(T('خلصت السباق', 'Finished') + ' ' + fmt(r.t), rec ? T('رقم قياسي جديد لهذا الحيّ', 'New record for this area') : r.assisted ? T('هذا وقت الطيّار التلقائيّ — اكسره', 'Auto-pilot time — beat it') : T('أفضل وقت ', 'Best ') + fmt(r.best), 3.5, 'gold');
+    }
+  }
+  function burst(p, col, n, sp) {
+    const pa = S.parts.geometry.attributes, pos = pa.position.array, cl = pa.color.array, pv = S.pv, N = pos.length / 3;
+    for (let k = 0, i = S.fxI || 0; k < n; k++, i = (i + 1) % N) {
+      pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
+      const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u), v = sp * (0.4 + Math.random() * 0.8);
+      pv[i * 4] = s * Math.cos(a) * v; pv[i * 4 + 1] = u * v + sp * 0.2; pv[i * 4 + 2] = s * Math.sin(a) * v; pv[i * 4 + 3] = 0.8 + Math.random() * 0.7;
+      cl[i * 3] = col[0]; cl[i * 3 + 1] = col[1]; cl[i * 3 + 2] = col[2]; S.fxI = (i + 1) % N;
+    }
+    S.fxLive = 2;
+  }
+
+  // ── الفيزياء (خطوة ثابتة صغيرة) ──
+  function hitAt(p) {
+    const at = S.city.idx.at;
+    for (const [ox, oz] of [[0, 0], [0.9, 0], [-0.9, 0], [0, 0.9], [0, -0.9]]) { const b = at(p.x + ox, p.z + oz); if (b && p.y < b.h + 0.35) return b; }
+    return null;
+  }
+  function step(h) {
+    const D = S.d, r = S.race, I = S.inp;
+    if (r.state === 'racing') r.t += h;
+    if (r.crashT > 0) { r.crashT -= h; if (r.crashT <= 0) resetToLast(); return; }
+    const kf = 1 - Math.exp(-h * 6), ky = 1 - Math.exp(-h * 8);
+    D.pitch += (I.fwd * TILT - D.pitch) * kf; D.roll += (I.strafe * TILT - D.roll) * kf; // بلا مدخل يرجع مستويًا (تسوية تلقائيّة)
+    D.yawRate += (-I.turn * 2.2 - D.yawRate) * ky; D.yaw += D.yawRate * h;
+    EUL.set(-D.pitch, D.yaw, -D.roll, 'YXZ'); D.q.setFromEuler(EUL);
+    UPV.set(0, 1, 0).applyQuaternion(D.q);
+    const v = D.vel, ay = I.lift * LIFT - v.y * VDAMP * (1 - Math.abs(I.lift) * 0.6); // تثبيت ارتفاع حين تُترك العصا
+    const thr = (G + ay) / Math.max(0.4, UPV.y); D.thr = thr / G;
+    const sp = Math.hypot(v.x, v.z), dr = C1 + C2 * sp;
+    v.x += (UPV.x * thr - v.x * dr) * h; v.z += (UPV.z * thr - v.z * dr) * h; v.y += (UPV.y * thr - G - v.y * 0.02) * h;
+    const rr = Math.hypot(D.pos.x, D.pos.z), lim = ctx.R * 1.15;
+    if (rr > lim) { v.x -= (D.pos.x / rr) * 25 * h; v.z -= (D.pos.z / rr) * 25 * h; }
+    if (D.pos.y > 650 && v.y > 0) v.y = 0;
+    D.prev.copy(D.pos); D.pos.addScaledVector(v, h);
+    if ((S.tick = (S.tick || 0) + 1) % 2 === 0) { // الذيل يُسجَّل بمعدّل ثابت فلا يتأثّر بسرعة الإطارات
+      const ta = S.trail.geometry.attributes.position.array, rx = Math.cos(D.yaw) * 0.14, rz = -Math.sin(D.yaw) * 0.14; ta.copyWithin(6, 0, ta.length - 6);
+      ta[0] = D.pos.x - rx; ta[1] = D.pos.y; ta[2] = D.pos.z - rz; ta[3] = D.pos.x + rx; ta[4] = D.pos.y; ta[5] = D.pos.z + rz;
+    }
+    if (D.pos.y < 0.35) { D.pos.y = 0.35; if (v.y < 0) v.y = 0; const f = Math.exp(-h * 3); v.x *= f; v.z *= f; }
+    const b = hitAt(D.pos);
+    if (b) {
+      if (D.prev.y >= b.h + 0.2 && sp < 5 && v.y > -7) { D.pos.y = b.h + 0.36; if (v.y < 0) v.y = 0; v.x *= 0.9; v.z *= 0.9; } // هبوط هادئ على السطح
+      else { crash(); return; }
+    }
+    if (r.state !== 'racing' || r.passed >= S.rings.length) return;
+    const g = S.rings[r.passed];
+    const s0 = (D.prev.x - g.x) * g.nx + (D.prev.z - g.z) * g.nz, s1 = (D.pos.x - g.x) * g.nx + (D.pos.z - g.z) * g.nz;
+    if (s0 * s1 > 0 || s0 === s1) return;
+    const t = s0 / (s0 - s1), X = D.prev.x + (D.pos.x - D.prev.x) * t, Y = D.prev.y + (D.pos.y - D.prev.y) * t, Z = D.prev.z + (D.pos.z - D.prev.z) * t;
+    if (Math.hypot(X - g.x, Y - g.y, Z - g.z) <= g.r) passRing();
+  }
+  function autopilot() {
+    const D = S.d, I = S.inp, W = S.wps, p = D.pos, v = D.vel;
+    let w = null, dx = 0, dy = 0, dz = 0, dist = 0;
+    while (S.ap < W.length) {
+      w = W[S.ap];
+      if (w.ring != null && S.race.passed > w.ring) { S.ap++; continue; }
+      dx = w.x - p.x; dy = w.y - p.y; dz = w.z - p.z; dist = Math.hypot(dx, dy, dz);
+      if (dist < w.tol && !(w.ring != null)) { S.ap++; continue; }
+      break;
+    }
+    if (S.ap >= W.length || !w) { I.fwd = I.strafe = I.lift = I.turn = 0; return; }
+    const vmax = (opts.vmax / 3.6) * 0.82, nx = W[S.ap + 1];
+    let vc = 3;
+    if (nx) { const ax = nx.x - w.x, ay = nx.y - w.y, az = nx.z - w.z, L = Math.hypot(ax, ay, az) || 1; const cs = (dx * ax + dy * ay + dz * az) / ((dist || 1) * L); vc = Math.max(4, vmax * Math.pow(Math.max(0, cs), 2)); }
+    const vt = Math.min(vmax, Math.sqrt(vc * vc + 2 * 5.5 * dist)), k = vt / (dist || 1);
+    const vdx = dx * k, vdy = clamp(dy * k, -11, 11), vdz = dz * k;
+    const ax = (vdx - v.x) * 2, ayy = (vdy - v.y) * 2, az = (vdz - v.z) * 2;
+    const fx = -Math.sin(D.yaw), fz = -Math.cos(D.yaw), rx = Math.cos(D.yaw), rz = -Math.sin(D.yaw), ah = G * Math.tan(TILT);
+    I.fwd = clamp((ax * fx + az * fz) / ah, -1, 1); I.strafe = clamp((ax * rx + az * rz) / ah, -1, 1);
+    I.lift = clamp((ayy + v.y * VDAMP) / LIFT, -1, 1);
+    const hd = Math.hypot(dx, dz);
+    I.turn = hd > 3 ? clamp(-wrap(yawTo(dx, dz) - D.yaw) * 2.2, -1, 1) : 0;
+  }
+  function manual() {
+    const k = (c) => (keys.has(c) ? 1 : 0);
+    const m = {
+      fwd: clamp(k('KeyW') + k('ArrowUp') - k('KeyS') - k('ArrowDown') - stk.r.y, -1, 1),
+      strafe: clamp(k('ArrowRight') - k('ArrowLeft') + stk.r.x, -1, 1),
+      turn: clamp(k('KeyD') - k('KeyA') + stk.l.x, -1, 1),
+      lift: clamp(k('KeyQ') + k('Space') - k('KeyE') - stk.l.y, -1, 1),
+    };
+    m.any = !!(m.fwd || m.strafe || m.turn || m.lift);
+    return m;
+  }
+
+  // ── الإطار ──
+  function frame(cdt, now) {
+    if (!S) return;
+    const dt = realDt(cdt, now), m = manual(); // الفيزياء والمؤقّت بالزمن الحقيقيّ، بخطوات ≤ ١/٦٠ ث
+    if (m.any) { if (S.demo) setDemo(false); S.intro = INTRO; if (S.race.state === 'ready') startRace(); }
+    const n = Math.max(1, Math.ceil(dt / HSTEP)), h = dt / n;
+    for (let i = 0; i < n; i++) { if (S.demo) autopilot(); else { S.inp.fwd = m.fwd; S.inp.strafe = m.strafe; S.inp.turn = m.turn; S.inp.lift = m.lift; } step(h); }
+    render(dt, now);
+  }
+  function chaseTarget(out, look) {
+    const D = S.d, fx = -Math.sin(D.yaw), fz = -Math.cos(D.yaw), idx = S.city.idx, ka = clamp(1.05 / ctx.camera.aspect, 1, 1.7); // الجوّال الطوليّ: الكاميرا أبعد
+    const rd = S.race.state === 'ready' ? 1.5 : 1; // على المنصّة: لقطة أعلى تُظهر الحيّ
+    out.set(D.pos.x - fx * 9.5 * ka * rd, D.pos.y + 3.4 * ka * rd * rd, D.pos.z - fz * 9.5 * ka * rd);
+    for (let k = 1; k > 0.15; k -= 0.15) { // لا تدخل الكاميرا جدار مبنى
+      const x = D.pos.x + (out.x - D.pos.x) * k, z = D.pos.z + (out.z - D.pos.z) * k, y = D.pos.y + (out.y - D.pos.y) * k;
+      if (idx.heightAt(x, z) < y - 1) { out.set(x, y, z); break; }
+      if (k <= 0.31) out.set(D.pos.x - fx * 1.5, D.pos.y + 2.2, D.pos.z - fz * 1.5);
+    }
+    if (out.y < 1.2) out.y = 1.2;
+    if (look) look.set(D.pos.x + fx * 8, D.pos.y + 1.0, D.pos.z + fz * 8);
+  }
+  function snapCam() { if (!S) return; S.snap = true; }
+  const _v = [];
+  function render(dt, now) {
+    const D = S.d, r = S.race, cam = ctx.camera, V = _v.length ? _v : (_v.push(new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()), _v);
+    // الدرون
+    const dr = S.drone; dr.position.copy(D.pos); dr.quaternion.copy(D.q);
+    if (r.crashT > 0) { const u = 0.9 - r.crashT; dr.rotateZ(u * 9); dr.rotateX(u * 5); dr.position.y -= u * u * 6; }
+    dr.visible = opts.cam !== 'fpv';
+    for (const p of dr.userData.props) p.rotation.y += p.userData.dir * dt * (38 + D.thr * 22);
+    // الحلقات: التالية ذهبيّة نابضة، القادمة سماويّة، المجتازة خضراء خافتة، الأخيرة وردية
+    const N = S.rings.length, pulse = 0.5 + 0.5 * Math.sin(now * 0.006);
+    for (const g of S.rings) {
+      const st = g.i < r.passed ? 'done' : g.i === r.passed ? 'next' : 'todo', o = g.obj;
+      if (st !== g.st) {
+        g.st = st;
+        const col = st === 'done' ? 0x52ffa8 : st === 'next' ? 0xffcf4a : g.i === N - 1 ? 0xff5bd0 : 0x6fd3ff;
+        o.core.material.color.setHex(col); o.glow.material.color.setHex(col); o.halo.material.color.setHex(col); o.mem.material.color.setHex(col);
+        o.core.material.opacity = st === 'done' ? 0.35 : 1; o.glow.material.opacity = st === 'done' ? 0.06 : st === 'next' ? 0.32 : 0.16;
+        o.halo.material.opacity = st === 'next' ? 0.11 : st === 'done' ? 0.02 : 0.05; o.lab.visible = st !== 'done';
+      }
+      if (st === 'next') { o.mem.material.opacity = 0.05 + pulse * 0.1; o.rg.scale.setScalar(1 + pulse * 0.04); }
+      else if (g.flash > 0) { g.flash = Math.max(0, g.flash - dt * 1.8); o.rg.scale.setScalar(1 + (1 - g.flash) * 0.6 * g.flash * 2); o.mem.material.opacity = g.flash * 0.35; }
+      else if (o.rg.scale.x !== 1) { o.rg.scale.setScalar(1); o.mem.material.opacity = st === 'done' ? 0 : 0.04; }
+    }
+    const nx = S.rings[r.passed];
+    S.beacon.visible = !!nx && r.state !== 'finished';
+    if (nx) { const bh = 320; S.beacon.position.set(nx.x, nx.y + nx.r + bh / 2, nx.z); S.beacon.scale.set(1, bh, 1); S.beacon.material.opacity = 0.1 + pulse * 0.1; }
+    S.arrow.visible = !!nx && opts.cam !== 'fpv' && r.crashT <= 0 && r.state !== 'finished';
+    if (S.arrow.visible) { S.arrow.position.set(D.pos.x, D.pos.y + 2.1, D.pos.z); S.arrow.lookAt(nx.x, nx.y, nx.z); }
+    // الذيل
+    S.trail.geometry.attributes.position.needsUpdate = true;
+    // الشرر
+    if (S.fxLive > 0) {
+      S.fxLive -= dt; const pa = S.parts.geometry.attributes, pos = pa.position.array, cl = pa.color.array, pv = S.pv;
+      for (let i = 0; i < pos.length / 3; i++) {
+        if (pv[i * 4 + 3] <= 0) continue;
+        pv[i * 4 + 3] -= dt; pv[i * 4 + 1] -= 9 * dt;
+        pos[i * 3] += pv[i * 4] * dt; pos[i * 3 + 1] += pv[i * 4 + 1] * dt; pos[i * 3 + 2] += pv[i * 4 + 2] * dt;
+        if (pv[i * 4 + 3] <= 0) { pos[i * 3 + 1] = -9999; } else { const f = Math.exp(-dt * 2.2); cl[i * 3] *= f; cl[i * 3 + 1] *= f; cl[i * 3 + 2] *= f; }
+      }
+      pa.position.needsUpdate = true; pa.color.needsUpdate = true;
+    }
+    if (S.avl) S.avl.material.color.setHex(Math.sin(now * 0.0035) > 0.3 ? 0xff3a3a : 0x3a0c0c);
+    // الكاميرا
+    const sp = Math.hypot(D.vel.x, D.vel.z, D.vel.y);
+    let fov = 62;
+    if (opts.cam === 'fpv') {
+      const fx = -Math.sin(D.yaw), fz = -Math.cos(D.yaw);
+      cam.position.set(D.pos.x + fx * 0.6, D.pos.y + 0.35, D.pos.z + fz * 0.6); cam.quaternion.copy(D.q).multiply(FPVQ); fov = 84 + Math.min(10, sp * 0.25);
+    } else if (opts.cam === 'over') {
+      const o = ctx.orbit; o.target.lerp(D.pos, S.snap ? 1 : 1 - Math.exp(-dt * 4)); o.apply();
+    } else {
+      chaseTarget(V[0], V[1]);
+      const k = S.snap ? 1 : 1 - Math.exp(-dt * 5);
+      S.camPos.lerp(V[0], k); S.camLook.lerp(V[1], S.snap ? 1 : 1 - Math.exp(-dt * 9));
+      fov = (ctx.camera.aspect < 1 ? 68 : 62) + Math.min(14, sp * 0.33);
+      if (S.intro < INTRO) { // افتتاحيّة: دوران فوق المسار ثمّ انقضاض خلف الدرون
+        S.intro += dt; const u = Math.min(1, S.intro / INTRO), a = S.introA + u * 1.5, rad = S.rad + 170;
+        V[2].set(S.centre.x + Math.sin(a) * rad, S.maxY + 140 + (1 - u) * 90, S.centre.z + Math.cos(a) * rad);
+        V[3].set(S.centre.x, S.maxY * 0.45, S.centre.z);
+        const s = u < 0.5 ? 0 : (u - 0.5) / 0.5, e = s * s * (3 - 2 * s);
+        cam.position.lerpVectors(V[2], S.camPos, e); V[3].lerp(S.camLook, e); cam.lookAt(V[3]);
+      } else {
+        cam.position.copy(S.camPos);
+        if (S.shake > 0) { S.shake = Math.max(0, S.shake - dt * 2); cam.position.x += (Math.random() - 0.5) * S.shake; cam.position.y += (Math.random() - 0.5) * S.shake; }
+        cam.lookAt(S.camLook);
+      }
+    }
+    S.snap = false;
+    if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix(); }
+    // الأرقام والرسائل والخريطة المصغّرة
+    S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.08; hud(); }
+    S.mapT -= dt; if (S.mapT <= 0) { S.mapT = 0.1; drawMap(); }
+    if (S.msgT && performance.now() > S.msgT) { S.msgT = 0; UI.msg.classList.remove('on'); }
+    publish();
+  }
+  function msg(big, small, sec, cls) {
+    UI.msg.className = 'dr-msg' + (cls ? ' ' + cls : ''); UI.msg.innerHTML = '';
+    UI.msg.appendChild(document.createTextNode(big)); if (small) { const s = document.createElement('small'); s.textContent = small; UI.msg.appendChild(s); }
+    void UI.msg.offsetWidth; UI.msg.classList.add('on'); if (S) S.msgT = performance.now() + (sec || 1.5) * 1000;
+  }
+  function distNext() { const g = S.rings[S.race.passed]; return g ? Math.hypot(g.x - S.d.pos.x, g.y - S.d.pos.y, g.z - S.d.pos.z) : 0; }
+  function hud() {
+    const r = S.race, D = S.d, N = S.rings.length;
+    UI.dhT.textContent = fmt(r.t);
+    UI.dhB.style.width = (N ? (100 * r.passed) / N : 0) + '%';
+    UI.dhR.textContent = r.passed + '/' + N;
+    UI.dhS.textContent = Math.round(Math.hypot(D.vel.x, D.vel.y, D.vel.z) * 3.6);
+    UI.dhA.textContent = Math.round(D.pos.y);
+    UI.dhN.textContent = r.state === 'finished' ? '—' : Math.round(distNext());
+    UI.dhC.textContent = r.crashes;
+    UI.dhBest.innerHTML = T('أفضل وقت', 'Best') + ' <b>' + fmt(r.best) + '</b>' + (r.autoLap ? ' · ' + T('الطيّار التلقائيّ', 'Auto-pilot') + ' <b>' + fmt(r.autoLap) + '</b>' : '');
+    UI.stat.innerHTML = '<span>' + T('الحالة', 'Status') + '</span><b>' + (r.state === 'racing' ? (S.demo ? T('طيران تلقائيّ', 'Auto flight') : T('في السباق', 'Racing')) : r.state === 'finished' ? T('خلص', 'Finished') : T('على المنصّة', 'On the pad')) + '</b>' +
+      '<span>' + T('آخر لفّة', 'Last lap') + '</span><b>' + fmt(r.lastLap) + '</b><span>' + T('أفضل وقت لك هنا', 'Your best here') + '</span><b>' + fmt(r.best) + '</b>';
+  }
+  function drawMap() {
+    const cv = UI.map; if (cv.offsetParent === null && getComputedStyle(cv).display === 'none') return;
+    const W = cv.width, E = ctx.R * 1.05, px = (x) => ((x + E) / (2 * E)) * W, g = cv.getContext('2d');
+    if (!S.mapBg) {
+      const bg = document.createElement('canvas'); bg.width = bg.height = W; const b = bg.getContext('2d');
+      b.fillStyle = '#0d1820'; b.fillRect(0, 0, W, W);
+      b.strokeStyle = 'rgba(160,190,205,.22)'; b.lineCap = 'round';
+      for (const rd of S.city.roads) { b.lineWidth = Math.max(1, (rd.w / (2 * E)) * W); b.beginPath(); rd.pts.forEach((p, i) => (i ? b.lineTo(px(p[0]), px(p[1])) : b.moveTo(px(p[0]), px(p[1])))); b.stroke(); }
+      for (const bd of S.city.buildings) {
+        const t = Math.min(1, bd.h / 160); b.fillStyle = 'rgb(' + Math.round(70 + t * 160) + ',' + Math.round(88 + t * 110) + ',' + Math.round(104 + t * 20) + ')';
+        b.beginPath(); bd.poly.forEach((p, i) => (i ? b.lineTo(px(p[0]), px(p[1])) : b.moveTo(px(p[0]), px(p[1])))); b.closePath(); b.fill();
+      }
+      S.mapBg = bg;
+    }
+    g.save(); g.clearRect(0, 0, W, W); g.beginPath(); g.arc(W / 2, W / 2, W / 2, 0, Math.PI * 2); g.clip(); g.drawImage(S.mapBg, 0, 0);
+    g.strokeStyle = 'rgba(143,230,255,.55)'; g.lineWidth = 2; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(px(S.pad.x), px(S.pad.z));
+    for (const w of S.wps) g.lineTo(px(w.x), px(w.z)); g.stroke(); g.setLineDash([]);
+    const r = S.race;
+    S.rings.forEach((rg) => {
+      const st = rg.i < r.passed ? '#52ffa8' : rg.i === r.passed ? '#ffcf4a' : rg.i === S.rings.length - 1 ? '#ff5bd0' : '#6fd3ff';
+      g.save(); g.translate(px(rg.x), px(rg.z)); g.rotate(Math.atan2(rg.nz, rg.nx) + Math.PI / 2);
+      g.fillStyle = st; g.fillRect(-9, -2.5, 18, 5); g.restore();
+    });
+    const D = S.d; g.save(); g.translate(px(D.pos.x), px(D.pos.z)); g.rotate(-D.yaw);
+    g.fillStyle = '#fff'; g.strokeStyle = '#ff7a1a'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -11); g.lineTo(8, 9); g.lineTo(0, 4); g.lineTo(-8, 9); g.closePath(); g.fill(); g.stroke(); g.restore();
+    g.restore();
+  }
+  function publish() {
+    const r = S.race, D = S.d;
+    window.__inspire_state = {
+      rings: S.rings.length, passed: r.passed, timeSec: +r.t.toFixed(2), crashes: r.crashes, status: r.state, finished: r.state === 'finished',
+      bestSec: r.best && +r.best.toFixed(2), lastLapSec: r.lastLap && +r.lastLap.toFixed(2), autoLapSec: r.autoLap && +r.autoLap.toFixed(2), laps: r.laps,
+      courseM: Math.round(S.courseM), ringAltM: S.rings.map((g) => Math.round(g.y)), ringTowerM: S.rings.map((g) => (g.mh ? Math.round(g.mh) : null)),
+      ringRadiusM: S.rings.map((g) => g.r), fallback: S.fallback, speedKmh: Math.round(Math.hypot(D.vel.x, D.vel.y, D.vel.z) * 3.6), altM: +D.pos.y.toFixed(1),
+      distNext: Math.round(distNext()), demo: S.demo, cam: opts.cam, vmaxKmh: opts.vmax, city: S.city.name,
+    };
+  }
+
+  // واجهة اختبار: محاكاة حتميّة بخطوة ثابتة بالطيّار التلقائيّ
+  window.__drone = {
+    simulate(sec, until) {
+      if (!S) return null;
+      if (S.race.state !== 'racing') { restart(true); startRace(); }
+      S.demo = true; S.race.assisted = true; S.intro = INTRO;
+      let n = Math.round((sec || 180) * 60);
+      while (n-- > 0) { autopilot(); step(HSTEP); if (S.race.state === 'finished') break; if (until && until(S)) break; }
+      if (S.race.state === 'finished') S.demo = false; else { S.msgT = 0; UI.msg.classList.remove('on'); }
+      UI.demo.textContent = S.demo ? T('أوقف التلقائي', 'Stop auto') : T('لفّة تلقائيّة', 'Auto lap');
+      snapCam(); render(0, performance.now()); hud(); publish();
+      return window.__inspire_state;
+    },
+    restart() { if (S) { setDemo(false); restart(true); publish(); } return window.__inspire_state; },
+    fly(inp, sec) { // طيران يدويّ حتميّ: {fwd, strafe, lift, turn} لمدّة sec ثانية
+      if (!S) return null; if (S.demo) setDemo(false); if (S.race.state === 'ready') startRace();
+      const I = S.inp; I.fwd = I.strafe = I.lift = I.turn = 0; Object.assign(I, inp || {});
+      let n = Math.round((sec || 1) * 60); while (n-- > 0) step(HSTEP);
+      I.fwd = I.strafe = I.lift = I.turn = 0; snapCam(); render(0, performance.now()); hud(); publish();
+      return Object.assign({ x: +S.d.pos.x.toFixed(1), z: +S.d.pos.z.toFixed(1) }, window.__inspire_state);
+    },
+    demo(on) { setDemo(on !== false); return window.__inspire_state; },
+    stage(k, back) { // لقطة: يطير تلقائيًّا حتّى الحلقة k ثمّ يصطفّ على خطّ الاقتراب منها ويواصل الطيران
+      if (!S) return null; k = clamp(k | 0, 0, S.rings.length - 1); back = back || 24;
+      window.__drone.simulate(300, (s) => s.race.passed >= k);
+      if (S.race.state !== 'racing') return window.__inspire_state;
+      const g = S.rings[k], D = S.d, ci = S.wps.findIndex((w) => w.ring === k);
+      D.pos.set(g.x - g.nx * back, g.y + 1, g.z - g.nz * back); D.prev.copy(D.pos); D.vel.set(g.nx * 15, 0, g.nz * 15);
+      D.yaw = yawTo(g.nx, g.nz); D.pitch = 0.3; D.roll = 0; D.yawRate = 0; resetTrail();
+      setDemo(true); S.ap = Math.max(0, ci - 1); snapCam(); render(0, performance.now()); hud(); publish();
+      return window.__inspire_state;
+    },
+    cam(m) { setCam(m); return opts.cam; },
+    rings(n) { UI.nI.value = n; UI.nI.dispatchEvent(new Event('input')); UI.nI.dispatchEvent(new Event('change')); return window.__inspire_state; },
+    speed(v) { UI.vI.value = v; UI.vI.dispatchEvent(new Event('input')); return C2; },
+    get S() { return S; },
+  };
+
+  const TITLE = T('سباق الدرون بين الأبراج', 'Drone race between the towers');
+  document.title = TITLE; // وسم <title> عربيّ في المصدر؛ بالإنجليزيّة يتبع لغة الصفحة
+  CK.start({
+    title: TITLE,
+    sub: T('حلقات مضيئة بين أطول مباني حيّك الحقيقيّة — مرّ منها بالترتيب بأسرع وقت.', 'Glowing rings between the tallest real buildings of your area — fly through them in order, fast.'),
+    shadows: true, autoHide: true,
+    panel(c) { setupOnce(c); },
+    onCity(c, city) { setupCity(c, city); },
+  });
+})();
+</script></body></html>

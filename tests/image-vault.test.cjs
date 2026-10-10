@@ -44,10 +44,19 @@ test('large images get a vault id and are stripped from the persisted copy; smal
 test('save path, boot hydration and lazy render hydration are wired', () => {
   assert.match(src, /indexedDB\.open\(IDB_NAME, 2\)/);
   assert.match(src, /if\(!db\.objectStoreNames\.contains\(IDB_IMAGES\)\) db\.createObjectStore\(IDB_IMAGES\);/);
-  assert.match(src, /__idbSavedAt = Date\.now\(\);\n\s+__vaultSave\(\)\.catch\(err => \{/);
-  assert.match(src, /try\{ await idbImgPutAll\(puts\); puts\.forEach\(x => \{ delete x\.ref\.vaultPending; \}\); \}/);
-  assert.match(src, /const copy = vaulted \? JSON\.parse\(JSON\.stringify\(state\.projects, __vaultReplacer\)\) : JSON\.parse\(JSON\.stringify\(state\.projects\)\);/);
-  assert.match(src, /if\(!a\.dataUrl && a\.vaultId\)\{ idbImgGet\(a\.vaultId\)\.then\(d => \{ if\(typeof d === 'string' && d\)\{ a\.dataUrl = d; img\.src = d; \} \}\)/);
+  assert.match(src, /__idbSavedAt = Date\.now\(\);\n\s+__vaultSave\(!!force \|\| document\.visibilityState === 'hidden'\)\.catch\(err => \{/); // v-perf-save-slices: الخروج دفعة واحدة
+  /* v-img-view: نسخ العرض المصنوعة قبل الكتابة تُكتب مع أصولها في المعاملة نفسها */
+  assert.match(src, /try\{ await idbImgPutAll\(puts\.concat\(puts\.filter\(x => x\.ref && x\.ref\.viewUrl\)\.map\(x => \(\{ id: x\.id \+ '~v', dataUrl: x\.ref\.viewUrl \}\)\)\)\); puts\.forEach\(x => \{ delete x\.ref\.vaultPending; \}\); \}/);
+  // v-perf-save-slices: المُستبدِل نفسه بحسب نجاح المخزن، مشروعًا مشروعًا
+  assert.match(src, /const rep = vaulted \? __vaultReplacer : __noViewReplacer;/);
+  // v-code-dedupe: المُستبدِل يُغلَّف لرموز الكود المكرّر ويُحيل كلّ ما عداها إليه
+  assert.match(src, /const js = JSON\.stringify\(projs\[i\], plan \? function\(k, v\)\{/);
+  assert.match(src, /return rep\.call\(this, k, v\);\n\s+\} : rep\);/);
+  /* v-mem-guard2: الرسم يقرأ عبر القارئ المشترك __vaultRead (قراءة واحدة لكلّ صورة) — وهو يعيد الأصل للمرفق ويزيل purged */
+  /* v-img-view: المخزونة تُرسم بنسخة العرض (من المخزن أو تُصنع من الأصل)، والأصل يُقرأ للأدوات وحدها */
+  assert.match(src, /else if\(__isBigDataImg\(a\.dataUrl\) \|\| __vaultDegraded\(a\)\)\{/);
+  assert.match(src, /if\(__vaultDegraded\(a\) && !window\.__usingSlimProjects\)\{ __vaultRead\(a\)\.then\(/);
+  assert.match(src, /pr = idbImgGet\(a\.vaultId\)\.then\(d => \{ if\(typeof d === 'string' && d\)\{ a\.dataUrl = d; delete a\.purged; \} return a\.dataUrl; \}\)/);
   const boot = fs.readFileSync('js/app-09-attach.js', 'utf8');
   assert.match(boot, /await window\.__hydrateProjectImages\(state\.projects\.find\(q => q\.id === state\.currentId\)\);/);
   assert.match(boot, /window\.__vaultSweep && window\.__vaultSweep\(\);/);

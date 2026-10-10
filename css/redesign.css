@@ -54,6 +54,152 @@ body.omranWelcome #messages{display:none;}
 .omToolCard .omToolDesc{font-size: var(--fs-5); color:var(--muted); line-height:1.45;}
 #omranQuickMobileWrap{display:none;}
 
+/* ---------------- 📱 بطاقات أدوات هواوي في شاشة الترحيب (طلب عمران لمتجر AppGallery) ---------------- */
+#huaweiHeroWrap{display:none !important;}
+body:not(.omranWelcome) #omranHero,
+body:not(.omranWelcome) #huaweiHeroWrap{
+  display:none !important;
+}
+html.store-safe body.omranWelcome #huaweiHeroWrap{
+  display:flex !important;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  max-width:540px;
+  margin:0 auto;
+  padding:8px 6px;
+  box-sizing:border-box;
+}
+html.store-safe body.omranWelcome.hwChatting #huaweiHeroWrap{display:none !important;}
+/* v-hw-cards-once: بعد أوّل مغادرة لشاشة الدخول في هذا الفتح لا تعود البطاقات (ui-wiring يضع hwCardsDone) */
+html.store-safe.hwCardsDone body.omranWelcome #huaweiHeroWrap{display:none !important;}
+.huawei-hero-head{display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; margin-bottom:2px;}
+.huawei-hero-badge{font-size:11px; font-weight:var(--w-bold, 700); color:var(--omGold, #d4af37); background:rgba(var(--accent-tint-rgb, 212,175,55),.12); border:1px solid var(--omGoldSoft, rgba(212,175,55,.3)); border-radius:999px; padding:2px 10px; letter-spacing:.5px;}
+.huawei-hero-title{font-size:16px; font-weight:800; color:var(--text); margin:2px 0 0; line-height:1.4;}
+.huawei-tools-grid{direction:rtl; display:grid; grid-template-columns:repeat(2,1fr); gap:12px; width:100%; box-sizing:border-box;}
+@media (max-width:480px){
+  .huawei-tools-grid{grid-template-columns:repeat(2,1fr); gap:8px;}
+}
+@media (max-width:340px){
+  .huawei-tools-grid{grid-template-columns:1fr; gap:8px;}
+}
+.hwToolCard{
+  direction:rtl;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  padding:0;
+  gap:0;
+  background:#070709;
+  border:1px solid rgba(212,175,55,.28);
+  border-radius:14px;
+  cursor:pointer;
+  font-family:inherit;
+  text-align:start;
+  transition:transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+  box-sizing:border-box;
+  width:100%;
+  overflow:hidden;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.hwToolCard:hover{
+  border-color:rgba(212,175,55,.7);
+  box-shadow:0 10px 24px rgba(0,0,0,.28), 0 0 0 1px rgba(212,175,55,.12);
+  transform:translateY(-2px);
+}
+.hwToolCard:active{transform:translateY(0);}
+.hwToolCard img.toolPhotoImage{
+  display:block !important;
+  width:100% !important;
+  height:96px !important;
+  object-fit:cover !important;
+  object-position:50% 40% !important;
+  border-radius:0 !important;
+  pointer-events:none;
+}
+@media (max-width:480px){
+  .hwToolCard img.toolPhotoImage{height:80px !important;}
+}
+.hwToolCard .tcMeta{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  width:100%;
+  flex:1 0 auto;
+  padding:8px 10px 9px;
+  background:#070709;
+  box-sizing:border-box;
+  direction:inherit;
+}
+.hwToolCard .tcTxt{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  text-align:start;
+}
+.hwToolCard .btnLabel{
+  display:-webkit-box !important;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:1;
+  overflow:hidden;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.25;
+  color:#f3efe4 !important;
+  text-align:start;
+}
+.hwToolCard .tcSub{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:1;
+  overflow:hidden;
+  font-size:10.5px;
+  font-weight:500;
+  line-height:1.3;
+  color:#b9b3a3;
+  white-space:normal;
+}
+.hwToolCard .tcArrow{
+  flex:0 0 26px;
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
+  line-height:1;
+  color:#f3efe4;
+  padding-bottom:2px;
+}
+html[dir="rtl"] .hwToolCard .tcArrow{transform:scaleX(-1);}
+.hwAllToolsBtn{
+  margin-top:4px;
+  background:rgba(var(--accent-tint-rgb, 212,175,55),.08);
+  border:1px solid var(--omGoldSoft, rgba(212,175,55,.3));
+  border-radius:999px;
+  padding:7px 18px;
+  color:var(--omGold, #d4af37);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  font-family:inherit;
+  transition:background .15s ease, border-color .15s ease;
+}
+.hwAllToolsBtn:hover{background:rgba(var(--accent-tint-rgb, 212,175,55),.18); border-color:var(--omGold, #d4af37);}
+
+html[data-mode="light"] .hwToolCard,
+html[data-mode="light"] .hwToolCard .tcMeta{background:#ffffff !important;}
+html[data-mode="light"] .hwToolCard .btnLabel{color:#14161a !important;}
+html[data-mode="light"] .hwToolCard .tcSub{color:#6b6657;}
+html[data-mode="light"] .hwToolCard .tcArrow{background:rgba(0,0,0,.05); border-color:rgba(0,0,0,.12); color:#14161a;}
+
 /* ---------------- Below composer (chips + disclaimer) ---------------- */
 #omranBelowComposer{display:none; flex-direction:column; align-items:center; gap:7px; padding:6px 4px 0;}
 body.omranWelcome #omranBelowComposer{display:flex;}
@@ -240,6 +386,7 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 #plusToolsPopup .omModeItem[data-mode="image_nano"]{order:50;}   /* ٥ محرّك نانو (خام) */
 #plusToolsPopup .omModeItem[data-mode="image_text"]{order:60;}   /* ٦ صورة بنصّ دقيق */
 #plusToolsPopup .omModeItem[data-mode="image_gpt"]{order:70;}    /* ٧ محرّك GPT (خام) */
+#plusToolsPopup .omModeItem[data-mode="image_mix"]{order:72;}    /* ٨ دمج نانو + GPT (v-img-mix) — تحت GPT وفوق الفاصل */
 #plusToolsPopup .omModeSep{order:75;}                              /* فاصل فوق الحذف */
 #plusToolsPopup #btnDeleteChat{order:80;}                          /* حذف المحادثة (أسفل) */
 /* القائمة لا تُقصّ على الشاشات القصيرة: سقف ارتفاع مع تمرير عند اللزوم. */
@@ -548,9 +695,10 @@ html #inputbar > .inputbar-tools-below > .inputbar-tools-left > button > svg{wid
     order:1 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
     justify-content:flex-start !important; margin:1px 0 0 !important; margin-inline-start:var(--om-chat-inset) !important;
   }
+  /* v-owner-bar-hide: لا display هنا — !important كان يغلب style.display='none' فيظهر الشريط لكلّ مستخدم؛ الإظهار لـmodes.js وحده. */
   html:not(.mobile-ui) #inputbar > #omBottomBar{
     order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
-    display:flex !important; justify-content:flex-end !important;
+    justify-content:flex-end !important;
     margin:0 0 0 !important; margin-inline-start:auto !important; margin-inline-end:var(--om-chat-inset) !important;
   }
 }
@@ -565,9 +713,10 @@ html.mobile-ui #inputbar > .inputbar-tools-below{
   order:1 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
   justify-content:flex-start !important; margin:2px 0 0 !important;
 }
+/* v-owner-bar-hide: بلا display — للمالك وحده بـmodes.js */
 html.mobile-ui #inputbar > #omBottomBar{
   order:2 !important; flex:0 0 auto !important; align-self:center !important; width:max-content !important; max-width:none;
-  display:flex !important; justify-content:flex-end !important;
+  justify-content:flex-end !important;
   margin:0 0 0 !important; margin-inline-start:auto !important;
 }
 /* v-foldable-composer (طلب المالك، مقيس على أعراض الهواوي/سامسونج): على التابلت/القابل للطيّ
@@ -592,6 +741,17 @@ html:not(.mobile-ui) #sidebarBrand .brandImg{height:42px; width:auto; object-fit
    أيضًا، فوق زرّ «محادثة جديدة» مباشرة (الزرّ order:-2 فالشعار order:-3 يسبقه). */
 html.mobile-ui #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:12px 14px 2px; cursor:pointer; user-select:none;}
 html.mobile-ui #sidebarBrand .brandImg{height:40px; width:auto; object-fit:contain; display:block;}
+/* v-om-brand (طلب عمران ٢٥ سبتمبر): «OM Ai» ونجومه الثلاث بجانبه تومض بالتناوب؛ dir=ltr يُبقي النجوم يمين الكلمة في العربيّة. */
+.omBrand{display:inline-flex; align-items:center; direction:ltr;}
+.omStars{display:block; margin-left:-2px; width:22px; height:42px; flex:0 0 auto; overflow:visible;}
+html.mobile-ui .omStars{width:21px; height:40px;}
+.omBrandStar{transform-origin:0 0; animation:omTwinkle 2.2s ease-in-out infinite; filter:drop-shadow(0 0 3px currentColor);}
+.omBrandStar.s1{color:#04BAEC; animation-delay:0s;}
+.omBrandStar.s2{color:#FEED01; animation-duration:2.8s; animation-delay:.7s;}
+.omBrandStar.s3{color:#F049D7; animation-duration:2.5s; animation-delay:1.4s;}
+@keyframes omTwinkle{0%,100%{opacity:.35; transform:scale(.65) rotate(0deg);} 50%{opacity:1; transform:scale(1.15) rotate(20deg);}}
+@media (prefers-reduced-motion: reduce){ .omBrandStar{animation:none; opacity:1; transform:none;} }
+html.omAndroid .omBrandStar{filter:none;}
 html:not(.mobile-ui) header h1 #brandTitle{display:none;}
 /* v-mobile-brand-once (طلب المالك): على الجوّال يبقى شعار الدرج فقط — يُخفى شعار الهيدر
    كي لا يظهر الاسم مرّتين («من الجهتين») عند فتح الدرج. */
@@ -599,3 +759,35 @@ html.mobile-ui header h1 #brandTitle{display:none !important;}
 /* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:2px;}
+
+/* v-iphone-fit (لقطات المالك ٢٣ سبتمبر — آيفون):
+   ١) الكيبورد مفتوح (html.kb-open من pinVisualViewport): شريط التبويبات وحاشية الهوم خلف الكيبورد، فلا حجز
+      لهما تحت main — مربّع الكتابة يلتصق فوق الكيبورد مباشرة بدل الطفو في وسط الشاشة.
+   ٢) درجا المحادثات والملفّات مثبّتان من top:0 بلا حاشية القمّة، فالشعار وأزرار الملفّات تحت الساعة والبطارية.
+      نفس حاشية الهيدر (بسقف 62px). السهم المطلق في درج المحادثات يحسب حاشيته بنفسه فلا يتأثّر. */
+html.kb-open main{padding-bottom:0 !important;}
+html.kb-open #omranBottomNav{display:none !important;}
+@media (max-width:860px){
+  #sidebar, #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
+}
+html.mobile-ui #sidebar, html.mobile-ui #workarea{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px);}
+
+/* v-android-gpu (فيديو المالك ٢٣ سبتمبر «التطبيق كامل يشوش» — أندرويد/هواوي: ضجيج مكان الشعار، مستطيلات سوداء فوق
+   بطاقات الأدوات، شاشات نصف مرسومة). عطب تركيب في معالج الرسوم: ٢٥ نجمة متحرّكة كلّ واحدة طبقة مستقلّة بفلتر
+   drop-shadow على شكل مقصوص (clip-path) يُعاد حسابه كلّ إطار، وأيقونة الشريط تحرّك فلترًا بلا توقّف، ونافذة الأدوات
+   فوق تغبيش ملء الشاشة لا يُرى أصلًا (القائمة تغطّي الشاشة كلّها). على أندرويد فقط (html.omAndroid): النجوم تبقى
+   وتومض بلا توهّج الفلتر، والأيقونة تنبض بالشفافيّة وحدها، والتغبيش المخفيّ يُلغى. الآيفون والكمبيوتر كما هما. */
+html.omAndroid #omranNewChatBtn > .omStar,
+html.omAndroid #omSkyLayer .omSkyStar,
+html.omAndroid #mahaSkyLayer .omSkyStar{filter:none;}
+html.omAndroid #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{animation:tickerAiPulseLite 2.2s ease-in-out infinite; filter:none;}
+@keyframes tickerAiPulseLite{0%,100%{opacity:.72;} 50%{opacity:1;}}
+html.omAndroid #sectionsToolsOverlay{backdrop-filter:none; -webkit-backdrop-filter:none;}
+/* v-bdf-off (المالك ٢٤ سبتمبر «وميض ومشوّشة»): v-android-gpu أطفأ التغبيش تحت لوحة الأدوات
+   وحدها، وبقي حيًّا على تسع نوافذ أخرى (قائمة الرأس، الرقائق السريعة، التعليم، التجارب،
+   المستندات، الحكومة، السيرة، الملاحظات) وعلى كلّ غلاف يُحقَن من JS بنمط سطريّ. كلّ واحد منها
+   لقطة خلفيّة ملء الشاشة في كلّ إطار — أغلى ما يُطلب من معالج رسوم WebView، وكلّها زينة فوق
+   خلفيّة معتمة أصلًا (rgba سوداء) فالنصّ يبقى مقروءًا بلا تغبيش.
+   القاعدة عامّة بـ!important لأنّ النمط السطريّ من JS لا تغلبه قاعدة عاديّة. أندرويد وحده. */
+html.omAndroid *{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;}
+

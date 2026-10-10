@@ -2,7 +2,10 @@
 // _designUsage.js but its own separate daily counter/namespace so it never
 // interferes with the interior-design feature's quota.
 const crypto = require('crypto');
-const { kvGetJSON, kvPutJSON } = require('./kv.js');
+// v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
+const quotaTally = require('./_dailyQuota.js');
+// v-plan-caps: الحدّ أدناه للمجّانيّ، والمشترك بباقة سارية بنسبة سقف محادثته (_planCap.js).
+const { planScaledLimit } = require('./_planCap.js');
 const { isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 // v-owner-unlimited (شكوى المالك «استهلكت المجاني كلها»): المالك وVIP بلا حدّ يومي هنا
@@ -31,27 +34,8 @@ function verifyToken(token) {
   }
 }
 
-function usagePath(username) {
-  return 'db/construction-usage/' + encodeURIComponent(username) + '.json';
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-}
-
-async function getUsage(username) {
-  return kvGetJSON(usagePath(username));
-}
-
-async function putUsage(username, usage) {
-  try {
-    await kvPutJSON(usagePath(username), usage);
-  } catch (e) {
-    // Best-effort bookkeeping; never block on a write failure here.
-  }
-}
-
-async function checkConstructionQuota(token) {
+// v-atomic-quota: مع res (ردّ طلب التوليد) يحجز مقعدًا ذرّيًّا يُردّ قبل خروج الردّ ما لم يُستهلك؛ بلا res قراءة مجرّدة.
+async function checkConstructionQuota(token, res) {
   const username = verifyToken(token);
   if (!username) {
     return { allowed: false, reason: 'auth', username: null };
@@ -62,27 +46,15 @@ async function checkConstructionQuota(token) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  if (usage.count >= CONSTRUCTION_DAILY_LIMIT) {
-    return { allowed: false, reason: 'limit', username };
-  }
-  return { allowed: true, username, remaining: CONSTRUCTION_DAILY_LIMIT - usage.count };
+  const limit = await planScaledLimit(username, CONSTRUCTION_DAILY_LIMIT);
+  return Object.assign(await quotaTally.check('construction', username, limit, res), { limit });
 }
 
-async function consumeConstruction(username) {
+// v-plan-consume-limit: limit = الحدّ المحسوب في الفحص (quota.limit) — لا قراءة ثانية للطبقة، والمتبقّي لا ينزل تحت الصفر.
+async function consumeConstruction(username, limit) {
   if (await __unlimitedUser(username)) return Infinity;
-  const today = todayStr();
-  let usage = await getUsage(username);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, count: 0 };
-  }
-  usage.count += 1;
-  await putUsage(username, usage);
-  return CONSTRUCTION_DAILY_LIMIT - usage.count;
+  const lim = Number(limit) > 0 ? Number(limit) : await planScaledLimit(username, CONSTRUCTION_DAILY_LIMIT);
+  return Math.max(0, await quotaTally.consume('construction', username, lim));
 }
 
 module.exports = { checkConstructionQuota, consumeConstruction, CONSTRUCTION_DAILY_LIMIT };

@@ -33,16 +33,28 @@ module.exports = async (req, res) => {
     messages = stripPrivateKeys(messages); // v-static-leak: لا مفاتيح __ داخليّة إلى المزوّد
     // Deprecated/retired Cohere model names get silently upgraded server-side,
     // so stale client caches (old JS, old localStorage) never hit a hard error.
-    const DEPRECATED_MODELS = new Set(['command-r-plus', 'command-r', 'command-r-plus-08-2024', 'command-r-08-2024', 'command']);
-    if (!model || DEPRECATED_MODELS.has(String(model).trim().toLowerCase())) {
-      model = 'command-a-03-2025';
+    /* v-cohere-prefix (لقطة المالك ٦ أكتوبر — 404): الاختيار المحفوظ من القائمة الحيّة يصل
+       ببادئة الوسيط «cohere/» فكان يُرسل حرفيًّا إلى api.cohere.com وهي لا تعرف إلّا المعرّف
+       المجرّد = 404 — تُجرَد البادئة أوّلًا. والقائمة صُحّحت على دورة حياة Cohere الرسميّة:
+       المسحوب ١٥ سبتمبر ٢٠٢٥ هو 03-2024/04-2024 والأسماء المستعارة وcommand-light؛
+       لقطتا 08-2024 مصنّفتان «Live» فتمرّان كما هما ولا تُرقَّيان. */
+    const DEPRECATED_MODELS = new Set(['command-r-plus', 'command-r', 'command-r-03-2024', 'command-r-plus-04-2024', 'command', 'command-light']);
+    // v-models-latest: الافتراضيّ Command A+ (مايو ٢٠٢٦)؛ ولو لم يصله المفتاح (404) يرجع النداء إلى Command A.
+    const COHERE_DEFAULT = 'command-a-plus-05-2026';
+    const COHERE_PREV = 'command-a-03-2025';
+    model = String(model || '').trim();
+    if (model.toLowerCase().indexOf('cohere/') === 0) model = model.slice(7); // v-cohere-prefix
+    if (!model || DEPRECATED_MODELS.has(model.toLowerCase())) {
+      model = COHERE_DEFAULT;
     }
     if (!messages) {
       res.status(400).json({ error: 'Missing messages' });
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'cohere', clientIp(req));
+    // v-model-lock: المشترك في سلّة الباقة الواحدة (plan) لا سلّة لكلّ مزوّد.
+    const usage = await checkAndConsume(token, guestId, 'cohere', clientIp(req), { chatBucket: true });
+    if (!require('./_model-guard.js').isPrivileged(usage)) model = COHERE_DEFAULT; // v-model-lock: الافتراضيّ لغير المالك وVIP
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -66,13 +78,17 @@ module.exports = async (req, res) => {
         'Authorization': 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
-        model: model || 'command-a-03-2025',
+        model: model || COHERE_DEFAULT,
         messages: msgs,
         temperature: 0.7,
         stream: wantStream,
       }),
     });
     let upstream = await doFetch(messages);
+    /* v-cohere-prefix (شبكة أمان): 404/400 على موديل مختار غير افتراضيّ (مسحوب عند Cohere أو
+       معرّف غريب وصل من كاش قديم) = رجوع للافتراضيّ بدل 404 خامّ للزائر. */
+    if ((upstream.status === 404 || upstream.status === 400) && model !== COHERE_DEFAULT && model !== COHERE_PREV) { model = COHERE_DEFAULT; upstream = await doFetch(messages); }
+    if ((upstream.status === 404 || upstream.status === 400) && model === COHERE_DEFAULT) { model = COHERE_PREV; upstream = await doFetch(messages); }
     // Retry once on 422: keep only system prompts + the last user message.
     if (upstream.status === 422) {
       const systems = messages.filter((m) => m.role === 'system');

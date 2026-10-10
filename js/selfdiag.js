@@ -28,6 +28,20 @@
     try{ localStorage.removeItem('aiapp_store'); }catch(e){ /* guard-ok */ }
     if((sessionStorage.getItem('aiapp_store') || '') === 'huawei'){
       document.documentElement.classList.add('store-safe');
+      /* v-hw-nomarkets (رفض هواوي ٢٩ سبتمبر بقاعدة 11.4 «عملات أجنبيّة وكريبتو» — بعد v-store-safe-revert؛ قرار المالك
+         ٢ أكتوبر: «شيلها من هواوي فقط وخلّها لي المالك والتطبيقات الأخرى»): داخل حزمة هواوي تُخفى الأسواق كلّها (شريط
+         الأسهم وزرّه، سوق الأسهم بقسم العملات، بطاقة «عن») لكلّ حساب غير المالك — المراجع لا يراها. الموقع والمتاجر
+         الأخرى وحساب المالك بلا تغيير، وsticker الطيّ لا يُحذف (قرار مالك) بل يُخفى مع شريطه. */
+      try{
+        var __u = String(sessionStorage.getItem('aiapp_username') || localStorage.getItem('aiapp_username') || '').trim().toLowerCase();
+        if(__u !== 'omran'){
+          document.documentElement.classList.add('store-nomarkets');
+          var __st = document.createElement('style');
+          __st.id = 'hwNoMarketsCss';
+          __st.textContent = 'html.store-nomarkets #stockTicker, html.store-nomarkets #stockTickerToggle, html.store-nomarkets #btnStocks, html.store-nomarkets #stocksModal, html.store-nomarkets #aboutStocksCard{display:none !important;}';
+          (document.head || document.documentElement).appendChild(__st);
+        }
+      }catch(e){ /* guard-ok: بلا الإخفاء تبقى النسخة الكاملة */ }
       /* v-store-twa (رفض هواوي 4.1 مرة ثانية — 1.3.9): مدخل المتجر يحمل بيان
          الحزمة الخاص به (manifest-huawei.json: start_url = /?store=huawei) حتى
          يبقى العلم بعد التثبيت من المتصفح ويقرأه مولّد الحزمة من الصفحة نفسها. */
@@ -40,6 +54,8 @@
       if(!localStorage.getItem('aiapp_store_tour')){
         var __openTour = function(){
           try{
+            var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+            if(cur && Array.isArray(cur.messages) && cur.messages.length > 0) return;
             var o = document.getElementById('sectionsToolsOverlay');
             if(!o) return setTimeout(__openTour, 400);
             o.classList.add('show');
@@ -151,6 +167,20 @@
     }, true);
   }catch(e){ /* guard-ok */ }
 })();
+/* v-err-build (تنبيه المالك ٢٣ سبتمبر بأخطاء منها «Unexpected token» من نسخة أُصلحت):
+   سجلّ الأخطاء لا ينتهي — خطأ النسخة المكسورة يبقى ينذر المالك بعد إصلاحه. كلّ بلاغ
+   يحمل بصمة الحزمة التي وقع فيها، وتنبيه المالك يعرض أخطاء النسخة الحاليّة فقط
+   (والقديمة بلا بصمة ما دامت آخر مرّة رُئيت فيها خلال ٢٤ ساعة). */
+window.__omranBuild = function(){
+  try{ return ((document.querySelector('script[src*="app.bundle.js"]') || {}).src || '').match(/v=([0-9a-f]+)/)[1] || ''; }
+  catch(e){ return ''; /* guard-ok: بلا بصمة يُعامَل البلاغ بعمره */ }
+};
+window.__omranErrLive = function(e, build, now){
+  if(!e) return false;
+  if(e.build) return !build || e.build === build;
+  var t = Date.parse(e.lastSeen || e.firstSeen || '');
+  return !isNaN(t) && (now - t) < 24 * 3600 * 1000;
+};
 (function(){
   var reported = {};
   function report(msg, src, line, col, stack){
@@ -165,7 +195,7 @@
         body: JSON.stringify({
           message: msg, source: String(src || ''), line: line || 0, col: col || 0,
           stack: String(stack || '').slice(0, 1500),
-          url: location.pathname, ua: navigator.userAgent
+          url: location.pathname, ua: navigator.userAgent, build: window.__omranBuild()
         })
       }).catch(function(){}); // guard-ok: مُبلِّغ الأخطاء لا يُبلّغ عن فشل إبلاغه — وإلّا صار الإبلاغ سببًا لإبلاغ جديد (حلقة لا تنتهي)
     }catch(e){ __swallow(e, "misc:index#6"); }
@@ -200,6 +230,78 @@
     var r = e.reason;
     report((r && r.message) || String(r), '', 0, 0, r && r.stack);
   });
+
+  /* v-mem-probe (المالك ٢٣ سبتمبر «بعده في تشويش» — لقطات من أندرويد كبير: الصور خضراء مشوّشة، والأيقونات لا تُرسم
+     حتّى في محادثة فارغة، ونصوص الإعدادات مخدوشة): عطل ذاكرة رسم لا يُعاد إنتاجه في المحاكي (بلا معالج رسوم).
+     بدل التخمين: جهاز المالك وحده يرسل أرقامه الحقيقيّة إلى سجلّ الأخطاء الذي تعرضه «فحص النظام» — ذاكرة JS، ذاكرة
+     الجهاز، الشاشة، الصور المفكوكة (الظاهرة والكلّ)، صور المحادثات في الذاكرة، عدد العناصر. بعد ٢٠ث ودقيقتين وخمس. */
+  (function memProbe(){
+    function ownerNow(){
+      try{ var u = (window.authGet && window.authGet('aiapp_username')) || localStorage.getItem('aiapp_username') || ''; return String(u).trim().toLowerCase() === 'omran'; }
+      catch(e){ return false; }
+    }
+    function sample(tag){
+      try{
+        if(!ownerNow()) return;
+        var MB = function(n){ return Math.round(n / 1048576); };
+        var pm = performance && performance.memory;
+        var heap = pm ? (MB(pm.usedJSHeapSize) + '/' + MB(pm.jsHeapSizeLimit) + 'MB') : '؟';
+        var vis = 0, visMB = 0, all = 0, allMB = 0;
+        /* v-mem-hosts (المالك ٢٤ سبتمبر: «نفس المشكلة»): الأرقام وحدها قالت «٣٢ صورة مخفيّة
+           تحمل ١٥١ م.ب» ولم تقل **أين** — فذهبت جولة أخرى في التخمين. الآن يسمّي المسبار
+           الحاويات المخفيّة الأثقل بأسمائها، فتكفي لقطة واحدة لتحديد الجذر بلا تخمين. */
+        var hosts = {};
+        var imgs = document.images;
+        for(var i = 0; i < imgs.length; i++){
+          var im = imgs[i]; if(!im.naturalWidth) continue;
+          var px = im.naturalWidth * im.naturalHeight * 4;
+          all++; allMB += px;
+          if(im.offsetParent){ vis++; visMB += px; continue; }
+          var host = '?', e = im.parentElement, n = 0;
+          while(e && n < 14){
+            if(e.id){ host = '#' + e.id; break; }
+            e = e.parentElement; n++;
+          }
+          var h = hosts[host] || (hosts[host] = { n: 0, px: 0 });
+          h.n++; h.px += px;
+        }
+        var top = Object.keys(hosts).sort(function(a, b){ return hosts[b].px - hosts[a].px; }).slice(0, 3)
+          .map(function(k){ return k + ' ' + MB(hosts[k].px) + 'MB×' + hosts[k].n; }).join(' · ');
+        var st = 0, stN = 0;
+        try{
+          (window.__omrS && window.__omrS.projects || []).forEach(function(p){ (p && p.messages || []).forEach(function(m){
+            (m && m.attachments || []).concat(m && m.apiImages || []).forEach(function(a){ var L = (a && typeof a.dataUrl === 'string') ? a.dataUrl.length : 0; if(L > 20000){ st += L; stN++; } });
+          }); });
+        }catch(e){ /* guard-ok: الحالة لم تجهز بعد */ }
+        report('v-mem-probe ' + tag + ': heap ' + heap + ' · جهاز ' + (navigator.deviceMemory || '؟') + 'GB · شاشة '
+          + window.innerWidth + 'x' + window.innerHeight + '@' + (Math.round((window.devicePixelRatio || 1) * 100) / 100)
+          + ' · صور ظاهرة ' + vis + ' (' + MB(visMB) + 'MB) كلّ ' + all + ' (' + MB(allMB) + 'MB)'
+          + (top ? ' · أثقل المخفيّ: ' + top : '')
+          /* v-sys-recolor: هل يعيد النظام تلوين ما نرسمه؟ إعلان color-scheme المحسوب يثبت أنّ
+             الإصلاح وصل، وبقيّة الاستعلامات تكشف تغميقًا قسريًّا أو إعداد إمكانيّة وصول —
+             وهو ما يفسّر أيقونة ممتلئة ونصًّا سليمًا بجانبها بلا أيّ علاقة بالذاكرة. */
+          + ' · نظام: ' + (function(){
+              var q = function(m){ try{ return matchMedia(m).matches; }catch(e){ return false; } };
+              var out = [];
+              try{ out.push('scheme=' + (getComputedStyle(document.documentElement).colorScheme || '?')); }
+              catch(e){ out.push('scheme=?'); }
+              out.push('sysDark=' + (q('(prefers-color-scheme: dark)') ? 'نعم' : 'لا'));
+              if(q('(forced-colors: active)')) out.push('ألوان مفروضة!');
+              if(q('(inverted-colors: inverted)')) out.push('ألوان معكوسة!');
+              if(q('(prefers-contrast: more)')) out.push('تباين عالٍ!');
+              if(q('(prefers-reduced-transparency: reduce)')) out.push('شفافيّة مخفّضة');
+              /* v-cpu-raster: وضع الرسم من الغلاف (cpu / gpu-video / gpu). بلا WebGL هنا عمدًا
+                 (v-mem-probe: المسبار لا يضيف حِملًا على معالج رسوم معطوب). اسم المعالج في /gpu-test.html. */
+              try{ out.push('رسم=' + (window.OmranRender && window.OmranRender.mode ? window.OmranRender.mode() : 'بلا-جسر')); }
+              catch(e){ out.push('رسم=?'); }
+              return out.join(' ');
+            })()
+          + ' · صور بالذاكرة ' + stN + ' (' + MB(st) + 'MB نصّ) · عناصر ' + document.getElementsByTagName('*').length
+          + ' · ' + (document.documentElement.classList.contains('omAndroid') ? 'omAndroid' : 'غير أندرويد'), 'selfdiag.js', 0, 0, '');
+      }catch(e){ /* guard-ok: المسبار ترف تشخيصيّ */ }
+    }
+    [[20000, '٢٠ث'], [120000, 'دقيقتان'], [300000, '٥ دقائق']].forEach(function(x){ setTimeout(function(){ sample(x[1]); }, x[0]); });
+  })();
 
   // v-diag-nav: وضع تشخيص حي للتبويبات — يعمل فقط عند فتح الرابط بـ ?diag=1
   // يعرض: البنية، بيئة التشغيل، ماذا يغطي كل تبويب، وعدّادًا حيًّا للمسات
@@ -338,6 +440,14 @@
             // «بيت أسود» — لا رسائل مرسومة ولا شاشة ترحيب ظاهرة. نحاول إعادة
             // الرسم أولًا (أرخص من الريلود)، وإن بقيت سوداء نعاملها كإقلاع معطوب.
             var blackHome = false;
+            /* v-maha-wd (المالك ٢٣ سبتمبر «زرّ مها ما يفتح في الآيفون»): مكالمة مها تخفي شاشة الترحيب، فإن فُتحت في
+               الثواني الخمس الأولى رآها الرقيب «بيتًا أسود» وأعاد تحميل الصفحة بعد ثانيتين من الضغط فتختفي المكالمة.
+               مكالمة جارية أو تبدأ = التطبيق حيّ؛ لا إعادة تحميل. */
+            try{
+              var __ms = document.getElementById('mahaCallScreen');
+              if((typeof mahaCallActive !== 'undefined' && mahaCallActive) || (typeof mahaCallStarting !== 'undefined' && mahaCallStarting)
+                 || (__ms && getComputedStyle(__ms).display !== 'none')) return;
+            }catch(e){ /* guard-ok: فحص المكالمة ترف — الرقيب يكمل كما كان */ }
             if(bootDone){
               try{
                 var me = document.getElementById('messages');

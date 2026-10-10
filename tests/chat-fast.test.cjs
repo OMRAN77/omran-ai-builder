@@ -71,7 +71,7 @@ test('١. الخادم: موديل OpenRouter غير كلود يطلب بلا ت
   let r = await ask('deepseek', ['ok']);
   assert.equal(r.bodies.length, 1);
   assert.match(r.bodies[0].url, /openrouter\.ai\/api\/v1\/messages/);
-  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v3.2');
+  assert.equal(r.bodies[0].body.model, 'deepseek/deepseek-v4-pro');
   assert.deepEqual(r.bodies[0].body.thinking, { type: 'disabled' });
   assert.deepEqual(r.bodies[0].body.reasoning, { enabled: false });
   assert.match(r.written, /"delta":"تم"/);
@@ -122,17 +122,17 @@ test('٢. الخادم: 400 يذكر reasoning → إعادة بـthinking وح�
 
 test('٣. الخادم: البنية — الحقول خارج تعريف callUpstream (اختبار v-claude-models يحرسه)، والإعادة بعد كاش-400 وقبل الفشل النهائيّ', () => {
   const s = read('api/_lib/chat.js');
-  const i = s.indexOf('const callUpstream = (withImg) => fetch(CHAT_URL');
+  const i = s.indexOf('const callUpstream = (withImg) => __upFetch(CHAT_URL');
   const req = s.slice(i, s.indexOf('let upstream = await callUpstream(true);', i));
   assert.ok(req.includes('__quickFields()'), 'الدمج في الجسم');
   assert.ok(!/thinking|reasoning/.test(req), 'لا حرف من الحقول داخل التعريف');
-  const qf = s.indexOf('const __quickFields = () => {');
+  const qf = s.indexOf('const __quickFields = () =>');
   assert.ok(qf > 0 && qf < i, 'التعريف يسبق callUpstream');
   const cache400 = s.indexOf("await logErrorAndFlush('chat/prompt-cache-400'");
   const quick400 = s.indexOf("await logErrorAndFlush('chat/or-quick-400'");
   const finalFail = s.indexOf("await logErrorAndFlush('chat/upstream-fail'");
   assert.ok(cache400 > 0 && quick400 > cache400 && finalFail > quick400);
-  assert.ok(s.includes("if (!viaOR || prov === 'claude') return {};"), 'كلود لا يُمسّ');
+  assert.ok(s.includes("if (!viaOR || prov === 'claude' || prov === 'cohere' || (__ownerReq && __ownerThink)) return {};"), 'كلود الوسيط لا يُمسّ، ودور المالك الصعب يفكّر (v-owner-auto)، وCohere موديل تفكير لا يُطفأ تفكيره (v-cohere-reasoning)');
 });
 
 // ── العميل ──

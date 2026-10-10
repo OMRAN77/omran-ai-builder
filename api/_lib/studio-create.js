@@ -20,14 +20,13 @@ async function openaiStudioEdit(promptText, images) {
   if (!key) return null;
   try {
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', 'gpt-image-2.5-sunburst');
     form.append('prompt', String(promptText).slice(0, 3900));
     form.append('size', 'auto');
-    /* v-strong-rescue: حفظ الملامح وجودة عالية */
-    form.append('input_fidelity', 'high');
     form.append('quality', 'high');
+    const imgField = images.length > 1 ? 'image[]' : 'image'; // أكثر من صورة على gpt-image-2 = image[] (كما في maha-image)
     images.forEach(([b64, mime], i) => {
-      form.append('image', new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
+      form.append(imgField, new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
     });
     const r = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
@@ -54,124 +53,13 @@ async function rescueGuarded(promptText, images, apiKey, feature) {
 }
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const faceLock = require('./face-lock.js');
+const mergeIdentity = require('./merge-identity');
 const { judgeBest, duoEnabled } = require('./image-judge');
+const variants = require('./studio-variants.js'); /* v-studio-variants */
 
-const STYLE_TEXT = {
-  hair: {
-    black: 'jet black hair color',
-    brown: 'natural chestnut brown hair color',
-    blonde: 'golden blonde hair color',
-    red: 'vivid auburn red hair color',
-    silver: 'silver/gray hair color',
-    colorful: 'vivid multicolor fantasy hair color (pink/blue/purple highlights)',
-    ombre: 'a stylish ombre hair color fading dark roots to light ends',
-    highlights: 'natural sun-kissed highlights through the hair',
-    platinum: 'icy platinum blonde hair color',
-    burgundy: 'deep burgundy wine hair color',
-    blue: 'bold electric blue hair color',
-    rose: 'soft rose-gold pink hair color',
-    curly: 'a voluminous curly hairstyle, defined bouncy curls',
-    straight: 'a sleek straight glossy hairstyle',
-    waves: 'soft glamorous hollywood waves hairstyle',
-    bob: 'a chic short bob haircut',
-    pixie: 'a modern pixie cut hairstyle',
-    longlayers: 'long layered flowing hairstyle',
-  },
-  nails: {
-    red: 'classic glossy red nail polish',
-    nude: 'nude/beige nail polish',
-    black: 'matte black nail polish',
-    french: 'classic French manicure (white tips)',
-    pink: 'soft pink nail polish',
-    gold: 'metallic gold glitter nail polish',
-    ombrenails: 'elegant ombre gradient nails',
-    glitter: 'sparkling glitter party nails',
-    mattegray: 'matte greige minimal nails',
-    chrome: 'mirror chrome metallic nails',
-    marble: 'white marble-effect nail art',
-    artnails: 'delicate hand-painted floral nail art',
-  },
-  makeup: {
-    natural: 'light natural everyday makeup look',
-    glam: 'glamorous full evening makeup look',
-    smokey: 'smokey eye makeup look',
-    redlips: 'bold red lipstick makeup look',
-    bridal: 'elegant bridal makeup look',
-    softglam: 'a soft-glam makeup look, luminous skin, neutral shimmer',
-    kohl: 'a striking Arabic kohl-lined eyes makeup look',
-    dewy: 'a dewy fresh-skin makeup look, glowing highlight',
-    matte: 'a full matte velvet-finish makeup look',
-    editorial: 'a bold colorful editorial makeup look, artistic liner',
-  },
-  beard: {
-    full: 'a full thick well-groomed beard',
-    stubble: 'light designer stubble',
-    mustache: 'a mustache only, clean shaved cheeks',
-    goatee: 'a neat goatee beard style',
-    clean: 'a completely clean-shaven face',
-    boxed: 'a short boxed beard, sharply groomed edges',
-    vandyke: 'a Van Dyke beard style, pointed goatee with detached mustache',
-    faded: 'a skin-faded beard blending into the haircut',
-    longbeard: 'a thick long well-groomed beard',
-    anchor: 'an anchor-shaped chin beard with mustache',
-  },
-  skin: {
-    subtle: 'subtle natural skin smoothing, keep realistic skin texture and pores',
-    glow: 'a healthy natural glow and even skin tone',
-    circles: 'reduced dark circles under the eyes, refreshed look',
-    tan: 'a healthy sun-kissed golden tan skin tone',
-    matteskin: 'shine-free matte refined skin finish',
-    freckles: 'charming natural light freckles',
-  },
-  glasses: {
-    sunglasses: 'classic black sunglasses',
-    round: 'round vintage-style glasses',
-    catseye: 'cat-eye shaped glasses',
-    aviator: 'aviator style glasses',
-    rimless: 'thin rimless glasses',
-    wayfarer: 'classic wayfarer frame glasses',
-    oversized: 'fashionable oversized frame glasses',
-    sportglasses: 'sleek wraparound sport sunglasses',
-    goldframe: 'luxury thin gold-frame glasses',
-    retroglasses: 'retro 70s tinted glasses',
-    hexagon: 'modern hexagonal frame glasses',
-    clearframe: 'trendy clear transparent frame glasses',
-  },
-  tattoo: {
-    sleeve: 'a detailed full arm sleeve tattoo design',
-    wrist: 'a small delicate wrist tattoo',
-    back: 'a large detailed back piece tattoo',
-    tribal: 'a bold black tribal-style tattoo',
-    geometric: 'a fine-line geometric pattern tattoo',
-    minimalline: 'a tiny minimalist single-line tattoo',
-    arabictattoo: 'an elegant Arabic calligraphy tattoo',
-    floraltattoo: 'a detailed floral botanical tattoo',
-    custom: 'a custom tattoo design as described',
-  },
-  anime: {
-    classic: 'a classic Japanese anime art style illustration',
-    chibi: 'a cute chibi cartoon style illustration',
-    ghibli: 'a Studio Ghibli-inspired hand-painted anime style illustration',
-    cyberpunk: 'a cyberpunk anime art style illustration with neon accents',
-    manga: 'a black and white manga ink illustration style',
-    shonenstudio: 'a dynamic shonen action anime style with speed lines and energy',
-    kawaii: 'a cute kawaii pastel anime style',
-    webtoon: 'a clean modern webtoon comic style',
-    retro90s: 'a nostalgic 1990s cel anime style',
-  },
-  heritage: {
-    kandora: 'a traditional Gulf men\'s kandora (dishdasha) with a matching ghutra headscarf and agal',
-    bisht: 'a luxurious traditional Gulf bisht cloak worn over a white kandora',
-    abaya: 'an elegant traditional women\'s black abaya with a matching sheila headscarf',
-    embroidered: 'a richly embroidered traditional Gulf women\'s dress (thobe nashal) with gold detailing',
-    saudi: 'a traditional Saudi men\'s thobe with a red-and-white shemagh headscarf',
-    emirati: 'a traditional Emirati women\'s kaftan with delicate hand embroidery',
-    omani: "a traditional Omani men's dishdasha with an embroidered kummah cap",
-    saudimen2: "a Saudi winter bisht over thobe with red shemagh, stately look",
-    moroccanher: 'a Moroccan djellaba with hood, fine stitching',
-    palestinian: 'a Palestinian embroidered thobe with traditional tatreez patterns',
-  },
-};
+/* v-studio-more-looks: أوصاف الخيارات انتقلت إلى ملفّ بيانات صرف يقرأه مولّد المعاينات أيضًا */
+/* نسخة سطحيّة: دمج الميزات الـ١٤ أدناه يجب ألّا يلوّث بيانات الملفّ المشتركة (يقرأها مولّد المعاينات) */
+const STYLE_TEXT = Object.assign({}, require('./studio-styles.js').STYLE_TEXT);
 
 const FEATURE_INSTRUCTIONS = {
   hair: (style) => 'Change only the hair to ' + style + '. Keep the same person, face, pose, clothing and background exactly the same, only alter the hair color/style. Output a single photorealistic image.',
@@ -198,6 +86,8 @@ const EDIT_LOCK = (what) =>
   'the same camera angle, framing, crop, lighting and background — pixel-for-pixel wherever not touched. ' +
   'Change ONLY ' + what + '. If the requested change does not mention headwear, keep the existing headwear exactly as it is. ' +
   'Do not beautify, restyle, re-pose or regenerate anything else.';
+/* v-edit-no-change: الناتج جاء مطابقًا للأصل — المحاولة الثانية تطلب التنفيذ صراحةً */
+const NO_CHANGE_RETRY = '\nSECOND ATTEMPT — the previous result came back identical to the source photo: the requested change was not applied at all. You MUST visibly apply it this time, clearly and unmistakably, while still keeping the same person, pose, framing and background.';
 const STRONGER_LOCK = '\nSECOND ATTEMPT — the previous result changed the person. Preserve the reference photo exactly; apply the single requested change as a thin overlay on the original pixels only.';
 const LOCK_WHAT = {
   hair: 'the hair', nails: 'the fingernails', makeup: 'the facial makeup', beard: 'the facial hair', skin: 'the skin finish',
@@ -208,8 +98,48 @@ const LOCK_WHAT = {
   iconic: 'the outfit, hair and setting', age: 'the apparent age',
 };
 
+/* v-studio-variety: ميزات «الرسم» — النقش يُرسم من جديد كلّ مرّة، فالخيار نفسه كان
+   يعطي التصميم نفسه بالضبط (حرارة ٠٫١٥ وأمر ثابت). بذرة تنويع + حرارة أعلى قليلًا:
+   الطلب لا يغيّر الستايل المختار، بل ترتيب النقش وتوزيعه. الوجه/الرأس محميّ بالبكسل
+   في الحنّاء والأظافر والتاتو (face-lock: body)، والمكياج يبقى على حرارته لأنّه على الوجه. */
+const DESIGN_FEATURES = ['henna', 'nails', 'tattoo'];
+const VARIETY_NOTE = {
+  henna: 'Draw a brand-new original henna layout inside this exact style: vary the motifs, their sizes, their spacing and the overall composition so it does not repeat an earlier drawing. Keep the described colour, pattern family and placement exactly as asked.',
+  nails: 'Paint a brand-new original nail design inside this exact style: vary the detailing, the accent nails and the finish placement so it does not repeat an earlier design. Keep the described colour and style exactly as asked.',
+  tattoo: 'Draw a brand-new original tattoo artwork inside this exact style: vary the composition, the line work and the shading so it does not repeat an earlier design. Keep the described style, size and placement exactly as asked.',
+};
+/* v-studio-skin-lock (شكوى المالك ٢٨ سبتمبر: صورة كفّ رجل + «حناء خليجية» ⇒ خطأ
+   image_edit_identity_mismatch): وصف الحنّاء «على اليدين» يجرّ الموديل إلى **يد أخرى**
+   ناعمة بلا شعر (يد عروس)، فيحكم الحارس بتغيّر الهويّة ويسقط الطلب كلّه. النقش يُضاف
+   فوق الجلد نفسه لا على يد بديلة. */
+const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP of the exact skin already in the photo. ' +
+  'Keep the same hands/limbs pixel-for-pixel apart from the added design: same skin tone and shade, same body hair, same veins, knuckles and wrinkles, ' +
+  'same nail shape and length, same size, same pose and same background. ' +
+  'Never replace them with someone else\'s hands or feet, never make them look younger, smoother, slimmer, lighter or more feminine, ' +
+  'and never add jewellery, rings, bracelets, sleeves or clothing that is not already there.';
+
+/* v-studio-variants: التنويع صار **داخل الخيار نفسه** لكلّ الميزات لا للرسم وحده —
+   توجيه محسوس من محاور studio-variants (آلاف الأشكال لكلّ خيار) بدل جملة «نوّع» عامّة
+   يتجاهلها الموديل. الرقم يصل من العميل (عدّاد لكلّ ميزة+خيار) فلا يتكرّر شكلٌ للمستخدم. */
+/* v-visible-change (شكوى المالك ٣٠ سبتمبر: «في الاستايل إذا اختار شيئًا — العين مثلًا — الشيء اللي
+   اختاره ما يتغيّر»): سطر التنويع كان يُضعف التعديل أو يناقضه — «أخفّ مستوى»، «التركيز على الجهة
+   اليسرى» للعيون، «عدسة شفّافة» لنظّارة شمسيّة، «مطفي» لخيار لامع. الآن: الخيار المختار هو المرجع،
+   والتنويع لا يمسّ إلّا ما تركه الخيار مفتوحًا، والتغيير يجب أن يكون ظاهرًا. والتعديلات الدقيقة
+   المطلوبة بعينها (العمر، الجسم، تبييض الأسنان…) بلا تنويع أصلًا. */
+function varietyLine(feature, variant, style) {
+  if (!variants.hasVariation(feature, style)) return '';
+  const total = variants.variantCount(feature, style);
+  const n = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) : Math.floor(Math.random() * total);
+  const directive = variants.variantDirective(feature, n, style);
+  const note = VARIETY_NOTE[feature] || 'Produce a fresh original execution of this exact style; do not repeat an earlier one.';
+  return '\nVARIATION #' + (n % total) + ' — a fresh execution of the chosen style. The chosen style described above is the authority: ' +
+    'keep every colour, finish, shape, size and placement it names exactly. Use the following ideas only for details the style leaves open, ' +
+    'and skip any idea that contradicts it: ' + directive + '.\n' + note +
+    '\nThe requested change must be clearly and unmistakably visible in the result.';
+}
+
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
-function buildSinglePrompt(feature, style, description, multiAngle) {
+function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   const styleMap = STYLE_TEXT[feature] || {};
   let styleDesc = styleMap[style];
   if (!styleDesc) {
@@ -228,13 +158,19 @@ function buildSinglePrompt(feature, style, description, multiAngle) {
   if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
     promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
   }
+  if (DESIGN_FEATURES.indexOf(feature) !== -1) promptText += SKIN_LOCK;
+  promptText += varietyLine(feature, variant, style);
   return promptText;
 }
 
 /* ───── نداء Gemini واحد: { b64, mime } أو { error, status, detail, why } ───── */
-async function geminiImage(apiKey, parts, feature) {
+async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-  const reqBody = { contents: [{ parts }], generationConfig: { temperature: feature === 'anime' ? 0.65 : 0.15, imageConfig: { imageSize: '2K' } } };
+  /* v-studio-variety: ميزات الرسم بحرارة ٠٫٤٥ — ٠٫١٥ كانت تعيد النقش نفسه حرفيًّا.
+     v-studio-guard-retry: المحاولة الثانية بحرارة منخفضة مفروضة (أمانة قبل تنويع). */
+  const temperature = Number.isFinite(tempOverride) ? tempOverride
+    : (feature === 'anime' ? 0.65 : (DESIGN_FEATURES.indexOf(feature) !== -1 ? 0.45 : 0.15));
+  const reqBody = { contents: [{ parts }], generationConfig: { temperature, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
   const upstream = await fetch(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
     signal: AbortSignal.timeout(240000), /* v-image-timeout */
@@ -271,7 +207,7 @@ async function runEdit(o) {
   let gemP = null;
   const guardOf = async (b64, mime) => {
     if (o.skipGuard) return true;
-    const g = await verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange) });
+    const g = await verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange), requireChange: !!(o.guard && o.guard.requireChange) });
     return !!(g && (g.ok || g.reason === 'validation_unavailable'));
   };
   if (prep) {
@@ -309,10 +245,21 @@ async function runEdit(o) {
       resultBase64: out.b64, resultMime: out.mime,
       userPrompt: (o.guard && o.guard.userPrompt) || o.feature,
       allowStyleChange: !!(o.guard && o.guard.allowStyleChange),
+      requireChange: !!(o.guard && o.guard.requireChange), /* v-edit-no-change */
     });
     /* v-guard-fail-open: تعطّل الحارس نفسه لا يُسقط صورةً جاهزة */
     if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
-    else if (!guard.ok) throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
+    else if (!guard.ok) {
+      /* v-studio-guard-retry (شكوى المالك: «image_edit_identity_mismatch» على صورة كفّ):
+         رسمةٌ واحدة شاردة كانت تُسقط الطلب كلّه بخطأ أحمر. محاولة ثانية واحدة بقفل
+         أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر. */
+      console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
+      const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK;
+      const retryParts = [{ text: o.promptText + retryNote }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+      const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
+      if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
+      throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
+    }
   }
   return finish(out.b64, out.mime, 'gemini');
 }
@@ -347,7 +294,8 @@ module.exports = async (req, res) => {
       feature, style, description, token,
       imageBase64, mimeType,
       imageBase64B, mimeTypeB,
-      multiAngle,
+      multiAngle, variant, /* v-studio-variants: رقم الشكل داخل الخيار (عدّاد العميل) */
+      originalBase64, originalMime, /* v-studio-chain: الصورة الأصليّة حين يكون هذا تعديلًا تاليًا في سلسلة */
     } = body;
 
     if (!feature) {
@@ -365,7 +313,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const quota = await checkStudioQuota(token);
+    const quota = await checkStudioQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
     if (!quota.allowed) {
       if (quota.reason === 'auth') {
         res.status(401).json({ error: 'auth_required' });
@@ -378,26 +326,23 @@ module.exports = async (req, res) => {
     const openaiKey = (process.env.OPENAI_API_KEY || '').trim();
 
     if (feature === 'merge') {
-      const extra = description ? (' Additional instructions: ' + String(description).slice(0, 300) + '.') : '';
-      const promptText =
-        'Merge the two photos provided into a single combined, coherent, photorealistic image. ' +
-        'Keep the people/subjects from both photos recognizable, and blend them naturally together in one consistent scene.' +
-        extra + ' Output a single photorealistic image.';
-      const parts = [
-        { text: promptText },
-        { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
-        { inlineData: { mimeType: mimeTypeB || 'image/jpeg', data: imageBase64B } },
-      ];
-      const out = await geminiImage(apiKey, parts, 'merge');
+      /* v-merge-faces: قالب هويّة الدمج نفسه (maha-image) — كان الأمر يطلب «مزج» الناس معًا (blend) — دعوة صريحة لخلط الوجوه،
+         والناس «recognizable» فقط. كلّ صورة بعنوانها، ولقطة مقرّبة لكلّ وجه، والأمر الكامل آخرًا ويستلمه GPT نفسه. */
+      const task = description ? String(description).slice(0, 300) : 'Place the people/subjects from both photos together naturally in one consistent, photorealistic scene.';
+      const photos = [{ data: imageBase64, mime: mimeType || 'image/jpeg' }, { data: imageBase64B, mime: mimeTypeB || 'image/jpeg' }];
+      const crops = await mergeIdentity.faceCrops(apiKey, photos);
+      const parts = mergeIdentity.mergeParts(photos, crops, task);
+      const promptText = parts[parts.length - 1].text;
+      const out = await geminiImage(apiKey, parts, 'merge', mergeIdentity.mergeAspect(photos[0], task));
       if (out.b64) {
-        const rem = await consumeStudio(quota.username);
-        res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining: rem, dailyLimit: STUDIO_DAILY_LIMIT });
+        const rem = await consumeStudio(quota.username, quota.limit);
+        res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining: rem, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
-      const rescue = await rescueGuarded(promptText, [[imageBase64, mimeType], [imageBase64B, mimeTypeB]], apiKey, 'merge');
+      const rescue = await rescueGuarded(promptText, photos.concat(crops).map((p) => [p.data, p.mime]), apiKey, 'merge');
       if (rescue) {
-        const remR = await consumeStudio(quota.username);
-        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: STUDIO_DAILY_LIMIT });
+        const remR = await consumeStudio(quota.username, quota.limit);
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
       res.status(out.status || 502).json({ error: out.error || 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
@@ -406,10 +351,13 @@ module.exports = async (req, res) => {
 
     if (feature === 'combo') { res.status(410).json({ error: 'combo_removed' }); return; } /* v-studio-combo-removed: أمر المالك */
 
-    const promptText = buildSinglePrompt(feature, style, description, multiAngle);
+    const promptText = buildSinglePrompt(feature, style, description, multiAngle, Number(variant));
     if (!promptText) { res.status(400).json({ error: 'Unknown feature' }); return; }
     let guardOpts = null;
-    if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime' };
+    /* v-edit-no-change: الميزات الخفيّة (بشرة، عيون، جسم، عمر) تغييرها دقيق فلا يُفرض عليها */
+    /* v-visible-change: العيون والجسم والعمر تغييرها ظاهر — «ما تغيّر» يُكشف ويُعاد؛ البشرة وحدها دقيقة بطبعها */
+    const SUBTLE = ['skin'];
+    if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime', requireChange: SUBTLE.indexOf(feature) === -1 };
     try {
       const r = await runEdit({
         apiKey, openaiKey, feature, promptText, imageBase64, mimeType,
@@ -417,8 +365,24 @@ module.exports = async (req, res) => {
         collage: !!(multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')),
         guard: guardOpts, skipGuard: !guardOpts,
       });
-      const remaining = await consumeStudio(quota.username);
-      res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, engine: r.engine, remaining, dailyLimit: STUDIO_DAILY_LIMIT });
+      /* v-studio-chain (طلب المالك ٣٠ سبتمبر: «يختار كذا شي… وشوف يغيّر شكل الشخصيّة»): في السلسلة كلّ
+         خطوة تُعدِّل ناتج السابقة، فحارس الخطوة يقارن بالناتج السابق لا بصورة المستخدم — والانزياح في
+         الهويّة يتراكم خطوة بعد خطوة. هنا فحص هويّة إضافيّ مقابل **الأصل** نفسه قبل الخصم: التعديلات
+         المطلوبة كلّها مسموحة (allowBroadChange)، والمرفوض وحده أن يصير شخصًا آخر. */
+      if (originalBase64 && originalBase64 !== imageBase64) {
+        const idg = await verifyLocalizedImageEdit({
+          apiKey, sourceBase64: originalBase64, sourceMime: originalMime || 'image/jpeg',
+          resultBase64: r.b64, resultMime: r.mime,
+          userPrompt: 'Identity check only: several intended style edits (hair, makeup, eyes, outfit, accessories, background) were applied on purpose. Judge only whether it is still the same person.',
+          allowBroadChange: true, allowStyleChange: feature === 'anime',
+        });
+        if (!idg.ok && idg.reason === 'identity_or_scope_mismatch') {
+          res.status(422).json({ error: 'image_edit_identity_mismatch', retryable: false, chainStep: true });
+          return;
+        }
+      }
+      const remaining = await consumeStudio(quota.username, quota.limit);
+      res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, engine: r.engine, remaining, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
     } catch (err) {
       if (err && err.status && err.payload) { res.status(err.status).json(err.payload); return; }
       throw err;
@@ -430,3 +394,5 @@ module.exports = async (req, res) => {
 };
 module.exports.STYLE_TEXT = STYLE_TEXT;
 module.exports.FEATURE_INSTRUCTIONS = FEATURE_INSTRUCTIONS;
+module.exports.buildSinglePrompt = buildSinglePrompt; /* v-studio-variety: للاختبار */
+module.exports.DESIGN_FEATURES = DESIGN_FEATURES;

@@ -215,9 +215,12 @@ async function __safeJson(res){
     if(ideaAI) ideaAI.style.display = 'none';
     ideaStatus('⏳ ' + bT('أجمع لك صورًا وتصاميم…', 'Collecting photos and designs…'));
     try{
-      const r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ place: opts.place || '', q: opts.q || '', style: styleEl ? styleEl.value : '' }) });
+      const r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ place: opts.place || '', q: opts.q || '', style: styleEl ? styleEl.value : '', token: (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '' }) });
       const d = await __safeJson(r);
       if(my !== ideaReq) return;
+      /* v-open-tools-cap: المعرض صار بجلسة وسقف يوميّ ثابت — نصّ الدخول والحدّ الموجودان بالـ١٤ لغة */
+      if(d && d.error === 'auth_required'){ ideaStatus(t('designAiNeedLogin')); return; }
+      if(d && d.error === 'daily_limit_reached'){ ideaStatus(t('designAiLimitReached')); return; }
       const imgs = Array.isArray(d.images) ? d.images : [];
       if(!imgs.length){
         /* v-ideas-resilient: مصدر الصور متوقف (حصّة) ≠ لا نتائج — نقول الحقيقة */
@@ -391,6 +394,7 @@ async function __safeJson(res){
       const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const ideas = Array.isArray(data.suggestions) ? data.suggestions : [];
@@ -683,6 +687,11 @@ function stuL(ar, en){
   return (m && m[l]) || en;
 }
 
+/* v-pstyle-img: وسم إصدار صور الأنماط — /assets/ مخبّأة يومًا كاملًا (وأسبوعًا stale)،
+   فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
+const PSTYLE_IMG_V = '15';
+function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
+
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
 (function(){
   const modal = $('#portraitStyleModal');
@@ -795,7 +804,7 @@ function stuL(ar, en){
     if(!styleTrigger || !styleEl) return;
     const opt = styleEl.querySelector('option[value="' + styleEl.value + '"]');
     const img = $('#portraitStyleTriggerImg');
-    if(img){ img.src = 'assets/portrait/styles/' + styleEl.value + '.webp'; img.onerror = function(){ img.style.visibility = 'hidden'; }; img.style.visibility = 'visible'; }
+    if(img){ img.src = pstyleImg(styleEl.value); img.onerror = function(){ img.style.visibility = 'hidden'; }; img.style.visibility = 'visible'; }
     const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? opt.textContent : '';
     const subEl = $('#portraitStyleTriggerSub'); if(subEl) subEl.textContent = pstyleSub(styleEl.value);
   }
@@ -864,12 +873,29 @@ function stuL(ar, en){
       + '.pstyleHero .pstyleHeroT{position:absolute; width:19%; aspect-ratio:1; border-radius:50%; overflow:hidden; border:2px solid rgba(212,175,55,.75); background:#17171b; box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; transform:translate(-50%,-50%); transition:transform .18s, box-shadow .18s;}'
       + '.pstyleHero .pstyleHeroT:hover{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 22px rgba(212,175,55,.6);}'
       + '.pstyleHero .pstyleHeroT img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
-      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}';
+      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}'
+      /* v-psheet-header-collapse (طلب المالك: الرأس يرفع كتابته ويصغر عند تمرير المعرض لأسفل، بدل مساحة ثابتة كبيرة) */
+      + '#portraitStyleSheetHeader{transition:padding .22s ease;}'
+      + '#portraitStyleSheetTitle{transition:font-size .22s ease;}'
+      + '#portraitStyleSheetCount{transition:opacity .18s ease, max-height .22s ease, margin-top .22s ease; overflow:hidden; max-height:16px;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall{padding-top:calc(6px + max(env(safe-area-inset-top,0px), 30px)) !important; padding-bottom:8px !important;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetTitle{font-size:14.5px !important;}'
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}';
     document.head.appendChild(st);
+  }
+  /* الرأس (العنوان + العدّاد) يصغر ويرتفع فور بدء تمرير المعرض، ويعود لحجمه عند القمّة */
+  function bindPsheetHeaderCollapse(scroller){
+    if(!scroller || scroller.__pstyleHeaderBound) return;
+    scroller.__pstyleHeaderBound = true;
+    scroller.addEventListener('scroll', function(){
+      const header = document.getElementById('portraitStyleSheetHeader');
+      if(header) header.classList.toggle('pstyleHeaderSmall', scroller.scrollTop > 20);
+    }, { passive: true });
   }
   function ensurePsheetChrome(){
     ensurePsheetCss();
     const scroller = styleCardsGrid.parentElement; if(!scroller) return;
+    bindPsheetHeaderCollapse(scroller);
     let hero = document.getElementById('portraitStyleHero');
     if(!hero){
       hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';
@@ -883,7 +909,7 @@ function stuL(ar, en){
         const a = (-90 + i * (360 / RING.length)) * Math.PI / 180, r = 40.5;
         const tdiv = document.createElement('div'); tdiv.className = 'pstyleHeroT'; tdiv.setAttribute('data-pstyle-ring', v);
         tdiv.style.left = (50 + r * Math.cos(a)) + '%'; tdiv.style.top = (50 + r * Math.sin(a)) + '%';
-        const im = document.createElement('img'); im.src = 'assets/portrait/styles/' + v + '.webp'; im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
+        const im = document.createElement('img'); im.src = pstyleImg(v); im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
         const lb = document.createElement('i'); lb.textContent = RING_EN[v] || pstyleEn(v);
         tdiv.appendChild(im); tdiv.appendChild(lb);
         tdiv.onclick = function(){ selectPortraitStyle(v); };
@@ -933,7 +959,7 @@ function stuL(ar, en){
   }
   function refreshPortraitFoot(){
     const o = styleEl && styleEl.querySelector('option[value="' + styleEl.value + '"]');
-    const pi = document.getElementById('portraitFootImg'); if(pi){ pi.src = 'assets/portrait/styles/' + styleEl.value + '.webp'; pi.style.visibility = 'visible'; }
+    const pi = document.getElementById('portraitFootImg'); if(pi){ pi.src = pstyleImg(styleEl.value); pi.style.visibility = 'visible'; }
     const pt = document.getElementById('portraitFootName'); if(pt) pt.textContent = o ? optLabel(o).trim() : '';
     const cta = document.getElementById('portraitStyleCta');
     if(cta) cta.textContent = window.__portraitHasPhoto ? gt('portraitGenerateBtn', '✨ حوّلها', '✨ Convert') : gt('psheetTry', '✨ جرّب على صورتك', '✨ Try it on your photo');
@@ -1016,7 +1042,7 @@ function stuL(ar, en){
       emoji.textContent = (title.match(/^\S+/) || [''])[0];
       emoji.style.cssText = 'width:54px; height:54px; border-radius:50%; border:1px solid rgba(212,175,55,.4); background:rgba(212,175,55,.06); display:flex; align-items:center; justify-content:center; font-size:22px;';
       const img = document.createElement('img');
-      img.src = 'assets/portrait/styles/' + v + '.webp';
+      img.src = pstyleImg(v);
       img.alt = title; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
@@ -1418,12 +1444,38 @@ function stuL(ar, en){
     try{ return (window.omranFashionExtras && window.omranFashionExtras().gender) || 'women'; }
     catch(e){ return 'women'; }
   }
+  /* v-fashion-variety (المالك: «الديزينات واحده… الشكل واحد»): عدّاد لكلّ فئة×نمط يُرسَل مع كلّ توليد، والخادم
+     يحوّله إلى تصميم من ≥١٠٠ للنمط لا يتكرّر حتّى تنفد (api/_lib/fashion-variety.js). يبدأ من رقم عشوائيّ لكلّ
+     جهاز فلا يرى الجميع التصميم نفسه أوّلًا، ويتقدّم عند الإرسال فتعطي المحاولة التالية تصميمًا آخر. */
+  let fxStyleManual = ''; /* v-fx-simple: نمط اختاره المستخدم بيده من المعرض */
+  const FX_VARIANT_KEY = 'aiapp_fashion_variant';
+  function fxNextVariant(styleVal){
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(FX_VARIANT_KEY) || '{}') || {}; }catch(e){ map = {}; }
+    const k = currentGender() + '|' + styleVal;
+    let n = Number(map[k]);
+    if(!Number.isSafeInteger(n) || n < 0) n = Math.floor(Math.random() * 100000);
+    map[k] = n + 1;
+    try{ localStorage.setItem(FX_VARIANT_KEY, JSON.stringify(map)); }catch(e){ __swallow(e, 'fashion:variant'); }
+    return n;
+  }
+  // «التصميم رقم ٣٧ من ٢١٦ لهذا النمط» — من ردّ الخادم؛ فارغ لخادم قديم بلا الحقل.
+  function fxDesignLine(d){
+    if(!d || !(d.n > 0) || !(d.total > 0)) return '';
+    const tpl = t('fxDesignNo');
+    return (tpl && tpl !== 'fxDesignNo' ? tpl : 'Design {n} of {total}').replace('{n}', d.n).replace('{total}', d.total);
+  }
   function lookImg(gender, value, alt){
     const img = document.createElement('img');
-    img.src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
     img.alt = alt;
-    img.loading = 'eager'; // البطاقات ≈40KB كلها — الكسل يؤخّر ظهورها بلا مكسب
+    img.loading = 'lazy';
     img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+    /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
+       فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
+       التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
+    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
+    else img.src = __src;
     img.onerror = function(){
       if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
       else img.remove();
@@ -1448,7 +1500,7 @@ function stuL(ar, en){
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
       }).filter(Boolean),
-      onPick: function(v){ styleEl.value = v; renderStyleCards(); },
+      onPick: function(v){ styleEl.value = v; fxStyleManual = v; renderStyleCards(); },
     });
   }
   function renderStyleCards(){
@@ -1473,6 +1525,8 @@ function stuL(ar, en){
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
     sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (bT('نمطًا لهذه الفئة','styles for this category')));
+    const __plus = t('fxStylesPlus'); /* v-fashion-variety: «أكثر من 100 تصميم لكل نمط» */
+    if(__plus && __plus !== 'fxStylesPlus') sub.textContent += ' · ' + __plus;
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
@@ -1485,6 +1539,39 @@ function stuL(ar, en){
   renderStyleCards();
   // تبديل الفئة (نسائي/رجالي/أطفال) يعيد رسم البطاقات وصفّ المقارنة بصور الفئة.
   window.addEventListener('fashion-gender-change', function(){ renderStyleCards(); buildCompareChecks(); });
+
+  /* v-fx-simple (تبسيط الأزياء): الخادم يبني التصميم من النمط («SPECIFIC DESIGN» من ≥١٠٠ للنمط) ثمّ يقول
+     «مخصّص لـ{المناسبة}». فلمّا طُوي منتقي النمط تحت «خصّصها» صار افتراضه («سهرة» أوّل القائمة) يُطبَّق بصمت:
+     مناسبة «كاجوال» + نمط «سهرة» = فستان سهرة لطلعة كاجوال. الآن المناسبة الظاهرة تختار النمط المطابق لها
+     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب). */
+  const FX_OCC_STYLE = {
+    wedding:    { women:'wedding', men:'wedding',     kids:'wedding' },
+    work:       { women:'office',  men:'office',      kids:'school' },
+    casual:     { women:'casual',  men:'casual',      kids:'casual' },
+    sport:      { women:'sporty',  men:'sporty',      kids:'sporty' },
+    travel:     { women:'casual',  men:'smartcasual', kids:'casual' },
+    formal:     { women:'formal',  men:'formal',      kids:'formal' },
+    graduation: { women:'formal',  men:'formal',      kids:'formal' },
+    religious:  { women:'abaya',   men:'traditional', kids:'eidkids' },
+  };
+  function fxStyleForOccasion(){
+    const g = currentGender();
+    const m = occasionEl && FX_OCC_STYLE[occasionEl.value];
+    const v = m && m[g];
+    return (v && (GENDER_STYLES[g] || []).indexOf(v) >= 0) ? v : '';
+  }
+  function fxApplyOccasionStyle(){
+    const v = fxStyleForOccasion();
+    if(v && styleEl.value !== v){ styleEl.value = v; renderStyleCards(); }
+  }
+  if(occasionEl) occasionEl.addEventListener('change', function(){ fxStyleManual = ''; fxApplyOccasionStyle(); });
+  window.addEventListener('fashion-gender-change', function(){
+    const list = GENDER_STYLES[currentGender()] || [];
+    if(fxStyleManual && list.indexOf(fxStyleManual) >= 0){ styleEl.value = fxStyleManual; renderStyleCards(); }
+    else { fxStyleManual = ''; fxApplyOccasionStyle(); }
+  });
+  fxApplyOccasionStyle(); /* الافتراضيّ نفسه كان متناقضًا: كاجوال + سهرة */
+  window.__fxStyleForOccasion = fxStyleForOccasion; /* للاختبار */
 
   /* ---- 👤 saved measurements profile ---- */
   const PROFILE_KEY = 'aiapp_fashion_profile';
@@ -1716,7 +1803,7 @@ function stuL(ar, en){
     try{
       const __engineEl = $('#fashionAiEngine');
       window.__fashionEngine = (__engineEl && __engineEl.value) || '';
-      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine };
+      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine, variant: fxNextVariant(styleEl.value) };
       try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
       if(mode === 'image'){
         payload.imageBase64 = selectedBase64;
@@ -1747,7 +1834,8 @@ function stuL(ar, en){
       setupBeforeAfter(dataUrl);
       /* v-fashion-refine: احفظ النتيجة كمصدر للتعديل الموضعي وأظهر صفّه */
       __refineRemember(data.imageBase64, data.mimeType || 'image/png');
-      setStatus(t('fashionAiDone'));
+      const __dl = fxDesignLine(data.design);
+      setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
       setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
@@ -1868,6 +1956,7 @@ function stuL(ar, en){
       const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; } /* v-open-tools-cap */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
@@ -1931,7 +2020,7 @@ function stuL(ar, en){
       const results = await Promise.all(stylesToRun.map(async (styleVal) => {
         // v-fashion-locks: fairness يفعّل قفل عدالة المقارنة في الخادم —
         // نفس الاستوديو والإضاءة والوقفة في كل الخيارات، فتُقارن الملابس لا الإضاءة.
-        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '' };
+        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '', variant: fxNextVariant(styleVal) };
         try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
         if(mode === 'image'){ payload.imageBase64 = selectedBase64; payload.mimeType = selectedMime; }
         else { payload.description = descriptionEl.value.trim(); }
@@ -2000,6 +2089,15 @@ function stuL(ar, en){
   const SYSTEM_PROMPTS = {
     verse: 'أنت عالم متخصص في تفسير القرآن الكريم. عند إعطائك آية أو اسم سورة ورقم آية، اشرحها بعمق ودقة معتمدًا على أشهر كتب التفسير المعتبرة (تفسير ابن كثير، تفسير الطبري، تفسير السعدي، تفسير القرطبي). اذكر: 1) نص الآية كاملة، 2) سبب النزول إن وجد، 3) المعنى الإجمالي، 4) أهم الفوائد والدروس المستفادة. اكتب بأسلوب واضح ومنظم بعناوين. اختم دائمًا بجملة: "هذا اجتهاد بشري في نقل التفسير المعتمد وليس فتوى شخصية، راجع أهل العلم للتأكد." أجب بنفس لغة سؤال المستخدم.',
     hadith: 'أنت باحث متخصص في الحديث النبوي الشريف. عند إعطائك نص حديث أو موضوعًا، ابحث في معرفتك عن الحديث الأقرب لذلك من الكتب الصحيحة المعتبرة (صحيح البخاري، صحيح مسلم، سنن أبي داود، الترمذي، النسائي، ابن ماجه). اذكر: 1) نص الحديث كاملًا إن استطعت، 2) الراوي ومصدر التخريج، 3) درجة الحديث (صحيح/حسن/ضعيف) بحسب ما هو معروف ومشهور، 4) الشرح والمعنى، 5) الفوائد والأحكام المستفادة. إذا لم تكن متأكدًا من درجة الحديث بدقة تامة، وضّح ذلك صراحة وانصح بالرجوع لموقع الدرر السنية أو مختص. أجب بنفس لغة سؤال المستخدم.',
+    bible: 'أنت باحث متخصص في الكتاب المقدس والتقليد المسيحي. عند إعطائك آية من الإنجيل أو الفلسفة المسيحية، اشرحها مستندًا إلى التقاليس المسيحية المختلفة والتفسيرات الكنسية المعتمدة. اذكر: 1) نص الآية كاملة، 2) السياق التاريخي والروحي، 3) المعنى اللاهوتي والروحي، 4) الدروس المستفادة. اكتب بوضوح واحترام للتقليس المسيحية. أجب بنفس لغة سؤال المستخدم.',
+    torah: 'أنت محلل متخصص في التوراة والتقاليس اليهودية. عند إعطائك آية توراتية أو موضوعًا يهوديًا، اشرحها معتمدًا على التلمود وتفسيرات الحاخامات المعتبرين. اذكر: 1) نص الآية، 2) التفسيرات التلمودية، 3) الدروس والحكمة اليهودية، 4) الصلة بالحياة المعاصرة. أجب بنفس لغة سؤال المستخدم.',
+    buddhism: 'أنت معلم متخصص في البوذية والتعاليم البوذية. عند إعطائك سؤالًا حول الطريق الوسط والتنوير والكارما، اشرحه بعمق مستندًا إلى الروايات البوذية الأساسية والحكمة الشرقية. اذكر: 1) المبدأ الأساسي، 2) التطبيق العملي، 3) المعنى الروحي، 4) الدروس والحكمة البوذية. أجب بنفس لغة سؤال المستخدم.',
+    hinduism: 'أنت عالم في الهندوسية والفلسفة الهندية القديمة. عند إعطائك سؤالًا عن الفيدا أو الأوبنيشاد أو الكارما والدارما، اشرحها مستندًا إلى الحكمة الهندية التقليدية. اذكر: 1) المفهوم الأساسي، 2) التفسير من النصوص المقدسة، 3) التطبيق الروحي، 4) الدروس المستفادة. أجب بنفس لغة سؤال المستخدم.',
+    /* v-hotfix-conflict-markers (٢١ سبتمبر ٢٠٢٦): دمج claude/eager-dirac-1qdfr3 في main تُرك بعلامات
+       تعارض <<<<<<</=======/>>>>>>> غير محلولة داخل السطر (لا حذف طرف كامل) — كسر app.bundle.js في
+       الإنتاج بالكامل (SyntaxError على كل مستخدم). أُبقيت bible/torah/buddhism/hinduism (طرف HEAD،
+       لا وجود لها في الطرف الآخر أصلًا)، واعتُمد نصّ dream من claude/eager-dirac-1qdfr3 (تعديل متعمَّد
+       لاحق «تقوية نص تفسير الأحلام لإعطاء جميع التفسيرات الستة» — يفرض صراحة عدم حذف أي تفسير). */
     dream: 'أنت مفسر أحلام موسوعي متخصص في تحليل الأحلام من ستة منظورات دينية وثقافية مختلفة. عند إعطائك وصف حلم، يجب عليك دائماً تقديم جميع التفسيرات الستة التالية بالكامل — لا تحذف أي منها مهما كان الحلم. كل تفسير بعنوان واضح ومفصل: 1) ☪️ التفسير الإسلامي الكامل (استنادًا لمنهج ابن سيرين والنابلسي، كتاب تعطير الأنام، مع شرح معاني الرموز بعمق)، 2) ✝️ التفسير المسيحي الكامل (استنادًا لتفسيرات الكتاب المقدس والتقليد الكنسي، قصص يوسف الصديق ودانيال، مع المعاني الروحية)، 3) ✡️ التفسير اليهودي الكامل (التلمود والقبالاه، تفسيرات الحاخامات، الرموز والمعاني العميقة)، 4) 🕉️ التفسير الهندوسي والبوذي الكامل (نظرية الكارما، الرموز الروحية، تفسير الأوبنشاد والسوترا)، 5) 🧠 التفسير النفسي الكامل (تحليل فرويد ويونغ والأرشيتايبس، اللاوعي والرموز النفسية)، 6) 🌍 الرمزية الثقافية العامة (المعاني المشتركة عالميًا للرموز والألوان والحيوانات). أجب بنفس لغة سؤال المستخدم وكن مفصلاً جداً.',
   };
 

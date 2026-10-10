@@ -2,7 +2,7 @@
 // والعنوان والمواصفات والسعر ورقم التواصل، ثم يُخرج سطر @@AD الذي تقرأه
 // الواجهة (ad-studio.html) لتبني منه ثمانية تصاميم.
 // حارسان قبل أي مفتاح: هويّة مُتحقَّقة (لا ضيوف) ثم سقف يوميّ لكل مستخدم.
-const { checkAndConsumeCustom } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: المشترك بنسبة سقف باقته
 const { verifyPointsToken } = require('./points.js');
 
 const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur:'Urdu', bn:'Bengali', ml:'Malayalam', ne:'Nepali', fil:'Filipino', id:'Indonesian', zh:'Chinese (Simplified)', ru:'Russian', tr:'Turkish', es:'Spanish' };
@@ -19,7 +19,7 @@ const SYS = `أنت خبير إعلانات إماراتيّ محترف داخل
 
 مهمّتك جمع: نوع الإعلان · العنوان · المواصفات · السعر · رقم التواصل.
 حين تكتمل هذه الخمسة (أو يقول المستخدم إنّه لا يريد ذكر واحدة)، اكتب ردًّا أخيرًا قصيرًا جدًّا (سطر واحد) ثمّ في **سطر منفصل أخير** هذا السطر بالضبط بلا أيّ شرح حوله:
-@@AD{"cat":"...","title":"...","spec":"...","price":"...","unit":"...","tel":"...","kick":"...","chips":["...","...","..."],"facts":["...","..."],"place":"...","note":"..."}
+@@AD{"cat":"...","title":"...","titleEn":"...","spec":"...","price":"...","unit":"...","tel":"...","kick":"...","badge":"...","badge2":"...","badge3":"...","chips":["...","...","..."],"features":["..."],"amenities":["..."],"facts":["...","..."],"landmarks":["..."],"brands":["..."],"deal":{"delivery":"","plan":"","area":"","price":"","freehold":""},"place":"...","note":"..."}
 
 قواعد سطر @@AD:
 - cat واحدة من: car, flat, food, shop, clinic, salon, service, other
@@ -33,6 +33,21 @@ const SYS = `أنت خبير إعلانات إماراتيّ محترف داخل
 - facts: حتّى ٨ تفاصيل قصيرة (كلّ واحدة ≤ ٢٦ حرفًا) مثل «الموديل: ٢٠٠٤» و«الممشى: ٢١٣٬٠٠٠ كم». إن لم تعرف ضع []
 - place: مكان المعاينة أو الاستلام إن ذُكر، وإلّا ""
 - note: سطر تنبيه واحد إن طلبه المستخدم (مثال: «أرجو عدم اتصال أصحاب المعارض»)، وإلّا ""
+
+حقول اللوحة المركّبة (تملأ لوحة بطراز مكاتب العقار والمعارض). كلّها اختياريّة:
+**لا تخترع رقمًا ولا مرفقًا ولا معلمًا لم يقله المستخدم — اترك الحقل فارغًا أو احذفه.**
+- titleEn: العنوان بالإنجليزيّة بحروف كبيرة، ≤ ٣٦ حرفًا. إن لم تعرفه ضع ""
+- badge: شارة حمراء قصيرة جدًّا فوق كلّ شيء (مثال: «بيعة مستعجلة جدًّا»، «مطلوب»)، ≤ ٢٢ حرفًا
+- badge2 و badge3: شارتان ثانويّتان أقصر من سطر (مثال: «سعر مخفّض عن السوق»، «فرصة للمستثمرين والسكن»)
+- features: حتّى ٦ مزايا، كلّ واحدة سطر واحد ≤ ٣٦ حرفًا (مثال: «المساحة ٧٩٦ قدم²»، «إطلالة بحريّة مباشرة»)
+- amenities: حتّى ٦ مرافق بصيغة «عربي|ENGLISH» بالضبط (مثال: «شاطئ خاصّ|PRIVATE BEACH»)
+- landmarks: حتّى ٦ معالم قريبة مع الزمن إن ذُكر (مثال: «كورنيش عجمان ١٥ دقيقة»)
+- brands: للسيّارات وحدها، حتّى ٦ بصيغة «الاسم|وصف قصير» (مثال: «مرسيدس مايباخ S 680|فخامة قصوى»)
+- deal: للمشاريع والعقار — {"delivery":"الربع الرابع ٢٠٢٦","plan":"١٠٪ دفعة أولى + ٩٠٪ عند التسليم","area":"من ٣٬٩٠٠ إلى ٤٬٠٨٣ قدم²","price":"من ٢٫٥٣ إلى ٢٫٧٩ مليون درهم","freehold":"لجميع الجنسيّات"}. احذف أيّ مفتاح لم يُذكر.
+
+إن كان الإعلان عقارًا أو مشروعًا أو معرض سيّارات فاسأل — على عادتك نقطتين في كلّ ردّ — عن: المرافق،
+والمعالم القريبة، والتسليم وخطّة الدفع (للمشاريع)، والماركات المطلوبة (للسيّارات). ولا تؤخّر سطر @@AD
+انتظارًا لها: اكتبه حين تكتمل الخمسة الأساسيّة، وضع الاختياريّ الذي عرفته فقط.
 اكتب @@AD مرّة واحدة فقط في المحادثة كلّها، ولا تكتبه قبل أن تعرف نوع الإعلان وعنوانه على الأقلّ.`;
 
 /* قاعدة اللغة تُلحق بالنهاية لتعلو على «تتكلّم عربيّة فصيحة» في أوّل SYS. */
@@ -42,7 +57,8 @@ function sysFor(lg) {
 
 === قاعدة اللغة — تعلو على كلّ ما سبق ===
 اكتب كلّ ردودك المرئيّة بلغة ${LANGN[lg]} وحدها. لا تكتب حرفًا عربيًّا في الردّ المرئيّ.
-وداخل سطر @@AD: قيم title و spec و unit و kick و chips و facts و place و note كلّها بلغة ${LANGN[lg]}،
+وداخل سطر @@AD: قيم title و spec و unit و kick و chips و facts و place و note و badge و features
+و amenities و landmarks و brands و قيم deal كلّها بلغة ${LANGN[lg]}، و titleEn بالإنجليزيّة دائمًا،
 و price بأرقام لاتينيّة مع فاصل الآلاف (مثال: 49,000)، و cat تبقى بالإنجليزيّة من القائمة كما هي.`;
 }
 
@@ -64,10 +80,10 @@ module.exports = async (req, res) => {
       return;
     }
     // ② سقف يوميّ لكل مستخدم (المالك وVIP معفيان داخل الدالّة).
-    const gate = await checkAndConsumeCustom(token, null, null, 'adchat', DAILY);
+    const gate = await checkAndConsumePlanCustom(token, null, null, 'adchat', DAILY);
     if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' رسالة) في استوديو الإعلانات. جرّب غدًا.',
-        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + DAILY + ' messages) in Ad Studio. Try again tomorrow.' }));
+      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' رسالة) في استوديو الإعلانات. جرّب غدًا.',
+        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + gate.limit + ' messages) in Ad Studio. Try again tomorrow.' }));
       return;
     }
 
@@ -84,7 +100,7 @@ module.exports = async (req, res) => {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 700, system: sysFor(lg), messages: msgs }),
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1300, system: sysFor(lg), messages: msgs }),
     });
     const j = await r.json();
     if (!r.ok) { res.status(502).end(JSON.stringify({ error: (j && j.error && j.error.message) || 'upstream' })); return; }

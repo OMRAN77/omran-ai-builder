@@ -95,22 +95,26 @@ module.exports = async (req, res) => {
     // Compute a simple confidence score from Whisper's own segment stats.
     let lowConfidence = false;
     const segments = Array.isArray(parsed.segments) ? parsed.segments : [];
+    let avgNoSpeech = 0, avgLogprob = 0;
     if (segments.length) {
       let noSpeechSum = 0, logprobSum = 0;
       for (const s of segments) {
         noSpeechSum += (typeof s.no_speech_prob === 'number') ? s.no_speech_prob : 0;
         logprobSum += (typeof s.avg_logprob === 'number') ? s.avg_logprob : 0;
       }
-      const avgNoSpeech = noSpeechSum / segments.length;
-      const avgLogprob = logprobSum / segments.length;
+      avgNoSpeech = noSpeechSum / segments.length;
+      avgLogprob = logprobSum / segments.length;
       // High no_speech_prob = Whisper itself thinks it may not be real speech.
       // Very negative avg_logprob = Whisper was not confident about the words it picked.
       if (avgNoSpeech > 0.5 || avgLogprob < -1.0) lowConfidence = true;
     }
-    // Also flag extremely short transcripts (1-2 words) as low-confidence, since a
-    // single garbled word is a common Whisper failure mode on quick/overlapping speech.
+    // v-maha-oneword (بلاغ المالك «مها ما تنطق كأنك تكلم شخص»): كان أي ردّ من
+    // كلمة واحدة («نعم»، «لا»، «وقف»...) يُرفَض دائمًا بصرف النظر عن ثقة
+    // Whisper الفعلية — محادثة حقيقية فيها ردود قصيرة كثيرة، ورفضها كلها
+    // يكسر الحوار الطبيعي. الحل: نفس إشارتَي الثقة أعلاه، بحدّ أشدّ (كلمة
+    // واحدة تعطي مؤشّرًا أقلّ يقينًا) بدل رفض كلّ كلمة مفردة دون قيد.
     const wordCount = (parsed.text || '').trim().split(/\s+/).filter(Boolean).length;
-    if (wordCount > 0 && wordCount <= 1) lowConfidence = true;
+    if (wordCount === 1 && (avgNoSpeech > 0.3 || avgLogprob < -0.6)) lowConfidence = true;
 
     // Whisper's own detected spoken language (ISO-639-1-ish code, e.g. "ar",
     // "en", "fr", "hi", "ur", "bn", "ne"). Used downstream to pick a matching

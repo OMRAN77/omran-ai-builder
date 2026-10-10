@@ -111,6 +111,98 @@ test('readGithub: pull request and issue', async () => {
   assert.ok(is.includes('🐛 Issue #9: Bug — open · u · bug') && is.includes('it breaks') && is.includes('— v: me too please'));
 });
 
+/* v-github-code-search (المالك: «نفس الفكرة عندما يقرأ الكود» — أراد الوكيل يبحث في المستودع
+   كما يبحث Claude Code، لا يتصفّح ملفًّا فملفًّا). بلا path: فهرس GitHub الرسميّ (/search/code). */
+test('readGithub: query بلا path = بحث فهرس GitHub، مقتطفات، لا نتائج تنبّه بالفهرس، حدّ الطلبات', async () => {
+  const net = fakeNet([
+    [/\/search\/code\?per_page=15&q=/, jsonRes({
+      total_count: 2, incomplete_results: false, items: [
+        { path: 'api/_lib/video-trends.js', text_matches: [{ fragment: 'function buildTrendPrompt(key, params) {' }] },
+        { path: 'tests/trend-people.test.cjs', text_matches: [{ fragment: 'TRENDS.buildTrendPrompt(k, {' }] },
+      ],
+    })],
+  ]);
+  const out = await GH.readGithub({ url: 'a/b', query: 'buildTrendPrompt' }, net.opts);
+  assert.ok(out.includes('🔎 «buildTrendPrompt» في a/b — 2 نتيجة'));
+  assert.ok(out.includes('📄 api/_lib/video-trends.js') && out.includes('function buildTrendPrompt(key, params)'));
+  assert.ok(out.includes('📄 tests/trend-people.test.cjs'));
+  assert.equal(net.calls[0].accept, 'application/vnd.github.text-match+json');
+  assert.match(net.calls[0].url, /q=buildTrendPrompt%20repo%3Aa%2Fb$/, 'بلا path لا حصر ولا نداء شجرة/محتوى');
+  assert.equal(net.calls.length, 1, 'query بلا path = نداء واحد فقط (فهرس GitHub)');
+
+  const empty = fakeNet([[/\/search\/code/, jsonRes({ total_count: 0, items: [] })]]);
+  const noRes = await GH.readGithub({ url: 'a/b', query: 'nope' }, empty.opts);
+  assert.match(noRes, /لا نتائج لـ«nope»/);
+  assert.match(noRes, /فهرس بحث GitHub وقد لا يشمل/, 'التنبيه بنقص الفهرس صريح');
+  assert.match(noRes, /كرّر النداء مع path/, 'يوجّه للبديل الموثوق');
+
+  const limited = fakeNet([[/\/search\/code/, jsonRes({ message: 'rate limited' }, 403)]]);
+  assert.match(await GH.readGithub({ url: 'a/b', query: 'x' }, limited.opts), /حدّ البحث/);
+
+  assert.match(await GH.readSearch(GH.parseTarget({ url: 'a/b' }), net.opts, ''), /أعطِ نصّ البحث/);
+});
+
+/* v-github-code-search-2 (لقطة المالك: بحث فهرس GitHub رجع «لا نتائج» لـomranAgentTools الموجود فعلًا
+   في app-17-agent-tools.js): query مع path = بحث حقيقيّ في محتوى الملفّات، لا فهرسة خارجيّة. */
+function treeNet(extraRoutes) {
+  return fakeNet([
+    [/\/repos\/a\/b$/, jsonRes({ default_branch: 'main' })],
+    [/\/git\/trees\/main\?recursive=1$/, jsonRes({
+      tree: [
+        { path: 'js/app-17-agent-tools.js', type: 'blob', size: 60 },
+        { path: 'js/app-01-boot-auth.js', type: 'blob', size: 30 },
+        { path: 'js/node_modules/dep.js', type: 'blob', size: 10 }, // يُتخطّى: مجلّد مستبعَد
+        { path: 'js/huge.bin', type: 'blob', size: 9999999 },        // يُتخطّى: أكبر من الحدّ
+      ],
+    })],
+    [/\/contents\/js\/app-17-agent-tools\.js\?ref=main$/, textRes('window.omranAgentTools = {\n  foo(){ return omranAgentTools; }\n};\n')],
+    [/\/contents\/js\/app-01-boot-auth\.js\?ref=main$/, textRes('// unrelated\nconst x = 1;\n')],
+    ...(extraRoutes || []),
+  ]);
+}
+
+test('readGithub: query مع path = بحث حقيقيّ في المحتوى (الحالة التي فشل فيها فهرس GitHub فعلًا)', async () => {
+  const net = treeNet();
+  const out = await GH.readGithub({ url: 'a/b', path: 'js', query: 'omranAgentTools' }, net.opts);
+  assert.ok(out.includes('🔎 «omranAgentTools» في a/b/js — 1 ملفّ (بحث فعليّ في محتوى 2 ملفًّا)'), out);
+  assert.ok(out.includes('📄 js/app-17-agent-tools.js'));
+  assert.match(out, /1\| window\.omranAgentTools = \{/, 'رقم السطر والمقتطف الحرفيّ');
+  assert.ok(!out.includes('app-01-boot-auth'), 'الملفّ غير المطابق لا يظهر');
+  // node_modules والملفّ الضخم لم يُقرآ أصلًا (لا نداء محتوى لهما)
+  assert.ok(!net.calls.some((c) => /node_modules|huge\.bin/.test(c.url)), 'مجلّد مستبعَد وملفّ ضخم لم يُقرآ');
+  assert.equal(net.calls.length, 4, 'الشجرة (+الفرع الافتراضيّ) ثمّ ملفّان مطابقان فقط لحدّ الحجم/الاستبعاد');
+});
+
+test('readContentSearch: مسار غير موجود، لا تطابق فعليّ، وحدّ عدد الملفّات', async () => {
+  const netNoPath = treeNet();
+  assert.match(await GH.readGithub({ url: 'a/b', path: 'nowhere', query: 'x' }, netNoPath.opts), /لا ملفّات كود تحت a\/b\/nowhere/);
+
+  const netNoMatch = treeNet();
+  const noMatch = await GH.readGithub({ url: 'a/b', path: 'js', query: 'zzz_not_there' }, netNoMatch.opts);
+  assert.match(noMatch, /لا نتائج لـ«zzz_not_there»/);
+  assert.match(noMatch, /بحث فعليّ في محتوى 2 ملفًّا — لا فهرسة/);
+
+  // أكثر من حدّ الملفّات (٤٠٠ عاديّ) يُرفض بطلب تضييق المسار — بلا أيّ نداء محتوى
+  const many = Array.from({ length: GH.SEARCH_MAX_FILES + 1 }, (_, i) => ({ path: 'big/f' + i + '.js', type: 'blob', size: 10 }));
+  const netMany = fakeNet([
+    [/\/repos\/a\/b$/, jsonRes({ default_branch: 'main' })],
+    [/\/git\/trees\/main\?recursive=1$/, jsonRes({ tree: many })],
+  ]);
+  const tooMany = await GH.readGithub({ url: 'a/b', path: 'big', query: 'x' }, netMany.opts);
+  assert.match(tooMany, /أكثر من حدّ البحث الواحد/);
+  assert.ok(!netMany.calls.some((c) => /\/contents\//.test(c.url)), 'رفض العدد قبل أيّ قراءة محتوى');
+});
+
+test('readContentSearch: ref صريح يُستعمل كما هو بلا نداء لتحديد الفرع الافتراضيّ', async () => {
+  const net = fakeNet([
+    [/\/git\/trees\/dev\?recursive=1$/, jsonRes({ tree: [{ path: 'js/a.js', type: 'blob', size: 10 }] })],
+    [/\/contents\/js\/a\.js\?ref=dev$/, textRes('const needle = 1;\n')],
+  ]);
+  const out = await GH.readGithub({ url: 'a/b', ref: 'dev', path: 'js', query: 'needle' }, net.opts);
+  assert.ok(out.includes('📄 js/a.js'));
+  assert.ok(!net.calls.some((c) => /\/repos\/a\/b$/.test(c.url)), 'ref معطًى = لا نداء لتحديد الفرع الافتراضيّ');
+});
+
 test('readGithub: failures are messages, never throws', async () => {
   const net = fakeNet([[/\/repos\/a\/private$/, jsonRes({}, 404)], [/\/repos\/a\/limited$/, jsonRes({}, 403)]]);
   assert.match(await GH.readGithub({ url: 'a/private' }, net.opts), /غير موجود أو خاصّ.*GITHUB_TOKEN/);

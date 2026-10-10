@@ -65,7 +65,7 @@
     return Promise.race([p, timer]).finally(function () { try { clearTimeout(to); } catch (e) { /* guard-ok — تنظيف المؤقّت */ } });
   }
 
-  window.callChatWithTools = async function (messages, onDelta, provider) {
+  window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     window.__chatVideoResult = null;
     window.__chatVideoReference = null;
     window.__chatLastUserText = '';
@@ -112,8 +112,10 @@
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
-        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود فقط، والخادم يقبل قائمته حصرًا */
-        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; } catch (e) { return ''; } })(),
+        noTools: (opts && opts.noTools) ? true : undefined, /* v-owner-solo: المسار القديم للمالك (استئذان/إصلاح) بلا أدوات كما كان — الخادم يقبله للمالك وحده */
+        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
+           المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
+        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -131,10 +133,16 @@
     var reader = res.body.getReader();
     var dec = new TextDecoder();
     var buf = '', full = '', serverErr = null;
+    var __planLimit = false; /* v-plans-gate: الخادم علّم الخطأ «حدّ الباقة» (limit) — المستدعي يفتح الباقات ولا يجرّب غيره */
+    var __ownerStop = false; /* v-owner-solo: مزوّد المالك المختار فشل والخادم كتب السبب — المستدعي يعرضه ولا يجرّب غيره */
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
     var __model = ''; /* v-claude-models: اسم النموذج الذي أجاب فعلًا (من الخادم) */
+    var __served = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه في ردّه (للمالك) */
+    /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
+       سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
+    var __t0 = Date.now(), __tFirst = 0, __steps = [];
 
     while (true) {
       var chunk;
@@ -155,9 +163,16 @@
         if (line.indexOf('data: ') !== 0) continue;
         var ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
-        if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
+        /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
+        if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
+        else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
+        if (ev.status && /^↳/.test(String(ev.status)) && __steps.length < 24) {
+          var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
+          __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
+        }
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
         if (ev.delta) {
+          if (!__tFirst) __tFirst = Date.now();
           noteEnd();
           full += ev.delta;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:delta'); } }
@@ -174,16 +189,22 @@
           });
         }
         if (ev.error) serverErr = ev.error;
+        if (ev.error && ev.limit === true) __planLimit = true;
+        if (ev.error && ev.ownerStop === true) __ownerStop = true;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
         if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
+        if (typeof ev.served === 'string' && ev.served) __served = ev.served;
+        /* v-oa-models: موديل مختار رفضه المفتاح → يُمسح من الاختيار المحفوظ (يعود للافتراضيّ) فلا يتكرّر الرفض مع كلّ رسالة */
+        if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:forget-model'); } }
       }
     }
     noteEnd();
 
-    // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
-    if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
+    // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم — إلّا حدّ الباقة: لا مسار آخر يتجاوزه.
+    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er; }
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
+    var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log };
   };
 })();
 
@@ -257,4 +278,77 @@
       else s.dataset.memOn = '';
     }, 60);
   }, true);
+})();
+
+/* v-living-memory + v-living-all (طلب المالك ٤ أكتوبر): «ذاكرتي الحيّة» في إعدادات «ذاكرتي» لكلّ مستخدم مسجَّل — آخر ١٠ حقائق
+   تعلّمها المساعد عنه، وزرّ «امسح» لكلّ واحدة، و«امسح كل شي». المصدر Redis عبر memory.js (living_*، ملفّ صاحب الجلسة وحده)،
+   ونسخة في localStorage تُرسم فورًا وتبقى إن تعذّر الخادم — موسومة باسم صاحبها فلا يراها مستخدم آخر على الجهاز نفسه.
+   livingLearn يُستدعى بعد اكتمال الردّ: طلب منفصل لا يؤخّر ختام البثّ، والخادم يتخطّى ما لا يستحقّ نداء نموذج. */
+(function(){
+  var KEY = 'aiapp_living_memory', lastLearnAt = 0;
+  function tok(){ try{ return sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token') || ''; }catch(e){ return ''; } }
+  function tr(k, fb){ try{ var d = window.__i18nDict ? window.__i18nDict(document.documentElement.lang || 'ar') : null; return (d && d[k]) || fb; }catch(e){ return fb; } }
+  function call(op, extra){
+    var t = tok(); if(!t) return Promise.resolve(null);
+    return fetch('/api/system?action=memory', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign({ token: t, op: op }, extra || {})) })
+      .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  }
+  function who(){ try{ return String(sessionStorage.getItem('aiapp_username') || localStorage.getItem('aiapp_username') || '').trim().toLowerCase(); }catch(e){ return ''; } }
+  function readMirror(){
+    try{
+      var d = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if(d && d.u === who() && Array.isArray(d.facts)) return d.facts;
+      if(d) localStorage.removeItem(KEY); // نسخة مستخدم آخر على هذا الجهاز — لا تُعرض ولا تبقى
+      return [];
+    }catch(e){ return []; }
+  }
+  function writeMirror(facts){ try{ localStorage.setItem(KEY, JSON.stringify({ u: who(), at: Date.now(), facts: facts })); }catch(e){ if(window.__swallow) window.__swallow(e, 'living:mirror'); } }
+  function status(text, bad){ var el = document.getElementById('livingMemStatus'); if(!el) return; el.textContent = text || ''; el.style.color = bad ? '#e05555' : ''; }
+  function draw(facts){
+    var box = document.getElementById('livingMemList'); if(!box) return;
+    box.textContent = '';
+    var all = document.getElementById('livingMemClearAll');
+    var shown = (facts || []).slice().sort(function(a, b){ return (b.at || 0) - (a.at || 0); }).slice(0, 10);
+    if(all) all.style.display = shown.length ? '' : 'none';
+    if(!shown.length){
+      var empty = document.createElement('div'); empty.style.cssText = 'padding:8px 2px; font-size:12.5px; opacity:.75;';
+      empty.textContent = tr('livingMemEmpty', 'لم يتعلّم المساعد شيئًا عنك بعد.'); box.appendChild(empty); return;
+    }
+    shown.forEach(function(f){
+      var row = document.createElement('div'); row.className = 'livingMemRow'; row.style.cssText = 'display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--border);';
+      var txt = document.createElement('div'); txt.style.cssText = 'flex:1; min-width:0; font-size:13px; line-height:1.7; word-break:break-word;'; txt.textContent = f.text;
+      var del = document.createElement('button'); del.type = 'button'; del.setAttribute('data-living-del', f.id); del.textContent = tr('livingMemDelete', 'امسح');
+      del.style.cssText = 'flex:none; padding:5px 12px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel); color:var(--text); font-size:12px; cursor:pointer;';
+      row.appendChild(txt); row.appendChild(del); box.appendChild(row);
+    });
+  }
+  window.livingRefresh = function(){
+    var wrap = document.getElementById('livingMemWrap');
+    if(wrap) wrap.style.display = tok() ? '' : 'none'; // الزائر بلا حساب: لا بطاقة
+    if(!tok()) return;
+    draw(readMirror()); status('');
+    call('living_get').then(function(d){
+      if(!d || !Array.isArray(d.facts)){ status(tr('livingMemLoadError', 'تعذّر تحميل ذاكرتك الحيّة الآن.'), true); return; } // ردّ بلا قائمة لا يمحو المرآة
+      writeMirror(d.facts); draw(d.facts);
+    });
+  };
+  window.livingLearn = function(messages){
+    if(!tok() || Date.now() - lastLearnAt < 8000) return; // نفس حدّ الخادم (MIN_LEARN_GAP_MS): لا طلب يضيع في الطريق
+    var win = (messages || []).filter(function(m){ return m && (m.role === 'user' || m.role === 'assistant') && !m._diag && !m._cc && typeof m.content === 'string' && m.content.trim(); })
+      .slice(-20).map(function(m){ return { role: m.role, content: m.content.replace(/```[\s\S]*?(?:```|$)/g, ' ').slice(0, 700) }; });
+    if(!win.length) return;
+    lastLearnAt = Date.now();
+    call('living_learn', { messages: win }).then(function(d){ if(d && Array.isArray(d.facts)) writeMirror(d.facts); });
+  };
+  document.addEventListener('click', function(e){
+    var t = e.target, b = t && t.closest ? t.closest('[data-living-del]') : null, all = t && t.closest ? t.closest('#livingMemClearAll') : null;
+    if(!b && !all) return;
+    if(all && !confirm(tr('livingMemClearConfirm', 'مسح كلّ ما تعلّمه المساعد عنك؟ لا يمكن التراجع.'))) return;
+    var btn = b || all; btn.disabled = true;
+    call(b ? 'living_del' : 'living_clear', b ? { id: b.getAttribute('data-living-del') } : {}).then(function(d){
+      btn.disabled = false;
+      if(!d || !Array.isArray(d.facts)){ status(tr('livingMemDeleteError', 'تعذّر المسح. حاول مرّة أخرى.'), true); return; }
+      writeMirror(d.facts); draw(d.facts); status('');
+    });
+  });
 })();

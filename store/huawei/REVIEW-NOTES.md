@@ -6,7 +6,7 @@
 ## Notes for review (English — paste in AGC)
 ```
 Omran AI Builder is a native-feeling multi-tool AI application, not a single-feature website wrapper.
-Rule 4.1 response — this build (1.3.10) changes what the reviewer sees on first launch:
+Resubmission after the review report of 2026-09-29 (rules 4.1 and 11.4). Both issues are fixed in the content served to this package:
 
 1. On first launch the app opens the Tools panel automatically. It shows 19 in-app tools in three groups:
    Creativity: Photo styles, Suggestions, Video maker, Decor AI, Fashion studio, Style AI.
@@ -18,7 +18,7 @@ Rule 4.1 response — this build (1.3.10) changes what the reviewer sees on firs
    prayer times with Qibla compass, and more.
 3. The package launches at https://omran-ai-builder.vercel.app/?store=huawei with verified Digital Asset Links
    (.well-known/assetlinks.json for com.omran.aibuilder.twa), so it runs full-screen without any browser UI.
-4. No cryptocurrency, foreign-exchange or stock-market content exists in this build (rule 11.4).
+4. Rule 11.4: all market screens (stock ticker, stock market, currency/forex rates) are removed from this package for every user. No cryptocurrency, foreign-exchange or stock-market content is shown in the AppGallery build, and the app offers no trading, exchange or payment-in-crypto service.
 
 How to test each feature quickly:
 - Tools panel: opens on first launch, or tap "Tools" (bottom bar) → tap any card.
@@ -36,7 +36,7 @@ Test account: (username) / (password)
 ## ملاحظات المراجع (عربيّ — للمراجعة العربيّة إن وُجدت)
 ```
 تطبيق عمران AI منصّة أدوات ذكاء اصطناعيّ متعدّدة، لا غلاف موقع بميزة واحدة.
-ردًّا على القاعدة 4.1 — هذا الإصدار (1.3.10) يغيّر ما يراه المراجع من أوّل ثانية:
+ردًّا على القاعدة 4.1 — هذا الإصدار (1.3.12) يغيّر ما يراه المراجع من أوّل ثانية:
 ١) عند أوّل تشغيل يفتح التطبيق مربّع الأدوات تلقائيًّا: ١٩ أداة داخل التطبيق في ثلاث مجموعات
    (إبداع: أنماط الصور، اقتراحات، صانع الفيديو، ديكور، أزياء، ستايل · أعمال: استوديو الإعلانات،
    محلّل المصاريف، السيرة الذاتيّة، المستندات، البريد، المقاولات · حياة يوميّة: القبلة والمواقيت،

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 260" width="120" height="260">
+  <!-- v-skin-wood: سنابل جافّة للزينة (مرسومة يدويًّا) -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c9a77a"/><stop offset="1" stop-color="#8a6644"/></linearGradient>
+    <g id="k"><ellipse rx="3.6" ry="8.5" fill="url(#g)" stroke="#7a5638" stroke-width=".6"/><line x1="0" y1="-8" x2="0" y2="-19" stroke="#a88660" stroke-width=".7"/></g>
+  </defs>
+  <g fill="none" stroke-linecap="round">
+    <path d="M62 258 C60 200 58 150 50 92" stroke="#9c7b55" stroke-width="2.2"/>
+    <path d="M64 258 C70 205 80 160 92 112" stroke="#a9875f" stroke-width="2"/>
+    <path d="M60 258 C52 215 38 175 20 132" stroke="#9c7b55" stroke-width="1.8"/>
+    <path d="M60 200 C40 190 30 205 18 196" stroke="#b0916a" stroke-width="1.6"/>
+    <path d="M66 214 C82 200 96 214 108 200" stroke="#b0916a" stroke-width="1.6"/>
+  </g>
+  <!-- السنبلة الوسطى -->
+  <g transform="translate(50 92) rotate(-8)">
+    <use href="#k" transform="translate(0 -6)"/>
+    <use href="#k" transform="translate(-4 4) rotate(-24)"/><use href="#k" transform="translate(4 6) rotate(24)"/>
+    <use href="#k" transform="translate(-4.5 16) rotate(-24)"/><use href="#k" transform="translate(4.5 18) rotate(24)"/>
+    <use href="#k" transform="translate(-5 28) rotate(-26)"/><use href="#k" transform="translate(5 30) rotate(26)"/>
+    <use href="#k" transform="translate(-5 40) rotate(-28)"/><use href="#k" transform="translate(5 42) rotate(28)"/>
+    <use href="#k" transform="translate(-4 52) rotate(-30)"/><use href="#k" transform="translate(4 54) rotate(30)"/>
+  </g>
+  <!-- اليمنى -->
+  <g transform="translate(92 112) rotate(14) scale(.85)">
+    <use href="#k" transform="translate(0 -6)"/>
+    <use href="#k" transform="translate(-4 4) rotate(-24)"/><use href="#k" transform="translate(4 6) rotate(24)"/>
+    <use href="#k" transform="translate(-4.5 16) rotate(-24)"/><use href="#k" transform="translate(4.5 18) rotate(24)"/>
+    <use href="#k" transform="translate(-5 28) rotate(-26)"/><use href="#k" transform="translate(5 30) rotate(26)"/>
+    <use href="#k" transform="translate(-4 40) rotate(-28)"/><use href="#k" transform="translate(4 42) rotate(28)"/>
+  </g>
+  <!-- اليسرى -->
+  <g transform="translate(20 132) rotate(-26) scale(.8)">
+    <use href="#k" transform="translate(0 -6)"/>
+    <use href="#k" transform="translate(-4 4) rotate(-24)"/><use href="#k" transform="translate(4 6) rotate(24)"/>
+    <use href="#k" transform="translate(-4.5 16) rotate(-24)"/><use href="#k" transform="translate(4.5 18) rotate(24)"/>
+    <use href="#k" transform="translate(-5 28) rotate(-26)"/><use href="#k" transform="translate(5 30) rotate(26)"/>
+    <use href="#k" transform="translate(-4 40) rotate(-28)"/><use href="#k" transform="translate(4 42) rotate(28)"/>
+  </g>
+</svg>

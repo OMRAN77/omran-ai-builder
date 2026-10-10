@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const quota = await checkConstructionQuota(token);
+    const quota = await checkConstructionQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
     if (!quota.allowed) {
       if (quota.reason === 'auth') {
         res.status(401).json({ error: 'auth_required' });
@@ -144,7 +144,7 @@ module.exports = async (req, res) => {
           const r = await fetch('https://api.openai.com/v1/images/generations', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'gpt-image-2', prompt: prompt.slice(0, 3900), size: '1536x1024', quality: 'high' }),
+            body: JSON.stringify({ model: 'gpt-image-2.5-flare', prompt: prompt.slice(0, 3900), size: '1536x1024', quality: 'high' }),
             signal: AbortSignal.timeout(240000), /* v-image-timeout */
           });
           const d = await r.json();
@@ -161,12 +161,12 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const remaining = await consumeConstruction(quota.username);
+    const remaining = await consumeConstruction(quota.username, quota.limit);
     res.status(200).json({
       imageBase64: outB64,
       mimeType: outMime,
       remaining,
-      dailyLimit: CONSTRUCTION_DAILY_LIMIT,
+      dailyLimit: quota.limit || CONSTRUCTION_DAILY_LIMIT,
     });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

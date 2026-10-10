@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
     }
 
     let premiumRefund = null;
-    const usage = await checkAndConsume(token, guestId, 'gemini', clientIp(req));
+    // v-free-20-daily: سلّة 'chat' المشتركة لغير المشترك — لا يضاعف سقفه بتبديل المزوّد.
+    const usage = await checkAndConsume(token, guestId, 'gemini', clientIp(req), { chatBucket: true });
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -46,7 +47,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const useModel = model || 'gemini-flash-latest';
+    const mg = require('./_model-guard.js'); // v-model-lock: لغير المالك وVIP فلاش وحده (لا Pro ولا نماذج الصور)
+    const useModel = mg.guardModel('gemini', model, mg.isPrivileged(usage)) || 'gemini-flash-latest';
     const wantStream = !!body.stream;
     const endpoint = wantStream
       ? `https://generativelanguage.googleapis.com/v1beta/models/${useModel}:streamGenerateContent?alt=sse&key=${apiKey}`

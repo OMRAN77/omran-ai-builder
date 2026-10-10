@@ -14,16 +14,21 @@ test('١. نيّة النصّ: حذف أو تبديل أو كتابة أو كل�
   assert.match(mi, /&& \(__textIntent \|\| \(editImageBase64 \? __optTextFaithful : \(__optTextFaithful \|\| \(!rawMode && __textCueRe\.test\(cleanPrompt\)\)\)\)\);/, 'v-lanes: بلا مصنّف نصّ كثيف؛ التوليد بنصّ كما كان');
   assert.ok(!/sourceLooksTextDense/.test(mi));
   assert.match(mi, /!isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent/, 'الإبداعيّ ودمج الصور خارج المسار');
-  // ضربة واحدة: لا مزدوج ولا حكم على مسار النصّ
-  const i = mi.indexOf('if (__textRoute) {');
-  const seg = mi.slice(i, mi.indexOf('/* v-image-duo', i));
-  assert.ok(seg.includes("const denseB64 = await openaiRescueImage();") && seg.includes("await sendImg(denseB64, 'image/png', 'openai');"), 'GPT ثمّ الإرسال مباشرة');
+  // ضربة واحدة: لا مزدوج على مسار النصّ. v-img-honest (٢٣ سبتمبر): الناتج يُقاس، وبرو مرّة فقط إن لم يُنفّذ GPT (image-honest ١٠)
+  const i = mi.indexOf('if (__textRoute && !__engineMix) {');
+  assert.ok(i > 0, 'مسار النصّ موجود');
+  const seg = mi.slice(i, mi.indexOf('/* v-lanes: نداء واحد للمحرّك (برو)', i));
+  assert.ok(seg.includes("const denseB64 = await openaiRescueImage();") && seg.includes("await deliver({ b64: denseB64, mime: 'image/png', engine: 'openai' }, function () { return proCandidate(__extraBudget()); });"), 'GPT أوّلًا ثمّ القياس والإرسال');
   assert.ok(!seg.includes('densePromise = openaiRescueImage'), 'لا نداء متوازٍ للحكم');
   assert.ok(mi.indexOf('const __textIntent') > mi.indexOf('const __pureRaw = rawMode'), '__pureRaw معرّف قبل الاستعمال');
   // الحذف والتبديل كما هما معرّفان
   assert.match(mi, /const isTextRemove = !!editImageBase64 && [^\n]*isPureTextRemoval\(intentText\);/);
-  // GPT في التعديل بأمانة عالية إلّا في «GPT خام» للمالك
-  assert.match(mi, /form\.append\('input_fidelity', 'high'\);/, 'v-lanes: أمانة عالية دائمًا في التعديل، حتّى GPT خام');
+  // Sunburst يفرض أمانة المدخل تلقائيًّا ويرفض حقل input_fidelity القديم
+  assert.ok(
+    mi.includes("'gpt-image-2.5-sunburst'") &&
+    !mi.includes("form.append('input_fidelity'"),
+    'Sunburst يفرض أمانة المدخل تلقائيًّا'
+  );
 });
 
 test('٢. فشل GPT (بلا مفتاح أو خطأ) → المسار القائم كما هو، والمزدوج لا يعمل على مسار نصّ فشل', () => {

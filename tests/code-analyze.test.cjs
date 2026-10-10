@@ -208,7 +208,7 @@ test('callPro: streams Anthropic text deltas, picks model from env, direct key w
   assert.equal(text, '{"score": 88}');
   assert.equal(cap.url, 'https://api.anthropic.com/v1/messages');
   assert.equal(cap.headers['x-api-key'], 'k1');
-  assert.equal(cap.body.model, 'claude-opus-5', 'الافتراضي Opus 5');
+  assert.equal(cap.body.model, 'claude-opus-5-5', 'الافتراضي Opus 5.5 (v-models-latest)');
   assert.equal(cap.body.temperature, undefined, 'لا معاملات عيّنة — الجيل الحاليّ يرفضها');
   assert.deepEqual(cap.body.thinking, { type: 'adaptive' });
   assert.deepEqual(cap.body.output_config, { effort: 'xhigh' });
@@ -226,7 +226,7 @@ test('callPro: falls back to OpenRouter with vendor prefix; no key throws', asyn
   const cap = {};
   await CA.callPro({ system: 'S', user: 'U' }, { env: { OPENROUTER_API_KEY: 'k2' }, fetchImpl: fakeFetch(cap, ['data: {"type":"message_stop"}']) });
   assert.equal(cap.url, 'https://openrouter.ai/api/v1/messages');
-  assert.equal(cap.body.model, 'anthropic/claude-opus-5');
+  assert.equal(cap.body.model, 'anthropic/claude-opus-5.5', 'صيغة الوسيط بنقطة');
   assert.equal(cap.body.thinking, undefined, 'الوسيط لا يضمن تمرير التفكير');
   assert.equal(cap.body.fallbacks, undefined);
   assert.equal(cap.headers['anthropic-beta'], undefined);
@@ -289,7 +289,7 @@ test('callPro: refusal stop reason surfaces as a refusal error, thinking deltas 
 test('limits: pro takes large files, free stays small', () => {
   assert.equal(CA.LIMITS.perFile, 200000); assert.equal(CA.LIMITS.total, 500000);
   assert.equal(CA.LIMITS.perFileFree, 60000); assert.equal(CA.LIMITS.totalFree, 60000);
-  assert.equal(CA.DEFAULT_MODEL, 'claude-opus-5');
+  assert.equal(CA.DEFAULT_MODEL, 'claude-opus-5-5');
   assert.equal(CA.pickEffort('max'), 'max'); assert.equal(CA.pickEffort(''), 'xhigh'); assert.equal(CA.pickEffort('nope'), 'xhigh');
 });
 

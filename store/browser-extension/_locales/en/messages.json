@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "om ai"
+  },
+  "extDesc": {
+    "message": "Ask om ai from any page: select text and right-click, type \"om\" in the address bar, or use the toolbar button."
+  },
+  "ctxAsk": {
+    "message": "Ask om ai about \"%s\""
+  },
+  "popupPlaceholder": {
+    "message": "Ask om ai anything…"
+  },
+  "popupAsk": {
+    "message": "Ask"
+  },
+  "popupOpen": {
+    "message": "Open om ai"
+  },
+  "popupHint": {
+    "message": "Tip: select text on any page, right-click, and choose \"Ask om ai\" — or type om and a space in the address bar."
+  },
+  "omniboxHint": {
+    "message": "Ask om ai: type your question and press Enter"
+  }
+}

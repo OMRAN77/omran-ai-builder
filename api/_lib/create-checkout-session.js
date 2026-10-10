@@ -14,20 +14,11 @@
 // close that hole: they call Stripe's server API to confirm the payment
 // actually completed before ever touching the user's stored `plan`.
 //
-// KNOWN LIMITATION (flagged in the payment audit, not fixed here — needs a
-// product decision): the "بطاقة" button below creates a real recurring
-// Stripe *subscription* (mode: 'subscription'), so Stripe will keep billing
-// the card every month — but this app has no Stripe webhook listening for
-// `invoice.paid` on renewal, so only the FIRST successful checkout grants
-// points/plan. Renewals are not currently re-credited automatically. The
-// Apple Pay / Google Pay path added here is intentionally a plain one-time
-// PaymentIntent (not a subscription) for the same reason: Payment Request
-// Button does not create Stripe subscriptions on its own without an
-// additional SetupIntent + server-side subscription-creation step. Fixing
-// true recurring re-crediting requires a Stripe webhook endpoint verified
-// with STRIPE_WEBHOOK_SECRET — see PAYMENT-AUDIT-REPORT.md.
+// التجديد: «بطاقة» دفعة لشهر افتراضيًّا (mode=payment)، واشتراك متجدّد لمن فعّل autoRenew؛ فواتير التجديد يشحنها
+// الويب هوك (api/webhook.js، invoice.paid) بـgrantPlanToUser نفسها. Apple Pay / Google Pay دفعة واحدة (PaymentIntent).
 const { verifyToken, getUser, putUser } = require('./auth.js');
-const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
+const { kvIncrBy, kvSetIfAbsent, kvDel } = require('./kv.js');
+const { MEDIA_PLANS, grantMedia } = require('./_mediaPlans.js');
 
 const PLANS = {
   // v-plans-2026-09 (قرار المالك ١٢ سبتمبر): الباقات الأكبر تأخذ سعر نقطة أفضل
@@ -42,39 +33,147 @@ const PLANS = {
   pack100: { amount: 499, points: 100, pack: true, name: '100 نقطة / 100 pts' },
   pack300: { amount: 1299, points: 300, pack: true, name: '300 نقطة / 300 pts' },
   pack700: { amount: 2499, points: 700, pack: true, name: '700 نقطة / 700 pts' },
-  pack900: { amount: 3499, points: 900, pack: true, name: '900 نقطة / 900 pts' },
+  // v-fair-video (قرار المالك ٥ أكتوبر): الرزمة الكبرى كانت أغلى للنقطة من ٧٠٠ — ١٬٠٥٠ بالسعر نفسه (المفتاح pack900 باقٍ لجلسات الطريق).
+  pack900: { amount: 3499, points: 1050, pack: true, name: '1,050 نقطة / 1,050 pts' },
 };
+// v-media-plans: اشتراكات الصور/الفيديو — شهريّة، بلا نقاط ولا تغيير للباقة (رصيدها منفصل في _mediaPlans.js).
+// v-media-merge: img_/vid_ متوقّفة (retired): لا جلسة دفع جديدة لها، ويبقى منحها لتجديدٍ قائم أو جلسة بدأت قبل الإيقاف.
+for (const [k, p] of Object.entries(MEDIA_PLANS)) {
+  PLANS[k] = { amount: p.amount, points: 0, media: p.media, name: p.name };
+  if (p.retired) PLANS[k].retired = true;
+}
+
+/* v-aed-checkout (طلب المالك ٥ أكتوبر، «الدرهم فقط»): الأسعار تُعرض بعملة البلد (js/currency.js) والدفع كان بالدولار
+   وحده — فالمشترك في الإمارات يرى ٣٧٫٥ د.إ وتخصم بطاقته ١٠$ برسوم تحويل. الآن يدفع بالدرهم السعر المعروض نفسه بالفلس
+   (pretty(usd × 3.6725) — يثبّت التطابقَ tests/aed-checkout.test.cjs)؛ بقيّة الدول بالدولار كما كانت. العميل يختار العملة لا
+   المبلغ، وأيّ عملة أخرى = الدولار. PayPal بالدولار دائمًا (لا يدعم الدرهم). */
+const AED_FILS = { basic: 3750, pro: 7500, max: 37500, pack100: 1900, pack300: 4800, pack700: 9500, pack900: 13000 };
+const MEDIA_AED_FILS = { basic: 3750, pro: 7500, max: 37500 }; // img_/vid_/maha_/media_ بنفس أسعار المحادثة بالدرهم
+function priceFor(plan, currency) { // plan معروف في PLANS (يتحقّق منه المستدعي)
+  const aed = PLANS[plan].media ? MEDIA_AED_FILS[String(plan).split('_')[1]] : AED_FILS[plan];
+  if (String(currency || '').toLowerCase() === 'aed' && aed > 0) return { currency: 'aed', amount: aed };
+  return { currency: 'usd', amount: PLANS[plan].amount };
+}
+
+const LOGIN_FIRST = 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe';
+const RETIRED = 'هذه الباقة توقّف بيعها — الصور والفيديو صارا باقة واحدة «صور وفيديو» / This plan is no longer sold — images and video are now one «Images & video» plan';
+
+/* v-pay-once (فحص الاشتراكات ٥ أكتوبر): «أمان التكرار» كان يتذكّر آخر دفعة وحدها وبلا قفل — دفعتان حقيقيّتان
+   تُعادان بالتناوب (A، B، A…) تُشحنان بلا نهاية، وعشرة طلبات تحقّق متزامنة لدفعة واحدة تُشحن عشر مرّات (أُثبت محلّيًّا).
+   الآن كلّ رقم دفعة يُحجز حجزًا ذرّيًّا (SET NX) قبل الشحن: أوّل نداء يشحن وكلّ ما بعده «سبق الشحن» — في التحقّق
+   والويب هوك وApple/Google Pay وPayPal معًا. فشل الشحن بعد الحجز يفكّه، فتعيد المحاولة (الويب هوك يعيد ثلاثة أيّام). */
+const CLAIM_TTL_SEC = 400 * 86400;
+const claimKey = (field, id) => 'paid:' + field + ':' + String(id).slice(0, 200);
+// التحقّق من العميل (العودة وجسر الآيفون) لدفعة حديثة فقط: ما سبق الحجز الذرّيّ لا يُعاد بعد النشر؛ الويب هوك (الموقَّع) بلا حدّ.
+const VERIFY_WINDOW_SEC = 72 * 3600;
+const tooOld = (created) => Number(created) > 0 && (Date.now() / 1000 - Number(created)) > VERIFY_WINDOW_SEC;
+
+/* v-rename-move: الاشتراك المتجدّد والجلسة يحملان الاسم وقت الشراء؛ بعد تغيير الاسم يصير السجلّ القديم
+   { deleted, movedTo } فكان التجديد يُخصم ولا يُشحن لأحد. الشحن يتبع السجلّ الجديد. */
+async function liveAccount(username) {
+  let name = String(username || '');
+  let user = await getUser(name);
+  // ٣٢ قفزة كسلسلة الشواهد في auth.js (tombstoneLeadsTo): بخمس كان حساب غيّر اسمه ست مرّات يُحلّ إلى شاهد، فيرمي withAccount BUSY للأبد.
+  for (let i = 0; i < 32 && user && user.deleted && user.movedTo; i++) { name = String(user.movedTo); user = await getUser(name); }
+  return { name, user };
+}
+/* v-acct-lock (المراجعة المعاكسة الثالثة لـv-pay-refund): سجلّ الحساب يُكتب كاملًا من قراءة سابقة (KV بلا CAS)، فسحبان معًا على
+   خانتين (باقة المحادثة وباقة الفيديو، أو باقة ورزمة نقاط) أو منحٌ مع سحب على الحساب نفسه يكتب أحدهما نسخته القديمة فوق ما كتبه
+   الآخر — فتعود فترة مسحوبة أو يضيع شراء جديد. المنح (grantPlanToUser) والسحب (pay-refund.js) يأخذان قفلًا للحساب ويقرآن داخله
+   نسخة طازجة فيعدّلان ما يملكانه وحده. لم يُنل القفل في ~٨ ثوانٍ ⇒ رمي قبل أيّ أثر (non-2xx فيعيد المرسل). صرف النقاط لا يأخذه
+   (المسار الساخن)؛ نافذته تُضيَّق في pay-refund.js. */
+const ACCT_LOCK_TTL_SEC = 20;
+const ACCT_LOCK_WAIT_MS = 8000;
+const BUSY = 'الحساب مشغول بعمليّة دفع أخرى، أعد المحاولة بعد لحظات / Account busy with another payment, please retry in a moment';
+const acctLockKey = (name) => 'db/acct-lock/' + encodeURIComponent(String(name || '').trim().toLowerCase());
+async function withAccount(username, fn) {
+  const name = (await liveAccount(username)).name;
+  const key = acctLockKey(name);
+  const until = Date.now() + ACCT_LOCK_WAIT_MS;
+  for (let wait = 40; !(await kvSetIfAbsent(key, '1', ACCT_LOCK_TTL_SEC)); wait = Math.min(400, Math.round(wait * 1.5))) {
+    if (Date.now() + wait > until) throw new Error(BUSY);
+    await new Promise((r) => setTimeout(r, wait + Math.floor(Math.random() * wait)));
+  }
+  try {
+    const acct = await liveAccount(name); // طازجة داخل القفل
+    if (acct.name !== name) throw new Error(BUSY); // غيّر اسمه بين القراءة والقفل: الإعادة تقفل اسمه الجديد
+    return await fn(acct.name, acct.user);
+  } finally { await kvDel(key); } // kvDel لا يرمي: بعد أثرٍ تمّ لا يُفشل فكُّ القفل العمليّة
+}
+
+// هل كان هذا الحساب يحمل ذلك الاسم قبل تغييره؟ (جلسة دفع بدأت قبل تغيير الاسم بلحظات، أو اشتراك قديم)
+async function wasNamed(username, oldName) {
+  if (!username || !oldName) return false;
+  try { const u = await getUser(username); return !!(u && Array.isArray(u.prevUsernames) && u.prevUsernames.includes(String(oldName))); } catch (e) { return false; }
+}
+
+/* v-pay-refund: سجلّ ما منحته الدفعة برقمها وأرقامها الأخرى (meta.refs: payment_intent/invoice/charge) ومبلغها — يقرؤه
+   الاسترداد والاعتراض البنكيّ (pay-refund.js) ليسحب ما منحته هي بالضبط. بعد نجاح المنح وأفضل جهد: لا يرمي، فلا يُفشل منحًا تمّ. */
+async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev) {
+  if (!sourceId) return;
+  const p = PLANS[plan];
+  const m = meta || {};
+  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : (p.pack ? null : user.planUpdatedAt);
+  await require('./pay-refund.js').recordGrant({
+    id: String(sourceId), field: sourceField || null, username, plan, points: p.points, media: p.media || null, at: Number(at) || null,
+    amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
+    refs: Array.isArray(m.refs) ? m.refs : [],
+    prev: prev || null, // الفترة التي حلّت هذه الدفعة محلّها — تعود إن استُردّت هذه كاملة وتلك سارية غير مسحوبة
+  });
+}
 
 // Shared "the payment definitely happened, now grant it" logic used by both
 // the Stripe Checkout Session flow (verifyCheckout) and the Apple Pay /
 // Google Pay PaymentIntent flow (verifyPaymentIntent), so both stay
 // consistent and a fix to one doesn't silently miss the other.
-async function grantPlanToUser(username, plan, sourceField, sourceId) {
-  const user = await getUser(username);
+// meta (اختياريّ، v-pay-refund): { refs, amount, currency } لسجلّ المنح — لا يغيّر المنح نفسه.
+// v-acct-lock: تحت قفل الحساب وعلى نسخته الطازجة — سحبٌ متزامن لا يكتب فوق هذا المنح ولا هذا فوقه.
+async function grantPlanToUser(username, plan, sourceField, sourceId, meta) {
+  return withAccount(username, (name, user) => grantLocked(name, user, plan, sourceField, sourceId, meta));
+}
+async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
   if (!user || user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
 
   // أمان التكرار: نفس الجلسة/العملية لا تضيف النقاط مرتين — كان الحقل يُخزَّن
   // بلا فحص، فتكرار التحقق (تحديث صفحة النجاح، أو جسر الآيفون) كان يضاعفها.
-  if (sourceField && sourceId && user[sourceField] === sourceId) {
-    return { ok: true, plan, pointsAdded: 0, alreadyGranted: true, balance: Number(user.points || 0) };
+  const already = { ok: true, plan, pointsAdded: 0, alreadyGranted: true, balance: Number(user.points || 0) };
+  if (sourceField && sourceId && user[sourceField] === sourceId) return already;
+  const claim = (sourceField && sourceId) ? claimKey(sourceField, sourceId) : null;
+  if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) return already; // v-pay-once
+
+  try {
+    const prev = await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
+    if (PLANS[plan].media) {
+      if (sourceField) user[sourceField] = sourceId;
+      const g = await grantMedia(user, username, plan);
+      if (g && sourceId) user.media[g.media].payId = String(sourceId); // v-pay-refund: الدفعة التي فتحت فترة الباقة — استردادها وحده يسحبها
+      await putUser(username, user);
+      await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
+      return { ok: true, plan: user.plan || null, media: g.media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0) };
+    }
+
+    // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
+    if (!PLANS[plan].pack) { user.plan = plan; user.planUpdatedAt = Date.now(); }
+    if (!PLANS[plan].pack) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
+    if (sourceField) user[sourceField] = sourceId;
+
+    // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
+    // (اسم المستخدم بأحرف صغيرة ومقصوص لضمان مطابقة نفس المفتاح دائمًا).
+    // v-pay-seed: عدّاد غائب = أوّل لمسة للمحفظة؛ يُبذر من سجلّ الحساب (هديّة الترحيب أو رصيد ما قبل المحفظة الذرّيّة)
+    // لا من صفر — كان الشراء قبل أوّل صرف يمسح الرصيد (٧٠ + ١٠٠ = ١٠٠، و٥٠٠ + Pro = ٩٢٠؛ أُثبت محلّيًّا).
+    // داخل الدالّة: points.js يقرأ AUTH_SECRET عند تحميله، والويب هوك يُحمَّل في بيئة عارية.
+    await require('./points.js').ensureBalance(username);
+    const balanceKey = 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
+    const newBalance = await kvIncrBy(balanceKey, PLANS[plan].points);
+    user.points = Number(newBalance);
+
+    await putUser(username, user);
+    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
+    return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
+  } catch (e) {
+    if (claim) await kvDel(claim); // لم يكتمل الشحن — يُفكّ الحجز فتنجح المحاولة التالية
+    throw e;
   }
-
-  // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
-  if (!PLANS[plan].pack) { user.plan = plan; user.planUpdatedAt = Date.now(); }
-  if (sourceField) user[sourceField] = sourceId;
-
-  // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
-  // (اسم المستخدم بأحرف صغيرة ومقصوص لضمان مطابقة نفس المفتاح دائمًا).
-  const balanceKey = 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
-  const raw = await kvGetRaw(balanceKey);
-  if (raw === null || raw === undefined || String(raw) === '') {
-    await kvSetIfAbsent(balanceKey, 0);
-  }
-  const newBalance = await kvIncrBy(balanceKey, PLANS[plan].points);
-  user.points = Number(newBalance);
-
-  await putUser(username, user);
-  return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
 }
 
 async function createCheckoutSession(req, res) {
@@ -87,29 +186,35 @@ async function createCheckoutSession(req, res) {
 
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { plan, origin, token } = body;
+    const { plan, origin, token, autoRenew, currency } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+    if (planInfo.retired) { res.status(410).json({ error: RETIRED, retired: true }); return; } // v-media-merge
 
+    // v-checkout-login: دفعة بلا حساب تُخصم ولا تُنسب لأحد (الويب هوك يتجاهلها) — لا جلسة دفع بلا دخول.
     const username = verifyToken(token);
+    if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
 
+    // v-checkout-autorenew: يدويّ (payment) لشهر واحد افتراضيًّا — الباقة تسقط بعد ٣٥ يومًا (tier.js)؛
+    // الاشتراك الشهريّ المتجدّد لمن فعّل autoRenew صراحةً. رزمة النقاط دفعة واحدة دائمًا.
+    const recurring = !planInfo.pack && autoRenew === true;
     const base = origin || 'https://omran-ai-builder.vercel.app';
     const params = new URLSearchParams();
-    // v-plan-routing: رزمة النقاط دفعة واحدة (payment) بلا تجديد؛ الباقة اشتراك شهريّ.
-    params.append('mode', planInfo.pack ? 'payment' : 'subscription');
+    params.append('mode', recurring ? 'subscription' : 'payment');
     params.append('payment_method_types[0]', 'card');
     params.append('line_items[0][quantity]', '1');
-    params.append('line_items[0][price_data][currency]', 'usd');
-    params.append('line_items[0][price_data][unit_amount]', String(planInfo.amount));
-    if (!planInfo.pack) params.append('line_items[0][price_data][recurring][interval]', 'month');
+    const price = priceFor(plan, currency); // v-aed-checkout — التجديد الشهريّ بالعملة نفسها
+    params.append('line_items[0][price_data][currency]', price.currency);
+    params.append('line_items[0][price_data][unit_amount]', String(price.amount));
+    if (recurring) params.append('line_items[0][price_data][recurring][interval]', 'month');
     params.append('line_items[0][price_data][product_data][name]', planInfo.name);
     params.append('metadata[plan]', plan);
-    if (username) params.append('metadata[username]', username);
+    params.append('metadata[username]', username);
     // v-webhook: نفس البيانات على الاشتراك نفسه — فتحملها فواتير التجديد
     // الشهري ويعرف الويب هوك لمن يضيف نقاط كل شهر (كان التجديد بلا شحن).
-    if (!planInfo.pack) {
+    if (recurring) {
       params.append('subscription_data[metadata][plan]', plan);
-      if (username) params.append('subscription_data[metadata][username]', username);
+      params.append('subscription_data[metadata][username]', username);
     }
     params.append('success_url', `${base}/?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`);
     params.append('cancel_url', `${base}/?checkout=cancel`);
@@ -170,8 +275,13 @@ async function verifyCheckout(req, res) {
       return;
     }
 
-    if (data.metadata && data.metadata.username && data.metadata.username !== username) {
+    const payer = data.metadata && data.metadata.username;
+    if (payer && payer !== username && !(await wasNamed(username, payer))) {
       res.status(403).json({ error: 'هذه الجلسة لا تخص هذا الحساب / This session does not belong to this account' });
+      return;
+    }
+    if (tooOld(data.created)) { // v-pay-once
+      res.status(410).json({ error: 'هذه دفعة قديمة لا تُشحن من هنا — إن لم تصلك نقاطها راسلنا / This payment is too old to claim here — contact us if it was not credited' });
       return;
     }
 
@@ -181,7 +291,8 @@ async function verifyCheckout(req, res) {
       return;
     }
 
-    const grant = await grantPlanToUser(username, plan, 'lastStripeSessionId', session_id);
+    const grant = await grantPlanToUser(username, plan, 'lastStripeSessionId', session_id,
+      { refs: [data.payment_intent, data.invoice], amount: data.amount_total, currency: data.currency }); // v-pay-refund
     if (grant.error) { res.status(grant.status || 500).json({ error: grant.error }); return; }
     res.status(200).json(grant);
   } catch (e) {
@@ -191,9 +302,9 @@ async function verifyCheckout(req, res) {
 
 // ===== Apple Pay / Google Pay via Stripe Payment Request Button API =====
 // These create a plain one-time PaymentIntent (NOT a subscription — see the
-// KNOWN LIMITATION note at the top of this file) for the same USD amount as
-// the plan, so the frontend's Payment Request Button can confirm it directly
-// on-page without a redirect.
+// KNOWN LIMITATION note at the top of this file) for the plan's amount (USD, or
+// AED for the UAE — v-aed-checkout), so the frontend's Payment Request Button
+// can confirm it directly on-page without a redirect.
 async function createPaymentIntent(req, res) {
   try {
     const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -204,19 +315,22 @@ async function createPaymentIntent(req, res) {
 
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { plan, token } = body;
+    const { plan, token, currency } = body;
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
+    if (planInfo.retired) { res.status(410).json({ error: RETIRED, retired: true }); return; } // v-media-merge
 
     const username = verifyToken(token);
+    if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
 
+    const price = priceFor(plan, currency); // v-aed-checkout — نفس مبلغ ورقة Apple/Google Pay في العميل
     const params = new URLSearchParams();
-    params.append('amount', String(planInfo.amount));
-    params.append('currency', 'usd');
+    params.append('amount', String(price.amount));
+    params.append('currency', price.currency);
     params.append('payment_method_types[0]', 'card');
     params.append('description', planInfo.name);
     params.append('metadata[plan]', plan);
-    if (username) params.append('metadata[username]', username);
+    params.append('metadata[username]', username);
 
     const stripeRes = await fetch('https://api.stripe.com/v1/payment_intents', {
       method: 'POST',
@@ -272,8 +386,13 @@ async function verifyPaymentIntent(req, res) {
       return;
     }
 
-    if (data.metadata && data.metadata.username && data.metadata.username !== username) {
+    const payer = data.metadata && data.metadata.username;
+    if (payer && payer !== username && !(await wasNamed(username, payer))) {
       res.status(403).json({ error: 'هذه العملية لا تخص هذا الحساب / This payment does not belong to this account' });
+      return;
+    }
+    if (tooOld(data.created)) { // v-pay-once
+      res.status(410).json({ error: 'هذه دفعة قديمة لا تُشحن من هنا — إن لم تصلك نقاطها راسلنا / This payment is too old to claim here — contact us if it was not credited' });
       return;
     }
 
@@ -283,9 +402,64 @@ async function verifyPaymentIntent(req, res) {
       return;
     }
 
-    const grant = await grantPlanToUser(username, plan, 'lastStripePaymentIntentId', payment_intent_id);
+    const grant = await grantPlanToUser(username, plan, 'lastStripePaymentIntentId', payment_intent_id,
+      { refs: [data.latest_charge], amount: data.amount_received || data.amount, currency: data.currency }); // v-pay-refund
     if (grant.error) { res.status(grant.status || 500).json({ error: grant.error }); return; }
     res.status(200).json(grant);
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Server error' });
+  }
+}
+
+/* v-autorenew-toggle (المالك ٢ أكتوبر «في الاشتراكات زرّ يلغي الاشتراك الشهريّ — خصم شهريّ ولا عاديّ — يفتح ويغلق في
+   أوّل الصفحة»): الاشتراك المتجدّد كان يُلغى من لوحة Stripe وحدها. هنا: بلا on = حالة اشتراكات الحساب المتجدّدة؛
+   on=false = إيقاف التجديد عند نهاية الشهر المدفوع (cancel_at_period_end، بلا استرجاع ولا قطع)؛ on=true = إعادته قبل نهايته.
+   الاشتراكات تُعرف بـmetadata.username التي يضعها createCheckoutSession — فلا يلمس الحساب إلّا اشتراكاته. */
+function subPeriodEnd(sub) {
+  const top = Number(sub && sub.current_period_end) || 0;
+  const items = (sub && sub.items && Array.isArray(sub.items.data)) ? sub.items.data : [];
+  return items.reduce((m, it) => Math.max(m, Number(it && it.current_period_end) || 0), top); // الإصدارات الأحدث تضعه على البند
+}
+async function autoRenewToggle(req, res, fetchImpl) {
+  const f = fetchImpl || fetch;
+  try {
+    let body = req.body;
+    if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
+    const username = verifyToken(body.token);
+    if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) { res.status(200).json({ ok: true, subs: 0, configured: false }); return; }
+    const auth = { Authorization: 'Bearer ' + secretKey };
+    // v-rename-move: الاشتراك يحمل الاسم وقت الشراء — بعد تغيير الاسم يُبحث بالأسماء السابقة أيضًا، وإلّا لم يجد المشترك
+    // اشتراكه ليوقفه وبقي يُخصم كلّ شهر.
+    let prev = [];
+    try { const u = await getUser(username); prev = (u && Array.isArray(u.prevUsernames)) ? u.prevUsernames.slice(-3) : []; } catch (e) { prev = []; }
+    const names = [username].concat(prev.filter((n) => n && n !== username));
+    const seen = new Set();
+    const subs = [];
+    for (const name of names) {
+      const q = "metadata['username']:'" + String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "' AND status:'active'";
+      const sr = await f('https://api.stripe.com/v1/subscriptions/search?limit=10&query=' + encodeURIComponent(q), { headers: auth });
+      const sd = await sr.json().catch(() => ({}));
+      if (!sr.ok) { res.status(502).json({ error: (sd.error && sd.error.message) || 'stripe search failed' }); return; }
+      for (const x of (Array.isArray(sd.data) ? sd.data : [])) {
+        if (x && x.metadata && x.metadata.username === name && !seen.has(x.id)) { seen.add(x.id); subs.push(x); }
+      }
+    }
+    let periodEnd = subs.reduce((m, x) => Math.max(m, subPeriodEnd(x)), 0);
+    if (typeof body.on !== 'boolean') {
+      res.status(200).json({ ok: true, subs: subs.length, on: subs.some((x) => !x.cancel_at_period_end), periodEnd });
+      return;
+    }
+    for (const x of subs) {
+      const ur = await f('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(x.id), {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded' }, auth),
+        body: new URLSearchParams({ cancel_at_period_end: body.on ? 'false' : 'true' }).toString(),
+      });
+      if (!ur.ok) { const ud = await ur.json().catch(() => ({})); res.status(502).json({ error: (ud.error && ud.error.message) || 'stripe update failed' }); return; }
+    }
+    res.status(200).json({ ok: true, subs: subs.length, on: body.on, periodEnd });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Server error' });
   }
@@ -303,10 +477,19 @@ module.exports = async (req, res) => {
   if (routedAction === 'verify-checkout') return verifyCheckout(req, res);
   if (routedAction === 'create-payment-intent') return createPaymentIntent(req, res);
   if (routedAction === 'verify-payment-intent') return verifyPaymentIntent(req, res);
+  if (routedAction === 'auto-renew') return autoRenewToggle(req, res);
   return createCheckoutSession(req, res);
 };
 
 // v-webhook: يستعملهما ويب هوك سترايب (api/webhook.js) — نفس منطق المنح
 // وأمان التكرار، فلا ازدواج بين مسار العودة والويب هوك.
 module.exports.grantPlanToUser = grantPlanToUser;
+module.exports.wasNamed = wasNamed; // v-rename-move — PayPal يربط الطلب بالحساب بالاسم نفسه
 module.exports.PLANS = PLANS;
+module.exports.priceFor = priceFor; // v-aed-checkout — للاختبار
+module.exports.RETIRED = RETIRED; // v-media-merge — PayPal يرفض الطلب الجديد بالنصّ نفسه
+module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — للاختبار
+// v-pay-refund: الاسترداد يتبع الحساب بعد تغيير اسمه، ويعرف الدفعة القديمة الممنوحة بحجزها.
+module.exports.liveAccount = liveAccount;
+module.exports.claimKey = claimKey;
+module.exports.withAccount = withAccount; // v-acct-lock — السحب يأخذ قفل الحساب نفسه

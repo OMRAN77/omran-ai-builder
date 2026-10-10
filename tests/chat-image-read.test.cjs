@@ -19,7 +19,7 @@ test('IMAGE_READ_NOTE: reads the screenshot first, alerts and errors before anyt
 });
 
 test('source guard: the note rides every image turn (tool turn and no-tool turn), after the guide note', () => {
-  const withTools = src.indexOf("+ ownerKnowledge + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE");
+  const withTools = src.indexOf("+ ownerKnowledge + SEARCH_RULE_NOTE + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE" /* v-live-social: قاعدة البحث قبل ملاحظات الصورة */);
   const noTools = src.indexOf("+ baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;");
   assert.ok(withTools > 0, 'فرع الأدوات');
   assert.ok(noTools > 0, 'فرع بلا أدوات');

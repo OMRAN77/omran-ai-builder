@@ -10,20 +10,93 @@ window.__swallow = window.__swallow || function (err, ctx) {
   try { console.warn('[swallowed] ' + (ctx || 'early') + ':', (err && err.message) || err); }
   catch (e) { /* لا استثناء من داخل catch أبدًا */ }
 };
+/* v-android-gpu (فيديو المالك ٢٣ سبتمبر «التطبيق كامل يشوش» — أندرويد/هواوي): علامة html.omAndroid قبل أيّ رسم،
+   يقرؤها redesign.css ليخفّف ما يرهق معالج الرسوم في أندرويد (ظلال الفلتر المتحرّكة والتغبيش المخفيّ). */
+try { if (/Android|HarmonyOS|HUAWEI|HONOR/i.test(navigator.userAgent || '')) document.documentElement.classList.add('omAndroid'); }
+catch (e) { /* guard-ok: بلا العلامة يبقى الشكل الكامل كما كان */ }
+/* v-hw-cards-once: قرار «شفت بطاقات أدوات هواوي وسألت» محفوظ على الجهاز (ui-wiring يكتبه) —
+   يُطبَّق هنا قبل أوّل رسم فلا تومض البطاقات في الفتحات التالية. */
+try { if (localStorage.getItem('aiapp_hw_cards_done') === '1') document.documentElement.classList.add('hwCardsDone'); }
+catch (e) { /* guard-ok: بلا الصنف تظهر البطاقات كأوّل مرّة */ }
+/* v-cpu-calm (المالك ٢٩ سبتمبر «التطبيق ثقيل، يتأخّر إذا يدخل أيّ مكان، وإذا أكتب يعلّق»): تطبيق هواوي يرسم
+   بالمعالج المركزيّ (v-cpu-raster) فكلّ إطار = الشاشة كلّها في المعالج. مسبار: الشاشة الساكنة تُعاد ٦٠ مرّة في ٤ ثوانٍ
+   من نجوم الشعار وأيقونة الشريط، و٢٤٢ مع خلفيّة المجرّة. html.omCpu قبل أوّل رسم يوقف الحركة الدائمة الزخرفيّة
+   ويجعل الخلفيّات المتحرّكة لقطة ثابتة (app-05). الجسر يقول cpu، أو حزمة هواوي بلا جسر (?store=huawei). */
+(function () {
+  try {
+    var R = window.OmranRender, m = R && typeof R.mode === 'function' ? String(R.mode() || '') : '';
+    var hw = /[?&]store=huawei\b/.test(location.search || '');
+    try { hw = hw || sessionStorage.getItem('aiapp_store') === 'huawei'; } catch (e2) { /* guard-ok: بلا تخزين يكفي الرابط */ }
+    if ((m && m !== 'gpu') || (!R && hw)) document.documentElement.classList.add('omCpu');
+  } catch (e) { /* guard-ok: بلا العلامة تبقى الحركة كما كانت */ }
+})();
+/* v-art-defer (المالك ٢٤ سبتمبر: «الشاشة كاملة فيها وميض ومشوّشة… والأدوات»): مقياس على مقاس
+   جهازه (٧٠٠×٧٧٠ بكثافة ٢٫٦٢٥، محادثة فارغة): ٧٤ صورة تُحمَّل عند الإقلاع = ٥٠٫٤ م.ب بكسلات،
+   والمعروض منها ٠٫١٨ م.ب وحدها (الشعار) — ٦٩ صورة داخل نوافذ **مغلقة**: استوديو الأزياء ٤٨
+   (٣٣٫١ م.ب: نسائيّ/رجاليّ/أطفال وصفّ المقارنة ٣٦ نمطًا)، بطاقات الأدوات ١٨ (١٤٫٨ م.ب)،
+   الديكور ٢ والاستوديو ١. `loading="lazy"` لا يؤجّل شيئًا داخل display:none — العنصر بلا صندوق
+   تخطيط فلا يتقاطع مع الشاشة أبدًا، فيحمّله المتصفّح فورًا؛ و`new Image()` يتجاوز الوسم أصلًا.
+   هنا مراقب تقاطع واحد يُعرَّف قبل أيّ سكربت: العمل يُؤجَّل حتّى يدخل العنصر الشاشة فعلًا
+   (أي حين تُفتح نافذته)، فتُحمَّل صوره ساعتها لا قبلها. */
+/* v-cpu-raster (الجزء الذي في الصفحة): غلاف هواوي يرسم بالمعالج المركزيّ لأنّ تعريف معالج رسوم
+   الجهاز يتلف الصفوف العليا من الأنسجة (صور البطاقات وأطلس الحروف — فيديو المالك ١٧:٤٤). الفيديو
+   المضمَّن يحتاج التسريع العتاديّ، فنخبر الغلاف متى يعمل <video> ومتى يتوقّف. أحداث الوسائط لا
+   تفقّع لكنّها تمرّ بمرحلة الالتقاط على document. خارج التطبيق (متصفّح) لا جسر = لا شيء يحدث. */
+(function () {
+  try {
+    var R = window.OmranRender;
+    if (!R || typeof R.video !== 'function') return;
+    var last = null;
+    var sync = function () {
+      var on = false, v = document.getElementsByTagName('video');
+      for (var i = 0; i < v.length; i++) { if (!v[i].paused && !v[i].ended) { on = true; break; } }
+      if (on === last) return;
+      last = on;
+      try { R.video(on); } catch (e) { /* guard-ok: الجسر ترف — بلاه يبقى الرسم كما هو */ }
+    };
+    ['play', 'playing', 'pause', 'ended', 'emptied', 'abort'].forEach(function (t) {
+      document.addEventListener(t, function () { setTimeout(sync, 0); }, true);
+    });
+  } catch (e) { /* guard-ok: خارج غلاف هواوي لا جسر */ }
+})();
+window.__omranWhenSeen = (function () {
+  var obs = null;
+  try {
+    obs = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        if (!entries[i].isIntersecting) continue;
+        var el = entries[i].target;
+        obs.unobserve(el);
+        var fns = el.__omSeen; el.__omSeen = null;
+        if (fns) for (var j = 0; j < fns.length; j++) { try { fns[j](); } catch (e) { window.__swallow(e, 'whenSeen'); } }
+      }
+    }, { rootMargin: '400px' });
+  } catch (e) { /* guard-ok: بلا مراقب يُنفَّذ العمل فورًا كما كان قبل التأجيل */ }
+  return function (el, fn) {
+    if (!el || typeof fn !== 'function') return;
+    if (!obs) { fn(); return; }
+    if (el.__omSeen) { el.__omSeen.push(fn); return; }
+    el.__omSeen = [fn];
+    obs.observe(el);
+  };
+})();
 </script>
 
   <meta name="google-site-verification" content="EIm6owSevV2DFP5G_giH4ZW-UNLtHuKGH4AY-xZMH74" />
   <meta name="google-site-verification" content="7RpDAzZaxoqFw0wXGzNIWXFFtmOTRH8GNNrFjz5oCD8" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title id="pageTitle">عمران AI — منصّة الذكاء</title>
+<title id="pageTitle">om ai — عمران AI — منصّة الذكاء</title>
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="om ai">
 <script>/* v-boot-l10n (شكوى المالك: عند التحديث الصفحة كلها تظهر بالعربي ثم تنقلب
   وتقفز العناصر): الصفحة مكتوبة عربية، والترجمة تصل بعد تحميل الحزمة. هنا —
   قبل أول رسمة — يُضبط الاتجاه واللغة من المحفوظ ويُسدل ستار حتى يُطبَّق قاموس
-  اللغة الحقيقي (يرفعه applyLanguage، وحارس زمني يرفعه قسرًا لو تعثّر التحميل). */
+  اللغة الحقيقي (يرفعه applyLanguage، وحارس زمني يرفعه قسرًا لو تعثّر التحميل).
+  v-search-om-ai (طلب المالك ٢٥ سبتمبر: om ai في البحث بدل Omran AI Builder):
+  في البحث تظهر om ai، وداخل التطبيق يُعاد عنوان النافذة فورًا إلى عمران AI. */
 (function(){try{
   var l = localStorage.getItem('aiapp_lang') || 'ar';
-  if(l === 'ar') return;
+  if(l === 'ar'){ document.title = 'عمران AI — منصّة الذكاء'; return; }
   var d = document.documentElement;
   d.dir = (l === 'ur') ? 'rtl' : 'ltr';
   d.lang = l;
@@ -46,11 +119,21 @@ window.__swallow = window.__swallow || function (err, ctx) {
   var isNarrow = window.matchMedia('(max-width:860px)').matches;
   if((isMobileUA && isTouch) || isNarrow) document.documentElement.classList.add('mobile-ui');
 }catch(e){}})();</script>
-<meta name="description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
-<meta name="keywords" content="منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
+<meta name="description" content="om ai — أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
+<meta name="keywords" content="om ai, om ai builder, Omran AI Builder, عمران AI, منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
 <meta name="author" content="Omran">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#000000">
+<!-- v-color-scheme (المالك ٢٤ سبتمبر، الجولة الخامسة — الدليل: أيقونات SVG سطريّة تُرسم
+     **ممتلئة رماديّة** والنصّ بجانبها سليم؛ وهي في الصفحة من أوّل بايت بـfill="none" ولا قاعدة
+     CSS تضبط fill — أي أنّ شيئًا **خارج كودنا** يغيّر رسمها): التغميق الخوارزميّ في WebView
+     أندرويد/هواوي (force-dark) يعيد تلوين صفحة **لا تعلن color-scheme**، ويطال SVG والصور
+     والنصّ — وهذا شكل «الضجيج الملوّن» و«الصور الخضراء» و«النصّ المخدوش».
+     الإعلان الوحيد في المشروع كان `color-scheme:light` في tokens.css تحت الوضع الفاتح وحده،
+     والوضع الداكن (وهو ما يستعمله المالك) بلا إعلان إطلاقًا — getComputedStyle: "normal".
+     إعلانها هنا قبل أيّ نمط يخبر المحرّك أنّ الصفحة تتولّى وضعها بنفسها فيمتنع عن تغميقها. -->
+<meta name="color-scheme" content="dark light">
+<style>:root{color-scheme:dark}html[data-mode="light"]{color-scheme:light}</style>
 <link rel="canonical" href="https://omran-ai-builder.vercel.app/">
 <link rel="alternate" hreflang="ar" href="https://omran-ai-builder.vercel.app/">
 <link rel="alternate" hreflang="en" href="https://omran-ai-builder.vercel.app/">
@@ -58,9 +141,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
 
 <!-- Open Graph / Facebook / WhatsApp -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Omran AI Builder">
+<meta property="og:site_name" content="om ai">
 <meta property="og:url" content="https://omran-ai-builder.vercel.app/">
-<meta property="og:title" content="Omran AI Builder — مُنشئ التطبيقات بالذكاء الاصطناعي">
+<meta property="og:title" content="om ai — مُنشئ التطبيقات بالذكاء الاصطناعي">
 <meta property="og:description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم 4 نماذج ذكاء اصطناعي رائدة، ثنائي اللغة، ومجاني بالكامل.">
 <meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
 <meta property="og:image:width" content="1200">
@@ -70,34 +153,43 @@ window.__swallow = window.__swallow || function (err, ctx) {
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Omran AI Builder — مُنشئ التطبيقات بالذكاء الاصطناعي">
+<meta name="twitter:title" content="om ai — مُنشئ التطبيقات بالذكاء الاصطناعي">
 <meta name="twitter:description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. مجاني وثنائي اللغة.">
 <meta name="twitter:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
 
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "Omran AI Builder",
-  "alternateName": "مُنشئ التطبيقات بالذكاء الاصطناعي",
-  "url": "https://omran-ai-builder.vercel.app/",
-  "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "Any",
-  "description": "أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر.",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "om ai",
+    "alternateName": ["Omran AI Builder", "Omran AI", "عمران AI", "om ai builder"],
+    "url": "https://omran-ai-builder.vercel.app/"
   },
-  "author": {
-    "@type": "Person",
-    "name": "Omran"
-  },
-  "inLanguage": ["ar", "en"]
-}
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "om ai",
+    "alternateName": ["Omran AI Builder", "Omran AI", "مُنشئ التطبيقات بالذكاء الاصطناعي"],
+    "url": "https://omran-ai-builder.vercel.app/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "description": "أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Omran"
+    },
+    "inLanguage": ["ar", "en"]
+  }
+]
 </script>
 
-<link rel="manifest" href="/manifest.json?v=515-vg-removed">
+<link rel="manifest" href="/manifest.json?v=516-browser-install">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -105,10 +197,19 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <meta name="apple-mobile-web-app-title" content="Omran AI Builder">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=717">
-<link rel="stylesheet" href="css/redesign.css?v=681">
-<link rel="stylesheet" href="css/modules.css?v=659">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- v-perf-fonts-async: خطّ جوجل كان <link rel=stylesheet> عاديًّا يحجب الرسم الأوّل كاملًا حتى يستقرّ الاتصال
+     بجوجل (لا مهلة)؛ الآن غير حاجب (نمط loadCSS: media=print يحمّله بأولويّة منخفضة، onload يفعّله) مع
+     noscript احتياطيّ لمن عطّل JS. Tajawal تبقى fallback لأيّ فشل (v-fonts في tokens.css). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="css/tokens.css?v=729">
+<link rel="stylesheet" href="css/redesign.css?v=689">
+<link rel="stylesheet" href="css/modules.css?v=675">
+<link rel="stylesheet" href="css/خلفيات.css?v=3">
+<link rel="stylesheet" href="css/إطارات.css?v=3"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
+<link rel="stylesheet" href="css/ثيم-خشبي.css?v=3"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
+<link rel="stylesheet" href="css/ثيمات.css?v=8"><!-- v-themes: الثيمات الثلاثة عشر، كلّها تحت html.skin -->
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -139,7 +240,8 @@ window.__swallow = window.__swallow || function (err, ctx) {
 
 <style>
 /* v473 — إخفاء ٥ عناصر بأمر عمران (٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة كاملةً. */
-#btnTemplates, #btnAgentMode, #btnInstall, #btnInstallHeader, #btnShareApp, #btnGov { display: none !important; }
+/* v-browser-install (طلب المالك ٢٦ سبتمبر «أريد التطبيق في المتصفّحات»): #btnInstall عاد للقائمة؛ يخفيه الكود حين يعمل التطبيق مثبّتًا. */
+#btnTemplates, #btnAgentMode, #btnInstallHeader, #btnShareApp, #btnGov { display: none !important; }
 /* v474 — لون روابط الردّ. v-hl-gold (طلب المالك ١٩ سبتمبر): ذهبيّ بدل الفيروزيّ. الرجوع: احذف هذه الكتلة. */
 .msg-text a{ color:#d4af37 !important; }
 html[data-mode="light"] .msg-text a{ color:#b8860b !important; }
@@ -517,6 +619,14 @@ body #btnMode{ display: none !important; }
 @keyframes oiBreathe{from{transform:scale(1)}to{transform:scale(1.025)}}
 @keyframes oiUp{to{opacity:1}}
 @media (prefers-reduced-motion:reduce){#omranIntro .oiImg,#omranIntro .oiSheen{animation:none}}
+/* v-intro-gpu (المالك ٢٤ سبتمبر «وميض»): المقدّمة تظهر مع كلّ تشغيل، وهي أوّل ما يراه — وفيها
+   أغلى تأثيرين على معالج رسوم أندرويد في أثقل لحظة (الإقلاع): oiBg يمرّر blur(30px) على طبقة
+   892×970 (أكبر من الشاشة، مكبّرة 1.12)، وoiSheen يفرض عزل طبقة بـmix-blend-mode:screen.
+   قياس بمقاس جهاز المالك: ثماني طبقات بحجم الشاشة الكاملة أثناء المقدّمة. على أندرويد وحده:
+   الخلفيّة المغبّشة تُحذف (الحاوية أصلًا ‎#07070B‎ فيبقى الإطار داكنًا نظيفًا) والوميض يبقى
+   متحرّكًا بلا مزج. الآيفون والكمبيوتر بلا تغيير. */
+html.omAndroid #omranIntro .oiBg{display:none}
+html.omAndroid #omranIntro .oiSheen{mix-blend-mode:normal;opacity:.5}
 html.oiOn body{overflow:hidden}
 </style>
 <style>
@@ -524,6 +634,8 @@ html.oiOn body{overflow:hidden}
    لا تسمح باقته باختيار المزوّد (المجّانيّ/الضيف/Plus/Pro) — الخادم يوجّههم بجدول الباقة. الفئة plan-locked
    تضعها applyPlanGate (app-05) من نتيجة usage-status أو رصيد النقاط. الرجوع: احذف الكتلة. */
 html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }
+/* v-gold-badge-plan: شارة Pro الذهبيّة بجانب الاسم في رأس الإعدادات (Pro وMax) — تضعها applyPlanGate. الرجوع: احذف السطر. */
+html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:inline-block; margin-inline-start:6px; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:.4px; line-height:16px; color:#1a1300; background:linear-gradient(90deg,#f1d878,#d4af37); box-shadow:0 0 0 1px rgba(212,175,55,.45); vertical-align:middle; }
 </style>
 </head>
 <body>
@@ -555,30 +667,24 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script src="/js/partials-core.js?v=642"></script>
+<script defer src="/js/partials-core.js?v=654"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
-<script src="/js/design-sels.js?v=560"></script>
+<script defer src="/js/design-sels.js?v=560"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
-<script src="/js/design-gen.js?v=607"></script>
+<script defer src="/js/design-gen.js?v=610"></script>
 
 
 <header>
   <button type="button" class="omIconBtn" id="omranHamburger" title="القائمة الجانبية" data-i18n-title="sidePanelTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
   <h1>
     <span class="titles">
-      <span id="brandTitle" class="brandTitle brand-ar"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg" width="126" height="42"></span>
-      <script>/* v-brand-noflash (شكوى المالك: الضغط على الاسم فوق يُظهر «عمران» عربيًا
-        بأي لغة): الشعار العربي كان مكتوبًا في الصفحة فيظهر أول لقطة قبل الجافاسكربت.
-        هنا يُبدَّل فورًا أثناء التحليل بشعار اللغة المحفوظة — نفس جدول syncBrand. */
+      <span id="brandTitle" class="brandTitle brand-ar"><span class="omBrand" dir="ltr"><img src="icons/brand-om-s.png" alt="OM Ai" class="brandImg" width="141" height="42"><svg class="omStars" viewBox="0 0 22 42" width="22" height="42" aria-hidden="true"><g transform="translate(7.5 14) scale(0.42)"><path class="omBrandStar s1" fill="#04BAEC" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(15 19) scale(0.62)"><path class="omBrandStar s2" fill="#FEED01" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(7.5 28) scale(0.38)"><path class="omBrandStar s3" fill="#F049D7" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g></svg></span></span>
+      <script>/* v-om-brand (طلب عمران ٢٥ سبتمبر): شعار «OM Ai» واحد لكلّ اللغات الأربع عشرة بدل شعار «عمران» لكلّ لغة،
+        فلا تبديل صورة هنا؛ يبقى عنوان التبويب لغير العربيّة كما كان في v-brand-noflash. */
       (function(){try{
         var l = localStorage.getItem('aiapp_lang') || 'ar';
-        if(l === 'ar') return;
-        var W = { zh:84, hi:71, es:87, fr:89, bn:80, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
-        var s = W[l] ? ('icons/brand-' + l + '.png') : 'icons/brand-en.png';
-        var w = W[l] || 161;
-        document.getElementById('brandTitle').innerHTML = '<img src="' + s + '" alt="Omran Ai" class="brandImg" width="' + w + '" height="42">';
-        document.title = 'Omran AI';
+        if(l !== 'ar') document.title = 'Omran AI';
       }catch(e){}})();</script>
     </span>
   </h1>
@@ -640,14 +746,18 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 <div id="drawerBackdrop"></div>
 
 <main>
+  <div id="omFrameCenter" aria-hidden="true"></div><!-- v-frame-design: إطار لوحة المحادثة خلف الهيدر والمحادثة -->
   <div id="sidebar" style="background:#000;">
     <!-- v-drawer-close (طلب المالك): زرّ طيّ درج المحادثات على الجوّال — سهم (داخل/خارج) بلا دائرة ولا ✕ (مع السحب القائم). يظهر على الجوّال فقط. -->
     <button type="button" id="sidebarCloseBtn" aria-label="إغلاق القائمة" data-i18n="[aria-label]closeTitle" title="إغلاق" data-i18n-title="closeTitle"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg></button>
     <!-- v-sidebar-brand (طلب عمران ١٨ سبتمبر بلقطتين): الشعار الذهبيّ في رأس القائمة الجانبيّة مكان «محادثة جديدة»، والزرّ تحته مباشرة — سطح المكتب فقط؛ الجوّال يبقي شعار الرأس. -->
-    <div id="sidebarBrand" class="sidebarBrand" title="عمران AI"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg" width="126" height="42"></div>
+    <div id="sidebarBrand" class="sidebarBrand" title="OM Ai"><span class="omBrand" dir="ltr"><img src="icons/brand-om-s.png" alt="OM Ai" class="brandImg" width="141" height="42"><svg class="omStars" viewBox="0 0 22 42" width="22" height="42" aria-hidden="true"><g transform="translate(7.5 14) scale(0.42)"><path class="omBrandStar s1" fill="#04BAEC" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(15 19) scale(0.62)"><path class="omBrandStar s2" fill="#FEED01" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g transform="translate(7.5 28) scale(0.38)"><path class="omBrandStar s3" fill="#F049D7" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g></svg></span></div>
     <script>/* v-sidebar-brand: يتبع شعار الرأس (بُدّل أثناء التحليل حسب اللغة المحفوظة) فلا وميض */
     (function(){try{var b=document.getElementById('brandTitle'),s=document.getElementById('sidebarBrand');if(b&&s)s.innerHTML=b.innerHTML;}catch(e){}})();</script>
+    <div id="sidebarBrandSub" data-i18n="brandSubtitle">منصة الذكاء</div><!-- v-frame-design -->
     <button type="button" id="omranNewChatBtn"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="ncLabel" data-i18n="ncNewChatLabel">محادثة جديدة ✨</span></button>
+    <!-- v-frame-design: خانة بحث ظاهرة كما في الصورة — تمرّر إلى بحث المشاريع القائم (projSearchInput) -->
+    <div id="sbSearchWrap"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><input type="search" id="sbSearch" autocomplete="off" data-i18n-placeholder="projSearchLabel" placeholder="بحث عن مشروع"></div>
     <div id="omranHistTitle"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> <span data-i18n="omNavChats">المحادثات</span></div>
     <div id="providerGridSidebar">
       <button id="provDropdownBtn" type="button"><span id="provDDLogo"></span><span class="provDDName" id="provDDName"></span><svg class="provDDChev" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
@@ -690,6 +800,54 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 
   <div id="chatcol">
     <div id="omranHero">
+      <!-- 📱 بطاقات هواوي في صندوق المحادثة: تظهر فقط عند فتح حزمة هواوي (?store=huawei / html.store-safe) وفي وضع الترحيب -->
+      <div id="huaweiHeroWrap" class="huawei-hero-wrap">
+        <div id="huaweiToolsGrid" class="huawei-tools-grid">
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardPortrait" data-hwtool="portrait">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnPortraitStyle.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="portraitBtnTitle">أنماط الصور</span>
+                <span class="tcSub" data-i18n="tcSub_btnPortraitStyle">مجموعة متنوعة من أنماط الصور</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardEdu" data-hwtool="edu">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnOmranEdu.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="omranEduTitle">التعليم</span>
+                <span class="tcSub" data-i18n="tcSub_btnOmranEdu">كورسات ودروس تعليمية</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardQibla" data-hwtool="qibla">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnQibla.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="qiblaTitle">القبلة والمواقيت</span>
+                <span class="tcSub" data-i18n="tcSub_btnQibla">مواقيت الصلاة واتجاه القبلة</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+          <button type="button" class="hwToolCard hasToolPhoto" id="hwCardSuggestions" data-hwtool="suggestions">
+            <img class="stp3d toolPhotoImage" src="/assets/tool-cards/s/btnQuickTemplates.jpg?v=2" alt="" loading="lazy">
+            <div class="tcMeta">
+              <div class="tcTxt">
+                <span class="btnLabel" data-i18n="quickTemplatesTitle">اقتراحات</span>
+                <span class="tcSub" data-i18n="tcSub_btnQuickTemplates">أفكار وإلهام لمشاريعك القادمة</span>
+              </div>
+              <span class="tcArrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+        </div>
+        <button type="button" class="hwAllToolsBtn" id="hwAllToolsBtn">
+          <span data-i18n="omNavTools">الأدوات</span> <span aria-hidden="true">›</span>
+        </button>
+      </div>
       <div id="omranToolsGrid"></div>
       <div id="omranQuickMobileWrap">
         <div class="omPanelTitle" data-i18n="quickToolsTitle">أدوات سريعة</div>
@@ -733,7 +891,7 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
               <button class="btn" id="btnFeedback" type="button" title="رأيك يهمنا" data-i18n-title="fbMenuLabel"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg> <span class="btnLabel" data-i18n="fbMenuLabel">رأيك يهمنا</span></button>
               <button class="btn" id="btnChatToPdf" type="button" title="تحويل إلى PDF" data-i18n-title="chatToPdfLabel" style="display:none !important;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 18 15 15"></polyline></svg> <span class="btnLabel" data-i18n="chatToPdfLabel">تحويل إلى PDF</span></button>
               <button class="btn" id="btnDeleteChat" type="button" title="حذف المحادثة" data-i18n-title="deleteChatLabel" style="color:#e66;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> <span class="btnLabel" data-i18n="deleteChatLabel">حذف المحادثة</span></button>
-              <input type="file" id="imgToPdfInput" accept="image/*" multiple style="display:none;">
+              <input type="file" id="imgToPdfInput" multiple style="display:none;"> <!-- v-pdf-docs: بلا accept — image/* كان يفتح المعرض وحده في أندرويد ويخفي الملفّات -->
               <!-- 📸 «ورّني وأبنيه»: capture="environment" يفتح الكاميرا الخلفية مباشرة على الجوال -->
               <input type="file" id="snapInput" accept="image/*" capture="environment" multiple style="display:none;">
             </div>
@@ -795,12 +953,6 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
           <p id="emptyDescEl" data-i18n="emptyDesc" style="display:none;">اكتب وصفًا في المربع على اليسار، مثال:<br>"لعبة كسر الطوب"، "موقع لمطعم بيتزا"، "قائمة مهام يومية"</p>
         </div>
         <iframe id="previewFrame" style="display:none;"></iframe>
-        <!-- 🧪 اختبار تفاعلي — لا يعمل تلقائيًا أبدًا: نقر أعمى على تطبيق قد
-             يحتوي زر حذف ليس مهمة خلفية، ويستهلك نقاطًا، ويُبقي المستخدم منتظرًا. -->
-        <div id="omranTestBar" style="display:none; align-items:center; gap:6px;">
-          <button type="button" id="btnTestApp" class="btn iconBtn" title="جرّبه لي" data-i18n-title="tryItTitle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v5a1 1 0 01-1 1h-4a1 1 0 01-1-1V3z"/><path d="M7 8l-2 13h14L17 8"/><circle cx="12" cy="15" r="2"/></svg> 🧪</button>
-          <button type="button" id="btnTestStop" class="btn iconBtn" title="إيقاف" data-i18n-title="stopTitle" style="display:none;">■</button>
-        </div>
         <div id="pyConsole" style="display:none;">
           <div id="pyConsoleToolbar">
             <button class="btn" id="btnRunPython" type="button" data-i18n="runPythonBtn">▶️ تشغيل</button>
@@ -830,16 +982,15 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     <div id="mahaMicMeter" style="display:none; margin:4px auto 0; width:84px; height:4px; border-radius:var(--r-1); background:rgba(255,255,255,.12); overflow:hidden;"><div id="mahaMicMeterFill" style="width:0%; height:100%; border-radius:var(--r-1); background:linear-gradient(90deg,#22c55e,#4ade80); transition:width .08s linear;"></div></div>
     <div id="mahaPointsMeter" style="display:none; margin-top:3px; align-items:center; justify-content:center; gap:4px; font-size:10px; color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
   </div>
-  <div style="flex:1; display:flex; align-items:center; justify-content:center; position:relative;">
+  <div id="mahaAvatarBox" style="flex:1; display:flex; align-items:center; justify-content:center; position:relative;">
     <div id="mahaOrb" class="maha-orb-idle" style="width:105px; height:105px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:39px; box-shadow:0 0 28px rgba(123,92,255,.5);">💁‍♀️</div>
     <img id="mahaGenImage" alt="" style="display:none; width:105px; height:105px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(123,92,255,.5); cursor:zoom-in;" />
     <div id="mahaWave" class="maha-wave-idle" style="display:none; width:77px; height:77px; border-radius:50%;"></div>
+    <!-- v-maha-ring (المالك ١ أكتوبر: «الذهبيّة دائرة» — حلقة ذهبيّة مضيئة متوسّطة في الوسط تنبض مع صوتها بدل الشريط): الحلقة يبنيها js/app-30-maha-wave.js -->
+    <div id="mahaGoldWave" data-shape="ring" aria-hidden="true" style="display:none; position:relative; width:clamp(150px, 26vw, 230px); height:clamp(150px, 26vw, 230px); max-width:none; overflow:visible;"></div>
   </div>
   <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:auto; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); width:59px; height:78px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
-  <!-- v-maha-captions: ترجمة نصية حية للمكالمة — مثل صوت GPT المتقدم، ولذوي ضعف السمع -->
-  <div id="mahaCaptions" dir="rtl" style="display:none; width:min(258px, 78vw); max-height:118px; overflow-y:auto; background:rgba(10,10,20,.78); border:1px solid rgba(255,255,255,.16); border-radius:13px; padding:7px 11px; font-size:12px; line-height:1.75; color:#f3efff; text-align:right; box-shadow:0 4px 16px rgba(0,0,0,.45); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);"></div>
-  <div style="display:flex; align-items:center; gap:13px;">
-    <button type="button" id="btnMahaCc" data-i18n-title="mahaCcTitle" title="الترجمة النصية" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:14px; cursor:pointer;">💬</button>
+  <div id="mahaCallBtns" style="display:flex; align-items:center; gap:13px;">
     <button type="button" id="btnMahaCamera" data-i18n-title="mahaCameraTitle" title="الكاميرا — عين مها" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:15px; cursor:pointer;">📷</button>
     <button type="button" id="btnMahaEndCall" style="width:45px; height:45px; border-radius:50%; border:none; background:#ff4d4d; color:#fff; font-size:18px; box-shadow:0 4px 11px rgba(255,77,77,.5); cursor:pointer;">✕</button>
   </div>
@@ -849,13 +1000,13 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=659"></script>
+<script defer src="/js/partials-settings.js?v=694"></script>
 
-<script src="/js/selfdiag.js?v=hw-twa-2"></script>
+<script src="/js/selfdiag.js?v=hw-twa-8"></script>
 <script defer src="/templates-data.js?v=589"></script>
-    <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=aab94ea0"></script>
-    <script defer src="/js/modes.js?v=m150916a"></script>
+    <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
+    <script defer src="/js/app.bundle.js?v=48e9bf40"></script>
+    <script defer src="/js/modes.js?v=m081026a"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">
@@ -876,7 +1027,8 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
   </div>
 </div>
 <div id="eduChatHint"><span id="eduChatHintTxt" style="flex:1;"></span><button class="eduPrimary" id="eduChatHintBtn" style="margin-top:0;padding:7px 12px;font-size:12px;border:none;border-radius:var(--r-2);cursor:pointer;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">التعليم</button></div>
-<script defer src="/js/edu.js?v=664"></script>
+<script defer src="/js/edu.js?v=668"></script>
+<script defer src="/js/edu-plus.js?v=2"></script>
 
 <!-- 👑 الرد الاحترافي (Premium Reply) — client-side wiring only. Server enforces real deduction. -->
 <script defer src="/js/premium.js?v=624"></script>
@@ -908,59 +1060,19 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
   <button type="button" class="omNavBtn" data-omnav="files"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavFiles">الملفات</span></button>
   <button type="button" class="omNavBtn" data-omnav="settings"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span data-i18n="omNavSettings">الإعدادات</span></button>
 </nav>
-<script defer src="/js/ui-wiring.js?v=648"></script>
+<script defer src="/js/ui-wiring.js?v=660"></script>
 <!-- v412 — استوديو صانع الفيديو (كمبيوتر فقط، لا يلمس الجوّال) -->
-<script defer src="/js/video.js?v=423"></script>
+<script defer src="/js/video.js?v=439"></script>
 
 <!-- v413 ديكور: إطار البطاقات · ذوبان حرفَي الشريط · مقبض اللوحة · زرّ المحادثة · الفواصل — كمبيوتر وجوّال -->
 
-    <!-- 🎨 تمييز الأرقام والروابط في ردود الذكاء بلون مختلف -->
+    <!-- 🎨 الروابط في ردود الذكاء ذهبيّة. v-num-plain (المالك ٢٣ سبتمبر «الأرقام تطلع باللون الذهبي، أريد فقط الروابط»):
+         أُزيل مُلوِّن الأرقام (.numHL) — كان يلفّ كلّ رقم بعد اكتمال الردّ بلون ذهبيّ. -->
     <style>
     /* v-links-yellow (أمر عمران «الروابط باللون الأصفر»): كانت خضراء — صارت صفراء مثل بقيّة الروابط. */
     .msg.assistant a{color:#e3b341 !important;font-weight:600;text-decoration:underline;text-underline-offset:2px;}
     body.dark .msg.assistant a, html.dark .msg.assistant a{color:#f5c451 !important;}
-    .numHL{color:#e8a020;font-weight:700;}
-    body.dark .numHL, html.dark .numHL{color:#f5c451;}
     </style>
-    <script>
-    (function(){
-    var SKIP = {A:1,CODE:1,PRE:1,SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,BUTTON:1};
-    var NUM_RE = /(\d[\d.,،:%\u066B\u066C]*\d%?|\d%?|[\u0660-\u0669][\u0660-\u0669.,،:%\u066B\u066C]*%?)/g;
-    function hl(root){
-      try{
-        var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-          acceptNode: function(n){
-            var p = n.parentNode;
-            for (var e = p; e && e !== root; e = e.parentNode) {
-              if (SKIP[e.nodeName] || (e.classList && e.classList.contains('numHL'))) return NodeFilter.FILTER_REJECT;
-            }
-            return /\d|[\u0660-\u0669]/.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-          }
-        });
-        var nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
-        nodes.forEach(function(n){
-          var frag = document.createDocumentFragment(), s = n.nodeValue, last = 0, m;
-          NUM_RE.lastIndex = 0;
-          while ((m = NUM_RE.exec(s))) {
-            if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
-            var sp = document.createElement('span'); sp.className = 'numHL'; sp.textContent = m[0];
-            frag.appendChild(sp); last = m.index + m[0].length;
-          }
-          if (last === 0) return;
-          if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
-          n.parentNode.replaceChild(frag, n);
-        });
-      }catch(e){}
-    }
-    var t = null;
-    new MutationObserver(function(){
-      clearTimeout(t);
-      t = setTimeout(function(){
-        document.querySelectorAll('.msg.assistant:not(.msg-streaming)').forEach(hl);
-      }, 600);
-    }).observe(document.body, {childList:true, subtree:true, characterData:true});
-    })();
-    </script> 
 <!-- ===== ✨ نجوم زر "محادثة جديدة" ===== -->
 <style>
 #omranNewChatBtn{ position:relative; overflow:hidden; }
@@ -988,6 +1100,10 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 @media (prefers-reduced-motion:reduce){
   #omranNewChatBtn > .omStar, #omranNewChatBtn::after{ animation:none; }
 }
+/* v-cpu-calm: في رسم هواوي البرمجيّ كلّ إطار حركة = الشاشة كلّها — الزخرفة الدائمة تسكن كما في «تقليل الحركة» */
+html.omCpu #omranNewChatBtn > .omStar, html.omCpu #omranNewChatBtn::after{ animation:none!important; }
+html.omCpu .omBrandStar{ animation:none!important; opacity:1; transform:none; }
+html.omCpu #stockTickerAiIcon{ animation:none!important; }
 </style>
 <script>
 (function(){
@@ -1000,11 +1116,17 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
     ['66%','80%','7px','3s','.9s'],
     ['30%','91%','5px','2.9s','1.9s']
   ];
+  /* v-stars-lite (الخطوة التالية التي سمّاها v-android-gpu ولم تُنفَّذ): كلّ نجمة طبقة تركيب
+     متحرّكة دائمة — ٢٥ نجمة (٧ على زرّ المحادثة و١٨ في الشريط) = ٢٥ طبقة تُركَّب في كلّ إطار.
+     على أندرويد وحده تُنصَّف: النجوم تبقى وتومض، والحمل ينزل للنصف. */
+  var OM_LITE = false;
+  try { OM_LITE = document.documentElement.classList.contains('omAndroid'); }
+  catch (e) { /* guard-ok: بلا العلامة يبقى العدد الكامل كما كان */ }
   function build(){
     var b = document.getElementById('omranNewChatBtn');
     if(!b || b.dataset.omStars) return;
     b.dataset.omStars = '1';
-    STARS.forEach(function(p){
+    STARS.filter(function(_, i){ return !OM_LITE || i % 2 === 0; }).forEach(function(p){
       var s = document.createElement('span');
       s.className = 'omStar';
       s.style.top = p[0]; s.style.left = p[1];
@@ -1046,7 +1168,10 @@ html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.pla
 </style>
 <script>
 (function(){
+  /* v-stars-lite: ثماني عشرة نجمة في الشريط الجانبيّ = ثماني عشرة طبقة متحرّكة — نصفها على أندرويد. */
   var COUNT = 18, layer = null;
+  try { if (document.documentElement.classList.contains('omAndroid')) COUNT = 8; }
+  catch (e) { /* guard-ok: بلا العلامة يبقى العدد الكامل */ }
 
   function makeLayer(){
     if(layer && layer.parentNode) return layer;

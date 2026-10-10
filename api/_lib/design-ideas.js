@@ -9,6 +9,30 @@
 // (٣) سبب الفشل يصل للواجهة (error:'provider') فتقول الحقيقة بدل «ما حصلت صورًا».
 const TAVILY = 'https://api.tavily.com/search';
 const crypto = require('crypto');
+const { checkAndConsumeCustom, refundCustom, clientIp } = require('./_usage.js');
+const { verifyToken } = require('./auth.js');
+
+/* v-open-tools-cap (المالك: «مفتوحة على مفاتيحك بلا حدّ»): المعرض كان بلا رمز ولا عدّاد ولا IP — كلّ نصّ جديد يطلق
+   حتّى ١٦ استعلام Tavily و٤ Google (مفاتيح البحث في المحادثة نفسها). الآن: جلسة شرط (التسجيل أوّلًا)، وسقف ثابت
+   لكلّ حساب يُعدّ حين يُجمع من الويب فقط — المخبوء مجّانيّ لا يُعدّ. تجاوزه 429 لا 402: حدّ ثابت لا ترفعه الباقة،
+   فلا يفتح «الباقات». المالك وVIP بلا سقف (checkAndConsumeCustom). */
+const IDEAS_DAILY_LIMIT = 30;
+async function meterFresh(req, res, body) {
+  const u = await checkAndConsumeCustom(body.token, null, clientIp(req), 'design-ideas', IDEAS_DAILY_LIMIT);
+  if (u.allowed) return true;
+  if (u.reason === 'auth') res.status(401).json({ error: 'auth_required' });
+  else res.status(429).json({ error: 'daily_limit_reached', limit: IDEAS_DAILY_LIMIT });
+  return false;
+}
+// v-refund-custom (المراجعة المعاكسة): كلّ المصادر فشلت (error:'provider') ولا صورة واحدة — الجمعة المعدودة تُردّ
+// v-ideas-paid (المراجعة الثانية): لكن «لا صور» تقع أيضًا حين يجيب Tavily أو Google بـ200 فارغًا — طلب مدفوع خُدم، والفراغ
+// لا يُخبَّأ، فكان أيّ نصّ بلا معنى يطلق ١٦ Tavily و٤ Google بلا حدّ. الردّ الآن فقط حين لم يخدم أيّ مزوّد مدفوع الطلب.
+// v-ideas-paid-count (المراجعة الثالثة): علم واحد لكلّ مزوّد يأخذ رمز الفشل إن فشل استعلام واحد من الثمانية — سبعة ردود Tavily
+// مدفوعة و٤٢٩ واحد (يحدثه المهاجم بنفسه بتجاوز المعدّل) كانت تردّ العدّ. الآن يُعدّ كلّ ردّ مدفوع ناجح، والردّ حين لا شيء منها.
+async function refundIfEmpty(req, body, out) {
+  const d = (out && out.detail) || {};
+  if (out && out.error === 'provider' && !(Number(d.paid) > 0)) await refundCustom(body.token, null, clientIp(req), 'design-ideas');
+}
 
 const PLACE_EN = {
   restaurant: 'restaurant', cafe: 'cafe coffee shop', bedroom: 'bedroom', majlis: 'arabic majlis',
@@ -44,7 +68,7 @@ async function tavilyImages(queries, apiKey, state) {
     body: JSON.stringify({ api_key: apiKey, query: q, search_depth: 'basic', include_images: true, include_answer: false, max_results: 10 }),
     signal: AbortSignal.timeout(15000),
   }).then(async (r) => {
-    if (r.ok) return r.json();
+    if (r.ok) { state.paid = (state.paid || 0) + 1; return r.json(); } // v-ideas-paid-count
     state.tavilyFail = r.status || 1;
     return { images: [] };
   }).catch(() => { state.tavilyErr = true; return { images: [] }; })));
@@ -64,7 +88,7 @@ async function googleImages(queries, state) {
     '&searchType=image&num=10&safe=active&q=' + encodeURIComponent(q),
     { signal: AbortSignal.timeout(15000) }
   ).then(async (r) => {
-    if (r.ok) return r.json();
+    if (r.ok) { state.paid = (state.paid || 0) + 1; return r.json(); } // v-ideas-paid-count
     state.googleFail = r.status || 1;
     return {};
   }).catch(() => { state.googleErr = true; return {}; })));
@@ -201,6 +225,7 @@ async function gather(apiKey, wave1, wave2, gq) {
     pexels: state.pexelsFail || (state.pexelsErr ? 'net' : (process.env.PEXELS_API_KEY ? 'ok' : 'off')),
     unsplash: state.unsplashFail || (state.unsplashErr ? 'net' : (process.env.UNSPLASH_ACCESS_KEY ? 'ok' : 'off')),
     openverse: state.ovFail || (state.ovErr ? 'net' : 'ok'),
+    paid: state.paid || 0, // v-ideas-paid-count: استعلامات Tavily/Google المدفوعة التي أجابت ok
   };
   if (!images.length) {
     out.error = 'provider';
@@ -217,6 +242,7 @@ module.exports = async (req, res) => {
   if (!apiKey && !hasGoogle) { res.status(500).json({ error: 'Server is missing TAVILY_API_KEY' }); return; }
   let body = req.body;
   if (!body || typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }
+  if (!verifyToken(body.token)) { res.status(401).json({ error: 'auth_required' }); return; }
   // v-cx-ideas: وضع المقاولات — نوع المبنى + ما يريد (واجهة/مخطط/داخلي…) + عدد الأدوار + الطراز
   if (String(body.mode || '') === 'construction') { return constructionIdeas(req, res, body, apiKey); }
   const place = String(body.place || '').trim();
@@ -229,6 +255,7 @@ module.exports = async (req, res) => {
   const key = cacheKey(['decor', subjectEn, subjectAr, style]);
   const cached = await cacheGet(key);
   if (cached && cached.images && cached.images.length) { res.setHeader('Cache-Control', 'private, max-age=600'); res.status(200).json(cached); return; }
+  if (!(await meterFresh(req, res, body))) return;
 
   // v-ideas-50 (طلب المالك: ٥٠ صورة على الأقل): موجتان من الاستعلامات —
   // الأولى ثمانية استعلامات متوازية، وإن لم تبلغ الصور الحدّ تُطلق الثانية.
@@ -260,6 +287,7 @@ module.exports = async (req, res) => {
   ];
   const out = await gather(apiKey, wave1, wave2, gq);
   if (out.images.length) await cacheSet(key, out);
+  await refundIfEmpty(req, body, out);
   res.setHeader('Cache-Control', 'private, max-age=600');
   res.status(200).json(out);
 };
@@ -289,11 +317,13 @@ async function constructionIdeas(req, res, body, apiKey) {
   const key = cacheKey(['cx', t[0], f[0], v[0], st[0], free]);
   const cached = await cacheGet(key);
   if (cached && cached.images && cached.images.length) { res.setHeader('Cache-Control', 'private, max-age=600'); res.status(200).json(cached); return; }
+  if (!(await meterFresh(req, res, body))) return;
   const wave1 = [en('design ideas'), en('photos'), ar(''), en('architecture'), ar('صور'), en('3d render'), ar('حديث'), en('inspiration')];
   const wave2 = [en('elevation'), en('pinterest'), ar('نماذج'), en('luxury'), ar('فخم'), en('gallery'), ar('أفكار'), en('real photo')];
   const gq = [en('design'), en('photos'), ar(''), en('architecture')];
   const out = await gather(apiKey, wave1, wave2, gq);
   if (out.images.length) await cacheSet(key, out);
+  await refundIfEmpty(req, body, out);
   res.setHeader('Cache-Control', 'private, max-age=600');
   res.status(200).json(out);
 }

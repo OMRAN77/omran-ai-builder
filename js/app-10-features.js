@@ -145,14 +145,18 @@ const btnInstall = $('#btnInstall');
       'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
       'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
       'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-5',
-      'google/gemini-pro-1.5': 'google/gemini-3.5-flash',
+      'google/gemini-pro-1.5': 'google/gemini-3.8-flash',
       /* v-models-family: بدائل الجيل السابق في المنسدلة المدفوعة → معرّفاتها الحاليّة. */
       'openai/gpt-4o-mini': 'openai/gpt-5.6-terra',
       'openai/gpt-4o': 'openai/gpt-5.6-terra',
       'anthropic/claude-sonnet-4.5': 'anthropic/claude-sonnet-5',
-      'google/gemini-2.5-pro': 'google/gemini-3.5-flash',
+      'google/gemini-2.5-pro': 'google/gemini-3.8-flash',
       'meta-llama/llama-3.1-70b-instruct': 'meta-llama/llama-4-maverick',
-      'deepseek/deepseek-chat': 'deepseek/deepseek-v3.2',
+      'deepseek/deepseek-chat': 'deepseek/deepseek-v4-pro',
+      /* v-models-latest (٢٥ سبتمبر): خيارات المنسدلة التي رُقّيت → معرّفاتها الجديدة. */
+      'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',
+      'google/gemini-3.5-flash': 'google/gemini-3.8-flash',
+      'deepseek/deepseek-v3.2': 'deepseek/deepseek-v4-pro',
     };
     if (__orRemap[__orOld]) localStorage.setItem('aiapp_openrouter_model', __orRemap[__orOld]);
   } catch(e){ __swallow(e, "save:app-10-features#3"); }
@@ -193,23 +197,20 @@ window.addEventListener('beforeinstallprompt', (e) => {
   } catch(err){ __swallow(err, "save:app-10-features#4"); }
 });
 
+/* v-browser-install: المتصفّحات التي لا تطلق beforeinstallprompt (Safari، Firefox، متصفّحات iOS)
+   تحصل على خطوات متصفّحها بلغة الواجهة. iPadOS يعرّف نفسه «Macintosh» فيُميَّز باللمس. */
+function installHowKey(ua, touchPoints){
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && touchPoints > 1);
+  if(isIOS) return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? 'installHowIOSOther' : 'installHowIOS';
+  if(/Android/i.test(ua)) return 'installHowAndroid';
+  if(/Firefox\//.test(ua)) return 'installHowFirefox';
+  if(/Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg\/|OPR\//.test(ua)) return 'installHowMacSafari';
+  return 'installHowDesktop';
+}
 function showManualInstallInstructions(){
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isAndroid = /Android/i.test(ua);
-  let msgAr, msgEn;
-  if(isIOS){
-    msgAr = 'للتثبيت على الآيفون:\n1) افتح الموقع من متصفح Safari\n2) اضغط زر المشاركة (المربع مع السهم للأعلى) في الأسفل\n3) اختر "إضافة إلى الشاشة الرئيسية"\n4) اضغط "إضافة"';
-    msgEn = 'To install on iPhone:\n1) Open this site in Safari\n2) Tap the Share button (square with an up arrow)\n3) Choose "Add to Home Screen"\n4) Tap "Add"';
-  } else if(isAndroid){
-    msgAr = 'للتثبيت على أندرويد:\n1) افتح قائمة المتصفح (⋮) في الأعلى يمين\n2) اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"\n3) اتبع التعليمات لإتمام التثبيت';
-    msgEn = 'To install on Android:\n1) Open the browser menu (⋮) top-right\n2) Choose "Install app" or "Add to Home screen"\n3) Follow the prompts to finish installing';
-  } else {
-    msgAr = 'للتثبيت على الكمبيوتر:\nابحث عن أيقونة التثبيت (⊕ أو شاشة صغيرة) في شريط عنوان المتصفح، ثم اضغط عليها واختر "تثبيت".';
-    msgEn = 'To install on desktop:\nLook for the install icon (⊕ or small monitor) in your browser\'s address bar, click it, then choose "Install".';
-  }
-  const currentLang = (typeof lang !== 'undefined' && lang === 'ar') ? 'ar' : 'en';
-  alert(currentLang === 'ar' ? msgAr : msgEn);
+  const key = installHowKey(navigator.userAgent || '', navigator.maxTouchPoints || 0);
+  const d = (typeof window.curT === 'function') ? window.curT() : {};
+  alert(d[key] || (I18N.en || {})[key] || '');
 }
 
 const onInstallBtnClick = async () => {
@@ -228,6 +229,27 @@ installButtons.forEach(b => { b.onclick = onInstallBtnClick; });
 window.addEventListener('appinstalled', () => {
   showInstallButtons(false);
 });
+
+/* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
+   المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */
+(function(){
+  try {
+    const u = new URL(location.href);
+    const q = (u.searchParams.get('q') || '').trim().slice(0, 4000);
+    if(!q) return;
+    u.searchParams.delete('q');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    const fill = () => {
+      const p = document.getElementById('prompt');
+      if(!p) return;
+      p.value = q;
+      p.dispatchEvent(new Event('input', { bubbles: true }));
+      try { p.focus(); } catch(e){ __swallow(e, "misc:app-10-features#q-focus"); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill, { once: true });
+    else setTimeout(fill, 0);
+  } catch(e){ __swallow(e, "misc:app-10-features#q"); }
+})();
 
 /* ---------- Share App button ---------- */
 const btnShareApp = $('#btnShareApp');
@@ -468,6 +490,26 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   }
   const stpCloseBtn = document.getElementById('stpCloseBtn');
   if(stpCloseBtn && ptOverlay){ stpCloseBtn.onclick = () => ptOverlay.classList.remove('show'); }
+  /* v-tools-shelves: الصفحة الرئيسية صفوف اكتشاف أفقية، و«عرض الكل» يستبدل
+     المحتوى داخل شاشة الأدوات نفسها. لا نافذة متداخلة ولا نسخ للأزرار. */
+  let ptSectionsView = null, ptAllView = null, ptAllTitle = null, ptAllHost = null, ptAllBack = null;
+  if(ptPopup){
+    ptSectionsView = document.createElement('div');
+    ptSectionsView.className = 'ptSectionsView';
+    ptAllView = document.createElement('section');
+    ptAllView.className = 'ptAllView';
+    ptAllView.hidden = true;
+    ptAllView.innerHTML = '<div class="ptAllHead"><button type="button" class="ptAllBack"></button><h2 class="ptAllTitle" tabindex="-1"></h2></div><div class="ptAllHost"></div>';
+    ptAllTitle = ptAllView.querySelector('.ptAllTitle');
+    ptAllHost = ptAllView.querySelector('.ptAllHost');
+    ptAllBack = ptAllView.querySelector('.ptAllBack');
+    ptAllBack.setAttribute('data-i18n-title', 'back');
+    ptAllBack.title = (typeof t === 'function') ? t('back') : 'رجوع';
+    ptAllBack.setAttribute('aria-label', ptAllBack.title);
+    ptAllBack.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>';
+    ptPopup.appendChild(ptSectionsView);
+    ptPopup.appendChild(ptAllView);
+  }
   // v434: أيقونات Microsoft Fluent 3D الرسمية لبطاقات تبويب الأدوات
   const STP_3D = 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/';
   const STP_ICONS = {
@@ -504,17 +546,53 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   }
   groups.forEach(g => {
     if(g.title && ptPopup){
-      const h = document.createElement('div');
+      const section = document.createElement('section');
+      section.className = 'ptSection';
+      section.setAttribute('data-tools-group', g.title);
+      const head = document.createElement('div');
+      head.className = 'ptSectionHead';
+      const h = document.createElement('h2');
       h.className = 'ptSectionTitle';
       const lbl = document.createElement('span');
       lbl.setAttribute('data-i18n', g.title);
       lbl.textContent = (typeof t === 'function') ? t(g.title) : g.title;
       h.appendChild(lbl);
-      ptPopup.appendChild(h);
-      const grid = document.createElement('div');
-      grid.className = 'ptGrid';
-      ptPopup.appendChild(grid);
-      g.ids.forEach(id => { const b = document.getElementById(id); if(b){ grid.appendChild(b); stpApply3d(b, id); } });
+      const controls = document.createElement('div');
+      controls.className = 'ptShelfControls';
+      const all = document.createElement('button');
+      all.type = 'button';
+      all.className = 'ptViewAll';
+      all.setAttribute('data-i18n', 'portraitStyleBrowseAll');
+      all.textContent = (typeof t === 'function') ? t('portraitStyleBrowseAll') : 'عرض الكل';
+      const prev = document.createElement('button');
+      prev.type = 'button'; prev.className = 'ptShelfArrow ptShelfPrev'; prev.innerHTML = '‹';
+      const next = document.createElement('button');
+      next.type = 'button'; next.className = 'ptShelfArrow ptShelfNext'; next.innerHTML = '›';
+      prev.setAttribute('aria-label', '‹ ' + lbl.textContent);
+      next.setAttribute('aria-label', '› ' + lbl.textContent);
+      controls.appendChild(all);
+      head.appendChild(h); head.appendChild(controls);
+      const carouselShell = document.createElement('div');
+      carouselShell.className = 'ptCarouselShell';
+      const viewport = document.createElement('div');
+      viewport.className = 'ptCarousel';
+      const track = document.createElement('div');
+      track.className = 'ptGrid ptTrack';
+      const start = document.createElement('i');
+      start.className = 'ptSentinel ptSentinelStart';
+      start.setAttribute('aria-hidden', 'true');
+      const end = document.createElement('i');
+      end.className = 'ptSentinel ptSentinelEnd';
+      end.setAttribute('aria-hidden', 'true');
+      track.appendChild(start);
+      g.ids.forEach(id => { const b = document.getElementById(id); if(b){ track.appendChild(b); stpApply3d(b, id); } });
+      track.appendChild(end);
+      viewport.appendChild(track);
+      carouselShell.appendChild(viewport);
+      carouselShell.appendChild(prev);
+      carouselShell.appendChild(next);
+      section.appendChild(head); section.appendChild(carouselShell);
+      ptSectionsView.appendChild(section);
       /* v-tools-back (طلب عمران ١ سبتمبر): اختيار ميزة كان يغلق مربع
          الأدوات تحتها — فإغلاق الميزة يرمي المستخدم للمحادثة بدل «نقطة
          خلف». كل الميزات تفتح فوق المربع (تدقيق z-index للسبع عشرة)،
@@ -524,6 +602,115 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) dd.appendChild(b); });
     }
   });
+  if(ptPopup && ptSectionsView && ptAllView){
+    let allState = null, historyToken = 0;
+    const cards = (track) => Array.from(track.children).filter(el => el.matches && el.matches('button.btn'));
+    const moveShelf = (section, delta) => {
+      const viewport = section.querySelector('.ptCarousel'), list = cards(section.querySelector('.ptTrack'));
+      if(!viewport || !list.length) return;
+      const vr = viewport.getBoundingClientRect();
+      const visible = list.map((el, i) => ({ el, i, r:el.getBoundingClientRect() }))
+        .filter(x => x.r.left >= vr.left - 2 && x.r.right <= vr.right + 2);
+      const first = visible.length ? visible[0].i : 0;
+      const amount = Math.max(1, visible.length - 1);
+      const target = list[Math.max(0, Math.min(list.length - 1, first + delta * amount))];
+      if(!target) return;
+      try{ target.scrollIntoView({ behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest', inline:'start' }); }
+      catch(e){ try{ target.scrollIntoView(); }catch(_){ __swallow(_, 'tools:shelf-scroll'); } }
+    };
+    /* v-hw-tools-grid (المالك ٢٨ سبتمبر بعد نشر v-shelf-nocomposite: «الحين أبطأ كثير، وما توقف آخر صورة، واحذف
+       الدوائر اللي فيها الأسهم»): تطبيق هواوي يرسم بالمعالج المركزيّ (v-cpu-raster)، فالصفّ الأفقيّ يا ماسح مركّب
+       يفرغ (فيديو ١٧:٤٦) يا سحب بـJS يعيد رسم النافذة كلّها مع كلّ حركة إصبع فيبطؤ. داخل تطبيق هواوي لا سحب
+       جانبيّ إذن: كلّ قسم شبكة عموديّة ببطاقاته كلّها (شكل الأدوات قبل الصفوف، وكان سليمًا على الجهاز نفسه)، بلا
+       أسهم ولا «عرض الكل». البوّابة: جسر OmranRender (1.3.12+) أو html.store-safe (selfdiag.js المتزامن يضبطه من
+       ?store=huawei قبل الحزمة). الحاسوب والمتصفّحات على الصفوف كما هي. */
+    /* v-tools-one-col (المالك بلقطة من جهازه: «رجّعلي في الأدوات نفس قبل… نفس هاذي»): الشكل المطلوب
+       بطاقة واحدة بعرض كامل في الصفّ. البوّابة نفسها تُوسَّع للهواتف والتابلت (حتّى ١٠٢٤) بدل قاعدة CSS مستقلّة — فتُعاد
+       استعمال قواعد الشبكة القائمة وإخفاء الأسهم و«عرض الكل»، ويبقى سحب الرجوع يعمل (app-05-swipe-back
+       يسمح به فوق .ptHwGrid ويحجبه فوق الصفّ الأفقيّ). الحاسوب على صفوفه كما هو. */
+    const ptHwGrid = (() => { try{
+      if((window.OmranRender && typeof window.OmranRender.mode === 'function') || document.documentElement.classList.contains('store-safe')) return true;
+      return !!(window.matchMedia && window.matchMedia('(max-width:1024px)').matches);
+    }catch(e){ return false; } })();
+    if(ptHwGrid) ptSectionsView.classList.add('ptHwGrid');
+    const closeAll = (restoreFocus) => {
+      if(!allState) return;
+      const s = allState, track = ptAllHost.querySelector('.ptTrack');
+      if(track) s.viewport.appendChild(track);
+      ptAllView.hidden = true;
+      ptSectionsView.hidden = false;
+      allState = null;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ptPopup.scrollTop = s.top;
+        s.viewport.scrollLeft = s.left;
+        if(restoreFocus && s.opener) try{ s.opener.focus(); }catch(e){ __swallow(e, 'tools:focus-return'); }
+      }));
+    };
+    const openAll = (section, opener) => {
+      const viewport = section.querySelector('.ptCarousel'), track = section.querySelector('.ptTrack');
+      const title = section.querySelector('.ptSectionTitle');
+      if(!viewport || !track || !title) return;
+      historyToken++;
+      allState = { section, viewport, opener, top:ptPopup.scrollTop, left:viewport.scrollLeft, token:historyToken };
+      ptAllTitle.textContent = title.textContent;
+      ptSectionsView.hidden = true;
+      ptAllView.hidden = false;
+      ptAllHost.appendChild(track);
+      ptPopup.scrollTop = 0;
+      try{ history.pushState({ omranToolsAll:historyToken }, '', location.href); }catch(e){ __swallow(e, 'tools:history-push'); }
+      requestAnimationFrame(() => { try{ ptAllTitle.focus(); }catch(e){ __swallow(e, 'tools:focus-title'); } });
+    };
+    ptAllBack.onclick = () => {
+      if(allState && history.state && history.state.omranToolsAll === allState.token) history.back();
+      else closeAll(true);
+    };
+    if(ptOverlay){
+      ptOverlay.__omranSwipeBackStep = () => {
+        if(!allState) return false;
+        if(history.state && history.state.omranToolsAll === allState.token) history.back();
+        else closeAll(true);
+        return true;
+      };
+    }
+    window.addEventListener('popstate', () => { if(allState) closeAll(true); });
+    ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
+      const viewport = section.querySelector('.ptCarousel');
+      const start = section.querySelector('.ptSentinelStart'), end = section.querySelector('.ptSentinelEnd');
+      const all = section.querySelector('.ptViewAll'), prev = section.querySelector('.ptShelfPrev'), next = section.querySelector('.ptShelfNext');
+      const edge = { start:false, end:false, seenStart:false, seenEnd:false };
+      const paint = () => {
+        if(!edge.seenStart || !edge.seenEnd) return;
+        const noOverflow = edge.start && edge.end;
+        section.classList.toggle('ptNoOverflow', noOverflow);
+        prev.disabled = edge.start; next.disabled = edge.end;
+        prev.hidden = noOverflow || edge.start; next.hidden = noOverflow || edge.end; all.hidden = noOverflow;
+      };
+      try{
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            const k = entry.target === start ? 'start' : 'end';
+            edge[k] = entry.isIntersecting && entry.intersectionRatio >= .9;
+            edge[k === 'start' ? 'seenStart' : 'seenEnd'] = true;
+          });
+          paint();
+        }, { root:viewport, threshold:[0, .9, 1] });
+        observer.observe(start); observer.observe(end);
+      }catch(e){
+        all.hidden = false; prev.hidden = false; next.hidden = false;
+      }
+      prev.onclick = () => moveShelf(section, -1);
+      next.onclick = () => moveShelf(section, 1);
+      all.onclick = () => openAll(section, all);
+    });
+    if(ptOverlay && window.MutationObserver){
+      new MutationObserver(() => {
+        if(ptOverlay.classList.contains('show') || !allState) return;
+        const hadHistory = history.state && history.state.omranToolsAll === allState.token;
+        closeAll(false);
+        if(hadHistory) try{ history.back(); }catch(e){ __swallow(e, 'tools:history-clean'); }
+      }).observe(ptOverlay, { attributes:true, attributeFilter:['class'] });
+    }
+  }
   // v214: تسجيل الخروج دائمًا آخر خانة في القائمة
   const lastLogout = document.getElementById('btnMenuLogout');
   if(lastLogout) dd.appendChild(lastLogout);
@@ -690,9 +877,129 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       fr.readAsDataURL(file);
     });
   }
+  /* v-pdf-docs (شكوى عمران: «فقط صورة أقدر أحمّل»): الزرّ كان يقبل الصور وحدها (accept=image/* يفتح
+     المعرض فقط في أندرويد). الآن: صور + Word (.docx) + نصوص (txt/md/csv/log/json…) — كلّها داخل
+     المتصفّح بلا خادم ولا رصيد. «PDF» و«.doc» القديم وExcel/PowerPoint تُتخطّى برسالة تسمّيها. */
+  const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  function pdfKindOf(f){
+    const n = String((f && f.name) || ''), ty = String((f && f.type) || '');
+    if(ty.indexOf('image/') === 0 || /\.(jpe?g|png|gif|webp|bmp|hei[cf]|avif)$/i.test(n)) return 'image';
+    if(ty === DOCX_MIME || /\.docx$/i.test(n)) return 'docx';
+    if(/\.(html?|rtf|xml)$/i.test(n) || ty === 'text/html' || ty === 'text/rtf') return 'other';
+    if(ty.indexOf('text/') === 0 || /\.(txt|md|markdown|csv|tsv|log|json|ini|ya?ml)$/i.test(n)) return 'text';
+    return 'other';
+  }
+  function fmtPdf(key, vars){
+    return String(t(key)).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined) ? vars[k] : m);
+  }
+  /* «نوت باد» العربيّ القديم يحفظ بترميز ويندوز ١٢٥٦ لا UTF-8 — بلا هذا يخرج النصّ رموزًا */
+  async function readTextFile(file){
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if(bytes[0] === 0xFF && bytes[1] === 0xFE) return new TextDecoder('utf-16le').decode(bytes);
+    if(bytes[0] === 0xFE && bytes[1] === 0xFF) return new TextDecoder('utf-16be').decode(bytes);
+    try{ return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+    catch(e){ __swallow(e, 'pdf:not-utf8'); }
+    try{ return new TextDecoder('windows-1256').decode(bytes); }
+    catch(e){ __swallow(e, 'pdf:no-1256'); return new TextDecoder('utf-8').decode(bytes); }
+  }
+  /* كلّ سطر كتلة: السطر لا يُقطع عند حافّة الصفحة، واتّجاهه يُكتشف من حروفه (عربيّ/إنجليزيّ) */
+  function textBlocks(text, title){
+    const lines = String(text || '').slice(0, 400000).replace(/\r\n?/g, '\n').split('\n').slice(0, 20000);
+    const out = [];
+    if(title) out.push({ html: '<div dir="auto" style="font-weight:700;font-size:18px;margin-bottom:10px;">' + msgEscapeHtml(title) + '</div>' });
+    lines.forEach((ln) => out.push({ html: '<div dir="auto" style="white-space:pre-wrap;word-break:break-word;">' + (ln.trim() ? msgEscapeHtml(ln.replace(/\t/g, '    ')) : '&nbsp;') + '</div>' }));
+    if(out.length) out[0].newpage = true;
+    return out;
+  }
+  /* mammoth يحوّل Word إلى HTML (عناوين/قوائم/جداول/صور)؛ نمرّره بقائمة بيضاء قبل أن يلمس الصفحة
+     فلا وسم ولا خاصّية (onerror/href/style) من ملفّ غريب تصل إلى DOM التطبيق */
+  async function docxBlocks(file, title){
+    await omranLoadMammoth();
+    const res = await window.mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+    const doc = new DOMParser().parseFromString('<!doctype html><body>' + res.value, 'text/html');
+    doc.querySelectorAll('script,style,iframe,object,embed,link,meta,form,svg,audio,video').forEach((n) => n.remove());
+    doc.body.querySelectorAll('*').forEach((el) => {
+      Array.from(el.attributes).forEach((a) => {
+        const n = a.name.toLowerCase();
+        const ok = n === 'colspan' || n === 'rowspan' || n === 'alt' || (n === 'src' && el.tagName === 'IMG' && /^data:image\//i.test(a.value));
+        if(!ok) el.removeAttribute(a.name);
+      });
+      if(/^(P|H[1-6]|LI|TD|TH|UL|OL)$/.test(el.tagName)) el.setAttribute('dir', 'auto');
+    });
+    const out = [];
+    if(title) out.push({ html: '<div dir="auto" style="font-weight:700;font-size:18px;margin-bottom:10px;">' + msgEscapeHtml(title) + '</div>' });
+    Array.from(doc.body.children).forEach((el) => {
+      const tag = el.tagName;
+      if(tag === 'UL' || tag === 'OL'){
+        /* القائمة الطويلة تُوزَّع بنودها على الصفحات؛ start يحفظ الترقيم */
+        Array.from(el.children).forEach((li, k) => out.push({ html: '<' + tag.toLowerCase() + ' dir="auto"' + (tag === 'OL' ? ' start="' + (k + 1) + '"' : '') + '>' + li.outerHTML + '</' + tag.toLowerCase() + '>' }));
+      } else out.push({ html: el.outerHTML });
+    });
+    if(!out.length || (title && out.length === 1)) throw new Error('empty-doc');
+    out[0].newpage = true;
+    return out;
+  }
+  async function imageBlock(file){
+    const dec = await readImage(await omranNormalizeImageFile(file));
+    const img = dec.img;
+    const cv = document.createElement('canvas');
+    const sc = Math.min(1, 1600 / Math.max(img.width, img.height));
+    cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+    const cx = cv.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+    cx.drawImage(img, 0, 0, cv.width, cv.height);
+    return [{ html: '<img alt="" src="' + cv.toDataURL('image/jpeg', 0.82) + '">', newpage: true, alone: true }];
+  }
+  /* ملفّات مختلطة أو وثائق: تُرتَّب كما اختارها المستخدم في ملفّ PDF واحد، والتالف يُتخطّى ويُسمّى */
+  async function runPdfDocs(all){
+    const failed = [], skipped = [];
+    let added = 0, outcome = null;
+    btn.disabled = true;
+    try{
+      const blocks = [];
+      const multi = all.length > 1;
+      for(const f of all){
+        const kind = pdfKindOf(f);
+        if(kind === 'other'){ skipped.push(f.name || f.type || '?'); continue; }
+        try{
+          const part = kind === 'image' ? await imageBlock(f)
+            : kind === 'docx' ? await docxBlocks(f, multi ? f.name : '')
+            : textBlocks(await readTextFile(f), multi ? f.name : '');
+          if(part.length){ part.forEach((b) => blocks.push(b)); added++; } /* لا spread: آلاف الكتل تتجاوز حدّ وسائط الدالّة */
+        }catch(e){
+          failed.push((f.name || '?') + ' (' + String((e && e.message) || e).slice(0, 60) + ')');
+          __swallow(e, 'pdf:doc-read');
+        }
+      }
+      if(added){
+        const only = all.length === 1 ? String(all[0].name || '').replace(/\.[^.]*$/, '').replace(/[\\/:*?"<>|]+/g, '_').trim() : '';
+        outcome = await omranExportPagedPdfFile(blocks, { fileName: (only || 'omran-docs') + '.pdf' });
+      }
+    }catch(err){
+      try{
+        fetch('/api/system?action=client-errors', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            message: 'DOC2PDF FAIL: ' + String((err && err.message) || err).slice(0,120)
+              + ' — types: ' + all.map(f => f.type || f.name || '?').slice(0,5).join(','),
+            source: 'doc-to-pdf', url: location.href, ua: navigator.userAgent
+          }), keepalive: true
+        }).catch(function(){ /* guard-ok: الإبلاغ لا يعطل شيئًا */ });
+      }catch(e2){ __swallow(e2, 'doc2pdf:report'); }
+      failed.push(String((err && err.message) || err).slice(0, 120));
+    }
+    btn.disabled = false;
+    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    const notes = [];
+    if(outcome && outcome.truncated) notes.push(fmtPdf('pdfDocTruncated', { n: outcome.pages }));
+    if(skipped.length) notes.push(fmtPdf('pdfDocSkipped', { n: skipped.length, names: skipped.slice(0, 3).join('، ') }));
+    if(failed.length) notes.push(fmtPdf('pdfDocFail', { why: failed.slice(0, 3).join(' | ') }));
+    if(notes.length) alert(notes.join('\n'));
+  }
   let __pdfPickHandled = false;
   async function runPdfFiles(rawFiles){
-    const files = Array.from(rawFiles || []).filter(f => f.type.indexOf('image/') === 0);
+    const all = Array.from(rawFiles || []);
+    if(all.some(f => pdfKindOf(f) !== 'image')) return runPdfDocs(all);
+    const files = all;
     /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
        مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
        (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */
@@ -792,23 +1099,12 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ /* guard-ok */ }
     try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ /* guard-ok */ }
   };
-  /* v-brand-l10n (طلب المالك ٢٩ أغسطس): شعار ذهبي مخصوص لكل لغة — العربي
-     والإنجليزي كما هما بلا أي تغيير. الأعراض عند ارتفاع 42 من ملفات PNG
-     الفعلية (الأصل 168px = ٤×). لغة بلا شعار خاص ترجع للإنجليزي. */
-  const BRAND_L10N_W = { zh:84, hi:71, es:87, fr:89, bn:80, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
+  /* v-om-brand (طلب عمران ٢٥ سبتمبر): شعار «OM Ai» بنجومه الثلاث واحد لكلّ اللغات
+     ومكتوب في index.html بأبعاده (لا قفزة)، فلا تبديل صورة حسب اللغة — بدّل شعار
+     «عمران» الخاصّ بكلّ لغة (v-brand-l10n). يبقى نسخه إلى رأس القائمة الجانبيّة. */
   const syncBrand = () => {
     const bt = document.getElementById('brandTitle');
-    const l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
     if(bt){
-      /* v-brand-stable (شكوى ٢٩ أغسطس: الشعار يتحرك عند التحديث): أبعاد
-         الصورة تُعلن مسبقًا فيحجز المتصفح مكانها قبل تحميلها — لا قفزة.
-         النِّسب من ملفات PNG الفعلية: عربي 1203×400، إنجليزي 1534×400. */
-      let imgSrc, imgW, imgAlt;
-      if(l === 'ar'){ imgSrc = 'icons/brand-ar.png'; imgW = 126; imgAlt = 'عمران Ai'; }
-      else if(BRAND_L10N_W[l]){ imgSrc = 'icons/brand-' + l + '.png'; imgW = BRAND_L10N_W[l]; imgAlt = 'Omran Ai'; }
-      else { imgSrc = 'icons/brand-en.png'; imgW = 161; imgAlt = 'Omran Ai'; }
-      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
-      /* v-sidebar-brand: نسخة رأس القائمة الجانبيّة تتبع الشعار نفسه عند تبديل اللغة */
       const sb = document.getElementById('sidebarBrand');
       if(sb){ sb.innerHTML = bt.innerHTML; if(h1 && !sb.onclick) sb.onclick = h1.onclick; }
     }
@@ -1117,18 +1413,19 @@ function openShareModal(project){
     resultBox.style.display = 'none';
     createBtn.disabled = true;
     try{
-      const username = (typeof authGet === 'function' && authGet('aiapp_username')) ? authGet('aiapp_username') : 'زائر';
+      /* v-share-guard: النشر برمز الجلسة — الخادم يأخذ اسم الناشر من الرمز، فلا يُرسَل الاسم */
       const resp = await fetch('/api/share', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           title: shareModalProject.title || t('defaultProjectTitle'),
           code: shareModalProject.code || '',
-          username,
+          token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''),
           isPublic,
           messages: __shareMsgs, /* v-share-chat */
         }),
       });
+      if(resp.status === 401){ closeModal(); if(typeof window.requireLogin === 'function') window.requireLogin('guestLimit'); return; } /* v-share-guard: الضيف → التسجيل (النافذة فوق شاشة الدخول فتُغلق أوّلًا) */
       const data = await resp.json();
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
@@ -1154,6 +1451,78 @@ function openShareModal(project){
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCopied');
   });
+})();
+
+/* v-modal-img-release (المالك ٢٤ سبتمبر، الجولة الرابعة: «نفس المشكلة»).
+   قياس «فحص النظام» من جهازه بعد v-art-defer: `صور ظاهرة 1 (0MB) كلّ 33 (151MB)` — أي **٣٢
+   صورة داخل حاويات مخفيّة تحمل ١٥١ م.ب**. صور المعارض كلّها 360×540 (٠٫٧٤ م.ب) فلا تفسّر الرقم؛
+   الذي يفسّره صور **النتائج المولَّدة** (2K = ١٦ م.ب للواحدة) الباقية في `<img>` داخل نوافذ
+   الاستوديوهات بعد إغلاقها: عشرة منها ≈ ١٦٠ م.ب. إغلاق النافذة كان `display:none` وحده، فتبقى
+   البكسلات محجوزة إلى نهاية الجلسة، وعليها تتزاحم فكّ الصور والرسم فتتأخّر الطبقة الرئيسيّة —
+   وهذا ما يظهر في فيديو المالك: مربّعات رماديّة مكان الأيقونات ثمّ شاشة فارغة ثمّ الرسم الصحيح
+   (بلاطات لم تُرسَم بعد)، بينما شريط الأسهم يبقى مرسومًا لأنّه طبقة تركيب مستقلّة.
+
+   هنا: عند إخفاء النافذة تُفرَّغ صورها الكبيرة وحدها (≥ ٤ م.ب مفكوكة — النتائج والمعاينات، لا
+   بطاقات المعارض ولا الأيقونات) ويُحفظ مصدرها؛ وعند إظهارها يُعاد فورًا قبل أن يراها المستخدم.
+   لا تُمسّ صورة قيد التحميل (naturalWidth == 0) فلا يُقطع توليد جارٍ. */
+(function omranModalImgRelease(){
+  var MIN_PX = 4 * 1048576 / 4; /* ≥ ٤ م.ب مفكوكة = مليون بكسل (١٠٢٤×١٠٢٤ فأكثر) */
+  var IDS = ['portraitStyleModal','videoMakerModal','designAiModal','fashionAiModal','studioAiModal',
+    'constructionModal','religionModal','emailAssistModal','expModal','docModal','govModal','cvModal',
+    'eduHubModal','omranEduModal','portraitStyleSheet','pickerSheet','adStudioModal','imgTextModal'];
+
+  function shown(el){
+    try{ return !!el.offsetParent || getComputedStyle(el).display !== 'none'; }
+    catch(e){ return true; /* guard-ok: عند الشكّ لا نحرّر شيئًا */ }
+  }
+  function release(modal){
+    var n = 0;
+    try{
+      var imgs = modal.getElementsByTagName('img');
+      for(var i = 0; i < imgs.length; i++){
+        var im = imgs[i];
+        if(!im.naturalWidth) continue;                    /* قيد التحميل — لا يُقطع */
+        if(im.naturalWidth * im.naturalHeight < MIN_PX) continue;
+        var src = im.getAttribute('src');
+        if(!src || im.__omHold) continue;
+        im.__omHold = src;
+        im.removeAttribute('src');
+        n++;
+      }
+    }catch(e){ __swallow(e, 'modal-img-release'); }
+    return n;
+  }
+  function restore(modal){
+    try{
+      var imgs = modal.getElementsByTagName('img');
+      for(var i = 0; i < imgs.length; i++){
+        var im = imgs[i];
+        if(!im.__omHold) continue;
+        im.src = im.__omHold;
+        im.__omHold = null;
+      }
+    }catch(e){ __swallow(e, 'modal-img-restore'); }
+  }
+  /* أيّ كود يقرأ .src ونافذته مغلقة يجد الفراغ — لذلك مُتاح استرجاعها صراحةً. */
+  window.omranModalImgSrc = function(img){ return (img && (img.__omHold || img.getAttribute('src'))) || ''; };
+
+  function watch(id){
+    var m = document.getElementById(id);
+    if(!m || m.__omImgWatch) return;
+    m.__omImgWatch = 1;
+    var was = shown(m);
+    try{
+      new MutationObserver(function(){
+        var now = shown(m);
+        if(now === was) return;
+        was = now;
+        if(now) restore(m); else release(m);
+      }).observe(m, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+    }catch(e){ __swallow(e, 'modal-img-watch'); }
+  }
+  function arm(){ IDS.forEach(watch); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arm);
+  arm(); setTimeout(arm, 1500); setTimeout(arm, 4000);
 })();
 
 /* v-modal-close-fix (شكوى عمران: «✕ فوق عند الساعة ما ينضغط» — وبطلبه لاحقًا:

@@ -29,24 +29,46 @@ btnStop.onclick = () => {
 // v246 — قسم الصوت المبسط: زران (رجل/امرأة) يحفظان الاختيار فورًا + زر تجربة.
 function setVoiceGenderUI(val){
   document.querySelectorAll('.voiceGenderBtn').forEach(b => b.classList.toggle('active', b.dataset.gender === val));
+  /* v-voice-calligraphy: اسم الشخصيّة صورة خطّ ذهبيّ — العربيّة للواجهة العربيّة، والإنجليزيّة لكلّ لغة أخرى (طلب المالك). */
+  const __vl = (typeof lang === 'string' && lang === 'ar') ? 'ar' : 'en';
+  document.querySelectorAll('#voiceGenderBtns .vgName').forEach(img => {
+    const want = '/icons/name-' + img.dataset.persona + '-' + __vl + '.png';
+    if(img.getAttribute('src') !== want){ img.onerror = () => img.classList.remove('on'); img.setAttribute('src', want); }
+    img.classList.toggle('on', !window.__mahaPaused); // من مها موقوفة عنده يرى الأسماء محايدة (v-maha-pause) لا صورها
+  });
+}
+/* v-voice-names (المالك ١ أكتوبر «ضيف عبدالله… ويكون في الإعدادات صوت تجريبيّ: مها وعبدالله»): الزرّان باسميهما،
+   والضغط يختار الصوت ويُسمعك تعريفه بنفسه فورًا («أنا مها…»/«أنا عبدالله…») — وزرّ التجربة يُسمع المختار. */
+function voicePersonaSample(gender){
+  const name = t(gender === 'male' ? 'voiceGenderMale' : 'voiceGenderFemale');
+  const tpl = t('voiceSampleIntro');
+  return (tpl && tpl !== 'voiceSampleIntro' ? tpl : "Hi, I'm {name}. How can I help you today?").split('{name}').join(name);
 }
 document.querySelectorAll('.voiceGenderBtn').forEach(b => {
   b.onclick = () => {
     localStorage.setItem('aiapp_voice_gender', b.dataset.gender);
     setVoiceGenderUI(b.dataset.gender);
+    try{ if(typeof mahaUpdatePersonaUI === 'function') mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'voice:persona-ui'); } // الأيقونة والاسم فورًا
+    try{ speakSmart(voicePersonaSample(b.dataset.gender), null, null, true); }catch(e){ __swallow(e, 'voice:persona-sample'); }
+  };
+});
+// v-maha-voice-speed: نفس نمط أزرار الجنس أعلاه لأزرار السرعة — يُزامَن عند فتح
+// الإعدادات فعليًا (app-06-checkout.js، مثل setVoiceGenderUI بالضبط) لا هنا فورًا،
+// لأن أزرار القسم قد لا تكون في DOM وقت تحميل هذا الجزء.
+function setVoiceSpeedUI(val){
+  document.querySelectorAll('.voiceSpeedBtn').forEach(b => b.classList.toggle('active', b.dataset.speed === val));
+}
+document.querySelectorAll('.voiceSpeedBtn').forEach(b => {
+  b.onclick = () => {
+    localStorage.setItem('aiapp_maha_voice_speed', b.dataset.speed);
+    setVoiceSpeedUI(b.dataset.speed);
   };
 });
 const btnTestVoice = $('#btnTestVoice');
 if(btnTestVoice){
   btnTestVoice.onclick = () => {
-    const testTextByLang = {
-      ar: 'مرحبًا، هذا اختبار للصوت.',
-      en: 'Hello, this is a voice test.',
-      fr: 'Bonjour, ceci est un test de la voix.',
-      hi: 'नमस्ते, यह आवाज़ का परीक्षण है।',
-      ur: 'ہیلو، یہ آواز کا امتحان ہے۔'
-    };
-    speakSmart(testTextByLang[lang] || testTextByLang.en, null, null, true);
+    // v-voice-names: التجربة صارت تعريف الشخصيّة المختارة بلغة الواجهة
+    speakSmart(voicePersonaSample(localStorage.getItem('aiapp_voice_gender') === 'male' ? 'male' : 'female'), null, null, true);
   };
 }
 // ---- Mic: record audio (works on ALL devices: Android + iPhone + desktop) and
@@ -158,9 +180,10 @@ async function buildCodeFromPrompt(promptText){
     if(cur.code){
       apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
     }
-    apiMessages.push({role: 'user', content: promptText});
+    // v-chat-edit: على تصميم كبير يُطلب التعديل رقعًا ويُقرأ الردّ بحارس التصميم — ملفّ انقطع لا يمحوه
+    apiMessages.push({role: 'user', content: promptText + (omranEditBigOpen(cur) ? omranEditAsk(cur.code.length) : '')});
     const { reply } = await callAIWithFallback(apiMessages, null);
-    const { code } = extractReply(reply);
+    const { code } = extractReply(reply, cur.code);
     if(code){ cur.code = code; }
     renderAll();
     saveState();
@@ -187,7 +210,7 @@ async function voiceTabSpeak(text){
     const resp = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300) }),
+      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300), token: ttsAuthToken(), guestId: ttsGuestId() }), // v-tts-account
     });
     if(resp.ok){
       const blob = await resp.blob();

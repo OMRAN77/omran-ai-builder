@@ -45,7 +45,7 @@ function onHistoryReady(){
     // ── أنشئ محادثة جديدة ──────────────────────────────────────────────────
     var newId = 'p_' + Date.now();
     var provKey = '';
-    try{ provKey = localStorage.getItem('aiapp_provider') || 'claude'; }catch(e){ /* guard-ok */ provKey = 'claude'; }
+    try{ provKey = localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ /* guard-ok */ provKey = 'openai'; }
     var title = '';
     try{ title = (typeof t === 'function') ? (t('defaultProjectTitle') || 'محادثة جديدة') : 'محادثة جديدة'; }catch(e){ title = 'محادثة جديدة'; }
 

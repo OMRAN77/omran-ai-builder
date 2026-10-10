@@ -4,14 +4,28 @@
   var KEY = 'omran_font';
   var loaded = Object.create(null);
   var fonts = [
-    {id:'default', ar:'الافتراضي', en:'Default', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-font-plex (المالك ٢٣ سبتمبر «الخط مش جميل، شوف أحلى خط»): الافتراضيّ صار IBM Plex Sans Arabic —
+       أوضح خطّ عربيّ للقراءة الطويلة (فتحات حروف واسعة، أرقام متناسقة مع اللاتينيّ). تجوال باقٍ خيارًا. */
+    {id:'default', ar:'الافتراضي', en:'Default', family:"'IBM Plex Sans Arabic'", google:'', line:1.8},
+    {id:'tajawal', ar:'تجوال', en:'Tajawal', family:"'Tajawal'", google:'', line:1.7},
+    /* v-chat-fonts-more (المالك ٢٣ سبتمبر «فيه خطوط أفضل من اللي عندي؟ زيد عليها»): ستّة خطوط قراءة حديثة
+       من Google Fonts، تُحمَّل عند اختيارها فقط كبقيّة الخيارات. */
+    {id:'cairo', ar:'القاهرة', en:'Cairo', family:"'Cairo'", google:'Cairo:wght@400;600;700', line:1.75},
+    {id:'almarai', ar:'المراعي', en:'Almarai', family:"'Almarai'", google:'Almarai:wght@400;700', line:1.8},
+    {id:'readex', ar:'ريدكس', en:'Readex Pro', family:"'Readex Pro'", google:'Readex+Pro:wght@400;600;700', line:1.75},
+    {id:'notokufi', ar:'كوفي نوتو', en:'Noto Kufi', family:"'Noto Kufi Arabic'", google:'Noto+Kufi+Arabic:wght@400;600;700', line:1.85},
+    {id:'vazir', ar:'وزير', en:'Vazirmatn', family:"'Vazirmatn'", google:'Vazirmatn:wght@400;600;700', line:1.8},
+    {id:'messiri', ar:'المسيري', en:'El Messiri', family:"'El Messiri'", google:'El+Messiri:wght@400;600;700', line:1.8},
     {id:'kufi', ar:'الكوفي', en:'Kufi', family:"'Reem Kufi'", google:'Reem+Kufi:wght@400..700', line:1.85},
     {id:'naskh', ar:'النسخ', en:'Naskh', family:"'Amiri'", google:'Amiri:ital,wght@0,400;0,700;1,400', line:1.95},
     {id:'naskh2', ar:'نسخ نوتو', en:'Noto Naskh', family:"'Noto Naskh Arabic'", google:'Noto+Naskh+Arabic:wght@400..700', line:1.9},
-    {id:'thuluth', ar:'الثلث', en:'Thuluth', family:"'Aref Ruqaa'", google:'Aref+Ruqaa:wght@400;700', line:2.05, alt:true},
+    /* v-calligraphy-names (المالك ٢٨ سبتمبر «صلحها»): الخطوط الثلاثة بأسمائها الحقيقيّة كما في الصور (v-image-fonts) —
+       «الثلث» كان Aref Ruqaa وهو رقعة، و«الديواني» كان Katibeh وهو نسخ عناوين، و«الرقعة» Rakkas عرض ثقيل.
+       الثلث والديواني مستضافان (assets/fonts، ليسا في Google Fonts) بلا google كي لا يُفسدا رابط PDF المجمّع. */
+    {id:'thuluth', ar:'الثلث', en:'Thuluth', family:"'Tholoth'", google:'', url:'/assets/fonts/tholoth.woff2', css:'Tholoth', line:2.05},
     {id:'farsi', ar:'الفارسي', en:'Nastaliq', family:"'Gulzar'", google:'Gulzar', line:2.45},
-    {id:'diwani', ar:'الديواني', en:'Diwani', family:"'Katibeh'", google:'Katibeh', line:2.05, alt:true},
-    {id:'ruqaa', ar:'الرقعة', en:'Ruqaa', family:"'Rakkas'", google:'Rakkas', line:1.95, alt:true},
+    {id:'diwani', ar:'الديواني', en:'Diwani', family:"'UKIJ Diwani Tom'", google:'', url:'/assets/fonts/ukij-diwani-tom.woff2', css:'UKIJ Diwani Tom', line:2.05},
+    {id:'ruqaa', ar:'الرقعة', en:'Ruqaa', family:"'Aref Ruqaa'", google:'Aref+Ruqaa:wght@400;700', line:2.05},
     {id:'quran', ar:'المصحف', en:'Quranic', family:"'Scheherazade New'", google:'Scheherazade+New:wght@400;700', line:2.15}
   ];
 
@@ -29,9 +43,19 @@
   }
   function isArabic(){ return (document.documentElement.lang || 'ar').toLowerCase() === 'ar'; }
   function load(font){
-    if(!font.google || loaded[font.id]) return;
+    if((!font.google && !font.url) || loaded[font.id]) return;
     loaded[font.id] = true;
     try{
+      if(font.url){
+        /* خطّ مستضاف: قاعدة @font-face نفسها وبمعرّف mahaLoadFont نفسه — تُعرَّف مرّة للصور والمحادثة والتوقيع */
+        var fid = 'ff-' + font.url.replace(/^.*\//, '').replace(/\W/g, '-');
+        if(document.getElementById(fid)) return;
+        var face = document.createElement('style');
+        face.id = fid;
+        face.textContent = '@font-face{font-family:"' + font.css + '";src:url("' + font.url + '") format("woff2");font-display:swap;}';
+        document.head.appendChild(face);
+        return;
+      }
       var link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://fonts.googleapis.com/css2?family=' + font.google + '&display=swap';

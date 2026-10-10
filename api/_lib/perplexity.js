@@ -37,7 +37,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'perplexity', clientIp(req));
+    // v-model-lock: المشترك في سلّة الباقة الواحدة (plan) لا سلّة لكلّ مزوّد.
+    const usage = await checkAndConsume(token, guestId, 'perplexity', clientIp(req), { chatBucket: true });
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -48,6 +49,8 @@ module.exports = async (req, res) => {
     }
 
     const wantStream = !!body.stream;
+    const mg = require('./_model-guard.js'); // v-model-lock: لغير المالك وVIP «sonar» وحده (لا البحث العميق الأغلى)
+    if (!mg.isPrivileged(usage)) model = mg.guardModel('perplexity', model, false);
     const upstream = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {

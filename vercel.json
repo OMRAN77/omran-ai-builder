@@ -37,7 +37,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' data: blob: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss: blob: data:; frame-src 'self' data: blob: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
         }
       ]
     },
@@ -121,6 +121,10 @@
     {
       "source": "/p/:id",
       "destination": "/api/media?action=pdf&id=:id"
+    },
+    {
+      "source": "/f/:id",
+      "destination": "/api/media?action=file&id=:id"
     },
     {
       "source": "/api/openai",
@@ -353,6 +357,14 @@
     {
       "source": "/api/email-calendar",
       "destination": "/api/system?action=email-calendar"
+    },
+    {
+      "source": "/download",
+      "destination": "/download.html"
+    },
+    {
+      "source": "/install",
+      "destination": "/download.html"
     },
     {
       "source": "/ar",

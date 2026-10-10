@@ -1,0 +1,124 @@
+/* v-frame-design — التصميم الجديد للكمبيوتر (أمر المالك ٤ أكتوبر بصورتين، العاجيّ والأسود: «سوّ لي نفس نفس التصميم»،
+   و«الأبيض نفس هذا، والأسود خلّه نفس الدرجة الموجودة في التطبيق»، و«شوف كيف التصميم من على الأطراف»).
+   المقاسات مقيسة بكسلًا بكسلًا من صورتيه:
+     • ثلاث لوحات منفصلة (القائمة، المحادثة، المعاينة)، ١٣px عن حافّة الشاشة و١٤px بينها، زواياها ٢٠px.
+     • إطار مزدوج كبرواز صورة: خطّ برّانيّ ٢px، ثمّ شريط ٥px بلون اللوحة، ثمّ خطّ جوّانيّ ١px.
+     • العاجيّ: الأرضيّة #e8dec8، اللوحات #fdf8ec/#fcf6eb/#f9f2e4، البحث والكتابة #e8dec8، المختار #f6eeda،
+       الخطّان #d0c6ac و#e6dbca، الحبر #4a4034، الذهبيّ #9a7c38.
+     • الأسود: ألوان التطبيق الحاليّة كما هي (أمر المالك)، والخطّان #3f3c2f و#262626.
+   الجوّال خارج الملفّ كلّه (min-width:861px و:not(.mobile-ui)). الخلفيّات والثيمات (html.bgimg) تأخذ الشكل نفسه
+   بخطّين ذهبيّين شفّافين، وألوانها من ثيمها (الخشبيّ وhtml.skin — css/ثيمات.css — يكسوان الخانات والإرسال بأنفسهما). */
+
+/* خانة البحث والعنوان الفرعيّ وإطار اللوحة الوسطى: لا وجود لها خارج الكمبيوتر. («بيت» لوحة المعاينة الفارغة — القوس والهلال
+   وعنوانه — شيل كاملًا بأمر المالك بعد الثيمات: «شيل هنا تبدأ الأفكار… كاملة مع الصورة والأيقونة»؛ اللوحة الفارغة بلونها وحده) */
+#sbSearchWrap, #sidebarBrandSub, #omFrameCenter{display:none;}
+
+@media (min-width:861px){
+  html:not(.mobile-ui){
+    --frame-line:#3f3c2f; --frame-line2:#262626; --frame-gold:#d8c276; --frame-gold2:#ceb562;
+    --frame-ink:var(--text); --frame-muted:#7e7c74; --frame-field:#0b0b0d; --frame-active:#1a1814; --frame-active-line:#3f3a28;
+    --frame-pill-line:#454233; --frame-shadow:none;
+  }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg){
+    --frame-line:#d0c6ac; --frame-line2:#e6dbca; --frame-gold:#9a7c38; --frame-gold2:#a8873a;
+    --frame-ink:#4a4034; --frame-muted:#8e8477; --frame-field:#e8dec8; --frame-active:#f6eeda; --frame-active-line:#dccb9f;
+    --frame-pill-line:#cdc2a7; --frame-shadow:0 6px 18px rgba(140,112,60,.16);
+    /* العاجيّ نفسه للأسطح كلّها (كان أبيض صافيًا) */
+    --bg:#fbf5e9 !important; --bg2:#fbf5e9 !important; --panel:#fbf5e9 !important; --panel2:#f3ead6 !important;
+    --text:#4a4034 !important; --muted:#8e8477 !important; --border:rgba(120,96,50,.14) !important;
+    --accent-ink:#4a4034 !important; --accent-on-surface:#4a4034 !important; --accent-surface:#efe5cf !important;
+    background:#e8dec8 !important;
+  }
+  html.bgimg:not(.mobile-ui){ --frame-line:rgba(214,190,140,.62); --frame-line2:rgba(214,190,140,.28); --frame-shadow:0 8px 22px rgba(0,0,0,.22); }
+  /* الثيم الخشبيّ: خاناته من خامته (ألواحه والرقّ) لا من الأسود؛ والخطّان بنّيّان كإطار البرواز */
+  html.skin-wood:not(.mobile-ui){ --frame-line:rgba(140,98,60,.55); --frame-line2:rgba(140,98,60,.28); --frame-field:rgba(255,248,236,.62); --frame-ink:#3b2a1c; --frame-muted:#6b5038; --frame-gold2:#8a5a32; --frame-pill-line:rgba(140,98,60,.45); }
+  html.skin-wood:not(.mobile-ui) .resizer{ background:transparent !important; }
+
+  /* ── الشكل: ثلاث لوحات منفصلة ── */
+  html:not(.mobile-ui) body{ padding:13px; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) body{ background:#e8dec8 !important; }
+  html:not(.mobile-ui) .resizer{ width:14px; background:transparent !important; }
+  html:not(.mobile-ui) .resizer::after{ display:none; }
+  html:not(.mobile-ui) #sidebar, html:not(.mobile-ui) #workarea, html:not(.mobile-ui) #omFrameCenter{
+    border:2px solid var(--frame-line) !important; border-radius:20px !important; box-shadow:var(--frame-shadow) !important;
+    position:relative; isolation:isolate;
+  }
+  /* الخطّ الجوّانيّ: ٥px بعد البرّانيّ، تحت المحتوى لا فوقه */
+  html:not(.mobile-ui) #sidebar::after, html:not(.mobile-ui) #workarea::after, html:not(.mobile-ui) #omFrameCenter::after{
+    content:""; position:absolute; inset:5px; border:1px solid var(--frame-line2); border-radius:15px; pointer-events:none; z-index:-1;
+  }
+  html:not(.mobile-ui) #sidebar{ padding:8px 4px 6px; }
+  html:not(.mobile-ui) #workarea{ overflow:hidden; padding:6px; }
+  /* المحادثة: لوحة واحدة خلف الهيدر والمحادثة معًا (عناصر شبكة منفصلة) */
+  html:not(.mobile-ui) #omFrameCenter{ display:block; grid-column:3; grid-row:1 / -1; min-width:0; min-height:0; }
+  html:not(.mobile-ui) body > header{ background:transparent !important; margin:7px 9px 0; }
+  html:not(.mobile-ui) body #chatcol{ margin:0 9px 9px; border:none !important; }
+  html:not(.mobile-ui) #inputbar{ background:transparent !important; }
+  html:not(.mobile-ui) #tabs{ background:transparent !important; }
+
+  /* ── الألوان: العاجيّ ── */
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #sidebar{ background:#fdf8ec !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #omFrameCenter{ background:#fcf6eb; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #workarea{ background:radial-gradient(120% 38% at 50% 100%, rgba(236,206,140,.32), transparent 70%), #f9f2e4 !important; }
+  /* ── الأسود: ألوان التطبيق كما هي، واللوحة الوسطى بلون المحادثة الحاليّ ── */
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg) #omFrameCenter{ background:#000; }
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg) #workarea{ background:radial-gradient(120% 38% at 50% 100%, rgba(206,181,98,.10), transparent 70%), #101013 !important; }
+  /* الخلفيّات والثيمات: اللوحة الوسطى شفّافة كما كانت المحادثة فوق الصورة */
+  html.bgimg:not(.mobile-ui) #omFrameCenter{ background:transparent; }
+
+  /* ── القائمة الجانبيّة كما في الصورة ── */
+  /* سهم طيّ القائمة (أمر المالك بعد النشر: «رجّع السهم الخارجيّ والداخليّ — وين المحادثة الجديدة»): على سطر «محادثة جديدة»
+     في طرفه (الارتفاع ‎--sb-arrow-top‎ من js/app-31-إطارات.js)، وداخل سياق تكديس القائمة (isolation) فلا يعلو شاشة الأدوات
+     كما كان بـz-index:9999. إعادة الفتح (#sbReopen) كما هي. */
+  html:not(.mobile-ui) #sidebarCloseBtn{ top:var(--sb-arrow-top, 120px) !important; inset-inline-end:12px; width:30px; height:30px; z-index:3; color:var(--frame-gold2); filter:none; }
+  html:not(.mobile-ui) #sidebarBrand{ justify-content:center !important; }
+  /* «محادثة جديدة» سطر بلا خلفيّة كسطر «لوحة التحكّم» في الصورة */
+  html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn, html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn:hover{ background:transparent !important; background-image:none !important; border-color:transparent !important; justify-content:center !important; color:var(--frame-ink) !important; }
+  html:not(.mobile-ui):not(.bgimg) #omranNewChatBtn svg{ color:var(--frame-gold2); }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #askAllHintTip{ background:#efe5cf !important; color:var(--frame-ink) !important; }
+  html:not(.mobile-ui) #sidebarBrandSub{ order:-3; display:block; text-align:center; font-size:11px; color:var(--frame-muted); margin:-6px 0 4px; letter-spacing:.5px; }
+  html:not(.mobile-ui) #sbSearchWrap{ order:-1; display:flex; align-items:center; gap:6px; margin:4px 10px 8px; padding:0 12px; height:38px; border-radius:12px; background:var(--frame-field); border:1px solid transparent; color:var(--frame-muted); }
+  html:not([data-mode="light"]):not(.mobile-ui) #sbSearchWrap{ border-color:var(--frame-line2); }
+  html:not(.mobile-ui) #sbSearchWrap svg{ flex:none; opacity:.8; }
+  html:not(.mobile-ui) #sbSearch{ flex:1; min-width:0; background:none; border:none; outline:none; color:var(--frame-ink); font:inherit; font-size:13px; }
+  html:not(.mobile-ui) #sbSearch::placeholder{ color:var(--frame-muted); }
+  html:not(.mobile-ui) #projMenuWrap{ border-bottom:1px solid var(--frame-line2); padding-bottom:4px; }
+  html:not(.mobile-ui) #btnProjMenuToggle{ color:var(--frame-ink) !important; font-weight:700; }
+  html:not(.mobile-ui):not(.skin-wood):not(.skin) .hist-item{ color:var(--frame-muted); padding:9px 12px; }
+  html:not(.mobile-ui):not(.skin-wood):not(.skin) .hist-item .hist-thumb{ width:22px; height:22px; color:var(--frame-muted); }
+  html:not(.mobile-ui):not(.skin-wood):not(.skin) .hist-item.active{ background:var(--frame-active) !important; border:1px solid var(--frame-active-line) !important; border-radius:10px !important; color:var(--frame-gold2) !important; }
+  html:not(.mobile-ui):not(.skin-wood):not(.skin) .hist-item.active .hist-thumb{ color:var(--frame-gold2); }
+  /* الأسماء تحت الأيقونات (الشريط يُخفيها تحت ٢١٠px من عرضه) — حشوة أقلّ تُبقيها كما في الصورة */
+  html:not(.mobile-ui) #omranSidebarFoot{ border-top:1px solid var(--frame-line2) !important; margin:0 8px; padding-inline:4px !important; }
+  html:not(.mobile-ui) #omranSidebarFoot .omNavBtn, html:not(.mobile-ui) #omranSidebarFoot .omModeNav{ color:var(--frame-muted); }
+
+  /* الإعدادات والنوافذ والقوائم في العاجيّ (أمر المالك: «غيّر اللون هذا» — كانت رماديّة #EBEBEB من v520) */
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) :is(dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu, .dlg-actions, #provDropdownPanel, #omModelPopup){ background:#fbf5e9 !important; color:var(--frame-ink); }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) .settingsNavGroup{ background:#f3ead6 !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) :is(#eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap, #videoMakerModal .vmk-stage){ background:#fbf5e9 !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) :is(#eduHubModal .eduHead, #expModal .expHead, .xm .xmHead){ background:#f3ead6 !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcMeta{ background:#fdf8ec !important; }
+
+  /* ── المحادثة: فقاعتك بإطار رفيع، والإرسال دائرة ذهبيّة ── */
+  html:not(.mobile-ui):not(.bgimg) #messages .msg.user{ background:transparent !important; border:1px solid var(--frame-pill-line) !important; border-radius:22px !important; padding:8px 16px !important; color:var(--frame-ink) !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #composerBox{ background:var(--frame-field) !important; border:1px solid #d5c9ad !important; border-radius:28px !important; }
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg) #composerBox{ border-radius:28px !important; }
+  html:not(.mobile-ui):not(.skin-wood):not(.skin) #composerBox > #btnSend{ background:linear-gradient(160deg,#e9c766,#b8902a) !important; border:none !important; color:#2b1d02 !important; box-shadow:0 3px 10px rgba(150,115,30,.35) !important; opacity:1 !important; }
+  html:not(.mobile-ui):not(.skin-wood):not(.skin) #composerBox > #btnSend svg{ stroke:#2b1d02 !important; }
+  /* مكان الكود بلون الصفحة (أمر المالك) */
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #code{ background:#f9f2e4 !important; color:#3b332a !important; }
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg) #code{ background:#101013 !important; }
+
+
+  /* ── صورة المستخدم بجانب رسائله (أمر المالك): من «حسابي»، أو أوّل حرف من اسمه في دائرة ذهبيّة ── */
+  html.has-user-av:not(.mobile-ui) #messages .msg.user{ position:relative; margin-inline-start:46px; overflow:visible !important; content-visibility:visible !important; }
+  html.has-user-av:not(.mobile-ui) #messages .msg.user::before{
+    content:var(--user-initial, ""); position:absolute; inset-inline-start:-46px; top:50%; transform:translateY(-50%);
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:var(--user-av, linear-gradient(160deg,#e9c766,#a67f22)) center/cover no-repeat; color:#2b1d02; font-size:15px; font-weight:800;
+    box-shadow:0 2px 8px rgba(120,90,30,.35), 0 0 0 2px var(--frame-line);
+  }
+
+  /* ── شاشة الأدوات: لا أسهم دائريّة على الصفوف (أمر المالك) — التمرير بالماوس و«عرض الكل» باقيان ── */
+  html:not(.mobile-ui) #sectionsToolsPopup .ptShelfArrow{ display:none !important; }
+}

@@ -9,15 +9,15 @@ const PROMPT = [
   'asking to change some of that text (a date, a name, a number, a word, one letter or a logo glyph).',
   'Find the ONE existing text line that must change. Return ONLY strict JSON, no markdown:',
   '{"found":true,"box":{"x":number,"y":number,"w":number,"h":number},',
-  '"newLine":string,"color":"#rrggbb","fontKey":"naskh"|"diwani"|"kufi"|"ruqaa"|"default","bold":boolean}',
+  '"newLine":string,"color":"#rrggbb","fontKey":"thuluth"|"diwani"|"kufi"|"farsi","bold":boolean}',
   'Rules:',
   '- newLine: the COMPLETE line exactly as it should read AFTER the change — apply only the requested',
   '  replacement and keep every other character identical (same language, same spelling, same digits).',
   '- box: a snug bounding box around the EXISTING line as fractions of image width/height (0..1),',
   '  x/y = top-left corner. For a standalone letter or logo glyph, box only that glyph. Otherwise cover the whole line.',
   '- color: the hex color of the existing text. fontKey: closest Arabic style of the existing text',
-  '  (naskh = classic serif-like, diwani = ornate calligraphy, kufi = geometric, ruqaa = handwriting,',
-  '  default = clean modern sans).',
+  '  (thuluth = classic grand calligraphy or serif-like, diwani = ornate or handwriting, kufi = geometric or modern,',
+  '  farsi = Nastaliq).',
   '- If the request is NOT about changing written text, or you cannot confidently locate the line,',
   '  return {"found":false}.',
 ].join('\n');
@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
       box: { x: bx.x, y: bx.y, w: bx.w, h: bx.h },
       newLine: spec.newLine.trim().slice(0, 200),
       color: /^#[0-9a-f]{6}$/i.test(String(spec.color)) ? spec.color : '#333333',
-      fontKey: ['naskh', 'diwani', 'kufi', 'ruqaa', 'default'].indexOf(spec.fontKey) >= 0 ? spec.fontKey : 'naskh',
+      fontKey: ['thuluth', 'diwani', 'kufi', 'farsi'].indexOf(spec.fontKey) >= 0 ? spec.fontKey : 'thuluth',
       bold: spec.bold === true,
     }));
   } catch (e) {

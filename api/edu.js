@@ -9,6 +9,7 @@ require('./_lib/_env-keys.js'); // v-key-shape: مفتاح OpenRouter الموض
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
 const { installCors } = require('./_lib/cors.js');
+const { oaLightFetch } = require('./_lib/_oa-light.js'); // v-models-latest
 // حارس الميزات المتقاعدة — يُفحص قبل أي تحميل وحدة أو استخدام مفتاح.
 const { isRetired, retiredResponse } = require('./_lib/_retired.js');
 
@@ -26,6 +27,29 @@ const GUEST_PROCESS_PER_DAY = 3;
 // Every analysis is a Claude call with a large PDF and a big output budget.
 const USER_PROCESS_PER_DAY = Number(process.env.EDU_USER_DAILY || 25);
 const USER_GRADE_PER_DAY = Number(process.env.EDU_GRADE_DAILY || 120);
+// v-edu-plus: «اسأل المعلّم» و«حلّ مسألة» — سقفان مستقلّان عن تحليل المحاضرات
+const USER_TUTOR_PER_DAY = Number(process.env.EDU_TUTOR_DAILY || 80);
+const GUEST_TUTOR_PER_DAY = 10;
+const USER_SOLVE_PER_DAY = Number(process.env.EDU_SOLVE_DAILY || 30);
+const GUEST_SOLVE_PER_DAY = 3;
+
+// v-edu-tiers (قرار المالك: التعليم ضمن باقات المحادثة — Plus باقة الطالب):
+// السقف اليومي يتبع الطبقة (ضيف/مجاني/Plus/Pro/Max) بدل الثنائية مسجّل/ضيف.
+// المالك وVIP بلا سقف (eduCapsFor ترجع null)، وMax بلا عدّاد (Infinity).
+// متغيرات البيئة القديمة (EDU_USER_DAILY وإخوتها) صارت تضبط سقف Plus.
+const EDU_CAPS = {
+  guest: { proc: GUEST_PROCESS_PER_DAY, tutor: GUEST_TUTOR_PER_DAY, solve: GUEST_SOLVE_PER_DAY, grade: 10, docask: 15, cv: GUEST_PROCESS_PER_DAY, lscript: 20 },
+  free:  { proc: 5,  tutor: 20,  solve: 10, grade: 30,  docask: 15,  cv: 3,  lscript: 20 },
+  basic: { proc: USER_PROCESS_PER_DAY, tutor: USER_TUTOR_PER_DAY, solve: USER_SOLVE_PER_DAY, grade: USER_GRADE_PER_DAY, docask: USER_GRADE_PER_DAY, cv: 15, lscript: 40 },
+  pro:   { proc: 60, tutor: 200, solve: 80, grade: 300, docask: 300, cv: 40, lscript: 80 },
+  max:   { proc: Infinity, tutor: Infinity, solve: Infinity, grade: Infinity, docask: Infinity, cv: Infinity, lscript: Infinity },
+};
+function eduCapsFor(t) {
+  if (!t || t.tier === 'guest') return EDU_CAPS.guest;
+  if (t.tier === 'owner' || t.tier === 'vip') return null; // معفى — VIP كالمالك
+  if (t.tier === 'sub') return EDU_CAPS[t.plan] || EDU_CAPS.free;
+  return EDU_CAPS.free;
+}
 
 /**
  * One daily counter per subject (ip or username) per bucket. Owner is exempt.
@@ -368,6 +392,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (isRetired(action)) { retiredResponse(res, action); return; }
     const username = body.token ? verifyToken(body.token) : null;
     const isOwner = isOwnerName(username);
+    // v-edu-tiers: طبقة المستخدم وسقفه التعليمي — تُحسب مرة لكل طلب.
+    // عطب القراءة = معاملة مسجّل مجاني (فشل آمن، لا يفتح ولا يقفل ظلمًا).
+    let __eduCaps = username ? EDU_CAPS.free : EDU_CAPS.guest;
+    try { __eduCaps = eduCapsFor(await require('./_lib/tier.js').resolveTier(username)); } catch (e) { /* best-effort */ }
+    const __eduMax = (k) => (__eduCaps ? __eduCaps[k] : Infinity);
 
     // ---------------- process ----------------
     if (action === 'process') {
@@ -378,7 +407,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // only the owner is exempt.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
           res.status(402).json({
             error: username
@@ -444,7 +473,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // الصفحة لا ترسل توكن — سقف يومي بالـIP يحمي المفتاح دون تغيير التجربة.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        if (await overDailyLimit(subject, 'lscript', 20)) {
+        if (await overDailyLimit(subject, 'lscript', __eduMax('lscript'))) {
           res.status(402).json({ error: 'وصلت للحد اليومي لدروس الفيديو. عد غدًا 🌙' });
           return;
         }
@@ -466,16 +495,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const sys = 'You are an expert curriculum designer. Generate a complete lesson script as JSON only (no text outside JSON). The lesson is at ' + levelLabel + ' level. ALL text values in the JSON (title, heading, bullets, narration) MUST be written entirely in ' + langName + ' — do not mix in other languages. Content must be accurate, well organized, and sized for a video of about ' + mins + ' minutes (~' + totalWords + ' total narration words spread across slides).';
       const userMsg = 'Topic: "' + String(topic).slice(0, 500) + '"\n\nGenerate about ' + targetSlides + ' slides (a bit more or fewer if truly needed). Write every field in ' + langName + '. Return ONLY JSON in exactly this shape:\n{\n  "title": "Lesson title (in ' + langName + ')",\n  "slides": [\n    { "heading": "Slide heading (in ' + langName + ')", "bullets": ["point 1", "point 2", "point 3"] (in ' + langName + '), "narration": "Full narration text a natural voice will read for this slide, in ' + langName + ', clear and easy to understand" }\n  ]\n}\nFirst slide is always an intro, last slide is a summary/conclusion.';
 
-      const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + oaiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
+      const upstream = await oaLightFetch(oaiKey, { // v-models-latest
           messages: [{ role: 'system', content: sys }, { role: 'user', content: userMsg }],
           temperature: 0.7,
           response_format: { type: 'json_object' },
-        }),
-      });
+        });
       if (!upstream.ok) {
         const errText = await upstream.text();
         res.status(upstream.status).json({ error: 'OpenAI error: ' + errText.slice(0, 500) });
@@ -500,7 +524,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
           res.status(402).json({
             error: username
@@ -548,7 +572,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!qSummary) { res.status(400).json({ error: 'لا يوجد ملخص لتوليد الأسئلة منه.' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       }
       const qTail = eduLangTail(body.lang, body.nativeLang, body.examLang, body.stage || 'university');
@@ -585,7 +609,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
           res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' });
           return;
@@ -655,13 +679,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (action === 'cv') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
-      if (!username) {
-        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
-        const key = 'cv:proc:' + encodeURIComponent(ip) + ':' + todayStr();
-        let count = 0;
-        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
-        if (count > GUEST_PROCESS_PER_DAY) {
-          res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + GUEST_PROCESS_PER_DAY + ' سير ذاتية). سجّل الدخول أو عد غدًا 🌙' });
+      // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        if (await overDailyLimit(subject, 'cv', __eduMax('cv'))) {
+          res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' });
           return;
         }
       }
@@ -692,13 +714,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
 
-      if (!username) {
-        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
-        const key = 'exp:proc:' + encodeURIComponent(ip) + ':' + todayStr();
-        let count = 0;
-        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
-        if (count > GUEST_PROCESS_PER_DAY) {
-          res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + GUEST_PROCESS_PER_DAY + ' كشوفات). سجّل الدخول أو عد غدًا 🌙' });
+      // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        if (await overDailyLimit(subject, 'exp', __eduMax('cv'))) {
+          res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' });
           return;
         }
       }
@@ -756,7 +776,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // الأمني: لا نداء كلود بلا هوية/حدّ.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'doc', max)) {
           res.status(402).json({
             error: username
@@ -812,7 +832,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // رخيص لكنه قابل للتكرار — نحدّه كالتصحيح.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const cap = username ? USER_GRADE_PER_DAY : 15;
+        const cap = __eduMax('docask');
         if (await overDailyLimit(subject, 'docask', cap)) {
           res.status(402).json({ error: 'وصلت للحد اليومي للأسئلة (' + cap + '). عد غدًا 🌙' });
           return;
@@ -864,7 +884,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // Grading is cheap per call but trivially loopable — cap it like process.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const cap = username ? USER_GRADE_PER_DAY : 10;
+        const cap = __eduMax('grade');
         if (await overDailyLimit(subject, 'grade', cap)) {
           res.status(402).json({ error: 'وصلت للحد اليومي للتصحيح (' + cap + '). عد غدًا 🌙' });
           return;
@@ -897,6 +917,113 @@ module.exports = withErrorCapture('edu', async (req, res) => {
           rubric: rubric.slice(0, 8),
         },
       });
+      return;
+    }
+
+    // ---------------- 💬 tutor: «اسأل المعلّم» داخل الدرس (v-edu-plus) ----------------
+    // الطالب يسأل عن درس بعينه؛ المعلّم يعرف الدرس (عنوانه وملخّصه) وآخر المحادثة، ويجيب
+    // بإيجاز وبطريقة غير التي في الملخّص. سقف يوميّ مستقلّ عن التحليل.
+    if (action === 'tutor') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const question = String(body.question || '').slice(0, 2000).trim();
+      if (!question) { res.status(400).json({ error: 'اكتب سؤالك أولًا.' }); return; }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const cap = __eduMax('tutor');
+        if (await overDailyLimit(subject, 'tutor', cap)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي لأسئلة المعلّم (' + cap + '). عد غدًا 🌙' });
+          return;
+        }
+      }
+      const title = String(body.title || '').slice(0, 160);
+      const summary = String(body.summary || '').slice(0, 12000);
+      const history = (Array.isArray(body.history) ? body.history : []).slice(-8)
+        .map((m) => (m && m.role === 'assistant' ? 'المعلّم: ' : 'الطالب: ') + String((m && m.text) || '').slice(0, 1500)).join('\n');
+      const sys = 'أنت معلّم خصوصيّ صبور وذكيّ داخل تطبيق تعليميّ. عندك درس محدّد، والطالب يسألك عنه.\n'
+        + 'قواعد: (١) أجب عن سؤاله بالضبط وبإيجاز (عادةً ٤–١٢ سطرًا)، بلغة بسيطة ومثال ملموس من الحياة أو خطوات مرقّمة. '
+        + '(٢) إن لم يفهم فاشرح بطريقة مختلفة عن الملخّص لا بتكرار نصّه. (٣) إن كان السؤال خارج الدرس فأجب باختصار ثمّ اربطه بالدرس. '
+        + '(٤) لا تحلّ واجبًا منقولًا حرفيًّا دون شرح — علّم الطريقة. (٥) المعادلات بصيغة $…$ والكود في ```…``` والمقارنات في جدول ماركداون. '
+        + '(٦) اختم أحيانًا بسؤال قصير يتأكّد من فهمه. (٧) لا تذكر اسم أيّ نموذج ذكاء اصطناعيّ أو شركة؛ أنت «المعلّم».\n'
+        + languageRules(body.lang, body.nativeLang, '') + '\n'
+        + 'أعد JSON فقط: {"reply":"إجابتك بالماركداون"}';
+      const blocks = [{ type: 'text', text: 'الدرس: ' + title + '\n\nملخّص الدرس:\n' + summary
+        + (history ? '\n\nآخر المحادثة:\n' + history : '') + '\n\nسؤال الطالب الآن:\n' + question }];
+      let result = null;
+      try { result = await anthropicJSON(apiKey, sys, blocks, 1800); }
+      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الردّ الآن — حاول مرة أخرى.' }); return; }
+      const reply = String((result && result.reply) || '').trim();
+      if (!reply) { res.status(502).json({ error: 'وصل ردّ فارغ — حاول مرة أخرى.' }); return; }
+      res.status(200).json({ ok: true, reply: reply.slice(0, 8000) });
+      return;
+    }
+
+    // ---------------- 🧩 solve: حلّ مسألة خطوة بخطوة (v-edu-plus) ----------------
+    // صورة أو نصّ مسألة → خطوات، لكلّ خطوة تلميح أوّلًا ثمّ العمل، ثمّ الجواب والتحقّق.
+    // الواجهة تكشفها واحدة واحدة فيتعلّم الطالب الطريقة لا ينسخ الجواب.
+    if (action === 'solve') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const text = String(body.text || '').slice(0, 6000).trim();
+      const img = body.image && typeof body.image.base64 === 'string' ? body.image : null;
+      if (!text && !img) { res.status(400).json({ error: 'اكتب المسألة أو صوّرها أولًا.' }); return; }
+      if (img && img.base64.length > MAX_BASE64_CHARS) { res.status(413).json({ error: 'الصورة كبيرة جدًا — جرّب صورة أصغر.' }); return; }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const cap = __eduMax('solve');
+        if (await overDailyLimit(subject, 'solve', cap)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي لحلّ المسائل (' + cap + '). عد غدًا 🌙' });
+          return;
+        }
+      }
+      /* v-edu-homework (طلب المالك ٢٨ سبتمبر مع صورة بطاقة تقييم بوستر): أيّ واجب من أيّ مادّة ومنهج —
+         مسألة، ورقة أسئلة، تعبير، أو مشروع/بوستر. كان يرفض كلّ ما ليس مسألة حسابيّة. */
+      const sys = 'أنت معلّم خبير في كلّ المواد والمناهج الدراسيّة (الإماراتيّ والخليجيّ والعربيّ والدوليّ، من الروضة إلى الجامعة). '
+        + 'الطالب يرسل واجبه (صورة أو نصًّا) ويريد تحليله وحلّه كاملًا صحيحًا. اقرأ الواجب بدقّة، وحدّد المادّة والصفّ والمنهج من محتواه، '
+        + 'ثمّ حلّه بمستوى يناسب ذلك الصفّ وأسلوب منهجه.\n'
+        + 'نوع الواجب (kind): "problem" مسألة واحدة · "questions" ورقة فيها عدّة أسئلة (حلّ كلّ سؤال برقمه في خطوة مستقلّة، ولا تترك سؤالًا) · '
+        + '"writing" تعبير أو إنشاء أو بحث قصير (اكتب النصّ النموذجيّ كاملًا في answer) · "project" مشروع أو بوستر أو نشاط عمليّ أو بطاقة تقييم مهمّة '
+        + '(اشرح المطلوب، وخطّة التنفيذ خطوات، والمحتوى الجاهز، وكيف ينال الدرجة الكاملة في كلّ معيار).\n'
+        + 'أعد JSON فقط بهذه الصيغة: {"kind":"problem|questions|writing|project","subject":"المادّة","grade":"الصفّ والمنهج كما يظهر أو تستنتجه",'
+        + '"problem":"نصّ الواجب كما فهمته","topic":"الموضوع","understand":"المطلوب بجملة أو جملتين",'
+        + '"steps":[{"hint":"تلميح قصير يوجّه للخطوة دون كشفها","work":"الخطوة كاملة"}],"answer":"الجواب النهائيّ كاملًا (لكلّ الأسئلة مرقّمة)",'
+        + '"check":"كيف نتحقّق أنّ الجواب صحيح","tip":"الفكرة العامّة للواجبات المشابهة",'
+        + '"project":{"content":["النصوص الجاهزة التي تُكتب في العمل: العنوان ثمّ العناصر"],"design":["أفكار تصميم وألوان ورسوم"],'
+        + '"checklist":[{"criterion":"المعيار كما في البطاقة","points":2,"how":"كيف تحقّقه"}],'
+        + '"poster":"English description of one finished poster for this task, child-friendly, with the exact title and labels in the original language in quotes"}}\n'
+        + 'المفتاح project للنوع "project" فقط. من ٢ إلى ١٢ خطوة. المعادلات بصيغة $…$، والكود في ```…```. '
+        + 'إن كانت الصورة غير مقروءة أو لا علاقة لها بالدراسة فأعد {"error":"السبب باختصار"}. '
+        + 'لا تذكر اسم أيّ نموذج ذكاء اصطناعيّ أو شركة.\n' + languageRules(body.lang, body.nativeLang, '');
+      const blocks = [];
+      if (img) blocks.push({ type: 'image', source: { type: 'base64', media_type: /^image\/(png|jpeg|gif|webp)$/i.test(img.mime || '') ? img.mime : 'image/jpeg', data: img.base64 } });
+      blocks.push({ type: 'text', text: (text ? 'الواجب:\n' + text : 'الواجب في الصورة.') + '\n\nحلّه الآن كاملًا وأعد JSON فقط.' });
+      let result = null;
+      try { result = await anthropicJSON(apiKey, sys, blocks, 8000); }
+      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الحلّ الآن — حاول مرة أخرى.' }); return; }
+      if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300) }); return; }
+      const steps = (result && Array.isArray(result.steps) ? result.steps : [])
+        .filter((st) => st && (st.work || st.hint)).slice(0, 12)
+        .map((st) => ({ hint: String(st.hint || '').slice(0, 600), work: String(st.work || '').slice(0, 2500) }));
+      if (!steps.length || !result.answer) { res.status(502).json({ error: 'تعذّر فهم الحلّ — حاول مرة أخرى.' }); return; }
+      const kind = ['problem', 'questions', 'writing', 'project'].includes(result.kind) ? result.kind : 'problem';
+      const strList = (a, n, len) => (Array.isArray(a) ? a : []).filter((x) => x && typeof x !== 'object').slice(0, n).map((x) => String(x).slice(0, len));
+      const solution = {
+        kind, subject: String(result.subject || '').slice(0, 80), grade: String(result.grade || '').slice(0, 120),
+        problem: String(result.problem || text).slice(0, 3000), topic: String(result.topic || '').slice(0, 120),
+        understand: String(result.understand || '').slice(0, 800), steps,
+        answer: String(result.answer).slice(0, 6000), check: String(result.check || '').slice(0, 1500), tip: String(result.tip || '').slice(0, 800),
+      };
+      if (kind === 'project') {
+        const pj = (result.project && typeof result.project === 'object') ? result.project : {};
+        solution.project = {
+          content: strList(pj.content, 20, 300), design: strList(pj.design, 10, 300),
+          checklist: (Array.isArray(pj.checklist) ? pj.checklist : []).filter((c) => c && c.criterion).slice(0, 10).map((c) => ({
+            criterion: String(c.criterion).slice(0, 200), points: Number.isFinite(Number(c.points)) ? Number(c.points) : null, how: String(c.how || '').slice(0, 400),
+          })),
+          poster: String(pj.poster || '').slice(0, 1200),
+        };
+      }
+      res.status(200).json({ ok: true, solution });
       return;
     }
 

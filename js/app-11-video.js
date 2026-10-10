@@ -20,7 +20,48 @@
   function proxyVideoUrl(url){
     // روابط blob وروابط same-origin (تبدأ بـ /) لا تحتاج بروكسي
     if(!url || /^blob:/.test(url) || /^\//.test(url)) return url;
+    /* v-dl-ticket (المراجعة المعاكسة): لا رمز جلسة في الرابط — كان يتسرّب من السجلّات وزرّ «فتح» والمشاركة. نقرة «تحميل»
+       تمرّ بالحافظ الموحّد (app-05-save-media.js) فيجلب بالترويسة أو يصدر تذكرة تنزيل قصيرة لرابط ورقة الجوّال */
     return '/api/video-download?url=' + encodeURIComponent(url);
+  }
+  /* v-dl-ticket: الجلب نفسه يحمل الجلسة في ترويسة Authorization (البروكسي يقبلها) */
+  function proxyFetch(url){
+    const tk = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : '';
+    return fetch(proxyVideoUrl(url), tk ? { headers: { Authorization: 'Bearer ' + tk } } : undefined);
+  }
+  async function proxyBlob(url){
+    const r = await proxyFetch(url);
+    if(!r.ok) throw new Error('proxy ' + r.status);
+    return r.blob();
+  }
+  // v-trend-dl-fix: تتيح لملفّ الترندات (app-11-video-trends.js، إغلاق مستقلّ) استخدام نفس البروكسي
+  // بدل رابط Runway/Veo الخام — بلا هذا كان زرّ تحميل الترند يفشل صامتًا على الجوّال وهواوي.
+  window.__omranProxyVideoUrl = proxyVideoUrl;
+
+  /* v-video-poll (المالك: «⏳ يولّد الفيديو» ما ينتهي): حلقات الاستطلاع الأربع كانت بلا سقف عمر
+     وتبتلع كلّ خطأ شبكة بصمت (`catch(e){ keep polling }`)، فأيّ فشل لا يُعلَن — أو حالة لا يعرفها
+     الخادم فيردّها «لسّا شغّال» — يترك المستخدم ينتظر إلى الأبد. هذا الحارس يحدّ العمر ويحدّ
+     الأخطاء المتتالية (العابر منها يُتسامح معه) ويعطي رسالة صريحة بدل الانتظار الصامت. */
+  function makePollGuard(reject, everyMs, maxMs){
+    const step = everyMs || 8000;
+    const life = maxMs || 15 * 60 * 1000;
+    let ticks = 0, errors = 0;
+    return {
+      // أوّل كلّ دورة: false = انتهى العمر وأُبلغ المستخدم
+      tick(iv){
+        if(++ticks * step < life) return true;
+        clearInterval(iv);
+        reject(new Error(bT('طال انتظار الفيديو بلا نتيجة — أعد المحاولة.','The video took too long with no result — please try again.')));
+        return false;
+      },
+      ok(){ errors = 0; },
+      // خطأ شبكة: نتسامح مع العابر ونستسلم بعد ستّ محاولات متتالية فاشلة
+      fail(iv){
+        if(++errors < 6) return;
+        clearInterval(iv);
+        reject(new Error(bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.')));
+      },
+    };
   }
 
   // v526: autoSaveVideo — النقر البرمجي محظور على هواوي/أندرويد
@@ -57,16 +98,36 @@
       const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
-      if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب');
+      if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب' + (d.redisWhy ? ' — السبب: ' + String(d.redisWhy).slice(0, 200) : '')); /* v-redis-why: للمالك وحده */
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
       if(missing.length) problems.push('مفاتيح ناقصة: ' + missing.join(', '));
-      if(d.clientErrorsCount > 0){
-        const top = (d.clientErrors || []).slice(0,3).map(e => '• ' + String(e.message || '').slice(0,90)).join('\n');
-        problems.push('أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount + '\n' + top);
+      /* v-err-build: أخطاء النسخة الحاليّة فقط — ما أُصلح في نسخة سابقة لا يُنذر بعد
+         نشر الإصلاح. ومع كلّ خطأ ملفّه وسطره، فاللقطة وحدها تكفي للتشخيص. */
+      const __build = (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '';
+      const __live = (d.clientErrors || []).filter(e => (typeof window.__omranErrLive === 'function') ? window.__omranErrLive(e, __build, Date.now()) : true);
+      if(__live.length > 0){
+        const top = __live.slice(0,3).map(e => {
+          const src = String(e.source || '').split('/').pop().split('?')[0].slice(0, 40);
+          return '• ' + '\u2066' + String(e.message || '').slice(0,90) + (src ? ' — ' + src + (e.line ? ':' + e.line : '') : '') + (e.count > 1 ? ' (x' + e.count + ')' : '') + '\u2069'; /* v-err-ltr */
+        }).join('\n');
+        problems.push('أخطاء مسجلة من المستخدمين: ' + __live.length + '\n' + top);
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
-      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
+         position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
+         فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك
+         لا يعرف بوجودها ليضغط ✕. جسم الصفحة شبكة CSS (body{display:grid})
+         بصفوف/أعمدة محدَّدة صراحةً للهيدر وشريط الأسهم وعمود المحادثة
+         (v-frame-c)، فإدراج الشريط كابن عاديّ بلا موضع شبكة صريح يُقحمه في
+         صفّ ضمنيّ أسفل الشاشة كلّها لا فوق الهيدر مباشرة — لذا الحلّ يبقى
+         fixed (يهرب من الشبكة تمامًا) لكن `top` يُحسَب من الارتفاع الفعليّ
+         لأسفل الهيدر بدل ٠ ثابت، فيظهر الشريط تحته دائمًا لا فوقه. */
+      const headerBottom = (function(){
+        try{ const h = document.querySelector('header'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; }
+        catch(e){ return 0; }
+      })();
+      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
       bar.textContent = '🩺 تنبيه للمالك — توجد ملاحظات في النظام:\n' + problems.join('\n');
       const x = document.createElement('button');
       x.textContent = '✕';
@@ -94,15 +155,15 @@
       const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
-      lines.push(mark(d.redisOk) + ' قاعدة البيانات (Redis)');
+      lines.push(mark(d.redisOk) + ' قاعدة البيانات (Redis)' + (!d.redisOk && d.redisWhy ? ' — ' + String(d.redisWhy).slice(0, 200) : '')); /* v-redis-why */
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
       lines.push(missing.length ? ('❌ مفاتيح ناقصة: ' + missing.join(', ')) : '✅ كل مفاتيح API موجودة');
       if(d.clientErrorsCount > 0){
         lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
         /* v-err-date: بلا تاريخ لا نفرق خطأ اليوم عن خطأ الأسبوع الماضي */
         const __fmtD = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
-        d.clientErrors.slice(0,5).forEach(e => {
-          lines.push('   • ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtD(e.lastSeen) ? ' — ' + __fmtD(e.lastSeen) : ''));
+        d.clientErrors.slice(0,10).forEach(e => {
+          lines.push('   • ' + '\u2066' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtD(e.lastSeen) ? ' — ' + __fmtD(e.lastSeen) : '') + '\u2069'); /* v-err-ltr */
           /* v-crash-stack: انهيارات غلاف الأندرويد تُعرض بمكدسها — التشخيص
              يحتاج اسم الصنف والسطر لا الرسالة وحدها. */
           if(/android/i.test(String(e.source || '')) && e.stack){
@@ -119,16 +180,30 @@
       } else {
         lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
       }
+      /* v-health-split: قياسات مسبار الذاكرة (v-mem-probe) أرقام من جهاز المالك لا أخطاء — بعنوانها، ولا تُحسب ملاحظة. */
+      const __fmtT = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
+      if((d.clientDiag || []).length){
+        lines.push('📏 قياسات جهازك (ليست أخطاء): ' + d.clientDiag.length);
+        d.clientDiag.forEach(e => { lines.push('   · ' + String(e.message || '').replace(/^v-mem-probe\s*/, '').slice(0,200) + (__fmtT(e.lastSeen) ? ' — ' + __fmtT(e.lastSeen) : '')); });
+      }
       /* v-health-srv: أخطاء الخادم نفسها (نداءات النماذج، المسارات) — كانت
-         تُسجّل في KV بلا أي نافذة عرض للمالك. */
-      if(d.serverErrorsCount > 0){
-        lines.push('⚠️ أخطاء الخادم: ' + d.serverErrorsCount);
-        (d.serverErrors || []).slice(0,5).forEach(e => {
-          const __d2 = (() => { try{ const v = e.lastAt || e.at; return v ? new Date(v).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } })();
-          lines.push('   • [' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,110) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__d2 ? ' — ' + __d2 : ''));
-        });
+         تُسجّل في KV بلا أي نافذة عرض للمالك. v-err-deploy: النشر الحاليّ وحده «ملاحظة»؛ ما قبله يُعرض مطويًّا
+         بعنوانه (أُصلح أو لم يتكرّر بعد التحديث) — كانت أخطاء ٢١ سبتمبر وما أُصلح تُعدّ كأنّها الآن. */
+      const __srv = d.serverErrors || [];
+      const __cur = String(d.deploy || '');
+      const __now = __srv.filter(e => !__cur || e.deploy === __cur);
+      const __old = __srv.filter(e => __cur && e.deploy !== __cur);
+      /* v-err-ltr: السطر التقنيّ (مسار + JSON إنجليزيّ) داخل صندوق يمين-يسار كان يتبعثر («'>>' Uncaught…») — يُعزل يسار-يمين كتلةً واحدة */
+      const __srvLine = (e) => '\u2066' + '[' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtT(e.lastAt || e.at) ? ' — ' + __fmtT(e.lastAt || e.at) : '') + '\u2069';
+      if(__now.length){
+        lines.push('⚠️ أخطاء الخادم' + (__cur ? ' في النشر الحاليّ' : '') + ': ' + __now.length);
+        __now.forEach(e => { lines.push('   • ' + __srvLine(e)); });
       } else {
-        lines.push('✅ لا توجد أخطاء في الخادم');
+        lines.push('✅ لا توجد أخطاء في الخادم' + (__cur ? ' منذ آخر تحديث' : ''));
+      }
+      if(__old.length){
+        lines.push('🗂️ من نشر سابق (أُصلحت أو لم تتكرّر بعد التحديث): ' + __old.length);
+        __old.forEach(e => { lines.push('   · ' + __srvLine(e)); });
       }
     }catch(e){
       lines.push('❌ فحص الخادم فشل: ' + e.message);
@@ -140,9 +215,67 @@
   window.clearClientErrors = async function(){
     const box = document.getElementById('adminHealthBox');
     try{
-      const r = await fetch('/api/system?action=client-errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {method:'DELETE'});
+      /* v-err-deploy: «مسح سجل الأخطاء» كان يمسح أخطاء المستخدمين وحدها — أخطاء الخادم لا تُمسح من التطبيق أبدًا
+         (402 من ٢١ سبتمبر باقٍ). clear=errors في فحص الصحّة يمسح السجلّين معًا (للمالك وحده). */
+      const r = await fetch('/api/system?action=health&clear=errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
     }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
+  };
+  /* v-redis-capacity: «ما يملأ القاعدة» — قياس بالقراءة فقط (SCAN + STRLEN) يعرض العائلات الأكبر وأكبر المفاتيح في صندوق الفحص. */
+  window.redisUsageCheck = async function(){
+    const box = document.getElementById('adminHealthBox');
+    const mb = (n) => (n / 1048576).toFixed(1) + ' م.ب';
+    if(box) box.textContent = '⏳ أقيس ما في القاعدة… (قراءة فقط، لا يُحذف شيء)';
+    try{
+      const r = await fetch('/api/system?action=health&usage=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
+      const d = await r.json().catch(() => ({}));
+      if(!r.ok || !d.usage){ if(box) box.textContent = '❌ فشل القياس (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      const u = d.usage;
+      const lines = ['💾 القيم ≈ ' + mb(u.totalBytes) + ' في ' + u.totalKeys + ' مفتاحًا (الحدّ ٢٥٦ م.ب)' + (u.truncated ? ' — فُحص أوّل ' + u.scanned + ' فقط' : ''), '', 'العائلات الأكبر:'];
+      (u.groups || []).forEach(function(g){ lines.push('• ' + g.prefix + ' — ' + mb(g.bytes) + ' · ' + g.keys + ' مفتاحًا'); });
+      lines.push('', 'أكبر المفاتيح:');
+      (u.biggest || []).forEach(function(b){ lines.push('• ' + b.key + ' — ' + mb(b.bytes)); });
+      if(box) box.textContent = lines.join('\n');
+    }catch(e){ if(box) box.textContent = '❌ فشل القياس: ' + e.message; }
+  };
+  /* v-cost-meter: «تكلفة المشتركين» — تكلفة كلّ حساب علينا هذا الشهر مجمّعة لكلّ باقة، مقابل ما يدفعه (قراءة فقط). */
+  window.subscriberCostsCheck = async function(){
+    const box = document.getElementById('adminHealthBox');
+    const usd = (n) => (Number(n) || 0).toFixed(2) + '$';
+    const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: 'مجّاني', vip: 'VIP', owner: 'المالك' };
+    const NET = { basic: 9.41, pro: 19.12, max: 96.80 }; // ما يصلك من الاشتراك الشهريّ بعد رسوم الدفع
+    if(box) box.textContent = '⏳ أجمع تكلفة الشهر لكلّ باقة… (قراءة فقط)';
+    try{
+      const r = await fetch('/api/system?action=health&costs=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
+      const d = await r.json().catch(() => ({}));
+      if(!r.ok || !d.costs){ if(box) box.textContent = '❌ فشل التقرير (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      const c = d.costs;
+      const lines = ['💵 تكلفة الحسابات علينا — ' + c.month + ' (من أوّل الشهر حتّى الآن)', 'المجموع ' + usd(c.total) + ' على ' + c.users + ' حسابًا', ''];
+      (c.byPlan || []).forEach(function(g){ lines.push('• ' + (NAME[g.plan] || g.plan) + ': ' + g.users + ' · متوسّط ' + usd(g.avg) + ' · الأعلى ' + usd(g.max) + (NET[g.plan] ? ' · يدفع ' + usd(NET[g.plan]) : '')); });
+      lines.push('', 'أعلى الحسابات تكلفةً:');
+      (c.top || []).forEach(function(u){ lines.push('• ' + u.user + ' (' + (NAME[u.plan] || u.plan) + ') — ' + usd(u.total) + '  [رسائل ' + usd(u.chat) + ' · وسائط ' + usd(u.media) + ' · صوت ' + usd(u.voice) + ']'); });
+      if(box) box.textContent = lines.join('\n');
+    }catch(e){ if(box) box.textContent = '❌ فشل التقرير: ' + e.message; }
+  };
+  /* v-media-purge: «تنظيف التطبيق» عند المالك — يحذف روابط المشاركة الأقدم من ٧ أيّام (الخادم يتحقّق من المالك). */
+  window.purgeOldMedia = async function(){
+    const btn = document.getElementById('acctCleanupBtnEl');
+    if(!confirm('حذف صور وملفّات المشاركة الأقدم من ٧ أيّام؟ روابطها القديمة ستتوقّف — الحسابات والمحادثات لا تُمسّ.')) return;
+    const label = btn ? btn.textContent : '';
+    if(btn){ btn.disabled = true; btn.textContent = '⏳ جارِ التنظيف…'; }
+    let msg = '';
+    try{
+      const r = await fetch('/api/system?action=health&purge=media&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
+      const d = await r.json().catch(() => ({}));
+      if(r.ok && d && d.purged){
+        const p = d.purged, b = p.byPrefix || {}, n = (k) => (b[k] && b[k].deleted) || 0;
+        msg = '✅ حُذف ' + p.deleted + ' من ' + p.scanned + ' مفتاحًا\nصور: ' + n('db/img/') + ' · ملفّات: ' + n('db/file/') + ' · PDF: ' + n('db/pdf/');
+      } else {
+        msg = '❌ فشل التنظيف (' + r.status + ')' + (d && d.message ? ': ' + d.message : '');
+      }
+    }catch(e){ msg = '❌ فشل التنظيف: ' + e.message; }
+    if(btn){ btn.disabled = false; btn.textContent = label; }
+    alert(msg);
   };
   function setStatus(text){
     statusEl.style.display = text ? 'block' : 'none';
@@ -168,6 +301,7 @@
   }
 
   btnOpen.onclick = () => {
+    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ /* guard-ok */ } }
     modal.style.display = 'flex';
     closeHeaderMenu();
     const owner = isOwnerAccount();
@@ -180,6 +314,7 @@
 
   // v524: فتح صانع الفيديو من المحادثة — يقبل prompt اختياري + صورة hero اختيارية
   window.omranOpenVideoMaker = function(prompt, heroDataUrl, heroMimeType){
+    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ /* guard-ok */ } }
     try{
       if(promptEl && prompt) promptEl.value = String(prompt).trim();
       // صورة hero — تُعرض في المعاينة وتُستخدم في الفيلم
@@ -192,7 +327,8 @@
           filmHeroMime   = heroMimeType || 'image/jpeg';
           if(prev){ prev.src = heroDataUrl; prev.style.display = 'inline-block'; }
           if(clr)  { clr.style.display = 'inline-block'; }
-          if(heroRowEl){ heroRowEl.style.display = ''; }
+          if(heroRowEl){ syncFilmHeroRow(); } /* v-video-photo-identity: حسب الوضع لا إظهار أعمى */
+          applyHeroRatioFromDataUrl(heroDataUrl);
           // v525: عند وجود صورة → واقعي تلقائياً لأن الأنيمي يُضيّع تفاصيل الصورة الأصلية
           if(styleEl && styleEl.value !== 'realistic') styleEl.value = 'realistic';
         }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
@@ -210,15 +346,35 @@
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
+  /* v-video-photo-identity (المالك: «الفيديوات عامّة تغيّر الأشكال… مش ترندات، في الفيديوات العاديّة»):
+     (١) كانت كلّ نقرة على وضع كانفا/المحترف/الممثّل تمسح صورة البطل المحفوظة نهائيًّا بلا إشعار — الآن
+     تُخفى في كانفا وحده (لا يستعمل صورًا) وتبقى محفوظة. (٢) «المحترف لا يقبل صورًا» خطأ قديم: خادمه
+     يحرّك الصورة إطارًا أوّل (veo-create: instance.image) — فالصورة تُرسل له وللممثّل أيضًا. */
   function syncFilmHeroRow(){
     const heroRowEl = document.getElementById('videoMakerHeroRow');
     const noteEl = document.getElementById('videoMakerHeroVeoNote');
-    const modeVal = modeEl.value;
-    // البطل مدعوم في كل الأوضاع ما عدا: veo (لا يقبل صور)، actor (veo-based)، canvas (مبني على التوقيع)
-    const heroSupported = (modeVal !== 'veo' && modeVal !== 'actor' && modeVal !== 'canvas');
+    const heroSupported = (modeEl.value !== 'canvas');
     if(heroRowEl) heroRowEl.style.display = heroSupported ? 'block' : 'none';
-    if(noteEl) noteEl.style.display = (modeVal === 'veo') ? 'block' : 'none';
-    if(!heroSupported && window.__clearFilmHero) window.__clearFilmHero();
+    if(noteEl) noteEl.style.display = 'none';
+  }
+  /* v-video-photo-identity: المحرّك يقصّ الصورة من وسطها إلى نسبة الفيديو المطلوبة، والنسبة الافتراضيّة
+     عرضيّة — فصورة جوّال طوليّة (سيلفي/وقوف كامل) تفقد أعلاها وأسفلها، والوجه غالبًا في الأعلى، فيخترع
+     المحرّك وجهًا بدل وجه مقصوص. النسبة تتبع اتّجاه الصورة لحظة اختيارها (ظاهرة في الواجهة، ويغيّرها
+     المستخدم إن شاء): الطوليّة والمربّعة ⇒ ٩:١٦ (القصّ من الجانبين لا من الرأس)، والعرضيّة ⇒ ١٦:٩. */
+  function heroRatioFor(w, h){ return (h >= w) ? '720:1280' : '1280:720'; }
+  function applyHeroRatio(w, h){
+    if(!ratioEl || !(w > 0) || !(h > 0)) return;
+    const want = heroRatioFor(w, h);
+    if(ratioEl.value === want) return;
+    ratioEl.value = want;
+    try{ ratioEl.dispatchEvent(new Event('change')); }catch(e){ /* guard-ok — مزامنة حبّات العرض ترف */ }
+  }
+  function applyHeroRatioFromDataUrl(dataUrl){
+    try{
+      const probe = new Image();
+      probe.onload = () => applyHeroRatio(probe.naturalWidth || probe.width, probe.naturalHeight || probe.height);
+      probe.src = dataUrl;
+    }catch(e){ /* guard-ok — بلا أبعاد تبقى النسبة كما اختارها المستخدم */ }
   }
   // 📋 معاينة وتعديل السيناريو قبل التوليد
   function showScriptPreview(title, scenes){
@@ -269,6 +425,8 @@
     signatureRow.style.display = (m === 'canvas' || m === 'hybrid') ? 'flex' : 'none';
     const actorRowEl = document.getElementById('videoMakerActorRow');
     if(actorRowEl) actorRowEl.style.display = (m === 'actor') ? 'flex' : 'none';
+    const actorVoiceRowEl = document.getElementById('videoMakerActorVoiceRow'); /* v-actor-lipsync */
+    if(actorVoiceRowEl) actorVoiceRowEl.style.display = (m === 'actor') ? 'block' : 'none';
     syncFilmHeroRow();
   }
   modeEl.onchange = updateModeUI;
@@ -351,7 +509,7 @@
     let listTxt = '';
     for(let i = 0; i < urls.length; i++){
       const name = 'scene' + i + '.mp4';
-      await ffmpeg.writeFile(name, await fetchFile(proxyVideoUrl(urls[i])));
+      await ffmpeg.writeFile(name, await fetchFile(await proxyBlob(urls[i])));
       listTxt += "file '" + name + "'\n";
     }
     await ffmpeg.writeFile('list.txt', listTxt);
@@ -385,7 +543,7 @@
     let listTxt = '';
     for(let i = 0; i < scenes.length; i++){
       if(onProgress) onProgress(i, scenes.length);
-      await ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(proxyVideoUrl(scenes[i].videoUrl)));
+      await ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(await proxyBlob(scenes[i].videoUrl)));
       const hasAudio = scenes[i].audioBlob && scenes[i].audioBlob.size > 0;
       if(hasAudio){
         await ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
@@ -409,10 +567,13 @@
 
   function pollTaskOnce(id){
     return new Promise((resolve, reject) => {
+      const guard = makePollGuard(reject, 5000);
       const iv = setInterval(async () => {
+        if(!guard.tick(iv)) return;
         try{
           const res = await fetch('/api/video-status?id=' + encodeURIComponent(id));
           const data = await res.json();
+          guard.ok();
           if(data.error){ clearInterval(iv); reject(new Error(data.error)); return; }
           if(data.status === 'SUCCEEDED'){
             clearInterval(iv);
@@ -427,7 +588,7 @@
           } else {
             setStatus((bT('⏳ الحالة: ','⏳ Status: ')) + (data.status || '...'));
           }
-        } catch(e){ /* transient network hiccup; keep polling */ }
+        } catch(e){ guard.fail(iv); }
       }, 5000);
     });
   }
@@ -589,11 +750,12 @@
     });
 
     setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
+    /* v-video-photo-identity: وضع الدمج يُظهر خانة صورة البطل لكنّه كان لا يرسلها — فيخترع المحرّك شخصًا. */
     const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
       setStatus(isEn()
         ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
         : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-    });
+    }, filmHeroBase64, filmHeroMime);
     setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
 
     const ffmpeg = await getFFmpeg();
@@ -608,7 +770,10 @@
       setStatus(bT('✍️ جاري إضافة توقيعك على الفيديو...','✍️ Adding your signature watermark...'));
       const wmBlob = await makeWatermarkPng(signature, ratio);
       await ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
-      await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h:shortest=1', '-c:a', 'copy', 'main_wm.mp4']);
+      /* v-video-first-frame (فيديو المالك ٣٫٩ث: مقدّمة + إطار واحد من الفيديو + خاتمة): «shortest=1» مع صورة ثابتة
+         (wm.png إطار واحد) يُنهي الناتج عند أقصر الدخلين — فيُقصّ فيديو الذكاء كلّه إلى إطار واحد (قيس: ١٢٠ ← ١).
+         بلا shortest يتكرّر آخر إطار للتوقيع (eof_action=repeat) طوال الفيديو، والطول طول الفيديو نفسه. */
+      await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h', '-c:a', 'copy', 'main_wm.mp4']);
       mainForConcat = 'main_wm.mp4';
     }
 
@@ -661,7 +826,7 @@
       body: JSON.stringify(payload),
     }));
     const data = await res.json();
-    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error });
+    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error, retryAfter: data.retryAfter || 0 });
     return data.id;
   }
 
@@ -685,6 +850,8 @@
         if(e && e.code === 'auth_required') throw e;
         if(e && e.code === 'daily_limit_reached') throw e;
         if(e && e.code === 'owner_only') throw e;
+        /* v-video-refund: مهلة الثلاث دقائق لا تُعالَج بإعادة بعد ٦ ثوانٍ — ارفعها للمستخدم برسالة مفهومة. */
+        if(e && e.code === 'video_cooldown') throw e;
         if(attempt < maxAttempts){
           if(onRetryStatus) onRetryStatus(attempt, maxAttempts);
           await new Promise((r) => setTimeout(r, 6000 * attempt));
@@ -692,6 +859,34 @@
       }
     }
     throw lastErr;
+  }
+
+  /* v-video-seq-cooldown (بلاغ مُثبَت: قفل «فيديو واحد كلّ ٣ دقائق» يبدأ عند قبول المشهد ولا يُفكّ إلّا
+     بالفشل، وسلسلة المشاهد — فيلم متكامل، ٢٠ ثانية — كانت تطلب التالي فور جهوز الأوّل فيُرفض
+     بـvideo_cooldown وتموت كلّها والمشهد الأوّل مدفوع). ليست إعادة عمياء (v-video-refund): ننتظر
+     المتبقّي الذي يعلنه الخادم بعدّ تنازليّ ظاهر ثمّ نعيد المشهد نفسه، مرّتين على الأكثر. المشهد الوحيد
+     كما كان (رسالة المهلة بلا انتظار)، والمالك وVIP بلا قفل أصلًا فلا ينتظرون شيئًا. */
+  const SEQ_COOLDOWN_WAITS_MAX = 2;
+  function sceneWaitText(sceneNo, total, secs){
+    const tpl = (typeof window.t === 'function' && window.t('videoSceneWait') !== 'videoSceneWait') ? window.t('videoSceneWait')
+      : bT('⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.', '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.');
+    return String(tpl).replace('{i}', sceneNo).replace('{n}', total).replace('{s}', secs);
+  }
+  async function waitOutCooldown(err, sceneNo, total){
+    const secs = Math.max(1, Math.ceil(Number(err && err.retryAfter) || 180));
+    for(let left = secs; left > 0; left--){
+      setStatus(sceneWaitText(sceneNo, total, left));
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+  async function sceneInSequence(sceneNo, total, run){
+    for(let waits = 0; ; waits++){
+      try{ return await run(); }
+      catch(e){
+        if(!(e && e.code === 'video_cooldown') || waits >= SEQ_COOLDOWN_WAITS_MAX) throw e;
+        await waitOutCooldown(e, sceneNo, total);
+      }
+    }
   }
 
   /* 📸 صورتك بطل الفيلم — hero photo state */
@@ -718,6 +913,7 @@
         filmHeroBase64 = savedB64; filmHeroMime = savedMime;
         if(prev){ prev.src = 'data:' + savedMime + ';base64,' + savedB64; prev.style.display = 'inline-block'; }
         if(clr) clr.style.display = 'inline-block';
+        applyHeroRatioFromDataUrl('data:' + savedMime + ';base64,' + savedB64);
       }
     } catch(_){ /* استعادة صورة البطل المحفوظة ترفٌ: تخزين محجوب أو قيمة تالفة
          يعني بلا معاينة سابقة فقط — لا يمنع اختيار صورة جديدة. */ }
@@ -736,8 +932,11 @@
       if(!f) return;
       const img = new Image();
       img.onload = () => {
-        const max = 768;
+        /* v-video-photo-identity: ٧٦٨ كانت أصغر من الحدّ الأدنى الموصى به عند المحرّك (٦٤٠×٦٤٠ بعد القصّ)،
+           ووجه صورة الوقوف الكامل يصل بكسلات قليلة فيُعاد رسمه تقريبًا — ١٤٠٠ كالترندات (v-trend-identity). */
+        const max = 1400;
         let w = img.width, h = img.height;
+        applyHeroRatio(w, h);
         if(Math.max(w, h) > max){ const k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
         // Runway requires width/height ratio between 0.5 and 2 — pad if outside
         let cw = w, ch = h;
@@ -759,7 +958,10 @@
         // حفظ البطل في localStorage (أفاتار ثابت عبر الجلسات)
         try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); }
         catch(_){ /* الحصّة ممتلئة أو التخزين محجوب: البطل يبقى في الذاكرة لهذه
-             الجلسة ولا يُحفظ عبرها — والفيديو يُبنى منه كما هو. */ }
+             الجلسة ولا يُحفظ عبرها — والفيديو يُبنى منه كما هو.
+             v-video-photo-identity: ويُمحى المحفوظ القديم، وإلّا عاد بعد إعادة التحميل شخصٌ سابق بطلًا. */
+          try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); }
+          catch(__){ /* guard-ok — التخزين محجوب أصلًا */ } }
       };
       img.src = URL.createObjectURL(f);
     };
@@ -795,6 +997,11 @@
       const code = err && err.code;
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
+      /* v-video-refund: بدل رمز «video_cooldown» الخام — مهلة بين فيديو وآخر، والانتظار بالدقائق. */
+      if(code === 'video_cooldown'){
+        const m = Math.max(1, Math.ceil((Number(err && err.retryAfter) || 180) / 60));
+        return isEn() ? ('⏳ One video every few minutes. Try again in about ' + m + ' min.') : ('⏳ فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
+      }
       return (bT('❌ خطأ: ','❌ Error: ')) + (err && err.message ? err.message : String(err));
     }
 
@@ -805,9 +1012,19 @@
        Available to ALL logged-in accounts (small scene count); owner gets more scenes. ---- */
     /* Helper: check Runway credits BEFORE starting so nothing is charged on doomed runs. */
     async function ensureRunwayCredits(needed){
+      /* v-video-open-lock: الرصيد عند المزوّد وسطره (باسمه وموقع شحنه) للمالك وحده.
+         v-balance-enough (المراجعة المعاكسة): وغير المالك يسأل «هل يكفي؟» بجلسته — الجواب {enough} وحده، ورسالته عامّة بلا مزوّد */
+      const owner = isOwnerAccount();
       try{
-        const r = await fetch('/api/video?action=video-balance');
+        const tk = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : '';
+        const r = owner
+          ? await fetch('/api/video?action=video-balance&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''))
+          : await fetch('/api/video?action=video-balance&needed=' + encodeURIComponent(needed), { headers: { Authorization: 'Bearer ' + tk } });
         const d = await r.json();
+        if(!owner){
+          if(d && d.enough === false){ setStatus(bT('فشل توليد الفيديو — أعد المحاولة.','Video generation failed — try again.')); return false; }
+          return true;
+        }
         if(typeof d.credits === 'number' && d.credits >= 0 && d.credits < needed){
           setStatus(isEn()
             ? '⛔ Not enough Runway credits (' + d.credits + ' left, ' + needed + ' needed). Nothing was charged. Top up at runwayml.com first.'
@@ -819,23 +1036,29 @@
     }
 
     /* Helper: generate ONE scene via Google Veo 3 (create + poll) and return its video URL. */
-    async function createVeoScene(prompt, sceneRatio, sceneToken, hq){
+    async function createVeoScene(prompt, sceneRatio, sceneToken, hq, heroB64, heroMime){
+      const payload = { promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast', style: styleEl.value }; /* v-video-first-frame: الأسلوب يصل كلّ محرّك */
+      if(heroB64){ payload.imageBase64 = heroB64; payload.imageMime = heroMime || 'image/jpeg'; } /* v-video-photo-identity */
       const cr = await fetch('/api/video?action=veo-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast' }),
+        body: JSON.stringify(payload),
       });
       const crData = await cr.json();
-      if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
+      /* v-video-seq-cooldown: الرمز والمهلة يصلان كما في createScene — فتعرفهما سلسلة المشاهد وfriendlyError. */
+      if(!cr.ok || crData.error || !crData.op) throw Object.assign(new Error(crData.error || 'veo create failed'), { code: crData.error, retryAfter: crData.retryAfter || 0 });
       return await new Promise((resolve, reject) => {
+        const guard = makePollGuard(reject, 8000);
         const iv = setInterval(async () => {
+          if(!guard.tick(iv)) return;
           try{
             const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
             const d = await st.json();
+            guard.ok();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
             else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
-          } catch(e){ /* keep polling */ }
+          } catch(e){ guard.fail(iv); }
         }, 8000);
       });
     }
@@ -843,6 +1066,16 @@
     if(durationEl.value === 'film'){
       try{
         const filmUseVeo = (creationMode === 'veo');
+        /* v-film-mode-gate (بلاغ مُثبَت: فحص «فيلم متكامل» يسبق فحص الوضع كلّه، فكانفا المجّانيّ والاقتصاديّ
+           والسينمائيّ والدمج والممثّل كانت تُرسَل بصمت إلى محرّك الفيديو الأساسيّ المدفوع): الفيلم مبنيّ على
+           محرّكين فقط — غيرهما يُوقَف هنا قبل أيّ نداء أو خصم، برسالة واضحة لا تحويل صامت. */
+        if(creationMode !== 'runway' && !filmUseVeo){
+          setStatus((typeof window.t === 'function' && window.t('videoFilmModeOnly') !== 'videoFilmModeOnly') ? window.t('videoFilmModeOnly')
+            : bT('🎬 «فيلم متكامل» يعمل مع وضع «فيديو AI» فقط — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
+                 '🎬 "Full mini-film" works with the "AI video" mode only — change the mode or pick another length. Nothing was charged.'));
+          btnGenerate.disabled = false;
+          return;
+        }
         if(filmUseVeo && !isOwnerAccount()){
           setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
           btnGenerate.disabled = false;
@@ -875,26 +1108,20 @@
           const ok = await ensureRunwayCredits(scenes.length * 50);
           if(!ok){ btnGenerate.disabled = false; return; }
         }
-        if(filmUseVeo && filmHeroBase64){
-          setStatus(bT('ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...','ℹ️ Hero photo is supported with Runway only; continuing without it...'));
-        }
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
           setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
-          // إذا كان هناك بطل: نثبّت موضعه في كل prompt حتى يبدو بنفس المكان عبر المشاهد
-          const baseScenePrompt = sc.visual || text;
-          const heroAnchor = filmHeroBase64
-            ? 'Hero centered in frame, medium shot, consistent camera angle. '
-            : '';
-          const scenePromptWithHero = heroAnchor + baseScenePrompt;
-          const videoUrl = filmUseVeo
-            ? await createVeoScene(scenePromptWithHero, ratio, token, wantQuality)
-            : await createSceneWithRetry(scenePromptWithHero, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
+          /* v-video-photo-identity: كان يُلحق «ضعه في وسط الإطار بلقطة متوسّطة» — أمر إعادة تأطير يعاكس
+             الإطار الأوّل (الصورة نفسها) فيُعاد رسم الوجه بمقاس آخر. قفل الهويّة يبنيه الخادم لكلّ محرّك. */
+          const scenePromptWithHero = sc.visual || text;
+          const videoUrl = await sceneInSequence(i + 1, scenes.length, () => filmUseVeo
+            ? createVeoScene(scenePromptWithHero, ratio, token, wantQuality, filmHeroBase64, filmHeroMime)
+            : createSceneWithRetry(scenePromptWithHero, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
                 setStatus(isEn()
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
-              }, filmHeroBase64, filmHeroMime);
+              }, filmHeroBase64, filmHeroMime));
           setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
@@ -987,6 +1214,88 @@
       return;
     }
 
+    /* v-minimax-video: المحرّك الاقتصاديّ — إضافة بجانب Runway وVeo. غير متزامن:
+       ينشئ مهمّة ويستطلعها حتى يجهز المقطع (نفس شكل استطلاع Runway). */
+    /* v-omni-video: المحرّك السينمائيّ (Gemini Omni) — إضافة رابعة. متزامن:
+       طلب واحد يرجّع رابط الفيديو مباشرة (بلا استطلاع). */
+    if(creationMode === 'omni'){
+      try{
+        setStatus(bT('🎬 جاري توليد الفيديو السينمائيّ (قد يستغرق ١-٣ دقائق)...','🎬 Generating the cinematic video (may take 1-3 min)...'));
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame: الأسلوب كان لا يصل */
+        if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
+        const cr = await (window.postWithConfirm
+          ? window.postWithConfirm('/api/video?action=omni-create', payload)
+          : fetch('/api/video?action=omni-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        const d = await cr.json();
+        if(!cr.ok || d.error) throw Object.assign(new Error(d.error || 'omni failed'), { code: d.error });
+        const videoUrl = d.url || d.dataUrl;
+        if(!videoUrl) throw new Error('no video');
+        setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
+        let vurl;
+        if(d.dataUrl){ vurl = d.dataUrl; }
+        else {
+          const vres = await fetch(videoUrl);
+          if(!vres.ok) throw new Error('download failed ' + vres.status);
+          vurl = URL.createObjectURL(await vres.blob());
+        }
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+        resultEl.src = vurl;
+        resultEl.style.display = 'block';
+        downloadEl.href = d.url || vurl;
+        downloadEl.style.display = 'block';
+        autoSaveVideo(vurl);
+      } catch(e){
+        setStatus(friendlyError(e));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
+    if(creationMode === 'minimax'){
+      try{
+        setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame: الأسلوب كان لا يصل */
+        if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
+        const cr = await (window.postWithConfirm
+          ? window.postWithConfirm('/api/video?action=minimax-create', payload)
+          : fetch('/api/video?action=minimax-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        const crData = await cr.json();
+        if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error });
+        const videoUrl = await new Promise((resolve, reject) => {
+          const guard = makePollGuard(reject, 8000);
+          const iv = setInterval(async () => {
+            if(!guard.tick(iv)) return;
+            try{
+              const st = await fetch('/api/video?action=minimax-status&task_id=' + encodeURIComponent(crData.task_id));
+              const d = await st.json();
+              guard.ok();
+              if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
+              if(d.status === 'SUCCEEDED' && d.output && d.output[0]){ clearInterval(iv); resolve(d.output[0]); }
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error(bT('فشل توليد الفيديو — أعد المحاولة.','Video generation failed — try again.'))); }
+              else setStatus(bT('⏳ يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Generating the video (may take 1-3 min)...'));
+            } catch(e){ guard.fail(iv); }
+          }, 8000);
+        });
+        setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
+        /* v-dl-ours (المراجعة المعاكسة): فشل البروكسي (429/401) كان يرمي «download failed» فلا يظهر الفيديو المدفوع —
+           المشغّل يأخذ رابطه الخامّ كفرع Runway */
+        let vurl;
+        try{ vurl = URL.createObjectURL(await proxyBlob(videoUrl)); }catch(e){ vurl = videoUrl; }
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+        resultEl.src = vurl;
+        resultEl.style.display = 'block';
+        downloadEl.href = proxyVideoUrl(videoUrl);
+        downloadEl.style.display = 'block';
+        autoSaveVideo(vurl);
+      } catch(e){
+        setStatus(friendlyError(e));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
@@ -1001,28 +1310,71 @@
             setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
             return;
           }
-          veoPrompt = (text || 'An Emirati man in traditional white kandura and ghutra, warm friendly face')
+          /* v-actor-lipsync (المالك ٢ أكتوبر: «الصوت المتحدث ليس دقيق في اللهجة الإماراتية والكلام عربي ضعيف جدًّا»): Veo يخترع
+             الصوت من وصف إنجليزيّ. الآن الكلام بالحرف بصوت إماراتيّ أصيل (حمدان/فاطمة) والوجه يتحرّك عليه؛ Veo احتياط فقط
+             حين يقول الخادم fallback (قبل أيّ خصم: لا مفتاح، أو تعذّر الصوت أو الوجه). */
+          const actorVoiceEl = document.getElementById('videoMakerActorVoice');
+          const actorGender = (actorVoiceEl && actorVoiceEl.value === 'female') ? 'female' : 'male';
+          setStatus(bT('🎙️ يسجّل كلام الممثل بصوت إماراتي...','🎙️ Recording the actor\'s line in an Emirati voice...'));
+          const acPayload = { speech, promptText: text, voiceGender: actorGender, ratio, token };
+          if(filmHeroBase64){ acPayload.imageBase64 = filmHeroBase64; acPayload.imageMime = filmHeroMime || 'image/jpeg'; }
+          const ac = await fetch('/api/video?action=actor-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(acPayload) });
+          const acData = await ac.json().catch(() => ({}));
+          if(ac.ok && acData.id){
+            setStatus(bT('🎬 يحرّك وجه الممثل على صوته (قد يستغرق ١-٣ دقائق)...','🎬 Animating the actor to the voice (may take 1-3 min)...'));
+            const actorUrl = await new Promise((resolve, reject) => {
+              const guard = makePollGuard(reject, 8000);
+              const iv = setInterval(async () => {
+                if(!guard.tick(iv)) return;
+                try{
+                  const st = await fetch('/api/video?action=actor-status&id=' + encodeURIComponent(acData.id));
+                  const d = await st.json();
+                  guard.ok();
+                  if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
+                  if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
+                  else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error(bT('تعذّر توليد الممثل — رجعت نقاطك، أعد المحاولة.','Actor generation failed — points refunded, try again.') + (d.failure ? ' — ' + d.failure : ''))); }
+                } catch(e){ guard.fail(iv); }
+              }, 8000);
+            });
+            setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
+            let avurl; /* v-dl-ours: فشل البروكسي لا يُخفي الناتج المدفوع — رابطه الخامّ للمشغّل */
+            try{ avurl = URL.createObjectURL(await proxyBlob(actorUrl)); }catch(e){ avurl = actorUrl; }
+            setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+            resultEl.src = avurl;
+            resultEl.style.display = 'block';
+            downloadEl.href = proxyVideoUrl(actorUrl);
+            downloadEl.style.display = 'block';
+            return;
+          }
+          if(!acData.fallback) throw new Error(acData.error || ('actor ' + ac.status));
+          console.warn('[actor] lipsync path unavailable — Veo fallback:', acData.error);
+          veoPrompt = (text || (filmHeroBase64 ? 'The real person in the reference photo' : 'An Emirati man in traditional white kandura and ghutra, warm friendly face'))
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
         setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
+        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame */
+        if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         const cr = await fetch('/api/video?action=veo-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast' }),
+          body: JSON.stringify(veoPayload),
         });
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
         const videoUrl = await new Promise((resolve, reject) => {
+          const guard = makePollGuard(reject, 8000);
           const iv = setInterval(async () => {
+            if(!guard.tick(iv)) return;
             try{
               const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
               const d = await st.json();
+              guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
               else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
               else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
-            } catch(e){ /* keep polling */ }
+            } catch(e){ guard.fail(iv); }
           }, 8000);
         });
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
@@ -1104,8 +1456,7 @@
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenes.length + '...');
-          const lmHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
-          const videoUrl = await createSceneWithRetry(lmHeroAnchor + (sc.visual || text), style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
+          const videoUrl = await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
@@ -1149,24 +1500,23 @@
       let sceneUrls = [];
       const okBal2 = await ensureRunwayCredits(isLong ? 100 : 50);
       if(!okBal2){ btnGenerate.disabled = false; return; }
-      const singleHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
       if(isLong){
         const scenePrompts = [
-          singleHeroAnchor + text + (bT(' (اللحظة الافتتاحية للمشهد)',' (opening moment of the scene)')),
-          singleHeroAnchor + text + (bT(' (استكمال نفس المشهد، اللحظة التالية)',' (continuing the same scene, next moment)')),
+          text + (bT(' (اللحظة الافتتاحية للمشهد)',' (opening moment of the scene)')),
+          text + (bT(' (استكمال نفس المشهد، اللحظة التالية)',' (continuing the same scene, next moment)')),
         ];
         for(let i = 0; i < scenePrompts.length; i++){
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenePrompts.length + '...');
-          const url = await createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
+          const url = await sceneInSequence(i + 1, scenePrompts.length, () => createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-          }, filmHeroBase64, filmHeroMime);
+          }, filmHeroBase64, filmHeroMime));
           sceneUrls.push(url);
         }
       } else {
         setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
-        const url = await createSceneWithRetry(singleHeroAnchor + text, style, durationEl.value, ratio, token, false, (attempt, max) => {
+        const url = await createSceneWithRetry(text, style, durationEl.value, ratio, token, false, (attempt, max) => {
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
             : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
@@ -1237,7 +1587,7 @@
         dlUrl = proxyVideoUrl(finalSrc);
         try{
           setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading video...'));
-          const vres = await fetch(dlUrl);
+          const vres = await proxyFetch(finalSrc); /* v-dl-ticket: الجلسة في الترويسة لا الرابط */
           if(!vres.ok) throw new Error('proxy ' + vres.status);
           playerUrl = URL.createObjectURL(await vres.blob());
         } catch(e){

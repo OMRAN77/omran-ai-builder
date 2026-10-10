@@ -50,40 +50,16 @@ async function omranBlobToServerLink(blob, filename){
     fr.readAsDataURL(blob);
   });
   if(!b64 || b64.length > 4 * 1024 * 1024) throw new Error('too-large');
-  const r = await fetch('/api/media?action=pdf', {
+  /* v-reply-export: PDF إلى نقطته (تفحص التوقيع)، وأيّ ملفّ آخر (Word/TXT/صورة) إلى نقطة الملفّات العامّة */
+  const isPdf = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
+  const r = await fetch(isPdf ? '/api/media?action=pdf' : '/api/media?action=file', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: b64, name: filename }),
+    body: JSON.stringify({ data: b64, name: filename, mime: (blob && blob.type) || 'application/octet-stream', token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), purpose: 'download' }), /* v-share-guard: الرفع برمز الجلسة · v-media-save: الحفظ تنزيل لا مشاركة */
   });
+  if(r.status === 429 && typeof settingsToast === 'function' && typeof t === 'function') settingsToast(t('portraitLimitReached')); /* v-media-save: نصّ الحدّ القائم، ثمّ الورقة المحلّيّة */
   const d = await r.json();
   if(!r.ok || !d || !d.url) throw new Error('upload-failed');
   return d.url;
-}
-function omranShareRetapBar(file, filename){
-  try{
-    const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-    const bar = document.createElement('div');
-    bar.style.cssText = 'position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));inset-inline:14px;z-index:99999;background:rgba(24,24,30,.96);border:1px solid rgba(212,175,55,.4);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;color:#eef0f6;font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.5);';
-    const txt = document.createElement('span');
-    txt.style.cssText = 'flex:1;';
-    txt.textContent = isArT ? '✅ الملف جاهز' : '✅ File ready';
-    const go = document.createElement('button');
-    go.textContent = isArT ? 'حفظ / مشاركة' : 'Save / Share';
-    go.style.cssText = 'background:none;color:#d4af37;font-weight:800;font-size:13.5px;padding:7px 14px;border:1px solid rgba(212,175,55,.5);border-radius:10px;cursor:pointer;touch-action:manipulation;';
-    go.onclick = function(){
-      navigator.share({ files: [file], title: filename }).then(function(){ bar.remove(); }).catch(function(e3){
-        if(e3 && e3.name === 'AbortError'){ bar.remove(); return; }
-        __swallow(e3, 'share:retap');
-      });
-    };
-    const x2 = document.createElement('button');
-    x2.textContent = '✕';
-    x2.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:14px;cursor:pointer;padding:4px 6px;';
-    x2.onclick = function(){ bar.remove(); };
-    bar.appendChild(txt); bar.appendChild(go); bar.appendChild(x2);
-    document.body.appendChild(bar);
-    setTimeout(function(){ try{ bar.remove(); }catch(e){ __swallow(e, 'share:retap-bar'); } }, 60000);
-    return true;
-  }catch(e){ __swallow(e, 'share:retap-bar2'); return false; }
 }
 /* v-pdf-sheet (شكوى المالك ٤ سبتمبر «تحميل PDF ما اشتغل في الهواوي والأندرويد»):
    كشف الغلاف كان يخطئ (لا مرجع android-app ولا standalone في بعض الأغلفة) فيسقط
@@ -107,7 +83,8 @@ function omranPdfReadySheet(url, file, filename, kind, openUrl){
     const head = document.createElement('div');
     head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;color:#f3efe4;font-weight:800;font-size:15px;';
     const ttl = document.createElement('span');
-    ttl.textContent = kind === 'video' ? (isArT ? '✅ الفيديو جاهز' : '✅ Video ready') : (kind === 'image' ? (isArT ? '✅ الصورة جاهزة' : '✅ Image ready') : (isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready'));
+    const fileTtl = (typeof t === 'function' && t('fileReadyTitle') !== 'fileReadyTitle' && t('fileReadyTitle')) || (isArT ? '✅ الملف جاهز' : '✅ File ready');
+    ttl.textContent = kind === 'video' ? (isArT ? '✅ الفيديو جاهز' : '✅ Video ready') : (kind === 'image' ? (isArT ? '✅ الصورة جاهزة' : '✅ Image ready') : (kind === 'file' ? fileTtl : (isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready')));
     const x = document.createElement('button'); x.textContent = '✕';
     x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
     x.onclick = function(){ sheet.remove(); };
@@ -160,6 +137,9 @@ function omranPdfReadySheet(url, file, filename, kind, openUrl){
 }
 async function omranSaveBlob(blob, filename){
   const isPdfFile = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
+  /* v-reply-export: نوع الورقة — PDF بعنوانه، والصورة بعنوانها، وأيّ ملفّ آخر «الملفّ جاهز» */
+  const sheetKind = isPdfFile ? 'pdf' : (/^image\//i.test((blob && blob.type) || '') ? 'image' : 'file');
+  const sheetMime = isPdfFile ? 'application/pdf' : ((blob && blob.type) || 'application/octet-stream');
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   try{
     if(navigator.canShare && typeof File === 'function'){
@@ -168,23 +148,20 @@ async function omranSaveBlob(blob, filename){
         try{ await navigator.share({ files: [f], title: filename }); return; }
         catch(e){
           if(e && e.name === 'AbortError') return;
-          /* v-share-retap (عمران: «على طول استوت من الهاتف» مرة واحدة فقط):
-             آيفون يرفض المشاركة بعد معالجة طويلة لانتهاء «ضغطة المستخدم».
-             ضغطة جديدة على شريط صغير تعيد فتح ورقة المشاركة الأصلية دائمًا.
-             داخل الأغلفة فقط — المتصفحات العادية تنزّل مباشرة كما كانت. */
-          /* v-pdf-sheet: PDF على الجوال → ورقة الأزرار (أدناه) بدل شريط إعادة اللمس */
-          if(!(isPdfFile && (omranLikelyApp() || omranMobileUA())) && omranLikelyApp() && omranShareRetapBar(f, filename)) return;
+          /* v-reply-export: رفض المشاركة (انتهاء «ضغطة المستخدم» في الآيفون، أو نوع خارج قائمة كروم
+             مثل .doc) → ورقة الأزرار أدناه لكلّ الأنواع؛ فيها «مشاركة» بلمسة جديدة تغني عن شريط إعادة اللمس. */
         }
       }
     }
   }catch(e){ __swallow(e, 'share:universal'); }
-  /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
-  if(isPdfFile && (omranLikelyApp() || omranMobileUA())){
+  /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي لكلّ الأنواع (v-reply-export: كان PDF فقط، فكان
+     Word/TXT يسقطان على تنزيل blob الذي تخطفه مصيدة الصور وترفعه «صورة» مكسورة) */
+  if(omranLikelyApp() || omranMobileUA()){
     try{
       const url = await omranBlobToServerLink(blob, filename);
       let fileForShare = null;
-      try{ if(typeof File === 'function') fileForShare = new File([blob], filename, { type: 'application/pdf' }); }catch(e){ fileForShare = null; }
-      if(omranPdfReadySheet(url, fileForShare, filename)){
+      try{ if(typeof File === 'function') fileForShare = new File([blob], filename, { type: sheetMime }); }catch(e){ fileForShare = null; }
+      if(omranPdfReadySheet(url, fileForShare, filename, sheetKind)){
         /* محاولة تنزيل تلقائي صامتة إلى جانب الورقة (تعمل في TWA كروم) */
         try{
           const dfr0 = document.createElement('iframe');
@@ -242,9 +219,9 @@ async function omranSaveBlob(blob, filename){
       /* v-pdf-big (شكوى المالك: بصورة واحدة يعمل وبخمس لا): تعذّر رابط الخادم (ملف كبير) —
          الورقة نفسها بملف محلي: مشاركة بالملف (تعمل في الأغلفة) ورابط blob وفتح */
       try{
-        let f2 = null; try{ if(typeof File === 'function') f2 = new File([blob], filename, { type: 'application/pdf' }); }catch(e2){ f2 = null; }
+        let f2 = null; try{ if(typeof File === 'function') f2 = new File([blob], filename, { type: sheetMime }); }catch(e2){ f2 = null; }
         const bu = URL.createObjectURL(blob);
-        if(omranPdfReadySheet(bu, f2, filename, 'pdf', bu)) return;
+        if(omranPdfReadySheet(bu, f2, filename, sheetKind, bu)) return;
       }catch(e3){ __swallow(e3, 'share:big-sheet'); }
     }
   }
@@ -258,7 +235,7 @@ function msgDownloadBlob(blob, filename){
       fr.onload = () => {
         try{
           const b64 = String(fr.result || '').split(',')[1] || '';
-          share.postMessage({ b64, name: filename || 'omran-file', mime: blob.type || 'application/octet-stream' });
+          share.postMessage({ b64, name: filename || 'omran-file', mime: String(blob.type || 'application/octet-stream').split(';')[0].trim() });
         }catch(e){ __swallow(e, 'share:app#post'); }
       };
       fr.readAsDataURL(blob);
@@ -367,7 +344,9 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
   try{
     await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
     try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
-    const canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 2 });
+    /* v-reply-export (PDF «فاضي»): html-to-image ينسخ موضع الحاوية المحسوب (fixed؛ left:-12000px) إلى
+       نسختها داخل الصورة، فتُرسم خارج اللوحة ويخرج كلّ PDF أبيض منذ v-pdf-file. النسخة تُرسم في مكانها. */
+    const canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 2, style: { position: 'static', left: '0', top: '0' } });
     if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -396,6 +375,109 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
     try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
   }
 }
+/* v-pdf-docs (شكوى عمران: «مااقدر احمل الملفات لتحويل PDF — فقط صورة»): زرّ «PDF» كان يقبل الصور
+   وحدها. الآن Word (.docx) والنصوص أيضًا، كلّها داخل المتصفّح بلا خادم ولا رصيد. المصدّر أعلاه يرسم
+   المحتوى كلّه في لوحة واحدة ثمّ يقصّها — فوثيقة من ١٠ صفحات تتجاوز حدّ لوحة آيفون (≈١٦ ميغابكسل)
+   وتخرج بيضاء، ويقطع السطر عند حافّة الصفحة. هنا: الكتل تُقاس ثمّ تُوزَّع على صفحات (لا كتلة تُقطع إلا
+   إن كانت أطول من صفحة)، وكلّ صفحة تُرسم بلوحتها الخاصّة — فلا سقف لطول الوثيقة إلا عدد الصفحات. */
+let __omranMammothLoading = null;
+function omranLoadMammoth(){
+  if(window.mammoth) return Promise.resolve();
+  if(__omranMammothLoading) return __omranMammothLoading;
+  __omranMammothLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/mammoth.browser.min.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranMammothLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranMammothLoading;
+}
+/* heights: ارتفاع كلّ كتلة (px)، pageH: ارتفاع محتوى الصفحة، breaks[i]: الكتلة i تبدأ صفحة جديدة.
+   الناتج: [{items:[فهارس الكتل]}] أو لكتلة أطول من صفحة شرائح [{items:[i], clipTop, clipH}]. */
+function omranPaginateBlocks(heights, pageH, breaks){
+  const pages = [];
+  let cur = null, used = 0;
+  heights.forEach((h0, i) => {
+    const h = Math.max(0, Number(h0) || 0);
+    if(h > pageH){
+      for(let top = 0; top < h; top += pageH) pages.push({ items: [i], clipTop: top, clipH: pageH });
+      cur = null; used = 0;
+      return;
+    }
+    if(!cur || (breaks && breaks[i]) || used + h > pageH){ cur = { items: [] }; pages.push(cur); used = 0; }
+    cur.items.push(i); used += h;
+  });
+  return pages;
+}
+async function omranExportPagedPdfFile(blocks, opts){
+  opts = opts || {};
+  const PW = 794, PH = 1123, PADV = 40, PADH = 44;
+  const contentH = PH - PADV * 2 - 6;
+  const maxPages = opts.maxPages || 80;
+  const css = '<style>p{margin:0 0 .6em}h1,h2,h3,h4,h5,h6{margin:.4em 0 .3em;line-height:1.5}h1{font-size:24px}h2{font-size:20px}h3{font-size:17px}ul,ol{margin:0 0 .6em;padding-inline-start:1.6em}table{border-collapse:collapse;width:100%;margin:0 0 .6em}td,th{border:1px solid #999;padding:3px 8px;vertical-align:top}img{max-width:100%;max-height:' + (contentH - 20) + 'px;display:block;margin:0 auto}</style>';
+  const mk = () => {
+    const h = document.createElement('div');
+    h.dir = opts.rtl === false ? 'ltr' : 'rtl';
+    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + PW + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+    h.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
+    return h;
+  };
+  const wrap = (html) => '<div style="display:flow-root">' + html + '</div>';
+  let pill = null;
+  try{
+    pill = document.createElement('div');
+    pill.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:2147483000;background:rgba(20,20,26,.96);color:#f3efe4;border:1px solid rgba(212,175,55,.45);border-radius:999px;padding:9px 16px;font-size:13.5px;font-weight:700;';
+    pill.textContent = '⏳ …';
+    document.body.appendChild(pill);
+  }catch(e){ pill = null; }
+  const measure = mk();
+  try{
+    await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
+    try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
+    /* القياس: كلّ كتلة في غلاف flow-root فلا تُهرَّب هوامشها خارج ارتفاعها، وعرضه كعرض صفحة الرسم */
+    measure.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
+    document.body.appendChild(measure);
+    await Promise.all(Array.from(measure.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
+    const heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+    measure.remove();
+    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone)));
+    let pages = omranPaginateBlocks(heights, contentH, breaks);
+    const total = pages.length;
+    if(!total) throw new Error('empty-doc');
+    if(total > maxPages) pages = pages.slice(0, maxPages);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    for(let k = 0; k < pages.length; k++){
+      if(pill) pill.textContent = String(t('pdfDocPage')).replace('{i}', k + 1).replace('{n}', pages.length);
+      await new Promise((r) => setTimeout(r, 0));
+      const pg = pages[k];
+      const inner = pg.items.map((i) => wrap(blocks[i].html)).join('');
+      const holder = mk();
+      holder.innerHTML = css + (pg.clipH ? '<div style="height:' + pg.clipH + 'px;overflow:hidden"><div style="margin-top:-' + pg.clipTop + 'px">' + inner + '</div></div>' : inner);
+      document.body.appendChild(holder);
+      let canvas;
+      try{
+        await Promise.all(Array.from(holder.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
+        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 1.3, style: { position: 'static', left: '0', top: '0' } });
+      } finally { holder.remove(); }
+      if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
+      if(k > 0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير */
+    }
+    await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-docs.pdf');
+    return { pages: pages.length, total, truncated: total > pages.length };
+  } catch(err){
+    try{
+      const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
+      if(errPill){ errPill.textContent = '❌ ' + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
+    }catch(e){ /* guard-ok */ }
+    throw err;
+  } finally {
+    try{ measure.remove(); }catch(e){ /* guard-ok */ }
+    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
+  }
+}
 function msgPdfFontSpec(){
   const fallback = {family:"'Tajawal'", google:'', line:1.7};
   try{
@@ -407,7 +489,11 @@ function msgPdfFontSpec(){
 function msgPdfFontHead(font){
   const family = font.family + ", 'Tajawal', Tahoma, Arial, sans-serif";
   const query = (font.google ? 'family=' + font.google + '&family=' : 'family=') + 'Tajawal:wght@400;500;700';
-  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
+  /* v-calligraphy-names: الخطّ المستضاف (الثلث/الديواني) ليس في رابط Google — قاعدته في رأس المستند بعنوان كامل،
+     لأنّ نافذة الطباعة وsrcdoc وجسر PDF في التطبيق تستلم نصّ HTML قد لا يعرف أصل الموقع */
+  const origin = (typeof location !== 'undefined' && location && location.origin && location.origin !== 'null') ? location.origin : '';
+  const face = font.url ? '<style>@font-face{font-family:"' + font.css + '";src:url("' + origin + font.url + '") format("woff2");}</style>' : '';
+  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">' + face};
 }
 function msgPrintAfterFont(view, family, ctx){
   /* v-app-share: داخل تطبيق المتجر window.print() لا يعمل — نرسل مستند
@@ -457,7 +543,7 @@ function exportReplyAsPdf(text){
 function exportReplyAsWord(text){
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  msgDownloadBlob(blob, 'omran-ai-reply.doc');
+  msgSaveExport(blob, 'omran-ai-reply.doc');
 }
 function exportReplyAsImage(text){
   const width = 900;
@@ -487,15 +573,52 @@ function exportReplyAsImage(text){
   ctx.textAlign = 'right';
   ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
   lines.forEach((line, i) => { ctx.fillText(line, canvas.width - padding, padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4)); });
-  canvas.toBlob(blob => { if(blob) msgDownloadBlob(blob, 'omran-ai-reply.png'); }, 'image/png');
+  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); }, 'image/png');
 }
 function exportReplyAsTxt(text){
   const blob = new Blob([text || ''], { type: 'text/plain;charset=utf-8' });
-  msgDownloadBlob(blob, 'omran-ai-reply.txt');
+  msgSaveExport(blob, 'omran-ai-reply.txt');
+}
+/* v-reply-export (شكوى المالك ٢٤ سبتمبر: «الورد والـtxt والصور ما تشتغل»): كانت الثلاثة تنزّل
+   blob مباشرة، وداخل التطبيق تخطفها مصيدة الصور فترفع Word/TXT «صورة» مكسورة. على الجوال وفي
+   التطبيقات تمرّ الآن بمسار الحفظ الموحّد (جسر ← ورقة المشاركة ← رابط خادم بورقة أزرار)؛
+   الكمبيوتر ينزّل مباشرة كما كان. */
+function msgSaveExport(blob, filename){
+  let viaSheet = false;
+  try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
+  if(viaSheet){
+    omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
+    return;
+  }
+  msgDownloadBlob(blob, filename);
 }
 let __msgMoreMenuOpen = null;
+let __msgMoreMenuAnchor = null;
+let __msgMoreMenuCounter = 0;
 function closeMsgMoreMenu(){
   if(__msgMoreMenuOpen){ __msgMoreMenuOpen.remove(); __msgMoreMenuOpen = null; }
+  if(__msgMoreMenuAnchor){
+    __msgMoreMenuAnchor.setAttribute('aria-expanded', 'false');
+    __msgMoreMenuAnchor.removeAttribute('aria-controls');
+    __msgMoreMenuAnchor = null;
+  }
+  document.removeEventListener('keydown', __msgMoreMenuKeydown);
+  window.removeEventListener('resize', closeMsgMoreMenu);
+  window.removeEventListener('scroll', closeMsgMoreMenu);
+}
+function __msgMoreMenuKeydown(e){
+  if(!__msgMoreMenuOpen || !__msgMoreMenuAnchor) return;
+  if(e.key === 'Escape'){
+    e.preventDefault();
+    const anchor = __msgMoreMenuAnchor;
+    closeMsgMoreMenu();
+    anchor.focus();
+  }else if(e.key === 'Tab'){
+    const buttons = Array.from(__msgMoreMenuOpen.querySelectorAll('button:not(:disabled)'));
+    if(!buttons.length) return;
+    if(e.shiftKey && document.activeElement === buttons[0]){ e.preventDefault(); buttons[buttons.length - 1].focus(); }
+    else if(!e.shiftKey && document.activeElement === buttons[buttons.length - 1]){ e.preventDefault(); buttons[0].focus(); }
+  }
 }
 document.addEventListener('click', closeMsgMoreMenu);
 // ✨ v363: قدرات التطبيق داخل المحادثة نفسها — أيقونة سريعة تحت كل رد
@@ -566,34 +689,63 @@ function openCapabilitiesMenu(anchorBtn){
   __msgMoreMenuOpen = menu;
 }
 
-function openMsgMoreMenu(anchorBtn, text){
+function openMsgMoreMenu(anchorBtn, text, actions){
+  if(__msgMoreMenuAnchor === anchorBtn){ closeMsgMoreMenu(); return; }
   closeMsgMoreMenu();
   const menu = document.createElement('div');
-  menu.className = 'msgMoreMenu';
-  const items = [
+  menu.className = 'msgMoreMenu msgReplyMoreMenu';
+  menu.id = 'msgMoreMenu-' + (++__msgMoreMenuCounter);
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', t('msgToolbarLabel'));
+  const items = (actions || []).concat([
     { label: t('convertToPdf') || 'تحويل إلى PDF', fn: () => exportReplyAsPdf(text) },
     { label: t('convertToWord') || 'تحويل إلى Word', fn: () => exportReplyAsWord(text) },
     { label: t('convertToImage') || 'تحويل إلى صورة', fn: () => exportReplyAsImage(text) },
     { label: t('downloadTxt') || 'تنزيل نص TXT', fn: () => exportReplyAsTxt(text) },
-  ];
-  items.forEach(it => {
+  ]);
+  items.forEach((it, index) => {
+    if(index === (actions || []).length && index){
+      const divider = document.createElement('div');
+      divider.className = 'msgMoreDivider';
+      divider.setAttribute('role', 'separator');
+      menu.appendChild(divider);
+    }
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = it.label;
-    b.onclick = (e) => { e.stopPropagation(); it.fn(); closeMsgMoreMenu(); };
+    b.setAttribute('role', 'menuitem');
+    b.title = it.label;
+    b.setAttribute('aria-label', it.label);
+    if(it.checkable){
+      b.setAttribute('role', 'menuitemcheckbox');
+      b.setAttribute('aria-checked', it.active && it.active() ? 'true' : 'false');
+    }
+    if(it.icon) b.innerHTML = it.icon;
+    const label = document.createElement('span');
+    label.textContent = it.label;
+    b.appendChild(label);
+    if(it.active && it.active()) b.classList.add('msgMoreActive');
+    if(it.disabled && it.disabled()) b.disabled = true;
+    b.onclick = (e) => { e.stopPropagation(); it.fn(b); closeMsgMoreMenu(); };
     menu.appendChild(b);
   });
   document.body.appendChild(menu);
   const rect = anchorBtn.getBoundingClientRect();
   const menuW = menu.offsetWidth || 170;
   const menuH = menu.offsetHeight || 180;
-  let left = rect.left + window.scrollX;
-  if(left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
-  menu.style.left = Math.max(8, left) + 'px';
-  let top = rect.top + window.scrollY - menuH - 6;
-  if(top < window.scrollY + 8) top = rect.bottom + window.scrollY + 4;
-  menu.style.top = top + 'px';
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuW - 8));
+  menu.style.left = left + 'px';
+  const above = rect.top - menuH - 6;
+  const below = rect.bottom + 4;
+  menu.style.top = Math.max(8, Math.min(above >= 8 ? above : below, window.innerHeight - menuH - 8)) + 'px';
   __msgMoreMenuOpen = menu;
+  __msgMoreMenuAnchor = anchorBtn;
+  anchorBtn.setAttribute('aria-controls', menu.id);
+  anchorBtn.setAttribute('aria-expanded', 'true');
+  document.addEventListener('keydown', __msgMoreMenuKeydown);
+  window.addEventListener('resize', closeMsgMoreMenu);
+  window.addEventListener('scroll', closeMsgMoreMenu);
+  const first = menu.querySelector('button:not(:disabled)');
+  if(first) first.focus();
 }
 
 /* v-code-viewer: عارض قراءة داخل تبويب «الكود» — ترقيم أسطر وتلوين خفيف.
@@ -1438,21 +1590,57 @@ document.querySelectorAll('.tab').forEach(tab => {
   };
 });
 
-/* v338: حجم خط المحادثة */
+/* v338: حجم خط المحادثة — v-font-tuner (المالك ٢ أكتوبر، لقطة «حجم الخط / سماكة الخط» بمعاينة محادثة): الأزرار الأربعة
+   صارت شريطين بمعاينة حيّة — الحجم ٧ درجات (العاديّ الثالثة = حجم المحادثة الافتراضيّ كما هو) والسماكة ٤.
+   الاختيار القديم (chatFontSize) يُنقل مرّة: صغير ٠، عاديّ ٢، كبير ٣، كبير جدًّا ٥ — بنفس مقاساته تقريبًا. */
+const FT_SIZES = [12, 13, 0, 15.5, 17, 18.5, 20]; // ٠ = العاديّ (لا يُفرض شيء)
+const FT_SIZE_KEYS = ['fontSizeTiny', 'fontSizeSmall', 'fontSizeNormal', 'fontSizeMedium', 'fontSizeLarge', 'fontSizeXLarge', 'fontSizeHuge'];
+const FT_WEIGHTS = [300, 400, 500, 700];
+const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'fontWeightBold'];
 (function(){
-  function applyFS(v){
-    document.documentElement.classList.remove('fs-small','fs-large','fs-xlarge');
-    if(v && v !== 'normal') document.documentElement.classList.add('fs-' + v);
-    document.querySelectorAll('.fontSizeBtn').forEach(b => b.classList.toggle('active', b.dataset.fs === v));
+  try{
+    const st = document.createElement('style');
+    st.id = 'ftChatCss';
+    st.textContent = 'html[data-chat-fs] .msg{font-size:var(--omran-chat-fs);} html[data-chat-fw] .msg-text{font-weight:var(--omran-chat-fw);}';
+    document.head.appendChild(st);
+  }catch(e){ __swallow(e, 'ui:font-tuner-css'); }
+  function readStep(key, def, max){
+    let v = NaN;
+    try{ v = parseInt(localStorage.getItem(key), 10); }catch(e){ __swallow(e, 'ui:font-tuner-read'); }
+    return (v >= 0 && v <= max) ? v : def;
   }
-  let saved = 'normal';
-  try{ saved = localStorage.getItem('chatFontSize') || 'normal'; }catch(e){ __swallow(e, "ui:app-05-ui#15"); }
-  applyFS(saved);
-  document.querySelectorAll('.fontSizeBtn').forEach(b => {
-    b.onclick = function(){
-      try{ localStorage.setItem('chatFontSize', b.dataset.fs); }catch(e){ __swallow(e, "save:app-05-ui#16"); }
-      applyFS(b.dataset.fs);
-    };
+  function migrate(){
+    try{
+      if(localStorage.getItem('chatFontStep') !== null) return;
+      const old = localStorage.getItem('chatFontSize');
+      const map = { small: 0, normal: 2, large: 3, xlarge: 5 };
+      if(old && map[old] !== undefined) localStorage.setItem('chatFontStep', String(map[old]));
+    }catch(e){ __swallow(e, 'ui:font-tuner-migrate'); }
+  }
+  function apply(){
+    const root = document.documentElement;
+    const si = readStep('chatFontStep', 2, 6), wi = readStep('chatFontWeight', 1, 3);
+    root.classList.remove('fs-small','fs-large','fs-xlarge'); // v338 القديمة
+    if(FT_SIZES[si]){ root.setAttribute('data-chat-fs', String(si)); root.style.setProperty('--omran-chat-fs', FT_SIZES[si] + 'px'); }
+    else { root.removeAttribute('data-chat-fs'); root.style.removeProperty('--omran-chat-fs'); }
+    if(wi !== 1){ root.setAttribute('data-chat-fw', String(wi)); root.style.setProperty('--omran-chat-fw', String(FT_WEIGHTS[wi])); }
+    else { root.removeAttribute('data-chat-fw'); root.style.removeProperty('--omran-chat-fw'); }
+    const sz = document.getElementById('ftSize'), wt = document.getElementById('ftWeight');
+    if(sz) sz.value = String(si);
+    if(wt) wt.value = String(wi);
+    const sn = document.getElementById('ftSizeName'), wn = document.getElementById('ftWeightName');
+    try{ if(sn) sn.textContent = t(FT_SIZE_KEYS[si]); if(wn) wn.textContent = t(FT_WEIGHT_KEYS[wi]); }catch(e){ __swallow(e, 'ui:font-tuner-names'); }
+  }
+  window.omranApplyFontTuner = apply;
+  migrate();
+  apply();
+  [['ftSize', 'chatFontStep'], ['ftWeight', 'chatFontWeight']].forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', () => {
+      try{ localStorage.setItem(key, el.value); }catch(e){ __swallow(e, 'ui:font-tuner-save'); }
+      apply();
+    });
   });
 })();
 
@@ -1670,7 +1858,8 @@ const PROVIDER_KEY_LABELS = {
   perplexity: 'Perplexity',
   mistral: 'Mistral AI',
   deepseek: 'DeepSeek',
-  cohere: 'Cohere'
+  cohere: 'Cohere',
+  kimi: 'Moonshot Kimi' // v-kimi
 };
 // ===== المزودين التسعة: شبكة الدرج الجانبي + شريط التلفون (شعارات أصلية) =====
 const PROVIDER_LOGOS = {"openai":"<svg fill=\"currentColor\" fill-rule=\"evenodd\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z\"></path></svg>","claude":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z\" fill=\"#D97757\" fill-rule=\"nonzero\"></path></svg>","gemini":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z\" fill=\"#3186FF\"></path><path d=\"M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z\" fill=\"url(#lobe-icons-gemini-0-_R_0_)\"></path><path d=\"M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z\" fill=\"url(#lobe-icons-gemini-1-_R_0_)\"></path><path d=\"M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z\" fill=\"url(#lobe-icons-gemini-2-_R_0_)\"></path><defs><linearGradient gradientUnits=\"userSpaceOnUse\" id=\"lobe-icons-gemini-0-_R_0_\" x1=\"7\" x2=\"11\" y1=\"15.5\" y2=\"12\"><stop stop-color=\"#08B962\"></stop><stop offset=\"1\" stop-color=\"#08B962\" stop-opacity=\"0\"></stop></linearGradient><linearGradient gradientUnits=\"userSpaceOnUse\" id=\"lobe-icons-gemini-1-_R_0_\" x1=\"8\" x2=\"11.5\" y1=\"5.5\" y2=\"11\"><stop stop-color=\"#F94543\"></stop><stop offset=\"1\" stop-color=\"#F94543\" stop-opacity=\"0\"></stop></linearGradient><linearGradient gradientUnits=\"userSpaceOnUse\" id=\"lobe-icons-gemini-2-_R_0_\" x1=\"3.5\" x2=\"17.5\" y1=\"13.5\" y2=\"12\"><stop stop-color=\"#FABC12\"></stop><stop offset=\".46\" stop-color=\"#FABC12\" stop-opacity=\"0\"></stop></linearGradient></defs></svg>","mistral":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M3.428 3.4h3.429v3.428H3.428V3.4zm13.714 0h3.43v3.428h-3.43V3.4z\" fill=\"gold\"></path><path d=\"M3.428 6.828h6.857v3.429H3.429V6.828zm10.286 0h6.857v3.429h-6.857V6.828z\" fill=\"#FFAF00\"></path><path d=\"M3.428 10.258h17.144v3.428H3.428v-3.428z\" fill=\"#FF8205\"></path><path d=\"M3.428 13.686h3.429v3.428H3.428v-3.428zm6.858 0h3.429v3.428h-3.429v-3.428zm6.856 0h3.43v3.428h-3.43v-3.428z\" fill=\"#FA500F\"></path><path d=\"M0 17.114h10.286v3.429H0v-3.429zm13.714 0H24v3.429H13.714v-3.429z\" fill=\"#E10500\"></path></svg>","perplexity":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z\" fill=\"#22B8CD\" fill-rule=\"nonzero\"></path></svg>","deepseek":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M23.748 4.482c-.254-.124-.364.113-.512.234-.051.039-.094.09-.137.136-.372.397-.806.657-1.373.626-.829-.046-1.537.214-2.163.848-.133-.782-.575-1.248-1.247-1.548-.352-.156-.708-.311-.955-.65-.172-.241-.219-.51-.305-.774-.055-.16-.11-.323-.293-.35-.2-.031-.278.136-.356.276-.313.572-.434 1.202-.422 1.84.027 1.436.633 2.58 1.838 3.393.137.093.172.187.129.323-.082.28-.18.552-.266.833-.055.179-.137.217-.329.14a5.526 5.526 0 01-1.736-1.18c-.857-.828-1.631-1.742-2.597-2.458a11.365 11.365 0 00-.689-.471c-.985-.957.13-1.743.388-1.836.27-.098.093-.432-.779-.428-.872.004-1.67.295-2.687.684a3.055 3.055 0 01-.465.137 9.597 9.597 0 00-2.883-.102c-1.885.21-3.39 1.102-4.497 2.623C.082 8.606-.231 10.684.152 12.85c.403 2.284 1.569 4.175 3.36 5.653 1.858 1.533 3.997 2.284 6.438 2.14 1.482-.085 3.133-.284 4.994-1.86.47.234.962.327 1.78.397.63.059 1.236-.03 1.705-.128.735-.156.684-.837.419-.961-2.155-1.004-1.682-.595-2.113-.926 1.096-1.296 2.746-2.642 3.392-7.003.05-.347.007-.565 0-.845-.004-.17.035-.237.23-.256a4.173 4.173 0 001.545-.475c1.396-.763 1.96-2.015 2.093-3.517.02-.23-.004-.467-.247-.588zM11.581 18c-2.089-1.642-3.102-2.183-3.52-2.16-.392.024-.321.471-.235.763.09.288.207.486.371.739.114.167.192.416-.113.603-.673.416-1.842-.14-1.897-.167-1.361-.802-2.5-1.86-3.301-3.307-.774-1.393-1.224-2.887-1.298-4.482-.02-.386.093-.522.477-.592a4.696 4.696 0 011.529-.039c2.132.312 3.946 1.265 5.468 2.774.868.86 1.525 1.887 2.202 2.891.72 1.066 1.494 2.082 2.48 2.914.348.292.625.514.891.677-.802.09-2.14.11-3.054-.614zm1-6.44a.306.306 0 01.415-.287.302.302 0 01.2.288.306.306 0 01-.31.307.303.303 0 01-.304-.308zm3.11 1.596c-.2.081-.399.151-.59.16a1.245 1.245 0 01-.798-.254c-.274-.23-.47-.358-.552-.758a1.73 1.73 0 01.016-.588c.07-.327-.008-.537-.239-.727-.187-.156-.426-.199-.688-.199a.559.559 0 01-.254-.078c-.11-.054-.2-.19-.114-.358.028-.054.16-.186.192-.21.356-.202.767-.136 1.146.016.352.144.618.408 1.001.782.391.451.462.576.685.914.176.265.336.537.445.848.067.195-.019.354-.25.452z\" fill=\"#4D6BFE\"></path></svg>","openrouter":"<svg fill=\"currentColor\" fill-rule=\"evenodd\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M18.654 3.87a5.087 5.087 0 110 10.174L23.7 19.09c.64.641.187 1.737-.72 1.737H8.48a8.479 8.479 0 010-16.958h10.175zM8.479 7.26a5.087 5.087 0 100 10.176 5.087 5.087 0 000-10.175z\"></path></svg>","groq":"<svg fill=\"currentColor\" fill-rule=\"evenodd\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12.036 2c-3.853-.035-7 3-7.036 6.781-.035 3.782 3.055 6.872 6.908 6.907h2.42v-2.566h-2.292c-2.407.028-4.38-1.866-4.408-4.23-.029-2.362 1.901-4.298 4.308-4.326h.1c2.407 0 4.358 1.915 4.365 4.278v6.305c0 2.342-1.944 4.25-4.323 4.279a4.375 4.375 0 01-3.033-1.252l-1.851 1.818A7 7 0 0012.029 22h.092c3.803-.056 6.858-3.083 6.879-6.816v-6.5C18.907 4.963 15.817 2 12.036 2z\"></path></svg>","cohere":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path clip-rule=\"evenodd\" d=\"M8.128 14.099c.592 0 1.77-.033 3.398-.703 1.897-.781 5.672-2.2 8.395-3.656 1.905-1.018 2.74-2.366 2.74-4.18A4.56 4.56 0 0018.1 1H7.549A6.55 6.55 0 001 7.55c0 3.617 2.745 6.549 7.128 6.549z\" fill=\"#39594D\" fill-rule=\"evenodd\"></path><path clip-rule=\"evenodd\" d=\"M9.912 18.61a4.387 4.387 0 012.705-4.052l3.323-1.38c3.361-1.394 7.06 1.076 7.06 4.715a5.104 5.104 0 01-5.105 5.104l-3.597-.001a4.386 4.386 0 01-4.386-4.387z\" fill=\"#D18EE2\" fill-rule=\"evenodd\"></path><path d=\"M4.776 14.962A3.775 3.775 0 001 18.738v.489a3.776 3.776 0 007.551 0v-.49a3.775 3.775 0 00-3.775-3.775z\" fill=\"#FF7759\"></path></svg>"};
@@ -1691,21 +1880,21 @@ function funcPrimaryOf(key){
 const PROVIDER_DISPLAY = {
   claude: 'الكينج', gemini: 'السريع', openai: 'العميق', groq: 'السريع',
   mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
-  cohere: 'العميق', openrouter: 'العميق',
+  cohere: 'العميق', openrouter: 'العميق', kimi: 'العميق', // v-kimi
 };
 /* v-nick-i18n (شكوى المالك ٢٩ أغسطس: «الكينج» طلعت عربية وسط واجهة
    المليالم): الألقاب الثلاثة صارت مفاتيح ترجمة تتبدل مع لغة الواجهة. */
 const PROVIDER_NICK_KEYS = {
   claude: 'provNickKing', gemini: 'provNickFast', openai: 'provNickDeep', groq: 'provNickFast',
   mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
-  cohere: 'provNickDeep', openrouter: 'provNickDeep',
+  cohere: 'provNickDeep', openrouter: 'provNickDeep', kimi: 'provNickDeep', // v-kimi
 };
 /* v-owner-real-names (طلب عمران ١٨ سبتمبر: «عند الكتابة وعند ردّ المزوّد أريد اسمه — الحين يكتب الكينج.
    فقط الاسم لا تغيّر شيئًا ثانيًا»): للمالك وحده تُعرض الأسماء الحقيقيّة القصيرة للمزوّد الذي ردّ فعلًا
    (لا رأس مجموعته)، في سطر الحالة وشارة الردّ وقوائم المزوّدين. بقيّة المستخدمين على الألقاب الوظيفيّة. */
 const PROVIDER_REAL_SHORT = {
   claude: 'Claude', gemini: 'Gemini', openai: 'GPT', groq: 'Groq', mistral: 'Mistral',
-  deepseek: 'DeepSeek', perplexity: 'Perplexity', cohere: 'Cohere', openrouter: 'OpenRouter',
+  deepseek: 'DeepSeek', perplexity: 'Perplexity', cohere: 'Cohere', openrouter: 'OpenRouter', kimi: 'Kimi', // v-kimi
 };
 function omranOwnerUi(){
   try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
@@ -1729,7 +1918,7 @@ const PROVIDER_QUICK_LIST = [
   { key: 'openai', name: 'العميق', color: '#10a37f' },
 ];
 // ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
-try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); }
+if(!omranOwnerUi()) try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); } // v-owner-solo: DeepSeek المالك يبقى DeepSeek
 let providerQuickBarBuilt = false;
 /* v-provider-arrow (أمر عمران «كل المزودين ٩ في السهم»): منتقٍ من شريط السهم (modes.js)
    يضبط موديل المزوّد ثمّ يبدّل المزوّد بمنطق selectProviderKey نفسه (مشروع/محادثة لكلّ
@@ -1737,12 +1926,12 @@ let providerQuickBarBuilt = false;
 window.omranPickProviderModel = function(provKey, storeKey, modelId){
   try{ if(storeKey && modelId) localStorage.setItem(storeKey, modelId); }catch(e){ __swallow(e, "save:app-05-ui#prov-arrow"); }
   try{
-    const cur = localStorage.getItem('aiapp_provider') || 'claude';
+    const cur = localStorage.getItem('aiapp_provider') || 'openai';
     if(provKey && provKey !== cur) selectProviderKey(provKey);
   }catch(e){ __swallow(e, "misc:app-05-ui#prov-arrow"); }
 };
 function selectProviderKey(key){
-  const prev = localStorage.getItem('aiapp_provider') || 'claude';
+  const prev = localStorage.getItem('aiapp_provider') || 'openai';
   localStorage.setItem('aiapp_provider', key);
   // v262: المستخدم اختار مزودًا بيده → نحترم اختياره ويتعطل التوجيه بالتخصص
   localStorage.setItem('aiapp_provider_explicit', '1');
@@ -1791,16 +1980,27 @@ function selectProviderKey(key){
 /* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يظهر
    لمن باقته تسمح باختيار المزوّد (Max) وللمالك وVIP فقط؛ المجّانيّ والضيف وPlus وPro يوجَّهون من الخادم
    بجدول الباقة (tier.js PLAN_ROUTING) فلا يُعرض لهم اختيار لا أثر له. تُستدعى بنتيجة usage-status
-   (tier/plan) وبنتيجة رصيد النقاط؛ بلا نتيجة (شبكة مقطوعة) لا تغيّر شيئًا. */
+   (tier/plan) وبنتيجة رصيد النقاط؛ بلا نتيجة (شبكة مقطوعة) لا تغيّر شيئًا.
+   v-providers-owner (أمر المالك ٤ أكتوبر «رجّع المزوّدين إلى المالك فقط»): المنتقي للمالك وحده — Max وVIP صاروا
+   كبقيّة الباقات، والخادم يتجاهل اختيارهم القديم المحفوظ (tier.js وchat.js) فلا يعلق أحد على مزوّد اختاره قبل الإخفاء. */
 function applyPlanGate(d){
   try{
     if(!d || typeof d !== 'object') return;
     const tier = typeof d.tier === 'string' && d.tier ? d.tier : (d.authed === false ? 'guest' : '');
     if(!tier) return;
     const plan = tier === 'sub' ? String(d.plan || '').toLowerCase() : '';
-    const open = tier === 'owner' || tier === 'vip' || (tier === 'sub' && plan === 'max');
+    const open = tier === 'owner'; // v-providers-owner
+    const prevPlan = window.__omranPlan;
     window.__omranPlan = plan || tier;
+    if(prevPlan !== window.__omranPlan && typeof renderSettingsNavList === 'function') renderSettingsNavList();
     document.documentElement.classList.toggle('plan-locked', !open);
+    // v-gold-badge-plan (قرار المالك ٥ أكتوبر، الجدول الثاني): بطاقة Pro تعد «شارة ذهبية» ولم يكن لها تنفيذ — تظهر بجانب
+    // الاسم في رأس الإعدادات (#setProfileName؛ الرأس العلويّ بلا اسم منذ v-auth-optional-3) لمشترك Pro وMax («كل مزايا Pro»).
+    // متغيّر CSS على html لا سمة على العنصر: جزء الإعدادات يُحقن بعد هذا النداء أحيانًا. الاسم PRO/MAX كما في البطاقات.
+    const gold = plan === 'pro' || plan === 'max';
+    const root = document.documentElement;
+    root.classList.toggle('plan-gold', gold);
+    if(gold) root.style.setProperty('--plan-badge', JSON.stringify(plan.toUpperCase())); else root.style.removeProperty('--plan-badge');
   }catch(e){ __swallow(e, "ui:app-05-ui#plan-gate"); }
 }
 window.applyPlanGate = applyPlanGate;
@@ -1837,7 +2037,7 @@ function buildProviderQuickBar(){
 /* v336: قائمة المزودين المنسدلة (كمبيوتر فقط) */
 function provDDUpdateButton(){
   try{
-    const cur = localStorage.getItem('aiapp_provider') || 'claude';
+    const cur = localStorage.getItem('aiapp_provider') || 'openai';
     const p = PROVIDER_QUICK_LIST.find(x => x.key === cur) || PROVIDER_QUICK_LIST[0];
     const logo = document.getElementById('provDDLogo');
     const name = document.getElementById('provDDName');
@@ -1895,7 +2095,7 @@ function relabelProviders(){
 }
 try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
-  const current = localStorage.getItem('aiapp_provider') || 'claude';
+  const current = localStorage.getItem('aiapp_provider') || 'openai';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
     el.classList.toggle('active', el.dataset.provider === current);
     el.title = functionalLabel(el.dataset.provider);
@@ -2079,6 +2279,8 @@ document.addEventListener('DOMContentLoaded', applyTheme);
 // ===== 3D animated background system (Vanta.js) =====
 const BG3D_EFFECTS = [
   { id: 'none',     emoji: '🚫', ar: 'بدون خلفية',        en: 'No background',   fr: 'Sans arrière-plan',      hi: 'बिना पृष्ठभूमि',        ur: 'بغیر پس منظر',        bn: "কোনো ব্যাকগ্রাউন্ড নেই", ne: "पृष्ठभूमि छैन", lib: null },
+  /* v-bg-galaxy (فيديو المالك ٢٨ سبتمبر «اريد تضيف هذي … خلفية ٣ الابعاد»): مجرّة لا نهائية — نجوم كثيفة تطير نحوك من المركز */
+  { id: 'galaxy',   emoji: '🌠', ar: 'مجرّة لا نهائية',     en: 'Endless Galaxy',    fr: 'Galaxie infinie',        hi: 'अनंत आकाशगंगा',         ur: 'لامتناہی کہکشاں',     bn: "অসীম ছায়াপথ", ne: "अनन्त आकाशगंगा", es: 'Galaxia infinita', zh: '无尽星河', fil: 'Walang-hanggang Galaksiya', ind: 'Galaksi Tanpa Batas', ml: 'അനന്ത ഗാലക്സി', ru: 'Бесконечная галактика', tr: 'Sonsuz Galaksi', lib: 'custom' },
   { id: 'net',      emoji: '🕸️', ar: 'شبكة سلكية',        en: 'Wire Network',    fr: 'Réseau filaire',         hi: 'तार नेटवर्क',          ur: 'تار نیٹ ورک',        bn: "ওয়্যার নেটওয়ার্ক", ne: "तार नेटवर्क", lib: 'three' },
   { id: 'waves',    emoji: '🌊', ar: 'أمواج سائلة',        en: 'Waves',           fr: 'Vagues',                 hi: 'लहरें',                ur: 'لہریں',              bn: "তরঙ্গ", ne: "लहरहरू", lib: 'three' },
   { id: 'fog',      emoji: '🌫️', ar: 'ضباب متحرك',        en: 'Fog',             fr: 'Brouillard',             hi: 'कोहरा',                ur: 'دھند',               bn: "কুয়াশা", ne: "कुहिरो", lib: 'three' },
@@ -2100,7 +2302,8 @@ const BG3D_EFFECTS = [
   { id: 'fireflies',  emoji: '🌳', ar: 'يراعات الغابة',        en: 'Forest Fireflies',  fr: 'Lucioles de forêt',      hi: 'जंगल की जुगनू',         ur: 'جنگل کے جگنو',       bn: "বন ফায়ারফ্লাইস", ne: "वन फायरफ्लाइज", lib: 'custom' }
 ];
 function bgEffLabel(eff){
-  return eff[lang] || eff.en;
+  /* v-bg-galaxy: رمز الإندونيسيّة 'id' هو مفتاح الخيار نفسه — فكان يُعرض المعرّف الخامّ (net/waves…) اسمًا؛ اسمها في 'ind' */
+  return eff[lang === 'id' ? 'ind' : lang] || eff.en;
 }
 const loadedScripts = {};
 function loadScriptOnce(url){
@@ -2150,7 +2353,8 @@ function bg3dPalette(){
     skyTop:'#01030a', skyBot:'#0a1330', star:'255,255,255',
     snowBg:'#0b1220', flake:'255,255,255,0.85',
     rainBg:'rgba(8,12,20,1)', rainLine:'rgba(160,200,255,0.35)',
-    forest:'#020a05', glow:'200,255,120', fly:'220,255,150' };
+    forest:'#020a05', glow:'200,255,120', fly:'220,255,150',
+    galaxyBg:'#000000', galaxyStar:'255,255,255' };
   return { light:true, bgHex:0xeef2f8,
     oceanTop:'#f3f7fc', oceanBot:'#dbe6f2',
     wave:['rgba(120,165,205,0.40)','rgba(95,140,185,0.40)','rgba(70,115,165,0.45)'],
@@ -2158,7 +2362,8 @@ function bg3dPalette(){
     skyTop:'#f4f7fc', skyBot:'#dde6f3', star:'55,72,105',
     snowBg:'#e9eff7', flake:'95,120,155,0.85',
     rainBg:'rgba(234,239,246,1)', rainLine:'rgba(80,120,170,0.45)',
-    forest:'#eef4e8', glow:'110,150,45', fly:'120,160,50' };
+    forest:'#eef4e8', glow:'110,150,45', fly:'120,160,50',
+    galaxyBg:'#eef2f8', galaxyStar:'55,72,105' };
 }
 // مؤثّرات Vanta التي تتجاهل backgroundColor لها مفاتيحها الخاصّة — في الوضع الفاتح فقط
 const BG3D_LIGHT_EXTRA = {
@@ -2168,11 +2373,406 @@ const BG3D_LIGHT_EXTRA = {
   clouds:  { skyColor: 0xdfe9f5, cloudColor: 0xffffff, cloudShadowColor: 0xbecbdc, sunColor: 0xffffff, sunGlareColor: 0xf1f5fa, sunlightColor: 0xffffff },
   clouds2: { skyColor: 0xdfe9f5, cloudColor: 0xffffff, lightColor: 0xffffff }
 };
+// v-bg-galaxy — خلفيّة «مجرّة لا نهائيّة»: حقل نجوم ثلاثيّ الأبعاد حقيقيّ بإسقاط منظوريّ من مركز الشاشة.
+// كلّ نجم (x, y, z) موزّع بانتظام داخل هرم الرؤية؛ الكاميرا تتقدّم (z يتناقص) فيتحرّك النجم على الشاشة نحو الخارج
+// بمعدّل سرعة/z. يولد النجم على المستوى البعيد حيث الضباب يخفيه كاملًا، ويظهر تدريجيًّا كلّما اقترب، ويُعاد إلى
+// البعيد حين يخرج من الشاشة أو يبلغ المستوى القريب — فلا فاصل حلقة ولا نجم يقفز من العدم، والكثافة ثابتة أبدًا.
+// الرسم: canvas 2D بكتابة البكسلات مباشرة (ImageData + putImageData واحد في الإطار). الخافت (الأغلبيّة) يُوزَّع
+// ثنائيّ الخطّ على ٤ بكسلات، والأسطع نواة غاوسيّة محسوبة مسبقًا لكلّ حجم ولكلّ موضع دون البكسل، فالحركة ناعمة بلا
+// قفز بكسليّ. السطوع يُجمع جمعًا ويُلوَّن بجدول (خلفيّة ← نجم) من لوحة الوضع الحاليّ فيتبع الفاتح/الداكن فورًا.
+// الأداء: قائمة الرسم تُرتَّب بالعدّ حسب شريط الصفّ، والمسح يسبق النثر شريطًا شريطًا فتبقى الكتابة في المخبئ؛
+// والإطارات محدودة بـ≤60/ث (≤30/ث على اللمس، أو حين تغلو كلفة الإطار) والحركة بالزمن لا بعدد الإطارات.
+function bg3dGalaxy(canvas, getPalette) {
+  var ctx = canvas.getContext('2d', { alpha: false });
+  // ——— ثوابت المشهد (مضبوطة على قياسات الفيديو) ———
+  var Z_FAR = 1, Z_NEAR = 0.08;
+  var SPEED = 0.156;           // وحدة عمق/ثانية → معدّل التدفّق الشعاعيّ سرعة/z (وسيطه ≈0.24/ث كالفيديو)
+  var FOG_Z = 0.94;            // أبعد من هذا يخفت النجم بالضباب حتّى يختفي عند Z_FAR (ظهور تدريجيّ ≈0.4 ث)
+  var NEAR_Z = 0.2;            // أقرب من هذا يتلاشى قبل المستوى القريب
+  var GAIN_Z = 0.7, GAIN_MAX = 1.35;        // كسب السطوع بالقرب: sqrt(GAIN_Z/z) بسقف
+  var KNEE = 205, KNEE_S = 0.35;            // فوق الركبة يُضغط السطوع: قلّة فقط تبلغ الإشباع كما في الفيديو
+  var POOL_DENS = 12000;       // نجوم الحوض لكلّ ميغابكسل من اللوحة (≈8400 نجم مرئيّ لكلّ ميغابكسل)
+  var MAX_STARS = 52000;
+  // شبكة الرسم بمقياس بكسل الفيديو: بكسل لكلّ بكسل CSS على الحاسوب، وضلع أقصر ≥ GRID على الجوّال (دقّة الفيديو
+  // نفسه على الهاتف)، بسقف E_MAX لكلّ بكسل CSS وسقف بكسلات للذاكرة والكلفة. لا تصغير تحت بكسل الجهاز قبل السقف:
+  // اللوحة المصغَّرة يكبّرها المركّب ببطء على دقّة 1.
+  var GRID = 564, E_MAX = 2, PIX_BUDGET = 4200000, MAX_SIDE = 16384;
+  var LIFT = 4;                // رفع خفيف للخلفيّة الداكنة (سواد الفيديو ليس صفرًا)
+  var LIGHT_K = 0.8;           // النجوم الداكنة على الخلفيّة الفاتحة أهدأ قليلًا
+  var MIN_V = 2.5;             // أخفت مساهمة تُكتب (مستوى من 255)
+  var QP = 8;                  // مواضع دون البكسل لكلّ محور للنوى الغاوسيّة
+  var NORM_P = 0.42;           // تطبيع عبر المواضع: 0 = ثبات الذروة، 0.5 = ثبات معيار L2 — وسط يمنع الوميض أثناء الحركة
+  var SIG0 = 0.40, SIGS = 0.05, NSIG = 18;  // أحجام النوى (σ بالبكسل): 0.40..1.25
+  var SIG_A0 = 100, SIG_K = 0.0012;         // نموّ الحجم مع السطوع
+  var BIG_A0 = 225, BIG_A1 = 340, BIG_SIG = 0.9;  // الأسطع هو الأعرض: σ يرتفع بنعومة إلى BIG_SIG
+  var SOFT_SHARE = 0.006, SOFT_M0 = 90, SOFT_M1 = 190, SOFT_SIG = 1.25; // قلّة ناعمة كبيرة خافتة
+  var BIL_SHARP = 1.6;         // تحديب الكسر دون البكسل للخافت (1 = ثنائيّ خطّيّ صرف)
+  var BIL_A = 150;             // أخفت من هذا: توزيع ثنائيّ الخطّ السريع بدل النواة
+  var ROWS = 16;               // ارتفاع شريط الترتيب والمسح
+  var NBZ = 2048;              // دقّة جدول السطوع بالعمق
+  // الإيقاع: هدف 60 إطارًا/ث (الشاشات 120/144 هرتز ترسم إطارًا من كلّ اثنين أو ثلاثة بإيقاع منتظم)، و30 إطارًا/ث
+  // — معدّل الفيديو نفسه — على أجهزة اللمس (بطّاريّة، ومركّب برمجيّ في WebView) أو حين يتجاوز متوسّط كلفة الإطار
+  // PACE_HI م‌ث، والعودة إلى 60 تحت PACE_LO. الإطارات الأولى بعد تغيير الحجم (تسخين المترجم) لا تُحتسب.
+  var FAST_MS = 1000 / 60, SLOW_MS = 1000 / 30;
+  var PACE_HI = 5.5, PACE_LO = 4, PACE_WARM = 20;
+  // ألوان احتياطيّة لكلّ وضع حين تنقص اللوحة مفاتيح المجرّة أو تفسد
+  var DEF_DARK = ['#000000', '255,255,255'], DEF_LIGHT = ['#eef2f8', '55,72,105'];
+  // توزيع السطوع الذاتيّ (مقلوب التوزيع التراكميّ) — مستوى 0..255 عند كسب 1، مضبوط على ذرى نجوم الفيديو
+  var QU = [0, 0.15, 0.42, 0.73, 0.9, 0.97, 0.995, 1];
+  var QV = [14, 51, 76, 122, 190, 258, 310, 370];
+
+  // ——— الحالة ———
+  var W = 0, H = 0, E = 0, cx = 0, cy = 0, scale = 1, halfX = 1, halfY = 1, margin = 4;
+  var cssW0 = 0, cssH0 = 0, dpr0 = 0;
+  var N = 0, X = null, Y = null, Z = null, M = null;
+  var DK = null, DA = null, DB = null, DX = null, DY = null, DQ = null, order = null, cnt = null, nb = 0; // قائمة الرسم للإطار
+  var img = null, u32 = null;
+  var LUT = new Int32Array(256), INV = new Uint8Array(256), chShift = 0, palKey = null;
+  var KOFF = null, KLEN = null, KD = null, KX = null, KY = null, KW = null, kdW = -1, siSoft = 0;
+  var SF = new Float32Array(16), BN = new Float32Array(256), BZ = new Float32Array(NBZ + 2), SIA = new Uint8Array(1024);
+  var lastT = -1, lastCall = -1, frameMs = FAST_MS, skip = 0, seed = 20260928, cost = 0, halfRate = false, rendered = 0;
+  var LE = new Uint8Array(new Uint32Array([0x01020304]).buffer)[0] === 4;
+  var touch = false;
+  try { touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch (err) { touch = false; /* متصفّح بلا matchMedia: نعامله كحاسوب */ }
+
+  function rnd() { // مولّد حتميّ سريع (mulberry32)
+    seed = (seed + 0x6D2B79F5) | 0;
+    var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function magSample() {
+    var u = rnd(), i = 1;
+    while (i < QU.length - 1 && u > QU[i]) i++;
+    return QV[i - 1] + (QV[i] - QV[i - 1]) * (u - QU[i - 1]) / (QU[i] - QU[i - 1]);
+  }
+  function mag() { return rnd() < SOFT_SHARE ? -(SOFT_M0 + rnd() * (SOFT_M1 - SOFT_M0)) : magSample(); } // الناعمة الكبيرة بسطوع سالب
+  function place(i, z) { // موضع منتظم على مقطع الهرم عند العمق z
+    X[i] = (rnd() * 2 - 1) * halfX * z;
+    Y[i] = (rnd() * 2 - 1) * halfY * z;
+    Z[i] = z;
+    M[i] = mag();
+  }
+  var A3 = Math.pow(Z_NEAR / Z_FAR, 3);
+  function steadyZ() { return Math.cbrt(A3 + rnd() * (1 - A3)) * Z_FAR; } // الحالة المستقرّة: كثافة منتظمة في الحجم (∝ z²)
+
+  // جداول ثابتة: السطوع بالعمق (ضباب × كسب × تلاشٍ قريب)، وتطبيع الثنائيّ الخطّ، وفئة الحجم بالسطوع
+  (function () {
+    for (var j = 0; j <= NBZ + 1; j++) {
+      var z = Z_NEAR + (Z_FAR - Z_NEAR) * Math.min(j, NBZ) / NBZ;
+      var f = Math.min(1, Math.max(0, (Z_FAR - z) / (Z_FAR - FOG_Z)));
+      f = f * f * (3 - 2 * f);
+      if (z < NEAR_Z) { var n = (z - Z_NEAR) / (NEAR_Z - Z_NEAR); f *= n * n * (3 - 2 * n); }
+      BZ[j] = f * Math.min(GAIN_MAX, Math.sqrt(GAIN_Z / z));
+    }
+    for (var e = 0; e < 16; e++) { // الكسر دون البكسل مُحدَّبًا قليلًا نحو أقرب بكسل: نجوم أحدّ والحركة متّصلة
+      var u = e / 16 + 1 / 32, ua = Math.pow(u, BIL_SHARP), ub = Math.pow(1 - u, BIL_SHARP);
+      SF[e] = ua / (ua + ub);
+    }
+    for (var q = 0; q < 256; q++) {
+      var bx = SF[q & 15], by = SF[q >> 4];
+      BN[q] = Math.pow(1 / ((bx * bx + (1 - bx) * (1 - bx)) * (by * by + (1 - by) * (1 - by))), NORM_P);
+    }
+    for (var a = 0; a < 1024; a++) {
+      var t = Math.min(1, Math.max(0, (a - BIG_A0) / (BIG_A1 - BIG_A0)));
+      var sg = SIG0 + (a > SIG_A0 ? (a - SIG_A0) * SIG_K : 0);
+      sg += (BIG_SIG - sg) * t * t * (3 - 2 * t);
+      SIA[a] = Math.max(0, Math.min(NSIG - 1, Math.round((sg - SIG0) / SIGS)));
+    }
+    siSoft = Math.min(NSIG - 1, Math.round((SOFT_SIG - SIG0) / SIGS));
+  })();
+
+  // نوى غاوسيّة (تُبنى مرّة واحدة): لكلّ σ ولكلّ موضع دون البكسل قائمة خلايا (إزاحة، وزن) مرتّبة تنازليًّا بالوزن
+  // (يُقطع عند الخافت)، ذروتها 1 حين يتوسّط النجم البكسل، ومعيارها ثابت عبر المواضع. إزاحة الخليّة في المخزن
+  // (dy·W + dx) وحدها تعتمد على عرض اللوحة فتُعاد في buildOffsets عند تغيّره.
+  (function () {
+    var nk = NSIG * QP * QP, cells = [], k = 0, maxR = 0;
+    KOFF = new Int32Array(nk); KLEN = new Int32Array(nk);
+    for (var s = 0; s < NSIG; s++) {
+      var sig = SIG0 + s * SIGS, i2s = 1 / (2 * sig * sig), R = Math.ceil(sig * 2.4 + 0.5), s0 = 0;
+      if (R > maxR) maxR = R;
+      for (var yy = -R; yy <= R; yy++) for (var xx = -R; xx <= R; xx++) s0 += Math.exp(-2 * (xx * xx + yy * yy) * i2s);
+      for (var qy = 0; qy < QP; qy++) for (var qx = 0; qx < QP; qx++) {
+        var ox = (qx + 0.5) / QP, oy = (qy + 0.5) / QP, list = [], sum = 0, c;
+        for (var dy = -R; dy <= R; dy++) for (var dx = -R; dx <= R; dx++) {
+          var ex = dx + 0.5 - ox, ey = dy + 0.5 - oy, w = Math.exp(-(ex * ex + ey * ey) * i2s);
+          sum += w * w; list.push([dx, dy, w]);
+        }
+        var sc = Math.pow(s0 / sum, NORM_P), kept = [];
+        for (c = 0; c < list.length; c++) { list[c][2] *= sc; if (list[c][2] >= 0.006) kept.push(list[c]); }
+        kept.sort(function (p1, p2) { return p2[2] - p1[2]; });
+        KOFF[k] = cells.length; KLEN[k] = kept.length;
+        for (c = 0; c < kept.length; c++) cells.push(kept[c]);
+        k++;
+      }
+    }
+    KD = new Int32Array(cells.length); KX = new Int8Array(cells.length); KY = new Int8Array(cells.length); KW = new Float32Array(cells.length);
+    for (var j = 0; j < cells.length; j++) { KX[j] = cells[j][0]; KY[j] = cells[j][1]; KW[j] = cells[j][2]; }
+    margin = maxR + 1;
+  })();
+  function buildOffsets(w) {
+    if (kdW === w) return;
+    kdW = w;
+    for (var j = 0; j < KD.length; j++) KD[j] = KY[j] * w + KX[j];
+  }
+
+  // لون من '#rgb' أو '#rrggbb' أو 'r,g,b' أو 'rgb(r,g,b)'؛ null إن لم يصلح (فيُستعمل لون الوضع الاحتياطيّ)
+  function parseColor(s) {
+    s = String(s == null ? '' : s).trim();
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
+    if (m) {
+      var h = m[1];
+      if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+      var v = parseInt(h, 16);
+      return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+    }
+    var p = s.replace(/^rgba?\(|\)$/gi, '').split(','), out = [];
+    if (p.length < 3) return null;
+    for (var k = 0; k < 3; k++) {
+      var c = parseFloat(p[k]);
+      if (!(c === c) || !isFinite(c)) return null;
+      out.push(Math.max(0, Math.min(255, Math.round(c))));
+    }
+    return out;
+  }
+  // جدول اللون لكلّ مستوى، ومقلوبه من القناة الأوسع مدًى (لجمع سطوع النجوم المتراكبة دون مخزن إضافيّ).
+  // يُعاد بناؤه فقط حين تتغيّر نصوص اللوحة، فقلب الوضع حيًّا لا يكلّف شيئًا في الإطارات الأخرى.
+  function updatePalette(P) {
+    P = P || {};
+    var light = !!P.light, key = (light ? 'L' : 'D') + P.galaxyBg + '|' + P.galaxyStar;
+    if (key === palKey) return;
+    palKey = key;
+    var def = light ? DEF_LIGHT : DEF_DARK;
+    var bg = parseColor(P.galaxyBg) || parseColor(def[0]), sc = parseColor(P.galaxyStar) || parseColor(def[1]);
+    var k = light ? LIGHT_K : 1, ch = 0, i, j, col = [];
+    if (!light) for (j = 0; j < 3; j++) bg[j] += (sc[j] - bg[j]) * LIFT / 255;
+    for (j = 1; j < 3; j++) if (Math.abs(sc[j] - bg[j]) > Math.abs(sc[ch] - bg[ch])) ch = j;
+    for (i = 0; i < 256; i++) {
+      var a = Math.min(1, i / 255 * k);
+      var r = Math.round(bg[0] + (sc[0] - bg[0]) * a), g = Math.round(bg[1] + (sc[1] - bg[1]) * a), b = Math.round(bg[2] + (sc[2] - bg[2]) * a);
+      col.push([r, g, b][ch]);
+      LUT[i] = LE ? ((255 << 24) | (b << 16) | (g << 8) | r) : ((r << 24) | (g << 16) | (b << 8) | 255);
+    }
+    chShift = LE ? ch * 8 : (3 - ch) * 8;
+    INV.fill(0);                       // INV[قيمة القناة] = أعلى مستوى يعطيها؛ والخلفيّة نفسها مستوى 0
+    for (i = 0; i < 256; i++) INV[col[i]] = i;
+    INV[col[0]] = 0;
+  }
+
+  function alloc(n) {
+    N = n;
+    X = new Float32Array(N); Y = new Float32Array(N); Z = new Float32Array(N); M = new Float32Array(N);
+    DK = new Int32Array(N); DA = new Float32Array(N); DB = new Int32Array(N); DX = new Int32Array(N); DY = new Int32Array(N); DQ = new Uint16Array(N); order = new Int32Array(N);
+  }
+  function resize(cssW, cssH, devicePR) {
+    cssW = Math.max(1, Math.round(+cssW) || 1); cssH = Math.max(1, Math.round(+cssH) || 1);
+    var dp = +devicePR > 0 && isFinite(+devicePR) ? +devicePR : 1;
+    // لوحة المفاتيح على اللمس تقصّر الارتفاع وحده: الخلفيّة ثابتة بملء الشاشة فتبقى كما هي (تغطّيها اللوحة فقط)،
+    // بلا إعادة بذر ولا انتقال لمركز الطيران؛ وعند إغلاقها يعود الارتفاع نفسه فلا يتغيّر شيء
+    // (المراجعة: قصر الارتفاع وحده بلا حقل كتابة مركَّز ليس لوحة مفاتيح — تقسيم الشاشة في أندرويد مثلًا — فيُحجَّم عاديًّا)
+    var ae = typeof document !== 'undefined' ? document.activeElement : null;
+    var typing = !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || !!ae.isContentEditable);
+    if (touch && typing && X && cssW === cssW0 && dp === dpr0 && cssH < cssH0) return;
+    var e = Math.min(E_MAX, dp, Math.max(1, GRID / Math.min(cssW, cssH)));
+    if (cssW * cssH * e * e > PIX_BUDGET) e = Math.sqrt(PIX_BUDGET / (cssW * cssH));
+    e = Math.min(e, MAX_SIDE / Math.max(cssW, cssH));   // أبعاد شاذّة: لا ضلع فوق حدّ المتصفّح
+    var nw = Math.max(1, Math.round(cssW * e)), nh = Math.max(1, Math.round(cssH * e));
+    canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
+    cssW0 = cssW; cssH0 = cssH; dpr0 = dp;
+    rendered = 0; cost = 0; halfRate = false; skip = 0; // الإيقاع يُقاس من جديد بالحجم الجديد
+    if (X && nw === W && nh === H) return;               // حجم الجهاز نفسه: لا شيء يُعاد بناؤه
+    var oW = W, oH = H, ocx = cx, ocy = cy, oScale = scale, oMargin = margin, k = E ? e / E : 1;
+    canvas.width = nw; canvas.height = nh;
+    skip = 1 << 30;                                      // اللوحة المعاد تحجيمها سوداء (alpha:false): الإطار التالي يُرسم حتمًا ولا يُترك
+    W = nw; H = nh; E = e; cx = W / 2; cy = H / 2;
+    scale = Math.max(W, H) / 2;
+    halfX = (W / 2 + margin) / scale; halfY = (H / 2 + margin) / scale;
+    buildOffsets(W);
+    img = ctx.createImageData(W, H);
+    u32 = new Int32Array(img.data.buffer);
+    nb = Math.ceil((H + 2 * margin) / ROWS) + 1; cnt = new Int32Array(nb + 1);
+    var want = Math.max(300, Math.min(MAX_STARS, Math.round(POOL_DENS * W * H / 1e6)));
+    var oX = X, oY = Y, oZ = Z, oM = M, oN = N, i, j, z, sx, sy;
+    var x0 = -margin, x1 = W + margin, y0 = -margin, y1 = H + margin;
+    if (!X || Math.abs(k - 1) > 0.03) { // أوّل مرّة، أو تغيّر مقياس الشبكة: بذر بالحالة المستقرّة
+      alloc(want);
+      for (i = 0; i < N; i++) place(i, steadyZ());
+      return;
+    }
+    // غير ذلك: كلّ نجم يبقى في موضعه نفسه على الشاشة (اللوحة مثبّتة من أعلى اليسار)، ومن يخرج من الإطار الجديد
+    // يُترك؛ والمساحة المكشوفة حديثًا (لم تكن مرئيّة) تُملأ بنجوم الحالة المستقرّة — فلا قطع ولا فراغ ولا ظهور مفاجئ.
+    var keep = new Int32Array(oN), nk = 0;
+    for (i = 0; i < oN; i++) {
+      z = oZ[i]; sx = (ocx + oX[i] * oScale / z) * k; sy = (ocy + oY[i] * oScale / z) * k;
+      if (sx >= x0 && sx < x1 && sy >= y0 && sy < y1) keep[nk++] = i;
+    }
+    // المستطيل القديم بإحداثيّات اللوحة الجديدة، ومساحة الجديد منه فقط
+    var ox0 = -oMargin * k, ox1 = (oW + oMargin) * k, oy0 = -oMargin * k, oy1 = (oH + oMargin) * k;
+    var area = (x1 - x0) * (y1 - y0);
+    var over = Math.max(0, Math.min(x1, ox1) - Math.max(x0, ox0)) * Math.max(0, Math.min(y1, oy1) - Math.max(y0, oy0));
+    var nFill = Math.round(want * Math.max(0, area - over) / area);
+    alloc(Math.max(want, nk + nFill));
+    for (j = 0; j < nk; j++) {
+      i = keep[j]; z = oZ[i];
+      sx = (ocx + oX[i] * oScale / z) * k; sy = (ocy + oY[i] * oScale / z) * k;
+      X[j] = (sx - cx) * z / scale; Y[j] = (sy - cy) * z / scale; Z[j] = z; M[j] = oM[i];
+    }
+    for (; j < nk + nFill; j++) {
+      for (var tries = 0; tries < 64; tries++) {
+        sx = x0 + rnd() * (x1 - x0); sy = y0 + rnd() * (y1 - y0);
+        if (sx < ox0 || sx >= ox1 || sy < oy0 || sy >= oy1) break;
+      }
+      if (tries === 64) { place(j, Z_FAR - rnd() * 0.02); continue; }
+      z = steadyZ();
+      X[j] = (sx - cx) * z / scale; Y[j] = (sy - cy) * z / scale; Z[j] = z; M[j] = mag();
+    }
+    for (; j < N; j++) place(j, Z_FAR - rnd() * 0.02); // الفائض الإحصائيّ يولد خفيًّا في البعيد
+  }
+
+  function addPx(x, y, v) { // كتابة بكسل مع فحص الحدود (للنجوم على حافّة اللوحة فقط)
+    if (v < MIN_V || x < 0 || y < 0 || x >= W || y >= H) return;
+    var p = y * W + x, lv = INV[(u32[p] >>> chShift) & 255] + ((v + 0.5) | 0);
+    u32[p] = LUT[lv > 255 ? 255 : lv];
+  }
+
+  function draw(now) {
+    now = +now || 0;
+    if (!X || !W) return;
+    // فاصل الإطارات الفعليّ (متوسّط متحرّك) ← نرسم إطارًا من كلّ n بإيقاع منتظم: ≤60/ث، أو ≤30/ث في الوضع البطيء
+    if (lastCall >= 0) { var gap = now - lastCall; if (gap > 1 && gap < 100) frameMs += (gap - frameMs) * 0.1; }
+    lastCall = now;
+    var every = Math.max(1, Math.ceil((halfRate || touch ? SLOW_MS : FAST_MS) / frameMs - 0.3));
+    if (lastT >= 0 && ++skip < every) return;           // إطار متروك: اللوحة كما هي
+    skip = 0;
+    var t0 = performance.now();
+    render(now);
+    var ms = performance.now() - t0;
+    if (++rendered <= PACE_WARM) return;
+    cost = cost ? cost * 0.9 + ms * 0.1 : ms;
+    if (!halfRate && cost > PACE_HI) halfRate = true; else if (halfRate && cost < PACE_LO) halfRate = false;
+  }
+  function render(now) {
+    updatePalette(typeof getPalette === 'function' ? getPalette() : null);
+    var dt = lastT < 0 ? 0 : (now - lastT) / 1000;
+    lastT = now;
+    if (!(dt > 0)) dt = 0; else if (dt > 0.1) dt = 0.1;
+    var Wm = W, Hm = H, mg = margin, rows = ROWS, i, d, b;
+    // ١) الحركة والسطوع لكلّ النجوم، وجمع المرئيّ منها في قائمة رسم مع عدّها بشرائط الصفوف
+    var Xa = X, Ya = Y, Za = Z, Ma = M, Bz = BZ, Sa = SIA;
+    var dz = SPEED * dt, sc = scale, x0 = -mg, x1 = W + mg, y0 = -mg, y1 = H + mg, zn = Z_NEAR, bzk = NBZ / (Z_FAR - Z_NEAR);
+    var QQ = QP * QP, aMin = MIN_V * 1.6, nd = 0;
+    cnt.fill(0);
+    for (i = 0; i < N; i++) {
+      // الكاميرا تتقدّم؛ من يعبر المستوى القريب أو يخرج من الشاشة يولد من جديد في البعيد (خفيًّا في الضباب)
+      var z = Za[i] - dz;
+      if (z <= zn) { place(i, Z_FAR); continue; }
+      Za[i] = z;
+      var iz = sc / z, sx = cx + Xa[i] * iz, sy = cy + Ya[i] * iz;
+      if (sx < x0 || sx >= x1 || sy < y0 || sy >= y1) { place(i, Z_FAR); continue; }
+      // السطوع: ذاتيّ × ضباب البعد × كسب القرب × تلاشي المستوى القريب؛ ثمّ الحجم منه
+      var m = Ma[i], soft = m < 0, A = (soft ? -m : m) * Bz[((z - zn) * bzk) | 0];
+      if (A < aMin) continue;
+      var ai = A | 0; if (ai > 1023) ai = 1023;
+      var si = soft ? siSoft : Sa[ai];
+      if (A > KNEE) A = KNEE + (A - KNEE) * KNEE_S;
+      // الخافت: ثنائيّ الخطّ بين مراكز البكسلات (رمز سالب يحمل الموضع دون البكسل بدقّة 1/16)؛ الأسطع: نواة
+      var bil = A < BIL_A && !soft, ax = sx + (bil ? 1023.5 : 1024), ay = sy + (bil ? 1023.5 : 1024), ix = ax | 0, iy = ay | 0;
+      var qx = ax - ix, qy = ay - iy;
+      DK[nd] = bil ? -1 - ((((qy * 16) | 0) << 4) | ((qx * 16) | 0)) : si * QQ + ((qy * QP) | 0) * QP + ((qx * QP) | 0);
+      ix -= 1024; iy -= 1024;
+      DA[nd] = A;
+      if (ix >= mg && iy >= mg && ix < Wm - mg && iy < Hm - mg) DB[nd] = iy * Wm + ix;
+      else { DB[nd] = -1; DX[nd] = ix; DY[nd] = iy; }
+      var bk = (iy + mg) / rows | 0;
+      DQ[nd] = bk; cnt[bk + 1]++;
+      nd++;
+    }
+    // ٢) ترتيب بالعدّ حسب الشريط لتكون كتابة الذاكرة متتابعة
+    for (b = 1; b <= nb; b++) cnt[b] += cnt[b - 1];
+    for (d = 0; d < nd; d++) order[cnt[DQ[d]]++] = d;
+    // ٣) النثر: المسح يسبق النثر شريطًا شريطًا (فيبقى الشريط الجاري في المخبئ)، والسطوع يُجمع على القناة
+    //    الأوسع مدًى ثمّ يُلوَّن من الجدول
+    var U = u32, L = LUT, IV = INV, sh = chShift, bg0 = LUT[0], Kw = KW, Kd = KD, Ko = KOFF, Kl = KLEN, minV = MIN_V;
+    var filled = 0, o = 0;
+    for (b = 0; b < nb; b++) {
+      var need = (b + 1) * rows; if (need > Hm) need = Hm;
+      if (need > filled) { U.fill(bg0, filled * Wm, need * Wm); filled = need; }
+      for (var oEnd = cnt[b]; o < oEnd; o++) {
+        d = order[o];
+        var kid = DK[d], Aa = DA[d], base = DB[d], c, v, p, lv;
+        if (kid < 0) { // خافت: ٤ بكسلات بأوزان ثنائيّة الخطّ
+          var fq = -1 - kid, fx = SF[fq & 15], fy = SF[fq >> 4], gx = 1 - fx, gy = 1 - fy;
+          Aa *= BN[fq];
+          var v0 = Aa * gx * gy, v1 = Aa * fx * gy, v2 = Aa * gx * fy, v3 = Aa * fx * fy;
+          if (base >= 0) {
+            if (v0 >= minV) { lv = IV[(U[base] >>> sh) & 255] + ((v0 + 0.5) | 0); U[base] = L[lv > 255 ? 255 : lv]; }
+            if (v1 >= minV) { p = base + 1; lv = IV[(U[p] >>> sh) & 255] + ((v1 + 0.5) | 0); U[p] = L[lv > 255 ? 255 : lv]; }
+            if (v2 >= minV) { p = base + Wm; lv = IV[(U[p] >>> sh) & 255] + ((v2 + 0.5) | 0); U[p] = L[lv > 255 ? 255 : lv]; }
+            if (v3 >= minV) { p = base + Wm + 1; lv = IV[(U[p] >>> sh) & 255] + ((v3 + 0.5) | 0); U[p] = L[lv > 255 ? 255 : lv]; }
+          } else {
+            var ex = DX[d], ey = DY[d];
+            addPx(ex, ey, v0); addPx(ex + 1, ey, v1); addPx(ex, ey + 1, v2); addPx(ex + 1, ey + 1, v3);
+          }
+          continue;
+        }
+        var c0 = Ko[kid], c1 = c0 + Kl[kid];
+        if (base >= 0) {
+          for (c = c0; c < c1; c++) {
+            v = Aa * Kw[c];
+            if (v < minV) break;
+            p = base + Kd[c];
+            lv = IV[(U[p] >>> sh) & 255] + ((v + 0.5) | 0);
+            U[p] = L[lv > 255 ? 255 : lv];
+          }
+        } else {
+          var bx = DX[d], by = DY[d];
+          for (c = c0; c < c1; c++) {
+            v = Aa * Kw[c];
+            if (v < minV) break;
+            addPx(bx + KX[c], by + KY[c], v);
+          }
+        }
+      }
+    }
+    if (filled < Hm) U.fill(bg0, filled * Wm, Hm * Wm);
+    ctx.putImageData(img, 0, 0);
+  }
+  return { resize: resize, draw: draw };
+}
+/* v-cpu-calm: في رسم هواوي البرمجيّ (html.omCpu من index.html) الخلفيّة المتحرّكة لقطة ثابتة — كانت ٦٠ إطارًا/ث
+   كلّ واحد يعيد رسم الشاشة كلّها في المعالج فيثقل التطبيق كلّه والكتابة. */
+function bg3dStill(){ try{ return document.documentElement.classList.contains('omCpu'); }catch(e){ return false; } }
 function initCustomBg3D(id){
   const container = document.getElementById('vantaBg');
   if(!container) return;
   const canvas = document.createElement('canvas');
   container.appendChild(canvas);
+  if(id === 'galaxy'){
+    /* v-bg-galaxy: قبل getContext العامّ (المجرّة تطلب سياقًا بلا شفافيّة) وقبل resize العامّ الذي يضع canvas.width =
+       innerWidth بالبكسل CSS فيقصّ الصورة على الجوّال؛ المجرّة تحجّم لوحتها بنفسها على شبكة بكسل الفيديو */
+    canvas.style.display = 'block';
+    const G = bg3dGalaxy(canvas, bg3dPalette);
+    const fit = () => G.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
+    let fitTimer = 0;
+    /* سحب نافذة الحاسوب: بناء واحد بعد التوقّف — ولا بناء إن استُبدلت الخلفيّة خلال المهلة */
+    const onResize = () => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { if(currentCustomBg && currentCustomBg.canvas === canvas) fit(); }, 100); };
+    fit();
+    window.addEventListener('resize', onResize);
+    currentCustomBg = { raf: null, resizeHandler: onResize, canvas };
+    if(bg3dStill()){
+      /* لقطة واحدة (النداءات المتتالية تتجاوز تخطّي الإطار في draw)، وتُعاد بعد التحجيم فقط */
+      const still = () => { const t = performance.now(); for(let i = 0; i < 4; i++) G.draw(t + i * 17); };
+      still();
+      const onStill = () => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { if(currentCustomBg && currentCustomBg.canvas === canvas){ fit(); still(); } }, 100); };
+      window.removeEventListener('resize', onResize);
+      window.addEventListener('resize', onStill);
+      currentCustomBg.resizeHandler = onStill;
+      return;
+    }
+    const galaxyLoop = (ts) => { G.draw(ts); currentCustomBg.raf = requestAnimationFrame(galaxyLoop); };
+    currentCustomBg.raf = requestAnimationFrame(galaxyLoop);
+    return;
+  }
   const ctx = canvas.getContext('2d');
   let w, h;
   function resize(){
@@ -2332,6 +2932,14 @@ function initCustomBg3D(id){
     currentCustomBg.raf = requestAnimationFrame(loop);
   }
   currentCustomBg = { raf: null, resizeHandler: resizeAndReset, canvas };
+  if(bg3dStill()){
+    draw();
+    const onStill = () => { resizeAndReset(); draw(); };
+    window.removeEventListener('resize', resizeAndReset);
+    window.addEventListener('resize', onStill);
+    currentCustomBg.resizeHandler = onStill;
+    return;
+  }
   loop();
 }
 function getBg3DAccentColorHex(){
@@ -2346,6 +2954,8 @@ async function applyBg3D(id, save){
   destroyBg3D();
   document.body.classList.toggle('vantaActive', id !== 'none');
   if(id === 'none') return;
+  // v-bg-images: خلفيّة واحدة — اختيار ثلاثيّة يزيل صورة الشاشة (والعكس في app-25)
+  try{ if(window.خلفيات) window.خلفيات.طبّق(null); }catch(e){ __swallow(e, 'bg3d:bgimg-off'); }
   const eff = BG3D_EFFECTS.find(e => e.id === id);
   if(!eff) return;
   if(eff.lib === 'custom'){
@@ -2370,6 +2980,11 @@ async function applyBg3D(id, save){
       color: color,
       backgroundColor: P.bgHex
     }, P.light ? (BG3D_LIGHT_EXTRA[id] || {}) : {}));
+    /* v-cpu-calm: Vanta يرسم نفسه في حلقة rAF — في رسم هواوي البرمجيّ تُوقف الحلقة بعد أوّل إطارات فتبقى لقطة */
+    if(bg3dStill() && currentVantaEffect){
+      const eff0 = currentVantaEffect;
+      setTimeout(() => { try{ if(currentVantaEffect === eff0 && eff0.req){ cancelAnimationFrame(eff0.req); eff0.req = null; } }catch(e){ __swallow(e, 'bg3d:vanta-still'); } }, 1500);
+    }
   } catch(e){ console.warn('bg3d init failed', e); }
 }
 // v443/v444: تبديل الوضع يعيد بناء الخلفيّة الحاليّة أيًّا كان محرّكها — applyBg3D يوزّع
@@ -2479,7 +3094,7 @@ try{
     if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ /* guard-ok */ } }
   }, true);
 }catch(e){ /* guard-ok */ }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','vaultSection','adminSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','ownerSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;
@@ -2615,8 +3230,38 @@ function collapseAllSettingsSections(){
   });
 }
 
+// دوال التفاعل مع صفوف قسم «حسابي» والباركود والمشاركة
+window.acctToggleRow = function(id, btn) {
+  var p = document.getElementById(id);
+  if (!p) return;
+  var open = p.style.display === 'none' || !p.style.display;
+  p.style.display = open ? 'block' : 'none';
+  var s = btn ? (btn.querySelector('svg:last-of-type') || btn.querySelector('svg')) : null;
+  if (s) s.style.transform = open ? 'rotate(90deg)' : '';
+};
+window.acctToggleQr = function() {
+  var q = document.getElementById('acctQrBox');
+  if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
+};
+window.acctShareApp = async function() {
+  var u = document.getElementById('acctReferralLink');
+  var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+  var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
+  if (navigator.share) {
+    try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+  } else {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+    } catch (e2) {
+      prompt('انسخ الرابط:', shareUrl);
+    }
+  }
+};
+
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
-const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
+// v-owner-page: «صفحة المالك» أوّل القائمة، وتُتخطّى لغير المالك (settingsOwnerUi)
+const SETTINGS_NAV_IDS = ['ownerSection','langSection','accountSection','statsSection','apiKeysSection','themeSection','bgImgSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
@@ -2624,6 +3269,7 @@ const SETTINGS_NAV_ICONS = {
   agentSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M12 4v4"></path><circle cx="12" cy="3" r="1"></circle><circle cx="9" cy="13" r="1"></circle><circle cx="15" cy="13" r="1"></circle><path d="M9 17h6"></path></svg>`,
   apiKeysSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="M21 2l-9.6 9.6"></path><path d="M15.5 7.5l3 3L22 7l-3-3"></path></svg>`,
   themeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
+  bgImgSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`,
   fontFamilySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14"></path><path d="M12 5v14"></path><path d="M8 19h8"></path></svg>`,
   fontSizeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14h-5"></path><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"></path><path d="M4.5 13h6"></path><path d="m3 16 4.5-9 4.5 9"></path></svg>`,
   notifSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
@@ -2632,25 +3278,116 @@ const SETTINGS_NAV_ICONS = {
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
   pricingSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`,
   aboutSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+  settingsLogoutRow: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`,
+  ownerSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20"></path><path d="M3 18 2 7l6 4 4-7 4 7 6-4-1 11"></path></svg>`,
   feedbackSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
 };
 function stripUiEmoji(t){ try{ return (t||'').replace(/[\u{1F000}-\u{1FAFF}\u{2100}-\u{214F}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}]/gu,'').trim(); }catch(e){ return t; } }
+function settingsOwnerUi(){
+  try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
+}
+/* v-settings-groups (أمر المالك ٢٦ سبتمبر بلقطة إعدادات ChatGPT): رأس بصورة الحساب واسمه، بطاقة «الترقية» لغير
+   المشترك، ثمّ الصفوف في مجموعات بعناوين (التخصيص · الحساب · المظهر · عام) بدل قائمة واحدة مرتّبة بالطول
+   (v-settings-tidy). «صفحة المالك» تبقى أوّلًا للمالك وحده. */
+const SETTINGS_NAV_GROUPS = [
+  ['setGrpPersonal', ['toneSection', 'memorySection', 'voiceSection']],
+  ['setGrpAccount', ['pricingSection', 'accountSection', 'statsSection']],
+  ['setGrpAppearance', ['themeSection', 'bgImgSection', 'fontFamilySection', 'fontSizeSection', 'langSection']],
+  ['setGrpGeneral', ['apiKeysSection', 'aboutSection']], // v-news-off: «التنبيهات» أُزيل مع الأخبار
+];
+const SETTINGS_PLAN_LABEL = { basic: 'Plus', pro: 'Pro', max: 'Max', owner: 'VIP', vip: 'VIP' };
+function settingsTr(k){ try{ return (typeof t === 'function' && t(k)) || ''; }catch(e){ return ''; } }
+function settingsLoggedIn(){ try{ return !!(typeof authGet === 'function' && authGet('aiapp_auth_token')); }catch(e){ return false; } }
+function settingsPaidPlan(){ const p = String(window.__omranPlan || '').toLowerCase(); return settingsOwnerUi() || !!SETTINGS_PLAN_LABEL[p]; }
+function settingsNavRow(sid, label, value, sub){
+  const row = document.createElement('div');
+  row.className = 'settingsNavRow' + (sid === 'ownerSection' ? ' settingsNavOwner' : '');
+  row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
+    '<span class="settingsNavLabel"><span class="settingsNavText"></span><span class="settingsNavSub"></span></span><span class="settingsNavValue"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+  row.querySelector('.settingsNavText').textContent = label;
+  row.querySelector('.settingsNavSub').textContent = sub || '';
+  row.querySelector('.settingsNavValue').textContent = value || '';
+  if(row.dataset) row.dataset.sid = sid;
+  row.onclick = () => showSettingsPage(sid);
+  return row;
+}
+function renderSettingsProfile(){
+  const name = document.getElementById('setProfileName');
+  if(!name) return;
+  const logged = settingsLoggedIn();
+  const uname = logged ? String((typeof authGet === 'function' && authGet('aiapp_username')) || '') : '';
+  name.textContent = uname;
+  const img = document.getElementById('setProfileImg');
+  const ini = document.getElementById('setProfileInitials');
+  let av = ''; try{ av = logged ? (localStorage.getItem('aiapp_avatar') || '') : ''; }catch(e){ av = ''; }
+  if(img){ if(av){ img.src = av; img.style.display = 'block'; } else { img.removeAttribute('src'); img.style.display = 'none'; } }
+  if(ini){ ini.textContent = av ? '' : (uname ? uname.trim().slice(0, 2).toUpperCase() : '?'); }
+  const edit = document.querySelector('#setProfileAvatar .setProfileEdit');
+  if(edit) edit.style.display = logged ? '' : 'none';
+  const loginBtn = document.getElementById('setProfileLogin');
+  if(loginBtn) loginBtn.style.display = logged ? 'none' : '';
+  const up = document.getElementById('settingsUpgradeCard');
+  if(up) up.style.display = settingsPaidPlan() ? 'none' : 'flex';
+}
+window.renderSettingsProfile = renderSettingsProfile;
 function renderSettingsNavList(){
   const listEl = document.getElementById('settingsNavList');
   if(!listEl) return;
   listEl.innerHTML = '';
-  SETTINGS_NAV_IDS.forEach(sid => {
-    const headerH3 = document.querySelector('#' + sid + ' .settingsSectionHeader h3');
-    const label = stripUiEmoji(headerH3 ? headerH3.textContent : sid);
-    const row = document.createElement('div');
-    row.className = 'settingsNavRow';
-    row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
-      '<span class="settingsNavLabel"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-    row.querySelector('.settingsNavLabel').textContent = label;
-    row.onclick = () => showSettingsPage(sid);
-    listEl.appendChild(row);
+  const owner = settingsOwnerUi();
+  const logged = settingsLoggedIn();
+  const labelOf = (sid) => { const h = document.querySelector('#' + sid + ' .settingsSectionHeader h3'); return stripUiEmoji(h ? h.textContent : sid); };
+  const has = (sid) => !!document.getElementById(sid);
+  if(owner && has('ownerSection')){
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup';
+    card.appendChild(settingsNavRow('ownerSection', labelOf('ownerSection')));
+    listEl.appendChild(card);
+  }
+  const plan = String(window.__omranPlan || '').toLowerCase();
+  const planText = owner ? 'VIP' : (SETTINGS_PLAN_LABEL[plan] || settingsTr('setPlanFree'));
+  SETTINGS_NAV_GROUPS.forEach(([titleKey, ids]) => {
+    const rows = ids.filter(has);
+    if(!rows.length) return;
+    const title = document.createElement('div');
+    title.className = 'settingsNavGroupTitle';
+    title.textContent = settingsTr(titleKey);
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup';
+    rows.forEach(sid => {
+      card.appendChild(settingsNavRow(sid, labelOf(sid), sid === 'pricingSection' ? planText : ''));
+    });
+    listEl.appendChild(title);
+    listEl.appendChild(card);
   });
+  /* v-account-tidy (أمر المالك ٢٦ سبتمبر): الخروج آخر صفّ في الإعدادات بلون عاديّ، لا زرًّا أحمر داخل «حسابي». */
+  if(logged){
+    const card = document.createElement('div');
+    card.className = 'settingsNavGroup settingsNavLogoutCard';
+    const row = settingsNavRow('settingsLogoutRow', stripUiEmoji(settingsTr('logoutTitle')));
+    row.classList.add('settingsNavLogout');
+    row.onclick = () => {
+      try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-logout#close'); }
+      if(typeof doLogout === 'function') doLogout();
+    };
+    listEl.appendChild(card);
+    card.appendChild(row);
+  }
+  try{ renderSettingsProfile(); }catch(e){ __swallow(e, 'ui:settings-profile'); }
 }
+(function(){
+  const av = document.getElementById('setProfileAvatar');
+  if(av) av.onclick = () => {
+    if(!settingsLoggedIn()){ const b = document.getElementById('acctLoginBtn'); if(b) b.click(); return; }
+    const inp = document.getElementById('acctAvatarInput'); if(inp) inp.click();
+  };
+  const login = document.getElementById('setProfileLogin');
+  if(login) login.onclick = () => { const b = document.getElementById('acctLoginBtn'); if(b) b.click(); };
+  const up = document.getElementById('setUpgradeBtn');
+  if(up) up.onclick = () => showSettingsPage('pricingSection');
+  const cls = document.getElementById('setHomeClose');
+  if(cls) cls.onclick = () => { try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-close'); } };
+})();
 function showSettingsHome(){
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');
@@ -2663,6 +3400,7 @@ function showSettingsHome(){
 }
 window.showSettingsHome = showSettingsHome;
 function showSettingsPage(sid){
+  if(sid === 'ownerSection' && !settingsOwnerUi()){ showSettingsHome(); return; }
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');
   const pageTitleEl = document.getElementById('settingsPageTitle');
@@ -2686,6 +3424,9 @@ function showSettingsPage(sid){
   try{
     if(sid === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
     if(sid === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+    // v-bg-images-row: صفحة «خلفيّات الشاشة» تبني شبكة المصغّرات عند فتحها من القائمة
+    if(sid === 'bgImgSection' && window.خلفيات) window.خلفيات.افتح();
+    if(sid === 'memorySection' && window.livingRefresh) window.livingRefresh(); // v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل
   }catch(e){ __swallow(e, 'points:acct-refresh'); }
 }
 window.showSettingsPage = showSettingsPage;
@@ -3022,13 +3763,22 @@ async function postWithConfirm(url, payload){
         info.appendChild(sb);
       }
       card.appendChild(wrap); card.appendChild(info);
-      card.onclick = function(){ sheet.style.display = 'none'; if(cfg.onPick) cfg.onPick(it.v); };
+      card.onclick = function(){ shut(); if(cfg.onPick) cfg.onPick(it.v); };
       grid.appendChild(card);
     });
     sheet.style.display = 'flex';
     var c = el('pickerSheetClose');
-    if(c) c.onclick = function(){ sheet.style.display = 'none'; };
+    if(c) c.onclick = shut;
   } };
+  /* v-picker-release (المالك ٢٤ سبتمبر، قياس «فحص النظام» من جهازه: ٣٣ صورة مفكوكة و«ظاهرة ١»
+     — أي ٣٢ صورة في حاويات مخفيّة): الإغلاق كان `display:none` وحده، فتبقى بطاقات المعرض كلّها
+     وصورها مفكوكة في الذاكرة إلى أن يُفتح معرض آخر. المعرض يُبنى من الصفر في كلّ فتحة
+     (`grid.innerHTML = ''` أوّل open) فإفراغه عند الإغلاق لا يفقد شيئًا ولا يؤخّر فتحة قادمة. */
+  function shut(){
+    var sheet = el('pickerSheet'), grid = el('pickerSheetGrid');
+    if(sheet) sheet.style.display = 'none';
+    if(grid) grid.innerHTML = '';
+  }
   /* بطاقة مصغّرة موحّدة «عرض الكل ›» — get() ترجع {img,name,sub}،
      وopenCfg() ترجع إعدادات open. ترجع {el,refresh}. */
   window.omranPicker.trigger = function(get, openCfg){
@@ -3056,7 +3806,14 @@ async function postWithConfirm(url, payload){
       nm.textContent = s.name || '';
       sb.textContent = s.sub || '';
       if(s.bg) th.style.background = s.bg;
-      if(s.img){ im.style.visibility = 'visible'; im.src = s.img; }
+      /* v-art-defer: البطاقة المصغّرة تُبنى عند الإقلاع داخل نوافذ مغلقة (الديكور، المناسبة،
+         الموسم)، فكانت صورتها تُحمَّل بلا أن يراها أحد. الحاوية th بمقاس ثابت 44×58 فلها
+         تخطيطها دائمًا — التأجيل عليها آمن، والصورة تصل عند فتح النافذة. */
+      if(s.img){
+        im.style.visibility = 'visible';
+        if(window.__omranWhenSeen) window.__omranWhenSeen(im, function(){ im.src = s.img; });
+        else im.src = s.img;
+      }
       else im.style.visibility = 'hidden';
     }
     d.onclick = function(){ window.omranPicker.open(openCfg()); };
@@ -3113,7 +3870,7 @@ async function postWithConfirm(url, payload){
       const cs = getComputedStyle(g);
       const ctx = document.createElement('canvas').getContext('2d');
       ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-      const m = ctx.measureText('م');
+      const m = ctx.measureText(g.textContent || 'م'); // v-voice-letter: «م» أو «ع» حسب الشخصيّة
       if(m.fontBoundingBoxAscent === undefined) return; // متصفح قديم: تبقى إزاحة CSS الافتراضية
       const spanH = g.getBoundingClientRect().height;
       const baselineTop = (spanH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
@@ -3126,6 +3883,7 @@ async function postWithConfirm(url, payload){
     }catch(e){ __swallow(e, 'ui:maha-center'); }
   };
   fix();
+  window.__mahaGlyphFix = fix; // v-voice-letter: يُعاد التوسيط عند تبديل الحرف
   try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
 })();
 

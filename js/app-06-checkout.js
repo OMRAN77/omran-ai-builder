@@ -8,7 +8,10 @@ function sanitizeGeminiContents(list){
     if(last && last.role === c.role){ last.parts = last.parts.concat(c.parts); continue; }
     out.push({ role: c.role, parts: c.parts.slice() });
   }
-  while(out.length && out[0].role !== 'user') out.shift();   // must open on a user turn
+  // must open on a user turn — v-chat-edit: كود المشروع يصل دور model في المقدّمة وكان shift يرميه، فيكتب Gemini ملفًّا جديدًا
+  // بلا أن يرى التصميم. نسبقه بدور مستخدم كما يفعل الخادم؛ وأيّ مقدّمة model غير الكود تُرمى كما كانت.
+  if(out.length && out[0].role !== 'user' && /^```/.test(String((out[0].parts[0] && out[0].parts[0].text) || ''))) out.unshift({ role: 'user', parts: [{ text: 'هذا مشروعي الحالي — اعتمد عليه فيما يلي:' }] });
+  while(out.length && out[0].role !== 'user') out.shift();
   while(out.length && out[out.length - 1].role !== 'user') out.pop(); // and close on one
   return out;
 }
@@ -24,7 +27,23 @@ let currentWalletAvailability = null; // { applePay, googlePay } | null while un
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
-const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499 };
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499, maha_basic: 1021, maha_pro: 2042, maha_max: 10211, media_basic: 1021, media_pro: 2042, media_max: 10211 }; // v-maha-plans + v-media-merge: مها و«صور وفيديو» (٣٧٫٥ · ٧٥ · ٣٧٥ درهم) — img_/vid_ توقّف بيعها
+/* v-aed-checkout (طلب المالك ٥ أكتوبر، «الدرهم فقط»): من عملته المعروضة درهم (منتقي العملة، وإلّا كشف الدولة) يدفع
+   بالدرهم السعر المعروض نفسه؛ غيره بالدولار. بالفلس — يطابق AED_FILS في create-checkout-session.js (الخادم يحسب المبلغ). */
+const CHECKOUT_AED_FILS = { basic: 3750, pro: 7500, max: 37500, pack100: 1900, pack300: 4800, pack700: 9500, pack900: 13000, maha_basic: 3750, maha_pro: 7500, maha_max: 37500, media_basic: 3750, media_pro: 7500, media_max: 37500 };
+function checkoutCurrency(){
+  try{
+    if(window.OmranCur && typeof window.OmranCur.cur === 'function') return window.OmranCur.cur().cc === 'AED' ? 'aed' : 'usd';
+    if(window.OmranGeo && typeof window.OmranGeo.country === 'function') return window.OmranGeo.country() === 'AE' ? 'aed' : 'usd';
+  }catch(e){ __swallow(e, 'checkout:currency'); }
+  return 'usd';
+}
+// المبلغ الذي سيُخصم بعملة الدفع — نافذة الدفع تقوله كما يقوله Stripe.
+function checkoutPriceText(plan, cur){
+  return cur === 'aed' ? (CHECKOUT_AED_FILS[plan] / 100).toLocaleString('en-US') + ' AED' : '$' + (CHECKOUT_PLAN_AMOUNTS[plan] / 100).toLocaleString('en-US');
+}
+// v-fair-video: نقاط كلّ رزمة كما يمنحها الخادم — مفتاح pack900 يمنح ١٬٠٥٠ (الاسم من المفتاح كان سيقول ٩٠٠).
+const PACK_POINTS = { pack100: 100, pack300: 300, pack700: 700, pack900: 1050 };
 // pk_live key is public by design (Stripe publishable keys are meant to ship
 // in frontend code) — it only lets the browser start a payment, never move
 // money on its own.
@@ -38,6 +57,51 @@ function buyPointsPack(amount){
   settingsToast(t('pricingComingSoon'));
 }
 window.buyPointsPack = buyPointsPack;
+
+// v-price-tabs: كلّ نوع اشتراك في قسمه — زرّ القسم يعرضه ويخفي البقيّة.
+// v-media-merge: الصور والفيديو قسم واحد «صور وفيديو» — أسماء أقسامهما القديمة (img · vid) وأنواعهما (image · video · mix) تفتحه.
+function showPriceTab(tab){
+  const k0 = ({ img: 'media', vid: 'media', image: 'media', video: 'media', mix: 'media' })[tab] || tab;
+  const k = ['chat', 'media', 'maha', 'pts'].includes(k0) ? k0 : 'chat';
+  document.querySelectorAll('#pricingSection .priceTab').forEach(function(el){ el.style.display = el.getAttribute('data-tab') === k ? '' : 'none'; });
+  document.querySelectorAll('#priceTabs .priceTabBtn').forEach(function(b){ const on = b.getAttribute('data-tab') === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+}
+window.showPriceTab = showPriceTab;
+
+// v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
+// v-media-merge: قسم «صور وفيديو» يعرض رصيد المدموجة، ومتبقّي باقة الصور أو الفيديو القديمة ما دامت سارية.
+function renderMediaPlanStatus(media){
+  const box = document.getElementById('mediaPlanStatus');
+  if(!box) return;
+  const m = media || {};
+  const lines = [];
+  if(m.mix && m.mix.counts) lines.push(t('mixLeft') + ': <b>' + (Number(m.mix.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' ' + t('mediaOr') + ' <b>' + (Number(m.mix.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco'));
+  if(m.image && m.image.counts) lines.push(t('mediaLeftImg') + ': <b>' + (Number(m.image.counts.image_normal) || 0) + '</b> ' + t('mediaImgPlain') + ' (' + t('mediaHighEq') + ')');
+  if(m.video && m.video.counts) lines.push(t('mediaLeftVid') + ': <b>' + (Number(m.video.counts.minimax_video) || 0) + '</b> ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' <b>' + (Number(m.video.counts.omni_video) || 0) + '</b> ' + t('mediaVidCine'));
+  box.innerHTML = lines.join('<br>');
+  box.style.display = lines.length ? 'block' : 'none';
+  const mbox = document.getElementById('mahaPlanStatus');
+  if(mbox){
+    mbox.innerHTML = (m.maha && m.maha.counts) ? (t('mahaLeft') + ': <b>' + (Number(m.maha.counts.maha_minute) || 0) + '</b> ' + t('mahaMinUnit')) : '';
+    mbox.style.display = (m.maha && m.maha.counts) ? 'block' : 'none';
+  }
+  const qb = document.getElementById('mediaQualityBox');
+  if(qb){
+    const qs = m.image || m.mix; // الخانة التي تُصرف منها الصورة أوّلًا (كـimageQuality في الخادم)
+    qb.style.display = qs ? 'block' : 'none';
+    const q = (qs && qs.quality) === 'high' ? 'high' : 'normal';
+    qb.querySelectorAll('.mediaQBtn').forEach(function(b){ const on = b.getAttribute('data-q') === q; b.style.borderColor = on ? '#c9a227' : ''; b.style.background = on ? 'rgba(201,162,39,.16)' : 'transparent'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  }
+}
+async function setMediaQuality(q){
+  const token = authGet('aiapp_auth_token');
+  if(!token) return;
+  try{
+    const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'media-quality', token, quality:q }) });
+    if(r.ok) refreshPointsWallet();
+  }catch(e){ __swallow(e, 'media:quality'); }
+}
+window.setMediaQuality = setMediaQuality;
 
 // جلب رصيد النقاط وعرضه في صف المحفظة أعلى قسم الباقات
 async function refreshPointsWallet(){
@@ -54,6 +118,7 @@ async function refreshPointsWallet(){
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
+      renderMediaPlanStatus(d.media);
     } else { row.style.display = 'none'; }
   }catch(e){ /* صامت */ }
 }
@@ -63,6 +128,20 @@ window.refreshPointsWallet = refreshPointsWallet;
    تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
    يُستدعى تلقائيًا عند فتح قسم «حسابي» — لا زر ولا خطوة من المستخدم. */
 const ACCT_POINTS_LOW = 20;
+// v-acct-media: سطر لكلّ اشتراك ساري (صور · فيديو · مها) تحت رصيد النقاط في «حسابي».
+function renderAcctMedia(media){
+  const box = document.getElementById('acctMediaBox');
+  if(!box) return;
+  const m = media || {};
+  const row = (label, value) => '<div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-weight: var(--w-bold); white-space:nowrap;">' + label + '</span><span style="font-weight:800; color:#d4af37; text-align:end;">' + value + '</span></div>';
+  const rows = [];
+  if(m.mix && m.mix.counts) rows.push(row(t('priceTabMedia'), (Number(m.mix.counts.image_normal) || 0) + ' ' + t('mediaImgPlain') + ' ' + t('mediaOr') + ' ' + (Number(m.mix.counts.minimax_video) || 0) + ' ' + t('mediaVidEco'))); // v-media-merge
+  if(m.image && m.image.counts) rows.push(row(t('priceTabImg'), (Number(m.image.counts.image_normal) || 0) + ' ' + t('mediaImgPlain')));
+  if(m.video && m.video.counts) rows.push(row(t('priceTabVid'), (Number(m.video.counts.minimax_video) || 0) + ' ' + t('mediaVidEco') + ' ' + t('mediaOr') + ' ' + (Number(m.video.counts.omni_video) || 0) + ' ' + t('mediaVidCine')));
+  if(m.maha && m.maha.counts) rows.push(row(t('priceTabMaha'), (Number(m.maha.counts.maha_minute) || 0) + ' ' + t('mahaMinUnit')));
+  box.innerHTML = rows.join('');
+  box.style.display = rows.length ? 'flex' : 'none';
+}
 async function refreshAcctPoints(){
   const box = document.getElementById('acctPointsBox');
   const val = document.getElementById('acctPointsValue');
@@ -70,12 +149,13 @@ async function refreshAcctPoints(){
   const warnText = document.getElementById('acctPointsLowText');
   if(!box || !val) return;
   const token = authGet('aiapp_auth_token');
-  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
-    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     box.style.display = 'flex';
+    renderAcctMedia(d.media);
     if(d.unlimited){
       val.textContent = '∞';
       if(warn) warn.style.display = 'none';
@@ -112,6 +192,15 @@ function omranIOSStoreApp(){
 }
 
 function openCheckout(plan){
+  // v-checkout-login: الدفع بلا حساب كان يُخصم ولا يصل لأحد — التسجيل أوّلًا، ثمّ تعود النافذة نفسها بعد الدخول.
+  if(!authGet('aiapp_auth_token')){
+    window.__pendingCheckoutPlan = plan;
+    const sd0 = document.getElementById('settingsDialog');
+    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if(typeof window.requireLogin === 'function') window.requireLogin('checkout');
+    else settingsToast(t('checkoutLoginFirst'));
+    return;
+  }
   checkoutCurrentPlan = plan;
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
@@ -119,7 +208,12 @@ function openCheckout(plan){
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   // v-plan-routing: رزمة نقاط = «<n> نقطة» بوحدة النقاط المترجمة (بلا مفتاح جديد).
-  if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (String(plan).slice(4) + ' ' + t('pricingPointsUnit')) : t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  const __mp = /^(img|vid|maha|media)_(basic|pro|max)$/.exec(String(plan));
+  // v-aed-checkout: السعر في النافذة بعملة الدفع — «$10» في نصّ الباقة يصير «37.5 AED» لمن يدفع بالدرهم، والوسائط بالدولار لغيره.
+  const __cur = checkoutCurrency();
+  const __planTxt = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
+  if (label && __mp) label.textContent = t(({ img: 'mediaImgName', vid: 'mediaVidName', maha: 'mahaPlanName', media: 'mixPlanName' })[__mp[1]]) + ' · ' + checkoutPriceText(plan, __cur) + ' ' + t('planPer');
+  else if (label) label.textContent = /^pack\d+$/.test(String(plan)) ? (Number(PACK_POINTS[plan] || String(plan).slice(4)).toLocaleString('en-US') + ' ' + t('pricingPointsUnit')) : (__cur === 'aed' ? __planTxt.replace(/\$\s?\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?\s?\$/, checkoutPriceText(plan, __cur)) : __planTxt);
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually
@@ -160,7 +254,7 @@ async function startStripeCheckout(){
     const r = await fetch('/api/account?action=create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token') }),
+      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token'), autoRenew: autoRenewPref(), /* v-autorenew-one: زرّ المحادثة الواحد يحكم كلّ شراء (الرزم دفعة واحدة دائمًا في الخادم) */ currency: checkoutCurrency() }),
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
@@ -214,33 +308,34 @@ async function ensureStripeJs(){
 async function setupWalletPaymentRequest(plan){
   currentWalletAvailability = null;
   currentPaymentRequest = null;
-  const amount = CHECKOUT_PLAN_AMOUNTS[plan];
+  const cur = checkoutCurrency(); // v-aed-checkout — الورقة والعمليّة في الخادم بالعملة والمبلغ نفسيهما
+  const amount = cur === 'aed' ? CHECKOUT_AED_FILS[plan] : CHECKOUT_PLAN_AMOUNTS[plan];
   if (!amount) return;
   try {
     const stripe = await ensureStripeJs();
     if (!stripe) return;
     const pr = stripe.paymentRequest({
       country: 'AE',
-      currency: 'usd',
+      currency: cur,
       total: { label: 'Omran AI Builder', amount },
       requestPayerName: true,
       requestPayerEmail: true,
     });
     const availability = await pr.canMakePayment();
     currentWalletAvailability = availability || null;
-    pr.on('paymentmethod', (ev) => { handleWalletPaymentMethod(ev, plan); });
+    pr.on('paymentmethod', (ev) => { handleWalletPaymentMethod(ev, plan, cur); });
     currentPaymentRequest = pr;
   } catch (e) { currentWalletAvailability = null; currentPaymentRequest = null; }
 }
 
-async function handleWalletPaymentMethod(ev, plan){
+async function handleWalletPaymentMethod(ev, plan, currency){
   const statusMsg = document.getElementById('checkoutStatusMsg');
   try {
     const stripe = await ensureStripeJs();
     const cr = await fetch('/api/account?action=create-payment-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan, token: authGet('aiapp_auth_token') }),
+      body: JSON.stringify({ plan, token: authGet('aiapp_auth_token'), currency: currency || 'usd' }),
     });
     const cd = await cr.json();
     if (!cr.ok || !cd.clientSecret) {
@@ -315,6 +410,18 @@ function clickGooglePay(){
 window.clickGooglePay = clickGooglePay;
 
 // ===== PayPal =====
+// v-paypal-honest: إعادة شحن طلب مكتمل لم يُشحن — 'ok' شُحن (أو سبق شحنه)، 'stop' لا فائدة من الإعادة، 'retry' عطل عابر.
+async function paypalClaim(orderId){
+  const token = authGet('aiapp_auth_token');
+  if(!orderId || !token) return 'retry';
+  try{
+    const r = await fetch('/api/account?action=paypal-order', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'claim', orderId, token }) });
+    const d = await r.json().catch(() => ({}));
+    if(r.ok && d.credited === true) return 'ok';
+    if(r.status === 404 || r.status === 409 || (r.ok && /^(not_owner|no_plan|account)$/.test(String(d.reason || '')))) return 'stop';
+  }catch(e){ __swallow(e, 'checkout:pp-claim'); }
+  return 'retry';
+}
 async function loadPaypalButtons(){
   const container = document.getElementById('paypalButtonContainer');
   const fallbackBtn = document.getElementById('paypalFallbackBtn');
@@ -345,7 +452,7 @@ async function loadPaypalButtons(){
           const cr = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan }),
+            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan, token: authGet('aiapp_auth_token') }),
           });
           const cd = await cr.json();
           if (!cr.ok) throw new Error(cd.error || 'error');
@@ -358,14 +465,26 @@ async function loadPaypalButtons(){
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
           });
-          const capData = await cap.json();
-          if (cap.ok && (capData.status === 'COMPLETED' || capData.status === 'APPROVED')) {
-            if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
-            if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
-            setTimeout(closeCheckout, 2500);
+          const capData = await cap.json().catch(() => ({}));
+          if (cap.ok && capData.status === 'COMPLETED') {
+            /* v-paypal-honest: «تمّ» كانت تظهر بحالة الدفع وحدها ولو فشل الشحن بعد السحب. الآن بالشحن نفسه، ومحاولات
+               إعادة على الخادم (claim آمن التكرار)، وإلّا رسالة صادقة ويبقى الطلب معلّقًا يُستكمل عند العودة للتطبيق. */
+            let credited = capData.credited === true;
+            for (let i = 0; !credited && i < 3; i++) {
+              await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+              credited = await paypalClaim(data.orderID) === 'ok';
+            }
+            if (credited) {
+              if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
+              if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
+              setTimeout(closeCheckout, 2500);
+            } else {
+              try { localStorage.setItem('aiapp_pp_pending', data.orderID + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pp-pending'); }
+              if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutPaidPending'); }
+            }
           } else if (statusMsg) {
             statusMsg.style.color = '';
-            statusMsg.textContent = t('checkoutError');
+            statusMsg.textContent = capData.error || t('checkoutError');
           }
         },
         onError: () => {
@@ -461,10 +580,28 @@ window.startPaypalCheckout = startPaypalCheckout;
     } catch(e){ __swallow(e, 'checkout:claim'); }
     busy = false;
   }
-  window.addEventListener('focus', claim);
-  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
+  // v-paypal-honest: طلب PayPal سُحب مبلغه ولم يُشحن — يُعاد شحنه عند كلّ عودة للتطبيق حتّى أسبوع.
+  let ppBusy = false;
+  async function claimPaypal(){
+    let raw = null;
+    try { raw = localStorage.getItem('aiapp_pp_pending'); } catch(e){ return; }
+    if(!raw || ppBusy) return;
+    const i = raw.lastIndexOf(':');
+    const id = raw.slice(0, i), ts = Number(raw.slice(i + 1) || 0);
+    const drop = () => { try { localStorage.removeItem('aiapp_pp_pending'); } catch(e){ __swallow(e, 'checkout:pp-clear'); } };
+    if(!id || (Date.now() - ts) > 7 * 86400000){ drop(); return; }
+    ppBusy = true;
+    const res = await paypalClaim(id);
+    ppBusy = false;
+    if(res === 'retry') return;
+    drop();
+    if(res === 'ok'){ alert(t('checkoutSuccessMsg')); if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }
+  }
+  window.addEventListener('focus', () => { claim(); claimPaypal(); });
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ claim(); claimPaypal(); } });
   const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 5000);
   claim();
+  claimPaypal();
 })();
 const btnExportProjectsEl = $('#btnExportProjects');
 if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;
@@ -483,7 +620,7 @@ $('#btnSettings').onclick = () => {
   collapseAllSettingsSections();
   renderStats();
   renderReferral();
-  $('#provider').value = localStorage.getItem('aiapp_provider') || 'claude';
+  $('#provider').value = localStorage.getItem('aiapp_provider') || 'openai';
   $('#apiKey').value = localStorage.getItem('aiapp_apikey') || '';
   $('#modelName').value = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
@@ -518,6 +655,9 @@ $('#btnSettings').onclick = () => {
   $('#chkIncludeDeepSeek').checked = localStorage.getItem('aiapp_include_deepseek') !== 'false';
   $('#chkIncludeCohere').checked = localStorage.getItem('aiapp_include_cohere') !== 'false';
   try { setVoiceGenderUI(localStorage.getItem('aiapp_voice_gender') || 'female'); } catch(e) { console.error(e); }
+  try { syncAutoRenewUI(); } catch(e) { console.error(e); }
+  try { if (window.omranApplyFontTuner) window.omranApplyFontTuner(); } catch(e) { console.error(e); } // v-font-tuner: الأسماء بلغة الواجهة
+  try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }
   } catch(e) { console.error('settings populate error', e); }
@@ -638,15 +778,28 @@ function populateClockTZSelect(){
   else sel.value = 'Asia/Riyadh';
 }
 
+// v-perf-idle-timers: #btnClock (الحاوية) مخفيّة بلا أيّ كود يُظهرها — كان هذا يبني
+// Intl.DateTimeFormat جديدًا ويكتب في DOM كلّ ثانية للأبد لعنصر لا يراه أحد إطلاقًا. الآن
+// يبدأ فقط لو ظهر العنصر فعلًا (احتياط لتفعيل مستقبليّ)، ويتوقّف تلقائيًّا لو اختفى مجدَّدًا.
+const __headerClockFmt = { ar: new Intl.DateTimeFormat('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+  en: new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) };
 function updateHeaderClock(){
   const el = $('#headerClockTime');
   if (!el) return;
-  el.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-  }).format(new Date());
+  el.textContent = (lang === 'ar' ? __headerClockFmt.ar : __headerClockFmt.en).format(new Date());
 }
-updateHeaderClock();
-setInterval(updateHeaderClock, 1000);
+let __headerClockTimer = null;
+function __headerClockSync(){
+  const btn = $('#btnClock');
+  const visible = !!btn && getComputedStyle(btn).display !== 'none';
+  if (visible && !__headerClockTimer) { updateHeaderClock(); __headerClockTimer = setInterval(updateHeaderClock, 1000); }
+  else if (!visible && __headerClockTimer) { clearInterval(__headerClockTimer); __headerClockTimer = null; }
+}
+__headerClockSync();
+try {
+  const __btnClockEl = $('#btnClock');
+  if (__btnClockEl) new MutationObserver(__headerClockSync).observe(__btnClockEl, { attributes: true, attributeFilter: ['style', 'class'] });
+} catch(e){ /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
 
 function renderClockWorldStrip(){
   const box = $('#clockWorldStrip');
@@ -718,7 +871,9 @@ $('#btnCancelSettings').onclick = () => closeDialogSafe(settingsDialog);
 /* v-settings-sheet (طلب عمران): زرا حفظ/إلغاء أُخفيا — الحفظ صار تلقائيًا
    عند إغلاق النافذة، والسحب لأسفل من أعلى المحتوى يغلقها كورقة جوال. */
 const saveSettingsNow = () => {
-  localStorage.setItem('aiapp_provider', $('#provider').value);
+  /* v-prov-order: قائمة الإعدادات فيها أربعة مزوّدين فقط؛ مزوّد اختاره المالك من السهم (Kimi، DeepSeek، OpenRouter…) لا يُطابق
+     خيارًا فتكون القيمة فارغة — وكان إغلاق الإعدادات يكتبها فيرجع الاختيار إلى GPT. القيمة الفارغة لا تمسح الاختيار. */
+  if ($('#provider').value) localStorage.setItem('aiapp_provider', $('#provider').value);
   localStorage.setItem('aiapp_apikey', $('#apiKey').value.trim());
   localStorage.setItem('aiapp_model', $('#modelName').value.trim() || 'gpt-4o-mini');
   localStorage.setItem('aiapp_gemini_apikey', $('#geminiApiKey').value.trim());
@@ -731,6 +886,7 @@ const saveSettingsNow = () => {
   (() => {
     const sel = $('#openrouterModelSelect');
     const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-5.6-terra') : sel.value;
+    if (typeof omranOwnerUi === 'function' && omranOwnerUi()) return; // v-owner-solo: اختيار المالك من قائمة المزوّدين لا من حقل لم يُهيّأ
     localStorage.setItem('aiapp_openrouter_model', finalModel);
   })();
   localStorage.setItem('aiapp_perplexity_apikey', $('#perplexityApiKey').value.trim());
@@ -740,7 +896,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_deepseek_apikey', $('#deepseekApiKey').value.trim());
   localStorage.setItem('aiapp_deepseek_model', $('#deepseekModel').value.trim() || 'deepseek-chat');
   localStorage.setItem('aiapp_cohere_apikey', $('#cohereApiKey').value.trim());
-  localStorage.setItem('aiapp_cohere_model', normalizeCohereModel($('#cohereModel').value));
+  { const __cs = localStorage.getItem('aiapp_cohere_model') || '', __cv = normalizeCohereModel($('#cohereModel').value); if(__cv !== normalizeCohereModel(__cs)) localStorage.setItem('aiapp_cohere_model', __cv); } // v-cohere-prefix: حقل لم يُغيَّر لا يمحو بادئة اختيار القائمة
   localStorage.setItem('aiapp_include_openai', $('#chkIncludeOpenAI').checked ? 'true' : 'false');
   localStorage.setItem('aiapp_include_gemini', $('#chkIncludeGemini').checked ? 'true' : 'false');
   localStorage.setItem('aiapp_include_groq', $('#chkIncludeGroq').checked ? 'true' : 'false');
@@ -1048,7 +1204,7 @@ const APP_CAPABILITY_RULE = '\nAPP CAPABILITY RULE (mandatory): This app AUTOMAT
 // نقص العرض عند بداية الكود ونظهر مؤشر "يكتب الكود" بدل عرض الكود في المحادثة.
 function liveStripCode(text){
   if(!text) return '';
-  const i = text.search(/```|<!doctype html|<html[\s>]/i);
+  const i = text.search(/```|@@PATCH|<!doctype html|<html[\s>]/i); // v-chat-edit: رقعة بلا سياج لا تُبثّ خامًا
   if(i === -1) return text;
   const before = text.slice(0, i).trim();
   const lang = localStorage.getItem('aiapp_lang') || 'ar';
@@ -1151,6 +1307,9 @@ function testCodeInSandbox(code){
 async function selfHealCode(code, codeType, onStatus){
   // نفحص فقط أكواد HTML القابلة للعرض في المعاينة
   if(!code || (codeType && codeType !== 'html' && codeType !== '') || !/<\w+[^>]*>/.test(code)) return code;
+  /* v-chat-edit: الإصلاح الذاتيّ يطلب الملفّ كاملًا — فوق ما يسعه ردّ واحد (≈٤٥ ألف حرف) لا يُطلب أصلًا، ودونه يُقرأ ردّه
+     بحارس التصميم (base) فلا يحلّ محلّه ملفّ انقطع. */
+  if(code.length > OMRAN_HEAL_MAX) return code;
   let current = code;
   for(let attempt = 1; attempt <= 2; attempt++){
     let errors;
@@ -1164,7 +1323,7 @@ async function selfHealCode(code, codeType, onStatus){
         { role: 'user', content: 'Runtime errors:\n' + errors.join('\n') + '\n\nCode:\n```html\n' + current + '\n```' }
       ];
       const res = await callAIWithFallback(fixMessages, () => {});
-      const fixed = extractReply((res && res.reply) || '');
+      const fixed = extractReply((res && res.reply) || '', current);
       if(fixed.code && fixed.code.length > current.length * 0.5){
         current = fixed.code;
       } else {
@@ -1232,9 +1391,25 @@ function stripLeakedThinking(text){
   }
   return out;
 }
-function extractReply(text){
+function extractReply(text, base){
+  /* v-chat-edit: «غيّر كذا / سوّ لي كذا» على تصميم كبير — الردّ رقع (@@PATCH/@@OLD/@@NEW/@@END) تُطبَّق على المشروع الحاليّ
+     (base) كلّها أو لا شيء، قبل extractReplyRaw كي لا تُحسب رقعة فيها <div أو <script «ملفًّا كاملًا». */
+  if(base){ const __e = omranEditReply(text, base); if(__e){ if(__e.code) __e.code = substUserImage(__e.code); return __e; } }
+  const __big = !!(base && String(base).length > OMRAN_EDIT_BIG);
+  // رقعة لم يقرأها المحلّل (بلا رأس @@PATCH، أو بحروف صغيرة، أو ```diff) ليست ملفًّا كاملًا أبدًا
+  if(__big && (/@@(?:PATCH|OLD|NEW)\b/i.test(String(text || '')) || /```(?:patch|diff)\b/i.test(String(text || '')))){
+    return omranEditFail(String(stripLeakedThinking(String(text || ''))).replace(/```[\s\S]*?(?:```|$)/g, '').replace(/@@(?:PATCH|WHY|OLD|NEW)[\s\S]*$/i, '').trim(), 'editPartial', { partial: 1 });
+  }
   const __r = extractReplyRaw(text);
   if(__r && __r.code) __r.code = substUserImage(__r.code);
+  if(__big && __r && __r.code && __r.codeType === 'html'){
+    // حارس التصميم الكبير: «ملفّ كامل» انقطع قبل </html> لا يحلّ محلّ مشروع يعمل
+    if(omranEditTruncated(__r.code, base)) return omranEditFail(String(__r.explanation || ''), 'editTruncated', { truncated: true });
+    // ولا مقتطف بلا رأس مستند (غلّفه مسار v490 بمستند كامل)، ولا ملفّ «كامل» اختُصر بتعليق «… باقي الكود كما هو»
+    if(!/<!doctype html|<html[\s>]/i.test(String(text || '')) || (__r.code.length < String(base).length && OMRAN_ELIDED_RE.test(__r.code) && !OMRAN_ELIDED_RE.test(base))){
+      return omranEditFail(String(__r.explanation || ''), 'editPartial', { partial: 1 });
+    }
+  }
   return __r;
 }
 function extractReplyRaw(text){
@@ -1304,6 +1479,144 @@ function extractReplyRaw(text){
   return { code: '', explanation: text.trim(), codeType: '' };
 }
 
+/* ── v-chat-edit: تعديل التصميم الكبير بالمقاطع ──
+   المحادثة كانت تعيد الملفّ كلّه، وتجربة «الإلهام» ٦٥–٨٥ ك.ب أكبر من حدّ الردّ (١٦ ألف توكن): يصل مقطوعًا فيمحو المشروع، أو
+   يكتب الموديل دالّة منفصلة لا تُطبَّق. فوق OMRAN_EDIT_BIG حرف يُطلب من الموديل رقع بصيغة أداة «إصلاح الكود» (app-24)، وتُطبَّق
+   هنا على نسخة: كلّ «قديم» يوجد مرّة واحدة بالضبط (أو بسطور مطابقة بعد تجاهل المسافة البادئة)، وإلّا لا يتغيّر شيء. */
+const OMRAN_EDIT_BIG = 24000;
+const OMRAN_HEAL_MAX = 45000; // أكبر ملفّ يسعه ردّ إصلاح كامل (حدّ الردّ ١٦ ألف توكن)
+// تعليق يختصر الكود بدل كتابته: «// ... باقي الكود كما هو» / «/* rest of the code */»
+const OMRAN_ELIDED_RE = /(?:^|[\s;{}>])(?:\/\/|\/\*|<!--)[ \t]*(?:\.\.\.|…|(?:باقي|بقي[ةّ])[ \t]|(?:the )?rest of|(?:existing|unchanged|remaining|other) code|same as before|نفس الكود)/im;
+function omranEditNote(key, n){
+  const v = (typeof t === 'function') ? t(key) : '';
+  const fb = { editApplied: 'طُبّقت التعديلات على التصميم ({n}).', editFailed: 'ما طبّقت التعديل — جزء من النصّ القديم ما طابق التصميم الحاليّ، فبقي التصميم كما هو. اطلبه مرّة ثانية.', editTruncated: 'الردّ انقطع قبل اكتمال الملفّ، فما استبدلت التصميم — بقي كما هو.',
+    editPartial: 'ما طبّقت التعديل — الردّ وصل ناقصًا أو بصيغة غير سليمة، فبقي التصميم كما هو. اطلبه مرّة ثانية.', editBroke: 'ما طبّقت التعديل — كان سيكسر كود التصميم، فبقي التصميم كما هو. اطلبه مرّة ثانية.' }; // = نصوص i18n العربيّة
+  return String((v && v !== key) ? v : fb[key] || '').split('{n}').join(String(n == null ? '' : n));
+}
+// ردّ لم يُطبَّق: لا كود (فلا يُستبدل المشروع) + سبب صريح؛ note منفصلة لمسار الوكيل
+function omranEditFail(prose, key, edits){
+  const note = omranEditNote(key);
+  return { code: '', explanation: (prose ? prose + '\n\n' : '') + note, codeType: '', edits: edits, note: note };
+}
+// تعليمة للموديل (لا يراها المستخدم) تُلحق بالدور الحاليّ حين يكون التصميم كبيرًا — الخادم يقصّها قبل تصنيف الدور (chat.js)
+function omranEditAsk(len){
+  return '\n\n[تعديل تصميم كبير — إلزاميّ إن طلبتُ أيّ تغيير]: كود مشروعي الحاليّ في رسالة سابقة، طوله ' + len + ' حرفًا — أكبر من أن يُعاد كاملًا في ردّ واحد (سينقطع). '
+    + 'لا تُعِد الملفّ كاملًا ولا تكتب دالّة منفصلة لأنسخها بنفسي: أرسل التعديل رقعًا يطبّقها التطبيق على الملفّ مباشرةً، كلّها داخل كتلة ```patch واحدة بهذا الشكل حرفيًّا:\n'
+    + '```patch\n@@PATCH\n@@WHY سبب التعديل في سطر\n@@OLD\n(نصّ موجود في الملفّ الحاليّ منسوخ حرفًا بحرف)\n@@NEW\n(النصّ البديل)\n@@END\n```\n'
+    + 'القواعد: نصّ @@OLD يوجد في الملفّ مرّة واحدة بالضبط — وسّعه بسطر أو سطرين مجاورين حتّى يصير فريدًا، وانسخه كما هو بلا تغيير حرف. '
+    + 'للحذف اترك @@NEW فارغًا. للإضافة ضع في @@OLD سطرًا موجودًا وفي @@NEW السطر نفسه ومعه الإضافة. كلّ التغييرات اللازمة في رقع (حتّى ٢٠)، '
+    + 'وقبل الكتلة سطر أو سطران يقولان ما غيّرت. إن لم يطلب تغييرًا فأجب عاديًّا بلا رقع.';
+}
+// المشروع المفتوح تصميم كبير يُعدَّل بالرقع (لا بوّابة بناء ولا «ابنِه كاملًا»)
+function omranEditBigOpen(cur){
+  return !!(cur && cur.code && cur.codeType !== 'python' && String(cur.code).length > OMRAN_EDIT_BIG);
+}
+const OMRAN_EDIT_APPROVE_NOTE = ' — المشروع المفتوح تصميم كبير: إن كان ما عرضته تعديلًا عليه فأرسله رقعًا ```patch كما في تعليمة دور المستخدم، لا الملفّ كاملًا.';
+function omranEditTruncated(code, base){
+  return String(base).length > OMRAN_EDIT_BIG && /<\/html>/i.test(base) && !/<\/html>/i.test(code);
+}
+/* المحلّل: كتلة بلا @@OLD/@@NEW مرتّبين، أو بلا @@END (انقطع الردّ عند حدّه وسط النصّ الجديد)، أو بقديم فارغ = bad — والردّ
+   كلّه لا يُطبَّق. يُقبل غياب @@END فقط إذا أُغلق سياج ``` على سطر وحده بعد @@NEW. الشرح = النصّ خارج الكتل المقروءة. */
+function omranEditParse(text){
+  const txt = String(text || '').split('@@CS@@').join('://');
+  if(txt.indexOf('@@PATCH') === -1 || txt.indexOf('@@OLD') === -1) return null;
+  const blocks = [], segs = [];
+  let bad = 0;
+  const parts = txt.split('@@PATCH');
+  segs.push(parts[0]);
+  const trim = (x) => x.replace(/^[ \t]*\r?\n/, '').replace(/\r?\n[ \t]*$/, '');
+  for(let i = 1; i < parts.length; i++){
+    const b = parts[i];
+    const iOld = b.indexOf('@@OLD'), iNew = b.indexOf('@@NEW');
+    let iEnd = b.indexOf('@@END'), after = iEnd + 5;
+    if(iEnd < 0 && iNew > iOld && iOld >= 0){
+      const f = /\n[ \t]*```[ \t]*(?:\r?\n|$)/.exec(b.slice(iNew + 5));
+      if(f){ iEnd = iNew + 5 + f.index; after = iEnd; }
+    }
+    if(iOld < 0 || iNew < 0 || iNew < iOld || iEnd < 0 || iEnd < iNew){ bad++; segs.push(iEnd >= 0 ? b.slice(after) : ''); continue; }
+    const why = (b.slice(0, iOld).match(/@@WHY[ \t]*([^\n]*)/) || [0, ''])[1].trim();
+    const old = trim(b.slice(iOld + 5, iNew));
+    const neu = trim(b.slice(iNew + 5, iEnd)).replace(/\n?```\s*$/, '');
+    if(!old.trim()){ bad++; segs.push(b.slice(after)); continue; }
+    blocks.push({ why, old, neu });
+    segs.push(b.slice(after));
+  }
+  const prose = segs.join('\n').replace(/```[a-z]*\s*```/gi, '').replace(/```[a-z]*\s*$/i, '').replace(/^\s*```[ \t]*\n/, '').replace(/\n{3,}/g, '\n\n').trim();
+  return { blocks, prose, bad };
+}
+function omranEditApply(base, blocks){
+  let code = String(base || '');
+  const failed = [];
+  const count = (hay, needle) => { let n = 0, i = 0; while(true){ const k = hay.indexOf(needle, i); if(k === -1 || n > 2) break; n++; i = k + needle.length; } return n; };
+  for(let bi = 0; bi < blocks.length; bi++){
+    const b = blocks[bi];
+    if(count(code, b.old) === 1){
+      const k = code.indexOf(b.old);
+      // حذف سطور كاملة يحذف سطرها أيضًا (لا يترك سطرًا فارغًا)
+      const eol = b.neu === '' && (k === 0 || code[k - 1] === '\n') && code[k + b.old.length] === '\n' ? 1 : 0;
+      code = code.slice(0, k) + b.neu + code.slice(k + b.old.length + eol);
+      continue;
+    }
+    // تسامح المسافات: نفس السطور بعد إزالة المسافة البادئة والزائدة — نافذة واحدة فقط تُقبل
+    const lines = code.split('\n'), want = b.old.split('\n').map((l) => l.trim());
+    while(want.length && !want[0]) want.shift();
+    while(want.length && !want[want.length - 1]) want.pop();
+    let at = -1, hits = 0;
+    if(want.length) for(let i = 0; i + want.length <= lines.length && hits < 2; i++){
+      let ok = true;
+      for(let j = 0; j < want.length; j++){ if(lines[i + j].trim() !== want[j]){ ok = false; break; } }
+      if(ok){ hits++; at = i; }
+    }
+    if(hits !== 1){ failed.push(bi); continue; }
+    // الإزاحة: فرق بادئة الأصل عن بادئة أوّل سطر في «القديم» يُطبَّق على كلّ سطر جديد — تبقى البنية النسبيّة (بايثون)
+    const pad = (lines[at].match(/^[ \t]*/) || [''])[0];
+    const op = ((b.old.split('\n').find((l) => l.trim()) || '').match(/^[ \t]*/) || [''])[0];
+    const delta = pad.length - op.length, ch = pad.charAt(0) || ' ';
+    const re = b.neu.split('\n').map((l) => {
+      if(!l.trim()) return l;
+      const lead = l.match(/^[ \t]*/)[0];
+      return (delta >= 0 ? ch.repeat(delta) + lead : lead.slice(Math.min(lead.length, -delta))) + l.slice(lead.length);
+    });
+    lines.splice(at, want.length, ...(b.neu === '' ? [] : re));
+    code = lines.join('\n');
+  }
+  return { ok: !failed.length && blocks.length > 0, code, applied: blocks.length - failed.length, failed };
+}
+// أخطاء صياغة السكربتات المضمّنة الكلاسيكيّة (كما يفحص app-24 قبل حفظ رقعة) — تُقارن قبل الرقعة وبعدها
+function omranEditScriptErrors(html){
+  let n = 0, m;
+  const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  while((m = re.exec(String(html || '')))){
+    const attrs = m[1] || '';
+    if(/\bsrc\s*=/i.test(attrs)) continue;
+    const ty = (attrs.match(/\btype\s*=\s*["']?([^"'\s>]+)/i) || [0, ''])[1].toLowerCase();
+    if(ty && !/^(?:text\/javascript|application\/javascript|javascript)$/.test(ty)) continue; // module/json/babel…
+    try{ new Function(m[2]); }catch(e){ if(e && e.name === 'SyntaxError') n++; }
+  }
+  return n;
+}
+function omranEditReply(text, base){
+  const p = omranEditParse(stripLeakedThinking(String(text || '')));
+  if(!p || (!p.blocks.length && !p.bad)) return null;
+  // كتلة مكرّرة حرفيًّا (ملخّص يعيدها) تُطبَّق مرّة؛ قديم واحد بجديدين مختلفين = تعارض لا يُخمَّن
+  const norm = (x) => x.split('\n').map((l) => l.trim()).join('\n');
+  const seen = new Map(), blocks = [];
+  let clash = 0;
+  for(const b of p.blocks){
+    const k = norm(b.old);
+    if(seen.has(k)){ if(seen.get(k) !== norm(b.neu)) clash++; continue; }
+    seen.set(k, norm(b.neu));
+    blocks.push(b);
+  }
+  const total = p.blocks.length + p.bad;
+  if(p.bad || clash) return omranEditFail(p.prose, 'editPartial', { partial: p.bad + clash, total });
+  const r = omranEditApply(base, blocks);
+  if(!r.ok) return omranEditFail(p.prose, 'editFailed', { failed: r.failed.length, total });
+  if(omranEditScriptErrors(r.code) > omranEditScriptErrors(base)) return omranEditFail(p.prose, 'editBroke', { broke: true, total });
+  const note = omranEditNote('editApplied', r.applied);
+  return { code: r.code, explanation: (p.prose ? p.prose + '\n\n' : '') + note, codeType: 'html', edits: { applied: r.applied }, note };
+}
+
 function throwProviderError(status, errText){
   // Every thrown error carries the original HTTP status on `.status` so callers
   // (like the auto-fallback logic in callAIWithFallback) can tell a rate-limit
@@ -1317,8 +1630,13 @@ function throwProviderError(status, errText){
       const __p = JSON.parse(errText);
       if(__p && (__p.reason === 'points' || __p.error === 'insufficient_points')) __pointsErr = true;
     }catch(_){ if(/insufficient_points|"reason"\s*:\s*"points"/.test(errText || '')) __pointsErr = true; }
-    err = new Error(t('dailyLimitError'));
+    /* v-plans-gate: حدّ باقتنا (ردّ خوادمنا يحمل subscribeOnly أو engine_limit) غير رصيد مزوّد خارجيّ — له سطره، وتنفتح الباقات. */
+    let __planLimit = false;
+    try{ const __p2 = JSON.parse(errText); __planLimit = !__pointsErr && !!__p2 && (__p2.reason === 'engine_limit' || Object.prototype.hasOwnProperty.call(__p2, 'subscribeOnly')); }
+    catch(_){ __planLimit = false; }
+    err = new Error(__planLimit ? t('plansWhyLimit') : t('dailyLimitError'));
     if(__pointsErr) err.premiumNoPoints = true;
+    if(__planLimit) err.planLimit = true;
   } else if(status === 429){
     err = new Error(t('quotaError'));
   } else if(status === 401 || status === 403){
@@ -1515,7 +1833,9 @@ async function readClaudeStream(res, onDelta){
 
 async function callOpenAILike(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_apikey');
-  const model = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
+  // v-openai-pick: السهم يحفظ معرّفًا بصيغة OpenRouter (openai/…) كي يعمل
+  // في مسار الأدوات؛ المفتاح الشخصي يتصل بـOpenAI نفسها فتُقصّ البادئة هنا.
+  const model = (localStorage.getItem('aiapp_model') || 'gpt-4o-mini').replace(/^openai\//i, '');
   // If the visitor hasn't entered their own OpenAI key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -1533,6 +1853,8 @@ async function callOpenAILike(messages, onDelta){
     const data = await res.json();
     return data.choices[0].message.content;
   }
+  const directBody = { model, messages: toOpenAIVisionMessages(messages), stream: !!onDelta };
+  if(!/^gpt-[56]/i.test(model)) directBody.temperature = 0.7;
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
       signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
     method: 'POST',
@@ -1540,7 +1862,7 @@ async function callOpenAILike(messages, onDelta){
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + apiKey,
     },
-    body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), temperature: 0.7, stream: !!onDelta }),
+    body: JSON.stringify(directBody),
   });
   if(!res.ok){
     const errText = await res.text();
@@ -1599,8 +1921,12 @@ function stripPplxCitations(s){
 }
 async function callPerplexity(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_perplexity_apikey');
-  const model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
-  let plainMessages = await stripImagesWithDescription(messages);
+  let model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
+  /* v-owner-solo: معرّف Perplexity قديم محفوظ (llama-3.1-sonar-…، pplx-…) يُرفض 400 في كلّ رسالة — يُرحَّل مرّة إلى sonar (المعرّفات الحيّة لا تُمسّ) */
+  if(typeof omranOwnerUi === 'function' && omranOwnerUi() && /^(?:llama-3(?:\.1)?-sonar|sonar-(?:small|medium|huge)-|pplx-)/i.test(model)){ model = 'sonar'; try{ localStorage.setItem('aiapp_perplexity_model', model); }catch(e){ __swallow(e, 'pplx:migrate'); } }
+  // v-owner-vision: للمالك Sonar يقرأ الصورة نفسها (image_url بـdata URI في واجهته الرسميّة) بدل وصف Gemini؛ غيره كما كان.
+  let plainMessages = ((typeof omranOwnerUi === 'function' && omranOwnerUi()) && messages.some(m => m.images && m.images.length))
+    ? toOpenAIVisionMessages(messages) : await stripImagesWithDescription(messages);
   plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم تحية لفظية فقط (مثل: السلام عليكم، مرحبا، هلا، صباح الخير) فاكتفِ بتحية قصيرة وطبيعية من دون صيغة ثابتة أو بحث أو مصادر؛ لا تطرح أي سؤال ولا تعرض المساعدة. أمّا سؤال المجاملة مثل «كيف حالك؟» فأجب عن حالك مباشرة واسأل المستخدم عن حاله عند الملاءمة؛ لا تكرر التحية ولا تعرض المساعدة بدل الجواب. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
   if(onDelta){ const orig = onDelta; onDelta = (chunk) => orig(stripPplxCitations(chunk)); }
   // If the visitor hasn't entered their own Perplexity key, fall back to the server-side
@@ -1723,7 +2049,8 @@ async function callGroq(messages, onDelta){
   try{ return await __groqSend(GROQ_VISION_MODEL, toOpenAIVisionMessages(messages), onDelta); }
   catch(e){
     const __t = String((e && (e.upstreamText || e.message)) || '');
-    const __modelErr = !!(e && (e.status === 404 || /model_not_found|does not exist|decommissioned|has been deprecated|not supported/i.test(__t)));
+    /* v-groq-image-turn: «content must be a string» = نموذج نصّيّ استلم الصورة (الخادم القديم يجرّب المرشّحين بها) — غياب رؤية كذلك */
+    const __modelErr = !!(e && (e.status === 404 || /model_not_found|does not exist|decommissioned|has been deprecated|not supported|content must be a string/i.test(__t)));
     if(!__modelErr || (e && e.name === 'AbortError')) throw e;
     return await __groqSend(textModel, await stripImagesWithDescription(messages), onDelta);
   }
@@ -1848,16 +2175,24 @@ async function callDeepSeek(messages, onDelta){
   return data.choices[0].message.content;
 }
 
+/* v-cohere-prefix (العميل — نظير api/_lib/cohere.js؛ اختباراه ٧ و٨ في provider-models أُضيفا في 1434031 بلا هذا الكود فبقي CI أحمر):
+   الاختيار من القائمة الحيّة محفوظ ببادئة الوسيط «cohere/» وapi.cohere.com لا تعرف إلّا المعرّف المجرّد — تُجرَد. وقائمة المسحوبات
+   على دورة حياة Cohere الرسميّة: المسحوب ١٥ سبتمبر ٢٠٢٥ هو 03-2024/04-2024 والأسماء المستعارة وcommand-light؛ لقطتا 08-2024 «Live»
+   تمرّان كما هما (كان العميل يرقّيهما خطأً). */
+const COHERE_RETIRED_SET = new Set(['command-r-plus', 'command-r', 'command-r-03-2024', 'command-r-plus-04-2024', 'command', 'command-light']);
+const COHERE_SAFE_MODEL = 'command-a-03-2025';
 function normalizeCohereModel(raw){
-  const v = (raw || '').trim().toLowerCase();
-  if(!v || v === 'command-r-plus' || v === 'command-r' || v === 'command-r-plus-08-2024' || v === 'command-r-08-2024' || v === 'command') return 'command-a-03-2025';
-  return raw.trim();
+  let v = String(raw || '').trim();
+  if(v.toLowerCase().indexOf('cohere/') === 0) v = v.slice(7);
+  if(!v || COHERE_RETIRED_SET.has(v.toLowerCase())) return COHERE_SAFE_MODEL;
+  return v;
 }
-async function callCohere(messages, onDelta){
+async function callCohere(messages, onDelta, __forceModel){
   const apiKey = localStorage.getItem('aiapp_cohere_apikey');
   const savedModel = localStorage.getItem('aiapp_cohere_model');
-  const model = normalizeCohereModel(savedModel);
-  if(savedModel !== model) localStorage.setItem('aiapp_cohere_model', model);
+  const model = __forceModel || normalizeCohereModel(savedModel);
+  // المسحوب وحده يُستبدل في التخزين — المعرّف الحيّ يبقى كما حُفظ (ببادئته) فلا يضيع اختيار القائمة
+  if(!__forceModel && savedModel && COHERE_RETIRED_SET.has(String(savedModel).trim().toLowerCase().replace(/^cohere\//, ''))) localStorage.setItem('aiapp_cohere_model', model);
   // If the visitor hasn't entered their own Cohere key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -1867,6 +2202,7 @@ async function callCohere(messages, onDelta){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages: stripToPlainMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
     });
+    if(!res.ok && res.status === 404 && model !== COHERE_SAFE_MODEL){ try{ localStorage.removeItem('aiapp_cohere_model'); }catch(e){ __swallow(e, 'cohere:forget'); } return await callCohere(messages, onDelta, COHERE_SAFE_MODEL); } // v-cohere-prefix: مختار محفوظ رُفض 404 = مسح + إعادة بالافتراضيّ مرّة واحدة
     if(!res.ok){
       const errText = await res.text();
       throwProviderError(res.status, errText);
@@ -1884,6 +2220,7 @@ async function callCohere(messages, onDelta){
     },
     body: JSON.stringify({ model, messages: stripToPlainMessages(messages), temperature: 0.7, stream: !!onDelta }),
   });
+  if(!res.ok && res.status === 404 && model !== COHERE_SAFE_MODEL){ try{ localStorage.removeItem('aiapp_cohere_model'); }catch(e){ __swallow(e, 'cohere:forget'); } return await callCohere(messages, onDelta, COHERE_SAFE_MODEL); } // v-cohere-prefix: مختار محفوظ رُفض 404 = مسح + إعادة بالافتراضيّ مرّة واحدة
   if(!res.ok){
     const errText = await res.text();
     throwProviderError(res.status, errText);
@@ -2014,15 +2351,14 @@ async function callClaude(messages, onDelta){
 }
 
 // providerKey: 'default' uses the selected default provider (openai/openrouter/gemini/groq/claude/perplexity), or explicitly named
-// 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات الخمس (مُتحقَّق حيًّا).
-// cohere وperplexity وopenrouter خارجها عمدًا: الأوّلان لا يدعمان الأدوات على
-// هذا الطريق، والثالث مفتاح المستخدم نفسه.
-const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة */
+// 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات (مُتحقَّق حيًّا).
+// Perplexity وحده خارجها عمدًا: موديلات Sonar لا تقبل الأدوات أصلًا (بحثها مدمج).
+const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter', 'kimi']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة · v-openrouter-tools: والمزوّد العامّ كذلك، بالمفتاح نفسه */
 
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
   if(providerKey === 'default'){
-    effective = localStorage.getItem('aiapp_provider') || 'claude';
+    effective = localStorage.getItem('aiapp_provider') || 'openai';
   }
   if(effective === 'gemini') return await callGemini(messages, onDelta);
   if(effective === 'groq') return await callGroq(messages, onDelta);
@@ -2032,6 +2368,15 @@ async function callProviderAI(providerKey, messages, onDelta){
   if(effective === 'mistral') return await callMistral(messages, onDelta);
   if(effective === 'deepseek') return await callDeepSeek(messages, onDelta);
   if(effective === 'cohere') return await callCohere(messages, onDelta);
+  /* v-kimi: Kimi على مسار الأدوات وحده (chat.js → Moonshot مباشرةً أو عبر الوسيط). كان أيّ اسم غير معروف يسقط إلى GPT هنا
+     فيُكتب الردّ باسم Kimi وهو من GPT.
+     v-owner-solo (المالك ٨ أكتوبر): الرمي كان يُسلّم الدور لكلود في «صلّح/خطأ» ودور الاستئذان — الآن هذا المسار يمرّ بالخادم نفسه
+     لـKimi (بلا رسالة النظام الثابتة الأولى، كمسار الأدوات في app-09)، فيجيب Kimi أو يُكتب سبب فشله. */
+  if(effective === 'kimi'){
+    if(typeof window.callChatWithTools !== 'function') throw new Error('kimi: tools path only');
+    const __km = await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), onDelta, 'kimi');
+    return __km.reply;
+  }
   return await callOpenAILike(messages, onDelta);
 }
 
@@ -2119,7 +2464,10 @@ function __idleGuard(promise, idleMs, getLast){
                  function(e){ if(!done){ done = true; clearInterval(timer); reject(e); } });
   });
 }
-async function callAIWithFallback(messages, onDelta, preferredList){
+async function callAIWithFallback(messages, onDelta, preferredList, opts){
+  /* v-owner-solo (المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه، وإذا ما فيه رصيد يكتبلي»): solo = المزوّد الأوّل وحده — لا
+     احتياط ولا تحويل بعد ردّ رفض، وفشله يُرمى باسمه وسببه فيظهر في الفقاعة. */
+  const __solo = !!(opts && opts.solo);
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
   try{
@@ -2133,10 +2481,10 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   }catch(e){ __swallow(e, "misc:app-06-checkout#11"); }
   // v358 — التوجيه بالمجموعات الوظيفية: المزود المختار يوسَّع لسلسلة مجموعته
   // (الاحتياط الصامت يبقى داخل نفس المجموعة أولًا)، ثم بقية المزودين كشبكة أمان أخيرة.
-  const __sel = localStorage.getItem('aiapp_provider') || 'claude';
+  const __sel = localStorage.getItem('aiapp_provider') || 'openai';
   const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
-  const order = [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
+  const order = __solo ? head.slice(0, 1) : [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
   let lastErr = null;
   let firstErr = null;     // v-img-err: خطأ المزوّد الأوّل (المطلوب) — هو السبب الحقيقيّ حين يفشل الجميع
   let firstProv = '';
@@ -2156,10 +2504,18 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       }catch(e){ console.warn('[status] provider phase failed', e); }
       var __lastProg = Date.now();
       var __od = function(full){ __lastProg = Date.now(); if(onDelta) onDelta(full); };
-      const reply = await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
+      /* v-owner-solo (فحص المزوّدين ٨ أكتوبر): للمالك المسار القديم («صلّح/خطأ» مع كود، دور الاستئذان، فشل مسار الأدوات) كان يرسل
+         لكلّ مزوّد موديلًا غير الذي في القائمة (Gemini بمعرّف الوسيط إلى Google فيرفض، Mistral Small بدل Medium، GPT-4o-mini بدل GPT-6،
+         Sonnet بدل Haiku…) ويصف صورته لـGemini أو يسقطها. الآن يمرّ بالخادم لمزوّده نفسه كالمسار العاديّ (بلا رسالة النظام الثابتة
+         الأولى، كمسار الأدوات)، فالمزوّد والموديل والصورة ورسالة الفشل واحدة. Perplexity خارج مسار الأدوات فيبقى على مساره. */
+      const __viaChat = __solo && TOOL_PROVIDERS.indexOf(providerKey) !== -1 && typeof window.callChatWithTools === 'function';
+      if(__viaChat && opts && opts.toolsErr) throw opts.toolsErr; // v-owner-solo: مسار الأدوات لهذا المزوّد فشل للتوّ — لا طلب ثانٍ يكرّر أدواته (تفويض/رفع/صورة)
+      const reply = __viaChat
+        ? (await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), __od, providerKey, { noTools: true })).reply
+        : await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
-      if(isRefusalReply(reply) && refusalTries < 2){
+      if(!__solo && isRefusalReply(reply) && refusalTries < 2){
         if(!firstRefusal) firstRefusal = { reply, providerKey };
         refusalTries++;
         continue; // 🛡️ تحويل صامت للمزود التالي — بدون أي رسالة للمستخدم
@@ -2182,6 +2538,16 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       // نسمّي من فشل ولماذا. الرسالة العامة كانت تترك المستخدم يرى مزوّدًا
       // غير الذي اختاره بلا تفسير — فيظنّ أن الاختيار معطّل، والحقيقة أن
       // المزوّد المختار فشل وأُخفي فشله.
+      if(__solo){
+        // v-owner-solo: لا مزوّد بعده؛ الرسالة قصيرة كرسالة الخادم — «ما عندي رصيد» أو «ما قدرت أردّ الحين — خطأ N».
+        if(err && !err.ownerStop){
+          try{
+            const __st = err.status || Number((String(err.message || '').match(/^chat (\d{3})\b/) || [])[1]) || 0;
+            err.message = (__st === 402 || /credit|balance|billing|insufficient_quota|payment/i.test(String(err.upstreamText || ''))) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين' + (__st ? ' — خطأ ' + __st : ''));
+          }catch(e){ __swallow(e, 'fallback:solo-msg'); }
+        }
+        throw err;
+      }
       try{
         if(window.__chatStatus){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
@@ -2281,3 +2647,55 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+
+
+/* v-autorenew-toggle (المالك ٢ أكتوبر «خاصيّة في الاشتراكات تلغي الاشتراك الشهريّ — خصم شهريّ ولا عاديّ — زرّ يفتح ويغلق
+   في أوّل الصفحة»): زرّ واحد أعلى «خطط الأسعار». للشراء الجديد: مفعّل = اشتراك شهريّ متجدّد، متوقّف = شهر واحد (الافتراضيّ).
+   ولمن عنده اشتراك متجدّد فعلًا: الإيقاف يوقف التجديد عند نهاية الشهر المدفوع (لا استرجاع ولا قطع)، والتفعيل يعيده.
+   حالة الزرّ تُقرأ من Stripe عند فتح الإعدادات إن وُجد اشتراك، وإلّا من التفضيل المحفوظ. */
+function autoRenewPref(){ try{ return localStorage.getItem('aiapp_autorenew') === '1'; }catch(e){ return false; } }
+function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffHint'); }
+function setAutoRenewUI(on){
+  const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
+  if (chk) chk.checked = !!on;
+  if (hint) hint.textContent = autoRenewHintText(!!on);
+}
+async function autoRenewCall(on){
+  const tk = authGet('aiapp_auth_token');
+  if (!tk) return null;
+  const r = await fetch('/api/account?action=auto-renew', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(on === undefined ? { token: tk } : { token: tk, on: !!on }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+async function syncAutoRenewUI(){
+  setAutoRenewUI(autoRenewPref());
+  try{
+    const j = await autoRenewCall();
+    if (j && j.subs > 0){ localStorage.setItem('aiapp_autorenew', j.on ? '1' : '0'); setAutoRenewUI(j.on); }
+  }catch(e){ __swallow(e, 'checkout:autorenew-sync'); }
+}
+(function wireAutoRenew(){
+  const chk = document.getElementById('chkAutoRenew');
+  if (!chk || chk.dataset.wired === '1') return;
+  chk.dataset.wired = '1';
+  setAutoRenewUI(autoRenewPref());
+  chk.addEventListener('change', async () => {
+    const on = chk.checked;
+    const prev = autoRenewPref();
+    try{ localStorage.setItem('aiapp_autorenew', on ? '1' : '0'); }catch(e){ __swallow(e, 'checkout:autorenew-save'); }
+    setAutoRenewUI(on);
+    try{
+      const j = await autoRenewCall(on);
+      if (j && j.subs > 0){
+        const d = j.periodEnd ? new Date(j.periodEnd * 1000).toLocaleDateString(lang === 'ar' ? 'ar-AE' : undefined) : '';
+        settingsToast(on ? t('autoRenewResumed') : t('autoRenewStopped').replace('{date}', d));
+      }
+    }catch(e){
+      __swallow(e, 'checkout:autorenew-set');
+      try{ localStorage.setItem('aiapp_autorenew', prev ? '1' : '0'); }catch(e2){ __swallow(e2, 'checkout:autorenew-revert'); }
+      setAutoRenewUI(prev);
+      settingsToast(t('autoRenewFailed'));
+    }
+  });
+})();

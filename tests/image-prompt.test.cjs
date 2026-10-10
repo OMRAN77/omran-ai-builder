@@ -31,6 +31,7 @@ test('reserved exact-text area remains free of model-rendered writing', () => {
   const p = buildGenerationPrompt('غروب هادئ', { reserveTextArea:true, textPosition:'top' });
   assert.match(p, /Do not render any words, letters, numbers/);
   assert.match(p, /Keep the upper portion calm and uncluttered/);
+  assert.match(buildGenerationPrompt('غروب هادئ', { reserveTextArea:true, textPosition:'right-center' }), /Keep the right-hand portion calm and uncluttered/);
 });
 
 test('generation never asks the image model to reproduce user wording', () => {
@@ -68,9 +69,11 @@ test('all image-edit entry points apply style preservation except explicit anime
   const fashion = fs.readFileSync('api/_lib/fashion-create.js', 'utf8');
   assert.match(maha, /buildEditPrompt\(cleanPrompt, intentText\)/); // v-remove-target
   assert.match(portrait, /\['hairstyle',[\s\S]*?'outfit'[\s\S]*?\]\.includes\(style\)/);
-  assert.match(portrait, /temperature: isLocalizedEdit \? 0\.15 : 0\.65/);
+  assert.match(portrait, /temperature: \(isLocalizedEdit \|\| isMultiSourceComposition\) \? 0\.15 : 0\.65/); // v-merge-faces: الدمج أمين أيضًا، والأساليب الفنّيّة ٠٫٦٥
   assert.match(studio, /if \(feature !== 'anime'\) promptText \+=/);
-  assert.match(studio, /temperature: feature === 'anime' \? 0\.65 : 0\.15/);
+  // v-studio-variety: الأنمي ٠٫٦٥، وميزات الرسم (حنّاء/أظافر/تاتو) ٠٫٤٥ كي لا يتكرّر النقش نفسه، والباقي ٠٫١٥ كما كان
+  assert.match(studio, /feature === 'anime' \? 0\.65 : \(DESIGN_FEATURES\.indexOf\(feature\) !== -1 \? 0\.45 : 0\.15\)/);
+  assert.match(studio, /const DESIGN_FEATURES = \['henna', 'nails', 'tattoo'\]/);
   assert.match(sourceStylePreservationRule(), /unless the USER REQUEST explicitly asks/);
   assert.ok(!/verifyLocalizedImageEdit/.test(maha), 'v-lanes: لا حارس رافض في maha-image'); // يبقى في portrait/studio
   assert.match(portrait, /if \(!isMultiSourceComposition\)/);
@@ -109,7 +112,7 @@ test('localized edit quality gate rejects anime drift and identity changes', () 
 test('chat edit flow continues from the latest edited pixels and never auto-recreates from text', () => {
   const attach = fs.readFileSync('js/app-09-attach.js', 'utf8');
   const maha = fs.readFileSync('js/app-08-maha.js', 'utf8');
-  assert.match(attach, /__pendingImageEditSource = \{ b64:__b64, mime:__mime \}/); assert.match(attach, /__side=\/\^\(right\|left\)-\//); assert.match(require('../api/_lib/prayer-plan').buildPlannerPrompt('أريد شعرًا', { kind:'poetry' }), /original polished 2–3 line Arabic poem/); assert.equal(require('../js/app-08-image-text.js').parseImageTextSpec('اكتب «نص» أعلى يمين الصورة').position, 'right-top');
+  assert.match(attach, /__pendingImageEditSource = __keepLayer \? [^\n]*: \{ b64:__b64, mime:__mime \}/); /* v-text-keep: بلا طبقة كتابتنا = آخر بكسلات كما كان */ assert.match(attach, /const poster = !!\(T\.title && T\.lines\.length\), P = __textPosNorm\(position\);/); /* v-text-layout (يخلف side = /^(right|left)-(top|center|bottom)$/): المواضع الستّة باقية وتُطبَّع معها right/left وbottom-right/right-bottom */ assert.match(require('../api/_lib/prayer-plan').buildPlannerPrompt('أريد شعرًا', { kind:'poetry' }), /original polished 2–3 line Arabic poem/); assert.equal(require('../js/app-08-image-text.js').parseImageTextSpec('اكتب «نص» أعلى يمين الصورة').position, 'right-top');
   assert.match(attach, /cumulativeImageEditPrompt\(cur, text/);
   assert.match(attach, /cur\.imageEditSource = __pendingImageEditSource/);
   assert.match(attach, /cur\.imageEditInstructions = __pendingImageEditInstructions/);

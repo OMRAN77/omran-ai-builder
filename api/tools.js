@@ -14,6 +14,7 @@ function load(action) {
   switch (action) {
     case 'design-create': return require('./_lib/design-create.js');
     case 'design-ideas': return require('./_lib/design-ideas.js');
+    case 'construction-brief': return require('./_lib/construction-brief.js'); // v-cx-brief: سطر واحد ← حقول النموذج
     case 'construction-create': return require('./_lib/construction-create.js');
     case 'construction-view': return require('./_lib/construction-view.js');
     case 'construction-library': return require('./_lib/construction-library.js');
@@ -33,6 +34,7 @@ function load(action) {
     case 'card-extract': return require('./_lib/card-extract.js');
     case 'text-swap': return require('./_lib/text-swap.js');
     case 'media-intent': return require('./_lib/media-intent.js'); // v-media-gate
+    case 'video-write': return require('./_lib/video-write.js'); // v-video-write: مساعد الكتابة داخل صانع الفيديو
     default: return null;
   }
 }

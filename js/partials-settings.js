@@ -13,8 +13,18 @@
   <h3 id="settingsDlgTitle" data-i18n-title="settingsDlgMaxTitle" style="display:none; margin-top:0; cursor:zoom-in; user-select:none;" title="دبل كلك للتكبير/التصغير" data-i18n="settingsTitle">إعدادات الاتصال بالذكاء الاصطناعي</h3>
 
 <div id="settingsHomeView">
+  <!-- v-settings-groups: رأس الحساب وبطاقة الترقية، ثمّ مجموعات الصفوف (تُبنى في renderSettingsNavList) -->
+  <div id="settingsProfile" class="setProfile">
+    <button type="button" id="setHomeClose" class="setHomeClose" aria-label="إغلاق" data-i18n-title="closeTitle" title="إغلاق">✕</button>
+    <button type="button" id="setProfileAvatar" class="setProfileAvatar" title="" data-i18n-title="setChangePhoto"><img id="setProfileImg" alt="" style="display:none;"><span id="setProfileInitials">?</span><span class="setProfileEdit"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span></button>
+    <div id="setProfileName" class="setProfileName"></div>
+    <button type="button" id="setProfileLogin" class="setUpgradeBtn" style="display:none;" data-i18n="loginAction">دخول</button>
+  </div>
+  <div id="settingsUpgradeCard" class="setUpgrade" style="display:none;">
+    <div class="setUpgradeText"><div class="setUpgradeTitle" data-i18n="setUpgradeTitle">أنجز المزيد مع Om ai</div><div class="setUpgradeSub" data-i18n="setUpgradeSub">حدود أعلى وإمكانيّة الوصول إلى الميزات المتقدّمة.</div></div>
+    <button type="button" id="setUpgradeBtn" class="setUpgradeBtn" data-i18n="setUpgradeBtn">الترقية</button>
+  </div>
   <div id="settingsNavList"></div>
-  <div id="appVersionLabel" style="text-align:center; color:var(--muted); font-size:12px; opacity:.7; margin-top:22px; padding-bottom:6px; user-select:text;"></div>
 </div>
 <div id="settingsPageHeader" style="display:none; align-items:center; gap:10px; margin-top:26px; margin-bottom:14px;">
   <button type="button" id="settingsPageBackBtn" title="رجوع" data-i18n-title="back" style="background:none; border:none; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:center; padding:4px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" id="settingsBackSvg"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
@@ -44,28 +54,17 @@
   </div></div>
 
   <div id="accountSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('accountSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="acctSectionTitle">👤 حسابي</h3><span class="settingsSectionArrow" id="accountSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="accountSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;"><div style="display:flex; flex-direction:column; width:100%;">
-    <button type="button" id="acctLoginBtn" style="display:none; width:100%; padding:12px; margin-bottom:14px; border-radius:var(--r-2); border:1px solid var(--accent-surface,#d4af37); background:rgba(212,175,55,.10); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctLoginBtnLabel">🔐 تسجيل الدخول / حساب جديد</button>
-    <div id="acctSignedInAs" style="display:none; align-items:center; justify-content:center; gap:8px; padding:10px 12px; margin-bottom:14px; border-radius:var(--r-2); background:rgba(212,175,55,.08); border:1px solid rgba(212,175,55,.30); font-size: var(--fs-3); font-weight: var(--w-bold); color:var(--text);"><span>👤</span><span id="acctSignedInAsName"></span></div>
-    <!-- v-points-acct (طلب المالك): رصيد النقاط في قائمة الحساب + تحذير تلقائي قبل النفاد -->
-    <div id="acctPointsBox" style="display:none; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; margin-bottom:14px; border-radius:var(--r-2); background:rgba(212,175,55,.08); border:1px solid rgba(212,175,55,.30); font-size: var(--fs-3);">
-      <span style="font-weight: var(--w-bold);">⭐ <span data-i18n="acctPointsLabel">رصيد النقاط</span></span>
-      <span id="acctPointsValue" style="font-weight:800; color:#d4af37; direction:ltr; unicode-bidi:isolate;">—</span>
-    </div>
-    <div id="acctPointsLowWarn" style="display:none; padding:10px 12px; margin:-6px 0 14px; border-radius:var(--r-2); background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.40); color:#ef4444; font-size:12.5px; line-height:1.7;">
-      <span id="acctPointsLowText" data-i18n="acctPointsLow">⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.</span>
-      <button type="button" id="acctPointsBuyBtn" onclick="if(typeof showSettingsPage==='function')showSettingsPage('pricingSection')" style="display:block; margin-top:7px; width:100%; padding:9px; border-radius:8px; border:1px solid rgba(212,175,55,.5); background:rgba(212,175,55,.12); color:#d4af37; font-weight:700; cursor:pointer;" data-i18n="acctPointsBuyBtn">💳 شحن النقاط</button>
-    </div>
-    <button type="button" id="acctLogoutBtn" style="display:none; width:100%; padding:11px; margin-bottom:14px; border-radius:var(--r-2); border:1px solid rgba(239,68,68,.45); background:rgba(239,68,68,.10); color:#ef4444; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="logoutTitle">🚪 تسجيل الخروج</button>
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('accountSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="acctSectionTitle">حسابي</h3><span class="settingsSectionArrow" id="accountSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="accountSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;"><div style="display:flex; flex-direction:column; width:100%;">
+    <button type="button" id="acctLoginBtn" style="display:none; width:100%; padding:12px; margin-bottom:14px; border-radius:var(--r-2); border:1px solid var(--accent-surface,#d4af37); background:rgba(212,175,55,.10); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctLoginBtnLabel">تسجيل الدخول / حساب جديد</button>
     <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:14px;">
       <div style="position:relative;">
         <img id="acctAvatarPreview" src="" alt="" style="width:72px; height:72px; border-radius:50%; object-fit:cover; background:var(--bg); border:1px solid var(--border); display:none;">
-        <div id="acctAvatarPlaceholder" style="width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:34px; background:var(--bg); border:1px solid var(--border);">👤</div>
+        <div id="acctAvatarPlaceholder" style="width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:600; color:var(--muted,#9a958a); background:var(--bg); border:1px solid var(--border);"></div>
         <input type="file" id="acctAvatarInput" accept="image/*" style="display:none;">
       </div>
-      <button type="button" id="acctAvatarBtn" style="background:none; border:none; cursor:pointer; color:var(--accent); font-size:13px; font-weight:500; padding:2px 8px;" data-i18n="acctAvatarBtn">📷 تغيير الصورة</button>
+      <button type="button" id="acctAvatarBtn" style="background:none; border:none; cursor:pointer; color:var(--accent); font-size:13px; font-weight:500; padding:2px 8px;" data-i18n="acctAvatarBtn">تغيير الصورة</button>
     </div>
-    <div><button type="button" onclick="acctToggleRow('acctRowUser',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctUsernameLabel">اسم المستخدم</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowUser',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctUsernameLabel">اسم المستخدم</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowUser" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">
         <input type="text" id="acctUsername" style="flex:1;" autocomplete="username">
@@ -73,7 +72,7 @@
       </div>
       <div id="acctUsernameMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
-    <div><button type="button" onclick="acctToggleRow('acctRowPass',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctPasswordRow">كلمة المرور</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowPass',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctPasswordRow">كلمة المرور</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowPass" style="display:none; padding:8px 8px 12px;">
       <label data-i18n="acctCurrentPasswordLabel">كلمة المرور الحالية</label>
       <input type="password" id="acctCurrentPassword" autocomplete="current-password">
@@ -84,7 +83,7 @@
       </div>
       <div id="acctPasswordMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
-    <div><button type="button" onclick="acctToggleRow('acctRowEmail',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctEmailLabel">📧 الإيميل الاحتياطي (لاسترجاع كلمة المرور)</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowEmail',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctEmailLabel">الإيميل (لو نسيت اسمك أو كلمة المرور)</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowEmail" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">
         <input type="email" id="acctEmail" style="flex:1; direction:ltr;" autocomplete="email">
@@ -92,42 +91,52 @@
       </div>
       <div id="acctEmailMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
-    <div><button type="button" onclick="acctToggleRow('acctRowRef',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctReferralLabel">🔗 رابط دعوة أصدقائك</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <!-- v-phone-link (أمر المالك ٤ أكتوبر): ربط الرقم مجّانًا — المستخدم يرسل الرمز من واتساب أو يشارك رقمه في بوت تيليجرام -->
+    <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowPhone',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctPhoneLabel">رقم الهاتف (للاسترجاع)</span><span id="acctPhoneVal" style="font-size:12px; color:var(--muted,#9a958a); direction:ltr; unicode-bidi:isolate;" data-i18n="phoneNotLinked">غير مربوط</span></button>
+    <div id="acctRowPhone" style="display:none; padding:8px 8px 12px;">
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn" data-phone-link="whatsapp" style="flex:1; justify-content:center; text-align:center;" data-i18n="phoneViaWa">واتساب</button>
+        <button type="button" class="btn" data-phone-link="telegram" style="flex:1; justify-content:center; text-align:center;" data-i18n="phoneViaTg">تيليجرام</button>
+      </div>
+      <div id="acctPhoneMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+    </div></div>
+    <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowRef',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctReferralLabel">رابط دعوة أصدقائك</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowRef" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">
         <input type="text" id="acctReferralLink" readonly style="flex:1;">
-        <button type="button" class="btn" id="acctReferralCopyBtn" style="width:auto; white-space:nowrap;" data-i18n="acctCopyBtn">📋 نسخ</button>
+        <button type="button" class="btn" id="acctReferralCopyBtn" style="width:auto; white-space:nowrap;" data-i18n="acctCopyBtn">نسخ</button>
       </div>
-      <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:4px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية 🎁</div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button type="button" class="btn" id="acctShareBtn" onclick="acctShareApp()" style="flex:1; background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.45); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">إرسال ومشاركة</button>
+        <button type="button" class="btn" id="acctQrBtn" onclick="acctToggleQr()" style="flex:1; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">فتح الباركود</button>
+      </div>
+      <div id="acctQrBox" style="display:none; margin-top:12px; padding:12px; background:rgba(0,0,0,.35); border-radius:var(--r-2); text-align:center; border:1px solid rgba(212,175,55,.25);">
+        <img id="acctQrImg" src="/icons/omran-qr-code.png" alt="QR" style="width:180px; height:180px; border-radius:12px; background:#fff; padding:6px; box-shadow:0 4px 16px rgba(0,0,0,.4); display:inline-block;">
+        <div style="display:flex; gap:8px; margin-top:10px; justify-content:center;">
+          <a href="/icons/omran-qr-code.png" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;">تحميل الباركود</a>
+          <a href="/download" target="_blank" rel="noopener" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text);">صفحة المتاجر</a>
+        </div>
+      </div>
+      <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية</div>
       <div id="acctReferralBonus" style="font-size: var(--fs-3); font-weight: var(--w-bold); margin-top:6px;"></div>
     </div></div>
-    <div><button type="button" onclick="acctToggleRow('acctRowCleanup',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:#ef4444; font-size: var(--fs-3); text-align:start;"><span style="display:flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg><span data-i18n="acctCleanupLabel">تنظيف التطبيق</span></span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowCleanup',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctCleanupLabel">تنظيف التطبيق</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowCleanup" style="display:none; padding:8px 8px 12px;">
-      <div style="font-size:12px; color:var(--muted); margin-bottom:8px;" data-i18n="acctCleanupHint">يحذف كل المحادثات والمشاريع نهائيًا من هذا الجهاز ومن السحابة. حسابك ولغتك يبقيان.</div>
-      <button type="button" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(239,68,68,.5); background:rgba(239,68,68,.12); color:#ef4444; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
+      <div id="acctCleanupHintEl" style="font-size:12px; color:var(--muted); margin-bottom:8px;" data-i18n="acctCleanupHint">يحذف كل المحادثات والمشاريع نهائيًا من هذا الجهاز ومن السحابة. حسابك ولغتك يبقيان.</div>
+      <button type="button" id="acctCleanupBtnEl" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(128,128,128,.3); background:rgba(128,128,128,.12); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
     </div></div>
     </div>
-    <script src="/js/themes.js?v=441"></script>
-    <script>window.acctToggleRow=function(id,btn){var p=document.getElementById(id);var open=p.style.display==='none';p.style.display=open?'block':'none';var s=btn.querySelector('svg');if(s)s.style.transform=open?'rotate(90deg)':'';};</script>
   </div></div>
 
   <div id="statsSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('statsSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="statsSectionTitle">📊 إحصائياتي</h3><span class="settingsSectionArrow" id="statsSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="statsSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('statsSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="statsSectionTitle">📊 مشاريعي والنسخ الاحتياطي</h3><span class="settingsSectionArrow" id="statsSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="statsSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
     <div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsProjectsLabel">عدد المشاريع</span><b id="statProjectsCount" style="font-size: var(--fs-2);">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsMessagesLabel">إجمالي الرسائل المُرسلة</span><b id="statMessagesCount" style="font-size: var(--fs-2);">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsFavProviderLabel">أكثر مزوّد تستخدمه</span><b id="statFavProvider" style="font-size: var(--fs-2);">—</b></div><button type="button" id="btnExportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="statsExportBtn">تصدير المشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button><button type="button" id="btnImportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="statsImportBtn">استيراد مشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button></div>
       <input type="file" id="importProjectsFile" accept="application/json" style="display:none;">
       </div>
     </div>
   </div></div>
 
-  <!-- v-agent-settings: قسم «الوكيل» — زر التشغيل انتقل هنا من الشاشة الرئيسية (أمر عمران ٢٦ أغسطس ٢٠٢٦) -->
-  <div id="agentSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('agentSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="agentSectionTitle">🤖 الوكيل</h3><span class="settingsSectionArrow" id="agentSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="agentSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-      <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted); line-height:1.7;" data-i18n="agentSectionDesc">وضع الوكيل: يخطّط وينفّذ بنفسه — يبني ويعدّل ويختبر الكود قبل تسليمه، يتحقق من المصادر الحية، ويكمل عمله حتى لو أُغلقت الصفحة. شغّله من الزر ثم اكتب طلبك في المحادثة.</p>
-      <div id="agentSettingsHost"></div>
-      <p id="agentOnNote" style="display:none; margin:10px 0 0; font-size:12px; color:var(--accent-ink, var(--accent)); font-weight:600;" data-i18n="agentOnNote">الوكيل شغّال الآن — ارجع للمحادثة واكتب طلبك.</p>
-    </div>
-  </div>
-
+  <!-- v-settings-tidy (أمر عمران): قسم «الوكيل» حُذف — كان نصًّا بلا زرّ؛ التشغيل من قائمة «@» للمالك. -->
   <div id="apiKeysSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('apiKeysSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="apiKeysSectionTitle">🔑 مفاتيح API لمزوّدي الخدمة</h3><span class="settingsSectionArrow" id="apiKeysSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="apiKeysSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <label data-i18n="provider">مزوّد الخدمة الافتراضي</label>
@@ -171,10 +180,10 @@
         <!-- v-models-family: رُفعت للجيل الحاليّ (معرّفات تطابق OR_MODELS في الخادم). -->
         <option value="openai/gpt-5.6-terra">OpenAI GPT-5.6 Terra</option>
         <option value="anthropic/claude-sonnet-5">Anthropic Claude Sonnet 5</option>
-        <option value="anthropic/claude-opus-5">Anthropic Claude Opus 5</option>
-        <option value="google/gemini-3.5-flash">Google Gemini 3.5 Flash</option>
+        <option value="anthropic/claude-opus-5.5">Anthropic Claude Opus 5.5</option>
+        <option value="google/gemini-3.8-flash">Google Gemini 3.8 Flash</option>
         <option value="meta-llama/llama-4-maverick">Meta Llama 4 Maverick</option>
-        <option value="deepseek/deepseek-v3.2">DeepSeek V3.2</option>
+        <option value="deepseek/deepseek-v4-pro">DeepSeek V4 Pro</option>
       </optgroup>
       <option value="__custom__" data-i18n="orCustomOption">✏️ مخصص...</option>
     </select>
@@ -290,7 +299,19 @@
   </label>
     </div>
   </div>
+
   </div></div>
+
+  <!-- v-bg-images-row (المالك: «خلّ خلفيّات الشاشة برّع في قسم المظهر… والصورة رسميّة من غير الإيموجي»):
+       صفّ مستقلّ في قائمة الإعدادات (مجموعة المظهر) بأيقونة SVG كبقيّة الصفوف؛ الشبكة تُبنى عند فتح الصفحة
+       (showSettingsPage في app-05) وعند نقر الرأس. -->
+  <div id="bgImgSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('bgImgSection'); if(window.خلفيات) window.خلفيات.افتح();" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:var(--fs-3);" data-i18n="bgImgSectionLabel">خلفيّات الشاشة</h3><span class="settingsSectionArrow" id="bgImgSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="bgImgSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <!-- v-bg-custom-rotate: تبديل تلقائيّ بمدّة يختارها المالك (الأزرار تُربط في app-25 عند الفتح) -->
+      <div class="bgImgRotate"><span class="bgImgRotateLabel" data-i18n="bgImgRotate">تبديل تلقائيّ</span><div id="bgImgRotateOpts" class="bgImgRotateOpts"><button type="button" class="bgImgRotOpt" data-min="0" data-i18n="bgImgRotateOff">إيقاف</button><button type="button" class="bgImgRotOpt" data-min="10" data-i18n="bgImgEvery10">١٠ دقائق</button><button type="button" class="bgImgRotOpt" data-min="30" data-i18n="bgImgEvery30">٣٠ دقيقة</button><button type="button" class="bgImgRotOpt" data-min="60" data-i18n="bgImgEvery60">ساعة</button></div></div>
+      <div id="bgImgGrid" class="bgImgGrid"></div>
+      <input type="file" id="bgImgFile" accept="image/*" hidden>
+    </div></div>
 
   <div id="fontFamilySection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontFamilySection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:var(--fs-3);" data-i18n="fontFamilySectionLabel">نوع الخط</h3><span class="settingsSectionArrow" id="fontFamilySectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontFamilySectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
@@ -300,11 +321,34 @@
 
   <div id="fontSizeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontSizeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="fontSizeSectionLabel">حجم الخط</h3><span class="settingsSectionArrow" id="fontSizeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontSizeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-      <div id="fontSizeBtns" style="display:flex; flex-direction:column; gap:2px;">
-        <button type="button" class="fontSizeBtn" data-fs="small"><span data-i18n="fontSizeSmall">صغير</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
-        <button type="button" class="fontSizeBtn" data-fs="normal"><span data-i18n="fontSizeNormal">عادي</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
-        <button type="button" class="fontSizeBtn" data-fs="large"><span data-i18n="fontSizeLarge">كبير</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
-        <button type="button" class="fontSizeBtn" data-fs="xlarge"><span data-i18n="fontSizeXLarge">كبير جدًا</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <!-- v-font-tuner (المالك ٢ أكتوبر، لقطة إعدادات الهاتف «حجم الخط / سماكة الخط» بمعاينة محادثة: «مكان الخطوط حطّ لي نفس الفكرة») -->
+      <style>
+      #fontTuner .ftPreview{display:flex; flex-direction:column; gap:10px; padding:6px 2px 14px;}
+      #fontTuner .ftBubble{max-width:85%; padding:10px 14px; border-radius:18px; line-height:1.6; font-family:var(--omran-chat-font); font-size:var(--omran-chat-fs,14px); font-weight:var(--omran-chat-fw,400);}
+      #fontTuner .ftUser{align-self:flex-start; background:rgba(201,162,39,.16); border:1px solid rgba(201,162,39,.35);}
+      #fontTuner .ftBot{align-self:flex-end; background:var(--panel2); border:1px solid var(--line,rgba(128,128,128,.18));}
+      #fontTuner .ftLabel, #autoRenewRow .ftLabel{font-size:13px; color:var(--muted); margin:10px 2px 6px;}
+      #fontTuner .ftCard, .ftCard{background:var(--panel2); border:1px solid var(--line,rgba(128,128,128,.18)); border-radius:16px; padding:12px 14px;}
+      #fontTuner .ftName{text-align:center; font-size:13px; margin-bottom:8px;}
+      #fontTuner .ftRow{display:flex; align-items:center; gap:12px;}
+      #fontTuner .ftA{font-size:15px; color:var(--text); width:20px; text-align:center;}
+      #fontTuner .ftA.big{font-size:24px;}
+      #fontTuner input[type=range]{flex:1; accent-color:#c9a227; height:28px; cursor:pointer;}
+      </style>
+      <div id="fontTuner">
+        <div class="ftPreview">
+          <div class="ftBubble ftUser" data-i18n="fontPreviewQ">هل تعرف إنه صار ممكن تغيّر حجم الخط وسماكته؟</div>
+          <div class="ftBubble ftBot" data-i18n="fontPreviewA">إي! اسحب الشريط تحت وجرّبها الحين.</div>
+        </div>
+        <div class="ftCard">
+          <div class="ftName" id="ftSizeName"></div>
+          <div class="ftRow" dir="ltr"><span class="ftA">A</span><input type="range" id="ftSize" min="0" max="6" step="1" value="2"><span class="ftA big">A</span></div>
+        </div>
+        <div class="ftLabel" data-i18n="fontWeightLabel">سماكة الخط</div>
+        <div class="ftCard">
+          <div class="ftName" id="ftWeightName"></div>
+          <div class="ftRow" dir="ltr"><span class="ftA" style="font-weight:300;">A</span><input type="range" id="ftWeight" min="0" max="3" step="1" value="1"><span class="ftA big" style="font-weight:800;">A</span></div>
+        </div>
       </div>
     </div></div>
 
@@ -317,27 +361,49 @@
         <button type="button" id="memoryClearBtn" style="padding:9px 16px; border-radius:10px; border:1px solid rgba(220,70,70,.45); background:transparent; color:#e05555; cursor:pointer; font-size:var(--fs-6);" data-i18n="memoryClearBtn">حذف ذاكرتي</button>
         <span id="memoryStatus" role="status" aria-live="polite" style="font-size:var(--fs-6); opacity:.75;"></span>
       </div>
+      <!-- v-living-all: «ذاكرتي الحيّة» — حقائق منظَّمة يتعلّمها المساعد من محادثاتك: آخر ١٠، «امسح» لكلّ واحدة، و«امسح كل شي» -->
+      <div id="livingMemWrap" style="margin-top:22px; padding-top:16px; border-top:1px solid var(--border); display:none;">
+        <div style="font-size:var(--fs-3); font-weight:700; margin-bottom:6px;" data-i18n="livingMemTitle">ذاكرتي الحيّة</div>
+        <p style="margin:0 0 10px; opacity:.75; font-size:var(--fs-6); line-height:1.7;" data-i18n="livingMemIntro">آخر ما تعلّمه المساعد عنك من محادثاتك. يستعمل منها في كلّ ردّ ما يخصّ سؤالك فقط، ويطبّق أسلوبك المفضّل. امسح أيّ حقيقة ليتناساها.</p>
+        <div id="livingMemList" style="background:var(--panel2); border-radius:var(--r-2); padding:4px 10px;"></div>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px;">
+          <button type="button" id="livingMemClearAll" style="display:none; padding:9px 16px; border-radius:10px; border:1px solid rgba(220,70,70,.45); background:transparent; color:#e05555; cursor:pointer; font-size:var(--fs-6);" data-i18n="livingMemClearAll">امسح كل شي</button>
+          <span id="livingMemStatus" role="status" aria-live="polite" style="font-size:var(--fs-6); opacity:.75;"></span>
+        </div>
+      </div>
     </div></div>
 
-  <div id="notifSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('notifSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="notifSectionLabel">🔔 التنبيهات</h3><span class="settingsSectionArrow" id="notifSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="notifSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-      <label style="display:flex; align-items:center; gap:10px; padding:12px; background:var(--panel2); border-radius:var(--r-2); cursor:pointer; user-select:none;">
-        <input type="checkbox" id="chkNewsAlerts" style="width:auto;">
-        <span style="display:flex; flex-direction:column; gap:3px;">
-          <span data-i18n="newsAlertsLabel" style="font-size:14px; font-weight:700;">📢 تنبيهات الأخبار العاجلة</span>
-          <span data-i18n="newsAlertsHint" style="font-size:12px; color:var(--muted);">يصلك إشعار عند وجود خبر عاجل أو تحذير طارئ حتى والتطبيق مغلق</span>
-        </span>
-      </label>
-      <div id="newsAlertsStatus" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);"></div>
-    </div>
-  </div>
+  <!-- v-news-off: قسم «🔔 التنبيهات» كان فيه مفتاح الأخبار العاجلة وحده — أُزيل مع الميزة (أمر المالك ٣ أكتوبر). -->
 
   <div id="voiceSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('voiceSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="voiceSectionLabel">الصوت</h3><span class="settingsSectionArrow" id="voiceSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="voiceSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <!-- v-voice-calligraphy (المالك ٢ أكتوبر، صورتان «عبدالله/Abdullah» و«مها/Maha» بالذهب: «عطِ كلّ اسم بالعربي عربي والإنجليزي
+       بالإنجليزي والباقين بالإنجليزي… في الإعدادات فقط، والبراويز الموجودة خلّها باللون الذهبيّ») -->
+  <style>
+  #voiceSection .voiceGenderBtn, #voiceSection .voiceSpeedBtn, #voiceSection #btnTestVoice{border:2px solid rgba(201,162,39,.38) !important;}
+  #voiceSection .voiceGenderBtn.active, #voiceSection .voiceSpeedBtn.active{border-color:#c9a227 !important; box-shadow:0 0 14px rgba(201,162,39,.28);}
+  #voiceSection .voiceGenderBtn svg{color:#c9a227;}
+  /* v-voice-calligraphy2 (المالك: «شيل الأيقونة الشخصيّة، خلّهم في الوسط»): الاسم وحده في منتصف البطاقة */
+  #voiceGenderBtns .voiceGenderBtn:has(.vgName.on) svg{display:none;}
+  #voiceGenderBtns .voiceGenderBtn:has(.vgName.on){justify-content:center; min-height:120px;}
+  #voiceGenderBtns .vgName.on{height:56px;}
+  #voiceGenderBtns .vgName{display:none; height:48px; max-width:100%; object-fit:contain;}
+  #voiceGenderBtns .vgName.on{display:block;}
+  #voiceGenderBtns .vgName.on + span{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+  </style>
   <label data-i18n="voiceGenderLabel">نوع الصوت المفضل</label>
   <div id="voiceGenderBtns" style="display:flex; gap:12px; margin-top:10px;">
-    <button type="button" class="voiceGenderBtn" data-gender="male"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span data-i18n="voiceGenderMale">صوت رجل</span></button>
-    <button type="button" class="voiceGenderBtn" data-gender="female"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><path d="M8 3.5C9 2.5 10.4 2 12 2s3 .5 4 1.5"></path></svg><span data-i18n="voiceGenderFemale">صوت امرأة</span></button>
+    <button type="button" class="voiceGenderBtn" data-gender="male"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><img class="vgName" data-persona="abdullah" alt="" aria-hidden="true"><span data-i18n="voiceGenderMale">صوت رجل</span></button>
+    <button type="button" class="voiceGenderBtn" data-gender="female"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><path d="M8 3.5C9 2.5 10.4 2 12 2s3 .5 4 1.5"></path></svg><img class="vgName" data-persona="maha" alt="" aria-hidden="true"><span data-i18n="voiceGenderFemale">صوت امرأة</span></button>
+  </div>
+  <!-- v-maha-voice-speed (طلب المالك «صوت مها بطيء سريع سريع جدًا»): سرعة كلام مها —
+       تُطبَّق على الوضعين (الفائق عبر تعليمة نبرة، والأساسيّ عبر معامل TTS حقيقيّ). -->
+  <label style="display:block; margin-top:18px;" data-i18n="voiceSpeedLabel">سرعة الصوت</label>
+  <div id="voiceSpeedBtns" style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+    <button type="button" class="voiceSpeedBtn" data-speed="slow"><span data-i18n="voiceSpeedSlow">بطيء</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="normal"><span data-i18n="voiceSpeedNormal">عادي</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="fast"><span data-i18n="voiceSpeedFast">سريع</span></button>
+    <button type="button" class="voiceSpeedBtn" data-speed="xfast"><span data-i18n="voiceSpeedXFast">سريع جدًا</span></button>
   </div>
   <button type="button" class="btn" id="btnTestVoice" style="margin-top:16px; display:inline-flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg><span data-i18n="testVoiceBtn">تجربة الصوت</span></button>
   </div></div>
@@ -360,14 +426,14 @@
     </div></div>
 
   <div id="pricingSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('pricingSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="pricingSectionTitle">💳 خطط الأسعار</h3><span class="settingsSectionArrow" id="pricingSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="pricingSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-  <a href="/pricing.html" target="_blank" rel="noopener" id="openFullPricing" style="display:flex; align-items:center; justify-content:center; gap:8px; margin:2px 0 14px; padding:12px 14px; border:1px solid var(--line,rgba(128,128,128,.22)); border-radius:14px; background:var(--panel2); color:inherit; text-decoration:none; font-size:13px; font-weight:600;"><span data-i18n="showAllPlansCur">عرض كل الباقات والأسعار بعملتك</span><span style="font-size:12px;">↗</span></a>
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('pricingSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="pricingSectionTitle">خطط الأسعار</h3><span class="settingsSectionArrow" id="pricingSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="pricingSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <div id="pricingWalletRow" style="display:none; align-items:center; gap:8px; padding:10px 4px; font-size: var(--fs-3);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
     <span data-i18n="pricingWalletLabel">رصيدك من النقاط</span>
     <b id="pricingWalletValue" style="margin-inline-start:auto; font-size: var(--fs-2);">—</b>
   </div>
   <style>
+  .priceTabBtn{padding:9px 4px; border-radius:10px; border:1px solid var(--line2,rgba(128,128,128,.30)); background:transparent; color:var(--text); font-family:inherit; font-size:12.5px; cursor:pointer;}
+  .priceTabBtn.on{border-color:#c9a227; background:rgba(201,162,39,.16); font-weight:700;}
   .planGrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:12px; align-items:stretch; margin-top:6px;}
   .pcard{position:relative; background:var(--panel2); border:1px solid var(--line,rgba(128,128,128,.18)); border-radius:16px; padding:20px 16px 16px; display:flex; flex-direction:column;}
   .pcard.feat{border-color:rgba(201,162,39,.45);}
@@ -391,13 +457,21 @@
   .pcard .pbtn.primary{background:#c9a227; border-color:#c9a227; color:#0a0a0a;}
   .pcard .pbtn.ghost{opacity:.45; cursor:default;}
   </style>
-  <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;" data-i18n="currencyLabel">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div><div class="planGrid">
+  <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;" data-i18n="currencyLabel">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div>
+  <!-- v-price-tabs: كلّ نوع اشتراك في قسمه — المحادثة · صور وفيديو (v-media-merge) · مها · النقاط -->
+  <div id="priceTabs" role="tablist" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:0 0 12px;">
+    <button type="button" role="tab" class="priceTabBtn on" data-tab="chat" onclick="showPriceTab('chat')" data-i18n="priceTabChat">المحادثة</button>
+    <button type="button" role="tab" class="priceTabBtn" data-tab="media" onclick="showPriceTab('media')" data-i18n="priceTabMedia">صور وفيديو</button>
+    <button type="button" role="tab" class="priceTabBtn" data-tab="maha" onclick="showPriceTab('maha')" data-i18n="priceTabMaha">مها</button>
+    <button type="button" role="tab" class="priceTabBtn" data-tab="pts" onclick="showPriceTab('pts')" data-i18n="priceTabPts">النقاط</button>
+  </div>
+  <div class="priceTab" data-tab="chat"><div class="planGrid">
     <div class="pcard">
       <div class="pname" data-i18n="pricingFreeTitle">مجاني</div>
       <div class="pprice"><span class="pnum" data-usd="0">0</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planFreePer">للتجربة</div>
       <div class="ppts"><b>70</b><span data-i18n="planPtsFree">نقطة ترحيب — مرّة واحدة</span></div>
-      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">5 رسائل يوميًا</li><li data-i18n="plFreeVoice">حتّى 4 دقائق محادثة صوتية</li><li data-i18n="plFreeImgs">حتّى 3 صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
+      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">20 رسالة يوميًّا</li><li data-i18n="plFreeVoice">حتّى 4 دقائق محادثة صوتية</li><li data-i18n="plFreeImgs">صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
       <button type="button" class="pbtn ghost" disabled data-i18n="planCurrentBtn">باقتك الحالية</button>
     </div>
     <div class="pcard">
@@ -405,7 +479,7 @@
       <div class="pprice"><span class="pnum" data-usd="10">10</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>360</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planPlusFeats"><li data-i18n="plStMsgs">50 رسالة يوميًا</li><li data-i18n="plStVoice">حتّى 24 دقيقة محادثة صوتية</li><li data-i18n="plStImgs">حتّى 15 صورة</li><li data-i18n="plStVideos">فيديو واحد</li></ul>
+      <ul data-i18n="planPlusFeats"><li data-i18n="plStMsgs">50 رسالة يوميًا</li><li data-i18n="plStVoice">حتّى 24 دقيقة محادثة صوتية</li><li data-i18n="plStImgs">صور بالذكاء الاصطناعي</li><li data-i18n="plStVideos">فيديو ضمن الباقة</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard feat"><span class="ptag" data-i18n="planTag">الأكثر اختيارًا</span>
@@ -413,7 +487,7 @@
       <div class="pprice"><span class="pnum" data-usd="20">20</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>920</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">100 رسالة يوميًا</li><li data-i18n="plProVoice">حتّى 61 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">حتّى 40 صورة · 2 فيديو</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">أولوية في السرعة · شارة ذهبية</li></ul>
+      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">100 رسالة يوميًا</li><li data-i18n="plProVoice">حتّى 61 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">صور وفيديو ضمن الباقة</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">شارة ذهبية</li></ul>
       <button type="button" class="pbtn primary" onclick="openCheckout('pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
@@ -421,24 +495,99 @@
       <div class="pprice"><span class="pnum" data-usd="100">100</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>3,200</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro · 250 رسالة يوميًا</li><li data-i18n="plMaxVoice">حتّى 213 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">حتّى 150 صورة · 3 فيديو</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
+      <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro · 250 رسالة يوميًا</li><li data-i18n="plMaxVoice">حتّى 213 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">صور وفيديو ضمن الباقة</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
   </div>
-  <div style="margin-top:16px;">
+  <!-- v-autorenew-toggle (المالك ٢ أكتوبر «زرّ يفتح ويغلق: خصم شهريّ ولا عاديّ»)؛ v-autorenew-one (المالك ٨ أكتوبر «خلّه واحد فقط في المحادثة ويكون لهم كلّهم»):
+       زرّ واحد في تبويب المحادثة وحده، يحكم كلّ الاشتراكات (المحادثة والوسائط ومها) — لا مربّع ثانٍ في نافذة الدفع -->
+  <label id="autoRenewRow" class="ftCard" style="display:flex; align-items:center; gap:10px; margin-top:14px; cursor:pointer;">
+    <span style="display:flex; flex-direction:column; gap:3px; flex:1;">
+      <span data-i18n="autoRenewLabel" style="font-size:14px; font-weight:700;">الخصم الشهري التلقائي</span>
+      <span id="autoRenewHint" style="font-size:12px; color:var(--muted);"></span>
+    </span>
+    <input type="checkbox" id="chkAutoRenew" role="switch" style="width:20px; height:20px; margin:0; accent-color:#c9a227; cursor:pointer;">
+  </label>
+  </div>
+  <!-- v-media-merge (قرار المالك ٨ أكتوبر): الصور والفيديو باقة واحدة برصيد واحد — أمثلة تقريبيّة لا حصص. img_/vid_ توقّف بيعها؛
+       المشترك القائم فيها يرى متبقّيه هنا (mediaPlanStatus) حتّى تنتهي نافذته -->
+  <div class="priceTab" data-tab="media" id="mediaPlansBox" style="display:none;">
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mixPlansDesc">لمن يريد الصور والفيديو — بلا محادثة. رصيد واحد يُصرف على الاثنين، وإذا خلص تكمل من نقاطك.</div>
+    <div id="mediaPlanStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
+    <div id="mediaQualityBox" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--line2,rgba(128,128,128,.30)); border-radius:10px;">
+      <div style="font-size:12.5px; font-weight:600; margin-bottom:6px;" data-i18n="mediaQLabel">جودة الصور</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <button type="button" class="pbtn mediaQBtn" data-q="normal" onclick="setMediaQuality('normal')" style="text-align:start; padding:10px; border-radius:10px; border:1px solid var(--line2,rgba(128,128,128,.30)); background:transparent; color:var(--text); cursor:pointer; font-family:inherit;"><b data-i18n="mediaQNormal">عاديّة</b><br><span style="font-size:11px; font-weight:400; color:var(--muted);" data-i18n="mediaQNormalDesc">سريعة ومناسبة للسوشال ميديا — صورة واحدة من رصيدك</span></button>
+        <button type="button" class="pbtn mediaQBtn" data-q="high" onclick="setMediaQuality('high')" style="text-align:start; padding:10px; border-radius:10px; border:1px solid var(--line2,rgba(128,128,128,.30)); background:transparent; color:var(--text); cursor:pointer; font-family:inherit;"><b data-i18n="mediaQHigh">عالية</b><br><span style="font-size:11px; font-weight:400; color:var(--muted);" data-i18n="mediaQHighDesc">تفاصيل أدقّ ونصوص أوضح وتصلح للطباعة — صورتين من رصيدك</span></button>
+      </div>
+      <div style="font-size:11px; color:var(--muted); margin-top:6px;" data-i18n="mediaQHint">أو اكتب «جودة عالية» في طلبك لصورة واحدة</div>
+    </div>
+    <div class="planGrid" style="margin-top:10px;">
+    <div class="pcard">
+      <div class="pname" data-i18n="mixPlanName">صور وفيديو</div>
+      <div class="pprice"><span class="pnum" data-usd="10.21">10.21</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li data-i18n="mixOneBalance">رصيد واحد للصور والفيديو</li><li data-i18n="mixApprox1">يكفي تقريبًا 50 صورة أو 12 فيديو أو خليطًا منهما</li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mixNoChat">بلا محادثة</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('media_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname" data-i18n="mixPlanName">صور وفيديو</div>
+      <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li data-i18n="mixOneBalance">رصيد واحد للصور والفيديو</li><li data-i18n="mixApprox2">يكفي تقريبًا 100 صورة أو 24 فيديو أو خليطًا منهما</li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mixNoChat">بلا محادثة</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('media_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname" data-i18n="mixPlanName">صور وفيديو</div>
+      <div class="pprice"><span class="pnum" data-usd="102.11">102.11</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li data-i18n="mixOneBalance">رصيد واحد للصور والفيديو</li><li data-i18n="mixApprox3">يكفي تقريبًا 500 صورة أو 121 فيديو أو خليطًا منهما</li><li data-i18n="mediaHighEq">الصورة العالية = صورتين</li><li class="off" data-i18n="mixNoChat">بلا محادثة</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('media_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    </div>
+  </div>
+  <!-- v-maha-plans: دقائق مها الصوتيّة وحدها — رصيد خاصّ، وإذا خلص تكمل من النقاط -->
+  <div class="priceTab" data-tab="maha" style="display:none;">
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="mahaPlansDesc">لمن يريد مكالمات مها الصوتيّة. دقائق الشهر خاصّة بمها، وإذا خلصت تكمل من نقاطك.</div>
+    <div id="mahaPlanStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
+    <div class="planGrid" style="margin-top:10px;">
+    <div class="pcard">
+      <div class="pname" data-i18n="mahaPlanName">مها</div>
+      <div class="pprice"><span class="pnum" data-usd="10.21">10.21</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>46</b> <span data-i18n="mahaMinPlain">دقيقة مكالمة</span></li><li data-i18n="mahaCapNote">حتّى 10 دقائق للمكالمة الواحدة</li><li class="off" data-i18n="mahaNoChat">بلا محادثة ولا صور ولا فيديو</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('maha_basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard feat"><span class="ptag" data-i18n="planTag">الأكثر اختيارًا</span>
+      <div class="pname" data-i18n="mahaPlanName">مها</div>
+      <div class="pprice"><span class="pnum" data-usd="20.42">20.42</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>92</b> <span data-i18n="mahaMinPlain">دقيقة مكالمة</span></li><li data-i18n="mahaCapNote">حتّى 10 دقائق للمكالمة الواحدة</li><li class="off" data-i18n="mahaNoChat">بلا محادثة ولا صور ولا فيديو</li></ul>
+      <button type="button" class="pbtn primary" onclick="openCheckout('maha_pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname" data-i18n="mahaPlanName">مها</div>
+      <div class="pprice"><span class="pnum" data-usd="102.11">102.11</span><span class="pcur cursym">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <ul><li><b>478</b> <span data-i18n="mahaMinPlain">دقيقة مكالمة</span></li><li data-i18n="mahaCapNote">حتّى 10 دقائق للمكالمة الواحدة</li><li class="off" data-i18n="mahaNoChat">بلا محادثة ولا صور ولا فيديو</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('maha_max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    </div>
+  </div>
+  <div class="priceTab" data-tab="pts" style="display:none;">
     <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingPointsTitle">باقات النقاط</div>
-    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو سينمائي: 275</div>
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • صورة: 20 • صورة إبداعية: 35 • فيديو: 55 • فيديو بالصوت: 175 • فيديو سينمائي: 120</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(100)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">100</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="4.99">4.99</span> <span class="cursym">$</span></span></button>
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(300)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">300</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="12.99">12.99</span> <span class="cursym">$</span></span></button>
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(700)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">700</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="24.99">24.99</span> <span class="cursym">$</span></span></button>
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">900</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="34.99">34.99</span> <span class="cursym">$</span></span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">1,050</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="34.99">34.99</span> <span class="cursym">$</span></span></button>
     </div>
   </div>
   
   <div style="margin-top:10px; display:flex; gap:14px; font-size:12px;">
-    <a href="/terms.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="termsLink">📜 الشروط والأحكام</a>
-    <a href="/privacy.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="privacyLink">🔒 سياسة الخصوصية</a>
+    <a href="/terms.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="termsLink">الشروط والأحكام</a>
+    <a href="/privacy.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="privacyLink">سياسة الخصوصية</a>
   </div>
   </div></div>
 
@@ -503,8 +652,8 @@
         <div style="font-size:12.5px; color:var(--muted); line-height:1.9;" data-i18n="aboutSupportDesc">نرد على استفساراتك خلال ٢٤-٤٨ ساعة.</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
           <a href="mailto:ommntr77@gmail.com" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid rgba(212,175,55,.45); color:#d4af37; direction:ltr; unicode-bidi:isolate;">✉️ ommntr77@gmail.com</a>
-          <a href="/privacy.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);" data-i18n="privacyLink">🔒 سياسة الخصوصية</a>
-          <a href="/terms.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);" data-i18n="termsLink">📜 الشروط والأحكام</a>
+          <a href="/privacy.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);">🔒 <span data-i18n="privacyLink">سياسة الخصوصية</span></a>
+          <a href="/terms.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);">📜 <span data-i18n="termsLink">الشروط والأحكام</span></a>
         </div>
       </div>
 
@@ -530,13 +679,19 @@
         </div>
         <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;" data-i18n="aboutCopyright">© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪</div>
       </div>
+      <div id="appVersionLabel" style="text-align:center; color:var(--muted); font-size:12px; opacity:.7; margin-top:18px; padding-bottom:6px; user-select:text;"></div>
   </div></div>
 
 
-  <!-- v-secret-vault: خزنة الأسرار — للمالك وحده (تظهر مع لوحة التحكّم) -->
-  <div id="vaultSectionWrap" style="display:none;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('vaultSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;">🔐 خزنة الأسرار (خاص بالمالك)</h3><span class="settingsSectionArrow" id="vaultSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="vaultSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <!-- v-owner-page (أمر عمران): صفحة المالك — الخزنة ولوحة التحكّم كانتا خارج نظام الصفحات
+       فتظهران أسفل كلّ صفحة إعدادات. صارتا صفحة واحدة في القائمة، للمالك وحده. -->
+  <div id="ownerSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('ownerSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="ownerSectionTitle">👑 صفحة المالك</h3><span class="settingsSectionArrow" id="ownerSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="ownerSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+
+  <!-- v-secret-vault: خزنة الأسرار — للمالك وحده -->
+  <div id="vaultSectionWrap" class="ownerCard" style="display:none;">
+    <div class="ownerCardTitle">🔐 خزنة الأسرار</div>
+    <div id="vaultSectionContent">
       <div style="font-size:12.5px; line-height:1.8; opacity:.85;">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع. الرفع يحتاج توكن بصلاحيّة Contents: write وPull requests: write على المستودع.</div>
       <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
@@ -552,9 +707,9 @@
     </div>
   </div>
 
-  <div id="adminSectionWrap" style="display:none;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="adminSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <div id="adminSectionWrap" class="ownerCard" style="display:none;">
+    <div class="ownerCardTitle" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</div>
+    <div id="adminSectionContent">
       <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
       <!-- v-claude-diag: فحص مفتاح كلود الفعلي في الخادم — يحسم «فيه رصيد» من عدمه -->
       <button type="button" id="adminClaudeDiagBtn" onclick="adminClaudeDiag()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px; margin-inline-start:8px;">👑 فحص مفتاح كلود</button>
@@ -574,11 +729,17 @@
       <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;">🩺 فحص النظام</div>
       <div style="display:flex; gap:8px; margin-top:8px;">
         <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🩺 افحص الآن</button>
+        <button type="button" id="adminRedisUsageBtn" onclick="redisUsageCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">💾 ما يملأ القاعدة</button>
         <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🧹 مسح سجل الأخطاء</button>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button type="button" id="adminCostsBtn" onclick="subscriberCostsCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">💵 تكلفة المشتركين هذا الشهر</button>
       </div>
       <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "افحص الآن" لتشغيل الفحص...</div>
     </div>
   </div>
+
+  </div></div>
 
   <button type="button" id="settingsLogoutBtn" style="display:none !important; width:100%; margin-top:18px; padding:12px; border-radius:var(--r-2); border:none; background:none; color:#fff; font-weight:700; font-size:14px; cursor:pointer;">🔑 <span id="settingsLogoutBtnLabel" data-i18n="loginAction">دخول</span></button>
 
@@ -701,10 +862,46 @@
       document.head.appendChild(g);
     } else { g.addEventListener('load', loadCur); }
   }
-  if (document.readyState === 'loading') { document.write(H); __mountCur(); return; }
+  // — دوال التفاعل في قسم «حسابي» والباركود والمشاركة —
+  window.acctToggleRow = function(id, btn) {
+    var p = document.getElementById(id);
+    if (!p) return;
+    var open = p.style.display === 'none' || !p.style.display;
+    p.style.display = open ? 'block' : 'none';
+    var s = btn ? (btn.querySelector('svg:last-of-type') || btn.querySelector('svg')) : null;
+    if (s) s.style.transform = open ? 'rotate(90deg)' : '';
+  };
+  window.acctToggleQr = function() {
+    var q = document.getElementById('acctQrBox');
+    if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
+  };
+  window.acctShareApp = async function() {
+    var u = document.getElementById('acctReferralLink');
+    var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+    var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
+    if (navigator.share) {
+      try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+      } catch (e2) {
+        prompt('انسخ الرابط:', shareUrl);
+      }
+    }
+  };
+  function __loadThemes() {
+    if (window.applyAppTheme) return;
+    var sc = document.createElement('script');
+    sc.src = '/js/themes.js?v=441';
+    sc.charset = 'utf-8';
+    document.head.appendChild(sc);
+  }
+  if (document.readyState === 'loading') { document.write(H); __mountCur(); __loadThemes(); return; }
   var d = document.createElement('div'); d.innerHTML = H;
   var f = document.createDocumentFragment();
   while (d.firstChild) f.appendChild(d.firstChild);
   (S && S.parentNode ? S.parentNode : document.body).insertBefore(f, S || null);
   __mountCur();
+  __loadThemes();
 })();

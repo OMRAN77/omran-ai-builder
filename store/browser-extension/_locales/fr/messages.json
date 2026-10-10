@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "om ai"
+  },
+  "extDesc": {
+    "message": "Interrogez om ai depuis toute page : clic droit sur un texte sélectionné, « om » dans la barre d’adresse, ou le bouton."
+  },
+  "ctxAsk": {
+    "message": "Demander à om ai : « %s »"
+  },
+  "popupPlaceholder": {
+    "message": "Demandez n’importe quoi à om ai…"
+  },
+  "popupAsk": {
+    "message": "Demander"
+  },
+  "popupOpen": {
+    "message": "Ouvrir om ai"
+  },
+  "popupHint": {
+    "message": "Astuce : sélectionnez du texte, faites un clic droit et choisissez « Demander à om ai », ou tapez om puis espace dans la barre d’adresse."
+  },
+  "omniboxHint": {
+    "message": "Demander à om ai : tapez votre question puis Entrée"
+  }
+}

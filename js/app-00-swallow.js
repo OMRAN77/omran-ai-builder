@@ -37,6 +37,7 @@
           stack: (err && err.stack) ? String(err.stack).slice(0, 800) : null,
           url: location.href,
           ua: navigator.userAgent,
+          build: (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '',
         }),
         keepalive: true,
       }).catch(function () { /* الإبلاغ نفسه لا يجوز أن يوقف شيئًا */ });

@@ -3,6 +3,8 @@ const { stripPrivateKeys } = require('./_msgs.js'); // v-static-leak
 // own server-side API key (OPENAI_API_KEY env var), so visitors can try the app
 // without entering their own key. This key is NEVER exposed to the client.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
+const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
+const { spendPoints, refundPoints, verifyPointsToken, PREMIUM_MODELS, PREMIUM_COST } = require('./points.js'); // v-openai-pick
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,7 +38,10 @@ module.exports = async (req, res) => {
       return;
     }
 
-    let useModel = (!model || model === 'gpt-4.1-mini' || model === 'gpt-4o-mini') ? 'gpt-4.1' : model;
+    // v-models-latest: الافتراضيّ (والأسماء القديمة) = الخفيف الأحدث بقائمة مرشّحين (_oa-light) بدل gpt-4.1 الثابت.
+    let useDefault = !model || model === 'gpt-4.1-mini' || model === 'gpt-4o-mini' || model === 'gpt-4.1';
+    let useModel = useDefault ? 'gpt-4.1' : String(model);
+    if (useModel.indexOf('/') !== -1) useModel = useModel.split('/').pop(); // v-provider-models: معرّف OpenRouter (openai/…) على المسار المباشر
     // 👑 الرد الاحترافي: موديل بريميوم مقابل نقاط (المالك بلا حدود).
     let premiumRefund = null;
     let isPremium = false;
@@ -49,7 +54,8 @@ module.exports = async (req, res) => {
       useModel = PREMIUM_MODELS.openai;
       isPremium = true;
     } else {
-      const usage = await checkAndConsume(token, guestId, 'openai', clientIp(req));
+      // v-model-lock: المشترك في سلّة الباقة الواحدة (plan) لا سلّة لكلّ مزوّد.
+      const usage = await checkAndConsume(token, guestId, 'openai', clientIp(req), { chatBucket: true });
       if (!usage.allowed) {
         if (usage.reason === 'auth') {
           res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -58,19 +64,23 @@ module.exports = async (req, res) => {
         }
         return;
       }
+      // v-model-lock: بلا 👑 (نقاط) النموذج الخفيف الافتراضيّ لغير المالك وVIP — كان اسم الاحترافيّ في model يتخطّى خصم ١٥ نقطة.
+      if (!require('./_model-guard.js').isPrivileged(usage)) { useDefault = true; useModel = 'gpt-4.1'; }
     }
 
     const wantStream = !!body.stream;
     const payload = { model: useModel, messages, stream: wantStream, store: false }; // v544: لا تُخزَّن عند المزوّد
     if (!isPremium) payload.temperature = 0.7; // موديلات gpt-5.x قد ترفض temperature مخصص
-    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
-      },
-      body: JSON.stringify(payload),
-    });
+    const upstream = (useDefault && !isPremium)
+      ? await oaLightFetch(apiKey, payload, { models: ['gpt-6-luna', 'gpt-5-mini', 'gpt-4.1'] })
+      : await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey,
+        },
+        body: JSON.stringify(payload),
+      });
 
     if (wantStream && upstream.ok && upstream.body) {
       res.status(200);

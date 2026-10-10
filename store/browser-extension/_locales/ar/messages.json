@@ -1,0 +1,26 @@
+{
+  "extName": {
+    "message": "om ai"
+  },
+  "extDesc": {
+    "message": "اسأل om ai من أيّ صفحة: حدّد نصًّا واضغط بالزرّ الأيمن، أو اكتب om في شريط العنوان، أو استعمل زرّ الإضافة."
+  },
+  "ctxAsk": {
+    "message": "اسأل om ai عن «%s»"
+  },
+  "popupPlaceholder": {
+    "message": "اسأل om ai أيّ شيء…"
+  },
+  "popupAsk": {
+    "message": "اسأل"
+  },
+  "popupOpen": {
+    "message": "افتح om ai"
+  },
+  "popupHint": {
+    "message": "تلميح: حدّد نصًّا في أيّ صفحة واضغط بالزرّ الأيمن ثمّ «اسأل om ai»، أو اكتب om ثمّ مسافة في شريط العنوان."
+  },
+  "omniboxHint": {
+    "message": "اسأل om ai: اكتب سؤالك ثمّ Enter"
+  }
+}

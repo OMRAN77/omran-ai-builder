@@ -5,9 +5,13 @@
 // الجسم مضغوط من المتصفّح (JPEG ≤1600px) فيبقى دون حدّ جسم الطلب في Vercel.
 const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+const KV = require('./kv.js');
+const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
+const { gateShare, refundShare, uploadPlan } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — العرض العامّ (GET) بلا رمز كما كان
 
 const MAX_B64 = 3 * 1024 * 1024; // حدّ أمان لكلّ صورة
-const TTL_SEC = 60 * 60 * 24 * 30;
+const TTL_SEC = 60 * 60 * 24 * 7; // v-media-purge: كان ٣٠ يومًا فامتلأت القاعدة المجانيّة — ٧ كالفيديو والـPDF
+const DAILY_UPLOADS = 30; // v-share-guard: روابط صور يوميًّا لكلّ حساب
 const KEY = (id) => 'db/img/' + id;
 
 module.exports = async (req, res) => {
@@ -127,6 +131,8 @@ module.exports = async (req, res) => {
     if (!data) { res.status(400).json({ error: 'Missing data' }); return; }
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
+    const plan = uploadPlan(body, 'share-img', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
+    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     const mime = /^image\/(png|jpeg|webp)$/.test(String(body.mime || '')) ? String(body.mime) : 'image/jpeg';
     const id = crypto.randomBytes(6).toString('hex');
     const w = Math.max(0, parseInt(body.w, 10) || 0), h = Math.max(0, parseInt(body.h, 10) || 0);
@@ -135,27 +141,28 @@ module.exports = async (req, res) => {
     /* دعم أجزاء للصور الكبيرة */
     const CHUNK = 700 * 1024;
     let ok;
-    if (data.length <= CHUNK) {
-      ok = await kvSetIfAbsent(KEY(id), prefix + data, TTL_SEC);
-    } else {
-      const n = Math.ceil(data.length / CHUNK);
-      ok = true;
-      for (let i = 0; i < n && ok; i++) {
-        const ok_i = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
-        ok = ok && ok_i;
+    try {
+      if (data.length <= CHUNK) {
+        ok = await setIfAbsentWithRoom(KV, KEY(id), prefix + data, plan.ttlSec);
+      } else {
+        const n = Math.ceil(data.length / CHUNK);
+        ok = true;
+        for (let i = 0; i < n && ok; i++) {
+          const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), plan.ttlSec);
+          ok = ok && ok_i;
+        }
+        if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + prefix, plan.ttlSec);
       }
-      if (ok) ok = await kvSetIfAbsent(KEY(id), 'chunks:' + n + ':' + prefix, TTL_SEC);
-      if (!ok) {
-        res.status(500).json({ error: 'store_failed', detail: 'فشل حفظ جزء من الصورة' });
-        return;
-      }
+    } catch (e) {
+      console.error('[img-share] store failed:', e && e.message); // القاعدة ممتلئة رغم التنظيف أو عطل — يُردّ كـstore_failed
+      ok = false;
     }
 
-    if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
+    if (!ok) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
     // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
     // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
     const outExt = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
-    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 30 });
+    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 7 });
     return;
   }
 

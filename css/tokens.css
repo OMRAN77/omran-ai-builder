@@ -289,7 +289,7 @@
   .fontSizeBtn.active .fsCheck{display:block;}
 
   /* اختيار خط المحادثة — المحتوى فقط، ويعمل على الكمبيوتر والجوال */
-  :root{--omran-chat-font:'Tajawal','Inter',Tahoma,Arial,sans-serif;--omran-chat-line:1.7;}
+  :root{--omran-chat-font:'IBM Plex Sans Arabic','Tajawal','Inter',Tahoma,Arial,sans-serif;--omran-chat-line:1.8;} /* v-chat-font-plex */
   html[data-omran-font] .msg,
   html[data-omran-font] .msg-text,
   html[data-omran-font] .msg-text *{font-family:var(--omran-chat-font);}
@@ -545,6 +545,11 @@
     background:var(--panel2); color:var(--text); font-size: var(--fs-3); font-family:inherit;
   }
   dialog input:focus, dialog select:focus{outline:none; border-color:var(--accent);}
+  /* v-dialog-ring (لقطة المالك من الآيفون ٢٤ سبتمبر: «في الإعدادات احذف الخط الأزرق»): عند فتح درج
+     الإعدادات يأخذ <dialog> نفسه التركيز، فيرسم المتصفّح حلقة التركيز الافتراضيّة حوله (outline:auto —
+     زرقاء في الآيفون). الدرج ملاصق لأعلى الشاشة ويمينها وأسفلها فلا يظهر من الحلقة إلّا ضلعها الأيسر:
+     خطّ أزرق بطول الشاشة. الحاوية نفسها ليست زرًّا يحتاج حلقة؛ عناصر التحكّم داخلها تبقى بحلقاتها. */
+  dialog:focus, dialog:focus-visible{outline:none;}
   dialog select option{ background:#000000; color:#f1f1f4; }
   select option{ background:#000000; color:#f1f1f4; }
   .dlg-actions{
@@ -734,13 +739,16 @@
   html.mobile-ui #settingsDialog{
     top:0; bottom:0; height:100dvh; max-height:100dvh;
     right:0; left:auto; margin:0;
-    width:80vw; max-width:80vw;
+    /* v-settings-full-mobile (طلب المالك ٢٦ سبتمبر: «خلها الصفحه كامله في الهواتف فقط»): صفحة كاملة بدل
+       درج ٨٠٪ وشريط معتم؛ الإغلاق بـ✕ أعلى الصفحة أو بالسحب يمينًا. الحاسوب بلا تغيير. */
+    width:100vw; max-width:100vw;
     border-radius:0; border:none;
-    /* v-drawer-rail: الحافة المكشوفة يسار الدرج — border-inline-start في RTL
-       كان يرسمها على اليمين الملاصق للشاشة فلا تظهر إطلاقًا */
-    border-left:1px solid var(--border);
     padding-top:env(safe-area-inset-top, 0px);
   }
+  /* v-settings-no-x-mobile: صفحة الهاتف كاملة ويكفي الرجوع/السحب؛ زر X الدائري
+     كان زائدًا فوق صورة الحساب. يبقى على الحاسوب وحده. */
+  html.mobile-ui #setHomeClose{display:none!important;}
+  @media (max-width:860px){ #setHomeClose{display:none!important;} }
   /* v-drawer-drag: الدرج ينسحب مع الإصبع — pan-y يترك التمرير الرأسي للمتصفح
      ويعطينا الحركة الأفقية بلا تعارض. العصية العمودية حُذفت بطلب عمران. */
   html.mobile-ui #settingsDialog{ touch-action: pan-y; }
@@ -769,8 +777,45 @@
   .settingsNavRow .settingsNavChevron{ flex:0 0 auto; width:16px; height:16px; color:var(--muted); opacity:.7; }
   [dir="rtl"] .settingsNavRow .settingsNavChevron{ transform:scaleX(-1); }
   [dir="rtl"] #settingsBackSvg{ transform:scaleX(-1); }
+  /* v-owner-page: صفحة المالك — بطاقتان (الخزنة · لوحة التحكّم) وصفّ ذهبيّ في رأس القائمة */
+  .ownerCard{ background:var(--panel2); border:1px solid rgba(212,175,55,.28); border-radius:var(--r-3); padding:14px; margin-bottom:14px; }
+  .ownerCard .ownerCardTitle{ font-size:14px; font-weight:700; margin-bottom:10px; color:#d4af37; }
+  .ownerCard input, .ownerCard #vaultGhStatus, .ownerCard #vaultTestBox, .ownerCard #adminStatsBox, .ownerCard #adminClaudeDiagBox, .ownerCard #adminUsersTable, .ownerCard #vipListBox, .ownerCard #adminHealthBox{ background:var(--panel) !important; }
+  .settingsNavRow.settingsNavOwner .settingsNavIcon, .settingsNavRow.settingsNavOwner .settingsNavLabel{ color:#d4af37; font-weight:700; }
+  /* v-settings-groups: رأس الحساب، بطاقة الترقية، ومجموعات بعناوين مثل ChatGPT */
+  .setProfile{ position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:18px 0 14px; }
+  .setHomeClose{ display:none; position:absolute; top:8px; inset-inline-end:0; width:40px; height:40px; border-radius:50%; border:none; background:rgba(128,128,128,.16); color:var(--text); font-size:18px; cursor:pointer; align-items:center; justify-content:center; padding:0; }
+  html.mobile-ui .setHomeClose{ display:flex; }
+  html.mobile-ui .setHomeClose:focus{ outline:none; }
+  .setProfileAvatar{ position:relative; width:76px; height:76px; border-radius:50%; border:none; padding:0; cursor:pointer; background:linear-gradient(135deg,#b8862b,#d4af37); color:#111; font-size:26px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .setProfileAvatar img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
+  .setProfileEdit{ position:absolute; bottom:-2px; inset-inline-start:-2px; width:26px; height:26px; border-radius:50%; background:var(--panel2); color:var(--text); border:2px solid var(--panel,#1a1a1a); display:flex; align-items:center; justify-content:center; }
+  .setProfileName{ font-size:16px; font-weight:700; letter-spacing:.5px; }
+  .setUpgrade{ display:flex; align-items:center; gap:12px; background:rgba(128,128,128,.12); border-radius:18px; padding:14px 16px; margin:4px 0 8px; }
+  .setUpgradeText{ flex:1 1 auto; min-width:0; }
+  .setUpgradeTitle{ font-size:14px; font-weight:700; margin-bottom:4px; }
+  .setUpgradeSub{ font-size:12px; color:var(--muted); line-height:1.5; }
+  .setUpgradeBtn{ flex:0 0 auto; border:none; border-radius:999px; padding:9px 18px; background:var(--text); color:var(--bg,#111); font-weight:700; font-size:13px; cursor:pointer; }
+  .settingsNavGroupTitle{ font-size:13px; color:var(--muted); font-weight:600; margin:18px 6px 8px; }
+  .settingsNavGroup{ background:rgba(128,128,128,.12); border-radius:18px; padding:0 14px; }
+  .settingsNavGroup:first-child{ margin-top:6px; }
+  .settingsNavGroup .settingsNavRow{ border-radius:0; padding:14px 2px; border-bottom-color:rgba(128,128,128,.18); }
+  .settingsNavGroup .settingsNavRow:hover, .settingsNavGroup .settingsNavRow:active{ background:transparent; opacity:.8; }
+  /* v-account-tidy: الخروج آخر صفّ بلون عاديّ؛ صفوف «حسابي» بالرماديّ نفسه عند التمرير */
+  .settingsNavLogoutCard{ margin-top:18px; }
+  .settingsNavLogout .settingsNavChevron{ display:none; }
+  .acctRowBtn{ border-radius:var(--r-2); transition:background .15s; }
+  .acctRowBtn:hover, .acctRowBtn:active{ background:rgba(128,128,128,.12) !important; }
+  .settingsNavRow .settingsNavLabel{ display:flex; flex-direction:column; gap:2px; }
+  .settingsNavRow .settingsNavSub{ font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .settingsNavRow .settingsNavSub:empty{ display:none; }
+  .settingsNavRow .settingsNavValue{ flex:0 0 auto; font-size:13px; color:var(--muted); }
+  .settingsNavRow .settingsNavValue:empty{ display:none; }
   .voiceGenderBtn{ flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 10px; background:var(--panel2); border:2px solid transparent; border-radius:var(--r-3); cursor:pointer; color:var(--muted); font-size: var(--fs-3); transition:border-color .15s, color .15s; }
   .voiceGenderBtn.active{ border-color:var(--accent); color:var(--text); }
+  /* v-maha-voice-speed: نفس منطق voiceGenderBtn بصفٍّ أفقيّ مضغوط (نصّ فقط، بلا أيقونة) */
+  .voiceSpeedBtn{ flex:1 1 0; padding:10px 8px; background:var(--panel2); border:2px solid transparent; border-radius:var(--r-3); cursor:pointer; color:var(--muted); font-size: var(--fs-4); transition:border-color .15s, color .15s; }
+  .voiceSpeedBtn.active{ border-color:var(--accent); color:var(--text); }
   /* iOS-style toggle switch, used by ticker calm-mode + reused wherever needed */
   .iosSwitch{ position:relative; display:inline-block; width:44px; height:26px; flex:0 0 auto; }
   .iosSwitch input{ opacity:0; width:0; height:0; }
@@ -807,6 +852,9 @@
   .msgActionBar button:hover{ color:var(--accent-ink); }
   .msgActionBar button.msgThumbActive{ color:var(--accent-ink); }
   .msgActionBar button.msgThumbDownActive{ color:#ef4444; }
+  .msgReplyActions .msgMoreTrigger{ order:1; }
+  .msgActionBar .msgMoreTrigger{ border-inline-start:1px solid var(--border,rgba(255,255,255,.12)); padding-inline-start:12px; }
+  .msgActionBar button:focus-visible, .msgMoreMenu button:focus-visible{ outline:2px solid var(--accent-ink); outline-offset:2px; }
 
   /* v560: تحرير/إعادة توليد بأسلوب ChatGPT — سطح المكتب فقط. */
   html:not(.mobile-ui) #chatEditNotice{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 10px 2px;padding:7px 10px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
@@ -816,6 +864,12 @@
   .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:var(--r-2); box-shadow:var(--sh-2); padding:6px; min-width:170px; font-size: var(--fs-3); }
   .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:var(--r-1); cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }
+  .msgReplyMoreMenu{ position:fixed; max-width:calc(100vw - 16px); max-height:calc(100vh - 16px); overflow-y:auto; }
+  .msgReplyMoreMenu button{ align-items:center; gap:10px; }
+  .msgReplyMoreMenu button svg{ width:17px; height:17px; flex:none; }
+  .msgReplyMoreMenu button.msgMoreActive{ color:var(--accent-ink); background:var(--panel2); }
+  .msgReplyMoreMenu button:disabled{ opacity:.55; cursor:default; }
+  .msgMoreDivider{ border-top:1px solid var(--border,rgba(255,255,255,.12)); margin:5px 4px; }
   .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9; max-width:100%; min-width:0;} /* v-status-tidy: نفس العرض المطويّ على الجوال */
   .chat-status-text{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .chat-status-fold[open] .chat-status-text{white-space:normal;}
@@ -833,6 +887,10 @@
   .chat-status-fold summary{padding:7px 13px; border-radius:999px; background:linear-gradient(90deg, rgba(212,175,55,.12), rgba(212,175,55,.03)); border:1px solid rgba(212,175,55,.28); box-shadow:inset 0 0 18px rgba(212,175,55,.06), 0 2px 12px rgba(0,0,0,.18);}
   .chat-status-fold[open] summary{border-radius:16px;}
   .chat-status-spark{color:var(--omGold,#d4af37) !important; display:inline-block; animation:omranSpark 1.6s ease-in-out infinite; text-shadow:0 0 8px rgba(212,175,55,.65);}
+  /* v-agent-badge-star (طلب المالك: احذف إيموجي 🤖 وحطّ مكانه وميض نجمة ذهبية — شرارة تفكير
+     الوكيل نفسها): لون ثابت هنا لا var(--omGold) — المتغيّر مُحيَّد عمدًا (gold-kill.ts) في كل
+     التطبيق فيطفئ الوميض رماديًّا بدل الذهبيّ لو استُعمل هنا. */
+  .agent-badge-spark{color:#d4af37; display:inline-block; margin-inline-end:4px; animation:omranSpark 1.6s ease-in-out infinite; text-shadow:0 0 6px rgba(212,175,55,.6);}
   .chat-status-running{animation:none; background:linear-gradient(90deg, var(--muted,#98a0b3) 0%, var(--muted,#98a0b3) 35%, #fff 48%, var(--omGold,#d4af37) 52%, var(--muted,#98a0b3) 65%, var(--muted,#98a0b3) 100%); background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:omranShimmer 2.2s linear infinite;}
   .chat-status-dots{display:inline-flex; gap:3px; align-items:center; margin-inline-start:2px;}
   .chat-status-dots i{width:4px; height:4px; border-radius:50%; background:var(--omGold,#d4af37); opacity:.35; animation:omranDots 1.2s ease-in-out infinite;}
@@ -844,7 +902,33 @@
   @keyframes omranSpark{0%,100%{transform:scale(.85) rotate(0deg); opacity:.75} 50%{transform:scale(1.2) rotate(25deg); opacity:1}}
   @keyframes omranShimmer{from{background-position:220% 0} to{background-position:-20% 0}}
   @keyframes omranDots{0%,100%{opacity:.25; transform:translateY(0)} 50%{opacity:1; transform:translateY(-2px)}}
-  @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
+  @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running, .agent-badge-spark{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
+  /* v-cpu-status (المالك ٢٩ سبتمبر: «يعلّق إذا يقرأ الوكيل»): تطبيق هواوي يرسم بالمعالج (html.omCpu، v-cpu-calm)، وحبّة
+     الحالة ستّ حركات لا تنتهي طوال عمل الوكيل أو تفكير المزوّد = الشاشة كلّها تُعاد ٦٠ مرّة/ث. تسكن هنا كما في «تقليل الحركة». */
+  html.omCpu :is(.chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running){animation:none;}
+  html.omCpu .agent-badge-spark{animation:none;} /* v-agent-badge-star: شرارة شارة الوكيل تسكن تحت رسم المعالج كحبّة الحالة */
+  html.omCpu .chat-status-running{color:var(--text,#fff); background:none;}
+  html.omCpu .chat-status-dots i{opacity:.7;}
+  /* v-agent-log: سجلّ عمل الوكيل كما في Claude Code — كلامه، وكلّ خطوة سطر «$ عنوان» مؤطّر ينفتح على الأمر وناتجه،
+     و«فكّر N ثانية ›» و«استكشف N ملفّات ›». ساكن تمامًا (لا حركة) فلا يكلّف رسم المعالج شيئًا. */
+  .agLog{display:flex; flex-direction:column; gap:8px; margin:2px 0 10px;}
+  .agLog .agText{line-height:1.7;}
+  .agStep{border:1px solid var(--border, rgba(128,128,128,.28)); border-radius:12px; padding:0 12px; background:rgba(128,128,128,.06); font-size:13.5px;}
+  .agStep > summary, .agThink > summary, .agGroup > summary{cursor:pointer; list-style:none;}
+  .agStep > summary::-webkit-details-marker, .agThink > summary::-webkit-details-marker, .agGroup > summary::-webkit-details-marker{display:none;}
+  .agStep > summary{display:flex; align-items:center; gap:10px; padding:9px 0; color:var(--text); overflow-wrap:anywhere;}
+  .agIc{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); flex:0 0 auto;}
+  .agRun .agTt::after{content:' …'; color:var(--muted);}
+  .agStepErr .agIc{color:#f87171;}
+  .agPre{margin:0 0 8px; padding:8px 10px; max-height:280px; overflow:auto; border-radius:8px; background:rgba(128,128,128,.12); font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; word-break:break-word; text-align:left;}
+  .agPre.agErr{color:#f87171;}
+  .agNone{color:var(--muted); font-size:12px; padding:0 0 8px;}
+  .agThink, .agGroup > summary{color:var(--muted); font-size:13.5px;}
+  .agThink > summary::after, .agGroup > summary::after{content:' ›';}
+  .agThink[open] > summary::after, .agGroup[open] > summary::after{content:' ⌄';}
+  .agThinkBody{color:var(--muted); font-size:13px; white-space:pre-wrap; margin:6px 0 2px; padding-inline-start:10px; border-inline-start:2px solid rgba(128,128,128,.28);}
+  .agGroup > .agStep{margin-top:6px;}
+  .agPill:empty{display:none;}
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.
@@ -983,11 +1067,11 @@ html[data-mode="light"] #composerBox{background:#E5E5E5 !important;}
 /* v569: الروابط لا تتقطّع في منتصف الكلمة — الكسر عند المسافة، والكلمة الأطول من السطر وحدها تُكسر */
 .msg a, .msg-text a{overflow-wrap:break-word; word-break:normal; hyphens:none;}
 
-/* v-store-safe: حزمة AppGallery — كل الواجهات المالية مخفية (قاعدة 11.4). */
-html.store-safe #stockTicker,
-html.store-safe #btnStocks,
-html.store-safe #stocksModal,
-html.store-safe #aboutStocksCard{display:none !important;}
+/* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر): كانت هذه القاعدة تخفي كل
+   الواجهات الماليّة تحت حزمة AppGallery (قاعدة هواوي 11.4) — أُزيلت بأمره
+   رغم تحذيره من مخاطرة رفض المتجر؛ راجع knowledge/DECISIONS.md لهذا التاريخ.
+   store/huawei/REVIEW-NOTES.md لا يزال يذكر للمراجع أنّ لا محتوى أسواق أسهم
+   في الحزمة — هذا التعديل يجعل ذلك النصّ غير صحيح إن أُعيد استعماله كما هو. */
 
 /* v-close-unified (طلب عمران ١ سبتمبر): أزرار إغلاق الميزات كانت مبعثرة
    (14px، 46px، 90px من اليسار وبأشكال شتى) — نقطة واحدة ثابتة أعلى يسار
@@ -1148,8 +1232,12 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
    — سطح المكتب فقط — فيظهر أبيض على الجوّال. نعيدها هنا خارج أي ميديا لتعمل
    على كلّ العروض، مع لون احتياطيّ صريح. */
 :root{ --om-hl:#e3b341; }
-/* v-hl-links-only: الإنجليزي والأرقام بيضاء — الأصفر للروابط فقط (نمط <a>). */
-.chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl,#e3b341) !important; }
+/* v-code-color-mobile-fix (بلاغ المالك: أرقام الكود صفراء أثناء البثّ على الجوّال):
+   هذا السطر كان ينسخ قاعدة v-hl-yellow القديمة بالخطأ (فرض الأصفر على كتلة الكود
+   كاملة عبر --om-hl) رغم أنّ v-code-color حذفتها من نسخة سطح المكتب أعلاه (سطر ٣٤١-٣٤٢)
+   ليحلّ محلّها تلوين omranCodeHighlight البرمجيّ. التعليق أعلاه كان يقول «الأرقام بيضاء»
+   بينما السطر نفسه يلوّنها صفراء — نفس اللون المحايد الآن على كلّ العروض، لا الأصفر. */
+.chat-codeblock pre, .chat-codeblock pre .tts-word{ color:#e6edf3 !important; }
 .tts-word.active{ background:var(--om-hl,#e3b341); color:#14161a; box-shadow:0 0 0 2px var(--om-hl,#e3b341); }
 
 /* v-ticker-ai (طلب المالك): شريط الأسهم المطويّ يظهر كأيقونة ذكاء ذهبيّة تومض بخفّة؛
@@ -1201,3 +1289,30 @@ html:not(.mobile-ui) body.sbCollapsedMode #sbReopen{
 }
 html:not(.mobile-ui) body.sbCollapsedMode #sbReopen svg{width:16px; height:16px;}
 html:not(.mobile-ui) body.sbCollapsedMode #sbReopen:hover{ color:var(--text); background:none !important; }
+
+/* v-md-blocks (المالك ٢٣ سبتمبر: «الكتابة غير نظاميّة وغير مرتّبة»): كلّ سطر من الردّ كتلة باتّجاه صريح
+   (buildSpokenWordSpans ← omranMdBlocks) بدل نصّ واحد يقلب اتّجاه كلّ سطر حسب أوّل حرف فيه.
+   unicode-bidi:isolate يغلب plaintext الموروث من .msg-text فيُحترم dir الكتلة. */
+.msg .md-line, .msg-text div.md-line{unicode-bidi:isolate; white-space:pre-wrap; margin:0 0 .4em;}
+.msg .md-line:last-child{margin-bottom:0;}
+.msg .md-line.md-hb{margin:.75em 0 .3em;}
+.msg .md-line.md-hb:first-child{margin-top:0;}
+.msg .md-line.md-li, .msg .md-line.md-oli{position:relative; padding-inline-start:1.55em; margin-bottom:.25em;}
+.msg .md-line.md-li-glued{padding-inline-start:.2em;}
+.msg .md-line .tts-word.md-mk{position:absolute; top:0; min-width:1.3em; text-align:center; unicode-bidi:isolate; direction:ltr; color:var(--muted,#98a0b3); font-weight:600;}
+.msg .md-line[dir="rtl"] .tts-word.md-mk{right:0; left:auto;}
+.msg .md-line[dir="ltr"] .tts-word.md-mk{left:0; right:auto;}
+/* v-chat-math (لقطة المالك ٢٧ سبتمبر): المعادلة المرسومة معزولة الاتّجاه، ومعادلة العرض ($$…$$ وحدها في سطرها) جدول في
+   الوسط سطوره من بدايتها (aligned)، والأسّ والدليل معزولان (تسمية عربيّة فوق السهم لا تسحب ما بعدها)، وعلامة ^( ) للمشاركة
+   مخفيّة بخطّ صفريّ لا display:none ولا position:absolute (الأوّل يُسقطها من innerText والثاني يكسر السطر حولها)، وسهم المتّجه فوق الاسم كلّه (AB)، و«---» خطّ فاصل رفيع. عامّ للحاسوب والجوّال لأنّ الراسم واحد واللقطة من الجوّال. */
+.msg .om-math{unicode-bidi:isolate;}
+.msg .om-math-nw{white-space:nowrap;}
+.msg .om-math sup, .msg .om-math sub{font-size:.72em; line-height:0; unicode-bidi:isolate;}
+.msg .om-math-block{display:table; margin:.3em auto; text-align:start;}
+.msg .om-math-sr{font-size:0; line-height:0; letter-spacing:0; color:transparent;}
+.msg .om-rows{display:inline-block; vertical-align:middle; text-align:start; white-space:pre-line;}
+.msg .om-vec{position:relative; display:inline-block; padding-top:.32em; line-height:1;}
+.msg .om-vec::before{content:''; position:absolute; top:.12em; left:.04em; right:.12em; border-top:1px solid currentColor;}
+.msg .om-vec::after{content:''; position:absolute; top:calc(.12em - 2.5px); right:.1em; width:5px; height:5px; border-top:1px solid currentColor; border-right:1px solid currentColor; transform:rotate(45deg);}
+.msg .md-line.md-hr{height:0; overflow:hidden; margin:.7em 0; border-top:1px solid var(--omLine, rgba(255,255,255,.09));}
+.msg .omStreamHead, .msg .omStreamTail, .msg .omStreamSeg{display:block;}

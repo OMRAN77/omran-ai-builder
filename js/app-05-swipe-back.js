@@ -18,6 +18,7 @@
     /* أمر المالك ٤ سبتمبر: «في الديكور كلها داخل احذف X وخلها سحاب، وفي الاستايل بعد كلها، وفي التعليم»:
        ورقة الخيارات الداخلية الموحّدة (الشعر، المناسبة، نمط الديكور، …) */
     pickerSheet: 'pickerSheetClose',
+    inspireScreen: 'inspireCloseBtn', /* v-inspire: شاشة «اقتراحات» — سحب/Esc يغلقها وحدها لا شاشة الأدوات تحتها */
   };
 
   var css = document.createElement('style');
@@ -49,6 +50,11 @@
     return best;
   }
   function closeTool(el){
+    /* شاشة الأدوات فيها مستوى داخلي («عرض الكل»): السحب يرجع منه إلى الصفوف
+       أولًا، ولا يغلق شاشة الأدوات إلى المحادثة مباشرة. */
+    if(el && typeof el.__omranSwipeBackStep === 'function'){
+      try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ /* guard-ok */ }
+    }
     var btn = el && document.getElementById(MAP[el.id]);
     if(btn){ try{ swipeClickGuardUntil = 0; btn.click(); return true; }catch(e){ /* guard-ok */ } }
     return false;
@@ -62,6 +68,13 @@
     return kids[0] || el;
   }
   /* عناصر لا نسحب منها: منزلقات، فيديو، كانفاس، حقول نصية، وأي قائمة تتمرر أفقيًا */
+  /* v-compare-drag-swipe-fix (لقطة المالك ٢١ سبتمبر: «السحب يسحب الشاشة كاملة إلى الخارج» —
+     شريط قبل/بعد المحسّن): حاويات المقارنة (v-compare-drag/v-compare-drag-all) صارت سحبًا مباشرًا
+     على <div> عاديّ بدل <input type=range> القديم المستثنى هنا صراحة (السطر أعلاه). أيّ سحب عليها
+     كان يبدأ أيضًا سحب الورقة/النافذة كاملة للإغلاق (هذا الملف يستمع لأي سحب من أيّ مكان في الأداة)،
+     فيتنازع مع سحب المقارنة ويغلبه بصريًّا — بالضبط ما وصفه المالك. نفس منطق استثناء «شريط تمرير أفقي»
+     أدناه (overflowX) لكن بالمعرّف مباشرة لأنّ حاويات المقارنة overflow:hidden لا scroll. */
+  var COMPARE_DRAG_IDS = { portraitCompareWrap: 1, designBAWrap: 1, fashionAiResultWrap: 1, studioAiResultWrap: 1 };
   function blocked(t){
     var e = t;
     for(var i = 0; e && e !== document.body && i < 12; i++){
@@ -70,6 +83,10 @@
       if(tag === 'input' && (e.type === 'range' || e.type === 'file')) return true;
       /* الحقول: السحب منها مسموح ما لم تكن قيد الكتابة (شكوى المالك في مولّد السيرة: الصفحة كلها حقول) */
       if((tag === 'input' || tag === 'textarea' || tag === 'select') && document.activeElement === e) return true;
+      if(e.id && COMPARE_DRAG_IDS[e.id]) return true;
+      /* صفوف الأدوات سحب أفقي دائمًا؛ لا ندع سحب الرجوع العام ينافسها
+         حتى خلال لحظة إعادة الرسم أو قبل اكتمال قياس overflow. */
+      if(e.classList && e.classList.contains('ptCarousel') && !(e.closest && e.closest('.ptHwGrid'))) return true; /* v-hw-tools-grid: شبكة هواوي لا تتمرّر جانبيًّا */
       try{
         var cs = getComputedStyle(e);
         if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;

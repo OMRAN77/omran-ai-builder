@@ -16,7 +16,8 @@ const { CLAUDE_MODELS, pickClaudeModel } = chat.__vmodels;
 const { imageTurnConfig } = chat.__vimg;
 
 // v-models-family (أمر عمران ١٥ سبتمبر): عائلة كلود ٥ كاملة في منتقي السهم للمالك.
-const IDS = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
+// v-models-latest (٢٥ سبتمبر): Opus 5 ← Opus 5.5.
+const IDS = ['claude-opus-5-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
 
 test('١. القائمة: عائلة كلود ٥ كاملة، ولكلّ منها صيغة وسيط بادئتها anthropic/', () => {
   assert.deepEqual(Object.keys(CLAUDE_MODELS), IDS);
@@ -24,19 +25,21 @@ test('١. القائمة: عائلة كلود ٥ كاملة، ولكلّ منه�
     assert.ok(CLAUDE_MODELS[id].label, id);
     assert.ok(CLAUDE_MODELS[id].or.startsWith('anthropic/claude-'), id);
   }
-  assert.equal(CLAUDE_MODELS['claude-opus-5'].or, 'anthropic/claude-opus-5');
+  assert.equal(CLAUDE_MODELS['claude-opus-5-5'].or, 'anthropic/claude-opus-5.5');
   assert.equal(CLAUDE_MODELS['claude-sonnet-5'].or, 'anthropic/claude-sonnet-5');
   assert.equal(CLAUDE_MODELS['claude-haiku-4-5'].or, 'anthropic/claude-haiku-4.5');
   assert.equal(CLAUDE_MODELS['claude-fable-5-1'].or, 'anthropic/claude-fable-5.1');
 });
 
 test('٢. pickClaudeModel: المباشر يمرّر المعرّف، الوسيط يحوّله، وغير المعروف = الافتراضيّ', () => {
-  assert.deepEqual(pickClaudeModel('claude-opus-5', false, 'claude-sonnet-5'), { model: 'claude-opus-5', picked: true, id: 'claude-opus-5', label: 'Opus 5' });
+  assert.deepEqual(pickClaudeModel('claude-opus-5-5', false, 'claude-sonnet-5'), { model: 'claude-opus-5-5', picked: true, id: 'claude-opus-5-5', label: 'Opus 5.5' });
+  // اختيار محفوظ قديم (Opus 5) يُرقّى إلى 5.5 لا يرجع صامتًا للافتراضيّ
+  assert.deepEqual(pickClaudeModel('claude-opus-5', true, 'anthropic/claude-sonnet-5'), { model: 'anthropic/claude-opus-5.5', picked: true, id: 'claude-opus-5-5', label: 'Opus 5.5' });
   assert.deepEqual(pickClaudeModel(' Claude-Sonnet-5 ', true, 'anthropic/claude-sonnet-5'), { model: 'anthropic/claude-sonnet-5', picked: true, id: 'claude-sonnet-5', label: 'Sonnet 5' });
   assert.deepEqual(pickClaudeModel('claude-haiku-4-5', false, 'claude-sonnet-5'), { model: 'claude-haiku-4-5', picked: true, id: 'claude-haiku-4-5', label: 'Haiku 4.5' });
   assert.deepEqual(pickClaudeModel('claude-fable-5-1', true, 'anthropic/claude-sonnet-5'), { model: 'anthropic/claude-fable-5.1', picked: true, id: 'claude-fable-5-1', label: 'Fable 5.1' });
   // خارج العائلة (أجيال سابقة أو مزوّد آخر أو مفاتيح خطرة) = الافتراضيّ
-  for (const bad of ['', null, undefined, 'gpt-5', 'claude-opus-4-8', 'anthropic/claude-opus-5', '__proto__', 'constructor']) {
+  for (const bad of ['', null, undefined, 'gpt-5', 'claude-opus-4-8', 'anthropic/claude-opus-5.5', '__proto__', 'constructor']) {
     assert.deepEqual(pickClaudeModel(bad, false, 'claude-sonnet-5'), { model: 'claude-sonnet-5', picked: false, id: '', label: '' }, String(bad));
   }
 });
@@ -54,9 +57,9 @@ test('٣. الخادم: body.model على مسار كلود فقط، رجوع ل
   assert.ok(s.includes("k: 'stModelFallback', p: { model: __pick.label }"));
   assert.ok(s.includes('CHAT_MODEL = DEFAULT_MODEL;'));
   assert.ok(s.includes('if (__imgCfg) __imgCfg = imageTurnConfig(process.env, viaOR, CHAT_MODEL);'), 'دور الصورة يتبع النموذج بعد الرجوع');
-  assert.ok(s.includes('let __imgCfg = lastUserHasImage'));
+  assert.ok(s.includes('let __imgCfg = (lastUserHasImage && !__direct)'));
   // الرجوع يسبق الفشل النهائيّ (الاحتياط) ويأتي بعد إعادة دور الصورة
-  const imgRetry = s.indexOf("upstream = await callUpstream(false);\n      }\n      // v-claude-models");
+  const imgRetry = s.indexOf("upstream = await callUpstream(false);\n      }\n      // v-owner-auto"); // v-owner-auto: إعادة «بلا تفكير» تسبق الحكم على الموديل
   const fallback = s.indexOf('if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {');
   const finalFail = s.indexOf("await logErrorAndFlush('chat/upstream-fail'");
   assert.ok(imgRetry > 0 && fallback > imgRetry && finalFail > fallback);
@@ -78,14 +81,16 @@ test('٤. الواجهة: مبدّل النموذج في قائمة «+» (لل�
   assert.ok(a29.includes('window.claudeModelGet = get;'));
   assert.ok(a29.includes("el.id !== 'claudeModel'"));
   const a18 = read('js/app-18-chat-tools.js');
-  assert.ok(a18.includes("model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; }"));
+  // v-provider-models: لبقيّة المزوّدين معرّف OpenRouter من شريط السهم (omranModelFor)؛ كلود كما كان.
+  assert.ok(a18.includes("model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); }"));
   assert.ok(a18.includes("if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;"));
   assert.ok(a18.includes('model: __model || undefined'));
   const i18n = read('js/app-03-i18n-data.js');
   assert.equal((i18n.match(/claudeModelPick:/g) || []).length, 2, 'عربيّ وإنجليزيّ');
   assert.equal((i18n.match(/stModelFallback:/g) || []).length, 2);
-  // v-custom-instructions: رُفع إلى 657 بعد إضافة حقل التعليمات المخصّصة للقسم؛ v-plan-routing: 659 (بطاقات الباقات).
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=659'), 'كسر كاش الجزء بعد تغييره');
+  // v-custom-instructions: رُفع إلى 657 بعد إضافة حقل التعليمات المخصّصة للقسم؛ v-plan-routing: 659
+  // (بطاقات الباقات)؛ v-maha-voice-speed: 660 (أزرار سرعة صوت مها في قسم الصوت).
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'), 'كسر كاش الجزء بعد تغييره');
 });
 
 test('٥. Haiku 4.5 بلا effort في دور الصورة، والجيل الحاليّ معه', () => {
@@ -96,8 +101,24 @@ test('٥. Haiku 4.5 بلا effort في دور الصورة، والجيل الح
 
 test('٦. طلب المحادثة بلا thinking ولا temperature — فالقائمة كلّها تمرّ بالطلب نفسه', () => {
   const s = read('api/_lib/chat.js');
-  const i = s.indexOf('const callUpstream = (withImg) => fetch(CHAT_URL');
+  const i = s.indexOf('const callUpstream = (withImg) => __upFetch(CHAT_URL');
   const req = s.slice(i, s.indexOf('let upstream = await callUpstream(true);', i));
   assert.ok(req.length > 0);
   assert.ok(!/thinking|temperature|top_p|top_k/.test(req), 'Fable يرفض temperature، وHaiku يرفض adaptive');
+});
+
+// v-chat-economy (أمر المالك ٢٣ سبتمبر «كلاود الرئيسي للمحادثات يكون الاقتصادي»): الافتراضيّ Haiku 4.5
+// على الخطّين (المباشر والوسيط)، وفي منتقي المالك وتلميحه — Sonnet لم يعد يُوصف بالافتراضيّ.
+test('٧. الافتراضيّ الاقتصاديّ: Haiku 4.5 في الخادم والمنتقي والتلميح', () => {
+  const s = read('api/_lib/chat.js');
+  assert.equal((s.match(/process\.env\.CHAT_CLAUDE_MODEL \|\| 'claude-haiku-4-5'/g) || []).length, 2, 'الخطّ المباشر ومسار الباقة');
+  assert.ok(!/process\.env\.CHAT_CLAUDE_MODEL \|\| 'claude-sonnet-5'/.test(s), 'لا بقايا Sonnet افتراضيًّا');
+  assert.match(s, /\n  claude: 'anthropic\/claude-haiku-4\.5',/, 'الوسيط: OR_MODELS.claude');
+  assert.equal(CLAUDE_MODELS['claude-haiku-4-5'].or, 'anthropic/claude-haiku-4.5', 'صيغة الوسيط نفسها في القائمة');
+  const modes = read('js/modes.js');
+  assert.ok(modes.includes("store:'aiapp_claude_model',     def:'claude-haiku-4-5',"), 'منتقي المالك: الافتراضيّ Haiku');
+  const picker = read('js/app-29-claude-model.js');
+  assert.ok(picker.includes("'': ['الافتراضيّ: Haiku 4.5"), 'التلميح بلا اختيار');
+  assert.ok(/'claude-haiku-4-5': \['[^']*هو الافتراضيّ/.test(picker) && !/'claude-sonnet-5': \['[^']*الافتراضيّ/.test(picker), 'وصف الافتراضيّ انتقل لـHaiku');
+  assert.ok(read('index.html').includes('js/modes.js?v=m081026a'), 'وسم كاش modes رُفع');
 });

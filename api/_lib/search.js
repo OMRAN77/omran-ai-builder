@@ -9,7 +9,9 @@
 // frontend) are metered by IP instead of blocked, so nothing breaks. Owner
 // account unlimited.
 const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: البحث (والعميق) بنسبة سقف الباقة؛ المصنّف ثابت
 const SEARCH_DAILY_LIMIT = 40;
+const CLASSIFY_DAILY_LIMIT = 200; // v-open-tools-cap: مصنّف «هل يحتاج بحثًا؟» — سقف ثابت لكلّ حساب أو IP
 
 // مصدر محذوف بقرار المالك: لا يُطلب مباشرةً ولا يُسمح له بالمرور من مزوّد آخر.
 const REMOVED_SOURCE_HOST = 'news.google.com';
@@ -478,15 +480,24 @@ module.exports = async (req, res) => {
     // specific => YES. Chit-chat, coding, writing, math, translations => NO.
     // Questions about "عمران/Omran" (this app) => always NO (identity rule).
     // On any error: {search:false} so behavior degrades to the old keyword
-    // heuristic handled client-side. Free: doesn't consume the daily limit.
+    // heuristic handled client-side. Doesn't consume the search daily limit.
     if (body && body.classify) {
       if (/عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(query)) { res.status(200).json({ search: false }); return; }
+      // v-open-tools-cap: كان «مجّانيًّا» بلا رمز ولا IP — كلّ طلب نداء Groq ثمّ Mistral على مفاتيح المالك بلا سقف.
+      // سلّة منفصلة بسقف ثابت قبل النداء (للحساب، وإلّا IP)؛ تجاوزه = {search:false} كأيّ خطأ، بـ429 لا 402 فلا يفتح «الباقات».
+      const clsUsage = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'search-classify', CLASSIFY_DAILY_LIMIT);
+      if (!clsUsage.allowed) {
+        res.status(clsUsage.reason === 'auth' ? 401 : 429).json({ search: false, error: clsUsage.reason === 'auth' ? 'auth_required' : 'daily_limit_reached' });
+        return;
+      }
       const clsPrompt = 'You are a web-search router. Decide if answering the user message requires a LIVE internet search for real-world/current facts.\nAnswer YES if it asks about: a person, company, shop, brand, product, app (other than this one), social media account/profile, phone number or contact info, an ad/listing (car, house, item for sale), place, event, price, news, weather, sports, or anything the answer could be wrong without checking the web.\nAnswer NO if it is: greetings/chit-chat, opinions, coding/building apps, writing/translation/summarization, math/logic, general timeless knowledge (science, history, definitions), or questions about this app itself.\nReply with exactly one word: YES or NO.\nUser message: ' + query.slice(0, 500);
       const callCls = async (url, key, model) => {
+        // v-models-latest: gpt-oss يفكّر، وتفكيره يُحسب من max_tokens — ٣ رموز كانت ستُرجع نصًّا فارغًا؛ جهد منخفض وسقف أوسع.
+        const reasoning = /gpt-oss/.test(model);
         const r = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-          body: JSON.stringify({ model, messages: [{ role: 'user', content: clsPrompt }], max_tokens: 3, temperature: 0 }),
+          body: JSON.stringify(Object.assign({ model, messages: [{ role: 'user', content: clsPrompt }], max_tokens: reasoning ? 400 : 3, temperature: 0 }, reasoning ? { reasoning_effort: 'low' } : {})),
         });
         if (!r.ok) throw new Error('cls ' + r.status);
         const j = await r.json();
@@ -494,7 +505,7 @@ module.exports = async (req, res) => {
       };
       let verdict = '';
       try {
-        verdict = await callCls('https://api.groq.com/openai/v1/chat/completions', process.env.GROQ_API_KEY, 'llama-3.1-8b-instant');
+        verdict = await callCls('https://api.groq.com/openai/v1/chat/completions', process.env.GROQ_API_KEY, 'openai/gpt-oss-20b'); // v-models-latest: llama-3.1-8b-instant أُوقف ١٦ أغسطس ٢٠٢٦
       } catch (e1) {
         try {
           verdict = await callCls('https://api.mistral.ai/v1/chat/completions', process.env.MISTRAL_API_KEY, 'mistral-small-latest');
@@ -504,13 +515,13 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsumeCustom(body && body.token, body && body.guestId, clientIp(req), 'search', SEARCH_DAILY_LIMIT);
+    const usage = await checkAndConsumePlanCustom(body && body.token, body && body.guestId, clientIp(req), 'search', SEARCH_DAILY_LIMIT);
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
         return;
       }
-      res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + SEARCH_DAILY_LIMIT + ') للبحث. حاول لاحقًا.' });
+      res.status(402).json({ error: 'وصلت للحد اليومي (' + usage.limit + ') للبحث. حاول لاحقًا.' }); /* v-plan-caps: الحدّ المطبَّق لا رقم المجّانيّ */
       return;
     }
     // v360 — 🌍 كشف دولة المستخدم من الشبكة لتوجيه البحث الحي عالميًا.
@@ -541,7 +552,7 @@ module.exports = async (req, res) => {
         const sqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.GROQ_API_KEY },
-          body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: sqPrompt }], max_tokens: 300, temperature: 0.3 }),
+          body: JSON.stringify({ model: 'openai/gpt-oss-20b', messages: [{ role: 'user', content: sqPrompt }], max_tokens: 1200, temperature: 0.3, reasoning_effort: 'low' }), // v-models-latest
         });
         if (sqResp.ok) {
           const sqJ = await sqResp.json();

@@ -2,8 +2,8 @@
 // مزوّدات لها طبقة مجانية (Gemini Flash → Groq → Mistral → OpenRouter)، كلّها
 // بصيغة OpenAI المتوافقة (chat/completions + SSE) فدالّة بثّ واحدة تكفي.
 //
-// بلا أدوات: لا بحث حي ولا صور ولا وكيل — تلك للنسخة الاحترافية. الصور المرفقة
-// تمرّ للمزوّد الذي يرى (Gemini) وتُستبدل بملاحظة نصّية عند الباقين.
+// بلا أدوات: لا بحث حي ولا توليد صور ولا وكيل — تلك للنسخة الاحترافية. الصور المرفقة
+// تمرّ للمزوّد الذي يرى فقط، ولا يُستدعى مزوّد أعمى لدور الصورة.
 // امتلاء حصة مزوّد (429) أو أي عطل يمرّر الطلب للتالي بصمت؛ فشل الجميع يرجع
 // {ok:false, errors} والمستدعي يعرض رسالة «مشغول» لا خطأ تقنيًّا.
 //
@@ -15,7 +15,7 @@
 const { freeChain } = require('./tier.js');
 
 // ملاحظة النظام للطبقة المجانية — بلا اسم أي مزوّد (قرار المالك: «بدون اسم كلاود»).
-const FREE_NOTE = '\n\n[الوضع المجاني — إلزامي]: أنت «عمران» مساعد التطبيق. في هذا الوضع تردّ نصًّا فقط: لا تملك بحثًا حيًّا ولا توليد صور ولا تشغيل كود، فلا تدّعِ أنك بحثت أو رسمت. إن طلب المستخدم بحثًا حيًّا أو صورة أو بناء تطبيق فأجب بما تعرفه باختصار ثم قل بلطف إن هذه الميزة في النسخة الاحترافية. لا تذكر اسم النموذج أو الشركة المزوّدة أبدًا. أجب بلغة المستخدم ولهجته.';
+const FREE_NOTE = '\n\n[الوضع المجاني — إلزامي]: أنت «عمران» مساعد التطبيق. في هذا الوضع تردّ نصًّا فقط: لا تملك بحثًا حيًّا ولا توليد صور ولا تشغيل كود، فلا تدّعِ أنك بحثت أو رسمت. ما يأتي في رسالة المستخدم تحت «[قرأ التطبيق هذا المحتوى الآن من …]» قُرئ فعلًا: اقرأه كاملًا وحلّله قبل أن تجيب، واستشهد بما فيه (اسم الملفّ أو السطر أو العبارة) دليلًا على كلامك، ولا تقل إنك لا تستطيع فتح الروابط. إن طلب المستخدم بحثًا حيًّا أو صورة أو بناء تطبيق فأجب بما تعرفه باختصار ثم قل بلطف إن هذه الميزة في النسخة الاحترافية. لا تذكر اسم النموذج أو الشركة المزوّدة أبدًا. أجب بلغة المستخدم ولهجته.';
 
 function blockText(b) {
   if (!b) return '';
@@ -25,7 +25,17 @@ function blockText(b) {
   return '';
 }
 
-// تحويل محادثة بصيغة Anthropic إلى صيغة OpenAI. vision=false يستبدل الصور بنصّ.
+function validImageSource(b) {
+  return b && b.source && b.source.type === 'base64'
+    && typeof b.source.data === 'string' && !!b.source.data.trim();
+}
+
+function hasUnsupportedImage(convo) {
+  return (Array.isArray(convo) ? convo : []).some((m) => m && m.role === 'user' && Array.isArray(m.content)
+    && m.content.some((b) => b && b.type === 'image' && !validImageSource(b)));
+}
+
+// تحويل محادثة بصيغة Anthropic إلى صيغة OpenAI. المصدر غير المدعوم خطأ صريح لا صورة محذوفة.
 function toOpenAIMessages(system, convo, vision) {
   const out = [];
   if (system) out.push({ role: 'system', content: String(system) });
@@ -36,7 +46,8 @@ function toOpenAIMessages(system, convo, vision) {
     const texts = [];
     const images = [];
     for (const b of m.content) {
-      if (b && b.type === 'image' && b.source && b.source.type === 'base64' && b.source.data) {
+      if (b && b.type === 'image') {
+        if (!validImageSource(b)) throw new Error('unsupported-image-source');
         images.push('data:' + (b.source.media_type || 'image/jpeg') + ';base64,' + b.source.data);
       } else {
         const t = blockText(b);
@@ -146,7 +157,7 @@ const MODEL_CACHE_MS = 6 * 3600000;
 const workingModel = new Map();
 
 function candidateModels(spec, now) {
-  const hit = workingModel.get(spec.id);
+  const hit = workingModel.get(spec.cacheId || spec.id); // v-img-why: نماذج الرؤية لها ذاكرتها — لا يُقدَّم ناجح نصّيّ أعمى لدور صورة
   const cached = hit && now - hit.at < MODEL_CACHE_MS ? hit.model : null;
   return (cached ? [cached] : []).concat(spec.models.filter((m) => m !== cached));
 }
@@ -154,16 +165,23 @@ function candidateModels(spec, now) {
 // يجرّب السلسلة بالترتيب. {ok:true, provider, model, text} عند أوّل نجاح؛ وإن فشل
 // مزوّد بعد أن بثّ نصًّا جزئيًّا لا ننتقل (لئلّا يتكرّر الردّ) بل نرجع ما وصل.
 async function streamFreeChain(args) {
+  // قبل أيّ طلب شبكة: URL أو كتلة بلا بيانات لا تملك بكسلات نمرّرها إلى المزوّد.
+  if (hasUnsupportedImage(args.convo)) return { ok: false, provider: null, model: null, text: '', attempts: 0, errors: ['unsupported-image-source'] };
   const all = freeChain(args.env || process.env);
   // v-img-no-blind (شكوى المالك ١٨ سبتمبر: عند نفاد رصيد المحرّك الاحترافيّ يردّ الاحتياط
   // «الصورة غير واضحة، أرسل لقطة أوضح» على صورة سليمة): مزوّد بلا رؤية يستلم بدل الصورة
-  // سطرًا نصّيًّا ثمّ يؤلّف حكمًا عليها. مع requireVision ودور فيه صورة تُستبعد المزوّدات
+  // سطرًا نصّيًّا ثمّ يؤلّف حكمًا عليها. أيّ دور فيه صورة يستبعد المزوّدات
   // العمياء كلّها؛ ولا مزوّد يرى = فشل صريح (no-vision-provider) يقوله المستدعي بصدق.
-  const needVision = !!args.requireVision && convoHasImage(args.convo);
-  const chain = needVision ? all.filter((s) => s.vision) : all;
+  const needVision = convoHasImage(args.convo);
+  /* v-img-why: مزوّد أعمى له نماذج ترى (visionModels) يدخل دور الصورة بها وحدها، بعد من يرى أصلًا، وبلا استكشاف /models
+     (قد يلتقط نموذجًا أعمى). */
+  const chain = needVision
+    ? all.filter((s) => s.vision).concat(all.filter((s) => !s.vision && Array.isArray(s.visionModels) && s.visionModels.length)
+      .map((s) => Object.assign({}, s, { vision: true, visionOnly: true, models: s.visionModels.slice(), model: s.visionModels[0], cacheId: s.id + ':vision' })))
+    : all;
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
-  const system = String(args.system || '') + FREE_NOTE;
+  const system = args.raw ? '' : String(args.system || '') + FREE_NOTE; // v-owner-free: raw للمالك المتحقَّق منه فقط (chat.js)
   let attempts = 0;
   // أسباب الفشل (بلا مفاتيح) — تُعاد للمستدعي ليسجّلها ويبثّها كتشخيص للمالك.
   const errors = [];
@@ -179,7 +197,7 @@ async function streamFreeChain(args) {
     const tryModel = async (model) => {
       const text = await streamOne(spec, model, messages, send, args);
       if (text && text.trim()) {
-        workingModel.set(spec.id, { model, at: now });
+        workingModel.set(spec.cacheId || spec.id, { model, at: now });
         return { ok: true, provider: spec.id, model, text, attempts, errors };
       }
       errors.push(spec.id + '/' + model + ': empty');
@@ -202,6 +220,7 @@ async function streamFreeChain(args) {
       }
     }
     if (providerDead) continue;
+    if (spec.visionOnly) { errors.push(spec.id + ': no vision model answered'); continue; } // v-img-why: لا استكشاف قد يلتقط أعمى
     // كل المرشّحين «غير موجود» → اسأل المزوّد نفسه عن نماذجه.
     const found = await discoverModel(spec, args);
     if (found && !tried.includes(found)) {

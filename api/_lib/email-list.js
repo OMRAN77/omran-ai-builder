@@ -5,6 +5,7 @@
 // must approve/edit each draft (see email-send.js).
 const { getUser, putUser, verifyToken } = require('./auth.js');
 const { decrypt } = require('./_emailCrypto.js');
+const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -74,16 +75,11 @@ async function getStyleProfile(accessToken, user, username) {
       if (samples.length >= 6) break;
     }
     if (!samples.length) return '';
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-      body: JSON.stringify({
+    const r = await oaLightFetch(apiKey, { // v-models-latest
         store: false,
-        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: 'Below are emails written by one person. Describe their writing style in 3-4 short bullet points (tone, greeting/closing habits, formality, typical length, language quirks). Reply with the bullet points only.\n\n' + samples.map((s, i) => '--- Email ' + (i + 1) + ' ---\n' + s).join('\n') }],
         temperature: 0.2,
-      }),
-    });
+      });
     const d = await r.json();
     const text = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content || '').trim().slice(0, 1200);
     if (!text) return '';
@@ -110,18 +106,12 @@ async function draftReply(fromName, subject, bodyText, styleProfile) {
     (styleProfile ? 'IMPORTANT — write the draft imitating the user\'s personal writing style:\n' + styleProfile + '\n\n' : '') +
     'From: ' + fromName + '\nSubject: ' + subject + '\nBody: ' + bodyText.slice(0, 3000);
   try {
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-      signal: AbortSignal.timeout(25000), // v-email-alive: نداء معلّق لا يعلّق القائمة كلها
-      body: JSON.stringify({
+    const r = await oaLightFetch(apiKey, { // v-models-latest
         store: false,
-        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.4,
         response_format: { type: 'json_object' },
-      }),
-    });
+      }, { signal: AbortSignal.timeout(25000) }); // v-email-alive: نداء معلّق لا يعلّق القائمة كلها
     const d = await r.json();
     const parsed = JSON.parse(d.choices[0].message.content);
     return {

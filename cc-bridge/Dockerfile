@@ -28,7 +28,7 @@ RUN npm i -g --no-audit --no-fund playwright@${PW_VERSION} \
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && chown -R agent:agent /app
-COPY policy.mjs git.mjs server.mjs entrypoint.sh ./
+COPY policy.mjs git.mjs watch.mjs server.mjs entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
 # No USER here on purpose: entrypoint.sh starts as root only to take ownership of the mounted

@@ -1,5 +1,5 @@
 // Vercel Serverless Function: mints an ephemeral OpenAI Realtime API client
-// secret for Maha's voice-to-voice call mode (gpt-realtime). This lets the
+// secret for Maha's voice-to-voice call mode (gpt-realtime-2.1). This lets the
 // browser connect directly to OpenAI via WebRTC for natural, low-latency
 // speech-to-speech, using the site owner's own OPENAI_API_KEY (never exposed
 // to the client - only the short-lived ephemeral token is sent to the browser).
@@ -38,7 +38,16 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "Gist first: the direct answer in your first sentence, detail after for those who want it.",
   "You are an expert friend who cares, not a call-center robot: have real opinions with reasons, respectfully disagree when the user is wrong (with the correct info), and never flatter emptily.",
   "If USER MEMORY has their name, greet them by name naturally mid-call sometimes (not every sentence).",
-  "Sound human on the phone: brief natural acknowledgements while listening-turns change ('اممم', 'إي', 'تمام') where fitting, vary your sentence openings, and never read like a script.",
+  "PACE: speak at a steady, natural conversational pace, like a calm phone call - never rushed, never dragged, with clear articulation.",
+  "LISTENING: wait for the user to finish their thought. If what you heard was only noise, breathing, or an unclear fragment, do not guess an answer - briefly ask them to repeat.",
+  "",
+  "# Conversation Style - a real person on a phone call",
+  "You are a person chatting, not an assistant reading a script: when it fits, react briefly like a human first ('والله؟', 'أوه', 'حلوة!', 'صدق؟'), then answer.",
+  "Match the user's energy and mood: relaxed and playful when they joke (a light natural laugh is fine), calm and gentle when they are worried, quick and to the point when they are in a hurry.",
+  "Speak in everyday words and short natural sentences - never list-style speech, never 'first, second, third' unless giving steps, never a long announcement of what you are about to do.",
+  "Back-and-forth: after you answer, stop and let them talk - a real conversation is short turns, not speeches. Ask a short follow-up question only when it truly helps, not every turn.",
+  "INTERRUPTIONS: if the user cuts in while you are talking, stop and respond to what they just said - never restart or finish your previous answer unless they ask.",
+  "VARIETY: never repeat the same opener, reaction, or filler twice in a row - vary how you start and confirm so you never sound robotic.",
   "",
   "# Language",
   "LANGUAGE: always reply in the exact language the user just spoke.",
@@ -47,8 +56,10 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "Never mix languages.",
   "",
   "# Verbosity",
-  "DEPTH RULE: when the user asks an informational question (facts, explanations, advice, comparisons, how-to, study topics), answer with FULL substance and detail like a knowledgeable expert - complete, rich, useful answers are REQUIRED, not a failure of brevity.",
-  "Keep replies short (1-2 sentences) ONLY for confirmations, greetings, and simple yes/no exchanges.",
+  "DEPTH RULE: accuracy and real substance are always required - delivered like a knowledgeable friend talking, never like a lecture.",
+  "Default turn: 1-3 short spoken sentences, then stop.",
+  "Informational questions (facts, explanations, advice, comparisons, how-to): give the complete core answer in a few natural spoken sentences; if the topic is big, give the most useful part first and offer to continue instead of a long monologue.",
+  "Go long and detailed ONLY when the user asks for detail or step-by-step, for study help (Education Mode below), or for news (the bulletin rule below still applies in full).",
   "Answer ONLY what was asked; if unclear, ask ONE short clarifying question.",
   "",
   "# Instructions / Rules",
@@ -126,6 +137,30 @@ function toMalePersona(txt) {
 }
 
 
+// إعداد مها السابق (حتّى v-maha-natural): قطع بالصمت، والعميل يطلب الردّ بعد speech_stopped.
+// يبقى احتياطًا: MAHA_TURN=classic، أو إن رفضت الواجهة semantic_vad.
+const MAHA_CLASSIC_TURN = {
+  type: 'server_vad',
+  // v-maha-listen (المالك ٢٢ سبتمبر: «ما فيها دقّة إنصات، تتسرّع — تتكلّم قبل لا تتكلّم»): كانت 0.08
+  // (الافتراضيّ الموثّق 0.5) فكلّ نفَس أو ضجيج أو صدى صوت مها نفسها = «كلام»، والصمت لا يُلتقط
+  // فلا يأتي speech_stopped، فيتكفّل حارس العميل (كان ٣ث) بإطلاق الردّ وسط الجملة أو على ضجيج.
+  // الكلمات الأولى الهادئة يحفظها prefix_padding_ms (١ث قبل بدء الكشف) لا العتبة المنخفضة.
+  threshold: 0.5,
+  prefix_padding_ms: 1000,
+  // كانت 450م.ث ثمّ 700م.ث (v607) — والبلاغ تكرّر حتّى بعد 700م.ث: «يردّ بعد
+  // الكلمة الثانية». v-maha-voice-speed لمس فقط SILENCE_HOLD_MS في المسار
+  // الاحتياطيّ الكلاسيكيّ (js/app-08-maha.js) لا هذا الإعداد — الفائق (الوضع
+  // النشِط افتراضيًّا) بقي بلا تغيير وهو غالبًا المسار الفعليّ الذي جرَّبه
+  // المالك. 1100م.ث خطوة أكبر بنفس منطق رفعة v607، بانتظار تجربة صوتية حيّة
+  // فعليّة (لا طريقة لقياس زمن الصمت المناسب إلّا بمكالمة حقيقية) — إن تكرّر
+  // القطع ارفعها أكثر تدريجيًّا، وإن صار الردّ بطيئًا واضحًا اخفضها قليلًا.
+  silence_duration_ms: 1100,
+  // Be explicit so every detected user turn creates a reply.
+  // The client sends one explicit response.create after speech_stopped.
+  // Avoid racing the server's automatic response on mobile.
+  create_response: false,
+};
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -140,6 +175,7 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let undoBill = null; // v-maha-server-bill: يردّ دقيقة الافتتاح إن لم تُفتح الجلسة عند المزوّد
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -155,6 +191,25 @@ module.exports = async (req, res) => {
     const mode = body.mode === 'builder' ? 'builder' : 'assistant';
     const voiceGender = body.voiceGender === 'male' ? 'male' : 'female';
     const isDesktop = body.desktop === true; // v607: يبقى مُستقبَلًا من العميل؛ لم يبقَ فرق في إعدادات الصوت (الجوّال والكمبيوتر سواء)
+    // v-maha-voice-speed (طلب المالك): لا معامل سرعة رقميّ موثَّق في audio.output لواجهة
+    // الفائق (Realtime) — إضافة حقل غير موثَّق قد يرفض الجلسة كليًّا فتنكسر مها بالكامل.
+    // البديل الآمن: تعليمة نصّية صريحة في instructions (تقنية معروفة تُغيّر إيقاع الأداء
+    // الصوتيّ فعليًا). "normal" لا يضيف شيئًا — سلوك الفائق الافتراضيّ يبقى حرفيًا كما كان.
+    const voiceSpeed = ['slow', 'fast', 'xfast'].includes(body.voiceSpeed) ? body.voiceSpeed : 'normal';
+    const VOICE_SPEED_INSTRUCTIONS = {
+      // v-maha-pace: لمسة خفيفة فوق المعامل الحقيقيّ — لا «مزاد» ولا «وقفات» تكسر الإيقاع الطبيعيّ.
+      slow: ' SPEAKING PACE: a little slower and clearer than usual - still natural and flowing, never drawn out.',
+      fast: ' SPEAKING PACE: a little quicker than usual - still natural, every word clear.',
+      xfast: ' SPEAKING PACE: noticeably quicker than usual - still natural, every word clear, never rushed or slurred.',
+    };
+    const voiceSpeedInstruction = VOICE_SPEED_INSTRUCTIONS[voiceSpeed] || '';
+    // v-maha-natural (المالك ١ أكتوبر «كأنه شخص يكلمني» مثل محادثة GPT الصوتيّة): مها تكشف نهاية كلامك بالمعنى
+    // (semantic_vad) والخادم يردّ فورًا، بدل صمت ١١٠٠م.ث ثابت ثمّ طلب من العميل بعد ٣٥٠م.ث. «high» يحدّ انتظار
+    // الجملة الناقصة بأقصر مهلة — v607 أزال semantic_vad لأنّ مهلته الافتراضيّة الأطول بدت «لا تردّ حتّى تتكلّم ثانية».
+    // مفتاح طوارئ بلا تعديل كود: MAHA_TURN=classic يعيد الإعداد السابق حرفيًّا، وlow|medium|high يضبط الانتظار.
+    const mahaTurnEnv = String(process.env.MAHA_TURN || '').trim().toLowerCase();
+    let naturalTurn = mode !== 'builder' && mahaTurnEnv !== 'classic';
+    const naturalEagerness = ['low', 'medium', 'high'].includes(mahaTurnEnv) ? mahaTurnEnv : 'high';
 
     const usage = await checkAndConsume(token, guestId, 'maha-realtime', clientIp(req));
     if (!usage.allowed) {
@@ -166,9 +221,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 💰 نظام النقاط لمها: دقيقة المكالمة = 10 نقاط لغير المالك.
+    // 💰 نظام النقاط لمها: دقيقة المكالمة = COSTS.maha_minute لغير المالك.
     // المسجّل الجديد له دقيقة تجريبية مجانية مرة وحدة، والضيف كذلك
-    // (مربوطة بمعرّف المتصفح). المالك بلا حدود.
+    // (مربوطة بعنوان الشبكة). المالك بلا حدود.
     const pointsLib = require('./points.js');
     const rtUser = pointsLib.verifyPointsToken(token);
     let mahaBudget;
@@ -176,13 +231,40 @@ module.exports = async (req, res) => {
       mahaBudget = { unlimited: true };
     } else if (rtUser) {
       const rec = await pointsLib.readPoints(rtUser);
-      const pts = rec ? rec.points : 0;
-      const trial = !!(rec && !rec.user.mahaTrialUsed);
-      if (pts < pointsLib.COSTS.maha_minute && !trial) {
-        res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.maha_minute, points: pts });
-        return;
+      if (!rec) { res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); return; }
+      const mediaLib = require('./_mediaPlans.js');
+      const cost = pointsLib.COSTS.maha_minute;
+      /* v-maha-server-bill (فحص الاشتراكات ٥ أكتوبر): الخادم كان يتأكّد من الرصيد ولا يخصم شيئًا، والمتصفّح يخصم بعد
+         كلّ ٦٠ ثانية — فكلّ مكالمة أقلّ من دقيقة مجّانيّة للكلّ، والتجربة لا تُعلَّم «مستخدمة» إلّا بعد ٦٠ ثانية (من يغلق
+         عند ٠:٥٩ تبقى تجربته للأبد ولو رصيده صفر). الآن الدقيقة الأولى تُدفع هنا قبل فتح الجلسة: التجربة بحجز ذرّيّ
+         يُعلَّم فورًا، وإلّا خصم دقيقة (رصيد اشتراك مها أوّلًا ثمّ النقاط). والمتصفّح يخصم كلّ دقيقة تبدأ بعدها. */
+      let trial = false;
+      if (!rec.user.mahaTrialUsed) {
+        const trialKey = 'maha:trial:' + encodeURIComponent(String(rtUser).trim().toLowerCase());
+        trial = await require('./kv.js').kvSetIfAbsent(trialKey, '1');
+        if (trial) {
+          rec.user.mahaTrialUsed = true;
+          await require('./auth.js').putUser(rtUser, rec.user);
+          undoBill = async () => {
+            await require('./kv.js').kvDel(trialKey);
+            const u = await require('./auth.js').getUser(rtUser);
+            if (u && !u.deleted) { u.mahaTrialUsed = false; await require('./auth.js').putUser(rtUser, u); }
+          };
+        }
       }
-      mahaBudget = { unlimited: false, points: pts, trial };
+      let pay = null;
+      if (!trial) {
+        pay = await pointsLib.spendPoints(rtUser, cost, 'maha_minute');
+        if (!pay.ok) { res.status(402).json({ error: 'points_insufficient', needed: cost, points: pay.points || 0 }); return; }
+        undoBill = pay.media === 'maha' ? () => mediaLib.refundMahaMinute(rtUser) : (pay.owner ? null : () => pointsLib.refundPoints(rtUser, cost));
+      }
+      // v-maha-plans: دقائق اشتراك مها تُصرف قبل النقاط، وحدّ المكالمة للمشترك وحده.
+      let mahaMin = 0;
+      try { const st = await mediaLib.mediaStatus(rtUser); mahaMin = (st.maha && st.maha.counts.maha_minute) || 0; } catch (e) { mahaMin = 0; }
+      const paidWith = trial ? 'trial' : (pay.media === 'maha' ? 'media' : 'points');
+      mahaBudget = (pay && pay.owner) ? { unlimited: true } // VIP: بلا خصم ولا حدّ كالمالك
+        : { unlimited: false, points: (pay && !pay.media) ? pay.points : rec.points, trial, prepaid: paidWith, cost, mahaMin,
+          capMin: (mahaMin > 0 || paidWith === 'media') ? mediaLib.MAHA_CALL_CAP_MIN : 0 };
     } else {
       const { kvGetJSON, kvPutJSON } = require('./kv.js');
       // The free guest minute was keyed on an id the browser itself generates, so
@@ -267,11 +349,12 @@ module.exports = async (req, res) => {
     const sessionConfig = {
       session: {
         type: 'realtime',
-        model: 'gpt-realtime',
+        model: 'gpt-realtime-2.1',
         instructions: (mode === 'builder'
           ? BUILDER_REALTIME_INSTRUCTIONS
           : (voiceGender === 'male' ? toMalePersona(MAHA_REALTIME_INSTRUCTIONS) : MAHA_REALTIME_INSTRUCTIONS))
-          + timeContext + memoryContext,
+          + timeContext + memoryContext
+          + (mode === 'builder' ? '' : voiceSpeedInstruction),
         audio: {
           output: (mode !== 'builder' && voiceGender === 'male')
             ? { voice: 'cedar' } /* v-maha-power: صوت رجالي أحدث وأطبع من echo */
@@ -282,27 +365,19 @@ module.exports = async (req, res) => {
             // الجوّال far_field ⇒ كبت عدوانيّ يبتر أوّل جملة، خاصّة في الضوضاء.
             // كلّ أجهزتنا مايك قريب (الهاتف باليد · لابتوب المستخدم قريب منه) ⇒ near_field للجميع.
             noise_reduction: { type: 'near_field' },
-            // v-maha-captions: تفريغ كلام المستخدم نصًّا ليصل حدث
-            // input_audio_transcription.completed فتظهر الترجمة الحية على الشاشة.
-            transcription: { model: 'gpt-4o-mini-transcribe' },
+            // v-maha-firstreply: حُذف «transcription» — لا شيء في العميل يستقبل أحداث التفريغ
+            // (input_audio_transcription.*)، فكان كلفة بلا فائدة، و«gpt-live-transcribe» موثَّق لجلسات
+            // التفريغ ولا يدعم server_vad المستعمل هنا (رفض الجلسة = هبوط مها إلى الوضع الأساسيّ الأضعف).
+            // نموذج المكالمة يسمع الصوت نفسه مباشرةً؛ التفريغ لا يغيّر فهمه. إن بُنيت ترجمة حيّة لاحقًا
+            // فاختر نموذجًا موثَّقًا لجلسات المحادثة.
             // v607: الجوّال كان semantic_vad — يقرّر بالمعنى، وينتظر مهلة إن ظنّ الجملة ناقصة
             // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'
               ? { type: 'server_vad', threshold: 0.88, prefix_padding_ms: 300, silence_duration_ms: 800 }
-              : {
-                  type: 'server_vad',
-                  // Preserve quiet opening words and natural pauses in a first turn.
-                  threshold: 0.08,
-                  prefix_padding_ms: 1000,
-                  // كانت 450م.ث — أي توقّف طبيعيّ وسط الجملة كان يقطعها فيصل
-                  // نصف الكلام ويأتي الردّ «مش مضبوط». 700م.ث توازن مجرَّب:
-                  // تسمع الجملة كاملة بزيادة كمون شبه محسوسة فقط.
-                  silence_duration_ms: 700,
-                  // Be explicit so every detected user turn creates a reply.
-                  // The client sends one explicit response.create after speech_stopped.
-                // Avoid racing the server's automatic response on mobile.
-                create_response: false,
-                },
+              : naturalTurn
+              // v-maha-natural: الخادم يبدأ الردّ لحظة انتهاء الجملة، ومقاطعتها تُسكتها فورًا.
+              ? { type: 'semantic_vad', eagerness: naturalEagerness, create_response: true, interrupt_response: true }
+              : MAHA_CLASSIC_TURN,
           },
         },
         tools: [
@@ -318,8 +393,9 @@ module.exports = async (req, res) => {
               properties: {
                 prompt: { type: 'string', description: 'A short, clear, detailed English description of exactly the image to generate. If the user wants any words/text written on the image, do NOT include those words here - describe the visuals only and explicitly say the image must contain no text or letters.' },
                 text_to_write: { type: 'string', description: 'If the user asked for specific words/text (a name, phrase, greeting) to appear ON the image, put that exact text here VERBATIM in the user\'s own language (e.g. Arabic stays Arabic). It will be drawn on the image with a proper clean font. Leave empty if no text is requested.' },
-                font_style: { type: 'string', enum: ['othmani', 'naskh', 'ruqaa', 'kufi', 'diwani', 'modern'], description: 'Arabic font style for the written text. othmani/naskh = classic Quranic-style, ruqaa = handwritten, kufi = geometric, diwani = ornate, modern = clean contemporary (default). When the user asks for text, SUGGEST font choices by voice (e.g. "تبينه بالخط العثماني ولا الرقعة ولا الحديث؟") if they did not specify one.' },
+                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "تبينه بالديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
                 text_color: { type: 'string', description: 'Hex color for the written text, e.g. #ffd700 for gold, #ff0000 red, #ffffff white (default). Ask or suggest a color if the user did not specify.' },
+                text_position: { type: 'string', enum: ['auto', 'top', 'center', 'bottom', 'right-top', 'right-center', 'right-bottom', 'left-top', 'left-center', 'left-bottom'], description: 'Exact placement of the written text. Arabic voice commands map literally: يمين = right-center, يسار فوق = left-top, يمين الوسط = right-center. Default auto.' },
               },
               required: ['prompt'],
             },
@@ -329,15 +405,17 @@ module.exports = async (req, res) => {
             name: 'edit_image',
             description: mode === 'builder'
               ? 'Modify the exact same picture already shown in this project, keeping everything else unchanged. In builder mode, ALWAYS call this (never generate_image) for any image-related request once a picture already exists in this project, no matter what it asks for - even a completely different subject/type/model - since only ONE image is allowed per project. A brand new image is only ever created when the user starts a new project.'
-              : 'Modify the exact same picture just shown, keeping everything else in it unchanged. Use this by DEFAULT whenever a picture already exists in this call and the user asks to add, remove, change, adjust, resize, recolor, or improve ANY detail, object, or element ON TOP OF that picture (e.g. "add a boat", "ضيف مركب", "زيد عليها كذا", "change its color", "make it bigger", "add a hat") - these all mean edit the current image, not start over. Only call generate_image instead if the user clearly asks for a completely unrelated new subject/scene that has nothing to do with the current picture.',
+              : 'Modify the exact same picture just shown, keeping everything else in it unchanged. Use this by DEFAULT whenever a picture already exists in this call and the user asks to add, remove, change, adjust, resize, recolor, or improve ANY NAMED detail, object, or element ON TOP OF that picture (e.g. "add a boat", "ضيف مركب", "change its color", "add a hat"). If the target is vague ("احذف هذا الشي", "remove this") and the user did not name it, DO NOT call the tool or guess: ask what exactly to remove. Only call generate_image instead if the user clearly asks for a completely unrelated new subject/scene that has nothing to do with the current picture.',
             parameters: {
               type: 'object',
               properties: {
                 instruction: { type: 'string', description: 'A short, clear English instruction describing exactly what to change about the existing image. If the user wants words/text written on it, do NOT include those words here - put them in text_to_write instead and say the image itself must contain no generated text or letters.' },
-                rewrite_text_only: { type: 'boolean', description: 'Set true when the user ONLY wants to change the written text, its font, or its color on the current image (e.g. "غيري اللون أحمر", "خليه بالخط العثماني") with no change to the picture itself. This re-writes the text instantly without regenerating the image. Always pass text_to_write (the full text), font_style and text_color again with the new values.' },
+                rewrite_text_only: { type: 'boolean', description: 'Set true when the user ONLY wants to change the written text, its font, color, or position on the current image (e.g. "خلي الكتابة يمين", "غيري اللون أحمر", "خليه بالخط الديواني") with no change to the picture itself. This re-writes the text instantly without regenerating the image. Always pass text_to_write (the full text), font_style, text_color and text_position again with the new values.' },
+                remove_text_only: { type: 'boolean', description: 'Set true only when the user explicitly asks to delete/remove the written text/words from the current image (e.g. "احذف الكتابة", "امسح هذا النص"). This restores the clean image instantly. Never set this for vague "احذف هذا الشي" — ask what thing first.' },
                 text_to_write: { type: 'string', description: 'If the user asked for specific words/text (a name, phrase, greeting) to appear ON the image, put that exact text here VERBATIM in the user\'s own language (e.g. Arabic stays Arabic). It will be drawn on the image with a proper clean font. Leave empty if no text is requested.' },
-                font_style: { type: 'string', enum: ['othmani', 'naskh', 'ruqaa', 'kufi', 'diwani', 'modern'], description: 'Arabic font style for the written text. othmani/naskh = classic Quranic-style, ruqaa = handwritten, kufi = geometric, diwani = ornate, modern = clean contemporary (default). When the user asks for text, SUGGEST font choices by voice (e.g. "تبينه بالخط العثماني ولا الرقعة ولا الحديث؟") if they did not specify one.' },
+                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "تبينه بالديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
                 text_color: { type: 'string', description: 'Hex color for the written text, e.g. #ffd700 for gold, #ff0000 red, #ffffff white (default). Ask or suggest a color if the user did not specify.' },
+                text_position: { type: 'string', enum: ['auto', 'top', 'center', 'bottom', 'right-top', 'right-center', 'right-bottom', 'left-top', 'left-center', 'left-bottom'], description: 'Exact placement of the full written text. Map the user\'s spoken direction literally.' },
               },
               required: ['instruction'],
             },
@@ -454,7 +532,13 @@ module.exports = async (req, res) => {
 
     // v606: نطق مها أحيوى 5% (0.25-1.5 موثّق). لو رفضتها الواجهة
     // فالخطّاف أدناه يحذفها ويعيد الطلب — صفر خطر على المكالمة.
-    if (mode !== 'builder') sessionConfig.session.audio.output.speed = 1.05;
+    // v-reply-voice-speed (المالك ٢٢ سبتمبر «بطيء وسريع… أريدهم لمها»): درجة الإعدادات صارت معامل السرعة الحقيقيّ
+    // هنا أيضًا (الحقل موثّق: audio.output.speed من 0.25 إلى 1.5) لا تعليمة النبرة وحدها. التعليمة تبقى (إيقاع
+    // ووقفات)، لذلك المعاملات أهدأ من خريطة tts.js كي لا يتضاعف الأثر فيصعب الفهم.
+    // v-maha-pace (المالك: «يا بطيئة ما تفهم عليها ولا سريعة ما تفهم عليها، مش نظاميّة»): المعامل كان يتضاعف مع تعليمة
+    // نبرة متطرّفة («مثل الدلّال في المزاد»). الآن مدى هادئ موحّد مع tts.js، والعاديّ 1.0 كالمحادثة الصوتيّة المعتادة.
+    const REALTIME_SPEED = { slow: 0.9, normal: 1.0, fast: 1.1, xfast: 1.2 };
+    if (mode !== 'builder') sessionConfig.session.audio.output.speed = REALTIME_SPEED[voiceSpeed] || 1.0;
 
     const postSession = () => fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
@@ -467,12 +551,22 @@ module.exports = async (req, res) => {
 
     let upstream = await postSession();
     let rawText = await upstream.text();
+    // v-maha-natural: إن رفضت الواجهة كشف المعنى فالإعداد السابق حرفيًّا — المكالمة لا تهبط للوضع الأساسيّ بسببه.
+    // يُجرَّب أوّلًا متى سمّى الخطأ الحقل (فتبقى السرعة)، وأخيرًا متى رُفض الطلب بلا تسمية.
+    const useClassicTurn = async () => {
+      naturalTurn = false;
+      sessionConfig.session.audio.input.turn_detection = MAHA_CLASSIC_TURN;
+      upstream = await postSession();
+      rawText = await upstream.text();
+    };
+    if (!upstream.ok && naturalTurn && /turn_detection|semantic|eagerness|interrupt_response|create_response/i.test(rawText)) await useClassicTurn();
     // بعض إصدارات واجهة realtime لا تقبل حقل السرعة — أعِد المحاولة بدونه
     if (!upstream.ok && sessionConfig.session.audio.output.speed != null) {
       delete sessionConfig.session.audio.output.speed;
       upstream = await postSession();
       rawText = await upstream.text();
     }
+    if (!upstream.ok && naturalTurn && upstream.status === 400) await useClassicTurn();
     // وكذلك حقل التفريغ النصي (v-maha-captions): رفضُه لا يُسقط المكالمة —
     // تكمل بلا ترجمة حية لكلام المستخدم (كلمات مها تصل من مسار آخر أصلًا).
     if (!upstream.ok && sessionConfig.session.audio.input.transcription) {
@@ -480,8 +574,15 @@ module.exports = async (req, res) => {
       upstream = await postSession();
       rawText = await upstream.text();
     }
+    // v-maha-server-bill: فشل فتح الجلسة عند المزوّد يردّ دقيقة الافتتاح (أو يعيد التجربة) — لا خصم بلا مكالمة.
+    const refundOpening = async () => {
+      if (!undoBill) return;
+      const u = undoBill; undoBill = null;
+      try { await u(); } catch (e) { console.error('[realtime-session] opening refund failed:', e && e.message); }
+    };
     if (!upstream.ok) {
       console.error('[realtime-session] OpenAI error:', upstream.status, rawText);
+      await refundOpening();
       res.status(upstream.status).setHeader('Content-Type', 'application/json').send(rawText);
       return;
     }
@@ -489,12 +590,16 @@ module.exports = async (req, res) => {
     let parsed;
     try { parsed = JSON.parse(rawText); } catch (e) { parsed = null; }
     if (!parsed || !parsed.value) {
+      await refundOpening();
       res.status(500).json({ error: 'Unexpected response from OpenAI Realtime API' });
       return;
     }
 
-    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime', mahaBudget });
+    // v-cost-meter: دقيقة التجربة مجّانيّة للمستخدم لكنّها تكلّفنا — تُحسب في عدّاد الشهر (المدفوعة حسبها الخصم نفسه).
+    if (rtUser && mahaBudget && mahaBudget.prepaid === 'trial') { try { await require('./cost-meter.js').meterOp(rtUser, 'maha_minute'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
+    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic' });
   } catch (e) {
+    if (undoBill) { try { await undoBill(); } catch (e2) { console.error('[realtime-session] opening refund failed:', e2 && e2.message); } }
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };

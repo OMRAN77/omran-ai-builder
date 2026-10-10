@@ -59,6 +59,28 @@ const RESERVED_USERNAMES = new Set([
   'omran', 'admin', 'administrator', 'root', 'owner', 'support', 'system', 'api',
 ]);
 
+/* v-name-reuse (فحص ٨ أكتوبر): الرمز يحمل الاسم وحده، فالاسم هويّة الحساب ولا يُعطى لشخص ثانٍ أبدًا. السجلّ المحذوف
+   (شاهد تغيير الاسم {deleted, movedTo} أو حذف المالك) يبقى حاجزًا: كان signup وchangeUsername يكتبان فوقه، فيصير رمز صاحب
+   الاسم القديم رمزًا لحساب المسجِّل الجديد، ويرث المسجِّل عدّاد نقاط المحذوف، وينقطع movedTo الذي يتبعه الشحن.
+   الاستثناء الوحيد: صاحب الحساب يرجع إلى اسم كان له — والدليل سلسلة الشواهد نفسها (movedTo ← … ← حسابه)، لا prevUsernames
+   (غائب عن تغييرات ما قبل ٥ أكتوبر، ومقصوص إلى عشرة، ولا يقول من حمل الاسم أخيرًا). وحساب Google مفتاحه g_<البريد>
+   (الكولباك)، فهذه المساحة لا تُختار اسمًا — وإلّا سجّلها غيرك قبلك بكلمة مرور يعرفها، ودخولك بزرّ Google يفتح حسابه. */
+function isGoogleKey(key) { return /^g_.*@/.test(String(key || '')); }
+
+// سجلّ محذوف يعود لهذا الحساب فقط إن قادت شواهده (كلّها {deleted, movedTo}) إليه. حذف المالك (بلا movedTo) أو سلسلة
+// تنتهي عند حساب حيّ آخر = ليس لك. سجلّ مقفل في الطريق = ليس لك أيضًا.
+async function tombstoneLeadsTo(rec, targetKey) {
+  try {
+    for (let i = 0; i < 32; i++) {
+      if (!rec || !rec.deleted || !rec.movedTo) return false;
+      const next = String(rec.movedTo).trim().toLowerCase();
+      if (next === targetKey) return true;
+      rec = await getUser(next, 1);
+    }
+  } catch (e) { logError('auth:tombstone-chain', e, { to: String(targetKey).slice(0, 40) }); }
+  return false;
+}
+
 // الحدّ الأدنى لكلمة المرور. كان 4 — رقم منخفض بلا مبرّر حتّى مع قفل المحاولات.
 // ثابت واحد بدل ثلاثة أرقام متفرّقة في الرسائل والشروط.
 const MIN_PASSWORD = 8;
@@ -129,6 +151,33 @@ function verifyPassword(password, salt, hash) {
   const b = Buffer.from(String(hash || ''));
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
+}
+
+/* v-rename-move (فحص الاشتراكات ٥ أكتوبر): السجلّ كان ينتقل والعدّادات الحيّة تبقى على الاسم القديم — فالرجوع للاسم
+   القديم يعيد الرصيد كاملًا بعد صرفه (٩٨٠ ← صرف ٨٢٥ ← رجوع ← ٩٨٠، أُثبت بهذا الكود)، والاسم الجديد يبدأ بفيديوهات باقة
+   وحصص يوم جديدة، ورصيد اشتراك الوسائط يختفي عنه. الآن كلّ عدّاد يتبع الحساب ولا يبقى منه شيء تحت الاسم القديم،
+   وعدّاد يتيم تحت الاسم الجديد (من صاحب سابق) يُمحى بدل أن يُبعث. */
+async function moveLiveCounters(oldKey, newKey, user) {
+  const { kvGetRaw, kvSetRaw, kvDel } = require('./kv.js');
+  const n = (u) => encodeURIComponent(String(u).trim().toLowerCase());
+  if (n(oldKey) === n(newKey)) return; // النقل إلى المفتاح نفسه = نسخ ثمّ حذف — يمحو الرصيد
+  const move = async (from, to, ttlSec) => {
+    const v = await kvGetRaw(from);
+    if (v !== null && v !== undefined && String(v) !== '') await kvSetRaw(to, v, ttlSec);
+    else await kvDel(to);
+    await kvDel(from);
+  };
+  await move('points:' + n(oldKey), 'points:' + n(newKey));
+  for (const kind of ['image', 'video', 'maha', 'mix']) { // رصيد اشتراك الوسائط بما بقي من نافذته (٣٥ يومًا) — mix: «صور وفيديو» (v-media-merge، MEDIA_KINDS)
+    const m = user.media && user.media[kind];
+    const left = m ? Math.floor((Number(m.at || 0) + 35 * 86400000 - Date.now()) / 1000) : 0;
+    if (left > 0) await move('media:' + kind + ':' + n(oldKey), 'media:' + kind + ':' + n(newKey), left);
+    else await kvDel('media:' + kind + ':' + n(newKey));
+  }
+  const at = Math.floor(Number(user.planUpdatedAt) || 0); // فيديوهات الباقة للفترة الحاليّة (_planVideos.js)
+  if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
+  await require('./_usage.js').moveTodayTallies(oldKey, newKey);
+  await require('./cost-meter.js').moveMonthCosts(oldKey, newKey);
 }
 
 function genRecoveryCode() {
@@ -225,11 +274,65 @@ function isValidEmail(email) {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
+// v-simple-login: خانة الدخول تقبل اسم المستخدم أو الإيميل. الاسم أوّلًا (الأسماء بلا قيد أحرف،
+// فقد يحمل اسمٌ قديم «@»)، ثمّ فهرس الإيميل الذي يكتبه التسجيل وجوجل والدخول بالرمز.
+async function resolveLoginUser(identifier) {
+  const key = String(identifier || '').trim().toLowerCase();
+  const direct = key ? await getUser(key) : null;
+  if ((direct && !direct.deleted) || !isValidEmail(key)) return { key, user: direct };
+  try {
+    const idx = await kvGetJSON('db/email-index/' + key);
+    const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
+    if (uname) {
+      const user = await getUser(uname);
+      if (user && !user.deleted) return { key: uname, user };
+    }
+  } catch (e) { logError('auth:login-email-index', e); }
+  return { key, user: direct };
+}
+
+/* v-google-login-help: حساب «المتابعة عبر Google» مفتاحه g_<البريد> (أو حساب دُمج فيه — db/alias كما في الكولباك)، بلا
+   فهرس بريد ولا كلمة مرور يعرفها صاحبه. محاولة واحدة لا أربع: الغياب هنا هو الحالة الغالبة لا تأخّر تخزين. */
+async function googleAccountFor(emailKey) {
+  try {
+    const gKey = 'g_' + emailKey;
+    const alias = await kvGetJSON('db/alias/' + gKey);
+    const key = (alias && alias.primary) ? String(alias.primary) : gKey;
+    const user = await getUser(key, 1);
+    if (user && !user.deleted) return { key, user };
+  } catch (e) { logError('auth:google-account', e); }
+  return null;
+}
+
 // يمنع حقن HTML عبر اسم المستخدم في جسم الرسالة.
 function escapeHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* v-account-email (أمر المالك ٤ أكتوبر، بعد فحص #792): مالك البريد الحيّ من الفهرس — مدخل يشير إلى حساب محذوف أو غيّر
+   بريده لا يُحسب. يمنع حسابين ببريد واحد (كان الاسترجاع بالبريد يذهب للأوّل). */
+async function emailOwner(emailKey) {
+  try {
+    const idx = await kvGetJSON('db/email-index/' + emailKey);
+    if (!idx || !idx.username) return null;
+    const user = await getUser(String(idx.username).trim().toLowerCase());
+    if (user && !user.deleted && user.email === emailKey) return { key: String(idx.username).trim().toLowerCase(), user };
+  } catch (e) { logError('auth:email-owner', e); }
+  return null;
+}
+/* v-account-email: نافذة محاولات بسيطة في KV — يرجع دقائق الانتظار، أو ٠ إن سُمح. */
+async function rateWait(rateKey, limit, windowMs) {
+  const now = Date.now();
+  let rate = null;
+  try { rate = await kvGetJSON(rateKey); } catch (e) { logError('auth:rate-read', e); rate = null; }
+  if (rate && rate.windowStart && (now - rate.windowStart) < windowMs) {
+    if ((rate.count || 0) >= limit) return Math.ceil((rate.windowStart + windowMs - now) / 60000);
+    rate = { windowStart: rate.windowStart, count: (rate.count || 0) + 1 };
+  } else rate = { windowStart: now, count: 1 };
+  try { await kvPutJSON(rateKey, rate); } catch (e) { logError('auth:rate-write', e); }
+  return 0;
 }
 
 async function sendMail(toEmail, subject, html) {
@@ -264,6 +367,27 @@ async function sendResetEmail(toEmail, username, resetToken, isEn) {
         <h2>إعادة تعيين كلمة المرور</h2>
         <p>مرحبًا ${name}، اضغط الزر بالأسفل لتعيين كلمة مرور جديدة. الرابط صالح لمدة 30 دقيقة.</p>
         <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">إعادة تعيين كلمة المرور</a></p>
+        <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
+       </div>`;
+  return sendMail(toEmail, subject, html);
+}
+
+// v-google-login-help: بريد «نسيت كلمة المرور» لحساب أُنشئ بزرّ Google — لا رابط إعادة (لا كلمة مرور له أصلًا) بل الطريق الصحيح للدخول.
+async function sendGoogleHintEmail(toEmail, username, isEn) {
+  const name = escapeHtml(username);
+  const link = siteUrl() + '/';
+  const subject = isEn ? 'How to sign in — Omran AI Builder' : 'طريقة دخولك — Omran AI Builder';
+  const html = isEn
+    ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+        <h2>Your account signs in with Google</h2>
+        <p>Hi ${name}, your account was created with Google, so it has no password of its own. Open the app, tap <b>Continue with Google</b> and choose this email.</p>
+        <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">Open the app</a></p>
+        <p style="color:#888;font-size:13px">If you didn't request this, ignore this email.</p>
+       </div>`
+    : `<div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto">
+        <h2>حسابك يدخل بزرّ Google</h2>
+        <p>مرحبًا ${name}، حسابك أُنشئ بحساب Google فلا كلمة مرور خاصّة له. افتح التطبيق واضغط <b>المتابعة عبر Google</b> واختر هذا البريد.</p>
+        <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">افتح التطبيق</a></p>
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
        </div>`;
   return sendMail(toEmail, subject, html);
@@ -346,17 +470,22 @@ module.exports = async (req, res) => {
         return;
       }
       const key = String(username).trim().toLowerCase();
-      if (RESERVED_USERNAMES.has(key)) {
+      if (RESERVED_USERNAMES.has(key) || isGoogleKey(key)) {
         res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
         return;
       }
       const existing = await getUser(key);
-      if (existing && !existing.deleted) {
+      if (existing) { // v-name-reuse: والمحذوف أيضًا — الاسم لا يُعاد لغير صاحبه
         res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
         return;
       }
       if (email && !isValidEmail(email)) {
         res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
+        return;
+      }
+      // v-account-email: الإيميل كالاسم — حساب واحد لكلّ بريد، وإلّا ضاع الاسترجاع بالبريد بين حسابين.
+      if (email && await emailOwner(String(email).trim().toLowerCase())) {
+        res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.') });
         return;
       }
       const { salt, hash } = hashPassword(password);
@@ -380,7 +509,8 @@ module.exports = async (req, res) => {
       if (user.email) {
         try {
           const existingIdx = await kvGetJSON('db/email-index/' + user.email);
-          if (!existingIdx || !existingIdx.username) {
+          // v-account-email: مدخل لحساب محذوف أو غيّر بريده لا يحجز البريد — لا مالك حيّ (فُحص قبل الإنشاء) = يُكتب للجديد.
+          if (!existingIdx || !existingIdx.username || !(await emailOwner(user.email))) {
             await kvPutJSON('db/email-index/' + user.email, { username: key, at: Date.now() });
           }
         } catch (e) { logError('auth:email-index', e); }
@@ -410,20 +540,31 @@ module.exports = async (req, res) => {
         res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
         return;
       }
-      const clash = await getUser(newKey);
-      if (clash && !clash.deleted) {
-        res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
-        return;
-      }
+      // v-name-reuse: رمز اسم ميّت (غيّره صاحبه أو حذفه المالك) لا ينقل شيئًا.
       const user = await getUser(oldKey);
-      if (!user) {
+      if (!user || user.deleted) {
         res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
+      const clash = await getUser(newKey);
+      const ownPrev = Boolean(clash && await tombstoneLeadsTo(clash, oldKey));
+      // مفتاح Google لصاحبه وحده: حسابه (googleAuth) ببريده نفسه، راجعًا إلى مفتاحه بسلسلة شواهده.
+      const ownGoogleKey = ownPrev && user.googleAuth === true && newKey === 'g_' + String(user.email || '').trim().toLowerCase();
+      if (isGoogleKey(newKey) && !ownGoogleKey) {
+        res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
+        return;
+      }
+      if (clash && !ownPrev) {
+        res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
+        return;
+      }
       const movedUser = Object.assign({}, user, { username: String(newUsername).trim() });
+      // v-rename-move: الأسماء السابقة — اشتراك أو جلسة دفع بدأت بالاسم القديم تُعرف لصاحبها بعد التغيير.
+      movedUser.prevUsernames = (Array.isArray(user.prevUsernames) ? user.prevUsernames : []).filter((x) => x !== newKey).concat([oldKey]).slice(-10);
       await putUser(newKey, movedUser);
       // Free up the old key so it can't be logged into or re-claimed while pointing here.
       await putUser(oldKey, { deleted: true, movedTo: newKey });
+      try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
       res.status(200).json({ ok: true, token: makeToken(newKey), username: movedUser.username, avatar: movedUser.avatar || null });
       return;
     }
@@ -506,7 +647,7 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
-      res.status(200).json({ ok: true, email: user.email || null });
+      res.status(200).json({ ok: true, email: user.email || null, phone: user.phone || null }); // v-phone-link
       return;
     }
 
@@ -548,14 +689,52 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'forgotPassword') {
-      if (!username) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم', 'Enter your username') });
+      /* v-account-email: من كتب بريدًا يأخذ ردًّا واحدًا وُجد الحساب أم لا — كان «الحساب غير موجود» يكشف أيّ بريد مسجَّل —
+         وثلاث محاولات لكلّ بريد في ربع ساعة. الاسم يبقى كما كان (الاسم يُكشف أصلًا عند التسجيل «مستخدم من قبل»). */
+      const byEmail = email || (username && isValidEmail(String(username).trim()) ? username : null);
+      if (byEmail) {
+        const emailKey = String(byEmail).trim().toLowerCase();
+        if (!isValidEmail(emailKey)) {
+          res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
+          return;
+        }
+        if (!RESEND_API_KEY) {
+          res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin') });
+          return;
+        }
+        const wait = await rateWait('db/forgot-rate/' + emailKey, 3, 15 * 60 * 1000);
+        if (wait) {
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') });
+          return;
+        }
+        const found = await resolveLoginUser(emailKey);
+        const owner = (found.user && !found.user.deleted && found.user.email) ? found : null;
+        if (owner) {
+          const rt = crypto.randomBytes(24).toString('hex');
+          owner.user.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');
+          owner.user.resetTokenExpiry = Date.now() + 1000 * 60 * 30;
+          await putUser(owner.key, owner.user);
+          const sent = await sendResetEmail(owner.user.email, owner.user.username, rt, isEn);
+          if (!sent) logError('auth:forgot-send', new Error('reset mail not sent'));
+        } else {
+          // v-google-login-help: حساب «المتابعة عبر Google» لا يجده البحث بالبريد ولا كلمة مرور له يعرفها صاحبه — كان يقرأ
+          // «سيصلك رابط» ولا يصله شيء. الآن يصل بريده نفسه إرشاد «ادخل بزرّ Google»؛ الردّ على الشاشة واحد (v-account-email).
+          const g = await googleAccountFor(emailKey);
+          if (g) {
+            const sent = await sendGoogleHintEmail(emailKey, g.user.username, isEn);
+            if (!sent) logError('auth:forgot-google-send', new Error('google hint mail not sent'));
+          }
+        }
+        res.status(200).json({ ok: true, message: m('إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.', 'If this email is linked to an account, a reset link will reach you within minutes.') });
         return;
       }
-      const key = String(username).trim().toLowerCase();
-      const user = await getUser(key);
+      if (!username) {
+        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل', 'Enter your username or email') });
+        return;
+      }
+      const { key, user } = await resolveLoginUser(username);
       if (!user || user.deleted) {
-        res.status(404).json({ error: m('اسم المستخدم غير موجود', 'Username not found') });
+        res.status(404).json({ error: m('الحساب غير موجود', 'Account not found') });
         return;
       }
       if (!user.email) {
@@ -601,11 +780,10 @@ module.exports = async (req, res) => {
 
     if (action === 'login') {
       if (!username || !password) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم وكلمة المرور', 'Enter your username and password') });
+        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل وكلمة المرور', 'Enter your username or email and password') });
         return;
       }
-      const key = String(username).trim().toLowerCase();
-      const user = await getUser(key);
+      const { key, user } = await resolveLoginUser(username);
       // Brute-force protection: lock the account for 15 minutes after 6
       // consecutive failed attempts. Lockout resets on any successful login.
       const LOCK_AFTER = 6;
@@ -624,7 +802,7 @@ module.exports = async (req, res) => {
           });
           try { await putUser(key, updated); } catch (e) { logError('auth:lock-write', e); }
         }
-        res.status(401).json({ error: m('اسم المستخدم أو كلمة المرور غير صحيحة', 'Incorrect username or password') });
+        res.status(401).json({ error: m('اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة', 'Incorrect username, email or password') });
         return;
       }
       if (user.banned) {
@@ -668,6 +846,33 @@ module.exports = async (req, res) => {
       // 🔄 جلسة منزلقة: توكن جديد بعمر كامل مع كل تحقق ناجح — المستخدم
       // النشط لا يُطرد أبدًا بانتهاء صلاحية الثلاثين يومًا الثابتة.
       res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
+      return;
+    }
+
+    /* v-phone-link (أمر المالك ٤ أكتوبر «ربط الهاتف بالواتساب أو تيليجرام، اللي يرسل بالمجان»): رمز يعيش ١٠ دقائق،
+       والمستخدم يرسله بنفسه (واتساب) أو يشارك رقمه في البوت (تيليجرام) — لا رسالة مدفوعة. الربط لحساب مسجَّل،
+       والاسترجاع لمن نسي؛ والحالة لصاحب الرمز وحده (الرمز سرّه). حدود: ٥ رموز لكلّ حساب أو عنوان في ربع ساعة. */
+    if (action === 'phone-link-start' || action === 'phone-recover-start' || action === 'phone-link-status') {
+      const pl = require('./phone-link.js');
+      if (action === 'phone-link-status') {
+        res.status(200).json(Object.assign({ ok: true }, await pl.status(body.code)));
+        return;
+      }
+      const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'telegram';
+      let me = null;
+      if (action === 'phone-link-start') {
+        me = verifyToken(token);
+        if (!me) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
+      }
+      const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
+      const wait = await rateWait('db/phone-start-rate/' + (me ? 'u/' + me : 'ip/' + (ip || 'none')), 5, 15 * 60 * 1000);
+      if (wait) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') }); return; }
+      const r = await pl.start({ purpose: me ? 'link' : 'recover', channel, username: me });
+      if (r.error === 'channel_unavailable') {
+        res.status(503).json({ error: channel === 'whatsapp' ? m('الربط عبر واتساب غير مهيّأ بعد — جرّب تيليجرام', 'WhatsApp linking is not set up yet — try Telegram') : m('الربط عبر تيليجرام غير مهيّأ', 'Telegram linking is not set up') });
+        return;
+      }
+      res.status(200).json({ ok: true, code: r.code, link: r.link, expiresIn: r.expiresIn, channel: r.channel });
       return;
     }
 
@@ -773,7 +978,7 @@ module.exports = async (req, res) => {
           candidateKey = (prefix + '_' + suffix).slice(0, 40);
           if (RESERVED_USERNAMES.has(candidateKey)) { candidateKey = ''; continue; }
           const clash = await getUser(candidateKey);
-          if (!clash || clash.deleted) break;
+          if (!clash) break; // v-name-reuse: المحذوف ليس حرًّا
           candidateKey = '';
         }
         if (!candidateKey) candidateKey = 'user_' + crypto.randomBytes(6).toString('hex');

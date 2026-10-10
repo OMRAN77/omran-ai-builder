@@ -2,10 +2,19 @@
 // نمط مطابق لـ img-share.js و pdf-share.js: Redis تحت db/file/<id> بعمر ٧ أيام.
 const crypto = require('crypto');
 const { kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+const KV = require('./kv.js');
+const { setIfAbsentWithRoom } = require('./media-purge.js'); // v-media-autopurge: القاعدة ممتلئة → تنظيف المشاركات القديمة ثمّ إعادة
+const { gateShare, refundShare, uploadPlan } = require('./share-gate.js'); // v-share-guard: الرفع برمز جلسة وسقف يوميّ — التنزيل العامّ (GET) بلا رمز كما كان
 
 const MAX_B64 = 5 * 1024 * 1024; // ≈4MB ملف فعلي
 const TTL_SEC = 60 * 60 * 24 * 7;
+const DAILY_UPLOADS = 10; // v-share-guard: روابط ملفّات يوميًّا لكلّ حساب
 const KEY = (id) => 'db/file/' + id;
+/* v-share-guard: /f/<id> يُقدَّم من نطاق التطبيق نفسه (حيث رمز الجلسة في التخزين) — نوع يُنفّذه المتصفّح
+   (HTML/XHTML/SVG/XML/JS) لا يُرسَل بنوعه أبدًا، بل application/octet-stream مع attachment القائم. يُطبَّق عند
+   الحفظ وعند التقديم معًا، فيغطّي ما خُزِّن قبل الإصلاح طوال أيّامه السبعة. */
+const ACTIVE_MIME = /^(?:text\/html|[a-z0-9.+-]+\/(?:[a-z0-9.+-]+\+)?xml|[a-z0-9.+-]+\/(?:x-)?(?:java|ecma|vb)script)\s*(?:;|$)/i;
+const safeMime = (m) => (ACTIVE_MIME.test(String(m || '').trim()) ? 'application/octet-stream' : m);
 
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
@@ -52,7 +61,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Type', safeMime(mime));
     res.setHeader('Content-Length', String(buf.length));
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
     res.setHeader('Accept-Ranges', 'bytes');
@@ -73,22 +82,32 @@ module.exports = async (req, res) => {
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
 
-    const mime = String(body.mime || 'application/octet-stream');
+    /* v-reply-export: النوع يُخزَّن بصيغة mime:name:data ويُرسَل ترويسةً — نوع/نوع فرعيّ مع charset
+       اختياريّ فقط؛ غيره (نقطتان، أسطر، معاملات أخرى) يصير application/octet-stream. */
+    const rawMime = String(body.mime || '').trim();
+    const mime = safeMime(/^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+(;\s*charset=[A-Za-z0-9_-]+)?$/.test(rawMime) ? rawMime : 'application/octet-stream');
+    const plan = uploadPlan(body, 'share-file', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
+    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     const rawName = String(body.name || 'file');
     const name = rawName.replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || 'file';
     const id = crypto.randomBytes(6).toString('hex');
 
     const CHUNK = 700 * 1024;
     let ok;
-    if (data.length <= CHUNK) {
-      ok = await kvSetIfAbsent(KEY(id), mime + ':' + name + ':' + data, TTL_SEC);
-    } else {
-      const n = Math.ceil(data.length / CHUNK);
-      ok = true;
-      for (let i = 0; i < n && ok; i++) ok = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
-      if (ok) ok = await kvSetIfAbsent(KEY(id), 'chunks:' + n + ':' + mime + ':' + name, TTL_SEC);
+    try {
+      if (data.length <= CHUNK) {
+        ok = await setIfAbsentWithRoom(KV, KEY(id), mime + ':' + name + ':' + data, plan.ttlSec);
+      } else {
+        const n = Math.ceil(data.length / CHUNK);
+        ok = true;
+        for (let i = 0; i < n && ok; i++) ok = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), plan.ttlSec);
+        if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + mime + ':' + name, plan.ttlSec);
+      }
+    } catch (e) {
+      console.error('[file-share] store failed:', e && e.message); // القاعدة ممتلئة رغم التنظيف أو عطل — يُردّ كـstore_failed
+      ok = false;
     }
-    if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
+    if (!ok) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
     res.status(200).json({ id, url: '/f/' + id, ttlDays: 7 });
     return;
   }
