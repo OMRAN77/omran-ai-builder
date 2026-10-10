@@ -624,6 +624,15 @@ document.addEventListener('click', closeMsgMoreMenu);
 // ✨ v363: قدرات التطبيق داخل المحادثة نفسها — أيقونة سريعة تحت كل رد
 // + ملاحظة تلقائية تقترح الميزة المناسبة. الأزرار القديمة في ⋮ تبقى كما هي؛
 // هذا باب إضافي (المكانين) عشان المستخدم يختار اللي يريحه.
+/* v-tools-pause (المالك ١٠ أكتوبر: «اخفاء محلل المصاريف والسيرة الذاتية»، ثمّ «التلفزيون والاقتراحات»): أدوات مخفيّة مؤقّتًا —
+   لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
+   الإرجاع = حذف المعرّف من هذه القائمة. */
+var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* بطاقة «اقتراحات» في الصفحة الرئيسيّة (هواوي) تتبع زرّها المخفيّ */
+if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
+  try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }
+  catch(e){ __swallow(e, 'ui:paused-hw-card'); }
+}
 var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
     kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
@@ -633,7 +642,7 @@ var APP_CAPABILITIES = [
     kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
   { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
     kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
-];
+].filter(function(c){ return OMRAN_PAUSED_TOOLS.indexOf(c.id) < 0; });
 // ميزة الشخصية الكرتونية الناطقة = من الدردشة (صورة + «سوِّ منها شخصية تتكلم»)
 function startTalkingCharFlow(){
   try{
@@ -3342,6 +3351,9 @@ const SETTINGS_NAV_GROUPS = [
   ['setGrpAppearance', ['themeSection', 'bgImgSection', 'fontFamilySection', 'fontSizeSection', 'langSection']],
   ['setGrpGeneral', ['apiKeysSection', 'aboutSection']], // v-news-off: «التنبيهات» أُزيل مع الأخبار
 ];
+// v-apikeys-owner (أمر المالك): صفّ «مفاتيح API لمزوّدي الخدمة» للمالك وحده — يُخفى من قائمة الإعدادات
+// لغير المالك ولا تُفتح صفحته مباشرةً (مثل «صفحة المالك»). المفاتيح يديرها المالك لا المستخدمون.
+const SETTINGS_OWNER_ONLY = ['apiKeysSection'];
 const SETTINGS_PLAN_LABEL = { basic: 'Plus', pro: 'Pro', max: 'Max', owner: 'VIP', vip: 'VIP' };
 function settingsTr(k){ try{ return (typeof t === 'function' && t(k)) || ''; }catch(e){ return ''; } }
 function settingsLoggedIn(){ try{ return !!(typeof authGet === 'function' && authGet('aiapp_auth_token')); }catch(e){ return false; } }
@@ -3394,7 +3406,7 @@ function renderSettingsNavList(){
   const plan = String(window.__omranPlan || '').toLowerCase();
   const planText = owner ? 'VIP' : (SETTINGS_PLAN_LABEL[plan] || settingsTr('setPlanFree'));
   SETTINGS_NAV_GROUPS.forEach(([titleKey, ids]) => {
-    const rows = ids.filter(has);
+    const rows = ids.filter(sid => has(sid) && (owner || SETTINGS_OWNER_ONLY.indexOf(sid) === -1)); // v-apikeys-owner: مفاتيح المزوّدين للمالك وحده
     if(!rows.length) return;
     const title = document.createElement('div');
     title.className = 'settingsNavGroupTitle';
@@ -3448,6 +3460,7 @@ function showSettingsHome(){
 window.showSettingsHome = showSettingsHome;
 function showSettingsPage(sid){
   if(sid === 'ownerSection' && !settingsOwnerUi()){ showSettingsHome(); return; }
+  if(SETTINGS_OWNER_ONLY.indexOf(sid) !== -1 && !settingsOwnerUi()){ showSettingsHome(); return; } // v-apikeys-owner
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');
   const pageTitleEl = document.getElementById('settingsPageTitle');

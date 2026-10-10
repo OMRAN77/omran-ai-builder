@@ -550,6 +550,7 @@ module.exports = async (req, res) => {
     const modelLabel = (id) => { for (const k of Object.keys(AGENT_MODELS)) if (AGENT_MODELS[k] === id) return k; return String(id || ''); };
     let modelAnnounced = false;
     let steps = 0;
+    let ownerCarried = false; // v-owner-carry
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
     // الحقيقية تحتاج عشرات الجولات، وكان الوكيل يتوقف في منتصف عمله فيبدو
@@ -909,6 +910,18 @@ module.exports = async (req, res) => {
         continue;
       }
 
+      /* v-owner-carry: كما في المحادثة — خطّة بلا تنفيذ للمالك تُعاد للحلقة مرّة واحدة. */
+      if (isOwner(runUser) && !ownerCarried && steps < MAX_STEPS && Date.now() - taskStart < MAX_TASK_MS - 45000) {
+        const oc = require('./owner-carry.js');
+        const said = contentBlocks.filter(Boolean).map((cb) => cb.text || '').join('');
+        if (oc.stalledPlan(said, { usedTools: steps > 1, pushed: (run.pushes || 0) > 0, ownerText: living.lastUserText(messages) })) {
+          ownerCarried = true;
+          convo.push({ role: 'assistant', content: said.trim() || ' ' });
+          convo.push({ role: 'user', content: oc.CARRY_NOTE });
+          send({ phase: 'executing', status: '🛠️ الوكيل ينفّذ…' });
+          continue;
+        }
+      }
       // Finished normally.
       run.status = 'done'; await journal(runUser, run);
       if (agentFail && isOwner(runUser)) send({ phase: 'reporting', delta: swapNote('كلود عبر الوسيط · ' + orModel(model)) }); // v-owner-swap: للمالك وحده، تحت الردّ
