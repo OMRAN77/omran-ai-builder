@@ -112,12 +112,12 @@
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoModeLabel">وضع الإنشاء</label>
       <select id="videoMakerMode" style="width:100%;">
-        <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 كانفا فقط (بدون AI)</option>
-        <option value="runway" selected data-i18n="videoModeRunwayOnly">🤖 فيديو AI فقط (Runway)</option>
+        <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 قوالب متحرّكة (بلا ذكاء اصطناعي)</option>
+        <option value="runway" selected data-i18n="videoModeRunwayOnly">🤖 فيديو AI فقط</option>
         <option value="minimax" data-i18n="videoModeMinimax">💸 فيديو اقتصادي — أرخص وأسرع</option>
         <option value="omni" data-i18n="videoModeOmni">🎬 فيديو سينمائيّ — أعلى جودة (أغلى)</option>
         <option value="hybrid" data-i18n="videoModeHybrid">🔗 دمج الاثنين (الأفضل)</option>
-        <option value="veo" data-i18n="videoModeVeo">🚀 Veo 3 — جوجل (أعلى جودة + صوت)</option>
+        <option value="veo" data-i18n="videoModeVeo">🚀 سينمائي (أعلى جودة + صوت)</option>
         <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية</option>
       </select>
     </div>
@@ -190,7 +190,7 @@
       <input type="file" id="videoMakerHeroInput" accept="image/*" style="display:none;">
       <p style="font-size: var(--fs-5); color:var(--muted); margin-top:6px;" data-i18n="videoMakerHeroNote">ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.</p>
     </div>
-    <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل متاحة مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.</p>
+    <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل تعمل مع محرّك «فيديو بالذكاء الاصطناعي» فقط — المحرّك السينمائيّ لا يقبل صورة في وضع الفيلم.</p>
 
     <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer;">
       <input type="checkbox" id="videoMakerNarrationToggle">

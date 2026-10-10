@@ -185,7 +185,7 @@ test('٧. العميل: المسار الجديد أوّلًا وVeo احتيا�
   assert.match(p, /<select id="videoMakerActorVoice"[^>]*>\s*<option value="male" selected data-i18n="videoActorVoiceMale">/);
   assert.match(p, /<option value="female" data-i18n="videoActorVoiceFemale">/);
   assert.ok(!/videoModeActor">[^<]*Veo/.test(p), 'لا اسم محرّك في اسم الوضع');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=655'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=656'));
   const b = read('js/app.bundle.js');
   assert.ok(b.includes("fetch('/api/video?action=actor-create'"), 'الحزمة مبنيّة');
   const r = read('api/video.js');
@@ -203,5 +203,5 @@ test('٨. النصوص الجديدة بالـ١٤ لغة، واسم الوضع 
     assert.ok(!/videoModeActor"?\s*:\s*"[^"]*Veo/.test(s), lg);
   }
   assert.ok(!/videoModeActor:\s*"[^"]*Veo/.test(data));
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=732'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=733'/);
 });

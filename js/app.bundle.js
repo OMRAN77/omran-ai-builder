@@ -3451,7 +3451,7 @@ const I18N = {
     "authUseCodeLink": "لدي رمز استرجاع بدلًا من ذلك",
     "authOrDivider": "أو",
     "authGoogleBtn": "المتابعة عبر Google",
-    "videoMakerHeroVeoNote": "ℹ️ صورة البطل تعمل مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.",
+    "videoMakerHeroVeoNote": "ℹ️ صورة البطل تعمل مع محرّك «فيديو بالذكاء الاصطناعي» فقط — المحرّك السينمائيّ لا يقبل صورة في وضع الفيلم.",
     "runCodeBtn": "تشغيل",
     "orFreeGroup": "🆓 مجاني",
     "orPaidGroup": "💰 مدفوع",
@@ -3693,12 +3693,12 @@ const I18N = {
     videoMakerRatioLandscape: '🖥️ عرضي 16:9',
     videoMakerRatioPortrait: '📱 طولي 9:16',
     videoModeLabel: 'وضع الإنشاء',
-    videoModeCanvasOnly: '🎨 كانفا فقط (بدون AI)',
-    videoModeRunwayOnly: '🤖 فيديو AI فقط (Runway)',
+    videoModeCanvasOnly: '🎨 قوالب متحرّكة (بلا ذكاء اصطناعي)',
+    videoModeRunwayOnly: '🤖 فيديو AI فقط',
     videoModeMinimax: '💸 فيديو اقتصادي — أرخص وأسرع',
     videoModeOmni: '🎬 فيديو سينمائيّ — أعلى جودة (أغلى)',
     videoModeHybrid: '🔗 دمج الاثنين (الأفضل)',
-    videoModeVeo: '🚀 Veo 3 — جوجل (أعلى جودة + صوت)',
+    videoModeVeo: '🚀 سينمائي (أعلى جودة + صوت)',
     videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية",
     videoActorSpeechLabel: "🗣️ شو يقول الممثل؟ (بالحرف)",
     videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق عمران AI",
@@ -5082,11 +5082,11 @@ const I18N = {
     videoMakerRatioPortrait: '📱 Portrait 9:16',
     videoModeLabel: 'Creation mode',
     videoModeCanvasOnly: '🎨 Canvas only (no AI)',
-    videoModeRunwayOnly: '🤖 AI video only (Runway)',
+    videoModeRunwayOnly: '🤖 AI video only',
     videoModeMinimax: '💸 Economy video — cheaper & faster',
     videoModeOmni: '🎬 Cinematic video — top quality (pricier)',
     videoModeHybrid: '🔗 Merge both (best)',
-    videoModeVeo: '🚀 Veo 3 — Google (top quality + sound)',
+    videoModeVeo: '🚀 Cinematic (top quality + sound)',
     videoModeActor: "🗣️ Talking actor — Emirati dialect",
     videoActorSpeechLabel: "🗣️ What does the actor say? (exactly)",
     videoActorSpeechPlaceholder: "Example: Welcome to Omran AI, the best AI platform!",
@@ -5101,7 +5101,7 @@ const I18N = {
     videoMakerDurationFilm: '🎬 Full mini-film (script + scenes + narration)',
     videoMakerHeroLabel: '📸 Your photo as the film hero (optional)',
     videoMakerHeroBtn: '📸 Pick hero photo',
-    videoMakerHeroVeoNote: 'ℹ️ Hero photo works with the Runway engine only — Veo 3 does not accept an image in film mode.',
+    videoMakerHeroVeoNote: 'ℹ️ Hero photo works with the AI video engine only — the cinematic engine does not accept an image in film mode.',
     videoMakerHeroNote: 'Upload your photo (or anyone\'s) — they will star in every scene of the film.',
     videoMakerDurationLongMinutes: '🎥 Long (minutes) - owner only',
     videoMakerLongMinutesLabel: 'Full video length (minutes, 1-10)',
@@ -5702,7 +5702,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=732'; /* v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=733'; /* v-no-provider-names (733): أسماء المزوّدين خرجت من خيارات الفيديو ومحرّك الأزياء (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -8025,7 +8025,7 @@ function renderMessages(keepScroll){
           m._reportPending = true;
           try{
             let u='guest'; try{ u = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ __swallow(_, "ui:app-04-i18n-state#39"); }
-            const response = await fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
+            const response = await fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,token:((typeof authGet==='function'&&authGet('aiapp_auth_token'))||''),lang:(typeof lang!=='undefined'?lang:'')})}); /* v-sec-feedback: الخادم يأخذ الاسم من الرمز الموقَّع وحده — بلا رمز يُسجَّل «guest» */
             if(!response.ok) throw new Error('Report request failed: ' + response.status);
             const result = await response.json();
             if(!result || result.ok !== true) throw new Error('Report not accepted');
@@ -29345,7 +29345,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   }
 
   async function runCanvasOnly(text, ratio, seconds, signature, wantNarration, narrationVal){
-    setStatus(bT('🎨 جاري إنشاء فيديو الكانفا...','🎨 Rendering canvas video...'));
+    setStatus(bT('🎨 جاري إنشاء فيديو القوالب...','🎨 Rendering template video...')); /* v-no-provider-names: لا اسم مزوّد/أداة في نصّ يراه المستخدم */
     const clipBlob = await recordCanvasClip({ title: text, signature, seconds, ratio });
     let finalBlob = clipBlob;
     if(wantNarration){
@@ -29411,7 +29411,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       mainForConcat = 'main_wm.mp4';
     }
 
-    setStatus(bT('🔗 جاري دمج الكانفا مع فيديو الذكاء الاصطناعي...','🔗 Merging canvas + AI video...'));
+    setStatus(bT('🔗 جاري دمج القوالب مع فيديو الذكاء الاصطناعي...','🔗 Merging template + AI video...'));
     const { w, h } = ratioDims(ratio);
     await ffmpeg.exec([
       '-i', 'intro.webm', '-i', mainForConcat, '-i', 'outro.webm',
@@ -29691,7 +29691,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             guard.ok();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل المحرّك السينمائيّ.','The cinematic engine failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
           } catch(e){ guard.fail(iv); }
         }, 8000);
       });
@@ -29711,7 +29711,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           return;
         }
         if(filmUseVeo && !isOwnerAccount()){
-          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
+          setStatus(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.'));
           btnGenerate.disabled = false;
           return;
         }
@@ -29745,7 +29745,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? bT(' (سينمائي)',' (cinematic)') : '') + /* v-no-provider-names */ '...');
           /* v-video-photo-identity: كان يُلحق «ضعه في وسط الإطار بلقطة متوسّطة» — أمر إعادة تأطير يعاكس
              الإطار الأوّل (الصورة نفسها) فيُعاد رسم الوجه بمقاس آخر. قفل الهويّة يبنيه الخادم لكلّ محرّك. */
           const scenePromptWithHero = sc.visual || text;
@@ -29933,7 +29933,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
+          setStatus(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.'));
           return;
         }
         let veoPrompt = text;
@@ -29986,7 +29986,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
-        setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
+        setStatus(bT('🚀 جاري الإرسال إلى المحرّك السينمائيّ...','🚀 Sending to the cinematic engine...')); /* v-no-provider-names */
         const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         const cr = await fetch('/api/video?action=veo-create', {
@@ -30006,8 +30006,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
               guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
-              else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل المحرّك السينمائيّ.','The cinematic engine failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+              else setStatus(bT('⏳ المحرّك السينمائيّ يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ The cinematic engine is generating (may take 1-3 min)...'));
             } catch(e){ guard.fail(iv); }
           }, 8000);
         });
