@@ -10,6 +10,7 @@ const { readGithub } = require('./github-read.js'); // v-agent-github
 const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
 const githubWrite = require('./github-write.js'); // v-agent-github-push: للمالك وحده
 const githubEdit = require('./github-edit.js'); // v-agent-surgical: تعديل جراحيّ + دمج بأمر «ادمج» — للمالك وحده
+const githubManage = require('./github-manage.js'); // v-agent-manage
 const delegate = require('./agent-delegate.js'); // v-agent-delegate: Claude Code في GitHub Actions — للمالك وحده
 const appErrors = require('./app-errors.js'); // v-provider-errors: أخطاء الإنتاج الحيّة — للمالك وحده
 const { ownerList } = require('./_owner.js');
@@ -95,7 +96,7 @@ function isOwner(user) { return !!user && ownerList().includes(String(user).trim
    القصير — يظهر سطرًا في سجلّ العمل كما يظهر وصف الأمر في Claude Code. أوّل الخصائص كي يُكتب قبل غيره. */
 const STEP_TITLE = { type: 'string', description: 'عنوان قصير لهذه الخطوة يراه المستخدم سطرًا في سجلّ العمل: ٣–٧ كلمات بلغته، مثل «البحث عن مستهلكي code-analyze» أو «قراءة api/_lib/chat.js كاملًا».' };
 function withStepTitle(t) { return Object.assign({}, t, { input_schema: Object.assign({}, t.input_schema, { properties: Object.assign({ step_title: STEP_TITLE }, (t.input_schema || {}).properties) }) }); }
-function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]).concat([githubEdit.EDIT_TOOL, githubEdit.MERGE_TOOL]) : TOOLS).map(withStepTitle); }
+function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]).concat([githubEdit.EDIT_TOOL, githubEdit.MERGE_TOOL, githubManage.MANAGE_TOOL]) : TOOLS).map(withStepTitle); }
 // الأمر كما يُعرض تحت عنوان الخطوة: اسم الأداة ومدخلها بلا العنوان، والنصوص الطويلة (كود، ملفّات) مختصرة.
 function stepCmd(name, input) {
   const o = {};
@@ -833,6 +834,13 @@ module.exports = async (req, res) => {
             if (!isOwner(runUser)) result = '✗ الدمج للمالك وحده.';
             else if (!githubEdit.ownerSaidMerge(living.lastUserText(messages))) result = '✗ لا دمج بلا «ادمج» صريحة في آخر رسالة من المالك — أعطه رابط الطلب واسأله.';
             else { run.merges = (run.merges || 0) + 1; result = run.merges > 2 ? '✗ دمجان في التشغيل الواحد حدّ مقصود.' : githubEdit.formatMerge(await githubEdit.mergePr(input)); }
+          }
+          /* v-agent-manage: حالة الطلبات والتشغيلات وإدارتها — التسكير والحذف والإلغاء بفعل صريح في آخر رسالة المالك يفحصه الخادم. */
+          else if (cb.name === 'manage_github') {
+            const act = String((input && input.action) || '');
+            if (!isOwner(runUser)) result = '✗ إدارة GitHub للمالك وحده.';
+            else if (!githubManage.ownerAllows(act, living.lastUserText(messages))) result = '✗ «' + act + '» يحتاج أن يقولها المالك صراحةً في رسالته الأخيرة («سكّر» · «افتح» · «احذف» · «وقّف») — اعرض عليه ما ستفعله واسأله.';
+            else { run.manages = (run.manages || 0) + 1; result = run.manages > 8 ? '✗ ثمانية استدعاءات إدارة في التشغيل الواحد حدّ مقصود.' : githubManage.formatManage(await githubManage.manage(input)); }
           }
           else if (cb.name === 'delegate_code_task') {
             // v-agent-delegate: للمالك وحده، ومهمّة واحدة في التشغيل — كلّ تسليم يشغّل Claude Code على حساب المالك.
