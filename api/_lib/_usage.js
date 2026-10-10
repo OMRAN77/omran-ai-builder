@@ -6,7 +6,7 @@
 // day (UTC) via a 2-day TTL on the counter key.
 const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
-const { kvIncr, kvExpire, kvGetJSON } = require('./kv.js');
+const { kvIncr, kvIncrBy, kvExpire, kvGetJSON, kvDecrBy, kvSetIfAbsent, kvDel } = require('./kv.js');
 const { isVip } = require('./_vip.js');
 // v-tiers: السقف اليومي صار بحسب الطبقة (ضيف/مجاني/مشترك بباقته) لا رقمًا واحدًا،
 // والمزوّدات المدفوعة للمشتركين فقط. انظر tier.js.
@@ -91,6 +91,62 @@ async function addTally(key) {
   }
 }
 
+// v-atomic-quota: الفحص والزيادة في أمر واحد — INCR أوّلًا ثمّ المقارنة، وما تجاوز السقف تُرجَع زيادته.
+// كان countTally ثمّ addTally: عشرة طلبات متزامنة تقرأ العدّ نفسه فتمرّ كلّها فوق السقف.
+// سقف صفر (الضيف افتراضيًّا) يُرفض قبل أيّ عدّ. عطل KV = مفتوح كما كان (countTally كان يرجع ٠).
+// يرجع { ok, count } — count عدّ اليوم بعد هذا الطلب إن قُبل، أو العدّ الممتلئ إن رُفض.
+async function takeTally(key, limit) {
+  if (limit <= 0) return { ok: false, count: 0 };
+  const k = tallyKey(key);
+  let n;
+  try {
+    n = Number(await kvIncr(k));
+  } catch (e) {
+    return { ok: true, count: 1 }; // عطل KV = مفتوح كما كان
+  }
+  if (n === 1) {
+    try { await kvExpire(k, 172800); } catch (e) { /* أفضل جهد كما في addTally: المفتاح مؤرَّخ أصلًا */ }
+  }
+  if (n > limit) {
+    try { await kvDecrBy(k, 1); } catch (e) { /* زيادة باقية لا تمرّر رسالة — العدّ يبدو ممتلئًا فقط حتّى انتهاء المفتاح */ }
+    return { ok: false, count: n - 1 };
+  }
+  return { ok: true, count: n };
+}
+
+// v-refund-custom (المراجعة المعاكسة): ردّ ما عدّه takeTally في مفتاحه — إنقاص واحد لا ينزل تحت الصفر. أفضل جهد ولا يرمي.
+async function giveTally(key) {
+  const k = tallyKey(key);
+  try {
+    const n = Number(await kvDecrBy(k, 1));
+    if (n < 0) { await kvIncrBy(k, -n); await kvExpire(k, 172800); } // لا عدّ يُردّ (يوم جديد أو حجز لم يقع) — لا رصيد سالب يفتح السقف
+  } catch (e) { /* أفضل جهد: عدّ باقٍ يحجب طلبًا واحدًا حتّى نهاية اليوم ولا يمرّر شيئًا */ }
+}
+
+// v-atomic-quota: سحب رصيد المكافأة تحت قفل قصير لكلّ حساب (SET NX EX) — كان قراءة سجلّ ثمّ كتابته،
+// فعشرة متزامنة برصيد ٢ تقرأ ٢ وتكتب ١ وتمرّ كلّها. من لا ينال القفل ينتظر دوره قليلًا ثمّ يُرفض.
+// الغالب (لا رصيد) يُرفض بقراءة واحدة بلا قفل كما كان؛ وصاحب الرصيد يُعاد قراءة سجلّه تحت القفل.
+async function spendBonus(username) {
+  const first = await getUser(username);
+  if (!first || first.deleted || !((first.bonusMessages || 0) > 0)) return false;
+  const lock = 'db/usage/bonus-lock/' + encodeURIComponent(username);
+  let held = false;
+  for (let i = 0; i < 40 && !held; i++) {
+    held = await kvSetIfAbsent(lock, '1', 10);
+    if (!held) await new Promise((r) => setTimeout(r, 50));
+  }
+  if (!held) return false;
+  try {
+    const user = await getUser(username);
+    if (!user || user.deleted || !((user.bonusMessages || 0) > 0)) return false;
+    user.bonusMessages -= 1;
+    await putUser(username, user);
+    return true;
+  } finally {
+    await kvDel(lock);
+  }
+}
+
 // Lifetime cap (not daily) for anonymous guests trying the app before creating
 // an account. Tracked by a random client-generated id stored in localStorage
 // (see aiapp_guest_id / getGuestId() in index.html), never used for anything
@@ -101,8 +157,8 @@ function isValidGuestId(id) {
   return typeof id === 'string' && /^[a-zA-Z0-9_-]{6,64}$/.test(id);
 }
 
-// Verifies the session token and, if valid and under quota, atomically-ish
-// consumes one message from today's allowance. Returns:
+// Verifies the session token and, if valid and under quota, atomically
+// consumes one message from today's allowance (v-atomic-quota: takeTally). Returns:
 //   { allowed: true,  username, remaining }
 //   { allowed: false, reason: 'auth' | 'limit', username }
 // If there is no valid login token but a guestId is supplied, falls back to a
@@ -147,24 +203,20 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
     // مزوّد كانت تضاعف «٥٠ رسالة يوميًّا» بعدد الروابط المباشرة.
     const bucketKey = chatBucket ? (tier.subscriber ? 'plan' : 'chat') : providerKey;
     const key = username + '_' + todayStr() + '_' + bucketKey;
-    const count = await countTally(key);
-    if (count >= limit) {
+    const taken = await takeTally(key, limit); // v-atomic-quota: INCR ثمّ المقارنة (كان فحصًا ثمّ زيادة)
+    if (!taken.ok) {
       // Daily free quota for this provider is used up — fall back to the
       // user's referral bonus balance (a one-time reward pool, not tied to
       // any single provider or day) before finally blocking the request.
       try {
-        const user = await getUser(username);
-        if (user && !user.deleted && (user.bonusMessages || 0) > 0) {
-          user.bonusMessages -= 1;
-          await putUser(username, user);
+        if (await spendBonus(username)) {
           return { allowed: true, username, remaining: 0, usedBonus: true, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null };
         }
       } catch (e) { /* if the bonus check fails, just fall through to blocking */ }
       return { allowed: false, reason: 'limit', username, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null, limit,
         message: tier.subscriber ? tierLib.FREE_TEXT.subLimit(limit) : tierLib.FREE_TEXT.freeLimit };
     }
-    await addTally(key);
-    return { allowed: true, username, remaining: limit - (count + 1), limit, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null };
+    return { allowed: true, username, remaining: limit - taken.count, limit, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null };
   }
 
   // Guests are counted by network address, not by the id their own browser
@@ -182,12 +234,11 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
   const addr = ip && String(ip).trim() ? String(ip).trim() : null;
   if (addr) {
     const key = 'guestip_' + addr + '_' + (chatBucket ? 'chat' : providerKey);
-    const count = await countTally(key);
-    if (count >= guestLimit) {
+    const taken = await takeTally(key, guestLimit); // سقف صفر يُرفض قبل أيّ عدّ
+    if (!taken.ok) {
       return { allowed: false, reason: 'limit', username: null, tier: 'guest', subscriber: false, limit: guestLimit, message: tierLib.FREE_TEXT.guestLimit };
     }
-    await addTally(key);
-    return { allowed: true, username: null, remaining: guestLimit - (count + 1), limit: guestLimit, tier: 'guest', subscriber: false };
+    return { allowed: true, username: null, remaining: guestLimit - taken.count, limit: guestLimit, tier: 'guest', subscriber: false };
   }
 
   // No address and no session: refuse rather than fall back to a
@@ -247,12 +298,11 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
     }
     if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
     const key = username + '_' + todayStr() + '_' + providerKey;
-    const count = await countTally(key);
-    if (count >= dailyLimit) {
+    const taken = await takeTally(key, dailyLimit); // v-atomic-quota
+    if (!taken.ok) {
       return { allowed: false, reason: 'limit', username };
     }
-    await addTally(key);
-    return { allowed: true, username, remaining: dailyLimit - (count + 1) };
+    return { allowed: true, username, remaining: dailyLimit - taken.count };
   }
 
   // Guests: meter by network address first, so rotating the client-supplied
@@ -261,12 +311,11 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
   const cleanIp = (typeof ip === 'string' && ip.trim()) ? ip.trim().slice(0, 64) : null;
   if (cleanIp) {
     const key = 'ip_' + cleanIp + '_' + todayStr() + '_' + providerKey;
-    const count = await countTally(key);
-    if (count >= dailyLimit) {
+    const taken = await takeTally(key, dailyLimit); // v-atomic-quota
+    if (!taken.ok) {
       return { allowed: false, reason: 'limit', username: null };
     }
-    await addTally(key);
-    return { allowed: true, username: null, remaining: dailyLimit - (count + 1) };
+    return { allowed: true, username: null, remaining: dailyLimit - taken.count };
   }
 
   // Only when no IP is discoverable at all (rare on Vercel) do we fall back to
@@ -274,15 +323,32 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
   // primary gate. Bucketed by day to match dailyLimit semantics.
   if (isValidGuestId(guestId)) {
     const key = 'guest_' + guestId + '_' + todayStr() + '_' + providerKey;
-    const count = await countTally(key);
-    if (count >= dailyLimit) {
+    const taken = await takeTally(key, dailyLimit); // v-atomic-quota
+    if (!taken.ok) {
       return { allowed: false, reason: 'limit', username: null };
     }
-    await addTally(key);
-    return { allowed: true, username: null, remaining: dailyLimit - (count + 1) };
+    return { allowed: true, username: null, remaining: dailyLimit - taken.count };
   }
 
   return { allowed: false, reason: 'auth', username: null };
+}
+
+// v-refund-custom (المراجعة المعاكسة): الحصّة تُحجز قبل النداء، وما فشل قبل أن يخدم المستخدم (رفض المزوّد، مفتاح غائب،
+// مضيف محجوب، تخزين فاشل، بلا صور) كان يحرقها. يُنقص العدّاد الذي زاده checkAndConsumeCustom بالمدخلات نفسها — المفتاح
+// نفسه: حساب أو IP أو guest + اليوم + السلّة. المالك وVIP لا يُعدّون فلا يُردّ لهم شيء. أفضل جهد ولا يرمي.
+async function refundCustom(token, guestId, ip, provider) {
+  try {
+    const providerKey = provider ? String(provider).toLowerCase() : 'general';
+    const username = verifyToken(token);
+    if (username) {
+      if (isOwnerUsername(username) || await isVip(username)) return;
+      await giveTally(username + '_' + todayStr() + '_' + providerKey);
+      return;
+    }
+    const cleanIp = (typeof ip === 'string' && ip.trim()) ? ip.trim().slice(0, 64) : null;
+    if (cleanIp) { await giveTally('ip_' + cleanIp + '_' + todayStr() + '_' + providerKey); return; }
+    if (isValidGuestId(guestId)) await giveTally('guest_' + guestId + '_' + todayStr() + '_' + providerKey);
+  } catch (e) { /* أفضل جهد — الردّ لا يُسقط ردّ المستخدم */ }
 }
 
 // Best-effort extraction of the caller's IP from Vercel's forwarded headers.
@@ -307,8 +373,28 @@ async function bumpCount(username, bucket) {
   await addTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
 }
 
+// v-meter-atomic (المراجعة المعاكسة): حدّ الموديل داخل الباقة كان todayCount ثمّ bumpCount بعد قبول الحصّة — فالطلبات
+// المتزامنة تقرأ العدّ نفسه وتعبر الحدّ كلّها. الآن حجز ذرّيّ على نمط takeTally (INCR ثمّ المقارنة ثمّ DECR إن تجاوز):
+// true = حُجز مكان في المقياس، false = المقياس ممتلئ (فيُعاد التوجيه للمسار التالي). عطل KV = مفتوح كما كان.
+async function takeMeter(username, bucket, cap) {
+  if (!username) return false;
+  return (await takeTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase(), Number(cap) || 0)).ok;
+}
+// يردّ حجز takeMeter حين يفشل النداء قبل أن يخدم — أفضل جهد ولا يرمي.
+async function giveMeter(username, bucket) {
+  if (!username) return;
+  await giveTally(username + '_' + todayStr() + '_' + String(bucket || 'general').toLowerCase());
+}
+
 // v-rename-move: تغيير الاسم لا يصفّر حدّ اليوم — حصص اليوم تنتقل مع الحساب (طلبان مجمّعان، أفضل جهد).
-const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'maha-realtime', 'agent', 'claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'gemini', 'groq', 'mistral', 'openrouter', 'stt', 'general'];
+// v-move-buckets (المراجعة المعاكسة): وكلّ سلال checkAndConsumeCustom المستعملة — كانت سقوف الأدوات (البحث، المشاركة،
+// التنزيل، الاقتراحات، الفيديو…) تتصفّر بتغيير الاسم بلا حدّ. tests/rename-move.test.cjs يستخرج السلال من الكود ويقارن.
+const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'maha-realtime', 'agent', 'claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'gemini', 'groq', 'mistral', 'openrouter', 'stt', 'general',
+  'prayer-plan', 'text-layout',
+  'search', 'search-classify', 'chat-search', 'translate', 'tts', 'media-intent', 'adchat', 'adimage', 'stamps', 'cx-brief', 'video-write', 'stocks-ai', 'stocks-pf',
+  'design-ideas', 'design-suggest', 'fashion-suggest', 'studio-suggest',
+  'video-prompt', 'video-upscale', 'video-download',
+  'share', 'share-img', 'share-pdf', 'share-file', 'media-save-img', 'media-save-pdf', 'media-save-file'];
 async function moveTodayTallies(oldUser, newUser) {
   if (!oldUser || !newUser) return;
   try {
@@ -322,4 +408,4 @@ async function moveTodayTallies(oldUser, newUser) {
   } catch (e) { console.warn('[usage] rename tallies not moved:', e && e.message); }
 }
 
-module.exports = { todayCount, bumpCount, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp, moveTodayTallies };
+module.exports = { todayCount, bumpCount, takeMeter, giveMeter, checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, refundCustom, clientIp, moveTodayTallies, MOVE_BUCKETS };

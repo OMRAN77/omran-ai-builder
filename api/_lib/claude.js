@@ -49,6 +49,8 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let meterHeld = null; // v-meter-atomic: { u, b } — حجز حدّ الموديل، يُردّ إن لم يخدم المزوّد
+  const giveBack = async () => { if (!meterHeld) return; const h = meterHeld; meterHeld = null; await require('./_usage').giveMeter(h.u, h.b); };
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
@@ -90,13 +92,20 @@ module.exports = async (req, res) => {
       const tierLib = require('./tier.js');
       const meters = require('./_usage');
       const used = { haiku: await meters.todayCount(usage.username, 'plan-haiku'), sonnet: await meters.todayCount(usage.username, 'plan-sonnet') };
-      const route = tierLib.planRoute({ tier: 'sub', plan: usage.plan, subscriber: true }, 'claude', 'اكتب كود', used, process.env);
-      if (!route || route.prov !== 'claude' || !route.model) {
-        res.status(402).json({ error: tierLib.FREE_TEXT.engineLimit, reason: 'engine_limit' });
-        return;
+      /* v-meter-atomic (المراجعة المعاكسة): كان فحصًا (todayCount) ثمّ زيادة (bumpCount) فتعبر المتزامنة الحدّ — الآن حجز ذرّيّ
+         للمسار المختار قبل النداء؛ رفضه = امتلأ للتوّ فيُجرَّب التالي (Sonnet ثمّ Haiku)، وبعدها 402 كما كان. */
+      let route;
+      for (;;) {
+        route = tierLib.planRoute({ tier: 'sub', plan: usage.plan, subscriber: true }, 'claude', 'اكتب كود', used, process.env);
+        if (!route || route.prov !== 'claude' || !route.model) {
+          res.status(402).json({ error: tierLib.FREE_TEXT.engineLimit, reason: 'engine_limit' });
+          return;
+        }
+        if (!route.meter) break;
+        if (await meters.takeMeter(usage.username, 'plan-' + route.meter, route.meterCap)) { meterHeld = { u: usage.username, b: 'plan-' + route.meter }; break; }
+        used[route.meter] = Infinity;
       }
       useModel = route.model;
-      if (route.meter) await meters.bumpCount(usage.username, 'plan-' + route.meter);
     }
     const wantStream = !!body.stream;
 
@@ -149,19 +158,24 @@ module.exports = async (req, res) => {
             useModel = preferred;
             upstream = await doRequest(preferred, wantStream);
           } else {
+            await giveBack(); // v-meter-atomic: لا نموذج يخدم — الحجز يُردّ
             res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
             return;
           }
         } else {
+          await giveBack();
           res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
           return;
         }
       } else {
+        await giveBack();
         res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
         return;
       }
     }
 
+    if (upstream.ok) meterHeld = null; // v-meter-atomic: قبل المزوّد الطلب — الحجز صار استهلاكًا
+    else await giveBack();
     if (wantStream && upstream.ok && upstream.body) {
       res.status(200);
       res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -196,6 +210,7 @@ module.exports = async (req, res) => {
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
+    await giveBack();
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };

@@ -8,7 +8,9 @@
   var $ = function(id){ return document.getElementById(id); };
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   function T(o){ return (o && (o[lg()] || o.en || o.ar)) || ''; }
-  function ui(k){ return T(D.ui[k]); }
+  /* v-vmk-clean (المالك: «شيل الأيقونات… شغل نضيف ومرتب»): لا إيموجي في واجهة الترندات — الأسماء وحدها */
+  function noEmoji(x){ return String(x == null ? '' : x).replace(/\u200D(?=\p{Extended_Pictographic})|(?![\u00A9\u00AE\u2122])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\uFE0F|\u20E3/gu, '').replace(/\s{2,}/g, ' ').trim(); }
+  function ui(k){ return noEmoji(T(D.ui[k])); }
   function tokenOf(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
   var PREVIEW = function(k){ return '/api/studio-preview?feature=trend&value=' + encodeURIComponent(k); };
 
@@ -42,24 +44,20 @@
     r.readAsDataURL(file);
   }
 
+  /* بطاقة نظيفة: المعاينة تملأها والاسم فوقها في أسفلها — لا شيء تحتها، ولا أيقونة، ولا سطر وصف */
   function card(t){
     var c = document.createElement('div');
-    c.style.cssText = 'border-radius:14px;overflow:hidden;cursor:pointer;background:#17171b;border:1px solid #2a2a30;';
-    var wrap = document.createElement('div');
-    wrap.style.cssText = 'position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
-    var badge = document.createElement('div'); badge.textContent = t.em;
-    badge.style.cssText = 'font-size:34px;';
-    wrap.appendChild(badge);
+    c.setAttribute('role', 'button'); c.tabIndex = 0;
+    c.style.cssText = 'position:relative;aspect-ratio:3/4;border-radius:14px;overflow:hidden;cursor:pointer;background:linear-gradient(160deg,#262a34,#12141a);border:1px solid var(--border,#2a2a30);';
     var im = document.createElement('img'); im.src = PREVIEW(t.key); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async';
     im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
     im.onerror = function(){ im.remove(); };
-    wrap.appendChild(im);
-    var info = document.createElement('div'); info.style.cssText = 'padding:8px 9px 10px;text-align:center;';
-    var nm = document.createElement('div'); nm.textContent = t.em + ' ' + T(t.title); nm.style.cssText = 'font-size:12.5px;font-weight:700;';
-    var sb = document.createElement('div'); sb.textContent = T(t.sub); sb.style.cssText = 'font-size:10.5px;color:#9a9a9e;margin-top:3px;line-height:1.5;';
-    info.appendChild(nm); info.appendChild(sb);
-    c.appendChild(wrap); c.appendChild(info);
+    c.appendChild(im);
+    var nm = document.createElement('div'); nm.textContent = noEmoji(T(t.title));
+    nm.style.cssText = 'position:absolute;inset:auto 0 0 0;padding:26px 10px 10px;text-align:center;font-size:12.5px;font-weight:700;line-height:1.5;color:#fff;background:linear-gradient(0deg,rgba(0,0,0,.82),rgba(0,0,0,0));';
+    c.appendChild(nm);
     c.onclick = function(){ openTrend(t); };
+    c.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openTrend(t); } };
     return c;
   }
 
@@ -122,6 +120,45 @@
     strip.appendChild(add); strip.appendChild(fi);
   }
 
+  /* مساعد الكتابة داخل نموذج الترند (المالك: «في الترندات المحادثة غير موجودة»): نفس إجراء video-write، ويضع الناتج في خانتَي الترند */
+  function W(k){ var v = (typeof window.t === 'function') ? window.t(k) : ''; return v && v !== k ? noEmoji(v) : ''; }
+  function assistant(t){
+    var d = document.createElement('details'); d.open = true;
+    d.style.cssText = 'margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:0 12px 12px;background:rgba(255,255,255,.03);';
+    var sm = document.createElement('summary'); sm.textContent = W('vwTitle'); sm.style.cssText = 'cursor:pointer;padding:11px 0;font-size:12.5px;font-weight:700;color:#e8c27a;list-style:none;';
+    var msgs = document.createElement('div'); msgs.style.cssText = 'display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;';
+    var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+    var inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 400; inp.placeholder = W('vwPh');
+    inp.style.cssText = 'flex:1;min-width:0;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;';
+    var btn = document.createElement('button'); btn.type = 'button'; btn.textContent = W('vwSend');
+    btn.style.cssText = 'padding:0 18px;border:0;border-radius:10px;background:linear-gradient(135deg,#e8c27a,#c9964a);color:#1a1408;font:inherit;font-weight:800;cursor:pointer;';
+    var bubble = function(txt, own){ var b = document.createElement('div'); b.textContent = txt; b.style.cssText = 'padding:8px 11px;border-radius:12px;font-size:12.5px;line-height:1.8;white-space:pre-wrap;' + (own ? 'align-self:flex-start;background:rgba(232,194,122,.12);border:1px solid rgba(232,194,122,.3);' : 'align-self:flex-end;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);'); msgs.appendChild(b); msgs.scrollTop = msgs.scrollHeight; return b; };
+    var put = function(el, v){ if(!el) return; el.value = String(v).slice(0, 400); el.dispatchEvent(new Event('input', { bubbles: true })); };
+    var chip = function(label, fn){ var c = document.createElement('button'); c.type = 'button'; c.textContent = label; c.style.cssText = 'margin:8px 6px 0 0;padding:4px 11px;border-radius:99px;border:1px solid rgba(232,194,122,.55);background:none;color:#e8c27a;font:inherit;font-size:11.5px;cursor:pointer;'; c.onclick = fn; return c; };
+    var busyA = false;
+    var send = function(){
+      var q = inp.value.trim(); if(!q || busyA) return; busyA = true; btn.disabled = true; inp.value = '';
+      bubble(q, true); var wait = bubble(W('vwBusy'), false);
+      var kind = /إعلان|اعلان|\bad\b|advert/i.test(q) ? 'ad' : /حوار|dialog/i.test(q) ? 'dialogue' : 'story';
+      fetch('/api/tools?action=video-write', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ request:q, kind:kind, duration:'8', token:tokenOf(), characters:[] }) })
+        .then(function(r){ return r.json(); }).then(function(r){
+          wait.remove();
+          var x = r && r.result;
+          if(!x){ bubble(W(r && r.reason === 'limit' ? 'vwLimit' : r && r.reason === 'auth' ? 'vwLogin' : 'vwErr'), false); return; }
+          var speech = (x.lines && x.lines.length) ? x.lines.map(function(l){ return l.text; }).join(' ') : x.narration;
+          var all = [x.scene].concat((x.lines || []).map(function(l){ return (l.who ? l.who + ': ' : '') + l.text; }), x.narration ? [x.narration] : []).filter(Boolean).join('\n');
+          var b = bubble(all, false);
+          var main = $('vtText'), extra = $('vtExtra');
+          if(main) b.appendChild(chip(W('vwToScene'), function(){ put(main, t.kind === 'sentence' ? (speech || x.scene) : (x.scene || speech)); }));
+          if(extra) b.appendChild(chip(W('vcToExtra'), function(){ put(extra, all); }));
+        }).catch(function(){ wait.remove(); bubble(W('vwErr'), false); })
+        .then(function(){ busyA = false; btn.disabled = false; });
+    };
+    btn.onclick = send; inp.onkeydown = function(e){ if(e.key === 'Enter'){ e.preventDefault(); send(); } };
+    row.appendChild(inp); row.appendChild(btn); d.appendChild(sm); d.appendChild(msgs); d.appendChild(row);
+    return d;
+  }
+
   function openTrend(t){
     cur = t; photos = [];
     grid.style.display = 'none'; panel.style.display = 'block'; panel.innerHTML = '';
@@ -130,7 +167,7 @@
     panel.appendChild(back);
     var head = document.createElement('div'); head.style.cssText = 'display:flex;gap:10px;align-items:center;margin-bottom:10px;';
     var im = document.createElement('img'); im.src = PREVIEW(t.key); im.alt = ''; im.style.cssText = 'width:64px;height:84px;object-fit:cover;border-radius:10px;background:#17171b;flex:none;'; im.onerror = function(){ im.style.visibility = 'hidden'; };
-    var ht = document.createElement('div'); ht.innerHTML = '<div style="font-size:15px;font-weight:800;">' + t.em + ' ' + T(t.title) + '</div><div style="font-size:12px;color:#9a9a9e;margin-top:3px;line-height:1.5;">' + T(t.sub) + '</div>';
+    var ht = document.createElement('div'); ht.innerHTML = '<div style="font-size:15px;font-weight:800;">' + noEmoji(T(t.title)) + '</div><div style="font-size:12px;color:#9a9a9e;margin-top:3px;line-height:1.5;">' + T(t.sub) + '</div>';
     head.appendChild(im); head.appendChild(ht); panel.appendChild(head);
     if(t.photo !== 'none'){
       var plab = document.createElement('div'); plab.style.cssText = 'font-size:12px;color:#9a9a9e;margin:2px 0 7px;line-height:1.6;';
@@ -154,6 +191,7 @@
     var xinp = document.createElement('textarea'); xinp.rows = 2; xinp.id = 'vtExtra'; xinp.maxLength = 400; xinp.placeholder = ui('extraPh');
     xinp.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;resize:vertical;';
     panel.appendChild(xlab); panel.appendChild(xinp);
+    panel.appendChild(assistant(t));
     var go = document.createElement('button'); go.type = 'button'; go.className = 'btn primary'; go.id = 'vtGo'; go.style.cssText = 'width:100%;margin-top:12px;font-weight:800;';
     go.textContent = ui('make') + (t.scenes > 1 ? ' (' + t.scenes + ')' : '');
     go.onclick = function(){ make(t); };

@@ -85,7 +85,7 @@ function planRoute(tier, requestedProv, lastUserText, used, env, hasImage) {
   if (!names.length) names = ['groq'];
   const lane = LANES[names[0]] || { prov: names[0] };
   const fallback = PLAN_FALLBACK.filter((n) => LANES[n].prov !== lane.prov).map((n) => Object.assign({}, LANES[n]));
-  return { plan, job, strong: job === 'code' || job === 'math', prov: lane.prov, model: lane.model || '', direct: !!lane.direct, meter: lane.meter || '', fallback, allowed: r.allowed.slice(), bucket: 'plan' };
+  return { plan, job, strong: job === 'code' || job === 'math', prov: lane.prov, model: lane.model || '', direct: !!lane.direct, meter: lane.meter || '', meterCap: lane.meter && r.meters[lane.meter] ? envInt(e, r.meters[lane.meter][0], r.meters[lane.meter][1]) : 0 /* v-meter-atomic: سقف المقياس — يحجزه المنادي ذرّيًّا (takeMeter) */, fallback, allowed: r.allowed.slice(), bucket: 'plan' };
 }
 
 // أسماء النماذج تتغيّر باستمرار (المجسّ ١٢ سبتمبر: gemini-2.5-flash «لم يعد

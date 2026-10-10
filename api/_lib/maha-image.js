@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
   let guestImageCharge = null;
   /* v-img-engine-tag-owner (متابعة): مسار النصّ (__textRoute) يقرّر GPT هو الصحّ لكن قد يفشل نداؤه
      فيسقط بصمت إلى برو/نانو — بلا هذا السطر يرى المالك «nano» بلا أيّ فكرة عن سبب تجاوز GPT له. */
-  let __textRouteFailNote = '', __mediaQuality = '', __mediaLeft = 0; /* v-media-plans: جودة صورة مشترك الصور ومتبقّيه بعد الخصم من رصيده */
+  let __textRouteFailNote = '', __mediaQuality = '', __mediaLeft = 0, __mediaPool = ''; /* v-media-plans: جودة صورة مشترك الصور ومتبقّيه بعد الخصم من رصيده؛ v-media-merge: والخانة (mix = «صور وفيديو») */
   let __cardsNote = '';
   async function refundImageCharge() {
     if (mahaImgCharged && pointsLib) {
@@ -59,6 +59,7 @@ module.exports = async (req, res) => {
       try {
         const { kvDecrBy } = require('./kv.js');
         await kvDecrBy(charge.counterKey, 1);
+        if (charge.ipKey) await kvDecrBy(charge.ipKey, 1); /* v-share-guard: حصّة الشبكة تُردّ مع حصّة المعرّف */
       } catch (error) { console.error('[maha-image] guest refund failed'); }
     }
   }
@@ -138,7 +139,7 @@ module.exports = async (req, res) => {
         const __ask4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i
           .test(String(userText || '') + ' ' + String(prompt || ''));
         const __imgCost = __ask4K ? pointsLib.COSTS.image_4k : pointsLib.COSTS.image; const __mq = __ask4K ? null : await require('./_mediaPlans.js').imageQuality(mahaImgUser, String(userText || '') + ' ' + String(prompt || '')).catch(() => null); /* v-media-plans: «عاديّة» بنصف الرصيد على المحرّك السريع */
-        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : (__mq === 'normal' ? 'image_normal' : 'image')); if (pay.ok && pay.media === 'image') { __mediaQuality = __mq || 'high'; __mediaLeft = pay.mediaLeft; }
+        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : (__mq === 'normal' ? 'image_normal' : 'image')); if (pay.ok && pay.media === 'image') { __mediaQuality = __mq || 'high'; __mediaLeft = pay.mediaLeft; __mediaPool = pay.pool || ''; }
         if (!pay.ok) {
           res.status(402).json({ error: 'points_insufficient', needed: __imgCost, points: pay.points || 0 });
           return;
@@ -169,7 +170,11 @@ module.exports = async (req, res) => {
         res.status(402).json({ error: 'guest_image_used' });
         return;
       }
-      guestImageCharge = { counterKey };
+      /* v-share-guard (٨ أكتوبر ٢٠٢٦): guestId من المتصفّح — تغييره كان يعطي ٣ صور جديدة بلا حدّ. الحدّ نفسه لكلّ شبكة يوميًّا أيضًا (كـguestip_ في _usage.js؛ يوميّ لأنّ IP الجوّال مشترك)، والعمر مع الإنشاء (NX EX) ثمّ INCR الذرّيّ. */
+      const __gip = String(clientIp(req) || '').trim().slice(0, 64), ipKey = __gip ? 'db/points/guest-image-ip/' + encodeURIComponent(__gip) + '/' + new Date().toISOString().slice(0, 10) : '';
+      if (ipKey) await kvSetIfAbsent(ipKey, 0, 172800);
+      if (ipKey && await kvIncr(ipKey) > 3) { await kvDecrBy(ipKey, 1); await kvDecrBy(counterKey, 1); res.status(402).json({ error: 'guest_image_used' }); return; }
+      guestImageCharge = { counterKey }; if (ipKey) guestImageCharge.ipKey = ipKey;
     } else {
       res.status(401).json({ error: 'auth_required' });
       return;
@@ -251,7 +256,7 @@ module.exports = async (req, res) => {
         upscaled: (__up && __up.ok) ? { scale: __up.scale, width: __up.w, height: __up.h } : undefined,
         authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
         visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
-        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined, mediaTag: __mediaQuality ? { q: __mediaQuality, left: Math.floor(__mediaLeft / 25) } : undefined, /* v-media-plans: الجودة والمتبقّي بالصور العاديّة */
+        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined, mediaTag: __mediaQuality ? { q: __mediaQuality, left: Math.floor(__mediaLeft / 25), pool: __mediaPool } : undefined, /* v-media-plans: الجودة والمتبقّي بالصور العاديّة */
       });
     }
 

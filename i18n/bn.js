@@ -28,9 +28,9 @@ I18N['bn'] = {
     cnLandAreaPh: 'উদাহরণ: 500', cnEmirateOpt: 'আমিরাত — ঐচ্ছিক', cnDetailsAnnexes: '🏠 বিবরণ এবং সংযোজন', cnExElevator: 'ইনডোর লিফট', cnExStore: 'বাইরের গুদাম', cnExWaterTank: 'পানির ট্যাংক',
     cnExSolar: 'সোলার প্যানেল', cnExPlayground: 'বাইরের খেলার মাঠ', cnExCarport: 'অতিরিক্ত গাড়ির শেড', cnBudgetOutputs: '💰 বাজেট এবং ফলাফল', cnDownloadBoq: '📊 পরিমাণ তালিকা ডাউনলোড করুন',
     cnPdfReport: '📄 PDF রিপোর্ট', keyHowToTitle: '📝 প্রতিটি প্রদানকারীর জন্য কী কীভাবে পাবেন:', showAllPlansCur: 'আপনার মুদ্রায় সব প্ল্যান ও দাম দেখুন', currencyLabel: 'মুদ্রা',
-    plFreeMsgs: 'প্রতিদিন 20 বার্তা', plFreeVoice: 'সর্বোচ্চ 4 মিনিট ভয়েস চ্যাট', plFreeImgs: 'সর্বোচ্চ 3 AI ছবি', plFreeNoVideo: 'ভিডিও নেই', plStMsgs: 'প্রতিদিন 50 বার্তা', plStVoice: 'সর্বোচ্চ 24 মিনিট ভয়েস চ্যাট',
-    plStImgs: 'সর্বোচ্চ 15 ছবি', plStVideos: '1 ভিডিও', plProMsgs: 'প্রতিদিন 100 বার্তা', plProVoice: 'সর্বোচ্চ 61 মিনিট ভয়েস চ্যাট', plProMedia: 'সর্বোচ্চ 40 ছবি · 2 ভিডিও', plProAgent: 'স্মার্ট এজেন্ট',
-    plProPriority: 'গোল্ড ব্যাজ', plMaxAllPro: 'Pro-এর সবকিছু · প্রতিদিন 250 বার্তা', plMaxVoice: 'সর্বোচ্চ 213 মিনিট ভয়েস চ্যাট', plMaxMedia: 'সর্বোচ্চ 150 ছবি · 3 ভিডিও',
+    plFreeMsgs: 'প্রতিদিন 20 বার্তা', plFreeVoice: 'সর্বোচ্চ 4 মিনিট ভয়েস চ্যাট', plFreeImgs: 'AI ছবি', plFreeNoVideo: 'ভিডিও নেই', plStMsgs: 'প্রতিদিন 50 বার্তা', plStVoice: 'সর্বোচ্চ 24 মিনিট ভয়েস চ্যাট',
+    plStImgs: 'AI ছবি', plStVideos: 'ভিডিও অন্তর্ভুক্ত', plProMsgs: 'প্রতিদিন 100 বার্তা', plProVoice: 'সর্বোচ্চ 61 মিনিট ভয়েস চ্যাট', plProMedia: 'ছবি ও ভিডিও অন্তর্ভুক্ত', plProAgent: 'স্মার্ট এজেন্ট',
+    plProPriority: 'গোল্ড ব্যাজ', plMaxAllPro: 'Pro-এর সবকিছু · প্রতিদিন 250 বার্তা', plMaxVoice: 'সর্বোচ্চ 213 মিনিট ভয়েস চ্যাট', plMaxMedia: 'ছবি ও ভিডিও অন্তর্ভুক্ত',
     plMaxSupport: 'ডেডিকেটেড সাপোর্ট',
     adStudioTitle: 'বিজ্ঞাপন স্টুডিও', adStudioHint: 'বিজ্ঞাপন স্টুডিও — চ্যাট করে আপনার বিজ্ঞাপন তৈরি করুন।', chatToPdfEmpty: 'রূপান্তরের জন্য এখনও কোনো উত্তর নেই।', mahaConnectionLost: 'পুনরায় সংযোগ করা যায়নি', voiceTabAssistantName: 'অ্যাসিস্ট্যান্ট',
     buildNoCode: '⚠️ প্রোভাইডার থেকে কোনো কোড আসেনি — প্রিভিউ খালি। অনুরোধটি আবার পাঠান বা অন্য প্রোভাইডার চেষ্টা করুন।',
@@ -184,8 +184,8 @@ I18N['bn'] = {
     pricingComingSoon: "শীঘ্রই আসছে 🚀 — সদস্যতা এখনও উপলব্ধ নয়৷",
     pricingSubscribeBtn: "এখন সদস্যতা",
     pricingTestNote: "🧪 আপাতত টেস্ট মোড — ব্যবসার লাইসেন্স প্রাপ্ত হয়ে গেলে সম্পূর্ণ সক্রিয়করণ",
-    termsLink: "📜 শর্তাবলী",
-    privacyLink: "🔒 গোপনীয়তা নীতি",
+    termsLink: "শর্তাবলী",
+    privacyLink: "গোপনীয়তা নীতি",
     aboutSectionTitle: "ℹ️ অ্যাপ এবং ইন্ট্রো ভিডিও সম্পর্কে",
     feedbackSectionTitle: '💬 আপনার মতামত গুরুত্বপূর্ণ',
     fbTagBug: '🐛 সমস্যা',
@@ -216,7 +216,7 @@ I18N['bn'] = {
     checkoutCancelMsg: "⚠️ পেমেন্ট বাতিল করা হয়েছে",
     logoutTitle: "লগ আউট করুন",
     loginAction: "লগইন করুন",
-    acctSectionTitle: "👤 আমার অ্যাকাউন্ট",
+    acctSectionTitle: "আমার অ্যাকাউন্ট",
     statsSectionTitle: "আমার প্রকল্প ও ব্যাকআপ",
     statsProjectsLabel: "প্রকল্প গণনা",
     statsMessagesLabel: "মোট বার্তা পাঠানো হয়েছে",
@@ -227,22 +227,22 @@ I18N['bn'] = {
     importProjectsConfirm: "আমদানি করা প্রকল্পগুলি আপনার বর্তমান প্রকল্পগুলির সাথে একত্রিত হবে৷ চালিয়ে যান?",
     importProjectsSuccess: "✅ প্রকল্প সফলভাবে আমদানি করা হয়েছে",
     importProjectsError: "❌ অবৈধ ফাইল, নিশ্চিত করুন যে এটি একটি বৈধ প্রজেক্ট এক্সপোর্ট ফাইল",
-    acctAvatarBtn: "📷 ছবি পরিবর্তন করুন",
+    acctAvatarBtn: "ছবি পরিবর্তন করুন",
     acctUsernameLabel: "ব্যবহারকারীর নাম",
     acctSaveBtn: "সংরক্ষণ করুন",
     acctEmailLabel: "ইমেল (ইউজারনেম বা পাসওয়ার্ড ভুলে গেলে)",
-    acctReferralLabel: "🔗 বন্ধুদের আমন্ত্রণ লিঙ্ক",
-    acctCopyBtn: "📋 কপি",
-    acctReferralHint: "আপনার লিঙ্কে সাইন আপ করা প্রতিটি বন্ধুর জন্য, আপনি উভয়ই 10টি অতিরিক্ত বিনামূল্যের বার্তা পাবেন 🎁৷",
+    acctReferralLabel: "বন্ধুদের আমন্ত্রণ লিঙ্ক",
+    acctCopyBtn: "কপি",
+    acctReferralHint: "আপনার লিঙ্কে সাইন আপ করা প্রতিটি বন্ধুর জন্য, আপনি উভয়ই 10টি অতিরিক্ত বিনামূল্যের বার্তা পাবেন ৷",
     acctCleanupLabel: 'অ্যাপ পরিষ্কার করুন',
     acctCleanupHint: 'এই ডিভাইস এবং ক্লাউড থেকে সমস্ত চ্যাট ও প্রজেক্ট স্থায়ীভাবে মুছে যাবে। আপনার অ্যাকাউন্ট ও ভাষা থাকবে।',
     acctCleanupConfirm: 'সমস্ত চ্যাট ও প্রজেক্ট স্থায়ীভাবে মুছে যাবে। আপনি কি নিশ্চিত?',
     acctCleanupBtn: 'এখনই সব মুছুন',
-    acctReferralCopied: "লিঙ্ক কপি করা হয়েছে ✅",
+    acctReferralCopied: "লিঙ্ক কপি করা হয়েছে",
     acctReferralBonusCount: "আপনার বোনাস বার্তা ব্যালেন্স: {n}",
     acctCurrentPasswordLabel: "বর্তমান পাসওয়ার্ড",
     acctNewPasswordLabel2: "নতুন পাসওয়ার্ড",
-    acctSaved: "✅ সংরক্ষিত",
+    acctSaved: "সংরক্ষিত",
     acctSaving: "সংরক্ষণ করা হচ্ছে...",
     acctFillUsername: "একটি বৈধ ব্যবহারকারীর নাম লিখুন (অন্তত 3টি অক্ষর)",
     acctFillPasswords: "আপনার বর্তমান পাসওয়ার্ড এবং একটি নতুন পাসওয়ার্ড লিখুন (কমপক্ষে 4 অক্ষর)",
@@ -815,7 +815,7 @@ I18N['bn'] = {
     fontWeightBold: "মোটা",
     fontPreviewQ: "আপনি কি জানেন এখন ফন্টের আকার ও পুরুত্ব বদলানো যায়?",
     fontPreviewA: "হ্যাঁ! নিচের স্লাইডার টেনে এখনই চেষ্টা করুন।",
-    autoRenewLabel: "🔁 মাসিক স্বয়ংক্রিয় চার্জ",
+    autoRenewLabel: "মাসিক স্বয়ংক্রিয় চার্জ",
     autoRenewOnHint: "চালু — আপনার প্ল্যান প্রতি মাসে স্বয়ংক্রিয়ভাবে নবায়ন ও চার্জ হয়",
     autoRenewOffHint: "বন্ধ — আপনি শুধু এক মাসের জন্য পরিশোধ করেন এবং যখন খুশি নিজে নবায়ন করেন",
     autoRenewStopped: "মাসিক চার্জ বন্ধ — আপনার প্ল্যান {date} পর্যন্ত সক্রিয় থাকবে",
@@ -913,24 +913,12 @@ I18N['bn'] = {
     religionDisclaimer: "⚠️ এটি একটি AI-এর অনুমান, শরিয়া ফতোয়া বা চূড়ান্ত রায় নয়। অনুগ্রহ করে আলেম ও বিশেষজ্ঞদের সাথে যোগাযোগ করুন।",
     religionTabVerse: "🕌 আয়াতের ব্যাখ্যা",
     religionTabHadith: "📖 হাদিস অনুসন্ধান",
-    religionTabBible: "✝️ বাইবেল ব্যাখ্যা",
-    religionTabTorah: "✡️ তোরাহ ব্যাখ্যা",
-    religionTabBuddhism: "🕉️ বৌদ্ধ শিক্ষা",
-    religionTabHinduism: "🙏 হিন্দু ধর্মের ব্যাখ্যা",
     religionTabDream: "🌙 স্বপ্নের ব্যাখ্যা",
     religionInputLabelVerse: "আয়াত বা তার নম্বর লিখুন (উদাহরণ: আল-বাকারা ২৫৫)",
     religionInputLabelHadith: "হাদিসের লেখা বা বিষয় লিখুন",
-    religionInputLabelBible: "বাইবেলের অনুচ্ছেদ বা তার নম্বর লিখুন",
-    religionInputLabelTorah: "তোরাহের অনুচ্ছেদ বা তার নম্বর লিখুন",
-    religionInputLabelBuddhism: "বৌদ্ধ ধর্ম সম্পর্কিত প্রশ্ন লিখুন",
-    religionInputLabelHinduism: "হিন্দু ধর্ম সম্পর্কিত প্রশ্ন লিখুন",
     religionInputLabelDream: "আপনার স্বপ্নের বিস্তারিত বর্ণনা লিখুন",
     religionInputPlaceholderVerse: "উদাহরণ: সূরা আল-বাকারা আয়াত ২৫৫ (আয়াতুল কুরসি)",
     religionInputPlaceholderHadith: "উদাহরণ: 'নিয়ত অনুযায়ী কাজের ফলাফল' হাদিস, অথবা পিতামাতার প্রতি সদাচরণ এর মতো একটি বিষয় লিখুন",
-    religionInputPlaceholderBible: "উদাহরণ: জন ৩:১৬, রোমান ১২:২, অথবা ভালোবাসা সম্পর্কিত একটি অনুচ্ছেদ",
-    religionInputPlaceholderTorah: "উদাহরণ: তোরাহ ১:১, লেভিটিকাস ১৯:১৮, অথবা মোজেস এর শিক্ষা",
-    religionInputPlaceholderBuddhism: "উদাহরণ: নিরাবিলা অর্জন, কর্ম, ধ্যান, বা বুদ্ধের শিক্ষা সম্পর্কে",
-    religionInputPlaceholderHinduism: "উদাহরণ: কর্মফল, ধ্যান, বা বেদের শিক্ষা সম্পর্কে জানতে চাই",
     religionInputPlaceholderDream: "উদাহরণ: আমি স্বপ্নে দেখলাম আমি সমুদ্রের ওপর দিয়ে উড়ছি এবং একটি বড় চাঁদ দেখলাম...",
     religionGenerateBtn: "✨ ব্যাখ্যা করুন",
     religionNeedInput: "⚠️ অনুগ্রহ করে প্রথমে কিছু লিখুন।",
@@ -957,8 +945,8 @@ I18N['bn'] = {
     designAiPlaceLabel: "স্থানের ধরন", premiumOn: "এজেন্ট চালু ⚡ — সরাসরি উত্তর, কোনো স্টাইল লেয়ার নেই", premiumNeedLogin: "এজেন্ট ব্যবহার করতে সাইন ইন করুন", memorySectionLabel: "আমার মেমরি", memoryIntro: "অ্যাপটি আপনার, আপনার প্রজেক্ট এবং আপনার কথা বলার ধরন সম্পর্কে যা মনে রাখে তা এখানে। এটি আপনার অ্যাকাউন্টের মাধ্যমে সব ডিভাইসে সিঙ্ক হয়, এবং আপনি এটি সম্পাদনা বা মুছে ফেলতে পারেন।",
     memorySaveBtn: "পরিবর্তন সংরক্ষণ করুন", memoryClearBtn: "আমার মেমরি মুছুন", memoryEmpty: "আপনার সম্পর্কে এখনো কিছু সংরক্ষিত নেই।", memoryGuest: "আপনার মেমরি দেখতে সাইন ইন করুন।", memoryConfirm: "অ্যাপটি আপনার সম্পর্কে যা মনে রাখে তার সবকিছু মুছে ফেলবেন? এটি ফেরানো যাবে না।", memorySaved: "সংরক্ষিত হয়েছে এবং আপনার অ্যাকাউন্টের সাথে সিঙ্ক হয়েছে।", memorySaveError: "সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
     memoryLoadError: "এখন মেমরি লোড করা যাচ্ছে না।", fontFamilySectionLabel: "ফন্ট স্টাইল", fontFamilyHint: "ডেস্কটপ ও মোবাইলে চ্যাট মেসেজ বদলায়, কোড ব্লক বা অ্যাপ লেআউট বদলায় না।", guestImageMsg: "🎁 আপনি আপনার ৩টি ফ্রি গেস্ট ইমেজ ব্যবহার করে ফেলেছেন! কয়েক সেকেন্ডে ফ্রি অ্যাকাউন্ট তৈরি করুন এবং ইমেজ তৈরি ও এডিট চালিয়ে যাওয়ার জন্য ৭০ গিফট পয়েন্ট পান।", planPer: "প্রতি মাসে", planFreePer: "ট্রাই করতে",
-    planPtsFree: "ওয়েলকাম পয়েন্ট — একবার মাত্র", planPtsMo: "প্রতি মাসে পয়েন্ট", planTag: "সবচেয়ে জনপ্রিয়", planCurrentBtn: "আপনার বর্তমান প্ল্যান", planSoonBtn: "শীঘ্রই আসছে", planFreeFeats: '<li>প্রতিদিন 20 বার্তা</li><li>সর্বোচ্চ 4 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 3 AI ছবি</li><li class="off">ভিডিও নেই</li>', planPlusFeats: '<li>প্রতিদিন 50 বার্তা</li><li>সর্বোচ্চ 24 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 15 ছবি</li><li>1 ভিডিও</li>',
-    planProFeats: '<li>প্রতিদিন 100 বার্তা</li><li>সর্বোচ্চ 61 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 40 ছবি · 2 ভিডিও</li><li>স্মার্ট এজেন্ট</li><li>গোল্ড ব্যাজ</li>', planMaxFeats: '<li>Pro-এর সবকিছু · প্রতিদিন 250 বার্তা</li><li>সর্বোচ্চ 213 মিনিট ভয়েস চ্যাট</li><li>সর্বোচ্চ 150 ছবি · 3 ভিডিও</li><li>ডেডিকেটেড সাপোর্ট</li>', checkoutPlanLabelMax: 'Max প্ল্যান $100/মাস — 3,200 পয়েন্ট', copyCode: "কপি করুন",
+    planPtsFree: "ওয়েলকাম পয়েন্ট — একবার মাত্র", planPtsMo: "প্রতি মাসে পয়েন্ট", planTag: "সবচেয়ে জনপ্রিয়", planCurrentBtn: "আপনার বর্তমান প্ল্যান", planSoonBtn: "শীঘ্রই আসছে", planFreeFeats: '<li>প্রতিদিন 20 বার্তা</li><li>সর্বোচ্চ 4 মিনিট ভয়েস চ্যাট</li><li>AI ছবি</li><li class="off">ভিডিও নেই</li>', planPlusFeats: '<li>প্রতিদিন 50 বার্তা</li><li>সর্বোচ্চ 24 মিনিট ভয়েস চ্যাট</li><li>AI ছবি</li><li>ভিডিও অন্তর্ভুক্ত</li>',
+    planProFeats: '<li>প্রতিদিন 100 বার্তা</li><li>সর্বোচ্চ 61 মিনিট ভয়েস চ্যাট</li><li>ছবি ও ভিডিও অন্তর্ভুক্ত</li><li>স্মার্ট এজেন্ট</li><li>গোল্ড ব্যাজ</li>', planMaxFeats: '<li>Pro-এর সবকিছু · প্রতিদিন 250 বার্তা</li><li>সর্বোচ্চ 213 মিনিট ভয়েস চ্যাট</li><li>ছবি ও ভিডিও অন্তর্ভুক্ত</li><li>ডেডিকেটেড সাপোর্ট</li>', checkoutPlanLabelMax: 'Max প্ল্যান $100/মাস — 3,200 পয়েন্ট', copyCode: "কপি করুন",
     copiedMsg: "কপি হয়েছে ✅", emailAsst_connectText: "AI যাতে আপনার ইমেইল পড়তে এবং পাঠানোর আগে আপনার অনুমোদনসহ প্রস্তুত জবাব সাজেস্ট করতে পারে, তার জন্য আপনার Gmail অ্যাকাউন্ট কানেক্ট করুন।", emailAsst_connectBtn: "🔗 Gmail কানেক্ট করুন", emailAsst_disclaimer: "⚠️ প্রতিটি মেসেজে আপনার সুস্পষ্ট অনুমোদন ছাড়া কখনো কোনো জবাব পাঠানো হয় না।", emailAsst_title: "📧 AI ইমেইল অ্যাসিস্ট্যান্ট",
     emailAsst_refresh: "রিফ্রেশ করুন", emailAsst_loading: "আপনার ইনবক্স স্ক্যান করা হচ্ছে…", emailAsst_empty: "এখন কোনো নতুন ইমেইলে জবাবের প্রয়োজন নেই।", emailAsst_notConnected: "Gmail কানেক্ট নেই, দয়া করে পুনরায় কানেক্ট করুন।", emailAsst_send: "✅ পাঠান", emailAsst_ignore: "🚫 এই প্রেরককে উপেক্ষা করুন", emailAsst_sending: "পাঠানো হচ্ছে…", emailAsst_sent: "✅ পাঠানো হয়েছে",
     emailAsst_ignored: "🚫 উপেক্ষা করা হয়েছে — আর দেখানো হবে না", emailAsst_error: "❌ ত্রুটি: ", emailAsst_voiceBtn: "ভয়েস সারাংশ", emailAsst_addToCalendar: "📅 ক্যালেন্ডারে যুক্ত করুন", emailAsst_addingEvent: "ইভেন্ট যুক্ত করা হচ্ছে…", emailAsst_eventAdded: "✅ আপনার ক্যালেন্ডারে যুক্ত হয়েছে", emailAsst_calReauth: "ক্যালেন্ডার অ্যাক্সেসের অনুমতির জন্য Gmail পুনরায় কানেক্ট করুন",
@@ -969,7 +957,7 @@ I18N['bn'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["bn"], {
-    acctLoginBtnLabel: "🔐 সাইন ইন / নতুন অ্যাকাউন্ট",
+    acctLoginBtnLabel: "সাইন ইন / নতুন অ্যাকাউন্ট",
     designCompareTitle: "🆚 আমার ঘর সব স্টাইলে",
     designCompareHint: "ঘরের ছবি আপলোড করুন, ২-৩টি স্টাইল বেছে নিন — আমরা পাশাপাশি ডিজাইন করব",
     designCompareBtn: "🆚 বাছাই করা স্টাইলে ডিজাইন করুন",
@@ -1029,6 +1017,74 @@ Object.assign(I18N['bn'], {
   pickerOptsPick: "টি অপশন — বেছে নিন",
   videoOptAdspot: "📢 দ্রুত বিজ্ঞাপন (৫সে + ভাষ্য)",
   videoOptReels: "📱 স্মার্ট রিলস (১০সে + ভাষ্য)",
+  videoIdeaLbl: "💡 একটি উদাহরণ চেষ্টা করুন",
+  videoIdeaCanvas: "ইনফোগ্রাফিক: ৫ সেকেন্ডে টাকা বাঁচানোর ৩টি টিপস",
+  videoIdeaRunway: "রাতে দুবাইয়ের রাস্তায় চলমান স্পোর্টস কার",
+  videoIdeaMinimax: "সূর্যাস্তের সময় সৈকতে শান্ত ঢেউ",
+  videoIdeaOmni: "সূর্যাস্তের সময় সৈকতে বিলাসবহুল পারফিউমের বিজ্ঞাপন",
+  videoIdeaHybrid: "অফার বিজ্ঞাপন: পণ্যের ওপর ছাড় ও দাম",
+  videoIdeaVeo: "বিক্রেতা ও ক্রেতাদের শব্দে ভরা ব্যস্ত ঐতিহ্যবাহী বাজার",
+  videoIdeaActor: "একজন আমিরাতি অভিনেতা একটি কফি শপের পরিচয় দিচ্ছেন",
+  vwTitle: "লেখার সহকারী",
+  vwSub: "ভিডিওর সময় অনুযায়ী গল্প, সংলাপ বা বিজ্ঞাপন লেখে",
+  vwPh: "উদাহরণ: নতুন শাখা খোলা এক কফি শপ মালিকের গল্প লেখো",
+  vwSend: "পাঠান",
+  vwSug1: "আমার জন্য … নিয়ে ছোট গল্প লেখো",
+  vwSug2: "আমার জন্য … এর বিজ্ঞাপন লেখো",
+  vwToScene: "দৃশ্যের বর্ণনায় দিন",
+  vwToNarr: "বর্ণনাকারীতে দিন",
+  vwToActor: "অভিনেতার সংলাপে দিন",
+  vwBusy: "লিখছে…",
+  vwErr: "এখন লেখা যাচ্ছে না, একটু পরে চেষ্টা করুন",
+  vwLimit: "আজকের লেখার সীমা শেষ",
+  vwLogin: "লেখার সহকারী ব্যবহারে লগইন করুন",
+  vwFit: "{n} সেকেন্ডের জন্য সেট — সর্বোচ্চ {w} শব্দ",
+  videoTabTrends: "ট্রেন্ড",
+  videoIdeaCanvas2: "আজকের সোনার দাম দিরহামে, সবুজ বা লাল তীরসহ",
+  videoIdeaCanvas3: "দোকান উদ্বোধনের কাউন্টডাউন",
+  videoIdeaRunway2: "বিলাসবহুল শোরুমে গ্রাহককে গাড়ির চাবি বোঝাচ্ছেন বিক্রয়কর্মী",
+  videoIdeaRunway3: "গ্রিলে উল্টানো বার্গার, ধোঁয়া ও বাষ্প",
+  videoIdeaMinimax2: "ভোরে দুবাইয়ের টাওয়ারের ওপর দিয়ে ক্যামেরা",
+  videoIdeaMinimax3: "ক্যাফের জানালায় বৃষ্টির ফোঁটা",
+  videoIdeaOmni2: "খেজুরের পাশে কাপে ঢালা কফি পটের স্লো শট",
+  videoIdeaOmni3: "সিনেমার শুরু: ভোরে মরুভূমির বালিয়াড়ি",
+  videoIdeaHybrid2: "বাজার প্রতিবেদন: শহরের দৃশ্যে শেয়ারের সংখ্যা",
+  videoIdeaHybrid3: "নতুন সম্পত্তি: ভবন, দাম ও অবস্থান",
+  videoIdeaVeo2: "ভাজা ও ফোটার শব্দসহ রান্না (ASMR)",
+  videoIdeaVeo3: "ইঞ্জিনের শব্দে মরুভূমিতে ছুটে চলা গাড়ি",
+  videoIdeaActor2: "আতরের দোকান পরিচয় করাচ্ছেন আমিরাতি অভিনেতা: ঊদ ও ধূপ",
+  videoIdeaActor3: "গ্রাহকদের স্বাগত জানিয়ে সেবা বোঝাচ্ছেন রিসেপশনিস্ট",
+  vcTitle: "চরিত্র",
+  vcSub: "সর্বোচ্চ ৩টি চরিত্র — প্রতিটির নাম, কণ্ঠ ও সংলাপ",
+  vcAdd: "চরিত্র যোগ করুন",
+  vcName: "নাম",
+  vcLine: "কী বলে?",
+  vcMale: "পুরুষ",
+  vcFemale: "নারী",
+  vcRemove: "মুছুন",
+  vwToChars: "সংলাপ চরিত্রদের মধ্যে ভাগ করুন",
+  vcMore: "আরও বিকল্প",
+  vcTutorial: "দেখুন: কীভাবে ভিডিও বানাবেন",
+  vcToExtra: "অতিরিক্তে দিন",
+  videoTabClean: "ভিডিও উন্নত করুন",
+  vclTitle: "আপনার ডিভাইসের ভিডিও উন্নত করুন",
+  vclSub: "ঝাপসা বা নয়েজযুক্ত ভিডিও আপলোড করুন: আমরা নয়েজ কমাই, স্পষ্ট করি ও রং উন্নত করি — আপনার ডিভাইসেই, বিনামূল্যে",
+  vclPick: "ভিডিও বাছুন বা এখানে ছাড়ুন",
+  vclDrop: "সর্বোচ্চ {s} সেকেন্ড ও {n} MB",
+  vclLight: "হালকা",
+  vclStrong: "জোরালো",
+  vclUpscale: "রেজোলিউশন দ্বিগুণ (ছোট ভিডিও)",
+  vclStart: "ভিডিও উন্নত করুন",
+  vclWorking: "উন্নত করা হচ্ছে… জানালাটি বন্ধ করবেন না",
+  vclCancel: "বাতিল",
+  vclDownload: "উন্নত ভিডিও ডাউনলোড করুন",
+  vclBefore: "আগে",
+  vclAfter: "পরে",
+  vclTooLong: "ভিডিওটি {s} সেকেন্ডের বেশি — আগে ছোট করুন",
+  vclTooBig: "ফাইলটি {n} MB-এর বেশি",
+  vclFail: "এই ডিভাইসে ভিডিওটি উন্নত করা যায়নি",
+  vclNote: "নয়েজ কমায়, প্রান্ত স্পষ্ট করে ও রং উন্নত করে; তীব্র ঝাপসা বা ক্যামেরা কাঁপা ঠিক করে না",
+  vclLoading: "উন্নত করার টুল প্রস্তুত হচ্ছে (শুধু প্রথমবার)…",
   fashionEngineLabel: "🎨 ইমেজ ইঞ্জিন",
   fashionEngineGemini: "Gemini — মুখ সবচেয়ে ভালো রাখে (ডিফল্ট)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT ইমেজ ইঞ্জিন",
@@ -1111,20 +1167,20 @@ Object.assign(I18N["bn"], {"imgUnchanged": "⚠️ সম্পাদনা প�
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["bn"], {"mediaPlansTitle": "ছবি ও ভিডিও সাবস্ক্রিপশন", "mediaPlansDesc": "যারা শুধু ছবি বা ভিডিও চান তাদের জন্য — চ্যাট ছাড়া। প্রতিটি সাবস্ক্রিপশনের নিজস্ব ব্যালেন্স, যা অন্য কিছুতে খরচ হয় না।", "mediaImgName": "ছবি", "mediaVidName": "ভিডিও", "mediaImgUnit": "উচ্চমানের ছবি", "mediaVidEco": "সাশ্রয়ী ভিডিও", "mediaVidCine": "সিনেমাটিক ভিডিও", "mediaVidSound": "শব্দসহ ভিডিও", "mediaOr": "অথবা", "mediaNoChatVideo": "চ্যাট ও ভিডিও নেই", "mediaNoChatImage": "চ্যাট ও ছবি নেই", "mediaLeftImg": "ছবির সাবস্ক্রিপশনে বাকি", "mediaLeftVid": "ভিডিও সাবস্ক্রিপশনে বাকি"});
-Object.assign(I18N["bn"], {"mediaImgPlain": "ছবি", "mediaHighEq": "একটি উচ্চমানের ছবি = ২টি ছবি", "mediaQLabel": "ছবির মান", "mediaQNormal": "⚡ সাধারণ", "mediaQHigh": "💎 উচ্চ", "mediaQNormalDesc": "দ্রুত, সোশ্যাল মিডিয়ার জন্য ভালো — ব্যালেন্স থেকে ১টি ছবি", "mediaQHighDesc": "আরও সূক্ষ্ম বিবরণ, স্পষ্ট লেখা, প্রিন্টের উপযোগী — ব্যালেন্স থেকে ২টি ছবি", "mediaQHint": "অথবা একটি ছবির জন্য অনুরোধে “উচ্চমান” লিখুন"});
+Object.assign(I18N["bn"], {"mediaImgPlain": "ছবি", "mediaHighEq": "একটি উচ্চমানের ছবি = ২টি ছবি", "mediaQLabel": "ছবির মান", "mediaQNormal": "সাধারণ", "mediaQHigh": "উচ্চ", "mediaQNormalDesc": "দ্রুত, সোশ্যাল মিডিয়ার জন্য ভালো — ব্যালেন্স থেকে ১টি ছবি", "mediaQHighDesc": "আরও সূক্ষ্ম বিবরণ, স্পষ্ট লেখা, প্রিন্টের উপযোগী — ব্যালেন্স থেকে ২টি ছবি", "mediaQHint": "অথবা একটি ছবির জন্য অনুরোধে “উচ্চমান” লিখুন"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["bn"], {"priceTabChat": "💬 চ্যাট", "priceTabImg": "🖼️ ছবি", "priceTabVid": "🎬 ভিডিও", "priceTabPts": "⚡ পয়েন্ট"});
-Object.assign(I18N["bn"], {"priceTabMaha": "🎙️ মাহা", "mahaPlanName": "মাহা", "mahaPlansDesc": "মাহার ভয়েস কলের জন্য। মাসের মিনিট শুধু মাহার জন্য; শেষ হলে কল আপনার পয়েন্টে চলবে।", "mahaMinPlain": "কল মিনিট", "mahaMinUnit": "মিনিট", "mahaCapNote": "প্রতি কলে সর্বোচ্চ 10 মিনিট", "mahaNoChat": "চ্যাট, ছবি বা ভিডিও নেই", "mahaLeft": "মাহার বাকি মিনিট", "mahaCapEnd": "কল 10 মিনিটের সীমায় শেষ হয়েছে — চালিয়ে যেতে আবার কল করুন", "mahaToPoints": "মিনিট শেষ — এখন পয়েন্টে চলছে"});
+Object.assign(I18N["bn"], {"priceTabChat": "চ্যাট", "priceTabImg": "🖼️ ছবি", "priceTabVid": "🎬 ভিডিও", "priceTabPts": "পয়েন্ট"});
+Object.assign(I18N["bn"], {"priceTabMaha": "মাহা", "mahaPlanName": "মাহা", "mahaPlansDesc": "মাহার ভয়েস কলের জন্য। মাসের মিনিট শুধু মাহার জন্য; শেষ হলে কল আপনার পয়েন্টে চলবে।", "mahaMinPlain": "কল মিনিট", "mahaMinUnit": "মিনিট", "mahaCapNote": "প্রতি কলে সর্বোচ্চ 10 মিনিট", "mahaNoChat": "চ্যাট, ছবি বা ভিডিও নেই", "mahaLeft": "মাহার বাকি মিনিট", "mahaCapEnd": "কল 10 মিনিটের সীমায় শেষ হয়েছে — চালিয়ে যেতে আবার কল করুন", "mahaToPoints": "মিনিট শেষ — এখন পয়েন্টে চলছে"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["bn"], {"installHowIOS":"iPhone বা iPad-এ ইনস্টল করতে:\n1) সাইটটি Safari-তে খুলুন\n2) শেয়ার বোতাম চাপুন (উপরে তীরসহ বর্গ)\n3) \"হোম স্ক্রিনে যোগ করুন\" বেছে নিন, তারপর \"যোগ করুন\"","installHowIOSOther":"এই ব্রাউজার থেকে iPhone-এ ইনস্টল করতে:\n1) ঠিকানা বারের পাশে শেয়ার বোতাম (উপরে তীরসহ বর্গ) চাপুন\n2) \"হোম স্ক্রিনে যোগ করুন\" বেছে নিন\nবিকল্পটি না থাকলে সাইটটি Safari-তে খুলুন।","installHowAndroid":"Android-এ ইনস্টল করতে:\n1) ব্রাউজার মেনু (⋮) খুলুন\n2) \"অ্যাপ ইনস্টল করুন\" বা \"হোম স্ক্রিনে যোগ করুন\" বেছে নিন\n3) ইনস্টল নিশ্চিত করুন","installHowDesktop":"কম্পিউটারে ইনস্টল করতে (Chrome বা Edge):\nঠিকানা বারে ইনস্টল আইকন (⊕ বা ছোট স্ক্রিন) চাপুন, অথবা ব্রাউজার মেনু (⋮ বা …) খুলে \"ইনস্টল\" বা \"অ্যাপস → এই সাইটটি অ্যাপ হিসেবে ইনস্টল করুন\" বেছে নিন।","installHowMacSafari":"Mac-এ Safari থেকে ইনস্টল করতে:\nউপরে \"File\" মেনু খুলুন, \"Add to Dock\" বেছে নিন, তারপর \"Add\"।","installHowFirefox":"কম্পিউটারে Firefox ওয়েব অ্যাপ ইনস্টল করতে পারে না।\nসাইটটি Chrome বা Edge-এ খুলে \"অ্যাপ ইনস্টল করুন\" চাপুন, অথবা ফোন থেকে ইনস্টল করুন।"});
 Object.assign(I18N["bn"], {"videoSceneWait":"⏳ দৃশ্য {i}/{n}: ভিডিওর মাঝে বিরতি — {s} সেকেন্ড পরে নিজে থেকেই শুরু হবে।","videoFilmModeOnly":"🎬 «পূর্ণ চলচ্চিত্র» শুধু «AI ভিডিও» মোডে কাজ করে — মোড বদলান বা অন্য দৈর্ঘ্য বেছে নিন। কিছুই কাটা হয়নি।"}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["bn"], {"acctPhoneLabel": "📱 ফোন নম্বর (পুনরুদ্ধারের জন্য)", "phoneNotLinked": "সংযুক্ত নয়", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "প্রস্তুত বার্তাটি পাঠান বা আপনার নম্বর শেয়ার করুন, তারপর এখানে ফিরে আসুন…", "phoneLinkedOk": "✓ নম্বর সংযুক্ত হয়েছে", "phoneTaken": "এই নম্বরটি অন্য একটি অ্যাকাউন্টের সাথে সংযুক্ত", "phoneNoUser": "এই নম্বরের সাথে কোনো অ্যাকাউন্ট সংযুক্ত নেই", "phoneExpired": "লিঙ্কের মেয়াদ শেষ — আবার চেষ্টা করুন", "phoneRecoverTitle": "অথবা আপনার ফোন দিয়ে অ্যাকাউন্ট পুনরুদ্ধার করুন:", "phoneRecoverSent": "✓ সেখানে আপনার চ্যাটে নতুন পাসওয়ার্ডের লিঙ্ক পাঠানো হয়েছে"});
+Object.assign(I18N["bn"], {"acctPhoneLabel": "ফোন নম্বর (পুনরুদ্ধারের জন্য)", "phoneNotLinked": "সংযুক্ত নয়", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "প্রস্তুত বার্তাটি পাঠান বা আপনার নম্বর শেয়ার করুন, তারপর এখানে ফিরে আসুন…", "phoneLinkedOk": "✓ নম্বর সংযুক্ত হয়েছে", "phoneTaken": "এই নম্বরটি অন্য একটি অ্যাকাউন্টের সাথে সংযুক্ত", "phoneNoUser": "এই নম্বরের সাথে কোনো অ্যাকাউন্ট সংযুক্ত নেই", "phoneExpired": "লিঙ্কের মেয়াদ শেষ — আবার চেষ্টা করুন", "phoneRecoverTitle": "অথবা আপনার ফোন দিয়ে অ্যাকাউন্ট পুনরুদ্ধার করুন:", "phoneRecoverSent": "✓ সেখানে আপনার চ্যাটে নতুন পাসওয়ার্ডের লিঙ্ক পাঠানো হয়েছে"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["bn"], {"bgThemeWood": "কাঠ"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["bn"], {"brandSubtitle": "এআই প্ল্যাটফর্ম"});
-Object.assign(I18N["bn"], {"bgThemeDarkwood": "গাঢ় কাঠ", "bgThemeMarble": "মার্বেল", "bgThemeCode": "কোড", "bgThemeCars": "গাড়ি", "bgThemeKids": "শিশু", "bgThemeCuisine": "রান্না", "bgThemeSunset": "সূর্যাস্ত", "bgThemeBeach": "সৈকত", "bgThemeWinter": "শীত", "bgThemeGarage": "গ্যারেজ", "bgThemeAnime": "অ্যানিমে", "bgThemeCyber": "সাইবার নিরাপত্তা", "bgThemeSchool": "শ্রেণিকক্ষ"});
+Object.assign(I18N["bn"], {"bgThemeDarkwood": "গাঢ় কাঠ", "bgThemeMarble": "মার্বেল", "bgThemeCode": "কোড", "bgThemeCars": "গাড়ি", "bgThemeKids": "শিশু", "bgThemeCuisine": "রান্না", "bgThemeSunset": "সূর্যাস্ত", "bgThemeBeach": "সৈকত", "bgThemeWinter": "শীত", "bgThemeGarage": "গ্যারেজ", "bgThemeAnime": "অ্যানিমে", "bgThemeCyber": "সাইবার নিরাপত্তা", "bgThemeSchool": "শ্রেণিকক্ষ", "bgThemeTactical": "অ্যাকশন অ্যানিমে", "bgThemeAngel": "বরফের দেবদূত", "bgThemeNeonAnime": "নিয়ন অ্যানিমে", "bgThemeStation": "ভবিষ্যতের স্টেশন", "bgThemeRally": "বৃষ্টির রেস", "bgThemeSmoke": "নীল ধোঁয়া", "bgThemeLibrary": "লাইব্রেরি", "bgThemeCafe": "ক্যাফে", "bgThemeWorkshop": "রাতের ওয়ার্কশপ", "bgThemeModern": "আধুনিক বাড়ি"});
 /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (v-living-memory: صفحة المالك) */
 Object.assign(I18N["bn"], {"livingMemTitle": "আমার জীবন্ত মেমরি", "livingMemIntro": "আপনার কথোপকথন থেকে সহকারী আপনার সম্পর্কে সম্প্রতি যা শিখেছে। প্রতিটি উত্তরে সে কেবল আপনার প্রশ্নের সঙ্গে সম্পর্কিত অংশই ব্যবহার করে এবং আপনার পছন্দের ধরন প্রয়োগ করে। কোনো তথ্য ভুলিয়ে দিতে সেটি মুছুন।", "livingMemEmpty": "সহকারী এখনও আপনার সম্পর্কে কিছু শেখেনি।", "livingMemDelete": "মুছুন", "livingMemLoadError": "আপনার জীবন্ত মেমরি এখন লোড করা যায়নি।", "livingMemDeleteError": "মোছা যায়নি। আবার চেষ্টা করুন।", "livingMemClearAll": "সব মুছুন", "livingMemClearConfirm": "সহকারী আপনার সম্পর্কে যা শিখেছে সব মুছবেন? এটি ফেরানো যাবে না।"});
 /* v-pdf-docs: «PDF» يقبل Word والنصوص لا الصور وحدها */
@@ -1135,3 +1191,6 @@ Object.assign(I18N["bn"], {"pdfDocPage": "⏳ পৃষ্ঠা {i} / {n} ত�
 /* v-video-watch */ Object.assign(I18N['bn'], {"vwUploading": "🎬 ভিডিও আপলোড হচ্ছে…", "vwWatching": "🎬 ভিডিওটি দেখছি এবং এর শব্দ শুনছি…", "vwCharged": "🎬 {n} পয়েন্ট খরচ হয়েছে · {d} ভিডিও", "vwNoPoints": "আপনার {p} পয়েন্ট আছে; এই ভিডিও বিশ্লেষণে {n} পয়েন্ট লাগবে।", "vwTooBig": "ভিডিওটি 100 MB-এর বেশি — ছোট করুন বা রেজোলিউশন কমিয়ে আবার পাঠান।", "vwTooLong": "ভিডিওটি 10 মিনিটের বেশি — ছোট একটি ক্লিপ পাঠান।", "vwFormat": "এই ভিডিও ফরম্যাট সমর্থিত নয় — MP4, MOV বা WEBM হিসেবে পাঠান।", "vwFailed": "ভিডিও বিশ্লেষণ করা যায়নি — কোনো পয়েন্ট কাটা হয়নি। আবার চেষ্টা করুন।", "vwLogin": "ভিডিও বিশ্লেষণ করতে আগে সাইন ইন করুন।", "vwDefaultQ": "এই ভিডিওটি বিশ্লেষণ করো"});
 /* v-plans-gate */ Object.assign(I18N['bn'], {"plansWhyPoints": "আপনার পয়েন্ট শেষ — প্ল্যান থেকে টপ-আপ করে এখনই চালিয়ে যান।", "plansWhyLimit": "আজকের জন্য আপনার প্ল্যানের সীমা পূর্ণ হয়েছে — প্ল্যান আপগ্রেড করুন বা আগামীকাল পর্যন্ত অপেক্ষা করুন।", "plansWhyExpired": "আপনার {plan} সাবস্ক্রিপশন শেষ হয়েছে — সুবিধা ফিরে পেতে নবায়ন করুন।", "plansWhyExpiring": "আপনার {plan} সাবস্ক্রিপশন {date} তারিখে শেষ হবে — সুবিধা চালু রাখতে নবায়ন করুন।", "plansRenew": "নবায়ন করুন", "plansLater": "পরে", "vwUnavailable": "ভিডিও বিশ্লেষণ সাময়িকভাবে বন্ধ আছে — কোনো পয়েন্ট কাটা হয়নি। একটু পরে আবার চেষ্টা করুন।"});
 /* v-google-login-help */ Object.assign(I18N['bn'], {"authGoogleHint": "Google দিয়ে সাইন আপ করেছিলেন? “{btn}” চাপুন — আপনার Gmail পাসওয়ার্ড এখানে কাজ করে না।"});
+/* v-media-merge */ Object.assign(I18N['bn'], {"priceTabMedia":"ছবি ও ভিডিও","mixPlanName":"ছবি ও ভিডিও","mixPlansDesc":"যাঁরা ছবি ও ভিডিও চান — চ্যাট ছাড়া। একটি ব্যালেন্সেই দুটো চলে; শেষ হলে আপনার পয়েন্টে চলবে।","mixOneBalance":"ছবি ও ভিডিওর জন্য একটি ব্যালেন্স","mixApprox1":"প্রায় 50টি ছবি বা 12টি ভিডিও, বা দুটো মিলিয়ে","mixApprox2":"প্রায় 100টি ছবি বা 24টি ভিডিও, বা দুটো মিলিয়ে","mixApprox3":"প্রায় 500টি ছবি বা 121টি ভিডিও, বা দুটো মিলিয়ে","mixNoChat":"চ্যাট নেই","mixLeft":"ছবি ও ভিডিও ব্যালেন্সে বাকি"});
+/* v-inspire */ Object.assign(I18N['bn'], {"inspTabInspire":"অনুপ্রেরণা","inspTabQuick":"দ্রুত পরামর্শ","inspCityTitle":"আপনার আসল শহর","inspCitySub":"খোলা মানচিত্র থেকে আপনার আসল পাড়ার ওপর তৈরি 3D অভিজ্ঞতা। একটি বেছে নিন, সঙ্গে সঙ্গে প্রিভিউতে খুলবে — তারপর সেখানে যেকোনো পাড়া বা শহরের নাম লিখুন।","inspLoading":"খুলছে…","inspFail":"এখন খোলা গেল না — আবার চেষ্টা করুন"});
+/* v-chat-edit */ Object.assign(I18N['bn'], {"editApplied": "ডিজাইনে পরিবর্তনগুলো প্রয়োগ হয়েছে ({n})।", "editFailed": "পরিবর্তনটি প্রয়োগ করা হয়নি — পুরনো লেখার একটি অংশ বর্তমান ডিজাইনের সাথে মেলেনি, তাই ডিজাইন অপরিবর্তিত। আবার বলুন।", "editTruncated": "ফাইল সম্পূর্ণ হওয়ার আগেই উত্তর কেটে গেছে, তাই ডিজাইন আগের মতোই রাখা হয়েছে।", "editPartial": "পরিবর্তনটি প্রয়োগ করিনি — উত্তরটি অসম্পূর্ণ বা ভুল ফরম্যাটে এসেছে, তাই ডিজাইন অপরিবর্তিত আছে। আবার অনুরোধ করুন।", "editBroke": "পরিবর্তনটি প্রয়োগ করিনি — এতে ডিজাইনের কোড ভেঙে যেত, তাই ডিজাইন অপরিবর্তিত আছে। আবার অনুরোধ করুন।"});

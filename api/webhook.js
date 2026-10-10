@@ -6,6 +6,9 @@
 //   https://omran-ai-builder.vercel.app/api/webhook
 // بأحداث checkout.session.completed وinvoice.paid، وينسخ «Signing secret»
 // (يبدأ بـ whsec_) إلى متغير بيئة STRIPE_WEBHOOK_SECRET في Vercel.
+// v-pay-refund: وأحداث charge.refunded وcharge.dispute.created (سحب ما منحته الدفعة — pay-refund.js) وcustomer.subscription.deleted
+// (لا سحب: الفترة المدفوعة تكمل). وPayPal على ‎/api/webhook?src=paypal‎ بأحداث PAYMENT.CAPTURE.REFUNDED وPAYMENT.CAPTURE.REVERSED
+// وCUSTOMER.DISPUTE.CREATED، ومعرّف ذلك الويب هوك في PAYPAL_WEBHOOK_ID (بلا المعرّف = رفض).
 //
 // التحقق من التوقيع يدويًا بـ HMAC (بلا مكتبة stripe — المشروع كله fetch خام)،
 // والمنح عبر grantPlanToUser نفسه: أمان التكرار مضمون (نفس الجلسة/الفاتورة
@@ -76,8 +79,30 @@ async function waWebhook(req, res) {
   res.status(200).json({ received: true });
 }
 
+/* v-pay-refund (قرار المالك ٨ أكتوبر «لمّا يسترجع مشترك فلوسه أو يفتح اعتراضًا في البنك: سحب الباقة والنقاط»): ويب هوك PayPal على
+   الدالّة نفسها (جسم خامّ، وحدّ الـ١٢ دالّة) — ‎?src=paypal‎. التوقيع بالتحقّق الرسميّ (verify-webhook-signature بـPAYPAL_WEBHOOK_ID)
+   ويفشل مغلقًا: بلا المعرّف 503، وتوقيع لا يصحّ 401 — وإلّا سحب أيّ أحد باقة أيّ أحد بحدث ملفَّق. */
+async function paypalWebhook(req, res) {
+  if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).end('Method Not Allowed'); return; }
+  const hookId = String(process.env.PAYPAL_WEBHOOK_ID || '').trim();
+  if (!hookId) { res.status(503).json({ error: 'PAYPAL_WEBHOOK_ID missing' }); return; }
+  const pr = require('./_lib/pay-refund.js');
+  let raw, event;
+  try { raw = (await rawBody(req)).toString('utf8'); event = JSON.parse(raw); } catch (e) { res.status(400).json({ error: 'bad payload' }); return; }
+  if (!(await pr.verifyPaypalSig(raw, req.headers || {}, hookId))) { res.status(401).json({ error: 'signature verification failed' }); return; }
+  try {
+    const r = await pr.paypalEvent(event);
+    if (r && r.retry) { res.status(503).json({ error: 'busy, retry' }); return; }
+    res.status(200).json({ received: true });
+  } catch (e) {
+    console.error('[webhook/paypal]', e && e.message); // فشل السحب فعلًا: non-2xx فيعيد PayPal (والسحب لا يتكرّر بعلامة الحدث)
+    res.status(500).json({ error: 'handler error' });
+  }
+}
+
 module.exports = async (req, res) => {
   if (req.query && req.query.src === 'wa') return waWebhook(req, res); // v-phone-link
+  if (req.query && req.query.src === 'paypal') return paypalWebhook(req, res); // v-pay-refund
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).end('Method Not Allowed'); return; }
   const secret = (process.env.STRIPE_WEBHOOK_SECRET || '').trim();
   if (!secret) { res.status(503).json({ error: 'STRIPE_WEBHOOK_SECRET missing' }); return; }
@@ -101,7 +126,8 @@ module.exports = async (req, res) => {
     if (event.type === 'checkout.session.completed') {
       const md = obj.metadata || {};
       if (obj.payment_status === 'paid' && md.username && PLANS[md.plan]) {
-        const g = await grantPlanToUser(md.username, md.plan, 'lastStripeSessionId', obj.id);
+        const g = await grantPlanToUser(md.username, md.plan, 'lastStripeSessionId', obj.id,
+          { refs: [obj.payment_intent, obj.invoice], amount: obj.amount_total, currency: obj.currency }); // v-pay-refund: سجلّ المنح
         console.log('[webhook] checkout ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
       }
     } else if (event.type === 'invoice.paid') {
@@ -109,9 +135,20 @@ module.exports = async (req, res) => {
       const md = (obj.subscription_details && obj.subscription_details.metadata)
         || (obj.lines && obj.lines.data && obj.lines.data[0] && obj.lines.data[0].metadata) || {};
       if (obj.billing_reason === 'subscription_cycle' && md.username && PLANS[md.plan]) {
-        const g = await grantPlanToUser(md.username, md.plan, 'lastStripeInvoiceId', obj.id);
+        const pays = (obj.payments && Array.isArray(obj.payments.data)) ? obj.payments.data.map((x) => x && x.payment).filter(Boolean) : [];
+        const g = await grantPlanToUser(md.username, md.plan, 'lastStripeInvoiceId', obj.id, { // v-pay-refund: سجلّ المنح بأرقام دفعته
+          refs: [obj.payment_intent, obj.charge].concat(pays.map((x) => x.payment_intent), pays.map((x) => x.charge)), amount: obj.amount_paid, currency: obj.currency });
         console.log('[webhook] renewal ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
       }
+    } else if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
+      // v-pay-refund: الاسترداد (بنسبة المسترد) والاعتراض البنكيّ (مع تنبيه المالك) يسحبان ما منحته الدفعة، مرّة واحدة لكلّ حدث.
+      // فشل السحب يرمي ⇒ 500 أدناه فيعيد Stripe؛ والقفل المشغول ⇒ 503 فيعيد لاحقًا ولا يتكرّر السحب.
+      const r = await require('./_lib/pay-refund.js').stripeEvent(event);
+      if (r && r.retry) { res.status(503).json({ error: 'busy, retry' }); return; }
+    } else if (event.type === 'customer.subscription.deleted') {
+      // v-pay-refund: الإلغاء لا يسحب شيئًا — الفترة المدفوعة تكمل وتنتهي وحدها بنافذة الـ٣٥ يومًا من planUpdatedAt (tier.js).
+      // ولا تجديد بعده: Stripe لا يصدر فاتورة لاشتراك محذوف، وinvoice.paid أعلاه يشحن subscription_cycle وحدها.
+      console.log('[webhook] subscription deleted ' + obj.id + ' → لا سحب، الفترة المدفوعة تكمل');
     }
 
     res.status(200).json({ received: true });

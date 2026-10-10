@@ -15,6 +15,10 @@
   var KEY = 'aiapp_bgimg', KEY_CUSTOM = 'aiapp_bgimg_custom', KEY_ROT = 'aiapp_bgimg_rotate', KEY_ROT_AT = 'aiapp_bgimg_rotate_at';
   var BASE = '/assets/' + encodeURIComponent('خلفيات') + '/';
   var CUSTOM = 'custom:', MAX_PX = 1600, MAX_CUSTOM = 12;
+  /* v-bg-fresh (المالك ٩ أكتوبر بعد دمج الخلفيّات الموضَّحة: «بعده الصور نفس الشي»): الصور بالأسماء نفسها، وعامل الخدمة يعرضها
+     من الكاش أوّلًا (stale-while-revalidate) والـCDN يحفظها يومًا — فالقديمة تبقى. وسم إصدار على رابط الصورة والمصغّر يجلب الجديدة فورًا؛
+     ارفعه عند كلّ تبديل لصور المجلّد. */
+  var BG_VER = 2;
   var فهرس = null, تحميل = null, مؤقّت = null;
   var ثيمات = { 'خشبي': { ملف: 'ثيم:خشبي', ثيم: 'wood', عنوان: 'bgThemeWood', لون: '#ece3d3', فاتحة: true, مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent('خشبي') + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' } };
   /* v-themes (أمر المالك ٤ أكتوبر: «كمّل الثيمات الباقية» — نفس فكرة الخشبيّ على التصميم الجديد): ثلاثة عشر ثيمًا تكسوها
@@ -27,9 +31,20 @@
    ['غروب', 'sunset', 'bgThemeSunset', '#7a4a5a', false, true], ['شاطئ', 'beach', 'bgThemeBeach', '#8fd0e0', true, true],
    ['شتاء', 'winter', 'bgThemeWinter', '#d5dce4', true, true], ['كراج', 'garage', 'bgThemeGarage', '#141416', false, true],
    ['أنمي', 'anime', 'bgThemeAnime', '#1d1430', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', '#06121f', false, true],
-   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true]].forEach(function(a){
+   ['فصل', 'school', 'bgThemeSchool', '#3a3226', false, true],
+   /* v-themes-ten (المالك ٩ أكتوبر «عطني ١٠ أشكال جديدة… أنمي ٤ وسيارات ٣ ودراسيّة ٣»): عشر ثيمات مشهد من صوره */
+   ['أنمي-قتالي', 'tactical', 'bgThemeTactical', '#7a0f2e', false, true],
+   ['ملاك', 'angel', 'bgThemeAngel', '#c9d8ea', true, true],
+   ['أنمي-نيون', 'neonanime', 'bgThemeNeonAnime', '#050607', false, true],
+   ['محطّة', 'station', 'bgThemeStation', '#3a3f44', false, true],
+   ['سباق', 'rally', 'bgThemeRally', '#5a5440', false, true],
+   ['دخان', 'smoke', 'bgThemeSmoke', '#071a33', false, true],
+   ['مكتبة', 'library', 'bgThemeLibrary', '#cfeef0', true, true],
+   ['مقهى', 'cafe', 'bgThemeCafe', '#e8d8c2', true, true],
+   ['ورشة', 'workshop', 'bgThemeWorkshop', '#1a1830', false, true],
+   ['عصري', 'modern', 'bgThemeModern', '#d9d2c6', true, true]].forEach(function(a){
     ثيمات[a[0]] = { ملف: 'ثيم:' + a[0], ثيم: a[1], عنوان: a[2], لون: a[3], فاتحة: a[4], مشهد: !!a[5],
-      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=1' };
+      مصغّر: '/assets/' + encodeURIComponent('ثيمات') + '/' + encodeURIComponent(a[0]) + '/' + encodeURIComponent('مصغّر.jpg') + '?v=2' }; // v-bg-fresh: مصغّرات الثلاثة عشر أُعيد توليدها (v-scene-clear/sharp)
   });
   function ثيم(اسم){ return ثيمات[اسم] || null; }
 
@@ -47,8 +62,15 @@
       var id = ملف.slice(CUSTOM.length), hit = خاصّة().filter(function(s){ return s.id === id; })[0];
       return hit ? hit.data : '';
     }
-    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف);
+    return BASE + (مصغّر ? encodeURIComponent('مصغّرات') + '/' : '') + encodeURIComponent(ملف) + '?v=' + BG_VER;
   }
+  /* v-bg-desktop (المالك ٩ أكتوبر، لقطة لاندكروزر ضبابيّة بجانب فورمولا واضحة: «فيه خلفيّات غير واضحة فقط في الكمبيوتر»):
+     الصورة الطوليّة الضيّقة (أقلّ من ١٥٠٠ عرضًا) يمدّها المتصفّح على عرض شاشة الحاسوب فتطرى. لهذه وحدها نسخة حاسوب
+     assets/خلفيات/حاسوب/<الملفّ> (الشريط الأوسط ١٦:٩ موضَّح إلى ٢٥٦٠ عرضًا)، يعلّمها الفهرس بـ«حاسوب: true» وتُختار على
+     غير الجوّال. الجوّال والمصغّرات على الأصل. */
+  function للحاسوب(ملف){ return BASE + encodeURIComponent('حاسوب') + '/' + encodeURIComponent(ملف) + '?v=' + BG_VER; }
+  function على_حاسوب(){ return !document.documentElement.classList.contains('mobile-ui'); }
+  function مدخل(ملف){ return (فهرس || []).filter(function(s){ return s.ملف === ملف; })[0] || null; }
   function طبقة(){
     var el = document.getElementById('bgImgLayer');
     if(!el){ el = document.createElement('div'); el.id = 'bgImgLayer'; document.body.insertBefore(el, document.body.firstChild); }
@@ -76,13 +98,17 @@
     }
     var src = صورة.ثيم ? '' : رابط(صورة.ملف);
     if(!src && !صورة.ثيم){ طبّق(null); return; } // صورة جهاز حُذفت
+    if(!صورة.ثيم && صورة.ملف.indexOf(CUSTOM) !== 0){ // v-bg-desktop: النسخة العريضة على الحاسوب (العلم من الفهرس إن لم يحمله المحفوظ)
+      var ح = صورة.حاسوب; if(ح === undefined){ var م = مدخل(صورة.ملف); if(م) ح = صورة.حاسوب = !!م.حاسوب; }
+      if(ح && على_حاسوب()) src = للحاسوب(صورة.ملف);
+    }
     طبقة().style.backgroundImage = src ? 'url("' + src + '")' : ''; // الثيم: خامة الطبقة من CSS الثيم
     html.style.setProperty('--bgimg-tint', صورة.لون || '#000');
     html.classList.add('bgimg');
     html.classList.toggle('bgimg-light', !!صورة.فاتحة);
     html.classList.toggle('bgimg-dark', !صورة.فاتحة);
     if(حفظ !== false){
-      try{ localStorage.setItem(KEY, JSON.stringify(صورة.ثيم ? { ملف: صورة.ملف, ثيم: صورة.ثيم, لون: صورة.لون, فاتحة: !!صورة.فاتحة } : { ملف: صورة.ملف, لون: صورة.لون, فاتحة: !!صورة.فاتحة })); }
+      try{ localStorage.setItem(KEY, JSON.stringify(صورة.ثيم ? { ملف: صورة.ملف, ثيم: صورة.ثيم, لون: صورة.لون, فاتحة: !!صورة.فاتحة } : Object.assign({ ملف: صورة.ملف, لون: صورة.لون, فاتحة: !!صورة.فاتحة }, صورة.حاسوب ? { حاسوب: true } : {}))); }
       catch(e){ __swallow(e, 'bgimg:save'); }
     }
     try{
@@ -109,7 +135,7 @@
     if(!تحميل){
       تحميل = fetch(BASE + encodeURIComponent('فهرس.json'), { cache: 'no-cache' })
         .then(function(r){ if(!r.ok) throw new Error('فهرس الخلفيّات ' + r.status); return r.json(); })
-        .then(function(j){ فهرس = (j && j.صور) || []; return فهرس; })
+        .then(function(j){ فهرس = (j && j.صور) || []; حدّث_حاسوب(); return فهرس; })
         .catch(function(e){ تحميل = null; __swallow(e, 'bgimg:index'); return []; });
     }
     return تحميل;
@@ -264,6 +290,11 @@
     });
   }
 
+  // v-bg-desktop: محفوظ من قبل العلم (بلا «حاسوب») على الحاسوب — حين يصل الفهرس (لا يُجلب عند الإقلاع) يُعاد التطبيق بالنسخة العريضة
+  function حدّث_حاسوب(){
+    var cur = الحاليّ();
+    if(cur && cur.ملف && !cur.ثيم && cur.ملف.indexOf(CUSTOM) !== 0 && cur.حاسوب === undefined && على_حاسوب()){ var م = مدخل(cur.ملف); if(م && م.حاسوب) طبّق(cur, false); }
+  }
   function استرجع(){
     var cur = الحاليّ(); if(cur && cur.ملف) طبّق(cur, false);
     جدول();

@@ -54,8 +54,9 @@ async function omranBlobToServerLink(blob, filename){
   const isPdf = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
   const r = await fetch(isPdf ? '/api/media?action=pdf' : '/api/media?action=file', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: b64, name: filename, mime: (blob && blob.type) || 'application/octet-stream' }),
+    body: JSON.stringify({ data: b64, name: filename, mime: (blob && blob.type) || 'application/octet-stream', token: (typeof authGet === 'function' ? (authGet('aiapp_auth_token') || '') : ''), purpose: 'download' }), /* v-share-guard: الرفع برمز الجلسة · v-media-save: الحفظ تنزيل لا مشاركة */
   });
+  if(r.status === 429 && typeof settingsToast === 'function' && typeof t === 'function') settingsToast(t('portraitLimitReached')); /* v-media-save: نصّ الحدّ القائم، ثمّ الورقة المحلّيّة */
   const d = await r.json();
   if(!r.ok || !d || !d.url) throw new Error('upload-failed');
   return d.url;
@@ -623,6 +624,15 @@ document.addEventListener('click', closeMsgMoreMenu);
 // ✨ v363: قدرات التطبيق داخل المحادثة نفسها — أيقونة سريعة تحت كل رد
 // + ملاحظة تلقائية تقترح الميزة المناسبة. الأزرار القديمة في ⋮ تبقى كما هي؛
 // هذا باب إضافي (المكانين) عشان المستخدم يختار اللي يريحه.
+/* v-tools-pause (المالك ١٠ أكتوبر: «اخفاء محلل المصاريف والسيرة الذاتية»، ثمّ «التلفزيون والاقتراحات»): أدوات مخفيّة مؤقّتًا —
+   لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
+   الإرجاع = حذف المعرّف من هذه القائمة. */
+var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* بطاقة «اقتراحات» في الصفحة الرئيسيّة (هواوي) تتبع زرّها المخفيّ */
+if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
+  try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }
+  catch(e){ __swallow(e, 'ui:paused-hw-card'); }
+}
 var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
     kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
@@ -632,7 +642,7 @@ var APP_CAPABILITIES = [
     kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
   { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
     kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
-];
+].filter(function(c){ return OMRAN_PAUSED_TOOLS.indexOf(c.id) < 0; });
 // ميزة الشخصية الكرتونية الناطقة = من الدردشة (صورة + «سوِّ منها شخصية تتكلم»)
 function startTalkingCharFlow(){
   try{
@@ -1917,7 +1927,7 @@ const PROVIDER_QUICK_LIST = [
   { key: 'openai', name: 'العميق', color: '#10a37f' },
 ];
 // ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
-try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); }
+if(!omranOwnerUi()) try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); } // v-owner-solo: DeepSeek المالك يبقى DeepSeek
 let providerQuickBarBuilt = false;
 /* v-provider-arrow (أمر عمران «كل المزودين ٩ في السهم»): منتقٍ من شريط السهم (modes.js)
    يضبط موديل المزوّد ثمّ يبدّل المزوّد بمنطق selectProviderKey نفسه (مشروع/محادثة لكلّ

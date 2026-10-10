@@ -28,9 +28,9 @@ I18N['tr'] = {
     cnEmirateOpt: 'Emirlik — isteğe bağlı', cnDetailsAnnexes: '🏠 Detaylar ve ekler', cnExElevator: 'İç asansör', cnExStore: 'Dış depo', cnExWaterTank: 'Su deposu', cnExSolar: 'Güneş panelleri',
     cnExPlayground: 'Dış oyun alanı', cnExCarport: 'Ek araba gölgeliği', cnBudgetOutputs: '💰 Bütçe ve çıktılar', cnDownloadBoq: '📊 Metraj cetvelini indir', cnPdfReport: '📄 PDF rapor',
     keyHowToTitle: '📝 Her sağlayıcı için anahtar nasıl alınır:', showAllPlansCur: 'Tüm planları ve fiyatları kendi para biriminizde göster', currencyLabel: 'Para birimi', plFreeMsgs: 'Günde 20 mesaj',
-    plFreeVoice: 'En fazla 4 dakika sesli sohbet', plFreeImgs: 'En fazla 3 AI görsel', plFreeNoVideo: 'Video yok', plStMsgs: 'Günde 50 mesaj', plStVoice: 'En fazla 24 dakika sesli sohbet', plStImgs: 'En fazla 15 görsel',
-    plStVideos: '1 video', plProMsgs: 'Günde 100 mesaj', plProVoice: 'En fazla 61 dakika sesli sohbet', plProMedia: 'En fazla 40 görsel · 2 video', plProAgent: 'Akıllı ajan',
-    plProPriority: 'Altın rozet', plMaxAllPro: "Pro'daki her şey · günde 250 mesaj", plMaxVoice: 'En fazla 213 dakika sesli sohbet', plMaxMedia: 'En fazla 150 görsel · 3 video',
+    plFreeVoice: 'En fazla 4 dakika sesli sohbet', plFreeImgs: 'AI görseller', plFreeNoVideo: 'Video yok', plStMsgs: 'Günde 50 mesaj', plStVoice: 'En fazla 24 dakika sesli sohbet', plStImgs: 'AI görseller',
+    plStVideos: 'Video dahil', plProMsgs: 'Günde 100 mesaj', plProVoice: 'En fazla 61 dakika sesli sohbet', plProMedia: 'Görseller ve video dahil', plProAgent: 'Akıllı ajan',
+    plProPriority: 'Altın rozet', plMaxAllPro: "Pro'daki her şey · günde 250 mesaj", plMaxVoice: 'En fazla 213 dakika sesli sohbet', plMaxMedia: 'Görseller ve video dahil',
     plMaxSupport: 'Özel destek',
     adStudioTitle: 'Reklam Stüdyosu', adStudioHint: 'Reklam Stüdyosu — sohbet ederek reklamını oluştur', chatToPdfEmpty: 'Dönüştürülecek bir yanıt yok.', mahaConnectionLost: 'Yeniden bağlanılamadı', voiceTabAssistantName: 'Asistan',
     acctCleanupConfirm: 'Tüm sohbetler ve projeler kalıcı olarak silinecek. Emin misiniz?',
@@ -172,8 +172,8 @@ I18N['tr'] = {
     "pricingComingSoon": "Yakında geliyor 🚀 — abonelikler henüz kullanılamıyor",
     "pricingSubscribeBtn": "Şimdi abone ol",
     "pricingTestNote": "🧪 Şimdilik test modu — ticari lisans alındıktan sonra tam etkinleştirilecek",
-    "termsLink": "📜 Şartlar ve Koşullar",
-    "privacyLink": "🔒 Gizlilik Politikası",
+    "termsLink": "Şartlar ve Koşullar",
+    "privacyLink": "Gizlilik Politikası",
     "aboutSectionTitle": "ℹ️ Uygulama Hakkında ve Tanıtım Videoları",
     "feedbackSectionTitle": "💬 Geri Bildirim ve Öneriler",
     "fbTagBug": "🐛 Hata",
@@ -204,7 +204,7 @@ I18N['tr'] = {
     "checkoutCancelMsg": "⚠️ Ödeme iptal edildi",
     "logoutTitle": "Çıkış yap",
     "loginAction": "Giriş",
-    "acctSectionTitle": "👤 Hesabım",
+    "acctSectionTitle": "Hesabım",
     "statsSectionTitle": "Projelerim ve yedekleme",
     "statsProjectsLabel": "Proje sayısı",
     "statsMessagesLabel": "Gönderilen toplam mesaj",
@@ -215,19 +215,19 @@ I18N['tr'] = {
     "importProjectsConfirm": "İçe aktarılan projeler mevcut projelerinizle birleştirilecek. Devam edilsin mi?",
     "importProjectsSuccess": "✅ Projeler başarıyla içe aktarıldı",
     "importProjectsError": "❌ Geçersiz dosya, geçerli bir proje dışa aktarma dosyası olduğundan emin olun",
-    "acctAvatarBtn": "📷 Fotoğrafı değiştir",
+    "acctAvatarBtn": "Fotoğrafı değiştir",
     "acctUsernameLabel": "Kullanıcı adı",
     "acctPasswordRow": "Şifre",
     "acctSaveBtn": "Kaydet",
     "acctEmailLabel": "E-posta (kullanıcı adını veya parolayı unutursan)",
-    "acctReferralLabel": "🔗 Arkadaşlarını davet et bağlantısı",
-    "acctCopyBtn": "📋 Kopyala",
-    "acctReferralHint": "Bağlantınızla kayıt olan her arkadaşınız için ikinize de 10 ekstra ücretsiz mesaj verilir 🎁",
-    "acctReferralCopied": "Bağlantı kopyalandı ✅",
+    "acctReferralLabel": "Arkadaşlarını davet et bağlantısı",
+    "acctCopyBtn": "Kopyala",
+    "acctReferralHint": "Bağlantınızla kayıt olan her arkadaşınız için ikinize de 10 ekstra ücretsiz mesaj verilir",
+    "acctReferralCopied": "Bağlantı kopyalandı",
     "acctReferralBonusCount": "Bonus mesaj bakiyeniz: {n}",
     "acctCurrentPasswordLabel": "Mevcut parola",
     "acctNewPasswordLabel2": "Yeni parola",
-    "acctSaved": "✅ Kaydedildi",
+    "acctSaved": "Kaydedildi",
     "acctSaving": "Kaydediliyor...",
     "acctFillUsername": "Geçerli bir kullanıcı adı girin (en az 3 karakter)",
     "acctFillPasswords": "Mevcut parolanızı ve yeni bir parolayı girin (en az 4 karakter)",
@@ -798,24 +798,12 @@ I18N['tr'] = {
     "religionDisclaimer": "⚠️ Bu, resmi bir dini hüküm değil, bir AI yorumudur. Lütfen yetkin alimlere/uzmanlara danışın.",
     "religionTabVerse": "🕌 Ayet Tefsiri",
     "religionTabHadith": "📖 Hadis Arama",
-    "religionTabBible": "✝️ İncil Ayeti",
-    "religionTabTorah": "✡️ Tevrat Ayeti",
-    "religionTabBuddhism": "🕉️ Budist Öğretisi",
-    "religionTabHinduism": "🙏 Hindu İlkesi",
     "religionTabDream": "🌙 Rüya Tabiri",
     "religionInputLabelVerse": "Ayeti veya numarasını yazın (örn. Bakara 255)",
     "religionInputLabelHadith": "Hadis metnini veya konusunu yazın",
-    "religionInputLabelBible": "İncil'den bir ayet veya konusunu yazın",
-    "religionInputLabelTorah": "Tevrat'tan bir ayet veya konusunu yazın",
-    "religionInputLabelBuddhism": "Budizm konusu veya soru yazın",
-    "religionInputLabelHinduism": "Hinduizm konusu veya soru yazın",
     "religionInputLabelDream": "Rüyanızı detaylıca anlatın",
     "religionInputPlaceholderVerse": "örn. Bakara Suresi 255. ayet (Ayet-el Kürsi)",
     "religionInputPlaceholderHadith": "örn. niyetler hadisi veya ana-babaya saygı gibi bir konu",
-    "religionInputPlaceholderBible": "örn. Matta 5:7 (Mutluluklar) veya sevgi",
-    "religionInputPlaceholderTorah": "örn. Yaratılış 1:1 veya Yasa",
-    "religionInputPlaceholderBuddhism": "örn. aydınlanma, karma, bilgelik",
-    "religionInputPlaceholderHinduism": "örn. dharma, karma, Brahman",
     "religionInputPlaceholderDream": "örn. denizin üzerinde uçtuğumu ve büyük bir ay gördüğümü rüyamda gördüm...",
     "religionGenerateBtn": "✨ Yorumla",
     "religionNeedInput": "⚠️ Lütfen önce bir metin yazın.",
@@ -953,7 +941,7 @@ I18N['tr'] = {
     "fontWeightBold": "Kalın",
     "fontPreviewQ": "Artık yazı boyutunu ve kalınlığını değiştirebildiğini biliyor musun?",
     "fontPreviewA": "Evet! Aşağıdaki kaydırıcıyı sürükle ve hemen dene.",
-    "autoRenewLabel": "🔁 Aylık otomatik ödeme",
+    "autoRenewLabel": "Aylık otomatik ödeme",
     "autoRenewOnHint": "Açık — planınız her ay otomatik yenilenir ve ücretlendirilir",
     "autoRenewOffHint": "Kapalı — yalnızca bir ay ödersiniz ve istediğinizde elle yenilersiniz",
     "autoRenewStopped": "Aylık ödeme durduruldu — planınız {date} tarihine kadar aktif",
@@ -1006,8 +994,8 @@ I18N['tr'] = {
     designAiPlaceLabel: "Mekan türü", premiumOn: "Ajan AÇIK ⚡ — doğrudan yanıt, stil katmanı yok", premiumNeedLogin: "Ajanı kullanmak için giriş yapın", memorySectionLabel: "Hafızam", memoryIntro: "Uygulamanın sizin hakkınızda, projeleriniz ve iletişim tarzınız hakkında hatırladıkları burada. Hesabınız üzerinden tüm cihazlarınızda senkronize olur, düzenleyebilir veya silebilirsiniz.",
     memorySaveBtn: "Değişiklikleri kaydet", memoryClearBtn: "Hafızamı sil", memoryEmpty: "Sizin hakkınızda henüz kaydedilmiş bir şey yok.", memoryGuest: "Hafızanızı görmek için giriş yapın.", memoryConfirm: "Uygulamanın sizin hakkınızda hatırladığı her şey silinsin mi? Bu işlem geri alınamaz.", memorySaved: "Kaydedildi ve hesabınızla senkronize edildi.", memorySaveError: "Kaydedilemedi. Lütfen tekrar deneyin.",
     memoryLoadError: "Hafıza şu anda yüklenemiyor.", fontFamilySectionLabel: "Yazı stili", fontFamilyHint: "Masaüstü ve mobilde sohbet mesajlarını değiştirir, kod bloklarını veya uygulama düzenini değiştirmez.", guestImageMsg: "🎁 3 ücretsiz misafir görselinizi kullandınız! Saniyeler içinde ücretsiz hesap oluşturun ve görsel oluşturmaya, düzenlemeye devam etmek için 70 hediye puan kazanın.", planPer: "aylık",
-    planFreePer: "denemek için", planPtsFree: "hoş geldin puanı — tek seferlik", planPtsMo: "her ay puan", planTag: "En popüler", planCurrentBtn: "Mevcut planınız", planSoonBtn: "Yakında", planFreeFeats: '<li>Günde 20 mesaj</li><li>En fazla 4 dakika sesli sohbet</li><li>En fazla 3 AI görsel</li><li class="off">Video yok</li>', planPlusFeats: '<li>Günde 50 mesaj</li><li>En fazla 24 dakika sesli sohbet</li><li>En fazla 15 görsel</li><li>1 video</li>',
-    planProFeats: '<li>Günde 100 mesaj</li><li>En fazla 61 dakika sesli sohbet</li><li>En fazla 40 görsel · 2 video</li><li>Akıllı ajan</li><li>Altın rozet</li>', planMaxFeats: "<li>Pro'daki her şey · günde 250 mesaj</li><li>En fazla 213 dakika sesli sohbet</li><li>En fazla 150 görsel · 3 video</li><li>Özel destek</li>", checkoutPlanLabelMax: 'Max Plan 100$/ay — 3.200 puan', copyCode: "Kopyala", copiedMsg: "Kopyalandı ✅",
+    planFreePer: "denemek için", planPtsFree: "hoş geldin puanı — tek seferlik", planPtsMo: "her ay puan", planTag: "En popüler", planCurrentBtn: "Mevcut planınız", planSoonBtn: "Yakında", planFreeFeats: '<li>Günde 20 mesaj</li><li>En fazla 4 dakika sesli sohbet</li><li>AI görseller</li><li class="off">Video yok</li>', planPlusFeats: '<li>Günde 50 mesaj</li><li>En fazla 24 dakika sesli sohbet</li><li>AI görseller</li><li>Video dahil</li>',
+    planProFeats: '<li>Günde 100 mesaj</li><li>En fazla 61 dakika sesli sohbet</li><li>Görseller ve video dahil</li><li>Akıllı ajan</li><li>Altın rozet</li>', planMaxFeats: "<li>Pro'daki her şey · günde 250 mesaj</li><li>En fazla 213 dakika sesli sohbet</li><li>Görseller ve video dahil</li><li>Özel destek</li>", checkoutPlanLabelMax: 'Max Plan 100$/ay — 3.200 puan', copyCode: "Kopyala", copiedMsg: "Kopyalandı ✅",
     emailAsst_connectText: "AI’nin e-postalarınızı okuyup gönderilmeden önce onayladığınız hazır yanıtlar önerebilmesi için Gmail hesabınızı bağlayın.", emailAsst_connectBtn: "🔗 Gmail’i bağla", emailAsst_disclaimer: "⚠️ Her mesaj için açık onayınız olmadan asla yanıt gönderilmez.", emailAsst_title: "📧 AI E-posta Asistanı", emailAsst_refresh: "Yenile", emailAsst_loading: "Gelen kutunuz taranıyor…",
     emailAsst_empty: "Şu anda yanıt gerektiren yeni e-posta yok.", emailAsst_notConnected: "Gmail bağlı değil, lütfen yeniden bağlayın.", emailAsst_send: "✅ Gönder", emailAsst_ignore: "🚫 Bu göndereni yoksay", emailAsst_sending: "Gönderiliyor…", emailAsst_sent: "✅ Gönderildi", emailAsst_ignored: "🚫 Yoksayıldı — tekrar gösterilmeyecek", emailAsst_error: "❌ Hata: ", emailAsst_voiceBtn: "Sesli özet",
     emailAsst_addToCalendar: "📅 Takvime ekle", emailAsst_addingEvent: "Etkinlik ekleniyor…", emailAsst_eventAdded: "✅ Takviminize eklendi", emailAsst_calReauth: "Takvim erişimine izin vermek için Gmail’i yeniden bağlayın", emailAsst_voiceLoading: "🔊 Sesli özet hazırlanıyor…", emailAsst_voiceEmpty: "Özetlenecek e-posta yok.", emailAsst_urgent: "🔴 Acil", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Düşük",
@@ -1017,7 +1005,7 @@ I18N['tr'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["tr"], {
-    acctLoginBtnLabel: "🔐 Giriş yap / Hesap oluştur",
+    acctLoginBtnLabel: "Giriş yap / Hesap oluştur",
     designCompareTitle: "🆚 Odam tüm tarzlarda",
     designCompareHint: "Odanızın fotoğrafını yükleyin, 2-3 tarz seçin — yan yana tasarlayalım",
     designCompareBtn: "🆚 Seçilen tarzlarla tasarla",
@@ -1077,6 +1065,74 @@ Object.assign(I18N['tr'], {
   pickerOptsPick: "seçenek — seçin",
   videoOptAdspot: "📢 Hızlı reklam (5sn dikey + anlatım)",
   videoOptReels: "📱 Akıllı reels (10sn + anlatım)",
+  videoIdeaLbl: "💡 Bir örnek dene",
+  videoIdeaCanvas: "İnfografik: 5 saniyede 3 tasarruf ipucu",
+  videoIdeaRunway: "Gece Dubai sokaklarında giden spor araba",
+  videoIdeaMinimax: "Gün batımında sahilde sakin dalgalar",
+  videoIdeaOmni: "Gün batımında sahilde lüks parfüm reklamı",
+  videoIdeaHybrid: "Kampanya reklamı: ürün çekimi, üstünde indirim ve fiyat",
+  videoIdeaVeo: "Satıcı ve müşteri sesleriyle kalabalık geleneksel çarşı",
+  videoIdeaActor: "Bir kafeyi tanıtan Emirlikli oyuncu",
+  vwTitle: "Yazım asistanı",
+  vwSub: "Video süresine uygun hikâye, diyalog veya reklam yazar",
+  vwPh: "Örnek: yeni şube açan bir kafe sahibi hakkında bir hikâye yaz",
+  vwSend: "Gönder",
+  vwSug1: "Bana… hakkında kısa bir hikâye yaz",
+  vwSug2: "Bana… için reklam metni yaz",
+  vwToScene: "Sahne açıklaması olarak kullan",
+  vwToNarr: "Anlatıcı olarak kullan",
+  vwToActor: "Oyuncu konuşması olarak kullan",
+  vwBusy: "Yazılıyor…",
+  vwErr: "Şu an yazılamadı, biraz sonra tekrar dene",
+  vwLimit: "Bugünkü yazma sınırına ulaştın",
+  vwLogin: "Yazım asistanını kullanmak için giriş yap",
+  vwFit: "{n} saniyeye göre ayarlı — en fazla {w} kelime",
+  videoTabTrends: "Trendler",
+  videoIdeaCanvas2: "Bugünkü altın fiyatı dirhem olarak, yeşil veya kırmızı okla",
+  videoIdeaCanvas3: "Mağaza açılışına geri sayım",
+  videoIdeaRunway2: "Lüks bir showroomda müşteriye araba anahtarını anlatan satış danışmanı",
+  videoIdeaRunway3: "Izgarada çevrilen hamburger, buhar ve duman",
+  videoIdeaMinimax2: "Şafakta Dubai kulelerinin üzerinden geçen kamera",
+  videoIdeaMinimax3: "Bir kafe penceresinde yağmur damlaları",
+  videoIdeaOmni2: "Hurmaların yanında fincana dökülen cezvenin ağır çekimi",
+  videoIdeaOmni3: "Film açılışı: şafakta çöl kumulları",
+  videoIdeaHybrid2: "Piyasa raporu: şehir görüntüsü ve üstünde borsa rakamları",
+  videoIdeaHybrid3: "Yeni gayrimenkul: bina görüntüsü, fiyat ve konum",
+  videoIdeaVeo2: "Cızırtı ve kaynama sesleriyle yemek (ASMR)",
+  videoIdeaVeo3: "Çölde motor sesiyle hızlanan araba",
+  videoIdeaActor2: "Parfüm dükkânını tanıtan Emirlikli oyuncu: ud ve tütsü",
+  videoIdeaActor3: "Müşterileri karşılayıp hizmetleri anlatan resepsiyonist",
+  vcTitle: "Karakterler",
+  vcSub: "En fazla 3 karakter — her birinin adı, sesi ve repliği",
+  vcAdd: "Karakter ekle",
+  vcName: "Ad",
+  vcLine: "Ne söylüyor?",
+  vcMale: "Erkek",
+  vcFemale: "Kadın",
+  vcRemove: "Kaldır",
+  vwToChars: "Diyaloğu karakterlere dağıt",
+  vcMore: "Daha fazla seçenek",
+  vcTutorial: "İzle: nasıl video yapılır",
+  vcToExtra: "Eklere koy",
+  videoTabClean: "Videoyu iyileştir",
+  vclTitle: "Cihazındaki bir videoyu iyileştir",
+  vclSub: "Bulanık ya da karıncalı bir video yükle: gürültüyü azaltır, netleştirir ve renkleri iyileştiririz — cihazında, ücretsiz",
+  vclPick: "Video seç veya buraya bırak",
+  vclDrop: "En fazla {s} saniye ve {n} MB",
+  vclLight: "Hafif",
+  vclStrong: "Güçlü",
+  vclUpscale: "Çözünürlüğü iki katına çıkar (küçük videolar)",
+  vclStart: "Videoyu iyileştir",
+  vclWorking: "İyileştiriliyor… bu pencereyi kapatma",
+  vclCancel: "İptal",
+  vclDownload: "İyileştirilmiş videoyu indir",
+  vclBefore: "Önce",
+  vclAfter: "Sonra",
+  vclTooLong: "Video {s} saniyeden uzun — önce kırp",
+  vclTooBig: "Dosya {n} MB’tan büyük",
+  vclFail: "Bu video bu cihazda iyileştirilemedi",
+  vclNote: "Gürültüyü azaltır, kenarları netleştirir ve renkleri iyileştirir; ağır bulanıklığı veya kamera titremesini düzeltmez",
+  vclLoading: "İyileştirme aracı hazırlanıyor (yalnızca ilk sefer)…",
   fashionEngineLabel: "🎨 Görsel motoru",
   fashionEngineGemini: "Gemini — yüzü en iyi koruyan (varsayılan)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT görsel motoru",
@@ -1159,20 +1215,20 @@ Object.assign(I18N["tr"], {"imgUnchanged": "⚠️ Düzenleme uygulanmadı: gör
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["tr"], {"mediaPlansTitle": "Görsel ve video abonelikleri", "mediaPlansDesc": "Yalnızca görsel veya video isteyenler için — sohbet yok. Her aboneliğin kendi bakiyesi vardır ve başka bir şeye harcanmaz.", "mediaImgName": "Görseller", "mediaVidName": "Video", "mediaImgUnit": "yüksek kaliteli görsel", "mediaVidEco": "ekonomik video", "mediaVidCine": "sinematik video", "mediaVidSound": "sesli video", "mediaOr": "veya", "mediaNoChatVideo": "Sohbet ve video yok", "mediaNoChatImage": "Sohbet ve görsel yok", "mediaLeftImg": "Görsel aboneliğinde kalan", "mediaLeftVid": "Video aboneliğinde kalan"});
-Object.assign(I18N["tr"], {"mediaImgPlain": "görsel", "mediaHighEq": "Yüksek kaliteli görsel = 2 görsel", "mediaQLabel": "Görsel kalitesi", "mediaQNormal": "⚡ Standart", "mediaQHigh": "💎 Yüksek", "mediaQNormalDesc": "Hızlı, sosyal medya için ideal — bakiyenden 1 görsel", "mediaQHighDesc": "Daha ince detay, daha net yazı, baskıya hazır — bakiyenden 2 görsel", "mediaQHint": "Ya da tek bir görsel için isteğine “yüksek kalite” yaz"});
+Object.assign(I18N["tr"], {"mediaImgPlain": "görsel", "mediaHighEq": "Yüksek kaliteli görsel = 2 görsel", "mediaQLabel": "Görsel kalitesi", "mediaQNormal": "Standart", "mediaQHigh": "Yüksek", "mediaQNormalDesc": "Hızlı, sosyal medya için ideal — bakiyenden 1 görsel", "mediaQHighDesc": "Daha ince detay, daha net yazı, baskıya hazır — bakiyenden 2 görsel", "mediaQHint": "Ya da tek bir görsel için isteğine “yüksek kalite” yaz"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["tr"], {"priceTabChat": "💬 Sohbet", "priceTabImg": "🖼️ Görseller", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Puanlar"});
-Object.assign(I18N["tr"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Maha sesli aramaları için. Aylık dakikalarınız yalnızca Maha içindir; bitince aramalar puanlarınızla devam eder.", "mahaMinPlain": "arama dakikası", "mahaMinUnit": "dk", "mahaCapNote": "Arama başına en fazla 10 dakika", "mahaNoChat": "Sohbet, görsel ve video yok", "mahaLeft": "Kalan Maha dakikası", "mahaCapEnd": "Arama 10 dakika sınırında bitti — devam etmek için tekrar arayın", "mahaToPoints": "Dakikalarınız bitti — puanlarla devam ediliyor"});
+Object.assign(I18N["tr"], {"priceTabChat": "Sohbet", "priceTabImg": "🖼️ Görseller", "priceTabVid": "🎬 Video", "priceTabPts": "Puanlar"});
+Object.assign(I18N["tr"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Maha sesli aramaları için. Aylık dakikalarınız yalnızca Maha içindir; bitince aramalar puanlarınızla devam eder.", "mahaMinPlain": "arama dakikası", "mahaMinUnit": "dk", "mahaCapNote": "Arama başına en fazla 10 dakika", "mahaNoChat": "Sohbet, görsel ve video yok", "mahaLeft": "Kalan Maha dakikası", "mahaCapEnd": "Arama 10 dakika sınırında bitti — devam etmek için tekrar arayın", "mahaToPoints": "Dakikalarınız bitti — puanlarla devam ediliyor"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["tr"], {"install":"Uygulamayı Yükle","installHowIOS":"iPhone veya iPad'e yüklemek için:\n1) Bu siteyi Safari'de açın\n2) Paylaş düğmesine dokunun (yukarı oklu kare)\n3) \"Ana Ekrana Ekle\"yi, ardından \"Ekle\"yi seçin","installHowIOSOther":"Bu tarayıcıdan iPhone'a yüklemek için:\n1) Adres çubuğunun yanındaki Paylaş düğmesine (yukarı oklu kare) dokunun\n2) \"Ana Ekrana Ekle\"yi seçin\nSeçenek yoksa bu siteyi Safari'de açın.","installHowAndroid":"Android'e yüklemek için:\n1) Tarayıcı menüsünü (⋮) açın\n2) \"Uygulamayı yükle\" veya \"Ana ekrana ekle\"yi seçin\n3) Yüklemeyi onaylayın","installHowDesktop":"Bilgisayara yüklemek için (Chrome veya Edge):\nAdres çubuğundaki yükleme simgesine (⊕ veya küçük ekran) tıklayın ya da tarayıcı menüsünü (⋮ veya …) açıp \"Yükle\" veya \"Uygulamalar → Bu siteyi uygulama olarak yükle\"yi seçin.","installHowMacSafari":"Mac'e Safari'den yüklemek için:\nÜstteki \"Dosya\" menüsünü açın, \"Dock'a Ekle\"yi, ardından \"Ekle\"yi seçin.","installHowFirefox":"Bilgisayardaki Firefox web uygulaması yükleyemez.\nBu siteyi Chrome veya Edge'de açıp \"Uygulamayı Yükle\"ye tıklayın ya da telefonunuzdan yükleyin."});
 Object.assign(I18N["tr"], {"videoSceneWait":"⏳ Sahne {i}/{n}: videolar arası bekleme — {s} sn sonra otomatik başlar.","videoFilmModeOnly":"🎬 «Tam film» yalnızca «Yapay zekâ videosu» moduyla çalışır — modu değiştirin veya başka bir süre seçin. Hiçbir ücret alınmadı."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["tr"], {"acctPhoneLabel": "📱 Telefon numarası (kurtarma için)", "phoneNotLinked": "Bağlı değil", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Hazır mesajı gönderin veya numaranızı paylaşın, sonra buraya dönün…", "phoneLinkedOk": "✓ Numara bağlandı", "phoneTaken": "Bu numara başka bir hesaba bağlı", "phoneNoUser": "Bu numaraya bağlı bir hesap yok", "phoneExpired": "Bağlantının süresi doldu — tekrar deneyin", "phoneRecoverTitle": "Ya da hesabınızı telefonunuzla kurtarın:", "phoneRecoverSent": "✓ Oradaki sohbetinize yeni şifre bağlantısı gönderdik"});
+Object.assign(I18N["tr"], {"acctPhoneLabel": "Telefon numarası (kurtarma için)", "phoneNotLinked": "Bağlı değil", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Hazır mesajı gönderin veya numaranızı paylaşın, sonra buraya dönün…", "phoneLinkedOk": "✓ Numara bağlandı", "phoneTaken": "Bu numara başka bir hesaba bağlı", "phoneNoUser": "Bu numaraya bağlı bir hesap yok", "phoneExpired": "Bağlantının süresi doldu — tekrar deneyin", "phoneRecoverTitle": "Ya da hesabınızı telefonunuzla kurtarın:", "phoneRecoverSent": "✓ Oradaki sohbetinize yeni şifre bağlantısı gönderdik"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["tr"], {"bgThemeWood": "Ahşap"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["tr"], {"brandSubtitle": "Yapay Zekâ Platformu"});
-Object.assign(I18N["tr"], {"bgThemeDarkwood": "Koyu ahşap", "bgThemeMarble": "Mermer", "bgThemeCode": "Kod", "bgThemeCars": "Arabalar", "bgThemeKids": "Çocuk", "bgThemeCuisine": "Yemek", "bgThemeSunset": "Gün batımı", "bgThemeBeach": "Plaj", "bgThemeWinter": "Kış", "bgThemeGarage": "Garaj", "bgThemeAnime": "Anime", "bgThemeCyber": "Siber güvenlik", "bgThemeSchool": "Sınıf"});
+Object.assign(I18N["tr"], {"bgThemeDarkwood": "Koyu ahşap", "bgThemeMarble": "Mermer", "bgThemeCode": "Kod", "bgThemeCars": "Arabalar", "bgThemeKids": "Çocuk", "bgThemeCuisine": "Yemek", "bgThemeSunset": "Gün batımı", "bgThemeBeach": "Plaj", "bgThemeWinter": "Kış", "bgThemeGarage": "Garaj", "bgThemeAnime": "Anime", "bgThemeCyber": "Siber güvenlik", "bgThemeSchool": "Sınıf", "bgThemeTactical": "Taktik anime", "bgThemeAngel": "Buz meleği", "bgThemeNeonAnime": "Neon anime", "bgThemeStation": "Gelecek istasyonu", "bgThemeRally": "Yağmur yarışı", "bgThemeSmoke": "Mavi duman", "bgThemeLibrary": "Kütüphane", "bgThemeCafe": "Kafe", "bgThemeWorkshop": "Gece atölyesi", "bgThemeModern": "Modern ev"});
 /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (v-living-memory: صفحة المالك) */
 Object.assign(I18N["tr"], {"livingMemTitle": "Canlı hafızam", "livingMemIntro": "Asistanın sohbetlerinizden sizin hakkınızda öğrendiği son şeyler. Her yanıtta yalnızca sorunuzla ilgili olanları kullanır ve tercih ettiğiniz üslubu uygular. Unutması için bir bilgiyi silin.", "livingMemEmpty": "Asistan henüz sizin hakkınızda bir şey öğrenmedi.", "livingMemDelete": "Sil", "livingMemLoadError": "Canlı hafızanız şu an yüklenemedi.", "livingMemDeleteError": "Silinemedi. Lütfen tekrar deneyin.", "livingMemClearAll": "Hepsini sil", "livingMemClearConfirm": "Asistanın sizin hakkınızda öğrendiği her şey silinsin mi? Bu işlem geri alınamaz."});
 /* v-pdf-docs: «PDF» يقبل Word والنصوص لا الصور وحدها */
@@ -1183,3 +1239,6 @@ Object.assign(I18N["tr"], {"pdfDocPage": "⏳ Sayfa {i} / {n} hazırlanıyor…"
 /* v-video-watch */ Object.assign(I18N['tr'], {"vwUploading": "🎬 Video yükleniyor…", "vwWatching": "🎬 Videoyu izliyor ve sesini dinliyorum…", "vwCharged": "🎬 {n} puan kullanıldı · {d} video", "vwNoPoints": "{p} puanın var; bu videoyu analiz etmek için {n} gerekiyor.", "vwTooBig": "Video 100 MB’tan büyük — kısaltın veya çözünürlüğünü düşürüp tekrar gönderin.", "vwTooLong": "Video 10 dakikadan uzun — daha kısa bir klip gönderin.", "vwFormat": "Video biçimi desteklenmiyor — MP4, MOV veya WEBM olarak gönderin.", "vwFailed": "Video analiz edilemedi — puan kullanılmadı. Tekrar deneyin.", "vwLogin": "Videoları analiz etmek için önce giriş yapın.", "vwDefaultQ": "Bu videoyu analiz et"});
 /* v-plans-gate */ Object.assign(I18N['tr'], {"plansWhyPoints": "Puanınız bitti — Planlar’dan yükleyip hemen devam edin.", "plansWhyLimit": "Planınızın bugünkü sınırına ulaştınız — planınızı yükseltin veya yarını bekleyin.", "plansWhyExpired": "{plan} aboneliğiniz sona erdi — avantajlarınızı geri almak için yenileyin.", "plansWhyExpiring": "{plan} aboneliğiniz {date} tarihinde sona eriyor — avantajlarınız durmasın diye yenileyin.", "plansRenew": "Yenile", "plansLater": "Sonra", "vwUnavailable": "Video analizi geçici olarak kullanılamıyor — puan kullanılmadı. Birazdan tekrar deneyin."});
 /* v-google-login-help */ Object.assign(I18N['tr'], {"authGoogleHint": "Google ile mi kaydoldunuz? “{btn}” düğmesine dokunun — Gmail şifreniz burada çalışmaz."});
+/* v-media-merge */ Object.assign(I18N['tr'], {"priceTabMedia":"Görsel ve video","mixPlanName":"Görsel ve video","mixPlansDesc":"Görsel ve video isteyenler için — sohbet yok. İkisi için tek bakiye; bitince puanlarınızla devam edersiniz.","mixOneBalance":"Görsel ve video için tek bakiye","mixApprox1":"Yaklaşık 50 görsel veya 12 video ya da ikisinin karışımı","mixApprox2":"Yaklaşık 100 görsel veya 24 video ya da ikisinin karışımı","mixApprox3":"Yaklaşık 500 görsel veya 121 video ya da ikisinin karışımı","mixNoChat":"Sohbet yok","mixLeft":"Görsel ve video bakiyesinde kalan"});
+/* v-inspire */ Object.assign(I18N['tr'], {"inspTabInspire":"İlham","inspTabQuick":"Hızlı öneriler","inspCityTitle":"Gerçek şehrin","inspCitySub":"Açık haritalardan gerçek mahallen üzerine kurulan 3D deneyimler. Birini seç, önizlemede hemen açılsın — sonra içine istediğin mahalle ya da şehri yaz.","inspLoading":"Açılıyor…","inspFail":"Şu an açılamadı — tekrar dene"});
+/* v-chat-edit */ Object.assign(I18N['tr'], {"editApplied": "Değişiklikler tasarıma uygulandı ({n}).", "editFailed": "Değişikliği uygulamadım — eski metnin bir kısmı mevcut tasarımla eşleşmedi, tasarım aynen kaldı. Lütfen tekrar isteyin.", "editTruncated": "Yanıt dosya tamamlanmadan kesildi, bu yüzden tasarım olduğu gibi bırakıldı.", "editPartial": "Değişikliği uygulamadım — yanıt eksik ya da hatalı biçimde geldi, tasarım aynen kaldı. Lütfen tekrar isteyin.", "editBroke": "Değişikliği uygulamadım — tasarımın kodunu bozacaktı, tasarım aynen kaldı. Lütfen tekrar isteyin."});

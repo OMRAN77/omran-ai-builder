@@ -6,6 +6,10 @@
 // match-score percentage). Does NOT generate an image and does NOT consume
 // the daily image-generation quota — only requires a logged-in session.
 const { checkFashionQuota } = require('./_fashionUsage');
+const { checkAndConsumeCustom, refundCustom, clientIp } = require('./_usage.js');
+// v-open-tools-cap: فحص الحصّة أدناه لا يرفض إلّا غير المسجَّل ولا يعدّ شيئًا — نداء رؤية بلا سقف لأيّ حساب (ويسقط
+// إلى موديل مدفوع). سقف ثابت لهذه الأداة في سلّتها؛ تجاوزه 429 (لا 402: الباقة لا ترفعه فلا يفتح «الباقات»). المالك وVIP بلا سقف.
+const SUGGEST_DAILY_LIMIT = 30;
 const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
 // v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يُسقط الاقتراحات —
@@ -49,6 +53,7 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let refund = null; // v-refund-custom: يردّ الاقتراح المعدود إن فشل النموذج (والبديل)
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -72,6 +77,13 @@ module.exports = async (req, res) => {
       res.status(401).json({ error: 'auth_required' });
       return;
     }
+    const cap = await checkAndConsumeCustom(token, null, clientIp(req), 'fashion-suggest', SUGGEST_DAILY_LIMIT);
+    if (!cap.allowed) {
+      if (cap.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
+      res.status(429).json({ error: 'daily_limit_reached', limit: SUGGEST_DAILY_LIMIT });
+      return;
+    }
+    refund = () => refundCustom(token, null, clientIp(req), 'fashion-suggest');
 
     const isArabic = lang !== 'en' && lang !== 'fr' && lang !== 'hi' && lang !== 'ur' && lang !== 'bn' && lang !== 'ne';
     const langNames = { en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
@@ -123,6 +135,7 @@ module.exports = async (req, res) => {
     } else {
       rawText = await openaiSuggest(promptText, imageBase64, mimeType);
       if (!rawText) {
+        await refund();
         res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
         return;
       }
@@ -151,6 +164,7 @@ module.exports = async (req, res) => {
 
     res.status(200).json({ suggestions, engine });
   } catch (e) {
+    if (refund) await refund();
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };

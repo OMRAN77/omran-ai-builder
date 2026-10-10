@@ -161,7 +161,8 @@ test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمف
       assert.equal(c.headers.Authorization, 'Bearer gsk-test');
       assert.equal(c.body.model, 'openai/gpt-oss-120b');
       assert.ok(Array.isArray(c.body.tools) && c.body.tools.some((t) => t.function.name === 'web_search'), 'الأدوات عابرة');
-      assert.ok(c.body.messages.some((m) => m.role === 'system' && String(m.content).includes('أنت «عمران»')), 'v-owner-full: المالك يأخذ النظام الكامل افتراضيًّا');
+      // v-owner-full: النظام الكامل افتراضيًّا — وv-owner-identity: بهويّة المزوّد الحقيقيّة بدل «أنت عمران»
+      assert.ok(c.body.messages.some((m) => m.role === 'system' && String(m.content).includes('[البحث]') && String(m.content).includes('أنت موديل يعمل على خوادم Groq')), 'v-owner-full: المالك يأخذ النظام الكامل افتراضيًّا، بهويّته الحقيقيّة');
     }
     const second = r.calls[1].body.messages.filter((m) => m.role !== 'system'); // v-owner-full: النظام أوّلًا
     assert.deepEqual(second[1].tool_calls[0].function, { name: 'web_search', arguments: '{"query":"عمران"}' });
@@ -172,7 +173,9 @@ test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمف
   } finally { delete process.env.GROQ_API_KEY; }
 });
 
-test('٥. المالك + مفتاح Groq مرفوض (401) → الوسيط للمزوّد نفسه بسطر حالة، لا صمت', async () => {
+/* v-owner-solo (أمر المالك ٨ أكتوبر «كلّ مزوّد يردّ عن نفسه»): Groq عبر الوسيط = Llama 4 Maverick عند مضيف غير Groq (Groq أوقفه) —
+   فمفتاح Groq المرفوض يتوقّف بسببه ولا يجيب الوسيط. */
+test('٥. المالك + مفتاح Groq مرفوض (401) → سبب الفشل، ولا يجيب الوسيط عن Groq', async () => {
   process.env.GROQ_API_KEY = 'gsk-bad';
   try {
     const r = await run({ user: 'omran', provider: 'groq', messages: ask('هلا بك'), script: [
@@ -180,10 +183,9 @@ test('٥. المالك + مفتاح Groq مرفوض (401) → الوسيط لل�
       () => anthropicText('من الوسيط'),
     ] });
     assert.equal(r.calls[0].url, 'https://api.groq.com/openai/v1/chat/completions');
-    assert.match(r.calls[1].url, /openrouter\.ai\/api\/v1\/messages/);
-    assert.equal(r.calls[1].body.model, 'meta-llama/llama-4-maverick');
-    assert.ok(r.events.some((e) => e.k === 'stModelFallback' && /Groq · 401/.test(e.status)));
-    assert.equal(r.text, 'من الوسيط');
+    assert.ok(!r.calls.some((c) => /openrouter\.ai/.test(c.url)), 'لا وسيط');
+    assert.ok(r.events.some((e) => e.ownerStop === true && e.error === 'ما قدرت أردّ الحين — خطأ 401'));
+    assert.equal(r.text, '');
   } finally { delete process.env.GROQ_API_KEY; }
 });
 
@@ -225,13 +227,15 @@ test('٧. المالك + مفتاح OpenAI: GPT مباشر بمعرّفه عند
   } finally { delete process.env.OPENAI_API_KEY; delete process.env.GROQ_API_KEY; }
 });
 
-test('٨. تفكير الموديل: دور المالك الصعب بلا حقول إطفاء، والعاديّ بها (v-owner-auto)، وغير المالك عليها كما كان (v-chat-fast)', async () => {
+test('٨. تفكير الموديل: سؤال المالك بلا حقول إطفاء، والمجاملة بها (v-owner-think-all)، وغير المالك عليها كما كان (v-chat-fast)', async () => {
   chat.__orQuick.level = 2;
   let r = await run({ user: 'omran', provider: 'deepseek', messages: ask('حلّل لي هذا التقرير'), script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.thinking, undefined);
   assert.equal(r.calls[0].body.reasoning, undefined);
   r = await run({ user: 'omran', provider: 'deepseek', messages: ask('اشرح'), script: [() => anthropicText('تم')] });
-  assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' }, 'v-owner-auto: الكلام العاديّ للمالك فوريّ');
+  assert.equal(r.calls[0].body.thinking, undefined, 'v-owner-think-all: كلّ سؤال للمالك يفكّر');
+  r = await run({ user: 'omran', provider: 'deepseek', messages: ask('شكرًا'), script: [() => anthropicText('تم')] });
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' }, 'v-owner-auto: المجاملة للمالك فوريّة');
   assert.deepEqual(r.calls[0].body.reasoning, { enabled: false });
   r = await run({ user: 'someone', provider: 'deepseek', messages: ask('اشرح'), script: [() => anthropicText('تم')] });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' });

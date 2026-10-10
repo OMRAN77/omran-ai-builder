@@ -28,10 +28,10 @@ I18N['id'] = {
     cnEmirateOpt: 'Emirat — opsional', cnDetailsAnnexes: '🏠 Detail dan lampiran', cnExElevator: 'Lift dalam ruangan', cnExStore: 'Gudang luar', cnExWaterTank: 'Tangki air', cnExSolar: 'Panel surya',
     cnExPlayground: 'Taman bermain luar ruangan', cnExCarport: 'Kanopi mobil tambahan', cnBudgetOutputs: '💰 Anggaran dan hasil', cnDownloadBoq: '📊 Unduh daftar kuantitas',
     cnPdfReport: '📄 Laporan PDF', keyHowToTitle: '📝 Cara mendapatkan kunci untuk setiap penyedia:', showAllPlansCur: 'Tampilkan semua paket dan harga dalam mata uang Anda', currencyLabel: 'Mata uang',
-    plFreeMsgs: '20 pesan per hari', plFreeVoice: 'Hingga 4 menit obrolan suara', plFreeImgs: 'Hingga 3 gambar AI', plFreeNoVideo: 'Tanpa video', plStMsgs: '50 pesan per hari',
-    plStVoice: 'Hingga 24 menit obrolan suara', plStImgs: 'Hingga 15 gambar', plStVideos: '1 video', plProMsgs: '100 pesan per hari', plProVoice: 'Hingga 61 menit obrolan suara',
-    plProMedia: 'Hingga 40 gambar · 2 video', plProAgent: 'Agen pintar', plProPriority: 'Lencana emas', plMaxAllPro: 'Semua yang ada di Pro · 250 pesan per hari',
-    plMaxVoice: 'Hingga 213 menit obrolan suara', plMaxMedia: 'Hingga 150 gambar · 3 video', plMaxSupport: 'Dukungan khusus',
+    plFreeMsgs: '20 pesan per hari', plFreeVoice: 'Hingga 4 menit obrolan suara', plFreeImgs: 'Gambar AI', plFreeNoVideo: 'Tanpa video', plStMsgs: '50 pesan per hari',
+    plStVoice: 'Hingga 24 menit obrolan suara', plStImgs: 'Gambar AI', plStVideos: 'Termasuk video', plProMsgs: '100 pesan per hari', plProVoice: 'Hingga 61 menit obrolan suara',
+    plProMedia: 'Termasuk gambar dan video', plProAgent: 'Agen pintar', plProPriority: 'Lencana emas', plMaxAllPro: 'Semua yang ada di Pro · 250 pesan per hari',
+    plMaxVoice: 'Hingga 213 menit obrolan suara', plMaxMedia: 'Termasuk gambar dan video', plMaxSupport: 'Dukungan khusus',
     adStudioTitle: 'Studio Iklan', adStudioHint: 'Studio Iklan — buat iklanmu lewat obrolan', chatToPdfEmpty: 'Belum ada balasan untuk dikonversi.', mahaConnectionLost: 'Tidak dapat tersambung kembali', voiceTabAssistantName: 'Asisten',
     acctCleanupConfirm: 'Semua obrolan dan proyek akan dihapus permanen. Anda yakin?',
     buildNoCode: '⚠️ Tidak ada kode yang diterima dari penyedia — pratinjau kosong. Kirim ulang permintaan atau coba penyedia lain.',
@@ -172,8 +172,8 @@ I18N['id'] = {
     "pricingComingSoon": "Segera hadir 🚀 — langganan belum tersedia",
     "pricingSubscribeBtn": "Berlangganan sekarang",
     "pricingTestNote": "🧪 Masih dalam mode uji coba — aktivasi penuh setelah lisensi bisnis diperoleh",
-    "termsLink": "📜 Syarat & Ketentuan",
-    "privacyLink": "🔒 Kebijakan Privasi",
+    "termsLink": "Syarat & Ketentuan",
+    "privacyLink": "Kebijakan Privasi",
     "aboutSectionTitle": "ℹ️ Tentang Aplikasi & Video Perkenalan",
     "feedbackSectionTitle": "💬 Masukan & Saran",
     "fbTagBug": "🐛 Bug",
@@ -204,7 +204,7 @@ I18N['id'] = {
     "checkoutCancelMsg": "⚠️ Pembayaran dibatalkan",
     "logoutTitle": "Keluar",
     "loginAction": "Masuk",
-    "acctSectionTitle": "👤 Akun saya",
+    "acctSectionTitle": "Akun saya",
     "statsSectionTitle": "Proyek saya & cadangan",
     "statsProjectsLabel": "Jumlah proyek",
     "statsMessagesLabel": "Total pesan terkirim",
@@ -215,19 +215,19 @@ I18N['id'] = {
     "importProjectsConfirm": "Proyek yang diimpor akan digabung dengan proyek Anda saat ini. Lanjutkan?",
     "importProjectsSuccess": "✅ Proyek berhasil diimpor",
     "importProjectsError": "❌ File tidak valid, pastikan ini adalah file ekspor proyek yang sah",
-    "acctAvatarBtn": "📷 Ganti foto",
+    "acctAvatarBtn": "Ganti foto",
     "acctUsernameLabel": "Nama pengguna",
     "acctPasswordRow": "Kata sandi",
     "acctSaveBtn": "Simpan",
     "acctEmailLabel": "Email (jika lupa nama pengguna atau kata sandi)",
-    "acctReferralLabel": "🔗 Tautan undang teman",
-    "acctCopyBtn": "📋 Salin",
-    "acctReferralHint": "Untuk setiap teman yang mendaftar dengan tautan Anda, Anda berdua mendapatkan 10 pesan gratis tambahan 🎁",
-    "acctReferralCopied": "Tautan disalin ✅",
+    "acctReferralLabel": "Tautan undang teman",
+    "acctCopyBtn": "Salin",
+    "acctReferralHint": "Untuk setiap teman yang mendaftar dengan tautan Anda, Anda berdua mendapatkan 10 pesan gratis tambahan",
+    "acctReferralCopied": "Tautan disalin",
     "acctReferralBonusCount": "Saldo pesan bonus Anda: {n}",
     "acctCurrentPasswordLabel": "Kata sandi saat ini",
     "acctNewPasswordLabel2": "Kata sandi baru",
-    "acctSaved": "✅ Tersimpan",
+    "acctSaved": "Tersimpan",
     "acctSaving": "Menyimpan...",
     "acctFillUsername": "Masukkan nama pengguna yang valid (minimal 3 karakter)",
     "acctFillPasswords": "Masukkan kata sandi Anda saat ini dan kata sandi baru (minimal 4 karakter)",
@@ -798,24 +798,12 @@ I18N['id'] = {
     "religionDisclaimer": "⚠️ Ini adalah interpretasi AI, bukan fatwa resmi. Silakan konsultasikan dengan ulama/ahli yang berkompeten.",
     "religionTabVerse": "🕌 Tafsir Ayat",
     "religionTabHadith": "📖 Pencarian Hadis",
-    "religionTabBible": "✝️ Tafsir Alkitab",
-    "religionTabTorah": "✡️ Tafsir Taurat",
-    "religionTabBuddhism": "🕉️ Ajaran Buddhis",
-    "religionTabHinduism": "🙏 Tafsir Hinduisme",
     "religionTabDream": "🌙 Tafsir Mimpi",
     "religionInputLabelVerse": "Ketik ayat atau nomornya (contoh: Al-Baqarah 255)",
     "religionInputLabelHadith": "Ketik teks hadis atau topiknya",
-    "religionInputLabelBible": "Ketik ayat Alkitab atau nomornya",
-    "religionInputLabelTorah": "Ketik ayat Taurat atau nomornya",
-    "religionInputLabelBuddhism": "Ketik pertanyaan tentang Buddhisme",
-    "religionInputLabelHinduism": "Ketik pertanyaan tentang Hinduisme",
     "religionInputLabelDream": "Jelaskan mimpi Anda secara rinci",
     "religionInputPlaceholderVerse": "contoh: Surah Al-Baqarah ayat 255 (Ayat Kursi)",
     "religionInputPlaceholderHadith": "contoh: hadis tentang niat, atau topik seperti berbakti kepada orang tua",
-    "religionInputPlaceholderBible": "contoh: Yohanes 3:16, Roma 12:2, atau interpretasi cinta dalam Alkitab",
-    "religionInputPlaceholderTorah": "contoh: Taurat 1:1, Imamat 19:18, atau ajaran Musa",
-    "religionInputPlaceholderBuddhism": "contoh: nirvana, karma, meditasi, atau ajaran Buddha",
-    "religionInputPlaceholderHinduism": "contoh: karma, dharma, meditasi, atau ajaran Veda",
     "religionInputPlaceholderDream": "contoh: Saya bermimpi terbang di atas laut dan melihat bulan besar...",
     "religionGenerateBtn": "✨ Tafsirkan",
     "religionNeedInput": "⚠️ Silakan tulis teks terlebih dahulu.",
@@ -953,7 +941,7 @@ I18N['id'] = {
     "fontWeightBold": "Tebal",
     "fontPreviewQ": "Tahukah Anda sekarang ukuran dan ketebalan huruf bisa diubah?",
     "fontPreviewA": "Ya! Geser penggeser di bawah dan coba sekarang.",
-    "autoRenewLabel": "🔁 Tagihan bulanan otomatis",
+    "autoRenewLabel": "Tagihan bulanan otomatis",
     "autoRenewOnHint": "Aktif — paket Anda diperpanjang dan ditagih otomatis setiap bulan",
     "autoRenewOffHint": "Nonaktif — Anda membayar satu bulan saja dan memperpanjang manual kapan saja",
     "autoRenewStopped": "Tagihan bulanan dihentikan — paket Anda tetap aktif hingga {date}",
@@ -1006,8 +994,8 @@ I18N['id'] = {
     designAiPlaceLabel: "Jenis tempat", premiumOn: "Agen AKTIF ⚡ — jawaban langsung, tanpa lapisan gaya", premiumNeedLogin: "Masuk untuk menggunakan Agen", memorySectionLabel: "Memori saya", memoryIntro: "Ini yang diingat aplikasi tentang Anda, proyek Anda, dan gaya komunikasi Anda. Tersinkron dengan akun Anda di semua perangkat, dan Anda dapat mengedit atau menghapusnya.", memorySaveBtn: "Simpan perubahan",
     memoryClearBtn: "Hapus memori saya", memoryEmpty: "Belum ada yang tersimpan tentang Anda.", memoryGuest: "Masuk untuk melihat memori Anda.", memoryConfirm: "Hapus semua yang diingat aplikasi tentang Anda? Ini tidak dapat dibatalkan.", memorySaved: "Tersimpan dan tersinkron dengan akun Anda.", memorySaveError: "Gagal menyimpan. Silakan coba lagi.", memoryLoadError: "Memori tidak dapat dimuat saat ini.",
     fontFamilySectionLabel: "Gaya font", fontFamilyHint: "Mengubah pesan chat di desktop dan seluler, tanpa mengubah blok kode atau tata letak aplikasi.", guestImageMsg: "🎁 Anda telah menggunakan 3 gambar gratis sebagai tamu! Buat akun gratis dalam hitungan detik dan dapatkan 70 poin hadiah untuk terus membuat dan mengedit gambar.", planPer: "per bulan", planFreePer: "untuk mencoba",
-    planPtsFree: "poin selamat datang — sekali saja", planPtsMo: "poin setiap bulan", planTag: "Paling populer", planCurrentBtn: "Paket Anda saat ini", planSoonBtn: "Segera", planFreeFeats: '<li>20 pesan per hari</li><li>Hingga 4 menit obrolan suara</li><li>Hingga 3 gambar AI</li><li class="off">Tanpa video</li>', planPlusFeats: '<li>50 pesan per hari</li><li>Hingga 24 menit obrolan suara</li><li>Hingga 15 gambar</li><li>1 video</li>',
-    planProFeats: '<li>100 pesan per hari</li><li>Hingga 61 menit obrolan suara</li><li>Hingga 40 gambar · 2 video</li><li>Agen pintar</li><li>Lencana emas</li>', planMaxFeats: '<li>Semua yang ada di Pro · 250 pesan per hari</li><li>Hingga 213 menit obrolan suara</li><li>Hingga 150 gambar · 3 video</li><li>Dukungan khusus</li>', checkoutPlanLabelMax: 'Paket Max $100/bln — 3.200 poin', copyCode: "Salin",
+    planPtsFree: "poin selamat datang — sekali saja", planPtsMo: "poin setiap bulan", planTag: "Paling populer", planCurrentBtn: "Paket Anda saat ini", planSoonBtn: "Segera", planFreeFeats: '<li>20 pesan per hari</li><li>Hingga 4 menit obrolan suara</li><li>Gambar AI</li><li class="off">Tanpa video</li>', planPlusFeats: '<li>50 pesan per hari</li><li>Hingga 24 menit obrolan suara</li><li>Gambar AI</li><li>Termasuk video</li>',
+    planProFeats: '<li>100 pesan per hari</li><li>Hingga 61 menit obrolan suara</li><li>Termasuk gambar dan video</li><li>Agen pintar</li><li>Lencana emas</li>', planMaxFeats: '<li>Semua yang ada di Pro · 250 pesan per hari</li><li>Hingga 213 menit obrolan suara</li><li>Termasuk gambar dan video</li><li>Dukungan khusus</li>', checkoutPlanLabelMax: 'Paket Max $100/bln — 3.200 poin', copyCode: "Salin",
     copiedMsg: "Disalin ✅", emailAsst_connectText: "Hubungkan akun Gmail Anda agar AI dapat membaca email Anda dan menyarankan balasan siap pakai yang Anda setujui sebelum dikirim.", emailAsst_connectBtn: "🔗 Hubungkan Gmail", emailAsst_disclaimer: "⚠️ Tidak ada balasan yang pernah dikirim tanpa persetujuan eksplisit Anda pada setiap pesan.", emailAsst_title: "📧 Asisten Email AI", emailAsst_refresh: "Segarkan",
     emailAsst_loading: "Memindai kotak masuk Anda…", emailAsst_empty: "Tidak ada email baru yang perlu dibalas saat ini.", emailAsst_notConnected: "Gmail tidak terhubung, silakan hubungkan kembali.", emailAsst_send: "✅ Kirim", emailAsst_ignore: "🚫 Abaikan pengirim ini", emailAsst_sending: "Mengirim…", emailAsst_sent: "✅ Terkirim", emailAsst_ignored: "🚫 Diabaikan — tidak akan muncul lagi",
     emailAsst_error: "❌ Kesalahan: ", emailAsst_voiceBtn: "Ringkasan suara", emailAsst_addToCalendar: "📅 Tambahkan ke Kalender", emailAsst_addingEvent: "Menambahkan acara…", emailAsst_eventAdded: "✅ Ditambahkan ke kalender Anda", emailAsst_calReauth: "Hubungkan kembali Gmail untuk mengizinkan akses kalender", emailAsst_voiceLoading: "🔊 Menyiapkan ringkasan suara…",
@@ -1018,7 +1006,7 @@ I18N['id'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["id"], {
-    acctLoginBtnLabel: "🔐 Masuk / Buat akun",
+    acctLoginBtnLabel: "Masuk / Buat akun",
     designCompareTitle: "🆚 Kamarku dalam semua gaya",
     designCompareHint: "Unggah foto kamar Anda, pilih 2-3 gaya — kami desain berdampingan",
     designCompareBtn: "🆚 Desain dengan gaya terpilih",
@@ -1078,6 +1066,74 @@ Object.assign(I18N['id'], {
   pickerOptsPick: "opsi — pilih",
   videoOptAdspot: "📢 Iklan cepat (5dtk + narasi)",
   videoOptReels: "📱 Reels pintar (10dtk + narasi)",
+  videoIdeaLbl: "💡 Coba contoh",
+  videoIdeaCanvas: "Infografis: 3 tips hemat dalam 5 detik",
+  videoIdeaRunway: "Mobil sport melaju di jalanan Dubai pada malam hari",
+  videoIdeaMinimax: "Ombak tenang di pantai saat matahari terbenam",
+  videoIdeaOmni: "Iklan parfum mewah di pantai saat matahari terbenam",
+  videoIdeaHybrid: "Iklan promo: produk dengan diskon dan harga di atasnya",
+  videoIdeaVeo: "Pasar tradisional ramai dengan suara pedagang dan pembeli",
+  videoIdeaActor: "Aktor Emirat memperkenalkan sebuah kedai kopi",
+  vwTitle: "Asisten menulis",
+  vwSub: "Menulis cerita, dialog, atau iklan sesuai durasi video",
+  vwPh: "Contoh: tulis cerita tentang pemilik kafe yang membuka cabang baru",
+  vwSend: "Kirim",
+  vwSug1: "Tulis cerita pendek tentang…",
+  vwSug2: "Tulis naskah iklan tentang…",
+  vwToScene: "Pakai sebagai deskripsi adegan",
+  vwToNarr: "Pakai sebagai narator",
+  vwToActor: "Pakai sebagai ucapan aktor",
+  vwBusy: "Menulis…",
+  vwErr: "Belum bisa menulis sekarang, coba lagi sebentar",
+  vwLimit: "Batas menulis hari ini tercapai",
+  vwLogin: "Masuk untuk memakai asisten menulis",
+  vwFit: "Disesuaikan {n} detik — maks {w} kata",
+  videoTabTrends: "Tren",
+  videoIdeaCanvas2: "Harga emas hari ini dalam dirham dengan panah hijau atau merah",
+  videoIdeaCanvas3: "Hitung mundur pembukaan toko",
+  videoIdeaRunway2: "Tenaga penjual menjelaskan kunci mobil kepada pelanggan di showroom mewah",
+  videoIdeaRunway3: "Burger dibalik di panggangan dengan uap dan asap",
+  videoIdeaMinimax2: "Kamera melintas di atas menara Dubai saat fajar",
+  videoIdeaMinimax3: "Tetesan hujan di jendela kafe",
+  videoIdeaOmni2: "Gerak lambat teko kopi menuang ke cangkir di samping kurma",
+  videoIdeaOmni3: "Pembuka film: bukit pasir gurun saat fajar",
+  videoIdeaHybrid2: "Laporan pasar: pemandangan kota dengan angka saham di atasnya",
+  videoIdeaHybrid3: "Properti baru: bangunan dengan harga dan lokasi",
+  videoIdeaVeo2: "Memasak dengan suara menggoreng dan mendidih (ASMR)",
+  videoIdeaVeo3: "Mobil melaju di gurun dengan suara mesin",
+  videoIdeaActor2: "Aktor Emirat memperkenalkan toko parfum: oud dan dupa",
+  videoIdeaActor3: "Resepsionis menyambut pelanggan dan menjelaskan layanan",
+  vcTitle: "Karakter",
+  vcSub: "Maksimal 3 karakter — masing-masing dengan nama, suara, dan dialog",
+  vcAdd: "Tambah karakter",
+  vcName: "Nama",
+  vcLine: "Apa yang diucapkan?",
+  vcMale: "Pria",
+  vcFemale: "Wanita",
+  vcRemove: "Hapus",
+  vwToChars: "Bagikan dialog ke karakter",
+  vcMore: "Opsi lainnya",
+  vcTutorial: "Tonton: cara membuat video",
+  vcToExtra: "Pakai sebagai tambahan",
+  videoTabClean: "Tingkatkan video",
+  vclTitle: "Tingkatkan video dari perangkatmu",
+  vclSub: "Unggah video buram atau berderau: kami kurangi derau, pertajam, dan perbaiki warna — di perangkatmu, gratis",
+  vclPick: "Pilih video atau letakkan di sini",
+  vclDrop: "Maksimal {s} detik dan {n} MB",
+  vclLight: "Ringan",
+  vclStrong: "Kuat",
+  vclUpscale: "Gandakan resolusi (video kecil)",
+  vclStart: "Tingkatkan video",
+  vclWorking: "Sedang meningkatkan… jangan tutup jendela ini",
+  vclCancel: "Batal",
+  vclDownload: "Unduh video yang ditingkatkan",
+  vclBefore: "Sebelum",
+  vclAfter: "Sesudah",
+  vclTooLong: "Video lebih dari {s} detik — potong dulu",
+  vclTooBig: "Berkas lebih dari {n} MB",
+  vclFail: "Tidak dapat meningkatkan video ini di perangkat ini",
+  vclNote: "Mengurangi derau, mempertajam tepi, dan memperbaiki warna; tidak memperbaiki buram berat atau guncangan kamera",
+  vclLoading: "Menyiapkan alat peningkat (hanya pertama kali)…",
   fashionEngineLabel: "🎨 Mesin gambar",
   fashionEngineGemini: "Gemini — paling menjaga wajah (bawaan)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — mesin gambar ChatGPT",
@@ -1160,20 +1216,20 @@ Object.assign(I18N["id"], {"imgUnchanged": "⚠️ Edit tidak diterapkan: gambar
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["id"], {"mediaPlansTitle": "Langganan gambar & video", "mediaPlansDesc": "Untuk yang hanya ingin gambar atau video — tanpa chat. Setiap langganan punya saldo sendiri dan tidak bisa dipakai untuk hal lain.", "mediaImgName": "Gambar", "mediaVidName": "Video", "mediaImgUnit": "gambar berkualitas tinggi", "mediaVidEco": "video hemat", "mediaVidCine": "video sinematik", "mediaVidSound": "video bersuara", "mediaOr": "atau", "mediaNoChatVideo": "Tanpa chat dan video", "mediaNoChatImage": "Tanpa chat dan gambar", "mediaLeftImg": "Sisa di langganan gambar", "mediaLeftVid": "Sisa di langganan video"});
-Object.assign(I18N["id"], {"mediaImgPlain": "gambar", "mediaHighEq": "Satu gambar kualitas tinggi = 2 gambar", "mediaQLabel": "Kualitas gambar", "mediaQNormal": "⚡ Standar", "mediaQHigh": "💎 Tinggi", "mediaQNormalDesc": "Cepat, cocok untuk media sosial — 1 gambar dari saldo Anda", "mediaQHighDesc": "Detail lebih halus, teks lebih jelas, siap cetak — 2 gambar dari saldo Anda", "mediaQHint": "Atau tulis “kualitas tinggi” di permintaan Anda untuk satu gambar"});
+Object.assign(I18N["id"], {"mediaImgPlain": "gambar", "mediaHighEq": "Satu gambar kualitas tinggi = 2 gambar", "mediaQLabel": "Kualitas gambar", "mediaQNormal": "Standar", "mediaQHigh": "Tinggi", "mediaQNormalDesc": "Cepat, cocok untuk media sosial — 1 gambar dari saldo Anda", "mediaQHighDesc": "Detail lebih halus, teks lebih jelas, siap cetak — 2 gambar dari saldo Anda", "mediaQHint": "Atau tulis “kualitas tinggi” di permintaan Anda untuk satu gambar"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["id"], {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Gambar", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Poin"});
-Object.assign(I18N["id"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Untuk panggilan suara dengan Maha. Menit bulanan hanya untuk Maha; jika habis, panggilan berlanjut dengan poin Anda.", "mahaMinPlain": "menit panggilan", "mahaMinUnit": "mnt", "mahaCapNote": "Hingga 10 menit per panggilan", "mahaNoChat": "Tanpa chat, gambar, atau video", "mahaLeft": "Sisa menit Maha", "mahaCapEnd": "Panggilan berakhir di batas 10 menit — hubungi lagi untuk melanjutkan", "mahaToPoints": "Menit habis — lanjut dengan poin"});
+Object.assign(I18N["id"], {"priceTabChat": "Chat", "priceTabImg": "🖼️ Gambar", "priceTabVid": "🎬 Video", "priceTabPts": "Poin"});
+Object.assign(I18N["id"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Untuk panggilan suara dengan Maha. Menit bulanan hanya untuk Maha; jika habis, panggilan berlanjut dengan poin Anda.", "mahaMinPlain": "menit panggilan", "mahaMinUnit": "mnt", "mahaCapNote": "Hingga 10 menit per panggilan", "mahaNoChat": "Tanpa chat, gambar, atau video", "mahaLeft": "Sisa menit Maha", "mahaCapEnd": "Panggilan berakhir di batas 10 menit — hubungi lagi untuk melanjutkan", "mahaToPoints": "Menit habis — lanjut dengan poin"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["id"], {"install":"Pasang Aplikasi","installHowIOS":"Untuk memasang di iPhone atau iPad:\n1) Buka situs ini di Safari\n2) Ketuk tombol Bagikan (kotak dengan panah ke atas)\n3) Pilih \"Tambah ke Layar Utama\", lalu \"Tambah\"","installHowIOSOther":"Untuk memasang di iPhone dari browser ini:\n1) Ketuk tombol Bagikan (kotak dengan panah ke atas) di dekat bilah alamat\n2) Pilih \"Tambah ke Layar Utama\"\nJika opsinya tidak ada, buka situs ini di Safari.","installHowAndroid":"Untuk memasang di Android:\n1) Buka menu browser (⋮)\n2) Pilih \"Instal aplikasi\" atau \"Tambahkan ke Layar utama\"\n3) Konfirmasi pemasangan","installHowDesktop":"Untuk memasang di komputer (Chrome atau Edge):\nKlik ikon instal (⊕ atau layar kecil) di bilah alamat, atau buka menu browser (⋮ atau …) lalu pilih \"Instal\" atau \"Aplikasi → Instal situs ini sebagai aplikasi\".","installHowMacSafari":"Untuk memasang di Mac dari Safari:\nBuka menu \"File\" di atas, pilih \"Add to Dock\", lalu \"Add\".","installHowFirefox":"Firefox di komputer tidak dapat memasang aplikasi web.\nBuka situs ini di Chrome atau Edge lalu klik \"Pasang Aplikasi\", atau pasang dari ponsel Anda."});
 Object.assign(I18N["id"], {"videoSceneWait":"⏳ Adegan {i}/{n}: jeda antar video — mulai otomatis dalam {s} detik.","videoFilmModeOnly":"🎬 «Film utuh» hanya bekerja dengan mode «Video AI» — ubah mode atau pilih durasi lain. Tidak ada yang dipotong."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["id"], {"acctPhoneLabel": "📱 Nomor telepon (untuk pemulihan)", "phoneNotLinked": "Belum ditautkan", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Kirim pesan yang sudah disiapkan atau bagikan nomormu, lalu kembali ke sini…", "phoneLinkedOk": "✓ Nomor ditautkan", "phoneTaken": "Nomor ini tertaut ke akun lain", "phoneNoUser": "Tidak ada akun yang tertaut ke nomor ini", "phoneExpired": "Tautan kedaluwarsa — coba lagi", "phoneRecoverTitle": "Atau pulihkan akunmu dengan telepon:", "phoneRecoverSent": "✓ Kami mengirim tautan kata sandi baru ke obrolanmu di sana"});
+Object.assign(I18N["id"], {"acctPhoneLabel": "Nomor telepon (untuk pemulihan)", "phoneNotLinked": "Belum ditautkan", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Kirim pesan yang sudah disiapkan atau bagikan nomormu, lalu kembali ke sini…", "phoneLinkedOk": "✓ Nomor ditautkan", "phoneTaken": "Nomor ini tertaut ke akun lain", "phoneNoUser": "Tidak ada akun yang tertaut ke nomor ini", "phoneExpired": "Tautan kedaluwarsa — coba lagi", "phoneRecoverTitle": "Atau pulihkan akunmu dengan telepon:", "phoneRecoverSent": "✓ Kami mengirim tautan kata sandi baru ke obrolanmu di sana"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["id"], {"bgThemeWood": "Kayu"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["id"], {"brandSubtitle": "Platform AI"});
-Object.assign(I18N["id"], {"bgThemeDarkwood": "Kayu gelap", "bgThemeMarble": "Marmer", "bgThemeCode": "Kode", "bgThemeCars": "Mobil", "bgThemeKids": "Anak-anak", "bgThemeCuisine": "Memasak", "bgThemeSunset": "Senja", "bgThemeBeach": "Pantai", "bgThemeWinter": "Musim dingin", "bgThemeGarage": "Garasi", "bgThemeAnime": "Anime", "bgThemeCyber": "Keamanan siber", "bgThemeSchool": "Ruang kelas"});
+Object.assign(I18N["id"], {"bgThemeDarkwood": "Kayu gelap", "bgThemeMarble": "Marmer", "bgThemeCode": "Kode", "bgThemeCars": "Mobil", "bgThemeKids": "Anak-anak", "bgThemeCuisine": "Memasak", "bgThemeSunset": "Senja", "bgThemeBeach": "Pantai", "bgThemeWinter": "Musim dingin", "bgThemeGarage": "Garasi", "bgThemeAnime": "Anime", "bgThemeCyber": "Keamanan siber", "bgThemeSchool": "Ruang kelas", "bgThemeTactical": "Anime taktis", "bgThemeAngel": "Malaikat es", "bgThemeNeonAnime": "Anime neon", "bgThemeStation": "Stasiun masa depan", "bgThemeRally": "Balap hujan", "bgThemeSmoke": "Asap biru", "bgThemeLibrary": "Perpustakaan", "bgThemeCafe": "Kafe", "bgThemeWorkshop": "Bengkel malam", "bgThemeModern": "Rumah modern"});
 /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (v-living-memory: صفحة المالك) */
 Object.assign(I18N["id"], {"livingMemTitle": "Memori hidup saya", "livingMemIntro": "Hal-hal terbaru yang dipelajari asisten tentang Anda dari percakapan Anda. Di setiap jawaban, asisten hanya memakai yang berkaitan dengan pertanyaan Anda dan menerapkan gaya yang Anda sukai. Hapus fakta apa pun agar dilupakan.", "livingMemEmpty": "Asisten belum mempelajari apa pun tentang Anda.", "livingMemDelete": "Hapus", "livingMemLoadError": "Memori hidup Anda tidak dapat dimuat saat ini.", "livingMemDeleteError": "Gagal menghapus. Silakan coba lagi.", "livingMemClearAll": "Hapus semua", "livingMemClearConfirm": "Hapus semua yang telah dipelajari asisten tentang Anda? Tindakan ini tidak dapat dibatalkan."});
 /* v-pdf-docs: «PDF» يقبل Word والنصوص لا الصور وحدها */
@@ -1184,3 +1240,6 @@ Object.assign(I18N["id"], {"pdfDocPage": "⏳ Menyiapkan halaman {i} dari {n}…
 /* v-video-watch */ Object.assign(I18N['id'], {"vwUploading": "🎬 Mengunggah video…", "vwWatching": "🎬 Menonton video dan mendengarkan audionya…", "vwCharged": "🎬 {n} poin terpakai · video {d}", "vwNoPoints": "Kamu punya {p} poin; menganalisis video ini butuh {n}.", "vwTooBig": "Video lebih dari 100 MB — potong atau turunkan resolusinya, lalu kirim lagi.", "vwTooLong": "Video lebih dari 10 menit — kirim klip yang lebih pendek.", "vwFormat": "Format video tidak didukung — kirim sebagai MP4, MOV, atau WEBM.", "vwFailed": "Video tidak dapat dianalisis — tidak ada poin yang terpakai. Coba lagi.", "vwLogin": "Masuk dulu untuk menganalisis video.", "vwDefaultQ": "Analisis video ini"});
 /* v-plans-gate */ Object.assign(I18N['id'], {"plansWhyPoints": "Poin Anda habis — isi ulang dari Paket dan lanjutkan langsung.", "plansWhyLimit": "Anda sudah mencapai batas paket hari ini — tingkatkan paket atau tunggu sampai besok.", "plansWhyExpired": "Langganan {plan} Anda telah berakhir — perpanjang untuk mendapatkan kembali manfaatnya.", "plansWhyExpiring": "Langganan {plan} Anda berakhir pada {date} — perpanjang agar manfaatnya tidak berhenti.", "plansRenew": "Perpanjang", "plansLater": "Nanti", "vwUnavailable": "Analisis video sedang tidak tersedia — tidak ada poin yang terpakai. Coba lagi sebentar lagi."});
 /* v-google-login-help */ Object.assign(I18N['id'], {"authGoogleHint": "Mendaftar dengan Google? Ketuk “{btn}” — kata sandi Gmail Anda tidak berlaku di sini."});
+/* v-media-merge */ Object.assign(I18N['id'], {"priceTabMedia":"Gambar & video","mixPlanName":"Gambar & video","mixPlansDesc":"Untuk yang ingin gambar dan video — tanpa chat. Satu saldo untuk keduanya; jika habis, lanjut dengan poin Anda.","mixOneBalance":"Satu saldo untuk gambar dan video","mixApprox1":"Cukup untuk sekitar 50 gambar atau 12 video, atau campuran keduanya","mixApprox2":"Cukup untuk sekitar 100 gambar atau 24 video, atau campuran keduanya","mixApprox3":"Cukup untuk sekitar 500 gambar atau 121 video, atau campuran keduanya","mixNoChat":"Tanpa chat","mixLeft":"Sisa di saldo gambar & video"});
+/* v-inspire */ Object.assign(I18N['id'], {"inspTabInspire":"Inspirasi","inspTabQuick":"Ide cepat","inspCityTitle":"Kotamu yang nyata","inspCitySub":"Pengalaman 3D yang dibangun di lingkungan nyatamu dari peta terbuka. Pilih satu dan langsung terbuka di pratinjau — lalu ketik lingkungan atau kota mana pun di dalamnya.","inspLoading":"Membuka…","inspFail":"Belum bisa dibuka sekarang — coba lagi"});
+/* v-chat-edit */ Object.assign(I18N['id'], {"editApplied": "Perubahan diterapkan ke desain ({n}).", "editFailed": "Perubahan tidak diterapkan — sebagian teks lama tidak cocok dengan desain saat ini, jadi desain tetap seperti semula. Silakan minta lagi.", "editTruncated": "Balasan terpotong sebelum file selesai, jadi desain dibiarkan seperti semula.", "editPartial": "Perubahan tidak diterapkan — balasan datang tidak lengkap atau formatnya salah, jadi desain tetap seperti semula. Silakan minta lagi.", "editBroke": "Perubahan tidak diterapkan — perubahan itu akan merusak kode desain, jadi desain tetap seperti semula. Silakan minta lagi."});

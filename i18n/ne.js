@@ -28,9 +28,9 @@ I18N['ne'] = {
     cnLandAreaPh: 'उदाहरण: 500', cnEmirateOpt: 'इमिरेट — वैकल्पिक', cnDetailsAnnexes: '🏠 विवरण र संलग्नकहरू', cnExElevator: 'भित्री लिफ्ट', cnExStore: 'बाहिरी भण्डार', cnExWaterTank: 'पानी ट्याङ्की',
     cnExSolar: 'सोलार प्यानल', cnExPlayground: 'बाहिरी खेल मैदान', cnExCarport: 'थप कार छाना', cnBudgetOutputs: '💰 बजेट र परिणामहरू', cnDownloadBoq: '📊 परिमाण तालिका डाउनलोड गर्नुहोस्',
     cnPdfReport: '📄 PDF प्रतिवेदन', keyHowToTitle: '📝 प्रत्येक प्रदायकको लागि कुञ्जी कसरी पाउने:', showAllPlansCur: 'तपाईंको मुद्रामा सबै योजना र मूल्य देखाउनुहोस्', currencyLabel: 'मुद्रा',
-    plFreeMsgs: 'प्रतिदिन 20 सन्देश', plFreeVoice: 'बढीमा 4 मिनेट आवाज च्याट', plFreeImgs: 'बढीमा 3 AI तस्बिरहरू', plFreeNoVideo: 'भिडियो छैन', plStMsgs: 'प्रतिदिन 50 सन्देश', plStVoice: 'बढीमा 24 मिनेट आवाज च्याट',
-    plStImgs: 'बढीमा 15 तस्बिरहरू', plStVideos: '1 भिडियो', plProMsgs: 'प्रतिदिन 100 सन्देश', plProVoice: 'बढीमा 61 मिनेट आवाज च्याट', plProMedia: 'बढीमा 40 तस्बिर · 2 भिडियो', plProAgent: 'स्मार्ट एजेन्ट',
-    plProPriority: 'गोल्ड ब्याज', plMaxAllPro: 'Pro का सबै सुविधाहरू · प्रतिदिन 250 सन्देश', plMaxVoice: 'बढीमा 213 मिनेट आवाज च्याट', plMaxMedia: 'बढीमा 150 तस्बिर · 3 भिडियो',
+    plFreeMsgs: 'प्रतिदिन 20 सन्देश', plFreeVoice: 'बढीमा 4 मिनेट आवाज च्याट', plFreeImgs: 'AI तस्बिरहरू', plFreeNoVideo: 'भिडियो छैन', plStMsgs: 'प्रतिदिन 50 सन्देश', plStVoice: 'बढीमा 24 मिनेट आवाज च्याट',
+    plStImgs: 'AI तस्बिरहरू', plStVideos: 'भिडियो समावेश', plProMsgs: 'प्रतिदिन 100 सन्देश', plProVoice: 'बढीमा 61 मिनेट आवाज च्याट', plProMedia: 'तस्बिर र भिडियो समावेश', plProAgent: 'स्मार्ट एजेन्ट',
+    plProPriority: 'गोल्ड ब्याज', plMaxAllPro: 'Pro का सबै सुविधाहरू · प्रतिदिन 250 सन्देश', plMaxVoice: 'बढीमा 213 मिनेट आवाज च्याट', plMaxMedia: 'तस्बिर र भिडियो समावेश',
     plMaxSupport: 'समर्पित सहयोग',
     adStudioTitle: 'विज्ञापन स्टुडियो', adStudioHint: 'विज्ञापन स्टुडियो — च्याट गरेर आफ्नो विज्ञापन बनाउनुहोस्।', chatToPdfEmpty: 'अहिलेसम्म परिवर्तन गर्नका लागि कुनै जवाफ छैन।', mahaConnectionLost: 'फेरि जडान गर्न सकिएन', voiceTabAssistantName: 'सहायक',
     buildNoCode: '⚠️ प्रदायकबाट कुनै कोड प्राप्त भएन — पूर्वावलोकन खाली छ। अनुरोध फेरि पठाउनुहोस् वा अर्को प्रदायक प्रयास गर्नुहोस्।',
@@ -184,8 +184,8 @@ I18N['ne'] = {
     pricingComingSoon: "चाँडै आउँदैछ 🚀 — सदस्यताहरू अझै उपलब्ध छैनन्",
     pricingSubscribeBtn: "अब सदस्यता लिनुहोस्",
     pricingTestNote: "🧪 अहिलेको लागि परीक्षण मोड — व्यापार इजाजतपत्र प्राप्त भएपछि पूर्ण सक्रियता",
-    termsLink: "📜 नियम र सर्तहरू",
-    privacyLink: "🔒 गोपनीयता नीति",
+    termsLink: "नियम र सर्तहरू",
+    privacyLink: "गोपनीयता नीति",
     aboutSectionTitle: "ℹ️ एप र परिचय भिडियोहरूको बारेमा",
     feedbackSectionTitle: '💬 तपाईंको राय महत्त्वपूर्ण छ',
     fbTagBug: '🐛 समस्या',
@@ -216,7 +216,7 @@ I18N['ne'] = {
     checkoutCancelMsg: "⚠️ भुक्तानी रद्द गरियो",
     logoutTitle: "लग आउट गर्नुहोस्",
     loginAction: "लगइन गर्नुहोस्",
-    acctSectionTitle: "👤 मेरो खाता",
+    acctSectionTitle: "मेरो खाता",
     statsSectionTitle: "मेरो परियोजना र ब्याकअप",
     statsProjectsLabel: "परियोजनाहरू गणना",
     statsMessagesLabel: "कुल सन्देशहरू पठाइयो",
@@ -227,22 +227,22 @@ I18N['ne'] = {
     importProjectsConfirm: "आयातित परियोजनाहरू तपाईंका हालका परियोजनाहरूसँग मर्ज हुनेछन्। जारी राख्ने हो?",
     importProjectsSuccess: "✅ परियोजनाहरू सफलतापूर्वक आयात गरियो",
     importProjectsError: "❌ अमान्य फाइल, यो एक मान्य परियोजना निर्यात फाइल हो भनी सुनिश्चित गर्नुहोस्",
-    acctAvatarBtn: "📷 फोटो परिवर्तन गर्नुहोस्",
+    acctAvatarBtn: "फोटो परिवर्तन गर्नुहोस्",
     acctUsernameLabel: "प्रयोगकर्ता नाम",
     acctSaveBtn: "बचत गर्नुहोस्",
     acctEmailLabel: "इमेल (युजरनेम वा पासवर्ड बिर्सिएमा)",
-    acctReferralLabel: "🔗 साथीहरूलाई लिङ्क निमन्त्रणा गर्नुहोस्",
-    acctCopyBtn: "📋 प्रतिलिपि",
-    acctReferralHint: "तपाइँको लिङ्क मार्फत साइन अप गर्ने प्रत्येक साथीको लागि, तपाइँ दुबैले 10 अतिरिक्त निःशुल्क सन्देशहरू प्राप्त गर्नुहुन्छ 🎁",
+    acctReferralLabel: "साथीहरूलाई लिङ्क निमन्त्रणा गर्नुहोस्",
+    acctCopyBtn: "प्रतिलिपि",
+    acctReferralHint: "तपाइँको लिङ्क मार्फत साइन अप गर्ने प्रत्येक साथीको लागि, तपाइँ दुबैले 10 अतिरिक्त निःशुल्क सन्देशहरू प्राप्त गर्नुहुन्छ",
     acctCleanupLabel: 'एप सफा गर्नुहोस्',
     acctCleanupHint: 'यो यन्त्र र क्लाउडबाट सबै च्याट र प्रोजेक्टहरू स्थायी रूपमा मेटिनेछन्। तपाईंको खाता र भाषा रहनेछ।',
     acctCleanupConfirm: 'सबै च्याट र प्रोजेक्टहरू स्थायी रूपमा मेटिनेछन्। के तपाईं निश्चित हुनुहुन्छ?',
     acctCleanupBtn: 'अहिले नै सबै मेट्नुहोस्',
-    acctReferralCopied: "लिङ्क प्रतिलिपि गरियो ✅",
+    acctReferralCopied: "लिङ्क प्रतिलिपि गरियो",
     acctReferralBonusCount: "तपाईंको बोनस सन्देश ब्यालेन्स: {n}",
     acctCurrentPasswordLabel: "हालको पासवर्ड",
     acctNewPasswordLabel2: "नयाँ पासवर्ड",
-    acctSaved: "✅ सुरक्षित",
+    acctSaved: "सुरक्षित",
     acctSaving: "बचत गर्दै...",
     acctFillUsername: "वैध प्रयोगकर्ता नाम प्रविष्ट गर्नुहोस् (कम्तीमा 3 वर्णहरू)",
     acctFillPasswords: "आफ्नो हालको पासवर्ड र नयाँ पासवर्ड प्रविष्ट गर्नुहोस् (कम्तिमा 4 वर्णहरू)",
@@ -689,24 +689,12 @@ I18N['ne'] = {
     religionDisclaimer: "⚠️ यो AI को व्याख्या हो, कुनै आधिकारिक धार्मिक फतवा होइन। कृपया विज्ञ विद्वानहरूसँग सल्लाह लिनुहोस्।",
     religionTabVerse: "🕌 आयत व्याख्या",
     religionTabHadith: "📖 हदिस खोज",
-    religionTabBible: "✝️ बाइबल आयत",
-    religionTabTorah: "✡️ तोराह आयत",
-    religionTabBuddhism: "🕉️ बौद्ध शिक्षा",
-    religionTabHinduism: "🙏 हिन्दू ज्ञान",
     religionTabDream: "🌙 सपनाको व्याख्या",
     religionInputLabelVerse: "आयत वा यसको नम्बर लेख्नुहोस् (जस्तै अल-बकरा २५५)",
     religionInputLabelHadith: "हदिसको पाठ वा विषय लेख्नुहोस्",
-    religionInputLabelBible: "बाइबलको आयत वा विषय लेख्नुहोस्",
-    religionInputLabelTorah: "तोराहको आयत वा विषय लेख्नुहोस्",
-    religionInputLabelBuddhism: "बौद्ध विषय वा प्रश्न लेख्नुहोस्",
-    religionInputLabelHinduism: "हिन्दू विषय वा प्रश्न लेख्नुहोस्",
     religionInputLabelDream: "आफ्नो सपनाको विस्तृत विवरण दिनुहोस्",
     religionInputPlaceholderVerse: "जस्तै सूरा अल-बकरा आयत २५५ (आयतुल कुर्सी)",
     religionInputPlaceholderHadith: "जस्तै नियतको हदिस, वा आमाबुबुको सेवा जस्तो विषय",
-    religionInputPlaceholderBible: "जस्तै म्याथु ५:७ (आशीर्वाद) वा प्रेम",
-    religionInputPlaceholderTorah: "जस्तै उत्पत्ति १:१ वा कानून",
-    religionInputPlaceholderBuddhism: "जस्तै प्रबोधन, कर्म, ज्ञान",
-    religionInputPlaceholderHinduism: "जस्तै धर्म, कर्म, ब्रह्मन",
     religionInputPlaceholderDream: "जस्तै मैले सपनामा देखेँ म समुद्र माथि उडिरहेको थिएँ र ठूलो जून देखेँ...",
     religionGenerateBtn: "✨ व्याख्या गर्नुहोस्",
     religionNeedInput: "⚠️ कृपया पहिले केही लेख्नुहोस्।",
@@ -844,7 +832,7 @@ I18N['ne'] = {
     fontWeightBold: "मोटो",
     fontPreviewQ: "के तपाईंलाई थाहा छ अब फन्टको आकार र मोटाइ बदल्न सकिन्छ?",
     fontPreviewA: "हो! तलको स्लाइडर तान्नुहोस् र अहिले नै प्रयास गर्नुहोस्।",
-    autoRenewLabel: "🔁 मासिक स्वचालित भुक्तानी",
+    autoRenewLabel: "मासिक स्वचालित भुक्तानी",
     autoRenewOnHint: "सक्रिय — तपाईंको योजना हरेक महिना स्वचालित रूपमा नवीकरण र चार्ज हुन्छ",
     autoRenewOffHint: "बन्द — तपाईं एक महिनाको मात्र तिर्नुहुन्छ र चाहेको बेला आफैं नवीकरण गर्नुहुन्छ",
     autoRenewStopped: "मासिक भुक्तानी रोकियो — तपाईंको योजना {date} सम्म सक्रिय रहन्छ",
@@ -956,9 +944,9 @@ I18N['ne'] = {
     designAiPlaceLabel: "स्थानको प्रकार", premiumOn: "एजेन्ट अन छ ⚡ — सीधा जवाफ, कुनै स्टाइल लेयर छैन", premiumNeedLogin: "एजेन्ट प्रयोग गर्न साइन इन गर्नुहोस्", memorySectionLabel: "मेरो मेमोरी", memoryIntro: "एपले तपाईं, तपाईंका प्रोजेक्टहरू र तपाईंको संवाद शैलीको बारेमा याद राख्ने कुरा यहाँ छ। यो तपाईंको खातामार्फत सबै डिभाइसमा सिंक हुन्छ, र तपाईं यसलाई सम्पादन वा मेटाउन सक्नुहुन्छ।",
     memorySaveBtn: "परिवर्तनहरू सेभ गर्नुहोस्", memoryClearBtn: "मेरो मेमोरी मेटाउनुहोस्", memoryEmpty: "तपाईंको बारेमा अहिलेसम्म केही सेभ गरिएको छैन।", memoryGuest: "आफ्नो मेमोरी हेर्न साइन इन गर्नुहोस्।", memoryConfirm: "एपले तपाईंको बारेमा याद राखेको सबै मेटाउने हो? यो फिर्ता गर्न सकिँदैन।", memorySaved: "सेभ भयो र तपाईंको खातासँग सिंक भयो।", memorySaveError: "सेभ गर्न सकिएन। कृपया फेरि प्रयास गर्नुहोस्।",
     memoryLoadError: "अहिले मेमोरी लोड गर्न सकिएन।", fontFamilySectionLabel: "फन्ट स्टाइल", fontFamilyHint: "डेस्कटप र मोबाइलमा च्याट मेसेज परिवर्तन गर्छ, कोड ब्लक वा एप लेआउट परिवर्तन गर्दैन।", guestImageMsg: "🎁 तपाईंले आफ्नो ३ फ्री गेस्ट इमेज प्रयोग गरिसक्नुभयो! केही सेकेन्डमा फ्री खाता बनाउनुहोस् र इमेज बनाउन तथा सम्पादन गर्न जारी राख्न ७० गिफ्ट पोइन्ट प्राप्त गर्नुहोस्।", planPer: "महिनामा",
-    planFreePer: "प्रयास गर्न", planPtsFree: "वेलकम पोइन्ट — एकपटक मात्र", planPtsMo: "हरेक महिना पोइन्ट", planTag: "सबैभन्दा लोकप्रिय", planCurrentBtn: "तपाईंको हालको योजना", planSoonBtn: "छिट्टै आउँदैछ", planFreeFeats: '<li>प्रतिदिन 20 सन्देश</li><li>बढीमा 4 मिनेट आवाज च्याट</li><li>बढीमा 3 AI तस्बिरहरू</li><li class="off">भिडियो छैन</li>',
-    planPlusFeats: '<li>प्रतिदिन 50 सन्देश</li><li>बढीमा 24 मिनेट आवाज च्याट</li><li>बढीमा 15 तस्बिरहरू</li><li>1 भिडियो</li>', planProFeats: '<li>प्रतिदिन 100 सन्देश</li><li>बढीमा 61 मिनेट आवाज च्याट</li><li>बढीमा 40 तस्बिर · 2 भिडियो</li><li>स्मार्ट एजेन्ट</li><li>गोल्ड ब्याज</li>',
-    planMaxFeats: '<li>Pro का सबै सुविधाहरू · प्रतिदिन 250 सन्देश</li><li>बढीमा 213 मिनेट आवाज च्याट</li><li>बढीमा 150 तस्बिर · 3 भिडियो</li><li>समर्पित सहयोग</li>', checkoutPlanLabelMax: 'Max योजना $100/महिना — 3,200 अंक', copyCode: "कपी गर्नुहोस्", copiedMsg: "कपी भयो ✅", emailAsst_connectText: "AI ले तपाईंको इमेल पढ्न र पठाउनुअघि तपाईंको मन्जुरीका साथ तयार जवाफ सुझाव दिन सकोस् भनेर आफ्नो Gmail खाता जोड्नुहोस्।",
+    planFreePer: "प्रयास गर्न", planPtsFree: "वेलकम पोइन्ट — एकपटक मात्र", planPtsMo: "हरेक महिना पोइन्ट", planTag: "सबैभन्दा लोकप्रिय", planCurrentBtn: "तपाईंको हालको योजना", planSoonBtn: "छिट्टै आउँदैछ", planFreeFeats: '<li>प्रतिदिन 20 सन्देश</li><li>बढीमा 4 मिनेट आवाज च्याट</li><li>AI तस्बिरहरू</li><li class="off">भिडियो छैन</li>',
+    planPlusFeats: '<li>प्रतिदिन 50 सन्देश</li><li>बढीमा 24 मिनेट आवाज च्याट</li><li>AI तस्बिरहरू</li><li>भिडियो समावेश</li>', planProFeats: '<li>प्रतिदिन 100 सन्देश</li><li>बढीमा 61 मिनेट आवाज च्याट</li><li>तस्बिर र भिडियो समावेश</li><li>स्मार्ट एजेन्ट</li><li>गोल्ड ब्याज</li>',
+    planMaxFeats: '<li>Pro का सबै सुविधाहरू · प्रतिदिन 250 सन्देश</li><li>बढीमा 213 मिनेट आवाज च्याट</li><li>तस्बिर र भिडियो समावेश</li><li>समर्पित सहयोग</li>', checkoutPlanLabelMax: 'Max योजना $100/महिना — 3,200 अंक', copyCode: "कपी गर्नुहोस्", copiedMsg: "कपी भयो ✅", emailAsst_connectText: "AI ले तपाईंको इमेल पढ्न र पठाउनुअघि तपाईंको मन्जुरीका साथ तयार जवाफ सुझाव दिन सकोस् भनेर आफ्नो Gmail खाता जोड्नुहोस्।",
     emailAsst_connectBtn: "🔗 Gmail जोड्नुहोस्", emailAsst_disclaimer: "⚠️ हरेक मेसेजमा तपाईंको स्पष्ट मन्जुरी बिना कुनै जवाफ पठाइँदैन।", emailAsst_title: "📧 AI इमेल सहायक", emailAsst_refresh: "रिफ्रेस गर्नुहोस्", emailAsst_loading: "तपाईंको इनबक्स स्क्यान गरिँदैछ…", emailAsst_empty: "अहिले कुनै नयाँ इमेललाई जवाफ चाहिँदैन।", emailAsst_notConnected: "Gmail जोडिएको छैन, कृपया फेरि जोड्नुहोस्।",
     emailAsst_send: "✅ पठाउनुहोस्", emailAsst_ignore: "🚫 यो पठाउनेलाई बेवास्ता गर्नुहोस्", emailAsst_sending: "पठाइँदैछ…", emailAsst_sent: "✅ पठाइयो", emailAsst_ignored: "🚫 बेवास्ता गरियो — फेरि देखिँदैन", emailAsst_error: "❌ त्रुटि: ", emailAsst_voiceBtn: "भ्वाइस सारांश", emailAsst_addToCalendar: "📅 क्यालेन्डरमा थप्नुहोस्", emailAsst_addingEvent: "इभेन्ट थपिँदैछ…",
     emailAsst_eventAdded: "✅ तपाईंको क्यालेन्डरमा थपियो", emailAsst_calReauth: "क्यालेन्डर एक्सेसका लागि Gmail फेरि जोड्नुहोस्", emailAsst_voiceLoading: "🔊 भ्वाइस सारांश तयार गरिँदैछ…", emailAsst_voiceEmpty: "सारांश गर्न कुनै इमेल छैन।", emailAsst_urgent: "🔴 जरुरी", emailAsst_normal: "🟡 सामान्य", emailAsst_low: "⚪ न्यून",
@@ -968,7 +956,7 @@ I18N['ne'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["ne"], {
-    acctLoginBtnLabel: "🔐 साइन इन / नयाँ खाता",
+    acctLoginBtnLabel: "साइन इन / नयाँ खाता",
     designCompareTitle: "🆚 मेरो कोठा सबै शैलीमा",
     designCompareHint: "कोठाको फोटो अपलोड गर्नुहोस्, २-३ शैली छान्नुहोस् — हामी सँगसँगै डिजाइन गर्छौं",
     designCompareBtn: "🆚 छानिएका शैलीले डिजाइन गर्नुहोस्",
@@ -1028,6 +1016,74 @@ Object.assign(I18N['ne'], {
   pickerOptsPick: "विकल्प — रोज्नुहोस्",
   videoOptAdspot: "📢 छिटो विज्ञापन (5से + वाचन)",
   videoOptReels: "📱 स्मार्ट रिल्स (10से + वाचन)",
+  videoIdeaLbl: "💡 एउटा उदाहरण प्रयास गर्नुहोस्",
+  videoIdeaCanvas: "इन्फोग्राफिक: ५ सेकेन्डमा पैसा बचाउने ३ सुझाव",
+  videoIdeaRunway: "रातमा दुबईका सडकमा हिँडिरहेको स्पोर्ट्स कार",
+  videoIdeaMinimax: "सूर्यास्तको समयमा समुद्री किनारमा शान्त छालहरू",
+  videoIdeaOmni: "सूर्यास्तको समयमा समुद्री किनारमा पर्फ्युमको विज्ञापन",
+  videoIdeaHybrid: "अफर विज्ञापन: उत्पादनमाथि छुट र मूल्य",
+  videoIdeaVeo: "विक्रेता र ग्राहकका आवाजले भरिएको चहलपहल भएको परम्परागत बजार",
+  videoIdeaActor: "एक अमिराती अभिनेताले कफी सपको परिचय दिँदै",
+  vwTitle: "लेखन सहायक",
+  vwSub: "भिडियोको अवधि अनुसार कथा, संवाद वा विज्ञापन लेख्छ",
+  vwPh: "उदाहरण: नयाँ शाखा खोल्ने कफी सप मालिकको कथा लेख",
+  vwSend: "पठाउनुहोस्",
+  vwSug1: "मेरो लागि … बारे छोटो कथा लेख",
+  vwSug2: "मेरो लागि … को विज्ञापन लेख",
+  vwToScene: "दृश्य विवरणमा राख्नुहोस्",
+  vwToNarr: "वर्णनकर्तामा राख्नुहोस्",
+  vwToActor: "अभिनेताको संवादमा राख्नुहोस्",
+  vwBusy: "लेख्दै…",
+  vwErr: "अहिले लेख्न सकिएन, केही बेरपछि प्रयास गर्नुहोस्",
+  vwLimit: "आजको लेखन सीमा पुग्यो",
+  vwLogin: "लेखन सहायक प्रयोग गर्न लगइन गर्नुहोस्",
+  vwFit: "{n} सेकेन्डका लागि मिलाइएको — अधिकतम {w} शब्द",
+  videoTabTrends: "ट्रेन्डहरू",
+  videoIdeaCanvas2: "आजको सुनको भाउ दिरहममा, हरियो वा रातो तीरसहित",
+  videoIdeaCanvas3: "पसल उद्घाटनको काउन्टडाउन",
+  videoIdeaRunway2: "भव्य सोरुममा ग्राहकलाई गाडीको चाबी बुझाउँदै सेल्सम्यान",
+  videoIdeaRunway3: "ग्रिलमा पल्टाइँदै गरेको बर्गर, वाफ र धुवाँ",
+  videoIdeaMinimax2: "बिहानै दुबईका टावरमाथि हुँदै जाने क्यामेरा",
+  videoIdeaMinimax3: "क्याफेको झ्यालमा वर्षाका थोपा",
+  videoIdeaOmni2: "छोहरासँगै कपमा खन्याइँदै गरेको कफी पटको स्लो सट",
+  videoIdeaOmni3: "फिल्मको सुरुवात: बिहान मरुभूमिका बालुवाका थुप्रा",
+  videoIdeaHybrid2: "बजार प्रतिवेदन: सहरको दृश्यमाथि सेयरका अङ्क",
+  videoIdeaHybrid3: "नयाँ सम्पत्ति: भवन, मूल्य र स्थान",
+  videoIdeaVeo2: "भुट्ने र उम्लने आवाजसहित खाना पकाउने (ASMR)",
+  videoIdeaVeo3: "इन्जिनको आवाजसहित मरुभूमिमा कुदिरहेको गाडी",
+  videoIdeaActor2: "अत्तरको पसल चिनाउँदै अमिराती अभिनेता: ऊद र धूप",
+  videoIdeaActor3: "ग्राहकलाई स्वागत गरी सेवा बुझाउँदै रिसेप्सनिस्ट",
+  vcTitle: "पात्रहरू",
+  vcSub: "बढीमा ३ पात्र — प्रत्येकको नाम, आवाज र संवाद",
+  vcAdd: "पात्र थप्नुहोस्",
+  vcName: "नाम",
+  vcLine: "के भन्छ?",
+  vcMale: "पुरुष",
+  vcFemale: "महिला",
+  vcRemove: "हटाउनुहोस्",
+  vwToChars: "संवाद पात्रहरूमा बाँड्नुहोस्",
+  vcMore: "थप विकल्पहरू",
+  vcTutorial: "हेर्नुहोस्: भिडियो कसरी बनाउने",
+  vcToExtra: "थपमा राख्नुहोस्",
+  videoTabClean: "भिडियो सुधार्नुहोस्",
+  vclTitle: "तपाईंको उपकरणको भिडियो सुधार्नुहोस्",
+  vclSub: "धमिलो वा नोइज भएको भिडियो अपलोड गर्नुहोस्: हामी नोइज घटाउँछौं, स्पष्ट बनाउँछौं र रङ सुधार्छौं — तपाईंकै उपकरणमा, निःशुल्क",
+  vclPick: "भिडियो छान्नुहोस् वा यहाँ छोड्नुहोस्",
+  vclDrop: "बढीमा {s} सेकेन्ड र {n} MB",
+  vclLight: "हल्का",
+  vclStrong: "बलियो",
+  vclUpscale: "रिजोल्युसन दोब्बर (साना भिडियो)",
+  vclStart: "भिडियो सुधार्नुहोस्",
+  vclWorking: "सुधार हुँदैछ… यो विन्डो बन्द नगर्नुहोस्",
+  vclCancel: "रद्द गर्नुहोस्",
+  vclDownload: "सुधारिएको भिडियो डाउनलोड गर्नुहोस्",
+  vclBefore: "पहिले",
+  vclAfter: "पछि",
+  vclTooLong: "भिडियो {s} सेकेन्डभन्दा लामो छ — पहिले काट्नुहोस्",
+  vclTooBig: "फाइल {n} MB भन्दा ठूलो छ",
+  vclFail: "यो उपकरणमा यो भिडियो सुधार्न सकिएन",
+  vclNote: "नोइज घटाउँछ, किनारा स्पष्ट बनाउँछ र रङ सुधार्छ; गहिरो धमिलोपन वा क्यामेरा हल्लाइ ठीक गर्दैन",
+  vclLoading: "सुधार उपकरण तयार हुँदैछ (पहिलो पटक मात्र)…",
   fashionEngineLabel: "🎨 इमेज इन्जिन",
   fashionEngineGemini: "Gemini — अनुहार राम्ररी जोगाउँछ (पूर्वनिर्धारित)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT इमेज इन्जिन",
@@ -1110,20 +1166,20 @@ Object.assign(I18N["ne"], {"imgUnchanged": "⚠️ सम्पादन ला�
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["ne"], {"mediaPlansTitle": "तस्बिर र भिडियो सदस्यता", "mediaPlansDesc": "तस्बिर वा भिडियो मात्र चाहनेहरूका लागि — च्याट बिना। हरेक सदस्यताको आफ्नै ब्यालेन्स हुन्छ, जुन अरू कुरामा खर्च हुँदैन।", "mediaImgName": "तस्बिर", "mediaVidName": "भिडियो", "mediaImgUnit": "उच्च गुणस्तरका तस्बिर", "mediaVidEco": "किफायती भिडियो", "mediaVidCine": "सिनेमाटिक भिडियो", "mediaVidSound": "आवाजसहितका भिडियो", "mediaOr": "वा", "mediaNoChatVideo": "च्याट र भिडियो बिना", "mediaNoChatImage": "च्याट र तस्बिर बिना", "mediaLeftImg": "तस्बिर सदस्यतामा बाँकी", "mediaLeftVid": "भिडियो सदस्यतामा बाँकी"});
-Object.assign(I18N["ne"], {"mediaImgPlain": "तस्बिर", "mediaHighEq": "एउटा उच्च गुणस्तरको तस्बिर = २ तस्बिर", "mediaQLabel": "तस्बिरको गुणस्तर", "mediaQNormal": "⚡ सामान्य", "mediaQHigh": "💎 उच्च", "mediaQNormalDesc": "छिटो, सामाजिक सञ्जालका लागि उपयुक्त — ब्यालेन्सबाट १ तस्बिर", "mediaQHighDesc": "थप सूक्ष्म विवरण, स्पष्ट अक्षर, प्रिन्टयोग्य — ब्यालेन्सबाट २ तस्बिर", "mediaQHint": "वा एउटा तस्बिरका लागि अनुरोधमा “उच्च गुणस्तर” लेख्नुहोस्"});
+Object.assign(I18N["ne"], {"mediaImgPlain": "तस्बिर", "mediaHighEq": "एउटा उच्च गुणस्तरको तस्बिर = २ तस्बिर", "mediaQLabel": "तस्बिरको गुणस्तर", "mediaQNormal": "सामान्य", "mediaQHigh": "उच्च", "mediaQNormalDesc": "छिटो, सामाजिक सञ्जालका लागि उपयुक्त — ब्यालेन्सबाट १ तस्बिर", "mediaQHighDesc": "थप सूक्ष्म विवरण, स्पष्ट अक्षर, प्रिन्टयोग्य — ब्यालेन्सबाट २ तस्बिर", "mediaQHint": "वा एउटा तस्बिरका लागि अनुरोधमा “उच्च गुणस्तर” लेख्नुहोस्"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["ne"], {"priceTabChat": "💬 च्याट", "priceTabImg": "🖼️ तस्बिर", "priceTabVid": "🎬 भिडियो", "priceTabPts": "⚡ अंक"});
-Object.assign(I18N["ne"], {"priceTabMaha": "🎙️ महा", "mahaPlanName": "महा", "mahaPlansDesc": "महासँग भ्वाइस कलका लागि। महिनाका मिनेट महाका लागि मात्र हुन्; सकिएपछि कल तपाईंको अंकबाट चल्छ।", "mahaMinPlain": "कल मिनेट", "mahaMinUnit": "मिनेट", "mahaCapNote": "प्रति कल बढीमा 10 मिनेट", "mahaNoChat": "च्याट, तस्बिर वा भिडियो छैन", "mahaLeft": "महाका बाँकी मिनेट", "mahaCapEnd": "कल 10 मिनेटको सीमामा सकियो — जारी राख्न फेरि कल गर्नुहोस्", "mahaToPoints": "मिनेट सकियो — अब अंकबाट जारी"});
+Object.assign(I18N["ne"], {"priceTabChat": "च्याट", "priceTabImg": "🖼️ तस्बिर", "priceTabVid": "🎬 भिडियो", "priceTabPts": "अंक"});
+Object.assign(I18N["ne"], {"priceTabMaha": "महा", "mahaPlanName": "महा", "mahaPlansDesc": "महासँग भ्वाइस कलका लागि। महिनाका मिनेट महाका लागि मात्र हुन्; सकिएपछि कल तपाईंको अंकबाट चल्छ।", "mahaMinPlain": "कल मिनेट", "mahaMinUnit": "मिनेट", "mahaCapNote": "प्रति कल बढीमा 10 मिनेट", "mahaNoChat": "च्याट, तस्बिर वा भिडियो छैन", "mahaLeft": "महाका बाँकी मिनेट", "mahaCapEnd": "कल 10 मिनेटको सीमामा सकियो — जारी राख्न फेरि कल गर्नुहोस्", "mahaToPoints": "मिनेट सकियो — अब अंकबाट जारी"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["ne"], {"installHowIOS":"iPhone वा iPad मा स्थापना गर्न:\n1) यो साइट Safari मा खोल्नुहोस्\n2) सेयर बटन थिच्नुहोस् (माथि तीर भएको वर्ग)\n3) \"होम स्क्रिनमा थप्नुहोस्\" छान्नुहोस्, त्यसपछि \"थप्नुहोस्\"","installHowIOSOther":"यो ब्राउजरबाट iPhone मा स्थापना गर्न:\n1) ठेगाना पट्टी नजिकको सेयर बटन (माथि तीर भएको वर्ग) थिच्नुहोस्\n2) \"होम स्क्रिनमा थप्नुहोस्\" छान्नुहोस्\nविकल्प नदेखिए यो साइट Safari मा खोल्नुहोस्।","installHowAndroid":"Android मा स्थापना गर्न:\n1) ब्राउजर मेनु (⋮) खोल्नुहोस्\n2) \"एप स्थापना गर्नुहोस्\" वा \"होम स्क्रिनमा थप्नुहोस्\" छान्नुहोस्\n3) स्थापना पुष्टि गर्नुहोस्","installHowDesktop":"कम्प्युटरमा स्थापना गर्न (Chrome वा Edge):\nठेगाना पट्टीमा स्थापना आइकन (⊕ वा सानो स्क्रिन) थिच्नुहोस्, वा ब्राउजर मेनु (⋮ वा …) खोलेर \"स्थापना\" वा \"एप्स → यो साइटलाई एपको रूपमा स्थापना गर्नुहोस्\" छान्नुहोस्।","installHowMacSafari":"Mac मा Safari बाट स्थापना गर्न:\nमाथि \"File\" मेनु खोल्नुहोस्, \"Add to Dock\" छान्नुहोस्, त्यसपछि \"Add\"।","installHowFirefox":"कम्प्युटरको Firefox ले वेब एप स्थापना गर्दैन।\nयो साइट Chrome वा Edge मा खोलेर \"एप स्थापना गर्नुहोस्\" थिच्नुहोस्, वा फोनबाट स्थापना गर्नुहोस्।"});
 Object.assign(I18N["ne"], {"videoSceneWait":"⏳ दृश्य {i}/{n}: भिडियोबीच पर्खाइ — {s} सेकेन्डमा आफैँ सुरु हुन्छ।","videoFilmModeOnly":"🎬 «पूरा फिल्म» «AI भिडियो» मोडमा मात्र चल्छ — मोड बदल्नुहोस् वा अर्को अवधि छान्नुहोस्। केही कटौती भएको छैन।"}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["ne"], {"acctPhoneLabel": "📱 फोन नम्बर (पुनःप्राप्तिका लागि)", "phoneNotLinked": "जोडिएको छैन", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "तयार सन्देश पठाउनुहोस् वा आफ्नो नम्बर साझा गर्नुहोस्, अनि यहाँ फर्कनुहोस्…", "phoneLinkedOk": "✓ नम्बर जोडियो", "phoneTaken": "यो नम्बर अर्को खातासँग जोडिएको छ", "phoneNoUser": "यो नम्बरसँग कुनै खाता जोडिएको छैन", "phoneExpired": "लिङ्कको म्याद सकियो — फेरि प्रयास गर्नुहोस्", "phoneRecoverTitle": "वा आफ्नो फोनबाट खाता फिर्ता पाउनुहोस्:", "phoneRecoverSent": "✓ त्यहाँ तपाईंको च्याटमा नयाँ पासवर्डको लिङ्क पठाइयो"});
+Object.assign(I18N["ne"], {"acctPhoneLabel": "फोन नम्बर (पुनःप्राप्तिका लागि)", "phoneNotLinked": "जोडिएको छैन", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "तयार सन्देश पठाउनुहोस् वा आफ्नो नम्बर साझा गर्नुहोस्, अनि यहाँ फर्कनुहोस्…", "phoneLinkedOk": "✓ नम्बर जोडियो", "phoneTaken": "यो नम्बर अर्को खातासँग जोडिएको छ", "phoneNoUser": "यो नम्बरसँग कुनै खाता जोडिएको छैन", "phoneExpired": "लिङ्कको म्याद सकियो — फेरि प्रयास गर्नुहोस्", "phoneRecoverTitle": "वा आफ्नो फोनबाट खाता फिर्ता पाउनुहोस्:", "phoneRecoverSent": "✓ त्यहाँ तपाईंको च्याटमा नयाँ पासवर्डको लिङ्क पठाइयो"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["ne"], {"bgThemeWood": "काठ"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["ne"], {"brandSubtitle": "एआई प्लेटफर्म"});
-Object.assign(I18N["ne"], {"bgThemeDarkwood": "गाढा काठ", "bgThemeMarble": "संगमरमर", "bgThemeCode": "कोड", "bgThemeCars": "कारहरू", "bgThemeKids": "बालबालिका", "bgThemeCuisine": "खाना पकाउने", "bgThemeSunset": "सूर्यास्त", "bgThemeBeach": "समुद्र तट", "bgThemeWinter": "जाडो", "bgThemeGarage": "ग्यारेज", "bgThemeAnime": "एनिमे", "bgThemeCyber": "साइबर सुरक्षा", "bgThemeSchool": "कक्षा कोठा"});
+Object.assign(I18N["ne"], {"bgThemeDarkwood": "गाढा काठ", "bgThemeMarble": "संगमरमर", "bgThemeCode": "कोड", "bgThemeCars": "कारहरू", "bgThemeKids": "बालबालिका", "bgThemeCuisine": "खाना पकाउने", "bgThemeSunset": "सूर्यास्त", "bgThemeBeach": "समुद्र तट", "bgThemeWinter": "जाडो", "bgThemeGarage": "ग्यारेज", "bgThemeAnime": "एनिमे", "bgThemeCyber": "साइबर सुरक्षा", "bgThemeSchool": "कक्षा कोठा", "bgThemeTactical": "ट्याक्टिकल एनिमे", "bgThemeAngel": "हिउँको परी", "bgThemeNeonAnime": "नियोन एनिमे", "bgThemeStation": "भविष्यको स्टेशन", "bgThemeRally": "वर्षाको दौड", "bgThemeSmoke": "नीलो धुवाँ", "bgThemeLibrary": "पुस्तकालय", "bgThemeCafe": "क्याफे", "bgThemeWorkshop": "रातको कार्यशाला", "bgThemeModern": "आधुनिक घर"});
 /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (v-living-memory: صفحة المالك) */
 Object.assign(I18N["ne"], {"livingMemTitle": "मेरो जीवित मेमोरी", "livingMemIntro": "तपाईंका कुराकानीबाट असिस्टेन्टले तपाईंको बारेमा हालसालै सिकेका कुरा। हरेक जवाफमा यसले तपाईंको प्रश्नसँग सम्बन्धित कुरा मात्र प्रयोग गर्छ र तपाईंको मनपर्ने शैली लागू गर्छ। कुनै तथ्य बिर्साउन त्यसलाई मेटाउनुहोस्।", "livingMemEmpty": "असिस्टेन्टले अहिलेसम्म तपाईंको बारेमा केही सिकेको छैन।", "livingMemDelete": "मेटाउनुहोस्", "livingMemLoadError": "तपाईंको जीवित मेमोरी अहिले लोड गर्न सकिएन।", "livingMemDeleteError": "मेटाउन सकिएन। कृपया फेरि प्रयास गर्नुहोस्।", "livingMemClearAll": "सबै मेटाउनुहोस्", "livingMemClearConfirm": "असिस्टेन्टले तपाईंको बारेमा सिकेका सबै कुरा मेटाउने? यो फिर्ता गर्न सकिँदैन।"});
 /* v-pdf-docs: «PDF» يقبل Word والنصوص لا الصور وحدها */
@@ -1134,3 +1190,6 @@ Object.assign(I18N["ne"], {"pdfDocPage": "⏳ पृष्ठ {i} / {n} तय�
 /* v-video-watch */ Object.assign(I18N['ne'], {"vwUploading": "🎬 भिडियो अपलोड हुँदैछ…", "vwWatching": "🎬 भिडियो हेर्दै र यसको आवाज सुन्दै…", "vwCharged": "🎬 {n} अंक प्रयोग भयो · {d} को भिडियो", "vwNoPoints": "तपाईंसँग {p} अंक छ; यो भिडियो विश्लेषण गर्न {n} चाहिन्छ।", "vwTooBig": "भिडियो 100 MB भन्दा ठूलो छ — छोट्याउनुहोस् वा रिजोल्युसन घटाएर फेरि पठाउनुहोस्।", "vwTooLong": "भिडियो 10 मिनेटभन्दा लामो छ — छोटो क्लिप पठाउनुहोस्।", "vwFormat": "यो भिडियो ढाँचा समर्थित छैन — MP4, MOV वा WEBM मा पठाउनुहोस्।", "vwFailed": "भिडियो विश्लेषण गर्न सकिएन — कुनै अंक काटिएन। फेरि प्रयास गर्नुहोस्।", "vwLogin": "भिडियो विश्लेषण गर्न पहिले साइन इन गर्नुहोस्।", "vwDefaultQ": "यो भिडियो विश्लेषण गर"});
 /* v-plans-gate */ Object.assign(I18N['ne'], {"plansWhyPoints": "तपाईंका पोइन्ट सकिए — प्लानबाट टप-अप गरेर तुरुन्तै जारी राख्नुहोस्।", "plansWhyLimit": "तपाईंले आजको लागि आफ्नो प्लानको सीमा पूरा गर्नुभयो — प्लान अपग्रेड गर्नुहोस् वा भोलिसम्म पर्खनुहोस्।", "plansWhyExpired": "तपाईंको {plan} सदस्यता सकियो — सुविधाहरू फिर्ता पाउन नवीकरण गर्नुहोस्।", "plansWhyExpiring": "तपाईंको {plan} सदस्यता {date} मा सकिँदैछ — सुविधाहरू नरोकिऊन् भनेर नवीकरण गर्नुहोस्।", "plansRenew": "नवीकरण गर्नुहोस्", "plansLater": "पछि", "vwUnavailable": "भिडियो विश्लेषण अस्थायी रूपमा उपलब्ध छैन — कुनै पोइन्ट काटिएन। केही बेरपछि फेरि प्रयास गर्नुहोस्।"});
 /* v-google-login-help */ Object.assign(I18N['ne'], {"authGoogleHint": "Google बाट साइन अप गर्नुभएको हो? “{btn}” मा ट्याप गर्नुहोस् — तपाईंको Gmail पासवर्ड यहाँ काम गर्दैन।"});
+/* v-media-merge */ Object.assign(I18N['ne'], {"priceTabMedia":"तस्बिर र भिडियो","mixPlanName":"तस्बिर र भिडियो","mixPlansDesc":"तस्बिर र भिडियो चाहनेहरूका लागि — च्याटबिना। दुवैमा एउटै ब्यालेन्स खर्च हुन्छ; सकिएपछि तपाईंको अंकबाट चल्छ।","mixOneBalance":"तस्बिर र भिडियोका लागि एउटै ब्यालेन्स","mixApprox1":"लगभग 50 तस्बिर वा 12 भिडियो, वा दुवैको मिश्रण","mixApprox2":"लगभग 100 तस्बिर वा 24 भिडियो, वा दुवैको मिश्रण","mixApprox3":"लगभग 500 तस्बिर वा 121 भिडियो, वा दुवैको मिश्रण","mixNoChat":"च्याट छैन","mixLeft":"तस्बिर र भिडियो ब्यालेन्समा बाँकी"});
+/* v-inspire */ Object.assign(I18N['ne'], {"inspTabInspire":"प्रेरणा","inspTabQuick":"छिटो सुझाव","inspCityTitle":"तपाईंको वास्तविक सहर","inspCitySub":"खुला नक्साबाट तपाईंको वास्तविक टोलमा बनेका 3D अनुभव। एउटा छान्नुहोस्, तुरुन्तै पूर्वावलोकनमा खुल्छ — त्यसपछि त्यहाँ कुनै पनि टोल वा सहरको नाम लेख्नुहोस्।","inspLoading":"खुल्दैछ…","inspFail":"अहिले खोल्न सकिएन — फेरि प्रयास गर्नुहोस्"});
+/* v-chat-edit */ Object.assign(I18N['ne'], {"editApplied": "डिजाइनमा परिवर्तनहरू लागू भए ({n})।", "editFailed": "परिवर्तन लागू गरिएन — पुरानो पाठको केही भाग हालको डिजाइनसँग मिलेन, त्यसैले डिजाइन जस्ताको तस्तै छ। फेरि भन्नुहोस्।", "editTruncated": "फाइल पूरा हुनुअघि नै जवाफ काटियो, त्यसैले डिजाइन पहिलेकै जस्तो राखियो।", "editPartial": "परिवर्तन लागू गरिएन — जवाफ अपूर्ण वा गलत ढाँचामा आयो, त्यसैले डिजाइन जस्ताको तस्तै छ। फेरि अनुरोध गर्नुहोस्।", "editBroke": "परिवर्तन लागू गरिएन — यसले डिजाइनको कोड बिगार्ने थियो, त्यसैले डिजाइन जस्ताको तस्तै छ। फेरि अनुरोध गर्नुहोस्।"});

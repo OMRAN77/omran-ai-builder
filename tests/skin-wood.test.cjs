@@ -52,7 +52,7 @@ test('٢. الخامات: كلّ url في CSS موجود وخفيف، والمص
 
 test('٣. الربط والترجمة: CSS بعد خلفيات.css، واسم الثيم بالـ١٤ لغة، ووسم اللغات مرفوع', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/خلفيات.css?v=3'), b = html.indexOf('css/ثيم-خشبي.css?v=3');
+  const a = html.indexOf('css/خلفيات.css?v='), b = html.indexOf('css/ثيم-خشبي.css?v=');
   assert.ok(a > 0 && b > a, 'يُحمَّل بعد خلفيات.css فيعلو عليه');
   const data = rd('js/app-03-i18n-data.js');
   for (const k of ['bgThemeWood']) {
@@ -60,7 +60,7 @@ test('٣. الربط والترجمة: CSS بعد خلفيات.css، واسم ا
     for (const lg of LANGS) assert.ok(rd('i18n/' + lg + '.js').includes('"' + k + '":'), lg + ': ' + k);
   }
   assert.match(data, /bgThemeWood: 'خشبي'/);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=724'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=732'"));
 });
 
 test('٤. «بيت» لوحة المعاينة الفارغة شيل (أمر المالك بعد الثيمات: «شيل هذا من البنّيّ»): لا دالّة ولا مراقب ولا CSS ولا نصّ', () => {

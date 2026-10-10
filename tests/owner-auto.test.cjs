@@ -76,22 +76,22 @@ async function run({ user, provider, messages, model, script }) {
 const ask = (t) => [{ role: 'user', content: t }];
 const badge = (r) => (r.events.filter((e) => typeof e.modelLabel === 'string' && e.modelLabel).pop() || {}).modelLabel || '';
 
-test('١. الحكم: الكلام العاديّ فوريّ، والصعب يفكّر', () => {
-  const quick = ['السلام', 'السلام عليكم', 'هلا والله', 'كيف حالك', 'شكرًا', 'اشرح لي الذكاء الاصطناعي باختصار', 'كم سعر الذهب اليوم', 'ترجم لي هذي الجملة', 'وش رأيك في فيلم الأمس'];
+test('١. الحكم (v-owner-think-all): المجاملة القصيرة وحدها فوريّة، وكلّ سؤال يفكّر فيه المزوّد', () => {
+  const quick = ['السلام', 'السلام عليكم', 'هلا والله', 'كيف حالك', 'شكرًا', 'تمام', 'وش أخبارك', 'مشكور يعطيك العافية', 'ok', ''];
   for (const s of quick) assert.equal(ot.ownerThinks(s, {}), false, s);
-  const hard = ['حلّل لي هذا التقرير', 'قارن بين آيفون وسامسونج', 'اشرح بالتفصيل كيف يعمل المحرّك', 'اكتب لي خطة تسويق لمطعمي',
+  const hard = ['اشرح لي الذكاء الاصطناعي باختصار', 'كم سعر الذهب اليوم', 'ترجم لي هذي الجملة', 'وش رأيك في فيلم الأمس', 'ليش السماء زرقاء', 'شكرًا، بس ليش ما اشتغل الكود؟', 'حلّل لي هذا التقرير', 'قارن بين آيفون وسامسونج', 'اشرح بالتفصيل كيف يعمل المحرّك', 'اكتب لي خطة تسويق لمطعمي',
     'احسب الضريبة على ٥٠٠٠', 'اعمل لي موقع لمطعمي', 'فيه bug في الكود', '```js\nlet x = 1\n```', 'ن'.repeat(600), 'سطر\n'.repeat(8), 'analyze this', 'compare these'];
   for (const s of hard) assert.equal(ot.ownerThinks(s, {}), true, s.slice(0, 30));
   assert.equal(ot.ownerThinks('وش هذا', { image: true }), true, 'الصورة تحليل');
   assert.equal(ot.ownerThinks('السلام', { image: true, greeting: true }), true, 'تحيّة مع صورة ليست تحيّة');
 });
 
-test('٢. متابعة محادثة كود تفكّر، والتحيّة وسطها تبقى فوريّة', () => {
+test('٢. متابعة محادثة كود تفكّر، والتحيّة وسطها تبقى فوريّة، و«كمّل» يفكّر', () => {
   const history = [{ role: 'user', content: 'سوّ لي زرّ' }, { role: 'assistant', content: 'تفضّل:\n```html\n<button>x</button>\n```' }, { role: 'user', content: 'كمّل' }];
   assert.equal(ot.ownerThinks('كمّل', { history }), true);
   assert.equal(ot.ownerThinks('السلام', { history, greeting: true }), false);
   const chatty = [{ role: 'user', content: 'هلا' }, { role: 'assistant', content: 'هلا فيك' }, { role: 'user', content: 'كمّل' }];
-  assert.equal(ot.ownerThinks('كمّل', { history: chatty }), false);
+  assert.equal(ot.ownerThinks('كمّل', { history: chatty }), true, 'v-owner-think-all: «كمّل» طلب لا مجاملة');
   assert.equal(ot.lastReplyHasCode([{ role: 'assistant', content: [{ type: 'text', text: '<!DOCTYPE html>' }] }]), true, 'محتوى كتل');
 });
 
@@ -188,4 +188,17 @@ test('٨. GPT يرفض كلّ درجات السلّم → الطلب بلا reas
     assert.equal(r.ok, true);
     assert.deepEqual(calls.map((b) => b.reasoning && b.reasoning.effort), ['none', 'minimal', 'low', undefined]);
   } finally { od.__quickRejected.clear(); }
+});
+
+test('٩. v-owner-think-all: سؤال عاديّ للمالك («ليش…») يصل DeepSeek بلا أيّ حقل إطفاء — تفكيره هو؛ و«شكرًا» فوريّة؛ وغير المالك كما كان', async () => {
+  chat.__orQuick.level = 2;
+  let r = await run({ user: 'omran', provider: 'deepseek', messages: ask('ليش أسعار الذهب ترتفع هالأيام؟'), script: [() => anthropicText('تم')] });
+  let b = r.calls[0].body;
+  assert.ok(!b.thinking && !b.reasoning, 'بلا thinking:disabled ولا reasoning.enabled=false');
+  assert.match(badge(r), /🧠/);
+  r = await run({ user: 'omran', provider: 'deepseek', messages: ask('شكرًا'), script: [() => anthropicText('العفو')] });
+  b = r.calls[0].body;
+  assert.deepEqual(b.thinking, { type: 'disabled' }, 'المجاملة فوريّة كما كانت');
+  r = await run({ user: 'someone', provider: 'deepseek', messages: ask('ليش أسعار الذهب ترتفع هالأيام؟'), script: [() => anthropicText('تم')] });
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' }, 'غير المالك على v-chat-fast كما هو');
 });

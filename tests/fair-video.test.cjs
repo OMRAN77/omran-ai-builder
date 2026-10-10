@@ -40,7 +40,8 @@ test('٢. Plus فيديو باقة واحد، ورزمة ٩٠٠ تمنح ١٬٠�
   assert.match(a6, /Number\(PACK_POINTS\[plan\] \|\| String\(plan\)\.slice\(4\)\)\.toLocaleString\('en-US'\)/);
   const ps = read('js/partials-settings.js');
   assert.ok(ps.includes('onclick="buyPointsPack(900)"') && ps.includes('<b style="font-size: var(--fs-3);">1,050</b>'));
-  for (const n of ['<b>122</b>', '<li><b>11</b> ', '<b>4</b> <span data-i18n="mediaVidCine">', '<li><b>23</b> ', '<b>8</b> <span data-i18n="mediaVidCine">', '<b>92</b> <span data-i18n="mahaMinPlain">']) assert.ok(ps.includes(n), n);
+  // v-media-merge (قرار المالك ٨ أكتوبر): بطاقات الصور/الفيديو المنفصلة صارت «صور وفيديو» بأمثلة تقريبيّة (media-merge.test ١٢)؛ مها كما هي.
+  for (const n of ['data-i18n="mixApprox1">يكفي تقريبًا 50 صورة أو 12 فيديو', 'data-i18n="mixApprox2">يكفي تقريبًا 100 صورة أو 24 فيديو', '<b>92</b> <span data-i18n="mahaMinPlain">']) assert.ok(ps.includes(n), n);
   assert.ok(!fs.existsSync(path.join(__dirname, '..', 'pricing.html')), 'v-cleanup: صفحة الأسعار اليتيمة حُذفت بموافقة المالك — بطاقات الإعدادات هي المرجع');
 });
 
@@ -86,7 +87,7 @@ test('٤. الشارة الذهبيّة: Pro وMax يريانها بجانب ا�
   const idx = read('index.html');
   assert.match(idx, /html\.plan-gold \.setProfileName::after\{ content: var\(--plan-badge, ""\);/);
   assert.ok(read('js/partials-settings.js').includes('<div id="setProfileName" class="setProfileName"></div>'));
-  assert.ok(idx.includes('/js/partials-settings.js?v=691'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=724'"));
+  assert.ok(idx.includes('/js/partials-settings.js?v=694'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=732'"));
   assert.ok(read('js/app.bundle.js').includes("root.style.setProperty('--plan-badge', JSON.stringify(plan.toUpperCase()));"), 'الحزمة مبنيّة');
 });

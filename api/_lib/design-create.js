@@ -181,7 +181,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const quota = await checkDesignQuota(token);
+    const quota = await checkDesignQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
     if (!quota.allowed) {
       if (quota.reason === 'auth') {
         res.status(401).json({ error: 'auth_required' });
@@ -254,8 +254,8 @@ module.exports = async (req, res) => {
           const vimgs = (((vd && vd.data) || []).map((x) => x && x.b64_json).filter(Boolean))
             .map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
           if (vimgs.length) {
-            const vrem = await consumeDesign(quota.username);
-            res.status(200).json({ images: vimgs, remaining: vrem, dailyLimit: DESIGN_DAILY_LIMIT });
+            const vrem = await consumeDesign(quota.username, quota.limit);
+            res.status(200).json({ images: vimgs, remaining: vrem, dailyLimit: quota.limit || DESIGN_DAILY_LIMIT });
             return;
           }
         } catch (e) { /* fallback to normal generation below */ }
@@ -291,8 +291,8 @@ module.exports = async (req, res) => {
         });
         return;
       }
-      const rem = await consumeDesign(quota.username);
-      res.status(200).json({ images, remaining: rem, dailyLimit: DESIGN_DAILY_LIMIT });
+      const rem = await consumeDesign(quota.username, quota.limit);
+      res.status(200).json({ images, remaining: rem, dailyLimit: quota.limit || DESIGN_DAILY_LIMIT });
       return;
     }
 
@@ -329,8 +329,8 @@ module.exports = async (req, res) => {
       // بمفتاح الخادم — نفس خط إنقاذ الأزياء والبورتريه والستايل.
       const rescued = duoP ? await duoP : await openaiDesignEdit(promptText, imageBase64, mimeType);
       if (rescued) {
-        const rrem = await consumeDesign(quota.username);
-        res.status(200).json({ imageBase64: rescued, mimeType: 'image/webp', remaining: rrem, dailyLimit: DESIGN_DAILY_LIMIT, engine: 'openai' });
+        const rrem = await consumeDesign(quota.username, quota.limit);
+        res.status(200).json({ imageBase64: rescued, mimeType: 'image/webp', remaining: rrem, dailyLimit: quota.limit || DESIGN_DAILY_LIMIT, engine: 'openai' });
         return;
       }
       const gmsg = String((data && data.error && data.error.message) || 'Upstream error');
@@ -355,13 +355,13 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.warn('[design-create] duo skipped: ' + (e && e.message)); }
     }
-    const remaining = await consumeDesign(quota.username);
+    const remaining = await consumeDesign(quota.username, quota.limit);
     res.status(200).json({
       imageBase64: outB64,
       mimeType: outMime,
       engine: outEngine,
       remaining,
-      dailyLimit: DESIGN_DAILY_LIMIT,
+      dailyLimit: quota.limit || DESIGN_DAILY_LIMIT,
     });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

@@ -79,7 +79,7 @@ test('٣. صفحة Stripe بالدرهم للدفعة والاشتراك الم�
 });
 
 test('٤. Apple/Google Pay: العمليّة في الخادم بالدرهم والمبلغ نفسه، وبلا عملة بالدولار', async () => {
-  let r = await call('create-payment-intent', { plan: 'img_pro', token: token('reem'), currency: 'aed' });
+  let r = await call('create-payment-intent', { plan: 'media_pro', token: token('reem'), currency: 'aed' }); // v-media-merge: img_ توقّف بيعها
   assert.equal(r.status, 200);
   assert.deepEqual([r.params.get('currency'), r.params.get('amount')], ['aed', '7500']);
   r = await call('create-payment-intent', { plan: 'pack900', token: token('reem') });
@@ -99,8 +99,10 @@ function clientFns(extra) {
 
 test('٥. جدول العميل يطابق الخادم لكلّ خطّة (ورقة Apple/Google Pay تقول ما يخصمه الخادم)', () => {
   const c = clientFns();
-  assert.deepEqual(Object.keys(c.CHECKOUT_AED_FILS).sort(), Object.keys(PLANS).sort());
-  for (const plan of Object.keys(PLANS)) {
+  const sold = Object.keys(PLANS).filter((p) => !PLANS[p].retired); // v-media-merge: img_/vid_ لا تُباع — خرجت من مرآة العميل
+  assert.deepEqual(Object.keys(c.CHECKOUT_AED_FILS).sort(), sold.sort());
+  assert.deepEqual(Object.keys(c.CHECKOUT_PLAN_AMOUNTS).sort(), sold.sort());
+  for (const plan of sold) {
     assert.equal(c.CHECKOUT_AED_FILS[plan], priceFor(plan, 'aed').amount, plan);
     assert.equal(c.CHECKOUT_PLAN_AMOUNTS[plan], priceFor(plan, 'usd').amount, plan);
   }
@@ -118,7 +120,7 @@ test('٦. عملة الدفع = العملة المعروضة: درهم ← aed�
   const c = clientFns();
   assert.equal(c.checkoutPriceText('pro', 'aed'), '75 AED');
   assert.equal(c.checkoutPriceText('basic', 'aed'), '37.5 AED');
-  assert.equal(c.checkoutPriceText('img_basic', 'usd'), '$10.21');
+  assert.equal(c.checkoutPriceText('media_basic', 'usd'), '$10.21'); // v-media-merge
 });
 
 test('٧. نافذة الدفع تقول الدرهم لمن يدفع به — «$20» يصير «75 AED» في نصوص الباقات بالـ١٤ لغة', () => {
@@ -147,7 +149,7 @@ test('٧. نافذة الدفع تقول الدرهم لمن يدفع به — �
 });
 
 test('٨. الأسلاك: Stripe وورقة المحفظة والعمليّة بالعملة نفسها، وPayPal بالدولار، والحزمة مبنيّة', () => {
-  assert.match(a6, /autoRenew: !!\(document\.getElementById\('checkoutAutoRenew'\) \|\| \{\}\)\.checked, currency: checkoutCurrency\(\) \}/);
+  assert.match(a6, /autoRenew: autoRenewPref\(\),[^}]*currency: checkoutCurrency\(\) \}/); // v-autorenew-one
   const wallet = a6.slice(a6.indexOf('async function setupWalletPaymentRequest('), a6.indexOf('async function handleWalletPaymentMethod('));
   assert.match(wallet, /const amount = cur === 'aed' \? CHECKOUT_AED_FILS\[plan\] : CHECKOUT_PLAN_AMOUNTS\[plan\];/);
   assert.match(wallet, /currency: cur,/);

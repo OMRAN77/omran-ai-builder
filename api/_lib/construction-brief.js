@@ -11,7 +11,8 @@
    حارس الصحّة: لا نثق بما يرجعه الموديل — كلّ قيمة تُطابَق على قوائم المفاتيح المسموحة أدناه،
    وهي مطابقة حرفيًّا لخرائط construction-create.js (يثبّتها اختبار `cx-brief`)، والمجهول يُسقَط. */
 const { extractJsonObject } = require('./image-edit-guard');
-const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const { clientIp } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: المشترك بنسبة سقف باقته
 
 const DAILY_LIMIT = 120;
 const MAX_TEXT = 240;
@@ -116,7 +117,7 @@ async function handler(req, res) {
   // حساب مطلوب: قارئ نصّ مجّانيّ مفتوح للضيوف بابُ إساءة، والتوليد نفسه يطلب حسابًا أصلًا.
   let gate = null;
   try {
-    gate = await checkAndConsumeCustom(body.token, null, clientIp(req), 'cx-brief', DAILY_LIMIT);
+    gate = await checkAndConsumePlanCustom(body.token, null, clientIp(req), 'cx-brief', DAILY_LIMIT);
   } catch (e) { gate = null; /* عطب العدّاد لا يفتح الباب ولا يغلقه: يُحسم أدناه */ }
   if (gate && !gate.allowed) { res.status(200).json({ fields: null, reason: gate.reason === 'limit' ? 'limit' : 'auth' }); return; }
   if (!gate || !gate.username) { res.status(200).json({ fields: null, reason: 'auth' }); return; }

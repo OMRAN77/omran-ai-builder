@@ -768,7 +768,7 @@ async function smartMaybeSearch(text, ctxMsgs){
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: text, classify: true }),
+      body: JSON.stringify({ query: text, classify: true, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }), // v-open-tools-cap: المصنّف يُعدّ على الحساب لا على IP البيت كلّه
       signal: controller.signal,
     });
     clearTimeout(timeout);

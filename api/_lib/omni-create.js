@@ -71,6 +71,7 @@ module.exports = async (req, res) => {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
       if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
+      quality = await require('./_qualityGate.js').gateQuality(username, quality); // v-quality-gate: الجودة العالية للمشتركين والمالك
       const gateOm = pointsLib.requireConfirmation(body, pointsLib.COSTS.omni_video, 'فيديو المحرّك السينمائيّ');
       if (gateOm) { res.status(gateOm.status).json(gateOm.payload); return; }
       const pay = await pointsLib.spendPoints(username, pointsLib.COSTS.omni_video, 'omni_video');
@@ -175,7 +176,7 @@ module.exports = async (req, res) => {
 
     if (uri) {
       // نمرّره عبر بروكسي veo-download (يضيف مفتاح Google لتنزيل ملفّ generativelanguage).
-      res.status(200).json({ url: '/api/video?action=veo-download&uri=' + encodeURIComponent(uri) });
+      res.status(200).json({ url: require('./veo-download.js').downloadUrl(uri) }); // v-video-open-lock: موقّع على الملفّ
     } else {
       res.status(200).json({ dataUrl: 'data:' + mime + ';base64,' + b64 });
     }

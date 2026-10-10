@@ -65,8 +65,8 @@ test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D
   const html = rd('index.html');
   assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=3">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
-  assert.match(html, /partials-settings\.js\?v=691/, 'وسم الإعدادات ارتفع');
-  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=724'/, 'وسم اللغات ارتفع');
+  assert.match(html, /partials-settings\.js\?v=694/, 'وسم الإعدادات ارتفع');
+  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=732'/, 'وسم اللغات ارتفع');
   for (const old of ['js/app-25-خلفيات-مدير.js', 'js/partials-خلفيات-قسم.js']) assert.ok(!fs.existsSync(path.join(root, old)), old + ' يجب أن يُحذف');
 
   const settings = rd('js/partials-settings.js');
@@ -166,7 +166,7 @@ function makeEnv({ storage = {}, list, fetchFails = false, now = 1_000_000 } = {
   return { ctx, html, body, grid, rot, store, calls, clock, tick };
 }
 // v-themes: ١٤ ثيمًا في الشبكة (خشبي + ١٣) بين «صورة من جهازك» والصور — أوّل صورة في الخانة 2 + TH
-const TH = 14;
+const TH = 24; // v-themes-ten: ١٤ + ١٠
 const LIST = [
   { ملف: '01-مدينة.jpg', عرض: 1000, ارتفاع: 1000, لون: '#1c2123', فاتحة: false },
   { ملف: '02-ثلج.jpg', عرض: 1000, ارتفاع: 1000, لون: '#e8e8ea', فاتحة: true },
@@ -185,12 +185,14 @@ test('٥. الشبكة: «بلا خلفيّة» ثمّ مصغّر لكلّ صو�
   assert.ok(add.classList.contains('bgImgAdd') && !add.classList.contains('active') && add.dataset.file === undefined, 'زرّ الإضافة لا يُعلَّم');
   assert.equal(b1.textContent, '', 'المصغّر بلا اسم');
   assert.ok(b1.style.backgroundImage.includes(encodeURIComponent('مصغّرات') + '/' + encodeURIComponent('01-مدينة.jpg')), 'المصغّر من مجلّد المصغّرات');
+  assert.ok(b1.style.backgroundImage.includes(encodeURIComponent('01-مدينة.jpg') + '?v=2'), 'v-bg-fresh: وسم إصدار على المصغّر');
 
   b1.onclick();
   assert.ok(html.classList.contains('bgimg') && html.classList.contains('bgimg-dark') && !html.classList.contains('bgimg-light'));
   const layer = body.children[0];
   assert.equal(layer.id, 'bgImgLayer');
   assert.ok(layer.style.backgroundImage.includes('/assets/' + encodeURIComponent('خلفيات') + '/' + encodeURIComponent('01-مدينة.jpg')) && !layer.style.backgroundImage.includes(encodeURIComponent('مصغّرات')), 'الطبقة تأخذ الصورة الكاملة');
+  assert.ok(layer.style.backgroundImage.includes(encodeURIComponent('01-مدينة.jpg') + '?v=2'), 'v-bg-fresh: وسم إصدار على الصورة');
   assert.equal(html.style['--bgimg-tint'], '#1c2123');
   assert.deepEqual(JSON.parse(store.get('aiapp_bgimg')), { ملف: '01-مدينة.jpg', لون: '#1c2123', فاتحة: false });
   assert.ok(b1.classList.contains('active') && !none.classList.contains('active'), 'العلامة انتقلت');
@@ -385,4 +387,39 @@ test('١٢. الثيمات الثلاثة عشر: مصغّراتها بعد ال
   const b = makeEnv({ list: LIST, storage: { aiapp_bgimg: JSON.stringify({ ملف: 'ثيم:شاطئ', ثيم: 'beach', لون: '#8fd0e0', فاتحة: true }) } });
   for (const c of ['skin', 'skin-beach', 'skin-scene', 'bgimg-light']) assert.ok(b.html.classList.contains(c), 'مسترجَع: ' + c);
   assert.equal(b.calls.fetch, 0);
+});
+
+/* v-bg-desktop (المالك ٩ أكتوبر: «فيه خلفيّات غير واضحة فقط في الكمبيوتر»): الصورة الضيّقة لها نسخة حاسوب يعلّمها الفهرس بـ«حاسوب: true» —
+   تُختار على غير الجوّال وحده؛ الجوّال والمصغّر على الأصل؛ المحفوظ القديم بلا العلم يأخذها بعد الفهرس. */
+test('١٣. v-bg-desktop: نسخة الحاسوب للصور المعلَّمة على الحاسوب وحده، والجوّال والمصغّرات على الأصل، والفهرس يعلّم ما في مجلّد حاسوب/', async () => {
+  const L = [{ ملف: '01-ضيّقة.jpg', عرض: 1100, ارتفاع: 2048, لون: '#111111', فاتحة: false, حاسوب: true }, { ملف: '02-عريضة.jpg', عرض: 2048, ارتفاع: 1500, لون: '#222222', فاتحة: false }];
+  const D = encodeURIComponent('حاسوب') + '/' + encodeURIComponent('01-ضيّقة.jpg');
+  const a = makeEnv({ list: L });
+  await a.ctx.window.خلفيات.افتح();
+  const b1 = a.grid.children[2 + TH], b2 = a.grid.children[3 + TH];
+  assert.ok(b1.style.backgroundImage.includes(encodeURIComponent('مصغّرات') + '/' + encodeURIComponent('01-ضيّقة.jpg')), 'المصغّر من الأصل');
+  b1.onclick();
+  assert.ok(a.body.children[0].style.backgroundImage.includes(D), 'الحاسوب: النسخة العريضة');
+  assert.ok(JSON.parse(a.store.get('aiapp_bgimg')).حاسوب === true, 'المحفوظ يحمل العلم');
+  b2.onclick();
+  assert.ok(!a.body.children[0].style.backgroundImage.includes(encodeURIComponent('حاسوب')), 'صورة بلا نسخة حاسوب: الأصل');
+  // الجوّال: الأصل حتّى للمعلَّمة
+  const m = makeEnv({ list: L });
+  m.html.classList.add('mobile-ui');
+  await m.ctx.window.خلفيات.افتح();
+  m.grid.children[2 + TH].onclick();
+  assert.ok(!m.body.children[0].style.backgroundImage.includes(encodeURIComponent('حاسوب')) && m.body.children[0].style.backgroundImage.includes(encodeURIComponent('01-ضيّقة.jpg')), 'الجوّال على الأصل');
+  // محفوظ قديم بلا العلم على الحاسوب → بعد الفهرس النسخة العريضة
+  const o = makeEnv({ list: L, storage: { aiapp_bgimg: JSON.stringify({ ملف: '01-ضيّقة.jpg', لون: '#111111', فاتحة: false }) } });
+  assert.equal(o.calls.fetch, 0, 'الإقلاع بلا جلب الفهرس كما كان (٧)');
+  assert.ok(!o.body.children[0].style.backgroundImage.includes(encodeURIComponent('حاسوب')), 'قبل الفهرس: الأصل');
+  await o.ctx.window.خلفيات.افتح();
+  assert.ok(o.body.children[0].style.backgroundImage.includes(D), 'المحفوظ القديم أخذ نسخة الحاسوب حين وصل الفهرس');
+  // الفهرس الحقيقيّ: كلّ ما في حاسوب/ معلَّم، ولا علم بلا ملفّ
+  const idx = JSON.parse(fs.readFileSync(path.join(DIR, 'فهرس.json'), 'utf8')).صور;
+  const deskDir = path.join(DIR, 'حاسوب');
+  const deskFiles = fs.existsSync(deskDir) ? fs.readdirSync(deskDir).filter((f) => /\.jpe?g$/i.test(f)) : [];
+  for (const s of idx) assert.equal(!!s.حاسوب, deskFiles.includes(s.ملف), s.ملف + ': علم الحاسوب يطابق المجلّد');
+  for (const f of deskFiles) { assert.equal(jpegSize(path.join(deskDir, f)).w, 2560, f + ': نسخة الحاسوب ٢٥٦٠ عرضًا'); }
+  assert.match(rd('scripts/خلفيات.mjs'), /const desk = fs\.existsSync\(path\.join\(DIR, 'حاسوب', f\)\);/, 'المولّد يعلّم');
 });

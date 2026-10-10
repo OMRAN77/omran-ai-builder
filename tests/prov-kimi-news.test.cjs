@@ -89,13 +89,14 @@ test('٤. القائمة: ثلاث مجموعات مرتّبة بخطّ بينه
   assert.match(block, /key:'kimi',\s+name:'Kimi · Moonshot',\s+or:true, direct:true, store:'aiapp_kimi_model',\s+def:'kimi-k3',\s+models:\[\['kimi-k3','Kimi K3'\],\['kimi-k2\.6','Kimi K2\.6'\]\]/);
   assert.match(m, /if\(i && p\.grp !== PROVS\[i-1\]\.grp\) out \+= divider;/);
   assert.match(m, /kimi:'provNickDeep'/);
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m041026b/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m081026a/);
 });
 
 test('٥. العميل: Kimi على مسار الأدوات وحده، باسمه للمالك، وإغلاق الإعدادات لا يمسح الاختيار', () => {
   const c = read('js/app-06-checkout.js');
   assert.match(c, /const TOOL_PROVIDERS = \[[^\]]*'kimi'\]/);
-  assert.match(c, /if\(effective === 'kimi'\) throw new Error\('kimi: tools path only'\);\n\s+return await callOpenAILike/);
+  // v-owner-solo: في المسار القديم Kimi يمرّ بالخادم لـKimi نفسه (كان يُرمى فيجيب كلود) — ولا يسقط إلى GPT أبدًا.
+  assert.match(c, /if\(effective === 'kimi'\)\{\n[^\n]*throw new Error\('kimi: tools path only'\);\n\s+const __km = await window\.callChatWithTools\([^\n]*'kimi'\);\n\s+return __km\.reply;\n\s+\}\n\s+return await callOpenAILike/);
   assert.match(c, /if \(\$\('#provider'\)\.value\) localStorage\.setItem\('aiapp_provider', \$\('#provider'\)\.value\);/);
   const u = read('js/app-05-ui.js');
   assert.match(u, /openrouter: 'OpenRouter', kimi: 'Kimi', \/\/ v-kimi/);
@@ -113,7 +114,7 @@ test('٦. الأخبار أُزيلت كلّها: لا ملفّات ولا نا�
   assert.ok(!st.includes('id="notifSection"') && !st.includes('chkNewsAlerts'));
   assert.ok(!read('js/app-05-ui.js').match(/SETTINGS_NAV_IDS = \[[^\]]*notifSection/));
   const html = read('index.html');
-  assert.ok(html.includes('/js/partials-core.js?v=654') && html.includes('/js/partials-settings.js?v=691'));
+  assert.ok(html.includes('/js/partials-core.js?v=655') && html.includes('/js/partials-settings.js?v=694'));
   const cr = read('api/_lib/check-reminders.js');
   assert.ok(!cr.includes('newsItems') && !cr.includes('breaking-news'));
   assert.match(cr, /if \(r\.type === 'news'\) \{\n[^\n]*\n\s+nextList\.push\(r\);\n\s+continue;\n\s+\}/, 'سجلّ الأخبار القديم يبقى كما هو بلا دفع');

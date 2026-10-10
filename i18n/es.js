@@ -29,10 +29,10 @@ I18N['es'] = {
     cnExStore: 'Almacén exterior', cnExWaterTank: 'Tanque de agua', cnExSolar: 'Paneles solares', cnExPlayground: 'Área de juegos exterior', cnExCarport: 'Cochera adicional',
     cnBudgetOutputs: '💰 Presupuesto y resultados', cnDownloadBoq: '📊 Descargar el listado de cantidades', cnPdfReport: '📄 Informe en PDF',
     keyHowToTitle: '📝 Cómo obtener una clave para cada proveedor:', showAllPlansCur: 'Mostrar todos los planes y precios en tu moneda', currencyLabel: 'Moneda', plFreeMsgs: '20 mensajes al día',
-    plFreeVoice: 'Hasta 4 minutos de chat de voz', plFreeImgs: 'Hasta 3 imágenes con IA', plFreeNoVideo: 'Sin video', plStMsgs: '50 mensajes al día', plStVoice: 'Hasta 24 minutos de chat de voz',
-    plStImgs: 'Hasta 15 imágenes', plStVideos: '1 video', plProMsgs: '100 mensajes al día', plProVoice: 'Hasta 61 minutos de chat de voz', plProMedia: 'Hasta 40 imágenes · 2 videos',
+    plFreeVoice: 'Hasta 4 minutos de chat de voz', plFreeImgs: 'Imágenes con IA', plFreeNoVideo: 'Sin video', plStMsgs: '50 mensajes al día', plStVoice: 'Hasta 24 minutos de chat de voz',
+    plStImgs: 'Imágenes con IA', plStVideos: 'Video incluido', plProMsgs: '100 mensajes al día', plProVoice: 'Hasta 61 minutos de chat de voz', plProMedia: 'Imágenes y video incluidos',
     plProAgent: 'El agente inteligente', plProPriority: 'Insignia dorada', plMaxAllPro: 'Todo lo de Pro · 250 mensajes al día', plMaxVoice: 'Hasta 213 minutos de chat de voz',
-    plMaxMedia: 'Hasta 150 imágenes · 3 videos', plMaxSupport: 'Soporte dedicado',
+    plMaxMedia: 'Imágenes y video incluidos', plMaxSupport: 'Soporte dedicado',
     adStudioTitle: 'Estudio de Anuncios', adStudioHint: 'Estudio de Anuncios — crea tu anuncio chateando', chatToPdfEmpty: 'Aún no hay respuesta para convertir.', mahaConnectionLost: 'No se pudo reconectar', voiceTabAssistantName: 'Asistente',
     acctCleanupConfirm: 'Se eliminarán permanentemente todos los chats y proyectos. ¿Estás seguro?',
     buildNoCode: '⚠️ No se recibió código del proveedor — la vista previa está vacía. Vuelve a enviar la solicitud o prueba con otro proveedor.',
@@ -173,8 +173,8 @@ I18N['es'] = {
     "pricingComingSoon": "Próximamente 🚀 — las suscripciones aún no están disponibles",
     "pricingSubscribeBtn": "Suscribirse ahora",
     "pricingTestNote": "🧪 Modo de prueba por ahora — activación completa una vez que se obtenga la licencia comercial",
-    "termsLink": "📜 Términos y condiciones",
-    "privacyLink": "🔒 Política de privacidad",
+    "termsLink": "Términos y condiciones",
+    "privacyLink": "Política de privacidad",
     "aboutSectionTitle": "ℹ️ Acerca de la app y videos de introducción",
     "feedbackSectionTitle": "💬 Comentarios y sugerencias",
     "fbTagBug": "🐛 Error",
@@ -205,7 +205,7 @@ I18N['es'] = {
     "checkoutCancelMsg": "⚠️ El pago fue cancelado",
     "logoutTitle": "Cerrar sesión",
     "loginAction": "Iniciar sesión",
-    "acctSectionTitle": "👤 Mi cuenta",
+    "acctSectionTitle": "Mi cuenta",
     "statsSectionTitle": "Mis proyectos y copia de seguridad",
     "statsProjectsLabel": "Número de proyectos",
     "statsMessagesLabel": "Total de mensajes enviados",
@@ -216,19 +216,19 @@ I18N['es'] = {
     "importProjectsConfirm": "Los proyectos importados se combinarán con tus proyectos actuales. ¿Continuar?",
     "importProjectsSuccess": "✅ Proyectos importados correctamente",
     "importProjectsError": "❌ Archivo no válido, asegúrate de que sea un archivo de exportación de proyectos válido",
-    "acctAvatarBtn": "📷 Cambiar foto",
+    "acctAvatarBtn": "Cambiar foto",
     "acctUsernameLabel": "Nombre de usuario",
     "acctPasswordRow": "Contraseña",
     "acctSaveBtn": "Guardar",
     "acctEmailLabel": "Correo (si olvidas tu usuario o contraseña)",
-    "acctReferralLabel": "🔗 Enlace para invitar amigos",
-    "acctCopyBtn": "📋 Copiar",
-    "acctReferralHint": "Por cada amigo que se registre con tu enlace, ambos reciben 10 mensajes gratuitos adicionales 🎁",
-    "acctReferralCopied": "Enlace copiado ✅",
+    "acctReferralLabel": "Enlace para invitar amigos",
+    "acctCopyBtn": "Copiar",
+    "acctReferralHint": "Por cada amigo que se registre con tu enlace, ambos reciben 10 mensajes gratuitos adicionales",
+    "acctReferralCopied": "Enlace copiado",
     "acctReferralBonusCount": "Tu saldo de mensajes de bonificación: {n}",
     "acctCurrentPasswordLabel": "Contraseña actual",
     "acctNewPasswordLabel2": "Nueva contraseña",
-    "acctSaved": "✅ Guardado",
+    "acctSaved": "Guardado",
     "acctSaving": "Guardando...",
     "acctFillUsername": "Ingresa un nombre de usuario válido (al menos 3 caracteres)",
     "acctFillPasswords": "Ingresa tu contraseña actual y una nueva contraseña (al menos 4 caracteres)",
@@ -799,24 +799,12 @@ I18N['es'] = {
     "religionDisclaimer": "⚠️ Esta es una interpretación de la IA, no un dictamen religioso oficial. Consulta a eruditos/expertos calificados.",
     "religionTabVerse": "🕌 Tafsir de versículos",
     "religionTabHadith": "📖 Búsqueda de hadices",
-    "religionTabBible": "✝️ Interpretación de la Biblia",
-    "religionTabTorah": "✡️ Interpretación de la Torá",
-    "religionTabBuddhism": "🕉️ Enseñanzas budistas",
-    "religionTabHinduism": "🙏 Interpretación del hinduismo",
     "religionTabDream": "🌙 Interpretación de sueños",
     "religionInputLabelVerse": "Escribe el versículo o su número (p. ej., Al-Baqarah 255)",
     "religionInputLabelHadith": "Escribe el texto del hadiz o su tema",
-    "religionInputLabelBible": "Escribe el versículo de la Biblia o su número",
-    "religionInputLabelTorah": "Escribe el versículo de la Torá o su número",
-    "religionInputLabelBuddhism": "Escribe una pregunta sobre el budismo",
-    "religionInputLabelHinduism": "Escribe una pregunta sobre el hinduismo",
     "religionInputLabelDream": "Describe tu sueño en detalle",
     "religionInputPlaceholderVerse": "p. ej., Surat Al-Baqarah versículo 255 (Ayat al-Kursi)",
     "religionInputPlaceholderHadith": "p. ej., hadiz de las intenciones, o un tema como honrar a los padres",
-    "religionInputPlaceholderBible": "p. ej., Juan 3:16, Romanos 12:2, o interpretación del amor en la Biblia",
-    "religionInputPlaceholderTorah": "p. ej., Torá 1:1, Levítico 19:18, o enseñanzas de Moisés",
-    "religionInputPlaceholderBuddhism": "p. ej., nirvana, karma, meditación, o enseñanzas de Buda",
-    "religionInputPlaceholderHinduism": "p. ej., karma, dharma, meditación, o enseñanzas de los Vedas",
     "religionInputPlaceholderDream": "p. ej., soñé que volaba sobre el mar y vi una luna grande...",
     "religionGenerateBtn": "✨ Interpretar",
     "religionNeedInput": "⚠️ Escribe primero algún texto.",
@@ -954,7 +942,7 @@ I18N['es'] = {
     "fontWeightBold": "Gruesa",
     "fontPreviewQ": "¿Sabías que ya puedes cambiar el tamaño y el grosor de la letra?",
     "fontPreviewA": "¡Sí! Arrastra el control de abajo y pruébalo ahora.",
-    "autoRenewLabel": "🔁 Cobro mensual automático",
+    "autoRenewLabel": "Cobro mensual automático",
     "autoRenewOnHint": "Activado — tu plan se renueva y se cobra cada mes automáticamente",
     "autoRenewOffHint": "Desactivado — pagas solo un mes y renuevas manualmente cuando quieras",
     "autoRenewStopped": "Cobro mensual detenido — tu plan sigue activo hasta el {date}",
@@ -1007,9 +995,9 @@ I18N['es'] = {
     designAiPlaceLabel: "Tipo de lugar", premiumOn: "Agente ACTIVADO ⚡ — respuesta directa, sin capas de estilo", premiumNeedLogin: "Inicia sesión para usar el Agente", memorySectionLabel: "Mi memoria", memoryIntro: "Esto es lo que la app recuerda sobre ti, tus proyectos y tu estilo de comunicación. Se sincroniza con tu cuenta en todos tus dispositivos, y puedes editarlo o eliminarlo.",
     memorySaveBtn: "Guardar cambios", memoryClearBtn: "Eliminar mi memoria", memoryEmpty: "Aún no hay nada guardado sobre ti.", memoryGuest: "Inicia sesión para ver tu memoria.", memoryConfirm: "¿Eliminar todo lo que la app recuerda sobre ti? Esta acción no se puede deshacer.", memorySaved: "Guardado y sincronizado con tu cuenta.", memorySaveError: "No se pudo guardar. Inténtalo de nuevo.",
     memoryLoadError: "No se pudo cargar la memoria en este momento.", fontFamilySectionLabel: "Estilo de fuente", fontFamilyHint: "Cambia los mensajes del chat en escritorio y móvil, sin modificar los bloques de código ni el diseño de la app.", guestImageMsg: "🎁 ¡Has usado tus 3 imágenes gratuitas de invitado! Crea una cuenta gratis en segundos y obtén 70 puntos de regalo para seguir generando y editando imágenes.",
-    planPer: "al mes", planFreePer: "para probar", planPtsFree: "puntos de bienvenida — una sola vez", planPtsMo: "puntos cada mes", planTag: "Más popular", planCurrentBtn: "Tu plan actual", planSoonBtn: "Próximamente", planFreeFeats: '<li>20 mensajes al día</li><li>Hasta 4 minutos de chat de voz</li><li>Hasta 3 imágenes con IA</li><li class="off">Sin video</li>',
-    planPlusFeats: '<li>50 mensajes al día</li><li>Hasta 24 minutos de chat de voz</li><li>Hasta 15 imágenes</li><li>1 video</li>', planProFeats: '<li>100 mensajes al día</li><li>Hasta 61 minutos de chat de voz</li><li>Hasta 40 imágenes · 2 videos</li><li>El agente inteligente</li><li>Insignia dorada</li>',
-    planMaxFeats: '<li>Todo lo de Pro · 250 mensajes al día</li><li>Hasta 213 minutos de chat de voz</li><li>Hasta 150 imágenes · 3 videos</li><li>Soporte dedicado</li>', checkoutPlanLabelMax: 'Plan Max $100/mes — 3,200 puntos', copyCode: "Copiar", copiedMsg: "Copiado ✅", emailAsst_connectText: "Conecta tu cuenta de Gmail para que la IA pueda leer tus correos y sugerir respuestas listas que apruebes antes de enviarlas.",
+    planPer: "al mes", planFreePer: "para probar", planPtsFree: "puntos de bienvenida — una sola vez", planPtsMo: "puntos cada mes", planTag: "Más popular", planCurrentBtn: "Tu plan actual", planSoonBtn: "Próximamente", planFreeFeats: '<li>20 mensajes al día</li><li>Hasta 4 minutos de chat de voz</li><li>Imágenes con IA</li><li class="off">Sin video</li>',
+    planPlusFeats: '<li>50 mensajes al día</li><li>Hasta 24 minutos de chat de voz</li><li>Imágenes con IA</li><li>Video incluido</li>', planProFeats: '<li>100 mensajes al día</li><li>Hasta 61 minutos de chat de voz</li><li>Imágenes y video incluidos</li><li>El agente inteligente</li><li>Insignia dorada</li>',
+    planMaxFeats: '<li>Todo lo de Pro · 250 mensajes al día</li><li>Hasta 213 minutos de chat de voz</li><li>Imágenes y video incluidos</li><li>Soporte dedicado</li>', checkoutPlanLabelMax: 'Plan Max $100/mes — 3,200 puntos', copyCode: "Copiar", copiedMsg: "Copiado ✅", emailAsst_connectText: "Conecta tu cuenta de Gmail para que la IA pueda leer tus correos y sugerir respuestas listas que apruebes antes de enviarlas.",
     emailAsst_connectBtn: "🔗 Conectar Gmail", emailAsst_disclaimer: "⚠️ Nunca se envía una respuesta sin tu aprobación explícita en cada mensaje.", emailAsst_title: "📧 Asistente de correo con IA", emailAsst_refresh: "Actualizar", emailAsst_loading: "Escaneando tu bandeja de entrada…", emailAsst_empty: "No hay correos nuevos que necesiten respuesta por ahora.",
     emailAsst_notConnected: "Gmail no está conectado, vuelve a conectarlo.", emailAsst_send: "✅ Enviar", emailAsst_ignore: "🚫 Ignorar a este remitente", emailAsst_sending: "Enviando…", emailAsst_sent: "✅ Enviado", emailAsst_ignored: "🚫 Ignorado — no volverá a aparecer", emailAsst_error: "❌ Error: ", emailAsst_voiceBtn: "Resumen de voz", emailAsst_addToCalendar: "📅 Añadir al calendario",
     emailAsst_addingEvent: "Añadiendo evento…", emailAsst_eventAdded: "✅ Añadido a tu calendario", emailAsst_calReauth: "Vuelve a conectar Gmail para permitir el acceso al calendario", emailAsst_voiceLoading: "🔊 Preparando resumen de voz…", emailAsst_voiceEmpty: "No hay correos para resumir.", emailAsst_urgent: "🔴 Urgente", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Baja",
@@ -1019,7 +1007,7 @@ I18N['es'] = {
    والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
    والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
 Object.assign(I18N["es"], {
-    acctLoginBtnLabel: "🔐 Iniciar sesión / Crear cuenta",
+    acctLoginBtnLabel: "Iniciar sesión / Crear cuenta",
     designCompareTitle: "🆚 Mi habitación en todos los estilos",
     designCompareHint: "Sube la foto de tu habitación, elige 2-3 estilos — los diseñamos lado a lado",
     designCompareBtn: "🆚 Diseñar con los estilos elegidos",
@@ -1079,6 +1067,74 @@ Object.assign(I18N['es'], {
   pickerOptsPick: "opciones — elige",
   videoOptAdspot: "📢 Anuncio rápido (5s vertical + narración)",
   videoOptReels: "📱 Reels inteligente (10s + narración)",
+  videoIdeaLbl: "💡 Prueba un ejemplo",
+  videoIdeaCanvas: "Infografía: 3 consejos para ahorrar en 5 segundos",
+  videoIdeaRunway: "Un coche deportivo por las calles de Dubái de noche",
+  videoIdeaMinimax: "Olas tranquilas en una playa al atardecer",
+  videoIdeaOmni: "Anuncio de perfume de lujo en una playa al atardecer",
+  videoIdeaHybrid: "Anuncio de oferta: producto con descuento y precio encima",
+  videoIdeaVeo: "Un mercado tradicional lleno de vendedores y clientes",
+  videoIdeaActor: "Un actor emiratí presenta una cafetería",
+  vwTitle: "Asistente de escritura",
+  vwSub: "Escribe una historia, diálogo o anuncio ajustado a la duración del vídeo",
+  vwPh: "Ejemplo: escribe una historia sobre el dueño de una cafetería que abre una sucursal",
+  vwSend: "Enviar",
+  vwSug1: "Escríbeme una historia corta sobre…",
+  vwSug2: "Escríbeme un guion de anuncio sobre…",
+  vwToScene: "Usar como descripción de la escena",
+  vwToNarr: "Usar como narrador",
+  vwToActor: "Usar como diálogo del actor",
+  vwBusy: "Escribiendo…",
+  vwErr: "No se pudo escribir ahora, inténtalo en un momento",
+  vwLimit: "Alcanzaste el límite de escritura de hoy",
+  vwLogin: "Inicia sesión para usar el asistente de escritura",
+  vwFit: "Ajustado a {n} segundos — hasta {w} palabras",
+  videoTabTrends: "Tendencias",
+  videoIdeaCanvas2: "Precio del oro hoy en dírhams con una flecha verde o roja",
+  videoIdeaCanvas3: "Cuenta atrás para la apertura de la tienda",
+  videoIdeaRunway2: "Un vendedor explica la llave de un coche a un cliente en un showroom de lujo",
+  videoIdeaRunway3: "Una hamburguesa dándose la vuelta en la parrilla con vapor y humo",
+  videoIdeaMinimax2: "Cámara sobrevolando las torres de Dubái al amanecer",
+  videoIdeaMinimax3: "Gotas de lluvia en la ventana de un café",
+  videoIdeaOmni2: "Plano lento de una cafetera sirviendo en una taza junto a dátiles",
+  videoIdeaOmni3: "Apertura de película: dunas del desierto al amanecer",
+  videoIdeaHybrid2: "Informe de mercado: una ciudad con las cifras de bolsa encima",
+  videoIdeaHybrid3: "Nueva propiedad: el edificio con precio y ubicación",
+  videoIdeaVeo2: "Cocinando con sonidos de fritura y hervor (ASMR)",
+  videoIdeaVeo3: "Un coche acelera por el desierto con sonido de motor",
+  videoIdeaActor2: "Un actor emiratí presenta una perfumería: oud e incienso",
+  videoIdeaActor3: "Una recepcionista recibe a los clientes y explica los servicios",
+  vcTitle: "Personajes",
+  vcSub: "Hasta 3 personajes — cada uno con nombre, voz y frases",
+  vcAdd: "Añadir personaje",
+  vcName: "Nombre",
+  vcLine: "¿Qué dice?",
+  vcMale: "Hombre",
+  vcFemale: "Mujer",
+  vcRemove: "Quitar",
+  vwToChars: "Repartir el diálogo entre los personajes",
+  vcMore: "Más opciones",
+  vcTutorial: "Ver: cómo hacer un vídeo",
+  vcToExtra: "Usar como extras",
+  videoTabClean: "Mejorar vídeo",
+  vclTitle: "Mejora un vídeo de tu dispositivo",
+  vclSub: "Sube un vídeo borroso o con ruido: reducimos el ruido, aumentamos la nitidez y mejoramos los colores — en tu dispositivo, gratis",
+  vclPick: "Elige un vídeo o suéltalo aquí",
+  vclDrop: "Hasta {s} segundos y {n} MB",
+  vclLight: "Suave",
+  vclStrong: "Fuerte",
+  vclUpscale: "Duplicar la resolución (vídeos pequeños)",
+  vclStart: "Mejorar vídeo",
+  vclWorking: "Mejorando… no cierres esta ventana",
+  vclCancel: "Cancelar",
+  vclDownload: "Descargar vídeo mejorado",
+  vclBefore: "Antes",
+  vclAfter: "Después",
+  vclTooLong: "El vídeo dura más de {s} segundos: recórtalo primero",
+  vclTooBig: "El archivo supera {n} MB",
+  vclFail: "No se pudo mejorar este vídeo en este dispositivo",
+  vclNote: "Reduce el ruido, define los bordes y mejora los colores; no corrige un desenfoque fuerte ni el temblor",
+  vclLoading: "Preparando la herramienta (solo la primera vez)…",
   fashionEngineLabel: "🎨 Motor de imágenes",
   fashionEngineGemini: "Gemini — conserva mejor el rostro (predeterminado)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — el motor de imágenes de ChatGPT",
@@ -1161,20 +1217,20 @@ Object.assign(I18N["es"], {"imgUnchanged": "⚠️ La edición no se aplicó: la
 
 /* v-media-plans: اشتراكات الصور والفيديو المنفصلة */
 Object.assign(I18N["es"], {"mediaPlansTitle": "Planes de imágenes y video", "mediaPlansDesc": "Para quien solo quiere imágenes o videos, sin chat. Cada plan tiene su propio saldo y no se gasta en otra cosa.", "mediaImgName": "Imágenes", "mediaVidName": "Video", "mediaImgUnit": "imágenes de alta calidad", "mediaVidEco": "videos económicos", "mediaVidCine": "videos cinematográficos", "mediaVidSound": "videos con sonido", "mediaOr": "o", "mediaNoChatVideo": "Sin chat ni video", "mediaNoChatImage": "Sin chat ni imágenes", "mediaLeftImg": "Restante en tu plan de imágenes", "mediaLeftVid": "Restante en tu plan de video"});
-Object.assign(I18N["es"], {"mediaImgPlain": "imágenes", "mediaHighEq": "Una imagen de alta calidad = 2 imágenes", "mediaQLabel": "Calidad de imagen", "mediaQNormal": "⚡ Estándar", "mediaQHigh": "💎 Alta", "mediaQNormalDesc": "Rápida, ideal para redes sociales — 1 imagen de tu saldo", "mediaQHighDesc": "Más detalle, texto más claro, lista para imprimir — 2 imágenes de tu saldo", "mediaQHint": "O escribe «alta calidad» en tu solicitud para una sola imagen"});
+Object.assign(I18N["es"], {"mediaImgPlain": "imágenes", "mediaHighEq": "Una imagen de alta calidad = 2 imágenes", "mediaQLabel": "Calidad de imagen", "mediaQNormal": "Estándar", "mediaQHigh": "Alta", "mediaQNormalDesc": "Rápida, ideal para redes sociales — 1 imagen de tu saldo", "mediaQHighDesc": "Más detalle, texto más claro, lista para imprimir — 2 imágenes de tu saldo", "mediaQHint": "O escribe «alta calidad» en tu solicitud para una sola imagen"});
 /* v-price-tabs: أقسام صفحة الأسعار */
-Object.assign(I18N["es"], {"priceTabChat": "💬 Chat", "priceTabImg": "🖼️ Imágenes", "priceTabVid": "🎬 Video", "priceTabPts": "⚡ Puntos"});
-Object.assign(I18N["es"], {"priceTabMaha": "🎙️ Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para llamadas de voz con Maha. Tus minutos mensuales son solo para Maha; cuando se acaban, las llamadas siguen con tus puntos.", "mahaMinPlain": "minutos de llamada", "mahaMinUnit": "min", "mahaCapNote": "Hasta 10 minutos por llamada", "mahaNoChat": "Sin chat, imágenes ni video", "mahaLeft": "Minutos de Maha restantes", "mahaCapEnd": "La llamada terminó en el límite de 10 minutos — vuelve a llamar para continuar", "mahaToPoints": "Minutos agotados — continúa con tus puntos"});
+Object.assign(I18N["es"], {"priceTabChat": "Chat", "priceTabImg": "🖼️ Imágenes", "priceTabVid": "🎬 Video", "priceTabPts": "Puntos"});
+Object.assign(I18N["es"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para llamadas de voz con Maha. Tus minutos mensuales son solo para Maha; cuando se acaban, las llamadas siguen con tus puntos.", "mahaMinPlain": "minutos de llamada", "mahaMinUnit": "min", "mahaCapNote": "Hasta 10 minutos por llamada", "mahaNoChat": "Sin chat, imágenes ni video", "mahaLeft": "Minutos de Maha restantes", "mahaCapEnd": "La llamada terminó en el límite de 10 minutos — vuelve a llamar para continuar", "mahaToPoints": "Minutos agotados — continúa con tus puntos"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["es"], {"install":"Instalar la app","installHowIOS":"Para instalar en iPhone o iPad:\n1) Abre este sitio en Safari\n2) Toca el botón Compartir (cuadro con una flecha hacia arriba)\n3) Elige \"Añadir a pantalla de inicio\" y luego \"Añadir\"","installHowIOSOther":"Para instalar en iPhone desde este navegador:\n1) Toca el botón Compartir (cuadro con una flecha hacia arriba) junto a la barra de direcciones\n2) Elige \"Añadir a pantalla de inicio\"\nSi no aparece la opción, abre este sitio en Safari.","installHowAndroid":"Para instalar en Android:\n1) Abre el menú del navegador (⋮)\n2) Elige \"Instalar aplicación\" o \"Añadir a pantalla de inicio\"\n3) Confirma la instalación","installHowDesktop":"Para instalar en el ordenador (Chrome o Edge):\nHaz clic en el icono de instalar (⊕ o pantalla pequeña) de la barra de direcciones, o abre el menú del navegador (⋮ o …) y elige \"Instalar\" o \"Aplicaciones → Instalar este sitio como aplicación\".","installHowMacSafari":"Para instalar en Mac desde Safari:\nAbre el menú \"Archivo\" arriba, elige \"Añadir al Dock\" y luego \"Añadir\".","installHowFirefox":"Firefox en el ordenador no puede instalar aplicaciones web.\nAbre este sitio en Chrome o Edge y pulsa \"Instalar la app\", o instálala desde tu teléfono."});
 Object.assign(I18N["es"], {"videoSceneWait":"⏳ Escena {i}/{n}: pausa entre videos — continúa automáticamente en {s} s.","videoFilmModeOnly":"🎬 «Película completa» solo funciona con el modo «Video IA» — cambia el modo o elige otra duración. No se cobró nada."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
-Object.assign(I18N["es"], {"acctPhoneLabel": "📱 Número de teléfono (para recuperar)", "phoneNotLinked": "No vinculado", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envía el mensaje preparado o comparte tu número, y luego vuelve aquí…", "phoneLinkedOk": "✓ Número vinculado", "phoneTaken": "Este número está vinculado a otra cuenta", "phoneNoUser": "No hay ninguna cuenta vinculada a este número", "phoneExpired": "El enlace caducó — inténtalo de nuevo", "phoneRecoverTitle": "O recupera tu cuenta con tu teléfono:", "phoneRecoverSent": "✓ Enviamos un enlace de nueva contraseña a tu chat allí"});
+Object.assign(I18N["es"], {"acctPhoneLabel": "Número de teléfono (para recuperar)", "phoneNotLinked": "No vinculado", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envía el mensaje preparado o comparte tu número, y luego vuelve aquí…", "phoneLinkedOk": "✓ Número vinculado", "phoneTaken": "Este número está vinculado a otra cuenta", "phoneNoUser": "No hay ninguna cuenta vinculada a este número", "phoneExpired": "El enlace caducó — inténtalo de nuevo", "phoneRecoverTitle": "O recupera tu cuenta con tu teléfono:", "phoneRecoverSent": "✓ Enviamos un enlace de nueva contraseña a tu chat allí"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */
 Object.assign(I18N["es"], {"bgThemeWood": "Madera"});
 /* v-frame-design: التصميم الجديد — عنوان القائمة الفرعيّ و«بيت» اللوحة الفارغة */
 Object.assign(I18N["es"], {"brandSubtitle": "Plataforma de IA"});
-Object.assign(I18N["es"], {"bgThemeDarkwood": "Madera oscura", "bgThemeMarble": "Mármol", "bgThemeCode": "Código", "bgThemeCars": "Coches", "bgThemeKids": "Niños", "bgThemeCuisine": "Cocina", "bgThemeSunset": "Atardecer", "bgThemeBeach": "Playa", "bgThemeWinter": "Invierno", "bgThemeGarage": "Garaje", "bgThemeAnime": "Anime", "bgThemeCyber": "Ciberseguridad", "bgThemeSchool": "Aula"});
+Object.assign(I18N["es"], {"bgThemeDarkwood": "Madera oscura", "bgThemeMarble": "Mármol", "bgThemeCode": "Código", "bgThemeCars": "Coches", "bgThemeKids": "Niños", "bgThemeCuisine": "Cocina", "bgThemeSunset": "Atardecer", "bgThemeBeach": "Playa", "bgThemeWinter": "Invierno", "bgThemeGarage": "Garaje", "bgThemeAnime": "Anime", "bgThemeCyber": "Ciberseguridad", "bgThemeSchool": "Aula", "bgThemeTactical": "Anime táctico", "bgThemeAngel": "Ángel de hielo", "bgThemeNeonAnime": "Anime neón", "bgThemeStation": "Estación del futuro", "bgThemeRally": "Carrera bajo lluvia", "bgThemeSmoke": "Humo azul", "bgThemeLibrary": "Biblioteca", "bgThemeCafe": "Cafetería", "bgThemeWorkshop": "Taller nocturno", "bgThemeModern": "Casa moderna"});
 /* v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (v-living-memory: صفحة المالك) */
 Object.assign(I18N["es"], {"livingMemTitle": "Mi memoria viva", "livingMemIntro": "Lo último que el asistente ha aprendido de ti en tus conversaciones. En cada respuesta usa solo lo que se relaciona con tu pregunta y aplica tu estilo preferido. Elimina un dato para que lo olvide.", "livingMemEmpty": "El asistente aún no ha aprendido nada sobre ti.", "livingMemDelete": "Eliminar", "livingMemLoadError": "No se pudo cargar tu memoria viva ahora.", "livingMemDeleteError": "No se pudo eliminar. Inténtalo de nuevo.", "livingMemClearAll": "Eliminar todo", "livingMemClearConfirm": "¿Eliminar todo lo que el asistente ha aprendido sobre ti? No se puede deshacer."});
 /* v-pdf-docs: «PDF» يقبل Word والنصوص لا الصور وحدها */
@@ -1185,3 +1241,6 @@ Object.assign(I18N["es"], {"pdfDocPage": "⏳ Preparando la página {i} de {n}�
 /* v-video-watch */ Object.assign(I18N['es'], {"vwUploading": "🎬 Subiendo el video…", "vwWatching": "🎬 Viendo el video y escuchando su audio…", "vwCharged": "🎬 {n} puntos usados · video de {d}", "vwNoPoints": "Tienes {p} puntos; analizar este video requiere {n}.", "vwTooBig": "El video supera los 100 MB: recórtalo o baja su resolución y vuelve a enviarlo.", "vwTooLong": "El video dura más de 10 minutos: envía un clip más corto.", "vwFormat": "Formato de video no compatible: envíalo como MP4, MOV o WEBM.", "vwFailed": "No se pudo analizar el video: no se usaron puntos. Inténtalo de nuevo.", "vwLogin": "Inicia sesión primero para analizar videos.", "vwDefaultQ": "Analiza este video"});
 /* v-plans-gate */ Object.assign(I18N['es'], {"plansWhyPoints": "Te quedaste sin puntos — recarga desde Planes y continúa al instante.", "plansWhyLimit": "Llegaste al límite de tu plan por hoy — mejora tu plan o espera hasta mañana.", "plansWhyExpired": "Tu suscripción {plan} terminó — renuévala para recuperar tus ventajas.", "plansWhyExpiring": "Tu suscripción {plan} termina el {date} — renuévala para no perder tus ventajas.", "plansRenew": "Renovar", "plansLater": "Más tarde", "vwUnavailable": "El análisis de video no está disponible por ahora — no se usaron puntos. Inténtalo de nuevo en un momento."});
 /* v-google-login-help */ Object.assign(I18N['es'], {"authGoogleHint": "¿Te registraste con Google? Toca «{btn}»: tu contraseña de Gmail no funciona aquí."});
+/* v-media-merge */ Object.assign(I18N['es'], {"priceTabMedia":"Imágenes y video","mixPlanName":"Imágenes y video","mixPlansDesc":"Para quien quiere imágenes y videos — sin chat. Un solo saldo para ambos; cuando se acaba, sigues con tus puntos.","mixOneBalance":"Un solo saldo para imágenes y video","mixApprox1":"Alcanza para unas 50 imágenes o 12 videos, o una mezcla de ambos","mixApprox2":"Alcanza para unas 100 imágenes o 24 videos, o una mezcla de ambos","mixApprox3":"Alcanza para unas 500 imágenes o 121 videos, o una mezcla de ambos","mixNoChat":"Sin chat","mixLeft":"Restante en tu saldo de imágenes y video"});
+/* v-inspire */ Object.assign(I18N['es'], {"inspTabInspire":"Inspiración","inspTabQuick":"Ideas rápidas","inspCityTitle":"Tu ciudad real","inspCitySub":"Experiencias 3D construidas sobre tu barrio real a partir de mapas abiertos. Elige una y se abre al instante en la vista previa; luego escribe dentro cualquier barrio o ciudad.","inspLoading":"Abriendo…","inspFail":"No se pudo abrir ahora — inténtalo de nuevo"});
+/* v-chat-edit */ Object.assign(I18N['es'], {"editApplied": "Cambios aplicados al diseño ({n}).", "editFailed": "No apliqué el cambio: parte del texto antiguo no coincidía con el diseño actual, así que el diseño sigue igual. Pídelo de nuevo.", "editTruncated": "La respuesta se cortó antes de completar el archivo, así que el diseño se mantuvo igual.", "editPartial": "No apliqué el cambio: la respuesta llegó incompleta o con un formato incorrecto, así que el diseño sigue igual. Pídelo de nuevo.", "editBroke": "No apliqué el cambio: habría roto el código del diseño, así que el diseño sigue igual. Pídelo de nuevo."});

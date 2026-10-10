@@ -63,12 +63,12 @@ test('الافتراضيّ يدويّ: دفعة واحدة بلا تجديد و�
 });
 
 test('autoRenew=true وحده يصنع اشتراكًا شهريًّا يحمل الحساب لفواتير التجديد', async () => {
-  const r = await call(checkout, 'create-checkout-session', { plan: 'img_pro', token: token('omar'), autoRenew: true });
+  const r = await call(checkout, 'create-checkout-session', { plan: 'media_pro', token: token('omar'), autoRenew: true }); // v-media-merge: img_ توقّف بيعها
   const p = stripeParams(r);
   assert.equal(p.get('mode'), 'subscription');
   assert.equal(p.get('line_items[0][price_data][recurring][interval]'), 'month');
   assert.equal(p.get('subscription_data[metadata][username]'), 'omar');
-  assert.equal(p.get('subscription_data[metadata][plan]'), 'img_pro');
+  assert.equal(p.get('subscription_data[metadata][plan]'), 'media_pro');
   const loose = await call(checkout, 'create-checkout-session', { plan: 'pro', token: token('omar'), autoRenew: 'true' });
   assert.equal(stripeParams(loose).get('mode'), 'payment', 'قيمة غير true الصريحة لا تفعّل التجديد');
 });
@@ -121,23 +121,17 @@ test('العميل: الزائر يُحوَّل للتسجيل بدل نافذة
 
 test('العميل: البطاقة ترسل اختيار التجديد، وPayPal يرسل التوكن', () => {
   const src = read('js/app-06-checkout.js');
-  assert.match(src, /autoRenew: !!\(document\.getElementById\('checkoutAutoRenew'\) \|\| \{\}\)\.checked/);
+  assert.match(src, /autoRenew: autoRenewPref\(\),/, 'v-autorenew-one: زرّ المحادثة الواحد');
   assert.match(src, /action: 'create', plan: checkoutCurrentPlan, token: authGet\('aiapp_auth_token'\)/);
-  assert.match(src, /if \(arBox\) arBox\.checked = autoRenewPref\(\);/, 'v-autorenew-toggle: يتبع زرّ أوّل الصفحة');
   assert.match(src, /function autoRenewPref\(\)\{ try\{ return localStorage\.getItem\('aiapp_autorenew'\) === '1'; \}/, 'والافتراضيّ متوقّف (يدويّ) كما كان');
-  assert.match(src, /arRow\.style\.display = \/\^pack\\d\+\$\/\.test/, 'الخيار مخفيّ لرزم النقاط');
 });
 
-test('نافذة الدفع: زرّ صغير للتجديد التلقائيّ، غير مفعّل افتراضيًّا', () => {
+test('نافذة الدفع بلا مربّع تجديد — v-autorenew-one: الخيار الواحد زرّ تبويب المحادثة (الافتراضيّ متوقّف)', () => {
   const html = read('js/partials-settings.js');
-  const row = /<label id="checkoutAutoRenewRow"[\s\S]*?<\/label>/.exec(html);
-  assert.ok(row, 'الصفّ موجود');
-  assert.match(row[0], /<input type="checkbox" id="checkoutAutoRenew"/);
-  assert.doesNotMatch(row[0], /\bchecked\b/);
-  assert.match(row[0], /data-i18n="checkoutAutoRenew"/);
-  assert.ok(html.indexOf('checkoutAutoRenewRow') > html.indexOf('startStripeCheckout()'), 'تحت زرّ البطاقة');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=691'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=724'"));
+  assert.equal(/<label id="checkoutAutoRenewRow"/.test(html), false, 'المربّع حُذف من نافذة الدفع');
+  assert.match(html, /<input type="checkbox" id="chkAutoRenew" role="switch"(?![^>]*\bchecked\b)[^>]*>/, 'الزرّ الواحد غير مفعّل افتراضيًّا');
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=732'"));
 });
 
 test('النصّان الجديدان في ١٤ لغة بلا اسم مزوّد', () => {

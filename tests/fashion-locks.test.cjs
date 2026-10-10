@@ -159,7 +159,7 @@ const stocksSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/stocks.js'),
 assert.ok(stocksSrv.includes('v-stocks-paper') && stocksSrv.includes("mode === 'pf-trade'"), 'أوضاع المحفظة في الخادم');
 assert.ok(stocksSrv.includes('db/stocks/pf/') && stocksSrv.includes('db/stocks/pf-board.json'), 'محفظة لكل مستخدم + لوحة ترتيب');
 assert.ok(stocksSrv.includes('pos.avgCost = (pos.avgCost * pos.qty + cost) / (pos.qty + qty)'), 'متوسط التكلفة يحسب بالكود لا بالنموذج');
-assert.ok(stocksSrv.includes("checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40)"), 'حد يومي للصفقات');
+assert.ok(stocksSrv.includes("checkAndConsumePlanCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40)"), 'حد يومي للصفقات (v-plan-caps: أساس المجّانيّ، والمشترك بنسبة باقته)');
 const stocksCli = fs.readFileSync(path.join(__dirname, '../js/app-13-stocks-init.js'), 'utf8');
 assert.ok(stocksCli.includes('v-stocks-paper') && stocksCli.includes('stocksPfBtn') && stocksCli.includes('function pfTrade'), 'تبويب المحفظة وتنفيذ الصفقات في الواجهة');
 assert.ok(stocksCli.includes('وضع تعليمي — أموال افتراضية') && stocksCli.includes("mode:'learn', symbol: sym"), 'الطابع التعليمي: شارة + زر علّمني يستدعي المعلم بالأرقام الحية');

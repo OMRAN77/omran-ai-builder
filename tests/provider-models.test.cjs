@@ -86,7 +86,10 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
   const orBlock = chat.slice(chat.indexOf('const OR_MODELS = {'), chat.indexOf('};', chat.indexOf('const OR_MODELS = {')));
   const orDefaults = {};
   for (const m of orBlock.matchAll(/^\s+(\w+): '([^']+)'/gm)) orDefaults[m[1]] = m[2];
-  for (const k of ['openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere']) {
+  // v-owner-solo: افتراضيّ Groq في السهم = افتراضيّ Groq المباشر (الذي يجيب فعلًا عند Groq)، لا Llama 4 Maverick الذي أوقفه Groq
+  assert.equal(require('../api/_lib/oa-direct.js').directModel('groq', '', {}).def, 'openai/gpt-oss-120b');
+  assert.match(modes, /key:'groq',[^\n]*or:true,[^\n]*def:'openai\/gpt-oss-120b'/);
+  for (const k of ['openai', 'gemini', 'deepseek', 'mistral', 'cohere']) {
     assert.ok(orDefaults[k], 'OR_MODELS ' + k);
     const re = new RegExp("key:'" + k + "',[^\\n]*or:true,[^\\n]*def:'" + orDefaults[k].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "'");
     assert.match(modes, re, 'افتراضيّ السهم لـ' + k + ' = ' + orDefaults[k]);
@@ -98,7 +101,7 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) {
     assert.ok(read(f).includes("window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : '');"), f);
   }
-  assert.ok(read('index.html').includes('js/modes.js?v=m041026b'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m081026a'), 'وسم كاش modes رُفع');
 });
 
 test('٦. v-cohere-prefix (الخادم): تجريد بادئة الوسيط + قائمة مسحوبات مصحّحة رسميًّا + شبكة أمان', () => {
@@ -140,4 +143,35 @@ test('٨. الحزمة المبنيّة تحوي إصلاحات Cohere (npm run 
   const bundle = read('js/app.bundle.js');
   assert.match(bundle, /COHERE_RETIRED_SET/, 'تطبيع العميل في الحزمة');
   assert.match(bundle, /command-r-03-2024/, 'القائمة المصحّحة في الحزمة');
+});
+
+test('٩. v-cohere-prefix (العميل) يعمل فعلًا: المعرّف المجرّد يُرسل والاختيار الحيّ لا يُمحى، والمسحوب يُستبدل، و404 = إعادة واحدة بالافتراضيّ', async () => {
+  const src = read('js/app-06-checkout.js');
+  const block = src.slice(src.indexOf('const COHERE_RETIRED_SET'), src.indexOf('async function fetchClaudeModelList'));
+  const vm = require('vm');
+  async function call(stored, statuses) {
+    const store = new Map(stored == null ? [] : [['aiapp_cohere_model', stored]]);
+    const sent = [];
+    const ctx = {
+      localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) },
+      fetch: async (u, init) => { const b = JSON.parse(init.body); sent.push(b.model); const st = statuses.shift() || 200; return st === 200 ? new Response(JSON.stringify({ choices: [{ message: { content: 'من ' + b.model } }] }), { status: 200 }) : new Response('{"message":"model not found"}', { status: st }); },
+      authGet: () => '', window: { getGuestId: () => 'g' }, stripToPlainMessages: (m) => m, __swallow() {}, Response, JSON, String,
+      throwProviderError: (st, t) => { const e = new Error('HTTP ' + st); e.status = st; throw e; },
+    };
+    vm.createContext(ctx);
+    vm.runInContext(block + '\nthis.callCohere = callCohere;', ctx);
+    const reply = await ctx.callCohere([{ role: 'user', content: 'هلا' }], null);
+    return { reply, sent, stored: store.get('aiapp_cohere_model') };
+  }
+  const live = await call('cohere/command-r7b-12-2024', [200]);
+  assert.deepEqual(live.sent, ['command-r7b-12-2024'], 'البادئة تُجرَد قبل الإرسال');
+  assert.equal(live.stored, 'cohere/command-r7b-12-2024', 'اختيار القائمة يبقى ببادئته');
+  const snap = await call('command-r-08-2024', [200]);
+  assert.deepEqual(snap.sent, ['command-r-08-2024'], 'لقطة 08-2024 الحيّة لا تُرقَّى');
+  const old = await call('command-r', [200]);
+  assert.deepEqual(old.sent, ['command-a-03-2025']); assert.equal(old.stored, 'command-a-03-2025', 'المسحوب يُستبدل في التخزين');
+  const gone = await call('cohere/command-x-gone', [404, 200]);
+  assert.deepEqual(gone.sent, ['command-x-gone', 'command-a-03-2025'], 'إعادة واحدة بالافتراضيّ');
+  assert.equal(gone.stored, undefined, 'المختار المرفوض يُمسح'); assert.equal(gone.reply, 'من command-a-03-2025');
+  await assert.rejects(call(null, [404, 404]), (e) => e.status === 404, 'الافتراضيّ المرفوض لا يُعاد بلا نهاية');
 });

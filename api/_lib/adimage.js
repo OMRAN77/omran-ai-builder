@@ -4,7 +4,7 @@
 // حارسان قبل أي مفتاح: هويّة مُتحقَّقة (لا ضيوف) ثمّ سقف يوميّ منفصل عن المحادثة.
 // ⚠️ فخّ مُثبت: حارس _fetch-timeout.js يقطع كلّ fetch عند ٣٠ ثانية، وتوليد الصورة
 //    يستغرق ٦٠–١٥٠ ثانية. لذلك نمرّر signal خاصًّا بنا — الحارس يترك من يمرّر signal.
-const { checkAndConsumeCustom } = require('./_usage.js');
+const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: المشترك بنسبة سقف باقته
 const { verifyPointsToken } = require('./points.js');
 
 const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur:'Urdu', bn:'Bengali', ml:'Malayalam', ne:'Nepali', fil:'Filipino', id:'Indonesian', zh:'Chinese (Simplified)', ru:'Russian', tr:'Turkish', es:'Spanish' };
@@ -105,9 +105,9 @@ module.exports = async (req, res) => {
       return;
     }
     // ② سقف يوميّ مستقلّ — الصورة أغلى من الرسالة.
-    const gate = await checkAndConsumeCustom(b.token, null, null, 'adimage', DAILY);
+    const gate = await checkAndConsumePlanCustom(b.token, null, null, 'adimage', DAILY);
     if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
+      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
       return;
     }
 
@@ -227,14 +227,14 @@ module.exports = async (req, res) => {
       if (hasImg) gImgs.push([b.imageBase64, /^image\/(png|jpeg|webp)$/.test(String(b.mimeType || '')) ? b.mimeType : 'image/jpeg']);
       const g = await geminiAdImage(p, gImgs);
       if (g) {
-        res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: DAILY, engine: 'gemini' }));
+        res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: gate.limit || DAILY, engine: 'gemini' }));
         return;
       }
       const m = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).replace(/key=[^&\s"']+/g, 'key=***');
       res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان: ' + m }));
       return;
     }
-    res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: DAILY }));
+    res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: gate.limit || DAILY }));
   } catch (e) {
     const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));

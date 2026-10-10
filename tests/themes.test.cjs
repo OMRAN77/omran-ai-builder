@@ -19,7 +19,9 @@ const THEMES = [['خشب-داكن', 'darkwood', 'bgThemeDarkwood', false, false]
   ['غروب', 'sunset', 'bgThemeSunset', false, true], ['شاطئ', 'beach', 'bgThemeBeach', true, true],
   ['شتاء', 'winter', 'bgThemeWinter', true, true], ['كراج', 'garage', 'bgThemeGarage', false, true],
   ['أنمي', 'anime', 'bgThemeAnime', false, true], ['أمن-سيبراني', 'cyber', 'bgThemeCyber', false, true],
-  ['فصل', 'school', 'bgThemeSchool', false, true]];
+  ['فصل', 'school', 'bgThemeSchool', false, true],
+  // v-themes-ten: أنمي ٤ · سيارات ٢ · دراسيّة ٣ · بيت عصريّ — مشاهد من صور المالك
+  ['أنمي-قتالي', 'tactical', 'bgThemeTactical', false, true], ['ملاك', 'angel', 'bgThemeAngel', true, true], ['أنمي-نيون', 'neonanime', 'bgThemeNeonAnime', false, true], ['محطّة', 'station', 'bgThemeStation', false, true], ['سباق', 'rally', 'bgThemeRally', false, true], ['دخان', 'smoke', 'bgThemeSmoke', false, true], ['مكتبة', 'library', 'bgThemeLibrary', true, true], ['مقهى', 'cafe', 'bgThemeCafe', true, true], ['ورشة', 'workshop', 'bgThemeWorkshop', false, true], ['عصري', 'modern', 'bgThemeModern', true, true]];
 
 function jpegSize(file) {
   const b = fs.readFileSync(file);
@@ -56,7 +58,7 @@ test('٢. السجلّ: الثلاثة عشر في js/app-25-خلفيات.js ب�
     }
     assert.equal(/--th-scheme:light/.test(b), light, id + ': الفاتح يطابق السجلّ (bgimg-light)');
     assert.equal(/--th-scene:url\(/.test(b), scene, id + ': المشهد يطابق السجلّ (skin-scene)');
-    if (scene) assert.match(b, /--th-pos:\d+% 50%; --th-pos-m:\d+% 50%;/, id + ': موضع الصورة للكمبيوتر والجوّال');
+    if (scene) assert.match(b, /--th-pos:\d+% \d+%; --th-pos-m:\d+% \d+%;/, id + ': موضع الصورة للكمبيوتر والجوّال (v-themes-ten: الطوليّة تحتاج موضعًا رأسيًّا)');
   }
   // الكسوة: html.skin للثلاثة عشر لا للخشبيّ، وskin-scene من السجلّ لا من المحفوظ
   assert.match(src, /html\.classList\.toggle\('skin', !!مدخل && اسم !== 'wood'\);/);
@@ -68,17 +70,18 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
   const urls = [...new Set([...CSS.matchAll(/url\("([^"]+)"\)/g)].map((m) => m[1]))];
   assert.ok(urls.length >= 20, 'روابط: ' + urls.length);
   for (const u of urls) {
-    const f = path.join(root, 'css', decodeURIComponent(u));
+    const f = path.join(root, 'css', decodeURIComponent(u.replace(/\?v=\d+$/, ''))); // v-bg-fresh: وسم الإصدار على المشاهد والسيارة
     assert.ok(fs.existsSync(f), 'مفقود: ' + decodeURIComponent(u));
-    assert.ok(fs.statSync(f).size < 240 * 1024, 'ثقيل: ' + decodeURIComponent(u));
+    assert.ok(fs.statSync(f).size < (/%D9%85%D8%B4%D9%87%D8%AF\.jpg/.test(u) ? 900 : 240) * 1024, 'ثقيل: ' + decodeURIComponent(u)); // v-scene-sharp: المشهد ٢٥٦٠ بكسل يُحمَّل عند اختيار ثيمه وحده
   }
   for (const [dir, , , , scene] of THEMES) {
     const d = path.join(root, 'assets', 'ثيمات', dir);
     assert.equal(jpegSize(path.join(d, 'مصغّر.jpg'))[0], 360, dir + ': مصغّر الشبكة');
-    if (scene) assert.equal(jpegSize(path.join(d, 'مشهد.jpg'))[0], 1600, dir + ': المشهد');
+    if (scene) { const [w, h] = jpegSize(path.join(d, 'مشهد.jpg')); assert.ok(Math.max(w, h) >= 2000 && Math.max(w, h) <= 2560, dir + ': المشهد ٢٠٠٠–٢٥٦٠ على ضلعه الأطول (v-scene-sharp؛ v-themes-ten: صور المالك العريضة ٢٠٠٠ والطوليّة ٢٥٦٠ ارتفاعًا)'); }
   }
   // السيارة المتوهّجة من صورة المالك (أمره: «وهذي بعد») في بداية «سيارات»: ضعفا حجمها، وتذوب خلفيّتها الداكنة في الكربون
-  assert.equal(jpegSize(path.join(root, 'assets', 'ثيمات', 'مركبات', 'سيارة.jpg'))[0], 600);
+  assert.equal(jpegSize(path.join(root, 'assets', 'ثيمات', 'مركبات', 'سيارة.jpg'))[0], 1200); // v-scene-sharp
+  for (const u of urls) if (/%D9%85%D8%B4%D9%87%D8%AF\.jpg|%D8%B3%D9%8A%D8%A7%D8%B1%D8%A9\.jpg/.test(u)) assert.match(u, /\?v=\d+$/, 'v-bg-fresh: وسم إصدار على ' + decodeURIComponent(u)); // v-scene-wide: يُرفع عند تبديل المشهد
   // وخلفيّة دائمة لا في البداية وحدها (أمره بعدها: «صورة السيارة غير موجودة الخلفيّة» — كانت تختفي مع أوّل رسالة)
   assert.ok(CSS.includes('\nhtml.skin-cars #chatcol::before{'), 'بلا شرط omranWelcome');
   assert.ok(!/skin-cars body\.omranWelcome/.test(CSS));
@@ -97,7 +100,7 @@ test('٣. الخامات: كلّ url في CSS موجود وخفيف، والمش
 
 test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد يترك الخانات والإرسال للثيم، والمختار والزرّ يغلبان قاعدتي التطبيق', () => {
   const html = rd('index.html');
-  const a = html.indexOf('css/ثيم-خشبي.css?v=3'), b = html.indexOf('css/ثيمات.css?v=4');
+  const a = html.indexOf('css/ثيم-خشبي.css?v='), b = html.indexOf('css/ثيمات.css?v=');
   assert.ok(a > 0 && b > a, 'يُحمَّل آخرًا فيعلو');
   const frame = rd('css/إطارات.css');
   assert.doesNotMatch(frame, /:not\(\.skin-wood\) (\.hist-item|#composerBox)/, 'قواعد الإطار للخانات والإرسال تستثني html.skin');
@@ -108,7 +111,8 @@ test('٤. الربط: CSS بعد الخشبيّ، والتصميم الجديد 
   // مكان الكود بلون لوحة المعاينة (أمر المالك)، والمشهد: الصورة خلف الشاشة والقائمة والمعاينة زجاج فوقها
   assert.match(CSS, /html\.skin #code\{background:transparent !important;/);
   assert.match(CSS, /html\.skin-scene #bgImgLayer\{background:var\(--th-scene\) var\(--th-pos, center\) \/ cover no-repeat, var\(--th-page\) !important;\}/);
-  assert.match(CSS, /html\.skin-scene #sidebar, html\.skin-scene #workarea\{-webkit-backdrop-filter:blur\(18px\)/);
+  assert.match(CSS, /html\.skin-scene #sidebar, html\.skin-scene #workarea\{-webkit-backdrop-filter:saturate\(1\.15\); backdrop-filter:saturate\(1\.15\);\}/, 'v-scene-clear: بلا تغبيش فوق المشهد');
+  assert.ok(!/skin-scene #sidebar[^\n]*blur\(/.test(CSS), 'v-scene-clear: لا blur على لوحتي المشهد');
 });
 
 test('٥. الترجمة: أسماء الثلاثة عشر بالـ١٤ لغة، ووسم اللغات مرفوع', () => {
@@ -119,5 +123,5 @@ test('٥. الترجمة: أسماء الثلاثة عشر بالـ١٤ لغة،
   }
   assert.match(data, /bgThemeCyber: 'أمن سيبراني'/);
   assert.match(data, /bgThemeSchool: 'فصل دراسي'/);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=724'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=732'"));
 });

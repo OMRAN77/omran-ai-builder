@@ -1,0 +1,1122 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>وين أشوف الألعاب الناريّة</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+/* CityKit — نواة «مدينتك الحقيقيّة» (v-inspire). تُلصق داخل كلّ تجربة فتبقى كلّ تجربة ملفّ HTML واحدًا مستقلًّا.
+   البحث عن المكان (Nominatim ثمّ Photon) ← مباني وطرق وماء وحدائق من OpenStreetMap (Overpass بمرايا احتياطيّة) ←
+   أمتار محلّيّة ← مشهد three.js (المباني دفعة واحدة) + خطّ رؤية سريع على شبكة + تحكّم بالكاميرا للفأرة واللمس.
+   تحتاج THREE العامّ (three@0.160.0/build/three.min.js) قبلها. */
+(function () {
+  'use strict';
+  const CK = {};
+  // اللغة من وسم الصفحة (التطبيق يكتبه بلغة المستخدم عند الفتح)، ثمّ لغة المتصفّح: العربيّة لمن لغته عربيّة، والإنجليزيّة لغيره.
+  const AR = /^ar/i.test(document.documentElement.lang || navigator.language || 'ar');
+  const T = (ar, en) => (AR ? ar : en);
+  CK.T = T; CK.AR = AR;
+  CK.PRESETS = [
+    { ar: 'دبي — المارينا', en: 'Dubai Marina', lat: 25.0805, lon: 55.1403 },
+    { ar: 'الرياض — العليا', en: 'Riyadh Olaya', lat: 24.6990, lon: 46.6850 },
+    { ar: 'الكويت — شرق', en: 'Kuwait Sharq', lat: 29.3780, lon: 47.9900 },
+    { ar: 'الدوحة — الخليج الغربيّ', en: 'Doha West Bay', lat: 25.3215, lon: 51.5280 },
+    { ar: 'أبوظبي — الكورنيش', en: 'Abu Dhabi Corniche', lat: 24.4760, lon: 54.3550 },
+    { ar: 'المنامة', en: 'Manama', lat: 26.2350, lon: 50.5770 },
+    { ar: 'جدّة — الكورنيش', en: 'Jeddah Corniche', lat: 21.5430, lon: 39.1730 },
+    { ar: 'مسقط — القرم', en: 'Muscat Qurum', lat: 23.5880, lon: 58.4080 },
+  ];
+  CK.OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+
+  // ── البيانات ──
+  function timed(url, init, ms) {
+    const ac = typeof AbortController === 'function' ? new AbortController() : null;
+    const t = ac ? setTimeout(() => ac.abort(), ms) : null;
+    return fetch(url, Object.assign({}, init, ac ? { signal: ac.signal } : {})).finally(() => t && clearTimeout(t));
+  }
+  CK.geocode = async function (q) {
+    q = String(q || '').trim(); if (!q) throw new Error('empty');
+    const m = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*[,،]\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (m) return { lat: +m[1], lon: +m[2], name: q };
+    try {
+      const r = await timed('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=' + (AR ? 'ar' : 'en') + '&q=' + encodeURIComponent(q), {}, 12000);
+      const j = await r.json();
+      if (j && j[0]) return { lat: +j[0].lat, lon: +j[0].lon, name: j[0].display_name || q };
+    } catch (e) { /* المرآة التالية */ }
+    const r2 = await timed('https://photon.komoot.io/api/?limit=1&q=' + encodeURIComponent(q), {}, 12000);
+    const j2 = await r2.json();
+    const f = j2 && j2.features && j2.features[0];
+    if (!f) throw new Error('notfound');
+    return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], name: (f.properties && f.properties.name) || q };
+  };
+  CK.query = function (lat, lon, r) {
+    const a = '(around:' + Math.round(r) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
+    const c = '(around:' + Math.round(r * 2) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')';
+    // العلاقات: مبانٍ بفناء داخليّ (أسواق، جوامع، جامعات) وبحيرات وحدائق كبيرة لا تُرسم في OSM إلّا علاقات.
+    // خطّ الساحل: البحر في OSM ليس مضلّعًا — يُستنتج من جهة الماء (يمين اتّجاه الخطّ).
+    return '[out:json][timeout:25];(way["building"]' + a + ';relation["building"]' + a + ';way["highway"]' + a + ';way["natural"="water"]' + a + ';way["water"]' + a +
+      ';relation["type"="multipolygon"]["natural"="water"]' + a + ';way["leisure"~"park|garden"]' + a + ';relation["type"="multipolygon"]["leisure"~"park|garden"]' + a +
+      ';way["landuse"="grass"]' + a + ';way["natural"="coastline"]' + c + ';);out geom;';
+  };
+  // كاش المناطق: التجربة تعمل داخل معاينة التطبيق بنفس الأصل، فـlocalStorage مشترك مع مشاريع المستخدم (aiapp_projects) —
+  // منطقة واحدة قد تبلغ ١٫٥ مليون حرف فتملأ حصّته بعد ٢–٣ مناطق ويفشل حفظ التطبيق. لذلك: ذاكرة الصفحة + Cache API في مخزن
+  // خاصّ (حصّة القرص لا حصّة localStorage) بآخر KEEP مناطق فقط، ومسح أيّ «ck1:» قديم من localStorage.
+  const AREA_CACHE = 'ck-osm-1', KEEP = 6, MEM = new Map();
+  try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('ck1:') === 0) localStorage.removeItem(k); } } catch (e) { /* بلا تخزين */ }
+  async function areaGet(key) {
+    if (MEM.has(key)) return MEM.get(key);
+    try { if (!window.caches) return null; const r = await (await caches.open(AREA_CACHE)).match(key); return r ? await r.json() : null; } catch (e) { return null; }
+  }
+  async function areaPut(key, j) {
+    MEM.set(key, j); while (MEM.size > 3) MEM.delete(MEM.keys().next().value);
+    try {
+      if (!window.caches) return;
+      const c = await caches.open(AREA_CACHE);
+      await c.put(key, new Response(JSON.stringify(j), { headers: { 'Content-Type': 'application/json' } }));
+      const ks = await c.keys(); for (let i = 0; i < ks.length - KEEP; i++) await c.delete(ks[i]);
+    } catch (e) { /* بلا كاش: نكمل من الشبكة */ }
+  }
+  CK.fetchArea = async function (lat, lon, r) {
+    const key = 'https://citykit.cache/' + lat.toFixed(4) + ',' + lon.toFixed(4) + ',' + Math.round(r);
+    const hit = await areaGet(key); if (hit) return hit;
+    let last = null;
+    for (const url of CK.OVERPASS) {
+      try {
+        const res = await timed(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(CK.query(lat, lon, r)) }, 30000);
+        if (!res.ok) { last = new Error('HTTP ' + res.status); continue; }
+        const j = await res.json();
+        if (!j || !Array.isArray(j.elements) || (j.remark && /error|timed out|out of memory|runtime/i.test(String(j.remark)))) { last = new Error('overpass: ' + String((j && j.remark) || 'bad reply').slice(0, 80)); continue; }
+        if (j.elements.length) await areaPut(key, j); // منطقة فارغة (بحر/صحراء) لا تُحفظ — قد تكون ردًّا ناقصًا
+        return j;
+      } catch (e) { last = e; }
+    }
+    throw last || new Error('overpass');
+  };
+  const ROAD_W = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 8, residential: 6, unclassified: 6, road: 6, busway: 6, living_street: 5, service: 4, track: 3.5, pedestrian: 4, footway: 2.5, path: 2.5, cycleway: 2.5, corridor: 2, steps: 2 };
+  function heightOf(tags, id) {
+    const h = parseFloat(String(tags.height || '').replace(',', '.'));
+    if (h > 0 && h < 1000) return h;
+    const lv = parseFloat(tags['building:levels']);
+    if (lv > 0 && lv < 250) return lv * 3.2 + 1;
+    const b = tags.building;
+    if (/^(roof|carport)$/.test(b)) return 4; // مظلّة مواقف/محطّة وقود
+    const j = ((id * 2654435761) % 1000) / 1000; // ثابت لكلّ مبنى
+    if (/house|detached|villa|bungalow|semidetached/.test(b)) return 6 + j * 3;
+    if (/apartments|residential|dormitory/.test(b)) return 12 + j * 12;
+    if (/commercial|office|hotel|retail/.test(b)) return 14 + j * 16;
+    if (/industrial|warehouse|garage|shed/.test(b)) return 7 + j * 5;
+    if (/mosque|church/.test(b)) return 12;
+    return 8 + j * 6;
+  }
+  CK.parse = function (osm, lat0, lon0) {
+    const mx = Math.cos(lat0 * Math.PI / 180) * 111320, mz = 110540;
+    const P = (g) => { let d = g.lon - lon0; if (d > 180) d -= 360; else if (d < -180) d += 360; return [d * mx, -(g.lat - lat0) * mz]; }; // الالتفاف عند خطّ ١٨٠
+    const out = { buildings: [], roads: [], water: [], parks: [], lat: lat0, lon: lon0, sea: false };
+    const isClosed = (pts) => pts.length > 3 && Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 0.01 && Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 0.01;
+    const addBuilding = (id, poly, t) => {
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const [x, z] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+      out.buildings.push({ id, poly, h: heightOf(t, id), kind: t.building, name: t.name || '', box: [x0, z0, x1, z1] });
+    };
+    const coast = [];
+    for (const e of (osm && osm.elements) || []) {
+      const t = e.tags || {};
+      if (e.type === 'relation') { // العلاقة: الحلقات الخارجيّة تُخاط من أعضائها (الفناء الداخليّ يُملأ — أقرب من غيابه)
+        const outer = CK.stitch((e.members || []).filter((m) => m.type === 'way' && m.role !== 'inner' && m.geometry && m.geometry.length > 1).map((m) => m.geometry.map(P)));
+        if (t.building) outer.forEach((ring, i) => addBuilding(e.id * 16 + i, ring, t));
+        else if (t.natural === 'water' || t.water) out.water.push(...outer);
+        else if (t.leisure || t.landuse) out.parks.push(...outer);
+        continue;
+      }
+      if (e.type !== 'way' || !e.geometry || e.geometry.length < 2) continue;
+      const pts = e.geometry.map(P);
+      const closed = isClosed(pts);
+      const hk = t.highway ? String(t.highway).replace(/_link$/, '') : ''; // الوصلات (منحدرات، مخارج، دوّارات) بنوع أصلها وعرض أضيق
+      if (t.natural === 'coastline') coast.push(pts);
+      else if (t.building && closed) addBuilding(e.id, pts.slice(0, -1), t);
+      else if (hk && ROAD_W[hk]) {
+        const link = hk !== t.highway;
+        out.roads.push({ id: e.id, pts, kind: hk, w: ROAD_W[hk] * (link ? 0.7 : 1), name: t.name || '', link });
+      } else if ((t.natural === 'water' || t.water) && closed) out.water.push(pts.slice(0, -1));
+      else if ((t.leisure || t.landuse) && closed) out.parks.push(pts.slice(0, -1));
+    }
+    const sea = CK.seaPolys(coast, 1200, 25); // حتّى ٢R حول المركز (خطّ الساحل يُجلب حتّى ٢R)
+    if (sea.length) { out.water.push(...sea); out.sea = true; }
+    out.buildings.sort((a, b) => b.h - a.h);
+    return out;
+  };
+  // خياطة خطوط إلى حلقات مغلقة (أعضاء العلاقة تأتي قطعًا متتالية بأيّ اتّجاه)
+  CK.stitch = function (lines) {
+    const near = (a, b) => Math.abs(a[0] - b[0]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5;
+    const pool = lines.map((l) => l.slice()), out = [];
+    while (pool.length) {
+      let cur = pool.shift(), guard = 0;
+      while (!near(cur[0], cur[cur.length - 1]) && guard++ < 2000) {
+        const end = cur[cur.length - 1]; let k = -1, rev = false;
+        for (let i = 0; i < pool.length; i++) { const l = pool[i]; if (near(l[0], end)) { k = i; break; } if (near(l[l.length - 1], end)) { k = i; rev = true; break; } }
+        if (k < 0) break;
+        const l = pool.splice(k, 1)[0]; if (rev) l.reverse(); cur = cur.concat(l.slice(1));
+      }
+      if (cur.length > 3 && near(cur[0], cur[cur.length - 1])) out.push(cur.slice(0, -1));
+    }
+    return out;
+  };
+  // البحر من خطّ الساحل: الماء يمين اتّجاه الخطّ (OSM). شبكة خلايا H×2 بعرض C — كلّ خليّة تأخذ جهة أقرب قطعة ساحل إليها
+  // (عند رأس مشترك: متوسّط عموديّي القطعتين)، ثمّ تُدمج الخلايا البحريّة مستطيلات (صفوف ثمّ أعمدة) تُضاف إلى الماء.
+  CK.seaPolys = function (coast, H, C) {
+    C = C || 20; if (!coast || !coast.length) return [];
+    const segs = [];
+    for (const l of coast) for (let i = 0; i < l.length - 1; i++) {
+      const a = l[i], b = l[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
+      if (L < 0.01) continue;
+      // في إحداثيّاتنا z جنوبًا: يمين الاتّجاه (شمالًا للأعلى) = (-dz, dx)/L بعد قلب z مرّتين ← (−dz, dx) في (x,z)
+      segs.push({ a, b, dx, dz, L, nx: -dz / L, nz: dx / L });
+    }
+    if (!segs.length) return [];
+    const N = Math.ceil(H / C), grid = [];
+    for (let j = -N; j < N; j++) {
+      const row = [];
+      for (let i = -N; i < N; i++) {
+        const x = (i + 0.5) * C, z = (j + 0.5) * C;
+        let best = Infinity, qx = 0, qz = 0, sx = 0, sz = 0;
+        for (const s of segs) {
+          let t = ((x - s.a[0]) * s.dx + (z - s.a[1]) * s.dz) / (s.L * s.L); t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const px = s.a[0] + s.dx * t, pz = s.a[1] + s.dz * t, d = (x - px) * (x - px) + (z - pz) * (z - pz);
+          if (d < best - 1e-3) { best = d; qx = px; qz = pz; sx = s.nx; sz = s.nz; }
+          else if (d < best + 1e-3) { sx += s.nx; sz += s.nz; } // رأس مشترك بين قطعتين: متوسّط عموديّيهما
+        }
+        row.push(best > 1e-3 && (x - qx) * sx + (z - qz) * sz > 0);
+      }
+      grid.push(row);
+    }
+    // دمج: لكلّ صفّ مقاطع متّصلة، ثمّ يمتدّ المقطع نفسه رأسيًّا ما دام مطابقًا
+    const out = [], open = new Map();
+    const flush = (key, j1) => { const o = open.get(key); open.delete(key); const x0 = (o.i0 - N) * C, x1 = (o.i1 + 1 - N) * C, z0 = (o.j0 - N) * C, z1 = (j1 - N) * C; out.push([[x0, z0], [x1, z0], [x1, z1], [x0, z1]]); };
+    for (let j = 0; j <= grid.length; j++) {
+      const runs = new Set();
+      if (j < grid.length) { const r = grid[j]; for (let i = 0; i < r.length; i++) if (r[i]) { let k = i; while (k + 1 < r.length && r[k + 1]) k++; runs.add(i + ',' + k); i = k; } }
+      for (const key of [...open.keys()]) if (!runs.has(key)) flush(key, j);
+      for (const key of runs) if (!open.has(key)) { const [i0, i1] = key.split(',').map(Number); open.set(key, { i0, i1, j0: j }); }
+    }
+    return out;
+  };
+
+  // ── الهندسة والفهرس ──
+  CK.inPoly = function (x, z, poly) {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], zi = poly[i][1], xj = poly[j][0], zj = poly[j][1];
+      if (((zi > z) !== (zj > z)) && (x < (xj - xi) * (z - zi) / (zj - zi) + xi)) c = !c;
+    }
+    return c;
+  };
+  CK.index = function (data, cell) {
+    cell = cell || 24; const grid = new Map();
+    const k = (i, j) => i + ',' + j;
+    for (const b of data.buildings) {
+      for (let i = Math.floor(b.box[0] / cell); i <= Math.floor(b.box[2] / cell); i++)
+        for (let j = Math.floor(b.box[1] / cell); j <= Math.floor(b.box[3] / cell); j++) {
+          const kk = k(i, j); if (!grid.has(kk)) grid.set(kk, []); grid.get(kk).push(b);
+        }
+    }
+    const near = (x, z) => grid.get(k(Math.floor(x / cell), Math.floor(z / cell))) || [];
+    const at = (x, z) => { for (const b of near(x, z)) if (x >= b.box[0] && x <= b.box[2] && z >= b.box[1] && z <= b.box[3] && CK.inPoly(x, z, b.poly)) return b; return null; };
+    const heightAt = (x, z) => { const b = at(x, z); return b ? b.h : 0; };
+    // خطّ رؤية: يمشي على القطعة بخطوة ثابتة ويسأل هل نقطة منها داخل مبنى أعلى منها
+    const los = (a, b, step) => {
+      step = step || 3;
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, L = Math.hypot(dx, dz);
+      const n = Math.max(1, Math.ceil(L / step));
+      for (let s = 1; s < n; s++) {
+        const t = s / n, x = a.x + dx * t, z = a.z + dz * t, y = a.y + dy * t;
+        const hb = at(x, z); if (hb && hb.h > y) return false;
+      }
+      return true;
+    };
+    return { at, heightAt, los, near, cell };
+  };
+
+  function buildingGeometry(THREE, data) {
+    const pos = [], nor = [], col = [];
+    const cA = new THREE.Color(), cLow = new THREE.Color(0xd9cdb8), cMid = new THREE.Color(0xb9c4cc), cHigh = new THREE.Color(0x7fa6bd);
+    for (const b of data.buildings) {
+      const ring = b.poly; const n = ring.length; if (n < 3) continue;
+      const t = Math.min(1, b.h / 180); cA.copy(t < 0.25 ? cLow : cMid).lerp(t < 0.25 ? cMid : cHigh, t < 0.25 ? t / 0.25 : (t - 0.25) / 0.75);
+      let area = 0; for (let i = 0; i < n; i++) { const p = ring[i], q = ring[(i + 1) % n]; area += p[0] * q[1] - q[0] * p[1]; }
+      const ccw = area > 0;
+      for (let i = 0; i < n; i++) {
+        const p = ring[i], q = ring[(i + 1) % n];
+        const ex = q[0] - p[0], ez = q[1] - p[1], L = Math.hypot(ex, ez) || 1;
+        let nx = ez / L, nz = -ex / L; if (!ccw) { nx = -nx; nz = -nz; }
+        const v = [[p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], b.h, q[1]], [p[0], 0, p[1]], [q[0], b.h, q[1]], [p[0], b.h, p[1]]];
+        const order = ccw ? [0, 2, 1, 3, 5, 4] : [0, 1, 2, 3, 4, 5];
+        for (const o of order) { pos.push(v[o][0], v[o][1], v[o][2]); nor.push(nx, 0, nz); col.push(cA.r * 0.92, cA.g * 0.92, cA.b * 0.92); }
+      }
+      const tri = THREE.ShapeUtils.triangulateShape(ring.map((p) => new THREE.Vector2(p[0], p[1])), []);
+      for (const f of tri) {
+        const idx = ccw ? [f[0], f[2], f[1]] : [f[0], f[1], f[2]];
+        for (const k of idx) { pos.push(ring[k][0], b.h, ring[k][1]); nor.push(0, 1, 0); col.push(cA.r, cA.g, cA.b); }
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.computeBoundingSphere();
+    return g;
+  }
+  function ribbonGeometry(THREE, roads, y) {
+    const pos = [];
+    for (const r of roads) {
+      const hw = r.w / 2;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1];
+        const dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz) || 1, nx = -dz / L * hw, nz = dx / L * hw;
+        pos.push(p[0] + nx, y, p[1] + nz, q[0] - nx, y, q[1] - nz, q[0] + nx, y, q[1] + nz,
+          p[0] + nx, y, p[1] + nz, p[0] - nx, y, p[1] - nz, q[0] - nx, y, q[1] - nz);
+      }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+    return g;
+  }
+  // كلّ المضلّعات المسطّحة (ماء أو حدائق) في هندسة واحدة: مدينة مرسومة جيّدًا فيها مئات المسطّحات الخضراء، وشبكة لكلّ واحد
+  // تعني مئات نداءات الرسم في كلّ إطار. تبقى داخل Group كما كانت (تجارب تقرأ cityGroup.children وتبحث عن Group).
+  function polysMesh(THREE, polys, y, color) {
+    const grp = new THREE.Group(), pos = [];
+    for (const poly of polys) {
+      if (!poly || poly.length < 3) continue;
+      let tri; try { tri = THREE.ShapeUtils.triangulateShape(poly.map((p) => new THREE.Vector2(p[0], p[1])), []); } catch (e) { continue; } // مضلّع متقاطع ذاتيًّا: يُتخطّى
+      for (const f of tri) for (const k of f) pos.push(poly[k][0], y, poly[k][1]);
+    }
+    if (pos.length) {
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+      // إزاحة العمق: سنتيمترات فوق الأرض لا تكفي من بعيد فيتقاطع السطحان خطوطًا (z-fighting)
+      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+      m.receiveShadow = false; grp.add(m); // الظلّ على المسطّحات الرقيقة يرسم خطوطًا متكسّرة
+    }
+    return grp;
+  }
+
+  // ── تحكّم الكاميرا (بلا OrbitControls: البناء العامّ لـthree لا يحويه) ──
+  CK.orbit = function (camera, dom, o) {
+    const s = { target: new CK.THREE.Vector3(0, 0, 0), dist: 900, theta: 0.6, phi: 0.9, min: 30, max: 3000, enabled: true };
+    Object.assign(s, o || {});
+    const apply = () => {
+      s.phi = Math.max(0.12, Math.min(1.5, s.phi)); s.dist = Math.max(s.min, Math.min(s.max, s.dist));
+      camera.position.set(s.target.x + s.dist * Math.sin(s.phi) * Math.sin(s.theta), s.target.y + s.dist * Math.cos(s.phi), s.target.z + s.dist * Math.sin(s.phi) * Math.cos(s.theta));
+      camera.lookAt(s.target);
+    };
+    const ptrs = new Map(); let last = null, pinch = 0;
+    dom.style.touchAction = 'none';
+    dom.addEventListener('pointerdown', (e) => { if (!s.enabled) return; dom.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); last = [e.clientX, e.clientY, e.button === 2 || e.shiftKey]; });
+    dom.addEventListener('pointermove', (e) => {
+      if (!s.enabled || !ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch) s.dist *= pinch / d; pinch = d; apply(); return;
+      }
+      const dx = e.clientX - last[0], dy = e.clientY - last[1]; last[0] = e.clientX; last[1] = e.clientY;
+      if (last[2]) {
+        const k = s.dist / 800, c = Math.cos(s.theta), sn = Math.sin(s.theta);
+        s.target.x -= (dx * c + dy * sn) * k; s.target.z -= (-dx * sn + dy * c) * k;
+      } else { s.theta -= dx * 0.006; s.phi -= dy * 0.005; }
+      apply();
+    });
+    const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0; };
+    dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+    dom.addEventListener('wheel', (e) => { if (!s.enabled) return; e.preventDefault(); s.dist *= Math.exp(e.deltaY * 0.0012); apply(); }, { passive: false });
+    dom.addEventListener('contextmenu', (e) => e.preventDefault());
+    s.apply = apply; apply();
+    return s;
+  };
+
+  // ── الواجهة ──
+  const CSS = `
+  .ck-ui{position:fixed;top:12px;right:12px;left:auto;z-index:5;box-sizing:border-box;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;
+    background:rgba(12,22,28,.86);color:#e8f1f3;border:1px solid rgba(120,200,210,.25);border-radius:14px;padding:12px 14px;
+    font:14px/1.6 "IBM Plex Sans Arabic",Tahoma,system-ui,sans-serif;direction:${AR ? 'rtl' : 'ltr'};backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+  .ck-ui h1{font-size:17px;margin:0 0 2px;font-weight:700}.ck-ui .sub{margin:0 0 8px;color:#a9c1c7;font-size:13px}
+  .ck-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+  .ck-ui input,.ck-ui select{font:inherit;flex:1 1 140px;min-width:0;background:#0d1a20;color:#e8f1f3;border:1px solid #2b4650;border-radius:9px;padding:6px 9px}
+  .ck-ui button{font:inherit;background:#1f8a93;color:#fff;border:0;border-radius:9px;padding:6px 12px;cursor:pointer}
+  .ck-ui button.ghost{background:transparent;border:1px solid #2b4650;color:#cfe3e7}
+  .ck-ui button:disabled{opacity:.5;cursor:default}
+  .ck-ui label{display:block;font-size:13px;color:#a9c1c7;margin-top:6px}
+  .ck-ui input[type=range]{width:100%;flex-basis:100%}
+  .ck-status{font-size:12.5px;color:#9fd8de;min-height:1.4em}
+  .ck-stat{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-variant-numeric:tabular-nums;margin-top:6px}
+  .ck-stat b{color:#fff}
+  .ck-img[hidden]{display:none}
+  .ck-img{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:13px;margin-top:6px;cursor:pointer}
+  .ck-ui .ck-img input{flex:none;width:auto;min-width:0;margin:0;padding:0;accent-color:#1f8a93}
+  .ck-img small{color:#9fd8de;font-size:12px}
+  .ck-attr{margin-top:8px;font-size:11px;color:#8fb0b8}.ck-attr a{color:inherit;text-decoration:none}.ck-attr a:hover{text-decoration:underline}
+  /* لوحة التجربة نافذة منبثقة على الحاسوب: زرّ ثابت أعلى الزاوية، واللوحة تنزل تحته وتُطوى بالزرّ (وبنقرة الشاشة في ألعاب القيادة).
+     الجوّال كما كان: اللوحة في مكانها بلا زرّ ولا طيّ. */
+  .ck-toggle{display:none;position:fixed;top:12px;right:12px;z-index:6;width:38px;height:38px;padding:0;align-items:center;justify-content:center;border-radius:50%;
+    border:1px solid rgba(120,200,210,.35);background:rgba(12,22,28,.86);color:#e8f1f3;cursor:pointer;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+  .ck-toggle[aria-expanded=true]{background:#1f8a93;border-color:#1f8a93}
+  .ck-toggle svg{width:20px;height:20px;display:block}
+  @media (min-width:641px){
+    .ck-toggle{display:flex}
+    .ck-ui{top:58px;max-height:calc(100vh - 70px);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
+    .ck-ui.ck-off{opacity:0;transform:translateY(-10px);visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+  }
+  @media (max-width:640px){.ck-ui{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:46vh}}
+  .ck-hud{position:fixed;left:12px;top:12px;z-index:4;font:600 15px/1.4 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;text-shadow:0 1px 3px #000;direction:${AR ? 'rtl' : 'ltr'};pointer-events:none}
+  `;
+  // ── صور جوّيّة (اختياريّة لكلّ تجربة بـopt.imagery): تُلصق على أرض المدينة وأسطح مبانيها المنخفضة ──
+  // المزوّد بلا مفتاح (طبقة Esri World Imagery) — شروطه على المالك (انظر DECISIONS: v-inspire-imagery)؛ بدّل CK.IMAGERY لمزوّد آخر.
+  CK.IMAGERY = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr: 'Esri, Maxar, Earthstar Geographics', z: 17, roofMax: 30 };
+  // بلاطات XYZ التي تغطّي دائرة نصف قطرها R حول المركز + مستطيلها بالأمتار المحلّيّة (نفس إسقاط CK.parse: x شرقًا، z جنوبًا)
+  CK.tileList = function (lat0, lon0, R, z) {
+    const n = Math.pow(2, z), rad = Math.PI / 180, mx = Math.cos(lat0 * rad) * 111320, mz = 110540;
+    const lonX = (lon) => (lon + 180) / 360 * n, latY = (lat) => (1 - Math.log(Math.tan(lat * rad) + 1 / Math.cos(lat * rad)) / Math.PI) / 2 * n;
+    const xLon = (x) => x / n * 360 - 180, yLat = (y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) / rad;
+    const cl = (v) => Math.max(0, Math.min(n - 1, v));
+    const x0 = cl(Math.floor(lonX(lon0 - R / mx))), x1 = cl(Math.floor(lonX(lon0 + R / mx))), y0 = cl(Math.floor(latY(lat0 + R / mz))), y1 = cl(Math.floor(latY(lat0 - R / mz)));
+    const tiles = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) tiles.push({ x, y, col: x - x0, row: y - y0 });
+    return { z, x0, x1, y0, y1, cols: x1 - x0 + 1, rows: y1 - y0 + 1, tiles,
+      rect: { minX: (xLon(x0) - lon0) * mx, maxX: (xLon(x1 + 1) - lon0) * mx, minZ: -(yLat(y0) - lat0) * mz, maxZ: -(yLat(y1 + 1) - lat0) * mz } };
+  };
+  CK.imageryOn = function () { try { return localStorage.getItem('ck-imagery') !== '0'; } catch (e) { return true; } };
+  CK.imagerySave = function (v) { try { localStorage.setItem('ck-imagery', v ? '1' : '0'); } catch (e) { /* بلا تخزين: الاختيار للجلسة */ } };
+  // يرجع true إن رُكّبت، وfalse (والمشهد كما كان) إن لم تصل أغلب البلاطات أو تبدّلت المدينة أثناء الجلب
+  CK.drape = async function (ctx, city) {
+    const THREE = ctx.THREE, IM = CK.IMAGERY, L = CK.tileList(city.lat, city.lon, ctx.R * 1.25, IM.z);
+    if (!L.tiles.length || L.tiles.length > 100) return false;
+    const cv = document.createElement('canvas'); cv.width = L.cols * 256; cv.height = L.rows * 256; const g = cv.getContext('2d'); let ok = 0;
+    const one = (t) => new Promise((res) => {
+      const im = new Image(), to = setTimeout(() => { im.onload = im.onerror = null; res(); }, 15000); im.crossOrigin = 'anonymous';
+      im.onload = () => { clearTimeout(to); try { g.drawImage(im, t.col * 256, t.row * 256, 256, 256); ok++; } catch (e) { /* بلاطة مرفوضة */ } res(); };
+      im.onerror = () => { clearTimeout(to); res(); };
+      im.src = IM.url.replace('{z}', L.z).replace('{x}', t.x).replace('{y}', t.y);
+    });
+    const q = L.tiles.slice(); await Promise.all(Array.from({ length: 8 }, async () => { while (q.length) await one(q.shift()); }));
+    if (ok < L.tiles.length * 0.5 || ctx.city !== city) return false;
+    if (city.imgOff) city.imgOff();
+    const { minX, maxX, minZ, maxZ } = L.rect, W = maxX - minX, H = maxZ - minZ;
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, ctx.renderer.capabilities.getMaxAnisotropy());
+    const gg = new THREE.BufferGeometry();
+    gg.setAttribute('position', new THREE.Float32BufferAttribute([minX, 0.02, minZ, maxX, 0.02, minZ, maxX, 0.02, maxZ, minX, 0.02, maxZ], 3));
+    gg.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
+    gg.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2)); gg.setIndex([0, 2, 1, 0, 3, 2]);
+    const ground = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: tex, color: 0xa8a8a8, side: THREE.DoubleSide })); ground.receiveShadow = true;
+    const pos = [], nor = [], uv = [];
+    for (const b of city.buildings) {
+      if (b.h > IM.roofMax || b.poly.length < 3) continue;
+      const tri = THREE.ShapeUtils.triangulateShape(b.poly.map((p) => new THREE.Vector2(p[0], p[1])), []);
+      for (const f of tri) for (const k of f) { const p = b.poly[k]; pos.push(p[0], b.h + 0.08, p[1]); nor.push(0, 1, 0); uv.push((p[0] - minX) / W, 1 - (p[1] - minZ) / H); }
+    }
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); rg.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); rg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    const roofs = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ map: tex, color: 0xb4b4b4, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); roofs.receiveShadow = true;
+    const root = city.root || ctx.scene; root.add(ground); root.add(roofs);
+    const hid = [city.waterMesh, city.parksMesh].filter(Boolean); hid.forEach((m) => { m.visible = false; }); // الصورة فيها الماء والحدائق أصلًا
+    city.imgOff = () => { root.remove(ground); root.remove(roofs); gg.dispose(); rg.dispose(); ground.material.dispose(); roofs.material.dispose(); tex.dispose(); hid.forEach((m) => { m.visible = true; }); city.imgOff = null; };
+    return true;
+  };
+  CK.ui = function (title, sub) {
+    const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+    const box = document.createElement('div'); box.className = 'ck-ui';
+    box.innerHTML = '<h1></h1><p class="sub"></p><div class="ck-row"><input id="ckq" type="search"><button id="ckgo"></button></div>' +
+      '<div class="ck-row"><select id="ckpre"></select><button class="ghost" id="ckme"></button></div><div class="ck-status" id="ckst"></div><div id="ckpanel"></div>' +
+      '<label class="ck-img" hidden><input type="checkbox" id="ckimg"><span></span><small id="ckimgst"></small></label>' +
+      '<div class="ck-attr"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"></a><span id="ckat"></span></div>';
+    box.querySelector('h1').textContent = title; box.querySelector('.sub').textContent = sub || '';
+    box.querySelector('#ckq').placeholder = T('اكتب اسم حيّك أو مدينتك', 'Type your neighbourhood or city');
+    box.querySelector('#ckgo').textContent = T('ابنِ', 'Build');
+    box.querySelector('#ckme').textContent = T('موقعي', 'My location');
+    box.querySelector('.ck-attr a').textContent = T('بيانات الخريطة © مساهمو OpenStreetMap', 'Map data © OpenStreetMap contributors');
+    box.querySelector('.ck-img span').textContent = T('صور جوّيّة حقيقيّة', 'Real aerial imagery');
+    const sel = box.querySelector('#ckpre');
+    sel.innerHTML = '<option value="">' + T('أو اختر مدينة…', 'or pick a city…') + '</option>' + CK.PRESETS.map((p, i) => '<option value="' + i + '">' + (AR ? p.ar : p.en) + '</option>').join('');
+    document.body.appendChild(box);
+    const hud = document.createElement('div'); hud.className = 'ck-hud'; document.body.appendChild(hud);
+    // زرّ اللوحة: يفتحها ويطويها (الحاسوب فقط؛ CSS يخفيه على الجوّال). تبدأ مفتوحة ليختار المستخدم المكان.
+    box.id = 'ckbox';
+    const tg = document.createElement('button'); tg.type = 'button'; tg.className = 'ck-toggle'; tg.setAttribute('aria-controls', 'ckbox');
+    const lbl = T('لوحة التجربة', 'Experience panel'); tg.title = lbl; tg.setAttribute('aria-label', lbl);
+    tg.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>';
+    document.body.appendChild(tg);
+    let open = true;
+    const set = (v) => { open = !!v; box.classList.toggle('ck-off', !open); tg.setAttribute('aria-expanded', String(open)); };
+    tg.addEventListener('click', () => set(!open));
+    set(true);
+    const imgBox = box.querySelector('.ck-img'), imgCb = box.querySelector('#ckimg'), imgSt = box.querySelector('#ckimgst'), at = box.querySelector('#ckat');
+    const imagery = { enable: () => { imgBox.hidden = false; }, checked: () => imgCb.checked, set: (v) => { imgCb.checked = !!v; }, note: (m) => { imgSt.textContent = m || ''; }, credit: (v) => { at.textContent = v ? ' · ' + T('الصور: ', 'Imagery: ') + CK.IMAGERY.attr : ''; }, onChange: (fn) => imgCb.addEventListener('change', () => fn(imgCb.checked)) };
+    return { box, imagery, toggle: tg, show: () => set(true), hide: () => set(false), isOpen: () => open, panel: box.querySelector('#ckpanel'), status: (s) => { box.querySelector('#ckst').textContent = s || ''; }, hud: (s) => { hud.innerHTML = s || ''; } };
+  };
+  CK.el = function (html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
+
+  // ── التشغيل ──
+  CK.start = function (opt) {
+    const THREE = window.THREE; CK.THREE = THREE;
+    const R = opt.radius || 600;
+    document.documentElement.dir = AR ? 'rtl' : 'ltr';
+    document.body.style.cssText = 'margin:0;overflow:hidden;background:#0b1419';
+    const ui = CK.ui(opt.title, opt.sub);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: !!opt.keepBuffer });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = !!opt.shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+    if (opt.autoHide) { // ألعاب القيادة: نقرة على الشاشة (لا سحب) تطوي اللوحة فيبقى المشهد وحده
+      let dn = null; const cv = renderer.domElement;
+      cv.addEventListener('pointerdown', (e) => { dn = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+      cv.addEventListener('pointerup', (e) => { if (dn && Math.hypot(e.clientX - dn.x, e.clientY - dn.y) < 6 && performance.now() - dn.t < 500) ui.hide(); dn = null; });
+    }
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfd9e6); scene.fog = new THREE.Fog(0xbfd9e6, R * 1.4, R * 4);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, R * 8);
+    const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x8a7a5c, 0.85); scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(-R * 0.6, R * 1.2, R * 0.4); scene.add(sun); scene.add(sun.target);
+    if (opt.shadows) { sun.castShadow = true; const sc = sun.shadow.camera; sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = R * 4; sc.updateProjectionMatrix(); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; }
+    const orbit = CK.orbit(camera, renderer.domElement, { dist: R * 1.5, max: R * 5 });
+    const frames = [];
+    let city = null, cityGroup = null, busy = false;
+    const ctx = { THREE, scene, camera, renderer, orbit, sun, hemi, ui, R, T, AR, frames, onFrame: (f) => frames.push(f) };
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    let prev = performance.now();
+    renderer.setAnimationLoop(() => {
+      const now = performance.now(), dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+      for (const f of frames) { try { f(dt, now); } catch (e) { console.error(e); } }
+      renderer.render(scene, camera);
+    });
+    async function load(lat, lon, name) {
+      if (busy) return; busy = true;
+      ui.status(T('أجلب مباني وشوارع ', 'Fetching buildings and streets of ') + (name || '') + '…');
+      try {
+        const osm = await CK.fetchArea(lat, lon, R);
+        const data = CK.parse(osm, lat, lon);
+        if (!data.buildings.length && !data.roads.length) { ui.status(T('ما لقيت مباني هنا — جرّب مكانًا داخل المدينة.', 'No buildings here — try a spot inside the city.')); busy = false; return; }
+        if (city && city.imgOff) city.imgOff();
+        if (cityGroup) { scene.remove(cityGroup); cityGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+        frames.length = 0;
+        cityGroup = new THREE.Group(); scene.add(cityGroup);
+        const ground = new THREE.Mesh(new THREE.CircleGeometry(R * 3, 64), new THREE.MeshLambertMaterial({ color: 0xd8ccb4 }));
+        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; cityGroup.add(ground);
+        const waterMesh = polysMesh(THREE, data.water, 0.03, 0x3d8fb6), parksMesh = polysMesh(THREE, data.parks, 0.04, 0x8fb87a);
+        cityGroup.add(waterMesh); cityGroup.add(parksMesh);
+        const roads = new THREE.Mesh(ribbonGeometry(THREE, data.roads, 0.06), new THREE.MeshLambertMaterial({ color: 0x5f6b72, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+        roads.receiveShadow = true; cityGroup.add(roads);
+        const bm = new THREE.Mesh(buildingGeometry(THREE, data), new THREE.MeshLambertMaterial({ vertexColors: true }));
+        bm.castShadow = true; bm.receiveShadow = true; cityGroup.add(bm);
+        const idx = CK.index(data);
+        const group = new THREE.Group(); cityGroup.add(group);
+        city = Object.assign({}, data, { idx, buildingsMesh: bm, roadsMesh: roads, ground, group, waterMesh, parksMesh, root: cityGroup, name: name || '' });
+        ctx.city = city;
+        orbit.target.set(0, 0, 0); orbit.dist = R * 1.5; orbit.apply();
+        ui.status(T('جاهز: ', 'Ready: ') + data.buildings.length + T(' مبنى · ', ' buildings · ') + data.roads.length + T(' طريق', ' roads'));
+        await new Promise((r) => setTimeout(r, 16)); // إطار يُرسم فيه المشهد قبل حسابات التجربة (لا تجمّد الصفحة دفعة واحدة)
+        if (opt.onCity) await opt.onCity(ctx, city);
+        window.__ck_ready = (window.__ck_ready || 0) + 1;
+        if (opt.imagery) applyImagery(city);
+      } catch (e) {
+        console.warn('[citykit]', e);
+        ui.status(T('تعذّر جلب الخريطة الحين — حاول بعد قليل أو اختر مدينة أخرى.', 'Could not load the map now — try again or pick another city.'));
+        window.__ck_error = String(e && e.message || e);
+      }
+      busy = false;
+    }
+    // الصور الجوّيّة: بعد أن يظهر المشهد وتجربته (لا تؤخّرهما)؛ فشلها لا يغيّر شيئًا والمستخدم يطفئها بمربّعها
+    let imgSeq = 0;
+    async function applyImagery(c) {
+      const im = ui.imagery, my = ++imgSeq; im.enable(); im.set(CK.imageryOn()); im.credit(false); im.note('');
+      if (!im.checked()) return;
+      im.note(T('أجلب الصور…', 'Loading imagery…'));
+      let done = false; try { done = await CK.drape(ctx, c); } catch (e) { console.warn('[citykit] imagery', e); }
+      if (my !== imgSeq) return;
+      im.note(done ? '' : T('غير متاحة الآن', 'unavailable now')); im.credit(done); window.__ck_imagery = done ? 1 : 0;
+    }
+    if (opt.imagery) ui.imagery.onChange((v) => {
+      CK.imagerySave(v); imgSeq++;
+      if (!v) { if (city && city.imgOff) city.imgOff(); ui.imagery.credit(false); ui.imagery.note(''); window.__ck_imagery = 0; } else if (city) applyImagery(city);
+    });
+    ctx.load = load; window.__ck_ctx = ctx; // للاختبار: تبديل المدينة من داخل الصفحة
+    const q = ui.box.querySelector('#ckq');
+    const go = async () => { try { ui.status(T('أبحث…', 'Searching…')); const g = await CK.geocode(q.value); await load(g.lat, g.lon, q.value); } catch (e) { ui.status(T('ما لقيت المكان — اكتبه بطريقة ثانية.', 'Place not found — try another spelling.')); } };
+    ui.box.querySelector('#ckgo').addEventListener('click', go);
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    ui.box.querySelector('#ckpre').addEventListener('change', (e) => { const p = CK.PRESETS[+e.target.value]; if (p) load(p.lat, p.lon, AR ? p.ar : p.en); });
+    ui.box.querySelector('#ckme').addEventListener('click', () => {
+      if (!navigator.geolocation) return ui.status(T('الموقع غير متاح هنا.', 'Location is not available here.'));
+      navigator.geolocation.getCurrentPosition((p) => load(p.coords.latitude, p.coords.longitude, T('موقعك', 'your location')), () => ui.status(T('ما سمح المتصفّح بالموقع — اكتب اسم الحيّ.', 'Location blocked — type the neighbourhood.')), { timeout: 10000 });
+    });
+    if (opt.panel) opt.panel(ctx);
+    const p0 = CK.PRESETS[0];
+    load(p0.lat, p0.lon, AR ? p0.ar : p0.en);
+    return ctx;
+  };
+  // أدوات مشتركة صغيرة
+  CK.sunDir = function (lat, lon, date) { // اتّجاه الشمس (ارتفاع + سمت) من التاريخ والوقت — تقريب NOAA
+    const rad = Math.PI / 180, d = (date - Date.UTC(2000, 0, 1, 12)) / 86400000;
+    const g = (357.529 + 0.98560028 * d) * rad, q = 280.459 + 0.98564736 * d;
+    const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad, e = (23.439 - 0.00000036 * d) * rad;
+    const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)), dec = Math.asin(Math.sin(e) * Math.sin(L));
+    const gmst = (18.697374558 + 24.06570982441908 * d) % 24, lst = (gmst * 15 + lon) * rad;
+    const H = lst - ra, la = lat * rad;
+    const alt = Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(H));
+    const az = Math.atan2(-Math.sin(H), Math.tan(dec) * Math.cos(la) - Math.sin(la) * Math.cos(H)); // من الشمال باتّجاه الشرق
+    return { alt, az, x: Math.cos(alt) * Math.sin(az), y: Math.sin(alt), z: -Math.cos(alt) * Math.cos(az) };
+  };
+  window.CityKit = CK;
+})();
+
+</script>
+<style>
+.ck-ui .fw-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:#b9cdd2;margin:8px 0 2px}
+.ck-ui .fw-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:6px;vertical-align:-1px}
+.ck-ui .fw-g{background:#3dff8a;box-shadow:0 0 8px #3dff8a}.ck-ui .fw-r{background:#ff4058;box-shadow:0 0 8px #ff4058}.ck-ui .fw-y{background:#ffcf5a;box-shadow:0 0 8px #ffcf5a}
+.ck-ui .fw-prog{height:5px;background:#13262d;border-radius:5px;overflow:hidden;margin:8px 0 4px}
+.ck-ui .fw-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffcf5a,#3dff8a);transition:width .15s}
+.ck-ui .fw-h{font-size:14px;margin:12px 0 4px;color:#ffe2a0;font-weight:700}
+.ck-ui .fw-spot{display:flex;align-items:center;gap:10px;width:100%;text-align:start;background:#11232a;border:1px solid #2b4650;margin:6px 0;padding:8px 10px;border-radius:11px;color:#e8f1f3;line-height:1.45}
+.ck-ui .fw-spot:hover,.ck-ui .fw-spot.on{border-color:#ffcf5a;background:#1a2a26}
+.ck-ui .fw-spot .n{flex:0 0 28px;height:28px;border-radius:50%;background:#ffcf5a;color:#1a1206;font-weight:800;display:grid;place-items:center;box-shadow:0 0 10px rgba(255,207,90,.55)}
+.ck-ui .fw-spot .t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ck-ui .fw-spot small{color:#9fb7bd;font-size:12px}
+.ck-ui .fw-spot .go{flex:0 0 auto;color:#ffcf5a;display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700}
+.ck-ui .fw-wait{font-size:13px;color:#9fb7bd;padding:6px 0}
+.ck-ui .fw-btns button{display:inline-flex;align-items:center;gap:6px}
+.ck-ui .fw-btns button.gold{background:linear-gradient(135deg,#ffb84a,#ff6a5a);color:#1a0d06;font-weight:700}
+.ck-ui .fw-hint{font-size:12.5px;color:#9fd8de;margin-top:4px}
+.fw-hud{background:radial-gradient(closest-side,rgba(3,7,16,.55),rgba(3,7,16,0));padding:8px 12px}
+.fw-hud .big{font:800 46px/1 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#3dff8a;text-shadow:0 0 18px rgba(61,255,138,.55),0 2px 4px #000;font-variant-numeric:tabular-nums}
+.fw-hud .big small{font-size:24px;margin-inline-start:2px}
+.fw-hud .cap{font-size:14px;color:#e8f1f3;opacity:.92;margin-top:4px}
+.fw-hud .row{font-size:14px;margin-top:8px;color:#ffe2a0}.fw-hud .row b{font-size:20px;color:#fff;font-variant-numeric:tabular-nums}
+.fw-hud .mid{font:700 22px/1.25 "IBM Plex Sans Arabic",Tahoma,sans-serif;color:#fff;max-width:60vw}
+.fw-hud .scan{font-size:15px;color:#ffe2a0}
+.fw-back{position:fixed;left:12px;bottom:18px;z-index:6;display:inline-flex;align-items:center;gap:8px;font:600 14px "IBM Plex Sans Arabic",Tahoma,sans-serif;background:rgba(12,22,28,.9);color:#ffe2a0;border:1px solid #ffcf5a;border-radius:999px;padding:9px 16px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.fw-back[hidden]{display:none}
+@media (max-width:640px){.fw-back{bottom:auto;top:132px}.fw-hud .big{font-size:32px}.fw-hud .cap,.fw-hud .row{font-size:12.5px}.fw-hud .row b{font-size:17px}.fw-hud .mid{font-size:18px}}
+</style>
+</head><body><script>
+(function () {
+  'use strict';
+  const THREE = window.THREE, T = CityKit.T;
+  document.title = T('وين أشوف الألعاب الناريّة', 'Where to watch the fireworks');
+  const EYE = 1.6, STEP = 15, LOS_STEP = 3, COMFORT = 60, SEP = 60, MAX_SAMPLES = 15000;
+  const PAL = [[[1, .28, .34], [1, .82, .38]], [[.35, .7, 1], [1, 1, 1]], [[.72, .42, 1], [1, .45, .85]], [[.35, 1, .55], [1, .95, .6]],
+    [[1, .6, .18], [1, .32, .18]], [[.25, .95, 1], [.65, .38, 1]], [[1, .9, .5], [1, 1, 1]]];
+  const GOLD = [1, .72, .32], TRAIL = [1, .58, .24], WHITE = [1, 1, 1];
+  const C_VIS = [.25, 1, .52], C_HID = [1, .16, .24], C_PEND = [.22, .3, .4];
+  const ICON_EYE = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const ICON_UP = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+  const ICON_STAR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v5M12 17v5M2 12h5M17 12h5M5 5l3.5 3.5M15.5 15.5L19 19M19 5l-3.5 3.5M8.5 15.5L5 19"/></svg>';
+  const ICON_PLAY = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg>';
+  const ICON_PAUSE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+  const M = T('م', 'm');
+  const fmt = (n) => Math.round(n).toLocaleString('en-US');
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const r1 = (v) => Math.round(v * 10) / 10;
+  let S = null, CTX = null, alt = 60, showOn = true, gen = 0;
+  const UI = {};
+
+  // ── قوام ومواد تُنشأ مرّة واحدة ──
+  function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return new THREE.CanvasTexture(c); }
+  function radial(stops) { return canvasTex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); for (const [o, c] of stops) gr.addColorStop(o, c); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }); }
+  let MAT = null;
+  function mats() {
+    if (MAT) return MAT;
+    const sky = canvasTex(4, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#02040c'); gr.addColorStop(0.42, '#08122b'); gr.addColorStop(0.74, '#171a3a'); gr.addColorStop(0.9, '#2e2445'); gr.addColorStop(1, '#45304a'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+    sky.colorSpace = THREE.SRGBColorSpace;
+    const dot = radial([[0, 'rgba(255,255,255,1)'], [0.22, 'rgba(255,255,255,.9)'], [0.55, 'rgba(255,255,255,.2)'], [1, 'rgba(255,255,255,0)']]);
+    const glow = radial([[0, 'rgba(255,255,255,1)'], [0.12, 'rgba(255,255,255,.75)'], [0.4, 'rgba(255,255,255,.18)'], [1, 'rgba(255,255,255,0)']]);
+    const moon = canvasTex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 10, 64, 64, 64); gr.addColorStop(0, 'rgba(220,230,255,.5)'); gr.addColorStop(1, 'rgba(220,230,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); g.beginPath(); g.arc(64, 64, 17, 0, Math.PI * 2); g.fillStyle = '#f4f1e6'; g.fill(); g.beginPath(); g.arc(71, 59, 15, 0, Math.PI * 2); g.fillStyle = 'rgba(200,205,215,.35)'; g.fill(); });
+    moon.colorSpace = THREE.SRGBColorSpace;
+    const nums = [1, 2, 3].map((n) => { const t = canvasTex(128, 128, (g) => { g.beginPath(); g.arc(64, 64, 52, 0, Math.PI * 2); g.fillStyle = '#ffcf5a'; g.shadowColor = '#ffcf5a'; g.shadowBlur = 12; g.fill(); g.shadowBlur = 0; g.lineWidth = 7; g.strokeStyle = '#2a1a06'; g.stroke(); g.fillStyle = '#2a1a06'; g.font = 'bold 70px Tahoma, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 69); }); t.colorSpace = THREE.SRGBColorSpace; return t; });
+    const add = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending };
+    MAT = {
+      sky, dot, glow, nums,
+      spots: new THREE.PointsMaterial(Object.assign({ size: 21, map: dot, vertexColors: true, sizeAttenuation: true }, add)),
+      stars: new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true, fog: false, transparent: true, depthWrite: false }),
+      moon: new THREE.SpriteMaterial({ map: moon, fog: false, depthWrite: false, transparent: true }),
+      ring: new THREE.MeshBasicMaterial(Object.assign({ color: 0x7fe9ff, opacity: 0.85, side: THREE.DoubleSide }, add)),
+      pad: new THREE.MeshBasicMaterial(Object.assign({ color: 0xffcf5a, opacity: 0.9, side: THREE.DoubleSide }, add)),
+      beacon: new THREE.SpriteMaterial(Object.assign({ map: glow, color: 0xffd27a, fog: false }, add)),
+      sight: new THREE.LineDashedMaterial({ color: 0xffd36a, dashSize: 7, gapSize: 5, transparent: true, opacity: 0.8, depthWrite: false }),
+      stem: new THREE.LineDashedMaterial({ color: 0xffe9b0, dashSize: 4, gapSize: 4, transparent: true, opacity: 0.6, depthWrite: false }),
+      labels: nums.map((t) => new THREE.SpriteMaterial({ map: t, depthTest: false, depthWrite: false, sizeAttenuation: false, transparent: true, fog: false })),
+      flash: [0, 1, 2, 3, 4, 5].map(() => new THREE.SpriteMaterial(Object.assign({ map: glow, color: 0xffffff, fog: false, opacity: 0 }, add))),
+      pillar: new THREE.ShaderMaterial(Object.assign({
+        uniforms: { uC: { value: new THREE.Color(0xffcf5a) } },
+        vertexShader: 'varying float vH; void main(){ vH = position.y / 70.0 + 0.5; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform vec3 uC; varying float vH; void main(){ gl_FragColor = vec4(uC, pow(1.0 - vH, 1.7) * 0.9); }',
+        side: THREE.DoubleSide,
+      }, add)),
+      fw: new THREE.ShaderMaterial(Object.assign({
+        uniforms: { uScale: { value: 800 } },
+        vertexShader: 'attribute float aSize; attribute float aAlpha; attribute vec3 aCol; uniform float uScale; varying vec3 vC; varying float vA;' +
+          'void main(){ vC = aCol; vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;' +
+          ' float s = aSize * uScale / max(1.0, -mv.z); gl_PointSize = aAlpha <= 0.0 ? 0.0 : clamp(s, 1.6, 96.0); }',
+        fragmentShader: 'varying vec3 vC; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; if (d > 1.0) discard;' +
+          ' float a = pow(1.0 - d, 1.7); vec3 c = mix(vC, vec3(1.0), pow(max(0.0, 1.0 - d * 2.4), 2.0) * 0.75); gl_FragColor = vec4(c * 1.3, a * vA); }',
+      }, add)),
+    };
+    return MAT;
+  }
+
+  // نوافذ مضاءة ليلًا: نحقن في مادّة المباني نمط نوافذ من إحداثيّات العالم (بلا UV ولا قوام)
+  function windowShader(sh) {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;\nvarying vec3 vWN;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;\nvarying vec3 vWN;')
+      .replace('#include <emissivemap_fragment>', [
+        '#include <emissivemap_fragment>',
+        '{ float side = 1.0 - smoothstep(0.3, 0.7, abs(vWN.y));',
+        '  float u = dot(vWP.xz, normalize(vec2(-vWN.z, vWN.x) + 1e-5));',
+        '  vec2 g = vec2(u / 3.6, (vWP.y - 1.0) / 3.3); vec2 f = fract(g); vec2 c = floor(g);',
+        '  float w = step(0.2, f.x) * step(f.x, 0.8) * step(0.25, f.y) * step(f.y, 0.78);',
+        '  float r = fract(sin(dot(c, vec2(12.9898, 78.233)) + floor(vWP.x * 0.04) * 7.31 + floor(vWP.z * 0.04) * 3.17) * 43758.5453);',
+        '  vec3 wc = mix(vec3(1.0, 0.58, 0.24), vec3(1.0, 0.88, 0.66), fract(r * 7.13));',
+        '  totalEmissiveRadiance += side * w * step(0.6, r) * step(1.0, vWP.y) * wc * 0.8; }',
+      ].join('\n'));
+  }
+
+  function night(ctx, city) {
+    const m = mats(), R = ctx.R;
+    ctx.scene.background = m.sky;
+    ctx.scene.fog.color.set(0x0c1228); ctx.scene.fog.near = R * 1.3; ctx.scene.fog.far = R * 4.2;
+    ctx.hemi.color.set(0x6474b8); ctx.hemi.groundColor.set(0x2a2018); ctx.hemi.intensity = 0.6;
+    ctx.sun.color.set(0xa4b6ff); ctx.sun.intensity = 0.5;
+    const bm = city.buildingsMesh.material; bm.onBeforeCompile = windowShader; bm.needsUpdate = true;
+    city.ground.material.color.set(0x34322f);
+    city.roadsMesh.material.color.set(0x4a4f57); city.roadsMesh.material.emissive.set(0x2a1806);
+  }
+
+  function roadLabel(r) {
+    if (r.name) return r.name;
+    const k = r.kind || '';
+    if (/foot|path|pedestrian|cycle|steps/.test(k)) return T('ممشى', 'Walkway');
+    if (/motorway|trunk/.test(k)) return T('طريق سريع', 'Highway');
+    if (/primary|secondary/.test(k)) return T('شارع رئيسيّ', 'Main street');
+    return T('شارع فرعيّ', 'Side street');
+  }
+
+  // ── نقاط المشاهدة: كلّ ١٥م على كلّ طريق داخل المنطقة المحمّلة، خارج المباني ──
+  // لا وقوف على الطرق السريعة والشريانيّة ولا على الوصلات (منحدرات ومخارج): تخرج من العيّنات فلا تُقترح ولا تدخل نسبة الرؤية
+  const NO_STAND = /^(motorway|trunk)$/;
+  function buildSamples(city, R) {
+    const xs = [], zs = [], rs = [], lim2 = (R * 0.97) * (R * 0.97);
+    for (const r of city.roads) {
+      if (r.link || NO_STAND.test(r.kind)) continue;
+      let next = STEP / 2;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const p = r.pts[i], q = r.pts[i + 1], L = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        while (next <= L) {
+          const t = next / L, x = p[0] + (q[0] - p[0]) * t, z = p[1] + (q[1] - p[1]) * t; next += STEP;
+          if (x * x + z * z > lim2 || city.idx.at(x, z)) continue;
+          xs.push(x); zs.push(z); rs.push(r);
+        }
+        next -= L;
+      }
+    }
+    let keep = xs.map((_, i) => i);
+    if (keep.length > MAX_SAMPLES) { const k = keep.length / MAX_SAMPLES; keep = Array.from({ length: MAX_SAMPLES }, (_, i) => Math.floor(i * k)); }
+    const n = keep.length;
+    S.n = n; S.sx = new Float32Array(n); S.sz = new Float32Array(n); S.sd = new Float32Array(n); S.vis = new Int8Array(n); S.sroad = new Array(n);
+    keep.forEach((j, i) => { S.sx[i] = xs[j]; S.sz[i] = zs[j]; S.sroad[i] = rs[j]; });
+    const pos = new Float32Array(n * 3); S.col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { pos[i * 3] = S.sx[i]; pos[i * 3 + 1] = 0.8; pos[i * 3 + 2] = S.sz[i]; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    S.colAttr = new THREE.BufferAttribute(S.col, 3); g.setAttribute('color', S.colAttr);
+    S.spots = new THREE.Points(g, MAT.spots); S.spots.renderOrder = 2; city.group.add(S.spots);
+  }
+
+  function makeSky(group, ctx) {
+    const n = 1100, R = ctx.R * 3.2, p = new Float32Array(n * 3), c = new Float32Array(n * 3);
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < n; i++) {
+      const el = Math.asin(0.05 + 0.95 * Math.pow(rnd(), 0.8)), az = rnd() * Math.PI * 2, b = 0.25 + 0.75 * Math.pow(rnd(), 3);
+      p[i * 3] = Math.cos(el) * Math.sin(az) * R; p[i * 3 + 1] = Math.sin(el) * R; p[i * 3 + 2] = Math.cos(el) * Math.cos(az) * R;
+      c[i * 3] = b * (0.85 + 0.15 * rnd()); c[i * 3 + 1] = b * 0.92; c[i * 3 + 2] = b;
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    group.add(new THREE.Points(g, MAT.stars));
+    const moon = new THREE.Sprite(MAT.moon); moon.position.set(-R * 0.5, R * 0.42, -R * 0.6); moon.scale.set(260, 260, 1); group.add(moon);
+  }
+
+  // ── الألعاب الناريّة: مخزن جسيمات واحد (Points) + صواريخ + ومضات تضيء المباني ──
+  function makeFireworks(group) {
+    const N = 9000;
+    const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), sz = new Float32Array(N), al = new Float32Array(N);
+    const vel = new Float32Array(N * 3), life = new Float32Array(N), max = new Float32Array(N), drg = new Float32Array(N), grv = new Float32Array(N), s0 = new Float32Array(N), kd = new Uint8Array(N), em = new Float32Array(N);
+    const geo = new THREE.BufferGeometry();
+    const attrs = [['position', pos, 3], ['aCol', col, 3], ['aSize', sz, 1], ['aAlpha', al, 1]].map(([k, a, s]) => { const b = new THREE.BufferAttribute(a, s); b.setUsage(THREE.DynamicDrawUsage); geo.setAttribute(k, b); return b; });
+    const pts = new THREE.Points(geo, MAT.fw); pts.frustumCulled = false; pts.renderOrder = 6; group.add(pts);
+    const light = new THREE.PointLight(0xffffff, 0, 0, 2); light.position.set(0, -500, 0); group.add(light);
+    const flashes = MAT.flash.map((m) => { const s = new THREE.Sprite(m); s.visible = false; s.renderOrder = 7; group.add(s); return { s, t: 9 }; });
+    let head = 0, fi = 0, lightT = 9, lightPeak = 0;
+    const fw = { queue: [], rockets: [], bursts: 0, alive: 0, launched: 0 };
+    function spawn(x, y, z, vx, vy, vz, c, size, lf, dr, gr, k) {
+      const i = head; head = (head + 1) % N; const j = i * 3;
+      pos[j] = x; pos[j + 1] = y; pos[j + 2] = z; vel[j] = vx; vel[j + 1] = vy; vel[j + 2] = vz;
+      col[j] = c[0]; col[j + 1] = c[1]; col[j + 2] = c[2];
+      s0[i] = size; sz[i] = size; life[i] = lf; max[i] = lf; drg[i] = dr; grv[i] = gr; kd[i] = k; em[i] = Math.random() * 0.07; al[i] = 1;
+    }
+    const U = [0, 0, 0];
+    function unit(o) { const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u); o[0] = s * Math.cos(th); o[1] = u; o[2] = s * Math.sin(th); return o; }
+    const jit = (a) => a * (0.93 + Math.random() * 0.14);
+    function sphere(x, y, z, n, speed, colors, size, lf, dr, gr, k) {
+      for (let i = 0; i < n; i++) { unit(U); const v = jit(speed); spawn(x, y, z, U[0] * v, U[1] * v, U[2] * v, colors[i % colors.length], size, lf * (0.85 + Math.random() * 0.3), dr, gr, k); }
+    }
+    fw.burst = function (x, y, z, type, pal) {
+      const P = PAL[pal % PAL.length]; fw.bursts++;
+      if (type === 'willow') sphere(x, y, z, 120, 90, [GOLD], 4, 3.4, 1.15, 9, 1);
+      else if (type === 'ring') {
+        const n = unit([0, 0, 0]); n[1] = Math.abs(n[1]) * 0.5 + 0.5;
+        const a = new THREE.Vector3(n[0], n[1], n[2]).normalize(), u = new THREE.Vector3(1, 0, 0).cross(a).normalize(), v = a.clone().cross(u);
+        for (let i = 0; i < 110; i++) { const t = i / 110 * Math.PI * 2, s = jit(125), c = Math.cos(t), d = Math.sin(t); spawn(x, y, z, (u.x * c + v.x * d) * s, (u.y * c + v.y * d) * s, (u.z * c + v.z * d) * s, P[0], 4.6, 2.1 + Math.random() * 0.4, 1.7, 6, 0); }
+        sphere(x, y, z, 60, 50, [P[1]], 3.4, 1.6, 1.7, 6, 4);
+      } else if (type === 'palm') {
+        for (let i = 0; i < 9; i++) { unit(U); U[1] = Math.abs(U[1]) * 0.6 + 0.35; const l = Math.hypot(U[0], U[1], U[2]), v = jit(130) / l; spawn(x, y, z, U[0] * v, U[1] * v, U[2] * v, P[0], 7, 2.3, 1.25, 9, 1); }
+        sphere(x, y, z, 70, 70, [WHITE, P[1]], 3, 1.5, 1.8, 6, 4);
+      } else if (type === 'crackle') sphere(x, y, z, 180, 110, [WHITE, GOLD, P[0]], 3.3, 1.8, 1.8, 7, 4);
+      else { sphere(x, y, z, 170, 128, P, 4.6, 2.2, 1.7, 7, 0); sphere(x, y, z, 36, 55, [WHITE], 3, 1.4, 1.6, 6, 4); }
+      const f = flashes[fi]; fi = (fi + 1) % flashes.length;
+      f.t = 0; f.s.position.set(x, y, z); f.s.visible = true; f.s.material.color.setRGB(0.55 + P[0][0] * 0.45, 0.55 + P[0][1] * 0.45, 0.55 + P[0][2] * 0.45);
+      light.position.set(x, y, z); light.color.setRGB(P[0][0], P[0][1], P[0][2]); lightT = 0; lightPeak = 26000;
+    };
+    // صاروخ: من سطح المبنى إلى نقطة الانفجار مع ذيل شرر
+    fw.launch = function (o) {
+      const sh = S.show, rb = () => Math.random() - 0.5;
+      const by = Math.max(sh.base + 18, sh.y + rb() * 70);
+      o.a = [sh.x + rb() * 14, sh.base + 1.5, sh.z + rb() * 14]; o.b = [sh.x + rb() * 130, by, sh.z + rb() * 130];
+      o.t = 0; o.em = 0; o.ph = Math.random() * 6; fw.rockets.push(o); fw.launched++;
+    };
+    fw.step = function (dt) {
+      for (let q = fw.queue.length - 1; q >= 0; q--) { const it = fw.queue[q]; it.d -= dt; if (it.d <= 0) { fw.queue.splice(q, 1); fw.launch(it); } }
+      for (let r = fw.rockets.length - 1; r >= 0; r--) {
+        const k = fw.rockets[r]; k.t += dt; const f = Math.min(1, k.t / k.fuse), e = 1 - (1 - f) * (1 - f);
+        const x = k.a[0] + (k.b[0] - k.a[0]) * e + Math.sin(k.t * 13 + k.ph) * 0.7, y = k.a[1] + (k.b[1] - k.a[1]) * e, z = k.a[2] + (k.b[2] - k.a[2]) * e;
+        k.em += dt;
+        while (k.em > 0.014) { k.em -= 0.014; spawn(x + (Math.random() - 0.5), y, z + (Math.random() - 0.5), (Math.random() - 0.5) * 3, -6 + Math.random() * 3, (Math.random() - 0.5) * 3, TRAIL, 2.1, 0.3 + Math.random() * 0.4, 2.2, 5, 2); }
+        if (f >= 1) { fw.rockets.splice(r, 1); fw.burst(k.b[0], k.b[1], k.b[2], k.type, k.pal); }
+      }
+      let alive = 0;
+      for (let i = 0; i < N; i++) {
+        if (life[i] <= 0) continue;
+        life[i] -= dt;
+        if (life[i] <= 0) { al[i] = 0; continue; }
+        alive++;
+        const j = i * 3, d = Math.exp(-drg[i] * dt);
+        vel[j] *= d; vel[j + 1] = vel[j + 1] * d - grv[i] * dt; vel[j + 2] *= d;
+        pos[j] += vel[j] * dt; pos[j + 1] += vel[j + 1] * dt; pos[j + 2] += vel[j + 2] * dt;
+        const f = life[i] / max[i];
+        let a = f < 0.35 ? f / 0.35 : 1; if (kd[i] === 4) a *= Math.random() < 0.45 ? 1 : 0.12;
+        al[i] = a; sz[i] = s0[i] * (0.5 + 0.5 * f);
+        if (kd[i] === 1) { em[i] += dt; if (em[i] > 0.07) { em[i] = 0; spawn(pos[j], pos[j + 1], pos[j + 2], (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2 - 1, (Math.random() - 0.5) * 2, TRAIL, 1.8, 0.5 + Math.random() * 0.4, 2.5, 4, 2); } }
+      }
+      fw.alive = alive;
+      for (const f of flashes) { if (f.t > 0.6) { f.s.visible = false; continue; } f.t += dt; const k = f.t / 0.6; f.s.material.opacity = Math.pow(1 - Math.min(1, k), 2); const sc = 220 + 160 * k; f.s.scale.set(sc, sc, 1); }
+      lightT += dt; light.intensity = lightT < 0.9 ? lightPeak * Math.exp(-lightT * 5) : 0;
+    };
+    fw.commit = function () { for (const a of attrs) a.needsUpdate = true; };
+    fw.finale = function () {
+      const types = ['peony', 'ring', 'willow', 'palm', 'crackle', 'peony', 'ring', 'peony', 'willow', 'crackle', 'palm', 'peony', 'ring', 'peony'];
+      types.forEach((type, i) => fw.queue.push({ d: i * 0.13 + Math.random() * 0.1, fuse: 0.8 + Math.random() * 0.35, type, pal: (Math.random() * PAL.length) | 0 }));
+    };
+    return fw;
+  }
+  function launchRandom() {
+    const types = ['peony', 'peony', 'ring', 'willow', 'palm', 'crackle'];
+    const n = Math.random() < 0.18 ? 3 : 1;
+    for (let i = 0; i < n; i++) S.fw.queue.push({ d: i * 0.22, fuse: 1.15 + Math.random() * 0.5, type: types[(Math.random() * types.length) | 0], pal: (Math.random() * PAL.length) | 0 });
+  }
+
+  // ── نقطة العرض ──
+  function setShow(x, z, base, label) {
+    S.show = { x, z, base, y: base + alt, label };
+    const g = S.beacon; while (g.children.length) { const o = g.children.pop(); if (o.geometry) o.geometry.dispose(); }
+    const glow = new THREE.Sprite(MAT.beacon); glow.position.set(x, S.show.y, z); glow.scale.set(40, 40, 1); g.add(glow); S.glow = glow;
+    const stem = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, base + 1, z), new THREE.Vector3(x, S.show.y, z)]), MAT.stem); stem.computeLineDistances(); g.add(stem);
+    const pad = new THREE.Mesh(new THREE.RingGeometry(7, 10, 40), MAT.pad); pad.rotation.x = -Math.PI / 2; pad.position.set(x, base + 0.6, z); g.add(pad);
+    S.fw.queue.length = 0; S.fw.rockets.length = 0;
+    startJob();
+  }
+  function setShowDefault() {
+    const b = S.city.buildings[0];
+    if (!b) return setShow(0, 0, 0, T('وسط الحيّ', 'Area centre'));
+    let cx = 0, cz = 0; for (const p of b.poly) { cx += p[0]; cz += p[1]; } cx /= b.poly.length; cz /= b.poly.length;
+    if (!CityKit.inPoly(cx, cz, b.poly)) { cx = (b.box[0] + b.box[2]) / 2; cz = (b.box[1] + b.box[3]) / 2; }
+    S.tallest = b;
+    setShow(cx, cz, b.h, (b.name || T('أعلى مبنى', 'Tallest building')) + ' · ' + fmt(b.h) + ' ' + M);
+  }
+
+  // ── خطّ الرؤية: مهمّة مقسّمة على الإطارات، من الأقرب للأبعد (موجة مسح تنتشر من نقطة العرض) ──
+  function paint(k, c) { const j = k * 3; S.col[j] = c[0]; S.col[j + 1] = c[1]; S.col[j + 2] = c[2]; }
+  function startJob() {
+    const n = S.n, sh = S.show;
+    for (let k = 0; k < n; k++) { S.sd[k] = Math.hypot(S.sx[k] - sh.x, S.sz[k] - sh.z); paint(k, C_PEND); }
+    const ord = new Uint32Array(n); for (let k = 0; k < n; k++) ord[k] = k;
+    ord.sort((a, b) => S.sd[a] - S.sd[b]);
+    S.ord = ord; S.ji = 0; S.vis.fill(-1); S.visCount = 0; S.done = false; S.best = []; S.pct = 0; S.pick = -1;
+    S.colAttr.needsUpdate = true; clearMarks(); S.ring.visible = true;
+    renderAll();
+  }
+  function runJob() {
+    if (S.done || !S.ord) return;
+    const t0 = performance.now(), los = S.city.idx.los, a = { x: 0, y: EYE, z: 0 }, b = { x: S.show.x, y: S.show.y, z: S.show.z };
+    let i = S.ji;
+    while (i < S.n) {
+      const k = S.ord[i++]; a.x = S.sx[k]; a.z = S.sz[k];
+      const v = los(a, b, LOS_STEP); S.vis[k] = v ? 1 : 0; if (v) S.visCount++;
+      paint(k, v ? C_VIS : C_HID);
+      if ((i & 31) === 0 && performance.now() - t0 > 9) break;
+    }
+    S.ji = i; S.colAttr.needsUpdate = true;
+    const rr = i > 0 ? S.sd[S.ord[i - 1]] : 1; S.ring.scale.set(Math.max(1, rr), Math.max(1, rr), 1);
+    if (i >= S.n) finalize(); else if (UI.prog) { UI.prog.style.width = (100 * i / S.n).toFixed(1) + '%'; if ((S.tick = (S.tick || 0) + 1) % 6 === 0) renderHud(); }
+  }
+  function pickBest(maxElev, out) {
+    for (let i = 0; i < S.n && out.length < 3; i++) {
+      const k = S.ord[i]; if (S.vis[k] !== 1) continue;
+      const d = S.sd[k], elev = Math.atan2(S.show.y - EYE, d) * 180 / Math.PI;
+      if (elev > maxElev) continue;
+      if (out.some((o) => Math.hypot(o.x - S.sx[k], o.z - S.sz[k]) < SEP)) continue;
+      out.push({ k, x: S.sx[k], z: S.sz[k], d, elev, name: roadLabel(S.sroad[k]) });
+    }
+    return out;
+  }
+  function finalize() {
+    S.done = true; S.ring.visible = false;
+    S.pct = S.n ? Math.round(S.visCount / S.n * 1000) / 10 : 0;
+    const best = pickBest(COMFORT, []); if (best.length < 3) pickBest(90, best);
+    best.sort((p, q) => p.d - q.d); S.best = best;
+    buildMarks(); renderAll();
+  }
+
+  function clearMarks() { const g = S.marks; while (g.children.length) { const o = g.children.pop(); if (o.geometry) o.geometry.dispose(); } S.markObjs = []; }
+  function buildMarks() {
+    clearMarks();
+    const sh = new THREE.Vector3(S.show.x, S.show.y, S.show.z);
+    S.best.forEach((b, i) => {
+      const objs = [];
+      const pil = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 70, 14, 1, true), MAT.pillar); pil.position.set(b.x, 35, b.z); objs.push(pil);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(6, 9, 40), MAT.pad); ring.rotation.x = -Math.PI / 2; ring.position.set(b.x, 0.9, b.z); objs.push(ring);
+      const lab = new THREE.Sprite(MAT.labels[i]); lab.position.set(b.x, 78, b.z); const ls = window.innerWidth < 640 ? 0.036 : 0.05; lab.scale.set(ls, ls, 1); lab.renderOrder = 10; objs.push(lab);
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(b.x, EYE, b.z), sh]), MAT.sight); line.computeLineDistances(); objs.push(line);
+      objs.forEach((o) => S.marks.add(o)); S.markObjs.push(objs);
+    });
+  }
+
+  // ── الكاميرا: تمهيد، طيران إلى الموقف، ونظرة من مستوى الشارع ──
+  const V1 = new THREE.Vector3(), V2 = new THREE.Vector3();
+  function airView(fromSpot) {
+    const o = CTX.orbit, sh = S.show;
+    const narrow = window.innerWidth < window.innerHeight;
+    const v = { tx: sh.x, ty: sh.y * (narrow ? 0.62 : 0.5), tz: sh.z, dist: Math.max(CTX.R * 0.95, sh.y * 2.3) * (narrow ? 1.9 : 1), phi: 1.1, theta: o.theta };
+    if (fromSpot) v.theta = Math.atan2(fromSpot.x - sh.x, fromSpot.z - sh.z);
+    return v;
+  }
+  function orbitPos(v, out) { return out.set(v.tx + v.dist * Math.sin(v.phi) * Math.sin(v.theta), v.ty + v.dist * Math.cos(v.phi), v.tz + v.dist * Math.sin(v.phi) * Math.cos(v.theta)); }
+  function tweenOrbit(v, dur) { const o = CTX.orbit; S.tween = { t: 0, dur, from: { tx: o.target.x, ty: o.target.y, tz: o.target.z, dist: o.dist, phi: o.phi, theta: o.theta }, to: v }; }
+  function streetLook(pos, out) {
+    const dx = S.show.x - pos.x, dy = S.show.y - pos.y, dz = S.show.z - pos.z, h = Math.hypot(dx, dz);
+    const yaw = Math.atan2(dx, dz) + S.look.yaw, pitch = Math.max(-0.35, Math.min(1.4, Math.atan2(dy, h) * 0.86 + S.look.pitch));
+    return out.set(pos.x + Math.cos(pitch) * Math.sin(yaw) * 100, pos.y + Math.sin(pitch) * 100, pos.z + Math.cos(pitch) * Math.cos(yaw) * 100);
+  }
+  function flyTo(i) {
+    const b = S.best[i]; if (!b || S.flight) return;
+    const cam = CTX.camera; S.tween = null; S.pick = i; S.look = { yaw: 0, pitch: 0 };
+    const p0 = cam.position.clone(), p1 = new THREE.Vector3(b.x, EYE, b.z);
+    const c = p0.clone().lerp(p1, 0.6); c.y = Math.max(p0.y * 0.75, 140);
+    const l0 = S.mode === 'street' ? streetLook(p0, new THREE.Vector3()) : CTX.orbit.target.clone();
+    S.flight = { t: 0, dur: 3.4, p0, c, p1, l0, l1: streetLook(p1, new THREE.Vector3()), to: 'street', fov0: cam.fov, fov1: 62 };
+    CTX.orbit.enabled = false; S.mode = 'flying';
+    S.markObjs.forEach((objs, j) => objs.forEach((o) => { o.visible = j !== i; }));
+    renderAll();
+  }
+  function back() {
+    if (S.mode !== 'street' || S.flight) return;
+    const cam = CTX.camera, b = S.best[S.pick], v = airView(b);
+    const p1 = orbitPos(v, new THREE.Vector3()), p0 = cam.position.clone();
+    const c = p0.clone().lerp(p1, 0.4); c.y = Math.max(p1.y, 160);
+    S.flight = { t: 0, dur: 2.8, p0, c, p1, l0: streetLook(p0, new THREE.Vector3()), l1: new THREE.Vector3(v.tx, v.ty, v.tz), to: 'air', v, fov0: cam.fov, fov1: 50 };
+    S.mode = 'flying'; S.spots.visible = true;
+    S.markObjs.forEach((objs) => objs.forEach((o) => { o.visible = true; }));
+    renderAll();
+  }
+  function camStep(dt) {
+    const cam = CTX.camera;
+    if (S.flight) {
+      const f = S.flight; f.t += dt; const k = Math.min(1, f.t / f.dur), e = ease(k), a = 1 - e;
+      cam.position.set(a * a * f.p0.x + 2 * a * e * f.c.x + e * e * f.p1.x, a * a * f.p0.y + 2 * a * e * f.c.y + e * e * f.p1.y, a * a * f.p0.z + 2 * a * e * f.c.z + e * e * f.p1.z);
+      cam.fov = f.fov0 + (f.fov1 - f.fov0) * e; cam.updateProjectionMatrix();
+      cam.lookAt(V1.copy(f.l0).lerp(f.l1, e));
+      if (f.to === 'street' && k > 0.75) S.spots.visible = false;
+      if (k >= 1) {
+        S.flight = null;
+        if (f.to === 'street') S.mode = 'street';
+        else { const o = CTX.orbit; o.target.set(f.v.tx, f.v.ty, f.v.tz); o.dist = f.v.dist; o.phi = f.v.phi; o.theta = f.v.theta; o.enabled = true; o.apply(); S.mode = 'air'; S.pick = -1; }
+        renderAll();
+      }
+    } else if (S.mode === 'street') {
+      cam.lookAt(streetLook(cam.position, V2));
+    } else if (S.tween) {
+      const w = S.tween; w.t += dt; const e = ease(Math.min(1, w.t / w.dur)), o = CTX.orbit, A = w.from, B = w.to, L = (p, q) => p + (q - p) * e;
+      o.target.set(L(A.tx, B.tx), L(A.ty, B.ty), L(A.tz, B.tz)); o.dist = L(A.dist, B.dist); o.phi = L(A.phi, B.phi); o.theta = L(A.theta, B.theta); o.apply();
+      if (w.t >= w.dur) S.tween = null;
+    }
+  }
+
+  // ── الإطار ──
+  function frame(_, now) {
+    if (!S || !S.fw) return;
+    const raw = Math.max(0, (now - S.lastNow) / 1000), dt = Math.min(0.25, raw); S.lastNow = now;
+    runJob();
+    if (showOn) { S.next -= dt; if (S.next <= 0) { launchRandom(); S.next = 0.55 + Math.random() * 0.8; } }
+    let left = dt; while (left > 1e-4) { const h = Math.min(0.04, left); S.fw.step(h); left -= h; }
+    S.fw.commit();
+    camStep(Math.min(1, raw)); // حركة الكاميرا بالزمن الفعليّ حتّى لو بطؤت الإطارات
+    const cam = CTX.camera, v = cam.view, ph = (v && v.enabled ? v.fullHeight : window.innerHeight) * CTX.renderer.getPixelRatio();
+    MAT.fw.uniforms.uScale.value = ph / 2 / Math.tan(cam.fov * Math.PI / 360);
+    if (S.glow) { const s = 34 + Math.sin(now / 260) * 8; S.glow.scale.set(s, s, 1); }
+    MAT.pillar.uniforms.uC.value.setHSL(0.11, 1, 0.6 + Math.sin(now / 400) * 0.08);
+    if ((S.pubT = (S.pubT || 0) + dt) > 0.3) { S.pubT = 0; pub(); }
+  }
+
+  // ── الواجهة ──
+  function pub() {
+    if (!S || !S.show) return;
+    window.__inspire_state = {
+      city: S.city.name, gen: S.gen, samples: S.n, checked: S.ji, visible: S.visCount, visiblePct: S.pct, done: S.done,
+      best: S.best.map((b) => Math.round(b.d)), bestSpots: S.best.map((b) => ({ x: r1(b.x), z: r1(b.z), d: Math.round(b.d), elev: Math.round(b.elev), name: b.name })),
+      show: { x: r1(S.show.x), y: r1(S.show.y), z: r1(S.show.z), base: r1(S.show.base), label: S.show.label }, alt, tallest: S.tallest ? r1(S.tallest.h) : 0,
+      mode: S.mode, pick: S.pick, showOn, rockets: S.fw.launched, bursts: S.fw.bursts, particles: S.fw.alive,
+    };
+  }
+  function renderHud() {
+    if (!S || !S.show) return;
+    const hud = CTX.ui.hud;
+    if ((S.mode === 'street' || (S.flight && S.flight.to === 'street')) && S.best[S.pick]) {
+      const b = S.best[S.pick];
+      hud('<div class="fw-hud"><div class="cap">' + T('تشوف من موقف رقم ', 'Watching from spot ') + (S.pick + 1) + '</div><div class="mid">' + esc(b.name) + '</div><div class="row"><b>' + fmt(b.d) + '</b> ' + M + ' · ' + T('زاوية النظر ', 'angle ') + '<b><bdi dir="ltr">' + Math.round(b.elev) + '°</bdi></b></div></div>');
+    } else if (!S.done) {
+      hud('<div class="fw-hud"><div class="big">' + Math.round(100 * S.ji / Math.max(1, S.n)) + '<small>%</small></div><div class="scan">' + T('أفحص خطّ الرؤية من كلّ شارع…', 'Checking the view from every street…') + '</div></div>');
+    } else {
+      hud('<div class="fw-hud"><div class="big">' + S.pct + '<small>%</small></div><div class="cap">' + T('من الشوارع تشوف الألعاب', 'of street spots see the show') + '</div>' +
+        (S.best[0] ? '<div class="row">' + T('أقرب موقف مريح ', 'Nearest good spot ') + '<b>' + fmt(S.best[0].d) + '</b> ' + M + '</div>' : '') + '</div>');
+    }
+  }
+  function renderAll() {
+    if (!S || !UI.best) return;
+    UI.n.textContent = fmt(S.n);
+    UI.v.textContent = S.done ? fmt(S.visCount) + ' (' + S.pct + '%)' : '…';
+    UI.s.textContent = S.show.label;
+    UI.h.textContent = fmt(S.show.y) + ' ' + M;
+    UI.prog.style.width = S.done ? '100%' : (100 * S.ji / Math.max(1, S.n)).toFixed(1) + '%';
+    if (!S.done) UI.best.innerHTML = '<div class="fw-wait">' + T('أحسب خطوط الرؤية…', 'Computing sight lines…') + '</div>';
+    else if (!S.best.length) UI.best.innerHTML = '<div class="fw-wait">' + T('ولا شارع يشوف هالنقطة — ارفع الألعاب أو انقلها.', 'No street sees this point — raise or move the show.') + '</div>';
+    else UI.best.innerHTML = S.best.map((b, i) => '<button class="fw-spot' + (S.pick === i ? ' on' : '') + '" data-i="' + i + '"><span class="n">' + (i + 1) + '</span><span class="t"><b>' + fmt(b.d) + ' ' + M + '</b> · ' + esc(b.name) +
+      '<br><small>' + T('زاوية النظر ', 'View angle ') + '<bdi dir="ltr">' + Math.round(b.elev) + '°</bdi> · ' + (b.elev > COMFORT ? T('قريب جدًّا', 'very close') : T('مريحة', 'comfortable')) + '</small></span><span class="go">' + ICON_EYE + T('شاهد', 'Watch') + '</span></button>').join('');
+    UI.back.hidden = S.mode !== 'street';
+    UI.toggle.innerHTML = showOn ? ICON_PAUSE + T('أوقف العرض', 'Pause show') : ICON_PLAY + T('شغّل العرض', 'Play show');
+    renderHud(); pub();
+  }
+  function viewOffset() {
+    if (!CTX) return;
+    const W = window.innerWidth, H = window.innerHeight, cam = CTX.camera, mob = W <= 640;
+    const dx = mob ? 0 : Math.round(Math.min(190, W * 0.15)), dy = mob ? Math.round(H * 0.19) : 0;
+    cam.aspect = (W + 2 * dx) / (H + 2 * dy);
+    if (dx || dy) cam.setViewOffset(W + 2 * dx, H + 2 * dy, 2 * dx, 2 * dy, W, H); else cam.clearViewOffset();
+    cam.updateProjectionMatrix();
+  }
+  function setAlt(m) {
+    alt = Math.max(20, Math.min(250, Math.round(m)));
+    if (UI.alt) { UI.alt.value = alt; UI.altV.textContent = alt; }
+    if (S && S.show && S.mode === 'air') setShow(S.show.x, S.show.z, S.show.base, S.show.label);
+  }
+  const ray = new THREE.Raycaster(), NDC = new THREE.Vector2();
+  function pickAt(cx, cy) {
+    if (!S || S.mode !== 'air' || S.flight) return false;
+    const rect = CTX.renderer.domElement.getBoundingClientRect();
+    NDC.set(((cx - rect.left) / rect.width) * 2 - 1, -((cy - rect.top) / rect.height) * 2 + 1);
+    ray.setFromCamera(NDC, CTX.camera);
+    const hit = ray.intersectObjects([S.city.buildingsMesh, S.city.ground], false)[0];
+    if (!hit) return false;
+    const p = hit.point.clone().addScaledVector(ray.ray.direction, 0.6);
+    if (Math.hypot(p.x, p.z) > CTX.R * 0.92) { CTX.ui.status(T('اختر نقطة داخل الحيّ المحمّل.', 'Pick a point inside the loaded area.')); return false; }
+    const b = S.city.idx.at(p.x, p.z);
+    setShow(p.x, p.z, b ? b.h : 0, b && b.name ? b.name : T('نقطة اخترتها', 'Your chosen point'));
+    S.tallest = S.city.buildings[0] || null;
+    const v = airView(); const o = CTX.orbit; v.dist = o.dist; v.phi = o.phi; tweenOrbit(v, 1.2);
+    return true;
+  }
+
+  CityKit.start({
+    title: T('وين أوقف عشان أشوف الألعاب الناريّة؟', 'Where to stand for the fireworks?'),
+    sub: T('نفحص من كلّ شارع في حيّك: تشوف الألعاب أو تحجبها المباني؟ انقر الخريطة لتنقل مكان العرض.', 'We test every street in your area: can you see the show, or do buildings block it? Tap the map to move it.'),
+    radius: 600,
+    panel(ctx) {
+      CTX = ctx; mats();
+      const p = ctx.ui.panel;
+      p.innerHTML =
+        '<div class="fw-legend"><span><i class="fw-dot fw-g"></i>' + T('تشوف العرض', 'Clear view') + '</span><span><i class="fw-dot fw-r"></i>' + T('محجوب بالمباني', 'Blocked') + '</span><span><i class="fw-dot fw-y"></i>' + T('أفضل ٣ مواقف', 'Top 3 spots') + '</span></div>' +
+        '<div class="fw-prog"><i></i></div>' +
+        '<div class="ck-stat"><span>' + T('نقاط مشاهدة على الشوارع', 'Street spots tested') + '</span><b data-k="n">—</b>' +
+        '<span>' + T('تشوف العرض', 'With a clear view') + '</span><b data-k="v">—</b>' +
+        '<span>' + T('مكان الإطلاق', 'Launch site') + '</span><b data-k="s">—</b>' +
+        '<span>' + T('ارتفاع الانفجار', 'Burst height') + '</span><b data-k="h">—</b></div>' +
+        '<label>' + T('ارتفاع الألعاب فوق السطح: ', 'Height above the roof: ') + '<b data-k="altv">60</b> ' + M + '</label>' +
+        '<input type="range" min="20" max="250" step="10" value="60" data-k="alt">' +
+        '<div class="ck-row fw-btns"><button data-k="toggle"></button><button class="gold" data-k="finale">' + ICON_STAR + T('الختام', 'Grand finale') + '</button><button class="ghost" data-k="tall">' + ICON_UP + T('فوق أعلى برج', 'Above tallest') + '</button></div>' +
+        '<div class="fw-hint">' + T('انقر أيّ مكان على الخريطة لتنقل مكان الإطلاق.', 'Tap anywhere on the map to move the launch site.') + '</div>' +
+        '<div class="fw-h">' + T('أفضل ٣ مواقف (تشوف وأقرب)', 'Best 3 spots (clear and closest)') + '</div><div data-k="best"></div>';
+      const q = (k) => p.querySelector('[data-k="' + k + '"]');
+      Object.assign(UI, { n: q('n'), v: q('v'), s: q('s'), h: q('h'), alt: q('alt'), altV: q('altv'), toggle: q('toggle'), best: q('best'), prog: p.querySelector('.fw-prog i') });
+      UI.alt.addEventListener('input', () => { UI.altV.textContent = UI.alt.value; });
+      UI.alt.addEventListener('change', () => setAlt(+UI.alt.value));
+      UI.toggle.addEventListener('click', () => { showOn = !showOn; renderAll(); });
+      q('finale').addEventListener('click', () => { if (S && S.fw) S.fw.finale(); });
+      q('tall').addEventListener('click', () => { if (S && S.mode === 'air') { setShowDefault(); const v = airView(); v.dist = CTX.orbit.dist; v.phi = CTX.orbit.phi; tweenOrbit(v, 1.2); } });
+      UI.best.addEventListener('click', (e) => { const b = e.target.closest('.fw-spot'); if (b && S) { if (S.mode === 'street' && S.pick === +b.dataset.i) return; flyTo(+b.dataset.i); } });
+      UI.back = CityKit.el('<button class="fw-back" hidden>' + ICON_UP + T('ارجع للمنظر العلوي', 'Back to the aerial view') + '</button>');
+      UI.back.addEventListener('click', () => S && back());
+      document.body.appendChild(UI.back);
+      // النقر لاختيار نقطة العرض (بعتبة حركة كي لا يلتقط السحب)، والسحب في الشارع يلفّ النظر
+      const dom = ctx.renderer.domElement, active = new Map(); let down = null;
+      dom.addEventListener('pointerdown', (e) => {
+        active.set(e.pointerId, [e.clientX, e.clientY]);
+        down = active.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
+        if (S) S.tween = null;
+      });
+      dom.addEventListener('pointermove', (e) => {
+        const last = active.get(e.pointerId); if (!last) return;
+        if (S && S.mode === 'street' && active.size === 1) { S.look.yaw -= (e.clientX - last[0]) * 0.004; S.look.pitch = Math.max(-0.9, Math.min(0.9, S.look.pitch + (e.clientY - last[1]) * 0.004)); }
+        active.set(e.pointerId, [e.clientX, e.clientY]);
+      });
+      const up = (e) => {
+        const ok = down && down.id === e.pointerId && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 7 && e.type === 'pointerup';
+        active.delete(e.pointerId); if (ok) pickAt(e.clientX, e.clientY); down = null;
+      };
+      dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+      window.addEventListener('resize', viewOffset);
+      viewOffset();
+      // واجهة للاختبار الآليّ
+      window.__fw = {
+        wait: () => new Promise((res) => { const t = setInterval(() => { if (S && S.done && !S.flight) { clearInterval(t); pub(); res(window.__inspire_state); } }, 60); }),
+        tap: (x, y) => pickAt(x, y), setShow: (x, z) => { const b = S.city.idx.at(x, z); setShow(x, z, b ? b.h : 0, T('نقطة اخترتها', 'Your chosen point')); },
+        setAlt, fly: (i) => flyTo(i || 0), back: () => back(), finale: () => S.fw.finale(), tallest: () => setShowDefault(),
+        losCheck: () => S.best.every((b) => S.city.idx.los({ x: b.x, y: EYE, z: b.z }, S.show, LOS_STEP)),
+      };
+    },
+    onCity(ctx, city) {
+      CTX = ctx; mats(); night(ctx, city);
+      S = { city, gen: ++gen, mode: 'air', look: { yaw: 0, pitch: 0 }, flight: null, tween: null, done: false, best: [], pick: -1, markObjs: [], lastNow: performance.now(), next: 0.4, visCount: 0, ji: 0, pct: 0 };
+      ctx.orbit.enabled = true; ctx.camera.fov = 50; viewOffset();
+      makeSky(city.group, ctx);
+      buildSamples(city, ctx.R);
+      S.ring = new THREE.Mesh(new THREE.RingGeometry(0.975, 1, 160), MAT.ring); S.ring.rotation.x = -Math.PI / 2; S.ring.position.y = 1.2; city.group.add(S.ring);
+      S.marks = new THREE.Group(); city.group.add(S.marks);
+      S.beacon = new THREE.Group(); city.group.add(S.beacon);
+      S.fw = makeFireworks(city.group);
+      setShowDefault();
+      ctx.onFrame(frame);
+      tweenOrbit(airView(), 2.6);
+      ctx.ui.status(T('جاهز: ', 'Ready: ') + fmt(city.buildings.length) + T(' مبنى · ', ' buildings · ') + fmt(S.n) + T(' نقطة مشاهدة على الشوارع', ' street spots'));
+      pub();
+    },
+  });
+})();
+</script></body></html>

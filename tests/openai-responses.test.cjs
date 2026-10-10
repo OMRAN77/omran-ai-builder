@@ -279,7 +279,7 @@ test('٩. العميل: الموديل المرفوض يُمسح من الاخت
   const tools = fs.readFileSync(path.join(root, 'js/app-18-chat-tools.js'), 'utf8');
   assert.ok(tools.includes("if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); }"), 'العميل يمسح عند سطر الرجوع');
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('window.omranForgetModel(ev.prov'), 'في الحزمة');
-  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m041026b'), 'وسم كاش modes رُفع');
+  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m081026a'), 'وسم كاش modes رُفع');
 });
 
 test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب الذي رفض والموديل (OpenAI المباشر ثمّ OpenRouter) بدل JSON بلا اسم', async () => {
@@ -292,11 +292,10 @@ test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب ال�
     const final = log.find((e) => e.route === 'swallowed:chat/upstream-fail');
     assert.ok(direct && direct.message.startsWith('OpenAI مباشر · gpt-6-sol: '), direct && direct.message);
     assert.ok(/insufficient_quota/.test(direct.message), 'نصّ المزوّد باقٍ بعد الاسم');
-    /* v-owner-swap: بعد رفض المختار يكمل المالك على بدلاء بأدواتهم — رفض المختار نفسه يُسجَّل باسم حسابه وموديله في سطر التبديل،
-       والفشل النهائيّ يسمّي آخر من رفض (لا JSON بلا اسم). */
-    const swap = log.find((e) => /^swallowed:chat\/plan-fallback-402$/.test(e.route) && e.message.startsWith('OpenRouter · openai/gpt-6-sol: '));
-    assert.ok(swap, JSON.stringify(log.map((e) => e.route + ' ' + String(e.message).slice(0, 60))));
-    assert.ok(final && /^402 OpenRouter · \S+: /.test(final.message), final && final.message);
+    /* v-owner-solo (أمر المالك ٨ أكتوبر، بدل v-owner-swap): لا بدلاء بعد رفض المختار — الفشل النهائيّ هو GPT نفسه عبر الوسيط،
+       باسم حسابه وموديله (لا JSON بلا اسم)، ولا سطر تبديل إلى مزوّد آخر. */
+    assert.ok(!log.some((e) => /^swallowed:chat\/plan-fallback-/.test(e.route)), JSON.stringify(log.map((e) => e.route + ' ' + String(e.message).slice(0, 60))));
+    assert.ok(final && /^402 OpenRouter · openai\/gpt-6-sol: /.test(final.message), final && final.message);
   } finally { delete process.env.OPENAI_API_KEY; }
 });
 

@@ -34,6 +34,7 @@ function load(action) {
     case 'card-extract': return require('./_lib/card-extract.js');
     case 'text-swap': return require('./_lib/text-swap.js');
     case 'media-intent': return require('./_lib/media-intent.js'); // v-media-gate
+    case 'video-write': return require('./_lib/video-write.js'); // v-video-write: مساعد الكتابة داخل صانع الفيديو
     default: return null;
   }
 }
