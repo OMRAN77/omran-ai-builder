@@ -1259,6 +1259,24 @@ function omranLooksLikeScreenshot(file, dims, opts){
     return r >= 1.55 && r <= 2.45 && Math.max(w, h) >= 640;
   }catch(e){ return false; }
 }
+/* v-owner-ui-shot-client (لقطة المالك ١٠ أكتوبر، بعد #967): «احذف هذا المكان» مع لقطة من التطبيق كانت تذهب من هنا
+   إلى محرّر الصور (/api/maha-image) قبل أن تصل الخادم، فإصلاح الخادم (uiEditTurn) لم يُستدعَ قطّ. التعابير الثلاثة نسخة
+   حرفيّة من api/_lib/owner-carry.js (اختبار owner-ui-shot يثبت التطابق)، وفوقها شرط: المرفق لقطة شاشة أو النصّ يسمّي
+   عنصر واجهة صريحًا — فصورة كاميرا مع «شيل الشجرة هذي» تبقى تعديل صورة. للمالك وحده. */
+const OMRAN_UI_VERB_RE = /(?:احذف|حذف|شيل|امسح|عدّ?ل|غيّ?ر|كبّ?ر|صغّ?ر|انقل|حرّ?ك|لوّ?ن|صلّ?ح|أصلح|اصلح|خبّ?ي|أخف|اخف|ضيف|أضف|اضف|وسّ?ط|ابعد|قرّ?ب|delete|remove|hide|move|fix|change)/i;
+const OMRAN_UI_REF_RE = /(?:هذا|هذي|هذه|هاذا|هاذي|هنا|ذا\s|المكان|الزر|زر\s|زرّ|القائمة|قائمة|القسم|الشريط|الأيقونة|ايقونة|السهم|العنصر|البلوك|الخانة|الإطار|الاطار|الكلمة|النص|الشاشة|الواجهة|التطبيق|button|menu|section|element|icon|bar)/i;
+const OMRAN_UI_IMG_RE = /(?:الصور[ةه]|صورتي|صوره|صورة|الخلفي[ةه]\s+من|من\s+الصور|في\s+الصور|الشخص|الوجه|فوتوشوب|photo|picture|image|background\s+from)/i;
+const OMRAN_UI_NAMED_RE = /(?:الزر|زرّ|زر\s|القائمة|القسم|الشريط|الأيقونة|ايقونة|العنصر|الخانة|الشاشة|الواجهة|التطبيق|button|menu|section|element|icon)/i;
+function omranOwnerUiShotTurn(text, att){
+  try{
+    if(String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return false;
+    if(!att || !att.isImage || att._fromMemory) return false;
+    const s = String(text || '');
+    if(!s.trim() || s.length > 600) return false;
+    if(!OMRAN_UI_VERB_RE.test(s) || !OMRAN_UI_REF_RE.test(s) || OMRAN_UI_IMG_RE.test(s)) return false;
+    return !!(att._screenshot || OMRAN_UI_NAMED_RE.test(s));
+  }catch(e){ return false; }
+}
 async function omranIngestFiles(files, opts){
   files = Array.from(files || []);
   opts = opts || {};
@@ -3440,10 +3458,15 @@ async function __sendPromptCore(){
       __mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : (__MEDIA_MAKE_RE.test(text) ? await omranMediaIntent(text) : null); /* v-chat-fast */
     }
   }catch(e){ __mediaLane = null; }
+  /* v-owner-ui-shot-client: لقطة المالك + أمر على عنصر فيها = تعديل التطبيق — لا صور ولا فيديو ولا إعلان في هذا الدور،
+     فيصل الطلب للمحادثة حيث يقرأ المزوّد الكود ويعدّله (ملاحظة UI_SHOT_NOTE في الخادم). */
+  const __ownerUiShot = omranOwnerUiShotTurn(text, pendingAttachments.filter(a => a && a.isImage).slice(-1)[0]);
+  if(__ownerUiShot) __mediaLane = 'none';
   window.__mediaGate = __mediaLane; /* للتشخيص */
   // 🎬 v525: اكتشاف طلب إنشاء فيديو → فتح صانع الفيديو مباشرة
   // إذا فيه صورة: نحلّلها بـ AI ليطلع prompt إنجليزي دقيق بدل نص المستخدم الخام
-  const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
+  // v-video-ad-route: «سوّ لي فيديو إعلان لمطعم» — «سوّ/سو» لم تكن في القائمة فيسقط الطلب لمسار الإعلان فيخرج صورة إعلان بدل فيديو.
+  const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:اعمل|اصنع|سوّي|سوي|سولي|سوّ|سو|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
   const __VID_Q_RE    = /^(?:كيف|ما|وش|ايش|أيش|هل|لماذا|why|how|what|can\s+i|where)\s|[؟?]\s*$/;
   if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
     const __heroAtt = pendingAttachments.find(function(a){ return a.isImage && a.dataUrl; });
@@ -3451,7 +3474,7 @@ async function __sendPromptCore(){
     /* v-video-photo-identity: «سوّي فيديو لي وأنا أمشي في دبي» + صورة كان يُرمى فيها كلام المستخدم كلّه
        ويُستبدل بوصف آليّ للصورة من عشرين كلمة — فيخرج فيديو لا يطلبه، وأمره يصف الشخص نصًّا بدل أن يحرّكه.
        كلام المستخدم يبقى أمر الفيديو متى قال شيئًا غير «سوّ فيديو من الصورة»؛ الوصف الآليّ لذاك وحده. */
-    const __VID_FILLER = /^(?:اعمل|اصنع|سوّي|سوي|سولي|سوّلي|سويلي|سوّيلي|سوولي|اسوي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|ابغا|أبغا|ابي|أبي|ابا|أبا|نبي|نبغى|ودي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع|صنعلي|لي|ليا|فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|من|منها|هذي|هذه|هذا|ذي|هاي|هاذي|بهذي|لهذي|حق|حقي|حقتي|عن|لو|سمحت|فضلك|ممكن|تكفى|تكفا|بليز|يعافيك|يخليك|create|make|generate|produce|a|an|the|of|from|me|my|this|that|photo|pic|image|picture|video|clip|film|reel|short|animation|please|for|it)$/i;
+    const __VID_FILLER = /^(?:اعمل|اصنع|سوّي|سوي|سولي|سوّ|سو|سوّلي|سويلي|سوّيلي|سوولي|اسوي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|ابغا|أبغا|ابي|أبي|ابا|أبا|نبي|نبغى|ودي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع|صنعلي|لي|ليا|فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|من|منها|هذي|هذه|هذا|ذي|هاي|هاذي|بهذي|لهذي|حق|حقي|حقتي|عن|لو|سمحت|فضلك|ممكن|تكفى|تكفا|بليز|يعافيك|يخليك|create|make|generate|produce|a|an|the|of|from|me|my|this|that|photo|pic|image|picture|video|clip|film|reel|short|animation|please|for|it)$/i;
     const __VID_PHOTO_WORD = /^[وبل]{0,2}(?:ال|هال|ل)?صور(?:ة|ه|تي|ي|ته)?$/;
     /* كلمة حقيقيّة = حرفان على الأقلّ (عربيّ/لاتينيّ)، ليست حشوًا ولا «الصورة» بأشكالها — «رقص»/«بحر» كلام، والرموز لا. */
     const __vidOwnWordsOf = function(t){
@@ -3913,7 +3936,11 @@ function __friendlyErr(e){
     // كانت الكلمات — «وين لوجو/هات الشعار» بنص المحادثة تروح للمزود يكمل
     // على نفس الموضوع من السياق.
     const __freshChat = cur.messages.filter(m => m.role === 'user').length <= 1;
-    const __isLogoFetch = __freshChat && __logoFetchRe.test(text) && !__logoDesignRe.test(text) && !__logoNewRe.test(text) && !__logoRefRe.test(text) && !(cur && cur.code);
+    /* v-owner-logo-place (مسبار التوجيه ١٠ أكتوبر): المالك «حط شعار الدائرة الاقتصادية في الصفحة الرئيسية» = تعديل في تطبيقه،
+       لا بحث صور شعارات — مكان من واجهة التطبيق في الطلب يُغلق بوّابة الجلب له. */
+    const __ownerAppPlace = String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran'
+      && /(?:الصفح[ةه]\s+الرئيسي[ةه]|التطبيق|الواجه[ةه]|الإعدادات|الاعدادات|القائم[ةه]|الشريط|الهيدر|الفوتر|الزر|زرّ)/i.test(text);
+    const __isLogoFetch = __freshChat && __logoFetchRe.test(text) && !__logoDesignRe.test(text) && !__logoNewRe.test(text) && !__logoRefRe.test(text) && !(cur && cur.code) && !__ownerAppPlace;
     // v-design-img-followup (لقطات عمران ٢٧ أغسطس): «عطني صورة التصميم/الفكرة»
     // بعد نقاش تصميم كان يُخطف لبحث صور حقيقية فيرجع صور أجنبية لا علاقة لها —
     // الإشارة لتصميمٍ من المحادثة نفسها ليست بحثًا: تمر للنموذج فيرسمها.
@@ -4318,7 +4345,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
+    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !/(?:فيديو|ڤيديو|video|clip|reel)/i.test(text) /* v-video-ad-route: إعلان فيديو ليس صورة إعلان */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
       // v695: إعلان → /api/tools?action=adimage (gpt-image-2) بجودة احترافية حقيقية
       const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
@@ -5781,8 +5808,8 @@ DESIGN RULES (non-negotiable):
     }
 
     // 🔍 قراءة وتحليل قوي للصور المرفقة: تعليمة رؤية شاملة تُحقن فقط عند وجود صورة
-    if(imageAttachments.length && !cur.adMode && imageAttachments.some(a => a && a._screenshot)){
-      // v-visual-assist: دور المساعد البصري للقطات الواجهات
+    if(imageAttachments.length && !cur.adMode && !__ownerUiShot && imageAttachments.some(a => a && a._screenshot)){
+      // v-visual-assist: دور المساعد البصري للقطات الواجهات (لا لقطة المالك التي يطلب تعديلها — تلك تعديل كود لا إرشاد)
       apiMessages.push({role: 'system', content: lang === 'ar'
         ? 'أنت المساعد البصري داخل تطبيق عمران AI. المرفق لقطة شاشة لواجهة. القواعد:\n• اعتمد على ما يظهر في اللقطة فقط، لا على ذاكرتك عن شكل البرنامج في أجهزة أخرى.\n• احفظ سياق المحادثة كاملًا: نوع الجهاز (جوال أو كمبيوتر)، لغة الواجهة، اسم البرنامج، هدف المستخدم، وكل خطوة سبق أن أعطيتها — حتى لو لم يذكرها في رسالته الأخيرة. الرسالة القصيرة مثل «ما فهمت» تعني إعادة الشرح لنفس الموقف لا بدء موضوع جديد.\n• إذا كان الجهاز جوالًا فممنوع ذكر اختصارات الكيبورد (Ctrl / Alt / Shift / Delete) — أعطِ البديل باللمس من القوائم.\n• إذا كانت الواجهة بالعربية فاذكر أسماء الأزرار بالعربية كما تظهر فيها.\n• اذكر اسم الزر بنصه الحرفي كما يظهر في اللقطة، ثم موضعه على الشاشة (أعلى اليمين، أسفل اليسار...).\n• إذا كانت الميزة التي يسأل عنها غير موجودة في هذا البرنامج فقل ذلك صراحةً في أول سطر، ثم اذكر البرنامج الذي فيه الميزة فعلًا. «غير موجودة» جواب صحيح ومقبول.\n• ممنوع اقتراح أداة وظيفتها مختلفة لمجرد تشابه الاسم أو الأيقونة أو قربها في القائمة.\n• ممنوع منعًا باتًا توجيه المستخدم إلى أداة تحذف أو تغيّر المحتوى نهائيًا (Redact / Flatten / Apply / Delete) كبديل عن ميزة سأل عنها — تُذكر فقط إذا طلبها بنفسه صراحةً.\n• خطوة واحدة في كل رد، ثم اطلب لقطة جديدة للتحقق. إذا بدت الشاشة الجديدة كالسابقة فالخطوة فشلت — أعطِ طريقة بديلة لا نفس الكلام.\n• إذا لم تجد العنصر في اللقطة فقل ذلك واطلب لقطة أوضح — ممنوع «دوّر على» أو «جرّب تضغط» أو «أحيانًا». الفشل الممنوع هنا هو إرسال المستخدم إلى زر خاطئ، لا الاعتراف بعدم وجود الميزة.'
         : 'You are the visual assistant inside the Omran AI app. Rely ONLY on what is visible in the screenshot, never on your memory of how the program looks elsewhere. Keep the FULL conversation context: device type, UI language, app name, the user goal, and every step you already gave — a short message like "I do not understand" means re-explain the same situation, not start a new topic. On a phone, NEVER give keyboard shortcuts (Ctrl / Alt / Shift / Delete) — give the touch alternative from the menus. Quote button labels verbatim as they appear, in the UI language, then give their position on screen. If the feature the user asks about does not exist in this program, say so plainly in the first line and name the program that does have it — "it does not exist here" is a correct answer. Never suggest a different-purpose tool because its name, icon or menu position looks similar, and never point the user to a destructive tool (Redact / Flatten / Apply / Delete) as a substitute for a feature they asked about. One step per reply, then ask for a fresh screenshot; if the new screen looks unchanged the step failed — give a different route, not the same words. If you cannot find the element in the screenshot, say so and ask for a clearer one — never "look around" or "try tapping". The forbidden failure here is sending the user to the wrong button, not admitting a feature is missing.'});

@@ -34,10 +34,12 @@ const UI_VERB_RE = /(?:احذف|حذف|شيل|امسح|عدّ?ل|غيّ?ر|كب�
 const UI_REF_RE = /(?:هذا|هذي|هذه|هاذا|هاذي|هنا|ذا\s|المكان|الزر|زر\s|زرّ|القائمة|قائمة|القسم|الشريط|الأيقونة|ايقونة|السهم|العنصر|البلوك|الخانة|الإطار|الاطار|الكلمة|النص|الشاشة|الواجهة|التطبيق|button|menu|section|element|icon|bar)/i;
 const IMG_WORD_RE = /(?:الصور[ةه]|صورتي|صوره|صورة|الخلفي[ةه]\s+من|من\s+الصور|في\s+الصور|الشخص|الوجه|فوتوشوب|photo|picture|image|background\s+from)/i;
 function uiEditTurn(text) {
-  const s = String(text || '');
+  /* v-owner-ui-shot-client: العميل يُلحق «[مرفقات: image.png]» بنصّ الدور — اسم الملفّ (image) كان يُقرأ كلمة صورة
+     فيفشل الفحص حين يصل الطلب أخيرًا من العميل. يُفحص كلام المالك وحده. */
+  const s = String(text || '').replace(/\n*\[[^\[\]\n]{1,30}:\s[^\[\]\n]*\]\s*$/, '');
   return !!s.trim() && s.length <= 600 && UI_VERB_RE.test(s) && UI_REF_RE.test(s) && !IMG_WORD_RE.test(s);
 }
 const UI_SHOT_NOTE = '\n\n[لقطة من التطبيق — هذا الدور]: المالك أرسل لقطة من واجهة تطبيقه ويطلب تغيير العنصر الظاهر فيها في الكود — ليس تعديل الصورة (أدوات الصور مرفوعة من هذا الدور). '
   + 'حدّد العنصر في المستودع بـread_github (ابحث بنصّه الظاهر أو معرّفه) ثمّ نفّذ التغيير بـedit_github وأعطِه رابط طلب السحب. إن لم تتعرّف على العنصر في اللقطة فصِف ما تراه واسأله سؤالًا واحدًا.';
 
-module.exports = { stalledPlan, CARRY_NOTE, INTENT_RE, ACTION_RE, uiEditTurn, UI_SHOT_NOTE };
+module.exports = { stalledPlan, CARRY_NOTE, INTENT_RE, ACTION_RE, uiEditTurn, UI_SHOT_NOTE, UI_VERB_RE, UI_REF_RE, IMG_WORD_RE }; // الثلاثة الأخيرة: نسختها في العميل (js/app-09-attach.js) تُطابَق في الاختبار
