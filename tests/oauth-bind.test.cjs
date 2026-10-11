@@ -2,9 +2,11 @@
 /* v-oauth-bind (ثغرة استيلاء على الحساب — موافقة المالك):
    ١) دخول Google: state يختارها البادئ. مهاجم يرسل للضحيّة رابط google-start بـstate من عنده (أو بـ&app=1)،
       الضحيّة تكمل في جوجل، الكولباك يودع جلستها (٣٠ يومًا) تحت db/oauth-claim/<state>، والمهاجم يستلمها
-      بـoauth-claim من جهازه. الآن الإيداع يحمل شبكة من أكمل الدخول، والاستلام من شبكة أخرى = 404 pending.
+      بـoauth-claim من جهازه. الآن الإيداع يحمل شبكة من أكمل الدخول، والاستلام من شبكة أخرى = 200 {error:'network_changed'}
+      بلا رمز ويُحذف الإيداع (المراجعة oauth-1: كان 404 pending صامتًا يعلّق الغلاف عشر دقائق)، ثمّ 404.
    ٢) ربط Gmail: state كانت رمز الجلسة نفسه — يمرّ في روابط جوجل، ومن أكمل رابطًا برمز غيره رُبطت Gmail الخاصّة
-      به بحساب ذلك الغير. الآن تذكرة قصيرة العمر تُسكّ بنداء موثَّق، تُستهلك مرّة، ومن الشبكة نفسها.
+      به بحساب ذلك الغير. الآن تذكرة قصيرة العمر تُسكّ بنداء موثَّق، تُستهلك مرّة، ومن الشبكة نفسها — دائمًا، فمفتاح طوارئ
+      الدخول لا يمسّها (oauth-4)، واختلاف الشبكة يُبلَّغ network_changed لا session_expired (oauth-2).
    على المعالجات الحقيقيّة (والموجّه api/system.js لسكّ التذكرة) بـKV في الذاكرة وجوجل مستبدَلة. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -104,20 +106,28 @@ for (const app of [false, true]) {
     assert.equal(r2.code, 302);
     if (app) assert.equal(r2.headers.Location, 'https://example.test/login-done.html');
     else assert.match(r2.headers.Location, /[?&]gtoken=/, 'الضحيّة تستلم جلستها في متصفّحها كما كانت');
-    const atk = await claimAs(S, ATTACKER);
-    assert.equal(atk.code, 404, 'المهاجم من شبكة أخرى لا يستلم شيئًا');
-    assert.deepEqual(atk.j, { error: 'pending' });
-    assert.ok(!atk.j.token);
     const dep = JSON.parse(store.get('db/oauth-claim/' + S));
     assert.ok(dep.token, 'الإيداع باقٍ (تطبيق الشاشة الرئيسيّة والمعاينات يحتاجانه)');
     assert.equal(dep.net, VICTIM, 'الإيداع يحمل شبكة من أكمل الدخول');
-    const noIp = await claimAs(S, null);
-    assert.equal(noIp.code, 404, 'بلا عنوان = لا تسليم');
-    // صاحب الجهاز نفسه (الشبكة نفسها) يستلم — مرّة واحدة.
-    const own = await claimAs(S, VICTIM);
+    const atk = await claimAs(S, ATTACKER);
+    assert.equal(atk.code, 200, 'خطأ يعرضه العميل (claimFail) لا انتظار صامت');
+    assert.deepEqual(atk.j, { error: 'network_changed' }, 'المهاجم من شبكة أخرى لا يستلم رمزًا');
+    assert.ok(!store.has('db/oauth-claim/' + S), 'الإيداع حُذف: الجلسة لا تبقى في KV لمن يسأل من شبكة أخرى');
+    const atk2 = await claimAs(S, ATTACKER);
+    assert.equal(atk2.code, 404);
+    assert.deepEqual(atk2.j, { error: 'pending' });
+    const S0 = HEX(16);
+    await googleLogin({ state: S0, app, ip: VICTIM });
+    const noIp = await claimAs(S0, null);
+    assert.ok(!noIp.j.token, 'بلا عنوان = لا تسليم');
+    assert.deepEqual(noIp.j, { error: 'network_changed' });
+    // صاحب الجهاز نفسه (الشبكة نفسها) يستلم إيداعه — مرّة واحدة.
+    const S2 = HEX(16);
+    await googleLogin({ state: S2, app, ip: VICTIM });
+    const own = await claimAs(S2, VICTIM);
     assert.equal(own.code, 200);
     assert.equal(auth.verifyToken(own.j.token), 'g_victim@gmail.com');
-    const again = await claimAs(S, VICTIM);
+    const again = await claimAs(S2, VICTIM);
     assert.equal(again.code, 404, 'استلام واحد');
   });
 }
@@ -136,20 +146,25 @@ test('٣. IPv6: عنوان آخر في الـ/64 نفسها يستلم، و/64 �
   const S = HEX(16);
   await googleLogin({ state: S, app: true, ip: '2001:db8:abcd:12:1111:2222:3333:4444' });
   const other = await claimAs(S, '2001:db8:abcd:13::1');
-  assert.equal(other.code, 404, '/64 أخرى');
-  const same = await claimAs(S, '2001:db8:abcd:12::99');
+  assert.deepEqual(other.j, { error: 'network_changed' }, '/64 أخرى: لا رمز');
+  const S2 = HEX(16);
+  await googleLogin({ state: S2, app: true, ip: '2001:db8:abcd:12:1111:2222:3333:4444' });
+  const same = await claimAs(S2, '2001:db8:abcd:12::99');
   assert.equal(same.code, 200, 'الشبكة نفسها (الجهاز يدوّر عنوانه داخل /64)');
   assert.equal(auth.verifyToken(same.j.token), 'g_victim@gmail.com');
 });
 
-test('٤. إيداع قديم بلا net (قبل النشر) = 404 pending، وإيداع الفشل كما كان', async () => {
+test('٤. إيداع قديم بلا net (قبل النشر) = network_changed بلا رمز ثمّ 404 (إعادة المحاولة تصلحه)، وإيداع الفشل كما كان', async () => {
   store.clear();
   const S = HEX(16);
   store.set('db/oauth-claim/' + S, JSON.stringify({ token: 'tok', user: 'u', ts: Date.now() }));
   const c = await claimAs(S, VICTIM);
-  assert.equal(c.code, 404);
-  assert.deepEqual(c.j, { error: 'pending' });
-  assert.ok(store.has('db/oauth-claim/' + S), 'لا يُحذف — ينتهي بمهلته');
+  assert.equal(c.code, 200);
+  assert.deepEqual(c.j, { error: 'network_changed' });
+  assert.ok(!store.has('db/oauth-claim/' + S), 'حُذف');
+  const c2 = await claimAs(S, VICTIM);
+  assert.equal(c2.code, 404);
+  assert.deepEqual(c2.j, { error: 'pending' });
   const E = HEX(16);
   store.set('db/oauth-claim/' + E, JSON.stringify({ error: 'access_denied', ts: Date.now() }));
   const e = await claimAs(E, ATTACKER);
@@ -157,21 +172,30 @@ test('٤. إيداع قديم بلا net (قبل النشر) = 404 pending، و�
   assert.deepEqual(e.j, { error: 'access_denied' });
 });
 
-test('٥. مفتاح الطوارئ OAUTH_CLAIM_NET_BIND=off: الاستلام بلا فحص شبكة (يُقرأ عند النداء)', async () => {
+test('٥. مفتاح الطوارئ OAUTH_CLAIM_NET_BIND (off/0/false/no، بلا حساسيّة حالة ومسافات): الاستلام بلا فحص شبكة (يُقرأ عند النداء)', async () => {
   store.clear();
-  const S = HEX(16);
-  store.set('db/oauth-claim/' + S, JSON.stringify({ token: 'tok', user: 'u', ts: Date.now() }));
-  process.env.OAUTH_CLAIM_NET_BIND = 'off';
   try {
-    const c = await claimAs(S, ATTACKER);
-    assert.equal(c.code, 200);
-    assert.equal(c.j.token, 'tok');
+    for (const v of ['off', ' OFF ', '0', 'false', 'False', 'no', ' No ']) {
+      const S = HEX(16);
+      store.set('db/oauth-claim/' + S, JSON.stringify({ token: 'tok', user: 'u', ts: Date.now() }));
+      process.env.OAUTH_CLAIM_NET_BIND = v;
+      const c = await claimAs(S, ATTACKER);
+      assert.equal(c.code, 200, JSON.stringify(v));
+      assert.equal(c.j.token, 'tok', JSON.stringify(v) + ' يوقف الفحص');
+    }
+    for (const v of ['on', '1', 'disabled', '']) {
+      const S = HEX(16);
+      store.set('db/oauth-claim/' + S, JSON.stringify({ token: 'tok', user: 'u', ts: Date.now() }));
+      process.env.OAUTH_CLAIM_NET_BIND = v;
+      const c = await claimAs(S, ATTACKER);
+      assert.deepEqual(c.j, { error: 'network_changed' }, JSON.stringify(v) + ' لا يوقفه');
+    }
   } finally {
     delete process.env.OAUTH_CLAIM_NET_BIND;
   }
   const S2 = HEX(16);
   store.set('db/oauth-claim/' + S2, JSON.stringify({ token: 'tok2', user: 'u', ts: Date.now() }));
-  assert.equal((await claimAs(S2, ATTACKER)).code, 404, 'بعد إعادته: الفحص عاد');
+  assert.deepEqual((await claimAs(S2, ATTACKER)).j, { error: 'network_changed' }, 'بعد إعادته: الفحص عاد');
 });
 
 // ——— ربط Gmail ———
@@ -245,9 +269,28 @@ test('٩. المهاجم يسكّ تذكرته ويرسل الرابط للضح�
   const atkTok = await seedUser('attacker');
   const t = (await mint(atkTok, ATTACKER)).j.ticket;
   const r = await gmailCallback(t, 'victim-code', VICTIM);
-  assert.equal(r.headers.Location, 'https://example.test/?emailerror=session_expired');
+  assert.equal(r.headers.Location, 'https://example.test/?emailerror=network_changed', 'اختلاف الشبكة باسمه (قالب emLinkError القائم)');
   assert.equal((await auth.getUser('attacker')).emailAssist, undefined, 'Gmail الضحيّة لم تُربط بحساب المهاجم');
   assert.ok(!store.has('db/gmail-link/' + t), 'والتذكرة احترقت فلا تُعاد');
+  const again = await gmailCallback(t, 'victim-code', ATTACKER);
+  assert.equal(again.headers.Location, 'https://example.test/?emailerror=session_expired', 'المحترقة/المجهولة = session_expired');
+});
+
+test('٩ج. فحص شبكة تذكرة Gmail لا يتبع مفتاح طوارئ الدخول: OAUTH_CLAIM_NET_BIND=off لا يعيد ثغرة الربط', async () => {
+  store.clear();
+  const atkTok = await seedUser('attacker');
+  const t = (await mint(atkTok, ATTACKER)).j.ticket;
+  process.env.OAUTH_CLAIM_NET_BIND = 'off';
+  try {
+    const r = await gmailCallback(t, 'victim-code', VICTIM);
+    assert.equal(r.headers.Location, 'https://example.test/?emailerror=network_changed');
+    assert.equal((await auth.getUser('attacker')).emailAssist, undefined, 'لا ربط مع المفتاح off');
+    const t2 = (await mint(atkTok, OFFICE)).j.ticket;
+    const ok = await gmailCallback(t2, 'alice-code', OFFICE);
+    assert.equal(ok.headers.Location, 'https://example.test/?emailconnected=1', 'الشبكة نفسها تربط كما كانت');
+  } finally {
+    delete process.env.OAUTH_CLAIM_NET_BIND;
+  }
 });
 
 test('٩ب. الهجوم كما كان: رمز جلسة المهاجم نفسه في state لا يربط Gmail الضحيّة بحسابه', async () => {
@@ -277,5 +320,21 @@ test('١١. الواجهة والحزمة: state تذكرة مسكوكة لا ر
     assert.ok(s.slice(i, i + 80).includes('encodeURIComponent(ticket)'), f + ': التذكرة هي state');
     assert.ok(s.includes("'/api/system?action=email-link-ticket'"), f + ': تُسكّ بنداء موثَّق');
     assert.ok(s.includes("window.open(location.origin + emStartUrl, '_blank')"), f + ': الغلاف يفتح سفاري كما كان');
+  }
+});
+
+test('١٢. العميل يعرض network_changed بلا تعديل ولا نصّ جديد: 200 + error ⇒ claimFail ⇒ القالب العامّ «تعذر تسجيل الدخول بجوجل (…)»، وربط Gmail بقالب emLinkError', () => {
+  // تشغيل الحزمة الحقيقيّة (ui-shot --eval، oauth-claim محاكى بـ{error:'network_changed'}) أظهر النصّ في شاشة الدخول ومسح الانتظار.
+  for (const f of ['js/app-01-boot-auth.js', 'js/app.bundle.js']) {
+    const s = fs.readFileSync(path.join(root, f), 'utf8');
+    const i = s.indexOf('action=oauth-claim');
+    assert.ok(i > 0, f);
+    const poll = s.slice(i, i + 1400);
+    assert.ok(/if\(r\.ok\)\{/.test(poll) && poll.includes('} else if(d && d.error) claimFail(d.error);'), f + ': ٢٠٠ بخطأ يصل claimFail');
+    assert.ok(s.includes("'تعذر تسجيل الدخول بجوجل (' + gerror + ')'"), f + ': القالب العامّ يعرض الرمز');
+    assert.ok(!s.includes('network_changed'), f + ': لا مفتاح ولا نصّ خاصّ');
+  }
+  for (const f of ['js/app-12-studios.js', 'js/app.bundle.js']) {
+    assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);"), f);
   }
 });

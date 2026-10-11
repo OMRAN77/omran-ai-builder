@@ -33,9 +33,11 @@ module.exports = async (req, res) => {
     if (error) return fail(String(error));
     if (!code || !state) return fail('missing_params');
     // v-oauth-bind: state كانت رمز الجلسة نفسه — فمن أكمل رابطًا يحمل رمز غيره رُبطت Gmail الخاصّة به بحساب ذلك
-    // الغير. الآن تذكرة تُستهلك مرّة (عشر دقائق) وتُعيد صاحبها وحده، ومن الشبكة التي سكّتها؛ وإلّا الخطأ القائم.
-    const username = await takeTicket(String(state), req);
-    if (!username) return fail('session_expired');
+    // الغير. الآن تذكرة تُستهلك مرّة (عشر دقائق) وتُعيد صاحبها وحده، ومن الشبكة التي سكّتها؛ وإلّا الخطأ القائم —
+    // network_changed لاختلاف الشبكة وحده (قالب emLinkError نفسه، بلا نصّ جديد)، وsession_expired لغيره.
+    const why = {};
+    const username = await takeTicket(String(state), req, why);
+    if (!username) return fail(why.reason || 'session_expired');
 
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',

@@ -86,6 +86,10 @@ async function tombstoneLeadsTo(rec, targetKey) {
 // ثابت واحد بدل ثلاثة أرقام متفرّقة في الرسائل والشروط.
 const MIN_PASSWORD = 8;
 
+// تغيير الاسم: حدّان لكلّ حساب في ٢٤ ساعة متحرّكة (renameLog في السجلّ) — انظر changeUsername.
+const RENAME_MAX = 2;
+const RENAME_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 // مرسِل البريد. onboarding@resend.dev هو مرسِل Resend التجريبيّ ولا يصل إلّا
 // لصاحب الحساب نفسه — أي أنّ رسائل الاسترجاع والرموز لا تصل مستخدميك، ويرجع
 // الكود ok:true لأنّ Resend قبلت الطلب. فشل صامت تامّ.
@@ -179,6 +183,7 @@ async function moveLiveCounters(oldKey, newKey, user) {
   if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
   await require('./_usage.js').moveTodayTallies(oldKey, newKey);
   await require('./_dailyQuota.js').moveToday(oldKey, newKey); // v-farm-gate: حصص أدوات الصور والفيديو اليوميّة كانت تتصفّر بتغيير الاسم
+  await require('./image-giveback.js').moveToday(oldKey, newKey); // ردود الحارس و«لم يُنفَّذ» اليوم — كانت تتجدّد مع كلّ اسم
   await require('./cost-meter.js').moveMonthCosts(oldKey, newKey);
 }
 
@@ -539,32 +544,56 @@ module.exports = async (req, res) => {
         res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
         return;
       }
-      // v-name-reuse: رمز اسم ميّت (غيّره صاحبه أو حذفه المالك) لا ينقل شيئًا.
-      const user = await getUser(oldKey);
-      if (!user || user.deleted) {
-        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
+      // المراجعة العدائيّة: قفل لكلّ حساب طوال التغيير. بلا قفل يقرأ طلبان متوازيان السجلّ الحيّ نفسه فيصير الحساب اسمين حيّين
+      // (والرصيد منسوخ في كلٍّ منهما من مرآة السجلّ)، ويتجاوزان حدّ التغييرات معًا. المشغول = ٤٢٩ القائم.
+      const { kvSetIfAbsent, kvDel } = require('./kv.js');
+      const lockKey = 'db/rename-lock/' + encodeURIComponent(oldKey);
+      if (!(await kvSetIfAbsent(lockKey, '1', 30))) {
+        res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + 1 + ' دقيقة', 'Too many attempts, try again in ' + 1 + ' min') });
         return;
       }
-      const clash = await getUser(newKey);
-      const ownPrev = Boolean(clash && await tombstoneLeadsTo(clash, oldKey));
-      // مفتاح Google لصاحبه وحده: حسابه (googleAuth) ببريده نفسه، راجعًا إلى مفتاحه بسلسلة شواهده.
-      const ownGoogleKey = ownPrev && user.googleAuth === true && newKey === 'g_' + String(user.email || '').trim().toLowerCase();
-      if (isGoogleKey(newKey) && !ownGoogleKey) {
-        res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
-        return;
+      try {
+        // v-name-reuse: رمز اسم ميّت (غيّره صاحبه أو حذفه المالك) لا ينقل شيئًا.
+        const user = await getUser(oldKey);
+        if (!user || user.deleted) {
+          res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
+          return;
+        }
+        const clash = await getUser(newKey);
+        const ownPrev = Boolean(clash && await tombstoneLeadsTo(clash, oldKey));
+        // مفتاح Google لصاحبه وحده: حسابه (googleAuth) ببريده نفسه، راجعًا إلى مفتاحه بسلسلة شواهده.
+        const ownGoogleKey = ownPrev && user.googleAuth === true && newKey === 'g_' + String(user.email || '').trim().toLowerCase();
+        if (isGoogleKey(newKey) && !ownGoogleKey) {
+          res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
+          return;
+        }
+        if (clash && !ownPrev) {
+          res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
+          return;
+        }
+        // المراجعة العدائيّة (img422-1، farm-6، INT-1): التغيير بالرمز وحده وبلا حدّ كان يصفّر في حلقةٍ كلَّ ما يُعدّ بالاسم ولم يُنقل.
+        // حدّان في ٢٤ ساعة متحرّكة لكلّ حساب، في السجلّ نفسه (renameLog — النسخ أدناه ينقله مع الحساب)؛ الثالث ٤٢٩ القائم والسجلّ
+        // لا يُمسّ. المالك معفى.
+        const now = Date.now();
+        const renameLog = (Array.isArray(user.renameLog) ? user.renameLog : []).map(Number).filter((t) => Number.isFinite(t) && now - t < RENAME_WINDOW_MS);
+        if (renameLog.length >= RENAME_MAX && !require('./_owner.js').isOwnerName(oldKey)) {
+          const mins = Math.max(1, Math.ceil((Math.min(...renameLog) + RENAME_WINDOW_MS - now) / 60000));
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
+          return;
+        }
+        const movedUser = Object.assign({}, user, { username: String(newUsername).trim() });
+        // v-rename-move: الأسماء السابقة — اشتراك أو جلسة دفع بدأت بالاسم القديم تُعرف لصاحبها بعد التغيير.
+        movedUser.prevUsernames = (Array.isArray(user.prevUsernames) ? user.prevUsernames : []).filter((x) => x !== newKey).concat([oldKey]).slice(-10);
+        movedUser.renameLog = renameLog.concat([now]);
+        await putUser(newKey, movedUser);
+        // Free up the old key so it can't be logged into or re-claimed while pointing here.
+        await putUser(oldKey, { deleted: true, movedTo: newKey });
+        try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
+        _banMemo.delete(oldKey); _banMemo.delete(newKey); // الشاهد جلسة ميّتة الآن (isBanned) — لا ينتظر ذاكرة الخمس ثوانٍ
+        res.status(200).json({ ok: true, token: makeToken(newKey), username: movedUser.username, avatar: movedUser.avatar || null });
+      } finally {
+        try { await kvDel(lockKey); } catch (e) { logError('auth:rename-unlock', e); }
       }
-      if (clash && !ownPrev) {
-        res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
-        return;
-      }
-      const movedUser = Object.assign({}, user, { username: String(newUsername).trim() });
-      // v-rename-move: الأسماء السابقة — اشتراك أو جلسة دفع بدأت بالاسم القديم تُعرف لصاحبها بعد التغيير.
-      movedUser.prevUsernames = (Array.isArray(user.prevUsernames) ? user.prevUsernames : []).filter((x) => x !== newKey).concat([oldKey]).slice(-10);
-      await putUser(newKey, movedUser);
-      // Free up the old key so it can't be logged into or re-claimed while pointing here.
-      await putUser(oldKey, { deleted: true, movedTo: newKey });
-      try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
-      res.status(200).json({ ok: true, token: makeToken(newKey), username: movedUser.username, avatar: movedUser.avatar || null });
       return;
     }
 
@@ -1037,7 +1066,10 @@ async function isBanned(username) {
     // (~1.8s total) when a record is missing. That is fine on a login form and
     // ruinous on a path every single chat message walks through.
     const user = await getUserOnce(username);
-    v = !!(user && user.banned);
+    // المراجعة العدائيّة (farm-1، img422-2): الشاهد (تغيير الاسم {deleted, movedTo} أو حذف المالك) جلسة ميّتة كالحظر —
+    // رمز ما قبل التغيير يبقى صالحًا ٣٠ يومًا وحصصه تبدأ من صفر (moveToday يحذف عدّادات القديم)، فكلّ تغيير اسم كان يهب
+    // يومًا جديدًا من الصور المدفوعة، والمسقوف (حدّ 0) معه. الاسم الحيّ لحساب غيّر اسمه ليس شاهدًا أبدًا.
+    v = !!(user && (user.banned || user.deleted));
   } catch (e) {
     v = false; // fail open — see note above
   }

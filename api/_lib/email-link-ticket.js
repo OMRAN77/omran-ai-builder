@@ -3,10 +3,12 @@
 // Gmail من أكمل التفويض بأيّ حساب يحمله state — فمهاجم يرسل للضحيّة رابطًا برمزه هو فتُربط Gmail الضحيّة (قراءة
 // وإرسال وتقويم) بحساب المهاجم. الآن: نداء موثَّق (رمز الجلسة في الجسم كجيرانه email-*) يسكّ تذكرة عشوائيّة ١٢٨ بتّ
 // db/gmail-link/<32 سداسيّ> = { u, net, ts } لعشر دقائق؛ state = التذكرة وحدها؛ والكولباك يستهلكها مرّة، ولا يربط
-// إلّا لصاحبها ومن الشبكة التي سكّتها (OAUTH_CLAIM_NET_BIND=off يوقف فحص الشبكة كما في oauth-claim).
+// إلّا لصاحبها ومن الشبكة التي سكّتها — دائمًا: مفتاح طوارئ الدخول OAUTH_CLAIM_NET_BIND لا يمسّ هذا الفحص، فإيقافه
+// يعيد ثغرة الربط (تذكرة المهاجم تُكمَل من الضحيّة على أيّ شبكة) — المراجعة oauth-4. وعدم تطابق الشبكة سببه network_changed
+// لا session_expired (oauth-2: الغلاف مع Private Relay — «سجّل الدخول من جديد» لا ينفع هناك).
 const crypto = require('crypto');
 const { sessionUser, tokenOf } = require('./_session.js');
-const { netOf, sameNet } = require('./oauth-claim.js');
+const { netOf, netMatches } = require('./oauth-claim.js');
 
 const TTL_SEC = 600;
 const TICKET_RE = /^[0-9a-f]{32,64}$/;
@@ -15,8 +17,9 @@ const keyOf = (t) => 'db/gmail-link/' + t;
 /** شكل التذكرة (سداسيّ ٣٢–٦٤) — رمز الجلسة (base64url بنقطة) لا يطابقه أبدًا. */
 const isTicket = (s) => typeof s === 'string' && TICKET_RE.test(s);
 
-/** يستهلك التذكرة (قراءة ثمّ حذف — استعمال واحد) ويعيد اسم صاحبها، أو null إن غابت أو قدمت أو جاءت من شبكة أخرى. */
-async function takeTicket(state, req) {
+/** يستهلك التذكرة (قراءة ثمّ حذف — استعمال واحد) ويعيد اسم صاحبها، أو null إن غابت أو قدمت أو جاءت من شبكة أخرى.
+    out.reason = 'network_changed' حين لا يردّها إلّا اختلاف الشبكة (الغائبة والقديمة بلا سبب = session_expired عند المنادي). */
+async function takeTicket(state, req, out) {
   if (!isTicket(state)) return null;
   const { kvGetJSON, kvDel } = require('./kv.js');
   const t = state.toLowerCase();
@@ -25,7 +28,7 @@ async function takeTicket(state, req) {
   await kvDel(keyOf(t));
   if (typeof rec.u !== 'string' || !rec.u) return null;
   if (!(Date.now() - Number(rec.ts || 0) <= TTL_SEC * 1000)) return null;
-  if (!sameNet(rec.net, req)) return null;
+  if (!netMatches(rec.net, req)) { if (out) out.reason = 'network_changed'; return null; }
   return rec.u;
 }
 

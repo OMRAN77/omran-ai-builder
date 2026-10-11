@@ -4,17 +4,24 @@
 // v-oauth-bind (استيلاء على الحساب): state يختارها من يبدأ الدخول — فمهاجم يرسل للضحيّة رابط بدء بـstate من عنده،
 // الضحيّة تكمل في جوجل، والكولباك يودع جلستها (٣٠ يومًا) تحت تلك state، والمهاجم يستلمها من جهازه. الآن الإيداع
 // يحمل شبكة من أكمل الدخول (net: IPv4 كما هو، IPv6 بـ/64 — giftNet نفسه)، والاستلام لا يسلّم الجلسة إلّا لطلب من
-// الشبكة نفسها؛ غير ذلك (أو إيداع قديم بلا net) = 404 pending القائم. لا يمنع من يشارك الضحيّة الشبكة نفسها (NAT مكتب
+// الشبكة نفسها؛ غير ذلك (أو إيداع قديم بلا net) = network_changed أدناه. لا يمنع من يشارك الضحيّة الشبكة نفسها (NAT مكتب
 // واحد): الإغلاق الكامل تسليم بمخطّط التطبيق (رابط عالميّ) يحتاج بناءً أصليًّا.
-// مفتاح الطوارئ يُقرأ عند النداء: OAUTH_CLAIM_NET_BIND=off يوقف فحص الشبكة (الافتراضيّ مفعَّل؛ تغييره يحتاج إعادة نشر).
+// مفتاح الطوارئ يُقرأ عند النداء: OAUTH_CLAIM_NET_BIND=off (أو 0/false/no) يوقف فحص الشبكة هنا وحده (الافتراضيّ مفعَّل؛ تغييره
+// يحتاج إعادة نشر). فحص تذكرة Gmail (email-link-ticket.js) لا يتبعه أبدًا: طوارئ الدخول لا تعيد ثغرة ربط Gmail (المراجعة: oauth-4).
+// المراجعة (oauth-1): عدم التطابق كان 404 pending صامتًا — الغلاف يستطلع عشر دقائق بلا رسالة (Private Relay في سفاري وحده، VPN
+// المتصفّح، تبدّل الشبكة، وإيداعات ما قبل النشر بلا net). الآن يُحذف الإيداع ويُردّ 200 {error:'network_changed'}، فيعرض العميل
+// خطأ جوجل القائم (claimFail ← showGoogleAuthError: «تعذر تسجيل الدخول بجوجل (network_changed)»)، ولا رمز للمهاجم البعيد.
 const { kvGetJSON, kvDel } = require('./kv.js');
 const { giftNet, clientIp } = require('./welcome-gift.js');
 
 /** شبكة صاحب الطلب كما يحسبها سقف الهديّة (Vercel يكتب x-forwarded-for ولا يقبله من العميل). */
 const netOf = (req) => giftNet(clientIp(req));
-const netBindOn = () => String(process.env.OAUTH_CLAIM_NET_BIND || '').trim().toLowerCase() !== 'off';
-/** هل يُسلَّم سجلّ مربوط بالشبكة recNet لهذا الطلب؟ بلا net مسجّل = لا (fail-closed). */
-const sameNet = (recNet, req) => !netBindOn() || (!!recNet && recNet === netOf(req));
+const OFF = ['off', '0', 'false', 'no'];
+const netBindOn = () => !OFF.includes(String(process.env.OAUTH_CLAIM_NET_BIND || '').trim().toLowerCase());
+/** شبكة السجلّ هي شبكة الطلب؟ بلا net مسجّل = لا (fail-closed). بلا مفتاح — تذكرة Gmail تستعمله دائمًا. */
+const netMatches = (recNet, req) => !!recNet && recNet === netOf(req);
+/** هل يُسلَّم إيداع الدخول المربوط بـrecNet لهذا الطلب؟ مفتاح الطوارئ يوقفه. */
+const sameNet = (recNet, req) => !netBindOn() || netMatches(recNet, req);
 
 module.exports = async (req, res) => {
   try {
@@ -31,8 +38,13 @@ module.exports = async (req, res) => {
       res.status(200).json({ error: String(rec.error) });
       return;
     }
-    if (!rec || !rec.token || (Date.now() - (rec.ts || 0)) > 10 * 60 * 1000 || !sameNet(rec.net, req)) {
+    if (!rec || !rec.token || (Date.now() - (rec.ts || 0)) > 10 * 60 * 1000) {
       res.status(404).json({ error: 'pending' });
+      return;
+    }
+    if (!sameNet(rec.net, req)) {
+      await kvDel(key); // الجلسة لا تبقى في KV لمن يسأل من شبكة أخرى، والاستطلاع التالي 404
+      res.status(200).json({ error: 'network_changed' });
       return;
     }
     await kvDel(key); // استلام واحد — لا يُعاد تسليم الجلسة مرتين
@@ -43,3 +55,4 @@ module.exports = async (req, res) => {
 };
 module.exports.netOf = netOf;
 module.exports.sameNet = sameNet;
+module.exports.netMatches = netMatches;

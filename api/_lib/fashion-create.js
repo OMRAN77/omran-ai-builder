@@ -326,8 +326,12 @@ module.exports = async (req, res) => {
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const reqBody = { contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
-    /* v-image-duo: gpt-image بالتوازي مع Gemini، والحكم يختار الأدقّ في النهاية */
-    const duoP = duoEnabled() ? (mode === 'image' ? openaiRedress(promptText, imageBase64, mimeType) : openaiGenerate(promptText)).catch(function () { return null; }) : null;
+    /* v-image-duo: gpt-image بالتوازي مع Gemini، والحكم يختار الأدقّ في النهاية.
+       المراجعة (img422-3): في التعديل الموضعيّ (refine) البديل تعديلٌ للمصدر نفسه (images/edits) لا توليد من الصفر — كان الإنقاذ
+       يسلّم صورة شخص آخر بوصفها التعديل ويُحتسب، والعميل يبني عليها التعديلات التالية. */
+    const editsSource = mode === 'image' || mode === 'refine';
+    const altImage = () => (editsSource ? openaiRedress(promptText, imageBase64, mimeType) : openaiGenerate(promptText));
+    const duoP = duoEnabled() ? altImage().catch(function () { return null; }) : null;
     /* v-guard-cap: نتيجة gpt-image الموازية مدفوعة في كلّ الأحوال — تمرّ بالحارس نفسه (وضع الصورة) وتُسلَّم بشكل الإنقاذ نفسه */
     const guardAlt = (alt) => verifyLocalizedImageEdit({ apiKey, sourceBase64: imageBase64, sourceMime: mimeType || 'image/jpeg', resultBase64: alt.imageBase64, resultMime: alt.mimeType || 'image/png', userPrompt: guardPrompt });
     const passes = (g) => !!(g && (g.ok || g.reason === 'validation_unavailable'));
@@ -352,9 +356,7 @@ module.exports = async (req, res) => {
       console.error('[fashion-create] upstream failed status=' + upstream.status + ' detail=' + detail);
       // v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعني تعطّل الميزة —
       // إن وُجد مفتاح OpenAI فجرّب gpt-image-1 قبل إبلاغ المستخدم بالفشل.
-      const rescue = duoP ? await duoP : (mode === 'image'
-        ? await openaiRedress(promptText, imageBase64, mimeType)
-        : await openaiGenerate(promptText));
+      const rescue = duoP ? await duoP : await altImage();
       if (rescue) {
         const remR = await consumeFashion(quota.username, quota.limit);
         res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });

@@ -278,7 +278,7 @@ module.exports = async (req, res) => {
       const r = await settleCandidates(Object.assign({ first: first, altFn: altFn, polishFn: polishFn || null, deadlineOk: function () { return __extraBudget() >= 25000; },
         honest: !prayerPlan && !__pureRaw && String(process.env.IMAGE_VERIFY || 'on').toLowerCase() !== 'off' }, __settleCtx));
       if (!r.ok) {
-        const __gb = (!mahaImgCharged && !guestImageCharge) || await require('./image-giveback.js').unchangedGiveback(guestImageCharge ? [guestImageCharge.counterKey, guestImageCharge.ipKey] : ['u:' + String(mahaImgCharged).trim().toLowerCase()]); /* v-unchanged-cap: الردّ بعد نداء مدفوع بسقف يوميّ (٢ لكلّ فاعل)؛ بعده يبقى الخصم برمز لا يدّعي «ما انحسبت»، وبلا إعادة تلقائيّة */
+        const __gb = (!mahaImgCharged && !guestImageCharge) || await require('./image-giveback.js').unchangedGiveback(guestImageCharge ? [guestImageCharge.counterKey, guestImageCharge.ipKey] : [require('./image-giveback.js').userMeterId(mahaImgCharged)]); /* v-unchanged-cap: الردّ بعد نداء مدفوع بسقف يوميّ (٢ لكلّ فاعل)؛ بعده يبقى الخصم برمز لا يدّعي «ما انحسبت»، وبلا إعادة تلقائيّة */
         if (__gb) await refundImageCharge();
         try { await require('./log-error.js').logErrorAndFlush('maha-image:unchanged', new Error('image_unchanged'), { tried: r.tried, personSwap: isPersonSwap, charged: !__gb }); } catch (e) { /* التسجيل لا يعطّل الردّ */ }
         res.status(422).json({ error: __gb ? 'image_unchanged' : (editImageBase64 ? 'image_edit_no_change' : 'image_generation_failed'), retryable: false, __diag: process.env.IMG_DIAG === 'off' ? undefined : { tried: r.tried } });

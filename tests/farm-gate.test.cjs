@@ -91,6 +91,7 @@ const H = {
   stamps: require(rp('api/_lib/stamps.js')),
   maha: require(rp('api/_lib/realtime-session.js')),
   draw: require(rp('api/_lib/maha-image.js')),
+  translate: require(rp('api/_lib/translate.js')), // أداة نصّ على checkAndConsumeCustom (الرمز الميّت بعد تغيير الاسم)
 };
 const BODY = {
   design: (t) => ({ token: t, place: 'living', style: 'modern', count: 1 }),
@@ -102,6 +103,7 @@ const BODY = {
   adimage: (t) => ({ token: t, title: 'Car', cat: 'car' }),
   stamps: (t) => ({ token: t, name: 'Ali', imageBase64: PNG.repeat(3), mimeType: 'image/png' }),
   maha: (t) => (t ? { token: t } : { guestId: 'guestmaha01' }),
+  translate: (t) => ({ token: t, texts: ['hello'], targetLang: 'ar' }),
 };
 const QUOTA_TOOLS = ['design', 'fashion', 'studio', 'portrait', 'construction', 'cview']; // _dailyQuota
 const TALLY_TOOLS = ['adimage', 'stamps']; // takeTally (checkAndConsumePlanCustom)
@@ -410,4 +412,107 @@ test('١٣. صور الضيف في المحادثة: تدوير IPv6 داخل /6
   assert.equal((await guestDraw('guestv6other', '2001:db8:aa:2::1')).code, 200, '/64 أخرى');
   assert.equal((await guestDraw('guestv4one1', '198.51.100.77')).code, 200);
   assert.equal(store.get('db/points/guest-image-ip/198.51.100.77/' + day()), '1', 'مفتاح IPv4 كما كان');
+});
+
+test('١٤. تغيير الاسم لا يُحيي الرمز القديم: الشاهد جلسة ميّتة — أدوات الصور الثماني وأداة نصّ والنقاط ترفضه بصفر نداء، مسقوفًا وغير مسقوف (farm-1، img422-2)', async () => {
+  reset({ WELCOME_GIFT_PER_IP_DAILY: '1' });
+  store.set('db/welcome-gift/ip/203.0.113.61/' + day(), '1'); // سقف الشبكة مأخوذ: التسجيل التالي مسقوف
+  const tA = await signup('deadcap', '203.0.113.61');
+  assert.equal((await auth.getUser('deadcap')).giftCapped, true);
+  assert.equal((await call('design', tA)).code, 402, 'قبل التغيير: المسقوف ٤٠٢');
+  const r = await rename(tA, 'deadcap2');
+  assert.equal(r.code, 200);
+  assert.equal((await call('design', r.body.token)).code, 402, 'الاسم الجديد مسقوف كما كان');
+  for (const tool of QUOTA_TOOLS) {
+    const o = await call(tool, tA);
+    assert.equal(o.paid, 0, tool + ': لا نداء مدفوع بالرمز القديم');
+    assert.equal(o.code, 401, tool); assert.equal(o.body.error, 'auth_required', tool + ': رمز «سجّل الدخول» القائم');
+  }
+  for (const tool of TALLY_TOOLS) {
+    const o = await call(tool, tA);
+    assert.equal(o.paid, 0, tool); assert.equal(o.code, 429, tool);
+  }
+  process.env.MISTRAL_API_KEY = 'test-mistral';
+  try {
+    const tr = await call('translate', tA);
+    assert.equal(tr.paid, 0); assert.equal(tr.code, 401, 'أداة نصّ (checkAndConsumeCustom): الشاهد مرفوض');
+    assert.notEqual((await call('translate', r.body.token)).code, 401, 'والاسم الحيّ يعبر البوّابة');
+  } finally { delete process.env.MISTRAL_API_KEY; }
+  const points = require(rp('api/_lib/points.js'));
+  const sp = await points.spendPoints('deadcap', 10, 'test');
+  assert.equal(sp.ok, false); assert.equal(sp.reason, 'auth');
+  const m = await call('maha', tA);
+  assert.equal(m.paid, 0); assert.equal(m.code, 401);
+
+  // غير المسقوف: ٣/٣ ثمّ تغيير — الرمز القديم لا يأخذ ثلاثًا أخرى (كانت ٢٠٠×٣ بنداءات مدفوعة)
+  await put('deadfree', { points: 70, welcomeGift: true, giftCapped: false });
+  const tF = tok('deadfree');
+  const codes = [];
+  for (let k = 0; k < 4; k++) codes.push((await call('design', tF)).code);
+  assert.deepEqual(codes, [200, 200, 200, 402]);
+  const r2 = await rename(tF, 'deadfree2');
+  assert.equal(r2.code, 200);
+  for (let k = 0; k < 3; k++) {
+    const o = await call('design', tF);
+    assert.equal(o.paid, 0); assert.equal(o.code, 401);
+  }
+  assert.equal((await call('design', r2.body.token)).code, 402, 'الحصّة على الاسم الجديد');
+  assert.equal((await points.spendPoints('deadfree2', 10, 'test')).ok, true, 'الاسم الحيّ ليس شاهدًا');
+});
+
+test('١٥. تغيير الاسم: اثنان في ٢٤ ساعة متحرّكة لكلّ حساب — الثالث ٤٢٩ برسالة المحاولات القائمة والسجلّ لا يُمسّ؛ المتباعدان يُقبلان؛ المالك معفى؛ المتوازيان لا ينسخان الحساب', async () => {
+  reset();
+  await put('limiter', { points: 70, welcomeGift: true, giftCapped: false });
+  let r = await rename(tok('limiter'), 'limiter2');
+  assert.equal(r.code, 200);
+  r = await rename(r.body.token, 'limiter3');
+  assert.equal(r.code, 200);
+  const before = store.get(auth.userPath('limiter3'));
+  const third = await rename(r.body.token, 'limiter4');
+  assert.equal(third.code, 429);
+  assert.match(third.body.error, /^محاولات كثيرة، حاول بعد (\d+) دقيقة$/);
+  assert.ok(Number(third.body.error.match(/\d+/)[0]) >= 1439, 'حتّى يخرج أقدم التغييرين من النافذة: ' + third.body.error);
+  assert.equal(store.get(auth.userPath('limiter3')), before, 'السجلّ كما هو');
+  assert.equal(store.has(auth.userPath('limiter4')), false, 'ولا اسم جديد');
+  assert.equal((await auth.getUser('limiter3')).renameLog.length, 2, 'renameLog انتقل مع الحساب');
+
+  const H24 = 86400000;
+  await put('spaced', { points: 70, renameLog: [Date.now() - H24 - 3600000, Date.now() - H24 - 60000] });
+  r = await rename(tok('spaced'), 'spaced2');
+  assert.equal(r.code, 200, 'تغييران قبل أكثر من ٢٤ ساعة لا يمنعان');
+  assert.equal((await auth.getUser('spaced2')).renameLog.length, 1, 'القديم يسقط من السجلّ');
+  await put('edge', { points: 70, renameLog: [Date.now() - H24 + 3600000, Date.now() - 600000] });
+  const e = await rename(tok('edge'), 'edge2');
+  assert.equal(e.code, 429);
+  const mins = Number(e.body.error.match(/\d+/)[0]);
+  assert.ok(mins >= 59 && mins <= 61, 'الدقائق حتّى يخرج أقدمهما: ' + mins);
+
+  await put('omran', { points: 0, renameLog: [Date.now() - 7200000, Date.now() - 3600000] });
+  assert.equal((await rename(tok('omran'), 'omranx')).code, 200, 'المالك معفى');
+
+  await put('forker', { points: 500 });
+  store.set('points:forker', '500');
+  const rs = await Promise.all(['fk1', 'fk2', 'fk3', 'fk4', 'fk5'].map((n) => rename(tok('forker'), n)));
+  assert.deepEqual(rs.map((x) => x.code).sort(), [200, 429, 429, 429, 429], 'قفل الحساب: تغيير واحد');
+  const live = [];
+  for (const n of ['fk1', 'fk2', 'fk3', 'fk4', 'fk5']) { const u = await auth.getUserOnce(n); if (u && !u.deleted) live.push(n); }
+  assert.equal(live.length, 1, 'لا نسخ حيّة متعدّدة للحساب (كانت ٥ بـ٥٠٠ نقطة لكلّ واحدة)');
+  assert.equal(store.has('db/rename-lock/forker'), false, 'القفل يُفكّ بعد التغيير');
+});
+
+test('١٦. سقف الشبكة على تسجيلاتها لا هداياها: بعد استنزاف السقف العامّ من شبكتين، التسجيل (perIp+1) على شبكة ثالثة مسقوف، وأوّل تسجيل على شبكة جديدة لا (farm-2)', async () => {
+  reset({ WELCOME_GIFT_PER_IP_DAILY: '2', WELCOME_GIFT_DAILY: '4' });
+  await Promise.all([signup('drna0', '203.0.113.81'), signup('drna1', '203.0.113.81'), signup('drnb0', '203.0.113.82'), signup('drnb1', '203.0.113.82')]);
+  assert.equal(store.get('db/welcome-gift/all/' + day()), '4', 'السقف العامّ مستنزف');
+  await Promise.all([signup('drnc0', '203.0.113.83'), signup('drnd0', '203.0.113.84')]);
+  for (let i = 1; i < 3; i++) await signup('drnc' + i, '203.0.113.83');
+  const net3 = [];
+  for (let i = 0; i < 3; i++) { const u = await auth.getUser('drnc' + i); net3.push(u.welcomeGift + ':' + u.giftCapped); }
+  assert.deepEqual(net3, ['false:false', 'false:false', 'false:true'], 'الثالث (perIp+1) مسقوف — كان بلا سقف بقيّة اليوم');
+  assert.equal(store.get('db/welcome-gift/ip/203.0.113.83/' + day()), '2', 'عدّاد الشبكة يعدّ التسجيلات');
+  const fresh = await auth.getUser('drnd0');
+  assert.equal(fresh.welcomeGift, false);
+  assert.equal(fresh.giftCapped, false, 'أوّل تسجيل على شبكة جديدة ليس مسقوفًا');
+  assert.equal((await call('design', tok('drnd0'), '203.0.113.84')).code, 200);
+  assert.equal(store.get('db/welcome-gift/all/' + day()), '4', 'رفض السقف العامّ يردّ زيادته وحدها');
 });

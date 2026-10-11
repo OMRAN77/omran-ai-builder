@@ -51,7 +51,8 @@ async function giveBack(kv, keys) {
 
 /** يحجز هديّة ترحيب لهذا الطلب: true = تُمنح، false = حساب برصيد 0. لا ترمي أبدًا.
     v-farm-gate: o.out.capped = true حين رفضها سقف **الشبكة** وحده — لا السقف العامّ (استنزافه من مزرعة لا يحرم الأمين على شبكة
-    أخرى أدواته المجّانيّة)، ولا البيئة 0، ولا عطب KV. المسارات الثلاثة تكتبه giftCapped في السجلّ (free-tier.js). */
+    أخرى أدواته المجّانيّة)، ولا البيئة 0، ولا عطب KV. المسارات الثلاثة تكتبه giftCapped في السجلّ (free-tier.js). وسقف الشبكة
+    على تسجيلاتها في اليوم، بهديّة أو بلا هديّة (المراجعة farm-2). */
 async function takeWelcomeGift(req, o) {
   const opt = o || {};
   const perIp = envInt('WELCOME_GIFT_PER_IP_DAILY', 50);
@@ -73,7 +74,9 @@ async function takeWelcomeGift(req, o) {
       taken.push(key);
       if (!(n >= 1) || n > cap) {
         if (perNet && n > cap && opt.out) opt.out.capped = true;
-        await giveBack(kv, taken);
+        // المراجعة (farm-2): رفض السقف العامّ يُبقي زيادة الشبكة — عدّاد الشبكة يعدّ تسجيلاتها لا هداياها. كان يُردّ معه، فبعد
+        // استنزاف السقف العامّ لا تبلغ شبكةٌ سقفها أبدًا ولا يُسقف أحد بقيّة اليوم. ورفض الشبكة نفسها يردّ زيادتها كما كان.
+        await giveBack(kv, perNet ? taken : [key]);
         return false;
       }
     }
