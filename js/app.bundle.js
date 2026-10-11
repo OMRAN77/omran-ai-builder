@@ -43738,7 +43738,14 @@ if(document.readyState === 'loading'){
    عدّاد الفيديو لا يصفّره تبدّل نصّ الحالة أثناء التوليد الواحد.
 
    ذاتيّة بالكامل: MutationObserver + IIFE — بلا تعديل على العارض ولا مسارات التوليد،
-   ومسار تعديل الصور ذو النقاط الذهبيّة (الذي اختاره المالك) لا يُمسّ. */
+   ومسار تعديل الصور ذو النقاط الذهبيّة (الذي اختاره المالك) لا يُمسّ.
+
+   v-gen-scene (المالك ١١ أكتوبر، بصورة «برج الأزياء»: «في الأزياء تطلّع لي هذي عند توليد الصورة، لكن
+   تكون ممطرة، والعدّاد يشتغل [يبدأ من الصفر]، ويكون فوق مش تحت»): بطاقة الأزياء صارت مشهدًا — صورة المالك
+   خلفيّةً (assets/fashion/gen-scene.webp، وعدّاد «75%» المرسوم فيها مطموس)، فوقها مطر متحرّك وتموّجات على
+   الأرضيّة، وعدّاد حيّ في مكان المرسوم: حلقة تمتلئ ورقم يبدأ من ٠ وشريط ومرحلة. وتُركَّب أعلى الاستوديو
+   (قبل تبويبَي «من صورة / من وصف») لا تحت زرّ «صمم»، ويُمرَّر إليها. التعديل الموضعيّ («جاري تطبيق…»)
+   يبقى تحت سطر الحالة حيث ينظر المستخدم. بلا نصّ جديد: المراحل والتوقّع كما هي. */
 (function(){
   if(window.omranGenWait) return;
 
@@ -43755,7 +43762,9 @@ if(document.readyState === 'loading'){
     { id: 'styles', sel: '#portraitStyleStatus', kind: 'styles',
       busy: ['⏳', '🎞️'] },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
-      busy: ['🎨', 'جاري تطبيق', 'Applying'] }
+      busy: ['🎨', 'جاري تطبيق', 'Applying'],
+      /* v-gen-scene: التوليد (🎨) يُركَّب أعلى الاستوديو قبل صفّ التبويبين؛ البطاقة تُبحث في النافذة كلّها */
+      scope: '#fashionAiModal', topSel: '#fashionAiTabImage', top: ['🎨'] }
   ];
 
   /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
@@ -43791,7 +43800,7 @@ if(document.readyState === 'loading'){
       slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
-      est: 40,
+      est: 40, scene: '/assets/fashion/gen-scene.webp?v=1',
       hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
       expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
@@ -43841,6 +43850,64 @@ if(document.readyState === 'loading'){
     + 'html[data-mode="light"] .genw-track{background:rgba(90,70,20,.12)}'
     + '@media (prefers-reduced-motion:reduce){.genw-frame,.genw-frame::before,.genw-shimmer::after,.genw-film{animation:none}}';
 
+  /* v-gen-scene: بلاطة مطر SVG (خطوط تخفت من أعلاها) — ثلاث طبقات بمقاسات وسرعات مختلفة فلا يبدو المطر شبكة */
+  function rainTile(w, h, streaks, sw){
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0" stop-color="#cfeaff" stop-opacity="0"/><stop offset="1" stop-color="#cfeaff" stop-opacity=".9"/></linearGradient></defs>';
+    for(var i = 0; i < streaks.length; i++) svg += '<rect x="' + streaks[i][0] + '" y="' + streaks[i][1] + '" width="' + sw + '" height="' + streaks[i][2] + '" fill="url(#g)"/>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg + '</svg>') + '")';
+  }
+  var ARC_LEN = 276.5; /* محيط حلقة العدّاد (نصف قطر ٤٤ في إطار ١٠٠) */
+  function sceneCss(){
+    return ''
+    + '.genw--scene{width:min(100%,760px);margin:10px auto 14px}'
+    + '.genw--scene .genw-frame{animation:genwNeon 2.6s ease-in-out infinite}'
+    + '.genw--scene .genw-frame::before{background:linear-gradient(120deg,transparent 15%,rgba(125,249,255,.15) 30%,#bff6ff 45%,#ff7bd5 55%,rgba(125,249,255,.15) 70%,transparent 85%);background-size:280% 100%}'
+    + '@keyframes genwNeon{0%,100%{box-shadow:0 0 22px -6px rgba(125,249,255,.4),0 0 60px -18px rgba(255,123,213,.25)}'
+    +   '50%{box-shadow:0 0 34px -4px rgba(125,249,255,.6),0 0 90px -14px rgba(255,123,213,.4)}}'
+    + '.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{display:block;aspect-ratio:1024/559;background:#070b22 center/cover no-repeat}'
+    /* المطر: الحاوية مائلة، وكلّ طبقة تنزل بمقدار بلاطتها بالضبط فتتكرّر بلا قفزة (transform وحده — لا إعادة رسم) */
+    + '.genw-rain{position:absolute;top:-30%;bottom:-30%;left:-12%;right:-12%;transform:rotate(9deg);pointer-events:none;z-index:1}'
+    + '.genw-rain i{position:absolute;left:0;right:0;top:-260px;bottom:0;background-repeat:repeat}'
+    + '.genw-rain i:nth-child(1){background-image:' + rainTile(120, 260, [[18, 8, 54], [74, 122, 60], [104, 44, 46], [46, 196, 50]], 1.5) + ';background-size:120px 260px;opacity:.8;animation:genwRain1 .62s linear infinite}'
+    + '.genw-rain i:nth-child(2){background-image:' + rainTile(90, 200, [[12, 20, 34], [58, 96, 38], [80, 150, 30], [34, 60, 32]], 1.1) + ';background-size:90px 200px;opacity:.55;animation:genwRain2 .85s linear infinite}'
+    + '.genw-rain i:nth-child(3){background-image:' + rainTile(60, 150, [[8, 10, 22], [36, 70, 24], [52, 118, 20], [22, 40, 20]], 0.9) + ';background-size:60px 150px;opacity:.38;animation:genwRain3 1.15s linear infinite}'
+    + '@keyframes genwRain1{to{transform:translate3d(0,260px,0)}}'
+    + '@keyframes genwRain2{to{transform:translate3d(0,200px,0)}}'
+    + '@keyframes genwRain3{to{transform:translate3d(0,150px,0)}}'
+    /* تموّجات قطرات على الأرضيّة المبلّلة (الربع السفليّ من الصورة) */
+    + '.genw-rip{position:absolute;left:0;right:0;bottom:0;height:24%;pointer-events:none;z-index:1}'
+    + '.genw-rip i{position:absolute;width:9%;aspect-ratio:4/1;border:1px solid rgba(190,236,255,.75);border-radius:50%;opacity:0;animation:genwRip 1.9s ease-out infinite}'
+    + '.genw-rip i:nth-child(1){left:14%;top:22%}'
+    + '.genw-rip i:nth-child(2){left:31%;top:58%;animation-delay:.45s}'
+    + '.genw-rip i:nth-child(3){left:47%;top:30%;animation-delay:.9s}'
+    + '.genw-rip i:nth-child(4){left:63%;top:66%;animation-delay:.25s}'
+    + '.genw-rip i:nth-child(5){left:78%;top:26%;animation-delay:1.3s}'
+    + '.genw-rip i:nth-child(6){left:22%;top:74%;animation-delay:1.55s}'
+    + '.genw-rip i:nth-child(7){left:55%;top:80%;animation-delay:.7s}'
+    + '@keyframes genwRip{0%{transform:scale(.15);opacity:.85}100%{transform:scale(1.5);opacity:0}}'
+    /* العدّاد الحيّ فوق موضع العدّاد المرسوم في الصورة (مركزه ٥٠٪ × ٥٧٫٧٪) */
+    + '.genw-hud{position:absolute;left:50%;top:57.7%;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:6px;'
+    +   'padding:8px 12px 9px;border-radius:16px;background:rgba(7,11,34,.94);box-shadow:0 0 0 1px rgba(125,249,255,.5),0 0 18px -2px rgba(125,249,255,.45)}'
+    + '.genw-ring{position:relative;flex:none;width:clamp(64px,11vw,84px);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center}'
+    + '.genw-ring svg{position:absolute;top:0;left:0;width:100%;height:100%;transform:rotate(-90deg)}'
+    + '.genw-ring circle{fill:none;stroke-width:7}'
+    + '.genw-arc0{stroke:rgba(255,255,255,.14)}'
+    + '.genw-arc{stroke:#7df9ff;stroke-linecap:round;stroke-dasharray:' + ARC_LEN + ';stroke-dashoffset:' + ARC_LEN + ';transition:stroke-dashoffset .25s linear}'
+    + '.genw--scene .genw-pct,html[data-mode="light"] .genw--scene .genw-pct{font-size:clamp(17px,2.9vw,22px);color:#eafcff;text-shadow:0 0 12px rgba(125,249,255,.7)}'
+    + '.genw--scene .genw-pct small{display:none}'
+    + '.genw-hudb{width:clamp(126px,22vw,166px)}'
+    + '.genw-sbar{height:5px;border-radius:99px;background:rgba(255,255,255,.16);overflow:hidden}'
+    + '.genw--scene .genw-fill{background:linear-gradient(90deg,#7df9ff,#ffc4ee);box-shadow:0 0 10px rgba(125,249,255,.6)}'
+    + '.genw--scene .genw-stage{font-size:12px;line-height:1.35;min-height:16px;margin-top:5px;text-align:center;color:#eafcff}'
+    + '.genw--scene .genw-sub{justify-content:center}'
+    /* الجوّال: الحلقة والشريط جنبًا إلى جنب كي لا يغطّي العدّاد نصف المشهد */
+    + '@media (max-width:430px){.genw-hud{flex-direction:row;gap:8px;padding:7px 10px}.genw-ring{width:50px}'
+    +   '.genw--scene .genw-pct,html[data-mode="light"] .genw--scene .genw-pct{font-size:15px}.genw-hudb{width:118px}.genw--scene .genw-stage{font-size:11px;margin-top:4px}}'
+    + 'html.omAndroid .genw-rain i:nth-child(3){display:none}'
+    + '@media (prefers-reduced-motion:reduce){.genw--scene .genw-frame,.genw-rain i,.genw-rip i{animation:none}.genw-arc{transition:none}}';
+  }
+
   var AR_DIG = '٠١٢٣٤٥٦٧٨٩';
   function toAr(n){ return String(n).replace(/[0-9]/g, function(d){ return AR_DIG[+d]; }); }
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
@@ -43852,7 +43919,7 @@ if(document.readyState === 'loading'){
     if(document.getElementById(CSS_ID)) return;
     var st = document.createElement('style');
     st.id = CSS_ID;
-    st.textContent = CSS;
+    st.textContent = CSS + sceneCss(); /* v-gen-scene */
     document.head.appendChild(st);
   }
 
@@ -43868,8 +43935,20 @@ if(document.readyState === 'loading'){
     var slowTxt = cfg.slow[isAr() ? 'ar' : 'en'];
 
     var root = document.createElement('div');
-    root.className = 'genw' + (cfg.wide ? ' genw--video' : '');
-    root.innerHTML = ''
+    root.className = 'genw' + (cfg.wide ? ' genw--video' : '') + (cfg.scene ? ' genw--scene' : '');
+    /* v-gen-scene: مشهد بخلفيّة ومطر وعدّاد حيّ — بالخطّافات نفسها فالنبضة أدناه واحدة للنوعين */
+    root.innerHTML = cfg.scene ? (''
+      + '<div class="genw-frame"><div class="genw-canvas">'
+      +   '<div class="genw-rain"><i></i><i></i><i></i></div>'
+      +   '<div class="genw-rip"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>'
+      +   '<div class="genw-hud">'
+      +     '<div class="genw-ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="genw-arc0" cx="50" cy="50" r="44"></circle><circle class="genw-arc" cx="50" cy="50" r="44"></circle></svg>'
+      +       '<div class="genw-pct">0%<small></small></div></div>'
+      +     '<div class="genw-hudb"><div class="genw-sbar"><div class="genw-fill"></div></div><div class="genw-stage"></div></div>'
+      +   '</div>'
+      + '</div></div>'
+      + '<div class="genw-sub"><span class="genw-timer"></span></div>'
+    ) : ''
       + '<div class="genw-frame"><div class="genw-canvas">'
       +   '<div class="genw-shimmer"></div>'
       +   (cfg.film ? '<div class="genw-film"></div>' : '')
@@ -43884,6 +43963,8 @@ if(document.readyState === 'loading'){
     var fillEl = root.querySelector('.genw-fill');
     var stageEl = root.querySelector('.genw-stage');
     var timerEl = root.querySelector('.genw-timer');
+    var arcEl = root.querySelector('.genw-arc'); /* حلقة المشهد — غائبة في البطاقة الذهبيّة */
+    if(cfg.scene){ try{ root.querySelector('.genw-canvas').style.backgroundImage = 'url("' + cfg.scene + '")'; }catch(e){ /* guard-ok — بلا خلفيّة يبقى لون المشهد الداكن والعدّاد يعمل */ } }
     pctSmall.textContent = hint;
     stageEl.textContent = stages[0];
 
@@ -43904,6 +43985,7 @@ if(document.readyState === 'loading'){
       var shown = Math.min(99, Math.round(eased(p) * 100));
       pctEl.firstChild.textContent = fmt(shown) + '%';
       fillEl.style.width = shown + '%';
+      if(arcEl) arcEl.style.strokeDashoffset = String(Math.round(ARC_LEN * (100 - shown)) / 100);
       timerEl.textContent = '⏱ ' + fmt(Math.floor(el)) + (isAr() ? 'ث' : 's') + ' — ' + expect;
       if(el > cfg.est * 2 && !slow){
         slow = true;
@@ -43935,6 +44017,37 @@ if(document.readyState === 'loading'){
   /* زمن بداية كلّ لوحة: يبقى طول التوليد الواحد (الفيديو يبدّل نصّ حالته 🚀→⏳→🎬)
      ولا يُصفَّر إلا حين ينتهي الاشتغال أو تُزال البطاقة. */
   var t0ByPanel = Object.create(null);
+
+  /* v-gen-scene — عطب قائم كشفه المسبار: v-clean-ui يحذف الإيموجي من نصوص الواجهة بعد ٤٠ مث من كتابتها، والرصد
+     يقرأ سطر الحالة بعد ٦٠ مث، فلا يجد بادئة «مشغول» (🎨 / ⏳ / 🚀…) أبدًا — فلم تعد بطاقة أيّ لوحة (فيديو، أنماط،
+     أزياء) تظهر منذ تنظيف الواجهة. الآن تُقرأ الحالة لحظة تغيّرها (قبل التنظيف) ويُحفظ نصّها خامًا ومنظَّفًا؛ اللوحة
+     «مشغولة» ما دام النصّ الظاهر أحدهما. النصّ الخام يبقى مرجع «أيّ بادئة بدأت» (التوليد 🎨 يصعد، التعديل يبقى). */
+  var rawBusy = Object.create(null);
+  var cleanBusy = Object.create(null);
+  function hasPrefix(txt, list){
+    for(var i = 0; txt && list && i < list.length; i++){ if(txt.indexOf(list[i]) === 0) return true; }
+    return false;
+  }
+  function stripEmoji(txt){
+    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
+    return String(txt);
+  }
+  function noteBusy(p, txt){ rawBusy[p.id] = txt; cleanBusy[p.id] = stripEmoji(txt); }
+  function panelBusy(p, ptxt){
+    if(hasPrefix(ptxt, p.busy)){ noteBusy(p, ptxt); return true; }
+    if(ptxt && cleanBusy[p.id] && ptxt === cleanBusy[p.id]) return true;
+    delete rawBusy[p.id]; delete cleanBusy[p.id];
+    return false;
+  }
+  /* تُستدعى مع كلّ دفعة تغيّرات — ثلاث قراءات بالمعرّف فقط */
+  function sample(){
+    for(var i = 0; i < PANELS.length; i++){
+      var el = null, txt = '';
+      try{ el = document.querySelector(PANELS[i].sel); txt = el ? String(el.textContent || '').trim() : ''; }catch(e){ txt = ''; }
+      if(hasPrefix(txt, PANELS[i].busy)) noteBusy(PANELS[i], txt);
+    }
+  }
+
   function scan(){
     if(!document.body) return;
     var active = Object.create(null);
@@ -43987,24 +44100,41 @@ if(document.readyState === 'loading'){
       if(!pel || !pel.parentNode) continue;
       var ptxt = '';
       try{ ptxt = String(pel.textContent || '').trim(); }catch(e){ ptxt = ''; }
-      var busy = false;
-      for(var bi = 0; ptxt && bi < p.busy.length; bi++){
-        if(ptxt.indexOf(p.busy[bi]) === 0){ busy = true; break; }
-      }
+      var busy = panelBusy(p, ptxt); /* v-gen-scene: يصمد لحذف الإيموجي من سطر الحالة */
       var card = null;
-      try{ card = pel.parentNode.querySelector('.genw[data-genw-panel="' + p.id + '"]'); }catch(e){ card = null; }
+      var scopeEl = pel.parentNode; /* v-gen-scene: بطاقة تُركَّب أعلى الاستوديو ليست ابنة حاوية سطر الحالة بالضرورة */
+      if(p.scope){ try{ scopeEl = document.querySelector(p.scope) || pel.parentNode; }catch(e){ scopeEl = pel.parentNode; } }
+      try{ card = scopeEl.querySelector('.genw[data-genw-panel="' + p.id + '"]'); }catch(e){ card = null; }
       if(busy && !card){
         if(!t0ByPanel[p.id]) t0ByPanel[p.id] = Date.now();
         try{
           var node = render({ t0: t0ByPanel[p.id], kind: p.kind });
           node.setAttribute('data-genw-panel', p.id);
-          pel.parentNode.insertBefore(node, pel.nextSibling);
+          var mp = mountPoint(p, pel, rawBusy[p.id] || ptxt, document);
+          mp.parent.insertBefore(node, mp.before);
+          /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
+          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
         }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
       } else if(!busy && card){
         try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
         delete t0ByPanel[p.id];
       }
     }
+  }
+
+  /* v-gen-scene: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
+     بادئات top تُركَّب قبل صفّ ذلك العنصر (أعلى الاستوديو)؛ غيرها — وأيّ مرساة غائبة — بعد سطر الحالة كما كان. */
+  function mountPoint(p, pel, ptxt, doc){
+    var below = { parent: pel.parentNode, before: pel.nextSibling, top: false };
+    if(!p || !p.topSel || !p.top) return below;
+    var up = false;
+    for(var i = 0; i < p.top.length; i++){ if(String(ptxt || '').indexOf(p.top[i]) === 0){ up = true; break; } }
+    if(!up) return below;
+    var anchor = null;
+    try{ anchor = (doc || document).querySelector(p.topSel); }catch(e){ anchor = null; }
+    var row = anchor && anchor.parentNode;
+    if(!row || !row.parentNode) return below;
+    return { parent: row.parentNode, before: row, top: true };
   }
 
   var scheduled = false;
@@ -44016,12 +44146,29 @@ if(document.readyState === 'loading'){
 
   if(typeof MutationObserver !== 'undefined' && document.documentElement){
     try{
-      new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+      new MutationObserver(function(){ sample(); schedule(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ /* بلا رصد = بلا بطاقة فقط */ } }
   }
   schedule();
 
+  /* v-gen-scene: خلفيّة المشهد تُحمَّل عند فتح استوديو الأزياء لا عند أوّل توليد — فلا يظهر المشهد فارغًا لحظةً */
+  var scenePreloaded = false;
+  function preloadScenes(){
+    if(scenePreloaded) return;
+    scenePreloaded = true;
+    for(var k in KINDS){ if(KINDS[k].scene){ try{ (new Image()).src = KINDS[k].scene; }catch(e){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } } }
+  }
+  if(document.addEventListener){
+    document.addEventListener('click', function(e){
+      var tg = e && e.target;
+      if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
+    }, true);
+  }
+
   window.omranGenWait = { render: render, scan: scan, _eased: eased, PHRASES: PHRASES, PANELS: PANELS, KINDS: KINDS };
+  window.omranGenWait._mountPoint = mountPoint; /* v-gen-scene: للاختبار */
+  window.omranGenWait._panelBusy = panelBusy;
+  window.omranGenWait._sample = sample;
 })();
 /* v-inspire (المالك ٩ أكتوبر «أبدأ بالخطوة الأولى»): «اقتراحات» صارت شاشة بتبويبين — «الإلهام» و«اقتراحات سريعة».
    «الإلهام» قسمه الأوّل «مدينتك الحقيقيّة»: عشر تجارب ثلاثيّة الأبعاد تبني حيّ المستخدم الحقيقيّ من الخرائط المفتوحة
