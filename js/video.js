@@ -17,6 +17,30 @@
     return ['-i',o.input,'-t',String(o.maxSec||60),'-map','0:v:0','-map','0:a:0?','-vf',vf.join(','),'-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p','-c:a','aac','-b:a','160k','-movflags','+faststart',o.output||'out.mp4'];
   }
   try{ window.__vmkCleanArgs=cleanArgs; }catch(e){ /* guard-ok — بيئة بلا window */ }
+  /* v-video-enhance-pro (المالك بعد تجربة المسار المجّانيّ: «مش قوي بما فيه الكفاية… مش الجودة المطلوبة» ثمّ «اريده في التطبيق»):
+     زرّ «تحسين احترافي» في القسم نفسه — ترميم على الخادم بالنقاط (api/_lib/video-enhance.js). المسار المجّانيّ أعلاه لا يتغيّر ولا
+     يمرّ بالخادم. هذه الدوالّ الصرفة تُكشف للاختبار: estimate تقدير النقاط قبل الرفع (الحكم لقياس الخادم)، check فحص محلّيّ يُرجع
+     مفتاح نصّ الرفض أو فراغًا (فلا يُرفع ملفّ سيُرفض)، errKey رمز الخادم ← مفتاح النصّ.
+     info.tall===false = الخادم يقول إنّ المخرج الأعلى من 1080 مغلق لهذا الحساب: قاعدته نفسها هنا (العرض ≤ 1920 والارتفاع ≤ 1080) قبل
+     الرفع — المقطع الطوليّ كان يُرفع كاملًا ويأكل رفعة من حدّ اليوم ثمّ يُرفض. جواب بلا الحقل يبقى على القاعدة العامّة. */
+  function proEstimate(info,sec){
+    var r=info?+info.rate:0, mn=info?+info.minSec:0, s=+sec;
+    return (r>0&&mn>0&&s>0)?r*Math.max(mn,Math.ceil(s-0.1)):0;
+  }
+  function proCheck(info,file,meta){
+    if(!info||!file) return '';
+    var ty=String(file.type||'').toLowerCase().split(';')[0].trim();
+    if(!/\.(mp4|mov|m4v)$/i.test(file.name||'')&&!/^video\/(mp4|quicktime|x-m4v)$/.test(ty)) return 'vclProSpec';
+    if(file.size>info.maxMB*1048576) return 'vclTooBig';
+    if(meta&&meta.sec>info.maxSec+0.1) return 'vclProTooLong';
+    if(meta&&meta.w&&meta.h&&info.tall===false&&(meta.w>1920||meta.h>1080)) return 'vclProSpec';
+    if(meta&&meta.w&&meta.h&&(Math.min(meta.w,meta.h)>1080||Math.max(meta.w,meta.h)>1920)) return 'vclProSpec';
+    return '';
+  }
+  var PRO_ERR={points_insufficient:'vclProNoPoints',too_big:'vclTooBig',too_long:'vclProTooLong',fps:'vclProSpec',resolution:'vclProSpec',format:'vclProSpec',
+    limit:'vclProLimit',unavailable:'vclProUnavailable',upload:'vclProUploadFail',not_uploaded:'vclProUploadFail'};
+  function proErrKey(code){ var c=String(code||''); return Object.prototype.hasOwnProperty.call(PRO_ERR,c)?PRO_ERR[c]:'vclProFail'; }
+  try{ window.__vmkPro={estimate:proEstimate,check:proCheck,errKey:proErrKey}; }catch(e){ /* guard-ok — بيئة بلا window */ }
   var M=document.getElementById('videoMakerModal'); if(!M) return;
   var G=[['videoMakerMode','card'],['videoMakerStyle','pill'],['videoMakerDuration','pill'],['videoMakerRatio','pill']];
   var PTS={canvas:0,runway:60,hybrid:60,veo:400,actor:400};
@@ -264,6 +288,10 @@
   /* ═══ v-vmk-clean-video: قسم «تحسين فيديو» ═══ */
   var CL={file:null,orig:'',out:'',meta:null,level:'light',busy:false,ff:null,ffLoading:null,run:0,msg:null,view:null,showing:'after'};
   var CL_MAX_SEC=60;
+  /* v-video-enhance-pro: حالة «تحسين احترافي» — info إعداد الخادم لهذا الحساب، stage ''|'up' (رفع وفحص، يُلغى)|'run' (أُرسل التأكيد، لا إلغاء)،
+     id/up/quote مهمّة الملفّ المختار، parked مهمّة تُركت تكمل على الخادم، last آخر محاولة استئناف، job المهمّة المتابَعة الآن (ليست دائمًا
+     مهمّة الملفّ المختار: مهمّة الحساب الجارية أو المستأنَفة)، who جلسة الدخول التي تخصّها هذه الحالة. التخزين المحلّيّ يحفظ معرّف آخر نتيجة عُرضت فقط. */
+  var PRO={info:null,asked:false,stage:'',id:'',up:false,quote:null,xhr:null,parked:'',last:0,job:''}, PRO_SEEN='vmk_pro_seen';
   function clMaxMB(){ return (window.matchMedia&&matchMedia('(max-width:860px)').matches)?80:200; }
   function clRevoke(u){ try{ if(u) URL.revokeObjectURL(u); }catch(e){ /* guard-ok — رابط زال */ } }
   var clLoad=null;
@@ -314,6 +342,7 @@
       +'<div class="vmk-cl-opts" id="vmkClOpts"><div class="vmk-pills vmk-cl-level"><span class="vmk-pill" data-lv="light"></span><span class="vmk-pill" data-lv="strong"></span></div>'
       +'<label class="vmk-cl-up"><input type="checkbox" id="vmkClUp"><span></span></label></div>'
       +'<button type="button" class="vmk-cl-go" id="vmkClGo"></button>'
+      +'<button type="button" class="vmk-cl-go vmk-cl-pro" id="vmkClPro"></button><p class="vmk-cl-pnote" id="vmkClProNote"></p>'
       +'<div class="vmk-cl-prog" id="vmkClProg"><div class="vmk-cl-track"><i id="vmkClBar"></i></div><div class="vmk-cl-prow"><span id="vmkClPct">0%</span><span class="vmk-cl-wk"></span><button type="button" id="vmkClCancel"></button></div></div>'
       +'<div class="vmk-cl-done" id="vmkClDone"><div class="vmk-pills vmk-cl-ab"><span class="vmk-pill" data-ab="before"></span><span class="vmk-pill" data-ab="after"></span></div><a class="vmk-cl-dl" id="vmkClDl" download="video-clean.mp4"></a></div>'
       +'<p class="vmk-cl-msg" id="vmkClMsg"></p><p class="vmk-cl-note"></p>';
@@ -331,10 +360,19 @@
     box.querySelector('[data-ab="after"]').textContent=L('vclAfter');
     box.querySelector('#vmkClDl').textContent=L('vclDownload');
     box.querySelector('.vmk-cl-note').textContent=L('vclNote');
+    /* v-video-enhance-pro: زرّ واحد وسطر تنبيه واحد تحت الزرّ المجّانيّ — يظهران فقط حين يفتح الخادم الميزة لهذا الحساب.
+       فحص محلّيّ يفشل = الزرّ معطَّل والسطر يقول السبب (لا يُرفع ملفّ سيُرفض)؛ عرض تكلفة قائم = الزرّ يصير «تأكيد وخصم». */
+    var pi=PRO.info, pb=id('vmkClPro'), pn=id('vmkClProNote'), pq=(PRO.quote&&PRO.id)?PRO.quote:null;
+    var why=(has&&pi)?proCheck(pi,CL.file,CL.meta):'', est=(pi&&CL.meta&&!pq&&!why)?proEstimate(pi,CL.meta.sec):0;
+    pb.textContent=pq?proText('vclProConfirm',{n:pq.cost}):L('vclPro'); pb.classList.toggle('ask',!!pq); pb.disabled=!!why;
+    if(est>0) pb.setAttribute('data-cost',est+' '+L('pricingPointsUnit'));
+    pn.textContent=why?proText(why,{n:pi.maxMB,s:pi.maxSec}):(pi?proText('vclProNotice',{n:pi.rate,m:pi.rate*pi.minSec,s:pi.maxSec}):'');
     var small=!!(CL.meta&&Math.min(CL.meta.w,CL.meta.h)<=540);
     id('vmkClFile').style.display=has?'':'none'; id('vmkClOpts').style.display=has?'':'none';
     id('vmkClGo').style.display=has&&!CL.busy?'':'none'; id('vmkClProg').style.display=CL.busy?'':'none';
     id('vmkClDone').style.display=done&&!CL.busy?'':'none'; id('vmkClDrop').classList.toggle('has',has);
+    var proOn=has&&!CL.busy&&!!(pi&&pi.on); pb.style.display=proOn?'':'none'; pn.style.display=proOn?'':'none';
+    box.querySelector('.vmk-cl-ab').style.display=CL.orig?'':'none'; /* نتيجة استُؤنفت بلا الملفّ الأصليّ: لا «قبل/بعد» */
     var up=id('vmkClUp'); up.disabled=!small; up.checked=small&&!!CL.upscale; up.parentElement.style.opacity=small?'1':'.45';
     [].forEach.call(box.querySelectorAll('[data-lv]'),function(p){ p.setAttribute('aria-checked',String(p.dataset.lv===CL.level)); p.onclick=function(){ if(!CL.busy){ CL.level=p.dataset.lv; clRender(); } }; });
     [].forEach.call(box.querySelectorAll('[data-ab]'),function(p){ p.setAttribute('aria-checked',String(p.dataset.ab===CL.showing)); p.onclick=function(){ CL.showing=p.dataset.ab; clStage(CL.showing==='before'?CL.orig:CL.out); clRender(); }; });
@@ -348,19 +386,26 @@
     dz.ondragleave=function(){ dz.classList.remove('over'); };
     dz.ondrop=function(e){ e.preventDefault(); dz.classList.remove('over'); var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) clPick(f); };
     id('vmkClGo').onclick=clRun;
+    id('vmkClPro').onclick=clPro;
     id('vmkClCancel').onclick=clCancel;
   }
   function clPick(f){
-    if(CL.busy) return;
+    /* v-video-enhance-pro: مهمّة احترافيّة تُتابَع (بعد الخصم، بلا إلغاء) لا تقفل القسم — اختيار ملفّ يخرج من متابعتها (accept أدناه) */
+    if(CL.busy&&PRO.stage!=='run') return;
     clMsg('');
     if(!/^video\//.test(f.type||'')&&!/\.(mp4|mov|m4v|webm|mkv|3gp)$/i.test(f.name||'')){ clMsg(L('vclFail'),true); return; }
     if(f.size>clMaxMB()*1048576){ clMsg(L('vclTooBig').replace('{n}',String(clMaxMB())),true); return; }
     var url=URL.createObjectURL(f), v=document.createElement('video'); v.preload='metadata'; v.muted=true; var settled=false;
     var accept=function(sec,w,h){
       if(settled) return; settled=true;
+      /* v-video-enhance-pro: ملفّ اختير ثمّ بدأ «تحسين احترافي» لسابقه قبل أن تُقرأ بياناته — لا يُبدَّل الملفّ تحت رفع جارٍ (عرض تكلفة ملفّ على ملفّ آخر) */
+      if(PRO.stage==='up'){ clRevoke(url); return; }
       if(sec>CL_MAX_SEC+0.5){ clRevoke(url); clMsg(L('vclTooLong').replace('{s}',String(CL_MAX_SEC)),true); return; }
+      /* …وملفّ مقبول اختير أثناء متابعة مهمّة مدفوعة: المتابعة تُترك (المهمّة تكمل على الخادم وزرّ «تحسين احترافي» يعيدها) والمسار المجّانيّ يعود كما كان */
+      if(PRO.stage==='run') proLeave();
       clRevoke(CL.orig); clRevoke(CL.out);
       CL.file=f; CL.orig=url; CL.out=''; CL.meta=w?{sec:sec,w:w,h:h}:null; CL.upscale=!!w&&Math.min(w,h)<=540; CL.showing='before';
+      PRO.id=''; PRO.up=false; PRO.quote=null; /* ملفّ جديد = رفع وعرض تكلفة جديدان */
       clRender(); clStage(w?url:''); /* بلا معاينة يُفرَّغ العارض: لا يبقى على رابط ملفّ سابق أُلغي */
     };
     /* WebM من MediaRecorder يعطي مدّة Infinity حتّى يُقرأ كلّه: مدّة غير محدودة = غير معروفة، و-t في الأداة يحدّها */
@@ -408,13 +453,239 @@
   }
   function clCancel(){
     if(!CL.busy) return;
+    if(PRO.stage){ proCancel(); return; } /* v-video-enhance-pro: إلغاء الرفع الاحترافيّ لا يُنهي أداة التحسين المحمَّلة */
     CL.run++;
     [CL.ff,CL.ffLoading].forEach(function(f){ try{ if(f) f.terminate(); }catch(e){ /* guard-ok — العامل انتهى */ } });
     CL.ff=null; CL.ffLoading=null; clLoad=null; CL.busy=false; clMsg(''); clRender();
   }
   function syncClean(){
     if(tab!=='clean'){ return; }
+    proInfo();
     if(!CL.busy) clRender();
+    proResume();
+  }
+  /* ═══ v-video-enhance-pro: «تحسين احترافي» — رفع ← فحص وعرض التكلفة ← تأكيد ← خصم وتشغيل على الخادم ← النتيجة في العارض نفسه ═══
+     المال كلّه في الخادم (api/_lib/video-enhance.js): الواجهة لا تقرّر خصمًا ولا ردًّا، تعرض ما يجيب به فقط. قاعدتان هنا:
+     «لم يُخصم شيء» لا تُكتب إلّا حين يُعرف ذلك (قبل إرسال التأكيد، أو برفض صريح من الخادم)؛ وبعد إرسال التأكيد أيّ جواب غير
+     واضح (انقطاع، رمز مجهول) لا يُفسَّر — تُسأل الحالة، وهي الحقيقة. الإلغاء متاح قبل التأكيد فقط؛ بعده المهمّة تكمل على الخادم
+     ولو أُغلقت النافذة، والنتيجة تنتظر صاحبها يومين ويجدها من أيّ جهاز (الخادم يحفظ مهمّة الحساب). */
+  function proTok(){ try{ return (typeof authGet==='function')?(authGet('aiapp_auth_token')||''):''; }catch(e){ return ''; } }
+  function proSleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+  function proText(k,v){ var s=L(k); Object.keys(v||{}).forEach(function(x){ s=s.split('{'+x+'}').join(String(v[x])); }); return s; }
+  /* سبب الفشل الحقيقيّ للمالك وحده (نمط v-video-watch-diag): الخادم لا يرسل __diag لغيره، وعطل الرفع أو الشبكة يُكتب هنا. نصّ الخادم لا يُعرض لمستخدم. */
+  function proDiag(d,local){
+    var own=false; try{ own=String(authGet('aiapp_username')||'').trim().toLowerCase()==='omran'; }catch(e){ own=false; }
+    var s=(d&&d.__diag)||(local&&own?local:'');
+    return s?' ['+String(s).slice(0,300)+']':'';
+  }
+  function proQuoteText(q){ return proText('vclProQuote',{s:q.sec,n:q.cost,p:q.points==null?'∞':q.points})+proDiag(q); }
+  function proWallets(){ ['refreshPointsWallet','refreshPremiumPoints'].forEach(function(n){ try{ if(typeof window[n]==='function') window[n](); }catch(e){ /* guard-ok — الرصيد يتحدّث عند أوّل قراءة تالية */ } }); }
+  function proSeenId(){ try{ return localStorage.getItem(PRO_SEEN)||''; }catch(e){ return ''; } }
+  /* عُرضت نتيجتها (أو انتهت): لا تُستأنف ثانية — في التخزين للزيارة التالية، وفي الذاكرة إن تعذّر التخزين */
+  function proForget(jid){ if(PRO.parked===jid) PRO.parked=''; if(PRO.info&&PRO.info.job===jid) PRO.info.job=null; }
+  function proSeen(jid){
+    proForget(jid);
+    try{ localStorage.setItem(PRO_SEEN,jid); }catch(e){ /* guard-ok — بلا تخزين تُعرض النتيجة مرّة أخرى في زيارة تالية */ }
+  }
+  function proDrop(jid){ if(!jid||PRO.id===jid){ PRO.id=''; PRO.up=false; PRO.quote=null; } }
+  function proIdle(){ PRO.stage=''; PRO.xhr=null; CL.busy=false; clRender(); }
+  function proStage(text,cancelable){
+    var w=M.querySelector('#vmkClean .vmk-cl-wk'), c=id('vmkClCancel');
+    if(w) w.textContent=text; if(c) c.style.display=cancelable?'':'none';
+  }
+  function proBusy(stage,text,cancelable,p){
+    PRO.stage=stage; if(!CL.busy){ CL.busy=true; clRender(); }
+    clMsg(''); proStage(text,cancelable); clProgress(p);
+  }
+  function proClock(ms){ var n=id('vmkClPct'), s=Math.max(0,Math.floor(ms/1000)); if(n) n.textContent=Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60); }
+  async function proApi(step,payload){
+    /* POST دائمًا، حتّى للاستطلاع: عامل الخدمة يحوّل GET الفاشل إلى 503 مزيّف ولا يلمس POST؛ والرمز في الجسم كبقيّة خطوات الفيديو */
+    var r=await fetch('/api/video?action=video-enhance&step='+step,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:proTok()},payload||{}))});
+    var d=await r.json().catch(function(){ return null; });
+    return {status:r.status,d:(d&&typeof d==='object')?d:{}};
+  }
+  function proInfo(){
+    if(typeof fetch!=='function') return;
+    /* مرّة لكلّ جلسة دخول: الجواب يخصّ الحساب (المالك وحده قبل الفتح للجميع، ومهمّته هو)، والدخول لا يعيد تحميل الصفحة.
+       جواب حساب سابق يُنسى، وقراءة فشلت تُعاد عند أوّل فتح للقسم بعد نصف دقيقة. بلا جواب لا يظهر الزرّ والمسار المجّانيّ كما هو. */
+    var tk=proTok(), who=tk||'-'; if(PRO.asked===who) return;
+    /* جلسة أخرى في الصفحة نفسها (الخروج والدخول لا يعيدان تحميلها): مهمّة الحساب السابق وعرض تكلفته ومهمّته المركونة لا تُعرض لغيره ولا
+       تُستطلع برمزه. مرحلة جارية تُترك: جواب الخادم برمز الجلسة الجديدة ينهيها. */
+    if(PRO.who!==undefined&&PRO.who!==who&&!PRO.stage){ if(!CL.busy&&(PRO.id||PRO.parked||PRO.quote)) clMsg(''); PRO.id=''; PRO.up=false; PRO.quote=null; PRO.parked=''; }
+    PRO.who=who; PRO.asked=who; PRO.info=null;
+    var again=function(){ setTimeout(function(){ if(PRO.asked===who&&!PRO.info) PRO.asked=false; },30000); };
+    /* GET لا POST: أيّ POST إلى /api/video يفتح شريط طلب الإشعارات، وقراءة الإعداد عند فتح التبويب لا تستحقّه */
+    fetch('/api/video?action=video-enhance&step=info',tk?{headers:{Authorization:'Bearer '+tk}}:undefined)
+      .then(function(r){ return r.json(); }).then(function(d){
+        if(PRO.asked!==who) return;
+        if(!d||d.ok!==true){ again(); return; }
+        if(d.job&&d.job===proSeenId()) d.job=null;
+        PRO.info=d; if(!CL.busy&&tab==='clean') clRender(); proResume();
+      }).catch(again);
+  }
+  function proPut(url,mime,file,my){
+    return new Promise(function(res,rej){
+      var x=new XMLHttpRequest(); PRO.xhr=x;
+      var bad=function(){ rej({error:'upload',local:'http '+x.status}); };
+      x.open('PUT',url,true); x.timeout=900000;
+      x.setRequestHeader('Content-Type',mime); /* النوع الذي أصدر الخادم الهدف به حرفيًّا */
+      x.upload.onprogress=function(e){ if(my===CL.run&&e.lengthComputable&&e.total>0) clProgress(e.loaded/e.total*0.9); };
+      x.onload=function(){ if(x.status>=200&&x.status<300) res(); else bad(); };
+      x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
+      x.send(file);
+    });
+  }
+  function proFail(d,local,keep){
+    d=d||{}; var pi=PRO.info||{}, k=proErrKey(d.error);
+    if(!keep) proDrop('');
+    proIdle();
+    clMsg(proText(k,{p:d.points==null?0:d.points,n:k==='vclTooBig'?pi.maxMB:(d.needed==null?'':d.needed),s:pi.maxSec})+proDiag(d,local),true);
+  }
+  async function clPro(){
+    var pi=PRO.info;
+    if(!CL.file||CL.busy||!pi||!pi.on||proCheck(pi,CL.file,CL.meta)) return;
+    if(!proTok()){ try{ if(typeof window.requireLogin==='function') window.requireLogin('guestLimit'); }catch(e){ /* guard-ok — بلا شاشة دخول لا شيء يُرفع */ } return; }
+    if(PRO.quote&&PRO.id){ proConfirm(PRO.quote); return; }
+    /* مهمّة للحساب لم تُعرف نهايتها أو لم تُرَ نتيجتها (رُكنت، تُركت باختيار ملفّ آخر، أو بدأت من جهاز آخر): الزرّ يسأل الخادم عنها أوّلًا —
+       لا رفع ثانٍ ولا عرض تكلفة ثانٍ لفيديو ربّما خُصم ثمنه، ولا مهمّة جديدة تكتب فوق نتيجة مدفوعة لم تُعرض */
+    if(proResume(true)) return;
+    var my=++CL.run, f=CL.file, q=null, step='start';
+    proBusy('up',L('vclProUploading'),true,0);
+    try{
+      if(!PRO.up||!PRO.id){
+        var s=await proApi('start',{size:f.size,mime:f.type||'',name:f.name||'',durationSec:(CL.meta&&CL.meta.sec)||0});
+        if(my!==CL.run) return;
+        if(s.d.error==='busy'&&s.d.job){ proBusy('run',L('vclProWorking'),false,1); proWatch(String(s.d.job),my); return; } /* مهمّة الحساب ما زالت جارية */
+        if(!s.d.ok||!s.d.id||!s.d.upload){ proFail(s.d,'start '+s.status); return; }
+        PRO.id=String(s.d.id); PRO.up=false; step='put';
+        await proPut(String(s.d.upload),s.d.mime||f.type||'video/mp4',f,my);
+        if(my!==CL.run) return;
+        PRO.up=true; PRO.xhr=null;
+      }
+      step='run'; clProgress(0.95);
+      /* الخادم ينسخ الملفّ ويقيسه: «لم يصل بعد» و«أعد» وعطل الشبكة أو البوّابة = انتظار ثمّ إعادة، ١٢ مرّة */
+      for(var i=0;i<12;i++){
+        try{ q=await proApi('run',{id:PRO.id}); }catch(e){ q=null; }
+        if(my!==CL.run) return;
+        if(q&&q.d.error!=='not_uploaded'&&q.d.error!=='retry'&&!(q.status>=500&&!q.d.error)) break;
+        await proSleep(2000); if(my!==CL.run) return;
+      }
+      if(q&&q.d.ok&&q.d.quote){ PRO.quote=q.d; proIdle(); clMsg(proQuoteText(q.d)); return; }
+      if(q&&q.d.ok&&q.d.state){ proBusy('run',L('vclProWorking'),false,1); proWatch(PRO.id,my); return; } /* أُكّدت من نافذة أخرى */
+      proFail(q&&q.d.error?q.d:{error:q?'':'upload'},'run '+(q?q.status:'network'));
+    }catch(err){
+      if(my!==CL.run) return; /* أُلغي: الإلغاء أعاد الرسم بنفسه */
+      proFail({error:'upload'},step+': '+((err&&(err.local||err.message))||'network'));
+    }
+  }
+  async function proConfirm(q){
+    var jid=PRO.id, my=++CL.run, r=null; PRO.job=jid;
+    /* من هنا لا إلغاء: الطلب قد يخصم، وما لا يُعرف مصيره يُسأل عنه الخادم */
+    PRO.quote=null; proBusy('run',L('vclProWorking'),false,1); proClock(0);
+    try{ r=await proApi('run',{id:jid,confirmed:true,cost:q.cost}); }catch(e){ r=null; }
+    if(my!==CL.run) return;
+    var d=r?r.d:{};
+    if(d.ok&&d.quote){ PRO.quote=d; proIdle(); clMsg(proQuoteText(d)); return; } /* التكلفة تغيّرت: عرض جديد بلا خصم */
+    if(d.ok&&d.state){ proWallets(); proWatch(jid,my); return; }
+    if(d.error==='busy'){ proWatch(String(d.job||jid),my); return; }
+    if(d.refunded!=null){ /* خُصم ثمّ تعذّر الإرسال: الخادم ردّ النقاط في الجواب نفسه */
+      proWallets();
+      if(d.refunded>0){ proDrop(''); proIdle(); clMsg(proText('vclProRefunded',{n:d.refunded})+proDiag(d),true); }
+      else proFail(d);
+      return;
+    }
+    /* رفض صريح قبل الخصم. نقص الرصيد وتوقّف الخدمة يُبقيان العرض (صالح ربع ساعة) فيعيد المستخدم التأكيد بلا رفع ثانٍ */
+    if({points_insufficient:1,unavailable:1}[d.error]===1){ PRO.quote=q; proFail(d,'',true); return; }
+    if({banned:1,limit:1,not_found:1,resolution:1,auth:1}[d.error]===1){ proFail(d); return; }
+    proWatch(jid,my);
+  }
+  /* استطلاع المهمّة: كلّ ٥ث في أوّل دقيقتين ثمّ ١٠ث، والوقت المنقضي مكان النسبة. خطأ الاستطلاع ليس فشل المهمّة أبدًا. */
+  async function proWatch(jid,my){
+    var t0=Date.now(), due=0, errs=0, miss=0, el=0, tk0=proTok(); PRO.job=jid;
+    try{
+      for(;;){
+        if(my!==CL.run) return;
+        el=Date.now()-t0; proClock(el);
+        if(el>=due){
+          var r=null; try{ r=await proApi('status',{id:jid}); }catch(e){ r=null; }
+          if(my!==CL.run) return;
+          el=Date.now()-t0; due=el+(el<120000?5000:10000);
+          var d=r?r.d:{};
+          if(d.ok===true){
+            errs=0; miss=0;
+            if(d.state==='done'){ proShow(jid,d,my); return; }
+            if(d.state==='failed'){
+              proSeen(jid); proWallets(); proDrop(jid); proIdle();
+              clMsg(d.refunded>0?proText('vclProRefunded',{n:d.refunded}):L('vclProFail'),true); return;
+            }
+            if(d.state==='gone'){ proSeen(jid); proDrop(jid); proIdle(); clMsg(''); return; }
+            if(d.state==='quoted'||d.state==='upload'){ /* لم يُخصم شيء: العرض من جديد إن كان لملفّنا، وإلّا رجوع صامت */
+              proForget(jid);
+              if(d.quote&&PRO.id===jid&&CL.file){ PRO.quote=d; proIdle(); clMsg(proQuoteText(d)); }
+              else if(PRO.id===jid) proFail({error:'failed'});
+              else { proIdle(); clMsg(''); }
+              return;
+            }
+          } else {
+            /* «غير موجودة» برمز جلسة أخرى (دخل حساب آخر أثناء المتابعة) ليست «شوهدت»: علامة الجهاز تبقى لصاحب المهمّة فيجد نتيجته حين يعود */
+            if(d.error==='not_found'){ if(++miss>=3){ if(proTok()===tk0) proSeen(jid); else proForget(jid); proDrop(jid); proIdle(); clMsg(''); return; } } else miss=0;
+            if(++errs>=6){ proPark(jid); return; }
+          }
+        }
+        /* ٥٠ دقيقة: تُترك تكمل على الخادم. بعد الاستطلاع لا قبله: صفحة نامت (هاتف مقفل، تبويب في الخلفيّة) تسأل الخادم مرّة عند
+           استيقاظها — المهمّة غالبًا انتهت — ولا تقول «ما زال جاريًا» بلا سؤال */
+        if(el>=3000000){ proPark(jid); return; }
+        await proSleep(1000);
+      }
+    }catch(err){
+      /* عطل غير متوقَّع في الواجهة لا يحبس القسم في «جارٍ» بلا زرّ إلغاء: المهمّة تكمل على الخادم */
+      try{ __swallow(err,'video:pro'); }catch(e){ /* guard-ok — لا مسجّل */ }
+      if(my===CL.run) proPark(jid);
+    }
+  }
+  async function proShow(jid,d,my){
+    try{
+      /* عبر وسيط التنزيل عندنا دائمًا: جلب رابط المزوّد مباشرة يخزّنه عامل الخدمة (GET من أصل آخر) */
+      var tk=proTok(), px=(typeof window.__omranProxyVideoUrl==='function')?window.__omranProxyVideoUrl(String(d.url||'')):'';
+      if(!/^\/api\//.test(px||'')) throw new Error('no proxy');
+      var r=await fetch(px,tk?{headers:{Authorization:'Bearer '+tk}}:undefined);
+      if(!r.ok) throw new Error('proxy '+r.status);
+      var blob=await r.blob();
+      if(my!==CL.run) return;
+      if(PRO.id!==jid){ clRevoke(CL.orig); CL.file=null; CL.orig=''; CL.meta=null; } /* ملفّ آخر مختار: «قبل/بعد» لا يقارن بأصل غير أصله */
+      proDrop(''); PRO.stage=''; PRO.xhr=null;
+      clRevoke(CL.out); CL.out=URL.createObjectURL(blob); CL.showing='after';
+      CL.busy=false; clRender(); clStage(CL.out); clProgress(1);
+      clMsg(proText('vclProDone',{n:d.cost==null?0:d.cost,s:d.sec==null?'':d.sec}));
+      proSeen(jid);
+      try{ if(typeof window.mediaReadyNotify==='function') window.mediaReadyNotify('video',true); }catch(e){ /* guard-ok — الإشعار تحسين */ }
+    }catch(err){
+      if(my!==CL.run) return;
+      proPark(jid); /* النتيجة محفوظة على الخادم: تعذّر جلبها الآن ليس فشلًا */
+    }
+  }
+  function proPark(jid){ PRO.parked=jid; PRO.last=Date.now(); proIdle(); clMsg(L('vclProLater')); }
+  /* خروج المستخدم من متابعة مهمّة مدفوعة باختيار ملفّ: لا إلغاء (المهمّة تكمل على الخادم) ولا رسالة — تُركن بمعرّفها المتابَع، وجواب أيّ
+     طلب جارٍ يُهمل برمز التشغيل (تأكيد في الطريق تُعرف حقيقته من الحالة عند العودة) */
+  function proLeave(){ var jid=PRO.job||PRO.id; CL.run++; if(jid){ PRO.parked=jid; PRO.last=Date.now(); } proIdle(); }
+  function proCancel(){
+    if(PRO.stage==='run') return; /* بعد إرسال التأكيد لا إلغاء: المهمّة تكمل على الخادم، وإلغاء المزوّد لا يضمن ألّا يحاسبنا */
+    CL.run++;
+    try{ if(PRO.xhr) PRO.xhr.abort(); }catch(e){ /* guard-ok — الرفع انتهى */ }
+    proIdle(); clMsg('');
+  }
+  /* مهمّة تُركت تكمل (أو بدأت من جهاز آخر): العودة إلى القسم تتابعها — مرّة كلّ دقيقة على الأكثر (أو فورًا بنقرة المستخدم)، ولا تقاطع عملًا جاريًا.
+     الاستئناف التلقائيّ لا يأخذ ما على الشاشة: نتيجة معروضة (المجّانيّة تُمحى بعرض غيرها) أو ملفّ مختار غير ملفّ المهمّة يبقيان، والمهمّة
+     تنتظر نقرة «تحسين احترافي» أو فتح القسم فارغًا. مهمّة الملفّ المختار نفسه تُستأنف كما كانت. ترجع true حين بدأت متابعة. */
+  function proResume(now){
+    var jid=String(PRO.parked||(PRO.info&&PRO.info.job)||'');
+    if(!/^[a-f0-9]{24}$/.test(jid)||tab!=='clean'||CL.busy||!proTok()||jid===proSeenId()||(now!==true&&Date.now()-PRO.last<60000)) return false;
+    if(now!==true&&(CL.out||(CL.file&&PRO.id!==jid))) return false;
+    PRO.last=Date.now();
+    var my=++CL.run;
+    proBusy('run',L('vclProWorking'),false,1);
+    proWatch(jid,my);
+    return true;
   }
   function L(k){ var v=(typeof window.t==='function')?window.t(k):k; return v&&v!==k?v:''; }
   var SECS={'5':5,'8':8,'10':10,long20:20,film:45,adspot:5,reels:10};

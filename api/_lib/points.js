@@ -113,7 +113,7 @@ async function readPoints(username) {
 // which Redis evaluates under its own lock. The user record keeps a mirror so
 // nothing else in the app has to change, and so an existing account migrates
 // on first touch instead of losing its points.
-const { kvIncrBy, kvDecrBy, kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+const { kvIncrBy, kvDecrBy, kvSetIfAbsent, kvGetRaw, kvPipeline, kvDel } = require('./kv.js');
 
 function balanceKey(username) {
   return 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
@@ -228,6 +228,36 @@ async function refundPoints(username, amount) {
   } catch (e) {
     console.error('[points] refund failed for ' + username + ':', e && e.message);
   }
+}
+
+/* v-video-enhance-pro: ردّ بالنقاط وحدها — لخدمة سببها خارج جدول الوسائط (UNIT_COST) فخُصمت من النقاط لا من رصيد اشتراك.
+   refundPoints أعلاه يمرّ أوّلًا بتذاكر فيديو الباقة ثمّ تذاكر الوسائط، فكان سيحوّل هذا الردّ إلى رصيد اشتراك لم يُخصم منه.
+   يرجع true حين عادت النقاط (أو لم يكن شيء مستحقًّا: المالك وVIP والمبلغ صفر)، وfalse حين فشل القيد أو لم يُعرف مصيره — المتّصل
+   يعيد لاحقًا.
+   mark اختياريّ = [مفتاح، قيمة، مدّة بالثواني]: ختم «رُدّت» يُكتب مع القيد في نداء Redis واحد (pipeline: طلب واحد بترتيبه، لا
+   معاملة) — ردّ وقع وختمه لم يُكتب كان يُعاد ثانيةً. معه: رصيد ليس عددًا صحيحًا = false قبل النداء (فلا يفشل INCRBY داخل النداء
+   والختم ينجح)، ونداء أجاب وقيده لم يقع يُحذف ختمه (أفضل جهد) فلا يُقرأ «رُدّت» بلا قيد. وfalse مع mark قد تعني «وقع وضاع
+   الجواب»: المتّصل يقرأ ختمه قبل أن يعيد. المالك وVIP والمبلغ صفر لا يصلون النداء، فالختم لا يُكتب لهم هنا. */
+async function refundPointsOnly(username, amount, mark) {
+  if (!username || isOwner(username)) return true;
+  if (await isVip(username)) return true; // لم يُخصم منه شيء، فلا شيء يُعاد.
+  const amt = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!amt) return true;
+  let after;
+  try {
+    const seed = await ensureBalance(username);
+    if (mark) {
+      if (!Number.isInteger(seed)) throw new Error('balance is not an integer');
+      const r = await kvPipeline([['INCRBY', balanceKey(username), String(amt)], ['SET', String(mark[0]), String(mark[1]), 'EX', String(mark[2])]]);
+      if (r[0] == null || !Number.isFinite(Number(r[0]))) {
+        await kvDel(String(mark[0]));
+        throw new Error('refund not applied');
+      }
+      after = Number(r[0]);
+    } else after = Number(await kvIncrBy(balanceKey(username), amt));
+  } catch (e) { console.error('[points] refund failed for ' + username + ':', e && e.message); return false; }
+  try { await mirrorToUser(username, after); } catch (e) { /* guard-ok — المرآة لا تقلب نتيجة الردّ */ }
+  return true;
 }
 
 /* v-plans-gate (طلب المالك ٦ أكتوبر: «انتهاء الخدمة ولا تجديد … تحوّله إلى الاشتراك»): نهاية كلّ اشتراك من سجلّ الحساب
@@ -351,6 +381,7 @@ module.exports.spendPoints = spendPoints;
 module.exports.ensureBalance = ensureBalance; // v-pay-seed: الشحن يبذر العدّاد من السجلّ لا من صفر
 module.exports.spendByToken = spendByToken;
 module.exports.refundPoints = refundPoints;
+module.exports.refundPointsOnly = refundPointsOnly; // v-video-enhance-pro: ردّ لا يمرّ بتذاكر الباقات
 module.exports.readPoints = readPoints;
 module.exports.isOwnerUsername = isOwner;
 module.exports.verifyPointsToken = verifyToken;

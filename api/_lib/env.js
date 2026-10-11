@@ -52,6 +52,12 @@ const SPEC = {
   FAL_KEY:                ['feature', 'ممثل يتكلم بصوت إماراتيّ أصيل (حمدان/فاطمة) وتحريك الشفاه عليه — بدونه يعمل الوضع على Veo كما كان (v-actor-lipsync)'],
   ACTOR_LIPSYNC_MODEL:    ['tunable', 'بديل: fal-ai/bytedance/omnihuman/v1.5 — محرّك تحريك الشفاه'],
   ACTOR_MAX_SEC:          ['tunable', 'بديل: ١٥ — أطول كلام للممثّل بالثواني (المحرّك يُحاسَب بالثانية)'],
+  // v-video-enhance-pro: «تحسين احترافي» للفيديو — يعمل بمفتاح FAL_KEY نفسه؛ الخمسة لها بديل آمن في video-enhance.js
+  VIDEO_ENHANCE:          ['tunable', 'off يوقفه للجميع · on يفتحه للجميع · غير ذلك (الافتراضيّ) للمالك وحده'],
+  VIDEO_ENHANCE_TIER:     ['tunable', 'بديل: fast — طبقة المحرّك وسعرها معًا: fast · precise · max'],
+  VIDEO_ENHANCE_CAP_CENTS:['tunable', 'بديل: ١٠٠٠ — سقف صرفنا اليوميّ عند المزوّد بالسنت (يوم UTC)؛ ٠ يغلق'],
+  VIDEO_ENHANCE_TALL_OK:  ['tunable', 'طبقات (بفواصل) تحقّق المالك من سعر مخرجها الطوليّ — بدونها المخرج الطوليّ للمالك وحده'],
+  VIDEO_ENHANCE_UNTRIP:   ['tunable', 'الرمز المكتوب في سجلّ المالك لإعادة الفتح بعد القاطع (مهمّة فاقت تقديرها ثلاث مرّات)'],
   REPLICATE_API_TOKEN:    ['feature', 'ترقية دقّة الصور (مكبّر Real-ESRGAN) — بدونه تُعاد الصورة كما هي (v-img-upscale)'],
   IMAGE_UPSCALE:          ['tunable', 'off يعطّل الترقية التلقائيّة لنواتج الصور دون 2K'],
   UPSCALE_MAX_MS:         ['tunable', 'بديل: ٦٠٠٠٠ — مهلة الترقية'],
