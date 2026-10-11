@@ -22,6 +22,7 @@ function load(action) {
     case 'actor-create': return require('./_lib/actor-create.js'); // v-actor-lipsync: صوت إماراتيّ + تحريك الشفاه
     case 'actor-status': return require('./_lib/actor-status.js');
     case 'video-watch': return require('./_lib/video-watch.js'); // v-video-watch: فيديو مرفق في المحادثة يُشاهَد ويُسمَع معًا
+    case 'video-enhance': return require('./_lib/video-enhance.js'); // v-video-enhance-pro
     default: return null;
   }
 }
