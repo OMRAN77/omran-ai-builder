@@ -50,5 +50,5 @@ test('تظهر مكان خانة «صورتك» عند «ولّد»، وتختف
   assert.ok(css.includes('.stTowerPhoto span{position:absolute;inset:0;background:var(--tint,#fff);mix-blend-mode:color'));
   assert.ok(css.includes('animation:stTowerFloat') && css.includes('animation:stTowerRise'));
   assert.ok(/prefers-reduced-motion:reduce\)\{#studioAiModal \.stTower/.test(css), 'الحركة تُطفأ لمن طلب');
-  assert.ok(read('index.html').includes('css/modules.css?v=678'));
+  assert.ok(read('index.html').includes('css/modules.css?v=679'));
 });

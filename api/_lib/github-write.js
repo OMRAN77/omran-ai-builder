@@ -12,6 +12,7 @@
 'use strict';
 
 const { ghFetch, parseTarget, resolveGithubToken } = require('./github-read.js'); // v-secret-vault: المفتاح من البيئة أو الخزنة
+const bundleCore = require('./bundle-core.js'); // v-auto-bundle
 
 const LIMITS = { files: 20, perFile: 200000, total: 1000000, deletes: 20 };
 /* v-claude-code-level (F1): edit_github يرفع الملفّ كلّه بعد تبديل مقطع، فسقف ٢٠٠ ألف حرف منع تعديل app-09
@@ -73,6 +74,48 @@ function validateInput(input, limits) {
   return { files: outFiles, deletes: outDel };
 }
 
+/* ---------- v-auto-bundle: الحزمة تُبنى داخل الرفعة نفسها ----------
+   المالك ١١ أكتوبر: «كلّ مزوّد يقرأ ويرفع ويدمج، وClaude Code ما يكون الأساسيّ». رفعة تمسّ js/app-NN-*.js كانت تُفشل
+   CI (verify) وتُبقي المعاينة قديمة لأنّ لا أداة تبني الحزمة — فيُحال كلّ تعديل واجهة إلى Claude Code. هنا: الأجزاء من
+   شجرة الأب (الفرع إن وُجد) مع ما في الرفعة، ثمّ البناء بـbundle-core (منطق build.mjs نفسه) وإضافة js/app.bundle.js
+   وindex.html وsw.js إلى الالتزام نفسه. null = الرفعة لا تمسّ الأجزاء أو المستودع ليس فيه حزمة. الفشل يُرمى فيرفع
+   المستدعي بلا حزمة ويقول ذلك صراحةً (لا يضيع تعديل المزوّد). */
+async function blobText(R, sha, o) {
+  const { r, j } = await ghJson(R + '/git/blobs/' + sha, Object.assign({}, o, { timeoutMs: Math.max(o.timeoutMs || 0, 30000) }));
+  if (!r.ok || !j || typeof j.content !== 'string') throw new Error('تعذّرت قراءة ملفّ من الشجرة (GitHub HTTP ' + r.status + ')');
+  return j.encoding === 'base64' ? Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf8') : j.content;
+}
+async function autoBundle(R, rootTreeSha, v, o) {
+  if (!v.files.some((f) => bundleCore.isPartPath(f.path)) && !v.deletes.some((p) => bundleCore.isPartPath(p))) return null;
+  const at = (tree, name) => tree.find((e) => e && e.path === name);
+  const { r: rt, j: root } = await ghJson(R + '/git/trees/' + rootTreeSha, o);
+  if (!rt.ok || !root || !Array.isArray(root.tree)) throw new Error('تعذّرت قراءة شجرة المستودع (GitHub HTTP ' + rt.status + ')');
+  const jsDir = at(root.tree, 'js'), htmlE = at(root.tree, 'index.html'), swE = at(root.tree, 'sw.js');
+  if (!jsDir || jsDir.type !== 'tree' || !htmlE || !swE) return null;
+  const { r: rj, j: js } = await ghJson(R + '/git/trees/' + jsDir.sha, o);
+  if (!rj.ok || !js || !Array.isArray(js.tree)) throw new Error('تعذّرت قراءة مجلّد js (GitHub HTTP ' + rj.status + ')');
+  if (!at(js.tree, 'app.bundle.js')) return null; // مستودع آخر بأجزاء بالاسم نفسه لكن بلا حزمة
+  const pushed = new Map(v.files.map((f) => [f.path, f.content]));
+  const deleted = new Set(v.deletes);
+  const parts = {}, need = [];
+  for (const e of js.tree) {
+    if (!e || e.type !== 'blob' || !bundleCore.PART_NAME_RE.test(e.path) || deleted.has('js/' + e.path)) continue;
+    if (!pushed.has('js/' + e.path)) need.push(e);
+  }
+  for (const [p, c] of pushed) if (bundleCore.isPartPath(p)) parts[p.slice(3)] = c; // المعدَّل والجديد من الرفعة
+  for (let k = 0; k < need.length; k += 8) {
+    await Promise.all(need.slice(k, k + 8).map(async (e) => { parts[e.path] = await blobText(R, e.sha, o); }));
+  }
+  const html = pushed.has('index.html') ? pushed.get('index.html') : await blobText(R, htmlE.sha, o);
+  const sw = pushed.has('sw.js') ? pushed.get('sw.js') : await blobText(R, swE.sha, o);
+  const b = bundleCore.buildBundle(parts);
+  const put = (path, content) => { const f = v.files.find((x) => x.path === path); if (f) f.content = content; else v.files.push({ path, content }); };
+  put(bundleCore.BUNDLE_PATH, b.bundle);
+  put('index.html', bundleCore.stampHtml(html, b.hash));
+  put('sw.js', bundleCore.stampSw(sw, b.hash));
+  return { hash: b.hash, parts: b.count };
+}
+
 /* ---------- الرفع ---------- */
 async function pushFiles(input, opts) {
   const o = opts || {};
@@ -113,10 +156,14 @@ async function pushFiles(input, opts) {
 
   /* v-claude-code-level (F1): ملفّ فوق سقف write_github (لا يصله إلّا مسار التعديل) يُرفع blobًا أوّلًا — /git/blobs
      موثّق حتّى ١٠٠ م.ب، والمحتوى المضمَّن في /git/trees بلا سقف موثّق. ما دون السقف يبقى مضمَّنًا كما كان حرفيًّا. */
+  const userFiles = v.files.length; // ما رفعه النموذج — الحزمة وختمها إضافة من الخادم
+  let bundled = null, bundleError = '';
+  try { bundled = await autoBundle(R, cj.tree.sha, v, o); } catch (e) { bundleError = String((e && e.message) || e).slice(0, 200); }
+
   const tree = [];
   for (const f of v.files) {
     if (f.content.length <= LIMITS.perFile) { tree.push({ path: f.path, mode: '100644', type: 'blob', content: f.content }); continue; }
-    const { r: bl, j: blj } = await ghJson(R + '/git/blobs', Object.assign({}, o, { method: 'POST', body: { content: f.content, encoding: 'utf-8' } }));
+    const { r: bl, j: blj } = await ghJson(R + '/git/blobs', Object.assign({}, o, { method: 'POST', body: { content: f.content, encoding: 'utf-8' }, timeoutMs: Math.max(o.timeoutMs || 0, 60000) })); /* v-auto-bundle: الحزمة ~٣٫٧ م.ب */
     if (!bl.ok || !blj || !blj.sha) return { error: apiMsg(bl, blj, 'رفع ' + f.path) };
     tree.push({ path: f.path, mode: '100644', type: 'blob', sha: blj.sha });
   }
@@ -134,7 +181,7 @@ async function pushFiles(input, opts) {
     if (!mk.ok) return { error: apiMsg(mk, mj, 'إنشاء الفرع ' + branch) };
   }
 
-  const out = { ok: true, repo: t.owner + '/' + t.repo, branch, base, direct: branch === base, commit: cmj.sha, commitUrl: (cmj.html_url || ('https://github.com/' + t.owner + '/' + t.repo + '/commit/' + cmj.sha)), files: v.files.length, deleted: v.deletes.length, prUrl: '', prNumber: null, prError: '' };
+  const out = { ok: true, repo: t.owner + '/' + t.repo, branch, base, direct: branch === base, commit: cmj.sha, commitUrl: (cmj.html_url || ('https://github.com/' + t.owner + '/' + t.repo + '/commit/' + cmj.sha)), files: userFiles, bundle: bundled || undefined, bundleError: bundleError || undefined, deleted: v.deletes.length, prUrl: '', prNumber: null, prError: '' };
   if (branch !== base) {
     const { r: pl, j: plj } = await ghJson(R + '/pulls?state=open&head=' + encodeURIComponent(t.owner + ':' + branch) + '&base=' + encodeURIComponent(base), o);
     let pr = pl.ok && Array.isArray(plj) && plj.length ? plj[0] : null;
@@ -152,6 +199,8 @@ async function pushFiles(input, opts) {
 function formatPush(res) {
   if (!res || res.error) return '✗ لم يُرفع شيء: ' + ((res && res.error) || 'سبب غير معروف');
   const lines = ['✅ رُفع commit ' + short(res.commit) + ' إلى ' + res.repo + ' على الفرع «' + res.branch + '» (' + res.files + ' ملفًّا' + (res.deleted ? '، حُذف ' + res.deleted : '') + ').', 'الالتزام: ' + res.commitUrl];
+  if (res.bundle) lines.push('📦 الحزمة js/app.bundle.js بُنيت تلقائيًّا في الالتزام نفسه من ' + res.bundle.parts + ' جزءًا (بصمة ' + res.bundle.hash + ' في index.html وsw.js) — لا تبنها ولا ترفعها بنفسك؛ CI والمعاينة يريان التغيير.');
+  else if (res.bundleError) lines.push('⚠️ تعذّر بناء الحزمة تلقائيًّا: ' + res.bundleError + ' — CI سيفشل والمعاينة لن تتغيّر. قلها للمالك كما هي.');
   if (res.prUrl) lines.push('طلب السحب #' + res.prNumber + ': ' + res.prUrl);
   else if (res.direct) lines.push('دُفع مباشرةً إلى ' + res.base + ' (AGENT_GITHUB_DIRECT مفعّل).');
   else if (res.prError) lines.push('لم يُفتح طلب سحب: ' + res.prError + ' — الفرع مرفوع ويمكن فتح الطلب يدويًّا.');
@@ -178,4 +227,4 @@ const TOOL = {
   },
 };
 
-module.exports = { pushFiles, formatPush, validateInput, validPath, TOOL, LIMITS, EDIT_PUSH_LIMITS };
+module.exports = { pushFiles, formatPush, validateInput, validPath, autoBundle, TOOL, LIMITS, EDIT_PUSH_LIMITS };
