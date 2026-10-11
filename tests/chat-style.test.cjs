@@ -137,7 +137,7 @@ check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocial
 check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة') && attach.includes('ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'سؤال الحال له توجيه مباشر يمنع عرض الخدمة والمواضيع القديمة');
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
-check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('وممنوع سرد مشاريع أو مواضيع قديمة'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
+check(chatServer.includes('const system = (quietSocialTurn') /* v-prov-self: ملفّ المزوّد والدروس تُلحق بآخر النظام */ && chatServer.includes('وممنوع سرد مشاريع أو مواضيع قديمة'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
 check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 
 // ═══ الأدوات والبحث ═══
