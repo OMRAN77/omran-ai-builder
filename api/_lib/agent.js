@@ -96,7 +96,7 @@ function isOwner(user) { return !!user && ownerList().includes(String(user).trim
    القصير — يظهر سطرًا في سجلّ العمل كما يظهر وصف الأمر في Claude Code. أوّل الخصائص كي يُكتب قبل غيره. */
 const STEP_TITLE = { type: 'string', description: 'عنوان قصير لهذه الخطوة يراه المستخدم سطرًا في سجلّ العمل: ٣–٧ كلمات بلغته، مثل «البحث عن مستهلكي code-analyze» أو «قراءة api/_lib/chat.js كاملًا».' };
 function withStepTitle(t) { return Object.assign({}, t, { input_schema: Object.assign({}, t.input_schema, { properties: Object.assign({ step_title: STEP_TITLE }, (t.input_schema || {}).properties) }) }); }
-function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]).concat([githubEdit.EDIT_TOOL, githubEdit.MERGE_TOOL, githubManage.MANAGE_TOOL]) : TOOLS).map(withStepTitle); }
+function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]).concat([githubEdit.EDIT_TOOL, githubEdit.MERGE_TOOL, githubManage.MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]) : TOOLS).map(withStepTitle); } // v-prov-self: ملفّ Claude والدروس العامّة
 // الأمر كما يُعرض تحت عنوان الخطوة: اسم الأداة ومدخلها بلا العنوان، والنصوص الطويلة (كود، ملفّات) مختصرة.
 function stepCmd(name, input) {
   const o = {};
@@ -519,6 +519,7 @@ module.exports = async (req, res) => {
     const __cc = String(currentCode).slice(0, 300000), __big = __cc.length > 24000;
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا' + (__big ? ' — الملفّ ' + __cc.length + ' حرفًا، أكبر من أن يُعاد كاملًا: أرسل التعديل رقعًا داخل كتلة ```patch بالشكل @@PATCH ثمّ @@WHY سطر ثمّ @@OLD نصّ موجود في الملفّ مرّة واحدة بالضبط منسوخ حرفيًّا ثمّ @@NEW البديل ثمّ @@END، والتطبيق يطبّقها' : ' وأعد الملف كاملًا') + '):\n```html\n' + __cc + '\n```';
   }
+  if (isOwner(runUser)) { try { system += await require('./prov-self.js').systemBlocks(true, 'claude'); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } } // v-prov-self
   if (isOwner(runUser)) system += OWNER_ENGINEERING_NOTE + OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله · v-agent-surgical
 
   const convoAll = messages
@@ -710,7 +711,9 @@ module.exports = async (req, res) => {
           content: typeof m.content === 'string' ? m.content
             : (Array.isArray(m.content) ? m.content.map((c) => c.text || c.content || '').filter(Boolean).join('\n') : ''),
         })).filter((m) => m.content));
-        for (const fb of fallbacks) {
+        /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه… من غير لفّ ودوران»): للمالك لا هبوط صامت إلى DeepSeek/Mistral/Groq بلا أدوات
+           (كان v-silent-fallback) — يقول السبب في سطر كالمحادثة (v-owner-solo). */
+        for (const fb of (isOwner(runUser) ? [] : fallbacks)) {
           if (!fb.key) continue;
           try {
             const fr = await fetch(fb.url, {
@@ -747,6 +750,7 @@ module.exports = async (req, res) => {
           } catch (e) { /* جرّب التالي */ }
         }
         await meterRun();
+        if (isOwner(runUser)) { send({ error: (Number(upstream.status) === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(errText)) ? 'ما عندي رصيد' : 'ما قدرت أردّ الحين — خطأ ' + upstream.status }); res.end(); return; } // v-prov-self
         send({ error: 'خطأ المحرّك ' + upstream.status + ': ' + errText.slice(0, 300) });
         res.end();
         return;
@@ -903,6 +907,9 @@ module.exports = async (req, res) => {
           else if (cb.name === 'check_code_task') {
             result = isOwner(runUser) ? delegate.formatCheck(await delegate.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
           }
+          /* v-prov-self: الوكيل وكيلُ Claude — ملفّه ملفّ Claude نفسه؛ والدروس بـ«عمّم» يفحصها الخادم */
+          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf('claude', input, isOwner(runUser));
+          else if (cb.name === 'teach_users') result = await require('./prov-self.js').runTeach(input, living.lastUserText(messages), isOwner(runUser), 'claude');
           /* v-provider-errors: أخطاء الإنتاج الحيّة — للمالك وحده، وحارسٌ ثانٍ هنا لا في إخفاء الأداة وحده. */
           else if (cb.name === 'read_app_errors') {
             result = isOwner(runUser) ? await appErrors.appErrorsText() : '✗ قراءة أخطاء التطبيق للمالك وحده.';

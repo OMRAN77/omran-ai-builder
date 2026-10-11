@@ -110,10 +110,10 @@ test('الربط: الأداة للمالك وحده في الوكيل والم�
   const A = require('../api/_lib/agent.js').__test;
   assert.ok(!A.toolsFor('__nobody__').map((t) => t.name).includes('manage_github'));
   const agent = read('api/_lib/agent.js');
-  assert.match(agent, /githubEdit\.MERGE_TOOL, githubManage\.MANAGE_TOOL\]/);
+  assert.match(agent, /githubEdit\.MERGE_TOOL, githubManage\.MANAGE_TOOL[,\]]/); // v-prov-self: أداتا ملفّ المزوّد والدروس بعدها
   assert.match(agent, /cb\.name === 'manage_github'[\s\S]{0,300}isOwner\(runUser\)[\s\S]{0,200}githubManage\.ownerAllows\(act, living\.lastUserText\(messages\)\)/);
   const chat = read('api/_lib/chat.js');
-  assert.match(chat, /const OWNER_TOOLS = \[[^\n]*require\('\.\/github-manage\.js'\)\.MANAGE_TOOL\]/);
+  assert.match(chat, /const OWNER_TOOLS = \[[^\n]*require\('\.\/github-manage\.js'\)\.MANAGE_TOOL[,\]]/);
   assert.match(chat, /cb\.name === 'manage_github'[\s\S]{0,300}__ownerReq[\s\S]{0,200}__gm\.ownerAllows\(__act, lastUserText\)/);
   const GE = require('../api/_lib/github-edit.js');
   assert.match(GE.WORK_NOTE, /الحالة تُفحص لا تُفترض/);
