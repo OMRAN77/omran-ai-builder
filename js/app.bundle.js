@@ -23148,8 +23148,12 @@ async function __sendPromptCore(){
      (lastMsgWasImageEdit تبقى مرفوعة بعد الدور النصّيّ). مراجعة نصّيّة لا تذكر الصورة، ورسالة المستخدم السابقة طلب مخرَج نصّيّ (أو مراجعات نصّيّة متتالية بعده)
      = للنصّ لا للصورة. العلامة نفسها لا تُمسّ: «خلها بالليل/الخلفية بحر/كرتون» بعد القصيدة تعدّل الصورة كما في main، و«حلوة» بينهما تُرجع سلوك main. */
   const __rtTextRevRe = /(?:^|[\s،,.!؟?])(?:اختصر|اختصره|اختصرها|اختصري|لخص|لخّص|لخصه|لخصها|قصّر|قصره|قصرها|أقصر|اقصر|أطول|اطول|طوّل|طوله|طولها|ترجم|ترجمه|ترجمها|ترجمي|بالإنجليزي|بالانجليزي|بالإنقليزي|بالعربي|بالفرنسي|رسمي|أرسمي|أسلوب|اسلوب|بأسلوب|باسلوب|صياغ[ةه]|صيغ[ةه]|نقاط|بنقاط|shorter|longer|translate|english|formal)(?=$|[\s،,.!؟?])/i;
-  const __rtIsTextOut = (t) => !!(t && !__rtImgRefRe.test(t) && ((__rtWriteVerbRe.test(t) && __rtDocNounRe.test(t) && !__rtStyleCueRe.test(t)) || __rtTextOutRe.test(t)));
-  const __rtTextRev = !!(text && __rtTextRevRe.test(text) && !__rtImgRefRe.test(text) && (() => {
+  const __rtIsTextOut = (t) => !!(t && !__rtImgRefRe.test(t) && ((__rtWriteVerbRe.test(t) && __rtDocNounRe.test(t) && !__rtStyleCueRe.test(t)) || __rtTextOutRe.test(t) || (__rtSuggestRe.test(t) && !__rtPutRe.test(t))));
+  const __rtQRe = /[؟?]\s*$|^\s*(?:وش|شو|ايش|إيش|ليش|كيف|متى|وين|هل|مين|كم|ماهو|ماهي|what|why|how|when|where|who)(?=$|[\s،,])/i; // سؤال يُجاب نصًّا
+  const __rtContRe = /^\s*(?:كمل|كمّل|كمل لي|زيد|وبعد|continue|more)\s*[.!؟?]*\s*$/i;
+  const __rtDocNameRe = /(?:^|[\s،,.!؟?])(?:ال)?(?:قصيد[ةه]|إيميل|ايميل|رسال[ةه]|مقال[ةه]?|بوست|منشور|ملخص|تقرير|كابشن|الكلام|الشرح|الجواب|الرد|الردّ)(?=$|[\s،,.!؟?])/i; // «اختصر القصيدة» تسمّي النصّ
+  const __rtCtx = (() => { // سياق الأدوار السابقة: strict = طلب مخرَج نصّيّ صريح (أو اقتراح أسماء)، any = أو سؤال يُجاب نصًّا — عبر المراجعات و«كمل»
+    const out = { strict: false, any: false };
     try{
       const ms = ((typeof __rtCurP !== 'undefined' && __rtCurP) || getCurrent() || {}).messages || [];
       let hops = 0;
@@ -23157,12 +23161,16 @@ async function __sendPromptCore(){
         const m = ms[i]; if(!m || m.role !== 'user') continue;
         const u = String(m.content || ''); if(u === String(text) && i === ms.length - 1) continue; // الرسالة الحاليّة إن دُفعت
         hops++;
-        if(__rtIsTextOut(u)) return true;
-        if(!(__rtTextRevRe.test(u) && !__rtImgRefRe.test(u))) return false;
+        if(__rtIsTextOut(u)){ out.strict = out.any = true; break; }
+        if(__rtQRe.test(u) && !__rtImgRefRe.test(u)){ out.any = true; break; }
+        if((__rtTextRevRe.test(u) && !__rtImgRefRe.test(u)) || __rtContRe.test(u)) continue;
+        break;
       }
-    }catch(e){ __swallow(e, 'route:text-rev'); }
-    return false;
-  })());
+    }catch(e){ __swallow(e, 'route:text-ctx'); }
+    return out;
+  })();
+  const __rtTextRev = !!(text && __rtTextRevRe.test(text) && !__rtImgRefRe.test(text) && (__rtCtx.any || __rtDocNameRe.test(text)));
+  const __rtAfterTextOut = __rtCtx.strict; // بعد طلب نصّيّ صريح: الالتقاط الشامل (__FOLLOW_ANY) مطفأ — «الثالث حلو» بعد «عطني خمس أسماء» للنصّ، والتعديل الصريح يبقى
   /* «اكتب لي دعوة/شهادة/بطاقة…» في أوّل الرسالة = وثيقة تُكتب، لا تصميم بنصّ (فعل التصميم «صمّم/سوّ» يبقى صورة) */
   const __rtWriteDocAsk = !!(text && !__rtImgRefRe.test(text) && /^\s*(?:(?:ممكن|لو\s*سمحت|من\s*فضلك|بليز|please|ساعدني)\s+)?(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|تكتبلي|write)\s*(?:لي\s*|لنا\s*|me\s+)?(?:(?:a|an)\s+)?(?:ال)?(?:دعو[ةه]|شهاد[ةه]|بطاق[ةه]|تهنئ[ةه]|كرت|invitation|certificate|card)(?=$|[\s،,.:!؟?])/i.test(text));
   const __IMGF_NEW_RE = /(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster)\s*(?:جديد[ةه]|ثاني[ةه]|أخرى|اخرى|new|another)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster|logo|banner)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:صوّر|صور|صوره|صورة|تصور)\s?لي\s+\S/i; // v659: «صوّر لي X» = صورة جديدة، لا تعديل على السابقة
@@ -24458,7 +24466,7 @@ function __showImgLoading(el, ar, en){
        التعديل قائمة كلمات («واقعي» لا تطابق «واقعية»، «إضاءة» لا تطابق «الإضاءة»). كتطبيقات الصور الكبرى: بعد صورة مباشرةً
        أيّ رسالة قصيرة ليست سؤالًا ولا شكرًا ولا طلب صورة جديدة ولا كودًا = تعديل على آخر نسخة. */
     const __ackOnly = /^\s*(?:هلا|مرحبا|السلام\s*عليكم|شكرا|شكرًا|مشكور|تسلم|تسلمين|يعطيك\s*العافية|تمام|ممتاز|رائع|جميل|جميلة|حلو|حلوة|زين|نعم|لا|اوكي|أوكي|ok|okay|thanks|thank you|nice|great|perfect|yes|no)\s*[.!👍❤️🌹]*\s*$/i;
-    const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 300 && !__ackOnly.test(text) && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !__rtWriteAsk /* v-route-write */ && !__rtTextRev /* v-route-sticky */);
+    const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 300 && !__ackOnly.test(text) && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !__rtWriteAsk /* v-route-write */ && !__rtTextRev && !__rtAfterTextOut /* v-route-sticky */);
     const __FOLLOW_DEFAULT = __FOLLOW_ANY || !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text) && !__rtWriteAsk /* v-route-write */ && !__rtTextRev /* v-route-sticky */);
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/

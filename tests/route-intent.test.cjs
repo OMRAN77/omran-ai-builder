@@ -163,8 +163,9 @@ vm.runInNewContext([
   '  const cur = { lastMsgWasImageEdit: chain !== false, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
   '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ].concat(extra || []) };',
   '  const getCurrent = () => cur, pendingAttachments = [], imageAttachments = [];',
-  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtPutRe = '), line('const __rtWriteAsk = '), line('const __rtTextOutRe = '), line('const __rtTextOut = '), line('const __rtTextRevRe = '), line('const __rtIsTextOut = '),
-  SRC.slice(SRC.indexOf('  const __rtTextRev = '), SRC.indexOf('  })());', SRC.indexOf('  const __rtTextRev = ')) + 8),
+  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtPutRe = '), line('const __rtWriteAsk = '), line('const __rtTextOutRe = '), line('const __rtTextOut = '), line('const __rtTextRevRe = '), line('const __rtIsTextOut = '), line('const __rtQRe = '), line('const __rtContRe = '), line('const __rtDocNameRe = '),
+  SRC.slice(SRC.indexOf('  const __rtCtx = '), SRC.indexOf('  })();', SRC.indexOf('  const __rtCtx = ')) + 7),
+  line('const __rtTextRev = '), line('const __rtAfterTextOut = '),
   line('const __IMGF_NEW_RE = '), line('const __IMGF_NOT_RE = '), line('const __IMG_EDIT_VERB_RE = '),
   imgFollowSrc,
   line('const __nanoQ = '), line('const __ATT_VISION_RE = '), line('const __codeWordRe = '), line('const __ackOnly = '),
@@ -295,6 +296,12 @@ test('١٥. v-route-sticky: بعد «اكتب لي قصيدة/بوست/ملخص�
   for (const pre of [[U('سوي لي ملخص عن تاريخ الاتحاد'), A('ملخص…')], [U('اكتب لي معلومات عن الجمال'), A('الجمال…')], [U('اكتب لي بوست لينكدإن عن العمل الجماعي'), A('بوست…')]]) {
     for (const t of ['بالإنجليزي', 'اختصرها في ثلاث نقاط', 'خله أقصر']) assert.equal(IMG(W.after(t, pre)), false, pre[0].content + ' ← ' + t);
   }
+  // المسبار الأعمى (الجولة الأخيرة): «الثالث حلو» بعد «عطني خمس أسماء» للنصّ؛ «اختصر» بعد سؤال و«كمل»؛ «اختصر القصيدة» تسمّي النصّ
+  const names = [U('اقترح لي اسم للنادي'), A('١. الفرسان…'), U('عطني خمس أسماء ثانية'), A('١… ٥…')];
+  assert.equal(IMG(W.after('الثالث حلو', names)), false, 'بعد اقتراح الأسماء');
+  assert.equal(IMG(W.after('خلها بالليل', names)), true, 'والتعديل الصريح بعدها يبقى');
+  assert.equal(IMG(W.after('اختصر', [U('وش معنى الوردة الحمراء في الثقافة العربية'), A('…'), U('كمل'), A('…')])), false, 'بعد سؤال و«كمل»');
+  assert.equal(IMG(W.after('اختصر القصيدة', [U('اكتب قصيدة عن الصورة'), A('…'), U('وش اسم هذي السلالة؟'), A('…')])), false, 'تسمية النصّ');
   // سلسلة مراجعات: «اختصرها» ثمّ «بالإنجليزي» كلاهما للنصّ
   assert.equal(IMG(W.after('بالإنجليزي', poem.concat([U('اختصرها'), A('…')]))), false, 'مراجعة بعد مراجعة');
   // «حلوة» بينهما تُرجع سلوك main، وبعد الصورة مباشرةً كما كانت
