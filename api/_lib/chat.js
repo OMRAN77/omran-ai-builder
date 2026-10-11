@@ -150,7 +150,7 @@ const TOOLS = [
    (v-owner-raw2) — فوصفُها هو تعليمتُها الوحيدة التي تصله. */
 /* v-providers-like-agent (أمر المالك ٤ أكتوبر «خلّهم كلّهم نفس الي عند الوكيل، نفس الخاصيّة في الكتابة وكلّ شي»): أدوات المالك
    في المحادثة هي أدوات وكيله نفسها — الرفع إلى GitHub وتفويض مهمّة الكود والتحقّق منها وأخطاء الإنتاج — لكلّ مزوّد. */
-const OWNER_TOOLS = [require('./app-errors.js').TOOL, require('./github-write.js').TOOL, require('./agent-delegate.js').START_TOOL, require('./agent-delegate.js').CHECK_TOOL, require('./github-edit.js').EDIT_TOOL, require('./github-edit.js').MERGE_TOOL, require('./github-manage.js').MANAGE_TOOL]; // v-agent-surgical: التعديل الجراحيّ والدمج بـ«ادمج»
+const OWNER_TOOLS = [require('./app-errors.js').TOOL, require('./github-write.js').TOOL, require('./agent-delegate.js').START_TOOL, require('./agent-delegate.js').CHECK_TOOL, require('./github-edit.js').EDIT_TOOL, require('./github-edit.js').MERGE_TOOL, require('./github-manage.js').MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]; // v-prov-self: ملفّ المزوّد والدروس العامّة · v-agent-surgical: التعديل الجراحيّ والدمج بـ«ادمج»
 const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []); // v-claude-code-level E5: وصف read_github للمالك يذكر from= المتوازية — غيره بالكائنات نفسها حرفيًّا
 
 const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — سبع، وهي تعمل فعلًا الآن]:\n' +
@@ -1461,13 +1461,16 @@ module.exports = async (req, res) => {
     /* v-live-social: «اريده ai فعلن وليس كلام فقط» — كلّ سؤال معلومة يُبحث فيه، لا ما «قد تغيّر» وحده */
     const SEARCH_RULE_NOTE = '\n\n[البحث]: لأيّ سؤال يطلب معلومة أو حقيقة استدعِ web_search أوّلًا حتّى لو ظننت أنّك تعرف — يبحث في الويب والتواصل الاجتماعي معًا. '
       + 'اذكر من أين جاءت كلّ معلومة (موقع أو منصّة). لا بحث للتحيّة والمجاملة والكتابة الإبداعيّة والترجمة وتعديل نصّ المستخدم. بحثان كحدّ أقصى في الردّ.';
-    const system = quietSocialTurn
+    /* v-prov-self: آخر النظام (فيبقى الثابت بادئة الكاش) — للمالك ملفّ المزوّد المختار والدروس كلّها، ولغيره الدروس المنشورة بـ«عمّم» */
+    let __provSelfSys = '';
+    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov); } catch (e) { logError('chat/prov-self', e); }
+    const system = (quietSocialTurn
       ? PERSONA_NOTE + '\n' + __sysBase + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور وبلغة رسالة المستخدم نفسها — جملتان أو ثلاث فيها روح (المثال العربي «الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟» مجرد مثال، ترجم روحه للغة المستخدم) واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + ملف المالك + ذاكرة الحساب (تصل ضمن __sysBase).
            v-tokens-cache: التاريخ والوقت والمدينة صارت في ذيل رسالة المستخدم الأخيرة (__turnTail) — تتبدّل كلّ دقيقة فكانت تبطل كاش التاريخ. */
         ? PERSONA_NOTE + '\n' + __sysBase + ownerKnowledge + SEARCH_RULE_NOTE + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE + (siteGuideTurn && baseSystem.indexOf(SITE_GUIDE_MARK) === -1 ? SITE_GUIDE_NOTE : '') + (__ownerNoTools ? '' : (ownerKnowledge && __ownerReq ? require('./github-edit.js').WORK_NOTE : '')) + (__ownerUiShot ? require('./owner-carry.js').UI_SHOT_NOTE : '') + (__ownerNoTools ? require('./provider-level.js').NO_TOOLS_NOTE : '') /* v-claude-code-level E1: دور المالك بلا أدوات لا يُؤمر بها */ /* v-agent-surgical: طريقة العمل بلا تكرار */
-        : PERSONA_NOTE + '\n' + __sysBase + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;
+        : PERSONA_NOTE + '\n' + __sysBase + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ) + __provSelfSys;
     // v-owner-raw2: ما يُرسل فعلًا — للمالك صفر حرف، ولغيره النظام كما هو.
     const __coach = __rawOwner && prov === 'cohere'; // v-cohere-coach
     const __sysRaw = __rawOwner ? (siteGuideTurn ? SITE_GUIDE_NOTE.trim() : '') : system; // v-site-guide3: الإرشاد وحده يصل نظام المالك الخام
@@ -2049,6 +2052,9 @@ module.exports = async (req, res) => {
             else if (!__dl.ownerAsksCode(lastUserText)) result = __dl.DELEGATE_REFUSAL; // v-code-not-primary: بطلب المالك بالاسم وحده
             else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
           }
+          /* v-prov-self: ملفّ المزوّد المختار نفسه (لا غيره)، والدروس العامّة بـ«عمّم» يفحصها الخادم */
+          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf(reqProv || prov, input, __ownerReq);
+          else if (cb.name === 'teach_users') result = await require('./prov-self.js').runTeach(input, lastUserText, __ownerReq, reqProv || prov);
           else if (cb.name === 'check_code_task') {
             const __dl = require('./agent-delegate.js');
             result = __ownerReq ? __dl.formatCheck(await __dl.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
@@ -2121,6 +2127,8 @@ function ownerStopNote(fail, then) {
   const __f = (then || fail) || {};
   // v-groq-tpm: 413 «tokens per minute» بعد إعادة القصّ في oa-direct = المحادثة نفسها أكبر من حدّ المفتاح في الدقيقة
   if (Number(__f.status) === 413 && /tokens per minute|\bTPM\b/i.test(String(__f.text || ''))) return 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة';
+  // v-groq-tpm: 429 بموعد («try again in 12m3s») بعد انتظار oa-direct القصير = موعد الحدّ نفسه للمالك بدل رقم
+  if (Number(__f.status) === 429) { const __w = require('./oa-direct.js').groqRetryAfter(__f.text); if (__w) return 'ما قدرت أردّ الحين — وصلت حدّ المفتاح؛ جرّب بعد ' + (__w < 90 ? Math.ceil(__w) + ' ثانية' : __w < 5400 ? Math.ceil(__w / 60) + ' دقيقة' : Math.ceil(__w / 3600) + ' ساعة'); }
   return 'ما قدرت أردّ الحين — خطأ ' + (__f.status || '؟');
 }
 /* v-owner-identity (المالك ٨ أكتوبر: «ولا واحد يردّ على أيّ مزوّد باسمه… المزوّدين كلّهم أسامي فقط، شو عرّفني أنّهم بأصلهم»):

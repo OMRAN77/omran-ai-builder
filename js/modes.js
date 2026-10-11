@@ -223,7 +223,7 @@
       var ACCENT = 'var(--accent,#f0c040)', INK = 'var(--text,#eee)';
       function refresh(){
         var nm = wrap.querySelector('.omModelName');
-        if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true) ? agentLabel() : curProvName();
+        if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true && curProv() === 'claude') /* v-prov-self: الوكيل يعمل مع Claude وحده؛ غيره يردّ بنفسه فاسمه هو */ ? agentLabel() : curProvName();
         try{
           var pk = curProv(); var pv = provOf(pk); var mid = pv ? curModelId(pv) : '';
           var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ heads[i].style.color = (heads[i].getAttribute('data-prov') === pk) ? ACCENT : INK; }
