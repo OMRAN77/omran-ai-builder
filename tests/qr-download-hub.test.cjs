@@ -146,13 +146,26 @@ test('٧. النقاء: لا اسم مزوّد، لا سكربت خارجيّ، 
   }
   assert.ok(read('scripts/guard.mjs').includes("'download.html'"));
   assert.ok(fs.statSync(path.join(ROOT, 'icons/ai-hub-mark-256.png')).size > 10000, 'شعار الوسط موجود');
+  // قرار المالك: الوسائط غير المستخدمة تبقى — والثابتة تخدم تنزيل الضيف والملصقات المطبوعة (/download ← التحويل نفسه)
+  for (const [f, min] of [['icons/omran-qr-code.png', 20000], ['assets/omran-qr-card.png', 20000], ['icons/ai-hub-mark.png', 100000]]) {
+    assert.ok(fs.existsSync(path.join(ROOT, f)) && fs.statSync(path.join(ROOT, f)).size > min, f + ' باقية');
+  }
 });
 
 test('٨. «حسابي»: باركود واحد يُرسم برابط دعوة صاحب الحساب، بلا «صفحة المتاجر» ولا الصورة الثابتة', () => {
   const p = read('js/partials-settings.js');
   assert.ok(p.includes('id="acctQrCanvas"') && p.includes('id="acctQrDl"'), 'لوحة الباركود وزرّ تحميله');
   assert.ok(!p.includes('صفحة المتاجر') && !p.includes('href="/download"'), 'زرّ صفحة المتاجر أُزيل');
-  assert.ok(!p.includes('omran-qr-code.png'), 'الصورة الثابتة (رابط /download بلا دعوة) لم تعد تُعرض');
+  assert.ok(!/<img[^>]+omran-qr-code\.png/.test(p), 'الصورة الثابتة (رابط /download بلا دعوة) لم تعد تُعرض');
+  assert.match(p, /a\.href = \/\[\?&\]ref=\/\.test\(link\) \? cv\.toDataURL\('image\/png'\) : '\/icons\/omran-qr-code\.png';/,
+    'صاحب الدعوة ينزّل المرسوم، والضيف الثابتة (https — داخل تطبيق هواوي data: يُرفع برمز الجلسة فيُرفض للضيف)');
+  assert.match(p, /sc\.onerror = function\(\) \{ if \(sc\.parentNode\) sc\.parentNode\.removeChild\(sc\); \};/, 'فشل التحميل لا يكدّس الوسوم');
+  // «إرسال ومشاركة» يرسل الرابط الذي يحمله الباركود (النسختان)
+  for (const f of ['js/partials-settings.js', 'js/app-05-ui.js']) {
+    assert.match(read(f), /var shareUrl = window\.acctQrLink \? window\.acctQrLink\(u && u\.value\) :/, f);
+  }
+  // الدخول والخروج لا يعيدان التحميل: renderReferral يعيد رسم الباركود المفتوح (acctPaintQr لا يرسم إن لم يتغيّر الرابط)
+  assert.match(read('js/app-05-ui.js'), /linkEl\.value = username \?[^\n]*\n[^\n]*\n  const qrBox = \$\('#acctQrBox'\);\n  if\(qrBox && qrBox\.style\.display === 'block' && window\.acctPaintQr\) window\.acctPaintQr\(\);/);
   assert.match(p, /sc\.src = '\/js\/qr\.js\?v=\d+'/, 'المولّد يُحمَّل عند فتح الباركود فقط');
   assert.ok(p.includes("logo: '/icons/ai-hub-mark-256.png'"), 'الشعار في الوسط');
   // نسختا acctToggleQr (الجزء والحزمة — الحزمة تُحمَّل بعده فتغلب) ترسمان عند الفتح
@@ -174,7 +187,7 @@ test('٩. رابط باركود «حسابي» من رابط الدعوة: /app?
   assert.equal(f('https://x/?ref=%22%3E%3Cimg'), 'https://omran-ai-builder.vercel.app/app');
 });
 
-function runPill({ href, standalone }) {
+function runPill({ href, standalone, bridge, storeSafe }) {
   const src = read('js/app-10-features.js');
   const m = /\/\* v-qr-one:[\s\S]*?\n\(function\(\)\{[\s\S]*?\n\}\)\(\);/.exec(src);
   assert.ok(m, 'كتلة زرّ التثبيت موجودة');
@@ -189,16 +202,17 @@ function runPill({ href, standalone }) {
   }
   const calls = { install: 0, replaced: null };
   const ctx = {
-    URL, I18N: { en: { install: 'Install app' } },
+    URL, I18N: { en: { install: 'Install app', closeTitle: 'Close' } },
     location: { href },
     history: { state: null, replaceState: (s, t, u) => { calls.replaced = u; } },
     isStandalone: () => standalone,
     onInstallBtnClick: () => { calls.install++; },
     __swallow: (e) => { throw e; },
     setTimeout: (fn) => fn(),
-    window: { curT: () => ({ install: 'تثبيت التطبيق' }) },
+    window: Object.assign({ curT: () => ({ install: 'تثبيت التطبيق', closeTitle: 'إغلاق' }) }, bridge ? { OmranRender: { mode: () => 'cpu' } } : {}),
     document: {
       readyState: 'complete',
+      documentElement: { classList: { contains: (c) => !!storeSafe && c === 'store-safe' } },
       getElementById: (id) => els[id] || null,
       createElement: el,
       body: { appendChild: (c) => { if (c.id) els[c.id] = c; } },
@@ -221,6 +235,7 @@ test('١٠. الوصول من الباركود (?install=1): زرّ «تثبيت
   assert.equal(r.calls.install, 1, 'onInstallBtnClick');
   assert.ok(pill.removed);
   const r2 = runPill({ href: 'https://omran-ai-builder.vercel.app/?install=1', standalone: false });
+  assert.equal(x.attrs['aria-label'], 'إغلاق', 'زرّ الإغلاق بنصّ closeTitle المترجم');
   r2.els.installPill.children[1].onclick();
   assert.equal(r2.calls.install, 0, '× يغلق بلا تثبيت');
 });
@@ -232,8 +247,22 @@ test('١١. لا زرّ داخل التطبيق المثبّت ولا بلا ?in
   const b = runPill({ href: 'https://omran-ai-builder.vercel.app/?ref=omran', standalone: false });
   assert.equal(b.els.installPill, undefined);
   assert.equal(b.calls.replaced, null, 'لا لمس للرابط');
-  // النصّ موجود في الـ١٤ لغة (لا نصّ جديد)
+  // داخل تطبيق هواوي: الرابط يفتح فيه (autoVerify) وWebView ليس standalone — الجسر أو علم المتجر يمنعان الزرّ
+  for (const o of [{ bridge: true }, { storeSafe: true }]) {
+    const h = runPill(Object.assign({ href: 'https://omran-ai-builder.vercel.app/?ref=omran&install=1', standalone: false }, o));
+    assert.equal(h.els.installPill, undefined, JSON.stringify(o));
+    assert.equal(h.calls.replaced, '/?ref=omran', 'الرابط يُنظَّف');
+  }
+});
+
+test('١٢. نصّا الزرّ (install وcloseTitle) موجودان فعلًا في الـ١٤ لغة — لا نصّ جديد', () => {
   const data = read('js/app-03-i18n-data.js');
-  assert.equal((data.match(/\binstall:/g) || []).length, 2);
-  for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) assert.match(read('i18n/' + lg + '.js'), /\binstall:/, lg);
+  assert.equal((data.match(/^\s*install: '/gm) || []).length, 2, 'العربيّة والإنجليزيّة');
+  assert.equal((data.match(/\bcloseTitle: '/g) || []).length, 2, 'العربيّة والإنجليزيّة');
+  for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) {
+    const ctx = { I18N: { [lg]: {} } };
+    ctx.window = ctx;
+    vm.runInNewContext(read('i18n/' + lg + '.js'), ctx);
+    for (const k of ['install', 'closeTitle']) assert.ok(typeof ctx.I18N[lg][k] === 'string' && ctx.I18N[lg][k].length > 1, k + ' في ' + lg);
+  }
 });

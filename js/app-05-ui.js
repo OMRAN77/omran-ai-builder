@@ -3193,6 +3193,9 @@ function renderReferral(){
   const username = authGet('aiapp_username');
   const linkEl = $('#acctReferralLink');
   if(linkEl) linkEl.value = username ? (location.origin + '/?ref=' + encodeURIComponent(username)) : '';
+  // v-qr-one: الباركود المفتوح يتبع الرابط — الدخول والخروج لا يعيدان تحميل الصفحة، والصندوق يبقى مفتوحًا بينهما
+  const qrBox = $('#acctQrBox');
+  if(qrBox && qrBox.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
   const bonusEl = $('#acctReferralBonus');
   if(!bonusEl) return;
   if(!username){ bonusEl.textContent = ''; return; }
@@ -3318,7 +3321,7 @@ window.acctToggleQr = function() {
 };
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
-  var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+  var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
   var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
   if (navigator.share) {
     try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }

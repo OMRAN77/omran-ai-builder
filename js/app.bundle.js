@@ -12259,6 +12259,9 @@ function renderReferral(){
   const username = authGet('aiapp_username');
   const linkEl = $('#acctReferralLink');
   if(linkEl) linkEl.value = username ? (location.origin + '/?ref=' + encodeURIComponent(username)) : '';
+  // v-qr-one: الباركود المفتوح يتبع الرابط — الدخول والخروج لا يعيدان تحميل الصفحة، والصندوق يبقى مفتوحًا بينهما
+  const qrBox = $('#acctQrBox');
+  if(qrBox && qrBox.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
   const bonusEl = $('#acctReferralBonus');
   if(!bonusEl) return;
   if(!username){ bonusEl.textContent = ''; return; }
@@ -12384,7 +12387,7 @@ window.acctToggleQr = function() {
 };
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
-  var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+  var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
   var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
   if (navigator.share) {
     try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
@@ -27095,14 +27098,16 @@ window.addEventListener('appinstalled', () => {
 
 /* v-qr-one: الباركود الواحد (/app ← download.html) يفتح التطبيق بـ?install=1 على أيّ جهاز: زرّ «تثبيت التطبيق» عائم
    أعلى الشاشة بنصّ install الموجود في الـ١٤ لغة، ونقره = زرّ التثبيت نفسه (نافذة المتصفّح أو خطوات جهازه).
-   لا يظهر داخل التطبيق المثبّت، ويُحذف install من الرابط كي لا يعود مع التحديث (ref يبقى لمن يقرؤه). */
+   لا يظهر داخل التطبيق المثبّت ولا داخل تطبيق هواوي (الرابط يفتح فيه بفلتر autoVerify، وWebView ليس standalone —
+   جسره OmranRender أو علم المتجر يدلّان عليه)، ويُحذف install من الرابط كي لا يعود مع التحديث (ref يبقى لمن يقرؤه). */
 (function(){
   try {
     const here = new URL(location.href);
     if(here.searchParams.get('install') !== '1') return;
     here.searchParams.delete('install');
     history.replaceState(history.state, '', here.pathname + here.search + here.hash);
-    if(isStandalone()) return;
+    const root = document.documentElement;
+    if(isStandalone() || window.OmranRender || (root && root.classList.contains('store-safe'))) return;
     const mount = () => {
       if(document.getElementById('installPill')) return;
       const d = (typeof window.curT === 'function') ? window.curT() : {};
@@ -27120,7 +27125,7 @@ window.addEventListener('appinstalled', () => {
       go.onclick = () => { pill.remove(); onInstallBtnClick(); };
       const x = document.createElement('button');
       x.type = 'button';
-      x.setAttribute('aria-label', '×');
+      x.setAttribute('aria-label', d.closeTitle || (I18N.en || {}).closeTitle || '×');
       x.textContent = '×';
       x.style.cssText = 'border:0;background:none;color:#cfd3dc;font-size:20px;line-height:1;width:32px;height:32px;border-radius:50%;cursor:pointer;';
       x.onclick = () => pill.remove();

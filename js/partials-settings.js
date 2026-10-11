@@ -877,6 +877,8 @@
   };
   // v-qr-one: باركود واحد لكلّ الأجهزة برابط دعوة صاحب الحساب — /app يرسل كلّ جهاز إلى تطبيقه (download.html).
   // يُرسم هنا بـjs/qr.js (بلا شبكة) ويُعاد فقط إن تغيّر الرابط؛ «تحميل الباركود» ينزّل الصورة المرسومة نفسها.
+  // الضيف (بلا دعوة) ينزّل الصورة الثابتة: داخل تطبيق هواوي رابط data: يُرفع للخادم برمز الجلسة فيُرفض للضيف،
+  // ورابط https ينزّله منزّل النظام؛ والثابتة (/download) تحوّل كـ/app تمامًا. «إرسال ومشاركة» يرسل الرابط نفسه.
   window.acctQrLink = function(refLink) {
     var m = /[?&]ref=([^&#]*)/.exec(refLink || '');
     var ref = m ? decodeURIComponent(m[1]) : '';
@@ -892,18 +894,19 @@
       cv.setAttribute('data-link', link);
       window.OmranQR.draw(cv, link, { px: 720, logo: '/icons/ai-hub-mark-256.png' }, function() {
         var a = document.getElementById('acctQrDl');
-        try { if (a) a.href = cv.toDataURL('image/png'); } catch (e) { /* guard-ok — لوحة ملوّثة لا تُصدَّر؛ الباركود ظاهر ويُمسح من الشاشة */ }
+        try { if (a) a.href = /[?&]ref=/.test(link) ? cv.toDataURL('image/png') : '/icons/omran-qr-code.png'; } catch (e) { /* guard-ok — لوحة ملوّثة لا تُصدَّر؛ الباركود ظاهر ويُمسح من الشاشة */ }
       });
     };
     if (window.OmranQR) return paint();
     var sc = document.createElement('script');
     sc.src = '/js/qr.js?v=1';
     sc.onload = paint;
+    sc.onerror = function() { if (sc.parentNode) sc.parentNode.removeChild(sc); }; // الفتح التالي يعيد المحاولة بوسم واحد
     document.head.appendChild(sc);
   };
   window.acctShareApp = async function() {
     var u = document.getElementById('acctReferralLink');
-    var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+    var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
     var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
     if (navigator.share) {
       try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
