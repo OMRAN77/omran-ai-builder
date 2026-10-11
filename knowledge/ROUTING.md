@@ -14,7 +14,7 @@
 
 ## ١. نقطة الدخول الوحيدة
 
-كلّ نداءات الذكاء تمرّ من دالّة واحدة: `api/ai.js:479` (`module.exports = withErrorCapture('ai', …)`).
+كلّ نداءات الذكاء تمرّ من دالّة واحدة: `api/ai.js:481` (`module.exports = withErrorCapture('ai', …)`).
 الفرز بـ`?action=` عبر `load()` في `api/ai.js:19`.
 
 ```
@@ -25,7 +25,7 @@ POST /api/ai?action=<name>
 │     openrouter · perplexity · agent · chat
 │     (غير ذلك → 404 «unknown ai route»)
 │
-└─ action ضمن PROVIDERS؟                          ai.js:477
+└─ action ضمن PROVIDERS؟                          ai.js:479
    │  ['openai','gemini','groq','claude','cohere','deepseek',
    │   'mistral','openrouter','perplexity']   ← لاحظ: «chat» و«agent» ليسا منها
    │
@@ -40,27 +40,27 @@ POST /api/ai?action=<name>
 
 ## ٢. مسار المزوّد المباشر (PROVIDERS)
 
-يُطبَّق فقط حين `action` في القائمة **و**`req.method === 'POST'` (`ai.js:487`).
+يُطبَّق فقط حين `action` في القائمة **و**`req.method === 'POST'` (`ai.js:489`).
 
 | # | القرار | المرساة | الأثر |
 |---|--------|---------|-------|
 | ١ | تنظيف محادثة Claude (آخر رسالة يجب أن تكون للمستخدم) | `ai.js` داخل المعالج | يمنع خطأ 400 (v262) |
 | ٢ | تنظيف `contents` لـGemini | `sanitizeGeminiContents` | يمنع 400 صامتًا |
 | ٣ | هل الطالب المالك؟ | `isOwner` → `body.__ownerFactory` | يفتح الوضع الخام |
-| ٤ | المالك + `raw === true` → نزع طبقة التطبيق (اختياريّ منذ v-religion-owner، كـ`chat.js`) | `stripAppSystem` — `ai.js:352` | يحذف كلّ رسائل `system` |
-| ٥ | حقن الملاحظات | `injectNote` — `ai.js:358` | §٢-أ |
+| ٤ | المالك + `raw === true` → نزع طبقة التطبيق (اختياريّ منذ v-religion-owner، كـ`chat.js`) | `stripAppSystem` — `ai.js:354` | يحذف كلّ رسائل `system` |
+| ٥ | حقن الملاحظات | `injectNote` — `ai.js:360` | §٢-أ |
 | ٦ | حذف علم المالك قبل الإرسال | داخل المعالج | لا يتسرّب للمزوّد |
 
 ### ٢-أ. `injectNote` — ماذا يُحقن ومتى
 
 ```
-injectNote(action, body, country)                 ai.js:358
+injectNote(action, body, country)                 ai.js:360
 │
-├─ resolveMode(body)                              ai.js:307
-│   ├─ body.mode صريح وضمن MODES؟ → هو            MODES: ai.js:296
+├─ resolveMode(body)                              ai.js:309
+│   ├─ body.mode صريح وضمن MODES؟ → هو            MODES: ai.js:298
 │   │     ['factory','balanced','minimal','guided']   ('minimal' → 'balanced')
 │   ├─ body.__ownerFactory === true  → 'factory'   (المالك افتراضًا)
-│   └─ وإلّا → AI_MODE من البيئة أو 'balanced'     ai.js:294
+│   └─ وإلّا → AI_MODE من البيئة أو 'balanced'     ai.js:296
 │
 ├─ mode === 'factory'
 │     └─ المالك فقط: OWNER_DIRECT_NOTE ثمّ **توقّف** — لا شيء آخر يُحقن
@@ -75,7 +75,7 @@ injectNote(action, body, country)                 ai.js:358
       + APP_FACTS_NOTE + HIVE
 ```
 
-الحقن نفسه يُكتب في الحقل الذي يقرأه كلّ مزوّد: `applyNote` — `ai.js:440`
+الحقن نفسه يُكتب في الحقل الذي يقرأه كلّ مزوّد: `applyNote` — `ai.js:442`
 (Gemini → `systemInstruction`، Claude → `body.system`، الباقي → رسالة `system` في `messages`).
 
 مصادر الملاحظات: النيّة `quickIntent` — `_lib/router.js:32` و`INTENT_NOTES` — `router.js:78`؛
@@ -256,7 +256,7 @@ streamFreeChain(args)                             free-chain.js:167
 
 | السلك | كان ينقطع عند | الحالة |
 |-------|---------------|--------|
-| أزرار «النبرة» (ودود · مباشر · رسمي) | العميل يحقن `tone` لطلبات `/api/ai`، و`injectNote` لا يقرأه إلّا لمسارات `PROVIDERS` (`ai.js:477`) — و`chat` ليس منها | **حُذفت** (`v-tone-buttons-removed`). البديل: الأسلوب العفويّ في `PERSONA_NOTE` + حقل التعليمات المخصّصة |
+| أزرار «النبرة» (ودود · مباشر · رسمي) | العميل يحقن `tone` لطلبات `/api/ai`، و`injectNote` لا يقرأه إلّا لمسارات `PROVIDERS` (`ai.js:479`) — و`chat` ليس منها | **حُذفت** (`v-tone-buttons-removed`). البديل: الأسلوب العفويّ في `PERSONA_NOTE` + حقل التعليمات المخصّصة |
 
 ### ٦-ب. قائمة ما زال يستحقّ الانتباه
 
@@ -284,6 +284,6 @@ streamFreeChain(args)                             free-chain.js:167
 | `scripts/routing-probe.mjs` | **السلوك**: ١٩ نقطة قرار تُستدعى فعلًا (`__resolveMode` · `__injectNote` · `__stripAppSystem` · `resolveTier` · `freeChain`) ويُقارَن الفرع المأخوذ بما تصفه الخريطة. بلا شبكة وبلا مفاتيح | `node scripts/routing-probe.mjs` |
 
 الأوّل يمسك انزياح الكود، والثاني يمسك تغيّر السلوك مع بقاء الشكل. أُثبت أنّ الأوّل يفشل
-فعلًا: إزاحة سطر واحد في `api/ai.js` أسقطته فورًا («المرساة `api/ai.js:479` تشير إلى سطر فارغ»).
+فعلًا: إزاحة سطر واحد في `api/ai.js` أسقطته فورًا («المرساة `api/ai.js:481` تشير إلى سطر فارغ»).
 
 عند تغيير التوجيه: عدّل الكود، ثمّ عدّل هذه الخريطة، ثمّ `npm run ci`.

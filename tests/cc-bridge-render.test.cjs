@@ -162,7 +162,7 @@ test('٦. الخادم والصورة: /render قبل بوّابة السرّ ا
   assert.ok(srv.includes("appUrl: String(env.DIRECTOR_APP_URL || 'https://omran-ai-builder.vercel.app')") && srv.includes("ffmpeg: env.FFMPEG_BIN || 'ffmpeg'"));
   assert.ok(srv.includes("if (req.method === 'POST' && url.pathname === '/chat')") && srv.includes("url.pathname.startsWith('/runs/')"), 'مسارا /chat و/runs كما هما');
   const docker = read('cc-bridge/Dockerfile');
-  assert.ok(/python3 python3-pip ffmpeg fonts-noto-core/.test(docker) && docker.includes('COPY policy.mjs git.mjs watch.mjs render.mjs server.mjs entrypoint.sh ./'));
+  assert.ok(/python3 python3-pip ffmpeg fonts-noto-core/.test(docker) && docker.includes('COPY policy.mjs git.mjs watch.mjs server.mjs render.mjs entrypoint.sh ./'));
   const pol = read('cc-bridge/policy.mjs');
   assert.ok(!/render/.test(pol), 'سياج أدوات Claude Code لم يُلمس');
   assert.ok(!/console\.log\([^)]*(token|secret)/i.test(read('cc-bridge/render.mjs')), 'لا رمز ولا سرّ في السجلّ');
